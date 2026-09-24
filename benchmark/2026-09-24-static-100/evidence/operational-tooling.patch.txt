@@ -1,0 +1,25 @@
+--- a/harness/westlake_gap/scanner.py
++++ b/harness/westlake_gap/scanner.py
+@@ -281,0 +282 @@
++            errors="backslashreplace",
+--- a/harness/westlake_gap/contracts.py
++++ b/harness/westlake_gap/contracts.py
+@@ -44 +44 @@
+-    return element.get(ANDROID_NS + name, default)
++    return element.get(ANDROID_NS + name, element.get(name, default))
+--- a/harness/westlake_gap/ohresolve.py
++++ b/harness/westlake_gap/ohresolve.py
+@@ -43,0 +44,3 @@
++    target = scan["inventory"].get("native_resolution", {}).get("target_abi")
++    if target:
++        elfs = [e for e in elfs if e.get("abi") == target and e.get("abi_matches_machine", True)]
+--- a/harness/westlake_gap/gapmap.py
++++ b/harness/westlake_gap/gapmap.py
+@@ -998,0 +999,7 @@
++    # Operational arm64 projection; preserve original scan inventory on disk.
++    target = scan["inventory"].get("native_resolution", {}).get("target_abi")
++    if target:
++        scan = {**scan, "inventory": {**scan["inventory"], "elfs": [
++            e for e in scan["inventory"].get("elfs", [])
++            if e.get("abi") == target and e.get("abi_matches_machine", True)
++        ]}}
