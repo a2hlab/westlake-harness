@@ -23,8 +23,33 @@ from pathlib import Path
 from typing import Any
 
 CHILD_LOG = "/data/service/el1/public/appspawnx/adapter_child_{pid}.stderr"
+#: The source-closure flow never runs the cfg that creates the CHILD_LOG directory; the child
+#: walks child_main.cpp's candidates and lands on <runtime>/private-tmp/ instead. The legacy
+#: path stays as a candidate for boards still on the old layout.
+CHILD_LOG_PRIVATE_TMP = "{runtime}/private-tmp/adapter_child_{pid}.stderr"
 FAULTLOG_GLOB = "/data/log/faultlog/temp/cppcrash-{pid}-*"
 TAP_CHANNEL = "/data/local/tmp/noice_tap.{pid}"
+
+#: Screen/board keep-alive around each app (outer loop, verified on the real board): the
+#: default 30 s screen timeout locks the panel over the app, and OH backgrounds the host
+#: (org.westlake.imehost), zeroing the app's child windows and blackening captures.
+HOST_PACKAGE = "org.westlake.imehost"
+HOST_ABILITY = "EntryAbility"
+WAKE_COMMANDS = ["power-shell wakeup",
+                 "power-shell timeout -o 86400000"]  # 2147483647 is silently discarded
+UNLOCK_SWIPE = "uinput -T -m 600 1500 600 400 300"  # swipe up: dismiss the lock screen
+FOREGROUND_COMMAND = f"aa start -b {HOST_PACKAGE} -a {HOST_ABILITY}"
+
+
+def child_log_candidates(child_pid: int | None, runtime: str | None) -> list[str]:
+    """Where the child's stderr can live, most likely first for this board's layout."""
+    if child_pid is None:
+        return []
+    candidates = []
+    if runtime:
+        candidates.append(CHILD_LOG_PRIVATE_TMP.format(runtime=runtime, pid=child_pid))
+    candidates.append(CHILD_LOG.format(pid=child_pid))
+    return candidates
 
 
 def sha256(path: Path) -> str:
@@ -68,8 +93,24 @@ def launch_command(args: argparse.Namespace, app_key: str, app: dict[str, Any],
 
 
 def view_tree_from_log(lines: list[str]) -> list[str]:
-    """Widget lines out of a tap-channel view-tree dump: geometry-bearing rows only."""
-    return [line for line in lines if "rect=[" in line]
+    """Widget lines out of a tap-channel view-tree dump: geometry-bearing rows only.
+
+    Both dump eras are accepted: the old one tags rows '[N/OH_InputBridge] VT <widget>'
+    (ttwalk.sh matched on 'OH_InputBridge. VT'), the current one drops the tag and starts
+    the row with 'VT ' itself ('VT     LinearLayout id=e5c rect=[…]'). What matters for the
+    §10 P4a oracle is unchanged: a laid-out widget carries rect=[x,y WxH] with W,H > 0.
+    """
+    widgets = []
+    for line in lines:
+        text = line
+        if "OH_InputBridge" in text and " VT" in text:
+            text = text.split(" VT", 1)[1]
+        elif text.lstrip().startswith("VT"):
+            pass  # current era: the row itself starts with 'VT '
+        # bare widget rows (already-stripped fixtures) pass through unchanged
+        if "rect=[" in text:
+            widgets.append(text.strip())
+    return widgets
 
 
 def cleanup_commands(hdc: str, serial: str, package: str | None,
@@ -141,6 +182,12 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
 
     report_path = out / "device-report.json"
     try:
+        # Keep the panel lit and the host in front before the launch: the default 30 s
+        # screen timeout locks over the app, and OH backgrounds the host, zeroing the app's
+        # child windows (outer-loop evidence from the 11-app real-board baseline).
+        device = _Device(args.hdc, serial)
+        for wake in (*WAKE_COMMANDS, UNLOCK_SWIPE):
+            device.shell(wake)
         try:
             proc = subprocess.run(command, cwd=args.manifest, capture_output=True, text=True,
                                   timeout=args.launch_timeout)
@@ -151,19 +198,32 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
                                   "stderr_tail": tail(error.stderr)})
             return record
         if proc.returncode != 0 or not report_path.exists():
-            return {**record, "verdict": "launch-failed",
-                    "detail": (proc.stdout + proc.stderr).strip()[-300:]}
+            # Mutate `record` itself (not a {**record} copy): the finally writes cleanup
+            # into it, and a copied dict would drop that field from the returned record.
+            record.update(verdict="launch-failed",
+                          detail=(proc.stdout + proc.stderr).strip()[-300:])
+            return record
 
+        # Bring the host back to the foreground after the launch, before collecting
+        # evidence — a backgrounded host makes the app's windows 0×0 and captures black.
+        device.shell(FOREGROUND_COMMAND)
         report = json.loads(report_path.read_text())
         child = report.get("child")
-        device = _Device(args.hdc, serial)
-        child_log = device.shell(f"cat {CHILD_LOG.format(pid=child)} 2>/dev/null")
+        child_log = ""
+        for candidate in child_log_candidates(child, report.get("runtime")):
+            child_log = device.shell(f"cat {candidate} 2>/dev/null")
+            if child_log.strip():
+                record["child_log_path"] = candidate
+                break
         # View tree over the tap channel ('v' dump), then RenderService visible nodes — the
         # two independent §10 oracles; a screenshot is deliberately not among them.
         device.shell(f"echo v > {TAP_CHANNEL.format(pid=child)}")
         time.sleep(args.vt_wait)
-        view_tree = view_tree_from_log(
-            device.shell(f"cat {CHILD_LOG.format(pid=child)} 2>/dev/null").splitlines())
+        if record.get("child_log_path"):
+            refreshed = device.shell(f"cat {record['child_log_path']} 2>/dev/null")
+            if refreshed.strip():
+                child_log = refreshed
+        view_tree = view_tree_from_log(child_log.splitlines())
         rs_raw = device.shell("hidumper -s RenderService -a RSTree 2>/dev/null")
         pkg = re_escape(app.get("package") or "")
         rs_visible = sum(1 for line in rs_raw.splitlines()
@@ -174,6 +234,13 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
         record["stages"] = stages.judge(child_log, view_tree, rs_visible)
         record["first_blocker"] = blockers.classify(child_log, faultlog, gap_map)
         record["verdict"] = "done"
+        return record
+    except Exception as error:
+        # An exception mid-collection must not escape to the worker: the finally below
+        # still runs cleanup first, and the returned record carries that cleanup — the
+        # worker-built fallback record never would (#7 leftover, carried into #9).
+        record.update(verdict="runner-error",
+                      detail=f"{type(error).__name__}: {error}")
         return record
     finally:
         # Every exit — done, launch-failed, launch-timeout, or an exception mid-collection —
@@ -294,7 +361,12 @@ def main(argv: list[str] | None = None) -> int:
         serials = list(args.serials)
         for index, (app_key, app) in enumerate(sorted(corpus.items())):
             serial = serials[index % len(serials)]
+            # Wake/keep-alive before each app, foreground after the launch — printed so a
+            # dry-run shows the full real-run sequence on the board.
+            for wake in (*WAKE_COMMANDS, UNLOCK_SWIPE):
+                print(f"# pre-launch: {args.hdc} -t {serial} shell {wake}")
             print(" ".join(launch_command(args, app_key, app, serial, run_dir / app_key)))
+            print(f"# post-launch: {args.hdc} -t {serial} shell {FOREGROUND_COMMAND}")
             # Cleanup runs after every launch, timeout or not -- print it too,
             # so a dry-run shows everything a real run would do on the board.
             for command in cleanup_commands(args.hdc, serial, app.get("package"), None, None):

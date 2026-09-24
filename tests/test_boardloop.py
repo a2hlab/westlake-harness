@@ -169,7 +169,8 @@ class TestRunner(unittest.TestCase):
             out = io.StringIO()
             with redirect_stdout(out):
                 runner.main(self._args(tmp))
-            command = out.getvalue().splitlines()[0]
+            command = next(line for line in out.getvalue().splitlines()
+                           if "--app-input " in line)
             app_input = command.split("--app-input ")[1].split(" ")[0]
             self.assertEqual(app_input, str(tmp / "app-inputs" / "fixy"))
             self.assertNotIn("app.apk", app_input)
@@ -268,12 +269,20 @@ class TestRunner(unittest.TestCase):
             results: list = []
             run_dir = tmp / "runs" / "t1"
             run_dir.mkdir(parents=True)
-            # mock's iterable side_effect raises exception items. Every launch is followed
-            # by pidof-fallback cleanup (no report written here): 2 subprocess.run per app.
-            ok = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
-            bad = subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="bad")
-            calls = [subprocess.TimeoutExpired(cmd=["x"], timeout=1), ok, bad, ok, bad, ok]
-            with mock.patch("subprocess.run", side_effect=calls):
+            # Content-based dispatch: per-app call counts vary (wake/foreground/cleanup),
+            # so a fixed list would silently break on any runner change. The first app's
+            # launch times out; the other two fail the launch; everything else succeeds.
+            launches = iter(["one", "two", "three"])
+            def dispatch(cmd, *a, **k):
+                joined = " ".join(str(c) for c in cmd)
+                if "probe_source_app.py" in joined:
+                    if next(launches) == "one":
+                        raise subprocess.TimeoutExpired(cmd=cmd, timeout=1)
+                    return subprocess.CompletedProcess(args=cmd, returncode=1,
+                                                       stdout="", stderr="bad")
+                return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                   stdout="", stderr="")
+            with mock.patch("subprocess.run", side_effect=dispatch):
                 runner._worker(ns, "S1", jobs, run_dir, "t1", results, threading.Lock())
             self.assertEqual(len(results), 3)
             self.assertEqual(results[0]["verdict"], "launch-timeout")
@@ -285,6 +294,128 @@ class TestRunner(unittest.TestCase):
             self.assertIn("launch-failed=2", summary)
             for name in ("one", "two", "three"):
                 self.assertTrue((run_dir / f"{name}.json").exists())
+
+
+# --- real-board fixtures recorded by the outer loop (toutiao, drive 1) --------------------------
+
+FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURE_LOG = (FIXTURES / "toutiao-drive-1.child.stderr").read_text(errors="replace")
+FIXTURE_REPORT = json.loads((FIXTURES / "toutiao-drive-1.device-report.json").read_text())
+
+
+class TestRealBoardAdaptation(unittest.TestCase):
+    """#9: log path from the report's runtime, dual-era VT parsing, keep-alive commands."""
+
+    def test_child_log_candidates_prefer_private_tmp_from_runtime(self) -> None:
+        """① the private-tmp path is derived from the report's runtime, legacy kept as fallback."""
+        runtime = FIXTURE_REPORT["runtime"]
+        child = FIXTURE_REPORT["child"]
+        candidates = runner.child_log_candidates(child, runtime)
+        self.assertEqual(candidates[0],
+                         f"{runtime}/private-tmp/adapter_child_{child}.stderr")
+        self.assertEqual(candidates[1],
+                         f"/data/service/el1/public/appspawnx/adapter_child_{child}.stderr")
+        # no runtime -> legacy only
+        self.assertEqual(runner.child_log_candidates(child, None),
+                         [f"/data/service/el1/public/appspawnx/adapter_child_{child}.stderr"])
+
+    def test_view_tree_parses_consent_dialog_from_real_fixture(self) -> None:
+        """② the consent dialog root and the 「同意」 ip4 row's rect parse out of the new format."""
+        tree = runner.view_tree_from_log(FIXTURE_LOG.splitlines())
+        # the consent dialog's root container is the DecorView at the top of the dump
+        self.assertTrue(any("DecorView" in line and "rect=[0,0 1200x1790]" in line
+                            for line in tree))
+        ip4 = next(line for line in tree if "id=ip4 " in line)
+        self.assertIn("rect=[294,1158 612x99]", ip4)
+        agree = next(line for line in tree if '"同意"' in line)
+        self.assertIn("rect=[564,1183 72x49]", agree)
+
+    def test_p2_passes_on_real_fixture(self) -> None:
+        """③ the fixture's `sBindAppDone=true` carries P2."""
+        self.assertEqual(stages.p2(FIXTURE_LOG), stages.PASS)
+
+    def test_dry_run_lists_wake_and_foreground_commands(self) -> None:
+        """④ dry-run shows wake/keep-alive before each app and `aa start` after the launch."""
+        import io
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            corpus = tmp / "corpus.json"
+            apk = tmp / "app.apk"
+            apk.write_bytes(b"fixture-bytes")
+            corpus.write_text(json.dumps({"apps": {
+                "fixy": {"input": str(apk), "package": "com.fixy"},
+            }}))
+            (tmp / "app-inputs" / "fixy").mkdir(parents=True)
+            (tmp / "app-inputs" / "fixy" / "app-input.json").write_text("{}")
+            argv = [
+                "--corpus", str(corpus), "--manifest", str(tmp / "manifest"),
+                "--workspace", str(tmp), "--westlake-source", str(tmp),
+                "--framework-report", str(tmp / "device-report.json"),
+                "--hdc", "hdc", "--prepared-root", str(tmp / "app-inputs"),
+                "--serials", "S1", "--runs", str(tmp / "runs"),
+                "--run-id", "wake", "--dry-run",
+            ]
+            out = io.StringIO()
+            with redirect_stdout(out):
+                runner.main(argv)
+            text = out.getvalue()
+            self.assertIn("power-shell wakeup", text)
+            self.assertIn("power-shell timeout -o 86400000", text)
+            self.assertIn("aa start -b org.westlake.imehost -a EntryAbility", text)
+
+    def test_failed_and_error_records_carry_cleanup(self) -> None:
+        """⑤ launch-failed and runner-error records both carry the cleanup field."""
+        import argparse
+        import subprocess
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            ns = argparse.Namespace(
+                manifest=tmp, workspace=tmp, westlake_source=tmp,
+                framework_report=tmp / "r.json", hdc="hdc",
+                prepared_root=tmp / "app-inputs", runtime_lock=None, gap_map=None,
+                runs=tmp / "runs", launch_timeout=1, vt_wait=0, dry_run=False,
+            )
+            (tmp / "app-inputs" / "appx").mkdir(parents=True)
+            (tmp / "app-inputs" / "appx" / "app-input.json").write_text("{}")
+            apk = tmp / "appx.apk"
+            apk.write_bytes(b"appx")
+            app = {"input": str(apk), "package": "com.appx"}
+
+            def launch_failed(cmd, *a, **k):
+                if "probe_source_app.py" in " ".join(str(c) for c in cmd):
+                    return subprocess.CompletedProcess(args=cmd, returncode=1,
+                                                       stdout="", stderr="boom")
+                return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+            with mock.patch("subprocess.run", side_effect=launch_failed):
+                record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
+            self.assertEqual(record["verdict"], "launch-failed")
+            self.assertIn("cleanup", record)
+            self.assertTrue(any("pidof com.appx" in e["command"]
+                                for e in record["cleanup"]))
+
+            def evidence_blows_up(cmd, *a, **k):
+                joined = " ".join(str(c) for c in cmd)
+                if "probe_source_app.py" in joined:
+                    out = Path(cmd[-1])
+                    out.mkdir(parents=True, exist_ok=True)
+                    (out / "device-report.json").write_text('{"child": 1, "parent": 2}')
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout="", stderr="")
+                if "kill -9" in joined or "power-shell" in joined or "aa start" in joined \
+                        or "uinput" in joined:
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout="", stderr="")
+                raise OSError("hdc transport died")
+
+            with mock.patch("subprocess.run", side_effect=evidence_blows_up):
+                record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
+            self.assertEqual(record["verdict"], "runner-error")
+            self.assertIn("OSError", record["detail"])
+            self.assertIn("cleanup", record)
+            self.assertTrue(any("kill -9 1" in e["command"] for e in record["cleanup"]))
 
 
 class TestCleanupEveryExit(unittest.TestCase):
@@ -399,6 +530,8 @@ class TestCleanupEveryExit(unittest.TestCase):
             self.assertIn("pidof com.appx", kills[0])
 
     def test_exception_mid_collection_still_cleans_up(self) -> None:
+        """#9 changed the contract: the exception is caught inside run_app and returned as
+        runner-error, but the finally still cleans up by the report's pids."""
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
             ns = self._ns(tmp)
@@ -416,18 +549,19 @@ class TestCleanupEveryExit(unittest.TestCase):
                     (out / "device-report.json").write_text('{"child": 4321, "parent": 4000}')
                     return subprocess.CompletedProcess(args=cmd, returncode=0,
                                                        stdout="", stderr="")
-                if "kill -9" in joined:
+                if any(m in joined for m in ("kill -9", "power-shell", "aa start", "uinput")):
                     return subprocess.CompletedProcess(args=cmd, returncode=0,
                                                        stdout="", stderr="")
                 raise OSError("hdc transport died")  # evidence collection blows up
 
             with mock.patch("subprocess.run", side_effect=fake_run):
-                with self.assertRaises(OSError):
-                    runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
+                record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
+            self.assertEqual(record["verdict"], "runner-error")
             kills = [" ".join(c) for c in calls if "kill -9" in " ".join(c)]
             self.assertEqual(len(kills), 3)  # cleanup ran despite the exception
             self.assertIn("kill -9 4321", kills[0])
             self.assertIn("kill -9 4000", kills[1])
+            self.assertTrue(any("pidof com.appx" in k for k in kills))
 
     def test_view_tree_parsing(self) -> None:
         lines = ["noise line", "Button rect=[1,2 3x4] id=ok", "VT another rect=[0,0 9x9]"]
