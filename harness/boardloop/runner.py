@@ -35,6 +35,22 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def prepared_input(args: argparse.Namespace, app_key: str) -> Path:
+    """The prepare_app.py output directory probe_source_app.py expects for this app.
+
+    probe_source_app.py reads <app-input>/app-input.json (manifest tools/probe_source_app.py),
+    so the raw APK/XAPK path from the corpus is never the right value: the prepared directory
+    under --prepared-root is. A missing directory (or one without app-input.json) is reported
+    rather than launching, since a launch against an unprepared input can only fail downstream.
+    """
+    prepared = Path(args.prepared_root) / app_key
+    if not (prepared / "app-input.json").exists():
+        raise FileNotFoundError(
+            f"{app_key}: no prepared input at {prepared} (missing app-input.json); "
+            f"run prepare_all.py {args.manifest} <inputs> {args.prepared_root} first")
+    return prepared
+
+
 def launch_command(args: argparse.Namespace, app_key: str, app: dict[str, Any],
                    serial: str, out: Path) -> list[str]:
     """The exact probe_source_app.py invocation for one app on one board."""
@@ -43,7 +59,7 @@ def launch_command(args: argparse.Namespace, app_key: str, app: dict[str, Any],
         "--workspace", str(args.workspace),
         "--westlake-source", str(args.westlake_source),
         "--framework-report", str(args.framework_report),
-        "--app-input", str(app["input"]),
+        "--app-input", str(prepared_input(args, app_key)),
         "--app", app_key,
         "--hdc", args.hdc,
         "--serial", serial,
@@ -158,6 +174,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--framework-report", required=True, type=Path,
                         help="per-board device-report.json from probe_framework_vm.py")
     parser.add_argument("--hdc", required=True)
+    parser.add_argument("--prepared-root", required=True, type=Path,
+                        help="prepare_all.py output root; each app launches with "
+                             "<prepared-root>/<key> as --app-input")
     parser.add_argument("--serials", required=True, nargs="+",
                         help="one worker per board serial; apps are dealt round-robin")
     parser.add_argument("--runtime-lock", type=Path, help="runtime lock this run is taken against")

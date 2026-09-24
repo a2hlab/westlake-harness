@@ -122,18 +122,23 @@ class TestFirstBlocker(unittest.TestCase):
 class TestRunner(unittest.TestCase):
     """Launcher plumbing: commands, records, and --dry-run."""
 
-    def _args(self, tmp: Path, dry_run: bool = True):
+    def _args(self, tmp: Path, dry_run: bool = True, prepared: bool = True):
         corpus = tmp / "corpus.json"
         apk = tmp / "app.apk"
         apk.write_bytes(b"fixture-bytes")
         corpus.write_text(json.dumps({"apps": {
             "fixy": {"input": str(apk), "package": "com.fixy", "version": "1.0"},
         }}))
+        prepared_root = tmp / "app-inputs"
+        if prepared:
+            (prepared_root / "fixy").mkdir(parents=True)
+            (prepared_root / "fixy" / "app-input.json").write_text("{}")
         argv = [
             "--corpus", str(corpus), "--manifest", str(tmp / "manifest"),
             "--workspace", str(tmp), "--westlake-source", str(tmp),
             "--framework-report", str(tmp / "device-report.json"),
-            "--hdc", "hdc", "--serials", "SERIAL1", "SERIAL2",
+            "--hdc", "hdc", "--prepared-root", str(prepared_root),
+            "--serials", "SERIAL1", "SERIAL2",
             "--runs", str(tmp / "runs"), "--run-id", "test-run",
         ]
         if dry_run:
@@ -151,7 +156,34 @@ class TestRunner(unittest.TestCase):
             text = out.getvalue()
             self.assertIn("probe_source_app.py", text)
             self.assertIn("--serial SERIAL1", text)
+            self.assertIn("--app-input", text)
+            self.assertIn("fixy", text)
             self.assertIn("dry-run", text)
+
+    def test_dry_run_points_at_the_prepared_directory(self) -> None:
+        """--app-input must be the prepare_app.py output dir, not the raw APK path."""
+        import io
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            out = io.StringIO()
+            with redirect_stdout(out):
+                runner.main(self._args(tmp))
+            command = out.getvalue().splitlines()[0]
+            app_input = command.split("--app-input ")[1].split(" ")[0]
+            self.assertEqual(app_input, str(tmp / "app-inputs" / "fixy"))
+            self.assertNotIn("app.apk", app_input)
+
+    def test_missing_prepared_directory_is_an_error_not_a_launch(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            argv = self._args(tmp, prepared=False)
+            import io
+            from contextlib import redirect_stdout
+            with redirect_stdout(io.StringIO()):
+                with self.assertRaises(FileNotFoundError) as ctx:
+                    runner.main(argv)
+            self.assertIn("prepare_all.py", str(ctx.exception))
 
     def test_view_tree_parsing(self) -> None:
         lines = ["noise line", "Button rect=[1,2 3x4] id=ok", "VT another rect=[0,0 9x9]"]
