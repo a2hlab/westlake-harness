@@ -1,10 +1,39 @@
-# 100 APK 静态复核与通用缺口优先级（2026-09-24）
+# 100 APK 静态复核与通用缺口优先级（2026-09-24，v2 / 黑板 #5）
 
-交付分支 `analysis/static-100`；基线 harness `e3100e1`，Westlake 源码 `22b945321929987c86b35cd99f9f2d2f4283e82e`。负责：内环(codex)，黑板 #2 分析改派。**R2：partially-verified（静态全量验证；启动结果未验证）**。没有连接或写入板子，没有 push，也没有修改主树或本分支的 harness 实现。
+交付分支 `analysis/static-100`；基线 harness `e3100e1`，Westlake 源码 `22b945321929987c86b35cd99f9f2d2f4283e82e`。负责：内环(codex)，黑板 #2 分析改派及 #5 修订。**R2：partially-verified（静态全量验证；启动结果未验证）**。没有连接或写入板子，没有 push，也没有修改主树或本分支的 harness 实现。
 
-100 个输入均完成 scan → oh-resolve → gap-map，并按输入哈希、包名、版本、runtime lock 与输出哈希逐个核对。最终 ABI 为 **92 个 target-abi-available，8 个 no-packaged-native-libraries**。原语料的今日头条含放在 arm64 路径下的 ARM32 ELF，保守排除，以富余候选微博替换；无因缺口多、运行困难而剔除的 app。
+100 个输入均完成 scan → oh-resolve → gap-map，并按输入哈希、包名、版本、runtime lock 与输出哈希逐个核对。最终 ABI 为 **92 个 target-abi-available，8 个 no-packaged-native-libraries**。按 #5 恢复主对照头条：保留原 APK，排除 ARM32 `libcvt.so` 的 AArch64 provider 资格，不再排除 app；移出同源 K-9/Thunderbird 对中的 `fd-k9`，保留微博与 Thunderbird，总数仍为 100。
 
 **最值得先验证的共性问题是 PackageManager、UserManager、JobScheduler、Notification 和 native 装载/入口契约。当前没有任何 app 的首阻塞或启动阶段跃迁观测，不能把静态引用数量称为“已阻塞 app 数”。** 前 N 项的条件化预估见后文：可计算覆盖与剩余静态约束，不能据此许诺点亮数量。
+
+## v2 相对已采认 v1 的差异
+
+基线为外环已采认的 `1cd16b3`；本次追加提交，不改写该提交。恢复 `toutiao`、移出 `fd-k9`，保留微博。pipeline 的指纹失效和 aggregator 的 corpus 过滤已作为正式工具提交，源码位于根目录 `tools/`。
+
+| 指标 | v1 | v2 | 差值 |
+|---|---:|---:|---:|
+| app | 100 | 100 | +0 |
+| 开放分组 | 170 | 170 | +0 |
+| 含硬 verdict 的分组 | 101 | 101 | +0 |
+| 缺失 Java 签名/类型候选 | 897 | 899 | +2 |
+
+以下每格依次为 **覆盖 / 静态硬行清零 / 乐观启动候选**，模型和权重不变；是语料变化及全量重算差异，不是观测到的启动收益。
+
+| 前 N 项 | v1 | v2 |
+|---:|---|---|
+| 1 | 79 / 0 / 0 | 79 / 0 / 0 |
+| 2 | 98 / 0 / 0 | 98 / 0 / 0 |
+| 3 | 98 / 0 / 0 | 98 / 0 / 0 |
+| 4 | 98 / 0 / 0 | 98 / 0 / 0 |
+| 5 | 100 / 0 / 1 | 100 / 0 / 1 |
+| 6 | 100 / 0 / 1 | 100 / 0 / 1 |
+| 7 | 100 / 1 / 2 | 100 / 1 / 2 |
+| 8 | 100 / 1 / 26 | 100 / 1 / 26 |
+| 9 | 100 / 1 / 100 | 100 / 1 / 100 |
+| 10 | 100 / 1 / 100 | 100 / 1 / 100 |
+
+最终明确忽略的 corpus 外 maps：`fd-k9`。所有 app 清单、统计差分和前 N 表保存于 [revision-diff.json](revision-diff.json)。
+
 
 ## 1. 语料与技术栈复核
 
@@ -12,7 +41,7 @@
 
 | 技术栈层 | app | arm64 / 无打包 native | 示例 |
 |---|---|---|---|
-| android-jvm | 68 | 60 / 8 | mcdonalds, wikipedia, termux, ooniprobe, anki, antennapod, newpipe, aegis, markor, opencamera, fd-k9, fd-tusky |
+| android-jvm | 68 | 60 / 8 | mcdonalds, wikipedia, termux, ooniprobe, anki, antennapod, newpipe, aegis, markor, opencamera, fd-tusky, fd-cl |
 | flutter | 8 | 8 / 0 | co-weibo, localsend, fd-fluffychat, fd-libre, fd-saber, fd-immich, fd-kitchenowl, co-mm |
 | native-engine | 8 | 8 / 0 | vlc, ppsspp, fd-organicmaps, fd-stk, fd-minetest, fd-mpv, co-client, co-candycrushsaga |
 | react-native | 7 | 7 / 0 | burgerking, fd-meet, fd-im-vector-app, co-barcelona, co-teams, co-shopping, co-discord |
@@ -23,18 +52,19 @@
 
 分类规则可在 [审计脚本快照](evidence/audit_static100.py.txt) 复算：优先识别 `libflutter.so`、`libreactnative.so`/React 合并库加 DEX 定义、`libunity.so`、`libxul.so`、libGDX/Arc；WebView hybrid 结合原标签与包内 JS 资源（Tutanota `assets/tutanota/app-env/*.js`、Jellyfin `assets/native/nativeshell.js`）保留；明确 native 主引擎按专用库划分；其余归 Android JVM。Compose/Kotlin 仅作辅助标签（58/100 含 Compose 类定义，不能推断全部首屏使用 Compose）。**引擎被打包不等于它是首屏或主 UI**，例如微信/微博含 Flutter、Duolingo 含 Unity、Element 含 React Native 子模块，必须在动态采样时再分主路径。
 
-McDonald’s 的旧 React Native 标签没有得到包内引擎/类定义支持，改为 Android JVM；原来的 libGDX、Flutter、Gecko、native-engine 样本分开保留。所有逐 app 分类与证据见 [CORPUS.md](CORPUS.md)、[corpus100.json](corpus100.json) 和 [audit.json](audit.json)。这是一组 F-Droid、既有控制/原生引擎及商业热门 app 的目的抽样，不代表市场占比；同源 SDK 和 K-9/Thunderbird、Firefox/Fennec 相关性使 100 个 app 不等于 100 个独立实现。
+McDonald’s 的旧 React Native 标签没有得到包内引擎/类定义支持，改为 Android JVM；原来的 libGDX、Flutter、Gecko、native-engine 样本分开保留。所有逐 app 分类与证据见 [CORPUS.md](CORPUS.md)、[corpus100.json](corpus100.json) 和 [audit.json](audit.json)。这是一组 F-Droid、既有控制/原生引擎及商业热门 app 的目的抽样，不代表市场占比；移出 K-9 后，同源 SDK 与 Firefox/Fennec 的相关性仍使 100 个 app 不等于 100 个独立实现。
 
-替换记录：
+语料修订记录：
 
-- 排除 `toutiao`，`abi_status=target-abi-available`，但 `lib/arm64-v8a/libcvt.so` 的 ELF machine 是 ARM/`armeabi-v7a`。这个状态只保证至少存在一个可选 arm64 ELF，不能保证目录中所有文件正确；本次采用更严格的目标目录检查。记录和原三阶段数据保留在 VM `~/a2hlab/static-history/static-100-original/`，摘要在 [exclusions.json](exclusions.json)。
-- 加入 `co-weibo`：`commercial100-results.json` 富余候选，包 `com.sina.weibo`，版本 `16.8.1`，先在 `static-candidates` 完成全链路后纳入最终 100；81 个 ELF 均为 arm64，无 machine mismatch。用候选清单中的 SHA-256 与文件实际哈希核对，不按文件名推断。
-- `fd-tutanota` 的另一个 ABI 条目 `lib/armeabi/libjnidispatch.so` 被扫描器规范化为 ARMv7 而报 alias mismatch；不在 arm64 选择集中，arm64 目录无错，保留。多 ABI APK 不因包含合法的 ARM32/x86 版本被排除。
-- 本任务没有改包或重签名。`fd-noice` 使用 F-Droid 下载目录输入，不沿用历史板上 patch 产物；历史 Noice 的 P4 成果不可移植到本次哈希。现有输入锁的 `modify_or_resign=false` 与本次实际哈希核对是本地追溯，不替代对全部第三方发行方签名的独立认证。
+- `toutiao` 已恢复。输入 SHA-256 逐字节匹配 VM manifest 锁中的 `applications.toutiao.sha256`；保留原包及所有文件，`lib/arm64-v8a/libcvt.so` 的 ELF machine 为 ARM32，只从 AArch64 符号提供者集合排除。依据是 manifest `SOURCE_STACK.md:22–26` 与 `tools/prepare_app.py:98–105`，快照及锁项见 evidence。scan 的 `target-abi-available` 有效，OH/map 沿用同一 target ABI + machine 过滤。
+- v1 将单个错标库扩大为整个 app 不合格，现按外环 #5 纠正。`exclusions.json` 保留原结论和证据，同时明确当前状态为 retained，避免将历史排除当现行规则。
+- 移出 `fd-k9`，保留 `fd-android`（Thunderbird）以减轻同源偏重；不删除原 APK、锁项或残留 scan/oh/map。最终聚合器必须把 corpus 外的 `fd-k9` map 列入 ignored，不能让它污染分母。
+- `co-weibo` 仍保留：v1 已校验富余候选来源、SHA-256 和 81 个 arm64 ELF。`fd-tutanota` 的 `armeabi` alias mismatch 仍不进入 arm64 提供者集合。
+- 本任务没有改包、重签名或改 manifest 历史。`fd-noice` 使用 F-Droid 下载目录输入，不沿用历史板上 patch 产物；历史板上 P4 结果不能转移到本次哈希。
 
 ## 2. 流水线失败、修复与冻结证据
 
-首轮由 kimi 启动，等待它退出后才修改正式语料和正式输出目录。首轮失败及处置：
+v1 首轮由 kimi 启动，以下失败已在 #2 定位并重跑；本次 v2 保留这些修补，以新指纹机制从零重建所有 corpus app 的三阶段产物：
 
 | app/范围 | 根因 | 处置与复验 |
 |---|---|---|
@@ -42,17 +72,23 @@ McDonald’s 的旧 React Native 标签没有得到包内引擎/类定义支持�
 | `co-p2pmobile`（PayPal） | Androguard XML 部分 Android 属性无命名空间，严格 `_attr` 读出 22 个 null provider 名称，gap-map `.split()` 崩溃 | `_attr` 优先读取 Android namespace，缺失时读取同名裸属性；22/22 provider 名称恢复；gap-map 重跑成功，未用空字符串掩盖问题 |
 | 多 ABI app 的 OH / map | scan 选了 arm64，但两个后续消费者仍遍历所有 ELF；既会引入 ARM32 依赖，也可能借错误 ABI 的 export 满足 ARM64 import | 消费者使用同一 `target_abi` + `abi_matches_machine` 过滤；全量 OH 与 maps 归档后重建；合成例确认 ARM32 export 不再满足 ARM64 import |
 
-改动只在 `westlake-inputs/static100-tooling/` 操作副本，补丁存于 [operational-tooling.patch.txt](evidence/operational-tooling.patch.txt)。这不是已合入 harness 的修复；外环可另立 detector 条目采纳。若不用这份补丁直接拿原脚本从零复跑，会重现前两处失败和 ABI 污染。
+上表所涉四处底层 scanner/consumer 修补仍只在 `westlake-inputs/static100-tooling/` 操作副本，补丁存于 [operational-tooling.patch.txt](evidence/operational-tooling.patch.txt)。这不是已合入 harness 的修复；外环可另立 detector 条目采纳。若不用这份补丁直接拿原脚本从零复跑，会重现前两处失败和 ABI 污染。
+
+本次新增的正式工具位于 [tools/static_pipeline.py](../../tools/static_pipeline.py) 与 [tools/aggregate_gaps.py](../../tools/aggregate_gaps.py)，内容同步到实际运行的 `westlake-inputs/tools/`。指纹机制为每个 app 在 `maps/<key>/pipeline-state.json` 记录：实际输入路径/SHA-256、runtime-index 路径/SHA-256/runtime_lock_id、工具包版本与源码/数据模型哈希、pipeline/CLI 入口哈希、Python 版本和配置。任何身份变化均归档旧三阶段结果并重跑该 app；没有 receipt 的旧输出也不信任。每阶段成功后原子记录输出 SHA-256，损坏的中间产物会使自身及下游失效；失败输出不会成为缓存。全局 runtime-index 改变影响所有使用它的 app，单 app 可用 `runtime_index` 指定独立快照。输出目录使用进程锁防止两个 writer 交错。
+
+聚合器现在必须传 corpus；只读取其 app keys 对应的 map，外部 map 即使 JSON 损坏也不解析，在 JSON 的 `ignored_apps` 和 Markdown 的 Ignored maps 小节列出。corpus 内缺 map 则非零退出，避免悄悄发布少于 100 个的榜单。
 
 验证证据：
 
 - 100 个有效 JSON 三元组；每个 scan/map 哈希与容器实际 SHA-256 一致，包名/版本/runtime-lock 一致；split/XAPK 保留整个容器，内 APK 与 DEX 的组件哈希另记在 audit；不存在只拿 base APK 代替 XAPK 的情况。
-- `static-100-resume.log` 的 `ok (` 行为 100，失败和 ABI 排除均为 0；[LEADERBOARD.md](LEADERBOARD.md) 首行含 `— 100 apps`。
+- `static-100-v2.log` 的 `ok (` 行为 100，失败和 ABI 排除均为 0；[LEADERBOARD.md](LEADERBOARD.md) 首行含 `— 100 apps`。
 - [逐 app 校验](audit.json) 的全部布尔 checks 为真；OH 解析按目标 ABI 与 provider export 集重新计算，100/100 与落盘结果一致；见 [verification.json](verification.json)。
-- 隔离工具副本的宿主已知答案测试：`source .../env-mac.sh && PYTHONPATH=.../static100-tooling:tests python -m unittest discover -s tests -v`，69 tests，67 pass、2 skip。VM 先行测试为 66 tests、12 skip，因此以宿主工具链完整测试为主要证据。没有把 skip 算 pass。
+- 本分支的宿主已知答案测试：`source .../env-mac.sh && PYTHONPATH=harness:tests python -m unittest discover -s tests -v`，79 tests，77 pass、2 skip（原 69 + 10 个新工具回归测试）。专项覆盖输入变更、单 app runtime 变更、同 lock ID 下内容变更、工具实现变更、旧输出无 receipt、输出损坏与失败续跑，以及 100 个 corpus maps + 一个非法外部 map 的过滤。没有把 skip 算 pass。
 - runtime lock 的 9 个 boot jar + 1 个 bridge 逐项哈希匹配当前文件；OH 解析输入的 261 个 `.so` 文件哈希单独冻结（其中 197 个非变体且有 exports 的库进入 resolver 索引）。源码 HEAD 和工作区 clean 已核对，[provenance.json](provenance.json) 记录完整值。
 
-目标 ABI 修正改变了 20 个 app 的 OH 缺失符号集合；逐 app 增减见 verification 的 `abi_filter_deltas`。这证明多 ABI 污染不是仅凭源码猜测。
+相对 #2 原始未过滤 ABI 的历史基线，当前 21 个 corpus app 的 OH 缺失符号集合不同；差分包含语料变化，并非本次新增的兼容性修复。v1 → v2 数量变化另见 `revision-diff.json`。
+
+真实 VM 缓存复验：仅将 `markor` receipt 的 runtime_lock_id 改为明确的测试值，然后对完整 corpus 续跑，结果 1 rebuilt（markor）+ 99 cached；规范的 runtime-index 与 APK 未改。独立运行时文件实际变更的单-app 隔离行为另由已知答案测试验证。原 receipt、扰动记录、输出和逐 app receipt 快照均归档。
 
 原始扫描全量仍在 VM `~/a2hlab/static/scans`，单文件哈希与大小均入 audit；完整最终 gap-map（含 supplied 行和成员签名）压缩冻结在 [gap-maps.json.gz](gap-maps.json.gz)。逐步原始日志、原工具及修补差异在 [evidence](evidence/)；最终 corpus 同步到用户指定的 `westlake-inputs/corpus100.json`。
 
@@ -67,7 +103,7 @@ McDonald’s 的旧 React Native 标签没有得到包内引擎/类定义支持�
 | 100/59 | `java:App framework` | hollow-candidate×41, missing×59 | apk-dependency-candidate |
 | 100/51 | `java:Java library` | hollow-candidate×49, missing×51 | apk-dependency-candidate |
 | 100/100 | `load:runtime-silent-success` | unresolved×100 | integrity |
-| 99/40 | `java:Other` | probe-only×56, missing×40, hollow-candidate×3 | apk-dependency-candidate |
+| 99/41 | `java:Other` | probe-only×55, missing×41, hollow-candidate×3 | apk-dependency-candidate |
 | 99/72 | `java:Views & windows` | hollow-candidate×27, missing×72 | apk-dependency-candidate |
 | 97/1 | `java:Content & intents` | hollow-candidate×96, missing×1 | apk-dependency-candidate |
 | 97/17 | `java:Graphics` | hollow-candidate×80, missing×17 | apk-dependency-candidate |
@@ -84,23 +120,23 @@ McDonald’s 的旧 React Native 标签没有得到包内引擎/类定义支持�
 | 89/89 | `pm:call:getComponentEnabledSetting` | stub×89 | apk-dependency-candidate |
 | 88/88 | `pm:call:queryIntentContentProviders` | stub×88 | apk-dependency-candidate |
 | 86/86 | `svc:textclassification` | unresolved×86 | candidate |
-| 81/41 | `java:OS services` | hollow-candidate×39, missing×41, probe-only×1 | apk-dependency-candidate |
+| 81/40 | `java:OS services` | hollow-candidate×40, missing×40, probe-only×1 | apk-dependency-candidate |
 | 81/81 | `pm:call:queryIntentServices` | stub×81 | apk-dependency-candidate |
-| 81/81 | `svc:jobscheduler` | hollow×81 | apk-dependency-candidate |
+| 80/80 | `svc:jobscheduler` | hollow×80 | apk-dependency-candidate |
 | 79/79 | `svc:user` | strict×79 | apk-dependency-candidate |
 | 68/68 | `wv:renderer-process` | missing×68 | apk-dependency-candidate |
-| 50/50 | `sym:bionic-private (not in the NDK)` | missing×50 | apk-dependency-candidate |
-| 30/30 | `load:shadowed-by-board` | missing×30 | apk-dependency-candidate |
-| 57/57 | `policy:lnk_file` | denied×57 | apk-dependency-candidate |
+| 51/51 | `sym:bionic-private (not in the NDK)` | missing×51 | apk-dependency-candidate |
+| 31/31 | `load:shadowed-by-board` | missing×31 | apk-dependency-candidate |
+| 58/58 | `policy:lnk_file` | denied×58 | apk-dependency-candidate |
 | 42/42 | `dep:google-play-services` | absent×42 | apk-dependency-candidate |
 
-本次聚合得到 170 个开放分组，其中 101 组至少有一个硬 verdict；独立成员表含 897 个缺失 Java 签名/类型候选。
+本次聚合得到 170 个开放分组，其中 101 组至少有一个硬 verdict；独立成员表含 899 个缺失 Java 签名/类型候选。
 
 所有组的修复路径与工时见 [GAP-DISPOSITION.md](GAP-DISPOSITION.md)；所有组 × 所有栈的分布、which 清单、class/verdict 分布见 [gap-analysis.json](gap-analysis.json)。按高频共性路径看，PM 查询/组件状态、通知、音频、调度和 user 查询比“把所有 Java hollow 补成有代码”更值得做启动契约验证。
 
 | 栈（分母） | PM provider | 通知 | 音频 | Job | User | native符号 | WebView |
 |---|---|---|---|---|---|---|---|
-| android-jvm (68) | 68 | 67 | 65 | 56 | 57 | 29 | 46 |
+| android-jvm (68) | 68 | 67 | 65 | 55 | 57 | 30 | 46 |
 | flutter (8) | 8 | 8 | 6 | 6 | 5 | 4 | 8 |
 | native-engine (8) | 7 | 7 | 7 | 6 | 5 | 6 | 3 |
 | react-native (7) | 7 | 7 | 7 | 6 | 6 | 6 | 7 |
@@ -119,32 +155,32 @@ McDonald’s 的旧 React Native 标签没有得到包内引擎/类定义支持�
 
 | app | 缺失成员（签名保留） | 状态 |
 |---|---|---|
-| 51 | `Landroid/view/accessibility/AccessibilityNodeInfo;->getChecked()I` | 静态缺失；动态到达未测 |
-| 51 | `Landroid/view/accessibility/AccessibilityNodeInfo;->getExpandedState()I` | 静态缺失；动态到达未测 |
-| 51 | `Landroid/view/accessibility/AccessibilityNodeInfo;->getSupplementalDescription()Ljava/lang/CharSequence;` | 静态缺失；动态到达未测 |
-| 51 | `Landroid/view/accessibility/AccessibilityNodeInfo;->isFieldRequired()Z` | 静态缺失；动态到达未测 |
+| 50 | `Landroid/view/accessibility/AccessibilityNodeInfo;->getChecked()I` | 静态缺失；动态到达未测 |
+| 50 | `Landroid/view/accessibility/AccessibilityNodeInfo;->getExpandedState()I` | 静态缺失；动态到达未测 |
+| 50 | `Landroid/view/accessibility/AccessibilityNodeInfo;->getSupplementalDescription()Ljava/lang/CharSequence;` | 静态缺失；动态到达未测 |
+| 50 | `Landroid/view/accessibility/AccessibilityNodeInfo;->isFieldRequired()Z` | 静态缺失；动态到达未测 |
 | 48 | `Landroid/view/RenderNode;` | 静态缺失；动态到达未测 |
-| 47 | `Landroid/app/Notification$Builder;->setShortCriticalText(Ljava/lang/String;)Landroid/app/Notification$Builder;` | 静态缺失；动态到达未测 |
 | 47 | `Landroid/view/DisplayListCanvas;` | 静态缺失；动态到达未测 |
-| 37 | `Landroid/os/Build$VERSION;->SDK_INT_FULL:I` | 静态缺失；动态到达未测 |
-| 35 | `Landroid/window/BackEvent;->getFrameTimeMillis()J` | 静态缺失；动态到达未测 |
+| 46 | `Landroid/app/Notification$Builder;->setShortCriticalText(Ljava/lang/String;)Landroid/app/Notification$Builder;` | 静态缺失；动态到达未测 |
+| 36 | `Landroid/os/Build$VERSION;->SDK_INT_FULL:I` | 静态缺失；动态到达未测 |
+| 34 | `Landroid/window/BackEvent;->getFrameTimeMillis()J` | 静态缺失；动态到达未测 |
 | 30 | `Landroid/app/ActivityOptions;->setAllowPassThroughOnTouchOutside(Z)V` | 静态缺失；动态到达未测 |
-| 30 | `Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;->ACTION_SET_EXTENDED_SELECTION:Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;` | 静态缺失；动态到达未测 |
+| 29 | `Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;->ACTION_SET_EXTENDED_SELECTION:Landroid/view/accessibility/AccessibilityNodeInfo$AccessibilityAction;` | 静态缺失；动态到达未测 |
 | 22 | `Ljava/lang/Thread;->threadId()J` | 静态缺失；动态到达未测 |
 | 22 | `Ldalvik/annotation/SourceDebugExtension;` | 静态缺失；动态到达未测 |
 | 19 | `Ljava/lang/instrument/ClassFileTransformer;` | 静态缺失；动态到达未测 |
 | 18 | `Ljavax/naming/NamingException;` | 静态缺失；动态到达未测 |
 
-聚合脚本的 `top_missing_members` 当前错误地只匹配 `absent_*` / `missing_member`，而扫描输出是 `missing_class/method/field`，因此原 leaderboard 的此字段会空白；且原脚本按 owner/name 合并会丢 overload signature。本报告保留原 leaderboard 不篡改，在 gap-analysis 中独立纠正。**未传 `--api-levels`，上述“缺失”还没有剔除非 Android API、较新 API 或 SDK_INT 保护分支**；因此这些高频 Android 新 API 先校准版本与可达性，再决定移植。
+聚合脚本的 `top_missing_members` 当前错误地只匹配 `absent_*` / `missing_member`，而扫描输出是 `missing_class/method/field`，因此原 leaderboard 的此字段会空白；且原脚本按 owner/name 合并会丢 overload signature。本次保留该成员统计行为（#5 仅修 corpus 过滤），在 gap-analysis 中独立纠正。**未传 `--api-levels`，上述“缺失”还没有剔除非 Android API、较新 API 或 SDK_INT 保护分支**；因此这些高频 Android 新 API 先校准版本与可达性，再决定移植。
 
 Native 方面，`oh-resolve` 未传 `--ndk-api-dir`，其 fallback 把所有未命名依赖写成 `bionic-private (not in the NDK)`。ANativeWindow、AMedia、AAsset 等不能因此被判为私有 Bionic；必须使用匹配 Android NDK 的声明库重新细分，不能拿 OH SDK 路径当 Android NDK。以下来自完整 OH missing 列表，扣除了 gap-map 识别的 shim symbol 覆盖，未受 `open_symbols[:20]` 截断影响。原始 OH-only 计数另存 gap-analysis 的 `oh_missing_symbols`：
 
 | app | OH + 源码 shim 后仍开口的符号 | 候选修复路径 |
 |---|---|---|
-| 23 | `__libc_init` | 先核 AOSP/Bionic 已有实现/ABI；NDK 图形、媒体、传感器项再接 OH |
-| 19 | `__system_property_read` | 先核 AOSP/Bionic 已有实现/ABI；NDK 图形、媒体、传感器项再接 OH |
-| 14 | `SL_IID_ANDROIDSIMPLEBUFFERQUEUE` | 先核 AOSP/Bionic 已有实现/ABI；NDK 图形、媒体、传感器项再接 OH |
-| 14 | `SL_IID_ANDROIDCONFIGURATION` | 先核 AOSP/Bionic 已有实现/ABI；NDK 图形、媒体、传感器项再接 OH |
+| 24 | `__libc_init` | 先核 AOSP/Bionic 已有实现/ABI；NDK 图形、媒体、传感器项再接 OH |
+| 20 | `__system_property_read` | 先核 AOSP/Bionic 已有实现/ABI；NDK 图形、媒体、传感器项再接 OH |
+| 15 | `SL_IID_ANDROIDSIMPLEBUFFERQUEUE` | 先核 AOSP/Bionic 已有实现/ABI；NDK 图形、媒体、传感器项再接 OH |
+| 15 | `SL_IID_ANDROIDCONFIGURATION` | 先核 AOSP/Bionic 已有实现/ABI；NDK 图形、媒体、传感器项再接 OH |
 | 13 | `AMediaCodec_configure` | 先核 AOSP/Bionic 已有实现/ABI；NDK 图形、媒体、传感器项再接 OH |
 | 13 | `AMediaCodec_delete` | 先核 AOSP/Bionic 已有实现/ABI；NDK 图形、媒体、传感器项再接 OH |
 | 13 | `AMediaCodec_dequeueInputBuffer` | 先核 AOSP/Bionic 已有实现/ABI；NDK 图形、媒体、传感器项再接 OH |
@@ -211,12 +247,12 @@ Native 方面，`oh-resolve` 未传 `--ndk-api-dir`，其 fallback 把所有未�
 
 ## 6. 复验命令与交付状态
 
-所有 VM 命令均经 `orb -m a2hlab bash -lc "<cmd>"`；以下 Python 工具快照和完整补丁随 evidence 保存，不依赖聊天记忆。原 `static_pipeline.py` 只按文件存在跳过，无哈希失效机制：换包、换 runtime、换工具时必须先归档相关 scan/oh/maps。聚合器遍历目录而不按 corpus 过滤，排除 app 的 maps 必须移出目录，否则会出现 101 app 污染。
+所有 VM 命令均经 `orb -m a2hlab bash -lc "<cmd>"`；以下 Python 工具快照和完整补丁随 evidence 保存，不依赖聊天记忆。v1 的按文件存在跳过机制已由指纹 + 阶段输出哈希替代：换包、换 runtime、换工具时自动失效。v2 聚合器允许保留 corpus 外的 maps；它们明确列为 ignored。
 
 ```bash
 # 宿主：操作副本在 westlake-inputs/static100-tooling；无需设备
 source ~/orca/workspaces/westlake-inputs/env-mac.sh
-PYTHONPATH=~/orca/workspaces/westlake-inputs/static100-tooling:tests python -m unittest discover -s tests -v
+PYTHONPATH=harness:tests python -m unittest discover -s tests -v
 
 # VM：最终 100 个均可续跑；现存结果仍须 audit 验证身份
 orb -m a2hlab bash -lc "PYTHONPATH=/Users/zhaoyue/orca/workspaces/westlake-inputs/static100-tooling ~/a2hlab/harness-venv/bin/python /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/static_pipeline.py /Users/zhaoyue/orca/workspaces/westlake-inputs/corpus100.json ~/a2hlab/static --jobs 4"
@@ -224,4 +260,4 @@ orb -m a2hlab bash -lc "python3 /Users/zhaoyue/orca/workspaces/westlake-inputs/t
 orb -m a2hlab bash -lc "python3 /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/audit_static100.py /Users/zhaoyue/orca/workspaces/westlake-inputs/audit-review"
 ```
 
-证据快照重算分析：把 `evidence/analyze_static100.py.txt` 复制为临时 `.py`，执行 `python3 <该脚本> <本目录>`。逐文件完整性用 `shasum -a 256 -c SHA256SUMS`。源码修复、设备上的真实 R2 verified、动态首阻塞确认、任何推送均未在本任务中声称完成。
+证据快照重算分析：把 `evidence/analyze_static100.py.txt` 复制为临时 `.py`，执行 `python3 <该脚本> <本目录>`。逐文件完整性用 `shasum -a 256 -c SHA256SUMS`。两个流水线工具修复已入本分支；底层 scanner 操作补丁仍未合入 harness library。设备上的 R2 verified、动态首阻塞确认、任何推送均未在本任务中声称完成。

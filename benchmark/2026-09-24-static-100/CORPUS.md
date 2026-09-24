@@ -22,7 +22,6 @@ SHA 为前 16 位，完整 SHA-256、原始标签、输入路径、技术栈证�
 | aegis | `com.beemdevelopment.aegis` | 3.4.3 | android-jvm | arm64 | 0eecec45de0da3ff | manifest app-inputs.lock (local-pins-main) |
 | markor | `net.gsantner.markor` | 2.16.1 | android-jvm | JVM | 3f9f260dc3e32a12 | manifest app-inputs.lock (local-pins-main) |
 | opencamera | `net.sourceforge.opencamera` | 1.56.2 | android-jvm | JVM | ca5672ca8c717455 | manifest app-inputs.lock (local-pins-main) |
-| fd-k9 | `com.fsck.k9` | 23.0 | android-jvm | arm64 | 92cd3a81c7a8d066 | F-Droid (fdroid100 fetch) |
 | fd-tusky | `com.keylesspalace.tusky` | 32.2 | android-jvm | arm64 | 3e8fcc49a80d4c30 | F-Droid (fdroid100 fetch) |
 | fd-client | `com.nextcloud.client` | 35.0.0 | android-jvm | arm64 | 2d08059c9a0a94ef | F-Droid (fdroid100 fetch) |
 | fd-gallery | `org.fossify.gallery` | 1.13.1 | android-jvm | arm64 | ae7e699599e81f70 | F-Droid (fdroid100 fetch) |
@@ -104,3 +103,4 @@ SHA 为前 16 位，完整 SHA-256、原始标签、输入路径、技术栈证�
 | co-cash | `com.squareup.cash` | 5.65.0 | android-jvm | arm64 | a2d753e51fb9abec | westlake-harness corpus/downloads.lock.json |
 | co-discord | `com.discord` | 341.13 - Stable | react-native | arm64 | 62345b3197faa88a | westlake-harness corpus/downloads.lock.json |
 | co-com-snapchat-android | `com.snapchat.android` | 14.20.0.50 | android-jvm | arm64 | ea05b7e17b1d062d | westlake-harness corpus/downloads.lock.json |
+| toutiao | `com.ss.android.article.news` | 13.9.0 | android-jvm | arm64 | a1112a0c941f8658 | manifest app-inputs.lock (local-pins-main) |

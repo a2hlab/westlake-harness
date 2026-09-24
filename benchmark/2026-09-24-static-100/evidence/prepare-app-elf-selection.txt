@@ -1,0 +1,51 @@
+source: /home/zhaoyue/a2hlab/manifest/tools/prepare_app.py
+sha256: f1cfdef22884a5764601c9eb6b45a189c122f0d5040f1f656eb2e17c78b0fc7f
+75: def extract_libraries(archive, archive_name, output, prefix, libraries):
+76:     """Extract every lib/<abi>/*.so in one archive to plain files under output."""
+77:     names = archive.namelist()
+78:     if len(names) != len(set(names)):
+79:         raise ValueError('Duplicate APK ZIP entries')
+80:     selected = [info for info in archive.infolist()
+81:                 if info.filename.startswith(prefix) and not info.is_dir()]
+82:     for info in selected:
+83:         relative = PurePosixPath(info.filename)
+84:         if (len(relative.parts) != 3 or '..' in relative.parts or
+85:                 '\\' in info.filename or stat.S_ISLNK(info.external_attr >> 16)):
+86:             raise ValueError('Unsafe native library entry: ' + info.filename)
+87:         if not info.filename.endswith('.so'):
+88:             raise ValueError('Unexpected native library entry: ' + info.filename)
+89:     for info in selected:
+90:         if info.filename in libraries:
+91:             raise ValueError('Native library packaged twice across archives: ' + info.filename)
+92:         target = output / info.filename
+93:         target.parent.mkdir(parents=True, exist_ok=True)
+94:         with archive.open(info) as source, target.open('xb') as destination:
+95:             shutil.copyfileobj(source, destination)
+96:         with target.open('rb') as stream:
+97:             header = stream.read(20)
+98:         # The original APK contains an ARM32 libcvt.so in arm64-v8a.
+99:         # Preserve app bytes; never count that file as an ARM64 provider.
+100:         elf = len(header) == 20 and header[:4] == b'\x7fELF'
+101:         machine = (int.from_bytes(header[18:20],
+102:                    'little' if header[5] == 1 else 'big') if elf else None)
+103:         libraries[info.filename] = {
+104:             'sha256': digest(target), 'bytes': target.stat().st_size,
+105:             'elf_class': header[4] if elf else None, 'elf_machine': machine,
+106:             'aarch64_provider': elf and header[4:6] == b'\x02\x01' and machine == 183,
+107:             'archive': archive_name,
+108:             'stored_uncompressed': info.compress_type == zipfile.ZIP_STORED}
+109:
+110:
+111: def main():
+112:     parser = argparse.ArgumentParser(description=__doc__)
+113:     parser.add_argument('--apk', type=Path, required=True, help='pinned base APK')
+114:     parser.add_argument('--split', type=Path, action='append', default=[],
+115:                         help='pinned split APK (e.g. split_config.arm64_v8a.apk); repeat')
+116:     parser.add_argument('--app', default='toutiao', help='application key in app-inputs.lock.json')
+117:     parser.add_argument('--out', type=Path, required=True)
+118:     args = parser.parse_args()
+119:     applications = json.loads((ROOT / 'app-inputs.lock.json').read_text())['applications']
+120:     if args.app not in applications:
+121:         parser.exit(1, 'APP_INPUT_REJECTED: unknown application ' + args.app + '\n')
+122:     entry = applications[args.app]
+123:     try:
