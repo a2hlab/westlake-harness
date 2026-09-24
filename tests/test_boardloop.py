@@ -229,12 +229,16 @@ class TestRunner(unittest.TestCase):
             # cleanup is recorded per app; on dry-run nothing is executed
             run_json = Path(td) / "runs" / "test-run" / "fixy.json"
             self.assertFalse(run_json.exists())  # dry-run writes no records
-            self.assertEqual(runner.cleanup_commands("hdc", "S1", "com.fixy", None),
+            self.assertEqual(runner.cleanup_commands("hdc", "S1", "com.fixy", None, None),
                              [["hdc", "-t", "S1", "shell",
                                "kill -9 $(pidof com.fixy) 2>/dev/null"]])
-            with_pid = runner.cleanup_commands("hdc", "S1", "com.fixy", 4321)
-            self.assertEqual(with_pid[1], ["hdc", "-t", "S1", "shell",
-                                           "kill -9 4321 2>/dev/null"])
+            with_pids = runner.cleanup_commands("hdc", "S1", "com.fixy", 4321, 4000)
+            # child first, then parent, pidof fallback last
+            self.assertEqual(with_pids[0], ["hdc", "-t", "S1", "shell",
+                                            "kill -9 4321 2>/dev/null"])
+            self.assertEqual(with_pids[1], ["hdc", "-t", "S1", "shell",
+                                            "kill -9 4000 2>/dev/null"])
+            self.assertIn("pidof com.fixy", with_pids[2][-1])
 
     def test_worker_survives_timeout_and_records_every_app(self) -> None:
         """One worker, three apps, the first raises TimeoutExpired: three records."""
@@ -264,11 +268,11 @@ class TestRunner(unittest.TestCase):
             results: list = []
             run_dir = tmp / "runs" / "t1"
             run_dir.mkdir(parents=True)
-            # mock's iterable side_effect raises exception items. Order of subprocess.run
-            # calls: app1 launch (times out), app1 timeout cleanup, app2 launch, app3 launch.
+            # mock's iterable side_effect raises exception items. Every launch is followed
+            # by pidof-fallback cleanup (no report written here): 2 subprocess.run per app.
             ok = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
             bad = subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="bad")
-            calls = [subprocess.TimeoutExpired(cmd=["x"], timeout=1), ok, bad, bad]
+            calls = [subprocess.TimeoutExpired(cmd=["x"], timeout=1), ok, bad, ok, bad, ok]
             with mock.patch("subprocess.run", side_effect=calls):
                 runner._worker(ns, "S1", jobs, run_dir, "t1", results, threading.Lock())
             self.assertEqual(len(results), 3)
@@ -281,6 +285,149 @@ class TestRunner(unittest.TestCase):
             self.assertIn("launch-failed=2", summary)
             for name in ("one", "two", "three"):
                 self.assertTrue((run_dir / f"{name}.json").exists())
+
+
+class TestCleanupEveryExit(unittest.TestCase):
+    """#7: every run_app exit cleans up by report pids, after evidence collection."""
+
+    def _ns(self, tmp: Path) -> "argparse.Namespace":
+        import argparse
+        return argparse.Namespace(
+            manifest=tmp, workspace=tmp, westlake_source=tmp,
+            framework_report=tmp / "r.json", hdc="hdc",
+            prepared_root=tmp / "app-inputs", runtime_lock=None, gap_map=None,
+            runs=tmp / "runs", launch_timeout=1, vt_wait=0, dry_run=False,
+        )
+
+    def _app(self, tmp: Path, name: str = "appx") -> dict:
+        (tmp / "app-inputs" / name).mkdir(parents=True, exist_ok=True)
+        (tmp / "app-inputs" / name / "app-input.json").write_text("{}")
+        apk = tmp / f"{name}.apk"
+        apk.write_bytes(name.encode())
+        return {"input": str(apk), "package": f"com.{name}"}
+
+    def _run(self, ns, app, tmp, report, device_side):
+        """Drive run_app with subprocess.run mocked: the launch writes the report,
+        hdc shell calls answer from device_side, and every call is recorded in order."""
+        import json as _json
+        import subprocess
+        from unittest import mock
+        calls: list[list[str]] = []
+
+        def fake_run(cmd, *a, **k):
+            calls.append([str(c) for c in cmd])
+            joined = " ".join(str(c) for c in cmd)
+            if "probe_source_app.py" in joined:
+                out = Path(cmd[-1])
+                out.mkdir(parents=True, exist_ok=True)
+                if report is not None:
+                    (out / "device-report.json").write_text(_json.dumps(report))
+                return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+            for marker, reply in device_side.items():
+                if marker in joined:
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout=reply, stderr="")
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+        with mock.patch("subprocess.run", side_effect=fake_run):
+            record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
+        return record, calls
+
+    def test_done_run_cleans_up_after_evidence_by_report_pids(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            ns = self._ns(tmp)
+            app = self._app(tmp)
+            device_side = {
+                "adapter_child": GOOD_LOG,
+                "hidumper": "node com.appx Visible: 1\n",
+            }
+            record, calls = self._run(ns, app, tmp,
+                                      {"child": 4321, "parent": 4000}, device_side)
+            self.assertEqual(record["verdict"], "done")
+            self.assertEqual(record["stages"]["P4b"], "pass")
+            kills = [c for c in calls if "kill -9" in " ".join(c)]
+            self.assertEqual(len(kills), 3)  # child pid, parent pid, pidof fallback
+            self.assertIn("kill -9 4321", " ".join(kills[0]))
+            self.assertIn("kill -9 4000", " ".join(kills[1]))
+            self.assertIn("pidof com.appx", " ".join(kills[2]))
+            # cleanup comes AFTER all evidence collection (log/vt/RS/faultlog reads)
+            first_kill = calls.index(kills[0])
+            evidence = [i for i, c in enumerate(calls)
+                        if any(m in " ".join(c) for m in
+                               ("adapter_child", "noice_tap", "hidumper", "faultlog"))]
+            self.assertTrue(all(i < first_kill for i in evidence))
+            self.assertEqual([e["rc"] for e in record["cleanup"]], [0, 0, 0])
+
+    def test_timeout_with_parent_only_report_cleans_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            ns = self._ns(tmp)
+            app = self._app(tmp)
+            import subprocess
+            from unittest import mock
+            calls: list[list[str]] = []
+
+            def fake_run(cmd, *a, **k):
+                calls.append([str(c) for c in cmd])
+                joined = " ".join(str(c) for c in cmd)
+                if "probe_source_app.py" in joined:
+                    out = Path(cmd[-1])
+                    out.mkdir(parents=True, exist_ok=True)
+                    (out / "device-report.json").write_text('{"parent": 4000}')
+                    raise subprocess.TimeoutExpired(cmd=cmd, timeout=1)
+                return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+            with mock.patch("subprocess.run", side_effect=fake_run):
+                record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
+            self.assertEqual(record["verdict"], "launch-timeout")
+            kills = [" ".join(c) for c in calls if "kill -9" in " ".join(c)]
+            self.assertEqual(len(kills), 2)  # parent pid + pidof fallback; no child
+            self.assertIn("kill -9 4000", kills[0])
+            self.assertIn("pidof com.appx", kills[1])
+
+    def test_no_report_falls_back_to_pidof_only(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            ns = self._ns(tmp)
+            app = self._app(tmp)
+            record, calls = self._run(ns, app, tmp, report=None, device_side={})
+            # launch "succeeded" (rc 0) but wrote no report -> launch-failed
+            self.assertEqual(record["verdict"], "launch-failed")
+            kills = [" ".join(c) for c in calls if "kill -9" in " ".join(c)]
+            self.assertEqual(len(kills), 1)
+            self.assertIn("pidof com.appx", kills[0])
+
+    def test_exception_mid_collection_still_cleans_up(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            ns = self._ns(tmp)
+            app = self._app(tmp)
+            import subprocess
+            from unittest import mock
+            calls: list[list[str]] = []
+
+            def fake_run(cmd, *a, **k):
+                calls.append([str(c) for c in cmd])
+                joined = " ".join(str(c) for c in cmd)
+                if "probe_source_app.py" in joined:
+                    out = Path(cmd[-1])
+                    out.mkdir(parents=True, exist_ok=True)
+                    (out / "device-report.json").write_text('{"child": 4321, "parent": 4000}')
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout="", stderr="")
+                if "kill -9" in joined:
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout="", stderr="")
+                raise OSError("hdc transport died")  # evidence collection blows up
+
+            with mock.patch("subprocess.run", side_effect=fake_run):
+                with self.assertRaises(OSError):
+                    runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
+            kills = [" ".join(c) for c in calls if "kill -9" in " ".join(c)]
+            self.assertEqual(len(kills), 3)  # cleanup ran despite the exception
+            self.assertIn("kill -9 4321", kills[0])
+            self.assertIn("kill -9 4000", kills[1])
 
     def test_view_tree_parsing(self) -> None:
         lines = ["noise line", "Button rect=[1,2 3x4] id=ok", "VT another rect=[0,0 9x9]"]

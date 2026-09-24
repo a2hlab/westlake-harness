@@ -73,34 +73,50 @@ def view_tree_from_log(lines: list[str]) -> list[str]:
 
 
 def cleanup_commands(hdc: str, serial: str, package: str | None,
-                     child_pid: int | None) -> list[list[str]]:
-    """Commands that end the app's on-board processes before the next app on this board.
+                     child_pid: int | None, parent_pid: int | None) -> list[list[str]]:
+    """Commands that end the app's on-board processes, child before parent.
 
-    probe_source_app.py kills its own touch forwarder but never the spawned child (it only
-    records the pid in device-report.json), so a timed-out or crashed app would otherwise
-    pollute the next launch on this board. Killing by package name covers the child; the
-    recorded child pid covers the case where the name no longer resolves. These are board
-    writes, executed only in real (non-dry-run) runs after a launch — which itself requires
-    board authorization — so the entry's no-board discipline is untouched.
+    probe_source_app.py spawns parent (`nohup … appspawn-x`, device-report `parent`) and the
+    child (`host_spawn`, report `child`) and never ends either — every app leaves both resident
+    on the board, accumulating across a corpus run. Pids from the report are the reliable
+    handles: the child's comm is only set late in Java init (westlake child_main.cpp
+    PR_SET_NAME truncates to 15 chars; AppSpawnXInit setArgV0 later still), so an early-stuck
+    or early-crashed app is invisible to `pidof <package>`. pidof remains as the fallback for
+    reports that are missing or unparseable. These are board writes, executed only in real
+    (non-dry-run) runs after a launch — which itself requires board authorization.
     """
     commands = []
+    if child_pid:
+        commands.append([hdc, "-t", serial, "shell", f"kill -9 {child_pid} 2>/dev/null"])
+    if parent_pid:
+        commands.append([hdc, "-t", serial, "shell", f"kill -9 {parent_pid} 2>/dev/null"])
     if package:
         commands.append([hdc, "-t", serial, "shell",
                          f"kill -9 $(pidof {package}) 2>/dev/null"])
-    if child_pid:
-        commands.append([hdc, "-t", serial, "shell", f"kill -9 {child_pid} 2>/dev/null"])
     return commands
 
 
+def report_pids(report_path: Path) -> tuple[int | None, int | None]:
+    """(child, parent) pids out of device-report.json; (None, None) when absent or bad."""
+    try:
+        report = json.loads(report_path.read_text())
+        return report.get("child"), report.get("parent")
+    except (OSError, json.JSONDecodeError):
+        return None, None
+
+
 def run_cleanup(args: argparse.Namespace, app: dict[str, Any], serial: str,
-                child_pid: int | None) -> list[str]:
-    """Run (or in dry-run, only list) the cleanup commands; returns them for the record."""
+                child_pid: int | None, parent_pid: int | None) -> list[dict[str, Any]]:
+    """Run (or in dry-run, only list) the cleanup commands; each entry records the exit code."""
     executed = []
-    for command in cleanup_commands(args.hdc, serial, app.get("package"), child_pid):
-        executed.append(" ".join(command))
+    for command in cleanup_commands(args.hdc, serial, app.get("package"),
+                                    child_pid, parent_pid):
+        entry: dict[str, Any] = {"command": " ".join(command)}
         if not args.dry_run:
-            subprocess.run(command, stdin=subprocess.DEVNULL,
-                           capture_output=True, text=True, timeout=30)
+            done = subprocess.run(command, stdin=subprocess.DEVNULL,
+                                  capture_output=True, text=True, timeout=30)
+            entry["rc"] = done.returncode
+        executed.append(entry)
     return executed
 
 
@@ -120,43 +136,52 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
     command = launch_command(args, app_key, app, serial, out)
     record["command"] = command
     if args.dry_run:
-        record["cleanup"] = run_cleanup(args, app, serial, None)
+        record["cleanup"] = run_cleanup(args, app, serial, None, None)
         return {**record, "verdict": "dry-run"}
 
-    try:
-        proc = subprocess.run(command, cwd=args.manifest, capture_output=True, text=True,
-                              timeout=args.launch_timeout)
-    except subprocess.TimeoutExpired as error:
-        record["cleanup"] = run_cleanup(args, app, serial, None)
-        tail = lambda s: (s or "").strip()[-300:]
-        return {**record, "verdict": "launch-timeout",
-                "detail": {"stdout_tail": tail(error.stdout), "stderr_tail": tail(error.stderr)}}
     report_path = out / "device-report.json"
-    if proc.returncode != 0 or not report_path.exists():
-        return {**record, "verdict": "launch-failed",
-                "detail": (proc.stdout + proc.stderr).strip()[-300:]}
+    try:
+        try:
+            proc = subprocess.run(command, cwd=args.manifest, capture_output=True, text=True,
+                                  timeout=args.launch_timeout)
+        except subprocess.TimeoutExpired as error:
+            tail = lambda s: (s or "").strip()[-300:]
+            record.update(verdict="launch-timeout",
+                          detail={"stdout_tail": tail(error.stdout),
+                                  "stderr_tail": tail(error.stderr)})
+            return record
+        if proc.returncode != 0 or not report_path.exists():
+            return {**record, "verdict": "launch-failed",
+                    "detail": (proc.stdout + proc.stderr).strip()[-300:]}
 
-    report = json.loads(report_path.read_text())
-    child = report.get("child")
-    device = _Device(args.hdc, serial)
-    child_log = device.shell(f"cat {CHILD_LOG.format(pid=child)} 2>/dev/null")
-    # View tree over the tap channel ('v' dump), then RenderService visible nodes — the two
-    # independent §10 oracles; a screenshot is deliberately not among them.
-    device.shell(f"echo v > {TAP_CHANNEL.format(pid=child)}")
-    time.sleep(args.vt_wait)
-    view_tree = view_tree_from_log(
-        device.shell(f"cat {CHILD_LOG.format(pid=child)} 2>/dev/null").splitlines())
-    rs_raw = device.shell("hidumper -s RenderService -a RSTree 2>/dev/null")
-    pkg = re_escape(app.get("package") or "")
-    rs_visible = sum(1 for line in rs_raw.splitlines()
-                     if pkg and pkg in line and "Visible: 1" in line) if pkg else None
-    faultlog = device.shell(f"cat {FAULTLOG_GLOB.format(pid=child)} 2>/dev/null")
+        report = json.loads(report_path.read_text())
+        child = report.get("child")
+        device = _Device(args.hdc, serial)
+        child_log = device.shell(f"cat {CHILD_LOG.format(pid=child)} 2>/dev/null")
+        # View tree over the tap channel ('v' dump), then RenderService visible nodes — the
+        # two independent §10 oracles; a screenshot is deliberately not among them.
+        device.shell(f"echo v > {TAP_CHANNEL.format(pid=child)}")
+        time.sleep(args.vt_wait)
+        view_tree = view_tree_from_log(
+            device.shell(f"cat {CHILD_LOG.format(pid=child)} 2>/dev/null").splitlines())
+        rs_raw = device.shell("hidumper -s RenderService -a RSTree 2>/dev/null")
+        pkg = re_escape(app.get("package") or "")
+        rs_visible = sum(1 for line in rs_raw.splitlines()
+                         if pkg and pkg in line and "Visible: 1" in line) if pkg else None
+        faultlog = device.shell(f"cat {FAULTLOG_GLOB.format(pid=child)} 2>/dev/null")
 
-    gap_map = json.loads(args.gap_map.read_text()) if args.gap_map else None
-    record["stages"] = stages.judge(child_log, view_tree, rs_visible)
-    record["first_blocker"] = blockers.classify(child_log, faultlog, gap_map)
-    record["verdict"] = "done"
-    return record
+        gap_map = json.loads(args.gap_map.read_text()) if args.gap_map else None
+        record["stages"] = stages.judge(child_log, view_tree, rs_visible)
+        record["first_blocker"] = blockers.classify(child_log, faultlog, gap_map)
+        record["verdict"] = "done"
+        return record
+    finally:
+        # Every exit — done, launch-failed, launch-timeout, or an exception mid-collection —
+        # cleans up AFTER evidence collection. The report is re-read here (not threaded
+        # through the try body) so a timeout still finds the pids save() wrote along the way;
+        # a missing/unparseable report falls back to pidof alone.
+        child_pid, parent_pid = report_pids(report_path)
+        record["cleanup"] = run_cleanup(args, app, serial, child_pid, parent_pid)
 
 
 def re_escape(text: str) -> str:
@@ -270,10 +295,10 @@ def main(argv: list[str] | None = None) -> int:
         for index, (app_key, app) in enumerate(sorted(corpus.items())):
             serial = serials[index % len(serials)]
             print(" ".join(launch_command(args, app_key, app, serial, run_dir / app_key)))
-            # The timeout cleanup runs after any launch that overstays -- print it too,
+            # Cleanup runs after every launch, timeout or not -- print it too,
             # so a dry-run shows everything a real run would do on the board.
-            for command in cleanup_commands(args.hdc, serial, app.get("package"), None):
-                print("# cleanup-after-timeout: " + " ".join(command))
+            for command in cleanup_commands(args.hdc, serial, app.get("package"), None, None):
+                print("# cleanup-after-run: " + " ".join(command))
         print(f"# {len(corpus)} apps over {len(serials)} board(s), run id {run_id} (dry-run)")
         return 0
 
