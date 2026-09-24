@@ -179,11 +179,108 @@ class TestRunner(unittest.TestCase):
             tmp = Path(td)
             argv = self._args(tmp, prepared=False)
             import io
-            from contextlib import redirect_stdout
-            with redirect_stdout(io.StringIO()):
-                with self.assertRaises(FileNotFoundError) as ctx:
-                    runner.main(argv)
-            self.assertIn("prepare_all.py", str(ctx.exception))
+            from contextlib import redirect_stderr, redirect_stdout
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                rc = runner.main(argv)
+            self.assertEqual(rc, 1)  # pre-flight refusal, not a launch
+
+    def test_preflight_lists_all_missing_before_any_launch(self) -> None:
+        """Two missing prepare dirs: both named in one refusal, zero launches."""
+        import io
+        from contextlib import redirect_stderr, redirect_stdout
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            corpus = tmp / "corpus.json"
+            apk = tmp / "app.apk"
+            apk.write_bytes(b"fixture-bytes")
+            corpus.write_text(json.dumps({"apps": {
+                "gone1": {"input": str(apk), "package": "com.g1"},
+                "here": {"input": str(apk), "package": "com.h"},
+                "gone2": {"input": str(apk), "package": "com.g2"},
+            }}))
+            prepared_root = tmp / "app-inputs"
+            (prepared_root / "here").mkdir(parents=True)
+            (prepared_root / "here" / "app-input.json").write_text("{}")
+            argv = [
+                "--corpus", str(corpus), "--manifest", str(tmp / "manifest"),
+                "--workspace", str(tmp), "--westlake-source", str(tmp),
+                "--framework-report", str(tmp / "device-report.json"),
+                "--hdc", "hdc", "--prepared-root", str(prepared_root),
+                "--serials", "SERIAL1", "--runs", str(tmp / "runs"),
+                "--run-id", "preflight", "--dry-run",
+            ]
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                rc = runner.main(argv)
+            self.assertEqual(rc, 1)
+            self.assertIn("gone1", err.getvalue())
+            self.assertIn("gone2", err.getvalue())
+            self.assertNotIn("here: no prepared", err.getvalue())
+            # no launch command was printed for any app
+            self.assertNotIn("probe_source_app.py", out.getvalue())
+
+    def test_dry_run_shows_cleanup_commands(self) -> None:
+        import io
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as td:
+            out = io.StringIO()
+            with redirect_stdout(out):
+                runner.main(self._args(Path(td)))
+            # cleanup is recorded per app; on dry-run nothing is executed
+            run_json = Path(td) / "runs" / "test-run" / "fixy.json"
+            self.assertFalse(run_json.exists())  # dry-run writes no records
+            self.assertEqual(runner.cleanup_commands("hdc", "S1", "com.fixy", None),
+                             [["hdc", "-t", "S1", "shell",
+                               "kill -9 $(pidof com.fixy) 2>/dev/null"]])
+            with_pid = runner.cleanup_commands("hdc", "S1", "com.fixy", 4321)
+            self.assertEqual(with_pid[1], ["hdc", "-t", "S1", "shell",
+                                           "kill -9 4321 2>/dev/null"])
+
+    def test_worker_survives_timeout_and_records_every_app(self) -> None:
+        """One worker, three apps, the first raises TimeoutExpired: three records."""
+        import argparse
+        import queue
+        import subprocess
+        import threading
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            ns = argparse.Namespace(
+                manifest=tmp, workspace=tmp, westlake_source=tmp,
+                framework_report=tmp / "r.json", hdc="hdc",
+                prepared_root=tmp / "app-inputs", runtime_lock=None, gap_map=None,
+                runs=tmp / "runs", launch_timeout=1, vt_wait=0, dry_run=False,
+            )
+            (tmp / "app-inputs").mkdir()
+            jobs: queue.Queue = queue.Queue()
+            apps = {}
+            for name in ("one", "two", "three"):
+                (tmp / "app-inputs" / name).mkdir()
+                (tmp / "app-inputs" / name / "app-input.json").write_text("{}")
+                apk = tmp / f"{name}.apk"
+                apk.write_bytes(name.encode())
+                apps[name] = {"input": str(apk), "package": f"com.{name}"}
+                jobs.put((name, apps[name]))
+            results: list = []
+            run_dir = tmp / "runs" / "t1"
+            run_dir.mkdir(parents=True)
+            # mock's iterable side_effect raises exception items. Order of subprocess.run
+            # calls: app1 launch (times out), app1 timeout cleanup, app2 launch, app3 launch.
+            ok = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+            bad = subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="bad")
+            calls = [subprocess.TimeoutExpired(cmd=["x"], timeout=1), ok, bad, bad]
+            with mock.patch("subprocess.run", side_effect=calls):
+                runner._worker(ns, "S1", jobs, run_dir, "t1", results, threading.Lock())
+            self.assertEqual(len(results), 3)
+            self.assertEqual(results[0]["verdict"], "launch-timeout")
+            self.assertEqual(results[1]["verdict"], "launch-failed")
+            self.assertEqual(results[2]["verdict"], "launch-failed")
+            summary = runner.summarize(results)
+            self.assertIn("total 3", summary)
+            self.assertIn("launch-timeout=1", summary)
+            self.assertIn("launch-failed=2", summary)
+            for name in ("one", "two", "three"):
+                self.assertTrue((run_dir / f"{name}.json").exists())
 
     def test_view_tree_parsing(self) -> None:
         lines = ["noise line", "Button rect=[1,2 3x4] id=ok", "VT another rect=[0,0 9x9]"]

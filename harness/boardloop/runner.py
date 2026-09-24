@@ -72,6 +72,38 @@ def view_tree_from_log(lines: list[str]) -> list[str]:
     return [line for line in lines if "rect=[" in line]
 
 
+def cleanup_commands(hdc: str, serial: str, package: str | None,
+                     child_pid: int | None) -> list[list[str]]:
+    """Commands that end the app's on-board processes before the next app on this board.
+
+    probe_source_app.py kills its own touch forwarder but never the spawned child (it only
+    records the pid in device-report.json), so a timed-out or crashed app would otherwise
+    pollute the next launch on this board. Killing by package name covers the child; the
+    recorded child pid covers the case where the name no longer resolves. These are board
+    writes, executed only in real (non-dry-run) runs after a launch — which itself requires
+    board authorization — so the entry's no-board discipline is untouched.
+    """
+    commands = []
+    if package:
+        commands.append([hdc, "-t", serial, "shell",
+                         f"kill -9 $(pidof {package}) 2>/dev/null"])
+    if child_pid:
+        commands.append([hdc, "-t", serial, "shell", f"kill -9 {child_pid} 2>/dev/null"])
+    return commands
+
+
+def run_cleanup(args: argparse.Namespace, app: dict[str, Any], serial: str,
+                child_pid: int | None) -> list[str]:
+    """Run (or in dry-run, only list) the cleanup commands; returns them for the record."""
+    executed = []
+    for command in cleanup_commands(args.hdc, serial, app.get("package"), child_pid):
+        executed.append(" ".join(command))
+        if not args.dry_run:
+            subprocess.run(command, stdin=subprocess.DEVNULL,
+                           capture_output=True, text=True, timeout=30)
+    return executed
+
+
 def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
             serial: str, run_dir: Path, run_id: str) -> dict[str, Any]:
     """Launch one app on one board and record the §10 evidence bundle."""
@@ -88,10 +120,17 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
     command = launch_command(args, app_key, app, serial, out)
     record["command"] = command
     if args.dry_run:
+        record["cleanup"] = run_cleanup(args, app, serial, None)
         return {**record, "verdict": "dry-run"}
 
-    proc = subprocess.run(command, cwd=args.manifest, capture_output=True, text=True,
-                          timeout=args.launch_timeout)
+    try:
+        proc = subprocess.run(command, cwd=args.manifest, capture_output=True, text=True,
+                              timeout=args.launch_timeout)
+    except subprocess.TimeoutExpired as error:
+        record["cleanup"] = run_cleanup(args, app, serial, None)
+        tail = lambda s: (s or "").strip()[-300:]
+        return {**record, "verdict": "launch-timeout",
+                "detail": {"stdout_tail": tail(error.stdout), "stderr_tail": tail(error.stderr)}}
     report_path = out / "device-report.json"
     if proc.returncode != 0 or not report_path.exists():
         return {**record, "verdict": "launch-failed",
@@ -144,23 +183,35 @@ def _worker(args: argparse.Namespace, serial: str, jobs: "queue.Queue[tuple[str,
             app_key, app = jobs.get_nowait()
         except queue.Empty:
             return
-        record = run_app(args, app_key, app, serial, run_dir, run_id)
+        # One app's failure must never kill the worker: a dead thread silently drops the
+        # rest of this board's queue and shortens the SUMMARY. Every app gets a record.
+        try:
+            record = run_app(args, app_key, app, serial, run_dir, run_id)
+        except Exception as error:  # TimeoutExpired is already handled inside run_app
+            record = {"app": app_key, "package": app.get("package"), "run_id": run_id,
+                      "serial": serial, "verdict": "runner-error",
+                      "detail": f"{type(error).__name__}: {error}"}
         with lock:
             results.append(record)
             (run_dir / f"{app_key}.json").write_text(json.dumps(record, indent=1) + "\n")
 
 
 def summarize(results: list[dict[str, Any]]) -> str:
-    head = "%-24s %-8s %-4s %-4s %-4s %-4s  %s" % (
+    head = "%-24s %-14s %-4s %-4s %-4s %-4s  %s" % (
         "app", "verdict", "P2", "P3", "P4a", "P4b", "first blocker")
     lines = [head, "-" * len(head)]
     for r in sorted(results, key=lambda r: r["app"]):
         st = r.get("stages", {})
         fb = r.get("first_blocker", {})
         blocker = fb.get("gap_row") or fb.get("identity") or r.get("verdict", "-")
-        lines.append("%-24s %-8s %-4s %-4s %-4s %-4s  %s" % (
+        lines.append("%-24s %-14s %-4s %-4s %-4s %-4s  %s" % (
             r["app"], r.get("verdict", "-"), st.get("P2", "-"), st.get("P3", "-"),
             st.get("P4a", "-"), st.get("P4b", "-"), str(blocker)[:60]))
+    counts: dict[str, int] = {}
+    for r in results:
+        counts[r.get("verdict", "?")] = counts.get(r.get("verdict", "?"), 0) + 1
+    tally = ", ".join(f"{verdict}={count}" for verdict, count in sorted(counts.items()))
+    lines.append(f"total {len(results)}: {tally}")
     return "\n".join(lines)
 
 
@@ -191,6 +242,21 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     corpus = json.loads(args.corpus.read_text())["apps"]
+    # Pre-flight: check every prepared input up front and list ALL misses before anything
+    # launches — discovering a missing directory mid-run would strand one board's queue.
+    missing = []
+    for app_key in sorted(corpus):
+        try:
+            prepared_input(args, app_key)
+        except FileNotFoundError as error:
+            missing.append(str(error))
+    if missing:
+        for line in missing:
+            print(line, file=sys.stderr)
+        print(f"pre-flight failed: {len(missing)}/{len(corpus)} prepared inputs missing; "
+              f"no app launched", file=sys.stderr)
+        return 1
+
     run_id = args.run_id or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = args.runs / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -204,6 +270,10 @@ def main(argv: list[str] | None = None) -> int:
         for index, (app_key, app) in enumerate(sorted(corpus.items())):
             serial = serials[index % len(serials)]
             print(" ".join(launch_command(args, app_key, app, serial, run_dir / app_key)))
+            # The timeout cleanup runs after any launch that overstays -- print it too,
+            # so a dry-run shows everything a real run would do on the board.
+            for command in cleanup_commands(args.hdc, serial, app.get("package"), None):
+                print("# cleanup-after-timeout: " + " ".join(command))
         print(f"# {len(corpus)} apps over {len(serials)} board(s), run id {run_id} (dry-run)")
         return 0
 
