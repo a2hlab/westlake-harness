@@ -16,26 +16,31 @@ def shot(label):
  recv(remote,r/(label+'.jpeg'));(preview/(label+'.jpeg')).write_bytes((r/(label+'.jpeg')).read_bytes())
 def vt(label):
  line=int(dev('wc -l < '+log).strip())
- action('echo v > /data/local/tmp/noice_tap');time.sleep(.8)
- raw=dev(f'tail -n +{line+1} '+log);(r/(label+'.txt')).write_text(raw);return raw
+ action('echo v > /data/local/tmp/noice_tap')
+ raw=''
+ for _ in range(24):
+  time.sleep(.25);raw=dev(f'tail -n +{line+1} '+log)
+  if 'VT ==== end ====' in raw:break
+ (r/(label+'.txt')).write_text(raw);return raw
 for fp in d.get('touch',{}).get('forwarder_pid','').split():
  exe=action(f'readlink /proc/{int(fp)}/exe').strip()
  if 'touchfwd' in exe and 'a2hlab-' in exe:action(f'kill {int(fp)}','disable-forwarder')
 print('LAUNCHED',name,pid,flush=True)
 start=time.monotonic();consent=False;ready=False;consent_done=None;sampler_pid=None;pause_pid=None
 delay=next((float(x.split("=",1)[1]) for x in sys.argv if x.startswith("--delay-consent=")),None)
+consent_after=15 if '--early-consent' in sys.argv else 100
 try:
  action('power-shell dump -t; power-shell wakeup','keep-screen-on')
  while time.monotonic()-start<180:
   raw=vt('latest-vt')
-  if not consent and '"同意"' in raw and time.monotonic()-start>100:
+  if '--setup-manual' not in sys.argv and not consent and '"同意"' in raw and time.monotonic()-start>consent_after:
    found=list(re.finditer(r'rect=\[(\d+),(\d+) (\d+)x(\d+)\].*\"同意\"',raw))
    if found:
     x,y,w,h=map(int,found[-1].groups())
     shot('consent-before');action('echo CONSENT_BEFORE; cat /proc/uptime; uinput -T -d 600 1273 -u 600 1273; echo CONSENT_AFTER; cat /proc/uptime','SETUP_ONLY_uinput_consent');consent=True;consent_done=time.monotonic()
   if '[INITCHILD-FAIL]' in raw or not dev(f'cat /proc/{pid}/stat 2>/dev/null').strip():
    print('UI_EXIT_BEFORE_TEST',flush=True);break
-  if '"同意"' not in raw and 'FeedCommonRecyclerView' in raw and ('FeedLightTextView' in raw or 'FeedTitleTextView' in raw) and time.monotonic()-start > (10 if '--warm' in sys.argv else 50):
+  if ('--setup-manual' not in sys.argv or (r/'setup-done').exists()) and '"同意"' not in raw and 'FeedCommonRecyclerView' in raw and ('FeedLightTextView' in raw or 'FeedTitleTextView' in raw) and time.monotonic()-start > (10 if '--warm' in sys.argv else 50):
    ready=True;break
   time.sleep(1)
  if ready and '--wait-idle' in sys.argv:
@@ -110,12 +115,17 @@ try:
   command='echo INPUT_BEFORE; cat /proc/uptime; '+gesture+'; echo INPUT_AFTER; cat /proc/uptime'
   (r/'physical-result.txt').write_text(action(command,'UINPUT_ACCEPTANCE',30))
   touch_done=time.monotonic()
-  for deadline,label in [(2,'after-2s'),(5,'after-5s'),(15,'after-15s'),(45,'after-45s')]:
+  observations=[(2,'after-2s'),(5,'after-5s'),(15,'after-15s'),(45,'after-45s')]
+  if '--observe-long' in sys.argv:observations += [(75,'after-75s'),(120,'after-120s')]
+  for deadline,label in observations:
    time.sleep(max(0,touch_done+deadline-time.monotonic()))
    action('cat /proc/uptime','SCREENSHOT_TIME_'+label);shot(label);vt(label)
    fresh=action(f'tail -n +{n+1} '+log)
    lines=[line for line in fresh.splitlines() if line.startswith('[B47-SLA]')]
    (r/(label+'-lifecycle.txt')).write_text('\n'.join(lines)+'\n')
+   if '--observe-long' in sys.argv:
+    state=action(f'cat /proc/{pid}/stat 2>/dev/null');(r/(label+'-process.txt')).write_text(state)
+    if not state.strip():break
   print('PHYSICAL_ACTION_COMPLETE',mode,flush=True)
   (r/'window-after.txt').write_text(action('hidumper -s WindowManagerService -a "-a"'))
   if '--profile-detail' in sys.argv:
