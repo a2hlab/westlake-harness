@@ -489,6 +489,38 @@ class TestOfflineReclassify(unittest.TestCase):
             self.assertIn("none-source: 1", summary)
 
 
+class TestStorageCleanup(unittest.TestCase):
+    """#22: probe never removes its stage/runtime dirs; a 100-app campaign filled
+    board C to 100%. Post-run removes exactly the two dirs the report names;
+    pre-launch sweeps stale leftovers; framework dirs are never touched."""
+
+    def test_post_run_targets_report_dirs_and_spares_framework(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            report = tmp / "device-report.json"
+            report.write_text(json.dumps({
+                "stage": "/data/local/tmp/a2hlab-app-abc123",
+                "runtime": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-abc123"}))
+            cmds = [" ".join(c) for c in runner.storage_cleanup_commands(
+                "hdc", "S1", report, "com.appx")]
+            self.assertTrue(any("rm -rf /data/local/tmp/a2hlab-app-abc123" in c for c in cmds))
+            self.assertTrue(any("a2hlab-source-abc123" in c for c in cmds))
+            self.assertTrue(any("a2hlab-app-*" in c for c in cmds))  # stale sweep
+            # a framework stage must never be deletable via this path
+            report.write_text(json.dumps({
+                "stage": "/data/local/tmp/a2hlab-framework-keepme", "runtime": None}))
+            cmds = [" ".join(c) for c in runner.storage_cleanup_commands(
+                "hdc", "S1", report, None)]
+            self.assertFalse(any("a2hlab-framework-keepme" in c for c in cmds))
+            self.assertFalse(any("a2hlab-source-" in c and "*" not in c for c in cmds))
+
+    def test_missing_report_yields_only_the_stale_sweep(self) -> None:
+        cmds = [" ".join(c) for c in runner.storage_cleanup_commands(
+            "hdc", "S1", None, None)]
+        self.assertEqual(len(cmds), 1)
+        self.assertIn("a2hlab-app-*", cmds[0])
+
+
 class TestNativeTargetsDerivation(unittest.TestCase):
     """#19: derive Android-ABI / net targets from APK DSO imports, offline."""
 
@@ -642,7 +674,7 @@ class TestRealBoardAdaptation(unittest.TestCase):
                     (out / "device-report.json").write_text('{"child": 1, "parent": 2}')
                     return subprocess.CompletedProcess(args=cmd, returncode=0,
                                                        stdout="", stderr="")
-                if "kill -9" in joined or "power-shell" in joined or "aa start" in joined \
+                if "kill -9" in joined or "rm -rf" in joined or "power-shell" in joined or "aa start" in joined \
                         or "uinput" in joined:
                     return subprocess.CompletedProcess(args=cmd, returncode=0,
                                                        stdout="", stderr="")
@@ -789,7 +821,7 @@ class TestCleanupEveryExit(unittest.TestCase):
                     (out / "device-report.json").write_text('{"child": 4321, "parent": 4000}')
                     return subprocess.CompletedProcess(args=cmd, returncode=0,
                                                        stdout="", stderr="")
-                if any(m in joined for m in ("kill -9", "power-shell", "aa start", "uinput")):
+                if any(m in joined for m in ("kill -9", "rm -rf", "power-shell", "aa start", "uinput")):
                     return subprocess.CompletedProcess(args=cmd, returncode=0,
                                                        stdout="", stderr="")
                 raise OSError("hdc transport died")  # evidence collection blows up

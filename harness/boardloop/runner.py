@@ -171,6 +171,54 @@ def cleanup_commands(hdc: str, serial: str, package: str | None,
     return commands
 
 
+def storage_cleanup_commands(hdc: str, serial: str, report_path: Path | None,
+                             package: str | None) -> list[list[str]]:
+    """Commands that reclaim the app's on-board storage: stage dir + runtime dir.
+
+    probe_source_app.py writes a fresh /data/local/tmp/a2hlab-app-<hash> stage (APK, libs,
+    launch inputs — tens to hundreds of MB) and a per-app runtime dir under the host's
+    files/ (framework + dex, hundreds of MB for heavy apps) and never removes either. A
+    100-app campaign filled board C to 100% (232G/232G, 265 stage + 265 runtime dirs) and
+    every later app died with 'no space left on device' (#22). Post-run we remove exactly
+    the two dirs this app's device-report names; the pre-launch sweep below removes
+    stale a2hlab-app-*/a2hlab-source-* leftovers. Framework dirs (a2hlab-framework-*)
+    are NEVER touched — that is the shared stage the campaign runs on.
+    """
+    commands: list[list[str]] = []
+    stage = runtime = None
+    if report_path is not None and report_path.exists():
+        try:
+            report = json.loads(report_path.read_text())
+            stage, runtime = report.get("stage"), report.get("runtime")
+        except (OSError, json.JSONDecodeError):
+            pass
+    for target in (stage, runtime):
+        if target and target.startswith(("/data/local/tmp/a2hlab-app-",
+                                         "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-")):
+            commands.append([hdc, "-t", serial, "shell", f"rm -rf {target}"])
+    # pre-launch stale sweep (package arg unused; globs are app-hash specific)
+    commands.append([hdc, "-t", serial, "shell",
+                     "rm -rf /data/local/tmp/a2hlab-app-* 2>/dev/null; "
+                     "rm -rf /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-* 2>/dev/null; true"])
+    del package
+    return commands
+
+
+def run_storage_cleanup(args: argparse.Namespace, app: dict[str, Any], serial: str,
+                        report_path: Path | None) -> list[dict[str, Any]]:
+    """Execute (or list, in dry-run) the storage reclamation commands."""
+    executed = []
+    for command in storage_cleanup_commands(args.hdc, serial, report_path,
+                                            app.get("package")):
+        entry: dict[str, Any] = {"command": " ".join(command)}
+        if not args.dry_run:
+            done = subprocess.run(command, stdin=subprocess.DEVNULL,
+                                  capture_output=True, text=True, timeout=120)
+            entry["rc"] = done.returncode
+        executed.append(entry)
+    return executed
+
+
 def report_pids(report_path: Path) -> tuple[int | None, int | None]:
     """(child, parent) pids out of device-report.json; (None, None) when absent or bad."""
     try:
@@ -222,6 +270,7 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
         # the next launch: pidof-based kill of this app's package plus any stale
         # appspawn-x children. Failures here are recorded, never fatal.
         record["pre_cleanup"] = run_cleanup(args, app, serial, None, None)
+        record["pre_storage_cleanup"] = run_storage_cleanup(args, app, serial, None)
 
         # Keep the panel lit and the host in front before the launch: the default 30 s
         # screen timeout locks over the app, and OH backgrounds the host, zeroing the app's
@@ -295,6 +344,7 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
         # a missing/unparseable report falls back to pidof alone.
         child_pid, parent_pid = report_pids(report_path)
         record["cleanup"] = run_cleanup(args, app, serial, child_pid, parent_pid)
+        record["storage_cleanup"] = run_storage_cleanup(args, app, serial, report_path)
 
 
 def re_escape(text: str) -> str:
