@@ -303,6 +303,79 @@ FIXTURE_LOG = (FIXTURES / "toutiao-drive-1.child.stderr").read_text(errors="repl
 FIXTURE_REPORT = json.loads((FIXTURES / "toutiao-drive-1.device-report.json").read_text())
 
 
+class TestTapChannelBothNames(unittest.TestCase):
+    """scan1 defect: the source-closure board watches the bare namespace symlink, not
+    noice_tap.<pid>; the 'v' dump must go to both names so either layout answers."""
+
+    def test_done_run_writes_both_tap_channel_names(self) -> None:
+        import argparse
+        import subprocess
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            ns = argparse.Namespace(
+                manifest=tmp, workspace=tmp, westlake_source=tmp,
+                framework_report=tmp / "r.json", hdc="hdc",
+                prepared_root=tmp / "app-inputs", runtime_lock=None, gap_map=None,
+                runs=tmp / "runs", launch_timeout=1, vt_wait=0, dry_run=False,
+                webview_input=None,
+            )
+            (tmp / "app-inputs" / "appx").mkdir(parents=True)
+            (tmp / "app-inputs" / "appx" / "app-input.json").write_text("{}")
+            apk = tmp / "appx.apk"
+            apk.write_bytes(b"appx")
+            app = {"input": str(apk), "package": "com.appx"}
+            calls: list[str] = []
+
+            def fake_run(cmd, *a, **k):
+                joined = " ".join(str(c) for c in cmd)
+                calls.append(joined)
+                if "probe_source_app.py" in joined:
+                    out = Path(cmd[-1])
+                    out.mkdir(parents=True, exist_ok=True)
+                    (out / "device-report.json").write_text(
+                        '{"child": 4321, "parent": 4000, "runtime": "/rt"}')
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout="", stderr="")
+                if "adapter_child" in joined or "faultlog" in joined:
+                    # child log: a laid-out view tree in the current 'VT ' format
+                    return subprocess.CompletedProcess(
+                        args=cmd, returncode=0,
+                        stdout="VT DecorView id=- rect=[0,0 1200x1790] c=0\n"
+                               "VT Button id=ok rect=[100,200 400x300] c=1\n",
+                        stderr="")
+                return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                   stdout="", stderr="")
+
+            with mock.patch("subprocess.run", side_effect=fake_run):
+                record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
+            self.assertEqual(record["verdict"], "done")
+            self.assertEqual(record["stages"]["P4a"], "pass")  # the scan1 failure mode
+            bare = [c for c in calls if "echo v > /data/local/tmp/noice_tap 2>/dev/null" in c]
+            per_pid = [c for c in calls if "echo v > /data/local/tmp/noice_tap.4321" in c]
+            self.assertTrue(bare, "bare namespace symlink never got the 'v' dump")
+            self.assertTrue(per_pid, "per-pid fallback never got the 'v' dump")
+
+    def test_webview_input_flows_into_the_command(self) -> None:
+        import argparse
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            prepared = Path(td) / "app-inputs"
+            (prepared / "k").mkdir(parents=True)
+            (prepared / "k" / "app-input.json").write_text("{}")
+            ns = argparse.Namespace(
+                manifest=Path(td), workspace=Path(td), westlake_source=Path(td),
+                framework_report=Path(td) / "r.json", hdc="hdc",
+                prepared_root=prepared, webview_input=Path(td) / "wv",
+            )
+            command = runner.launch_command(ns, "k", {"extra_args": []}, "S1", Path("/o"))
+            self.assertIn("--webview-input " + str(ns.webview_input), " ".join(command))
+            ns.webview_input = None
+            command = runner.launch_command(ns, "k", {"extra_args": []}, "S1", Path("/o"))
+            self.assertNotIn("--webview-input", " ".join(command))
+
+
 class TestRealBoardAdaptation(unittest.TestCase):
     """#9: log path from the report's runtime, dual-era VT parsing, keep-alive commands."""
 
