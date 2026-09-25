@@ -1,0 +1,80 @@
+{
+ "schema": 1,
+ "date": "2026-09-25",
+ "board_entry": "#35 (.octos/OUTER_LOOP_REVIEW.md)",
+ "source": {"path": "~/workspace/hanbin_adapter", "vcs": "none (not a git repository)", "latest_toutiao_record": "2026-09-18", "access": "read only"},
+ "frame": {
+  "hanbin": {"board": "DAYU200 RK3568", "userspace": "arm32", "os": "OpenHarmony 7.0.0.18, self-built image",
+             "toutiao": {"version": "17.6.0", "abis": ["armeabi-v7a"], "native_libs": 153, "apk_sha256_prefix": "f4bd11fb21af036f"},
+             "app_libc": "real Bionic libc + linker from /system/android since 2026-08-03 (app_fwk_bionic_design_v2.html:238)",
+             "deployment": "system install: zygote init service, 14 overwritten OH .z.so + file_contexts + system-sandbox.json (deploy/deploy_all_init.sh:66-76), SELinux patches"},
+  "westlake": {"board": "DAYU600", "userspace": "arm64", "os": "stock OH 6.1.0.31, 47 system libs hash-gated",
+               "toutiao": {"version": "13.9.0", "abis": ["arm64-v8a"], "native_libs": 138, "apk_sha256_prefix": "a1112a0c941f8658"},
+               "app_libc": "OH musl + per-library Android-ABI namespace with a Bionic shim",
+               "deployment": "/data/local/tmp, launched from our host HAP"},
+  "shared_ancestry": "westlake framework/package-manager/jni/apk_installer.cpp: 597 of 610 lines appear verbatim in hanbin's 1602-line file"
+ },
+ "toutiao_levels_on_hanbin": [
+  {"level": "L0 installed", "reached": true, "evidence": "apk_installation_design_v2.html:702"},
+  {"level": "L1 process starts", "reached": true, "evidence": "all 5 traces; trace/README.txt:11"},
+  {"level": "L2 Application + Activity", "reached": true, "evidence": "2026-09-14 trace L62012 makeApplication, L167127 performCreate MainActivity, L409363 performResume"},
+  {"level": "L3 first frame", "reached": true, "evidence": "2026-09-14 trace L699432 eglSwapBuffers, L700296 frameCommit success=1"},
+  {"level": "L4 feed chrome", "reached": true, "evidence": "2026-09-14 trace L521052 RV OnBindView (11 binds)"},
+  {"level": "L5 real feed content", "reached": true, "basis": "user sign-off", "evidence": "report:993 头条 feed 出图、可刷新；19 条 ESTABLISHED 长连接稳定"},
+  {"level": "L6 interactive", "reached": true, "basis": "user sign-offs; no touch in any trace", "evidence": "report:1052 点 tab 正常; report:1487 详情页正常显示内容; report:3153 视频首次播放出画面"},
+  {"level": "L7 stable >=5 min", "reached": "one claim", "evidence": "report:1048 清数据冷启后进程稳定存活 12 分钟以上 (2026-08-18); traces cover <=81 s"},
+  {"level": "L8 performance-tuned", "reached": false, "evidence": "first pixel 14.0 s after spawn (speed-profile trace) vs OH Photos 2.8 s; perf report:175,182,184"}
+ ],
+ "overstated_claim": "debug.md:35 '今日头条实测可用命令（2026-07-22 验证）' verifies only that aa start is accepted (debug.md:34); report:802/859 show launch failure and a 27 s crash fixed 2026-08-11/14",
+ "traces": [
+  {"file": "2026-09-14_toutiao_cold_start_pid8311", "purpose": "baseline", "first_frame_callback_s": 14.7, "first_pixel_s": 20.8, "frames": 27, "covers_s": 64},
+  {"file": "2026-09-16_toutiao_cold_start_pkgcache_pid3293", "purpose": "PI-70 package query cache", "first_frame_callback_s": 12.6, "first_pixel_s": 26.0, "frames": 11, "covers_s": 81},
+  {"file": "2026-09-18_toutiao_cold_start_madvise_warm_pid3490", "purpose": "PI-73 madvise", "first_frame_callback_s": 11.2, "first_pixel_s": 15.2, "frames": 16, "covers_s": 74},
+  {"file": "2026-09-18_toutiao_cold_start_madvise_postreboot_partial_pid2187", "purpose": "PI-73 cold cache", "first_frame_callback_s": 16.7, "first_pixel_s": null, "frames": 0, "covers_s": 23},
+  {"file": "2026-09-18_toutiao_cold_start_speedprofile_pid3402", "purpose": "PI-77 speed-profile dexopt", "first_frame_callback_s": 10.1, "first_pixel_s": 14.0, "frames": 15, "covers_s": 34}
+ ],
+ "metasec": {
+  "hanbin_musl_era": {"fixed": false, "crash": "arm32 libmetasec_ml+0x10b548: downward scan from load base - 824 after reading /proc/self/maps; cause never found",
+                      "evidence": ["libc_adaptation_directions.html:982,1154,1156,1252"]},
+  "hanbin_bionic_era": "not mentioned again; inferred gone because the process runs real Bionic; no document says fixed",
+  "offset_824": "start of that scan (module base - 824); debug.md:124 also lists hi - tcb = 824 as a musl layout constant; the 'scan starts at a thread descriptor (hi-824)' hypothesis was falsified",
+  "westlake_23_crash": "statically linked old Bionic vfork(): mrs TPIDR_EL0; ldr [TP,#8]; str wzr,[x0,#20]; clone(CLONE_VM|CLONE_VFORK|SIGCHLD)",
+  "arm64_census": {"tpidr_el0_reads": 1498, "slot5_stack_guard_reads": 1456, "slot1_users": ["0x2043b8 vfork stub", "0x10edc4 compares slot1 with pthread_self()"]},
+  "arm32_hanbin_build": "same Bionic vfork stub at 0x1bc064 (slot1 TP+4, cached_pid_ +12)",
+  "hanbin_mechanisms": [
+   {"name": "install-time .so rewrite (libdl->libbc, symbol renames, GOT patch)", "status": "retired", "system_change": true},
+   {"name": "libbc Bionic-named exports", "status": "deleted", "system_change": "loader patch"},
+   {"name": "shadow pthread_internal_t in tp[1] via bc_pthread_create", "status": "retired; 6/93 threads covered", "system_change": false},
+   {"name": "musl struct pthread reordered to Bionic layout + tp[1]=td in __copy_tls (arm32)", "status": "worked, no effect on Toutiao; deleted", "system_change": true},
+   {"name": "ART --wrap=pthread_getattr_np (guard-inclusive stack report)", "status": "retired with musl era", "system_change": "own libart"},
+   {"name": "ART fault handler in OH musl special sigchain slot", "status": "deleted", "system_change": "own libart"},
+   {"name": "single real Bionic in the app process", "status": "current", "system_change": true,
+    "files": ["aosp_patches/bionic/linker/linker.cpp.patch", "aosp_patches/bionic/libc/bionic/pthread_create.cpp.patch", "framework/zygote-x/config/ld.config.txt", "framework/zygote-x/config/zygote.cfg"]}
+  ],
+  "next_layers_hanbin_hit": ["/proc/self/maps geometry", "shadowhook/xhook need Bionic linker soinfo: never initialise on musl (libc_adaptation_directions.html:1237)"],
+  "westlake_shadowhook": "libshadowhook.so loads on OH (sensor-online-1/child.stderr:17253); init result logs to hilog, not captured"
+ },
+ "portability": [
+  {"id": 1, "item": "2 MiB floor for caller-shrunk thread stacks (Cronet 512 KiB under interpreter)", "hanbin": "aosp_patches/bionic/libc/bionic/pthread_create.cpp.patch", "class": "direct", "days": 1},
+  {"id": 2, "item": "ART guard-exclusive pthread_getattr_np puts a PROT_NONE page inside live stacks", "hanbin": "compat design §9.7, --wrap=pthread_getattr_np", "class": "direct, verify first", "westlake": "unmodified GetThreadStack/InstallImplicitProtection (art-build patches/runtime/thread.cc:1347,1440,1444), implicit_so_checks_=true on arm64 (runtime.cc:4652): likely present", "days": 1.5},
+  {"id": 3, "item": "process identity via currentProcessName, /proc/self/cmdline, getRunningAppProcesses", "hanbin": "PI-28, PI-33", "class": "direct", "days": 0.5},
+  {"id": 4, "item": "dalvik.vm.madvise.* property seeds", "hanbin": "PI-73 (main-thread D state 7.60->4.58 s)", "class": "direct", "days": 0.5},
+  {"id": 5, "item": "local caches for package query / display info / settings", "hanbin": "PI-70/71/72", "class": "adapt (count our calls first)", "days": "1-2 each"},
+  {"id": 6, "item": "install-time speed-profile dexopt", "hanbin": "PI-77", "class": "adapt", "days": "2-3"},
+  {"id": 7, "item": "TLS slot 1 compat for metasec vfork (arm64 shadow block at TP+8)", "hanbin": "retired shadow descriptor idea", "class": "adapt", "days": "3-5, then unknown", "open": ["pthread_self identity vs slot1 (0x10edc4)", "coverage of ART/main threads", "musl 16-byte gap on OH 6.1", "next layers: maps geometry, shadowhook"]},
+  {"id": 8, "item": "WebView multi-process off at Java level", "hanbin": "WebViewUpdateServiceAdapter.java:146-147", "class": "optional", "days": 0.5},
+  {"id": 9, "item": "tools and triage rules (struct_offsets.sh, sigchain-slot forensics, LiteProcessDumper, pgrep self-match, hilog ring, TTNet needs WebView provider)", "class": "direct", "days": "0-1"},
+  {"id": 10, "item": "single real Bionic in the app process", "class": "not applicable as built", "days": "weeks (large tier)"},
+  {"id": 11, "item": "arm32 musl patches, .so rewriting, OH service patches, init env, gid 1097->3003", "class": "not applicable", "days": null}
+ ],
+ "comparisons": {
+  "17_surfacecontrol": "hanbin ships real AOSP libandroid (full NDK table); westlake no-op table; same outcome",
+  "20_single_process": "hanbin isMultiProcessEnabled()=false; westlake --single-process; same outcome",
+  "cronet": "hanbin: one Bionic namespace, no choice; westlake: libsscronet Android-ABI target",
+  "30_heic": "hanbin: no special handling, APK libc++_shared bound by Bionic linker; retired musl design fixed the same __ndk1 class by loading the APK libc++_shared (compat design:2522): confirms #30",
+  "fonts_PI59": "westlake already handles (wl_fastlibc.cpp:376-380)",
+  "identity_token_recursion": "same bug on hanbin (report:1142); westlake #11"
+ },
+ "verification": "all cited report/design/source/trace lines re-read against originals (hanbin-evidence.txt); unverifiable trace counts dropped; binary census by me (metasec-tls-census.txt)",
+ "limits": ["hanbin memory/ has no Toutiao file", "traces have no touches, <=81 s", "no board used; westlake-side likely items need one board check each"]
+}

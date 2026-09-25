@@ -1,0 +1,73 @@
+# hanbin_adapter lines quoted verbatim for #35 (HTML tags stripped; raw-file line numbers).
+# Source: ~/workspace/hanbin_adapter (not a git repo; read only). westlake lines from VM ~/a2hlab/ws.
+
+## Frame: board, arch, libc
+memory/project_dev_board.md:9: - 系统库路径: `/system/lib/`（非 `lib64/`）
+memory/project_dev_board.md:10: - 系统版本: OpenHarmony 7.0.0.18 (weekly_20260302)
+memory/project_dev_board.md:11: - 编译 product: `--product-name rk3568`
+memory/project_build_target_arch.md:7: 当前需要编译的目标架构是 32-bit ARM（对应 DAYU200 RK3568 开发板）。
+memory/project_build_target_arch.md:9: **Why:** DAYU200 是 32-bit userspace，库路径为 `/system/lib/`（非 `lib64/`），64-bit 产物无法在设备上运行。
+doc/design/app_fwk_bionic_design_v2.html:238: …方向二（Bionic）＝进程内单 libc（Bionic）+ OH shim 层：
+
+## Toutiao status
+debug.md:33: ```
+debug.md:34: 成功判据：`start ability successfully`。
+debug.md:35: 3. **今日头条实测可用命令**（2026-07-22 验证）：
+doc/report/bionic_app_fwk_build_debug_report.html:802: 现象：今日头条 17.6.0 启动即失败，无 Fatal signal、进程干净退出。链路：ensureBindApplication → InvocationTargetException → Unable to instantiate application com.ss.android.article.news.mute.Mut… → Mirage invoke attachBaseContext error → UnsatisfiedLinkError: dlopen failed: library "libstdc++.so" not found: needed by /data/app/…。
+doc/report/bionic_app_fwk_build_debug_report.html:859: 现象：今日头条启动约 27s 后必崩，RenderThread SIGABRT：hwui drawRenderNode called on a context with no surface! 触发 LOG_ALWAYS_FATAL。
+doc/report/bionic_app_fwk_build_debug_report.html:993: 最终验收：头条 feed 出图、可刷新；进程 19 条 ESTABLISHED 长连接稳定，TIME_WAIT 潮消失。临时 [NETPROBE] 进程内探针（getaddrinfo/TCP443/裸 UDP DNS 三项自测）已随验收撤除。
+doc/report/bionic_app_fwk_build_debug_report.html:1048: 解决措施：B1-b——删除桩树 java/android/bluetooth/ 整目录（5 类 + le/ 3 类），[keep-stub] 组 4 的 11 条豁免全部清除，adapter-mainline-stubs.jar 重编 + boot image 42 件重烘（dex2oat 蓝牙 skip 零条）+ 全量部署 + 重启。真 initializer 接管：ActivityThread:8208 注入 manager → createAdapter 走 service-null 分支②返回 null adapter（AOSP 公开契约）。验证：清数据冷启后进程稳定存活 12 分钟以上，无任何蓝牙异常。
+doc/report/bionic_app_fwk_build_debug_report.html:1487: 4App 侧可见结果用户肉眼确认：详情页正常显示内容
+doc/report/bionic_app_fwk_build_debug_report.html:3153: 用户：头条视频页首次播放不点击即出画面。
+doc/report/bionic_app_fwk_build_debug_report.html:1142: …=null，PMS 侧才补包名；bind 日志 process=null，头条 TokenUtils.j 据此判"非主进程"，主进程里 TokenObjectProvider.query → TokenFactory.A → 反查自己的 provider 无限递归，三个线程 StackOverflow 闪退。修＝resolver normalize：应用 processName 缺省＝包名，各 ComponentInfo 缺省＝应用 processName。② FLAG_SYSTEM——PMS 按安装分区推导；缺它 LoadedApk.isBundledApp 为假，webview class
+doc/report/bionic_app_fwk_build_debug_report.html:123: …PI-59 详情页闪退根因＝$ANDROID_ROOT/fonts 缺失：第四次「只活在设备上的改动」（已解决 2026-09-10，已设备验证＋已沉淀）
+doc/report/bionic_app_fwk_build_debug_report.html:1048: …e-null 分支②返回 null adapter（AOSP 公开契约）。验证：清数据冷启后进程稳定存活 12 分钟以上，无任何蓝牙异常。
+doc/analysis/app_performance_analysis_report.html:175: 现象：头条启动慢、打开详情页慢、滑动卡。三者是本报告要解释的全部对象。
+doc/analysis/app_performance_analysis_report.html:182: 131.6 秒窗口内头条消耗 171.9 秒 CPU（平均 131%，峰值 308%），同期 render_service 与
+doc/analysis/app_performance_analysis_report.html:184: 2026-09-14 trace 实测后的状态：头条冷启动 17.9 s 的主线程构成已经量出（6.3.1）：运行 28%、缺页 39%、等锁与 GC 29%；
+trace/README.txt:11: com.ss.android.article.news cold start (task cleared first). Process spawned 27.66 s
+trace/README.txt:12: into the window, home screen visible ~45.5 s (17.9 s). Main thread tid 8311.
+trace/README.txt:13: No buffer overflow (entries-in-buffer == entries-written). Home reached; no freeze.
+trace/README.txt:14: Earlier runs with -b 204800 (800 MB pinned) are NOT kept: they measured the trace
+
+## metasec on musl (arm32)
+debug.md:124: | `hi−tcb=900` | `pthread_create` 的返回值 | 未用 musl `struct pthread.self` 自指特征独立定位（真值 **824**，差 76） |
+doc/design/compat/retired/libc_adaptation_directions.html:982: …从自身模块基址下方 824 字节开始、向低地址走的扫描；-824 不是任何结构体字段，
+doc/design/compat/retired/libc_adaptation_directions.html:1154: …扫描模型：起点 base-824、方向向低地址、终点第一页不可读内存。五个 ASLR 样本零偏差，satisfy 实验直接验证（放开起点页后扫描续走 1 MB 并在下一页 guard 再崩）。
+doc/design/compat/retired/libc_adaptation_directions.html:1156: …开放问题：这条扫描为什么在真机上不致命。当日七个假设全部证伪，不再补充未经验证的新假设。
+doc/design/compat/retired/libc_adaptation_directions.html:1252: …后者的成因至今未定。
+doc/design/compat/retired/libc_adaptation_directions.html:1237: …已确证：本设备上 shadowhook 的 safe / linker 模块永远无法初始化，
+doc/design/compat/retired/musl_pthread_bionic_layout_design.html:148: 证伪二：影子覆盖面只有 6%——同一 App 进程 93 个线程中仅 6 个经 libbc 创建。libart 加载在 default 命名空间、绑真 musl，全部 Java 线程与 ART 守护线程的描述符始终是裸 musl 布局。
+doc/design/compat/retired/musl_pthread_bionic_layout_design.html:216: musl 在 TP 之上只留 8 字节，tp[2] 起就是静态 TLS 数据。因此 Bionic 的槽 2~7 在 musl 下无处安放——想伪造就得改 GAP_ABOVE_TP 与 __copy_tls，那是在动 TLS ABI，风险远大于本方案。本设计只对齐 tp[1]。
+doc/design/compat/retired/musl_pthread_bionic_layout_design.html:366: .../src/env/__init_tls.c.patch新建在 __copy_tls 末尾 ((uintptr_t *)TP_ADJ(td))[1] = (uintptr_t)td，把描述符发布到 Bionic 的 TLS_SLOT_THREAD_ID。落点选 __copy_tls 而非 __init_tp：前者同时覆盖主线程与所有 pthread，一处顶两处
+doc/design/compat/retired/bionic_to_musl_compat_design.html:3312: 证伪二：影子的覆盖面只有 6%。实测同一 App 进程 93 个线程中仅 6 个经 libbc 创建。libart 加载在 default 命名空间、绑真 musl，因此全部 Java 线程与 ART 守护线程的描述符始终是裸 musl 布局，libbc 在其解析路径上根本不存在。而加固库是沿 musl 内部线程链表遍历到这些线程的（vreg 里的 prev/next 指向其它线程真描述符，其中一个甚至指向已 unmap 的地址），我们交出去的影子不在这条路径上。
+
+## WebView / network (Bionic era)
+framework/app-bridge/webview/java/WebViewUpdateServiceAdapter.java:145: @Override
+framework/app-bridge/webview/java/WebViewUpdateServiceAdapter.java:146: public boolean isMultiProcessEnabled() {
+framework/app-bridge/webview/java/WebViewUpdateServiceAdapter.java:147: return false;
+framework/zygote-x/java/OhZygoteConnection.java:488: // OH->Android INTERNET-grant translation.  OH AppMgr marks
+framework/zygote-x/java/OhZygoteConnection.java:489: // "ohos.permission.INTERNET granted" by adding gid 1097
+framework/zygote-x/java/OhZygoteConnection.java:490: // (NETSYS_SOCKET_GROUPID, app_mgr_service_inner.cpp:4448);
+framework/zygote-x/java/OhZygoteConnection.java:491: // AOSP Zygote decides setAllowNetworkingForProcess() by
+framework/zygote-x/java/OhZygoteConnection.java:492: // looking for gid 3003 (Process.INET_GID, Zygote.java:372).
+framework/zygote-x/java/OhZygoteConnection.java:493: // Without 3003 libnetd_client vetoes every AF_INET(6)
+
+## trace/2026-09-14_toutiao_cold_start_pid8311.txt.gz (milestones)
+L62012: id.article.news-8311    (   8311) [000] .....  2296.110355: tracing_mark_write: B|8311|makeApplication
+L167127: id.article.news-8311    (   8311) [002] .....  2300.247795: tracing_mark_write: B|8311|performCreate:com.ss.android.article.news.activity.MainActivity
+L409363: id.article.news-8311    (   8311) [000] .....  2307.387407: tracing_mark_write: B|8311|performResume:com.ss.android.article.news.activity.MainActivity
+L521052: id.article.news-8311    (   8311) [002] .....  2310.756076: tracing_mark_write: B|8311|RV OnBindView
+L699432: RenderThread-8557    (   8311) [001] .....  2315.310323: tracing_mark_write: B|8311|eglSwapBuffersWithDamageKHR
+L700296: RenderThread-8557    (   8311) [001] .....  2315.345583: tracing_mark_write: B|8311|frameCommit success=1
+
+## westlake side (VM ws/)
+westlake-all0925/framework/appspawn-x/src/wl_fastlibc.cpp:376: // lookup scope, ahead of the WebView bionic shim. That means Chromium's
+westlake-all0925/framework/appspawn-x/src/wl_fastlibc.cpp:377: // Android Skia backend otherwise sees ART's /system/android root and tries
+westlake-all0925/framework/appspawn-x/src/wl_fastlibc.cpp:378: // every configured font under the nonexistent /system/android/fonts.
+westlake-all0925/framework/appspawn-x/src/wl_fastlibc.cpp:379: // Adapt only direct calls from the stock WebView DSO; all framework, ART,
+westlake-all0925/framework/appspawn-x/src/wl_fastlibc.cpp:380: // OH-native, and app callers retain the real process environment.
+art-build-all0925/patches/runtime/thread.cc:1347: CHECK_PTHREAD_CALL(pthread_getattr_np, (thread, &attributes), __FUNCTION__);
+art-build-all0925/patches/runtime/thread.cc:1440: tlsPtr_.stack_begin += read_guard_size + GetStackOverflowProtectedSize();
+art-build-all0925/patches/runtime/thread.cc:1444: InstallImplicitProtection();
+art-build-all0925/patches/runtime/runtime.cc:4652: implicit_so_checks_ = true;

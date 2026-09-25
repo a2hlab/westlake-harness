@@ -1,0 +1,55 @@
+# Direct thread-pointer (TLS) accesses in libmetasec_ml.so — static census, #35
+# llvm-objdump -d (Homebrew LLVM); arm32 also disassembled as thumb. No binary is committed.
+
+## Inputs
+westlake (ours): toutiao.apk sha256 a1112a0c…7395, 13.9.0, lib/arm64-v8a only (138 libs)
+  lib/arm64-v8a/libmetasec_ml.so sha256 c91fc2ee0f47c87da4723fd59eb8420ed616b409076310f28f3420771a1fab6b bytes 3451528
+hanbin: out/app/toutiao_17.6.0.apk sha256 f4bd11fb21af036fdc6f370c392a14a0ec661fa2471fc01f998a5df642ceeb62, lib/armeabi-v7a only (153 libs)
+  lib/armeabi-v7a/libmetasec_ml.so sha256 c2032721a17473a3f5c9857f9808cca169c583f74a0a904fcd6355c406121b51 bytes 2907648
+Both: DT_NEEDED liblog libandroid libm libdl libc; imports pthread_self@LIBC and fork@LIBC.
+
+## arm64 (ours): 1498 'mrs Xn, TPIDR_EL0'
+- 1456 are followed by 'ldr [TP,#0x28]' = Bionic TLS_SLOT_STACK_GUARD (slot 5), the -fstack-protector canary.
+- the rest are the same canary load further down, TP saved to the stack, or a get-TP helper (0x11e210: mrs x0,TPIDR_EL0; ret).
+- exactly two reach TLS_SLOT_THREAD_ID (slot 1, TP+8):
+
+### (a) 0x2043b8 — statically linked Bionic vfork() (the #23 crash site)
+2043b8: d53bd040     	mrs	x0, TPIDR_EL0
+2043bc: f9400400     	ldr	x0, [x0, #0x8]
+2043c0: b900141f     	str	wzr, [x0, #0x14]
+2043c4: d2882220     	mov	x0, #0x4111             // =16657
+2043c8: aa1f03e1     	mov	x1, xzr
+2043cc: aa1f03e2     	mov	x2, xzr
+2043d0: aa1f03e3     	mov	x3, xzr
+2043d4: aa1f03e4     	mov	x4, xzr
+2043d8: d2801b88     	mov	x8, #0xdc               // =220
+2043dc: d4000001     	svc	#0
+2043e0: d65f03c0     	ret
+  = __get_tls()[TLS_SLOT_THREAD_ID]->cached_pid_ = 0; clone(CLONE_VM|CLONE_VFORK|SIGCHLD) (0x4111), __NR_clone=220.
+  This matches an older Bionic arch-arm64/bionic/vfork.S; the Android 15 source stores 0x80000000 (vforked_ flag) instead of 0.
+
+### (b) 0x10edc4 — compares slot 1 with pthread_self() and stores the result in two globals
+10edc4: 94003d13     	bl	0x11e210 <JNI_OnLoad+0xc4500>
+10edc8: f140041f     	cmp	x0, #0x1, lsl #12       // =0x1000
+10edcc: 54000109     	b.ls	0x10edec <JNI_OnLoad+0xb50dc>
+10edd0: f9400418     	ldr	x24, [x0, #0x8]
+10edd4: 97fc90d7     	bl	0x33130 <pthread_self@plt>
+10edd8: eb00031f     	cmp	x24, x0
+10eddc: 1a9f07e8     	cset	w8, ne
+10ede0: 1a9f17e9     	cset	w9, eq
+10ede4: b90396a9     	str	w9, [x21, #0x394]
+10ede8: b90392e8     	str	w8, [x23, #0x390]
+  On Bionic slot 1 IS pthread_self() (pthread_internal_t*); a compat object at TP+8 that differs from the app-visible pthread_self() makes these differ.
+
+## arm32 (hanbin's 17.6.0): the same Bionic vfork stub
+1bc064: ee1d3f70     	mrc	p15, #0x0, r3, c13, c0, #0x3
+1bc068: e5933004     	ldr	r3, [r3, #0x4]
+1bc06c: e3a00000     	mov	r0, #0
+1bc070: e583000c     	str	r0, [r3, #0xc]
+  = TPIDRURO → slot 1 (TP+4) → cached_pid_ at +12 (arm32 pthread_internal_t: next,prev,tid@8,cached_pid_@12).
+  Static disassembly of the arm32 build shows only 3 TPIDRURO reads (large parts of .text do not disassemble cleanly), so counts are not comparable across builds.
+
+## Bionic reference (VM android-source/bionic-android15)
+tls_defines.h: arm/arm64 TLS_SLOT_THREAD_ID 1, TLS_SLOT_STACK_GUARD 5; arm64 TLS_SLOT_BIONIC_TLS -1.
+pthread_internal.h: class pthread_internal_t { next; prev; pid_t tid; uint32_t cached_pid_:31; ... } → arm64 tid@16 cached_pid_@20, arm32 tid@8 cached_pid_@12.
+arch-arm64/bionic/vfork.S (Android 15): mrs x9,tpidr_el0; ldr x9,[x9,#(TLS_SLOT_THREAD_ID*8)]; mov w0,#0x80000000; ldr w10,[x9,#20]; str w0,[x9,#20]; ... mov x8,__NR_clone; svc #0
