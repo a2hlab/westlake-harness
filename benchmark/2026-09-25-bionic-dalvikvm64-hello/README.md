@@ -67,7 +67,7 @@ M2 was a chain of missing-piece failures; each was read from the log and fixed. 
 
 ## Verified vs deferred
 
-**Verified:** AOSP14 arm64 ART starts on the #39 Bionic linker64/libc on stock OH 6.1; the boot image + 12-jar BCP load (not interpreted); Java runs (`java.vm.name=Dalvik`, arithmetic); 3/3 reproducible, exit 0; zero avc; no `/system` change (su domain, only `/data/local/tmp`).
+**Verified:** AOSP14 arm64 ART starts on the #39 Bionic linker64/libc on stock OH 6.1; the boot image + 12-jar BCP load (not interpreted); Java runs (`java.vm.name=Dalvik`, arithmetic); 3/3 reproducible, exit 0; no `/system` change (su domain, only `/data/local/tmp`). The conclusion rests on the exit code + boot-image log evidence, not on avc: the su domain is permissive and AVC decisions are cached, so "zero avc" here is **not** evidence of anything (a real app-domain test — M3 — is where avc matters).
 
 **Deferred:** this ran in `u:r:su:s0` (dalvikvm64 from the su shell, as M2 specifies). Running ART under the app domain (`u:r:normal_hap:s0`) is the #41 path (fork+setcon+dlopen in the private namespace, appdat libs) — M3. A real app also needs the NDK public libs (the 10 OH-facing shims of #39/#41) which were emptied here. `libart-compiler.so` (JIT) loaded fine here on real Bionic; under `normal_hap` memfd-RX is denied (#41), so an app-domain ART uses ART's anon-RWX JIT fallback.
 
@@ -80,6 +80,7 @@ M2 was a chain of missing-piece failures; each was read from the log and fixed. 
 | `evidence/run-stderr-imageload.txt` | the boot-image-loaded proof (image/oat lines) |
 | `evidence/run-stderr-full.txt` | full ART stderr of one run |
 | `evidence/lib-provenance.txt` | each of the 45 libs → its source image |
+| `scripts/deploy_bionic43.sh` | **one-shot deploy**: assembles the exact on-board layout (apex/ roots, ICU/tz, emptied public.libraries.txt, ld.config.txt, run.sh) from the VM stage + scripts and pushes it to `/data/local/tmp/bionic43` — nothing is placed by hand, so the layout is fully reproducible |
 | `scripts/resolve.py` | dependency-closure resolver across ART/runtime/i18n/system images |
 | `scripts/run_bionic43.sh` | the on-board launcher (flags + env) |
 | `scripts/ld.config.txt` | minimal Bionic linker namespace config (via LD_CONFIG_FILE) |
