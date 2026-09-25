@@ -64,6 +64,7 @@ for r in sorted(R.glob('*-r[0-9]*')):
  row.update({'npth_hook_refusal_lines':refusal,'npth_debug_mapped_samples':sum(bool(re.search(r'^[0-9a-f]+-[0-9a-f]+.*libnpth_(xasan|heap_tracker)',s['output'],re.M)) for s in samples),
              'maps_min':min(counts) if counts else None,'maps_max':max(counts) if counts else None,'rss_peak_kib':max(rss) if rss else None,
              'get_meta_crash_files':[p.name for p in r.glob('cppcrash-*.txt') if 'get_meta' in p.read_text(errors='replace')]})
+ row['article_numeric_window_pass']=bool(final_alive and row['alive_after_last_resumed_s'] is not None and row['alive_after_last_resumed_s']>=180 and not row['metasec_ule_to_main_exit'] and not row['get_meta_crash_files'] and not terminal)
  (r/'summary.json').write_text(json.dumps(row,indent=2)+'\n')
 (R/'summary.json').write_text(json.dumps(rows,indent=2)+'\n')
-for r in rows:print(r['round'],r['pid'],r['terminal'],'alive_age',round(r['last_observed_alive_age_s'],2),'end_age',round(r['end_age_s'],2),'eacces',r['metasec_eacces_count'],'eacces_to_exit',r['eacces_to_main_exit'],'over3m',r['startup_over_180s'])
+for r in rows:print(r['round'],r['pid'],r['terminal'],'alive_age',round(r['last_observed_alive_age_s'],2),'end_age',round(r['end_age_s'],2),'metasec_ule_to_exit',r['metasec_ule_to_main_exit'],'article_numeric_window_pass',r['article_numeric_window_pass'],'refusals',len(r['npth_hook_refusal_lines']))
