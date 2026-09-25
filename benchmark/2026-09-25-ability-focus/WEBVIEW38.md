@@ -1,6 +1,6 @@
 # Article WebView investigation after #45
 
-R2: partially; work in progress. #45 remains resident on board61 as crash material.
+R2: partially; #46 article-rendering validation is in progress. #45 remains resident on board61 as crash material.
 This work uses only board5ea34a45 and the feed-capable ability38-v7/out-sp20 base.
 The earlier four-arm timing work is deprioritized in favor of article rendering.
 
@@ -55,7 +55,9 @@ Before editing, source bytes matched out-sp20's frozen shim source exactly.
 Per #36, the build compiles one C object and relinks one .so using the unchanged
 assembly object. Candidate SHA256: `ecc7b12c3591c979f3d9aece5bb1d414acc04d01d2c500a88364525082f9df9f`.
 No full native-runtime or downstream build was run. Candidate substitution is
-limited to the #38 application runtime and restored after each trial.
+limited to the #38 application runtime. Earlier automated trials restored the
+original after each trial; the explicit #46 manual verification keeps the patched
+runtime resident for inspection.
 
 ## Trial validity
 
@@ -68,7 +70,61 @@ child environment and produces the expected command-line marker.
 - inprocess-3: startup consent/render ordering invalidated selection; lifecycle
   target was TikTokActivity, not NewDetailActivity. It is not article evidence.
 - gles-fixed-1: actual feed touch reached InputConsumer DOWN+UP at uptime83274956/961ms, then parent reported signal11. No detail Activity or GLES translation marker; cause unknown, not assigned to RenderThread.
-- gles-fixed-2: data-preserving warm launch has no consent dialog; manually inspected feed and released the physical article touch. In progress.
+- gles-fixed-2: the initial automatic touch was invalidated by optional login.
+  After physically dismissing login, the manual retry at uptime83521.44s opened
+  NewDetailActivity record3, RESUMED83530.186s (+8.746s). `article-current.jpeg`
+  shows the complete short article body. The old filename `after-120s.jpeg` is
+  **+41.80s after this valid retry**, not 120s; its clock began at the invalid
+  first attempt. Assertions are 1/0/0, with no matching child faultlog. The
+  automated runner intentionally stopped this instance after observation.
+
+## Explicit #46 deployment and manual article sequence
+
+Run `wv46-articles-1` deploys the supplied **out-wv46/patched** artifact rather
+than rebuilding. Its full hash is identical to the independently built #38 fix.
+The original SHA256 is `ae6ac82830c2cd143469047c404765cd13b0c38106d2ccfe92596059f8e6b6ea`.
+Before replacement it was backed up both on device at
+`/data/local/tmp/ability38-webview46-original.<original-sha256>.so` and in VM
+`ability38/wv46-verification/original-shim.so`; both hashes were checked. See
+`evidence/wv46-verification/deployment.json` for exact target and source paths.
+No npth or other library was changed for this sequence.
+
+One data-preserving warm instance: child18719, parent18683; each article is opened
+from an inspected feed with real `uinput -T -d x y -u x y`, then returned with
+the visible back arrow. No i/c injection, no profiler, and no timeout-killing
+observer. Article records and screenshots, rather than settings JSON matches,
+are the acceptance evidence. Times use device uptime before DOWN to RESUMED;
+they include uinput invocation overhead and are not precise touch-to-first-frame.
+
+| Article | Physical coordinate | INPUT_BEFORE (s) | NewDetail record | RESUMED (s) | Elapsed |
+|---|---|---|---|---|---|
+| First feed item, Xinhua short body | 380,297 | 83891.730 | 2 | 83902.619 | 10.889s |
+| Second item, CCTV body and image | 380,377 | 84001.580 | 3 | 84004.598 | 3.018s |
+
+First item screenshot `article1-after60.jpeg` was re-captured after uptime
+83962.59s (at least +70.86s); the earlier same-name capture at +51s was replaced.
+The final hash manifest identifies the later image. Second item body screenshot
+shows article text above and below an embedded video poster; video playback was
+not requested or tested.
+
+**New failure after the second article:** child18719 was alive at uptime84041.74s
+(+40.16s), but absent at84089.95s. Its stderr ends after main-loop marker84058.925s
+with SIGTRAP, TRAP_BRKPT, thread20753 `ThreadPoolForeg`, PC0x7d832fccd4;
+parent confirms `child 18719 killed by signal 5`. No matching faultlog was found.
+This is not the old RenderThread SIGSEGV signature, but its precise cause is
+not established. `article2-after60.jpeg` was captured after process death and
+is a **stale window, explicitly invalid as survival evidence**. The earlier
+`article2-body.jpeg` is valid while the child was alive. Thus the two-article
+sequence does not establish 60s survival for the second article. Its orphan19336
+was archived and removed after verifying the same runtime namespace, before
+restarting the unchanged patched runtime for the third physical article open.
+
+Three required log counts so far are 1/0/0. An additional proposed assertion,
+**no ndk/libGLESv2.so anywhere in process maps, does not hold**: it remains
+mapped alongside platform GLESv3. The direct WebView translation log and real
+rendered body establish the corrected selection for this path; global mapping
+absence must not be claimed. Article1 comments show a network error. Neither
+comments nor the old <2s performance target are fixed by these observations.
 
 Screenshots must show body content, backed by the correct Activity lifecycle;
 PID survival, JSON substring matches, video pages, gray surfaces and old windows

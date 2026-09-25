@@ -5,7 +5,7 @@ def action(cmd):
  with (r/'manual-actions.jsonl').open('a') as f:f.write(json.dumps({'epoch':time.time(),'command':cmd,'output':out})+'\n')
  return out
 if op=='shot':
- label=sys.argv[3];remote='/data/local/tmp/wv38-current.jpeg';action('snapshot_display -f '+remote+' >/dev/null');recv(remote,r/(label+'.jpeg'));p=root/'preview'/name/(label+'.jpeg');p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes((r/(label+'.jpeg')).read_bytes())
+ label=sys.argv[3];remote='/data/local/tmp/wv38-current.jpeg';action('echo SHOT_'+label+'; cat /proc/uptime; snapshot_display -f '+remote+' >/dev/null; cat /proc/uptime');recv(remote,r/(label+'.jpeg'));p=root/'preview'/name/(label+'.jpeg');p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes((r/(label+'.jpeg')).read_bytes())
 elif op=='shell':print(action(sys.argv[3]))
 elif op=='ready':(r/'setup-done').write_text('Screen inspected and setup complete.\n')
 elif op=='go':(r/'go-physical').write_text('Visible article feed inspected.\n')
