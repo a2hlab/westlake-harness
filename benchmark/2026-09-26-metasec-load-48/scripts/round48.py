@@ -45,6 +45,17 @@ if op=='prepare':
  assert not dev('ls -d '+profile+' 2>/dev/null').strip()
  dev('mkdir -p '+profile)
  for part in ('app-data','data','webview-t-data'):dev('if [ -d '+runtime+'/'+part+' ]; then mv '+runtime+'/'+part+' '+profile+'/'+part+'; fi')
+ if name.startswith('a1-'):
+  artifact=pathlib.Path.home()/'a2hlab/ws/out-operator48/libart.so'
+  expected='ae2cb1829ffa9eca08e1a0fe816edfc33bbe0e1ca3e2f43aaa99e522924a8937'
+  assert sha(artifact)==expected
+  target=runtime+'/libart.so';prior=dev('sha256sum '+target).split()[0]
+  assert prior in ('009a08fb8282b4ed8b857eaf014038adb93bb5cac0daa5d32ab89a13f29c8bbc',expected)
+  if prior!=expected:
+   dev('cp '+target+' '+backup+'/libart.'+prior+'.so')
+   send(artifact,target+'.a1');dev('chmod 644 '+target+'.a1; mv '+target+'.a1 '+target)
+  assert dev('sha256sum '+target).split()[0]==expected
+  (r/'a1-deployment.json').write_text(json.dumps({'before':prior,'after':expected,'backup':backup,'target':target},indent=2)+'\n')
  dev(f'mkdir -p {runtime}/data/dalvik-cache/arm64 {runtime}/app-data/{PKG}/code_cache/art-volatile {runtime}/app-data/{PKG}/app_webview {runtime}/app-data/org.westlake.imehost {runtime}/webview-t-data; chown -R 20010053:20010053 {runtime}/data {runtime}/app-data {runtime}/webview-t-data; chcon -R u:object_r:data_app_el2_file:s0 {runtime}/app-data/{PKG}')
  send(ROOT/'scripts/preseed_metasec_applib.sh',runtime+'/preseed_metasec48.sh')
  dev('chmod 755 '+runtime+'/preseed_metasec48.sh; echo 1048576 > /proc/sys/vm/max_map_count; power-shell timeout -o 86400000; power-shell wakeup; aa start -b org.westlake.imehost -a EntryAbility; rm -f '+c['socket'])
@@ -54,10 +65,11 @@ if op=='prepare':
   time.sleep(.25)
  else:raise RuntimeError('parent socket not ready')
  hook=f'/bin/nsenter -t {c["parent"]} -m /system/bin/sh /data/local/tmp/asx/preseed_metasec48.sh'
- out=dev(hook+'; echo HOOK_RC=$?');(r/'preseed.txt').write_text(out);assert 'HOOK_RC=0' in out
+ if name.startswith('a2-'):
+  out=dev(hook+'; echo HOOK_RC=$?');(r/'preseed.txt').write_text(out);assert 'HOOK_RC=0' in out
  check=dev(f'ls -lZ {dst} {src}; readlink {dst}; sha256sum {src}; cat /proc/{c["parent"]}/mountinfo')
  (r/'preseed-identity.txt').write_text(check)
- assert '/data/local/tmp/asx/lib/arm64-v8a/libmetasec_ml.so' in check
+ if name.startswith('a2-'):assert '/data/local/tmp/asx/lib/arm64-v8a/libmetasec_ml.so' in check
  c['child']=int(re.search(r'result=0 pid=(\d+)',dev(c['spawn_command']))[1])
  s=stat(c['child']);c['birth']=s.rsplit(') ',1)[1].split()[19] if s else None
  c['profile_backup']=profile;c['original_metasec_sha256']=base['metasec_sha256']
@@ -65,7 +77,8 @@ if op=='prepare':
  t=(ROOT.parent/'2026-09-26-operator-toutiao-45/scripts/watchdog45.sh.in').read_text()
  for k,v in {'RUNTIME':shlex.quote(runtime),'STAGE':shlex.quote(stage),'SOCKET':shlex.quote(c['socket']),'UID':'20010053','PARENT_COMMAND':c['parent_command'],'SPAWN_COMMAND':c['spawn_command']}.items():t=t.replace('@@'+k+'@@',v)
  p=r/'watchdog.sh';p.write_text(t);send(p,D+'/watchdog.sh')
- dev(f'chmod 755 {D}/watchdog.sh; echo {c["child"]} > {D}/child.pid; echo {c["parent"]} > {D}/parent.pid; echo {runtime}/private-tmp/adapter_child_{c["child"]}.stderr > {D}/child.stderr.path; touch {D}/preseed48.enabled; rm -f {D}/guard.pid {D}/stop; rmdir {D}/guard.lock 2>/dev/null')
+ toggle='touch' if name.startswith('a2-') else 'rm -f'
+ dev(f'chmod 755 {D}/watchdog.sh; echo {c["child"]} > {D}/child.pid; echo {c["parent"]} > {D}/parent.pid; echo {runtime}/private-tmp/adapter_child_{c["child"]}.stderr > {D}/child.stderr.path; {toggle} {D}/preseed48.enabled; rm -f {D}/guard.pid {D}/stop; rmdir {D}/guard.lock 2>/dev/null')
  g=dev(f'nohup /system/bin/sh {D}/watchdog.sh >{D}/watchdog.log 2>&1 </dev/null & echo $!').strip();dev('echo '+g+' > '+D+'/guard.pid')
  print('ROUND_STARTED',name,c['child'],c['parent'],'GUARD',g,flush=True)
 else:
