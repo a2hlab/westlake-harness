@@ -38,12 +38,12 @@ Raw stderr, parent log, samples and matching faultlogs
 are retained. The old #49 group is not mixed in: it ended 3/5 body survival,
 2/5 metasec main exit and was ACK(blocked), commit1c5dad5.
 
-The initial five-round request was superseded on the shared outer-loop board
-after the new property failure was reported: "codex-2 待 claude-3 全量补齐后再测
-5 次,不再单符号迭代". The already-running second round was completed; rounds
-3–5 of this sensor-only group were not started. This is a finite reliability window, not a guarantee of
-unlimited uptime or of full metasec native functionality. Exports alone do not
-prove successful relocation/initialization; runtime exceptions are reported.
+The operator explicitly resumed this same candidate after the two-round
+interim report: complete c-r3/c-r4/c-r5 without waiting for the symbol closure.
+Stop further trials if the property ULE leads to an actual process exit. The
+first two observations remain part of this five-round group; no artifact changes.
+This is a finite reliability window, not a guarantee of unlimited uptime or
+of successful metasec loading. Runtime exceptions remain a separate metric.
 
 Live pointers remain `/data/local/tmp/operator45/{child.pid,parent.pid,guard.pid,child.stderr.path}`.
 Stop guardian without killing app: board shell
@@ -51,7 +51,7 @@ Stop guardian without killing app: board shell
 Archive root `/data/local/tmp/operator45-crashes`; old core backup subdirectory
 `sensor48-original`. No automatic rollback to the old candidate is planned.
 
-## Two-round result: blocked, R2 partially
+## Two-round interim result (continued by operator instruction)
 
 |Round / original PID|Original lifetime at end s|After detail RESUMED s|ASensor relocation errors|metasec main exit|Other metasec ULE|End body|
 |---|---:|---:|---:|---:|---:|---|
@@ -63,7 +63,7 @@ checks. Both still failed to load metasec because `__system_property_read` was
 missing in namespace 0, causing an uncaught platform-back-handler ULE. No
 metasec-associated main exit occurred within these two observation windows;
 this does not remove the dead-thread-to-null-Looper mechanism observed in #49.
-The requested five-round gate is incomplete and formal delivery is blocked.
+The two-round interim report did not establish the five-round gate; c-r3–c-r5 are now continuing on the same candidate.
 
 Both had zero original-PID SIG11/get_meta cppcrash, zero npth diagnostic-library
 refusal messages and zero sampled xasan/heap_tracker mappings. The refusal
@@ -79,5 +79,5 @@ were alive, with the article visible. Stage:
 Original stderr:
 `/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/private-tmp/adapter_child_19210.stderr`.
 Current pointers may change after guardian recovery; that would not extend
-the measured lifetime above. Full symbol-closure candidate is awaited from
-claude-3 before starting the next five-round group.
+the measured lifetime above. The current operator instruction continues the same candidate for c-r3–c-r5;
+claude-3’s symbol-closure candidate remains a fallback if a real exit occurs.
