@@ -70,6 +70,13 @@ else:
   out=dev(cmd)
   with (r/'inputs.jsonl').open('a') as f:f.write(json.dumps({'command':cmd,'output':out,'epoch':time.time()})+'\n')
   print(out)
+ elif op=='swipe':
+  assert live(d['child'],d['birth']) and dev('cat '+D+'/child.pid').strip()==str(d['child']),'original exited'
+  xy=sys.argv[3:];assert len(xy)==4 and all(x.isdigit() for x in xy)
+  cmd='cat /proc/uptime; uinput -T -m '+' '.join(xy)+' 800'
+  out=dev(cmd)
+  with (r/'inputs.jsonl').open('a') as f:f.write(json.dumps({'command':cmd,'output':out,'epoch':time.time()})+'\n')
+  print(out)
  elif op=='collect':collect(d)
  elif op=='monitor':
   duration=int(sys.argv[3]);start=time.monotonic();lastshot=-1

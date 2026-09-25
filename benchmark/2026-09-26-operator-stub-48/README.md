@@ -9,3 +9,5 @@
 测试进行中。
 
 首轮12880：最后采样活180.46s、185.05s检查已死；parent exited(1)。metasec引发platform-back-handler的Boolean.booleanValue null NPE（ms.bd.c.p2.d→MSManagerUtils.init），证明包装层并不普遍接受null；另点击进入ArticleInflowActivity后main抛Layout: -79 < 0。后者不能据时序直接归因于stub。feed/真实配图出现且推荐内容变化，未取得正文>180s或登录页，第一轮失败。继续相同候选余轮，保留失败不抵消。
+
+第二轮19769：最后采样活178.37s、182.36s检查已死。再次Boolean.booleanValue null NPE，随后X.DEv null Looper使ActivityThread.main返回，parent exited(1)。NewDetailActivity曾RESUMED，但正文未取得180s窗口；两轮均不能交付。
