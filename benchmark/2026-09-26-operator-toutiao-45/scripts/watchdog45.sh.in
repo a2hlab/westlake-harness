@@ -62,7 +62,8 @@ proc_start() {
 }
 uptime_s() { read up rest < /proc/uptime; echo "${up%%.*}"; }
 HZ45=$(getconf CLK_TCK)
-child=$(cat "$D/child.pid"); born=$(proc_start "$child"); started=$((born/HZ45))
+child=$(cat "$D/child.pid"); born=$(proc_start "$child")
+if [ -n "$born" ]; then started=$((born/HZ45)); else started=unknown; fi
 pending_tries=0
 late_capture() {
  [ "$pending_tries" -gt 0 ] || return
@@ -88,7 +89,8 @@ while [ ! -e "$D/stop" ]; do
  current=$(proc_start "$child")
  if [ -n "$current" ] && [ "$current" = "$born" ]; then late_capture; sleep 3; continue; fi
  seq=$((seq+1)); echo "$seq" > "$D/sequence"
- stamp=$(date +%Y%m%d-%H%M%S); epoch=$(date +%s); elapsed=$(($(uptime_s)-started))
+ stamp=$(date +%Y%m%d-%H%M%S); epoch=$(date +%s)
+ if [ "$started" = unknown ]; then elapsed=unknown; else elapsed=$(($(uptime_s)-started)); fi
  dest="$C/$seq-$stamp"; mkdir -p "$dest"
  printf 'pid=%s\nepoch=%s\nuptime=%s\nalive_seconds=%s\n' "$child" "$epoch" "$(uptime_s)" "$elapsed" > "$dest/exit.txt"
  cp "$RUNTIME/private-tmp/adapter_child_$child.stderr" "$dest/child.stderr" 2>"$dest/copy-errors.txt"
@@ -119,7 +121,8 @@ while [ ! -e "$D/stop" ]; do
  @@SPAWN_COMMAND@@ > "$dest/spawn.txt" 2>&1
  next=$(sed -n 's/.*result=0 pid=\([0-9][0-9]*\).*/\1/p' "$dest/spawn.txt" | tail -n 1)
  if [ -z "$next" ]; then printf '%s spawn_failed\n' "$(date +%s)" >> "$C/ERRORS"; sleep 3; continue; fi
- child=$next; born=$(proc_start "$child"); started=$((born/HZ45))
+ child=$next; born=$(proc_start "$child")
+ if [ -n "$born" ]; then started=$((born/HZ45)); else started=unknown; fi
  echo "$child" > "$D/child.pid"
  box="/proc/$child/root/data/local/tmp/noice_tap.$child"
  : > "$box"; chown "$UID45:$UID45" "$box"; chmod 666 "$box"; ln -sf "$box" /data/local/tmp/noice_tap
