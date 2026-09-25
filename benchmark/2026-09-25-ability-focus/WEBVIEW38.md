@@ -1,6 +1,8 @@
 # Article WebView investigation after #45
 
-R2: partially; #46 article-rendering validation is in progress. #45 remains resident on board61 as crash material.
+R2: partially overall; three physical opens now show article body with #46's
+GLES fix. General stability and the original <2s target remain blocked.
+#45 remains resident on board61 as crash material.
 This work uses only board5ea34a45 and the feed-capable ability38-v7/out-sp20 base.
 The earlier four-arm timing work is deprioritized in favor of article rendering.
 
@@ -100,6 +102,7 @@ they include uinput invocation overhead and are not precise touch-to-first-frame
 |---|---|---|---|---|---|
 | First feed item, Xinhua short body | 380,297 | 83891.730 | 2 | 83902.619 | 10.889s |
 | Second item, CCTV body and image | 380,377 | 84001.580 | 3 | 84004.598 | 3.018s |
+| New Xinhua relationship article, run5 | 380,390 | 84571.090 | 2 | 84579.250 | 8.160s |
 
 First item screenshot `article1-after60.jpeg` was re-captured after uptime
 83962.59s (at least +70.86s); the earlier same-name capture at +51s was replaced.
@@ -134,6 +137,17 @@ a detail ENTRY. It exited(1) with a Java NullPointerException: Handler construct
 received a null Looper (`Looper.mQueue`), through X.DEv / X.DPS / X.DPb.run,
 then ActivityThread's event loop unwound. It is likewise excluded from the
 successful article count; its surviving feed window is not article evidence.
+`wv46-articles-4`, child30440, also died with parent signal11 before an Activity
+ENTRY; no article was touched. Fatal origin is unknown. All these attempts were
+retained instead of being silently dropped from the deployment history.
+
+`wv46-articles-5`, child31745 / parent31721, successfully opened a different
+Xinhua article from the inspected feed, with full body visible in
+`article3-body.jpeg` and the child alive at uptime84601.63s (+30.54s).
+This completes **three successful body-rendering opens using the explicitly
+supplied #46 artifact**, across two child processes; not three uninterrupted
+sessions or three <2s results. The earlier byte-identical #38 trial is additional
+evidence, not needed to make this count.
 
 Three required log counts so far are 1/0/0. An additional proposed assertion,
 **no ndk/libGLESv2.so anywhere in process maps, does not hold**: it remains
@@ -141,6 +155,31 @@ mapped alongside platform GLESv3. The direct WebView translation log and real
 rendered body establish the corrected selection for this path; global mapping
 absence must not be claimed. Article1 comments show a network error. Neither
 comments nor the old <2s performance target are fixed by these observations.
+
+## Result and remaining failure
+
+**#46 deployment and three physical article-body opens are complete.** Each of
+the two successful child processes has exactly one WebView GLES translation to
+platform GLESv3, zero GrGLInterface creation failures, and zero InitializeGL
+failures. No RenderThread SIGSEGV was observed in these article windows.
+The third article still displayed real body with child31745 alive at
+uptime84652.04s, **+80.95s** from input; `article3-after60.jpeg` brackets its own
+uptime in `manual-actions.jsonl`. The first article was alive at +70.86s.
+
+R2 is **partially overall**: this demonstrates the rendering milestone, not
+general app stability. The second article's decoder JNI SIGTRAP prevents a claim
+that every article stays alive for 60s. The additional process-wide zero-NDK-GLES
+mapping assertion is false. Two startup signal11 exits and a Handler/Looper NPE
+remain. Three observed resume delays are 10.889/3.018/8.160s, all above2s.
+The next concrete failure is the missing MediaCodec.getOwnCodecInfo JNI method,
+with its exception and Chromium decoder stack preserved for #46 follow-up.
+
+The supplied shim remains deployed for outer-loop inspection. Last successful
+instance is child31745 / parent31721, stage
+`/data/local/tmp/a2hlab-app-f9c50f561b75433b97d54cc945f9aed8`; stderr is in runtime
+`/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-f9c50f561b75433b97d54cc945f9aed8/private-tmp/adapter_child_31745.stderr`.
+There is no automatic restart guardian on this board. PID liveness is a sampled
+fact, not a promise that the app will still be alive later.
 
 Screenshots must show body content, backed by the correct Activity lifecycle;
 PID survival, JSON substring matches, video pages, gray surfaces and old windows
