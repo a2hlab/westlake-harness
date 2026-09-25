@@ -1,0 +1,233 @@
+
+FILE aosp-art-15/runtime/oat/oat.h SHA256 7ad295120fdffa57e00446356296551aaf930c7d86470ab9d17dfeafeaddfc87
+44: class EXPORT PACKED(4) OatHeader {
+45:  public:
+46:   static constexpr std::array<uint8_t, 4> kOatMagic { { 'o', 'a', 't', '\n' } };
+47:   // Last oat version changed reason: Adding new entrypoints for InvokeExact intrisic.
+48:   static constexpr std::array<uint8_t, 4> kOatVersion{{'2', '4', '7', '\0'}};
+49: 
+50:   static constexpr const char* kDex2OatCmdLineKey = "dex2oat-cmdline";
+51:   static constexpr const char* kDebuggableKey = "debuggable";
+52:   static constexpr const char* kNativeDebuggableKey = "native-debuggable";
+53:   static constexpr const char* kCompilerFilter = "compiler-filter";
+54:   static constexpr const char* kClassPathKey = "classpath";
+55:   static constexpr const char* kBootClassPathKey = "bootclasspath";
+56:   static constexpr const char* kBootClassPathChecksumsKey = "bootclasspath-checksums";
+57:   static constexpr const char* kApexVersionsKey = "apex-versions";
+58:   static constexpr const char* kConcurrentCopying = "concurrent-copying";
+59:   static constexpr const char* kCompilationReasonKey = "compilation-reason";
+60:   static constexpr const char* kRequiresImage = "requires-image";
+61: 
+62:   static constexpr const char kTrueValue[] = "true";
+63:   static constexpr const char kFalseValue[] = "false";
+64: 
+65: 
+66:   static OatHeader* Create(InstructionSet instruction_set,
+67:                            const InstructionSetFeatures* instruction_set_features,
+68:                            uint32_t dex_file_count,
+69:                            const SafeMap<std::string, std::string>* variable_data);
+70: 
+71:   bool IsValid() const;
+72:   std::string GetValidationErrorMessage() const;
+
+FILE aosp-art-15/runtime/oat/oat.h SHA256 7ad295120fdffa57e00446356296551aaf930c7d86470ab9d17dfeafeaddfc87
+140: 
+141:   std::array<uint8_t, 4> magic_;
+142:   std::array<uint8_t, 4> version_;
+143:   uint32_t oat_checksum_;
+144: 
+145:   InstructionSet instruction_set_;
+146:   uint32_t instruction_set_features_bitmap_;
+147:   uint32_t dex_file_count_;
+148:   uint32_t oat_dex_files_offset_;
+149:   uint32_t bcp_bss_info_offset_;
+150:   uint32_t executable_offset_;
+151:   uint32_t jni_dlsym_lookup_trampoline_offset_;
+152:   uint32_t jni_dlsym_lookup_critical_trampoline_offset_;
+153:   uint32_t quick_generic_jni_trampoline_offset_;
+154:   uint32_t quick_imt_conflict_trampoline_offset_;
+155:   uint32_t quick_resolution_trampoline_offset_;
+156:   uint32_t quick_to_interpreter_bridge_offset_;
+157:   uint32_t nterp_trampoline_offset_;
+158: 
+159:   uint32_t key_value_store_size_;
+160:   uint8_t key_value_store_[0];  // note variable width data at end
+161: 
+
+FILE aosp-art-15/runtime/oat/oat_file_assistant.cc SHA256 05bb3a9b2307798104bb10c7b2c6a4d77600dfc1e99c1745218e7bfd3cb2a0c6
+603: bool OatFileAssistant::DexLocationToOdexFilename(const std::string& location,
+604:                                                  InstructionSet isa,
+605:                                                  std::string* odex_filename,
+606:                                                  std::string* error_msg) {
+607:   CHECK(odex_filename != nullptr);
+608:   CHECK(error_msg != nullptr);
+609: 
+610:   // For a DEX file on /apex, check if there is an odex file on /system. If so, and the file exists,
+611:   // use it.
+612:   if (LocationIsOnApex(location)) {
+613:     const std::string system_file = GetSystemOdexFilenameForApex(location, isa);
+614:     if (OS::FileExists(system_file.c_str(), /*check_file_type=*/true)) {
+615:       *odex_filename = system_file;
+616:       return true;
+617:     } else if (errno != ENOENT) {
+618:       PLOG(ERROR) << "Could not check odex file " << system_file;
+619:     }
+620:   }
+621: 
+622:   // The odex file name is formed by replacing the dex_location extension with
+623:   // .odex and inserting an oat/<isa> directory. For example:
+624:   //   location = /foo/bar/baz.jar
+625:   //   odex_location = /foo/bar/oat/<isa>/baz.odex
+626: 
+627:   // Find the directory portion of the dex location and add the oat/<isa>
+628:   // directory.
+629:   size_t pos = location.rfind('/');
+630:   if (pos == std::string::npos) {
+631:     *error_msg = "Dex location " + location + " has no directory.";
+632:     return false;
+633:   }
+634:   std::string dir = location.substr(0, pos + 1);
+635:   // Add the oat directory.
+636:   dir += "oat";
+637: 
+638:   // Add the isa directory
+639:   dir += "/" + std::string(GetInstructionSetString(isa));
+640: 
+641:   // Get the base part of the file without the extension.
+642:   std::string file = location.substr(pos + 1);
+643:   pos = file.rfind('.');
+644:   std::string base = pos != std::string::npos ? file.substr(0, pos) : file;
+645: 
+646:   *odex_filename = dir + "/" + base + ".odex";
+647:   return true;
+648: }
+649: 
+650: bool OatFileAssistant::DexLocationToOatFilename(const std::string& location,
+651:                                                 InstructionSet isa,
+652:                                                 std::string* oat_filename,
+653:                                                 std::string* error_msg) {
+654:   DCHECK(Runtime::Current() != nullptr);
+655:   return DexLocationToOatFilename(
+656:       location, isa, Runtime::Current()->DenyArtApexDataFiles(), oat_filename, error_msg);
+657: }
+658: 
+659: bool OatFileAssistant::DexLocationToOatFilename(const std::string& location,
+660:                                                 InstructionSet isa,
+661:                                                 bool deny_art_apex_data_files,
+662:                                                 std::string* oat_filename,
+663:                                                 std::string* error_msg) {
+664:   CHECK(oat_filename != nullptr);
+665:   CHECK(error_msg != nullptr);
+666: 
+667:   // Check if `location` could have an oat file in the ART APEX data directory. If so, and the
+668:   // file exists, use it.
+669:   const std::string apex_data_file = GetApexDataOdexFilename(location, isa);
+670:   if (!apex_data_file.empty() && !deny_art_apex_data_files) {
+671:     if (OS::FileExists(apex_data_file.c_str(), /*check_file_type=*/true)) {
+672:       *oat_filename = apex_data_file;
+673:       return true;
+674:     } else if (errno != ENOENT) {
+675:       PLOG(ERROR) << "Could not check odex file " << apex_data_file;
+676:     }
+677:   }
+678: 
+679:   // If ANDROID_DATA is not set, return false instead of aborting.
+
+FILE aosp-art-15/dex2oat/dex2oat.cc SHA256 5cf6c7fabad9af7643e86d705e1093d8cc74fa54620fd9bbbaee5218b8d465ad
+860: 
+861:     // Checks are all explicit until we know the architecture.
+862:     // Set the compilation target's implicit checks options.
+863:     switch (compiler_options_->GetInstructionSet()) {
+864:       case InstructionSet::kArm64:
+865:         compiler_options_->implicit_suspend_checks_ = true;
+866:         FALLTHROUGH_INTENDED;
+867:       case InstructionSet::kArm:
+868:       case InstructionSet::kThumb2:
+869:       case InstructionSet::kRiscv64:
+870:       case InstructionSet::kX86:
+871:       case InstructionSet::kX86_64:
+872:         compiler_options_->implicit_null_checks_ = true;
+873:         compiler_options_->implicit_so_checks_ = true;
+874:         break;
+875: 
+876:       default:
+877:         // Defaults are correct.
+878:         break;
+879:     }
+880: 
+881:     // OHOS does not reliably preserve the PC changes made by ART's SIGSEGV
+882:     // handlers when returning from the platform signal chain.  Generate the
+883:     // ordinary explicit null and suspend-check slow paths for opt-in AOT images
+884:     // instead of depending on signal-context rewriting.  Keep normal dex2oat
+885:     // behavior unchanged for every build that does not select this boundary.
+886:     const char* westlake_explicit_null_checks = getenv("WESTLAKE_EXPLICIT_NULL_CHECKS");
+887:     if (westlake_explicit_null_checks != nullptr &&
+888:         strcmp(westlake_explicit_null_checks, "1") == 0) {
+889:       compiler_options_->implicit_null_checks_ = false;
+890:       compiler_options_->implicit_suspend_checks_ = false;
+891:       LOG(INFO) << "Westlake: generating explicit null and suspend checks";
+892:     }
+
+FILE aosp-art-15/libprofile/profile/profile_compilation_info.cc SHA256 25d6f42e9efceb0c0de7282aa796ff5c209471908f2d13598d5c8cb997766191
+68: 
+69: namespace art {
+70: 
+71: const uint8_t ProfileCompilationInfo::kProfileMagic[] = { 'p', 'r', 'o', '\0' };
+72: // Last profile version: New extensible profile format.
+73: const uint8_t ProfileCompilationInfo::kProfileVersion[] = { '0', '1', '5', '\0' };
+74: const uint8_t ProfileCompilationInfo::kProfileVersionForBootImage[] = { '0', '1', '6', '\0' };
+75: 
+76: static_assert(sizeof(ProfileCompilationInfo::kProfileVersion) == 4,
+
+FILE android-source/frameworks-base/core/java/android/app/ActivityThread.java SHA256 3a6995ab5f30c7507fbdc25e45c852224f400838538b64422a585c4661286ca2
+2882:     @UnsupportedAppUsage
+2883:     public final LoadedApk getPackageInfoNoCheck(ApplicationInfo ai,
+2884:             CompatibilityInfo compatInfo) {
+2885:         return getPackageInfo(ai, compatInfo, null, false, true, false);
+2886:     }
+2887: 
+2888:     @Override
+2889:     public LoadedApk getPackageInfoNoCheck(ApplicationInfo ai) {
+2890:         return getPackageInfo(ai, mCompatibilityInfo, null /* baseLoader */,
+2891:                 false /* securityViolation */, true /* includeCode */, false /* registerPackage */);
+2892:     }
+2893: 
+
+FILE android-source/frameworks-base/core/java/android/app/ApplicationLoaders.java SHA256 a5c302be5bc65551ad60a8509a90549ec15e0890c2a8722a117712db1ffb2aee
+94:     private ClassLoader getClassLoader(String zip, int targetSdkVersion, boolean isBundled,
+95:                                        String librarySearchPath, String libraryPermittedPath,
+96:                                        ClassLoader parent, String cacheKey,
+97:                                        String classLoaderName, List<ClassLoader> sharedLibraries,
+98:                                        List<String> nativeSharedLibraries,
+99:                                        List<ClassLoader> sharedLibrariesLoadedAfterApp) {
+100:         /*
+101:          * This is the parent we use if they pass "null" in.  In theory
+102:          * this should be the "system" class loader; in practice we
+103:          * don't use that and can happily (and more efficiently) use the
+104:          * bootstrap class loader.
+105:          */
+106:         ClassLoader baseParent = ClassLoader.getSystemClassLoader().getParent();
+107: 
+108:         synchronized (mLoaders) {
+109:             if (parent == null) {
+110:                 parent = baseParent;
+111:             }
+112: 
+113:             /*
+114:              * If we're one step up from the base class loader, find
+115:              * something in our cache.  Otherwise, we create a whole
+116:              * new ClassLoader for the zip archive.
+117:              */
+118:             if (parent == baseParent) {
+119:                 ClassLoader loader = mLoaders.get(cacheKey);
+120:                 if (loader != null) {
+121:                     return loader;
+122:                 }
+123: 
+124:                 Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, zip);
+125: 
+126:                 ClassLoader classloader = ClassLoaderFactory.createClassLoader(
+127:                         zip,  librarySearchPath, libraryPermittedPath, parent,
+128:                         targetSdkVersion, isBundled, classLoaderName, sharedLibraries,
+129:                         nativeSharedLibraries, sharedLibrariesLoadedAfterApp);
+130: 
