@@ -8,7 +8,7 @@ for label,cmd in [('state','date; cat /proc/uptime; cat /data/local/tmp/operator
  (r/(label+'.txt')).write_text(dev(cmd))
 for label,remote in [('child.stderr',d['runtime']+f'/private-tmp/adapter_child_{d["child"]}.stderr'),('parent.log',d['stage']+'/parent.log'),('watchdog.sh','/data/local/tmp/operator45/watchdog.sh'),('INDEX.txt','/data/local/tmp/operator45-crashes/INDEX'),('startup-settings.log','/data/local/tmp/operator45/startup-settings.log')]:recv(remote,r/label)
 archive='/data/local/tmp/operator45-crashes'
-for remote in dev('find '+archive+' -type f').splitlines():
+for remote in ([] if '--live-only' in sys.argv else dev('find '+archive+' -type f').splitlines()):
  rel=pathlib.PurePosixPath(remote).relative_to(archive);first=rel.parts[0]
  m=re.match(r'(\d+)-',first)
  if not m or int(m[1])<6:continue

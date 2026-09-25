@@ -1,3 +1,5 @@
+> Latest morning integration and five-fix operator handoff: [MORNING46.md](MORNING46.md). The report below is the earlier #45 run.
+
 # #45 operator instance and resident recovery
 
 R2: **partially**. Deployment, persisted consent, physical tab switching, crash archives,
