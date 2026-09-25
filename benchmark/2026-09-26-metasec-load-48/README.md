@@ -78,9 +78,9 @@ A2 failed. Fresh original children, not guardian replacements:
 | Round / PID | Observed lifetime (seconds from birth) | metasec EACCES / back-handler ULE | Terminal status | Startup >180s | Article body >180s |
 |---|---:|---:|---|---|---|
 | a2-r1 / 13638 | 152.16 alive; dead by 155.64 | 1 / 1 | exit(1), X.DEv/null Looper | No | No |
-| a2-r2 / 18398 | 132.73 alive; dead by 136.14 | 0 / 0 | signal 11, thread/DSO unknown | No | No |
+| a2-r2 / 18398 | 132.73 alive; dead by 136.14 | 0 / 0 | signal 11, bd_tracker_w:13 → runtime → musl free | No | No |
 | a2-r3 / 23086 | >=470.54, alive at observation end | 1 / 1 | no process exit in window | Yes | Yes |
-| a2-r4 / 1624 | 237.54 last stat; subsequent liveness check dead | 0 / 0 | signal 11, thread/DSO unknown | Yes | No |
+| a2-r4 / 1624 | 237.54 last stat; subsequent liveness check dead | 0 / 0 | signal 11, RenderThread → Mali shader compilation → musl free | Yes | No |
 | a2-r5 / 7267 | 161.75 alive; dead by 165.15 | 1 / 1 | exit(1), X.DEv/null Looper | No | No |
 
 EACCES appeared in3/5, platform-back-handler ULE in3/5, associated
@@ -107,3 +107,32 @@ stability. r3 was intentionally stopped only after its completed window to
 prepare r4; planned cleanup is not counted as a natural exit.
 
 A1 testing follows with clean profiles and A2 disabled. No conclusion yet.
+
+## Native crash classification supplement
+
+The guardian's original-PID cppcrash files were subsequently retrieved:
+
+- r2: tid21181 bd_tracker_w:13; liboh_android_runtime+0x8754c,
+  +0x9eb28,+0x761d8 → musl __libc_free+24 → get_meta+92.
+- r4: tid2801 RenderThread; libhwui → Mali glLinkProgram/LLVM shader
+  compilation → __libc_free+24 → get_meta+92.
+
+Both fault on bad addresses inside free. The source of the corrupted/invalid
+pointer has not been established. Neither stack is the old WebView GrContext
+flush destructor. The early board ACK's unknown thread/DSO has been superseded
+by this original-PID evidence, not silently reassigned to metasec.
+
+## A1 observation boundary
+
+The first two completed A1 rounds each emit9 SAME/IDENTICAL-COPY markers with
+nonempty c91fc2ee SHA, then fail to relocate ASensorManager_getDefaultSensor.
+Thus the retry supplied by prerequisite1a190e8 is exercised, while the special
+f162c5e branch for unequal metasec images has not yet been exercised. A retry
+marker is not a successful dlopen or successful metasec initialization.
+The main app can survive a work_thread SIGABRT header and a back-handler ULE;
+these are reported separately from parent-observed process termination.
+
+The source diff and raw log artifacts intentionally retain their original
+whitespace. Code-only diff checks are clean; the raw-evidence diff has whitespace
+warnings. Evidence verification checks raw/decompressed SHA and committed HEAD
+bytes, without rewriting the observations to satisfy a whitespace linter.
