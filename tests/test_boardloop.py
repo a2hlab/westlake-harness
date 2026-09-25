@@ -489,6 +489,21 @@ class TestOfflineReclassify(unittest.TestCase):
             self.assertIn("none-source: 1", summary)
 
 
+class TestP3JudgeRegressionTrap(unittest.TestCase):
+    """#22 regression note: fd-libre/fd-fluffychat lost P3 in campaign22 not because
+    the first activity stopped being created, but because their child logs carry an
+    explicit 'Unable to start activity ComponentInfo' line — P3's failure oracle.
+    Pinned here so the judge keeps requiring an explicit failure, never inferring it."""
+
+    def test_p3_passes_on_decorview_without_failure(self) -> None:
+        log = "09-25 x DecorView@abc[0,0 1080x2340]\n"
+        self.assertEqual(stages.judge("\n".join(["sBindAppDone=true", log]), None, None)["P3"], "pass")
+
+    def test_p3_fails_on_explicit_activity_failure(self) -> None:
+        log = "DecorView@abc\nUnable to start activity ComponentInfo{com.x/.Y}\n"
+        self.assertEqual(stages.judge("\n".join(["sBindAppDone=true", log]), None, None)["P3"], "fail")
+
+
 class TestStorageCleanup(unittest.TestCase):
     """#22: probe never removes its stage/runtime dirs; a 100-app campaign filled
     board C to 100%. Post-run removes exactly the two dirs the report names;
