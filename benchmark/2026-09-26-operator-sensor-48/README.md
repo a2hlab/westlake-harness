@@ -38,7 +38,10 @@ Raw stderr, parent log, samples and matching faultlogs
 are retained. The old #49 group is not mixed in: it ended 3/5 body survival,
 2/5 metasec main exit and was ACK(blocked), commit1c5dad5.
 
-Results pending. This is a finite reliability window, not a guarantee of
+The initial five-round request was superseded on the shared outer-loop board
+after the new property failure was reported: "codex-2 待 claude-3 全量补齐后再测
+5 次,不再单符号迭代". The already-running second round was completed; rounds
+3–5 of this sensor-only group were not started. This is a finite reliability window, not a guarantee of
 unlimited uptime or of full metasec native functionality. Exports alone do not
 prove successful relocation/initialization; runtime exceptions are reported.
 
@@ -47,3 +50,34 @@ Stop guardian without killing app: board shell
 `touch /data/local/tmp/operator45/stop; kill $(cat /data/local/tmp/operator45/guard.pid)`.
 Archive root `/data/local/tmp/operator45-crashes`; old core backup subdirectory
 `sensor48-original`. No automatic rollback to the old candidate is planned.
+
+## Two-round result: blocked, R2 partially
+
+|Round / original PID|Original lifetime at end s|After detail RESUMED s|ASensor relocation errors|metasec main exit|Other metasec ULE|End body|
+|---|---:|---:|---:|---:|---:|---|
+|c-r1 / 9704|420.82|229.424|0|0|1|readable|
+|c-r2 / 19210|372.34|200.873|0|0|1|readable|
+
+Both real-uinput trials passed the bounded body-survival/zero-ASensor-error
+checks. Both still failed to load metasec because `__system_property_read` was
+missing in namespace 0, causing an uncaught platform-back-handler ULE. No
+metasec-associated main exit occurred within these two observation windows;
+this does not remove the dead-thread-to-null-Looper mechanism observed in #49.
+The requested five-round gate is incomplete and formal delivery is blocked.
+
+Both had zero original-PID SIG11/get_meta cppcrash, zero npth diagnostic-library
+refusal messages and zero sampled xasan/heap_tracker mappings. The refusal
+branch remains unexercised. Each had one work_thread SIGABRT banner without a
+corresponding original-main-process terminal record. Maps peaked at 11104 /
+10831, RSS at 1159180 / 1202256 KiB. The sysctl stayed 1048576. All seven
+deployed component hashes matched before and after both rounds.
+
+[Second-round article screenshot](evidence/c-r2/monitor-end.jpeg).
+At handoff (2026-09-26 06:12:53 CST), original child19210 and guardian19249
+were alive, with the article visible. Stage:
+`/data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d`.
+Original stderr:
+`/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/private-tmp/adapter_child_19210.stderr`.
+Current pointers may change after guardian recovery; that would not extend
+the measured lifetime above. Full symbol-closure candidate is awaited from
+claude-3 before starting the next five-round group.
