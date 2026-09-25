@@ -83,6 +83,9 @@ elif cmd=='observe':
   remote='/data/local/tmp/mc46.jpeg';action('cat /proc/uptime; snapshot_display -f '+remote+' >/dev/null; cat /proc/uptime')
   recv(remote,r/(label+'-'+tag+'.jpeg'));p=root/'preview'/name/(label+'-'+tag+'.jpeg');p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes((r/(label+'-'+tag+'.jpeg')).read_bytes())
  shot('before')
+ log=d['runtime']+'/private-tmp/adapter_child_'+pid+'.stderr'
+ start_line=int(dev('wc -l < '+log).strip())
+ (r/(label+'-start-line.json')).write_text(json.dumps({'line':start_line})+'\n')
  (r/(label+'-input.txt')).write_text(action(f'echo INPUT_BEFORE; cat /proc/uptime; uinput -T -d {x} {y} -u {x} {y}; echo INPUT_AFTER; cat /proc/uptime'))
  begin=time.monotonic();pending=[15,90,125]
  while True:
@@ -96,6 +99,8 @@ elif cmd=='observe':
   if elapsed>=125:break
   time.sleep(3)
  collect(r,d)
+ window='\n'.join((r/'child.stderr').read_text(errors='replace').splitlines()[start_line:])+'\n'
+ (r/(label+'-window.stderr')).write_text(window)
  print('OBSERVATION_COMPLETE',flush=True)
 elif cmd=='summary':
  r=R/name;d=json.loads((r/'device-report.json').read_text());collect(r,d);s=(r/'child.stderr').read_text(errors='replace');lines=s.splitlines()
