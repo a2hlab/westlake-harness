@@ -20,8 +20,11 @@ for r in sorted(R.glob('*-r[0-9]*')):
  consent=float(inputs[0]['output'].split()[0]) if inputs else None
  clicks=[float(i['output'].split()[0]) for i in inputs if '-d 380 295' in i['command']]
  resumed=[l for l in lines if l.startswith('[ABILITY38-RESUMED]')]
- detail=[l for l in lines if l.startswith('[B47-SLA] ENTRY') and 'NewDetailActivity' in l]
- detail_position=max((i for i,l in enumerate(lines) if l.startswith('[B47-SLA] ENTRY') and 'NewDetailActivity' in l),default=-1)
+ # Concurrent native logging can prefix a real marker on the same line.
+ # Match the exact lifecycle record, never an Activity substring in settings JSON.
+ entry='[B47-SLA] ENTRY bundle=com.ss.android.article.news ability=com.ss.android.detail.feature.detail2.view.NewDetailActivity recordId='
+ detail=[l[l.index(entry):] for l in lines if entry in l]
+ detail_position=max((i for i,l in enumerate(lines) if entry in l),default=-1)
  detail_resumed=[l for l in lines[detail_position+1:] if l.startswith('[ABILITY38-RESUMED]')] if detail_position>=0 else []
  last=states[-1];alive_age=max([s['age'] for s in states if s['alive']],default=0)
  # monitor checks liveness again after the composite sample; it may observe

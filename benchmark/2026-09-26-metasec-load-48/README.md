@@ -144,3 +144,24 @@ place after A1 r4/r5, followed by a separate five-run trial of npth-hook-refuse
 shim85c789f4. Therefore restore_operator45.py is retained as an unused rollback
 utility; it is NOT executed for this handoff. The original baseline backups
 remain intact. #49 trials use a separate worktree, branch and evidence directory.
+
+## A1 five-round completion (05:23)
+
+| Round/PID | Original age at end (s) | After detail RESUMED (s) | metasec ULE | Main exit | Body at end |
+|---|---:|---:|---:|---:|---|
+| a1-r1/11852 | 383.66 | 180.762 | 1 | 0 | Visible |
+| a1-r2/20242 | 417.82 | 226.000 | 1 | 0 | Visible |
+| a1-r3/29419 | 423.45 | 205.447 | 1 | 0 | Visible |
+| a1-r4/7209 | 447.09 | 246.237 | 1 | 0 | Visible |
+| a1-r5/16998 | 467.16 | 205.987 | 1 | 0 | Visible |
+
+All5 original children were alive at the end, with real video-article body screenshots.
+All5 have one platform-back-handler ULE for ASensorManager_getDefaultSensor,
+nine identical-copy retry markers, and one work_thread SIGABRT header; none had
+a parent-observed process exit during its observation window. Literal errno13
+is replaced by the failed relocation, not by a successful metasec load. The
+zero-background-thread-failure gate from #48 remains unmet. Per the latest #49
+instruction, this A1 candidate is retained and the refusal shim is now tested
+in a new five-run group. No rollback executed and no unrelated sensor stubs added.
+The r3 ENTRY is on a line prefixed by an epoll_ctl log; the parser recognizes
+the full B47-SLA lifecycle marker and recordId, never an Activity name in JSON.
