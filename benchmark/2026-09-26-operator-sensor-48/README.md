@@ -81,3 +81,20 @@ Original stderr:
 Current pointers may change after guardian recovery; that would not extend
 the measured lifetime above. The current operator instruction continues the same candidate for c-r3–c-r5;
 claude-3’s symbol-closure candidate remains a fallback if a real exit occurs.
+
+## Continued result: c-r4 real exit; c-r5 stopped
+
+c-r3 / original30577 survived509.15s and285.691s after detail RESUMED;
+body readable. c-r4 / original10607 was last alive149.82s and dead by154.07s.
+It threw the same __system_property_read ULE on platform-back-handler, then
+X.DEv null-Looper construction reached the main thread and the parent reaped
+exit(1). No article lifecycle opened; the attempted article input was rejected
+because the bound original had exited. This is a real property-associated
+process exit, not merely a nonfatal ULE. c-r5 was not started, as the operator
+explicitly required stopping on this outcome. Final sensor-only result:3/4
+body-window passes,1/4 metasec-related main exits,one planned round not run.
+All four had zero ASensor relocation errors and zero SIG11/get_meta cppcrash;
+all had one property ULE. Thus sensor alone did not make the exit deterministic.
+
+The new user task supplies complete symbol-closure source1d4af70. That candidate
+will be built and tested as a separate group/worktree, preserving these failures.
