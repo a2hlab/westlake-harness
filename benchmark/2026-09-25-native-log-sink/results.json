@@ -1,0 +1,53 @@
+{
+ "schema": 1,
+ "date": "2026-09-25",
+ "board_entry": "#44 (.octos/OUTER_LOOP_REVIEW.md)",
+ "title": "Make app-native library logs visible in the child (liblog -> hilog + gated stderr)",
+ "status": "VM-side done (source change + build verified); on-board Toutiao verification pending an outer-loop board slot (5cd1e3dd is occupied by #42's Toutiao timing)",
+ "mode": "VM-side only this round: read-only source archaeology + one source file + a single-library rebuild; no board run yet",
+ "root_cause": {
+  "symptom": "app-native __android_log_print / __android_log_buf_write in the child (Cronet/ttnet/Lynx/metasec) are silently lost; only the Java Log.println_native path (B.37) was fixed",
+  "finding": "the hilog bridge (android_log_hilog_bridge.cpp, which calls __android_log_set_logger to route to HiLogPrint) is compiled into liboh_adapter_bridge.so and liboh_android_runtime.so, NOT into liblog.so",
+  "evidence": "out-all0925/core-runtime/liblog.so exports __android_log_print/__android_log_set_logger/__android_log_write_log_message but has NO HiLogPrint / 0xD000F00 / register_hilog reference; the D000F00 strings live in liboh_adapter_bridge.so and liboh_android_runtime.so",
+  "mechanism": "__android_log_set_logger just sets a per-liblog-instance global (logger_write.cpp: logger_function = logger; no abort). The liblog instance the app's native libs bind (a copy in the ART classloader namespace, and/or one whose logger the framework never set) keeps liblog's default logd writer, whose socket is dead on OH -> messages dropped",
+  "why_it_downgraded_41": "on OH the METASEC log tag is native (E METASEC : MSTaskManager::DoLazyInit) so its absence from child.stderr proves nothing until this channel works"
+ },
+ "fix": {
+  "file": "westlake/framework/core/jni/westlake_liblog_native_sink.cpp (new)",
+  "added_to": "liblog.so sources in westlake/native/libraries.json (8 -> 9 sources)",
+  "how": "a __attribute__((constructor)) calls __android_log_set_logger so EVERY liblog instance self-registers a logger at load; this reaches the app-namespace liblog copy that the misplaced bridge never touched",
+  "logger_behaviour": [
+   "hilog: HiLogPrint(LOG_TYPE_CORE=3, level, domain 0xD000F00, tag, \"%{public}s\", msg) — same domain/route as B.37; HiLogPrint resolved via dlopen(libhilog.so)+dlsym so liblog.so gains NO hard libhilog dependency and stays loadable in every namespace",
+   "stderr: when WESTLAKE_SOURCE_LOG_STDERR=1, also write(2, ...) in logcat form \"<prio> <tag> : <msg>\\n\"; env read once and cached; unset (default, and every #38 timing run) skips the stderr branch entirely"
+  ],
+  "source_commit": "e627b770b05f1da2fd9752217cd308e58feaf023 (branch fix/native-log-sink-44 in the westlake source repo; only committed, not pushed; shared tree restored to detached 22b9453)"
+ },
+ "build_verification": {
+  "command": "build_android_native.py --workspace <verify> --out out-log44 --target ohos --library liblog.so",
+  "artifact": "out-log44/lib/liblog.so",
+  "sha256": "fcdfd9b6cd486d7edcf5141631be2aac3260e0f0d1923d8b04e45662ca37988c",
+  "dt_needed": ["libc++.so", "libc.so"],
+  "no_libhilog_dependency": true,
+  "exports_intact": ["__android_log_print", "__android_log_buf_write", "__android_log_set_logger", "__android_log_write_log_message"],
+  "constructor_present": "westlake_register_native_log_sink (INIT_ARRAY)",
+  "sink_strings_present": ["WESTLAKE_SOURCE_LOG_STDERR", "HiLogPrint", "libhilog.so", "%{public}s", "AndroidLog"]
+ },
+ "on_board_acceptance_pending": {
+  "requires": "an outer-loop-assigned board slot (must not run Toutiao while #42 times it on 5cd1e3dd)",
+  "deploy": "overlay out-log44/lib/liblog.so onto the runtime staging's liblog.so, launch Toutiao via probe_source_app.py with --runtime-env WESTLAKE_SOURCE_LOG_STDERR=1",
+  "checks": [
+   "child.stderr shows app-native log lines (Cronet/ttnet/Lynx/metasec tags)",
+   "volume order-of-magnitude comparable to the Android reference N100CU025C18D000128 logcat's same-process native tags; list the tag-set differences",
+   "no main-thread slowdown: #38 queueMs before/after unchanged (stderr off by default, so only the diagnostic run pays; measure it)",
+   "answer definitively: does METASEC / MSTaskManager::DoLazyInit appear on OH (the #41 open question)"
+  ]
+ },
+ "verdicts": [
+  {"item": "root cause: bridge absent from liblog.so; app-namespace liblog uses dead logd", "verdict": "verified (symbol/string inspection of the built libs)"},
+  {"item": "sink compiled into liblog.so, self-registers, routes to hilog + gated stderr", "verdict": "built & verified (symbols/strings/deps)"},
+  {"item": "no new hard dependency (dlopen HiLogPrint)", "verdict": "verified (DT_NEEDED unchanged)"},
+  {"item": "app-native logs visible in child.stderr on Toutiao", "verdict": "pending on-board (needs board)"},
+  {"item": "queueMs unchanged", "verdict": "pending on-board"},
+  {"item": "METASEC/DoLazyInit presence on OH", "verdict": "pending on-board (this is what the fix unblocks)"}
+ ]
+}
