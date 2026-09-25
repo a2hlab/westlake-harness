@@ -1,0 +1,89 @@
+# OH-side evidence for #26 tasks 2-3, quoted verbatim from
+# VM ~/a2hlab/board/5cd1e3dd00000000000000000923012c/applib23/<run>/ (read offline; board not touched).
+# Format: <run>/<file>:<line>: <text>. Long lines cut at 300 chars.
+
+## search order and the HEIF / GIF decoder load failures
+sensor-online-1/child.stderr:7741: [SOURCE-NATIVE-LOAD] path=/data/local/tmp/asx/lib/arm64-v8a/libbdheif.so search=/data/local/tmp/asx:/system/lib64:/system/lib64/platformsdk:/system/lib64/chipset-sdk:/system/lib64/chipset-sdk-sp:/system/lib64/ndk:/vendor/lib64/chipsetsdk:/vendor/lib64/hw:/vendor/lib64:/data/local/tmp/asx/lib/arm64-v
+sensor-online-1/child.stderr:7745: [SOURCE-NATIVE-LOAD-FAIL] path=/data/local/tmp/asx/lib/arm64-v8a/libbdheif.so namespace=0 error=Error relocating /data/local/tmp/asx/lib/arm64-v8a/libbdheif.so: _ZNSt6__ndk119__shared_weak_countD2Ev: symbol not found
+sensor-online-1/child.stderr:7750: [SOURCE-NATIVE-LOAD] path=/data/local/tmp/asx/lib/arm64-v8a/libc++_shared.so search=/data/local/tmp/asx:/system/lib64:/system/lib64/platformsdk:/system/lib64/chipset-sdk:/system/lib64/chipset-sdk-sp:/system/lib64/ndk:/vendor/lib64/chipsetsdk:/vendor/lib64/hw:/vendor/lib64:/data/local/tmp/asx/lib/arm
+sensor-online-3/child.stderr:21092: [SOURCE-NATIVE-LOAD-FAIL] path=/data/local/tmp/asx/lib/arm64-v8a/libgifimage.so namespace=0 error=Error relocating /data/local/tmp/asx/lib/arm64-v8a/libgifimage.so: _ZNKSt6__ndk119__shared_weak_count13__get_deleterERKSt9type_info: symbol not found
+
+## both libc++_shared.so copies are mapped (app copy, OH system copy)
+sensor-online-1/maps-early.txt:954: 7e89040000-7e89116000 r-xp 00000000 103:30 85447                         /data/local/tmp/asx/lib/arm64-v8a/libc++_shared.so
+sensor-online-1/maps-early.txt:1685: 7efb040000-7efb0d2000 r--p 00000000 103:20 2939                          /system/lib64/libc++_shared.so
+
+## SIGABRT handlers: #1-#8 from libsafe-mode-native-lib.so (+0xb28), #9 from crashpad in libwebviewchromium.so (+0x4099190)
+sensor-online-1/child.stderr:337: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #1 signal=4 flags=0x18000004 callback=0x7ee1e00b28 rc=0 errno=22
+sensor-online-1/child.stderr:338: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #2 signal=5 flags=0x18000004 callback=0x7ee1e00b28 rc=0 errno=22
+sensor-online-1/child.stderr:339: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #3 signal=6 flags=0x18000004 callback=0x7ee1e00b28 rc=0 errno=22
+sensor-online-1/child.stderr:340: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #4 signal=7 flags=0x18000004 callback=0x7ee1e00b28 rc=0 errno=22
+sensor-online-1/child.stderr:341: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #5 signal=8 flags=0x18000004 callback=0x7ee1e00b28 rc=0 errno=22
+sensor-online-1/child.stderr:342: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #6 signal=11 flags=0x18000004 callback=0x7ee1e00b28 rc=0 errno=22
+sensor-online-1/child.stderr:343: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #7 signal=16 flags=0x18000004 callback=0x7ee1e00b28 rc=0 errno=22
+sensor-online-1/child.stderr:344: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #8 signal=31 flags=0x18000004 callback=0x7ee1e00b28 rc=0 errno=22
+sensor-online-1/child.stderr:17081: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #9 signal=6 flags=0x8000004 callback=0x7df5d19190 rc=0 errno=13
+sensor-online-1/maps-early.txt:1560: 7ee1e00000-7ee1e02000 r-xp 00000000 103:30 85712                         /data/local/tmp/asx/lib/arm64-v8a/libsafe-mode-native-lib.so
+sensor-online-1/maps-early.txt:570: 7df1c80000-7df759e000 r-xp 00000000 103:30 85913                         /data/local/tmp/asx/webview-t-lib/libwebviewchromium.so
+
+## the work_thread abort block; the app pid keeps logging afterwards
+sensor-online-1/child.stderr:18044: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #16 signal=6 flags=0x18000004 callback=0x7ee1e00b28 rc=0 errno=22
+sensor-online-1/child.stderr:18045: *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+sensor-online-1/child.stderr:18046: Fatal signal 6 (SIGABRT), code -6 (SI_TKILL)
+sensor-online-1/child.stderr:18047: OS: Linux 5.15.180 (aarch64)
+sensor-online-1/child.stderr:18048: Cmdline: <unset>
+sensor-online-1/child.stderr:18049: Thread: 5283 "work_thread"
+sensor-online-1/child.stderr:18050: Registers:
+sensor-online-1/child.stderr:18051:      x0: 0x0000000000000000     x1: 0x0000007c87774f10     x2: 0x0000000000000000     x3: 0x0000000000000008
+sensor-online-1/child.stderr:18052:      x4: 0x0000000000000018     x5: 0x0000000000000009     x6: 0x0000000000000010     x7: 0x7f7f7f7fff7f7f7f
+sensor-online-1/child.stderr:18053:      x8: 0x0000000000000087     x9: 0x0000007c87776940    x10: 0x0000000000000000    x11: 0xffffffffffffffd8
+sensor-online-1/child.stderr:18054:     x12: 0x0000007c87774eb0    x13: 0x6c6c756e20736920    x14: 0x0000000000000000    x15: 0x0000000319738a90
+sensor-online-1/child.stderr:18055:     x16: 0x0000000000000000    x17: 0x000000000000003a    x18: 0x0000000000000000    x19: 0x0000000000000000
+sensor-online-1/child.stderr:18056:     x20: 0x0000007f9e1cd000    x21: 0x0000007c877750c8    x22: 0x0000007c87776aa8    x23: 0x0000000000000024
+sensor-online-1/child.stderr:18057:     x24: 0x0000007c877751e8    x25: 0x0000007c87776aa8    x26: 0x0000007c877751b8    x27: 0x0000007e6b2cc330
+sensor-online-1/child.stderr:18058:     x28: 0x00000000000000f2    x29: 0x0000007c87774f90    x30: 0x0000007f9e04c560
+sensor-online-1/child.stderr:18059:      sp: 0x0000007c87774f10     pc: 0x0000007f9e0a0344
+sensor-online-1/child.stderr:18060:  pstate: 0x0000000000001000 [ ]
+sensor-online-1/child.stderr:18061: 
+sensor-online-1/child.stderr:18062: Backtrace:
+sensor-online-1/child.stderr:18063: 
+sensor-online-1/child.stderr:18064: Fault message: 
+sensor-online-1/child.stderr:18245: nullptr I 09-25 15:41:45  3485  3495 heap.cc:2959] Background sticky concurrent mark sweep GC freed 58MB AllocSpace bytes, 682(60MB) LOS objects, 32% free, 136MB/203MB, paused 17.030ms total 6.596s
+
+## same abort in the other runs
+sensor-online-2/child.stderr:22485: Fatal signal 6 (SIGABRT), code -6 (SI_TKILL)
+sensor-online-2/child.stderr:22488: Thread: 9820 "work_thread"
+sensor-online-3/child.stderr:24837: Fatal signal 6 (SIGABRT), code -6 (SI_TKILL)
+sensor-online-3/child.stderr:24840: Thread: 14703 "work_thread"
+baseline1/child.stderr:18771: Fatal signal 6 (SIGABRT), code -6 (SI_TKILL)
+baseline1/child.stderr:18774: Thread: 27943 "work_thread"
+fix1/child.stderr:23390: Fatal signal 6 (SIGABRT), code -6 (SI_TKILL)
+fix1/child.stderr:23393: Thread: 10847 "work_thread"
+diag1/child.stderr:22519: Fatal signal 6 (SIGABRT), code -6 (SI_TKILL)
+diag1/child.stderr:22522: Thread: 2141 "work_thread"
+fresh-online-1/child.stderr:21648: Fatal signal 6 (SIGABRT), code -6 (SI_TKILL)
+fresh-online-1/child.stderr:21651: Thread: 17437 "work_thread"
+
+## sigaction counter repeats #16 in the app after the abort (fork-child hypothesis)
+fresh-online-1/child.stderr:20490: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #15 signal=5 flags=0x8000004 callback=0x7df8b59190 rc=0 errno=11
+fresh-online-1/child.stderr:21646: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #16 signal=6 flags=0x18000004 callback=0x7eece80b28 rc=0 errno=22
+fresh-online-1/child.stderr:22640: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #16 signal=11 flags=0xf105108c callback=0x7ef10441d4 rc=0 errno=22
+fresh-online-1/child.stderr:24415: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #17 signal=11 flags=0x8000004 callback=0x7df8b59190 rc=0 errno=22
+diag1/child.stderr:20484: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #15 signal=5 flags=0x8000004 callback=0x7e01ad9190 rc=0 errno=13
+diag1/child.stderr:22517: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #16 signal=6 flags=0x18000004 callback=0x7f01c40b28 rc=0 errno=22
+diag1/child.stderr:23391: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #16 signal=11 flags=0x2741108c callback=0x7e274041d4 rc=0 errno=22
+diag1/child.stderr:26278: [WESTLAKE-WEBVIEW-SIGNAL] sigaction #17 signal=11 flags=0x2bd69094 callback=0x18000804 rc=0 errno=22
+
+## libumeng-spy.so: Java_com_umeng_umzid_Spy_getNativeID installs SIGCHLD and forks
+    7bf8: 52800220     	mov	w0, #0x11               // =17
+    7bfc: 97fffda1     	bl	0x7280 <signal@plt>
+    7c00: 97fffe10     	bl	0x7440 <fork@plt>
+0000000000000b28 T _Z7handleriP7siginfoPv
+
+## the only code reference to "work_thread" (dexdump -d over all 5 dex files containing the string)
+classes17.dex dexdump:3722398:9658de: 1a01 33e8                              |0007: const-string v1, "work_thread" // string@e833
+3722394-9658d0: 1c02 143c                              |0000: const-class v2, Lcom/umeng/mc/e; // type@3c14
+3722396-9658d6: 6200 0299                              |0003: sget-object v0, Lcom/umeng/mc/e;.a:Landroid/os/HandlerThread; // field@9902
+
+## C++ ABI namespace of the two libc++_shared.so (llvm-nm -D --defined-only)
+APK lib/arm64-v8a/libc++_shared.so: __ndk1 exports = 1760; 00000000000918a8 T _ZNSt6__ndk119__shared_weak_countD2Ev
+OH SDK aarch64-linux-ohos/libc++_shared.so: __ndk1 exports = 0; 00000000000c5f8c T _ZNSt4__n119__shared_weak_countD2Ev
