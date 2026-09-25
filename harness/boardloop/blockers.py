@@ -43,7 +43,43 @@ def map_to_gap_row(category: str | None, identity: str | None,
         if item and (item in ident or ident in item):
             if best is None or len(item) > len(_norm(str(best.get("item", "")))):
                 best = row
-    return best["id"] if best is not None else None
+    if best is not None:
+        return best["id"]
+    return _family_row(category, identity, rows)
+
+
+def _family_row(category: str, identity: str, rows: list[dict[str, Any]]) -> str | None:
+    """Family-level fallback for maps whose rows are per-family, not per-symbol.
+
+    The 2026-09-21 gap map aggregates: one ndk:libc-abi row for all libc ABI symbols,
+    upcall:<lib>.so rows per library rather than per member. A per-symbol or per-member
+    identity can never substring-match such rows, which read as unmapped even though the
+    family is squarely on the map. Fallbacks map the identity to its family row; the
+    returned id carries a family-level marker so downstream readers never mistake it
+    for a direct row match.
+    """
+    ident = identity.strip()
+    low = ident.lower()
+    if category == "native-symbols":
+        # libc/bionic ABI surface (properties, asserts, C++ runtime internals)
+        if low.startswith("__system_property") or low in ("__assert",) or \
+           "_znst6__ndk1" in low:
+            for row in rows:
+                if str(row.get("id", "")).startswith("ndk:libc-abi"):
+                    return str(row["id"]) + " (family-level)"
+        # NDK helpers that surface as symbols
+        if ident.startswith(("AConfiguration", "ATrace_", "android_get_")):
+            for row in rows:
+                if str(row.get("id", "")).startswith("ndk:"):
+                    return str(row["id"]) + " (family-level)"
+    if category == "native-upcalls":
+        # member identities look like "android.app.ActivityThread.nPurgePendingResources"
+        # or "java.nio.MappedByteBuffer.load0"; the map's rows are per-.so
+        if "." in ident and not ident.endswith(".so"):
+            for row in rows:
+                if str(row.get("id", "")).startswith("upcall:"):
+                    return "upcall rows are per-.so in this map (family-level: no member row)"
+    return None
 
 
 def classify(child_log: str, faultlog: str = "",

@@ -113,6 +113,32 @@ class TestFirstBlocker(unittest.TestCase):
         self.assertEqual(result["category"], "native-symbols")
         self.assertEqual(result["gap_row"], "unmapped")
 
+    def test_family_level_fallback_maps_family_aggregate_rows(self) -> None:
+        """The 2026-09-21 map is family-aggregated: one ndk:libc-abi row for all libc
+        symbols, upcall:<lib>.so rows per library. Per-symbol/per-member identities
+        must fall back to the family row, marked family-level."""
+        gap_map = {"rows": [
+            {"category": "native-symbols", "id": "ndk:libc-abi",
+             "item": "bionic libc ABI: 10 symbols to translate onto musl"},
+            {"category": "native-upcalls", "id": "upcall:libpanorenderer.so",
+             "item": "libpanorenderer.so -> 36 classes, 213 members"},
+        ]}
+        self.assertEqual(
+            blockers.map_to_gap_row("native-symbols", "__system_property_read", gap_map["rows"]),
+            "ndk:libc-abi (family-level)")
+        self.assertEqual(
+            blockers.map_to_gap_row("native-symbols", "_ZNSt6__ndk119__shared_weak_count14__release_weakEv",
+                                    gap_map["rows"]),
+            "ndk:libc-abi (family-level)")
+        self.assertEqual(
+            blockers.map_to_gap_row("native-upcalls", "android.app.ActivityThread.nPurgePendingResources",
+                                    gap_map["rows"]),
+            "upcall rows are per-.so in this map (family-level: no member row)")
+        # direct substring match still wins over the fallback, unmarked
+        self.assertIsNone(blockers.map_to_gap_row("app-framework", "unrelated identity",
+                                                  [{"category": "app-framework", "id": "x",
+                                                    "item": "nothing matching"}]))
+
     def test_no_blocker(self) -> None:
         result = blockers.classify(GOOD_LOG, "", GAP_MAP)
         self.assertIsNone(result["category"])
