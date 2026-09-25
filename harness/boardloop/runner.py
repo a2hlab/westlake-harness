@@ -305,6 +305,22 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
             if child_log.strip():
                 record["child_log_path"] = candidate
                 break
+        # #29: board C's Toutiao finishes bind at ~45 s while the runner's first read
+        # lands seconds after spawn — the marker is simply not there yet, and P2
+        # reads fail despite a working app. Opt-in re-poll window: when --p2-wait is
+        # given and the marker has not appeared, keep refreshing the log every 10 s
+        # until it does or the window closes. Default 0 keeps scan cadence unchanged.
+        if getattr(args, "p2_wait", 0) and record.get("child_log_path") \
+                and not stages.has_p2_marker(child_log):
+            deadline = time.monotonic() + args.p2_wait
+            while time.monotonic() < deadline:
+                time.sleep(min(10, max(0.0, deadline - time.monotonic())))
+                refreshed = device.shell(f"cat {record['child_log_path']} 2>/dev/null")
+                if refreshed.strip():
+                    child_log = refreshed
+                if stages.has_p2_marker(child_log):
+                    record["p2_marker_waited_s"] = round(args.p2_wait - (deadline - time.monotonic()), 1)
+                    break
         # View tree over the tap channel ('v' dump), then RenderService visible nodes — the
         # two independent §10 oracles; a screenshot is deliberately not among them.
         # View tree over the tap channel ('v' dump), then RenderService visible nodes — the
@@ -447,6 +463,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--runs", type=Path, default=Path("runs"), help="runs root directory")
     parser.add_argument("--run-id", help="defaults to UTC timestamp")
     parser.add_argument("--launch-timeout", type=int, default=1200)
+    parser.add_argument("--p2-wait", type=float, default=0.0,
+                        help="seconds to keep re-reading the child log for the "
+                             "bind marker before judging P2 (0 = single read)")
     parser.add_argument("--vt-wait", type=float, default=8.0,
                         help="seconds to let the view-tree dump land after writing 'v'")
     parser.add_argument("--dry-run", action="store_true",

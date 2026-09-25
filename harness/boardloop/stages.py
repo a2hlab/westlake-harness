@@ -21,6 +21,11 @@ FAIL = "fail"
 ORACLE_UNAVAILABLE = "oracle-unavailable"
 
 
+def has_p2_marker(child_log: str) -> bool:
+    """True once the bind-complete lifecycle marker has appeared in the log."""
+    return _P2_BOUND.search(child_log) is not None
+
+
 def p2(child_log: str) -> str:
     """P2: Application attached/created — lifecycle event and process survival."""
     return PASS if _P2_BOUND.search(child_log) else FAIL

@@ -497,6 +497,109 @@ class TestOfflineReclassify(unittest.TestCase):
             self.assertIn("none-source: 1", summary)
 
 
+class TestP2RepollWindow(unittest.TestCase):
+    """#29: board C's Toutiao binds at ~45 s while the runner's single early read
+    misses the marker. --p2-wait keeps re-reading until the marker shows up."""
+
+    def test_p2_wait_repolls_until_marker_appears(self) -> None:
+        import argparse
+        import subprocess
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            ns = argparse.Namespace(
+                manifest=tmp, workspace=tmp, westlake_source=tmp,
+                framework_report=tmp / "r.json", hdc="hdc",
+                prepared_root=tmp / "app-inputs", runtime_lock=None, gap_map=None,
+                runs=tmp / "runs", launch_timeout=1, vt_wait=0, dry_run=False,
+                webview_input=None, source_webview_build=None, p2_wait=5.0,
+            )
+            (tmp / "app-inputs" / "appx").mkdir(parents=True)
+            (tmp / "app-inputs" / "appx" / "app-input.json").write_text("{}")
+            apk = tmp / "appx.apk"
+            apk.write_bytes(b"appx")
+            app = {"input": str(apk), "package": "com.appx"}
+            reads = {"n": 0}
+
+            def fake_run(cmd, *a, **k):
+                joined = " ".join(str(c) for c in cmd)
+                if "probe_source_app.py" in joined:
+                    out = Path(cmd[-1])
+                    out.mkdir(parents=True, exist_ok=True)
+                    (out / "device-report.json").write_text(
+                        '{"child": 4321, "parent": 4000, "runtime": "/rt"}')
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout="", stderr="")
+                if "adapter_child" in joined:
+                    reads["n"] += 1
+                    if reads["n"] == 1:
+                        body = ""            # spawn instant: nothing logged yet
+                    elif reads["n"] == 2:
+                        body = "starting up\n"   # pre-bind window
+                    else:
+                        body = "starting up\nsBindAppDone=true\nVT DecorView id=- rect=[0,0 100x100] c=0\n"
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout=body, stderr="")
+                if "kill -9" in joined or "rm -rf" in joined or "power-shell" in joined \
+                        or "aa start" in joined or "uinput" in joined or "noice_tap" in joined \
+                        or "hidumper" in joined or "faultlog" in joined:
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout="", stderr="")
+                raise AssertionError("unexpected command: " + joined)
+
+            with mock.patch("subprocess.run", side_effect=fake_run):
+                record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
+            self.assertEqual(record["verdict"], "done")
+            self.assertEqual(record["stages"]["P2"], "pass")   # caught by the re-poll
+            self.assertIn("p2_marker_waited_s", record)
+
+    def test_p2_wait_off_keeps_single_read(self) -> None:
+        # marker absent at first read, p2_wait=0 -> P2 fail, no waited field
+        import argparse
+        import subprocess
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            ns = argparse.Namespace(
+                manifest=tmp, workspace=tmp, westlake_source=tmp,
+                framework_report=tmp / "r.json", hdc="hdc",
+                prepared_root=tmp / "app-inputs", runtime_lock=None, gap_map=None,
+                runs=tmp / "runs", launch_timeout=1, vt_wait=0, dry_run=False,
+                webview_input=None, source_webview_build=None, p2_wait=0.0,
+            )
+            (tmp / "app-inputs" / "appx").mkdir(parents=True)
+            (tmp / "app-inputs" / "appx" / "app-input.json").write_text("{}")
+            apk = tmp / "appx.apk"
+            apk.write_bytes(b"appx")
+            app = {"input": str(apk), "package": "com.appx"}
+
+            def fake_run(cmd, *a, **k):
+                joined = " ".join(str(c) for c in cmd)
+                if "probe_source_app.py" in joined:
+                    out = Path(cmd[-1])
+                    out.mkdir(parents=True, exist_ok=True)
+                    (out / "device-report.json").write_text(
+                        '{"child": 4321, "parent": 4000, "runtime": "/rt"}')
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout="", stderr="")
+                if "adapter_child" in joined:
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout="starting up\n", stderr="")
+                if "kill -9" in joined or "rm -rf" in joined or "power-shell" in joined \
+                        or "aa start" in joined or "uinput" in joined or "noice_tap" in joined \
+                        or "hidumper" in joined or "faultlog" in joined:
+                    return subprocess.CompletedProcess(args=cmd, returncode=0,
+                                                       stdout="", stderr="")
+                raise AssertionError("unexpected command: " + joined)
+
+            with mock.patch("subprocess.run", side_effect=fake_run):
+                record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
+            self.assertEqual(record["stages"]["P2"], "fail")
+            self.assertNotIn("p2_marker_waited_s", record)
+
+
 class TestP3JudgeRegressionTrap(unittest.TestCase):
     """#22 regression note: fd-libre/fd-fluffychat lost P3 in campaign22 not because
     the first activity stopped being created, but because their child logs carry an
