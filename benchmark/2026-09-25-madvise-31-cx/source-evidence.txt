@@ -1,0 +1,168 @@
+SOURCE /Users/zhaoyue/workspace/hanbin_adapter/framework/zygote-x/src/oh_zygote_bootstrap.cpp
+SHA256 d2e4e05b2ed9b8100092786d82a8b146e2442328857bd6762cd734b9ec940b5a
+222:      * -XMadviseWillNeed{Vdex,Odex,Art}FileSize:, and ART's own defaults for
+223:      * those options are 0 (runtime_options.def), i.e. without the seed the
+224:      * runtime never issues MADV_WILLNEED on the vdex / odex / boot .art it
+225:      * maps and every first touch is a 4 KiB random major fault.  Measured
+226:      * 2026-09-14 (今日头条 cold start): main thread 7.4 s in D state over
+227:      * 8006 faults against a 262 MB base.vdex plus a 144 MB boot image.
+228:      * Consumers: oat_file_manager.cc (dex files inside the vdex, first
+229:      * 100 MB cumulative), image_space.cc (boot .art whole, boot .oat first
+230:      * 100 MB), both through Runtime::MadviseFileForRange in 128 KiB blocks.
+231:      */
+232:     {"dalvik.vm.madvise.vdexfile.size", "104857600"},
+233:     {"dalvik.vm.madvise.odexfile.size", "104857600"},
+234:     {"dalvik.vm.madvise.artfile.size", "4294967295"},
+235:     /*
+236:      * DIAGNOSTIC, NOT A FIX -- deliberate deviation from AOSP, to be removed or
+SOURCE /Users/zhaoyue/workspace/hanbin_adapter/doc/report/bionic_app_fwk_build_debug_report.html
+SHA256 0709e4623c0425bc2eedc499d4013bf1cbec61218988ffdd25e002a4a24d92ec
+3019: <h2 id="pi-73">PI-73 dexopt P0：zygote-x 种下 dalvik.vm.madvise.* 三属性（ART 文件预读）；头条冷启动主线程 D 态 7.60 → 4.58 s（热页缓存同条件）；hitrace 挂 hdc 会话被杀的取证血训（2026-09-18）</h2>
+3020: 
+3021: <p><b>结果先说</b>：<code>/system/bin/zygote</code> 换为含三项 <code>dalvik.vm.madvise.{vdexfile,odexfile,artfile}.size</code> 种子的版本（md5 <code>1230ce20</code>，旧 <code>f45ba701</code> 留底 <code>bkup/artifacts-20260918/zygote.pre-madvise</code> 本机 + ECS）。与 2026-09-16 基线同条件（热页缓存、清任务冷启）的 hitrace：spawn 后 23 s 窗口主线程 D 态 7.60 s → 4.58 s，最长一次 D 880 → 110 ms，spawn→首帧 12.6 → 11.2 s。设计：<code>apk_dexopt_profile_aot_design.html</code> 6.2.1。</p>
+3022: 
+3023: <h3>现象与根因</h3>
+3024: <ul>
+3025: <li><b>现象</b>（2026-09-14 trace）：头条冷启动主线程 7.4 s 处于 D 态，8006 次缺页打在 262 MB <code>base.vdex</code> 与 144 MB boot image 上，每次 4 KiB 随机 major fault。</li>
+3026: <li><b>根因</b>：AOSP 每台设备都在 <code>runtime_libart.mk</code> 种 <code>dalvik.vm.madvise.*</code>，<code>AndroidRuntime.cpp</code> 转成 <code>-XMadviseWillNeed*FileSize:</code>；ART 侧默认 0（<code>runtime_options.def</code>）。本项目属性由 zygote-x <code>kPropSeeds</code> 提供，此前无这三项 → <code>Runtime::MadviseFileForRange</code> 从不发 <code>MADV_WILLNEED</code>。属"接管了属性源却没接全"的同类缺口。</li>
+3027: </ul>
+3028: 
+3029: <h3>处置</h3>
+3030: <ul>
+3031: <li><code>framework/zygote-x/src/oh_zygote_bootstrap.cpp</code> <code>kPropSeeds</code> 加三项，值逐字取 AOSP（100 MB / 100 MB / 整个 .art）。<code>build_zygote_x.sh</code> 重编（09:38 一次因与另一 agent 的 <code>build_aosp_lib.sh</code> 撞 Soong 锁超时未产出；15:26 重跑成功）。<code>deploy_update.sh --only-files=zygote</code> + 重启。</li>
+3032: </ul>
+3033: 
+3034: <h3>验证</h3>
+3035: <ul>
+3036: <li><b>生效证据</b>：首页时 <code>/proc/&lt;pid&gt;/smaps</code> <code>base.vdex</code> 映射 255708 kB 中 Rss 92436 kB 成片驻留（≈ 100 MB 上限），<code>boot.art</code> 3328 kB 全驻留；bindApplication 里 <code>ResourcesImpl#updateConfiguration</code>→<code>setupGraphicsSupport</code>（<code>LoadedApk.getClassLoader</code> 开 vdex 处）由基线 42 ms 变为 0.53 s（热）/ 1.1 s（重启后冷）的同步 D 态——预读的一次性代价。</li>
+3037: <li><b>同脚本同窗口（spawn 后 23 s）</b>：09-14 基线 D 7.65 s / 3978 次；09-16 基线 7.60 s / 2032 次；09-18 重启后 4 min 冷页缓存 9.30 s / 1892 次、首帧 16.7 s（<b>无同条件对照，不作结论</b>）；09-18 热页缓存 4.58 s / 1961 次、首帧 11.2 s、on-CPU 6.18 → 7.73 s。全窗口 D 态 09-16 20.2 s/80.7 s → 09-18 10.8 s/73.7 s。</li>
+3038: <li>trace 归档 ECS <code>trace/2026-09-18_toutiao_cold_start_madvise_warm_pid3490.txt.gz</code>（完整，1844712/1844712 无溢出）与 <code>..._postreboot_partial_pid2187.txt.gz</code>（见下条，截断于 spawn 后 23 s）。</li>
+3039: </ul>
+3040: 
+3041: <h3>取证血训：hitrace 不能挂在本机 hdc 会话上</h3>
+SOURCE /Users/zhaoyue/OrbStack/a2hlab/home/zhaoyue/a2hlab/ws/aosp-art-15/runtime/runtime_options.def
+SHA256 4914cafb0504756f252ce599a799a1697938b609bf340784139a03b549ec77df
+87: RUNTIME_OPTIONS_KEY (bool,                DumpNativeStackOnSigQuit,       true)
+88: RUNTIME_OPTIONS_KEY (bool,                MadviseRandomAccess,            false)
+89: RUNTIME_OPTIONS_KEY (unsigned int,        MadviseWillNeedVdexFileSize,    0)
+90: RUNTIME_OPTIONS_KEY (unsigned int,        MadviseWillNeedOdexFileSize,    0)
+91: RUNTIME_OPTIONS_KEY (unsigned int,        MadviseWillNeedArtFileSize,     0)
+92: RUNTIME_OPTIONS_KEY (JniIdType,           OpaqueJniIds,                   JniIdType::kDefault)  // -Xopaque-jni-ids:{true, false, swapable}
+93: RUNTIME_OPTIONS_KEY (bool,                AutoPromoteOpaqueJniIds,        true)  // testing use only. -Xauto-promote-opaque-jni-ids:{true, false}
+SOURCE /Users/zhaoyue/OrbStack/a2hlab/home/zhaoyue/a2hlab/ws/aosp-art-15/runtime/parsed_options.cc
+SHA256 d9031554b2a27f89c0cd81a8b8d6b9afdfa024229c252f389d4c95b43e9f3c69
+261:           .WithType<bool>()
+262:           .WithValueMap({{"false", false}, {"true", true}})
+263:           .IntoKey(M::MadviseRandomAccess)
+264:       .Define("-XMadviseWillNeedVdexFileSize:_")
+265:           .WithType<unsigned int>()
+266:           .IntoKey(M::MadviseWillNeedVdexFileSize)
+267:       .Define("-XMadviseWillNeedOdexFileSize:_")
+268:           .WithType<unsigned int>()
+269:           .IntoKey(M::MadviseWillNeedOdexFileSize)
+270:       .Define("-XMadviseWillNeedArtFileSize:_")
+271:           .WithType<unsigned int>()
+272:           .IntoKey(M::MadviseWillNeedArtFileSize)
+273:       .Define("-Xusejit:_")
+274:           .WithType<bool>()
+SOURCE /Users/zhaoyue/OrbStack/a2hlab/home/zhaoyue/a2hlab/ws/aosp-art-15/runtime/runtime.cc
+SHA256 d2eb5d024a1d3c8210a602a82cb0757d3709d83f8359714e31d073e27d7960f1
+1717:   experimental_flags_ = runtime_options.GetOrDefault(Opt::Experimental);
+1718:   is_low_memory_mode_ = runtime_options.Exists(Opt::LowMemoryMode);
+1719:   madvise_willneed_total_dex_size_ = runtime_options.GetOrDefault(Opt::MadviseWillNeedVdexFileSize);
+1720:   madvise_willneed_odex_filesize_ = runtime_options.GetOrDefault(Opt::MadviseWillNeedOdexFileSize);
+1721:   madvise_willneed_art_filesize_ = runtime_options.GetOrDefault(Opt::MadviseWillNeedArtFileSize);
+1722: 
+1723:   jni_ids_indirection_ = runtime_options.GetOrDefault(Opt::OpaqueJniIds);
+1724:   automatically_set_jni_ids_indirection_ =
+3360: void Runtime::MadviseFileForRange(size_t madvise_size_limit_bytes,
+3361:                                   size_t map_size_bytes,
+3362:                                   const uint8_t* map_begin,
+3363:                                   const uint8_t* map_end,
+3364:                                   const std::string& file_name) {
+3365:   map_begin = AlignDown(map_begin, gPageSize);
+3366:   map_size_bytes = RoundUp(map_size_bytes, gPageSize);
+3367: #ifdef ART_TARGET_ANDROID
+3368:   // Short-circuit the madvise optimization for background processes. This
+3369:   // avoids IO and memory contention with foreground processes, particularly
+3370:   // those involving app startup.
+3371:   // Note: We can only safely short-circuit the madvise on T+, as it requires
+3372:   // the framework to always immediately notify ART of process states.
+3373:   static const int kApiLevel = android_get_device_api_level();
+3374:   const bool accurate_process_state_at_startup = kApiLevel >= __ANDROID_API_T__;
+3375:   if (accurate_process_state_at_startup) {
+3376:     const Runtime* runtime = Runtime::Current();
+3377:     if (runtime != nullptr && !runtime->InJankPerceptibleProcessState()) {
+3378:       return;
+3379:     }
+3380:   }
+3381: #endif  // ART_TARGET_ANDROID
+3382: 
+3383:   // Ideal blockTransferSize for madvising files (128KiB)
+3384:   static constexpr size_t kIdealIoTransferSizeBytes = 128*1024;
+3385: 
+3386:   size_t target_size_bytes = std::min<size_t>(map_size_bytes, madvise_size_limit_bytes);
+3387: 
+3388:   if (target_size_bytes > 0) {
+3389:     ScopedTrace madvising_trace("madvising "
+3390:                                 + file_name
+3391:                                 + " size="
+3392:                                 + std::to_string(target_size_bytes));
+3393: 
+3394:     // Based on requested size (target_size_bytes)
+3395:     const uint8_t* target_pos = map_begin + target_size_bytes;
+3396: 
+3397:     // Clamp endOfFile if its past map_end
+3398:     if (target_pos > map_end) {
+3399:       target_pos = map_end;
+3400:     }
+3401: 
+3402:     // Madvise the whole file up to target_pos in chunks of
+3403:     // kIdealIoTransferSizeBytes (to MADV_WILLNEED)
+3404:     // Note:
+3405:     // madvise(MADV_WILLNEED) will prefetch max(fd readahead size, optimal
+3406:     // block size for device) per call, hence the need for chunks. (128KB is a
+3407:     // good default.)
+3408:     for (const uint8_t* madvise_start = map_begin;
+3409:          madvise_start < target_pos;
+3410:          madvise_start += kIdealIoTransferSizeBytes) {
+3411:       void* madvise_addr = const_cast<void*>(reinterpret_cast<const void*>(madvise_start));
+3412:       size_t madvise_length = std::min(kIdealIoTransferSizeBytes,
+3413:                                        static_cast<size_t>(target_pos - madvise_start));
+3414:       int status = madvise(madvise_addr, madvise_length, MADV_WILLNEED);
+3415:       // In case of error we stop madvising rest of the file
+3416:       if (status < 0) {
+3417:         LOG(ERROR) << "Failed to madvise file " << file_name
+3418:                    << " for size:" << map_size_bytes
+SOURCE /Users/zhaoyue/OrbStack/a2hlab/home/zhaoyue/a2hlab/ws/westlake-madvise31-cx/framework/appspawn-x/src/appspawnx_runtime.cpp
+SHA256 fc9604257831fa667d397dad77d15a1de43fa87cb75ace34c3c2ca9bc60b97f3
+367:     // options. Use the AOSP runtime_libart.mk defaults (bytes); ART defaults
+368:     // these to zero. File pre-read is independent of the JIT enablement.
+369:     options.push_back(makeOption("-XMadviseWillNeedVdexFileSize:104857600"));
+370:     options.push_back(makeOption("-XMadviseWillNeedOdexFileSize:104857600"));
+371:     options.push_back(makeOption("-XMadviseWillNeedArtFileSize:4294967295"));
+372:     LOGW("ART file pre-read: vdex=104857600 odex=104857600 art=4294967295");
+373:     // §530: with the JIT on, the child died with java.lang.StackOverflowError inside
+374:     // AppSpawnXInit.initChild(). InstallImplicitProtection SUCCEEDED (no "Unable to create protected
+375:     // region"), so the guard page is fine — the suspicion is that compiled frames need more headroom
+376:     // than the interpreter did, which is exactly the condition libart's
+377:     // "Need to increase kStackOverflowReservedBytes (currently ...)" guards.
+378:     // Java thread stack size is the cheapest lever to test that.
+379:     if (const char* v = getenv("APPSPAWNX_XSS"); v && *v) {
+380:         addDynamicOption(std::string("-Xss") + v);
+381:         LOGW("ART thread stack size set to %s via APPSPAWNX_XSS", v);
+382:     }
+383:     // Generic heap controls for collector bring-up and constrained boards.
+384:     // Keep these opt-in so Android's normal defaults remain unchanged.  In
+385:     // particular, a large Xms is a useful control for distinguishing an ART
+386:     // collector/root-scanning defect from unrelated app/native corruption:
+387:     // it postpones the first collection without disabling allocation checks.
+388:     if (const char* v = getenv("APPSPAWNX_XMS"); v && *v) {
+389:         addDynamicOption(std::string("-Xms") + v);
+
+SOURCE /Users/zhaoyue/OrbStack/a2hlab/home/zhaoyue/a2hlab/ws/android-source/build-make/target/product/runtime_libart.mk
+162: # (in bytes) is madvised.
+163: # We madvise the whole .art file to MADV_WILLNEED with UINT_MAX limit.
+166:     dalvik.vm.madvise.vdexfile.size=104857600 \
+167:     dalvik.vm.madvise.odexfile.size=104857600 \
+168:     dalvik.vm.madvise.artfile.size=4294967295

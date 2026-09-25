@@ -1,0 +1,19 @@
+diff --git a/framework/appspawn-x/src/appspawnx_runtime.cpp b/framework/appspawn-x/src/appspawnx_runtime.cpp
+index 8ec40f3..f49a72a 100755
+--- a/framework/appspawn-x/src/appspawnx_runtime.cpp
++++ b/framework/appspawn-x/src/appspawnx_runtime.cpp
+@@ -362,6 +362,14 @@ int AppSpawnXRuntime::startVm() {
+             LOGW("ART JIT warmup threshold=%s", w);
+         }
+     }
++    // AppSpawnX bypasses AndroidRuntime::startVm(), which translates the
++    // dalvik.vm.madvise.{vdexfile,odexfile,artfile}.size properties into ART
++    // options. Use the AOSP runtime_libart.mk defaults (bytes); ART defaults
++    // these to zero. File pre-read is independent of the JIT enablement.
++    options.push_back(makeOption("-XMadviseWillNeedVdexFileSize:104857600"));
++    options.push_back(makeOption("-XMadviseWillNeedOdexFileSize:104857600"));
++    options.push_back(makeOption("-XMadviseWillNeedArtFileSize:4294967295"));
++    LOGW("ART file pre-read: vdex=104857600 odex=104857600 art=4294967295");
+     // §530: with the JIT on, the child died with java.lang.StackOverflowError inside
+     // AppSpawnXInit.initChild(). InstallImplicitProtection SUCCEEDED (no "Unable to create protected
+     // region"), so the guard page is fine — the suspicion is that compiled frames need more headroom
