@@ -1,0 +1,71 @@
+{
+ "schema": 1,
+ "date": "2026-09-25",
+ "board_entry": "#43 (.octos/OUTER_LOOP_REVIEW.md)",
+ "milestone": "Direction-2 64-bit M2 (learn hanbin, build 64-bit ourselves)",
+ "mode": "read-only extraction + on-board run under /data/local/tmp/bionic43 only; no /system write, no remount, no reflash; board 5cd1e3dd shared with #42 by process mutex (pidof com.ss.android.article.news checked empty before each run); test exits, not resident",
+ "goal": "Run a Java hello on official AOSP14 arm64 ART (dalvikvm64 + libart + boot image + BCP) brought up by the #39 Bionic linker64/libc, with the boot image loaded (not interpreted).",
+ "result": "SUCCESS",
+ "acceptance": {
+  "java_hello_printed": true,
+  "stdout": ["bionic43 java hello ok", "vm.name=Dalvik", "vm.version=2.1.0", "compute 6*7=42"],
+  "exit_code": 0,
+  "reproducible_runs": 3,
+  "all_runs_exit_0": true,
+  "boot_image_loaded_not_interpreted": true,
+  "image_evidence": {"using_image_file_lines": 12, "registered_oat_files": 12, "imageless_fallback_lines": 0, "decompress": "Decompressing image took 6.362ms (427MB/s)"},
+  "avc": {"denials_for_our_runs": 0, "method": "dmesg direct grep from a /dev/kmsg marker (not line count); run domain u:r:su:s0 (dalvikvm64 launched from the su shell per the task)"}
+ },
+ "provenance": {
+  "source_image": "arm64-v8a-34_r04.zip (official Google AOSP14 arm64, build UE1A.230829.036.A1, API 34; #39 download, zip sha1 d9f2011131919abe952814e041f16f317242c3fa)",
+  "art": "com.android.art.capex -> original_apex -> apex_payload.img (dalvikvm64, libart + 20 ART libs, javalib jars)",
+  "i18n": "com.android.i18n.apex (libicu/libicu_jni/libandroidicu, core-icu4j.jar, icudt72l.dat)",
+  "boot_image": "/system/framework/arm64/boot*.{art,oat} (real) + /system/framework/boot*.vdex (real; the arm64/*.vdex are symlinks to these)",
+  "bionic": "#39 linker64 + libc/libdl/libm from com.android.runtime apex",
+  "statsd": "libstatssocket.so from com.android.os.statsd.apex",
+  "tzdata": "com.android.tzdata.apex etc/tz/tzdata"
+ },
+ "layout_on_board": {
+  "root": "/data/local/tmp/bionic43",
+  "linker64": "linker64 (Bionic, PT_INTERP driver)",
+  "bin": "bin/dalvikvm64",
+  "lib64": "45 shared libs (21 ART apex, 12 system/lib64, 5 runtime-bionic, 5 i18n, 2 special) + lib64/bionic/{libc,libdl,libm}.so",
+  "framework/arm64": "12 boot image components x {art,oat,vdex} = 36 files",
+  "bcp": "12 BCP jars",
+  "system/etc/public.libraries.txt": "emptied (Java hello needs no NDK public libs)",
+  "apex/com.android.{art,i18n,tzdata}": "ANDROID_*_ROOT targets (ICU .dat, tzdata)",
+  "ld.config.txt": "minimal linker config selected via LD_CONFIG_FILE"
+ },
+ "invocation": {
+  "launcher": "linker64 (executable mode, absolute path) -> dalvikvm64  (dalvikvm64's baked PT_INTERP /system/bin/linker64 would hit the OH musl linker)",
+  "key_flags": ["-Xbootclasspath:<12 real jar paths>", "-Xbootclasspath-locations:<12 recorded /apex + /system locations>", "-Ximage:$RD/framework/boot.art (ART inserts the /arm64/ isa dir)", "-Xuse-stderr-logger", "-verbose:image", "-cp hello.jar Hello"],
+  "key_env": ["LD_LIBRARY_PATH=lib64:lib64/bionic", "LD_CONFIG_FILE=ld.config.txt", "ANDROID_ART_ROOT/ANDROID_I18N_ROOT/ANDROID_TZDATA_ROOT/ANDROID_ROOT/ANDROID_DATA"]
+ },
+ "blockers_hit_and_solved": [
+  {"n": 1, "error": "dlopen failed: library libartpalette-system.so not found", "cause": "ART palette system impl is dlopen'd at runtime (not DT_NEEDED); lives in /system/lib64", "fix": "stage it + its transitive closure (libcutils/libprocessgroup/libtombstoned_client/libselinux)", "hanbin_ref": "app_fwk_bionic_design_v2 native-lib closure"},
+  {"n": 2, "error": "Unknown argument -Xno-dex-file-fallback / -Xno-sig-chain", "cause": "dalvikvm64 arg set differs", "fix": "drop those flags"},
+  {"n": 3, "error": "Error reading public native library list .../system/etc/public.libraries.txt: No such file", "cause": "nativeloader reads $ANDROID_ROOT/etc/public.libraries.txt", "fix": "provide it (emptied — no NDK libs needed for hello)"},
+  {"n": 4, "error": "Failed to get system namespace for loading libandroid.so", "cause": "no /linkerconfig/ld.config.txt -> linker only has the default namespace; nativeloader wants named namespaces", "fix": "author a minimal ld.config.txt and select it with LD_CONFIG_FILE (/linkerconfig absent on OH, / is read-only)", "hanbin_ref": "zygote_x_design P-A (fake apex/linker roots)"},
+  {"n": 5, "error": "Error preloading public library libandroid.so: not found", "cause": "public.libraries.txt preloaded at init", "fix": "empty public.libraries.txt"},
+  {"n": 6, "error": "no namespace called com_android_art", "cause": "ART/nativeloader require named apex namespaces", "fix": "add com_android_art + com_android_i18n namespaces to ld.config.txt"},
+  {"n": 7, "error": "(silent SIGABRT, no message)", "cause": "ART LOG/abort go to logd which is absent on OH (the same broken native-log channel #44 tracks); messages dropped", "fix": "-Xuse-stderr-logger routes ART logging to stderr — the visible native-log channel for ART", "note": "directly answers the outer-loop concern about native-log visibility"},
+  {"n": 8, "error": "LoadNativeLibrary failed for libicu_jni.so: not found", "cause": "InitNativeMethods loads the ICU JNI bridge", "fix": "stage libicu_jni/libandroidicu/libicu from the i18n apex"},
+  {"n": 9, "error": "Unable to open .../framework/arm64/arm64/boot.art", "cause": "-Ximage must point at framework/boot.art; ART inserts the /arm64/ isa dir itself", "fix": "-Ximage:$RD/framework/boot.art"},
+  {"n": 10, "error": "Failed to mmap boot.vdex: Empty MemMap requested", "cause": "the vdex files under framework/arm64/ are symlinks to ../boot-*.vdex; debugfs dump captured the symlink text, not the real vdex", "fix": "extract the real vdex from /system/framework/*.vdex"},
+  {"n": 11, "error": "JIT could not load libart-compiler.so: not found -> Failed to allocate JIT -> abort", "cause": "libart-compiler.so is dlopen'd for JIT (not DT_NEEDED)", "fix": "stage libart-compiler.so"}
+ ],
+ "verdicts": [
+  {"item": "AOSP14 arm64 ART VM starts on real Bionic (linker64+libc) on stock OH 6.1", "verdict": "verified"},
+  {"item": "boot image + 12-jar BCP loaded (not interpreted)", "verdict": "verified (12 image files + 12 oat, 0 imageless)"},
+  {"item": "Java executes (System.out, arithmetic, java.vm.name=Dalvik)", "verdict": "verified"},
+  {"item": "reproducible", "verdict": "verified (3/3 exit 0, identical output)"},
+  {"item": "no sepolicy/system-partition change", "verdict": "verified (only /data/local/tmp; su domain)"},
+  {"item": "ART native-log visibility", "verdict": "solved for ART via -Xuse-stderr-logger"}
+ ],
+ "notes_for_next_milestone": [
+  "This ran in the su shell (u:r:su:s0). Running ART under the app domain (u:r:normal_hap:s0) is the #41 path: fork+setcon+dlopen in the private namespace, where the same libs load from appdat (proven in #41).",
+  "The JIT loaded libart-compiler.so successfully here (real Bionic); memfd-RX is denied under normal_hap (#41) so an app-domain ART would need the anon-RWX JIT fallback that ART already uses on OH.",
+  "public.libraries.txt was emptied; a real app (Toutiao) needs the NDK public libs (libandroid/libGLES/etc.) which are the 10 OH-facing shims from #39/#41 — that is the M3+ work.",
+  "libmetasec_ml's MSTaskManager::DoLazyInit visibility (the #41 open question, #44) will be observable once ART runs with -Xuse-stderr-logger or the #44 hilog fix."
+ ]
+}
