@@ -111,13 +111,29 @@ not requested or tested.
 (+40.16s), but absent at84089.95s. Its stderr ends after main-loop marker84058.925s
 with SIGTRAP, TRAP_BRKPT, thread20753 `ThreadPoolForeg`, PC0x7d832fccd4;
 parent confirms `child 18719 killed by signal 5`. No matching faultlog was found.
-This is not the old RenderThread SIGSEGV signature, but its precise cause is
-not established. `article2-after60.jpeg` was captured after process death and
+The preceding exception at approximately uptime84054.986s is an
+`UnsatisfiedLinkError` for native `android.media.MediaCodec.getOwnCodecInfo()`;
+the stack runs through `MediaCodec.getCodecInfo`, Chromium `MediaCodecUtil`,
+and `MediaCodecBridgeBuilder.createVideoDecoder`, followed by
+`FATAL:jni_android.cc(315) Please include Java exception stack in crash report`.
+This supplies a distinct media-decoder JNI failure chain, rather than the old
+GL initialization/RenderThread SIGSEGV signature. See `sigtrap-media-codec.txt`.
+No new codec workaround was added to the GLES-only experiment.
+`article2-after60.jpeg` was captured after process death and
 is a **stale window, explicitly invalid as survival evidence**. The earlier
 `article2-body.jpeg` is valid while the child was alive. Thus the two-article
 sequence does not establish 60s survival for the second article. Its orphan19336
 was archived and removed after verifying the same runtime namespace, before
 restarting the unchanged patched runtime for the third physical article open.
+
+The intervening restart `wv46-articles-2`, child25783, died with parent signal11
+before any Activity ENTRY or GLES translation. No article was touched and it is
+excluded from the article count; lack of a fatal banner leaves its cause unknown.
+`wv46-articles-3`, child27531, reached feed but the physical touch did not produce
+a detail ENTRY. It exited(1) with a Java NullPointerException: Handler constructor
+received a null Looper (`Looper.mQueue`), through X.DEv / X.DPS / X.DPb.run,
+then ActivityThread's event loop unwound. It is likewise excluded from the
+successful article count; its surviving feed window is not article evidence.
 
 Three required log counts so far are 1/0/0. An additional proposed assertion,
 **no ndk/libGLESv2.so anywhere in process maps, does not hold**: it remains
