@@ -1,0 +1,543 @@
+diff --git a/stubs/app_library_sha256.h b/stubs/app_library_sha256.h
+new file mode 100644
+index 0000000..0a05e26
+--- /dev/null
++++ b/stubs/app_library_sha256.h
+@@ -0,0 +1,296 @@
++// SHA-256 implementation from the locked AOSP 11 LZMA source:
++// external/lzma/C/Sha256.c (public domain; attribution retained below).
++// Private namespace and portable endian helpers keep it independent of the
++// application's or OH's crypto-provider ABI.
++#pragma once
++#include <cstdint>
++#include <cstddef>
++#include <cstring>
++namespace westlake_app_hash {
++using Byte = unsigned char;
++using UInt32 = uint32_t;
++using UInt64 = uint64_t;
++struct CSha256 { UInt32 state[8]; UInt64 count; Byte buffer[64]; };
++static inline UInt32 GetBe32(const Byte* p) {
++ return (UInt32(p[0])<<24)|(UInt32(p[1])<<16)|(UInt32(p[2])<<8)|p[3];
++}
++static inline void SetBe32(Byte* p, UInt32 v) {
++ p[0]=v>>24; p[1]=v>>16; p[2]=v>>8; p[3]=v;
++}
++static inline UInt32 rotrFixed(UInt32 v, unsigned n) { return (v>>n)|(v<<(32-n)); }
++/* Crypto/Sha256.c -- SHA-256 Hash
++2017-04-03 : Igor Pavlov : Public domain
++This code is based on public domain code from Wei Dai's Crypto++ library. */
++
++
++
++
++
++
++
++
++
++/* define it for speed optimization */
++#ifndef _SFX
++#define _SHA256_UNROLL
++#define _SHA256_UNROLL2
++#endif
++
++/* #define _SHA256_UNROLL2 */
++
++static void Sha256_Init(CSha256 *p)
++{
++  p->state[0] = 0x6a09e667;
++  p->state[1] = 0xbb67ae85;
++  p->state[2] = 0x3c6ef372;
++  p->state[3] = 0xa54ff53a;
++  p->state[4] = 0x510e527f;
++  p->state[5] = 0x9b05688c;
++  p->state[6] = 0x1f83d9ab;
++  p->state[7] = 0x5be0cd19;
++  p->count = 0;
++}
++
++#define S0(x) (rotrFixed(x, 2) ^ rotrFixed(x,13) ^ rotrFixed(x, 22))
++#define S1(x) (rotrFixed(x, 6) ^ rotrFixed(x,11) ^ rotrFixed(x, 25))
++#define s0(x) (rotrFixed(x, 7) ^ rotrFixed(x,18) ^ (x >> 3))
++#define s1(x) (rotrFixed(x,17) ^ rotrFixed(x,19) ^ (x >> 10))
++
++#define blk0(i) (W[i])
++#define blk2(i) (W[i] += s1(W[((i)-2)&15]) + W[((i)-7)&15] + s0(W[((i)-15)&15]))
++
++#define Ch(x,y,z) (z^(x&(y^z)))
++#define Maj(x,y,z) ((x&y)|(z&(x|y)))
++
++#ifdef _SHA256_UNROLL2
++
++#define R(a,b,c,d,e,f,g,h, i) \
++    h += S1(e) + Ch(e,f,g) + K[(i)+(size_t)(j)] + (j ? blk2(i) : blk0(i)); \
++    d += h; \
++    h += S0(a) + Maj(a, b, c)
++
++#define RX_8(i) \
++  R(a,b,c,d,e,f,g,h, i); \
++  R(h,a,b,c,d,e,f,g, i+1); \
++  R(g,h,a,b,c,d,e,f, i+2); \
++  R(f,g,h,a,b,c,d,e, i+3); \
++  R(e,f,g,h,a,b,c,d, i+4); \
++  R(d,e,f,g,h,a,b,c, i+5); \
++  R(c,d,e,f,g,h,a,b, i+6); \
++  R(b,c,d,e,f,g,h,a, i+7)
++
++#define RX_16  RX_8(0); RX_8(8);
++
++#else
++
++#define a(i) T[(0-(i))&7]
++#define b(i) T[(1-(i))&7]
++#define c(i) T[(2-(i))&7]
++#define d(i) T[(3-(i))&7]
++#define e(i) T[(4-(i))&7]
++#define f(i) T[(5-(i))&7]
++#define g(i) T[(6-(i))&7]
++#define h(i) T[(7-(i))&7]
++
++#define R(i) \
++    h(i) += S1(e(i)) + Ch(e(i),f(i),g(i)) + K[(i)+(size_t)(j)] + (j ? blk2(i) : blk0(i)); \
++    d(i) += h(i); \
++    h(i) += S0(a(i)) + Maj(a(i), b(i), c(i)) \
++
++#ifdef _SHA256_UNROLL
++
++#define RX_8(i)  R(i+0); R(i+1); R(i+2); R(i+3); R(i+4); R(i+5); R(i+6); R(i+7);
++#define RX_16  RX_8(0); RX_8(8);
++
++#else
++
++#define RX_16  unsigned i; for (i = 0; i < 16; i++) { R(i); }
++
++#endif
++
++#endif
++
++static const UInt32 K[64] = {
++  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
++  0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
++  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
++  0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
++  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
++  0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
++  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
++  0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
++  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
++  0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
++  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
++  0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
++  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
++  0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
++  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
++  0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
++};
++
++static void Sha256_WriteByteBlock(CSha256 *p)
++{
++  UInt32 W[16];
++  unsigned j;
++  UInt32 *state;
++
++  #ifdef _SHA256_UNROLL2
++  UInt32 a,b,c,d,e,f,g,h;
++  #else
++  UInt32 T[8];
++  #endif
++
++  for (j = 0; j < 16; j += 4)
++  {
++    const Byte *ccc = p->buffer + j * 4;
++    W[j    ] = GetBe32(ccc);
++    W[j + 1] = GetBe32(ccc + 4);
++    W[j + 2] = GetBe32(ccc + 8);
++    W[j + 3] = GetBe32(ccc + 12);
++  }
++
++  state = p->state;
++
++  #ifdef _SHA256_UNROLL2
++  a = state[0];
++  b = state[1];
++  c = state[2];
++  d = state[3];
++  e = state[4];
++  f = state[5];
++  g = state[6];
++  h = state[7];
++  #else
++  for (j = 0; j < 8; j++)
++    T[j] = state[j];
++  #endif
++
++  for (j = 0; j < 64; j += 16)
++  {
++    RX_16
++  }
++
++  #ifdef _SHA256_UNROLL2
++  state[0] += a;
++  state[1] += b;
++  state[2] += c;
++  state[3] += d;
++  state[4] += e;
++  state[5] += f;
++  state[6] += g;
++  state[7] += h;
++  #else
++  for (j = 0; j < 8; j++)
++    state[j] += T[j];
++  #endif
++
++  /* Wipe variables */
++  /* memset(W, 0, sizeof(W)); */
++  /* memset(T, 0, sizeof(T)); */
++}
++
++#undef S0
++#undef S1
++#undef s0
++#undef s1
++
++static void Sha256_Update(CSha256 *p, const Byte *data, size_t size)
++{
++  if (size == 0)
++    return;
++
++  {
++    unsigned pos = (unsigned)p->count & 0x3F;
++    unsigned num;
++
++    p->count += size;
++
++    num = 64 - pos;
++    if (num > size)
++    {
++      memcpy(p->buffer + pos, data, size);
++      return;
++    }
++
++    size -= num;
++    memcpy(p->buffer + pos, data, num);
++    data += num;
++  }
++
++  for (;;)
++  {
++    Sha256_WriteByteBlock(p);
++    if (size < 64)
++      break;
++    size -= 64;
++    memcpy(p->buffer, data, 64);
++    data += 64;
++  }
++
++  if (size != 0)
++    memcpy(p->buffer, data, size);
++}
++
++static void Sha256_Final(CSha256 *p, Byte *digest)
++{
++  unsigned pos = (unsigned)p->count & 0x3F;
++  unsigned i;
++
++  p->buffer[pos++] = 0x80;
++
++  while (pos != (64 - 8))
++  {
++    pos &= 0x3F;
++    if (pos == 0)
++      Sha256_WriteByteBlock(p);
++    p->buffer[pos++] = 0;
++  }
++
++  {
++    UInt64 numBits = (p->count << 3);
++    SetBe32(p->buffer + 64 - 8, (UInt32)(numBits >> 32));
++    SetBe32(p->buffer + 64 - 4, (UInt32)(numBits));
++  }
++
++  Sha256_WriteByteBlock(p);
++
++  for (i = 0; i < 8; i += 2)
++  {
++    UInt32 v0 = p->state[i];
++    UInt32 v1 = p->state[i + 1];
++    SetBe32(digest    , v0);
++    SetBe32(digest + 4, v1);
++    digest += 8;
++  }
++
++  Sha256_Init(p);
++}
++
++} // namespace westlake_app_hash
++
++#undef _SHA256_UNROLL
++#undef _SHA256_UNROLL2
++#undef S0
++#undef S1
++#undef s0
++#undef s1
++#undef blk0
++#undef blk2
++#undef Ch
++#undef Maj
++#undef R
++#undef RX_8
++#undef RX_16
++#undef a
++#undef b
++#undef c
++#undef d
++#undef e
++#undef f
++#undef g
++#undef h
++#undef R
++#undef RX_8
++#undef RX_16
++#undef RX_16
+diff --git a/stubs/link_stubs_arm64.cc b/stubs/link_stubs_arm64.cc
+index 2edd212..241d2c5 100644
+--- a/stubs/link_stubs_arm64.cc
++++ b/stubs/link_stubs_arm64.cc
+@@ -17,6 +17,7 @@
+ #include <cerrno>
+ #include <sys/mman.h>
+ #include <sys/stat.h>
++#include "verified_app_library.h"
+ 
+ extern "C" {
+ 
+@@ -557,15 +558,38 @@ void* OpenNativeLibrary(void* raw_env, int, const char* path, void*, const char*
+     void* handle = use_namespace
+             ? OpenInAndroidNamespace(open_path, use_anchor)
+             : dlopen(open_path, RTLD_NOW | RTLD_LOCAL);
+-    // dlopen has mapped it; the name is no longer needed either way.
++    // Preserve the first error before cleanup/JNI calls can overwrite dlerror.
++    const char* raw_error = handle == nullptr ? dlerror() : nullptr;
++    std::string load_error = raw_error ? raw_error : "dlopen failed";
+     if (!adjusted.empty() && adjusted.compare(0, 6, "/proc/") != 0) unlink(adjusted.c_str());
++    // OH may deny executable mappings of an app-private data copy. Reuse only
++    // an identical image already supplied in this ClassLoader's APK library
++    // directory. This neither changes its bytes nor relaxes mapping policy.
++    if (handle == nullptr && path != nullptr &&
++        load_error.find("failed to map library") != std::string::npos &&
++        load_error.find("errno=13") != std::string::npos) {
++        auto* env = static_cast<JNIEnv*>(raw_env);
++        auto library_path = static_cast<jstring>(raw_library_path);
++        const char* search = library_path ? env->GetStringUTFChars(library_path, nullptr) : nullptr;
++        std::string digest;
++        std::string packaged = westlake_app_library::FindPackagedCopy(path, search, &digest);
++        if (search) env->ReleaseStringUTFChars(library_path, search);
++        if (!env->ExceptionCheck() && !packaged.empty()) {
++            fprintf(stderr, "[SOURCE-NATIVE-IDENTICAL-COPY] from=%s to=%s sha256=%s\n",
++                    path, packaged.c_str(), digest.c_str());
++            const char* retry_path = packaged.c_str();
++            dlerror();
++            handle = use_namespace ? OpenInAndroidNamespace(retry_path, use_anchor)
++                                   : dlopen(retry_path, RTLD_NOW | RTLD_LOCAL);
++            const char* retry_error = handle == nullptr ? dlerror() : nullptr;
++            if (retry_error) load_error = retry_error;
++
++        }
++    }
+     if (handle == nullptr && error_msg != nullptr) {
+-        const char* error = dlerror();
+-        *error_msg = strdup(error != nullptr
+-                ? error
+-                : (use_namespace
+-                    ? "OH Android native namespace load failed"
+-                    : "dlopen failed"));
++        fprintf(stderr, "[SOURCE-NATIVE-LOAD-FAIL] path=%s namespace=%d error=%s\n",
++                path ? path : "<null>", use_namespace, load_error.c_str());
++        *error_msg = strdup(load_error.c_str());
+     }
+     return handle;
+ }
+diff --git a/stubs/verified_app_library.h b/stubs/verified_app_library.h
+new file mode 100644
+index 0000000..45db8ec
+--- /dev/null
++++ b/stubs/verified_app_library.h
+@@ -0,0 +1,110 @@
++#pragma once
++#include "app_library_sha256.h"
++#include <cerrno>
++#include <fcntl.h>
++#include <string>
++#include <sys/stat.h>
++#include <unistd.h>
++
++namespace westlake_app_library {
++static bool Stable(const struct stat& a, const struct stat& b) {
++    return a.st_dev == b.st_dev && a.st_ino == b.st_ino &&
++           a.st_size == b.st_size &&
++           a.st_mtim.tv_sec == b.st_mtim.tv_sec &&
++           a.st_mtim.tv_nsec == b.st_mtim.tv_nsec &&
++           a.st_ctim.tv_sec == b.st_ctim.tv_sec &&
++           a.st_ctim.tv_nsec == b.st_ctim.tv_nsec;
++}
++static bool Digest(int fd, unsigned char out[32]) {
++    westlake_app_hash::CSha256 state;
++    westlake_app_hash::Sha256_Init(&state);
++    unsigned char bytes[32768];
++    for (;;) {
++        ssize_t n = read(fd, bytes, sizeof(bytes));
++        if (n < 0 && errno == EINTR) continue;
++        if (n < 0) return false;
++        if (n == 0) break;
++        westlake_app_hash::Sha256_Update(&state, bytes, static_cast<size_t>(n));
++    }
++    westlake_app_hash::Sha256_Final(&state, out);
++    return true;
++}
++// Both inputs are opened without following final-component symlinks, and must
++// remain regular, unchanged files throughout comparison. No name-only fallback.
++static bool SameImage(const char* copy, const char* packaged, std::string* sha) {
++    int a = open(copy, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
++    if (a < 0) return false;
++    int b = open(packaged, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
++    if (b < 0) { close(a); return false; }
++    struct stat as{}, bs{}, after_a{}, after_b{}, named_b{};
++    unsigned char ah[32], bh[32];
++    bool same = fstat(a, &as) == 0 && fstat(b, &bs) == 0 &&
++                S_ISREG(as.st_mode) && S_ISREG(bs.st_mode) &&
++                as.st_size > 0 && as.st_size == bs.st_size &&
++                Digest(a, ah) && Digest(b, bh) &&
++                memcmp(ah, bh, sizeof(ah)) == 0 &&
++                fstat(a, &after_a) == 0 && fstat(b, &after_b) == 0 &&
++                lstat(packaged, &named_b) == 0 && S_ISREG(named_b.st_mode) &&
++                Stable(as, after_a) && Stable(bs, after_b) && Stable(bs, named_b);
++    close(a); close(b);
++    if (same) {
++        static const char digits[] = "0123456789abcdef";
++        sha->clear();
++        for (unsigned char c : ah) { *sha += digits[c >> 4]; *sha += digits[c & 15]; }
++    }
++    return same;
++}
++static bool Component(const std::string& s) {
++    return !s.empty() && s != "." && s != ".." &&
++           s.find('/') == std::string::npos;
++}
++// Accept only an app-private app_lib copy. Candidate locations come from that
++// ClassLoader's supplied native-library path, never a process-global basename
++// search. APK zip entries require a separate loader and are deliberately skipped.
++static std::string FindPackagedCopy(const char* path, const char* search,
++                                    std::string* sha) {
++    if (!path || !search) return {};
++    const std::string source(path), prefix("/data/data/");
++    if (source.compare(0, prefix.size(), prefix) != 0) return {};
++    const size_t pkg_end = source.find('/', prefix.size());
++    if (pkg_end == std::string::npos ||
++        !Component(source.substr(prefix.size(), pkg_end-prefix.size())) ||
++        source.compare(pkg_end, 9, "/app_lib/") != 0) return {};
++    const std::string name = source.substr(pkg_end + 9);
++    if (!Component(name) || name.size() < 4 ||
++        name.compare(name.size()-3, 3, ".so") != 0) return {};
++    // #48: one hardening library, metasec, rewrites its own app_lib copy at runtime, so it is
++    // never byte-identical to the APK copy, and that private copy sits where OH refuses an
++    // executable mapping (errno13). Left unhandled, System.load throws UnsatisfiedLinkError on a
++    // shared background HandlerThread; the uncaught error kills that thread, and a later component
++    // that builds a Handler on its now-null Looper NPEs the main thread into _exit(1). For this
++    // one name, reuse the executable APK copy on the ClassLoader search path without the identity
++    // guard, checking only that the candidate is a real ELF. Every other library keeps SameImage.
++    const bool relaxed = (name == "libmetasec_ml.so");
++    for (const char* first = search; *first;) {
++        const char* end = strchr(first, ':');
++        std::string dir(first, end ? size_t(end-first) : strlen(first));
++        if (!dir.empty() && dir[0] == '/' && dir.find('!') == std::string::npos) {
++            const std::string candidate = dir + "/" + name;
++            if (candidate != source) {
++                if (SameImage(path, candidate.c_str(), sha))
++                    return candidate;
++                if (relaxed) {
++                    int f = open(candidate.c_str(), O_RDONLY | O_CLOEXEC);
++                    if (f >= 0) {
++                        struct stat st; unsigned char m[4] = {0};
++                        const bool ok = fstat(f, &st) == 0 && S_ISREG(st.st_mode) &&
++                                        st.st_size > 0 && read(f, m, sizeof(m)) == 4 &&
++                                        m[0] == 0x7f && m[1] == 'E' && m[2] == 'L' && m[3] == 'F';
++                        close(f);
++                        if (ok) { if (sha) sha->clear(); return candidate; }
++                    }
++                }
++            }
++        }
++        if (!end) break;
++        first = end+1;
++    }
++    return {};
++}
++} // namespace westlake_app_library
+diff --git a/tests/app_library_copy_probe.cc b/tests/app_library_copy_probe.cc
+new file mode 100644
+index 0000000..ba79f64
+--- /dev/null
++++ b/tests/app_library_copy_probe.cc
+@@ -0,0 +1,9 @@
++#include "../stubs/verified_app_library.h"
++#include <cstdio>
++int main(int argc, char** argv) {
++ if (argc != 3) return 2;
++ std::string hash;
++ if (!westlake_app_library::SameImage(argv[1], argv[2], &hash)) return 1;
++ printf("%s\n", hash.c_str());
++ return 0;
++}
+diff --git a/tests/test_verified_app_library.py b/tests/test_verified_app_library.py
+new file mode 100644
+index 0000000..92d07d7
+--- /dev/null
++++ b/tests/test_verified_app_library.py
+@@ -0,0 +1,46 @@
++#!/usr/bin/env python3
++"""Exercise real SHA-256 comparison, including equal-size mismatches."""
++import hashlib
++import pathlib
++import subprocess
++import tempfile
++import unittest
++
++class VerifiedCopy(unittest.TestCase):
++    @classmethod
++    def setUpClass(cls):
++        cls.temp = tempfile.TemporaryDirectory()
++        cls.root = pathlib.Path(cls.temp.name)
++        cls.binary = cls.root / "copy-probe"
++        source = pathlib.Path(__file__).with_name("app_library_copy_probe.cc")
++        subprocess.run(["c++", "-std=c++17", "-Wall", "-Wextra", "-Werror",
++                        "-Wno-unused-function", str(source), "-o", str(cls.binary)], check=True)
++    @classmethod
++    def tearDownClass(cls):
++        cls.temp.cleanup()
++    def run_pair(self, a, b):
++        return subprocess.run([str(self.binary), str(a), str(b)], capture_output=True, text=True)
++    def test_hash_vectors_and_streaming(self):
++        for data in (b"abc", b"a"*1000000, bytes(range(256))*257):
++            a=self.root/"a";b=self.root/"b";a.write_bytes(data);b.write_bytes(data)
++            result=self.run_pair(a,b)
++            self.assertEqual(result.returncode,0)
++            self.assertEqual(result.stdout.strip(),hashlib.sha256(data).hexdigest())
++    def test_equal_size_mutation_rejected(self):
++        a=self.root/"a";b=self.root/"b";a.write_bytes(b"original");b.write_bytes(b"modified")
++        self.assertEqual(self.run_pair(a,b).returncode,1)
++    def test_size_difference_rejected(self):
++        a=self.root/"a";b=self.root/"b";a.write_bytes(b"abc");b.write_bytes(b"abcd")
++        self.assertEqual(self.run_pair(a,b).returncode,1)
++    def test_symlink_rejected(self):
++        a=self.root/"a";a.write_bytes(b"abc");link=self.root/"link";link.symlink_to(a)
++        self.assertEqual(self.run_pair(a,link).returncode,1)
++        self.assertEqual(self.run_pair(link,a).returncode,1)
++    def test_empty_and_nonregular_rejected(self):
++        a=self.root/"a";a.write_bytes(b"")
++        self.assertEqual(self.run_pair(a,a).returncode,1)
++        self.assertEqual(self.run_pair(a,self.root).returncode,1)
++        self.assertEqual(self.run_pair(a,self.root/"missing").returncode,1)
++
++if __name__ == "__main__":
++    unittest.main()

@@ -70,3 +70,40 @@ Original guardian/metasec/libart backups are under
 `/data/local/tmp/operator45-crashes/metasec48-original`.
 Per-round data backups are under the existing runtime's
 `profile-backups/metasec48-before-<round>`.
+
+## A2 five-round result (2026-09-26 04:45)
+
+A2 failed. Fresh original children, not guardian replacements:
+
+| Round / PID | Observed lifetime (seconds from birth) | metasec EACCES / back-handler ULE | Terminal status | Startup >180s | Article body >180s |
+|---|---:|---:|---|---|---|
+| a2-r1 / 13638 | 152.16 alive; dead by 155.64 | 1 / 1 | exit(1), X.DEv/null Looper | No | No |
+| a2-r2 / 18398 | 132.73 alive; dead by 136.14 | 0 / 0 | signal 11, thread/DSO unknown | No | No |
+| a2-r3 / 23086 | >=470.54, alive at observation end | 1 / 1 | no process exit in window | Yes | Yes |
+| a2-r4 / 1624 | 237.54 last stat; subsequent liveness check dead | 0 / 0 | signal 11, thread/DSO unknown | Yes | No |
+| a2-r5 / 7267 | 161.75 alive; dead by 165.15 | 1 / 1 | exit(1), X.DEv/null Looper | No | No |
+
+EACCES appeared in3/5, platform-back-handler ULE in3/5, associated
+main-thread null-Looper exit(1) in2/5. Two additional SIGSEGV exits are not
+attributed to metasec without a stack. Birth-to-180s survival2/5 is not the
+article acceptance: only1/5 has article body >=180s. All literal errno=13
+counts are0 because A2 emits Permission denied. The supplied assertion's
+errno13 PASS therefore is not a fix.
+
+For r3, real article input uptime95701.03, detail RESUMED95718.497,
+last observation96017.18:298.68s after RESUMED, with body visible in
+article-after.jpeg and monitor-end.jpeg. All119 symlink samples remained
+links. Before/after source SHA remained c91fc2ee...; no observed overwrite.
+The other rounds either exited before article selection or did not produce
+an article lifecycle/body. Early article input in r5 overlapped the consent
+transition; screenshot remained feed, and the second input was correctly
+rejected after original exit. These are not article passes.
+
+Consent was visually confirmed and tapped manually; time from process birth
+to consent varies (raw inputs record it), so this is a reliability gate,
+not a controlled estimate of treatment speed. r4 exceeded180s mostly before
+consent; its startup column must not be cited as three-minute post-consent
+stability. r3 was intentionally stopped only after its completed window to
+prepare r4; planned cleanup is not counted as a natural exit.
+
+A1 testing follows with clean profiles and A2 disabled. No conclusion yet.
