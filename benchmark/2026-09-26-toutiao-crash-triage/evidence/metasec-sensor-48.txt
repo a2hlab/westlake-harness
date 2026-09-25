@@ -1,0 +1,36 @@
+# #48 stub-metasec eval: the real cause is a missing sensor symbol, not a refused load
+
+## A1 board mechanism (a1-r1 child.stderr L370/393)
+L370 asx load FAIL: 'Error relocating libmetasec_ml.so: ASensorManager_getDefaultSensor: symbol not found' (namespace=0)
+L392 A1 IDENTICAL-COPY reuse fired (f162c5e works: errno13 half solved)
+L393 reused asx copy STILL relocate-FAILs on the SAME symbol -> back-handler ULE -> (sometimes) X.DEv NPE -> exit(1)
+So A1 fixed errno13 but the reused asx copy is unversioned-relocated in the DEFAULT namespace, whose
+libandroid lacks ASensorManager_getDefaultSensor. Any load failure (errno13 OR symbol) throws the same
+UnsatisfiedLinkError on platform-back-handler = the sixth exit.
+
+## metasec's link needs (readelf): JNI_OnLoad + RegisterNatives (0 Java_* exports)
+11 non-libc UND: 7 ASensorManager/ASensorEventQueue + 3 ALooper + __android_log_print.
+The ALooper/log are satisfied; only the 7 ASensor* are missing in the default-namespace libandroid.
+
+## which libandroid metasec binds (a1-r1 device-report)
+default-namespace search path = /data/local/tmp/asx:/system/lib64:... (does NOT include webview-t-lib)
+asx-root libandroid = dc5eb800 : lacks ASensorManager_getDefaultSensor -> metasec relocate fails
+westlake HAS the no-op sensor table elsewhere: webview 76512d97 (getDefaultSensor=1), native 11a260c9 (=2)
+but those are in webview-t-lib / runtime, not on metasec's default-namespace search path.
+
+## answers to the stub question
+1. REFUSE metasec: dlopen returns NULL -> System.load throws UnsatisfiedLinkError -> back-handler dies ->
+   REPRODUCES the sixth exit. A refused load is a failed load; the SDK does not catch it. So refuse is OUT.
+2. STUB so the load succeeds: possible, but a hollow .so needs to replicate RegisterNatives (metasec uses
+   JNI_OnLoad+RegisterNatives, 0 Java_*), else the SDK's later native calls throw. MORE ROBUST is route C:
+   the failure is a MISSING sensor symbol, so add the 7 ASensor* no-ops to the default-namespace libandroid
+   (westlake already ships these no-ops in its webview/native libandroid; #17 did the SurfaceControl no-ops
+   the same way). Then metasec relocates, loads, and stays lazy (#41) -- no stub, no RegisterNatives replica.
+3. feed+articles after: metasec is lazy (#41 DoLazyInit never runs); sensor no-ops only blank its anti-fraud
+   sensor sampling, irrelevant to reading. No side effect on feed/article.
+
+## conclusion
+Non-Bionic treatment CAN plausibly clear 5x3min: make the default-namespace libandroid export the 7 ASensor
+no-ops metasec links against (deploy the sensor-bearing libandroid as the asx-root copy, or add the 7 no-ops
+to that libandroid build), so metasec loads and stays lazy; stacked with the #49 heap fix. Not Bionic-bound.
+Bionic (M3/M4) remains the system fix for making these ByteDance libs actually WORK, not needed to read.
