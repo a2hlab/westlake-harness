@@ -26,11 +26,16 @@ for r in sorted(R.glob('*-r[0-9]*')):
  # death in that small gap. Do not turn the earlier stat into an alive result.
  result=json.loads((r/'result.json').read_text())
  final_alive=result['original_alive_at_end']
+ # Java uptime is milliseconds; /proc uptime is seconds and birth is ticks.
+ resume_s=int(re.search(r'uptime=(\d+)',resumed[-1])[1])/1000 if detail and resumed else None
+ assert resume_s is None or resume_s <= last['uptime'] + 1, (r.name,resume_s,last)
  row={'round':r.name,'pid':pid,'terminal':terminal[-1] if terminal else None,
       'last_observed_alive_age_s':alive_age,'end_age_s':last['age'],'alive_at_end':final_alive,
       'startup_over_180s':alive_age>=180,'consent_uptime':consent,
       'alive_after_consent_s':(states[-1]['uptime']-consent) if consent and final_alive else None,
       'article_inputs_uptime':clicks,'detail_entry':detail,'resumed':resumed,
+      'last_resumed_uptime_s':resume_s,
+      'alive_after_last_resumed_s':last['uptime']-resume_s if resume_s is not None and final_alive else None,
       'platform_back_handler_errors':errors,'metasec_eacces_count':len(eacces),
       'metasec_ule_count':len(errors),
       'metasec_ule_to_main_exit':bool(errors and 'J_invokeStaticMain_main_threw' in log and 'X.DEv' in log and terminal and 'exited(1)' in terminal[-1]),
