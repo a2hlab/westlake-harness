@@ -246,10 +246,10 @@
       "root_fix_note": "errno13 is OH policy not libc; swapping musl->Bionic does not change SELinux; full Android runtime (M3/M4) removes it via untrusted_app domain, i.e. the whole model not the libc",
       "treatments": {
         "A_route_to_asx_no_policy_change_PREFERRED": {
-          "A1_loader_reuse": "link_stubs: on app_lib EACCES reuse loaded asx image (RTLD_NOLOAD), drop sha256 identity; core-runtime rebuild; medium feasibility",
-          "A2_symlink_bind": "point app_lib copy at asx inode; low feasibility, metasec rewrites/clobbers at runtime",
+          "A1_loader_reuse": "IMPLEMENTED art-build fix/metasec-load-48 f162c5e: FindPackagedCopy reuses executable APK/asx copy for libmetasec_ml.so without SameImage (ELF-only check); other libs keep sha256; syntax-checked; needs core-runtime rebuild; immune to metasec rewrite",
+          "A2_symlink_bind": "scripts/preseed_metasec_applib.sh (no rebuild): symlink app_lib copy to asx, chown app uid, restorecon, idempotent; holds only if metasec does not overwrite before System.load",
           "risk": "metasec may self-check loaded path; load success lets init reach DoLazyInit on the same platform-back-handler; #41 saw DoLazyInit never run and not crash (silent skip) but must confirm",
-          "board_assert": "app_lib System.load non-null; no platform-back-handler UnsatisfiedLinkError; no X.DEv NPE; >3min on a video article with NO new crash (watch DoLazyInit/TLS on platform-back-handler)"
+          "board_assert": "scripts/assert_metasec_exit_gone.sh: errno13=0, platform-back-handler ULE=0, X.DEv NPE=0, launchActivityThread-RETURNED=0, no new Fatal/DoLazyInit; gate = 5 fresh starts each >3min on a video article; detector validated on known-bad log"
         },
         "B_intercept_npe": "NOT VIABLE: getBackgroundHandlerThread returns cached thread, no rebuild; other callers guard (classes5 getState==RUNNABLE, classes20 looper!=null) but X.DEv does not; westlake cannot patch app bytecode nor revive a dead app thread; collapses into A",
         "C_make_app_lib_executable_policy": {
@@ -262,7 +262,7 @@
         "chain": "verified",
         "errno13_nature": "verified (lean SELinux, board command to confirm)",
         "B_not_viable": "verified",
-        "A_and_C_effect": "unverified",
+        "A_and_C_effect": "A1 implemented+syntax-checked, effect unverified (needs board)",
         "root_not_bionic_only": "verified"
       },
       "probe_command": "hdc -t 61b0657200000000000000000324012c shell su 0 sh -c: grep /data /proc/mounts; grep /data/data /proc/self/mountinfo; dmesg | grep 'avc denied execute normal_hap|app_data'",
