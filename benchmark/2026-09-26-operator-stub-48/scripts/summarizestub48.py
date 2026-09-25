@@ -71,6 +71,10 @@ for r in sorted(R.glob('*-r[0-9]*')):
  row['missing_symbol_relocations']=[l for l in lines if 'symbol not found' in l]
  row['closure_numeric_gate']=bool(row['article_numeric_window_pass'] and not row['missing_symbol_relocations'] and not row['metasec_ule_count'])
  row['metasec_ule_absent']=not row['metasec_ule_count']
+ row['platform_back_handler_all_errors']=[l for l in lines if l.startswith("[UNCAUGHT] thread='platform-back-handler'")]
+ row['metasec_boolean_null_exception']=bool('boolean java.lang.Boolean.booleanValue()' in log and '[UNCAUGHT]   at ms.bd.c.p2.d' in log)
+ row['main_exception_lines']=[l for l in lines if 'J_invokeStaticMain_main_threw:' in l]
+ row['stub_numeric_gate']=bool(row['article_numeric_window_pass'] and not row['platform_back_handler_all_errors'])
  row['original_cppcrash_lifetime_s']=[int(m[1]) for p in r.glob('cppcrash-*.txt') if (m:=re.search(r'Process life time:(\d+)s',p.read_text(errors='replace')))]
  row['native_a4_sigsegv']=bool(re.search(r'Fatal signal 11.*?Thread: \d+ \"a-4\"',log,re.S) and terminal and 'signal 11' in terminal[-1])
  row['fatal_thread_lines']=[l for l in lines if l.startswith('Thread:')]

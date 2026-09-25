@@ -7,3 +7,5 @@
 五轮要求：信息流可见，真实uinput进入详情、正文可读，原实例详情RESUMED后至少180s；无metasec相关SIGSEGV、无main exit(1)。另检查信息流刷新、文章及登录页面（不提交登录凭据）；无法执行或发现异常均单列，不把未见崩溃等同无副作用。即使5/5通过也仅证明这些测试窗口，不证明无限期可靠。
 
 测试进行中。
+
+首轮12880：最后采样活180.46s、185.05s检查已死；parent exited(1)。metasec引发platform-back-handler的Boolean.booleanValue null NPE（ms.bd.c.p2.d→MSManagerUtils.init），证明包装层并不普遍接受null；另点击进入ArticleInflowActivity后main抛Layout: -79 < 0。后者不能据时序直接归因于stub。feed/真实配图出现且推荐内容变化，未取得正文>180s或登录页，第一轮失败。继续相同候选余轮，保留失败不抵消。
