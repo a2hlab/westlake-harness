@@ -10,7 +10,11 @@ text=dev("hidumper -s WindowManagerService -a '-a'");(r/'windows.txt').write_tex
 print('\n'.join(l for l in text.splitlines() if 'com.ss.android' in l or 'Focus window' in l))
 for name in ('guard-test','guard-test2'):
  if not (R/name).exists():continue
- (R/name/'recovery-lifecycle.txt').write_text('\n'.join(l for l in (r/'child.stderr').read_text(errors='replace').splitlines() if l.startswith(('[ABILITY38-RESUMED]','[B47-SLA]')))+'\n') if name=='guard-test2' else None
+ testpid=(R/name/'after-3s.txt').read_text().splitlines()[1].strip()
+ assert testpid.isdigit()
+ testlog=d['runtime']+'/private-tmp/adapter_child_'+testpid+'.stderr'
+ lifecycle=dev("grep -E '^\\[ABILITY38-RESUMED\\]|^\\[B47-SLA\\]' "+shlex.quote(testlog))
+ (R/name/'recovery-lifecycle.txt').write_text('pid='+testpid+'\n'+lifecycle)
 archive='/data/local/tmp/operator45-crashes'
 # Snapshot only our own crash directory. Preserve extensionless INDEX as text.
 for remote in dev('find '+archive+' -type f').splitlines():
