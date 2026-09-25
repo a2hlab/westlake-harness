@@ -228,6 +228,33 @@
         "exhausted_resource": "partially",
         "mitigation_effective": "unverified"
       }
+    },
+    {
+      "id": "metasec-errno13-sixth-exit-path",
+      "board_entry": "#48",
+      "signature": "main-thread NPE -> ActivityThread.main returns -> _exit(1), ~100-126s, non-signal",
+      "evidence_run": "61b06572 operator45/morning46/exit-6204.stderr (+exit-8881), five fixes deployed",
+      "two_independent_events": {
+        "event1": "metasec System.load(/data/data/<pkg>/app_lib/libmetasec_ml.so) errno13 (EACCES executable mapping of app-private file) on godzilla platform-back-handler thread; uncaught UnsatisfiedLinkError kills it; once, non-fatal by itself",
+        "event2": "~100s later main-thread X.DEv.<init> builds Handler on getBackgroundHandlerThread().getLooper()=null (thread dead) -> NPE escapes ActivityThread.main -> _exit(1)"
+      },
+      "causation": "X.DEv null Looper is the EFFECT of the dead shared thread, not an independent bug",
+      "thread_identity": "platform-back-handler = X.AFG new HandlerThread = PlatformHandlerThread.getBackgroundHandlerThread()",
+      "why_existing_retry_failed": "FindPackagedCopy reuses a copy only if byte-identical (size+sha256); metasec rewrites its app_lib private copy so sha256 != asx/APK; 0 IDENTICAL-COPY logs, exception still thrown",
+      "errno13_nature": "OH SELinux/mount denies executable mapping under /data/data/<pkg>/app_lib (normal_hap); kernel policy, independent of libc",
+      "root_fix_is_bionic_only": false,
+      "root_fix_note": "errno13 is OH policy not libc; swapping musl->Bionic does not change SELinux; full Android runtime (M3/M4) removes it via untrusted_app domain, i.e. the whole model not the libc",
+      "treatments": {
+        "T1": "relax errno13 retry for libmetasec_ml.so: reuse loaded asx image (RTLD_NOLOAD) without sha256 identity so System.load returns non-null and the shared thread survives; link_stubs/core-runtime change; risk = metasec self-check of loaded path (but DoLazyInit already never runs on OH, #41)",
+        "T2": "allow executable mapping under app_lib (OH SELinux/mount) - out of app scope, weakens security model",
+        "T3_T4": "not viable: dead app thread cannot be revived; re-entering main after its Looper died is meaningless"
+      },
+      "r2": {
+        "chain": "verified",
+        "errno13_nature": "verified",
+        "t1_effect_and_metasec_selfcheck": "unverified",
+        "root_not_bionic_only": "verified"
+      }
     }
   ],
   "aot42_formal_signal11": {

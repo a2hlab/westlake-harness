@@ -1,0 +1,95 @@
+# #48 sixth exit path: metasec errno13 kills the shared background thread, X.DEv later reads its null Looper
+source: 61b06572 operator45/morning46/exit-6204.stderr (child 6204, exit ~ after consent + long read)
+sha256 997f9b960176c51b702144cb0dd596adca806644b7efa5d040b847f0df9d7373
+
+## 1. metasec tries two paths; app_lib fails errno13; westlake reports NO load-fail and NO retry for it
+L381 asx path:      /data/local/tmp/asx/lib/arm64-v8a/libmetasec_ml.so   (executable location; #41 = loads)
+L384 app_lib path:  /data/data/com.ss.android.article.news/app_lib/libmetasec_ml.so  (app-private dir)
+SOURCE-NATIVE-LOAD-FAIL(metasec) = 0;  IDENTICAL-COPY-retry(metasec) = 0
+
+## 2. the only UnsatisfiedLinkError, on the shared background thread (once, never retried)
+[UNCAUGHT] thread='platform-back-handler' java.lang.UnsatisfiedLinkError: Error loading library /data/data/com.ss.android.article.news/app_l
+[UNCAUGHT]   at java.lang.Runtime.load0(Unknown Source:30)
+[UNCAUGHT]   at java.lang.System.load(Unknown Source:8)
+[UNCAUGHT]   at ms.bd.c.z.d(SourceFile:50790521)
+[UNCAUGHT]   at ms.bd.c.z.b(SourceFile:33816603)
+[UNCAUGHT]   at ms.bd.c.p2.c(SourceFile:50856032)
+[UNCAUGHT]   at ms.bd.c.p2.d(SourceFile:34013244)
+[UNCAUGHT]   at com.bytedance.mobsec.metasec.ml.MSManagerUtils.init(Unknown Source:7)
+[UNCAUGHT]   at com.ss.android.newmedia.sec.SecConfig.initMetaSec(SourceFile:393332)
+[UNCAUGHT]   at com.ss.android.newmedia.sec.SecConfig.lambda$init$1(SourceFile:196624)
+[UNCAUGHT]   at com.ss.android.newmedia.sec.SecConfig.e(Unknown Source:0)
+[UNCAUGHT]   at X.AKE.run(Unknown Source:0)
+[UNCAUGHT]   at android.os.Handler.handleCallback(Unknown Source:2)
+[UNCAUGHT]   at android.os.Handler.dispatchMessage(Unknown Source:4)
+[UNCAUGHT]   at android.os.Looper.loopOnce(Unknown Source:163)
+[UNCAUGHT]   at android.os.Looper.loop(Unknown Source:34)
+[UNCAUGHT]   at com.bytedance.platform.godzilla.thread.PlatformHandlerThread$NoQuitHandlerThread.run(SourceFile:327764)
+
+## 3. the thread is godzilla's background HandlerThread named platform-back-handler (X.AFG = PlatformHandlerThread)
+   X.AFG.<init>(I): new HandlerThread("platform-back-handler", priority)
+
+## 4. X.DEv.<init> builds a Handler on getBackgroundHandlerThread().getLooper() — the SAME thread
+   0x001f invoke-static PlatformHandlerThread.getBackgroundHandlerThread()
+   0x0023 invoke-virtual HandlerThread.getLooper()   <- null, thread is dead
+   0x0027 invoke-direct  Handler.<init>(Looper)      <- NPE
+
+## 5. the exit: main-thread NPE from X.DEv -> ActivityThread.main returns -> _exit(1)
+(DnsOptimizer.cpp:171): VeLSDnsOptimizer:resolveLocalDnsByName:host: pull-tsl-f3.douyinliving.com, local ip count:8
+[CHILD_CK] J_invokeStaticMain_main_threw: java.lang.NullPointerException: Attempt to read from field 'android.os.MessageQueue android.os.Looper.mQueue
+java.lang.NullPointerException: Attempt to read from field 'android.os.MessageQueue android.os.Looper.mQueue' on a null object reference in method 'vo
+	at android.os.Handler.<init>(Unknown Source:5)
+	at android.os.Handler.<init>(Unknown Source:1)
+	at android.os.Handler.<init>(Unknown Source:2)
+	at X.DEv.<init>(SourceFile:327719)
+	at X.DEv.n(SourceFile:262179)
+	at X.DPS.s(SourceFile:393395)
+	at X.DPS.b(Unknown Source:0)
+	at X.DPb.run(Unknown Source:2)
+	at android.os.Handler.handleCallback(Unknown Source:2)
+	at android.os.Handler.dispatchMessage(Unknown Source:4)
+	at android.os.Looper.loopOnce(Unknown Source:163)
+	at android.os.Looper.loop(Unknown Source:34)
+	at android.app.ActivityThread.main(Unknown Source:96)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.AppSpawnXInit.invokeStaticMain(Unknown Source:296)
+	at com.android.internal.os.AppSpawnXInit.initChild(Unknown Source:397)
+[INITCHILD-FAIL] java.lang.reflect.InvocationTargetException: null
+[INITCHILD-FAIL]   at java.lang.reflect.Method.invoke(Native Method)
+[INITCHILD-FAIL]   at com.android.internal.os.AppSpawnXInit.invokeStaticMain(Unknown Source:296)
+[INITCHILD-FAIL]   at com.android.internal.os.AppSpawnXInit.initChild(Unknown Source:397)
+[INITCHILD-FAIL]   caused by: java.lang.NullPointerException: Attempt to read from field 'android.os.MessageQueue android.os.Looper.mQueue' on a null 
+[INITCHILD-FAIL]     at android.os.Handler.<init>(Unknown Source:5)
+[INITCHILD-FAIL]     at android.os.Handler.<init>(Unknown Source:1)
+[INITCHILD-FAIL]     at android.os.Handler.<init>(Unknown Source:2)
+[INITCHILD-FAIL]     at X.DEv.<init>(SourceFile:327719)
+[INITCHILD-FAIL]     at X.DEv.n(SourceFile:262179)
+[INITCHILD-FAIL]     at X.DPS.s(SourceFile:393395)
+[INITCHILD-FAIL]     at X.DPS.b(Unknown Source:0)
+[INITCHILD-FAIL]     at X.DPb.run(Unknown Source:2)
+[INITCHILD-FAIL]     at android.os.Handler.handleCallback(Unknown Source:2)
+[INITCHILD-FAIL]     at android.os.Handler.dispatchMessage(Unknown Source:4)
+[INITCHILD-FAIL]     at android.os.Looper.loopOnce(Unknown Source:163)
+[INITCHILD-FAIL]     at android.os.Looper.loop(Unknown Source:34)
+[INITCHILD-FAIL]     at android.app.ActivityThread.main(Unknown Source:96)
+[INITCHILD-FAIL]     at java.lang.reflect.Method.invoke(Native Method)
+[INITCHILD-FAIL]     at com.android.internal.os.AppSpawnXInit.invokeStaticMain(Unknown Source:296)
+[INITCHILD-FAIL]     at com.android.internal.os.AppSpawnXInit.initChild(Unknown Source:397)
+[INITCHILD-FAIL] NOT calling System.exit — see §653; child stays alive so the failure above is the visible cause
+[AppSpawnX] [CHILD_CK] CK_AFTER_initChild_call (Java returned!)
+[CM-CK] initChild CallStaticVoidMethod RETURNED (exc=0) — ActivityThread.main/Looper.loop exited or threw
+[AppSpawnX][E] [CHILD_CK] AppSpawnXInit.initChild() returned WITHOUT exception (event loop exited unexpectedly)
+nullptr W 09-26 03:24:44  6204  6220 thread.cc:2449] Native thread exiting without having called DetachCurrentThread (maybe it's going to use a pthrea
+
+## 6. why westlake's existing errno13 retry did NOT save metasec
+link_stubs OpenNativeLibrary already retries 'failed to map library errno=13' via FindPackagedCopy:
+  it accepts /data/data/<pkg>/app_lib/<name>.so and reuses a same-name file on the ClassLoader search
+  path (/data/local/tmp/asx/lib/arm64-v8a) ONLY when SameImage = identical size AND identical sha256.
+  For metasec: IDENTICAL-COPY log = 0, exception still thrown => SameImage failed => the app_lib copy
+  is NOT byte-identical to the asx/APK copy. A hardening SDK rewrites its private copy, so the
+  sha256 guard (correct in general) cannot reuse it. #41 separately verified the asx copy DOES load.
+
+## 7. errno13 nature: EACCES on an executable mapping of an app-private data file
+  path is /data/data/<pkg>/app_lib (normal_hap private dir), not /data/local/tmp/asx (permissive).
+  Executable mapping there is refused by OH policy (SELinux normal_hap lacks execute app_data_file,
+  or the dir is mounted noexec). This is a kernel policy, independent of libc (musl vs Bionic).
