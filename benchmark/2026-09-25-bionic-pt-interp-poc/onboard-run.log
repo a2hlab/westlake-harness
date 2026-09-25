@@ -1,0 +1,50 @@
+== target ==
+uid=0(root) gid=0(root) groups=0(root),1006(file_manager),1007(log),2000(shell),3009(readproc) context=u:r:su:s0
+Linux localhost 5.15.180 #1 SMP PREEMPT Wed Jul 1 12:41:01 UTC 2026 aarch64 Toybox
+== stage files under /data/local/tmp/bionic39 (no /system writes) ==
+/data/local/tmp/bionic39:
+total 11792384
+-rwxr-xr-x 1 root root    5888 2026-09-25 21:58 hello_dyn
+-rwxr-xr-x 1 root root 4851728 2026-09-25 21:58 hello_static
+drwxr-xr-x 3 root root    3452 2026-09-25 21:58 lib64
+-rwxr-xr-x 1 root root 2052848 2026-09-25 21:58 linker64
+-rwxr-xr-x 1 root root    6888 2026-09-25 21:58 tp_probe_dyn
+-rwxr-xr-x 1 root root 4852136 2026-09-25 21:58 tp_probe_static
+
+/data/local/tmp/bionic39/lib64/bionic:
+total 1642496
+-rw-r--r-- 1 root root 1168752 2026-09-25 21:58 libc.so
+-rw-r--r-- 1 root root  136608 2026-09-25 21:58 libdl.so
+-rw-r--r-- 1 root root  331656 2026-09-25 21:58 libm.so
+== dmesg/hilog baseline (line counts) ==
+dmesg lines before: 2081
+== A. static control (no interpreter) ==
+error: "./tp_probe_static": executable's TLS segment is underaligned: alignment is 8, needs to be at least 64 for ARM64 Bionic
+libc: error: "./tp_probe_static": executable's TLS segment is underaligned: alignment is 8, needs to be at least 64 for ARM64 Bionic
+Signal 6 
+EXIT=134
+== B. dynamic via Bionic linker64 ==
+linker: Warning: failed to find generated linker configuration from "/linkerconfig/ld.config.txt"
+WARNING: linker: Warning: failed to find generated linker configuration from "/linkerconfig/ld.config.txt"
+bionic39 hello
+EXIT=0
+linker: Warning: failed to find generated linker configuration from "/linkerconfig/ld.config.txt"
+WARNING: linker: Warning: failed to find generated linker configuration from "/linkerconfig/ld.config.txt"
+bionic39 tp_probe up
+tpidr_el0    = 0x7f91fdf010
+tls[1]       = 0x7f932844f8
+pthread_self = 0x7f932844f8
+tls[5]guard  = 0x2cd719d8d31a8bd6
+gettid       = 23724
+slot1==self  = yes
+pthread.tid@16 = 23724 (match=yes)
+EXIT=0
+== B2. explicit-linker form (linker64 executable-mode) ==
+error: expected absolute path: "./tp_probe_dyn"
+linker: error: expected absolute path: "./tp_probe_dyn"
+
+EXIT=1
+== dmesg delta since baseline, avc grep ==
+(no matching new dmesg lines)
+== hilog avc grep (recent) ==
+== done ==

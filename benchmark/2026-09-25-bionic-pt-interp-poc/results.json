@@ -1,0 +1,108 @@
+{
+ "schema": 1,
+ "date": "2026-09-25",
+ "board_entry": "#39 (.octos/OUTER_LOOP_REVIEW.md)",
+ "task": "Bionic implementation step 1: minimal viable verification. Take an arm64 AOSP14 Bionic linker64+libc, point a minimal native program's PT_INTERP at it, exec on a stock OH 6.1 board, confirm zero avc and that the pthread_internal_t/TLS layout is Bionic's. If it holds, emit the 57-library rebuild batch plan.",
+ "mode": "read-only research + minimal on-board exec; only /data/local/tmp/bionic39 written; no /system, no remount, no reflash; no app launched",
+ "part1_provenance": {
+  "source_zip": "arm64-v8a-34_r04.zip",
+  "source_url": "https://dl.google.com/android/repository/sys-img/android/arm64-v8a-34_r04.zip",
+  "zip_sha1": "d9f2011131919abe952814e041f16f317242c3fa",
+  "zip_sha256": "1447958a4c6747c44390ac5f5f4c894be6d1dfce93868a0385a95c5f0ae4c339",
+  "zip_bytes": 705115396,
+  "build_fingerprint": "Android/sdk_phone64_arm64/emu64a:14/UE1A.230829.036.A1/11228894:userdebug/test-keys",
+  "api_level": 34,
+  "release": "14",
+  "security_patch": "2023-09-05",
+  "extraction_path": "system.img (GPT) -> super (liblp logical partition 'system', ext4) -> /system/apex/com.android.runtime.apex (zip) -> apex_payload.img (ext4) -> debugfs rdump (read-only)",
+  "extracted": {
+   "bin/linker64":            {"bytes": 2052848, "sha256": "ffd6af09d964f0911365ebc0e5c8ab6a980886e62ca1df91d1a1f67684ac88dd", "build_id": "754da550a9a0a6253736cb09421cd8e4"},
+   "lib64/bionic/libc.so":    {"bytes": 1168752, "sha256": "d9c96460e9b4f820f31048f77ea02db45596db906d750ac2f2385de8a32fba2c", "build_id": "a87908b48b368e6282bcc9f34bcfc28c", "soname": "libc.so"},
+   "lib64/bionic/libdl.so":   {"bytes": 136608,  "sha256": "10eca1437dc0d3c4e0f2dba6aca138c9cab76e12cbdc2b54719c00e0fdf57d62", "build_id": "68dbee43b38ecf35adb7a992155439d5", "soname": "libdl.so"},
+   "lib64/bionic/libm.so":    {"bytes": 331656,  "sha256": "a01413bf699c7deaa50cf8b8ca7ff1dc5640286851efc63e4ae8a0b70e748eec", "build_id": "4392071b5402c384f493539827bf25c0", "soname": "libm.so"},
+   "lib64/bionic/libdl_android.so": {"bytes": 0, "sha256": "dfa02e6b7cc246bf4b4bb3d7360f70cda61a9e0037e7248d59377015158a66e6"},
+   "also_extracted": ["lib64/libc_malloc_debug.so", "lib64/libc_malloc_hooks.so", "bin/crash_dump64", "bin/linkerconfig", "etc/linker.config.pb"]
+  },
+  "note": "AOSP14 arm64 matches Toutiao metasec's target ABI (arm64, Android 14/15 Bionic). Extraction was fully read-only from the official Google image; nothing was rebuilt or patched."
+ },
+ "part2_onboard": {
+  "board_serial": "5cd1e3dd00000000000000000923012c",
+  "board_kernel": "Linux 5.15.180 aarch64 (OH 6.1, DAYU600)",
+  "shell_context": "uid=0 root, u:r:su:s0",
+  "hdc": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc (Ver 3.2.0d)",
+  "toolchain": "NDK r23b aarch64-linux-android21-clang, -fPIE -pie -Wl,--dynamic-linker=/data/local/tmp/bionic39/linker64",
+  "binaries": {
+   "tp_probe_dyn": {"pt_interp": "/data/local/tmp/bionic39/linker64", "needed": ["libdl.so", "libc.so"], "bytes": 6888},
+   "hello_dyn":    {"pt_interp": "/data/local/tmp/bionic39/linker64", "needed": ["libdl.so", "libc.so"], "bytes": 5888},
+   "tp_probe_static": {"pt_interp": "none (static)", "bytes": 4852136},
+   "hello_static":    {"pt_interp": "none (static)", "bytes": 4851728}
+  },
+  "results": {
+   "A_static_control": {"exit": 134, "signal": 6, "reason": "NDK r23b emits TLS segment alignment 8; AOSP14 Bionic requires >=64 on arm64 (SIGABRT before main). Toolchain nuance, NOT a linker-path failure. Confirms the shipped libc IS genuine AOSP14 Bionic (it enforces the newer alignment rule)."},
+   "B_hello_dyn_via_linker64": {"stdout": "bionic39 hello", "exit": 0, "warning": "linker: failed to find /linkerconfig/ld.config.txt (benign fallback to default namespace honoring LD_LIBRARY_PATH)"},
+   "B_tp_probe_dyn_via_linker64": {
+    "exit": 0,
+    "tpidr_el0": "0x7f91fdf010",
+    "tls_slot1_thread_id": "0x7f932844f8",
+    "pthread_self": "0x7f932844f8",
+    "tls_slot5_stack_guard": "0x2cd719d8d31a8bd6",
+    "gettid": 23724,
+    "slot1_eq_pthread_self": true,
+    "pthread_internal_t_tid_at_offset_16": 23724,
+    "tid_match": true
+   },
+   "B2_explicit_linker_absolute_path": {"exit": 0, "slot1_eq_self": true, "note": "linker64 executable-mode requires an absolute program path ('expected absolute path' when given ./relative)"},
+   "reproducibility": {"runs": 3, "slot1_eq_self": "yes x3", "tid_match": "yes x3", "exit": "0 x3", "distinct_tids": [24351, 24356, 24361]},
+   "avc": {"dmesg_delta_denials": 0, "hilog_denials": 0, "method": "dmesg diff from baseline line 2081 + hilog -x grep; no dmesg -c used"}
+  },
+  "acceptance": {
+   "helloworld_runs_via_bionic_linker64_pt_interp": true,
+   "output_and_exit_reproducible": true,
+   "pthread_internal_t_layout_is_bionic": true,
+   "zero_avc": true,
+   "hanbin_poc2_holds_on_stock_oh61_arm64": true
+  },
+  "cleanup": "/data/local/tmp/bionic39 removed after the run"
+ },
+ "part3_batch_plan": {
+  "runtime_libs": 57,
+  "mechanical_libc_only": 47,
+  "mechanical_bytes": 66828368,
+  "mechanical_disposition": {"aosp": 31, "rebuild": 9, "retire": 6, "art": 1},
+  "mechanical_batches_by_topo_level": {
+   "L0": 20, "L1": 5, "L2": 8, "L3": 4, "L4": 3, "L6": 2, "L7": 2, "L10": 3
+  },
+  "retire_musl_compat": ["libwestlake_bionic", "libwestlake_securec", "liboh_popen_boundary", "liboh_process_cpu_time", "liboh_tls_boundary", "libwestlake_libcore_linux"],
+  "art_special": {"lib": "libart", "bytes": 21545984, "constraint": "must match the Android boot image (boot .art/.oat) it loads; cannot be a free rebuild"},
+  "oh_facing": 10,
+  "oh_facing_effort_person_days": 98,
+  "oh_facing_person_weeks": 20,
+  "oh_facing_detail": [
+   {"lib": "liboh_adapter_bridge", "level": 6, "ext_libs": 34, "symbols": 384, "c_api": 52, "cxx_innerkit": 332, "effort_pd": 53.4},
+   {"lib": "libwl_opengl_jni",     "level": 2, "ext_libs": 2,  "symbols": 374, "c_api": 374, "cxx_innerkit": 0,  "effort_pd": 19.7},
+   {"lib": "libhwui",              "level": 8, "ext_libs": 9,  "symbols": 198, "c_api": 197, "cxx_innerkit": 1,  "effort_pd": 11.0},
+   {"lib": "liboh_ime_helper_capi","level": 0, "ext_libs": 2,  "symbols": 29,  "c_api": 1,   "cxx_innerkit": 28, "effort_pd": 5.2},
+   {"lib": "liboh_connectivity_state","level": 0, "ext_libs": 1, "symbols": 7, "c_api": 0, "cxx_innerkit": 7, "effort_pd": 2.0},
+   {"lib": "liboh_android_runtime","level": 5, "ext_libs": 3,  "symbols": 9,   "c_api": 9,   "cxx_innerkit": 0,  "effort_pd": 1.4},
+   {"lib": "liboh_account_state",  "level": 1, "ext_libs": 1,  "symbols": 3,   "c_api": 0,   "cxx_innerkit": 3,  "effort_pd": 1.4},
+   {"lib": "libandroid",           "level": 9, "ext_libs": 3,  "symbols": 6,   "c_api": 5,   "cxx_innerkit": 1,  "effort_pd": 1.4},
+   {"lib": "liboh_hwui_shim",      "level": 1, "ext_libs": 1,  "symbols": 3,   "c_api": 3,   "cxx_innerkit": 0,  "effort_pd": 1.1},
+   {"lib": "liboh_permission_queries","level": 0, "ext_libs": 1, "symbols": 1, "c_api": 0, "cxx_innerkit": 1, "effort_pd": 1.1}
+  ],
+  "effort_heuristic": "1 pd base per lib + 0.05 pd per C-API forwarder symbol + 0.15 pd per C++ innerkit symbol (vtable/RTTI/ABI bridge). C-API/innerkit split is name-based (GLES/EGL/vulkan/native_*/hilog/hitrace/napi/_ndk/begetutil/sync_fence => C-API; ipc/utils/want/ability/window/render_service/dm/mmi/... => C++ innerkit); libsurface is counted C-API because it exposes a C native_window ABI."
+ },
+ "verdicts": [
+  {"step": "arm64 AOSP14 Bionic linker64+libc, provenance", "verdict": "verified (official Google image, hashes recorded)"},
+  {"step": "helloworld PT_INTERP -> Bionic linker64, exec from /data/local/tmp, su domain", "verdict": "verified (exit 0, reproducible x3+1)"},
+  {"step": "pthread_internal_t / TLS slot1==pthread_self, tid@16==gettid", "verdict": "verified (the metasec-relied ABI fact holds)"},
+  {"step": "zero avc under real Bionic interpreter, no policy patch", "verdict": "verified (dmesg+hilog, 0 denials); confirms hanbin PoC-2 on stock OH 6.1 arm64"},
+  {"step": "static control", "verdict": "expected fail (NDK r23b TLS align 8 < 64); use newer NDK or a thread_local-aligned build for a static baseline"},
+  {"step": "57-library rebuild batch plan", "verdict": "produced from deps39.json"}
+ ],
+ "unverified_or_deferred": [
+  "exec via source_app_namespace with an app uid (T1 step; this PoC ran only in the su shell)",
+  "Bionic behaviour with no Android property area over a long-lived process (short probe only)",
+  "libm actually loaded (tp_probe pulled only libc+libdl; libm pushed but unexercised)",
+  "the effort estimates are heuristic, not measured"
+ ]
+}

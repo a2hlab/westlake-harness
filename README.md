@@ -117,6 +117,7 @@ kind of work from where the corpus started
 | `tests/` | Executable known-answer fixtures: `ColorMatrix.set`, a Conscrypt existence probe, an unbound vendor native, and an arm64 JNI library whose platform-coupled and pure methods are known in advance. |
 | `corpus/` | Reproducible top-ten selection plus exact download hashes. APK/XAPK binaries are deliberately ignored. |
 | `benchmark/2026-08-20/` | Completed ten-app benchmark report, deduplicated registry, and runtime lock. |
+| `benchmark/2026-09-25-bionic-pt-interp-poc/` | **Real AOSP14 Bionic `linker64` brings a native process up on a stock OH 6.1 board with 0 avc**: PT_INTERP → an on-board Bionic linker, `tls[1]==pthread_self()` and `pthread_internal_t.tid@+16==gettid()` (the layout `metasec` reads), reproducible, no `/system` write — confirms hanbin PoC-2 on our platform. Plus the 57-library rebuild plan: 47 mechanical (31 aosp / 9 rebuild / 6 retire / 1 art) batched by DT_NEEDED level, 10 OH-facing client shims ≈98 person-days. |
 | `benchmark/2026-08-21/` | ABI-aware redo against the current ARM64 runtime lock; the prior benchmark remains preserved. |
 | `benchmark/2026-08-23-toutiao/native-analysis/ANDROID11-RESOLUTION.md` | **99.7% of 3415 native imports decided** against stock Android 11, and the IFUNC parser defect that finding exposed. |
 | `benchmark/2026-09-18-oh-board/` | **First resolution against the deployed OpenHarmony runtime**: 90% of both apps' native imports resolve; the real gap is 58 symbols in five clusters, led by `__sF` at 40 importing libraries. |
