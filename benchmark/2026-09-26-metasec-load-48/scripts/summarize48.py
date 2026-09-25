@@ -32,13 +32,16 @@ for r in sorted(R.glob('*-r[0-9]*')):
       'alive_after_consent_s':(states[-1]['uptime']-consent) if consent and final_alive else None,
       'article_inputs_uptime':clicks,'detail_entry':detail,'resumed':resumed,
       'platform_back_handler_errors':errors,'metasec_eacces_count':len(eacces),
+      'metasec_ule_count':len(errors),
+      'metasec_ule_to_main_exit':bool(errors and 'J_invokeStaticMain_main_threw' in log and 'X.DEv' in log and terminal and 'exited(1)' in terminal[-1]),
       'eacces_to_main_exit':bool(eacces and 'J_invokeStaticMain_main_threw' in log and 'X.DEv' in log and terminal and 'exited(1)' in terminal[-1]),
       'null_looper_main':bool('J_invokeStaticMain_main_threw' in log and 'X.DEv' in log),
       'symlink_samples':sum(s['symlink'] for s in states),'samples':len(states),
       'literal_errno13_count':sum('app_lib/libmetasec_ml.so: failed to map library' in l and 'errno=13' in l for l in lines),
       'fatal_headers':[l for l in lines if l.startswith('Fatal signal')],
       'reuse_markers':[l for l in lines if l.startswith('[SOURCE-NATIVE-IDENTICAL-COPY]') and 'metasec' in l],
-      'load_failures':[l for l in lines if l.startswith('[SOURCE-NATIVE-LOAD-FAIL]') and 'metasec' in l]}
+      'load_failures':[l for l in lines if l.startswith('[SOURCE-NATIVE-LOAD-FAIL]') and 'metasec' in l],
+      'cppcrash_heads':{p.name:p.read_text(errors='replace').split('Registers:',1)[0] for p in r.glob('cppcrash-*.txt')}}
  (r/'summary.json').write_text(json.dumps(row,indent=2)+'\n');rows.append(row)
 (R/'summary.json').write_text(json.dumps(rows,indent=2)+'\n')
 for r in rows:print(r['round'],r['pid'],r['terminal'],'alive_age',round(r['last_observed_alive_age_s'],2),'end_age',round(r['end_age_s'],2),'eacces',r['metasec_eacces_count'],'eacces_to_exit',r['eacces_to_main_exit'],'over3m',r['startup_over_180s'])
