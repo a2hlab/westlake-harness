@@ -164,6 +164,45 @@
         "cause": "verified",
         "fix_effective": "unverified"
       }
+    },
+    {
+      "id": "inproc-renderer-partitionalloc-oom",
+      "priority": 7,
+      "signature": "SIGTRAP/brk on Chrome_InProcRe, engine file offset 0x37cfec8 (PartitionAlloc OOM handler)",
+      "evidence_run": "board/5ea34a45/ability38/four46-fresh2 (video3 ~99s, four fixes deployed)",
+      "register_decode": {
+        "x1_size": "0x9000",
+        "x2_prot": "PROT_READ|PROT_WRITE (mprotect recommit)",
+        "x6x7_ascii": "blink,blink_styl -> PartitionAlloc tags blink/blink_style"
+      },
+      "rss_curve_mib": {
+        "video1": "860->1116 (121/min)",
+        "video2": "1077->1584 (240/min)",
+        "video3": "1629->2064 (270/min)"
+      },
+      "vsz_gib_flat": 231,
+      "threads_flat": 400,
+      "vma_at_consent": 5452,
+      "vm_max_map_count_default": 65530,
+      "in_process_reason": "--single-process forced by #20 (child service doesn't exist); renderer memory never reclaimed by process exit",
+      "exhausted_resource": {
+        "candidates": [
+          "mapping count (max_map_count)",
+          "physical/memcg commit"
+        ],
+        "experiment": "every 10s from launch: wc -l /proc/pid/maps, VmRSS/VmSwap, app memory.current/memory.max"
+      },
+      "fixes": {
+        "mitigation_no_build": "board_setup raises vm.max_map_count (A) or app memcg/overcommit (B) before launch — defers only",
+        "operator": "watchdog force-stop + rebuild WebView every N articles",
+        "root": "multiprocess renderer (returns address space on navigate) — blocked on child-service spawn"
+      },
+      "r2": {
+        "handler_and_growth": "verified",
+        "in_process_causation": "verified",
+        "exhausted_resource": "partially",
+        "mitigation_effective": "unverified"
+      }
     }
   ],
   "aot42_formal_signal11": {

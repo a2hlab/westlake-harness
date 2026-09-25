@@ -1,4 +1,4 @@
-# Toutiao crash triage (#46): six signatures, four fixes ready
+# Toutiao crash triage (#46): seven signatures, four fixes + a fifth root-caused
 
 Every saved Toutiao run on the OH boards crashes. #46 triaged the existing evidence offline, with no board time: 19+ #38 runs on board 5ea34a45 (`ability38/*`) and the #42 runs on board 5cd1e3dd (`aot42/*`). Each class below gets a root-cause hypothesis, its evidence, a fix and a verification method. They are ordered by the outer loop's priority: first what blocks "tap a feed item, read the article", then what burns CPU.
 
@@ -10,6 +10,7 @@ Every saved Toutiao run on the OH boards crashes. #46 triaged the existing evide
 | 4 | `TicketGuardNetw` SIGSEGV@0x28 (#42 verify-r2b) | a default-namespace **second copy** of `libttboringssl.so`/`libttcrypto.so` (pulled in by non-target libraries such as `libdelta.so`) binds `HMAC_Init_ex` to OH's OpenSSL 3, which OH musl searches first in load order; its `HMAC_CTX_init` still binds to `libttcrypto.so` | **launcher policy, no rebuild**: 15 libraries added to `WESTLAKE_ANDROID_NATIVE_TARGETS`, run.sh `0915047…` (§7) | loader rule and two copies verified; caller by elimination partially; fix unverified |
 | 5 | `PatchUpdateMana` → shadowhook → `calloc` → `__libc_malloc_impl+1332` writes NULL (#42 prerun) | heap already corrupt; the corrupter is unknown | experiment | unverified |
 | 6 | post-WebView-fix SIGTRAP/TRAP_BRKPT on `ThreadPoolForeg` (first article with a video) | hollow MediaCodec from `native_setup` + unregistered `getOwnCodecInfo` → `UnsatisfiedLinkError` (an Error) → Chromium FATAL `jni_android.cc(315)` + `brk` | **built**: westlake `fix/mediacodec-unsupported-46` `ddb2f48`, bridge `d4fae8e5…` | cause verified; fix unverified |
+| 7 | SIGTRAP/`brk` on `Chrome_InProcRe` (in-process renderer), engine `0x37cfec8` | Blink PartitionAlloc (blink/blink_style) recommit `mprotect(PROT_RW)` fails after the renderer's memory climbs unbounded (~200 MiB/min, RSS 0.86→2.06 GiB over three videos) — in-process because `--single-process` (#20) means the renderer never exits to return it | **no build; run-env + route**: raise the board's mapping/commit ceiling before launch (mitigation), multiprocess renderer (root, needs child-service spawn) | handler + growth verified; exhausted resource (mapping-count vs commit) partially; mitigation unverified |
 
 What was wrong before #46:
 - The memory rule "cppcrash rel-pc minus 0x2002000 = `libwebviewchromium` vaddr" held only for cold-a4. The rel-pc base differs per run: verify-1 needed `0x801000`. Compute vaddr from the absolute pc minus the r-xp mapping at file offset 0.
@@ -202,12 +203,34 @@ Evidence: [evidence/tt-namespace.txt](evidence/tt-namespace.txt). This refines �
 
   If a native `dlopen` from a default-namespace library still creates a second image, the image count shows it. The generic follow-up is for the loader to route a library into the namespace whenever its DT_NEEDED closure intersects the target set.
 
+## 8. In-process renderer PartitionAlloc OOM (the fifth long-survival crash)
+
+With the four fixes deployed, two of three video articles survived >120 s; the third crashed at ~99 s with a new signature. Evidence: [evidence/inproc-oom.txt](evidence/inproc-oom.txt).
+
+- **Signature (verified).** `Fatal signal 5 (SIGTRAP)` on tid 6853 `Chrome_InProcRe` (Chromium's InProcessRendererThread). pc = `libwebviewchromium.so` file offset `0x37cfec8`, a `brk #0`. The instruction before it, at `0x37cfea4`, stores x0 (a pointer to the request size) into a global and calls the crash logger `Mqw5545M` — the same `IMMEDIATE_CRASH` shape as §6's mediacodec SIGTRAP, here the PartitionAlloc out-of-memory handler.
+  - x1 = `0x9000` (36 KiB, the request), x2 = `3` = `PROT_READ|PROT_WRITE` (a recommit `mprotect`), x4 = `0x4000`.
+  - x6/x7 decode to ASCII `blink,blink_styl…`: PartitionAlloc's partition tags `blink` and `blink_style`, i.e. this is the Blink allocator, not V8 or the disk cache.
+  - So the renderer's Blink PartitionAlloc asked the kernel to commit another 36 KiB (`mprotect PROT_RW` on a page it had reserved `PROT_NONE`), the syscall failed, and PartitionAlloc's `CHECK` fired `brk`.
+- **Unbounded growth (verified).** Across the three videos the process RSS climbs monotonically: video1 0.86→1.12 GiB (121 MiB/min), video2 1.08→1.58 (240), video3 1.63→2.06 (270), crash at ~2.06 GiB. VSZ is flat at 231 GiB — PartitionAlloc's one-time GigaCage reservation, not growth. Thread count is flat at ~400 (not a thread leak). The renderer's memory is not being returned between article navigations.
+- **Why in-process matters (verified logic).** The fault thread is the in-process renderer. `--single-process` was forced by #20 because a sandboxed renderer process throws `child service doesn't exist` (still logged once here) and wedges the UI thread. With the renderer in the browser process, its Blink PartitionAlloc lives in the browser process's address space and is **never reclaimed by process exit** — in multiprocess Chromium, navigating away kills the renderer process and returns every one of its mappings and its RSS at once. In-process, each article's Blink objects, GPU transfer buffers and recommitted pages accumulate for the life of the app.
+- **Which resource ran out (partially — needs one board experiment).** The recommit `mprotect(PROT_RW)` failed, but the run only sampled the address space at consent (5452 mappings). Two candidates, both driven by the same unbounded growth, and both consistent with the evidence:
+  - **A. mapping count.** PartitionAlloc recommits many small ranges; each `mprotect` on a slice of a larger `PROT_NONE` reservation splits one VMA into three. OH's default `vm.max_map_count` is 65530. At ~200 MiB/min for ~350 s the count can climb from 5452 toward the ceiling, at which point `mprotect` returns `ENOMEM` with RSS still only ~2 GiB — matching a crash that early.
+  - **B. physical / per-app commit.** RSS reaching a DAYU600 memcg or overcommit ceiling; the board's total memory was not in the device report. A self-inflicted `CHECK` (not an lmkd `SIGKILL`) means the `mprotect`/`mmap` syscall itself returned failure, which a hard memcg limit or strict overcommit produces.
+  - Distinguish on the board: from launch, every 10 s read `wc -l /proc/<pid>/maps`, `VmRSS` and `VmSwap` from `/proc/<pid>/status`, and the app's `memory.current`/`memory.max` from its cgroup. Whichever curve hits its ceiling at ~99 s into video 3 is the bound. This is cheap and can run alongside the article taps.
+- **Fixes / trade-offs.**
+  - **Mitigation, no engine change (config).** If A, `board_setup.sh` raises `vm.max_map_count` (e.g. to 262144) before the app starts — the hdc shell is `su`/permissive, so `echo … > /proc/sys/vm/max_map_count` is applied per boot. If B, raise the app's memcg limit / `vm.overcommit_memory`. Either only defers the crash, but for a single-article read session it buys the survival the milestone needs. Verify by re-reading the same curve.
+  - **Operator session.** The #45 watchdog already relaunches; folding "force-stop and rebuild the WebView every N articles" into it caps the accumulation without touching the engine.
+  - **Root fix (route change, larger).** Restore the multiprocess renderer so navigating away returns its whole address space. That is blocked on `child service doesn't exist`: westlake must let the renderer spawn as a real sandboxed child (the #20 note). Until then in-process is unavoidable and the crash is only deferrable.
+  - The engine is a fixed 109 prebuilt; its PartitionAlloc `CHECK` cannot be edited, so there is no single-object rebuild for this class — the lever is the run environment and the process model, which is why this section ships analysis + an experiment rather than a binary.
+- **Verify on a board.** With the four fixes plus whichever mitigation A/B the experiment selects, open ≥5 video articles back to back and require: the mapping-count (A) or memcg (B) curve stays below its ceiling; no `Chrome_InProcRe` `Fatal signal 5`; RSS plateaus or the session completes; feed and non-video articles unaffected.
+
 ## Rules this adds
 
 - Compute a stripped library's vaddr from the absolute pc minus the base of its r-xp mapping at file offset 0. faultloggerd's rel-pc base varies by run.
 - A `Fatal signal` banner whose thread is not in the app's task list is a child process. Check x20/x21 against the app pid before counting it as an app crash.
 - In `webview_bionic_shim.c` `dlopen()`, every name translation must precede the `.z.so` probe, because the probe returns the plain name whenever it opens. This is the second instance of this bug.
 - Never delete or refuse an app library whose `System.loadLibrary` is unguarded on the Application path. Patch or stub it.
+- An in-process renderer never returns its memory: what a multiprocess Chromium reclaims by killing the renderer process accumulates for the app's lifetime, so any per-process ceiling (mapping count, memcg) is reached eventually. Sample the ceiling, don't guess which one.
 - A library that must load in the Android namespace brings its whole reverse-dependency closure with it. Otherwise a default-namespace consumer loads a second copy, and OH musl's load-order lookup binds that copy's imports to whatever the default namespace loaded first.
 - A framework native that the runtime does not implement must fail the way AOSP fails, with the Exception type AOSP throws, or not exist on a reachable path. A hollow success defers the failure to an unregistered native, and `UnsatisfiedLinkError` escapes every `catch (Exception)`. In Chromium that means FATAL + `brk`.
 - The npth fix is to leave musl's `pthread_self()` alone and neutralise the one Bionic-layout walk. No Android-ABI library can be given a Bionic `pthread_internal_t`.
@@ -223,7 +246,8 @@ Evidence: [evidence/tt-namespace.txt](evidence/tt-namespace.txt). This refines �
 | `evidence/dex-and-load-chains.txt` | dex call chains (heap dump, Umeng, `loadLibrary("npth")`), `isSoLoaded` guard scan, DT_NEEDED |
 | `evidence/ticketguard-hmac.txt` | banner, maps, OH OpenSSL symbolization, export comparison |
 | `evidence/crash-run-map.txt` | per-run signatures, #38 and #42 |
+| `evidence/inproc-oom.txt` | in-process renderer PartitionAlloc OOM: banner, register decode, handler disasm, RSS/VSZ/VMA curve |
 | `evidence/tt-namespace.txt` | TicketGuard split: two images, OH musl lookup rule, closure, run.sh diff |
 | `evidence/sigtrap-mediacodec.txt` | post-fix SIGTRAP: stderr, banner, engine trap site, unregistered natives, westlake diff, rebuild hashes |
-| `scripts/` | `build_shim.sh`, `patch_npth.py`, `build_bridge_mc.py`, `tt_closure.py`, `apply_tt_targets.py`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
+| `scripts/` | `build_shim.sh`, `patch_npth.py`, `build_bridge_mc.py`, `tt_closure.py`, `apply_tt_targets.py`, `mem_curve.py`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
 | `results.json` | machine-readable summary |

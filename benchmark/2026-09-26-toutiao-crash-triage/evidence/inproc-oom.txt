@@ -1,0 +1,90 @@
+# InProcess-renderer PartitionAlloc OOM: board 5ea34a45 ability38/four46-fresh2 (video 3, ~99s)
+child.stderr sha256 a3b3e81acb17068c666467852201253973bc7ce448a28801e7c9d83a714f943c
+
+## banner (child.stderr L1204202)
+OS: Linux 5.15.180 (aarch64)
+Cmdline: <unset>
+Thread: 6853 "Chrome_InProcRe"
+Registers:
+     x0: 0x0000007d037fb348     x1: 0x0000000000009000     x2: 0x0000000000000003     x3: 0x0000000000000003
+     x4: 0x0000000000004000     x5: 0x0000007d037fb4cc     x6: 0x6c622c6b6e696c62     x7: 0x6c7974735f6b6e69
+     x8: 0x0000007de4136000     x9: 0x0000000000009000    x10: 0x0000007fa6872000    x11: 0xfffffffffffff000
+    x12: 0x0000000000000000    x13: 0x000000000000c000    x14: 0xffffffffffffc000    x15: 0x0000002001800000
+    x16: 0x0000007de407bbd8    x17: 0x0000007fa66ffb50    x18: 0x0000000000000000    x19: 0x0000000000009000
+    x20: 0x0000007a5f4cc000    x21: 0x0000000000000003    x22: 0x0000000000000003    x23: 0x0000007d037fb4cc
+    x24: 0x0000007a5f401660    x25: 0x0000000000009000    x26: 0x0000007a5f4cc000    x27: 0x0000007d037fc9a0
+    x28: 0x0000007a5f401000    x29: 0x0000007d037fb350    x30: 0x0000007de1d4fec8
+     sp: 0x0000007d037fb340     pc: 0x0000007de1d4fec8
+ pstate: 0x0000000060001000 [ Z C ]
+
+Backtrace:
+
+Fault message: 
+
+## register decode
+  x1 size = 0x9000 (36864)
+  x2 prot = 0x3 (3)
+  x4 = 0x4000 (16384)
+  x2=3 = PROT_READ|PROT_WRITE (mprotect recommit)
+  x6 ascii = 'blink,bl'
+  x7 ascii = 'ink_styl'
+  -> PartitionAlloc partition tags: blink, blink_style
+
+## fatal PC mapping (fatal-pc-mapping.json): pc 0x7de1d4fec8 -> libwebviewchromium.so file offset 0x37cfec8
+{
+  "pc": "0x7de1d4fec8",
+  "file_offset": "0x37cfec8",
+  "mapping": "7dde580000-7de3e9e000 r-xp 00000000 103:30 25533                         /data/local/tmp/asx/webview-t-lib/libwebviewchromium.so",
+  "source": "maps-after-consent.txt",
+  "note": "Mapping from earlier same process; function not symbolized."
+}
+
+## OOM handler at 0x37cfea4 (stores request size to a global, calls the crash logger Mqw5545M, brk) — same IMMEDIATE_CRASH shape as the mediacodec SIGTRAP
+ 37cfea4:      	paciasp
+ 37cfea8:      	sub	sp, sp, #32
+ 37cfeac:      	stp	x29, x30, [sp, #16]
+ 37cfeb0:      	add	x29, sp, #16
+ 37cfeb4:      	adrp	x8, 0x5bb6000 <Java_J_N_MgOW0Igo+0x81900>
+ 37cfeb8:      	str	x0, [sp, #8]
+ 37cfebc:      	str	x0, [x8, #176]
+ 37cfec0:      	add	x0, sp, #8
+ 37cfec4:      	bl	0xd10854 <Java_J_N_Mqw5545M>
+ 37cfec8:      	brk	#0
+
+## RSS / VSZ / VMA / thread curve
+window   t+sec    VSZ(GiB)  RSS(MiB)  threads
+video1      0.0      30.7       860     401
+video1     19.1     232.3       897     425
+video1     37.6     232.1       960     416
+video1     56.3     232.4       959     425
+video1     74.9     232.0      1015     412
+video1     94.4     232.1      1097     415
+video1    112.8     232.9      1109     410
+video1    127.5     231.9      1116     408
+  -> RSS 860 -> 1116 MiB over 127s (121 MiB/min)
+video2      0.0     231.5      1077     397
+video2     19.6     232.0      1173     405
+video2     38.0     231.7      1263     399
+video2     56.3     231.3      1349     388
+video2     74.7     231.2      1400     386
+video2     93.8     231.3      1477     390
+video2    112.2     231.3      1561     390
+video2    126.8     231.3      1584     389
+  -> RSS 1077 -> 1584 MiB over 127s (240 MiB/min)
+video3      0.0     231.4      1629     391
+video3     14.8     231.9      1707     401
+video3     30.2     231.7      1776     400
+video3     44.9     231.4      1849     391
+video3     59.4     231.4      1918     391
+video3     74.1     231.2      1955     385
+video3     88.6     231.2      2025     385
+video3     96.7     231.2      2064     386
+  -> RSS 1629 -> 2064 MiB over 97s (270 MiB/min)
+
+## address space at consent (maps-after-consent.txt, 5452 mappings; vm.max_map_count on OH default = 65530)
+committed rw-p ~10 GiB, PROT_NONE reserved ~18 GiB, RSS ~2 GiB at crash — VSZ 231 GiB is PartitionAlloc's one-time GigaCage reservation, stable (not growing)
+
+## flags this run (four patches deployed: shim ecc7b12c, bridge d4fae8e5, libnpth 8b8d559c, tt run.sh)
+SOURCE-WEBVIEW-CMD] --disable-features=AndroidSurfaceControl
+SOURCE-WEBVIEW-CMD] --single-process
+renderer is in-process: fault thread Chrome_InProcRe (InProcessRendererThread); 'child service doesnt exist' count = 1 (the reason #20 forced --single-process)
