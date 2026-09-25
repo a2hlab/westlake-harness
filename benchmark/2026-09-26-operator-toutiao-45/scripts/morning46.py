@@ -15,6 +15,8 @@ def launch(name):
  rows=[json.loads(x) for x in (R/'warm/commands.jsonl').read_text().splitlines()]
  parent=next(x['command'] for x in rows if x['command'].startswith('nohup ') and 'source_app_namespace' in x['command'])
  spawn=next(x['command'] for x in rows if '/host_spawn /dev/unix' in x['command'])
+ runtime=d['runtime'];pkg='com.ss.android.article.news'
+ dev(f'mkdir -p {runtime}/data/dalvik-cache/arm64 {runtime}/app-data/{pkg}/code_cache/art-volatile {runtime}/app-data/{pkg}/app_webview {runtime}/app-data/org.westlake.imehost {runtime}/webview-t-data; chown -R 20010053:20010053 {runtime}/data {runtime}/app-data {runtime}/webview-t-data; chcon -R u:object_r:data_app_el2_file:s0 {runtime}/app-data/{pkg}')
  dev('echo 1048576 > /proc/sys/vm/max_map_count; power-shell timeout -o 86400000; power-shell wakeup; aa start -b org.westlake.imehost -a EntryAbility')
  dev('rm -f '+d['socket']);d['parent']=int(dev(parent).strip())
  for _ in range(120):
