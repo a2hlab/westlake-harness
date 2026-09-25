@@ -1,0 +1,95 @@
+# TicketGuardNetw SIGSEGV@0x28, aot42 formal-verify-r2b (board 5cd1e3dd)
+Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR) fault addr 0x28
+OS: Linux 5.15.180 (aarch64)
+Cmdline: <unset>
+Thread: 6996 "TicketGuardNetw"
+Registers:
+     x0: 0x0000000000000000     x1: 0x0000007f7eb05bd0     x2: 0x0000000000000000     x3: 0x0000000000000000
+     x4: 0x0000007dcd3ba9b0     x5: 0x0000007dcd3ba940     x6: 0x9116db725b806985     x7: 0x5309434368b11c46
+     x8: 0x0000000000000090     x9: 0x0000007dcd3ba920    x10: 0x0000000000000036    x11: 0x0000007dcd3ba9b0
+    x12: 0x0000000000000036    x13: 0x16bf56d7d0419f33    x14: 0x0000000000000000    x15: 0x16ea7b771ffb98b9
+    x16: 0x0000007f7eb44ca8    x17: 0x0000007f7e9deb40    x18: 0x0000000000000000    x19: 0x0000000000000000
+    x20: 0x0000007dcd3baa98    x21: 0x0000000000000000    x22: 0x0000000000000000    x23: 0x0000000000000020
+    x24: 0x0000000000000000    x25: 0x0000007f7eb05bd0    x26: 0x0000007dcd3babb8    x27: 0x0000007dcd3bbad8
+    x28: 0x0000000000000001    x29: 0x0000007dcd3ba8d0    x30: 0x0000007f7ea07e74
+     sp: 0x0000007dcd3ba8d0     pc: 0x0000007f7e9de524
+ pstate: 0x0000000060001000 [ Z C ]
+
+Backtrace:
+
+
+# maps-before.txt: libcrypto_openssl.z.so segments (base 0x7f7e7c0000)
+7f7e7c0000-7f7e91c000 r--p 00000000 103:20 2590                          /system/lib64/chipset-sdk-sp/libcrypto_openssl.z.so
+7f7e91c000-7f7eaeb000 r-xp 0015b000 103:20 2590                          /system/lib64/chipset-sdk-sp/libcrypto_openssl.z.so
+7f7eaeb000-7f7eb4d000 r--p 00329000 103:20 2590                          /system/lib64/chipset-sdk-sp/libcrypto_openssl.z.so
+7f7eb4d000-7f7eb50000 rw-p 0038a000 103:20 2590                          /system/lib64/chipset-sdk-sp/libcrypto_openssl.z.so
+7e556c0000-7e557dd000 r-xp 00000000 103:30 25686                         /data/local/tmp/asx/lib/arm64-v8a/libttcrypto.so
+7e557dd000-7e557f0000 r--p 0011c000 103:30 25686                         /data/local/tmp/asx/lib/arm64-v8a/libttcrypto.so
+7e557f0000-7e557f1000 rw-p 0012e000 103:30 25686                         /data/local/tmp/asx/lib/arm64-v8a/libttcrypto.so
+7e55800000-7e5585b000 r-xp 00000000 103:30 25850                         /data/local/tmp/asx/lib/arm64-v8a/libttboringssl.so
+7e5585b000-7e5585e000 r--p 0005a000 103:30 25850                         /data/local/tmp/asx/lib/arm64-v8a/libttboringssl.so
+7e5585e000-7e5585f000 rw-p 0005c000 103:30 25850                         /data/local/tmp/asx/lib/arm64-v8a/libttboringssl.so
+
+# hw248 OH 6.1.0.31 build (wukong100) PT_LOAD layout == board mapping layout; symbolized with NDK r27c llvm-symbolizer
+  LOAD           0x000000 0x0000000000000000 0x0000000000000000 0x15b574 0x15b574 R   0x1000
+  LOAD           0x15b580 0x000000000015c580 0x000000000015c580 0x1cea70 0x1cea70 R E 0x1000
+  LOAD           0x329ff0 0x000000000032bff0 0x000000000032bff0 0x060528 0x060530 RW  0x1000
+  LOAD           0x38a520 0x000000000038d520 0x000000000038d520 0x001f98 0x005175 RW  0x1000
+evp_md_init_internal
+/opt/build-trees/oh610_lts_source/out/wukong100/../../third_party/openssl/crypto/evp/digest.c:152:14
+
+HMAC_Init_ex
+/opt/build-trees/oh610_lts_source/out/wukong100/../../third_party/openssl/crypto/hmac/hmac.c:79:17
+
+EVP_DigestInit_ex
+/opt/build-trees/oh610_lts_source/out/wukong100/../../third_party/openssl/crypto/evp/digest.c:371:0
+
+sha256_md
+legacy_sha.c:0:0
+
+  21e504:      	stp	x29, x30, [sp, #-0x40]!
+  21e508:      	str	x23, [sp, #0x10]
+  21e50c:      	stp	x22, x21, [sp, #0x20]
+  21e510:      	stp	x20, x19, [sp, #0x30]
+  21e514:      	mov	x29, sp
+  21e518:      	mov	x22, x3
+  21e51c:      	mov	x21, x2
+  21e520:      	mov	x19, x0
+  21e524:      	ldr	x9, [x0, #0x28]
+  21e528:      	mov	x20, x1
+  21e52c:      	cbz	x9, 0x21e5a8 <evp_md_init_internal+0xa4>
+
+# third_party/openssl/crypto/hmac/hmac.c:76-81 and hmac_local.h:16-21
+        for (i = 0; i < HMAC_MAX_MD_CBLOCK_SIZE; i++)
+            pad[i] = 0x36 ^ keytmp[i];
+        if (!EVP_DigestInit_ex(ctx->i_ctx, md, impl)
+                || !EVP_DigestUpdate(ctx->i_ctx, pad,
+                                     EVP_MD_get_block_size(md)))
+            goto err;
+struct hmac_ctx_st {
+    const EVP_MD *md;
+    EVP_MD_CTX *md_ctx;
+    EVP_MD_CTX *i_ctx;
+    EVP_MD_CTX *o_ctx;
+};
+
+# OH OpenSSL 3 exports (HMAC_CTX_init absent):
+HMAC_Init_ex: defined
+HMAC_CTX_init: absent
+HMAC_CTX_new: defined
+
+# APK: libttboringssl.so imports HMAC_CTX_init + HMAC_Init_ex; DT_NEEDED libttcrypto.so (BoringSSL, defines both)
+HMAC_CTX_cleanup
+HMAC_CTX_init
+HMAC_Final
+HMAC_Init_ex
+HMAC_Update
+HMAC_size
+HMAC
+ 0x0000000000000001 (NEEDED)             Shared library: [libttcrypto.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libm.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libdl.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so]
+HMAC_Init_ex
+HMAC_CTX_init
+HMAC_CTX_new

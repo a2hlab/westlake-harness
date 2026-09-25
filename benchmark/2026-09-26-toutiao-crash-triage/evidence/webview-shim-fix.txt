@@ -1,0 +1,114 @@
+# westlake fix/webview-gles-order-46 @ 87fb17b6311e87a42b3671297595872d81f3f1b4 (base 22b9453)
+commit 87fb17b6311e87a42b3671297595872d81f3f1b4
+Author: Alvin <zyzzz0928@gmail.com>
+Date:   Sat Sep 26 00:36:28 2026 +0800
+
+    fix(webview): translate libGLESv2.so before the .z.so probe (#46)
+    
+    The §734 translation of libGLESv2.so to /system/lib64/platformsdk/libGLESv3.so
+    sat behind the .z.so probe, which opens the plain name first and returns the
+diff --git a/framework/webview-shim/webview_bionic_shim.c b/framework/webview-shim/webview_bionic_shim.c
+index a81d700..738741c 100644
+--- a/framework/webview-shim/webview_bionic_shim.c
++++ b/framework/webview-shim/webview_bionic_shim.c
+@@ -955,6 +955,24 @@ void *dlopen(const char *filename, int flags)
+             }
+         }
+     }
++    /*
++     * §734 must also run BEFORE the .z.so probe, for the same reason as the block above: the
++     * probe opens the plain name first, and "libGLESv2.so" does open -- as the NDK facade in
++     * /system/lib64/ndk.  Behind the probe this translation never ran ("GLES library translated"
++     * absent from all 50 #38/#42 Toutiao runs, ndk/libGLESv2.so mapped instead), so Chromium's
++     * GrContext came up NULL and ~SkiaOutputSurfaceImplOnGpu flushed it on the first article frame.
++     */
++    if (basename != NULL && strcmp(basename, "libGLESv2.so") == 0 &&
++        caller_is_webview(__builtin_return_address(0), NULL)) {
++        actual_filename = "/system/lib64/platformsdk/libGLESv3.so";
++        static int logged;
++        if (!__atomic_exchange_n(&logged, 1, __ATOMIC_RELAXED)) {
++            fprintf(stderr,
++                    "[WESTLAKE-WEBVIEW-BIONIC] GLES library translated "
++                    "%s -> %s for libwebviewchromium.so\n",
++                    filename, actual_filename);
++        }
++    }
+     /*
+      * OH names several NDK libraries with a .z.so suffix that Android spells plainly, and an app
+      * asking for the Android name gets "No such file or directory" even though the library is
+@@ -988,17 +1006,6 @@ void *dlopen(const char *filename, int flags)
+             }
+         }
+     }
+-    if (basename != NULL && strcmp(basename, "libGLESv2.so") == 0 &&
+-        caller_is_webview(__builtin_return_address(0), NULL)) {
+-        actual_filename = "/system/lib64/platformsdk/libGLESv3.so";
+-        static int logged;
+-        if (!__atomic_exchange_n(&logged, 1, __ATOMIC_RELAXED)) {
+-            fprintf(stderr,
+-                    "[WESTLAKE-WEBVIEW-BIONIC] GLES library translated "
+-                    "%s -> %s for libwebviewchromium.so\n",
+-                    filename, actual_filename);
+-        }
+-    }
+     return real_dlopen(actual_filename, flags);
+ }
+ 
+
+# build: scripts/build_shim.sh (exact out-sp20 commands)
+ae6ac82830c2cd143469047c404765cd13b0c38106d2ccfe92596059f8e6b6ea  /home/zhaoyue/a2hlab/ws/out-sp20/webview-shims/libwebview_bionic_shim.so
+ae6ac82830c2cd143469047c404765cd13b0c38106d2ccfe92596059f8e6b6ea  /home/zhaoyue/a2hlab/ws/out-wv46/repro/libwebview_bionic_shim.so
+ecc7b12c3591c979f3d9aece5bb1d414acc04d01d2c500a88364525082f9df9f  /home/zhaoyue/a2hlab/ws/out-wv46/patched/libwebview_bionic_shim.so
+dynsym/NEEDED diff repro vs patched:
+identical
+identical
+
+# dlopen control flow, deployed (= repro): .so suffix check branches into the probe (0x56fc) before strcmp("libGLESv2.so") @0x5660
+    5620:      	cmp	x22, x19
+    5624:      	b.ne	0x5654 <dlopen+0x1ec>
+    5628:      	mov	x0, x19
+    562c:      	bl	0x81b0 <strlen@plt>
+    5630:      	cmp	x0, #4
+    5634:      	b.lo	0x5654 <dlopen+0x1ec>
+    5638:      	add	x24, x19, x0
+    563c:      	mov	x25, x0
+    5640:      	sub	x0, x24, #3
+    5644:      	adrp	x1, 0x2000 <dlopen+0x1d0>
+    5648:      	add	x1, x1, #1250
+    564c:      	bl	0x8180 <strcmp@plt>
+    5650:      	cbz	w0, 0x56fc <dlopen+0x294>
+    5654:      	adrp	x1, 0x2000 <dlopen+0x1e0>
+    5658:      	add	x1, x1, #2282
+    565c:      	mov	x0, x22
+    5660:      	bl	0x8180 <strcmp@plt>
+    5664:      	cbz	w0, 0x569c <dlopen+0x234>
+    5668:      	ldr	x8, [x26, #2344]
+    566c:      	mov	x0, x23
+    5670:      	mov	w1, w20
+    5674:      	blr	x8
+    5678:      	mov	x24, x0
+
+# dlopen control flow, patched: strcmp(basename,"libGLESv2.so") @0x5628 is the first test after the resolve block
+    561c:      	adrp	x1, 0x2000 <dlopen+0x1a8>
+    5620:      	add	x1, x1, #2282
+    5624:      	mov	x0, x21
+    5628:      	bl	0x8170 <strcmp@plt>
+    562c:      	cbz	w0, 0x5694 <dlopen+0x22c>
+    5630:      	cmp	x21, x19
+    5634:      	b.ne	0x5664 <dlopen+0x1fc>
+    5638:      	mov	x0, x19
+    563c:      	bl	0x81a0 <strlen@plt>
+    5640:      	cmp	x0, #4
+    5644:      	b.lo	0x5664 <dlopen+0x1fc>
+    5648:      	add	x21, x19, x0
+    564c:      	mov	x23, x0
+    5650:      	sub	x0, x21, #3
+    5654:      	adrp	x1, 0x2000 <dlopen+0x1e0>
+    5658:      	add	x1, x1, #1250
+    565c:      	bl	0x8170 <strcmp@plt>
+    5660:      	cbz	w0, 0x56f4 <dlopen+0x28c>
+    5664:      	ldr	x8, [x24, #2328]
+    5668:      	mov	x0, x22
+    566c:      	mov	w1, w20
+    5670:      	blr	x8
+    5674:      	mov	x21, x0

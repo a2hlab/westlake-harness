@@ -1,0 +1,68 @@
+# dex call chains (dexdump of toutiao.apk classes*.dex)
+## fork heap dump: who calls Npth.dumpHprof -> NativeBridge.o -> nativeDumpHprof
+com.bytedance.crash.jni.NativeBridge.o:(Ljava/lang/String;)V @0x19 catches=['<any> -> 0x001c']
+  com.bytedance.crash.Npth.dumpHprof:(Ljava/lang/String;)V @0x12 catches=[]
+    X.B3q.f:(Ljava/io/File;)Ljava/io/File; @0x1b catches=['Ljava/lang/Exception; -> 0x005b']
+      X.B3q.c:()V @0xf2 catches=[]
+      X.B3q.c:()V @0xfe catches=[]
+## umeng ZID: who calls Spy.getNativeID
+com.umeng.umzid.Spy.a:()Ljava/lang/String; @0xb catches=[]
+  com.umeng.mc.f.b:()V @0xd8 catches=[]
+    com.umeng.mc.f.a:(Ljava/lang/Object;I)V @0x5 catches=[]
+## only literal "work_thread" in the APK
+        |0005: if-nez v0, 0031 // +002c
+        |0007: const-string v1, "work_thread" // string@e833
+## libnpth load: System.loadLibrary("npth") chain up to Application (catches listed are monitor-exit + rethrow)
+X.BEO.f:(Landroid/content/Context;Ljava/io/File;)V @0x23 catches=['<any> -> 0x002a']
+  X.BF5.<init>:(Landroid/content/Context;Ljava/io/File;)V @0x41 catches=[]
+    X.BF5.a:(Landroid/content/Context;Ljava/io/File;)V @0x33 catches=['<any> -> 0x003a']
+      X.BDn.g:(Landroid/content/Context;Ljava/io/File;)V @0x14 catches=[]
+        X.BDS.b:(Landroid/content/Context;LX/BEz;)V @0x18 catches=[]
+          com.bytedance.crash.monitor.MonitorManager.createAppMonitor:(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;J)LX/BEz; @0x34 catches=[]
+        X.BDS.c:(Landroid/content/Context;LX/BGb;)V @0x18 catches=[]
+          com.bytedance.crash.monitor.MonitorManager.createSdkMonitor:(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;J[Ljava/lang/String;[Ljava/lang/String;)LX/BGb; @0x3e catches=[]
+        com.bytedance.crash.monitor.MonitorManager.createInnerAppMonitor:(Landroid/content/Context;Lcom/bytedance/crash/ICommonParams;)LX/BEz; @0x47 catches=[]
+          com.bytedance.crash.Npth.init:(Landroid/content/Context;Lcom/bytedance/crash/ICommonParams;)V @0x23 catches=['<any> -> 0x0059']
+com.bytedance.crash.Npth.init:(Landroid/app/Application;Landroid/content/Context;Lcom/bytedance/crash/ICommonParams;ZZZZJ)V @0x4a catches=['<any> -> 0x004f']
+  com.bytedance.crash.Npth.init:(Landroid/content/Context;Lcom/bytedance/crash/ICommonParams;ZZZZJ)V @0x47 catches=['<any> -> 0x004c']
+    com.bytedance.crash.Npth.init:(Landroid/content/Context;Lcom/bytedance/crash/ICommonParams;ZZZZ)V @0x48 catches=['<any> -> 0x004d']
+      com.bytedance.crash.Npth.init:(Landroid/content/Context;Lcom/bytedance/crash/ICommonParams;ZZZ)V @0x3d catches=['<any> -> 0x0042']
+      com.bytedance.crash.Npth.initMiniApp:(Landroid/content/Context;Lcom/bytedance/crash/ICommonParams;)V @0x1f catches=['<any> -> 0x0024']
+      com.bytedance.crash.Npth.initMiniApp:(Landroid/content/Context;Lcom/bytedance/crash/ICommonParams;ILjava/lang/String;)V @0x24 catches=['<any> -> 0x0029']
+      com.ss.android.article.news.ArticleApplication.npthCallInit:(Landroid/content/Context;Z)V @0x4f catches=[]
+com.ss.android.article.news.basicmode.BasicModeImpl.initNpth:(Landroid/content/Context;)V @0x16 catches=[]
+com.ss.android.article.news.ArticleApplication.initNpth:()V @0x1e catches=[]
+  com.ss.android.article.news.ArticleApplication.access$1000:(Lcom/ss/android/article/news/ArticleApplication;)V @0x0 catches=[]
+    X.3Qw.run:()V @0x4e catches=[]
+  com.ss.android.article.news.ArticleApplication.com_ss_android_article_news_ArticleApplication_onAttachBaseContext_origin_knot:(Landroid/content/Context;)V @0x428 catches=[]
+    com.ss.android.article.news.ArticleApplication.onAttachBaseContext_proxy__com_ss_android_knot_aop_PerfTempAop_onAttachBaseContext__knot:(Lcom/bytedance/knot/base/Context;Landroid/content/Context;)V @0x1b catches=[]
+      com.ss.android.article.news.ArticleApplication.onAttachBaseContext:(Landroid/content/Context;)V @0x1f catches=[]
+com.ss.android.article.news.ArticleApplication.initNpthSimplize:()V @0x11 catches=[]
+  com.ss.android.article.news.ArticleApplication.m:(Lcom/ss/android/article/news/ArticleApplication;)V @0x0 catches=[]
+    X.A2q.run:()V @0x2 catches=[]
+  com.ss.android.article.news.ArticleApplication.attachBaseContext:(Landroid/content/Context;)V @0x1c5 catches=[]
+  com.ss.android.article.news.ArticleApplication.attachBaseContext:(Landroid/content/Context;)V @0x21d catches=[]
+com.ss.android.article.news.ArticleApplication.lambda$delayInitAfterAgreement$1:()V @0x1b catches=[]
+  com.ss.android.article.news.ArticleApplication.l:(Lcom/ss/android/article/news/ArticleApplication;)V @0x0 catches=[]
+    X.A2Z.run:()V @0x2 catches=[]
+      com.ss.android.article.news.ArticleApplication.delayInitAfterAgreement:()V @0x28 catches=[]
+## isSoLoaded guard scan over the three npth JNI classes
+native methods: 86
+guarded call sites: 56 unguarded: 15
+   ('X.BE3.<init>:(Ljava/io/File;Lorg/json/JSONObject;LX/4ub;LX/BEi;)V', 'nAnrNativeProfilerFormat:(Ljava/lang/Str')
+   ('X.BEc.c:(Ljava/io/File;J)V', 'nAnrNativeProfilerDump:(JLjava/lang/Stri')
+   ('X.BEc.d:()V', 'nAnrNativeProfilerExit:(J)V')
+   ('X.BEc.e:()V', 'nAnrNativeProfilerJvmStart:(J)I')
+   ('X.BFo.run:()V', 'nAnrNativeProfilerStart:()J')
+   ('com.bytedance.crash.jni.NativeBridge.B:()Ljava/util/HashMap;', 'nativeGetTags:()[Ljava/lang/String;')
+   ('com.bytedance.crash.resource.NativeResourceMonitor.a:(IILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)I', 'nNativeBridgeInit:(IILjava/lang/String;L')
+   ('com.bytedance.crash.resource.NativeResourceMonitor.b:(ILjava/lang/String;Ljava/lang/String;)V', 'nXasanInit:(ILjava/lang/String;Ljava/lan')
+   ('com.bytedance.crash.resource.NativeResourceMonitor.c:(I)I', 'nFdTrackDoCommand:(I)I')
+   ('com.bytedance.crash.resource.NativeResourceMonitor.d:(I)I', 'nFdTrackGetFdCount:(I)I')
+   ('com.bytedance.crash.resource.NativeResourceMonitor.f:(I)I', 'nNativeDoCommnad:(I)I')
+   ('com.bytedance.crash.resource.NativeResourceMonitor.g:()J', 'nNativeGetHeapLeakSize:()J')
+   ('com.bytedance.crash.resource.NativeResourceMonitor.h:()J', 'nNativeGetHeapSize:()J')
+   ('com.bytedance.crash.resource.NativeResourceMonitor.i:(II)I', 'nVmMonitorDoCommand:(II)I')
+   ('com.bytedance.crash.resource.NativeResourceMonitor.j:(Ljava/lang/String;)V', 'nVmMonitorDumpMaps:(Ljava/lang/String;)V')
+## DT_NEEDED on libnpth.so itself (none) vs helper libs
+(end)

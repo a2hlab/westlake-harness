@@ -127,6 +127,7 @@ kind of work from where the corpus started
 | `benchmark/2026-09-18-mvp-target/` | The Android-specific platform contract of both MVP apps: 206 symbols, of which 48 are ours to implement. |
 | `benchmark/2026-08-23-toutiao/runtime-evidence/android-baseline/` | **Static reading versus running**, on a OnePlus 6T: 280 methods and five whole libraries that no APK scan can see, 43 failing `dlsym` lookups, 463 methods never exercised. |
 | `benchmark/2026-08-23-toutiao/native-analysis/` | Provenance and surface reach over 138 stripped arm64 libraries: 1417 recovered JNI methods, 47% touching no platform surface. |
+| `benchmark/2026-09-26-toutiao-crash-triage/` | **Every Toutiao crash class, triaged offline**: the article-page WebView crash is the shim opening the NDK GLES facade before its own translation (fix built, `87fb17b`); the npth CPU spin is a Bionic thread-list walk that never ends on musl (one-instruction patch built); `work_thread` SIGABRT is Umeng's forked root probe, not the app; TicketGuard's SIGSEGV is BoringSSL HMAC calls resolved into OH's OpenSSL 3. Explains 6 of the 9 #42 signal-11 deaths. |
 
 ---
 
