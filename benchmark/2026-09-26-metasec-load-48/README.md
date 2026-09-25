@@ -136,3 +136,11 @@ The source diff and raw log artifacts intentionally retain their original
 whitespace. Code-only diff checks are clean; the raw-evidence diff has whitespace
 warnings. Evidence verification checks raw/decompressed SHA and committed HEAD
 bytes, without rewriting the observations to satisfy a whitespace linter.
+
+## Superseding operator instruction (#49)
+
+The operator subsequently directed that A1 and all existing fixes remain in
+place after A1 r4/r5, followed by a separate five-run trial of npth-hook-refuse
+shim85c789f4. Therefore restore_operator45.py is retained as an unused rollback
+utility; it is NOT executed for this handoff. The original baseline backups
+remain intact. #49 trials use a separate worktree, branch and evidence directory.

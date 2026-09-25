@@ -21,13 +21,15 @@ for r in sorted(R.glob('*-r[0-9]*')):
  clicks=[float(i['output'].split()[0]) for i in inputs if '-d 380 295' in i['command']]
  resumed=[l for l in lines if l.startswith('[ABILITY38-RESUMED]')]
  detail=[l for l in lines if l.startswith('[B47-SLA] ENTRY') and 'NewDetailActivity' in l]
+ detail_position=max((i for i,l in enumerate(lines) if l.startswith('[B47-SLA] ENTRY') and 'NewDetailActivity' in l),default=-1)
+ detail_resumed=[l for l in lines[detail_position+1:] if l.startswith('[ABILITY38-RESUMED]')] if detail_position>=0 else []
  last=states[-1];alive_age=max([s['age'] for s in states if s['alive']],default=0)
  # monitor checks liveness again after the composite sample; it may observe
  # death in that small gap. Do not turn the earlier stat into an alive result.
  result=json.loads((r/'result.json').read_text())
  final_alive=result['original_alive_at_end']
  # Java uptime is milliseconds; /proc uptime is seconds and birth is ticks.
- resume_s=int(re.search(r'uptime=(\d+)',resumed[-1])[1])/1000 if detail and resumed else None
+ resume_s=int(re.search(r'uptime=(\d+)',detail_resumed[-1])[1])/1000 if detail_resumed else None
  assert resume_s is None or resume_s <= last['uptime'] + 1, (r.name,resume_s,last)
  row={'round':r.name,'pid':pid,'terminal':terminal[-1] if terminal else None,
       'last_observed_alive_age_s':alive_age,'end_age_s':last['age'],'alive_at_end':final_alive,
