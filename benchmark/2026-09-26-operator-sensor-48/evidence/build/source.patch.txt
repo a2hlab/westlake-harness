@@ -1,0 +1,116 @@
+commit 72ed855566c530c46cdd5ec3f378b1b979f8bbda
+Author: Alvin <zyzzz0928@gmail.com>
+Date:   Sat Sep 26 05:49:35 2026 +0800
+
+    fix(libandroid): add 7 NDK sensor no-ops so metasec relocates in the default namespace (#48 route C)
+    
+    metasecs
+
+diff --git a/native/android-ndk15-sources.json b/native/android-ndk15-sources.json
+index 484b964..da7a71f 100644
+--- a/native/android-ndk15-sources.json
++++ b/native/android-ndk15-sources.json
+@@ -5,7 +5,8 @@
+     "android-source/frameworks-base/native/android/asset_manager.cpp",
+     "westlake/native/oh_socket_tagging.c",
+     "westlake/native/oh_multinetwork.c",
+-    "android-source/frameworks-base/native/android/looper.cpp"
++    "android-source/frameworks-base/native/android/looper.cpp",
++    "westlake/native/android_sensor_noop.c"
+   ],
+   "includes": [
+     "android-source/incremental-delivery/incfs/util/include",
+diff --git a/native/android_sensor_noop.c b/native/android_sensor_noop.c
+new file mode 100644
+index 0000000..84786cf
+--- /dev/null
++++ b/native/android_sensor_noop.c
+@@ -0,0 +1,88 @@
++/*
++ * android_sensor_noop.c  [#48 route C]
++ *
++ * The NDK sensor entry points (ASensorManager_* / ASensorEventQueue_*) as
++ * no-op stubs, for the core (default-namespace) libandroid.so.
++ *
++ * Why: metasec's libmetasec_ml.so DT_NEEDEDs libandroid.so and imports
++ * ASensorManager_getDefaultSensor and six siblings. The core libandroid built
++ * from android-ndk15-sources has no sensor source (only asset/looper/hwui/net),
++ * so metasec relocate-fails in the default namespace with
++ *   Error relocating libmetasec_ml.so: ASensorManager_getDefaultSensor: symbol not found
++ * The uncaught UnsatisfiedLinkError on the shared platform-back-handler thread
++ * kills it, and a later Handler built on its now-null Looper NPEs the main
++ * thread into _exit(1) (board #48). AOSP's real sensor implementation drives a
++ * SensorService that OH does not have, so it is not usable here; a no-op that
++ * reports "no default sensor" is the documented way to say the type is
++ * unsupported, and metasec is lazy on OH anyway (#41 DoLazyInit never runs).
++ *
++ * Same shape and semantics as the WebView shim's sensor stubs
++ * (framework/webview-shim/libandroid_webview_core_shim.c): a non-null manager
++ * is a valid service handle, an absent default sensor reports an unsupported
++ * type, and the queue stays valid so a client that creates it before checking
++ * the sensor can tear it down normally. Signatures follow AOSP 14
++ * android/sensor.h.
++ */
++#include <errno.h>
++#include <stddef.h>
++#include <stdint.h>
++
++typedef struct ASensorManager { int unused; } ASensorManager;
++typedef struct ASensorEventQueue { int unused; } ASensorEventQueue;
++typedef struct ASensor { int unused; } ASensor;
++typedef struct ASensorEvent { uint8_t opaque[104]; } ASensorEvent;
++struct ALooper;
++typedef int (*ALooper_callbackFunc)(int fd, int events, void *data);
++
++static ASensorManager g_sensor_manager;
++static ASensorEventQueue g_sensor_queue;
++
++ASensorManager *ASensorManager_getInstance(void)
++{
++    return &g_sensor_manager;
++}
++
++const ASensor *ASensorManager_getDefaultSensor(ASensorManager *manager,
++                                               int sensor_type)
++{
++    (void)manager;
++    (void)sensor_type;
++    return NULL;
++}
++
++ASensorEventQueue *ASensorManager_createEventQueue(
++        ASensorManager *manager, struct ALooper *looper, int ident,
++        ALooper_callbackFunc callback, void *data)
++{
++    (void)looper;
++    (void)ident;
++    (void)callback;
++    (void)data;
++    return manager != NULL ? &g_sensor_queue : NULL;
++}
++
++int ASensorManager_destroyEventQueue(ASensorManager *manager,
++                                     ASensorEventQueue *queue)
++{
++    return manager != NULL && queue != NULL ? 0 : -EINVAL;
++}
++
++int ASensorEventQueue_enableSensor(ASensorEventQueue *queue,
++                                   const ASensor *sensor)
++{
++    return queue != NULL && sensor != NULL ? 0 : -EINVAL;
++}
++
++int ASensorEventQueue_disableSensor(ASensorEventQueue *queue,
++                                    const ASensor *sensor)
++{
++    return queue != NULL && sensor != NULL ? 0 : -EINVAL;
++}
++
++int ASensorEventQueue_getEvents(ASensorEventQueue *queue,
++                                ASensorEvent *events, size_t count)
++{
++    (void)events;
++    (void)count;
++    return queue != NULL ? 0 : -EINVAL;
++}
