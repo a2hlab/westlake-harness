@@ -484,11 +484,13 @@ class TestNativeTargetsDerivation(unittest.TestCase):
             self._so(libs / "libvision_core.so", ["__sF", "memcpy"])
             self._so(libs / "libsscronet.so", ["__system_property_get", "getaddrinfo"])
             self._so(libs / "libplain_dep.so", ["memcpy"])
+            self._so(libs / "libc++_shared.so", ["__errno", "memcpy"])
             shim = {"__sF", "__system_property_get"}  # subset of shim exports
             undefined_map = {
                 "libvision_core.so": ["__sF", "memcpy"],
                 "libsscronet.so": ["__system_property_get", "getaddrinfo", "freeaddrinfo"],
                 "libplain_dep.so": ["memcpy"],
+                "libc++_shared.so": ["__errno", "memcpy"],
             }
             needed_map = {
                 "libvision_core.so": ["libplain_dep.so"],
@@ -508,7 +510,7 @@ class TestNativeTargetsDerivation(unittest.TestCase):
             names = result["native"]
             self.assertIn("libvision_core.so", names)       # bionic-only import
             self.assertIn("libsscronet.so", names)          # property import
-            self.assertIn("libc++_shared.so", names) if False else None  # not in fixture
+            self.assertIn("libc++_shared.so", names)       # core-symbol hit (__errno)
             self.assertIn("libplain_dep.so", names)         # dependency closure
             self.assertEqual(result["net"], ["libsscronet.so"])  # getaddrinfo family
             samples = result["native_samples"]["libsscronet.so"]
