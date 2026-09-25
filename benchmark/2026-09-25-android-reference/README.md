@@ -1,8 +1,8 @@
 # Toutiao on real Android: what normal looks like, and two OH problems read against it
 
-On the OH board a tab tap during a networked first launch waits 11–17 s before the UI thread runs
-it (#21). The app copies `libmetasec_ml.so` into `app_lib` and fails to load it (#23), feed
-thumbnails stay grey, and every run logs a SIGABRT on a thread called `work_thread`. None of that
+On the OH board a tab tap during launch waits 8–21 s before the UI thread runs it (#21, #25).
+The app copies `libmetasec_ml.so` into `app_lib` and fails to load it (#23), feed thumbnails stay
+grey, and every run logs a SIGABRT on a thread called `work_thread`. None of that
 said what the same APK does where it is supposed to run. This run records that on a real Android
 device, with the byte-identical APK, and reads the two OH problems offline against it
 (board entry #26).
@@ -22,12 +22,17 @@ launch phase counts.
 - **Touch delivery is not slow on Android, even in a first launch.** From the event's timestamp to
   the moment the app's main thread starts `deliverInputEvent`: **2.3–71.6 ms** (median 4.1, n=15) in
   first launches, **2.6–6.8 ms** in second launches. This is the quantity Westlake measures as
-  post→run, and there it is **11,016–16,730 ms** in a networked first launch (#21).
+  post→run, and there it is **8.2–21.5 s** in all four data × network conditions during launch
+  (#25; 11.0–16.7 s in #21).
 - **The app's own first-launch work never holds Android's main thread that long.** The longest
   main-thread slice is 0.96–2.0 s, during launch (`bindApplication` or the first activity
   transaction); once the feed is up the longest is 0.45 s and there are no slices of 500 ms or
-  more. So an 11–17 s wait on OH is either
-  work that takes far longer there, or work that Android does not do at all.
+  more. So an 8–21 s wait on OH is either work that takes far longer there, or work that Android
+  does not do at all. #25 has since found it is the second kind:
+  - The UI thread waits on `SourcePackageRegistry`'s class lock.
+  - Meanwhile another thread holds that lock and runs `collectCertificates` over the whole APK.
+  - On Android that verification runs once, at install, in system_server; runtime queries read the
+    cached result. That is AOSP behaviour, not measured here.
 - **Tab → new content, when normal:** 0.36–0.90 s to switch the page. Content then arrives in
   2.6–3.3 s for a category fetched from the network for the first time (热点, 小视频). It takes
   about 1.1 s for 推荐, and 0.5–0.9 s for 小说. On a second launch 热点 takes 1.16 s from reused data.
@@ -55,7 +60,7 @@ tap whose feed region has real items (see [Method](#method)).
 | | first launch (F1–F3) | second launch (S1–S3) | OH / Westlake |
 |---|---|---|---|
 | cold start, `am start -W` TotalTime | 1828 / 1889 / 1924 ms | 3421 / 4007 / 4031 ms | — |
-| event → main thread `deliverInputEvent` | 2.3–71.6 ms, median 4.1 (15 taps incl. consent) | 2.6–6.8 ms (8 taps) | post→run 11,016–16,730 ms networked first launch; 1 ms reused data + offline (#21) |
+| event → main thread `deliverInputEvent` | 2.3–71.6 ms, median 4.1 (15 taps incl. consent) | 2.6–6.8 ms (8 taps) | post→run 8.2–21.5 s in all four fresh/reused × offline/online cells during launch (#25); 1 ms only once launch work is over, same process |
 | tap → page switched | 362–899 ms | 368–705 ms | — |
 | tap → content: 热点 | 2633 / 3132 / 3021 ms | 1163 / 1156 ms | — |
 | tap → content: 小视频 | 2666 / 3313 / 2990 ms | 2749 / 2887 ms | — |
