@@ -465,6 +465,56 @@ class TestOfflineReclassify(unittest.TestCase):
             self.assertIn("none-source: 1", summary)
 
 
+class TestNativeTargetsDerivation(unittest.TestCase):
+    """#19: derive Android-ABI / net targets from APK DSO imports, offline."""
+
+    def _so(self, path: Path, undefined: list[str], needed: list[str] | None = None) -> None:
+        """Fake an ELF: nm/readelf are stubbed per-test, so any bytes will do."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"\x7fELF-fake")
+
+    def test_derivation_flags_native_net_and_closure(self) -> None:
+        from unittest import mock
+        from boardloop import native_targets as nt
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            app = tmp / "toutiao"
+            libs = app / "lib" / "arm64-v8a"
+            # three fakes: bionic-only importer, net importer, plain dependency
+            self._so(libs / "libvision_core.so", ["__sF", "memcpy"])
+            self._so(libs / "libsscronet.so", ["__system_property_get", "getaddrinfo"])
+            self._so(libs / "libplain_dep.so", ["memcpy"])
+            shim = {"__sF", "__system_property_get"}  # subset of shim exports
+            undefined_map = {
+                "libvision_core.so": ["__sF", "memcpy"],
+                "libsscronet.so": ["__system_property_get", "getaddrinfo", "freeaddrinfo"],
+                "libplain_dep.so": ["memcpy"],
+            }
+            needed_map = {
+                "libvision_core.so": ["libplain_dep.so"],
+                "libsscronet.so": [],
+                "libplain_dep.so": [],
+            }
+            def fake_nm(path, args):
+                assert args == ["--undefined-only"] or args == ["--defined-only"]
+                if args == ["--undefined-only"]:
+                    return undefined_map.get(Path(path).name, [])
+                return ["__sF", "__system_property_get"]  # shim exports
+            def fake_readelf(path):
+                return needed_map.get(Path(path).name, [])
+            with mock.patch.object(nt, "_nm", side_effect=fake_nm), \
+                 mock.patch.object(nt, "dt_needed", side_effect=fake_readelf):
+                result = nt.derive_app(app, shim)
+            names = result["native"]
+            self.assertIn("libvision_core.so", names)       # bionic-only import
+            self.assertIn("libsscronet.so", names)          # property import
+            self.assertIn("libc++_shared.so", names) if False else None  # not in fixture
+            self.assertIn("libplain_dep.so", names)         # dependency closure
+            self.assertEqual(result["net"], ["libsscronet.so"])  # getaddrinfo family
+            samples = result["native_samples"]["libsscronet.so"]
+            self.assertTrue(any("system_property" in s for s in samples))
+
+
 class TestRealBoardAdaptation(unittest.TestCase):
     """#9: log path from the report's runtime, dual-era VT parsing, keep-alive commands."""
 
