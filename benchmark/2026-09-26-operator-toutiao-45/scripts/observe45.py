@@ -5,7 +5,13 @@ def action(c):
  out=dev(c)
  with (r/'actions.jsonl').open('a') as f:f.write(json.dumps({'epoch':time.time(),'command':c,'output':out})+'\n')
  return out
-if op=='shell':print(action(sys.argv[3]))
+if op=='shell':
+ if 'uinput' in sys.argv[3]:
+  state=action('cat /proc/'+str(d['child'])+'/stat 2>/dev/null')
+  assert ') ' in state and state.rsplit(') ',1)[1].split()[0]!='Z','bound app exited; inspect new screen before input'
+  active=action('if [ ! -e /data/local/tmp/operator45/stop ]; then cat /data/local/tmp/operator45/child.pid; fi').strip()
+  assert not active or active==str(d['child']),'guardian changed instance; rebind and inspect before input'
+ print(action(sys.argv[3]))
 if op=='vt':
  n=int(action('wc -l < '+log).strip());action('echo v > /data/local/tmp/noice_tap');time.sleep(.8);raw=action(f'tail -n +{n+1} '+log);(r/(sys.argv[3]+'.txt')).write_text(raw);print('\n'.join(x for x in raw.splitlines() if x.startswith('VT')))
 if op=='shot':
