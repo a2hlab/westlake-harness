@@ -12,7 +12,7 @@ def save(p,name):
  entries[name]={'path':name,'source':str(p),'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'raw_sha256':hashlib.sha256(raw).hexdigest(),'raw_bytes':len(raw),'gzip':packed}
 for name in sys.argv[1:]:
  for p in sorted((R/name).iterdir()):
-  if p.is_file() and (p.suffix in ('.json','.jsonl','.log','.txt','.jpeg','.stderr','.sh','.data') or p.name=='child.stderr' or p.name.startswith('cppcrash-')):
+  if p.is_file() and (p.suffix in ('.json','.jsonl','.log','.txt','.jpeg','.stderr','.sh','.data','.csv','.svg') or p.name=='child.stderr' or p.name.startswith('cppcrash-')):
    save(p,name+'/'+p.name)
 for name in ('framework-candidate',):
  for p in sorted((R/name).iterdir()):
