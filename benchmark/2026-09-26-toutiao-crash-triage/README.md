@@ -1,4 +1,4 @@
-# Toutiao crash triage (#46): six signatures, three fixes built
+# Toutiao crash triage (#46): six signatures, four fixes ready
 
 Every saved Toutiao run on the OH boards crashes. #46 triaged the existing evidence offline, with no board time: 19+ #38 runs on board 5ea34a45 (`ability38/*`) and the #42 runs on board 5cd1e3dd (`aot42/*`). Each class below gets a root-cause hypothesis, its evidence, a fix and a verification method. They are ordered by the outer loop's priority: first what blocks "tap a feed item, read the article", then what burns CPU.
 
@@ -7,7 +7,7 @@ Every saved Toutiao run on the OH boards crashes. #46 triaged the existing evide
 | 1 | RenderThread SIGSEGV@0, `libwebviewchromium.so` vaddr `0x1e006f0` (cppcrash `+0x3e026f0` / `+0x26016f0`) | shim `dlopen()` opens `libGLESv2.so` before its §734 GLES translation → NDK facade → GrContext NULL → Chromium 109 flushes NULL in `~SkiaOutputSurfaceImplOnGpu` | **built**: westlake `fix/webview-gles-order-46` `87fb17b`, shim `ecc7b12c…` | symbolization verified; cause partially; fix unverified |
 | 2 | `npth-dumper-thr` spins at one full core (≈45% of process samples) | libnpth's "dump pthread" routine (`0x17930`) walks Bionic's thread list `x = *x`; musl `struct pthread` offset 0 is `self` | **built**: one-instruction patch, `libnpth.so` `8b8d559c…` | verified (static + outer-loop live sample); patch unverified |
 | 3 | `work_thread` SIGABRT, empty backtrace | a **forked child**, not the app: Umeng ZID's root probe (`libumeng-spy.so` `getNativeID`) forked from Umeng's `work_thread` HandlerThread | none needed for the app; abort site inside the child needs one experiment | partially |
-| 4 | `TicketGuardNetw` SIGSEGV@0x28 (#42 verify-r2b) | `libttboringssl.so` (BoringSSL ABI) calls `HMAC_Init_ex`, which resolved to OH's OpenSSL 3 `libcrypto_openssl.z.so`; its `HMAC_CTX_init` came from `libttcrypto.so` | experiment: load the tt crypto pair as Android-ABI targets | partially |
+| 4 | `TicketGuardNetw` SIGSEGV@0x28 (#42 verify-r2b) | a default-namespace **second copy** of `libttboringssl.so`/`libttcrypto.so` (pulled in by non-target libraries such as `libdelta.so`) binds `HMAC_Init_ex` to OH's OpenSSL 3, which OH musl searches first in load order; its `HMAC_CTX_init` still binds to `libttcrypto.so` | **launcher policy, no rebuild**: 15 libraries added to `WESTLAKE_ANDROID_NATIVE_TARGETS`, run.sh `0915047…` (§7) | loader rule and two copies verified; caller by elimination partially; fix unverified |
 | 5 | `PatchUpdateMana` → shadowhook → `calloc` → `__libc_malloc_impl+1332` writes NULL (#42 prerun) | heap already corrupt; the corrupter is unknown | experiment | unverified |
 | 6 | post-WebView-fix SIGTRAP/TRAP_BRKPT on `ThreadPoolForeg` (first article with a video) | hollow MediaCodec from `native_setup` + unregistered `getOwnCodecInfo` → `UnsatisfiedLinkError` (an Error) → Chromium FATAL `jni_android.cc(315)` + `brk` | **built**: westlake `fix/mediacodec-unsupported-46` `ddb2f48`, bridge `d4fae8e5…` | cause verified; fix unverified |
 
@@ -165,12 +165,50 @@ codex-2 put shim `ecc7b12c` on 5ea34a45 (`ability38/wv46-articles-*`). Two artic
 
   Residual risk: a type OH can create, e.g. AAC audio, will reach more of the 31 still-unregistered natives. If one is called, the same FATAL follows. Registering the rest with AOSP-equivalent `IllegalStateException` bodies is the follow-up.
 
+## 7. TicketGuard HMAC split: make the app's BoringSSL pair exist once, in the Android namespace
+
+Evidence: [evidence/tt-namespace.txt](evidence/tt-namespace.txt). This refines §4.
+
+- **Two copies (verified).** One process (`wv46-articles-3` maps) maps **two** images each of `libttboringssl.so`, `libttcrypto.so` and `libsscronet.so`, and one `libcrypto_openssl.z.so`.
+  - `libsscronet.so` is an Android-ABI target: `System.loadLibrary` routes it into the isolated `westlake_android_app` namespace (`dlopen_ns`, inheriting only libc/libdl/libm/libz/liblog), and its DT_NEEDED pair loads there.
+  - Non-target libraries that also need the pair load with plain `dlopen(RTLD_LOCAL)` in the default namespace, and their DT_NEEDED pair loads a second time there. #42 verify-r2b loaded `libdelta.so` this way.
+  - `WESTLAKE_ANDROID_NATIVE_TARGETS` routes only `System.loadLibrary` calls. It cannot move a DT_NEEDED dependency of a default-namespace library.
+- **Why only the default copy splits (verified from OH source).** OH 6.1.0.31 musl `do_relocs` resolves every import by walking the global DSO chain **in load order**. Each DSO it visits is either global (exe, preload, ldso) or a dependency of an earlier dlopen that `check_sym_accessible()` says is visible from the relocating DSO's namespace (`dynlink.c` 614–631, 735–760, 1070–1086).
+  - For the default copy, `libcrypto_openssl.z.so` (default namespace, loaded earlier) is visible and first. `HMAC_Init_ex`, `HMAC_Update` and `HMAC_Final` bind to OpenSSL 3. `HMAC_CTX_init` and `HMAC_CTX_cleanup` exist only in `libttcrypto.so`.
+  - For the namespace copy, OpenSSL 3 is not visible and everything binds to `libttcrypto.so`. Cronet's TLS, which runs on that copy, works; the feed loads.
+  - A BoringSSL-layout `HMAC_CTX` handed to OpenSSL 3 reads `i_ctx` = NULL and faults at `+0x28`, exactly the crash.
+  - The caller is identified by elimination (**partially**). Only a default-namespace copy can reach OpenSSL 3's `HMAC_Init_ex`, and `libttboringssl.so` is the only APK importer of it.
+- **Fix: launcher policy, no rebuild.** Every library whose DT_NEEDED closure reaches the pair must itself load in the namespace. `scripts/tt_closure.py` computes the reverse-dependency closure over the APK's 138 libraries: 17 libraries, 2 already targets. It adds:
+  - `libbdvideouploader`, `libcjtfccsm`, `libdelta`, `libmffmpeg`, `libropaencrypt`, `libtt_cnpa_sdk`
+  - `libttboringssl`, `libttcrypto`, `libttmplayer`, `libttmverify`, `libttmverifylite`
+  - `libvcn`, `libvcnverify`, `libvcnverifylite`, `libxbnlog`
+
+  `scripts/apply_tt_targets.py` rewrites the one export line, is idempotent and keeps the existing order. Applied to the wv46 run.sh (`65530f5c…`, the one deployed with shim `ecc7b12c`), the result is `~/a2hlab/ws/out-tt46/run.sh`, sha256 `0915047878fcb82effe1e3801d46710fae3d414ded32f8beb5b5c74ee675f17e`, with 34 targets. For `probe_source_app.py`, add one `--android-native-target <lib>` per added name.
+- **What changes for the moved libraries.** Their non-APK dependencies resolve through the namespace search path:
+  - `libandroid.so` and `libjnigraphics.so` resolve to the `webview-t-lib` copies, as for the 19 current targets;
+  - `libstdc++.so` resolves to `/data/local/tmp/asx`;
+  - only `libttmplayer.so` needs `libEGL`/`libGLESv2`/`libOpenSLES`. Today `libGLESv2.so` already resolves to `/system/lib64/ndk/libGLESv2.so`, which the namespace also picks. `libEGL`/`libOpenSLES` may move from `platformsdk`/`/system/lib64` to `/system/lib64/ndk` if that directory holds them. This is checked on the board below.
+- **Why not preload `libttcrypto.so` globally.** It would bind OH system libraries that use OpenSSL 3 to BoringSSL, the same split in the other direction.
+- **Verify on a board.** Use the patched run.sh on top of shim `ecc7b12c`, bridge `d4fae8e5` and patched `libnpth` `8b8d559c`:
+
+  | Check | Expected |
+  |---|---|
+  | offset-0 r-xp images of `libttboringssl.so`, `libttcrypto.so`, `libsscronet.so` in `/proc/<pid>/maps` | 1 each |
+  | `grep -c 'TicketGuardNetw' child.stderr` in a `Fatal signal` banner | 0 |
+  | `[SOURCE-NATIVE-LOAD-FAIL]` lines for the 15 added names | 0 |
+  | feed | loads (Cronet TLS unchanged) |
+  | article with a video, 5 min after the tap | alive |
+  | GL/audio files mapped | recorded, and compared with today's `ndk/libGLESv2.so` + `platformsdk/libEGL.so` |
+
+  If a native `dlopen` from a default-namespace library still creates a second image, the image count shows it. The generic follow-up is for the loader to route a library into the namespace whenever its DT_NEEDED closure intersects the target set.
+
 ## Rules this adds
 
 - Compute a stripped library's vaddr from the absolute pc minus the base of its r-xp mapping at file offset 0. faultloggerd's rel-pc base varies by run.
 - A `Fatal signal` banner whose thread is not in the app's task list is a child process. Check x20/x21 against the app pid before counting it as an app crash.
 - In `webview_bionic_shim.c` `dlopen()`, every name translation must precede the `.z.so` probe, because the probe returns the plain name whenever it opens. This is the second instance of this bug.
 - Never delete or refuse an app library whose `System.loadLibrary` is unguarded on the Application path. Patch or stub it.
+- A library that must load in the Android namespace brings its whole reverse-dependency closure with it. Otherwise a default-namespace consumer loads a second copy, and OH musl's load-order lookup binds that copy's imports to whatever the default namespace loaded first.
 - A framework native that the runtime does not implement must fail the way AOSP fails, with the Exception type AOSP throws, or not exist on a reachable path. A hollow success defers the failure to an unregistered native, and `UnsatisfiedLinkError` escapes every `catch (Exception)`. In Chromium that means FATAL + `brk`.
 - The npth fix is to leave musl's `pthread_self()` alone and neutralise the one Bionic-layout walk. No Android-ABI library can be given a Bionic `pthread_internal_t`.
 
@@ -185,6 +223,7 @@ codex-2 put shim `ecc7b12c` on 5ea34a45 (`ability38/wv46-articles-*`). Two artic
 | `evidence/dex-and-load-chains.txt` | dex call chains (heap dump, Umeng, `loadLibrary("npth")`), `isSoLoaded` guard scan, DT_NEEDED |
 | `evidence/ticketguard-hmac.txt` | banner, maps, OH OpenSSL symbolization, export comparison |
 | `evidence/crash-run-map.txt` | per-run signatures, #38 and #42 |
+| `evidence/tt-namespace.txt` | TicketGuard split: two images, OH musl lookup rule, closure, run.sh diff |
 | `evidence/sigtrap-mediacodec.txt` | post-fix SIGTRAP: stderr, banner, engine trap site, unregistered natives, westlake diff, rebuild hashes |
-| `scripts/` | `build_shim.sh`, `patch_npth.py`, `build_bridge_mc.py`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
+| `scripts/` | `build_shim.sh`, `patch_npth.py`, `build_bridge_mc.py`, `tt_closure.py`, `apply_tt_targets.py`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
 | `results.json` | machine-readable summary |

@@ -1,0 +1,129 @@
+# TicketGuardNetw SIGSEGV@0x28: namespace split of the app's BoringSSL pair
+
+## (1) two images of the pair in one process (wv46-articles-3 maps-before.txt, sha256 2c425226130fd2a8)
+libttboringssl.so offset-0 images: 2
+    7f14bc0000-7f14c1b000 r-xp /data/local/tmp/asx/lib/arm64-v8a/libttboringssl.so
+    7f1fe40000-7f1fe9b000 r-xp /data/local/tmp/asx/lib/arm64-v8a/libttboringssl.so
+libttcrypto.so offset-0 images: 2
+    7e5f180000-7e5f29d000 r-xp /data/local/tmp/asx/lib/arm64-v8a/libttcrypto.so
+    7f14c40000-7f14d5d000 r-xp /data/local/tmp/asx/lib/arm64-v8a/libttcrypto.so
+libsscronet.so offset-0 images: 2
+    7d8bfc0000-7d8c3bd000 r-xp /data/local/tmp/asx/lib/arm64-v8a/libsscronet.so
+    7f14d80000-7f1517d000 r-xp /data/local/tmp/asx/lib/arm64-v8a/libsscronet.so
+libcrypto_openssl.z.so offset-0 images: 1
+    7fb0080000-7fb01dc000 r--p /system/lib64/chipset-sdk-sp/libcrypto_openssl.z.so
+
+## (2) a non-target library that needs the pair is loaded in the default namespace (formal-verify-r2b loader trace)
+SOURCE-NATIVE-LOADER] path=/data/local/tmp/asx/lib/arm64-v8a/libdelta.so
+SOURCE-NATIVE-LOADER] path=/data/local/tmp/asx/lib/arm64-v8a/libsscronet.so
+(libdelta.so is not in WESTLAKE_ANDROID_NATIVE_TARGETS; its DT_NEEDED libttboringssl.so/libttcrypto.so therefore load again in the default namespace)
+
+## (3) OH 6.1.0.31 musl relocation lookup (third_party/musl/porting/linux/user/ldso/dynlink.c, read-only)
+static bool check_sym_accessible(struct dso *dso, ns_t *ns)
+{
+	if (!dso || !dso->namespace || !ns) {
+		LD_LOGD("check_sym_accessible invalid parameter!");
+		return false;
+	}
+	if (dso->namespace == ns) {
+		return true;
+	}
+	for (int i = 0; i < dso->parents_count; i++) {
+		if (dso->parents[i]->namespace == ns) {
+			return true;
+		}
+	}
+	LD_LOGD(
+		"check_sym_accessible dso name [%{public}s] ns_name [%{public}s] not accessible!", dso->name, ns->ns_name);
+	return false;
+}
+	}
+}
+
+/* The list of so that can be accessed during relocation include:
+ * - The is_global flag of the so is true which means accessible by default.
+ *   Global so includes exe, ld preload so and ldso.
+ * - We only check whether ns is accessible for the so if is_reloc_head_so_dep is true.
+ *
+ *   How to set is_reloc_head_so_dep:
+ *   When dlopen A, we set is_reloc_head_so_dep to true for
+ *   all direct and indirect dependent sos of A, including A itself. */
+static void add_can_search_so_list_in_dso(struct dso *dso_relocating, struct dso *start_check_dso) {
+	struct dso *p = start_check_dso;
+	for (; p; p = p->syms_next) {
+		if (p->is_global) {
+			add_reloc_can_search_dso(dso_relocating, p);
+			continue;
+		}
+
+		if (p->is_reloc_head_so_dep) {
+			if (dso_relocating->namespace && check_sym_accessible(p, dso_relocating->namespace)) {
+				add_reloc_can_search_dso(dso_relocating, p);
+			}
+		}
+	}
+
+			name = strings + sym->st_name;
+			ctx = type==REL_COPY ? head->syms_next : head;
+			struct verinfo vinfo = { .s = name, .v = ""};
+
+			vinfo.use_vna_hash = get_vna_hash(dso, sym_index, &vinfo.vna_hash);
+			if (!vinfo.use_vna_hash && dso->versym && (dso->versym[sym_index] & 0x7fff) >= 0) {
+				get_verinfo(dso, sym_index, &vinfo);
+			}
+			if (dso->cache_sym_index == sym_index) {
+				def = (struct symdef){ .dso = dso->cache_dso, .sym = dso->cache_sym };
+			} else {
+				def = (sym->st_info>>4) == STB_LOCAL
+					? (struct symdef){ .dso = dso, .sym = sym }
+					: dso != &ldso ? find_sym_by_saved_so_list(type, ctx, &vinfo, type==REL_PLT, dso)
+					: find_sym2(ctx, &vinfo, type==REL_PLT, 0, dso->namespace);
+				dso->cache_sym_index = sym_index;
+				dso->cache_dso = def.dso;
+
+## (4) reverse-dependency closure of the pair (scripts/tt_closure.py)
+reverse-dependency closure of the tt crypto pair (17):
+  libbdvideouploader.so        ADD
+  libcjtfccsm.so               ADD
+  libdelta.so                  ADD
+  liblynxsecurity.so           already target
+  libmffmpeg.so                ADD
+  libropaencrypt.so            ADD
+  libsscronet.so               already target
+  libtt_cnpa_sdk.so            ADD
+  libttboringssl.so            ADD
+  libttcrypto.so               ADD
+  libttmplayer.so              ADD
+  libttmverify.so              ADD
+  libttmverifylite.so          ADD
+  libvcn.so                    ADD
+  libvcnverify.so              ADD
+  libvcnverifylite.so          ADD
+  libxbnlog.so                 ADD
+non-APK deps of the closure (resolved by the namespace search path): ['libEGL.so', 'libGLESv2.so', 'libOpenSLES.so', 'libandroid.so', 'libjnigraphics.so', 'libstdc++.so']
+
+WESTLAKE_ANDROID_NATIVE_TARGETS=libanimax.so:libbdheif.so:libc++_shared.so:libgifimage.so:libjato.so:libkeva.so:liblivestrategy.so:liblynx.so:liblynx_markdown.so:liblynxsecurity.so:libnapi.so:libnpth.so:libnpth_unw.so:libnpth_unwind.so:libquick.so:libsscronet.so:libttheif_dec.so:libvcbasekit.so:libvision_core.so:libbdvideouploader.so:libcjtfccsm.so:libdelta.so:libmffmpeg.so:libropaencrypt.so:libtt_cnpa_sdk.so:libttboringssl.so:libttcrypto.so:libttmplayer.so:libttmverify.so:libttmverifylite.so:libvcn.so:libvcnverify.so:libvcnverifylite.so:libxbnlog.so
+
+## (5) GL/audio deps inside the closure (only libttmplayer.so)
+ 0x0000000000000001 (NEEDED)             Shared library: [liblog.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libandroid.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libEGL.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libm.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libz.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libGLESv2.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libOpenSLES.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libjnigraphics.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libmffmpeg.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libvcbasekit.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libdl.so]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so]
+
+## (6) product: patched run.sh (scripts/apply_tt_targets.py, idempotent)
+65530f5cec5249c71ff03399a4fb78a5f3b9a264fd621be9bac6e5aace6e075c  /home/zhaoyue/a2hlab/board/5ea34a4500000000000000001123012c/ability38/ab-config/original-run.sh
+0915047878fcb82effe1e3801d46710fae3d414ded32f8beb5b5c74ee675f17e  /home/zhaoyue/a2hlab/ws/out-tt46/run.sh
+33c33
+< export WESTLAKE_ANDROID_NATIVE_TARGETS=libanimax.so:libbdheif.so:libc++_shared.so:libgifimage.so:libjato.so:libkeva.so:liblivestrategy.so:liblynx.so:liblynx_markdown.so:liblynxsecurity.so:libnapi.so:libnpth.so:libnpth_unw.so:libnpth_unwind.so:libquick.so:libsscronet.so:libttheif_dec.so:libvcbasekit.so:libvision_core.so
+---
+> export WESTLAKE_ANDROID_NATIVE_TARGETS=libanimax.so:libbdheif.so:libc++_shared.so:libgifimage.so:libjato.so:libkeva.so:liblivestrategy.so:liblynx.so:liblynx_markdown.so:liblynxsecurity.so:libnapi.so:libnpth.so:libnpth_unw.so:libnpth_unwind.so:libquick.so:libsscronet.so:libttheif_dec.so:libvcbasekit.so:libvision_core.so:libbdvideouploader.so:libcjtfccsm.so:libdelta.so:libmffmpeg.so:libropaencrypt.so:libtt_cnpa_sdk.so:libttboringssl.so:libttcrypto.so:libttmplayer.so:libttmverify.so:libttmverifylite.so:libvcn.so:libvcnverify.so:libvcnverifylite.so:libxbnlog.so
+
+## (7) GL files mapped today (articles-3): /system/lib64/ndk/libGLESv2.so /system/lib64/platformsdk/libEGL.so /system/lib64/platformsdk/libGLESv3.so 
