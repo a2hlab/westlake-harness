@@ -100,35 +100,9 @@
         "HMAC_Init_ex hmac.c:79 0x247e74"
       ],
       "root_cause": "default-namespace second copy of libttboringssl.so/libttcrypto.so (DT_NEEDED of non-target libs such as libdelta.so) binds HMAC_Init_ex/Update/Final to OH OpenSSL 3 (OH musl load-order lookup across accessible DSOs); HMAC_CTX_init/cleanup bind to libttcrypto.so",
-      "fix": {
-        "kind": "launcher policy (no rebuild)",
-        "script": "scripts/tt_closure.py + scripts/apply_tt_targets.py",
-        "closure_size": 17,
-        "added_targets": [
-          "libbdvideouploader.so",
-          "libcjtfccsm.so",
-          "libdelta.so",
-          "libmffmpeg.so",
-          "libropaencrypt.so",
-          "libtt_cnpa_sdk.so",
-          "libttboringssl.so",
-          "libttcrypto.so",
-          "libttmplayer.so",
-          "libttmverify.so",
-          "libttmverifylite.so",
-          "libvcn.so",
-          "libvcnverify.so",
-          "libvcnverifylite.so",
-          "libxbnlog.so"
-        ],
-        "run_sh_in_sha256": "65530f5cec5249c71ff03399a4fb78a5f3b9a264fd621be9bac6e5aace6e075c",
-        "run_sh_out": "~/a2hlab/ws/out-tt46/run.sh",
-        "run_sh_out_sha256": "0915047878fcb82effe1e3801d46710fae3d414ded32f8beb5b5c74ee675f17e"
-      },
       "r2": {
-        "loader_rule": "verified",
-        "two_copies": "verified",
-        "caller_identity": "partially",
+        "split_and_unroutable": "verified",
+        "ld_preload_viability": "verified",
         "fix_effective": "unverified"
       },
       "copies_in_process": {
@@ -136,6 +110,57 @@
         "libttcrypto.so": 2,
         "libsscronet.so": 2,
         "libcrypto_openssl.z.so": 1
+      },
+      "target_attempt_four46": {
+        "targets_added": [
+          "libttcrypto.so",
+          "libttboringssl.so",
+          "libdelta.so",
+          "liblynxsecurity.so"
+        ],
+        "images_at_consent": 1,
+        "images_during_video": 2,
+        "reason": "targets route only NativeLoader (System.loadLibrary); 10 of 15 direct DT_NEEDED dependants have no NativeLoader root (native dlopen, video path)"
+      },
+      "coverage": {
+        "direct_dependants": 15,
+        "nativeloader_roots": [
+          "libcjtfccsm.so",
+          "libdelta.so",
+          "liblynxsecurity.so",
+          "libsscronet.so"
+        ],
+        "no_nativeloader_root": [
+          "libbdvideouploader.so",
+          "libmffmpeg.so",
+          "libropaencrypt.so",
+          "libtt_cnpa_sdk.so",
+          "libttmverify.so",
+          "libttmverifylite.so",
+          "libvcn.so",
+          "libvcnverify.so",
+          "libvcnverifylite.so",
+          "libxbnlog.so"
+        ]
+      },
+      "fix_a_targets": {
+        "add": [
+          "libcjtfccsm.so",
+          "libdelta.so"
+        ],
+        "run_sh": "~/a2hlab/ws/out-tt46b/run-targets.sh",
+        "run_sh_sha256": "22c1d3df6529210fde522436a08643afea4d1791ebb6275df952a8c986f32e0f",
+        "targets": 21,
+        "sufficient": false,
+        "note": "removes NativeLoader-path copy only"
+      },
+      "fix_b_ld_preload": {
+        "lib": "/data/local/tmp/asx/lib/arm64-v8a/libttcrypto.so",
+        "position": "first",
+        "run_sh": "~/a2hlab/ws/out-tt46b/run-combined.sh",
+        "run_sh_sha256": "33b4ab080b87ac7005e2495e1adbba4fd3407b53626138ae69846bfdebec312d",
+        "viable_because": "all HMAC/EVP symbols unversioned; libttcrypto self-contains HMAC+EVP (DT_NEEDED libc/m/dl)",
+        "hijack_risk": "only libsqlite.z.so imports HMAC unversioned among in-process OH libs"
       }
     },
     {

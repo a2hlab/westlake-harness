@@ -1,0 +1,55 @@
+# TicketGuard root fix: coverage analysis + LD_PRELOAD fallback
+
+## four46-fresh2 deployed only 4 targets (ttcrypto,ttboringssl,delta,lynxsecurity); ttcrypto/ttboringssl were 1 image AT CONSENT, but the outer loop observed 2 again while videos played
+
+## coverage: 15 direct DT_NEEDED dependants of the tt pair; only 4 go through NativeLoader
+# direct DT_NEEDED dependants of the tt crypto pair: 15
+  libbdvideouploader.so      NO NativeLoader root
+  libcjtfccsm.so             NativeLoader-root
+  libdelta.so                NativeLoader-root
+  liblynxsecurity.so         NativeLoader-root
+  libmffmpeg.so              NO NativeLoader root
+  libropaencrypt.so          NO NativeLoader root
+  libsscronet.so             NativeLoader-root
+  libtt_cnpa_sdk.so          NO NativeLoader root
+  libttboringssl.so          via libcjtfccsm.so,libdelta.so,libsscronet.so
+  libttmverify.so            NO NativeLoader root
+  libttmverifylite.so        NO NativeLoader root
+  libvcn.so                  NO NativeLoader root
+  libvcnverify.so            NO NativeLoader root
+  libvcnverifylite.so        NO NativeLoader root
+  libxbnlog.so               NO NativeLoader root
+
+# minimal target set (NativeLoader roots that must be isolated):
+  libcjtfccsm.so              ADD
+  libdelta.so                 ADD
+  liblynxsecurity.so          (already target)
+  libsscronet.so              (already target)
+
+# libs to ADD to WESTLAKE_ANDROID_NATIVE_TARGETS: libcjtfccsm.so libdelta.so
+# direct dependants with NO NativeLoader root (targets cannot route -> fallback): libbdvideouploader.so libmffmpeg.so libropaencrypt.so libtt_cnpa_sdk.so libttmverify.so libttmverifylite.so libvcn.so libvcnverify.so libvcnverifylite.so libxbnlog.so
+
+WESTLAKE_ANDROID_NATIVE_TARGETS=libanimax.so:libbdheif.so:libc++_shared.so:libgifimage.so:libjato.so:libkeva.so:liblivestrategy.so:liblynx.so:liblynx_markdown.so:liblynxsecurity.so:libnapi.so:libnpth.so:libnpth_unw.so:libnpth_unwind.so:libquick.so:libsscronet.so:libttheif_dec.so:libvcbasekit.so:libvision_core.so:libcjtfccsm.so:libdelta.so
+
+## HMAC symbol versioning (decides LD_PRELOAD): all unversioned
+app libttcrypto exports:
+   HMAC_Init_ex
+   HMAC_CTX_init
+   HMAC_CTX_new
+app libttboringssl UND refs: HMAC_Init_ex HMAC_CTX_init HMAC_Update (no version)
+OH libcrypto_openssl exports HMAC_Init_ex + HMAC_CTX_new but NOT HMAC_CTX_init (OpenSSL3 removed it); unversioned
+libttcrypto self-contains HMAC+EVP, DT_NEEDED only libc/m/dl -> one LD_PRELOAD entry suffices
+
+## LD_PRELOAD hijack scan: OH .z.so in the app-process maps that UNVERSIONED-import HMAC
+  only libsqlite.z.so (1). Every other in-process OH lib imports no HMAC.
+
+## products (from run.sh 65530f5c, the wv46 deployed one)
+22c1d3df6529210fde522436a08643afea4d1791ebb6275df952a8c986f32e0f  /home/zhaoyue/a2hlab/ws/out-tt46b/run-targets.sh
+33b4ab080b87ac7005e2495e1adbba4fd3407b53626138ae69846bfdebec312d  /home/zhaoyue/a2hlab/ws/out-tt46b/run-combined.sh
+run-targets.sh: 21 targets (+libcjtfccsm +libdelta)
+liblynxsecurity.so
+libsscronet.so
+libcjtfccsm.so
+libdelta.so
+run-combined.sh LD_PRELOAD:
+export LD_PRELOAD=/data/local/tmp/asx/lib/arm64-v8a/libttcrypto.so:/data/local/tmp/asx/libandroid_native_network_compat.so:/data/local/tmp/asx/webview-t-lib/libwebview_bionic_shim.so

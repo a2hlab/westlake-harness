@@ -7,7 +7,7 @@ Every saved Toutiao run on the OH boards crashes. #46 triaged the existing evide
 | 1 | RenderThread SIGSEGV@0, `libwebviewchromium.so` vaddr `0x1e006f0` (cppcrash `+0x3e026f0` / `+0x26016f0`) | shim `dlopen()` opens `libGLESv2.so` before its §734 GLES translation → NDK facade → GrContext NULL → Chromium 109 flushes NULL in `~SkiaOutputSurfaceImplOnGpu` | **built**: westlake `fix/webview-gles-order-46` `87fb17b`, shim `ecc7b12c…` | symbolization verified; cause partially; fix unverified |
 | 2 | `npth-dumper-thr` spins at one full core (≈45% of process samples) | libnpth's "dump pthread" routine (`0x17930`) walks Bionic's thread list `x = *x`; musl `struct pthread` offset 0 is `self` | **built**: one-instruction patch, `libnpth.so` `8b8d559c…` | verified (static + outer-loop live sample); patch unverified |
 | 3 | `work_thread` SIGABRT, empty backtrace | a **forked child**, not the app: Umeng ZID's root probe (`libumeng-spy.so` `getNativeID`) forked from Umeng's `work_thread` HandlerThread | none needed for the app; abort site inside the child needs one experiment | partially |
-| 4 | `TicketGuardNetw` SIGSEGV@0x28 (#42 verify-r2b) | a default-namespace **second copy** of `libttboringssl.so`/`libttcrypto.so` (pulled in by non-target libraries such as `libdelta.so`) binds `HMAC_Init_ex` to OH's OpenSSL 3, which OH musl searches first in load order; its `HMAC_CTX_init` still binds to `libttcrypto.so` | **launcher policy, no rebuild**: 15 libraries added to `WESTLAKE_ANDROID_NATIVE_TARGETS`, run.sh `0915047…` (§7) | loader rule and two copies verified; caller by elimination partially; fix unverified |
+| 4 | `TicketGuardNetw` SIGSEGV@0x28 (#42 verify-r2b) | a default-namespace **second copy** of the tt BoringSSL pair binds `HMAC_Init_ex` to OH's OpenSSL 3 (load-order lookup); `HMAC_CTX_init` (absent from OpenSSL 3) stays in `libttcrypto` — mismatched HMAC_CTX | **config, no rebuild**: Fix A targets `+cjtfccsm +delta` (run `22c1d3df`) for NativeLoader paths, Fix B `LD_PRELOAD libttcrypto` (run `33b4ab08`) for the native-dlopen video path | split + 10 unroutable dependants verified; LD_PRELOAD viability verified; effect unverified |
 | 5 | `PatchUpdateMana` → shadowhook → `calloc` → `__libc_malloc_impl+1332` writes NULL (#42 prerun) | heap already corrupt; the corrupter is unknown | experiment | unverified |
 | 6 | post-WebView-fix SIGTRAP/TRAP_BRKPT on `ThreadPoolForeg` (first article with a video) | hollow MediaCodec from `native_setup` + unregistered `getOwnCodecInfo` → `UnsatisfiedLinkError` (an Error) → Chromium FATAL `jni_android.cc(315)` + `brk` | **built**: westlake `fix/mediacodec-unsupported-46` `ddb2f48`, bridge `d4fae8e5…` | cause verified; fix unverified |
 | 7 | SIGTRAP/`brk` on `Chrome_InProcRe` (in-process renderer), engine `0x37cfec8` | Blink PartitionAlloc (blink/blink_style) recommit `mprotect(PROT_RW)` fails after the renderer's memory climbs unbounded (~200 MiB/min, RSS 0.86→2.06 GiB over three videos) — in-process because `--single-process` (#20) means the renderer never exits to return it | **no build; run-env + route**: raise the board's mapping/commit ceiling before launch (mitigation), multiprocess renderer (root, needs child-service spawn) | handler + growth verified; exhausted resource (mapping-count vs commit) partially; mitigation unverified |
@@ -179,29 +179,25 @@ Evidence: [evidence/tt-namespace.txt](evidence/tt-namespace.txt). This refines �
   - For the namespace copy, OpenSSL 3 is not visible and everything binds to `libttcrypto.so`. Cronet's TLS, which runs on that copy, works; the feed loads.
   - A BoringSSL-layout `HMAC_CTX` handed to OpenSSL 3 reads `i_ctx` = NULL and faults at `+0x28`, exactly the crash.
   - The caller is identified by elimination (**partially**). Only a default-namespace copy can reach OpenSSL 3's `HMAC_Init_ex`, and `libttboringssl.so` is the only APK importer of it.
-- **Fix: launcher policy, no rebuild.** Every library whose DT_NEEDED closure reaches the pair must itself load in the namespace. `scripts/tt_closure.py` computes the reverse-dependency closure over the APK's 138 libraries: 17 libraries, 2 already targets. It adds:
-  - `libbdvideouploader`, `libcjtfccsm`, `libdelta`, `libmffmpeg`, `libropaencrypt`, `libtt_cnpa_sdk`
-  - `libttboringssl`, `libttcrypto`, `libttmplayer`, `libttmverify`, `libttmverifylite`
-  - `libvcn`, `libvcnverify`, `libvcnverifylite`, `libxbnlog`
-
-  `scripts/apply_tt_targets.py` rewrites the one export line, is idempotent and keeps the existing order. Applied to the wv46 run.sh (`65530f5c…`, the one deployed with shim `ecc7b12c`), the result is `~/a2hlab/ws/out-tt46/run.sh`, sha256 `0915047878fcb82effe1e3801d46710fae3d414ded32f8beb5b5c74ee675f17e`, with 34 targets. For `probe_source_app.py`, add one `--android-native-target <lib>` per added name.
-- **What changes for the moved libraries.** Their non-APK dependencies resolve through the namespace search path:
-  - `libandroid.so` and `libjnigraphics.so` resolve to the `webview-t-lib` copies, as for the 19 current targets;
-  - `libstdc++.so` resolves to `/data/local/tmp/asx`;
-  - only `libttmplayer.so` needs `libEGL`/`libGLESv2`/`libOpenSLES`. Today `libGLESv2.so` already resolves to `/system/lib64/ndk/libGLESv2.so`, which the namespace also picks. `libEGL`/`libOpenSLES` may move from `platformsdk`/`/system/lib64` to `/system/lib64/ndk` if that directory holds them. This is checked on the board below.
-- **Why not preload `libttcrypto.so` globally.** It would bind OH system libraries that use OpenSSL 3 to BoringSSL, the same split in the other direction.
-- **Verify on a board.** Use the patched run.sh on top of shim `ecc7b12c`, bridge `d4fae8e5` and patched `libnpth` `8b8d559c`:
+- **Why the first target attempt did not hold (verified).** `four46-fresh2` deployed a 4-target run.sh (`libttcrypto`, `libttboringssl`, `libdelta`, `liblynxsecurity`); the pair was **1 image at consent** but the outer loop saw 2 again once videos played. Adding a library name to `WESTLAKE_ANDROID_NATIVE_TARGETS` only routes it if it arrives through NativeLoader (`System.loadLibrary`); it does nothing for a library a native `dlopen` pulls in. `scripts/tt_cover.py` crosses the 15 direct DT_NEEDED dependants of the pair with the 63 libraries this run actually took through NativeLoader:
+  - **4 have a NativeLoader root** — `libcjtfccsm`, `libdelta`, `liblynxsecurity`, `libsscronet` — so a target moves them into the namespace.
+  - **10 have no NativeLoader root** — `libbdvideouploader`, `libmffmpeg`, `libropaencrypt`, `libtt_cnpa_sdk`, `libttmverify`, `libttmverifylite`, `libvcn`, `libvcnverify`, `libvcnverifylite`, `libxbnlog` — reachable only by a native `dlopen` (the video path: `ttmplayer`/`vcn`/`mffmpeg`), which no target can route. This is why the second image reappeared during video playback, and it is a hard limit of the target mechanism, not a missing name.
+- **Fix A — complete the routable set (no rebuild, necessary but not sufficient).** Add the two missing NativeLoader roots `libcjtfccsm` and `libdelta` (`libsscronet`, `liblynxsecurity` already targets). `scripts/apply_tt_targets.py` on the wv46 run.sh (`65530f5c…`) gives `~/a2hlab/ws/out-tt46b/run-targets.sh`, sha256 `22c1d3df6529210fde522436a08643afea4d1791ebb6275df952a8c986f32e0f`, 21 targets. This removes every NativeLoader-path second copy, but the 10 native-`dlopen` dependants can still create one during video playback.
+- **Fix B — LD_PRELOAD the app's BoringSSL (no rebuild, closes the gap).** Every HMAC/EVP symbol is **unversioned** on all three sides (app `libttcrypto` exports, app `libttboringssl` imports, OH `libcrypto_openssl` exports; OH exports `HMAC_CTX_new` but not `HMAC_CTX_init`, which OpenSSL 3 removed). So one `libttcrypto.so` placed first in `LD_PRELOAD` — it self-contains HMAC + EVP with DT_NEEDED only libc/m/dl — makes **every** unversioned HMAC/EVP reference in the default namespace bind to BoringSSL, whichever way its consumer was loaded. The namespace copy is already all-BoringSSL, so it is unaffected. `scripts/apply_ld_preload.py` on Fix A's run.sh gives `~/a2hlab/ws/out-tt46b/run-combined.sh`, sha256 `33b4ab080b87ac7005e2495e1adbba4fd3407b53626138ae69846bfdebec312d` (both fixes together).
+  - **Hijack risk is one library (verified scan).** A global BoringSSL could in principle re-bind an OH system library's HMAC. Of every OH `.z.so` in the app-process maps, only `libsqlite.z.so` imports HMAC unversioned; all others import none. So the only OH component whose HMAC would move to BoringSSL is SQLite, and only if Toutiao exercises SQLite's HMAC path. The existing `LD_PRELOAD` already carries two shims without harming OH libraries, so a global preload is an established shape here; this adds one entry and one narrow risk to check on the board.
+- **What changes for the moved libraries (Fix A).** Non-APK deps resolve through the namespace search path: `libandroid`/`libjnigraphics` to the `webview-t-lib` copies (as the 19 current targets), `libstdc++` to `/data/local/tmp/asx`; only `libttmplayer` needs GL/audio, and `libGLESv2` already resolves to `/system/lib64/ndk/libGLESv2.so`. Recorded on the board below.
+- **Verify on a board.** Apply Fix A first (cheap); if the pair is still 2 images during video, apply Fix B. On top of shim `ecc7b12c`, bridge `d4fae8e5`, patched `libnpth` `8b8d559c`:
 
   | Check | Expected |
   |---|---|
-  | offset-0 r-xp images of `libttboringssl.so`, `libttcrypto.so`, `libsscronet.so` in `/proc/<pid>/maps` | 1 each |
+  | offset-0 r-xp images of `libttboringssl`, `libttcrypto`, `libsscronet` in `/proc/<pid>/maps`, sampled during a **video** article | 1 each |
   | `grep -c 'TicketGuardNetw' child.stderr` in a `Fatal signal` banner | 0 |
-  | `[SOURCE-NATIVE-LOAD-FAIL]` lines for the 15 added names | 0 |
-  | feed | loads (Cronet TLS unchanged) |
+  | `[SOURCE-NATIVE-LOAD-FAIL]` for the added target names | 0 |
+  | feed / Cronet TLS | loads |
+  | Fix B only: SQLite-backed features (history, saved articles, login persistence) | work (SQLite HMAC not broken) |
   | article with a video, 5 min after the tap | alive |
-  | GL/audio files mapped | recorded, and compared with today's `ndk/libGLESv2.so` + `platformsdk/libEGL.so` |
 
-  If a native `dlopen` from a default-namespace library still creates a second image, the image count shows it. The generic follow-up is for the loader to route a library into the namespace whenever its DT_NEEDED closure intersects the target set.
+  If Fix A alone leaves 2 images, that confirms the native-`dlopen` path and selects Fix B. The generic long-term follow-up is for the loader to route a library into the namespace whenever its DT_NEEDED closure intersects the target set, which would make Fix A sufficient on its own.
 
 ## 8. In-process renderer PartitionAlloc OOM (the fifth long-survival crash)
 
@@ -248,6 +244,7 @@ With the four fixes deployed, two of three video articles survived >120 s; the t
 | `evidence/crash-run-map.txt` | per-run signatures, #38 and #42 |
 | `evidence/inproc-oom.txt` | in-process renderer PartitionAlloc OOM: banner, register decode, handler disasm, RSS/VSZ/VMA curve |
 | `evidence/tt-namespace.txt` | TicketGuard split: two images, OH musl lookup rule, closure, run.sh diff |
+| `evidence/tt-rootfix.txt` | TicketGuard root fix: NativeLoader coverage, HMAC versioning, LD_PRELOAD hijack scan, both run.sh products |
 | `evidence/sigtrap-mediacodec.txt` | post-fix SIGTRAP: stderr, banner, engine trap site, unregistered natives, westlake diff, rebuild hashes |
-| `scripts/` | `build_shim.sh`, `patch_npth.py`, `build_bridge_mc.py`, `tt_closure.py`, `apply_tt_targets.py`, `mem_curve.py`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
+| `scripts/` | `build_shim.sh`, `patch_npth.py`, `build_bridge_mc.py`, `tt_closure.py`, `tt_cover.py`, `apply_tt_targets.py`, `apply_ld_preload.py`, `mem_curve.py`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
 | `results.json` | machine-readable summary |
