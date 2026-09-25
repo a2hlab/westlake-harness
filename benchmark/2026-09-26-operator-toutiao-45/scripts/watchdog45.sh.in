@@ -7,6 +7,40 @@ STAGE=@@STAGE@@
 SOCKET=@@SOCKET@@
 UID45=@@UID@@
 mkdir -p "$D" "$C"
+# pidof includes npth fork children whose comm is work_thread. Preserve only the
+# authoritative current app PID; report PPID=1 separately from other stale children.
+cleanup_toutiao() {
+ clean_count=0; orphan_count=0
+ for stale in $(pidof com.ss.android.article.news); do
+  [ "$stale" != "$child" ] || continue
+  [ -r "/proc/$stale/stat" ] || continue
+  before=$(cat "/proc/$stale/stat")
+  rest=${before##*) }; set -- $rest; state=$1; ppid45=$2
+  [ "$state" != Z ] || continue
+  printf '%s\n' "$before" >> "$dest/cleanup-before.txt"
+  # Recheck identity immediately before signaling; never use broad killall.
+  after=$(cat "/proc/$stale/stat" 2>/dev/null)
+  [ "${before##*) }" = "${after##*) }" ] || {
+   b=${before##*) }; a=${after##*) }; set -- $b; shift 19; birth_before=$1
+   set -- $a; [ "$#" -ge 20 ] || continue; shift 19
+   [ "$birth_before" = "$1" ] || continue
+  }
+  if kill -9 "$stale" 2>> "$dest/cleanup-errors.txt"; then
+   clean_count=$((clean_count+1))
+   [ "$ppid45" != 1 ] || orphan_count=$((orphan_count+1))
+   printf 'pid=%s ppid=%s signal=9\n' "$stale" "$ppid45" >> "$dest/cleanup-killed.txt"
+  fi
+ done
+ printf 'cleaned=%s ppid1=%s preserved=%s\n' "$clean_count" "$orphan_count" "$child" > "$dest/cleanup-summary.txt"
+ pidof com.ss.android.article.news > "$dest/cleanup-pidof-after.txt"
+}
+if [ "$1" = --cleanup-only ]; then
+ child=$(cat "$D/child.pid"); stamp=$(date +%Y%m%d-%H%M%S)
+ dest="$C/manual-$stamp"; mkdir -p "$dest"; cleanup_toutiao
+ printf 'manual\t%s\tNA\tcleanup_SIGKILL\tpid=%s\tcleaned=%s\tppid1=%s\n' "$stamp" "$child" "$clean_count" "$orphan_count" >> "$C/INDEX"
+ cat "$dest/cleanup-summary.txt"
+ exit 0
+fi
 [ ! -e "$D/stop" ] || exit 0
 mkdir "$D/guard.lock" 2>/dev/null || exit 1
 trap 'rmdir "$D/guard.lock" 2>/dev/null' EXIT
@@ -35,7 +69,7 @@ late_capture() {
   cp "$STAGE/parent.log" "$pending_dest/parent-late.log"
   while IFS= read -r row; do
    case "$row" in
-    "$pending_seq	"*) printf "%s\t%s\t%s\t%s\tpid=%s\n" "$pending_seq" "$pending_stamp" "$pending_elapsed" "$line" "$pending_pid";;
+    "$pending_seq	"*) printf "%s\t%s\t%s\t%s\tpid=%s\tcleaned=%s\tppid1=%s\n" "$pending_seq" "$pending_stamp" "$pending_elapsed" "$line" "$pending_pid" "$pending_cleaned" "$pending_orphans";;
     *) printf "%s\n" "$row";;
    esac
   done < "$C/INDEX" > "$C/INDEX.tmp"
@@ -57,8 +91,9 @@ while [ ! -e "$D/stop" ]; do
  while IFS= read -r file; do [ -f "$file" ] && cp "$file" "$dest/"; done < "$dest/fault-paths.txt"
  signal=$(grep -F "[WESTLAKE-REAP] child $child " "$dest/parent.log" | tail -n 1)
  [ -n "$signal" ] || signal=unknown
- printf '%s\t%s\t%s\t%s\tpid=%s\n' "$seq" "$stamp" "$elapsed" "$signal" "$child" >> "$C/INDEX"
- pending_pid=$child; pending_dest=$dest; pending_seq=$seq; pending_stamp=$stamp; pending_elapsed=$elapsed; pending_tries=40
+ cleanup_toutiao
+ printf '%s\t%s\t%s\t%s\tpid=%s\tcleaned=%s\tppid1=%s\n' "$seq" "$stamp" "$elapsed" "$signal" "$child" "$clean_count" "$orphan_count" >> "$C/INDEX"
+ pending_pid=$child; pending_dest=$dest; pending_seq=$seq; pending_stamp=$stamp; pending_elapsed=$elapsed; pending_tries=40; pending_cleaned=$clean_count; pending_orphans=$orphan_count
  [ ! -e "$D/stop" ] || break
  # Reuse the live preloaded parent and all app data. Only recovery foregrounds the host.
  aa start -b org.westlake.imehost -a EntryAbility > "$dest/foreground.txt" 2>&1
