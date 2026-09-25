@@ -61,5 +61,21 @@ if cmd=='deploy':
  (r/'setup.txt').write_text(setup)
  (r/'deployment.json').write_text(json.dumps({'board':S,'runtime':d['runtime'],'stage':d['stage'],'patches':records,'app_data':'preserved; prior consent retained'},indent=2)+'\n')
  print('DEPLOYED',json.dumps(records),flush=True)
+elif cmd=='fresh':
+ guard=dev('cat /data/local/tmp/operator45/guard.pid').strip()
+ dev('touch /data/local/tmp/operator45/stop; kill '+guard);time.sleep(4)
+ assert not dev('cat /proc/'+guard+'/stat 2>/dev/null').strip()
+ dev('/system/bin/sh /data/local/tmp/operator45/watchdog.sh --cleanup-only')
+ child=dev('cat /data/local/tmp/operator45/child.pid').strip()
+ recv(d['runtime']+'/private-tmp/adapter_child_'+child+'.stderr',r/('pre-fresh-'+child+'.stderr'))
+ checked_kill(child);checked_kill(dev('cat /data/local/tmp/operator45/parent.pid').strip())
+ backup=d['runtime']+'/profile-backups/morning46'
+ assert not dev('ls -d '+backup+' 2>/dev/null').strip(),'profile backup exists'
+ dev('mkdir -p '+backup)
+ for part in ('app-data','data','webview-t-data'):
+  dev('if [ -d '+d['runtime']+'/'+part+' ]; then mv '+d['runtime']+'/'+part+' '+backup+'/'+part+'; fi')
+ dev('rm -f /data/local/tmp/operator45/guard.pid; rmdir /data/local/tmp/operator45/guard.lock 2>/dev/null')
+ (r/'profile-backup.json').write_text(json.dumps({'preserved_at':backup,'reason':'Two warm instances exited in Handler(null Looper); prepare fresh consent then verify second warm launch.'},indent=2)+'\n')
+ print('PROFILE_PRESERVED',backup)
 elif cmd=='launch':launch(sys.argv[2])
 else:raise SystemExit('deploy | launch NAME')
