@@ -1,0 +1,43 @@
+diff --git a/framework/window/jni/oh_window_manager_client.cpp b/framework/window/jni/oh_window_manager_client.cpp
+index 351a5d8..364c828 100755
+--- a/framework/window/jni/oh_window_manager_client.cpp
++++ b/framework/window/jni/oh_window_manager_client.cpp
+@@ -2282,14 +2282,30 @@ int OHWindowManagerClient::updateSessionRect(int32_t sessionId,
+                     "session=%{public}d rect=[%{public}d,%{public}d,%{public}d,%{public}d]",
+                     sessionId, x, y, width, height);
+ 
+-    // G2.14c — legacy path: IWindowManager has no per-window UpdateRect IPC;
+-    // geometry updates go through IWindowManager::UpdateProperty(property, action).
+-    // For now (P1), no-op — Android Activity main DecorView doesn't strictly
+-    // need relayout to put pixels on screen for HelloWorld. P2: add legacy
+-    // UpdateProperty plumbing.
+-    LOGI("updateSessionRect: legacy path, no-op (window=%d %dx%d)",
+-         sessionId, width, height);
+-    return 0;
++    OHOS::sptr<OHOS::IRemoteObject> remote;
++    {
++        std::lock_guard<std::recursive_mutex> lock(sessionMutex_);
++        auto it = sessions_.find(sessionId);
++        if (it == sessions_.end()) return -1;
++        remote = it->second.sessionRemote;
++    }
++    if (!remote) return 0; // Existing legacy WMS behavior.
++    if (width <= 0 || height <= 0) return -2;
++    // MMI must see the actual Android window bounds, including narrow popups.
++    // Keeping only the RS buffer size updated leaves a full-screen input region.
++    OHOS::MessageParcel data, reply;
++    OHOS::MessageOption option(OHOS::MessageOption::TF_ASYNC);
++    const bool wrote = data.WriteInterfaceToken(u"OHOS.ISession") &&
++        data.WriteInt32(x) && data.WriteInt32(y) &&
++        data.WriteUint32(width) && data.WriteUint32(height) &&
++        data.WriteUint32(static_cast<uint32_t>(OHOS::Rosen::SizeChangeReason::RESIZE)) &&
++        data.WriteBool(false) && data.WriteBool(false) && data.WriteUint64(0);
++    const auto code = OHOS::Rosen::SessionInterfaceCode::TRANS_ID_UPDATE_SESSION_RECT;
++    const int err = wrote ? remote->SendRequest(static_cast<uint32_t>(code), data, reply, option) : -1;
++    fprintf(stderr, "[FOCUS34] UpdateRect session=%d rect=%d,%d,%d,%d ipc=%d\n",
++            sessionId, x, y, width, height, err);
++    return err; // asynchronous IPC: no fabricated reply status
++
+ }
+ 
+ int OHWindowManagerClient::notifyDrawingCompleted(int32_t sessionId) {
