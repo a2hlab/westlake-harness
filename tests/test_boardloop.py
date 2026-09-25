@@ -376,6 +376,69 @@ class TestTapChannelBothNames(unittest.TestCase):
             self.assertNotIn("--webview-input", " ".join(command))
 
 
+class TestOfflineReclassify(unittest.TestCase):
+    """#15: offline re-classification with a gap map, original records untouched."""
+
+    def _make_run(self, tmp: Path):
+        run = tmp / "run"
+        run.mkdir()
+        (run / "crashy.json").write_text(json.dumps({
+            "app": "crashy", "package": "com.crashy", "runtime_lock": None,
+            "child_log_path": "/onboard/adapter_child_1.stderr",
+            "stages": {"P2": "pass", "P3": "fail"}, "first_blocker": {"source": "none"},
+        }))
+        (run / "goody.json").write_text(json.dumps({
+            "app": "goody", "package": "com.goody", "runtime_lock": "old-lock",
+            "child_log_path": "/onboard/adapter_child_2.stderr",
+            "stages": {"P2": "pass"}, "first_blocker": {"source": "none"},
+        }))
+        # probe device-report for runtime_lock backfill on the null record
+        (run / "crashy").mkdir()
+        (run / "crashy" / "device-report.json").write_text(json.dumps({
+            "framework_report_sha256": "abc123", "stage": "/data/local/tmp/a2hlab-app-1",
+            "runtime": "/data/app/…/a2hlab-source-1", "apk_sha256": "deadbeef"}))
+        logs = tmp / "logs"
+        logs.mkdir()
+        (logs / "crashy.child.stderr").write_text(CRASH_LOG)
+        (logs / "crashy.faultlog.txt").write_text(CRASH_FAULTLOG)
+        (logs / "goody.child.stderr").write_text(GOOD_LOG)
+        return run, logs
+
+    def test_reclassify_maps_and_backfills_without_touching_originals(self) -> None:
+        from boardloop import reclassify
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            run, logs = self._make_run(tmp)
+            before = {p.name: p.read_bytes() for p in run.glob("*.json")}
+            results = reclassify.classify_run(run, tmp / "out", GAP_MAP, logs)
+            by_app = {r["app"]: r for r in results}
+            self.assertEqual(by_app["crashy"]["first_blocker"]["gap_row"],
+                             "af:start-activity")
+            self.assertEqual(by_app["crashy"]["offline_classified"], True)
+            # runtime_lock backfilled from the probe's own report
+            lock = by_app["crashy"]["runtime_lock"]
+            self.assertEqual(lock["framework_report_sha256"], "abc123")
+            # non-null original lock is preserved
+            self.assertEqual(by_app["goody"]["runtime_lock"], "old-lock")
+            # goody has no blocker -> source none stays
+            self.assertEqual(by_app["goody"]["first_blocker"]["source"], "none")
+            # originals untouched
+            after = {p.name: p.read_bytes() for p in run.glob("*.json")}
+            self.assertEqual(before, after)
+            self.assertTrue((tmp / "out" / "crashy.json").exists())
+
+    def test_reclassify_summary_counts(self) -> None:
+        from boardloop import reclassify
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            run, logs = self._make_run(tmp)
+            results = reclassify.classify_run(run, tmp / "out", GAP_MAP, logs)
+            summary = reclassify.summarize_classified(results)
+            self.assertIn("total 2", summary)
+            self.assertIn("mapped: 1", summary)
+            self.assertIn("none-source: 1", summary)
+
+
 class TestRealBoardAdaptation(unittest.TestCase):
     """#9: log path from the report's runtime, dual-era VT parsing, keep-alive commands."""
 
