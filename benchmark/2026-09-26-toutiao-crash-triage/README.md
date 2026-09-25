@@ -1,4 +1,4 @@
-# Toutiao crash triage (#46): five signatures, two fixes built
+# Toutiao crash triage (#46): six signatures, three fixes built
 
 Every saved Toutiao run on the OH boards crashes. #46 triaged the existing evidence offline, with no board time: 19+ #38 runs on board 5ea34a45 (`ability38/*`) and the #42 runs on board 5cd1e3dd (`aot42/*`). Each class below gets a root-cause hypothesis, its evidence, a fix and a verification method. They are ordered by the outer loop's priority: first what blocks "tap a feed item, read the article", then what burns CPU.
 
@@ -9,6 +9,7 @@ Every saved Toutiao run on the OH boards crashes. #46 triaged the existing evide
 | 3 | `work_thread` SIGABRT, empty backtrace | a **forked child**, not the app: Umeng ZID's root probe (`libumeng-spy.so` `getNativeID`) forked from Umeng's `work_thread` HandlerThread | none needed for the app; abort site inside the child needs one experiment | partially |
 | 4 | `TicketGuardNetw` SIGSEGV@0x28 (#42 verify-r2b) | `libttboringssl.so` (BoringSSL ABI) calls `HMAC_Init_ex`, which resolved to OH's OpenSSL 3 `libcrypto_openssl.z.so`; its `HMAC_CTX_init` came from `libttcrypto.so` | experiment: load the tt crypto pair as Android-ABI targets | partially |
 | 5 | `PatchUpdateMana` → shadowhook → `calloc` → `__libc_malloc_impl+1332` writes NULL (#42 prerun) | heap already corrupt; the corrupter is unknown | experiment | unverified |
+| 6 | post-WebView-fix SIGTRAP/TRAP_BRKPT on `ThreadPoolForeg` (first article with a video) | hollow MediaCodec from `native_setup` + unregistered `getOwnCodecInfo` → `UnsatisfiedLinkError` (an Error) → Chromium FATAL `jni_android.cc(315)` + `brk` | **built**: westlake `fix/mediacodec-unsupported-46` `ddb2f48`, bridge `d4fae8e5…` | cause verified; fix unverified |
 
 What was wrong before #46:
 - The memory rule "cppcrash rel-pc minus 0x2002000 = `libwebviewchromium` vaddr" held only for cold-a4. The rel-pc base differs per run: verify-1 needed `0x801000`. Compute vaddr from the absolute pc minus the r-xp mapping at file offset 0.
@@ -130,12 +131,47 @@ The #42 speed-1/2 preruns (105 s / 88 s) crashed in `calloc(0xc20)` from `libsha
 
 Unattributed: #42 verify-r1, verify-r3 and speed-r1 died before the item tap with no banner and no cppcrash. verify-r3 carries only the child SIGABRT. These are left to the crash census.
 
+## 6. After the WebView fix: SIGTRAP on the first article with a video
+
+codex-2 put shim `ecc7b12c` on 5ea34a45 (`ability38/wv46-articles-*`). Two article bodies rendered and every §1 assertion passed. About 54 s after the second article resumed, the child died with `Fatal signal 5 (SIGTRAP), code 1 (TRAP_BRKPT)` on tid 20753 `ThreadPoolForeg`, and parent logged `child 18719 killed by signal 5`. Evidence: [evidence/sigtrap-mediacodec.txt](evidence/sigtrap-mediacodec.txt).
+
+- **Cause (verified).**
+  - Tid 20753 first logs `No implementation found for … MediaCodec.getOwnCodecInfo()`, then `java.lang.UnsatisfiedLinkError` under `MediaCodec.getCodecInfo` ← `org.chromium.media.MediaCodecUtil` ← `MediaCodecBridgeBuilder.createVideoDecoder`, then `[FATAL:jni_android.cc(315)] Please include Java exception stack in crash report`.
+  - The banner is that same tid. x7, x12 and x13 still hold the formatted message text (`ni_andro`, `in crash`, ` report\n`).
+  - In the deployed engine `27c34ff4…`, the only `brk #0` whose page offset (`0xcd4`) and LR distance match is vaddr `0xe3ccd4`. It is Chromium's `IMMEDIATE_CRASH` (`brk #0; hlt #0`) at the end of the stderr-writing FATAL path.
+  - 4 video-decoder attempts in the run hit the same Error.
+  - **Unrelated to TicketGuard/HMAC**: different thread, signal and library.
+- **Why the Error reaches native.**
+  - `framework/core/jni/oh_mediacodec_shim.cpp` bridges only OH audio decoders, and its `native_setup` never fails. For a type OH cannot create it logs `CreateByMime failed` and hands Java a codec with nothing behind it.
+  - Chromium's `createDecoder` therefore "succeeds" and calls `getCodecInfo()`, whose native `getOwnCodecInfo` the shim never registered. 32 of AOSP 14's 50 `MediaCodec` natives are unregistered.
+  - `UnsatisfiedLinkError` is an `Error`, not an `Exception`, so Chromium's `catch (Exception)` misses it.
+- **Fix (built).** westlake branch `fix/mediacodec-unsupported-46` @ `ddb2f48` (worktree `~/a2hlab/ws/westlake-mc46`, base 22b9453; the file is identical in ability38).
+  - `native_setup` throws what AOSP throws: `IllegalArgumentException("Failed to initialize <type>, error 0xfffffffe (NAME_NOT_FOUND)")` when OH has no codec for the type, `IOException` when the OH codec library is unavailable. Chromium catches both and plays no video; the article is untouched.
+  - `getOwnCodecInfo` is registered on its own, returning null. AOSP's `getCodecInfo()` then asks `MediaCodecList`, which the shim implements.
+  - The succeeding `audio/mpeg` path is unchanged.
+  - `scripts/build_bridge_mc.py` reuses the exact compile flags and link line of `out-ability38/native-stack`, the build of the deployed bridge. The untouched object and the untouched relink reproduce `06c0e052` and `e4ab5de6` byte for byte.
+  - Output `~/a2hlab/ws/out-mc46/patched/liboh_adapter_bridge.so`, sha256 `d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b`. Exports, imports and DT_NEEDED are unchanged.
+- **Verify on a board.** Replace `liboh_adapter_bridge.so` in the stage, keeping shim `ecc7b12c`. Open ≥3 articles, including one with a video, and require:
+
+  | Check | Expected |
+  |---|---|
+  | `grep -c 'getOwnCodecInfo()' child.stderr` | 0 |
+  | `grep -c 'FATAL:jni_android.cc(315)' child.stderr` | 0 |
+  | `grep -c '^Fatal signal 5' child.stderr` | 0 |
+  | `grep -c 'Failed to initialize video/' child.stderr` | ≥ 1 (Chromium's "Failed to create MediaCodec" log carries the exception) |
+  | the video article | body still shown |
+  | process 120 s after the tap | alive |
+  | noice (MP3 through `audio/mpeg`) | still plays |
+
+  Residual risk: a type OH can create, e.g. AAC audio, will reach more of the 31 still-unregistered natives. If one is called, the same FATAL follows. Registering the rest with AOSP-equivalent `IllegalStateException` bodies is the follow-up.
+
 ## Rules this adds
 
 - Compute a stripped library's vaddr from the absolute pc minus the base of its r-xp mapping at file offset 0. faultloggerd's rel-pc base varies by run.
 - A `Fatal signal` banner whose thread is not in the app's task list is a child process. Check x20/x21 against the app pid before counting it as an app crash.
 - In `webview_bionic_shim.c` `dlopen()`, every name translation must precede the `.z.so` probe, because the probe returns the plain name whenever it opens. This is the second instance of this bug.
 - Never delete or refuse an app library whose `System.loadLibrary` is unguarded on the Application path. Patch or stub it.
+- A framework native that the runtime does not implement must fail the way AOSP fails, with the Exception type AOSP throws, or not exist on a reachable path. A hollow success defers the failure to an unregistered native, and `UnsatisfiedLinkError` escapes every `catch (Exception)`. In Chromium that means FATAL + `brk`.
 - The npth fix is to leave musl's `pthread_self()` alone and neutralise the one Bionic-layout walk. No Android-ABI library can be given a Bionic `pthread_internal_t`.
 
 ## Layout
@@ -149,5 +185,6 @@ Unattributed: #42 verify-r1, verify-r3 and speed-r1 died before the item tap wit
 | `evidence/dex-and-load-chains.txt` | dex call chains (heap dump, Umeng, `loadLibrary("npth")`), `isSoLoaded` guard scan, DT_NEEDED |
 | `evidence/ticketguard-hmac.txt` | banner, maps, OH OpenSSL symbolization, export comparison |
 | `evidence/crash-run-map.txt` | per-run signatures, #38 and #42 |
-| `scripts/` | `build_shim.sh`, `patch_npth.py`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
+| `evidence/sigtrap-mediacodec.txt` | post-fix SIGTRAP: stderr, banner, engine trap site, unregistered natives, westlake diff, rebuild hashes |
+| `scripts/` | `build_shim.sh`, `patch_npth.py`, `build_bridge_mc.py`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
 | `results.json` | machine-readable summary |

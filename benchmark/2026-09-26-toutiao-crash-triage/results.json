@@ -13,12 +13,20 @@
       "id": "webview-renderthread-sigsegv",
       "priority": 1,
       "signature": "RenderThread SIGSEGV@0 libwebviewchromium.so vaddr 0x1e006f0 (GrDirectContext::flush)",
-      "cppcrash_relpc": ["0x3e026f0 (cold-a4, base +0x2002000)", "0x26016f0 (aot42 verify-1, base +0x801000)"],
+      "cppcrash_relpc": [
+        "0x3e026f0 (cold-a4, base +0x2002000)",
+        "0x26016f0 (aot42 verify-1, base +0x801000)"
+      ],
       "runs_with_signature": 12,
       "runs_opening_article": 13,
       "aot42_formal_signal11_explained": 5,
       "root_cause": "webview_bionic_shim.c dlopen(): .z.so probe opens libGLESv2.so (NDK facade) before the §734 translation to platformsdk/libGLESv3.so; GrContext NULL; ~SkiaOutputSurfaceImplOnGpu flushes NULL",
-      "existing_switches_avoid": {"single-process": false, "no-surface-control": false, "in-process": "no (same GL path; re-enables AndroidSurfaceControl)", "software": "untested"},
+      "existing_switches_avoid": {
+        "single-process": false,
+        "no-surface-control": false,
+        "in-process": "no (same GL path; re-enables AndroidSurfaceControl)",
+        "software": "untested"
+      },
       "fix": {
         "westlake_branch": "fix/webview-gles-order-46",
         "commit": "87fb17b6311e87a42b3671297595872d81f3f1b4",
@@ -28,15 +36,30 @@
         "unchanged_rebuild_reproduces_deployed": true,
         "exports_and_needed_unchanged": true
       },
-      "r2": {"symbolization": "verified", "same_root_both_offsets": "verified", "facade_causes_null_gl": "partially", "fix_effective": "unverified"}
+      "r2": {
+        "symbolization": "verified",
+        "same_root_both_offsets": "verified",
+        "facade_causes_null_gl": "partially",
+        "fix_effective": "unverified"
+      }
     },
     {
       "id": "npth-dumper-spin",
       "priority": 2,
       "signature": "npth-dumper-thr R, ~45% of process samples, pc libnpth.so+0x179c0..0x179c8",
       "root_cause": "dump-pthread routine 0x17930 walks Bionic pthread_internal_t.next (offset 0) from pthread_self(); OH musl struct pthread offset 0 is self",
-      "musl_layout": {"self": 0, "prev": 8, "next": 16, "sysinfo": 24, "tid": 32},
-      "reached_from": ["native crash dump sequence 0x193a0", "dump sequence 0x19ac0", "native-info dump dispatcher 0x28bfc (+32 latch)"],
+      "musl_layout": {
+        "self": 0,
+        "prev": 8,
+        "next": 16,
+        "sysinfo": 24,
+        "tid": 32
+      },
+      "reached_from": [
+        "native crash dump sequence 0x193a0",
+        "dump sequence 0x19ac0",
+        "native-info dump dispatcher 0x28bfc (+32 latch)"
+      ],
       "other_pthread_walks_in_npth_libs": 0,
       "delete_library_safe": false,
       "delete_library_reason": "System.loadLibrary(\"npth\") unguarded up to ArticleApplication.attachBaseContext (all catches monitor-exit+rethrow)",
@@ -48,13 +71,21 @@
         "change": "0x17930 stp x29,x30,[sp,#-96]! -> ret"
       },
       "fix_b_stub_unguarded_native_call_sites": 15,
-      "r2": {"loop_mechanism": "verified", "trigger_is_anr_dump": "partially", "patch_effective": "unverified"}
+      "r2": {
+        "loop_mechanism": "verified",
+        "trigger_is_anr_dump": "partially",
+        "patch_effective": "unverified"
+      }
     },
     {
       "id": "work-thread-sigabrt",
       "signature": "Fatal signal 6 SI_TKILL, Thread work_thread, empty backtrace, PC musl+0x96f1c, LR libnpth+0x13854",
       "is_app_process": false,
-      "evidence": ["x20=x21=getpid()=gettid()!=app pid", "TPIDR_EL0 in 32MB Java thread mapping", "only literal work_thread = com.umeng.mc.e HandlerThread"],
+      "evidence": [
+        "x20=x21=getpid()=gettid()!=app pid",
+        "TPIDR_EL0 in 32MB Java thread mapping",
+        "only literal work_thread = com.umeng.mc.e HandlerThread"
+      ],
       "forker": "libumeng-spy.so Java_com_umeng_umzid_Spy_getNativeID (root probe child)",
       "side_effect": "getNativeID(true) installs process-wide SIGCHLD reaper waitpid(-1)",
       "abort_site_in_child": "unknown",
@@ -63,7 +94,11 @@
     {
       "id": "ticketguard-hmac",
       "signature": "TicketGuardNetw SIGSEGV@0x28 (aot42 formal-verify-r2b)",
-      "frames": ["libcrypto_openssl.z.so evp_md_init_internal 0x21e524", "EVP_DigestInit_ex", "HMAC_Init_ex hmac.c:79 0x247e74"],
+      "frames": [
+        "libcrypto_openssl.z.so evp_md_init_internal 0x21e524",
+        "EVP_DigestInit_ex",
+        "HMAC_Init_ex hmac.c:79 0x247e74"
+      ],
       "root_cause": "libttboringssl.so BoringSSL-ABI HMAC calls split between libttcrypto.so (HMAC_CTX_init/cleanup) and OH OpenSSL 3 (HMAC_Init_ex/Update/Final)",
       "fix": "experiment: libttcrypto.so and libttboringssl.so (+ libdelta.so, liblynxsecurity.so) as Android-ABI targets; check with probes/runtime-resolve",
       "r2": "partially"
@@ -73,11 +108,44 @@
       "signature": "PatchUpdateMana SIGSEGV@0 __libc_malloc_impl+1332 <- libc_gwp_asan_calloc <- libshadowhook",
       "root_cause": "heap corruption, corrupter unknown",
       "r2": "unverified"
+    },
+    {
+      "id": "post-webview-fix-sigtrap-mediacodec",
+      "signature": "Fatal signal 5 TRAP_BRKPT, tid 20753 ThreadPoolForeg, engine vaddr 0xe3ccd4 (brk #0 of IMMEDIATE_CRASH)",
+      "evidence_run": "board/5ea34a45/ability38/wv46-articles-1 (child 18719, killed by signal 5)",
+      "root_cause": "oh_mediacodec_shim native_setup returns a hollow codec for types OH cannot create; Chromium createVideoDecoder -> getCodecInfo -> unregistered getOwnCodecInfo -> UnsatisfiedLinkError (Error, escapes catch Exception) -> FATAL jni_android.cc(315) -> brk",
+      "related_to_ticketguard_hmac": false,
+      "unregistered_mediacodec_natives_before_fix": 32,
+      "fix": {
+        "westlake_branch": "fix/mediacodec-unsupported-46",
+        "commit": "ddb2f48",
+        "artifact": "~/a2hlab/ws/out-mc46/patched/liboh_adapter_bridge.so",
+        "sha256": "d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b",
+        "deployed_sha256": "e4ab5de64d20b8da6c7f388a7d5f5efd536f2962bb3913975e89ce824300c45a",
+        "unchanged_rebuild_reproduces_deployed": true,
+        "symbol_surface_unchanged": true
+      },
+      "r2": {
+        "cause": "verified",
+        "fix_effective": "unverified"
+      }
     }
   ],
   "aot42_formal_signal11": {
-    "webview_gl_failure": ["formal-base-r1", "formal-base-r2", "formal-base-r3", "formal-speed-r2", "formal-speed-r3"],
-    "ticketguard_hmac": ["formal-verify-r2b"],
-    "unattributed": ["formal-verify-r1", "formal-verify-r3", "formal-speed-r1"]
+    "webview_gl_failure": [
+      "formal-base-r1",
+      "formal-base-r2",
+      "formal-base-r3",
+      "formal-speed-r2",
+      "formal-speed-r3"
+    ],
+    "ticketguard_hmac": [
+      "formal-verify-r2b"
+    ],
+    "unattributed": [
+      "formal-verify-r1",
+      "formal-verify-r3",
+      "formal-speed-r1"
+    ]
   }
 }
