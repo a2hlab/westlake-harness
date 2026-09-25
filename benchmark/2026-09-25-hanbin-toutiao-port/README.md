@@ -27,7 +27,13 @@ The two code bases share an ancestor. Of westlake's 610-line `framework/package-
   - What it did was stop using musl in the app process.
   - Its own ledger of the musl era ends with "当日七个假设全部证伪" and "后者的成因至今未定" (`libc_adaptation_directions.html:1156, 1252`).
   - In the Bionic era, metasec no longer appears in its reports at all.
-- **"824" is not a TLS offset.** In hanbin's arm32 build, 824 marks the start of a downward scan from metasec's own load base (`base-824`). The scan runs after metasec reads `/proc/self/maps` text (`libc_adaptation_directions.html:982, 1154`). That is a different crash from our #23.
+- **"824" is not a TLS offset and not a fix.** It appears twice in hanbin, both times as an arm32 musl measurement (`libc_adaptation_directions.html` A.6.1):
+  - `hi − tcb = 824`: the distance from the top of a musl thread-stack mapping to the thread descriptor, measured 3/3.
+    - `debug.md:124`'s "900 vs 824, off by 76" is the same table's `tcb − pthread_t = 76`. The first measurement took `pthread_t` instead of the descriptor.
+  - The metasec fault address = the library's load base − 824. Across five ASLR runs the difference is exactly 824, e.g. base `0xbf800000`, fault `0xbf7ffcc8`.
+    - It is the start of a downward scan that follows a read of `/proc/self/maps` (A.6, lines 982 and 1154).
+    - The hypothesis that the scan starts at a thread descriptor was falsified.
+  - On our arm64 board codex measured TP − `pthread_self` = 392 (#23). No 824-based constant carries over, and nothing in hanbin uses 824 to repair metasec. It is a different crash from our #23.
 - **Our #23 crash is a statically linked Bionic `vfork()`, and the dependency is narrow.**
   - In our arm64 metasec, exactly **two** instructions reach TLS slot 1 (`TLS_SLOT_THREAD_ID`, TP+8):
     - the vfork stub at 0x2043b8, which zeroes `cached_pid_` at +20;
