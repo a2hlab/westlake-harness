@@ -50,5 +50,17 @@ for r in sorted(R.glob('*-r[0-9]*')):
       'load_failures':[l for l in lines if l.startswith('[SOURCE-NATIVE-LOAD-FAIL]') and 'metasec' in l],
       'cppcrash_heads':{p.name:p.read_text(errors='replace').split('Registers:',1)[0] for p in r.glob('cppcrash-*.txt')}}
  (r/'summary.json').write_text(json.dumps(row,indent=2)+'\n');rows.append(row)
+ refusal=[l for l in lines if 'refusing self-trapping library:' in l and ('libnpth_xasan' in l or 'libnpth_heap_tracker' in l)]
+ counts=[];rss=[]
+ for sample in samples:
+  for line in sample['output'].splitlines():
+   m=re.fullmatch(r'\s*(\d+)\s+/proc/'+str(pid)+r'/maps\s*',line)
+   if m:counts.append(int(m[1]))
+   m=re.match(r'VmRSS:\s+(\d+)\s+kB',line)
+   if m:rss.append(int(m[1]))
+ row.update({'npth_hook_refusal_lines':refusal,'npth_debug_mapped_samples':sum(bool(re.search(r'^[0-9a-f]+-[0-9a-f]+.*libnpth_(xasan|heap_tracker)',s['output'],re.M)) for s in samples),
+             'maps_min':min(counts) if counts else None,'maps_max':max(counts) if counts else None,'rss_peak_kib':max(rss) if rss else None,
+             'get_meta_crash_files':[p.name for p in r.glob('cppcrash-*.txt') if 'get_meta' in p.read_text(errors='replace')]})
+ (r/'summary.json').write_text(json.dumps(row,indent=2)+'\n')
 (R/'summary.json').write_text(json.dumps(rows,indent=2)+'\n')
 for r in rows:print(r['round'],r['pid'],r['terminal'],'alive_age',round(r['last_observed_alive_age_s'],2),'end_age',round(r['end_age_s'],2),'eacces',r['metasec_eacces_count'],'eacces_to_exit',r['eacces_to_main_exit'],'over3m',r['startup_over_180s'])
