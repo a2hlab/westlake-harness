@@ -1,8 +1,10 @@
-# #42：头条 dex AOT，VM 产物已就绪，上板待分配
+# #42：头条应用 AOT 已被 ART 接收，三臂性能验收被崩溃阻塞
 
-**R2=partially。** VM 编译、输入哈希、OAT 元数据及旧 profile 拒绝原因 verified；板上加载、点击延迟和首屏收益 unverified。没有连接或占用设备，没有改 westlake 源码、共享 out 或系统分区。不能以本报告宣称消掉了首跑解释执行。
+**ACK(blocked)，R2=partially。** 同源 OAT247 两档部署/加载 verified；完成 baseline、verify、speed 各 3 次正式启动尝试，但有效固定时点条目点击分别只有 **3/0/2**。九轮最终均由父进程记录 signal 11；无法给出每臂 n≥3 的点击性能比较，也不能宣称解决首跑慢或文章页可用。详见 [DEVICE.md](DEVICE.md)、逐行数据 [device-results.json](device-results.json)。
 
-工作分支 `feat/toutiao-aot-42`，独立 worktree `westlake-harness-aot42`。VM 独立目录 `~/a2hlab/ws/out-aot42`，仅运行 dex2oat，没有重编 native-runtime。设备分配按 #42 等外环协调：5ea34a45 当时属于 #38，5cd1e3dd 属于 #41/#43，板 C 属于 #40。
+独立分支 `feat/toutiao-aot-42`，worktree `westlake-harness-aot42`。VM `~/a2hlab/ws/out-aot42`；外环后续授权的板为 **5cd1e3dd00000000000000000923012c**，使用 Mac HDC。每轮前确认无 dalvikvm/linker64/头条/appspawn，结束清自己的 PID，最终再次核空。未动 bionic43、其他两块板、westlake 源码、共享 out 或系统分区。只运行应用 dex2oat，无 native 重编。
+
+原 VM 阶段提交为 `f1133cd9a53dca9bbe9b2d9b20de6f7cd49ded23`。下面保留其输入与构建事实；“后续上板步骤”是当时计划，实际执行与偏差以 DEVICE.md 为准。
 
 ## 同源输入与产物
 
