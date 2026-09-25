@@ -1,0 +1,91 @@
+# Lines quoted verbatim for board #37 (HTML tags stripped; raw-file line numbers). Read only.
+
+## hanbin: overwritten OH files
+# workspace/hanbin_adapter/deploy/deploy_all_init.sh
+66: OVERWRITE_LIB=(
+67: libwms.z.so libappms.z.so libbms.z.so libskia_canvaskit.z.so
+68: libinstalls.z.so libappspawn_client.z.so librender_service.z.so
+69: )
+70: OVERWRITE_PLATFORMSDK=(
+71: libabilityms.z.so libmission_list.z.so libscene_session.z.so libscene_session_manager.z.so
+72: librender_service_base.z.so libappexecfwk_common.z.so libwmutil.z.so
+73: )
+74: # Bionic 新件（linker / libc / ld.config.txt 等）落在 /system/android/ 下，是
+75: # adapter 自建目录而非 factory 原件，不进备份清单。
+76: OVERWRITE_ETC=( selinux/targeted/contexts/file_contexts sandbox/system-sandbox.json )
+
+## hanbin: PT_INTERP set by patchelf
+# workspace/hanbin_adapter/build/inner/zygote-x/compile_zygote_x.sh
+53: # [ZB-4] PT_INTERP is rewritten AFTER linking, by patchelf (see [ZB-4a] below).
+54: #   The Android.bp ldflags route was tried first and does not work: Soong appends
+55: #   its own -Wl,-dynamic-linker,/system/bin/linker after user ldflags
+56: #   (build/soong/cc/binary.go:351) and the last flag wins; the field behind it is
+57: #   `blueprint:"mutated"` (binary.go:50), so no .bp property can override it
+183: "$PATCHELF" --set-interpreter "$WANT_INTERP" "$OUT_DIR/zygote" || {
+
+## hanbin: Bionic/ART built with Soong
+# workspace/hanbin_adapter/build/build_aosp_lib.sh
+260: LUNCH_TARGET="${LUNCH_TARGET:-oh_adapter-userdebug}"
+333: lunch "$LUNCH_TARGET" >/dev/null 2>&1 || sefail "lunch $LUNCH_TARGET failed"
+
+## hanbin: AOSP tag
+# workspace/hanbin_adapter/build/inner/fetch_missing_aosp_projects.sh
+57: BRANCH="${AOSP_BRANCH:-android-14.0.0_r1}"
+
+## hanbin: policy.31 brick, 2026-09-08
+# workspace/hanbin_adapter/deploy/deploy_all_init.sh
+1298: # 为什么必须自成一个 stage，而不是并进任何带 .so 的批次：
+1299: # policy.31 是 init 每次开机都要读的文件。deploy_update.sh 只要在同一次运行里
+1300: # 还带了 OH service .so，就会先 begetctl stop_service foundation/render_service，
+1301: # 于是 boot-critical 文件被写进一台核心服务已经死掉的设备。2026-09-08 正是这样
+1302: # 把开发板写坏的：脚本里的健康守卫拦下了那次部署（读到 f= r= 为空），守卫被改成
+1303: # 前后对比式以放行，写入过程中设备掉线，policy.31 未落盘留下残缺文件；开机时
+1304: # init 的 LoadPolicy() 失败后只打日志继续（services/modules/selinux/selinux_adp.c），
+1305: # SELinux 从未初始化，随后每个服务的 setcon 都失败 —— 什么都起不来，停在 OH logo，
+1306: # USB 枚举正常但 hdcd 永不启动。守卫自始至终是对的，错的是把两件事塞进一次跑。
+
+## hanbin: Mali blob single-instance loading is unverified
+# workspace/hanbin_adapter/framework/zygote-x/config/ld.config.txt
+77: # --- SINGLE-INSTANCE RESOLUTION -- UNVERIFIED HYPOTHESIS, DO NOT TREAT AS FACT
+78: # Design section 6.3: the blob's DT_NEEDED libsurface.z.so and libhilog.so MUST
+79: # resolve to the already-loaded liboh_kit_surface / liboh_kit_hilog instances in
+80: # the Bionic world. A second copy, or OH's real musl build, would interpret the
+81: # same OHNativeWindow memory under a different libc++ layout, or split the
+
+## hanbin: design (direction 2)
+# workspace/hanbin_adapter/doc/design/app_fwk_bionic_design_v2.html
+243: 唯一无法重编的 musl 二进制是 Mali GPU 用户态驱动 blob，以镜像版 libbc（§7.3）收编进 Bionic 进程。
+247: 世界边界因此落在内核上：App 进程（Bionic）与 OH 系统服务（musl）之间只共享 binder 驱动、socket、dma-buf fd——内核接口不关心用户态 libc，这是方向二成立的根本原因。
+431: 总量估 4~6 人月（各层串行 19~30 周，实际可部分并行）。里程碑序列与验收判据（外部观察，遵守 APK 透明适配原则）：
+451: R2Mali blob 存在符号面之外的 musl 深耦合（TCB 直读/隐藏 dlopen）符号维度已排除PoC-3 实测：404 UND 全分类（Bionic 同名 224 / NDK libc++abi 27 / OH libc++ __h 124 / OH 平台库 11 / musl 特有 17），符号面有界无未知来源；TCB 直读一类仍待最小 EGL demo 复验（阶段 6.7）
+472: PoC-3 基础地基（生死点）✅ PASS纯 Bionic 静态进程完成带鉴权 OH IPC：binder v8 → samgr 多次往返（token 671108964 被接受）→ WMS GetSystemConfig 应答 112 字节；ffrt 关断点确认；Mali 404 符号五桶分类
+474: PoC-2 zygote-x 拉起✅ PASSinit 拉起 → u:r:appspawn:s0 域 → 解释器与 /system/android/lib 映射零 avc；socket fd 传递与 fork 凭证纯继承成立
+
+## westlake: parent launched from the hdc shell, child forked by appspawn-x
+# OrbStack/a2hlab/home/zhaoyue/a2hlab/manifest/tools/probe_source_app.py
+521: 'exec ' + logical + '/appspawn-x --socket-name ' + socket_name + '\n')
+525: ' /system/bin/sh ' + logical + '/run.sh >' + stage + '/parent.log 2>&1 </dev/null & echo $!')
+526: state['parent'] = int(shell(command).strip())
+527: save()
+537: match = re.search(r'HOST_SPAWN result=0 pid=(\d+)', response)
+
+## board: / is read-only ext4, no dm device
+# OrbStack/a2hlab/home/zhaoyue/a2hlab/ws/westlake-applib23/evidence/app-lib-loading-23/scripts/baseline-mount-label.txt
+1: 1298 1297 259:32 / / ro,nodev,relatime - ext4 /dev/block/platform/soc/soc:ap-ahb/22000000.ufs/by-name/system ro,seclabel
+
+## board: permissive used for launches 3-7
+# orca/workspaces/westlake-harness/benchmark/2026-09-22-burgerking-blind/README.md
+55: Seven launches on the OH board. The first ran on Westlake `f6dc615`, as predicted; later launches carry
+56: the fixes below. Launches 3 to 7 ran with SELinux permissive, because under enforcing every line the
+57: app logs is dropped (see "What the launches taught the harness"). The board was set back to
+58: enforcing afterwards.
+
+## hardware: one D600 flashed with Android as same-hardware control
+# orca/workspaces/westlake-inputs/HANDOFF.md
+7: - 硬件(用户提供,待接):**4 块 D600——3 块刷 OH 6.1.0.31(作者同一份镜像),1 块刷安卓作同硬件对照**。OH:2 块跑批回归 + 1 块调试。另有 Pixel 7(Android 14,无 root,有 GMS,bootloader 已解锁)作备用对照。**不用模拟器。**
+
+## sibling Bridge project: remount / rw on D600/OH 6.1
+# orca/01.OH61AOSP16/docs/errors/appspawn-x-v2sig-wall-rootcause.md
+204: hdc shell "begetctl stop_service appspawn-x; mount -o rw,remount /; \
+205: cp /data/local/tmp/x.jar /system/android/framework/oh-adapter-runtime.jar; \
+206: chmod 644 /system/android/framework/oh-adapter-runtime.jar; mount -o ro,remount /; \

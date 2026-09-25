@@ -1,0 +1,66 @@
+{
+ "schema": 1,
+ "date": "2026-09-25",
+ "board_entry": "#37 (.octos/OUTER_LOOP_REVIEW.md)",
+ "mode": "read only; no board or device; hanbin untouched",
+ "answer": {
+  "system_partition_write_needed_for_bionic_app_process": false,
+  "keep_westlake_adapter_layer": "Java layer, launch model, harness and bridge sources kept; every in-process native library rebuilt for Bionic; musl-compat layers retired; hanbin's system-install model not needed",
+  "minimal_metasec_path": {"tier": "T0", "days": "3-5", "irreversible_steps": 0},
+  "toutiao_under_bionic_westlake": {"tier": "T1", "weeks": "6-10"},
+  "full_ui": {"tier": "T2", "extra_months": "2-3"},
+  "hanbin_estimate_for_comparison": "4-6 person-months (app_fwk_bionic_design_v2.html:431)"
+ },
+ "hanbin": {
+  "bionic_source": {"aosp_tag": "android-14.0.0_r1", "build": "Soong, lunch oh_adapter-userdebug", "arch": "arm32",
+                    "libs": ["linker", "libc", "libm", "libdl", "libc++", "libstdc++"],
+                    "patches_applied": ["linker config/search paths -> /system/android", "3 property-area files"],
+                    "patch_present_not_applied": "pthread_create.cpp.patch (2 MiB stack floor)"},
+  "pt_interp": "AOSP app_process relinked, interpreter rewritten by patchelf to /system/android/bin/linker (compile_zygote_x.sh:53-57,183)",
+  "zygote_cfg": "uid root, secon u:r:appspawn:s0, ondemand, init sockets Zygote/UsapPoolPrimary",
+  "oh_kit": {"libs": 30, "source": "OH master weekly_20260302, ~2.15M lines", "patch_files": 92, "target": "armv7a-linux-androideabi34"},
+  "mali": "libmc.so impersonates libc.so in an isolated namespace (328 musl-ABI symbols forwarded to Bionic); single-instance loading of libsurface/libhilog marked UNVERIFIED (ld.config.txt:77)",
+  "overwritten_files": {
+   "needed_for_bionic": ["policy.31", "file_contexts", "libappspawn_client.z.so (socket name 'Zygote')"],
+   "bionic_era_dexopt": ["system-sandbox.json", "libinstalls.z.so (APK_DEXOPT part)", "dex2oat.te"],
+   "general_apk_integration": ["libappms", "libbms", "libinstalls", "libappexecfwk_common", "libabilityms", "libmission_list", "libwms", "libwmutil", "librender_service_base (client pid trusted)"],
+   "debug_leftovers": ["librender_service", "libskia_canvaskit", "libsurface shadow copy"],
+   "unexplained": ["libscene_session", "libscene_session_manager"]
+  },
+  "pocs_passed_2026_08_03": ["static Bionic process does authenticated OH IPC", "RS client subset compiles, 0 skia symbols", "MMI subset cuts", "Bionic zygote under init in appspawn:s0 with 0 AVC, no policy patch", "Bionic crash on OH kernel dies cleanly"],
+  "timeline": {"decided": "2026-07-31", "pocs": "2026-08-03", "first_ui": "2026-08-10", "toutiao_main_ui": "2026-08-14", "still_ongoing": "2026-09-18"},
+  "brick_events": ["2026-09-08 truncated policy.31: stuck at OH logo, hdcd never starts, reflash", "init cfg critical -> reboot loop", "critical:[0] -> respawn storm", "bootevents+disabled:1 -> no desktop", "namespace ini sed edit broke boot", "libnativeloader+ini -> boot loop", "extra boot image segment -> no desktop"]
+ },
+ "westlake_platform": {
+  "runtime_libs": 57, "libc_only": 47, "oh_facing": 10, "oh_facing_list": ["libandroid", "libhwui", "liboh_account_state", "liboh_adapter_bridge (34 external)", "liboh_android_runtime", "liboh_connectivity_state", "liboh_hwui_shim", "liboh_ime_helper_capi", "liboh_permission_queries", "libwl_opengl_jni"],
+  "firmware_libs": 47, "vendor_blob": "/vendor/lib64/chipsetsdk/libGLES_mali.z.so (Mali-G57)",
+  "toolchain_now": "OH SDK clang 15.0.4, aarch64-linux-ohos, musl sysroot, OH libc++; ART: clang-15 + legacy musl sysroot, -D__MUSL__",
+  "local_bionic": "none for Android 15 arm64 (NDK r23b stubs/libc.a, an Android 9 libc.so only); AOSP bionic-android15 source present; no Soong tree",
+  "local_oh_61_source": "headers only (13,414)",
+  "launch_chain": "root hdc shell -> source_app_namespace -> sh run.sh -> exec /data/local/tmp/.../appspawn-x; child forked on host_spawn request (probe_source_app.py:521-537)",
+  "board": {"shell": "root, u:r:su:s0", "selinux": "enforcing; permissive used for real runs (burgerking-blind README:55-58)",
+            "mounts": "/, /vendor, /sys_prod ro ext4 by-name; /data f2fs rw; 0 dm devices in 54 mount lines",
+            "remount_rw": "done by sibling project on D600/OH 6.1 (01.OH61AOSP16 appspawn-x-v2sig-wall-rootcause.md:204-206); not tried here",
+            "reflash": "Unisoc UpgradeDownload + PAC; OH 6.1 PAC not local"},
+  "bionic_prebuilt_candidate": "Android D600 (same SoC) = likely N100CU025C18D000128, Android 16 userdebug with su (HANDOFF.md:7; inferred)"
+ },
+ "verdicts": [
+  {"step": "Bionic interpreter via patchelf; exec from /data/local/tmp", "verdict": "feasible, verify one exec"},
+  {"step": "normal_hap child mapping Bionic libs from /data/local/tmp", "verdict": "feasible"},
+  {"step": "Android property area", "verdict": "verify (patch path or run without)"},
+  {"step": "arm64 Bionic + ART", "verdict": "T0 feasible via prebuilt; T1 toolchain decision"},
+  {"step": "oh-kit for OH 6.1", "verdict": "blocked on source; alternative musl island for stock libs to verify"},
+  {"step": "Mali-G57 in libmc island", "verdict": "verify (symbol census)"},
+  {"step": "overwrite OH service libs", "verdict": "not needed"},
+  {"step": "persist SELinux policy", "verdict": "not needed; brick risk"},
+  {"step": "system partition writable", "verdict": "likely, unverified, unnecessary"}
+ ],
+ "tiers": [
+  {"tier": "T0", "goal": "metasec under real Bionic, headless dalvikvm64 from /data/local/tmp", "effort": "3-5 days", "reversible": true},
+  {"tier": "T1", "goal": "westlake runtime on Bionic, Toutiao Application/SDK init incl. metasec with real OH IPC, no window", "effort": "6-10 weeks", "reversible": true},
+  {"tier": "T2", "goal": "full UI: surface/RS/input/window clients, hwui + Mali island, WebView on real Bionic", "effort": "+2-3 months", "reversible": true},
+  {"tier": "T3", "goal": "hanbin-style system install", "effort": "n/a (needs OH 6.1 source)", "reversible": false, "recommended": false}
+ ],
+ "irreversible_without_reflash": ["partially written policy.31", "init .cfg critical / respawn / bootevents", "overwriting boot-critical OH service libs", "namespace config / libnativeloader in /system"],
+ "unverified": ["phone N100CU025C18D000128 is the fourth D600 (inferred)", "exec of interpreter under /data/local/tmp", "Bionic without property area", "remount rw on our boards", "AVB enforcement"]
+}

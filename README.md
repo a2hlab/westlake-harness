@@ -118,6 +118,7 @@ kind of work from where the corpus started
 | `corpus/` | Reproducible top-ten selection plus exact download hashes. APK/XAPK binaries are deliberately ignored. |
 | `benchmark/2026-08-20/` | Completed ten-app benchmark report, deduplicated registry, and runtime lock. |
 | `benchmark/2026-08-21/` | ABI-aware redo against the current ARM64 runtime lock; the prior benchmark remains preserved. |
+| `benchmark/2026-09-25-bionic-libc-feasibility/` | **Running the app process on real Bionic on stock DAYU600 / OH 6.1**: the switch needs no system-partition write in westlake's `/data/local/tmp` model (hanbin's 14 overwritten OH libraries are mostly APK integration), but every in-process native library must be rebuilt and the OH client layer re-provided; a 3–5 day headless PoC with the same-SoC Android D600's Bionic tests metasec first, with nothing irreversible. |
 | `benchmark/2026-08-23-toutiao/native-analysis/ANDROID11-RESOLUTION.md` | **99.7% of 3415 native imports decided** against stock Android 11, and the IFUNC parser defect that finding exposed. |
 | `benchmark/2026-09-18-oh-board/` | **First resolution against the deployed OpenHarmony runtime**: 90% of both apps' native imports resolve; the real gap is 58 symbols in five clusters, led by `__sF` at 40 importing libraries. |
 | `benchmark/2026-09-18-mcdonalds/` | Cheap validation of the second MVP app: in-APK library loading is required (WebView needs it too), the gap list, and a working Android baseline that touches only six native methods. |
