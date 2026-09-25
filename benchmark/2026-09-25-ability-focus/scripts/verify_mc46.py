@@ -15,7 +15,9 @@ def clean(origin):
  stop(d)
  return d
 cmd,name=sys.argv[1:3]
-if cmd in ('deploy','restart'):
+if cmd=='clean':
+ clean(name);print('CLEANED; patched libraries retained',flush=True)
+elif cmd in ('deploy','restart'):
  origin=sys.argv[3];d=clean(origin);target=d['runtime']+'/liboh_adapter_bridge.so'
  if cmd=='deploy':
   oldhash=dev('sha256sum '+target).split()[0]
