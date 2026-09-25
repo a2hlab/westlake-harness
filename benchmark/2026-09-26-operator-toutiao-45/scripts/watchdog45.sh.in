@@ -1,0 +1,82 @@
+#!/system/bin/sh
+# Generated for one operator45 deployment. No touch injection or focus calls while alive.
+D=/data/local/tmp/operator45
+C=/data/local/tmp/operator45-crashes
+RUNTIME=@@RUNTIME@@
+STAGE=@@STAGE@@
+SOCKET=@@SOCKET@@
+UID45=@@UID@@
+mkdir -p "$D" "$C"
+[ ! -e "$D/stop" ] || exit 0
+mkdir "$D/guard.lock" 2>/dev/null || exit 1
+trap 'rmdir "$D/guard.lock" 2>/dev/null' EXIT
+trap 'exit 0' TERM INT
+proc_start() {
+ [ -r "/proc/$1/stat" ] || return 1
+ value=$(cat "/proc/$1/stat")
+ rest=${value##*) }
+ set -- $rest
+ [ "$1" != Z ] || return 1
+ shift 19
+ echo "$1"
+}
+uptime_s() { read up rest < /proc/uptime; echo "${up%%.*}"; }
+HZ45=$(getconf CLK_TCK)
+child=$(cat "$D/child.pid"); born=$(proc_start "$child"); started=$((born/HZ45))
+pending_tries=0
+late_capture() {
+ [ "$pending_tries" -gt 0 ] || return
+ pending_tries=$((pending_tries-1))
+ find /data/log/faultlog -type f -name "*-$pending_pid-*" > "$pending_dest/fault-paths-late.txt" 2>/dev/null
+ while IFS= read -r file; do [ -f "$file" ] && cp "$file" "$pending_dest/"; done < "$pending_dest/fault-paths-late.txt"
+ line=$(grep -F "[WESTLAKE-REAP] child $pending_pid " "$STAGE/parent.log" | tail -n 1)
+ if [ -n "$line" ]; then
+  printf "%s\n" "$line" > "$pending_dest/exit-signal.txt"
+  cp "$STAGE/parent.log" "$pending_dest/parent-late.log"
+  while IFS= read -r row; do
+   case "$row" in
+    "$pending_seq	"*) printf "%s\t%s\t%s\t%s\tpid=%s\n" "$pending_seq" "$pending_stamp" "$pending_elapsed" "$line" "$pending_pid";;
+    *) printf "%s\n" "$row";;
+   esac
+  done < "$C/INDEX" > "$C/INDEX.tmp"
+  mv "$C/INDEX.tmp" "$C/INDEX"
+ fi
+}
+seq=0
+[ ! -r "$D/sequence" ] || seq=$(cat "$D/sequence")
+while [ ! -e "$D/stop" ]; do
+ current=$(proc_start "$child")
+ if [ -n "$current" ] && [ "$current" = "$born" ]; then late_capture; sleep 3; continue; fi
+ seq=$((seq+1)); echo "$seq" > "$D/sequence"
+ stamp=$(date +%Y%m%d-%H%M%S); epoch=$(date +%s); elapsed=$(($(uptime_s)-started))
+ dest="$C/$seq-$stamp"; mkdir -p "$dest"
+ printf 'pid=%s\nepoch=%s\nuptime=%s\nalive_seconds=%s\n' "$child" "$epoch" "$(uptime_s)" "$elapsed" > "$dest/exit.txt"
+ cp "$RUNTIME/private-tmp/adapter_child_$child.stderr" "$dest/child.stderr" 2>"$dest/copy-errors.txt"
+ cp "$STAGE/parent.log" "$dest/parent.log" 2>>"$dest/copy-errors.txt"
+ find /data/log/faultlog -type f -name "*-$child-*" > "$dest/fault-paths.txt" 2>>"$dest/copy-errors.txt"
+ while IFS= read -r file; do [ -f "$file" ] && cp "$file" "$dest/"; done < "$dest/fault-paths.txt"
+ signal=$(grep -F "[WESTLAKE-REAP] child $child " "$dest/parent.log" | tail -n 1)
+ [ -n "$signal" ] || signal=unknown
+ printf '%s\t%s\t%s\t%s\tpid=%s\n' "$seq" "$stamp" "$elapsed" "$signal" "$child" >> "$C/INDEX"
+ pending_pid=$child; pending_dest=$dest; pending_seq=$seq; pending_stamp=$stamp; pending_elapsed=$elapsed; pending_tries=40
+ [ ! -e "$D/stop" ] || break
+ # Reuse the live preloaded parent and all app data. Only recovery foregrounds the host.
+ aa start -b org.westlake.imehost -a EntryAbility > "$dest/foreground.txt" 2>&1
+ parent=$(cat "$D/parent.pid")
+ if ! kill -0 "$parent" 2>/dev/null || [ ! -S "$SOCKET" ]; then
+  rm -f "$SOCKET"
+  @@PARENT_COMMAND@@ > "$D/parent-start.txt"
+  parent=$(cat "$D/parent-start.txt"); echo "$parent" > "$D/parent.pid"
+  n=0; while [ ! -S "$SOCKET" ] && [ "$n" -lt 40 ]; do sleep .25; n=$((n+1)); done
+ fi
+ @@SPAWN_COMMAND@@ > "$dest/spawn.txt" 2>&1
+ next=$(sed -n 's/.*result=0 pid=\([0-9][0-9]*\).*/\1/p' "$dest/spawn.txt" | tail -n 1)
+ if [ -z "$next" ]; then printf '%s spawn_failed\n' "$(date +%s)" >> "$C/ERRORS"; sleep 3; continue; fi
+ child=$next; born=$(proc_start "$child"); started=$((born/HZ45))
+ echo "$child" > "$D/child.pid"
+ box="/proc/$child/root/data/local/tmp/noice_tap.$child"
+ : > "$box"; chown "$UID45:$UID45" "$box"; chmod 666 "$box"; ln -sf "$box" /data/local/tmp/noice_tap
+ printf 'child=%s\nparent=%s\nuptime=%s\nepoch=%s\n' "$child" "$parent" "$(uptime_s)" "$(date +%s)" > "$dest/restarted.txt"
+ printf '%s\n' "$RUNTIME/private-tmp/adapter_child_$child.stderr" > "$D/child.stderr.path"
+ sleep 3
+done
