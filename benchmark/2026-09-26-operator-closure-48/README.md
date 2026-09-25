@@ -7,3 +7,7 @@
 A1 ART、85c789f4 shim、mc46 bridge、8b8d559c npth、tt targets/LD_PRELOAD、map_count1048576均保留。sensor旧core按SHA备份，仅替换core库。守护恢复实例不计原实例存活；失败如实保留。源中property为未设置返回值，__sF为resolve-only零对象，并非完整Bionic语义实现。
 
 测试进行中；每轮要求原实例详情RESUMED后至少180s、正文可读、metasec exit=0、无缺符号重定位失败。本组不混入sensor-only旧组（3/4正文、c-r4 property致命退出）。
+
+## 终止于新派单
+
+完整闭包3轮全部在启动7秒发生a-4 SIGSEGV，pc=0x4000、sp=0x7b；原PID分别24918/27501/31253。全部无缺符号重定位错误、无详情生命周期、无文章正文。零缺符号不等同运行正确。依用户最新空壳派单停止此候选，未开启第4/5轮；守护已暂停避免失败候选重启循环。三轮cppcrash与child.stderr独立留存，空壳另组测试。

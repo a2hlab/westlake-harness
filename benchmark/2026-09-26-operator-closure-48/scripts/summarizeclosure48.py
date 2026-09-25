@@ -71,6 +71,10 @@ for r in sorted(R.glob('*-r[0-9]*')):
  row['missing_symbol_relocations']=[l for l in lines if 'symbol not found' in l]
  row['closure_numeric_gate']=bool(row['article_numeric_window_pass'] and not row['missing_symbol_relocations'] and not row['metasec_ule_count'])
  row['metasec_ule_absent']=not row['metasec_ule_count']
+ row['original_cppcrash_lifetime_s']=[int(m[1]) for p in r.glob('cppcrash-*.txt') if (m:=re.search(r'Process life time:(\d+)s',p.read_text(errors='replace')))]
+ row['native_a4_sigsegv']=bool(re.search(r'Fatal signal 11.*?Thread: \d+ \"a-4\"',log,re.S) and terminal and 'signal 11' in terminal[-1])
+ row['fatal_thread_lines']=[l for l in lines if l.startswith('Thread:')]
+ row['no_original_exit']=bool(final_alive and not terminal)
  (r/'summary.json').write_text(json.dumps(row,indent=2)+'\n')
 (R/'summary.json').write_text(json.dumps(rows,indent=2)+'\n')
 for r in rows:print(r['round'],r['pid'],r['terminal'],'alive_age',round(r['last_observed_alive_age_s'],2),'end_age',round(r['end_age_s'],2),'metasec_ule_to_exit',r['metasec_ule_to_main_exit'],'article_numeric_window_pass',r['article_numeric_window_pass'],'refusals',len(r['npth_hook_refusal_lines']))
