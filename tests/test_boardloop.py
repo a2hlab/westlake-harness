@@ -377,6 +377,8 @@ class TestTapChannelBothNames(unittest.TestCase):
             with mock.patch("subprocess.run", side_effect=fake_run):
                 record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
             self.assertEqual(record["verdict"], "done")
+            # #24: child log persisted locally before storage cleanup
+            self.assertTrue((tmp / "runs" / "appx" / "child.stderr").exists())
             # #22: pre-launch sweep ran before the launch (recorded, non-fatal)
             self.assertIn("pre_cleanup", record)
             self.assertTrue(any("pidof com.appx" in c["command"]

@@ -318,6 +318,10 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
             refreshed = device.shell(f"cat {record['child_log_path']} 2>/dev/null")
             if refreshed.strip():
                 child_log = refreshed
+        # #24: persist the child log next to the record BEFORE storage cleanup deletes
+        # the on-board runtime dir it lives in — campaign22's logs were unrecoverable
+        # after the sweep, leaving only the identity string in first_blocker.
+        (out / "child.stderr").write_text(child_log, errors="replace")
         view_tree = view_tree_from_log(child_log.splitlines())
         rs_raw = device.shell("hidumper -s RenderService -a RSTree 2>/dev/null")
         pkg = re_escape(app.get("package") or "")
