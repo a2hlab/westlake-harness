@@ -1,0 +1,28 @@
+# #41 ① faithful test — mmap PROT_EXEC of Bionic files as u:r:normal_hap:s0 inside the
+# app private namespace (source_app_namespace bind mounts appdat runtime root -> /data/local/tmp/asx).
+# dommap exit code bits: 1=mmap PROT_EXEC file OK, 2=mprotect anon PROT_EXEC OK,
+#                        4=open OK, 8=setcon OK, 16=current domain == target. 31 = all OK.
+
+## App child SELinux domain (authoritative, from appspawn-x child.stderr, #38 runs)
+[AppSpawnX] Applying DAC: uid=20010053 gid=20010053
+[AppSpawnX] applySELinux: apl=normal pkg=org.westlake.imehost hapFlags=0 uid=20010053
+[AppSpawnX] applySELinux: child secon transitioned successfully (apl=normal)   => u:r:normal_hap:s0
+[WESTLAKE-OH-JIT] memfd RX denied (13); using ART anonymous cache with RWX     => normal_hap denies memfd-exec, allows anon execmem
+
+## Global /data/local/tmp path (data_local_tmp label) — NOT the app path
+control su-domain, mmap Bionic libc.so:                        CODE=31 (all ok)
+normal_hap, libc.so=appdat,          global path:              open FAILED (dir traversal on data_local_tmp) -> CODE=26 (no bit4/bit1)
+normal_hap, libc.so=data_local_tmp,  global path:              open FAILED -> CODE=26
+  => normal_hap cannot even traverse the GLOBAL /data/local/tmp dir; execve of a data_local_tmp binary is also denied (EXIT 126, dontaudit-suppressed).
+
+## Faithful app path: private namespace (source_app_namespace), appdat runtime root -> /data/local/tmp/asx
+(a) target = Bionic libc.so   (appdat, /data/local/tmp/asx/bionic41/lib64/bionic/libc.so):  CODE=31  ALL OK
+(b) control = production libart.so (appdat, /data/local/tmp/asx/libart.so):                  CODE=31  ALL OK
+(c) target = Bionic linker64  (appdat, /data/local/tmp/asx/bionic41/linker64):               CODE=31  ALL OK
+normal_hap avc denials in ring buffer after all runs: 0
+
+CONCLUSION: in the real app context (u:r:normal_hap:s0, app uid 20010053, private ns), the app
+domain can open + mmap(PROT_READ|PROT_EXEC) the Bionic linker64 and libc.so from the appdat
+runtime root — identical result to the production libart.so it already loads — and can mprotect
+anon memory PROT_EXEC. No sepolicy change; 0 denials. The load mechanism the app uses is
+dlopen/mmap after a fork+setcon (never execve), so the execve/global-tmp denials are irrelevant.

@@ -1,0 +1,31 @@
+== stage ==
+== control: run in su domain (baseline, expect exit 0) ==
+linker: Warning: failed to find generated linker configuration from "/linkerconfig/ld.config.txt"
+WARNING: linker: Warning: failed to find generated linker configuration from "/linkerconfig/ld.config.txt"
+bionic41 tp_probe up
+selinux_domain = u:r:su:s0
+uid=0 gid=0 pid=10742
+tls[1]=0x7fb998c4f8 pthread_self=0x7fb998c4f8 slot1==self=yes
+pthread.tid@16=10742 gettid=10742 match=yes
+pthread.cached_pid@20=10742 getpid=10742 match=yes
+EXIT=0
+== case datalocal: files labelled u:object_r:data_local_tmp:s0, exec under u:r:normal_hap:s0 ==
+u:object_r:data_local_tmp:s0 /data/local/tmp/bionic41
+u:object_r:data_local_tmp:s0 /data/local/tmp/bionic41/lib64/bionic/libc.so
+u:object_r:data_local_tmp:s0 /data/local/tmp/bionic41/linker64
+u:object_r:data_local_tmp:s0 /data/local/tmp/bionic41/tp_probe41
+sh: /data/local/tmp/bionic41/tp_probe41: Permission denied
+EXIT=126
+-- normal_hap avc between markers (direct grep, show permissive=) --
+(no avc lines in window)
+== case appdat: files labelled u:object_r:appdat:s0, exec under u:r:normal_hap:s0 ==
+u:object_r:appdat:s0 /data/local/tmp/bionic41
+u:object_r:data_local_tmp:s0 /data/local/tmp/bionic41/lib64/bionic/libc.so
+u:object_r:data_local_tmp:s0 /data/local/tmp/bionic41/linker64
+u:object_r:data_local_tmp:s0 /data/local/tmp/bionic41/tp_probe41
+sh: /data/local/tmp/bionic41/tp_probe41: Permission denied
+EXIT=126
+-- normal_hap avc between markers (direct grep, show permissive=) --
+(no avc lines in window)
+== all normal_hap denials currently in ring buffer (context) ==
+== done ==

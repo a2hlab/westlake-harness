@@ -1,0 +1,78 @@
+{
+ "schema": 1,
+ "date": "2026-09-25",
+ "board_entry": "#41 (.octos/OUTER_LOOP_REVIEW.md)",
+ "mode": "read-only analysis + minimal on-board test; only /data/local/tmp and a scratch subdir of an existing app runtime root written; no /system, no remount, no app launched; board 5cd1e3dd",
+ "questions": {
+  "q1": "In the real app process context (appspawn-x child, app uid, app SELinux domain), can it exec a PT_INTERP=Bionic linker64 program and mmap-execute Bionic files?",
+  "q2": "Under the current best Toutiao config (#38), how is libmetasec_ml handled — loaded/failed/skipped, crash, effect on visible features — vs the Android reference?"
+ },
+ "q1_app_domain": {
+  "app_domain": "u:r:normal_hap:s0",
+  "app_uid": 20010053,
+  "domain_source": "appspawn-x child.stderr: applySELinux apl=normal pkg=org.westlake.imehost -> child secon transitioned successfully",
+  "how_app_gets_code": "fork from appspawn-x + setcon (dyntransition) to normal_hap, then dlopen/mmap of .so; the app NEVER execve's a binary",
+  "labels": {
+   "global_/data/local/tmp": "u:object_r:data_local_tmp:s0",
+   "app_runtime_root_/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-*": "u:object_r:appdat:s0",
+   "note": "source_app_namespace bind-mounts the appdat runtime root -> /data/local/tmp/asx and app private-tmp -> /data/local/tmp inside the child ns; SELinux label follows the inode, so inside the child /data/local/tmp is appdat, not data_local_tmp"
+  },
+  "tests": {
+   "execve_binary_under_normal_hap_global_tmp": {"exit": 126, "verdict": "denied (no entrypoint on data_local_tmp; app never execve's anyway); dontaudit-suppressed"},
+   "open+mmap_PROT_EXEC_global_tmp_under_normal_hap": {"exit_code_bits": 26, "open": false, "verdict": "blocked at directory traversal of the data_local_tmp dir, not the file"},
+   "mmap_PROT_EXEC_bionic_libc_appdat_in_private_ns": {"exit_code_bits": 31, "open": true, "mmap_exec": true, "execmem": true, "in_target_domain": true, "verdict": "OK"},
+   "mmap_PROT_EXEC_bionic_linker64_appdat_in_private_ns": {"exit_code_bits": 31, "verdict": "OK"},
+   "control_mmap_PROT_EXEC_production_libart_appdat_in_private_ns": {"exit_code_bits": 31, "verdict": "OK (identical to Bionic libc)"},
+   "execmem_anon_mprotect_PROT_EXEC_under_normal_hap": {"result": "OK", "corroborates": "ART child.stderr WESTLAKE-OH-JIT anonymous RWX fallback"},
+   "memfd_rx_under_normal_hap": {"result": "denied(13)", "source": "ART child.stderr; ART falls back to anon RWX; does not affect Bionic .so file-mmap loading"}
+  },
+  "normal_hap_avc_denials_on_success_path": 0,
+  "answer": "YES. The Bionic linker64 and libc can be loaded (open + mmap PROT_EXEC) in the real app domain (u:r:normal_hap:s0, uid 20010053) from the appdat runtime root inside the app private namespace — the identical result to the production libart.so the app already loads — with 0 SELinux denials and no sepolicy change. The load path is dlopen/mmap after fork+setcon, so the execve and global-/data/local/tmp denials (data_local_tmp label) are irrelevant to it. Method note: entering normal_hap via setcon from the permissive su shell reproduces the app's own fork+setcon; global-tmp denials were dontaudit-suppressed (measured by exit code and EACCES, not by dmesg line count, since the ring buffer wraps)."
+ },
+ "q2_metasec": {
+  "config": "#38 best config (WESTLAKE_ANDROID_NATIVE_TARGETS incl. libmetasec_ml.so routed through the ART isolated namespace + libwebview_bionic_shim.so bionic-ABI boundary)",
+  "runs_examined": ["process-identity-11/toutiao-1", "toutiao-2", "toutiao-3"],
+  "android_reference": {
+   "device": "N100CU025C18D000128",
+   "dlopen": "nativeloader Load libmetasec_ml.so ... : ok (once)",
+   "init": "E METASEC : MSTaskManager::DoLazyInit() runs",
+   "app": "Displayed MainActivity +4s031ms; tab switches + feed refresh work fully"
+  },
+  "oh_westlake": {
+   "dlopen": "attempted repeatedly (from /data/local/tmp/asx/lib/arm64-v8a and /data/data/com.ss.android.article.news/app_lib), resolved through libwebview_bionic_shim.so; no load error surfaced",
+   "init_MSTaskManager_DoLazyInit": "NEVER runs — 0 occurrences across all 3 runs (Android runs it)",
+   "crash": "no metasec crash; intermittent SIGSEGV at 75s (toutiao-1) / (toutiao-3) is in libart.so on Worker-thread-1 (the #38 bd_tracker/ART worker crash), stack all libart.so; toutiao-2 ran 2790 lines with no fatal; the #23 static-vfork crash (0x2043b8) did NOT occur",
+   "visible_features": {
+    "feed_render": "yes — view-tree shows SSTabHost/StreamViewPager/FeedCommonRefreshView/FeedCommonRecyclerView itemCount=3; privacy-consent dialog present",
+    "article_open": "blocked by input/focus (#34/#38), NOT metasec",
+    "login_video_personalized_refresh": "not separately tested; at risk because metasec's DoLazyInit (signing/anti-tamper) did not run"
+   }
+  },
+  "interpretation": "On OH, metasec is in a loaded-but-not-initialized state: dlopen succeeds via the bionic shim (repeatedly re-requested, vs Android's single ok) but MSTaskManager::DoLazyInit — the actual security init — never executes. The initial feed does not hard-depend on it (3 items render), but signed/deep operations do. DoLazyInit is exactly where metasec's Bionic-ABI assumptions live (pthread slot1==pthread_self, cached_pid@20, static vfork — per #35); under OH musl + shim that init does not complete.",
+  "answer": "Loaded (dlopen via shim, no error, no crash), but NOT functionally initialized — MSTaskManager::DoLazyInit never runs on OH, whereas it runs on the Android reference. metasec does not crash and does not block the initial feed; it is not the current visible-feature blocker (input/focus + the ART worker crash are). Its full anti-tamper/signing is unconfirmed and most likely inert under musl+shim."
+ },
+ "recommendation": {
+  "verdict": "advance the Bionic route, but stage it behind the current input/focus + ART-worker-crash blockers",
+  "why": [
+   "Q1 removes the SELinux unknown: loading real Bionic into the app process is permitted with no policy change and 0 denials (proven in the app domain).",
+   "Q2 shows metasec loads but its DoLazyInit does not run under musl+shim; making it run as on Android is the concrete payoff of real Bionic (its ABI assumptions live in that init).",
+   "But metasec is NOT today's binding blocker: the feed already renders and the visible failures are input/focus (#34/#38) and an ART worker crash. Bionic is a stability/correctness investment (~98 person-days of shims + ART boot-image matching per #39), not a quick unlock."
+  ],
+  "next_bionic_step": "M2 (#43): dalvikvm64 with AOSP14 ART/i18n APEX + boot image + BCP + the #39 Bionic linker/libc, to check ART itself runs on real Bionic before committing to the 57-lib rebuild."
+ },
+ "verdicts": [
+  {"item": "app domain identity", "verdict": "verified (u:r:normal_hap:s0, uid 20010053)"},
+  {"item": "Bionic mmap PROT_EXEC in app domain (private ns, appdat)", "verdict": "verified (code 31, == production libart)"},
+  {"item": "normal_hap cannot use global data_local_tmp path", "verdict": "verified (irrelevant to app path)"},
+  {"item": "metasec loaded on OH", "verdict": "verified (dlopen via shim, 3 runs)"},
+  {"item": "metasec MSTaskManager::DoLazyInit runs on OH", "verdict": "verified NEGATIVE (0/3; Android runs it)"},
+  {"item": "metasec crash", "verdict": "verified none; ART worker SIGSEGV is unrelated"},
+  {"item": "feed renders with metasec loaded", "verdict": "verified (itemCount=3)"},
+  {"item": "metasec functional signing on OH", "verdict": "unverified (no gorgon/argus/DoLazyInit evidence; likely inert)"}
+ ],
+ "deferred": [
+  "login / video / personalized-refresh behaviour under OH metasec",
+  "whether real Bionic makes MSTaskManager::DoLazyInit run (that is #43 onward)",
+  "the ART worker (bd_tracker) SIGSEGV root cause (separate from metasec)"
+ ]
+}
