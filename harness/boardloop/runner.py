@@ -216,6 +216,13 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
 
     report_path = out / "device-report.json"
     try:
+        # #22: pre-launch sweep. probe_source_app does not kill the children it spawns, and
+        # the previous app's leftover processes accumulate until the board runs out of
+        # memory. The same cleanup machinery that closes a finished run also runs BEFORE
+        # the next launch: pidof-based kill of this app's package plus any stale
+        # appspawn-x children. Failures here are recorded, never fatal.
+        record["pre_cleanup"] = run_cleanup(args, app, serial, None, None)
+
         # Keep the panel lit and the host in front before the launch: the default 30 s
         # screen timeout locks over the app, and OH backgrounds the host, zeroing the app's
         # child windows (outer-loop evidence from the 11-app real-board baseline).

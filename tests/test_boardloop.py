@@ -377,6 +377,10 @@ class TestTapChannelBothNames(unittest.TestCase):
             with mock.patch("subprocess.run", side_effect=fake_run):
                 record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
             self.assertEqual(record["verdict"], "done")
+            # #22: pre-launch sweep ran before the launch (recorded, non-fatal)
+            self.assertIn("pre_cleanup", record)
+            self.assertTrue(any("pidof com.appx" in c["command"]
+                                for c in record["pre_cleanup"]))
             self.assertEqual(record["stages"]["P4a"], "pass")  # the scan1 failure mode
             bare = [c for c in calls if "echo v > /data/local/tmp/noice_tap 2>/dev/null" in c]
             per_pid = [c for c in calls if "echo v > /data/local/tmp/noice_tap.4321" in c]
@@ -712,12 +716,13 @@ class TestCleanupEveryExit(unittest.TestCase):
             self.assertEqual(record["verdict"], "done")
             self.assertEqual(record["stages"]["P4b"], "pass")
             kills = [c for c in calls if "kill -9" in " ".join(c)]
-            self.assertEqual(len(kills), 3)  # child pid, parent pid, pidof fallback
-            self.assertIn("kill -9 4321", " ".join(kills[0]))
-            self.assertIn("kill -9 4000", " ".join(kills[1]))
-            self.assertIn("pidof com.appx", " ".join(kills[2]))
+            self.assertEqual(len(kills), 4)  # pre-launch pidof sweep + child pid, parent pid, pidof fallback
+            self.assertIn("pidof com.appx", " ".join(kills[0]))  # the #22 pre-launch sweep
+            self.assertIn("kill -9 4321", " ".join(kills[1]))
+            self.assertIn("kill -9 4000", " ".join(kills[2]))
+            self.assertIn("pidof com.appx", " ".join(kills[3]))
             # cleanup comes AFTER all evidence collection (log/vt/RS/faultlog reads)
-            first_kill = calls.index(kills[0])
+            first_kill = calls.index(kills[1])
             evidence = [i for i, c in enumerate(calls)
                         if any(m in " ".join(c) for m in
                                ("adapter_child", "noice_tap", "hidumper", "faultlog"))]
@@ -747,9 +752,10 @@ class TestCleanupEveryExit(unittest.TestCase):
                 record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
             self.assertEqual(record["verdict"], "launch-timeout")
             kills = [" ".join(c) for c in calls if "kill -9" in " ".join(c)]
-            self.assertEqual(len(kills), 2)  # parent pid + pidof fallback; no child
-            self.assertIn("kill -9 4000", kills[0])
-            self.assertIn("pidof com.appx", kills[1])
+            self.assertEqual(len(kills), 3)  # pre-launch sweep + parent pid + pidof fallback; no child
+            self.assertIn("pidof com.appx", kills[0])  # the #22 pre-launch sweep
+            self.assertIn("kill -9 4000", kills[1])
+            self.assertIn("pidof com.appx", kills[2])
 
     def test_no_report_falls_back_to_pidof_only(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -760,7 +766,7 @@ class TestCleanupEveryExit(unittest.TestCase):
             # launch "succeeded" (rc 0) but wrote no report -> launch-failed
             self.assertEqual(record["verdict"], "launch-failed")
             kills = [" ".join(c) for c in calls if "kill -9" in " ".join(c)]
-            self.assertEqual(len(kills), 1)
+            self.assertEqual(len(kills), 2)  # pre-launch pidof sweep + post-run pidof fallback
             self.assertIn("pidof com.appx", kills[0])
 
     def test_exception_mid_collection_still_cleans_up(self) -> None:
@@ -792,9 +798,10 @@ class TestCleanupEveryExit(unittest.TestCase):
                 record = runner.run_app(ns, "appx", app, "S1", tmp / "runs", "rid")
             self.assertEqual(record["verdict"], "runner-error")
             kills = [" ".join(c) for c in calls if "kill -9" in " ".join(c)]
-            self.assertEqual(len(kills), 3)  # cleanup ran despite the exception
-            self.assertIn("kill -9 4321", kills[0])
-            self.assertIn("kill -9 4000", kills[1])
+            self.assertEqual(len(kills), 4)  # pre-launch sweep + cleanup ran despite the exception
+            self.assertIn("pidof com.appx", kills[0])  # the #22 pre-launch sweep
+            self.assertIn("kill -9 4321", kills[1])
+            self.assertIn("kill -9 4000", kills[2])
             self.assertTrue(any("pidof com.appx" in k for k in kills))
 
     def test_extra_args_flow_into_the_launch_command(self) -> None:
