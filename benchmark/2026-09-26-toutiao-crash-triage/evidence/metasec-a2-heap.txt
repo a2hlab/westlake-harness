@@ -1,0 +1,32 @@
+# #48 A2 five-run classification: the SIG11 is NOT metasec init
+board 61b06572 metasec48/a2-r{1..5}, codex-2 test/metasec-load-48 @ 3431db8
+
+## per-round outcome
+r1: symlink NOT applied (metasec errno13=1) -> platform-back-handler ULE -> X.DEv null-Looper -> exit(1) @155s  [old sixth path]
+r2: symlink APPLIED (errno13=0, no back-handler ULE) -> SIG11 @136s
+r3: symlink NOT applied (errno13=1) but no X.DEv NPE -> survived 470s (PASS)
+r4: symlink APPLIED (errno13=0) -> SIG11 @237s
+r5: symlink NOT applied (errno13=1) -> X.DEv null-Looper -> exit(1) @165s  [old sixth path]
+
+## the two SIG11 (cppcrash) are different victims of the SAME musl heap corruption, NOT metasec
+r2 Tid bd_tracker_w:13  SEGV@0x00022b8bb5843cf6 (a corrupted heap pointer, not NULL/OOM)
+   #00 ld-musl get_meta+92  #01 __libc_free+24  #02-05 liboh_android_runtime.so = SQLite:
+      dbMallocRawFinish / sqlite3VdbeMemGrow / register_android_database_SQLiteConnection
+   #06 libart.so  -> bd_tracker thread writing SQLite; free() hits an already-corrupted chunk
+r4 Tid RenderThread    SEGV@0x001690254429071a (corrupted heap pointer)
+   #00 ld-musl get_meta+92  #01 __libc_free+24  #02+ libGLES_mali.z.so (Mali shader compiler
+      SelectionDAGISel/runOnMachineFunction) -> GPU driver free() hits corruption
+
+## conclusions
+- NOT metasec: fault DSOs are SQLite (via oh_android_runtime) and Mali; neither is libmetasec_ml.so.
+- NOT #35 metasec TLS: no pthread/TLS read in libmetasec; r2 has 0 metasec native activity (lazy, #41 holds).
+- It is a process-wide musl mallocng heap-metadata corruption (get_meta+92 on __libc_free),
+  surfacing in whichever thread free()s a poisoned chunk first (bd_tracker/SQLite, RenderThread/Mali).
+- bd_tracker is exactly the '116s bd_tracker SIGSEGV, possibly independent' the outer loop flagged at #38.
+- It only appears in r2/r4 because metasec's early exit (r1/r5) or luck (r3) previously hid it:
+  removing the sixth exit lets the process live long enough to free a corrupted chunk. Same shape as
+  class 5 (fix the earlier crash, the next one surfaces). The corruption is INDEPENDENT of A2/metasec.
+
+## codex-2 also established (README): app-namespace /data,/data/data,asx have NO noexec ->
+   errno13 is NOT a noexec mount; app_lib label=data_app_el2_file, asx label=appdat (leans SELinux,
+   AVC not yet caught in read-only dmesg, so not promoted to confirmed).

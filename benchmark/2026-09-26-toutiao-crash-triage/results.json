@@ -262,12 +262,25 @@
         "chain": "verified",
         "errno13_nature": "verified (lean SELinux, board command to confirm)",
         "B_not_viable": "verified",
-        "A_and_C_effect": "A1 implemented+syntax-checked, effect unverified (needs board)",
-        "root_not_bionic_only": "verified"
+        "A_and_C_effect": "A removes sixth exit (verified r2/r4: errno13=0, no back-handler ULE, no null-Looper); A alone insufficient for 5x3min due to independent musl heap corruption",
+        "root_not_bionic_only": "verified (metasec lazy after load, no init crash; SIG11 is SQLite/Mali heap corruption not metasec)"
       },
       "probe_command": "hdc -t 61b0657200000000000000000324012c shell su 0 sh -c: grep /data /proc/mounts; grep /data/data /proc/self/mountinfo; dmesg | grep 'avc denied execute normal_hap|app_data'",
       "probe_lean": "SELinux (normal_hap enforcing, #39 memory); command confirms noexec-mount vs avc",
-      "caveat": "all three make metasec load, letting init run; this exit is errno13 not TLS (outer loop re-judgement correct), but clearing 3min depends on whether metasec init crashes after loading; if it crashes on platform-back-handler that is the TLS pit and is the Bionic-bound part"
+      "caveat": "all three make metasec load, letting init run; this exit is errno13 not TLS (outer loop re-judgement correct), but clearing 3min depends on whether metasec init crashes after loading; if it crashes on platform-back-handler that is the TLS pit and is the Bionic-bound part",
+      "a2_board_result": {
+        "runs": "metasec48/a2-r1..r5 (codex-2 3431db8)",
+        "pattern": "symlink applied (r2,r4)->SIG11; not applied (r1,r5)->old sixth exit; r3 luck->470s PASS",
+        "sig11_is_metasec": false,
+        "sig11_root": "musl mallocng heap-metadata corruption (get_meta+92 -> __libc_free); r2 victim=SQLite via oh_android_runtime on bd_tracker thread, r4 victim=Mali libGLES_mali on RenderThread; corrupted heap pointer not NULL/OOM",
+        "not_35_tls": true,
+        "metasec_native_activity_r2": 0,
+        "independent_of_a2": "only surfaces when metasec sixth-exit removed lets process live longer; = #38 'bd_tracker SIGSEGV possibly independent'",
+        "errno13_not_noexec": "codex-2 verified /data,/data/data,asx have no noexec; app_lib label data_app_el2_file, asx appdat; leans SELinux",
+        "A_clears_3min": "A removes sixth exit AND hits no Bionic-bound metasec residual (root not Bionic-only), but A alone does NOT clear 5x3min due to the independent heap corruption (seventh class)",
+        "not_load_metasec": "feasible via stub .so or Java short-circuit but not the lever: does not touch the heap corruption (fault DSOs SQLite/Mali, not metasec)",
+        "next": "re-run with A1 (f162c5e, cherry-picked baca9a3/94f8195) to drop symlink flakiness; chase heap corruption with libc_gwp_asan"
+      }
     }
   ],
   "aot42_formal_signal11": {

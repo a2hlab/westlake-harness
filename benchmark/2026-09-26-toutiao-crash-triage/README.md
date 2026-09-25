@@ -251,12 +251,39 @@ The stack the outer loop quoted is **two independent events**, not one causal li
   - **Candidate C — make app_lib executable (changes policy).** If the probe shows `noexec`, `board_setup.sh` adds `mount -o remount,exec` for the mount (root, one line, deterministic). If it shows SELinux, it needs an `allow normal_hap app_data_file:file execute` policy unit (hard under Enforcing) or a global `setenforce 0` (weakens the whole model). Feasibility: **noexec = high, SELinux = low/invasive**. Risk: weakens OH's model; and, like A, it lets metasec init proceed, so the same `DoLazyInit`/TLS question applies. Board assertions: app_lib maps executable; same 3-min survival + no-new-crash check as A.
 - **The honest caveat for all three.** Every candidate makes metasec *load*, which lets its init run. This exit is errno13 (the outer loop's re-judgement is right — it is not the TLS pit), but whether the process then clears 3 minutes depends on whether metasec's init crashes after loading. #41's "DoLazyInit never runs, no crash" is the encouraging signal that it skips silently; A1 is the cheapest way to test it without changing policy. If init does crash on `platform-back-handler`, that crash is the TLS pit and is the part that is genuinely Bionic-bound.
 
+### 9a. A2 board result (#48): the loader route works, but it uncovers an independent heap corruption
+
+codex-2 ran A2 (symlink preseed) five fresh times (board `metasec48/a2-r{1..5}`, `test/metasec-load-48` @ 3431db8). Evidence: [evidence/metasec-a2-heap.txt](evidence/metasec-a2-heap.txt).
+
+| run | symlink applied | metasec errno13 | outcome |
+|---|---|---|---|
+| r1 | no | yes | old sixth path: back-handler ULE → X.DEv null-Looper → exit(1) @155s |
+| r2 | **yes** | **0** | **SIG11 @136s** |
+| r3 | no | yes | survived 470s (no X.DEv NPE that round) — PASS |
+| r4 | **yes** | **0** | **SIG11 @237s** |
+| r5 | no | yes | old sixth path: exit(1) @165s |
+
+- **The SIG11 is not metasec (verified from the cppcrashes).** Both are different victims of the **same musl heap-metadata corruption** — `#00 ld-musl get_meta+92`, `#01 __libc_free+24`, SEGV on a corrupted heap pointer (not NULL, not OOM):
+  - **r2** `bd_tracker_w` thread, frames #02–05 in `liboh_android_runtime.so` symbolize to **SQLite** (`dbMallocRawFinish` / `sqlite3VdbeMemGrow` / `register_android_database_SQLiteConnection`): the tracker writes SQLite and `free()` hits a poisoned chunk.
+  - **r4** `RenderThread`, frames in `libGLES_mali.z.so` (Mali shader compiler `SelectionDAGISel`): the GPU driver `free()` hits the same corruption.
+  - Neither DSO is `libmetasec_ml.so`; r2 shows **0** metasec native activity (lazy, #41 holds). This is **not** the #35 metasec TLS pit.
+- **Why it only shows in r2/r4.** When the symlink is not applied (r1/r5), metasec's sixth exit fires at ~155–165 s before the process lives long enough to free a poisoned chunk; r3 got lucky. Removing the sixth exit lets the process run longer and surface a corruption that was always there — the same "fix the earlier crash, the next surfaces" shape as class 5. **The corruption is independent of A2 and of metasec.** It is the `bd_tracker` SIGSEGV the outer loop already flagged as "possibly independent" at #38.
+- **errno13 is not noexec (codex-2, verified).** The app-namespace mounts of `/data`, `/data/data`, and asx carry **no** `noexec` flag; app_lib's label is `data_app_el2_file`, asx's is `appdat`. So Candidate C's easy branch (remount) does not apply; it leans SELinux, though a matching AVC was not yet caught in read-only dmesg.
+
+### 9b. Answers to the #48 follow-up
+
+- **Is the SIG11 metasec's Bionic-bound init?** No. It is a process-wide musl heap corruption surfacing in SQLite (bd_tracker) and Mali (RenderThread), unrelated to `libmetasec_ml.so` and not the #35 TLS pit.
+- **Can A make fresh starts reliably clear 3 minutes?** A **removes the sixth exit path** (r2/r4 have no errno13, no back-handler ULE, no null-Looper) and **does not hit a Bionic-bound metasec residual** — so the root fix is confirmed **not** Bionic-only. But A **alone does not** clear 5×3 min, because it uncovers the independent heap corruption. That is the next gate (a seventh class), not metasec.
+- **Should we just not load metasec?** Feasible but not the lever. A stub `.so` exporting every metasec JNI symbol would be needed (else the SDK's later native calls throw), or a Java-side `SecConfig` short-circuit (bytecode, hard). Either only re-achieves what A already does (kills the sixth path); **neither touches the heap corruption**, whose fault DSOs are SQLite and Mali. #41's laziness means metasec is not the corruptor.
+- **Recommended next step.** Re-run with **A1** (the loader patch, `art-build f162c5e`, cherry-picked by codex-2 as `baca9a3`/`94f8195`) instead of A2, to remove the symlink's own flakiness (r1/r5 where it did not apply) and get a clean post-metasec survival rate; then chase the musl heap corruption with an allocator debugger (OH musl ships `libc_gwp_asan`) to find who overflows/double-frees, since SQLite and Mali are only where it lands.
+
 ## Rules this adds
 
 - Compute a stripped library's vaddr from the absolute pc minus the base of its r-xp mapping at file offset 0. faultloggerd's rel-pc base varies by run.
 - A `Fatal signal` banner whose thread is not in the app's task list is a child process. Check x20/x21 against the app pid before counting it as an app crash.
 - In `webview_bionic_shim.c` `dlopen()`, every name translation must precede the `.z.so` probe, because the probe returns the plain name whenever it opens. This is the second instance of this bug.
 - Never delete or refuse an app library whose `System.loadLibrary` is unguarded on the Application path. Patch or stub it.
+- Removing an early crash uncovers the next one: metasec's sixth exit was masking an independent musl heap corruption that only shows once the process lives long enough to free a poisoned chunk. A green run is not a fixed process; it is a process that did not reach the next fault.
 - Separate the crash you see from the crash that killed you: an uncaught exception on a *shared* background thread has no visible effect until, much later, another component reads that thread's Looper/Handler and gets null. The banner names the second site; the cause is the earlier thread death.
 - An in-process renderer never returns its memory: what a multiprocess Chromium reclaims by killing the renderer process accumulates for the app's lifetime, so any per-process ceiling (mapping count, memcg) is reached eventually. Sample the ceiling, don't guess which one.
 - A library that must load in the Android namespace brings its whole reverse-dependency closure with it. Otherwise a default-namespace consumer loads a second copy, and OH musl's load-order lookup binds that copy's imports to whatever the default namespace loaded first.
@@ -274,6 +301,7 @@ The stack the outer loop quoted is **two independent events**, not one causal li
 | `evidence/dex-and-load-chains.txt` | dex call chains (heap dump, Umeng, `loadLibrary("npth")`), `isSoLoaded` guard scan, DT_NEEDED |
 | `evidence/ticketguard-hmac.txt` | banner, maps, OH OpenSSL symbolization, export comparison |
 | `evidence/crash-run-map.txt` | per-run signatures, #38 and #42 |
+| `evidence/metasec-a2-heap.txt` | A2 five-run result: SIG11 is a musl heap corruption in SQLite/Mali, not metasec; per-round table |
 | `evidence/metasec-exit-48.txt` | #48 sixth exit: metasec errno13 → dead background thread → X.DEv null Looper → _exit(1), with retry analysis |
 | `evidence/inproc-oom.txt` | in-process renderer PartitionAlloc OOM: banner, register decode, handler disasm, RSS/VSZ/VMA curve |
 | `evidence/tt-namespace.txt` | TicketGuard split: two images, OH musl lookup rule, closure, run.sh diff |
