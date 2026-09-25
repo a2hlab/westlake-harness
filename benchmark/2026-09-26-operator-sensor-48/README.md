@@ -30,8 +30,11 @@ old profile trees, creates empty ones and launches a new parent/child. Consent
 and article clicks use real uinput after visual confirmation. Original PID and
 birth are bound; guardian replacement never counts as survival. Each successful
 round requires a real NewDetailActivity lifecycle record, at least 180s after
-detail RESUMED, readable article screenshots, no metasec ULE/exit and no original
-process terminal record. Raw stderr, parent log, samples and matching faultlogs
+detail RESUMED, readable article screenshots, no ASensor relocation failure,
+no metasec-associated main exit and no original process terminal record.
+Other metasec ULEs remain a separate explicit metric: even a surviving window
+does not establish successful loading or elimination of the dead-thread chain.
+Raw stderr, parent log, samples and matching faultlogs
 are retained. The old #49 group is not mixed in: it ended 3/5 body survival,
 2/5 metasec main exit and was ACK(blocked), commit1c5dad5.
 

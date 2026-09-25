@@ -44,7 +44,8 @@ for r in sorted(R.glob('*-r[0-9]*')):
       'alive_after_last_resumed_s':last['uptime']-resume_s if resume_s is not None and final_alive else None,
       'platform_back_handler_errors':errors,'metasec_eacces_count':len(eacces),
       'metasec_ule_count':len(errors),
-      'sensor_relocation_errors':[l for l in errors if 'ASensor' in l and 'symbol not found' in l],
+      'sensor_relocation_errors':[l for l in lines if 'ASensor' in l and 'symbol not found' in l],
+      'metasec_missing_symbols':sorted(set(m[1] for l in lines if 'libmetasec_ml.so' in l and (m:=re.search(r': ([A-Za-z_][A-Za-z_0-9]*): symbol not found',l)))),
       'metasec_ule_to_main_exit':bool(errors and 'J_invokeStaticMain_main_threw' in log and 'X.DEv' in log and terminal and 'exited(1)' in terminal[-1]),
       'eacces_to_main_exit':bool(eacces and 'J_invokeStaticMain_main_threw' in log and 'X.DEv' in log and terminal and 'exited(1)' in terminal[-1]),
       'null_looper_main':bool('J_invokeStaticMain_main_threw' in log and 'X.DEv' in log),
@@ -66,7 +67,9 @@ for r in sorted(R.glob('*-r[0-9]*')):
  row.update({'npth_hook_refusal_lines':refusal,'npth_debug_mapped_samples':sum(bool(re.search(r'^[0-9a-f]+-[0-9a-f]+.*libnpth_(xasan|heap_tracker)',s['output'],re.M)) for s in samples),
              'maps_min':min(counts) if counts else None,'maps_max':max(counts) if counts else None,'rss_peak_kib':max(rss) if rss else None,
              'get_meta_crash_files':[p.name for p in r.glob('cppcrash-*.txt') if 'get_meta' in p.read_text(errors='replace')]})
- row['article_numeric_window_pass']=bool(final_alive and row['alive_after_last_resumed_s'] is not None and row['alive_after_last_resumed_s']>=180 and not row['metasec_ule_to_main_exit'] and not row['metasec_ule_count'] and not row['get_meta_crash_files'] and not terminal)
+ row['article_numeric_window_pass']=bool(final_alive and row['alive_after_last_resumed_s'] is not None and row['alive_after_last_resumed_s']>=180 and not row['metasec_ule_to_main_exit'] and not row['get_meta_crash_files'] and not terminal)
+ row['route_c_numeric_gate']=bool(row['article_numeric_window_pass'] and not row['sensor_relocation_errors'])
+ row['metasec_ule_absent']=not row['metasec_ule_count']
  (r/'summary.json').write_text(json.dumps(row,indent=2)+'\n')
 (R/'summary.json').write_text(json.dumps(rows,indent=2)+'\n')
 for r in rows:print(r['round'],r['pid'],r['terminal'],'alive_age',round(r['last_observed_alive_age_s'],2),'end_age',round(r['end_age_s'],2),'metasec_ule_to_exit',r['metasec_ule_to_main_exit'],'article_numeric_window_pass',r['article_numeric_window_pass'],'refusals',len(r['npth_hook_refusal_lines']))
