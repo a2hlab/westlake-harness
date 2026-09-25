@@ -7,6 +7,11 @@ STAGE=@@STAGE@@
 SOCKET=@@SOCKET@@
 UID45=@@UID@@
 mkdir -p "$D" "$C"
+configure_maps() {
+ echo 1048576 > /proc/sys/vm/max_map_count || return 1
+ [ "$(cat /proc/sys/vm/max_map_count)" = 1048576 ] || return 1
+ printf '%s max_map_count=1048576\n' "$(date +%s)" >> "$D/startup-settings.log"
+}
 # pidof includes npth fork children whose comm is work_thread. Preserve only the
 # authoritative current app PID; report PPID=1 separately from other stale children.
 cleanup_toutiao() {
@@ -45,6 +50,7 @@ fi
 mkdir "$D/guard.lock" 2>/dev/null || exit 1
 trap 'rmdir "$D/guard.lock" 2>/dev/null' EXIT
 trap 'exit 0' TERM INT
+configure_maps || exit 1
 proc_start() {
  [ -r "/proc/$1/stat" ] || return 1
  value=$(cat "/proc/$1/stat")
@@ -95,6 +101,12 @@ while [ ! -e "$D/stop" ]; do
  printf '%s\t%s\t%s\t%s\tpid=%s\tcleaned=%s\tppid1=%s\n' "$seq" "$stamp" "$elapsed" "$signal" "$child" "$clean_count" "$orphan_count" >> "$C/INDEX"
  pending_pid=$child; pending_dest=$dest; pending_seq=$seq; pending_stamp=$stamp; pending_elapsed=$elapsed; pending_tries=40; pending_cleaned=$clean_count; pending_orphans=$orphan_count
  [ ! -e "$D/stop" ] || break
+ if ! configure_maps; then
+  printf '%s sysctl_failed\n' "$(date +%s)" >> "$C/ERRORS"
+  sleep 3; continue
+ fi
+ power-shell timeout -o 86400000 > "$dest/power.txt" 2>&1
+ power-shell wakeup >> "$dest/power.txt" 2>&1
  # Reuse the live preloaded parent and all app data. Only recovery foregrounds the host.
  aa start -b org.westlake.imehost -a EntryAbility > "$dest/foreground.txt" 2>&1
  parent=$(cat "$D/parent.pid")
