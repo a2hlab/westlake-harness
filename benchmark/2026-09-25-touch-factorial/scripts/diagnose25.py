@@ -17,15 +17,17 @@ def diagnostic(r,d,fresh):
   if '[INITCHILD-FAIL]' in raw:raise RuntimeError('UI exited before diagnostic')
  else:raise RuntimeError('No UI before diagnostic')
  action('aa start -b org.westlake.imehost -a EntryAbility');time.sleep(1)
- tids=re.findall(r'\[TOUCH21-POLL\] enter now=\d+ tid=(\d+)',raw)
+ candidate=dev("grep -F '[TOUCH21-POLL] enter' "+log+' | tail -1')
+ tids=re.findall(r'\[TOUCH21-POLL\] enter now=\d+ tid=(\d+)',candidate)
  ui=tids[-1] if tids else None
  (r/'ui-tid-candidate.txt').write_text(str(ui))
  action('echo i 309 213 > /data/local/tmp/noice_tap')
  start=time.monotonic()
  for i in range(90):
   # ART's signal catcher dumps all threads; main is selected by stack bottom, not name.
-  action(f'cat /proc/uptime; kill -3 {pid}');time.sleep(.4)
-  if ui and i%3==0:
+  sched=f'cat /proc/{pid}/task/{ui}/schedstat; ' if ui else ''
+  action(f'cat /proc/uptime; '+sched+f'kill -3 {pid}');time.sleep(.4)
+  if ui and 'native' in sys.argv and i%3==0:
    native=action(f'cat /proc/uptime; dumpcatcher -p {pid} -t {ui}; cat /proc/uptime')
    (r/f'native-{i:03}.txt').write_text(native)
   raw=dev("grep -F '[TOUCH21] run action=1 ' "+log)

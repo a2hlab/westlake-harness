@@ -4,8 +4,10 @@ root=pathlib.Path(sys.argv[1]);results=[]
 for r in sorted(root.iterdir()):
  if not r.is_dir():continue
  p=r/'child.stderr'
+ if not p.exists():p=r/'child.stderr.gz'
  if not p.exists():continue
- lines=p.read_text(errors='replace').splitlines();posts={};touches=[];stacks=[]
+ text=gzip.open(p,'rt',errors='replace').read() if p.suffix=='.gz' else p.read_text(errors='replace')
+ lines=text.splitlines();posts={};touches=[];stacks=[]
  wall=None;block=[];begin=None
  def finish():
   if block and any('at android.app.ActivityThread.main(' in l for l in block):
