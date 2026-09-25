@@ -28,7 +28,13 @@ CHILD_LOG = "/data/service/el1/public/appspawnx/adapter_child_{pid}.stderr"
 #: path stays as a candidate for boards still on the old layout.
 CHILD_LOG_PRIVATE_TMP = "{runtime}/private-tmp/adapter_child_{pid}.stderr"
 FAULTLOG_GLOB = "/data/log/faultlog/temp/cppcrash-{pid}-*"
+#: Tap-channel names. The old layout wrote a per-pid file under /data/local/tmp (host side);
+#: the source-closure board exposes ONE namespace symlink /data/local/tmp/noice_tap that the
+#: child's input bridge watches -- the first real-board scan (scan1) proved writing the
+#: per-pid name produces zero VT rows (P4a=0 while P4b=20 passed), so the bare name is
+#: primary and the per-pid name stays as a fallback for old-layout boards.
 TAP_CHANNEL = "/data/local/tmp/noice_tap.{pid}"
+TAP_CHANNEL_BARE = "/data/local/tmp/noice_tap"
 
 #: Screen/board keep-alive around each app (outer loop, verified on the real board): the
 #: default 30 s screen timeout locks the panel over the app, and OH backgrounds the host
@@ -96,7 +102,7 @@ def extra_args(app: dict[str, Any]) -> list[str]:
 def launch_command(args: argparse.Namespace, app_key: str, app: dict[str, Any],
                    serial: str, out: Path) -> list[str]:
     """The exact probe_source_app.py invocation for one app on one board."""
-    return [
+    command = [
         sys.executable, str(args.manifest / "tools" / "probe_source_app.py"),
         "--workspace", str(args.workspace),
         "--westlake-source", str(args.westlake_source),
@@ -106,8 +112,14 @@ def launch_command(args: argparse.Namespace, app_key: str, app: dict[str, Any],
         "--hdc", args.hdc,
         "--serial", serial,
         "--out", str(out),
-        *extra_args(app),
     ]
+    # The locked WebView payload root carries the bionic boundary input the Android ABI
+    # namespace requires: without it the probe refuses any --android-native-target app
+    # (scan1's toutiao: 'Android ABI namespace currently requires the locked bionic
+    # boundary input'). Passed once for the whole corpus; apps that don't use it ignore it.
+    if getattr(args, "webview_input", None):
+        command += ["--webview-input", str(args.webview_input)]
+    return command + extra_args(app)
 
 
 def view_tree_from_log(lines: list[str]) -> list[str]:
@@ -235,7 +247,12 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
                 break
         # View tree over the tap channel ('v' dump), then RenderService visible nodes — the
         # two independent §10 oracles; a screenshot is deliberately not among them.
-        device.shell(f"echo v > {TAP_CHANNEL.format(pid=child)}")
+        # View tree over the tap channel ('v' dump), then RenderService visible nodes — the
+        # two independent §10 oracles; a screenshot is deliberately not among them. The
+        # source-closure board exposes one namespace symlink (bare name); the per-pid file
+        # is the old layout. Write both: whichever the bridge watches answers.
+        for channel in (TAP_CHANNEL_BARE, TAP_CHANNEL.format(pid=child)):
+            device.shell(f"echo v > {channel} 2>/dev/null")
         time.sleep(args.vt_wait)
         if record.get("child_log_path"):
             refreshed = device.shell(f"cat {record['child_log_path']} 2>/dev/null")
@@ -338,6 +355,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--prepared-root", required=True, type=Path,
                         help="prepare_all.py output root; each app launches with "
                              "<prepared-root>/<key> as --app-input")
+    parser.add_argument("--webview-input", type=Path,
+                        help="locked WebView payload root; also supplies the bionic boundary "
+                             "input --android-native-target apps need (probe refuses them without it)")
     parser.add_argument("--serials", required=True, nargs="+",
                         help="one worker per board serial; apps are dealt round-robin")
     parser.add_argument("--runtime-lock", type=Path, help="runtime lock this run is taken against")
