@@ -78,15 +78,21 @@ else:
  elif op=='collect':collect(d)
  elif op=='monitor':
   duration=int(sys.argv[3]);start=time.monotonic();lastshot=-1
+  segment=1
+  while (r/f'result-segment-{segment}.json').exists():segment+=1
+  if (r/'result.json').exists():
+   (r/f'result-segment-{segment}.json').write_bytes((r/'result.json').read_bytes())
+   segment+=1
+  shotprefix='monitor' if segment==1 else f'monitor-segment-{segment}'
   while True:
    elapsed=time.monotonic()-start
    out=dev(f"cat /proc/uptime; cat {D}/child.pid; cat /proc/{d['child']}/stat; ls -lZ {dst}; readlink {dst}; wc -l /proc/{d['child']}/maps; grep -E 'libnpth_(xasan|heap_tracker)' /proc/{d['child']}/maps; grep -E '^(VmRSS|VmSize|Threads):' /proc/{d['child']}/status")
    with (r/'samples.jsonl').open('a') as f:f.write(json.dumps({'elapsed':elapsed,'output':out})+'\n')
    alive=live(d['child'],d['birth'])
    if not alive or elapsed>=duration:break
-   if int(elapsed)//60>lastshot:lastshot=int(elapsed)//60;shot(r,'monitor-'+str(lastshot*60))
+   if int(elapsed)//60>lastshot:lastshot=int(elapsed)//60;shot(r,shotprefix+'-'+str(lastshot*60))
    time.sleep(3)
-  shot(r,'monitor-end');collect(d)
+  shot(r,shotprefix+'-end');collect(d)
   result={'round':name,'original_child':d['child'],'observed_seconds':elapsed,'original_alive_at_end':alive,'birth':d['birth']}
   (r/'result.json').write_text(json.dumps(result,indent=2)+'\n');print('ROUND_RESULT',json.dumps(result),flush=True)
  else:raise SystemExit(op)
