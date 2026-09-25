@@ -1,0 +1,63 @@
+# metasec relocation-symbol closure (#48) — evidence
+date: 2026-09-26   target: toutiao libmetasec_ml.so (arm64-v8a)
+
+## Model
+musl dlopen resolves an opened DSO UND against ONLY its direct DT_NEEDED
+(depth-1) + global scope. metasec DT_NEEDED = liblog libandroid libm libdl libc.
+westlake controls libandroid (+liblog); libc/libm/libdl are OH musl (sysroot
+libc.so covers all three). closure complete iff:
+    UND_hard(libmetasec_ml.so) - DEFINED(libandroid U liblog U musl-libc) == {}
+
+## Model validation (stock -> sensor-patched libandroid delta == exactly the 7 ASensor)
+metasec UND: 227 (hard non-weak: 226)
+
+MODEL CHECK: stock->patched delta (should be exactly the 7 sensor no-ops)
+  removed by sensor patch: 7
+    - ASensorEventQueue_disableSensor
+    - ASensorEventQueue_enableSensor
+    - ASensorEventQueue_getEvents
+    - ASensorManager_createEventQueue
+    - ASensorManager_destroyEventQueue
+    - ASensorManager_getDefaultSensor
+    - ASensorManager_getInstance
+
+=== REMAINING HARD-MISSING after sensor patch: 8 ===
+  __errno                                  exists-in:libwestlake_bionic.so
+  __openat_2                               NOWHERE(new impl/no-op)
+  __sF                                     exists-in:libwestlake_bionic.so
+  __system_property_find                   exists-in:libbase.so
+  __system_property_read                   exists-in:libbase.so
+  android_set_abort_message                exists-in:libwestlake_bionic.so
+  strtoll_l                                exists-in:libwestlake_bionic.so
+
+## Closure assertion — KNOWN-BAD (sensor-patched libandroid, no compat object)
+metasec hard-UND: 226   provider defined: 1733
+FAIL: 8 UND still unresolved by metasec's direct deps:
+   - __errno
+   - __openat_2
+   - __sF
+   - __system_property_find
+   - __system_property_read
+   - android_set_abort_message
+   - strtoll_l
+   - strtoull_l
+
+## Closure assertion — KNOWN-GOOD (sensor-patched libandroid + android_bionic_compat_noop.o)
+  strtoull_l                         OK
+
+metasec hard-UND: 226   provider defined: 1741
+PASS: metasec closure complete — zero UND-missing against direct deps
+
+## The compat object: 8 symbols exported (7 FUNC + __sF OBJECT/456), UND libc-only
+  DEF  FUNC     __errno
+  DEF  FUNC     strtoll_l
+  DEF  FUNC     strtoull_l
+  DEF  FUNC     __openat_2
+  DEF  FUNC     android_set_abort_message
+  DEF  FUNC     __system_property_find
+  DEF  FUNC     __system_property_read
+  DEF  OBJECT   __sF
+  UND  __errno_location
+  UND  openat
+  UND  strtoll
+  UND  strtoull

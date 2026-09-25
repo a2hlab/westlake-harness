@@ -303,6 +303,28 @@ The deterministic fix for the metasec sixth exit (better than A1's probabilistic
 - **Why this beats A1.** A1 fixed errno13 but left the missing sensor symbol, so metasec still failed to relocate and the sixth exit reappeared probabilistically (final-r1). Route C removes the symbol failure at the source: metasec relocates, loads, and stays lazy (#41) every time — deterministic, non-Bionic.
 - **Board gate.** Deploy the rebuilt core libandroid on the BASELINE stack; run 5 fresh starts. Expect: no `ASensorManager_getDefaultSensor: symbol not found`, no `platform-back-handler` UnsatisfiedLinkError, no `X.DEv` NPE, process survives 3 min on a video article. Stacks with the #49 heap fix.
 
+## 12. Metasec symbol closure (#48): stop patching one symbol at a time, satisfy the whole set
+
+Route C fixed the 7 sensor symbols, and the board then hit `__system_property_read`: metasec is a *chain* of missing symbols, so the fix is to compute the full closure once, not iterate. Evidence: `evidence/metasec-closure-48.txt`.
+
+- **Why it comes one at a time.** OH musl's `dlopen` resolves an opened DSO's undefined symbols against **only its direct DT_NEEDED (depth-1)** plus the global scope — not the transitive closure. metasec's direct deps are exactly `{liblog, libandroid, libm, libdl, libc}`. `libbase` and `libwestlake_bionic` — which already define `__system_property_read`, `__errno`, `__sF`, etc. — sit at depth-2 (via libandroid) and are **invisible** to metasec's relocation. Each board run only surfaces the alphabetically-first still-missing symbol, so a per-symbol loop needs one board cycle per symbol.
+- **The closure, computed offline** (`scripts/metasec_direct_missing.py`): `UND_hard(libmetasec_ml.so) − DEFINED(libandroid ∪ liblog ∪ OH-musl-libc)`. Providers taken from the deployed core (`out-operator-sensor48`, i.e. the current sensor-patched board runtime) + the OH SDK sysroot `libc.so` (which carries libm/libdl on musl). **Model validated**: stock→sensor-patched libandroid removes *precisely* the 7 `ASensor*` symbols the board already fixed — so the model reproduces the board's own history before predicting the rest.
+- **Result: 8 hard-missing after the sensor patch**, all added to libandroid in westlake `fix/metasec-symbol-closure-48` `1d4af70` (`native/android_bionic_compat_noop.c`), because libandroid is the only one of metasec's 5 direct deps westlake builds:
+
+  | Symbol | Kind | Impl | Bucket |
+  |---|---|---|---|
+  | `__errno` | FUNC | `return __errno_location()` (musl) | musl-equivalent forward |
+  | `strtoll_l` / `strtoull_l` | FUNC | drop `locale_t`, call `strtoll`/`strtoull` | musl-equivalent forward |
+  | `__openat_2` | FUNC | `openat(fd,path,flags)` (FORTIFY variant) | real impl (trivial) |
+  | `android_set_abort_message` | FUNC | no-op (crash-note only) | safe no-op |
+  | `__system_property_find` | FUNC | `NULL` (OH has no Android prop DB; unset==valid) | safe no-op |
+  | `__system_property_read` | FUNC | clear out buffers, return 0 | safe no-op |
+  | `__sF` | OBJECT/456 | zeroed object mirroring libwestlake_bionic exactly | data resolve-only (#41 lazy) |
+
+- **Name-only matching.** OH musl ignores ELF symbol versioning, so these unversioned defs satisfy metasec's versioned refs (`__sF@LIBC` etc.) — the same reason the unversioned sensor no-ops satisfied `ASensorManager_getDefaultSensor@LIBC` on the board.
+- **Assertion (`scripts/assert_metasec_closure.py`).** Computes the closure against a candidate libandroid (`.so`) plus optional not-yet-linked `.o`, and asserts **zero UND-missing across the whole 226-symbol metasec UND set** — stronger than grepping for 15 names. Validated end-to-end: sensor-patched libandroid **alone FAILs** with exactly these 8; **plus `android_bionic_compat_noop.o` PASSes** with zero missing. Needs the core-runtime rebuild to link both compat sources into `libandroid.so`.
+- **Board gate.** On the BASELINE + #49 heap stack, deploy the rebuilt core libandroid (sensor + bionic-compat) and run 5 fresh starts: expect no `symbol not found` at metasec load, metasec relocates and stays lazy (#41), and the sixth exit is gone deterministically. No further single-symbol iteration.
+
 ## Rules this adds
 
 - Compute a stripped library's vaddr from the absolute pc minus the base of its r-xp mapping at file offset 0. faultloggerd's rel-pc base varies by run.
@@ -316,6 +338,7 @@ The deterministic fix for the metasec sixth exit (better than A1's probabilistic
 - A library that must load in the Android namespace brings its whole reverse-dependency closure with it. Otherwise a default-namespace consumer loads a second copy, and OH musl's load-order lookup binds that copy's imports to whatever the default namespace loaded first.
 - A framework native that the runtime does not implement must fail the way AOSP fails, with the Exception type AOSP throws, or not exist on a reachable path. A hollow success defers the failure to an unregistered native, and `UnsatisfiedLinkError` escapes every `catch (Exception)`. In Chromium that means FATAL + `brk`.
 - The npth fix is to leave musl's `pthread_self()` alone and neutralise the one Bionic-layout walk. No Android-ABI library can be given a Bionic `pthread_internal_t`.
+- A prebuilt Android `.so` dlopen'd on OH musl resolves its UND against **only its direct DT_NEEDED (depth-1)** plus the global scope, not the transitive closure. A symbol that exists at depth-2 (e.g. `__system_property_read` in libbase, reached via libandroid) is invisible to it. So a missing-symbol failure is fixed by defining the symbol in one of the consumer's *direct* deps — for an app lib that means libandroid/liblog, the two westlake builds — and the whole closure must be computed and satisfied at once, because the loader only surfaces one missing symbol per load.
 
 ## Layout
 
@@ -330,11 +353,12 @@ The deterministic fix for the metasec sixth exit (better than A1's probabilistic
 | `evidence/crash-run-map.txt` | per-run signatures, #38 and #42 |
 | `evidence/npth-heap-source-49.txt` | seventh class rooted: npth xasan/heap_tracker are the only Bionic-malloc-ABI libs; poison signature, shim refuse fix |
 | `evidence/metasec-sensor-48.txt` (route C built: `fix/libandroid-sensor-noop-48` 72ed855, `scripts/assert_libandroid_sensor.sh`) | metasec sixth-exit real cause: missing ASensorManager_getDefaultSensor no-op in default-namespace libandroid; refuse/stub/route-C eval |
+| `evidence/metasec-closure-48.txt` (closure fix: `fix/metasec-symbol-closure-48` 1d4af70, `scripts/assert_metasec_closure.py`) | full metasec relocation closure: depth-1 model, stock→sensor delta validation, 8 remaining symbols + buckets, known-bad/known-good assertion |
 | `evidence/metasec-a2-heap.txt` | A2 five-run result: SIG11 is a musl heap corruption in SQLite/Mali, not metasec; per-round table |
 | `evidence/metasec-exit-48.txt` | #48 sixth exit: metasec errno13 → dead background thread → X.DEv null Looper → _exit(1), with retry analysis |
 | `evidence/inproc-oom.txt` | in-process renderer PartitionAlloc OOM: banner, register decode, handler disasm, RSS/VSZ/VMA curve |
 | `evidence/tt-namespace.txt` | TicketGuard split: two images, OH musl lookup rule, closure, run.sh diff |
 | `evidence/tt-rootfix.txt` | TicketGuard root fix: NativeLoader coverage, HMAC versioning, LD_PRELOAD hijack scan, both run.sh products |
 | `evidence/sigtrap-mediacodec.txt` | post-fix SIGTRAP: stderr, banner, engine trap site, unregistered natives, westlake diff, rebuild hashes |
-| `scripts/` | `build_shim.sh`, `patch_npth.py`, `build_bridge_mc.py`, `tt_closure.py`, `tt_cover.py`, `apply_tt_targets.py`, `apply_ld_preload.py`, `mem_curve.py`, `preseed_metasec_applib.sh`, `assert_metasec_exit_gone.sh`, `assert_heap_corruption_gone.sh`, `assert_libandroid_sensor.sh`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
+| `scripts/` | `build_shim.sh`, `patch_npth.py`, `build_bridge_mc.py`, `tt_closure.py`, `tt_cover.py`, `apply_tt_targets.py`, `apply_ld_preload.py`, `mem_curve.py`, `preseed_metasec_applib.sh`, `assert_metasec_exit_gone.sh`, `assert_heap_corruption_gone.sh`, `assert_libandroid_sensor.sh`, `metasec_closure.py`, `metasec_direct_missing.py`, `assert_metasec_closure.py`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
 | `results.json` | machine-readable summary |

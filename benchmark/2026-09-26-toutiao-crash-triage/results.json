@@ -300,6 +300,29 @@
         "beats_a1": "A1 left the missing symbol so the sixth exit reappeared probabilistically (final-r1); route C is deterministic",
         "needs": "core-runtime rebuild (libandroid linked by native object-map)",
         "clears_gate": "unverified (needs board 5 fresh starts, stacked with #49 heap fix)"
+      },
+      "symbol_closure_48": {
+        "problem": "metasec is a chain of missing relocation symbols; board fixed one per run (sensor, then __system_property_read). Root: OH musl dlopen resolves UND against ONLY direct DT_NEEDED (depth-1) {liblog,libandroid,libm,libdl,libc}, not the transitive closure, so depth-2 defs (libbase/libwestlake_bionic) are invisible.",
+        "method": "offline closure = UND_hard(libmetasec_ml.so) - DEFINED(libandroid U liblog U OH-musl-libc); providers from out-operator-sensor48 (sensor-patched board runtime) + OH SDK sysroot libc.so (covers libm/libdl on musl). scripts/metasec_direct_missing.py, scripts/metasec_closure.py.",
+        "model_validation": "stock->sensor-patched libandroid delta == exactly the 7 ASensor symbols the board already fixed",
+        "metasec_und_total": 226,
+        "remaining_after_sensor": 8,
+        "symbols": {
+          "__errno": "FUNC -> __errno_location() (musl)",
+          "strtoll_l": "FUNC -> strtoll drop locale (musl)",
+          "strtoull_l": "FUNC -> strtoull drop locale (musl)",
+          "__openat_2": "FUNC -> openat(fd,path,flags) (FORTIFY variant)",
+          "android_set_abort_message": "FUNC -> no-op (crash note only)",
+          "__system_property_find": "FUNC -> NULL (OH has no Android prop DB)",
+          "__system_property_read": "FUNC -> clear out buffers, return 0",
+          "__sF": "OBJECT/456 -> zeroed object mirroring libwestlake_bionic; address-taken GLOB_DAT, resolve-only under #41 lazy"
+        },
+        "carrier": "all 8 added to core libandroid (only direct dep westlake builds) via native/android_bionic_compat_noop.c; unversioned defs satisfy metasec versioned refs (OH musl matches by name)",
+        "commit": "westlake fix/metasec-symbol-closure-48 1d4af70 (on route C 72ed855)",
+        "assertion": "scripts/assert_metasec_closure.py — zero UND-missing across full 226-symbol metasec UND; validated known-bad (sensor-only libandroid FAILs with these 8) and known-good (+compat object PASSes)",
+        "object_verified": "compiles clean; 8 exports (7 FUNC + __sF OBJECT/456) GLOBAL; UND only libc-satisfiable (__errno_location/openat/strtoll/strtoull)",
+        "status": "built + asserted offline; needs core-runtime rebuild to link into libandroid.so; board 5x3min pending on BASELINE+#49",
+        "grade": "R2: partially-verified (offline closure proven; board unverified)"
       }
     },
     {
