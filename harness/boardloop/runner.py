@@ -328,6 +328,9 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
         rs_visible = sum(1 for line in rs_raw.splitlines()
                          if pkg and pkg in line and "Visible: 1" in line) if pkg else None
         faultlog = device.shell(f"cat {FAULTLOG_GLOB.format(pid=child)} 2>/dev/null")
+        # #24-prereq-A: faultlog persisted too — a native crash with an empty child log
+        # leaves the faultlog as the only frame evidence.
+        (out / "faultlog.txt").write_text(faultlog, errors="replace")
 
         gap_map = json.loads(args.gap_map.read_text()) if args.gap_map else None
         record["stages"] = stages.judge(child_log, view_tree, rs_visible)
@@ -348,6 +351,17 @@ def run_app(args: argparse.Namespace, app_key: str, app: dict[str, Any],
         # a missing/unparseable report falls back to pidof alone.
         child_pid, parent_pid = report_pids(report_path)
         record["cleanup"] = run_cleanup(args, app, serial, child_pid, parent_pid)
+        # #24-prereq-A: the storage sweep is the point of no return for on-board logs.
+        # Verify the local copies first; an empty child log on a done run is a
+        # collection failure that must be visible in the record, not silent.
+        evidence = {}
+        for name in ("child.stderr", "faultlog.txt"):
+            local = out / name
+            evidence[name] = local.stat().st_size if local.exists() else None
+        record["evidence_local_bytes"] = evidence
+        if record.get("verdict") == "done" and not (evidence.get("child.stderr") or 0):
+            record.setdefault("warnings", []).append(
+                "empty child.stderr on a done run — evidence collection failed")
         record["storage_cleanup"] = run_storage_cleanup(args, app, serial, report_path)
 
 

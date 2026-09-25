@@ -379,6 +379,12 @@ class TestTapChannelBothNames(unittest.TestCase):
             self.assertEqual(record["verdict"], "done")
             # #24: child log persisted locally before storage cleanup
             self.assertTrue((tmp / "runs" / "appx" / "child.stderr").exists())
+            # prereq-A: faultlog persisted, sizes recorded before the sweep, no warning
+            self.assertTrue((tmp / "runs" / "appx" / "faultlog.txt").exists())
+            ev = record["evidence_local_bytes"]
+            self.assertIn("child.stderr", ev)
+            self.assertGreater(ev["child.stderr"], 0)
+            self.assertNotIn("warnings", record)
             # #22: pre-launch sweep ran before the launch (recorded, non-fatal)
             self.assertIn("pre_cleanup", record)
             self.assertTrue(any("pidof com.appx" in c["command"]
