@@ -245,16 +245,29 @@
       "root_fix_is_bionic_only": false,
       "root_fix_note": "errno13 is OH policy not libc; swapping musl->Bionic does not change SELinux; full Android runtime (M3/M4) removes it via untrusted_app domain, i.e. the whole model not the libc",
       "treatments": {
-        "T1": "relax errno13 retry for libmetasec_ml.so: reuse loaded asx image (RTLD_NOLOAD) without sha256 identity so System.load returns non-null and the shared thread survives; link_stubs/core-runtime change; risk = metasec self-check of loaded path (but DoLazyInit already never runs on OH, #41)",
-        "T2": "allow executable mapping under app_lib (OH SELinux/mount) - out of app scope, weakens security model",
-        "T3_T4": "not viable: dead app thread cannot be revived; re-entering main after its Looper died is meaningless"
+        "A_route_to_asx_no_policy_change_PREFERRED": {
+          "A1_loader_reuse": "link_stubs: on app_lib EACCES reuse loaded asx image (RTLD_NOLOAD), drop sha256 identity; core-runtime rebuild; medium feasibility",
+          "A2_symlink_bind": "point app_lib copy at asx inode; low feasibility, metasec rewrites/clobbers at runtime",
+          "risk": "metasec may self-check loaded path; load success lets init reach DoLazyInit on the same platform-back-handler; #41 saw DoLazyInit never run and not crash (silent skip) but must confirm",
+          "board_assert": "app_lib System.load non-null; no platform-back-handler UnsatisfiedLinkError; no X.DEv NPE; >3min on a video article with NO new crash (watch DoLazyInit/TLS on platform-back-handler)"
+        },
+        "B_intercept_npe": "NOT VIABLE: getBackgroundHandlerThread returns cached thread, no rebuild; other callers guard (classes5 getState==RUNNABLE, classes20 looper!=null) but X.DEv does not; westlake cannot patch app bytecode nor revive a dead app thread; collapses into A",
+        "C_make_app_lib_executable_policy": {
+          "noexec_case": "board_setup mount -o remount,exec (root, one line, deterministic) - high feasibility",
+          "selinux_case": "allow normal_hap app_data_file:file execute policy unit (hard under Enforcing) or setenforce 0 (weakens model) - low",
+          "risk": "weakens OH model; same DoLazyInit/TLS question as A"
+        }
       },
       "r2": {
         "chain": "verified",
-        "errno13_nature": "verified",
-        "t1_effect_and_metasec_selfcheck": "unverified",
+        "errno13_nature": "verified (lean SELinux, board command to confirm)",
+        "B_not_viable": "verified",
+        "A_and_C_effect": "unverified",
         "root_not_bionic_only": "verified"
-      }
+      },
+      "probe_command": "hdc -t 61b0657200000000000000000324012c shell su 0 sh -c: grep /data /proc/mounts; grep /data/data /proc/self/mountinfo; dmesg | grep 'avc denied execute normal_hap|app_data'",
+      "probe_lean": "SELinux (normal_hap enforcing, #39 memory); command confirms noexec-mount vs avc",
+      "caveat": "all three make metasec load, letting init run; this exit is errno13 not TLS (outer loop re-judgement correct), but clearing 3min depends on whether metasec init crashes after loading; if it crashes on platform-back-handler that is the TLS pit and is the Bionic-bound part"
     }
   ],
   "aot42_formal_signal11": {

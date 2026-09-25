@@ -93,3 +93,23 @@ link_stubs OpenNativeLibrary already retries 'failed to map library errno=13' vi
   path is /data/data/<pkg>/app_lib (normal_hap private dir), not /data/local/tmp/asx (permissive).
   Executable mapping there is refused by OH policy (SELinux normal_hap lacks execute app_data_file,
   or the dir is mounted noexec). This is a kernel policy, independent of libc (musl vs Bionic).
+
+## 8. why intercepting the NPE (candidate B) is not viable
+getBackgroundHandlerThread() returns a CACHED thread and does not rebuild a dead one.
+Callers that guard the dead thread (so they are safe):
+  classes5:  getBackgroundHandlerThread().getState(); if (state==RUNNABLE) use getLooper()
+  classes20: getLooper(); if (looper != null) new Handler(looper)
+X.DEv (classes21, the crash) does NEITHER: getLooper() -> new Handler(looper) with no null/state check.
+westlake cannot add a check to app bytecode, and a dead app thread cannot be revived
+(an UncaughtExceptionHandler runs AFTER run() has returned). So the only lever is to stop the
+thread dying, i.e. make metasec's app_lib System.load not throw = candidate A.
+
+## 9. metasec load: asx path (executable) then app_lib path (throws); asx reuse is the basis for A
+L381 asx LOAD (permissive /data/local/tmp) ; L384 app_lib LOAD -> errno13 throw.
+#41: with metasec loaded, MSTaskManager::DoLazyInit NEVER runs on OH (3/3) and does not crash —
+so if app_lib load is made to succeed, init reaches DoLazyInit and skips silently (must confirm on board).
+
+## 10. one-command probe: noexec mount vs SELinux avc (run in an operator idle window)
+hdc -t 61b0657200000000000000000324012c shell "su 0 sh -c 'grep -E \" /data \" /proc/mounts; echo ---MOUNTINFO---; grep -E \"/data/data\" /proc/self/mountinfo | head; echo ---DMESG---; dmesg | grep -iE \"avc.*denied.*(execute|execmem|execmod).*(normal_hap|app_data)\" | tail -20'"
+interpretation: a noexec flag on the /data or app_lib mount => remount fix (C); an avc denied execute on normal_hap/app_data_file => SELinux policy (C harder).
+prior (#39 memory): OH boards globally Enforcing, su=permissive; /data/local/tmp exec logs avc denied but permissive=1 passes; normal_hap (app) is enforcing -> leans SELinux, but confirm both.
