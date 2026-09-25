@@ -118,6 +118,13 @@ while [ ! -e "$D/stop" ]; do
   parent=$(cat "$D/parent-start.txt"); echo "$parent" > "$D/parent.pid"
   n=0; while [ ! -S "$SOCKET" ] && [ "$n" -lt 40 ]; do sleep .25; n=$((n+1)); done
  fi
+ # A2 runs in the parent's app mount namespace before child creation.
+ if [ -f "$D/preseed48.enabled" ]; then
+  /bin/nsenter -t "$parent" -m /system/bin/sh /data/local/tmp/asx/preseed_metasec48.sh >> "$dest/preseed48.log" 2>&1
+  hook_rc=$?
+  printf '%s preseed48_rc=%s parent=%s\n' "$(date +%s)" "$hook_rc" "$parent" >> "$D/startup-settings.log"
+  [ "$hook_rc" = 0 ] || { sleep 3; continue; }
+ fi
  @@SPAWN_COMMAND@@ > "$dest/spawn.txt" 2>&1
  next=$(sed -n 's/.*result=0 pid=\([0-9][0-9]*\).*/\1/p' "$dest/spawn.txt" | tail -n 1)
  if [ -z "$next" ]; then printf '%s spawn_failed\n' "$(date +%s)" >> "$C/ERRORS"; sleep 3; continue; fi
