@@ -17,7 +17,7 @@ def clean(origin):
 cmd,name=sys.argv[1:3]
 if cmd=='clean':
  clean(name);print('CLEANED; patched libraries retained',flush=True)
-elif cmd in ('deploy','deploy-npth','restart'):
+elif cmd in ('deploy','deploy-npth','deploy-tt','restart'):
  origin=sys.argv[3];d=clean(origin);target=d['runtime']+'/liboh_adapter_bridge.so'
  if cmd=='deploy':
   oldhash=dev('sha256sum '+target).split()[0]
@@ -45,6 +45,17 @@ elif cmd in ('deploy','deploy-npth','restart'):
  checks={n:dev('sha256sum '+d['runtime']+'/'+n).split()[0] for n in ['liboh_adapter_bridge.so','webview-t-lib/libwebview_bionic_shim.so','lib/arm64-v8a/libnpth.so']}
  assert checks['liboh_adapter_bridge.so']=='d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b'
  assert checks['webview-t-lib/libwebview_bionic_shim.so']=='ecc7b12c3591c979f3d9aece5bb1d414acc04d01d2c500a88364525082f9df9f'
+ if cmd=='deploy-tt':
+  target=d['runtime']+'/run.sh';original=base/'pre-tt-run.sh';recv(target,original)
+  before=sha(original);backup='/data/local/tmp/ability38-tt46-original.'+before+'.sh';dev('cp '+target+' '+backup)
+  assert dev('sha256sum '+backup).split()[0]==before
+  helper=pathlib.Path('/Users/zhaoyue/orca/workspaces/westlake-harness-triage46/benchmark/2026-09-26-toutiao-crash-triage/scripts/apply_tt_targets.py')
+  targets='libttcrypto.so,libttboringssl.so,libdelta.so,liblynxsecurity.so';patched=base/'tt-run.sh'
+  subprocess.run([sys.executable,str(helper),str(original),str(patched),targets],check=True)
+  repeated=base/'tt-run-again.sh';subprocess.run([sys.executable,str(helper),str(patched),str(repeated),targets],check=True)
+  assert repeated.read_bytes()==patched.read_bytes()
+  send(patched,target);dev('chmod 755 '+target);assert dev('sha256sum '+target).split()[0]==sha(patched)
+  (base/'tt-deployment.json').write_text(json.dumps({'target':target,'backup':backup,'original_sha256':before,'candidate_sha256':sha(patched),'helper':str(helper),'helper_sha256':sha(helper),'added_targets':targets.split(','),'idempotent':True},indent=2)+'\n')
  dev('power-shell timeout -o 86400000; power-shell wakeup')
  profile_backup=None
  if '--fresh-preserved' in sys.argv:
@@ -58,6 +69,8 @@ elif cmd in ('deploy','deploy-npth','restart'):
  (r/'deployment.json').write_bytes((base/'deployment.json').read_bytes())
  (r/'library-hashes.json').write_text(json.dumps(checks,indent=2)+'\n')
  if (base/'npth-deployment.json').exists():(r/'npth-deployment.json').write_bytes((base/'npth-deployment.json').read_bytes())
+ if (base/'tt-deployment.json').exists():(r/'tt-deployment.json').write_bytes((base/'tt-deployment.json').read_bytes())
+ (r/'native-targets-live.txt').write_text(dev('strings /proc/'+str(d['child'])+'/environ | grep WESTLAKE_ANDROID_NATIVE_TARGETS'))
  if profile_backup:(r/'fresh-profile.json').write_text(json.dumps({'fresh':True,'preserved_at':profile_backup,'reason':'Repeated pre-article startup exits in existing warm data; original directories retained.'},indent=2)+'\n')
  print('LIVE',d['child'],d['parent'],flush=True)
 elif cmd=='observe':
