@@ -76,6 +76,23 @@ def prepared_input(args: argparse.Namespace, app_key: str) -> Path:
     return prepared
 
 
+def extra_args(app: dict[str, Any]) -> list[str]:
+    """Per-app probe arguments from the corpus entry ('extra_args': ["--flag", "value", …]).
+
+    Some apps only run under flags the probe must carry -- toutiao needs its NDK-side
+    DSOs routed through the isolated Android ABI namespace
+    (--android-native-target libvision_core.so --android-native-target libc++_shared.so).
+    Keeping this in the corpus entry keeps the launcher generic and the need per-app
+    visible next to the app it belongs to.
+    """
+    args: list[str] = []
+    for flag in app.get("extra_args", []):
+        if not isinstance(flag, str):
+            raise ValueError(f"extra_args entries must be strings, got {flag!r}")
+        args.append(flag)
+    return args
+
+
 def launch_command(args: argparse.Namespace, app_key: str, app: dict[str, Any],
                    serial: str, out: Path) -> list[str]:
     """The exact probe_source_app.py invocation for one app on one board."""
@@ -89,6 +106,7 @@ def launch_command(args: argparse.Namespace, app_key: str, app: dict[str, Any],
         "--hdc", args.hdc,
         "--serial", serial,
         "--out", str(out),
+        *extra_args(app),
     ]
 
 

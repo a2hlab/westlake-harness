@@ -563,6 +563,44 @@ class TestCleanupEveryExit(unittest.TestCase):
             self.assertIn("kill -9 4000", kills[1])
             self.assertTrue(any("pidof com.appx" in k for k in kills))
 
+    def test_extra_args_flow_into_the_launch_command(self) -> None:
+        """Per-app probe flags from the corpus entry reach the command verbatim."""
+        import io
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            corpus = tmp / "corpus.json"
+            apk = tmp / "app.apk"
+            apk.write_bytes(b"fixture-bytes")
+            corpus.write_text(json.dumps({"apps": {
+                "toutiao": {"input": str(apk), "package": "com.ss.android.article.news",
+                            "extra_args": ["--android-native-target", "libvision_core.so",
+                                           "--android-native-target", "libc++_shared.so"]},
+            }}))
+            prepared_root = tmp / "app-inputs"
+            (prepared_root / "toutiao").mkdir(parents=True)
+            (prepared_root / "toutiao" / "app-input.json").write_text("{}")
+            argv = [
+                "--corpus", str(corpus), "--manifest", str(tmp / "manifest"),
+                "--workspace", str(tmp), "--westlake-source", str(tmp),
+                "--framework-report", str(tmp / "device-report.json"),
+                "--hdc", "hdc", "--prepared-root", str(prepared_root),
+                "--serials", "S1", "--runs", str(tmp / "runs"),
+                "--run-id", "extra-args", "--dry-run",
+            ]
+            out = io.StringIO()
+            with redirect_stdout(out):
+                rc = runner.main(argv)
+            self.assertEqual(rc, 0)
+            command = next(line for line in out.getvalue().splitlines()
+                           if "--app-input " in line)
+            self.assertIn("--android-native-target libvision_core.so", command)
+            self.assertIn("--android-native-target libc++_shared.so", command)
+
+    def test_extra_args_reject_non_strings(self) -> None:
+        with self.assertRaises(ValueError):
+            runner.extra_args({"extra_args": ["--ok", 42]})
+
     def test_view_tree_parsing(self) -> None:
         lines = ["noise line", "Button rect=[1,2 3x4] id=ok", "VT another rect=[0,0 9x9]"]
         self.assertEqual(runner.view_tree_from_log(lines), lines[1:])
