@@ -28,9 +28,15 @@ starts, each surviving 3 min on a video article, with feed and article body show
 ## Out of baseline (open)
 
 - **metasec sixth exit (#48).** A1/A2 reduce but do not reliably remove it; the real
-  cause is a missing `ASensorManager_getDefaultSensor` no-op in the default-namespace
-  libandroid (README §9b, `evidence/metasec-sensor-48.txt`). Candidate route C — add
-  the 7 sensor no-ops to that libandroid — is the next non-Bionic step; not yet on a board.
+  cause is metasec failing to relocate in the default namespace because a *set* of
+  symbols it imports are not defined in its direct DT_NEEDED. Fixed at the source by
+  the full symbol closure (README §11 route C + §12): **15 symbols** added to core
+  libandroid — 7 `ASensor*` no-ops (`fix/libandroid-sensor-noop-48` 72ed855) + 8
+  Bionic-libc compat symbols (`fix/metasec-symbol-closure-48` 1d4af70,
+  `native/android_bionic_compat_noop.c`). Proven complete offline
+  (`scripts/assert_metasec_closure.py`: zero UND-missing across metasec's 226 UND).
+  Enters the baseline once the core-runtime rebuild links both compat sources into
+  libandroid.so and a board 5×3min passes; until then it stays here.
 - **Bionic (M3/M4)** stays the long-term system fix for the whole "ByteDance native
   assumes Bionic" class (xasan/heap_tracker/metasec working, not just not-crashing).
   Reading feed+articles does not require it.
