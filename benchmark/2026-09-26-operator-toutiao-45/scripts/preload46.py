@@ -1,0 +1,25 @@
+"""VM-only: add the requested TicketGuard preload, preserving original scripts/logs."""
+from board45 import *
+r=R/'morning46-preload';r.mkdir(exist_ok=False)
+d=json.loads((R/'morning46-first/device-report.json').read_text())
+guard=dev('cat /data/local/tmp/operator45/guard.pid').strip()
+dev('touch /data/local/tmp/operator45/stop; kill '+guard);time.sleep(4)
+assert not dev('cat /proc/'+guard+'/stat 2>/dev/null').strip()
+dev('/system/bin/sh /data/local/tmp/operator45/watchdog.sh --cleanup-only')
+for key in ('child','parent'):
+ pid=dev('cat /data/local/tmp/operator45/'+key+'.pid').strip()
+ if key=='child':recv(d['runtime']+'/private-tmp/adapter_child_'+pid+'.stderr',r/'before-child.stderr')
+ else:recv(d['stage']+'/parent.log',r/'before-parent.log')
+ st=dev('cat /proc/'+pid+'/stat 2>/dev/null');now=dev('cat /proc/'+pid+'/stat 2>/dev/null')
+ if ') ' in st and ') ' in now and st.rsplit(') ',1)[1].split()[19]==now.rsplit(') ',1)[1].split()[19]:dev('kill -9 '+pid)
+target=d['runtime']+'/run.sh';before=r/'run-before.sh';after=r/'run.sh';recv(target,before)
+helper=pathlib.Path('/Users/zhaoyue/orca/workspaces/westlake-harness-triage46/benchmark/2026-09-26-toutiao-crash-triage/scripts/apply_ld_preload.py')
+subprocess.run([sys.executable,str(helper),str(before),str(after)],check=True)
+repeat=r/'run-again.sh';subprocess.run([sys.executable,str(helper),str(after),str(repeat)],check=True);assert after.read_bytes()==repeat.read_bytes()
+backup='/data/local/tmp/operator45-crashes/morning46-upgrade/run-preload-before.'+sha(before)+'.sh'
+dev('cp '+target+' '+backup);assert dev('sha256sum '+backup).split()[0]==sha(before)
+send(after,target+'.preload46');dev('chmod 755 '+target+'.preload46; mv '+target+'.preload46 '+target)
+assert dev('sha256sum '+target).split()[0]==sha(after)
+dev('rm -f /data/local/tmp/operator45/guard.pid; rmdir /data/local/tmp/operator45/guard.lock 2>/dev/null')
+(r/'deployment.json').write_text(json.dumps({'target':target,'backup':backup,'before':sha(before),'after':sha(after),'helper':str(helper),'helper_sha256':sha(helper),'idempotent':True,'data':'preserved'},indent=2)+'\n')
+print('PRELOAD_INSTALLED',sha(after))
