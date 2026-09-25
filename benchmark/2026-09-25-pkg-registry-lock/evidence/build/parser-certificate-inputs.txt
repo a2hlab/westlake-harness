@@ -1,0 +1,80 @@
+Source SHA256 cf8dba6fda5751903e4722aa713230cc91c8fa29dc40d4676d3ec195be3172ea
+1381:      * populating {@link Package#mSigningDetails}. Also asserts that all APK
+1382:      * contents are signed correctly and consistently.
+1383:      */
+1384:     @UnsupportedAppUsage
+1385:     public static void collectCertificates(Package pkg, boolean skipVerify)
+1386:             throws PackageParserException {
+1387:         collectCertificatesInternal(pkg, skipVerify);
+1388:         final int childCount = (pkg.childPackages != null) ? pkg.childPackages.size() : 0;
+1389:         for (int i = 0; i < childCount; i++) {
+1390:             Package childPkg = pkg.childPackages.get(i);
+1391:             childPkg.mSigningDetails = pkg.mSigningDetails;
+1392:         }
+1393:     }
+1394: 
+1395:     private static void collectCertificatesInternal(Package pkg, boolean skipVerify)
+1396:             throws PackageParserException {
+1397:         pkg.mSigningDetails = SigningDetails.UNKNOWN;
+1398: 
+1399:         Trace.traceBegin(TRACE_TAG_PACKAGE_MANAGER, "collectCertificates");
+1400:         try {
+1401:             collectCertificates(pkg, new File(pkg.baseCodePath), skipVerify);
+1402: 
+1403:             if (!ArrayUtils.isEmpty(pkg.splitCodePaths)) {
+1404:                 for (int i = 0; i < pkg.splitCodePaths.length; i++) {
+1405:                     collectCertificates(pkg, new File(pkg.splitCodePaths[i]), skipVerify);
+1406:                 }
+1407:             }
+1408:         } finally {
+1409:             Trace.traceEnd(TRACE_TAG_PACKAGE_MANAGER);
+1410:         }
+1411:     }
+1412: 
+1413:     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
+1414:     private static void collectCertificates(Package pkg, File apkFile, boolean skipVerify)
+1415:             throws PackageParserException {
+1416:         final String apkPath = apkFile.getAbsolutePath();
+1417: 
+1418:         int minSignatureScheme = ApkSignatureVerifier.getMinimumSignatureSchemeVersionForTargetSdk(
+1419:                 pkg.applicationInfo.targetSdkVersion);
+1420:         if (pkg.applicationInfo.isStaticSharedLibrary()) {
+1421:             // must use v2 signing scheme
+1422:             minSignatureScheme = SigningDetails.SignatureSchemeVersion.SIGNING_BLOCK_V2;
+1423:         }
+1424:         final ParseTypeImpl input = ParseTypeImpl.forDefaultParsing();
+1425:         final ParseResult<android.content.pm.SigningDetails> result;
+1426:         if (skipVerify) {
+1427:             // systemDir APKs are already trusted, save time by not verifying
+1428:             result = ApkSignatureVerifier.unsafeGetCertsWithoutVerification(
+1429:                     input, apkPath, minSignatureScheme);
+1430:         } else {
+1431:             result = ApkSignatureVerifier.verify(input, apkPath, minSignatureScheme);
+1432:         }
+1433:         if (result.isError()) {
+1434:             throw new PackageParserException(result.getErrorCode(), result.getErrorMessage(),
+1435:                     result.getException());
+1436:         }
+1437: 
+1438:         // Verify that entries are signed consistently with the first pkg
+1439:         // we encountered. Note that for splits, certificates may have
+1440:         // already been populated during an earlier parse of a base APK.
+1441:         final android.content.pm.SigningDetails verified = result.getResult();
+1442:         if (pkg.mSigningDetails == SigningDetails.UNKNOWN) {
+1443:             pkg.mSigningDetails = new SigningDetails(verified.getSignatures(),
+1444:                     verified.getSignatureSchemeVersion(),
+1445:                     verified.getPublicKeys(),
+1446:                     verified.getPastSigningCertificates());
+1447:         } else {
+1448:             if (!Signature.areExactArraysMatch(pkg.mSigningDetails.signatures,
+1449:                     verified.getSignatures())) {
+1450:                 throw new PackageParserException(
+1451:                         INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES,
+1452:                         apkPath + " has mismatched certificates");
+1453:             }
+1454:         }
+1455:     }
+1456: 
+1457:     private static AssetManager newConfiguredAssetManager() {
+1458:         AssetManager assetManager = new AssetManager();
+1459:         assetManager.setConfiguration(0, 0, null, null, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
