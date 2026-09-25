@@ -22,7 +22,8 @@ for fp in d.get('touch',{}).get('forwarder_pid','').split():
  exe=action(f'readlink /proc/{int(fp)}/exe').strip()
  if 'touchfwd' in exe and 'a2hlab-' in exe:action(f'kill {int(fp)}','disable-forwarder')
 print('LAUNCHED',name,pid,flush=True)
-start=time.monotonic();consent=False;ready=False
+start=time.monotonic();consent=False;ready=False;consent_done=None;sampler_pid=None;pause_pid=None
+delay=next((float(x.split("=",1)[1]) for x in sys.argv if x.startswith("--delay-consent=")),None)
 try:
  action('power-shell dump -t; power-shell wakeup','keep-screen-on')
  while time.monotonic()-start<180:
@@ -31,7 +32,7 @@ try:
    found=list(re.finditer(r'rect=\[(\d+),(\d+) (\d+)x(\d+)\].*\"同意\"',raw))
    if found:
     x,y,w,h=map(int,found[-1].groups())
-    shot('consent-before');action(f'uinput -T -d 600 1273 -u 600 1273','SETUP_ONLY_uinput_consent');consent=True
+    shot('consent-before');action('echo CONSENT_BEFORE; cat /proc/uptime; uinput -T -d 600 1273 -u 600 1273; echo CONSENT_AFTER; cat /proc/uptime','SETUP_ONLY_uinput_consent');consent=True;consent_done=time.monotonic()
   if '[INITCHILD-FAIL]' in raw or not dev(f'cat /proc/{pid}/stat 2>/dev/null').strip():
    print('UI_EXIT_BEFORE_TEST',flush=True);break
   if '"同意"' not in raw and 'FeedCommonRecyclerView' in raw and ('FeedLightTextView' in raw or 'FeedTitleTextView' in raw) and time.monotonic()-start > (10 if '--warm' in sys.argv else 50):
@@ -53,6 +54,20 @@ try:
    time.sleep(1.5)
   if not idle:raise RuntimeError('Main loop did not reach nativePollOnce; no acceptance touch')
  if ready:
+  if delay is not None:
+   if consent_done is None:raise RuntimeError('Fixed-age trial requires actual consent')
+   time.sleep(max(0,consent_done+delay-10-time.monotonic()))
+   if '--npth-pause' in sys.argv:
+    cmd=f'/data/local/tmp/ability38-proc pause {pid} 75'
+    pause_pid=int(action('nohup '+cmd+' > /data/local/tmp/ability38-pause-npth.log 2>&1 </dev/null & echo $!','NPTH_SINGLE_THREAD_PAUSE').strip())
+    (r/'npth-pause-launch.txt').write_text(str(pause_pid))
+    time.sleep(1)
+    state=action('cat /data/local/tmp/ability38-pause-npth.log')
+    (r/'npth-pause-before.txt').write_text(state)
+    if 'PAUSED_MATCHED_LOOP' not in state:raise RuntimeError('npth loop intervention not established')
+   (r/'maps-before.txt').write_text(action(f'cat /proc/{pid}/maps'))
+   (r/'tasks-before.txt').write_text(action(f'cat /proc/{pid}/task/*/stat'))
+   (r/'cmdline-before.txt').write_text(action(f'cat /proc/{pid}/cmdline'))
   shot('before');vt('before')
   if '--manual-ready' in sys.argv:
    print('READY_FOR_SCREENSHOT_CHECK',flush=True)
@@ -73,7 +88,7 @@ try:
    (r/'selected-title.json').write_text(json.dumps({'text':title,'rect':[x,y,w,h],'touch':[tx,ty]},ensure_ascii=False))
    gesture=f'uinput -T -d {tx} {ty} -u {tx} {ty}'
   if '--profile-detail' in sys.argv:
-   early=action('cat '+log)
+   early=action("grep -m 1 '^\\[TOUCH21-POLL\\] enter' "+log)
    main_tid=int(re.search(r'\[TOUCH21-POLL\] enter now=\d+ tid=(\d+)',early)[1])
    (r/'main-thread.json').write_text(json.dumps({'pid':pid,'tid':main_tid,'exclude_from_latency_cohort':True}))
    (r/'maps-before.txt').write_text(action(f'cat /proc/{pid}/maps'))
@@ -81,6 +96,16 @@ try:
    perf_command=f'echo PROFILE_BEFORE; cat /proc/uptime; /bin/hiperf record -p {pid} -d 20 -f 400 -e sw-task-clock -s dwarf,16384 --symbol-dir /data/local/tmp/a2hlab-framework-ability38-v7 -o /data/local/tmp/ability38-detail.data; echo PROFILE_RC=$?; cat /proc/uptime'
    action('nohup /system/bin/sh -c '+shlex.quote(perf_command)+' >/data/local/tmp/ability38-detail-record.txt 2>&1 </dev/null & echo $!','CPU_PROFILE_NOT_LATENCY')
    time.sleep(.5)
+  if '--offcpu' in sys.argv:
+   early=action("grep -m 1 '^\\[TOUCH21-POLL\\] enter' "+log)
+   main_tid=int(re.search(r'\[TOUCH21-POLL\] enter now=\d+ tid=(\d+)',early)[1])
+   (r/'main-thread.json').write_text(json.dumps({'pid':pid,'tid':main_tid,'offcpu_interval_ms':50,'java_request_interval_ms':500}))
+   (r/'fds-before.txt').write_text(action(f'ls -l /proc/{pid}/fd'))
+   cmd=f'/data/local/tmp/ability38-proc sample {pid} {main_tid} 60 /data/local/tmp/noice_tap'
+   sampler_pid=int(action('nohup '+cmd+' >/data/local/tmp/ability38-offcpu.txt 2>&1 </dev/null & echo $!','OFFCPU_SAMPLER').strip())
+  if delay is not None:
+   if time.monotonic()>consent_done+delay+2:raise RuntimeError('Missed fixed consent-age deadline')
+   time.sleep(max(0,consent_done+delay-time.monotonic()))
   command='echo INPUT_BEFORE; cat /proc/uptime; '+gesture+'; echo INPUT_AFTER; cat /proc/uptime'
   (r/'physical-result.txt').write_text(action(command,'UINPUT_ACCEPTANCE',30))
   touch_done=time.monotonic()
@@ -99,4 +124,10 @@ try:
     (r/f'report-{label}.txt').write_text(action(f'/bin/hiperf report -i /data/local/tmp/ability38-detail.data --symbol-dir /data/local/tmp/a2hlab-framework-ability38-v7 {filters} --sort tid,comm,dso,func --limit-percent 0',timeout=180))
    (r/'report-stacks.txt').write_text(action(f'/bin/hiperf report -i /data/local/tmp/ability38-detail.data --symbol-dir /data/local/tmp/a2hlab-framework-ability38-v7 --tids {main_tid} --sort tid,comm,dso,func -s --limit-percent 0.1',timeout=180))
 finally:
+ for helper in (sampler_pid,pause_pid):
+  if helper and action(f'readlink /proc/{helper}/exe').strip()=='/data/local/tmp/ability38-proc':action(f'kill {helper}')
+ if '--offcpu' in sys.argv:
+  recv('/data/local/tmp/ability38-offcpu.txt',r/'offcpu.txt')
+ if '--npth-pause' in sys.argv:
+  (r/'npth-pause-after.txt').write_text(action('cat /data/local/tmp/ability38-pause-npth.log'))
  collect(r,d);stop(d);print('COLLECTED_STOPPED',name,flush=True)
