@@ -29,6 +29,7 @@ chown "$APP_UID48:$APP_UID48" "$DIR" 2>/dev/null
 chown -h "$APP_UID48:$APP_UID48" "$DST" 2>/dev/null
 # give the app-data SELinux label so normal_hap may reach the link (target inode's
 # own label still governs the executable mapping, which asx already permits)
-restorecon "$DIR" "$DST" 2>/dev/null
+restorecon "$DIR" 2>/dev/null
+restorecon "$DST" 2>/dev/null
 ls -lZ "$DST" 2>/dev/null || ls -l "$DST"
 echo "preseed: $DST -> $SRC"
