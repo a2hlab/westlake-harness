@@ -39,5 +39,35 @@ then `kill $(cat /data/local/tmp/operator45/guard.pid)`.
 Original shim backup: `/data/local/tmp/operator45-crashes/reliability49-original/`.
 The #48 rollback utility is not executed; the operator explicitly requested A1 retained.
 
-Results pending. Evidence is exported with raw/decompressed SHA and committed-HEAD
-verification via `verify.py --git`. Historical #48 evidence is separate.
+The five-round gate is blocked: final-r1 and final-r3 reproduced the
+metasec-associated main-thread exit. Both failed relocation at
+`ASensorManager_getDefaultSensor`, then platform-back-handler threw ULE,
+`X.DEv` attempted to create a Handler with a null Looper, ActivityThread.main
+returned, and the parent reaped exit(1). This is not an errno13 failure, but
+it is still the failed-back-thread-to-main-exit chain. A1's earlier five
+surviving windows did not establish elimination of that chain.
+
+Final-r2 survived 652.61s total and 255.394s after detail RESUMED. Its body and
+video cover remained visible at the end. Consent and article timing varied
+with UI readiness/manual observation; this is not a matched timing A/B.
+Final-r3 displayed its consent dialog after an initial feed screenshot, so
+the first article input was unsuccessful; the later consent input is recorded
+separately. No input is sent to guardian replacements.
+
+All five rounds are complete. Evidence is exported with raw/decompressed SHA and
+committed-HEAD verification via `verify.py --git`. Historical #48 evidence is
+separate. Refusal coverage and heap outcomes are separate from metasec exits.
+
+## Final five-round result: blocked, R2 partially
+
+|Round / original PID|Last alive age s|End check age s|Detail RESUMED window s|metasec → main exit(1)|Body at end|
+|---|---:|---:|---:|---:|---|
+|final-r1 / 26917|188.91|193.20|0.000|1|not opened|
+|final-r2 / 2331|652.61|652.61|255.394|0|readable|
+|final-r3 / 16393|148.37|152.25|0.000|1|not opened|
+|final-r4 / 21769|398.37|398.37|189.958|0|readable|
+|final-r5 / 31132|395.68|395.68|213.162|0|readable|
+
+3/5 completed the article survival window. 2/5 exited via ASensor relocation failure → dead platform-back-handler → null Looper → main return. All five had one platform-back-handler ULE and one work_thread SIGABRT banner; the latter did not mean the original app exited by SIGABRT. No original-PID SIG11/get_meta cppcrash was observed. All five had zero refusal messages and zero sampled xasan/heap_tracker mappings: actual refusal requests remain unverified.
+
+[Final article screenshot](evidence/final-r5/monitor-end.jpeg). 147 evidence files verified against raw/decompressed SHA and HEAD. Six component hashes were checked before/after each round. The original instances in rounds 2/4/5 survived their windows; later deliberate teardown for the next trial is not a crash. New user route C is a separate worktree/group; all old failures remain in this report.
