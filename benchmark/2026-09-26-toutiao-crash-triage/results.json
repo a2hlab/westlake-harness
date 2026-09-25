@@ -323,6 +323,21 @@
         "object_verified": "compiles clean; 8 exports (7 FUNC + __sF OBJECT/456) GLOBAL; UND only libc-satisfiable (__errno_location/openat/strtoll/strtoull)",
         "status": "built + asserted offline; needs core-runtime rebuild to link into libandroid.so; board 5x3min pending on BASELINE+#49",
         "grade": "R2: partially-verified (offline closure proven; board unverified)"
+      },
+      "hollow_stub_48": {
+        "trigger": "the §12 full symbol closure let metasec relocate and run real init, which SIGSEGV ~7s reading Bionic pthread_internal_t on musl. Partial closure=probabilistic sixth exit; full closure=init crash; NO sweet spot. Bionic-bound residual.",
+        "decision": "hollow no-op libmetasec_ml.so, no real init (last non-Bionic option; #41 metasec non-essential for feed+articles)",
+        "app_native_abi": {
+          "real_so_exports": "exactly one dynamic symbol: JNI_OnLoad",
+          "reverse_dt_needed": "no other APK lib DT_NEEDs libmetasec_ml.so (empty native-import surface)",
+          "app_declared_natives": "exactly one: ms.bd.c.m.a public static native Object a(int,int,long,String,Object) = (IIJLjava/lang/String;Ljava/lang/Object;)Ljava/lang/Object; -> Java_ms_bd_c_m_a (short name; one native in class); com.bytedance.mobsec.metasec.ml.* are pure-Java wrappers, 0 natives"
+        },
+        "stub": "stub/libmetasec_ml_stub.c built by stub/build_stub.sh -> libmetasec_ml.so sha256 6e6b9aaad14c6b8e5762c062a3689f96e4c74b8b84b32665cb42b2b9a661a9a9; exports JNI_OnLoad(returns JNI_VERSION_1_6)+Java_ms_bd_c_m_a(returns null); SONAME libmetasec_ml.so; NEEDED only libc.so; zero UND (also sidesteps §12 closure). Java_* default-resolution path + best-effort RegisterNatives in JNI_OnLoad. No init, no pthread reads.",
+        "assertion": "scripts/assert_metasec_stub.sh — SONAME + JNI_OnLoad + Java_ms_bd_c_m_a + hollow(NEEDED⊆{libc}) + zero UND. Validated: stub PASS, real metasec FAIL (no Java_* export, heavy NEEDED, 226 UND).",
+        "tooling": "scripts/scan_jni_methods.py (RELATIVE-reloc JNINativeMethod scan; showed metasec registers via runtime-decrypted strings, no static plaintext table — so the method list comes from the app dex, not the .so)",
+        "status": "built + asserted offline; overlay onto app staged arm64-v8a/libmetasec_ml.so; board 5x3min pending on BASELINE+#49",
+        "honest_failure_signal": "if app integrity-checks metasec or a wrapper NPEs on the null dispatch result and breaks feed/articles -> that is the evidence metasec needs the Bionic root fix (M3/M4), not a stub",
+        "grade": "R2: partially-verified (offline ABI+stub+assert proven; board unverified)"
       }
     },
     {

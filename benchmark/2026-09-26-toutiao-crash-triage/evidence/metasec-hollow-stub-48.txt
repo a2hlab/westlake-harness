@@ -1,0 +1,50 @@
+# Hollow metasec stub (#48) — evidence
+date: 2026-09-26   target: toutiao libmetasec_ml.so (arm64-v8a)
+
+## Why a stub (no sweet spot)
+Partial symbol closure -> metasec half-loads -> probabilistic sixth exit.
+Full closure -> metasec fully loads, runs real init, ~7s SIGSEGV reading
+Bionic pthread layout on musl (Bionic-bound residual). #41: metasec is not
+required for feed+articles. So: hollow no-op libmetasec_ml.so, no real init.
+
+## App-side native ABI metasec must satisfy (the WHOLE surface)
+1) real libmetasec_ml.so exports exactly ONE dynamic symbol:
+      FUNC JNI_OnLoad
+2) no other APK lib DT_NEEDs libmetasec_ml.so (empty native-import surface):
+     (none)
+3) app declares exactly ONE native backed by metasec (single dispatcher):
+     class  ms.bd.c.m
+     method public static native Object a(int,int,long,String,Object)
+     JNI    (IIJLjava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;
+     -> mangled short name Java_ms_bd_c_m_a (one native in class => short form)
+     (com.bytedance.mobsec.metasec.ml.* are pure-Java wrappers, 0 natives)
+
+## The stub
+cut: '"': No such file or directory
+sha256: 
+    0x0000000000000001 (NEEDED)             Shared library: [libc.so]
+    0x000000000000000e (SONAME)             Library soname: [libmetasec_ml.so]
+   exports:
+      _init
+      _fini
+      Java_ms_bd_c_m_a
+      JNI_OnLoad
+
+## Assertion (scripts/assert_metasec_stub.sh)
+### KNOWN-GOOD: hollow stub  (exit 0)
+  OK   SONAME=libmetasec_ml.so
+  OK   exports JNI_OnLoad
+  OK   exports Java_ms_bd_c_m_a (app native ms.bd.c.m.a)
+  OK   hollow: NEEDED ⊆ {libc.so}
+  OK   no undefined global symbols (fully self-contained)
+
+PASS: hollow metasec stub covers the app native ABI
+
+### KNOWN-BAD: real metasec (registers dynamically, heavy NEEDED)  (exit 1)
+  OK   SONAME=libmetasec_ml.so
+  OK   exports JNI_OnLoad
+  MISS no Java_ms_bd_c_m_a — app native would UnsatisfiedLinkError
+  MISS not hollow: extra NEEDED: libandroid.so libdl.so liblog.so libm.so 
+  WARN 226 undefined symbols (real lib, not hollow): abort@LIBC access@LIBC ALooper_forThread ALooper_pollOnce ALooper_prepare __andr…
+
+FAIL: stub does not cover the app native ABI
