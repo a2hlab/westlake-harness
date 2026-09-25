@@ -293,6 +293,16 @@ Evidence: [evidence/npth-heap-source-49.txt](evidence/npth-heap-source-49.txt). 
   3. **Can non-Bionic treatment make 5×3 min reliable?** Yes, plausibly. The source is two non-essential libraries with a Bionic-only assumption, refused in westlake's own shim — no policy change, no Bionic. Bionic (M3/M4) stays the long-term system fix for the whole "ByteDance native assumes Bionic" class (so xasan/heap_tracker/metasec would actually *work*), but reading feed+articles does not need them to work — refusing the heap-corrupting ones clears the gate. **This corrects the earlier lean that the seventh class was necessarily Bionic-bound.**
 - **Verify on a board (`scripts/assert_heap_corruption_gone.sh`).** With shim `85c789f4` (which also carries the GLES fix) on top of bridge `d4fae8e5`, libnpth `8b8d559c`, and the tt fix: no `get_meta` cppcrash; process not killed by SIG11; `refusing self-trapping library: …libnpth_xasan/heap_tracker` logged; feed and a video article still load. **Gate: 5 fresh starts, each >3 min on a video article.** Detector validated on the known-bad a2-r2 (it FAILs there).
 
+## 11. Route C built (#48): 7 sensor no-ops for the default-namespace libandroid
+
+The deterministic fix for the metasec sixth exit (better than A1's probabilistic reuse). Evidence: `evidence/metasec-sensor-48.txt`.
+
+- **What was missing.** The core (default-namespace) libandroid.so is built from `native/android-ndk15-sources.json`, whose 5 sources are asset/looper/hwui/net — **no sensor source**. So the deployed core libandroid (`dc5eb800`) exports 0 of the 7 `ASensor*` symbols metasec links against, and metasec relocate-fails in the default namespace. (AOSP's real sensor is present in a different build, `11a260c9`, but it drives a SensorService OH lacks, so it is not a safe fix — a no-op is.)
+- **Fix (built).** westlake `fix/libandroid-sensor-noop-48` `72ed855` adds `native/android_sensor_noop.c` — the 7 `ASensor*` entry points as no-ops returning null/0 (a null default sensor is the documented unsupported-type report; same shape as the WebView shim stubs and the #17 SurfaceControl no-ops) — and lists it in `android-ndk15-sources.json`. The object compiles clean and exports all 7 as GLOBAL FUNC (verified with `readelf -s`). Needs the core-runtime rebuild (libandroid is linked by the native object-map, #27 recipe).
+- **Assertion (`scripts/assert_libandroid_sensor.sh`).** On the rebuilt core `libandroid.so`, all 7 `ASensor*` are exported. Validated: the no-op object PASSes, the deployed sensor-less core libandroid FAILs.
+- **Why this beats A1.** A1 fixed errno13 but left the missing sensor symbol, so metasec still failed to relocate and the sixth exit reappeared probabilistically (final-r1). Route C removes the symbol failure at the source: metasec relocates, loads, and stays lazy (#41) every time — deterministic, non-Bionic.
+- **Board gate.** Deploy the rebuilt core libandroid on the BASELINE stack; run 5 fresh starts. Expect: no `ASensorManager_getDefaultSensor: symbol not found`, no `platform-back-handler` UnsatisfiedLinkError, no `X.DEv` NPE, process survives 3 min on a video article. Stacks with the #49 heap fix.
+
 ## Rules this adds
 
 - Compute a stripped library's vaddr from the absolute pc minus the base of its r-xp mapping at file offset 0. faultloggerd's rel-pc base varies by run.
@@ -319,12 +329,12 @@ Evidence: [evidence/npth-heap-source-49.txt](evidence/npth-heap-source-49.txt). 
 | `evidence/ticketguard-hmac.txt` | banner, maps, OH OpenSSL symbolization, export comparison |
 | `evidence/crash-run-map.txt` | per-run signatures, #38 and #42 |
 | `evidence/npth-heap-source-49.txt` | seventh class rooted: npth xasan/heap_tracker are the only Bionic-malloc-ABI libs; poison signature, shim refuse fix |
-| `evidence/metasec-sensor-48.txt` | metasec sixth-exit real cause: missing ASensorManager_getDefaultSensor no-op in default-namespace libandroid; refuse/stub/route-C eval |
+| `evidence/metasec-sensor-48.txt` (route C built: `fix/libandroid-sensor-noop-48` 72ed855, `scripts/assert_libandroid_sensor.sh`) | metasec sixth-exit real cause: missing ASensorManager_getDefaultSensor no-op in default-namespace libandroid; refuse/stub/route-C eval |
 | `evidence/metasec-a2-heap.txt` | A2 five-run result: SIG11 is a musl heap corruption in SQLite/Mali, not metasec; per-round table |
 | `evidence/metasec-exit-48.txt` | #48 sixth exit: metasec errno13 → dead background thread → X.DEv null Looper → _exit(1), with retry analysis |
 | `evidence/inproc-oom.txt` | in-process renderer PartitionAlloc OOM: banner, register decode, handler disasm, RSS/VSZ/VMA curve |
 | `evidence/tt-namespace.txt` | TicketGuard split: two images, OH musl lookup rule, closure, run.sh diff |
 | `evidence/tt-rootfix.txt` | TicketGuard root fix: NativeLoader coverage, HMAC versioning, LD_PRELOAD hijack scan, both run.sh products |
 | `evidence/sigtrap-mediacodec.txt` | post-fix SIGTRAP: stderr, banner, engine trap site, unregistered natives, westlake diff, rebuild hashes |
-| `scripts/` | `build_shim.sh`, `patch_npth.py`, `build_bridge_mc.py`, `tt_closure.py`, `tt_cover.py`, `apply_tt_targets.py`, `apply_ld_preload.py`, `mem_curve.py`, `preseed_metasec_applib.sh`, `assert_metasec_exit_gone.sh`, `assert_heap_corruption_gone.sh`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
+| `scripts/` | `build_shim.sh`, `patch_npth.py`, `build_bridge_mc.py`, `tt_closure.py`, `tt_cover.py`, `apply_tt_targets.py`, `apply_ld_preload.py`, `mem_curve.py`, `preseed_metasec_applib.sh`, `assert_metasec_exit_gone.sh`, `assert_heap_corruption_gone.sh`, `assert_libandroid_sensor.sh`, `make_evidence.sh`, and the dexdump/objdump helpers `strs.py`, `callers.py`, `guard.py`, `webview-fnstr.py` |
 | `results.json` | machine-readable summary |

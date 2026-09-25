@@ -263,7 +263,8 @@
         "errno13_nature": "verified (lean SELinux, board command to confirm)",
         "B_not_viable": "verified",
         "A_and_C_effect": "A removes sixth exit (verified r2/r4: errno13=0, no back-handler ULE, no null-Looper); A alone insufficient for 5x3min due to independent musl heap corruption",
-        "root_not_bionic_only": "verified (metasec lazy after load, no init crash; SIG11 is SQLite/Mali heap corruption not metasec)"
+        "root_not_bionic_only": "verified (metasec lazy after load, no init crash; SIG11 is SQLite/Mali heap corruption not metasec)",
+        "route_C": "source built + object verified (7 GLOBAL FUNC); effect unverified (needs core-runtime rebuild + board)"
       },
       "probe_command": "hdc -t 61b0657200000000000000000324012c shell su 0 sh -c: grep /data /proc/mounts; grep /data/data /proc/self/mountinfo; dmesg | grep 'avc denied execute normal_hap|app_data'",
       "probe_lean": "SELinux (normal_hap enforcing, #39 memory); command confirms noexec-mount vs avc",
@@ -288,6 +289,17 @@
         "route_C_preferred": "add the 7 ASensor* no-ops to the default-namespace libandroid (westlake ships them in webview 76512d97 / native 11a260c9; #17 pattern); metasec relocates, loads, stays lazy (#41); no stub, no Bionic",
         "feed_articles": "unaffected: metasec lazy (#41); sensor no-ops only blank anti-fraud sampling",
         "clears_5x3min": "plausibly, stacked with #49 heap fix; not Bionic-bound"
+      },
+      "route_C_built": {
+        "westlake_branch": "fix/libandroid-sensor-noop-48",
+        "commit": "72ed855",
+        "source": "native/android_sensor_noop.c (7 ASensor* no-ops null/0) + android-ndk15-sources.json",
+        "why": "core default-namespace libandroid (android-ndk15-sources: asset/looper/hwui/net, no sensor) exports 0 of 7 ASensor*; metasec relocate-fails; AOSP real sensor (11a260c9) drives a SensorService OH lacks so no-op is the safe fix",
+        "object_verified": "compiles clean, all 7 exported GLOBAL FUNC (readelf -s)",
+        "assert": "scripts/assert_libandroid_sensor.sh (no-op object PASS, deployed sensor-less core lib FAIL)",
+        "beats_a1": "A1 left the missing symbol so the sixth exit reappeared probabilistically (final-r1); route C is deterministic",
+        "needs": "core-runtime rebuild (libandroid linked by native object-map)",
+        "clears_gate": "unverified (needs board 5 fresh starts, stacked with #49 heap fix)"
       }
     },
     {
