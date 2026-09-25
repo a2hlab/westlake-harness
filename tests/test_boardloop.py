@@ -401,6 +401,26 @@ class TestTapChannelBothNames(unittest.TestCase):
             command = runner.launch_command(ns, "k", {"extra_args": []}, "S1", Path("/o"))
             self.assertNotIn("--webview-input", " ".join(command))
 
+    def test_source_webview_build_flows_into_the_command(self) -> None:
+        import argparse
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            prepared = Path(td) / "app-inputs"
+            (prepared / "k").mkdir(parents=True)
+            (prepared / "k" / "app-input.json").write_text("{}")
+            ns = argparse.Namespace(
+                manifest=Path(td), workspace=Path(td), westlake_source=Path(td),
+                framework_report=Path(td) / "r.json", hdc="hdc",
+                prepared_root=prepared, webview_input=None,
+                source_webview_build=Path("/out-sp20/webview-candidate"),
+            )
+            command = runner.launch_command(ns, "k", {"extra_args": []}, "S1", Path("/o"))
+            self.assertIn("--source-webview-build /out-sp20/webview-candidate",
+                          " ".join(command))
+            ns.source_webview_build = None
+            command = runner.launch_command(ns, "k", {"extra_args": []}, "S1", Path("/o"))
+            self.assertNotIn("--source-webview-build", " ".join(command))
+
 
 class TestOfflineReclassify(unittest.TestCase):
     """#15: offline re-classification with a gap map, original records untouched."""

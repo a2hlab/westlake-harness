@@ -119,6 +119,10 @@ def launch_command(args: argparse.Namespace, app_key: str, app: dict[str, Any],
     # boundary input'). Passed once for the whole corpus; apps that don't use it ignore it.
     if getattr(args, "webview_input", None):
         command += ["--webview-input", str(args.webview_input)]
+    # #22: source-built WebView candidate (e.g. out-sp20: SurfaceControl no-op table +
+    # --single-process) replaces the captured webview payload when given.
+    if getattr(args, "source_webview_build", None):
+        command += ["--source-webview-build", str(args.source_webview_build)]
     return command + extra_args(app)
 
 
@@ -355,6 +359,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--prepared-root", required=True, type=Path,
                         help="prepare_all.py output root; each app launches with "
                              "<prepared-root>/<key> as --app-input")
+    parser.add_argument("--source-webview-build", type=Path,
+                        help="source-built WebView candidate root; replaces the captured "
+                             "webview payload when given (#22: sp20 = SC no-op + single-process)")
     parser.add_argument("--webview-input", type=Path,
                         help="locked WebView payload root; also supplies the bionic boundary "
                              "input --android-native-target apps need (probe refuses them without it)")
