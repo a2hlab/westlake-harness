@@ -17,7 +17,8 @@ for r in sorted(R.glob('*-r[0-9]*')):
  errors=[l for l in lines if l.startswith("[UNCAUGHT] thread='platform-back-handler'") and 'metasec' in l]
  eacces=[l for l in errors if 'errno=13' in l or 'Permission denied' in l]
  inputs=[json.loads(l) for l in (r/'inputs.jsonl').read_text().splitlines()] if (r/'inputs.jsonl').exists() else []
- consent=float(inputs[0]['output'].split()[0]) if inputs else None
+ consent_inputs=[i for i in inputs if '-d 600 1273' in i['command']]
+ consent=float(consent_inputs[0]['output'].split()[0]) if consent_inputs else None
  clicks=[float(i['output'].split()[0]) for i in inputs if '-d 380 295' in i['command']]
  resumed=[l for l in lines if l.startswith('[ABILITY38-RESUMED]')]
  # Concurrent native logging can prefix a real marker on the same line.
