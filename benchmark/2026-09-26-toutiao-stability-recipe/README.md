@@ -90,3 +90,12 @@ python3 verify_logs.py child.stderr maps-curve.csv
 今晚依据 `feat/ability-focus-38` 的 `bab3fc0d202e2feb4f09ffd80ae3f1b3f4dc0a74`：五篇正文持续可读、各窗口>120s、SIGTRAP=0；maps峰21792，低于新上限也低于旧65530，所以不能证明提高上限是存活原因。完整child仍有metasec加载ULE及work_thread SIGABRT横幅，五篇窗口ULE=0，**全局ULE=0尚未达成**。ttcrypto/ttboringssl仍各两份映像，四名targets没有根治TicketGuard。视频播放、评论网络、<2s性能SLA和长期稳定性均不在本配方的已通过声明中。
 
 本次离线验证：真实三产物SHA全部匹配；源/目标原件备份核验；首次应用、二次应用字节完全一致；targets-only输出与今晚实测run一致；启动哈希清单自检通过；普通文件模拟sysctl设置/读回与低值拒绝；6项失败路径/幂等测试通过。真实fixture记录见 [smoke.json](evidence/smoke.json)。**未上板，不声称本次新增的启动包装或设备验收已实测通过。**
+
+## v2:#47 AAssetManager 族并入(aasset47,2026-09-26)
+
+`fixes.json` 升 `toutiao-stability-46-v2`:新增第 4 个 binary 条目 `aasset47`——
+- source:`out-aasset47/webview-candidate/webview-t-lib/libandroid.so`(commit `eaa814b`,westlake 分支 `fix/webview-ndk-assets-47`)
+- destination:`webview-t-lib/libandroid.so`;original=sp20 候选的 52 导出/0 AAsset 变体;patched=70 导出/18 AAsset\*(含 `T AAssetManager_fromJava`)
+- 动机:c40 三 app(burgerking/co-candycrushsaga/co-discord)的首阻塞 `Error relocating … AAssetManager_fromJava: symbol not found`,修复把 20 个 AAsset 入口(AOSP14 语义)植入该 libandroid 边界并懒转发到每次 stage 已部署的 `libwestlake_asset_bridge.so`(14 个 `wl_AAsset*`)。
+
+验证:配方单测 6/6;合成 stage(真实基线字节,四 destination 齐)`apply_all_fixes.py --dry-run` 通过——plan 接受 v2 全部四条目并输出 8 项更新(四 binary+run.sh 改写+两 hook+SHA256SUMS)。板上生效断言(等外环分配板):三 app `AAssetManager_fromJava: symbol not found` 计数=0、首阻塞前移。
