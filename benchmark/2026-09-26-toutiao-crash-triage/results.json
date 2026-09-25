@@ -281,6 +281,32 @@
         "not_load_metasec": "feasible via stub .so or Java short-circuit but not the lever: does not touch the heap corruption (fault DSOs SQLite/Mali, not metasec)",
         "next": "re-run with A1 (f162c5e, cherry-picked baca9a3/94f8195) to drop symlink flakiness; chase heap corruption with libc_gwp_asan"
       }
+    },
+    {
+      "id": "seventh-class-musl-heap-corruption",
+      "board_entry": "#49",
+      "signature": "process-wide musl mallocng heap-metadata corruption; get_meta+92 -> __libc_free SIGSEGV in random victim threads (SQLite/bd_tracker, Mali/RenderThread)",
+      "poison": "corrupted in-band chunk meta header (x0=x11=0x7d022b8bb5843ce6, valid heap 0x7e/0x7f); freed chunk held JSON; adjacent overrun",
+      "source": "libnpth_xasan.so + libnpth_heap_tracker.so — the ONLY 2 of 138 APK libs referencing Bionic malloc-dispatch ABI (__libc_malloc_dispatch/__libc_globals); hook malloc/free via shadowhook/bytehook, write Bionic-layout tracking metadata over musl in-band headers",
+      "not_source": "shadowhook (the hooking tool; r2 had not loaded it), bd_tracker (a victim = #38 'possibly independent')",
+      "load_path": "libnpth loads xasan via system dlopen (0x28e34 dlopen@plt), intercepted by LD_PRELOAD shim; 0x28e38 cbz x0 tolerates NULL",
+      "fix": {
+        "westlake_branch": "fix/npth-hook-refuse-49",
+        "commit": "b14e4d0",
+        "base": "#46 GLES fix 87fb17b",
+        "change": "add libnpth_xasan.so + libnpth_heap_tracker.so to g_refused_libraries",
+        "shim_sha256": "85c789f48b2bc0c31658c9dc591cd27784cc0ddfe559005e8d36d1d7d220476a",
+        "exports_needed_unchanged": true,
+        "non_essential": "APM diagnostics; feed/article do not need them"
+      },
+      "root_not_bionic_only": true,
+      "root_note": "source is two non-essential Bionic-assuming libs, refused in westlake shim; non-Bionic treatment can plausibly clear 5x3min; Bionic M3/M4 stays the long-term system fix for the whole class but is not required to read feed+articles",
+      "r2": {
+        "poison_signature": "verified",
+        "source_by_static_scan": "verified",
+        "refuse_safe_npth_tolerates_null": "verified",
+        "fix_clears_gate": "unverified (needs board 5x3min)"
+      }
     }
   ],
   "aot42_formal_signal11": {

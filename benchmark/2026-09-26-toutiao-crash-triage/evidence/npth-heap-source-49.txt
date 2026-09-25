@@ -1,0 +1,34 @@
+# #49 seventh class source: npth xasan/heap_tracker assume Bionic malloc, corrupt musl heap
+
+## poison signature (board #48 a2-r2 cppcrash)
+SEGV@0x00022b8bb5843cf6, thread bd_tracker_w:13, #00 ld-musl get_meta+92, #01 __libc_free+24
+x0=x11=0x7d022b8bb5843ce6 = corrupted meta pointer (valid heap is 0x7e../0x7f..; high bytes overwritten)
+freed chunk (x1) holds JSON ("..k_version":"3.5..") -> an adjacent overflow overwrote its in-band
+mallocng meta header; get_meta reads the poisoned group pointer and dereferences it -> SIGSEGV.
+r4: same get_meta+92/__libc_free, RenderThread freeing a Mali chunk. Different victims, same corruption.
+
+## source located by static scan of all 138 APK libraries
+ONLY libnpth_xasan.so and libnpth_heap_tracker.so reference Bionic malloc-dispatch ABI:
+  __libc_malloc_dispatch, __libc_malloc_default_dispatch, __libc_globals  (Bionic-only; musl has none)
+They hook malloc/free (via shadowhook/bytehook, which both import malloc/free/calloc/realloc) and do
+Bionic-style redzone/tracking writes -> overrun musl in-band chunk headers. shadowhook is the TOOL
+they hook with, not the source; the crashing r2 had not even loaded shadowhook yet.
+
+## load path & tolerance (why refuse works and is safe)
+libnpth loads xasan with the SYSTEM dlopen (libnpth.so 0x28e34 bl dlopen@plt, arg "libnpth_xasan.so"),
+which the LD_PRELOAD webview_bionic_shim intercepts. 0x28e38 is cbz x0 -> libnpth SKIPS on NULL, so
+refusing the load does not crash npth. heap_tracker is not in libnpth's dlopen strings (triggered
+elsewhere); refused by basename too. Both are APM diagnostics, not needed for feed/article.
+
+## fix: shim refused list (westlake, no Bionic)
+westlake fix/npth-hook-refuse-49 b14e4d0 (on top of #46 GLES fix 87fb17b): add libnpth_xasan.so +
+libnpth_heap_tracker.so to g_refused_libraries. Rebuilt shim sha256 85c789f48b2bc0c3...; exports and
+DT_NEEDED identical to the GLES-only ecc7b12c.
+
+## answers to #49
+1. Source: npth xasan/heap_tracker (Bionic malloc-dispatch assumption), NOT shadowhook itself, NOT bd_tracker (a victim).
+2. Not loading them: clean via the shim refused list; libnpth tolerates the NULL; feed/article unaffected.
+3. Non-Bionic treatment CAN make 5x3min reliable: the source is two non-essential libraries with a
+   Bionic-only assumption, refused in westlake's own shim. Bionic (M3/M4) stays the long-term system
+   fix for the whole 'ByteDance native assumes Bionic' class, but reading feed+articles does not need
+   xasan/heap_tracker/metasec to work -- refusing the heap-corrupting ones clears the gate.
