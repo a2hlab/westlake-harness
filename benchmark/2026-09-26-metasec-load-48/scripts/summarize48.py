@@ -22,10 +22,14 @@ for r in sorted(R.glob('*-r[0-9]*')):
  resumed=[l for l in lines if l.startswith('[ABILITY38-RESUMED]')]
  detail=[l for l in lines if l.startswith('[B47-SLA] ENTRY') and 'NewDetailActivity' in l]
  last=states[-1];alive_age=max([s['age'] for s in states if s['alive']],default=0)
+ # monitor checks liveness again after the composite sample; it may observe
+ # death in that small gap. Do not turn the earlier stat into an alive result.
+ result=json.loads((r/'result.json').read_text())
+ final_alive=result['original_alive_at_end']
  row={'round':r.name,'pid':pid,'terminal':terminal[-1] if terminal else None,
-      'last_observed_alive_age_s':alive_age,'end_age_s':last['age'],'alive_at_end':last['alive'],
+      'last_observed_alive_age_s':alive_age,'end_age_s':last['age'],'alive_at_end':final_alive,
       'startup_over_180s':alive_age>=180,'consent_uptime':consent,
-      'alive_after_consent_s':(states[-1]['uptime']-consent) if consent and last['alive'] else None,
+      'alive_after_consent_s':(states[-1]['uptime']-consent) if consent and final_alive else None,
       'article_inputs_uptime':clicks,'detail_entry':detail,'resumed':resumed,
       'platform_back_handler_errors':errors,'metasec_eacces_count':len(eacces),
       'eacces_to_main_exit':bool(eacces and 'J_invokeStaticMain_main_threw' in log and 'X.DEv' in log and terminal and 'exited(1)' in terminal[-1]),
