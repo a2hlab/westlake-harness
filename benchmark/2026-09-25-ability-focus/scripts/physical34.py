@@ -68,6 +68,7 @@ try:
    (r/'maps-before.txt').write_text(action(f'cat /proc/{pid}/maps'))
    (r/'tasks-before.txt').write_text(action(f'cat /proc/{pid}/task/*/stat'))
    (r/'cmdline-before.txt').write_text(action(f'cat /proc/{pid}/cmdline'))
+   (r/'clock-ticks.txt').write_text(action('getconf CLK_TCK'))
   shot('before');vt('before')
   if '--manual-ready' in sys.argv:
    print('READY_FOR_SCREENSHOT_CHECK',flush=True)
