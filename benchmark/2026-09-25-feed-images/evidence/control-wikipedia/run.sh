@@ -1,0 +1,35 @@
+#!/system/bin/sh
+set -eu
+cd /data/local/tmp/asx
+export WESTLAKE_RUNTIME_ROOT=/data/local/tmp/asx
+export LD_LIBRARY_PATH=/data/local/tmp/asx:/system/lib64:/system/lib64/platformsdk:/system/lib64/chipset-sdk:/system/lib64/chipset-sdk-sp:/system/lib64/ndk:/vendor/lib64/chipsetsdk:/vendor/lib64/hw:/vendor/lib64:/data/local/tmp/asx/lib/arm64-v8a:/data/local/tmp/asx/webview-t-lib
+export WESTLAKE_SOURCE_LOG_STDERR=1
+export WESTLAKE_SOURCE_PACKAGE=1
+export WESTLAKE_TRACE_NATIVE_LOADER=1
+export ASX_RUNTIME_OWNER_UID=20010053
+export ASX_LAUNCH_PKG=org.wikipedia
+export ASX_NATIVE_LIB_DIR=/data/local/tmp/asx/lib/arm64-v8a
+export ASX_APK_PATH=/data/local/tmp/asx/wikipedia.apk
+export ASX_SPLIT_APK_PATHS=''
+export ASX_LAUNCH_ACTIVITY=org.wikipedia.main.MainActivity
+export ASX_DIRECT_LAUNCH=1
+export ASX_KEEP_THEME=1
+export ASX_DIAG_THROWABLE=1
+export ASX_WEBVIEW_DATA_DIR=/data/local/tmp/asx/webview-t-data
+export WL_PARENT_ID=31
+export WL_SUB_WINDOW=1
+export WL_FOCUSABLE=1
+export WL_SESSION_BUNDLE=org.westlake.imehost
+export WL_ABILITY_OWNED_WINDOWS=1
+export WL_MMI=1
+export WESTLAKE_OH_JIT_ANON_FALLBACK=1
+export APPSPAWNX_JIT_BASELINE=1
+export WESTLAKE_OH_JIT_FILE_CACHE_DIR=/data/data/org.wikipedia/code_cache/art-volatile
+export ASX_WEBVIEW_APK=/data/local/tmp/asx/webview-t.apk
+export ASX_WEBVIEW_LIB_DIR=/data/local/tmp/asx/webview-t-lib
+export LD_PRELOAD=/data/local/tmp/asx/webview-t-lib/libwebview_bionic_shim.so
+export WESTLAKE_PERMISSION_HELPER_PATH=/data/local/tmp/asx/liboh_permission_queries.so
+export WESTLAKE_ACCOUNT_HELPER_PATH=/data/local/tmp/asx/liboh_account_state.so
+export WESTLAKE_CONNECTIVITY_HELPER_PATH=/data/local/tmp/asx/liboh_connectivity_state.so
+export WL_TOUCH_TRACE=1
+exec /data/local/tmp/asx/appspawn-x --socket-name A2HSourcec0e5b9fb585940329391
