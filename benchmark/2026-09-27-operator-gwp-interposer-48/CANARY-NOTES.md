@@ -47,3 +47,29 @@ survive appspawn-x — DIGEST B-9). Config for the ~17s crash:  WGWP_SCAN=2000 W
 On CORRUPTION: the report's alloc_site (absolute) and the abort's crash-analysis+maps -> hand claude-3.
 claude-3 resolves alloc_site - lib base (from maps) = file offset -> the lib/function that allocated
 the overflowed buffer (the corrupting subsystem), + the clobber word = the writer's data signature.
+
+## UPDATE 2026-09-27: chain-load variant for the single-slot NATIVE_PRELOAD channel
+The app's only early-preload channel is WESTLAKE_ANDROID_NATIVE_PRELOAD and it accepts EXACTLY ONE
+.so path (a colon list is treated as one illegal filename and breaks the shim). That slot currently
+holds libwebview_bionic_shim.so (app-required bionic-compat). To also get the canary into the child,
+the canary now CHAIN-LOADS the shim itself: constructor(101) arms the canary, then
+dlopen(shim, RTLD_GLOBAL|RTLD_NOW). Order is correct — canary loads first so its malloc-family
+GLOBAL DEFAULT interception is live before the shim loads; the shim's mallocs go through canary.
+So set the single slot to the canary:
+  WESTLAKE_ANDROID_NATIVE_PRELOAD=/data/local/tmp/asx/lib/arm64-v8a/libwestlake_canary_shim.so
+Shim path is env-overridable: WGWP_SHIM (default /data/local/tmp/asx/webview-t-lib/libwebview_bionic_shim.so).
+On dlopen failure it LOGs ("[WGWP-CANARY] shim dlopen FAILED path=... dlerror=...") and does NOT abort
+(a shim path problem must be loud, not a silent later crash).
+RTLD constants (OH musl dlfcn.h): RTLD_NOW=0x2, RTLD_GLOBAL=0x100.
+
+Product: out/libwestlake_canary_shim.aarch64-ohos.so  sha256 503a0ebb26a1fda1c2d16f9df4d580a21672b5c1e949c8020a7e769fc5fcf13c (ELF64 AArch64; malloc-family
+GLOBAL DEFAULT; UND adds dlopen/dlerror; no __emutls). Supersedes the plain libwestlake_canary for
+board use (single-slot preload). Self-test (glibc): default(missing) shim -> FAILED log + NORMAL_OK
+rc0 (no abort); WGWP_SHIM=<real lib> -> "chain-loaded" log + NORMAL_OK rc0; overflow still -> abort rc134.
+
+## Board use (updated) — claude-2
+  WESTLAKE_ANDROID_NATIVE_PRELOAD=/data/local/tmp/asx/lib/arm64-v8a/libwestlake_canary_shim.so
+  WGWP_SCAN=2000 WGWP_ABORT=1 WGWP_LOG=1
+Gate: APP CHILD stderr shows "[WGWP-CANARY] armed" AND "[WGWP-CANARY] shim chain-loaded: ..." (if the
+shim FAILED line appears instead, fix WGWP_SHIM before proceeding — the app needs the shim). Then warm
+reproduce. On CORRUPTION: the report's alloc_site + the abort's crash-analysis+maps -> hand claude-3.

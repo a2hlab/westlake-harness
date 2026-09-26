@@ -31,7 +31,13 @@ extern long  write(int, const void *, size_t);
 extern void *memcpy(void *, const void *, size_t);
 extern void *memset(void *, int, size_t);
 extern void  abort(void);
-#define RTLD_NEXT ((void *)-1)
+extern void *dlopen(const char *, int);
+extern char *dlerror(void);
+#define RTLD_NEXT   ((void *)-1)
+#define RTLD_NOW    0x2      /* OH musl dlfcn.h */
+#define RTLD_GLOBAL 0x100    /* OH musl dlfcn.h */
+
+static void puts2(const char *s);   /* forward decl (defined below) */
 
 static void *(*real_malloc)(size_t);
 static void  (*real_free)(void *);
@@ -85,6 +91,23 @@ static void canary_init(void){
         void*r=mmap(0,len,PROT_RW,MAP_PA,-1,0); if(r!=(void*)-1) g_live=(void**)r; }
     g_ready=1;
     if(g_log){ const char m[]="[WGWP-CANARY] armed\n"; (void)write(2,m,sizeof(m)-1); }
+    // chain-load libwebview_bionic_shim: the app's single NATIVE_PRELOAD slot now points at THIS
+    // lib, so we must load the (app-required) bionic-compat shim ourselves. Order is correct:
+    // canary is already loaded -> its malloc-family GLOBAL DEFAULT interception is live -> the
+    // shim's mallocs go through canary. RTLD_GLOBAL puts the shim's symbols in the global scope
+    // (like the original preload). On failure: LOG, do NOT abort (a shim path issue must be loud,
+    // not a silent malloc-less crash later).
+    {
+        const char *shim = getenv("WGWP_SHIM");
+        if (!shim || !shim[0]) shim = "/data/local/tmp/asx/webview-t-lib/libwebview_bionic_shim.so";
+        void *h = dlopen(shim, RTLD_GLOBAL | RTLD_NOW);
+        if (!h) {
+            puts2("[WGWP-CANARY] shim dlopen FAILED path="); puts2(shim); puts2("\n");
+            char *er = dlerror(); if (er) { puts2("[WGWP-CANARY]   dlerror="); puts2(er); puts2("\n"); }
+        } else if (g_log) {
+            puts2("[WGWP-CANARY] shim chain-loaded: "); puts2(shim); puts2("\n");
+        }
+    }
 }
 
 // hex helpers for the report (no libc)
