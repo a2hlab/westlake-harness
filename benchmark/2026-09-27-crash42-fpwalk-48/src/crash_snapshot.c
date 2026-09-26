@@ -8,8 +8,6 @@
 #include <time.h>
 #include <ucontext.h>
 #include <unistd.h>
-#include <link.h>
-#include <elf.h>
 
 /* No allocation, stdio, dladdr, locks, raw stack dereferences or signal APIs in
  * the observer. File I/O can still delay termination: this is diagnostic-only.
@@ -94,39 +92,6 @@ int wl_crash_snapshot_init(const char *directory) {
     return root_fd < 0 ? -1 : 0;
 }
 
-/* #48 path A: in-process address -> owning lib name + file offset via dl_iterate_phdr.
- * Called only from the fault handler FP walk. dl_iterate_phdr takes the loader lock; the
- * target a_crash is in mallocng (not ld.so) so that lock is free. Raw returns are written
- * BEFORE this runs, so the caller chain survives even if resolution is unavailable. */
-struct wl_res { uint64_t addr; int fd; int found; };
-static int wl_phdr_cb(struct dl_phdr_info *info, size_t sz, void *data) {
-    (void)sz;
-    struct wl_res *c = data;
-    for (int i = 0; i < info->dlpi_phnum; ++i) {
-        const ElfW(Phdr) *ph = &info->dlpi_phdr[i];
-        if (ph->p_type != PT_LOAD) continue;
-        uint64_t lo = (uint64_t)info->dlpi_addr + ph->p_vaddr;
-        uint64_t hi = lo + ph->p_memsz;
-        if (c->addr >= lo && c->addr < hi) {
-            const char *nm = (info->dlpi_name && info->dlpi_name[0]) ? info->dlpi_name : "(exe)";
-            char b[288], *p = text(b, "[CRASH42] fp_frame_lib=");
-            while (*nm && (size_t)(p - b) < sizeof(b) - 40u) *p++ = *nm++;
-            *p++ = '\n';
-            (void)put(c->fd, b, (size_t)(p - b));
-            field(c->fd, "fp_frame_libbase", (uint64_t)info->dlpi_addr);
-            field(c->fd, "fp_frame_off", c->addr - (uint64_t)info->dlpi_addr);
-            c->found = 1;
-            return 1;
-        }
-    }
-    return 0;
-}
-static void wl_resolve(int fd, uint64_t addr) {
-    struct wl_res c = { addr, fd, 0 };
-    dl_iterate_phdr(wl_phdr_cb, &c);
-    if (!c.found) field(fd, "fp_frame_unresolved", addr);
-}
-
 void wl_crash_snapshot(int sig, const siginfo_t *info, const void *raw) {
     int saved = errno;
     if (root_fd < 0 || !raw) { errno = saved; return; }
@@ -200,30 +165,31 @@ void wl_crash_snapshot(int sig, const siginfo_t *info, const void *raw) {
             field(meta, "stack_base", sp); field(meta, "stack_bytes", pos-sp);
             field(meta, "stack_complete_to_vma_end", pos == hi); close(stack);
         } else field(meta, "stack_open_errno", (unsigned)errno);
-        /* (FP walk moved below: now mem-independent -- #48 path A) */
+        /* (FP walk moved below: mem-independent, AS-safe raw-returns -- #48 path A v2) */
     }
     if (mem >= 0) close(mem);
-    /* #48 path A: mem-independent FP chain. The pread(/proc/self/mem) walk above is skipped
-     * when mem<0 (EACCES on the board). Use the [lo,hi] stack VMA (from /proc/self/maps,
-     * readable) + a guarded direct dereference so the free()/realloc caller chain is captured
-     * even when /proc/self/mem is inaccessible. Bounds+align+monotonic guard: a bad fp stops
-     * the walk instead of faulting. Raw returns first, then in-process symbolization. */
+    /* #48 path A v2 (async-signal-safe). The base event + /proc/self/maps above are already
+     * written, so a fault in the FP walk below cannot lose them. In-signal we do ONLY AS-safe work:
+     * a bounded direct stack dereference to collect RAW return addresses. We do NOT call
+     * dl_iterate_phdr / dladdr / malloc here (they take the loader lock; the corruptor faults during
+     * startup dlopen while that lock is HELD, so in-signal resolution deadlocks and the handler dies
+     * silently -- exactly what v1 did on-board). Symbolization is OFFLINE: fp_frame_return[] (raw) are
+     * resolved against this event's maps dump by scripts/symbolize_fpwalk.py. Bounds/align/monotonic
+     * guard makes a bad fp stop the walk instead of faulting; a nested fault is caught by `busy`. */
+    field(meta, "base_capture_complete", 1);
     if (hi > lo && fp != 0) {
         field(meta, "fp_frame_pc", pc);
-        uint64_t returns[32];
         unsigned nret = 0;
         uint64_t f = fp;
-        while (nret < 32u && f >= sp && f >= lo && (hi - f) >= 16u && f < hi && !(f & 7u)) {
+        while (nret < 64u && f >= sp && f >= lo && (hi - f) >= 16u && f < hi && !(f & 7u)) {
             uint64_t next = ((const volatile uint64_t *)(uintptr_t)f)[0];
             uint64_t ret  = ((const volatile uint64_t *)(uintptr_t)f)[1];
-            returns[nret++] = ret;
             field(meta, "fp_frame_return", ret); field(2, "fp_frame_return", ret);
+            ++nret;
             if (next <= f) break;
             f = next;
         }
         field(meta, "fp_steps", nret); field(meta, "fp_next", f);
-        wl_resolve(meta, pc);
-        for (unsigned k = 0; k < nret; ++k) wl_resolve(meta, returns[k]);
     }
     field(meta, "capture_end", 1); close(meta);
 done:

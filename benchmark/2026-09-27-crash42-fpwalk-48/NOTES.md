@@ -117,3 +117,49 @@ Deploy the RELINKED libart.so (b42e48f4), not libsigchain.so, via the same route
 used for the #42 diagnostic libart (device sigchain lives inside libart). Back up the on-device libart
 first; sha-verify b42e48f4 on-board; warm-reproduce 0xd6e20 → crash42 event-*.txt now carries the
 mem-independent fp-walk (fp_frame_return[] + fp_frame_lib/libbase/off) = the free()/realloc caller chain.
+
+## v2 (2026-09-27): AS-safe rewrite — v1 deadlocked on-board, dl_iterate_phdr removed from signal context
+v1 (libart b42e48f4) deployed: target correct, feed rendered, survival gate PASS — but the FORENSICS
+gate FAILED: the new handler silently died, ZERO events. claude-2 A/B (same board, same warm): old
+libart 78e34445 → EVENT=yes / C42=4; new b42e48f4 → EVENT=NONE / C42=0. Safe-rolled-back to 78e34445.
+
+ROOT CAUSE: `dl_iterate_phdr` is NOT async-signal-safe (it takes the dynamic-loader lock). The
+non-hook corruptor faults during STARTUP dlopen while that lock is HELD; my in-signal wl_resolve →
+dl_iterate_phdr then blocks on the held lock (deadlock) / nested-faults → the handler dies silently
+and writes no event. My host self-test passed only because the host had no "crash while the loader
+lock is held" condition. (I had flagged this async-signal-safety risk in v1's NOTES; on-board it
+proved fatal — lesson: for a crash recorder, NEVER take a userspace lock in signal context.)
+
+FIX (v2, crash_snapshot.v2.diff): remove ALL in-signal symbolization. In the signal handler do ONLY
+async-signal-safe work:
+- The base event (pc/regs/thread/signal) + /proc/self/maps are already written BEFORE the FP walk;
+  add `base_capture_complete=1` right before the walk so a fault in the walk cannot lose the base.
+- FP walk = bounded direct in-process dereference of the stack (stack_vma [lo,hi] from the readable
+  /proc/self/maps), collecting RAW return addresses only (`fp_frame_return[]`). NO dl_iterate_phdr /
+  dladdr / malloc / any loader-lock call. Bounds+align+monotonic guard; nested fault caught by the
+  existing `busy` flag; handler installed SA_ONSTACK|SA_SIGINFO|SA_RESTART (already, by sigchain).
+- Symbolization moved OFFLINE: scripts/symbolize_fpwalk.py resolves fp_frame_return[]+pc → lib +
+  ELF file offset using the event's own captured .maps file (self-maps IS readable in the app; board
+  evidence has .maps per event). Fallback if self-maps ever blocked: an INIT-time (non-signal)
+  dl_iterate_phdr base→lib snapshot — not needed here since maps is captured.
+
+### Result — v2 diagnostic libart.so (AS-safe)
+- VM: `~/a2hlab/ws/out-crash42-fpwalk48/art-v2/libart.so` (+ relink.json + crash_snapshot.c + .v2.diff + SHA256SUMS).
+- **sha256 `72068841f2993f60094b49734dc5ac6dc111ffada5168261ba798fd22b0ae213`** (21573592 B).
+- relink.json: baseline == reproduced == 009a08fb… (byte-for-byte), candidate 72068841, 454 objects verified.
+- v2 crash_snapshot.o sha `c5422a48b7497dae`: **UND dl_iterate_phdr count = 0** (the fix); has base_capture_complete/fp_frame_return.
+- Self-test (VM host x86_64):
+  * normal: base_capture_complete + fp_frame_pc + fp_frame_return[3] + fp_steps + **capture_end=1** (complete).
+  * **mem-forced-fail (mem=-1 → mem_open_errno=EACCES = the board condition)**: base_capture_complete
+    + fp_frame_return[3] + fp_steps=3 + **capture_end=1** → the handler COMPLETES and emits the raw
+    caller chain even with /proc/self/mem inaccessible, with NO loader-lock call.
+  * offline symbolize_fpwalk.py on that mem-fail event: pc → ts_nomem elf_off=0x2620; fp_ret[0/1] →
+    libc.so.6 elf_off=0x2a1ca/0x2a28b; fp_ret[2] → ts_nomem elf_off=0x1735 (raw returns resolved to
+    lib+ELF-offset from the captured maps — same result as v1's in-signal resolution, no deadlock).
+
+### Deploy (claude-2) — v2 supersedes v1; v1 (b42e48f4) is VOID
+Deploy the v2 relinked libart.so (72068841) via the same #42 diagnostic-libart route claude-2 used
+(back up on-device libart first — the working baseline is 78e34445; sha-verify 72068841 on-board).
+Warm-reproduce 0xd6e20 → crash42 event-*.txt now COMPLETES (capture_end=1) and carries
+fp_frame_return[] (raw). Recv the event dir (incl. the sibling .maps) → run scripts/symbolize_fpwalk.py
+offline to get the free()/realloc caller chain as lib+ELF-offset → hand to claude-3.

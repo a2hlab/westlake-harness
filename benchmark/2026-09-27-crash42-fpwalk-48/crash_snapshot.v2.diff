@@ -1,0 +1,45 @@
+--- /home/zhaoyue/a2hlab/ws/out-crash42/fixture/native/crash_snapshot.c	2026-09-26 00:35:21.000000000 +0800
++++ /tmp/crash42-v2/crash_snapshot.c	2026-09-27 07:32:49.609297592 +0800
+@@ -165,19 +165,32 @@
+             field(meta, "stack_base", sp); field(meta, "stack_bytes", pos-sp);
+             field(meta, "stack_complete_to_vma_end", pos == hi); close(stack);
+         } else field(meta, "stack_open_errno", (unsigned)errno);
+-        /* Supplementary FP chain only. Stop reasons are explicit; not DWARF. */
++        /* (FP walk moved below: mem-independent, AS-safe raw-returns -- #48 path A v2) */
++    }
++    if (mem >= 0) close(mem);
++    /* #48 path A v2 (async-signal-safe). The base event + /proc/self/maps above are already
++     * written, so a fault in the FP walk below cannot lose them. In-signal we do ONLY AS-safe work:
++     * a bounded direct stack dereference to collect RAW return addresses. We do NOT call
++     * dl_iterate_phdr / dladdr / malloc here (they take the loader lock; the corruptor faults during
++     * startup dlopen while that lock is HELD, so in-signal resolution deadlocks and the handler dies
++     * silently -- exactly what v1 did on-board). Symbolization is OFFLINE: fp_frame_return[] (raw) are
++     * resolved against this event's maps dump by scripts/symbolize_fpwalk.py. Bounds/align/monotonic
++     * guard makes a bad fp stop the walk instead of faulting; a nested fault is caught by `busy`. */
++    field(meta, "base_capture_complete", 1);
++    if (hi > lo && fp != 0) {
+         field(meta, "fp_frame_pc", pc);
+-        unsigned i = 0;
+-        for (; i < 256 && fp >= sp && fp >= lo && hi-fp >= 16 && fp < hi && !(fp & 7); ++i) {
+-            uint64_t pair[2];
+-            if (pread(mem, pair, sizeof(pair), (off_t)fp) != sizeof(pair)) break;
+-            field(meta, "fp_frame_return", pair[1]); field(2, "fp_frame_return", pair[1]);
+-            if (pair[0] <= fp) break;
+-            fp = pair[0];
++        unsigned nret = 0;
++        uint64_t f = fp;
++        while (nret < 64u && f >= sp && f >= lo && (hi - f) >= 16u && f < hi && !(f & 7u)) {
++            uint64_t next = ((const volatile uint64_t *)(uintptr_t)f)[0];
++            uint64_t ret  = ((const volatile uint64_t *)(uintptr_t)f)[1];
++            field(meta, "fp_frame_return", ret); field(2, "fp_frame_return", ret);
++            ++nret;
++            if (next <= f) break;
++            f = next;
+         }
+-        field(meta, "fp_steps", i); field(meta, "fp_next", fp);
++        field(meta, "fp_steps", nret); field(meta, "fp_next", f);
+     }
+-    if (mem >= 0) close(mem);
+     field(meta, "capture_end", 1); close(meta);
+ done:
+     __atomic_store_n(&busy, 0, __ATOMIC_RELEASE); errno = saved;
