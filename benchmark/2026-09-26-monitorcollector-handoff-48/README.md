@@ -1,0 +1,13 @@
+# #48 monitorcollector exact arm64 baseline handoff
+
+ACK(done), R2=verified for artifact identity only. Read-only retrieval from board61, no app start, deployment or profile change. Intended for Claude-3 analysis/patching: r5 maps; current hook-neutered f3918bdc baseline (sigaction unchanged by this handoff).
+
+- App namespace path: `/data/local/tmp/asx/lib/arm64-v8a/libmonitorcollector-lib.so`
+- Actual board path: `/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/lib/arm64-v8a/libmonitorcollector-lib.so`
+- SHA256: `f3918bdc42b60a19edc3b80c4bd1c1cadc972eba286e5f1b1447505a6bff1793`
+- Bytes: 313744; ELF64 little-endian AArch64; inode137146 matches the recorded crash maps.
+- Shared binary: `/Users/zhaoyue/orca/workspaces/westlake-harness-enginecheck48/benchmark/2026-09-26-monitorcollector-handoff-48/libmonitorcollector-lib.so` (same /Users path on Mac and a2hlab VM).
+
+Board-before SHA = pulled SHA = board-after SHA. The binary itself is committed, not just its hash. `manifest.json`, `board-before.txt`, `board-after.txt` and crash-map excerpts preserve the evidence. The caller/root cause is not inferred from file identity.
+
+All36 hollow+clamp+engine component hashes still match the final test state. No app/appspawn PIDs, both guardians stopped, map_count1048576, consent retained. `pull.py` uses the established HDC helper with deadlines≤20s and was run through `orb -m a2hlab bash -lc`. It reads board state and copies the binary off the board; no on-board writes.
