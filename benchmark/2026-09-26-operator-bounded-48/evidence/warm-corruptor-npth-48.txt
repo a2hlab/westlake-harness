@@ -1,0 +1,56 @@
+# Warm heap corruptor = libnpth (confirmed) (#48, Path B)
+date: 2026-09-26   inputs: master-r1..5 (5ee2a9e), narrow-r2 (b6a13442), fresh before-consent maps
+
+## The master switch did not work — and why
+Deploying the bytehook/shadowhook API filter (shim e692f8fd), warm still crashed
+5/5 with the same musl mallocng corruption (victims PushThreadHandl / platform-io /
+viewPool; 4/5 PC = ld-musl 0xd6e20 = get_meta/free trap; r1 was a downstream
+libhilog SEGV_ACCERR@0x18000004). The interposers had no effect because OH musl
+NAMESPACE isolation: the shim's bytehook/shadowhook symbols are not in the scope
+where the monitors resolve those calls. (The shim's dlopen refuse still works —
+xasan/heap_tracker stay unmapped — because that is a libc-level interception, not a
+namespace-local one.)
+
+## The fresh/warm difference is the whole monitor fleet
+A fresh before-consent maps (operator-refined safe-r1) loads ZERO of the monitor
+fleet — bytehook/shadowhook/npth/monitorcollector/godzilla-*/jato are all absent.
+The entire fleet is consent-gated: fresh (consent dialog blocking) never loads
+them, warm (retained consent) loads them at startup. So "fresh 3/3 survives 173s"
+proves only that the monitors were not loaded — it does NOT prove any specific
+monitor safe. This invalidated every prior "keep libnpth because fresh-proven safe"
+decision: libnpth was never loaded on fresh.
+
+## Elimination pins libnpth
+The narrowed run refused every malloc-hooker EXCEPT libnpth (memsponge, jato,
+monitorcollector, sysoptimizer, vm_monitor, xasan, heap_tracker all refused). Its
+crash (narrow-r2, victim ChromiumNet0) maps show the only malloc-hooker still
+loaded was libnpth (plus the engines libbytehook/libshadowhook, the npth unwind
+plugins npth_dl/unw/unwind which do not hook malloc, and hotfix which hooks no
+allocator). With every other malloc-hooker gone, libnpth alone corrupted the heap.
+libnpth's .rodata hook targets: malloc, calloc, posix_memalign — it writes
+Bionic-layout metadata over musl mallocng chunk headers.
+
+The 5 master-switch rounds corroborate: the intersection of loaded_monitors across
+all 5 crashes is {libnpth + npth unwind + engines + monitorcollector}; memsponge
+(r3-5) and jato (r2-5) are not necessary (r1 crashed without them). libnpth is the
+common malloc-hooker in every crash.
+
+## Fix (westlake dc68e0b, shim df779574)
+dlopen refuse is proven here, so refuse the full malloc-hooker set INCLUDING
+libnpth: #49's xasan/heap_tracker + memsponge/jato/monitorcollector/sysoptimizer/
+npth_vm_monitor/libnpth. All are APM/crash-monitor/perf diagnostics off the feed/
+article/WebView/network/render path; the westlake recorder (out-crash42) is
+separate, so refusing libnpth does not lose fault capture. The non-allocator
+hookers (hotfix/turbo/tunnel/…) stay loaded. The API interposers remain as belt for
+the default namespace.
+
+RISK: libnpth is the early crash monitor; an unguarded loader could _exit(1) on
+refuse. FALLBACK (safer, keeps npth): patch libnpth to skip only its malloc-family
+hook install (we already rebuild it, 8b8d559c via scripts/patch_npth.py) — npth
+loads and monitors, just does not hook the allocator.
+
+## Gate (scripts/assert_heap_hook_refuse.sh, board double-verify)
+warm, 5 CONSECUTIVE rounds, >=180s each: npth-worker/get_meta SIG11 = 0; the
+refused set (incl libnpth) not mapped; no _exit(1)/ExceptionInInitializerError
+(especially from the libnpth refuse); feed + article visible. Exports/DT_NEEDED
+unchanged; b14e4d0 reproduces the deployed 85c789f4.

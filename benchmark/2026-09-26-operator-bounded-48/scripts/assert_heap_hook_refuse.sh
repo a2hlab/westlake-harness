@@ -16,12 +16,15 @@ say(){ printf '  %-4s %s\n' "$1" "$2"; [ "$1" = FAIL ] && fail=1; return 0; }
 # family). libhotfix-opt and the other bytehook/shadowhook users that hook
 # NON-allocator symbols are intentionally NOT here — refusing them broke class
 # init (app _exit(1) ~61s). libnpth is kept (patched, fresh-proven non-corrupting).
+# libnpth is the CONFIRMED warm corruptor (elimination: narrow-r2 loaded libnpth as
+# the only malloc-hooker and still corrupted). It is now refused too. "fresh-proven
+# safe" was wrong — the whole fleet is consent-gated and libnpth never loaded on fresh.
 REFUSED="libgodzilla-memsponge libjato libmonitorcollector-lib libsysoptimizer \
-libnpth_vm_monitor libnpth_xasan libnpth_heap_tracker"
-# These MUST still load (kept functional libs); a load failure here is a regression.
+libnpth_vm_monitor libnpth_xasan libnpth_heap_tracker libnpth"
+# These MUST still load (kept non-allocator hookers); a load failure here is a regression.
 KEPT_FUNCTIONAL="libhotfix-opt libturbo libtunnel libflash libreparo libhubble \
 libgodzilla-lib libgodzilla-sysopt libnpth_fd_tracker libnpth_ref_monitor \
-libnpth_repair libnpth_tls_monitor libnpth"
+libnpth_repair libnpth_tls_monitor"
 
 # decompress any maps in the dir into one stream
 maps(){ find "$D" -iname '*.maps' -o -iname '*maps*.gz' -o -name 'warm.maps' 2>/dev/null | while read -r m; do
