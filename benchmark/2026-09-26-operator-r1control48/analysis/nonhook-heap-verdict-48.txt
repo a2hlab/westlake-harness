@@ -1,0 +1,65 @@
+# Non-hook mallocng heap corruption — source characterization + fixability verdict (#48)
+date: 2026-09-27   evidence: r1control48 control-r1/r2/r3 (hollow engines + clamp + r5 neuter deployed)
+
+## Correction to the prior claim: engine hollow did NOT fully fix the heap class
+control-r2 crashed at musl mallocng 0xd6e20 / LR 0xd6a18 (platform-io-thr, SIGSEGV si_code=1
+MAPERR, si_addr=0x0) WITH the hollow engines deployed (verified hashes: libbytehook fbb761a0,
+libshadowhook 34378f5c) -> 0 inline hooks / 0 trampolines. Disasm confirms it is the free-path
+metadata check: ldurb w14,[x10,#-4]; cbz w14,ok; mov x14,xzr; strb wzr,[x14] (a_crash on a
+corrupted in-band metadata byte). So a chunk's metadata byte was overwritten by a NON-HOOK path
+(not via bytehook/shadowhook) -> patching hooks / hollowing engines cannot stop it. The earlier
+"5 rounds 0 heap" (enginecheck) was intermittent luck, not a fix.
+
+## What is confirmed
+- NON-HOOK: hollow engines active, 0 trampolines, still 0xd6e20 (metadata byte overwrite).
+- INTERMITTENT: control-r1 survived 360s + read a real article (NewDetailActivity, body verified);
+  control-r2 crashed at 17.4s (this heap crash); control-r3 crashed at 17.5s (ChromiumNet0 = the
+  r1 cronet crash — the r1 guard was NOT deployed in this control run). Same deploy config across
+  rounds -> the failures are race/timing, clustered in the ~17s early startup / feed-load window.
+- VICTIM = platform-io-thr, an app/cronet network I/O thread (no monitor-fleet lib references
+  "platform-io" in rodata; stderr context is epoll/NATIVENET + AsyncTask). The victim merely FREED
+  a chunk whose header was already poisoned; it is not the corruptor.
+- NO BACKTRACE: the recorder's mem_open returns EACCES -> only PC/LR/registers/maps, never a call
+  stack. So the CORRUPTOR (which wrote the bad byte earlier, on some thread) is invisible.
+
+## What is ruled out (so the search does not repeat dead ends)
+- Inline hooks (bytehook/shadowhook): engines hollow, 0 trampolines.
+- malloc_usable_size / Bionic-rounding overflow: NO fleet lib imports malloc_usable_size (only
+  npth imports mallinfo, which does not write; npth is hollow anyway). So the systematic
+  "write malloc_usable_size(p) bytes with Bionic's larger rounding" class is not the source.
+- sigaction (r5): different class (signal, not heap); r5 patched separately.
+
+## Fixability verdict — NOT cleanly root-fixable from the current (victim-side) evidence
+The corruptor's identity (which lib + what operation: double-free / use-after-free / OOB write)
+cannot be determined from victim-side registers with no backtrace and an intermittent race across
+a ~15-lib monitor fleet + the app's own C++/cronet. I did NOT force a source. The ONLY way to pin
+the WRITER is to make the corrupting write itself fault (with a resolvable PC), which needs a
+board-side heap-write-catching run, not static analysis.
+
+## Two honest paths (outer loop's call)
+A) KEEP DIGGING — one bounded experiment to pin the writer:
+   Build a page-guard / GWP-ASan-style malloc interposer (malloc/free/calloc/realloc/posix_memalign)
+   as an LD_PRELOAD .so. malloc is a libc symbol -> LD_PRELOAD interposition IS globally effective
+   in OH musl (unlike bytehook/shadowhook-exported symbols; the dlopen/libc interposition works —
+   this is why the sigaction/hook namespace blind spot does NOT apply to malloc). Each guarded
+   allocation gets a trailing guard page (or a sampled subset, GWP-ASan style, to bound memory —
+   the app allocates heavily, full page-guard would OOM). An OOB write then faults AT the write,
+   giving the corruptor's PC/LR -> the lib + operation. I can build this; codex-2 runs it, reproduces
+   the ~17s crash, and the new fault PC names the writer. This is the definitive (and only) pin.
+B) DELIVER "works + fresh-restart recovery" (pragmatic, given an unpinnable intermittent early crash):
+   The app WORKS when it survives (control-r1: 360s + real article read; enginecheck 3/5). The
+   residual is an intermittent ~17s early crash. With the FULL fix stack deployed (hollow engines +
+   adapter clamp + r1 guard [not in this control run] + r5 neuter), the other classes (hook heap,
+   Layout -79, cronet r1, sigaction r5) are handled, leaving only this intermittent non-hook heap
+   race. Recommend a PRODUCTION watchdog that restarts fresh on the early SIG11 (out-crash42 detects
+   it; fresh restart recovers -> control-r1 proves fresh survives). NOTE: the campaign learned that
+   naive auto-relaunch piled up orphans in CONTROLLED tests (see KNOWLEDGE-DIGEST B) -> the production
+   watchdog must kill orphans + check free mem between restarts. Reliability = "survives within a few
+   fresh restarts", not a clean 5/5.
+
+## Recommendation
+Primary (honest): it is NOT cleanly root-fixable from current evidence -> path B (works + fresh
+restart) is the pragmatic delivery. Offer path A (guard-interposer instrumentation run) as the ONE
+concrete way to pin the writer if root-cause is required; I can build the interposer on request.
+Do NOT keep re-guessing libs from victim-side data — that is the dead end the no-backtrace recorder
+forces.
