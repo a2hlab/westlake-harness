@@ -1,0 +1,68 @@
+# libnpth no-inline-hooks patch — the safer warm-corruptor fallback (#48)
+date: 2026-09-26   base: libnpth 8b8d559c (class-3 patched); product sha256 4f7cc3a6…
+
+## Honest correction: libnpth does NOT hook the malloc family
+The ask was to disable libnpth's malloc/calloc/realloc/... hooks. Disassembly shows
+libnpth has NO malloc-family hook. Its .rodata "malloc"/"free" tokens are LOG
+strings ("calloc parameters", " FREE SWAPPED"). Its ONLY two hook-install calls in
+JNI_OnLoad are:
+  - 0x1ffb4  bl bytehook_hook_partial      target: "setpriority"
+  - 0x24a34  bl shadowhook_hook_sym_name   target: a table of libart.so ART GC /
+             thread internals — FinishGC, WaitForGcToCompleteLocked,
+             GarbageCollector::Run, GarbageCollector::ScopedPause,
+             ThreadList::AllocThreadId, InternTable::WaitUntilAccessible,
+             Heap::ThreadFlipBegin/End.
+So the warm mallocng corruption libnpth causes is NOT a malloc hook — it is the
+inline hooking of these hot ART functions (shadowhook trampoline management on
+musl), plus npth's own heap monitoring. The patch therefore neuters npth's inline
+hooks, which is the corruption vector.
+
+## The patch (scripts/patch_npth_hooks.py)
+Replace each `bl <hook-install>` with `mov x0, #1` (d2800020): a fake non-null
+success stub. npth believes every hook installed, so JNI_OnLoad takes its success
+path and returns success — npth stays LOADED, its signal-based crash catching is
+untouched (no _exit(1) risk, unlike refusing it). But NO inline hook is installed:
+setpriority runs unhooked and ART's GC/thread functions are never rewritten, so the
+mallocng corruption vector is gone.
+
+Why fake SUCCESS not NULL: if a hook-install returns NULL, JNI_OnLoad logs and
+returns -6 (failure) — which is equivalent to refusing npth. To keep npth loaded we
+must fake success. Safety verified: site-1's stub is not dereferenced (0x1866c only
+reads a global flag); site-2's stubs are stored for unhook only, which runs in
+error/exit paths where shadowhook_unhook validates the stub and returns an error
+without dereferencing it.
+
+Stacks on the class-3 patch (8b8d559c): the 0x17930 thread-walk ret patch is
+preserved.
+
+## Product + how to reproduce (NOT deployed — board is codex-2's)
+  base:    ~/a2hlab/ws/out-npth46/libnpth.so (8b8d559c, class-3 patched)
+  build:   python3 scripts/patch_npth_hooks.py <base> libnpth.so
+  sha256:  4f7cc3a62b08216b4ad3e114ec13f1468256b76ad35c94d870a83a052c27b0d2
+  size:    182416 (identical; in-place 8-byte patch)
+
+## Disabled hooks (exact)
+  setpriority (bytehook, all callers)
+  libart.so::_ZN3art2gc4Heap8FinishGCEPNS_6ThreadENS0_9collector6GcTypeE
+  libart.so::_ZN3art2gc4Heap8FinishGCE...GcCauseE
+  libart.so::_ZN3art2gc4Heap25WaitForGcToCompleteLockedENS0_7GcCauseEPNS_6ThreadE
+  libart.so::_ZN3art2gc9collector16GarbageCollector3RunENS0_7GcCauseEb
+  libart.so::_ZN3art11InternTable19WaitUntilAccessibleEPNS_6ThreadE
+  libart.so::_ZN3art2gc4Heap15ThreadFlipBeginEPNS_6ThreadE
+  libart.so::_ZN3art2gc4Heap13ThreadFlipEndEPNS_6ThreadE
+  libart.so::_ZN3art2gc9collector16GarbageCollector11ScopedPause{C1,D1}
+  libart.so::_ZN3art10ThreadList13AllocThreadIdEPNS_6ThreadE
+
+## Confirm npth still JNI_OnLoads (scripts/assert_npth_nohooks.sh)
+Static: JNI_OnLoad exported; both sites = mov x0,#1; no hook-install bl remains;
+class-3 ret patch intact. Board (codex-2): warm run, libnpth IS mapped, no
+UnsatisfiedLinkError / npth-load failure in child stderr (JNI_OnLoad returned
+success), and npth-worker/get_meta SIG11 = 0.
+
+## Choose this vs the refuse (df779574)
+Refuse (df779574) is primary — it prevents libnpth loading at all, so it covers ANY
+npth corruption path. This patch is the fallback if the refuse _exit(1)s on an
+unguarded npth loader: it keeps npth loaded and monitoring. CAVEAT: the patch only
+removes npth's INLINE HOOKS; if npth corrupts through a non-hook path (its heap-
+monitoring JNI walking the heap, or a plugin), only the refuse works. Board should
+verify this patch alone gives warm 5x SIG11=0 before preferring it.
