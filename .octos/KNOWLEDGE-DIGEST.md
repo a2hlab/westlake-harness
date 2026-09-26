@@ -56,3 +56,8 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 ## B 补充（claude-2）
 
 9. **env 未必透到 app 子进程**：run.sh 里 export 的环境变量，appspawn-x fork app child 时会重置 environ，child 内 `getenv` 拿不到（#44 的 WESTLAKE_SOURCE_LOG_STDERR 就这样失效）；只有框架在 fork 前读的(如 WESTLAKE_TRACE_NATIVE_LOADER)才生效。要传给 app native 代码需 appspawn-x 的 env 转发白名单。
+
+## B补 (2026-09-26 新踩的坑)
+
+9. **受控 N 轮可靠性测试不要挂自动重启守护**：守护在崩溃后不停重启会堆积头条孤儿(实测板上堆到 7 个、有个活 1 天多)、占满内存(6.8G/7.4G)、拖垮板子,还会让测试驱动卡在等不返回的 hdc 命令上(卡死 38 分钟)。受控测试改成"起一个→测≤180s→kill -9 实例及 appspawn-x→确认 free -m 有余→再起下一轮"。守护只用于给 operator 上手的持久实例,不用于测量。
+10. **每个板上操作给超时**:hdc 命令超过 60s 不返回就超时跳过并记该轮失败,别让整个驱动挂死。板过载时 hdc 会无限等。
