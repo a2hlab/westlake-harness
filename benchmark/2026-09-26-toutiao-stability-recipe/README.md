@@ -1,5 +1,7 @@
 # 头条稳定性集成配方（#46 → #27 / operator）
 
+**2026-09-26 speed-AOT 增量模块**：当前operator已使用85c789f4 shim及后续targets/LD_PRELOAD，不能回放下方早期v1二进制覆盖。完成当前native基线后，单独运行本目录新增的 `apply_speed_aot.sh`，只在 `oat/arm64/` 放置锁定的三份AOT产物，保留全部native、run.sh与数据。详见 [speed-AOT配方](../2026-09-26-toutiao-speed-aot/README.md)。这一模块已通过VM幂等检查，新基线设备提速仍待验收。
+
 此配方固定今晚 **ability38 + wv46 + mc46 + npth + 四名 tt targets** 的组合，并加入启动前 `vm.max_map_count >= 1048576` 钩子。适用头条13.9.0的已有 ability38 **runtime 根目录**，其中含 `run.sh`、应用 `lib/arm64-v8a/` 和 `webview-t-lib/`。它不是只有 framework 的 stage，也不是只有 namespace launcher 的 `/data/local/tmp/a2hlab-app-*` 目录。
 
 本次只做离线打包与验证，没有连接板子。二进制不复制进 Git；完整来源、原件/候选 SHA256 在 [fixes.json](fixes.json)。应用回执在 stage 的 `.stability46/receipt.json`；设备启动前可用的清单在 `stability46/SHA256SUMS`。
