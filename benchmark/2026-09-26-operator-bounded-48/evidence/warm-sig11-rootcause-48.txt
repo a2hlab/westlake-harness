@@ -1,0 +1,85 @@
+# Warm-start npth-worker SIG11 root cause (#48)
+date: 2026-09-26   evidence: confirm-warm-r1 (event-396b-3aa8-1), board ld-musl fd3c4701…
+
+## Symptom
+fresh start 3/3 stable ~173s. WARM start (retained consent) crashes ~24.5s:
+tid=npth-worker, SIGSEGV SEGV_MAPERR @0, PC in ld-musl-aarch64.so.1 elf_vaddr
+0xd6e20, LR 0xd6c54 (same lib). samples.jsonl: process 14699 alive at 20.6s,
+gone by 24.4s; had grown to ~200 threads / ~490 MB. child.stderr and the crash42
+.maps were BOTH empty here (recorder mem_open EACCES 0xd) — no full backtrace,
+no process map captured.
+
+## What 0xd6e20 actually is (NOT wcsxfrm — that is just the last dynsym before it)
+Disassembly around the fault (labels read "wcsxfrm+…" only because mallocng's
+functions are LOCAL/static and stripped from .dynsym):
+    d6df8: ldrb  w13,[x10,#13]      ; read slot metadata byte
+    d6e0c: ldurb w14,[x10,#-4]      ; read the reserved/offset byte before the chunk
+    d6e18: cbz   w14, 0xd6e24       ; if that byte == 0 -> OK, continue
+    d6e1c: mov   x14, xzr           ; else x14 = 0
+    d6e20: strb  wzr, [x14]         ; *(char*)0 = 0  == a_crash()  <-- deliberate trap
+Preceded by a size-class table lookup (ubfx #6,#6; ldrh from an index table),
+a slot-address computation (madd x10, size, idx, group_base), and reads of the
+in-band chunk header. This is musl **mallocng get_meta()/free-path integrity
+check** (src/malloc/mallocng): it a_crash()es when a chunk's in-band metadata is
+corrupted. It is the #49 heap-corruption class — a poisoned chunk header — caught
+by the a_crash trap instead of a poisoned-pointer deref (#49 was get_meta+92).
+
+## Root cause (confirmed class) + who
+- CONFIRMED (from the instruction): warm-start musl mallocng heap corruption. A
+  chunk's in-band header was overwritten; ~24s later npth-worker frees/reallocs
+  that chunk and mallocng traps. **npth-worker is the VICTIM (frees the poisoned
+  chunk), not the corruptor** — same pattern as #49 (SQLite/Mali were victims).
+- NOT a stub null return (this is allocator-level, orthogonal to ms.bd.c.m.a's
+  Java Object result) and NOT a new npth Bionic pthread assumption.
+- Corruptor CLASS (strong inference; needs the maps to name the exact lib): the
+  ByteDance monitor fleet inline-hooks the malloc family via bytehook/shadowhook
+  and writes Bionic-layout tracking metadata over musl mallocng chunk headers.
+  Libs that hook malloc/free/calloc/realloc (strings = hook targets):
+    libnpth.so (malloc/calloc/free/mallinfo)          <- the crash thread's own lib
+    libnpth_heap_tracker.so (full malloc family)       <- #49 already refuses this one
+    libgodzilla-memsponge.so (full malloc family)      <- "memory sponge", godzilla/security
+    libsysoptimizer.so, libmonitorcollector-lib.so, libjato.so,
+    libnpth_repair.so, libnpth_ref_monitor.so
+  All DT_NEED libbytehook.so and/or libshadowhook.so.
+
+## Why #49's fix does not cover it, and why warm-only
+- #49 refused only the 2 libs referencing the __libc_malloc_dispatch ABI
+  (xasan + heap_tracker). But 6+ MORE libs hook the malloc family the OTHER way —
+  via bytehook/shadowhook inline hooks — and remain. The engines (libbytehook/
+  libshadowhook) are pulled in as DT_NEEDED, NOT via dlopen, so the LD_PRELOAD
+  shim's dlopen-refuse cannot intercept them.
+- Warm-gated: retained consent skips the privacy dialog, so the full monitor
+  fleet initializes immediately (installs its malloc hooks) and corrupts within
+  ~24s. Fresh start is consent-blocked, so that heavy monitor init never runs in
+  the 173s window (privacy-gated SDK init).
+
+## Confirming capture (codex-2, cheap — do this before the big fix)
+This run lost the maps + stderr. On one warm run, before cleanup:
+  1. board `cat /proc/<pid>/maps > /data/local/tmp/warm.maps` then pull it
+     (do NOT hdc recv /proc/pid/maps — it truncates to ~4KB, digest B.8).
+  2. pull the real adapter_child_<pid>.stderr (fd1) and grep the shim refusal
+     lines: confirm libnpth_heap_tracker/xasan are actually refused, and see
+     which monitor libs loaded.
+Expected: the malloc-hooking fleet (libnpth/memsponge/sysoptimizer/monitorcollector/
+jato) mapped; heap_tracker refused-but-others-present -> confirms the class.
+
+## Fix (recommended): neuter the hook ENGINES, not lib-by-lib
+Overlay no-op libbytehook.so + libshadowhook.so stubs onto the staged app lib dir
+(same hollow-stub model as the metasec stub). Export the full API; install ZERO
+real hooks; return success so monitors do not retry/crash:
+  - bytehook_init / shadowhook_init -> 0 (OK)
+  - bytehook_hook_* / shadowhook_hook_* -> a non-null dummy stub handle (caller
+    reads non-null = "hook installed"), but nothing is hooked -> malloc/free run
+    unhooked -> no Bionic-layout metadata over mallocng -> no corruption
+  - *_unhook -> 0; *_get_prev_func -> NULL (its proxy never runs); JNI_OnLoad ->
+    JNI_VERSION_1_6; *_get_version -> a version string; *_get_mode -> 0
+Surfaces: libbytehook 20 exports, libshadowhook 31 exports (both open-source APIs).
+This kills the ENTIRE inline-hook corruption class in 2 stub libs instead of
+refusing 8+ monitor libs (and avoids the "refuse a lib whose loadLibrary is
+unguarded -> crash" risk). Per #41/#49 the monitor infra is non-essential for
+feed+articles.
+Alternative (narrower, more brittle): add all malloc-hooking libs to the shim
+g_refused list — but they load bytehook/shadowhook via DT_NEEDED, and refusing a
+monitor whose loadLibrary is unguarded crashes the app. The engine stub is cleaner.
+The npth-worker-path intercept only moves the crash to the next free (it is the
+victim, not the corruptor) — not a real fix.
