@@ -1,0 +1,113 @@
+# Layout -79 FIX: degenerate-width clamp in WindowSessionAdapter.relayout (#48)
+date: 2026-09-26   source WindowSessionAdapter.java (base-adapter, md5 db49ecca...)
+
+## Root cause recap (see 2026-09-26-operator-layout79-48)
+App-visible window WIDTH collapses 1200->~1px via the OH_WSA relayout path;
+Toutiao UGCInnerFlow builds the article-title StaticLayout with
+width = collapsedWidth(0/1) - card chrome(~79-80px) = constant -79 ->
+android.text.Layout width<0 assert -> IllegalArgumentException on the main
+thread -> _exit(1).
+
+## Exact defect site (matches the deployed logs byte-for-byte)
+WindowSessionAdapter.relayout(), the size source that feeds EVERYTHING
+(nativeUpdateSessionRect, nativeCreateOHSurface, outFrames, winCfg bounds, the
+IWindow.resized reverse-push, AND outMergedConfiguration):
+
+    int width  = requestedWidth  > 0 ? requestedWidth  : sessionInfo[3];   // orig 692
+    int height = requestedHeight > 0 ? requestedHeight : sessionInfo[4];   // orig 693
+
+This is exactly `useW = requestedW>0 ? requestedW : sessionW`. On the collapse:
+requestedWidth==0 AND sessionInfo[3] has degraded to 1 -> width==1. The 1px
+winCfg is then reverse-pushed into the app's global Configuration (IWindow.resized
++ outMergedConfiguration), so screenWidthDp->0 and it PERSISTS across later
+relayouts (feedback loop). The deployed log fingerprints that pinned this:
+  [OH_WSA-relayout] requestedWH=0x1920 sessionInfo[3,4]=1x1920 -> useWH=1x1920 visibility=8   (relayout, src line 699-703)
+  [OH_WSA-relayout] outMergedConfiguration set: winConfig.mBounds=Rect(0,0-1,1920) screenDp=0x960 densityDpi=320  (src line 885-888)
+
+## The fix (change)
+File: adapter/framework/window/java/WindowSessionAdapter.java (package adapter.window)
+Method: public int relayout(...)  (the sole IWindowSession.relayout override)
+Two hunks (see WindowSessionAdapter.relayout-clamp.patch):
+  (1) two new process-wide fields next to mLastPushedSize:
+        private static volatile int sLastGoodWidth  = 0;
+        private static volatile int sLastGoodHeight = 0;
+  (2) immediately AFTER width/height are computed (orig line 693), BEFORE they are
+      used by anything: clamp any degenerate axis (<=1) to the last healthy (>1)
+      value; a >1 relayout updates the cache. Degenerate axis before any healthy
+      relayout falls back to the real display max bounds (never the degraded
+      per-session rect). A DEGENERATE log line records every clamp.
+
+Clamp point rationale: width/height at line 692-693 is the SINGLE source consumed
+by outFrames (line 794), the reverse-push frames (851-854) and outMergedConfiguration
+(via winCfg, 883). Clamping only winCfg would still let the reverse-push send 1px
+frames to ViewRootImpl and re-collapse. Clamping the variables fixes all consumers
+consistently.
+
+Why <=1 is the right threshold and captures screenWidthDp==0: at densityDpi 320
+(2x), screenWidthDp = floor(widthPx / 2); screenWidthDp==0 <=> widthPx <= 1. A real
+full-screen OH window here is 1200; a legitimate window is never 1-2px wide in this
+full-screen-activity adapter model, so width<=1 is unambiguously the degenerate case.
+
+Why last-valid (cached) not sessionInfo: the 变体3 prior-art clamp reused
+sessionInfo's full-screen size, but HERE sessionInfo itself degraded to 1, so it is
+not a usable fallback. The static cache of the last >1 relayout is the last-valid
+full-screen the window actually is. No hardcoded density/dp constant (keeps the
+base-adapter's "no 160/320" invariant); the fallback size is a real observed value.
+
+## Static safety — normal 1200 path is untouched
+- The healthy branch runs `if (width > 1 && height > 1)`: for every normal relayout
+  (requested or session gives 1200x1920) width=1200>1, height=1920>1 -> ONLY the two
+  cache stores execute, width/height are UNCHANGED -> identical downstream behavior,
+  identical outMergedConfiguration (mBounds 1200x1920, screenDp 600x960). Zero change
+  to the working path; the else-branch is entered ONLY when an axis is <=1 (the bug).
+- New APIs are all already used in this class/method: Rect (line 794), Resources.
+  getSystem().getConfiguration() (820), windowConfiguration (823-825, setMaxBounds is
+  its pair). getMaxBounds() returns Rect; Rect.width()/height() exist. No new import.
+- Fields are static volatile ints (visible across sessions/threads); reads/writes are
+  benign racy hints (worst case: use a slightly stale but still full-screen size).
+
+## Expected effect on the board
+Every relayout whose computed width or height is <=1 is clamped to full-screen before
+it reaches winCfg/outMergedConfiguration/reverse-push; the app's global Configuration
+never sees mBounds width=1 / screenWidthDp=0; Toutiao's title width stays positive ->
+no `Layout: -79 < 0`. The `[OH_WSA-relayout] DEGENERATE ... -> CLAMPED to 1200x1920`
+line is the on-board proof the guard fired.
+
+## BUILD STATUS — routed (needs the westlake framework build env, not in my env)
+This is a framework-internal class (extends IWindowSession.Stub, uses MergedConfiguration/
+ClientWindowFrames/InsetsState/WindowConfiguration hidden types). Compiling it needs the
+westlake framework classpath (framework.jar + the other adapter classes), i.e. the
+$BRIDGE_SRC/$BRIDGE_ARM64 build. That tree is NOT present on this Mac or the orb VM
+(searched: no bridge-build, no framework.jar, no matching oh-adapter jar emitting
+OH_WSA-relayout). Surgical smali patch of the DEPLOYED jar also needs that jar, which I
+do not hold (the local games oh-adapter-runtime.jar is an older build without the
+relayout logging). So the jar rebuild is routed to codex-2 — see BUILD.md for the two
+build routes + assert. Source patch + change spec are complete and matched to the
+deployed behavior.
+
+## hw248 finding (2026-09-26) — WHICH jar, and the real blocker
+The relayout-logging WindowSessionAdapter (emits OH_WSA-relayout / -> useWH=) is
+packaged in **oh-adapter-framework.jar** (a BCP jar), NOT the non-BCP
+oh-adapter-runtime.jar the 变体3 doc named (that was the games route's packaging).
+Confirmed on hw248: /opt/build-runs/m1-route-a-generation-20260824-r22/source/evidence/
+task79-noice-lightup/base-v9-framework-jar/oh-adapter-framework.8d2e350f.jar
+(sha256 8d2e350fea38b1aa7e493f250c10a57229f61ab55fb3d1fa0ca4c350a5696382) contains
+adapter.window.WindowSessionAdapter + OH_WSA-relayout + "-> useWH=" (12 string hits),
+no DEGENERATE marker (unpatched). DEPLOY IMPLICATION: a BCP jar is not a simple
+webview-t-lib overlay — it goes through the boot classpath / boot image, so codex-2
+must stage it the BCP way (or via whatever mechanism the Toutiao run already uses to
+load this adapter jar).
+BLOCKER is baseline-identity, not tooling: the hw248 jars are m1-route-a (games/Noice)
+builds, NOT confirmed identical to the adapter jar the Toutiao westlake runtime stages
+(codex-2 owns staging). Patching a games-route jar risks handing back a jar that is not
+the Toutiao baseline. The source is byte-identical across all local base-adapter copies
+(md5 db49ecca) and its log strings byte-match the Toutiao run, so the SOURCE fix is
+certainly correct; only the exact jar to emit needs codex-2's baseline.
+WHAT I NEED FROM codex-2 to emit the exact patched jar + sha:
+  (a) the path/sha of the CURRENT Toutiao-staged adapter jar (the one on the board
+      emitting OH_WSA-relayout), OR confirmation it == a specific hw248
+      oh-adapter-framework.jar; then I do the surgical d8/smali patch (arch-independent)
+      and return the patched jar + sha; OR
+  (b) codex-2 applies WindowSessionAdapter.relayout-clamp.patch in the westlake adapter
+      source tree and rebuilds oh-adapter-framework.jar via the normal framework build,
+      then runs scripts/assert_relayout_clamp.sh on it.

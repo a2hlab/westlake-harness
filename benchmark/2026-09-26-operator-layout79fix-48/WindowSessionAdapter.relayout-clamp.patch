@@ -1,0 +1,73 @@
+diff --git a/Users/zhaoyue/orca/workspaces/westlake-harness-hollow48/benchmark/2026-09-26-operator-layout79fix-48/src/WindowSessionAdapter.java.orig b/Users/zhaoyue/orca/workspaces/westlake-harness-hollow48/benchmark/2026-09-26-operator-layout79fix-48/src/WindowSessionAdapter.java
+index 64e7f82..63fe7cd 100755
+--- a/Users/zhaoyue/orca/workspaces/westlake-harness-hollow48/benchmark/2026-09-26-operator-layout79fix-48/src/WindowSessionAdapter.java.orig
++++ b/Users/zhaoyue/orca/workspaces/westlake-harness-hollow48/benchmark/2026-09-26-operator-layout79fix-48/src/WindowSessionAdapter.java
+@@ -136,6 +136,15 @@ public class WindowSessionAdapter extends IWindowSession.Stub {
+     // → requestLayout → relayout → push → infinite relayout oscillation.
+     private final Map<Integer, Long> mLastPushedSize = new HashMap<>();
+ 
++    // 2026-09-26 (#48 Toutiao "Layout: -79 < 0") — last healthy (>1px) window
++    // size observed in relayout(), used to clamp a degenerate 1px session rect
++    // (see the clamp inside relayout()).  Process-wide (static) because the app's
++    // global Configuration is process-wide: any single window's degenerate rect,
++    // once pushed into outMergedConfiguration, poisons every activity's window
++    // metrics until a healthy relayout overwrites it.
++    private static volatile int sLastGoodWidth = 0;
++    private static volatile int sLastGoodHeight = 0;
++
+     // 2026-06-01 issue-1 (flicker): sessionId -> owning activity token, recorded
+     // when the window relayouts VISIBLE (its owner is then foreground; attrs.token
+     // is null in the relayout path).  Used to decide covered (keep) vs minimized
+@@ -691,6 +700,52 @@ public class WindowSessionAdapter extends IWindowSession.Stub {
+         int sessionId = sessionInfo[0];
+         int width = requestedWidth > 0 ? requestedWidth : sessionInfo[3];
+         int height = requestedHeight > 0 ? requestedHeight : sessionInfo[4];
++
++        // 2026-09-26 (#48 Toutiao "Layout: -79 < 0") — degenerate-width clamp.
++        // A hidden/torn-down OH session can report sessionInfo[3] <= 1 (width)
++        // while requestedWidth == 0, so the ternary above yields width == 1 (seen
++        // on Toutiao: [OH_WSA-relayout] mBounds collapses 1200->1, screenWidthDp->0,
++        // and it PERSISTS because this 1px winCfg is reverse-pushed into the app's
++        // global Configuration).  App UI that derives a text width as
++        // (windowWidth - fixed chrome) then goes negative: Toutiao UGCInnerFlow
++        // builds the article-title StaticLayout with width = ~1 - cardChrome(~80)
++        // = -79 -> android.text.Layout width<0 assert -> IllegalArgumentException
++        // on the main thread -> _exit(1).  A degenerate session's 1px bounds must
++        // NEVER become the app-visible window size.  The degraded session (also 1)
++        // is not a usable fallback, so cache the last healthy (>1) size and reuse
++        // it — that is the last-valid full-screen the window really is.  No
++        // hardcoded density/dp: the fallback size comes from a real prior relayout
++        // (or, before any healthy one, the display's real max bounds).
++        if (width > 1 && height > 1) {
++            sLastGoodWidth = width;
++            sLastGoodHeight = height;
++        } else {
++            int degW = width, degH = height;
++            if (width <= 1 && sLastGoodWidth > 1) {
++                width = sLastGoodWidth;
++            }
++            if (height <= 1 && sLastGoodHeight > 1) {
++                height = sLastGoodHeight;
++            }
++            // Last resort before any healthy relayout has been seen: the real
++            // display size from the framework global Configuration's max window
++            // bounds (never the per-session degraded rect).
++            if (width <= 1 || height <= 1) {
++                Rect disp = android.content.res.Resources.getSystem()
++                        .getConfiguration().windowConfiguration.getMaxBounds();
++                if (width <= 1 && disp.width() > 1) {
++                    width = disp.width();
++                }
++                if (height <= 1 && disp.height() > 1) {
++                    height = disp.height();
++                }
++            }
++            System.err.println("[OH_WSA-relayout] DEGENERATE session rect "
++                    + degW + "x" + degH + " (requestedWH=" + requestedWidth + "x"
++                    + requestedHeight + " sessionInfo[3,4]=" + sessionInfo[3] + "x"
++                    + sessionInfo[4] + ") -> CLAMPED to " + width + "x" + height
++                    + " [#48 Layout:-79 guard]");
++        }
+         // mirror WMS relayoutWindow result flags — RELAYOUT_RES_SURFACE_CHANGED is
+         // set only on first surface creation (see the outSurfaceControl block below).
+         int relayoutResult = 0;
