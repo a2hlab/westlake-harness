@@ -1,0 +1,56 @@
+# r5 fix: neuter libnpth's non-NULL-old sigaction calls (musl struct overrun) (#48)
+date: 2026-09-26   base: libnpth 4f7cc3a6 (class-3 + hook-neuter); product sha 7639af00…
+
+## Mechanism (why npth's sigaction overruns on musl)
+r5 faulted INSIDE musl `sigaction` (0x111974 = sigaction+0x1a4, `str x8,[x19,#144]`),
+si_addr 0x7f76800000 (page-aligned), thread npth-worker. x19 = si_addr-144 =
+0x7f767fff70 — the caller's `old` output buffer, a real high address (NOT the
+hook patch's fake stub, which would fault near 0x91).
+
+musl's `struct sigaction` is **152 bytes** — sa_handler(8) + **sa_mask = sigset_t =
+128 bytes (1024 signals)** + sa_flags(8) + sa_restorer(8). Bionic's is ~40 bytes
+(sigset_t is 8 bytes / 64 signals). libnpth is Bionic-ABI: it declares Bionic-sized
+`struct sigaction old` buffers and calls sigaction(sig, act, &old). musl fills the
+full 152-byte struct into that Bionic-sized buffer and overruns it by ~112 bytes.
+When a buffer sits within 152 bytes of a page boundary, the tail write hits a
+read-only page -> SEGV_ACCERR. The worst case is npth's loop that saves many old
+handlers into a fixed-stride slot array (48-byte Bionic slots): each 152-byte musl
+write runs 104 bytes past its slot, and the last slot's write crosses the array end
+into a protected page.
+
+libnpth has 34 sigaction call sites; **only 14 pass a non-NULL `old`** (x2 != xzr) —
+those are the overrun candidates. The other 20 pass old=NULL (musl writes no `old`,
+no overrun) and are left untouched.
+
+## Fix (scripts/patch_npth_sigaction.py, stacks on 4f7cc3a6)
+For each `bl sigaction` whose `old` (x2) is non-NULL, replace the bl with
+`mov x0, #0` — a fake SUCCESS (real sigaction returns 0 on success). The call is
+skipped: musl never writes the oversized `old`, so no overrun. `mov x0,#0` at the
+bl (not patching x2) is deliberate: the slot-loop carries the slot pointer in a
+persistent base register via `add x2, x2, #off`, so zeroing x2 would make the next
+`add` compute a small bogus address and fault worse. Skipping the call leaves the
+base register intact. Callers check `cbz w0` (success) and proceed; the neutered
+handlers are simply not installed and no `old` is saved.
+
+npth stays loadable and its remaining 20 old=NULL handler installs still run; it
+loses only the saved-old / chaining for the 14 neutered calls. Crash catching is
+redundant with the westlake recorder (out-crash42). Class-3 (thread-walk ret,
+0x17930) and the hook-neuter (0x1ffb4/0x24a34) are preserved.
+
+## Product (NOT deployed — board is codex-2's)
+  base:  libnpth 8b8d559c -> patch_hook_installs.py -> 4f7cc3a6 -> patch_npth_sigaction.py
+  final: libnpth.so sha256 7639af0004a2a0da079e3ad3af339cb3aa341d4a9fe9d4cdce3983db6d80d39e
+  layers: class-3 thread-walk ret (0x17930=c0035fd6) + 2 hook installs (mov x0,#1)
+          + 14 non-NULL-old sigaction calls (mov x0,#0); 20 old=NULL calls kept.
+
+## Confirm npth still works (scripts/assert_npth_all_48.sh)
+Static: JNI_OnLoad exported; class-3 ret intact; both hook sites mov x0,#1; the 14
+non-NULL-old sigaction sites mov x0,#0; ELF valid. Board (codex-2): warm run,
+libnpth IS mapped, no UnsatisfiedLinkError, npth-worker no longer SEGVs in musl
+sigaction, warm SIG11=0 for the npth-worker signature.
+
+## Combined final for warm 5/5
+This npth (7639af00) replaces 4f7cc3a6 in the combined patch:
+  npth 7639af00 (r5 fixed) + memsponge 2f066332 [+ monitorcollector + sysopt]
+Then r3 (another lib's inline hook) and r5 (npth sigaction) are both addressed.
+Add jato only if r3 persists.
