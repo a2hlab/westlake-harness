@@ -49,7 +49,7 @@ def collect(child):
  (r/'fault-paths.txt').write_text(paths)
  for p in paths.splitlines():
   if p.startswith(rt+'/private-tmp/crash42/') or p.startswith('/data/log/faultlog/'):recv(p,r/'faults'/p.rsplit('/',1)[-1],15)
-if op in ('run','auto'):
+if op in ('run','auto','confirm','confirm-warm'):
  assert not r.exists();r.mkdir();result={'round':name,'restart_guardian':False,'max_observation_s':175,'board_kill_deadline_s':180,'failure':None};parent=None;child=None
  try:
   pre=dev('touch '+D+'/stop; echo APP_PIDS; pidof '+PKG+'; echo APPSPAWN_PIDS; pidof appspawn-x; echo MEMORY; free -m; cat /proc/meminfo',12)
@@ -62,8 +62,9 @@ if op in ('run','auto'):
   expected=dict(EXPECTED);expected['libart.so']='78e344455ec300f70106a7fcceafeff26f4b768f17b0c116927dc8848676f3bc'
   hashes=dev('sha256sum '+' '.join(rt+'/'+p for p in expected),20);(r/'component-hashes.txt').write_text(hashes)
   for p,v in expected.items():assert v+'  '+rt+'/'+p in hashes,p
-  profile=rt+'/profile-backups/bounded48-'+name
-  dev('test ! -e '+profile+' || exit 9; mkdir -p '+profile+'; '+ '; '.join('if [ -d '+rt+'/'+p+' ]; then mv '+rt+'/'+p+' '+profile+'/'+p+'; fi' for p in ('app-data','data','webview-t-data'))+'; echo PROFILE_READY',20)
+  if op!='confirm-warm':
+   profile=rt+'/profile-backups/bounded48-'+name
+   dev('test ! -e '+profile+' || exit 9; mkdir -p '+profile+'; '+ '; '.join('if [ -d '+rt+'/'+p+' ]; then mv '+rt+'/'+p+' '+profile+'/'+p+'; fi' for p in ('app-data','data','webview-t-data'))+'; echo PROFILE_READY',20)
   s=dev(f'mkdir -p {rt}/data/dalvik-cache/arm64 {rt}/app-data/{PKG}/code_cache {rt}/app-data/{PKG}/app_webview {rt}/app-data/org.westlake.imehost {rt}/webview-t-data; chown -R 20010053:20010053 {rt}/data {rt}/app-data {rt}/webview-t-data; chcon -R u:object_r:data_app_el2_file:s0 {rt}/app-data/{PKG}; echo 1048576 > /proc/sys/vm/max_map_count; power-shell timeout -o 86400000; power-shell wakeup; aa start -b org.westlake.imehost -a EntryAbility; rm -f '+c['socket']+'; cat /proc/sys/vm/max_map_count',20)
   (r/'setup.txt').write_text(s);assert '1048576' in s
   parent=int(dev(c['parent_command'],10).strip());result['parent']=parent
@@ -79,7 +80,7 @@ if op in ('run','auto'):
   q=__import__('shlex').quote
   result['deadline_timer']=dev('nohup /system/bin/sh -c '+q(timer)+' >'+D+'/bounded48-'+name+'-deadline.log 2>&1 </dev/null & echo $!',5).strip()
   fd=dev('ls -l /proc/'+str(child)+'/fd',5);(r/'recorder-fd.txt').write_text(fd);assert '/private-tmp/crash42' in fd
-  print('ROUND_STARTED',name,child,parent,flush=True);last=-1;observed_alive=True;next_dialog_check=15;auto_clicked=False;consented=False
+  print('ROUND_STARTED',name,child,parent,flush=True);last=-1;observed_alive=True;next_dialog_check=15;auto_clicked=False;consented=(op=='confirm-warm')
   while True:
    elapsed=time.monotonic()-started
    if elapsed>=173:break
@@ -89,7 +90,7 @@ if op in ('run','auto'):
    rows=s.splitlines();st=next((x for x in rows if x.startswith(str(child)+' (')),None)
    observed_alive=bool(st and st.rsplit(') ',1)[1].split()[0]!='Z' and st.rsplit(') ',1)[1].split()[19]==birth)
    if not observed_alive:result['failure']='original exited during observation';break
-   if op=='auto' and not auto_clicked and elapsed>=next_dialog_check and elapsed<130:
+   if (op=='auto' or (op=='confirm' and not consented)) and not auto_clicked and elapsed>=next_dialog_check and elapsed<130:
     from privacy_dialog import privacy_dialog, feed_ready
     label=('feed-gate-' if consented else 'consent-gate-')+str(int(elapsed));shot(label,5);next_dialog_check=elapsed+(3 if consented else 10)
     matched=feed_ready(r/(label+'.jpeg')) if consented else privacy_dialog(r/(label+'.jpeg'))
@@ -104,7 +105,8 @@ if op in ('run','auto'):
       auto_clicked=True;result['automatic_input_elapsed']=time.monotonic()-started;print('AUTO_ARTICLE_UINPUT',name,result['automatic_input_elapsed'],flush=True)
      else:
       consented=True;next_dialog_check=time.monotonic()-started+3;print('AUTO_CONSENT_UINPUT',name,flush=True)
-   if int(elapsed)//40>last and elapsed<150:last=int(elapsed)//40;shot('during-'+str(last*40),min(10,max(1,(170-elapsed)/2)))
+   interval=10 if op in ('confirm','confirm-warm') and consented else 40
+   if int(elapsed)//interval>last and elapsed<160:last=int(elapsed)//interval;shot('during-'+str(last*interval),min(5,max(1,(170-elapsed)/2)))
    if elapsed>162 and not result.get('final_shot'):shot('before-cleanup',3);result['final_shot']=True
    time.sleep(min(3,max(0,173-(time.monotonic()-started))))
   result.update(observed_seconds=time.monotonic()-started,alive_before_cleanup=observed_alive,cleanup_reason='scheduled bounded termination' if observed_alive else 'original already exited')
@@ -118,12 +120,15 @@ if op in ('run','auto'):
    try:collect(child)
    except Exception as e:result['collection_failure']=repr(e)
   result['end_epoch']=time.time();(r/'result.json').write_text(json.dumps(result,indent=2));print('ROUND_RESULT',json.dumps(result),flush=True)
-elif op=='input':
+elif op in ('input','article'):
  d=json.loads((r/'instance.json').read_text());assert time.time()<d['deadline_epoch']-10,'window ended';st=state(d['child']);assert st and st['alive'] and st['birth']==d['birth']
  xy=sys.argv[3:];assert len(xy)==2 and all(x.isdigit() for x in xy)
  cmd='cat /proc/uptime; uinput -T -d '+' '.join(xy)+' -u '+' '.join(xy);s=dev(cmd,5)
  with (r/'inputs.jsonl').open('a') as f:f.write(json.dumps({'epoch':time.time(),'command':cmd,'output':s})+'\n')
- print(s)
+ print(s,flush=True)
+ if op=='article':
+  clicked=time.monotonic();time.sleep(10);shot('article-after-10s',3)
+  (r/'article-capture-time.json').write_text(json.dumps({'command':cmd,'click_output':s,'after_command_return_s':time.monotonic()-clicked},indent=2))
 elif op=='shot':shot(sys.argv[3],5)
 elif op=='timeout-test':
  r.mkdir(exist_ok=True);start=time.monotonic()

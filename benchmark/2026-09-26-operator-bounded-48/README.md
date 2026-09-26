@@ -41,3 +41,15 @@ auto-r3 waited for unshaded feed (reviewed feed-gate-113.jpeg), then physical ui
 HDC timeout and cleanup failure counts: 0/3. The real Mac HDC timeout self-test (sleep3, timeout0.3) returned TimeoutError in about0.36s. Final board state: no app/appspawn PIDs, stop PRESENT, free1029MiB and MemAvailable5861348KiB; free and available are distinct.
 
 Preparation bounded-r1..3 retained: alive173s, detail ENTRY without RESUMED, final feed images; late manual input shortened article observation. single-r1 failed before spawn. auto-r1/r2 used98f0625; r3 added the feed screenshot gate, so these are not identical-protocol A/B samples. No guardian or #50 A/B was started.
+
+## Follow-up article confirmation: blocked by a captured warm-start SIG11
+
+`confirm-r1` (child10378/parent10348) was a fresh consent preparation, no guardian. It survived173.009s and was killed/cleaned as scheduled. The feed refreshed to video cards; no definite article was clicked. A late tab attempt was refused by the deadline check. This is an incomplete preparation, not an article failure or success.
+
+`confirm-warm-r1` (14699/14666) reused the consent/profile from that preparation, without a guardian or concurrent app processes. It died before article input: detected at24.562s, parent reports `killed by signal 11`. All seven component hashes passed; no #50 was enabled. Do not silently fold this warm-profile result into the previous three fresh-profile observations.
+
+The passive recorder captured SIGSEGV/SEGV_MAPERR at address0, thread `npth-worker` TID15016. PC0x7fa6ddce20 and LR0x7fa6ddcc54 map to `/system/lib/ld-musl-aarch64.so.1`. Correct ELF addresses are0xd6e20/0xd6c54; file offsets are0xd5e20/0xd5c54, because executable PT_LOAD has vaddr-offset=0x1000. At PC: `strb wzr,[x14]`, immediately preceded by `mov x14,xzr`, on a failed byte-check path. This establishes a deliberate null write, not the caller or corruption source. The library is stripped: objdump's nearest exported `wcsxfrm+...` label is NOT a function identification.
+
+Metadata, 4560-byte ucontext, 128-byte siginfo and3827-line maps were captured. Stack bytes were NOT captured: opening `/proc/self/mem` returned EACCES (`mem_open_errno=0xd`). Do not call this a complete native backtrace. The original sysroot library was read, never modified, and its SHA plus PC mapping are in `crash-analysis.json`.
+
+Both instances were cleaned; final app/appspawn PID lists are empty, stop marker retained, MemAvailable5893312KiB. This follow-up provides no article-body screenshot. Warm-start crash evidence must be reviewed before extending the earlier three clean173s runs into a universal stability claim.
