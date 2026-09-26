@@ -78,3 +78,42 @@ frame = the free()/realloc caller chain resolved to lib+offset. Recv the event d
 The fp_frame chain names the ld-musl free/realloc path + the caller lib/offset that invoked into the
 allocator on the detecting thread; cross-referenced with the registers (victim group/meta ptr) it
 pins the writing subsystem → fix (patch / hollow / refuse / permanent musl malloc round-up).
+
+## CORRECTION (2026-09-27): the deployable container is a RELINKED libart.so, NOT libsigchain.so
+Outer loop (crash-census VM_READY.md L41): the standalone `recorder/libsigchain.so` is only an
+independent link-check artifact and CANNOT be deployed. On the device the #42 sigchain is STATICALLY
+LINKED INSIDE libart; the device candidate is a re-linked libart. My fp-walk patch in crash_snapshot.c
+is correct — it just has to ride into libart, not libsigchain. The libsigchain.so build (sha 32c11986)
+is VOID for deployment.
+
+Mechanism = `out-crash42/fixture/scripts/relink_art.py`:
+1. Reproduces the frozen #42 baseline libart byte-for-byte and asserts sha == 009a08fb…c8bbc (proves
+   the relink env is faithful → the candidate differs from baseline ONLY by my change).
+2. Verifies all 454 input object shas against artifacts.json.
+3. Recompiles sigchain_musl_diag.cc → sigchain.o (replaces the baseline sigchain/sigchain.o) and
+   APPENDS `out-crash42/recorder/crash_snapshot.o`.
+So to carry the fp-walk: rebuild `crash_snapshot.o` from the PATCHED crash_snapshot.c (OHOS clang,
+`-std=c11 -O2 -g -fPIC -Wall -Wextra -Werror -I fixture/native`), place it at
+`out-crash42/recorder/crash_snapshot.o`, then run relink_art.py.
+
+### Result — diagnostic libart.so
+- VM stable path: `~/a2hlab/ws/out-crash42-fpwalk48/art/libart.so` (+ relink.json + SHA256SUMS).
+- **sha256 `b42e48f4852a7ada69ea631a23f83ff436e17fa1bc01fd1d186241379e3965f1`** (21576600 B; baseline 21537112).
+- relink.json: baseline_sha256 == reproduced_sha256 == 009a08fb… (byte-for-byte), candidate_sha256 =
+  b42e48f4…, objects_verified 454, replaced sigchain/sigchain.o, added crash_snapshot.o.
+- patched crash_snapshot.o sha `21522116c65c1e39` (38488 B); UND dl_iterate_phdr.
+- fp-walk PRESENT in libart: strings fp_frame_libbase / fp_frame_off / fp_frame_unresolved;
+  `wl_crash_snapshot` defined (T); dl_iterate_phdr UND resolved via DT_NEEDED libc.
+- ELF sanity: Machine AArch64, SONAME libart.so, DT_NEEDED = libwestlake_runtime_boundary.so / libc++.so
+  / libz.so / libc.so, FLAGS SYMBOLIC BIND_NOW — a well-formed libart with full deps, so BIND_NOW
+  resolves at load (NOT the zero-DT_NEEDED-preload load failure of the earlier observer). Loads as libart.
+- fp-walk LOGIC already validated in this same crash_snapshot.o via the host test_snapshot harness
+  (mem-forced-fail = board EACCES → still emits fp_frame_return + resolved libs); the relink only
+  repackages that object into libart. Cannot run aarch64 libart on the x86_64 VM host, so the libart
+  self-test = presence (strings/symbols) + ELF well-formedness + faithful baseline reproduce.
+
+### Deploy (claude-2)
+Deploy the RELINKED libart.so (b42e48f4), not libsigchain.so, via the same route/path crash-census
+used for the #42 diagnostic libart (device sigchain lives inside libart). Back up the on-device libart
+first; sha-verify b42e48f4 on-board; warm-reproduce 0xd6e20 → crash42 event-*.txt now carries the
+mem-independent fp-walk (fp_frame_return[] + fp_frame_lib/libbase/off) = the free()/realloc caller chain.
