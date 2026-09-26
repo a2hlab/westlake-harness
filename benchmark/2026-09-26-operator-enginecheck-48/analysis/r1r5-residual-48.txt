@@ -1,0 +1,62 @@
+# engine-hollow residual r1 (cronet NET) + r5 (sigaction ABI) — source + fix (#48)
+date: 2026-09-27   evidence: engine-r1 / engine-r5 (enginecheck warm 5x, 3/5 pass 360s)
+
+## WIN: engine hollow closed the heap-corruption class
+5 rounds, mallocng 0xd6e20/0xd5e1c = ZERO. 3/5 lived 360s + read both article types.
+Two discrete residuals remain: r1 (cronet null-deref) + r5 (sigaction OOB, another lib).
+
+## r5 = sigaction Bionic-vs-musl ABI overrun in ANOTHER lib = libmonitorcollector-lib
+- Fault: musl sigaction (0x1117d0) at +0x184 (0x111954) `stp q0,q1,[x19,#96]` — x19 = the
+  caller's `old`/oldact buffer; musl copies the FULL 152-byte struct sigaction (sa_mask =
+  sigset_t 128B/1024 sig) into it. `cbz x19,...` at 0x111948 is NOT taken => old is NON-NULL.
+- npth (the prior sigaction offender) is now the HOLLOW stub (no sigaction). Of the r5-loaded
+  libs, the ONLY one importing sigaction@LIBC is **libmonitorcollector-lib** (godzilla-memsponge/
+  jato/npth_bt/npth_dl do not import it). monitorcollector's hooks were neutered by f3918bdc but
+  its sigaction CALLS were untouched -> it passes a Bionic-sized `old` (~40B: sa_mask=8B/64 sig)
+  to musl, which writes 152B -> ~112B overrun -> when the buffer is <152B from a page edge, the
+  tail hits an unmapped/RO page -> SIGSEGV on the platform-handle (crash-handler) thread.
+- This is the SAME class as npth's r5 (I patched npth's 14 non-null-old sites); monitorcollector
+  is a second offender, and MORE libs may do it (any Bionic-built lib installing signal handlers
+  with a saved old).
+- FIX RECOMMENDATION = UNIVERSAL musl-side sigaction shim (>> per-lib whack-a-mole). westlake
+  ALREADY intercepts sigaction (see r1/r5 stderr `[WESTLAKE-WEBVIEW-SIGNAL] sigaction #N ...`).
+  Extend that interceptor so that for EVERY caller with a non-null oldact: call the real
+  sigaction into an INTERNAL 152-byte musl-layout `old` buffer, then copy back ONLY the
+  Bionic-struct-sized prefix (sa_handler @0, sa_mask[0..8], sa_flags, sa_restorer) into the
+  caller's buffer -> the caller's small buffer is never overrun; it still gets the fields it
+  reads. One shim change covers monitorcollector + npth + every future offender, arch-clean, no
+  per-lib binary patching. (Per-lib alt: patch monitorcollector's sigaction calls like npth's
+  7639af00 — needs the arm64 monitorcollector baseline, and only fixes this one lib.)
+
+## r1 = cronet (libsscronet) early-init null-deref — intermittent, NOT strictly load-bearing
+- Fault: libsscronet.so +0x28a21c `ldr x8,[x8,#40]`, x8 ~null, si_addr=0x28, thread ChromiumNet0,
+  at 20.68s during MainActivity feed init (no article read). lr +0x28a20c (same function, 16B
+  before pc) — straight-line, not a call-return.
+- INTERMITTENT: 3/5 rounds cronet worked fine 360s + read articles. So the no-op'd hook is NOT
+  strictly load-bearing (else all 5 fail at cronet init). r1 is a specific-path/timing null-deref.
+- RULED OUT: libsscronet does NOT self-hook (no bytehook/shadowhook DT_NEEDED, no hook-install
+  imports); NO loaded hooker has a cronet/sscronet/CronetEngine/URLRequest target STRING. The
+  r1 NET-hooker libgodzilla-sysopt hooks BY ADDRESS (shadowhook_hook_sym_addr + bytehook_hook_
+  single) so its targets are invisible statically (rodata has only "address"/"bias_addr").
+- TWO hypotheses, indistinguishable without the arm64 sscronet disassembly:
+  (a) an address-installed hook (godzilla-sysopt, in r1's loaded set) on a cronet network
+      dependency that matters only on some startup network paths -> no-op -> intermittent null;
+  (b) a PRE-EXISTING cronet init race / connection-error path null-deref UNMASKED now that the
+      heap corruption is fixed (the app now runs far enough down the network path to hit it);
+      the many `connect ... errno=115` (IPv6 unreachable) at startup make an error-path null plausible.
+- TO PIN (need from codex-2, same handoff as the engine baselines): arm64
+  /data/local/tmp/asx/lib/arm64-v8a/libsscronet.so. Then disassemble 0x28a21c and the ~10 insns
+  before to see what x8 is (a bytehook/shadowhook trampoline slot => load-bearing hook -> precise
+  single-target pass-through; a config/object ptr => cronet init/error-path bug -> different fix).
+- PASS-THROUGH ENGINE: deliberately NOT built on a guess. A pass-through must name the exact
+  target; guessing risks (i) not fixing r1 and (ii) re-introducing trampoline corruption for the
+  passed-through target. Once the target is pinned (sscronet disasm), I build a precise
+  single-target pass-through on the engine baselines I already hold (the patched hook-install
+  entry checks the target sym/addr: matches -> branch to the real thunk body -> real install;
+  else -> mov x0,#1;ret). Mechanism ready; awaiting the target.
+
+## Next
+r5: implement the universal westlake sigaction shim (bounce non-null old through a 152B musl
+buffer, copy back Bionic-sized prefix) — needs the westlake bionic-shim source. r1: codex-2
+shares arm64 libsscronet.so; I disassemble 0x28a21c, pin hook-vs-cronet-bug, then build the
+precise pass-through engine or recommend the cronet-path fix.
