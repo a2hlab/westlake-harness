@@ -4,6 +4,12 @@
 
 板61b0657200000000000000000324012c；独立分支test/npth-hollow-48基于claude-3的b21b284，只commit不push。相对ef78d68组合，仅替换libnpth7639af00为hollow9966e296，保留shim85c789f4、memsponge2f066332、monitorcollector f3918bdc、sysopt c92d0ea5，以及mc46 bridge、metasec1021a058、tt targets/LD_PRELOAD、map_count1048576。无#50文件JIT，无守护，同意数据保持warm。
 
+## 新稳定基线候选（外环采认，待Layout修复）
+
+采用shim85c789f4 + npth hollow9966e296 + memsponge2f066332 + monitorcollector f3918bdc + sysopt c92d0ea5，完整部署参数与SHA见下节及evidence/deployment。外环已独立复核本次五轮中mallocng/sigaction SIG11未出现、4/5存活240s及文章可读，采认为后续修复的基线候选。
+
+候选边界：ArticleInflowActivity负宽度Layout -79导致第五轮exit(1)，尚未达到5/5；五轮work_thread SIGABRT横幅仍在，来源未定。继续保留现有同意数据、map_count1048576，禁守护，不恢复旧npth或叠JIT；等待单独的Layout修法验证。仅commit，不push。
+
 ## 部署
 
 `stub/build_npth_stub.sh`在a2hlab VM单库重建，SHA精确为`9966e2966057c4d7d31f81232decf58da046898b9a2be900df675d44d016a107`，静态8项通过。app内实际SOURCE-NATIVE-LOAD位置为`/data/local/tmp/asx/lib/arm64-v8a/libnpth.so`，宿主runtime为`/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d`。
