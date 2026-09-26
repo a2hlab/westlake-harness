@@ -1,0 +1,80 @@
+# Article-vs-login: is TransparentAccountLoginActivity a mis-tap or a stub side-effect? (#48)
+date: 2026-09-26   source: toutiao APK static analysis (androguard) + refined-stub board result
+
+## Board state going in
+Refined safe-value stub (sha 1021a058): process stable ~173 s, no SIG11, no
+metasec exit — stability solved, no Bionic needed. But article acceptance 0/3:
+the auto-tap lands on com.ss.android.account.v3.view.TransparentAccountLoginActivity
+(a login page) instead of the article.
+
+## What launches TransparentAccountLoginActivity (static)
+- Launched by com.ss.android.account.impl.v2.AccountManager.loginInner, which is
+  called only from AccountManager.login and AccountManager.realInduceLogin.
+  "realInduceLogin" = the app INDUCING login (a guide/prompt), not a user action.
+- It is the logged-out one-key / red-packet login guide. Strings on that module:
+  requireAutoLogin, canUseOneKeyAuth, autoLoginToken, AccountPreloadOneKeyTok,
+  AccountOneKeyLoginFragment, BIG_RED_PACKET_LOGIN_BTN, AD_RED_PACKET,
+  /luckycat/lite/v1/get_red_packet/video.
+- Trigger: logged-out account state + campaign config. Our fresh profile has no
+  credentials, so the induce-login guide fires — the classic growth-hack overlay
+  that appears over the feed on startup (campaign digest B: "popups eat taps").
+
+## Is metasec (the stub) on the login-decision path? NO.
+- ZERO references to ms.bd.c.m.a / MSManagerUtils / com.bytedance.mobsec.metasec
+  in ANY com.ss.android.account* / OneKeyLogin* / RedPacket* class (grep over all
+  instructions in those classes = 0 hits).
+- metasec supplies anti-fraud / risk tokens; it does not manage account state and
+  does not gate whether the induce-login guide shows. The dispatcher's return
+  values cannot route the app to login.
+
+## Conclusion (offline, high confidence)
+The login page is NOT a stub side-effect. It is the logged-out induce-login
+(red-packet / one-key) overlay eating the auto-tap. Therefore:
+- Returning "authenticated/verified" semantic values from some dispatcher cmd
+  would NOT fix this (metasec is not on the path) — that treatment is unwarranted.
+- Predicted control outcome: the stub group opens the article whenever the tap
+  lands on a clean feed article card (overlay dismissed / correct coordinate).
+- The article 0/3 is a popup-occlusion + tap-coordinate harness problem, not a
+  metasec/stub problem. Stability is delivered.
+
+Caveat (per digest B.3/B.7): confirm on the board with screenshots; do not close
+on static analysis alone. The control below discriminates the confounds.
+
+## Control experiment (codex-2, board; no daemon, per-round cleanup, fresh profile)
+Confounds to separate:
+  C1 induce-login/red-packet overlay is foreground and eats the tap
+  C2 tap coordinate/timing off (feed clean, tap misses the card)
+  C3 stub changes feed content (item at the coordinate is login-gated)
+  C4 stub routes a tapped article to login (the side-effect hypothesis)
+
+Protocol — arm A = refined stub on BASELINE+#49:
+  1. Launch, wait for feed. Screenshot + log the FOREGROUND activity.
+  2. AT TAP TIME, record the top activity. If TransparentAccountLoginActivity or a
+     red-packet dialog is already foreground BEFORE the tap -> C1 (overlay eats
+     tap), not coordinate, not stub. This is the predicted case.
+  3. Dismiss the induce-login/red-packet overlay (tap its close / back), confirm
+     the feed is foreground and unobstructed by screenshot.
+  4. Inject one tap at a CONFIRMED article-card center — the coordinate the 04:07
+     operator physical click opened an article at, or a FeedItemRoot the log shows
+     as a loaded article/tab-loaded card (not a login/ad card).
+  5. Record the top activity after: NewDetailActivity/ArticleActivity (article)
+     vs TransparentAccountLoginActivity (login). Screenshot is ground truth.
+
+Reference (establishes what the coordinate/card IS — real metasec crashes on OH,
+so do NOT run the real lib on the OH stage): use the Android reference phone
+(N100CU025C18D000128, real Toutiao) or the 04:07 OH physical-click session to
+confirm (a) the same feed position opens an article, and (b) a logged-out session
+there ALSO shows the induce-login overlay — proving it is login-state-driven, not
+stub-driven.
+
+Discrimination:
+  - Login overlay foreground at tap        -> C1: popup eats tap. Fix = dismiss then
+                                              tap. Stub OK, stability deliverable.
+  - Clean feed, tap opens the article       -> C2: coordinate/timing. Stub OK.
+  - Clean feed, tap a confirmed article card, opens article on reference but goes
+    to login under the stub                 -> C4: real stub side-effect. THEN pull
+                                              the gating cmd from logcat around the
+                                              redirect and return an authenticated/
+                                              verified value for it. (Predicted NOT
+                                              to occur: 0 metasec refs on the path.)
+  - Overlay appears in both logged-out cases (stub and reference) -> rules out C3.
