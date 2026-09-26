@@ -60,3 +60,51 @@ r5: implement the universal westlake sigaction shim (bounce non-null old through
 buffer, copy back Bionic-sized prefix) — needs the westlake bionic-shim source. r1: codex-2
 shares arm64 libsscronet.so; I disassemble 0x28a21c, pin hook-vs-cronet-bug, then build the
 precise pass-through engine or recommend the cronet-path fix.
+
+## r1 CONFIRMED via arm64 libsscronet.so disasm (sha 38f0dd42…, handoff) — NOT a hook, cronet C++ lifecycle
+Fault 0x28a21c is a C++ VIRTUAL CALL in cronet's TTNet detection code:
+  28a20c: ldr x0,[x20,#0x568]   ; x0 = detector object ptr (field 0x568 of x20)
+  28a218: ldr x8,[x0]           ; x8 = vtable = *x0
+  28a21c: ldr x8,[x8,#0x28]     ; CRASH: x8(vtable)==0 -> read 0x28  (si_addr=0x28)
+  28a220: blr x8                ; virtual dispatch
+x0 is a VALID pointer (else 0x28a218 ldr x8,[x0] would fault at 0, not reach 0x28a21c); [x0]==0
+means the detector object's VTABLE is null -> object allocated but NOT constructed (or destroyed).
+The sibling path just above (0x28a1cc: ldr x8,[x20,#0x40]; ldr x0,[x8,#0x28]; cbz x0, skip; ...)
+DOES null-guard its virtual call; the crashing [x20+0x568] path does NOT. The detectors are
+cronet/TTNet's own C++ objects (rodata: ttnet_raw_detect / stress / exception / feedback /
+polling_detect). A monitor hook does NOT construct cronet C++ objects, and a MISSING hook would
+leave a null object POINTER, not a valid object with a null vtable. => r1 is NOT a load-bearing
+hook. It is a cronet/TTNet detector object lifecycle issue (read-before-construct or use-after-
+destroy) on an unguarded virtual-call path, network/config-timing dependent (=> intermittent,
+3/5 fine), UNMASKED now that the heap fix lets the app reach this network-detection path. The
+engine hollow did not cause it (it removes inline hooks; it does not touch cronet C++ construction).
+
+r1 FIX: NO pass-through engine (not a hook). A binary guard patch on sscronet is NOT clean: no
+>=32B zero code-cave exists in .text (Chromium is densely packed; padding is nop/brk not zeros),
+and an in-place vtable-null guard needs +1 instruction that does not fit the 6-slot window. So a
+guard would need a fragile nop-padding detour in a 4MB functional network lib (moderate risk of
+breaking networking). RECOMMEND instead: (c) root-cause why the TTNet detector at [x20+0x568] is
+unconstructed on OH (likely settings/config-fetch timing — startup shows many connect errno=115
+IPv6-unreachable, so a settings/detector-config load may not have completed when this network
+event fires this path) — a cleaner, safer fix than patching cronet control flow; or (a) tolerate
+(intermittent 3/5). If the outer loop still wants the guard, I can build the nop-padding detour
+(cbz vtable -> skip the dispatch, mirroring the sibling guarded path) on the handoff sscronet,
+flagged as moderate-risk, board-test-gated.
+
+## r5 namespace judgment (the outer loop's key check) -> PER-LIB, not universal shim
+DECISIVE evidence: r5 crashed INSIDE musl sigaction (0x1117d0). That means monitorcollector's
+sigaction call resolved DIRECTLY to musl — westlake's existing sigaction interception
+([WESTLAKE-WEBVIEW-SIGNAL]) did NOT reach it. So a "universal westlake sigaction shim" as
+currently architected would also miss monitorcollector (same OH-musl namespace blind spot that
+killed the LD_PRELOAD hook-API master-switch e692f8fd). Per the outer loop's rule (prefer
+namespace-robust; don't ship a shim that can't intercept), r5 fix = PER-LIB, file-level patch of
+libmonitorcollector-lib.so's sigaction calls (namespace-robust: the patched .so file is what
+loads, regardless of namespace/SOURCE-NATIVE-LOAD), exactly like the npth sigaction neuter
+(7639af00): for each `bl sigaction` site that passes a non-null old (x2 != xzr), replace with
+`mov x0,#0` (fake success; musl then never writes the oversized old struct -> no OOB). Keep
+old==NULL sites (musl doesn't write old). NEED the arm64 baseline libmonitorcollector-lib.so
+(sha f3918bdc42b60a19edc3b80c4bd1c1cadc972eba286e5f1b1447505a6bff1793, per handoff hashes) — NOT
+in the sscronet handoff. (A universal shim is only viable IF westlake can interpose sigaction as
+a GLOBAL libc symbol like it does dlopen — needs the westlake bionic-shim architecture confirmed;
+the r5 crash shows the current interception is not global. Until confirmed, per-lib is the safe
+namespace-robust choice.)
