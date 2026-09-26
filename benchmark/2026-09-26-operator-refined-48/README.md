@@ -9,3 +9,5 @@
 主验收为正文可读且原实例详情RESUMED后>180s，无metasec SIGSEGV、Boolean-null NPE或main exit(1)；另测刷新、登录页、点击布局。五轮有限窗口通过也不证明无限期可靠，更不能仅凭通过断言所有功能不需Bionic。主任务完成后才跑匿名/文件JIT A/B各3轮。
 
 测试进行中。
+
+首轮safe-r1/25973：最后采样活101.35s、104.79s检查已死，parent killed by signal 11。无Boolean-null NPE、无main exit(1)；NewDetailActivity有ENTRY未见完成RESUMED/正文。faultlog初次及延后均未取得，SIG11归属未知，不宣称metasec已消除。JIT日志选择文件后端，但捕获maps仅见同inode r--s/r-xs，未见rw-s；完整双视图验收未通过。
