@@ -1,0 +1,56 @@
+# Master switch: block malloc-family hooks at the bytehook/shadowhook API (#48)
+date: 2026-09-26
+
+## Why (stop whack-a-mole)
+Per-library refuse could not keep up: after narrowing to 7 libs, warm r1 lived
+240 s but r2 crashed ~20 s with the same musl mallocng meta corruption (victim
+ChromiumNet0, not one of the 7). The corruptor is intermittent and multi-source —
+any of ~18 monitors may or may not load and hook on a given warm start. Listing
+libraries is a losing game.
+
+## The choke point
+Every one of those monitors installs its malloc/free hook through the SAME API:
+libbytehook.so / libshadowhook.so. Block the malloc family there and no library
+can install a heap-stomping hook, whoever it is.
+
+## Design (westlake 971f36e, shim e692f8fd)
+The shim is already LD_PRELOAD'd before any monitor runs its init. It now
+interposes the 9 hook-install/unhook entry points:
+  shadowhook_hook_sym_name, _sym_name_callback, _sym_addr, _func_addr, unhook
+  bytehook_hook_all, _single, _partial, unhook
+For each hook request, if the TARGET symbol is the malloc family (malloc / free /
+calloc / realloc / reallocarray / posix_memalign / memalign / aligned_alloc /
+valloc / pvalloc / cfree / malloc_usable_size / mallinfo / malloc_info):
+  - return a fake non-null stub (caller sees "hook installed") and install NOTHING
+  - set the caller's orig_addr to the real libc symbol (so any cached passthrough
+    still reaches real malloc; the skipped hook would never have run anyway)
+Otherwise pass through to the real framework via dlsym(RTLD_NEXT, …), so functional
+hooks (I/O, dlopen, …) still install — no libhotfix-opt-style _exit(1). The
+by-address variants resolve the target name with dladdr. unhook recognizes the
+sentinel stub and returns success without touching the real framework. OH musl
+matches symbols by name (ignores versions), so the shim's LIBC-versioned exports
+interpose the monitors' calls.
+
+## Risk (concern 2)
+A monitor whose malloc hook silently does not install keeps running with the
+allocator unhooked — the benign outcome (that is the whole point). The only failure
+mode is a monitor that treats a NON-installed hook as fatal; none is expected
+(they take the returned stub as success), and the assertion catches any resulting
+ExceptionInInitializerError / _exit(1). This is strictly safer than refusing the
+library (which broke libhotfix-opt): here the library still loads and initializes.
+
+## Scope / fallback
+g_refused reverts to the #49 set (akamai + xasan + heap_tracker; those hook via a
+non-API path the interposers do not see). Everything else is handled by the switch.
+If a lib bypasses the API — resolves shadowhook_hook_sym_name via dlsym on the
+libshadowhook handle rather than the global scope, or hooks before the shim — the
+interposer will not see it; fall back to listing that lib in g_refused (the r2
+source, once the maps name it).
+
+## Gate (scripts/assert_hook_masterswitch.sh + board)
+Static: the shim exports all 9 interposers and the malloc-family filter list.
+Board (codex-2, no daemon): warm start, 5 CONSECUTIVE rounds, >=180 s each,
+npth-worker/get_meta SIG11 = 0, no _exit(1), feed + article visible, and the
+monitor libs (memsponge/jato/monitorcollector) DO appear in the maps — proving the
+switch (not refusal) is what prevents corruption. Exports/DT_NEEDED unchanged;
+rebuilding b14e4d0 reproduces the deployed 85c789f4.
