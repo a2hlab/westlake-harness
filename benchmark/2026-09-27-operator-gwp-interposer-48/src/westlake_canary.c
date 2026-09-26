@@ -50,7 +50,7 @@ static size_t (*real_usable)(void *);
 #define FCANARY  0xC0DEFACEDEADBEEFULL
 #define RFILL    0xEC
 static int    g_rear = 16, g_abort = 1, g_log = 0;
-static unsigned long g_scan = 0, g_cap = 65536;
+static unsigned long g_scan = 4096, g_cap = 65536;
 static int    g_ready = 0;
 static unsigned long g_mallocs = 0;
 

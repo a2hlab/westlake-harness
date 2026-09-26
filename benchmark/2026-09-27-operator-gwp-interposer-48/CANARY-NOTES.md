@@ -73,3 +73,19 @@ rc0 (no abort); WGWP_SHIM=<real lib> -> "chain-loaded" log + NORMAL_OK rc0; over
 Gate: APP CHILD stderr shows "[WGWP-CANARY] armed" AND "[WGWP-CANARY] shim chain-loaded: ..." (if the
 shim FAILED line appears instead, fix WGWP_SHIM before proceeding — the app needs the shim). Then warm
 reproduce. On CORRUPTION: the report's alloc_site + the abort's crash-analysis+maps -> hand claude-3.
+
+## UPDATE 2026-09-27 (b): periodic scan default-ON (env-free operation)
+WGWP_SCAN (like WGWP_SHIM) does NOT reach the app child (DIGEST B-9), so relying on it to enable the
+periodic scan would leave the child with scan OFF (free-time check only). Since canary takes over ALL
+allocations, the original musl free-time crash no longer fires (everything is a canary chunk) and a
+long-lived (never-freed) overflowed buffer would be missed without the scan. So the periodic scan is
+now HARDCODED default-ON: src line 53 g_scan default 0 -> 4096 (scan the live ring every 4096
+mallocs; WGWP_SCAN still overrides if it ever reaches). g_abort default 1 already correct.
+=> libwestlake_canary_shim now needs NO env at all: chain-load shim (default path) + guard EVERY
+   allocation + periodic scan (default 4096) + abort+report(alloc-site,clobber) on detection.
+Rebuilt product: out/libwestlake_canary_shim.aarch64-ohos.so  sha256 a32b6feb6aae723f3c431248528291fbd82d9243cb43c3809968a8ff61ca1a53 (10344 B).
+Self-test (glibc, NO env): un-freed overflow caught by default-on scan -> abort rc134; normal rc0;
+overflow+free -> abort rc134. Supersedes 503a0ebb.
+Board deploy (env-free): WESTLAKE_ANDROID_NATIVE_PRELOAD=/data/local/tmp/asx/lib/arm64-v8a/libwestlake_canary_shim.so
+(WGWP_LOG optional for the armed/chain-loaded lines). Gate: app child shows "[WGWP-CANARY] armed"
++ "[WGWP-CANARY] shim chain-loaded" (both canary and shim mapped into the child).
