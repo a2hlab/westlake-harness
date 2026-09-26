@@ -7,7 +7,7 @@ OLD_STUB='6e6b9aaad14c6b8e5762c062a3689f96e4c74b8b84b32665cb42b2b9a661a9a9'
 STUB='1021a0582e360ceafb49aa1162ee5d024104a73504ba0801927aaaa8bf2e706f'
 EXPECTED={
  'libandroid.so':CORE,
- 'libart.so':'cdd3e268ce3fd8d449a9a767fb0ad7012d01ca1c60e2f72188736899b09fda94',
+ 'libart.so':'78e344455ec300f70106a7fcceafeff26f4b768f17b0c116927dc8848676f3bc',
  'webview-t-lib/libwebview_bionic_shim.so':SHIM,
  'liboh_adapter_bridge.so':'d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b',
  'lib/arm64-v8a/libnpth.so':'8b8d559c50130a997b5fbf3383e8ebf6291ebe54ab2b5ed5fbc8e1ac73fe36af',

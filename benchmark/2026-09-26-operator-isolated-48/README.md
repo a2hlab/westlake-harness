@@ -11,3 +11,9 @@ run.sh去掉FILE_CACHE_DIR并显式unset，保留原ANON_FALLBACK=1及JIT_BASELI
 每轮新三组profile、新parent、原PID/birth生存监测；真实uinput同意及点文章，要求详情RESUMED+正文截图且存活>180s。原实例退出即失败，守护替代不续时。完成三轮或失败有原生证据后落ACK，#50 A/B延期。
 
 首准备iso-r1在spawn前被旧缓存的expected SHA拒绝（实际是正确新ART/run）；未运行应用、不计轮次。清掉本分支Python字节码缓存并用-B重跑，正式命名diag-r1..3；保留原失败证据。
+
+## 记录器入口修正
+
+首启动diag-r1的child明确`SigchainStartReassert not found`，记录目录fd不存在，现成libart记录器尚未启用。这轮实际匿名JIT，真实点击后文章正文和图片可读，但人工停止作为准备轮、不计正式三轮。其monitor末尾与替换ART发生交叠，组件检查捕获cdd→78漂移并退出；保留错误，不当应用崩溃。
+
+仅在私有sigchain副本把目录初始化移到AddSpecialSignalHandlerFn注册阶段（非signal上下文）并幂等，已打开的目录fd跨fork继承；原Start入口仍调用同一幂等函数。观察器wrapper/原siginfo/ucontext/原callback返回值和OH链全部保持。重新编一个sigchain对象+重链当前A1 ART，候选78e34445。必须核验子进程真实目录fd及后续记录，不凭设置环境变量报已捕获。正式命名capture-r1..3。
