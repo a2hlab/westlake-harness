@@ -1,0 +1,70 @@
+# Warm heap-corruption: the full malloc-hooking fleet + refuse plan (#48)
+date: 2026-09-26   inputs: warm maps event-396b-3aa8-1 (3827 lines) + 138-lib static scan
+
+## ① Complete list
+
+SET A — reference the Bionic malloc-dispatch ABI (__libc_malloc_dispatch / __libc_globals):
+  NONE in the current APK. (#49's premise was xasan/heap_tracker used this ABI;
+  the current corruption does NOT — it is bytehook/shadowhook inline hooks.)
+
+SET B — DT_NEED libbytehook and/or libshadowhook (hook-capable), 20 libs:
+  libflash, libgodzilla-lib, libgodzilla-memsponge, libgodzilla-sysopt,
+  libhotfix-opt, libhubble, libjarvis-binder, libjato, libmonitorcollector-lib,
+  libnpth, libnpth_fd_tracker, libnpth_ref_monitor, libnpth_repair,
+  libnpth_tls_monitor, libnpth_vm_monitor, libreparo, libsysoptimizer,
+  libtunnel, libturbo, libxdoctor.
+
+SET C — of SET B, those that also reference malloc-family names (actually hook
+malloc/free/calloc/realloc), 18 libs = SET B minus libjarvis-binder, libxdoctor:
+  libflash, libgodzilla-lib, libgodzilla-memsponge, libgodzilla-sysopt,
+  libhotfix-opt, libhubble, libjato, libmonitorcollector-lib, libnpth,
+  libnpth_fd_tracker, libnpth_ref_monitor, libnpth_repair, libnpth_tls_monitor,
+  libnpth_vm_monitor, libreparo, libsysoptimizer, libtunnel, libturbo.
+
+Load mechanism: ALL 18 are dlopen-only — none is DT_NEEDED by another APK lib —
+so the shim's dlopen hook can refuse every one of them. (The engines libbytehook/
+libshadowhook ARE pulled in via DT_NEEDED and cannot be shim-refused, but they are
+harmless once no hooker loads to drive them.)
+
+Mapped on the warm crash run (event-396b-3aa8-1.maps): libnpth, libgodzilla-memsponge,
+libjato, libmonitorcollector-lib, libhotfix-opt (+ engines libbytehook/libshadowhook).
+#49's libnpth_xasan/libnpth_heap_tracker were NOT mapped — the #49 refuse works.
+
+## ② Classification: refuse vs keep
+
+Functionally required for feed/article reading: NONE. All 18 are APM / crash-
+monitor / hotfix / perf-optimizer diagnostics. WebView, networking (TTNet/cronet),
+rendering and the account/login flow do not depend on any of them. metasec (which
+used the godzilla engine) is already a hollow stub, so godzilla-* are dead weight.
+
+Refuse (17) — all dlopen-only monitors, safe to fail (loaders null-check, #49
+pattern):
+  libgodzilla-memsponge, libjato, libmonitorcollector-lib, libhotfix-opt  <- the 4
+    confirmed mapped as warm corruptors
+  libgodzilla-lib, libgodzilla-sysopt, libhubble, libsysoptimizer, libturbo,
+  libflash, libreparo, libtunnel, libnpth_fd_tracker, libnpth_ref_monitor,
+  libnpth_repair, libnpth_tls_monitor, libnpth_vm_monitor  <- same class, defensive
+
+KEEP libnpth (do NOT refuse): it hooks malloc too, but (a) it is already patched
+(8b8d559c) and fresh 3/3 survives 173s with it loaded, so it does not corrupt in
+window; (b) it is the early-loaded crash monitor and its System.loadLibrary may be
+unguarded, so refusing it risks a NEW crash. If warm SIG11 persists after refusing
+the 17, escalate: refuse libnpth, or overlay no-op libbytehook/libshadowhook engine
+stubs (the choke point — kills every hook including libnpth's own).
+
+## ③ Shim change + gate
+westlake fix/npth-hook-refuse-warm-48 98c0945 adds the 17 to g_refused_libraries
+(on top of #49's xasan/heap_tracker). Verified: rebuilding the parent b14e4d0
+reproduces the deployed 85c789f4 exactly; the new shim 06375dc1 has identical
+exports and DT_NEEDED (only the static array grew) and contains all 17 + 3 strings.
+scripts/assert_heap_hook_refuse.sh gates a warm run: SIG11=0, none of the refused
+libs mapped, no new UnsatisfiedLinkError. Board gate (codex-2): no daemon, warm
+start (retain consent), >=180s, plus feed+article screenshot.
+
+## ④ Feed + articles unaffected
+None of the 17 is on the read path (all monitoring/perf/hotfix). #41 (metasec lazy)
+and #49 established the ByteDance native monitor infra is not needed for feed or
+article reading; refusing xasan/heap_tracker (#49) already ran clean on fresh. The
+assertion's UnsatisfiedLinkError check is the guard: if refusing any one lib causes
+a load-failure crash (unguarded loader), it fails the gate and that lib is dropped
+from the list — the rest still apply.
