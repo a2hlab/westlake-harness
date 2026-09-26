@@ -63,7 +63,7 @@ static int   (*real_posix_memalign)(void **, size_t, size_t);
 static size_t (*real_usable)(void *);
 
 static int g_sample = 1, g_ready = 0;
-static size_t g_cap = 4096, g_minsz = 1, g_maxsz = 4096;
+static size_t g_cap = 16384, g_minsz = 1, g_maxsz = (size_t)-1;  /* v3: no size cap -> guard ALL sizes (IO buffers >4KB too) */
 
 static char g_boot[1 << 20]; static size_t g_boot_off = 0;
 static int in_boot(void *p){ return (char*)p>=g_boot && (char*)p<g_boot+sizeof(g_boot); }
@@ -154,7 +154,6 @@ static void gwp_init(void){
     if((e=getenv("WGWP_SAMPLE"))){ int v=atoi(e); if(v>=1) g_sample=v; }
     if((e=getenv("WGWP_CAP"))){ long v=atol(e); if(v>=16) g_cap=(size_t)v; }
     if((e=getenv("WGWP_MAXSZ"))){ g_maxsz=(size_t)atol(e); }
-    if(g_maxsz>PAGE) g_maxsz=PAGE;
     resolve_real();
     size_t rlen=((g_cap*sizeof(region_t))+PAGE-1)&~(PAGE-1);
     void*r=mmap(0,rlen,PROT_RW,MAP_PA,-1,0);

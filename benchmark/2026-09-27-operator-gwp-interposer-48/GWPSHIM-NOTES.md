@@ -44,3 +44,28 @@ the ~17s crash. On the corrupting write the LEFT guard faults and the handler pr
 "[WGWP-GUARD] FAULT ... writer_pc=... writer_lib=<lib> writer_off=0x... victim_buffer/size alloc_site".
 writer_lib+writer_off = the CORRUPTOR (hand claude-3 that line + crash-analysis). Memory: guard-all is
 ~2 pages/guarded alloc capped at 4096 (~32MB steady). If OOM before 17s, rebuild with a smaller CAP.
+
+## UPDATE 2026-09-27 (v3): removed the ≤4096B size cap — guard ALL sizes
+v2 result: armed OK, 13 rounds, r7 reproduced the target mallocng a_crash (platform-io-thr @12s) but
+ZERO FAULT lines. Root cause: v2 STRUCTURALLY guarded only allocations <=PAGE (the `if(g_maxsz>PAGE)
+g_maxsz=PAGE` cap + `n>g_maxsz` skip). platform-io-thr's IO buffers are mostly LARGE (>4KB) -> routed
+to real_malloc -> became real musl chunks -> their p-4 clobber was invisible to the guard (musl then
+a_crashed). v3 minimal change: (1) removed the PAGE cap, g_maxsz default = (size_t)-1 (no upper limit
+-> guard every size; LEFT-adjacent works for any size: 1 front guard page + ceil(n/PAGE) data pages,
+mmap lazy so ~one page committed per live alloc region + data touched); (2) g_cap 4096 -> 16384 (so a
+large victim isn't ring-evicted before it's written); sample=1 unchanged (guard all). Everything else
+identical (LEFT-adjacent, memalign coverage, in-SEGV dl_iterate_phdr, chain-load shim, env-free,
+unconditional report).
+Product: out/libwestlake_gwp_shim.aarch64-ohos.so  sha256 345b032c5eb2d45ddbc8610f986b165751892c126232ef5dd0b4f3b6158818f4 (SUPERSEDES 139d0ece).
+Self-test (glibc x86_64): mixed small+large NORMAL_OK rc0; 64KB alloc underflow (write p-4) ->
+LEFT-guard FAULT, victim_size=0x10000 (proves LARGE alloc guarded), writer_pc resolved via
+dl_iterate_phdr, alloc_site, abort rc134.
+
+## Experiment logic (verdict for the board run)
+Deploy v3 (WESTLAKE_ANDROID_NATIVE_PRELOAD=<...>/libwestlake_gwp_shim.so), reproduce the r7-class crash.
+- FAULT hit -> writer_pc/writer_lib/writer_off = the CORRUPTOR; victim is a large user chunk. Done.
+- STILL 0 FAULT (all sizes now guarded) -> the corruption is NOT of a user allocation; the writer does
+  an OOB write into musl-INTERNAL metadata (not adjacent to any user buffer). Next step: instrument
+  the musl check point itself (a_crash at 0xd6e20 / caller 0xd6a18) -> before a_crash, use
+  dl_iterate_phdr to dump the DETECTING thread's stack + victim chunk + clobbered bytes (a musl-side
+  probe build), since a user-space page-guard cannot see writes into musl's own metadata arena.
