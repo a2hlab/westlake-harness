@@ -49,7 +49,7 @@ def collect(child):
  (r/'fault-paths.txt').write_text(paths)
  for p in paths.splitlines():
   if p.startswith(rt+'/private-tmp/crash42/') or p.startswith('/data/log/faultlog/'):recv(p,r/'faults'/p.rsplit('/',1)[-1],15)
-if op=='run':
+if op in ('run','auto'):
  assert not r.exists();r.mkdir();result={'round':name,'restart_guardian':False,'max_observation_s':175,'board_kill_deadline_s':180,'failure':None};parent=None;child=None
  try:
   pre=dev('touch '+D+'/stop; echo APP_PIDS; pidof '+PKG+'; echo APPSPAWN_PIDS; pidof appspawn-x; echo MEMORY; free -m; cat /proc/meminfo',12)
@@ -79,7 +79,7 @@ if op=='run':
   q=__import__('shlex').quote
   result['deadline_timer']=dev('nohup /system/bin/sh -c '+q(timer)+' >'+D+'/bounded48-'+name+'-deadline.log 2>&1 </dev/null & echo $!',5).strip()
   fd=dev('ls -l /proc/'+str(child)+'/fd',5);(r/'recorder-fd.txt').write_text(fd);assert '/private-tmp/crash42' in fd
-  print('ROUND_STARTED',name,child,parent,flush=True);last=-1;observed_alive=True
+  print('ROUND_STARTED',name,child,parent,flush=True);last=-1;observed_alive=True;next_dialog_check=15;auto_clicked=False
   while True:
    elapsed=time.monotonic()-started
    if elapsed>=173:break
@@ -89,6 +89,18 @@ if op=='run':
    rows=s.splitlines();st=next((x for x in rows if x.startswith(str(child)+' (')),None)
    observed_alive=bool(st and st.rsplit(') ',1)[1].split()[0]!='Z' and st.rsplit(') ',1)[1].split()[19]==birth)
    if not observed_alive:result['failure']='original exited during observation';break
+   if op=='auto' and not auto_clicked and elapsed>=next_dialog_check and elapsed<130:
+    from privacy_dialog import privacy_dialog
+    label='consent-gate-'+str(int(elapsed));shot(label,5);next_dialog_check=elapsed+10
+    matched=privacy_dialog(r/(label+'.jpeg'))
+    with (r/'visual-gate.jsonl').open('a') as f:f.write(json.dumps({'elapsed':elapsed,'image':label+'.jpeg','privacy_dialog_matched':matched})+'\n')
+    if matched:
+     for xy in ('600 1273','380 380'):
+      cmd='cat /proc/uptime; uinput -T -d '+xy+' -u '+xy
+      out=dev(cmd,5)
+      with (r/'inputs.jsonl').open('a') as f:f.write(json.dumps({'epoch':time.time(),'command':cmd,'output':out,'source':'visual-gated automatic real uinput'})+'\n')
+      time.sleep(.7)
+     auto_clicked=True;result['automatic_input_elapsed']=time.monotonic()-started;print('AUTO_UINPUT',name,result['automatic_input_elapsed'],flush=True)
    if int(elapsed)//40>last and elapsed<150:last=int(elapsed)//40;shot('during-'+str(last*40),min(10,max(1,(170-elapsed)/2)))
    if elapsed>162 and not result.get('final_shot'):shot('before-cleanup',3);result['final_shot']=True
    time.sleep(min(3,max(0,173-(time.monotonic()-started))))
@@ -110,4 +122,11 @@ elif op=='input':
  with (r/'inputs.jsonl').open('a') as f:f.write(json.dumps({'epoch':time.time(),'command':cmd,'output':s})+'\n')
  print(s)
 elif op=='shot':shot(sys.argv[3],5)
+elif op=='timeout-test':
+ r.mkdir(exist_ok=True);start=time.monotonic()
+ try:
+  dev('sleep 3',.3);raise AssertionError('timeout did not fire')
+ except TimeoutError as e:
+  elapsed=time.monotonic()-start;assert elapsed<5,elapsed
+  (r/'timeout-selftest.json').write_text(json.dumps({'expected_timeout':True,'elapsed':elapsed,'message':str(e)},indent=2));print('TIMEOUT_TEST_PASS',elapsed)
 else:raise SystemExit(op)
