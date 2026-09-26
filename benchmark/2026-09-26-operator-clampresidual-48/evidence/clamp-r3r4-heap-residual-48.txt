@@ -1,0 +1,70 @@
+# clamp r3/r4 residual heap corruption — source + next move (#48)
+date: 2026-09-26   evidence: clamp-r3/clamp-r4 crash-analysis + maps + APK v7a lib ABI
+
+## Both are the SAME mallocng chunk-header-overwrite class (different detection points)
+- clamp-r3: 20.8s, thread bd_tracker_w:13, sqlite3 measureAllocationSize; PC 0xd6e20-class.
+- clamp-r4: 17.5s, thread pool-4-thread-2; musl ld PC 0xd5e1c / LR 0xd5b44. Disasm 0xd5e1c =
+  mallocng get_meta: ldr x13,[x12,#-16] (in-band chunk header) ^ secret -> x0 (decoded meta
+  ptr); ldr x13,[x0,#16] FAULTS because the header was overwritten -> decoded ptr is garbage.
+  Same corruption class as 0xd6e20 (a_crash trap), earlier detection point (poisoned-ptr deref).
+
+## (a) r3 = libjato free-hook (malloc-family)
+r3 loaded_monitors: bytehook, shadowhook, godzilla-memsponge, godzilla-sysopt, JATO,
+monitorcollector, npth(hollow), npth_bt, npth_dl. memsponge/sysopt/mc are the PATCHED shas
+(hooks neutered); npth is the hollow stub. The ONLY unneutralized malloc-family inline-hooker
+loaded is libjato (hooks free x4, verified prior). Its free-hook writes Bionic-layout tracking
+metadata over musl mallocng chunk headers -> later free (bd_tracker_w / sqlite3) hits the
+poisoned header. => r3 = jato. FIX = jato patch (26 hook sites verified deref-safe;
+patch_hook_installs.py ready). Needs arm64 libjato.so baseline (not local; only v7a on Mac).
+
+## (b) r4 = shadowhook inline-hook MACHINERY, driven by libhotfix-opt
+Definitive scan of r4's 341 loaded libs for engine dependency (DT_NEEDED bytehook/shadowhook),
+intersected with the crash maps -> only 4 hook-capable libs loaded:
+  libbytehook (engine), libnpth (deployed HOLLOW -> NEEDED only libc -> installs NOTHING),
+  libmonitorcollector-lib (PATCHED f3918bdc; proven heap-safe across 5 hollow survivor rounds),
+  libhotfix-opt (UNPATCHED).
+=> the ONLY active (unneutralized) inline-hooker in r4 is libhotfix-opt. It inline-hooks
+   art::ClassLinker::EnsureInitialized (class init) via shadowhook_hook_sym_name — a HOT path
+   under navigation (every new feed card / article view initializes new classes).
+Its hook target is NOT malloc, yet r4 is mallocng corruption -> the corruption comes from the
+shadowhook INLINE-HOOK MACHINERY itself (trampoline alloc / prologue rewrite / bookkeeping on
+musl, assuming Bionic malloc), exercised heavily under class-init load — NOT a malloc-hook
+callback. (npth_bt/npth_dl/jnativehook ruled out: no bytehook/shadowhook dep, no hook imports,
+no malloc/target strings. hotfix-opt has NO malloc target string — its "debug.apm.malloc.*"
+rodata are config keys, the classic rodata!=target trap.)
+This answers "engine bytehook/shadowhook trampoline itself?" = YES for r4.
+
+## (c) pre-existing residual REVEALED by render/nav load — NOT clamp/boot-introduced
+- The corruption CLASS is identical to pre-clamp crashes (0xd5e1c seen pre-hollow, codex-2 b6a1344).
+- clamp changed ONLY WindowSessionAdapter window geometry; the boot rebuild recompiled BCP
+  dex->oat. Neither touches musl malloc or any monitor lib.
+- Mechanism: hollow runs had the window COLLAPSING to 1px (that's why -79) which SUPPRESSED
+  full-size rendering -> far fewer new-view class inits / render allocations -> the engine hook
+  machinery (jato/hotfix) fired little -> 0/5 heap crashes. clamp un-collapses the window ->
+  full-size render + 360s harder nav -> many more class inits/allocs -> hooks fire far more ->
+  machinery corrupts more chunks -> surfaces at 17-21s. Render load REVEALED a pre-existing
+  residual; clamp/boot did not introduce it.
+- CONTROL EXPERIMENT to confirm: hollow config (no clamp, window collapses) + the SAME 360s
+  hard navigation. If it ALSO heap-crashes -> pre-existing confirmed. If clean -> clamp/boot
+  implicated. Recommend codex-2 run it.
+
+## Next move — CONVERGENT engine neutralization (stop whack-a-mole)
+r3 (jato/free) and r4 (hotfix/ClassLinker via shadowhook machinery) are DIFFERENT hooks but
+BOTH go through the engines; ~18 possible hookers exist. Convergent fix = file-level HOLLOW/
+patch libbytehook.so + libshadowhook.so so every hook-install returns fake-success + installs
+NOTHING -> no inline hooks -> no trampolines -> kills r3 + r4 + every residual hooker at once.
+This BYPASSES the OH-musl namespace isolation that killed the LD_PRELOAD master-switch (the
+patched .so FILE is what loads, regardless of namespace/SOURCE-NATIVE-LOAD). Buildable from
+source like the npth/metasec hollow stubs (engine ABI enumerable: bytehook 20 exports,
+shadowhook 49; open-source semantics) — needs codex-2's arm64 libbytehook.so/libshadowhook.so
+only to enumerate the EXACT arm64 export set (avoid ULE).
+CRUX EXPERIMENT (experiment-over-estimates): deploy hollow engines, feed+article 5x — resolves
+BOTH "is it the engine" (heap-clean?) AND "are any inline hooks load-bearing for feed/articles"
+(still work?). #41/#49 established the monitor infra is non-essential, so likely all no-op-able;
+if a functional hook is load-bearing, preserve that one target (pass-through).
+INCREMENTAL FALLBACK (if engine-hollow risks a functional hook): jato patch (r3) + hotfix-opt
+hook-install fake-success patch (r4), libs stay loaded. Both need arm64 baselines.
+
+## What I need from codex-2 (arm64 board baselines — not local, only v7a hanbin apk on Mac)
+libbytehook.so + libshadowhook.so (build hollow engines / enumerate ABI) and, for the fallback,
+libjato.so + libhotfix-opt.so. Same handoff as the adapter jar (shared path + sha).
