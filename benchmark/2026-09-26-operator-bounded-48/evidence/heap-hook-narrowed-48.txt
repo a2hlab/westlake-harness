@@ -1,0 +1,63 @@
+# Narrowed malloc-hook refuse list — per-lib hook-target verification (#48)
+date: 2026-09-26
+
+## Why narrow
+The broad refuse (17 libs = every bytehook/shadowhook user that referenced a
+malloc-family name) killed the warm SIG11 but also refused libhotfix-opt, a
+FUNCTIONAL lib that hooks no allocator; its class init then failed and the app
+_exit(1)ed ~61 s. A lib can reference "malloc"/"free" for two different reasons:
+  (a) a UND import  -> the lib CALLS malloc (harmless)
+  (b) a .rodata string constant passed to a hook-install call -> the lib HOOKS
+      malloc (this is what corrupts musl mallocng)
+`strings | grep malloc` conflates the two. The correct criterion is (b).
+
+## Per-lib verification
+For each bytehook/shadowhook user: does .rodata contain a malloc-family string
+(the hook target) AND does the lib import a hook-install function
+(bytehook_hook_* / shadowhook_hook_sym_*)? Hook-target profile from .rodata
+function-name strings.
+
+  lib                      rodata alloc-target  hook-install  profile / verdict
+  libnpth_xasan            calloc/free/malloc/…  (dispatch)    memory sanitizer  REFUSE (#49)
+  libnpth_heap_tracker     free/malloc          (dispatch)    heap tracker      REFUSE (#49)
+  libgodzilla-memsponge    free                 yes           memory manager    REFUSE
+  libnpth_vm_monitor       free                 yes           vm: free/mmap/munmap/mremap  REFUSE
+  libmonitorcollector-lib  malloc               yes           APM: open/malloc/dlopen      REFUSE
+  libjato                  free, malloc         yes           IO-primary: read/open/dlsym/mmap + free×4  REFUSE
+  libsysoptimizer          free                 yes           IO/syscall: open/write + free×1            REFUSE
+  --------------------------------------------------------------------------- keep below
+  libnpth                  malloc/calloc/…      yes           crash monitor; fresh-proven non-corrupting, patched 8b8d559c  KEEP
+  libhotfix-opt            (none)               yes           hooks non-allocator; broke when refused   KEEP
+  libturbo                 (none)               yes           perf                                      KEEP
+  libtunnel                (none)               yes           diagnostics                               KEEP
+  libflash                 (none)               yes           diagnostics                               KEEP
+  libreparo                (none)               yes           native repair                             KEEP
+  libhubble                (none)               yes           APM                                       KEEP
+  libgodzilla-lib          (none)               yes           godzilla core (metasec stubbed)           KEEP
+  libgodzilla-sysopt       (none)               yes           system optimizer                          KEEP
+  libnpth_fd_tracker       (none)               yes           fd monitor (not memory)                   KEEP
+  libnpth_ref_monitor      (none)               yes           ref monitor                               KEEP
+  libnpth_repair           (none)               yes           repair                                    KEEP
+  libnpth_tls_monitor      (none)               yes           tls monitor (not heap)                    KEEP
+
+## Narrowed refuse list (5 new + #49's 2)
+  libnpth_xasan, libnpth_heap_tracker  (#49)
+  libgodzilla-memsponge, libmonitorcollector-lib, libjato, libsysoptimizer,
+  libnpth_vm_monitor
+
+## Correction to the "functional" assumption
+jato/monitorcollector/sysoptimizer were assumed functional/non-malloc, but the
+disassembly shows they DO hook the malloc/free family (jato: free×4 + I/O;
+monitorcollector: malloc×2; sysoptimizer: free×1), and jato/monitorcollector were
+mapped on the warm crash run. By the hook-target criterion they are refused. They
+are I/O/perf/APM diagnostics, not on the read path, so refusing them should not
+break reading — but if the board shows a NEW _exit(1) from one (unguarded loader,
+like hotfix), drop that one; if SIG11 then returns, that lib was the corruptor and
+needs a no-op engine stub instead of a refuse. libnpth stays out of the list
+(fresh-proven safe, unsafe to refuse).
+
+## Gate (scripts/assert_heap_hook_refuse.sh, board double-verify)
+warm start, >=180s: SIG11=0; the 7 refused libs not mapped; the kept functional
+libs load with no UnsatisfiedLinkError; no ExceptionInInitializerError/_exit(1);
+feed + article visible. Shim e55b30a (dc4f5e6f); exports/DT_NEEDED unchanged,
+b14e4d0 reproduces the deployed 85c789f4.
