@@ -1,0 +1,90 @@
+# Layout: -79 < 0 root cause + work_thread SIGABRT classification (#48)
+date: 2026-09-26   evidence: hollow-stub warm rounds (final-r5, stub-r1..r3)
+
+## TL;DR
+- Layout -79 = the app-visible window/screen WIDTH collapses to ~1px (mBounds
+  width=1, screenWidthDp=0) via the OH_WSA relayout path; Toutiao's UGCInnerFlow
+  builds the article TITLE StaticLayout with width = collapsedWidth - fixed card
+  chrome (~79-80px) = a CONSTANT -79 -> android.text.Layout width>=0 assertion ->
+  IllegalArgumentException on the MAIN thread -> parent exit(1).
+- It is GENERAL (geometry), NOT content-specific: value is constant -79 across
+  rounds and independent of article text. It is RECURRING, not r5-only: stub-r1
+  (a scored 240s survivor) ALSO terminates its child with the identical
+  J_invokeStaticMain_main_threw: Layout: -79 + INITCHILD-FAIL (line 62626/62792).
+  "Survivor" vs "r5" differs only by WHEN in the article-reading sequence the
+  collapsed-width title build lands on the main thread.
+- work_thread SIGABRT is a SEPARATE, NON-FATAL, pre-existing background abort
+  (SI_TKILL, "...is null" message), present in survivors too (stub-r1 tid15491,
+  stub-r2 tid22308), caught by the out-crash42 recorder; the process runs ~129k
+  more log lines after it. NOT a new class, NOT the r5 failure cause.
+
+## (1) The negative dimension: OH_WSA window-width collapse 1200 -> 1
+final-r5/child.stderr (gunzip):
+  L4925  [OH_WSA-relayout] outMergedConfiguration set: mBounds=Rect(0,0-1200,1920) screenDp=600x960  <- GOOD
+  L6161  ... mBounds=Rect(0,0-1200,1920) screenDp=600x960                                            <- GOOD
+  L8650  ... mBounds=Rect(0,0-1200,1920) screenDp=600x960                                            <- GOOD
+  L27394 [OH_WSA-relayout] outMergedConfiguration set: mBounds=Rect(0,0- 1 ,1920) screenDp= 0 x960   <- COLLAPSED
+  L30193 ... mBounds=Rect(0,0-1,1920) screenDp=0x960   ... persists through L38669                   <- COLLAPSED (stays)
+The collapse is driven by a degraded window SESSION, not visibility alone:
+  L27380 [OH_WSA-relayout] requestedWH=0x1920 sessionInfo[3,4]=1x1920 -> useWH=1x1920 visibility=8
+  L30168 [OH_WSA-relayout] requestedWH=0x1920 sessionInfo[3,4]=1x1920 -> useWH=1x1920 visibility=0  (VISIBLE, still 1!)
+  vs early healthy:
+  L4914  requestedWH=0x0    sessionInfo[3,4]=1200x1920 -> useWH=1200x1920 visibility=8  (requested 0 but session 1200 -> OK)
+  L6146  requestedWH=1200x1920 sessionInfo=1200x1920 -> useWH=1200x1920 visibility=0
+Adapter logic ~= useW = (requestedW>0 ? requestedW : sessionW). Early, requestedW=0
+falls back to sessionW=1200 (fine). Later BOTH requestedW=0 AND sessionW itself
+degraded to 1 -> useW=1, written into the app-visible merged Configuration (mBounds
+width=1, screenWidthDp=0). Once written it persists in the app's cached config.
+
+## (2) The crash consumes the collapsed width
+Crash stack (final-r5 L131366; identical in stub-r1 L62626):
+  [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.IllegalArgumentException: Layout: -79 < 0
+    at android.text.Layout.<init>(Unknown Source:141)          <- width>=0 assertion
+    at android.text.StaticLayout.<init> / StaticLayout$Builder.build
+    at com.bytedance.ugc.textflow.resource.TitleResource.h      <- builds article TITLE StaticLayout
+    at ...InnerFlowCardProcessor.c / NormalCardSectionController / BlockCardPresenter
+    at UGCAggrListAdapterWrapper.notifyDataSetChanged -> Fragment.performStart -> exit(1)
+Config is otherwise NORMAL (densityDpi=360, fontScale=1.0, locale=en_US) so density/
+font are NOT the cause. -79 = collapsedWidth(0..1) - InnerFlow card fixed horizontal
+chrome (paddings/margins/thumbnail gap ~79-80px). Constant -79 across 3 occurrences
+and across rounds => geometry, not content. TitleResource.h runs during data binding
+(notifyDataSetChanged in performStart), so it reads the cached (collapsed) window
+width; whether it lands on the main thread (fatal) vs earlier feed refresh decides
+fatal-vs-tolerated -> flaky-fatal.
+
+## (3) FIX (shim/runtime side) -- clamp the adapter output; app never sees <=1px
+Fix domain = WindowSessionAdapter.relayout / the outMergedConfiguration write (the
+[OH_WSA-relayout] emitter) in the westlake OH runtime. Prior art pins this exact
+class: 02.APP/99.DOC/变体3几何崩溃完整分析 -> WindowSessionAdapter.java:594
+(oh-adapter-runtime.jar, dex, non-BCP, arch-independent) clamped RS-node Bounds to a
+shrunk requestedWH; fix = ignore the shrunk request, use the session's full-screen
+size. OUR case is worse (requestedW=0 AND sessionW degraded to 1), so cannot fall
+back to sessionInfo (also bad). Clamp rule:
+  when computing useW/useH and writing outMergedConfiguration, if effective width<=1
+  OR screenWidthDp==0, DO NOT propagate it; substitute the decor-root / last-known-
+  valid full-screen bounds (1200x1920, screenDp 600x960). i.e. a hidden/degenerate
+  session's 1px bounds must never overwrite the app-visible window/screen width.
+This is the "shim returns a valid metric" fix. Root of WHY sessionInfo->1 is a deeper
+OH multi-window question, but the adapter boundary is the correct clamp point because
+it is what feeds the app's Configuration. No app-side avoidance is needed; this is a
+runtime geometry defect, reproducible and deterministic.
+
+## (4) work_thread SIGABRT classification -- NON-FATAL background noise, distinct class
+final-r5 L2819: Fatal signal 6 (SIGABRT), code -6 (SI_TKILL), Thread 13819 "work_thread".
+- SI_TKILL (code -6) = signal raised deliberately via tgkill/tkill (abort()/raise/
+  pthread_kill), NOT a hardware fault -> different class from the mallocng heap
+  corruption (SEGV 0xd6e20, eliminated by the hollow stub) AND from Layout -79 (Java).
+- Register x13 = 0x6c6c756e20736920 = ASCII " is null" -> the abort message being
+  formatted ends "...is null" (a native null-check abort). Recorder Backtrace/Fault
+  message are EMPTY (mem_open EACCES), so the exact function is not pinnable.
+- Occurs during EARLY startup (L2819 of 131671) while libtnet(TTNet)/libumeng load and
+  network inits; process CONTINUES normally right after (SOURCE-NATIVE-LOAD, TOUCH21,
+  network connects for ~129k more lines) -> caught by out-crash42, NON-FATAL.
+- Present in survivors: stub-r1 (tid15491) and stub-r2 (tid22308) both show the same
+  banner and then live 240s. => pre-existing benign banner, in ALL rounds, unrelated
+  to the r5 failure. Corroborates codex-2 (c322ac5): "每轮亦有work_thread SIGABRT横幅,
+  前四轮随后仍活240s、回溯空". Do not merge it with the Layout -79 exit(1).
+
+## Files / lines
+final-r5/child.stderr.gz  L2819 (SIGABRT), L4925/27394 (config), L27380 (requestedWH), L131366 (crash)
+stub-r1/child.stderr.gz   L62626 (identical Layout -79 crash), 3x collapsed config, work_thread SIGABRT tid15491
