@@ -17,3 +17,5 @@ run.sh去掉FILE_CACHE_DIR并显式unset，保留原ANON_FALLBACK=1及JIT_BASELI
 首启动diag-r1的child明确`SigchainStartReassert not found`，记录目录fd不存在，现成libart记录器尚未启用。这轮实际匿名JIT，真实点击后文章正文和图片可读，但人工停止作为准备轮、不计正式三轮。其monitor末尾与替换ART发生交叠，组件检查捕获cdd→78漂移并退出；保留错误，不当应用崩溃。
 
 仅在私有sigchain副本把目录初始化移到AddSpecialSignalHandlerFn注册阶段（非signal上下文）并幂等，已打开的目录fd跨fork继承；原Start入口仍调用同一幂等函数。观察器wrapper/原siginfo/ucontext/原callback返回值和OH链全部保持。重新编一个sigchain对象+重链当前A1 ART，候选78e34445。必须核验子进程真实目录fd及后续记录，不凭设置环境变量报已捕获。正式命名capture-r1..3。
+
+capture-r1真实子进程7061和parent7019都持有fd6→private-tmp/crash42，parent日志`directory ready before fork`；匿名后端日志成立。证明目录初始化和fork继承已生效，尚不等同已取得真实致命栈。
