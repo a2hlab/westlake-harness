@@ -1,0 +1,71 @@
+# Combo residual r3/r5: non-hook npth corruptor + hollow-npth recommendation (#48)
+date: 2026-09-26   evidence: combo final-r4/r5 crash-analysis + maps
+
+## Result of the combined patch (npth 7639af00 + memsponge/mc/sysopt)
+3/5 clean. The r5 sigaction fix is confirmed: NO sigaction-class crash (0x111974)
+remains. Residual r4/r5 both crash at musl mallocng 0xd6e20 / LR 0xd6a18
+(get_meta/free integrity trap — metadata corruption). This mallocng source SURVIVED
+every hook patch.
+
+## Qualitative: this is (b) a NON-HOOK path in npth core — engines ruled out
+Decisive evidence from final-r5 (npth-worker, 0xd6e20, autonomous at 17.5 s):
+- The full r5 map has NO jato, NO memsponge, NO sysopt — only libnpth + its
+  bt/dl/unw/unwind plugins + libmonitorcollector + the two engines.
+- Every hook-installer loaded in r5 is patched: npth 7639af00 (hooks + sigaction
+  neutered), monitorcollector f3918bdc (hooks neutered).
+- The npth plugins bt/dl/unw/unwind install ZERO hooks (0 hook-install bl, 0
+  hook-install imports) — they are backtrace/unwind/dl helpers.
+=> No library in r5 installs any bytehook/shadowhook hook, so the engines are IDLE
+   (they only manage trampolines while installing/holding hooks). Option (2)
+   "engine trampoline mismanagement" is ruled out: with no active hook there is no
+   trampoline to mismanage.
+=> The corruptor is (1) a NON-HOOK path. npth-worker crashed AUTONOMOUSLY (not from
+   an app native call) at 17.5 s, so it is npth core's background activity — its
+   heap monitoring / worker thread writing metadata with a Bionic-layout assumption
+   over musl mallocng chunk headers. r4 (bd_tracker_w victim) has jato loaded too,
+   but r5 proves the non-hook npth source alone corrupts; jato is not necessary.
+The exact npth function is not pinnable — the recorder has no backtrace (mem_open
+EACCES); only PC/LR/registers.
+
+## npth is a repeat multi-path offender
+#46-3 thread-walk (patched), #48 inline hooks (patched 4f7cc3a6), r5 sigaction
+struct overrun (patched 7639af00), and now r3/r5 a non-hook autonomous heap path.
+Layering yet another point-patch is whack-a-mole on one library.
+
+## Recommendation: whole-library HOLLOW npth stub (metasec-style)
+npth's app-facing ABI is structurally tiny — same shape as metasec:
+- it exports exactly ONE dynamic symbol: JNI_OnLoad
+- NO other APK lib DT_NEEDs libnpth.so (no native-to-native consumer)
+- it registers its natives dynamically via RegisterNatives in JNI_OnLoad
+So a hollow libnpth.so — JNI_OnLoad returns JNI_VERSION_1_6 and SPAWNS NOTHING (no
+worker/monitor thread => the autonomous corruptor is gone) and registers the app's
+npth natives as typed-safe no-ops (=> no UnsatisfiedLinkError/NPE when the Java
+layer calls them) — kills ALL npth corruption paths at once (hooks, sigaction,
+non-hook heap) and cannot regress. The westlake recorder (out-crash42) already
+captures crashes, so losing npth's own crash/APM monitoring is acceptable.
+
+Lighter alternative (kept on the table): stay on 7639af00 and neuter only npth's
+worker/monitor-thread spawn in JNI_OnLoad. Fewer changes and keeps npth's natives
+real, but requires pinning the spawn site (no backtrace) and does not cover any
+app-triggered corrupting native. The hollow stub is preferred: comprehensive and
+final for npth.
+
+## npth app-facing ABI (stub prerequisite — full list in npth-app-abi-48.txt)
+Export: JNI_OnLoad only. Reverse-DT_NEEDED: none.
+JNI natives to register as no-ops = 81 methods, 2 classes:
+  com.bytedance.crash.jni.NativeBridge   71 natives
+  com.bytedance.apm.profiler.Profiler    10 natives
+Return-type safe defaults (JNI primitives don't unbox, so no metasec-style NPE):
+  40 void  -> return
+  10 int   -> 0        9 boolean -> JNI_FALSE     7 long -> 0
+  11 String-> ""(NewStringUTF)   3 String[] -> empty   1 NativeCrashSummary -> null
+Note: the 11 String / 3 String[] returns are non-null to be safe; NativeCrashSummary
+(nLoadNativeCrashSummary) is only on the crash-reporting path (null acceptable).
+(libjato's HeapReferenceCutter/StringUncompressionOpt natives are NOT npth.)
+
+## jato (secondary, r4 only)
+libjato's 26 hook-install sites were verified deref-safe (all `bl; cbz w0` or stub
+stored/overwritten — 0 dangerous derefs), so patch_hook_installs.py can neuter jato
+cleanly if r4 needs it. But r5 shows jato is not the primary source; the non-hook
+npth fix is the priority. Produce the jato patch only if r4 persists after the npth
+stub.
