@@ -8,6 +8,6 @@ state=dev(f'cat /proc/uptime; cat /proc/{pid}/stat; grep libmetasec /proc/{pid}/
 (r/(label+'-state.txt')).write_text(state)
 print('ORIGINAL_ALIVE',live(pid,d['birth']));print(state[:1800]);print('\n'.join(l for l in s.splitlines() if any(x in l for x in ('[UNCAUGHT]','Fatal signal','symbol not found','[B47-SLA] ENTRY','[ABILITY38-RESUMED]','[WESTLAKE-OH-JIT]','[WESTLAKE-JIT-BOOT]')))[-4000:])
 if live(pid,d['birth']):
- recv('/proc/'+str(pid)+'/maps',r/(label+'-maps.txt'))
+ proc_maps(pid,r/(label+'-maps.txt'))
  (r/(label+'-identity.txt')).write_text(dev('cat /proc/'+str(pid)+'/status /proc/'+str(pid)+'/attr/current'))
 shot(r,label)

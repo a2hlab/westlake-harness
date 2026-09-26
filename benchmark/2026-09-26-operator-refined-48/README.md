@@ -10,4 +10,6 @@
 
 测试进行中。
 
-首轮safe-r1/25973：最后采样活101.35s、104.79s检查已死，parent killed by signal 11。无Boolean-null NPE、无main exit(1)；NewDetailActivity有ENTRY未见完成RESUMED/正文。faultlog初次及延后均未取得，SIG11归属未知，不宣称metasec已消除。JIT日志选择文件后端，但捕获maps仅见同inode r--s/r-xs，未见rw-s；完整双视图验收未通过。
+首轮safe-r1/25973：最后采样活101.35s、104.79s检查已死，parent killed by signal 11。无Boolean-null NPE、无main exit(1)；NewDetailActivity有ENTRY未见完成RESUMED/正文。faultlog初次及延后均未取得，SIG11归属未知，不宣称metasec已消除。JIT日志选择文件后端；首轮maps被HDC直接读取procfs截断到4011字节，先前据此推断“缺rw-s”无效（已更正）。第三轮改为板上cat到普通文件后取回，4717行含末尾stack；同inode300645具r--s/r-xs/rw-s、无rwx文件映射，实际双视图成立。
+
+第二/三轮4522/11320亦signal11退出，最后活/检查死分别118.09/121.65s、139.13/142.69s。第三轮实际输入为同意后点未登录tab，未取得登录页；无Boolean-null NPE或main exit(1)，SIG11缺原生栈，归属未知。不能从“未见metasec栈”写成metasec崩溃0。第四轮继续。

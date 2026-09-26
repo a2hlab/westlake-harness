@@ -31,3 +31,11 @@ def kill_checked(pid):
 def shot(r,label):
  remote='/data/local/tmp/refined48.jpeg';dev('snapshot_display -f '+remote+' >/dev/null');recv(remote,r/(label+'.jpeg'))
  p=ROOT/'preview'/r.name/(label+'.jpeg');p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes((r/(label+'.jpeg')).read_bytes());print('SHOT',p,flush=True)
+
+# HDC file recv on procfs stops after its first ~4 KiB read; spool to a regular file.
+def proc_maps(pid, destination):
+ remote='/data/local/tmp/refined48-maps-'+str(int(pid))+'.txt'
+ dev('cat /proc/'+str(int(pid))+'/maps > '+remote)
+ recv(remote,destination)
+ lines=destination.read_text().splitlines()
+ assert len(lines)>100 and any('[stack]' in l for l in lines),'incomplete maps snapshot'

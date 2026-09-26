@@ -12,7 +12,7 @@ src=runtime+'/lib/arm64-v8a/libmetasec_ml.so'
 dst=runtime+'/app-data/'+PKG+'/app_lib/libmetasec_ml.so'
 def collect(d):
  if live(d['child'],d['birth']):
-  recv('/proc/'+str(d['child'])+'/maps',r/'maps.txt')
+  proc_maps(d['child'],r/'maps.txt')
   (r/'identity.txt').write_text(dev('cat /proc/'+str(d['child'])+'/status /proc/'+str(d['child'])+'/attr/current'))
  recv(runtime+f"/private-tmp/adapter_child_{d['child']}.stderr",r/'child.stderr')
  recv(stage+'/parent.log',r/'parent.log')
