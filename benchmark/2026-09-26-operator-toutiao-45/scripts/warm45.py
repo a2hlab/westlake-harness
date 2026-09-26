@@ -1,5 +1,6 @@
 """Preserve all app data; replace only this task's child/parent and mailbox."""
 from board45 import *
+from jit_cache45 import prepare_jit_cache
 oldname,name=sys.argv[1:3];old=R/oldname;r=R/name;assert not r.exists();r.mkdir()
 d=json.loads((old/'device-report.json').read_text());runtime=d['runtime']
 for key,path in [('child.stderr',runtime+f'/private-tmp/adapter_child_{d["child"]}.stderr'),('parent.log',d['stage']+'/parent.log')]:recv(path,old/key)
@@ -20,6 +21,7 @@ for _ in range(120):
  if 'READY' in dev('if [ -S '+d['socket']+' ]; then echo READY; fi'):break
  time.sleep(.25)
 else:raise RuntimeError('parent not ready')
+prepare_jit_cache(dev,send,runtime,d['parent'])
 c=next(x['command'] for x in rows if '/host_spawn /dev/unix' in x['command']);d['child']=int(re.search(r'result=0 pid=(\d+)',dev(c))[1])
 uid=20010053;box=f'/proc/{d["child"]}/root/data/local/tmp/noice_tap.{d["child"]}'
 dev(f': > {box}; chown {uid}:{uid} {box}; chmod 666 {box}; ln -sf {box} /data/local/tmp/noice_tap')

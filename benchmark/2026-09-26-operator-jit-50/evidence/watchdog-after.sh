@@ -2,10 +2,10 @@
 # Generated for one operator45 deployment. No touch injection or focus calls while alive.
 D=/data/local/tmp/operator45
 C=/data/local/tmp/operator45-crashes
-RUNTIME=@@RUNTIME@@
-STAGE=@@STAGE@@
-SOCKET=@@SOCKET@@
-UID45=@@UID@@
+RUNTIME=/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d
+STAGE=/data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d
+SOCKET=/dev/unix/socket/A2HSourcec91d26bfb4db4fd5a002
+UID45=20010053
 mkdir -p "$D" "$C"
 configure_maps() {
  echo 1048576 > /proc/sys/vm/max_map_count || return 1
@@ -117,7 +117,7 @@ while [ ! -e "$D/stop" ]; do
  parent=$(cat "$D/parent.pid")
  if ! kill -0 "$parent" 2>/dev/null || [ ! -S "$SOCKET" ]; then
   rm -f "$SOCKET"
-  @@PARENT_COMMAND@@ > "$D/parent-start.txt"
+  nohup /data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d/source_app_namespace /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d 20010053 /system/bin/sh /data/local/tmp/asx/run.sh >/data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d/parent.log 2>&1 </dev/null & echo $! > "$D/parent-start.txt"
   parent=$(cat "$D/parent-start.txt"); echo "$parent" > "$D/parent.pid"
   n=0; while [ ! -S "$SOCKET" ] && [ "$n" -lt 40 ]; do sleep .25; n=$((n+1)); done
  fi
@@ -133,7 +133,7 @@ while [ ! -e "$D/stop" ]; do
   printf '%s preseed48_rc=%s parent=%s\n' "$(date +%s)" "$hook_rc" "$parent" >> "$D/startup-settings.log"
   [ "$hook_rc" = 0 ] || { sleep 3; continue; }
  fi
- @@SPAWN_COMMAND@@ > "$dest/spawn.txt" 2>&1
+ /data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d/host_spawn /dev/unix/socket/A2HSourcec91d26bfb4db4fd5a002 /data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d/request.bin > "$dest/spawn.txt" 2>&1
  next=$(sed -n 's/.*result=0 pid=\([0-9][0-9]*\).*/\1/p' "$dest/spawn.txt" | tail -n 1)
  if [ -z "$next" ]; then printf '%s spawn_failed\n' "$(date +%s)" >> "$C/ERRORS"; sleep 3; continue; fi
  child=$next; born=$(proc_start "$child")

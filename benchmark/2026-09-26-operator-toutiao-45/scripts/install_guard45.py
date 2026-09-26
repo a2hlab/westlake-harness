@@ -1,4 +1,5 @@
 from board45 import *
+from jit_cache45 import prepare_jit_cache
 name=sys.argv[1];r=R/name;d=json.loads((r/'device-report.json').read_text())
 update='--update' in sys.argv
 if update:
@@ -9,6 +10,7 @@ if update:
 rows=[json.loads(s) for s in (r/'commands.jsonl').read_text().splitlines()]
 parent=next(x['command'] for x in rows if x['command'].startswith('nohup ') and 'source_app_namespace' in x['command'])
 spawn=next(x['command'] for x in rows if '/host_spawn /dev/unix' in x['command'])
+prepare_jit_cache(dev,send,d['runtime'])
 t=pathlib.Path(__file__).with_name('watchdog45.sh.in').read_text()
 for key,val in {'RUNTIME':shlex.quote(d['runtime']),'STAGE':shlex.quote(d['stage']),'SOCKET':shlex.quote(d['socket']),'UID':'20010053','PARENT_COMMAND':parent,'SPAWN_COMMAND':spawn}.items():t=t.replace('@@'+key+'@@',val)
 p=R/'watchdog45.sh';p.write_text(t)

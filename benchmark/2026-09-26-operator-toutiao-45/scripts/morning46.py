@@ -1,5 +1,6 @@
 """VM-only: install the four accepted patches into the existing operator45 runtime."""
 from board45 import *
+from jit_cache45 import prepare_jit_cache
 r=R/'morning46';r.mkdir(exist_ok=True)
 d=json.loads((R/'warm/device-report.json').read_text())
 root=pathlib.Path(__file__).resolve().parents[1]
@@ -23,6 +24,7 @@ def launch(name):
   if 'READY' in dev('if [ -S '+d['socket']+' ]; then echo READY; fi'):break
   time.sleep(.25)
  else:raise RuntimeError('parent socket not ready')
+ prepare_jit_cache(dev,send,runtime,d['parent'])
  d['child']=int(re.search(r'result=0 pid=(\d+)',dev(spawn))[1])
  box=f'/proc/{d["child"]}/root/data/local/tmp/noice_tap.{d["child"]}'
  dev(f': > {box}; chown 20010053:20010053 {box}; chmod 666 {box}; ln -sf {box} /data/local/tmp/noice_tap')
