@@ -13,3 +13,5 @@
 首轮safe-r1/25973：最后采样活101.35s、104.79s检查已死，parent killed by signal 11。无Boolean-null NPE、无main exit(1)；NewDetailActivity有ENTRY未见完成RESUMED/正文。faultlog初次及延后均未取得，SIG11归属未知，不宣称metasec已消除。JIT日志选择文件后端；首轮maps被HDC直接读取procfs截断到4011字节，先前据此推断“缺rw-s”无效（已更正）。第三轮改为板上cat到普通文件后取回，4717行含末尾stack；同inode300645具r--s/r-xs/rw-s、无rwx文件映射，实际双视图成立。
 
 第二/三轮4522/11320亦signal11退出，最后活/检查死分别118.09/121.65s、139.13/142.69s。第三轮实际输入为同意后点未登录tab，未取得登录页；无Boolean-null NPE或main exit(1)，SIG11缺原生栈，归属未知。不能从“未见metasec栈”写成metasec崩溃0。第四轮继续。
+
+用户新指令中止混合配置：safe-r4于uptime110953前后主动停止，user-stop.json单列，不算自然崩溃/正式通过；safe-r5未启动。r4同意前等待约265s，uinput第二条110818.36，详情RESUMED110824.240（5.88s），截图只见文章框架，正文持续空白。该时序不与前三轮同等比较。后续改到独立test/metasec-isolated-48做匿名JIT+被动记录器三轮，#50 A/B延后。

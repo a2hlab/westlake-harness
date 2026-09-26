@@ -19,7 +19,7 @@ for r in sorted(R.glob('*-r[0-9]*')):
  inputs=[json.loads(l) for l in (r/'inputs.jsonl').read_text().splitlines()] if (r/'inputs.jsonl').exists() else []
  consent_inputs=[i for i in inputs if '-d 600 1273' in i['command']]
  consent=float(consent_inputs[0]['output'].split()[0]) if consent_inputs else None
- clicks=[float(i['output'].split()[0]) for i in inputs if '-d 380 295' in i['command']]
+ clicks=[float(i['output'].split()[0]) for i in inputs if any(x in i['command'] for x in ('-d 380 295', '-d 380 380'))]
  resumed=[l for l in lines if l.startswith('[ABILITY38-RESUMED]')]
  # Concurrent native logging can prefix a real marker on the same line.
  # Match the exact lifecycle record, never an Activity substring in settings JSON.
