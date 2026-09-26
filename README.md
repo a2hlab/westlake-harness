@@ -126,7 +126,9 @@ kind of work from where the corpus started
 | `benchmark/2026-09-21-ndk-coverage/` | **The entire NDK against the OH board**: of 4,449 public symbols, OH provides 59%, Westlake 3%; the missing 1,719 reduce to ten welds plus the libc shim, and 165 are already built by Westlake but not deployed. |
 | `benchmark/2026-09-18-mvp-target/` | The Android-specific platform contract of both MVP apps: 206 symbols, of which 48 are ours to implement. |
 | `benchmark/2026-08-23-toutiao/runtime-evidence/android-baseline/` | **Static reading versus running**, on a OnePlus 6T: 280 methods and five whole libraries that no APK scan can see, 43 failing `dlsym` lookups, 463 methods never exercised. |
+| `benchmark/2026-09-25-toutiao-source-board/` | **Toutiao on the source-built runtime, three fresh boards**: four layers peeled — board state, touch coordinates (`5e91ebc`), WebView render backend (`5c06883`), and an Android-visible process name that sent the token SDK's provider into 194,500-deep self-recursion (`19fb4c2`); the fifth, several threads recursing at once, is open. |
 | `benchmark/2026-08-23-toutiao/native-analysis/` | Provenance and surface reach over 138 stripped arm64 libraries: 1417 recovered JNI methods, 47% touching no platform surface. |
+| `benchmark/2026-09-26-toutiao-crash-knowledge/` | **The seven crash classes behind "opens then dies in 1–3 min", and how each is neutralised on the musl side without a real Bionic.** WebView GLES-order, MediaCodec SIGTRAP, npth musl self-pointer spin, TicketGuard HMAC-CTX split, in-process-renderer `vm.max_map_count` OOM, xasan/heap_tracker `__libc_malloc_dispatch` heap corruption, and the metasec missing-symbol → NPE-exit chain whose true residual (`DoLazyInit` reading Bionic pthread) is the only Bionic-bound part. Includes the known-good baseline, the two speed levers (JIT file cache, dex2oat oat-247), eight methodology pitfalls, and why hanbin's Bionic route has not solved metasec either. |
 
 ---
 
