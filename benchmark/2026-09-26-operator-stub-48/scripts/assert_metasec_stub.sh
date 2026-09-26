@@ -37,7 +37,17 @@ uc=$(printf '%s\n' "$un" | grep -c . )
 [ "$uc" = 0 ] && say OK "no undefined global symbols (fully self-contained)" \
   || say WARN "$uc undefined symbols (real lib, not hollow): $(printf '%s ' $un | cut -c1-80)…"
 
+# 6. Safe-value dispatcher: the refined stub boxes typed non-null results
+#    (Boolean/Integer via valueOf) instead of returning null. These class/method
+#    strings prove the typed-return paths are compiled in — the null stub had none.
+miss=""
+for s in "java/lang/Boolean" "java/lang/Integer" "valueOf"; do
+  strings "$L" 2>/dev/null | grep -qxF "$s" || miss="$miss $s"
+done
+[ -z "$miss" ] && say OK "safe-value dispatcher (boxes Boolean/Integer, not null)" \
+  || say MISS "null-returning dispatcher — missing boxing:$miss (would NPE app wrappers)"
+
 echo
-[ "$fail" = 0 ] && echo "PASS: hollow metasec stub covers the app native ABI" \
+[ "$fail" = 0 ] && echo "PASS: safe-value hollow metasec stub covers the app native ABI" \
                || echo "FAIL: stub does not cover the app native ABI"
 exit $fail
