@@ -23,3 +23,21 @@ bounded-r1..3均按173s清场，无守护、无超时，但人工读图/发指�
 auto-r1/r2的条目尝试紧跟同意约1秒，仍命中正在退出的同意窗口（r1日志session583），末帧均是TransparentAccountLoginActivity登录页；不当作正文通过，也不据此认定桩引入登录副作用。r2看到无遮挡信息流后另补uinput(380,410)，仍记录实际结果。auto-r3改为两个独立截图门槛：先识别并点击同意，再等无遮挡信息流（白色背景/底部头条红图标，五张正负例验证）才点(380,410)，全部输入仍是真实uinput。前两轮不删、不用第三轮替换。
 
 观察窗总计173秒与文章存活180秒是不同口径；此组只执行最新限时指令。记录器fd证明已初始化，未遇SIG11不能证明已成功捕获一次真实native崩溃。日志中的work_thread SIGABRT和主进程是否退出分列。
+
+## Final result: ACK(blocked), R2=partially
+
+All three original processes survived to planned termination. Readable article acceptance: 0/3.
+
+|Round|Child/parent|Observed seconds|SIG11 headers/snapshots|Final image|Post-cleanup MemAvailable KiB|
+|---|---|---:|---|---|---:|
+|auto-r1|9341/9308|173.008|0/0|Login page, no article body|5938396|
+|auto-r2|17894/17860|173.003|0/0|Login page, no article body|5938336|
+|auto-r3|22989/22956|173.010|0/0|Login page, no article body|5934752|
+
+Each round selected anonymous JIT; file-backed log count=0, Boolean-null NPE=0, no observed main exit(1). Each had a work_thread SIGABRT banner (TIDs 11588, 20417, 25471) while the original process survived, plus a Chrome_ProcessLauncherThread missing-child-service RuntimeException. These are not SIG11 and do not establish a metasec/JIT cause.
+
+auto-r3 waited for unshaded feed (reviewed feed-gate-113.jpeg), then physical uinput at uptime114148.31. START at114169510 was TransparentAccountLoginActivity; no NewDetail ENTRY. The touch target/login transition is unresolved; neither article success nor a stub-induced login regression is established.
+
+HDC timeout and cleanup failure counts: 0/3. The real Mac HDC timeout self-test (sleep3, timeout0.3) returned TimeoutError in about0.36s. Final board state: no app/appspawn PIDs, stop PRESENT, free1029MiB and MemAvailable5861348KiB; free and available are distinct.
+
+Preparation bounded-r1..3 retained: alive173s, detail ENTRY without RESUMED, final feed images; late manual input shortened article observation. single-r1 failed before spawn. auto-r1/r2 used98f0625; r3 added the feed screenshot gate, so these are not identical-protocol A/B samples. No guardian or #50 A/B was started.
