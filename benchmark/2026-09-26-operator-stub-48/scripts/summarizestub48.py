@@ -2,7 +2,7 @@
 from boardstub48 import *
 rows=[]
 for r in sorted(R.glob('*-r[0-9]*')):
- if not (r/'result.json').exists():continue
+ if not (r/'result.json').exists() or (r/'user-stop.json').exists():continue
  d=json.loads((r/'device-report.json').read_text());pid=d['child']
  samples=[json.loads(s) for s in (r/'samples.jsonl').read_text().splitlines()]
  states=[]

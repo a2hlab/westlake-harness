@@ -11,3 +11,9 @@
 首轮12880：最后采样活180.46s、185.05s检查已死；parent exited(1)。metasec引发platform-back-handler的Boolean.booleanValue null NPE（ms.bd.c.p2.d→MSManagerUtils.init），证明包装层并不普遍接受null；另点击进入ArticleInflowActivity后main抛Layout: -79 < 0。后者不能据时序直接归因于stub。feed/真实配图出现且推荐内容变化，未取得正文>180s或登录页，第一轮失败。继续相同候选余轮，保留失败不抵消。
 
 第二轮19769：最后采样活178.37s、182.36s检查已死。再次Boolean.booleanValue null NPE，随后X.DEv null Looper使ActivityThread.main返回，parent exited(1)。NewDetailActivity曾RESUMED，但正文未取得180s窗口；两轮均不能交付。
+
+## 用户叫停旧空壳，待细化版
+
+07:59:10–07:59:13 CST按指令清理61b06572：停止守护26870，保留stop标记；结束第三轮原child26828及parent26789。清理前原实例仍活，第三轮未执行同意/条目输入，未完成验收。原始监测在人工kill后记录dead，该结果明确标作用户中止，汇总排除，不当自然崩溃或成功。只完成前两轮，两轮均失败；第4/5轮未启动。
+
+清理后pidof头条无存活进程、绑定parent无存活、守护不存活；stage和原件备份/实验日志保留，当前库仍是旧空壳，未声称已部署细化版。停止方法已实际执行：touch /data/local/tmp/operator45/stop，再终止guard.pid对应守护。等待细化版交付，不继续旧空壳试验。
