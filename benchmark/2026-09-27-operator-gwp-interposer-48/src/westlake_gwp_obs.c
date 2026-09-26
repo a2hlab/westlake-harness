@@ -1,4 +1,4 @@
-// westlake_gwp_obs.c — v4 OBSERVER (#48). NO guarding (does not perturb musl layout).
+// westlake_gwp_obs.c — v4b OBSERVER (#48). NO guarding (does not perturb musl layout).
 // The non-hook mallocng corruption clobbers a SHARED musl group/meta (victim thread random across
 // main/ChromiumNet0/RenderThread/bd_tracker/platform-io, all a_crash at ld-musl 0xd6e20), NOT a
 // thread-local user chunk — so a user-allocation adjacency guard (canary / page-guard v2/v3) can
@@ -10,10 +10,17 @@
 // the DETECTING thread (each saved LR resolved to lib+off via dl_iterate_phdr) = the free()/realloc
 // call chain that tripped musl's integrity check. Keeps chain-load of the app-required shim.
 //
+// v4b LOAD FIX (vs the v4 that failed to load on-board): the first v4 EXPORTED+interposed `sigaction`
+// and installed our handler via a dlsym(RTLD_NEXT,"sigaction") function pointer. Defining a libc
+// symbol (sigaction) in a zero-DT_NEEDED preload that the OH runtime dlopen()s broke loading (no
+// [WGWP-OBS] armed, 0 chain-load, ~2s pc=0x0). v3 (proven loadable) instead CALLS libc `sigaction`
+// DIRECTLY (a normal UND resolved by the loader) and chains to whatever handler was installed BEFORE
+// us (out-crash42, the runtime recorder present from process start). v4b mirrors v3's exact symbol
+// profile: NO exported sigaction, direct sigaction() install, chain-to-previous. Only the handler
+// body (enhanced dump) and the removed guard machinery differ from v3.
+//
 // Malloc family is a thin PASS-THROUGH (guarding disabled) so musl's native allocator/layout is
-// untouched. To guarantee our SIGSEGV handler stays ON TOP (our preload runs before out-crash42, so
-// a later installer would shadow us), we interpose sigaction: any SIGSEGV registration re-installs
-// OURS on top and chains to theirs. Header-minimal, -nostdlib, env-free, aarch64.
+// untouched. Header-minimal, -nostdlib, env-free, aarch64.
 #include <stddef.h>
 #include <stdint.h>
 
@@ -25,7 +32,7 @@ extern char *getenv(const char *);
 extern long  write(int, const void *, size_t);
 extern void *memset(void *, int, size_t);
 extern void  abort(void);
-extern int   sigaction(int, const void *, void *);   // interposed below
+extern int   sigaction(int, const void *, void *);   // called DIRECTLY (UND, loader-resolved) — NOT interposed
 
 #define RTLD_NEXT ((void*)-1)
 #define RTLD_NOW  0x2
@@ -62,7 +69,6 @@ static int   (*real_posix_memalign)(void **, size_t, size_t);
 static void *(*real_memalign)(size_t, size_t);
 static void *(*real_aligned_alloc)(size_t, size_t);
 static size_t(*real_usable)(void *);
-static int   (*real_sigaction)(int, const void *, void *);
 
 static void puts2(const char*s){ size_t n=0; while(s[n])n++; (void)write(2,s,n); }
 static void puthex(unsigned long v){ char b[19]; b[0]='0';b[1]='x'; for(int i=0;i<16;i++){int nib=(v>>((15-i)*4))&0xf; b[2+i]=nib<10?('0'+nib):('a'+nib-10);} b[18]='\n'; (void)write(2,b,19); }
@@ -77,7 +83,6 @@ static void resolve_real(void){
     real_memalign=(void*(*)(size_t,size_t))dlsym(RTLD_NEXT,"memalign");
     real_aligned_alloc=(void*(*)(size_t,size_t))dlsym(RTLD_NEXT,"aligned_alloc");
     real_usable=(size_t(*)(void*))dlsym(RTLD_NEXT,"malloc_usable_size");
-    real_sigaction=(int(*)(int,const void*,void*))dlsym(RTLD_NEXT,"sigaction");
 }
 
 // resolve an address -> owning lib name + file offset (in-process; no /proc/maps needed)
@@ -101,13 +106,16 @@ static void resolve_print(const char*tag, unsigned long a){
     else puts2("      -> (unresolved)\n");
 }
 
-static unsigned long g_chain_h=0, g_chain_fl=0;   // handler we chain to (out-crash42)
+// previous SIGSEGV handler storage (musl struct sigaction = 152B: handler@0, mask@8(128), flags@136, restorer@144)
+static unsigned char g_oldsa[160];
 static volatile int g_in_handler=0;
 
 static void seg_handler(int sig, void*si, void*uc){
+    unsigned long oldh = *(unsigned long*)g_oldsa;          // previous sa_handler @0 (out-crash42 if present)
+    unsigned long oldfl= *(unsigned long*)(g_oldsa+136);    // previous sa_flags @136
     if(__atomic_exchange_n(&g_in_handler,1,__ATOMIC_ACQ_REL)){
         // nested fault (e.g. while walking a bad fp) -> chain/abort immediately, no re-dump
-        if(g_chain_h && g_chain_h!=1){ if(g_chain_fl&SA_SIGINFO_)((void(*)(int,void*,void*))g_chain_h)(sig,si,uc); else ((void(*)(int))g_chain_h)(sig); return; }
+        if(oldh && oldh!=1 && oldh!=(unsigned long)&seg_handler){ if(oldfl&SA_SIGINFO_)((void(*)(int,void*,void*))oldh)(sig,si,uc); else ((void(*)(int))oldh)(sig); return; }
         abort();
     }
     unsigned long pc=*(unsigned long*)((char*)uc+UC_PC_OFF);
@@ -135,40 +143,24 @@ static void seg_handler(int sig, void*si, void*uc){
         fp=saved_fp;
     }
     puts2("[WGWP-OBS] ==== end ====\n");
-    // chain to out-crash42 (also captures) or abort (re-raise)
-    if(g_chain_h && g_chain_h!=1){ if(g_chain_fl&SA_SIGINFO_)((void(*)(int,void*,void*))g_chain_h)(sig,si,uc); else ((void(*)(int))g_chain_h)(sig); g_in_handler=0; return; }
+    // chain to the previous handler (out-crash42) so it also captures; else abort (re-raise)
+    if(oldh && oldh!=1 && oldh!=(unsigned long)&seg_handler){ if(oldfl&SA_SIGINFO_)((void(*)(int,void*,void*))oldh)(sig,si,uc); else ((void(*)(int))oldh)(sig); g_in_handler=0; return; }
     abort();
 }
 
-static unsigned char g_oldsa[160];
-static void install_ours(void){
+// install our SA_SIGINFO SIGSEGV handler via a DIRECT libc sigaction() call (v3-proven, loader-resolved
+// UND). g_oldsa receives the previous handler (out-crash42) which seg_handler then chains to.
+static void install_handler(void){
     unsigned char act[160]; memset(act,0,sizeof(act));
     *(unsigned long*)act=(unsigned long)&seg_handler;      // sa_handler @0
     *(unsigned long*)(act+136)=SA_SIGINFO_;                // sa_flags @136 (after 8B handler + 128B mask)
-    real_sigaction(SIGSEGV_, act, g_oldsa);                // our 160B buf -> no OOB
-    unsigned long prev=*(unsigned long*)g_oldsa;
-    if(prev && prev!=(unsigned long)&seg_handler){ g_chain_h=prev; g_chain_fl=*(unsigned long*)(g_oldsa+136); }
-}
-
-// interpose sigaction: keep OUR SIGSEGV handler on top; chain to whoever registers later (out-crash42)
-int sigaction(int sig, const void*act, void*old){
-    if(!real_sigaction) resolve_real();
-    if(sig==SIGSEGV_ && act){
-        unsigned long th=*(unsigned long*)act;
-        if(th!=(unsigned long)&seg_handler){
-            g_chain_h=th; g_chain_fl=*(unsigned long*)((char*)act+136);   // their handler = our new chain
-            if(old){ memset(old,0,160); *(unsigned long*)old=(unsigned long)&seg_handler; }  // best-effort
-            install_ours();                                              // re-assert ours on top
-            return 0;
-        }
-    }
-    return real_sigaction ? real_sigaction(sig,act,old) : 0;
+    sigaction(SIGSEGV_, act, g_oldsa);                     // musl writes 152B into our 160B buf (no OOB)
 }
 
 __attribute__((constructor(101)))
 static void obs_init(void){
     resolve_real();
-    install_ours();
+    install_handler();
     puts2("[WGWP-OBS] armed (observer: no guarding; regs+fp-backtrace dump at a_crash)\n");
     const char*shim=getenv("WGWP_SHIM"); if(!shim||!shim[0]) shim="/data/local/tmp/asx/webview-t-lib/libwebview_bionic_shim.so";
     void*h=dlopen(shim,RTLD_GLOBAL|RTLD_NOW);
