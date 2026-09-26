@@ -1,0 +1,59 @@
+# npth-patch residual r3/r5 diagnosis + next-lib patch (#48)
+date: 2026-09-26   evidence: pure-r3, pure-r5
+
+## The patch worked partially
+The npth no-inline-hooks patch (4f7cc3a6) gave warm 3/5 clean (read 3 real
+articles) — npth's inline hooks were ONE real corruption source (0/5 -> 3/5). warm
+is confirmed a MULTI-source SOURCE-NATIVE-LOAD monitor queue. Two residuals:
+
+## r5 — NOT a patch regression; npth's sigaction struct overrun (non-hook path)
+Thread npth-worker, SIGSEGV si_code=2 (SEGV_ACCERR), si_addr=0x7f76800000 (page
+aligned), PC = musl `sigaction+0x1a4`, fault insn `str x8, [x19, #144]`.
+- x19 = si_addr - 144 = 0x7f767fff70 — a REAL high address, NOT the fake stub. A
+  "mov x0,#1" regression would fault near 0x91 (1+offset); this is a page-boundary
+  write. So r5 is NOT introduced by the patch's fake-success stub.
+- musl `sigaction` copies a 152-byte `struct sigaction` to x19 (its k_sigaction).
+  musl's sigset_t is 128 bytes (1024 signals) vs Bionic's 8 bytes, so musl's struct
+  is far larger. npth (Bionic ABI) passed a Bionic-sized sigaction buffer that sits
+  144 bytes before a page boundary; musl's 152-byte write runs off the end into a
+  read-only page -> SEGV_ACCERR.
+- This is npth's NON-HOOK path — its signal-handler management — hitting a
+  Bionic-vs-musl struct-size mismatch. It is exposed because the patch KEEPS npth
+  loaded (the refuse would not, but the refuse is bypassed by SOURCE-NATIVE-LOAD).
+- FIX direction (a further, deeper npth patch): neuter npth's sigaction handler
+  install so npth-worker never calls musl sigaction with the Bionic struct. The
+  westlake recorder (out-crash42) catches crashes independently, so npth does not
+  need its own signal handlers. (Not built this turn — see task-2 first.)
+
+## r3 — another SOURCE-NATIVE-LOAD lib's inline hook
+Thread platform-single, mallocng 0xd6e20 (get_meta/free trap = metadata corruption
+= the inline-hook signature). loaded_monitors: libjato, libgodzilla-memsponge,
+libgodzilla-sysopt, libmonitorcollector-lib, npth (hooks neutered), engines. With
+npth's hooks gone, the corruptor is one of the OTHER inline-hookers, which load via
+SOURCE-NATIVE-LOAD (constructors) and so cannot be refused. Same mechanism as npth:
+inline-hooking hot functions, shadowhook trampoline mismanagement on musl.
+
+## Task 2: push the binary-neuter to the next lib(s)
+scripts/patch_hook_installs.py — GENERIC: locates each lib's bytehook/shadowhook
+hook-INSTALL PLT stub (from .rela.plt + .plt disassembly) and replaces every `bl`
+to it with `mov x0,#1` (fake-success stub). Validated on npth: it reproduces the
+hand-found sites 0x1ffb4 + 0x24a34 and the identical sha 4f7cc3a6.
+
+Patched candidates (base = app-inputs/toutiao/lib/arm64-v8a/<lib>.so; rebuild with
+patch_hook_installs.py; NOT deployed — board is codex-2's):
+  libgodzilla-memsponge.so  4 hooks  sha 2f066332…  PRIMARY r3 suspect (godzilla
+        memory optimizer, GCThreadPriorityOpt); its 4 sites are deref-safe (stub
+        stored in x24 or overwritten by `mov x0,x19`, never dereferenced).
+  libmonitorcollector-lib.so 1 hook  sha f3918bdc…  (has JNI_OnLoad)
+  libgodzilla-sysopt.so     2 hooks  sha c92d0ea5…  (ctor-loaded, no JNI_OnLoad)
+  libjato.so               ~26 hooks (shadowhook_hook_sym_addr/func_addr)  HIGHER
+        RISK: many sites, fake-stub deref not verified per-site; produce with the
+        tool only if r3 persists after memsponge+mc+sysopt, and verify each site.
+All patched libs: 0 residual hook-install bl, valid ELF. memsponge/sysopt install
+via constructors (no JNI_OnLoad) — the neuter lets the ctor run but install nothing.
+
+## Recommendation
+Board (codex-2), warm 5 rounds: deploy the COMBINED patch npth(4f7cc3a6) +
+memsponge(2f066332) [+ monitorcollector + sysopt, all low-risk] and check r3 SIG11
+= 0. If r3 persists, add jato (verify its sites). r5 needs the separate npth
+sigaction-neuter patch; it is npth's non-hook Bionic-ABI path, independent of r3.
