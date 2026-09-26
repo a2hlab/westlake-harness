@@ -1,0 +1,70 @@
+# metasec dispatcher ms.bd.c.m.a — cmd → return-type map (#48)
+date: 2026-09-26   source: toutiao APK, 617 call sites (scripts/dispatch_map.py, androguard)
+
+The single native ms.bd.c.m.a(int cmd, int, long, String, Object)Object is a
+command multiplexer. Every com.bytedance.mobsec.metasec.ml.* wrapper calls it
+and check-casts the Object result per cmd. Returning null unboxes to NPE, so the
+stub must return a non-null value of the type each cmd expects. cmd's high byte
+is the command family. Map recovered from the const feeding arg0 and the
+check-cast / unbox at each of the 617 call sites:
+
+  cmd         family  return type observed at call sites          stub returns
+  0x01000001  0x01    String  (×402; +8 null-checked)             ""
+  0x01000003  0x01    ignored                                     "" (0x01 family)
+  0x01000006  0x01    ignored                                     ""
+  0x01000007  0x01    ignored                                     ""
+  0x01000008  0x01    String                                      ""
+  0x02000001  0x02    ignored (setter)                            null
+  0x02000002  0x02    ignored (o2.setDeviceID)                    null
+  0x02000003  0x02    ignored (setInstallID)                      null
+  0x02000004  0x02    ignored (setSessionID)                      null
+  0x02000005  0x02    ignored (setBDDeviceID)                     null
+  0x02000006  0x02    String[]  (o2.getFeatureHash)               new String[0]
+  0x02000007  0x02    String    (o2.getToken)                     ""
+  0x02000008  0x02    Object (null-checked / instance-of)         null
+  0x02000009  0x02    ignored (setCollectMode)                    null
+  0x0200000a  0x02    String[]  (o2.frameSign)                    new String[0]
+  0x0200000b  0x02    ignored (postEventMessage)                  null
+  0x0200000c  0x02    String                                      ""
+  0x0200000d  0x02    Object (null-checked / const/4)             null
+  0x0200000e  0x02    ignored                                     null
+  0x0200000f  0x02    ignored (setMsSettingConfig)                null
+  0x02000010  0x02    ignored (setCustomInfo)                     null
+  0x03000001  0x03    String[]  (onCallToAddSecurityFactor)       new String[0]
+  0x03000002  0x03    ignored (finalize)                          null
+  0x03000003  0x03    Object (null-checked, stored to field)      null
+  0x04000001  0x04    Boolean  (p2.d -> MSManagerUtils.init)      Boolean.TRUE
+  0x04000002  0x04    Object (null-checked)                       null
+  0x04000003  0x04    String   (MSManagerUtils.versionInfo)       ""
+  0x04000004  0x04    Boolean  (f3.run WAIT LOOP)                 Boolean.TRUE
+  0x05000001  0x05    ignored (h0.a)                              null
+  0x06000001  0x06    Object (null-checked)                       null
+  0x06000002  0x06    ignored (finalize)                          null
+  0x08000001  0x08    Integer  (z3.c .intValue())                 Integer(0)
+  0x08000002  0x08    Integer  (z3.b .intValue())                 Integer(0)
+  0x08000003  0x08    ignored                                     Integer(0) (0x08 family)
+  0x08000004  0x08    Integer                                     Integer(0)
+  (162 call sites: cmd const not statically back-traceable; all check-cast to
+   String -> covered by the 0x01-family default "")
+
+## Why the Boolean values are TRUE, not false
+- 0x04000004 (Lms/bd/c/f3;->run) is a spin-wait:
+      Boolean r = (Boolean) a(0x04000004, ...);
+      if (!r.booleanValue()) { Thread.sleep(500); goto retry; }   // loops on false
+  Returning false would hang the thread in a 500 ms retry loop. TRUE breaks it.
+- 0x04000001 (Lms/bd/c/p2;->d, reached from MSManagerUtils.init) unboxes the
+  Boolean and records call timing, then returns the flag to its caller. This is
+  the exact site that NPE'd under the null stub (board stub-r1/r2). TRUE = "ready/ok"
+  is the non-blocking answer.
+Integer results (0x08*) are 0 (neutral status code, e.g. z3$e enum default path).
+Strings are "" and arrays empty: the app compares them against real signatures
+(f3.run: a(0x01000001) equals g3.b().toUpperCase()) — "" won't match, so the
+security action is skipped, which is the intended metasec-unavailable behaviour.
+
+## Not resolvable to a safe default (would need real metasec) — NONE FOUND
+No call site consumes the result in a way that requires a genuine metasec
+computation to stay correct for feed/article reading: results are either
+unboxed primitives (safe neutral value), strings/arrays compared to real
+signatures (safe empty = "skip"), or explicitly null-checked. If a board run
+shows a wrapper still failing on a safe value, that cmd is the evidence metasec
+needs the Bionic root fix.
