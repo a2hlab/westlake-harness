@@ -1,0 +1,144 @@
+--- a/private/tmp/claude-501/-Users-zhaoyue-orca-workspaces-westlake-harness/c3abca54-9df7-4c39-bb9a-5bb4da8fca81/scratchpad/l79jar/smali/adapter/window/WindowSessionAdapter.smali.prepatch
++++ b/private/tmp/claude-501/-Users-zhaoyue-orca-workspaces-westlake-harness/c3abca54-9df7-4c39-bb9a-5bb4da8fca81/scratchpad/l79jar/smali/adapter/window/WindowSessionAdapter.smali
+@@ -19,6 +19,10 @@
+ 
+ .field private static final TAG:Ljava/lang/String; = "OH_WSAdapter"
+ 
++.field private static volatile sLastGoodWidth:I
++
++.field private static volatile sLastGoodHeight:I
++
+ 
+ # instance fields
+ .field private final mBaseWindowTokens:Ljava/util/Map;
+@@ -2073,6 +2077,108 @@
+     throw p0
+ .end method
+ 
++.method private static clampWidth48(I)I
++    .locals 4
++
++    const/4 v0, 0x1
++
++    if-le p0, v0, :cond_degen
++
++    sput p0, Ladapter/window/WindowSessionAdapter;->sLastGoodWidth:I
++
++    return p0
++
++    :cond_degen
++    sget v1, Ladapter/window/WindowSessionAdapter;->sLastGoodWidth:I
++
++    if-gt v1, v0, :cond_log
++
++    invoke-static {}, Landroid/content/res/Resources;->getSystem()Landroid/content/res/Resources;
++
++    move-result-object v2
++
++    invoke-virtual {v2}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
++
++    move-result-object v2
++
++    iget-object v2, v2, Landroid/content/res/Configuration;->windowConfiguration:Landroid/app/WindowConfiguration;
++
++    invoke-virtual {v2}, Landroid/app/WindowConfiguration;->getMaxBounds()Landroid/graphics/Rect;
++
++    move-result-object v2
++
++    invoke-virtual {v2}, Landroid/graphics/Rect;->width()I
++
++    move-result v2
++
++    if-gt v2, v0, :cond_disp
++
++    return p0
++
++    :cond_disp
++    move v1, v2
++
++    :cond_log
++    const-string v2, "[OH_WSA-relayout] DEGENERATE session rect width clamped [#48 Layout:-79 guard]"
++
++    sget-object v3, Ljava/lang/System;->err:Ljava/io/PrintStream;
++
++    invoke-virtual {v3, v2}, Ljava/io/PrintStream;->println(Ljava/lang/String;)V
++
++    return v1
++.end method
++
++.method private static clampHeight48(I)I
++    .locals 4
++
++    const/4 v0, 0x1
++
++    if-le p0, v0, :cond_degen
++
++    sput p0, Ladapter/window/WindowSessionAdapter;->sLastGoodHeight:I
++
++    return p0
++
++    :cond_degen
++    sget v1, Ladapter/window/WindowSessionAdapter;->sLastGoodHeight:I
++
++    if-gt v1, v0, :cond_log
++
++    invoke-static {}, Landroid/content/res/Resources;->getSystem()Landroid/content/res/Resources;
++
++    move-result-object v2
++
++    invoke-virtual {v2}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
++
++    move-result-object v2
++
++    iget-object v2, v2, Landroid/content/res/Configuration;->windowConfiguration:Landroid/app/WindowConfiguration;
++
++    invoke-virtual {v2}, Landroid/app/WindowConfiguration;->getMaxBounds()Landroid/graphics/Rect;
++
++    move-result-object v2
++
++    invoke-virtual {v2}, Landroid/graphics/Rect;->height()I
++
++    move-result v2
++
++    if-gt v2, v0, :cond_disp
++
++    return p0
++
++    :cond_disp
++    move v1, v2
++
++    :cond_log
++    const-string v2, "[OH_WSA-relayout] DEGENERATE session rect height clamped [#48 Layout:-79 guard]"
++
++    sget-object v3, Ljava/lang/System;->err:Ljava/io/PrintStream;
++
++    invoke-virtual {v3, v2}, Ljava/io/PrintStream;->println(Ljava/lang/String;)V
++
++    return v1
++.end method
++
+ .method static resolveRelayoutDimension(III)I
+     .registers 4
+ 
+@@ -4241,6 +4347,10 @@
+ 
+     move-result v10
+ 
++    invoke-static {v10}, Ladapter/window/WindowSessionAdapter;->clampWidth48(I)I
++
++    move-result v10
++
+     if-eqz v0, :cond_d2
+ 
+     iget v9, v0, Landroid/view/WindowManager$LayoutParams;->height:I
+@@ -4261,6 +4371,10 @@
+ 
+     move-result v11
+ 
++    invoke-static {v11}, Ladapter/window/WindowSessionAdapter;->clampHeight48(I)I
++
++    move-result v11
++
+     sget-object v9, Ljava/lang/System;->err:Ljava/io/PrintStream;
+ 
+     new-instance v12, Ljava/lang/StringBuilder;

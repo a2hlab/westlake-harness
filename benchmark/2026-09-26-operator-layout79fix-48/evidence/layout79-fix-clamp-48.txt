@@ -111,3 +111,15 @@ WHAT I NEED FROM codex-2 to emit the exact patched jar + sha:
   (b) codex-2 applies WindowSessionAdapter.relayout-clamp.patch in the westlake adapter
       source tree and rebuilds oh-adapter-framework.jar via the normal framework build,
       then runs scripts/assert_relayout_clamp.sh on it.
+
+## DELIVERED (2026-09-26) — patched jar on the exact baseline
+codex-2 provided the board baseline adapter-runtime-bcp.jar (sha 5731db00…, 198155 B).
+Surgical smali patch applied ON THAT JAR. Two facts corrected vs the source-only plan:
+ (1) the real logic is in relayoutLegacy(...) (the plain relayout() is a WindowRelayoutResult
+     wrapper delegating to it); (2) width/height are resolved via a static helper
+     resolveRelayoutDimension(attrs, requested, session), so the clamp wraps ITS result
+     (v10 width, v11 height) right after each move-result. Product:
+   adapter-runtime-bcp.CLAMP48.jar  sha256 ea5d8b277f1207c928d289196876ad69505d73ab586815daccbda7080169523e (202502 B)
+   inner classes.dex               sha256 c5bd7fd23b0ed5c8a6d2b8dce0bd387f899b6fd0b58f5423314c3e90983d35cf (dex 039)
+ assert_relayout_clamp.sh ALL PASS 9/9; 0 smali deletions / 114 additions; healthy 1200
+ path byte-identical. BCP jar → boot-image deploy (codex-2). See out/CHANGE-NOTES.md.

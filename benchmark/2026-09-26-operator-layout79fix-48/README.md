@@ -26,3 +26,15 @@ real max bounds before any healthy relayout. Normal 1200-wide path is byte-ident
 ROUTED: jar rebuild needs the westlake framework build env ($BRIDGE_SRC/$BRIDGE_ARM64,
 framework.jar) which is not present on this Mac or the orb VM. Source patch + spec are
 complete; codex-2 (build env / board owner) rebuilds via BUILD.md. Not deployed.
+
+## UPDATE 2026-09-26 — DELIVERED (patched jar built)
+codex-2 handed the exact board baseline `adapter-runtime-bcp.jar`
+(sha256 5731db00…, 198155 B). Applied the clamp as a surgical smali patch on that exact
+jar (WindowSessionAdapter lives in `relayoutLegacy`, not the WindowRelayoutResult wrapper;
+width/height are resolved via a `resolveRelayoutDimension` helper — clamp inserted right
+after each result, reusing v10/v11). Product:
+- `out/adapter-runtime-bcp.CLAMP48.jar` — sha256 ea5d8b277f1207c928d289196876ad69505d73ab586815daccbda7080169523e (202502 B); inner classes.dex sha256 c5bd7fd23b0ed5c8a6d2b8dce0bd387f899b6fd0b58f5423314c3e90983d35cf (dex 039).
+- `out/CHANGE-NOTES.md`, `out/WindowSessionAdapter.patched.smali`, `WindowSessionAdapter.smali.clamp48.diff` (0 deletions / 114 additions).
+Validated: smali reassembles to dex 039, round-trip baksmali OK, healthy 1200 path byte-
+identical, `scripts/assert_relayout_clamp.sh` ALL PASS (9/9). BCP jar → codex-2 deploys via
+boot-image rebuild (not overlay). Not deployed by me.
