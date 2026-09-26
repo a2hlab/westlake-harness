@@ -1,0 +1,118 @@
+#!/system/bin/sh
+# Board-only fresh recovery. Legacy operator45 guardian remains stopped.
+D=/data/local/tmp/operator45
+F=$D/fresh48
+C=/data/local/tmp/operator45-crashes
+RUNTIME=@@RUNTIME@@
+STAGE=@@STAGE@@
+SOCKET=@@SOCKET@@
+mkdir -p "$F" "$C"
+[ ! -e "$F/stop" ] || exit 0
+mkdir "$F/lock" 2>/dev/null || exit 2
+trap 'rmdir "$F/lock" 2>/dev/null' EXIT
+trap 'touch "$F/stop"; exit 0' TERM INT
+echo $$ > "$F/guardian.pid"
+# Never permit the legacy warm guardian to race this controller.
+touch "$D/stop"
+uptime_s(){ read up rest < /proc/uptime; echo "${up%%.*}"; }
+birth(){
+ [ -r "/proc/$1/stat" ] || return 1
+ v=$(cat "/proc/$1/stat"); rest=${v##*) }; set -- $rest
+ [ "$1" != Z ] || return 1
+ shift 19; echo "$1"
+}
+clean_all(){
+ cleaned=0; orphans=0
+ for p in $(pidof com.ss.android.article.news appspawn-x); do
+  b=$(birth "$p"); [ -n "$b" ] || continue
+  row=$(cat "/proc/$p/stat"); rest=${row##*) }; set -- $rest; pp=$2
+  [ "$(birth "$p")" = "$b" ] || continue
+  kill -9 "$p" 2>/dev/null && cleaned=$((cleaned+1))
+  [ "$pp" != 1 ] || orphans=$((orphans+1))
+ done
+ sleep 1
+ [ -z "$(pidof com.ss.android.article.news appspawn-x)" ] || return 1
+ free -m > "$F/memory.txt"
+ avail=$(sed -n 's/^MemAvailable: *\([0-9]*\).*/\1/p' /proc/meminfo)
+ [ "$avail" -gt 1048576 ]
+}
+reset_profile(){
+ # Only this controller's immediately preceding disposable profile is removed.
+ old="$RUNTIME/operator-fresh-profile"
+ rm -rf "$old" || return 1
+ mkdir -p "$old" || return 1
+ for p in app-data data webview-t-data; do
+  [ ! -e "$RUNTIME/$p" ] || mv "$RUNTIME/$p" "$old/$p" || return 1
+ done
+ mkdir -p "$RUNTIME/data/dalvik-cache/arm64" "$RUNTIME/app-data/com.ss.android.article.news/code_cache" "$RUNTIME/app-data/com.ss.android.article.news/app_webview" "$RUNTIME/app-data/org.westlake.imehost" "$RUNTIME/webview-t-data" || return 1
+ chown -R 20010053:20010053 "$RUNTIME/data" "$RUNTIME/app-data" "$RUNTIME/webview-t-data"
+ chcon -R u:object_r:data_app_el2_file:s0 "$RUNTIME/app-data/com.ss.android.article.news"
+ echo "$(uptime_s) NEW_PROFILE seq=$seq" >> "$F/events.log"
+}
+archive_exit(){
+ stamp=$(date +%Y%m%d-%H%M%S); dest="$C/fresh-$seq-$stamp"; mkdir -p "$dest"
+ cp "$RUNTIME/private-tmp/adapter_child_$child.stderr" "$dest/child.stderr" 2>"$dest/copy-errors.txt"
+ cp "$STAGE/parent.log" "$dest/parent.log" 2>>"$dest/copy-errors.txt"
+ hex=$(printf '%x' "$child")
+ find "$RUNTIME/private-tmp/crash42" -type f -name "event-$hex-*" > "$dest/fault-paths.txt"
+ find /data/log/faultlog -type f -name "*-$child-*" >> "$dest/fault-paths.txt" 2>/dev/null
+ while IFS= read -r f; do cp "$f" "$dest/" 2>>"$dest/copy-errors.txt"; done < "$dest/fault-paths.txt"
+ signal=$(grep -F "[WESTLAKE-REAP] child $child " "$dest/parent.log" | tail -n 1)
+ elapsed=$(($(uptime_s)-started))
+ clean_all || { echo CLEANUP_FAILED > "$F/state"; touch "$F/stop"; return 1; }
+ printf 'fresh-%s\t%s\t%s\t%s\tpid=%s\tcleaned=%s\tppid1=%s\tmode=fresh\n' "$seq" "$stamp" "$elapsed" "${signal:-unknown}" "$child" "$cleaned" "$orphans" >> "$C/INDEX"
+}
+seq=$(cat "$F/sequence" 2>/dev/null); seq=${seq:-0}
+while [ ! -e "$F/stop" ]; do
+ clean_all || { echo CLEANUP_FAILED > "$F/state"; break; }
+ seq=$((seq+1)); echo "$seq" > "$F/sequence"
+ reset_profile || { echo RESET_FAILED > "$F/state"; break; }
+ echo 1048576 > /proc/sys/vm/max_map_count
+ [ "$(cat /proc/sys/vm/max_map_count)" = 1048576 ] || break
+ timeout 10 power-shell timeout -o 86400000 > "$F/power.log" 2>&1
+ timeout 10 power-shell wakeup >> "$F/power.log" 2>&1
+ timeout 10 aa start -b org.westlake.imehost -a EntryAbility > "$F/foreground.log" 2>&1
+ rm -f "$SOCKET"
+ @@PARENT_COMMAND@@ > "$F/parent-start.txt"
+ parent=$(cat "$F/parent-start.txt"); echo "$parent" > "$D/parent.pid"
+ n=0; while [ ! -S "$SOCKET" ] && [ "$n" -lt 80 ]; do sleep .25; n=$((n+1)); done
+ [ -S "$SOCKET" ] || { echo PARENT_FAILED > "$F/state"; clean_all; break; }
+ @@SPAWN_COMMAND@@ > "$F/spawn.txt" 2>&1
+ child=$(sed -n 's/.*result=0 pid=\([0-9][0-9]*\).*/\1/p' "$F/spawn.txt" | tail -n 1)
+ born=$(birth "$child"); [ -n "$born" ] || { echo SPAWN_FAILED > "$F/state"; clean_all; break; }
+ started=$(uptime_s); last_action=0; ready=0; feed_count=0
+ echo "$child" > "$D/child.pid"; echo "$parent" > "$D/parent.pid"
+ echo "$RUNTIME/private-tmp/adapter_child_$child.stderr" > "$D/child.stderr.path"
+ printf 'child=%s\nparent=%s\nbirth=%s\nstarted=%s\nseq=%s\nmode=fresh\n' "$child" "$parent" "$born" "$started" "$seq" > "$F/instance.txt"
+ echo BOOTSTRAP > "$F/state"
+ while [ ! -e "$F/stop" ]; do
+  [ "$(birth "$child")" = "$born" ] || break
+  now=$(uptime_s)
+  # Only explicit privacy/login matches inject touch; article/feed/unknown never do.
+  label=unknown
+  if timeout 5 snapshot_display -t png -f "$F/current.png" > "$F/snapshot.log" 2>&1; then
+   label=$(timeout 3 "$D/screen-gate" "$F/current.png")
+  fi
+  printf '%s pid=%s label=%s\n' "$now" "$child" "$label" >> "$F/ui.log"
+  [ "$(birth "$child")" = "$born" ] || break
+  if [ $((now-last_action)) -ge 15 ]; then
+   case "$label" in
+    privacy) cp "$F/current.png" "$F/consent-$seq.png"; timeout 5 uinput -T -d 600 1273 -u 600 1273; last_action=$now; echo "$now consent $child" >> "$F/events.log";;
+    login) cp "$F/current.png" "$F/login-$seq.png"; timeout 5 uinput -T -d 55 92 -u 55 92; last_action=$now; echo "$now dismiss_login $child" >> "$F/events.log";;
+   esac
+  fi
+  if [ "$label" = feed ]; then
+   feed_count=$((feed_count+1))
+   if [ "$feed_count" -ge 2 ] && [ "$ready" = 0 ]; then
+    ready=1; cp "$F/current.png" "$F/feed-$seq.png"; echo READY > "$F/state"
+    echo "$now READY pid=$child seq=$seq startup_s=$((now-started))" >> "$F/events.log"
+   fi
+  else feed_count=0; fi
+  sleep 3
+ done
+ [ ! -e "$F/stop" ] || break
+ archive_exit || break
+ # Each recovery returns to top and creates new data, never reuses a warm child.
+ sleep 3
+done
+# Stop marker prevents restart; leave any current app for explicit operator handling.
