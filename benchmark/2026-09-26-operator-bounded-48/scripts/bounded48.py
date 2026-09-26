@@ -79,7 +79,7 @@ if op in ('run','auto'):
   q=__import__('shlex').quote
   result['deadline_timer']=dev('nohup /system/bin/sh -c '+q(timer)+' >'+D+'/bounded48-'+name+'-deadline.log 2>&1 </dev/null & echo $!',5).strip()
   fd=dev('ls -l /proc/'+str(child)+'/fd',5);(r/'recorder-fd.txt').write_text(fd);assert '/private-tmp/crash42' in fd
-  print('ROUND_STARTED',name,child,parent,flush=True);last=-1;observed_alive=True;next_dialog_check=15;auto_clicked=False
+  print('ROUND_STARTED',name,child,parent,flush=True);last=-1;observed_alive=True;next_dialog_check=15;auto_clicked=False;consented=False
   while True:
    elapsed=time.monotonic()-started
    if elapsed>=173:break
@@ -90,17 +90,20 @@ if op in ('run','auto'):
    observed_alive=bool(st and st.rsplit(') ',1)[1].split()[0]!='Z' and st.rsplit(') ',1)[1].split()[19]==birth)
    if not observed_alive:result['failure']='original exited during observation';break
    if op=='auto' and not auto_clicked and elapsed>=next_dialog_check and elapsed<130:
-    from privacy_dialog import privacy_dialog
-    label='consent-gate-'+str(int(elapsed));shot(label,5);next_dialog_check=elapsed+10
-    matched=privacy_dialog(r/(label+'.jpeg'))
-    with (r/'visual-gate.jsonl').open('a') as f:f.write(json.dumps({'elapsed':elapsed,'image':label+'.jpeg','privacy_dialog_matched':matched})+'\n')
+    from privacy_dialog import privacy_dialog, feed_ready
+    label=('feed-gate-' if consented else 'consent-gate-')+str(int(elapsed));shot(label,5);next_dialog_check=elapsed+(3 if consented else 10)
+    matched=feed_ready(r/(label+'.jpeg')) if consented else privacy_dialog(r/(label+'.jpeg'))
+    with (r/'visual-gate.jsonl').open('a') as f:f.write(json.dumps({'elapsed':elapsed,'image':label+'.jpeg','gate':'feed' if consented else 'privacy','matched':matched})+'\n')
     if matched:
-     for xy in ('600 1273','380 380'):
+     for xy in (('380 410',) if consented else ('600 1273',)):
       cmd='cat /proc/uptime; uinput -T -d '+xy+' -u '+xy
       out=dev(cmd,5)
       with (r/'inputs.jsonl').open('a') as f:f.write(json.dumps({'epoch':time.time(),'command':cmd,'output':out,'source':'visual-gated automatic real uinput'})+'\n')
       time.sleep(.7)
-     auto_clicked=True;result['automatic_input_elapsed']=time.monotonic()-started;print('AUTO_UINPUT',name,result['automatic_input_elapsed'],flush=True)
+     if consented:
+      auto_clicked=True;result['automatic_input_elapsed']=time.monotonic()-started;print('AUTO_ARTICLE_UINPUT',name,result['automatic_input_elapsed'],flush=True)
+     else:
+      consented=True;next_dialog_check=time.monotonic()-started+3;print('AUTO_CONSENT_UINPUT',name,flush=True)
    if int(elapsed)//40>last and elapsed<150:last=int(elapsed)//40;shot('during-'+str(last*40),min(10,max(1,(170-elapsed)/2)))
    if elapsed>162 and not result.get('final_shot'):shot('before-cleanup',3);result['final_shot']=True
    time.sleep(min(3,max(0,173-(time.monotonic()-started))))

@@ -8,3 +8,10 @@ def privacy_dialog(path):
  return (all_pixels([(340,1250),(400,1250),(800,1295),(850,1295)],lambda r,g,b:r>235 and 30<g<100 and 20<b<110)
   and all_pixels([(320,850),(880,1150),(320,800),(880,800)],lambda r,g,b:min(r,g,b)>247)
   and all_pixels([(580,720),(610,705)],lambda r,g,b:85<r<160 and 140<g<210 and b>225 and b-r>65))
+
+
+def feed_ready(path):
+ im=Image.open(path).convert('RGB')
+ if im.size!=(1200,1920):return False
+ return (all(min(im.getpixel(xy))>240 for xy in [(1100,280),(100,1800),(1050,1850)])
+  and (lambda r,g,b:r>230 and 35<g<125 and 30<b<125)(*im.getpixel((120,1840))))

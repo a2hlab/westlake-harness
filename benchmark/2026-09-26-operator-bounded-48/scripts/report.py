@@ -5,12 +5,14 @@ for p in sorted(r.glob('*-r*/result.json')):
  d=p.parent;j=json.loads(p.read_text());log=(d/'child.stderr').read_text(errors='replace') if (d/'child.stderr').exists() else '';lines=log.splitlines()
  ent='[B47-SLA] ENTRY bundle=com.ss.android.article.news ability=com.ss.android.detail.feature.detail2.view.NewDetailActivity recordId='
  pos=max((i for i,l in enumerate(lines) if ent in l),default=-1)
- resumes=[l for l in lines[pos+1:] if l.startswith('[ABILITY38-RESUMED]')] if pos>=0 else []
+ end=next((i for i in range(pos+1,len(lines)) if lines[i].startswith('[B47-SLA] ENTRY ')),len(lines))
+ resumes=[l for l in lines[pos+1:end] if l.startswith('[ABILITY38-RESUMED]')] if pos>=0 else []
  inputs=[json.loads(l) for l in (d/'inputs.jsonl').read_text().splitlines()] if (d/'inputs.jsonl').exists() else []
- click=next((float(i['output'].split()[0]) for i in inputs if '-d 380 380' in i['command']),None)
+ clicks=[float(i['output'].split()[0]) for i in inputs if '-d 380 ' in i['command']]
+ click=clicks[-1] if clicks else None
  resume=float(re.search(r'uptime=(\d+)',resumes[0])[1])/1000 if resumes else None
  snapshots=[p.name for p in (d/'faults').glob('*.txt') if 'signal=0xb' in p.read_text(errors='replace')]
- j.update(detail_entry=pos>=0,detail_resumed=resumes,article_click_uptime=click,click_to_resumed_s=resume-click if resume and click else None,
+ j.update(input_records=inputs,article_attempt_uptimes=clicks,lifecycle_entries=[l for l in lines if l.startswith('[B47-SLA] ENTRY ')],fatal_thread_headers=[lines[i+3] for i,l in enumerate(lines) if l.startswith('Fatal signal') and i+3<len(lines)],detail_entry=pos>=0,detail_resumed=resumes,article_click_uptime=click,click_to_resumed_s=resume-click if resume and click else None,
    native_sig11_headers=[l for l in lines if 'Fatal signal 11' in l],native_sig11_snapshots=snapshots,
    fatal_headers=[l for l in lines if l.startswith('Fatal signal')],
    boolean_null_npe='boolean java.lang.Boolean.booleanValue()' in log,
