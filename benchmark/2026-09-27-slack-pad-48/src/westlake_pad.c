@@ -32,8 +32,15 @@ extern void *memset(void *, int, size_t);
 #define RTLD_NOW    0x2
 #define RTLD_GLOBAL 0x100
 
-// Tail slack per allocation. 64 B first (enlarge later if the smash overruns further). env-free.
-#define SLACK ((size_t)64)
+// Tail slack per allocation (env-free, compile-time). Override with -DWPAD_SLACK=N.
+// 64 confirmed A/B: heap-corruption 19%->6%, feed normal. Rebuild at 128/256 to discriminate a
+// bounded linear overrun (residual keeps dropping) from a wild-pointer write (residual hits a floor).
+#ifndef WPAD_SLACK
+#define WPAD_SLACK 64
+#endif
+#define S_(x) #x
+#define S(x) S_(x)
+#define SLACK ((size_t)WPAD_SLACK)
 
 static void *(*real_malloc)(size_t);
 static void  (*real_free)(void *);
@@ -124,7 +131,7 @@ size_t malloc_usable_size(void *p){
 __attribute__((constructor(101)))
 static void pad_init(void){
     resolve_real();
-    puts2("[WGWP-PAD] armed (global slack-padding, SLACK=64, pure pass-through +slack)\n");
+    puts2("[WGWP-PAD] armed (global slack-padding, SLACK=" S(WPAD_SLACK) ", pure pass-through +slack)\n");
     const char *shim = getenv("WGWP_SHIM"); if (!shim || !shim[0]) shim = "/data/local/tmp/asx/webview-t-lib/libwebview_bionic_shim.so";
     void *h = dlopen(shim, RTLD_GLOBAL | RTLD_NOW);
     if (!h){ puts2("[WGWP-PAD] shim dlopen FAILED path="); puts2(shim); puts2("\n"); char*er=dlerror(); if(er){puts2("[WGWP-PAD]   dlerror="); puts2(er); puts2("\n");} }

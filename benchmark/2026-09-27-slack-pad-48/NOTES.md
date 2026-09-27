@@ -51,3 +51,34 @@ Gate: app child stderr shows `[WGWP-PAD] armed` + `shim chain-loaded`. Then run 
 no-pad baseline and measure: (1) feed still renders normally (expected — pure slack, no behavior change);
 (2) crash rate down / eliminated. This is the decisive test of whether global padding neutralizes the
 whole-heap smash. If crashes persist, enlarge SLACK (128/256) — the overrun may exceed 64 B.
+
+## SLACK discriminator (2026-09-27): 64 A/B worked (19%→6%), build 128 + 256 to discriminate
+SLACK=64 board A/B: heap-corruption rate 19% → 6%, feed fully normal (screenshots). Residual 6% =
+overrun >64 B OR wild-pointer write. Discriminator: rebuild at larger SLACK.
+- If the residual keeps dropping with more slack → BOUNDED linear overrun → padding can chase it toward 0.
+- If it floors at ~6% regardless → WILD-POINTER write → padding ceiling (fall back to fresh self-heal).
+
+Source is now parameterized: `-DWPAD_SLACK=N` (default 64). Built both:
+- **SLACK=128** libwestlake_pad.slack128.aarch64-ohos.so — **sha256 `8cc435f346faf612bc19232b68f185375bc48b1d45bae0b55a3087445a94ef66`** (2× per-alloc overhead).
+- **SLACK=256** libwestlake_pad.slack256.aarch64-ohos.so — **sha256 `93f0066c86bc163879a3e66f505faa0e5dc263dbf894f85eb91300789c576039`** (4× per-alloc overhead).
+Both: 8 malloc-family GLOBAL DEFAULT, UND clean (no sigaction/dl_iterate_phdr/emutls), no BIND_NOW,
+chain-load shim, banner prints the SLACK value. Self-tested (glibc): malloc(100) usable 232 (128) /
+360 (256); calloc zeroed; realloc preserved; churn 3000 no crash. VM: ~/a2hlab/ws/out-pad48/.
+
+### Memory-overhead assessment (important — env can't reach the child, so SLACK is baked in)
+SLACK is a FIXED tail per LIVE allocation (not multiplicative on size): total overhead = live_allocs ×
+SLACK. A Chromium/WebView/cronet app can hold ~10^5–10^6 live allocations, so:
+- SLACK=128 → ~+13–128 MB extra RSS at peak.
+- SLACK=256 → ~+26–256 MB extra RSS at peak.
+The tested SLACK=64 ran fine; 256 is 4× that per-alloc, with a real OOM-confound risk on a busy app.
+
+RECOMMENDATION: deploy **SLACK=256** first for the cleanest discriminator (biggest jump from 64). If
+OOM-class symptoms appear — crash rate goes UP (not down), crashes move OFF ld-musl 0xd6e20/0xd5e1c
+(e.g. NULL-deref at a different PC from malloc returning NULL), SIGKILL/OOM-killer, or peak RSS spikes
+— that is the MEMORY ceiling, NOT a padding result; fall back to the pre-built **SLACK=128** (2×, already
+delivered, no rebuild wait). Distinguish before concluding "padding floored".
+
+### Deploy (outer loop) — one A/B round each
+Swap run.sh single-slot preload → libwestlake_pad.slack256.so (or .slack128.so); gate on
+`[WGWP-PAD] armed (... SLACK=256 ...)`; ~15-round A/B vs the SLACK=64 baseline. Report whether the 6%
+residual drops further (linear → try even larger) or holds (wild-write ceiling → self-heal fallback).
