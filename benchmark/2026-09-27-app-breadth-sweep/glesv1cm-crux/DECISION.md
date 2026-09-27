@@ -65,3 +65,28 @@ normal probe on fd-stk.
 Artifacts here: `glesv1_cm_stub.c` (source), `libGLESv1_CM.so.stub` (built, ready to stage),
 `run_crux.sh` (the re-exec approach — kept for reference; superseded by the manifest recipe above),
 `artifacts/stk_impl.err` (evidence the run.sh re-exec hit the ephemeral-`asx` wall).
+
+## RESULT — executed on 5ea34a45 (2026-09-27)
+Deployed via the manifest recipe: added `lib/arm64-v8a/libGLESv1_CM.so` (the stub) to fd-stk's
+`native_libraries` in its `app-input.json` with the stub's sha256 + a `local_substitution` provenance
+block. **probe accepted it (rc=0)** — the `native_libraries` path is NOT rejected (unlike editing the
+APK), and the stub staged to `<logical>/lib/arm64-v8a/libGLESv1_CM.so` beside libSDL2. STK launched
+windowed.
+
+Verdict (screenshot `screens/stk_stubnl2.jpeg`, child stderr `artifacts/stk_stubnl.child.stderr`):
+- **(a) SDL "Error loading libGLESv1_CM.so" is GONE ✅** — the stub satisfied libSDL2's BIND_NOW; 0
+  libGLESv1_CM errors remain in the child stderr. libSDL2 got past the GLESv1_CM DT_NEEDED.
+- **(b) STK NOT lit — next wall `AConfiguration_new: symbol not found`.** STK rendered its OWN SDL error
+  dialog (so window bring-up + STK's own UI work), now naming `Error relocating libSDL2.so:
+  AConfiguration_new: symbol not found`. libSDL2 still UND-needs the NDK **libandroid** cluster:
+  `AConfiguration_*`, `AAsset*`/`AAssetManager_*`, `ALooper_*`, `ANativeWindow_*` — OH's libandroid shim
+  lacks them. (Non-fatal warns: `oh_typeface_mark_child` font degrade, `u_setDataDirectory` ICU.)
+- **(c) 0 `[glesv1_cm_stub] CALLED`** in the child stderr → STK never calls ES1 fixed-function → **gl4es
+  confirmed NOT needed** (empirical, not a guess). Also `[WL-OPENGL] EGLImpl/GLES10..GLES32=ok` and STK
+  obtained an RS node + surface.
+
+**Answer to "can one stub light a whole class of SDL2/ES1 GL apps?"** — Partially. It's a **2-part native
+gap**: ① the GLESv1_CM stub (necessary, verified, no gl4es) clears the GL-load layer; ② OH's libandroid
+still needs the **AConfiguration/NativeActivity/AAssetManager/ALooper/ANativeWindow NDK symbol cluster**
+before STK reaches its GL menu. Both are **named, incremental native-symbol welds** — not window-bring-up
+mystery. Next owner: libandroid NDK shim adds the AConfiguration cluster, then re-run STK for the menu.
