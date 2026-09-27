@@ -40,7 +40,12 @@ D="/data/local/tmp/operator45"; F="$D/selfheal48"
 PDIR="/data/local/tmp/persist-demo"; MANIFEST="$PDIR/manifest.txt"
 TT_RT_HASH="c91d26bf"
 SHOTS="$HERE/screens"; mkdir -p "$SHOTS"
-APPS="${APPS:-wikipedia ooniprobe fd-com-kunzisoft-keepass-libre fd-com-amaze-filemanager fd-auxio antennapod aegis fd-netguard fd-AppManager fd-droidify fd-noice fd-fitness burgerking}"
+# Default demo list = the 12 apps that reliably open to first screen after reboot (verified).
+# burgerking (McDonald's, com.emn8...bk) spawns but CRASHES on the 61b base (shows the host launcher,
+# not the app) — kept in the manifest (openable via `open burgerking` for diagnosis) but OUT of the
+# default sweep. Add it back with APPS_EXTRA=burgerking if you want to include it.
+APPS="${APPS:-wikipedia ooniprobe fd-com-kunzisoft-keepass-libre fd-com-amaze-filemanager fd-auxio antennapod aegis fd-netguard fd-AppManager fd-droidify fd-noice fd-fitness}"
+[ -n "${APPS_EXTRA:-}" ] && APPS="$APPS $APPS_EXTRA"
 
 dev(){ gtimeout "${2:-60}" "$HDC" -t "$S61" shell "$1" 2>&1 | tr -d '\r'; }
 recv(){ gtimeout 40 "$HDC" -t "$S61" file recv "$1" "$2" >/dev/null 2>&1; }
