@@ -251,3 +251,24 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **产物**:batch shim(交付 85c789f4 + 12 条)**sha `679623bacf9cb77a`**;control(=85c789f4)`85c789f48b2bc0c3` 供成对 A/B。VM `~/a2hlab/ws/out-refusebatch48/`。源=westlake-wv46(未改 build 逐字节复现 85c789f4→batch 差异只是 12 条)。机制=扩展 shim 编译期 g_refused_libraries[](dlopen 命中返 NULL）。harness `88c1af9`。
 - **判据(成对 A/B,同代码只差数组)**:batch≪control→字节安全库是残余 smash 源(再二分 12,加密族首嫌);batch≈control→非这些库(野指针写他处→退 SLACK-pad+自愈)。hanbin 周级投入前 go/no-go。
 - **通则**:判某库"可拒不破 feed"先看反查 DT_NEEDED needed_by;=0 才可能安全,但仍需运行期 A/B 验(needed_by=0 只证无链接破坏,不证非 feed-functional)。
+
+## D补:横向 LocalSend/Flutter pc=0 = Impeller GLES 扩展 proc 缺失(claude-3,2026-09-27)
+- **现象**:Flutter app 首帧 "1.raster" 线程 pc=0(blr NULL)。libflutter.so .bss@0xaee000 是全局 GLES ProcTable;主填表器(adrp 0xaee000;str [x8,#N])填核心 proc #960–#3512(跑了),但扩展区(#3520+,含崩溃槽 #468=偏移#3744)由独立 eglGetProcAddress+cbz-null-skip 加载器填。
+- **根因**:此版 libflutter **Impeller 默认**(串 `[Action Required]: Impeller opt-out deprecated`)。某扩展 GL proc 在 OH GLES 驱动 getProcAddress 返 NULL(驱动宣称扩展但不导出其函数),null-guard 跳过存储→槽 0,Impeller 光栅路径**无条件 blr**(不像 Skia 先 null-check)→pc=0。
+- **修法(通用于 OH 上任何 Flutter app 的 GLES proc 缺口)**:①关 Impeller→Skia GL(防御性,容缺失扩展 proc):manifest `io.flutter.embedding.android.EnableImpeller=false` 或 shell arg `--no-enable-impeller`;②`--enable-software-rendering`(绕开 GL 表,保底);③LD_PRELOAD 拦 eglGetProcAddress 记 NULL 名→GLES-shim。判据:表基 adrp、崩溃偏移 vs 主填表器终点(超出=扩展区)、libflutter 后端串。
+- 证据 westlake-harness `benchmark/2026-09-27-localsend-bringup/`(claude-2)+ merged48 `benchmark/2026-09-27-localsend-impeller-re/`(claude-3,harness 15fd424)。
+
+## D补:横向框架合并修复 X telephony NPE + LocalSend Impeller(claude-3,2026-09-27,仅 5ea34a45)
+- **X telephony NPE**:app 注册 PhoneStateListener→`TelephonyManager.listen` 经 `getService("telephony.registry")`=null→`Stub.asInterface(null)=null`→NPE。**修法(通用)**:`OHServiceManager.lookupAdapter` 加 `case "telephony.registry": return LocalServiceBinders.get(name)`;`LocalServiceBinders.get` 加 `proxy(name,"com.android.internal.telephony.ITelephonyRegistry",(c,a)->DEFAULT)`。proxy() 按名运行期加载 AIDL(无编译依赖)+ 动态 Proxy 附本地 Binder,方法返类型默认。**通则**:任何 app 因某 system service getService 返 null 而 NPE→在 OHServiceManager 路由到 LocalServiceBinders no-op proxy(已有 uimode/power/audio/appops… 先例)。
+- **LocalSend Impeller 首帧 pc=0**:见另一条 D补(Impeller GLES 扩展 proc 缺失)。**框架级修法(通用于 OH 上所有 Flutter app)**:`ApplicationMetaDataReader.populate()` 在 `info.metaData=result` 前注入 `if(!containsKey) result.putBoolean("io.flutter.embedding.android.EnableImpeller", false)`→全局强制 Flutter 走 Skia GL(仅 Flutter 读该 key;containsKey 尊重 app 自设)。比逐 app 改 manifest 省事。
+- **产物/构建**:3 个类全在 **`adapter-runtime-bcp.jar`(BCP)**。源码 patch=merged48 `benchmark/2026-09-27-framework-x-localsend-fix/framework-fix.patch`(harness 4da91ef,base westlake 22b9453/framework-cab462ff)。**构建流水线 /home/dspfac/bridge-build 从内环 zhaoyue 会话不可及**→交源码补丁,claude-2/构建环境重建(源码重建 或 CLAMP48 式 smali-patch adapter-runtime-bcp.jar)+ boot-image + stage 5ea34a45。**仅 5ea34a45,不碰 61b06572 头条。**
+
+## E. 横向 app 点亮（2026-09-27，claude 外环）
+把头条战役经验横向迁移到别的 app。**关键规律:旧 `analysis/APP-STATUS.zh.md` 记录普遍乐观/过时——每个 app 必须上板实测真 blocker**(LocalSend 的 HDR 前提废了、X 的 Firebase 墙过时了、麦当劳 dashboard 记录也过时);且**每个 app 是多轮工程(迷你头条战役,逐层剥),不是"点亮到首屏"就一键**。
+
+1. **麦当劳(com.mcdonalds.app,RN)= 干净点亮**:当前 runtime 直接渲染首屏"Sign in or sign up"(FB/Google/Email+真 logo+T&C),稳 5min 无崩,截图确认=首个可用界面。dashboard+5tab(旧记录)在当前 runtime 达不到(登录门+缺 McDonald 专属修复),但首屏 sheet 本身即点亮。benchmark/2026-09-27-mcdonalds-recheck/。
+2. **可复用能力:框架级修复走 smali+boot-image(复用头条 CLAMP48 通路)**:westlake 框架修复源在 `/home/dspfac/bridge-build`(常不可及)→ 但改动若落在 **adapter-runtime-bcp.jar**(BCP,CLAMP48 同 jar),可 **baksmali→smali 外科 patch→dex2oat 重建 boot image(oat247)→部署**,绕开 bridge-build。已实测通(telephony 桩生效)。**telephony 桩模式**:app 注册 PhoneStateListener→`getService("telephony.registry")` 返 null→NPE;修=OHServiceManager/LocalServiceBinders 给 "telephony.registry" 返 no-op ITelephonyRegistry proxy(listen 全按类型 no-op)。benchmark/2026-09-27-framework-{x-localsend-fix,x-localsend-smali}/。
+3. **X/Twitter(com.twitter.android)= 深墙泊车**:过 Firebase(旧墙已废)→ telephony NPE(已修,桩 ITelephonyRegistry)→ **WebView SIGTRAP 新类**:`libwebviewchromium+0x170531c` `brk #0`(Chromium IMMEDIATE_CRASH/CHECK on null 全局 flag),**非头条 #46-1/#46-2**,套头条 WebView shim 85c789f4 无效(崩点逐字节相同)。需 RE Chromium CHECK 的 null 全局 flag=巨型工程。泊车。
+4. **LocalSend(org.localsend.localsend_app,Flutter)= 深墙泊车**:HDR 前提(SurfaceControl.nativeSetDesiredHdrHeadroom)已废(runtime 已 no-op)→ 真墙=libflutter 首帧 `.bss` 槽#468 空函数指针(pc=0),=**Impeller 后端 init 没填分发表**(Impeller 需的 GLES 扩展 proc 在 OH 缺)。修法明确=关 Impeller 回退 Skia GL(`io.flutter.embedding.android.EnableImpeller=false`),但**在 ApplicationMetaDataReader 注入该 metadata 被 Flutter 忽略**(注入点/机制不对)→ 需换注入机制(engine shell arg / 别的钩子)。泊车。benchmark/2026-09-27-localsend-bringup/。
+
+**横向点亮总数(2026-09-27):3**——Wikipedia(原本)+ 今日头条(交付级)+ 麦当劳(首屏)。X/LocalSend 深墙泊车(各需量级 RE)。**点亮到首个可用界面 ≠ 每 app 快赢;真赢是可复用的框架-smali+boot-image 通路 + telephony 桩模式。**
