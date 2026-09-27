@@ -163,3 +163,50 @@ Deploy the v2 relinked libart.so (72068841) via the same #42 diagnostic-libart r
 Warm-reproduce 0xd6e20 → crash42 event-*.txt now COMPLETES (capture_end=1) and carries
 fp_frame_return[] (raw). Recv the event dir (incl. the sibling .maps) → run scripts/symbolize_fpwalk.py
 offline to get the free()/realloc caller chain as lib+ELF-offset → hand to claude-3.
+
+## v3 (2026-09-27): ROOT CAUSE was the WRONG PIPELINE — not my patch, not busy guard, not dl_iterate_phdr
+v2 (72068841, dl_iterate_phdr removed) ALSO failed identically on-board (EVENT=NONE), disproving the
+deadlock hypothesis. Decisive offline finding: relinking with the UNPATCHED fixture recorder ALSO does
+not reproduce the working deployed recorder 78e34445 (.text differs; 78e34445 is ~10KB larger via the
+fixture relink_art.py). So the failure is inherited from the relink PIPELINE, not my fp-walk.
+
+Root cause (confirmed):
+- I built v1/v2 with the fixture `relink_art.py`: baseline 009a08fb (art-build) + `sigchain_musl_diag.cc`,
+  where crash42 directory init runs ONLY in `SigchainStartReassert()`.
+- Per DIGEST B: on the operator appspawn child, `SigchainStartReassert` is not called ("SigchainStartReassert
+  not found"), so `wl_crash_snapshot_init` never runs → `root_fd` stays -1 → `wl_crash_snapshot` bails at
+  its first line `if (root_fd < 0 ...) return;` → ZERO events. The handler (sigchain trampoline) DID run;
+  the recorder just bailed because its output dir was never opened.
+- The WORKING recorder 78e34445 was built by the ISOLATED48 pipeline: baseline `ae2cb182`
+  (out-operator48/libart.so) + `sigchain_initialized.cc`, which adds an idempotent
+  `crash42_prepare_directory()` called from BOTH SigchainStartReassert AND `AddSpecialSignalHandlerFn`
+  (special-handler registration, reliably called before fork) → root_fd set reliably → events written.
+
+Fix (v3): build via the isolated48 pipeline (scripts/build_v3_isolated48_pipeline.sh):
+`out-isolated48-recorder` relink_recorder.py (baseline ae2cb182, 454 objects, reproduces byte-for-byte)
++ initialize_recorder.py (sigchain_initialized.cc = the init fix), with my v2 AS-safe fp-walk
+crash_snapshot.o as the recorder object. Safe: backs up + restores the deployed 78e34445 and
+out-isolated48-recorder working artifacts; outputs to out-crash42-fpwalk48/art-v3/.
+
+### Result — v3 diagnostic libart-initialized.so
+- VM: `~/a2hlab/ws/out-crash42-fpwalk48/art-v3/libart-initialized.so`.
+- **sha256 `c6fa9f32c69b2c4c2a3b7c5cb5e98fe276040fe6286ca91232aa7254272ac1bd`** (21584040 B; 78e34445 = 21584336, Δ 296 B).
+- Verified: sigchain init fix present ("directory ready before fork" string) and BYTE-IDENTICAL to
+  78e34445's sigchain (regenerated transform == deployed sigchain_initialized.cc); fp-walk present
+  (base_capture_complete/fp_frame_return strings); `wl_crash_snapshot` defined (T); recorder object
+  UND dl_iterate_phdr = 0 (AS-safe).
+- HONEST CAVEAT: the UNPATCHED isolated48-pipeline output does NOT stripped-reproduce 78e34445
+  (mine c54590be vs 78e34445 3dde35da). Drift localized: sigchain is byte-identical, so ALL the drift
+  is in the RECORDER — the exact recorder source that built 78e34445 (crash_snapshot.o ee05703b) is no
+  longer on the VM (only the current fixture crash_snapshot.c remains, which drifts). So v3 =
+  "78e34445's exact init fix + the current fixture recorder + fp-walk", NOT provably "78e34445 + only
+  fp-walk". The init fix (the root cause) is faithful; the recorder is a functional event-writer
+  (host-tested: complete events with capture_end=1 under mem-EACCES).
+
+### Deploy (claude-2) — v3 supersedes v1/v2; both VOID
+Deploy v3 libart-initialized.so (c6fa9f32) via the same route claude-2 used for 78e34445 (back up the
+on-device libart 78e34445 first; sha-verify c6fa9f32). This directly A/B-tests whether the init fix
+resolves EVENT=NONE: warm-reproduce 0xd6e20 → expect crash42 event-*.txt to COMPLETE (capture_end=1)
+and carry fp_frame_return[] + the per-event .maps. Recv the event dir → scripts/symbolize_fpwalk.py
+offline → free()/realloc caller chain (lib+ELF-off) → claude-3. If v3 STILL EVENT=NONE, the residual is
+the recorder drift, not the init — escalate to recover the exact ee05703b recorder source.
