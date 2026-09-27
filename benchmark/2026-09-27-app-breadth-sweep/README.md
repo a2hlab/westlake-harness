@@ -10,6 +10,8 @@ up, and tally. Board **5ea34a45 only** — hard-guarded; never 61b06572 (Toutiao
 | scripts/sweep_config.5ea34a45.sh.template | the 5ea34a45 base-runtime candidate paths the sweep needs (HDC/SERIAL/PROBE/WORKSPACE/WESTLAKE_SOURCE/FRAMEWORK_REPORT/HOST_BUILD/WEBVIEW_INPUT/SOURCE_WEBVIEW_BUILD/APP_INPUT_ROOT/OUT_ROOT) — fill from the assembled 5ea34a45 runtime |
 | scripts/keys.fdroid.txt | 66 open/F-Droid app keys (fd-* ≈ fdroid100 + wikipedia/newpipe/anki/… ) — sweep these FIRST (high hit rate) |
 | scripts/keys.commercial.txt | 37 co-* commercial keys (heavy, anti-tamper — low hit; sweep last) |
+| RESULTS.md | **2026-09-27 run result table**: 56 apps classified, LIT 13 (~23%), BLOCKED 43 by category; markor root-cause (per-app window bring-up, not staging); interrupted by 5ea34a45 detach after mcdonalds |
+| screens/&lt;key&gt;.jpeg | per-app first-UI screenshot (the sole LIT/BLOCKED discriminator — read visually) |
 
 Classify: LIT = process alive after WAIT + render markers in child stderr (ANativeWindow/onResume/
 render/prewrapped/drawFrame) [+ screenshot saved for manual confirm]; BLOCKED = fatal crash (category:
