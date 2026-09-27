@@ -54,7 +54,8 @@ zget(){ dev "hidumper -s WindowManagerService -a '-a' 2>/dev/null | grep -E '$1'
 alive(){ [ -n "${1:-}" ] && [ "$(dev "ls -d /proc/$1 2>/dev/null && echo A || echo G" 10 | tail -1)" = A ]; }
 dismiss_lock(){ dev "power-shell wakeup >/dev/null 2>&1; for i in 1 2; do uinput -T -m 600 1700 600 200 300 >/dev/null 2>&1; sleep 1; done" 12 >/dev/null; }
 man_get(){ dev "grep -m1 \"^$1 \" $MANIFEST 2>/dev/null" 10; }   # -> "app suffix socket pkg"
-ensure_host(){ dev "pidof $HOST >/dev/null || aa start -b $HOST -a EntryAbility >/dev/null 2>&1; power-shell timeout -o 86400000 >/dev/null 2>&1; power-shell wakeup >/dev/null 2>&1; echo host=\$(pidof $HOST)" 20; }
+ensure_host(){ # retry until the host process is up — post-boot OH services (aa/WMS) can take ~30-40s to be ready
+  dev "n=0; while [ \$n -lt 30 ]; do pidof $HOST >/dev/null && break; aa start -b $HOST -a EntryAbility >/dev/null 2>&1; sleep 2; n=\$((n+1)); done; power-shell timeout -o 86400000 >/dev/null 2>&1; power-shell wakeup >/dev/null 2>&1; echo host=\$(pidof $HOST)" 90; }
 start_keeper(){
   gtimeout 60 "$HDC" -t "$S61" file send "$KEEPER_SRC" "$D/onscreen_keeper.sh" >/dev/null 2>&1
   dev "mkdir -p $D; chmod +x $D/onscreen_keeper.sh; rm -f $D/keeper.stop $D/keeper.pid; KDIR=$D INTERVAL=5 nohup /system/bin/sh $D/onscreen_keeper.sh >$D/keeper.out 2>&1 </dev/null & echo keeper_on" 15 >/dev/null
