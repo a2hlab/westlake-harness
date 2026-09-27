@@ -13,16 +13,20 @@
 set -uo pipefail
 APP="${1:?usage: sweep_app.sh <app-key>}"
 SERIAL="${SERIAL:?SERIAL must be set}"
+
+# ---- HARD BOARD GUARD (FIRST, before anything else) ----
+# A wrong serial aborts immediately, even if other env is unset, so a stray run can never touch
+# 61b06572 (Toutiao delivery) or 5cd1e3dd (device farm).
+EXPECT_SERIAL="5ea34a4500000000000000001123012c"
+if [ "$SERIAL" != "$EXPECT_SERIAL" ]; then
+  echo "REFUSE: SERIAL=$SERIAL != $EXPECT_SERIAL (5ea34a45 only; never 61b06572/5cd1e3dd)" >&2; exit 2
+fi
+
 : "${HDC:?}" "${WORKSPACE:?}" "${WESTLAKE_SOURCE:?}" "${FRAMEWORK_REPORT:?}" "${HOST_BUILD:?}" \
   "${WEBVIEW_INPUT:?}" "${SOURCE_WEBVIEW_BUILD:?}" "${APP_INPUT_ROOT:?}" "${PROBE:?}" "${OUT_ROOT:?}"
 HOST="${HOST:-org.westlake.imehost}"
 WAIT="${WAIT:-30}"
 
-# ---- HARD BOARD GUARD ----
-EXPECT_SERIAL="5ea34a4500000000000000001123012c"
-if [ "$SERIAL" != "$EXPECT_SERIAL" ]; then
-  echo "REFUSE: SERIAL=$SERIAL != $EXPECT_SERIAL (5ea34a45 only; never 61b06572/5cd1e3dd)" >&2; exit 2
-fi
 if ! "$HDC" list targets 2>/dev/null | grep -qx "$EXPECT_SERIAL"; then
   echo "REFUSE: board $EXPECT_SERIAL not attached" >&2; exit 2
 fi
