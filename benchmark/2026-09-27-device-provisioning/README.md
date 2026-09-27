@@ -71,11 +71,13 @@ secondary confirmation only — otherwise a board actually showing the feed coul
 |--------|------------------------|-----------|-------|
 | 61b06572 | ✅ (pre-existing demo) | ✅ | NOT touched (user recording) |
 | **5cd1e3dd** | ✅ **persistent** (this pipeline; ~20 s to feed, survives idle/re-lock via keeper) | ✅ (kill→READY recovery 28 s) | provisioned by `provision_toutiao.sh` (Tier-1, no AOT); on-screen after forced-suspend stress test: `5cd1e3dd-onscreen-after-relock-stress.png` |
-| 5ea34a45 | — | — | reserved for claude-3 app-breadth sweep (not provisioned) |
+| **5ea34a45** | ✅ **persistent** (this pipeline; READY + feed at t=25 s, keyguard auto-dismissed at t=5 s) | ✅ (selfheal watchdog) | provisioned by `provision_toutiao.sh` after cleaning the app-breadth sweep residue (killed ~30 sweep appspawn-x, freed ~107 GB / 106 staging + 106 source RT dirs); host ZOrder 102 (vs 5cd's 101 — board difference absorbed by the `host≥0 & lock<0` test); screenshot `5ea34a45-toutiao-onscreen.png` |
 
-**Devices lit: 2 / 3** (61b06572 + 5cd1e3dd; 5ea34a45 allocated elsewhere). Pipeline scales: any further board
+**Devices lit: 3 / 3** (61b06572 demo + 5cd1e3dd + 5ea34a45). Pipeline scales: any further board
 that connects is `provision_toutiao.sh <SN>` away from Toutiao-on-screen — **and now stays on screen** across
-idle/re-lock because the on-screen keeper ships in the bundle and is started by the provisioner.
+idle/re-lock because the on-screen keeper ships in the bundle and is started by the provisioner. The 5ea34a45
+run proved the provisioner drops cleanly onto a board that just finished the app-breadth sweep: pre-clean
+(kill all `appspawn-x` = the sweep's per-app source spawns + `rm` the staging/source-RT dirs), then provision.
 
 ## Bundle rebuild (if scratchpad is lost)
 Pull from the 61b06572 delivery (read-only) as done here, or re-assemble: RT core tar (exclude
