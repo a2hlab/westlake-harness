@@ -1,0 +1,52 @@
+diff --git a/framework/core/java/LocalServiceBinders.java b/framework/core/java/LocalServiceBinders.java
+index e0df9e6..2a1faf7 100644
+--- a/framework/core/java/LocalServiceBinders.java
++++ b/framework/core/java/LocalServiceBinders.java
+@@ -51,6 +51,13 @@ public final class LocalServiceBinders {
+         if (binder != null) return binder;
+         try {
+             switch (name) {
++                // #48 X/Twitter: no-op ITelephonyRegistry (loaded by name at runtime, no compile dep).
++                // listen/listenWithEventList/listenForSubscriber and all methods answer the type
++                // default, so PhoneStateListener registration succeeds without a radio and never NPEs.
++                case "telephony.registry":
++                    binder = proxy(name, "com.android.internal.telephony.ITelephonyRegistry",
++                            (call, args) -> DEFAULT);
++                    break;
+                 case "uimode":
+                     binder = proxy(name, "android.app.IUiModeManager", LocalServiceBinders::uiMode);
+                     break;
+diff --git a/framework/core/java/OHServiceManager.java b/framework/core/java/OHServiceManager.java
+index a029280..57813bd 100755
+--- a/framework/core/java/OHServiceManager.java
++++ b/framework/core/java/OHServiceManager.java
+@@ -146,6 +146,12 @@ public final class OHServiceManager extends IServiceManager.Stub {
+                 return LocalServiceBinders.get(name);
+             // Explicit stub-null whitelist (feedback.txt line 12): services
+             // for which OH has no analog and HelloWorld path tolerates null.
++            // #48 X/Twitter: PhoneStateListener -> TelephonyManager.listen resolves
++            // ITelephonyRegistry via getService("telephony.registry"); a null binder ->
++            // Stub.asInterface(null)=null -> null.listen() NPE (com.twitter.util.telephony.a.run).
++            // Answer in process with a no-op ITelephonyRegistry so listen() succeeds silently.
++            case "telephony.registry":
++                return LocalServiceBinders.get(name);
+             case "network_management":
+             case "content_capture":
+             case "game":
+diff --git a/framework/package-manager/java/ApplicationMetaDataReader.java b/framework/package-manager/java/ApplicationMetaDataReader.java
+index 4a858b0..895f0cb 100644
+--- a/framework/package-manager/java/ApplicationMetaDataReader.java
++++ b/framework/package-manager/java/ApplicationMetaDataReader.java
+@@ -42,6 +42,12 @@ final class ApplicationMetaDataReader {
+                 result.putString(key, String.valueOf(value));
+             }
+         }
++        // #48 horizontal (LocalSend/Flutter): OH's GLES driver returns NULL via eglGetProcAddress
++        // for an extension proc that Impeller's GLES ProcTable calls unconditionally on the raster
++        // thread (first-frame pc=0). Force Skia GL (defensive proc-loader) unless the app opts in.
++        if (!result.containsKey("io.flutter.embedding.android.EnableImpeller")) {
++            result.putBoolean("io.flutter.embedding.android.EnableImpeller", false);
++        }
+         info.metaData = result;
+         System.err.println("[WESTLAKE-PM] application metadata package=" + info.packageName
+                 + " entries=" + result.size());
