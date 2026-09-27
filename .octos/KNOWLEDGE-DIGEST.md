@@ -58,7 +58,7 @@
    - **铁证机制(不是猜)**:npth+monitorcollector 的 `sigaction` ABI 不匹配(Bionic 40B vs musl 152B struct→写越界,A.15/A.17 已 patch)= "安全库按 Bionic 布局写 musl 踩坏内存"的**活样本**;残余野写几乎肯定是同类第 N 个(另一结构/偏移,没找到没 patch)。npth_heap_tracker/xasan(#49,A.1)同病根(Bionic `__libc_malloc_dispatch`)。
    - **旁证**:sscronet(加密网络栈)主导符号化受害者栈(34 帧);崩在启动 ~11-17s(安全库 init/反篡改扫描最活跃)。
    - **hanbin/Bionic 能根治的逻辑**:真 Bionic 上这些库写对布局→不越界。**caveat**:①hanbin 自己没搞定 metasec("never fixed metasec on musl",metasec DoLazyInit 读 Bionic pthread 真 Bionic-bound,A.3/A.4);②hanbin arm32 我们 arm64,周级重写;③有些库可能真 bug 非 ABI,Bionic 也救不了。
-   - **判定实验(周级投入前省钱前置)**:选择性 neuter 交付态活跃、非 feed 必需的安全库(Encryptor/lynxsecurity/jato/ttcrypto;**sscronet 不能拆**——feed 依赖,r1 教训)+ 符号化记录器测崩溃率。**降**=某安全库 Bionic 布局野写→要么像 sigaction 精确 patch(几小时,不用 hanbin)、要么坐实 hanbin 值得投;**不降**=feed 必需库(sscronet)或真 bug→hanbin 未必救。**每次只 neuter 一变量,neuter 后必测 feed 没破**(B.4/A.15)。
+   - **判定实验(2026-09-27 已跑,结论级)**:批量 dlopen-refuse 活跃安全库测崩溃率(全域 DT_NEEDED 反查分类:needed_by=0 才可拒;refuse-batch-48,batch shim 679623ba vs control 85c789f4)。**两个结论**:①**监控/RASP 组**(godzilla×3/sysoptimizer/monitorcollector/metasec/jato/npth_xasan/heap_tracker)拒掉后 **a_crash 仍在**(方向性略低但欠功效)→**不是主真凶**;②**full-12(含加密组 Encryptor/encrypt/gecko_encrypt/ropaencrypt/lynxsecurity)拒掉 feed 直接破**→**加密组 feed 必需(请求签名/TLS/Lynx),拒不得**(ttcrypto needed_by=15 TLS 核心、sscronet needed_by=4+网络引擎,同样拒不得)。**综合定论:真凶头号嫌疑=加密/crypto/网络层(监控组已排除),而该层 feed 必需拒不得、又是野写钉不到→dlopen-refuse 判别到此为止**。→ **要不破 feed 又根治,只剩 hanbin/Bionic**(让这些 feed 必需 crypto 库写对布局)或精确 patch 某个野写点(但钉不到)。交付态实验后已完整恢复+验证(libart 78e34445/shim 85c789f4/AOT+JIT/watchdog/名图)。**教训:dlopen-refuse 判别对 feed 必需的嫌疑库无效(拒了破 feed);对这类只能精确 patch 或换 Bionic**。分析:merged48 `benchmark/2026-09-27-refuse-batch-48/`。
 
 ## B. 方法论陷阱（别再犯）
 
@@ -243,3 +243,11 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **内存开销(关键,env 到不了 child→SLACK 烧死)**:SLACK=每存活分配固定尾部,总开销=存活分配数×SLACK。Chromium/WebView app 峰值 10^5–10^6 存活分配 → 128≈+13–128MB、256≈+26–256MB RSS。256 有 OOM-confound 风险。**推荐先 256(判别最清晰),OOM 症状(崩溃率升/崩点移出 0xd6e20/0xd5e1c/SIGKILL-OOM/RSS 飙)退已建 128。下"触顶"结论前先区分 OOM。**
 
 18. **全堆 mallocng smash 无法用空间 padding 可靠消除——野指针/非线性写,交付=自愈天花板(claude,2026-09-27)**：v3 recorder(fp-walk,EACCES 墙攻破)取多样本证实 0xd6e20/0xd5e1c 受害者**跨子系统各异**(sscronet/ICU/Mali-GPU/hilog/ART,受害库跟崩溃线程 free 路径走)=**堆全域元数据 smash 非单一子系统**。pad 缓解器(纯 slack n+SLACK,无 guard,功能透明,feed 正常无 OOM)A/B:无-pad 3/16(19%)、SLACK=64 1/16(6%)、SLACK=256 3/16(19%)——**非单调,SLACK 加大没续降** → padding **无可靠剂量-响应、到天花板**;残余是野指针/非线性写(写坏者算目标地址非有界越界),推远相邻块无效。SLACK=256 花 4x 内存(RSS 1GB)零收益。**交付天花板=selfheal watchdog(崩→fresh 重启自愈)**,app 可用+间歇崩(~15-20%/冷启)自动恢复。**方法论**:小样本崩溃率 A/B 要看**单调剂量-响应**(padding 有效应越大越趋零),单点低值(SLACK=64 的 6%)可能是变异,需多档+同法验。**能力留存**:v3 recorder(libart c6fa9f32,挂对 AddSpecialSignalHandlerFn)给任何残余崩溃产符号化受害者链。
+
+## D补:#48 A.22 活跃安全库批量 refuse 分类 + shim(claude-3,2026-09-27)
+- **分类法**:APK 全域反查 DT_NEEDED(138 库/813 边)。needed_by=0=dlopen-only=可安全拒(无链接破坏);needed_by>0=被依赖=拒则破依赖者。
+- **硬排除(feed 必需)**:`libttcrypto`(**needed_by=15**,ttboringssl/sscronet/lynxsecurity/ropaencrypt/vcn*/ttmverify* 等,HTTPS/TLS 核心)、`libsscronet`(needed_by=4 + 网络引擎 r1)。**这两个拒不得。**
+- **可安全拒(全 needed_by=0)**:高置信=监控/RASP 组 jato/metasec_ml/monitorcollector/godzilla-lib/-memsponge/-sysopt/sysoptimizer(同意门控,feed 无它们照跑);中风险=加密/UI 安全 Encryptor/encrypt/gecko_encrypt/ropaencrypt/lynxsecurity(A.22 正靶,needed_by=0 无链接破坏但可能 API 签名/Lynx 渲染必需,A/B feed 检查揭示)。
+- **产物**:batch shim(交付 85c789f4 + 12 条)**sha `679623bacf9cb77a`**;control(=85c789f4)`85c789f48b2bc0c3` 供成对 A/B。VM `~/a2hlab/ws/out-refusebatch48/`。源=westlake-wv46(未改 build 逐字节复现 85c789f4→batch 差异只是 12 条)。机制=扩展 shim 编译期 g_refused_libraries[](dlopen 命中返 NULL）。harness `88c1af9`。
+- **判据(成对 A/B,同代码只差数组)**:batch≪control→字节安全库是残余 smash 源(再二分 12,加密族首嫌);batch≈control→非这些库(野指针写他处→退 SLACK-pad+自愈)。hanbin 周级投入前 go/no-go。
+- **通则**:判某库"可拒不破 feed"先看反查 DT_NEEDED needed_by;=0 才可能安全,但仍需运行期 A/B 验(needed_by=0 只证无链接破坏,不证非 feed-functional)。
