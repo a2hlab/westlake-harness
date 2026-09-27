@@ -53,6 +53,13 @@
    - **信号所有权**:ART sigchain trampoline 拥有 SIGSEGV(每 2ms re-assert),自装 handler 输→改进 crash42(它 100% 在 a_crash 运行)。
    - 产物 v3 libart **c6fa9f32**(VM out-crash42-fpwalk48/art-v3),部署=覆盖 $RT/libart.so。**留档非交付**(fixture recorder 有漂移 caveat,交付基线用 78e34445)。
 
+22. **加密/安全堡垒假设:残余野写很可能是字节安全库按 Bionic 布局在 musl 上算错地址的写(hanbin 路线的根据,#48 研究,claude,2026-09-27)**——A.20 定"野指针写 in-process 不可根治"后最强的根因方向,判定实验待跑:
+   - **头条有 37+ 库的安全堡垒**:加密(Encryptor/encrypt/gecko_encrypt/ropaencrypt/ttboringssl/ttcrypto)、反篡改(godzilla×3/isecgm/lynxsecurity/metasec/sysoptimizer)、监控钩子(npth×15 含 heap_tracker/xasan/vm_monitor + monitorcollector/jato)。交付态仍活跃:**Encryptor/lynxsecurity/ttcrypto/sscronet/jato** + 已 neuter 但仍加载的 metasec/npth/monitorcollector。
+   - **铁证机制(不是猜)**:npth+monitorcollector 的 `sigaction` ABI 不匹配(Bionic 40B vs musl 152B struct→写越界,A.15/A.17 已 patch)= "安全库按 Bionic 布局写 musl 踩坏内存"的**活样本**;残余野写几乎肯定是同类第 N 个(另一结构/偏移,没找到没 patch)。npth_heap_tracker/xasan(#49,A.1)同病根(Bionic `__libc_malloc_dispatch`)。
+   - **旁证**:sscronet(加密网络栈)主导符号化受害者栈(34 帧);崩在启动 ~11-17s(安全库 init/反篡改扫描最活跃)。
+   - **hanbin/Bionic 能根治的逻辑**:真 Bionic 上这些库写对布局→不越界。**caveat**:①hanbin 自己没搞定 metasec("never fixed metasec on musl",metasec DoLazyInit 读 Bionic pthread 真 Bionic-bound,A.3/A.4);②hanbin arm32 我们 arm64,周级重写;③有些库可能真 bug 非 ABI,Bionic 也救不了。
+   - **判定实验(周级投入前省钱前置)**:选择性 neuter 交付态活跃、非 feed 必需的安全库(Encryptor/lynxsecurity/jato/ttcrypto;**sscronet 不能拆**——feed 依赖,r1 教训)+ 符号化记录器测崩溃率。**降**=某安全库 Bionic 布局野写→要么像 sigaction 精确 patch(几小时,不用 hanbin)、要么坐实 hanbin 值得投;**不降**=feed 必需库(sscronet)或真 bug→hanbin 未必救。**每次只 neuter 一变量,neuter 后必测 feed 没破**(B.4/A.15)。
+
 ## B. 方法论陷阱（别再犯）
 
 1. **别数子串**：`grep -c NewDetailActivity` 会命中服务端 settings JSON。活动是否启动只看行首生命周期行(onCreate/onResume/START/Displayed/`[B47-SLA] ENTRY`) + 截图。
