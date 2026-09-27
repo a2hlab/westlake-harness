@@ -175,11 +175,32 @@ case "$CMD" in
     say "OPEN-ALL DONE: $shown/$total apps reached the screen (verify screenshots in $SHOTS/)"
     ;;
 
+  broker-all)
+    # Drive EVERY manifest app through the real HAP channel (open.req -> broker -> fast-open),
+    # one at a time, screenshotting each. This is the icon-path end-to-end sweep. HOLD=arg3 (default 3).
+    HOLD="${3:-3}"
+    ensure_host >/dev/null; start_broker; dismiss_lock
+    keys=$(dev "cut -d' ' -f1 $MANIFEST" 10)
+    total=$(echo $keys | wc -w | tr -d ' '); i=0; shown=0
+    for app in $keys; do
+      i=$((i+1))
+      dev "echo $app > $PDIR/open.req" 10 >/dev/null      # exactly what the HAP icon does
+      sleep 15                                             # broker fast-open + first-frame render
+      dev "rm -f /data/local/tmp/po.png; snapshot_display -t png -f /data/local/tmp/po.png >/dev/null 2>&1" 12 >/dev/null
+      recv "/data/local/tmp/po.png" "$SHOTS/broker-$(printf '%02d' $i)-$app.png"
+      pkg=$(dev "grep -m1 \"^$app \" $MANIFEST" 10 | sed 's/.* //'); live=$(dev "pidof $pkg" 10)
+      [ -n "$live" ] && shown=$((shown+1))
+      say "[$i/$total] $app pkg=$pkg live_pid=${live:-none} shot=$SHOTS/broker-$(printf '%02d' $i)-$app.png"
+      sleep "$HOLD"
+    done
+    say "BROKER-ALL DONE: $shown/$total apps have a live process after broker-open (eyeball screenshots for render)"
+    ;;
+
   list)   dev "cat $MANIFEST 2>/dev/null" 10 ;;
   status) dev "echo host=\$(pidof $HOST) keeper=\$(ps -ef|grep onscreen_keeper|grep -v grep|wc -l) demo_apps=\$(pidof appspawn-x|wc -w); echo manifest:; cat $MANIFEST 2>/dev/null" 15 ;;
   toutiao)
     dev "rm -f $F/stop $D/stop $D/fresh48/stop $D/keeper.stop $D/keeper.pid; rm -rf $F/lock; power-shell timeout -o 86400000 >/dev/null 2>&1; nohup /system/bin/sh $F/watchdog.sh >$D/watchdog-persist.log 2>&1 </dev/null & KDIR=$D INTERVAL=5 nohup /system/bin/sh $D/onscreen_keeper.sh >$D/keeper.out 2>&1 </dev/null & echo tt_on" 20
     say "Toutiao watchdog + keeper restarted"
     ;;
-  *) echo "usage: $0 61b06572 {install | up | open <app> | open-all [HOLD] | req <key> | broker-stop | list | status | toutiao}"; exit 2 ;;
+  *) echo "usage: $0 61b06572 {install | up | open <app> | open-all [HOLD] | broker-all [HOLD] | req <key> | broker-stop | list | status | toutiao}"; exit 2 ;;
 esac
