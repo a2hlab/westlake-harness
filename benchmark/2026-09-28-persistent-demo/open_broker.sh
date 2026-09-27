@@ -53,6 +53,9 @@ open_app(){
   nohup "$stage/source_app_namespace" "$rt" "$UID_APP" /system/bin/sh /data/local/tmp/asx/run.sh >"$stage/parent.log" 2>&1 </dev/null &
   n=0; while [ "$n" -lt 60 ]; do [ -S "/dev/unix/socket/$socket" ] && break; sleep 0.25; n=$((n+1)); done
   "$stage/host_spawn" "/dev/unix/socket/$socket" "$stage/request.bin" >>"$LOG" 2>&1
+  # The launcher HAP that triggered us is a separate OH app whose window (applauncher0) is on top and
+  # would cover the app. Re-front the host window so the app (a sub-window of imehost0) is visible.
+  aa start -b "$HOST" -a EntryAbility >/dev/null 2>&1
   power-shell timeout -o 86400000 >/dev/null 2>&1; power-shell wakeup >/dev/null 2>&1
   for i in 1 2 3; do uinput -T -m 600 1700 600 200 300 >/dev/null 2>&1; sleep 1; done
   log "opened $1 (suffix=$suffix wid=$WID)"
@@ -72,11 +75,13 @@ while :; do
     key=$(head -1 "$REQFILE"); : > "$REQFILE"
     log "req(file): $key"; open_app "$key"
   fi
-  # (3) app-sandbox fallback: any HAP's files/wl_open.req (root reads; skip the host bundle)
-  for rq in /data/app/el2/100/base/*/haps/*/files/wl_open.req; do
+  # (3) app-sandbox fallback: any HAP's files/open.req or files/wl_open.req (root reads; skip host bundle).
+  #     claude-3's launcher (org.westlake.applauncher) writes .../haps/entry/files/open.req since an OH app
+  #     sandbox cannot write /data/local/tmp. Match both filenames so any launcher naming works.
+  for rq in /data/app/el2/100/base/*/haps/*/files/open.req /data/app/el2/100/base/*/haps/*/files/wl_open.req; do
     [ -s "$rq" ] || continue
-    case "$rq" in */$HOST/*) : > "$rq"; continue;; esac
-    key=$(head -1 "$rq"); : > "$rq"
+    case "$rq" in */$HOST/*) : > "$rq" 2>/dev/null; continue;; esac
+    key=$(head -1 "$rq"); : > "$rq" 2>/dev/null; rm -f "$rq" 2>/dev/null
     log "req(sandbox $rq): $key"; open_app "$key"
   done
   sleep 0.7
