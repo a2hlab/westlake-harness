@@ -74,6 +74,11 @@ LIT 2 launches(`burgerking`=McD 登录[见异常,不计独立]、`noice`=fd-noic
 app 在 RS 树里有 `*.MainActivity_content` 渲染节点**（auxio/aegis/ooniprobe/wikipedia/antennapod），未亮
 app 进程活但**从没创建窗口/渲染节点**。同管线 13/56 点亮 ⇒ 墙是**逐-app 运行时窗口/Activity 起栈不兼容**。
 
+> **★认知翻转(GLESv1_CM crux 后)**:"窗口没起"对 **SDL/NDK 类不是玄学死墙**——STK 补 GLESv1_CM stub 后
+> **窗口成功起**(RSNODE+Surface),真卡点是**具名缺符号 `AConfiguration_new`**。→ 未亮 app 的 host-launcher 兜底应
+> **逐个抓 child stderr**(`adapter_child_<pid>.stderr` / stage `parent.log`)找 `Error relocating … symbol not found`,
+> 多半是**可增量补的 native-symbol 缺口**,不是死墙。下一步 triage 每个未亮 app 走这一步。
+
 ### 🏆 GLESv1_CM 金发现（单列，最可行动）
 `fd-stk`（SuperTuxKart）是唯一渲染了**自己错误 UI** 的未亮 app：SDL 弹窗
 `Error loading shared library libGLESv1_CM.so: (needed by .../libSDL2.so)`。
@@ -89,6 +94,11 @@ app 进程活但**从没创建窗口/渲染节点**。同管线 13/56 点亮 ⇒
 - **判定(机测坐实,见 `glesv1cm-crux/DECISION.md`)**:**任何 symlink 都不行**(设备无库导出这 14 符号 → BIND_NOW
   "cannot locate symbol");**薄 stub 是唯一路且已建**(`glesv1cm-crux/libGLESv1_CM.so.stub`,14632B,sha256
   `a1ae3950…b37bf`,精确导出 14 符号,被调时打 stderr);**gl4es 不需要**(STK 走 GLES3)。
-- **部署(需 board-runner 一行集成)**:改 APK 被 probe 拒(`Changed original APK input`),per-run staged 目录
-  临时不可预置 → 把 stub 加进 fd-stk 的 `native_libraries`(app-inputs.lock.json,指向 stub sha256)让 probe
-  staging 带上,再正常带窗口跑 → 定论 STK 点亮 / 是否真调 fixed-function。stub 是**所有 SDL2/ES1 app 通用一文件 shim**。
+- **✅ 已执行(2026-09-27,带窗口实测)**:把 stub 加进 fd-stk **app-input.json** 的 `native_libraries`(非 lock;
+  probe 从 app-input.json 读 native_libraries,只交叉校验 `application` 块 → **加库 rc=0 接受**;改 APK 才被拒)。
+  结果:**(a) SDL "Error loading libGLESv1_CM.so" 消失**(stub 满足 BIND_NOW);**(b) STK 未点亮,撞下一堵墙**
+  **`AConfiguration_new: symbol not found`**——STK 渲染出自己 SDL 弹窗(**窗口 bring-up + STK UI 成功**),libSDL2 还
+  UND 需 NDK libandroid 簇 `AConfiguration_*/AAsset*/ALooper_*/ANativeWindow_*`(OH libandroid shim 缺);
+  **(c) `[glesv1_cm_stub] CALLED`=0 → STK 不调 ES1 fixed-function → gl4es 确定不需要**(实证)。
+- **结论:点亮 SDL2/ES1 类 = 2 段 native-symbol 补口**:① GLESv1_CM stub[✅完成,通用一文件 shim] + ② OH libandroid
+  补 AConfiguration/NativeActivity NDK 簇[待办,board-runner/native 侧]。两段都**有名字、可增量**,非窗口玄学。
