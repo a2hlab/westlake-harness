@@ -1,5 +1,11 @@
 # app-breadth sweep RESULTS — board 5ea34a45 (LocalSend framework-2 base runtime a2hlab-framework-cab462ff)
 
+> **UPDATE (final):** the tail 10 were re-swept after 5ea34a45 re-attached (physical re-plug; the detach also
+> re-locked the screen — fixed with `power-shell timeout -o 3600000` + `uinput -T` swipe-unlock). The
+> authoritative final table (66 launches, 13 distinct LIT, ~23%, tail results, the `burgerking`=McDonald's
+> mislabel anomaly, and the on-device-confirmed GLESv1_CM finding) now lives in **README.md → 收官总表** and
+> **glesv1cm-crux/DECISION.md**. The body below is the pre-tail 56-app snapshot.
+
 Date: 2026-09-27. Runner: claude-3 (authorized self-run). Board **5ea34a45 ONLY** (hard-guarded;
 `vm_sweep.sh` refuses if 5ea34a45 not in `hdc list targets` — never falls through to 61b06572 / 5cd1e3dd).
 
