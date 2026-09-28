@@ -18,6 +18,7 @@ B5 之后 Wikipedia 的 child 已实例化 `org.wikipedia.main.MainActivity`,但
 - 根因(#31 实证):OH musl 先派发 special 信号处理器,DFX 占 special 槽先收 SIGSEGV,ART 的 libsigchain 只登记为 user handler、晚 670 ms 才收到,隐式空检查转不成 NPE。修复照搬现成的 musl 桥:用 `bms/src/adapter/build/inner/compile_sigchain_muslcompat.sh` 把 `aosp_patches/art/sigchainlib/sigchain_muslcompat.cc` 编成 aarch64 `libsigchain.so`,替换 route-a 的 `libsigchain.so`(现为 ea7becd0,无 `add_special_signal_handler` 导入)。不重建 boot image,不改 framework
 - 替换前核对:新库导出覆盖 route-a `libart.so` 从 `libsigchain.so` 导入的全部符号,缺一个就不部署
 - route-a 的 child 插件把每个 provider 的 SHA/build-id 封进 sealed manifest,loader 映射前校验;只换 `libsigchain.so` 会被拒(#33:`WLCGATE:LSP:LOAD_ERROR:8`,`WLSCPL_ERROR_ARTIFACT_IDENTITY`)。所以按 `stock_child_plugin/build_target_in_container.sh` 既有构建流重生成一代:新 `libsigchain.so` 进 provider 清单 → 重生成 `sealed_provider_manifest.c` 并重编 child 插件 → 把新插件 SHA 钉进 appspawn-x。不绕过、不关闭身份校验
+- 2026-09-28 用户决定:板上 R155 这一代(child 0976dee8、appspawn-x 1f6cf53b)找不到同版源码,改用 00.Workspace 最新源码整代重建——libart 与全部 provider、native roots、child 插件、appspawn-x 同源同配置一起构建;若新 libart 与板上 boot image 不兼容,同源重建 boot image。不混用板上旧件与新源码产物
 - 部署走 `bms/` 复现器的候选代机制(`var/state/<skill>/candidates/`)或 B5 的覆盖方式,整代一起换、一起回滚;板上实际加载的 libsigchain、child 插件、appspawn-x 的 SHA 写进 `results.json`
 
 ## 边界
