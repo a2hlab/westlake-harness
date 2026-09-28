@@ -1,0 +1,112 @@
+389:     manifest_encoding.extend(string(item["sha256"]))
+390:     manifest_encoding.extend(string(item["build_id"]))
+391:     manifest_encoding.extend(string(item["soname"]))
+392:     manifest_encoding.extend(u32(
+393:         1 if item["artifact_kind"] == "sealed" else 2))
+394:     manifest_encoding.extend(u32(len(item["needed"])))
+395:     for dependency in item["needed"]:
+396:         manifest_encoding.extend(u32(indices[dependency]))
+397: manifest_digest = hashlib.sha256(manifest_encoding).digest()
+398: digest_values = ", ".join(f"UINT8_C(0x{value:02x})" for value in manifest_digest)
+399: 
+400: lines = [
+401:     '#include "sealed_child_provider_loader.h"',
+402:     '',
+403:     'static const WlscplArtifactV2 kWlscplArtifacts[] = {',
+404: ]
+405: for name in names:
+406:     path, absolute_path, needed, build_id, kind = metadata[name]
+407:     if len(needed) > 32:
+408:         raise SystemExit(f"too many sealed dependencies: {name}")
+409:     sha = hashlib.sha256(path.read_bytes()).hexdigest()
+410:     needed_values = ", ".join(f"UINT32_C({indices[item]})" for item in needed)
+411:     needed_initializer = "{" + needed_values + "}" if needed_values else "{0}"
+412:     lines.extend([
+413:         '    {',
+414:         f'        "{absolute_path}",',
+415:         f'        "{sha}",',
+416:         f'        "{build_id}",',
+417:         f'        "{name}",',
+418:         ('        WLSCPL_ARTIFACT_SEALED_LOAD,' if kind == "sealed" else
+419:          '        WLSCPL_ARTIFACT_OH_SYSTEM_ROOT,'),
+420:         f'        UINT32_C({len(needed)}),',
+421:         f'        {needed_initializer},',
+422:         '        {0},',
+423:         '    },',
+424:     ])
+425: lines.extend([
+426:     '};',
+427:     '',
+428:     'static const WlscplManifestV2 kWlscplManifest = {',
+429:     '    WLSCPL_ABI_VERSION,',
+430:     '    (uint32_t)sizeof(WlscplManifestV2),',
+431:     '    UINT16_C(183),',
+432:     '    UINT16_C(0),',
+433:     f'    UINT32_C({len(names)}),',
+434:     '    UINT32_C(0),',
+435:     f'    UINT32_C({sum(1 for item in semantic if item["artifact_kind"] == "external")}),',
+436:     '    UINT32_C(0),',
+437:     f'    {{{digest_values}}},',
+438:     '    kWlscplArtifacts,',
+439:     '};',
+440:     '',
+441:     'const WlscplManifestV2 *WLSCPL_GetBuildGeneratedManifest(void)',
+442:     '{',
+443:     '    return &kWlscplManifest;',
+444:     '}',
+445:     '',
+446: ])
+447: output.write_text("\n".join(lines), encoding="utf-8")
+448: output.with_suffix(output.suffix + ".digest").write_text(
+449:     manifest_digest.hex() + "\n", encoding="utf-8")
+450: PY
+453: build_pass()
+454: {
+455:     local pass=$1
+456:     local dir=$OUT/$pass
+457:     local manifest_digest
+458:     generate_sealed_manifest "$pass" "$dir/sealed_provider_manifest.c"
+459:     manifest_digest=$(<"$dir/sealed_provider_manifest.c.digest")
+460:     [[ $manifest_digest =~ ^[0-9a-f]{64}$ &&
+461:        $manifest_digest != "$GENERATION_SHA" ]] || {
+462:         echo "ERROR absent or mixed sealed manifest digest for $pass" >&2
+463:         exit 1
+464:     }
+465:     run python3 "$PLUGIN/generate_generation_metadata.py" \
+466:         --artifact-generation-digest "$GENERATION_SHA" \
+467:         --manifest-digest "$manifest_digest" \
+468:         --manifest-source "$dir/sealed_provider_manifest.c" \
+469:         --hook-digest "$HOOK_SCHEMA_DIGEST" \
+470:         --policy-epoch "$POLICY_EPOCH" \
+471:         --policy-provenance-digest "$POLICY_PROVENANCE_DIGEST" \
+472:         --launch-generation "$LAUNCH_GENERATION" \
+473:         --boot-id "$BUILD_BOOT_ID" \
+474:         --output-c "$dir/generated_generation_metadata.c"
+475:     compile "$PLUGIN/src/stage_receipt.c" "$dir/stage_receipt.o"
+476:     compile "$PLUGIN/src/sealed_child_provider_loader.c" "$dir/sealed_child_provider_loader.o"
+477:     compile "$PLUGIN/src/westlake_generation_identity_facts.c" "$dir/westlake_generation_identity_facts.o"
+    compile "$PLUGIN/src/westlake_elf_identity.c" \
+        "$dir/westlake_elf_identity.o"
+    compile "$PLUGIN/src/westlake_sha256.c" \
+        "$dir/westlake_sha256.o"
+    compile "$dir/generated_generation_metadata.c" \
+        "$dir/generated_generation_metadata.o"
+    compile "$dir/sealed_provider_manifest.c" \
+        "$dir/sealed_provider_manifest.o"
+    compile "$PLUGIN/src/westlake_android_child_plugin.c" \
+        "$dir/westlake_android_child_plugin.o" \
+        "-DWLASC_PLUGIN_GENERATION_SHA_HEX=\"$GENERATION_SHA\"" \
+        "-DWLASC_PLUGIN_BUILD_ID_HEX=\"$PLUGIN_BUILD_ID_HEX\"" \
+        "-DWLAR_GENERATION_SHA_HEX=\"$GENERATION_SHA\""
+        echo "ERROR plugin identity derivation failed for $pass" >&2
+        exit 1
+    }
+    compile "$PLUGIN/src/westlake_stock_host_main.c" \
+        "$dir/westlake_stock_host_main.o" \
+        "-DWLASC_PLUGIN_GENERATION_SHA_HEX=\"$GENERATION_SHA\"" \
+        "-DWLASC_PLUGIN_BUILD_ID_HEX=\"$PLUGIN_BUILD_ID_HEX\"" \
+        "-DWLASC_PLUGIN_ELF_SHA256_HEX=\"$plugin_sha\"" \
+        "-DWLAR_GENERATION_SHA_HEX=\"$GENERATION_SHA\""
+    compile "$PLUGIN/stock_host_patched/base/startup/appspawn/standard/appspawn_service.c" \
+        "$dir/appspawn_service_fail_closed.o" -Wno-everything
+}

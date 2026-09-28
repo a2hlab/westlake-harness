@@ -341,3 +341,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - BMS B5（2026-09-28，5ea）：按原 APK manifest 仅补 ActivityInfo.targetActivity 后，Wikipedia DefaultIcon→MainActivity、旧 ClassNotFound 消失，继而 Activity.attach/getTheme/getApplicationInfo SIGSEGV（后续根因未证）；HelloWorld 原入口仍上屏，缺目标类独立负控明确 ClassNotFound+exit1。66 key 按实际 BMS 入口计 13 alias，不能与“任一启用 launcher alias”15 混用；证据 `benchmark/2026-09-28-bms-route-deploy/alias-entry/`。
 
 - **B6/BMS route-a 隐式空检查(2026-09-28)**:Wikipedia 原APK AppCompatActivity.attachBaseContext 在super之前getTheme且catch NPE；PID27515实录OH musl special slot3 DFX先收SIGSEGV、670ms后才派AOSP libsigchain Handler(user action)，现有sigchain_muslcompat.cc未进当前库；只读定位未部署修复。oat230全27段重烤引入Wiki Inflater/HelloWorld Proxy回退，已撤回；同版本不等于同闭包可用，见 benchmark/2026-09-28-bms-route-deploy/attach-theme/。
+
+- **B6 #33 native封闭清单(2026-09-28)**:只换route-a libsigchain ea7becd0→生产musl桥0084775a，会在ART前WLCGATE LOAD_ERROR:8/VALIDATED_COUNT:8/exit123；旧SHA编进child插件0976dee8(文件偏移0x8798)，build_target生成manifest并将插件SHA再钉入appspawn，必须用完整身份生成流程，不能照JAR单文件替换。已回滚；4个sigchain专属符号覆盖通过，sigaction活体绑定OH musl，见 sigchain-bridge/。

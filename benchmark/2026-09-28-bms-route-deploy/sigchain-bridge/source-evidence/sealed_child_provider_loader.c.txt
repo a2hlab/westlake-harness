@@ -1,0 +1,47 @@
+331: 
+332: static int RealVerifyIdentity(void *context, const WlscplArtifactV2 *artifact,
+333:                               uint16_t elf_machine,
+334:                               WlscplVerifiedObject *verified)
+335: {
+336:     WleiVerifiedFile file;
+337:     int result;
+338:     (void)context;
+339:     if (artifact->artifact_kind == WLSCPL_ARTIFACT_SEALED_LOAD) {
+340:         result = WLEI_OpenVerifiedFileHex(
+341:             artifact->absolute_path, elf_machine, artifact->sha256_hex,
+342:             artifact->build_id_hex, &file);
+343:     } else {
+344:         result = WLEI_OpenVerifiedSystemFileHex(
+345:             artifact->absolute_path, elf_machine, artifact->sha256_hex,
+346:             artifact->build_id_hex, &file);
+347:     }
+348:     if (result != 0) return -1;
+349:     verified->descriptor_token = (int64_t)file.descriptor;
+552:                               computed_manifest_digest) != 0 ||
+553:         !wlgr_v2_bytes_equal(
+554:             computed_manifest_digest, request->manifest->manifest_digest,
+555:             WLGR_V2_SHA256_SIZE) ||
+556:         !wlgr_v2_bytes_equal(
+557:             request->generation_identity->artifact_manifest_digest,
+558:             computed_manifest_digest, WLGR_V2_SHA256_SIZE))
+559:         return Fail(loader, request, result,
+560:                     WLSCPL_ERROR_GENERATION_IDENTITY, 0U, ops, verified, 0U);
+561:     loader->generation_identity = *request->generation_identity;
+562:     if (VisitClosure(request->manifest, request->manifest->root_index, marks,
+563:                      order, &order_count) != 0 ||
+564:         order_count != request->manifest->artifact_count)
+565:         return Fail(loader, request, result, WLSCPL_ERROR_CLOSURE_INVALID,
+566:                     0U, ops, verified, 0U);
+567:     for (index = 0U; index < order_count; ++index) {
+568:         uint32_t artifact_index = order[index];
+569:         const WlscplArtifactV2 *artifact =
+570:             &request->manifest->artifacts[artifact_index];
+571:         int state;
+572:         if (ops->verify_identity(ops->context, artifact,
+573:                 request->manifest->elf_machine,
+574:                 &verified[artifact_index]) != 0)
+575:             return Fail(loader, request, result,
+576:                         WLSCPL_ERROR_ARTIFACT_IDENTITY, index, ops, verified,
+577:                         request->manifest->artifact_count);
+578:         state = ops->mapping_state(ops->context, artifact,
+579:                                    &verified[artifact_index]);
