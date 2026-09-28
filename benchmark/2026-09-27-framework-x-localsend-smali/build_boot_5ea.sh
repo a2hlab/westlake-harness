@@ -1,6 +1,8 @@
 set -e
 TOOL=/home/dspfac/a2hlab/source-closure/verify/out/host-tools/host/objects/bin/dex2oat
-B=/private/tmp/claude-501/-Users-zhaoyue-orca-workspaces-westlake-harness/1ff6919c-26aa-4c66-b437-84a6c81b7f06/scratchpad/fxwork/build
+# Work dir: the 9 BCP jars in fw/ + boot/ output. Moved out of a session scratchpad on 2026-09-28
+# (574 files, verified identical); the Mac path is visible inside the OrbStack VM too.
+B=${B:-/Users/zhaoyue/a2hlab-provision/fxwork/build}
 NAMES="core-oj core-libart core-icu4j conscrypt okhttp bouncycastle apache-xml framework adapter-runtime-bcp"
 FILES=""; LOCS=""
 for n in $NAMES; do FILES="${FILES:+$FILES:}$B/fw/$n.jar"; LOCS="${LOCS:+$LOCS:}/system/framework/$n.jar"; done

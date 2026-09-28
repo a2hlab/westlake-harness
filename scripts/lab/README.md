@@ -31,3 +31,5 @@ in `.octos/OPS-RUNBOOK.md`).
 | `board_acks.py`, `watch_inner_negative.sh`, `watch_pane_idle.sh` | Outer-loop board and inner-loop watchers. |
 | `zig_prefetch_build.sh` | Build herdr when Zig's HTTP client fails through the proxy. |
 | `env-mac.sh`, `mise.toml`, `toolshim/` | macOS host environment: `cc`, `readelf`, `sha256sum` shims and the pinned JDK. |
+
+`adhoc/` holds small diagnostic tools rescued from a 2026-09-25 session scratchpad (see its README).
