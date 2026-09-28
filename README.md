@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| `benchmark/2026-09-28-bms-route-deploy/batch/` | **OH6.1 BMS batch preparation (#20): 66-key install/readback, exact SceneBoard tap, foreground observations and fresh screenshots; offline tested, device unverified.** |
 | `benchmark/2026-09-28-bms-route-study/` | **BMS execution preparation (#15): PAC/payload hash audit, host readiness, first-hour deployment gates, and historically evidenced app priorities. No device execution.** |
 | `requirements/APK-GAP-PROBE-PROCESS.md` | **The process specification (v0.3).** Taxonomy, phases, stage ladder, gap registry, prioritisation, roadmap, done-criteria. Start here. |
 | `requirements/APK-COMPATIBILITY-ARCHITECTURE.md` | The compatibility architecture this process measures against. |
