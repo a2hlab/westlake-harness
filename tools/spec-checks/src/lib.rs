@@ -17,3 +17,20 @@ fn bms_batch_evidence() {
 fn bms_spawn_ab_evidence() {
     run(&["benchmark/2026-09-28-bms-route-deploy/spawn-ab/verify.py"]);
 }
+
+#[test]
+fn b1_wikipedia_lit_after_sandbox_prep() {
+    run(&["benchmark/2026-09-28-bms-route-deploy/sandbox-prep/verify.py", "wikipedia"]);
+}
+#[test]
+fn b1_sandbox_roots_match_helloworld() {
+    run(&["benchmark/2026-09-28-bms-route-deploy/sandbox-prep/verify.py", "roots"]);
+}
+#[test]
+fn b1_prep_failure_skips_launch() {
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-28-bms-route-deploy/batch", "-p", "test_bms_batch.py", "-k", "test_sandbox_failure_prevents_launch"]);
+}
+#[test]
+fn b1_prep_is_idempotent() {
+    run(&["benchmark/2026-09-28-bms-route-deploy/sandbox-prep/verify.py", "idempotent"]);
+}

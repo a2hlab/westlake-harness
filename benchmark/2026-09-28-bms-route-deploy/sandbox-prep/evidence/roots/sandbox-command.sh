@@ -1,0 +1,13 @@
+set -e
+D() { sh -c "$1"; }
+# Extracted verbatim from restore-pr03-helloworld-5min.sh:291-294.
+prepare_sandbox()
+{
+    local PACKAGE="$1" APP_UID="$2"
+D "set -e; for d in /data/app/el1/100/base /data/app/el1/100/database /data/app/el2/100/base /data/app/el2/100/database /data/app/el2/100/sharefiles /data/app/el3/100/base /data/app/el3/100/database /data/app/el4/100/base /data/app/el4/100/database; do mkdir -p \${d}/$PACKAGE; done; mkdir -p /data/app/el2/100/log/$PACKAGE; for s in cache code_cache databases files haps no_backup preferences shared_prefs temp; do mkdir -p /data/app/el2/100/base/$PACKAGE/\${s}; done; chown -R $APP_UID:$APP_UID /data/app/el1/100/base/$PACKAGE /data/app/el1/100/database/$PACKAGE /data/app/el2/100/base/$PACKAGE /data/app/el2/100/database/$PACKAGE /data/app/el2/100/sharefiles/$PACKAGE /data/app/el3/100/base/$PACKAGE /data/app/el3/100/database/$PACKAGE /data/app/el4/100/base/$PACKAGE /data/app/el4/100/database/$PACKAGE; chown $APP_UID:log /data/app/el2/100/log/$PACKAGE; chmod -R 0700 /data/app/el1/100/base/$PACKAGE /data/app/el2/100/base/$PACKAGE /data/app/el2/100/sharefiles/$PACKAGE /data/app/el3/100/base/$PACKAGE /data/app/el4/100/base/$PACKAGE; chmod 0770 /data/app/el1/100/database/$PACKAGE /data/app/el2/100/database/$PACKAGE /data/app/el2/100/log/$PACKAGE /data/app/el3/100/database/$PACKAGE /data/app/el4/100/database/$PACKAGE; chcon -R u:object_r:appdat:s0 /data/app/el1/100/base/$PACKAGE /data/app/el1/100/database/$PACKAGE /data/app/el2/100/base/$PACKAGE /data/app/el2/100/database/$PACKAGE /data/app/el2/100/sharefiles/$PACKAGE /data/app/el3/100/base/$PACKAGE /data/app/el3/100/database/$PACKAGE /data/app/el4/100/base/$PACKAGE /data/app/el4/100/database/$PACKAGE; chcon u:object_r:data_app_el2_file:s0 /data/app/el2/100/log/$PACKAGE"
+# OH 6.1 toolbox 的 chcon -R 在这个目录树上只处理首个子项；逐项执行，
+# 否则严格校验会在安装器预建的 code_cache/files 等目录上随机 first-bad。
+D "set -e; for app_root in /data/app/el1/100/base/$PACKAGE /data/app/el1/100/database/$PACKAGE /data/app/el2/100/base/$PACKAGE /data/app/el2/100/database/$PACKAGE /data/app/el2/100/sharefiles/$PACKAGE /data/app/el3/100/base/$PACKAGE /data/app/el3/100/database/$PACKAGE /data/app/el4/100/base/$PACKAGE /data/app/el4/100/database/$PACKAGE; do find \${app_root} -exec chcon u:object_r:appdat:s0 {} \;; done"
+}
+
+prepare_sandbox org.wikipedia 20010057

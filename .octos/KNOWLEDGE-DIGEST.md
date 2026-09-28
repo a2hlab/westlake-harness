@@ -333,3 +333,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **BMS 66-key 实测（2026-09-28, cx-t0）**：三板各22项，62 key原APK首装成功并完成桌面点击/截图，fd-seal/toutiao/x报9568260且BMS不可查询，subwaysurfers输入SHA不符在写板前拒绝；62项机器状态均foreground_unconfirmed，不能称点亮。126张证据图待外环逐图终判，已抽读Aegis/OONI/markor均OH桌面。见 `benchmark/2026-09-28-bms-route-deploy/`；HelloWorld/ZigZag通过不外推为66 app兼容。
 
 - **BMS启动前置缺失（2026-09-28, #24同boot A/B）**：5ea上Wikipedia并非未fork：AppSpawnX子PID26163出现约22ms，因`el1/100/database/org.wikipedia`缺失在stock sandbox hook31返回`0xd000008`，未到WLCGATE/Android入口；UID轮询与15s末快照均可能漏掉。HelloWorld PID25183正常；restore在bm install后另建10个沙箱根目录并设UID/mode/label，而批量脚本遗漏。外环#23终判0/62上屏；此根因只验证Wikipedia，不外推62项或称补目录必亮。installed两包resources.index相同且含Hello World，标签为独立模板缺陷。证据：`benchmark/2026-09-28-bms-route-deploy/spawn-ab/`。
+
+- **B1沙箱修后新分叉（2026-09-28,#27）**：原样prepare_sandbox补齐10根后，Wikipedia child4789 spawn result0、RAC/LSP/provider和ActivityThread.main均到达；随后把桌面alias `org.wikipedia.DefaultIcon`当Java类实例化，ClassNotFoundException后exit1（BMS targetAbility空）。目录同HelloWorld/幂等均过；不能称已点亮，62项重跑未启。证据 `benchmark/2026-09-28-bms-route-deploy/sandbox-prep/`，B1 lifecycle 3pass/1fail。

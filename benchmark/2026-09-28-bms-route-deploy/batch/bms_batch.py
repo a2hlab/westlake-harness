@@ -38,6 +38,10 @@ class BatchStop(RuntimeError):
     """Identity, lock or transport lost: no more device writes."""
 
 
+class SandboxPreparationFailure(AppFailure):
+    """The restore preparation command failed; desktop launch is forbidden."""
+
+
 def save(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -403,6 +407,27 @@ def cold_stop(board, package, uid, out, tag='before'):
     return False
 
 
+def prepare_sandbox(board, package, uid, out):
+    """Run the accepted restore command body, changing only package and UID."""
+    if not isinstance(package, str) or not IDENT.fullmatch(package) or '.' not in package:
+        raise AppFailure('invalid sandbox package')
+    if type(uid) is not int or uid < 20000000:
+        raise AppFailure('invalid sandbox app UID')
+    recipe = Path(__file__).with_name('prepare_sandbox.sh')
+    command = 'set -e\nD() { sh -c "$1"; }\n' + recipe.read_text()
+    command += '\nprepare_sandbox ' + shlex.quote(package) + ' ' + str(uid)
+    command_path = Path(out)/'sandbox-command.sh'
+    command_path.write_text(command + '\n')
+    rc, output = board.shell(command, required=False)
+    Path(out, 'sandbox-preparation.txt').write_text(output)
+    receipt = {'package': package, 'uid': uid, 'recipe_sha256': sha(recipe), 'return_code': rc,
+               'command_path': str(command_path), 'command_sha256': sha(command_path)}
+    save(Path(out)/'sandbox-preparation.json', receipt)
+    if rc:
+        raise SandboxPreparationFailure(f'sandbox preparation failed ({rc}); command: {command_path}')
+    return receipt
+
+
 def collect_app(board, entry, input_root, out, remote, wait_seconds=15):
     out.mkdir(parents=True, exist_ok=False)
     rec = dict(key=entry['key'], phase=entry['phase'], serial=board.serial, boot_id=board.boot,
@@ -435,6 +460,7 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15):
         rec['cold_stop_verified'] = cold_stop(board, app['package'], uid, out)
         if not rec['cold_stop_verified']:
             raise AppFailure('cold start identity unconfirmed')
+        rec['sandbox_preparation'] = prepare_sandbox(board, app['package'], uid, out)
         rec['desktop_activity'] = rec['bms'].get('desktop_activity') or app.get('launch_activity')
         desktop_app = dict(app, launch_activity=rec['desktop_activity'])
         desktop_launch(board, desktop_app, remote, out, rec)
@@ -459,7 +485,7 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15):
         rec.update(status='batch_interrupted', error=str(exc))
         raise BatchStop(str(exc) or 'interrupted') from exc
     except (AppFailure, OSError, ValueError, KeyError) as exc:
-        rec.update(status='app_failed', error=str(exc))
+        rec.update(status='sandbox_prep_failed' if isinstance(exc, SandboxPreparationFailure) else 'app_failed', error=str(exc))
         if rec['bms'].get('queryable') and rec['bms'].get('uid') is not None:
             try:
                 rec['cleanup_stopped'] = cold_stop(board, rec['package'], rec['bms']['uid'], out, 'cleanup')

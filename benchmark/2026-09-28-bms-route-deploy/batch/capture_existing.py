@@ -36,6 +36,7 @@ def capture(board, entry, input_root, out, remote, prior_path):
         validated=True
         board.shell('mkdir -p '+shlex.quote(remote))
         if not b.cold_stop(board,app['package'],uid,out):raise b.AppFailure('cold state unconfirmed')
+        rec['sandbox_preparation']=b.prepare_sandbox(board,app['package'],uid,out)
         rec['desktop_activity']=rec['bms'].get('desktop_activity') or app.get('launch_activity')
         b.desktop_launch(board,dict(app,launch_activity=rec['desktop_activity']),remote,out,rec)
         started=time.monotonic();time.sleep(3)
@@ -48,7 +49,7 @@ def capture(board, entry, input_root, out, remote, prior_path):
         rec['screenshots'].append(b.capture(board,remote+'/final.jpeg',out/'final.jpeg'))
         rec['status']='captured' if rec['foreground']['confirmed'] else 'foreground_unconfirmed'
     except b.AppFailure as exc:
-        rec.update(status='app_failed',error=str(exc))
+        rec.update(status='sandbox_prep_failed' if isinstance(exc,b.SandboxPreparationFailure) else 'app_failed',error=str(exc))
     except (b.BatchStop,KeyboardInterrupt) as exc:
         rec.update(status='batch_interrupted',error=str(exc));raise
     finally:

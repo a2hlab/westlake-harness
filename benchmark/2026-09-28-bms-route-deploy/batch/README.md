@@ -71,3 +71,7 @@ R2: **verified** offline tests/manifest shape; **unverified** real-board install
 Validation: 19 offline tests passed; known-answer suite 69 ran / 2 skipped / 0 failed; agent-spec lint score 100%, lifecycle 2 pass / 0 fail; Bash syntax and default offline-plan checks passed. These are host/synthetic results only. See `results.json` and `lifecycle.json`. The outer reviewer committed the previous #15 report as `637afe4`; #20 remains a separate change set.
 
 Local staging/commit is blocked in this sandbox: creation of the parent repository Git `index.lock` returns `Operation not permitted`. #20 files are ready in this worktree for the outer reviewer to stage and commit; no #20 commit hash is claimed and nothing was pushed.
+
+## Post-install sandbox preparation (B1)
+
+`prepare_sandbox.sh` preserves HelloWorld restore lines 291–294 exactly and takes package/UID parameters. Both fresh installation and `capture_existing.py` run it after BMS identity/cold-stop checks and before clicking. Failure is `sandbox_prep_failed`, with command, return code and output retained. See [intervention report](../sandbox-prep/README.md): preparation fixes the stock sandbox failure, but Wikipedia still exits on unresolved DefaultIcon; the broader rerun remains gated.

@@ -157,6 +157,31 @@ class BatchTests(unittest.TestCase):
         self.assertTrue(b.foreground(text,[42])['confirmed'])
         self.assertFalse(b.foreground(text,[43])['confirmed'])
         self.assertFalse(b.foreground('app process alive',[42])['confirmed'])
+    def test_restore_recipe_body_is_unchanged(self):
+        root=Path(b.__file__).parent
+        source=json.loads((root.parent/'sandbox-prep/source.json').read_text())
+        original=(root.parent/'sandbox-prep/source-lines-291-294.sh.txt').read_text()
+        self.assertEqual(hashlib.sha256(original.encode()).hexdigest(),source['copied_body_sha256'])
+        recipe=(root/'prepare_sandbox.sh').read_text()
+        self.assertEqual(recipe.split('    local PACKAGE="$1" APP_UID="$2"\n',1)[1],original+'}\n')
+    def test_sandbox_parameters_rejected_before_writes(self):
+        for pkg,uid in [('org.x;id',20010055),(PKG,0),(PKG,'20010055'),('../org.x',20010055)]:
+            board=FakeBoard()
+            with self.assertRaises(b.AppFailure):b.prepare_sandbox(board,pkg,uid,self.root)
+            self.assertEqual(board.calls,[])
+    def test_sandbox_failure_prevents_launch(self):
+        board=FakeBoard();original=board.shell
+        def shell(cmd,required=True,timeout=60):
+            if cmd.startswith('set -e\nD()'):return 1,'chcon failed'
+            return original(cmd,required,timeout)
+        board.shell=shell
+        rec=b.collect_app(board,self.entry,self.root/'inputs',self.root/'prep-fail','/unique')
+        self.assertEqual(rec['status'],'sandbox_prep_failed')
+        self.assertFalse(rec['clicked'])
+        self.assertIn('sandbox preparation failed',rec['error'])
+        receipt=json.loads((self.root/'prep-fail/sandbox-preparation.json').read_text())
+        self.assertEqual(receipt['return_code'],1)
+        self.assertTrue(Path(receipt['command_path']).is_file())
     def test_simulated_full_collect(self):
         board=FakeBoard()
         with patch.object(b.time,'sleep'):
@@ -167,6 +192,11 @@ class BatchTests(unittest.TestCase):
         self.assertTrue(rec['bms']['queryable'])
         self.assertTrue(rec['foreground']['confirmed'])
         self.assertTrue(any(c.startswith('bm install -p ') for c in board.calls))
+        install=next(i for i,c in enumerate(board.calls) if c.startswith('bm install '))
+        prep=next(i for i,c in enumerate(board.calls) if c.startswith('set -e\nD()'))
+        click=board.calls.index('uitest uiInput click 200 300')
+        self.assertLess(install,prep)
+        self.assertLess(prep,click)
         self.assertFalse(any('aa start' in c for c in board.calls))
         self.assertTrue((self.root/'run/record.json').exists())
     def test_failure_keeps_install_return_and_no_launch(self):
