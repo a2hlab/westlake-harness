@@ -8,8 +8,11 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
+import t0_evidence as evidence
+import t0_capture as capture_ops
 
 SERIAL = '5ea34a4500000000000000001123012c'
+ALLOWED_SERIALS = {SERIAL, '61b0657200000000000000000324012c'}
 TOOLS = '/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/'
 HDC = TOOLS + 'hdc_mac.sh'
 W = Path('/home/dspfac/a2hlab/source-closure/verify')
@@ -48,21 +51,30 @@ class Board:
 
     def ready(self):
         p = subprocess.run(['mac', 'bash', '-c', TOOLS + 'board_note.sh held ' + SERIAL], capture_output=True, text=True, timeout=10)
-        if p.returncode or not p.stdout.startswith('cx-t0 '):
-            raise RuntimeError('board lock missing or owned by another lane')
+        if not capture_ops.lock_owner_valid(p.returncode, p.stdout):
+            raise RuntimeError(f'board lock missing or owned by another lane: rc={p.returncode}, stdout={p.stdout[:200]!r}, stderr={p.stderr[:200]!r}')
         p = subprocess.run([HDC, 'list', 'targets'], capture_output=True, text=True, timeout=15)
-        if p.returncode or SERIAL not in p.stdout.split():
+        if not capture_ops.attached(p.returncode, p.stdout, SERIAL):
             raise RuntimeError('board detached; stop further board commands')
 
     def shell(self, command, timeout=30, required=True):
         self.ready()
         wrapped = 'sh -c ' + shlex.quote(command) + '; t0rc=$?; printf "\\n__T0_RC__%s\\n" "$t0rc"'
-        p = subprocess.run([HDC, '-t', SERIAL, 'shell', wrapped], capture_output=True, text=True, timeout=timeout)
-        raw = p.stdout.replace('\r', '')
+        p = subprocess.run([HDC, '-t', SERIAL, 'shell', wrapped], capture_output=True, timeout=timeout)
+        decoding = {}
+        try:
+            raw = p.stdout.decode('utf-8')
+        except UnicodeDecodeError:
+            raw_file = self.out / ('transport-' + str(time.time_ns()) + '.bin')
+            raw_file.write_bytes(p.stdout)
+            decoding = {'raw_bytes_file': raw_file.name, 'raw_sha256': sha(raw_file),
+                        'decoding': 'utf-8-with-replacement; original bytes retained on VM'}
+            raw = p.stdout.decode('utf-8', errors='replace')
+        raw = raw.replace('\r', '')
         m = re.search(r'\n__T0_RC__(\d+)\n?$', raw)
         rc = int(m[1]) if m else -1
         with (self.out / 'commands.jsonl').open('a') as f:
-            f.write(json.dumps({'time': time.time(), 'command': command, 'transport_rc': p.returncode, 'remote_rc': rc}) + '\n')
+            f.write(json.dumps({'time': time.time(), 'command': command, 'transport_rc': p.returncode, 'remote_rc': rc, **decoding}) + '\n')
         if p.returncode or m is None or '[Fail]' in raw:
             raise RuntimeError('transport failed: ' + command + ': ' + raw[-500:])
         if required and rc:
@@ -82,11 +94,12 @@ class Board:
 
 
 def collect(key, run_id):
-    out = Path.home() / 'a2hlab/ws' / ('out-appsweep-t0-' + run_id) / SERIAL / key
+    out = capture_ops.isolated_root(Path.home(), run_id) / SERIAL / key
     out.mkdir(parents=True, exist_ok=False)
     b = Board(out)
     result = {'key': key, 'run_id': run_id, 'serial': SERIAL, 'status': 'interrupted',
-              'review': 'pending_review', 'observations': {}, 'confirmed': []}
+              'review': 'pending_review', 'observations': {}, 'confirmed': [],
+              'collector_source_sha256': COLLECTOR_SOURCE_SHA256}
     save(out / 'triage.json', result)
     try:
         b.ready()
@@ -95,8 +108,8 @@ def collect(key, run_id):
         app_dst = out / 'app-input'
         shutil.copytree(app_src, app_dst)
         app = json.loads((app_dst / 'app-input.json').read_text())
-        result.update(package=app['application']['package'], apk_sha256=app['apk_sha256'], launch_activity=app['application']['launch_activity'])
-        framework = Path.home() / 'a2hlab/board' / SERIAL / 'framework-2/device-report.json'
+        result.update(package=app['application']['package'], apk_sha256=app['apk_sha256'], launch_activity=app['application'].get('launch_activity') or app['application']['package'] + '.activity.MainActivity')
+        framework = Path.home() / 'a2hlab/board' / SERIAL / ('framework-2/device-report.json' if SERIAL.startswith('5ea') else 'framework-1/device-report.json')
         fw = json.loads(framework.read_text())
         save(out / 'framework.json', fw)
         result['framework_report_sha256'] = sha(framework)
@@ -124,14 +137,16 @@ def collect(key, run_id):
         pid, runtime, stage = report['child'], report['runtime'], report['stage']
         result.update(child_pid=pid, runtime=runtime, stage=stage, host_window=report['window'])
         time.sleep(30)
-        rtpath = f'{runtime}/private-tmp/adapter_child_{pid}.stderr'
+        rtpath = capture_ops.stderr_path(runtime, pid)
         obs = result['observations']
         obs['stderr'], raw = b.read(rtpath, out / 'child.pre.stderr')
         obs['proc_stderr'], _ = b.read(f'/proc/{pid}/root/data/local/tmp/adapter_child_{pid}.stderr', out / 'proc.stderr')
         obs['parent_log'], _ = b.read(stage + '/parent.log', out / 'parent.log')
-        _, rs = b.shell('hidumper -s RenderService')
+        _, rs = b.shell('hidumper -s RenderService -a allInfo')
         (out / 'rs.txt').write_text(rs)
-        obs['render_node'] = {'status': 'unresolved', 'pid': pid, 'host_window': report['window'], 'source': 'rs.txt'}
+        _, wm = b.shell('hidumper -s WindowManagerService -a -a')
+        (out / 'wm.txt').write_text(wm)
+        obs['render_node'] = evidence.render_nodes(rs, pid, report['window'], result['package'], wm)
         b.shell('power-shell wakeup')
         b.shell('power-shell timeout -o 3600000')
         b.shell('uinput -T -m 600 1600 600 400 200')
@@ -144,7 +159,7 @@ def collect(key, run_id):
         if rc == 0:
             _, stat = b.shell('stat -c "%Y %s" ' + remote)
             mtime, size = map(int, stat.split())
-            if mtime >= start and size > 0:
+            if capture_ops.fresh_snapshot(rc, mtime, size, start):
                 b.ready()
                 p = subprocess.run([HDC, '-t', SERIAL, 'file', 'recv', remote, key + '.jpeg'], cwd=out, capture_output=True, text=True, timeout=30)
                 image = out / (key + '.jpeg')
@@ -154,49 +169,39 @@ def collect(key, run_id):
                     image.unlink()
         obs['stacks'] = []
         for i in range(2):
-            rc, _ = b.shell(f'test -d /proc/{pid}', required=False)
-            capture = {'status': 'capture-failed', 'reason': 'child-exited', 'pid': pid}
-            if rc == 0:
-                capture.update(sent_epoch=time.time(), reason='no-complete-stack-within-12s')
-                _, old = b.read(rtpath, out / f'quit{i}.before.stderr')
-                b.shell(f'kill -QUIT {pid}')
-                for _ in range(6):
-                    time.sleep(2)
-                    _, new = b.read(rtpath, out / f'quit{i}.after.stderr')
-                    delta = new[len(old):] if new.startswith(old) else ''
-                    complete = stack_sections(delta, pid)
-                    if complete:
-                        (out / f'quit{i}.stack.txt').write_text(complete[-1])
-                        capture.update(status='ok', reason=None, file=f'quit{i}.stack.txt')
-                        break
-                _, paths = b.shell(f'ls -la /data/anr /proc/{pid}/root/data/anr /data/log/faultlog/temp 2>/dev/null', required=False)
-                (out / f'quit{i}.destinations.txt').write_text(paths)
-                time.sleep(max(0, 5 - (time.time() - capture['sent_epoch'])))
-            obs['stacks'].append(capture)
+            obs['stacks'].append(capture_ops.stack_capture(b, pid, rtpath, out, i, stack_sections, evidence.main_stack))
         end = float(b.shell('date +%s')[1].strip()) + 1
         _, hilog = b.shell('hilog -x -v epoch', timeout=45)
         (out / 'hilog.raw.txt').write_text(hilog)
         (out / 'hilog.crash.txt').write_text(filter_hilog(hilog, pid, start, end))
-        obs['stderr_final'], _ = b.read(rtpath, out / 'child.final.stderr')
+        obs['stderr_final'], final_stderr = b.read(rtpath, out / 'child.final.stderr')
+        alive_rc, _ = b.shell(f'test -d /proc/{pid}', required=False)
+        obs['alive_after_capture'] = alive_rc == 0
         after = {str(p.relative_to(app_src)): sha(p) for p in app_src.rglob('*') if p.is_file()}
         result['app_input_unchanged'] = before == after
         save(out / 'input-hashes.json', {'before': before, 'after': after})
-        result['candidate_blocker'] = {'class': 'capture-failed' if any(s['status'] != 'ok' for s in obs['stacks']) else 'no-marker', 'source': 'child.final.stderr', 'reason': 'minimal collection experiment; no root cause claim'}
+        result['candidate_blocker'] = evidence.classify(final_stderr, filter_hilog(hilog, pid, start, end), obs['stacks'], alive_rc == 0)
         result.update(status='completed', finish_epoch=end)
     except Exception as e:
         result['error'] = str(e)
         result['candidate_blocker'] = {'class': 'capture-failed', 'reason': str(e)}
     finally:
         save(out / 'triage.json', result)
-    print(json.dumps({'out': str(out), 'status': result['status'], 'error': result.get('error'), 'stacks': result['observations'].get('stacks')}), flush=True)
+    print(json.dumps({'out': str(out), 'status': result['status'], 'error': result.get('error'), 'stacks': [{k: s.get(k) for k in ('status', 'reason', 'pid')} for s in result['observations'].get('stacks', [])]}), flush=True)
     return 0 if result['status'] == 'completed' else 2
 
 
+COLLECTOR_SOURCE_SHA256 = sha(__file__)
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('key', choices=['wikipedia', 'markor'])
+    manifest_path = Path(__file__).resolve().parents[3] / 'benchmark/2026-09-28-blocker-triage/manifest.json'
+    manifest = json.loads(manifest_path.read_text())
+    ap.add_argument('key', choices=sorted({x['key'] for v in manifest.values() for x in v}))
     ap.add_argument('run_id')
+    ap.add_argument('--serial', choices=sorted(ALLOWED_SERIALS), default=SERIAL)
     args = ap.parse_args()
     if not re.fullmatch(r'[a-zA-Z0-9_-]+', args.run_id):
         ap.error('run_id must be a single path component')
+    SERIAL = args.serial
     raise SystemExit(collect(args.key, args.run_id))

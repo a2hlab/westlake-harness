@@ -319,3 +319,7 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
   - 头条运行时目录会膨胀:61b 上 31GB,其中 `profile-backups/` 22GB、`private-tmp/*.stderr` 5.7GB(单个 743MB,几乎全是 `[TOUCH21-POLL]`)。grep stderr 先 `wc -l` 记基线,再 `tail -n +BASE | grep -v TOUCH21-POLL`。
 
 - **T0 基座预检补充(2026-09-28,cx-t0)**:5ea framework-2 哈希门通过仍不能保证 host 一致;Wikipedia probe 在 child 前报 `Installed host differs from the signed source payload`，installed HAP `df385638…` ≠ signed/local `8cfa5bb1…`，必须同时核 host HAP；本轮零截图/零 app 根因，见 `benchmark/2026-09-28-blocker-triage/`。
+- **T0 动态取证(2026-09-28,cx-t0)**:markor 无 APK 自带 .so 仍经系统 WebView 进入 native；本轮精确 PID stderr 在 child 退出后保留453行，含 Chrome_ProcessLauncherThread 子服务 metadata 异常及 CrBrowserMain SIGTRAP，故“纯 Java APK”不能排除依赖 WebView 的原生崩溃；Wikipedia 的 ART main 是 Thread-2/tid=1，可由 ActivityThread.main 定位，Looper 空等非阻塞。
+- **T0 时钟(2026-09-28,cx-t0)**:61b 看似仅慢2h42，实测 date 为1970-01-01/epoch22322；TLS基线必须核完整日期或epoch，不能只看时分。已按RUNBOOK从Mac同步，校时前对照全部clock_skew作废并另run重采。
+
+- **T0 日志传输(2026-09-28)**：实板 hilog 会混非 UTF-8 字节，`subprocess.run(text=True)` 曾让 61b 在截图/两栈成功后中断；按字节收取、保存原件及 sha、替代解码后过滤，不能把解码失败记成 app blocker。

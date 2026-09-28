@@ -19,6 +19,8 @@ def check(namespace):
     assert actual == raw.splitlines()[0] + '\n', repr(actual)
 
 
+sys.path.insert(0, str(SOURCE.parent))
+
 def load(source):
     namespace = {'__name__': 't0_under_test'}
     exec(compile(source, str(SOURCE), 'exec'), namespace)

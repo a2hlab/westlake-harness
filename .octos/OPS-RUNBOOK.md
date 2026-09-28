@@ -74,3 +74,5 @@
 - **旧板归档方法**:在 `flock -x <板>.lock` 下把旧内容 `head -n <边界前一行>` 原样移进 `.octos/archive/OUTER_LOOP_REVIEW-<年月>-<战役>.md`,用 `cat 归档 <(tail -n +<边界>) | cmp - 原板` 证明逐字节无损,再写新头部 + 在途条目。换本前先确认没有挂着的侦听哨(哨按行数基线判定)。2026-09-28 头条战役 #1–#50(4009 行)已归档,新板从 #51 起。
 - herdr server 必须由用户自己起,不要从 agent 会话里 nohup。octoscode stdio 模式要带 `--session <名>`。
 - 复验:`git worktree add --detach ~/.octos/outer/verify/<名> <commit>` → 逐字重跑验收 → 落判词 → 删 worktree。
+
+- **T0取证补充(2026-09-28)**:ART SIGQUIT 完整转储落本轮 `<runtime>/private-tmp/adapter_child_<pid>.stderr`，以 `----- pid <pid> at ...` 到 `----- end <pid> -----` 确认完整；主线程用 `ActivityThread.main` 识别，不要求线程名为 main。`hidumper -s RenderService` 默认仅帮助，`-a RSTree` 可能漏 app 内容队列；用 `-a allInfo` 的 package `_content` 队列联合 `hidumper -s WindowManagerService -a -a` 的本轮 child PID/WinId 绑定，保留两份原文；仍只作观测。校时先存 `date; date +%s`，再用Mac `date +%m%d%H%M%Y.%S` 设置，核epoch误差。
