@@ -28,6 +28,7 @@
 **安卓参考机** `N100CU025C18D000128`(UNISOC,Android 16 userdebug,1200×1920,`su 0` 可用;adb 在 `~/Library/Android/sdk/platform-tools/adb`)
 - 预装头条 13.9.0 与语料 APK 逐字节相同,**别重装**。机上有用户自己的头条数据:`pm clear` 前先 `su 0 tar --selinux --numeric-owner -cf` 备份 `/data/user/0`、`/data/user_de/0`、`/data/media/0/Android/data` 下该包,**并记录 `dumpsys package` 的运行时权限**(pm clear 会重置,曾经没记导致无法恢复)。
 - 两个窗口会吃点击:系统通知授权弹窗、二次启动 ~8 s 的登录推广页;`mCurrentFocus` 是它们时按 BACK。点"热点"会滚动 tab 条,固定 x 坐标会点到别的 tab。
+- 很可能就是第 4 块 D600(与 OH 板同 SoC uis7885),其 `/apex/com.android.runtime`、`/apex/com.android.art` 可作 arm64 Bionic/ART 来源(推断,未证实)。
 - 计时:atrace 主线程 `deliverInputEvent … eventTimeNano=`;screenrecord 内嵌 Winscope 轨可把 `date +%s.%N` 对齐到帧。报告在分支 `analysis/android-reference-26`。
 
 ## 2. 新板上手
@@ -54,6 +55,8 @@
 - **只重建受影响的最小单元**(#36):改一个文件只重编那个 .so + relink,下游只在输入真变了才重跑。单库:`tools/build_android_native.py --workspace <verify> --out <dir> --target ohos --library liblog.so`(库名要带 `.so`)。
 - #27 全修复集成构建:westlake 工作树 `~/a2hlab/ws/westlake-all0925` 的 `tests/integrate-all-0925/`(不在本仓库),产物 `~/a2hlab/ws/out-all0925`,空目录重建约 8 分钟且确定性。**WebView 打包坑**:`package_webview_gpu_candidate.py` 只从 shim 构建取 plat_support,`libandroid.so`/`libwebview_bionic_shim.so` 来自基础载荷 → shim 修复不覆盖就进不了候选包,打包后用 verify.sh 核哈希。
 - 从目录名不同的工作树构建会改变 libart 等的字节(路径串躲过了 `-ffile-prefix-map`),功能无差异。
+- WebView 输入不用编 Chromium:引擎 = AOSP android-13.0.0_r80 预编译 arm64 + 11 处 `.dynstr` 导入改名(逐字节可复现);APK = 该预编译 + westlake smali 类作 classes2.dex,本地签名;4 个边界库来自 `westlake-inputs/tools/scratch/build_webview_shims.sh`(scratch 未镜像)。载荷在 `out/webview-input-source`。集成候选包预期哈希:libandroid 76512d97…、bionic shim 4b19a817…、plat_support aef81ea2…。
+- 重建时 framework flags 除 java-profile 的 3 个外还需 8 个 APEX flag 库;native object map 在 `$A/native-object-map.json`。就绪检查:`planned_staging.py` + harness `deploy-check`。
 
 ## 6. OctoLoop 现场
 

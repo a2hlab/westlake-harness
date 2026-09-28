@@ -103,6 +103,9 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 3. **用 6.1 源而非寒冰 7.0 pristine**：按寒冰 origin.txt 路径清单从板子同版 6.1 树(/opt/build-trees/oh610_lts_source)取文件、重生成 6.1 md5；寒冰 7.0 patch 多能 fuzz 套上。gen 生成物(IDL 头/proxy 源)从 `out/wukong100/gen` 暂存进 pristine/gen。
 4. **rs 是 6.1↔7.0 架构反转，寒冰 rs patch 对 6.1 方向相反(别照搬)**：6.1 事务=RSRenderServiceClient→服务连接(`GetClientToServiceConnection`，真实现)；7.0=RSRenderPipelineClient→渲染连接。6.1 的 RSRenderPipelineClient::CommitTransaction 是空体。寒冰 0004/0005(丢服务连接)对 6.1 反了，0015(裁 RSRenderPipelineClient)裁的是 6.1 里的空壳。rs 移植 6.1 需围绕 RSRenderServiceClient 从头设计裁剪(借鉴方法非移植)。
 
+**用户对寒冰路线的决定(2026-09-25)**:①「直接学过来」——把寒冰的窗口/输入做法搬进 westlake;②「我们没有 32 位的机器,只有 64 位的,所以可以学他的代码经验,但是自己编译 64 位的」——寒冰是 32 位 rk3568 + OH 7.0.0.18 且写 /system,不能照搬;按其方向二里程碑用 64 位重做:M1 Bionic linker/libc(#39 done)→ M2 ART on Bionic(#43 done)→ M3 上屏 → M4 头条。westlake 目前把 app 嵌在 host `org.westlake.imehost` 里、只写 /data/local/tmp(安全可回退),代价是拿不到真 OH 输入焦点(触摸靠注入)。
+**分析分支索引**(各含一个 `benchmark/2026-09-25-*`):`analysis/hanbin-toutiao-port-35`、`analysis/bionic-libc-feasibility-37`、`analysis/bionic-pt-interp-39`、`analysis/bionic-appdomain-41`、`analysis/bionic-dalvikvm64-43`(`-Xuse-stderr-logger`、`LD_CONFIG_FILE` 等技巧)、`analysis/m3-onscreen-design-45`、`analysis/native-log-sink-44`、`analysis/android-reference-26`。寒冰源码 `~/workspace/hanbin_adapter`(非 git,只读)。
+
 ## B 补充（claude-2）
 
 9. **env 未必透到 app 子进程**：run.sh 里 export 的环境变量，appspawn-x fork app child 时会重置 environ，child 内 `getenv` 拿不到（#44 的 WESTLAKE_SOURCE_LOG_STDERR 就这样失效）；只有框架在 fork 前读的(如 WESTLAKE_TRACE_NATIVE_LOADER)才生效。要传给 app native 代码需 appspawn-x 的 env 转发白名单。
