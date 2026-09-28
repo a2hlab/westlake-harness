@@ -41,3 +41,10 @@ bm uninstall → 同 APK 重装 → bm dump label:`Wikipedia` / `Markor` / `Aegi
 ## R2
 
 编译/部署/哈希核验/label/REFERENCE-hop hilog = **verified**(原始文件);回退场景 = **partially**(历史证据,本次未触发);桌面显示 = 外环读图。
+
+## 部署完成判据(#42 新增,2026-09-29)
+
+**换 installer 后必须有一张非黑的桌面截图才算部署完成。** 黑图特征:恒 36627 B(1200×1920 空
+内容 JPEG);根因是 RSSurfaceCapture 的 rect/contentRect 全 0(sceneboard UI 层未重建,截图内容
+为空),屏幕硬件链(POWER_ON/背光/60Hz)与健康无异。判据:截图大小 ≠ 36627 B 且翻页后前后两
+张互异。#42 交付:VM `board/p42/desktop-p0.jpeg`(81244 B)与 `desktop-p2.jpeg`(81205 B)。
