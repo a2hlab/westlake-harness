@@ -57,40 +57,40 @@ fn b5_missing_target_reported() {
 
 #[test]
 fn b6_wikipedia_lit() {
-    run(&["benchmark/2026-09-28-bms-route-deploy/native-generation-hw248/verify.py", "wikipedia"]);
+    run(&["benchmark/2026-09-28-bms-route-deploy/r155-sigchain-generation/verify.py", "wikipedia"]);
 }
 
 #[test]
 fn b6_caller_identified() {
-    run(&["benchmark/2026-09-28-bms-route-deploy/native-generation-hw248/verify.py", "caller"]);
+    run(&["benchmark/2026-09-28-bms-route-deploy/r155-sigchain-generation/verify.py", "caller"]);
 }
 
 #[test]
 fn b6_no_regression_helloworld_zigzag() {
-    run(&["benchmark/2026-09-28-bms-route-deploy/native-generation-hw248/verify.py", "regression"]);
+    run(&["benchmark/2026-09-28-bms-route-deploy/r155-sigchain-generation/verify.py", "regression"]);
 }
 
 #[test]
 fn b6_next_wall_recorded() {
-    run(&["benchmark/2026-09-28-bms-route-deploy/native-generation-hw248/verify.py", "nextwall"]);
+    run(&["benchmark/2026-09-28-bms-route-deploy/r155-sigchain-generation/verify.py", "nextwall"]);
 }
 
 #[test]
 fn b6_fix_absent_detected() {
-    run(&["benchmark/2026-09-28-bms-route-deploy/native-generation-hw248/verify.py", "negative"]);
+    run(&["benchmark/2026-09-28-bms-route-deploy/r155-sigchain-generation/verify.py", "negative"]);
 }
 
 #[test]
 fn b6_null_check_mode_recorded() {
-    run(&["benchmark/2026-09-28-bms-route-deploy/native-generation-hw248/verify.py", "null"]);
+    run(&["benchmark/2026-09-28-bms-route-deploy/r155-sigchain-generation/verify.py", "null"]);
 }
 
 #[test]
 fn b6_sigchain_exports_cover_libart_imports() {
-    run(&["benchmark/2026-09-28-bms-route-deploy/native-generation-hw248/verify.py", "symbols"]);
+    run(&["benchmark/2026-09-28-bms-route-deploy/r155-sigchain-generation/verify.py", "symbols"]);
 }
 
 #[test]
 fn b6_generation_passes_identity_gate() {
-    run(&["benchmark/2026-09-28-bms-route-deploy/native-generation-hw248/verify.py", "identity"]);
+    run(&["benchmark/2026-09-28-bms-route-deploy/r155-sigchain-generation/verify.py", "identity"]);
 }

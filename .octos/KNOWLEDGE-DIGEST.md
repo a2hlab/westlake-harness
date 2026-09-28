@@ -347,3 +347,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **B6 #34 整代构建输入门(2026-09-28)**:build_target 预检缺 `.work/product-tls-generation/frozen/toolchain/bin/clang-15`；指定 00.Workspace/suite 共18逻辑根未找到冻结工具链/sysroot及清单 frozen.sha256(0bcca016…)、tool_runtime.lock(3c53b9a1…)。历史 provider origin 可缺(冻结目的库校验通过即可)，不能误当硬依赖；完整缺件与搜索范围见 native-generation/，未部署。
 
 - **B6 #35 hw248 输入可整代重建但≠R155可替换(2026-09-28)**:生产桥须补SONAME/build-id并去无用libc++_shared依赖；v12冻结基线不改，新桥进生成清单且单独钉SHA。新代两次链接/ABI PASS，HelloWorld仍libartbase header映射失败退桌面，已整代回滚且HW/ZigZag截图恢复；新代libart be688≠R155 59e1，未证NPE，见 native-generation-hw248/。
+
+- **B6 #37 R155 源码门**：5ea 28 个 route-a 实物可只读拉回并逐 SHA 对齐；#35 child `.text` 41996 vs 现役18796，确属异代。`~/orca/.bridge-payload/appspawn-x-src` 旧快照重编为 dae64028，仍缺现役0976dee8的 CompleteStockChildReply/WLSCPL_OpenPreparedNamespace；交接README自述源码未绑定二进制，不能凭 d0314588e 成功记录认定可重编。只换sigchain前须补齐同版源，证据见 r155-sigchain-generation。
