@@ -275,6 +275,12 @@ class Board:
 
     def ready(self):
         rc, held = self.command(self.lock + ['held', self.serial], 10)
+        # OrbStack 'mac' bridge transiently returns rc=0 with empty output.
+        # Retry once after 2 s only for that empty-output case; a real
+        # other-lane holder name stops immediately as before.
+        if not rc and not held.split():
+            time.sleep(2)
+            rc, held = self.command(self.lock + ['held', self.serial], 10)
         if rc or not held.split() or held.split()[0] != self.lane:
             raise BatchStop('invoking lane does not hold board lock')
         rc, targets = self.command(self.hdc + ['list', 'targets'], 15)
