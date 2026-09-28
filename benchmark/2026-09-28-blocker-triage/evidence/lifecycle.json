@@ -1,0 +1,509 @@
+{
+  "failure_summary": "## Verification Failed\n\n12 of 14 scenarios are non-passing.\n\n### Non-passing Scenarios\n\n**未亮 app 取得本轮观测**\n- verdict: Skip\n- Skip: 修复后的采集脚本在持锁的板上按 app 分片重扫清单里的 43 个未亮 app (test selector `t0_blocked_apps_have_observations` matched zero tests)\n- Skip: 汇总各 app 的 `triage.json` (test selector `t0_blocked_apps_have_observations` matched zero tests)\n- Skip: 至少 39 个 app 有 `capture-failed` 以外的观测 (test selector `t0_blocked_apps_have_observations` matched zero tests)\n- Skip: 每条 `candidate_blocker` 附带至少 1 行本轮原文证据与来源文件 (test selector `t0_blocked_apps_have_observations` matched zero tests)\n  > test `t0_blocked_apps_have_observations`: passed=false\n\n**纯 Java 未亮 app 取得两次主线程栈**\n- verdict: Skip\n- Skip: markor、fd-etar、fd-uhabits、fd-wifianalyzer、fd-libretube、opencamera、fd-api 在重扫集合里且进程存活 (test selector `t0_pure_jvm_apps_have_main_stack` matched zero tests)\n- Skip: 采集 `SIGQUIT` 线程栈 (test selector `t0_pure_jvm_apps_have_main_stack` matched zero tests)\n- Skip: 每个 app 的 `triage.json` 含两份间隔 5 s 的 `main` 段,且都来自本轮 child pid (test selector `t0_pure_jvm_apps_have_main_stack` matched zero tests)\n- Skip: 只剩 `Looper` 空等的栈不被当作 `main-thread-blocked` (test selector `t0_pure_jvm_apps_have_main_stack` matched zero tests)\n  > test `t0_pure_jvm_apps_have_main_stack`: passed=false\n\n**取栈失败时显式记 capture-failed**\n- verdict: Skip\n- Skip: child 在发送 `SIGQUIT` 前已退出 (test selector `t0_stack_timeout_marked_capture_failed` matched zero tests)\n- Skip: 采集线程栈 (test selector `t0_stack_timeout_marked_capture_failed` matched zero tests)\n- Skip: 该 app 记 `capture-failed` 并写明原因 (test selector `t0_stack_timeout_marked_capture_failed` matched zero tests)\n- Skip: 不使用任何旧栈或其他进程的栈 (test selector `t0_stack_timeout_marked_capture_failed` matched zero tests)\n  > test `t0_stack_timeout_marked_capture_failed`: passed=false\n\n**stderr 按本轮 pid 定位并区分缺失与空**\n- verdict: Skip\n- Skip: 运行时目录里有本轮 child 与上一轮 child 各一个 stderr 文件 (test selector `t0_stderr_located_by_pid` matched zero tests)\n- Skip: 取回 stderr (test selector `t0_stderr_located_by_pid` matched zero tests)\n- Skip: 只取回本轮 pid 的文件,且不含 `TOUCH21-POLL` (test selector `t0_stderr_located_by_pid` matched zero tests)\n- Skip: 文件不存在时记 `missing`,存在但为空时记 `empty`,两者不混用 (test selector `t0_stderr_located_by_pid` matched zero tests)\n  > test `t0_stderr_located_by_pid`: passed=false\n\n**快照失败时拒绝判亮**\n- verdict: Skip\n- Skip: 板上残留上一轮同名截图,且本轮 `snapshot_display` 失败 (test selector `t0_stale_screenshot_rejected` matched zero tests)\n- Skip: 采集截图 (test selector `t0_stale_screenshot_rejected` matched zero tests)\n- Skip: 该 app 记 `shot=failed` (test selector `t0_stale_screenshot_rejected` matched zero tests)\n- Skip: 证据目录里没有该 app 本轮的截图文件,results.json 不出现 LIT (test selector `t0_stale_screenshot_rejected` matched zero tests)\n  > test `t0_stale_screenshot_rejected`: passed=false\n\n**LIT 对照组无回退且哨兵仍未亮**\n- verdict: Skip\n- Skip: 某块板记录了完整部署清单,并用同一采集脚本重扫 13 个 LIT app 与 markor (test selector `t0_lit_control_set_unchanged` matched zero tests)\n- Skip: 外环逐张读图签认 (test selector `t0_lit_control_set_unchanged` matched zero tests)\n- Skip: 13 个全部判为 LIT,markor 仍未亮 (test selector `t0_lit_control_set_unchanged` matched zero tests)\n  > test `t0_lit_control_set_unchanged`: passed=false\n\n**基座不一致的板结果被拒绝**\n- verdict: Skip\n- Skip: 某块板的 LIT 对照组有 app 未亮,或运行中部署清单哈希发生变化 (test selector `t0_board_without_full_lit_control_excluded` matched zero tests)\n- Skip: 汇总各板的 `triage.json` (test selector `t0_board_without_full_lit_control_excluded` matched zero tests)\n- Skip: 该板本轮结果标记 `base_mismatch` 且不进入汇总 (test selector `t0_board_without_full_lit_control_excluded` matched zero tests)\n- Skip: 这些 app 重新排进其余板的分片 (test selector `t0_board_without_full_lit_control_excluded` matched zero tests)\n  > test `t0_board_without_full_lit_control_excluded`: passed=false\n\n**争锁失败时零写命令**\n- verdict: Skip\n- Skip: 目标板的锁被另一条车道持有 (test selector `t0_lock_contention_no_writes` matched zero tests)\n- Skip: 采集脚本对该板启动分片 (test selector `t0_lock_contention_no_writes` matched zero tests)\n- Skip: `board_note.sh lock` 返回 75 (test selector `t0_lock_contention_no_writes` matched zero tests)\n- Skip: 该板上没有执行任何写命令,分片内 app 记 `not-run` (test selector `t0_lock_contention_no_writes` matched zero tests)\n  > test `t0_lock_contention_no_writes`: passed=false\n\n**板子中途掉线时终止该分片**\n- verdict: Skip\n- Skip: 分片进行到一半时该板从 `hdc list targets` 消失 (test selector `t0_midrun_detach_stops_shard` matched zero tests)\n- Skip: 采集脚本检测到阶段失败 (test selector `t0_midrun_detach_stops_shard` matched zero tests)\n- Skip: 该分片 app 分别记 `completed` / `interrupted` / `not-run` (test selector `t0_midrun_detach_stops_shard` matched zero tests)\n- Skip: 不读取任何上一轮的 `verdict.tsv`,没有命令发往白名单外的序列号 (test selector `t0_midrun_detach_stops_shard` matched zero tests)\n  > test `t0_midrun_detach_stops_shard`: passed=false\n\n**跨板汇总每个 app 恰好一条有效记录**\n- verdict: Skip\n- Skip: 两块板各自产出分片的 `triage.json`,其中一个 app 在两块板上各有一次 attempt (test selector `t0_merged_triage_one_record_per_app` matched zero tests)\n- Skip: 合并成一个 triage 集合 (test selector `t0_merged_triage_one_record_per_app` matched zero tests)\n- Skip: 清单里 43 个 key 各有恰好 1 条有效记录,并注明板、run_id 与 apk_sha256 (test selector `t0_merged_triage_one_record_per_app` matched zero tests)\n- Skip: 被淘汰的 attempt 仍保留在 `attempts` 里 (test selector `t0_merged_triage_one_record_per_app` matched zero tests)\n  > test `t0_merged_triage_one_record_per_app`: passed=false\n\n**采集不写共享输入与其他车道目录**\n- verdict: Skip\n- Skip: `~/a2hlab/app-inputs/localsend` 与另一车道的 OUT_ROOT 在采集前记录了哈希清单 (test selector `t0_isolated_out_root` matched zero tests)\n- Skip: 一个分片跑完并清理 (test selector `t0_isolated_out_root` matched zero tests)\n- Skip: 本轮所有写入都在 `out-appsweep-t0-<run_id>/` 之下 (test selector `t0_isolated_out_root` matched zero tests)\n- Skip: app-inputs 与另一车道 OUT_ROOT 的哈希清单不变 (test selector `t0_isolated_out_root` matched zero tests)\n  > test `t0_isolated_out_root`: passed=false\n\n**清理拒绝删除头条目录**\n- verdict: Skip\n- Skip: 板上存在 `a2hlab-source-c91d26bf` 与 `a2hlab-app-c91d26bf` 前缀的目录 (test selector `t0_cleanup_exempts_toutiao_dirs` matched zero tests)\n- Skip: 单个 app 扫完执行清理 (test selector `t0_cleanup_exempts_toutiao_dirs` matched zero tests)\n- Skip: 两个 c91d26bf 目录及其内容仍然存在 (test selector `t0_cleanup_exempts_toutiao_dirs` matched zero tests)\n  > test `t0_cleanup_exempts_toutiao_dirs`: passed=false\n\n### Action Required\n\nResolve the failures or missing verification coverage above and re-run verification.\n",
+  "lint_issues": 3,
+  "passed": false,
+  "quality_score": 1.0,
+  "stage": "complete",
+  "verification": {
+    "results": [
+      {
+        "duration_ms": 22,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_blocked_apps_have_observations",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "未亮 app 取得本轮观测",
+        "step_results": [
+          {
+            "reason": "test selector `t0_blocked_apps_have_observations` matched zero tests",
+            "step_text": "修复后的采集脚本在持锁的板上按 app 分片重扫清单里的 43 个未亮 app",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_blocked_apps_have_observations` matched zero tests",
+            "step_text": "汇总各 app 的 `triage.json`",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_blocked_apps_have_observations` matched zero tests",
+            "step_text": "至少 39 个 app 有 `capture-failed` 以外的观测",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_blocked_apps_have_observations` matched zero tests",
+            "step_text": "每条 `candidate_blocker` 附带至少 1 行本轮原文证据与来源文件",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 21,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_pure_jvm_apps_have_main_stack",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "纯 Java 未亮 app 取得两次主线程栈",
+        "step_results": [
+          {
+            "reason": "test selector `t0_pure_jvm_apps_have_main_stack` matched zero tests",
+            "step_text": "markor、fd-etar、fd-uhabits、fd-wifianalyzer、fd-libretube、opencamera、fd-api 在重扫集合里且进程存活",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_pure_jvm_apps_have_main_stack` matched zero tests",
+            "step_text": "采集 `SIGQUIT` 线程栈",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_pure_jvm_apps_have_main_stack` matched zero tests",
+            "step_text": "每个 app 的 `triage.json` 含两份间隔 5 s 的 `main` 段,且都来自本轮 child pid",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_pure_jvm_apps_have_main_stack` matched zero tests",
+            "step_text": "只剩 `Looper` 空等的栈不被当作 `main-thread-blocked`",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 21,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_stack_timeout_marked_capture_failed",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "取栈失败时显式记 capture-failed",
+        "step_results": [
+          {
+            "reason": "test selector `t0_stack_timeout_marked_capture_failed` matched zero tests",
+            "step_text": "child 在发送 `SIGQUIT` 前已退出",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_stack_timeout_marked_capture_failed` matched zero tests",
+            "step_text": "采集线程栈",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_stack_timeout_marked_capture_failed` matched zero tests",
+            "step_text": "该 app 记 `capture-failed` 并写明原因",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_stack_timeout_marked_capture_failed` matched zero tests",
+            "step_text": "不使用任何旧栈或其他进程的栈",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 54,
+        "evidence": [
+          {
+            "passed": true,
+            "stdout": "\nrunning 1 test\nPASS hilog (offline synthetic filter test; no board crash capture claimed)\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.03s\n\n",
+            "test_name": "t0_hilog_keeps_own_pid_crash_only",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "hilog 只保留本轮 child 的真实异常",
+        "step_results": [
+          {
+            "reason": "covered by explicit test `t0_hilog_keeps_own_pid_crash_only`",
+            "step_text": "hilog 里同时有本轮 child 的 `Error relocating … symbol not found` 行、另一个 pid 的 `Fatal signal` 行与采集命令自己的 HDC_LOG 行",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `t0_hilog_keeps_own_pid_crash_only`",
+            "step_text": "采集 hilog 崩溃片段",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `t0_hilog_keeps_own_pid_crash_only`",
+            "step_text": "结果只含本轮 child 的那一行",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `t0_hilog_keeps_own_pid_crash_only`",
+            "step_text": "不含 `HDC_LOG` 与 `ExecuteCommand`",
+            "verdict": "pass"
+          }
+        ],
+        "verdict": "pass"
+      },
+      {
+        "duration_ms": 23,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_stderr_located_by_pid",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "stderr 按本轮 pid 定位并区分缺失与空",
+        "step_results": [
+          {
+            "reason": "test selector `t0_stderr_located_by_pid` matched zero tests",
+            "step_text": "运行时目录里有本轮 child 与上一轮 child 各一个 stderr 文件",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_stderr_located_by_pid` matched zero tests",
+            "step_text": "取回 stderr",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_stderr_located_by_pid` matched zero tests",
+            "step_text": "只取回本轮 pid 的文件,且不含 `TOUCH21-POLL`",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_stderr_located_by_pid` matched zero tests",
+            "step_text": "文件不存在时记 `missing`,存在但为空时记 `empty`,两者不混用",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 21,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_stale_screenshot_rejected",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "快照失败时拒绝判亮",
+        "step_results": [
+          {
+            "reason": "test selector `t0_stale_screenshot_rejected` matched zero tests",
+            "step_text": "板上残留上一轮同名截图,且本轮 `snapshot_display` 失败",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_stale_screenshot_rejected` matched zero tests",
+            "step_text": "采集截图",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_stale_screenshot_rejected` matched zero tests",
+            "step_text": "该 app 记 `shot=failed`",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_stale_screenshot_rejected` matched zero tests",
+            "step_text": "证据目录里没有该 app 本轮的截图文件,results.json 不出现 LIT",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 20,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_lit_control_set_unchanged",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "LIT 对照组无回退且哨兵仍未亮",
+        "step_results": [
+          {
+            "reason": "test selector `t0_lit_control_set_unchanged` matched zero tests",
+            "step_text": "某块板记录了完整部署清单,并用同一采集脚本重扫 13 个 LIT app 与 markor",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_lit_control_set_unchanged` matched zero tests",
+            "step_text": "外环逐张读图签认",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_lit_control_set_unchanged` matched zero tests",
+            "step_text": "13 个全部判为 LIT,markor 仍未亮",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 21,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_board_without_full_lit_control_excluded",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "基座不一致的板结果被拒绝",
+        "step_results": [
+          {
+            "reason": "test selector `t0_board_without_full_lit_control_excluded` matched zero tests",
+            "step_text": "某块板的 LIT 对照组有 app 未亮,或运行中部署清单哈希发生变化",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_board_without_full_lit_control_excluded` matched zero tests",
+            "step_text": "汇总各板的 `triage.json`",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_board_without_full_lit_control_excluded` matched zero tests",
+            "step_text": "该板本轮结果标记 `base_mismatch` 且不进入汇总",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_board_without_full_lit_control_excluded` matched zero tests",
+            "step_text": "这些 app 重新排进其余板的分片",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 21,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_lock_contention_no_writes",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "争锁失败时零写命令",
+        "step_results": [
+          {
+            "reason": "test selector `t0_lock_contention_no_writes` matched zero tests",
+            "step_text": "目标板的锁被另一条车道持有",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_lock_contention_no_writes` matched zero tests",
+            "step_text": "采集脚本对该板启动分片",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_lock_contention_no_writes` matched zero tests",
+            "step_text": "`board_note.sh lock` 返回 75",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_lock_contention_no_writes` matched zero tests",
+            "step_text": "该板上没有执行任何写命令,分片内 app 记 `not-run`",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 65,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_midrun_detach_stops_shard",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "板子中途掉线时终止该分片",
+        "step_results": [
+          {
+            "reason": "test selector `t0_midrun_detach_stops_shard` matched zero tests",
+            "step_text": "分片进行到一半时该板从 `hdc list targets` 消失",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_midrun_detach_stops_shard` matched zero tests",
+            "step_text": "采集脚本检测到阶段失败",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_midrun_detach_stops_shard` matched zero tests",
+            "step_text": "该分片 app 分别记 `completed` / `interrupted` / `not-run`",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_midrun_detach_stops_shard` matched zero tests",
+            "step_text": "不读取任何上一轮的 `verdict.tsv`,没有命令发往白名单外的序列号",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 22,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_merged_triage_one_record_per_app",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "跨板汇总每个 app 恰好一条有效记录",
+        "step_results": [
+          {
+            "reason": "test selector `t0_merged_triage_one_record_per_app` matched zero tests",
+            "step_text": "两块板各自产出分片的 `triage.json`,其中一个 app 在两块板上各有一次 attempt",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_merged_triage_one_record_per_app` matched zero tests",
+            "step_text": "合并成一个 triage 集合",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_merged_triage_one_record_per_app` matched zero tests",
+            "step_text": "清单里 43 个 key 各有恰好 1 条有效记录,并注明板、run_id 与 apk_sha256",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_merged_triage_one_record_per_app` matched zero tests",
+            "step_text": "被淘汰的 attempt 仍保留在 `attempts` 里",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 19,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_isolated_out_root",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "采集不写共享输入与其他车道目录",
+        "step_results": [
+          {
+            "reason": "test selector `t0_isolated_out_root` matched zero tests",
+            "step_text": "`~/a2hlab/app-inputs/localsend` 与另一车道的 OUT_ROOT 在采集前记录了哈希清单",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_isolated_out_root` matched zero tests",
+            "step_text": "一个分片跑完并清理",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_isolated_out_root` matched zero tests",
+            "step_text": "本轮所有写入都在 `out-appsweep-t0-<run_id>/` 之下",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_isolated_out_root` matched zero tests",
+            "step_text": "app-inputs 与另一车道 OUT_ROOT 的哈希清单不变",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 20,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n",
+            "test_name": "t0_cleanup_exempts_toutiao_dirs",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "清理拒绝删除头条目录",
+        "step_results": [
+          {
+            "reason": "test selector `t0_cleanup_exempts_toutiao_dirs` matched zero tests",
+            "step_text": "板上存在 `a2hlab-source-c91d26bf` 与 `a2hlab-app-c91d26bf` 前缀的目录",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_cleanup_exempts_toutiao_dirs` matched zero tests",
+            "step_text": "单个 app 扫完执行清理",
+            "verdict": "skip"
+          },
+          {
+            "reason": "test selector `t0_cleanup_exempts_toutiao_dirs` matched zero tests",
+            "step_text": "两个 c91d26bf 目录及其内容仍然存在",
+            "verdict": "skip"
+          }
+        ],
+        "verdict": "skip"
+      },
+      {
+        "duration_ms": 53,
+        "evidence": [
+          {
+            "passed": true,
+            "stdout": "\nrunning 1 test\nDETECTED real production mutation: int(m[2]) == pid -> True\nDETECTED real production mutation: start <= float(m[1]) <= end -> True\nPASS negative (offline synthetic filter test; no board crash capture claimed)\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.03s\n\n",
+            "test_name": "t0_negative_controls_fail",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "负控使检查器失败",
+        "step_results": [
+          {
+            "reason": "covered by explicit test `t0_negative_controls_fail`",
+            "step_text": "把生产分类器里 pid 过滤或截图新鲜度检查之一改成恒真",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `t0_negative_controls_fail`",
+            "step_text": "运行对应的 `t0_*` 检查",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `t0_negative_controls_fail`",
+            "step_text": "该检查失败并指出被破坏的逻辑",
+            "verdict": "pass"
+          }
+        ],
+        "verdict": "pass"
+      }
+    ],
+    "spec_name": "T0 修扫量取证并重扫未亮 app",
+    "summary": {
+      "failed": 0,
+      "passed": 2,
+      "pending_review": 0,
+      "skipped": 12,
+      "total": 14,
+      "uncertain": 0
+    }
+  }
+}

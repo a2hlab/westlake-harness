@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # sweep_app.sh <app-key> — stage+launch ONE app on board 5ea34a45, wait, snapshot, classify.
-# Idempotent: kills + clears the host between runs. Classifies LIT vs BLOCKED(category) from the
-# child stderr lifecycle + process-alive + a screenshot saved for manual confirmation.
+# Legacy collector; all visual results require review. Use t0_minexp.sh for new evidence.
 #
 # SAFETY: hard-pinned to board 5ea34a45. ABORTS if $SERIAL is not exactly that board, so a stray
 # run can never touch 61b06572 (Toutiao delivery) or 5cd1e3dd (device farm).
@@ -63,23 +62,8 @@ CHILD=$(h shell "ls -t /data/local/tmp/adapter_child_*.stderr 2>/dev/null | head
 [ -n "$CHILD" ] && h file recv "$CHILD" "$OUT/child.stderr" >/dev/null 2>&1
 ALIVE=$(h shell "pidof appspawn-x 2>/dev/null | head -c 40" | tr -d '\r')
 
-# ---- classify ----
-S="$OUT/child.stderr"; [ -f "$S" ] || S="$OUT/probe.stderr"
-verdict="BLOCKED"; category="unknown"
-if grep -qE "Fatal signal|SIGSEGV|SIGABRT|\bpc 0+\b|pc=0x0*\b|libc.*abort" "$S" 2>/dev/null; then
-  category="crash"
-  grep -qE "0xd6e20|0xd5e1c|mallocng" "$S" && category="crash:mallocng-smash"
-  grep -qiE "telephony|ITelephonyRegistry" "$S" && category="crash:telephony-NPE"
-  grep -qiE "impeller|libflutter|eglGetProc|1.raster" "$S" && category="crash:flutter-impeller"
-  grep -qiE "cannot locate symbol|undefined symbol|dlopen failed|UnsatisfiedLink" "$S" && category="crash:native-symbol"
-elif [ -n "$ALIVE" ] && grep -qiE "ANativeWindow|first frame|onResume|render|SurfaceView|prewrapped|drawFrame" "$S" 2>/dev/null; then
-  verdict="LIT"; category="rendered"
-elif [ -n "$ALIVE" ]; then
-  verdict="BLOCKED"; category="alive-no-render(stuck/black)"
-else
-  verdict="BLOCKED"; category="exited-no-crash-marker"
-fi
-
-echo "$APP	$verdict	$category	probe_rc=$PROBE_RC	alive=${ALIVE:-no}" | tee "$OUT/verdict.tsv"
+# Visual interpretation belongs to the outer reviewer. This legacy collector is
+# retained only as historical tooling; use t0_minexp.sh for current evidence.
+printf '%s\tpending_review\tprobe_rc=%s\n' "$APP" "$PROBE_RC" | tee "$OUT/verdict.tsv"
 # cleanup for the next app
 h shell "aa force-stop $HOST 2>/dev/null; true" >/dev/null 2>&1

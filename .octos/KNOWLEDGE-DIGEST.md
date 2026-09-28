@@ -317,3 +317,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
   - 在 demo 板上 stage 新 app 前确认不动头条运行时 `a2hlab-source-c91d26bf…`(61b 曾因此头条起不来)。**别在唯一能用的 demo 板上做重启实验**:本轮为测自启重启了能用的 5cd,头条随之掉线,只能靠 provision 拉回。
   - 板子经 hub 接 Mac 时 USB 在 provision/remount 瞬间掉过三次,最长 50 分钟不回,只能物理重插。
   - 头条运行时目录会膨胀:61b 上 31GB,其中 `profile-backups/` 22GB、`private-tmp/*.stderr` 5.7GB(单个 743MB,几乎全是 `[TOUCH21-POLL]`)。grep stderr 先 `wc -l` 记基线,再 `tail -n +BASE | grep -v TOUCH21-POLL`。
+
+- **T0 基座预检补充(2026-09-28,cx-t0)**:5ea framework-2 哈希门通过仍不能保证 host 一致;Wikipedia probe 在 child 前报 `Installed host differs from the signed source payload`，installed HAP `df385638…` ≠ signed/local `8cfa5bb1…`，必须同时核 host HAP；本轮零截图/零 app 根因，见 `benchmark/2026-09-28-blocker-triage/`。
