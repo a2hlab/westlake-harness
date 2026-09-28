@@ -13,14 +13,12 @@ added by claude-3 as a HAP that talks to the broker (see the contract below).
    sockets after reboot). The 13 runtimes (`/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-*`),
    their stages (`/data/local/tmp/a2hlab-app-*`), the manifest, the host bundle and the framework all persist.
    Only **processes** die on reboot (host, appspawn-x, source_app_namespace, keeper, broker) — re-launched by `up`.
-2. **Auto-start** — **not established.** The Toutiao watchdog was a manual `nohup` (not a boot service); OH
-   `/system` is read-only (ext4 ro), so adding an init `.cfg` service isn't safe/feasible for tomorrow. The
-   one post-boot step is `persist_demo.sh 61b06572 up` (starts host + keeper + broker). `bootevent.boot.completed`
-   exists but wiring a service to it needs a `/system` write or a host-HAP rebuild — out of scope for stability.
-3. **Entry to first screen** — (a) one OH icon per app is **infeasible** (only ONE OH bundle exists,
-   `org.westlake.imehost`; 13 real icons would need 13 OH bundles). So: **(c) command `open <app>`** (reliable,
-   shipped here) and **(b) desktop icons via a launcher HAP → broker** (claude-3 builds the HAP; the broker
-   below is the privilege bridge).
+2. **Auto-start** — **not established.** The one post-boot step is `persist_demo.sh 61b06572 up` (starts host +
+   keeper + broker). *Corrected later the same day:* `/system` does remount rw (`mount -o rw,remount /`) and an
+   init `.cfg` in `/system/etc/init/` does fire at boot — the blocker is elsewhere, see `autostart/README.md`.
+3. **Entry to first screen** — SceneBoard shows one icon per OH bundle, so 13 icons need 13 bundles. First
+   judged infeasible; then done: claude-3 built 12 single-ability HAPs (`org.westlake.la0..la11`, in `hap/`) plus
+   the Toutiao host icon. Each icon writes a request the broker picks up. `open <app>` remains as the command path.
 
 ## Deliverables
 - **`persist_demo.sh <SN> {install|up|open <app>|open-all [HOLD]|req <key>|broker-stop|list|status|toutiao}`**
@@ -80,6 +78,11 @@ bash benchmark/2026-09-28-persistent-demo/persist_demo.sh 61b06572 up
 **注意**：Toutiao selfheal watchdog 若在跑会抢前台把头条顶上来盖住别的 app；`up` 不启动它，保持关闭即可（头条仍可点自己图标打开）。
 
 **踩坑（2026-09-28）**：
+- 图标只在 ability **冷启动**（onCreate）时写 `wl_open.req`。该 la* app 已在后台时再点图标不会重写请求，看起来像"点了没反应"。点之前 `aa force-stop org.westlake.laN`，或让 ability 写完就 terminateSelf。
+- broker 打开 app 后必须 `aa start org.westlake.imehost` 把 host 窗口重新前置：launcher 本身是独立 OH app，点击后它的窗口会盖在渲染进 imehost0 的 app 上面。
+- 一次只开一个。并发打开时后开的层层叠在上面，被压在下面的 app surface 会被回收（droidify 并发失败、单开成功）。
+- `up` 在刚开机（uptime < ~40 s）跑时 host 起不来，`ensure_host` 已加重试循环。
+- 13 个里 burgerking（`com.emn8.mobilem8.nativeapp.bk`，实为麦当劳 APK）在 61b 上 HOST_SPAWN 返回 0 但进程随即崩，已从默认清单剔除。
 - 参数顺序是 `persist_demo.sh <SERIAL> <CMD>`。写反（`up 61b06572`）会报 `REFUSE: only 61b06572 (got up)`，看着像 broker 坏了，其实没有。
 - 在 61b 上 stage 这 12 个 app 时一度把头条运行时 `a2hlab-source-c91d26bf…` 删了，头条随即起不来（watchdog 永远 `BOOTSTRAP`）。给 demo 板加 app 前先确认不动这个目录。该目录后来已恢复（11:40 复核：143 个 lib，与 5cd 一致），但 61b 的 watchdog 仍停在 `SPAWN_BLOCKED`，原因未查。
 - 该目录在 61b 上长到 31 GB（5cd 6.9 GB）：`profile-backups/` 22 GB（提速期 JIT profile 备份）+ `private-tmp/adapter_child_*.stderr` 5.7 GB（单个可达 743 MB，几乎全是 `[TOUCH21-POLL]` 调试输出）。/data 还剩 177 GB，暂不构成问题，但 grep 这些 stderr 必须先记基线行只看新增。

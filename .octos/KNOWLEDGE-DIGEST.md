@@ -302,6 +302,8 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **陷阱**:
   - `hdc shell "… pgrep -f X …"` 恒 +1(匹配到包着它的 `sh -c`),搜不存在的名字也返回 1。用 `pgrep -f '[X]yz'`。
   - `selfheal48/state` 在 /data,重启不清,开机读到 READY 可能是上轮残留。
+  - **头条有两个 c91d26bf 目录**:RT `imehost/files/a2hlab-source-c91d26bf…` 和 STAGE `/data/local/tmp/a2hlab-app-c91d26bf…`(source_app_namespace/host_spawn/request.bin + parent.log)。清理别的 app 时 `rm -rf /data/local/tmp/a2hlab-app-*` 会连 STAGE 一起删 → 头条卡 `PARENT_BLOCKED`。清理必须同时豁免这两个(见 bridge-demo README)。
+  - **"黑屏"先看 ZOrder**:OH 锁屏 `SCBScreenLock` 在屏灭→亮时会自动前置盖住活着的 app(进程活、state READY)。`hidumper -s WindowManagerService -a '-a'`:盖住态 SCBScreenLock≥0 / imehost0=-1。provision 自带 `onscreen_keeper.sh` 保屏+上滑消锁(见 device-provisioning README)。板上 shell 无 `awk`/`tr`,取列用 `set -- $line; echo $8`。
   - provision 150s 窗口在刚开机的板上会超时误判 FAIL,截图为准。
   - `persist_demo.sh` 参数是 `<SERIAL> <CMD>`,写反报 `REFUSE: only 61b06572 (got up)`,看着像 broker 坏。
   - 在 demo 板上 stage 新 app 前确认不动头条运行时 `a2hlab-source-c91d26bf…`(61b 曾因此头条起不来)。**别在唯一能用的 demo 板上做重启实验**:本轮为测自启重启了能用的 5cd,头条随之掉线,只能靠 provision 拉回。
