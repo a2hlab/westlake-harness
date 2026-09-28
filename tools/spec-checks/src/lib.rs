@@ -34,3 +34,23 @@ fn b1_prep_failure_skips_launch() {
 fn b1_prep_is_idempotent() {
     run(&["benchmark/2026-09-28-bms-route-deploy/sandbox-prep/verify.py", "idempotent"]);
 }
+
+#[test]
+fn b5_wikipedia_lit() {
+    run(&["benchmark/2026-09-28-bms-route-deploy/alias-entry/verify.py", "wikipedia"]);
+}
+
+#[test]
+fn b5_alias_resolved_to_target() {
+    run(&["benchmark/2026-09-28-bms-route-deploy/alias-entry/verify.py", "alias"]);
+}
+
+#[test]
+fn b5_non_alias_entry_unchanged() {
+    run(&["benchmark/2026-09-28-bms-route-deploy/alias-entry/verify.py", "ordinary"]);
+}
+
+#[test]
+fn b5_missing_target_reported() {
+    run(&["benchmark/2026-09-28-bms-route-deploy/alias-entry/verify.py", "negative"]);
+}

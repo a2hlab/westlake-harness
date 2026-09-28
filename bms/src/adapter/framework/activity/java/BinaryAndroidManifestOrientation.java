@@ -101,6 +101,87 @@ public final class BinaryAndroidManifestOrientation {
         return NOT_FOUND;
     }
 
+    /** Launcher alias semantics adapted from ManifestComponentProjection.readComponent.
+     * Reuses this baseline's bounded AXML reader, avoiding a new PM/service closure.
+     * null means a declared ordinary activity; errors never silently become aliases.
+     */
+    public static String readAliasTarget(String apkPath, String expectedPackage,
+            String expectedActivity) throws IOException {
+        try (ZipFile apk = new ZipFile(apkPath)) {
+            ZipEntry entry = apk.getEntry("AndroidManifest.xml");
+            if (entry == null || entry.getSize() > MAX_MANIFEST_BYTES) {
+                throw new IOException("Missing or oversized AndroidManifest.xml");
+            }
+            try (InputStream input = apk.getInputStream(entry)) {
+                return parseAliasTarget(readFully(input), expectedPackage, expectedActivity);
+            }
+        }
+    }
+
+    static String parseAliasTarget(byte[] xml, String expectedPackage,
+            String expectedActivity) throws IOException {
+        if (xml == null || xml.length < 8 || u16(xml, 0) != RES_XML_TYPE) {
+            throw new IOException("Invalid binary Android manifest");
+        }
+        int size = checkedSize(xml, 0);
+        if (size < 8 || size > xml.length) throw new IOException("Invalid manifest size");
+        StringPool strings = null;
+        String manifestPackage = null;
+        String selected = normalize(expectedPackage, expectedActivity);
+        String target = null;
+        boolean found = false;
+        java.util.Set<String> activities = new java.util.HashSet<>();
+        for (int offset = u16(xml, 2); offset >= 8 && offset + 8 <= size;) {
+            int type = u16(xml, offset);
+            int header = u16(xml, offset + 2);
+            int chunk = checkedSize(xml, offset);
+            if (header < 8 || chunk < header || (long) offset + chunk > size) {
+                throw new IOException("Invalid manifest chunk");
+            }
+            if (type == RES_STRING_POOL_TYPE) {
+                strings = StringPool.read(xml, offset, header, chunk);
+                if (strings == null) throw new IOException("Invalid manifest strings");
+            } else if (type == RES_XML_START_ELEMENT_TYPE && strings != null) {
+                int ext = offset + header;
+                if (header < 16 || (long) ext + 20 > offset + chunk) {
+                    throw new IOException("Invalid manifest element");
+                }
+                String tag = strings.get(s32(xml, ext + 4));
+                int attrSize = u16(xml, ext + 10), count = u16(xml, ext + 12);
+                int attrs = ext + u16(xml, ext + 8);
+                if (attrSize < 20 || attrs < ext || (long) attrs + (long) attrSize * count > offset + chunk) {
+                    throw new IOException("Invalid manifest attributes");
+                }
+                if ("manifest".equals(tag)) {
+                    manifestPackage = stringAttribute(xml, strings, attrs, attrSize, count, "package");
+                    if (!expectedPackage.equals(manifestPackage)) throw new IOException("Manifest package mismatch");
+                } else if ("activity".equals(tag) || "activity-alias".equals(tag)) {
+                    if (!expectedPackage.equals(manifestPackage)) throw new IOException("Component before package");
+                    String name = normalize(expectedPackage,
+                            stringAttribute(xml, strings, attrs, attrSize, count, "name"));
+                    if ("activity".equals(tag)) activities.add(name);
+                    if (selected.equals(name)) {
+                        if (found) throw new IOException("Duplicate launch declaration: " + name);
+                        found = true;
+                        if ("activity-alias".equals(tag)) {
+                            target = normalize(expectedPackage,
+                                    stringAttribute(xml, strings, attrs, attrSize, count, "targetActivity"));
+                            if (target.isEmpty() || target.equals(name)) {
+                                throw new IOException("Invalid alias target: alias=" + name + " target=" + target);
+                            }
+                        }
+                    }
+                }
+            }
+            offset += chunk;
+        }
+        if (!found) throw new IOException("Launch activity absent: " + selected);
+        if (target != null && !activities.contains(target)) {
+            throw new IOException("Alias target is not a declared activity: alias=" + selected + " target=" + target);
+        }
+        return target;
+    }
+
     private static String stringAttribute(byte[] xml, StringPool strings,
             int attributes, int attributeSize, int count, String wantedName) {
         for (int i = 0; i < count; i++) {

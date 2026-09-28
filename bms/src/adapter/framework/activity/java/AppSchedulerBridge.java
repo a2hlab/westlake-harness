@@ -1427,6 +1427,7 @@ public class AppSchedulerBridge {
             // §1.2.4.2: build complete ActivityInfo from OH AbilityInfo JSON.
             android.content.pm.ActivityInfo activityInfo =
                     buildActivityInfoFromAbility(packageName, abilityName, appInfo, abilityJson);
+            LaunchActivityAliasProjection.apply(activityInfo);
             ManifestOrientationProjection.applyActivityInfo(packageName, activityInfo);
 
             // §1.2.4.1: build Intent from OH Want JSON (component + action + categories

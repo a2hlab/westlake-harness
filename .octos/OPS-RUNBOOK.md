@@ -82,3 +82,5 @@
 - BMS批量恢复：原attempt留存，新的run-id只跑未完成key；已首装成功但截图缺失的key走 `batch/capture_existing.py`，先核对 prior record + 当前 `.../android/base.apk` SHA 再精确点BMS主入口。`mac held`/`hdc list targets` 曾rc0但stdout为空，守卫应停；只读重新确认锁、目标、boot不变后才能新run-id续跑。
 
 - BMS启动A/B采证：同boot和runtime SHA，先核BMS UID及精确图标；点击前`hilog -r`并连续采日志，板端约100–220ms轮询UID进程至少15s，配合AppSpawnChild/返回码/子退出日志。`success pid`后仍须看result；hook31沙箱初始化失败可有PID、exit0且无fault文件，末时刻无PID不能判从未fork。复现器`prepare_sandbox`是bm install之外的必要目录/UID/mode/label准备，批量部署必须显式核对；#24未执行补目录干预。
+
+- B5 JAR 最小覆盖（2026-09-28）：先锁板并核 baseline SHA；保留原 JAR，只 bind-mount 新 JAR，分别核 shell 与 AppSpawnX /proc/PID/root 中 SHA，子进程新增日志证活。回滚仅卸最上层该 JAR mount 并核 baseline SHA；须核 boot/PID，不能跨重启照抄 PID。5ea B5 临时覆盖 SHA250958dc… 留存，负控包已卸载；具体路径、回滚与原始证据见 `benchmark/2026-09-28-bms-route-deploy/alias-entry/README.md`。

@@ -92,7 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
-| **`benchmark/2026-09-28-bms-route-deploy/`** | **OH 6.1 BMS: three-board HelloWorld/ZigZag baseline, 66-key batch installation and desktop capture, retained failure receipts, per-key Westlake comparisons, and HelloWorld/Wikipedia spawn A/B diagnosis (`spawn-ab/`).** |
+| **`benchmark/2026-09-28-bms-route-deploy/`** | **OH 6.1 BMS: three-board HelloWorld/ZigZag baseline, 66-key batch installation and desktop capture, retained failure receipts, per-key Westlake comparisons, and HelloWorld/Wikipedia spawn A/B diagnosis (`spawn-ab/`), sandbox preparation, and activity-alias resolution with a missing-target negative (`alias-entry/`).** |
 | `requirements/APK-GAP-PROBE-PROCESS.md` | **The process specification (v0.3).** Taxonomy, phases, stage ladder, gap registry, prioritisation, roadmap, done-criteria. Start here. |
 | `requirements/APK-COMPATIBILITY-ARCHITECTURE.md` | The compatibility architecture this process measures against. |
 | `analysis/APK-GAP-PROBE-REVIEW.md` | **Critical review of the process**, in two passes: missing detectors, then internal consistency. Every criticism cites a specific measured defect. |
