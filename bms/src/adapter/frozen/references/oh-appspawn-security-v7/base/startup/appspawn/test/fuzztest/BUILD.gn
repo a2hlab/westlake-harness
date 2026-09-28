@@ -1,0 +1,96 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#####################appspawn-fuzz###################
+import("//base/startup/appspawn/appspawn.gni")
+import("//build/config/features.gni")
+import("//build/ohos.gni")
+import("//build/test.gni")
+##############################fuzztest##########################################
+ohos_fuzztest("AppSpawnClientInitFuzzTest") {
+  module_out_path = module_output_path
+  fuzz_config_file = "${appspawn_path}/test/fuzztest/appspawnclientinit_fuzzer"
+
+  include_dirs = [ "${appspawn_path}/interfaces/innerkits/include" ]
+
+  deps = [ "${appspawn_path}/interfaces/innerkits/client:appspawn_client" ]
+  external_deps = [ "bounds_checking_function:libsec_static" ]
+
+  defines = []
+  if (defined(appspawn_sandbox_new) && appspawn_sandbox_new) {
+    defines += [ "APPSPAWN_SANDBOX_NEW" ]
+  }
+
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+  ]
+  sources = [ "appspawnclientinit_fuzzer/appspawnclient_init_fuzzer.cpp" ]
+}
+
+ohos_fuzztest("AppSpawnClientBudleFuzzTest") {
+  module_out_path = module_output_path
+  fuzz_config_file = "${appspawn_path}/test/fuzztest/appspawnclientbudle_fuzzer"
+
+  include_dirs = [ "${appspawn_path}/interfaces/innerkits/include" ]
+
+  deps = [ "${appspawn_path}/interfaces/innerkits/client:appspawn_client" ]
+  external_deps = [ "bounds_checking_function:libsec_static" ]
+
+  defines = []
+  if (defined(appspawn_sandbox_new) && appspawn_sandbox_new) {
+    defines += [ "APPSPAWN_SANDBOX_NEW" ]
+  }
+
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+  ]
+  sources = [ "appspawnclientbudle_fuzzer/appspawnclient_budle_fuzzer.cpp" ]
+}
+
+ohos_fuzztest("AppSpawnClientStringFuzzTest") {
+  module_out_path = module_output_path
+  fuzz_config_file = "${appspawn_path}/test/fuzztest/appspawnclientstring_fuzzer"
+
+  include_dirs = [ "${appspawn_path}/interfaces/innerkits/include" ]
+
+  deps = [ "${appspawn_path}/interfaces/innerkits/client:appspawn_client" ]
+  external_deps = [ "bounds_checking_function:libsec_static" ]
+
+  defines = []
+  if (defined(appspawn_sandbox_new) && appspawn_sandbox_new) {
+    defines += [ "APPSPAWN_SANDBOX_NEW" ]
+  }
+
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+  ]
+  sources = [ "appspawnclientstring_fuzzer/appspawnclient_string_fuzzer.cpp" ]
+}
+
+group("app_spawn_fuzztest") {
+  testonly = true
+  deps = []
+  deps += [ ":AppSpawnClientInitFuzzTest" ]
+  deps += [ ":AppSpawnClientBudleFuzzTest" ]
+  deps += [ ":AppSpawnClientStringFuzzTest" ]
+}
+###############################################################################

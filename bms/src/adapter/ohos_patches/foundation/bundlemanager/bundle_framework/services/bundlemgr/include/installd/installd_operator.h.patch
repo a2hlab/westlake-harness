@@ -1,0 +1,17 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd/installd_operator.h
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd/installd_operator.h
+@@ -111,6 +111,14 @@
+     static bool IsNativeSo(const std::string &entryName, const std::string &cpuAbi);
+ 
+     static bool ExtractFiles(const ExtractParam &extractParam);
++
++    // Adapter APK transforms run in installs domain, which owns code-root I/O.
++    // Synthesize OH resources HAP from APK launcher icon + baked-in template.
++    static bool BuildApkResourcesHap(const std::string &apkPath, const std::string &outHapPath);
++
++    // Extract exactly lib/<cpuAbi>/lib*.so into a dedicated staging directory.
++    // Zero matches and every path/read/write/CRC/ELF/owner/mode failure are fatal.
++    static bool ExtractApkNativeFiles(const ExtractParam &extractParam);
+     static bool ExtractFiles(const std::map<std::string, std::string> &hnpPackageMap,
+         const ExtractParam &extractParam);
+     static bool ExtractTargetFile(

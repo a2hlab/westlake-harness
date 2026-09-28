@@ -1,0 +1,29 @@
+Subject: [WestLake] appspawn: fail closed when parent pre-fork hook fails
+
+The Android runtime's ZygoteHooks.preFork() must run immediately before the
+stock fork. Continuing after it fails can fork a VM with live daemon locks.
+The v7 stock call currently passes flags=0 and ignores the result, so this is
+the one required stock-host source delta for the Android child plugin.
+
+This does not move or replace the stock decoder, fork, child hooks, sandbox,
+token, SELinux, DAC, response pipe, or process records.
+
+--- a/base/startup/appspawn/standard/appspawn_service.c
++++ b/base/startup/appspawn/standard/appspawn_service.c
+@@ -1040,11 +1040,17 @@ static void ProcessSpawnReqMsg(AppSpawnConnection *connection, AppSpawnMsgNode *message)
+     message->connection = connection;
+     // mount el2 dir
+     // getWrapBundleNameValue
+-    AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, GetAppSpawnContent(), &property->client);
++    ret = AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, HOOK_STOP_WHEN_ERROR,
++        GetAppSpawnContent(), &property->client);
++    if (ret != 0) {
++        SendResponse(connection, &message->msgHeader, ret, 0);
++        DeleteAppSpawningCtx(property);
++        return;
++    }
+     DumpAppSpawnMsg(property->message);
+ 
+     clock_gettime(CLOCK_MONOTONIC, &property->spawnStart);
+     ret = RunAppSpawnProcessMsg(GetAppSpawnContent(), &property->client, &property->pid);
+     AppSpawnHookExecute(STAGE_PARENT_POST_FORK, 0, GetAppSpawnContent(), &property->client);

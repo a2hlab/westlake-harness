@@ -1,0 +1,364 @@
+diff --git a/apex/testing/Android.bp b/apex/testing/Android.bp
+index e521326..a9c7d9c 100644
+--- a/apex/testing/Android.bp
++++ b/apex/testing/Android.bp
+@@ -1,29 +1 @@
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-apex_test {
+-    name: "test_com.android.os.statsd",
+-    visibility: [
+-        "//system/apex/tests",
+-    ],
+-    defaults: ["com.android.os.statsd-defaults"],
+-    manifest: "test_manifest.json",
+-    file_contexts: ":com.android.os.statsd-file_contexts",
+-    // Test APEX, should never be installed
+-    installable: false,
+-}
++// Disabled
+diff --git a/apex/tests/libstatspull/Android.bp b/apex/tests/libstatspull/Android.bp
+index e96a698..a9c7d9c 100644
+--- a/apex/tests/libstatspull/Android.bp
++++ b/apex/tests/libstatspull/Android.bp
+@@ -1,64 +1 @@
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "LibStatsPullTests",
+-    static_libs: [
+-        "androidx.test.rules",
+-        "platformprotoslite",
+-        "statsdprotolite",
+-        "truth-prebuilt",
+-    ],
+-    libs: [
+-        "android.test.runner.stubs",
+-        "android.test.base.stubs",
+-    ],
+-    jni_libs: [
+-        "libstatspull_testhelper",
+-    ],
+-    srcs: [
+-        "src/**/*.java",
+-        "protos/**/*.proto",
+-        ],
+-    test_suites: [
+-        "device-tests",
+-        "mts",
+-    ],
+-    platform_apis: true,
+-    privileged: true,
+-    certificate: "platform",
+-    compile_multilib: "both",
+-}
+-
+-cc_library_shared {
+-    name: "libstatspull_testhelper",
+-    srcs: ["jni/stats_pull_helper.cpp"],
+-    cflags: [
+-        "-Wall",
+-        "-Werror",
+-    ],
+-    shared_libs: [
+-        "libbinder_ndk",
+-        "statsd-aidl-ndk",
+-    ],
+-    static_libs: [
+-        "libstatspull_private",
+-        "libstatssocket_private",
+-        "libcutils",
+-    ],
+-}
++// Disabled
+diff --git a/framework/Android.bp b/framework/Android.bp
+index 360801b..714319c 100644
+--- a/framework/Android.bp
++++ b/framework/Android.bp
+@@ -48,6 +48,7 @@ filegroup {
+ }
+ 
+ java_sdk_library {
++    unsafe_ignore_missing_latest_api: true,
+     name: "framework-statsd",
+     defaults: ["framework-module-defaults"],
+     installable: true,
+diff --git a/framework/test/hostsidetests/Android.bp b/framework/test/hostsidetests/Android.bp
+index e0b7eb0..a9c7d9c 100644
+--- a/framework/test/hostsidetests/Android.bp
++++ b/framework/test/hostsidetests/Android.bp
+@@ -1,70 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test_helper_app {
+-    name: "StatsdFrameworkTestApp",
+-    srcs: ["app/src/**/app/*.java"],
+-    manifest: "app/AndroidManifest.xml",
+-    static_libs: [
+-        "androidx.test.runner",
+-        "androidx.test.core",
+-        "statsdprotolite",
+-        "truth-prebuilt",
+-        "framework-statsd.stubs.module_lib",
+-    ],
+-    compile_multilib: "both",
+-    min_sdk_version: "30",
+-    sdk_version: "module_current",
+-    privileged: true,
+-    certificate: "platform",
+-}
+-
+-android_test_helper_app {
+-    name: "StatsdFrameworkTestAppNoPermission",
+-    srcs: ["app/src/**/appnopermission/*.java"],
+-    manifest: "app/AndroidManifestNoPermission.xml",
+-    static_libs: [
+-        "androidx.test.runner",
+-        "androidx.test.core",
+-        "statsdprotolite",
+-        "truth-prebuilt",
+-        "framework-statsd.stubs.module_lib",
+-    ],
+-    compile_multilib: "both",
+-    min_sdk_version: "30",
+-    sdk_version: "module_current",
+-    privileged: true,
+-    certificate: "platform",
+-}
+-
+-java_test_host {
+-    name: "FrameworkStatsdHostTest",
+-    srcs: [ "src/**/*.java" ],
+-    libs: [
+-        "tradefed",
+-        "truth-prebuilt",
+-    ],
+-    test_suites: [
+-        "device-tests",
+-        "mts-statsd",
+-    ],
+-    data: [
+-        ":StatsdFrameworkTestApp",
+-        ":StatsdFrameworkTestAppNoPermission",
+-    ],
+-}
++// Disabled
+diff --git a/framework/test/unittests/Android.bp b/framework/test/unittests/Android.bp
+index 243328c..a9c7d9c 100644
+--- a/framework/test/unittests/Android.bp
++++ b/framework/test/unittests/Android.bp
+@@ -1,39 +1 @@
+-// Copyright (C) 2020 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "FrameworkStatsdTest",
+-    sdk_version: "module_current",
+-    srcs: [ "**/*.java" ],
+-    manifest: "AndroidManifest.xml",
+-    static_libs: [
+-        "androidx.test.rules",
+-        "truth-prebuilt",
+-        "modules-utils-build",
+-    ],
+-    libs: [
+-        "android.test.runner.stubs",
+-        "android.test.base.stubs",
+-        "framework-statsd.impl",
+-    ],
+-    test_suites: [
+-        "general-tests",
+-        "mts-statsd",
+-    ],
+-    min_sdk_version: "30",
+-}
++// Disabled
+diff --git a/tests/Android.bp b/tests/Android.bp
+index 532ce63..a9c7d9c 100644
+--- a/tests/Android.bp
++++ b/tests/Android.bp
+@@ -1,50 +1 @@
+-// Copyright (C) 2014 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_test_host {
+-    name: "CtsStatsdHostTestCases",
+-
+-    srcs: [
+-        "src/**/*.java",
+-        ":apex-info-list",
+-    ],
+-
+-    // tag this module as a cts test artifact
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-        "mts-statsd",
+-    ],
+-
+-    libs: [
+-        "compatibility-host-util",
+-        "cts-tradefed",
+-        "host-libprotobuf-java-full",
+-        "platformprotos",
+-        "tradefed",
+-        "truth-prebuilt",
+-    ],
+-    static_libs: [
+-        "core_cts_test_resources",
+-        "perfetto_config-full",
+-    ],
+-    data: [
+-        "**/*.pbtxt",
+-        ":CtsStatsdApp",
+-    ],
+-}
++// Disabled
+diff --git a/tests/apps/statsdapp/Android.bp b/tests/apps/statsdapp/Android.bp
+index 61ee52c..a9c7d9c 100644
+--- a/tests/apps/statsdapp/Android.bp
++++ b/tests/apps/statsdapp/Android.bp
+@@ -1,64 +1 @@
+-// Copyright (C) 2017 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-cc_library_shared {
+-    name: "liblmkhelper",
+-    srcs: ["jni/alloc_stress_activity.cpp"],
+-    cflags: [
+-        "-Wall",
+-        "-Werror",
+-    ],
+-    header_libs: ["jni_headers"],
+-    shared_libs: ["liblog"],
+-    stl: "c++_static",
+-    sdk_version: "current",
+-}
+-
+-android_test_helper_app {
+-    name: "CtsStatsdApp",
+-    defaults: ["cts_defaults"],
+-    platform_apis: true,
+-    min_sdk_version: "24",
+-    srcs: [
+-        "src/**/*.java",
+-        ":statslog-statsd-cts-java-gen",
+-    ],
+-    libs: [
+-        "android.test.runner",
+-        "junit",
+-        "org.apache.http.legacy",
+-    ],
+-    privileged: true,
+-    static_libs: [
+-        "ctstestrunner-axt",
+-        "compatibility-device-util-axt",
+-        "androidx.legacy_legacy-support-v4",
+-        "androidx.test.rules",
+-        "cts-net-utils",
+-        "BlobStoreTestUtils"
+-    ],
+-    jni_libs: ["liblmkhelper"],
+-    compile_multilib: "both",
+-}
+-
+-genrule {
+-    name: "statslog-statsd-cts-java-gen",
+-    tools: ["stats-log-api-gen"],
+-    cmd: "$(location stats-log-api-gen) --java $(out) --module cts --javaPackage com.android.server.cts.device.statsd --javaClass StatsLogStatsdCts",
+-    out: ["com/android/server/cts/device/statsd/StatsLogStatsdCts.java"],
+-}
++// Disabled

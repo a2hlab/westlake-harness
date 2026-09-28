@@ -1,0 +1,52 @@
+diff --git a/libs/hwui/DeferredLayerUpdater.cpp b/libs/hwui/DeferredLayerUpdater.cpp
+index b763a96e..fbd1f012 100644
+--- a/libs/hwui/DeferredLayerUpdater.cpp
++++ b/libs/hwui/DeferredLayerUpdater.cpp
+@@ -14,6 +14,14 @@
+  * limitations under the License.
+  */
+ #include "DeferredLayerUpdater.h"
++// OH adapter stubs for missing ASurfaceTexture/ARect APIs
++typedef struct ARect_stub { int32_t left, top, right, bottom; } ARect;
++extern "C" {
++static inline int ASurfaceTexture_releaseConsumerOwnership(void*) { return 0; }
++static inline int ASurfaceTexture_takeConsumerOwnership(void*) { return 0; }
++static inline int ASurfaceTexture_getTransformMatrix(void*, float[16]) { return 0; }
++static inline int ASurfaceTexture_getCropRect(void*, ARect*) { return 0; }
++}
+ 
+ #include <GLES2/gl2.h>
+ #include <GLES2/gl2ext.h>
+@@ -106,6 +114,10 @@ status_t DeferredLayerUpdater::createReleaseFence(bool useFenceSync, EGLSyncKHR*
+         *display = eglManager.eglDisplay();
+         err = eglManager.createReleaseFence(useFenceSync, eglFence, releaseFence);
+     } else {
++#ifdef HWUI_NO_VULKAN
++        // OH adapter: Vulkan pipeline absent; no-op — no fence to create.
++        err = NO_ERROR;
++#else
+         int previousSlot = dlu->mCurrentSlot;
+         if (previousSlot != -1) {
+             dlu->mImageSlots[previousSlot].releaseQueueOwnership(
+@@ -113,6 +125,7 @@ status_t DeferredLayerUpdater::createReleaseFence(bool useFenceSync, EGLSyncKHR*
+         }
+         err = renderState.getRenderThread().vulkanManager().createReleaseFence(
+                 releaseFence, renderState.getRenderThread().getGrContext());
++#endif
+     }
+     return err;
+ }
+@@ -125,8 +138,13 @@ status_t DeferredLayerUpdater::fenceWait(int fence, void* handle) {
+     if (Properties::getRenderPipelineType() == RenderPipelineType::SkiaGL) {
+         err = renderState.getRenderThread().eglManager().fenceWait(fence);
+     } else {
++#ifdef HWUI_NO_VULKAN
++        // OH adapter: Vulkan pipeline absent; no-op — no fence to wait on.
++        err = NO_ERROR;
++#else
+         err = renderState.getRenderThread().vulkanManager().fenceWait(
+                 fence, renderState.getRenderThread().getGrContext());
++#endif
+     }
+     return err;
+ }

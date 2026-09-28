@@ -1,0 +1,22 @@
+diff --git a/libs/hwui/hwui/AnimatedImageDrawable.cpp b/libs/hwui/hwui/AnimatedImageDrawable.cpp
+index 8049dc94..fcbd52e5 100644
+--- a/libs/hwui/hwui/AnimatedImageDrawable.cpp
++++ b/libs/hwui/hwui/AnimatedImageDrawable.cpp
+@@ -111,7 +111,7 @@ AnimatedImageDrawable::Snapshot AnimatedImageDrawable::decodeNextFrame() {
+     {
+         std::unique_lock lock{mImageLock};
+         snap.mDurationMS = adjustFrameDuration(mSkAnimatedImage->decodeNextFrame());
+-        snap.mPic.reset(mSkAnimatedImage->newPictureSnapshot());
++        snap.mPic.reset(mSkAnimatedImage->makePictureSnapshot().release());
+     }
+ 
+     return snap;
+@@ -123,7 +123,7 @@ AnimatedImageDrawable::Snapshot AnimatedImageDrawable::reset() {
+     {
+         std::unique_lock lock{mImageLock};
+         mSkAnimatedImage->reset();
+-        snap.mPic.reset(mSkAnimatedImage->newPictureSnapshot());
++        snap.mPic.reset(mSkAnimatedImage->makePictureSnapshot().release());
+         snap.mDurationMS = currentFrameDuration();
+     }
+ 

@@ -1,0 +1,80 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/bundle_stream_installer_host_impl.cpp
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/bundle_stream_installer_host_impl.cpp
+@@ -19,1 +19,2 @@
++#include <algorithm>
+ #include <dirent.h>
+@@ -143,8 +143,13 @@
+ 
+     if (!BundleUtil::CheckFileType(fileName, ServiceConstants::INSTALL_FILE_SUFFIX) &&
+         !BundleUtil::CheckFileType(fileName, ServiceConstants::HSP_FILE_SUFFIX) &&
+-        !BundleUtil::CheckFileType(fileName, ServiceConstants::APP_FILE_SUFFIX)) {
+-        APP_LOGE("file is not hap or hsp or app");
++        !BundleUtil::CheckFileType(fileName, ServiceConstants::APP_FILE_SUFFIX)
++#ifdef OH_ADAPTER_ANDROID
++        // adapter project: allow .apk extension
++        && !BundleUtil::CheckFileType(fileName, ".apk")
++#endif
++        ) {
++        APP_LOGE("file is not hap or hsp or app or apk");
+         return Constants::DEFAULT_STREAM_FD;
+     }
+     // to prevent the hap copied to relevant path
+@@ -247,8 +252,13 @@
+ 
+     if (!BundleUtil::CheckFileType(hspName, ServiceConstants::INSTALL_FILE_SUFFIX) &&
+         !BundleUtil::CheckFileType(hspName, ServiceConstants::HSP_FILE_SUFFIX) &&
+-        !BundleUtil::CheckFileType(hspName, ServiceConstants::CODE_SIGNATURE_FILE_SUFFIX)) {
+-        APP_LOGE("file is not hap or hsp");
++        !BundleUtil::CheckFileType(hspName, ServiceConstants::CODE_SIGNATURE_FILE_SUFFIX)
++#ifdef OH_ADAPTER_ANDROID
++        // adapter project: allow .apk extension (covers "two-stream" install path used by some bm flows)
++        && !BundleUtil::CheckFileType(hspName, ".apk")
++#endif
++        ) {
++        APP_LOGE("file is not hap or hsp or apk");
+         return Constants::DEFAULT_STREAM_FD;
+     }
+ 
+@@ -411,8 +421,13 @@ static bool GetAppFilesFromBundlePath(const std::string &currentBundlePath, std::vector<std::string> &appFileList)
+             continue;
+         }
+         const std::string hapFilePath = bundlePath + entry->d_name;
+-        if (!BundleFileUtil::CheckFileType(hapFilePath, ServiceConstants::APP_FILE_SUFFIX)) {
++        bool isSupportedContainer =
++            BundleFileUtil::CheckFileType(hapFilePath, ServiceConstants::APP_FILE_SUFFIX);
++#ifdef OH_ADAPTER_ANDROID
++        isSupportedContainer = isSupportedContainer || BundleFileUtil::CheckFileType(hapFilePath, ".apk");
++#endif
++        if (!isSupportedContainer) {
+             ret = false;
+             continue;
+         }
+ 
+@@ -583,6 +594,27 @@
+         return false;
+     }
+ 
++#ifdef OH_ADAPTER_ANDROID
++    // APK verification/registration has one owner in
++    // BaseBundleInstaller::ProcessBundleInstall. Keep staged APKs intact and
++    // bypass only this HAP-specific verification/decompression pre-pass.
++    {
++        const size_t apkCount = static_cast<size_t>(std::count_if(appPaths.begin(), appPaths.end(),
++            [](const std::string &path) { return BundleFileUtil::CheckFileType(path, ".apk"); }));
++        if (apkCount > 0) {
++            // One APK package is one BMS transaction. Multiple packages are
++            // sequenced outside BMS so each receives an independent verdict.
++            if (apkCount != 1 || appPaths.size() != 1) {
++                APP_LOGE("APK stream install requires exactly one APK and no mixed inputs");
++                receiver_->OnFinished(ERR_APPEXECFWK_INSTALL_MORE_THAN_ONE_APP, "");
++                return false;
++            }
++            APP_LOGI("single APK retained for BaseBundleInstaller route");
++            return true;
++        }
++    }
++#endif
++
+     auto bundleInstallChecker = std::make_unique<BundleInstallChecker>();
+     std::vector<Security::Verify::HapVerifyResult> hapVerifyResults;
+     if (bundleInstallChecker == nullptr ||

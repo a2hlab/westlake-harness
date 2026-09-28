@@ -1,0 +1,40 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/bundle_data_mgr.cpp
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/bundle_data_mgr.cpp
+@@ -14,6 +14,9 @@
+  */
+ 
+ #include "bundle_data_mgr.h"
++#ifdef GLOBAL_RESMGR_ENABLE
++#include <fstream>  // adapter project: iconPath fallback
++#endif
+ 
+ #include <algorithm>
+ #include <sys/stat.h>
+@@ -8490,6 +8493,27 @@
+             return ERR_BUNDLE_MANAGER_ABILITY_DISABLED;
+         }
+     }
++    // adapter project: iconPath fallback when iconId=0
++    // Android-APK bundles registered without OH resources.index have iconId=0.
++    // Read PNG bytes from abilityInfo.iconPath directly, bypass ResourceManager.
++    if (abilityInfo.iconId == 0 && !abilityInfo.iconPath.empty()) {
++        std::ifstream ifs(abilityInfo.iconPath, std::ios::binary | std::ios::ate);
++        if (ifs) {
++            std::streamsize sz = ifs.tellg();
++            if (sz > 0 && sz < (10 * 1024 * 1024)) {
++                ifs.seekg(0);
++                mediaDataPtr = std::make_unique<uint8_t[]>(static_cast<size_t>(sz));
++                if (ifs.read(reinterpret_cast<char*>(mediaDataPtr.get()), sz)) {
++                    len = static_cast<size_t>(sz);
++                    APP_LOGI("adapter iconPath fallback: %{public}s (%{public}zu bytes)",
++                        abilityInfo.iconPath.c_str(), len);
++                    return ERR_OK;
++                }
++                mediaDataPtr.reset();
++            }
++        }
++        APP_LOGW("adapter iconPath fallback failed for %{public}s", abilityInfo.iconPath.c_str());
++    }
+     std::shared_ptr<Global::Resource::ResourceManager> resourceManager =
+         GetResourceManager(bundleName, abilityInfo.moduleName, responseUserId);
+     if (resourceManager == nullptr) {

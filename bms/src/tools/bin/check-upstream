@@ -1,0 +1,57 @@
+#!/bin/sh
+# check-upstream — verify Bridge upstream mirrors are present and match their
+# local baseline markers. Upstream source is NOT in git; see
+# code/upstream/README.md and code/upstream/upstream.lock.yaml.
+#
+# Exit non-zero if a mirror is missing or fails its baseline marker, so any
+# Action can gate its work on upstream being ready. Rebuild with:
+#   tools/bin/sync-upstreams-from-alexpc
+set -eu
+
+root=$(cd "$(dirname "$0")/../.." && pwd)
+up="$root/code/upstream"
+fail=0
+
+present() {  # name path  -> 0 if dir exists and is non-empty
+    if [ ! -d "$2" ] || [ -z "$(ls -A "$2" 2>/dev/null)" ]; then
+        echo "MISSING   $1 -> ${2#"$root"/} (empty or not mounted)"
+        fail=1
+        return 1
+    fi
+    return 0
+}
+
+marker() {  # name file pattern
+    if ! grep -qF "$3" "$2" 2>/dev/null; then
+        echo "BASELINE  $1 -> expected '$3' in ${2#"$root"/}"
+        fail=1
+    fi
+}
+
+# --- aosp-14: BoardConfig.mk lives in-tree (not excluded), so verify arm64. ---
+if present aosp-14 "$up/aosp-14"; then
+    bc="$up/aosp-14/device/adapter/oh_adapter/BoardConfig.mk"
+    marker aosp-14 "$bc" "TARGET_ARCH := arm64"
+    marker aosp-14 "$bc" "TARGET_CPU_ABI := arm64-v8a"
+fi
+
+# --- openharmony-6.1.0.31: out/ is excluded from the mirror, so args.gn is not
+# local. The authoritative baseline (manifest commit + wukong100 arm64) is
+# asserted against AlexPC inside sync-upstreams-from-alexpc. Locally we only
+# confirm this is a real OH source tree. ---
+if present openharmony-6.1.0.31 "$up/openharmony-6.1.0.31"; then
+    if [ ! -d "$up/openharmony-6.1.0.31/foundation" ] && \
+       [ ! -d "$up/openharmony-6.1.0.31/build" ]; then
+        echo "BASELINE  openharmony-6.1.0.31 -> missing foundation/ and build/ (not an OH tree?)"
+        fail=1
+    fi
+fi
+
+if [ "$fail" -ne 0 ]; then
+    echo
+    echo "Upstream not ready. Fetch/rebuild:  tools/bin/sync-upstreams-from-alexpc"
+    echo "Baseline pins & sources:            code/upstream/upstream.lock.yaml"
+    exit 1
+fi
+
+echo "OK  aosp-14 and openharmony-6.1.0.31 present and match local baseline markers."

@@ -1,0 +1,18 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/bundle_util.cpp
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/bundle_util.cpp
+@@ -98,8 +98,13 @@
+     if (!CheckFileType(bundlePath, ServiceConstants::INSTALL_FILE_SUFFIX) &&
+         !CheckFileType(bundlePath, ServiceConstants::HSP_FILE_SUFFIX) &&
+         !CheckFileType(bundlePath, ServiceConstants::QUICK_FIX_FILE_SUFFIX) &&
+-        !CheckFileType(bundlePath, ServiceConstants::CODE_SIGNATURE_FILE_SUFFIX)) {
+-        APP_LOGE("file is not hap, hsp, hqf or sig");
++        !CheckFileType(bundlePath, ServiceConstants::CODE_SIGNATURE_FILE_SUFFIX)
++#ifdef OH_ADAPTER_ANDROID
++        // adapter project: allow .apk extension (Route C dispatcher in BundleInstaller::Install)
++        && !CheckFileType(bundlePath, ".apk")
++#endif
++        ) {
++        APP_LOGE("file is not hap, hsp, hqf or sig or apk");
+         return ERR_APPEXECFWK_INSTALL_INVALID_HAP_NAME;
+     }
+     if (!PathToRealPath(bundlePath, realPath)) {

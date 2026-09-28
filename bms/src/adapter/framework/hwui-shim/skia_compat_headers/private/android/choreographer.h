@@ -1,0 +1,15 @@
+#pragma once
+#include <cstdint>
+typedef struct AChoreographer AChoreographer;
+typedef struct AChoreographerFrameCallbackData AChoreographerFrameCallbackData;
+extern "C" {
+typedef void (*AChoreographer_vsyncCallback)(const AChoreographerFrameCallbackData*, void*);
+void AChoreographer_postVsyncCallback(AChoreographer*, AChoreographer_vsyncCallback, void*);
+int64_t AChoreographer_getFrameInterval(const AChoreographer*);
+int64_t AChoreographerFrameCallbackData_getFrameTimeNanos(const AChoreographerFrameCallbackData*);
+size_t AChoreographerFrameCallbackData_getFrameTimelinesLength(const AChoreographerFrameCallbackData*);
+size_t AChoreographerFrameCallbackData_getPreferredFrameTimelineIndex(const AChoreographerFrameCallbackData*);
+int64_t AChoreographerFrameCallbackData_getFrameTimelineDeadlineNanos(const AChoreographerFrameCallbackData*, size_t);
+int64_t AChoreographerFrameCallbackData_getFrameTimelineExpectedPresentationTimeNanos(const AChoreographerFrameCallbackData*, size_t);
+int64_t AChoreographerFrameCallbackData_getFrameTimelineVsyncId(const AChoreographerFrameCallbackData*, size_t);
+}

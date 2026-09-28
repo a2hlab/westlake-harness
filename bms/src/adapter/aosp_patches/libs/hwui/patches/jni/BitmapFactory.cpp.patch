@@ -1,0 +1,27 @@
+diff --git a/libs/hwui/jni/BitmapFactory.cpp b/libs/hwui/jni/BitmapFactory.cpp
+index 8abcd9a5..91ffc62a 100644
+--- a/libs/hwui/jni/BitmapFactory.cpp
++++ b/libs/hwui/jni/BitmapFactory.cpp
+@@ -283,7 +283,7 @@ static bool decodeGainmap(std::unique_ptr<SkStream> gainmapStream, const SkGainm
+         // what we want.
+         paint.setBlendMode(SkBlendMode::kSrc);
+ 
+-        SkCanvas canvas(gainmapBitmap, SkCanvas::ColorBehavior::kLegacy);
++        SkCanvas canvas(gainmapBitmap);  /* M133: ColorBehavior arg removed */
+         canvas.scale(scaleX, scaleY);
+         decodeBitmap.setImmutable();  // so .asImage() doesn't make a copy
+         canvas.drawImage(decodeBitmap.asImage(), 0.0f, 0.0f,
+@@ -596,7 +596,7 @@ static jobject doDecode(JNIEnv* env, std::unique_ptr<SkStreamRewindable> stream,
+         // what we want.
+         paint.setBlendMode(SkBlendMode::kSrc);
+ 
+-        SkCanvas canvas(outputBitmap, SkCanvas::ColorBehavior::kLegacy);
++        SkCanvas canvas(outputBitmap);  /* M133: ColorBehavior arg removed */
+         canvas.scale(scaleX, scaleY);
+         decodingBitmap.setImmutable(); // so .asImage() doesn't make a copy
+         canvas.drawImage(decodingBitmap.asImage(), 0.0f, 0.0f,
+@@ -835,3 +835,4 @@ int register_android_graphics_BitmapFactory(JNIEnv* env) {
+     return android::RegisterMethodsOrDie(env, "android/graphics/BitmapFactory",
+                                          gMethods, NELEM(gMethods));
+ }
++

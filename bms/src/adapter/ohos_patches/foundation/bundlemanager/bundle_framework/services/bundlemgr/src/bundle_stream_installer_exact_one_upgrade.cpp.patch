@@ -1,0 +1,24 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/bundle_stream_installer_host_impl.cpp
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/bundle_stream_installer_host_impl.cpp
+@@ -580,20 +580,7 @@ bool BundleStreamInstallerHostImpl::InstallApp(const std::vector<std::string> &pathVec)
+ {
+     std::vector<std::string> appPaths;
+     for (const auto &path : pathVec) {
+-        if (!GetAppFilesFromBundlePath(path, appPaths) && !appPaths.empty()) {
+-            receiver_->OnFinished(ERR_APPEXECFWK_INSTALL_MORE_THAN_ONE_APP, "");
+-            return false;
+-        }
+-#ifdef OH_ADAPTER_ANDROID
+-        const size_t apkCount = static_cast<size_t>(std::count_if(appPaths.begin(), appPaths.end(),
+-            [](const std::string &item) { return BundleFileUtil::CheckFileType(item, ".apk"); }));
+-        // Do not apply the one-HAP container limit to a pure APK selection.
+-        // BMS will process each item as an independently committed package.
+-        if (!appPaths.empty() && apkCount == appPaths.size()) {
+-            continue;
+-        }
+-#endif
+-        if (appPaths.size() > 1) {
++        if ((!GetAppFilesFromBundlePath(path, appPaths) && !appPaths.empty()) || appPaths.size() > 1) {
+             receiver_->OnFinished(ERR_APPEXECFWK_INSTALL_MORE_THAN_ONE_APP, "");
+             return false;
+         }

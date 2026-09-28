@@ -1,0 +1,22 @@
+--- a/foundation/graphic/graphic_2d/rosen/modules/render_service/core/pipeline/main_thread/rs_uni_render_visitor.cpp
++++ b/foundation/graphic/graphic_2d/rosen/modules/render_service/core/pipeline/main_thread/rs_uni_render_visitor.cpp
+@@ -1106,6 +1106,19 @@
+ 
+ void RSUniRenderVisitor::QuickPrepareSurfaceRenderNode(RSSurfaceRenderNode& node)
+ {
++    // G2.14au r5 probe — RSUniRenderVisitor::QuickPrepareSurfaceRenderNode entry
++    // marker: G214au_RS_QuickPrep
++    {
++        static std::atomic<int> g_count{0};
++        int n = ++g_count;
++        const auto& sName = node.GetName();
++        if (sName.find("helloworld") != std::string::npos && (n == 1 || n % 30 == 0)) {
++            RS_LOGI("[G214au_RS] QuickPrepareSurfaceRenderNode #%{public}d name=%{public}s id=%{public}" PRIu64
++                    " onTree=%{public}d",
++                    n, sName.c_str(), node.GetId(), node.IsOnTheTree() ? 1 : 0);
++        }
++    }
++
+     RS_OPTIONAL_TRACE_BEGIN_LEVEL(TRACE_LEVEL_PRINT_NODEID, "QuickPrepareSurfaceRenderNode nodeId[%llu]", node.GetId());
+     UpdateCurFrameInfoDetail(node);
+     RSSubTreePrepareController subTreePrepareController(isCurSubTreeForcePrepare_, IsCurrentSubTreeForcePrepare(node));

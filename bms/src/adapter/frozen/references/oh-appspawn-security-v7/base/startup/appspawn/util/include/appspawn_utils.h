@@ -1,0 +1,292 @@
+/*
+ * Copyright (C) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef APPSPAWN_UTILS_H
+#define APPSPAWN_UTILS_H
+
+#include <ctype.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+#include "hilog/log.h"
+#include "appspawn_error.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
+
+#ifndef APPSPAWN_TEST
+#define APPSPAWN_STATIC static
+#else
+#define APPSPAWN_STATIC
+#endif
+
+#ifndef APPSPAWN_BASE_DIR
+#define APPSPAWN_BASE_DIR ""
+#endif
+#if defined(__MUSL__)
+#define APPSPAWN_SOCKET_DIR APPSPAWN_BASE_DIR "/dev/unix/socket/"
+#define APPSPAWN_MSG_DIR APPSPAWN_BASE_DIR "/data/service/el1/startup/"
+#else
+#define APPSPAWN_SOCKET_DIR APPSPAWN_BASE_DIR "/dev/socket/"
+#define APPSPAWN_MSG_DIR APPSPAWN_BASE_DIR "/data/service/el1/startup/"
+#endif
+
+#define DEVICE_VIRTUAL_NET_IO_FLAGS "/sys/devices/virtual/net/lo/flags"
+#define IFF_LOOPBACK_VALUE "9\n"
+#define IFF_LOOPBACK_SIZE 2
+
+#define APPSPAWN_CHECK_EXIT "AppSpawnCheckUnexpectedExitCall"
+#define UNUSED(x) (void)(x)
+
+#define APP_COLD_START 0x01
+#define APP_ASAN_DETECTOR 0x02
+#define APP_DEVELOPER_MODE 0x04
+#define APP_JITFORT_MODE 0x08
+#define APP_BEGETCTL_BOOT 0x400
+
+#define MAX_LEN_SHORT_NAME 16
+#define DEFAULT_UMASK 0002
+#define UID_BASE 200000 // 20010029
+#define DEFAULT_DIR_MODE 0711
+#define USER_ID_BUFFER_SIZE 32
+
+#define APPSPAWN_SEC_TO_NSEC 1000000000
+#define APPSPAWN_MSEC_TO_NSEC 1000000
+#define APPSPAWN_USEC_TO_NSEC 1000
+#define APPSPAWN_SEC_TO_MSEC 1000
+
+#define CHECK_FLAGS_BY_INDEX(flags, index) ((((flags) >> (index)) & 0x1) == 0x1)
+#ifndef ARRAY_LENGTH
+#define ARRAY_LENGTH(array) (sizeof((array)) / sizeof((array)[0]))
+#endif
+
+#define INVALID_PERMISSION_INDEX (-1)
+
+typedef struct {
+    int flag;
+    const char *ldPreload;
+    const char *asanOptions;
+    const char *tsanOptions;
+    const char *ubsanOptions;
+    const char *hwasanOptions;
+} EnvConfig;
+
+#define MAX_ENV_VALUE_LEN 1024
+#define DUMP_MAX_LOG_BUFF_LEN 1024
+typedef struct TagAppSpawnCommonEnv {
+    const char *envName;
+    const char *envValue;
+    int developerModeEnable;
+} AppSpawnCommonEnv;
+
+/* spawner permission */
+static const char *g_spawnerPermissionList[] = {
+    "ohos.permission.FOWNER",
+    "ohos.permission.ALLOW_IOURING"
+};
+
+typedef enum {
+    APPSPAWN_OK = 0,
+    APPSPAWN_SYSTEM_ERROR = 0xD000000,
+    APPSPAWN_ARG_INVALID,
+    APPSPAWN_MSG_INVALID,
+    APPSPAWN_MSG_TOO_LONG,
+    APPSPAWN_TLV_NOT_SUPPORT,
+    APPSPAWN_TLV_NONE,
+    APPSPAWN_SANDBOX_NONE,
+    APPSPAWN_SANDBOX_LOAD_FAIL,
+    APPSPAWN_SANDBOX_MOUNT_FAIL,
+    APPSPAWN_SANDBOX_MOUNT_FULL,
+    APPSPAWN_SANDBOX_UNSHARE_EINVAL,
+    APPSPAWN_SPAWN_TIMEOUT,
+    APPSPAWN_CHILD_CRASH,
+    APPSPAWN_NATIVE_NOT_SUPPORT,
+    APPSPAWN_ACCESS_TOKEN_INVALID,
+    APPSPAWN_PERMISSION_NOT_SUPPORT,
+    APPSPAWN_BUFFER_NOT_ENOUGH,
+    APPSPAWN_TIMEOUT,
+    APPSPAWN_FORK_FAIL,
+    APPSPAWN_DEBUG_MODE_NOT_SUPPORT,
+    APPSPAWN_ERROR_UTILS_MEM_FAIL,
+    APPSPAWN_ERROR_FILE_RMDIR_FAIL,
+    APPSPAWN_PIDMGR_DEFAULT_PID_MAX,
+    APPSPAWN_ERROR_UTILS_DECODE_JSON_FAIL,
+    APPSPAWN_ERROR_UTILS_CREATE_JSON_FAIL,
+    APPSPAWN_ERROR_UTILS_ADD_JSON_FAIL,
+    /* sandbox errno num */
+    APPSPAWN_SANDBOX_INVALID,
+    APPSPAWN_SANDBOX_ERROR_MKDIR_FAIL,
+    APPSPAWN_SANDBOX_ERROR_MOUNT_FAIL,
+    APPSPAWN_SANDBOX_ERROR_SET_PERMISSION_FLAG_FAIL,
+    APPSPAWN_NODE_EXIST,
+    /* devicedebug errno */
+    APPSPAWN_DEVICEDEBUG_ERROR_APP_NOT_EXIST,
+    APPSPAWN_DEVICEDEBUG_ERROR_APP_NOT_DEBUGGABLE,
+    APPSPAWN_NATIVE_NOT_ALLOW,
+    APPSPAWN_ENV_FILE_EMPTY,
+    APPSPAWN_ENV_FILE_READ_ERROR,
+    APPSPAWN_ENV_FILE_FORMAT_ERROR,
+    APPSPAWN_PRELOAD_DFX_NOT_ALLOW,
+} AppSpawnErrorCode;
+
+uint64_t DiffTime(const struct timespec *startTime, const struct timespec *endTime);
+void AppSpawnDump(const char *fmt, ...);
+void SetDumpToStream(FILE *stream);
+typedef int (*SplitStringHandle)(const char *str, void *context);
+int32_t StringSplit(const char *str, const char *separator, void *context, SplitStringHandle handle);
+char *GetLastStr(const char *str, const char *dst);
+uint32_t GetSpawnTimeout(uint32_t def, bool isColdRun);
+void DumpCurrentDir(char *buffer, uint32_t bufferLen, const char *dirPath);
+int CheckEnabled(const char *param, const char *value);
+int IsDeveloperModeOpen();
+void InitCommonEnv(void);
+int ConvertEnvValue(const char *srcEnv, char *dstEnv, int len);
+
+int EnableNewNetNamespace(void);
+
+#ifndef APP_FILE_NAME
+#define APP_FILE_NAME   (strrchr((__FILE__), '/') ? strrchr((__FILE__), '/') + 1 : (__FILE__))
+#endif
+
+#ifndef OHOS_LITE
+#define APPSPAWN_DOMAIN (0xD002C00 + 0x11)  // 0xD002C11
+#ifndef APPSPAWN_LABEL
+#define APPSPAWN_LABEL "APPSPAWN"
+#endif
+
+#undef LOG_TAG
+#define LOG_TAG APPSPAWN_LABEL
+#undef LOG_DOMAIN
+#define LOG_DOMAIN APPSPAWN_DOMAIN
+
+#define APPSPAWN_LOGI(fmt, ...) \
+    HILOG_INFO(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_LOGE(fmt, ...) \
+    HILOG_ERROR(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_LOGV(fmt, ...) \
+    HILOG_DEBUG(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_LOGW(fmt, ...) \
+    HILOG_WARN(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_LOGF(fmt, ...) \
+    HILOG_FATAL(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_DUMPI(fmt, ...) \
+    HILOG_INFO(LOG_CORE, fmt, ##__VA_ARGS__)
+#define APPSPAWN_DUMPW(fmt, ...) \
+    HILOG_WARN(LOG_CORE, fmt, ##__VA_ARGS__)
+
+#define APPSPAWN_DUMP(fmt, ...) \
+    do { \
+        HILOG_INFO(LOG_CORE, fmt, ##__VA_ARGS__); \
+        AppSpawnDump(fmt "\n", ##__VA_ARGS__); \
+    } while (0)
+#define APPSPAWN_KLOGI(fmt, ...) \
+    ((void)HiLogPrint(LOG_KMSG, LOG_INFO, LOG_DOMAIN, LOG_TAG, \
+    "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__))
+#define APPSPAWN_KLOGE(fmt, ...) \
+    ((void)HiLogPrint(LOG_KMSG, LOG_ERROR, LOG_DOMAIN, LOG_TAG, \
+    "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__))
+#else
+
+#define APPSPAWN_LOGI(fmt, ...) \
+    HILOG_INFO(HILOG_MODULE_HIVIEW, "[%{public}s:%{public}d]" fmt,  (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_LOGE(fmt, ...) \
+    HILOG_ERROR(HILOG_MODULE_HIVIEW, "[%{public}s:%{public}d]" fmt,  (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_LOGV(fmt, ...) \
+    HILOG_DEBUG(HILOG_MODULE_HIVIEW, "[%{public}s:%{public}d]" fmt,  (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_LOGW(fmt, ...) \
+    HILOG_FATAL(HILOG_MODULE_HIVIEW, "[%{public}s:%{public}d]" fmt,  (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_DUMPI(fmt, ...) \
+    HILOG_INFO(HILOG_MODULE_HIVIEW, fmt, ##__VA_ARGS__)
+#define APPSPAWN_DUMPW(fmt, ...) \
+    HILOG_FATAL(HILOG_MODULE_HIVIEW, fmt, ##__VA_ARGS__)
+#define APPSPAWN_KLOGI(fmt, ...) \
+    HILOG_INFO(HILOG_MODULE_HIVIEW, "[%{public}s:%{public}d]" fmt,  (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#endif
+
+#define APPSPAWN_CHECK(retCode, exper, fmt, ...) \
+    if (!(retCode)) {                    \
+        APPSPAWN_LOGE(fmt, ##__VA_ARGS__);         \
+        exper;                           \
+    }
+
+#define APPSPAWN_CHECK_LOGV(retCode, exper, fmt, ...) \
+    if (!(retCode)) {                    \
+        APPSPAWN_LOGV(fmt, ##__VA_ARGS__);         \
+        exper;                           \
+    }
+
+#define APPSPAWN_CHECK_LOGW(retCode, exper, fmt, ...) \
+    if (!(retCode)) {                    \
+        APPSPAWN_LOGW(fmt, ##__VA_ARGS__);         \
+        exper;                           \
+    }
+
+#define APPSPAWN_CHECK_DUMPI(retCode, exper, fmt, ...) \
+    if (!(retCode)) {                    \
+        APPSPAWN_DUMPI(fmt, ##__VA_ARGS__);         \
+        exper;                           \
+    }
+
+#define APPSPAWN_CHECK_DUMPW(retCode, exper, fmt, ...) \
+    if (!(retCode)) {                    \
+        APPSPAWN_DUMPW(fmt, ##__VA_ARGS__);         \
+        exper;                           \
+    }
+
+#define APPSPAWN_CHECK_LOGI(retCode, exper, fmt, ...) \
+    if (!(retCode)) {                    \
+        APPSPAWN_LOGI(fmt, ##__VA_ARGS__);         \
+        exper;                           \
+    }
+
+#define APPSPAWN_CHECK_ONLY_EXPER(retCode, exper) \
+    if (!(retCode)) {                  \
+        exper;                 \
+    }                         \
+
+#define APPSPAWN_ONLY_EXPER(retCode, exper) \
+    if ((retCode)) {                  \
+        exper;                 \
+    }
+
+#define APPSPAWN_CHECK_ONLY_LOG(retCode, fmt, ...) \
+    if (!(retCode)) {                    \
+        APPSPAWN_LOGE(fmt, ##__VA_ARGS__);      \
+    }
+
+#define APPSPAWN_CHECK_ONLY_LOGW(retCode, fmt, ...) \
+    if (!(retCode)) {                    \
+        APPSPAWN_LOGW(fmt, ##__VA_ARGS__);      \
+    }
+
+#define APPSPAWN_CHECK_ONLY_DUMPW(retCode, fmt, ...) \
+    if (!(retCode)) {                    \
+        APPSPAWN_DUMPW(fmt, ##__VA_ARGS__);      \
+    }
+
+#ifdef __cplusplus
+}
+#endif  // __cplusplus
+
+#endif  // APPSPAWN_UTILS_H

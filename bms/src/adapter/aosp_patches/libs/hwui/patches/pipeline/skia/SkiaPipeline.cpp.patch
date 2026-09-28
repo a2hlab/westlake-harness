@@ -1,0 +1,41 @@
+diff --git a/libs/hwui/pipeline/skia/SkiaPipeline.cpp b/libs/hwui/pipeline/skia/SkiaPipeline.cpp
+index b020e966..3b3e62cd 100644
+--- a/libs/hwui/pipeline/skia/SkiaPipeline.cpp
++++ b/libs/hwui/pipeline/skia/SkiaPipeline.cpp
+@@ -15,6 +15,9 @@
+  */
+ 
+ #include "SkiaPipeline.h"
++#include <android/SkSurfaceAndroid.h>
++#include "../../DeviceInfo.h"
++#include <gpu/ganesh/SkSurfaceGanesh.h>
+ 
+ #include <SkCanvas.h>
+ #include <SkColor.h>
+@@ -187,7 +190,7 @@ bool SkiaPipeline::createOrUpdateLayer(RenderNode* node, const DamageAccumulator
+                                  kPremul_SkAlphaType, getSurfaceColorSpace());
+         SkSurfaceProps props(0, kUnknown_SkPixelGeometry);
+         SkASSERT(mRenderThread.getGrContext() != nullptr);
+-        node->setLayerSurface(SkSurface::MakeRenderTarget(mRenderThread.getGrContext(),
++        node->setLayerSurface(SkSurfaces::RenderTarget(mRenderThread.getGrContext(),
+                                                           skgpu::Budgeted::kYes, info, 0,
+                                                           this->getSurfaceOrigin(), &props));
+         if (node->getLayerSurface()) {
+@@ -295,7 +298,7 @@ bool SkiaPipeline::setupMultiFrameCapture() {
+         // we need to keep it until after mMultiPic.close()
+         // procs is passed as a pointer, but just as a method of having an optional default.
+         // procs doesn't need to outlive this Make call.
+-        mMultiPic = SkMakeMultiPictureDocument(mOpenMultiPicStream.get(), &procs,
++        mMultiPic = SkMultiPictureDocument::Make(mOpenMultiPicStream.get(), &procs,
+             [sharingCtx = mSerialContext.get()](const SkPicture* pic) {
+                     SkSharingSerialContext::collectNonTextureImagesFromPicture(pic, sharingCtx);
+             });
+@@ -621,7 +624,7 @@ sk_sp<SkSurface> SkiaPipeline::getBufferSkSurface(
+     auto bufferColorSpace = bufferParams.getColorSpace();
+     if (mBufferSurface == nullptr || mBufferColorSpace == nullptr ||
+         !SkColorSpace::Equals(mBufferColorSpace.get(), bufferColorSpace.get())) {
+-        mBufferSurface = SkSurface::MakeFromAHardwareBuffer(
++        mBufferSurface = SkSurfaces::WrapAndroidHardwareBuffer(
+                 mRenderThread.getGrContext(), mHardwareBuffer, kTopLeft_GrSurfaceOrigin,
+                 bufferColorSpace, nullptr, true);
+         mBufferColorSpace = bufferColorSpace;

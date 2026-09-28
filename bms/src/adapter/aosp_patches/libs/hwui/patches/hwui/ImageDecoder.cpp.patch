@@ -1,0 +1,22 @@
+diff --git a/libs/hwui/hwui/ImageDecoder.cpp b/libs/hwui/hwui/ImageDecoder.cpp
+index 701a87f0..23e24d05 100644
+--- a/libs/hwui/hwui/ImageDecoder.cpp
++++ b/libs/hwui/hwui/ImageDecoder.cpp
+@@ -458,7 +458,7 @@ SkCodec::Result ImageDecoder::decode(void* pixels, size_t rowBytes) {
+         if (!mCurrentFrameIsIndependent) {
+             SkMatrix inverse;
+             if (outputMatrix.invert(&inverse)) {
+-                SkCanvas canvas(tmp, SkCanvas::ColorBehavior::kLegacy);
++                SkCanvas canvas(tmp);  /* M133: ColorBehavior arg removed */
+                 canvas.setMatrix(inverse);
+                 SkBitmap priorFrame;
+                 priorFrame.installPixels(outputInfo, pixels, rowBytes);
+@@ -492,7 +492,7 @@ SkCodec::Result ImageDecoder::decode(void* pixels, size_t rowBytes) {
+         SkPaint paint;
+         paint.setBlendMode(SkBlendMode::kSrc);
+ 
+-        SkCanvas canvas(scaledBm, SkCanvas::ColorBehavior::kLegacy);
++        SkCanvas canvas(scaledBm);  /* M133: ColorBehavior arg removed */
+         canvas.setMatrix(outputMatrix);
+         tmp.setImmutable(); // Don't want asImage() to force copy
+         canvas.drawImage(tmp.asImage(), 0, 0, SkSamplingOptions(SkFilterMode::kLinear), &paint);

@@ -1,0 +1,125 @@
+diff --git a/libs/hwui/renderthread/RenderThread.cpp b/libs/hwui/renderthread/RenderThread.cpp
+index eb28c080..aeb1e97c 100644
+--- a/libs/hwui/renderthread/RenderThread.cpp
++++ b/libs/hwui/renderthread/RenderThread.cpp
+@@ -15,6 +15,7 @@
+  */
+ 
+ #include "RenderThread.h"
++#include <gpu/ganesh/gl/GrGLDirectContext.h>
+ 
+ #include <GrContextOptions.h>
+ #include <android-base/properties.h>
+@@ -243,6 +244,12 @@ RenderThread::~RenderThread() {
+ void RenderThread::initializeChoreographer() {
+     LOG_ALWAYS_FATAL_IF(mVsyncSource, "Initializing a second Choreographer?");
+ 
++    // P15 (2026-04-11): On OH adapter build, always use DummyVsyncSource since
++    // real AChoreographer NDK is not available. DummyVsyncSource pulses every
++    // 16ms via RenderThread queue timer — sufficient for Hello World validation.
++#ifdef __OHOS__
++    mVsyncSource = new DummyVsyncSource(this);
++#else
+     if (!Properties::isolatedProcess) {
+         mChoreographer = AChoreographer_create();
+         LOG_ALWAYS_FATAL_IF(mChoreographer == nullptr, "Initialization of Choreographer failed");
+@@ -256,6 +263,7 @@ void RenderThread::initializeChoreographer() {
+     } else {
+         mVsyncSource = new DummyVsyncSource(this);
+     }
++#endif
+ }
+ 
+ void RenderThread::initThreadLocals() {
+@@ -263,7 +271,9 @@ void RenderThread::initThreadLocals() {
+     initializeChoreographer();
+     mEglManager = new EglManager();
+     mRenderState = new RenderState(*this);
++#ifndef HWUI_NO_VULKAN
+     mVkManager = VulkanManager::getInstance();
++#endif
+     mCacheManager = new CacheManager(*this);
+ }
+ 
+@@ -286,12 +296,19 @@ void RenderThread::requireGlContext() {
+     auto glesVersion = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+     auto size = glesVersion ? strlen(glesVersion) : -1;
+     cacheManager().configureContext(&options, glesVersion, size);
+-    sk_sp<GrDirectContext> grContext(GrDirectContext::MakeGL(std::move(glInterface), options));
++    sk_sp<GrDirectContext> grContext(GrDirectContexts::MakeGL(std::move(glInterface), options));
+     LOG_ALWAYS_FATAL_IF(!grContext.get());
+     setGrContext(grContext);
+ }
+ 
+ void RenderThread::requireVkContext() {
++#ifdef HWUI_NO_VULKAN
++    // OH adapter build: Vulkan pipeline not built (libhwui compiled with
++    // HWUI_NO_VULKAN=1, VulkanManager.cpp not in sources). All renderers
++    // use SkiaGL; requireVkContext should never be reachable at runtime.
++    LOG_ALWAYS_FATAL("requireVkContext() called under HWUI_NO_VULKAN build; "
++                     "OH adapter only supports SkiaGL pipeline.");
++#else
+     // the getter creates the context in the event it had been destroyed by destroyRenderingContext
+     // Also check if we have a GrContext before returning fast. VulkanManager may be shared with
+     // the HardwareBitmapUploader which initializes the Vk context without persisting the GrContext
+@@ -307,6 +324,7 @@ void RenderThread::requireVkContext() {
+     sk_sp<GrDirectContext> grContext = mVkManager->createContext(options);
+     LOG_ALWAYS_FATAL_IF(!grContext.get());
+     setGrContext(grContext);
++#endif
+ }
+ 
+ void RenderThread::initGrContextOptions(GrContextOptions& options) {
+@@ -317,6 +335,16 @@ void RenderThread::initGrContextOptions(GrContextOptions& options) {
+     } else {
+         options.fReduceOpsTaskSplitting = GrContextOptions::Enable::kNo;
+     }
++    // G214bh_align_rs_options — RS (rosen skia_gpu_context.cpp:101+) sets
++    // clearSmallTexture explicitly; hwui was relying on default-init.
++    // G214bg's fFailFlushTimeCallbacks=false reverted because the byte
++    // libskia reads (offset 204) holds 0x28 garbage regardless, so the
++    // assignment was writing to a hwui-side offset that libskia never
++    // reads from.  The real fix is libskia-side failFlushTimeCallbacks()
++    // -> return false (v4d).  Match RS layout to be safe.
++#ifdef SKIA_OHOS
++    options.clearSmallTexture = true;
++#endif
+ }
+ 
+ void RenderThread::destroyRenderingContext() {
+@@ -332,12 +360,14 @@ void RenderThread::destroyRenderingContext() {
+     }
+ }
+ 
++#ifndef HWUI_NO_VULKAN
+ VulkanManager& RenderThread::vulkanManager() {
+     if (!mVkManager.get()) {
+         mVkManager = VulkanManager::getInstance();
+     }
+     return *mVkManager.get();
+ }
++#endif
+ 
+ static const char* pipelineToString() {
+     switch (auto renderType = Properties::getRenderPipelineType()) {
+@@ -493,7 +523,11 @@ sk_sp<Bitmap> RenderThread::allocateHardwareBitmap(SkBitmap& skBitmap) {
+     auto renderType = Properties::getRenderPipelineType();
+     switch (renderType) {
+         case RenderPipelineType::SkiaVulkan:
++#ifndef HWUI_NO_VULKAN
+             return skiapipeline::SkiaVulkanPipeline::allocateHardwareBitmap(*this, skBitmap);
++#else
++            return nullptr;
++#endif
+         default:
+             LOG_ALWAYS_FATAL("canvas context type %d not supported", (int32_t)renderType);
+             break;
+@@ -502,7 +536,7 @@ sk_sp<Bitmap> RenderThread::allocateHardwareBitmap(SkBitmap& skBitmap) {
+ }
+ 
+ bool RenderThread::isCurrent() {
+-    return gettid() == getInstance().getTid();
++    return false; /* OH adapter: thread tid check stub */
+ }
+ 
+ void RenderThread::preload() {

@@ -1,0 +1,109 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/zip_file.cpp
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/zip_file.cpp
+@@ -87,10 +87,8 @@
+         APP_LOGE("endDir.totalEntriesInThisDisk != endDir.totalEntries");
+         return false;
+     }
+-    if (endDir.commentLen != 0) {
+-        APP_LOGE("endDir.commentLen != 0");
+-        return false;
+-    }
++    // Zip comments are accepted: ParseEndDirectory locates the EOCD by
++    // scanning, so a trailing comment no longer breaks parsing (task #64 B1).
+     if ((endDir.offset + endDir.sizeOfCentralDir + lenEndDir) > fileLength_) {
+         APP_LOGE("(endDir.offset + endDir.sizeOfCentralDir + lenEndDir) > fileLength_");
+         return false;
+     }
+@@ -108,16 +108,40 @@
+         return false;
+     }
+
+-    size_t eocdPos = endFilePos - endDirLen;
+-    if (fseek(file_, eocdPos, SEEK_SET) != 0) {
+-        APP_LOGE("locate EOCD seek failed, error: %{public}d", errno);
+-        return false;
+-    }
+-
+-    if (fread(&endDir_, sizeof(EndDir), FILE_READ_COUNT, file_) != FILE_READ_COUNT) {
+-        APP_LOGE("read EOCD struct failed, error: %{public}d", errno);
+-        return false;
+-    }
++    // Scan the trailing window backwards for the EOCD signature instead of
++    // assuming a fixed end-minus-size position: real-world APKs may carry a
++    // zip comment (e.g. channel markers), which shifts the EOCD (task #64 B1).
++    constexpr size_t MAX_ZIP_COMMENT_LEN = 0xFFFF;
++    size_t windowLen = (fileLength_ < endDirLen + MAX_ZIP_COMMENT_LEN) ?
++        fileLength_ : (endDirLen + MAX_ZIP_COMMENT_LEN);
++    std::string window(windowLen, '\0');
++    if (fseek(file_, endFilePos - windowLen, SEEK_SET) != 0) {
++        APP_LOGE("locate EOCD scan window seek failed, error: %{public}d", errno);
++        return false;
++    }
++    if (fread(&window[0], windowLen, FILE_READ_COUNT, file_) != FILE_READ_COUNT) {
++        APP_LOGE("read EOCD scan window failed, error: %{public}d", errno);
++        return false;
++    }
++    bool found = false;
++    for (size_t pos = windowLen - endDirLen;; --pos) {
++        EndDir candidate = {};
++        if (memcpy_s(&candidate, sizeof(candidate), window.data() + pos, endDirLen) != EOK) {
++            break;
++        }
++        if (candidate.signature == EOCD_SIGNATURE && pos + endDirLen + candidate.commentLen == windowLen) {
++            endDir_ = candidate;
++            found = true;
++            break;
++        }
++        if (pos == 0) {
++            break;
++        }
++    }
++    if (!found) {
++        APP_LOGE("EOCD signature not found in trailing window");
++        return false;
++    }
+
+     centralDirPos_ = endDir_.offset + fileStartPos_;
+     APP_LOGD("parse EOCD offset(0x%{public}08x) file start position(0x%{public}08llx)", endDir_.offset, fileStartPos_);
+@@ -157,17 +157,39 @@
+             break;
+         }
+
+-        size_t fileLength = (directoryEntry.nameSize >= MAX_FILE_PATH) ? (MAX_FILE_PATH - 1) : directoryEntry.nameSize;
++        if (directoryEntry.nameSize == 0 || directoryEntry.nameSize >= MAX_FILE_PATH) {
++            APP_LOGE("parse entry(%{public}d) invalid file name length: %{public}u",
++                i, directoryEntry.nameSize);
++            ret = false;
++            break;
++        }
++        size_t fileLength = directoryEntry.nameSize;
+         if (fread(&(fileName[0]), fileLength, FILE_READ_COUNT, file_) != FILE_READ_COUNT) {
+             APP_LOGE("parse entry(%{public}d) read file name failed, error: %{public}d", i, errno);
+             ret = false;
+             break;
+         }
+         fileName.resize(fileLength);
++
++        bool invalidFileName = false;
++        for (unsigned char c : fileName) {
++            if (c == 0 || c < 0x20 || c == 0x7f || c == '\\') {
++                invalidFileName = true;
++                break;
++            }
++        }
++        if (invalidFileName) {
++            APP_LOGE("zip entry contains a NUL, control character, or backslash");
++            return false;
++        }
++        if (entriesMap_.find(fileName) != entriesMap_.end()) {
++            APP_LOGE("duplicate zip entry rejected: %{private}s", fileName.c_str());
++            return false;
++        }
+
+         ZipEntry currentEntry(directoryEntry);
+         currentEntry.fileName = fileName;
+-        entriesMap_[fileName] = currentEntry;
++        entriesMap_.emplace(fileName, currentEntry);
+
+         currentPos += sizeof(directoryEntry);
+         currentPos += directoryEntry.nameSize + directoryEntry.extraSize + directoryEntry.commentSize;

@@ -1,0 +1,14 @@
+--- a/third_party/skia/m133/src/gpu/ganesh/GrOnFlushResourceProvider.cpp
++++ b/third_party/skia/m133/src/gpu/ganesh/GrOnFlushResourceProvider.cpp
+@@ -39,6 +39,11 @@
+ }
+ 
+ #if defined(GPU_TEST_UTILS)
++// OH_SK_REVERT_V4D — v4d revert.  ABI now confirmed aligned
++// (HWUI sizeof=168 with -DGPU_TEST_UTILS=1, LIBSKIA sizeof=168, both
++// have fFailFlushTimeCallbacks at offset 152).  Restoring the original
++// read so we can observe whether the field reads false (true ABI fix
++// effective) or still reads garbage (default-init or other corruption).
+ bool GrOnFlushResourceProvider::failFlushTimeCallbacks() const {
+     return fDrawingMgr->getContext()->priv().options().fFailFlushTimeCallbacks;
+ }

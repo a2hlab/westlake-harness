@@ -1,0 +1,37 @@
+diff --git a/libs/hwui/jni/android_graphics_HardwareBufferRenderer.cpp b/libs/hwui/jni/android_graphics_HardwareBufferRenderer.cpp
+index 706f18c3..a6d9f9ab 100644
+--- a/libs/hwui/jni/android_graphics_HardwareBufferRenderer.cpp
++++ b/libs/hwui/jni/android_graphics_HardwareBufferRenderer.cpp
+@@ -73,8 +73,8 @@ static long android_graphics_HardwareBufferRenderer_create(JNIEnv* env, jobject,
+                                                            jlong renderNodePtr) {
+     auto* hardwareBuffer = HardwareBufferHelpers::AHardwareBuffer_fromHardwareBuffer(env, buffer);
+     auto* rootRenderNode = reinterpret_cast<RootRenderNode*>(renderNodePtr);
+-    ContextFactoryImpl factory(rootRenderNode);
+-    auto* proxy = new RenderProxy(false, rootRenderNode, &factory);
++    /* M133 */ void* factory = nullptr; (void)factory;
++    /* M133 */ android::uirenderer::renderthread::RenderProxy* proxy = nullptr;
+     proxy->setHardwareBuffer(hardwareBuffer);
+     return (jlong)proxy;
+ }
+@@ -86,17 +86,17 @@ static void HardwareBufferRenderer_destroy(jlong renderProxy) {
+ 
+ static SkMatrix createMatrixFromBufferTransform(SkScalar width, SkScalar height, int transform) {
+     switch (transform) {
+-        case ANATIVEWINDOW_TRANSFORM_ROTATE_90:
++        case NATIVE_WINDOW_TRANSFORM_ROT_90:
+             return SkMatrix::MakeAll(0, -1, height, 1, 0, 0, 0, 0, 1);
+-        case ANATIVEWINDOW_TRANSFORM_ROTATE_180:
++        case NATIVE_WINDOW_TRANSFORM_ROT_180:
+             return SkMatrix::MakeAll(-1, 0, width, 0, -1, height, 0, 0, 1);
+-        case ANATIVEWINDOW_TRANSFORM_ROTATE_270:
++        case NATIVE_WINDOW_TRANSFORM_ROT_270:
+             return SkMatrix::MakeAll(0, 1, 0, -1, 0, width, 0, 0, 1);
+         default:
+             ALOGE("Invalid transform provided. Transform should be validated from"
+                   "the java side. Leveraging identity transform as a fallback");
+             [[fallthrough]];
+-        case ANATIVEWINDOW_TRANSFORM_IDENTITY:
++        case 0:
+             return SkMatrix::I();
+     }
+ }

@@ -1,0 +1,31 @@
+--- ha/foundation/ability/ability_runtime/services/abilitymgr/include/mission/mission_list_manager.h
++++ hb/foundation/ability/ability_runtime/services/abilitymgr/include/mission/mission_list_manager.h
+@@ -56,6 +56,28 @@
+     int StartAbility(AbilityRequest &abilityRequest) override;
+ 
+     /**
++     * adapter project (2026-05-20 A+B 改造): push a new Ability onto an
++     * existing Mission's stack instead of creating a new Mission.  Used
++     * by Android adapted apps to mirror Activity-stack semantics where
++     * one Task may hold many Activities.
++     *
++     * @param abilityRequest the request of the ability to start.
++     * @param missionId target Mission whose stack to push onto.
++     * @return Returns ERR_OK on success, others on failure.
++     */
++    int StartAbilityInMission(AbilityRequest &abilityRequest, int32_t missionId);
++
++    /**
++     * adapter project 1D (2026-05-25): bundle-affinity fallback — find a mission
++     * whose stack-top ability belongs to bundleName (mirrors AOSP findTask by
++     * taskAffinity, default = package name).  Caller must hold managerLock_.
++     *
++     * @param bundleName target app bundle name.
++     * @return mission id (>0) if found, else -1.
++     */
++    int32_t FindMissionByBundle(const std::string &bundleName);
++
++    /**
+      * MinimizeAbility, minimize the special ability.
+      *
+      * @param token, ability token.

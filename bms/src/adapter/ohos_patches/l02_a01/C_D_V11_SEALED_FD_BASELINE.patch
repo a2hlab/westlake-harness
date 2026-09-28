@@ -1,0 +1,951 @@
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/bundle_framework_services_ipc_interface_code.h v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/bundle_framework_services_ipc_interface_code.h
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/bundle_framework_services_ipc_interface_code.h	2026-07-10 16:49:32
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/bundle_framework_services_ipc_interface_code.h	2026-07-10 16:51:04
+@@ -102,6 +102,7 @@
+     STOP_SET_FILE_CON = 74,
+     GET_BUNDLE_FILE_COUNT = 75,
+     PROCESS_BIN_FILES = 76,
++    COPY_VERIFIED_APK_FROM_FD = 77,
+ };
+ 
+ } // namespace AppExecFwk
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd/installd_host_impl.h v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd/installd_host_impl.h
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd/installd_host_impl.h	2026-07-10 16:49:32
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd/installd_host_impl.h	2026-07-10 16:51:04
+@@ -213,6 +213,9 @@
+     virtual ErrCode CopyFile(const std::string &oldPath, const std::string &newPath,
+         const std::string &signatureFilePath = "") override;
+ 
++    virtual ErrCode CopyVerifiedApkFromFd(int sealedFd, const std::string &targetPath,
++        const std::string &expectedSha256) override;
++
+     virtual ErrCode Mkdir(
+         const std::string &dir, const int32_t mode, const int32_t uid, const int32_t gid) override;
+ 
+@@ -345,4 +348,4 @@
+ };
+ }  // namespace AppExecFwk
+ }  // namespace OHOS
+-#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_INSTALLD_HOST_IMPL_H
+\ No newline at end of file
++#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_INSTALLD_HOST_IMPL_H
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd/installd_operator.h v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd/installd_operator.h
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd/installd_operator.h	2026-07-10 16:48:59
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd/installd_operator.h	2026-07-10 16:51:04
+@@ -114,7 +114,14 @@
+ 
+     // Adapter APK transforms run in installs domain, which owns code-root I/O.
+     // Synthesize OH resources HAP from APK launcher icon + baked-in template.
+-    static bool BuildApkResourcesHap(const std::string &apkPath, const std::string &outHapPath);
++    static bool BuildApkResourcesHap(const ExtractParam &extractParam);
++
++    // Copy a bounded, fully sealed snapshot into the exact managed APK stage.
++    // Success includes exact destination hashing and a one-shot capability sentinel.
++    static bool CopyVerifiedApkFromFd(int sealedFd, const std::string &targetPath,
++        const std::string &expectedSha256);
++
++    static bool IsManagedApkStagePath(const std::string &path);
+ 
+     // Extract exactly lib/<cpuAbi>/lib*.so into a dedicated staging directory.
+     // Zero matches and every path/read/write/CRC/ELF/owner/mode failure are fatal.
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd_client.h v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd_client.h
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd_client.h	2026-07-10 16:49:32
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/installd_client.h	2026-07-10 16:51:04
+@@ -197,6 +197,9 @@
+     ErrCode CopyFile(const std::string &oldPath, const std::string &newPath,
+         const std::string &signatureFilePath = "");
+ 
++    ErrCode CopyVerifiedApkFromFd(int sealedFd, const std::string &targetPath,
++        const std::string &expectedSha256);
++
+     ErrCode Mkdir(
+         const std::string &dir, const int32_t mode, const int32_t uid, const int32_t gid);
+ 
+@@ -351,4 +354,4 @@
+ };
+ }  // namespace AppExecFwk
+ }  // namespace OHOS
+-#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_INSTALLD_CLIENT_H
+\ No newline at end of file
++#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_INSTALLD_CLIENT_H
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/extract_param.h v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/extract_param.h
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/extract_param.h	2026-07-10 16:48:59
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/extract_param.h	2026-07-10 16:50:10
+@@ -39,6 +39,8 @@
+     std::string cpuAbi;
+     ExtractFileType extractFileType = ExtractFileType::ALL;
+     bool needRemoveOld = false;
++    // Appended for wire compatibility. Only the APK adapter types consume it.
++    std::string expectedApkSha256;
+ 
+     std::string ToString() const;
+     bool ReadFromParcel(Parcel &parcel);
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_host.h v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_host.h
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_host.h	2026-07-10 16:49:32
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_host.h	2026-07-10 16:51:04
+@@ -207,6 +207,8 @@
+ 
+     bool HandleCopyFile(MessageParcel &data, MessageParcel &reply);
+ 
++    bool HandleCopyVerifiedApkFromFd(MessageParcel &data, MessageParcel &reply);
++
+     bool HandleMkdir(MessageParcel &data, MessageParcel &reply);
+ 
+     bool HandleGetFileStat(MessageParcel &data, MessageParcel &reply);
+@@ -291,4 +293,4 @@
+ };
+ }  // namespace AppExecFwk
+ }  // namespace OHOS
+-#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_INSTALLD_HOST_H
+\ No newline at end of file
++#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_INSTALLD_HOST_H
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_interface.h v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_interface.h
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_interface.h	2026-07-10 16:49:32
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_interface.h	2026-07-10 16:51:04
+@@ -349,6 +349,14 @@
+         return ERR_OK;
+     }
+ 
++    // Copies only from the verifier-owned immutable snapshot. The default is
++    // deliberately fail-closed for partial implementations and test doubles.
++    virtual ErrCode CopyVerifiedApkFromFd(int sealedFd, const std::string &targetPath,
++        const std::string &expectedSha256)
++    {
++        return ERR_APPEXECFWK_INSTALLD_COPY_FILE_FAILED;
++    }
++
+     /**
+      * @brief Create directory recursively.
+      * @param dir Indicates dir which will be created.
+@@ -596,4 +604,4 @@
+     } while (0)
+ }  // namespace AppExecFwk
+ }  // namespace OHOS
+-#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_INSTALLD_INTERFACE_H
+\ No newline at end of file
++#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_INSTALLD_INTERFACE_H
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_proxy.h v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_proxy.h
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_proxy.h	2026-07-10 16:49:32
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/include/ipc/installd_proxy.h	2026-07-10 16:51:04
+@@ -211,6 +211,9 @@
+     virtual ErrCode CopyFile(const std::string &oldPath, const std::string &newPath,
+         const std::string &signatureFilePath = "") override;
+ 
++    virtual ErrCode CopyVerifiedApkFromFd(int sealedFd, const std::string &targetPath,
++        const std::string &expectedSha256) override;
++
+     virtual ErrCode Mkdir(
+         const std::string &dir, const int32_t mode, const int32_t uid, const int32_t gid) override;
+ 
+@@ -315,4 +318,4 @@
+ };
+ }  // namespace AppExecFwk
+ }  // namespace OHOS
+-#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_INSTALLD_PROXY_H
+\ No newline at end of file
++#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_IPC_INSTALLD_PROXY_H
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp	2026-07-10 16:48:59
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp	2026-07-10 16:58:49
+@@ -1600,6 +1600,7 @@
+                         ServiceConstants::BUNDLE_NEW_CODE_DIR + pkg;
+                     const std::string deployedDir = stagedBundleRoot + "/android";
+                     const std::string deployedApk = deployedDir + "/base.apk";
++                    const std::string verifySentinel = deployedDir + "/.apk-sha256-verified-v1";
+                     const std::string entryHapPath = stagedBundleRoot + "/entry.hap";
+                     const std::string nativeStagePath = deployedDir + "/lib/" + primaryAbi;
+                     const std::string finalDeployedDir = bundleRoot + "/android";
+@@ -1607,7 +1608,16 @@
+                     const std::string finalEntryHapPath = bundleRoot + "/entry.hap";
+                     const std::string finalNativePath = finalDeployedDir + "/lib/" + primaryAbi;
+                     const std::string moduleNativePath = std::string("android/lib/") + primaryAbi;
+-                    const std::string srcApkPath = p;
++                    // A/B provides verifiedApk from the stable C ABI and owns an
++                    // outer close guard for every earlier return in this branch.
++                    const std::string verifiedApkSha256Hex(verifiedApk.apkSha256Hex);
++                    const bool validVerifiedSha256 = verifiedApkSha256Hex.size() == 64 &&
++                        std::all_of(verifiedApkSha256Hex.begin(), verifiedApkSha256Hex.end(),
++                            [](unsigned char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); });
++                    if (!validVerifiedSha256) {
++                        LOG_E(BMS_TAG_INSTALLER, "trusted APK verifier returned a malformed SHA-256 identity");
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
+                     auto installd = InstalldClient::GetInstance();
+                     if (installd == nullptr) {
+                         LOG_E(BMS_TAG_INSTALLER, "InstalldClient unavailable — cannot deploy APK");
+@@ -1641,35 +1651,55 @@
+                         (void)installd->RemoveDir(stagedBundleRoot);
+                         return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
+                     }
+-                    // 3. base.apk — copy from stream_install staging to persistent
+-                    //    location via installs-domain CopyFile.
+-                    ec = installd->CopyFile(srcApkPath, deployedApk, std::string());
++                    // 3. Copy the exact sealed snapshot accepted by the verifier.
++                    //    Pathname CopyFile is forbidden for this managed target.
++                    ec = installd->CopyVerifiedApkFromFd(
++                        verifiedApk.sealedApkFd, deployedApk, verifiedApkSha256Hex);
+                     if (ec != ERR_OK) {
+-                        LOG_E(BMS_TAG_INSTALLER, "CopyFile(%{public}s -> %{public}s) failed: %{public}d",
+-                            srcApkPath.c_str(), deployedApk.c_str(), ec);
++                        LOG_E(BMS_TAG_INSTALLER, "CopyVerifiedApkFromFd(%{public}s) failed: %{public}d",
++                            deployedApk.c_str(), ec);
+                         (void)installd->RemoveDir(stagedBundleRoot);
+                         return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
+                     }
++                    bool verifySentinelExists = false;
++                    if (installd->IsExistFile(verifySentinel, verifySentinelExists) != ERR_OK ||
++                        !verifySentinelExists) {
++                        LOG_E(BMS_TAG_INSTALLER, "managed base.apk SHA-256/capability gate failed");
++                        (void)installd->RemoveDir(stagedBundleRoot, false);
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    ec = installd->RemoveDir(verifySentinel, false);
++                    verifySentinelExists = true;
++                    if (ec != ERR_OK || installd->IsExistFile(verifySentinel, verifySentinelExists) != ERR_OK ||
++                        verifySentinelExists) {
++                        LOG_E(BMS_TAG_INSTALLER, "cannot remove managed APK verification sentinel");
++                        (void)installd->RemoveDir(stagedBundleRoot, false);
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    oh_adapter_close_verified_apk_v1(&verifiedApk);
++
+                     // 4. Synthesize OH resources HAP directly at entry.hap location —
+                     //    installd loads libapk_installer.so (installs domain) and calls
+                     //    oh_adapter_build_resources_hap(apk, outPath). No fs work in BMS.
+                     ExtractParam ep;
+-                    ep.srcPath = srcApkPath;
++                    ep.srcPath = deployedApk;
+                     ep.targetPath = entryHapPath;
++                    ep.expectedApkSha256 = verifiedApkSha256Hex;
+                     ep.extractFileType = ExtractFileType::APK_RESOURCES_HAP;
+                     ec = installd->ExtractFiles(ep);
+                     if (ec != ERR_OK) {
+                         LOG_E(BMS_TAG_INSTALLER, "ExtractFiles(APK_RESOURCES_HAP) %{public}s -> %{public}s failed: %{public}d",
+-                            srcApkPath.c_str(), entryHapPath.c_str(), ec);
++                            deployedApk.c_str(), entryHapPath.c_str(), ec);
+                         (void)installd->RemoveDir(stagedBundleRoot);
+                         return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
+                     }
+                     LOG_I(BMS_TAG_INSTALLER, "ExtractFiles(APK_RESOURCES_HAP) OK %{public}s", entryHapPath.c_str());
+ 
+                     ExtractParam nativeParam;
+-                    nativeParam.srcPath = srcApkPath;
++                    nativeParam.srcPath = deployedApk;
+                     nativeParam.targetPath = nativeStagePath;
+                     nativeParam.cpuAbi = primaryAbi;
++                    nativeParam.expectedApkSha256 = verifiedApkSha256Hex;
+                     nativeParam.extractFileType = ExtractFileType::APK_NATIVE_SO;
+                     ec = installd->ExtractFiles(nativeParam);
+                     if (ec != ERR_OK) {
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_host_impl.cpp v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_host_impl.cpp
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_host_impl.cpp	2026-07-10 16:49:32
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_host_impl.cpp	2026-07-10 17:27:59
+@@ -1684,6 +1684,10 @@
+         LOG_E(BMS_TAG_INSTALLD, "installd permission denied, only used for foundation process");
+         return ERR_APPEXECFWK_INSTALLD_PERMISSION_DENIED;
+     }
++    if (InstalldOperator::IsManagedApkStagePath(newPath)) {
++        LOG_E(BMS_TAG_INSTALLD, "managed APK artifacts cannot be created by pathname move");
++        return ERR_APPEXECFWK_INSTALLD_MOVE_FILE_FAILED;
++    }
+     if (!InstalldOperator::MoveFile(oldPath, newPath)) {
+         LOG_E(BMS_TAG_INSTALLD, "Move file %{public}s to %{public}s failed errno:%{public}d",
+             oldPath.c_str(), newPath.c_str(), errno);
+@@ -1698,6 +1702,10 @@
+         LOG_E(BMS_TAG_INSTALLD, "installd permission denied, only used for foundation process");
+         return ERR_APPEXECFWK_INSTALLD_PERMISSION_DENIED;
+     }
++    if (InstalldOperator::IsManagedApkStagePath(newPath)) {
++        LOG_E(BMS_TAG_INSTALLD, "managed APK artifacts cannot be created by pathname rename");
++        return ERR_APPEXECFWK_INSTALLD_MOVE_FILE_FAILED;
++    }
+     if (!InstalldOperator::RenameFile(oldPath, newPath)) {
+         LOG_E(BMS_TAG_INSTALLD, "rename file %{public}s to %{public}s failed errno:%{public}d",
+             oldPath.c_str(), newPath.c_str(), errno);
+@@ -1713,6 +1721,10 @@
+         LOG_E(BMS_TAG_INSTALLD, "installd permission denied, only used for foundation process");
+         return ERR_APPEXECFWK_INSTALLD_PERMISSION_DENIED;
+     }
++    if (InstalldOperator::IsManagedApkStagePath(newPath)) {
++        LOG_E(BMS_TAG_INSTALLD, "managed base.apk requires sealed-FD copy transaction");
++        return ERR_APPEXECFWK_INSTALLD_COPY_FILE_FAILED;
++    }
+     if (!InstalldOperator::CopyFileFast(oldPath, newPath)) {
+         LOG_E(BMS_TAG_INSTALLD, "Copy file %{private}s to %{private}s failed errno:%{public}d",
+             oldPath.c_str(), newPath.c_str(), errno);
+@@ -1740,6 +1752,20 @@
+     return ERR_OK;
+ }
+ 
++ErrCode InstalldHostImpl::CopyVerifiedApkFromFd(int sealedFd, const std::string &targetPath,
++    const std::string &expectedSha256)
++{
++    if (!InstalldPermissionMgr::VerifyCallingPermission(Constants::FOUNDATION_UID)) {
++        LOG_E(BMS_TAG_INSTALLD, "verified APK copy denied: caller is not foundation");
++        return ERR_APPEXECFWK_INSTALLD_PERMISSION_DENIED;
++    }
++    if (!InstalldOperator::CopyVerifiedApkFromFd(sealedFd, targetPath, expectedSha256)) {
++        LOG_E(BMS_TAG_INSTALLD, "copy verified APK from sealed fd failed");
++        return ERR_APPEXECFWK_INSTALLD_COPY_FILE_FAILED;
++    }
++    return ERR_OK;
++}
++
+ ErrCode InstalldHostImpl::Mkdir(
+     const std::string &dir, const int32_t mode, const int32_t uid, const int32_t gid)
+ {
+@@ -1917,6 +1943,10 @@
+         LOG_E(BMS_TAG_INSTALLD, "installd permission denied, only used for foundation process");
+         return ERR_APPEXECFWK_INSTALLD_PERMISSION_DENIED;
+     }
++    if (InstalldOperator::IsManagedApkStagePath(destinationDir)) {
++        LOG_E(BMS_TAG_INSTALLD, "managed APK subtree cannot be created by CopyFiles");
++        return ERR_APPEXECFWK_INSTALLD_COPY_FILE_FAILED;
++    }
+ 
+     InstalldOperator::CopyFiles(sourceDir, destinationDir);
+     return ERR_OK;
+@@ -2690,6 +2720,10 @@
+         LOG_E(BMS_TAG_INSTALLD, "installd permission denied, only used for foundation process");
+         return ERR_APPEXECFWK_INSTALLD_PERMISSION_DENIED;
+     }
++    if (InstalldOperator::IsManagedApkStagePath(targetPath)) {
++        LOG_E(BMS_TAG_INSTALLD, "managed APK subtree cannot be created by MoveHapToCodeDir");
++        return ERR_APPEXECFWK_INSTALLD_MOVE_FILE_FAILED;
++    }
+     if (!InstalldOperator::MoveFile(originPath, targetPath)) {
+         LOG_E(BMS_TAG_INSTALLD, "move file %{public}s to %{public}s failed errno:%{public}d",
+             originPath.c_str(), targetPath.c_str(), errno);
+@@ -3126,6 +3160,10 @@
+     if (!InstalldPermissionMgr::VerifyCallingPermission(Constants::FOUNDATION_UID)) {
+         LOG_E(BMS_TAG_INSTALLD, "permission denied");
+         return ERR_APPEXECFWK_INSTALLD_PERMISSION_DENIED;
++    }
++    if (InstalldOperator::IsManagedApkStagePath(destinationDir)) {
++        LOG_E(BMS_TAG_INSTALLD, "managed APK subtree cannot be created by CopyDir");
++        return ERR_APPEXECFWK_INSTALLD_COPY_DIR_FAILED;
+     }
+     if (sourceDir.empty() || destinationDir.empty()) {
+         LOG_E(BMS_TAG_INSTALLD, "empty sourceDir or destinationDir");
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_operator.cpp v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_operator.cpp
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_operator.cpp	2026-07-10 16:48:59
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_operator.cpp	2026-07-10 17:41:24
+@@ -16,6 +16,7 @@
+ #include "installd/installd_operator.h"
+ 
+ #include <algorithm>
++#include <array>
+ #include <elf.h>
+ #if defined(CODE_SIGNATURE_ENABLE)
+ #include "code_sign_utils.h"
+@@ -174,6 +175,259 @@
+     }
+     return false;
+ }
++
++constexpr uint64_t MAX_MANAGED_APK_BYTES = 1ULL << 30;
++constexpr const char *MANAGED_APK_SUFFIX = "/android/base.apk";
++constexpr const char *APK_VERIFY_SENTINEL_SUFFIX = "/android/.apk-sha256-verified-v1";
++constexpr const char *APK_VERIFY_SENTINEL_MAGIC = "APK-SHA256-VERIFIED-V1\n";
++constexpr int REQUIRED_APK_SEALS = F_SEAL_WRITE | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_SEAL;
++static_assert(ServiceConstants::BUNDLE_NEW_CODE_DIR[0] != ServiceConstants::PATH_SEPARATOR[0],
++    "BUNDLE_NEW_CODE_DIR must not contain a leading path separator");
++
++class ScopedFd final {
++public:
++    explicit ScopedFd(int fd) : fd_(fd) {}
++    ScopedFd(const ScopedFd &) = delete;
++    ScopedFd &operator=(const ScopedFd &) = delete;
++    ~ScopedFd()
++    {
++        if (fd_ >= 0) {
++            (void)close(fd_);
++        }
++    }
++    int Get() const
++    {
++        return fd_;
++    }
++    bool Close()
++    {
++        if (fd_ < 0) {
++            return true;
++        }
++        const int fd = fd_;
++        fd_ = -1;
++        return close(fd) == 0;
++    }
++
++private:
++    int fd_;
++};
++
++struct ManagedApkPath {
++    std::string bundleName;
++    std::string stageRoot;
++};
++
++bool ParseManagedApkPath(const std::string &path, ManagedApkPath &parsed)
++{
++    const std::string prefix = std::string(Constants::BUNDLE_CODE_DIR) +
++        ServiceConstants::PATH_SEPARATOR + ServiceConstants::BUNDLE_NEW_CODE_DIR;
++    const std::string suffix = MANAGED_APK_SUFFIX;
++    if (!StartsWith(path, prefix) || !EndsWith(path, suffix) ||
++        path.size() <= prefix.size() + suffix.size()) {
++        return false;
++    }
++    const std::string bundleName = path.substr(prefix.size(), path.size() - prefix.size() - suffix.size());
++    const bool validAndroidPackage = bundleName.size() >= Constants::MIN_BUNDLE_NAME &&
++        bundleName.size() <= Constants::MAX_BUNDLE_NAME &&
++        ((bundleName.front() >= 'A' && bundleName.front() <= 'Z') ||
++            (bundleName.front() >= 'a' && bundleName.front() <= 'z')) &&
++        std::all_of(bundleName.begin(), bundleName.end(), [](unsigned char c) {
++            return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
++                (c >= '0' && c <= '9') || c == '.' || c == '_';
++        });
++    if (!validAndroidPackage || !InstalldOperator::IsValidBundleName(bundleName)) {
++        return false;
++    }
++    const std::string stageRoot = prefix + bundleName;
++    if (path != stageRoot + suffix) {
++        return false;
++    }
++    parsed.bundleName = bundleName;
++    parsed.stageRoot = stageRoot;
++    return true;
++}
++
++bool IsLowerHexSha256(const std::string &digest)
++{
++    return digest.size() == SHA256_DIGEST_LENGTH * 2 &&
++        std::all_of(digest.begin(), digest.end(), [](unsigned char c) {
++            return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++        });
++}
++
++bool Sha256FdExact(int fd, uint64_t expectedSize, std::string &digestHex)
++{
++    SHA256_CTX sha256;
++    if (SHA256_Init(&sha256) != 1) {
++        return false;
++    }
++    std::array<unsigned char, 64 * 1024> buffer{};
++    uint64_t offset = 0;
++    while (offset < expectedSize) {
++        const size_t wanted = static_cast<size_t>(std::min<uint64_t>(buffer.size(), expectedSize - offset));
++        const ssize_t count = pread(fd, buffer.data(), wanted, static_cast<off_t>(offset));
++        if (count < 0 && errno == EINTR) {
++            continue;
++        }
++        if (count <= 0 || SHA256_Update(&sha256, buffer.data(), static_cast<size_t>(count)) != 1) {
++            return false;
++        }
++        offset += static_cast<uint64_t>(count);
++    }
++    unsigned char extra = 0;
++    ssize_t extraCount;
++    do {
++        extraCount = pread(fd, &extra, 1, static_cast<off_t>(expectedSize));
++    } while (extraCount < 0 && errno == EINTR);
++    if (extraCount != 0) {
++        return false;
++    }
++
++    std::array<unsigned char, SHA256_DIGEST_LENGTH> digest{};
++    if (SHA256_Final(digest.data(), &sha256) != 1) {
++        return false;
++    }
++    char actualHex[SHA256_DIGEST_LENGTH * 2 + 1] = {};
++    for (size_t i = 0; i < digest.size(); ++i) {
++        if (snprintf(actualHex + (i * 2), sizeof(actualHex) - (i * 2), "%02x", digest[i]) != 2) {
++            return false;
++        }
++    }
++    digestHex = actualHex;
++    return true;
++}
++
++bool VerifyManagedApkFile(const ExtractParam &extractParam, ManagedApkPath &parsed)
++{
++    if (!ParseManagedApkPath(extractParam.srcPath, parsed) ||
++        !IsLowerHexSha256(extractParam.expectedApkSha256)) {
++        return false;
++    }
++
++    int fd = open(extractParam.srcPath.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
++    if (fd < 0) {
++        return false;
++    }
++    struct stat before = {};
++    if (fstat(fd, &before) != 0 || !S_ISREG(before.st_mode) || before.st_nlink != 1 ||
++        before.st_uid != 0 || before.st_gid != 0 || before.st_size <= 0 ||
++        static_cast<uint64_t>(before.st_size) > MAX_MANAGED_APK_BYTES ||
++        (before.st_mode & 0777) != 0444) {
++        close(fd);
++        return false;
++    }
++    std::string actualHex;
++    struct stat after = {};
++    if (!Sha256FdExact(fd, static_cast<uint64_t>(before.st_size), actualHex) ||
++        fstat(fd, &after) != 0 || after.st_dev != before.st_dev || after.st_ino != before.st_ino ||
++        after.st_size != before.st_size || after.st_uid != before.st_uid || after.st_gid != before.st_gid ||
++        (after.st_mode & 0777) != 0444 || extractParam.expectedApkSha256 != actualHex) {
++        close(fd);
++        return false;
++    }
++    return close(fd) == 0;
++}
++
++bool WriteVerificationSentinel(const ManagedApkPath &parsed, const std::string &expectedSha256)
++{
++    const std::string expectedPath = parsed.stageRoot + APK_VERIFY_SENTINEL_SUFFIX;
++    const std::string payload = std::string(APK_VERIFY_SENTINEL_MAGIC) +
++        expectedSha256 + "\n";
++    int fd = open(expectedPath.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0400);
++    if (fd < 0) {
++        return false;
++    }
++    size_t offset = 0;
++    bool ok = true;
++    while (offset < payload.size()) {
++        const ssize_t count = write(fd, payload.data() + offset, payload.size() - offset);
++        if (count < 0 && errno == EINTR) {
++            continue;
++        }
++        if (count <= 0) {
++            ok = false;
++            break;
++        }
++        offset += static_cast<size_t>(count);
++    }
++    if (ok && fchown(fd, 0, 0) != 0) {
++        ok = false;
++    }
++    if (ok && fchmod(fd, 0444) != 0) {
++        ok = false;
++    }
++    if (ok && fsync(fd) != 0) {
++        ok = false;
++    }
++    const int closeResult = close(fd);
++    fd = -1;
++    ok = ok && closeResult == 0;
++    if (!ok) {
++        (void)unlink(expectedPath.c_str());
++        return false;
++    }
++    struct stat sentinelStat = {};
++    return lstat(expectedPath.c_str(), &sentinelStat) == 0 && S_ISREG(sentinelStat.st_mode) &&
++        sentinelStat.st_uid == 0 && sentinelStat.st_gid == 0 && (sentinelStat.st_mode & 0777) == 0444 &&
++        static_cast<uint64_t>(sentinelStat.st_size) == payload.size();
++}
++
++bool VerifyVerificationSentinel(const ManagedApkPath &parsed, const std::string &expectedSha256)
++{
++    const std::string path = parsed.stageRoot + APK_VERIFY_SENTINEL_SUFFIX;
++    const std::string expected = std::string(APK_VERIFY_SENTINEL_MAGIC) + expectedSha256 + "\n";
++    ScopedFd sentinel(open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
++    struct stat value = {};
++    if (sentinel.Get() < 0 || fstat(sentinel.Get(), &value) != 0 || !S_ISREG(value.st_mode) ||
++        value.st_nlink != 1 || value.st_uid != 0 || value.st_gid != 0 || (value.st_mode & 0777) != 0444 ||
++        static_cast<uint64_t>(value.st_size) != expected.size()) {
++        return false;
++    }
++    std::string actual(expected.size(), '\0');
++    size_t offset = 0;
++    while (offset < actual.size()) {
++        const ssize_t count = pread(sentinel.Get(), actual.data() + offset, actual.size() - offset,
++            static_cast<off_t>(offset));
++        if (count < 0 && errno == EINTR) {
++            continue;
++        }
++        if (count <= 0) {
++            return false;
++        }
++        offset += static_cast<size_t>(count);
++    }
++    unsigned char extra = 0;
++    return pread(sentinel.Get(), &extra, 1, static_cast<off_t>(actual.size())) == 0 && actual == expected;
++}
++
++bool PathExistsNoFollow(const std::string &path, bool &exists)
++{
++    struct stat value = {};
++    if (lstat(path.c_str(), &value) == 0) {
++        exists = true;
++        return true;
++    }
++    if (errno == ENOENT) {
++        exists = false;
++        return true;
++    }
++    return false;
++}
++
++bool IsTrustedStageDirectory(const std::string &path)
++{
++    struct stat statBuffer = {};
++    return lstat(path.c_str(), &statBuffer) == 0 && S_ISDIR(statBuffer.st_mode) &&
++        statBuffer.st_uid == 0 && statBuffer.st_gid == 0 &&
++        (statBuffer.st_mode & (S_IWGRP | S_IWOTH)) == 0;
++}
++
++bool FsyncDirectory(const std::string &path)
++{
++    ScopedFd directory(open(path.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW));
++    return directory.Get() >= 0 && fsync(directory.Get()) == 0 && directory.Close();
++}
+ } // namespace
+ 
+ #define FSCRYPT_KEY_DESCRIPTOR_SIZE 8
+@@ -452,9 +706,14 @@
+ {
+     LOG_D(BMS_TAG_INSTALLD, "InstalldOperator::ExtractFiles start");
+ 
++    if (IsManagedApkStagePath(extractParam.targetPath) &&
++        extractParam.extractFileType != ExtractFileType::APK_NATIVE_SO) {
++        LOG_E(BMS_TAG_INSTALLD, "generic extraction cannot write the managed APK subtree");
++        return false;
++    }
+     // adapter project: APK_RESOURCES_HAP
+     if (extractParam.extractFileType == ExtractFileType::APK_RESOURCES_HAP) {
+-        return BuildApkResourcesHap(extractParam.srcPath, extractParam.targetPath);
++        return BuildApkResourcesHap(extractParam);
+     }
+     if (extractParam.extractFileType == ExtractFileType::APK_NATIVE_SO) {
+         return ExtractApkNativeFiles(extractParam);
+@@ -3429,21 +3688,155 @@
+     return true;
+ }
+ 
++bool InstalldOperator::IsManagedApkStagePath(const std::string &path)
++{
++    const std::string androidMarker = "/android";
++    const size_t marker = path.find(androidMarker);
++    if (marker == std::string::npos) {
++        return false;
++    }
++    const std::string stageRoot = path.substr(0, marker);
++    const std::string androidRoot = stageRoot + androidMarker;
++    if (path != androidRoot && !StartsWith(path, androidRoot + ServiceConstants::PATH_SEPARATOR)) {
++        return false;
++    }
++    ManagedApkPath parsed;
++    return ParseManagedApkPath(stageRoot + MANAGED_APK_SUFFIX, parsed);
++}
++
++bool InstalldOperator::CopyVerifiedApkFromFd(int sealedFd, const std::string &targetPath,
++    const std::string &expectedSha256)
++{
++    ManagedApkPath parsed;
++    if (sealedFd < 0 || !ParseManagedApkPath(targetPath, parsed) || !IsLowerHexSha256(expectedSha256)) {
++        LOG_E(BMS_TAG_INSTALLD, "invalid verified APK copy parameters");
++        return false;
++    }
++    auto failStage = [&parsed]() {
++        (void)InstalldOperator::DeleteDir(parsed.stageRoot);
++        return false;
++    };
++    const std::string androidDir = parsed.stageRoot + "/android";
++    const std::string sentinelPath = parsed.stageRoot + APK_VERIFY_SENTINEL_SUFFIX;
++    if (!IsTrustedStageDirectory(parsed.stageRoot) || !IsTrustedStageDirectory(androidDir)) {
++        LOG_E(BMS_TAG_INSTALLD, "managed APK stage directories are not trusted");
++        return failStage();
++    }
++
++    struct stat sourceBefore = {};
++    const int sourceSeals = fcntl(sealedFd, F_GET_SEALS);
++    if (sourceSeals < 0 || (sourceSeals & REQUIRED_APK_SEALS) != REQUIRED_APK_SEALS ||
++        fstat(sealedFd, &sourceBefore) != 0 || !S_ISREG(sourceBefore.st_mode) || sourceBefore.st_size <= 0 ||
++        static_cast<uint64_t>(sourceBefore.st_size) > MAX_MANAGED_APK_BYTES) {
++        LOG_E(BMS_TAG_INSTALLD, "verified APK fd is not a bounded fully sealed regular file");
++        return failStage();
++    }
++    std::string sourceSha256;
++    if (!Sha256FdExact(sealedFd, static_cast<uint64_t>(sourceBefore.st_size), sourceSha256) ||
++        sourceSha256 != expectedSha256) {
++        LOG_E(BMS_TAG_INSTALLD, "sealed APK SHA-256 mismatch");
++        return failStage();
++    }
++
++    bool targetExists = false;
++    bool sentinelExists = false;
++    if (!PathExistsNoFollow(targetPath, targetExists) || !PathExistsNoFollow(sentinelPath, sentinelExists)) {
++        LOG_E(BMS_TAG_INSTALLD, "cannot inspect managed APK target or sentinel");
++        return failStage();
++    }
++    if (targetExists || sentinelExists) {
++        ExtractParam replayParam;
++        replayParam.srcPath = targetPath;
++        replayParam.expectedApkSha256 = expectedSha256;
++        ManagedApkPath replayParsed;
++        if (targetExists && sentinelExists && VerifyManagedApkFile(replayParam, replayParsed) &&
++            VerifyVerificationSentinel(replayParsed, expectedSha256)) {
++            LOG_I(BMS_TAG_INSTALLD, "accepted idempotent verified APK copy replay");
++            return true;
++        }
++        LOG_E(BMS_TAG_INSTALLD, "incomplete or mismatched verified APK copy replay");
++        return failStage();
++    }
++
++    ScopedFd output(open(targetPath.c_str(), O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0400));
++    if (output.Get() < 0) {
++        LOG_E(BMS_TAG_INSTALLD, "cannot create managed base.apk, errno:%{public}d", errno);
++        return failStage();
++    }
++    auto abortCopy = [&output, &targetPath, &failStage]() {
++        (void)output.Close();
++        (void)unlink(targetPath.c_str());
++        return failStage();
++    };
++    std::array<unsigned char, 64 * 1024> buffer{};
++    uint64_t offset = 0;
++    while (offset < static_cast<uint64_t>(sourceBefore.st_size)) {
++        const size_t wanted = static_cast<size_t>(std::min<uint64_t>(
++            buffer.size(), static_cast<uint64_t>(sourceBefore.st_size) - offset));
++        const ssize_t count = pread(sealedFd, buffer.data(), wanted, static_cast<off_t>(offset));
++        if (count < 0 && errno == EINTR) {
++            continue;
++        }
++        if (count <= 0) {
++            LOG_E(BMS_TAG_INSTALLD, "read sealed APK failed, errno:%{public}d", errno);
++            return abortCopy();
++        }
++        size_t written = 0;
++        while (written < static_cast<size_t>(count)) {
++            const ssize_t writeCount = pwrite(output.Get(), buffer.data() + written,
++                static_cast<size_t>(count) - written, static_cast<off_t>(offset + written));
++            if (writeCount < 0 && errno == EINTR) {
++                continue;
++            }
++            if (writeCount <= 0) {
++                LOG_E(BMS_TAG_INSTALLD, "write managed APK failed, errno:%{public}d", errno);
++                return abortCopy();
++            }
++            written += static_cast<size_t>(writeCount);
++        }
++        offset += static_cast<uint64_t>(count);
++    }
++
++    struct stat sourceAfter = {};
++    struct stat targetStat = {};
++    const int sourceSealsAfter = fcntl(sealedFd, F_GET_SEALS);
++    if (fstat(sealedFd, &sourceAfter) != 0 || sourceAfter.st_dev != sourceBefore.st_dev ||
++        sourceAfter.st_ino != sourceBefore.st_ino || sourceAfter.st_size != sourceBefore.st_size ||
++        sourceSealsAfter < 0 || (sourceSealsAfter & REQUIRED_APK_SEALS) != REQUIRED_APK_SEALS ||
++        fchown(output.Get(), 0, 0) != 0 || fchmod(output.Get(), 0444) != 0 || fsync(output.Get()) != 0 ||
++        fstat(output.Get(), &targetStat) != 0 || !S_ISREG(targetStat.st_mode) || targetStat.st_nlink != 1 ||
++        targetStat.st_uid != 0 || targetStat.st_gid != 0 || (targetStat.st_mode & 0777) != 0444 ||
++        targetStat.st_size != sourceBefore.st_size) {
++        LOG_E(BMS_TAG_INSTALLD, "managed APK copy shape or durability gate failed");
++        return abortCopy();
++    }
++    std::string targetSha256;
++    if (!Sha256FdExact(output.Get(), static_cast<uint64_t>(targetStat.st_size), targetSha256) ||
++        targetSha256 != expectedSha256 || !output.Close() ||
++        !WriteVerificationSentinel(parsed, expectedSha256) || !FsyncDirectory(androidDir)) {
++        LOG_E(BMS_TAG_INSTALLD, "managed APK destination SHA/sentinel gate failed");
++        return abortCopy();
++    }
++    LOG_I(BMS_TAG_INSTALLD, "copied verified APK from sealed fd for %{public}s", parsed.bundleName.c_str());
++    return true;
++}
++
+ bool InstalldOperator::ExtractApkNativeFiles(const ExtractParam &extractParam)
+ {
+-    const std::string stagePrefix = std::string(Constants::BUNDLE_CODE_DIR) +
+-        ServiceConstants::PATH_SEPARATOR + ServiceConstants::BUNDLE_NEW_CODE_DIR;
++    ManagedApkPath parsed;
++    if (!VerifyManagedApkFile(extractParam, parsed)) {
++        LOG_E(BMS_TAG_INSTALLD, "managed APK changed before native extraction");
++        if (!parsed.stageRoot.empty()) {
++            (void)DeleteDir(parsed.stageRoot);
++        }
++        return false;
++    }
+     const std::string nativeSuffix = std::string("/android/lib/") + extractParam.cpuAbi;
+-    const bool hasExactShape = StartsWith(extractParam.targetPath, stagePrefix) &&
+-        EndsWith(extractParam.targetPath, nativeSuffix) &&
+-        extractParam.targetPath.size() > stagePrefix.size() + nativeSuffix.size();
+-    const std::string bundleName = hasExactShape ? extractParam.targetPath.substr(stagePrefix.size(),
+-        extractParam.targetPath.size() - stagePrefix.size() - nativeSuffix.size()) : std::string();
+     if (extractParam.srcPath.empty() || extractParam.targetPath.empty() ||
+         (extractParam.cpuAbi != "arm64-v8a" && extractParam.cpuAbi != "armeabi-v7a") ||
+-        !hasExactShape || !IsValidBundleName(bundleName) ||
+-        extractParam.targetPath != stagePrefix + bundleName + nativeSuffix) {
++        extractParam.targetPath != parsed.stageRoot + nativeSuffix) {
+         LOG_E(BMS_TAG_INSTALLD, "invalid APK native extraction parameters");
++        (void)DeleteDir(parsed.stageRoot);
+         return false;
+     }
+ 
+@@ -3595,9 +3988,19 @@
+     return true;
+ }
+ // adapter project: APK_RESOURCES_HAP
+-bool InstalldOperator::BuildApkResourcesHap(const std::string &apkPath,
+-    const std::string &outHapPath)
++bool InstalldOperator::BuildApkResourcesHap(const ExtractParam &extractParam)
+ {
++    ManagedApkPath parsed;
++    if (!VerifyManagedApkFile(extractParam, parsed) ||
++        extractParam.targetPath != parsed.stageRoot + "/entry.hap") {
++        LOG_E(BMS_TAG_INSTALLD, "managed APK changed or resource output path is invalid");
++        if (!parsed.stageRoot.empty()) {
++            (void)DeleteDir(parsed.stageRoot);
++        }
++        return false;
++    }
++    const std::string &apkPath = extractParam.srcPath;
++    const std::string &outHapPath = extractParam.targetPath;
+     LOG_I(BMS_TAG_INSTALLD, "BuildApkResourcesHap: apk=%{public}s out=%{public}s",
+         apkPath.c_str(), outHapPath.c_str());
+     if (apkPath.empty() || outHapPath.empty()) {
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd_client.cpp v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd_client.cpp
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd_client.cpp	2026-07-10 16:49:32
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd_client.cpp	2026-07-10 16:54:38
+@@ -425,6 +425,20 @@
+     return CallService(&IInstalld::CopyFile, oldPath, newPath, signatureFilePath);
+ }
+ 
++ErrCode InstalldClient::CopyVerifiedApkFromFd(int sealedFd, const std::string &targetPath,
++    const std::string &expectedSha256)
++{
++    bool validDigest = expectedSha256.size() == 64;
++    for (char c : expectedSha256) {
++        validDigest = validDigest && ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'));
++    }
++    if (sealedFd < 0 || targetPath.empty() || !validDigest) {
++        APP_LOGE("verified APK parameters are invalid");
++        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
++    }
++    return CallService(&IInstalld::CopyVerifiedApkFromFd, sealedFd, targetPath, expectedSha256);
++}
++
+ ErrCode InstalldClient::Mkdir(
+     const std::string &dir, const int32_t mode, const int32_t uid, const int32_t gid)
+ {
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/extract_param.cpp v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/extract_param.cpp
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/extract_param.cpp	2026-07-10 16:48:59
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/extract_param.cpp	2026-07-10 16:50:10
+@@ -62,6 +62,7 @@
+     cpuAbi = Str16ToStr8(parcel.ReadString16());
+     extractFileType = static_cast<ExtractFileType>(parcel.ReadInt32());
+     needRemoveOld = parcel.ReadBool();
++    expectedApkSha256 = Str16ToStr8(parcel.ReadString16());
+     return true;
+ }
+ 
+@@ -72,6 +73,7 @@
+     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(String16, parcel, Str8ToStr16(cpuAbi));
+     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, static_cast<int32_t>(extractFileType));
+     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, needRemoveOld);
++    WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(String16, parcel, Str8ToStr16(expectedApkSha256));
+     return true;
+ }
+ 
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/installd_host.cpp v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/installd_host.cpp
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/installd_host.cpp	2026-07-10 16:49:32
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/installd_host.cpp	2026-07-10 17:16:13
+@@ -15,6 +15,9 @@
+ 
+ #include "ipc/installd_host.h"
+ 
++#include <fcntl.h>
++#include <unistd.h>
++
+ #include "app_log_tag_wrapper.h"
+ #include "bundle_constants.h"
+ #include "bundle_framework_services_ipc_interface_code.h"
+@@ -132,6 +135,9 @@
+         case static_cast<uint32_t>(InstalldInterfaceCode::COPY_FILE):
+             result = this->HandleCopyFile(data, reply);
+             break;
++        case static_cast<uint32_t>(InstalldInterfaceCode::COPY_VERIFIED_APK_FROM_FD):
++            result = this->HandleCopyVerifiedApkFromFd(data, reply);
++            break;
+         case static_cast<uint32_t>(InstalldInterfaceCode::MOVE_HAP_TO_CODE_DIR):
+             result = this->HandleMoveHapToCodeDir(data, reply);
+             break;
+@@ -838,6 +844,27 @@
+     std::string signatureFilePath = Str16ToStr8(data.ReadString16());
+ 
+     ErrCode result = CopyFile(oldPath, newPath, signatureFilePath);
++    WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, reply, result);
++    return true;
++}
++
++bool InstalldHost::HandleCopyVerifiedApkFromFd(MessageParcel &data, MessageParcel &reply)
++{
++    const bool hasExactlyOneObject = data.GetOffsetsSize() == 1;
++    int sealedFd = data.ReadFileDescriptor();
++    const std::string targetPath = Str16ToStr8(data.ReadString16());
++    const std::string expectedSha256 = Str16ToStr8(data.ReadString16());
++    ErrCode result = ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
++    if (sealedFd >= 0) {
++        const int fdFlags = fcntl(sealedFd, F_GETFD);
++        if (hasExactlyOneObject && fdFlags >= 0 && fcntl(sealedFd, F_SETFD, fdFlags | FD_CLOEXEC) == 0 &&
++            data.GetReadableBytes() == 0) {
++            result = CopyVerifiedApkFromFd(sealedFd, targetPath, expectedSha256);
++        }
++        if (close(sealedFd) != 0) {
++            LOG_W(BMS_TAG_INSTALLD, "close received verified APK fd failed, errno:%{public}d", errno);
++        }
++    }
+     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, reply, result);
+     return true;
+ }
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/installd_proxy.cpp v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/installd_proxy.cpp
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/installd_proxy.cpp	2026-07-10 16:49:32
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/ipc/installd_proxy.cpp	2026-07-10 16:54:38
+@@ -642,6 +642,20 @@
+     return TransactInstalldCmd(InstalldInterfaceCode::COPY_FILE, data, reply, option);
+ }
+ 
++ErrCode InstalldProxy::CopyVerifiedApkFromFd(int sealedFd, const std::string &targetPath,
++    const std::string &expectedSha256)
++{
++    MessageParcel data;
++    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
++    INSTALLD_PARCEL_WRITE(data, FileDescriptor, sealedFd);
++    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(targetPath));
++    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(expectedSha256));
++
++    MessageParcel reply;
++    MessageOption option(MessageOption::TF_SYNC);
++    return TransactInstalldCmd(InstalldInterfaceCode::COPY_VERIFIED_APK_FROM_FD, data, reply, option);
++}
++
+ ErrCode InstalldProxy::Mkdir(
+     const std::string &dir, const int32_t mode, const int32_t uid, const int32_t gid)
+ {
+@@ -1396,4 +1410,4 @@
+     return ERR_OK;
+ }
+ }  // namespace AppExecFwk
+-}  // namespace OHOS
+\ No newline at end of file
++}  // namespace OHOS
+diff -ruN v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/test/mock/src/installd_client.cpp v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/test/mock/src/installd_client.cpp
+--- v9plus/foundation/bundlemanager/bundle_framework/services/bundlemgr/test/mock/src/installd_client.cpp	2026-07-10 16:49:32
++++ v11/foundation/bundlemanager/bundle_framework/services/bundlemgr/test/mock/src/installd_client.cpp	2026-07-10 17:41:24
+@@ -365,6 +365,19 @@
+     return CallService(&IInstalld::CopyFile, oldPath, newPath, signatureFilePath);
+ }
+ 
++ErrCode InstalldClient::CopyVerifiedApkFromFd(int sealedFd, const std::string &targetPath,
++    const std::string &expectedSha256)
++{
++    bool validDigest = expectedSha256.size() == 64;
++    for (char c : expectedSha256) {
++        validDigest = validDigest && ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'));
++    }
++    if (sealedFd < 0 || targetPath.empty() || !validDigest) {
++        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
++    }
++    return CallService(&IInstalld::CopyVerifiedApkFromFd, sealedFd, targetPath, expectedSha256);
++}
++
+ ErrCode InstalldClient::Mkdir(
+     const std::string &dir, const int32_t mode, const int32_t uid, const int32_t gid)
+ {

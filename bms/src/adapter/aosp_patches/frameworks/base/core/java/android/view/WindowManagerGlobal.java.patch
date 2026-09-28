@@ -1,0 +1,54 @@
+diff --git a/frameworks/base/core/java/android/view/WindowManagerGlobal.java b/frameworks/base/core/java/android/view/WindowManagerGlobal.java
+old mode 100644
+new mode 100755
+index 99a4f6b4..38a9a695
+--- a/frameworks/base/core/java/android/view/WindowManagerGlobal.java
++++ b/frameworks/base/core/java/android/view/WindowManagerGlobal.java
+@@ -167,6 +167,23 @@ public final class WindowManagerGlobal {
+     @UnsupportedAppUsage
+     public static IWindowManager getWindowManagerService() {
+         synchronized (WindowManagerGlobal.class) {
++                // [OH_ADAPTER B.40] Delegate to OHEnvironment system-classloader factory
++                if (sWindowManagerService == null) {
++                    try {
++                        Class<?> envClass = Class.forName("adapter.core.OHEnvironment");
++                        Boolean isOH = (Boolean) envClass.getMethod("isOHEnvironment").invoke(null);
++                        if (Boolean.TRUE.equals(isOH)) {
++                            Object adapter = envClass.getMethod("getWindowManagerAdapter").invoke(null);
++                            if (adapter != null) {
++                                sWindowManagerService = (IWindowManager) adapter;
++                                return sWindowManagerService;
++                            }
++                        }
++                    } catch (Throwable t) {
++                        android.util.Log.w("WindowManagerGlobal",
++                            "OH adapter (WMS) init failed, falling back: " + t);
++                    }
++                }
+             if (sWindowManagerService == null) {
+                 sWindowManagerService = IWindowManager.Stub.asInterface(
+                         ServiceManager.getService("window"));
+@@ -187,6 +204,23 @@ public final class WindowManagerGlobal {
+     @UnsupportedAppUsage
+     public static IWindowSession getWindowSession() {
+         synchronized (WindowManagerGlobal.class) {
++                // [OH_ADAPTER B.40] Delegate to OHEnvironment system-classloader factory
++                if (sWindowSession == null) {
++                    try {
++                        Class<?> envClass = Class.forName("adapter.core.OHEnvironment");
++                        Boolean isOH = (Boolean) envClass.getMethod("isOHEnvironment").invoke(null);
++                        if (Boolean.TRUE.equals(isOH)) {
++                            Object adapter = envClass.getMethod("getWindowSessionAdapter").invoke(null);
++                            if (adapter != null) {
++                                sWindowSession = (IWindowSession) adapter;
++                                return sWindowSession;
++                            }
++                        }
++                    } catch (Throwable t) {
++                        android.util.Log.w("WindowManagerGlobal",
++                            "OH adapter (Session) init failed, falling back: " + t);
++                    }
++                }
+             if (sWindowSession == null) {
+                 try {
+                     // Emulate the legacy behavior.  The global instance of InputMethodManager
