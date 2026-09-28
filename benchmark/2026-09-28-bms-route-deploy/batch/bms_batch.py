@@ -328,8 +328,46 @@ def layout(board, remote, out, tag):
         raise AppFailure('invalid layout dump') from exc
 
 
+
+def launcher_focused(board, attempts=3):
+    """#38 gate: refuse to click unless the desktop (sceneboard) holds focus.
+
+    Bounded retry for the transient 'focus row missing' state observed right
+    after bm uninstall/reinstall (run2258 termux: row missing once, present on
+    manual re-check seconds later). Unknown-state retries wake+Home first;
+    after `attempts` tries the gate still BatchStops — no weakening.
+    """
+    last = None
+    for attempt in range(attempts):
+        board.shell('power-shell wakeup')
+        board.shell('uitest uiInput keyEvent Home')
+        _, wm = board.shell("hidumper -s WindowManagerService -a '-a'")
+        focus = re.search(r'^Focus window:\s*(\d+)', wm, re.M)
+        if not focus:
+            last = 'focus window missing; desktop state unknown'
+            time.sleep(2)
+            continue
+        wid = int(focus.group(1))
+        pid = None
+        for line in wm.splitlines():
+            fields = line.split()
+            if len(fields) >= 8 and all(v.isdigit() for v in fields[1:4]) and int(fields[3]) == wid:
+                pid = int(fields[2])
+                break
+        if pid is None:
+            last = 'focus window row missing; desktop state unknown'
+            time.sleep(2)
+            continue
+        _, ps = board.shell('ps -A -o PID,PPID,UID,NAME')
+        name = next((r['name'] for r in processes(ps) if r['pid'] == pid), '')
+        if name != 'com.ohos.sceneboard':
+            raise BatchStop('launcher not focused (pid %d is %s); not clicking' % (pid, name or 'unknown'))
+        return pid
+    raise BatchStop(last)
+
 def desktop_launch(board, app, remote, out, record, pages=10):
     board.shell('power-shell wakeup')
+    record['launcher_focus_gate'] = launcher_focused(board)
     # No global timeout mutation: wake before each UI step and capture.
     board.shell('uitest uiInput keyEvent Home')
     screen = None
