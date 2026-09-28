@@ -12,3 +12,8 @@ fn bms_batch_offline() {
 fn bms_batch_evidence() {
     run(&["benchmark/2026-09-28-bms-route-deploy/verify_batch_results.py"]);
 }
+
+#[test]
+fn bms_spawn_ab_evidence() {
+    run(&["benchmark/2026-09-28-bms-route-deploy/spawn-ab/verify.py"]);
+}

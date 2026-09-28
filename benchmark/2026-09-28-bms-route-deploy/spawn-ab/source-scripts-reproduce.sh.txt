@@ -1,0 +1,64 @@
+15: BOARD_8605="5ce2dcee00000000000000000923012c"
+16: BOARD_5EA1="5ea1719200000000000000001123012c"
+17: ROM_ONLY="OpenHarmony-6.1.0.31"
+18: PACKAGE="com.example.helloworld"
+19: ABILITY="com.example.helloworld.MainActivity"
+20: APK_PATH="/Users/zhaoyue/orca/.bridge-payload/pr03-74e6-portable/apk/HelloWorld.apk"
+21: APK_TARGET="/data/app/el1/bundle/public/$PACKAGE/android/base.apk"
+22: APK_SHA="2d122a7973ffd68c799700aaaaaa0593e5deec30bac83e22a9dc1bf9f64319fd"
+23: GENERATION="74e6f75976087d7890088b29c08482f17573a588fa5857cb6ca39264838ce16d"
+24: PROVIDER_TARGET="/system/lib64/westlake/route-a/$GENERATION/libwestlake_android_runtime_provider.so"
+25: 
+26: RESTORE_DRIVER_SHA="dc98e77e1fc1f54d827d5b5b80badc43752e659bbcd2778b961b2f5d8d01e61b"
+27: RECOVERY_SCRIPT_SHA="8dde8c4a19926d87a0fb6ef1833a66a0fbdd42d01680188df883838c2c91965b"
+28: RECOVERY_CFG_SHA="e2d68c9f921fad83db1a2593cf32eebf3306ed4538b2abaa4117cdb417b8581a"
+529: run_restore()
+530: {
+531:     local rc raw_log raw_dir uid pair parent child before after boot_id launch_token
+532:     set +e
+533:     env -u BRIDGE_PAYLOAD -u HDC_BIN -u FFMPEG_BIN \
+534:         "$RESTORE_DRIVER" "$BOARD" 2>&1 | tee "$RUN_LOG"
+535:     rc=${PIPESTATUS[0]}
+536:     set -e
+537:     [ "$rc" -eq 0 ] || die "PR03 restore driver failed: rc=$rc log=$RUN_LOG"
+538:     grep -q '^成功：HelloWorld 已在 .*上屏，CHANGE COLOR 点击后变为 RED。$' "$RUN_LOG" \
+539:         || die "restore driver did not emit its success marker"
+540: 
+541:     raw_log="$(sed -n 's/^完整日志：//p' "$RUN_LOG" | tail -n 1)"
+542:     [ -f "$raw_log" ] || die "restore driver returned no raw log"
+543:     raw_dir="$(dirname "$raw_log")"
+544:     case "$raw_dir" in
+545:         "$REPO_ROOT/var/state/pr03-helloworld-restore/"*) ;;
+546:         *) die "restore evidence escaped repository state: $raw_dir" ;;
+547:     esac
+548:     cp "$raw_dir/HelloWorld.jpeg" "$RUN_EVIDENCE/before.jpeg"
+549:     cp "$raw_dir/HelloWorld-touch-red.jpeg" "$RUN_EVIDENCE/after.jpeg"
+550:     cp "$raw_dir/visibility.txt" "$RUN_EVIDENCE/visibility.log"
+551:     cp "$raw_dir/touch.txt" "$RUN_EVIDENCE/touch.log"
+552:     cp "$raw_dir/restore.log" "$RUN_EVIDENCE/application.log"
+553:     verify_nonblank_jpeg "$RUN_EVIDENCE/before.jpeg" || die "restore before screenshot is blank or invalid"
+554:     verify_nonblank_jpeg "$RUN_EVIDENCE/after.jpeg" || die "restore after screenshot is blank or invalid"
+555:     before="$(decoded_frame_md5 "$RUN_EVIDENCE/before.jpeg")"
+556:     after="$(decoded_frame_md5 "$RUN_EVIDENCE/after.jpeg")"
+557: 
+558:     require_installed_identity
+559:     detect_runtime_profile
+560:     [ "$RUNTIME_PROFILE" = pr03-touch ] \
+561:         || { runtime_hash_report >&2; die "restore did not produce exact PR03 touch profile"; }
+562:     boot_id="$(D 'cat /proc/sys/kernel/random/boot_id' | trim)"
+563:     write_envstamp "$boot_id"
+564:     uid="$(sed -n 's/^HelloWorld UID=\([0-9][0-9]*\),.*$/\1/p' "$RUN_LOG" | tail -n 1)"
+565:     pair="$(sed -n 's/^parent\/child：//p' "$RUN_LOG" | tail -n 1)"
+566:     parent="${pair%/*}"
+567:     child="${pair#*/}"
+568:     launch_token="$(sed -n 's/^launch token：//p' "$RUN_LOG" | tail -n 1)"
+569:     [ -n "$uid" ] && [ -n "$parent" ] && [ -n "$child" ] && [ "$parent" != "$child" ] \
+570:         || die "restore process identity receipt is incomplete"
+571:     D "ps -ef | grep '^$uid *$child ' | grep -v grep || true" > "$RUN_EVIDENCE/process-after-touch.txt"
+572:     grep -q "$child" "$RUN_EVIDENCE/process-after-touch.txt" \
+573:         || die "restored HelloWorld child is not alive"
+574:     D "aa dump -a 2>/dev/null | grep -m1 'mission name.*#$PACKAGE:entry:$ABILITY' || true" \
+575:         > "$RUN_EVIDENCE/mission.txt"
+576:     printf 'raw_restore_dir=%s\nraw_restore_log_sha256=%s\n' \
+577:         "$raw_dir" "$(sha256_file "$raw_log")" > "$RUN_EVIDENCE/restore-source.env"
+578:     finalize_evidence "$uid" "$parent" "$child" "$before" "$after" "$launch_token"

@@ -1,0 +1,115 @@
+200: D "set -e; test ! -e '$REMOTE_STAGE'; mkdir -p '$REMOTE_STAGE' '$REMOTE_STAGE_RUNTIME' '$REMOTE_STAGE_HOST/platformsdk'"
+201: H file send "$PAYLOAD_ROOT/android" "$REMOTE_STAGE" >/dev/null || die "Android staging 传输失败"
+202: H file send "$PAYLOAD_ROOT/route" "$REMOTE_STAGE" >/dev/null || die "route staging 传输失败"
+203: send_file "$PAYLOAD_ROOT/runtime/appspawn-x" "$REMOTE_STAGE_RUNTIME/appspawn-x"
+204: send_file "$PAYLOAD_ROOT/runtime/libwestlake_android_child.z.so" "$REMOTE_STAGE_RUNTIME/libwestlake_android_child.z.so"
+205: send_file "$PAYLOAD_ROOT/runtime/appdata-sandbox.json" "$REMOTE_STAGE_RUNTIME/appdata-sandbox.json"
+206: send_file "$PAYLOAD_ROOT/runtime/appspawn_x.cfg" "$REMOTE_STAGE_RUNTIME/appspawn_x.cfg"
+207: send_file "$SCRIPT_DIR/pr03-runtime-recover-device.sh" "$REMOTE_STAGE_RUNTIME/pr03-runtime-recover.sh"
+208: send_file "$SCRIPT_DIR/pr03-runtime-recovery.cfg" "$REMOTE_STAGE_RUNTIME/00_pr03_runtime_recovery.cfg"
+209: send_file "$PAYLOAD_ROOT/apk/HelloWorld.apk" "$REMOTE_STAGE_APK"
+210: send_file "$PAYLOAD_ROOT/host/system/lib64/libbms.z.so" "$REMOTE_STAGE_HOST/libbms.z.so"
+211: send_file "$PAYLOAD_ROOT/host/system/lib64/libinstalls.z.so" "$REMOTE_STAGE_HOST/libinstalls.z.so"
+212: send_file "$PAYLOAD_ROOT/host/system/lib64/libapk_installer.so" "$REMOTE_STAGE_HOST/libapk_installer.so"
+213: send_file "$PAYLOAD_ROOT/host/system/lib64/libappms.z.so" "$REMOTE_STAGE_HOST/libappms.z.so"
+214: send_file "$PAYLOAD_ROOT/host/system/lib64/libappspawn_client.z.so" "$REMOTE_STAGE_HOST/libappspawn_client.z.so"
+215: send_file "$PAYLOAD_ROOT/host/system/lib64/libwestlake_hap_domain_wrapper.so" "$REMOTE_STAGE_HOST/libwestlake_hap_domain_wrapper.so"
+216: send_file "$PAYLOAD_ROOT/host/system/lib64/platformsdk/libabilityms.z.so" "$REMOTE_STAGE_HOST/platformsdk/libabilityms.z.so"
+217: 
+218: D "set -e; find '$REMOTE_STAGE_ANDROID' -type d -exec chmod 0755 {} \;; find '$REMOTE_STAGE_ROUTE' -type d -exec chmod 0755 {} \;; find '$REMOTE_STAGE_ROUTE' -type f -exec chmod 0644 {} \;; chmod 0755 '$REMOTE_STAGE_RUNTIME/appspawn-x' '$REMOTE_STAGE_RUNTIME/libwestlake_android_child.z.so'; chmod 0644 '$REMOTE_STAGE_RUNTIME/appdata-sandbox.json' '$REMOTE_STAGE_RUNTIME/appspawn_x.cfg' '$REMOTE_STAGE_RUNTIME/pr03-runtime-recover.sh' '$REMOTE_STAGE_RUNTIME/00_pr03_runtime_recovery.cfg'"
+240: [ "$(device_hash "$REMOTE_RUNTIME/appspawn-x")" = "$APPSPAWN_SHA" ] || die "原子切换后 appspawn-x hash 不对"
+241: echo "旧 backing（如存在）保留在：$REMOTE_PREVIOUS"
+242: 
+243: step "安装 PR03 宿主库、init 配置和每次开机自动恢复 hook"
+244: D "set -e; begetctl stop_service appspawn-x >/dev/null 2>&1 || true; mkdir -p /system/etc/init /system/lib64/platformsdk /system/android /system/lib64/appspawn $ROUTE_TARGET /system/etc/sandbox; [ -e /system/bin/appspawn-x ] || touch /system/bin/appspawn-x; [ -e /system/lib64/appspawn/libwestlake_android_child.z.so ] || touch /system/lib64/appspawn/libwestlake_android_child.z.so; [ -e /system/etc/sandbox/appdata-sandbox.json ] || touch /system/etc/sandbox/appdata-sandbox.json; [ -e /system/lib64/libwestlake_thread_guard_registry.so ] || touch /system/lib64/libwestlake_thread_guard_registry.so; cp $REMOTE_RUNTIME/appspawn_x.cfg /system/etc/init/appspawn_x.cfg; cp $REMOTE_RUNTIME/pr03-runtime-recover.sh /system/etc/pr03-runtime-recover.sh; cp $REMOTE_RUNTIME/00_pr03_runtime_recovery.cfg /system/etc/init/00_pr03_runtime_recovery.cfg; chown 0:0 /system/etc/init/appspawn_x.cfg /system/etc/pr03-runtime-recover.sh /system/etc/init/00_pr03_runtime_recovery.cfg; chmod 0550 /system/etc/init/appspawn_x.cfg /system/etc/pr03-runtime-recover.sh /system/etc/init/00_pr03_runtime_recovery.cfg; chcon u:object_r:system_etc_file:s0 /system/etc/init/appspawn_x.cfg /system/etc/pr03-runtime-recover.sh /system/etc/init/00_pr03_runtime_recovery.cfg"
+245: 
+246: # 核心库被 foundation 正在加载。覆盖和 reboot 必须在同一次设备 shell 内完成，
+247: # 中间不能再从主机发命令。
+248: D "(set -e; cp $REMOTE_HOST/libbms.z.so /system/lib64/libbms.z.so; cp $REMOTE_HOST/libinstalls.z.so /system/lib64/libinstalls.z.so; cp $REMOTE_HOST/libapk_installer.so /system/lib64/libapk_installer.so; cp $REMOTE_HOST/libappms.z.so /system/lib64/libappms.z.so; cp $REMOTE_HOST/libappspawn_client.z.so /system/lib64/libappspawn_client.z.so; cp $REMOTE_HOST/libwestlake_hap_domain_wrapper.so /system/lib64/libwestlake_hap_domain_wrapper.so; cp $REMOTE_HOST/libbms.z.so /system/lib64/platformsdk/libbms.z.so; cp $REMOTE_HOST/libinstalls.z.so /system/lib64/platformsdk/libinstalls.z.so; cp $REMOTE_HOST/libapk_installer.so /system/lib64/platformsdk/libapk_installer.so; cp $REMOTE_HOST/libappms.z.so /system/lib64/platformsdk/libappms.z.so; cp $REMOTE_HOST/libappspawn_client.z.so /system/lib64/platformsdk/libappspawn_client.z.so; cp $REMOTE_HOST/platformsdk/libabilityms.z.so /system/lib64/platformsdk/libabilityms.z.so; chmod 0755 /system/lib64/libbms.z.so /system/lib64/libinstalls.z.so /system/lib64/libapk_installer.so /system/lib64/libappms.z.so /system/lib64/libappspawn_client.z.so /system/lib64/libwestlake_hap_domain_wrapper.so /system/lib64/platformsdk/libbms.z.so /system/lib64/platformsdk/libinstalls.z.so /system/lib64/platformsdk/libapk_installer.so /system/lib64/platformsdk/libappms.z.so /system/lib64/platformsdk/libappspawn_client.z.so /system/lib64/platformsdk/libabilityms.z.so; chcon u:object_r:system_lib_file:s0 /system/lib64/libbms.z.so /system/lib64/libinstalls.z.so /system/lib64/libapk_installer.so /system/lib64/libappms.z.so /system/lib64/libappspawn_client.z.so /system/lib64/libwestlake_hap_domain_wrapper.so /system/lib64/platformsdk/libbms.z.so /system/lib64/platformsdk/libinstalls.z.so /system/lib64/platformsdk/libapk_installer.so /system/lib64/platformsdk/libappms.z.so /system/lib64/platformsdk/libappspawn_client.z.so /system/lib64/platformsdk/libabilityms.z.so); host_rc=\$?; sync; reboot; exit \$host_rc" >/dev/null 2>&1 || true
+249: 
+250: wait_device
+251: sleep 5
+252: H target mount >/dev/null 2>&1 || true
+253: wait_device
+254: 
+255: step "确认本次 boot 已自动恢复 PR03 运行闭包"
+256: [ "$(D "param get sys.pr03.runtime.ready" | tr -d ' ')" = "true" ] || die "开机恢复没有进入 READY"
+257: D "grep -q '^host_boot_completed=true$' /data/service/el1/public/appspawnx/pr03-boot-recovery.txt; grep -q '^selinux_mode=Permissive$' /data/service/el1/public/appspawnx/pr03-boot-recovery.txt; grep -q '^touch_closure=READY$' /data/service/el1/public/appspawnx/pr03-boot-recovery.txt; grep -q '^mount_count=7$' /data/service/el1/public/appspawnx/pr03-boot-recovery.txt; grep -q '^state=READY$' /data/service/el1/public/appspawnx/pr03-boot-recovery.txt" || die "开机恢复回执不完整"
+258: [ "$(D "grep -c ' /pr03-74e6-portable/' /proc/self/mountinfo" | tr -d ' ')" = "7" ] || die "开机没有自动恢复精确 7 个 bind"
+259: 
+260: step "确认宿主库已由 foundation 加载"
+276: D "grep -q /system/lib64/libbms.z.so /proc/$FOUNDATION_PID/maps && grep -q /system/lib64/libappms.z.so /proc/$FOUNDATION_PID/maps && grep -q /system/lib64/libappspawn_client.z.so /proc/$FOUNDATION_PID/maps && grep -q /system/lib64/platformsdk/libabilityms.z.so /proc/$FOUNDATION_PID/maps" || die "foundation 没加载完整 PR03 宿主库"
+277: 
+278: step "重装精确 HelloWorld APK"
+279: D "bm uninstall -n $PACKAGE" >/dev/null 2>&1 || true
+280: INSTALL_RESULT="$(D "bm install -p $REMOTE_APK")"
+281: echo "$INSTALL_RESULT"
+282: printf '%s\n' "$INSTALL_RESULT" | grep -q "install bundle successfully" || die "APK 安装失败"
+283: [ "$(device_hash "/data/app/el1/bundle/public/$PACKAGE/android/base.apk")" = "$APK_SHA" ] || die "安装后的 APK hash 不对"
+284: BUNDLE_DUMP="$(D "bm dump -n $PACKAGE")"
+285: printf '%s\n' "$BUNDLE_DUMP" | grep -q '"bundleType": 10' || die "包没有注册成 Android bundleType=10"
+286: APP_UID="$(printf '%s\n' "$BUNDLE_DUMP" | grep -oE '"uid": *[0-9]+' | head -n 1 | grep -oE '[0-9]+')"
+287: [ -n "$APP_UID" ] || die "取不到应用 UID"
+288: echo "HelloWorld UID=${APP_UID}, bundleType=10。"
+289: 
+290: step "建立应用沙箱目录"
+291: D "set -e; for d in /data/app/el1/100/base /data/app/el1/100/database /data/app/el2/100/base /data/app/el2/100/database /data/app/el2/100/sharefiles /data/app/el3/100/base /data/app/el3/100/database /data/app/el4/100/base /data/app/el4/100/database; do mkdir -p \${d}/$PACKAGE; done; mkdir -p /data/app/el2/100/log/$PACKAGE; for s in cache code_cache databases files haps no_backup preferences shared_prefs temp; do mkdir -p /data/app/el2/100/base/$PACKAGE/\${s}; done; chown -R $APP_UID:$APP_UID /data/app/el1/100/base/$PACKAGE /data/app/el1/100/database/$PACKAGE /data/app/el2/100/base/$PACKAGE /data/app/el2/100/database/$PACKAGE /data/app/el2/100/sharefiles/$PACKAGE /data/app/el3/100/base/$PACKAGE /data/app/el3/100/database/$PACKAGE /data/app/el4/100/base/$PACKAGE /data/app/el4/100/database/$PACKAGE; chown $APP_UID:log /data/app/el2/100/log/$PACKAGE; chmod -R 0700 /data/app/el1/100/base/$PACKAGE /data/app/el2/100/base/$PACKAGE /data/app/el2/100/sharefiles/$PACKAGE /data/app/el3/100/base/$PACKAGE /data/app/el4/100/base/$PACKAGE; chmod 0770 /data/app/el1/100/database/$PACKAGE /data/app/el2/100/database/$PACKAGE /data/app/el2/100/log/$PACKAGE /data/app/el3/100/database/$PACKAGE /data/app/el4/100/database/$PACKAGE; chcon -R u:object_r:appdat:s0 /data/app/el1/100/base/$PACKAGE /data/app/el1/100/database/$PACKAGE /data/app/el2/100/base/$PACKAGE /data/app/el2/100/database/$PACKAGE /data/app/el2/100/sharefiles/$PACKAGE /data/app/el3/100/base/$PACKAGE /data/app/el3/100/database/$PACKAGE /data/app/el4/100/base/$PACKAGE /data/app/el4/100/database/$PACKAGE; chcon u:object_r:data_app_el2_file:s0 /data/app/el2/100/log/$PACKAGE"
+292: # OH 6.1 toolbox 的 chcon -R 在这个目录树上只处理首个子项；逐项执行，
+293: # 否则严格校验会在安装器预建的 code_cache/files 等目录上随机 first-bad。
+294: D "set -e; for app_root in /data/app/el1/100/base/$PACKAGE /data/app/el1/100/database/$PACKAGE /data/app/el2/100/base/$PACKAGE /data/app/el2/100/database/$PACKAGE /data/app/el2/100/sharefiles/$PACKAGE /data/app/el3/100/base/$PACKAGE /data/app/el3/100/database/$PACKAGE /data/app/el4/100/base/$PACKAGE /data/app/el4/100/database/$PACKAGE; do find \${app_root} -exec chcon u:object_r:appdat:s0 {} \;; done"
+295: for APP_DIR in \
+296:   "/data/app/el2/100/base/$PACKAGE" \
+297:   "/data/app/el2/100/base/$PACKAGE/cache" \
+298:   "/data/app/el2/100/base/$PACKAGE/code_cache" \
+299:   "/data/app/el2/100/base/$PACKAGE/databases" \
+300:   "/data/app/el2/100/base/$PACKAGE/files" \
+301:   "/data/app/el2/100/base/$PACKAGE/haps" \
+302:   "/data/app/el2/100/base/$PACKAGE/no_backup" \
+303:   "/data/app/el2/100/base/$PACKAGE/preferences" \
+304:   "/data/app/el2/100/base/$PACKAGE/shared_prefs" \
+305:   "/data/app/el2/100/base/$PACKAGE/temp"; do
+306:   [ "$(D "stat -c '%a:%u:%g:%C' $APP_DIR" | tr -d ' ')" = "700:$APP_UID:$APP_UID:u:object_r:appdat:s0" ] || die "应用目录 owner/mode/label 不对：$APP_DIR"
+307: done
+308: 
+309: step "恢复 PR03 的 7 个精确 bind-mount"
+311: sleep 2
+312: D "set -e; umount /system/lib64/libwestlake_thread_guard_registry.so 2>/dev/null || true; umount /system/etc/sandbox/appdata-sandbox.json 2>/dev/null || true; umount /system/bin/appspawn-x 2>/dev/null || true; umount /system/lib64/appspawn/libwestlake_android_child.z.so 2>/dev/null || true; umount /system/android/lib64/liblzma.so 2>/dev/null || true; umount $ROUTE_TARGET 2>/dev/null || true; umount /system/android 2>/dev/null || true; mkdir -p /system/android /system/lib64/appspawn $ROUTE_TARGET /system/etc/sandbox; touch /system/bin/appspawn-x /system/lib64/appspawn/libwestlake_android_child.z.so /system/etc/sandbox/appdata-sandbox.json /system/lib64/libwestlake_thread_guard_registry.so; mount --bind $REMOTE_ANDROID /system/android; mount --bind $REMOTE_ROUTE $ROUTE_TARGET; mount --bind $REMOTE_ROUTE/liblzma.so /system/android/lib64/liblzma.so; mount --bind $REMOTE_RUNTIME/libwestlake_android_child.z.so /system/lib64/appspawn/libwestlake_android_child.z.so; mount --bind $REMOTE_RUNTIME/appspawn-x /system/bin/appspawn-x; mount --bind $REMOTE_RUNTIME/appdata-sandbox.json /system/etc/sandbox/appdata-sandbox.json; mount --bind $REMOTE_ROUTE/libwestlake_thread_guard_registry.so /system/lib64/libwestlake_thread_guard_registry.so"
+313: 
+314: D "set -e; find /system/android -type d -exec chmod 0755 {} \;; find /system/android -exec chcon u:object_r:system_file:s0 {} \;; find /system/android/lib64 -exec chcon u:object_r:system_lib_file:s0 {} \;; find $ROUTE_TARGET -exec chcon u:object_r:system_lib_file:s0 {} \;; chmod 0755 /system/bin/appspawn-x /system/lib64/appspawn/libwestlake_android_child.z.so; chmod 0644 /system/etc/sandbox/appdata-sandbox.json /system/lib64/libwestlake_thread_guard_registry.so /system/android/lib64/liblzma.so; chcon u:object_r:appspawn_exec:s0 /system/bin/appspawn-x; chcon u:object_r:system_lib_file:s0 /system/lib64/appspawn/libwestlake_android_child.z.so /system/lib64/libwestlake_thread_guard_registry.so /system/android/lib64/liblzma.so; chcon u:object_r:system_etc_file:s0 /system/etc/sandbox/appdata-sandbox.json; if [ -f /system/android/framework/arm64/boot.art ] && [ ! -e /system/android/framework/boot.art ]; then ln -sf arm64/boot.art /system/android/framework/boot.art; fi; for f in /system/android/framework/arm64/boot*.art /system/android/framework/arm64/boot*.oat /system/android/framework/arm64/boot*.vdex; do chcon u:object_r:system_lib_file:s0 \$f; done; chcon u:object_r:system_fonts_file:s0 /system/android/etc/fonts.xml 2>/dev/null || true; cp /system/android/etc/fonts.xml /system/etc/fonts.xml 2>/dev/null || true; chcon u:object_r:system_fonts_file:s0 /system/etc/fonts.xml 2>/dev/null || true; ln -sf /lib/ld-musl-aarch64.so.1 /system/lib/libc_musl.so; chcon -h u:object_r:system_lib_file:s0 /system/lib/libc_musl.so 2>/dev/null || true"
+315: 
+316: [ "$(device_hash /system/bin/appspawn-x)" = "$APPSPAWN_SHA" ] || die "appspawn-x bind 失败"
+317: [ "$(device_hash /system/lib64/appspawn/libwestlake_android_child.z.so)" = "$CHILD_SHA" ] || die "child so bind 失败"
+318: [ "$(device_hash "$ROUTE_TARGET/libwestlake_android_runtime_provider.so")" = "$PROVIDER_SHA" ] || die "provider bind 失败"
+319: [ "$(device_hash /system/android/lib64/liboh_android_runtime.so)" = "$RUNTIME_SHA" ] || die "runtime bind 失败"
+320: [ "$(device_hash /system/etc/sandbox/appdata-sandbox.json)" = "$SANDBOX_SHA" ] || die "sandbox bind 失败"
+321: [ "$(device_hash /system/lib64/libwestlake_thread_guard_registry.so)" = "$ROUTE_TGR_SHA" ] || die "TGR bind 失败"
+322: [ "$(device_hash /system/android/lib64/liblzma.so)" = "$LZMA_SHA" ] || die "liblzma bind 失败"
+323: [ "$(D "grep -F ' $ROUTE_TARGET ' /proc/self/mountinfo | wc -l" | tr -d ' ')" = "1" ] || die "route generation mount 不对"
+324: [ "$(D "grep -F ' /system/lib64/westlake/route-a ' /proc/self/mountinfo | wc -l" | tr -d ' ')" = "0" ] || die "禁止覆盖整个 route-a 父目录"
+325: [ "$(D "grep -c ' /pr03-74e6-portable/' /proc/self/mountinfo" | tr -d ' ')" = "7" ] || die "PR03 bind 数量不是精确 7 个"
+326: D "set -e; grep -F ' /system/android ' /proc/self/mountinfo | grep -q '/pr03-74e6-portable/android '; grep -F ' $ROUTE_TARGET ' /proc/self/mountinfo | grep -q '/pr03-74e6-portable/route '; grep -F ' /system/android/lib64/liblzma.so ' /proc/self/mountinfo | grep -q '/pr03-74e6-portable/route/liblzma.so '; grep -F ' /system/lib64/appspawn/libwestlake_android_child.z.so ' /proc/self/mountinfo | grep -q '/pr03-74e6-portable/runtime/libwestlake_android_child.z.so '; grep -F ' /system/bin/appspawn-x ' /proc/self/mountinfo | grep -q '/pr03-74e6-portable/runtime/appspawn-x '; grep -F ' /system/etc/sandbox/appdata-sandbox.json ' /proc/self/mountinfo | grep -q '/pr03-74e6-portable/runtime/appdata-sandbox.json '; grep -F ' /system/lib64/libwestlake_thread_guard_registry.so ' /proc/self/mountinfo | grep -q '/pr03-74e6-portable/route/libwestlake_thread_guard_registry.so '" || die "7 个 bind 的 source/target 对应关系不对"
+327: [ "$(D "stat -c '%a:%u:%g:%C' /system/android" | tr -d ' ')" = "755:0:0:u:object_r:system_file:s0" ] || die "Android root mode/label 不对"
+328: [ "$(D "stat -c '%a:%u:%g:%C' $ROUTE_TARGET" | tr -d ' ')" = "755:0:0:u:object_r:system_lib_file:s0" ] || die "route 目录 mode/label 不对"
+329: [ "$(D "stat -c '%a:%u:%g:%C' /system/android/lib64/liblzma.so" | tr -d ' ')" = "644:0:0:u:object_r:system_lib_file:s0" ] || die "liblzma mode/label 不对"
+330: [ "$(D "stat -c '%a:%u:%g:%C' /system/bin/appspawn-x" | tr -d ' ')" = "755:0:0:u:object_r:appspawn_exec:s0" ] || die "appspawn-x mode/label 不对"
+331: [ "$(D "stat -c '%a:%u:%g:%C' /system/lib64/appspawn/libwestlake_android_child.z.so" | tr -d ' ')" = "755:0:0:u:object_r:system_lib_file:s0" ] || die "child so mode/label 不对"
+332: [ "$(D "stat -c '%a:%u:%g:%C' /system/etc/sandbox/appdata-sandbox.json" | tr -d ' ')" = "644:0:0:u:object_r:system_etc_file:s0" ] || die "sandbox mode/label 不对"
+333: [ "$(D "stat -c '%a:%u:%g:%C' /system/lib64/libwestlake_thread_guard_registry.so" | tr -d ' ')" = "644:0:0:u:object_r:system_lib_file:s0" ] || die "TGR mode/label 不对"
+334: [ "$(D "stat -c '%a:%u:%g:%C' /system/android/framework/framework.jar" | tr -d ' ')" = "644:0:0:u:object_r:system_file:s0" ] || die "framework.jar mode/label 不对"
+335: 
+336: step "设置参数、唤醒并启动 appspawn-x"
+337: D "set -e; param set persist.sys.abilityms.support_anco_app true; param set persist.sys.abilityms.timeout_unit_time_ratio 20; param set persist.sys.prefork.enable false; param set ro.product.cpu.abilist arm64-v8a >/dev/null 2>&1 || true; param set ro.product.cpu.abilist64 arm64-v8a >/dev/null 2>&1 || true; chmod 0666 /dev/mali0; chcon u:object_r:dev_mali:s0 /dev/mali0; power-shell setmode 602; power-shell timeout -o 86400000; power-shell wakeup; power-shell display -o 230; hilog -r >/dev/null 2>&1 || true; sync"
+338: [ "$(D "param get persist.sys.abilityms.support_anco_app" | tr -d ' ')" = "true" ] || die "support_anco_app 参数未生效"
+339: [ "$(D "param get persist.sys.abilityms.timeout_unit_time_ratio" | tr -d ' ')" = "20" ] || die "timeout ratio 参数未生效"
+340: [ "$(D "param get persist.sys.prefork.enable" | tr -d ' ')" = "false" ] || die "prefork 参数未生效"
+341: [ "$(D "param get ro.product.cpu.abilist" | tr -d ' ')" = "arm64-v8a" ] || die "abilist 参数未生效"
+342: [ "$(D "param get ro.product.cpu.abilist64" | tr -d ' ')" = "arm64-v8a" ] || die "abilist64 参数未生效"
+384: 
+385: step "唯一一次冷启动 HelloWorld"
+386: D "set -e; power-shell setmode 602; power-shell timeout -o 86400000; power-shell wakeup; power-shell display -o 230; uinput -T -m 600 1500 600 600 500 >/dev/null 2>&1 || true; hilog -r >/dev/null 2>&1 || true"
+387: sleep 1
+388: LAUNCH_TOKEN="PR03-${BOARD:0:8}-${RUN_ID}-one-shot-001"
+389: echo "launch_token=$LAUNCH_TOKEN"
+390: AA_RESULT="$(D "aa start -a $ABILITY -b $PACKAGE -W")"
+391: echo "$AA_RESULT"
+392: printf '%s\n' "$AA_RESULT" | grep -q "start ability successfully" || die "aa start 失败"

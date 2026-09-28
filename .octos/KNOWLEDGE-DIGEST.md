@@ -331,3 +331,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-28 BMS 批量实测：桌面入口取 `bm dump.hapModuleInfos[entryModuleName].mainAbility`，不能套旧 direct-launch Activity（Wikipedia DefaultIcon / Termux HomeActivity）；Java Activity 可含 `$`（NfcAPI$NfcActivity）；首装后同包再次 `bm install -p` 曾返回9568260，补采须记录首装来源并读回已装base.apk哈希，不能把重装失败改成成功。
 
 - **BMS 66-key 实测（2026-09-28, cx-t0）**：三板各22项，62 key原APK首装成功并完成桌面点击/截图，fd-seal/toutiao/x报9568260且BMS不可查询，subwaysurfers输入SHA不符在写板前拒绝；62项机器状态均foreground_unconfirmed，不能称点亮。126张证据图待外环逐图终判，已抽读Aegis/OONI/markor均OH桌面。见 `benchmark/2026-09-28-bms-route-deploy/`；HelloWorld/ZigZag通过不外推为66 app兼容。
+
+- **BMS启动前置缺失（2026-09-28, #24同boot A/B）**：5ea上Wikipedia并非未fork：AppSpawnX子PID26163出现约22ms，因`el1/100/database/org.wikipedia`缺失在stock sandbox hook31返回`0xd000008`，未到WLCGATE/Android入口；UID轮询与15s末快照均可能漏掉。HelloWorld PID25183正常；restore在bm install后另建10个沙箱根目录并设UID/mode/label，而批量脚本遗漏。外环#23终判0/62上屏；此根因只验证Wikipedia，不外推62项或称补目录必亮。installed两包resources.index相同且含Hello World，标签为独立模板缺陷。证据：`benchmark/2026-09-28-bms-route-deploy/spawn-ab/`。
