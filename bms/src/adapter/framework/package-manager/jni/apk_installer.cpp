@@ -9,6 +9,7 @@
 #include "apk_manifest_parser.h"  // android:icon resolution
 #include "arsc_resolver.h"        // resource ID -> file path
 #include "icon_normalize.h"       // task #65 launcher-icon unification
+#include "adaptive_icon.h"          // B3 adaptive-icon composition
 
 #include <cerrno>
 #include <cstring>
@@ -489,11 +490,19 @@ bool ReadIconByManifest(const std::string& srcApkPath, std::vector<uint8_t>& out
              iconId, arscApk.c_str());
         return false;
     }
-    // Adaptive icons resolve to an XML drawable descriptor, not image bytes —
-    // publishing that as icon.png would render as garbage. Fall back to the
-    // legacy path-grep which only matches real image entries.
+    // B3: adaptive icons resolve to an XML drawable descriptor. Try composing
+    // foreground/background into a publishable PNG first; only if composition
+    // fails (vector layers, undecodable rasters) fall back to the legacy
+    // path-grep which only matches real image entries.
     if (entryPath.size() >= 4 && entryPath.compare(entryPath.size() - 4, 4, ".xml") == 0) {
-        LOGW("ReadIconByManifest: icon 0x%{public}08x resolves to XML %{public}s (adaptive icon?), falling back",
+        std::vector<uint8_t> xmlBytes;
+        if (ReadZipEntry(arscApk, entryPath, xmlBytes) && !xmlBytes.empty() &&
+            ComposeAdaptiveIcon(srcApkPath, arscApk, xmlBytes, out)) {
+            LOGI("ReadIconByManifest: adaptive icon 0x%{public}08x composed from %{public}s "
+                 "(%{public}zu bytes)", iconId, entryPath.c_str(), out.size());
+            return true;
+        }
+        LOGW("ReadIconByManifest: adaptive composition failed for 0x%{public}08x (%{public}s), falling back",
              iconId, entryPath.c_str());
         return false;
     }

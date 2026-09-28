@@ -112,6 +112,7 @@ $ADAPTER/framework/package-manager/jni/axml_parser.cpp \
 $ADAPTER/framework/package-manager/jni/apk_installer.cpp \
 $ADAPTER/framework/package-manager/jni/apk_label_resolver.cpp \
 $ADAPTER/framework/package-manager/jni/icon_normalize.cpp \
+$ADAPTER/framework/package-manager/jni/adaptive_icon.cpp \
 $ADAPTER/third_party/lodepng/lodepng.cpp \
 $ADAPTER/framework/package-manager/jni/arsc_resolver.cpp \
 $ADAPTER/framework/package-manager/jni/permission_mapper.cpp \
