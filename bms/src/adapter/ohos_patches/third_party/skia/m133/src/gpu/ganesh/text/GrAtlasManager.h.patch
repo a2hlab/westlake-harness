@@ -1,0 +1,35 @@
+--- a/third_party/skia/m133/src/gpu/ganesh/text/GrAtlasManager.h
++++ b/third_party/skia/m133/src/gpu/ganesh/text/GrAtlasManager.h
+@@ -9,6 +9,10 @@
+ #define GrAtlasManager_DEFINED
+ 
+ #include "include/core/SkRefCnt.h"
++
++// OH_SK_PREFLUSH_AtlasMgr_INC — v4c probes added 2026-05-13
++#include <atomic>
++#include <cstdio>
+ #include "include/gpu/GpuTypes.h"
+ #include "include/gpu/ganesh/GrBackendSurface.h"
+ #include "include/gpu/ganesh/GrTypes.h"
+@@ -121,6 +125,21 @@
+     // GrOnFlushCallbackObject overrides
+ 
+     bool preFlush(GrOnFlushResourceProvider* onFlushRP) override {
++        // OH_SK_PROBE_BODY_AtlasMgr_v4c
++        {
++            static std::atomic<int> g_OH_SK_PROBE_AtlasMgr{0};
++            int n = ++g_OH_SK_PROBE_AtlasMgr;
++            if (n <= 10 || n % 100 == 0) {
++#if defined(GPU_TEST_UTILS)
++                bool ftc = onFlushRP->failFlushTimeCallbacks();
++#else
++                bool ftc = false;
++#endif
++                std::fprintf(stderr,
++                    "[OH_SK_PREFLUSH_AtlasMgr] #%d this=%p ftc=%d\n",
++                    n, (void*)this, ftc?1:0);
++            }
++        }
+ #if defined(GPU_TEST_UTILS)
+         if (onFlushRP->failFlushTimeCallbacks()) {
+             return false;

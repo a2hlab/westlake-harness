@@ -1,0 +1,50 @@
+diff --git a/libs/hwui/AutoBackendTextureRelease.cpp b/libs/hwui/AutoBackendTextureRelease.cpp
+index b656b6ac..3ae327cb 100644
+--- a/libs/hwui/AutoBackendTextureRelease.cpp
++++ b/libs/hwui/AutoBackendTextureRelease.cpp
+@@ -15,6 +15,7 @@
+  */
+ 
+ #include "AutoBackendTextureRelease.h"
++#include "include/gpu/ganesh/SkImageGanesh.h"  // P10.E
+ 
+ #include "renderthread/RenderThread.h"
+ #include "utils/Color.h"
+@@ -70,7 +71,7 @@ void AutoBackendTextureRelease::unref(bool releaseImage) {
+ 
+ // releaseProc is invoked by SkImage, when texture is no longer in use.
+ // "releaseContext" contains an "AutoBackendTextureRelease*".
+-static void releaseProc(SkImage::ReleaseContext releaseContext) {
++static void releaseProc(SkImages::ReleaseContext releaseContext  /* P10.E */) {
+     AutoBackendTextureRelease* textureRelease =
+             reinterpret_cast<AutoBackendTextureRelease*>(releaseContext);
+     textureRelease->unref(false);
+@@ -86,7 +87,7 @@ void AutoBackendTextureRelease::makeImage(AHardwareBuffer* buffer,
+     // MakeFromTexture if there is a failure, or later when SkImage is discarded. It must
+     // be called before MakeFromTexture, otherwise Skia may remove HWUI's ref on failure.
+     ref();
+-    mImage = SkImage::MakeFromTexture(
++    mImage = SkImages::BorrowTextureFrom(  /* P10.E: M133 namespace */
+             context, mBackendTexture, kTopLeft_GrSurfaceOrigin, colorType, kPremul_SkAlphaType,
+             uirenderer::DataSpaceToColorSpace(dataspace), releaseProc, this);
+ }
+@@ -103,6 +104,8 @@ void AutoBackendTextureRelease::releaseQueueOwnership(GrDirectContext* context)
+     }
+ 
+     LOG_ALWAYS_FATAL_IF(Properties::getRenderPipelineType() != RenderPipelineType::SkiaVulkan);
++#ifdef SK_VULKAN
++    /* P10.E: entire body Vulkan-only; compiled out when SK_VULKAN is undefined */
+     if (mBackendTexture.isValid()) {
+         // Passing in VK_IMAGE_LAYOUT_UNDEFINED means we keep the old layout.
+         GrBackendSurfaceMutableState newState(VK_IMAGE_LAYOUT_UNDEFINED,
+@@ -115,8 +118,9 @@ void AutoBackendTextureRelease::releaseQueueOwnership(GrDirectContext* context)
+         // Note that we don't have an explicit call to set the backend texture back onto the
+         // graphics queue when we use the VkImage again. Internally, Skia will notice that the image
+         // is not on the graphics queue and will do the transition automatically.
+-        context->setBackendTextureState(mBackendTexture, newState, nullptr, releaseProc, this);
++        /* M133: setBackendTextureState requires MutableTextureState; stubbed for adapter */ (void)releaseProc;
+     }
++#endif  /* SK_VULKAN */
+ }
+ 
+ } /* namespace uirenderer */

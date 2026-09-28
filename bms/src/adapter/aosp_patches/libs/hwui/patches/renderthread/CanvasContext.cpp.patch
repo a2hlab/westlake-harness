@@ -1,0 +1,117 @@
+diff --git a/libs/hwui/renderthread/CanvasContext.cpp b/libs/hwui/renderthread/CanvasContext.cpp
+index 504dfaa2..485bb976 100644
+--- a/libs/hwui/renderthread/CanvasContext.cpp
++++ b/libs/hwui/renderthread/CanvasContext.cpp
+@@ -15,6 +15,7 @@
+  */
+ 
+ #include "CanvasContext.h"
++#include "../DeviceInfo.h"
+ 
+ #include <apex/window.h>
+ #include <fcntl.h>
+@@ -82,7 +83,11 @@ CanvasContext* CanvasContext::create(RenderThread& thread, bool translucent,
+                                      uiThreadId, renderThreadId);
+         case RenderPipelineType::SkiaVulkan:
+             return new CanvasContext(thread, translucent, rootRenderNode, contextFactory,
++#ifndef HWUI_NO_VULKAN
+                                      std::make_unique<skiapipeline::SkiaVulkanPipeline>(thread),
++#else
++                                     nullptr,
++#endif
+                                      uiThreadId, renderThreadId);
+         default:
+             LOG_ALWAYS_FATAL("canvas context type %d not supported", (int32_t)renderType);
+@@ -99,7 +104,9 @@ void CanvasContext::invokeFunctor(const RenderThread& thread, Functor* functor)
+             skiapipeline::SkiaOpenGLPipeline::invokeFunctor(thread, functor);
+             break;
+         case RenderPipelineType::SkiaVulkan:
++#ifndef HWUI_NO_VULKAN
+             skiapipeline::SkiaVulkanPipeline::invokeFunctor(thread, functor);
++#endif
+             break;
+         default:
+             LOG_ALWAYS_FATAL("canvas context type %d not supported", (int32_t)renderType);
+@@ -262,7 +269,23 @@ void CanvasContext::setSwapBehavior(SwapBehavior swapBehavior) {
+ 
+ bool CanvasContext::pauseSurface() {
+     mGenerationID++;
+-    return mRenderThread.removeFrameCallback(this);
++    bool adapterRemoved = mRenderThread.removeFrameCallback(this);
++    // adapter (2026-06-01 BBQ-null crash fix): drain pending frame-commit callbacks.
++    // AOSP only invokes/clears mFrameCommitCallbacks inside draw(); the OH-build
++    // DummyVsyncSource self-drives frames decoupled from the UI lifecycle, so a
++    // lingering callback could be invoked by a post-pause draw() AFTER
++    // ViewRootImpl.destroySurface() nulled mBlastBufferQueue -> NPE at
++    // ViewRootImpl:4601 (applyPendingTransactions on null). We run on the
++    // RenderThread (pause/stop go through RenderProxy runSync); waitOnFences()
++    // first so CommonPool enqueueFrameWork tasks finish pushing their callbacks;
++    // BBQ is still valid here (pause precedes destroySurface), so invoking with
++    // didProduceBuffer=false is safe and mirrors draw()'s own drain.
++    waitOnFences();
++    for (auto& adapterCommitCb : mFrameCommitCallbacks) {
++        adapterCommitCb(false /*didProduceBuffer*/);
++    }
++    mFrameCommitCallbacks.clear();
++    return adapterRemoved;
+ }
+ 
+ void CanvasContext::setStopped(bool stopped) {
+@@ -382,7 +405,7 @@ bool CanvasContext::isSwapChainStuffed() {
+ 
+         // If there's a multi-frameInterval gap we effectively already dropped a frame,
+         // so consider the queue healthy.
+-        if (std::abs(swapA.swapCompletedTime - swapB.swapCompletedTime) > frameInterval * 3) {
++        if (std::llabs((long long)(swapA.swapCompletedTime - swapB.swapCompletedTime)) > frameInterval * 3) {
+             return false;
+         }
+ 
+@@ -445,7 +468,7 @@ void CanvasContext::prepareTree(TreeInfo& info, int64_t* uiFrameInfo, int64_t sy
+     if (CC_LIKELY(mSwapHistory.size() && !info.forceDrawFrame)) {
+         nsecs_t latestVsync = mRenderThread.timeLord().latestVsync();
+         SwapHistory& lastSwap = mSwapHistory.back();
+-        nsecs_t vsyncDelta = std::abs(lastSwap.vsyncTime - latestVsync);
++        nsecs_t vsyncDelta = std::llabs((long long)(lastSwap.vsyncTime - latestVsync));
+         // The slight fudge-factor is to deal with cases where
+         // the vsync was estimated due to being slow handling the signal.
+         // See the logic in TimeLord#computeFrameTimeNanos or in
+@@ -516,6 +539,21 @@ void CanvasContext::stopDrawing() {
+     mRenderThread.removeFrameCallback(this);
+     mAnimationContext->pauseAnimators();
+     mGenerationID++;
++    // adapter (2026-06-01 BBQ-null crash fix): drain pending frame-commit callbacks.
++    // AOSP only invokes/clears mFrameCommitCallbacks inside draw(); the OH-build
++    // DummyVsyncSource self-drives frames decoupled from the UI lifecycle, so a
++    // lingering callback could be invoked by a post-pause draw() AFTER
++    // ViewRootImpl.destroySurface() nulled mBlastBufferQueue -> NPE at
++    // ViewRootImpl:4601 (applyPendingTransactions on null). We run on the
++    // RenderThread (pause/stop go through RenderProxy runSync); waitOnFences()
++    // first so CommonPool enqueueFrameWork tasks finish pushing their callbacks;
++    // BBQ is still valid here (pause precedes destroySurface), so invoking with
++    // didProduceBuffer=false is safe and mirrors draw()'s own drain.
++    waitOnFences();
++    for (auto& adapterCommitCb : mFrameCommitCallbacks) {
++        adapterCommitCb(false /*didProduceBuffer*/);
++    }
++    mFrameCommitCallbacks.clear();
+ }
+ 
+ void CanvasContext::notifyFramePending() {
+@@ -533,6 +571,17 @@ Frame CanvasContext::getFrame() {
+ }
+ 
+ void CanvasContext::draw(bool solelyTextureViewUpdates) {
++    // G2.14au r4 probe — CanvasContext::draw entry
++    // marker: G214au_HWR_CanvasCtxDraw
++    {
++        static std::atomic<int> g_count{0};
++        int n = ++g_count;
++        if (n == 1 || n % 30 == 0) {
++            fprintf(stderr, "[G214au_HWR] CanvasContext::draw #%d solelyTextureView=%d\n",
++                    n, solelyTextureViewUpdates ? 1 : 0);
++        }
++    }
++
+     if (auto grContext = getGrContext()) {
+         if (grContext->abandoned()) {
+             LOG_ALWAYS_FATAL("GrContext is abandoned/device lost at start of CanvasContext::draw");

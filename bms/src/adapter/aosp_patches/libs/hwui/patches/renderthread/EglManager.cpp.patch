@@ -1,0 +1,51 @@
+diff --git a/libs/hwui/renderthread/EglManager.cpp b/libs/hwui/renderthread/EglManager.cpp
+index 94f35fd9..9f541641 100644
+--- a/libs/hwui/renderthread/EglManager.cpp
++++ b/libs/hwui/renderthread/EglManager.cpp
+@@ -15,6 +15,8 @@
+  */
+ 
+ #include "EglManager.h"
++#include <android/native_window.h>
++#include "../DeviceInfo.h"
+ 
+ #include <EGL/eglext.h>
+ #include <GLES/gl.h>
+@@ -35,7 +37,9 @@
+ #define GLES_VERSION 2
+ 
+ // Android-specific addition that is used to show when frames began in systrace
++#ifdef __ANDROID__
+ EGLAPI void EGLAPIENTRY eglBeginFrame(EGLDisplay dpy, EGLSurface surface);
++#endif
+ 
+ namespace android {
+ namespace uirenderer {
+@@ -578,7 +582,9 @@ Frame EglManager::beginFrame(EGLSurface surface) {
+     eglQuerySurface(mEglDisplay, surface, EGL_WIDTH, &frame.mWidth);
+     eglQuerySurface(mEglDisplay, surface, EGL_HEIGHT, &frame.mHeight);
+     frame.mBufferAge = queryBufferAge(surface);
++#ifdef __ANDROID__
+     eglBeginFrame(mEglDisplay, surface);
++#endif
+     return frame;
+ }
+ 
+@@ -600,6 +606,17 @@ bool EglManager::damageRequiresSwap() {
+ }
+ 
+ bool EglManager::swapBuffers(const Frame& frame, const SkRect& screenDirty) {
++    // G2.14au r4 probe — EglManager::swapBuffers entry (real eglSwapBuffers call site)
++    // marker: G214au_HWR_EglSwap
++    {
++        static std::atomic<int> g_count{0};
++        int n = ++g_count;
++        if (n == 1 || n % 30 == 0) {
++            fprintf(stderr, "[G214au_HWR] EglManager::swapBuffers ENTRY #%d dpy=%p surface=%p\n",
++                    n, (void*)mEglDisplay, (void*)frame.mSurface);
++        }
++    }
++
+     if (CC_UNLIKELY(Properties::waitForGpuCompletion)) {
+         ATRACE_NAME("Finishing GPU work");
+         fence();

@@ -1,0 +1,28 @@
+diff --git a/libs/hwui/hwui/Bitmap.cpp b/libs/hwui/hwui/Bitmap.cpp
+index 92d875bf..8bf150fe 100644
+--- a/libs/hwui/hwui/Bitmap.cpp
++++ b/libs/hwui/hwui/Bitmap.cpp
+@@ -14,6 +14,9 @@
+  * limitations under the License.
+  */
+ #include "Bitmap.h"
++#include <encode/SkPngEncoder.h>
++#include <encode/SkJpegEncoder.h>
++#include <encode/SkWebpEncoder.h>
+ 
+ #include "HardwareBitmapUploader.h"
+ #include "Properties.h"
+@@ -549,7 +552,12 @@ bool Bitmap::compress(const SkBitmap& bitmap, JavaCompressFormat format,
+         }
+     }
+ 
+-    return SkEncodeImage(stream, bitmap, fm, quality);
++    switch (fm) {
++        case SkEncodedImageFormat::kPNG: { SkPngEncoder::Options o; return SkPngEncoder::Encode(stream, bitmap.pixmap(), o); }
++        case SkEncodedImageFormat::kJPEG: { SkJpegEncoder::Options o; o.fQuality = quality; return SkJpegEncoder::Encode(stream, bitmap.pixmap(), o); }
++        case SkEncodedImageFormat::kWEBP: { SkWebpEncoder::Options o; o.fQuality = quality; return SkWebpEncoder::Encode(stream, bitmap.pixmap(), o); }
++        default: return false;
++    }
+ }
+ 
+ sp<uirenderer::Gainmap> Bitmap::gainmap() const {

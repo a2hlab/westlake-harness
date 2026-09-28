@@ -1,0 +1,23 @@
+--- a/base/startup/appspawn/interfaces/innerkits/client/appspawn_client.c
++++ b/base/startup/appspawn/interfaces/innerkits/client/appspawn_client.c
+@@ -110,6 +110,9 @@
+         case CLIENT_FOR_HYBRIDSPAWN:
+             socketName = HYBRIDSPAWN_SOCKET_NAME;
+             break;
++        case CLIENT_FOR_APPSPAWNX:  // adapter project: Android APK spawner
++            socketName = APPSPAWNX_SOCKET_NAME;
++            break;
+         default:
+             socketName = NWEBSPAWN_SOCKET_NAME;
+             break;
+@@ -420,7 +423,9 @@
+     APPSPAWN_CHECK(handle != NULL, return APPSPAWN_ARG_INVALID, "Invalid handle for %{public}s", serviceName);
+     APPSPAWN_LOGV("AppSpawnClientInit serviceName %{public}s", serviceName);
+     AppSpawnClientType type = CLIENT_FOR_APPSPAWN;
+-    if (strcmp(serviceName, CJAPPSPAWN_SERVER_NAME) == 0) {
++    if (strcmp(serviceName, APPSPAWNX_SERVER_NAME) == 0) {  // adapter project
++        type = CLIENT_FOR_APPSPAWNX;
++    } else if (strcmp(serviceName, CJAPPSPAWN_SERVER_NAME) == 0) {
+         type = CLIENT_FOR_CJAPPSPAWN;
+     } else if (strcmp(serviceName, NWEBSPAWN_SERVER_NAME) == 0 || strstr(serviceName, NWEBSPAWN_SOCKET_NAME) != NULL) {
+         type = CLIENT_FOR_NWEBSPAWN;

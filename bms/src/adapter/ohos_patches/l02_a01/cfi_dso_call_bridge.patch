@@ -1,0 +1,21 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp
+@@ -1499,15 +1499,17 @@
+             using ApkFn2 = int (*)(const char*, int, char*, int);
+             ApkFn2 fn = handle ? reinterpret_cast<ApkFn2>(
+                 dlsym(handle, "oh_adapter_install_apk_with_manifest")) : nullptr;
++            const auto callApkFn2 = [fn](const char* path, int userId, char* manifest, int capacity)
++                __attribute__((no_sanitize("cfi"))) { return fn(path, userId, manifest, capacity); };
+             if (fn == nullptr) {
+                 LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest unavailable");
+                 return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
+             }
+             constexpr int kJsonBufSize = 65536;
+             std::vector<char> jsonBuf(kJsonBufSize, 0);
+             for (const auto &p : bundlePaths) {
+                 if (!BundleUtil::CheckFileType(p, ".apk")) continue;
+-                int r = fn(p.c_str(), installParam.userId, jsonBuf.data(), kJsonBufSize);
++                int r = callApkFn2(p.c_str(), installParam.userId, jsonBuf.data(), kJsonBufSize);
+                 if (r != 0) {
+                     LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest failed: %{public}d", r);
+                     return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;

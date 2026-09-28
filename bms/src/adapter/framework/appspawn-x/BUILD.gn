@@ -1,0 +1,95 @@
+# BUILD.gn for appspawn-x hybrid spawner
+# Combines OH appspawn security modules with Android ART runtime preloading
+
+import("//build/ohos.gni")
+
+config("appspawnx_config") {
+  include_dirs = [
+    "src",
+    "../native-compat/thread-template-publisher/include",
+    "//base/startup/appspawn/interfaces/innerkits/include",
+    "//base/startup/init/interfaces/innerkits/include",
+  ]
+
+  cflags_cc = [
+    "-std=c++17",
+    "-fPIC",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+  ]
+
+  defines = [
+    "APPSPAWNX_LOG_DOMAIN=0xD001F00",
+    "APPSPAWNX_LOG_TAG=\"AppSpawnX\"",
+  ]
+}
+
+# Route A uses the stock OpenHarmony appspawn executable plus the inert child
+# plugin.  The historical parent-ART executable is deliberately not a GN
+# target: it must be impossible to build or install it through this product
+# graph, even if a stale package group is selected.  src/main.cpp remains only
+# as non-product history until it is archived by its owning migration task.
+group("appspawn_x_legacy_parent_art_disabled") {
+  deps = []
+}
+
+# ============================================================
+# appspawn-x Java library (preload classes)
+# ============================================================
+ohos_prebuilt_etc("appspawnx_preloaded_classes") {
+  source = "config/preloaded-classes"
+  module_install_dir = "etc"
+  part_name = "appspawnx"
+  subsystem_name = "startup"
+}
+
+# ============================================================
+# appspawn-x configuration files
+# ============================================================
+ohos_prebuilt_etc("appspawn_x_cfg") {
+  source = "config/appspawn_x.cfg"
+  module_install_dir = "etc/init"
+  part_name = "appspawnx"
+  subsystem_name = "startup"
+}
+
+ohos_prebuilt_etc("appspawn_x_sandbox_config") {
+  source = "config/appspawn_x_sandbox.json"
+  module_install_dir = "etc"
+  part_name = "appspawnx"
+  subsystem_name = "startup"
+}
+
+# ============================================================
+# Java library for AppSpawnXInit
+# ============================================================
+ohos_java_library("appspawnx_java") {
+  sources = [
+    "java/com/android/internal/os/AppSpawnXInit.java",
+    "java/com/android/internal/os/ApkSignatureBridge.java",
+  ]
+
+  deps = [
+    "//adapter/framework/java:oh-adapter-framework",
+  ]
+
+  # Depends on Android framework.jar for Class.forName() targets
+  libs = [
+    "//third_party/android/framework/framework.jar",
+  ]
+
+  part_name = "appspawnx"
+  subsystem_name = "startup"
+}
+
+# ============================================================
+# Group target: install everything
+# ============================================================
+group("appspawnx_packages") {
+  deps = [
+    ":appspawn_x_cfg",
+    ":appspawn_x_sandbox_config",
+    ":appspawnx_java",
+  ]
+}

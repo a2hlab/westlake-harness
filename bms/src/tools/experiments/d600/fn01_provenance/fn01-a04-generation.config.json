@@ -1,0 +1,122 @@
+{
+  "schema_version": "bridge.fn01.generation-config.v1",
+  "action_id": "Fn01.A04",
+  "target": {
+    "os": "OpenHarmony",
+    "version": "6.1.0.31",
+    "arch": "AArch64"
+  },
+  "source_paths": [
+    "docs/spec/atoms/Fn01/A01/atom.yaml",
+    "docs/spec/atoms/Fn01/A01/DESIGN_SPEC.md",
+    "docs/spec/atoms/Fn01/A01/verification.md",
+    "docs/spec/atoms/Fn01/A02/atom.yaml",
+    "docs/spec/atoms/Fn01/A02/DESIGN_SPEC.md",
+    "docs/spec/atoms/Fn01/A02/verification.md",
+    "docs/spec/atoms/Fn01/A03/atom.yaml",
+    "docs/spec/atoms/Fn01/A03/DESIGN_SPEC.md",
+    "docs/spec/atoms/Fn01/A03/verification.md",
+    "docs/spec/atoms/Fn01/A04/atom.yaml",
+    "docs/spec/atoms/Fn01/A04/DESIGN_SPEC.md",
+    "docs/spec/atoms/Fn01/A04/verification.md",
+    "src/adapter/framework/jni/BUILD.gn",
+    "src/adapter/framework/package-manager",
+    "src/adapter/build/inner/compile_apk_installer.sh",
+    "src/adapter/scripts/build_oh61_v7_bridge_r8_arm64.sh",
+    "src/vendor/upstream/sources/oh61-v7-b2133b5b/build/inner/compile_oh_adapter_bridge_arm64.sh",
+    "src/vendor/upstream/sources/oh61-v7-b2133b5b/build/inner/oh_adapter_bridge.ninja.template",
+    "src/vendor/upstream/sources/oh61-v7-b2133b5b/framework",
+    "src/tools/experiments/d600/fn01_provenance/fn01_generation_provenance.py",
+    "src/tools/experiments/d600/fn01_provenance/build_fn01_a04_stage.sh"
+  ],
+  "source_exclude_paths": [
+    "src/adapter/framework/package-manager/install_plan/tests/host/.build"
+  ],
+  "builder_identity_probes": [
+    {
+      "name": "mac_host",
+      "command": [
+        "/usr/bin/uname",
+        "-a"
+      ]
+    },
+    {
+      "name": "native_container",
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "westlake-local-build:oh61-api23",
+        "--format",
+        "{{.Id}} {{.Os}}/{{.Architecture}}"
+      ]
+    },
+    {
+      "name": "alexpc_java_builder",
+      "command": [
+        "ssh",
+        "AlexPC",
+        "set -e; hostname; uname -srvm; sha256sum /opt/build-trees/aosp-arm64-d600/prebuilts/jdk/jdk17/linux-x86/bin/javac /opt/build-trees/aosp-arm64-d600/device/adapter/oh_adapter_framework/Android.bp /opt/build-trees/aosp-arm64-d600/device/adapter/oh_adapter_framework/java/adapter/packagemanager/PackageManagerAdapter.java /opt/build-trees/aosp-arm64-d600/device/adapter/oh_adapter_framework/java/adapter/packagemanager/PackageInfoBuilder.java"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "name": "host_a04",
+      "scope": "host",
+      "command": [
+        "src/adapter/framework/package-manager/test/run_fn01_a04_host_tests.sh"
+      ],
+      "env": {
+        "FN01_A04_HOST_OUT": "/opt/Bridge/src/adapter/.work/fn01-a04-provenance-generation/host"
+      }
+    },
+    {
+      "name": "target_bridge",
+      "scope": "target",
+      "command": [
+        "src/tools/experiments/d600/fn01_provenance/build_fn01_a04_stage.sh",
+        "bridge"
+      ]
+    },
+    {
+      "name": "target_installer",
+      "scope": "target",
+      "command": [
+        "src/tools/experiments/d600/fn01_provenance/build_fn01_a04_stage.sh",
+        "installer"
+      ]
+    },
+    {
+      "name": "target_java",
+      "scope": "target",
+      "command": [
+        "src/tools/experiments/d600/fn01_provenance/build_fn01_a04_stage.sh",
+        "java"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "role": "oh_adapter_bridge",
+      "kind": "elf",
+      "local_path": "src/vendor/upstream/sources/oh61-v7-b2133b5b/out/adapter/liboh_adapter_bridge.so",
+      "device_path": "/system/android/lib64/liboh_adapter_bridge.so",
+      "producer_stage": "target_bridge"
+    },
+    {
+      "role": "apk_installer",
+      "kind": "elf",
+      "local_path": "src/adapter/out/adapter/libapk_installer.so",
+      "device_path": "/system/lib64/libapk_installer.so",
+      "producer_stage": "target_installer"
+    },
+    {
+      "role": "oh_adapter_framework_jar",
+      "kind": "jar",
+      "local_path": ".work/fn01-a04-provenance-candidate/oh-adapter-framework.jar",
+      "device_path": "/system/android/framework/oh-adapter-framework.jar",
+      "producer_stage": "target_java"
+    }
+  ]
+}

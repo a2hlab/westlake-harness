@@ -1,0 +1,44 @@
+#!/bin/bash
+# Canonical pre-push guard for Bridge / 00.Workspace checkouts.
+# Install into the common git dir, e.g.:
+#   cp infra/git-hooks/pre-push "$(git rev-parse --git-common-dir)/hooks/pre-push"
+#   chmod +x "$(git rev-parse --git-common-dir)/hooks/pre-push"
+#
+# Policy (2026-08-04):
+# - Allow short-lived branches on upstream and fork remotes.
+# - Require main changes to enter through a PR by rejecting direct main updates.
+# - Reject non-fast-forward updates to an existing shared branch.
+# - Allow ordinary deletion of merged or abandoned non-main branches.
+set -euo pipefail
+
+remote_name="${1:-}"
+remote_url="${2:-}"
+zero="0000000000000000000000000000000000000000"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "${local_ref}" ] && continue
+
+  if [ "${remote_ref}" = "refs/heads/main" ]; then
+    echo "pre-push: direct updates or deletion of main are prohibited." >&2
+    echo "  attempted: ${local_ref} -> ${remote_ref}" >&2
+    echo "  Push a short-lived branch and open a PR into main." >&2
+    echo "  See docs/guides/contribute-via-pr.md" >&2
+    exit 1
+  fi
+
+  # Branch creation and non-main deletion are permitted.
+  if [ "${local_sha}" = "${zero}" ] || [ "${remote_sha}" = "${zero}" ]; then
+    continue
+  fi
+
+  # Refuse history rewrites when the advertised remote object is available.
+  if git cat-file -e "${remote_sha}^{commit}" 2>/dev/null &&
+     ! git merge-base --is-ancestor "${remote_sha}" "${local_sha}"; then
+    echo "pre-push: non-fast-forward update refused for shared ref ${remote_ref}." >&2
+    echo "  remote: ${remote_name} (${remote_url})" >&2
+    echo "  Create a new branch instead of rewriting shared history." >&2
+    exit 1
+  fi
+done
+
+exit 0

@@ -1,0 +1,69 @@
+diff --git a/libs/hwui/renderthread/CacheManager.cpp b/libs/hwui/renderthread/CacheManager.cpp
+index babce88b..56ea496e 100644
+--- a/libs/hwui/renderthread/CacheManager.cpp
++++ b/libs/hwui/renderthread/CacheManager.cpp
+@@ -15,6 +15,7 @@
+  */
+ 
+ #include "CacheManager.h"
++#include <algorithm>
+ 
+ #include <GrContextOptions.h>
+ #include <SkExecutor.h>
+@@ -116,7 +117,7 @@ void CacheManager::trimMemory(TrimLevel mode) {
+     }
+ 
+     // flush and submit all work to the gpu and wait for it to finish
+-    mGrContext->flushAndSubmit(/*syncCpu=*/true);
++    mGrContext->flushAndSubmit(GrSyncCpu::kYes);
+ 
+     switch (mode) {
+         case TrimLevel::BACKGROUND:
+@@ -130,7 +131,7 @@ void CacheManager::trimMemory(TrimLevel mode) {
+             // that have persistent data to be purged in LRU order.
+             mGrContext->setResourceCacheLimit(mBackgroundResourceBytes);
+             SkGraphics::SetFontCacheLimit(mBackgroundCpuFontCacheBytes);
+-            mGrContext->purgeUnlockedResources(mMemoryPolicy.purgeScratchOnly);
++            mGrContext->purgeUnlockedResources(mMemoryPolicy.purgeScratchOnly ? GrPurgeResourceOptions::kScratchResourcesOnly : GrPurgeResourceOptions::kAllResources);
+             mGrContext->setResourceCacheLimit(mMaxResourceBytes);
+             SkGraphics::SetFontCacheLimit(mMaxCpuFontCacheBytes);
+             break;
+@@ -150,7 +151,7 @@ void CacheManager::trimCaches(CacheTrimLevel mode) {
+         case CacheTrimLevel::ALL_CACHES:
+             SkGraphics::PurgeAllCaches();
+             if (mGrContext) {
+-                mGrContext->purgeUnlockedResources(false);
++                mGrContext->purgeUnlockedResources(GrPurgeResourceOptions::kAllResources);
+             }
+             break;
+         default:
+@@ -202,7 +203,11 @@ void CacheManager::dumpMemoryUsage(String8& log, const RenderState* renderState)
+     }
+     log.appendFormat("Contexts: %zu (stopped = %zu)\n", mCanvasContexts.size(), stoppedContexts);
+ 
++#ifndef HWUI_NO_VULKAN
+     auto vkInstance = VulkanManager::peekInstance();
++#else
++    sp<VulkanManager> vkInstance = nullptr;
++#endif
+     if (!mGrContext) {
+         if (!vkInstance) {
+             log.appendFormat("No GPU context.\n");
+@@ -284,7 +289,7 @@ void CacheManager::onThreadIdle() {
+         const nsecs_t cleanupMillis =
+                 ns2ms(std::max(frameDiffNanos, mMemoryPolicy.minimumResourceRetention));
+         mGrContext->performDeferredCleanup(std::chrono::milliseconds(cleanupMillis),
+-                                           mMemoryPolicy.purgeScratchOnly);
++                                           mMemoryPolicy.purgeScratchOnly ? GrPurgeResourceOptions::kScratchResourcesOnly : GrPurgeResourceOptions::kAllResources);
+     }
+ }
+ 
+@@ -329,7 +334,7 @@ void CacheManager::registerCanvasContext(CanvasContext* context) {
+ }
+ 
+ void CacheManager::unregisterCanvasContext(CanvasContext* context) {
+-    std::erase(mCanvasContexts, context);
++    mCanvasContexts.erase(std::remove(mCanvasContexts.begin(), mCanvasContexts.end(), context), mCanvasContexts.end());
+     checkUiHidden();
+     if (mCanvasContexts.empty()) {
+         scheduleDestroyContext();

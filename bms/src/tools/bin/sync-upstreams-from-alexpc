@@ -1,0 +1,64 @@
+#!/bin/sh
+set -eu
+
+bridge_root=/opt/Bridge
+image_root=/opt/build-trees/bridge-upstream-images
+aosp_mount="$bridge_root/src/upstream/aosp-14"
+oh_mount="$bridge_root/src/upstream/openharmony-6.1.0.31"
+aosp_image="$image_root/aosp-14.sparsebundle"
+oh_image="$image_root/openharmony-6.1.0.31.sparsebundle"
+
+ensure_image() {
+    image_path=$1
+    image_size=$2
+    volume_name=$3
+    mount_point=$4
+
+    mkdir -p "$image_root" "$mount_point"
+
+    if [ ! -d "$image_path" ]; then
+        hdiutil create \
+            -size "$image_size" \
+            -type SPARSEBUNDLE \
+            -fs 'Case-sensitive APFS' \
+            -volname "$volume_name" \
+            "$image_path"
+    fi
+
+    if ! mount | grep -F " on $mount_point " >/dev/null 2>&1; then
+        hdiutil attach -nobrowse -mountpoint "$mount_point" "$image_path"
+    fi
+
+    diskutil info "$mount_point" | grep -F 'File System Personality:   Case-sensitive APFS' >/dev/null
+    diskutil info "$mount_point" | grep -F "Volume Name:               $volume_name" >/dev/null
+}
+
+ssh AlexPC '
+    test "$(readlink -f /opt/build-trees/aosp)" = /opt/build-trees/aosp-arm64-d600
+    test "$(readlink -f /opt/build-trees/oh)" = /opt/build-trees/oh610_lts_source
+    grep -q "TARGET_ARCH := arm64" /opt/build-trees/aosp/device/adapter/oh_adapter/BoardConfig.mk
+    grep -q "TARGET_CPU_ABI := arm64-v8a" /opt/build-trees/aosp/device/adapter/oh_adapter/BoardConfig.mk
+    grep -q "product_name = \"wukong100\"" /opt/build-trees/oh/out/wukong100/args.gn
+    grep -q "target_cpu = \"arm64\"" /opt/build-trees/oh/out/wukong100/args.gn
+'
+
+ensure_image "$aosp_image" 16g Bridge-AOSP-14 "$aosp_mount"
+ensure_image "$oh_image" 70g Bridge-OH-6.1.0.31 "$oh_mount"
+
+rsync -a --partial --delete --timeout=900 \
+    --exclude='.repo/' \
+    --exclude='out/' \
+    --exclude='prebuilts/' \
+    AlexPC:/opt/build-trees/aosp-arm64-d600/ \
+    "$aosp_mount/"
+
+rsync -a --partial --delete --timeout=900 \
+    --exclude='.repo/' \
+    --exclude='out/' \
+    --exclude='prebuilts/' \
+    --exclude='oh_venv/' \
+    AlexPC:/opt/build-trees/oh610_lts_source/ \
+    "$oh_mount/"
+
+echo "AOSP mirror: $aosp_mount"
+echo "OpenHarmony mirror: $oh_mount"

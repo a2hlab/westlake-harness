@@ -1,0 +1,256 @@
+schema_version: "1.0"
+kind: FN_OS_OBJECT_PRESENTATION_PROJECTION
+authority: PRESENTATION_ONLY
+disclaimer: >-
+  本文件只定义可视化分组和对象标签。Concept、关系、路线裁决与成熟度仍以
+  docs/spec/concepts.yaml、docs/spec/concept-graph.yaml、各 Fn Concept 文档和独立证据为准。
+
+columns:
+  - id: identity
+    name: 身份边界
+    question: 谁拥有身份与隔离范围？
+  - id: definition
+    name: 定义 / 安装
+    question: 静态定义和持久记录是什么？
+  - id: runtime
+    name: 运行宿主
+    question: 哪个实例真正执行？
+  - id: orchestration
+    name: 调度 / 任务
+    question: 谁决定顺序、前后台和生命周期？
+  - id: interaction
+    name: 交互对象
+    question: 调用者实际操作什么？
+  - id: display
+    name: 显示 / 资源
+    question: 什么最终进入界面或宿主能力？
+  - id: evidence
+    name: 回执 / 证据
+    question: 如何证明成功或失败？
+
+concepts:
+  Fn01:
+    story: 从 APK 输入到可查询、可启动、可回滚的持久包事实。
+    lanes:
+      android:
+        - {column: definition, title: "APK / AndroidManifest", note: "安装输入与组件声明", source: "docs/concepts/Fn01/ANDROID_MODEL.md"}
+        - {column: definition, title: "PackageSetting / PackageInfo", note: "包真相与查询视图", source: "docs/concepts/Fn01/C02/README.md"}
+        - {column: interaction, title: "ApplicationInfo / Component", note: "调用者可见的包与组件对象", source: "docs/concepts/Fn01/C03/README.md"}
+        - {column: display, title: "Resource / Signature", note: "资源投影和签名事实", source: "docs/concepts/Fn01/C05/README.md"}
+      bridge:
+        - {column: definition, title: "Package projection", note: "Android 包事实到宿主记录的投影", source: "docs/concepts/Fn01/BRIDGE_CONTRACT.md"}
+        - {column: orchestration, title: "MultiPackageJob", note: "可恢复的多包提交与回滚单元", source: "docs/concepts/Fn01/C07/README.md"}
+        - {column: evidence, title: "Install ledger / receipt", note: "逐包终态、查询与恢复回执", source: "docs/concepts/Fn01/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: definition, title: "Bundle / BundleInfo", note: "BMS 原生包记录和查询对象", source: "docs/concepts/Fn01/OPENHARMONY_MODEL.md"}
+        - {column: orchestration, title: "BundleInstaller / BundleDataMgr", note: "宿主安装事务和持久化 owner", source: "docs/concepts/Fn01/OPENHARMONY_MODEL.md"}
+        - {column: display, title: "Bundle resource projection", note: "Launcher 可见图标与标签", source: "docs/concepts/Fn01/OPENHARMONY_MODEL.md"}
+        - {column: evidence, title: "BMS commit result", note: "安装、更新、卸载与查询终态", source: "docs/concepts/Fn01/OPENHARMONY_MODEL.md"}
+
+  Fn02:
+    story: 从宿主进程创建到 ART、JNI 和 native ABI 可执行环境就绪。
+    lanes:
+      android:
+        - {column: identity, title: "Process identity", note: "uid、pid、processName 与 generation", source: "docs/concepts/Fn02/ANDROID_MODEL.md"}
+        - {column: runtime, title: "Process / ART Runtime", note: "Android 应用代码的真实执行实例", source: "docs/concepts/Fn02/C01/README.md"}
+        - {column: runtime, title: "BootClassPath / JNI", note: "framework 类与 native 注册入口", source: "docs/concepts/Fn02/C03/README.md"}
+        - {column: interaction, title: "NativeLibrary / Bionic ABI", note: "APK native 库与 libc 假设", source: "docs/concepts/Fn02/C04/README.md"}
+      bridge:
+        - {column: runtime, title: "Runtime bootstrap", note: "预载、fork 后初始化与应用绑定", source: "docs/concepts/Fn02/BRIDGE_CONTRACT.md"}
+        - {column: runtime, title: "AdapterRegistry / NativeShim", note: "JNI 与 NDK API 的边界翻译", source: "docs/concepts/Fn02/C06/README.md"}
+        - {column: identity, title: "Linker / ABI isolation", note: "musl 与 Bionic 冲突隔离", source: "docs/concepts/Fn02/C05/README.md"}
+        - {column: evidence, title: "Runtime-ready receipt", note: "同代进程、VM、JNI 和库加载终态", source: "docs/concepts/Fn02/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: runtime, title: "appspawn child", note: "宿主负责创建与特化的进程", source: "docs/concepts/Fn02/OPENHARMONY_MODEL.md"}
+        - {column: identity, title: "Process specialization", note: "uid/gid、token、namespace 与 sandbox", source: "docs/concepts/Fn02/OPENHARMONY_MODEL.md"}
+        - {column: runtime, title: "musl / native loader", note: "宿主 native 运行基础", source: "docs/concepts/Fn02/OPENHARMONY_MODEL.md"}
+        - {column: evidence, title: "Spawn / load result", note: "进程创建、退出与加载失败事实", source: "docs/concepts/Fn02/OPENHARMONY_MODEL.md"}
+
+  Fn03:
+    story: 让真实 Activity 实例在两套生命周期 owner 之间保持同代、有序和可证明。
+    lanes:
+      android:
+        - {column: definition, title: "Activity class", note: "Manifest 中声明的组件定义", source: "docs/concepts/Fn03/ANDROID_MODEL.md"}
+        - {column: runtime, title: "Activity instance", note: "运行在 ActivityThread 中的真实实例", source: "docs/concepts/Fn03/C01/README.md"}
+        - {column: orchestration, title: "ClientTransaction / ActivityState", note: "create 到 destroy 的状态转换", source: "docs/concepts/Fn03/C02/README.md"}
+        - {column: identity, title: "Activity token", note: "实例与调度命令的稳定身份", source: "docs/concepts/Fn03/C03/README.md"}
+      bridge:
+        - {column: identity, title: "ActivityToken map", note: "Android token ↔ OH remote token", source: "docs/concepts/Fn03/BRIDGE_CONTRACT.md"}
+        - {column: orchestration, title: "Lifecycle translator", note: "保持 owner、顺序和 generation", source: "docs/concepts/Fn03/BRIDGE_CONTRACT.md"}
+        - {column: evidence, title: "Lifecycle receipt", note: "callback、host 与终态回执 join", source: "docs/concepts/Fn03/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: runtime, title: "UIAbility instance", note: "宿主前台组件实例", source: "docs/concepts/Fn03/OPENHARMONY_MODEL.md"}
+        - {column: orchestration, title: "AbilityRecord / lifecycle", note: "OH lifecycle owner 与调度记录", source: "docs/concepts/Fn03/OPENHARMONY_MODEL.md"}
+        - {column: identity, title: "IRemoteObject token", note: "宿主 Ability 身份", source: "docs/concepts/Fn03/OPENHARMONY_MODEL.md"}
+        - {column: evidence, title: "Ability transition result", note: "宿主状态与失败回执", source: "docs/concepts/Fn03/OPENHARMONY_MODEL.md"}
+
+  Fn04:
+    story: 从窗口身份到 buffer、transaction 和真正可观察的首帧呈现。
+    lanes:
+      android:
+        - {column: identity, title: "Window token / WindowState", note: "窗口 owner 与 generation", source: "docs/concepts/Fn04/ANDROID_MODEL.md"}
+        - {column: display, title: "Surface / BufferQueue", note: "图形生产者与 buffer 生命周期", source: "docs/concepts/Fn04/C02/README.md"}
+        - {column: display, title: "SurfaceControl / Transaction", note: "图层属性与提交", source: "docs/concepts/Fn04/C04/README.md"}
+        - {column: evidence, title: "RenderFrame / present", note: "一帧的提交与显示终态", source: "docs/concepts/Fn04/C05/README.md"}
+      bridge:
+        - {column: identity, title: "WindowRecord", note: "Android session ↔ OH SceneSession", source: "docs/concepts/Fn04/C01/README.md"}
+        - {column: display, title: "BufferQueueSurface / NativeWindow", note: "OH Surface 的 Android 兼容包装", source: "docs/concepts/Fn04/C03/README.md"}
+        - {column: display, title: "SurfaceControl mapping", note: "transaction 到 RSNode 的边界翻译", source: "docs/concepts/Fn04/BRIDGE_CONTRACT.md"}
+        - {column: evidence, title: "Frame receipt join", note: "submit、finish 与 content-present 联合终态", source: "docs/concepts/Fn04/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: identity, title: "SceneSession / hostSession", note: "宿主窗口记录与 persistent id", source: "docs/concepts/Fn04/OPENHARMONY_MODEL.md"}
+        - {column: display, title: "ProducerSurface / SurfaceBuffer", note: "宿主 buffer 生产与 flush", source: "docs/concepts/Fn04/OPENHARMONY_MODEL.md"}
+        - {column: display, title: "RSNode / RSTransaction", note: "RenderService 图层与提交", source: "docs/concepts/Fn04/OPENHARMONY_MODEL.md"}
+        - {column: evidence, title: "RS commit / present fact", note: "宿主提交与可观察显示事实", source: "docs/concepts/Fn04/OPENHARMONY_MODEL.md"}
+
+  Fn05:
+    story: 把宿主输入转换为带窗口身份、焦点世代和完成回执的 Android InputEvent。
+    lanes:
+      android:
+        - {column: identity, title: "InputChannel", note: "窗口到应用进程的输入端点", source: "docs/concepts/Fn05/C01/README.md"}
+        - {column: interaction, title: "InputEvent", note: "Pointer、Key、Joystick 等类型化事件", source: "docs/concepts/Fn05/C02/README.md"}
+        - {column: identity, title: "InputFocus", note: "焦点窗口与 epoch", source: "docs/concepts/Fn05/C03/README.md"}
+        - {column: evidence, title: "FINISHED / handled", note: "事件完成和消费结果", source: "docs/concepts/Fn05/ANDROID_MODEL.md"}
+      bridge:
+        - {column: interaction, title: "Event converter", note: "OH 事件到 Android wire contract", source: "docs/concepts/Fn05/BRIDGE_CONTRACT.md"}
+        - {column: identity, title: "Channel / focus mapping", note: "window generation、transform 与 focus epoch", source: "docs/concepts/Fn05/BRIDGE_CONTRACT.md"}
+        - {column: runtime, title: "Looper delivery", note: "投递到正确的 ViewRoot owner thread", source: "docs/concepts/Fn05/BRIDGE_CONTRACT.md"}
+        - {column: evidence, title: "Input receipt", note: "转换、投递、FINISHED 或 typed failure", source: "docs/concepts/Fn05/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: interaction, title: "MMI Pointer / Key event", note: "宿主原始输入对象", source: "docs/concepts/Fn05/OPENHARMONY_MODEL.md"}
+        - {column: identity, title: "WMS focus / target", note: "宿主焦点与命中窗口", source: "docs/concepts/Fn05/OPENHARMONY_MODEL.md"}
+        - {column: interaction, title: "InputMethod framework", note: "宿主输入法服务能力", source: "docs/concepts/Fn05/OPENHARMONY_MODEL.md"}
+        - {column: evidence, title: "MMI callback result", note: "宿主投递与错误事实", source: "docs/concepts/Fn05/OPENHARMONY_MODEL.md"}
+
+  Fn06:
+    story: Intent 解析为目标组件，并在 Android Task 与 OH Mission 之间保持任务语义。
+    lanes:
+      android:
+        - {column: interaction, title: "Intent", note: "action、data、component、flags 与 extras", source: "docs/concepts/Fn06/C01/README.md"}
+        - {column: orchestration, title: "Task / back stack", note: "用户任务、affinity 与 Activity 栈", source: "docs/concepts/Fn06/C02/README.md"}
+        - {column: orchestration, title: "ActivityLaunchTransaction", note: "认证的启动调度命令", source: "docs/concepts/Fn06/C03/README.md"}
+        - {column: evidence, title: "Launch / task state", note: "前后台、移除和失败终态", source: "docs/concepts/Fn06/ANDROID_MODEL.md"}
+      bridge:
+        - {column: interaction, title: "Intent / Want translator", note: "保留类型、flags 与调用身份", source: "docs/concepts/Fn06/BRIDGE_CONTRACT.md"}
+        - {column: orchestration, title: "AndroidTaskAuthority", note: "唯一 Task 栈序与启动决策 owner", source: "docs/concepts/Fn06/BRIDGE_CONTRACT.md"}
+        - {column: identity, title: "Task / Mission mapping", note: "任务身份与 generation 投影", source: "docs/concepts/Fn06/BRIDGE_CONTRACT.md"}
+        - {column: evidence, title: "Launch receipt", note: "目标、task、activity 与 terminal correlation", source: "docs/concepts/Fn06/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: interaction, title: "Want", note: "OH Ability 启动参数", source: "docs/concepts/Fn06/OPENHARMONY_MODEL.md"}
+        - {column: orchestration, title: "Mission / SceneBoard", note: "宿主任务与前后台投影", source: "docs/concepts/Fn06/OPENHARMONY_MODEL.md"}
+        - {column: orchestration, title: "AppScheduler callback", note: "ScheduleLaunchAbility 等宿主入口", source: "docs/concepts/Fn06/OPENHARMONY_MODEL.md"}
+        - {column: evidence, title: "Ability start result", note: "宿主启动、恢复与错误事实", source: "docs/concepts/Fn06/OPENHARMONY_MODEL.md"}
+
+  Fn07:
+    story: 保持 Android Service 的启动、绑定、发布、死亡和销毁语义。
+    lanes:
+      android:
+        - {column: definition, title: "Service component", note: "Manifest 服务定义与解析目标", source: "docs/concepts/Fn07/ANDROID_MODEL.md"}
+        - {column: runtime, title: "Service instance", note: "真实 Android Service 与生命周期", source: "docs/concepts/Fn07/C01/README.md"}
+        - {column: interaction, title: "ServiceConnection", note: "客户端绑定关系与 callback", source: "docs/concepts/Fn07/C02/README.md"}
+        - {column: interaction, title: "IBinder endpoint", note: "onBind 发布的服务接口", source: "docs/concepts/Fn07/C03/README.md"}
+      bridge:
+        - {column: runtime, title: "Service record", note: "Android 服务状态与宿主记录关联", source: "docs/concepts/Fn07/BRIDGE_CONTRACT.md"}
+        - {column: identity, title: "Connection generation", note: "caller、target、flags 与 callback 身份", source: "docs/concepts/Fn07/BRIDGE_CONTRACT.md"}
+        - {column: interaction, title: "Binder endpoint delivery", note: "发布、代理交付、death 与重连", source: "docs/concepts/Fn07/BRIDGE_CONTRACT.md"}
+        - {column: evidence, title: "Service terminal receipt", note: "start/bind/unbind/stop/destroy 终态", source: "docs/concepts/Fn07/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: definition, title: "ServiceExtensionAbility", note: "OH 服务扩展定义", source: "docs/concepts/Fn07/OPENHARMONY_MODEL.md"}
+        - {column: runtime, title: "ExtensionRecord / instance", note: "宿主服务实例和生命周期", source: "docs/concepts/Fn07/OPENHARMONY_MODEL.md"}
+        - {column: interaction, title: "IRemoteObject / connection", note: "宿主连接与远程端点", source: "docs/concepts/Fn07/OPENHARMONY_MODEL.md"}
+        - {column: evidence, title: "Connect / disconnect result", note: "宿主回调和死亡事实", source: "docs/concepts/Fn07/OPENHARMONY_MODEL.md"}
+
+  Fn08:
+    story: 把 package、user、uid、签名、权限与宿主 token/sandbox 组成可撤销身份链。
+    lanes:
+      android:
+        - {column: identity, title: "UserHandle / userId", note: "用户隔离域", source: "docs/concepts/Fn08/ANDROID_MODEL.md"}
+        - {column: identity, title: "UID / appId / PID", note: "调用者与进程身份", source: "docs/concepts/Fn08/ANDROID_MODEL.md"}
+        - {column: definition, title: "Signing / permission state", note: "安装时信任与运行时授权事实", source: "docs/concepts/Fn08/ANDROID_MODEL.md"}
+        - {column: runtime, title: "Zygote sandbox", note: "uid/gid/domain 与隔离实例", source: "docs/concepts/Fn08/ANDROID_MODEL.md"}
+      bridge:
+        - {column: identity, title: "Identity tuple", note: "package、uid、user、pid、signing、generation", source: "docs/concepts/Fn08/BRIDGE_CONTRACT.md"}
+        - {column: identity, title: "Permission mapping", note: "Android permission ↔ OH token 能力", source: "docs/concepts/Fn08/BRIDGE_CONTRACT.md"}
+        - {column: runtime, title: "Spawn specialization plan", note: "token、uid/gid 与 sandbox 材料", source: "docs/concepts/Fn08/BRIDGE_CONTRACT.md"}
+        - {column: evidence, title: "Allow / deny / isolation receipt", note: "最终受保护调用与负向证据", source: "docs/concepts/Fn08/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: identity, title: "OS Account / appIndex", note: "宿主用户与克隆身份范围", source: "docs/concepts/Fn08/OPENHARMONY_MODEL.md"}
+        - {column: identity, title: "HapToken / AccessTokenID", note: "宿主权限 token 与验证状态", source: "docs/concepts/Fn08/OPENHARMONY_MODEL.md"}
+        - {column: runtime, title: "appspawn uid/gid/sandbox", note: "宿主进程特化 owner", source: "docs/concepts/Fn08/OPENHARMONY_MODEL.md"}
+        - {column: evidence, title: "VerifyAccessToken / sandbox fact", note: "授权、拒绝与隔离回执", source: "docs/concepts/Fn08/OPENHARMONY_MODEL.md"}
+
+  Fn09:
+    story: 同时保持 APK 资源查找与 ContentProvider 数据访问的 Android 可见语义。
+    lanes:
+      android:
+        - {column: display, title: "AssetManager / Resources", note: "resource id、config、density 与 locale", source: "docs/concepts/Fn09/ANDROID_MODEL.md"}
+        - {column: definition, title: "ContentProvider / authority", note: "数据提供者定义与 URI 身份", source: "docs/concepts/Fn09/ANDROID_MODEL.md"}
+        - {column: interaction, title: "ContentResolver / Cursor / fd", note: "查询、变更和文件对象", source: "docs/concepts/Fn09/ANDROID_MODEL.md"}
+        - {column: evidence, title: "Typed resource/provider result", note: "值、行、变更数、fd 或失败", source: "docs/concepts/Fn09/ANDROID_MODEL.md"}
+      bridge:
+        - {column: display, title: "Resource projection", note: "APK/framework 资源查找与缓存边界", source: "docs/concepts/Fn09/BRIDGE_CONTRACT.md"}
+        - {column: identity, title: "Authority / caller mapping", note: "URI、authority、user 与权限身份", source: "docs/concepts/Fn09/BRIDGE_CONTRACT.md"}
+        - {column: interaction, title: "Provider transaction adapter", note: "query/insert/update/delete/openFile 翻译", source: "docs/concepts/Fn09/BRIDGE_CONTRACT.md"}
+        - {column: evidence, title: "Resource / provider receipt", note: "结果对象、所有权与 terminal failure", source: "docs/concepts/Fn09/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: display, title: "ResourceManager / bundle files", note: "宿主资源与真实 APK 文件能力", source: "docs/concepts/Fn09/OPENHARMONY_MODEL.md"}
+        - {column: definition, title: "DataShare provider / URI", note: "宿主数据提供端", source: "docs/concepts/Fn09/OPENHARMONY_MODEL.md"}
+        - {column: interaction, title: "DataShareHelper / ResultSet", note: "宿主查询、变更与结果对象", source: "docs/concepts/Fn09/OPENHARMONY_MODEL.md"}
+        - {column: evidence, title: "Rows / changes / fd result", note: "宿主连接和结果事实", source: "docs/concepts/Fn09/OPENHARMONY_MODEL.md"}
+
+  Fn10:
+    story: 让 HWUI、Skia 和 Graphics JNI 产生可提交、可同步、可证明的宿主图形工作。
+    lanes:
+      android:
+        - {column: runtime, title: "RenderThread / HWUI", note: "渲染线程与 display list 执行", source: "docs/concepts/Fn10/ANDROID_MODEL.md"}
+        - {column: interaction, title: "Skia Canvas / Graphics JNI", note: "绘制 API 与 native 对象", source: "docs/concepts/Fn10/ANDROID_MODEL.md"}
+        - {column: display, title: "GraphicBuffer / EGL / fence", note: "buffer、context 与同步对象", source: "docs/concepts/Fn10/ANDROID_MODEL.md"}
+        - {column: evidence, title: "Draw / submit / fence result", note: "图形执行或 typed failure", source: "docs/concepts/Fn10/ANDROID_MODEL.md"}
+      bridge:
+        - {column: interaction, title: "Graphics JNI adapter", note: "Android 图形 API 到宿主能力", source: "docs/concepts/Fn10/BRIDGE_CONTRACT.md"}
+        - {column: display, title: "Buffer / EGL / fence mapping", note: "对象所有权与 generation 翻译", source: "docs/concepts/Fn10/BRIDGE_CONTRACT.md"}
+        - {column: runtime, title: "Render execution boundary", note: "线程、context 与资源约束", source: "docs/concepts/Fn10/BRIDGE_CONTRACT.md"}
+        - {column: evidence, title: "Graphics receipt", note: "提交、同步、present 或失败事实", source: "docs/concepts/Fn10/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: runtime, title: "Rosen RenderService", note: "宿主渲染服务和执行 owner", source: "docs/concepts/Fn10/OPENHARMONY_MODEL.md"}
+        - {column: interaction, title: "Drawing / native graphics API", note: "宿主绘制与图形能力", source: "docs/concepts/Fn10/OPENHARMONY_MODEL.md"}
+        - {column: display, title: "SurfaceBuffer / EGL / fence", note: "宿主 buffer 和同步对象", source: "docs/concepts/Fn10/OPENHARMONY_MODEL.md"}
+        - {column: evidence, title: "RS / fence completion", note: "宿主图形完成事实", source: "docs/concepts/Fn10/OPENHARMONY_MODEL.md"}
+
+  Fn11:
+    story: 把 Binder、系统服务、广播和 framework-native API 放进明确的 owner 与失败边界。
+    lanes:
+      android:
+        - {column: definition, title: "ServiceManager / service name", note: "服务发布与查找目录", source: "docs/concepts/Fn11/ANDROID_MODEL.md"}
+        - {column: interaction, title: "IBinder / Parcel / death", note: "IPC 对象、事务与死亡语义", source: "docs/concepts/Fn11/ANDROID_MODEL.md"}
+        - {column: interaction, title: "Broadcast / callback", note: "事件发布、顺序与结果", source: "docs/concepts/Fn11/ANDROID_MODEL.md"}
+        - {column: runtime, title: "MessageQueue / clock / property", note: "framework-native 基础对象", source: "docs/concepts/Fn11/ANDROID_MODEL.md"}
+      bridge:
+        - {column: definition, title: "Service registry projection", note: "name、descriptor、generation 与 owner", source: "docs/concepts/Fn11/BRIDGE_CONTRACT.md"}
+        - {column: interaction, title: "Binder / event translator", note: "Parcel、callback 与 CommonEvent 边界", source: "docs/concepts/Fn11/BRIDGE_CONTRACT.md"}
+        - {column: runtime, title: "Native API bridge", note: "queue、clock、property 等显式翻译", source: "docs/concepts/Fn11/BRIDGE_CONTRACT.md"}
+        - {column: evidence, title: "Transaction / callback receipt", note: "reply、death、event 或 typed failure", source: "docs/concepts/Fn11/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: definition, title: "System Ability / samgr", note: "宿主服务目录与 owner", source: "docs/concepts/Fn11/OPENHARMONY_MODEL.md"}
+        - {column: interaction, title: "IRemoteObject / MessageParcel", note: "宿主 IPC 对象和事务", source: "docs/concepts/Fn11/OPENHARMONY_MODEL.md"}
+        - {column: interaction, title: "CommonEvent", note: "宿主发布订阅能力", source: "docs/concepts/Fn11/OPENHARMONY_MODEL.md"}
+        - {column: runtime, title: "EventRunner / time / parameter", note: "宿主 native 基础能力", source: "docs/concepts/Fn11/OPENHARMONY_MODEL.md"}
+
+  Fn12:
+    story: 让日志、Trace 与并发控制成为带身份、时间和终态的可观察对象。
+    lanes:
+      android:
+        - {column: interaction, title: "Log event / logd buffer", note: "priority、tag、uid/pid/tid、timestamp", source: "docs/concepts/Fn12/ANDROID_MODEL.md"}
+        - {column: interaction, title: "ATrace / Trace event", note: "begin/end/async/counter 与 nesting", source: "docs/concepts/Fn12/ANDROID_MODEL.md"}
+        - {column: orchestration, title: "Launch / install transaction", note: "并发工作与隔离范围", source: "docs/concepts/Fn12/ANDROID_MODEL.md"}
+        - {column: evidence, title: "Observable record", note: "可查询日志、trace 与完成终态", source: "docs/concepts/Fn12/ANDROID_MODEL.md"}
+      bridge:
+        - {column: interaction, title: "liblog / Trace bridge", note: "事件字段、tag 和时间域翻译", source: "docs/concepts/Fn12/BRIDGE_CONTRACT.md"}
+        - {column: identity, title: "Correlation / loss ledger", note: "generation、pid/tid 与丢失记录", source: "docs/concepts/Fn12/BRIDGE_CONTRACT.md"}
+        - {column: orchestration, title: "Concurrency guard", note: "per-package mutex 或隔离执行策略", source: "docs/concepts/Fn12/BRIDGE_CONTRACT.md"}
+        - {column: evidence, title: "Diagnostic / concurrency receipt", note: "记录存在、串行化或 typed failure", source: "docs/concepts/Fn12/BRIDGE_CONTRACT.md"}
+      openharmony:
+        - {column: interaction, title: "HiLog record", note: "domain、level、tag 与 message", source: "docs/concepts/Fn12/OPENHARMONY_MODEL.md"}
+        - {column: interaction, title: "HiTraceMeter event", note: "宿主 trace 与计数能力", source: "docs/concepts/Fn12/OPENHARMONY_MODEL.md"}
+        - {column: orchestration, title: "BMS mutex / appspawn execution", note: "宿主安装与启动并发 owner", source: "docs/concepts/Fn12/OPENHARMONY_MODEL.md"}
+        - {column: evidence, title: "HiLog / HiTrace query result", note: "宿主记录和并发终态", source: "docs/concepts/Fn12/OPENHARMONY_MODEL.md"}

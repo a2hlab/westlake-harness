@@ -1,0 +1,983 @@
+#!/usr/bin/env python3
+"""Repository-bound retest and build-invalidation decisions for Bridge Fn work."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+import jsonschema
+
+
+ROOT = Path(__file__).resolve().parents[1]
+POLICY = ROOT / "docs/workflows/FN01_INCREMENTAL_EXECUTION_POLICY.json"
+POLICY_SCHEMA = ROOT / "spec/workflow/fn-incremental-execution-policy.schema.json"
+RETEST_SCHEMA = ROOT / "spec/workflow/retest-decision-request.schema.json"
+BUILD_SCHEMA = ROOT / "spec/workflow/build-invalidation-request.schema.json"
+CHECKPOINT = ROOT / "docs/workflows/FN01_RESUME_CHECKPOINT.json"
+AUTHORITY_REGISTRY = ROOT / "docs/workflows/FN01_INCREMENTAL_AUTHORITY_REGISTRY.json"
+AUTHORITY_SCHEMA = ROOT / "spec/workflow/fn-incremental-authority-registry.schema.json"
+DEPLOY_OBSERVATION_SCHEMA = ROOT / "spec/workflow/device-deploy-observation.schema.json"
+CANDIDATE_MANIFEST_SCHEMA = ROOT / "spec/workflow/device-candidate-manifest.schema.json"
+PROBE_MANIFEST_SCHEMA = ROOT / "spec/workflow/device-probe-manifest.schema.json"
+PROBE_ARTIFACT_SCHEMA = (
+    ROOT / "spec/workflow/device-probe-artifact-manifest.schema.json"
+)
+OWNER_PROBE_APPROVAL_SCHEMA = (
+    ROOT / "spec/workflow/device-probe-owner-approval.schema.json"
+)
+PROBE_ADMISSION_SCHEMA = (
+    ROOT / "spec/workflow/device-probe-admission-request.schema.json"
+)
+STAGES = ("LEAF", "LINK", "PACKAGE", "DEPLOY")
+PRODUCT_ROLES = {"product_source", "build_config", "toolchain", "product_manifest"}
+NON_PRODUCT_ROLES = {"documentation", "evidence", "receipt", "metadata"}
+CASE_RE = re.compile(r"^###\s+([PNF][0-9]{2})\b", re.MULTILINE)
+
+
+def load_json(path: Path) -> dict:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ValueError(f"file does not exist: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid JSON in {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"JSON root must be an object: {path}")
+    return value
+
+
+def validate(value: dict, schema_path: Path, label: str) -> None:
+    schema = load_json(schema_path)
+    try:
+        jsonschema.Draft202012Validator(schema).validate(value)
+    except jsonschema.ValidationError as exc:
+        raise ValueError(f"{label} schema violation: {exc.message}") from exc
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def policy_identity() -> tuple[dict, str]:
+    policy = load_json(POLICY)
+    validate(policy, POLICY_SCHEMA, "policy")
+    return policy, sha256(POLICY)
+
+
+def authority_identity() -> tuple[dict, str]:
+    registry = load_json(AUTHORITY_REGISTRY)
+    validate(registry, AUTHORITY_SCHEMA, "authority registry")
+    validate_deploy_and_probe_authority(registry)
+    return registry, sha256(AUTHORITY_REGISTRY)
+
+
+def validate_deploy_and_probe_authority(registry: dict) -> None:
+    """Fail closed on stale refs or a probe/deploy compatibility mismatch."""
+    approvals = registry["owner_approval_receipts"]
+    deploy_sets = registry["device_deploy_sets"]
+    probe_sets = registry["probe_sets"]
+    approval_ids = [item["approval_receipt_id"] for item in approvals]
+    deploy_ids = [item["deploy_set_id"] for item in deploy_sets]
+    probe_ids = [item["probe_set_id"] for item in probe_sets]
+    if len(approval_ids) != len(set(approval_ids)):
+        raise ValueError("owner approval receipt ids must be unique")
+    if len(deploy_ids) != len(set(deploy_ids)):
+        raise ValueError("device deploy-set ids must be unique")
+    if len(probe_ids) != len(set(probe_ids)):
+        raise ValueError("probe-set ids must be unique")
+
+    approval_documents: dict[str, dict] = {}
+    for item in approvals:
+        path = repo_path(item["path"])
+        actual = sha256(path)
+        if actual != item["sha256"]:
+            raise ValueError(
+                f"{item['approval_receipt_id']} approval hash mismatch: "
+                f"expected={item['sha256']} actual={actual}"
+            )
+        receipt = load_json(path)
+        validate(receipt, OWNER_PROBE_APPROVAL_SCHEMA, "owner probe approval")
+        if (
+            receipt["approval_receipt_id"] != item["approval_receipt_id"]
+            or receipt["decision_id"] != item["decision_id"]
+            or receipt["attester_role"] != item["issuer"]
+        ):
+            raise ValueError(
+                f"{item['approval_receipt_id']} approval registration mismatch"
+            )
+        approval_documents[item["approval_receipt_id"]] = receipt
+
+    deploy_documents: dict[str, tuple[dict, dict]] = {}
+    for item in deploy_sets:
+        approval = approval_documents.get(item["approval_receipt_id"])
+        if approval is None:
+            raise ValueError(
+                f"{item['deploy_set_id']} has no independent owner approval"
+            )
+        receipt_path = repo_path(item["receipt"]["path"])
+        candidate_path = repo_path(item["candidate_manifest"]["path"])
+        if sha256(receipt_path) != item["receipt"]["sha256"]:
+            raise ValueError(f"{item['deploy_set_id']} receipt hash mismatch")
+        if sha256(candidate_path) != item["candidate_manifest"]["sha256"]:
+            raise ValueError(
+                f"{item['deploy_set_id']} candidate_manifest hash mismatch"
+            )
+        receipt = load_json(receipt_path)
+        candidate = load_json(candidate_path)
+        validate(receipt, DEPLOY_OBSERVATION_SCHEMA, "device deploy observation")
+        validate(candidate, CANDIDATE_MANIFEST_SCHEMA, "device candidate manifest")
+        source_path = repo_path(receipt["source_receipt"]["path"])
+        if sha256(source_path) != receipt["source_receipt"]["sha256"]:
+            raise ValueError(f"{item['deploy_set_id']} source receipt hash mismatch")
+        common = (
+            item["action_id"],
+            item["deploy_set_id"],
+            item["target_serial"],
+            item["boot_id"],
+            item["components"],
+        )
+        if common != (
+            receipt["action_id"],
+            receipt["deploy_set_id"],
+            receipt["target_serial"],
+            receipt["boot_id"],
+            receipt["components"],
+        ) or common != (
+            candidate["action_id"],
+            candidate["deploy_set_id"],
+            candidate["target_serial"],
+            candidate["boot_id"],
+            candidate["components"],
+        ):
+            raise ValueError(
+                f"{item['deploy_set_id']} semantic deploy identity mismatch"
+            )
+        if receipt["candidate_manifest_sha256"] != item["candidate_manifest"]["sha256"]:
+            raise ValueError(
+                f"{item['deploy_set_id']} receipt is not bound to candidate manifest"
+            )
+        if (
+            approval["action_id"] != item["action_id"]
+            or approval["deploy_set_id"] != item["deploy_set_id"]
+            or approval["target_serial"] != item["target_serial"]
+            or approval["boot_id"] != item["boot_id"]
+            or approval["candidate_manifest_sha256"]
+            != item["candidate_manifest"]["sha256"]
+            or approval["deploy_receipt_sha256"] != item["receipt"]["sha256"]
+        ):
+            raise ValueError(
+                f"{item['deploy_set_id']} independent approval does not bind deploy"
+            )
+        deploy_documents[item["deploy_set_id"]] = (receipt, candidate)
+
+    deploy_by_id = {item["deploy_set_id"]: item for item in deploy_sets}
+    for item in probe_sets:
+        deploy = deploy_by_id.get(item["compatible_deploy_set_id"])
+        if deploy is None:
+            raise ValueError(
+                f"{item['probe_set_id']} references an unknown deploy set"
+            )
+        if (
+            item["action_id"] != deploy["action_id"]
+            or item["target_serial"] != deploy["target_serial"]
+            or item["approval_receipt_id"] != deploy["approval_receipt_id"]
+        ):
+            raise ValueError(
+                f"{item['probe_set_id']} action/target differs from deploy set"
+            )
+        manifest_path = repo_path(item["manifest"]["path"])
+        artifact_path = repo_path(item["artifact_manifest"]["path"])
+        if sha256(manifest_path) != item["manifest"]["sha256"]:
+            raise ValueError(f"{item['probe_set_id']} manifest hash mismatch")
+        if sha256(artifact_path) != item["artifact_manifest"]["sha256"]:
+            raise ValueError(
+                f"{item['probe_set_id']} artifact_manifest hash mismatch"
+            )
+        manifest = load_json(manifest_path)
+        artifacts = load_json(artifact_path)
+        validate(manifest, PROBE_MANIFEST_SCHEMA, "device probe manifest")
+        validate(artifacts, PROBE_ARTIFACT_SCHEMA, "device probe artifact manifest")
+        if (
+            manifest["action_id"] != item["action_id"]
+            or manifest["probe_set_id"] != item["probe_set_id"]
+            or manifest["compatible_deploy_set_id"]
+            != item["compatible_deploy_set_id"]
+            or manifest["target_serial"] != item["target_serial"]
+            or manifest["operations"] != item["allowed_operations"]
+            or artifacts["action_id"] != item["action_id"]
+            or artifacts["probe_set_id"] != item["probe_set_id"]
+        ):
+            raise ValueError(f"{item['probe_set_id']} semantic probe identity mismatch")
+        approval = approval_documents[item["approval_receipt_id"]]
+        if (
+            approval["probe_set_id"] != item["probe_set_id"]
+            or approval["probe_manifest_sha256"] != item["manifest"]["sha256"]
+            or approval["artifact_manifest_sha256"]
+            != item["artifact_manifest"]["sha256"]
+            or approval["allowed_operations"] != item["allowed_operations"]
+        ):
+            raise ValueError(
+                f"{item['probe_set_id']} independent approval does not bind probe"
+            )
+
+
+def repo_path(relative: str) -> Path:
+    path = (ROOT / relative).resolve()
+    try:
+        path.relative_to(ROOT.resolve())
+    except ValueError as exc:
+        raise ValueError(f"path escapes repository: {relative}") from exc
+    return path
+
+
+def load_ref(ref: dict, label: str) -> tuple[Path, dict]:
+    path = repo_path(ref["path"])
+    actual = sha256(path)
+    if actual != ref["sha256"]:
+        raise ValueError(
+            f"{label} hash mismatch: {ref['path']} expected={ref['sha256']} actual={actual}"
+        )
+    return path, load_json(path)
+
+
+def emit(value: dict) -> None:
+    print(json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2))
+
+
+def policy_check() -> int:
+    policy, digest = policy_identity()
+    registry, registry_digest = authority_identity()
+    print(
+        f"PASS incremental policy: {POLICY.relative_to(ROOT)} "
+        f"policy_id={policy['policy_id']} sha256={digest} "
+        f"registry_id={registry['registry_id']} registry_sha256={registry_digest}"
+    )
+    return 0
+
+
+def probe_admission_check(request_path: Path) -> int:
+    registry, registry_sha = authority_identity()
+    request = load_json(request_path)
+    validate(request, PROBE_ADMISSION_SCHEMA, "probe admission request")
+    if request["authority_registry_sha256"] != registry_sha:
+        raise ValueError("probe admission request is bound to a stale registry")
+
+    deploy_matches = [
+        item
+        for item in registry["device_deploy_sets"]
+        if item["deploy_set_id"] == request["deploy_set_id"]
+    ]
+    probe_matches = [
+        item
+        for item in registry["probe_sets"]
+        if item["probe_set_id"] == request["probe_set_id"]
+    ]
+    if len(deploy_matches) != 1 or len(probe_matches) != 1:
+        raise ValueError("probe/deploy set is not uniquely registered")
+    deploy = deploy_matches[0]
+    probe = probe_matches[0]
+    expected = {
+        "action_id": deploy["action_id"],
+        "deploy_set_id": deploy["deploy_set_id"],
+        "probe_set_id": probe["probe_set_id"],
+        "target_serial": deploy["target_serial"],
+        "boot_id": deploy["boot_id"],
+        "candidate_manifest_sha256": deploy["candidate_manifest"]["sha256"],
+        "probe_manifest_sha256": probe["manifest"]["sha256"],
+        "artifact_manifest_sha256": probe["artifact_manifest"]["sha256"],
+    }
+    for key, value in expected.items():
+        if request[key] != value:
+            raise ValueError(f"probe admission {key} mismatch")
+    if (
+        probe["compatible_deploy_set_id"] != deploy["deploy_set_id"]
+        or request["operation"] not in probe["allowed_operations"]
+    ):
+        raise ValueError("probe operation is outside the registered deploy scope")
+
+    emit(
+        {
+            "schema_version": 1,
+            "decision": "ALLOW_REGISTERED_PROBE_OPERATION",
+            "action_id": request["action_id"],
+            "deploy_set_id": request["deploy_set_id"],
+            "probe_set_id": request["probe_set_id"],
+            "target_serial": request["target_serial"],
+            "boot_id": request["boot_id"],
+            "operation": request["operation"],
+            "authority_registry_sha256": registry_sha,
+            "approval_receipt_id": probe["approval_receipt_id"],
+            "candidate_manifest_sha256": request["candidate_manifest_sha256"],
+            "probe_manifest_sha256": request["probe_manifest_sha256"],
+            "artifact_manifest_sha256": request["artifact_manifest_sha256"],
+        }
+    )
+    return 0
+
+
+def action_checkpoint(action_id: str) -> dict:
+    checkpoint = load_json(CHECKPOINT)
+    for action in checkpoint["actions"]:
+        if action["action_id"] == action_id:
+            return action
+    raise ValueError(f"action is not registered in resume checkpoint: {action_id}")
+
+
+def canonical_cases(action_id: str) -> tuple[Path, str, list[str]]:
+    fn, action = action_id.split(".")
+    path = ROOT / "spec/atoms" / fn / action / "verification.md"
+    cases = sorted(set(CASE_RE.findall(path.read_text(encoding="utf-8"))))
+    if not cases:
+        raise ValueError(f"no canonical P/N/F cases found in {path.relative_to(ROOT)}")
+    return path, sha256(path), cases
+
+
+def baseline_drift(action: dict) -> list[dict]:
+    bindings = list(action.get("frozen_inputs", []))
+    bindings.extend(action.get("reuse", {}).get("exact_bindings", []))
+    drift = []
+    for binding in bindings:
+        path = repo_path(binding["path"])
+        actual = sha256(path) if path.exists() else "ABSENT"
+        if actual != binding["sha256"]:
+            drift.append(
+                {
+                    "path": binding["path"],
+                    "baseline_sha256": binding["sha256"],
+                    "current_sha256": actual,
+                }
+            )
+    return drift
+
+
+def scope_from_formal_scope(value: str) -> set[str]:
+    lowered = value.lower()
+    scopes = set()
+    if "host" in lowered:
+        scopes.add("host")
+    if "d600" in lowered or "device" in lowered:
+        scopes.add("d600")
+    return scopes
+
+
+def prior_evidence_state(
+    action: dict, registry: dict
+) -> tuple[set[str], bool, bool]:
+    verdict = action.get("reuse") or action.get("last_verdict") or {}
+    scopes = scope_from_formal_scope(
+        str(verdict.get("formal_scope") or verdict.get("scope") or "")
+    )
+    execution_confirmed = bool(scopes) and (
+        verdict.get("formal_verdict") == "PASS" or "reuse" in action
+    )
+    evidence = verdict.get("evidence")
+    expected = verdict.get("evidence_sha256")
+    evidence_linked = False
+    if evidence and expected:
+        path = repo_path(evidence)
+        registered = [
+            item
+            for item in registry["prior_action_evidence"]
+            if item["path"] == evidence
+            and item["sha256"] == expected
+            and item["action_id"] == action.get("action_id")
+            and set(item["scope"]) == scopes
+            and item["issuer"] == "independent_verifier"
+        ]
+        if len(registered) == 1 and path.exists() and sha256(path) == expected:
+            try:
+                manifest = load_json(path)
+            except ValueError:
+                manifest = {}
+            evidence_linked = (
+                manifest.get("action_id") == action.get("action_id")
+                and manifest.get("verdict") == "PASS"
+                and manifest.get("verification_sha256")
+                == registered[0]["verification_sha256"]
+                == next(
+                    (
+                        item["sha256"]
+                        for item in action.get("frozen_inputs", [])
+                        if item["path"].endswith("/verification.md")
+                    ),
+                    None,
+                )
+            )
+    return scopes, execution_confirmed, evidence_linked
+
+
+def validate_impact_receipt(
+    ref: dict,
+    registry: dict,
+    action_id: str,
+    verification_sha: str,
+    cases: list[str],
+    drift: list[dict],
+) -> tuple[str, list[str]]:
+    registered = [
+        item
+        for item in registry["impact_receipts"]
+        if item["path"] == ref["path"] and item["sha256"] == ref["sha256"]
+    ]
+    if len(registered) != 1:
+        raise ValueError("impact receipt has no unique authority-registry entry")
+    _, receipt = load_ref(ref, "impact receipt")
+    required = {
+        "schema_version",
+        "receipt_type",
+        "action_id",
+        "verification_sha256",
+        "canonical_cases",
+        "changed_artifacts",
+        "affected_cases",
+        "invalidates_all_cases",
+    }
+    if set(receipt) - (
+        required | {"approval_state", "owner", "auditor", "evidence_refs"}
+    ):
+        raise ValueError("impact receipt contains unsupported authority fields")
+    if not required.issubset(receipt):
+        raise ValueError(f"impact receipt misses: {sorted(required - set(receipt))}")
+    if receipt["schema_version"] != 1 or receipt["action_id"] != action_id:
+        raise ValueError("impact receipt identity does not match request")
+    if receipt["verification_sha256"] != verification_sha:
+        raise ValueError("impact receipt is not bound to current verification.md")
+    if sorted(receipt["canonical_cases"]) != cases:
+        raise ValueError("impact receipt canonical case set differs from repository truth")
+    expected_drift = sorted(drift, key=lambda item: item["path"])
+    actual_drift = sorted(receipt["changed_artifacts"], key=lambda item: item["path"])
+    if actual_drift != expected_drift:
+        raise ValueError("impact receipt changed_artifacts does not equal measured drift")
+    affected = sorted(set(receipt["affected_cases"]))
+    unknown = set(affected) - set(cases)
+    if unknown:
+        raise ValueError(f"impact receipt contains unknown cases: {sorted(unknown)}")
+    if receipt["receipt_type"] == "accepted_semantic_change":
+        if (
+            registered[0]["issuer"] != "project_owner"
+            or receipt.get("approval_state") != "accepted"
+            or receipt.get("owner") != "project_owner"
+            or receipt["invalidates_all_cases"] is not True
+            or affected != cases
+        ):
+            raise ValueError("FULL_RETEST requires owner-accepted complete invalidation")
+        return "FULL_RETEST", affected
+    if receipt["receipt_type"] == "independent_impact_audit":
+        if (
+            registered[0]["issuer"] != "independent_verifier"
+            or not receipt.get("auditor")
+            or receipt["invalidates_all_cases"] is not False
+        ):
+            raise ValueError("targeted/no-impact receipt requires an independent auditor")
+        return ("TARGETED_RETEST" if affected else "REUSE_VERDICT"), affected
+    raise ValueError(f"unsupported impact receipt type: {receipt['receipt_type']}")
+
+
+def classify_retest(request_path: Path) -> int:
+    policy, policy_sha = policy_identity()
+    registry, registry_sha = authority_identity()
+    request = load_json(request_path)
+    validate(request, RETEST_SCHEMA, "retest request")
+    action_id = request["action_id"]
+    requested = set(request["requested_scopes"])
+    action = action_checkpoint(action_id)
+    _, verification_sha, cases = canonical_cases(action_id)
+    drift = baseline_drift(action)
+    prior, execution_confirmed, evidence_linked = prior_evidence_state(
+        action, registry
+    )
+
+    retest_cases: list[str] = []
+    if drift:
+        if request["impact_receipt"] is None:
+            decision = "IMPACT_AUDIT_REQUIRED"
+            reason = "measured baseline drift has no hash-bound impact audit"
+        else:
+            decision, retest_cases = validate_impact_receipt(
+                request["impact_receipt"],
+                registry,
+                action_id,
+                verification_sha,
+                cases,
+                drift,
+            )
+            reason = {
+                "FULL_RETEST": "owner-accepted receipt invalidates repository-derived complete case set",
+                "TARGETED_RETEST": "independent impact receipt binds exact affected cases",
+                "REUSE_VERDICT": "independent impact receipt proves measured drift reaches no case",
+            }[decision]
+            if decision == "REUSE_VERDICT":
+                if requested.issubset(prior):
+                    if evidence_linked:
+                        pass
+                    elif execution_confirmed:
+                        decision = "EVIDENCE_RECOVERY_PENDING"
+                        reason = (
+                            "no-impact audit preserves behavior, but prior execution "
+                            "receipt is absent or mismatched"
+                        )
+                    else:
+                        decision = "IMPACT_AUDIT_REQUIRED"
+                        reason = (
+                            "no-impact audit cannot create a prior verdict or execution"
+                        )
+                elif prior and evidence_linked:
+                    decision = "EXTEND_SCOPE_ONLY"
+                    reason = (
+                        "no-impact audit preserves prior evidence; uncovered scopes "
+                        "still require first execution"
+                    )
+                elif prior and execution_confirmed:
+                    decision = "EVIDENCE_RECOVERY_PENDING"
+                    reason = (
+                        "recover prior receipt before preserving it while extending scope"
+                    )
+                else:
+                    decision = "EXTEND_SCOPE_ONLY"
+                    reason = (
+                        "no-impact audit cannot create coverage for an unexecuted scope"
+                    )
+    elif request["impact_receipt"] is not None:
+        raise ValueError("impact receipt supplied but repository baseline has no drift")
+    elif requested.issubset(prior):
+        if evidence_linked:
+            decision = "REUSE_VERDICT"
+            reason = "checkpoint-bound evidence covers unchanged requested scope"
+        elif execution_confirmed:
+            decision = "EVIDENCE_RECOVERY_PENDING"
+            reason = "checkpoint confirms execution but immutable evidence is absent or mismatched"
+        else:
+            decision = "IMPACT_AUDIT_REQUIRED"
+            reason = "no checkpoint-bound execution or evidence covers requested scope"
+    elif prior and evidence_linked:
+        decision = "EXTEND_SCOPE_ONLY"
+        reason = "only scopes outside checkpoint-bound evidence require execution"
+    elif prior and execution_confirmed:
+        decision = "EVIDENCE_RECOVERY_PENDING"
+        reason = "recover prior receipt before reusing it while extending scope"
+    else:
+        decision = "EXTEND_SCOPE_ONLY"
+        reason = "requested scopes have no prior reusable execution"
+
+    result = {
+        "policy_id": policy["policy_id"],
+        "policy_sha256": policy_sha,
+        "authority_registry_id": registry["registry_id"],
+        "authority_registry_sha256": registry_sha,
+        "action_id": action_id,
+        "decision": decision,
+        "reason": reason,
+        "canonical_cases": cases,
+        "measured_drift": drift,
+        "requested_scopes": sorted(requested),
+        "reused_scopes": sorted(requested & prior) if evidence_linked else [],
+        "new_scopes": sorted(requested - prior),
+        "retest_cases": retest_cases,
+        "full_retest_authorized": decision == "FULL_RETEST",
+    }
+    emit(result)
+    return 1 if decision == "IMPACT_AUDIT_REQUIRED" else 0
+
+
+def component_key(components: list[dict], current: bool, label: str) -> str:
+    normalized = []
+    for component in components:
+        required = {"role", "identity", "sha256"}
+        if not required.issubset(component):
+            raise ValueError(f"{label} component misses {sorted(required - set(component))}")
+        if current:
+            path_value = component.get("path")
+            if not path_value:
+                raise ValueError(f"{label} current component has no repository path")
+            path = repo_path(path_value)
+            actual = sha256(path)
+            if actual != component["sha256"]:
+                raise ValueError(f"{label} component hash mismatch: {path_value}")
+        normalized.append(
+            {
+                "role": component["role"],
+                "identity": component["identity"],
+                "sha256": component["sha256"],
+            }
+        )
+    encoded = json.dumps(normalized, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def output_state(value: dict | None, label: str) -> str | None:
+    if value is None:
+        return None
+    if set(value) != {"path", "sha256"}:
+        raise ValueError(f"{label} output must contain only path and sha256")
+    path = repo_path(value["path"])
+    actual = sha256(path)
+    if actual != value["sha256"]:
+        raise ValueError(f"{label} output hash mismatch: {value['path']}")
+    return actual
+
+
+def registry_item(items: list[dict], key: str, value: str, label: str) -> dict:
+    matches = [item for item in items if item.get(key) == value]
+    if len(matches) != 1:
+        raise ValueError(f"{label} has no unique authority-registry entry: {value}")
+    return matches[0]
+
+
+def normalized_components(components: list[dict]) -> list[dict]:
+    return [
+        {
+            "role": item["role"],
+            "identity": item["identity"],
+            "sha256": item["sha256"],
+        }
+        for item in components
+    ]
+
+
+def validate_component_contract(stage: str, components: list[dict]) -> None:
+    required_roles = {
+        "LEAF": {
+            "SOURCE",
+            "TRANSITIVE_HEADERS",
+            "COMPILE_COMMAND",
+            "COMPILER",
+            "SYSROOT",
+            "PROVIDER_ABI",
+        },
+        "LINK": {
+            "LEAF_OUTPUT",
+            "LINK_COMMAND",
+            "LINKER",
+            "LINKED_LIBRARY_ABI",
+        },
+        "PACKAGE": {"LINK_OUTPUT", "PACKAGE_MANIFEST", "ARTIFACT_ROLES"},
+        "DEPLOY": {
+            "PACKAGE_OUTPUT",
+            "BOOT_IMAGE_CONFIG",
+            "SECURITY_POLICY",
+            "DEPLOY_EXACT_SET",
+        },
+    }[stage]
+    roles = {item["role"] for item in components}
+    identities = [item["identity"] for item in components]
+    if roles != required_roles:
+        raise ValueError(
+            f"{stage} closed component roles differ: "
+            f"missing={sorted(required_roles - roles)} "
+            f"extra={sorted(roles - required_roles)}"
+        )
+    if len(identities) != len(set(identities)):
+        raise ValueError(f"{stage} component identities must be unique")
+
+
+def validate_change_manifest(
+    ref: dict, change_id: str, registry: dict
+) -> tuple[dict, bool, dict]:
+    authority = registry_item(
+        registry["change_sets"], "change_id", change_id, "change set"
+    )
+    if authority["manifest"] != ref:
+        raise ValueError("change manifest is not the authority-registered manifest")
+    _, manifest = load_ref(ref, "change manifest")
+    if manifest.get("schema_version") != 1 or manifest.get("change_id") != change_id:
+        raise ValueError("change manifest identity does not match request")
+    changes = manifest.get("changes")
+    if not isinstance(changes, list) or not changes:
+        raise ValueError("change manifest must contain at least one change")
+    if changes != authority["path_roles"]:
+        raise ValueError("change manifest does not equal registered VCS/frozen delta")
+    product_change = False
+    for change in authority["path_roles"]:
+        role = change["role"]
+        if role not in PRODUCT_ROLES | NON_PRODUCT_ROLES:
+            raise ValueError(f"unsupported change role: {role}")
+        current = change["current_sha256"]
+        path = repo_path(change["path"])
+        actual = sha256(path) if path.exists() else "ABSENT"
+        if current != actual:
+            raise ValueError(f"change manifest current hash mismatch: {change['path']}")
+        if change.get("previous_sha256") == current:
+            raise ValueError(f"change manifest entry is not a change: {change['path']}")
+        product_change |= role in PRODUCT_ROLES
+    if product_change:
+        for stage in STAGES:
+            validate_component_contract(
+                stage, authority["current_stage_components"][stage]
+            )
+    product_paths = {
+        item["path"] for item in authority["path_roles"] if item["role"] in PRODUCT_ROLES
+    }
+    leaf_paths = {
+        item["path"] for item in authority["current_stage_components"]["LEAF"]
+    }
+    if product_change and product_paths - leaf_paths:
+        raise ValueError(
+            f"LEAF component set omits changed product paths: {sorted(product_paths - leaf_paths)}"
+        )
+    return manifest, product_change, authority
+
+
+def validate_stage_receipt(
+    ref: dict,
+    change_id: str,
+    stage: str,
+    baseline: dict,
+    expected_current_components: list[dict],
+    upstream: tuple[str, str, str] | None,
+) -> dict:
+    _, receipt = load_ref(ref, f"{stage} stage receipt")
+    required = {
+        "schema_version",
+        "change_id",
+        "stage",
+        "previous_input_components",
+        "current_input_components",
+        "previous_output_sha256",
+        "current_output",
+    }
+    if set(receipt) != required:
+        raise ValueError(f"{stage} receipt fields differ from the closed contract")
+    if (
+        receipt["schema_version"] != 1
+        or receipt["change_id"] != change_id
+        or receipt["stage"] != stage
+    ):
+        raise ValueError(f"{stage} stage receipt identity mismatch")
+    if receipt["previous_input_components"] != baseline["input_components"]:
+        raise ValueError(f"{stage} previous inputs are not registry-bound baseline")
+    if receipt["previous_output_sha256"] != baseline["output_sha256"]:
+        raise ValueError(f"{stage} previous output is not registry-bound baseline")
+    if receipt["current_input_components"] != expected_current_components:
+        raise ValueError(f"{stage} current inputs differ from registered closed set")
+    validate_component_contract(stage, receipt["current_input_components"])
+    previous_key = component_key(
+        baseline["input_components"], False, f"{stage} previous"
+    )
+    current_key = component_key(
+        receipt["current_input_components"], True, f"{stage} current"
+    )
+    current_output = output_state(receipt["current_output"], stage)
+    previous_output = receipt["previous_output_sha256"]
+    if not re.fullmatch(r"[0-9a-f]{64}", previous_output):
+        raise ValueError(f"{stage} previous output hash is invalid")
+    if upstream:
+        required_role, upstream_previous, upstream_current = upstream
+        for components, expected, side in (
+            (receipt["previous_input_components"], upstream_previous, "previous"),
+            (receipt["current_input_components"], upstream_current, "current"),
+        ):
+            matches = [
+                item for item in components if item.get("role") == required_role
+            ]
+            if len(matches) != 1 or matches[0].get("sha256") != expected:
+                raise ValueError(
+                    f"{stage} {side} input is not bound to {required_role}={expected}"
+                )
+    if previous_key == current_key and current_output not in (None, previous_output):
+        raise ValueError(f"{stage} output changed while computed input key is unchanged")
+    return {
+        "previous_input_key": previous_key,
+        "current_input_key": current_key,
+        "previous_output": previous_output,
+        "current_output": current_output,
+    }
+
+
+def validate_freeze_receipt(
+    ref: dict | None, change_id: str, registry: dict
+) -> bool:
+    if ref is None:
+        return False
+    registered = [
+        item
+        for item in registry["source_freeze_receipts"]
+        if item["path"] == ref["path"]
+        and item["sha256"] == ref["sha256"]
+        and item["issuer"] == "project_owner"
+    ]
+    if len(registered) != 1:
+        raise ValueError("source freeze receipt has no owner authority registration")
+    _, receipt = load_ref(ref, "source freeze receipt")
+    required = {
+        "schema_version",
+        "change_id",
+        "approval_state",
+        "owner",
+        "source_tree_sha256",
+        "toolchain_sha256",
+        "commands_sha256",
+    }
+    if set(receipt) != required or not all(receipt.get(key) for key in required):
+        raise ValueError("source freeze receipt is incomplete")
+    return (
+        receipt["schema_version"] == 1
+        and receipt["change_id"] == change_id
+        and receipt["approval_state"] == "accepted"
+        and receipt["owner"] == "project_owner"
+    )
+
+
+def classify_build(request_path: Path) -> int:
+    policy, policy_sha = policy_identity()
+    registry, registry_sha = authority_identity()
+    request = load_json(request_path)
+    validate(request, BUILD_SCHEMA, "build request")
+    change_id = request["change_id"]
+    baseline = registry_item(
+        registry["build_baselines"],
+        "baseline_id",
+        request["baseline_id"],
+        "build baseline",
+    )
+    _, product_change, change_authority = validate_change_manifest(
+        request["change_manifest"], change_id, registry
+    )
+
+    if not product_change:
+        generation = (
+            "DENY_FORMAL_GENERATION_BUMP_RECEIPT_ONLY"
+            if request["request_frozen_build_id_change"]
+            else "KEEP_GENERATION"
+        )
+        emit(
+            {
+                "policy_id": policy["policy_id"],
+                "policy_sha256": policy_sha,
+                "authority_registry_id": registry["registry_id"],
+                "authority_registry_sha256": registry_sha,
+                "change_id": change_id,
+                "decision": "REISSUE_METADATA_OR_RECEIPT_ONLY",
+                "required_actions": [],
+                "reused_stages": list(STAGES),
+                "formal_generation": generation,
+            }
+        )
+        return 1 if request["request_frozen_build_id_change"] else 0
+
+    required_actions: list[str] = []
+    reused_stages: list[str] = []
+    changed_stages: list[str] = []
+    blocked_after = None
+    previous_stage = None
+    stage_states: dict[str, dict] = {}
+    upstream_roles = {
+        "LINK": "LEAF_OUTPUT",
+        "PACKAGE": "LINK_OUTPUT",
+        "DEPLOY": "PACKAGE_OUTPUT",
+    }
+    for stage in STAGES:
+        ref = request["stage_receipts"][stage]
+        if ref is None:
+            required_actions.append(f"{stage}_RUN_AND_COMPARE_OUTPUT")
+            blocked_after = stage
+            break
+        upstream = None
+        if previous_stage:
+            previous = stage_states[previous_stage]
+            if previous["current_output"] is None:
+                raise ValueError(f"{stage} cannot be evaluated before {previous_stage} output")
+            upstream = (
+                upstream_roles[stage],
+                previous["previous_output"],
+                previous["current_output"],
+            )
+        state = validate_stage_receipt(
+            ref,
+            change_id,
+            stage,
+            baseline["stages"][stage],
+            change_authority["current_stage_components"][stage],
+            upstream,
+        )
+        stage_states[stage] = state
+        changed = state["previous_input_key"] != state["current_input_key"]
+        if changed:
+            changed_stages.append(stage)
+        if state["current_output"] is None:
+            required_actions.append(f"{stage}_RUN_AND_COMPARE_OUTPUT")
+            blocked_after = stage
+            break
+        output_same = state["current_output"] == state["previous_output"]
+        if changed and output_same:
+            required_actions.append(f"{stage}_OUTPUT_REUSED")
+            reused_stages.append(stage)
+        elif changed:
+            required_actions.append(f"{stage}_OUTPUT_CHANGED")
+        else:
+            reused_stages.append(stage)
+        previous_stage = stage
+
+    freeze_accepted = validate_freeze_receipt(
+        request["source_freeze_receipt"], change_id, registry
+    )
+    generation = "KEEP_GENERATION"
+    generation_rc = 0
+    if request["request_frozen_build_id_change"]:
+        if not freeze_accepted:
+            generation = "DENY_FORMAL_GENERATION_BUMP_NO_ACCEPTED_FREEZE_RECEIPT"
+        elif blocked_after is not None or "DEPLOY" not in stage_states:
+            generation = "DENY_FORMAL_GENERATION_BUMP_BUILD_NOT_CLOSED"
+        elif (
+            stage_states["DEPLOY"]["current_output"]
+            == stage_states["DEPLOY"]["previous_output"]
+        ):
+            generation = "DENY_FORMAL_GENERATION_BUMP_DEPLOY_OUTPUT_UNCHANGED"
+        else:
+            generation = "FORMAL_GENERATION_ALLOCATION_REQUIRES_REGISTRY"
+        generation_rc = 1
+
+    emit(
+        {
+            "policy_id": policy["policy_id"],
+            "policy_sha256": policy_sha,
+            "authority_registry_id": registry["registry_id"],
+            "authority_registry_sha256": registry_sha,
+            "change_id": change_id,
+            "decision": (
+                "REUSE_ALL_PRODUCT_OUTPUTS"
+                if not changed_stages and blocked_after is None
+                else "INCREMENTAL_STAGE_ACTION_REQUIRED"
+            ),
+            "changed_input_stages": changed_stages,
+            "required_actions": required_actions,
+            "reused_stages": reused_stages,
+            "blocked_after": blocked_after,
+            "formal_generation": generation,
+        }
+    )
+    return generation_rc
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("policy-check")
+    admission = subparsers.add_parser("probe-admission")
+    admission.add_argument("--request", required=True, type=Path)
+    retest = subparsers.add_parser("retest")
+    retest.add_argument("--request", required=True, type=Path)
+    build = subparsers.add_parser("build")
+    build.add_argument("--request", required=True, type=Path)
+    args = parser.parse_args()
+
+    try:
+        if args.command == "policy-check":
+            return policy_check()
+        request = args.request.resolve()
+        if args.command == "probe-admission":
+            return probe_admission_check(request)
+        if args.command == "retest":
+            return classify_retest(request)
+        return classify_build(request)
+    except (ValueError, OSError) as exc:
+        print(f"FAIL incremental decision: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

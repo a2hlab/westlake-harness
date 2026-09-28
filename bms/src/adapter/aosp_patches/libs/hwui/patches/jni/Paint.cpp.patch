@@ -1,0 +1,31 @@
+diff --git a/libs/hwui/jni/Paint.cpp b/libs/hwui/jni/Paint.cpp
+index 13357fa2..687cb078 100644
+--- a/libs/hwui/jni/Paint.cpp
++++ b/libs/hwui/jni/Paint.cpp
+@@ -1,3 +1,6 @@
++#ifndef U16_GET_SUPPLEMENTARY
++#define U16_GET_SUPPLEMENTARY(lead, trail) (((lead) << 10UL) + (trail) - 0x35FDC00UL)
++#endif
+ /* libs/android_runtime/android/graphics/Paint.cpp
+ **
+ ** Copyright 2006, The Android Open Source Project
+@@ -517,7 +520,13 @@ namespace PaintGlue {
+         MinikinUtils::measureText(paint, bidiFlags, typeface, buf, start, count, bufSize,
+                 advancesArray.get());
+ 
+-        float result = minikin::getRunAdvance(advancesArray.get(), buf, start, count, offset);
++        // L2.1: minikin::getRunAdvance computes cumulative advance up to `offset`
++        // (advance is on the first char of each grapheme cluster, 0 on continuations).
++        // Inline replacement to avoid dependence on minikin internal API:
++        float result = 0.0f;
++        for (jint i = 0; i < offset; ++i) {
++            result += advancesArray[i];
++        }
+         if (advances) {
+             minikin::distributeAdvances(advancesArray.get(), buf, start, count);
+             env->SetFloatArrayRegion(advances, advancesIndex, count, advancesArray.get());
+@@ -1174,3 +1183,4 @@ int register_android_graphics_Paint(JNIEnv* env) {
+ }
+ 
+ }
++

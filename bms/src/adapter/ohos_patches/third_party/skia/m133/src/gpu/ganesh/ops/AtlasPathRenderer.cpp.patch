@@ -1,0 +1,35 @@
+--- a/third_party/skia/m133/src/gpu/ganesh/ops/AtlasPathRenderer.cpp
++++ b/third_party/skia/m133/src/gpu/ganesh/ops/AtlasPathRenderer.cpp
+@@ -6,6 +6,10 @@
+  */
+ #include "src/gpu/ganesh/ops/AtlasPathRenderer.h"
+ 
++// OH_SK_PREFLUSH_AtlasPath_INC — v4c probes added 2026-05-13
++#include <atomic>
++#include <cstdio>
++
+ #include "include/core/SkMatrix.h"
+ #include "include/core/SkPath.h"
+ #include "include/core/SkRect.h"
+@@ -425,6 +429,21 @@
+ }
+ 
+ bool AtlasPathRenderer::preFlush(GrOnFlushResourceProvider* onFlushRP) {
++    // OH_SK_PROBE_BODY_AtlasPath_v4c — entry + state dump
++    {
++        static std::atomic<int> g_OH_SK_PROBE_AtlasPath{0};
++        int n = ++g_OH_SK_PROBE_AtlasPath;
++        if (n <= 10 || n % 100 == 0) {
++#if defined(GPU_TEST_UTILS)
++            bool ftc = onFlushRP->failFlushTimeCallbacks();
++#else
++            bool ftc = false;
++#endif
++            std::fprintf(stderr,
++                "[OH_SK_PREFLUSH_AtlasPath] #%d this=%p ftc=%d tasks=%d\n",
++                n, (void*)this, ftc?1:0, (int)fAtlasRenderTasks.size());
++        }
++    }
+     if (fAtlasRenderTasks.empty()) {
+         SkASSERT(fAtlasPathCache.count() == 0);
+         return true;

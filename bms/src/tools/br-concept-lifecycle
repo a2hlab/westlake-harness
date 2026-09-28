@@ -1,0 +1,1202 @@
+#!/usr/bin/env python3
+"""Compatibility command for mandatory Bridge Concept lifecycle gates."""
+
+from __future__ import annotations
+
+import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+import jsonschema
+import yaml
+
+
+ROOT = Path(__file__).resolve().parents[1]
+STATES = {
+    "multi-apk": ROOT / "docs/workflows/FN01_MULTI_APK_LIFECYCLE.json",
+    "r2": ROOT / "docs/workflows/FN01_OWN_R2_LIFECYCLE.json",
+    "r3": ROOT / "docs/workflows/FN01_OWN_R3_LIFECYCLE.json",
+}
+CHECK = ROOT / "tools/check_mandatory_lifecycle.py"
+RESUME_CHECKPOINT = ROOT / "docs/workflows/FN01_RESUME_CHECKPOINT.json"
+RESUME_SCHEMA = ROOT / "spec/workflow/fn-resume-checkpoint.schema.json"
+RESUME_RUN_STATE = (
+    ROOT / "evidence/workflow/fn01-concept-resume/current-run.json"
+)
+RESUMABLE_STATES = {
+    "historical_pass_evidence_recovery",
+    "pass_reusable",
+    "waiting_evidence",
+    "remediating_fail",
+    "implementing",
+    "awaiting_verification",
+    "ready",
+}
+PRE_DEVICE_BLOCKER_CATEGORIES = {
+    "SPEC_INCOMPLETE",
+    "WIRING_INCOMPLETE",
+    "BUILD_NOT_CLOSED",
+    "HOST_PNF_INCOMPLETE",
+    "ARTIFACT_PROVENANCE_INCOMPLETE",
+    "EXTERNAL_PHYSICAL_RESOURCE",
+}
+PRE_DEVICE_GATE_CATEGORIES = {
+    "spec": "SPEC_INCOMPLETE",
+    "wiring": "WIRING_INCOMPLETE",
+    "build": "BUILD_NOT_CLOSED",
+    "host_pnf": "HOST_PNF_INCOMPLETE",
+    "artifact_provenance": "ARTIFACT_PROVENANCE_INCOMPLETE",
+}
+
+
+def fail_parallel(message: str) -> None:
+    raise SystemExit(f"FAIL parallel decision gate: {message}")
+
+
+def run_check(state: Path, require_complete: bool) -> int:
+    cmd = [sys.executable, str(CHECK), str(state), "--root", str(ROOT)]
+    if require_complete:
+        cmd.append("--require-complete")
+    return subprocess.call(cmd)
+
+
+def print_status(state: Path) -> int:
+    data = json.loads(state.read_text(encoding="utf-8"))
+    print(f"state: {state.relative_to(ROOT)}")
+    print(f"thread: {data['thread']}")
+    print(f"mandatory: {data['mandatory']}")
+    print(f"current_step: {data['current_step']}")
+    for step in data["steps"]:
+        marker = "->" if step["step"] == data["current_step"] else "  "
+        print(f"{marker} {step['step']:02d} {step['status']}: {step['name']}")
+    return 0
+
+
+def sha256_path(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def validate_bound_artifact(
+    root: Path,
+    artifact: dict,
+    owner: str,
+    invalidated: dict[str, list[str]],
+    all_action_ids: list[str],
+) -> None:
+    relative = artifact.get("path")
+    expected = artifact.get("sha256")
+    invalidates = artifact.get("invalidates", [owner] if owner != "concept" else ["*"])
+    if not isinstance(relative, str) or not relative:
+        raise ValueError(f"{owner} has a bound artifact without path")
+    if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected):
+        raise ValueError(f"{owner} artifact has invalid sha256: {relative}")
+    relative_path = Path(relative)
+    if relative_path.is_absolute():
+        raise ValueError(f"{owner} artifact path must be repository-relative: {relative}")
+    path = (root / relative_path).resolve()
+    try:
+        path.relative_to(root.resolve())
+    except ValueError as exc:
+        raise ValueError(
+            f"{owner} artifact path escapes repository root: {relative}"
+        ) from exc
+    reason = None
+    if not path.is_file():
+        reason = f"missing:{relative}"
+    else:
+        actual = sha256_path(path)
+        if actual != expected:
+            reason = f"sha256:{relative}:expected={expected}:actual={actual}"
+    if reason is None:
+        return
+    targets = all_action_ids if invalidates == ["*"] else invalidates
+    if not isinstance(targets, list) or not targets:
+        raise ValueError(f"{owner} artifact invalidates must be a non-empty list")
+    for action_id in targets:
+        if action_id not in invalidated:
+            raise ValueError(f"{owner} artifact invalidates unknown action {action_id}")
+        invalidated[action_id].append(reason)
+
+
+def validate_control_artifact(root: Path, artifact: dict, owner: str) -> None:
+    relative = artifact.get("path")
+    expected = artifact.get("sha256")
+    if not isinstance(relative, str) or not relative:
+        raise ValueError(f"{owner} has a control artifact without path")
+    if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected):
+        raise ValueError(f"{owner} control artifact has invalid sha256: {relative}")
+    relative_path = Path(relative)
+    if relative_path.is_absolute():
+        raise ValueError(f"{owner} control path must be repository-relative: {relative}")
+    path = (root / relative_path).resolve()
+    try:
+        path.relative_to(root.resolve())
+    except ValueError as exc:
+        raise ValueError(f"{owner} control path escapes repository: {relative}") from exc
+    if not path.is_file():
+        raise ValueError(f"{owner} control artifact is missing: {relative}")
+    actual = sha256_path(path)
+    if actual != expected:
+        raise ValueError(
+            f"{owner} control artifact drift: {relative}: expected={expected}:actual={actual}"
+        )
+
+
+def validate_pre_device_manifest(path: Path) -> tuple[str, list[dict[str, str]]]:
+    """Fail closed before device allocation without claiming a device verdict."""
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"pre-device manifest is unreadable: {path}: {exc}") from exc
+    if manifest.get("schema_version") != 1:
+        raise ValueError("pre-device manifest schema_version must be 1")
+    action_id = manifest.get("action_id")
+    if not isinstance(action_id, str) or not re.fullmatch(r"Fn\d{2}\.A\d{2}", action_id):
+        raise ValueError("pre-device manifest requires canonical action_id")
+    if manifest.get("device_verdict") != "NOT_RUN":
+        raise ValueError("pre-device manifest device_verdict must be NOT_RUN")
+
+    gates = manifest.get("gates")
+    if not isinstance(gates, dict):
+        raise ValueError("pre-device manifest gates must be an object")
+    blockers: list[dict[str, str]] = []
+    for gate, category in PRE_DEVICE_GATE_CATEGORIES.items():
+        record = gates.get(gate)
+        if not isinstance(record, dict):
+            blockers.append({"category": category, "reason": f"missing gate:{gate}"})
+            continue
+        if record.get("status") != "PASS":
+            blockers.append(
+                {
+                    "category": category,
+                    "reason": str(record.get("reason") or f"{gate} status is not PASS"),
+                }
+            )
+            continue
+        evidence = record.get("evidence")
+        if not isinstance(evidence, list) or not evidence:
+            blockers.append(
+                {"category": category, "reason": f"{gate} has no bound evidence"}
+            )
+            continue
+        try:
+            for artifact in evidence:
+                validate_control_artifact(ROOT, artifact, f"pre-device {gate}")
+        except ValueError as exc:
+            blockers.append({"category": category, "reason": str(exc)})
+
+    host_pnf = gates.get("host_pnf")
+    if isinstance(host_pnf, dict) and host_pnf.get("status") == "PASS":
+        cases = host_pnf.get("cases")
+        if not isinstance(cases, dict) or set(cases) != {
+            "positive",
+            "negative",
+            "failure",
+        }:
+            blockers.append(
+                {
+                    "category": "HOST_PNF_INCOMPLETE",
+                    "reason": "host_pnf must bind exactly positive, negative, and failure cases",
+                }
+            )
+        elif any(cases[name] != "PASS" for name in cases):
+            blockers.append(
+                {
+                    "category": "HOST_PNF_INCOMPLETE",
+                    "reason": "all host P/N/F cases must PASS",
+                }
+            )
+
+    provenance = gates.get("artifact_provenance")
+    if isinstance(provenance, dict) and provenance.get("status") == "PASS":
+        bindings = provenance.get("bindings")
+        required = {"source_inputs", "build_receipts", "deployable_artifacts"}
+        if (
+            not isinstance(bindings, dict)
+            or set(bindings) != required
+            or any(
+                not isinstance(bindings[key], list) or not bindings[key]
+                for key in required
+            )
+        ):
+            blockers.append(
+                {
+                    "category": "ARTIFACT_PROVENANCE_INCOMPLETE",
+                    "reason": "provenance must bind non-empty source_inputs, build_receipts, and deployable_artifacts",
+                }
+            )
+        else:
+            try:
+                for key in sorted(required):
+                    for artifact in bindings[key]:
+                        validate_control_artifact(
+                            ROOT, artifact, f"pre-device provenance {key}"
+                        )
+            except ValueError as exc:
+                blockers.append(
+                    {"category": "ARTIFACT_PROVENANCE_INCOMPLETE", "reason": str(exc)}
+                )
+
+    declared = manifest.get("blockers", [])
+    if not isinstance(declared, list):
+        raise ValueError("pre-device manifest blockers must be a list")
+    for blocker in declared:
+        if not isinstance(blocker, dict):
+            raise ValueError("pre-device blocker must be an object")
+        category = blocker.get("category")
+        reason = blocker.get("reason")
+        if category not in PRE_DEVICE_BLOCKER_CATEGORIES or not reason:
+            raise ValueError("pre-device blocker has unknown category or empty reason")
+        blockers.append({"category": category, "reason": str(reason)})
+    return action_id, blockers
+
+
+def print_pre_device_readiness(path: Path) -> int:
+    try:
+        action_id, blockers = validate_pre_device_manifest(path)
+    except ValueError as exc:
+        print(f"FAIL pre-device readiness: {exc}", file=sys.stderr)
+        return 2
+    print(f"action_id: {action_id}")
+    print("device_verdict: NOT_RUN")
+    if blockers:
+        print("readiness: BLOCKED")
+        for blocker in blockers:
+            print(f"BLOCKER {blocker['category']}: {blocker['reason']}")
+        return 1
+    print("readiness: READY_FOR_DEVICE_ALLOCATION")
+    print("formal_effect: NONE; readiness is not a device verdict")
+    return 0
+
+
+def load_resume_checkpoint(path: Path) -> dict:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ValueError(f"checkpoint does not exist: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"checkpoint is not valid JSON: {exc}") from exc
+    try:
+        schema = json.loads(RESUME_SCHEMA.read_text(encoding="utf-8"))
+        jsonschema.Draft202012Validator(schema).validate(data)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"resume schema cannot be loaded: {exc}") from exc
+    except jsonschema.ValidationError as exc:
+        raise ValueError(f"checkpoint schema violation: {exc.message}") from exc
+    if data.get("schema_version") != 1:
+        raise ValueError("checkpoint schema_version must be 1")
+    if data.get("concept_id") != "Fn01":
+        raise ValueError("checkpoint concept_id must be Fn01")
+    if data.get("approval_state") != "accepted":
+        raise ValueError("checkpoint approval_state must be accepted")
+    if data.get("source_of_truth") != "docs/progress.md":
+        raise ValueError("checkpoint source_of_truth must be docs/progress.md")
+    reset = data.get("reset_policy", {})
+    if reset.get("default_entry") != "resume":
+        raise ValueError("reset_policy.default_entry must be resume")
+    if reset.get("explicit_reset_reason_required") is not True:
+        raise ValueError("reset requires an explicit reason")
+    if reset.get("invalidated_artifact_list_required") is not True:
+        raise ValueError("reset requires an invalidated artifact list")
+    review = data.get("review_policy", {})
+    if review.get("no_new_issue_no_new_round") is not True:
+        raise ValueError("review policy must forbid empty new rounds")
+    if review.get("semantic_diff_required_to_reopen") is not True:
+        raise ValueError("review reopening requires a semantic diff")
+    if review.get("retest_requires_incremental_classifier") is not True:
+        raise ValueError("retest requires the incremental classifier")
+    if (
+        review.get("build_or_generation_change_requires_incremental_classifier")
+        is not True
+    ):
+        raise ValueError("build/generation changes require the incremental classifier")
+    return data
+
+
+def validate_evidence_identity(
+    relative: str, action_id: str, expected_verdict: str
+) -> None:
+    path = (ROOT / relative).resolve()
+    try:
+        path.relative_to(ROOT.resolve())
+    except ValueError as exc:
+        raise ValueError(f"{action_id} evidence escapes repository: {relative}") from exc
+    try:
+        evidence = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{action_id} evidence is not readable JSON: {relative}: {exc}") from exc
+    actual_action = evidence.get("action_id", evidence.get("actionId"))
+    actual_verdict = evidence.get("verdict", evidence.get("formalVerdict"))
+    if actual_action != action_id:
+        raise ValueError(
+            f"{action_id} evidence action identity mismatch: {actual_action}"
+        )
+    if actual_verdict != expected_verdict:
+        raise ValueError(
+            f"{action_id} evidence verdict mismatch: expected {expected_verdict}, got {actual_verdict}"
+        )
+    verifier = evidence.get("verifier")
+    implementer = evidence.get("implementer")
+    if expected_verdict in {"PASS", "FAIL", "BLOCK", "SPEC_GAP"}:
+        if not verifier or verifier == implementer:
+            raise ValueError(
+                f"{action_id} evidence does not prove independent verification"
+            )
+
+
+def evaluate_resume_checkpoint(path: Path) -> tuple[dict, dict[str, list[str]]]:
+    data = load_resume_checkpoint(path)
+    actions = data.get("actions")
+    if not isinstance(actions, list):
+        raise ValueError("checkpoint actions must be a list")
+    expected_ids = [f"Fn01.A{index:02d}" for index in range(1, 20)]
+    actual_ids = [action.get("action_id") for action in actions]
+    if actual_ids != expected_ids:
+        raise ValueError(f"checkpoint action IDs must be {expected_ids}, got {actual_ids}")
+    invalidated = {action_id: [] for action_id in expected_ids}
+    action_by_id = {action["action_id"]: action for action in actions}
+
+    incremental = data.get("incremental_execution_policy")
+    if not isinstance(incremental, dict):
+        raise ValueError("checkpoint requires incremental_execution_policy")
+    commands = incremental.get("required_commands")
+    if commands != [
+        "tools/br-incremental-execution policy-check",
+        "tools/br-concept-lifecycle resume-check",
+    ]:
+        raise ValueError("checkpoint incremental required_commands are not canonical")
+    control_artifacts = incremental.get("artifacts")
+    if not isinstance(control_artifacts, list) or not control_artifacts:
+        raise ValueError("checkpoint incremental policy must bind control artifacts")
+    for artifact in control_artifacts:
+        validate_control_artifact(ROOT, artifact, "incremental_execution_policy")
+
+    concept_baseline = data.get("concept_baseline")
+    if not isinstance(concept_baseline, list) or not concept_baseline:
+        raise ValueError("checkpoint concept_baseline must be a non-empty list")
+    for artifact in concept_baseline:
+        validate_bound_artifact(ROOT, artifact, "concept", invalidated, expected_ids)
+    control_evidence = data.get("control_evidence")
+    if not isinstance(control_evidence, list) or not control_evidence:
+        raise ValueError("checkpoint control_evidence must be a non-empty list")
+    for artifact in control_evidence:
+        validate_bound_artifact(
+            ROOT, artifact, "concept", invalidated, expected_ids
+        )
+
+    for action in actions:
+        action_id = action["action_id"]
+        if action.get("state") not in RESUMABLE_STATES:
+            raise ValueError(f"{action_id} has unknown state {action.get('state')}")
+        dependencies = action.get("depends_on", [])
+        if not isinstance(dependencies, list):
+            raise ValueError(f"{action_id} depends_on must be a list")
+        unknown_dependencies = [
+            dependency for dependency in dependencies if dependency not in action_by_id
+        ]
+        if unknown_dependencies:
+            raise ValueError(
+                f"{action_id} has unknown dependencies {unknown_dependencies}"
+            )
+        forward_dependencies = [
+            dependency
+            for dependency in dependencies
+            if expected_ids.index(dependency) >= expected_ids.index(action_id)
+        ]
+        if forward_dependencies:
+            raise ValueError(
+                f"{action_id} dependencies must precede it: {forward_dependencies}"
+            )
+        if not action.get("next_action"):
+            raise ValueError(f"{action_id} must record next_action")
+        frozen_inputs = action.get("frozen_inputs")
+        if not isinstance(frozen_inputs, list) or len(frozen_inputs) < 3:
+            raise ValueError(f"{action_id} requires at least three frozen inputs")
+        for artifact in frozen_inputs:
+            validate_bound_artifact(
+                ROOT, artifact, action_id, invalidated, expected_ids
+            )
+        atom_inputs = [
+            artifact
+            for artifact in frozen_inputs
+            if artifact.get("path") == f"spec/atoms/{action_id.replace('.', '/')}/atom.yaml"
+        ]
+        if len(atom_inputs) != 1:
+            raise ValueError(f"{action_id} must bind its canonical atom.yaml exactly once")
+        atom_path = ROOT / atom_inputs[0]["path"]
+        try:
+            atom = yaml.safe_load(atom_path.read_text(encoding="utf-8"))
+        except (OSError, yaml.YAMLError) as exc:
+            raise ValueError(f"{action_id} atom.yaml cannot be parsed: {exc}") from exc
+        if atom.get("action_id") != action_id:
+            raise ValueError(f"{action_id} atom.yaml identity mismatch")
+        atom_dependencies = [
+            dependency.get("action_id")
+            for dependency in atom.get("depends_on", [])
+            if isinstance(dependency, dict) and dependency.get("action_id")
+        ]
+        if dependencies != atom_dependencies:
+            raise ValueError(
+                f"{action_id} checkpoint dependencies {dependencies} do not match atom.yaml {atom_dependencies}"
+            )
+        reuse = action.get("reuse")
+        if action["state"] in {
+            "historical_pass_evidence_recovery",
+            "pass_reusable",
+        }:
+            if not isinstance(reuse, dict):
+                raise ValueError(f"{action_id} reusable state requires reuse record")
+            verdict = reuse.get("formal_verdict")
+            if verdict != "PASS":
+                raise ValueError(f"{action_id} reusable state requires PASS verdict")
+            evidence = reuse.get("evidence")
+            evidence_sha = reuse.get("evidence_sha256")
+            validate_bound_artifact(
+                ROOT,
+                {
+                    "path": evidence,
+                    "sha256": evidence_sha,
+                    "invalidates": [action_id],
+                },
+                action_id,
+                invalidated,
+                expected_ids,
+            )
+            validate_evidence_identity(evidence, action_id, "PASS")
+            for binding in reuse.get("exact_bindings", []):
+                validate_bound_artifact(
+                    ROOT, binding, action_id, invalidated, expected_ids
+                )
+            if action["state"] == "pass_reusable":
+                exact_bindings = reuse.get("exact_bindings", [])
+                runtime_bindings = [
+                    binding
+                    for binding in exact_bindings
+                    if binding.get("path", "").startswith("src/adapter/")
+                ]
+                if (
+                    reuse.get("binding_status") != "exact"
+                    or len(exact_bindings) < 3
+                    or len(runtime_bindings) < 2
+                    or not reuse.get("current_binding_scope")
+                    or not reuse.get("historical_artifact_scope")
+                ):
+                    raise ValueError(
+                        f"{action_id} pass_reusable requires scoped exact current runtime bindings and an explicit historical artifact scope"
+                    )
+            if action["state"] == "historical_pass_evidence_recovery":
+                if (
+                    reuse.get("binding_status")
+                    != "historical_hash_bound_current_source_lineage_requires_evidence_recovery"
+                    or reuse.get("owner_execution_instruction")
+                    != "do_not_repeat_device_recover_or_link_existing_evidence"
+                ):
+                    raise ValueError(
+                        f"{action_id} historical pass must preserve the evidence-recovery limitation"
+                    )
+        if action["state"] == "awaiting_verification":
+            handoff = action.get("implementation_handoff")
+            if not isinstance(handoff, dict):
+                raise ValueError(
+                    f"{action_id} awaiting_verification requires implementation_handoff"
+                )
+            if handoff.get("developer_claim") != "handoff_only_not_PASS":
+                raise ValueError(
+                    f"{action_id} implementation handoff must not claim PASS"
+                )
+            for path_key, sha_key in (
+                ("evidence", "evidence_sha256"),
+                ("implementation", "implementation_sha256"),
+            ):
+                validate_bound_artifact(
+                    ROOT,
+                    {
+                        "path": handoff.get(path_key),
+                        "sha256": handoff.get(sha_key),
+                        "invalidates": [action_id],
+                    },
+                    action_id,
+                    invalidated,
+                    expected_ids,
+                )
+        last_verdict = action.get("last_verdict")
+        if isinstance(last_verdict, dict) and last_verdict.get("evidence"):
+            validate_bound_artifact(
+                ROOT,
+                {
+                    "path": last_verdict.get("evidence"),
+                    "sha256": last_verdict.get("evidence_sha256"),
+                    "invalidates": [action_id],
+                },
+                action_id,
+                invalidated,
+                expected_ids,
+            )
+            validate_evidence_identity(
+                last_verdict["evidence"],
+                action_id,
+                last_verdict.get("formal_verdict"),
+            )
+        verdict_history = action.get("verdict_history", [])
+        if not isinstance(verdict_history, list):
+            raise ValueError(f"{action_id} verdict_history must be a list")
+        for prior_verdict in verdict_history:
+            if not isinstance(prior_verdict, dict) or not prior_verdict.get(
+                "evidence"
+            ):
+                raise ValueError(f"{action_id} verdict_history entry is malformed")
+            validate_bound_artifact(
+                ROOT,
+                {
+                    "path": prior_verdict.get("evidence"),
+                    "sha256": prior_verdict.get("evidence_sha256"),
+                    "invalidates": [action_id],
+                },
+                action_id,
+                invalidated,
+                expected_ids,
+            )
+            validate_evidence_identity(
+                prior_verdict["evidence"],
+                action_id,
+                prior_verdict.get("formal_verdict"),
+            )
+
+    changed = True
+    while changed:
+        changed = False
+        for action in actions:
+            action_id = action["action_id"]
+            for dependency in action.get("depends_on", []):
+                if invalidated[dependency] and not any(
+                    reason == f"dependency:{dependency}"
+                    for reason in invalidated[action_id]
+                ):
+                    invalidated[action_id].append(f"dependency:{dependency}")
+                    changed = True
+    return data, invalidated
+
+
+def print_resume_checkpoint(path: Path, strict: bool) -> int:
+    try:
+        data, invalidated = evaluate_resume_checkpoint(path)
+    except ValueError as exc:
+        print(f"FAIL resume checkpoint: {exc}", file=sys.stderr)
+        return 2
+
+    print(f"checkpoint: {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}")
+    print(f"concept: {data['concept_id']}")
+    print("default_entry: resume")
+    invalid_count = 0
+    for action in data["actions"]:
+        action_id = action["action_id"]
+        reasons = invalidated[action_id]
+        if reasons:
+            invalid_count += 1
+            print(f"INVALIDATED {action_id}: {'; '.join(reasons)}")
+            continue
+        state = action["state"].upper()
+        print(f"{state} {action_id}: {action['next_action']}")
+
+    lanes = data.get("execution_lanes", {})
+    active = lanes.get("active", [])
+    queued = lanes.get("queued", [])
+    if active:
+        print("active_lanes: " + ", ".join(active))
+    if queued:
+        print("queued_lanes: " + ", ".join(queued))
+    historical_count = sum(
+        action["state"] == "historical_pass_evidence_recovery"
+        for action in data["actions"]
+    )
+    if invalid_count:
+        print(f"resume_result: {invalid_count} action(s) invalidated")
+        return 1 if strict else 0
+    print(
+        "resume_result: checkpoint valid; "
+        f"{historical_count} historical evidence-recovery action(s); "
+        "no hash invalidation"
+    )
+    return 0
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def canonical_digest(value: object) -> str:
+    encoded = json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def atomic_write_json(path: Path, value: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            json.dump(value, stream, ensure_ascii=False, indent=2, sort_keys=True)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(path)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+
+
+def load_run_state(path: Path, checkpoint_id: str) -> dict:
+    if not path.exists():
+        return {
+            "schema_version": 1,
+            "checkpoint_id": checkpoint_id,
+            "runs": [],
+        }
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"resume run state is unreadable: {path}: {exc}") from exc
+    if state.get("schema_version") != 1:
+        raise ValueError("resume run state schema_version must be 1")
+    if state.get("checkpoint_id") != checkpoint_id:
+        raise ValueError(
+            "resume run state checkpoint_id does not match the selected checkpoint"
+        )
+    if not isinstance(state.get("runs"), list):
+        raise ValueError("resume run state runs must be a list")
+    return state
+
+
+def action_work_identity(checkpoint: dict, action: dict) -> tuple[str, dict]:
+    identity = {
+        "checkpoint_id": checkpoint["checkpoint_id"],
+        "concept_id": checkpoint["concept_id"],
+        "action_id": action["action_id"],
+        "state": action["state"],
+        "next_action": action["next_action"],
+        "frozen_inputs": action["frozen_inputs"],
+    }
+    return canonical_digest(identity), identity
+
+
+def select_resume_action(
+    checkpoint: dict,
+    invalidated: dict[str, list[str]],
+    requested_action: str | None,
+) -> dict:
+    actions = checkpoint["actions"]
+    if requested_action:
+        matches = [
+            action for action in actions if action["action_id"] == requested_action
+        ]
+        if not matches:
+            raise ValueError(f"checkpoint has no action {requested_action}")
+        action = matches[0]
+        if invalidated[action["action_id"]]:
+            raise ValueError(
+                f"{requested_action} is invalidated: "
+                + "; ".join(invalidated[requested_action])
+            )
+        return action
+    for action in actions:
+        if invalidated[action["action_id"]]:
+            continue
+        if action["state"] != "pass_reusable":
+            return action
+    raise ValueError("checkpoint has no resumable non-reusable action")
+
+
+def print_run(run: dict, prefix: str) -> None:
+    print(f"{prefix}: {run['run_id']}")
+    print(f"action_id: {run['action_id']}")
+    print(f"status: {run['status']}")
+    print(f"work_digest: {run['work_digest']}")
+    print(f"next_action: {run['next_action']}")
+
+
+def resume_next(
+    checkpoint_path: Path, run_state_path: Path, requested_action: str | None
+) -> int:
+    try:
+        checkpoint, invalidated = evaluate_resume_checkpoint(checkpoint_path)
+        invalid_count = sum(bool(reasons) for reasons in invalidated.values())
+        if invalid_count:
+            raise ValueError(
+                f"checkpoint has {invalid_count} invalidated action(s); "
+                "resume-check must be clean"
+            )
+        state = load_run_state(run_state_path, checkpoint["checkpoint_id"])
+        if requested_action is None:
+            open_runs = [
+                run
+                for run in state["runs"]
+                if run.get("status") in {"pending", "in_progress"}
+            ]
+            if open_runs:
+                requested_action = open_runs[-1]["action_id"]
+        action = select_resume_action(checkpoint, invalidated, requested_action)
+        work_digest, identity = action_work_identity(checkpoint, action)
+        existing = next(
+            (run for run in state["runs"] if run["work_digest"] == work_digest),
+            None,
+        )
+        if existing:
+            label = (
+                "ALREADY_COMPLETED"
+                if existing["status"] == "completed"
+                else "RESUMED_RUN"
+            )
+            print_run(existing, label)
+            return 0
+        for previous in state["runs"]:
+            if (
+                previous.get("action_id") == action["action_id"]
+                and previous.get("status") in {"pending", "in_progress"}
+            ):
+                previous["status"] = "superseded"
+                previous["updated_at"] = utc_now()
+                previous["superseded_by_work_digest"] = work_digest
+                previous["supersede_reason"] = (
+                    "accepted checkpoint action state or next_action advanced"
+                )
+        run = {
+            "run_id": f"{action['action_id'].lower().replace('.', '-')}-{work_digest[:20]}",
+            "work_digest": work_digest,
+            "checkpoint_id": checkpoint["checkpoint_id"],
+            "action_id": action["action_id"],
+            "checkpoint_state": action["state"],
+            "next_action": action["next_action"],
+            "frozen_identity": identity,
+            "status": "pending",
+            "created_at": utc_now(),
+            "updated_at": utc_now(),
+            "attempt_count": 0,
+            "result": None,
+        }
+        state["runs"].append(run)
+        atomic_write_json(run_state_path, state)
+        print_run(run, "CREATED_RUN")
+        return 0
+    except ValueError as exc:
+        print(f"FAIL resume-next: {exc}", file=sys.stderr)
+        return 2
+
+
+def find_open_run(state: dict, requested_run_id: str | None) -> dict:
+    candidates = [
+        run
+        for run in state["runs"]
+        if run.get("status") in {"pending", "in_progress"}
+        and (requested_run_id is None or run.get("run_id") == requested_run_id)
+    ]
+    if len(candidates) != 1:
+        raise ValueError(
+            f"expected exactly one open run, found {len(candidates)}; "
+            "pass --run-id when multiple runs exist"
+        )
+    return candidates[0]
+
+
+def run_next(checkpoint_path: Path, run_state_path: Path, run_id: str | None) -> int:
+    try:
+        checkpoint, invalidated = evaluate_resume_checkpoint(checkpoint_path)
+        state = load_run_state(run_state_path, checkpoint["checkpoint_id"])
+        run = find_open_run(state, run_id)
+        action = next(
+            action
+            for action in checkpoint["actions"]
+            if action["action_id"] == run["action_id"]
+        )
+        work_digest, _ = action_work_identity(checkpoint, action)
+        if invalidated[run["action_id"]] or work_digest != run["work_digest"]:
+            raise ValueError(
+                f"{run['run_id']} inputs drifted; do not execute the stale run"
+            )
+        if run["status"] == "pending":
+            run["status"] = "in_progress"
+            run["started_at"] = utc_now()
+            run["attempt_count"] += 1
+            run["updated_at"] = utc_now()
+            atomic_write_json(run_state_path, state)
+            print_run(run, "STARTED_RUN")
+        else:
+            print_run(run, "CONTINUING_RUN")
+        print("execution_contract: perform only next_action; preserve frozen inputs")
+        return 0
+    except (StopIteration, ValueError) as exc:
+        print(f"FAIL run-next: {exc}", file=sys.stderr)
+        return 2
+
+
+def validate_result_output(output: dict) -> None:
+    validate_control_artifact(ROOT, output, "resume result")
+
+
+def close_next(
+    checkpoint_path: Path,
+    run_state_path: Path,
+    result_path: Path,
+    run_id: str | None,
+) -> int:
+    try:
+        checkpoint, invalidated = evaluate_resume_checkpoint(checkpoint_path)
+        state = load_run_state(run_state_path, checkpoint["checkpoint_id"])
+        run = find_open_run(state, run_id)
+        if run["status"] != "in_progress":
+            raise ValueError("close-next requires an in_progress run")
+        try:
+            result = json.loads(result_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"result receipt is unreadable: {exc}") from exc
+        if result.get("schema_version") != 1:
+            raise ValueError("result receipt schema_version must be 1")
+        for field in ("run_id", "work_digest", "action_id"):
+            if result.get(field) != run[field]:
+                raise ValueError(f"result receipt {field} does not match open run")
+        outcome = result.get("outcome")
+        if outcome not in {"completed", "failed", "blocked_physical"}:
+            raise ValueError(
+                "result outcome must be completed, failed, or blocked_physical"
+            )
+        outputs = result.get("outputs")
+        if not isinstance(outputs, list) or not outputs:
+            raise ValueError("result receipt must bind at least one output")
+        for output in outputs:
+            validate_result_output(output)
+        action = next(
+            action
+            for action in checkpoint["actions"]
+            if action["action_id"] == run["action_id"]
+        )
+        work_digest, _ = action_work_identity(checkpoint, action)
+        if invalidated[run["action_id"]] or work_digest != run["work_digest"]:
+            raise ValueError(
+                f"{run['run_id']} inputs drifted; result cannot close stale work"
+            )
+        run["status"] = outcome
+        run["result"] = {
+            "receipt": str(result_path),
+            "receipt_sha256": sha256_path(result_path),
+            "outputs": outputs,
+        }
+        run["updated_at"] = utc_now()
+        run["finished_at"] = utc_now()
+        atomic_write_json(run_state_path, state)
+        print_run(run, "CLOSED_RUN")
+        print("formal_effect: NONE; close-next does not grant Action maturity")
+        return 0
+    except (StopIteration, ValueError) as exc:
+        print(f"FAIL close-next: {exc}", file=sys.stderr)
+        return 2
+
+
+def read_frontmatter(path: Path) -> dict[str, str]:
+    text = path.read_text(encoding="utf-8")
+    match = re.match(r"\A---\s*\n(.*?)\n---\s*\n", text, re.DOTALL)
+    if not match:
+        fail_parallel(f"decision record has no YAML frontmatter: {path}")
+    fields: dict[str, str] = {}
+    for line in match.group(1).splitlines():
+        if ":" not in line or line.lstrip().startswith("#"):
+            continue
+        key, value = line.split(":", 1)
+        fields[key.strip()] = value.strip().strip("'\"")
+    return fields
+
+
+def validate_concept_contract(path: Path) -> dict[str, str]:
+    text = path.read_text(encoding="utf-8")
+    concept = read_frontmatter(path)
+    required_sections = (
+        "## Normative state model",
+        "## Normative logical data model",
+        "## Concept relations: up / down / left / right",
+    )
+    missing = [section for section in required_sections if section not in text]
+    if missing:
+        fail_parallel(f"Concept freeze is missing required sections: {missing}")
+
+    graph_relative = concept.get("concept_graph_source")
+    expected_graph_sha = concept.get("concept_graph_sha256")
+    if not graph_relative or not expected_graph_sha:
+        fail_parallel("Concept freeze must bind the project Concept graph and SHA-256")
+    graph_path = ROOT / graph_relative
+    if not graph_path.is_file():
+        fail_parallel(f"Concept graph does not exist: {graph_relative}")
+    actual_graph_sha = hashlib.sha256(graph_path.read_bytes()).hexdigest()
+    if actual_graph_sha != expected_graph_sha:
+        fail_parallel(
+            f"Concept graph changed: expected {expected_graph_sha}, got {actual_graph_sha}"
+        )
+    print(
+        "PASS Concept contract shape: state model, data model and four-direction "
+        "graph binding present"
+    )
+    return concept
+
+
+def validate_parallel_decision_gate() -> int:
+    route_data = {
+        route: json.loads(STATES[route].read_text(encoding="utf-8"))
+        for route in ("r2", "r3")
+    }
+    for route, data in route_data.items():
+        policy = data.get("parallel_decision_policy", {})
+        if policy.get("compare_after_both_complete_step") != 6:
+            fail_parallel(f"{route} must compare after step 6")
+        if policy.get("winner_continues_from_step") != 7:
+            fail_parallel(f"{route} winner must continue from step 7")
+        if policy.get("backup_freezes_before_step") != 7:
+            fail_parallel(f"{route} backup must freeze before step 7")
+
+    prerequisites = {
+        (
+            data.get("concept_prerequisite", {}).get("record"),
+            data.get("concept_prerequisite", {}).get("required_status_before_step"),
+            data.get("concept_prerequisite", {}).get("required_status"),
+        )
+        for data in route_data.values()
+    }
+    if len(prerequisites) != 1:
+        fail_parallel("R2 and R3 must share one Concept prerequisite")
+    concept_record, required_before_step, required_concept_status = prerequisites.pop()
+    if not concept_record or required_before_step != 2 or not required_concept_status:
+        fail_parallel("Concept prerequisite must require accepted status before step 2")
+    concept_path = ROOT / concept_record
+    if not concept_path.is_file():
+        fail_parallel(f"Concept freeze record does not exist: {concept_record}")
+    concept = validate_concept_contract(concept_path)
+    technology_started = {
+        route
+        for route, data in route_data.items()
+        if any(step["status"] in {"active", "done"} for step in data["steps"][1:])
+    }
+    if technology_started and concept.get("status") != required_concept_status:
+        fail_parallel(
+            f"Technology Route step 2+ started for {technology_started} while "
+            f"Concept status is {concept.get('status')}, not {required_concept_status}"
+        )
+    if concept.get("status") == required_concept_status:
+        print(f"PASS Concept prerequisite gate: {concept_record} is accepted")
+    else:
+        print(
+            "PASS Concept prerequisite gate: Concept is pending and neither "
+            "Technology Route has crossed Step 1"
+        )
+
+    first_six_done = {
+        route: all(step["status"] == "done" for step in data["steps"][:6])
+        for route, data in route_data.items()
+    }
+    advanced = {
+        route
+        for route, data in route_data.items()
+        if any(step["status"] in {"active", "done"} for step in data["steps"][6:])
+    }
+    if advanced and not all(first_six_done.values()):
+        fail_parallel(
+            "step 7+ cannot start until both R2 and R3 have completed step 6"
+        )
+    if len(advanced) > 1:
+        fail_parallel(f"only one selected route may advance after step 6: {advanced}")
+
+    if not advanced:
+        print("PASS parallel decision gate: neither route has crossed step 6")
+        return 0
+
+    winner = advanced.pop()
+    loser = "r3" if winner == "r2" else "r2"
+    loser_step_7 = route_data[loser]["steps"][6]
+    if loser_step_7["status"] != "blocked":
+        fail_parallel(
+            f"{loser} must be blocked at step 7 before {winner} can advance"
+        )
+
+    policy = route_data[winner]["parallel_decision_policy"]
+    decision_relative = policy.get("decision_record")
+    if not decision_relative:
+        fail_parallel(f"{winner} has no decision_record")
+    decision_path = ROOT / decision_relative
+    if not decision_path.is_file():
+        fail_parallel(f"decision record does not exist: {decision_relative}")
+    decision = read_frontmatter(decision_path)
+    expected_route = route_data[winner].get("technology_route")
+    if not expected_route:
+        fail_parallel(f"{winner} has no technology_route")
+    if decision.get("status") != "accepted":
+        fail_parallel("decision record must be accepted before step 7")
+    if decision.get("selected_route") != expected_route:
+        fail_parallel(
+            f"decision selected_route must be {expected_route}, got "
+            f"{decision.get('selected_route')}"
+        )
+    print(f"PASS parallel decision gate: selected {expected_route}; {loser} frozen")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "command",
+        choices=[
+            "status",
+            "check",
+            "pre-push",
+            "parallel-status",
+            "parallel-check",
+            "resume",
+            "resume-check",
+            "resume-next",
+            "run-next",
+            "close-next",
+            "pre-device",
+        ],
+        help=(
+            "status prints one 10-step lifecycle; check validates order; "
+            "pre-push requires all 10 done; parallel-* operates on R2 and R3; "
+            "resume evaluates the accepted incremental checkpoint; "
+            "resume-next/run-next/close-next persist one hash-bound work item; "
+            "pre-device checks host readiness without granting a device verdict"
+        ),
+    )
+    parser.add_argument(
+        "--route",
+        choices=sorted(STATES),
+        default="multi-apk",
+        help="lifecycle alias for status/check/pre-push (default: multi-apk)",
+    )
+    parser.add_argument(
+        "--state",
+        type=Path,
+        help="explicit lifecycle JSON; mutually exclusive with a non-default --route",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=Path,
+        default=RESUME_CHECKPOINT,
+        help="incremental resume checkpoint (resume commands only)",
+    )
+    parser.add_argument(
+        "--run-state",
+        type=Path,
+        default=RESUME_RUN_STATE,
+        help="persistent incremental run journal",
+    )
+    parser.add_argument(
+        "--action",
+        help="stable Action ID selected by resume-next",
+    )
+    parser.add_argument(
+        "--run-id",
+        help="open run selected by run-next/close-next",
+    )
+    parser.add_argument(
+        "--result",
+        type=Path,
+        help="hash-bound result receipt required by close-next",
+    )
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        help="pre-device readiness manifest (pre-device only)",
+    )
+    args = parser.parse_args()
+
+    if args.command == "pre-device":
+        if args.manifest is None:
+            parser.error("pre-device requires --manifest")
+        manifest = (
+            args.manifest.resolve()
+            if args.manifest.is_absolute()
+            else (ROOT / args.manifest).resolve()
+        )
+        return print_pre_device_readiness(manifest)
+
+    resume_commands = {
+        "resume",
+        "resume-check",
+        "resume-next",
+        "run-next",
+        "close-next",
+    }
+    if args.command in resume_commands:
+        if args.state or args.route != "multi-apk":
+            parser.error("resume commands do not accept --state or --route")
+        checkpoint = (
+            args.checkpoint.resolve()
+            if args.checkpoint.is_absolute()
+            else (ROOT / args.checkpoint).resolve()
+        )
+        run_state = (
+            args.run_state.resolve()
+            if args.run_state.is_absolute()
+            else (ROOT / args.run_state).resolve()
+        )
+        if args.command in {"resume", "resume-check"}:
+            return print_resume_checkpoint(
+                checkpoint, strict=args.command == "resume-check"
+            )
+        if args.command == "resume-next":
+            if args.run_id or args.result:
+                parser.error("resume-next accepts --action, not --run-id/--result")
+            return resume_next(checkpoint, run_state, args.action)
+        if args.command == "run-next":
+            if args.action or args.result:
+                parser.error("run-next accepts --run-id, not --action/--result")
+            return run_next(checkpoint, run_state, args.run_id)
+        if args.command == "close-next":
+            if args.action or not args.result:
+                parser.error("close-next requires --result and accepts optional --run-id")
+            result = (
+                args.result.resolve()
+                if args.result.is_absolute()
+                else (ROOT / args.result).resolve()
+            )
+            return close_next(checkpoint, run_state, result, args.run_id)
+        raise AssertionError(args.command)
+
+    if args.command in {"parallel-status", "parallel-check"}:
+        if args.state or args.route != "multi-apk":
+            parser.error("parallel commands do not accept --state or --route")
+        result = 0
+        for route in ("r2", "r3"):
+            if args.command == "parallel-status":
+                result |= print_status(STATES[route])
+            else:
+                result |= run_check(STATES[route], require_complete=False)
+        if args.command == "parallel-check" and result == 0:
+            result |= validate_parallel_decision_gate()
+        return result
+
+    if args.state and args.route != "multi-apk":
+        parser.error("use either --state or --route, not both")
+    state = args.state.resolve() if args.state else STATES[args.route]
+    if not state.is_file():
+        parser.error(f"lifecycle state does not exist: {state}")
+
+    if args.command == "status":
+        return print_status(state)
+    if args.command == "check":
+        return run_check(state, require_complete=False)
+    if args.command == "pre-push":
+        return run_check(state, require_complete=True)
+    raise AssertionError(args.command)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

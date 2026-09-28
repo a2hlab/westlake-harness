@@ -73,6 +73,7 @@
 - **结构化调度**(Markdown 仍是唯一事实源,只加行首定式):车道用 `board_note.sh` 写 `PROGRESS(N)`(每里程碑或 ≤20 分钟)与 `LOCK/UNLOCK(<serial>)`(flock 持有进程真互斥,exit 75=别人持有);依赖取 spec 的 `depends:`。外环看 `board_status.py <板> --schedule --text`,哨用 `--watch`(ACK、可派发、停滞、锁异常即退出)。看板:`board_dash.sh --loop 30`(herdr `app-lighting` 工作区 `dash` 标签页)。
 - **一个战役一块新黑板**(2026-09-28 用户决定):`.octos/boards/<战役>.md`,编号从 #1 起;`.octos/OUTER_LOOP_REVIEW.md` 只做索引。车道名写在条目标题 `[cc-tN]`,`board_status.py <板> --lane <车道> --open` 取自己的条目。
 - **旧板归档方法**:在 `flock -x <板>.lock` 下把旧内容 `head -n <边界前一行>` 原样移进 `.octos/archive/OUTER_LOOP_REVIEW-<年月>-<战役>.md`,用 `cat 归档 <(tail -n +<边界>) | cmp - 原板` 证明逐字节无损,再写新头部 + 在途条目。换本前先确认没有挂着的侦听哨(哨按行数基线判定)。2026-09-28 头条战役 #1–#50(4009 行)已归档,新板从 #51 起。
+- **codex 窗格会弹交互式提问**(屏幕显示 `? 1 question  ⌥+↑ to answer`,herdr 状态 `blocked`):这时 `herdr agent prompt` 只会进队列,不回答问题,车道会一直卡住。处理:`herdr pane send-keys <pane> alt+up` 调出问题,读选项,`enter` 提交(或用方向键换选项)。`lane_watch.sh` 把 blocked 当作停下,能抓到。octoscode 的排队消息则要 `esc` 才会中断当前轮并发送;Claude Code 的消息会在轮中自动插入。
 - herdr server 必须由用户自己起,不要从 agent 会话里 nohup。octoscode stdio 模式要带 `--session <名>`。
 - 复验:`git worktree add --detach ~/.octos/outer/verify/<名> <commit>` → 逐字重跑验收 → 落判词 → 删 worktree。
 

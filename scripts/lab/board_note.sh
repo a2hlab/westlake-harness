@@ -32,6 +32,12 @@ holder() {  # holder <serial> -> "lane pid time" if the recorded holder process 
 }
 
 cmd=${1:-}; shift || true
+# The board is always an existing absolute path: a relative one (oc-t4, 2026-09-28) silently creates a stray
+# file in the agent's worktree and the notes never reach the board.
+case "$cmd" in progress|lock|unlock)
+  case "${1:-}" in /*) [ -f "$1" ] || { echo "REFUSE: board '$1' does not exist" >&2; exit 2; } ;;
+    *) echo "REFUSE: board path '${1:-}' must be absolute" >&2; exit 2 ;; esac ;;
+esac
 case "$cmd" in
   progress)
     [ $# -ge 4 ] || { echo "usage: board_note.sh progress <board> <entry> <lane> <text...>" >&2; exit 2; }

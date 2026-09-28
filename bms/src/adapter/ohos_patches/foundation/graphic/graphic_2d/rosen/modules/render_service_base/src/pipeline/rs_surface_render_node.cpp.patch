@@ -1,0 +1,24 @@
+--- a/foundation/graphic/graphic_2d/rosen/modules/render_service_base/src/pipeline/rs_surface_render_node.cpp
++++ b/foundation/graphic/graphic_2d/rosen/modules/render_service_base/src/pipeline/rs_surface_render_node.cpp
+@@ -1552,6 +1552,21 @@
+     const sptr<SyncFence>& acquireFence, const sptr<SurfaceBuffer>& preBuffer,
+     std::shared_ptr<RSSurfaceHandler::BufferOwnerCount> preBufferOwnerCount)
+ {
++    // G2.14au r5 probe — RSSurfaceRenderNode::UpdateBufferInfo entry
++    // marker: G214au_RS_UpdateBufferInfo
++    {
++        static std::atomic<int> g_count{0};
++        int n = ++g_count;
++        const auto& sName = GetName();
++        if (sName.find("helloworld") != std::string::npos && (n == 1 || n % 30 == 0)) {
++            RS_LOGI("[G214au_RS] UpdateBufferInfo #%{public}d name=%{public}s id=%{public}" PRIu64
++                    " bufferPtr=%{public}p w=%{public}d h=%{public}d damage=[%{public}d,%{public}d,%{public}d,%{public}d]",
++                    n, sName.c_str(), GetId(), buffer.GetRefPtr(),
++                    buffer ? buffer->GetWidth() : 0, buffer ? buffer->GetHeight() : 0,
++                    damageRect.x, damageRect.y, damageRect.w, damageRect.h);
++        }
++    }
++
+ #ifdef RS_ENABLE_GPU
+     auto surfaceParams = static_cast<RSSurfaceRenderParams*>(stagingRenderParams_.get());
+     if (!surfaceParams->IsBufferSynced()) {

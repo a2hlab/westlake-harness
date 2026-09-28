@@ -1,0 +1,188 @@
+--- a/libs/hwui/hwui/Typeface.cpp
++++ b/libs/hwui/hwui/Typeface.cpp
+@@ -16,26 +16,111 @@
+ 
+ #include "Typeface.h"
+ 
++#include <cstdio>
+ #include <fcntl.h>  // For tests.
+ #include <pthread.h>
+ #ifndef _WIN32
+ #include <sys/mman.h>  // For tests.
+ #endif
+ #include <sys/stat.h>  // For tests.
++#include <unistd.h>
+ 
+ #include "MinikinSkia.h"
+ #include "SkPaint.h"
+ #include "SkStream.h"  // Fot tests.
+ #include "SkTypeface.h"
+ 
++#include <minikin/Font.h>
+ #include <minikin/FontCollection.h>
+ #include <minikin/FontFamily.h>
+ #include <minikin/Layout.h>
+ #include <utils/Log.h>
+ #include <utils/MathUtils.h>
+ 
++#include "fonts/Font.h"
++
+ namespace android {
+ 
++namespace {
++
++struct OhFontHandle {
++    SkTypeface* skTypeface;
++    void* data;
++    unsigned size;
++    const char* path;
++};
++
++extern "C" int oh_create_default_skia_handle(OhFontHandle* out);
++extern "C" int oh_typeface_is_child(void);
++
++const Typeface* getOhosDefaultTypeface() {
++    // Do not initialize this singleton in the appspawn parent. The helper is
++    // intentionally child-gated so its C++ static guard cannot be poisoned
++    // by a failed pre-fork attempt.
++    LOG_ALWAYS_FATAL_IF(oh_typeface_is_child() != 1,
++                        "OH default Typeface requested before child fork");
++    if (oh_typeface_is_child() != 1) {
++        return nullptr;
++    }
++
++    static Typeface* const ohDefault = []() -> Typeface* {
++        OhFontHandle handle = {};
++        const int rc = oh_create_default_skia_handle(&handle);
++        if (rc != 0 || handle.skTypeface == nullptr || handle.data == nullptr ||
++            handle.size == 0 || handle.path == nullptr) {
++            std::fprintf(stderr,
++                         "[OH-TF] default SkTypeface failed rc=%d tf=%p data=%p size=%u path=%p\n",
++                         rc, static_cast<void*>(handle.skTypeface), handle.data, handle.size,
++                         static_cast<const void*>(handle.path));
++            return nullptr;
++        }
++
++        sk_sp<SkTypeface> skTypeface(handle.skTypeface);
++        std::vector<minikin::FontVariation> axes;
++        std::shared_ptr<minikin::MinikinFont> minikinFont =
++                std::make_shared<MinikinFontSkia>(std::move(skTypeface), fonts::getNewSourceId(),
++                                                  handle.data, handle.size, handle.path, 0, axes);
++        std::shared_ptr<minikin::Font> font = minikin::Font::Builder(minikinFont).build();
++        if (font == nullptr) {
++            std::fprintf(stderr, "[OH-TF] Minikin Font build failed for %s\n", handle.path);
++            return nullptr;
++        }
++
++        std::vector<std::shared_ptr<minikin::Font>> fonts;
++        fonts.push_back(std::move(font));
++        std::shared_ptr<minikin::FontFamily> family =
++                minikin::FontFamily::create(std::move(fonts));
++        if (family == nullptr) {
++            std::fprintf(stderr, "[OH-TF] FontFamily build failed for %s\n", handle.path);
++            return nullptr;
++        }
++
++        std::vector<std::shared_ptr<minikin::FontFamily>> families;
++        families.push_back(std::move(family));
++        std::shared_ptr<minikin::FontCollection> collection =
++                minikin::FontCollection::create(std::move(families));
++        if (collection == nullptr || collection->getFamilyCount() == 0) {
++            std::fprintf(stderr, "[OH-TF] FontCollection build failed for %s\n", handle.path);
++            return nullptr;
++        }
++
++        Typeface* result = new Typeface();
++        result->fFontCollection = std::move(collection);
++        result->fAPIStyle = Typeface::kNormal;
++        result->fBaseWeight = SkFontStyle::kNormal_Weight;
++        result->fStyle = minikin::FontStyle();
++        std::fprintf(stderr,
++                     "[OH-TF] real default ready path=%s bytes=%u collection=%p families=%zu\n",
++                     handle.path, handle.size, static_cast<void*>(result->fFontCollection.get()),
++                     result->fFontCollection->getFamilyCount());
++        return result;
++    }();
++
++    return ohDefault;
++}
++
++}  // namespace
++
+ static Typeface::Style computeAPIStyle(int weight, bool italic) {
+     // This bold detection comes from SkTypeface.h
+     if (weight >= SkFontStyle::kSemiBold_Weight) {
+@@ -63,8 +148,24 @@
+ const Typeface* gDefaultTypeface = NULL;
+ 
+ const Typeface* Typeface::resolveDefault(const Typeface* src) {
+-    LOG_ALWAYS_FATAL_IF(src == nullptr && gDefaultTypeface == nullptr);
+-    return src == nullptr ? gDefaultTypeface : src;
++    const Typeface* candidate = src == nullptr ? gDefaultTypeface : src;
++    if (candidate != nullptr && candidate->fFontCollection != nullptr &&
++        candidate->fFontCollection->getFamilyCount() > 0) {
++        return candidate;
++    }
++
++    const Typeface* ohDefault = getOhosDefaultTypeface();
++    LOG_ALWAYS_FATAL_IF(ohDefault == nullptr || ohDefault->fFontCollection == nullptr ||
++                        ohDefault->fFontCollection->getFamilyCount() == 0,
++                        "Failed to construct a real OH default Typeface");
++    if (ohDefault == nullptr || ohDefault->fFontCollection == nullptr ||
++        ohDefault->fFontCollection->getFamilyCount() == 0) {
++        return nullptr;
++    }
++
++    // Do not mutate the inherited/global placeholder here. Java's normal
++    // nativeSetDefault path publishes the complete clone after this returns.
++    return ohDefault;
+ }
+ 
+ Typeface* Typeface::createRelative(Typeface* src, Typeface::Style style) {
+@@ -127,12 +228,19 @@
+ Typeface* Typeface::createFromFamilies(std::vector<std::shared_ptr<minikin::FontFamily>>&& families,
+                                        int weight, int italic, const Typeface* fallback) {
+     Typeface* result = new Typeface;
+-    if (fallback == nullptr) {
++    const bool fallbackValid = fallback != nullptr && fallback->fFontCollection != nullptr &&
++            fallback->fFontCollection->getFamilyCount() > 0;
++    if (families.empty() && !fallbackValid) {
++        result->fFontCollection = resolveDefault(nullptr)->fFontCollection;
++    } else if (!fallbackValid) {
+         result->fFontCollection = minikin::FontCollection::create(std::move(families));
+     } else {
+         result->fFontCollection =
+                 fallback->fFontCollection->createCollectionWithFamilies(std::move(families));
+     }
++    LOG_ALWAYS_FATAL_IF(result->fFontCollection == nullptr ||
++                                result->fFontCollection->getFamilyCount() == 0,
++                        "Typeface created without a real FontCollection");
+ 
+     if (weight == RESOLVE_BY_FONT_TABLE || italic == RESOLVE_BY_FONT_TABLE) {
+         int weightFromFont;
+@@ -186,8 +294,10 @@
+     struct stat st = {};
+     LOG_ALWAYS_FATAL_IF(fstat(fd, &st) == -1, "Failed to stat file %s", kRobotoFont);
+     void* data = mmap(nullptr, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
++    close(fd);
++    LOG_ALWAYS_FATAL_IF(data == MAP_FAILED, "Failed to map file %s", kRobotoFont);
+     std::unique_ptr<SkStreamAsset> fontData(new SkMemoryStream(data, st.st_size));
+-    sk_sp<SkTypeface> typeface = SkTypeface::MakeFromStream(std::move(fontData));
++    sk_sp<SkTypeface> typeface = SkTypeface::MakeFromStream(std::move(fontData), 0);
+     LOG_ALWAYS_FATAL_IF(typeface == nullptr, "Failed to make typeface from %s", kRobotoFont);
+ 
+     std::shared_ptr<minikin::MinikinFont> font =
+@@ -196,8 +306,12 @@
+     std::vector<std::shared_ptr<minikin::Font>> fonts;
+     fonts.push_back(minikin::Font::Builder(font).build());
+ 
++    // P10.C: FontFamily::create returns shared_ptr<FontFamily>, but
++    // FontCollection::create wants vector<shared_ptr<FontFamily>>. Wrap.
++    std::vector<std::shared_ptr<minikin::FontFamily>> _families;
++    _families.push_back(minikin::FontFamily::create(std::move(fonts)));
+     std::shared_ptr<minikin::FontCollection> collection =
+-            minikin::FontCollection::create(minikin::FontFamily::create(std::move(fonts)));
++            minikin::FontCollection::create(std::move(_families));
+ 
+     Typeface* hwTypeface = new Typeface();
+     hwTypeface->fFontCollection = collection;

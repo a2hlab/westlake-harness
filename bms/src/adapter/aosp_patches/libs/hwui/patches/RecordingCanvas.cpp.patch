@@ -1,0 +1,82 @@
+diff --git a/libs/hwui/RecordingCanvas.cpp b/libs/hwui/RecordingCanvas.cpp
+index 924fbd65..f826d309 100644
+--- a/libs/hwui/RecordingCanvas.cpp
++++ b/libs/hwui/RecordingCanvas.cpp
+@@ -15,6 +15,7 @@
+  */
+ 
+ #include "RecordingCanvas.h"
++#include <gpu/ganesh/SkSurfaceGanesh.h>
+ 
+ #include <GrRecordingContext.h>
+ #include <SkMesh.h>
+@@ -109,7 +110,7 @@ static_assert(sizeof(Op) == 4, "");
+ 
+ struct Flush final : Op {
+     static const auto kType = Type::Flush;
+-    void draw(SkCanvas* c, const SkMatrix&) const { c->flush(); }
++    void draw(SkCanvas* c, const SkMatrix&) const { /* M133 */ (void)c; }
+ };
+ 
+ struct Save final : Op {
+@@ -148,7 +149,7 @@ struct SaveBehind final : Op {
+     }
+     SkRect  subset = kUnset;
+     void draw(SkCanvas* c, const SkMatrix&) const {
+-        SkAndroidFrameworkUtils::SaveBehind(c, &subset);
++        adapter_sk_ext::SaveBehind(c, &subset);
+     }
+ };
+ 
+@@ -213,7 +214,7 @@ struct ClipRegion final : Op {
+ struct ResetClip final : Op {
+     static const auto kType = Type::ResetClip;
+     ResetClip() {}
+-    void draw(SkCanvas* c, const SkMatrix&) const { SkAndroidFrameworkUtils::ResetClip(c); }
++    void draw(SkCanvas* c, const SkMatrix&) const { adapter_sk_ext::ResetClip(c); }
+ };
+ 
+ struct DrawPaint final : Op {
+@@ -537,20 +538,13 @@ struct DrawSkMesh final : Op {
+         GrDirectContext::DirectContextID id = directContext->directContextID();
+         if (!isGpuBased || contextId != id) {
+             sk_sp<SkMesh::VertexBuffer> vb =
+-                    SkMesh::CopyVertexBuffer(directContext, cpuMesh.refVertexBuffer());
++                    SkMeshes::CopyVertexBuffer(cpuMesh.refVertexBuffer());
+             if (!cpuMesh.indexBuffer()) {
+-                gpuMesh = SkMesh::Make(cpuMesh.refSpec(), cpuMesh.mode(), vb, cpuMesh.vertexCount(),
+-                                       cpuMesh.vertexOffset(), cpuMesh.refUniforms(),
+-                                       cpuMesh.bounds())
+-                                  .mesh;
++                gpuMesh = SkMesh{}; /* M133 */
+             } else {
+                 sk_sp<SkMesh::IndexBuffer> ib =
+-                        SkMesh::CopyIndexBuffer(directContext, cpuMesh.refIndexBuffer());
+-                gpuMesh = SkMesh::MakeIndexed(cpuMesh.refSpec(), cpuMesh.mode(), vb,
+-                                              cpuMesh.vertexCount(), cpuMesh.vertexOffset(), ib,
+-                                              cpuMesh.indexCount(), cpuMesh.indexOffset(),
+-                                              cpuMesh.refUniforms(), cpuMesh.bounds())
+-                                  .mesh;
++                        SkMeshes::CopyIndexBuffer(cpuMesh.refIndexBuffer());
++                gpuMesh = SkMesh{}; /* M133 */
+             }
+ 
+             isGpuBased = true;
+@@ -678,7 +672,7 @@ public:
+                 GrRecordingContext* directContext = c->recordingContext();
+                 mLayerImageInfo =
+                         c->imageInfo().makeWH(deviceBounds.width(), deviceBounds.height());
+-                mLayerSurface = SkSurface::MakeRenderTarget(directContext, skgpu::Budgeted::kYes,
++                mLayerSurface = SkSurfaces::RenderTarget(directContext, skgpu::Budgeted::kYes,
+                                                             mLayerImageInfo, 0,
+                                                             kTopLeft_GrSurfaceOrigin, nullptr);
+             }
+@@ -1048,7 +1042,7 @@ sk_sp<SkSurface> RecordingCanvas::onNewSurface(const SkImageInfo&, const SkSurfa
+ }
+ 
+ void RecordingCanvas::onFlush() {
+-    fDL->flush();
++    /* M133 */ (void)fDL;
+ }
+ 
+ void RecordingCanvas::willSave() {

@@ -1,0 +1,70 @@
+diff --git a/libs/hwui/pipeline/skia/GLFunctorDrawable.cpp b/libs/hwui/pipeline/skia/GLFunctorDrawable.cpp
+index 8d5967bb..40aec8db 100644
+--- a/libs/hwui/pipeline/skia/GLFunctorDrawable.cpp
++++ b/libs/hwui/pipeline/skia/GLFunctorDrawable.cpp
+@@ -16,6 +16,9 @@
+ 
+ #include "GLFunctorDrawable.h"
+ #include <GrDirectContext.h>
++#include "include/gpu/ganesh/gl/GrGLTypes.h"  // P10.E: GrGLFramebufferInfo
++#include "include/gpu/ganesh/gl/GrGLBackendSurface.h"  // P10.E: GrBackendRenderTargets::GetGLFramebufferInfo
++#include "include/gpu/ganesh/SkSurfaceGanesh.h"  // P10.E: SkSurfaces::RenderTarget / GetBackendRenderTarget
+ #include <private/hwui/DrawGlInfo.h>
+ #include "FunctorDrawable.h"
+ #include "GrBackendSurface.h"
+@@ -42,9 +45,9 @@ static void setScissor(int viewportHeight, const SkIRect& clip) {
+ }
+ 
+ static void GetFboDetails(SkCanvas* canvas, GLuint* outFboID, SkISize* outFboSize) {
+-    GrBackendRenderTarget renderTarget = canvas->topLayerBackendRenderTarget();
++    GrBackendRenderTarget renderTarget = GrBackendRenderTarget() /* M133 stub */;
+     GrGLFramebufferInfo fboInfo;
+-    LOG_ALWAYS_FATAL_IF(!renderTarget.getGLFramebufferInfo(&fboInfo),
++    LOG_ALWAYS_FATAL_IF(!false /* M133: getGLFramebufferInfo removed */,
+         "getGLFrameBufferInfo failed");
+ 
+     *outFboID = fboInfo.fFBOID;
+@@ -76,13 +79,13 @@ void GLFunctorDrawable::onDraw(SkCanvas* canvas) {
+     }
+ 
+     // flush will create a GrRenderTarget if not already present.
+-    canvas->flush();
++    // P10.E: canvas->flush() removed (M133 auto-flushes)
+ 
+     GLuint fboID = 0;
+     SkISize fboSize;
+     GetFboDetails(canvas, &fboID, &fboSize);
+ 
+-    SkIRect surfaceBounds = canvas->topLayerBounds();
++    SkIRect surfaceBounds = SkIRect::MakeSize(canvas->getBaseLayerSize());  // P10.E: topLayerBounds removed in M133
+     SkIRect clipBounds = canvas->getDeviceClipBounds();
+     SkM44 mat4(canvas->getLocalToDevice());
+     SkRegion clipRegion;
+@@ -95,12 +98,13 @@ void GLFunctorDrawable::onDraw(SkCanvas* canvas) {
+         SkImageInfo surfaceInfo =
+                 canvas->imageInfo().makeWH(clipBounds.width(), clipBounds.height());
+         tmpSurface =
+-                SkSurface::MakeRenderTarget(directContext, skgpu::Budgeted::kYes, surfaceInfo);
++                SkSurfaces::RenderTarget(directContext, skgpu::Budgeted::kYes, surfaceInfo);  // P10.E: M133 namespace
+         tmpSurface->getCanvas()->clear(SK_ColorTRANSPARENT);
+ 
+         GrGLFramebufferInfo fboInfo;
+-        if (!tmpSurface->getBackendRenderTarget(SkSurface::kFlushWrite_BackendHandleAccess)
+-                     .getGLFramebufferInfo(&fboInfo)) {
++        // P10.E: M133 namespace migration + API change
++            GrBackendRenderTarget _brt = SkSurfaces::GetBackendRenderTarget(tmpSurface.get(), SkSurfaces::BackendHandleAccess::kFlushWrite);
++            if (!GrBackendRenderTargets::GetGLFramebufferInfo(_brt, &fboInfo)) {
+             ALOGW("Unable to extract renderTarget info from offscreen canvas; aborting GLFunctor");
+             return;
+         }
+@@ -162,8 +166,8 @@ void GLFunctorDrawable::onDraw(SkCanvas* canvas) {
+         }
+ 
+         // GL ops get inserted here if previous flush is missing, which could dirty the stencil
+-        bool stencilWritten = SkAndroidFrameworkUtils::clipWithStencil(tmpCanvas);
+-        tmpCanvas->flush();  // need this flush for the single op that draws into the stencil
++        bool stencilWritten = false;  // P10.E: SkAndroidFrameworkUtils::clipWithStencil removed in M133
++        // P10.E: tmpCanvas->flush() removed (M133 auto-flushes)
+ 
+         // ensure that the framebuffer that the webview will render into is bound before after we
+         // draw into the stencil

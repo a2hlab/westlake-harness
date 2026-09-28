@@ -1,0 +1,55 @@
+--- a/foundation/ability/ability_runtime/services/abilitymgr/src/ability_manager_service.cpp	2026-07-26 22:45:32
++++ b/foundation/ability/ability_runtime/services/abilitymgr/src/ability_manager_service.cpp	2026-07-26 22:46:06
+@@ -1202,8 +1202,15 @@
+     }
+     TAG_LOGD(AAFwkTag::ABILITYMGR,
+         "Check call service or extension permission, name is %{public}s.", abilityInfo.name.c_str());
++    // WestLake/Bridge Fn04: Android-on-OpenHarmony apps use RESERVE_TYPE but may not have
++    // a broker collaborator registered on developer devices. Allow the call when the target
++    // is an Android app (collaboratorType == RESERVE_TYPE) instead of failing closed.
+     auto collaborator = GetCollaborator(CollaboratorType::RESERVE_TYPE);
+     if (collaborator == nullptr) {
++        if (abilityRequest.collaboratorType == CollaboratorType::RESERVE_TYPE) {
++            TAG_LOGW(AAFwkTag::ABILITYMGR, "Fn04: collaborator null for RESERVE_TYPE android app, allow");
++            return ERR_OK;
++        }
+         TAG_LOGE(AAFwkTag::ABILITYMGR, "collaborator null");
+         return CHECK_PERMISSION_FAILED;
+     }
+@@ -7982,7 +7989,13 @@
+     request.abilityInfo = abilityInfo->abilityInfo;
+     request.extensionProcessMode = abilityInfo->extensionProcessMode;
+     request.customProcess = abilityInfo->customProcess;
++    // WestLake/Bridge Fn04: Android apps register with module codePath under .../android,
++    // while applicationInfo.codePath may be the parent directory. Check both so AMS
++    // marks the request as RESERVE_TYPE and routes to appspawn-x.
+     request.collaboratorType = GetCollaboratorType(request.abilityInfo.applicationInfo.codePath);
++    if (request.collaboratorType != CollaboratorType::RESERVE_TYPE) {
++        request.collaboratorType = GetCollaboratorType(request.abilityInfo.codePath);
++    }
+     request.isTargetPlugin = abilityInfo->isTargetPlugin;
+ 
+     if (request.abilityInfo.type == AppExecFwk::AbilityType::SERVICE && request.abilityInfo.isStageBasedModel) {
+@@ -10906,6 +10919,10 @@
+             "Check static permission, name is %{public}s.", abilityInfo.name.c_str());
+         auto collaborator = GetCollaborator(CollaboratorType::RESERVE_TYPE);
+         if (collaborator == nullptr) {
++            if (abilityRequest.collaboratorType == CollaboratorType::RESERVE_TYPE) {
++                TAG_LOGW(AAFwkTag::ABILITYMGR, "Fn04: collaborator null for RESERVE_TYPE android app, grant static cfg");
++                return AppExecFwk::Constants::PERMISSION_GRANTED;
++            }
+             TAG_LOGE(AAFwkTag::ABILITYMGR, "Collaborator null");
+             return AppExecFwk::Constants::PERMISSION_NOT_GRANTED;
+         }
+@@ -12842,6 +12859,11 @@
+     } else if (codePath == std::to_string(CollaboratorType::OTHERS_TYPE)) {
+         return CollaboratorType::OTHERS_TYPE;
+     }
++    // WestLake/Bridge Fn04: Android-on-OpenHarmony apps install with codePath under /android
++    // (e.g. .../android or .../android/base.apk).
++    if (codePath.find("/android") != std::string::npos) {
++        return CollaboratorType::RESERVE_TYPE;
++    }
+     return 0;
+ }
+ 

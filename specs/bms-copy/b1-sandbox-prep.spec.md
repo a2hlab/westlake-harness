@@ -26,13 +26,12 @@ tags: [bms, sandbox, cx-t0]
 
 ## 验收标准
 
-场景: Wikipedia 补上沙箱准备后进程存活并上屏
-  测试: b1_wikipedia_lit_after_sandbox_prep
-  审核: human
+场景: Wikipedia 补上沙箱准备后越过沙箱墙
+  测试: b1_wikipedia_passes_sandbox_wall
   假设 Wikipedia 已 `bm install` 且执行了沙箱准备函数
-  当 从桌面点击它的图标并等待 15 s
-  那么 该 app 的 BMS uid 下有进程持续存活
-  并且 外环读图签认截图是 Wikipedia 自身界面
+  当 从桌面点击它的图标并采集 hilog 与进程时间线
+  那么 AppSpawnX child 不再因沙箱 bind mount ENOENT 退出
+  并且 child 进入 `ActivityThread.main`(上屏由 B5 负责,入口 alias 解析是其后的一堵墙)
 
 场景: 10 个沙箱根目录属性与 HelloWorld 一致
   测试: b1_sandbox_roots_match_helloworld

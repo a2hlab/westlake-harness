@@ -1,0 +1,90 @@
+--- a/third_party/skia/m133/src/gpu/ganesh/GrDrawingManager.cpp
++++ b/third_party/skia/m133/src/gpu/ganesh/GrDrawingManager.cpp
+@@ -6,6 +6,10 @@
+  */
+ #include "src/gpu/ganesh/GrDrawingManager.h"
+ 
++// OH_SK_GATE_INC — v4 probes added 2026-05-13 to pinpoint OpsTask drop gate
++#include <atomic>
++#include <cstdio>
++
+ #include "include/core/SkData.h"
+ #include "include/core/SkRect.h"
+ #include "include/core/SkSize.h"
+@@ -174,6 +178,17 @@
+         preFlushSuccessful &= onFlushCBObject->preFlush(&onFlushProvider);
+     }
+ 
++    // OH_SK_GATE_PREFLUSH v4b probe — log preFlushSuccessful result
++    {
++        static std::atomic<int> g_OH_SK_GATE_PREFLUSH{0};
++        int n = ++g_OH_SK_GATE_PREFLUSH;
++        if (n <= 10 || n % 100 == 0) {
++            std::fprintf(stderr,
++                "[OH_SK_GATE_PREFLUSH] #%d preFlushSuccessful=%d fOnFlushCBObjects.size=%d\n",
++                n, preFlushSuccessful?1:0, fOnFlushCBObjects.size());
++        }
++    }
++
+     bool cachePurgeNeeded = false;
+ 
+     if (preFlushSuccessful) {
+@@ -205,6 +220,16 @@
+             resourceAllocator.assign();
+         }
+ 
++        // OH_SK_GATE_FLUSH_PRE_EXEC v4 probe — capture gate A inputs
++        {
++            static std::atomic<int> g_OH_SK_GATE_FLUSH_PRE_EXEC{0};
++            int n = ++g_OH_SK_GATE_FLUSH_PRE_EXEC;
++            if (n <= 10 || n % 100 == 0) {
++                std::fprintf(stderr,
++                    "[OH_SK_GATE_FLUSH_PRE_EXEC] #%d failedInstantiation=%d fDAG.size=%d usingReorderedDAG=%d\n",
++                    n, resourceAllocator.failedInstantiation()?1:0, fDAG.size(), usingReorderedDAG?1:0);
++            }
++        }
+         cachePurgeNeeded = !resourceAllocator.failedInstantiation() &&
+                            this->executeRenderTasks(&flushState);
+     }
+@@ -259,6 +284,22 @@
+ 
+     bool anyRenderTasksExecuted = false;
+ 
++    // OH_SK_GATE_EXEC_DAG v4 probe — bucket isInstantiated over fDAG at entry
++    {
++        static std::atomic<int> g_OH_SK_GATE_EXEC_DAG{0};
++        int n = ++g_OH_SK_GATE_EXEC_DAG;
++        if (n <= 10 || n % 100 == 0) {
++            int inst_t = 0, inst_f = 0, null_t = 0;
++            for (const auto& rt : fDAG) {
++                if (!rt) { ++null_t; continue; }
++                if (rt->isInstantiated()) ++inst_t; else ++inst_f;
++            }
++            std::fprintf(stderr,
++                "[OH_SK_GATE_EXEC_DAG] #%d fDAG.size=%d inst_true=%d inst_false=%d null=%d\n",
++                n, fDAG.size(), inst_t, inst_f, null_t);
++        }
++    }
++
+     for (const auto& renderTask : fDAG) {
+         if (!renderTask || !renderTask->isInstantiated()) {
+              continue;
+@@ -287,6 +328,18 @@
+ #endif
+     for (const auto& renderTask : fDAG) {
+         SkASSERT(renderTask);
++        // OH_SK_GATE_EXEC_TASK v4 probe — per-task gate B observation
++        {
++            static std::atomic<int> g_OH_SK_GATE_EXEC_TASK{0};
++            int n = ++g_OH_SK_GATE_EXEC_TASK;
++            if (n <= 10 || n % 100 == 0) {
++                bool inst = renderTask->isInstantiated();
++                bool isOps = renderTask->asOpsTask() != nullptr;
++                std::fprintf(stderr,
++                    "[OH_SK_GATE_EXEC_TASK] #%d task=%p isInstantiated=%d isOpsTask=%d\n",
++                    n, (void*)renderTask.get(), inst?1:0, isOps?1:0);
++            }
++        }
+         if (!renderTask->isInstantiated()) {
+             continue;
+         }
