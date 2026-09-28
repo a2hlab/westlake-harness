@@ -325,3 +325,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
   - 在 demo 板上 stage 新 app 前确认不动头条运行时 `a2hlab-source-c91d26bf…`(61b 曾因此头条起不来)。**别在唯一能用的 demo 板上做重启实验**:本轮为测自启重启了能用的 5cd,头条随之掉线,只能靠 provision 拉回。
   - 板子经 hub 接 Mac 时 USB 在 provision/remount 瞬间掉过三次,最长 50 分钟不回,只能物理重插。
   - 头条运行时目录会膨胀:61b 上 31GB,其中 `profile-backups/` 22GB、`private-tmp/*.stderr` 5.7GB(单个 743MB,几乎全是 `[TOUCH21-POLL]`)。grep stderr 先 `wc -l` 记基线,再 `tail -n +BASE | grep -v TOUCH21-POLL`。
+
+- 2026-09-28 BMS 复现器迁移：`reproduce-oh61-game-suite` 没有 `check`（单 app 才有）；APFS 克隆会保留 ZigZag `current` 的旧绝对路径，改底层 serial 白名单也会触发 wrapper 固定 DRIVER_SHA，须显式记录迁移，不能把输入门禁失败归为板端失败；HelloWorld restore 三板首帧/触摸变红已证，见 `benchmark/2026-09-28-bms-route-deploy/`。
