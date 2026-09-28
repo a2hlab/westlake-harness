@@ -60,6 +60,10 @@
   - Mac 本机:DevEco 自带 OH clang `…/sdk/default/openharmony/native/llvm/bin/clang --target=aarch64-linux-ohos --sysroot=…/native/sysroot`,导出集合与 VM 产物一致,但**字节不同**(DevEco 编译器提交 `99548401`,VM 锁定的是 `feef13a3`,差在 `.comment`)→ 适合快速迭代,不适合要对上记录哈希的交付物。zsh 下参数串要 `${=FLAGS}`,否则 `-shared` 丢失、报 `undefined symbol: main`。
   - OrbStack docker(`--platform linux/amd64`,如现有镜像 `oh7-native-closure`)+ 把 VM 的 `~/a2hlab/ws/toolchains/ohos-sdk/native/{llvm,sysroot}`(2.3 GB,`orb … tar | docker run -i … tar -x` 约 9 s)拷进 volume → **逐字节复现** `a1ae3950…b37bf`。VM 里的 `clang` 是 `exec ccache <绝对路径>/clang-15` 的包装脚本,容器里直接调 `clang-15`。
   - 所以 VM 不是能力上必需,而是 346 GB 的工作区状态(verify 树、out-*、锁定工具链)都在那里;大件(libart、boot image、全量重建)仍在 VM 或 hw248 上做。
+- **构建默认走 docker:`westlake-inputs/tools/dockbuild.sh`**(镜像 `scripts/lab/dockbuild.sh`)。OrbStack 容器能直接挂 VM 的文件系统(`/mnt/machines/a2hlab/...`,不用拷贝),脚本把 `~/a2hlab`、作者路径 `/home/dspfac/a2hlab/source-closure/verify`、ccache、`westlake-inputs` 都挂在 VM 里的原路径,uid 501 → 现有 `build_*.sh` 原样可跑,产物写回 VM 工作区。
+  - `dockbuild.sh image`(一次,约 90 s,apt 走华为云镜像)/ `check`(自检挂载)/ `run [-n 名] -- <命令>` / `cc <clang 参数>`(锁定 clang-15 + sysroot,cwd 为 Mac 当前目录)。
+  - 实测(2026-09-28):`build_android_native.py --target ohos --library liblog.so --library libbase.so` 在 VM 与容器各跑一次(关 ccache),`.so`/`.o` 逐字节相同,`.o.d` 与 `artifacts.json` 只差输出目录名;耗时 11.3 s 对 11.6 s。**单次不更快**(同一 OrbStack 内核 + Rosetta),收益在于**可并行起多个隔离容器**。
+  - 上板操作(probe_source_app.py、hdc)仍在 VM 里跑:`hdc_mac.sh` 依赖 OrbStack 的 `mac` 命令,容器里没有。
 - 重建时 framework flags 除 java-profile 的 3 个外还需 8 个 APEX flag 库;native object map 在 `$A/native-object-map.json`。就绪检查:`planned_staging.py` + harness `deploy-check`。
 
 ## 6. OctoLoop 现场
