@@ -76,8 +76,15 @@ PY
     if h=$(holder "$serial"); then
       set -- $h
       [ "$1" = "$lane" ] || { echo "REFUSE: $serial is held by $1, not $lane" >&2; exit 1; }
-      kill "$2" 2>/dev/null || true
+      pkill -P "$2" 2>/dev/null || true; kill "$2" 2>/dev/null || true
     fi
+    # Anything of ours still holding the lock file goes too -- e.g. the `sleep` child of an old-style
+    # `flock -n … sleep` holder, which survives when only its flock parent is killed.
+    for p in $(lsof -t "$LOCKS/$serial.lock" 2>/dev/null); do
+      case "$(ps -o command= -p "$p" 2>/dev/null)" in
+        "sleep 86400"|flock\ -n\ *|*python3*) kill "$p" 2>/dev/null || true ;;
+      esac
+    done
     rm -f "$LOCKS/$serial.holder"
     printf 'UNLOCK(%s) %s %s\n' "$serial" "$lane" "$(now)" | "$APPEND" "$board" ;;
   held)
