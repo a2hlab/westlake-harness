@@ -1,7 +1,7 @@
 spec: task
 name: "B4 BMS 路线横向点亮重跑"
 inherits: project
-depends: [b1-sandbox-prep, b2-label-resolve, b3-icon-resolve]
+depends: [b1-sandbox-prep, b2-label-resolve, b3-icon-resolve, b5-activity-alias]
 tags: [bms, sweep, cx-t0]
 ---
 
