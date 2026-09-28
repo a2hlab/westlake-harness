@@ -269,7 +269,8 @@ def events(prev, cur):
     pst = {e["id"] for l in prev["lanes"] for e in l["entries"] if e["stale"]}
     for l in cur["lanes"]:
         for e in l["entries"]:
-            if e["stale"] and e["id"] not in pst:
+            # a newly dispatched entry has no PROGRESS yet; its silence is timed by the watch loop instead
+            if e["stale"] and e["id"] in ps and e["id"] not in pst:
                 ev.append(f"lane {l['lane']} entry #{e['id']} stale: no PROGRESS for > {cur['stale_min']} min")
     for a in set(cur["anomalies"]) - set(prev["anomalies"]):
         ev.append(f"anomaly: {a}")
