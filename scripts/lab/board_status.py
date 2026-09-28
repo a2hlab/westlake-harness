@@ -316,9 +316,13 @@ def main(argv):
             cur = schedule(board, stale, spec_dir)
             ev = events(base, cur)
             # a lane that never wrote PROGRESS is stale in the baseline too; time it from the watch start
+            # ...unless its task still waits on an unfinished dependency (e.g. B3 queued behind B2 in one lane)
+            waiting = {t["task"] for t in cur["tasks"] if not t["deps_done"]}
             if (time.time() - started) / 60 > stale:
                 for l in cur["lanes"]:
                     for e in l["entries"]:
+                        if e["task"] in waiting:
+                            continue
                         if e["last_progress"] is None and e["id"] not in silent_reported:
                             silent_reported.add(e["id"])
                             ev.append(f"lane {l['lane']} entry #{e['id']} silent: no PROGRESS since the watch "
