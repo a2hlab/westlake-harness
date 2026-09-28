@@ -3,8 +3,8 @@
 Writes still go to the Markdown board through olp-board-append.sh (flock, append-only); this only parses it.
 An entry is a `### N. title` heading up to the next heading. Its lane is the `[lane]` tag in the title, its
 boards are the connect-keys on the line naming 独占板/独占设备, its spec the first `specs/...spec.md` path.
-An ACK is `ACK(` anywhere on a line -- `ACK(51 done: …)`, `ACK(done: …)` and `ACK(done)` all count, while the
-template `ACK(51 done|blocked|wontdo)` quoted in a task body does not. One carrying a number is credited to
+An ACK is a bare `ACK(` anywhere on a line -- `ACK(51 done: …)`, `ACK(done: …)` and `ACK(done)` all count,
+while one quoted in backticks or the `ACK(51 done|blocked|wontdo)` template in a task body does not. One carrying a number is credited to
 that entry, otherwise to the entry it sits under. Lines signed 外环(…) are reviewer notes, not ACKs.
 
 usage: board_status.py [board.md] [--lane NAME] [--open] [--id N]
@@ -46,6 +46,8 @@ def parse(path):
         if re.search(r"外环\([^)]*\)", line[:60]):
             continue
         for hit in ACK.finditer(line):
+            if hit.start() > 0 and line[hit.start() - 1] == "`":
+                continue  # quoted in `code` by a task body, e.g. "先 `ACK(4 blocked)`"
             target = entries.get(hit.group(1), cur) if hit.group(1) else cur
             target["acks"].append({"line": n, "status": hit.group(2), "text": line.strip()[:200]})
     out = []
