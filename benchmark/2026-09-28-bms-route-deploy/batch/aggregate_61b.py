@@ -1,19 +1,33 @@
 #!/usr/bin/env python3
-"""B4 #32: aggregate 66 records from the 61b batch runs into results.json.
+"""#36 ①: corrected 61b aggregate (supersedes #32's b4-aggregate-61b.json).
 
-Merges the two run directories (main + resume), keys them against the fixed
-manifest, hashes the t3/final screenshots (paths+hash only; visual verdict is
-the outer reviewer's), and derives first_blocker buckets per spec b4:
-sandbox / spawn / alias-entry / activity-attach / art-entry / first-frame /
-install / other. Derivation is log-based only — no image reading.
+Fixes vs the voided version (outer-loop re-review findings):
+- liveness read from observed_pids (bms_batch.py field), not pids_after;
+- install success judged from install.txt TEXT ("failed to install bundle"
+  = failure with its code), not the bm process return code alone;
+- first_blocker joined from crash-map.json (raw faultlogger files);
+  late-crash survivors (alive at 16 s sample, crashed after) keep their
+  crash recorded but are NOT counted as exited;
+- firefox (batch_interrupted) and subwaysurfers (hash-refused, no
+  install.txt) are listed as their own statuses, not lumped into early-exit.
+
+Categories per key:
+- alive-at-sample: observed_pids non-empty
+- install-failed-9568260: install.txt contains the failure text
+- interrupted: status batch_interrupted
+- input-refused: no install.txt at all (hash mismatch refusal)
+- exited-early: no observed_pids and install ok
+  -> first_blocker from crash-map: b6-activity-attach / other-native;
+     absent crash file => unknown (recorded explicitly)
 """
-import collections, hashlib, json, os, re, sys
+import collections, hashlib, json, os, sys
 
 RUNS = [
-    "/home/zhaoyue/a2hlab/board/bms-61b-20260928T195314/61b0657200000000000000000324012c",
-    "/home/zhaoyue/a2hlab/board/bms-61b-resume-20260928T2040/61b0657200000000000000000324012c",
+    ("/home/zhaoyue/a2hlab/board/bms-61b-20260928T195314/61b0657200000000000000000324012c"),
+    ("/home/zhaoyue/a2hlab/board/bms-61b-resume-20260928T2040/61b0657200000000000000000324012c"),
 ]
 MANIFEST = "/Users/zhaoyue/orca/workspaces/westlake-harness-b4/benchmark/2026-09-28-bms-route-deploy/batch/apps.json"
+CRASHMAP = "/home/zhaoyue/a2hlab/board/b4-36-faultlog/crash-map.json"
 
 def sha256(p):
     h = hashlib.sha256()
@@ -22,94 +36,72 @@ def sha256(p):
             h.update(chunk)
     return h.hexdigest()
 
-def read(p, limit=400000):
-    try:
-        with open(p, "r", errors="replace") as f:
-            return f.read(limit)
-    except OSError:
-        return ""
-
-# signature -> bucket, ordered: first match wins against combined log text
-SIGS = [
-    ("activity-attach", [
-        r"ContextWrapper\.getApplicationInfo", r"ContextImpl\.getTheme",
-        r"Unable to instantiate activity", r"ClassNotFoundException",
-        r"attachBaseContext", r"SIGSEGV",
-    ]),
-    ("spawn", [
-        r"appspawn", r"failed to fork", r"setuid", r"Failed to start proc",
-    ]),
-    ("alias-entry", [
-        r"DefaultIcon", r"targetActivity", r"MissingTarget",
-    ]),
-    ("art-entry", [
-        r"art::", r"JNI DETECTED", r"java\.lang\.\w+Exception",
-    ]),
-]
-
-def bucket(rec, d):
-    if (rec.get("install") or {}).get("return_code") != 0:
-        return "install", "install rc != 0"
-    sp = (rec.get("sandbox") or {})
-    if sp.get("return_code") not in (0, None):
-        return "sandbox", sp.get("output", "")
-    fg = (rec.get("foreground") or {})
-    if isinstance(fg, bool):
-        fg = {"confirmed": fg}
-    if not rec.get("observed_pids"):
-        return "spawn", "no process observed for target UID between click and sampling"
-    if fg.get("confirmed"):
-        return "none", "foreground confirmed; lit pending outer review"
-    return "first-frame", "no process alive at sample; no signature matched"
-
 def main(out):
-    recs = []
+    recs = {}
     for r in RUNS:
-        recs += json.load(open(os.path.join(r, "summary.json")))["records"]
-    by = {x["key"]: x for x in recs}
+        for x in json.load(open(os.path.join(r, "summary.json")))["records"]:
+            recs[x["key"]] = (x, r)   # resume run wins for its 6 keys
     manifest = json.load(open(MANIFEST))["apps"]
-    order = [a["key"] for a in manifest]
-    assert len(by) == len(order) == 66, (len(by), len(order))
+    assert len(recs) == len(manifest) == 66
+    crashes = {c["key"]: c for c in json.load(open(CRASHMAP))}
     out_recs = []
     for a in manifest:
         k = a["key"]
-        rec = by[k]
-        # locate this key's directory (resume run's records win for its 6 keys)
-        d = None
-        for r in RUNS:
-            p = os.path.join(r, k)
-            if os.path.isdir(p):
-                d = p
-        shots = {}
-        for tag in ("t3", "final"):
-            p = os.path.join(d, tag + ".jpeg")
-            if os.path.isfile(p):
-                shots[tag] = {"path": p, "sha256": sha256(p)}
-        blk, ev = bucket(rec, d)
+        rec, r = recs[k]
+        d = os.path.join(r, k)
+        ip = os.path.join(d, "install.txt")
+        itxt = open(ip, errors="replace").read() if os.path.isfile(ip) else None
+        status = rec.get("status")
+        alive = bool(rec.get("observed_pids"))
+        # classification
+        if itxt is None and status == "app_failed":
+            cat, why = "input-refused", "no install.txt; status app_failed (input hash drift refusal)"
+        elif itxt is not None and "failed to install bundle" in itxt:
+            import re
+            code = re.search(r"code:(\d+)", itxt)
+            cat = "install-failed-%s" % (code.group(1) if code else "unknown")
+            why = itxt.strip().replace("\n", " / ")[:200]
+        elif status == "batch_interrupted":
+            cat, why = "interrupted", "install ok; batch interrupted before launch"
+        elif alive:
+            cat, why = "alive-at-sample", "observed_pids=%s" % rec.get("observed_pids")
+        else:
+            cat, why = "exited-early", "install ok; no target pid at 16 s sample"
+        # first blocker for exited-early comes from the crash map
+        blk, ev = None, None
+        cr = crashes.get(k)
+        if cat == "exited-early":
+            if cr and cr.get("first_blocker"):
+                blk, ev = cr["first_blocker"], cr.get("blocker_frame", "")
+            else:
+                blk, ev = "unknown", "no faultlogger file in window matches this key"
+        elif cr:
+            blk, ev = "late-crash:" + cr["first_blocker"], cr.get("blocker_frame", "")
+        shots = []
+        for s in (rec.get("screenshots") or []):
+            shots.append({"path": s["path"], "sha256": s["sha256"], "visual_verdict": s.get("visual_verdict", "pending_review")})
         out_recs.append({
             "key": k, "phase": a["phase"], "package": a["package"],
-            "apk_sha256": a["apk_sha256"],
-            "install_rc": (rec.get("install") or {}).get("return_code"),
-            "bms_queryable": (rec.get("bms") or {}).get("queryable"),
-            "uid": (rec.get("bms") or {}).get("uid"),
-            "desktop_activity": (rec.get("bms") or {}).get("desktop_activity"),
-            "clicked": rec.get("clicked"),
-            "pids_after": rec.get("pids_after"),
-            "foreground_confirmed": (rec.get("foreground") or {}).get("confirmed"),
-            "first_blocker": blk, "blocker_evidence": ev[:300],
-            "screenshots": shots, "review": "pending_review",
+            "apk_sha256": a["apk_sha256"], "record_status": status,
+            "observed_pids": rec.get("observed_pids"),
+            "foreground_confirmed": (rec.get("foreground") or {}).get("confirmed")
+                if isinstance(rec.get("foreground"), dict) else rec.get("foreground"),
+            "category": cat, "category_reason": why,
+            "first_blocker": blk, "blocker_evidence": ev,
+            "screenshots": shots,
         })
-    hist = collections.Counter(r["first_blocker"] for r in out_recs)
+    hist = collections.Counter(r["category"] for r in out_recs)
+    blk_hist = collections.Counter(r["first_blocker"].split(":")[-1] for r in out_recs if r["first_blocker"] and r["category"] == "exited-early")
     res = {
-        "task": "b4-bms-sweep 61b", "date": "2026-09-28",
-        "serial": "61b0657200000000000000000324012c",
-        "runs": RUNS, "total": len(out_recs),
-        "first_blocker_histogram": dict(hist),
+        "task": "b4-bms-sweep 61b corrected (#36; supersedes #32 aggregate)",
+        "date": "2026-09-28", "serial": "61b0657200000000000000000324012c",
+        "runs": RUNS, "crash_map": CRASHMAP, "total": len(out_recs),
+        "category_histogram": dict(hist),
+        "exited_early_first_blocker": dict(blk_hist),
         "records": out_recs,
     }
-    with open(out, "w") as f:
-        json.dump(res, f, indent=1, ensure_ascii=False)
-    print(json.dumps({"total": res["total"], "histogram": res["first_blocker_histogram"]}, indent=1))
+    json.dump(res, open(out, "w"), indent=1, ensure_ascii=False)
+    print(json.dumps({"categories": dict(hist), "early_blockers": dict(blk_hist)}, indent=1))
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "/tmp/b4-results.json")
+    main(sys.argv[1] if len(sys.argv) > 1 else "/tmp/b4-aggregate-corrected.json")
