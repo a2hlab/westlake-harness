@@ -1,0 +1,17 @@
+diff --git a/frameworks/base/core/java/android/content/ContextWrapper.java b/frameworks/base/core/java/android/content/ContextWrapper.java
+--- a/frameworks/base/core/java/android/content/ContextWrapper.java
++++ b/frameworks/base/core/java/android/content/ContextWrapper.java
+@@ -204,5 +204,13 @@
+     @Override
+     public ApplicationInfo getApplicationInfo() {
++        // B6: AppCompat probes the outer Activity's theme before attachBaseContext
++        // and catches NPE. This OH ART generation loses the implicit-null signal;
++        // keep the Java exception contract explicit instead of taking SIGSEGV.
++        if (mBase == null) {
++            final String reason = "[B6] ContextWrapper base not attached";
++            android.util.Log.w("B6ContextWrapper", reason, new Throwable());
++            throw new NullPointerException(reason);
++        }
+         return mBase.getApplicationInfo();
+     }
+ 

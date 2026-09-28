@@ -338,3 +338,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **B1沙箱修后新分叉（2026-09-28,#27）**：原样prepare_sandbox补齐10根后，Wikipedia child4789 spawn result0、RAC/LSP/provider和ActivityThread.main均到达；随后把桌面alias `org.wikipedia.DefaultIcon`当Java类实例化，ClassNotFoundException后exit1（BMS targetAbility空）。目录同HelloWorld/幂等均过；不能称已点亮，62项重跑未启。证据 `benchmark/2026-09-28-bms-route-deploy/sandbox-prep/`，B1 lifecycle 3pass/1fail。
 
 - BMS B5（2026-09-28，5ea）：按原 APK manifest 仅补 ActivityInfo.targetActivity 后，Wikipedia DefaultIcon→MainActivity、旧 ClassNotFound 消失，继而 Activity.attach/getTheme/getApplicationInfo SIGSEGV（后续根因未证）；HelloWorld 原入口仍上屏，缺目标类独立负控明确 ClassNotFound+exit1。66 key 按实际 BMS 入口计 13 alias，不能与“任一启用 launcher alias”15 混用；证据 `benchmark/2026-09-28-bms-route-deploy/alias-entry/`。
+
+- **B6/BMS route-a 隐式空检查(2026-09-28)**:Wikipedia 原APK AppCompatActivity.attachBaseContext 在super之前getTheme且catch NPE；PID27515实录OH musl special slot3 DFX先收SIGSEGV、670ms后才派AOSP libsigchain Handler(user action)，现有sigchain_muslcompat.cc未进当前库；只读定位未部署修复。oat230全27段重烤引入Wiki Inflater/HelloWorld Proxy回退，已撤回；同版本不等于同闭包可用，见 benchmark/2026-09-28-bms-route-deploy/attach-theme/。

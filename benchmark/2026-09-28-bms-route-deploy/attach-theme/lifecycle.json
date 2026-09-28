@@ -1,0 +1,226 @@
+{
+  "failure_summary": "## Verification Failed\n\n3 of 6 scenarios are non-passing.\n\n### Non-passing Scenarios\n\n**Wikipedia 从桌面启动后上屏**\n- verdict: Fail\n- Fail: 修复已在 5ea 生效,板上产物 SHA 与 `results.json` 一致 (explicit test `b6_wikipedia_lit` failed)\n- Fail: 从桌面点击 Wikipedia 图标并等待 15 s (explicit test `b6_wikipedia_lit` failed)\n- Fail: 其 BMS uid 下进程持续存活 (explicit test `b6_wikipedia_lit` failed)\n- Fail: 外环读图签认截图是 Wikipedia 自身界面 (explicit test `b6_wikipedia_lit` failed)\n  > test `b6_wikipedia_lit`: passed=false\n\n**修复后 HelloWorld 与 ZigZag 不回退**\n- verdict: Fail\n- Fail: 最终修复已在 5ea 生效 (explicit test `b6_no_regression_helloworld_zigzag` failed)\n- Fail: 用 `bms/` 复现器对 HelloWorld 与 ZigZag 各跑一次 `quick` (explicit test `b6_no_regression_helloworld_zigzag` failed)\n- Fail: 两者的截图仍是各自界面 (explicit test `b6_no_regression_helloworld_zigzag` failed)\n- Fail: 任一回退即判本任务失败,`results.json.regressions` 列出该 app (explicit test `b6_no_regression_helloworld_zigzag` failed)\n  > test `b6_no_regression_helloworld_zigzag`: passed=false\n\n**越过 getTheme 但仍未上屏时记下一堵墙**\n- verdict: Fail\n- Fail: 修复后 Wikipedia 不再在 `getTheme` 崩溃,但截图仍不是它自身界面 (explicit test `b6_next_wall_recorded` failed)\n- Fail: 重新采集 hilog 与 faultlog (explicit test `b6_next_wall_recorded` failed)\n- Fail: 交付状态记 `advanced`,`next_blocker` 附原始日志行 (explicit test `b6_next_wall_recorded` failed)\n- Fail: 点亮数不增加 (explicit test `b6_next_wall_recorded` failed)\n  > test `b6_next_wall_recorded`: passed=false\n\n### Action Required\n\nResolve the failures or missing verification coverage above and re-run verification.\n",
+  "lint_issues": 2,
+  "passed": false,
+  "quality_score": 1.0,
+  "stage": "complete",
+  "verification": {
+    "results": [
+      {
+        "duration_ms": 1284,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 1 test\nb6_wikipedia_lit --- FAILED\n\nfailures:\n\n---- b6_wikipedia_lit stdout ----\n\nthread 'b6_wikipedia_lit' (74024737) panicked at src/lib.rs:5:5:\nassertion failed: status.success()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    b6_wikipedia_lit\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.04s\n\n\nTraceback (most recent call last):\n  File \"/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/benchmark/2026-09-28-bms-route-deploy/attach-theme/verify.py\", line 38, in <module>\n    if __name__=='__main__':check(sys.argv[1])\n  File \"/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/benchmark/2026-09-28-bms-route-deploy/attach-theme/verify.py\", line 28, in check\n    assert c['currently_active'] and c['guard_execution_proven'],'no active validated B6 fix'\nAssertionError: no active validated B6 fix\nerror: test failed, to rerun pass `--lib`\n",
+            "test_name": "b6_wikipedia_lit",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "Wikipedia 从桌面启动后上屏",
+        "step_results": [
+          {
+            "reason": "explicit test `b6_wikipedia_lit` failed",
+            "step_text": "修复已在 5ea 生效,板上产物 SHA 与 `results.json` 一致",
+            "verdict": "fail"
+          },
+          {
+            "reason": "explicit test `b6_wikipedia_lit` failed",
+            "step_text": "从桌面点击 Wikipedia 图标并等待 15 s",
+            "verdict": "fail"
+          },
+          {
+            "reason": "explicit test `b6_wikipedia_lit` failed",
+            "step_text": "其 BMS uid 下进程持续存活",
+            "verdict": "fail"
+          },
+          {
+            "reason": "explicit test `b6_wikipedia_lit` failed",
+            "step_text": "外环读图签认截图是 Wikipedia 自身界面",
+            "verdict": "fail"
+          }
+        ],
+        "verdict": "fail"
+      },
+      {
+        "duration_ms": 62,
+        "evidence": [
+          {
+            "passed": true,
+            "stdout": "\nrunning 1 test\ncaller: passed\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.03s\n\n",
+            "test_name": "b6_caller_identified",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "getTheme 的调用者被具名",
+        "step_results": [
+          {
+            "reason": "covered by explicit test `b6_caller_identified`",
+            "step_text": "修复前的 Wikipedia 崩溃可复现",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b6_caller_identified`",
+            "step_text": "还原 `Activity.attach` 与 `getTheme` 之间的解释帧",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b6_caller_identified`",
+            "step_text": "`results.json.caller` 写明调用 `getTheme` 的 Java 方法",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b6_caller_identified`",
+            "step_text": "附日志行或 smali 片段作为证据",
+            "verdict": "pass"
+          }
+        ],
+        "verdict": "pass"
+      },
+      {
+        "duration_ms": 42,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 1 test\nb6_no_regression_helloworld_zigzag --- FAILED\n\nfailures:\n\n---- b6_no_regression_helloworld_zigzag stdout ----\n\nthread 'b6_no_regression_helloworld_zigzag' (74024909) panicked at src/lib.rs:5:5:\nassertion failed: status.success()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    b6_no_regression_helloworld_zigzag\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.02s\n\n\nTraceback (most recent call last):\n  File \"/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/benchmark/2026-09-28-bms-route-deploy/attach-theme/verify.py\", line 38, in <module>\n    if __name__=='__main__':check(sys.argv[1])\n  File \"/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/benchmark/2026-09-28-bms-route-deploy/attach-theme/verify.py\", line 31, in check\n    assert not D['regressions'],'HelloWorld regressed under rejected B6 candidate'\nAssertionError: HelloWorld regressed under rejected B6 candidate\nerror: test failed, to rerun pass `--lib`\n",
+            "test_name": "b6_no_regression_helloworld_zigzag",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "修复后 HelloWorld 与 ZigZag 不回退",
+        "step_results": [
+          {
+            "reason": "explicit test `b6_no_regression_helloworld_zigzag` failed",
+            "step_text": "最终修复已在 5ea 生效",
+            "verdict": "fail"
+          },
+          {
+            "reason": "explicit test `b6_no_regression_helloworld_zigzag` failed",
+            "step_text": "用 `bms/` 复现器对 HelloWorld 与 ZigZag 各跑一次 `quick`",
+            "verdict": "fail"
+          },
+          {
+            "reason": "explicit test `b6_no_regression_helloworld_zigzag` failed",
+            "step_text": "两者的截图仍是各自界面",
+            "verdict": "fail"
+          },
+          {
+            "reason": "explicit test `b6_no_regression_helloworld_zigzag` failed",
+            "step_text": "任一回退即判本任务失败,`results.json.regressions` 列出该 app",
+            "verdict": "fail"
+          }
+        ],
+        "verdict": "fail"
+      },
+      {
+        "duration_ms": 42,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 1 test\nb6_next_wall_recorded --- FAILED\n\nfailures:\n\n---- b6_next_wall_recorded stdout ----\n\nthread 'b6_next_wall_recorded' (74024966) panicked at src/lib.rs:5:5:\nassertion failed: status.success()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    b6_next_wall_recorded\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.02s\n\n\nTraceback (most recent call last):\n  File \"/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/benchmark/2026-09-28-bms-route-deploy/attach-theme/verify.py\", line 38, in <module>\n    if __name__=='__main__':check(sys.argv[1])\n  File \"/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/benchmark/2026-09-28-bms-route-deploy/attach-theme/verify.py\", line 34, in check\n    assert D['status']=='advanced' and c['guard_execution_proven'] and D['next_blocker'],'earlier regression is not advancement'\nAssertionError: earlier regression is not advancement\nerror: test failed, to rerun pass `--lib`\n",
+            "test_name": "b6_next_wall_recorded",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "越过 getTheme 但仍未上屏时记下一堵墙",
+        "step_results": [
+          {
+            "reason": "explicit test `b6_next_wall_recorded` failed",
+            "step_text": "修复后 Wikipedia 不再在 `getTheme` 崩溃,但截图仍不是它自身界面",
+            "verdict": "fail"
+          },
+          {
+            "reason": "explicit test `b6_next_wall_recorded` failed",
+            "step_text": "重新采集 hilog 与 faultlog",
+            "verdict": "fail"
+          },
+          {
+            "reason": "explicit test `b6_next_wall_recorded` failed",
+            "step_text": "交付状态记 `advanced`,`next_blocker` 附原始日志行",
+            "verdict": "fail"
+          },
+          {
+            "reason": "explicit test `b6_next_wall_recorded` failed",
+            "step_text": "点亮数不增加",
+            "verdict": "fail"
+          }
+        ],
+        "verdict": "fail"
+      },
+      {
+        "duration_ms": 42,
+        "evidence": [
+          {
+            "passed": true,
+            "stdout": "\nrunning 1 test\nnegative: passed\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.02s\n\n",
+            "test_name": "b6_fix_absent_detected",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "板上产物不是本次构建时判失败",
+        "step_results": [
+          {
+            "reason": "covered by explicit test `b6_fix_absent_detected`",
+            "step_text": "`/proc/<child pid>/root` 下实际加载的产物 SHA 与 `results.json` 记录值不一致",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b6_fix_absent_detected`",
+            "step_text": "执行验收",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b6_fix_absent_detected`",
+            "step_text": "任务判失败且不计入点亮数",
+            "verdict": "pass"
+          }
+        ],
+        "verdict": "pass"
+      },
+      {
+        "duration_ms": 42,
+        "evidence": [
+          {
+            "passed": true,
+            "stdout": "\nrunning 1 test\nnull: passed\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.02s\n\n",
+            "test_name": "b6_null_check_mode_recorded",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "空指针处理方式有记录",
+        "step_results": [
+          {
+            "reason": "covered by explicit test `b6_null_check_mode_recorded`",
+            "step_text": "已取得本运行时一次编译代码空指针解引用的现场",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b6_null_check_mode_recorded`",
+            "step_text": "查看 `results.json.null_check_mode`",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b6_null_check_mode_recorded`",
+            "step_text": "值为 `npe` 或 `sigsegv` 之一并附 faultlog 或 hilog 原文",
+            "verdict": "pass"
+          }
+        ],
+        "verdict": "pass"
+      }
+    ],
+    "spec_name": "B6 Activity.attach 期间 getTheme 空指针崩溃",
+    "summary": {
+      "failed": 3,
+      "passed": 3,
+      "pending_review": 0,
+      "skipped": 0,
+      "total": 6,
+      "uncertain": 0
+    }
+  }
+}

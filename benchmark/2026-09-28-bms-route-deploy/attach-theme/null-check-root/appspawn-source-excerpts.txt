@@ -1,0 +1,35 @@
+140:     // AOT-compiled methods shipped in boot.oat and fall back to the interpreter
+141:     // only for methods not covered.
+142: 
+143:     // Disable sigchain — OH musl's GWP-ASan init conflicts with ART's
+144:     // signal chain, causing infinite loop in may_init_gwp_asan.
+145:     // 2026-04-16: removed -Xno-sig-chain; ART Runtime::Start requires sig chain. libsigchain.so is now linked and functional.
+146: 
+147:     // Boot classpath: read from environment variable set by init.rc
+1077: int AppSpawnXRuntime::startVmAndPreloadOnDedicatedThread() {
+1078:     workerState_ = new WorkerState{this, 0, PTHREAD_MUTEX_INITIALIZER,
+1079:                                    PTHREAD_COND_INITIALIZER, false, -1};
+1080: 
+1081:     // Diagnostic: spawn a "SIGSEGV reclaimer" pthread that continuously
+1082:     // reinstalls SIG_DFL for SIGSEGV / SIGBUS while the VM worker is
+1083:     // initializing. Theory: libsigchain→libdfx_signalhandler installs an
+1084:     // OH fault dumper that itself faults while walking the stack through
+1085:     // libffrt, creating an unbounded signal-frame cascade that exhausts the
+1086:     // 128 MB worker stack. Forcing SIG_DFL means any genuine fault during
+1087:     // VM init terminates via kernel immediately — if EXIT=139 with a clean
+1088:     // short stack (not "Fatal signal 11 ... Fault addr = 0xedXX1ff8"), the
+1089:     // handler cascade hypothesis is confirmed.
+1090:     pthread_t reclaimer;
+1091:     pthread_create(&reclaimer, nullptr, [](void*) -> void* {
+1092:         for (int i = 0; i < 500; ++i) {
+1093:             signal(SIGSEGV, SIG_DFL);
+1094:             signal(SIGBUS, SIG_DFL);
+1095:             usleep(10000);  // 10 ms
+1096:         }
+1097:         return nullptr;
+1098:     }, nullptr);
+1099:     pthread_detach(reclaimer);
+1100:     fprintf(stderr, "[AppSpawnX][VM] [Main] SIGSEGV reclaimer pthread started (500x10ms)\n"); fflush(stderr);
+1101: 
+1102:     pthread_attr_t attr;
+1103:     pthread_attr_init(&attr);
