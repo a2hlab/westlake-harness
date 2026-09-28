@@ -76,7 +76,7 @@ def parse(path):
         if cur["spec"] is None:
             s = re.search(r"specs/[\w./-]+\.spec\.md", line)
             cur["spec"] = s.group(0) if s else None
-        for s in re.findall(r"改判\(作废 #(\d+)\)", line):
+        for s in re.findall(r"改判\((?:作废|停止|暂停) #(\d+)[^)]*\)", line):
             if s not in cur["supersedes"]:
                 cur["supersedes"].append(s)
         a = re.search(r"与 #(\d+) 同时执行", line)
