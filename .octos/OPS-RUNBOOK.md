@@ -72,7 +72,7 @@
 - 重建时 framework flags 除 java-profile 的 3 个外还需 8 个 APEX flag 库;native object map 在 `$A/native-object-map.json`。就绪检查:`planned_staging.py` + harness `deploy-check`。
 
 ## 6. OctoLoop 现场
-- **octoscode 内环「看着在、其实断了」**:TUI 背后的 `octos serve --stdio` 子进程会被重启(2026-09-28 22:07 两个车道的 serve 同时重生);重连时若报 `connection_closed` + `cursor_expired: session/open … cursor out of range`,TUI 停在旧画面、不再执行,herdr 仍显示 idle。判断:`ps -axo pid,ppid,etime,command | grep 'octos serve'` 看 serve 的启动时间,读窗格状态栏找 `x Error`。处理:窗格里 `/quit`,再用原命令 `octoscode --session <同名会话> --profile-id <同 profile> --no-splash` 重开(会话历史保留),然后重发当前条目。另:车道把长任务丢给 VM 后台 runner 后自己转 idle 等监视器,runner 早死它也不知道——派单时要求监视器同时看 runner 进程与日志末尾的 Traceback。
+- **octoscode 内环「看着在、其实断了」**:TUI 背后的 `octos serve --stdio` 子进程会被重启(2026-09-28 22:07 两个车道的 serve 同时重生);重连时若报 `connection_closed` + `cursor_expired: session/open … cursor out of range`,TUI 停在旧画面、不再执行,herdr 仍显示 idle。判断:`ps -axo pid,ppid,etime,command | grep 'octos serve'` 看 serve 的启动时间,读窗格状态栏找 `x Error`。处理:窗格里 `/quit`,再用原命令 `octoscode --session <同名会话> --profile-id <同 profile> --no-splash` 重开(会话历史保留),然后重发当前条目。⚠️ 完全访问不在启动参数里,是 operator 运行时切的:重开后新 serve 只有 `--solo`、没有 `--danger-full-access`,车道一动手就被沙箱挡(读不了 `~/.gitconfig`、git 元数据、黑板)。重开后先 `ps` 核 serve 参数,缺了就请 operator 亲手切回,外环不代为提权。另:车道把长任务丢给 VM 后台 runner 后自己转 idle 等监视器,runner 早死它也不知道——派单时要求监视器同时看 runner 进程与日志末尾的 Traceback。
 - **VM 里经 `mac <命令>` 调 Mac 侧工具,偶发退出码 0 但输出为空**(OrbStack mac 桥瞬时故障;B4 批量 20:25 因 `board_note.sh held` 空输出误判丢锁而停在 61/66)。以 Mac 侧命令输出做门禁的脚本,对空输出隔几秒重试一次再判停。
 
 - 黑板 `.octos/OUTER_LOOP_REVIEW.md` 只追加,写入用 `~/workspace/octoscode/scripts/olp-board-append.sh`;机读视图 `scripts/lab/board_status.py --lane <车道> --open`(旧的 `board_acks.py` 认不出 `ACK(done: …)`)。
