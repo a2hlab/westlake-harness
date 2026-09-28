@@ -18,6 +18,7 @@
 **构建 VM `a2hlab`**(OrbStack,Ubuntu 24.04 amd64 走 Rosetta)
 - 工作区 `~/a2hlab/ws`,以作者原路径 `/home/dspfac/a2hlab/source-closure/verify/out` bind mount(哈希才对得上 manifest 记录;**VM 重启后要重挂**)。manifest 克隆 `~/a2hlab/manifest`,本地分支 `local-pins-main`。运行时源码是私有 `a2hlab/westlake`(verify 构建基于 main `22b9453`),不是 `A2OH/westlake`。别碰已有的 `oh7x86` 机器。
 - 没有 USB → VM 里的工具用 `scripts/lab/hdc_mac.sh` 转发到 Mac 的 hdc。
+- **Mac 侧 `~/OrbStack` 视图会消失**(2026-09-28:OrbStack 在跑,VM 里 `/Users/zhaoyue/OrbStack/a2hlab/...` 看得到,Mac 上 `~/OrbStack` 只剩 README、`mount` 里没有 NFS)。旧 `hdc_mac.sh` 从 VM cwd 调用时 Mac 侧 `cd` 失败,**所有 hdc 命令都失败**。现版先 `mac test -d ~/OrbStack/a2hlab/home` 探一次:视图在走原映射;不在就把 `file send`/`install` 的本地参数拷进 `/Users/zhaoyue/.cache/hdc_mac.*` 暂存、`file recv` 收进暂存再拷回 VM(保留远端文件名),用完删除。判路径可见性要在 Mac 侧判,VM 侧 `-e` 永远为真。恢复视图需重启 OrbStack(会重启 VM,重挂 bind mount)。
 - VM 没配 git 身份,提交时 `git -c user.name=… -c user.email=…`。`orb -m a2hlab bash -lc '…'` 嵌套引号遇到撇号/heredoc 会坏 → 把脚本写到 `~/OrbStack/a2hlab/home/<user>/…`(VM 里同一个文件)再执行。
 - GitHub/PyPI 网络不稳,huaweicloud 镜像可靠;a2hlab 的 LFS 超额,缺的包从原始公开源补并校验哈希(记在 lock 的 `local_substitution`)。
 
