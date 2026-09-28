@@ -294,10 +294,19 @@ def main(argv):
     board = args[0] if args else BOARD
     if watch:
         base = schedule(board, stale, spec_dir)
+        started, silent_reported = time.time(), set()
         while True:
             time.sleep(interval)
             cur = schedule(board, stale, spec_dir)
             ev = events(base, cur)
+            # a lane that never wrote PROGRESS is stale in the baseline too; time it from the watch start
+            if (time.time() - started) / 60 > stale:
+                for l in cur["lanes"]:
+                    for e in l["entries"]:
+                        if e["last_progress"] is None and e["id"] not in silent_reported:
+                            silent_reported.add(e["id"])
+                            ev.append(f"lane {l['lane']} entry #{e['id']} silent: no PROGRESS since the watch "
+                                      f"started {stale:g} min ago")
             if ev:
                 print("SCHEDULE-SIGNAL")
                 print("\n".join(ev))
