@@ -197,11 +197,13 @@ def schedule(board, stale_min=30, spec_dir=None, now=None):
     for l in locks:
         last_lock[l["serial"]] = l
     owned = {}
-    for e in active:
-        if e["state"] in ("open", "blocked"):
-            for b in e["boards"]:
-                owned.setdefault(b, []).append(e["lane"])
-    devices = sorted(set(pool) | {b for e in active for b in e["boards"]})
+    for e in entries:  # attached entries can hand a lane extra boards (e.g. a board transfer)
+        if e.get("superseded_by") or not e["lane"] or e["state"] not in ("open", "blocked"):
+            continue
+        for b in e["boards"]:
+            if e["lane"] not in owned.setdefault(b, []):
+                owned[b].append(e["lane"])
+    devices = sorted(set(pool) | {b for e in entries for b in e["boards"]})
     dev = []
     anomalies = []
     for d in devices:
