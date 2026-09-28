@@ -208,8 +208,10 @@ def schedule(board, stale_min=30, spec_dir=None, now=None):
     owned = {}
     for e in entries:  # attached entries can hand a lane extra boards (e.g. a board transfer)
         # a transfer lasts as long as the entry it is attached to, even if the attached entry was ACKed itself
-        st = byid[e["attached_to"]]["state"] if e["attached_to"] in byid else e["state"]
-        if e.get("superseded_by") or not e["lane"] or st not in ("open", "blocked"):
+        parent = byid.get(e["attached_to"])
+        st = parent["state"] if parent else e["state"]
+        if (e.get("superseded_by") or (parent and parent.get("superseded_by")) or not e["lane"]
+                or st not in ("open", "blocked")):
             continue
         for b in e["boards"]:
             if e["lane"] not in owned.setdefault(b, []):
