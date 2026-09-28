@@ -55,6 +55,9 @@ def parse(path):
                                            "attached_to": None, "body": []})
             if eid not in order:
                 order.append(eid)
+            a = re.search(r"与 #(\d+) 同时执行", title)
+            if a:
+                cur["attached_to"] = a.group(1)
             continue
         if re.match(r"^#{1,6}\s", line):
             cur = None  # an unnumbered heading (####/## section) ends the entry
