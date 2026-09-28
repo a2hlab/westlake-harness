@@ -1,0 +1,19 @@
+--- a/foundation/bundlemanager/bundle_framework/common/utils/src/bundle_file_util.cpp
++++ b/foundation/bundlemanager/bundle_framework/common/utils/src/bundle_file_util.cpp
+@@ -61,8 +61,14 @@
+         !CheckFileType(bundlePath, CODE_SIGNATURE_SUFFIX) &&
+         !CheckFileType(bundlePath, PGO_SUFFIX) &&
+         !CheckFileType(bundlePath, JSON_FILE_SUFFIX) &&
+-        !CheckFileType(bundlePath, APP_FILE_SUFFIX)) {
+-        APP_LOGE("file is not hap, hsp or hqf or sig or ap or json or app");
++        !CheckFileType(bundlePath, APP_FILE_SUFFIX)
++#ifdef OH_ADAPTER_ANDROID
++        // Adapter project: allow Android .apk extension; downstream
++        // BundleInstaller::Install dispatches .apk via libapk_installer.so.
++        && !CheckFileType(bundlePath, ".apk")
++#endif
++        ) {
++        APP_LOGE("file is not hap, hsp or hqf or sig or ap or json or app or apk");
+         return false;
+     }
+     if (!PathToRealPath(bundlePath, realPath)) {

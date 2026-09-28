@@ -1,0 +1,38 @@
+--- a/foundation/ability/ability_runtime/services/appmgr/src/app_mgr_service_inner.cpp
++++ b/foundation/ability/ability_runtime/services/appmgr/src/app_mgr_service_inner.cpp
+@@ -4774,7 +4774,37 @@ int32_t AppMgrServiceInner::StartProcess(const std::string &appName, const std::
+     PerfProfile::GetInstance().SetAppForkStartTime(GetTickCount());
+     pid_t pid = 0;
+     ErrCode errCode = ERR_OK;
+-    if (isCJApp) {
++    // Android APK routing (copied from HanBing's proven HelloWorld path).
++    if (bundleType == BundleType::APP_ANDROID) {
++        TAG_LOGI(AAFwkTag::APPMGR, "StartProcess: routing to appspawn-x for Android app: %{public}s",
++            bundleName.c_str());
++        if (!remoteClientManager_->GetAndroidSpawnClient()) {
++            TAG_LOGE(AAFwkTag::APPMGR, "androidSpawnClient null");
++            appRunningManager_->RemoveAppRunningRecordById(appRecord->GetRecordId());
++            return AAFwk::ERR_GET_SPAWN_CLIENT_FAILED;
++        }
++        // APKs do not carry an OpenHarmony appIdentifier, so CreateStartMsg
++        // leaves ownerId empty. Route-A deliberately requires OWNER_INFO
++        // before stock child specialization; derive a typed namespace owner
++        // at this Android-only boundary instead of weakening that guard.
++        constexpr size_t ANDROID_OWNER_ID_MAX_LENGTH = 63;
++        if (startMsg.ownerId.empty()) {
++            startMsg.ownerId = "android:" + bundleName;
++            if (startMsg.ownerId.size() > ANDROID_OWNER_ID_MAX_LENGTH) {
++                TAG_LOGE(AAFwkTag::APPMGR,
++                    "Android ownerId too long for appspawn: %{public}zu", startMsg.ownerId.size());
++                appRunningManager_->RemoveAppRunningRecordById(appRecord->GetRecordId());
++                return AAFwk::ERR_CREATE_START_MSG_FAILED;
++            }
++            TAG_LOGI(AAFwkTag::APPMGR,
++                "Android appspawn ownerId derived at typed boundary: %{public}s", startMsg.ownerId.c_str());
++        }
++        startMsg.gids.push_back(SHADER_CACHE_GROUPID);
++        errCode = remoteClientManager_->GetAndroidSpawnClient()->StartProcess(startMsg, pid);
++    } else if (isCJApp) {
+         if (!remoteClientManager_->GetCJSpawnClient()) {
+             TAG_LOGE(AAFwkTag::APPMGR, "appSpawnClient null");
+             appRunningManager_->RemoveAppRunningRecordById(appRecord->GetRecordId());

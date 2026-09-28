@@ -1,0 +1,97 @@
+diff --git a/libs/hwui/pipeline/skia/RenderNodeDrawable.cpp b/libs/hwui/pipeline/skia/RenderNodeDrawable.cpp
+index da4f66d4..0b537256 100644
+--- a/libs/hwui/pipeline/skia/RenderNodeDrawable.cpp
++++ b/libs/hwui/pipeline/skia/RenderNodeDrawable.cpp
+@@ -15,6 +15,7 @@
+  */
+ 
+ #include "RenderNodeDrawable.h"
++#include <gpu/ganesh/SkImageGanesh.h>
+ #include <SkPaint.h>
+ #include <SkPaintFilterCanvas.h>
+ #include <SkPoint.h>
+@@ -118,6 +119,34 @@ const RenderProperties& RenderNodeDrawable::getNodeProperties() const {
+ }
+ 
+ void RenderNodeDrawable::onDraw(SkCanvas* canvas) {
++    // G2.14au r4 probe — RenderNodeDrawable::onDraw entry (DisplayList replay)
++    // marker: G214au_HWR_RNDOnDraw
++    {
++        static std::atomic<int> g_count{0};
++        int n = ++g_count;
++        if (n <= 64 || n % 100 == 0) {
++            fprintf(stderr, "[G214au_HWR] RenderNodeDrawable::onDraw #%d canvas=%p inReorder=%d\n",
++                    n, (void*)canvas, mInReorderingSection ? 1 : 0);
++            // G2.14be probe A — log DisplayList state to distinguish empty-list
++            // vs early-return vs silent-replay.  marker: G214be_DLProbe_A
++            RenderNode* rnA = mRenderNode.get();
++            SkiaDisplayList* dlA = rnA ? rnA->getDisplayList().asSkiaDl() : nullptr;
++            fprintf(stderr,
++                "[G214be] A dl-state #%d rn=%p dl=%p isEmpty=%d usedSize=%zu hasText=%d hasFunctor=%d hasVecDr=%d isRenderable=%d nothingToDraw=%d composeLayer=%d projDL=%p z=%.2f\n",
++                n, (void*)rnA, (void*)dlA,
++                dlA ? (int)dlA->isEmpty() : -1,
++                dlA ? dlA->getUsedSize() : (size_t)-1,
++                dlA ? (int)dlA->hasText() : -1,
++                dlA ? (int)dlA->hasFunctor() : -1,
++                dlA ? (int)dlA->hasVectorDrawables() : -1,
++                rnA ? (int)rnA->isRenderable() : -1,
++                rnA ? (int)rnA->nothingToDraw() : -1,
++                mComposeLayer ? 1 : 0,
++                (void*)mProjectedDisplayList,
++                rnA ? (double)rnA->properties().getZ() : 0.0);
++        }
++    }
++
+     // negative and positive Z order are drawn out of order, if this render node drawable is in
+     // a reordering section
+     if ((!mInReorderingSection) || MathUtils::isZero(mRenderNode->properties().getZ())) {
+@@ -152,6 +181,20 @@ void RenderNodeDrawable::forceDraw(SkCanvas* canvas) const {
+     // event that the properties change and it becomes visible.
+     if ((mProjectedDisplayList == nullptr && !renderNode->isRenderable()) ||
+         (renderNode->nothingToDraw() && mComposeLayer)) {
++        // G2.14be probe B — forceDraw early-return diagnostic.
++        // marker: G214be_DLProbe_B
++        {
++            static std::atomic<int> g_b_count{0};
++            int nb = ++g_b_count;
++            if (nb <= 64 || nb % 100 == 0) {
++                fprintf(stderr,
++                    "[G214be] B forceDraw #%d RETURN early-skip projDL=%p renderable=%d nothingToDraw=%d composeLayer=%d\n",
++                    nb, (void*)mProjectedDisplayList,
++                    (int)renderNode->isRenderable(),
++                    (int)renderNode->nothingToDraw(),
++                    mComposeLayer ? 1 : 0);
++            }
++        }
+         return;
+     }
+ 
+@@ -229,6 +272,19 @@ void RenderNodeDrawable::drawContent(SkCanvas* canvas) const {
+     // TODO should we let the bound of the drawable do this for us?
+     const SkRect bounds = SkRect::MakeWH(properties.getWidth(), properties.getHeight());
+     bool quickRejected = properties.getClipToBounds() && canvas->quickReject(bounds);
++    // G2.14be probe C — drawContent quickReject diagnostic.
++    // marker: G214be_DLProbe_C
++    {
++        static std::atomic<int> g_c_count{0};
++        int nc = ++g_c_count;
++        if (nc <= 64 || nc % 100 == 0) {
++            fprintf(stderr,
++                "[G214be] C drawContent #%d quickReject=%d clipToBounds=%d boundsW=%.1f boundsH=%.1f\n",
++                nc, quickRejected ? 1 : 0,
++                properties.getClipToBounds() ? 1 : 0,
++                (double)(bounds.width()), (double)(bounds.height()));
++        }
++    }
+     if (!quickRejected) {
+         auto clipBounds = canvas->getLocalClipBounds();
+         SkIRect srcBounds = SkIRect::MakeWH(bounds.width(), bounds.height());
+@@ -255,7 +311,7 @@ void RenderNodeDrawable::drawContent(SkCanvas* canvas) const {
+                 snapshotImage = renderNode->getLayerSurface()->makeImageSnapshot();
+                 if (imageFilter) {
+                     auto subset = SkIRect::MakeWH(srcBounds.width(), srcBounds.height());
+-                    snapshotImage = snapshotImage->makeWithFilter(recordingContext, imageFilter,
++                    snapshotImage = SkImages::MakeWithFilter(recordingContext, snapshotImage, imageFilter,
+                                                                   subset, clipBounds.roundOut(),
+                                                                   &srcBounds, &offset);
+                 }

@@ -1,0 +1,367 @@
+/*
+ * finished_token_ledger.cpp
+ *
+ * Fn05.A07 FINISHED-gated input receipt token ledger implementation.
+ */
+
+#include "finished_token_ledger.h"
+
+#include <algorithm>
+#include <chrono>
+#include <stdexcept>
+
+namespace oh_adapter {
+namespace input {
+
+FinishedTokenLedger::FinishedTokenLedger(LedgerConfig config,
+                                         MarkProcessedCallback mark_processed_cb)
+    : config_(config), mark_processed_cb_(std::move(mark_processed_cb)) {
+    if (config_.max_finished_wait_ns <= 0) {
+        throw std::invalid_argument(
+            "max_finished_wait_ns must be positive and finite");
+    }
+}
+
+bool FinishedTokenLedger::IsValidTerminalReason(const std::string& reason) {
+    return reason == TerminalReason::FINISHED ||
+           reason == TerminalReason::TIMEOUT ||
+           reason == TerminalReason::CANCELLED ||
+           reason == TerminalReason::DUPLICATE_FINISHED ||
+           reason == TerminalReason::WRONG_GENERATION ||
+           reason == TerminalReason::LEDGER_COLLISION ||
+           reason == TerminalReason::UNKNOWN_SEQ ||
+           reason == TerminalReason::PUBLISH_REJECT;
+}
+
+bool FinishedTokenLedger::acceptEvent(const std::string& generation,
+                                      int64_t oh_event_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (torn_down_generations_.count(generation)) {
+        return false;  // generation already torn down; fail-closed
+    }
+    auto& state = generations_[generation];
+    auto it = state.by_oh_event_id.find(oh_event_id);
+    if (it != state.by_oh_event_id.end()) {
+        // LEDGER_COLLISION: duplicate OH event id.  Record a diagnostic row
+        // so the collision is observable (DESIGN.md invariant 1).
+        LedgerRow row;
+        row.generation = generation;
+        row.oh_event_id = oh_event_id;
+        row.terminal_reason = TerminalReason::LEDGER_COLLISION;
+        rows_.push_back(std::move(row));
+        return false;
+    }
+    Token token;
+    token.generation = generation;
+    token.oh_event_id = oh_event_id;
+    token.state = TokenState::IDLE;
+    state.by_oh_event_id.emplace(oh_event_id, std::move(token));
+    return true;
+}
+
+bool FinishedTokenLedger::arm(const std::string& generation,
+                              int64_t oh_event_id,
+                              uint32_t android_seq,
+                              int64_t now_ns) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto gen_it = generations_.find(generation);
+    if (gen_it == generations_.end()) {
+        return false;
+    }
+    auto& state = gen_it->second;
+
+    auto ev_it = state.by_oh_event_id.find(oh_event_id);
+    if (ev_it == state.by_oh_event_id.end()) {
+        return false;  // no accepted event to arm
+    }
+    Token& token = ev_it->second;
+    if (token.state != TokenState::IDLE) {
+        return false;  // already armed or terminal
+    }
+
+    // LEDGER_COLLISION: seq already bound in this generation.
+    auto seq_it = state.by_seq.find(android_seq);
+    if (seq_it != state.by_seq.end()) {
+        // Record the colliding seq in the row before closing the rejected token.
+        token.android_seq = android_seq;
+        transitionToTerminal(token, TokenState::CANCELLED, now_ns,
+                             TerminalReason::LEDGER_COLLISION);
+        return false;
+    }
+
+    token.android_seq = android_seq;
+    token.state = TokenState::ARMED;
+    token.deadline_ns = now_ns + config_.max_finished_wait_ns;
+    state.by_seq[android_seq] = oh_event_id;
+    return true;
+}
+
+void FinishedTokenLedger::onFinished(const std::string& generation,
+                                     uint32_t android_seq,
+                                     int64_t now_ns,
+                                     int64_t callback_tid,
+                                     int handled) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // Generation teardown takes precedence: any late FINISHED for a torn-down
+    // generation is reported as WRONG_GENERATION and dropped.
+    if (torn_down_generations_.count(generation)) {
+        LedgerRow row;
+        row.generation = generation;
+        row.android_seq = android_seq;
+        row.callback_tid = callback_tid;
+        row.handled = handled;
+        row.terminal_reason = TerminalReason::WRONG_GENERATION;
+        rows_.push_back(std::move(row));
+        return;
+    }
+
+    auto gen_it = generations_.find(generation);
+    if (gen_it == generations_.end()) {
+        LedgerRow row;
+        row.generation = generation;
+        row.android_seq = android_seq;
+        row.callback_tid = callback_tid;
+        row.handled = handled;
+        // Oracle N3: seq live-bound in another generation means this FINISHED
+        // arrived under the wrong generation, not an unknown seq.
+        row.terminal_reason = boundLiveElsewhere(generation, android_seq)
+                                  ? TerminalReason::WRONG_GENERATION
+                                  : TerminalReason::UNKNOWN_SEQ;
+        rows_.push_back(std::move(row));
+        return;
+    }
+
+    auto& state = gen_it->second;
+    auto seq_it = state.by_seq.find(android_seq);
+    if (seq_it == state.by_seq.end()) {
+        LedgerRow row;
+        row.generation = generation;
+        row.android_seq = android_seq;
+        row.callback_tid = callback_tid;
+        row.handled = handled;
+        row.terminal_reason = boundLiveElsewhere(generation, android_seq)
+                                  ? TerminalReason::WRONG_GENERATION
+                                  : TerminalReason::UNKNOWN_SEQ;
+        rows_.push_back(std::move(row));
+        return;
+    }
+
+    auto ev_it = state.by_oh_event_id.find(seq_it->second);
+    if (ev_it == state.by_oh_event_id.end()) {
+        LedgerRow row;
+        row.generation = generation;
+        row.android_seq = android_seq;
+        row.callback_tid = callback_tid;
+        row.handled = handled;
+        row.terminal_reason = TerminalReason::UNKNOWN_SEQ;
+        rows_.push_back(std::move(row));
+        return;
+    }
+
+    Token& token = ev_it->second;
+    if (token.state == TokenState::ARMED) {
+        token.state = TokenState::FINISHED_RECEIVED;
+        token.finished_time_ns = now_ns;
+        token.callback_tid = callback_tid;
+        token.handled = handled;
+        emitMarkProcessed(token, now_ns);
+        return;
+    }
+
+    if (token.state == TokenState::FINISHED_RECEIVED ||
+        token.state == TokenState::PROCESSED_ACKED) {
+        LedgerRow row;
+        row.generation = generation;
+        row.oh_event_id = token.oh_event_id;
+        row.android_seq = android_seq;
+        row.callback_tid = callback_tid;
+        row.handled = handled;
+        row.terminal_reason = TerminalReason::DUPLICATE_FINISHED;
+        rows_.push_back(std::move(row));
+        return;
+    }
+
+    // Token exists but is in TIMEOUT or CANCELLED.  FINISHED is stale.
+    LedgerRow row;
+    row.generation = generation;
+    row.oh_event_id = token.oh_event_id;
+    row.android_seq = android_seq;
+    row.callback_tid = callback_tid;
+    row.handled = handled;
+    row.terminal_reason = TerminalReason::UNKNOWN_SEQ;
+    rows_.push_back(std::move(row));
+}
+
+void FinishedTokenLedger::scanTimeouts(
+    int64_t now_ns,
+    std::vector<std::pair<std::string, int64_t>>* timed_out) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto& gen_pair : generations_) {
+        for (auto& ev_pair : gen_pair.second.by_oh_event_id) {
+            Token& token = ev_pair.second;
+            if (token.state == TokenState::ARMED && now_ns > token.deadline_ns) {
+                transitionToTerminal(token, TokenState::TIMEOUT, now_ns,
+                                     TerminalReason::TIMEOUT);
+                if (timed_out) {
+                    timed_out->emplace_back(gen_pair.first,
+                                            token.oh_event_id);
+                }
+            }
+        }
+    }
+}
+
+void FinishedTokenLedger::teardownGeneration(const std::string& generation,
+                                             int64_t now_ns) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto gen_it = generations_.find(generation);
+    if (gen_it == generations_.end()) {
+        torn_down_generations_.insert(generation);
+        return;
+    }
+
+    for (auto& ev_pair : gen_it->second.by_oh_event_id) {
+        Token& token = ev_pair.second;
+        if (!isTerminalState(token.state)) {
+            transitionToTerminal(token, TokenState::CANCELLED, now_ns,
+                                 TerminalReason::CANCELLED);
+        }
+    }
+    torn_down_generations_.insert(generation);
+}
+
+bool FinishedTokenLedger::cancelEvent(const std::string& generation,
+                                      int64_t oh_event_id,
+                                      int64_t now_ns,
+                                      const std::string& reason,
+                                      int64_t publish_rc) {
+    if (!IsValidTerminalReason(reason)) {
+        return false;  // fail-closed: never record an out-of-contract reason
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto gen_it = generations_.find(generation);
+    if (gen_it == generations_.end()) {
+        return false;
+    }
+    auto ev_it = gen_it->second.by_oh_event_id.find(oh_event_id);
+    if (ev_it == gen_it->second.by_oh_event_id.end()) {
+        return false;
+    }
+    Token& token = ev_it->second;
+    if (isTerminalState(token.state)) {
+        return false;
+    }
+    transitionToTerminal(token, TokenState::CANCELLED, now_ns, reason,
+                         publish_rc);
+    return true;
+}
+
+std::vector<LedgerRow> FinishedTokenLedger::getRows() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return rows_;
+}
+
+size_t FinishedTokenLedger::inFlightCount() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    size_t count = 0;
+    for (const auto& gen_pair : generations_) {
+        for (const auto& ev_pair : gen_pair.second.by_oh_event_id) {
+            if (!isTerminalState(ev_pair.second.state)) {
+                ++count;
+            }
+        }
+    }
+    return count;
+}
+
+bool FinishedTokenLedger::isTerminalState(TokenState state) const {
+    return state == TokenState::PROCESSED_ACKED ||
+           state == TokenState::TIMEOUT ||
+           state == TokenState::CANCELLED;
+}
+
+bool FinishedTokenLedger::boundLiveElsewhere(const std::string& generation,
+                                             uint32_t android_seq) const {
+    for (const auto& gen_pair : generations_) {
+        if (gen_pair.first == generation) {
+            continue;
+        }
+        if (torn_down_generations_.count(gen_pair.first)) {
+            continue;
+        }
+        auto seq_it = gen_pair.second.by_seq.find(android_seq);
+        if (seq_it == gen_pair.second.by_seq.end()) {
+            continue;
+        }
+        auto ev_it = gen_pair.second.by_oh_event_id.find(seq_it->second);
+        if (ev_it != gen_pair.second.by_oh_event_id.end() &&
+            !isTerminalState(ev_it->second.state)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void FinishedTokenLedger::transitionToTerminal(Token& token,
+                                               TokenState terminal_state,
+                                               int64_t now_ns,
+                                               const std::string& reason,
+                                               int64_t publish_rc) {
+    if (isTerminalState(token.state)) {
+        return;
+    }
+    token.state = terminal_state;
+    token.terminal_reason = reason;
+    (void)now_ns;
+
+    LedgerRow row;
+    row.generation = token.generation;
+    row.oh_event_id = token.oh_event_id;
+    row.android_seq = token.android_seq;
+    row.android_finished_time_ns = token.finished_time_ns;
+    // MarkProcessed was never emitted on this path; keep the field at -1 so
+    // the evidence row cannot be misread as an OH acknowledgement.
+    row.oh_processed_time_ns = -1;
+    row.callback_tid = token.callback_tid;
+    row.handled = token.handled;
+    row.publish_rc = publish_rc;
+    row.terminal_reason = reason;
+    rows_.push_back(std::move(row));
+}
+
+void FinishedTokenLedger::emitMarkProcessed(Token& token, int64_t now_ns) {
+    token.state = TokenState::FINISHED_RECEIVED;
+    token.finished_time_ns = now_ns;
+
+    // The MarkProcessed callback runs while mutex_ is held.  This
+    // deliberately serializes emission against teardownGeneration: a
+    // concurrent teardown either runs first (token is CANCELLED and this
+    // path is never reached) or after the token is already PROCESSED_ACKED.
+    // MarkProcessed can therefore never be emitted for a cancelled token,
+    // and the FINISHED_RECEIVED -> CANCELLED design edge is subsumed by this
+    // serialization.  The callback must not re-enter the ledger.
+    if (mark_processed_cb_) {
+        mark_processed_cb_(token.generation, token.oh_event_id);
+    }
+
+    // The evidence contract records the wall time at which the MarkProcessed
+    // callback returns, captured from the injectable ledger clock.
+    token.processed_time_ns = config_.clock ? config_.clock() : now_ns;
+    token.state = TokenState::PROCESSED_ACKED;
+    token.terminal_reason = TerminalReason::FINISHED;
+
+    LedgerRow row;
+    row.generation = token.generation;
+    row.oh_event_id = token.oh_event_id;
+    row.android_seq = token.android_seq;
+    row.android_finished_time_ns = token.finished_time_ns;
+    row.oh_processed_time_ns = token.processed_time_ns;
+    row.callback_tid = token.callback_tid;
+    row.handled = token.handled;
+    row.terminal_reason = TerminalReason::FINISHED;
+    rows_.push_back(std::move(row));
+}
+
+}  // namespace input
+}  // namespace oh_adapter

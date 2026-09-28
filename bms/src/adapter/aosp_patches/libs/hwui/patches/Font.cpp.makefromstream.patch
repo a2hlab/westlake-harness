@@ -1,0 +1,20 @@
+--- a/libs/hwui/jni/fonts/Font.cpp
++++ b/libs/hwui/jni/fonts/Font.cpp
+@@ -462,8 +462,15 @@
+     args.setCollectionIndex(ttcIndex);
+     args.setVariationDesignPosition({skVariation.data(), static_cast<int>(skVariation.size())});
+ 
+-    sk_sp<SkFontMgr> fm(SkFontMgr::RefDefault());
+-    sk_sp<SkTypeface> face(fm->makeFromStream(std::move(fontData), args));
++    // OH_ADAPTER (typeface staged-fix, 2026-06-26): SkFontMgr_New_OHOS is empty /
++    // routes through libipc_core (OS_IPC_* threads) and returns a NULL SkTypeface
++    // inside the appspawn-x fork child -> createFromFile NPE -> sDefaultTypeface==null
++    // -> Typeface.createFromFamiliesWithDefault SIGSEGV@0x18. Replace the FontMgr
++    // path with the FontMgr-free FreeType direct path (proven in
++    // framework/hwui-shim/jni/oh_typeface_init.cpp:104). Variation axes are dropped
++    // (default fonts use collection-index only), which is acceptable for createFromFile.
++    sk_sp<SkTypeface> face(SkTypeface::MakeFromStream(std::move(fontData),
++                                                      args.getCollectionIndex()));
+     if (face == nullptr) {
+         return nullptr;
+     }

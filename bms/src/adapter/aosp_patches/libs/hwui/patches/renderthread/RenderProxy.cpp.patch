@@ -1,0 +1,39 @@
+diff --git a/libs/hwui/renderthread/RenderProxy.cpp b/libs/hwui/renderthread/RenderProxy.cpp
+index 224c878b..ab7e0b27 100644
+--- a/libs/hwui/renderthread/RenderProxy.cpp
++++ b/libs/hwui/renderthread/RenderProxy.cpp
+@@ -15,6 +15,7 @@
+  */
+ 
+ #include "RenderProxy.h"
++#include "../DeviceInfo.h"
+ 
+ #include <gui/TraceUtils.h>
+ #include "DeferredLayerUpdater.h"
+@@ -346,7 +347,7 @@ void RenderProxy::rotateProcessStatsBuffer() {
+ }
+ 
+ int RenderProxy::getRenderThreadTid() {
+-    return mRenderThread.getTid();
++    return 0; /* OH adapter: getTid stub */
+ }
+ 
+ void RenderProxy::addRenderNode(RenderNode* node, bool placeFront) {
+@@ -455,7 +456,7 @@ void RenderProxy::prepareToDraw(Bitmap& bitmap) {
+ int RenderProxy::copyHWBitmapInto(Bitmap* hwBitmap, SkBitmap* bitmap) {
+     ATRACE_NAME("HardwareBitmap readback");
+     RenderThread& thread = RenderThread::getInstance();
+-    if (gettid() == thread.getTid()) {
++    if (gettid() == 0 /* OH adapter */) {
+         // TODO: fix everything that hits this. We should never be triggering a readback ourselves.
+         return (int)thread.readback().copyHWBitmapInto(hwBitmap, bitmap);
+     } else {
+@@ -466,7 +467,7 @@ int RenderProxy::copyHWBitmapInto(Bitmap* hwBitmap, SkBitmap* bitmap) {
+ 
+ int RenderProxy::copyImageInto(const sk_sp<SkImage>& image, SkBitmap* bitmap) {
+     RenderThread& thread = RenderThread::getInstance();
+-    if (gettid() == thread.getTid()) {
++    if (gettid() == 0 /* OH adapter */) {
+         // TODO: fix everything that hits this. We should never be triggering a readback ourselves.
+         return (int)thread.readback().copyImageInto(image, bitmap);
+     } else {

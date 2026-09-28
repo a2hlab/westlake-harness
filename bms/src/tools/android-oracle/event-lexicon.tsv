@@ -1,0 +1,63 @@
+# 事件名词表 —— 把两侧原始日志名映射成同一个「标准名」，diff-events.py 才能逐条对齐。
+#
+# 格式：标准名 <TAB> 哪一侧(android|oh|both) <TAB> 正则(匹配 "name effect") <TAB> 是否比对效果(0|1)
+# 规则自上而下，先匹配先生效 —— 具体的放前面，笼统的放后面。
+#
+# 为什么必须有这张表：两个系统对同一件事叫法不同（安卓叫 Zygote，OH 叫 appspawn）。
+# 表不全的话，比对会把「名字不同」误判成「安卓有、OH 没有」，欠账数虚高。
+# diff-events.py 会统计映不上的条数并提醒补表 —— 看到提醒就补，不要无视。
+#
+# 覆盖范围对应 LADDER.md 的 9 级梯子。第 8–9 级（绘制、首帧）需要真机基准，
+# 模拟器的图形栈不可比，这两级的条目采到也要标降级。
+
+# ---- 第 1 级：装机 ----
+install	android	PackageManager.*(install|INSTALL_SUCCEEDED)|PackageInstaller	0
+install	oh	BMS|BundleMgr.*install|BundleInstaller	0
+
+# ---- 第 2 级：进程孵化 ----
+spawn	android	Zygote|ZygoteProcess|Start proc|ActivityManager.*Start proc	0
+spawn	oh	appspawn|AppSpawn|SpawnChild|fork.*child	0
+
+# ---- 第 3 级：虚拟机起来 ----
+art_init	android	\bart\b.*(Init|Runtime|Starting|created)|dalvikvm.*(Late-enabling|VM)	0
+art_init	oh	imageless|libart|ArtRuntime|runtime.*(init|start)	0
+
+# ---- 第 4 级：类加载 / JNI ----
+dlopen	both	openat\.so	1
+classload	android	ClassLoader|DexFile|dexopt|BaseDexClassLoader	0
+classload	oh	ClassLoader|DexFile|dexopt	0
+jni_register	both	RegisterNatives|JNI_OnLoad|jni.*register	0
+loadlibrary	both	System\.loadLibrary|loadLibrary0	0
+
+# ---- 第 5 级：主线程入口 ----
+activitythread_main	both	ActivityThread.*(main|attach|handleBindApplication)	0
+bindapplication	both	bindApplication|BindApplication|makeApplication	0
+
+# ---- 第 6 级：原生调用约定 ----
+crit_abi	both	CriticalNative|FastNative|crit-abi|critical.*native	0
+
+# ---- 第 7 级：消息循环 ----
+looper_prepare	android	Looper.*(prepare|prepareMainLooper)	0
+looper_prepare	oh	EventRunner.*(Create|Current)|EventHandler.*init	0
+looper_loop	android	Looper\.loop|MessageQueue|nativePollOnce	0
+looper_loop	oh	EventRunner.*Run|EventHandler.*(Process|Distribute)|epoll_wait	0
+
+# ---- 生命周期 ----
+activity_oncreate	android	onCreate|ActivityThread.*performLaunchActivity	0
+activity_oncreate	oh	AAFwk.*(OnStart|OnForeground)|AbilityManager.*start|WMS_LIFE	0
+activity_onresume	android	onResume|performResumeActivity|ResumeActivity	0
+activity_onresume	oh	AAFwk.*OnForeground|Ability.*Foreground	0
+
+# ---- 第 8 级：窗口 / 布局 / 绘制（模拟器基准不可比，采到须标降级） ----
+window_add	android	ViewRootImpl|WindowManager.*addView|addToDisplay	0
+window_add	oh	WMS_MAIN|WindowManager.*(AddWindow|CreateWindow)|ArkUI.*window	0
+measure_layout	android	performTraversals|performMeasure|performLayout	0
+measure_layout	oh	ArkUI.*(Measure|Layout)|RSNode.*layout	0
+
+# ---- 第 9 级：首帧 ----
+first_frame	android	Choreographer.*doFrame|Displayed .*\+|first.*frame	0
+first_frame	oh	RenderService|RSMain.*frame|first.*frame	0
+
+# ---- 失败信号：两侧都要抓，掉了会把崩溃当成「少了几条事件」 ----
+crash	both	FATAL EXCEPTION|AndroidRuntime.*FATAL|SIGSEGV|SIGABRT|SIGBUS|Fatal signal	0
+anr	both	\bANR\b|Application Not Responding|WATCHDOG	0

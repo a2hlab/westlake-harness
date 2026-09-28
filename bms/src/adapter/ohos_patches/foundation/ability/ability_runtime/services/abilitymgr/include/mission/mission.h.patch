@@ -1,0 +1,128 @@
+--- a/foundation/ability/ability_runtime/services/abilitymgr/include/mission/mission.h
++++ b/foundation/ability/ability_runtime/services/abilitymgr/include/mission/mission.h
+@@ -17,6 +17,7 @@
+ #define OHOS_ABILITY_RUNTIME_MISSION_H
+ 
+ #include <memory>
++#include <vector>
+ 
+ #include "inner_mission_info.h"
+ #include "mission_ability_record.h"
+@@ -27,7 +28,13 @@
+ 
+ /**
+  * @class Mission
+- * a mission only contains an AbilityRecord
++ * A mission contains one or more AbilityRecords in a stack.
++ *
++ * For OH native apps: stack always has exactly 1 Ability (unchanged behavior).
++ * For Android adapted apps: stack may have multiple Abilities (Activity stack).
++ *
++ * GetAbilityRecord() returns the stack top, maintaining backward compatibility
++ * with all existing callers that expect a single AbilityRecord per Mission.
+  */
+ class Mission : public std::enable_shared_from_this<Mission> {
+ public:
+@@ -79,7 +86,9 @@
+     std::string GetMissionName() const;
+ 
+     /**
+-     * @brief Get the Ability Record object
++     * @brief Get the top Ability Record (stack top).
++     * For single-ability missions (OH native), returns the only ability.
++     * For multi-ability missions (Android adapted), returns the stack top.
+      *
+      * @return MissionAbilityRecordPtr
+      */
+@@ -217,6 +226,72 @@
+         return unclearable_;
+     }
+ 
++    // ==================== Multi-Ability Stack (Android adapter) ====================
++
++    /**
++     * Push a new AbilityRecord onto the stack top.
++     * Used by Android adapter to add a new Activity to the Mission.
++     *
++     * @param abilityRecord the new AbilityRecord to push
++     */
++    void PushAbility(MissionAbilityRecordPtr abilityRecord);
++
++    /**
++     * Pop the top AbilityRecord from the stack.
++     * Will not pop the last ability (stack must retain at least one).
++     *
++     * @return the popped AbilityRecord, or nullptr if stack size <= 1
++     */
++    MissionAbilityRecordPtr PopAbility();
++
++    /**
++     * Get the number of AbilityRecords in the stack.
++     */
++    size_t GetAbilityStackSize() const;
++
++    /**
++     * Get the bottom (first) AbilityRecord in the stack.
++     * Used for Android RecentTaskInfo.baseActivity.
++     */
++    MissionAbilityRecordPtr GetBaseAbilityRecord() const;
++
++    /**
++     * Find an AbilityRecord in the stack by ability name.
++     * Searches from top to bottom.
++     *
++     * @param abilityName target ability name
++     * @return found AbilityRecord, or nullptr
++     */
++    MissionAbilityRecordPtr FindAbilityByName(const std::string &abilityName) const;
++
++    /**
++     * Check if an AbilityRecord exists in the stack.
++     *
++     * @param abilityRecord the AbilityRecord to search for
++     * @return true if found
++     */
++    bool ContainsAbility(const std::shared_ptr<AbilityRecord> &abilityRecord) const;
++
++    /**
++     * Pop all AbilityRecords above the target ability (for CLEAR_TOP).
++     *
++     * @param abilityName target ability name
++     * @param includeSelf whether to also pop the target itself
++     * @return list of popped AbilityRecords (need to be terminated)
++     */
++    std::vector<MissionAbilityRecordPtr> PopAbilitiesAbove(
++        const std::string &abilityName, bool includeSelf = false);
++
++    /**
++     * Check if this Mission supports multi-ability stack (Android adapter mode).
++     */
++    inline bool IsMultiAbilityMode() const { return multiAbilityMode_; }
++
++    /**
++     * Enable or disable multi-ability stack mode.
++     */
++    inline void SetMultiAbilityMode(bool enabled) { multiAbilityMode_ = enabled; }
++
+ private:
+     bool lockedState_ = false;
+     bool isMovingToFront_ = false;
+@@ -227,10 +302,17 @@
+     int32_t missionId_;
+     int32_t startMethod_;
+     std::weak_ptr<MissionList> ownerMissionList_;
+-    MissionAbilityRecordPtr abilityRecord_;
+     std::string missionName_;
+     std::string specifiedFlag_;
+     std::string missionTime_ = "0";
++
++    // Ability stack: back = top, front = bottom.
++    // For OH native apps: always exactly 1 element (behavior unchanged).
++    // For Android adapted apps: may have multiple elements.
++    std::vector<MissionAbilityRecordPtr> abilityStack_;
++
++    // Multi-ability mode flag. Default false (OH native behavior).
++    bool multiAbilityMode_ = false;
+ };
+ }  // namespace AAFwk
+ }  // namespace OHOS

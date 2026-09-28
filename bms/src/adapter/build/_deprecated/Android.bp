@@ -1,0 +1,79 @@
+// Android.bp - AOSP build configuration
+// Integrates the adaptation layer into the Android Framework build system
+
+// JNI shared library
+cc_library_shared {
+    name: "liboh_adapter_bridge",
+    srcs: [
+        // core: JNI entry point, JavaVM management, callback dispatch
+        "framework/core/jni/adapter_bridge.cpp",
+        "framework/core/jni/oh_callback_handler.cpp",
+        // activity: AMS/ATMS bridges, lifecycle, Intent/Want conversion
+        "framework/activity/jni/oh_ability_manager_client.cpp",
+        "framework/activity/jni/oh_app_mgr_client.cpp",
+        "framework/activity/jni/app_scheduler_adapter.cpp",
+        "framework/activity/jni/ability_scheduler_adapter.cpp",
+        "framework/activity/jni/ability_connection_adapter.cpp",
+        "framework/activity/jni/intent_want_converter.cpp",
+        "framework/activity/jni/lifecycle_state_mapper.cpp",
+        // window: WMS/WindowSession bridges, input event bridging
+        "framework/window/jni/oh_window_manager_client.cpp",
+        "framework/window/jni/oh_input_bridge.cpp",
+        "framework/window/jni/window_callback_adapter.cpp",
+        "framework/window/jni/session_stage_adapter.cpp",
+        "framework/window/jni/window_manager_agent_adapter.cpp",
+        // surface: RSSurfaceNode + IGraphicBufferProducer bridging
+        "framework/surface/jni/oh_surface_bridge.cpp",
+        "framework/surface/jni/oh_graphic_buffer_producer.cpp",
+        // broadcast: CommonEvent / BroadcastReceiver bridging
+        "framework/broadcast/jni/oh_common_event_client.cpp",
+        "framework/broadcast/jni/common_event_subscriber_adapter.cpp",
+        // contentprovider: DataShare / ContentProvider bridging
+        "framework/contentprovider/jni/oh_datashare_client.cpp",
+        // package-manager: BMS client (PackageManager queries)
+        "framework/package-manager/jni/oh_bundle_mgr_client.cpp",
+    ],
+    local_include_dirs: [
+        "framework/core/jni",
+        "framework/activity/jni",
+        "framework/window/jni",
+        "framework/surface/jni",
+        "framework/broadcast/jni",
+        "framework/contentprovider/jni",
+        "framework/package-manager/jni",
+    ],
+    shared_libs: [
+        "liblog",
+        "libutils",
+        "libcutils",
+    ],
+    // OH IPC libraries (require cross-compilation or prebuilt binaries)
+    // static_libs: [
+    //     "libipc_core",
+    //     "libsamgr_proxy",
+    //     "libappexecfwk_core",
+    // ],
+    cflags: [
+        "-std=c++17",
+        "-Wall",
+        "-Werror",
+    ],
+}
+
+// Java library
+java_library {
+    name: "oh-adapter-framework",
+    srcs: [
+        "framework/**/java/**/*.java",
+    ],
+    libs: [
+        "framework",
+    ],
+    required: [
+        "liboh_adapter_bridge",
+    ],
+}
+
+// Hello World test APK: built via Android Studio on Windows (D:\code\adapter\app\).
+// No Soong target here per CLAUDE.md "APK 编译位置规则". Removing this block
+// closes the door on "Android.bp re-introduces adapter coupling" accidents.

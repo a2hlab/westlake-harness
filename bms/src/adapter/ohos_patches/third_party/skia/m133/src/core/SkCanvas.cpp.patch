@@ -1,0 +1,226 @@
+--- a/third_party/skia/m133/src/core/SkCanvas.cpp
++++ b/third_party/skia/m133/src/core/SkCanvas.cpp
+@@ -7,6 +7,14 @@
+ 
+ #include "include/core/SkCanvas.h"
+ 
++// OH_SK_REPLAY probe — added 2026-05-13 for helloworld silent-NOOP diagnosis.
++// fprintf(stderr) per-process; appspawn-x child stderr redirects to
++// /data/service/el1/public/appspawnx/adapter_child_<pid>.stderr, so RS draw
++// activity is naturally filtered out.  Each probe limited to first 5 + every
++// 100th call to bound log volume.
++#include <atomic>
++#include <cstdio>
++
+ #include "include/core/SkAlphaType.h"
+ #include "include/core/SkBitmap.h"
+ #include "include/core/SkBlendMode.h"
+@@ -1915,19 +1923,58 @@
+ }
+ 
+ void SkCanvas::onDrawPaint(const SkPaint& paint) {
++    // OH_SK_REPLAY probe — onDrawPaint
++    {
++        static std::atomic<int> g_OH_SK_REPLAY_Paint{0};
++        int n = ++g_OH_SK_REPLAY_Paint;
++        if (n <= 5 || n % 100 == 0) {
++            std::fprintf(stderr,
++                "[OH_SK_REPLAY] onDrawPaint #%d canvas=%p (canvas-wide)\n",
++                n, (void*)this);
++        }
++    }
+     this->internalDrawPaint(paint);
+ }
+ 
+ void SkCanvas::internalDrawPaint(const SkPaint& paint) {
+-    // drawPaint does not call internalQuickReject() because computing its geometry is not free
+-    // (see getLocalClipBounds(), and the two conditions below are sufficient.
+     if (paint.nothingToDraw() || this->isClipEmpty()) {
++        // OH_SK_DISPATCH probe — internalDrawPaint REJECTED (nothingToDraw or clipEmpty)
++        {
++            static std::atomic<int> g_OH_SK_DISPATCH_Paint_REJ{0};
++            int n = ++g_OH_SK_DISPATCH_Paint_REJ;
++            if (n <= 5 || n % 100 == 0) {
++                std::fprintf(stderr,
++                    "[OH_SK_DISPATCH_Paint_REJ] Paint REJECTED #%d canvas=%p nothingToDraw=%d clipEmpty=%d\n",
++                    n, (void*)this, paint.nothingToDraw()?1:0, this->isClipEmpty()?1:0);
++            }
++        }
+         return;
+     }
+ 
+     auto layer = this->aboutToDraw(paint, nullptr, PredrawFlags::kCheckForOverwrite);
+     if (layer) {
++        // OH_SK_DISPATCH probe — internalDrawPaint DISPATCHED
++        {
++            static std::atomic<int> g_OH_SK_DISPATCH_Paint_OK{0};
++            int n = ++g_OH_SK_DISPATCH_Paint_OK;
++            if (n <= 5 || n % 100 == 0) {
++                std::fprintf(stderr,
++                    "[OH_SK_DISPATCH_Paint_OK] Paint DISPATCHED #%d canvas=%p\n",
++                    n, (void*)this);
++            }
++        }
+         this->topDevice()->drawPaint(layer->paint());
++    } else {
++        // OH_SK_DISPATCH probe — internalDrawPaint NO_LAYER (silent skip)
++        {
++            static std::atomic<int> g_OH_SK_DISPATCH_Paint_NOLAYER{0};
++            int n = ++g_OH_SK_DISPATCH_Paint_NOLAYER;
++            if (n <= 5 || n % 100 == 0) {
++                std::fprintf(stderr,
++                    "[OH_SK_DISPATCH_Paint_NOLAYER] Paint NO_LAYER (silent skip) #%d canvas=%p\n",
++                    n, (void*)this);
++            }
++        }
+     }
+ }
+ 
+@@ -2025,6 +2072,16 @@
+ }
+ 
+ void SkCanvas::onDrawRect(const SkRect& r, const SkPaint& paint) {
++    // OH_SK_REPLAY probe — onDrawRect
++    {
++        static std::atomic<int> g_OH_SK_REPLAY_Rect{0};
++        int n = ++g_OH_SK_REPLAY_Rect;
++        if (n <= 5 || n % 100 == 0) {
++            std::fprintf(stderr,
++                "[OH_SK_REPLAY] onDrawRect #%d canvas=%p l=%.1f t=%.1f r=%.1f b=%.1f\n",
++                n, (void*)this, (double)r.fLeft, (double)r.fTop, (double)r.fRight, (double)r.fBottom);
++        }
++    }
+     SkASSERT(r.isSorted());
+     if (this->internalQuickReject(r, paint)) {
+         return;
+@@ -2035,7 +2092,28 @@
+             SkRRect::MakeRect(r), paint, PredrawFlags::kCheckForOverwrite);
+ 
+     if (layer) {
++        // OH_SK_DISPATCH probe — onDrawRect DISPATCHED
++        {
++            static std::atomic<int> g_OH_SK_DISPATCH_Rect{0};
++            int n = ++g_OH_SK_DISPATCH_Rect;
++            if (n <= 5 || n % 100 == 0) {
++                std::fprintf(stderr,
++                    "[OH_SK_DISPATCH_Rect] Rect DISPATCHED #%d canvas=%p clipEmpty=%d\n",
++                    n, (void*)this, this->isClipEmpty()?1:0);
++            }
++        }
+         this->topDevice()->drawRect(r, layer->paint());
++    } else {
++        // OH_SK_DISPATCH probe — onDrawRect NO_LAYER (silent skip)
++        {
++            static std::atomic<int> g_OH_SK_DISPATCH_Rect_NOLAYER{0};
++            int n = ++g_OH_SK_DISPATCH_Rect_NOLAYER;
++            if (n <= 5 || n % 100 == 0) {
++                std::fprintf(stderr,
++                    "[OH_SK_DISPATCH_Rect_NOLAYER] Rect NO_LAYER (silent skip) #%d canvas=%p\n",
++                    n, (void*)this);
++            }
++        }
+     }
+ }
+ 
+@@ -2165,6 +2243,16 @@
+ }
+ 
+ void SkCanvas::onDrawPath(const SkPath& path, const SkPaint& paint) {
++    // OH_SK_REPLAY probe — onDrawPath
++    {
++        static std::atomic<int> g_OH_SK_REPLAY_Path{0};
++        int n = ++g_OH_SK_REPLAY_Path;
++        if (n <= 5 || n % 100 == 0) {
++            std::fprintf(stderr,
++                "[OH_SK_REPLAY] onDrawPath #%d canvas=%p path-verbs=%d\n",
++                n, (void*)this, path.countVerbs());
++        }
++    }
+     if (!path.isFinite()) {
+         return;
+     }
+@@ -2227,6 +2315,16 @@
+ void SkCanvas::onDrawImageRect2(const SkImage* image, const SkRect& src, const SkRect& dst,
+                                 const SkSamplingOptions& sampling, const SkPaint* paint,
+                                 SrcRectConstraint constraint) {
++    // OH_SK_REPLAY probe — onDrawImageRect
++    {
++        static std::atomic<int> g_OH_SK_REPLAY_ImageRect{0};
++        int n = ++g_OH_SK_REPLAY_ImageRect;
++        if (n <= 5 || n % 100 == 0) {
++            std::fprintf(stderr,
++                "[OH_SK_REPLAY] onDrawImageRect #%d canvas=%p image=%p dst l=%.1f t=%.1f r=%.1f b=%.1f\n",
++                n, (void*)this, (void*)image, (double)dst.fLeft, (double)dst.fTop, (double)dst.fRight, (double)dst.fBottom);
++        }
++    }
+     SkPaint realPaint = clean_paint_for_drawImage(paint);
+     SkSamplingOptions realSampling = clean_sampling_for_constraint(sampling, constraint);
+ 
+@@ -2372,6 +2470,16 @@
+ 
+ void SkCanvas::onDrawTextBlob(const SkTextBlob* blob, SkScalar x, SkScalar y,
+                               const SkPaint& paint) {
++    // OH_SK_REPLAY probe — onDrawTextBlob
++    {
++        static std::atomic<int> g_OH_SK_REPLAY_TextBlob{0};
++        int n = ++g_OH_SK_REPLAY_TextBlob;
++        if (n <= 5 || n % 100 == 0) {
++            std::fprintf(stderr,
++                "[OH_SK_REPLAY] onDrawTextBlob #%d canvas=%p blob=%p x=%.1f y=%.1f\n",
++                n, (void*)this, (void*)blob, (double)x, (double)y);
++        }
++    }
+     auto glyphRunList = fScratchGlyphRunBuilder->blobToGlyphRunList(*blob, {x, y});
+     this->onDrawGlyphRunList(glyphRunList, paint);
+ }
+@@ -2379,6 +2487,16 @@
+ void SkCanvas::onDrawGlyphRunList(const sktext::GlyphRunList& glyphRunList, const SkPaint& paint) {
+     SkRect bounds = glyphRunList.sourceBoundsWithOrigin();
+     if (this->internalQuickReject(bounds, paint)) {
++        // OH_SK_DISPATCH probe — onDrawGlyphRunList REJECTED (silent skip via quickReject)
++        {
++            static std::atomic<int> g_OH_SK_DISPATCH_Glyph_REJ{0};
++            int n = ++g_OH_SK_DISPATCH_Glyph_REJ;
++            if (n <= 5 || n % 100 == 0) {
++                std::fprintf(stderr,
++                    "[OH_SK_DISPATCH_Glyph_REJ] Glyph REJECTED #%d canvas=%p bounds=[%.1f,%.1f,%.1f,%.1f]\n",
++                    n, (void*)this, (double)bounds.fLeft, (double)bounds.fTop, (double)bounds.fRight, (double)bounds.fBottom);
++            }
++        }
+         return;
+     }
+ 
+@@ -2388,7 +2506,28 @@
+     // filter layer.
+     auto layer = this->aboutToDraw(paint, &bounds, PredrawFlags::kSkipMaskFilterAutoLayer);
+     if (layer) {
++        // OH_SK_DISPATCH probe — onDrawGlyphRunList DISPATCHED
++        {
++            static std::atomic<int> g_OH_SK_DISPATCH_Glyph_OK{0};
++            int n = ++g_OH_SK_DISPATCH_Glyph_OK;
++            if (n <= 5 || n % 100 == 0) {
++                std::fprintf(stderr,
++                    "[OH_SK_DISPATCH_Glyph_OK] Glyph DISPATCHED #%d canvas=%p clipEmpty=%d\n",
++                    n, (void*)this, this->isClipEmpty()?1:0);
++            }
++        }
+         this->topDevice()->drawGlyphRunList(this, glyphRunList, layer->paint());
++    } else {
++        // OH_SK_DISPATCH probe — onDrawGlyphRunList NO_LAYER (silent skip)
++        {
++            static std::atomic<int> g_OH_SK_DISPATCH_Glyph_NOLAYER{0};
++            int n = ++g_OH_SK_DISPATCH_Glyph_NOLAYER;
++            if (n <= 5 || n % 100 == 0) {
++                std::fprintf(stderr,
++                    "[OH_SK_DISPATCH_Glyph_NOLAYER] Glyph NO_LAYER (silent skip) #%d canvas=%p\n",
++                    n, (void*)this);
++            }
++        }
+     }
+ }
+ 
+@@ -2909,3 +3048,4 @@
+     return hndl ? std::unique_ptr<SkCanvas>(new SkCanvas(bm, std::move(alloc), hndl, props))
+                 : nullptr;
+ }
++

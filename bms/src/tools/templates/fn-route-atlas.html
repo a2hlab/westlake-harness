@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bridge Fn01–Fn12 多路径技术方案图谱</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --surface: #f0f2f6;
+      --text: #18202b;
+      --muted: #687386;
+      --border: #d8dde6;
+      --primary: #1167d8;
+      --primary-soft: #e8f2ff;
+      --backup: #b34cc8;
+      --backup-soft: #f8eafd;
+      --candidate: #7c8798;
+      --danger: #c93648;
+      --danger-soft: #fff0f2;
+      --android: #eaf4ff;
+      --bridge: #fff4e8;
+      --oh: #eaf8f1;
+      --shadow: 0 8px 28px rgba(25, 34, 50, 0.09);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #10141b;
+        --panel: #171c25;
+        --surface: #202633;
+        --text: #edf2f8;
+        --muted: #a4adbb;
+        --border: #343c49;
+        --primary: #65a7ff;
+        --primary-soft: #142c49;
+        --backup: #e48cf4;
+        --backup-soft: #38213d;
+        --candidate: #9aa5b5;
+        --danger: #ff7c8b;
+        --danger-soft: #3c2028;
+        --android: #14283d;
+        --bridge: #33271d;
+        --oh: #173128;
+        --shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+    button, input { font: inherit; }
+    button:focus-visible, input:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+      outline-offset: 2px;
+    }
+    .page {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: 1.15;
+    }
+    .subtitle, .source-line {
+      color: var(--muted);
+    }
+    .source-line {
+      font-size: 12px;
+      text-align: right;
+      word-break: break-all;
+    }
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .summary-chip, .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--panel);
+      padding: 4px 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .badge.accepted {
+      border-color: color-mix(in srgb, var(--primary) 48%, var(--border));
+      background: var(--primary-soft);
+      color: var(--text);
+    }
+    .badge.drift {
+      border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+    .shell {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .fn-nav {
+      position: sticky;
+      top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .fn-button {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 45px minmax(0, 1fr);
+      gap: 8px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--text);
+      padding: 8px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .fn-button:hover { background: var(--surface); }
+    .fn-button[aria-pressed="true"] {
+      border-color: var(--border);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .fn-id { font-weight: 700; }
+    .fn-name {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+    .fn-decision {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .main {
+      min-width: 0;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 10px;
+    }
+    .toolbar button, .toolbar .view-link {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 6px 11px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .toolbar button[aria-pressed="true"] {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+    .toolbar .search {
+      min-width: min(270px, 100%);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 7px 12px;
+    }
+    .heading {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 7px 12px;
+      margin-bottom: 8px;
+    }
+    .heading strong { font-size: 18px; }
+    .heading span { color: var(--muted); }
+    .route-stage {
+      position: relative;
+      display: grid;
+      grid-template-rows: 112px minmax(182px, auto) 112px;
+      gap: 7px;
+    }
+    .zone {
+      position: relative;
+      border-top: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .android-zone { background: var(--android); }
+    .route-zone {
+      background: var(--bridge);
+      padding: 42px 11px 15px;
+    }
+    .oh-zone { background: var(--oh); }
+    .zone-label {
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .contract-node {
+      position: absolute;
+      top: 38px;
+      left: 50%;
+      width: min(520px, 78%);
+      min-height: 56px;
+      transform: translateX(-50%);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 8px 12px;
+      font-weight: 650;
+      cursor: pointer;
+      z-index: 2;
+    }
+    .route-grid {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+      gap: 9px;
+    }
+    .route-card {
+      min-height: 104px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 9px 10px;
+      text-align: left;
+      cursor: grab;
+    }
+    .route-card:active { cursor: grabbing; }
+    .route-card:hover { box-shadow: var(--shadow); }
+    .route-card.primary { border: 3px solid var(--primary); }
+    .route-card.backup { border: 3px dashed var(--backup); }
+    .route-card.upgrade { border: 3px dotted #8f5bd6; }
+    .route-card[data-selected="true"] {
+      outline: 3px solid color-mix(in srgb, var(--primary) 40%, transparent);
+      outline-offset: 2px;
+    }
+    .route-card.drag-target {
+      background: var(--primary-soft);
+    }
+    .route-id, .route-role {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .route-title {
+      display: block;
+      margin: 4px 0 7px;
+      font-weight: 700;
+    }
+    .route-role.primary-role { color: var(--primary); }
+    .route-role.backup-role { color: var(--backup); }
+    .route-role.upgrade-role { color: #8f5bd6; }
+    .route-lines {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .route-lines path {
+      fill: none;
+      stroke: var(--candidate);
+      stroke-width: 1.2;
+      opacity: .5;
+    }
+    .route-lines path.primary {
+      stroke: var(--primary);
+      stroke-width: 3;
+      opacity: 1;
+    }
+    .route-lines path.backup {
+      stroke: var(--backup);
+      stroke-width: 2.6;
+      stroke-dasharray: 8 5;
+      opacity: 1;
+    }
+    .route-lines path.upgrade {
+      stroke: #8f5bd6;
+      stroke-width: 2.4;
+      stroke-dasharray: 2 5;
+      opacity: 1;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px 17px;
+      margin: 9px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .legend i {
+      display: inline-block;
+      width: 25px;
+      margin-right: 5px;
+      vertical-align: middle;
+      border-top: 2px solid var(--candidate);
+    }
+    .legend .primary-line { border-color: var(--primary); border-top-width: 3px; }
+    .legend .backup-line { border-color: var(--backup); border-top-style: dashed; }
+    .legend .upgrade-line {
+      border-color: #8f5bd6;
+      border-top-style: dotted;
+      border-top-width: 3px;
+    }
+    .detail {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      padding: 12px 14px;
+    }
+    .detail-title {
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    .detail-body { color: var(--muted); }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 7px 16px;
+      margin-top: 9px;
+    }
+    .detail-item {
+      border-top: 1px solid var(--border);
+      padding-top: 6px;
+    }
+    .detail-key {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .empty {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      padding: 34px 10px;
+      text-align: center;
+    }
+    .footnote {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      word-break: break-all;
+    }
+    @media (max-width: 800px) {
+      .page { padding: 12px; }
+      .page-header { align-items: flex-start; flex-direction: column; }
+      .source-line { text-align: left; }
+      .shell { grid-template-columns: 1fr; }
+      .fn-nav {
+        position: static;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .fn-button {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+      .fn-button span:nth-child(2) { display: none; }
+      .route-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 470px) {
+      .fn-nav { grid-template-columns: repeat(3, 1fr); }
+      .route-grid { grid-template-columns: 1fr; }
+      .toolbar .search { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <div>
+        <h1>Bridge 多路径技术方案图谱</h1>
+        <div class="subtitle">Fn01–Fn12 · 共同合同 → 候选路线 → 主路径 / 备份路径 → 共同终态</div>
+      </div>
+      <div class="source-line">只读聚合 · source digest <code>__SOURCE_DIGEST__</code></div>
+    </header>
+
+    <div class="summary" id="summary"></div>
+
+    <div class="shell">
+      <nav class="fn-nav" id="fn-nav" aria-label="Fn Concept Domains"></nav>
+
+      <main class="main">
+        <div class="toolbar">
+          <button type="button" data-filter="all" aria-pressed="true">全部技术路径</button>
+          <button type="button" data-filter="chosen" aria-pressed="false">只看主路径 / 备份路径</button>
+          <input class="search" id="route-search" type="search" placeholder="搜索路线、机制、风险…" aria-label="搜索技术路径">
+          <a class="view-link" id="object-map-link" href="fn-os-object-map.html">打开 OS 对象地图 ↗</a>
+          <span class="badge" id="decision-badge"></span>
+        </div>
+
+        <div class="heading">
+          <strong id="fn-heading"></strong>
+          <span id="model-heading"></span>
+        </div>
+
+        <div class="route-stage" id="route-stage">
+          <svg class="route-lines" id="route-lines" aria-hidden="true"></svg>
+          <section class="zone android-zone">
+            <span class="zone-label">共同 Android / AOSP 语义合同</span>
+            <button type="button" class="contract-node" id="android-contract"></button>
+          </section>
+          <section class="zone route-zone">
+            <span class="zone-label">Bridge 多路径技术方案 · 拖动只调整展示顺序</span>
+            <div class="route-grid" id="route-grid"></div>
+          </section>
+          <section class="zone oh-zone">
+            <span class="zone-label">共同 OpenHarmony 能力与可观察终态</span>
+            <button type="button" class="contract-node" id="oh-contract"></button>
+          </section>
+        </div>
+
+        <div class="legend">
+          <span><i class="primary-line"></i>主路径：已接受且 hash 绑定匹配</span>
+          <span><i class="backup-line"></i>备份路径：已接受且 hash 绑定匹配</span>
+          <span><i class="upgrade-line"></i>未来升级：非备份、非自动切换</span>
+          <span><i></i>候选 / 组件候选：未裁决或其他路线</span>
+        </div>
+
+        <section class="detail" id="detail" aria-live="polite"></section>
+        <div class="footnote">
+          Route Atlas 不产生裁决，不把源码存在、历史命中、实现交接或运行观察自动升级为成熟度 PASS。
+          拖动卡片只保存在当前浏览器内存，不写回任何语义真源。
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script id="atlas-data" type="application/json">__ATLAS_DATA__</script>
+  <script>
+    (() => {
+      const atlas = JSON.parse(document.getElementById("atlas-data").textContent);
+      const byId = new Map(atlas.concepts.map(item => [item.id, item]));
+      const nav = document.getElementById("fn-nav");
+      const summary = document.getElementById("summary");
+      const grid = document.getElementById("route-grid");
+      const stage = document.getElementById("route-stage");
+      const svg = document.getElementById("route-lines");
+      const androidContract = document.getElementById("android-contract");
+      const ohContract = document.getElementById("oh-contract");
+      const detail = document.getElementById("detail");
+      const search = document.getElementById("route-search");
+      const objectMapLink = document.getElementById("object-map-link");
+      const initialQuery = new URLSearchParams(location.search);
+      let activeId = byId.has(initialQuery.get("fn"))
+        ? initialQuery.get("fn")
+        : "Fn01";
+      let filter = "all";
+      let draggedRouteId = null;
+      const localOrders = new Map();
+
+      const escapeHtml = value => String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+      function stateLabel(item) {
+        const decision = item.decision;
+        if (decision.effective_selected_route) {
+          return `主 ${decision.effective_selected_route}` +
+            (decision.effective_backup_route
+              ? ` · 备 ${decision.effective_backup_route}`
+              : " · 备 NONE") +
+            (decision.future_upgrade_route
+              ? ` · 升级 ${decision.future_upgrade_route}`
+              : "");
+        }
+        if (decision.route_binding_status === "HASH_DRIFT") return "HASH 漂移";
+        return "未裁决";
+      }
+
+      function decisionBadge(item) {
+        const decision = item.decision;
+        const badge = document.getElementById("decision-badge");
+        badge.className = "badge";
+        if (decision.route_binding_status === "HASH_DRIFT") {
+          badge.classList.add("drift");
+          badge.textContent = `${decision.status} · ROUTE_SPACE hash 漂移`;
+          return;
+        }
+        if (decision.effective_selected_route) {
+          badge.classList.add("accepted");
+          badge.textContent = `accepted · 主 ${decision.effective_selected_route}` +
+            (decision.effective_backup_route
+              ? ` · 备 ${decision.effective_backup_route}`
+              : " · 备份 NONE") +
+            (decision.future_upgrade_route
+              ? ` · 未来升级 ${decision.future_upgrade_route}`
+              : "");
+          return;
+        }
+        badge.textContent = `${decision.status} · 主/备 NONE · ${decision.route_binding_status}`;
+      }
+
+      function routeRole(item, route) {
+        if (route.route_ids.includes(item.decision.effective_selected_route)) return "primary";
+        if (route.route_ids.includes(item.decision.effective_backup_route)) return "backup";
+        if (route.route_ids.includes(item.decision.future_upgrade_route)) return "upgrade";
+        return "candidate";
+      }
+
+      function roleLabel(item, role) {
+        if (role === "primary") return "主路径 · 已接受";
+        if (role === "backup") return "备份路径 · 已接受";
+        if (role === "upgrade") return "未来升级 · 非备份/非自动切换";
+        if (item.route_model === "COMPOSITE_ROUTE_VECTOR") return "组件候选 · 未强制互斥";
+        return item.decision.effective_selected_route ? "其他候选" : "候选 · 未裁决";
+      }
+
+      function orderedRoutes(item) {
+        const order = localOrders.get(item.id);
+        if (!order) return [...item.routes];
+        return order
+          .map(id => item.routes.find(route => route.id === id))
+          .filter(Boolean);
+      }
+
+      function searchableText(route) {
+        return [
+          route.id,
+          route.name,
+          ...Object.entries(route.fields).flat(),
+        ].join(" ").toLowerCase();
+      }
+
+      function visibleRoutes(item) {
+        const query = search.value.trim().toLowerCase();
+        return orderedRoutes(item).filter(route => {
+          const role = routeRole(item, route);
+          if (filter === "chosen" && !["primary", "backup"].includes(role)) return false;
+          if (query && !searchableText(route).includes(query)) return false;
+          return true;
+        });
+      }
+
+      function conceptContractLabel(item, side) {
+        if (side === "android") return `${item.id} · ${item.name} · Android oracle`;
+        return `${item.id} · ${item.name} · OH capability + terminal evidence`;
+      }
+
+      function renderSummary() {
+        const values = [
+          `${atlas.summary.concept_count} 个 Fn Concept Domain`,
+          `${atlas.summary.route_count} 条候选路线/组件`,
+          `${atlas.summary.accepted_route_decisions} 个有效已接受裁决`,
+          `${atlas.summary.hash_drift_count} 个 hash 漂移`,
+          `${atlas.summary.unbound_count} 个未绑定路线空间 hash`,
+        ];
+        summary.innerHTML = values
+          .map(value => `<span class="summary-chip">${escapeHtml(value)}</span>`)
+          .join("");
+      }
+
+      function renderNav() {
+        nav.innerHTML = "";
+        atlas.concepts.forEach(item => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "fn-button";
+          button.setAttribute("aria-pressed", item.id === activeId ? "true" : "false");
+          button.innerHTML =
+            `<span class="fn-id">${escapeHtml(item.id)}</span>` +
+            `<span><span class="fn-name">${escapeHtml(item.name)}</span>` +
+            `<span class="fn-decision">${escapeHtml(stateLabel(item))}</span></span>`;
+          button.addEventListener("click", () => {
+            activeId = item.id;
+            const next = new URL(location.href);
+            next.searchParams.set("fn", activeId);
+            next.searchParams.delete("route");
+            history.replaceState(null, "", next);
+            render();
+          });
+          nav.appendChild(button);
+        });
+      }
+
+      function renderRouteCards(item) {
+        const routes = visibleRoutes(item);
+        grid.innerHTML = "";
+        if (!routes.length) {
+          const reason = filter === "chosen" && !item.decision.effective_selected_route
+            ? "该 Fn 尚未裁决主路径或备份路径。切回“全部技术路径”查看候选。"
+            : "当前筛选条件没有匹配路线。";
+          grid.innerHTML = `<div class="empty">${escapeHtml(reason)}</div>`;
+          return;
+        }
+        routes.forEach(route => {
+          const role = routeRole(item, route);
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className = `route-card ${role}`;
+          card.draggable = true;
+          card.dataset.routeId = route.id;
+          card.innerHTML =
+            `<span class="route-id">${escapeHtml(route.id)}</span>` +
+            `<span class="route-title">${escapeHtml(route.name)}</span>` +
+            `<span class="route-role ${role}-role">${escapeHtml(roleLabel(item, role))}</span>`;
+          card.addEventListener("click", () => {
+            grid.querySelectorAll(".route-card").forEach(node => {
+              node.dataset.selected = node === card ? "true" : "false";
+            });
+            showRouteDetail(item, route, role);
+          });
+          card.addEventListener("dragstart", () => {
+            draggedRouteId = route.id;
+          });
+          card.addEventListener("dragover", event => {
+            event.preventDefault();
+            card.classList.add("drag-target");
+          });
+          card.addEventListener("dragleave", () => card.classList.remove("drag-target"));
+          card.addEventListener("drop", event => {
+            event.preventDefault();
+            card.classList.remove("drag-target");
+            reorder(item, draggedRouteId, route.id);
+          });
+          grid.appendChild(card);
+        });
+      }
+
+      function reorder(item, fromId, toId) {
+        if (!fromId || fromId === toId) return;
+        const order = orderedRoutes(item).map(route => route.id);
+        const fromIndex = order.indexOf(fromId);
+        const toIndex = order.indexOf(toId);
+        if (fromIndex < 0 || toIndex < 0) return;
+        const [moved] = order.splice(fromIndex, 1);
+        order.splice(toIndex, 0, moved);
+        localOrders.set(item.id, order);
+        renderRouteCards(item);
+        requestAnimationFrame(drawLines);
+      }
+
+      function showRouteDetail(item, route, role) {
+        const fields = Object.entries(route.fields)
+          .map(([key, value]) =>
+            `<div class="detail-item"><span class="detail-key">${escapeHtml(key)}</span>` +
+            `<span>${escapeHtml(value)}</span></div>`
+          )
+          .join("");
+        detail.innerHTML =
+          `<div class="detail-title">${escapeHtml(item.id)} ${escapeHtml(route.id)} · ${escapeHtml(route.name)}</div>` +
+          `<div class="detail-body">角色：${escapeHtml(roleLabel(item, role))}。` +
+          `此角色只由 <code>${escapeHtml(item.refs.strategy_decision)}</code> 和 hash 绑定决定。</div>` +
+          `<div class="detail-grid">${fields}</div>`;
+      }
+
+      function showConceptDetail(item, side) {
+        const projection = item.projection;
+        const refs = side === "android"
+          ? item.refs.concept
+          : item.refs.bridge_contract;
+        detail.innerHTML =
+          `<div class="detail-title">${escapeHtml(conceptContractLabel(item, side))}</div>` +
+          `<div class="detail-body">${escapeHtml(item.definition || "当前未提供结构化 definition。")}</div>` +
+          `<div class="detail-grid">` +
+          `<div class="detail-item"><span class="detail-key">合同来源</span><code>${escapeHtml(refs)}</code></div>` +
+          `<div class="detail-item"><span class="detail-key">Action STATUS 投影</span>${projection.action_status_files} 个</div>` +
+          `<div class="detail-item"><span class="detail-key">adapter code_refs</span>${projection.adapter_ref_count} 条</div>` +
+          `<div class="detail-item"><span class="detail-key">evidence refs</span>${projection.evidence_ref_count} 条</div>` +
+          `</div>`;
+      }
+
+      function showDecisionDetail(item) {
+        const decision = item.decision;
+        const advisoryRows = [];
+        if (decision.future_upgrade_route) {
+          advisoryRows.push(
+            `<div class="detail-item"><span class="detail-key">Future upgrade（非 backup）</span>` +
+            `${escapeHtml(decision.future_upgrade_route)}</div>`
+          );
+        }
+        [
+          ["Proposed route vector（未接受）", decision.proposed_route],
+          ["Proposed backup vector（未接受）", decision.proposed_backup],
+        ].forEach(([label, value]) => {
+          if (!value) return;
+          const lines = typeof value === "object"
+            ? Object.entries(value)
+                .map(([key, item]) => `${escapeHtml(key)} → ${escapeHtml(item)}`)
+                .join("<br>")
+            : escapeHtml(value);
+          advisoryRows.push(
+            `<div class="detail-item"><span class="detail-key">${label}</span>${lines}</div>`
+          );
+        });
+        detail.innerHTML =
+          `<div class="detail-title">${escapeHtml(item.id)} 路线裁决</div>` +
+          `<div class="detail-body">` +
+          (decision.effective_selected_route
+            ? `有效主路径 ${escapeHtml(decision.effective_selected_route)}` +
+              (decision.effective_backup_route
+                ? `，备份路径 ${escapeHtml(decision.effective_backup_route)}。`
+                : "，备份路径为空。")
+            : "当前没有有效的已接受主路径或备份路径。") +
+          ` 拖拽和筛选不会改变裁决。</div>` +
+          `<div class="detail-grid">` +
+          `<div class="detail-item"><span class="detail-key">Decision status</span>${escapeHtml(decision.status)}</div>` +
+          `<div class="detail-item"><span class="detail-key">Route model（派生视图）</span>${escapeHtml(item.route_model)}</div>` +
+          `<div class="detail-item"><span class="detail-key">Hash binding</span>${escapeHtml(decision.route_binding_status)}</div>` +
+          `<div class="detail-item"><span class="detail-key">Route Space</span><code>${escapeHtml(item.refs.route_space)}</code></div>` +
+          `<div class="detail-item"><span class="detail-key">Strategy Decision</span><code>${escapeHtml(item.refs.strategy_decision)}</code></div>` +
+          `<div class="detail-item"><span class="detail-key">Actual route SHA-256</span><code>${escapeHtml(decision.actual_route_space_sha256)}</code></div>` +
+          advisoryRows.join("") +
+          `</div>`;
+      }
+
+      function drawLines() {
+        const item = byId.get(activeId);
+        const stageRect = stage.getBoundingClientRect();
+        const source = androidContract.getBoundingClientRect();
+        const target = ohContract.getBoundingClientRect();
+        svg.innerHTML = "";
+        grid.querySelectorAll(".route-card").forEach(card => {
+          const route = item.routes.find(candidate => candidate.id === card.dataset.routeId);
+          if (!route) return;
+          const role = routeRole(item, route);
+          const middle = card.getBoundingClientRect();
+          [
+            [source.left + source.width / 2, source.bottom, middle.left + middle.width / 2, middle.top],
+            [middle.left + middle.width / 2, middle.bottom, target.left + target.width / 2, target.top],
+          ].forEach(([x1, y1, x2, y2]) => {
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("class", role);
+            const sx = x1 - stageRect.left;
+            const sy = y1 - stageRect.top;
+            const tx = x2 - stageRect.left;
+            const ty = y2 - stageRect.top;
+            path.setAttribute(
+              "d",
+              `M ${sx} ${sy} C ${sx} ${(sy + ty) / 2}, ${tx} ${(sy + ty) / 2}, ${tx} ${ty}`
+            );
+            svg.appendChild(path);
+          });
+        });
+      }
+
+      function render() {
+        const item = byId.get(activeId);
+        renderNav();
+        decisionBadge(item);
+        document.getElementById("fn-heading").textContent = `${item.id} · ${item.name}`;
+        document.getElementById("model-heading").textContent =
+          item.route_model === "COMPOSITE_ROUTE_VECTOR"
+            ? "组合型 Route Vector：不同 capability family 可采用不同路线组件"
+            : "互斥主路线：共同合同下比较主路径、备份路径与其他候选";
+        objectMapLink.href = `fn-os-object-map.html?fn=${encodeURIComponent(item.id)}`;
+        androidContract.textContent = conceptContractLabel(item, "android");
+        ohContract.textContent = conceptContractLabel(item, "oh");
+        renderRouteCards(item);
+        showDecisionDetail(item);
+        requestAnimationFrame(drawLines);
+      }
+
+      document.querySelectorAll("[data-filter]").forEach(button => {
+        button.addEventListener("click", () => {
+          filter = button.dataset.filter;
+          document.querySelectorAll("[data-filter]").forEach(node => {
+            node.setAttribute("aria-pressed", node === button ? "true" : "false");
+          });
+          render();
+        });
+      });
+      search.addEventListener("input", () => {
+        renderRouteCards(byId.get(activeId));
+        requestAnimationFrame(drawLines);
+      });
+      androidContract.addEventListener("click", () => showConceptDetail(byId.get(activeId), "android"));
+      ohContract.addEventListener("click", () => showConceptDetail(byId.get(activeId), "oh"));
+      document.getElementById("decision-badge").addEventListener("click", () => showDecisionDetail(byId.get(activeId)));
+      window.addEventListener("resize", drawLines);
+      window.addEventListener("popstate", () => {
+        const current = new URLSearchParams(location.search);
+        activeId = byId.has(current.get("fn")) ? current.get("fn") : "Fn01";
+        render();
+      });
+
+      renderSummary();
+      render();
+    })();
+  </script>
+</body>
+</html>

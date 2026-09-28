@@ -1,0 +1,84 @@
+{
+  "schema_version": "bridge.p0.helloworld-first-frame-config.v1",
+  "apk": {
+    "frozen_receipt": "specs/005-helloworld-first-frame/inputs/frozen-apk.json",
+    "project_relative_path": "var/evidence/runs/helloworld-hanbing-v2-cfi-schema-r4-20260724/artifacts/HelloWorld.apk",
+    "size_bytes": 21111,
+    "sha256": "2d122a7973ffd68c799700aaaaaa0593e5deec30bac83e22a9dc1bf9f64319fd",
+    "package_name": "com.example.helloworld",
+    "activity_name": "com.example.helloworld.MainActivity",
+    "unmodified": true
+  },
+  "generation": {
+    "generation_id": "4f20997965284aff49ce7d003e58eb90e439ec41eb79982ee6726f269c9a257e",
+    "execution_baseline_ref": "specs/005-helloworld-first-frame/execution-baseline.yaml",
+    "artifact_receipt_ref": "specs/005-helloworld-first-frame/execution-baseline.yaml#reused_generation.artifact_generation_receipt",
+    "device_readback_receipt_env": "D600_GENERATION_READBACK_RECEIPT",
+    "reuse_when_identity_matches": true,
+    "rebuild_only_when_inputs_change": true,
+    "forbidden_static_fields": [
+      "appspawn_sha256"
+    ]
+  },
+  "pre_launch_actions": {
+    "prepare_gpu_device_access": "chmod 0666 /dev/mali0 && ls -l /dev/mali0 | grep -q '^crw-rw-rw-'"
+  },
+  "lease": {
+    "input_mode": "file",
+    "input_path_env": "D600_LEASE_FILE",
+    "required_status": "HELD",
+    "required_fields": [
+      "serial",
+      "owner",
+      "writer_terminal",
+      "worktree",
+      "acquired_at",
+      "status"
+    ],
+    "serial_source": "lease.serial",
+    "forbidden_static_fields": [
+      "serial"
+    ]
+  },
+  "preflight_commands": {
+    "old_session": "pid=$(aa dump -a 2>/dev/null | grep -A2 'process name \\[com.example.helloworld\\]' | grep 'pid #' | sed -n 's/.*pid #\\([0-9][0-9]*\\).*/\\1/p' | sed -n '1p'); if [ -n \"$pid\" ] && [ -r \"/proc/$pid/stat\" ]; then echo \"ACTIVE_SESSION:$pid\"; fi",
+    "home_negative": "pid=$(aa dump -a 2>/dev/null | grep -A2 'process name \\[com.example.helloworld\\]' | grep 'pid #' | sed -n 's/.*pid #\\([0-9][0-9]*\\).*/\\1/p' | sed -n '1p'); if [ -n \"$pid\" ] && [ -r \"/proc/$pid/stat\" ]; then echo HOME_CONTAMINATED; else echo HOME_NEGATIVE; fi"
+  },
+  "oracle": {
+    "first_frame_deadline_seconds": 15,
+    "hold_seconds": 5,
+    "expected_text": "Hello World!",
+    "require_cold_precondition": true,
+    "require_new_child_identity": [
+      "pid",
+      "start_ticks"
+    ],
+    "require_same_boot_generation_process_and_window": true,
+    "reject_non_black_without_expected_text": true,
+    "developer_success_verdict": "DEVELOPER_OBSERVED_FIRST_FRAME",
+    "claim_boundary": "DEVELOPER_DEVICE_OBSERVATION_ONLY",
+    "formal_journey_verdict": "NOT_ISSUED"
+  },
+  "builder": {
+    "required_only_when_generation_inputs_change": true,
+    "discovery_mode": "runtime",
+    "builder_alias_env": "P0_LINUX_BUILDER",
+    "address_resolution": "ssh_config_or_runtime_dns",
+    "host_key_policy": "strict_runtime_capture",
+    "credential_source": "ssh_agent_or_ssh_config",
+    "persist_credentials": false,
+    "forbidden_static_fields": [
+      "ip_address",
+      "password",
+      "private_key",
+      "host_key"
+    ]
+  },
+  "evidence": {
+    "output_root_project_relative": "var/evidence/journeys/J01-first-frame-visible/developer-runs",
+    "run_id_env": "RUN_ID",
+    "candidate_id_env": "CANDIDATE_ID",
+    "require_explicit_run_and_candidate": true,
+    "allow_implicit_other_run_output": false
+  }
+}

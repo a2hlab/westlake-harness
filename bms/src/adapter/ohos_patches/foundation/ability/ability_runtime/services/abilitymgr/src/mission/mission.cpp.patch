@@ -1,0 +1,220 @@
+--- a/foundation/ability/ability_runtime/services/abilitymgr/src/mission/mission.cpp
++++ b/foundation/ability/ability_runtime/services/abilitymgr/src/mission/mission.cpp
+@@ -15,14 +15,19 @@
+ 
+ #include "mission.h"
+ 
++#include "hilog_tag_wrapper.h"
+ #include "mission_list.h"
+ 
+ namespace OHOS {
+ namespace AAFwk {
+ Mission::Mission(int32_t id, MissionAbilityRecordPtr abilityRecord, const std::string &missionName,
+     int32_t startMethod)
+-    : missionId_(id), startMethod_(startMethod), abilityRecord_(abilityRecord), missionName_(missionName)
++    : missionId_(id), startMethod_(startMethod), missionName_(missionName)
+ {
++    // Initialize the ability stack with the first ability
++    if (abilityRecord) {
++        abilityStack_.push_back(abilityRecord);
++    }
+ }
+ 
+ Mission::Mission(const std::shared_ptr<Mission> &mission)
+@@ -33,11 +38,12 @@
+ 
+     missionId_ = mission->missionId_;
+     startMethod_ = mission->startMethod_;
+-    abilityRecord_ = mission->abilityRecord_;
++    abilityStack_ = mission->abilityStack_;
+     missionName_ = mission->missionName_;
+     lockedState_ = mission->lockedState_;
+     ownerMissionList_ = mission->ownerMissionList_;
+     unclearable_ = mission->unclearable_;
++    multiAbilityMode_ = mission->multiAbilityMode_;
+ }
+ 
+ Mission::~Mission()
+@@ -45,7 +51,13 @@
+ 
+ MissionAbilityRecordPtr Mission::GetAbilityRecord() const
+ {
+-    return abilityRecord_;
++    // Return the stack top (most recent ability).
++    // For OH native apps (stack size 1), this returns the only ability.
++    // For Android adapted apps, this returns the top Activity.
++    if (abilityStack_.empty()) {
++        return nullptr;
++    }
++    return abilityStack_.back();
+ }
+ 
+ int32_t Mission::GetMissionId() const
+@@ -55,28 +67,27 @@
+ 
+ bool Mission::IsSingletonAbility() const
+ {
+-    if (abilityRecord_) {
+-        return abilityRecord_->GetAbilityInfo().launchMode == AppExecFwk::LaunchMode::SINGLETON;
++    // Use the base (first) ability to determine launch mode,
++    // as it defines the Mission's identity.
++    if (!abilityStack_.empty()) {
++        return abilityStack_.front()->GetAbilityInfo().launchMode == AppExecFwk::LaunchMode::SINGLETON;
+     }
+-
+     return false;
+ }
+ 
+ bool Mission::IsSpecifiedAbility() const
+ {
+-    if (abilityRecord_) {
+-        return abilityRecord_->GetAbilityInfo().launchMode == AppExecFwk::LaunchMode::SPECIFIED;
++    if (!abilityStack_.empty()) {
++        return abilityStack_.front()->GetAbilityInfo().launchMode == AppExecFwk::LaunchMode::SPECIFIED;
+     }
+-
+     return false;
+ }
+ 
+ bool Mission::IsStandardAbility() const
+ {
+-    if (abilityRecord_) {
+-        return abilityRecord_->GetAbilityInfo().launchMode == AppExecFwk::LaunchMode::STANDARD;
++    if (!abilityStack_.empty()) {
++        return abilityStack_.front()->GetAbilityInfo().launchMode == AppExecFwk::LaunchMode::STANDARD;
+     }
+-
+     return false;
+ }
+ 
+@@ -139,10 +150,16 @@
+ {
+     std::string dumpInfo = "    Mission ID #" + std::to_string(missionId_);
+     dumpInfo += "  mission name #[" + missionName_ + "]" + "  lockedState #" + std::to_string(lockedState_)
+-        + "  ANR State #" + std::to_string(isANRState_);
++        + "  ANR State #" + std::to_string(isANRState_)
++        + "  multiAbility #" + std::to_string(multiAbilityMode_)
++        + "  stackSize #" + std::to_string(abilityStack_.size());
+     info.push_back(dumpInfo);
+-    if (abilityRecord_) {
+-        abilityRecord_->Dump(info);
++
++    // Dump all abilities in the stack (top to bottom)
++    for (auto it = abilityStack_.rbegin(); it != abilityStack_.rend(); ++it) {
++        if (*it) {
++            (*it)->Dump(info);
++        }
+     }
+ }
+ 
+@@ -161,5 +178,110 @@
+     missionId_ = id;
+     return true;
+ }
++
++// ==================== Multi-Ability Stack Methods ====================
++
++void Mission::PushAbility(MissionAbilityRecordPtr abilityRecord)
++{
++    if (!abilityRecord) {
++        return;
++    }
++    abilityRecord->SetMissionId(missionId_);
++    abilityStack_.push_back(abilityRecord);
++    TAG_LOGI(AAFwkTag::ABILITYMGR,
++        "Mission %{public}d: pushed ability %{public}s, stack size=%{public}zu",
++        missionId_, abilityRecord->GetAbilityInfo().name.c_str(), abilityStack_.size());
++}
++
++MissionAbilityRecordPtr Mission::PopAbility()
++{
++    // Do not pop the last ability — Mission must always have at least one.
++    // The last ability is removed through Mission destruction.
++    if (abilityStack_.size() <= 1) {
++        return nullptr;
++    }
++
++    auto top = abilityStack_.back();
++    abilityStack_.pop_back();
++    TAG_LOGI(AAFwkTag::ABILITYMGR,
++        "Mission %{public}d: popped ability %{public}s, stack size=%{public}zu",
++        missionId_, top ? top->GetAbilityInfo().name.c_str() : "null", abilityStack_.size());
++    return top;
++}
++
++size_t Mission::GetAbilityStackSize() const
++{
++    return abilityStack_.size();
++}
++
++MissionAbilityRecordPtr Mission::GetBaseAbilityRecord() const
++{
++    if (abilityStack_.empty()) {
++        return nullptr;
++    }
++    return abilityStack_.front();
++}
++
++MissionAbilityRecordPtr Mission::FindAbilityByName(const std::string &abilityName) const
++{
++    // Search from top to bottom
++    for (auto it = abilityStack_.rbegin(); it != abilityStack_.rend(); ++it) {
++        if (*it && (*it)->GetAbilityInfo().name == abilityName) {
++            return *it;
++        }
++    }
++    return nullptr;
++}
++
++bool Mission::ContainsAbility(const std::shared_ptr<AbilityRecord> &abilityRecord) const
++{
++    if (!abilityRecord) {
++        return false;
++    }
++
++    for (const auto &record : abilityStack_) {
++        if (record == abilityRecord) {
++            return true;
++        }
++    }
++    return false;
++}
++
++std::vector<MissionAbilityRecordPtr> Mission::PopAbilitiesAbove(
++    const std::string &abilityName, bool includeSelf)
++{
++    std::vector<MissionAbilityRecordPtr> popped;
++
++    // Find the target ability in the stack (search from bottom)
++    auto targetIt = abilityStack_.end();
++    for (auto it = abilityStack_.begin(); it != abilityStack_.end(); ++it) {
++        if (*it && (*it)->GetAbilityInfo().name == abilityName) {
++            targetIt = it;
++            break;
++        }
++    }
++
++    if (targetIt == abilityStack_.end()) {
++        return popped;  // Target not found
++    }
++
++    // Determine where to start popping
++    auto startPop = includeSelf ? targetIt : (targetIt + 1);
++
++    // Collect abilities to pop
++    for (auto it = startPop; it != abilityStack_.end(); ++it) {
++        popped.push_back(*it);
++    }
++
++    // Erase from stack
++    abilityStack_.erase(startPop, abilityStack_.end());
++
++    TAG_LOGI(AAFwkTag::ABILITYMGR,
++        "Mission %{public}d: popped %{public}zu abilities above %{public}s, stack size=%{public}zu",
++        missionId_, popped.size(), abilityName.c_str(), abilityStack_.size());
++
++    return popped;
++}
++
+ }  // namespace AAFwk
+ }  // namespace OHOS

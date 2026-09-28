@@ -1,0 +1,807 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp
+@@ -14,6 +14,15 @@
+  */
+ 
+ #include "base_bundle_installer.h"
++#include "bundle_resource/bundle_resource_rdb.h"  // adapter project
++#include "bundle_resource/resource_info.h"  // adapter project
++#include "installd_client.h"  // adapter project: route entry.hap copy via installd
++#include "nlohmann/json.hpp"  // adapter project: parse libapk_installer manifest JSON
++#include <sys/stat.h>  // adapter project: chmod for entry.hap copy
++#ifdef OH_ADAPTER_ANDROID
++#include <dlfcn.h>  // adapter project: libapk_installer.so dispatch
++#include <cctype>
++#endif
+ 
+ #include <algorithm>
+ #include <fcntl.h>
+@@ -1498,6 +1507,746 @@
+     result = BundleUtil::CheckFilePath(parsedPaths, bundlePaths);
+     CHECK_RESULT(result, "hap file check failed %{public}d");
+     UpdateInstallerState(InstallerState::INSTALL_BUNDLE_CHECKED);                  // ---- 5%
++
++#ifdef OH_ADAPTER_ANDROID
++    // adapter project: .apk register with manifest v3
++    // 1. dispatch to libapk_installer.so — manifest parse only (no fs writes)
++    // 2. parse returned JSON manifest data
++    // 3. route file deployment via InstalldClient IPC (installs domain)
++    // 4. construct minimum-viable InnerBundleInfo
++    // 5. allocate real HAP AccessTokenID via AccessTokenKit::AllocHapToken
++    // 6. dataMgr->AddInnerBundleInfo + SaveInnerBundleInfo (reboot-safe)
++    {
++        const size_t apkCount = static_cast<size_t>(std::count_if(bundlePaths.begin(), bundlePaths.end(),
++            [](const std::string &path) { return BundleUtil::CheckFileType(path, ".apk"); }));
++        if (apkCount > 0) {
++            // One Android package is one BMS transaction. The vector overload
++            // belongs to one OH bundle's module set; it is not a cross-package
++            // queue. Multiple independent APKs are sequenced by the outer
++            // lifecycle orchestrator so every package retains its own receipt.
++            if (apkCount != 1 || bundlePaths.size() != 1) {
++                LOG_E(BMS_TAG_INSTALLER,
++                    "APK install requires exactly one APK and no mixed HAP/app inputs");
++                return ERR_APPEXECFWK_INSTALL_MORE_THAN_ONE_APP;
++            }
++            LOG_I(BMS_TAG_INSTALLER, "adapter .apk path detected, dispatching+register v2");
++            void* handle = dlopen("libapk_installer.so", RTLD_NOW | RTLD_GLOBAL);
++            using ApkFn2 = int (*)(const char*, int, char*, int);
++            ApkFn2 fn = handle ? reinterpret_cast<ApkFn2>(
++                dlsym(handle, "oh_adapter_install_apk_with_manifest")) : nullptr;
++            const auto callApkFn2 = [fn](const char* path, int userId, char* manifest, int capacity)
++                __attribute__((no_sanitize("cfi"))) { return fn(path, userId, manifest, capacity); };
++            if (fn == nullptr) {
++                LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest unavailable");
++                return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++            }
++            constexpr int kJsonBufSize = 1024 * 1024;
++            std::vector<char> jsonBuf(kJsonBufSize, 0);
++            ErrCode firstApkError = ERR_OK;
++            for (const auto &p : bundlePaths) {
++                if (!BundleUtil::CheckFileType(p, ".apk")) continue;
++                const auto installOneApk = [&]() -> ErrCode {
++                int r = callApkFn2(p.c_str(), installParam.userId, jsonBuf.data(), kJsonBufSize);
++                if (r != 0) {
++                    LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest failed: %{public}d", r);
++                    return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                }
++                // Parse without exceptions: libbms is intentionally built with
++                // -fno-exceptions in OH 6.1 LTS. Validate every field consumed by
++                // value()/get() before conversion so malformed APK metadata fails
++                // closed instead of reaching nlohmann's throwing paths.
++                {
++                    auto j = nlohmann::json::parse(std::string(jsonBuf.data()), nullptr, false);
++                    const auto isInteger = [](const auto &value) {
++                        return value.is_number_integer() || value.is_number_unsigned();
++                    };
++                    if (j.is_discarded() || !j.is_object() ||
++                        !j.contains("bundleName") || !j["bundleName"].is_string() ||
++                        !j.contains("abilities") || !j["abilities"].is_array() || j["abilities"].empty() ||
++                        (j.contains("versionCode") && !isInteger(j["versionCode"])) ||
++                        (j.contains("versionName") && !j["versionName"].is_string()) ||
++                        (j.contains("minSdkVersion") && !isInteger(j["minSdkVersion"])) ||
++                        (j.contains("targetSdkVersion") && !isInteger(j["targetSdkVersion"])) ||
++                        (j.contains("appLabel") && !j["appLabel"].is_string()) ||
++                        (j.contains("debuggable") && !j["debuggable"].is_boolean()) ||
++                        (j.contains("primaryAbi") && !j["primaryAbi"].is_string()) ||
++                        !j.contains("nativePayloadState") || !j["nativePayloadState"].is_string() ||
++                        !j.contains("hasNativeLibraries") || !j["hasNativeLibraries"].is_boolean() ||
++                        (j.contains("uid") && !isInteger(j["uid"]))) {
++                        LOG_E(BMS_TAG_INSTALLER, "manifest JSON schema rejected");
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    const auto &abilitiesJson = j["abilities"];
++                    for (const auto &ability : abilitiesJson) {
++                        const bool actionsValid = !ability.contains("actions") ||
++                            (ability["actions"].is_array() &&
++                            std::all_of(ability["actions"].begin(), ability["actions"].end(),
++                                [](const auto &item) { return item.is_string(); }));
++                        const bool categoriesValid = !ability.contains("categories") ||
++                            (ability["categories"].is_array() &&
++                            std::all_of(ability["categories"].begin(), ability["categories"].end(),
++                                [](const auto &item) { return item.is_string(); }));
++                        if (!ability.is_object() || !ability.contains("name") || !ability["name"].is_string() ||
++                            (ability.contains("label") && !ability["label"].is_string()) ||
++                            (ability.contains("launchMode") && !isInteger(ability["launchMode"])) ||
++                            (ability.contains("isMainAbility") && !ability["isMainAbility"].is_boolean()) ||
++                            !actionsValid || !categoriesValid) {
++                            LOG_E(BMS_TAG_INSTALLER, "manifest ability schema rejected");
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                    }
++                    const std::string pkg = j.value("bundleName", std::string());
++                    const bool validPackageName = pkg.size() >= Constants::MIN_BUNDLE_NAME &&
++                        pkg.size() <= Constants::MAX_BUNDLE_NAME &&
++                        std::isalpha(static_cast<unsigned char>(pkg.front())) &&
++                        std::all_of(pkg.begin(), pkg.end(), [](unsigned char c) {
++                            return std::isalnum(c) || c == '.' || c == '_';
++                        });
++                    if (!validPackageName) {
++                        LOG_E(BMS_TAG_INSTALLER, "invalid Android package name");
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    const int32_t versionCode = j.value("versionCode", 0);
++                    const std::string versionName = j.value("versionName", std::string());
++                    const int32_t minSdkVersion = j.value("minSdkVersion", 0);
++                    const int32_t targetSdkVersion = j.value("targetSdkVersion", 0);
++                    const std::string appLabel = j.value("appLabel", pkg);
++                    const bool debuggable = j.value("debuggable", false);
++                    const std::string primaryAbi = j.value("primaryAbi", std::string());
++                    const std::string nativePayloadState =
++                        j.value("nativePayloadState", std::string());
++                    if (nativePayloadState != "none" && nativePayloadState != "supported") {
++                        LOG_E(BMS_TAG_INSTALLER, "native payload state rejected: %{public}s",
++                            nativePayloadState.c_str());
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    if (!j.contains("hasNativeLibraries") || !j["hasNativeLibraries"].is_boolean()) {
++                        LOG_E(BMS_TAG_INSTALLER, "native payload boolean missing or invalid");
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    const bool hasNativeLibraries = j["hasNativeLibraries"].get<bool>();
++                    if (nativePayloadState == "none") {
++                        if (hasNativeLibraries || !primaryAbi.empty()) {
++                            LOG_E(BMS_TAG_INSTALLER, "inconsistent no-native payload contract");
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                    } else if (!hasNativeLibraries ||
++                        (primaryAbi != "arm64-v8a" && primaryAbi != "armeabi-v7a")) {
++                        LOG_E(BMS_TAG_INSTALLER, "unsupported or inconsistent primaryAbi: %{public}s",
++                            primaryAbi.c_str());
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    auto dataMgr = DelayedSingleton<BundleMgrService>::GetInstance()->GetDataMgr();
++                    if (dataMgr == nullptr) {
++                        LOG_E(BMS_TAG_INSTALLER, "BundleDataMgr unavailable for register");
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    const int32_t activeUserId = AccountHelper::GetCurrentActiveUserId();
++                    const bool adapterIsUpdate = dataMgr->IsBundleExist(pkg);
++                    uint32_t adapterOldVersionCode = 0;
++                    InnerBundleInfo adapterOldInfo;
++                    if (adapterIsUpdate) {
++                        const InnerBundleInfo *oldInfo = nullptr;
++                        if (!dataMgr->GetInnerBundleInfoWithFlags(pkg, 0, oldInfo) || oldInfo == nullptr) {
++                            LOG_E(BMS_TAG_INSTALLER, "existing APK record unavailable for update");
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                        adapterOldInfo = *oldInfo;
++                        adapterOldVersionCode = oldInfo->GetVersionCode();
++                    }
++                    // adapter v2: route all fs writes via InstalldClient IPC (installs
++                    // domain has write perms on data_app_el*_file; foundation does not).
++                    // Previous design leaked direct fs writes from foundation and
++                    // required setenforce 0 to actually work.
++                    const std::string codeRoot = Constants::BUNDLE_CODE_DIR;
++                    const std::string bundleRoot = codeRoot + ServiceConstants::PATH_SEPARATOR + pkg;
++                    const std::string stagedBundleRoot = codeRoot + ServiceConstants::PATH_SEPARATOR +
++                        ServiceConstants::BUNDLE_NEW_CODE_DIR + pkg;
++                    const std::string deployedDir = stagedBundleRoot + "/android";
++                    const std::string deployedApk = deployedDir + "/base.apk";
++                    const std::string entryHapPath = stagedBundleRoot + "/entry.hap";
++                    const std::string nativeStagePath = hasNativeLibraries ?
++                        deployedDir + "/lib/" + primaryAbi : std::string();
++                    const std::string finalDeployedDir = bundleRoot + "/android";
++                    const std::string finalEntryHapPath = bundleRoot + "/entry.hap";
++                    const std::string finalNativePath = hasNativeLibraries ?
++                        finalDeployedDir + "/lib/" + primaryAbi : std::string();
++                    const std::string moduleNativePath = hasNativeLibraries ?
++                        std::string("android/lib/") + primaryAbi : std::string();
++                    const std::string srcApkPath = p;
++                    auto installd = InstalldClient::GetInstance();
++                    if (installd == nullptr) {
++                        LOG_E(BMS_TAG_INSTALLER, "InstalldClient unavailable — cannot deploy APK");
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    // OH 6.1 LTS has no CREATE_NEW_DIR exception state. The scoped
++                    // +new- stage below is the LTS-compatible pre-publish contract.
++                    ErrCode ec = ERR_OK;
++                    // Build the complete code root under +new-; final remains untouched.
++                    bool stageExists = false;
++                    ec = installd->IsExistDir(stagedBundleRoot, stageExists);
++                    if (ec != ERR_OK || (stageExists && installd->RemoveDir(stagedBundleRoot, false) != ERR_OK)) {
++                        LOG_E(BMS_TAG_INSTALLER, "cannot clear stale APK stage %{public}s", stagedBundleRoot.c_str());
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    ec = installd->CreateBundleDir(stagedBundleRoot);
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER, "CreateBundleDir(%{public}s) failed: %{public}d",
++                            stagedBundleRoot.c_str(), ec);
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    ScopeGuard stageGuard([&installd, &stagedBundleRoot]() {
++                        (void)installd->RemoveDir(stagedBundleRoot, false);
++                    });
++                    // 2. 'android/' subdir — holds adapter-specific files (base.apk, lib/, oat/).
++                    //    Owned root:root so app process can't tamper.
++                    ec = installd->Mkdir(deployedDir, 0755, 0, 0);
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER, "Mkdir(%{public}s) failed: %{public}d", deployedDir.c_str(), ec);
++                        (void)installd->RemoveDir(stagedBundleRoot);
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    // 3. base.apk — copy from stream_install staging to persistent
++                    //    location via installs-domain CopyFile.
++                    ec = installd->CopyFile(srcApkPath, deployedApk, std::string());
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER, "CopyFile(%{public}s -> %{public}s) failed: %{public}d",
++                            srcApkPath.c_str(), deployedApk.c_str(), ec);
++                        (void)installd->RemoveDir(stagedBundleRoot);
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    // 4. Synthesize OH resources HAP directly at entry.hap location —
++                    //    installd loads libapk_installer.so (installs domain) and calls
++                    //    oh_adapter_build_resources_hap(apk, outPath). No fs work in BMS.
++                    ExtractParam ep;
++                    ep.srcPath = srcApkPath;
++                    ep.targetPath = entryHapPath;
++                    ep.extractFileType = ExtractFileType::APK_RESOURCES_HAP;
++                    ec = installd->ExtractFiles(ep);
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER, "ExtractFiles(APK_RESOURCES_HAP) %{public}s -> %{public}s failed: %{public}d",
++                            srcApkPath.c_str(), entryHapPath.c_str(), ec);
++                        (void)installd->RemoveDir(stagedBundleRoot);
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    LOG_I(BMS_TAG_INSTALLER, "ExtractFiles(APK_RESOURCES_HAP) OK %{public}s", entryHapPath.c_str());
++
++                    if (hasNativeLibraries) {
++                        ExtractParam nativeParam;
++                        nativeParam.srcPath = srcApkPath;
++                        nativeParam.targetPath = nativeStagePath;
++                        nativeParam.cpuAbi = primaryAbi;
++                        nativeParam.extractFileType = ExtractFileType::APK_NATIVE_SO;
++                        ec = installd->ExtractFiles(nativeParam);
++                        if (ec != ERR_OK) {
++                            LOG_E(BMS_TAG_INSTALLER,
++                                "ExtractFiles(APK_NATIVE_SO) failed abi=%{public}s ec=%{public}d",
++                                primaryAbi.c_str(), ec);
++                            (void)installd->RemoveDir(stagedBundleRoot);
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                        bool nativeStageExists = false;
++                        ec = installd->IsExistDir(nativeStagePath, nativeStageExists);
++                        if (ec != ERR_OK || !nativeStageExists) {
++                            LOG_E(BMS_TAG_INSTALLER, "APK native extractor capability/path gate failed");
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                        bool nativeStageEmpty = true;
++                        ec = installd->IsDirEmpty(nativeStagePath, nativeStageEmpty);
++                        if (ec != ERR_OK || nativeStageEmpty) {
++                            LOG_E(BMS_TAG_INSTALLER, "APK native extractor returned an empty stage");
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                    }
++
++                    InnerBundleInfo innerBundleInfo;
++                    BundleInfo bundleInfo;
++                    bundleInfo.name = pkg;
++                    bundleInfo.vendor = "android";
++                    bundleInfo.versionCode = versionCode;
++                    bundleInfo.versionName = versionName;
++                    bundleInfo.minSdkVersion = minSdkVersion;
++                    bundleInfo.targetVersion = targetSdkVersion;
++                    bundleInfo.cpuAbi = primaryAbi;
++                    innerBundleInfo.SetBaseBundleInfo(bundleInfo);
++
++                    ApplicationInfo appInfo;
++                    appInfo.name = pkg;
++                    appInfo.bundleName = pkg;
++                    appInfo.label = appLabel;
++                    // BMS uninstall calls RemoveDir(GetAppCodePath()). This must
++                    // therefore be the package-owned root, not base.apk: the
++                    // root also owns entry.hap and extracted native libraries.
++                    appInfo.codePath = bundleRoot;
++                    appInfo.dataDir = std::string("/data/app/el2/") +
++                        std::to_string(activeUserId) + "/base/" + pkg;
++                    appInfo.uid = j.value("uid", 10000);
++                    appInfo.debug = debuggable;
++                    appInfo.deviceId = "PHONE-001";
++                    appInfo.cpuAbi = primaryAbi;
++                    appInfo.nativeLibraryPath = finalNativePath;
++                    // Icon path: launcher requires applicationInfo.iconPath OR
++                    // applicationInfo.iconResource non-empty to render the icon.
++                    // ApkInstaller writes a fallback icon.png to deployedDir at
++                    // install time (extracts from APK or uses generic placeholder).
++                    appInfo.iconPath = finalDeployedDir + "/icon.png";
++                    appInfo.icon = appInfo.iconPath;
++                    // adapter project: app-level iconId/labelId point into the
++                    // per-APK synthesized entry.hap resource table. ApkInstaller
++                    // patches the template labels from AndroidManifest before
++                    // BMS publishes these resource IDs.
++                    appInfo.iconId  = 0x01000001;
++                    appInfo.labelId = 0x01000000;
++                    // Mark as Android app so AMS routes spawn requests through
++                    // the AndroidSpawnClient branch (-> appspawn-x) instead of
++                    // standard OH appspawn (which expects HAP + ArkTS runtime).
++                    appInfo.bundleType = BundleType::APP_ANDROID;
++                    // Preserve the existing token on update. Fresh installs allocate one
++                    // token and explicitly delete it on every pre-commit failure path.
++                    Security::AccessToken::AccessTokenIDEx allocTokenIdEx {};
++                    bool adapterAllocatedToken = false;
++                    if (adapterIsUpdate) {
++                        allocTokenIdEx.tokenIdExStruct.tokenID = adapterOldInfo.GetAccessTokenId(activeUserId);
++                        allocTokenIdEx.tokenIDEx = adapterOldInfo.GetAccessTokenIdEx(activeUserId);
++                    } else {
++                        Security::AccessToken::HapInfoParams hapInfo;
++                        hapInfo.userID = activeUserId;
++                        hapInfo.bundleName = pkg;
++                        hapInfo.instIndex = 0;
++                        hapInfo.dlpType = 0;
++                        hapInfo.appIDDesc = pkg + "_apk_adapter";
++                        hapInfo.apiVersion = 14;
++                        hapInfo.isSystemApp = false;
++                        hapInfo.appDistributionType = "none";
++                        Security::AccessToken::HapPolicyParams hapPolicy;
++                        hapPolicy.apl = Security::AccessToken::APL_NORMAL;
++                        hapPolicy.domain = "android.adapter.domain";
++                        allocTokenIdEx = Security::AccessToken::AccessTokenKit::AllocHapToken(hapInfo, hapPolicy);
++                        adapterAllocatedToken = allocTokenIdEx.tokenIdExStruct.tokenID != 0;
++                    }
++                    if (allocTokenIdEx.tokenIdExStruct.tokenID == 0) {
++                        LOG_E(BMS_TAG_INSTALLER,
++                            "AccessToken unavailable for %{public}s",
++                            pkg.c_str());
++                        (void)installd->RemoveDir(stagedBundleRoot);
++                        return ERR_APPEXECFWK_INSTALL_GRANT_REQUEST_PERMISSIONS_FAILED;
++                    }
++                    LOG_I(BMS_TAG_INSTALLER,
++                        "AccessToken %{public}s %{public}s tokenID=0x%{public}x",
++                        pkg.c_str(),
++                        adapterIsUpdate ? "reused" : "allocated",
++                        static_cast<uint32_t>(allocTokenIdEx.tokenIdExStruct.tokenID));
++                    auto deleteAllocatedToken = [&adapterAllocatedToken, &allocTokenIdEx]() {
++                        if (adapterAllocatedToken) {
++                            (void)Security::AccessToken::AccessTokenKit::DeleteToken(
++                                allocTokenIdEx.tokenIdExStruct.tokenID);
++                            adapterAllocatedToken = false;
++                        }
++                    };
++                    ScopeGuard allocatedTokenGuard([&deleteAllocatedToken]() { deleteAllocatedToken(); });
++                    appInfo.accessTokenId   = allocTokenIdEx.tokenIdExStruct.tokenID;
++                    appInfo.accessTokenIdEx = allocTokenIdEx.tokenIDEx;
++                    innerBundleInfo.SetBaseApplicationInfo(appInfo);
++                    // Override the bundleType field on InnerBundleInfo itself
++                    // (used by GetApplicationBundleType() which AMS reads to dispatch).
++                    innerBundleInfo.SetApplicationBundleType(BundleType::APP_ANDROID);
++
++                    InnerModuleInfo moduleInfo;
++                    moduleInfo.name = "entry";
++                    moduleInfo.modulePackage = "entry";
++                    moduleInfo.moduleName = "entry";
++                    moduleInfo.modulePath = finalDeployedDir;
++                    moduleInfo.cpuAbi = primaryAbi;
++                    moduleInfo.nativeLibraryPath = moduleNativePath;
++                    moduleInfo.isEntry = true;
++                    moduleInfo.installationFree = false;
++                    moduleInfo.distro.moduleType = "entry";
++                    moduleInfo.distro.installationFree = false;
++                    moduleInfo.distro.deliveryWithInstall = true;
++                    moduleInfo.distro.moduleName = "entry";
++                    // v2: entry.hap already synthesized by installd above via
++                    //     ExtractFiles(APK_RESOURCES_HAP). No BMS-side staging.
++                    moduleInfo.hapPath = finalEntryHapPath;
++                    moduleInfo.moduleResPath = moduleInfo.hapPath;
++
++                    {
++                        for (const auto &ab : abilitiesJson) {
++                            std::string abilityName = ab.value("name", std::string());
++                            if (abilityName.empty()) continue;
++                            InnerAbilityInfo innerAbility;
++                            innerAbility.name = abilityName;
++                            innerAbility.bundleName = pkg;
++                            innerAbility.moduleName = "entry";
++                            innerAbility.package = "entry";
++                            innerAbility.applicationName = pkg;
++                            innerAbility.label = ab.value("label", abilityName);
++                            innerAbility.launchMode = static_cast<LaunchMode>(
++                                ab.value("launchMode", 0));
++                            // OH InnerAbilityInfo defaults: visible=false, enabled=false,
++                            // isLauncherAbility=false. All three need to be true for
++                            // launcher's QueryLauncherAbilityInfos to surface this ability.
++                            innerAbility.visible = true;
++                            innerAbility.enabled = true;
++                            innerAbility.isLauncherAbility = ab.value("isMainAbility", false);
++                            innerAbility.kind = "page";
++                            innerAbility.type = AbilityType::PAGE;
++                            innerAbility.codePath = finalDeployedDir;
++                            innerAbility.deviceId = "PHONE-001";
++                            innerAbility.iconPath = finalDeployedDir + "/icon.png";
++                            // The synthesized entry.hap owns both icon and label
++                            // resources; ApkInstaller patches its label strings from
++                            // AndroidManifest for each APK before registration.
++                            innerAbility.iconId  = 0x01000005;
++                            innerAbility.labelId = 0x01000003;
++                            innerAbility.hapPath = finalEntryHapPath;
++                            innerAbility.resourcePath = innerAbility.hapPath;
++                            // Translate Android intent-filter to OH skills.
++                            // Crucially: when Android MAIN+LAUNCHER are present (isMainAbility=true)
++                            // we also add ohos.want.action.home so OH launcher's QueryLauncherAbilityInfos
++                            // (which filters by Want::ACTION_HOME = "ohos.want.action.home") finds this ability.
++                            Skill skill;
++                            if (ab.contains("actions") && ab["actions"].is_array()) {
++                                for (const auto &act : ab["actions"]) {
++                                    skill.actions.push_back(act.get<std::string>());
++                                }
++                            }
++                            if (ab.contains("categories") && ab["categories"].is_array()) {
++                                for (const auto &cat : ab["categories"]) {
++                                    skill.entities.push_back(cat.get<std::string>());
++                                }
++                            }
++                            if (ab.value("isMainAbility", false)) {
++                                skill.actions.push_back("ohos.want.action.home");
++                                skill.entities.push_back("entity.system.home");
++                            }
++                            innerAbility.skills.push_back(skill);
++                            std::string key = pkg + ".entry." + abilityName;
++                            innerBundleInfo.InsertAbilitiesInfo(key, innerAbility);
++                            if (ab.value("isMainAbility", false)) {
++                                moduleInfo.mainAbility = abilityName;
++                                moduleInfo.entryAbilityKey = key;
++                            }
++                        }
++                    }
++                    innerBundleInfo.InsertInnerModuleInfo("entry", moduleInfo);
++
++                    // adapter project: support reinstall/update. OH BMS state machine
++                    // (transferStates_) forbids INSTALL_SUCCESS -> INSTALL_START, so an
++                    // already-registered bundle must take the UPDATING path
++                    // (INSTALL_SUCCESS -> UPDATING_START -> UPDATING_SUCCESS). Detect
++                    // existence and pick the state; fresh install keeps INSTALL_START.
++                    InstallState adapterStartState = adapterIsUpdate
++                        ? InstallState::UPDATING_START : InstallState::INSTALL_START;
++                    if (!dataMgr->UpdateBundleInstallState(pkg, adapterStartState)) {
++                        LOG_E(BMS_TAG_INSTALLER, "UpdateBundleInstallState %{public}s failed for %{public}s",
++                            adapterIsUpdate ? "UPDATING_START" : "INSTALL_START", pkg.c_str());
++                        (void)installd->RemoveDir(stagedBundleRoot);
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    auto restoreAdapterUpdate = [&dataMgr, &pkg, &adapterOldInfo](bool restoreMetadata) {
++                        const bool rollbackStateOk =
++                            dataMgr->UpdateBundleInstallState(pkg, InstallState::ROLL_BACK);
++                        const bool metadataOk = !restoreMetadata ||
++                            dataMgr->UpdateInnerBundleInfo(adapterOldInfo, true);
++                        const bool stableStateOk =
++                            dataMgr->UpdateBundleInstallState(pkg, InstallState::INSTALL_SUCCESS);
++                        if (!rollbackStateOk || !metadataOk || !stableStateOk) {
++                            LOG_E(BMS_TAG_INSTALLER,
++                                "APK update rollback incomplete state=%{public}d metadata=%{public}d stable=%{public}d",
++                                rollbackStateOk, metadataOk, stableStateOk);
++                        }
++                    };
++                    auto removeFreshRegistration = [&dataMgr, &pkg]() {
++                        const bool uninstallStartOk =
++                            dataMgr->UpdateBundleInstallState(pkg, InstallState::UNINSTALL_START);
++                        const bool uninstallSuccessOk =
++                            dataMgr->UpdateBundleInstallState(pkg, InstallState::UNINSTALL_SUCCESS);
++                        if (!uninstallStartOk || !uninstallSuccessOk) {
++                            LOG_E(BMS_TAG_INSTALLER,
++                                "fresh APK rollback incomplete start=%{public}d success=%{public}d",
++                                uninstallStartOk, uninstallSuccessOk);
++                        }
++                    };
++                    bool freshCodePublished = false;
++                    ScopeGuard freshCodeGuard([&installd, &bundleRoot, &adapterIsUpdate, &freshCodePublished]() {
++                        if (!adapterIsUpdate && freshCodePublished) {
++                            (void)installd->RemoveDir(bundleRoot, false);
++                        }
++                    });
++
++                    // Publish only after all staged files and metadata have passed their gates.
++                    if (adapterIsUpdate) {
++                        // Keep the OH 6.1 LTS atomic-publish contract in this
++                        // current-vintage port. The similarly named InnerProcess*
++                        // helpers belong to a later five-file BMS refactor and are
++                        // deliberately not imported into this LTS tree.
++                        const std::string oldBundleRoot = codeRoot + ServiceConstants::PATH_SEPARATOR +
++                            ServiceConstants::BUNDLE_OLD_CODE_DIR + pkg;
++                        ec = installd->RenameModuleDir(bundleRoot, oldBundleRoot);
++                        if (ec != ERR_OK) {
++                            if (!BundleUtil::IsExistDir(bundleRoot) && errno == ENOENT) {
++                                LOG_W(BMS_TAG_INSTALLER,
++                                    "APK update real code path absent, continue publishing +new-");
++                                ec = ERR_OK;
++                            } else {
++                                LOG_E(BMS_TAG_INSTALLER,
++                                    "rename APK real to +old- failed: %{public}d", ec);
++                            }
++                        }
++                        if (ec == ERR_OK) {
++                            InstallExceptionInfo exceptionInfo;
++                            exceptionInfo.status = InstallRenameExceptionStatus::RENAME_RELA_TO_OLD_PATH;
++                            exceptionInfo.versionCode = adapterOldVersionCode;
++                            ErrCode saveEc = DelayedSingleton<InstallExceptionMgr>::GetInstance()
++                                ->SaveBundleExceptionInfo(pkg, exceptionInfo);
++                            if (saveEc != ERR_OK) {
++                                LOG_W(BMS_TAG_INSTALLER,
++                                    "save APK real-to-old exception state failed: %{public}d", saveEc);
++                            }
++                            ec = installd->RenameModuleDir(stagedBundleRoot, bundleRoot);
++                            if (ec == ERR_OK) {
++                                exceptionInfo.status =
++                                    InstallRenameExceptionStatus::RENAME_NEW_TO_RELA_PATH;
++                                saveEc = DelayedSingleton<InstallExceptionMgr>::GetInstance()
++                                    ->SaveBundleExceptionInfo(pkg, exceptionInfo);
++                                if (saveEc != ERR_OK) {
++                                    LOG_E(BMS_TAG_INSTALLER,
++                                        "save APK new-to-real exception state failed: %{public}d", saveEc);
++                                }
++                            }
++                        }
++                    } else {
++                        (void)installd->RemoveDir(bundleRoot);
++                        ec = installd->RenameModuleDir(stagedBundleRoot, bundleRoot);
++                        freshCodePublished = ec == ERR_OK;
++                    }
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER, "publish APK code root failed: %{public}d", ec);
++                        if (adapterIsUpdate) {
++                            RollbackCodePath(pkg, true);
++                            restoreAdapterUpdate(false);
++                        } else {
++                            (void)installd->RemoveDir(stagedBundleRoot);
++                            removeFreshRegistration();
++                        }
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    stageGuard.Dismiss();
++                    ScopeGuard registrationGuard([this, &adapterIsUpdate, &pkg, &restoreAdapterUpdate,
++                        &removeFreshRegistration]() {
++                        if (adapterIsUpdate) {
++                            RollbackCodePath(pkg, true);
++                            restoreAdapterUpdate(true);
++                        } else {
++                            removeFreshRegistration();
++                        }
++                    });
++                    // adapter project: register InnerBundleUserInfo ONLY for the current
++                    // active user (100). Previously userId 0 (system) was also registered
++                    // so some AMS/AppMS internal lookups would resolve, but that made the
++                    // bundle multi-user: a normal uninstall (user 100) then took the
++                    // user-level branch (isMultiUser==true -> "only delete userinfo") and
++                    // left the userId-0 entry behind, so the bundle stayed in BMS (still in
++                    // `bm dump -a`) and reloaded on reboot. Single-user registration makes
++                    // GetInnerBundleUserInfos().size()==1 -> uninstall takes the full-bundle
++                    // removal path -> symmetric install/uninstall.
++                    // NOTE: if a future launch path needs a userId-0 entry (old comment
++                    // referenced CheckLaunchApplicationParams), resolve it AMS-side against
++                    // the active user rather than re-introducing the dual registration.
++                    auto installTime = std::chrono::duration_cast<std::chrono::milliseconds>(
++                        std::chrono::system_clock::now().time_since_epoch()).count();
++                    for (int32_t uid_user : {AccountHelper::GetCurrentActiveUserId()}) {
++                        InnerBundleUserInfo userInfo;
++                        userInfo.bundleName = pkg;
++                        userInfo.bundleUserInfo.userId = uid_user;
++                        userInfo.bundleUserInfo.enabled = true;
++                        // OH-native uid/gid: uid = bundleUserInfo.userId*BASE_USER_RANGE + GenerateBundleId()
++                        dataMgr->GenerateUidAndGid(userInfo);
++                        userInfo.installTime = installTime;
++                        userInfo.updateTime = installTime;
++                        // adapter v3: persist allocated HAP token into the per-userId
++                        // InnerBundleUserInfo so InnerBundleInfo::GetAccessTokenId(userId)
++                        // (called by AMS to populate bundleInfo.applicationInfo.accessTokenId)
++                        // returns the real allocated token, not 0.
++                        userInfo.accessTokenId = allocTokenIdEx.tokenIdExStruct.tokenID;
++                        userInfo.accessTokenIdEx = allocTokenIdEx.tokenIDEx;
++                        innerBundleInfo.AddInnerBundleUserInfo(userInfo);
++                        // Also set via official setter so any side-state inside
++                        // InnerBundleInfo (e.g. cached lookup tables) stays consistent.
++                        innerBundleInfo.SetAccessTokenIdEx(allocTokenIdEx, uid_user);
++                    }
++                    // Android APKs enter BMS through the adapter fast path above, so
++                    // they do not reach the stock CreateBundleUserData flow.  The
++                    // appspawn-x sandbox still requires the same user data roots
++                    // (/data/app/el2/.../base, /log, /data/app/el1/.../database)
++                    // before fork.  Keep ownership and SELinux handling inside
++                    // installd, matching OH-native installs.
++                    CreateDirParam androidDataDirParam;
++                    androidDataDirParam.bundleName = pkg;
++                    androidDataDirParam.userId = activeUserId;
++                    androidDataDirParam.uid = innerBundleInfo.GetUid(activeUserId);
++                    androidDataDirParam.gid = androidDataDirParam.uid;
++                    androidDataDirParam.apl = innerBundleInfo.GetAppPrivilegeLevel();
++                    androidDataDirParam.isPreInstallApp = innerBundleInfo.IsPreInstallApp();
++                    androidDataDirParam.debug = debuggable;
++                    ec = installd->CreateBundleDataDir(androidDataDirParam);
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER,
++                            "CreateBundleDataDir failed for Android APK %{public}s user=%{public}d uid=%{public}d ec=%{public}d",
++                            pkg.c_str(), activeUserId, androidDataDirParam.uid, ec);
++                        if (adapterIsUpdate) {
++                            RollbackCodePath(pkg, true);
++                            restoreAdapterUpdate(true);
++                        } else {
++                            removeFreshRegistration();
++                        }
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    ScopeGuard androidDataDirGuard([&installd, &pkg, activeUserId]() {
++                        (void)installd->RemoveBundleDataDir(pkg, activeUserId, false, false);
++                    });
++                    ec = SetDirApl(androidDataDirParam, pkg);
++                    if (ec != ERR_OK) {
++                        LOG_E(BMS_TAG_INSTALLER,
++                            "SetDirApl failed for Android APK %{public}s user=%{public}d uid=%{public}d ec=%{public}d",
++                            pkg.c_str(), activeUserId, androidDataDirParam.uid, ec);
++                        if (adapterIsUpdate) {
++                            RollbackCodePath(pkg, true);
++                            restoreAdapterUpdate(true);
++                        } else {
++                            removeFreshRegistration();
++                        }
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    // adapter project: fresh install adds a new entry; update replaces it
++                    // in-place. AddInnerBundleInfo enforces state==INSTALL_START and would
++                    // reject the UPDATING path, so use UpdateInnerBundleInfo when updating.
++                    bool adapterAddOk = adapterIsUpdate
++                        ? dataMgr->UpdateInnerBundleInfo(innerBundleInfo, false)
++                        : dataMgr->AddInnerBundleInfo(pkg, innerBundleInfo, true);
++                    if (!adapterAddOk) {
++                        LOG_E(BMS_TAG_INSTALLER, "%{public}s failed for %{public}s",
++                            adapterIsUpdate ? "UpdateInnerBundleInfo" : "AddInnerBundleInfo", pkg.c_str());
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    // Persist the new record before publishing a success state. This keeps
++                    // a crash from leaving final code plus INSTALL_SUCCESS with no reboot-safe
++                    // bundle record. UpdateInnerBundleInfo above is intentionally memory-only;
++                    // both fresh and update paths cross the same storage commit gate here.
++                    if (!dataMgr->SaveInnerBundleInfo(innerBundleInfo)) {
++                        LOG_E(BMS_TAG_INSTALLER, "SaveInnerBundleInfo failed for %{public}s", pkg.c_str());
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    InstallState adapterSuccessState = adapterIsUpdate
++                        ? InstallState::UPDATING_SUCCESS : InstallState::INSTALL_SUCCESS;
++                    if (!dataMgr->UpdateBundleInstallState(pkg, adapterSuccessState)) {
++                        LOG_E(BMS_TAG_INSTALLER, "UpdateBundleInstallState success(%{public}d) failed for %{public}s",
++                            static_cast<int32_t>(adapterSuccessState), pkg.c_str());
++                        deleteAllocatedToken();
++                        return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                    }
++                    registrationGuard.Dismiss();
++                    freshCodeGuard.Dismiss();
++                    ProcessOldCodePath(pkg, adapterIsUpdate);
++                    androidDataDirGuard.Dismiss();
++                    allocatedTokenGuard.Dismiss();
++                    LOG_I(BMS_TAG_INSTALLER, "registered %{public}s in BMS for userId=100 (persistent)", pkg.c_str());
++                    // Fire COMMON_EVENT_PACKAGE_ADDED broadcast so launcher / Sceneboard
++                    // refresh and add the icon dynamically. Without this, launcher only
++                    // re-queries BMS at startup and won't notice our manual register.
++                    NotifyBundleEvents installRes;
++                    installRes.type           = NotifyType::INSTALL;
++                    installRes.resultCode     = ERR_OK;
++                    installRes.bundleName     = pkg;
++                    installRes.modulePackage  = "entry";
++                    installRes.uid            = innerBundleInfo.GetUid(AccountHelper::GetCurrentActiveUserId());
++                    installRes.userId         = AccountHelper::GetCurrentActiveUserId();
++                    installRes.isAppUpdate    = false;
++                    // adapter v3 (A+ fix 2026-05-09): launcher consumes these two
++                    // fields directly from the broadcast event JSON (without a BMS
++                    // re-query). Hardcoding bundleType=0 / accessTokenId=0 made
++                    // launcher silent-skip the view refresh — icon only appeared
++                    // after a reboot's full re-scan. Carry the real values written
++                    // by AllocHapToken + SetApplicationBundleType above.
++                    installRes.bundleType     = static_cast<int32_t>(BundleType::APP_ANDROID);
++                    installRes.accessTokenId  = allocTokenIdEx.tokenIdExStruct.tokenID;
++                    installRes.appDistributionType = "none";
++                    if (NotifyBundleStatus(installRes) != ERR_OK) {
++                        LOG_W(BMS_TAG_INSTALLER, "NotifyBundleStatus(INSTALL) failed for %{public}s — launcher may not refresh", pkg.c_str());
++                    } else {
++                        LOG_I(BMS_TAG_INSTALLER, "broadcast COMMON_EVENT_PACKAGE_ADDED for %{public}s", pkg.c_str());
++                    }
++                    // Directly write ResourceInfo into BundleResourceRdb with the
++                    // PNG bytes already extracted by ApkInstaller to
++                    // /data/app/android/<pkg>/icon.png. Bypass
++                    // BundleResourceManager::AddResourceInfoByBundleNameWhenInstall
++                    // because it tries to parse resources.index (always missing for
++                    // .apk) and ProcessResourceInfoWhenParseFailed substitutes a
++                    // generic default icon instead of our extracted PNG.
++                    {
++                        std::vector<uint8_t> iconBytes;
++                        std::vector<std::string> candidates = {
++                            finalDeployedDir + "/icon.png"
++                        };
++                        for (const auto &iconFile : candidates) {
++                            std::ifstream icf(iconFile, std::ios::binary | std::ios::ate);
++                            if (!icf) continue;
++                            std::streamsize sz = icf.tellg();
++                            if (sz <= 0 || sz >= (10 * 1024 * 1024)) continue;
++                            icf.seekg(0);
++                            iconBytes.resize(static_cast<size_t>(sz));
++                            if (icf.read(reinterpret_cast<char*>(iconBytes.data()), sz)) {
++                                LOG_I(BMS_TAG_INSTALLER, "loaded icon %{public}s (%{public}zu bytes)", iconFile.c_str(), iconBytes.size());
++                                break;
++                            }
++                            iconBytes.clear();
++                        }
++                        if (iconBytes.empty()) {
++                            LOG_W(BMS_TAG_INSTALLER, "no icon file found for %{public}s — RDB row will lack icon", pkg.c_str());
++                        }
++                        // OH launcher reads the ICON TEXT column which holds a
++                        // "data:image/png;base64,..." URI, NOT the FOREGROUND BLOB.
++                        // Inline base64 encode iconBytes into a data URI so the row
++                        // matches what BundleResourceParser would produce for a HAP.
++                        std::string iconDataUri;
++                        if (!iconBytes.empty()) {
++                            static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
++                            std::string b64str;
++                            b64str.reserve(((iconBytes.size() + 2) / 3) * 4);
++                            size_t i = 0;
++                            for (; i + 2 < iconBytes.size(); i += 3) {
++                                uint32_t n = (uint32_t(iconBytes[i]) << 16) | (uint32_t(iconBytes[i+1]) << 8) | uint32_t(iconBytes[i+2]);
++                                b64str.push_back(b64[(n >> 18) & 0x3F]);
++                                b64str.push_back(b64[(n >> 12) & 0x3F]);
++                                b64str.push_back(b64[(n >> 6)  & 0x3F]);
++                                b64str.push_back(b64[n & 0x3F]);
++                            }
++                            if (i < iconBytes.size()) {
++                                uint32_t n = uint32_t(iconBytes[i]) << 16;
++                                if (i + 1 < iconBytes.size()) n |= uint32_t(iconBytes[i+1]) << 8;
++                                b64str.push_back(b64[(n >> 18) & 0x3F]);
++                                b64str.push_back(b64[(n >> 12) & 0x3F]);
++                                b64str.push_back(i + 1 < iconBytes.size() ? b64[(n >> 6) & 0x3F] : '=');
++                                b64str.push_back('=');
++                            }
++                            iconDataUri = std::string("data:image/png;base64,") + b64str;
++                        }
++                        BundleResourceRdb rdb;
++                        // App-level row (abilityName empty).
++                        ResourceInfo appRes;
++                        appRes.bundleName_     = pkg;
++                        appRes.moduleName_     = "entry";
++                        appRes.abilityName_    = "";
++                        appRes.label_          = appLabel;
++                        appRes.iconNeedParse_  = false;
++                        appRes.labelNeedParse_ = false;
++                        appRes.icon_           = iconDataUri;
++                        if (!iconBytes.empty()) {
++                            appRes.foreground_ = iconBytes;
++                        }
++                        if (!rdb.AddResourceInfo(appRes)) {
++                            LOG_W(BMS_TAG_INSTALLER, "BundleResourceRdb app-level Add fail %{public}s", pkg.c_str());
++                        } else {
++                            LOG_I(BMS_TAG_INSTALLER, "BundleResourceRdb app-level Add OK %{public}s", pkg.c_str());
++                        }
++                        // Per-ability rows (one per launcher activity so
++                        // GetLauncherAbilityResourceInfo returns a list).
++                        for (const auto &abilityJson : abilitiesJson) {
++                            ResourceInfo aRes = appRes;
++                            aRes.abilityName_ = abilityJson.value("name", std::string(""));
++                            std::string aLabel = abilityJson.value("label", appLabel);
++                            if (!aLabel.empty()) {
++                                aRes.label_ = aLabel;
++                            }
++                            if (aRes.abilityName_.empty()) continue;
++                            if (!rdb.AddResourceInfo(aRes)) {
++                                LOG_W(BMS_TAG_INSTALLER, "BundleResourceRdb ability Add fail %{public}s/%{public}s", pkg.c_str(), aRes.abilityName_.c_str());
++                            } else {
++                                LOG_I(BMS_TAG_INSTALLER, "BundleResourceRdb ability Add OK %{public}s/%{public}s", pkg.c_str(), aRes.abilityName_.c_str());
++                            }
++                        }
++                    }
++                }
++                return ERR_OK;
++                };
++                const ErrCode apkResult = installOneApk();
++                if (apkResult != ERR_OK) {
++                    // Defensive propagation for the sole APK transaction.
++                    LOG_E(BMS_TAG_INSTALLER, "APK list item failed %{public}s: %{public}d",
++                        p.c_str(), apkResult);
++                    if (firstApkError == ERR_OK) firstApkError = apkResult;
++                }
++            }
++            LOG_I(BMS_TAG_INSTALLER, "adapter APK install + register completed: %{public}d",
++                firstApkError);
++            return firstApkError;
++        }
++    }
++#endif
+ 
+     // copy the haps to the dir which cannot be accessed from caller
+     result = CopyHapsToSecurityDir(installParam, bundlePaths);

@@ -1,0 +1,95 @@
+diff --git a/libs/hwui/HardwareBitmapUploader.cpp b/libs/hwui/HardwareBitmapUploader.cpp
+index b7e99994..7ee8fa17 100644
+--- a/libs/hwui/HardwareBitmapUploader.cpp
++++ b/libs/hwui/HardwareBitmapUploader.cpp
+@@ -15,6 +15,25 @@
+  */
+ 
+ #include "HardwareBitmapUploader.h"
++// P10.E: explicit hardware_buffer.h for AHARDWAREBUFFER_FORMAT_*
++#include <android/hardware_buffer.h>
++// P10.E: SkImages namespace
++#include "include/gpu/ganesh/SkImageGanesh.h"
++// P10.E: VK_FORMAT_* stubs — Vulkan paths in this file are dead code on OH (createUploader picks EGL).
++#ifndef VK_FORMAT_R8G8B8A8_UNORM
++#define VK_FORMAT_UNDEFINED 0
++#define VK_FORMAT_R8G8B8A8_UNORM 0
++#define VK_FORMAT_R16G16B16A16_SFLOAT 0
++#define VK_FORMAT_A2B10G10R10_UNORM_PACK32 0
++#define VK_FORMAT_R5G6B5_UNORM_PACK16 0
++#define VK_FORMAT_R8_UNORM 0
++// AHARDWAREBUFFER_FORMAT_R8_UNORM not visible because <android/hardware_buffer.h>
++// resolves to a partial header on this build configuration. Define from
++// nativewindow/include/android/hardware_buffer.h:175 (value 0x38).
++#ifndef AHARDWAREBUFFER_FORMAT_R8_UNORM
++#define AHARDWAREBUFFER_FORMAT_R8_UNORM ((AHardwareBuffer_Format)0x38)
++#endif
++#endif
+ 
+ #include <EGL/egl.h>
+ #include <EGL/eglext.h>
+@@ -246,6 +265,13 @@ private:
+           ATRACE_CALL();
+           std::lock_guard _lock{mVkLock};
+ 
++#ifdef HWUI_NO_VULKAN
++          // HWUI_NO_VULKAN: skip entire Vulkan upload path. Bitmap upload
++          // via Vulkan is dead code on OH adapter (we use SkiaGL pipeline).
++          // Returning without uploading leaves uploadSucceeded=false — caller
++          // falls back to EGL upload path in createUploader().
++          (void)mGrContext;
++#else
+           renderthread::VulkanManager* vkManager = getVulkanManager();
+           if (!vkManager->hasVkContext()) {
+               LOG_ALWAYS_FATAL_IF(mGrContext,
+@@ -260,12 +286,13 @@ private:
+               LOG_ALWAYS_FATAL_IF(!mGrContext, "failed to create GrContext for vulkan uploads");
+               this->postIdleTimeoutCheck();
+           }
++#endif
+ 
+-          sk_sp<SkImage> image =
+-              SkImage::MakeFromAHardwareBufferWithData(mGrContext.get(), bitmap.pixmap(), ahb);
+-          mGrContext->submit(true);
+-
+-          uploadSucceeded = (image.get() != nullptr);
++          // P10.E: M133 removed SkImage::MakeFromAHardwareBufferWithData; submit() sig changed.
++          // VkUploader is dead code on OH (createUploader picks EGLUploader).
++          (void)ahb; (void)bitmap;
++          sk_sp<SkImage> image = nullptr;
++          uploadSucceeded = false;
+         });
+         return uploadSucceeded;
+     }
+@@ -305,6 +332,8 @@ static bool checkSupport(AHardwareBuffer_Format format) {
+     return buffer != nullptr;
+ }
+ 
++// P10.E: header inline-defines these when __ANDROID__ is undef.
++#ifdef __ANDROID__
+ bool HardwareBitmapUploader::hasFP16Support() {
+     static bool hasFP16Support = checkSupport(AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT);
+     return hasFP16Support;
+@@ -319,6 +348,7 @@ bool HardwareBitmapUploader::hasAlpha8Support() {
+     static bool hasAlpha8Support = checkSupport(AHARDWAREBUFFER_FORMAT_R8_UNORM);
+     return hasAlpha8Support;
+ }
++#endif  // __ANDROID__
+ 
+ static FormatInfo determineFormat(const SkBitmap& skBitmap, bool usingGL) {
+     FormatInfo formatInfo;
+@@ -442,8 +472,12 @@ sk_sp<Bitmap> HardwareBitmapUploader::allocateHardwareBitmap(const SkBitmap& sou
+     if (!sUploader->uploadHardwareBitmap(bitmap, format, ahb.get())) {
+         return nullptr;
+     }
+-    return Bitmap::createFrom(ahb.get(), bitmap.colorType(), bitmap.refColorSpace(),
+-                              bitmap.alphaType(), Bitmap::computePalette(bitmap));
++    // P10.E: Bitmap::createFrom(AHardwareBuffer*, SkColorType, ...) is gated by
++    // #ifdef __ANDROID__ in Bitmap.h and not visible in this build. The whole
++    // hardware-bitmap allocation path is dead on OH; return nullptr so the caller
++    // falls back to a normal SkBitmap allocation.
++    (void)bitmap;
++    return nullptr;
+ }
+ 
+ void HardwareBitmapUploader::initialize() {

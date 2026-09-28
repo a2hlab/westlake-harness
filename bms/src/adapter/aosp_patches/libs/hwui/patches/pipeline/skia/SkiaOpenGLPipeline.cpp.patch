@@ -1,0 +1,151 @@
+diff --git a/libs/hwui/pipeline/skia/SkiaOpenGLPipeline.cpp b/libs/hwui/pipeline/skia/SkiaOpenGLPipeline.cpp
+index c4d3f5ce..7a78edaf 100644
+--- a/libs/hwui/pipeline/skia/SkiaOpenGLPipeline.cpp
++++ b/libs/hwui/pipeline/skia/SkiaOpenGLPipeline.cpp
+@@ -15,6 +15,9 @@
+  */
+ 
+ #include "SkiaOpenGLPipeline.h"
++#include <gpu/ganesh/gl/GrGLDirectContext.h>
++#include <gpu/ganesh/gl/GrGLBackendSurface.h>
++#include <gpu/ganesh/SkSurfaceGanesh.h>
+ 
+ #include <GrBackendSurface.h>
+ #include <SkBlendMode.h>
+@@ -39,6 +42,10 @@
+ 
+ using namespace android::uirenderer::renderthread;
+ 
++// G2.14az/G2.14bb helpers — defined in hwui_oh_abi_patch.cpp (§6/§7).
++extern "C" void g214az_dump_gl_state(const char* tag, int n);
++extern "C" uint32_t g214bb_raw_read_pixel(int x, int y);
++
+ namespace android {
+ namespace uirenderer {
+ namespace skiapipeline {
+@@ -113,6 +120,17 @@ IRenderPipeline::DrawResult SkiaOpenGLPipeline::draw(
+         const Rect& contentDrawBounds, bool opaque, const LightInfo& lightInfo,
+         const std::vector<sp<RenderNode>>& renderNodes, FrameInfoVisualizer* profiler,
+         const HardwareBufferRenderParams& bufferParams) {
++    // G2.14au r4 probe — SkiaOpenGLPipeline::draw entry
++    // marker: G214au_HWR_SkiaGLDraw
++    {
++        static std::atomic<int> g_count{0};
++        int n = ++g_count;
++        if (n == 1 || n % 30 == 0) {
++            fprintf(stderr, "[G214au_HWR] SkiaOpenGLPipeline::draw #%d opaque=%d renderNodes=%zu\n",
++                    n, opaque ? 1 : 0, renderNodes.size());
++        }
++    }
++
+     if (!isCapturingSkp() && !mHardwareBuffer) {
+         mEglManager.damageFrame(frame, dirty);
+     }
+@@ -135,7 +153,7 @@ IRenderPipeline::DrawResult SkiaOpenGLPipeline::draw(
+         LOG_ALWAYS_FATAL("Unsupported color type.");
+     }
+ 
+-    GrBackendRenderTarget backendRT(frame.width(), frame.height(), 0, STENCIL_BUFFER_SIZE, fboInfo);
++    GrBackendRenderTarget backendRT = GrBackendRenderTargets::MakeGL(frame.width(), frame.height(), 0, STENCIL_BUFFER_SIZE, fboInfo);
+ 
+     SkSurfaceProps props(mColorMode == ColorMode::Default ? 0 : SkSurfaceProps::kAlwaysDither_Flag,
+                          kUnknown_SkPixelGeometry);
+@@ -147,12 +165,70 @@ IRenderPipeline::DrawResult SkiaOpenGLPipeline::draw(
+         surface = getBufferSkSurface(bufferParams);
+         preTransform = bufferParams.getTransform();
+     } else {
+-        surface = SkSurface::MakeFromBackendRenderTarget(mRenderThread.getGrContext(), backendRT,
++        surface = SkSurfaces::WrapBackendRenderTarget(mRenderThread.getGrContext(), backendRT,
+                                                          getSurfaceOrigin(), colorType,
+                                                          mSurfaceColorSpace, &props);
+         preTransform = SkMatrix::I();
+     }
+ 
++    // ==================================================================
++    // G2.14ay probe A — log SkSurface state right after creation.
++    // G2.14az extension — also dump GL state (viewport / scissor / fb / blend).
++    // G2.14ba extension — test SkCanvas clear() directly: if probe C reads
++    // red, SkCanvas→framebuffer path is healthy and renderRenderNodes is
++    // failing; if probe C reads 0, even direct SkCanvas clear isn't reaching
++    // the framebuffer (OH Skia internal failure).
++    // marker: G214ay_SkiaProbe_A
++    // ==================================================================
++    {
++        // (extern declaration is at file top, inserted by HEADER patch)
++        static std::atomic<int> g_a_count{0};
++        int n = ++g_a_count;
++        if (n <= 5 || n % 60 == 0) {
++            SkCanvas* sc = surface ? surface->getCanvas() : nullptr;
++            int w = surface ? surface->width() : -1;
++            int h = surface ? surface->height() : -1;
++            void* rctx = surface ? surface->recordingContext() : nullptr;
++            fprintf(stderr, "[G214ay] A #%d surface=%p canvas=%p w=%d h=%d rctx=%p hwBuf=%d rn=%zu\n",
++                    n, (void*)surface.get(), (void*)sc, w, h, rctx,
++                    mHardwareBuffer ? 1 : 0, renderNodes.size());
++            // G2.14bc — GrDirectContext state (abandoned / backend / oomed).
++            // If abandoned=true, all Skia GPU calls silently no-op — direct match
++            // for "SkCanvas->clear writes nothing".
++            GrDirectContext* gctx = mRenderThread.getGrContext();
++            if (gctx) {
++                int aban = gctx->abandoned() ? 1 : 0;
++                int back = (int)gctx->backend();   // 0=Metal 1=OpenGL 2=Vulkan 3=Direct3D 4=Mock
++                int oom  = gctx->oomed() ? 1 : 0;
++                fprintf(stderr, "[G214bc] A #%d grCtx=%p abandoned=%d backend=%d oomed=%d\n",
++                        n, (void*)gctx, aban, back, oom);
++            } else {
++                fprintf(stderr, "[G214bc] A #%d grCtx=null\n", n);
++            }
++            g214az_dump_gl_state("A-preRender", n);
++            // G2.14ba — direct SkCanvas->clear(red) test before renderFrame.
++            // SK_ColorRED = 0xFFFF0000 (ARGB).  This calls the same Skia
++            // primitive that hwui's RenderNodeDrawable::onDraw eventually
++            // invokes via DisplayList ops — but we hit it directly, bypassing
++            // RenderNodeDrawable entirely.
++            if (sc) {
++                sc->clear(0xFFFF0000u);
++                fprintf(stderr, "[G214ba] A #%d SkCanvas->clear(red) issued\n", n);
++                // G2.14bb — read back via TWO paths to compare:
++                //   (a) SkSurface::readPixels — Skia's view of the surface
++                //   (b) raw glReadPixels       — actual GL framebuffer 0
++                // If Skia binds an internal FBO instead of fb 0, (a) returns red
++                // (Skia sees its own write) but (b) returns 0 (real fb untouched).
++                SkImageInfo info1 = SkImageInfo::Make(1, 1, kRGBA_8888_SkColorType, kUnpremul_SkAlphaType);
++                uint32_t sk_px = 0;
++                bool sk_ok = surface->readPixels(info1, &sk_px, 4, 360, 640);
++                uint32_t gl_px = g214bb_raw_read_pixel(360, 640);
++                fprintf(stderr, "[G214bb] A #%d post-SkClear sk_readPixels=0x%08x (ok=%d) raw_glReadPixels=0x%08x\n",
++                        n, sk_px, sk_ok?1:0, gl_px);
++            }
++        }
++    }
++
+     SkPoint lightCenter = preTransform.mapXY(lightGeometry.center.x, lightGeometry.center.y);
+     LightGeometry localGeometry = lightGeometry;
+     localGeometry.center.x = lightCenter.fX;
+@@ -171,7 +247,7 @@ IRenderPipeline::DrawResult SkiaOpenGLPipeline::draw(
+ 
+     {
+         ATRACE_NAME("flush commands");
+-        surface->flushAndSubmit();
++        skgpu::ganesh::FlushAndSubmit(surface.get());
+     }
+     layerUpdateQueue->clear();
+ 
+@@ -185,6 +261,17 @@ IRenderPipeline::DrawResult SkiaOpenGLPipeline::draw(
+ 
+ bool SkiaOpenGLPipeline::swapBuffers(const Frame& frame, bool drew, const SkRect& screenDirty,
+                                      FrameInfo* currentFrameInfo, bool* requireSwap) {
++    // G2.14au r4 probe — SkiaOpenGLPipeline::swapBuffers entry (pipeline-level)
++    // marker: G214au_HWR_SkiaGLSwap
++    {
++        static std::atomic<int> g_count{0};
++        int n = ++g_count;
++        if (n == 1 || n % 30 == 0) {
++            fprintf(stderr, "[G214au_HWR] SkiaOpenGLPipeline::swapBuffers #%d drew=%d width=%d height=%d\n",
++                    n, drew ? 1 : 0, frame.width(), frame.height());
++        }
++    }
++
+     GL_CHECKPOINT(LOW);
+ 
+     // Even if we decided to cancel the frame, from the perspective of jank

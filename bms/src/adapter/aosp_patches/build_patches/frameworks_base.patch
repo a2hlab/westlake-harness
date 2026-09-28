@@ -1,0 +1,254 @@
+diff --git a/Android.bp b/Android.bp
+index 4473d945..8094f51f 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -385,8 +385,30 @@ java_defaults {
+         "androidx.annotation_annotation",
+         "app-compat-annotations",
+         "ext",
+-        "framework-updatable-stubs-module_libs_api",
+         "unsupportedappusage",
++        "android.net.ipsec.ike.stubs.module_lib",
++        "framework-adservices.stubs.module_lib",
++        "framework-appsearch.stubs.module_lib",
++        "framework-bluetooth.stubs.module_lib",
++        "framework-configinfrastructure.stubs.module_lib",
++        "framework-connectivity.stubs.module_lib",
++        "framework-connectivity-t.stubs.module_lib",
++        "framework-graphics.stubs.system",
++        "framework-media.stubs.module_lib",
++        "framework-mediaprovider.stubs.module_lib",
++        "framework-permission.stubs.module_lib",
++        "framework-permission-s.stubs.module_lib",
++        "framework-scheduling.stubs.module_lib",
++        "framework-sdkextensions.stubs.module_lib",
++        "framework-sdksandbox.stubs.module_lib",
++        "framework-statsd.stubs.module_lib",
++        "framework-tethering.stubs.module_lib",
++        "framework-wifi.stubs.module_lib",
++        "framework-healthfitness.stubs.module_lib",
++        "framework-devicelock.stubs.module_lib",
++        "framework-ondevicepersonalization.stubs.module_lib",
++        "framework-virtualization.stubs.module_lib",
++        "framework-uwb.stubs.module_lib",
+     ],
+     sdk_version: "core_platform",
+     static_libs: [
+@@ -481,8 +503,7 @@ java_library {
+     static_libs: [
+         "app-compat-annotations",
+         "framework-minus-apex",
+-        "framework-updatable-stubs-module_libs_api",
+-    ],
++        ],
+     sdk_version: "core_platform",
+     apex_available: ["//apex_available:platform"],
+ }
+@@ -693,3 +714,10 @@ build = [
+     "ProtoLibraries.bp",
+     "TestProtoLibraries.bp",
+ ]
++
++// VCN utils sources
++filegroup {
++    name: "framework-vcn-util-sources",
++    srcs: ["services/core/java/com/android/server/vcn/util/PersistableBundleUtils.java"],
++    visibility: ["//visibility:public"],
++}
+diff --git a/api/Android.bp b/api/Android.bp
+index f5bafe8b..8cfd6642 100644
+--- a/api/Android.bp
++++ b/api/Android.bp
+@@ -101,15 +101,7 @@ combined_apis {
+         "framework-wifi",
+         "i18n.module.public.api",
+     ],
+-    system_server_classpath: [
+-        "service-art",
+-        "service-configinfrastructure",
+-        "service-healthfitness",
+-        "service-media-s",
+-        "service-permission",
+-        "service-rkp",
+-        "service-sdksandbox",
+-    ],
++    system_server_classpath: [],
+ }
+ 
+ genrule {
+diff --git a/api/StubLibraries.bp b/api/StubLibraries.bp
+index f08745b5..35eaeb21 100644
+--- a/api/StubLibraries.bp
++++ b/api/StubLibraries.bp
+@@ -34,21 +34,7 @@ droidstubs {
+         "module-classpath-stubs-defaults",
+     ],
+     args: metalava_framework_docs_args,
+-    check_api: {
+-        current: {
+-            api_file: ":non-updatable-current.txt",
+-            removed_api_file: ":non-updatable-removed.txt",
+-        },
+-        last_released: {
+-            api_file: ":android-non-updatable.api.public.latest",
+-            removed_api_file: ":android-non-updatable-removed.api.public.latest",
+-            baseline_file: ":android-non-updatable-incompatibilities.api.public.latest",
+-        },
+-        api_lint: {
+-            enabled: true,
+-            new_since: ":android.api.public.latest",
+-        },
+-    },
++
+     dists: [
+         {
+             targets: ["sdk"],
+@@ -86,22 +72,7 @@ droidstubs {
+         "module-classpath-stubs-defaults",
+     ],
+     args: metalava_framework_docs_args + priv_apps,
+-    check_api: {
+-        current: {
+-            api_file: ":non-updatable-system-current.txt",
+-            removed_api_file: ":non-updatable-system-removed.txt",
+-        },
+-        last_released: {
+-            api_file: ":android-non-updatable.api.system.latest",
+-            removed_api_file: ":android-non-updatable-removed.api.system.latest",
+-            baseline_file: ":android-non-updatable-incompatibilities.api.system.latest",
+-        },
+-        api_lint: {
+-            enabled: true,
+-            new_since: ":android.api.system.latest",
+-            baseline_file: ":non-updatable-system-lint-baseline.txt",
+-        },
+-    },
++
+     dists: [
+         {
+             targets: ["sdk"],
+@@ -125,16 +96,6 @@ droidstubs {
+         "module-classpath-stubs-defaults",
+     ],
+     args: metalava_framework_docs_args + test + priv_apps_in_stubs,
+-    check_api: {
+-        current: {
+-            api_file: ":non-updatable-test-current.txt",
+-            removed_api_file: ":non-updatable-test-removed.txt",
+-        },
+-        api_lint: {
+-            enabled: true,
+-            baseline_file: ":non-updatable-test-lint-baseline.txt",
+-        },
+-    },
+     dists: [
+         {
+             targets: ["sdk"],
+@@ -170,22 +131,7 @@ droidstubs {
+         "module-classpath-stubs-defaults",
+     ],
+     args: metalava_framework_docs_args + priv_apps_in_stubs + module_libs,
+-    check_api: {
+-        current: {
+-            api_file: ":non-updatable-module-lib-current.txt",
+-            removed_api_file: ":non-updatable-module-lib-removed.txt",
+-        },
+-        last_released: {
+-            api_file: ":android-non-updatable.api.module-lib.latest",
+-            removed_api_file: ":android-non-updatable-removed.api.module-lib.latest",
+-            baseline_file: ":android-non-updatable-incompatibilities.api.module-lib.latest",
+-        },
+-        api_lint: {
+-            enabled: true,
+-            new_since: ":android.api.module-lib.latest",
+-            baseline_file: ":non-updatable-module-lib-lint-baseline.txt",
+-        },
+-    },
++
+     dists: [
+         {
+             targets: ["sdk"],
+@@ -504,70 +450,6 @@ java_library {
+     ],
+ }
+ 
+-droidstubs {
+-    name: "api_versions_public",
+-    srcs: [":android_stubs_current_with_test_libs{.jar}"],
+-    generate_stubs: false,
+-    api_levels_annotations_enabled: true,
+-    api_levels_annotations_dirs: [
+-        "sdk-dir",
+-        "api-versions-jars-dir",
+-    ],
+-    api_levels_sdk_type: "public",
+-    extensions_info_file: ":sdk-extensions-info",
+-    visibility: ["//frameworks/base"],
+-}
+-
+-droidstubs {
+-    name: "api_versions_system",
+-    srcs: [":android_system_stubs_current_with_test_libs{.jar}"],
+-    generate_stubs: false,
+-    api_levels_annotations_enabled: true,
+-    api_levels_annotations_dirs: [
+-        "sdk-dir",
+-        "api-versions-jars-dir",
+-    ],
+-    api_levels_sdk_type: "system",
+-    extensions_info_file: ":sdk-extensions-info",
+-}
+-
+-// This module can be built with:
+-// m out/soong/.intermediates/frameworks/base/api_versions_module_lib/android_common/metalava/api-versions.xml
+-droidstubs {
+-    name: "api_versions_module_lib",
+-    srcs: [":android_module_stubs_current_with_test_libs{.jar}"],
+-    generate_stubs: false,
+-    api_levels_annotations_enabled: true,
+-    // this only has the non-updatable portions of the module lib sdk,
+-    // which can reference classes from updatable apexes, so remove references to them
+-    // from this api_versions file.
+-    flags: ["--remove-missing-class-references-in-api-levels"],
+-    api_levels_annotations_dirs: [
+-        "sdk-dir",
+-        "api-versions-jars-dir",
+-    ],
+-    api_levels_sdk_type: "module-lib",
+-    // extensions_info_file is purposefully omitted, because this module should just be
+-    // the non-updatable portions of the sdk, and extension sdks are updatable.
+-}
+-
+-droidstubs {
+-    name: "api_versions_system_server",
+-    srcs: [":android_system_server_stubs_current_with_test_libs{.jar}"],
+-    generate_stubs: false,
+-    api_levels_annotations_enabled: true,
+-    // this only has the non-updatable portions of the system server sdk,
+-    // which can reference classes from updatable apexes, so remove references to them
+-    // from this api_versions file.
+-    flags: ["--remove-missing-class-references-in-api-levels"],
+-    api_levels_annotations_dirs: [
+-        "sdk-dir",
+-        "api-versions-jars-dir",
+-    ],
+-    api_levels_sdk_type: "system-server",
+-    // extensions_info_file is purposefully omitted, because this module should just be
+-    // the non-updatable portions of the sdk, and extension sdks are updatable.
+-}
+ 
+ /////////////////////////////////////////////////////////////////////
+ // hwbinder.stubs provides APIs required for building HIDL Java
+diff --git a/libs/hwui/Android.bp b/libs/hwui/Android.bp
+index db581471..75ced9fb 100644
+--- a/libs/hwui/Android.bp
++++ b/libs/hwui/Android.bp
+@@ -629,7 +629,7 @@ cc_defaults {
+             srcs: [
+                 "utils/HostColorSpace.cpp",
+             ],
+-            export_static_lib_headers: [
++            static_libs: [
+                 "libarect",
+             ],
+         },

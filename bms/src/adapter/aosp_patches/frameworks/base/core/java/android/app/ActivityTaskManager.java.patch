@@ -1,0 +1,26 @@
+diff --git a/frameworks/base/core/java/android/app/ActivityTaskManager.java b/frameworks/base/core/java/android/app/ActivityTaskManager.java
+old mode 100644
+new mode 100755
+index be8f48df..7f34035d
+--- a/frameworks/base/core/java/android/app/ActivityTaskManager.java
++++ b/frameworks/base/core/java/android/app/ActivityTaskManager.java
+@@ -161,6 +161,19 @@ public class ActivityTaskManager {
+             new Singleton<IActivityTaskManager>() {
+                 @Override
+                 protected IActivityTaskManager create() {
++                    // [OH_ADAPTER B.40] Delegate to OHEnvironment system-classloader factory
++                    try {
++                        Class<?> envClass = Class.forName("adapter.core.OHEnvironment");
++                        Boolean isOH = (Boolean) envClass.getMethod("isOHEnvironment").invoke(null);
++                        if (Boolean.TRUE.equals(isOH)) {
++                            Object adapter = envClass.getMethod("getActivityTaskManagerAdapter").invoke(null);
++                            if (adapter != null) return (IActivityTaskManager) adapter;
++                        }
++                    } catch (Throwable t) {
++                        android.util.Log.w("ActivityTaskManager",
++                            "OH adapter init failed, falling back: " + t);
++                    }
++                    // Original AOSP path (fallback)
+                     final IBinder b = ServiceManager.getService(Context.ACTIVITY_TASK_SERVICE);
+                     return IActivityTaskManager.Stub.asInterface(b);
+                 }

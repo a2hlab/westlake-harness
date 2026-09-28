@@ -1,0 +1,30 @@
+diff --git a/libs/hwui/Mesh.h b/libs/hwui/Mesh.h
+index 13e3c8e7..1a159580 100644
+--- a/libs/hwui/Mesh.h
++++ b/libs/hwui/Mesh.h
+@@ -143,21 +143,19 @@ public:
+         }
+ 
+         if (mIsDirty || genId != mGenerationId) {
+-            auto vb = SkMesh::MakeVertexBuffer(
+-                    context, reinterpret_cast<const void*>(mVertexBufferData.data()),
++            auto vb = SkMeshes::MakeVertexBuffer( reinterpret_cast<const void*>(mVertexBufferData.data()),
+                     mVertexBufferData.size());
+             auto meshMode = SkMesh::Mode(mMode);
+             if (!mIndexBufferData.empty()) {
+-                auto ib = SkMesh::MakeIndexBuffer(
+-                        context, reinterpret_cast<const void*>(mIndexBufferData.data()),
++                auto ib = SkMeshes::MakeIndexBuffer( reinterpret_cast<const void*>(mIndexBufferData.data()),
+                         mIndexBufferData.size());
+                 mMesh = SkMesh::MakeIndexed(mMeshSpec, meshMode, vb, mVertexCount, mVertexOffset,
+-                                            ib, mIndexCount, mIndexOffset, mBuilder->fUniforms,
++                                            ib, mIndexCount, mIndexOffset, mBuilder->fUniforms, {},
+                                             mBounds)
+                                 .mesh;
+             } else {
+                 mMesh = SkMesh::Make(mMeshSpec, meshMode, vb, mVertexCount, mVertexOffset,
+-                                     mBuilder->fUniforms, mBounds)
++                                     mBuilder->fUniforms, {}, mBounds)
+                                 .mesh;
+             }
+             mIsDirty = false;

@@ -1,0 +1,26 @@
+--- a/foundation/graphic/graphic_2d/rosen/modules/render_service/core/pipeline/render_thread/rs_uni_render_processor.cpp
++++ b/foundation/graphic/graphic_2d/rosen/modules/render_service/core/pipeline/render_thread/rs_uni_render_processor.cpp
+@@ -125,6 +125,23 @@
+ void RSUniRenderProcessor::CreateLayer(RSSurfaceRenderNode& node, RSSurfaceRenderParams& params,
+     const std::shared_ptr<ProcessOfflineResult>& offlineResult)
+ {
++    // G2.14au r5 probe — RSUniRenderProcessor::CreateLayer(RSSurfaceRenderNode&) entry
++    // marker: G214au_RS_CreateLayer
++    {
++        static std::atomic<int> g_count{0};
++        int n = ++g_count;
++        const auto& sName = node.GetName();
++        if (sName.find("helloworld") != std::string::npos && (n == 1 || n % 30 == 0)) {
++            auto buf = params.GetBuffer();
++            const auto& bounds = params.GetBounds();
++            RS_LOGI("[G214au_RS] CreateLayer #%{public}d name=%{public}s id=%{public}" PRIu64
++                    " bufferPtr=%{public}p bounds=[%{public}f,%{public}f,%{public}f,%{public}f] alpha=%{public}f",
++                    n, sName.c_str(), node.GetId(), buf.GetRefPtr(),
++                    bounds.GetLeft(), bounds.GetTop(), bounds.GetWidth(), bounds.GetHeight(),
++                    params.GetAlpha());
++        }
++    }
++
+     auto surfaceHandler = node.GetRSSurfaceHandler();
+     auto buffer = offlineResult ? offlineResult->buffer : surfaceHandler->GetBuffer();
+     auto consumer = offlineResult ? offlineResult->consumer : surfaceHandler->GetConsumer();

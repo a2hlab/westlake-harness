@@ -1,0 +1,19 @@
+#pragma once
+#include <cstddef>
+#include <cstdint>
+namespace android {
+class Asset {
+public:
+    enum AccessMode { ACCESS_UNKNOWN = 0, ACCESS_RANDOM = 1, ACCESS_STREAMING = 2, ACCESS_BUFFER = 3 };
+    virtual ~Asset() {}
+    virtual ssize_t read(void*, size_t) = 0;
+    virtual off64_t seek(off64_t, int) = 0;
+    virtual void close() = 0;
+    virtual const void* getBuffer(bool) = 0;
+    virtual off64_t getLength() const = 0;
+    virtual off64_t getRemainingLength() const = 0;
+    virtual int openFileDescriptor(off64_t*, off64_t*) const = 0;
+    virtual bool isAllocated() const { return false; }
+    virtual const char* getAssetSource() const { return ""; }
+};
+}

@@ -1,0 +1,89 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp
+@@ -30,6 +30,7 @@
+ #include <sys/stat.h>
+ #include <sys/statfs.h>
+ #include <sstream>
++#include <utility>
+
+ #include "account_helper.h"
+ #ifdef BUNDLE_FRAMEWORK_FREE_INSTALL
+@@ -1525,6 +1526,7 @@
+                     if (j.is_discarded() || !j.is_object() ||
+                         !j.contains("bundleName") || !j["bundleName"].is_string() ||
+                         !j.contains("abilities") || !j["abilities"].is_array() || j["abilities"].empty() ||
++                        !j.contains("services") || !j["services"].is_array() ||
+                         (j.contains("versionCode") && !isInteger(j["versionCode"])) ||
+                         (j.contains("versionName") && !j["versionName"].is_string()) ||
+                         (j.contains("minSdkVersion") && !isInteger(j["minSdkVersion"])) ||
+@@ -1557,6 +1559,21 @@
+                             return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
+                         }
+                     }
++                    const auto &servicesJson = j["services"];
++                    for (const auto &service : servicesJson) {
++                        if (!service.is_object() ||
++                            !service.contains("name") || !service["name"].is_string() ||
++                            service["name"].get_ref<const std::string&>().empty() ||
++                            !service.contains("exported") || !service["exported"].is_boolean() ||
++                            !service.contains("permission") || !service["permission"].is_string() ||
++                            !service.contains("mappedPermission") ||
++                            !service["mappedPermission"].is_string() ||
++                            !service.contains("process") || !service["process"].is_string() ||
++                            service["process"].get_ref<const std::string&>().empty()) {
++                            LOG_E(BMS_TAG_INSTALLER, "manifest service schema rejected");
++                            return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
++                        }
++                    }
+                     const std::string pkg = j.value("bundleName", std::string());
+                     const bool validPackageName = pkg.size() >= Constants::MIN_BUNDLE_NAME &&
+                         pkg.size() <= Constants::MAX_BUNDLE_NAME &&
+@@ -1888,7 +1905,48 @@
+                             if (ab.value("isMainAbility", false)) {
+                                 moduleInfo.mainAbility = abilityName;
+                                 moduleInfo.entryAbilityKey = key;
++                            }
++                        }
++                    }
++                    {
++                        for (const auto &service : servicesJson) {
++                            const std::string serviceName =
++                                service.value("name", std::string());
++                            if (serviceName.empty()) continue;
++                            InnerExtensionInfo innerExtension;
++                            innerExtension.name = serviceName;
++                            innerExtension.bundleName = pkg;
++                            innerExtension.moduleName = "entry";
++                            innerExtension.visible = service.value("exported", false);
++                            innerExtension.enabled = true;
++                            innerExtension.type = ExtensionAbilityType::SERVICE;
++                            innerExtension.process =
++                                service.value("process", pkg);
++                            innerExtension.hapPath = finalEntryHapPath;
++                            innerExtension.resourcePath = finalEntryHapPath;
++                            const std::string permission =
++                                service.value("permission", std::string());
++                            if (!permission.empty()) {
++                                Metadata androidPermissionMetadata;
++                                androidPermissionMetadata.name =
++                                    "oh.adapter.android.service.permission";
++                                androidPermissionMetadata.value = permission;
++                                innerExtension.metadata.emplace_back(
++                                    std::move(androidPermissionMetadata));
++                                const std::string mappedPermission =
++                                    service.value("mappedPermission", std::string());
++                                if (!mappedPermission.empty()) {
++                                    innerExtension.permissions.push_back(
++                                        mappedPermission);
++                                }
+                             }
++                            const std::string key =
++                                pkg + ".entry." + serviceName;
++                            moduleInfo.extensionKeys.emplace_back(key);
++                            moduleInfo.extensionSkillKeys.emplace_back(key);
++                            innerBundleInfo.InsertExtensionSkillInfo(
++                                key, std::vector<Skill>{});
++                            innerBundleInfo.InsertExtensionInfo(key, innerExtension);
+                         }
+                     }
+                     innerBundleInfo.InsertInnerModuleInfo("entry", moduleInfo);

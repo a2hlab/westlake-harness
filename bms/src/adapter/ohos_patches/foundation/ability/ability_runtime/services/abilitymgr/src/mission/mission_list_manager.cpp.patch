@@ -1,0 +1,343 @@
+diff --git a/foundation/ability/ability_runtime/services/abilitymgr/src/mission/mission_list_manager.cpp b/foundation/ability/ability_runtime/services/abilitymgr/src/mission/mission_list_manager.cpp
+index 3b4421df3d..ce7d65bd9e 100644
+--- a/foundation/ability/ability_runtime/services/abilitymgr/src/mission/mission_list_manager.cpp
++++ b/foundation/ability/ability_runtime/services/abilitymgr/src/mission/mission_list_manager.cpp
+@@ -166,6 +166,47 @@ int MissionListManager::StartAbility(AbilityRequest &abilityRequest)
+ {
+     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+     std::lock_guard guard(managerLock_);
++    // adapter project (2026-05-20 A+B 改造): want-marker gated route to
++    // StartAbilityInMission. Adapter-side ATMAdapter.nativeStartAbilityInMission
++    // sets "__android_in_mission_id" on the Want when an Android Activity
++    // should be pushed onto an existing Mission stack.  OH native callers
++    // do not set this marker and fall through to the normal path below.
++    int32_t inMissionId = abilityRequest.want.GetIntParam("__android_in_mission_id", -1);
++    if (inMissionId > 0) {
++        TAG_LOGI(AAFwkTag::ABILITYMGR,
++            "StartAbility: routing to StartAbilityInMission, missionId=%{public}d", inMissionId);
++        return StartAbilityInMission(abilityRequest, inMissionId);
++    }
++    // adapter project 1D (2026-05-25): server-side mission grouping for Android
++    // adapted apps.  Mirrors AOSP ATMS ActivityStarter: caller's-task primary +
++    // bundle-affinity fallback.  Gated by "__android_adapter_app" so OH-native
++    // apps are unaffected.  NOTE: caller holds managerLock_; StartAbilityInMission
++    // and FindMissionByBundle assume the lock is already held (must NOT re-lock).
++    if (abilityRequest.want.GetBoolParam("__android_adapter_app", false)) {
++        constexpr int A_FLAG_NEW_TASK = 0x10000000;       // FLAG_ACTIVITY_NEW_TASK
++        constexpr int A_FLAG_MULTIPLE_TASK = 0x08000000;  // FLAG_ACTIVITY_MULTIPLE_TASK
++        int32_t androidFlags = abilityRequest.want.GetIntParam("__android_launch_flags", 0);
++        bool forceNewTask = (androidFlags & A_FLAG_NEW_TASK) && (androidFlags & A_FLAG_MULTIPLE_TASK);
++        if (!forceNewTask) {
++            int32_t groupMissionId = -1;
++            // (B) caller's-task rule: put the new Activity into the caller's mission.
++            auto callerForGroup = GetAbilityRecordByTokenInner(abilityRequest.callerToken);
++            if (callerForGroup) {
++                groupMissionId = callerForGroup->GetMissionId();
++            }
++            // (C) bundle-affinity fallback: no caller (launcher / NEW_TASK launch).
++            if (groupMissionId <= 0) {
++                groupMissionId = FindMissionByBundle(abilityRequest.abilityInfo.bundleName);
++            }
++            if (groupMissionId > 0 && GetMissionById(groupMissionId) != nullptr) {
++                TAG_LOGI(AAFwkTag::ABILITYMGR,
++                    "1D: Android app %{public}s grouping into mission %{public}d",
++                    abilityRequest.abilityInfo.bundleName.c_str(), groupMissionId);
++                return StartAbilityInMission(abilityRequest, groupMissionId);
++            }
++            // else: first Activity of this app -> fall through to native new mission.
++        }
++    }
+     bool isReachToSingleLimit = CheckSingleLimit(abilityRequest);
+     if (isReachToSingleLimit) {
+         TAG_LOGE(AAFwkTag::ABILITYMGR, "already reach single limit instance. limit: %{public}d",
+@@ -211,6 +252,178 @@ int MissionListManager::StartAbility(AbilityRequest &abilityRequest)
+     return ret;
+ }
+ 
++// adapter project (2026-05-20 A+B 改造 / Plan B): push a new Ability onto an
++// existing Mission's stack instead of creating a new Mission.  Replaces the
++// no-op draft in mission_list_manager_patch.cpp (which was all #if 0).
++int MissionListManager::StartAbilityInMission(
++    AbilityRequest &abilityRequest, int32_t missionId)
++{
++    // 2026-05-25 1D: NO std::lock_guard here.  This method is only reached from
++    // StartAbility(AbilityRequest&), which already holds managerLock_.  Because
++    // managerLock_ is ffrt::mutex (non-recursive), re-locking deadlocks.  The
++    // previous version locked again — a latent deadlock that never fired because
++    // the __android_in_mission_id path was never actually exercised.
++    TAG_LOGI(AAFwkTag::ABILITYMGR,
++        "StartAbilityInMission: missionId=%{public}d, ability=%{public}s",
++        missionId, abilityRequest.abilityInfo.name.c_str());
++
++    auto targetMission = GetMissionById(missionId);
++    if (!targetMission) {
++        TAG_LOGE(AAFwkTag::ABILITYMGR,
++            "StartAbilityInMission: Mission %{public}d not found", missionId);
++        return ERR_INVALID_VALUE;
++    }
++
++    // 2026-05-25 1D (P2): FLAG_ACTIVITY_SINGLE_TOP — if the target ability is
++    // already on top of this mission's stack, deliver onNewIntent to the existing
++    // instance instead of pushing a new one (Android singleTop semantics).
++    constexpr int A_FLAG_SINGLE_TOP = 0x20000000;  // FLAG_ACTIVITY_SINGLE_TOP
++    int32_t androidFlags = abilityRequest.want.GetIntParam("__android_launch_flags", 0);
++    auto stackTop = targetMission->GetAbilityRecord();
++    if ((androidFlags & A_FLAG_SINGLE_TOP) && stackTop &&
++        stackTop->GetElementName().GetBundleName() == abilityRequest.abilityInfo.bundleName &&
++        stackTop->GetElementName().GetAbilityName() == abilityRequest.abilityInfo.name) {
++        TAG_LOGI(AAFwkTag::ABILITYMGR,
++            "StartAbilityInMission: SINGLE_TOP, top is target -> onNewIntent");
++        stackTop->SetWant(abilityRequest.want);
++        stackTop->SetIsNewWant(true);
++        if (!stackTop->IsAbilityState(AbilityState::FOREGROUND)) {
++#ifdef SUPPORT_SCREEN
++            auto callerForTop = GetAbilityRecordByTokenInner(abilityRequest.callerToken);
++            std::shared_ptr<StartOptions> startOptionsTop = nullptr;
++            stackTop->ProcessForegroundAbility(false, abilityRequest, startOptionsTop, callerForTop,
++                static_cast<uint32_t>(WindowStateChangeReason::ABILITY_CALL));
++#else
++            stackTop->ProcessForegroundAbility(0);
++#endif
++        }
++        return ERR_OK;
++    }
++
++    auto newRecord = MissionAbilityRecord::CreateAbilityRecord(abilityRequest);
++    if (!newRecord) {
++        TAG_LOGE(AAFwkTag::ABILITYMGR,
++            "StartAbilityInMission: Failed to create AbilityRecord");
++        return ERR_INVALID_VALUE;
++    }
++    newRecord->SetMissionId(missionId);
++    // 2026-05-25 1D Fix 3: mirror GetTargetMissionAndAbility -- the record MUST
++    // carry the manager's user id, else AbilityManagerService::AttachAbilityThread
++    // calls GetMissionListManagerByUserId(ownerMissionUserId)==null (ABMS7202
++    // "nullptr"), early-returns before MoveToForeground, and the ability dies of
++    // "load timeout".  Native sets this in GetTargetMissionAndAbility; our
++    // hand-rolled record creation bypassed it.
++    newRecord->SetOwnerMissionUserId(userId_);
++
++    // Push new Ability onto Mission stack and activate multi-ability mode so
++    // TerminateAbilityLocked treats the Mission as an Activity stack.
++    // 2026-06-01 back-stack fix: remember the covered top before pushing.
++    auto prevTopForBg = targetMission->GetAbilityRecord();
++    targetMission->PushAbility(newRecord);
++    targetMission->SetMultiAbilityMode(true);
++
++    // Move Mission to top of its MissionList so it is the current top.
++    auto missionList = targetMission->GetMissionList();
++    if (missionList) {
++        missionList->AddMissionToTop(targetMission);
++    }
++
++    // 2026-05-25 1D Fix 2: mirror MissionListManager::StartAbilityLocked /
++    // MoveMissionToFrontInner EXACTLY -- only the NEW ability is driven to
++    // foreground here; the previous top is NOT eagerly backgrounded.  Native
++    // never calls MoveToBackgroundTask(currentTop) on a forward start: the
++    // previous ability's background is window-driven and fires AFTER the new
++    // ability's first frame (Android "B.onResume then A.onStop" order).
++    // Eagerly backgrounding the previous top here inverted that order and
++    // produced AbilityTransitionDone(BACKGROUND) rc=22 -> "background timeout"
++    // -> KillAppWithReason -> relaunch flicker.  SetPendingState(FOREGROUND)
++    // mirrors GetTargetMission so the AMS state machine serializes this
++    // foreground transition exactly like the native path.  NotifyAbilityToken +
++    // the 5-arg SUPPORT_SCREEN ProcessForegroundAbility complete the window
++    // handshake (window attaches; not the no-screen ProcessForegroundAbility(0)).
++    newRecord->SetPendingState(AbilityState::FOREGROUND);
++    auto callerForFg = GetAbilityRecordByTokenInner(abilityRequest.callerToken);
++    NotifyAbilityToken(newRecord->GetToken(), abilityRequest);
++    newRecord->SetSpecifyTokenId(abilityRequest.specifyTokenId);
++    newRecord->SetAbilityForegroundingFlag();
++#ifdef SUPPORT_SCREEN
++    std::shared_ptr<StartOptions> startOptionsFg = nullptr;
++    newRecord->ProcessForegroundAbility(false, abilityRequest, startOptionsFg, callerForFg,
++        static_cast<uint32_t>(WindowStateChangeReason::ABILITY_CALL));
++#else
++    newRecord->ProcessForegroundAbility(0);
++#endif
++
++    // 2026-06-01 back-stack fix: background the covered previous top AFTER
++    // the new ability is foregrounded (correct order; mirrors native
++    // window-driven background, avoids the inverted-order BACKGROUND rc=22
++    // the 1D note warns about).  Without this Main stays FOREGROUND in OH,
++    // so the back-pop's ProcessForegroundAbility(Main) is a no-op and Main
++    // never gets a FOREGROUND callback -> its window is never re-shown.
++    if (prevTopForBg && prevTopForBg != newRecord &&
++        prevTopForBg->IsAbilityState(AbilityState::FOREGROUND)) {
++        prevTopForBg->SetPendingState(AbilityState::BACKGROUND);
++        MoveToBackgroundTask(prevTopForBg);
++    }
++
++    // Refresh InnerMissionInfo so launcher / recents show the new top.
++    InnerMissionInfo innerInfo;
++    auto infoMgr = DelayedSingleton<MissionInfoMgr>::GetInstance();
++    if (infoMgr && infoMgr->GetInnerMissionInfoById(missionId, innerInfo) == ERR_OK) {
++        innerInfo.missionInfo.want = newRecord->GetWant();
++        innerInfo.missionInfo.label = abilityRequest.abilityInfo.label;
++        innerInfo.missionInfo.time = GetCurrentTime();
++        infoMgr->UpdateMissionInfo(innerInfo);
++    }
++
++    if (listenerController_) {
++        listenerController_->NotifyMissionSnapshotChanged(missionId);
++    }
++
++    return ERR_OK;
++}
++
++// 2026-05-25 1D (P2): bundle-affinity fallback.  Scan all mission lists and
++// return the id of a mission whose stack-top ability belongs to bundleName.
++// Mirrors AOSP RootWindowContainer.findTask matching by taskAffinity (default =
++// package name).  Caller (StartAbility) holds managerLock_, so NO lock here.
++int32_t MissionListManager::FindMissionByBundle(const std::string &bundleName)
++{
++    if (bundleName.empty()) {
++        return -1;
++    }
++    auto matchInList = [&bundleName](const std::shared_ptr<MissionList> &list) -> int32_t {
++        if (!list) {
++            return -1;
++        }
++        for (const auto &mission : list->GetAllMissions()) {
++            if (!mission) {
++                continue;
++            }
++            auto top = mission->GetAbilityRecord();
++            if (top && top->GetElementName().GetBundleName() == bundleName) {
++                return mission->GetMissionId();
++            }
++        }
++        return -1;
++    };
++    for (const auto &missionList : currentMissionLists_) {
++        int32_t id = matchInList(missionList);
++        if (id > 0) {
++            return id;
++        }
++    }
++    int32_t standardId = matchInList(defaultStandardList_);
++    if (standardId > 0) {
++        return standardId;
++    }
++    int32_t singleId = matchInList(defaultSingleList_);
++    if (singleId > 0) {
++        return singleId;
++    }
++    return -1;
++}
++
+ int MissionListManager::StartAbility(const std::shared_ptr<AbilityRecord> &currentTopAbility,
+     const std::shared_ptr<AbilityRecord> &callerAbility, const AbilityRequest &abilityRequest)
+ {
+@@ -235,6 +448,12 @@ int MissionListManager::MinimizeAbility(const sptr<IRemoteObject> &token, bool f
+     CHECK_POINTER_AND_RETURN_LOG(GetAbilityRecordByTokenInner(token), INNER_ERR,
+         "Minimize ability fail, ability is not in mission list.");
+     auto abilityRecord = Token::GetAbilityRecordByToken(token);
++    // adapter project (2026-06-01 back-key fix): MinimizeAbility is NATIVE again.
++    // recents/multitask minimize (WMS MinimizeApp -> AMS MinimizeAbility) minimizes
++    // the whole Mission and keeps every Activity on the stack. Android "back" no
++    // longer routes here -- it routes to TerminateAbility (the OH-native back
++    // method). The previous multi-stack pop reroute was removed so recents no
++    // longer pops the Activity stack.
+     return MinimizeAbilityLocked(abilityRecord, fromUser);
+ }
+ 
+@@ -1647,6 +1866,24 @@ int MissionListManager::TerminateAbility(const std::shared_ptr<AbilityRecord> &a
+ {
+     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+     std::lock_guard guard(managerLock_);
++    // adapter project (2026-06-01 back-key fix): an Android "back" press is routed
++    // here as TerminateAbility (OH-native back method) carrying an explicit marker
++    // Want. For a multi-Ability Mission with >1 Activity this pops the top (handled
++    // inside TerminateAbilityInner -> TerminateAbilityLocked). But for the ROOT
++    // Activity (stack size <= 1) Android's default back is moveTaskToBack ->
++    // minimize keep-alive, NOT destroy. Detect (marker + single stack) here and
++    // minimize instead. Real terminations (Activity.finish(), no marker) fall
++    // through to native destroy.
++    if (resultWant != nullptr && resultWant->GetBoolParam("ohAdapter.androidBack", false)) {
++        auto backMission = GetMissionById(abilityRecord->GetMissionId());
++        if (backMission && backMission->IsMultiAbilityMode() &&
++            backMission->GetAbilityStackSize() <= 1) {
++            TAG_LOGI(AAFwkTag::ABILITYMGR,
++                "TerminateAbility: root Activity back -> minimize keep-alive, mission=%{public}d",
++                backMission->GetMissionId());
++            return MinimizeAbilityLocked(abilityRecord, true);
++        }
++    }
+     return TerminateAbilityInner(abilityRecord, resultCode, resultWant, flag);
+ }
+ 
+@@ -1691,6 +1928,73 @@ int MissionListManager::TerminateAbilityInner(const std::shared_ptr<AbilityRecor
+ int MissionListManager::TerminateAbilityLocked(MissionAbilityRecordPtr abilityRecord, bool flag)
+ {
+     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
++    // adapter project (2026-05-26 Layer 1): multi-ability Mission teardown.
++    // OH-native Missions have stack size 1 and bypass this branch entirely.
++    // Two distinct intents are routed by clearMissionFlag (set ONLY by
++    // ClearMissionLocked on recents-delete; never by back / finish()):
++    //   - clearMissionFlag=false (back / top finish()): pop one Ability and
++    //     promote the one below (Android back-stack semantics, unchanged).
++    //   - clearMissionFlag=true (recents swipe-delete): terminate the WHOLE
++    //     stack without promoting.  Pop+terminate the top for real, then
++    //     recurse on the revealed Ability; when the stack shrinks to 1 this
++    //     branch is skipped and the native path below destroys the Mission.
++    //     Each terminated Ability fires ScheduleCleanAbility so the adapter
++    //     destroys the matching AOSP Activity (see mission_group_design §15).
++    {
++        auto mission = GetMissionById(abilityRecord->GetMissionId());
++        if (mission && mission->IsMultiAbilityMode() && mission->GetAbilityStackSize() > 1) {
++            const bool clearWholeStack = abilityRecord->IsClearMissionFlag();
++            auto popped = mission->PopAbility();
++            if (popped) {
++                auto newTop = mission->GetAbilityRecord();
++                if (clearWholeStack) {
++                    terminateAbilityList_.push_back(popped);
++                    DelayedSingleton<AppScheduler>::GetInstance()->PrepareTerminate(
++                        popped->GetToken());
++                    auto self(shared_from_this());
++                    auto poppedRec = popped;
++                    auto task = [poppedRec, self]() { self->DelayCompleteTerminate(poppedRec); };
++                    popped->Terminate(task);
++                    if (newTop) {
++                        newTop->SetClearMissionFlag(true);
++                        newTop->SetTerminatingState();
++                        return TerminateAbilityLocked(
++                            MissionAbilityRecord::FromBaseRecord(newTop), flag);
++                    }
++                    return ERR_OK;
++                }
++                // 2026-06-01 back-stack fix (option B): do NOT eagerly foreground
++                // newTop here.  Eager foreground revealed Main while Second still
++                // occupied the foreground -> Main computed not-visible -> relayout
++                // visibility=GONE -> its window was never re-shown/re-focused.
++                // Instead record Main as the popped ability's "next" and FALL
++                // THROUGH to the native RemoveTerminatingAbility + foreground-next
++                // path below: it tears Second down FIRST, then foregrounds the
++                // next (Main) -- the AOSP/OH ordering contract (hide current,
++                // then make next visible).
++                if (newTop) {
++                    abilityRecord->SetNextAbilityRecord(newTop);
++                }
++                InnerMissionInfo innerInfo;
++                auto mid = mission->GetMissionId();
++                auto infoMgr = DelayedSingleton<MissionInfoMgr>::GetInstance();
++                if (infoMgr && infoMgr->GetInnerMissionInfoById(mid, innerInfo) == ERR_OK) {
++                    if (newTop) {
++                        innerInfo.missionInfo.want = newTop->GetWant();
++                    }
++                    innerInfo.missionInfo.time = GetCurrentTime();
++                    infoMgr->UpdateMissionInfo(innerInfo);
++                }
++                if (listenerController_) {
++                    listenerController_->NotifyMissionSnapshotChanged(mid);
++                }
++                TAG_LOGI(AAFwkTag::ABILITYMGR,
++                    "TerminateAbility: popped mission %{public}d stack -> native terminate-next, remaining=%{public}zu",
++                    mid, mission->GetAbilityStackSize());
++                // fall through to RemoveTerminatingAbility + foreground-next below
++            }
++        }
++    }
+     TAG_LOGD(AAFwkTag::ABILITYMGR, "terminate ability locked, ability is %{public}s/%{public}s.",
+         abilityRecord->GetElementName().GetBundleName().c_str(),
+         abilityRecord->GetElementName().GetAbilityName().c_str());

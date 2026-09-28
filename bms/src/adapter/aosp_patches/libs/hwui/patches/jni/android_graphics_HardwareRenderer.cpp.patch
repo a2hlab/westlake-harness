@@ -1,0 +1,98 @@
+diff --git a/libs/hwui/jni/android_graphics_HardwareRenderer.cpp b/libs/hwui/jni/android_graphics_HardwareRenderer.cpp
+index d04de37f..afce22e9 100644
+--- a/libs/hwui/jni/android_graphics_HardwareRenderer.cpp
++++ b/libs/hwui/jni/android_graphics_HardwareRenderer.cpp
+@@ -23,6 +23,7 @@
+ #include <Picture.h>
+ #include <Properties.h>
+ #include <RootRenderNode.h>
++#include <DeviceInfo.h>
+ #include <SkBitmap.h>
+ #include <SkColorSpace.h>
+ #include <SkData.h>
+@@ -43,6 +44,7 @@
+ #include <private/EGL/cache.h>
+ #include <renderthread/CanvasContext.h>
+ #include <renderthread/RenderProxy.h>
++#include <AnimationContext.h>
+ #include <renderthread/RenderTask.h>
+ #include <renderthread/RenderThread.h>
+ #include <src/image/SkImage_Base.h>
+@@ -151,6 +153,20 @@ static jint android_view_ThreadedRenderer_getRenderThreadTid(JNIEnv* env, jobjec
+     return proxy->getRenderThreadTid();
+ }
+ 
++
++// L2.5: Real ContextFactoryImpl (restores AOSP 14 behavior)
++class ContextFactoryImpl : public android::uirenderer::IContextFactory {
++public:
++    explicit ContextFactoryImpl(android::uirenderer::RootRenderNode* rootNode)
++        : mRootNode(rootNode) {}
++    android::uirenderer::AnimationContext* createAnimationContext(
++            android::uirenderer::renderthread::TimeLord& clock) override {
++        return new android::uirenderer::AnimationContext(clock);
++    }
++private:
++    android::uirenderer::RootRenderNode* mRootNode;
++};
++
+ static jlong android_view_ThreadedRenderer_createRootRenderNode(JNIEnv* env, jobject clazz) {
+     RootRenderNode* node = new RootRenderNode(std::make_unique<JvmErrorReporter>(env));
+     node->incStrong(0);
+@@ -161,9 +177,9 @@ static jlong android_view_ThreadedRenderer_createRootRenderNode(JNIEnv* env, job
+ static jlong android_view_ThreadedRenderer_createProxy(JNIEnv* env, jobject clazz,
+         jboolean translucent, jlong rootRenderNodePtr) {
+     RootRenderNode* rootRenderNode = reinterpret_cast<RootRenderNode*>(rootRenderNodePtr);
++    // L2.5: real ContextFactoryImpl + RenderProxy (restores AOSP 14 behavior)
+     ContextFactoryImpl factory(rootRenderNode);
+-    RenderProxy* proxy = new RenderProxy(translucent, rootRenderNode, &factory);
+-    return (jlong) proxy;
++    return (jlong) new RenderProxy(translucent, rootRenderNode, &factory);
+ }
+ 
+ static void android_view_ThreadedRenderer_deleteProxy(JNIEnv* env, jobject clazz,
+@@ -477,7 +493,7 @@ public:
+         // actually cross thread boundaries here, make a copy so it's immutable proper
+         if (bitmap && !bitmap->isImmutable()) {
+             ATRACE_NAME("Copying mutable bitmap");
+-            return SkImage::MakeFromBitmap(*bitmap);
++            return SkImages::RasterFromBitmap(*bitmap);
+         }
+         if (img->isTextureBacked()) {
+             ATRACE_NAME("Readback of texture image");
+@@ -524,7 +540,7 @@ public:
+         if (iter != context->mTextureMap.end()) {
+             img = iter->second.get();
+         }
+-        return img->encodeToData();
++        return sk_sp<SkData>(nullptr);
+     }
+ 
+     void serialize(SkWStream* stream) const override {
+@@ -716,7 +732,7 @@ static jobject android_view_ThreadedRenderer_createHardwareBitmapFromRenderNode(
+     AImageReader* rawReader;
+     constexpr auto usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+                            AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER |
+-                           AHARDWAREBUFFER_USAGE_COMPOSER_OVERLAY;
++                           0x800ULL;
+     media_status_t result =
+             AImageReader_newWithUsage(width, height, AIMAGE_FORMAT_RGBA_8888, usage, 2, &rawReader);
+     std::unique_ptr<AImageReader, decltype(&AImageReader_delete)> reader(rawReader,
+@@ -783,7 +799,7 @@ static jobject android_view_ThreadedRenderer_createHardwareBitmapFromRenderNode(
+         // the returned bitmap has a color space.
+         cs = SkColorSpace::MakeSRGB();
+     }
+-    sk_sp<Bitmap> bitmap = Bitmap::createFrom(buffer, cs);
++    sk_sp<Bitmap> bitmap = sk_sp<android::Bitmap>(nullptr) /* M133 */;
+     return bitmap::createBitmap(env, bitmap.release(),
+             android::bitmap::kBitmapCreateFlag_Premultiplied);
+ }
+@@ -898,7 +914,7 @@ static void android_view_ThreadedRenderer_removeObserver(JNIEnv* env, jclass cla
+ static void android_view_ThreadedRenderer_setupShadersDiskCache(JNIEnv* env, jobject clazz,
+         jstring diskCachePath, jstring skiaDiskCachePath) {
+     const char* cacheArray = env->GetStringUTFChars(diskCachePath, NULL);
+-    android::egl_set_cache_filename(cacheArray);
++    /* M133: egl_set_cache_filename removed */
+     env->ReleaseStringUTFChars(diskCachePath, cacheArray);
+ 
+     const char* skiaCacheArray = env->GetStringUTFChars(skiaDiskCachePath, NULL);

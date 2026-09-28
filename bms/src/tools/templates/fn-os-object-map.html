@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bridge Fn Concept 操作系统对象地图</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7fa;
+      --panel: #ffffff;
+      --surface: #eef1f5;
+      --text: #17202d;
+      --muted: #657186;
+      --border: #d7dde7;
+      --android: #eaf4ff;
+      --android-strong: #1269d3;
+      --bridge: #fff3df;
+      --bridge-strong: #b45b00;
+      --oh: #e9f8f0;
+      --oh-strong: #087d50;
+      --audit: #f0f1f4;
+      --primary: #1167d8;
+      --backup: #b34cc8;
+      --upgrade: #8f5bd6;
+      --danger: #c93648;
+      --danger-soft: #fff0f2;
+      --warning: #a66100;
+      --success: #087d50;
+      --shadow: 0 9px 30px rgba(24, 34, 50, .09);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f141b;
+        --panel: #171d26;
+        --surface: #202733;
+        --text: #edf2f8;
+        --muted: #a5afbd;
+        --border: #343d4a;
+        --android: #142a42;
+        --android-strong: #68aaff;
+        --bridge: #352719;
+        --bridge-strong: #ffad59;
+        --oh: #173329;
+        --oh-strong: #65d5a6;
+        --audit: #232833;
+        --primary: #65a7ff;
+        --backup: #e48cf4;
+        --upgrade: #c4a1ff;
+        --danger: #ff7c8b;
+        --danger-soft: #3b2028;
+        --warning: #ffc46b;
+        --success: #65d5a6;
+        --shadow: 0 9px 30px rgba(0, 0, 0, .3);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.42;
+    }
+    button, input { font: inherit; }
+    button:focus-visible, input:focus-visible, a:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+      outline-offset: 2px;
+    }
+    a { color: var(--primary); }
+    .page {
+      max-width: 1880px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      margin-bottom: 14px;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: clamp(24px, 3vw, 36px);
+      line-height: 1.12;
+    }
+    .subtitle, .source-line, .muted { color: var(--muted); }
+    .source-line {
+      max-width: 580px;
+      font-size: 12px;
+      text-align: right;
+      word-break: break-all;
+    }
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .chip, .route-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--panel);
+      padding: 4px 10px;
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .shell {
+      display: grid;
+      grid-template-columns: 225px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .fn-nav {
+      position: sticky;
+      top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .fn-button {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 45px minmax(0, 1fr);
+      gap: 8px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--text);
+      padding: 8px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .fn-button:hover { background: var(--surface); }
+    .fn-button[aria-pressed="true"] {
+      border-color: var(--border);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .fn-id { font-weight: 750; }
+    .fn-name {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 650;
+    }
+    .fn-meta {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .workspace { min-width: 0; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 9px;
+    }
+    .search {
+      width: min(360px, 100%);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 7px 13px;
+    }
+    .view-link, .reset-button {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 7px 12px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .concept-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin: 8px 0 10px;
+    }
+    .concept-header h2 { margin: 0 0 3px; }
+    .concept-story { color: var(--muted); }
+    .mapping-warning {
+      margin: 7px 0;
+      border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--bridge) 45%, var(--panel));
+      padding: 8px 11px;
+      color: var(--text);
+      font-size: 13px;
+    }
+    .mapping-warning strong { color: var(--warning); }
+    .route-badge.accepted {
+      border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+      color: var(--text);
+    }
+    .route-badge.composite {
+      border-color: color-mix(in srgb, var(--bridge-strong) 55%, var(--border));
+      color: var(--bridge-strong);
+    }
+    .route-badge.drift {
+      border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+    .matrix-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .matrix {
+      min-width: 1300px;
+      display: grid;
+      grid-template-columns: 126px repeat(7, minmax(162px, 1fr));
+    }
+    .matrix > * {
+      min-width: 0;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .matrix > :nth-child(8n) { border-right: 0; }
+    .corner, .column-header {
+      min-height: 78px;
+      background: var(--surface);
+      padding: 9px;
+    }
+    .corner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      text-align: center;
+      font-size: 12px;
+    }
+    .column-name {
+      display: block;
+      font-weight: 750;
+    }
+    .column-question {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .column-header.audit-column {
+      background:
+        repeating-linear-gradient(
+          -45deg,
+          var(--audit),
+          var(--audit) 8px,
+          var(--surface) 8px,
+          var(--surface) 16px
+        );
+    }
+    .lane-label {
+      min-height: 158px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 11px;
+      font-weight: 750;
+    }
+    .lane-label small {
+      margin-top: 4px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .lane-label.android { background: var(--android); color: var(--android-strong); }
+    .lane-label.bridge { background: var(--bridge); color: var(--bridge-strong); }
+    .lane-label.openharmony { background: var(--oh); color: var(--oh-strong); }
+    .object-cell {
+      position: relative;
+      min-height: 158px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      padding: 8px;
+    }
+    .object-cell.android { background: color-mix(in srgb, var(--android) 45%, var(--panel)); }
+    .object-cell.bridge { background: color-mix(in srgb, var(--bridge) 52%, var(--panel)); }
+    .object-cell.openharmony { background: color-mix(in srgb, var(--oh) 48%, var(--panel)); }
+    .object-cell.audit-column {
+      background:
+        repeating-linear-gradient(
+          -45deg,
+          color-mix(in srgb, var(--audit) 75%, var(--panel)),
+          color-mix(in srgb, var(--audit) 75%, var(--panel)) 8px,
+          var(--panel) 8px,
+          var(--panel) 16px
+        );
+    }
+    .object-cell:not(.empty)::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: -8px;
+      height: 8px;
+      border-left: 1px dashed color-mix(in srgb, var(--muted) 55%, transparent);
+    }
+    .object-card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 8px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .object-card:hover { box-shadow: var(--shadow); }
+    .object-card[aria-pressed="true"] {
+      border-color: var(--primary);
+      outline: 2px solid color-mix(in srgb, var(--primary) 25%, transparent);
+    }
+    .object-title {
+      display: block;
+      font-weight: 700;
+      line-height: 1.24;
+    }
+    .object-note {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .empty-mark {
+      margin: auto;
+      color: color-mix(in srgb, var(--muted) 55%, transparent);
+      font-size: 12px;
+    }
+    .mapping-note {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      margin: 8px 2px 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .detail {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--panel);
+      padding: 13px 15px;
+    }
+    .detail-title { margin-bottom: 5px; font-weight: 750; }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 8px 18px;
+      margin-top: 10px;
+    }
+    .detail-item {
+      border-top: 1px solid var(--border);
+      padding-top: 6px;
+    }
+    .detail-key {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      word-break: break-word;
+    }
+    .compass-section { margin-top: 18px; }
+    .compass-section h3 { margin: 0 0 4px; }
+    .direction-legend { color: var(--muted); font-size: 12px; }
+    .compass {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.15fr) minmax(220px, 1fr);
+      grid-template-areas:
+        ". up ."
+        "left center right"
+        ". down .";
+      gap: 10px;
+      align-items: stretch;
+      margin-top: 10px;
+    }
+    .direction-zone, .compass-center {
+      min-height: 126px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--panel);
+      padding: 10px;
+    }
+    .direction-zone.up { grid-area: up; }
+    .direction-zone.down { grid-area: down; }
+    .direction-zone.left { grid-area: left; }
+    .direction-zone.right { grid-area: right; }
+    .compass-center {
+      grid-area: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border: 2px solid var(--primary);
+      text-align: center;
+    }
+    .direction-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .relation-card {
+      width: 100%;
+      display: block;
+      margin-top: 6px;
+      border: 1px solid var(--border);
+      border-left-width: 4px;
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      padding: 7px 8px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .relation-card.evidenced { border-left-color: var(--success); }
+    .relation-card.blocked { border-left-color: var(--danger); }
+    .relation-card.hypothesis { border-left-color: var(--warning); }
+    .relation-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 700;
+    }
+    .relation-status {
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .relation-name {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      word-break: break-word;
+    }
+    .no-neighbor {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .footnote {
+      margin-top: 13px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    @media (max-width: 980px) {
+      .shell { grid-template-columns: 1fr; }
+      .fn-nav {
+        position: static;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .compass {
+        grid-template-columns: 1fr;
+        grid-template-areas: "center" "up" "left" "right" "down";
+      }
+      .page-header, .concept-header { flex-direction: column; align-items: stretch; }
+      .source-line { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <div>
+        <h1>Bridge Fn Concept 操作系统对象地图</h1>
+        <div class="subtitle">操作系统对象层级 × Android / Bridge / OpenHarmony 语义对齐 × 四向 Concept 关系</div>
+      </div>
+      <div class="source-line">
+        只读呈现 · source digest <code>__SOURCE_DIGEST__</code>
+      </div>
+    </header>
+
+    <div class="summary" id="summary"></div>
+
+    <div class="shell">
+      <nav class="fn-nav" id="fn-nav" aria-label="Fn Concept Domain"></nav>
+
+      <main class="workspace">
+        <div class="toolbar">
+          <input class="search" id="object-search" type="search" placeholder="搜索对象、机制、身份、回执…">
+          <a class="view-link" id="route-link" href="fn-route-atlas.html">打开技术路线图谱 ↗</a>
+          <button class="reset-button" id="reset-selection" type="button">回到 Concept 总览</button>
+        </div>
+
+        <section class="concept-header">
+          <div>
+            <h2 id="concept-heading"></h2>
+            <div class="concept-story" id="concept-story"></div>
+          </div>
+          <a class="route-badge" id="route-badge" href="fn-route-atlas.html"></a>
+        </section>
+
+        <div class="mapping-warning">
+          <strong>阅读规则：</strong>这是语义分组矩阵，不是逐格一对一映射。一个 Android 对象可以由多个 Bridge/OH 对象组合承载，回调方向也可以从 OH 返回 Android。
+        </div>
+
+        <section class="matrix-wrap" aria-label="三泳道操作系统对象语义矩阵">
+          <div class="matrix" id="object-matrix"></div>
+        </section>
+        <div class="mapping-note">
+          <span>竖向虚线表示翻译边界，不表示一对一映射；同列对象可以是组合关系。</span>
+          <span>Evidence 是审计轨，不是 OS 生命周期的最后一步。</span>
+        </div>
+
+        <section class="detail" id="detail" aria-live="polite"></section>
+
+        <section class="compass-section">
+          <h3>Concept 四向关系罗盘</h3>
+          <div class="direction-legend">方向来自 <code>docs/spec/concept-graph.yaml</code>：上=前置，下=消费者，左=运行时输入，右=运行时输出。</div>
+          <div class="compass" id="compass"></div>
+        </section>
+
+        <div class="footnote">
+          本页是 presentation-only 只读投影。对象位置、筛选和点击不会改变 Concept、关系、路线或成熟度。
+          <code>EVIDENCED / HYPOTHESIS / BLOCKED</code> 是关系证据状态，不等于实现或成熟度 PASS。
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script id="object-map-data" type="application/json">__OBJECT_MAP_DATA__</script>
+  <script>
+    (() => {
+      const atlas = JSON.parse(document.getElementById("object-map-data").textContent);
+      const byId = new Map(atlas.concepts.map(item => [item.id, item]));
+      const laneDefinitions = [
+        ["android", "Android / AOSP", "语义 owner 与调用者可见对象"],
+        ["bridge", "Bridge Composition", "边界翻译、关联记录与回执"],
+        ["openharmony", "OpenHarmony", "宿主能力 owner 与可观察事实"],
+      ];
+      const directionLabels = {
+        up: ["↑ 前置依赖", "本 Concept 成立前需要什么"],
+        down: ["↓ 消费者", "谁消费本 Concept 的能力"],
+        left: ["← 运行时输入", "什么在运行时触发或进入"],
+        right: ["→ 运行时输出", "运行时产生什么"],
+      };
+      const query = new URLSearchParams(location.search);
+      let activeId = byId.has(query.get("fn")) ? query.get("fn") : "Fn01";
+      let selectedObjectId = query.get("object") || null;
+
+      const nav = document.getElementById("fn-nav");
+      const matrix = document.getElementById("object-matrix");
+      const compass = document.getElementById("compass");
+      const detail = document.getElementById("detail");
+      const search = document.getElementById("object-search");
+      const routeLink = document.getElementById("route-link");
+      const routeBadge = document.getElementById("route-badge");
+
+      const escapeHtml = value => String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+      function conceptObjectCount(item) {
+        return Object.values(item.objects).reduce((sum, objects) => sum + objects.length, 0);
+      }
+
+      function setUrl(objectId = null) {
+        const next = new URL(location.href);
+        next.searchParams.set("fn", activeId);
+        if (objectId) next.searchParams.set("object", objectId);
+        else next.searchParams.delete("object");
+        history.replaceState(null, "", next);
+      }
+
+      function routeLabel(item) {
+        const route = item.route;
+        if (route.binding === "HASH_DRIFT") return "HASH_DRIFT · 路线不生效";
+        if (route.model === "COMPOSITE_ROUTE_VECTOR") {
+          return `组合型 Route Vector · ${route.status}`;
+        }
+        if (route.selected) {
+          return `主 ${route.selected}` +
+            (route.backup ? ` · 备 ${route.backup}` : " · 备 NONE") +
+            (route.future_upgrade ? ` · 升级 ${route.future_upgrade}` : "");
+        }
+        return `${route.status} · 主/备 NONE`;
+      }
+
+      function routeClass(item) {
+        if (item.route.binding === "HASH_DRIFT") return "drift";
+        if (item.route.model === "COMPOSITE_ROUTE_VECTOR") return "composite";
+        if (item.route.selected) return "accepted";
+        return "";
+      }
+
+      function renderSummary() {
+        const values = [
+          `${atlas.summary.concept_count} 个 Fn Concept Domain`,
+          `${atlas.summary.object_count} 个 source-backed 对象投影`,
+          `${atlas.summary.relationship_count} 条本地四向关系视图`,
+          `${atlas.summary.evidenced_relationship_count} 条 EVIDENCED 关系证据状态（非成熟度）`,
+          `Graph: ${atlas.summary.graph_status}`,
+        ];
+        document.getElementById("summary").innerHTML = values
+          .map(value => `<span class="chip">${escapeHtml(value)}</span>`)
+          .join("");
+      }
+
+      function renderNav() {
+        nav.innerHTML = "";
+        atlas.concepts.forEach(item => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "fn-button";
+          button.setAttribute("aria-pressed", item.id === activeId ? "true" : "false");
+          button.innerHTML =
+            `<span class="fn-id">${escapeHtml(item.id)}</span>` +
+            `<span><span class="fn-name">${escapeHtml(item.name)}</span>` +
+            `<span class="fn-meta">${conceptObjectCount(item)} 对象投影</span></span>`;
+          button.addEventListener("click", () => activateConcept(item.id));
+          nav.appendChild(button);
+        });
+      }
+
+      function activateConcept(conceptId) {
+        if (!byId.has(conceptId)) return;
+        activeId = conceptId;
+        selectedObjectId = null;
+        search.value = "";
+        setUrl();
+        render();
+      }
+
+      function objectMatches(object, term) {
+        return !term || [
+          object.id,
+          object.title,
+          object.note,
+          object.source,
+        ].join(" ").toLowerCase().includes(term);
+      }
+
+      function renderMatrix(item) {
+        const term = search.value.trim().toLowerCase();
+        matrix.innerHTML =
+          `<div class="corner">对象所有权泳道<br>×<br>主要语义位置</div>` +
+          atlas.columns.map(column =>
+            `<div class="column-header ${column.id === "evidence" ? "audit-column" : ""}">` +
+              `<span class="column-name">${escapeHtml(column.name)}</span>` +
+              `<span class="column-question">${escapeHtml(column.question)}</span>` +
+            `</div>`
+          ).join("");
+
+        laneDefinitions.forEach(([lane, label, description]) => {
+          matrix.insertAdjacentHTML(
+            "beforeend",
+            `<div class="lane-label ${lane}">${escapeHtml(label)}<small>${escapeHtml(description)}</small></div>`
+          );
+          atlas.columns.forEach(column => {
+            const objects = item.objects[lane]
+              .filter(object => object.column === column.id)
+              .filter(object => objectMatches(object, term));
+            const cell = document.createElement("div");
+            cell.className =
+              `object-cell ${lane} ${column.id === "evidence" ? "audit-column" : ""}` +
+              (objects.length ? "" : " empty");
+            if (!objects.length) {
+              cell.innerHTML = `<span class="empty-mark">${term ? "无匹配" : "—"}</span>`;
+            } else {
+              objects.forEach(object => {
+                const card = document.createElement("button");
+                card.type = "button";
+                card.className = "object-card";
+                card.dataset.objectId = object.id;
+                card.setAttribute(
+                  "aria-pressed",
+                  object.id === selectedObjectId ? "true" : "false"
+                );
+                card.innerHTML =
+                  `<span class="object-title">${escapeHtml(object.title)}</span>` +
+                  `<span class="object-note">${escapeHtml(object.note)}</span>`;
+                card.addEventListener("click", () => selectObject(item, object, lane));
+                cell.appendChild(card);
+              });
+            }
+            matrix.appendChild(cell);
+          });
+        });
+      }
+
+      function laneLabel(lane) {
+        return laneDefinitions.find(item => item[0] === lane)?.[1] || lane;
+      }
+
+      function selectObject(item, object, lane) {
+        selectedObjectId = object.id;
+        setUrl(object.id);
+        matrix.querySelectorAll(".object-card").forEach(card => {
+          card.setAttribute(
+            "aria-pressed",
+            card.dataset.objectId === object.id ? "true" : "false"
+          );
+        });
+        detail.innerHTML =
+          `<div class="detail-title">${escapeHtml(object.title)}</div>` +
+          `<div class="muted">${escapeHtml(object.note)}</div>` +
+          `<div class="detail-grid">` +
+            `<div class="detail-item"><span class="detail-key">Concept Domain</span>${escapeHtml(item.id)} · ${escapeHtml(item.name)}</div>` +
+            `<div class="detail-item"><span class="detail-key">对象所有权泳道</span>${escapeHtml(laneLabel(lane))}</div>` +
+            `<div class="detail-item"><span class="detail-key">主要语义列</span>${escapeHtml(atlas.columns.find(column => column.id === object.column)?.name)}</div>` +
+            `<div class="detail-item"><span class="detail-key">Projection object id</span><code>${escapeHtml(object.id)}</code></div>` +
+            `<div class="detail-item"><span class="detail-key">Source-backed reference</span><a href="../${escapeHtml(object.source)}">${escapeHtml(object.source)}</a></div>` +
+            `<div class="detail-item"><span class="detail-key">技术路线镜片</span><a href="fn-route-atlas.html?fn=${encodeURIComponent(item.id)}&from=${encodeURIComponent(object.id)}">${escapeHtml(routeLabel(item))} ↗</a></div>` +
+          `</div>`;
+      }
+
+      function renderConceptDetail(item) {
+        const namedSubconcepts = item.subconcepts.filter(subconcept => subconcept.source);
+        const idOnlySubconcepts = item.subconcepts.filter(subconcept => !subconcept.source);
+        const subconcepts = namedSubconcepts.length
+          ? namedSubconcepts
+              .map(subconcept =>
+                `<span class="chip" title="${escapeHtml(subconcept.definition)}">${escapeHtml(subconcept.id)} · ${escapeHtml(subconcept.name)}</span>`
+              )
+              .join(" ") +
+              (idOnlySubconcepts.length
+                ? ` <span class="chip">${idOnlySubconcepts.length} 个仅登记 ID、尚无定义</span>`
+                : "")
+          : item.subconcepts.length
+            ? `<span class="muted">${item.subconcepts.length} 个 Subconcept 仅登记 ID，尚无可引用的人类定义。</span>`
+            : `<span class="muted">当前 Concept 图未登记 Subconcept。</span>`;
+        detail.innerHTML =
+          `<div class="detail-title">${escapeHtml(item.id)} · ${escapeHtml(item.name)} 对象总览</div>` +
+          `<div class="muted">${escapeHtml(item.story)}</div>` +
+          `<div class="detail-grid">` +
+            `<div class="detail-item"><span class="detail-key">只读对象投影</span>${conceptObjectCount(item)} 个</div>` +
+            `<div class="detail-item"><span class="detail-key">Stable Actions</span>${item.action_count} 个</div>` +
+            `<div class="detail-item"><span class="detail-key">Concept registry status</span>${escapeHtml(item.status)}</div>` +
+            `<div class="detail-item"><span class="detail-key">Route lens</span>${escapeHtml(routeLabel(item))}</div>` +
+          `</div>` +
+          `<div class="detail-item"><span class="detail-key">已登记 Subconcept</span>${subconcepts}</div>`;
+      }
+
+      function renderDirection(item, direction) {
+        const [title, question] = directionLabels[direction];
+        const edges = item.neighbors[direction];
+        const zone = document.createElement("section");
+        zone.className = `direction-zone ${direction}`;
+        zone.innerHTML =
+          `<div class="direction-title"><span>${escapeHtml(title)}</span><span>${escapeHtml(question)}</span></div>`;
+        if (!edges.length) {
+          zone.insertAdjacentHTML("beforeend", `<div class="no-neighbor">当前图谱无已登记邻接 Concept。</div>`);
+        } else {
+          edges.forEach(edge => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `relation-card ${edge.status.toLowerCase()}`;
+            button.title = [
+              edge.mechanism,
+              edge.transfer ? `传递：${edge.transfer}` : "",
+              edge.ordering ? `顺序：${edge.ordering}` : "",
+            ].filter(Boolean).join("\n");
+            button.innerHTML =
+              `<span class="relation-head"><span>${escapeHtml(edge.neighbor)} · ${escapeHtml(byId.get(edge.neighbor)?.name || "")}</span>` +
+              `<span class="relation-status">${escapeHtml(edge.status)}</span></span>` +
+              `<span class="relation-name">${escapeHtml(edge.relation)}</span>`;
+            button.addEventListener("click", () => {
+              if (byId.has(edge.neighbor)) activateConcept(edge.neighbor);
+            });
+            zone.appendChild(button);
+          });
+        }
+        return zone;
+      }
+
+      function renderCompass(item) {
+        compass.innerHTML = "";
+        ["up", "left"].forEach(direction => compass.appendChild(renderDirection(item, direction)));
+        const center = document.createElement("section");
+        center.className = "compass-center";
+        center.innerHTML =
+          `<strong>${escapeHtml(item.id)} · ${escapeHtml(item.name)}</strong>` +
+          `<span class="muted">${escapeHtml(item.story)}</span>`;
+        compass.appendChild(center);
+        ["right", "down"].forEach(direction => compass.appendChild(renderDirection(item, direction)));
+      }
+
+      function restoreSelectedObject(item) {
+        if (!selectedObjectId) return false;
+        for (const [lane, objects] of Object.entries(item.objects)) {
+          const object = objects.find(candidate => candidate.id === selectedObjectId);
+          if (object) {
+            selectObject(item, object, lane);
+            return true;
+          }
+        }
+        selectedObjectId = null;
+        setUrl();
+        return false;
+      }
+
+      function render() {
+        const item = byId.get(activeId);
+        renderNav();
+        document.getElementById("concept-heading").textContent = `${item.id} · ${item.name}`;
+        document.getElementById("concept-story").textContent = item.story;
+        const routeHref = `fn-route-atlas.html?fn=${encodeURIComponent(item.id)}&from=object-map`;
+        routeLink.href = routeHref;
+        routeBadge.href = routeHref;
+        routeBadge.textContent = routeLabel(item);
+        routeBadge.className = `route-badge ${routeClass(item)}`;
+        renderMatrix(item);
+        renderCompass(item);
+        if (!restoreSelectedObject(item)) renderConceptDetail(item);
+      }
+
+      search.addEventListener("input", () => renderMatrix(byId.get(activeId)));
+      document.getElementById("reset-selection").addEventListener("click", () => {
+        selectedObjectId = null;
+        setUrl();
+        renderMatrix(byId.get(activeId));
+        renderConceptDetail(byId.get(activeId));
+      });
+      window.addEventListener("popstate", () => {
+        const current = new URLSearchParams(location.search);
+        activeId = byId.has(current.get("fn")) ? current.get("fn") : "Fn01";
+        selectedObjectId = current.get("object") || null;
+        render();
+      });
+
+      renderSummary();
+      render();
+    })();
+  </script>
+</body>
+</html>

@@ -18,6 +18,7 @@
 **构建 VM `a2hlab`**(OrbStack,Ubuntu 24.04 amd64 走 Rosetta)
 - 工作区 `~/a2hlab/ws`,以作者原路径 `/home/dspfac/a2hlab/source-closure/verify/out` bind mount(哈希才对得上 manifest 记录;**VM 重启后要重挂**)。manifest 克隆 `~/a2hlab/manifest`,本地分支 `local-pins-main`。运行时源码是私有 `a2hlab/westlake`(verify 构建基于 main `22b9453`),不是 `A2OH/westlake`。别碰已有的 `oh7x86` 机器。
 - 没有 USB → VM 里的工具用 `scripts/lab/hdc_mac.sh` 转发到 Mac 的 hdc。
+- **Mac 侧 `~/OrbStack` 视图会消失**(2026-09-28:OrbStack 在跑,VM 里 `/Users/zhaoyue/OrbStack/a2hlab/...` 看得到,Mac 上 `~/OrbStack` 只剩 README、`mount` 里没有 NFS)。旧 `hdc_mac.sh` 从 VM cwd 调用时 Mac 侧 `cd` 失败,**所有 hdc 命令都失败**。现版先 `mac test -d ~/OrbStack/a2hlab/home` 探一次:视图在走原映射;不在就把 `file send`/`install` 的本地参数拷进 `/Users/zhaoyue/.cache/hdc_mac.*` 暂存、`file recv` 收进暂存再拷回 VM(保留远端文件名),用完删除。判路径可见性要在 Mac 侧判,VM 侧 `-e` 永远为真。恢复视图需重启 OrbStack(会重启 VM,重挂 bind mount)。
 - VM 没配 git 身份,提交时 `git -c user.name=… -c user.email=…`。`orb -m a2hlab bash -lc '…'` 嵌套引号遇到撇号/heredoc 会坏 → 把脚本写到 `~/OrbStack/a2hlab/home/<user>/…`(VM 里同一个文件)再执行。
 - GitHub/PyPI 网络不稳,huaweicloud 镜像可靠;a2hlab 的 LFS 超额,缺的包从原始公开源补并校验哈希(记在 lock 的 `local_substitution`)。
 
@@ -64,6 +65,7 @@
   - `dockbuild.sh image`(一次,约 90 s,apt 走华为云镜像)/ `check`(自检挂载)/ `run [-n 名] -- <命令>` / `cc <clang 参数>`(锁定 clang-15 + sysroot,cwd 为 Mac 当前目录)。
   - 实测(2026-09-28):`build_android_native.py --target ohos --library liblog.so --library libbase.so` 在 VM 与容器各跑一次(关 ccache),`.so`/`.o` 逐字节相同,`.o.d` 与 `artifacts.json` 只差输出目录名;耗时 11.3 s 对 11.6 s。**单次不更快**(同一 OrbStack 内核 + Rosetta),收益在于**可并行起多个隔离容器**。
   - 上板操作(probe_source_app.py、hdc)仍在 VM 里跑:`hdc_mac.sh` 依赖 OrbStack 的 `mac` 命令,容器里没有。
+- **本地编 BMS 适配层(libapk_installer 等)的编译包**:`~/orca/workspaces/oh61-bms-kit/`(布局同 OH 源码树,`OH_ROOT` 直接指它)=hw248 `oh610_lts_source` 的头文件子集(bundle_framework、zlib/minizip 源码、openssl、hilog、c_utils、ipc、ability_base、json、access_token,约 10 MB,`rsync -aR` 只取头文件)+ 板上只读拉的链接库(`/system/lib64/{platformsdk,chipset-sdk-sp}` 下 libhilog/libcrypto_openssl.z/libssl_openssl.z/libutils.z/libshared_libz.z)+ 软链到 docker 锁定工具链的 `prebuilts/clang/ohos/linux-x86_64/llvm` 与 musl `usr`。hw248 的 OH 源码树 clang 与我们锁定的 SDK clang 是同一提交(15.0.4 feef13a3);hw248 上**没有** `out/wukong100/packages`(系统库只能从板子取)。运行:`DOCKBUILD_MOUNTS="$KIT:$ADAPTER_ROOT" dockbuild.sh run -- "OH_ROOT=$KIT bash build_adapter.sh --no-apply --target=libapk_installer.so"`。⚠️ `compile_apk_installer.sh` 编译失败仍会链接出残缺 .so(实测 27 个源只编过 4 个也输出 50K 库)——必须看 `Compiled: N/N` 全绿;`games/boatattack-repro` 分支的构建脚本引用了本分支不存在的源文件(T-06/T-08/T-12 线),要在与板上库同代的提交上编。
 - 重建时 framework flags 除 java-profile 的 3 个外还需 8 个 APEX flag 库;native object map 在 `$A/native-object-map.json`。就绪检查:`planned_staging.py` + harness `deploy-check`。
 
 ## 6. OctoLoop 现场
@@ -72,6 +74,7 @@
 - **结构化调度**(Markdown 仍是唯一事实源,只加行首定式):车道用 `board_note.sh` 写 `PROGRESS(N)`(每里程碑或 ≤20 分钟)与 `LOCK/UNLOCK(<serial>)`(flock 持有进程真互斥,exit 75=别人持有);依赖取 spec 的 `depends:`。外环看 `board_status.py <板> --schedule --text`,哨用 `--watch`(ACK、可派发、停滞、锁异常即退出)。看板:`board_dash.sh --loop 30`(herdr `app-lighting` 工作区 `dash` 标签页)。
 - **一个战役一块新黑板**(2026-09-28 用户决定):`.octos/boards/<战役>.md`,编号从 #1 起;`.octos/OUTER_LOOP_REVIEW.md` 只做索引。车道名写在条目标题 `[cc-tN]`,`board_status.py <板> --lane <车道> --open` 取自己的条目。
 - **旧板归档方法**:在 `flock -x <板>.lock` 下把旧内容 `head -n <边界前一行>` 原样移进 `.octos/archive/OUTER_LOOP_REVIEW-<年月>-<战役>.md`,用 `cat 归档 <(tail -n +<边界>) | cmp - 原板` 证明逐字节无损,再写新头部 + 在途条目。换本前先确认没有挂着的侦听哨(哨按行数基线判定)。2026-09-28 头条战役 #1–#50(4009 行)已归档,新板从 #51 起。
+- **codex 窗格会弹交互式提问**(屏幕显示 `? 1 question  ⌥+↑ to answer`,herdr 状态 `blocked`):这时 `herdr agent prompt` 只会进队列,不回答问题,车道会一直卡住。处理:`herdr pane send-keys <pane> alt+up` 调出问题,读选项,`enter` 提交(或用方向键换选项)。`lane_watch.sh` 把 blocked 当作停下,能抓到。octoscode 的排队消息则要 `esc` 才会中断当前轮并发送;Claude Code 的消息会在轮中自动插入。
 - herdr server 必须由用户自己起,不要从 agent 会话里 nohup。octoscode stdio 模式要带 `--session <名>`。
 - 复验:`git worktree add --detach ~/.octos/outer/verify/<名> <commit>` → 逐字重跑验收 → 落判词 → 删 worktree。
 

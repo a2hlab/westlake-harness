@@ -6,7 +6,8 @@
 #   board_note.sh progress <board> <entry> <lane> <text...>
 #       -> PROGRESS(<entry>): <iso-time> <lane> <text>
 #   board_note.sh lock <board> <serial> <lane> [why...]
-#       Takes ~/.octos/board-locks/<serial>.lock with `flock -n` in a detached holder process, then writes
+#       Takes ~/.octos/board-locks/<serial>.lock (non-blocking flock) in a holder that detaches into its own
+#       session, then writes
 #       LOCK(<serial>) <lane> <iso-time> <why>. Exit 75 and no board line when another lane holds it.
 #       The holder lives until unlock (or 24 h), so the lock outlasts any single shell command.
 #   board_note.sh unlock <board> <serial> <lane>
@@ -31,6 +32,12 @@ holder() {  # holder <serial> -> "lane pid time" if the recorded holder process 
 }
 
 cmd=${1:-}; shift || true
+# The board is always an existing absolute path: a relative one (oc-t4, 2026-09-28) silently creates a stray
+# file in the agent's worktree and the notes never reach the board.
+case "$cmd" in progress|lock|unlock)
+  case "${1:-}" in /*) [ -f "$1" ] || { echo "REFUSE: board '$1' does not exist" >&2; exit 2; } ;;
+    *) echo "REFUSE: board path '${1:-}' must be absolute" >&2; exit 2 ;; esac ;;
+esac
 case "$cmd" in
   progress)
     [ $# -ge 4 ] || { echo "usage: board_note.sh progress <board> <entry> <lane> <text...>" >&2; exit 2; }
@@ -39,17 +46,39 @@ case "$cmd" in
   lock)
     [ $# -ge 3 ] || { echo "usage: board_note.sh lock <board> <serial> <lane> [why...]" >&2; exit 2; }
     board=$1 serial=$2 lane=$3; shift 3
+    # An OH connect-key is 32 hex digits; a truncated one locks a board that does not exist (seen 2026-09-28).
+    if [[ "$serial" =~ ^[0-9a-f]+$ ]] && [ ${#serial} -ne 32 ]; then
+      echo "REFUSE: '$serial' is ${#serial} hex digits; an OH connect-key has 32" >&2; exit 2
+    fi
     if h=$(holder "$serial"); then
       set -- $h; [ "$1" = "$lane" ] && { echo "already held by $lane (pid $2)"; exit 0; }
       echo "BUSY: $serial held by $1 (pid $2 since $3)" >&2; exit 75
     fi
-    # The holder keeps the flock for as long as it lives; `flock -n` makes a second taker fail at once.
-    nohup flock -n "$LOCKS/$serial.lock" sleep 86400 >/dev/null 2>&1 &
-    pid=$!
-    sleep 0.3
-    kill -0 "$pid" 2>/dev/null || { echo "BUSY: $serial flock held outside board_note.sh" >&2; exit 75; }
+    # The holder keeps the flock for as long as it lives. It double-forks into its own session, because
+    # some agent harnesses (codex) kill a command's whole process group when the command returns.
     t=$(now)
-    echo "$pid $lane $t" > "$LOCKS/$serial.holder"
+    python3 - "$LOCKS/$serial.lock" "$LOCKS/$serial.holder" "$lane" "$t" <<'PY' || { echo "BUSY: $serial flock held outside board_note.sh" >&2; exit 75; }
+import fcntl, os, sys, time
+lock, holder, lane, t = sys.argv[1:5]
+fd = os.open(lock, os.O_CREAT | os.O_RDWR, 0o644)
+try:
+    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    sys.exit(75)
+r, w = os.pipe()
+if os.fork():                      # caller: wait until the holder has recorded itself
+    os.close(w); os.read(r, 1); os._exit(0)
+os.setsid()
+if os.fork():
+    os._exit(0)
+devnull = os.open(os.devnull, os.O_RDWR)
+for n in (0, 1, 2):
+    os.dup2(devnull, n)
+with open(holder, "w") as f:
+    f.write(f"{os.getpid()} {lane} {t}\n")
+os.write(w, b"x"); os.close(w)
+time.sleep(86400)
+PY
     printf 'LOCK(%s) %s %s %s\n' "$serial" "$lane" "$t" "$*" | "$APPEND" "$board" ;;
   unlock)
     [ $# -eq 3 ] || { echo "usage: board_note.sh unlock <board> <serial> <lane>" >&2; exit 2; }
@@ -59,6 +88,13 @@ case "$cmd" in
       [ "$1" = "$lane" ] || { echo "REFUSE: $serial is held by $1, not $lane" >&2; exit 1; }
       pkill -P "$2" 2>/dev/null || true; kill "$2" 2>/dev/null || true
     fi
+    # Anything of ours still holding the lock file goes too -- e.g. the `sleep` child of an old-style
+    # `flock -n … sleep` holder, which survives when only its flock parent is killed.
+    for p in $(lsof -t "$LOCKS/$serial.lock" 2>/dev/null); do
+      case "$(ps -o command= -p "$p" 2>/dev/null)" in
+        "sleep 86400"|flock\ -n\ *|*python3*) kill "$p" 2>/dev/null || true ;;
+      esac
+    done
     rm -f "$LOCKS/$serial.holder"
     printf 'UNLOCK(%s) %s %s\n' "$serial" "$lane" "$(now)" | "$APPEND" "$board" ;;
   held)

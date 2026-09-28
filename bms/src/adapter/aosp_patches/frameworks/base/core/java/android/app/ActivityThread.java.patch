@@ -1,0 +1,30 @@
+diff --git a/frameworks/base/core/java/android/app/ActivityThread.java b/frameworks/base/core/java/android/app/ActivityThread.java
+old mode 100644
+new mode 100755
+index 41c58ef6..8894b95c
+--- a/frameworks/base/core/java/android/app/ActivityThread.java
++++ b/frameworks/base/core/java/android/app/ActivityThread.java
+@@ -2569,6 +2569,23 @@ public final class ActivityThread extends ClientTransactionHandler
+ 
+     @UnsupportedAppUsage
+     public static IPackageManager getPackageManager() {
++        // [OH_ADAPTER B.40] Delegate to OHEnvironment system-classloader factory
++        if (sPackageManager == null) {
++            try {
++                Class<?> envClass = Class.forName("adapter.core.OHEnvironment");
++                Boolean isOH = (Boolean) envClass.getMethod("isOHEnvironment").invoke(null);
++                if (Boolean.TRUE.equals(isOH)) {
++                    Object adapter = envClass.getMethod("getPackageManagerAdapter").invoke(null);
++                    if (adapter != null) {
++                        sPackageManager = (IPackageManager) adapter;
++                        return sPackageManager;
++                    }
++                }
++            } catch (Throwable t) {
++                android.util.Log.w("ActivityThread",
++                    "OH adapter init failed, falling back: " + t);
++            }
++        }
+         if (sPackageManager != null) {
+             return sPackageManager;
+         }

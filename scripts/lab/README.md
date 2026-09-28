@@ -32,6 +32,7 @@ in `.octos/OPS-RUNBOOK.md`).
 | `static_pipeline.py`, `*static100*.py` | Hash-validated static scan → gap map, no device. |
 | `board_status.py <board> [--lane L] [--open] [--id N]` / `--schedule [--text]` / `--watch` | Read-only views of a Markdown OLP campaign board. `--schedule`: each lane's entry, state and minutes since its last PROGRESS, tasks from the specs' `depends:` (which are dispatchable), device ownership, live locks, free devices, anomalies. `--watch` exits with events (ACK, newly dispatchable task, stale lane, lock anomaly) for the outer loop's sentinel. |
 | `board_note.sh {progress,lock,unlock,held}` | Line-start notes on the board with timestamps: `PROGRESS(N): <time> <lane> …`, `LOCK(<serial>) <lane> …` / `UNLOCK(…)`. `lock` holds `~/.octos/board-locks/<serial>.lock` with `flock -n` in a detached holder (exit 75 if another lane has it); `unlock` refuses another lane's lock. |
+| `lane_watch.sh [--interval S] <pane>...` | Negative-signal sentinel: exits when any watched herdr pane is idle/blocked/done or gone on two consecutive polls (filters the idle between turns), printing its screen tail. |
 | `board_dash.sh [board] [--loop S] [--tail N]` | Dashboard: `--schedule --text` plus the newest board lines; `--loop 30` for a live herdr pane. |
 | `board_acks.py`, `watch_inner_negative.sh`, `watch_pane_idle.sh` | Outer-loop board and inner-loop watchers. |
 | `zig_prefetch_build.sh` | Build herdr when Zig's HTTP client fails through the proxy. |

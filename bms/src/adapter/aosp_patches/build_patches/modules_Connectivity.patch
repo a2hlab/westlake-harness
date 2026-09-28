@@ -1,0 +1,3146 @@
+diff --git a/Cronet/tests/common/Android.bp b/Cronet/tests/common/Android.bp
+index e17081a..a9c7d9c 100644
+--- a/Cronet/tests/common/Android.bp
++++ b/Cronet/tests/common/Android.bp
+@@ -1,42 +1 @@
+-// Copyright (C) 2023 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-// Tests in this folder are included both in unit tests and CTS.
+-// They must be fast and stable, and exercise public or test APIs.
+-
+-package {
+-    // See: http://go/android-license-faq
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-// TODO: Consider merging with ConnectivityCoverageTests which is a collection of all
+-// Connectivity tests being used for coverage. This will depend on how far we decide to
+-// go with merging NetHttp and Tethering targets.
+-android_test {
+-    name: "NetHttpCoverageTests",
+-    enforce_default_target_sdk_version: true,
+-    min_sdk_version: "30",
+-    test_suites: ["general-tests", "mts-tethering"],
+-    static_libs: [
+-        "modules-utils-native-coverage-listener",
+-        "CtsNetHttpTestsLib",
+-        "NetHttpTestsLibPreJarJar",
+-    ],
+-    jarjar_rules: ":net-http-test-jarjar-rules",
+-    compile_multilib: "both", // Include both the 32 and 64 bit versions
+-    jni_libs: [
+-       "cronet_aml_components_cronet_android_cronet_tests__testing"
+-    ],
+-}
++// Disabled
+diff --git a/Cronet/tests/cts/Android.bp b/Cronet/tests/cts/Android.bp
+index a0b2434..a9c7d9c 100644
+--- a/Cronet/tests/cts/Android.bp
++++ b/Cronet/tests/cts/Android.bp
+@@ -1,67 +1 @@
+-//
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_library {
+-    name: "CtsNetHttpTestsLib",
+-    defaults: [
+-        "cts_defaults",
+-    ],
+-    sdk_version: "test_current",
+-    min_sdk_version: "30",
+-    srcs: [
+-        "src/**/*.java",
+-        "src/**/*.kt",
+-    ],
+-    static_libs: [
+-        "androidx.test.ext.junit",
+-        "ctstestrunner-axt",
+-        "ctstestserver",
+-        "hamcrest-library",
+-        "junit",
+-        "kotlin-test",
+-        "mockito-target",
+-        "net-tests-utils",
+-        "truth",
+-    ],
+-    libs: [
+-        "android.test.base",
+-        "androidx.annotation_annotation",
+-        "framework-connectivity",
+-        "org.apache.http.legacy",
+-    ],
+-    lint: { test: true }
+-}
+-
+-android_test {
+-    name: "CtsNetHttpTestCases",
+-    defaults: [
+-        "cts_defaults",
+-    ],
+-    enforce_default_target_sdk_version: true,
+-    sdk_version: "test_current",
+-    min_sdk_version: "30",
+-    static_libs: ["CtsNetHttpTestsLib"],
+-    // Tag this as a cts test artifact
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-        "mts-tethering"
+-    ],
+-}
++// Disabled
+diff --git a/Cronet/tests/mts/Android.bp b/Cronet/tests/mts/Android.bp
+index 4e4251c..a9c7d9c 100644
+--- a/Cronet/tests/mts/Android.bp
++++ b/Cronet/tests/mts/Android.bp
+@@ -1,61 +1 @@
+-// Copyright (C) 2023 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    // See: http://go/android-license-faq
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_genrule {
+-    name: "net-http-test-jarjar-rules",
+-    tool_files: [
+-        ":NetHttpTestsLibPreJarJar{.jar}",
+-        "jarjar_excludes.txt",
+-    ],
+-    tools: [
+-        "jarjar-rules-generator",
+-    ],
+-    out: ["net_http_test_jarjar_rules.txt"],
+-    cmd: "$(location jarjar-rules-generator) " +
+-        "$(location :NetHttpTestsLibPreJarJar{.jar}) " +
+-        "--prefix android.net.connectivity " +
+-        "--excludes $(location jarjar_excludes.txt) " +
+-        "--output $(out)",
+-}
+-
+-// Library to be used in coverage tests. cronet_java_tests can't be used directly because the common
+-// tests need to inherit the NetHttpTests manifest.
+-android_library {
+-    name: "NetHttpTestsLibPreJarJar",
+-    static_libs: ["cronet_java_tests"],
+-    sdk_version: "module_current",
+-    min_sdk_version: "30",
+-}
+-
+-android_test {
+-     name: "NetHttpTests",
+-     defaults: [
+-        "mts-target-sdk-version-current",
+-     ],
+-     static_libs: ["NetHttpTestsLibPreJarJar"],
+-     jarjar_rules: ":net-http-test-jarjar-rules",
+-     jni_libs: [
+-        "cronet_aml_components_cronet_android_cronet_tests__testing"
+-     ],
+-     test_suites: [
+-         "general-tests",
+-         "mts-tethering",
+-     ],
+-}
+-
++// Disabled
+diff --git a/Tethering/common/TetheringLib/Android.bp b/Tethering/common/TetheringLib/Android.bp
+index a957e23..0e96d6b 100644
+--- a/Tethering/common/TetheringLib/Android.bp
++++ b/Tethering/common/TetheringLib/Android.bp
+@@ -1,3 +1,9 @@
++filegroup {
++    name: "cronet_aml_api_sources",
++    srcs: [],
++    visibility: ["//visibility:public"],
++}
++
+ //
+ // Copyright (C) 2019 The Android Open Source Project
+ //
+diff --git a/Tethering/tests/Android.bp b/Tethering/tests/Android.bp
+index 72ca666..a9c7d9c 100644
+--- a/Tethering/tests/Android.bp
++++ b/Tethering/tests/Android.bp
+@@ -1,28 +1 @@
+-//
+-// Copyright (C) 2020 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-filegroup {
+-    name: "TetheringTestsJarJarRules",
+-    srcs: ["jarjar-rules.txt"],
+-    visibility: [
+-        "//packages/modules/Connectivity/tests:__subpackages__",
+-        "//packages/modules/Connectivity/Tethering/tests:__subpackages__",
+-    ]
+-}
++// Disabled
+diff --git a/Tethering/tests/integration/Android.bp b/Tethering/tests/integration/Android.bp
+index 5e08aba..a9c7d9c 100644
+--- a/Tethering/tests/integration/Android.bp
++++ b/Tethering/tests/integration/Android.bp
+@@ -1,105 +1 @@
+-//
+-// Copyright (C) 2020 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_defaults {
+-    name: "TetheringIntegrationTestsDefaults",
+-    defaults: ["framework-connectivity-test-defaults"],
+-    srcs: [
+-        "base/**/*.java",
+-    ],
+-    min_sdk_version: "30",
+-    static_libs: [
+-        "NetworkStackApiStableLib",
+-        "androidx.test.rules",
+-        "cts-net-utils",
+-        "mockito-target-extended-minus-junit4",
+-        "net-tests-utils",
+-        "net-utils-device-common-bpf",
+-        "testables",
+-        "connectivity-net-module-utils-bpf",
+-    ],
+-    libs: [
+-        "android.test.runner",
+-        "android.test.base",
+-        "android.test.mock",
+-    ],
+-    jni_libs: [
+-        // For mockito extended
+-        "libdexmakerjvmtiagent",
+-        "libstaticjvmtiagent",
+-    ],
+-}
+-
+-android_library {
+-    name: "TetheringIntegrationTestsBaseLib",
+-    target_sdk_version: "current",
+-    platform_apis: true,
+-    defaults: ["TetheringIntegrationTestsDefaults"],
+-    visibility: [
+-        "//packages/modules/Connectivity/Tethering/tests/mts",
+-    ]
+-}
+-
+-// Library including tethering integration tests targeting the latest stable SDK.
+-// Use with NetworkStackJarJarRules.
+-android_library {
+-    name: "TetheringIntegrationTestsLatestSdkLib",
+-    target_sdk_version: "33",
+-    platform_apis: true,
+-    defaults: ["TetheringIntegrationTestsDefaults"],
+-    srcs: [
+-        "src/**/*.java",
+-    ],
+-    visibility: [
+-        "//packages/modules/Connectivity/tests/cts/tethering",
+-        "//packages/modules/Connectivity/tests:__subpackages__",
+-        "//packages/modules/Connectivity/Tethering/tests:__subpackages__",
+-    ]
+-}
+-
+-// Library including tethering integration tests targeting current development SDK.
+-// Use with NetworkStackJarJarRules.
+-android_library {
+-    name: "TetheringIntegrationTestsLib",
+-    target_sdk_version: "current",
+-    platform_apis: true,
+-    defaults: ["TetheringIntegrationTestsDefaults"],
+-    srcs: [
+-        "src/**/*.java",
+-    ],
+-    visibility: [
+-        "//packages/modules/Connectivity/tests/cts/tethering",
+-        "//packages/modules/Connectivity/Tethering/tests/mts",
+-    ]
+-}
+-
+-// TODO: remove because TetheringIntegrationTests has been covered by ConnectivityCoverageTests.
+-android_test {
+-    name: "TetheringIntegrationTests",
+-    platform_apis: true,
+-    defaults: ["TetheringIntegrationTestsDefaults"],
+-    test_suites: [
+-        "device-tests",
+-    ],
+-    srcs: [
+-        "src/**/*.java",
+-    ],
+-    compile_multilib: "both",
+-    jarjar_rules: ":NetworkStackJarJarRules",
+-}
++// Disabled
+diff --git a/Tethering/tests/mts/Android.bp b/Tethering/tests/mts/Android.bp
+index 4f4b03c..a9c7d9c 100644
+--- a/Tethering/tests/mts/Android.bp
++++ b/Tethering/tests/mts/Android.bp
+@@ -1,68 +1 @@
+-// Copyright (C) 2020 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    // This tests for functionality that is not required for devices that
+-    // don't use Tethering mainline module.
+-    name: "MtsTetheringTestLatestSdk",
+-
+-    min_sdk_version: "30",
+-    target_sdk_version: "33",
+-
+-    libs: [
+-        "android.test.base",
+-    ],
+-
+-    srcs: [
+-        "src/**/*.java",
+-    ],
+-
+-    static_libs: [
+-        "TetheringIntegrationTestsBaseLib",
+-        "androidx.test.rules",
+-        // mockito-target-extended-minus-junit4 used in this lib have dependency with
+-        // jni_libs libdexmakerjvmtiagent and libstaticjvmtiagent.
+-        "cts-net-utils",
+-        // This is needed for androidx.test.runner.AndroidJUnitRunner.
+-        "ctstestrunner-axt",
+-        "junit",
+-        "junit-params",
+-        "connectivity-net-module-utils-bpf",
+-        "net-utils-device-common-bpf",
+-    ],
+-
+-    jni_libs: [
+-        // For mockito extended which is pulled in from -net-utils -> net-tests-utils
+-        // (mockito-target-extended-minus-junit4).
+-        "libdexmakerjvmtiagent",
+-        "libstaticjvmtiagent",
+-    ],
+-
+-    defaults: ["framework-connectivity-test-defaults"],
+-
+-    platform_apis: true,
+-
+-    // Tag this module as a mts test artifact
+-    test_suites: [
+-        "general-tests",
+-        "mts-tethering",
+-    ],
+-
+-    // Include both the 32 and 64 bit versions
+-    compile_multilib: "both",
+-}
++// Disabled
+diff --git a/Tethering/tests/privileged/Android.bp b/Tethering/tests/privileged/Android.bp
+index c890197..a9c7d9c 100644
+--- a/Tethering/tests/privileged/Android.bp
++++ b/Tethering/tests/privileged/Android.bp
+@@ -1,55 +1 @@
+-//
+-// Copyright (C) 2020 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_defaults {
+-    name: "TetheringPrivilegedTestsJniDefaults",
+-    jni_libs: [
+-        "libdexmakerjvmtiagent",
+-        "libstaticjvmtiagent",
+-        "libcom_android_networkstack_tethering_util_jni",
+-    ],
+-    jni_uses_sdk_apis: true,
+-    jarjar_rules: ":TetheringTestsJarJarRules",
+-    visibility: ["//visibility:private"],
+-}
+-
+-android_test {
+-    name: "TetheringPrivilegedTests",
+-    defaults: [
+-        "TetheringPrivilegedTestsJniDefaults",
+-        "ConnectivityNextEnableDefaults",
+-    ],
+-    srcs: [
+-        "src/**/*.java",
+-        "src/**/*.kt",
+-    ],
+-    certificate: "networkstack",
+-    platform_apis: true,
+-    test_suites: [
+-        "device-tests",
+-        "mts-tethering",
+-    ],
+-    static_libs: [
+-        "androidx.test.rules",
+-        "net-tests-utils",
+-        "TetheringApiCurrentLib",
+-    ],
+-    compile_multilib: "both",
+-}
++// Disabled
+diff --git a/Tethering/tests/unit/Android.bp b/Tethering/tests/unit/Android.bp
+index 36d9a63..a9c7d9c 100644
+--- a/Tethering/tests/unit/Android.bp
++++ b/Tethering/tests/unit/Android.bp
+@@ -1,117 +1 @@
+-//
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-// Tests in this folder are included both in unit tests and CTS.
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_library {
+-    name: "TetheringCommonTests",
+-    srcs: [
+-        "common/**/*.java",
+-        "common/**/*.kt"
+-    ],
+-    static_libs: [
+-        "androidx.test.rules",
+-        "net-tests-utils",
+-    ],
+-    // TODO(b/147200698) change sdk_version to module-current and remove framework-minus-apex
+-    sdk_version: "core_platform",
+-    libs: [
+-        "framework-minus-apex",
+-        "framework-connectivity.impl",
+-        "framework-connectivity-t.impl",
+-        "framework-tethering.impl",
+-    ],
+-    visibility: [
+-        "//packages/modules/Connectivity/tests/cts/tethering",
+-    ],
+-}
+-
+-java_defaults {
+-    name: "TetheringTestsDefaults",
+-    min_sdk_version: "30",
+-    srcs: [
+-        "src/**/*.java",
+-        "src/**/*.kt",
+-    ],
+-    static_libs: [
+-        "TetheringCommonTests",
+-        "androidx.test.rules",
+-        "frameworks-base-testutils",
+-        "mockito-target-extended-minus-junit4",
+-        "net-tests-utils",
+-        "testables",
+-    ],
+-    // TODO(b/147200698) change sdk_version to module-current and
+-    // remove framework-minus-apex, ext, and framework-res
+-    sdk_version: "core_platform",
+-    libs: [
+-        "android.test.runner",
+-        "android.test.base",
+-        "android.test.mock",
+-        "ext",
+-        "framework-minus-apex",
+-        "framework-res",
+-        "framework-bluetooth.stubs.module_lib",
+-        "framework-configinfrastructure.stubs.module_lib",
+-        "framework-connectivity.impl",
+-        "framework-connectivity-t.impl",
+-        "framework-tethering.impl",
+-        "framework-wifi.stubs.module_lib",
+-    ],
+-    jni_libs: [
+-        // For mockito extended
+-        "libdexmakerjvmtiagent",
+-        "libstaticjvmtiagent",
+-        "libcom_android_networkstack_tethering_util_jni",
+-    ],
+-}
+-
+-// Library containing the unit tests. This is used by the coverage test target to pull in the
+-// unit test code. It is not currently used by the tests themselves because all the build
+-// configuration needed by the tests is in the TetheringTestsDefaults rule.
+-android_library {
+-    name: "TetheringTestsLatestSdkLib",
+-    defaults: ["TetheringTestsDefaults"],
+-    static_libs: [
+-        "TetheringApiStableLib",
+-    ],
+-    target_sdk_version: "33",
+-    visibility: [
+-        "//packages/modules/Connectivity/tests:__subpackages__",
+-        "//packages/modules/Connectivity/Tethering/tests:__subpackages__",
+-    ]
+-}
+-
+-android_test {
+-    name: "TetheringTests",
+-    platform_apis: true,
+-    test_suites: [
+-        "device-tests",
+-        "mts-tethering",
+-    ],
+-    defaults: [
+-        "TetheringTestsDefaults",
+-        "ConnectivityNextEnableDefaults",
+-    ],
+-    static_libs: [
+-        "TetheringApiCurrentLib",
+-    ],
+-    compile_multilib: "both",
+-    jarjar_rules: ":TetheringTestsJarJarRules",
+-}
++// Disabled
+diff --git a/framework-t/Android.bp b/framework-t/Android.bp
+index ffa2857..22c4905 100644
+--- a/framework-t/Android.bp
++++ b/framework-t/Android.bp
+@@ -97,6 +97,7 @@ java_library {
+ // T, and were moved to the module in T. Other bootclasspath classes in connectivity should go to
+ // framework-connectivity.
+ java_sdk_library {
++    unsafe_ignore_missing_latest_api: true,
+     name: "framework-connectivity-t",
+     defaults: [
+         "framework-connectivity-t-defaults",
+diff --git a/framework/Android.bp b/framework/Android.bp
+index d7eaf9b..28815be 100644
+--- a/framework/Android.bp
++++ b/framework/Android.bp
+@@ -121,6 +121,7 @@ java_library {
+ }
+ 
+ java_sdk_library {
++    unsafe_ignore_missing_latest_api: true,
+     name: "framework-connectivity",
+     defaults: [
+         "framework-connectivity-defaults",
+diff --git a/nearby/tests/cts/fastpair/Android.bp b/nearby/tests/cts/fastpair/Android.bp
+index a61d180..a9c7d9c 100644
+--- a/nearby/tests/cts/fastpair/Android.bp
++++ b/nearby/tests/cts/fastpair/Android.bp
+@@ -1,47 +1 @@
+-// Copyright (C) 2021 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "CtsNearbyFastPairTestCases",
+-    defaults: ["cts_defaults"],
+-    static_libs: [
+-        "androidx.test.ext.junit",
+-        "androidx.test.ext.truth",
+-        "androidx.test.rules",
+-        "bluetooth-test-util-lib",
+-        "compatibility-device-util-axt",
+-        "ctstestrunner-axt",
+-        "truth-prebuilt",
+-    ],
+-    libs: [
+-        "android.test.base",
+-        "framework-bluetooth.stubs.module_lib",
+-        "framework-configinfrastructure",
+-        "framework-connectivity-t.impl",
+-    ],
+-    srcs: ["src/**/*.java"],
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-        "mts-tethering",
+-    ],
+-    certificate: "platform",
+-    sdk_version: "module_current",
+-    min_sdk_version: "30",
+-    target_sdk_version: "32",
+-}
++// Disabled
+diff --git a/nearby/tests/integration/privileged/Android.bp b/nearby/tests/integration/privileged/Android.bp
+index e3250f6..a9c7d9c 100644
+--- a/nearby/tests/integration/privileged/Android.bp
++++ b/nearby/tests/integration/privileged/Android.bp
+@@ -1,33 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "NearbyIntegrationPrivilegedTests",
+-    defaults: ["mts-target-sdk-version-current"],
+-    sdk_version: "test_current",
+-    certificate: "platform",
+-
+-    srcs: ["src/**/*.kt"],
+-    static_libs: [
+-        "androidx.test.ext.junit",
+-        "androidx.test.rules",
+-        "junit",
+-        "truth-prebuilt",
+-    ],
+-    test_suites: ["device-tests"],
+-}
++// Disabled
+diff --git a/nearby/tests/integration/ui/Android.bp b/nearby/tests/integration/ui/Android.bp
+index 524c838..a9c7d9c 100644
+--- a/nearby/tests/integration/ui/Android.bp
++++ b/nearby/tests/integration/ui/Android.bp
+@@ -1,40 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "NearbyIntegrationUiTests",
+-    defaults: ["mts-target-sdk-version-current"],
+-    sdk_version: "test_current",
+-    static_libs: ["NearbyIntegrationUiTestsLib"],
+-    test_suites: ["device-tests"],
+-}
+-
+-android_library {
+-    name: "NearbyIntegrationUiTestsLib",
+-    srcs: ["src/**/*.kt"],
+-    sdk_version: "test_current",
+-    static_libs: [
+-        "androidx.test.ext.junit",
+-        "androidx.test.rules",
+-        "androidx.test.uiautomator_uiautomator",
+-        "junit",
+-        "platform-test-rules",
+-        "service-nearby-pre-jarjar",
+-        "truth-prebuilt",
+-    ],
+-}
++// Disabled
+diff --git a/nearby/tests/integration/untrusted/Android.bp b/nearby/tests/integration/untrusted/Android.bp
+index 57499e4..a9c7d9c 100644
+--- a/nearby/tests/integration/untrusted/Android.bp
++++ b/nearby/tests/integration/untrusted/Android.bp
+@@ -1,37 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "NearbyIntegrationUntrustedTests",
+-    defaults: ["mts-target-sdk-version-current"],
+-    sdk_version: "test_current",
+-
+-    srcs: [
+-        "src/**/*.java",
+-        "src/**/*.kt",
+-    ],
+-    static_libs: [
+-        "androidx.test.ext.junit",
+-        "androidx.test.rules",
+-        "androidx.test.uiautomator_uiautomator",
+-        "junit",
+-        "kotlin-test",
+-        "truth-prebuilt",
+-    ],
+-    test_suites: ["device-tests"],
+-}
++// Disabled
+diff --git a/nearby/tests/multidevices/clients/Android.bp b/nearby/tests/multidevices/clients/Android.bp
+index db6d191..a9c7d9c 100644
+--- a/nearby/tests/multidevices/clients/Android.bp
++++ b/nearby/tests/multidevices/clients/Android.bp
+@@ -1,49 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_library {
+-    name: "NearbyMultiDevicesClientsLib",
+-    srcs: ["src/**/*.kt"],
+-    sdk_version: "test_current",
+-    static_libs: [
+-        "MoblySnippetHelperLib",
+-        "NearbyFastPairProviderLib",
+-        "NearbyFastPairSeekerSharedLib",
+-        "NearbyIntegrationUiTestsLib",
+-        "androidx.test.core",
+-        "androidx.test.ext.junit",
+-        "kotlin-stdlib",
+-        "mobly-snippet-lib",
+-        "truth-prebuilt",
+-    ],
+-}
+-
+-android_app {
+-    name: "NearbyMultiDevicesClientsSnippets",
+-    sdk_version: "test_current",
+-    certificate: "platform",
+-    static_libs: ["NearbyMultiDevicesClientsLib"],
+-    optimize: {
+-        enabled: true,
+-        shrink: false,
+-        // Required to avoid class collisions from static and shared linking
+-        // of MessageNano.
+-        proguard_compatibility: true,
+-        proguard_flags_files: ["proguard.flags"],
+-    },
+-}
++// Disabled
+diff --git a/nearby/tests/multidevices/clients/test_service/fastpair_seeker_data_provider/Android.bp b/nearby/tests/multidevices/clients/test_service/fastpair_seeker_data_provider/Android.bp
+index b406776..a9c7d9c 100644
+--- a/nearby/tests/multidevices/clients/test_service/fastpair_seeker_data_provider/Android.bp
++++ b/nearby/tests/multidevices/clients/test_service/fastpair_seeker_data_provider/Android.bp
+@@ -1,48 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_library {
+-    name: "NearbyFastPairSeekerSharedLib",
+-    srcs: ["shared/**/*.kt"],
+-    sdk_version: "test_current",
+-    static_libs: [
+-        // TODO(b/228406038): Remove "framework-nearby-static" once Fast Pair system APIs add back.
+-        "framework-nearby-static",
+-        "gson",
+-        "guava",
+-    ],
+-}
+-
+-android_library {
+-    name: "NearbyFastPairSeekerDataProviderLib",
+-    srcs: ["src/**/*.kt"],
+-    sdk_version: "test_current",
+-    static_libs: ["NearbyFastPairSeekerSharedLib"],
+-}
+-
+-android_app {
+-    name: "NearbyFastPairSeekerDataProvider",
+-    sdk_version: "test_current",
+-    certificate: "platform",
+-    static_libs: ["NearbyFastPairSeekerDataProviderLib"],
+-    optimize: {
+-        enabled: true,
+-        shrink: true,
+-        proguard_flags_files: ["proguard.flags"],
+-    },
+-}
++// Disabled
+diff --git a/nearby/tests/multidevices/clients/test_support/fastpair_provider/Android.bp b/nearby/tests/multidevices/clients/test_support/fastpair_provider/Android.bp
+index 298c9dc..a9c7d9c 100644
+--- a/nearby/tests/multidevices/clients/test_support/fastpair_provider/Android.bp
++++ b/nearby/tests/multidevices/clients/test_support/fastpair_provider/Android.bp
+@@ -1,46 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_library {
+-    name: "NearbyFastPairProviderLib",
+-    srcs: [
+-        "src/**/*.java",
+-        "src/**/*.kt",
+-    ],
+-    sdk_version: "core_platform",
+-    libs: [
+-        // order matters: classes in framework-bluetooth are resolved before framework, meaning
+-        // @hide APIs in framework-bluetooth are resolved before @SystemApi stubs in framework
+-        "framework-bluetooth.impl",
+-        "framework",
+-
+-        // if sdk_version="" this gets automatically included, but here we need to add manually.
+-        "framework-res",
+-    ],
+-    static_libs: [
+-        "NearbyFastPairProviderLiteProtos",
+-        "androidx.core_core",
+-        "androidx.test.core",
+-        "error_prone_annotations",
+-        "fast-pair-lite-protos",
+-        "framework-annotations-lib",
+-        "guava",
+-        "kotlin-stdlib",
+-        "nearby-common-lib",
+-    ],
+-}
++// Disabled
+diff --git a/nearby/tests/multidevices/clients/test_support/fastpair_provider/proto/Android.bp b/nearby/tests/multidevices/clients/test_support/fastpair_provider/proto/Android.bp
+index 7ae43e5..a9c7d9c 100644
+--- a/nearby/tests/multidevices/clients/test_support/fastpair_provider/proto/Android.bp
++++ b/nearby/tests/multidevices/clients/test_support/fastpair_provider/proto/Android.bp
+@@ -1,30 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_library {
+-    name: "NearbyFastPairProviderLiteProtos",
+-    proto: {
+-        type: "lite",
+-        canonical_path_from_root: false,
+-    },
+-    sdk_version: "system_current",
+-    min_sdk_version: "30",
+-    srcs: ["*.proto"],
+-}
+-
+-
++// Disabled
+diff --git a/nearby/tests/multidevices/clients/test_support/fastpair_provider/simulator_app/Android.bp b/nearby/tests/multidevices/clients/test_support/fastpair_provider/simulator_app/Android.bp
+index 125c34e..a9c7d9c 100644
+--- a/nearby/tests/multidevices/clients/test_support/fastpair_provider/simulator_app/Android.bp
++++ b/nearby/tests/multidevices/clients/test_support/fastpair_provider/simulator_app/Android.bp
+@@ -1,57 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-// Build and install NearbyFastPairProviderSimulatorApp to your phone:
+-// m NearbyFastPairProviderSimulatorApp
+-// adb root
+-// adb remount && adb reboot (make first time remount work)
+-//
+-// adb root
+-// adb remount
+-// adb push ${ANDROID_PRODUCT_OUT}/system/app/NearbyFastPairProviderSimulatorApp /system/app/
+-// adb reboot
+-// Grant all permissions requested to NearbyFastPairProviderSimulatorApp before launching it.
+-android_app {
+-    name: "NearbyFastPairProviderSimulatorApp",
+-    sdk_version: "test_current",
+-    // Sign with "platform" certificate for accessing Bluetooth @SystemAPI
+-    certificate: "platform",
+-    static_libs: ["NearbyFastPairProviderSimulatorLib"],
+-    optimize: {
+-        enabled: true,
+-        shrink: true,
+-        proguard_flags_files: ["proguard.flags"],
+-    },
+-}
+-
+-android_library {
+-    name: "NearbyFastPairProviderSimulatorLib",
+-    sdk_version: "test_current",
+-    srcs: [
+-        "src/**/*.java",
+-        "src/**/*.kt",
+-    ],
+-    static_libs: [
+-        "NearbyFastPairProviderLib",
+-        "NearbyFastPairProviderLiteProtos",
+-        "NearbyFastPairProviderSimulatorLiteProtos",
+-        "androidx.annotation_annotation",
+-        "error_prone_annotations",
+-        "fast-pair-lite-protos",
+-    ],
+-}
+\ No newline at end of file
++// Disabled
+diff --git a/nearby/tests/multidevices/clients/test_support/fastpair_provider/simulator_app/proto/Android.bp b/nearby/tests/multidevices/clients/test_support/fastpair_provider/simulator_app/proto/Android.bp
+index e964800..a9c7d9c 100644
+--- a/nearby/tests/multidevices/clients/test_support/fastpair_provider/simulator_app/proto/Android.bp
++++ b/nearby/tests/multidevices/clients/test_support/fastpair_provider/simulator_app/proto/Android.bp
+@@ -1,30 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_library {
+-    name: "NearbyFastPairProviderSimulatorLiteProtos",
+-    proto: {
+-        type: "lite",
+-        canonical_path_from_root: false,
+-    },
+-    sdk_version: "system_current",
+-    min_sdk_version: "30",
+-    srcs: ["*.proto"],
+-}
+-
+-
++// Disabled
+diff --git a/nearby/tests/multidevices/clients/test_support/snippet_helper/Android.bp b/nearby/tests/multidevices/clients/test_support/snippet_helper/Android.bp
+index 697c88d..a9c7d9c 100644
+--- a/nearby/tests/multidevices/clients/test_support/snippet_helper/Android.bp
++++ b/nearby/tests/multidevices/clients/test_support/snippet_helper/Android.bp
+@@ -1,24 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_library {
+-    name: "MoblySnippetHelperLib",
+-    srcs: ["src/**/*.kt"],
+-    sdk_version: "test_current",
+-    static_libs: ["mobly-snippet-lib",],
+-}
++// Disabled
+diff --git a/nearby/tests/multidevices/clients/test_support/snippet_helper/tests/Android.bp b/nearby/tests/multidevices/clients/test_support/snippet_helper/tests/Android.bp
+index ec0392c..a9c7d9c 100644
+--- a/nearby/tests/multidevices/clients/test_support/snippet_helper/tests/Android.bp
++++ b/nearby/tests/multidevices/clients/test_support/snippet_helper/tests/Android.bp
+@@ -1,39 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-// Run the tests: atest --host MoblySnippetHelperRoboTest
+-android_robolectric_test {
+-    name: "MoblySnippetHelperRoboTest",
+-    srcs: ["src/**/*.kt"],
+-    instrumentation_for: "NearbyMultiDevicesClientsSnippets",
+-    java_resources: ["robolectric.properties"],
+-
+-    static_libs: [
+-        "MoblySnippetHelperLib",
+-        "androidx.test.ext.junit",
+-        "androidx.test.rules",
+-        "junit",
+-        "mobly-snippet-lib",
+-        "truth-prebuilt",
+-    ],
+-    test_options: {
+-        // timeout in seconds.
+-        timeout: 36000,
+-    },
+-    upstream: true,
+-}
++// Disabled
+diff --git a/nearby/tests/multidevices/host/Android.bp b/nearby/tests/multidevices/host/Android.bp
+index b6c1c9d..a9c7d9c 100644
+--- a/nearby/tests/multidevices/host/Android.bp
++++ b/nearby/tests/multidevices/host/Android.bp
+@@ -1,54 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-// Run the tests: atest -v NearbyMultiDevicesTestSuite
+-// Check go/run-nearby-mainline-e2e for more details.
+-python_test_host {
+-    name: "NearbyMultiDevicesTestSuite",
+-    main: "suite_main.py",
+-    srcs: ["*.py"],
+-    libs: [
+-        "NearbyMultiDevicesHostHelper",
+-        "mobly",
+-    ],
+-    test_suites: [
+-        "general-tests",
+-        "mts-tethering",
+-    ],
+-    test_options: {
+-        unit_test: false,
+-    },
+-    data: [
+-        // Package the snippet with the Mobly test.
+-        ":NearbyMultiDevicesClientsSnippets",
+-        // Package the data provider with the Mobly test.
+-        ":NearbyFastPairSeekerDataProvider",
+-        // Package the JSON metadata with the Mobly test.
+-        "test_data/**/*",
+-    ],
+-    version: {
+-        py3: {
+-            embedded_launcher: true,
+-        },
+-    },
+-}
+-
+-python_library_host {
+-    name: "NearbyMultiDevicesHostHelper",
+-    srcs: ["test_helper/*.py"],
+-}
++// Disabled
+diff --git a/nearby/tests/robotests/Android.bp b/nearby/tests/robotests/Android.bp
+index 70fa0c3..a9c7d9c 100644
+--- a/nearby/tests/robotests/Android.bp
++++ b/nearby/tests/robotests/Android.bp
+@@ -1,55 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-//############################################
+-// Nearby Robolectric test target. #
+-//############################################
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_robolectric_test {
+-    name: "NearbyRoboTests",
+-    srcs: ["src/**/*.java"],
+-    instrumentation_for: "NearbyFakeTestApp",
+-    java_resource_dirs: ["config"],
+-
+-    libs: [
+-        "android-support-annotations",
+-        "services.core",
+-    ],
+-
+-    static_libs: [
+-        "androidx.test.core",
+-        "androidx.core_core",
+-        "androidx.annotation_annotation",
+-        "androidx.legacy_legacy-support-v4",
+-        "androidx.recyclerview_recyclerview",
+-        "androidx.preference_preference",
+-        "androidx.appcompat_appcompat",
+-        "androidx.lifecycle_lifecycle-runtime",
+-        "androidx.mediarouter_mediarouter-nodeps",
+-        "error_prone_annotations",
+-        "service-nearby-pre-jarjar",
+-        "truth-prebuilt",
+-        "robolectric_android-all-stub",
+-    ],
+-
+-    test_options: {
+-        // timeout in seconds.
+-        timeout: 36000,
+-    },
+-    upstream: true,
+-}
++// Disabled
+diff --git a/nearby/tests/robotests/fake_app/Android.bp b/nearby/tests/robotests/fake_app/Android.bp
+index 707b38f..a9c7d9c 100644
+--- a/nearby/tests/robotests/fake_app/Android.bp
++++ b/nearby/tests/robotests/fake_app/Android.bp
+@@ -1,26 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_app {
+-    name: "NearbyFakeTestApp",
+-    srcs: ["*.java"],
+-    platform_apis: true,
+-    optimize: {
+-        enabled: false,
+-    },
+-}
++// Disabled
+diff --git a/nearby/tests/unit/Android.bp b/nearby/tests/unit/Android.bp
+index 8a8aeab..a9c7d9c 100644
+--- a/nearby/tests/unit/Android.bp
++++ b/nearby/tests/unit/Android.bp
+@@ -1,58 +1 @@
+-// Copyright (C) 2021 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "NearbyUnitTests",
+-    defaults: ["mts-target-sdk-version-current"],
+-    sdk_version: "test_current",
+-    min_sdk_version: "31",
+-
+-    // Include all test java files.
+-    srcs: ["src/**/*.java"],
+-
+-    libs: [
+-        "android.test.base",
+-        "android.test.mock",
+-        "android.test.runner",
+-        "HalfSheetUX",
+-    ],
+-    compile_multilib: "both",
+-
+-    static_libs: [
+-        "androidx.test.ext.junit",
+-        "androidx.test.rules",
+-        "framework-nearby-static",
+-        "guava",
+-        "junit",
+-        "libprotobuf-java-lite",
+-        "mockito-target-extended-minus-junit4",
+-        "platform-test-annotations",
+-        "service-nearby-pre-jarjar",
+-        "truth-prebuilt",
+-        // "Robolectric_all-target",
+-    ],
+-    // these are needed for Extended Mockito
+-    jni_libs: [
+-        "libdexmakerjvmtiagent",
+-        "libstaticjvmtiagent",
+-    ],
+-    test_suites: [
+-        "general-tests",
+-        "mts-tethering",
+-    ],
+-}
++// Disabled
+diff --git a/tests/common/Android.bp b/tests/common/Android.bp
+index 8e47235..a9c7d9c 100644
+--- a/tests/common/Android.bp
++++ b/tests/common/Android.bp
+@@ -1,199 +1 @@
+-//
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-// Tests in this folder are included both in unit tests and CTS.
+-// They must be fast and stable, and exercise public or test APIs.
+-package {
+-    // See: http://go/android-license-faq
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-// The target SDK version of the "latest released SDK" CTS tests.
+-// This should be updated soon after a new SDK level is finalized.
+-// It is different from the target SDK version of production code (e.g., the Tethering,
+-// NetworkStack, and CaptivePortalLogin APKs):
+-// - The target SDK of production code influences the behaviour of the production code.
+-// - The target SDK of the CTS tests validates the behaviour seen by apps that call production APIs.
+-// - The behaviour seen by apps that target previous SDKs is tested by previous CTS versions
+-//   (currently, CTS 10, 11, and 12).
+-java_defaults {
+-    name: "ConnectivityTestsLatestSdkDefaults",
+-    target_sdk_version: "33",
+-}
+-
+-java_library {
+-    name: "FrameworksNetCommonTests",
+-    defaults: ["framework-connectivity-internal-test-defaults"],
+-    srcs: [
+-        "java/**/*.java",
+-        "java/**/*.kt",
+-    ],
+-    static_libs: [
+-        "androidx.core_core",
+-        "androidx.test.rules",
+-        "junit",
+-        "mockito-target-minus-junit4",
+-        "modules-utils-build",
+-        "net-tests-utils",
+-        "net-utils-framework-common",
+-        "platform-compat-test-rules",
+-        "platform-test-annotations",
+-    ],
+-    libs: [
+-        "android.test.base.stubs",
+-    ],
+-}
+-
+-// Combine Connectivity, NetworkStack and Tethering jarjar rules for coverage target.
+-// The jarjar files are simply concatenated in the order specified in srcs.
+-// jarjar stops at the first matching rule, so order of concatenation affects the output.
+-genrule {
+-    name: "ConnectivityCoverageJarJarRules",
+-    defaults: ["jarjar-rules-combine-defaults"],
+-    srcs: [
+-        "tethering-jni-jarjar-rules.txt",
+-        ":frameworks-net-tests-jarjar-rules",
+-        ":TetheringTestsJarJarRules",
+-        ":NetworkStackJarJarRules",
+-    ],
+-    out: ["jarjar-rules-connectivity-coverage.txt"],
+-    visibility: ["//visibility:private"],
+-}
+-
+-android_library {
+-    name: "ConnectivityCoverageTestsLib",
+-    min_sdk_version: "30",
+-    static_libs: [
+-        "FrameworksNetTestsLib",
+-        "NetdStaticLibTestsLib",
+-        "NetworkStaticLibTestsLib",
+-        "NetworkStackTestsLib",
+-        "TetheringTestsLatestSdkLib",
+-        "TetheringIntegrationTestsLatestSdkLib",
+-    ],
+-    jarjar_rules: ":ConnectivityCoverageJarJarRules",
+-    manifest: "AndroidManifest_coverage.xml",
+-    visibility: ["//visibility:private"],
+-}
+-
+-android_test {
+-    name: "ConnectivityCoverageTests",
+-    // Tethering started on SDK 30
+-    min_sdk_version: "30",
+-    test_suites: ["general-tests", "mts-tethering"],
+-    defaults: [
+-        "ConnectivityTestsLatestSdkDefaults",
+-        "framework-connectivity-internal-test-defaults",
+-        "FrameworksNetTests-jni-defaults",
+-        "libnetworkstackutilsjni_deps",
+-    ],
+-    manifest: "AndroidManifest_coverage.xml",
+-    test_config: "AndroidTest_Coverage.xml",
+-    static_libs: [
+-        // Added first so all tests use extended mockito, instead of all tests using regular mockito
+-        // (some tests would fail).
+-        // TODO: consider removing extended mockito usage in tests that use it, for performance
+-        "mockito-target-extended-minus-junit4",
+-        "modules-utils-native-coverage-listener",
+-        "ConnectivityCoverageTestsLib",
+-    ],
+-    jni_libs: [
+-        // For mockito extended
+-        "libdexmakerjvmtiagent",
+-        "libstaticjvmtiagent",
+-        // For NetworkStackUtils included in NetworkStackBase
+-        "libnetworkstackutilsjni",
+-        "libandroid_net_connectivity_com_android_net_module_util_jni",
+-        "libcom_android_networkstack_tethering_util_jni",
+-        // For framework tests
+-        "libservice-connectivity",
+-    ],
+-    libs: [
+-        // Although not required to compile the static libs together, the "libs" used to build each
+-        // of the common static test libs are necessary for R8 to avoid "Missing class" warnings and
+-        // incorrect optimizations
+-        "framework-tethering.impl",
+-        "framework-wifi.stubs.module_lib",
+-    ],
+-    compile_multilib: "both",
+-}
+-
+-// defaults for tests that need to build against framework-connectivity's @hide APIs
+-// Only usable from targets that have visibility on framework-connectivity.impl.
+-// Instead of using this, consider avoiding to depend on hidden connectivity APIs in
+-// tests.
+-java_defaults {
+-    name: "framework-connectivity-test-defaults",
+-    sdk_version: "core_platform", // tests can use @CorePlatformApi's
+-    libs: [
+-        // order matters: classes in framework-connectivity are resolved before framework,
+-        // meaning @hide APIs in framework-connectivity are resolved before @SystemApi
+-        // stubs in framework
+-        "framework-connectivity.impl",
+-        "framework-connectivity-t.impl",
+-        "framework-tethering.impl",
+-        "framework",
+-
+-        // if sdk_version="" this gets automatically included, but here we need to add manually.
+-        "framework-res",
+-    ],
+-}
+-
+-// defaults for tests that need to build against framework-connectivity's @hide APIs, but also
+-// using fully @hide classes that are jarjared (because they have no API member). Similar to
+-// framework-connectivity-test-defaults above but uses pre-jarjar class names.
+-// Only usable from targets that have visibility on framework-connectivity-pre-jarjar, and apply
+-// connectivity jarjar rules so that references to jarjared classes still match: this is limited to
+-// connectivity internal tests only.
+-java_defaults {
+-    name: "framework-connectivity-internal-test-defaults",
+-    sdk_version: "core_platform", // tests can use @CorePlatformApi's
+-    libs: [
+-        // order matters: classes in framework-connectivity are resolved before framework,
+-        // meaning @hide APIs in framework-connectivity are resolved before @SystemApi
+-        // stubs in framework
+-        "framework-connectivity-pre-jarjar",
+-        "framework-connectivity-t-pre-jarjar",
+-        "framework-tethering.impl",
+-        "framework",
+-
+-        // if sdk_version="" this gets automatically included, but here we need to add manually.
+-        "framework-res",
+-    ],
+-    defaults_visibility: ["//packages/modules/Connectivity/tests:__subpackages__"],
+-}
+-
+-// Defaults for tests that want to run in mainline-presubmit.
+-// Not widely used because many of our tests have AndroidTest.xml files and
+-// use the mainline-param config-descriptor metadata in AndroidTest.xml.
+-
+-// test_mainline_modules is an array of strings. Each element in the array is a list of modules
+-// separated by "+". The modules in this list must be in alphabetical order.
+-// See SuiteModuleLoader.java.
+-// TODO: why are the modules separated by + instead of being separate entries in the array?
+-mainline_presubmit_modules = [
+-        "CaptivePortalLoginGoogle.apk+NetworkStackGoogle.apk+com.google.android.resolv.apex+com.google.android.tethering.apex",
+-]
+-
+-cc_defaults {
+-    name: "connectivity-mainline-presubmit-cc-defaults",
+-    test_mainline_modules: mainline_presubmit_modules,
+-}
+-
+-java_defaults {
+-    name: "connectivity-mainline-presubmit-java-defaults",
+-    test_mainline_modules: mainline_presubmit_modules,
+-}
++// Disabled
+diff --git a/tests/cts/hostside/Android.bp b/tests/cts/hostside/Android.bp
+index 891c2dd..a9c7d9c 100644
+--- a/tests/cts/hostside/Android.bp
++++ b/tests/cts/hostside/Android.bp
+@@ -1,55 +1 @@
+-// Copyright (C) 2014 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-next_app_data = [ ":CtsHostsideNetworkTestsAppNext" ]
+-
+-// The above line is put in place to prevent any future automerger merge conflict between aosp,
+-// downstream branches. The CtsHostsideNetworkTestsAppNext target will not exist in
+-// some downstream branches, but it should exist in aosp and some downstream branches.
+-
+-
+-
+-
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_test_host {
+-    name: "CtsHostsideNetworkTests",
+-    defaults: ["cts_defaults"],
+-    // Only compile source java files in this apk.
+-    srcs: ["src/**/*.java"],
+-    libs: [
+-        "cts-tradefed",
+-        "tradefed",
+-    ],
+-    static_libs: [
+-        "modules-utils-build-testing",
+-    ],
+-    // Tag this module as a cts test artifact
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-        "sts"
+-    ],
+-    data: [
+-        ":CtsHostsideNetworkTestsApp",
+-        ":CtsHostsideNetworkTestsApp2",
+-        ":CtsHostsideNetworkCapTestsAppWithoutProperty",
+-        ":CtsHostsideNetworkCapTestsAppWithProperty",
+-        ":CtsHostsideNetworkCapTestsAppSdk33",
+-    ] + next_app_data,
+-    per_testcase_directory: true,
+-}
++// Disabled
+diff --git a/tests/cts/hostside/aidl/Android.bp b/tests/cts/hostside/aidl/Android.bp
+index 2751f6f..a9c7d9c 100644
+--- a/tests/cts/hostside/aidl/Android.bp
++++ b/tests/cts/hostside/aidl/Android.bp
+@@ -1,28 +1 @@
+-// Copyright (C) 2016 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_test_helper_library {
+-    name: "CtsHostsideNetworkTestsAidl",
+-    sdk_version: "current",
+-    srcs: [
+-        "com/android/cts/net/hostside/IMyService.aidl",
+-        "com/android/cts/net/hostside/INetworkCallback.aidl",
+-        "com/android/cts/net/hostside/INetworkStateObserver.aidl",
+-        "com/android/cts/net/hostside/IRemoteSocketFactory.aidl",
+-    ],
+-}
++// Disabled
+diff --git a/tests/cts/hostside/app/Android.bp b/tests/cts/hostside/app/Android.bp
+index 1d6828f..a9c7d9c 100644
+--- a/tests/cts/hostside/app/Android.bp
++++ b/tests/cts/hostside/app/Android.bp
+@@ -1,70 +1 @@
+-//
+-// Copyright (C) 2014 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_defaults {
+-    name: "CtsHostsideNetworkTestsAppDefaults",
+-    platform_apis: true,
+-    static_libs: [
+-        "CtsHostsideNetworkTestsAidl",
+-        "androidx.test.ext.junit",
+-        "androidx.test.rules",
+-        "androidx.test.uiautomator_uiautomator",
+-        "compatibility-device-util-axt",
+-        "cts-net-utils",
+-        "ctstestrunner-axt",
+-        "modules-utils-build",
+-        "ub-uiautomator",
+-    ],
+-    libs: [
+-        "android.test.runner",
+-        "android.test.base",
+-    ],
+-    srcs: ["src/**/*.java"],
+-    // Tag this module as a cts test artifact
+-    test_suites: [
+-        "general-tests",
+-        "sts",
+-    ],
+-}
+-
+-android_test_helper_app {
+-    name: "CtsHostsideNetworkTestsApp",
+-    defaults: [
+-        "cts_support_defaults",
+-        "framework-connectivity-test-defaults",
+-        "CtsHostsideNetworkTestsAppDefaults",
+-    ],
+-    static_libs: [
+-        "NetworkStackApiStableShims",
+-    ],
+-}
+-
+-android_test_helper_app {
+-    name: "CtsHostsideNetworkTestsAppNext",
+-    defaults: [
+-        "cts_support_defaults",
+-        "framework-connectivity-test-defaults",
+-        "CtsHostsideNetworkTestsAppDefaults",
+-        "ConnectivityNextEnableDefaults",
+-    ],
+-    static_libs: [
+-        "NetworkStackApiCurrentShims",
+-    ],
+-}
++// Disabled
+diff --git a/tests/cts/hostside/app2/Android.bp b/tests/cts/hostside/app2/Android.bp
+index db92f5c..a9c7d9c 100644
+--- a/tests/cts/hostside/app2/Android.bp
++++ b/tests/cts/hostside/app2/Android.bp
+@@ -1,38 +1 @@
+-//
+-// Copyright (C) 2016 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test_helper_app {
+-    name: "CtsHostsideNetworkTestsApp2",
+-    defaults: ["cts_support_defaults"],
+-    platform_apis: true,
+-    static_libs: [
+-        "androidx.annotation_annotation",
+-        "CtsHostsideNetworkTestsAidl",
+-        "NetworkStackApiStableShims",
+-    ],
+-    srcs: ["src/**/*.java"],
+-    // Tag this module as a cts test artifact
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-        "sts",
+-    ],
+-    certificate: ":cts-net-app",
+-}
++// Disabled
+diff --git a/tests/cts/hostside/certs/Android.bp b/tests/cts/hostside/certs/Android.bp
+index 60b5476..a9c7d9c 100644
+--- a/tests/cts/hostside/certs/Android.bp
++++ b/tests/cts/hostside/certs/Android.bp
+@@ -1,8 +1 @@
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_app_certificate {
+-    name: "cts-net-app",
+-    certificate: "cts-net-app",
+-}
++// Disabled
+diff --git a/tests/cts/hostside/networkslicingtestapp/Android.bp b/tests/cts/hostside/networkslicingtestapp/Android.bp
+index 2aa3f69..a9c7d9c 100644
+--- a/tests/cts/hostside/networkslicingtestapp/Android.bp
++++ b/tests/cts/hostside/networkslicingtestapp/Android.bp
+@@ -1,65 +1 @@
+-//
+-// Copyright (C) 2023 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_defaults {
+-    name: "CtsHostsideNetworkCapTestsAppDefaults",
+-    platform_apis: true,
+-    static_libs: [
+-        "androidx.test.ext.junit",
+-        "androidx.test.rules",
+-        "modules-utils-build",
+-        "cts-net-utils",
+-    ],
+-    srcs: ["src/**/*.java"],
+-    // Tag this module as a cts test artifact
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-        "sts",
+-    ],
+-}
+-
+-android_test_helper_app {
+-    name: "CtsHostsideNetworkCapTestsAppWithoutProperty",
+-    defaults: [
+-           "cts_support_defaults",
+-           "CtsHostsideNetworkCapTestsAppDefaults"
+-    ],
+-    manifest: "AndroidManifestWithoutProperty.xml",
+-}
+-
+-android_test_helper_app {
+-    name: "CtsHostsideNetworkCapTestsAppWithProperty",
+-    defaults: [
+-           "cts_support_defaults",
+-           "CtsHostsideNetworkCapTestsAppDefaults"
+-    ],
+-    manifest: "AndroidManifestWithProperty.xml",
+-}
+-
+-android_test_helper_app {
+-    name: "CtsHostsideNetworkCapTestsAppSdk33",
+-    defaults: [
+-           "cts_support_defaults",
+-           "CtsHostsideNetworkCapTestsAppDefaults"
+-    ],
+-    target_sdk_version: "33",
+-    manifest: "AndroidManifestWithoutProperty.xml",
+-}
++// Disabled
+diff --git a/tests/cts/net/Android.bp b/tests/cts/net/Android.bp
+index f9fe5b0..a9c7d9c 100644
+--- a/tests/cts/net/Android.bp
++++ b/tests/cts/net/Android.bp
+@@ -1,152 +1 @@
+-// Copyright (C) 2008 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_defaults {
+-    name: "CtsNetTestCasesDefaults",
+-    defaults: [
+-        "cts_defaults",
+-        "framework-connectivity-test-defaults",
+-    ],
+-
+-    // Include both the 32 and 64 bit versions
+-    compile_multilib: "both",
+-
+-    libs: [
+-        "voip-common",
+-        "android.test.base",
+-    ],
+-
+-    jni_libs: [
+-        "libcts_jni",
+-        "libnativedns_jni",
+-        "libnativemultinetwork_jni",
+-        "libnativehelper_compat_libc++",
+-    ],
+-
+-    srcs: [
+-        "src/**/*.java",
+-        "src/**/*.kt",
+-        ":ike-aes-xcbc",
+-    ],
+-    jarjar_rules: "jarjar-rules-shared.txt",
+-    static_libs: [
+-        "bouncycastle-unbundled",
+-        "FrameworksNetCommonTests",
+-        "core-tests-support",
+-        "cts-net-utils",
+-        "CtsNetTestsNonUpdatableLib",
+-        "ctstestrunner-axt",
+-        "junit",
+-        "junit-params",
+-        "modules-utils-build",
+-        "net-utils-framework-common",
+-        "truth-prebuilt",
+-    ],
+-
+-    // uncomment when b/13249961 is fixed
+-    // sdk_version: "current",
+-    platform_apis: true,
+-    data: [":ConnectivityChecker"],
+-    per_testcase_directory: true,
+-    host_required: ["net-tests-utils-host-common"],
+-    test_config_template: "AndroidTestTemplate.xml",
+-}
+-
+-// Networking CTS tests for development and release. These tests always target the platform SDK
+-// version, and are subject to all the restrictions appropriate to that version. Before SDK
+-// finalization, these tests have a min_sdk_version of 10000, and cannot be installed on release
+-// devices.
+-android_test {
+-    name: "CtsNetTestCases",
+-    defaults: ["CtsNetTestCasesDefaults", "ConnectivityNextEnableDefaults"],
+-    static_libs: [
+-        "DhcpPacketLib",
+-        "NetworkStackApiCurrentShims",
+-    ],
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-    ],
+-}
+-
+-java_defaults {
+-    name: "CtsNetTestCasesApiStableDefaults",
+-    // TODO: CTS should not depend on the entirety of the networkstack code.
+-    static_libs: [
+-        "DhcpPacketLib",
+-        "NetworkStackApiStableShims",
+-    ],
+-    jni_uses_sdk_apis: true,
+-    min_sdk_version: "29",
+-}
+-
+-// Networking CTS tests that target the latest released SDK. These tests can be installed on release
+-// devices at any point in the Android release cycle and are useful for qualifying mainline modules
+-// on release devices.
+-android_test {
+-    name: "CtsNetTestCasesLatestSdk",
+-    defaults: [
+-        "ConnectivityTestsLatestSdkDefaults",
+-        "CtsNetTestCasesDefaults",
+-        "CtsNetTestCasesApiStableDefaults",
+-    ],
+-    test_suites: [
+-        "general-tests",
+-        "mts-dnsresolver",
+-        "mts-networking",
+-        "mts-tethering",
+-        "mts-wifi",
+-    ],
+-}
+-
+-java_defaults {
+-    name: "CtsNetTestCasesMaxTargetSdkDefaults",
+-    defaults: [
+-        "CtsNetTestCasesDefaults",
+-        "CtsNetTestCasesApiStableDefaults",
+-    ],
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-        "mts-tethering",
+-    ],
+-}
+-
+-android_test {
+-    name: "CtsNetTestCasesMaxTargetSdk33",  // Must match CtsNetTestCasesMaxTargetSdk33 annotation.
+-    defaults: ["CtsNetTestCasesMaxTargetSdkDefaults"],
+-    target_sdk_version: "33",
+-    package_name: "android.net.cts.maxtargetsdk33",
+-    instrumentation_target_package: "android.net.cts.maxtargetsdk33",
+-}
+-
+-android_test {
+-    name: "CtsNetTestCasesMaxTargetSdk31",  // Must match CtsNetTestCasesMaxTargetSdk31 annotation.
+-    defaults: ["CtsNetTestCasesMaxTargetSdkDefaults"],
+-    target_sdk_version: "31",
+-    package_name: "android.net.cts.maxtargetsdk31",  // CTS package names must be unique.
+-    instrumentation_target_package: "android.net.cts.maxtargetsdk31",
+-}
+-
+-android_test {
+-    name: "CtsNetTestCasesMaxTargetSdk30",  // Must match CtsNetTestCasesMaxTargetSdk30 annotation.
+-    defaults: ["CtsNetTestCasesMaxTargetSdkDefaults"],
+-    target_sdk_version: "30",
+-    package_name: "android.net.cts.maxtargetsdk30",  // CTS package names must be unique.
+-    instrumentation_target_package: "android.net.cts.maxtargetsdk30",
+-}
++// Disabled
+diff --git a/tests/cts/net/api23Test/Android.bp b/tests/cts/net/api23Test/Android.bp
+index 9b81a56..a9c7d9c 100644
+--- a/tests/cts/net/api23Test/Android.bp
++++ b/tests/cts/net/api23Test/Android.bp
+@@ -1,58 +1 @@
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "CtsNetApi23TestCases",
+-    defaults: ["cts_defaults"],
+-
+-    // Include both the 32 and 64 bit versions
+-    compile_multilib: "both",
+-
+-    libs: [
+-        "android.test.base",
+-    ],
+-
+-    srcs: [
+-        "src/**/*.java",
+-        "src/**/*.kt",
+-    ],
+-
+-    static_libs: [
+-        "core-tests-support",
+-        "compatibility-device-util-axt",
+-        "cts-net-utils",
+-        "ctstestrunner-axt",
+-        "ctstestserver",
+-        "mockwebserver",
+-        "junit",
+-        "junit-params",
+-        "truth-prebuilt",
+-    ],
+-
+-    platform_apis: true,
+-
+-    // Tag this module as a cts test artifact
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-    ],
+-    data: [
+-        ":CtsNetTestAppForApi23",
+-    ],
+-    per_testcase_directory: true,
+-}
++// Disabled
+diff --git a/tests/cts/net/appForApi23/Android.bp b/tests/cts/net/appForApi23/Android.bp
+index b39690f..a9c7d9c 100644
+--- a/tests/cts/net/appForApi23/Android.bp
++++ b/tests/cts/net/appForApi23/Android.bp
+@@ -1,36 +1 @@
+-// Copyright (C) 2016 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "CtsNetTestAppForApi23",
+-    defaults: ["cts_defaults"],
+-
+-    // Include both the 32 and 64 bit versions
+-    compile_multilib: "both",
+-
+-    srcs: ["src/**/*.java"],
+-
+-    sdk_version: "23",
+-
+-    // Tag this module as a cts test artifact
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-    ],
+-
+-}
++// Disabled
+diff --git a/tests/cts/net/jni/Android.bp b/tests/cts/net/jni/Android.bp
+index 8f0d78f..a9c7d9c 100644
+--- a/tests/cts/net/jni/Android.bp
++++ b/tests/cts/net/jni/Android.bp
+@@ -1,49 +1 @@
+-// Copyright (C) 2013 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-cc_defaults {
+-    name: "net_jni_defaults",
+-
+-    cflags: [
+-        "-Wall",
+-        "-Werror",
+-        "-Wno-format",
+-        "-Wno-unused-parameter",
+-    ],
+-    shared_libs: [
+-        "libandroid",
+-        "libnativehelper_compat_libc++",
+-        "liblog",
+-    ],
+-    stl: "libc++_static",
+-    // To be compatible with Q devices, the min_sdk_version must be 29.
+-    sdk_version: "current",
+-    min_sdk_version: "29",
+-}
+-
+-cc_library_shared {
+-    name: "libnativedns_jni",
+-    defaults: ["net_jni_defaults"],
+-    srcs: ["NativeDnsJni.c"],
+-}
+-
+-cc_library_shared {
+-    name: "libnativemultinetwork_jni",
+-    defaults: ["net_jni_defaults"],
+-    srcs: ["NativeMultinetworkJni.cpp"],
+-}
++// Disabled
+diff --git a/tests/cts/net/native/Android.bp b/tests/cts/net/native/Android.bp
+index 153ff51..a9c7d9c 100644
+--- a/tests/cts/net/native/Android.bp
++++ b/tests/cts/net/native/Android.bp
+@@ -1,60 +1 @@
+-// Copyright (C) 2017 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-// Build the unit tests.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-cc_test {
+-    name: "CtsNativeNetTestCases",
+-
+-    compile_multilib: "both",
+-    multilib: {
+-        lib32: {
+-            suffix: "32",
+-        },
+-        lib64: {
+-            suffix: "64",
+-        },
+-    },
+-
+-    srcs: [
+-        "src/BpfCompatTest.cpp",
+-    ],
+-
+-    shared_libs: [
+-        "libbase",
+-        "liblog",
+-    ],
+-
+-    static_libs: [
+-        "libbpf_android",
+-        "libgtest",
+-        "libmodules-utils-build",
+-    ],
+-
+-    // Tag this module as a cts test artifact
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-    ],
+-
+-    cflags: [
+-        "-Werror",
+-        "-Wall",
+-    ],
+-
+-}
++// Disabled
+diff --git a/tests/cts/net/native/dns/Android.bp b/tests/cts/net/native/dns/Android.bp
+index 49b9337..a9c7d9c 100644
+--- a/tests/cts/net/native/dns/Android.bp
++++ b/tests/cts/net/native/dns/Android.bp
+@@ -1,52 +1 @@
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-cc_defaults {
+-    name: "dns_async_defaults",
+-
+-    cflags: [
+-        "-fstack-protector-all",
+-        "-g",
+-        "-Wall",
+-        "-Wextra",
+-        "-Werror",
+-        "-Wnullable-to-nonnull-conversion",
+-        "-Wsign-compare",
+-        "-Wthread-safety",
+-        "-Wunused-parameter",
+-    ],
+-    srcs: [
+-        "NativeDnsAsyncTest.cpp",
+-    ],
+-    shared_libs: [
+-        "libandroid",
+-        "liblog",
+-        "libutils",
+-    ],
+-    static_libs: [
+-        "libbase",
+-        "libnetdutils",
+-    ],
+-    // To be compatible with Q devices, the min_sdk_version must be 29.
+-    min_sdk_version: "29",
+-}
+-
+-cc_test {
+-    name: "CtsNativeNetDnsTestCases",
+-    defaults: ["dns_async_defaults"],
+-    multilib: {
+-        lib32: {
+-            suffix: "32",
+-        },
+-        lib64: {
+-            suffix: "64",
+-        },
+-    },
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-        "mts-dnsresolver",
+-        "mts-networking",
+-    ],
+-}
++// Disabled
+diff --git a/tests/cts/net/util/Android.bp b/tests/cts/net/util/Android.bp
+index fffd30f..a9c7d9c 100644
+--- a/tests/cts/net/util/Android.bp
++++ b/tests/cts/net/util/Android.bp
+@@ -1,32 +1 @@
+-//
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-// Common utilities for cts net tests.
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_library {
+-    name: "cts-net-utils",
+-    srcs: ["java/**/*.java", "java/**/*.kt"],
+-    static_libs: [
+-        "compatibility-device-util-axt",
+-        "junit",
+-        "net-tests-utils",
+-        "modules-utils-build",
+-        "net-utils-framework-common",
+-    ],
+-}
++// Disabled
+diff --git a/tests/cts/netpermission/internetpermission/Android.bp b/tests/cts/netpermission/internetpermission/Android.bp
+index 37ad7cb..a9c7d9c 100644
+--- a/tests/cts/netpermission/internetpermission/Android.bp
++++ b/tests/cts/netpermission/internetpermission/Android.bp
+@@ -1,33 +1 @@
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "CtsNetTestCasesInternetPermission",
+-    defaults: ["cts_defaults"],
+-
+-    srcs: ["src/**/*.java"],
+-
+-    static_libs: ["ctstestrunner-axt"],
+-
+-    // Tag this module as a cts test artifact
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-    ],
+-
+-}
++// Disabled
+diff --git a/tests/cts/netpermission/updatestatspermission/Android.bp b/tests/cts/netpermission/updatestatspermission/Android.bp
+index 7a24886..a9c7d9c 100644
+--- a/tests/cts/netpermission/updatestatspermission/Android.bp
++++ b/tests/cts/netpermission/updatestatspermission/Android.bp
+@@ -1,33 +1 @@
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "CtsNetTestCasesUpdateStatsPermission",
+-    defaults: ["cts_defaults"],
+-
+-    srcs: ["src/**/*.java"],
+-
+-    static_libs: ["ctstestrunner-axt"],
+-
+-    // Tag this module as a cts test artifact
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-    ],
+-
+-}
++// Disabled
+diff --git a/tests/cts/tethering/Android.bp b/tests/cts/tethering/Android.bp
+index 4284f56..a9c7d9c 100644
+--- a/tests/cts/tethering/Android.bp
++++ b/tests/cts/tethering/Android.bp
+@@ -1,103 +1 @@
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-java_defaults {
+-    name: "CtsTetheringTestDefaults",
+-    defaults: ["cts_defaults"],
+-
+-    libs: [
+-        "android.test.base",
+-    ],
+-
+-    srcs: [
+-        "src/**/*.java",
+-    ],
+-
+-    static_libs: [
+-        "TetheringCommonTests",
+-        "compatibility-device-util-axt",
+-        "cts-net-utils",
+-        "net-tests-utils",
+-        "ctstestrunner-axt",
+-        "junit",
+-        "junit-params",
+-    ],
+-
+-    jni_libs: [
+-        // For mockito extended
+-        "libdexmakerjvmtiagent",
+-        "libstaticjvmtiagent",
+-    ],
+-
+-    // Change to system current when TetheringManager move to bootclass path.
+-    platform_apis: true,
+-    host_required: ["net-tests-utils-host-common"],
+-}
+-
+-// Tethering CTS tests that target the latest released SDK. These tests can be installed on release
+-// devices which has equal or lowner sdk version than target sdk and are useful for qualifying
+-// mainline modules on release devices.
+-android_test {
+-    name: "CtsTetheringTestLatestSdk",
+-    defaults: [
+-        "ConnectivityTestsLatestSdkDefaults",
+-        "CtsTetheringTestDefaults",
+-    ],
+-
+-    min_sdk_version: "30",
+-
+-    static_libs: [
+-        "TetheringIntegrationTestsLatestSdkLib",
+-    ],
+-
+-    test_suites: [
+-        "general-tests",
+-        "mts-tethering",
+-    ],
+-
+-    test_config_template: "AndroidTestTemplate.xml",
+-
+-    // Include both the 32 and 64 bit versions
+-    compile_multilib: "both",
+-    jarjar_rules: ":NetworkStackJarJarRules",
+-}
+-
+-// Tethering CTS tests for development and release. These tests always target the platform SDK
+-// version, and are subject to all the restrictions appropriate to that version. Before SDK
+-// finalization, these tests have a min_sdk_version of 10000, and cannot be installed on release
+-// devices.
+-android_test {
+-    name: "CtsTetheringTest",
+-    defaults: ["CtsTetheringTestDefaults"],
+-
+-    static_libs: [
+-        "TetheringIntegrationTestsLib",
+-    ],
+-
+-    // Tag this module as a cts test artifact
+-    test_suites: [
+-        "cts",
+-        "general-tests",
+-    ],
+-
+-    test_config_template: "AndroidTestTemplate.xml",
+-
+-    // Include both the 32 and 64 bit versions
+-    compile_multilib: "both",
+-    jarjar_rules: ":NetworkStackJarJarRules",
+-}
++// Disabled
+diff --git a/tests/deflake/Android.bp b/tests/deflake/Android.bp
+index 8205f1c..a9c7d9c 100644
+--- a/tests/deflake/Android.bp
++++ b/tests/deflake/Android.bp
+@@ -1,54 +1 @@
+-//
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-package {
+-    // See: http://go/android-license-faq
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-// FrameworksNetDeflakeTest depends on FrameworksNetTests so it should be disabled
+-// if FrameworksNetTests is disabled.
+-enable_frameworks_net_deflake_test = true
+-// Placeholder
+-// This is a placeholder comment to minimize merge conflicts, as enable_frameworks_net_deflake_test
+-// may have different values depending on the branch
+-// Placeholder
+-
+-java_test_host {
+-    name: "FrameworksNetDeflakeTest",
+-    enabled: enable_frameworks_net_deflake_test,
+-    srcs: ["src/**/*.kt"],
+-    libs: [
+-        "junit",
+-        "tradefed",
+-    ],
+-    static_libs: [
+-        "kotlin-test",
+-        "net-host-tests-utils",
+-    ],
+-    data: [":FrameworksNetTests"],
+-    test_suites: ["device-tests"],
+-    // It will get build error if just set enabled to true. It fails with "windows_common"
+-    // depends on some disabled modules that are used by this test and it looks like set
+-    // enable_frameworks_net_deflake_test to true also enables "windows" variant. Thus,
+-    // disable this on target windows.
+-    // TODO: Remove this when b/201754360 is fixed.
+-    target: {
+-        windows: {
+-            enabled: false,
+-        },
+-    },
+-}
++// Disabled
+diff --git a/tests/integration/Android.bp b/tests/integration/Android.bp
+index 12919ae..a9c7d9c 100644
+--- a/tests/integration/Android.bp
++++ b/tests/integration/Android.bp
+@@ -1,92 +1 @@
+-//
+-// Copyright (C) 2019 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-package {
+-    // See: http://go/android-license-faq
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "FrameworksNetIntegrationTests",
+-    defaults: [
+-        "framework-connectivity-internal-test-defaults",
+-        "NetworkStackApiShimSettingsForCurrentBranch",
+-    ],
+-    platform_apis: true,
+-    certificate: "platform",
+-    srcs: [
+-        "src/**/*.kt",
+-        "src/**/*.aidl",
+-    ],
+-    libs: [
+-        "android.test.mock",
+-        "ServiceConnectivityResources",
+-    ],
+-    static_libs: [
+-        // It does not matter if NetworkStackApiStableLib or NetworkStackApiCurrentLib is used here,
+-        // since the shims for the branch are already included via
+-        // NetworkStackApiShimSettingsForCurrentBranch, and will be used in priority as they are
+-        // first in the classpath.
+-        // If the wrong shims are used for some reason, tests that use newer APIs fail.
+-        // TODO: have NetworkStackApiStableLib link dynamically against the shims to remove this
+-        // order-dependent setup.
+-        "NetworkStackApiStableLib",
+-        "androidx.test.ext.junit",
+-        "frameworks-net-integration-testutils",
+-        "kotlin-reflect",
+-        "mockito-target-extended-minus-junit4",
+-        "net-tests-utils",
+-        "service-connectivity-pre-jarjar",
+-        "service-connectivity-tiramisu-pre-jarjar",
+-        "services.net",
+-        "testables",
+-    ],
+-    test_suites: ["device-tests"],
+-    use_embedded_native_libs: true,
+-    jni_libs: [
+-        // For mockito extended
+-        "libdexmakerjvmtiagent",
+-        "libstaticjvmtiagent",
+-        // android_library does not include JNI libs: include NetworkStack dependencies here
+-        "libnativehelper_compat_libc++",
+-        "libnetworkstackutilsjni",
+-        "libandroid_net_connectivity_com_android_net_module_util_jni",
+-        "libservice-connectivity",
+-    ],
+-    jarjar_rules: ":connectivity-jarjar-rules",
+-}
+-
+-// Utilities for testing framework code both in integration and unit tests.
+-java_library {
+-    name: "frameworks-net-integration-testutils",
+-    defaults: ["framework-connectivity-test-defaults"],
+-    srcs: ["util/**/*.java", "util/**/*.kt"],
+-    static_libs: [
+-        "androidx.annotation_annotation",
+-        "androidx.test.rules",
+-        "junit",
+-        "net-tests-utils",
+-    ],
+-    libs: [
+-        "service-connectivity-pre-jarjar",
+-        "services.core",
+-        "services.net",
+-    ],
+-    visibility: [
+-        "//packages/modules/Connectivity/tests/integration",
+-        "//packages/modules/Connectivity/tests/unit",
+-    ],
+-}
++// Disabled
+diff --git a/tests/mts/Android.bp b/tests/mts/Android.bp
+index 74fee3d..a9c7d9c 100644
+--- a/tests/mts/Android.bp
++++ b/tests/mts/Android.bp
+@@ -1,42 +1 @@
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-cc_test {
+-    name: "bpf_existence_test",
+-    test_suites: [
+-        "general-tests",
+-        "mts-tethering",
+-    ],
+-    defaults: [
+-        "connectivity-mainline-presubmit-cc-defaults",
+-    ],
+-    require_root: true,
+-    header_libs: [
+-        "bpf_headers",
+-    ],
+-    static_libs: [
+-        "libbase",
+-        "libmodules-utils-build",
+-    ],
+-    srcs: [
+-        "bpf_existence_test.cpp",
+-    ],
+-    compile_multilib: "first",
+-    min_sdk_version: "29",  // Ensure test runs on Q and above.
+-}
++// Disabled
+diff --git a/tests/native/connectivity_native_test/Android.bp b/tests/native/connectivity_native_test/Android.bp
+index 8825aa4..a9c7d9c 100644
+--- a/tests/native/connectivity_native_test/Android.bp
++++ b/tests/native/connectivity_native_test/Android.bp
+@@ -1,40 +1 @@
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-cc_test {
+-    name: "connectivity_native_test",
+-    test_suites: [
+-        "general-tests",
+-        "mts-tethering",
+-        "vts",
+-    ],
+-    test_config_template: "AndroidTestTemplate.xml",
+-    min_sdk_version: "34",
+-    tidy: false,
+-    srcs: [
+-        "connectivity_native_test.cpp",
+-    ],
+-    header_libs: ["bpf_connectivity_headers"],
+-    shared_libs: [
+-        "libbase",
+-        "libbinder_ndk",
+-        "liblog",
+-        "libnetutils",
+-        "libprocessgroup",
+-    ],
+-    static_libs: [
+-        "connectivity_native_aidl_interface-lateststable-ndk",
+-        "libcutils",
+-        "libmodules-utils-build",
+-        "libutils",
+-    ],
+-    compile_multilib: "first",
+-}
+-
+-filegroup {
+-    name: "net_native_test_config_template",
+-    srcs: [
+-        "NetNativeTestConfigTemplate.xml",
+-    ],
+-}
++// Disabled
+diff --git a/tests/native/utilities/Android.bp b/tests/native/utilities/Android.bp
+index 4706b3d..a9c7d9c 100644
+--- a/tests/native/utilities/Android.bp
++++ b/tests/native/utilities/Android.bp
+@@ -1,34 +1 @@
+-//
+-// Copyright (C) 2022 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-cc_test_library {
+-    name: "libconnectivity_native_test_utils",
+-    defaults: [
+-        "netd_defaults",
+-        "resolv_test_defaults"
+-    ],
+-    srcs: [
+-        "firewall.cpp",
+-    ],
+-    header_libs: [
+-        "bpf_connectivity_headers",
+-    ],
+-    export_header_lib_headers: ["bpf_connectivity_headers"],
+-    export_include_dirs: ["."],
+-}
++// Disabled
+diff --git a/tests/smoketest/Android.bp b/tests/smoketest/Android.bp
+index 4ab24fc..a9c7d9c 100644
+--- a/tests/smoketest/Android.bp
++++ b/tests/smoketest/Android.bp
+@@ -1,27 +1 @@
+-// This test exists only because the jni_libs list for these tests is difficult to
+-// maintain: the test itself only depends on libnetworkstatsfactorytestjni, but the test
+-// fails to load that library unless *all* the dependencies of that library are explicitly
+-// listed in jni_libs. This means that whenever any of the dependencies changes the test
+-// starts failing and breaking presubmits in frameworks/base. We cannot easily put
+-// FrameworksNetTests into global presubmit because they are at times flaky, but this
+-// test is effectively empty beyond validating that the libraries load correctly, and
+-// thus should be stable enough to put in global presubmit.
+-//
+-// TODO: remove this hack when there is a better solution for jni_libs that includes
+-// dependent libraries.
+-package {
+-    // See: http://go/android-license-faq
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-android_test {
+-    name: "FrameworksNetSmokeTests",
+-    defaults: ["FrameworksNetTests-jni-defaults"],
+-    srcs: ["java/SmokeTest.java"],
+-    test_suites: ["device-tests"],
+-    static_libs: [
+-        "androidx.test.rules",
+-        "mockito-target-minus-junit4",
+-        "service-connectivity-for-tests",
+-    ],
+-}
++// Disabled
+diff --git a/tests/unit/Android.bp b/tests/unit/Android.bp
+index 8b286a0..a9c7d9c 100644
+--- a/tests/unit/Android.bp
++++ b/tests/unit/Android.bp
+@@ -1,187 +1 @@
+-//########################################################################
+-// Build FrameworksNetTests package
+-//########################################################################
+-package {
+-    // See: http://go/android-license-faq
+-    // A large-scale-change added 'default_applicable_licenses' to import
+-    // all of the 'license_kinds' from "Android-Apache-2.0"
+-    // to get the below license kinds:
+-    //   SPDX-license-identifier-Apache-2.0
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-// Whether to enable the FrameworksNetTests. Set to false in the branches that might have older
+-// frameworks/base since FrameworksNetTests includes the test for classes that are not in
+-// connectivity module.
+-enable_frameworks_net_tests = true
+-// Placeholder
+-// This is a placeholder comment to minimize merge conflicts, as enable_frameworks_net_tests
+-// may have different values depending on the branch
+-// Placeholder
+-
+-java_defaults {
+-    name: "FrameworksNetTests-jni-defaults",
+-    jni_libs: [
+-        "ld-android",
+-        "libandroid_net_frameworktests_util_jni",
+-        "libbase",
+-        "libbinder",
+-        "libc++",
+-        "libcrypto",
+-        "libcutils",
+-        "libdl_android",
+-        "libhidl-gen-utils",
+-        "libhidlbase",
+-        "libjsoncpp",
+-        "liblog",
+-        "liblzma",
+-        "libnativehelper",
+-        "libnetdutils",
+-        "libnetworkstats",
+-        "libnetworkstatsfactorytestjni",
+-        "libpackagelistparser",
+-        "libpcre2",
+-        "libselinux",
+-        "libtinyxml2",
+-        "libui",
+-        "libunwindstack",
+-        "libutils",
+-        "libutilscallstack",
+-        "libvndksupport",
+-        "libziparchive",
+-        "libz",
+-        "netd_aidl_interface-V5-cpp",
+-    ],
+-}
+-
+-filegroup {
+-    name: "non-connectivity-module-test",
+-    srcs: [
+-        "java/android/net/Ikev2VpnProfileTest.java",
+-        "java/android/net/IpMemoryStoreTest.java",
+-        "java/android/net/TelephonyNetworkSpecifierTest.java",
+-        "java/android/net/VpnManagerTest.java",
+-        "java/android/net/ipmemorystore/*.java",
+-        "java/android/net/netstats/NetworkStatsDataMigrationUtilsTest.kt",
+-        "java/com/android/internal/net/NetworkUtilsInternalTest.java",
+-        "java/com/android/internal/net/VpnProfileTest.java",
+-        "java/com/android/server/VpnManagerServiceTest.java",
+-        "java/com/android/server/connectivity/IpConnectivityEventBuilderTest.java",
+-        "java/com/android/server/connectivity/IpConnectivityMetricsTest.java",
+-        "java/com/android/server/connectivity/MetricsTestUtil.java",
+-        "java/com/android/server/connectivity/MultipathPolicyTrackerTest.java",
+-        "java/com/android/server/connectivity/NetdEventListenerServiceTest.java",
+-        "java/com/android/server/connectivity/VpnTest.java",
+-        "java/com/android/server/net/ipmemorystore/*.java",
+-    ]
+-}
+-
+-// Subset of services-core used to by ConnectivityService tests to test VPN realistically.
+-// This is stripped by jarjar (see rules below) from other unrelated classes, so tests do not
+-// include most classes from services-core, which are unrelated and cause wrong code coverage
+-// calculations.
+-java_library {
+-    name: "services.core-vpn",
+-    static_libs: ["services.core"],
+-    jarjar_rules: "vpn-jarjar-rules.txt",
+-    visibility: ["//visibility:private"],
+-}
+-
+-java_defaults {
+-    name: "FrameworksNetTestsDefaults",
+-    min_sdk_version: "30",
+-    defaults: [
+-        "framework-connectivity-internal-test-defaults",
+-    ],
+-    srcs: [
+-        "java/**/*.java",
+-        "java/**/*.kt",
+-    ],
+-    static_libs: [
+-        "androidx.test.rules",
+-        "androidx.test.uiautomator_uiautomator",
+-        "bouncycastle-repackaged-unbundled",
+-        "core-tests-support",
+-        "FrameworksNetCommonTests",
+-        "frameworks-base-testutils",
+-        "frameworks-net-integration-testutils",
+-        "framework-protos",
+-        "mockito-target-minus-junit4",
+-        "net-tests-utils",
+-        "net-utils-services-common",
+-        "platform-compat-test-rules",
+-        "platform-test-annotations",
+-        "service-connectivity-pre-jarjar",
+-        "service-connectivity-tiramisu-pre-jarjar",
+-        "services.core-vpn",
+-        "testables",
+-        "cts-net-utils"
+-    ],
+-    libs: [
+-        "android.net.ipsec.ike.stubs.module_lib",
+-        "android.test.runner",
+-        "android.test.base",
+-        "android.test.mock",
+-        "ServiceConnectivityResources",
+-    ],
+-    exclude_kotlinc_generated_files: false,
+-}
+-
+-android_library {
+-    name: "FrameworksNetTestsLib",
+-    defaults: [
+-        "FrameworksNetTestsDefaults",
+-    ],
+-    exclude_srcs: [":non-connectivity-module-test"],
+-    visibility: ["//packages/modules/Connectivity/tests:__subpackages__"],
+-}
+-
+-genrule {
+-    name: "frameworks-net-tests-jarjar-rules",
+-    defaults: ["jarjar-rules-combine-defaults"],
+-    srcs: [
+-        ":frameworks-net-tests-lib-jarjar-gen",
+-        // This is necessary because the tests use framework-connectivity-internal-test-defaults,
+-        // which require the user to use connectivity jarjar rules.
+-        ":connectivity-jarjar-rules",
+-    ],
+-    out: ["frameworks-net-tests-jarjar-rules.txt"],
+-    visibility: ["//packages/modules/Connectivity/tests:__subpackages__"],
+-}
+-
+-java_genrule {
+-    name: "frameworks-net-tests-lib-jarjar-gen",
+-    tool_files: [
+-        ":FrameworksNetTestsLib{.jar}",
+-        "jarjar-excludes.txt",
+-    ],
+-    tools: [
+-        "jarjar-rules-generator",
+-    ],
+-    out: ["frameworks-net-tests-lib-jarjar-rules.txt"],
+-    cmd: "$(location jarjar-rules-generator) " +
+-        "$(location :FrameworksNetTestsLib{.jar}) " +
+-        "--prefix android.net.connectivity " +
+-        "--excludes $(location jarjar-excludes.txt) " +
+-        "--output $(out)",
+-    visibility: ["//visibility:private"],
+-}
+-
+-android_test {
+-    name: "FrameworksNetTests",
+-    enabled: enable_frameworks_net_tests,
+-    defaults: [
+-        "FrameworksNetTestsDefaults",
+-        "FrameworksNetTests-jni-defaults",
+-    ],
+-    jarjar_rules: ":frameworks-net-tests-jarjar-rules",
+-    test_suites: ["device-tests"],
+-    static_libs: [
+-        "services.core",
+-        "services.net",
+-    ],
+-    jni_libs: [
+-        "libandroid_net_connectivity_com_android_net_module_util_jni",
+-        "libservice-connectivity",
+-    ],
+-}
++// Disabled
+diff --git a/tests/unit/jni/Android.bp b/tests/unit/jni/Android.bp
+index 616da81..a9c7d9c 100644
+--- a/tests/unit/jni/Android.bp
++++ b/tests/unit/jni/Android.bp
+@@ -1,50 +1 @@
+-package {
+-    // See: http://go/android-license-faq
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-cc_library_shared {
+-    name: "libnetworkstatsfactorytestjni",
+-
+-    cflags: [
+-        "-Wall",
+-        "-Werror",
+-        "-Wno-unused-parameter",
+-        "-Wthread-safety",
+-    ],
+-
+-    header_libs: ["bpf_connectivity_headers"],
+-
+-    srcs: [
+-        ":lib_networkStatsFactory_native",
+-        "test_onload.cpp",
+-    ],
+-
+-    shared_libs: [
+-        "liblog",
+-        "libnativehelper",
+-        "libnetdutils",
+-        "libnetworkstats",
+-    ],
+-}
+-
+-cc_library_shared {
+-    name: "libandroid_net_frameworktests_util_jni",
+-    cflags: [
+-        "-Wall",
+-        "-Werror",
+-        "-Wno-unused-parameter",
+-        "-Wthread-safety",
+-    ],
+-    srcs: [
+-        "android_net_frameworktests_util/onload.cpp",
+-    ],
+-    static_libs: [
+-        "libnet_utils_device_common_bpfjni",
+-        "libtcutils",
+-    ],
+-    shared_libs: [
+-        "liblog",
+-        "libnativehelper",
+-    ],
+-}
++// Disabled
