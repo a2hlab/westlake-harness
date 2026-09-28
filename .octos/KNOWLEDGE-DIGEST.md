@@ -324,3 +324,11 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
   - 在 demo 板上 stage 新 app 前确认不动头条运行时 `a2hlab-source-c91d26bf…`(61b 曾因此头条起不来)。**别在唯一能用的 demo 板上做重启实验**:本轮为测自启重启了能用的 5cd,头条随之掉线,只能靠 provision 拉回。
   - 板子经 hub 接 Mac 时 USB 在 provision/remount 瞬间掉过三次,最长 50 分钟不回,只能物理重插。
   - 头条运行时目录会膨胀:61b 上 31GB,其中 `profile-backups/` 22GB、`private-tmp/*.stderr` 5.7GB(单个 743MB,几乎全是 `[TOUCH21-POLL]`)。grep stderr 先 `wc -l` 记基线,再 `tail -n +BASE | grep -v TOUCH21-POLL`。
+
+## E.8 BMS 执行准备取证（2026-09-28，cx-bms，#15；未上板）
+
+- 同名 T006 v3 包不能互换：选 `~/t006/pack/t006-baseline-v3.tar.gz`（274575597 B、SHA e30a9199…71145），上层旧包 274574386 B；设备载荷相同，新包补 HelloWorld 防卸载、uitest 预热与路径归一，详见 `benchmark/2026-09-28-bms-route-study/`。
+- 本机 OH7 PAC 实名无 `-oh-7` 后缀，但 3514798293 B / SHA 4046781b…cb0b8 匹配留存核验；只凭文件名判 OH6.1 会误判，刷后仍须核 `OpenHarmony-7.0.0.38` + `Release`。
+- BMS 服务存活或 shell 全局库 hash 不能证明补丁加载；历史 foundation 保留旧挂载视图，须验 `/proc/<foundation>/root` 的实际库 hash + maps + APK 安装回读；T006 本地两轮安装成功但启动失败，不计点亮。
+- E.7 的 BMS 直查描述仅代表旧代：当前 `00.Workspace` cd5b329 的 resolveService 走 canonical component-state/catalog/package-store 链；新源码≠选定旧包字节，不能混代断言。
+- 后续用户纠偏：#15 的 T006/OH7 核对仅作历史参考；实际战役走 `01.OH61AOSP16` OH6.1 R130+R155（#19），不刷机、不用 T006 包；#20 只借其桌面图标启动实现。

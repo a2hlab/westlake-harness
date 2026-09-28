@@ -1,0 +1,46 @@
+--- root/t006_baseline.py
+
++++ pack/t006_baseline.py
+
+@@ -666,6 +666,17 @@
+
+     def persist():
+         (out / 'launch.json').write_text(json.dumps(record, indent=1))
+ 
++    # The first `uitest dumpLayout` after boot can fail ("Get window nodes
++    # failed"), and on the board that exposed this the screen override read
++    # 10000 ms right after it -- which the launch then refuses, correctly, as
++    # external drift. One throwaway dump *before* prepare() takes the hold puts
++    # that transient ahead of the hold instead of inside it. Its outcome is
++    # recorded, not judged: the gate is decided by the launch that follows.
++    warm = '/data/local/tmp/t006-uitest-warmup.json'
++    rc, text = b.shell('uitest dumpLayout -p %s' % warm, timeout=60)
++    rep.step('uitest_warmup', 'rc=%d %s' % (rc, (text.splitlines() or [''])[-1][:80]))
++    b.shell('rm -f %s' % warm)
++
+     try:
+         # prepare() wakes the screen and takes the timeout override. Getting past
+         # the lock screen and the USB dialog is desktop_launch's job: it settles
+@@ -728,7 +739,10 @@
+
+ 
+ 
+ def cmd_bringup(args):
+-    payload = Path(args.work or tempfile.mkdtemp(prefix='t006-bringup-'))
++    # Absolute from here on: the run config hands these paths to the harness,
++    # which refuses relative artifact paths (`automation_broker requires an
++    # absolute path`), and `--work ./run` is the natural thing to type.
++    payload = Path(args.work or tempfile.mkdtemp(prefix='t006-bringup-')).resolve()
+     payload.mkdir(parents=True, exist_ok=True)
+     if args.payload:
+         with tarfile.open(args.payload) as tf:
+@@ -892,7 +906,7 @@
+
+ 
+     The baseline must already be up; this adds only what is specific to the
+     task being measured."""
+-    payload = Path(args.work)
++    payload = Path(args.work).resolve()
+     rep = Report(payload / 'evidence' / ('cts-%s.json' % args.profile))
+     b = Board(args.hdc, args.serial, rep.log)
+ 
