@@ -25,6 +25,9 @@ mounts=(
   -v "$VMH/.cache/ccache:/home/zhaoyue/.cache/ccache"  # shared with the VM
   -v "$INPUTS:$INPUTS"                              # the build scripts call $INPUTS/tools/*.sh
 )
+# Extra Mac directories at their own paths: DOCKBUILD_MOUNTS="/Users/a/kit:/Users/b/src" (e.g. an OH header kit).
+IFS=: read -r -a extra_mounts <<< "${DOCKBUILD_MOUNTS:-}"
+for m in "${extra_mounts[@]}"; do [ -n "$m" ] && mounts+=(-v "$m:$m"); done
 # $PWD is mounted at its own path so relative arguments keep working (Mac paths only; VM paths are above).
 case "$PWD" in /Users/*|/private/*|/tmp/*) mounts+=(-v "$PWD:$PWD") ;; esac
 
