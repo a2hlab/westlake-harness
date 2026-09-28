@@ -34,6 +34,11 @@ LOCKLINE = re.compile(r"^(LOCK|UNLOCK)\(([^)]+)\)\s+(\S+)\s+(\S+)\s*(.*)$")
 TS = "%Y-%m-%dT%H:%M:%S%z"
 
 
+
+def superseded_ids(text):
+    """Entry numbers named in 改判(作废 #N) / 改判(作废 #N、#M) / 改判(停止|暂停 #N …)."""
+    return [n for grp in re.findall(r"改判\(((?:作废|停止|暂停) #[^)]*)\)", text) for n in re.findall(r"#(\d+)", grp)]
+
 def when(s):
     try:
         return dt.datetime.strptime(s, TS)
@@ -58,7 +63,7 @@ def parse(path):
             a = re.search(r"与 #(\d+) 同时执行", title)
             if a:
                 cur["attached_to"] = a.group(1)
-            for sup in re.findall(r"改判\((?:作废|停止|暂停) #(\d+)[^)]*\)", title):
+            for sup in superseded_ids(title):
                 if sup not in cur["supersedes"]:
                     cur["supersedes"].append(sup)
             continue
@@ -79,7 +84,7 @@ def parse(path):
         if cur["spec"] is None:
             s = re.search(r"specs/[\w./-]+\.spec\.md", line)
             cur["spec"] = s.group(0) if s else None
-        for s in re.findall(r"改判\((?:作废|停止|暂停) #(\d+)[^)]*\)", line):
+        for s in superseded_ids(line):
             if s not in cur["supersedes"]:
                 cur["supersedes"].append(s)
         a = re.search(r"与 #(\d+) 同时执行", line)
