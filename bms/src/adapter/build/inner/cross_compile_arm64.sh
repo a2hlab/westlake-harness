@@ -777,7 +777,8 @@ ARM_CC="$ARM_CC $CPU_FEATURES_SRC"
 # now requires real typed providers for every remaining edge and emits no
 # libart_runtime_stubs.so.
 bld art "$ART_DEFS $ART_INC -fno-rtti -I$BC_SRC" \
-    $RUNTIME_FILES $ARM_CC $ASM_STUBS "$ART_OPERATOR_SRC"
+    $RUNTIME_FILES $ARM_CC $ASM_STUBS "$ART_OPERATOR_SRC" \
+    "$ADAPTER_ROOT/framework/appspawn-x/src/art_abort_message_bridge.cpp"
 
 # Layer 4: libart-compiler.so (JIT compiler)
 echo "" >&2; echo "--- Layer 4: libart-compiler ---" >&2

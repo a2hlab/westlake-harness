@@ -358,3 +358,7 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - B6/#41：latest 00 cd5b329 的 `WLAR_EnterAndroidAfterStockSpecialization` 是无条件 -3007（反汇编 mov w0,#-3007;ret），child 将入口失败映射 exit210；新整代 HelloWorld 实测210、回桌面，不能误归因同时出现的 libartbased 探测日志。AppSpawnEnvClear 关闭 stderr 导致 WLCGATE 原文缺失；已整代回滚，见 latest-source-generation/art14-recovery/provider-entry-*。
 
 - B6/#41 real-work be16148da 的 Android 入口是真实现，但 appspawnx_runtime.cpp:52 强引用 `westlake_art_copy_fault_message_for_abort_logging`，固定 AOSP14 libart889de8d0 无此导出，严格链接失败；不能凭入口非桩认定可与v12配套。26库保持不变、未再上板，见 latest-source-generation/real-work-entry/。
+
+- B6/#44 更正#41：real-work配方把art_abort_message_bridge.cpp编入libart，r1 runtime_common.cc已有GetFaultMessageForAbortLogging；漏附加源才导致C桥缺符号。原样补入并只重链ART即可严格链接real-work provider；4项R155旧导出在2760板文件筛查+46 ELF中无UND消费者，按外环裁定不造诊断桩。
+
+- B6/#44 real-work入口+补桥ART的4af23ed3代已实测CHILD_A02，pid5337实映射新host/child/ART/sigchain；随后HelloWorld因UserBinder.onTransact boolean vs Binder Object的LinkageError exit1（更早HiLogOutputStream void vs Object），根因未定位，不能称NPE已修。两轮36挂载全回滚，B5两图复验正常，见 latest-source-generation/task44/。

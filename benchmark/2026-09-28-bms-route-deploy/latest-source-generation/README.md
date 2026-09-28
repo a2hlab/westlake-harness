@@ -1,3 +1,15 @@
+# B6 task 44: live admission repaired; HelloWorld class linking blocked
+
+The missing ART C bridge was an omitted recipe source, now restored unchanged.
+The real-work cohort passes strict host linking and the live identity gate, but
+HelloWorld exits 1 with a primitive-return-type `LinkageError` before UI.
+Both trials were fully rolled back; B5 HelloWorld and ZigZag screenshots are restored.
+See the [current task 44 report](task44/README.md), [current results](results.json),
+and [prior task 41 results](task44/prior-task41-results.json). Lit delta remains zero.
+
+The following task 41 report is retained as historical evidence; its missing-bridge
+blocker is resolved by task 44.
+
 # B6 task 41: generation rebuilt; activation and replacement route blocked
 
 The original inference that the `libartbased.so` probe meant a missing debug

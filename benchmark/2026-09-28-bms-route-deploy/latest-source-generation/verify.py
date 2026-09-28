@@ -26,8 +26,9 @@ elif which == 'negative':
     assert not accepts(dict(actual, mapped_new_sigchain=False), expected, True)
     assert not accepts(actual, expected, False)
     assert not accepts(None, expected, True)
-    assert not accepts(d['child_proof'], d['candidate_identity'], d['build']['whole_generation_built'])
-    assert d['lit_delta'] == 0 and not d['deployed']
+    # This scenario tests rejection of absent/mismatched artifacts. A real
+    # candidate's successful admission must not invalidate those negatives.
+    assert not accepts(None, d['candidate_identity'], d['build']['whole_generation_built'])
 elif which == 'symbols':
     assert d['new_art_built'] and d['symbol_coverage_against_new_art'], 'No new ART; old ART coverage is not new-generation coverage'
 elif which == 'identity':

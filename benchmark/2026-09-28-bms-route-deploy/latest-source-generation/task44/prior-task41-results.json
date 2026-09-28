@@ -11,30 +11,21 @@
     "explanation": "R8-inlined delegate probes the not-yet-attached outer Activity theme inside an NPE catch before calling super.attachBaseContext."
   },
   "sigchain_sha256": "6d5d5538ff45c057208186f5cb74b9b5c2402d693aa2756a99327fd4b9f8c400",
-  "board_item": 44,
+  "board_item": 41,
   "status": "blocked",
   "policy_block": false,
   "lit_delta": 0,
   "deployed": false,
-  "board_write_commands": "Two task44 whole-generation trials; each failed trial fully rolled back (36 mounts) and B5 controls observed",
+  "board_write_commands": "See deployment command receipts; all 36 mounts rolled back",
   "lock_acquired": true,
   "source_matched": false,
   "candidate_identity": {
-    "host": "8125006b52601f293458e6ab4281ea044430ae634b3b45cffb13db8c22750073",
-    "child": "c2952931a27b056957dab18272ac78b80f5d2d7f99e79e48ab2bd4e079106598",
-    "libsigchain": "6d5d5538ff45c057208186f5cb74b9b5c2402d693aa2756a99327fd4b9f8c400"
-  },
-  "child_proof": {
-    "host": "8125006b52601f293458e6ab4281ea044430ae634b3b45cffb13db8c22750073",
-    "child": "c2952931a27b056957dab18272ac78b80f5d2d7f99e79e48ab2bd4e079106598",
     "libsigchain": "6d5d5538ff45c057208186f5cb74b9b5c2402d693aa2756a99327fd4b9f8c400",
-    "libart": "073a54cba5abab4b97ab73b763012a9bf1ff6740dd19a9993e930d4bd8a8f7b2",
-    "mapped_new_sigchain": true,
-    "pid": 5337,
-    "evidence": "task44/trial2/helloworld/child-proof-5337.late-sha256",
-    "maps": "task44/trial2/helloworld/child-proof-5337.late-maps"
+    "host": "5c97aff6645cf006ace113e549d0fb96e0c16da0687b5ff8ade99c20e103ddfd",
+    "child": "ef547828c2b89a0da5a11c337e6f8e666677e7536d0ac9085b9f8e7d8254aa83"
   },
-  "identity_gate_passed": true,
+  "child_proof": null,
+  "identity_gate_passed": false,
   "closure_passed": true,
   "npe_retested": false,
   "wikipedia_retested": false,
@@ -42,23 +33,25 @@
   "new_art_built": true,
   "symbol_coverage_against_new_art": true,
   "null_check_mode": "sigsegv",
-  "null_check_mode_provenance": "Task31 original baseline only; task44 no implicit-null retest reached",
+  "null_check_mode_provenance": "Prior task31 baseline only; task41 has no repaired-generation retest",
   "regressions": [
     "helloworld"
   ],
-  "regression_provenance": "Task44 corrected-pin trial2 reaches CHILD_A02 then HelloWorld exits1 with Java LinkageError before UI. Candidate ZigZag/Wikipedia not run after first control failure.",
+  "regression_provenance": "Candidate HelloWorld child11441 exits210; ZigZag candidate not tested because first control failed.",
   "screenshots": [
-    "task44/trial1/helloworld/final.jpeg",
-    "task44/trial2/helloworld/final.jpeg"
+    "evidence/helloworld-r1/t3.jpeg",
+    "evidence/helloworld-r1/final.jpeg"
   ],
   "next_blocker": {
-    "classification": "primitive return-type resolution mismatch during child Java initialization",
-    "phase": "AppSpawnXInit.initChild -> UserManagerProjectionProxy.install",
-    "error": "LinkageError: UserBinder.onTransact boolean vs superclass Binder java.lang.Object",
-    "earlier_error": "HiLogOutputStream.write void vs superclass OutputStream java.lang.Object",
-    "child_exit": 1,
-    "evidence": "task44/trial2/helloworld/hilog-excerpt.txt",
-    "root_cause": "Not yet localized; consistent with primitive resolution/boot cohort mismatch, not proven caused by the omitted diagnostic exports"
+    "classification": "real-work and fixed AOSP14 provider interface mismatch",
+    "symbol": "westlake_art_copy_fault_message_for_abort_logging",
+    "evidence": [
+      "real-work-entry/strict-link-failure.txt",
+      "real-work-entry/undefined-symbol.txt",
+      "real-work-entry/source-excerpts.txt",
+      "real-work-entry/results.json"
+    ],
+    "board_attempted": false
   },
   "build": {
     "adapter_commit": "cd5b3293596cc9d9f324743d6d904c5135954076",
@@ -67,44 +60,46 @@
     "bridge_units_total": 55,
     "bridge_linked": true,
     "native_runtime_built": true,
-    "whole_generation_built": true,
-    "startup_adapter_commit": "be16148da9ae7bb89c62e81e144ed0bceb5c4669",
-    "libart_sha256": "073a54cba5abab4b97ab73b763012a9bf1ff6740dd19a9993e930d4bd8a8f7b2"
+    "whole_generation_built": true
   },
   "R2": {
     "verified": [
-      "Original art_abort_message_bridge source linked into libart; bridge rebuilt twice identically",
-      "Only libart changes in original 26 provider outputs",
-      "No UND consumers for four R155-only exports in 46 ELFs, with 2760 board-file preselection and positive control",
-      "Strict deterministic real-work provider/child/host builds and host/child ABI gates",
-      "338-library/3024-edge closure and all negative controls",
-      "Actual new host/child/ART/sigchain mapping hashes and raw CHILD_A02 admission",
-      "Corrected-pin HelloWorld exits1 with return-type LinkageError",
-      "Both trials rolled back all 36 mounts; final B5 HelloWorld and ZigZag visually observed, no new faults; 5ea lock released"
+      "AOSP14 source fingerprint recovery described per file",
+      "27 local libraries reproducible over two builds (26 original plus OpenJDK JVM)",
+      "strict native roots and complete host NEEDED closure",
+      "four original closure negative controls plus false SONAME-absence negative",
+      "new ART sigchain four-symbol coverage and removal negatives",
+      "actual deployed host/child/native root hashes",
+      "HelloWorld child exit210 and desktop screenshot",
+      "all 36 mount targets restored to their previous hashes",
+      "B5 rollback HelloWorld and ZigZag screenshots display their own UI",
+      "real-work entry is implemented but strict link requires unavailable ART symbol",
+      "26 original provider outputs preserved unchanged"
     ],
     "partially": [
-      "New VM initialized and Java child entry reached; overall boot-image semantic compatibility fails before HelloWorld UI"
+      "live loader admission inferred from exit210 control flow; raw WLCGATE and late sigchain mapping absent"
     ],
     "unverified": [
-      "Wikipedia UI",
-      "Implicit-null conversion to NPE",
-      "Candidate ZigZag"
+      "new-generation ART VM initialization and boot-image runtime compatibility",
+      "Wikipedia repair",
+      "NPE conversion after new sigchain",
+      "candidate ZigZag regression"
     ]
   },
   "baseline_readback_unchanged": true,
-  "baseline_evidence": "task44/trial2/rollback-identity.txt",
+  "baseline_evidence": "evidence/rollback-r1/identity-after.txt",
   "lifecycle": {
     "pass": [
       "getTheme 的调用者被具名",
       "板上产物不是本次构建时判失败",
-      "重生成的一代通过 loader 身份校验",
       "新 libsigchain 缺符号时不部署"
     ],
     "fail": [
       "Wikipedia 从桌面启动后上屏",
       "修复后 HelloWorld 与 ZigZag 不回退",
       "越过 getTheme 但仍未上屏时记下一堵墙",
-      "空指针处理方式有记录"
+      "空指针处理方式有记录",
+      "重生成的一代通过 loader 身份校验"
     ],
     "skip": 0,
     "pending_review": 0
@@ -131,32 +126,27 @@
     "art_compile_total": 245,
     "provider_byte_matches": 0,
     "provider_byte_comparisons": 13,
-    "board_commands": "Historical recovery phase only; task44 board trials recorded at top-level board_write_commands",
+    "board_commands": "one candidate trial and whole-generation rollback",
     "r2": "partially",
     "procinfo_header_deviation": "unmodified android14 r1 process_map.h; frozen fingerprint unavailable",
     "counts_provenance": "restoration-comparison-final.json; exact fingerprint inventory, not functional equivalence"
   },
-  "symbol_coverage_evidence": "task44/sigchain-symbols.json",
+  "symbol_coverage_evidence": "art14-recovery/new-art-sigchain-symbols.json",
   "ever_deployed": true,
   "rollback_verified": true,
-  "visual_observation": "Both candidate HelloWorld final screenshots show OH desktop. Both rollback control pairs show Hello World UI and ZigZag title UI; outer final review pending.",
+  "visual_observation": "Candidate final is OH desktop; not HelloWorld UI. Outer reviewer remains final authority.",
   "tuple_receipt_waiver": "art14-recovery/tuple-waiver.json",
   "real_work_route": {
     "source_commit": "be16148da9ae7bb89c62e81e144ed0bceb5c4669",
     "entry_is_implemented": true,
-    "compatibility": "task41 strict-link failure resolved by task44 original abort bridge TU; live Java LinkageError remains",
+    "compatibility": "failed_strict_link",
     "baseline_rollback_visuals": {
       "helloworld": "Hello World UI with lifecycle and buttons",
       "zigzag": "game title screen with TAP TO PLAY"
     },
     "missing_symbol": "westlake_art_copy_fault_message_for_abort_logging",
     "report": "real-work-entry/results.json",
-    "providers_unchanged": false,
-    "missing_symbol_resolved": true,
-    "provider_changes": [
-      "libart.so"
-    ],
-    "current_report": "task44/README.md"
+    "providers_unchanged": true
   },
   "prior_candidate_blocker": {
     "classification": "latest provider entry deliberately returns missing prerequisite",
@@ -174,8 +164,7 @@
   },
   "lock_currently_held": false,
   "baseline_rollback_screenshots": [
-    "task44/trial2/rollback-helloworld/final.jpeg",
-    "task44/trial2/rollback-zigzag/final.jpeg"
-  ],
-  "task44_report": "task44/README.md"
+    "evidence/rollback-r1/helloworld/final.jpeg",
+    "evidence/rollback-r1/zigzag/final.jpeg"
+  ]
 }
