@@ -65,6 +65,7 @@
   - `dockbuild.sh image`(一次,约 90 s,apt 走华为云镜像)/ `check`(自检挂载)/ `run [-n 名] -- <命令>` / `cc <clang 参数>`(锁定 clang-15 + sysroot,cwd 为 Mac 当前目录)。
   - 实测(2026-09-28):`build_android_native.py --target ohos --library liblog.so --library libbase.so` 在 VM 与容器各跑一次(关 ccache),`.so`/`.o` 逐字节相同,`.o.d` 与 `artifacts.json` 只差输出目录名;耗时 11.3 s 对 11.6 s。**单次不更快**(同一 OrbStack 内核 + Rosetta),收益在于**可并行起多个隔离容器**。
   - 上板操作(probe_source_app.py、hdc)仍在 VM 里跑:`hdc_mac.sh` 依赖 OrbStack 的 `mac` 命令,容器里没有。
+- **本地编 BMS 适配层(libapk_installer 等)的编译包**:`~/orca/workspaces/oh61-bms-kit/`(布局同 OH 源码树,`OH_ROOT` 直接指它)=hw248 `oh610_lts_source` 的头文件子集(bundle_framework、zlib/minizip 源码、openssl、hilog、c_utils、ipc、ability_base、json、access_token,约 10 MB,`rsync -aR` 只取头文件)+ 板上只读拉的链接库(`/system/lib64/{platformsdk,chipset-sdk-sp}` 下 libhilog/libcrypto_openssl.z/libssl_openssl.z/libutils.z/libshared_libz.z)+ 软链到 docker 锁定工具链的 `prebuilts/clang/ohos/linux-x86_64/llvm` 与 musl `usr`。hw248 的 OH 源码树 clang 与我们锁定的 SDK clang 是同一提交(15.0.4 feef13a3);hw248 上**没有** `out/wukong100/packages`(系统库只能从板子取)。运行:`DOCKBUILD_MOUNTS="$KIT:$ADAPTER_ROOT" dockbuild.sh run -- "OH_ROOT=$KIT bash build_adapter.sh --no-apply --target=libapk_installer.so"`。⚠️ `compile_apk_installer.sh` 编译失败仍会链接出残缺 .so(实测 27 个源只编过 4 个也输出 50K 库)——必须看 `Compiled: N/N` 全绿;`games/boatattack-repro` 分支的构建脚本引用了本分支不存在的源文件(T-06/T-08/T-12 线),要在与板上库同代的提交上编。
 - 重建时 framework flags 除 java-profile 的 3 个外还需 8 个 APEX flag 库;native object map 在 `$A/native-object-map.json`。就绪检查:`planned_staging.py` + harness `deploy-check`。
 
 ## 6. OctoLoop 现场

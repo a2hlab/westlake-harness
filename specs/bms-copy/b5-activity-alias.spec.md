@@ -28,13 +28,12 @@ B1 补上沙箱准备后,Wikipedia 的 child 已进入 `ActivityThread.main`,随
 
 ## 验收标准
 
-场景: Wikipedia 从桌面启动后上屏
-  测试: b5_wikipedia_lit
-  审核: human
+场景: Wikipedia 从桌面启动后越过 alias 墙
+  测试: b5_wikipedia_passes_alias_wall
   假设 修复已在 5ea 生效,Wikipedia 已安装且做过沙箱准备
-  当 从桌面点击它的图标并等待 15 s
-  那么 其 BMS uid 下进程持续存活
-  并且 外环读图签认截图是 Wikipedia 自身界面
+  当 从桌面点击它的图标并采集 hilog
+  那么 实例化的类是 `org.wikipedia.main.MainActivity`,不再出现 `ClassNotFoundException`
+  并且 进程走到 `Activity.attach`(上屏由 B4 汇总的下一批墙负责)
 
 场景: alias 被解析到目标类
   测试: b5_alias_resolved_to_target
