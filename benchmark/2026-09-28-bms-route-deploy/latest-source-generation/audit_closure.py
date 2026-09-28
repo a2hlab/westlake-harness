@@ -34,7 +34,12 @@ def audit(root,required,platform,readelf='llvm-readelf'):
                 f=Path(platform[needed]['path'])
                 if f.is_file():
                     child=inspect(f,readelf)
-                    if child['sha256']==platform[needed]['sha256'] and child['soname']==[needed] and child['aarch64']:
+                    # Some stock Rust DSOs omit DT_SONAME. Admit that only
+                    # when this exact file is explicitly pinned as such.
+                    expected_soname=platform[needed].get('soname',[needed])
+                    name_matches=(expected_soname==[needed] or
+                                  (expected_soname==[] and f.name==needed))
+                    if child['sha256']==platform[needed]['sha256'] and name_matches and child['soname']==expected_soname and child['aarch64']:
                         members[needed]=child;queue.append(needed);edge['resolved']=True
             edges.append(edge)
     unresolved=[e for e in edges if not e['resolved']]

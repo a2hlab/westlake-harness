@@ -1,0 +1,90 @@
+--- r1
++++ $ORCA/00.Workspace-survey1/src/adapter/framework/native-loader-oh/include/nativeloader/native_loader.h
+@@ -14,65 +14,47 @@
+  * limitations under the License.
+  */
+ 
+-#ifndef ART_LIBNATIVELOADER_INCLUDE_NATIVELOADER_NATIVE_LOADER_H_
+-#define ART_LIBNATIVELOADER_INCLUDE_NATIVELOADER_NATIVE_LOADER_H_
++#ifndef WESTLAKE_NATIVE_LOADER_OH_INCLUDE_NATIVELOADER_NATIVE_LOADER_H_
++#define WESTLAKE_NATIVE_LOADER_OH_INCLUDE_NATIVELOADER_NATIVE_LOADER_H_
+ 
+ #include <stdbool.h>
+ #include <stdint.h>
++
+ #include "jni.h"
+-#if defined(__ANDROID__)
+-#include <android/dlext.h>
+-#endif
+ 
+ #ifdef __cplusplus
+ namespace android {
+ extern "C" {
+-#endif  // __cplusplus
++#endif
+ 
+-// README: the char** error message parameter being passed
+-// to the methods below need to be freed through calling NativeLoaderFreeErrorMessage.
+-// It's the caller's responsibility to call that method.
+-
+-__attribute__((visibility("default")))
+-void InitializeNativeLoader();
++__attribute__((visibility("default"))) void InitializeNativeLoader(void);
+ 
+ __attribute__((visibility("default"))) jstring CreateClassLoaderNamespace(
+-    JNIEnv* env, int32_t target_sdk_version, jobject class_loader, bool is_shared, jstring dex_path,
+-    jstring library_path, jstring permitted_path, jstring uses_library_list);
++    JNIEnv* env, int32_t target_sdk_version, jobject class_loader,
++    bool is_shared, jstring dex_path, jstring library_path,
++    jstring permitted_path, jstring uses_library_list);
+ 
+ __attribute__((visibility("default"))) void* OpenNativeLibrary(
+-    JNIEnv* env, int32_t target_sdk_version, const char* path, jobject class_loader,
+-    const char* caller_location, jstring library_path, bool* needs_native_bridge, char** error_msg);
++    JNIEnv* env, int32_t target_sdk_version, const char* path,
++    jobject class_loader, const char* caller_location, jstring library_path,
++    bool* needs_native_bridge, char** error_msg);
+ 
+-__attribute__((visibility("default"))) bool CloseNativeLibrary(void* handle,
+-                                                               const bool needs_native_bridge,
+-                                                               char** error_msg);
++__attribute__((visibility("default"))) bool CloseNativeLibrary(
++    void* handle, bool needs_native_bridge, char** error_msg);
+ 
+-__attribute__((visibility("default"))) void NativeLoaderFreeErrorMessage(char* msg);
++__attribute__((visibility("default"))) void NativeLoaderFreeErrorMessage(
++    char* msg);
+ 
+-#if defined(__ANDROID__)
+-// Look up linker namespace by class_loader. Returns nullptr if
+-// there is no namespace associated with the class_loader.
+-// TODO(b/79940628): move users to FindNativeLoaderNamespaceByClassLoader and remove this function.
+-__attribute__((visibility("default"))) struct android_namespace_t* FindNamespaceByClassLoader(
+-    JNIEnv* env, jobject class_loader);
+-// That version works with native bridge namespaces, but requires use of OpenNativeLibrary.
+-struct NativeLoaderNamespace;
+-__attribute__((visibility("default"))) struct NativeLoaderNamespace*
+-FindNativeLoaderNamespaceByClassLoader(JNIEnv* env, jobject class_loader);
+-// Load library.  Unlinke OpenNativeLibrary above couldn't create namespace on demand, but does
+-// not require access to JNIEnv either.
+-__attribute__((visibility("default"))) void* OpenNativeLibraryInNamespace(
+-    struct NativeLoaderNamespace* ns, const char* path, bool* needs_native_bridge,
+-    char** error_msg);
+-#endif
++__attribute__((visibility("default"))) void ResetNativeLoader(void);
+ 
+-__attribute__((visibility("default")))
+-void ResetNativeLoader();
++typedef void* (*WestlakeSealedOpenFnV1)(const char* absolute_path, int flags);
++
++__attribute__((visibility("default"))) int WLNL_InstallSealedOpenV1(
++    WestlakeSealedOpenFnV1 open_fn);
+ 
+ #ifdef __cplusplus
+ }  // extern "C"
+ }  // namespace android
+-#endif  // __cplusplus
++#endif
+ 
+-#endif  // ART_LIBNATIVELOADER_INCLUDE_NATIVELOADER_NATIVE_LOADER_H_
++#endif  // WESTLAKE_NATIVE_LOADER_OH_INCLUDE_NATIVELOADER_NATIVE_LOADER_H_

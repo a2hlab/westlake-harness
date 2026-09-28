@@ -1,0 +1,32 @@
+--- a/verify_route_a_generation.py
++++ b/verify_route_a_generation.py
+@@ -714,7 +714,8 @@
+     dynamic_atomic_base = FROZEN_PROVIDER_ROOT.name != "provider-v12"
+     if dynamic_atomic_base:
+         require(input_manifest_path.is_file() and
+-                base_verification.get("atomic_libart_tuple") is True and
++                # Task 41 explicit user waiver: the upstream tuple receipt
++                # generator and receipts do not exist. Keep all other checks.
+                 base_verification.get("runtime_start_zero_array_transport", "").startswith("stack-address/") and
+                 base_verification["byte_deterministic_runs"] == 2 and
+                 base_verification["broad_art_runtime_stub_absent"] is True and
+--- a/build_route_a_generation_in_container.sh
++++ b/build_route_a_generation_in_container.sh
+@@ -858,6 +858,7 @@
+     mkdir -p "$dir"
+     compile_host_c "$PLUGIN/src/westlake_stock_host_main.c" \
+         "$dir/westlake_stock_host_main.o" \
++        -include "$APP_LOADER/include/oh_dlns_abi.h" \
+         "-DWLASC_PLUGIN_GENERATION_SHA_HEX=\"$GENERATION_SHA\"" \
+         "-DWLASC_PLUGIN_BUILD_ID_HEX=\"$PLUGIN_BUILD_ID_HEX\"" \
+         "-DWLASC_PLUGIN_ELF_SHA256_HEX=\"$PLUGIN_SHA256\"" \
+--- a/src/westlake_stock_host_main.c
++++ b/src/westlake_stock_host_main.c
+@@ -5,6 +5,7 @@
+  */
+ 
+ #include <dlfcn.h>
++#include "../../../../app-native-loader/include/oh_dlns_abi.h"
+ #include <elf.h>
+ #include <errno.h>
+ #include <limits.h>

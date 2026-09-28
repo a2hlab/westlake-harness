@@ -3,7 +3,7 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 W=$ROOT/bms/src/.work/b6-latest
 export BUILD_INNER_INVOKED=1 ADAPTER_ROOT=$W/adapter ADAPTER_OUT_DIR=$W/out BRIDGE_OBJ_DIR=${B6_BRIDGE_OBJ_DIR:-$W/bridge-objects}
-export OH_ROOT=$W/oh AOSP_ROOT=/Users/zhaoyue/aosp-r4-incs OH_SDK=$W/sdk FORCE_OH_SDK=1
+export OH_ROOT=$W/oh AOSP_ROOT=${B6_AOSP_ROOT:-/Users/zhaoyue/aosp-r4-incs} OH_SDK=$W/sdk FORCE_OH_SDK=${B6_FORCE_OH_SDK:-1}
 export OH61_GENERATED_HEADERS=$W/generated
 export OH_RESOURCE_MANAGEMENT_ROOT=/Users/zhaoyue/orca/00.Workspace-games-b-80488f37/.bridge-payload/oh-source-inputs/global_resource_management
 export R3_SKIA_ROOT=/Users/zhaoyue/orca/00.Workspace-games-b-80488f37/.bridge-payload/oh-source-inputs/third_party_skia/m133

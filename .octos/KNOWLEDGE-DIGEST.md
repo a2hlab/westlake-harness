@@ -352,3 +352,9 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **B6 #37 R155 源码门**：5ea 28 个 route-a 实物可只读拉回并逐 SHA 对齐；#35 child `.text` 41996 vs 现役18796，确属异代。`~/orca/.bridge-payload/appspawn-x-src` 旧快照重编为 dae64028，仍缺现役0976dee8的 CompleteStockChildReply/WLSCPL_OpenPreparedNamespace；交接README自述源码未绑定二进制，不能凭 d0314588e 成功记录认定可重编。只换sigchain前须补齐同版源，证据见 r155-sigchain-generation。
 
 - 2026-09-28 B6/#39 更正：#35 的 `libartbased.so` ENOENT 是 release `libartbase` 的 `CheckLoadedBuild` 对 debug/release 两名做 `RTLD_NOW|RTLD_NOLOAD` 自检，不是 DT_NEEDED 缺 debug 依赖；该库与 R155 字节相同(75c0f183)，补 debug 会触发另一拒绝分支，需核 namespace 自可见性。证据 `benchmark/2026-09-28-bms-route-deploy/latest-source-generation/{libart.so.elf.txt,check-loaded-build.disassembly.txt}`。
+
+- B6/#39 AOSP14 冻结源恢复：r1 最接近；旧 runtime.cc.patch 仅 hunk4–11 命中077582e9，class_linker 从25fed424提取五组CP并恢复fprintf命中2c801ab0，勿带后续vtable/GC补丁；tinyxml2是main418229dc而非16r2。恢复源码仍不足复现provider：冻结LLVM0e01a01d与SDK feef13a3不同，首轮13件0字节匹配，不能称“仅差诊断”，见 latest-source-generation/art14-recovery/。
+
+- B6/#41：latest 00 cd5b329 的 `WLAR_EnterAndroidAfterStockSpecialization` 是无条件 -3007（反汇编 mov w0,#-3007;ret），child 将入口失败映射 exit210；新整代 HelloWorld 实测210、回桌面，不能误归因同时出现的 libartbased 探测日志。AppSpawnEnvClear 关闭 stderr 导致 WLCGATE 原文缺失；已整代回滚，见 latest-source-generation/art14-recovery/provider-entry-*。
+
+- B6/#41 real-work be16148da 的 Android 入口是真实现，但 appspawnx_runtime.cpp:52 强引用 `westlake_art_copy_fault_message_for_abort_logging`，固定 AOSP14 libart889de8d0 无此导出，严格链接失败；不能凭入口非桩认定可与v12配套。26库保持不变、未再上板，见 latest-source-generation/real-work-entry/。

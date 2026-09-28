@@ -31,6 +31,9 @@ with tempfile.TemporaryDirectory() as tmp:
     mismatch = audit(root, ['libsigchain.so'], wrong)
     assert not mismatch['passed'] and mismatch['unresolved_needed']
     checks['wrong_platform_sha_rejected'] = True
+    false_absence = {'libc.so': dict(pool['libc.so'], soname=[])}
+    assert not audit(root, ['libsigchain.so'], false_absence)['passed']
+    checks['false_absent_soname_declaration_rejected'] = True
     shutil.copyfile(a.sigchain, root / 'libwrong.so')
     soname = audit(root, ['libwrong.so'], pool)
     assert not soname['passed'] and any(e['error'] == 'SONAME mismatch' for e in soname['errors'])

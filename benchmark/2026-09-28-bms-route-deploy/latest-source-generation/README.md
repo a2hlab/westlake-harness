@@ -1,77 +1,107 @@
-# Latest-source route-A generation (task 39, blocked before deployment)
+# B6 task 41: generation rebuilt; activation and replacement route blocked
 
-The task-35 diagnosis incorrectly treated the missing `libartbased.so` log as a
-required debug dependency. The inspected release `libart.so` needs
-`libartbase.so`, not `libartbased.so`. The release library's `CheckLoadedBuild`
-constructor probes **both** names with `RTLD_NOW | RTLD_NOLOAD` (6). It exits
-when neither name is visible, and would also reject a visible debug variant.
-Adding a debug library is not the repair.
+The original inference that the `libartbased.so` probe meant a missing debug
+dependency was wrong. The decisive first-trial failure was an unfinished Android
+entry in latest `00.Workspace` cd5b329: it returns -3007 unconditionally, and the
+child maps that to exit 210. The complete candidate was rolled back. The newly
+authorized real-work route has an implemented entry but fails strict host linking
+against the fixed AOSP14 ART provider. **B6 remains blocked; lit delta is zero.**
 
-Evidence: `libart.so.elf.txt`, `libartbase.so.elf.txt`, and
-`check-loaded-build.disassembly.txt`. `check-loaded-build-source.txt` contains
-supporting AOSP16 source, explicitly not the byte-exact source of the inspected
-v12 binary. The v12 `libartbase.so` is byte-identical to R155
-(`75c0f18372207ea54cd735b86eae7f0e0797e026136c0d07050520b8199f85b1`).
-The precise namespace failure remains to be verified; static NEEDED closure
-cannot prove dynamic `dlopen` visibility.
+## Current blocker: real-work interface
 
-## Route and source inputs
+Source `real-work` be16148da9ae7bb89c62e81e144ed0bceb5c4669 implements
+`WLAR_EnterAndroidAfterStockSpecialization`: it validates prerequisites, commits
+A02 handoff and calls `ChildMain::runAfterStockSpecialization`. Its
+`appspawnx_runtime.cpp:52` also requires
+`westlake_art_copy_fault_message_for_abort_logging`. The compiled consumer has
+that undefined symbol; rebuilt `libart.so` 889de8d0 does not export it. The
+real-work provider recipe fails with `-z defs`, `--no-undefined`, and
+`--no-allow-shlib-undefined` intact. No fallback implementation was added.
 
-The bounded R155 search did not recover a source receipt that rebuilds the
-active child `0976dee8` and host `1f6cf53b` byte-for-byte. `real-work`'s R155
-activation imports `historical-success-cohort`; its r150 source has the V2
-loader. Consequently this task continues with the authorized whole-generation
-route. The latest adapter source is fixed at `00.Workspace`
-`cd5b3293596cc9d9f324743d6d904c5135954076`.
+See [source excerpts](real-work-entry/source-excerpts.txt),
+[link failure](real-work-entry/strict-link-failure.txt) and
+[interface receipt](real-work-entry/results.json). The original **26/26 provider
+outputs remain byte-identical to their saved second-build hashes**. This second
+route stopped before generating a new manifest/child/host and made zero board
+writes, as explicitly required for an incompatible provider interface.
 
-The frozen v12 input has prebuilt AOSP14 providers, not ART source. The supplied
-hw248 `l03a15` provider source is the APK installer/parser. Full ART source found
-so far is AOSP16, with oat 259 or 265; the signed board boot-framework image is
-the previously verified oat 230 image. Source selection and matching dex2oat
-input remain pending. No AOSP16/14/230 compatibility is claimed.
+## Completed host work
 
-## Host evidence collected so far
+- AOSP14 r1 plus historical patches recovers runtime.cc and class_linker.cc
+  exactly. The final fingerprint inventory is **16,909/18,060 exact, 348 missing,
+  803 different**. Header/generated/metadata deviations remain enumerated; see
+  [recovery report](art14-recovery/README.md).
+- Unified OH 6.1 compiler b107ce03 compiled ART **245/245**, strict bridge
+  **55 units**, ICU **199/199**, androidfw **26/26**, and the native runtime.
+  The original 26 providers reproduce byte-for-byte over two builds. Added
+  OpenJDK JVM also reproduces separately over two builds.
+- Final ABI inventory covers **33 libraries** (5 lack an R155 counterpart),
+  comparing exports, NEEDED, SONAME and sections. This is an inventory, not proof
+  of runtime equivalence. No claim that all differences are diagnostic is made.
+- Latest00 generation `44865eb264fd2168160b69498cf3e68a9554d6e6a42fe9298c0e2cc895805180`
+  passed generation and TGR product verification. Only the tuple-receipt predicate
+  was waived under the user's explicit instruction: its generator and historical
+  receipts could not be found. All other checks remained active
+  (`art14-recovery/tuple-waiver.json`).
+- Host NEEDED closure: **34 required, 338 reachable, 3,023 edges**, zero unresolved.
+  Four original negatives plus a false absent-SONAME declaration were rejected.
+  The new ART's four sigchain APIs are covered; removing each export blocks
+  admission in the symbol negative controls. `sigaction` belongs to platform
+  musl libc; new live binding was not verified.
 
-- Latest-source TGR compiled in local dockbuild:
-  `1e6b2f2d55d99608477e7d7f3dbbcf78fe7d789f4d1c3ffd82ce45016729df80`.
-- `bridge-probe8.txt`: first bridge compilation unit succeeds. The compiler is
-  the recovered clang-15 and musl SDK from task 35. This is not a linked library.
-- `bridge-all1.txt`, `bridge-all2.txt`: 39/54 and 43/54 compilation units; errors
-  are preserved. The missing Ninja template (from the recipe's frozen
-  `oh61-v7-b2133b5b` source) accounts for absent include paths and M133 defines.
-  `bridge-all3.txt` through `bridge-all5.txt` use a fresh object directory
-  after recovery and finish at **54/54 compiled**. `bridge-objects.json` records
-  object identities. No bridge link or native-runtime build has passed.
-- `audit_closure.py`: requires explicit generation members and walks every
-  NEEDED edge, including a separately pinned platform pool. It checks SHA,
-  architecture and SONAME. `closure-audit.json` rejects the current incomplete
-  set: **31 missing out of 32 required members**. The required list is a minimum
-  inventory of the former generation's roles, not a fixed limit on new members.
-- `closure-negatives.json`: positive explicit-pool control passes; omitted
-  member, undeclared dependency, wrong platform SHA and wrong SONAME all fail.
-  These are host gate checks, not live generation validation.
+## First candidate trial and complete rollback
 
-`run_bridge_probe.sh` is a compile-only harness. Its partial object files must
-not be promoted to a product generation. A production build still needs the
-same-source ART/providers, native roots, pinned OH platform pool, strict link,
-manifest regeneration, identity admission and boot-image compatibility proof.
+Only 5ea was locked and written. Candidate host **5c97aff6**, child **ef547828**,
+ART **889de8d0**, and sigchain **6d5d5538** were staged as one cohort. Deployment
+replaced all existing provider aliases, both TGR paths and the native roots;
+`deployment.json` records **36 mounts** and their previous SHA values.
 
-## Board boundary
+HelloWorld child **11441** exited **210**. Its final image is the OH desktop:
+[evidence/helloworld-r1/final.jpeg](evidence/helloworld-r1/final.jpeg).
+Source and disassembly both show the unconditional -3007 return
+(`art14-recovery/provider-entry-*`). Wikipedia, NPE and candidate ZigZag were not
+run after the failed first control. WLCGATE writes stderr, which
+`AppSpawnEnvClear` closes. Exit-path analysis suggests admission advanced, but
+without raw gate messages or the late sigchain mapping **live identity is not
+claimed passed**.
 
-`board-baseline.txt` is read-only evidence for 5ea. No task-39 board write,
-installation, process launch, mount, or candidate activation has occurred.
-No new screenshots, fixed NPE result, Wikipedia UI, or regression pass is
-claimed. The signed B5 baseline remains the rollback target.
+All **36 mounts were removed and every original target SHA restored**. The B5
+host is **1f6cf53b**, child **0976dee8**, JAR **250958dc**, with unchanged boot ID.
+Regression observation after rollback produced HelloWorld PID 14870 and ZigZag
+PID 15878, without new faults. Both final screenshots were read: HelloWorld shows
+its buttons/lifecycle and ZigZag its game title screen. These are **B5 recovery
+proof**, not candidate-regression acceptance:
 
-## Contract status
+- [HelloWorld after rollback](evidence/rollback-r1/helloworld/final.jpeg)
+- [ZigZag after rollback](evidence/rollback-r1/zigzag/final.jpeg)
+- [Restored identities](evidence/rollback-r1/identity-after.txt)
 
-The caller and absence/mismatch negative control remain testable. The six
-new-generation runtime/coverage scenarios cannot pass without a complete
-candidate. See `results.json` and the fresh lifecycle result. Previous baseline
-UI or symbol checks against the old ART are not promoted as new-generation proof.
+The board lock is released. VM raw evidence is under
+`~/a2hlab/board/b6-41-helloworld-5ea-r1`, `b6-task41-44865eb264fd`, and
+`b6-41-rollback-5ea-r1`. No other board was touched.
 
-Validation: 69 repository known-answer tests, 0 failures and 2 skips. B6
-lifecycle: 2 pass (caller, absent-artifact negative), 6 fail (Wikipedia,
-regression, advancement, NPE retest, identity, new-ART symbol coverage),
-0 skips and 0 pending review. Final read-only boot ID and six SHA values match
-the initial B5 baseline exactly (`board-final.txt`).
+## Validation and limits
+
+Known-answer tests: **69 run, 2 skipped, 0 failures**. Fresh B6 lifecycle:
+**3 pass / 5 fail / 0 skipped / 0 pending review**. Pass: caller identified,
+absent-artifact negative, new-ART sigchain coverage. Fail: Wikipedia UI,
+HelloWorld/ZigZag candidate regression, advancement beyond getTheme, NPE retest,
+and live loader identity. `lifecycle.json` preserves every scenario verdict.
+
+R2 verified: source fingerprints, deterministic host builds, static closure and
+negative controls, both concrete blockers, complete rollback and baseline UI.
+Partially verified: first-trial identity progression inferred from the exit path.
+Unverified: repaired VM/boot-image compatibility, Wikipedia UI, NPE conversion,
+and candidate ZigZag. The previous `null_check_mode=sigsegv` is retained with
+explicit task-31 provenance; it is not a task-41 retest.
+
+The deployment/observation scripts are historical, guarded 5ea trial recipes,
+not automatic authorization to reactivate this failed candidate. Build recipes
+under `art14-recovery/recipes` require the recorded recovered input trees and
+must be restored to their corresponding staging locations; they are not a
+standalone source bootstrap. Published path placeholders are account-neutral.
+
+Public ABI receipts compact unchanged export lists to counts/hashes while retaining
+added/removed symbol deltas. Full lists remain locally; hilog excerpts carry line
+numbers and full-log hashes. Plain text strips trailing whitespace; patch files
+preserve their context whitespace.

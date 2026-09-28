@@ -1,0 +1,117 @@
+real-work be16148da9ae7bb89c62e81e144ed0bceb5c4669
+
+appspawnx_runtime.cpp:24-60
+#include "nativeloader/native_loader.h"
+
+// Abort trap from libart_runtime_stubs.so
+extern "C" volatile int g_abort_trap_enabled;
+extern "C" jmp_buf g_abort_jmpbuf;
+extern "C" std::size_t westlake_art_copy_fault_message_for_abort_logging(
+    char* output, std::size_t capacity);
+
+namespace appspawnx {
+
+// ---------------------------------------------------------------------------
+// JNI_CreateJavaVM function pointer type (loaded from libart.so)
+// ---------------------------------------------------------------------------
+using JNI_CreateJavaVM_t = jint (*)(JavaVM**, JNIEnv**, void*);
+
+// ---------------------------------------------------------------------------
+// Helper: build a VM option entry
+// ---------------------------------------------------------------------------
+static JavaVMOption makeOption(const char* str) {
+    JavaVMOption opt;
+    opt.optionString = const_cast<char*>(str);
+    opt.extraInfo = nullptr;
+    return opt;
+}
+
+static void logArtAbortAndTerminate() {
+    char message[4096] = {};
+    const std::size_t fullLength =
+        westlake_art_copy_fault_message_for_abort_logging(message,
+                                                          sizeof(message));
+    const char* text = message[0] == '\0' ? "(missing)" : message;
+    LOGE("WLCGATE:ART:ABORT_MESSAGE:length=%{public}zu text=%{public}s",
+         fullLength, text);
+    std::fprintf(stderr, "ART ABORT: length=%zu text=%s\n", fullLength, text);
+    std::fflush(stderr);
+    abort();
+}
+
+westlake_android_runtime_provider.cpp:936-1010
+int WLAR_EnterAndroidAfterStockSpecialization(
+    const WlascAndroidChildRequestV1 *request,
+    const WlascStockStageReceiptV1 *stock) {
+    ProviderGateMarker("WLCGATE:PROVIDER:A02_ENTER");
+    uint32_t expected = PREPARE_READY_FOR_A02;
+    uint64_t precondition_cause = PROVIDER_A02_PRECONDITION_OK;
+    if (!RequestValid(request, stock)) {
+        precondition_cause = PROVIDER_A02_PRECONDITION_REQUEST;
+    } else if (gContext.runtime == nullptr) {
+        precondition_cause = PROVIDER_A02_PRECONDITION_RUNTIME;
+    } else if (gContext.runtime->getJNIEnv() == nullptr) {
+        precondition_cause = PROVIDER_A02_PRECONDITION_JNI;
+    } else if (std::memcmp(request, &gContext.request, sizeof(*request)) != 0) {
+        precondition_cause = PROVIDER_A02_PRECONDITION_REQUEST_DRIFT;
+    } else if (std::memcmp(stock, &gContext.stock, sizeof(*stock)) != 0) {
+        precondition_cause = PROVIDER_A02_PRECONDITION_STOCK_DRIFT;
+    } else if (!wlgr_v2_a02_bundle_valid(&gLedger.bundle)) {
+        precondition_cause = PROVIDER_A02_PRECONDITION_BUNDLE;
+    } else if (Tid(&gContext) !=
+               gLedger.bundle.receipts[
+                   WLGR_V2_A02_PREREQUISITE_COUNT - UINT32_C(1)]
+                   .child_thread_id) {
+        precondition_cause = PROVIDER_A02_PRECONDITION_THREAD;
+    } else if (!__atomic_compare_exchange_n(
+                   &gPrepareState, &expected, PREPARE_ENTERING_A02, false,
+                   __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+        precondition_cause = PROVIDER_A02_PRECONDITION_STATE;
+    }
+    ProviderGateMarkerValue(
+        "WLCGATE:PROVIDER:A02_PRECONDITION_CAUSE", precondition_cause);
+    if (precondition_cause != PROVIDER_A02_PRECONDITION_OK) {
+        ProviderGateMarker("WLCGATE:PROVIDER:A02_FAIL_PRECONDITION");
+        return WLGR_V2_ERROR_MISSING_PREREQUISITE;
+    }
+    const wlar_child_sequence::Operations ops{
+        &gContext, request->runtime_generation, CaptureAuditSnapshot,
+        CommitAuditSnapshot, Constructors, Vm, Jni, Revoke, Drain,
+        Invalidate, Tid, Now, Digest};
+    const int32_t handoff = wlar_child_sequence::CommitA02Handoff(
+        &gLedger, ops, &gA02Receipt);
+    ProviderGateMarkerValue(
+        "WLCGATE:PROVIDER:A02_HANDOFF_CAUSE",
+        handoff < 0 ? static_cast<uint64_t>(-static_cast<int64_t>(handoff)) :
+                      static_cast<uint64_t>(handoff));
+    uint64_t receipt_cause = PROVIDER_A02_RECEIPT_OK;
+    if (handoff == WLGR_V2_RESULT_OK) {
+        if (!wlgr_v2_receipt_valid(&gA02Receipt)) {
+            receipt_cause = PROVIDER_A02_RECEIPT_INVALID;
+        } else if (gA02Receipt.action_id != WLGR_V2_ACTION_FN02_A02) {
+            receipt_cause = PROVIDER_A02_RECEIPT_ACTION;
+        } else if (gA02Receipt.transition_id != WLGR_V2_TRANSITION_T12) {
+            receipt_cause = PROVIDER_A02_RECEIPT_TRANSITION;
+        } else if (gA02Receipt.owner != WLGR_V2_OWNER_ACTIVITY_THREAD) {
+            receipt_cause = PROVIDER_A02_RECEIPT_OWNER;
+        }
+    }
+    ProviderGateMarkerValue(
+        "WLCGATE:PROVIDER:A02_RECEIPT_CAUSE", receipt_cause);
+    if (handoff != WLGR_V2_RESULT_OK ||
+        receipt_cause != PROVIDER_A02_RECEIPT_OK) {
+        __atomic_store_n(&gPrepareState, PREPARE_FAILED, __ATOMIC_RELEASE);
+        return handoff == WLGR_V2_RESULT_OK ? WLGR_V2_ERROR_INTERNAL : handoff;
+    }
+    (void)HiLogPrint(
+        LOG_CORE, LOG_INFO, UINT32_C(0xD002C11), "APPSPAWN",
+        "WLCGATE:PROVIDER:CHILD_A02 pid=%{public}d "
+        "bundle=%{public}s process=%{public}s seq=%{public}llu",
+        static_cast<int>(getpid()), request->bundle_name,
+        request->process_name,
+        static_cast<unsigned long long>(gA02Receipt.sequence));
+    appspawnx::ChildMain::runAfterStockSpecialization(
+        gContext.message, gContext.runtime);
+    ProviderGateMarker("WLCGATE:PROVIDER:A02_CHILD_MAIN_RETURNED");
+    return WLGR_V2_ERROR_INTERNAL;
+}

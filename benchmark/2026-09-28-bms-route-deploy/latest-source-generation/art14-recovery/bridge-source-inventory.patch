@@ -1,0 +1,28 @@
+--- a/build/inner/compile_oh_adapter_bridge_arm64.sh
++++ b/build/inner/compile_oh_adapter_bridge_arm64.sh
+@@ -829,6 +829,7 @@
+         [ -f "$src" ] || continue
+         case "$(basename "$src")" in
+             *-untested-on-*.cpp) continue ;;  # reference-only variants, not build inputs
++            package_permission_state.cpp|ui_automation_broker.cpp) continue ;; # standalone executables with main(), not bridge JNI
+             # DisplayManager's JNI surface is version-neutral and evolves in
+             # the canonical adapter tree.  The OH61 source cohort carries an
+             # identical historical copy only because its window/session files
+@@ -868,6 +869,8 @@
+     SOURCES="$SOURCES $src"
+ done
+ SOURCES="$SOURCES $ADAPTER_ROOT/framework/native-compat/jni-attach-admission/src/jni_attach_admission.cpp"
++# Latest adapter_bridge.cpp registers the in-process self-account JNI.
++SOURCES="$SOURCES $ADAPTER_ROOT/framework/package-manager/jni/oh_self_account_registration.cpp $ADAPTER_ROOT/framework/package-manager/jni/oh_self_account_jni.cpp $ADAPTER_ROOT/framework/package-manager/jni/oh_account_self_core.cpp"
+ 
+ total=0
+ for _ in $SOURCES; do total=$((total + 1)); done
+@@ -937,7 +940,7 @@
+   -lmmi-client.z \
+   -lsurface.z -lcesfwk_innerkits.z -ldatashare_consumer.z \
+   -lappexecfwk_base.z -lappexecfwk_core.z -laccesstoken_sdk.z -ltokensetproc_shared.z \
+-  -lappkit_native.z \
++  -lappkit_native.z -los_account_innerkits.z \
+   -lnativehelper \
+   \
+   -lEGL \
