@@ -21,6 +21,7 @@
 #include "appspawn_service.h"
 #include "appspawn_utils.h"
 #include "securec.h"
+#include "oh_dlns_abi.h"
 #include "westlake_elf_identity.h"
 #include "westlake_stock_host_services.h"
 

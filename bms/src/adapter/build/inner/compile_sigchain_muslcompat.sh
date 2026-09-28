@@ -75,6 +75,7 @@ echo "[compile_sigchain_muslcompat] out      = $OUT_PATH"
     --target=aarch64-linux-ohos \
     --sysroot="$OHOS_SYSROOT" \
     -fPIC -shared -O2 -Wall -Wextra \
+    -nostdlib++ -Wl,--build-id=sha1 -Wl,-soname,"$OUT_NAME" \
     ${EXTRA_DEFS[@]+"${EXTRA_DEFS[@]}"} \
     -o "$OUT_PATH" \
     "$SRC"

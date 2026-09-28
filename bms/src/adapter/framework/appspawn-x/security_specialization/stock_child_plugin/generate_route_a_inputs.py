@@ -70,6 +70,9 @@ def main() -> int:
     target_external = (
         PLUGIN / "frozen/target_external/openharmony-6.1.0.31-d600")
     explicit = [
+        ROOT / "adapter/out/aosp_lib_arm64/libsigchain.so",
+        ROOT / "adapter/build/inner/compile_sigchain_muslcompat.sh",
+        ROOT / "adapter/aosp_patches/art/sigchainlib/sigchain_muslcompat.cc",
         PLUGIN / "SOURCE_CLOSURE.json",
         PLUGIN / "build_route_a_generation_direct.sh",
         PLUGIN / "build_route_a_generation_in_container.sh",

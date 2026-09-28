@@ -345,3 +345,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **B6 #33 native封闭清单(2026-09-28)**:只换route-a libsigchain ea7becd0→生产musl桥0084775a，会在ART前WLCGATE LOAD_ERROR:8/VALIDATED_COUNT:8/exit123；旧SHA编进child插件0976dee8(文件偏移0x8798)，build_target生成manifest并将插件SHA再钉入appspawn，必须用完整身份生成流程，不能照JAR单文件替换。已回滚；4个sigchain专属符号覆盖通过，sigaction活体绑定OH musl，见 sigchain-bridge/。
 
 - **B6 #34 整代构建输入门(2026-09-28)**:build_target 预检缺 `.work/product-tls-generation/frozen/toolchain/bin/clang-15`；指定 00.Workspace/suite 共18逻辑根未找到冻结工具链/sysroot及清单 frozen.sha256(0bcca016…)、tool_runtime.lock(3c53b9a1…)。历史 provider origin 可缺(冻结目的库校验通过即可)，不能误当硬依赖；完整缺件与搜索范围见 native-generation/，未部署。
+
+- **B6 #35 hw248 输入可整代重建但≠R155可替换(2026-09-28)**:生产桥须补SONAME/build-id并去无用libc++_shared依赖；v12冻结基线不改，新桥进生成清单且单独钉SHA。新代两次链接/ABI PASS，HelloWorld仍libartbase header映射失败退桌面，已整代回滚且HW/ZigZag截图恢复；新代libart be688≠R155 59e1，未证NPE，见 native-generation-hw248/。

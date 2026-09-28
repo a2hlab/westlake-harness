@@ -871,9 +871,12 @@ def main() -> int:
             final_provider_manifest["libartpalette-system.so"] ==
             digest(art_palette),
             "rebuilt same-generation provider identity mismatch")
+    musl_bridge = PLUGIN_ROOT.parents[3] / "out/aosp_lib_arm64/libsigchain.so"
+    require(final_provider_manifest["libsigchain.so"] == digest(musl_bridge),
+            "rebuilt musl sigchain identity mismatch")
     for name in set(base_manifest) - {
         "libbionic_compat.so", "libapp_native_loader.so",
-        "libartpalette-system.so", "libnativeloader.so",
+        "libartpalette-system.so", "libnativeloader.so", "libsigchain.so",
     }:
         require(final_provider_manifest[name] == base_manifest[name],
                 f"unchanged base provider byte drift: {name}")
@@ -1068,7 +1071,7 @@ def main() -> int:
         "frozen_provider_copied_non_compat_count": len(frozen_provider_files),
         "final_provider_set_manifest_sha256": digest(provider_set_manifest),
         "final_provider_set_count": len(final_provider_manifest),
-        "unchanged_v12_provider_count": len(base_manifest) - 4,
+        "unchanged_v12_provider_count": len(base_manifest) - 5,
         "rebuilt_provider_members": [
             "libapp_native_loader.so",
             "libartpalette-system.so",

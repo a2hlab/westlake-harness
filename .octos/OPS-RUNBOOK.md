@@ -87,3 +87,5 @@
 - B5 JAR 最小覆盖（2026-09-28）：先锁板并核 baseline SHA；保留原 JAR，只 bind-mount 新 JAR，分别核 shell 与 AppSpawnX /proc/PID/root 中 SHA，子进程新增日志证活。回滚仅卸最上层该 JAR mount 并核 baseline SHA；须核 boot/PID，不能跨重启照抄 PID。5ea B5 临时覆盖 SHA250958dc… 留存，负控包已卸载；具体路径、回滚与原始证据见 `benchmark/2026-09-28-bms-route-deploy/alias-entry/README.md`。
 
 - **BMS route-a 与旧Westlake dex2oat要分开(2026-09-28 B6)**:5ea当前BMS child实际boot-framework.oat/libart是230(不是旧Westlake247)；先取`/proc/<child>/root` SHA与oat magic再选工具。hanbin `out/host-tools/dex2oat64` SHA7382bb5a可产230，Rosetta仍需libmap32bit预载；同版全27段重编已实测回退，原boot声明9 components也不能作7段前缀重编扩展。失败产物不得激活，回滚/证据见B6 attach-theme报告。
+
+- **B6 整代切换补充(2026-09-28 #35)**：stop/start appspawn-x 后核 AppSpawnX socket=`660:0:6005:u:object_r:appspawn_socket:s0`(同已验复现器)，否则AMS EACCES；thread-guard registry须同时核 `/system/lib64/` 与 `/system/android/lib64/` 的实际映射inode，漏后者会external-root校验失败(exit203)。Mac非大小写敏感卷会合并OH sysroot netfilter大小写头文件，rsync成功≠字节无损；记录16项偏差，后续使用这些头文件应在大小写敏感存储拷贝。

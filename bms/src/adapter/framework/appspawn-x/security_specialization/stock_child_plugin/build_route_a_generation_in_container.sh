@@ -87,6 +87,7 @@ do
 done
 
 for input in \
+    "$ROOT/adapter/out/aosp_lib_arm64/libsigchain.so" \
     "$CXX" \
     "$TOOLCHAIN/bin/ld.lld" \
     "$READELF" \
@@ -635,6 +636,8 @@ sha256sum \
 rm -rf "$OUT/providers"
 mkdir -p "$OUT/providers"
 cp "$V12"/*.so "$OUT/providers/"
+# B6: seal the rebuilt musl bridge without mutating the certified v12 base.
+cp "$ROOT/adapter/out/aosp_lib_arm64/libsigchain.so" "$OUT/providers/"
 cp "$OUT/libnativeloader.so" "$OUT/providers/"
 cp "$OUT/libshared_libz.z.so" "$OUT/providers/"
 cp "$OUT/libbionic_compat.so" "$OUT/providers/"
@@ -791,6 +794,7 @@ ACTUAL_PLUGIN_BUILD_ID=$(
 
 HOST_INCLUDES=(
     -I"$PLUGIN/include"
+    -I"$APP_LOADER/include"
     -I"$OH/base/startup/appspawn/common"
     -I"$OH/base/startup/appspawn/standard"
     -I"$OH/base/startup/appspawn/modules/common"
