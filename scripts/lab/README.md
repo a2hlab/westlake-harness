@@ -30,6 +30,9 @@ in `.octos/OPS-RUNBOOK.md`).
 | `dockbuild.sh {image,run,cc,check}` + `docker/Dockerfile` | Build in OrbStack amd64 docker containers instead of the VM shell: the VM filesystem is bind-mounted in place via `/mnt/machines/a2hlab` (incl. the author path), so the build scripts run unchanged; outputs are byte-identical to the VM's and several containers can build in parallel. Board work stays in the VM. |
 | `map32bit_shim.c` | `LD_PRELOAD` shim that makes host dex2oat work under Rosetta (which ignores `MAP_32BIT`). |
 | `static_pipeline.py`, `*static100*.py` | Hash-validated static scan → gap map, no device. |
+| `board_status.py <board> [--lane L] [--open] [--id N]` / `--schedule [--text]` / `--watch` | Read-only views of a Markdown OLP campaign board. `--schedule`: each lane's entry, state and minutes since its last PROGRESS, tasks from the specs' `depends:` (which are dispatchable), device ownership, live locks, free devices, anomalies. `--watch` exits with events (ACK, newly dispatchable task, stale lane, lock anomaly) for the outer loop's sentinel. |
+| `board_note.sh {progress,lock,unlock,held}` | Line-start notes on the board with timestamps: `PROGRESS(N): <time> <lane> …`, `LOCK(<serial>) <lane> …` / `UNLOCK(…)`. `lock` holds `~/.octos/board-locks/<serial>.lock` with `flock -n` in a detached holder (exit 75 if another lane has it); `unlock` refuses another lane's lock. |
+| `board_dash.sh [board] [--loop S] [--tail N]` | Dashboard: `--schedule --text` plus the newest board lines; `--loop 30` for a live herdr pane. |
 | `board_acks.py`, `watch_inner_negative.sh`, `watch_pane_idle.sh` | Outer-loop board and inner-loop watchers. |
 | `zig_prefetch_build.sh` | Build herdr when Zig's HTTP client fails through the proxy. |
 | `env-mac.sh`, `mise.toml`, `toolshim/` | macOS host environment: `cc`, `readelf`, `sha256sum` shims and the pinned JDK. |
