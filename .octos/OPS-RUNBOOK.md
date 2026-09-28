@@ -56,6 +56,10 @@
 - #27 全修复集成构建:westlake 工作树 `~/a2hlab/ws/westlake-all0925` 的 `tests/integrate-all-0925/`(不在本仓库),产物 `~/a2hlab/ws/out-all0925`,空目录重建约 8 分钟且确定性。**WebView 打包坑**:`package_webview_gpu_candidate.py` 只从 shim 构建取 plat_support,`libandroid.so`/`libwebview_bionic_shim.so` 来自基础载荷 → shim 修复不覆盖就进不了候选包,打包后用 verify.sh 核哈希。
 - 从目录名不同的工作树构建会改变 libart 等的字节(路径串躲过了 `-ffile-prefix-map`),功能无差异。
 - WebView 输入不用编 Chromium:引擎 = AOSP android-13.0.0_r80 预编译 arm64 + 11 处 `.dynstr` 导入改名(逐字节可复现);APK = 该预编译 + westlake smali 类作 classes2.dex,本地签名;4 个边界库来自 `westlake-inputs/tools/scratch/build_webview_shims.sh`(scratch 未镜像)。载荷在 `out/webview-input-source`。集成候选包预期哈希:libandroid 76512d97…、bionic shim 4b19a817…、plat_support aef81ea2…。
+- **小 native shim 不一定进 VM**(2026-09-28 实测,GLESv1_CM stub 同源同参数三处编译):
+  - Mac 本机:DevEco 自带 OH clang `…/sdk/default/openharmony/native/llvm/bin/clang --target=aarch64-linux-ohos --sysroot=…/native/sysroot`,导出集合与 VM 产物一致,但**字节不同**(DevEco 编译器提交 `99548401`,VM 锁定的是 `feef13a3`,差在 `.comment`)→ 适合快速迭代,不适合要对上记录哈希的交付物。zsh 下参数串要 `${=FLAGS}`,否则 `-shared` 丢失、报 `undefined symbol: main`。
+  - OrbStack docker(`--platform linux/amd64`,如现有镜像 `oh7-native-closure`)+ 把 VM 的 `~/a2hlab/ws/toolchains/ohos-sdk/native/{llvm,sysroot}`(2.3 GB,`orb … tar | docker run -i … tar -x` 约 9 s)拷进 volume → **逐字节复现** `a1ae3950…b37bf`。VM 里的 `clang` 是 `exec ccache <绝对路径>/clang-15` 的包装脚本,容器里直接调 `clang-15`。
+  - 所以 VM 不是能力上必需,而是 346 GB 的工作区状态(verify 树、out-*、锁定工具链)都在那里;大件(libart、boot image、全量重建)仍在 VM 或 hw248 上做。
 - 重建时 framework flags 除 java-profile 的 3 个外还需 8 个 APEX flag 库;native object map 在 `$A/native-object-map.json`。就绪检查:`planned_staging.py` + harness `deploy-check`。
 
 ## 6. OctoLoop 现场

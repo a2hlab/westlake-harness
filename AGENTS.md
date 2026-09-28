@@ -7,7 +7,8 @@
 
 ## 怎么积累
 - 发现写成 `benchmark/<YYYY-MM-DD>-<主题>/`:`README.md`(英文、证据先行、给数字、先写原来错在哪、这次立下什么规则)+ `results.json` + 小的证据文件;再在根 `README.md` 的 Layout 表加一行加粗。
-- 不建 `.spec` 契约,不写 `knowledge/context/evolution/` 记录(那是别的仓库的约定)。
+- 多步任务用 agent-spec 契约规划:`specs/<主题>/` 下放 `project.spec.md`(共享约束)+ `t<N>-<名>.spec.md`(用 `depends:` 连依赖)。交给 agent 前 `agent-spec lint specs/<主题>/t*.spec.md --min-score 0.7` 必须过(project spec 没有场景,不进这道门)。agent-spec 的测试层只会跑 `cargo test`,所以 `测试:` 选择器指向 `tools/spec-checks/` 里的 Rust 测试,由它转调真正的检查器(Python unittest / 脚本 / 板上 probe);要读截图才能判的场景标 `审核: human`,测试通过也只到 pendingreview。
+- 不写 `knowledge/context/evolution/` 记录(那是别的仓库的约定)。
 - `*.png/*.jpeg/*.jar/*.stderr` 默认被 `.gitignore` 忽略;README 引用到的证据截图用 `git add -f`,大二进制和 stderr 日志不入库。
 - **仓库是公开的**(github.com/A2OH/westlake-harness):不提交密码、服务器账号、个人数据。
 
@@ -23,6 +24,7 @@
 - 板子写操作前先做只读检查。
 - 用户说「保持」「别动」时,对那块板**零改动**,直到用户说「拉起」;心跳只做只读巡检。
 - **不要在唯一能用的演示板上做实验**(重启测自启、删运行时目录、换配置)。用空闲板,或先问。
+- 2026-09-28 起三块 OH 板(5ea34a45 / 5cd1e3dd / 61b06572)全部放开为实验板,当前没有演示板;以后用户再指定演示板,以用户当时的话为准。多板并行时每块板同一时刻只跑一个上板任务,只对白名单序列号下命令。安卓参考机允许安装测试 app 做对照(头条和用户数据仍不动)。
 
 ## 做事方式
 - 可行性有疑问时,别写设计文档或"N 人日"估算来回推,**立刻做最小的关键实验**:写清关键点、通过/失败判据、失败后的退路,结果说了算。agent 一小时就能写完"几人日"的代码。
