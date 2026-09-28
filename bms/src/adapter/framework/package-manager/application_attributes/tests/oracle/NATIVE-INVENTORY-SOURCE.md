@@ -1,0 +1,12 @@
+# Native inventory source contract
+
+- Android source: [NativeLibraryHelper.cpp, android-16.0.0_r4](https://android.googlesource.com/platform/frameworks/base/+/android-16.0.0_r4/core/jni/com_android_internal_content_NativeLibraryHelper.cpp).
+  Decoded file SHA-256 `e20eaaf8c9befaae688e78f9bc90fbeee387d6db8a53b1d22e61e3fd4b8d5ccf`. Lines 488–550 distinguish no native entries from no supported ABI and use caller-provided ABI ordering. Lines 306–340 check STORE and APK data-offset alignment; 16 KiB compatibility fallback is a later resource policy decision, not an inventory fact.
+- [Linux memfd_create](https://man7.org/linux/man-pages/man2/memfd_create.2.html) and [F_GET_SEALS / F_ADD_SEALS](https://man7.org/linux/man-pages/man2/F_GET_SEALS.2const.html): production requires WRITE/GROW/SHRINK/SEAL, takes its own descriptor reference and reads stable bytes. Existing writable mappings cannot coexist with F_SEAL_WRITE. Caller descriptor offset and lifetime are preserved.
+- ZIP metadata uses classic minizip from the hash-pinned zlib 1.3.1 source in CMake. Native names and actual ELF architecture use T-05/T-04 production functions; original GNU ELF fixture source, rebuild recipe and hashes are in ../fixtures/elf/SOURCE.md.
+
+The test ZIP writer creates stored/raw-DEFLATE entries, explicit local extra-field padding, CRC and central records. Tests change bytes only to express malformed input; they do not duplicate the inventory decision. Linux kernel seals, same-FD mmap, ZIP parsing, zlib decompression and ELF analysis are real. See ../linux/README.md for a portable host execution entry.
+
+Inventory preserves all native observations. Recognized ELF ABIs absent from the runtime profile remain unmatched facts; unknown ABI directories remain unmatched observations without fabricated ELF analysis. ABI order and multiArch/prefer32bit/override selection are reserved for the install resource policy. Compression and actual offset are recorded separately from the direct-load fact, so policy can apply extractNativeLibs and 16 KiB compatibility without losing inputs. No extraction, loader execution or installation occurs here.
+
+The verified session/signature owner must supply the borrowed sealed FD, exact size and digest. This function independently checks those byte bindings; it does not replace signature or manifest verification. Original ABI/extraction CTS and actual loader evidence remain external gates, not local test claims.
