@@ -40,6 +40,10 @@ case "$cmd" in
   lock)
     [ $# -ge 3 ] || { echo "usage: board_note.sh lock <board> <serial> <lane> [why...]" >&2; exit 2; }
     board=$1 serial=$2 lane=$3; shift 3
+    # An OH connect-key is 32 hex digits; a truncated one locks a board that does not exist (seen 2026-09-28).
+    if [[ "$serial" =~ ^[0-9a-f]+$ ]] && [ ${#serial} -ne 32 ]; then
+      echo "REFUSE: '$serial' is ${#serial} hex digits; an OH connect-key has 32" >&2; exit 2
+    fi
     if h=$(holder "$serial"); then
       set -- $h; [ "$1" = "$lane" ] && { echo "already held by $lane (pid $2)"; exit 0; }
       echo "BUSY: $serial held by $1 (pid $2 since $3)" >&2; exit 75
