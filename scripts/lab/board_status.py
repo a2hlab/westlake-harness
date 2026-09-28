@@ -149,10 +149,13 @@ def schedule(board, stale_min=30, spec_dir=None, now=None):
     entries, locks = parse(board)
     byid = {e["id"]: e for e in entries}
     repo = pathlib.Path(board).resolve().parents[2]
-    if spec_dir is None:
-        specs = {e["spec"] for e in entries if e["spec"]}
-        spec_dir = repo / pathlib.Path(sorted(specs)[0]).parent if specs else None
-    tasks, pool = read_specs(pathlib.Path(spec_dir)) if spec_dir else ({}, [])
+    # every spec family an entry points at (a campaign can pivot to a new family mid-way)
+    dirs = [pathlib.Path(spec_dir)] if spec_dir else sorted({repo / pathlib.Path(e["spec"]).parent
+                                                              for e in entries if e["spec"]})
+    tasks, pool = {}, []
+    for d in dirs:
+        t, pl = read_specs(d)
+        tasks.update(t); pool += [x for x in pl if x not in pool]
 
     # an attached entry reports under its parent; a superseded entry is history
     def root(e):
