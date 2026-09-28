@@ -78,3 +78,4 @@
 
 - BMS 复现器克隆迁移（2026-09-28）：四游戏 suite 无 `check`，用单 app `check`；HelloWorld `restore` 会重启，完成后再次核对板时钟。61b 使用 `date -s @<Mac epoch>` 同步并回读差值（本次 -1s）；`current` 绝对路径与 wrapper driver SHA 的变更须记录为迁移，证据见 `benchmark/2026-09-28-bms-route-deploy/`。
 - `reproduce-zigzag-apk quick` 多板并发须错开≥2秒启动（上游运行目录只含秒级时间，不含 serial）；完成后同时核对 wrapper receipt 的 board 和底层 envstamp 的 board，不能只看三个 PASS。
+- BMS批量恢复：原attempt留存，新的run-id只跑未完成key；已首装成功但截图缺失的key走 `batch/capture_existing.py`，先核对 prior record + 当前 `.../android/base.apk` SHA 再精确点BMS主入口。`mac held`/`hdc list targets` 曾rc0但stdout为空，守卫应停；只读重新确认锁、目标、boot不变后才能新run-id续跑。

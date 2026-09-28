@@ -328,3 +328,4 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 
 - 2026-09-28 BMS 复现器迁移：`reproduce-oh61-game-suite` 没有 `check`（单 app 才有）；APFS 克隆会保留 ZigZag `current` 的旧绝对路径，改底层 serial 白名单也会触发 wrapper 固定 DRIVER_SHA，须显式记录迁移，不能把输入门禁失败归为板端失败；HelloWorld restore 三板首帧/触摸变红已证，见 `benchmark/2026-09-28-bms-route-deploy/`。
 - 2026-09-28 ZigZag wrapper 的 `create_run_dir` 仅 `UTC秒-模式`，三板同秒并发会共用 driver.log/receipt 并串写（61b 汇总曾指向5cd）；逻辑不改时错开≥2秒启动，保持并发，逐个核对 receipt board 与 envstamp.board。
+- 2026-09-28 BMS 批量实测：桌面入口取 `bm dump.hapModuleInfos[entryModuleName].mainAbility`，不能套旧 direct-launch Activity（Wikipedia DefaultIcon / Termux HomeActivity）；Java Activity 可含 `$`（NfcAPI$NfcActivity）；首装后同包再次 `bm install -p` 曾返回9568260，补采须记录首装来源并读回已装base.apk哈希，不能把重装失败改成成功。
