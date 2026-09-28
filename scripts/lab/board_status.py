@@ -58,6 +58,9 @@ def parse(path):
             a = re.search(r"与 #(\d+) 同时执行", title)
             if a:
                 cur["attached_to"] = a.group(1)
+            for sup in re.findall(r"改判\((?:作废|停止|暂停) #(\d+)[^)]*\)", title):
+                if sup not in cur["supersedes"]:
+                    cur["supersedes"].append(sup)
             continue
         if re.match(r"^#{1,6}\s", line):
             cur = None  # an unnumbered heading (####/## section) ends the entry
