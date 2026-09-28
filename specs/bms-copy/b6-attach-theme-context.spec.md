@@ -15,7 +15,9 @@ B5 之后 Wikipedia 的 child 已实例化 `org.wikipedia.main.MainActivity`,但
 - 先定位再修:把 `Activity.attach+112` 到 `getTheme` 之间的解释帧还原成具体 Java 方法(app 自己的 `attachBaseContext`、AppCompat delegate,或适配层代码),证据是日志行或 baksmali 出的 smali 片段,写进 `results.json.caller`
 - 真机对照:同一个 Wikipedia APK 装到安卓参考机 `N100CU025C18D000128` 上从桌面启动,截图证明 APK 本身能用
 - 顺带判定并记录:本运行时里编译代码的空指针解引用是抛 `NullPointerException` 还是直接 SIGSEGV(ART 隐式空检查的故障处理是否生效),写进 `results.json.null_check_mode` 并附证据;这决定 app 自己 catch 的 NPE 会不会变成崩溃
-- 修复落点在改动最少处:适配层运行时 JAR,或 `aosp_patches/` 里的 framework 补丁;部署沿用 B5 的覆盖方式并带回滚,板上实际加载的产物 SHA 写进 `results.json`
+- 根因(#31 实证):OH musl 先派发 special 信号处理器,DFX 占 special 槽先收 SIGSEGV,ART 的 libsigchain 只登记为 user handler、晚 670 ms 才收到,隐式空检查转不成 NPE。修复照搬现成的 musl 桥:用 `bms/src/adapter/build/inner/compile_sigchain_muslcompat.sh` 把 `aosp_patches/art/sigchainlib/sigchain_muslcompat.cc` 编成 aarch64 `libsigchain.so`,替换 route-a 的 `libsigchain.so`(现为 ea7becd0,无 `add_special_signal_handler` 导入)。不重建 boot image,不改 framework
+- 替换前核对:新库导出覆盖 route-a `libart.so` 从 `libsigchain.so` 导入的全部符号,缺一个就不部署
+- 部署沿用 B5 的覆盖方式并带回滚;appspawn-x 若在父进程预载 ART,覆盖后要重启它才生效。板上实际加载的产物 SHA 写进 `results.json`
 
 ## 边界
 
@@ -72,6 +74,13 @@ B5 之后 Wikipedia 的 child 已实例化 `org.wikipedia.main.MainActivity`,但
   假设 已取得本运行时一次编译代码空指针解引用的现场
   当 查看 `results.json.null_check_mode`
   那么 值为 `npe` 或 `sigsegv` 之一并附 faultlog 或 hilog 原文
+  并且 替换 libsigchain 后重新取证,修复生效时该值为 `npe`
+
+场景: 新 libsigchain 缺符号时不部署
+  测试: b6_sigchain_exports_cover_libart_imports
+  假设 新编的 `libsigchain.so` 少导出 route-a `libart.so` 需要的某个符号
+  当 执行部署前核对
+  那么 部署中止,`results.json` 列出缺失符号,板上仍是原库
 
 ## 排除范围
 
