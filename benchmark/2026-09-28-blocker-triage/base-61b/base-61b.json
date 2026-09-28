@@ -1,0 +1,73 @@
+{
+ "task": "app-lighting board entry #9 (oc-t0): 61b base preparation for blocker-triage resweep",
+ "serial": "61b0657200000000000000000324012c",
+ "date": "2026-09-28",
+ "step1_disabled_services": {
+  "autostart_cfg": {
+   "path": "/system/etc/init/wl_toutiao.cfg",
+   "action": "renamed to wl_toutiao.cfg.disabled on /system (remount rw -> mv -> remount ro, verified)",
+   "original": "evidence/wl_toutiao.cfg.orig",
+   "content": "starts wl_toutiao_boot service -> /data/local/tmp/operator45/boot_toutiao.sh (once, su:s0)"
+  },
+  "boot_toutiao_sh": {
+   "path": "/data/local/tmp/operator45/boot_toutiao.sh",
+   "action": "line 2 early-exit guard inserted ([ -f boot.disabled ] && exit 0) + /data/local/tmp/operator45/boot.disabled touched",
+   "original": "evidence/boot_toutiao.sh.orig"
+  },
+  "onscreen_keeper_sh": {
+   "path": "/data/local/tmp/operator45/onscreen_keeper.sh",
+   "action": "pid 3226 killed; keeper.stop touched (script honors stop-file)",
+   "original": "evidence/onscreen_keeper.sh.orig"
+  },
+  "open_broker_sh": {
+   "path": "/data/local/tmp/persist-demo/open_broker.sh",
+   "action": "renamed to open_broker.sh.disabled (was not running; persist-demo dir retained)",
+   "original": "evidence/open_broker.sh.orig"
+  },
+  "selfheal_watchdog": {
+   "path": "/data/local/tmp/operator45/selfheal48/watchdog.sh",
+   "action": "already dead before this task (stop file present, no process); stop file left in place",
+   "note": "was launched only by boot_toutiao.sh; autostart cfg disabled above covers it"
+  },
+  "residual_check": "ps -ef after all actions: no keeper/watchdog/boot_toutiao/open_broker processes remain (kernel watchdogd/watchdog_feeder and watchdog_service are unrelated OH system processes)"
+ },
+ "step2_framework_compare": {
+  "method": "VM device-report.json 'files' maps (path->sha256), fresh comparison 2026-09-28, details in evidence/fw-compare.json",
+  "5ea_framework-2_report": "/home/zhaoyue/a2hlab/board/5ea34a4500000000000000001123012c/framework-2/device-report.json (stage: a2hlab-framework-cab462ff...)",
+  "61b_framework-1_report": "/home/zhaoyue/a2hlab/board/61b0657200000000000000000324012c/framework-1/device-report.json (stage: a2hlab-framework-b806febc...)",
+  "counts": {
+   "5ea_fw2": 306,
+   "61b_fw1": 306
+  },
+  "only_5ea": [],
+  "only_61b": [],
+  "hash_diffs": 0,
+  "files_map_sha256_this_method": "a6ad59398a74231a...",
+  "outer_loop_prior_digest": "b071cd7a... (different normalization, same conclusion: identical)",
+  "verdict": "IDENTICAL",
+  "both_passed": true,
+  "consequence": "61b needs NO restage: its framework-1 content equals 5ea framework-2; cx-t0 can use the 61b framework-1 report as-is for the resweep base"
+ },
+ "step3_deploy_inventory": {
+  "framework_dir": "/data/local/tmp/a2hlab-framework-b806febc554648dd9528c3025cbd6794 (66 entries, top-level sha256 list: evidence/framework-files.sha256)",
+  "framework_dirs_on_board": "21 a2hlab-framework-* dirs total (historical experiment dirs retained)",
+  "host_hap": "/data/app/el1/bundle/public/org.westlake.imehost/entry.hap sha256 df3856387ba69712... (evidence/entry-hap.sha256)",
+  "host_bundle_extra": "arkwebcore/, misc/ beside entry.hap; app data at /data/app/el2/100/base/org.westlake.imehost/{cache,files,haps,preferences}",
+  "installed_westlake_bundles": "org.westlake.imehost + org.westlake.la0..la11 (12 demo icons; #9 did not ask to remove them)",
+  "boot_image": "not directly readable from shell (bootimage partitions not exposed via sha256sum path); framework stage + report hashes above are the content evidence",
+  "df_data": "/data 232G total, 55G used, 177G avail, 24% use (evidence/df-data.txt)"
+ },
+ "step4_preserved": {
+  "c91d26bf_dirs": [
+   "/data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d (present)",
+   "runtime a2hlab-source-c91d26bf... under org.westlake.imehost files (referenced by watchdog.sh; bundle data intact)"
+  ]
+ },
+ "step5_lit_control": "NOT run per entry #9 (cx-t0 will run it with the fixed collection script)",
+ "r2_honesty": {
+  "autostart_disable": "verified (ps shows no processes; cfg renamed; boot guard in place; keeper stop-file)",
+  "framework_identical": "verified (fresh 306/306 zero-diff comparison of both device-reports)",
+  "reboot_persistence_of_disable": "partially (guard verified in-file, but no reboot test performed - boards are experiment boards and a reboot test would disturb other state)",
+  "boot_image_hash": "unverified (not exposed via shell path)"
+ }
+}

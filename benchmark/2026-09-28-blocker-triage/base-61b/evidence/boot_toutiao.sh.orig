@@ -1,0 +1,21 @@
+#!/system/bin/sh
+exec >/data/local/tmp/operator45/boot_toutiao.log 2>&1
+echo "[boot_toutiao] start $(date) uptime=$(cut -d. -f1 /proc/uptime)"
+D=/data/local/tmp/operator45; F=$D/selfheal48; HOST=org.westlake.imehost
+sleep 35
+# 1) ensure host window up (retry aa start until pidof)
+n=0; while [ $n -lt 40 ]; do
+  pidof $HOST >/dev/null 2>&1 && { echo "[boot_toutiao] host up at try $n"; break; }
+  aa start -b $HOST -a EntryAbility >/dev/null 2>&1
+  sleep 2; n=$((n+1))
+done
+sleep 5
+# 2) screen on + unlock
+echo 1048576 > /proc/sys/vm/max_map_count 2>/dev/null
+power-shell timeout -o 86400000 >/dev/null 2>&1
+power-shell wakeup >/dev/null 2>&1
+# 3) launch selfheal watchdog + on-screen keeper (watchdog feeds Toutiao into the host window)
+rm -f $F/stop $D/stop $D/fresh48/stop $D/keeper.stop $D/keeper.pid 2>/dev/null; rm -rf $F/lock 2>/dev/null
+nohup /system/bin/sh $F/watchdog.sh >$D/watchdog-boot.log 2>&1 </dev/null &
+KDIR=$D INTERVAL=5 nohup /system/bin/sh $D/onscreen_keeper.sh >$D/keeper.out 2>&1 </dev/null &
+echo "[boot_toutiao] watchdog+keeper launched at uptime=$(cut -d. -f1 /proc/uptime) host=$(pidof $HOST|wc -w)"
