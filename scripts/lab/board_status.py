@@ -34,6 +34,11 @@ LOCKLINE = re.compile(r"^(LOCK|UNLOCK)\(([^)]+)\)\s+(\S+)\s+(\S+)\s*(.*)$")
 TS = "%Y-%m-%dT%H:%M:%S%z"
 
 
+
+def superseded_ids(text):
+    """Entry numbers named in 改判(作废 #N) / 改判(作废 #N、#M) / 改判(停止|暂停 #N …)."""
+    return [n for grp in re.findall(r"改判\(((?:作废|停止|暂停) #[^)]*)\)", text) for n in re.findall(r"#(\d+)", grp)]
+
 def when(s):
     try:
         return dt.datetime.strptime(s, TS)
@@ -58,6 +63,9 @@ def parse(path):
             a = re.search(r"与 #(\d+) 同时执行", title)
             if a:
                 cur["attached_to"] = a.group(1)
+            for sup in superseded_ids(title):
+                if sup not in cur["supersedes"]:
+                    cur["supersedes"].append(sup)
             continue
         if re.match(r"^#{1,6}\s", line):
             cur = None  # an unnumbered heading (####/## section) ends the entry
@@ -76,7 +84,7 @@ def parse(path):
         if cur["spec"] is None:
             s = re.search(r"specs/[\w./-]+\.spec\.md", line)
             cur["spec"] = s.group(0) if s else None
-        for s in re.findall(r"改判\((?:作废|停止|暂停) #(\d+)[^)]*\)", line):
+        for s in superseded_ids(line):
             if s not in cur["supersedes"]:
                 cur["supersedes"].append(s)
         a = re.search(r"与 #(\d+) 同时执行", line)
@@ -149,10 +157,13 @@ def schedule(board, stale_min=30, spec_dir=None, now=None):
     entries, locks = parse(board)
     byid = {e["id"]: e for e in entries}
     repo = pathlib.Path(board).resolve().parents[2]
-    if spec_dir is None:
-        specs = {e["spec"] for e in entries if e["spec"]}
-        spec_dir = repo / pathlib.Path(sorted(specs)[0]).parent if specs else None
-    tasks, pool = read_specs(pathlib.Path(spec_dir)) if spec_dir else ({}, [])
+    # every spec family an entry points at (a campaign can pivot to a new family mid-way)
+    dirs = [pathlib.Path(spec_dir)] if spec_dir else sorted({repo / pathlib.Path(e["spec"]).parent
+                                                              for e in entries if e["spec"]})
+    tasks, pool = {}, []
+    for d in dirs:
+        t, pl = read_specs(d)
+        tasks.update(t); pool += [x for x in pl if x not in pool]
 
     # an attached entry reports under its parent; a superseded entry is history
     def root(e):
@@ -202,8 +213,10 @@ def schedule(board, stale_min=30, spec_dir=None, now=None):
     owned = {}
     for e in entries:  # attached entries can hand a lane extra boards (e.g. a board transfer)
         # a transfer lasts as long as the entry it is attached to, even if the attached entry was ACKed itself
-        st = byid[e["attached_to"]]["state"] if e["attached_to"] in byid else e["state"]
-        if e.get("superseded_by") or not e["lane"] or st not in ("open", "blocked"):
+        parent = byid.get(e["attached_to"])
+        st = parent["state"] if parent else e["state"]
+        if (e.get("superseded_by") or (parent and parent.get("superseded_by")) or not e["lane"]
+                or st not in ("open", "blocked")):
             continue
         for b in e["boards"]:
             if e["lane"] not in owned.setdefault(b, []):
@@ -308,9 +321,13 @@ def main(argv):
             cur = schedule(board, stale, spec_dir)
             ev = events(base, cur)
             # a lane that never wrote PROGRESS is stale in the baseline too; time it from the watch start
+            # ...unless its task still waits on an unfinished dependency (e.g. B3 queued behind B2 in one lane)
+            waiting = {t["task"] for t in cur["tasks"] if not t["deps_done"]}
             if (time.time() - started) / 60 > stale:
                 for l in cur["lanes"]:
                     for e in l["entries"]:
+                        if e["task"] in waiting:
+                            continue
                         if e["last_progress"] is None and e["id"] not in silent_reported:
                             silent_reported.add(e["id"])
                             ev.append(f"lane {l['lane']} entry #{e['id']} silent: no PROGRESS since the watch "
