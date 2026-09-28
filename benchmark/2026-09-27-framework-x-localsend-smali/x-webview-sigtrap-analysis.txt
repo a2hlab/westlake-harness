@@ -1,0 +1,27 @@
+X/Twitter WebView SIGTRAP on 5ea34a45 (2026-09-27) — NEW class, NOT #46-1/#46-2, parked
+
+After the telephony fix (X passes the ITelephonyRegistry NPE), X reaches WebView/Chromium bring-up and
+crashes: Fatal signal 5 (SIGTRAP, TRAP_BRKPT). Crash site (DETERMINISTIC across runs):
+  pc  = libwebviewchromium.so + 0x170531c   (= brk #0)
+  x30 = libwebviewchromium.so + 0x17052f0
+  x0=0 x2=0 x3=-1
+
+Disasm of the crash site (libwebviewchromium.so, source-built webview-input-source):
+  17052f0: adrp x8, 0x5c09000
+  17052f4: ldrb w8, [x8, #1584]         ; load global byte flag @ 0x5c0961c
+  17052f8: cbz  w8, 0x170531c           ; if flag==0 -> crash
+  170531c: brk  #0                       ; SIGTRAP (Chromium IMMEDIATE_CRASH/CHECK)
+Enclosing JNI method: Java_J_N_MS2qn6y8 (+0x7ee54) — obfuscated Chromium JNI export.
+
+=> A Chromium CHECK(global_flag) where the global byte at 0x5c0961c is 0 for X. The SAME libwebviewchromium
+   works for Toutiao (its WebView reaches articles), so the flag is SET during Toutiao's WebView init but NOT
+   for X — some init step/feature X's WebView path skips or triggers this check earlier.
+
+NOT #46-1 (GLES order): swapping X's webview shim ae6ac828 -> the fixed delivery shim 85c789f4 (which HAS the
+  #46-1 GLES-order fix) did NOT change the crash (identical offset). Shim 85c789f4 DID help earlier WebView
+  provider init (X now reaches [B47-SLA] MainActivity scheduleTransaction OK before the SIGTRAP).
+NOT #46-2 (MediaCodec): crash is in libwebviewchromium, not libmediandk; register_MediaCodec_shim rc=0 ran.
+
+Next (deep, parked): symbolize libwebviewchromium+0x170531c (needs Chromium symbols/RE) to name the CHECK;
+  or diff X vs Toutiao WebView init to find which step sets the 0x5c0961c flag (GPU/sandbox/process-model?).
+  Possibly needs a westlake WebView-init change or a Chromium flag. Deeper than the #46 shim/bridge fixes.

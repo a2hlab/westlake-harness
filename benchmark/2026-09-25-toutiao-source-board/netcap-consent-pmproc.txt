@@ -1,0 +1,36 @@
+Toutiao across the consent tap, board 5ea34a45, build = pmproc (#8 touch + #11 identity + PM processName; no #10 WebView fix).
+wl-netcap (probes/network-capture, sha256 a262a18e…) on wlan0 for 45 s, started 4 s before the consent tap.
+Child 32509: consent tapped at t=0, alive at +10 s, dead at +15 s; cppcrash SIGTRAP at libwebviewchromium.so
+report pc 0x370731c = file 0x170531c, the #10 IMMEDIATE_CRASH on CrBrowserMain (same pc in child 23821, an earlier run the same day).
+
+read.py output:
+packets=211  dns-queries=8  tls-hellos=3
+
+DNS names asked for:
+     2  connectivitycheck.cbg-app.huawei.com
+     2  connectivitycheck.platform.hicloud.com
+     2  bdsp.x.jd.com
+     2  ib.snssdk.com
+
+TLS SNI:
+     1  connectivitycheck.platform.hicloud.com
+     1  connectivitycheck.cbg-app.huawei.com
+     1  ib.snssdk.com
+
+destinations:
+    15  192.168.1.11:60684
+    14  116.77.238.8:443
+    13  180.105.58.103:443
+    12  192.168.1.11:42116
+    12  36.143.249.197:80
+    12  111.19.181.176:443
+    11  116.77.235.20:443
+    11  192.168.1.11:48488
+    10  192.168.1.11:36010
+     9  49.4.35.122:443
+     9  192.168.1.11:53892
+     6  116.77.235.20:80
+
+Reading: the feed request is issued. ib.snssdk.com (Toutiao's content API) is resolved and handshaken within the
+~12 s the process survives after consent; connectivitycheck.* are OH system probes, not the app. "Empty feed" on this
+build is the process dying before the response is rendered, not a request that is never sent.

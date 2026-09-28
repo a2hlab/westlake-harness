@@ -1,0 +1,28 @@
+# Board 5ea34a45, build = codex diag v2 (out-lrt/diag/v2) staged on out-procname v2 (#11 identity fix present).
+# Toutiao untouched; at ~5-6 s several threads (Worker-thread-1, gecko-check-upd, platform-default, SettingsConfig$)
+# fill their 32 MB stacks within one sample. stack_return_scan.py on the deepest (tid 1358, sp in a 32 MB stack)
+# scans 512 KB of stack and histograms 8-byte words that point into an executable mapping:
+#
+#   554  [anon-exec] 0xd4260      <- executable mapping 3a000000-3c000000 r-xp = the ART JIT code cache
+#   551  [anon-exec] 0x2825c
+#   551  [anon-exec] 0xd1304
+#   551  [anon-exec] 0xd49ac
+#   551  [anon-exec] 0xd8b64
+#   551  [anon-exec] 0xd34a0
+#   550  [anon-exec] 0x2808f4
+#   550  [anon-exec] 0x2a4d90
+#   550  [anon-exec] 0xd4fb8 / 0xd5ef4 / 0xd5428
+#
+# ~11 distinct JIT addresses, each ~550x in a 512 KB window => an ~11-frame cycle repeated ~28,000x over 26 MB.
+# Not libart, not the app .so's: it is JIT-compiled Java calling itself. The crash's last Java frame is
+# libcore.io.ForwardingOs.open / Linux.open (repeated file opens). getAllStackTraces() cannot dump it: 28k-deep
+# on 190+ threads either times out or is interrupted by the fatal GC checkpoint (LocalReferenceTable::VisitRoots).
+#
+# This is a DIFFERENT recursion from #11: #11 fixed the process identity (cmdline now = package), and these threads
+# still recurse, so it is not an is-main-process/self-forwarding-provider loop. Leaf = repeated open() suggests a
+# config / SharedPreferences loader that re-enters itself. Candidate self-referential providers in the manifest
+# (all process=main unless noted): TTMultiProcessSharedProvider, keva KevaMultiProcessContentProvider,
+# push MainProcessSettingsProvider / SmpProcessSettingsProvider (process=:smp), token AuthTokenMultiProcessSharedProvider.
+#
+# Next: resolve the ~11 JIT addresses to Java methods (ART JIT method map / -Xjitsaveprofilinginfo, or a capped
+# getStackTrace on one deep thread) to name the exact ring, then apply the #11-style compatibility fix.

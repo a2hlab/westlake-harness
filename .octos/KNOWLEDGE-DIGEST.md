@@ -272,3 +272,38 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 4. **LocalSend(org.localsend.localsend_app,Flutter)= 深墙泊车**:HDR 前提(SurfaceControl.nativeSetDesiredHdrHeadroom)已废(runtime 已 no-op)→ 真墙=libflutter 首帧 `.bss` 槽#468 空函数指针(pc=0),=**Impeller 后端 init 没填分发表**(Impeller 需的 GLES 扩展 proc 在 OH 缺)。修法明确=关 Impeller 回退 Skia GL(`io.flutter.embedding.android.EnableImpeller=false`),但**在 ApplicationMetaDataReader 注入该 metadata 被 Flutter 忽略**(注入点/机制不对)→ 需换注入机制(engine shell arg / 别的钩子)。泊车。benchmark/2026-09-27-localsend-bringup/。
 
 **横向点亮总数(2026-09-27):3**——Wikipedia(原本)+ 今日头条(交付级)+ 麦当劳(首屏)。X/LocalSend 深墙泊车(各需量级 RE)。**点亮到首个可用界面 ≠ 每 app 快赢;真赢是可复用的框架-smali+boot-image 通路 + telephony 桩模式。**
+
+### E.5 app 广度扫量化（2026-09-27,claude-3,板 5ea34a45 LocalSend framework-2 通用基座)
+系统扫 56 个 app 到首个可用 UI(自动 stage+launch+30s+snapshot,**逐张读图**分类)。**点亮率 ~23%(LIT 13/56)**。
+- **判据铁律**:自动化 `alive=yes` **只**表示 appspawn-x child 起活,**不等于点亮**——RS 渲染树里没该 app 的 `*.MainActivity_content` 节点时,屏幕停在 host launcher 兜底。**截图是唯一判别器**(尺寸启发式:~51.5KB≈host-launcher/BLOCKED,>60KB≈真内容/LIT,但空列表 app 如 droidify 会假阴性,必读图)。
+- **主墙根因(markor probe 取证)**:**非 staging bug**。probe 正确 stage APK + direct-launch 精确 MainActivity(host_spawn ok/child alive/touchfwd 挂上),但同一管线 13/56 点亮 ⇒ 墙是**逐-app 运行时窗口/Activity 起栈不兼容**(进程活、无渲染节点),不是"没拉起"。staging 无需修。
+- **点亮共性**:全是**轻量本地 View app**(文件管理/密码库/播客/2FA/防火墙/白噪音/商店/健身)。未亮集中在**重度原生渲染/GL/联网/多媒体**(Matrix/媒体服务器/浏览器/视频音乐播放器/地图/游戏/视频会议)。
+- **可行动 blocker(有名字)**:`fd-stk`(SuperTuxKart)渲染自己 SDL 弹窗→`Error loading shared library libGLESv1_CM.so`。**OH 只有 GLESv2/v3,缺 legacy GLESv1_CM**→补 libGLESv1_CM shim/symlink 可解一类 GL/SDL app。其余细分:black-render(fd-mobile 画黑)、blank-white(fd-client 白屏)、exited-to-desktop(fd-binaryeye 相机 HAL)。
+- **护栏实证**:扫到尾部时板 5ea34a45 掉线,vm_sweep.sh 对剩余 9 个直接 `REFUSE: not attached`,**绝不 fall through 到 61b06572/5cd1e3dd**。掉线后仅那俩在线=停手待回挂。尾部 10 个商业 app(mcdonalds 重扫+burgerking/subwaysurfers/firefox/vlc/localsend/ppsspp/mindustry/x/noice)待补。
+- 全表+截图:merged48 `benchmark/2026-09-27-app-breadth-sweep/{RESULTS.md,screens/}`。
+
+### E.6 GLESv1_CM crux + 尾部补扫运维坑(2026-09-27,claude-3,机测 5ea34a45)
+- **GLESv1_CM 金发现定论(SDL2/ES1 类 GL app 的通用墙)**:`fd-stk`(SuperTuxKart)是唯一渲染自己错误 UI 的未亮 app——SDL 弹窗 `Error loading shared library libGLESv1_CM.so (needed by libSDL2.so)`。
+  - **(a)** OH 6.1.0.31 **无任何 Khronos GLESv1 表面**:`/system/lib64/ndk/libGLESv2.so` 在 app namespace 路径(libSDL2 另一 DT_NEEDED libGLESv2 本就满足,报错只提 GLESv1_CM);但无 libGLESv1_CM.so,`/vendor/lib64/chipsetsdk/libGLESv1_impl.so`(Mali 后端 16.7MB)`readelf` **导出 0 个 gl\* 符号**(内部 backend,非 Khronos 名),且 vendor 目录不在 app namespace 搜索路径。**设备上没有任何库导出这 14 个 GLESv1 符号**。
+  - **(b)** libSDL2 `FLAGS:BIND_NOW` + UND 引用 10 GLESv1 fixed-function(glMatrixMode/glColor4f/glEnableClientState/glDisableClientState/glLoadIdentity/glOrthof/glColorPointer/glTexCoordPointer/glTexEnvf/glVertexPointer)+ 4 OES(glBindFramebufferOES/glGenFramebuffersOES/glBlendEquationOES/glDrawTexfOES)。libmain.so 不直接引用 gl\*。
+  - **判定**:**symlink 彻底不行**(没东西可指 → cannot locate symbol);**薄 stub 唯一路,已建**(OH SDK clang → libGLESv1_CM.so.stub,14632B,sha256 a1ae3950…b37bf,精确导出 14 no-op,被调打 stderr);**gl4es 不需要**(STK 走 GLES3)。**stub 是所有 SDL2/ES1 app 的通用一文件 shim**。
+  - **部署=board-runner 一行**:probe 拒改 APK(`Changed original APK input`,校验 apk_sha256),per-run staged 目录(`<logical>/lib/arm64-v8a`)临时不可预置,`--runtime-env` 不能覆盖 launcher 设的 LD_LIBRARY_PATH → 把 stub 加进 fd-stk 的 `native_libraries`(app-inputs.lock.json,指 stub sha256)让 probe staging 带上。材料:merged48 `benchmark/2026-09-27-app-breadth-sweep/glesv1cm-crux/`。
+- **运维坑:板 systemdump/掉线后熄屏→重锁**,`snapshot_display` 抓黑屏/锁屏(多张字节全同=同一黑帧)。**修**:`power-shell timeout -o 3600000`(1h 熄屏超时,防扫描中重锁)+ `uinput -T -m 600 1600 600 400 200`(上滑解锁);`power-shell wakeup` 只点亮**不解锁**。已加进 vm_sweep 快照前。
+- **麦当劳两 key 两结果**:`mcdonalds` key 回落 host launcher,`burgerking` key(实为 McD APK 错标)渲染出登录页 → 同 app 两结果差异在启动路径/Activity/基座,不在 app。distinct LIT = 13 真实 app。
+  - **【执行定论 2026-09-27】** 配方跑通:给 fd-stk 的 **app-input.json**(不是 lock)native_libraries 加 `lib/arm64-v8a/libGLESv1_CM.so`→指向 stub(sha256 a1ae3950…)+ 记 local_substitution,**probe rc=0 接受**(native_libraries 路不被拒;改 APK 才被拒),stub staged 到设备,带窗口起 STK。结果:**(a) SDL "Error loading libGLESv1_CM.so" 消失**(stub 满足 BIND_NOW,libGLESv1_CM 报错计数=0);**(b) STK 未点亮,撞下一堵墙 `AConfiguration_new: symbol not found`**——STK 渲染自己 SDL 弹窗(窗口 bring-up + STK UI 都 OK),libSDL2 还 UND 需 NDK libandroid 簇 `AConfiguration_*/AAsset*/ALooper_*/ANativeWindow_*`(OH libandroid shim 缺);**(c) `[glesv1_cm_stub] CALLED`=0 → STK 不调 ES1 fixed-function → gl4es 确定不需要**。**一文件 stub 点亮一整类 SDL2/ES1 app = 2 段 native gap**:①GLESv1_CM stub[完成] + ②libandroid AConfiguration/NativeActivity NDK 簇[下一步],两段都有名字可增量补。materials: merged48 glesv1cm-crux/{DECISION.md RESULT 节, artifacts/stk_stubnl.child.stderr, screens/stk_stubnl2.jpeg}。
+- **★认知翻转(重要,改扫法)**:E.5 说的"逐-app 窗口 bring-up 墙"对 **SDL/NDK 类不是玄学死墙**——STK 补 GLESv1_CM stub 后**窗口成功起**(RSNODE+Surface,STK 自己 SDL 弹窗都能画),真卡点是**具名缺符号 `AConfiguration_new`**(libandroid NDK 簇)。→ 未亮 app 的"host-launcher 兜底"不应止于"窗口没起",应**逐个抓 child stderr**(`/proc/<child>/root/data/local/tmp/adapter_child_<pid>.stderr`,或 stage `parent.log`)**找具名缺符号 / `Error relocating … symbol not found`**,多半是**可增量补的 native-symbol 缺口**(补 shim 导出即过),不是死墙。广度扫的下一步 = 给每个未亮 app 做这一步 triage。
+
+## F. 13 图标常驻 demo + 头条上屏运维 + 视频/自启两道墙(2026-09-28,claude 外环,板 61b06572/5cd1e3dd)
+- **桌面图标 = 每 bundle 一个**:OH SceneBoard 只给每个 bundle 的主 ability 出一个图标,单 HAP 多 ability 只出一个。13 图标 = 12 个独立单-ability HAP(`org.westlake.la0..la11`)+ 头条 host。图标 onCreate 写 app-key 到自己沙箱 `files/wl_open.req`(app 沙箱写不了 `/data/local/tmp`),root 常驻 `open_broker.sh` 扫这些文件并 HOST_SPAWN。详见 `benchmark/2026-09-28-persistent-demo/`。
+- **头条白屏 ≠ 断网**:provision 重拉后 app 数据重置,首启弹"个人信息保护指引",弹窗后 feed 区是空白;点"同意"后仍白 = 连的热点无外网上行(板子连着已保存的 `1228`,切到有网的已保存网络即可)。**判网看屏幕,别用 `hdc shell ping`**:shell 走 main 路由表(wlan0 只有子网路由、无 default),app 走 netd 的 per-network 策略路由,shell ping 公网 100% 丢包时 app 照样能刷 feed。板上 toybox 没有 `ip`/`route`/`wpa_cli`/`ndc`。
+- **视频不能播 = 二级 Surface 缓冲被 stub**:点视频进 TikTokActivity 停在封面帧(隔 5s 截图 md5 相同)。字节自研软解库齐全(`libByteVC1_dec`/`libbyteVC2dec`/`libttmplayer`/`libvcn`),不是缺解码器;app stderr `ReliableSurface::reserveNext returning OK`(stub)×37k + `ReliableSurface::init no-op`,OH hilog `Bufferqueue SetMetadata Failed with -5` ×280。主窗口 EGL 路径正常所以图文/封面能画。详见 `benchmark/2026-09-28-toutiao-video-playback/`。
+- **关机开机纯板载自启未打通**:init cfg 装 `/system/etc/init/`(/system 可 `mount -o rw,remount /`)。`secon=su:s0` 脚本能跑,但 spawn 子进程 `PR_SET_KEEPCAPS(0)` EPERM(su 域 securebits 锁了 KEEP_CAPS)→ abort;`secon=sh:s0` 脚本根本不跑。推荐改 runtime:`wl_finalize_app_privileges` 在 EPERM 且 `PR_GET_KEEPCAPS==0` 时视为成功。详见 `benchmark/2026-09-28-persistent-demo/autostart/`。
+- **可靠上屏路径**:`provision_toutiao.sh <完整connect-key>`,热板 25–40s、刚开机 90–150s 到 READY+feed。交付包 790MB 已从 `/private/tmp` 挪到 `~/a2hlab-provision/ttbundle`(按 MANIFEST 7/7 校验)。
+- **陷阱**:
+  - `hdc shell "… pgrep -f X …"` 恒 +1(匹配到包着它的 `sh -c`),搜不存在的名字也返回 1。用 `pgrep -f '[X]yz'`。
+  - `selfheal48/state` 在 /data,重启不清,开机读到 READY 可能是上轮残留。
+  - provision 150s 窗口在刚开机的板上会超时误判 FAIL,截图为准。
+  - `persist_demo.sh` 参数是 `<SERIAL> <CMD>`,写反报 `REFUSE: only 61b06572 (got up)`,看着像 broker 坏。
+  - 在 demo 板上 stage 新 app 前确认不动头条运行时 `a2hlab-source-c91d26bf…`(61b 曾因此头条起不来)。**别在唯一能用的 demo 板上做重启实验**:本轮为测自启重启了能用的 5cd,头条随之掉线,只能靠 provision 拉回。
+  - 板子经 hub 接 Mac 时 USB 在 provision/remount 瞬间掉过三次,最长 50 分钟不回,只能物理重插。
+  - 头条运行时目录会膨胀:61b 上 31GB,其中 `profile-backups/` 22GB、`private-tmp/*.stderr` 5.7GB(单个 743MB,几乎全是 `[TOUCH21-POLL]`)。grep stderr 先 `wc -l` 记基线,再 `tail -n +BASE | grep -v TOUCH21-POLL`。

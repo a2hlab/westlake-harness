@@ -1,0 +1,24 @@
+# Symbolized with llvm-symbolizer --obj=<build>/native-runtime/libart.so (libart carries .symtab + .debug_info;
+# cppcrash relative pc == vaddr for libart). For libwebviewchromium.so the report pc is file offset + 0x2002000.
+
+## A. Before #11 — token-provider recursion (original build, child 24922, SIGABRT on SettingsConfig$)
+cycle repeated 194,500x in the ART thread dump:
+  com.ss.android.token.TokenObjectProvider.query -> X.S5v.t -> X.3sP.a
+  -> com.bytedance.bdauditsdkbase.privacy.hook.PrivateApiLancetImpl.query
+  -> ContentResolver.query -> ContentProvider$Transport.query -> TokenObjectProvider.query -> ...
+switch: X.S5v.<init> sets x = TokenUtils.a(ctx) (is-main-process via Application.getProcessName ->
+ActivityThread -> /proc/<pid>/cmdline -> ActivityManager). On the board cmdline = "/data/local/tmp/asx/appspawn-x
+--socket-name ...", comm = "org.westlake.im" (host bundle), so x = false and the provider forwards to itself.
+
+## B. After #11 — ART GC root scan on an exhausted stack (build 19fb4c2, children 17675 / 24540 / 28426 / 32506)
+artQuickGenericJniTrampoline -> artJniMethodStart -> Thread::RunCheckpointFunction
+ -> gc::collector::MarkSweep::CheckpointMarkThreadRoots::Run -> Thread::VisitRoots<false>
+ -> art::jni::LocalReferenceTable::VisitRoots   <- SIGSEGV(SEGV_ACCERR)
+sp at the bottom of the thread's 32 MB stack mapping; fault address = sp - 0x30, inside the 4 KB guard page.
+Faulting thread varies (SettingsConfig$, Worker-thread-1, gecko-check-upd, platform-default); stack-depth-samples.txt
+shows several threads filling 32 MB concurrently, so the GC checkpoint is only the frame that crosses the edge.
+
+## C. WebView — Chromium default render backend (child 27940 and others)
+Fault thread CrBrowserMain, brk #0 + hlt #0 (IMMEDIATE_CRASH) at libwebviewchromium.so file+0x170531c, preceded by
+22 x "[ERROR:android_surface_control_compat.cc] Unable to load function ASurfaceControl_*" (OH has no ASurfaceControl).
+Intermittent: same build and flags gave SIGTRAP in some launches and none in others.

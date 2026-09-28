@@ -1,0 +1,33 @@
+Row 6: Cronet never boots because libsscronet.so never loads. Board 5ea34a45, integrated build + e88df46 WebView candidate.
+
+Tap channel `N` (Toutiao Cronet state, Westlake oh_input_bridge.cpp §803):
+  without targets (child 21007): appConfig=1 bootFailures=0 client=1 bootSucceed=0 cronetException=0 forceNoCronet=0
+  with targets    (child 18233): appConfig=1 bootFailures=0 client=1 bootSucceed=1 cronetException=0 forceNoCronet=0
+  targets = --android-native-target libsscronet.so --android-native-net-target libsscronet.so
+
+/proc/<pid>/maps lines for libsscronet: 21007 = 0 (204 load attempts in the child log), 18233 = 3.
+libsscronet.so NEEDED: libz libttboringssl libttcrypto libdl libm libandroid liblog libc++_shared libc.
+Bionic-only imports: __sF __errno android_fdsan_exchange_owner_tag; bionic-layout getaddrinfo/freeaddrinfo.
+
+ART thread dump by SIGQUIT (child 21007, Signal Catcher tid 21018), the waiter:
+  "CronetInit" prio=0 tid=59 ThreadState(71)
+    | group="a" sCount=1 ucsCount=0 flags=1 obj=0x15bf7700 self=0x7ede02f050
+    | sysTid=21250 nice=0 cgrp=default sched=0/0 handle=0x7e7d20b950
+    | state=S schedstat=( 128045591 51379617 398 ) utm=1 stm=11 core=1 HZ=100
+    | stack=0x7e7b20a000-0x7e7b20c000 stackSize=32MB
+    | held mutexes=
+    at java.lang.Object.wait(Native method)
+    - waiting on <0x09579036> (a android.os.ConditionVariable)
+    at java.lang.Object.wait(unavailable:1)
+    at java.lang.Object.wait(unavailable:2)
+    at android.os.ConditionVariable.block(unavailable:5)
+    - locked <0x09579036> (a android.os.ConditionVariable)
+    at com.ttnet.org.chromium.net.impl.CronetLibraryLoader.ensureInitializedOnInitThread(SourceFile:262163)
+    at com.ttnet.org.chromium.net.impl.CronetLibraryLoader$1.run(SourceFile:0)
+    at android.os.Handler.handleCallback(unavailable:2)
+    at android.os.Handler.dispatchMessage(unavailable:4)
+    at android.os.Looper.loopOnce(unavailable:163)
+  (NetNormal#1-8 and NetDownload#1-8 all parked on futexes at the same time.)
+
+Feed area after the fix: "当前网络不可用，点击重试" — the request was made; all three boards had lost WiFi during this run
+(Mac moved to a phone hotspot, AP 1228 unreachable), so content is not yet measured.

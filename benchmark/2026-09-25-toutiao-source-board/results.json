@@ -1,0 +1,158 @@
+{
+  "app": {
+    "key": "toutiao",
+    "package": "com.ss.android.article.news",
+    "version": "13.9.0",
+    "sha256_prefix": "a1112a0c"
+  },
+  "runtime": {
+    "westlake": "22b9453",
+    "firmware": "OpenHarmony 6.1.0.31",
+    "firmware_libraries_matching": "47/47"
+  },
+  "boards": [
+    "5ea34a45",
+    "5cd1e3dd",
+    "61b06572"
+  ],
+  "layers": [
+    {
+      "n": 1,
+      "symptom": "black screen / no windows",
+      "cause": "fresh-board state: 1970 clock, 30 s screen-off + lock screen, host backgrounded",
+      "state": "setup",
+      "board_entry": null
+    },
+    {
+      "n": 2,
+      "symptom": "consent dialog ignores taps",
+      "cause": "screen-to-window coordinates not converted (65 px offset); root choice preferred focused activity",
+      "state": "fixed",
+      "commit": "5e91ebc",
+      "board_entry": 8,
+      "verified_by": "outer loop, board 61b06572"
+    },
+    {
+      "n": 3,
+      "symptom": "consent passes, then the process dies 10-300 s later",
+      "cause": "Chromium 109 SurfaceControl::IsSupported() CHECKs the full NDK ASurfaceControl table once SDK_INT>=29 (runtime reports 34), before the feature flag; source-profile WebView libandroid.so exported none",
+      "state": "fixed, one board run; second-agent re-run pending (board #18)",
+      "commit": "e88df46",
+      "board_entry": 17,
+      "pmproc_build": {
+        "runs": 2,
+        "crashed_same_pc": 2,
+        "report_pc": "0x370731c",
+        "file_offset": "0x170531c",
+        "seconds_after_consent": "10-15"
+      },
+      "feed_request_sent": {
+        "host": "ib.snssdk.com",
+        "dns": true,
+        "tls_hello": true,
+        "evidence": "netcap-consent-pmproc.txt"
+      },
+      "before_fix_crashes": "6/6 at file 0x170531c (pmproc 2/2, integrated 3/3, same board 1/1)",
+      "after_fix": {
+        "runs": 1,
+        "crashes": 0,
+        "noop_calls": 0
+      }
+    },
+    {
+      "n": 4,
+      "symptom": "exit after 60-120 s",
+      "cause": "Android-visible process name was the host's; ByteDance token SDK provider forwarded queries to itself (194,500 cycles)",
+      "state": "fixed (completed by PM channel)",
+      "commit": "19fb4c2",
+      "board_entry": 11,
+      "verified_by": "outer loop, board 5cd1e3dd: cmdline=com.ss.android.article.news, comm=id.article.news, TokenObjectProvider.query=0",
+      "note": "#11 fixed argv0/comm/getProcessName; PM.getApplicationInfo().processName was still null (4th channel) -> recursion resumed; SourcePackageRegistry normalizes null processName to packageName"
+    },
+    {
+      "n": 5,
+      "symptom": "exit after 62-200 s",
+      "cause": "same token self-forwarding recursion as #4, via the PM metadata channel (not a new root cause; the JIT-compiled recursion did not log, so an earlier query=0 check was insufficient)",
+      "state": "fixed",
+      "board_entry": 12,
+      "resolution": "PM processName normalization"
+    },
+    {
+      "n": 6,
+      "symptom": "survives consent, full chrome, feed blank",
+      "cause": "libsscronet.so imports bionic-only symbols but was not an Android-ABI target; every load failed silently, CronetInit waits on sWaitForLibLoad forever, TTNet never falls back",
+      "state": "fixed and verified end-to-end",
+      "launch_args": [
+        "--android-native-target",
+        "libsscronet.so",
+        "--android-native-net-target",
+        "libsscronet.so"
+      ],
+      "cronet_bootSucceed": {
+        "before": 0,
+        "after": 1
+      },
+      "evidence": "cronet-hang.txt",
+      "feed_loaded": {
+        "headlines": 23,
+        "tls_handshakes": 55,
+        "cdns": [
+          "sf3-cdn-tos.toutiaostatic.com",
+          "v9.toutiaovod.com",
+          "p3-sign.toutiaoimg.com",
+          "lf3-search.searchpstatp.com"
+        ],
+        "evidence": "toutiao-feed-loaded.jpeg",
+        "board": "5ea34a45",
+        "run": "sc17-net-2",
+        "interactive": false
+      }
+    },
+    {
+      "n": 7,
+      "symptom": "feed and tabs render but do not respond to touch",
+      "cause": "Toutiao activity window draws under the OH host but is not input-eligible: no focus anywhere (f=1 count 0), windowVis=0; real DOWN/UP (i command) returns down=0 up=0, consumed by nothing",
+      "state": "open (board #20)",
+      "evidence": "c performClick result=0 no effect; i dispatchSingleTouch down=0 up=0; tab tap leaves headline set identical",
+      "note": "performClick masked this for the consent dialog; this is the goal's 'cannot interact'"
+    }
+  ],
+  "controls": {
+    "noice-2.5.1": "first screen, alive",
+    "wikipedia": "first screen, alive"
+  },
+  "acceptance_baseline": "acceptance-baseline.json",
+  "withdrawn_conclusions": [
+    "network fixes the self-exit (single sample)",
+    "WebView flag removes the crash (single sample)",
+    "WiFi rejection was a MAC allowlist (it was -90 dBm signal)",
+    "the feed renders (a RecyclerView container with zero article rows was counted as content)",
+    "--disable-features=AndroidSurfaceControl removes the WebView crash",
+    "renderer-gone terminator / inherited SIGCHLD reaper causes the WebView crash (the exiting child was the post-crash collector)",
+    "Toutiao is interactive / end-to-end done (feed items and tabs do not respond to real touch; window has no input focus)"
+  ],
+  "toutiao_stable": {
+    "board": "5ea34a45",
+    "survived_seconds": 332,
+    "deepest_app_thread_kb": 4490,
+    "crash": null,
+    "independent": true
+  },
+  "toutiao_end_to_end": {
+    "date": "2026-09-25",
+    "board": "5ea34a45",
+    "fixes": [
+      "#8 touch 5e91ebc",
+      "#11 identity 19fb4c2",
+      "PM 2478a7f",
+      "#17 webview e88df46",
+      "cronet launch targets"
+    ],
+    "consent_passed": true,
+    "webview_crashes": 0,
+    "cronet_bootSucceed": 1,
+    "feed_headlines": 23,
+    "interactive": false,
+    "retracted": "feed items and tabs do not respond to touch; see layer 7 / board #20"
+  }
+}

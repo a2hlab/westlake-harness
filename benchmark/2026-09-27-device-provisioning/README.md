@@ -6,7 +6,12 @@ watchdog) on any OH 6.1.0.31 DAYU600 board. Validated: one command provisioned *
 
 ## Deliverables
 - **`provision_toutiao.sh <SERIAL> [--with-aot]`** — idempotent, board-adaptive one-board provisioner.
-- **bundle/** (in scratchpad, gitignored for size; MANIFEST.sha256 committed) — the deployable Toutiao delivery:
+- **bundle/** — a local symlink (not committed) to `~/a2hlab-provision/ttbundle/`; `MANIFEST.sha256` is committed.
+  Until 2026-09-28 it pointed into a session scratchpad under `/private/tmp`, which macOS clears; the bundle was
+  copied out and verified 7/7 against the manifest. If it is missing: `mkdir bundle` from a verified copy, then
+  `cd bundle && shasum -a 256 -c ../MANIFEST.sha256`. **SERIAL must be the full connect-key**
+  (`5cd1e3dd00000000000000000923012c`), not the 8-char prefix — hdc answers "Not match target founded".
+  Contents — the deployable Toutiao delivery:
   - `tt-rt.tar` (755 MB) — RT core: libart 78e34445, boot image (oat 247), fw BCP jars, webview-t-lib
     (libwebviewchromium + shim 85c789f4 with the #46 WebView fixes), app libs (metasec hollow/npth/etc.),
     runtime .so's, run.sh #50 (webview shim preload + file-JIT), prepare_jit50.sh, apks. EXCLUDES per-device

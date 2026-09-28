@@ -63,3 +63,24 @@ persist_demo.sh 61b06572 toutiao       # optional: bring back the Toutiao self-h
 
 ## Constraints
 Only 61b06572 was touched. 5cd1e3dd / 5ea34a45 (their own demos / claude-3's HAP work) not touched.
+
+## 关机启动后的使用流程（2026-09-28 冷启实测通过）
+61b06572 装了 **13 个可点桌面图标**（la0-la11 十二个 app + 今日头条红图标 imehost），全部 `bm install`，**重启存活**。
+
+**每次开机/重启后，跑一条命令即可（纯板载自启尚未打通，见 `autostart/README.md`）：**
+```
+bash benchmark/2026-09-28-persistent-demo/persist_demo.sh 61b06572 up
+```
+它按正确顺序起 host 宿主窗 + 保屏 keeper + open-broker。之后**点任意一个桌面图标 → 对应 app 渲染到首屏**（头条点它自己的红图标）。
+
+**冷启实测（03:11，uptime 94s 的全新重启）**：`persist_demo.sh 61b06572 up`（UP: host=4331 broker=5373）→ 点 la6 图标 → Aegis 首屏渲染。截图 `screens/`（final2/reboot_la0b/myla6）。
+
+**图标↔app**：la0 Wikipedia · la1 OONI · la2 KeePassDX · la3 Amaze · la4 Auxio · la5 AntennaPod · la6 Aegis · la7 NetGuard · la8 AppManager · la9 Droid-ify · la10 Noice · la11 Fitness · imehost 今日头条。
+
+**注意**：Toutiao selfheal watchdog 若在跑会抢前台把头条顶上来盖住别的 app；`up` 不启动它，保持关闭即可（头条仍可点自己图标打开）。
+
+**踩坑（2026-09-28）**：
+- 参数顺序是 `persist_demo.sh <SERIAL> <CMD>`。写反（`up 61b06572`）会报 `REFUSE: only 61b06572 (got up)`，看着像 broker 坏了，其实没有。
+- 在 61b 上 stage 这 12 个 app 时一度把头条运行时 `a2hlab-source-c91d26bf…` 删了，头条随即起不来（watchdog 永远 `BOOTSTRAP`）。给 demo 板加 app 前先确认不动这个目录。该目录后来已恢复（11:40 复核：143 个 lib，与 5cd 一致），但 61b 的 watchdog 仍停在 `SPAWN_BLOCKED`，原因未查。
+- 该目录在 61b 上长到 31 GB（5cd 6.9 GB）：`profile-backups/` 22 GB（提速期 JIT profile 备份）+ `private-tmp/adapter_child_*.stderr` 5.7 GB（单个可达 743 MB，几乎全是 `[TOUCH21-POLL]` 调试输出）。/data 还剩 177 GB，暂不构成问题，但 grep 这些 stderr 必须先记基线行只看新增。
+- 头条红图标点开是 host 启动器而不是 feed：图标只拉起 host 窗口，feed 要靠 selfheal watchdog spawn 进去。watchdog 没跑或卡住时就只看到 host。
