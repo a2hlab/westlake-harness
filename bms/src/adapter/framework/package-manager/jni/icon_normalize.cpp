@@ -3,7 +3,7 @@
  *
  * Task #65 launcher-icon unification (see icon_normalize.h for the two-stage
  * design and why detection-based padding finders were abandoned).
- * PNG decode / re-encode via vendored lodepng (src/adapter/third_party/lodepng);
+ * PNG decode / re-encode via vendored lodepng (adapter/third_party/lodepng);
  * bilinear resample is local and dependency-free. Fail-open throughout: any
  * anomaly returns false with the input bytes untouched.
  */

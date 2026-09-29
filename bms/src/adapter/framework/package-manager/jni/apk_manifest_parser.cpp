@@ -9,6 +9,7 @@
  */
 #include "apk_manifest_parser.h"
 #include "axml_parser.h"
+#include "../application_attributes/src/manifest_version_parser.h"
 
 #include <cstring>
 #include <memory>
@@ -39,7 +40,6 @@ constexpr const char* LOG_TAG = "ApkManifestParser";
 constexpr uint32_t ATTR_NAME              = 0x01010003;
 constexpr uint32_t ATTR_LABEL             = 0x01010001;
 constexpr uint32_t ATTR_ICON              = 0x01010002;
-constexpr uint32_t ATTR_VERSION_CODE      = 0x0101021b;
 constexpr uint32_t ATTR_VERSION_NAME      = 0x0101021c;
 constexpr uint32_t ATTR_MIN_SDK_VERSION   = 0x0101020c;
 constexpr uint32_t ATTR_TARGET_SDK_VERSION = 0x01010270;
@@ -239,6 +239,9 @@ bool ApkManifestParser::ParseAXML(const uint8_t* data, size_t size, ManifestData
     State state = State::NONE;
     // Stack to track nested elements
     std::vector<State> stateStack;
+    bool rootSeen = false;
+    bool rootComplete = false;
+    size_t ignoredManifestDepth = 0;
 
     // Current component being parsed
     ActivityData currentActivity;
@@ -254,11 +257,31 @@ bool ApkManifestParser::ParseAXML(const uint8_t* data, size_t size, ManifestData
             return false;
         }
 
+        if (ignoredManifestDepth != 0) {
+            if (event == AxmlParser::EC_START_TAG) ++ignoredManifestDepth;
+            if (event == AxmlParser::EC_END_TAG) --ignoredManifestDepth;
+            continue;
+        }
+
         if (event == AxmlParser::EC_START_TAG) {
             size_t nameLen = 0;
             const char* name = tree.getElementName(&nameLen);
             if (name == nullptr) continue;
             std::string elemName(name, nameLen);
+
+            if (!rootSeen && elemName != "manifest") {
+                LOGE("Expected manifest root");
+                return false;
+            }
+            if (elemName == "manifest") {
+                if (rootSeen) {
+                    // r4 treats this unknown child as a skipped subtree, not
+                    // a second package/version declaration.
+                    ignoredManifestDepth = 1;
+                    continue;
+                }
+                rootSeen = true;
+            }
 
             stateStack.push_back(state);
 
@@ -281,9 +304,12 @@ bool ApkManifestParser::ParseAXML(const uint8_t* data, size_t size, ManifestData
                         outData.packageName = GetStringAttr(tree, i);
                     }
                 }
-                if ((idx = FindAttrByResId(tree, ATTR_VERSION_CODE)) >= 0) {
-                    outData.versionCode = GetIntAttr(tree, idx, 0);
+                if (!application_attributes::manifest_parser::ReadVersion(tree, &outData.versionV2)) {
+                    LOGE("Invalid manifest version declaration");
+                    return false;
                 }
+                outData.versionCode = application_attributes::manifest_parser::LegacyMinorBits(
+                    outData.versionV2.minor.bits);
                 if ((idx = FindAttrByResId(tree, ATTR_VERSION_NAME)) >= 0) {
                     outData.versionName = GetStringAttr(tree, idx);
                 }
@@ -523,6 +549,8 @@ bool ApkManifestParser::ParseAXML(const uint8_t* data, size_t size, ManifestData
             std::string elemName;
             if (name != nullptr) elemName.assign(name, nameLen);
 
+            const bool finishingRoot = elemName == "manifest" && stateStack.size() == 1;
+
             if (elemName == "intent-filter") {
                 // Attach completed filter to current component
                 State parentState = stateStack.empty() ? State::NONE : stateStack.back();
@@ -561,7 +589,17 @@ bool ApkManifestParser::ParseAXML(const uint8_t* data, size_t size, ManifestData
             } else {
                 state = State::NONE;
             }
+            if (finishingRoot) {
+                rootComplete = true;
+                break;
+            }
         }
+    }
+
+    // A truncated root cannot supply a successful version declaration.
+    if (!rootComplete) {
+        LOGE("Manifest root is incomplete");
+        return false;
     }
 
     // Validate required fields
