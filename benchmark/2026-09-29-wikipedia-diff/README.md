@@ -1,6 +1,6 @@
 # #76: Wikipedia — Westlake 路线(成功)vs route-A(r8b+6cb 代,exit 1)第一个分叉点
 
-采集:61b,2026-09-29。Westlake 侧复用板上 `a2hlab-source-0033a17c…` 运行时(run.sh 重写指向 runtime root,原样备份 .orig),`HOST_SPAWN result=0 pid=6592`,16M hilog(9.4 万行)全量落 `board/p76-westlake/wl-hilog.txt`,截图 136290B、YAVG=148.18(真实内容)。route-A 侧 master `bms_batch.py`(r8b d5000c4e + 6cb40cd6 代),run 目录 `board/b4-76-wiki-routeA/…`,facts.txt:`keys=1 screenshots_captured=0/2 alive_t5=0 alive_t20=0`。
+采集:61b,2026-09-29。Westlake 侧复用板上 `a2hlab-source-0033a17c…` 运行时(run.sh 重写指向 runtime root,原样备份 .orig),`HOST_SPAWN result=0 pid=6592`,16M hilog(9.4 万行)全量落 `board/p76-westlake/wl-hilog.txt`,截图 136290B(YAVG=148.18)——**外环改判(R2,2026-09-29 17:5x):四张截图实为 61b 桌面而非 Wikipedia,YAVG 只能排除黑/白空,不能证明内容;本条'上屏'结论作废,Westlake 侧唯一可靠证据是 hilog 生命周期链**。route-A 侧 master `bms_batch.py`(r8b d5000c4e + 6cb40cd6 代),run 目录 `board/b4-76-wiki-routeA/…`,facts.txt:`keys=1 screenshots_captured=0/2 alive_t5=0 alive_t20=0`。
 
 ## 逐段对照(两边原文)
 
