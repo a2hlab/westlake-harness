@@ -5,6 +5,8 @@
  * Handles: APK copy, native lib extraction, dex2oat, data directory creation.
  */
 #include "apk_installer.h"
+#include "apk_network_permissions.h"
+#include "nlohmann/json.hpp"
 #include "apk_label_resolver.h"
 #include "apk_manifest_parser.h"  // android:icon resolution
 #include "arsc_resolver.h"        // resource ID -> file path
@@ -734,6 +736,13 @@ bool ApkInstaller::ExtractAndPackResourceHap(const std::string& srcApkPath,
              iconPath.c_str(), apkIconBytes.size());
     }
 
+    oh_adapter::ApkManifestParser::ManifestData permissionManifest;
+    if (!oh_adapter::ApkManifestParser::Parse(srcApkPath, permissionManifest)) {
+        LOGE("ExtractAndPackResourceHap: permission manifest parse failed");
+        return false;
+    }
+    const auto networkPermissions = MapApkNetworkPermissions(permissionManifest.usesPermissions);
+
     // 1. Write embedded template HAP to a temp file so minizip can read it.
     // Use the same dir as outHapPath — caller is expected to pass a path that
     // foundation can write (typically /data/app/android/<pkg>/_resources.hap).
@@ -778,6 +787,7 @@ bool ApkInstaller::ExtractAndPackResourceHap(const std::string& srcApkPath,
     bool ok = true;
     size_t iconReplacementCount = 0;
     bool labelPatched = false;
+    bool modulePatched = false;
     int rc = unzGoToFirstFile(src);
     while (rc == UNZ_OK) {
         char name[512];
@@ -795,6 +805,29 @@ bool ApkInstaller::ExtractAndPackResourceHap(const std::string& srcApkPath,
             entryName == "resources/base/media/app_icon.png") {
             overrideData = &apkIconBytes;
             ++iconReplacementCount;
+        } else if (entryName == "module.json") {
+            std::vector<uint8_t> originalModule;
+            if (!ReadCurrentZipEntry(src, info, originalModule)) {
+                ok = false;
+                break;
+            }
+            auto moduleJson = nlohmann::json::parse(originalModule.begin(), originalModule.end(), nullptr, false);
+            if (moduleJson.is_discarded() || !moduleJson.is_object() ||
+                !moduleJson.contains("module") || !moduleJson["module"].is_object()) {
+                LOGE("ExtractAndPackResourceHap: invalid template module.json");
+                ok = false;
+                break;
+            }
+            auto requests = nlohmann::json::array();
+            for (const auto& permission : networkPermissions) {
+                requests.push_back({{"name", permission}});
+            }
+            moduleJson["module"]["requestPermissions"] = requests;
+            const auto serialized = moduleJson.dump();
+            patchedResourceIndex.assign(serialized.begin(), serialized.end());
+            overrideData = &patchedResourceIndex;
+            modulePatched = true;
+            LOGI("ExtractAndPackResourceHap: network requestPermissions=%{public}zu", networkPermissions.size());
         } else if (entryName == "resources.index") {
             std::vector<uint8_t> originalIndex;
             if (ReadCurrentZipEntry(src, info, originalIndex) &&
@@ -821,7 +854,7 @@ bool ApkInstaller::ExtractAndPackResourceHap(const std::string& srcApkPath,
     unzClose(src);
     ::unlink(templateTmp.c_str());
 
-    if (!ok || iconReplacementCount != 2 || !labelPatched) {
+    if (!ok || iconReplacementCount != 2 || !labelPatched || !modulePatched) {
         LOGE("ExtractAndPackResourceHap: incomplete typed replacement "
              "icons=%{public}zu label=%{public}d",
              iconReplacementCount, labelPatched ? 1 : 0);

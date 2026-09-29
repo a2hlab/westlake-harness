@@ -1,0 +1,59 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp
+@@ -19,0 +20 @@
++#include "apk_network_permissions.h"
+@@ -1529,0 +1531,3 @@
++                        !j.contains("usesPermissions") || !j["usesPermissions"].is_array() ||
++                        !std::all_of(j["usesPermissions"].begin(), j["usesPermissions"].end(),
++                            [](const auto &item) { return item.is_string(); }) ||
+@@ -1542,0 +1547,2 @@
++                    const auto requestedNetworkPermissions = oh_adapter::MapApkNetworkPermissions(
++                        j["usesPermissions"].get<std::vector<std::string>>());
+@@ -1770,0 +1777,18 @@
++                        // Existing adapter updates reuse the token. Require a fresh install when
++                        // network declarations change, rather than persist metadata the token lacks.
++                        std::vector<std::string> oldNetworkPermissions;
++                        for (const auto &permission : adapterOldInfo.GetAllRequestPermissions()) {
++                            if (permission.name == "ohos.permission.INTERNET" ||
++                                permission.name == "ohos.permission.GET_NETWORK_INFO") {
++                                oldNetworkPermissions.emplace_back(permission.name);
++                            }
++                        }
++                        auto newNetworkPermissions = requestedNetworkPermissions;
++                        std::sort(oldNetworkPermissions.begin(), oldNetworkPermissions.end());
++                        std::sort(newNetworkPermissions.begin(), newNetworkPermissions.end());
++                        if (oldNetworkPermissions != newNetworkPermissions) {
++                            LOG_E(BMS_TAG_INSTALLER, "APKNET: network permission changes require uninstall/install %{public}s",
++                                pkg.c_str());
++                            (void)installd->RemoveDir(stagedBundleRoot);
++                            return ERR_APPEXECFWK_INSTALL_GRANT_REQUEST_PERMISSIONS_FAILED;
++                        }
+@@ -1786 +1810,20 @@
+-                        allocTokenIdEx = Security::AccessToken::AccessTokenKit::AllocHapToken(hapInfo, hapPolicy);
++                        // Same initialization as OH BundlePermissionMgr::GetPermissionStateFullList:
++                        // ATM InitHapToken applies system_grant policy; do not force grant flags.
++                        for (const auto &name : requestedNetworkPermissions) {
++                            Security::AccessToken::PermissionStateFull state;
++                            state.permissionName = name;
++                            state.isGeneral = true;
++                            state.resDeviceID.emplace_back(appInfo.deviceId);
++                            state.grantStatus.emplace_back(Security::AccessToken::PermissionState::PERMISSION_DENIED);
++                            state.grantFlags.emplace_back(Security::AccessToken::PermissionFlag::PERMISSION_DEFAULT_FLAG);
++                            hapPolicy.permStateList.emplace_back(state);
++                        }
++                        Security::AccessToken::HapInfoCheckResult permissionCheck;
++                        const int permissionRet = Security::AccessToken::AccessTokenKit::InitHapToken(
++                            hapInfo, hapPolicy, allocTokenIdEx, permissionCheck);
++                        LOG_I(BMS_TAG_INSTALLER, "APKNET: InitHapToken %{public}s requests=%{public}zu ret=%{public}d",
++                            pkg.c_str(), requestedNetworkPermissions.size(), permissionRet);
++                        if (permissionRet != 0) {
++                            (void)installd->RemoveDir(stagedBundleRoot);
++                            return ERR_APPEXECFWK_INSTALL_GRANT_REQUEST_PERMISSIONS_FAILED;
++                        }
+@@ -1817,0 +1861,6 @@
++                    for (const auto &name : requestedNetworkPermissions) {
++                        RequestPermission request;
++                        request.name = name;
++                        request.moduleName = "entry";
++                        moduleInfo.requestPermissions.emplace_back(request);
++                    }

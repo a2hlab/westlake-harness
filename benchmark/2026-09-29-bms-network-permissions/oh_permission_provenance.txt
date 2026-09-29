@@ -1,0 +1,76 @@
+
+AccessToken::HapPolicyParams BundlePermissionMgr::CreateHapPolicyParam(const InnerBundleInfo &innerBundleInfo,
+    const std::string &appServiceCapabilities)
+{
+    AccessToken::HapPolicyParams hapPolicy;
+    std::string apl = innerBundleInfo.GetAppPrivilegeLevel();
+    std::vector<AccessToken::PermissionDef> permDef = GetPermissionDefList(innerBundleInfo);
+    hapPolicy.apl = GetTokenApl(apl);
+    hapPolicy.domain = "domain";
+    hapPolicy.permList = permDef;
+    hapPolicy.permStateList = GetPermissionStateFullList(innerBundleInfo);
+    hapPolicy.aclRequestedList = innerBundleInfo.GetAllowedAcls();
+    LOG_NOFUNC_I(BMS_TAG_DEFAULT, "-n %{public}s apl:%{public}s req permission:%{public}zu acls:%{public}zu",
+        innerBundleInfo.GetBundleName().c_str(), apl.c_str(), hapPolicy.permStateList.size(),
+        hapPolicy.aclRequestedList.size());
+    BundleParser bundleParser;
+    hapPolicy.aclExtendedMap = bundleParser.ParseAclExtendedMap(appServiceCapabilities);
+    // default permission list
+    DefaultPermission permission;
+    if (!GetDefaultPermission(innerBundleInfo.GetBundleName(), permission)) {
+        return hapPolicy;
+std::vector<AccessToken::PermissionStateFull> BundlePermissionMgr::GetPermissionStateFullList(
+    const InnerBundleInfo &innerBundleInfo)
+{
+    auto reqPermissions = innerBundleInfo.GetAllRequestPermissions();
+    std::vector<AccessToken::PermissionStateFull> permStateFullList;
+    if (!reqPermissions.empty()) {
+        for (const auto &reqPermission : reqPermissions) {
+            AccessToken::PermissionStateFull perState;
+            perState.permissionName = reqPermission.name;
+            perState.isGeneral = true;
+            perState.resDeviceID.emplace_back(innerBundleInfo.GetBaseApplicationInfo().deviceId);
+            perState.grantStatus.emplace_back(AccessToken::PermissionState::PERMISSION_DENIED);
+            perState.grantFlags.emplace_back(AccessToken::PermissionFlag::PERMISSION_DEFAULT_FLAG);
+            permStateFullList.emplace_back(perState);
+        }
+    } else {
+        LOG_D(BMS_TAG_DEFAULT, "BundlePermissionMgr::GetPermissionStateFullList requestPermission is empty");
+    }
+    return permStateFullList;
+}
+
+bool BundlePermissionMgr::GetAllReqPermissionStateFull(AccessToken::AccessTokenID tokenId,
+int32_t BundlePermissionMgr::InitHapToken(const InnerBundleInfo &innerBundleInfo, const int32_t userId,
+    const int32_t dlpType, Security::AccessToken::AccessTokenIDEx& tokenIdeEx,
+    Security::AccessToken::HapInfoCheckResult &checkResult, const std::string &appServiceCapabilities)
+{
+    LOG_NOFUNC_I(BMS_TAG_DEFAULT, "InitHapToken -n %{public}s", innerBundleInfo.GetBundleName().c_str());
+    AccessToken::HapInfoParams hapInfo = CreateHapInfoParams(innerBundleInfo, userId, dlpType);
+    AccessToken::HapPolicyParams hapPolicy = CreateHapPolicyParam(innerBundleInfo, appServiceCapabilities);
+#ifdef X86_EMULATOR_MODE
+    std::string appId = innerBundleInfo.GetAppId();
+    if (appId == (innerBundleInfo.GetBundleName() + "_")) {
+        LOG_I(BMS_TAG_DEFAULT, "UnSignatureHap checkIgnore");
+        hapPolicy.checkIgnore = AccessToken::HapPolicyCheckIgnore::ACL_IGNORE_CHECK;
+    }
+#endif
+    auto ret = AccessToken::AccessTokenKit::InitHapToken(hapInfo, hapPolicy, tokenIdeEx, checkResult);
+    if (AccessToken::AccessTokenError::ERR_SERVICE_ABNORMAL == ret ||
+        AccessToken::AccessTokenError::ERR_WRITE_PARCEL_FAILED == ret ||
+        AccessToken::AccessTokenError::ERR_READ_PARCEL_FAILED == ret) {
+        // try again
+        ret = AccessToken::AccessTokenKit::InitHapToken(hapInfo, hapPolicy, tokenIdeEx, checkResult);
+    }
+    if (ret != AccessToken::AccessTokenKitRet::RET_SUCCESS) {
+        LOG_E(BMS_TAG_DEFAULT, "InitHapToken failed, bundleName:%{public}s errCode:%{public}d",
+            innerBundleInfo.GetBundleName().c_str(), ret);
+        return ret;
+    }
+    LOG_NOFUNC_I(BMS_TAG_DEFAULT, "InitHapToken -n %{public}s -t %{public}u", innerBundleInfo.GetBundleName().c_str(),
+        tokenIdeEx.tokenIdExStruct.tokenID);
+    return ERR_OK;
+}
+
+int32_t BundlePermissionMgr::UpdateHapToken(Security::AccessToken::AccessTokenIDEx& tokenIdeEx,
+4026f1a1231b117a5886b33b019a658553135955ac26d4052100f71aac30d952  /opt/build-trees/oh610_lts_source/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/bundle_permission_mgr.cpp

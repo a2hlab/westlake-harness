@@ -426,3 +426,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **B11/#88 现成工具别串代(2026-09-29)**:VM out-aot42/out/out.75d82d5 三份 dex2oat 同SHA8f959217，实测OAT247/image118，不能配BMS R155的230/108；R155 boot.art声明9组件，mainline是secondary而非独立extension。cc-wiki运行时ConnectivityManager子类已越过connectivity墙，故不重编镜像；证据 `benchmark/2026-09-29-wikipedia-line/host-extension/`。
 
 - **BMS联网权限待补正(#80,2026-09-29)**:Wikipedia安装记录reqPermissions=[]，现役BMS样本子进程仅Groups3099；临时host候选d977bd15按授权补3003交cc-wiki实测，不能仅凭EPERM判根因。OH还读TLV_INTERNET_INFO并可能DisallowInternet；通用后续应保留APK INTERNET→BMS权限/凭据派生，勿把临时无条件加组当正解。证据 `benchmark/2026-09-29-wikipedia-line/network-groups/`。
+
+- **BMS APK 网络权限三断点（#89,2026-09-29）**：manifest已解析usesPermissions但C-entry JSON原先丢弃；APK专支手工InnerModuleInfo与AllocHapToken空policy不走HAP权限流程，所以只补资源module.json不足。精确映射INTERNET/ACCESS_NETWORK_STATE后须同时写BMS requestPermissions并照OH BundlePermissionMgr用InitHapToken处理system_grant；旧token权限集不同须卸载重装。本轮离线双APK真实HAP验证通过，ATM/通网仍交cc-wiki上板验，见benchmark/2026-09-29-bms-network-permissions/。

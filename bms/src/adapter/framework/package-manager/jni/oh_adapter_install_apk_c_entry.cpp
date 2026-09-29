@@ -407,6 +407,8 @@ extern "C" int oh_adapter_install_apk_with_manifest(
         services.push_back(serviceJson);
     }
     json["services"] = services;
+    // BMS must receive the verified APK declarations before allocating its token.
+    json["usesPermissions"] = manifest.usesPermissions;
 
     const std::string jsonText = json.dump();
     if (static_cast<int>(jsonText.size()) + 1 > outJsonBufSize) {
