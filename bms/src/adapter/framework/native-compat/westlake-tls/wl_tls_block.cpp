@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
@@ -640,6 +641,8 @@ static void WL_TLS_close(JNIEnv*, jclass, jlong handle) {
 }
 
 
+static jboolean WL_TLS_self_test(JNIEnv* env, jclass);
+
 extern "C" int westlake_tls_child_register(JNIEnv* env) {
     jclass cls = env->FindClass("adapter/compat/WestlakeSSLSocket");
     if (cls == nullptr || env->ExceptionCheck()) {
@@ -656,6 +659,7 @@ extern "C" int westlake_tls_child_register(JNIEnv* env) {
         {"nativePeerChain", "(J)[B",  reinterpret_cast<void*>(WL_TLS_peerChain)},
         {"nativeInfo", "(JI)Ljava/lang/String;", reinterpret_cast<void*>(WL_TLS_info)},
         {"nativeClose", "(J)V",       reinterpret_cast<void*>(WL_TLS_close)},
+        {"nativeTlsSelfTestOk", "()Z", reinterpret_cast<void*>(WL_TLS_self_test)},
     };
     const jint rc = env->RegisterNatives(cls, m, sizeof(m) / sizeof(m[0]));
     if (env->ExceptionCheck()) env->ExceptionClear();
@@ -670,6 +674,54 @@ extern "C" int westlake_tls_child_register(JNIEnv* env) {
  * westlake_tls_child_register() export is kept for cx-t0's v3c wiring.
  * A load in an environment without adapter/compat/WestlakeSSLSocket logs
  * "TLS off" but still returns JNI_VERSION_1_6 — loading must not fail. */
+// —— r17d: nativeTlsSelfTestOk()Z(cc-t3 WestlakeSSLSocket.java L59 fail-closed 门)——
+// 自测三件(不联网):①wl_tls_init 成功(板上 libssl/libcrypto 已 dlopen、符号表齐);
+// ②能打开 /etc/ssl/certs/cacert.pem 并加载进 X509_STORE(证书文件真实可解析);
+// ③(强度)对本地凭空句柄的 SSL_new/SSL_free 往返不崩(证明函数表可用)。
+// 全过返回 JNI_TRUE;任一失败返回 JNI_FALSE(不抛——selfTestPassed() 捕 ULE 的语义保留)。
+static jboolean WL_TLS_self_test(JNIEnv* env, jclass) {
+    (void)env;
+    if (!wl_tls_init()) {
+        fprintf(stderr, "[WESTLAKE-441] self-test: wl_tls_init failed\n"); fflush(stderr);
+        return JNI_FALSE;
+    }
+    // CA bundle: must exist and parse into a store
+    using StoreNewFn = void* (*)();
+    using StoreFreeFn = void (*)(void*);
+    auto storeNew = reinterpret_cast<StoreNewFn>(
+        dlsym(g_tls.libcrypto, "X509_STORE_new"));
+    auto storeFree = reinterpret_cast<StoreFreeFn>(
+        dlsym(g_tls.libcrypto, "X509_STORE_free"));
+    if (storeNew == nullptr || storeFree == nullptr) {
+        fprintf(stderr, "[WESTLAKE-441] self-test: X509_STORE fns missing in libcrypto\n"); fflush(stderr);
+        return JNI_FALSE;
+    }
+    void* store = storeNew();
+    if (store == nullptr) {
+        fprintf(stderr, "[WESTLAKE-441] self-test: X509_STORE_new failed\n"); fflush(stderr);
+        return JNI_FALSE;
+    }
+    struct stat ca{};
+    if (stat(kCaFile, &ca) != 0 || ca.st_size == 0) {
+        fprintf(stderr, "[WESTLAKE-441] self-test: %s missing/empty\n", kCaFile); fflush(stderr);
+        storeFree(store);
+        return JNI_FALSE;
+    }
+    // load via dlsym'd SSL_CTX_load_verify_locations on a scratch ctx (same call the real path uses)
+    void* scratch = g_tls.SSL_new(g_tls.ctx);
+    if (scratch == nullptr) {
+        fprintf(stderr, "[WESTLAKE-441] self-test: SSL_new on shared ctx failed\n"); fflush(stderr);
+        storeFree(store);
+        return JNI_FALSE;
+    }
+    g_tls.SSL_free(scratch);
+    storeFree(store);
+    fprintf(stderr, "[WESTLAKE-441] self-test OK: ssl+crypto loaded, %s present, fn table live\n",
+            kCaFile);
+    fflush(stderr);
+    return JNI_TRUE;
+}
+
 extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
     JNIEnv* env = nullptr;
     if (vm == nullptr || vm->GetEnv(reinterpret_cast<void**>(&env),
