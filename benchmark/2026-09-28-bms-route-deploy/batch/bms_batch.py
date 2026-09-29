@@ -618,7 +618,7 @@ def timed_collection(board, uid, out, remote, rec, wait_seconds, shots, focus_ch
 
 
 def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
-                reinstall=False, hilog_seconds=None, shots=None, focus_check=False):
+                reinstall=False, hilog_seconds=None, shots=None, focus_check=False, launch_only=False):
     out.mkdir(parents=True, exist_ok=True)
     if any(out.iterdir()):
         raise StaleEvidence('refuse stale app evidence: ' + str(out))
@@ -633,23 +633,34 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
         rec['input_apk'] = app['apk']
         save(out / 'record.json', rec)
         board.shell('mkdir -p ' + shlex.quote(remote))
-        remote_apk = remote + '/original.apk'
-        board.send(app['apk'], remote_apk)
-        _, readback = board.shell('sha256sum ' + shlex.quote(remote_apk))
-        if not readback.split() or readback.split()[0] != app['apk_sha256']:
-            raise AppFailure('staged APK hash differs')
-        if reinstall:
-            rec['uninstall'] = uninstall_existing(board, app, out)
-        rc, response = board.shell('bm install -p ' + shlex.quote(remote_apk), required=False, timeout=180)
-        (out / 'install.txt').write_text(response)
-        rec['install'] = {'return_code': rc, 'success_text': bm_success(rc, response, 'install'), 'output': str(out / 'install.txt')}
-        save(out/'record.json', rec)
-        board.shell('rm -f ' + shlex.quote(remote_apk))
+        if launch_only:
+            # Only the runtime changed (e.g. a JAR swap): keep the installed app, skip the ~1 min reinstall.
+            rec['install'] = {'skipped': 'launch_only', 'return_code': 0, 'success_text': True}
+        else:
+            remote_apk = remote + '/original.apk'
+            board.send(app['apk'], remote_apk)
+            _, readback = board.shell('sha256sum ' + shlex.quote(remote_apk))
+            if not readback.split() or readback.split()[0] != app['apk_sha256']:
+                raise AppFailure('staged APK hash differs')
+            if reinstall:
+                rec['uninstall'] = uninstall_existing(board, app, out)
+            rc, response = board.shell('bm install -p ' + shlex.quote(remote_apk), required=False, timeout=180)
+            (out / 'install.txt').write_text(response)
+            rec['install'] = {'return_code': rc, 'success_text': bm_success(rc, response, 'install'), 'output': str(out / 'install.txt')}
+            save(out/'record.json', rec)
+            board.shell('rm -f ' + shlex.quote(remote_apk))
         rc, response = board.shell('bm dump -n ' + shlex.quote(app['package']), required=False)
         (out / 'bundle.txt').write_text(response)
         rec['bms']['return_code'] = rc
         if rc == 0:
-            rec['bms'].update(parse_bundle(response, app['package']))
+            try:
+                rec['bms'].update(parse_bundle(response, app['package']))
+            except AppFailure as exc:
+                if launch_only:
+                    raise AppFailure('--launch-only needs the app already installed: ' + str(exc)) from exc
+                raise
+        if launch_only and not rec['bms']['queryable']:
+            raise AppFailure('--launch-only needs the app already installed; BMS cannot find it')
         if not rec['install']['success_text'] or rec['install']['return_code'] or not rec['bms']['queryable']:
             raise AppFailure('install or BMS readback failed')
         uid = rec['bms']['uid']
@@ -827,6 +838,7 @@ def main(argv=None):
     ap.add_argument('--run-id', default=datetime.datetime.now().strftime('%Y%m%dT%H%M%S')+'-'+uuid.uuid4().hex[:8])
     ap.add_argument('--wait', type=float, default=15)
     ap.add_argument('--reinstall', action='store_true', help='uninstall a confirmed installed target before installation')
+    ap.add_argument('--launch-only', action='store_true', help='skip install; launch the already-installed app (runtime-only change)')
     ap.add_argument('--hilog', nargs='?', const=True, type=float, metavar='SECONDS', help='reset before launch, dump after SECONDS (default: --wait) and pull new faultlogs')
     ap.add_argument('--shots', type=shot_offsets, metavar='5,20', help='click-relative screenshot offsets; implies strict per-shot focus check')
     ap.add_argument('--focus-check', action='store_true', help='require target focus for every screenshot')
@@ -836,7 +848,9 @@ def main(argv=None):
     hilog_seconds = args.wait if args.hilog is True else args.hilog
     if hilog_seconds is not None and (not math.isfinite(hilog_seconds) or not 0 < hilog_seconds <= 300):
         ap.error('hilog seconds must be finite and in (0, 300]')
-    options = dict(reinstall=args.reinstall, hilog_seconds=hilog_seconds,
+    if args.launch_only and args.reinstall:
+        ap.error('--launch-only and --reinstall are exclusive')
+    options = dict(reinstall=args.reinstall, launch_only=args.launch_only, hilog_seconds=hilog_seconds,
                    shots=args.shots, focus_check=args.focus_check)
     entries = load_apps(args.manifest,args.phase,args.keys)
     if not args.execute:

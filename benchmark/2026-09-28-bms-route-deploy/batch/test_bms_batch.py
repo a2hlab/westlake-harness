@@ -459,7 +459,7 @@ class BatchTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(b.main(['--keys','x,noice','--reinstall','--hilog','12','--shots','5,20','--focus-check']),0)
             options=json.loads(output.getvalue())['options']
-            self.assertEqual(options,dict(reinstall=True,hilog_seconds=12,shots=[5,20],focus_check=True))
+            self.assertEqual(options,dict(reinstall=True,launch_only=False,hilog_seconds=12,shots=[5,20],focus_check=True))
             for args in (['--shots','20,5'],['--shots','5,5'],['--shots','nan'],['--shots','0,20'],['--hilog','nan'],['--hilog','-1'],['--wait','inf']):
                 with self.subTest(args=args),contextlib.redirect_stderr(io.StringIO()):
                     with self.assertRaises(SystemExit):b.main(args)
@@ -529,6 +529,18 @@ class BatchTests(unittest.TestCase):
         for name in ('preflight.json','facts.txt','summary.json'):(self.root/name).unlink(missing_ok=True)
         with self.assertRaises(b.BatchStop) as cm:self.run_one(board)
         self.assertIn('board clock off',str(cm.exception))
+
+    def test_launch_only_skips_install_and_launches(self):
+        board,rec=self.collect(launch_only=True)
+        self.assertFalse(any(c.startswith('bm install') or c.startswith('send ') for c in board.calls))
+        self.assertEqual(rec['install']['skipped'],'launch_only')
+        self.assertTrue(board.clicked or any('uiInput click' in c for c in board.calls))
+
+    def test_launch_only_refuses_uninstalled_app(self):
+        board=FakeBoard();board.installed=False
+        board,rec=self.collect(board,launch_only=True)
+        self.assertEqual(rec['status'],'app_failed')
+        self.assertIn('launch-only',rec['error'])
 
     def test_stale_record_never_becomes_current_batch_result(self):
         directory=self.root/'app1';directory.mkdir()
