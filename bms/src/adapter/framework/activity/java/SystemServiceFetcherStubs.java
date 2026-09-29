@@ -41,8 +41,41 @@ public final class SystemServiceFetcherStubs {
             @Override public Object build(Object context) throws Throwable { return buildPowerExemptionManager(context); }
         });
         registerServiceName("android.os.PowerExemptionManager", "power_exemption");
+        // r17s (fd-meet/jitsi): getSystemService(RESTRICTIONS_SERVICE) is null on route-A, so
+        // jitsi MainActivity NPEs invoking RestrictionsManager.getApplicationRestrictions() on null.
+        // Build a real RestrictionsManager(Context, IRestrictionsManager) whose stubbed service returns
+        // an EMPTY Bundle (not null) so getApplicationRestrictions() -> non-null Bundle.
+        replaceFetcher("restrictions", new Builder() {
+            @Override public Object build(Object context) throws Throwable { return buildRestrictionsManager(context); }
+        });
+        registerServiceName("android.content.RestrictionsManager", "restrictions");
         // vibrator_manager is deferred: VibratorManager/Vibrator have package-private constructors, so a
         // subclass stub will not compile; it needs an IVibratorManagerService-level proxy instead.
+    }
+
+    /** RestrictionsManager(Context, IRestrictionsManager) with a stub service returning empty Bundles. */
+    private static Object buildRestrictionsManager(Object context) throws Throwable {
+        Class<?> rm = Class.forName("android.content.RestrictionsManager");
+        Class<?> irm = Class.forName("android.content.IRestrictionsManager");
+        Object service = Proxy.newProxyInstance(irm.getClassLoader(), new Class<?>[] {irm},
+                new InvocationHandler() {
+                    @Override public Object invoke(Object p, Method m, Object[] a) {
+                        String n = m.getName();
+                        if ("asBinder".equals(n)) return new android.os.Binder();
+                        Class<?> rt = m.getReturnType();
+                        if (rt == android.os.Bundle.class) return new android.os.Bundle();
+                        if (java.util.List.class.isAssignableFrom(rt)) return new java.util.ArrayList<Object>();
+                        if (rt == boolean.class) return Boolean.FALSE;
+                        if (rt == int.class) return Integer.valueOf(0);
+                        if (rt == long.class) return Long.valueOf(0L);
+                        return null;
+                    }
+                });
+        Class<?> contextType = Class.forName("android.content.Context");
+        Constructor<?> ctor = rm.getDeclaredConstructor(contextType, irm);
+        ctor.setAccessible(true);
+        System.err.println("[B8-FETCH] restrictions RestrictionsManager built (empty-Bundle service)");
+        return ctor.newInstance(context, service);
     }
 
     /**
