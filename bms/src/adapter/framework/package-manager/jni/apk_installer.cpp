@@ -533,17 +533,26 @@ bool ReadIconByManifest(const std::string& srcApkPath, std::vector<uint8_t>& out
 //     * DECLARED_MISSING_ALL_BUCKETS: manifest declares android:icon but the
 //       id resolves in NO density bucket of the owning package's arsc, and no
 //       physical icon entry exists either (declaration is a dead reference).
+//     * DECLARED_XML_ONLY (B7, 2026-09-29): manifest declares android:icon and
+//       the id resolves, but only to an XML drawable — a vector, or an
+//       adaptive icon whose layers are vectors — so no raster exists in any
+//       bucket (the arsc resolver prefers rasters, and ComposeAdaptiveIcon
+//       already failed), and no legacy icon entry is present either. Refusing
+//       such an APK blocked a whole class of modern apps (fd-k9: ic_launcher =
+//       vector ic_app_logo + v26 adaptive XML, zero PNG/WebP) from installing at
+//       all; the template's generic placeholder is the Android-like "default
+//       icon" outcome and still never borrows another package's icon.
 //   KEEP fail-closed — anything that smells like tampering or a real icon we
 //   merely failed to read:
 //     * manifest unparseable (nothing can be proven about the package);
-//     * declared id DOES resolve to an existing entry (corrupt/truncated
-//       bytes, or an adaptive-icon XML descriptor — the icon exists, only our
-//       raster path can't consume it);
+//     * declared id resolves to a raster entry that could not be read
+//       (corrupt/truncated bytes);
 //     * any candidate icon path physically present in the zip but unreadable
 //       (zip damage = tampered package).
 enum class IconlessApkClass {
     NOT_DECLARED,
     DECLARED_MISSING_ALL_BUCKETS,
+    DECLARED_XML_ONLY,
     FAIL_CLOSED,
 };
 
@@ -551,7 +560,9 @@ const char* IconlessApkClassName(IconlessApkClass cls)
 {
     return cls == IconlessApkClass::NOT_DECLARED ? "NOT_DECLARED"
         : cls == IconlessApkClass::DECLARED_MISSING_ALL_BUCKETS
-            ? "DECLARED_MISSING_ALL_BUCKETS" : "FAIL_CLOSED";
+            ? "DECLARED_MISSING_ALL_BUCKETS"
+        : cls == IconlessApkClass::DECLARED_XML_ONLY
+            ? "DECLARED_XML_ONLY" : "FAIL_CLOSED";
 }
 
 // Physical presence probe for the candidate icon paths. A present-but-
@@ -588,7 +599,12 @@ IconlessApkClass ClassifyIconlessApk(const std::string& srcApkPath)
             : srcApkPath;
         std::string entryPath;
         if (oh_adapter::ResolveResourceIdToFile(arscApk, iconId, entryPath)) {
-            return IconlessApkClass::FAIL_CLOSED;  // declared AND present, but unusable
+            const bool xmlOnly = entryPath.size() >= 4 &&
+                entryPath.compare(entryPath.size() - 4, 4, ".xml") == 0;
+            if (xmlOnly && !ZipHasAnyIconEntry(srcApkPath)) {
+                return IconlessApkClass::DECLARED_XML_ONLY;  // vector/adaptive only
+            }
+            return IconlessApkClass::FAIL_CLOSED;  // declared raster present, but unusable
         }
         return ZipHasAnyIconEntry(srcApkPath)
             ? IconlessApkClass::FAIL_CLOSED
@@ -643,8 +659,9 @@ bool ApkInstaller::ExtractAndPackResourceHap(const std::string& srcApkPath,
     // when icon bytes cannot be produced for a package that provably HAS (or
     // may have) an icon — otherwise template bytes would silently publish a
     // cross-package placeholder.  A provably icon-less APK (no declaration,
-    // or a dead declaration missing in every density bucket) instead gets the
-    // template's own generic placeholder under a loud typed alarm; see
+    // a dead declaration missing in every density bucket, or a declaration
+    // that only resolves to vector/adaptive XML with no raster anywhere) gets
+    // the template's own generic placeholder under a loud typed alarm; see
     // ClassifyIconlessApk for the exact boundary.
     if (!ReadIconByManifest(srcApkPath, apkIconBytes) &&
         !ReadApkLauncherIcon(srcApkPath, apkIconBytes)) {
