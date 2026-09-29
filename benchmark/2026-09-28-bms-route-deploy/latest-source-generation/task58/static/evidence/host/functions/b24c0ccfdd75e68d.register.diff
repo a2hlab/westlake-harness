@@ -1,0 +1,242 @@
+--- R155/ProcessSpawnReqMsg
++++ NEW/ProcessSpawnReqMsg
+@@ -8,19 +8,32 @@
+ mov xR, xR
+ mov xR, xR
+ str xR, [sp, #0x8]
+ bl <CheckAppSpawnMsg>
+-cbz wR, <ProcessSpawnReqMsg+0x50>
+-mov wR, wR
+-add xR, xR, #0x8
+-mov xR, xR
++mov wR, #0x2c11 // =11281
++mov wR, wR
++nop
++adr xR, <write+0x4598>
++adrp xR,
++add xR, xR, <string:'[%{public}s:%{public}d]WLCGATE:STOCK:REQUEST_INGRESS'>
++adrp xR,
++add xR, xR, <string:'appspawn_service.c'>
++mov wR, #0x3 // =3
++mov wR, #0x4 // =4
++movk wR, #0xd00, lsl #16
++mov wR, #0x3f9 // =1017
++bl <HiLogPrint@plt>
++cbz wR, <ProcessSpawnReqMsg+0x84>
++add xR, xR, #0x8
++mov xR, xR
++mov wR, wR
+ mov wR, wzr
+ bl <SendResponse>
+ add xR, sp, #0x8
+ bl <DeleteAppSpawnMsg>
+-b <ProcessSpawnReqMsg+0x424>
++b <ProcessSpawnReqMsg+0x4cc>
+ bl <IsDeveloperModeOpen>
+-cbz wR, <ProcessSpawnReqMsg+0x118>
++cbz wR, <ProcessSpawnReqMsg+0x14c>
+ adrp xR,
+ add xR, xR, <string:'const.startup.hnp.execute.enable'>
+ adrp xR,
+ add xR, xR, <string:'false'>
+@@ -29,21 +42,21 @@
+ strh wzr, [sp, #0x18]
+ str xzr, [sp, #0x10]
+ bl <GetParameter@plt>
+ cmp wR, #0x0
+-b.le <ProcessSpawnReqMsg+0xb4>
++b.le <ProcessSpawnReqMsg+0xe8>
+ ldr wR, [sp, #0x10]
+ mov wR, #0x7274 // =29300
+ ldrb wR, [sp, #0x14]
+ movk wR, #0x6575, lsl #16
+ eor wR, wR, wR
+ orr wR, wR, wR
+-cbnz wR, <ProcessSpawnReqMsg+0xe8>
++cbnz wR, <ProcessSpawnReqMsg+0x11c>
+ mov xR, xR
+ mov wR, #0x1 // =1
+ mov wR, #0x11 // =17
+ bl <SetAppSpawnMsgFlag>
+-b <ProcessSpawnReqMsg+0x118>
++b <ProcessSpawnReqMsg+0x14c>
+ mov wR, #0x2c11 // =11281
+ mov wR, wR
+ nop
+ adr xR, <write+0x4598>
+@@ -65,12 +78,12 @@
+ add xR, xR, <string:'appspawn_service.c'>
+ mov wR, #0x3 // =3
+ mov wR, #0x3 // =3
+ movk wR, #0xd00, lsl #16
+-mov wR, #0x403 // =1027
++mov wR, #0x404 // =1028
+ bl <HiLogPrint@plt>
+ bl <CreateAppSpawningCtx>
+-cbz xR, <ProcessSpawnReqMsg+0x160>
++cbz xR, <ProcessSpawnReqMsg+0x1cc>
+ mov wR, #0x2 // =2
+ mov xR, xR
+ str xR, [xR, #0x50]
+ str wR, [xR, #0x60]
+@@ -80,17 +93,31 @@
+ mov wR, #0x14 // =20
+ mov wR, #0x2 // =2
+ mov xR, xR
+ bl <AppSpawnHookExecute>
+-cbz wR, <ProcessSpawnReqMsg+0x170>
+-mov wR, wR
+-add xR, xR, #0x8
+-mov xR, xR
+-b <ProcessSpawnReqMsg+0x414>
++mov wR, wR
++mov wR, #0x2c11 // =11281
++nop
++adr xR, <write+0x4598>
++adrp xR,
++add xR, xR, <string:'[%{public}s:%{public}d]WLCGATE:STOCK:PREFORK_RESULT %{public}d'>
++adrp xR,
++add xR, xR, <string:'appspawn_service.c'>
++mov wR, #0x3 // =3
++mov wR, #0x4 // =4
++movk wR, #0xd00, lsl #16
++mov wR, #0x416 // =1046
++mov wR, wR
++bl <HiLogPrint@plt>
++cbz wR, <ProcessSpawnReqMsg+0x1dc>
++add xR, xR, #0x8
++mov xR, xR
++mov wR, wR
++b <ProcessSpawnReqMsg+0x4bc>
+ add xR, xR, #0x8
+ mov xR, xR
+ mov wR, #0xd000000 // =218103808
+-b <ProcessSpawnReqMsg+0x3c>
++b <ProcessSpawnReqMsg+0x70>
+ ldr xR, [xR, #0x50]
+ bl <DumpAppSpawnMsg>
+ add xR, xR, #0x68
+ mov wR, #0x1 // =1
+@@ -109,20 +136,20 @@
+ add xR, xR, #0x18
+ mov xR, xR
+ bl <pipe@plt>
+ cmn wR, #0x1
+-b.eq <ProcessSpawnReqMsg+0x1f0>
++b.eq <ProcessSpawnReqMsg+0x25c>
+ ldr wR, [xR]
+ mov wR, #0x1 // =1
+ bl <fcntl@plt>
+ cmp wR, #0x1
+-b.lt <ProcessSpawnReqMsg+0x268>
++b.lt <ProcessSpawnReqMsg+0x2d4>
+ ldr wR, [xR]
+ orr wR, wR, #0x800
+ mov wR, #0x2 // =2
+ mov wR, wR
+ bl <fcntl@plt>
+-b <ProcessSpawnReqMsg+0x268>
++b <ProcessSpawnReqMsg+0x2d4>
+ bl <__errno_location@plt>
+ mov wR, #0x2c11 // =11281
+ mov xR, xR
+ ldr wR, [xR]
+@@ -137,9 +164,9 @@
+ movk wR, #0xd00, lsl #16
+ mov wR, #0x25d // =605
+ bl <HiLogPrint@plt>
+ ldr wR, [xR]
+-cbz wR, <ProcessSpawnReqMsg+0x268>
++cbz wR, <ProcessSpawnReqMsg+0x2d4>
+ mov wR, #0x2c11 // =11281
+ nop
+ adr xR, <write+0x4598>
+ adrp xR,
+@@ -150,31 +177,46 @@
+ mov wR, #0x6 // =6
+ movk wR, #0xd00, lsl #16
+ mov wR, #0x399 // =921
+ bl <HiLogPrint@plt>
+-b <ProcessSpawnReqMsg+0x27c>
++b <ProcessSpawnReqMsg+0x2e8>
+ add xR, xR, #0x5c
+ mov xR, xR
+ mov xR, xR
+ bl <AppSpawnProcessMsg>
+ mov wR, wR
++mov wR, #0x2c11 // =11281
++ldr wR, [xR, #0x5c]
++nop
++adr xR, <write+0x4598>
++adrp xR,
++add xR, xR, <string:'[%{public}s:%{public}d]WLCGATE:STOCK:SPAWN_RESULT ret=%{public}d pid=%{public}d'>
++adrp xR,
++add xR, xR, <string:'appspawn_service.c'>
++mov wR, #0x3 // =3
++mov wR, #0x4 // =4
++movk wR, #0xd00, lsl #16
++mov wR, #0x421 // =1057
++mov wR, wR
++mov wR, #0x3 // =3
++str wR, [sp]
++bl <HiLogPrint@plt>
+ bl <GetAppSpawnContent>
+ mov xR, xR
+ mov wR, #0x15 // =21
+ mov wR, wzr
+ mov xR, xR
+ bl <AppSpawnHookExecute>
+-cbz wR, <ProcessSpawnReqMsg+0x2a8>
+-add xR, xR, #0x8
+-mov xR, xR
+-mov wR, wR
+-b <ProcessSpawnReqMsg+0x414>
++cbz wR, <ProcessSpawnReqMsg+0x354>
++add xR, xR, #0x8
++mov xR, xR
++mov wR, wR
++b <ProcessSpawnReqMsg+0x4bc>
+ mov xR, xR
+ bl <IsChildColdRun>
+ cmp wR, #0x0
+ mov xR, xR
+ mov wR, #0xa // =10
+-mov wR, #0x3 // =3
+ csel wR, wR, wR, eq
+ bl <IsChildColdRun>
+ cmp wR, #0x0
+ mov wR, wR
+@@ -211,28 +253,28 @@
+ mov wR, #0x2c3 // =707
+ mov wR, wR
+ str wR, [sp]
+ bl <HiLogPrint@plt>
+-cbz wR, <ProcessSpawnReqMsg+0x364>
++cbz wR, <ProcessSpawnReqMsg+0x40c>
+ mov wR, #0x2c5 // =709
+-b <ProcessSpawnReqMsg+0x3cc>
++b <ProcessSpawnReqMsg+0x474>
+ bl <LE_GetDefaultLoop@plt>
+ add xR, xR, #0x30
+ nop
+ adr xR, <WaitChildTimeout>
+ mov xR, xR
+ mov xR, xR
+ bl <LE_CreateTimer@plt>
+-cbnz wR, <ProcessSpawnReqMsg+0x3a0>
++cbnz wR, <ProcessSpawnReqMsg+0x448>
+ bl <LE_GetDefaultLoop@plt>
+ mov wR, #0x3e8 // =1000
+ ldr xR, [xR]
+ mov xR, xzr
+ mul wR, wR, wR
+ bl <LE_StartTimer@plt>
+-cbz wR, <ProcessSpawnReqMsg+0x424>
++cbz wR, <ProcessSpawnReqMsg+0x4cc>
+ ldr xR, [xR]
+-cbz xR, <ProcessSpawnReqMsg+0x3b4>
++cbz xR, <ProcessSpawnReqMsg+0x45c>
+ bl <LE_GetDefaultLoop@plt>
+ ldr xR, [xR]
+ bl <LE_StopTimer@plt>
+ str xzr, [xR]

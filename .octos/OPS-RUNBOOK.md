@@ -102,3 +102,5 @@
 ### B5 runtime recovery after installer reboot (5ea, 2026-09-29)
 
 Installer两处更新并重启foundation后可能黑屏；按明确授权整机重启，核 `/proc/<新foundation>/root` 两处SHA及非黑图。PR03启动恢复可能延迟，先只读核挂载，勿立即重复挂载。B5完整恢复还需保存的R155系统覆盖、B5 JAR和ZigZag的5个app原生库挂载；漏后者会使原始libmain报android_set_abort_message缺失。核源SHA后按重启前mountinfo恢复，复验HW+ZigZag；一般HelloWorld restore会覆盖installer，保留新installer时不要盲跑。实跑回执/带boot ID保护脚本见 benchmark/2026-09-28-bms-route-deploy/latest-source-generation/task52/installer/ 与 recipes/。
+
+- B6失败回滚后AMS可能暂留已死候选PID：`aa force-stop` 可exit0但文本10106401 kill process failed；不能只看rc或末时刻无PID判冷启动成功。保留日志，核新parent子PID并用新的run-id正常桌面重试；#58稍后重试恢复B5 HelloWorld，无需重启。

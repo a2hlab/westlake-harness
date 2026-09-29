@@ -1,0 +1,259 @@
+--- R155/OpenVerifiedFileHex
++++ NEW/OpenVerifiedFileHex
+@@ -0,0 +1,256 @@
++stp xR, xR, [sp, #-0x50]!
++str xR, [sp, #0x10]
++mov xR, sp
++stp xR, xR, [sp, #0x20]
++stp xR, xR, [sp, #0x30]
++stp xR, xR, [sp, #0x40]
++sub sp, sp, #0x5, lsl #12 // =0x5000
++sub sp, sp, #0x1d0
++mov wR, #-0x1 // =-1
++stp xzr, xzr, [xR, #-0x38]
++stur wzr, [xR, #-0x28]
++cbz xR, <OpenVerifiedFileHex+0x5c>
++mov xR, xR
++cbz xR, <OpenVerifiedFileHex+0x5c>
++mov wR, #-0x1 // =-1
++cbz xR, <OpenVerifiedFileHex+0x5c>
++ldrb wR, [xR]
++mov xR, xR
++cmp wR, #0x2f
++b.ne <OpenVerifiedFileHex+0x5c>
++ldrb wR, [xR, #0x40]
++cbz wR, <OpenVerifiedFileHex+0x80>
++mov wR, #-0x1 // =-1
++mov wR, wR
++add sp, sp, #0x5, lsl #12 // =0x5000
++add sp, sp, #0x1d0
++ldp xR, xR, [sp, #0x40]
++ldp xR, xR, [sp, #0x30]
++ldp xR, xR, [sp, #0x20]
++ldr xR, [sp, #0x10]
++ldp xR, xR, [sp], #0x50
++ret
++mov xR, xR
++mov wR, wR
++mov xR, xzr
++add xR, xR, #0x1
++sub xR, xR, #0x20
++mov wR, #-0x1 // =-1
++ldurb wR, [xR, #-0x1]
++ldrb wR, [xR]
++sub wR, wR, #0x61
++sub wR, wR, #0x30
++sub wR, wR, #0x57
++cmp wR, #0x6
++csinv wR, wR, wzr, lo
++cmp wR, #0xa
++sub wR, wR, #0x61
++sub wR, wR, #0x30
++csel wR, wR, wR, lo
++sub wR, wR, #0x57
++cmp wR, #0x6
++mvn wR, wR
++csinv wR, wR, wzr, lo
++cmp wR, #0xa
++and wR, wR, #0xff
++csel wR, wR, wR, lo
++cbz wR, <OpenVerifiedFileHex+0x5c>
++mvn wR, wR
++tst wR, #0xff
++b.eq <OpenVerifiedFileHex+0x5c>
++orr wR, wR, wR, lsl #4
++add xR, xR, #0x2
++strb wR, [xR, xR]
++add xR, xR, #0x1
++cmp xR, #0x20
++b.ne <OpenVerifiedFileHex+0x98>
++cbz xR, <OpenVerifiedFileHex+0x58>
++mov xR, xR
++bl <strlen@plt>
++and xR, xR, #0xfffffffffffffff7
++cmp xR, #0x20
++b.ne <OpenVerifiedFileHex+0x58>
++add xR, xR, #0x1
++orr xR, xR, #0x1
++cmp xR, xR
++b.ne <OpenVerifiedFileHex+0x58>
++ldrb wR, [xR, xR]
++cbnz wR, <OpenVerifiedFileHex+0x58>
++mov xR, xzr
++lsr xR, xR, #1
++add xR, xR, #0x1
++sub xR, xR, #0x38
++mov wR, #-0x1 // =-1
++ldurb wR, [xR, #-0x1]
++ldrb wR, [xR]
++sub wR, wR, #0x61
++sub wR, wR, #0x30
++sub wR, wR, #0x57
++cmp wR, #0x6
++csinv wR, wR, wzr, lo
++cmp wR, #0xa
++sub wR, wR, #0x61
++sub wR, wR, #0x30
++csel wR, wR, wR, lo
++sub wR, wR, #0x57
++cmp wR, #0x6
++mvn wR, wR
++csinv wR, wR, wzr, lo
++cmp wR, #0xa
++and wR, wR, #0xff
++csel wR, wR, wR, lo
++cbz wR, <OpenVerifiedFileHex+0x5c>
++mvn wR, wR
++tst wR, #0xff
++b.eq <OpenVerifiedFileHex+0x5c>
++orr wR, wR, wR, lsl #4
++add xR, xR, #0x2
++strb wR, [xR, xR]
++add xR, xR, #0x1
++cmp xR, xR
++b.ne <OpenVerifiedFileHex+0x14c>
++add xR, sp, #0x80
++mov xR, xR
++bl <realpath@plt>
++cbz xR, <OpenVerifiedFileHex+0x58>
++add xR, sp, #0x80
++mov xR, xR
++bl <strcmp@plt>
++cbnz wR, <OpenVerifiedFileHex+0x58>
++add xR, sp, #0x80
++bl <strlen@plt>
++mov wR, #-0x1 // =-1
++cmp xR, #0xfff
++b.hi <OpenVerifiedFileHex+0x5c>
++mov xR, xR
++mov wR, wzr
++mov wR, #0x1020 // =4128
++bl <memset@plt>
++mov wR, #0x8000 // =32768
++add xR, sp, #0x80
++movk wR, #0x8, lsl #16
++str wR, [xR]
++bl <open@plt>
++tbnz wR, #0x1f, <OpenVerifiedFileHex+0x23c>
++add xR, sp, #0x1, lsl #12 // =0x1000
++mov wR, wR
++add xR, xR, #0x80
++bl <fstat@plt>
++cbz wR, <OpenVerifiedFileHex+0x244>
++mov wR, wR
++bl <close@plt>
++mov wR, #-0x3 // =-3
++b <OpenVerifiedFileHex+0x5c>
++mov wR, #-0x2 // =-2
++b <OpenVerifiedFileHex+0x5c>
++ldr wR, [sp, #0x1090]
++and wR, wR, #0xf000
++cmp wR, #0x8, lsl #12 // =0x8000
++b.ne <OpenVerifiedFileHex+0x22c>
++ldr xR, [sp, #0x10b0]
++cmp xR, #0x0
++b.le <OpenVerifiedFileHex+0x22c>
++add xR, sp, #0x1, lsl #12 // =0x1000
++sub xR, xR, #0x38
++add xR, xR, #0x80
++mov wR, wR
++mov wR, wR
++mov xR, xR
++bl <VerifyBuildId>
++cbz wR, <OpenVerifiedFileHex+0x290>
++mov wR, wR
++bl <close@plt>
++mov wR, #-0x4 // =-4
++b <OpenVerifiedFileHex+0x5c>
++add xR, sp, #0x1, lsl #12 // =0x1000
++add xR, xR, #0x100
++bl <WLSha256Init>
++b <OpenVerifiedFileHex+0x2b8>
++add xR, sp, #0x1, lsl #12 // =0x1000
++add xR, sp, #0x1, lsl #12 // =0x1000
++add xR, xR, #0x100
++add xR, xR, #0x170
++bl <WLSha256Update>
++cbnz wR, <OpenVerifiedFileHex+0x2ec>
++add xR, sp, #0x1, lsl #12 // =0x1000
++mov wR, wR
++add xR, xR, #0x170
++mov wR, #0x4000 // =16384
++bl <read@plt>
++mov xR, xR
++cmp xR, #0x1
++b.ge <OpenVerifiedFileHex+0x2a0>
++tbz xR, #0x3f, <OpenVerifiedFileHex+0x2fc>
++bl <__errno_location@plt>
++ldr wR, [xR]
++cmp wR, #0x4
++b.eq <OpenVerifiedFileHex+0x2b8>
++mov wR, wR
++bl <close@plt>
++mov wR, #-0x5 // =-5
++b <OpenVerifiedFileHex+0x5c>
++add xR, sp, #0x1, lsl #12 // =0x1000
++sub xR, xR, #0x60
++add xR, xR, #0x100
++bl <WLSha256Final>
++cbnz wR, <OpenVerifiedFileHex+0x3c0>
++mov xR, sp
++mov wR, wR
++bl <fstat@plt>
++cbnz wR, <OpenVerifiedFileHex+0x3c0>
++ldr xR, [sp]
++ldr xR, [sp, #0x1080]
++cmp xR, xR
++b.ne <OpenVerifiedFileHex+0x3c0>
++ldr xR, [sp, #0x8]
++ldr xR, [sp, #0x1088]
++cmp xR, xR
++b.ne <OpenVerifiedFileHex+0x3c0>
++ldr xR, [sp, #0x30]
++ldr xR, [sp, #0x10b0]
++cmp xR, xR
++b.ne <OpenVerifiedFileHex+0x3c0>
++ldp qR, qR, [xR, #-0x20]
++ldp qR, qR, [xR, #-0x60]
++eor vR.16b, vR.16b, vR.16b
++eor vR.16b, vR.16b, vR.16b
++orr vR.16b, vR.16b, vR.16b
++ext vR.16b, vR.16b, vR.16b, #0x8
++orr vR.8b, vR.8b, vR.8b
++umov wR, vR.b[1]
++umov wR, vR.b[0]
++umov wR, vR.b[2]
++umov wR, vR.b[3]
++umov wR, vR.b[4]
++orr wR, wR, wR
++umov wR, vR.b[5]
++orr wR, wR, wR
++umov wR, vR.b[6]
++orr wR, wR, wR
++umov wR, vR.b[7]
++orr wR, wR, wR
++orr wR, wR, wR
++orr wR, wR, wR
++orr wR, wR, wR
++tst wR, #0xff
++b.eq <OpenVerifiedFileHex+0x3d0>
++mov wR, wR
++bl <close@plt>
++mov wR, #-0x7 // =-7
++b <OpenVerifiedFileHex+0x5c>
++mov wR, wR
++bl <close@plt>
++mov wR, #-0x6 // =-6
++b <OpenVerifiedFileHex+0x5c>
++add xR, sp, #0x80
++str wR, [xR]
++add xR, xR, #0x20
++stp xR, xR, [xR, #0x8]
++str xR, [xR, #0x18]
++bl <strlen@plt>
++add xR, xR, #0x1
++add xR, sp, #0x80
++mov xR, xR
++bl <memcpy@plt>
++mov wR, wzr
++b <OpenVerifiedFileHex+0x5c>

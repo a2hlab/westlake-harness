@@ -1,0 +1,401 @@
+--- R155/VerifyBuildId
++++ NEW/VerifyBuildId
+@@ -1,155 +1,172 @@
+-sub sp, sp, #0xf0
+-stp xR, xR, [sp, #0x90]
+-stp xR, xR, [sp, #0xa0]
+-stp xR, xR, [sp, #0xb0]
+-stp xR, xR, [sp, #0xc0]
++sub sp, sp, #0x130
+ stp xR, xR, [sp, #0xd0]
+ stp xR, xR, [sp, #0xe0]
+-add xR, sp, #0x90
++stp xR, xR, [sp, #0xf0]
++stp xR, xR, [sp, #0x100]
++stp xR, xR, [sp, #0x110]
++stp xR, xR, [sp, #0x120]
++add xR, sp, #0xd0
+ mov wR, wR
+ ands wR, wR, #0xffff
+ mov wR, #-0x1 // =-1
+-b.eq <VerifyBuildId+0x11c>
+-mov xR, xR
+-cbz xR, <VerifyBuildId+0x11c>
+-mov xR, xR
+-cbz xR, <VerifyBuildId+0x11c>
+-mov xR, xzr
+-sub xR, xR, #0x40
++b.eq <VerifyBuildId+0x12c>
++mov xR, xR
++cbz xR, <VerifyBuildId+0x12c>
++mov xR, xR
++cbz xR, <VerifyBuildId+0x12c>
++mov xR, xR
++and xR, xR, #0xfffffffffffffffb
++cmp xR, #0x10
++b.ne <VerifyBuildId+0x12c>
++mov xR, xzr
++sub xR, xR, #0x48
+ mov wR, #0x40 // =64
+-b <VerifyBuildId+0x5c>
++b <VerifyBuildId+0x6c>
+ add xR, xR, xR
+ cmp xR, #0x40
+-b.hs <VerifyBuildId+0x90>
++b.hs <VerifyBuildId+0xa0>
+ add xR, xR, xR
+ sub xR, xR, xR
+ mov wR, wR
+ mov xR, xR
+ bl <pread@plt>
+ cmp xR, #0x1
+-b.ge <VerifyBuildId+0x50>
+-tbz xR, #0x3f, <VerifyBuildId+0x118>
++b.ge <VerifyBuildId+0x60>
++tbz xR, #0x3f, <VerifyBuildId+0x128>
+ bl <__errno_location@plt>
+ ldr wR, [xR]
+ cmp wR, #0x4
+-b.eq <VerifyBuildId+0x54>
+-b <VerifyBuildId+0x118>
+-ldur wR, [xR, #-0x40]
++b.eq <VerifyBuildId+0x64>
++b <VerifyBuildId+0x128>
++ldur wR, [xR, #-0x48]
+ mov wR, #-0x1 // =-1
+ mov wR, #0x457f // =17791
+ movk wR, #0x464c, lsl #16
+ cmp wR, wR
+-b.ne <VerifyBuildId+0x11c>
+-ldurb wR, [xR, #-0x3c]
++b.ne <VerifyBuildId+0x12c>
++ldurb wR, [xR, #-0x44]
+ cmp wR, #0x2
+-b.ne <VerifyBuildId+0x11c>
+-ldurb wR, [xR, #-0x3b]
++b.ne <VerifyBuildId+0x12c>
++ldurb wR, [xR, #-0x43]
+ cmp wR, #0x1
+-b.ne <VerifyBuildId+0x11c>
+-ldurh wR, [xR, #-0x30]
++b.ne <VerifyBuildId+0x12c>
++ldurh wR, [xR, #-0x38]
+ cmp wR, #0x3
+-b.ne <VerifyBuildId+0x11c>
+-ldurh wR, [xR, #-0x2e]
++b.ne <VerifyBuildId+0x12c>
++ldurh wR, [xR, #-0x36]
+ mov wR, #-0x1 // =-1
+ cmp wR, wR
+-b.ne <VerifyBuildId+0x11c>
+-ldurh wR, [xR, #-0xa]
++b.ne <VerifyBuildId+0x12c>
++ldurh wR, [xR, #-0x12]
+ cmp wR, #0x38
+-b.ne <VerifyBuildId+0x11c>
+-ldurh wR, [xR, #-0x8]
+-cbz wR, <VerifyBuildId+0x11c>
++b.ne <VerifyBuildId+0x12c>
++ldurh wR, [xR, #-0x10]
++cbz wR, <VerifyBuildId+0x12c>
+ cmp wR, #0x80
+-b.hi <VerifyBuildId+0x11c>
+-ldur xR, [xR, #-0x20]
++b.hi <VerifyBuildId+0x12c>
++ldur xR, [xR, #-0x28]
+ ldr xR, [xR, #0x30]
+ subs xR, xR, xR
+-b.lo <VerifyBuildId+0x118>
++b.lo <VerifyBuildId+0x128>
+ mov wR, #0x38 // =56
+ mul xR, xR, xR
+ cmp xR, xR
+-b.ls <VerifyBuildId+0x13c>
+-mov wR, #-0x1 // =-1
++b.ls <VerifyBuildId+0x14c>
++mov wR, #-0x1 // =-1
++ldp xR, xR, [sp, #0x120]
++ldp xR, xR, [sp, #0x110]
++ldp xR, xR, [sp, #0x100]
++ldp xR, xR, [sp, #0xf0]
+ ldp xR, xR, [sp, #0xe0]
+ ldp xR, xR, [sp, #0xd0]
+-ldp xR, xR, [sp, #0xc0]
+-ldp xR, xR, [sp, #0xb0]
+-ldp xR, xR, [sp, #0xa0]
+-ldp xR, xR, [sp, #0x90]
+-add sp, sp, #0xf0
++add sp, sp, #0x130
+ ret
+-mov xR, xR
+-bl <IsAllZeros>
+-cbz wR, <VerifyBuildId+0x150>
++and xR, xR, #0xffffffffffffffe0
+ mov wR, wzr
+-b <VerifyBuildId+0x11c>
+-mov xR, xzr
++mov xR, xzr
++add xR, xR, #0x10
+ mov wR, #0x38 // =56
+-add xR, sp, #0x18
+-str xzr, [sp, #0x8]
++add xR, sp, #0x50
++str xR, [sp, #0x30]
++and xR, xR, #0x18
++str wzr, [sp, #0x3c]
++str xR, [sp, #0x40]
++str xR, [sp, #0x10]
++and xR, xR, #0xfffffffffffffff8
++str xR, [sp, #0x28]
++neg xR, xR
++stp xR, xR, [sp, #0x18]
+ nop
+ madd xR, xR, xR, xR
+ mov xR, xzr
+-str xR, [sp, #0x10]
+-b <VerifyBuildId+0x180>
++str xR, [sp, #0x48]
++b <VerifyBuildId+0x1a8>
+ add xR, xR, xR
+ cmp xR, #0x38
+-b.hs <VerifyBuildId+0x1b4>
++b.hs <VerifyBuildId+0x1dc>
+ add xR, xR, xR
+ sub xR, xR, xR
+ add xR, xR, xR
+ mov wR, wR
+ bl <pread@plt>
+ cmp xR, #0x1
+-b.ge <VerifyBuildId+0x174>
+-tbz xR, #0x3f, <VerifyBuildId+0x118>
++b.ge <VerifyBuildId+0x19c>
++tbz xR, #0x3f, <VerifyBuildId+0x128>
+ bl <__errno_location@plt>
+ ldr wR, [xR]
+ cmp wR, #0x4
+-b.eq <VerifyBuildId+0x178>
+-b <VerifyBuildId+0x118>
+-ldr wR, [sp, #0x18]
+-cmp wR, #0x4
+-b.ne <VerifyBuildId+0x224>
+-ldr xR, [sp, #0x38]
++b.eq <VerifyBuildId+0x1a0>
++b <VerifyBuildId+0x128>
++ldr wR, [sp, #0x50]
++cmp wR, #0x4
++b.ne <VerifyBuildId+0x25c>
++ldr xR, [sp, #0x70]
+ mov xR, #-0x10001 // =-65537
+ add xR, xR, xR
+ cmn xR, #0x10, lsl #12 // =0x10000
+-b.lo <VerifyBuildId+0x118>
+-ldr xR, [sp, #0x20]
++b.lo <VerifyBuildId+0x128>
++ldr xR, [sp, #0x58]
+ ldr xR, [xR, #0x30]
+ subs xR, xR, xR
+-b.lo <VerifyBuildId+0x118>
+-cmp xR, xR
+-b.hi <VerifyBuildId+0x118>
++b.lo <VerifyBuildId+0x128>
++cmp xR, xR
++b.hi <VerifyBuildId+0x128>
+ mov xR, xR
+ bl <malloc@plt>
+ mov xR, xR
+-cbz xR, <VerifyBuildId+0x350>
+-mov wR, wR
+-mov xR, xR
++cbz xR, <VerifyBuildId+0x470>
++mov wR, wR
++mov xR, xR
++str xR, [sp, #0x8]
+ mov xR, xR
+ mov xR, xR
+ bl <ReadExactAt>
+-cbnz wR, <VerifyBuildId+0x350>
++ldr xR, [sp, #0x8]
++cbnz wR, <VerifyBuildId+0x470>
+ cmp xR, #0xc
+-b.hs <VerifyBuildId+0x238>
+-mov xR, xR
++b.hs <VerifyBuildId+0x270>
++ldr wR, [sp, #0x3c]
++mov xR, xR
++str wR, [sp, #0x3c]
+ bl <free@plt>
+-ldr xR, [sp, #0x10]
++ldp xR, xR, [sp, #0x40]
+ add xR, xR, #0x1
+ cmp xR, xR
+-b.ne <VerifyBuildId+0x160>
+-b <VerifyBuildId+0x35c>
++b.ne <VerifyBuildId+0x188>
++b <VerifyBuildId+0x47c>
+ mov wR, #0x4e47 // =20039
+ mov xR, xzr
++add xR, xR, #0x10
+ mov wR, #0xc // =12
++ldr wR, [sp, #0x3c]
+ movk wR, #0x55, lsl #16
+-b <VerifyBuildId+0x25c>
++ldr xR, [sp, #0x30]
++b <VerifyBuildId+0x2a0>
+ add xR, xR, xR
+ add xR, xR, #0xc
+ cmp xR, xR
+-b.lo <VerifyBuildId+0x21c>
++b.lo <VerifyBuildId+0x250>
+ add xR, xR, xR
+ ldp wR, wR, [xR]
+ add xR, xR, #0x3
+ add xR, xR, #0x3
+@@ -157,34 +174,49 @@
+ and xR, xR, #0x1fffffffc
+ add xR, xR, xR
+ sub xR, xR, xR
+ cmp xR, xR
+-b.hi <VerifyBuildId+0x350>
+-cmp wR, #0x4
+-b.ne <VerifyBuildId+0x24c>
++b.hi <VerifyBuildId+0x470>
++cmp wR, #0x4
++b.ne <VerifyBuildId+0x290>
+ ldr wR, [xR, #0x8]
+ cmp wR, #0x3
+-b.ne <VerifyBuildId+0x24c>
+-cmp wR, #0x14
+-b.ne <VerifyBuildId+0x24c>
+-add xR, xR, xR
+-ldr wR, [xR]
++b.ne <VerifyBuildId+0x290>
++cmp xR, xR
++b.ne <VerifyBuildId+0x290>
++ldr wR, [xR, xR]
+ cmp wR, wR
+-b.ne <VerifyBuildId+0x24c>
+-add xR, xR, xR
+-ldr qR, [xR]
+-ldr sR, [xR, #0x10]
+-ldr qR, [xR]
+-ldr sR, [xR, #0x10]
+-ushll vR.8h, vR.8b, #0x0
++b.ne <VerifyBuildId+0x290>
++add wR, wR, #0x1
++cbz xR, <VerifyBuildId+0x290>
++cmp xR, #0x8
++b.hs <VerifyBuildId+0x308>
++mov xR, xzr
++b <VerifyBuildId+0x440>
++cmp xR, #0x20
++b.hs <VerifyBuildId+0x318>
++mov xR, xzr
++b <VerifyBuildId+0x3bc>
++movi vR.2d, #0000000000000000
++add xR, xR, xR
++movi vR.2d, #0000000000000000
++add xR, xR, xR
++mov xR, xR
++ldr xR, [sp, #0x18]
++mov vR.b[0], wR
++ldp qR, qR, [xR, #-0x10]
++add xR, xR, #0x20
++subs xR, xR, #0x20
++ldp qR, qR, [xR, #-0x10]
++add xR, xR, #0x20
+ eor vR.16b, vR.16b, vR.16b
+-ushll vR.8h, vR.8b, #0x0
++orr vR.16b, vR.16b, vR.16b
++eor vR.16b, vR.16b, vR.16b
++orr vR.16b, vR.16b, vR.16b
++b.ne <VerifyBuildId+0x334>
++orr vR.16b, vR.16b, vR.16b
++cmp xR, xR
+ ext vR.16b, vR.16b, vR.16b, #0x8
+-eor vR.8b, vR.8b, vR.8b
+-umov wR, vR.h[1]
+-umov wR, vR.h[0]
+-umov wR, vR.h[2]
+-umov wR, vR.h[3]
+ orr vR.8b, vR.8b, vR.8b
+ umov wR, vR.b[1]
+ umov wR, vR.b[0]
+ umov wR, vR.b[2]
+@@ -199,24 +231,63 @@
+ orr wR, wR, wR
+ orr wR, wR, wR
+ orr wR, wR, wR
+ orr wR, wR, wR
+-orr wR, wR, wR
+-orr wR, wR, wR
+-orr wR, wR, wR
+-orr wR, wR, wR
+-ldr wR, [sp, #0x8]
+-orr wR, wR, wR
+-ldr wR, [sp, #0xc]
+-add wR, wR, #0x1
+-stp wR, wR, [sp, #0x8]
+-b <VerifyBuildId+0x24c>
++b.eq <VerifyBuildId+0x290>
++mov xR, xR
++mov xR, xR
++ldr xR, [sp, #0x10]
++cbz xR, <VerifyBuildId+0x440>
++movi dR, #0000000000000000
++ldr xR, [sp, #0x20]
++add xR, xR, xR
++add xR, xR, xR
++add xR, xR, xR
++add xR, xR, xR
++add xR, xR, xR
++mov vR.b[0], wR
++ldr dR, [xR], #0x8
++ldr dR, [xR], #0x8
++adds xR, xR, #0x8
++eor vR.8b, vR.8b, vR.8b
++orr vR.8b, vR.8b, vR.8b
++b.ne <VerifyBuildId+0x3dc>
++umov wR, vR.b[1]
++umov wR, vR.b[0]
++umov wR, vR.b[2]
++umov wR, vR.b[3]
++umov wR, vR.b[4]
++orr wR, wR, wR
++umov wR, vR.b[5]
++orr wR, wR, wR
++umov wR, vR.b[6]
++orr wR, wR, wR
++umov wR, vR.b[7]
++orr wR, wR, wR
++orr wR, wR, wR
++orr wR, wR, wR
++orr wR, wR, wR
++ldr xR, [sp, #0x28]
++mov xR, xR
++cmp xR, xR
++b.eq <VerifyBuildId+0x290>
++add xR, xR, xR
++sub xR, xR, xR
++add xR, xR, xR
++add xR, xR, xR
++add xR, xR, xR
++ldrb wR, [xR], #0x1
++ldrb wR, [xR], #0x1
++subs xR, xR, #0x1
++eor wR, wR, wR
++orr wR, wR, wR
++b.ne <VerifyBuildId+0x454>
++b <VerifyBuildId+0x290>
+ mov xR, xR
+ bl <free@plt>
+-b <VerifyBuildId+0x118>
+-ldr wR, [sp, #0x8]
++b <VerifyBuildId+0x128>
++ldr wR, [sp, #0x3c]
+ tst wR, #0xff
+-ldr wR, [sp, #0xc]
+ ccmp wR, #0x1, #0x0, eq
+ cset wR, ne
+ sbfx wR, wR, #0, #1
+-b <VerifyBuildId+0x11c>
++b <VerifyBuildId+0x12c>

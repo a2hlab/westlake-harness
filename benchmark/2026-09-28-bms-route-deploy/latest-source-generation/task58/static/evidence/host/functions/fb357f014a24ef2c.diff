@@ -1,0 +1,83 @@
+--- R155/HandleRecvMessage
++++ NEW/HandleRecvMessage
+@@ -26,9 +26,9 @@
+ str x9, [sp, #0x28]
+ str d0, [sp, #0x30]
+ str wzr, [sp, #0x38]
+ bl <LE_GetUserData@plt>
+-cbz x0, <HandleRecvMessage+0x16c>
++cbz x0, <HandleRecvMessage+0x170>
+ mov x20, x0
+ bl <__errno_location@plt>
+ mov x22, x0
+ str wzr, [x0]
+@@ -52,11 +52,11 @@
+ mov w6, #0x167 // =359
+ bl <HiLogPrint@plt>
+ ldr w8, [sp, #0x30]
+ cmp w8, #0x10
+-b.lo <HandleRecvMessage+0x1a0>
++b.lo <HandleRecvMessage+0x1a4>
+ ldr x22, [sp, #0x28]
+-cbz x22, <HandleRecvMessage+0x1a0>
++cbz x22, <HandleRecvMessage+0x1a4>
+ add x21, x20, #0x24
+ mov x23, #0x3fffffff0 // =17179869168
+ ldr w8, [x22, #0x8]
+ cmp w8, #0x1
+@@ -67,29 +67,30 @@
+ ldr w8, [x22]
+ add x8, x8, x23
+ lsr x24, x8, #2
+ cmp w24, #0x11
+-b.ge <HandleRecvMessage+0x1bc>
++b.ge <HandleRecvMessage+0x1c0>
+ sbfiz x1, x24, #2, #32
+ add x2, x22, #0x10
+ mov x0, x21
+ mov x3, x1
+ bl <memcpy_s@plt>
+-cbnz w0, <HandleRecvMessage+0x1f4>
++cbnz w0, <HandleRecvMessage+0x1f8>
+ str w24, [x20, #0x20]
+ ldr w8, [x22]
+ cmp w8, #0x10
+-b.lo <HandleRecvMessage+0x1a0>
++b.lo <HandleRecvMessage+0x1a4>
+ ldr x9, [sp, #0x28]
+ add x8, x8, #0x7
+ ldr w10, [sp, #0x30]
+ and x8, x8, #0x1fffffff8
++add x11, x8, #0x10
++add x9, x9, x10
++sub x9, x9, x22
+ add x22, x22, x8
+-add x8, x22, #0x10
+-add x9, x9, x10
+-cmp x8, x9
++cmp x11, x9
+ b.lo <HandleRecvMessage+0xf0>
+-b <HandleRecvMessage+0x1a0>
++b <HandleRecvMessage+0x1a4>
+ mov w2, #0x2c11 // =11281
+ nop
+ adr x3, <write+0x4598>
+ adrp x4, <PAGE>
+@@ -121,9 +122,9 @@
+ mov w1, #0x6 // =6
+ movk w2, #0xd00, lsl #16
+ mov w6, #0x16e // =366
+ str w24, [sp]
+-b <HandleRecvMessage+0x224>
++b <HandleRecvMessage+0x228>
+ mov w2, #0x2c11 // =11281
+ mov w7, w0
+ nop
+ adr x3, <write+0x4598>
+@@ -135,5 +136,5 @@
+ mov w1, #0x6 // =6
+ movk w2, #0xd00, lsl #16
+ mov w6, #0x171 // =369
+ bl <HiLogPrint@plt>
+-b <HandleRecvMessage+0x19c>
++b <HandleRecvMessage+0x1a0>

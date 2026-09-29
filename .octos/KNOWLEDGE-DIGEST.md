@@ -373,3 +373,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - B6/#50：namespace真正配置在host StockCreateConfiguredNamespaces，R155 provider只转发；恢复044127fce同函数后233条归一指令与原版相同，26件原字节保留，HelloWorld过身份门并进onCreate。新墙为VSync→RsFrameReportExt::Init→do_init_fini在PC0x29dcc SEGV_ACCERR，根因与NPE仍未定；七挂载回滚+B5双图恢复，见 latest-source-generation/task50/。
 
 - **B6/#52**：frame初始化PC0x29dcc来自HiLogPrint GOT只含符号offset（缺load bias），不应放开页执行权限；恢复host NEEDED顺序仍在libandroid缺WLTG符号处失败并回滚。B5活体provider为route-a80c9aee0，system/android的977fb347未映射，静态恢复必须比实际加载件；installer675536e8在5ea重启后四哈希与非黑桌面通过，见 latest-source-generation/task52/。
+
+- B6/#58：G1–G4整组恢复、26件原字节保留后身份门通过，SIGSEGV实录ART special槽0先于DFX槽3；HelloWorld在系统libopenjdkjvm!JVM_NativeLoad+100读空Runtime::instance_崩溃，maps同时有route/system两份ART，具体namespace绑定因果未证。Java NPE/SIGBUS未验；七挂载回滚+B5双图恢复，见 latest-source-generation/task58/。

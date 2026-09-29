@@ -1,0 +1,58 @@
+--- R155/WLSCPL_OpenPreparedNamespace
++++ NEW/WLSCPL_OpenPreparedNamespace
+@@ -1,32 +1,39 @@
+-stp xR, xR, [sp, #-0x20]!
++sub sp, sp, #0x40
+ adrp xR,
+-stp xR, xR, [sp, #0x10]
+-mov xR, sp
+-ldrb wR, [xR, <object:g_namespace_prepared>]
++nop
++adr xR, <StockServicesValid.runtime_generation_hex+0x1b3>
++stp xR, xR, [sp, #0x20]
++stp xR, xR, [sp, #0x30]
++add xR, sp, #0x20
++ldrb wR, [xR, <object:namespace_prepared>]
++ldr qR, [xR]
++ldur xR, [xR, #0xf]
+ cmp wR, #0x1
+-b.ne <WLSCPL_OpenPreparedNamespace+0x44>
++str qR, [sp]
++stur xR, [sp, #0xf]
++b.ne <WLSCPL_OpenPreparedNamespace+0x5c>
+ mov wR, wR
+ mov xR, xR
+ bl <AbsoluteCanonicalForm>
+-cbz wR, <WLSCPL_OpenPreparedNamespace+0x44>
+-nop
+-adr xR, <StockServicesValid.runtime_generation_hex+0x374>
++cbz wR, <WLSCPL_OpenPreparedNamespace+0x5c>
++mov xR, sp
+ mov xR, xR
+ mov wR, #0x16 // =22
+ bl <strncmp@plt>
+-cbz wR, <WLSCPL_OpenPreparedNamespace+0x54>
+-ldp xR, xR, [sp, #0x10]
++cbz wR, <WLSCPL_OpenPreparedNamespace+0x70>
+ mov xR, xzr
+-ldp xR, xR, [sp], #0x20
++ldp xR, xR, [sp, #0x30]
++ldp xR, xR, [sp, #0x20]
++add sp, sp, #0x40
+ ret
++mov xR, xzr
+ mov wR, #0x102 // =258
+ and wR, wR, wR
+ cmp wR, #0x2
+-b.ne <WLSCPL_OpenPreparedNamespace+0x44>
++b.ne <WLSCPL_OpenPreparedNamespace+0x60>
+ ldrb wR, [xR, #0x16]
+-cbz wR, <WLSCPL_OpenPreparedNamespace+0x44>
++cbz wR, <WLSCPL_OpenPreparedNamespace+0x60>
+ mov xR, xR
+ mov wR, wR
+-ldp xR, xR, [sp, #0x10]
+-ldp xR, xR, [sp], #0x20
+-b <dlopen@plt>
++bl <dlopen@plt>
++b <WLSCPL_OpenPreparedNamespace+0x60>
