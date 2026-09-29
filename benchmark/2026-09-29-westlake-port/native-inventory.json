@@ -1,0 +1,172 @@
+{
+ "task": "native inventory for v3c packing — dependencies + per-board presence (board-side sha256 first-16, 2026-09-30 ~03:00)",
+ "boards": {
+  "5ea": "5ea34a45…",
+  "5cd": "5cd1e3dd…",
+  "61b": "61b06572…"
+ },
+ "files": [
+  {
+   "file": "libnativeloader.so",
+   "sha16_target": "760928557ea81b62",
+   "source": "bms/src/adapter/framework/native-loader-oh/src/native_loader.cpp (+registry/system_loader), b4 commit a6a65d3c",
+   "role": "B-case domain fix: LD_LIBRARY_PATH fallback when Runtime passes null libraryPath; unlocks System.load of all three compat libs",
+   "depends_on": [
+    "libapp_native_loader.so (ANL backend)",
+    "libwestlake_thread_guard_registry.so (WLTG)"
+   ],
+   "board": {
+    "5ea": "fde6f31c6f8911bd(OLD)",
+    "5cd": "fde6f31c6f8911bd(OLD)",
+    "61b": "fde6f31c6f8911bd(OLD)"
+   }
+  },
+  {
+   "file": "liboh_tls_boundary.so",
+   "sha16_target": "9c0f8d3814c40c1b",
+   "source": "bms/src/adapter/framework/native-compat/westlake-tls/ (wl_tls_block.cpp = §441 verbatim + JNI_OnLoad + 8th native), commits 7e511ad0; b93 pkg westlake-b93-tls-html-9c0f8d38-26ac847b",
+   "role": "TLS: 7 natives + nativeTlsSelfTestOk gate; dlopen board OpenSSL, cacert.pem verify",
+   "depends_on": [
+    "board libssl_openssl.z.so/libcrypto_openssl.z.so (dlopen)",
+    "/etc/ssl/certs/cacert.pem",
+    "libnativeloader domain (System.load)"
+   ],
+   "board": {
+    "5ea": "8ecf62507e997bb3(PREV no self-test)",
+    "5cd": "ABSENT",
+    "61b": "ABSENT"
+   }
+  },
+  {
+   "file": "libwestlake_html_compat.so",
+   "sha16_target": "26ac847bdec6552d",
+   "source": "benchmark/2026-09-29-westlake-port/html-compat/ commit fe153eb8 (Spanned return, quick-entry repair)",
+   "role": "tagsoup wall: Html.fromHtml single-method JNI conversion",
+   "depends_on": [
+    "libnativeloader domain (System.load)",
+    "runtime-JAR replacement class (WESTLAKE_HTML_COMPAT_CLASS)"
+   ],
+   "board": {
+    "5ea": "26ac847bdec6552d(CURRENT)",
+    "5cd": "ABSENT",
+    "61b": "ABSENT"
+   }
+  },
+  {
+   "file": "libwestlake_jni_gapfill.so",
+   "sha16_target": "c5ed50d53d20e97f",
+   "source": "benchmark/2026-09-29-westlake-port/jni-gapfill/ commit 56b5295c",
+   "role": "jni-noimpl cluster: Process.getElapsedCpuTime/FileObserver quad/nativeStopServiceAbility/Camera/EGLImpl",
+   "depends_on": [
+    "libnativeloader domain (System.load)"
+   ],
+   "board": {
+    "5ea": "ABSENT",
+    "5cd": "c5ed50d53d20e97f(CURRENT)",
+    "61b": "c5ed50d53d20e97f(CURRENT)"
+   }
+  },
+  {
+   "file": "libc.so (bionic-abi shim)",
+   "sha16_target": "from westlake-bionic build (see build/libc.so)",
+   "source": "bms/src/adapter/framework/native-compat/westlake-bionic/ commit 08b59282 (+ec342e3e build rows); version-script bionic-abi.map (LIBC node)",
+   "role": "resolves __errno@LIBC / __open_2 / __sF versioned relocations (netguard/breezyweather/antennapod) AND can serve as the /system/android/lib64 libc.so DT_NEEDED provider for the three compat libs (domain-resolution gap flagged)",
+   "depends_on": [
+    "(nothing — provides)"
+   ],
+   "board": {
+    "5ea": "ABSENT",
+    "5cd": "ABSENT",
+    "61b": "ABSENT"
+   }
+  },
+  {
+   "file": "liblog.so (shim)",
+   "sha16_target": "from westlake-bionic build",
+   "source": "same westlake-bionic package (liblog_android_supplement.cpp)",
+   "role": "anki librsdroid DT_NEEDED liblog.so",
+   "depends_on": [],
+   "board": {
+    "5ea": "cc3eb850fc316b31(other build)",
+    "5cd": "cc3eb850fc316b31",
+    "61b": "8c81a937a3977b85(different!)"
+   }
+  },
+  {
+   "file": "libGLESv2.so (soname shim)",
+   "sha16_target": "befb6ec78f52f3f54b955e268fa04faa6192d78c",
+   "source": "westlake-bionic libglesv2_shim.c commit ec342e3e",
+   "role": "fluffychat/libre/immich libflutter DT_NEEDED (+organicmaps)",
+   "depends_on": [],
+   "board": {
+    "5ea": "ABSENT",
+    "5cd": "ABSENT",
+    "61b": "ABSENT"
+   }
+  },
+  {
+   "file": "libstdc++.so (soname shim)",
+   "sha16_target": "7e06cd8b75fe99dbd5bc23b80afea214e6ca0b65",
+   "source": "westlake-bionic commit 3302406b",
+   "role": "fd-app libgdx DT_NEEDED",
+   "depends_on": [],
+   "board": {
+    "5ea": "ABSENT",
+    "5cd": "ABSENT",
+    "61b": "ABSENT"
+   }
+  },
+  {
+   "file": "libOpenSLES.so (shim)",
+   "sha16_target": "5891f899c2b21dcb24fa2f4cb3db78fbb3459774",
+   "source": "westlake-bionic commit 3302406b",
+   "role": "mindustry libarc DT_NEEDED",
+   "depends_on": [],
+   "board": {
+    "5ea": "ABSENT",
+    "5cd": "ABSENT",
+    "61b": "ABSENT"
+   }
+  },
+  {
+   "file": "libwestlake_thread_guard_registry.so",
+   "sha16_target": "unchanged (pre-existing)",
+   "source": "v3a generation payload",
+   "role": "WLTG provider for ANL gate",
+   "depends_on": [],
+   "board": {
+    "5ea": "674d3ef3b9b00b36",
+    "5cd": "674d3ef3b9b00b36",
+    "61b": "674d3ef3b9b00b36"
+   }
+  },
+  {
+   "file": "libapp_native_loader.so (ANL)",
+   "sha16_target": "cx-t0 v3a-lineage (a9c9187d-ready semantics)",
+   "source": "westlake-harness bms app-native-loader (cx-t0 owns)",
+   "role": "ANL backend + READY gate (log-and-allow per #91)",
+   "depends_on": [
+    "libwestlake_thread_guard_registry.so"
+   ],
+   "board": {
+    "5ea": "ae848463a59f4d79",
+    "5cd": "ae848463a59f4d79",
+    "61b": "ae848463a59f4d79"
+   }
+  }
+ ],
+ "dependency_edges": [
+  "libnativeloader -> ANL(libapp_native_loader) -> WLTG(registry)",
+  "three compat libs (tls/html/gapfill) --System.load--> libnativeloader domain (76092855 unlocks)",
+  "tls_boundary --dlopen--> board libssl/libcrypto_openssl.z.so + cacert.pem",
+  "html_compat --forward--> runtime-JAR replacement class (cc-t3)",
+  "app .so walls: libGLESv2/libstdc++/libOpenSLES/liblog shims are DT_NEEDED providers",
+  "libc.so shim is BOTH a relocation provider (versioned LIBC node) and the candidate DT_NEEDED libc provider for compat libs (domain-resolution gap)"
+ ],
+ "v3c_packing_order": [
+  "libnativeloader.so=76092855 (unlocks loads)",
+  "westlake-bionic full set (libc/liblog/libGLESv2/libstdc++/libOpenSLES shims)",
+  "b93 three libs on ALL boards (gapfill exists 5cd/61b only; tls 9c0f8d38 everywhere; html 26ac847b everywhere)"
+ ],
+ "cross_board_note": "5cd never had #86/#87 — group by facts.txt RUNTIME fingerprint; do not read cross-board class changes as regressions (outer rule 2026-09-30)."
+}
