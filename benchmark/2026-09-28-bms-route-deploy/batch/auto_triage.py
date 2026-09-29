@@ -37,8 +37,10 @@ RULES = [
                            "route-A-only (ViewModel factory chain; needs stack)"),
     ("multidex",           r"NoClassDefFoundError.*AppConfig|Didn't find class",
                            "route-A-only (multi-dex/classloader order; needs stack)"),
-    ("musl-reloc",         r"MUSL-LDSO|relocating failed",
-                           "musl/bionic symbol compat (separate track)"),
+    ("musl-reloc",         r"symbol not found\. dso=/data/app|Error loading shared library[^:]*: \(needed by /data/app",
+                           "musl/bionic symbol compat (#84: app-owned .so only)"),
+    ("musl-system-noise",  r"MUSL-LDSO.*(?:libmmi_knuckle|security_component|libartbased|libhwui)",
+                           "system-lib loader noise (not an app wall)"),
     ("provider-startup",   r"Unable to get provider androidx\.startup|InitializationProvider",
                            "provider chain (PackageManagerAdapter L1123-1133; B8 item 1)"),
 ]

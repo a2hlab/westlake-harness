@@ -1,0 +1,64 @@
+{
+ "task": "#84 musl dlopen family — symbol lists + Westlake approach (first version, for cx-t0)",
+ "correction": "auto_triage's musl-reloc bucket was a WIDE match: only 2 of the 4 apps have real app-library failures. droidify (4 .so all load) and noice (0 arm64 .so) are reclassified; their MUSL-LDSO hits are system-lib loader noise (libmmi_knuckle/security_component/libartbased/libhwui, some from launcher pid).",
+ "apps": {
+  "anki": {
+   "dead": true,
+   "so": "librsdroid.so (146 UND, 138 @LIBC)",
+   "DT_NEEDED": [
+    "liblog.so",
+    "libdl.so",
+    "libc.so",
+    "libm.so"
+   ],
+   "bionic_specific": [
+    "__errno@LIBC",
+    "__sF",
+    "__system_property_get@LIBC",
+    "__android_log_buf_write",
+    "__android_log_write"
+   ],
+   "failure": "Error loading shared library liblog.so: (needed by /data/app/.../com.ichi2.anki/android/lib/arm64-v8a/librsdroid.so) -> dlopen_ns failed — DT_NEEDED resolution, liblog.so absent from app musl namespace"
+  },
+  "fd-netguard": {
+   "dead": true,
+   "so": "libnetguard.so (66 UND)",
+   "DT_NEEDED": [
+    "liblog.so",
+    "libm.so",
+    "libdl.so",
+    "libc.so"
+   ],
+   "bionic_specific": [
+    "__errno@LIBC"
+   ],
+   "failure": "relocating failed: symbol not found s=__errno use_vna_hash=1 — versioned bionic symbol; musl provides __errno_location instead"
+  },
+  "fd-droidify": {
+   "dead": false,
+   "note": "4 own .so (graphics.path/datastore/image_processing/surface_util) ALL load; UND are ordinary @LIBC; reclassified OUT"
+  },
+  "fd-noice": {
+   "dead": false,
+   "note": "no arm64 .so in APK; reclassified OUT"
+  }
+ },
+ "westlake_how": {
+  "bionic-abi.map": "native/bionic-abi.map — linker version script copied from Android 15 libc.map.txt; LIBC version node {__errno, __sF, android_set_abort_message, __open_2, ...} — REQUIRED for versioned lookups (__errno@LIBC) to resolve",
+  "bionic_assert_compat.c L23-24": "int* __errno(void){ return __errno_location(); } — bridges to musl real symbol",
+  "bionic_stdio_compat.c L24": "__sF[3] visibility(default) — header comment: covers APK DSOs importing versioned __sF@LIBC",
+  "liblog_android_supplement.cpp L26-33": "__android_log_print/__android_log_buf_write/__android_log_security — the liblog.so content anki needs",
+  "same family": "malloc_compat.cpp, fdsan_stubs.cpp, libstdcxx_compat.c, android_native_network_compat.c, android_native_namespace_bootstrap.c (framework/appspawn-x/bionic_compat/src/)",
+  "sanitize_android_elf.c": "bionic_compat/tools/ — trims DT_INIT_ARRAY/FINI_ARRAY null/-1 sentinels that old OH musl loader calls (jump-to-zero); known 'header failed' contributor class",
+  "precedent": "webview-shim/webview_bionic_shim.c via LD_PRELOAD (used in the #76 successful Westlake run.sh)"
+ },
+ "copy_recommendation": {
+  "A (recommended, Westlake semantics)": "ship a bionic ABI provider lib for the v3a app namespace: port bionic_compat/src/*.c(pp) + native/bionic-abi.map version script; link sonames libc.so (with LIBC version node) and liblog.so into route-a generation or LD_PRELOAD. Solves anki (DT_NEEDED liblog) + netguard (__errno@LIBC) and prevents the whole NDK family; same ABI surface as the earlier benchmark/2026-09-28-ndk-libandroid 16-missing-symbol finding (16 missing symbols: AConfiguration x5, ASensorEventQueue x4, ASensorManager x4, ASensor x3) — mergeable into one provider",
+  "B (minimal, risky)": "append __errno/__sF/__android_log_* sources to existing native-runtime lib WITHOUT version node — netguard's use_vna_hash versioned lookup may still fail, so the version script is the key, not optional",
+  "do_not_fix": "system-lib header-failed noise lines (mmi_knuckle/security_component/artbased/hwui)"
+ },
+ "honest_limits": [
+  "bionic-abi.map has no build reference found inside westlake-current (only git-index hit) — the exact wiring (which CMake/script links libc.so from it) needs cx-t0 follow-up in historical/ or build records",
+  "auto_triage rule narrowed: netguard classifies musl-reloc; anki's chosen fatal line is the wrapper (header failed) while its liblog line sits one line above — regex matches the liblog line if selected; acceptable residual"
+ ]
+}
