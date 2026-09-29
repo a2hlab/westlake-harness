@@ -90,6 +90,29 @@ public final class B7BindFixes {
         } catch (Throwable t) {
             System.err.println("[B8-MSESSION] not installed: " + t);
         }
+        // r17e (#alarm/#vibrator): the last mile from a LocalServiceBinders binder to its Manager.
+        // OH's SystemServiceRegistry fetcher for ALARM_SERVICE does not consume our in-process "alarm"
+        // binder, so getSystemService(ALARM_SERVICE) returns null and k9/fd-android's
+        // AndroidAlarmManager.<init> NPEs on a null .getClass(); vibrator_manager is real-routed but
+        // its getVibratorIds() returns a null array (fossify-reader). Replace both SYSTEM_SERVICE_
+        // FETCHERS entries with ones that build a non-null Manager.
+        try {
+            SystemServiceFetcherStubs.install();
+        } catch (Throwable t) {
+            System.err.println("[B8-FETCH] not installed: " + t);
+        }
+        // r17e (#AndroidKeyStore): apps calling KeyStore.getInstance("AndroidKeyStore") (fossify-tasks,
+        // crypto apps) get "AndroidKeyStore not found" -- route-A has no keystore2 provider. Install
+        // Westlake's software-backed provider (keys under the app's no_backup dir), reflectively.
+        try {
+            if (ai != null && ai.dataDir != null) {
+                Class.forName("adapter.core.SoftwareAndroidKeyStore")
+                        .getMethod("install", java.io.File.class)
+                        .invoke(null, new java.io.File(ai.dataDir, "no_backup"));
+            }
+        } catch (Throwable t) {
+            System.err.println("[B8-KEYSTORE] not installed: " + t);
+        }
         // r17 (#93): Westlake HTTPS/TLS Java side. OhTrustBridge restores the BC JCA registrations the
         // trimmed BCP dropped (MessageDigest, AES, X.509 CertificateFactory, RSA/EC signatures, EC
         // KeyFactory) and publishes SecureRandom.WestlakeKernel + TrustManagerFactory.OH-PKIX/PKIX/X509

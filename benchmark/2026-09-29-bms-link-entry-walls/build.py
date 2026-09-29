@@ -53,7 +53,9 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
                src / 'SelfUidPackages.java',
                # r17d (#media_session): verbatim Westlake local ISessionManager so a MediaSessionCompat
                # service (noice/musicplayer) does not NPE on a null MediaSessionManager.
-               src / 'WlMediaSession.java']
+               src / 'WlMediaSession.java',
+               # r17e (#alarm): ALARM_SERVICE fetcher replacement (binder -> AlarmManager last mile).
+               src / 'SystemServiceFetcherStubs.java']
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 # r16 (#90): cc-wiki's OnlineConnectivityManager compiles against the Westlake android.net sources
 # (ConnectivityManager/Network/NetworkInfo/NetworkCapabilities/NetworkRequest, which expose the
@@ -87,6 +89,10 @@ tls_src = [src / 'WestlakeTlsInstall.java', src / 'OhTrustBridge.java',
            # r17b (#tagsoup): tagsoup-free Html.fromHtml replacement (android.text.* -> needs the
            # android.jar bootclasspath pass), called by oc-t4's libwestlake_html_compat.so.
            src / 'HtmlCompatFallback.java']
+# r17f TODO: SoftwareAndroidKeyStore needs a compile-only stub for
+# com.android.internal.org.bouncycastle.x509.X509V3CertificateGenerator (absent from the compile
+# android.jar, present in the runtime BCP) before it can join the TLS pass -- same shape as the
+# OnlineConnectivityManager android.net compile-against-Westlake-sources route.
 tls_classes = BUILD / 'tls-classes'; tls_classes.mkdir()
 run(['javac', '-source', '8', '-target', '8', '-bootclasspath', INPUT / 'android.jar',
      '-cp', INPUT / 'android.jar', '-d', tls_classes, '-nowarn', *tls_src])
