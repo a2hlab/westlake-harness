@@ -16,8 +16,6 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
-#include <cstdlib>
-#include <pthread.h>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <string>
@@ -330,60 +328,7 @@ void LaunchActivityThreadAfterStock(JNIEnv *env, const SpawnMsg &message,
         _exit(21);
     }
     (void)prctl(PR_SET_NAME, message.procName.c_str(), 0, 0, 0);
-    // Port of Westlake child_main.cpp:1500-1560 (2026-09-30, B92).
-    // OH musl reports the mapped extent for the initial thread (135168 bytes
-    // on 5ea), even when the default pthread stack is already 8 MiB. ART uses
-    // that value. An explicitly sized pthread has the full usable stack.
-    struct LaunchContext {
-        const SpawnMsg *message;
-        AppSpawnXRuntime *runtime;
-    } context{&message, runtime};
-    size_t javaStackMb = 8;
-    if (const char *value = getenv("APPSPAWNX_JAVA_STACK_MB"); value && *value) {
-        const long mb = strtol(value, nullptr, 10);
-        if (mb >= 1 && mb <= 512) javaStackMb = static_cast<size_t>(mb);
-    }
-    pthread_attr_t attr;
-    int rc = pthread_attr_init(&attr);
-    if (rc != 0) {
-        LOGE("[CM-BIGSTACK] pthread_attr_init failed rc=%d", rc);
-        _exit(23);
-    }
-    rc = pthread_attr_setstacksize(&attr, javaStackMb * 1024 * 1024);
-    pthread_t javaThread;
-    if (rc == 0) {
-        rc = pthread_create(&javaThread, &attr, [](void *opaque) -> void * {
-            auto *context = static_cast<LaunchContext *>(opaque);
-            JNIEnv *threadEnv = nullptr;
-            JavaVM *vm = context->runtime->getJavaVM();
-            if (vm == nullptr || vm->AttachCurrentThread(&threadEnv, nullptr) != JNI_OK) {
-                LOGE("[CM-BIGSTACK] AttachCurrentThread failed");
-                return nullptr;
-            }
-            size_t stackSize = 0;
-            pthread_attr_t actual;
-            if (pthread_getattr_np(pthread_self(), &actual) == 0) {
-                pthread_attr_getstacksize(&actual, &stackSize);
-                pthread_attr_destroy(&actual);
-            }
-            LOGI("[CM-BIGSTACK] ActivityThread on dedicated pthread stack=%zu bytes",
-                 stackSize);
-            LaunchActivityThreadAfterStock(threadEnv, *context->message, context->runtime);
-            vm->DetachCurrentThread();
-            return nullptr;
-        }, &context);
-    }
-    pthread_attr_destroy(&attr);
-    if (rc != 0) {
-        LOGE("[CM-BIGSTACK] pthread creation failed rc=%d", rc);
-        _exit(23);
-    }
-    // Westlake: the unused launcher must leave ART's mutator list before
-    // joining, otherwise STW GC waits for its checkpoint indefinitely.
-    const jint detachRc = runtime->getJavaVM()->DetachCurrentThread();
-    LOGI("[CM-BIGSTACK] launcher DetachCurrentThread before join rc=%d", detachRc);
-    if (detachRc != JNI_OK) _exit(24);
-    pthread_join(javaThread, nullptr);
+    LaunchActivityThreadAfterStock(env, message, runtime);
     _exit(1);
 }
 

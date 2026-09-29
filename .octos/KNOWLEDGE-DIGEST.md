@@ -430,3 +430,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **BMS APK 网络权限三断点（#89,2026-09-29）**：manifest已解析usesPermissions但C-entry JSON原先丢弃；APK专支手工InnerModuleInfo与AllocHapToken空policy不走HAP权限流程，所以只补资源module.json不足。精确映射INTERNET/ACCESS_NETWORK_STATE后须同时写BMS requestPermissions并照OH BundlePermissionMgr用InitHapToken处理system_grant；旧token权限集不同须卸载重装。本轮离线双APK真实HAP验证通过，ATM/通网仍交cc-wiki上板验，见benchmark/2026-09-29-bms-network-permissions/。
 
 - **#90双板部署复验(2026-09-30,cx-t0)**：61b换installer后foundation热重启重现黑屏，SHA正确不等于桌面可用；整机重启+原产物重放恢复，5cd直接同法通过。两板host d977bd15/BMS6f94d4f4/installer eb6824b4，5cd保留r16，61b保留r8b+VT/liblog；HW/ZigZag截图实际上屏但foreground_unconfirmed，各facts4/4。foundation root可能无/system/android，服务库在foundation核、runtime在appspawn父子核；launch-only旧token仍allow=0，联网回测必须重装。证据benchmark/2026-09-29-network-rollout/。
+
+- **#92 初始线程栈(2026-09-30)**：5ea探针默认8MiB而initial/fork仅135168B，setattr_default_np前后不变；musl按已映射页探测初始栈，新pthread报告8391240B。不能靠改默认值救初始线程；Westlake显式big-pthread需原线程Detach再join。ANL移植须保留v2 permitted-path修复，oc-t4 3302406b基线缺此项；见 `benchmark/2026-09-30-child-stack-default/`，上板验收待定。

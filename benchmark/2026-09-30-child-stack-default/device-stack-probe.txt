@@ -1,0 +1,10 @@
+PROGRESS(92): 2026-09-30T00:15:09+0800 cc-wiki stack_probe 在 5ea 执行(cc-wiki 持锁; /data/local/tmp/b92-stack-probe, sha256 前缀 1b4be913b8b480b2; 只调 pthread 属性查询/pthread_setattr_default_np/fork/waitpid/printf, 无持久改动). stdout 原样:
+1b4be913b8b480b2
+--- run ---
+STACKPROBE initial-before pid=6631 getattr=0 base=0x7fc8e19000 stack=135168 guard=0 default_rc=0 default=8388608
+STACKPROBE set-default rc=0
+STACKPROBE initial-after pid=6631 getattr=0 base=0x7fc8e19000 stack=135168 guard=0 default_rc=0 default=8388608
+STACKPROBE fork-child pid=6632 getattr=0 base=0x7fc8e19000 stack=135168 guard=0 default_rc=0 default=8388608
+STACKPROBE new-pthread pid=6631 getattr=0 base=0x7f09eff000 stack=8391240 guard=8192 default_rc=0 default=8388608
+rc=0
+解读: (1) initial 线程 getattr 报 stack=135168(=0x21000, 正好是父进程 [stack] VMA 7fccce2000-7fccd03000 的大小), 即 musl 按当前已映射范围报告, 不是 __default_stacksize——默认值本来就是 8388608. Westlake 注释说的「报 __default_stacksize」在这块板上不成立. (2) pthread_setattr_default_np rc=0 后 initial-after 仍 135168, fork-child 也 135168 -> 调默认栈大小救不了初始线程, 外环首选修法无效. (3) 新 pthread 得到 8391240(8 MiB+guard 8192), 显式/默认栈都正常. 落点建议: 要么在 ART 读取主线程栈范围之前把初始线程 [stack] VMA 预先长大(在父进程初始化 ART 前递归/alloca 触碰到 rlimit 深度, 让 musl 的映射探测报大值), 要么照 Westlake 把 ActivityThread 放到显式 8 MB pthread(需过 app_native_loader READY 门 + 原线程 DetachCurrentThread).
