@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deploy a sealed OH6.1 generation. Mac dispatches device I/O through a2hlab.
+"""Deploy an OH6.1 generation with deployment-time identity checks. Mac dispatches device I/O through a2hlab.
 
 No compilation, APK replacement, installer update or automatic boot service.
 State is per serial + boot; failed activation rolls back only mounts owned here.
@@ -54,7 +54,11 @@ def load_package(package):
             raise ValueError('unsafe mount target')
         targets.append(target)
     if len(targets) != len(set(targets)): raise ValueError('duplicate mount target')
-    if m['files']['payload/android/lib64/liboh_adapter_bridge.so'] != BRIDGE:
+    bridge = m['files']['payload/android/lib64/liboh_adapter_bridge.so']
+    if m.get('runtime_identity') == 'deployment-only':
+        if m.get('bridge_sha256') != bridge or m['live_hashes'].get('/system/android/lib64/liboh_adapter_bridge.so') != bridge:
+            raise ValueError('bridge version differs from deployment manifest')
+    elif bridge != BRIDGE:
         raise ValueError('wrong stage/accept-want bridge')
     return m
 
@@ -79,6 +83,31 @@ def rollback_order(state, boot, top_mounts):
             raise ValueError('mount changed since deployment: ' + row['target'])
         rows.append(row)
     return list(reversed(rows))
+
+def replacement_source(m, target):
+    if target not in m['live_hashes'] or not target.endswith('.so'):
+        raise ValueError('replacement must be a declared native library: ' + target)
+    rows = sorted(m['mounts'], key=lambda r: len(r['target']), reverse=True)
+    for row in rows:
+        if target == row['target'] or target.startswith(row['target'] + '/'):
+            source = row['source'] + target[len(row['target']):]
+            if source in m['files']: return source
+    raise ValueError('replacement target has no package file: ' + target)
+
+
+def validate_replacement(old, new, target):
+    if old.get('runtime_identity') != 'deployment-only' or new.get('runtime_identity') != 'deployment-only':
+        raise ValueError('single-file mode requires an unlocked generation')
+    if old['generation'] != new['generation'] or old['mounts'] != new['mounts'] or old['prerequisites'] != new['prerequisites']:
+        raise ValueError('single-file replacement changes generation, mounts or platform')
+    source = replacement_source(new, target)
+    changed = {k for k in old['files'].keys() | new['files'].keys() if old['files'].get(k) != new['files'].get(k)}
+    if changed != {source}: raise ValueError('replacement must change exactly one package file: ' + str(sorted(changed)))
+    changed_live = {k for k in old['live_hashes'].keys() | new['live_hashes'].keys() if old['live_hashes'].get(k) != new['live_hashes'].get(k)}
+    if changed_live != {target} or new['live_hashes'][target] != new['files'][source]:
+        raise ValueError('replacement SHA/target manifest mismatch: ' + target)
+    return source
+
 
 class Deployment:
     def __init__(self, args, m, b):
@@ -137,8 +166,75 @@ class Deployment:
                 return pid
             time.sleep(.3)
         raise RuntimeError('parent failed to start')
+    def verify_mounts(self):
+        tops = self.top_mounts()
+        for row in reversed(self.d.get('single_replacements', [])):
+            if tops.get(row['target']) != row['remote'][len('/data'):]:
+                raise RuntimeError('replacement mount changed externally: ' + row['target'])
+            tops[row['target']] = row['previous_root']
+        return rollback_order(self.d, self.board.boot, tops)
+
+    def rollback_single(self, verify=True):
+        rows = self.d.get('single_replacements', [])
+        if not rows: raise RuntimeError('no single-file replacement to roll back')
+        row = rows[-1]
+        current = self.top_mounts().get(row['target'])
+        if current not in [row['remote'][len('/data'):], row['previous_root']]:
+            raise RuntimeError('replacement mount changed externally: ' + row['target'])
+        old_package = Path(row['previous_package'])
+        old = load_package(old_package)
+        if sha(old_package / 'package.json') != row['previous_package_sha256']:
+            raise RuntimeError('rollback package changed')
+        self.stop()
+        if current == row['remote'][len('/data'):]: self.shell('umount ' + shlex.quote(row['target']))
+        if self.hashes([row['target']])[row['target']] != old['live_hashes'][row['target']]:
+            raise RuntimeError('single-file rollback SHA mismatch: ' + row['target'])
+        rows.pop()
+        self.package, self.m = old_package, old
+        self.d['package_path'] = str(old_package)
+        self.d['package_sha256'] = row['previous_package_sha256']
+        self.d['parent_pid'] = self.start(old['live_hashes']['/system/bin/appspawn-x'])
+        self.d['status'] = 'active'; self.record()
+        if verify: self.verify()
+
+    def replace(self, target):
+        if not self.d or self.d['status'] != 'active_verified':
+            raise RuntimeError('single-file mode requires a verified resident generation')
+        old_package = Path(self.d['package_path'])
+        if old_package == self.package: raise ValueError('keep the prior package intact; use a separate updated package')
+        old = load_package(old_package)
+        if sha(old_package / 'package.json') != self.d['package_sha256']: raise ValueError('resident package changed')
+        source = validate_replacement(old, self.m, target)
+        self.verify_mounts()
+        if self.hashes(list(old['live_hashes'])) != old['live_hashes']: raise RuntimeError('resident SHA mismatch before replacement')
+        remote = self.d['remote'] + '/single-' + str(time.time_ns()) + '.so'
+        self.board.send(self.package / source, remote)
+        if self.hashes([remote])[remote] != self.m['files'][source]: raise RuntimeError('replacement staging SHA mismatch: ' + target)
+        self.shell('chmod 0644 ' + remote + ' && chcon u:object_r:system_file:s0 ' + remote)
+        self.stop()
+        row = {'target': target, 'remote': remote, 'previous_root': self.top_mounts().get(target),
+               'previous_package': str(old_package), 'previous_package_sha256': self.d['package_sha256']}
+        self.d.setdefault('single_replacements', []).append(row)
+        self.d['status'] = 'replacing'; self.record()  # persist intent before the bind
+        try:
+            self.shell('mount --bind ' + remote + ' ' + shlex.quote(target))
+            self.d['package_path'] = str(self.package)
+            self.d['package_sha256'] = sha(self.package / 'package.json')
+            self.d['parent_pid'] = self.start(self.m['live_hashes']['/system/bin/appspawn-x'])
+            self.d['status'] = 'active'; self.record()
+            self.verify()
+        except Exception:
+            try:
+                # Keep failure evidence separate from the recovery smoke test.
+                self.out = self.root / ('recovery-' + str(time.time_ns())); self.out.mkdir()
+                self.rollback_single()
+            except Exception as error:
+                self.d['rollback_error'] = str(error); self.record()
+            raise
+
     def rollback(self):
         if not self.d or self.d['status'] == 'rolled_back': raise RuntimeError('no active deployment in this boot')
+        while self.d.get('single_replacements'): self.rollback_single(verify=False)
         tops = self.top_mounts()
         pending = self.d.get('pending_mount')
         if pending:
@@ -167,7 +263,7 @@ class Deployment:
         if self.hashes(list(self.d['installer_before'])) != self.d['installer_before']: raise RuntimeError('installer changed')
         self.top_mounts()
         # Exact top mounts also prove a repeat invocation does not stack binds.
-        rollback_order(self.d, self.board.boot, self.top_mounts())
+        self.verify_mounts()
         out = self.out / 'helloworld'; out.mkdir()
         pkg = APPS[0][1]; parsed = self.b.parse_bundle(self.shell('bm dump -n ' + pkg), pkg)
         if not self.b.cold_stop(self.board, pkg, parsed['uid'], out): raise RuntimeError('HelloWorld cold-stop failed')
@@ -207,7 +303,7 @@ class Deployment:
         before = self.hashes(sorted(set(before_paths)))
         installers = ['/system/lib64/libapk_installer.so', '/system/lib64/platformsdk/libapk_installer.so']
         remote = '/data/local/tmp/westlake-generation-' + self.gen[:12] + '-' + self.board.boot + '-' + str(time.time_ns())
-        self.d = {'serial': self.a.serial, 'boot_id': self.board.boot, 'generation': self.gen, 'package_sha256': sha(self.package / 'package.json'), 'remote': remote, 'before': before, 'installer_before': self.hashes(installers), 'mounted': [], 'status': 'staging'}
+        self.d = {'serial': self.a.serial, 'boot_id': self.board.boot, 'generation': self.gen, 'package_path': str(self.package), 'package_sha256': sha(self.package / 'package.json'), 'remote': remote, 'before': before, 'installer_before': self.hashes(installers), 'mounted': [], 'status': 'staging'}
         self.record()
         self.shell('mkdir ' + remote)
         archive = self.out / 'payload.tar'
@@ -250,6 +346,7 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('serial', choices=sorted(SERIALS)); p.add_argument('package', type=Path)
     mode = p.add_mutually_exclusive_group(); mode.add_argument('--rollback', action='store_true'); mode.add_argument('--dry-run', action='store_true')
+    p.add_argument('--replace', metavar='ABSOLUTE_TARGET', help='one-file replacement from a separately updated package; with --rollback undo the last replacement')
     p.add_argument('--lane', default=os.environ.get('WESTLAKE_LANE', 'cx-t0'))
     p.add_argument('--tools', default='/Users/zhaoyue/orca/workspaces/westlake-inputs/tools')
     p.add_argument('--state-root', type=Path, default=Path('/Users/zhaoyue/orca/workspaces/westlake-generation-state'))
@@ -260,11 +357,17 @@ def main(argv=None):
     if platform.system() == 'Darwin':
         command = ['python3', str(Path(__file__).resolve()), a.serial, str(a.package), '--lane', a.lane, '--tools', a.tools, '--state-root', str(a.state_root.resolve())]
         if a.rollback: command.append('--rollback')
+        if a.replace: command.extend(['--replace', a.replace])
         raise SystemExit(subprocess.call(['orb', '-m', 'a2hlab', 'bash', '-lc', shlex.join(command)]))
     sys.path.insert(0, str(a.package / 'tools'))
     import bms_batch as b
     d = Deployment(a, m, b)
-    if a.rollback: d.rollback()
+    if a.rollback and a.replace:
+        if not d.d or not d.d.get('single_replacements') or d.d['single_replacements'][-1]['target'] != a.replace:
+            raise RuntimeError('rollback target is not the last replacement')
+        d.rollback_single()
+    elif a.rollback: d.rollback()
+    elif a.replace: d.replace(a.replace)
     else: d.deploy()
     print(json.dumps({'state': str(d.statepath), 'evidence': str(d.out), 'status': d.d['status']}, indent=2))
 

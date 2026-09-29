@@ -1,0 +1,252 @@
+{
+  "failure_summary": "## Verification Failed\n\n2 of 7 scenarios are non-passing.\n\n### Non-passing Scenarios\n\n**桥接库导出 manifest 解析 JNI**\n- verdict: Fail\n- Fail: v3 的桥接库已构建 (explicit test `b9_bridge_exports_manifest_jni` failed)\n- Fail: 对它跑 `llvm-nm -D --defined-only` (explicit test `b9_bridge_exports_manifest_jni` failed)\n- Fail: 输出含 `Java_adapter_activity_AppSchedulerBridge_nativeParseManifestJson` 与 `Java_adapter_activity_AppSchedulerBridge_nativeGetSysProp` (explicit test `b9_bridge_exports_manifest_jni` failed)\n  > test `b9_bridge_exports_manifest_jni`: passed=false\n\n**无锁代不让已亮的 app 回退**\n- verdict: PendingReview\n- PendingReview: v3 已部署到 5ea (covered by explicit test `b9_no_regression`)\n- PendingReview: 拉起 HelloWorld 与 ZigZag (covered by explicit test `b9_no_regression`)\n- PendingReview: 外环读图签认两者截图仍是各自界面 (covered by explicit test `b9_no_regression`)\n  > test `b9_no_regression`: passed=true\n\n### Action Required\n\nResolve the failures or missing verification coverage above and re-run verification.\n",
+  "lint_issues": 3,
+  "passed": false,
+  "quality_score": 1.0,
+  "stage": "complete",
+  "verification": {
+    "results": [
+      {
+        "duration_ms": 222,
+        "evidence": [
+          {
+            "passed": true,
+            "stdout": "\nrunning 1 test\nPASS B9 swap\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.05s\n\n",
+            "test_name": "b9_single_bridge_swap_accepted",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "无锁代上单换桥接库被接受",
+        "step_results": [
+          {
+            "reason": "covered by explicit test `b9_single_bridge_swap_accepted`",
+            "step_text": "v3 已部署到 5ea,HelloWorld 正常",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_single_bridge_swap_accepted`",
+            "step_text": "只把 `liboh_adapter_bridge.so` 换成另一份 SHA 不同的构建并从桌面拉起 HelloWorld",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_single_bridge_swap_accepted`",
+            "step_text": "hilog 不出现 `exact adapter bridge admission failed`、`LOAD_ERROR` 与 `WLSCPL_ERROR_ARTIFACT_IDENTITY`",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_single_bridge_swap_accepted`",
+            "step_text": "子进程 maps 映射的是换上去的桥接库",
+            "verdict": "pass"
+          }
+        ],
+        "verdict": "pass"
+      },
+      {
+        "duration_ms": 51,
+        "evidence": [
+          {
+            "passed": false,
+            "stdout": "\nrunning 1 test\nb9_bridge_exports_manifest_jni --- FAILED\n\nfailures:\n\n---- b9_bridge_exports_manifest_jni stdout ----\n\nthread 'b9_bridge_exports_manifest_jni' (87312940) panicked at src/lib.rs:5:5:\nassertion failed: status.success()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    b9_bridge_exports_manifest_jni\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.03s\n\n\nTraceback (most recent call last):\n  File \"/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/benchmark/2026-09-29-unlocked-generation/verify.py\", line 19, in <module>\n    for symbol in ['nativeParseManifestJson','nativeGetSysProp']:assert 'Java_adapter_activity_AppSchedulerBridge_'+symbol in s\nAssertionError\nerror: test failed, to rerun pass `--lib`\n",
+            "test_name": "b9_bridge_exports_manifest_jni",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "桥接库导出 manifest 解析 JNI",
+        "step_results": [
+          {
+            "reason": "explicit test `b9_bridge_exports_manifest_jni` failed",
+            "step_text": "v3 的桥接库已构建",
+            "verdict": "fail"
+          },
+          {
+            "reason": "explicit test `b9_bridge_exports_manifest_jni` failed",
+            "step_text": "对它跑 `llvm-nm -D --defined-only`",
+            "verdict": "fail"
+          },
+          {
+            "reason": "explicit test `b9_bridge_exports_manifest_jni` failed",
+            "step_text": "输出含 `Java_adapter_activity_AppSchedulerBridge_nativeParseManifestJson` 与 `Java_adapter_activity_AppSchedulerBridge_nativeGetSysProp`",
+            "verdict": "fail"
+          }
+        ],
+        "verdict": "fail"
+      },
+      {
+        "duration_ms": 49,
+        "evidence": [
+          {
+            "passed": true,
+            "stdout": "\nrunning 1 test\nPASS B9 application\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.03s\n\n",
+            "test_name": "b9_custom_application_created",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "自定义 Application 被实例化",
+        "step_results": [
+          {
+            "reason": "covered by explicit test `b9_custom_application_created`",
+            "step_text": "v3 已部署到 5ea",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_custom_application_created`",
+            "step_text": "从桌面拉起 fd-k9 与 ooniprobe 并采 hilog",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_custom_application_created`",
+            "step_text": "`[B43-BIND] providers populated` 的数字大于 0",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_custom_application_created`",
+            "step_text": "不再出现 `KoinApplication has not been started` 与 Application 强转失败,越过的附原文",
+            "verdict": "pass"
+          }
+        ],
+        "verdict": "pass"
+      },
+      {
+        "duration_ms": 112,
+        "evidence": [
+          {
+            "passed": true,
+            "stdout": "\nrunning 1 test\nPASS B9 missing\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.09s\n\n\n.\n----------------------------------------------------------------------\nRan 1 test in 0.015s\n\nOK\n",
+            "test_name": "b9_bridge_build_fails_on_missing_source",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "缺源文件时构建失败",
+        "step_results": [
+          {
+            "reason": "covered by explicit test `b9_bridge_build_fails_on_missing_source`",
+            "step_text": "构建目录里去掉 `apk_manifest_jni.cpp` 或 minizip 目标文件",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_bridge_build_fails_on_missing_source`",
+            "step_text": "运行桥接库构建",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_bridge_build_fails_on_missing_source`",
+            "step_text": "构建以非零退出码结束并打印缺失的路径,不产出桥接库",
+            "verdict": "pass"
+          }
+        ],
+        "verdict": "pass"
+      },
+      {
+        "duration_ms": 53,
+        "evidence": [
+          {
+            "passed": true,
+            "stdout": "\nrunning 1 test\nPASS B9 regression\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.03s\n\n",
+            "test_name": "b9_no_regression",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "无锁代不让已亮的 app 回退",
+        "step_results": [
+          {
+            "reason": "covered by explicit test `b9_no_regression`",
+            "step_text": "v3 已部署到 5ea",
+            "verdict": "pendingreview"
+          },
+          {
+            "reason": "covered by explicit test `b9_no_regression`",
+            "step_text": "拉起 HelloWorld 与 ZigZag",
+            "verdict": "pendingreview"
+          },
+          {
+            "reason": "covered by explicit test `b9_no_regression`",
+            "step_text": "外环读图签认两者截图仍是各自界面",
+            "verdict": "pendingreview"
+          }
+        ],
+        "verdict": "pendingreview"
+      },
+      {
+        "duration_ms": 112,
+        "evidence": [
+          {
+            "passed": true,
+            "stdout": "\nrunning 1 test\nPASS B9 mismatch\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.09s\n\n\n..\n----------------------------------------------------------------------\nRan 2 tests in 0.006s\n\nOK\n",
+            "test_name": "b9_deploy_tool_rejects_mismatch",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "部署工具拦下配错的库",
+        "step_results": [
+          {
+            "reason": "covered by explicit test `b9_deploy_tool_rejects_mismatch`",
+            "step_text": "v3 已部署到 5ea",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_deploy_tool_rejects_mismatch`",
+            "step_text": "用单文件替换模式换上一个与包内清单 SHA 不符的库,或换后子进程 maps 出现两份 libart",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_deploy_tool_rejects_mismatch`",
+            "step_text": "`deploy_generation.sh` 以非零退出码结束并打印不符的组件",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_deploy_tool_rejects_mismatch`",
+            "step_text": "该文件被回滚,板上 SHA 回到替换前",
+            "verdict": "pass"
+          }
+        ],
+        "verdict": "pass"
+      },
+      {
+        "duration_ms": 61,
+        "evidence": [
+          {
+            "passed": true,
+            "stdout": "\nrunning 1 test\nPASS B9 rollback\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.04s\n\n",
+            "test_name": "b9_rollback_on_failed_deploy",
+            "type": "test_output"
+          }
+        ],
+        "provenance": "computational",
+        "scenario_name": "部署失败时回滚到 6cb40cd6",
+        "step_results": [
+          {
+            "reason": "covered by explicit test `b9_rollback_on_failed_deploy`",
+            "step_text": "v3 部署后 HelloWorld 不能上屏或出现双份 libart",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_rollback_on_failed_deploy`",
+            "step_text": "执行 `deploy_generation.sh --rollback`",
+            "verdict": "pass"
+          },
+          {
+            "reason": "covered by explicit test `b9_rollback_on_failed_deploy`",
+            "step_text": "5ea 回到 6cb40cd6,板上关键件 SHA 与 6cb40cd6 清单一致",
+            "verdict": "pass"
+          }
+        ],
+        "verdict": "pass"
+      }
+    ],
+    "spec_name": "B9 拆掉运行代的哈希锁,并把 manifest 解析 JNI 编回桥接库",
+    "summary": {
+      "failed": 1,
+      "passed": 5,
+      "pending_review": 1,
+      "skipped": 0,
+      "total": 7,
+      "uncertain": 0
+    }
+  }
+}

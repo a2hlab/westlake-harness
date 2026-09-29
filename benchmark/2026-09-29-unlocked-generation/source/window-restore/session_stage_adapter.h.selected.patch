@@ -1,0 +1,80 @@
+--- selected-oh61/session_stage_adapter.h
++++ real-work/session_stage_adapter.h
+@@ -47,6 +47,17 @@
+     SessionStageAdapter(JavaVM* jvm, jobject androidWindow);
+     ~SessionStageAdapter() override;
+ 
++    // Android top-level content is hosted by an OH APP_SUB_WINDOW whose
++    // MainSession parent owns platform focus.  Mark only that content stage so
++    // the parent's active edge can be projected through ViewRootImpl.
++    void SetInheritsParentFocus(bool inheritsParentFocus);
++
++    // WindowSessionAdapter cannot return ADD_FLAG_USE_BLAST on this route, but
++    // the current SurfaceControl/BBQ bridge supports it.  Enable the equivalent
++    // ViewRootImpl latch before the first relayout, otherwise no-buffer frame
++    // commit callbacks see a permanently-null mBlastBufferQueue.
++    bool EnableRootBlastForTopLevelContent();
++
+     // ================================================================
+     // Category 1: Session Lifecycle
+     // ================================================================
+@@ -254,7 +265,11 @@
+     // ================================================================
+ 
+     WSError NotifyAppForceLandscapeConfigUpdated() override;
+-    // OH 6.1.0.31 ISessionStage ABI has the zero-argument form.
++    // [S24 cut9 2026-07-09] param dropped to match the REAL device (6.1.0.31)
++    // ISessionStage::NotifyAppForceLandscapeConfigEnableUpdated() (0-arg) — the
++    // prior 1-arg signature never actually occupied this vtable slot (silently
++    // non-overriding, api24-vs-6.1.0.31 generational skew); compile-time-only
++    // fix, body was already ignoring the param.
+     WSError NotifyAppForceLandscapeConfigEnableUpdated() override;
+     WSError NotifyAppHookWindowInfoUpdated() override;
+ 
+@@ -262,10 +277,14 @@
+     // V7-only newly added pure virtuals — implemented as no-op OH_ONLY
+     // (Android side has no semantic counterpart; SSM still requires the
+     //  symbol to instantiate the stub.)
+-    // ================================================================
+-    // These four callbacks are newer than the OH 6.1.0.31 device vtable.
+-    // Keep the no-op methods for source compatibility, but do not claim vtable
+-    // slots that are absent on this device generation.
++    // [S24 cut9 2026-07-09] 'override' dropped on these 4: deployed device is
++    // 6.1.0.31 (V6-ish), whose ISessionStage does NOT declare these as
++    // virtuals at all (confirmed against local_oh_headers/oh_mirror — real
++    // device ABI, not this tree's newer api24 window_manager). Keeping the
++    // methods (harmless no-op OH_ONLY bodies, still callable directly /
++    // future-proof if device SSM gains them) but they are plain (non-
++    // overriding) member functions on THIS device generation.
++    // ================================================================
+     WSError NotifySubWindowAfterParentWindowSizeChange(OHOS::Rosen::Rect rect);
+     WSError NotifySubWindowAfterParentWindowStatusChange(OHOS::Rosen::WindowMode mode);
+     WSError GetSceneNodeCount(uint32_t& nodeCount);
+@@ -288,19 +307,21 @@
+     WMError UpdateWindowModeForUITest(int32_t updateMode) override;
+ 
+ private:
+-    // Obtain JNIEnv for the current thread, attaching to JVM if needed.
+-    JNIEnv* getJNIEnv(bool& needsDetach);
+-
+-    // Detach current thread from JVM if it was attached by us.
+-    void detachIfNeeded(bool needsDetach);
+-
+     // Call a void method on the Java SessionStageBridge object.
+     void callBridgeVoidMethod(const char* methodName, const char* signature, ...);
++
++    // Project OH focus through the existing Android WindowCallbackBridge.  It
++    // enters ViewRootImpl.windowFocusChanged instead of calling Activity or
++    // Unity callbacks directly.
++    void callFocusBridgeVoidMethod(const char* methodName, const char* signature, ...);
+ 
+     JavaVM* jvm_ = nullptr;
+     jobject androidWindow_ = nullptr;     // Global ref to Android IWindow
+     jclass bridgeClass_ = nullptr;        // Global ref to SessionStageBridge class
+     jobject bridgeObj_ = nullptr;         // Global ref to SessionStageBridge instance
++    jclass focusBridgeClass_ = nullptr;   // Global ref to WindowCallbackBridge class
++    jobject focusBridgeObj_ = nullptr;    // Global ref to WindowCallbackBridge instance
++    bool inheritsParentFocus_ = false;    // True only for top-level Android content
+     std::mutex jniMutex_;                 // Protects JNI calls from concurrent IPC threads
+ };
+ 

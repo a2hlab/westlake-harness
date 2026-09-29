@@ -1,0 +1,39 @@
+--- initial/session_stage_adapter.h
++++ real-work/session_stage_adapter.h
+@@ -47,6 +47,17 @@
+     SessionStageAdapter(JavaVM* jvm, jobject androidWindow);
+     ~SessionStageAdapter() override;
+ 
++    // Android top-level content is hosted by an OH APP_SUB_WINDOW whose
++    // MainSession parent owns platform focus.  Mark only that content stage so
++    // the parent's active edge can be projected through ViewRootImpl.
++    void SetInheritsParentFocus(bool inheritsParentFocus);
++
++    // WindowSessionAdapter cannot return ADD_FLAG_USE_BLAST on this route, but
++    // the current SurfaceControl/BBQ bridge supports it.  Enable the equivalent
++    // ViewRootImpl latch before the first relayout, otherwise no-buffer frame
++    // commit callbacks see a permanently-null mBlastBufferQueue.
++    bool EnableRootBlastForTopLevelContent();
++
+     // ================================================================
+     // Category 1: Session Lifecycle
+     // ================================================================
+@@ -299,10 +310,18 @@
+     // Call a void method on the Java SessionStageBridge object.
+     void callBridgeVoidMethod(const char* methodName, const char* signature, ...);
+ 
++    // Project OH focus through the existing Android WindowCallbackBridge.  It
++    // enters ViewRootImpl.windowFocusChanged instead of calling Activity or
++    // Unity callbacks directly.
++    void callFocusBridgeVoidMethod(const char* methodName, const char* signature, ...);
++
+     JavaVM* jvm_ = nullptr;
+     jobject androidWindow_ = nullptr;     // Global ref to Android IWindow
+     jclass bridgeClass_ = nullptr;        // Global ref to SessionStageBridge class
+     jobject bridgeObj_ = nullptr;         // Global ref to SessionStageBridge instance
++    jclass focusBridgeClass_ = nullptr;   // Global ref to WindowCallbackBridge class
++    jobject focusBridgeObj_ = nullptr;    // Global ref to WindowCallbackBridge instance
++    bool inheritsParentFocus_ = false;    // True only for top-level Android content
+     std::mutex jniMutex_;                 // Protects JNI calls from concurrent IPC threads
+ };
+ 

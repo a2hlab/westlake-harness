@@ -1,0 +1,116 @@
+--- before/input_receipt_ledger.h
++++ real-work/input_receipt_ledger.h
+@@ -0,0 +1,113 @@
++#ifndef INPUT_RECEIPT_LEDGER_H
++#define INPUT_RECEIPT_LEDGER_H
++
++#include <chrono>
++#include <cstdint>
++#include <functional>
++#include <unordered_map>
++#include <vector>
++
++namespace oh_adapter {
++
++struct InputReceiptKey {
++    int32_t sessionId;
++    uint64_t generation;
++    uint32_t seq;
++
++    bool operator==(const InputReceiptKey& other) const {
++        return sessionId == other.sessionId &&
++               generation == other.generation &&
++               seq == other.seq;
++    }
++};
++
++struct InputReceiptKeyHash {
++    size_t operator()(const InputReceiptKey& key) const {
++        size_t value = std::hash<int32_t>{}(key.sessionId);
++        value ^= std::hash<uint64_t>{}(key.generation) +
++                 0x9e3779b97f4a7c15ULL + (value << 6) + (value >> 2);
++        value ^= std::hash<uint32_t>{}(key.seq) +
++                 0x9e3779b97f4a7c15ULL + (value << 6) + (value >> 2);
++        return value;
++    }
++};
++
++/**
++ * Bounded mapping from one published Android InputMessage to the OH event
++ * completion that may run only after the matching FINISHED arrives.
++ *
++ * This class deliberately owns no lock. OHInputBridge serializes it with the
++ * same mutex that protects session fd/generation identity, so a stale fd
++ * cannot consume a token from a replacement generation.
++ */
++class InputReceiptLedger {
++public:
++    using Clock = std::chrono::steady_clock;
++    using Completion = std::function<void(bool handled)>;
++
++    bool arm(const InputReceiptKey& key, Completion completion,
++             Clock::time_point deadline) {
++        if (!completion) {
++            return false;
++        }
++        return entries_.emplace(
++            key, Entry{std::move(completion), deadline}).second;
++    }
++
++    Completion take(const InputReceiptKey& key) {
++        auto it = entries_.find(key);
++        if (it == entries_.end()) {
++            return {};
++        }
++        Completion completion = std::move(it->second.completion);
++        entries_.erase(it);
++        return completion;
++    }
++
++    bool cancel(const InputReceiptKey& key) {
++        return entries_.erase(key) == 1;
++    }
++
++    std::vector<InputReceiptKey> expire(Clock::time_point now) {
++        std::vector<InputReceiptKey> expired;
++        for (auto it = entries_.begin(); it != entries_.end();) {
++            if (it->second.deadline <= now) {
++                expired.push_back(it->first);
++                it = entries_.erase(it);
++            } else {
++                ++it;
++            }
++        }
++        return expired;
++    }
++
++    size_t dropGeneration(int32_t sessionId, uint64_t generation) {
++        size_t dropped = 0;
++        for (auto it = entries_.begin(); it != entries_.end();) {
++            if (it->first.sessionId == sessionId &&
++                it->first.generation == generation) {
++                it = entries_.erase(it);
++                ++dropped;
++            } else {
++                ++it;
++            }
++        }
++        return dropped;
++    }
++
++    size_t size() const {
++        return entries_.size();
++    }
++
++private:
++    struct Entry {
++        Completion completion;
++        Clock::time_point deadline;
++    };
++
++    std::unordered_map<InputReceiptKey, Entry, InputReceiptKeyHash> entries_;
++};
++
++}  // namespace oh_adapter
++
++#endif  // INPUT_RECEIPT_LEDGER_H

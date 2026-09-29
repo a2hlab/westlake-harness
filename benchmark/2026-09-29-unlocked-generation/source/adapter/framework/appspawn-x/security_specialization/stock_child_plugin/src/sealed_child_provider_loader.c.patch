@@ -1,0 +1,50 @@
+--- b67/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/sealed_child_provider_loader.c
++++ b68/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/sealed_child_provider_loader.c
+@@ -197,16 +197,6 @@
+     return (uint64_t)getpid();
+ }
+ 
+-static int RealVerifyIdentity(void *context,
+-                              const WlscplArtifactV1 *artifact,
+-                              uint16_t elf_machine)
+-{
+-    (void)context;
+-    return WLEI_VerifyFileHex(artifact->absolute_path, elf_machine,
+-                              artifact->sha256_hex,
+-                              artifact->build_id_hex, NULL, 0U);
+-}
+-
+ static int RealIsMapped(void *context, const WlscplArtifactV1 *artifact)
+ {
+     FILE *maps;
+@@ -342,7 +332,7 @@
+     uint32_t expected = WLSCPL_STATE_EMPTY;
+     uint32_t index;
+     if (loader == NULL || request == NULL || result == NULL || ops == NULL ||
+-        ops->current_pid == NULL || ops->verify_identity == NULL ||
++        ops->current_pid == NULL ||
+         ops->is_mapped == NULL || ops->open_local_now == NULL ||
+         ops->close_handle == NULL ||
+         request->abi_version != WLSCPL_ABI_VERSION ||
+@@ -391,11 +381,7 @@
+     for (index = 0U; index < order_count; ++index) {
+         const WlscplArtifactV1 *artifact =
+             &request->manifest->artifacts[order[index]];
+-        if (ops->verify_identity(ops->context, artifact,
+-                                 request->manifest->elf_machine) != 0) {
+-            return Fail(loader, request, result,
+-                        WLSCPL_ERROR_ARTIFACT_IDENTITY, index, ops);
+-        }
++        /* #68: provider file SHA/build-id is enforced by the deployer. */
+         {
+             int mapped = ops->is_mapped(ops->context, artifact);
+             int allowed = IsPreloadedRegistryUnityArtifact(artifact) ||
+@@ -440,7 +426,7 @@
+ {
+     static const WlscplOps ops = {
+         RealCurrentPid,
+-        RealVerifyIdentity,
++        NULL, /* no runtime file-identity callback */
+         RealIsMapped,
+         RealOpenLocalNow,
+         RealCloseHandle,

@@ -113,3 +113,7 @@ Installer两处更新并重启foundation后可能黑屏；按明确授权整机�
 重启后原命令重放；同 boot 重跑只校验+HelloWorld 冒烟，不叠加挂载。新状态写 Mac `westlake-generation-state/<serial>/<boot_id>.json`，保留它才能 `--rollback`（仅卸本次挂载、校验原 SHA、重启原 parent，跨 boot/其他覆盖拒绝）。#66 成功代保持常驻，**不要因 Wikipedia 仍回桌面回滚**。包会恢复 B5 JAR250958dc，新 Java 修正须部署后按所属任务重加；installer 不变。两份 bridge 映射可与已签基线一致，要求其 SHA84695d62；ART 与 openjdkjvm 必须各只有一份且在本代 route-a。
 
 - 多代部署器状态须按 serial + boot_id + generation 分开；旧 `<boot>.json` 仅同generation复用。服务重启后重新找唯一root appspawn-x并核exe SHA，不能信旧PID。#67更新版入口可校验/回滚v1与v2；v2回滚恢复先前6cb整代，包内B5 JAR会覆盖临时Java覆盖。v2 15728be5尚缺SQLite目标app执行验收，不作三板已签基线。
+
+- **B9 单文件换库**：`python3 scripts/lab/prepare_generation_replacement.py <当前包> <绝对.so目标> <新.so> --sha256 <SHA> --out <独立新包>`，再 `scripts/lab/deploy_generation.sh <serial> <新包> --replace <目标>`；加 `--rollback` 仅退最后一层单件。不得原地改当前包；包SHA在写板前核，写后核子进程SHA/maps/单ART，不符回滚。整代回滚先拆单件覆盖；先持板锁。见 `benchmark/2026-09-29-unlocked-generation/`。
+
+- **v3a 同包部署**：`scripts/lab/deploy_generation.sh <serial> /Users/zhaoyue/orca/workspaces/westlake-generation-v3a-74d1d6d4-r8b`，包内固定846 bridge+r8b JAR，三板使用同一目录；重启后按既有复现器恢复底座，再重放同命令。仅5ea已验证，其余板由外环派单后执行；包内哈希与live SHA一起核，不在各板另叠不同JAR。

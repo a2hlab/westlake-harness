@@ -1,0 +1,454 @@
+--- before/oh_input_bridge.cpp
++++ real-work/oh_input_bridge.cpp
+@@ -16,6 +16,7 @@
+ 
+ #include <android/log.h>
+ #include <sys/socket.h>
++#include <sys/syscall.h>
+ #include <unistd.h>
+ #include <poll.h>
+ #include <cerrno>
+@@ -220,23 +221,41 @@
+ 
+ namespace oh_adapter {
+ 
++namespace {
++
++/** Monotonic clock in nanoseconds for ledger arming/deadlines. */
++int64_t steadyNowNs() {
++    struct timespec ts;
++    clock_gettime(CLOCK_MONOTONIC, &ts);
++    return static_cast<int64_t>(ts.tv_sec) * 1'000'000'000LL + ts.tv_nsec;
++}
++
++}  // namespace
++
+ OHInputBridge& OHInputBridge::getInstance() {
+     static OHInputBridge instance;
+     return instance;
+ }
+ 
+ void OHInputBridge::registerInputChannel(int32_t sessionId, int serverFd) {
++    // Fn05.A07: rotate the session's window generation BEFORE the channel is
++    // visible to injectors; any previous generation is torn down fail-closed.
++    const std::string generation =
++        completionRouter_.openSession(sessionId, steadyNowNs());
++
+     std::lock_guard<std::mutex> lock(mutex_);
+ 
+     SessionInput& session = sessions_[sessionId];
+     session.serverFd = serverFd;
+     session.seq = 0;
+-
+-    LOGI("Registered input channel: session=%d, fd=%d", sessionId, serverFd);
+-
+-    // 2026-05-26 DIAGNOSTIC — start the ACK monitor once.  Reads FINISHED
+-    // messages ViewRootImpl writes back, to confirm whether injected events
+-    // actually reach the consumer.
++    session.generation = generation;
++
++    LOGI("Registered input channel: session=%d, fd=%d, generation=%s",
++         sessionId, serverFd, generation.c_str());
++
++    // Fn05.A07: the ACK monitor is load-bearing — it observes Android
++    // FINISHED messages and releases the gated OH MarkProcessed through the
++    // completion ledger.  Start it with the first registered channel.
+     if (!ackMonitoring_.load()) {
+         ackMonitoring_ = true;
+         ackThread_ = std::thread(&OHInputBridge::monitorAcks, this);
+@@ -245,6 +264,10 @@
+ }
+ 
+ void OHInputBridge::unregisterInputChannel(int32_t sessionId) {
++    // Fn05.A07: teardown the window generation fail-closed (all in-flight
++    // tokens CANCELLED, pending MarkProcessed thunks purged uncalled).
++    completionRouter_.closeSession(sessionId, steadyNowNs());
++
+     std::lock_guard<std::mutex> lock(mutex_);
+ 
+     auto it = sessions_.find(sessionId);
+@@ -274,29 +297,74 @@
+ 
+ int32_t OHInputBridge::injectTouchEvent(int32_t sessionId, int32_t action,
+                                           float x, float y,
+-                                          int64_t downTime, int64_t eventTime) {
++                                          int64_t downTime, int64_t eventTime,
++                                          int64_t ohEventId,
++                                          input::MarkProcessedThunk markProcessed) {
++    // Fn05.A07: accept into the completion ledger first.  If the event cannot
++    // be tracked, tell the caller to MarkProcessed immediately — injecting
++    // without a ledger token would produce a FINISHED with no pairing and
++    // (worse) leave OH waiting on a MarkProcessed that is never gated.  A
++    // ledger REJECTION (collision) is already recorded fail-closed; the
++    // caller must not ack.
++    switch (completionRouter_.acceptEvent(sessionId, ohEventId,
++                                          std::move(markProcessed))) {
++        case input::OhEventCompletionRouter::AcceptResult::ACCEPTED:
++            break;
++        case input::OhEventCompletionRouter::AcceptResult::UNTRACKED:
++            LOGD("injectTouchEvent: session=%d ohEvent=%lld not trackable",
++                 sessionId, (long long)ohEventId);
++            return INJECT_RC_UNTRACKED;
++        case input::OhEventCompletionRouter::AcceptResult::REJECTED:
++            LOGD("injectTouchEvent: session=%d ohEvent=%lld ledger-rejected",
++                 sessionId, (long long)ohEventId);
++            return INJECT_RC_REJECTED;
++    }
++
+     std::lock_guard<std::mutex> lock(mutex_);
+ 
+     auto it = sessions_.find(sessionId);
+-    if (it == sessions_.end()) {
+-        LOGE("injectTouchEvent: session %d not found", sessionId);
++    if (it == sessions_.end() || it->second.serverFd < 0) {
++        LOGE("injectTouchEvent: session %d has no server fd", sessionId);
++        completionRouter_.publishReject(sessionId, ohEventId, steadyNowNs(),
++                                        -1);
+         return -1;
+     }
+ 
+     SessionInput& session = it->second;
+-    if (session.serverFd < 0) {
+-        LOGE("injectTouchEvent: session %d has no server fd", sessionId);
++    session.seq++;
++    const uint32_t seq = session.seq;
++
++    if (!completionRouter_.arm(sessionId, ohEventId, seq, steadyNowNs())) {
++        LOGE("injectTouchEvent: session=%d ohEvent=%lld arm failed (seq=%u)",
++             sessionId, (long long)ohEventId, seq);
++        completionRouter_.publishReject(sessionId, ohEventId, steadyNowNs(),
++                                        -1);
+         return -1;
+     }
+ 
+-    session.seq++;
+-    int result = writeMotionEvent(session.serverFd, session.seq,
++    int result = writeMotionEvent(session.serverFd, seq,
+                                    action, x, y, downTime, eventTime);
+-
+-    LOGD("injectTouchEvent: session=%d, action=%d, x=%.1f, y=%.1f, result=%d",
+-         sessionId, action, x, y, result);
+-
+-    return result;
++    if (result != 0) {
++        completionRouter_.publishReject(sessionId, ohEventId, steadyNowNs(),
++                                        result);
++        return result;
++    }
++
++    LOGD("injectTouchEvent: session=%d, action=%d, x=%.1f, y=%.1f, seq=%u armed",
++         sessionId, action, x, y, seq);
++
++    return INJECT_RC_OK;
++}
++
++int32_t OHInputBridge::injectSyntheticTouchEvent(int32_t sessionId,
++                                                  int32_t action,
++                                                  float x, float y,
++                                                  int64_t downTime,
++                                                  int64_t eventTime) {
++    const int64_t syntheticEventId =
++        nextSyntheticEventId_.fetch_sub(1, std::memory_order_relaxed);
++    return injectTouchEvent(sessionId, action, x, y, downTime, eventTime,
++                            syntheticEventId, {});
+ }
+ 
+ int OHInputBridge::writeMotionEvent(int fd, uint32_t seq, int32_t action,
+@@ -394,33 +462,58 @@
+ 
+ int32_t OHInputBridge::injectKeyEvent(int32_t sessionId, int32_t action,
+                                        int32_t keyCode, int32_t metaState,
+-                                       int64_t downTime, int64_t eventTime) {
++                                       int64_t downTime, int64_t eventTime,
++                                       int64_t ohEventId,
++                                       input::MarkProcessedThunk markProcessed) {
++    // Fn05.A07: same FINISHED-gated contract as injectTouchEvent.
++    switch (completionRouter_.acceptEvent(sessionId, ohEventId,
++                                          std::move(markProcessed))) {
++        case input::OhEventCompletionRouter::AcceptResult::ACCEPTED:
++            break;
++        case input::OhEventCompletionRouter::AcceptResult::UNTRACKED:
++            LOGD("injectKeyEvent: session=%d ohEvent=%lld not trackable",
++                 sessionId, (long long)ohEventId);
++            return INJECT_RC_UNTRACKED;
++        case input::OhEventCompletionRouter::AcceptResult::REJECTED:
++            LOGD("injectKeyEvent: session=%d ohEvent=%lld ledger-rejected",
++                 sessionId, (long long)ohEventId);
++            return INJECT_RC_REJECTED;
++    }
++
+     std::lock_guard<std::mutex> lock(mutex_);
+ 
+     auto it = sessions_.find(sessionId);
+-    if (it == sessions_.end()) {
+-        LOGE("injectKeyEvent: session %d not found", sessionId);
++    if (it == sessions_.end() || it->second.serverFd < 0) {
++        LOGE("injectKeyEvent: session %d has no server fd", sessionId);
++        completionRouter_.publishReject(sessionId, ohEventId, steadyNowNs(),
++                                        -1);
+         return -1;
+     }
+ 
+     SessionInput& session = it->second;
+-    if (session.serverFd < 0) {
+-        LOGE("injectKeyEvent: session %d has no server fd", sessionId);
++    session.seq++;
++    const uint32_t seq = session.seq;
++
++    if (!completionRouter_.arm(sessionId, ohEventId, seq, steadyNowNs())) {
++        LOGE("injectKeyEvent: session=%d ohEvent=%lld arm failed (seq=%u)",
++             sessionId, (long long)ohEventId, seq);
++        completionRouter_.publishReject(sessionId, ohEventId, steadyNowNs(),
++                                        -1);
+         return -1;
+     }
+ 
+-    session.seq++;
+-    // 2026-05-26 DIAG (LOGI to survive hilog debug-level filtering): confirm
+-    // injectKeyEvent is actually reached and what serverFd it writes to.
+-    LOGI("injectKeyEvent: ENTER session=%d serverFd=%d seq=%u action=%d keyCode=%d",
+-         sessionId, session.serverFd, session.seq, action, keyCode);
+-    int result = writeKeyEvent(session.serverFd, session.seq,
++    int result = writeKeyEvent(session.serverFd, seq,
+                                action, keyCode, metaState, downTime, eventTime);
+-
+-    LOGI("injectKeyEvent: session=%d, action=%d, keyCode=%d, result=%d",
+-         sessionId, action, keyCode, result);
+-
+-    return result;
++    if (result != 0) {
++        completionRouter_.publishReject(sessionId, ohEventId, steadyNowNs(),
++                                        result);
++        return result;
++    }
++
++    LOGI("injectKeyEvent: session=%d, action=%d, keyCode=%d, seq=%u armed",
++         sessionId, action, keyCode, seq);
++
++    return INJECT_RC_OK;
+ }
+ 
+ int OHInputBridge::writeKeyEvent(int fd, uint32_t seq, int32_t action,
+@@ -526,14 +619,20 @@
+     LOGI("OH input monitor thread stopped");
+ }
+ 
+-// 2026-05-26 DIAGNOSTIC — poll all server fds for FINISHED messages that
+-// ViewRootImpl's InputConsumer writes back after consuming an InputEvent.
+-// Tells us whether an injected key/motion actually reached the consumer.
++// Fn05.A07 — poll all server fds for FINISHED messages that ViewRootImpl's
++// InputConsumer writes back after consuming an InputEvent, and forward them
++// to the completion router.  This is the ONLY path that completes ledger
++// tokens and releases the gated OH MarkProcessed; it also drives the
++// FINISHED-deadline scan so stalled tokens close as TIMEOUT (fail-closed,
++// no MarkProcessed) instead of hanging the ledger forever.
+ void OHInputBridge::monitorAcks() {
+-    LOGI("DIAG ACK monitor thread started");
++    LOGI("ACK monitor thread started (Fn05.A07 completion path)");
+     while (ackMonitoring_.load()) {
+         std::vector<pollfd> fds;
+-        std::vector<int32_t> sids;
++        // Generation bound to each fd AT REGISTRATION TIME: a FINISHED read
++        // from this fd belongs to that generation, even if the session has
++        // since been re-registered with a new generation and seq restart.
++        std::vector<std::string> fdGenerations;
+         {
+             std::lock_guard<std::mutex> lock(mutex_);
+             for (auto& pair : sessions_) {
+@@ -543,36 +642,50 @@
+                     pfd.events = POLLIN;
+                     pfd.revents = 0;
+                     fds.push_back(pfd);
+-                    sids.push_back(pair.first);
++                    fdGenerations.push_back(pair.second.generation);
+                 }
+             }
+         }
+         if (fds.empty()) {
++            completionRouter_.scanTimeouts(steadyNowNs());
+             usleep(100000);
+             continue;
+         }
+         int ret = poll(fds.data(), fds.size(), 100 /* ms */);
+-        if (ret <= 0) continue;
+-        for (size_t i = 0; i < fds.size(); i++) {
+-            if (fds[i].revents & POLLIN) {
+-                uint8_t buf[512];
+-                ssize_t n = recv(fds[i].fd, buf, sizeof(buf), MSG_DONTWAIT);
+-                if (n >= 8) {
+-                    uint32_t type = *reinterpret_cast<uint32_t*>(buf);
+-                    uint32_t seq = *reinterpret_cast<uint32_t*>(buf + 4);
+-                    int handled = -1;
+-                    if (type == INPUT_MSG_TYPE_FINISHED && n >= 9) {
+-                        handled = buf[8];  // FinishedBody.handled (body offset 0)
++        if (ret > 0) {
++            for (size_t i = 0; i < fds.size(); i++) {
++                if (fds[i].revents & POLLIN) {
++                    uint8_t buf[512];
++                    ssize_t n = recv(fds[i].fd, buf, sizeof(buf), MSG_DONTWAIT);
++                    if (n >= 8) {
++                        uint32_t type = *reinterpret_cast<uint32_t*>(buf);
++                        uint32_t seq = *reinterpret_cast<uint32_t*>(buf + 4);
++                        int handled = -1;
++                        if (type == INPUT_MSG_TYPE_FINISHED && n >= 9) {
++                            handled = buf[8];  // FinishedBody.handled (body offset 0)
++                        }
++                        LOGI("ACK generation=%s type=%u(%s) seq=%u handled=%d nread=%zd",
++                             fdGenerations[i].c_str(), type,
++                             (type == INPUT_MSG_TYPE_FINISHED ? "FINISHED" : "OTHER"),
++                             seq, handled, n);
++                        if (type == INPUT_MSG_TYPE_FINISHED) {
++                            // Completes the ledger token in the fd's OWN
++                            // generation; the gated OH MarkProcessed is
++                            // emitted by the router only now.
++                            completionRouter_.onFinishedGeneration(
++                                fdGenerations[i], seq, steadyNowNs(),
++                                static_cast<int64_t>(syscall(SYS_gettid)),
++                                handled);
++                        }
+                     }
+-                    LOGI("DIAG ACK session=%d type=%u(%s) seq=%u handled=%d nread=%zd",
+-                         sids[i], type,
+-                         (type == INPUT_MSG_TYPE_FINISHED ? "FINISHED" : "OTHER"),
+-                         seq, handled, n);
+                 }
+             }
+         }
+-    }
+-    LOGI("DIAG ACK monitor thread stopped");
++        // Scan AFTER draining ready fds so a FINISHED that just arrived is
++        // applied before its token can be judged timed out.
++        completionRouter_.scanTimeouts(steadyNowNs());
++    }
++    LOGI("ACK monitor thread stopped");
+ }
+ 
+ // ============================================================
+@@ -583,13 +696,20 @@
+ // OHInputBridge::mmiConsumer_) and dispatches each OH input event to one of
+ // the three OnInputEvent overloads on the registered EventHandler thread.
+ //
+-// Pointer events are converted to Android MotionEvent semantics and forwarded
+-// to OHInputBridge::injectTouchEvent, which writes a binary Android
+-// InputMessage to the InputChannel server fd; ViewRootImpl's
+-// WindowInputEventReceiver reads from the client end and dispatches up the
+-// View tree (HelloWorld's Button.OnClickListener.onClick eventually fires).
++// Pointer/Key events are converted to Android MotionEvent/KeyEvent semantics
++// and forwarded to OHInputBridge::injectTouchEvent/injectKeyEvent, which
++// writes a binary Android InputMessage to the InputChannel server fd;
++// ViewRootImpl's WindowInputEventReceiver reads from the client end and
++// dispatches up the View tree (HelloWorld's Button.OnClickListener.onClick
++// eventually fires).
+ //
+-// Key / Axis events stay Phase 1 stub for now (see §3.3.5 KeyEvent path).
++// Fn05.A07 (2026-07-28): OH MarkProcessed is no longer emitted right after
++// injection.  Accepted events are armed in the FINISHED-gated completion
++// ledger and acked only when the matching Android FINISHED(seq) is observed
++// by the ACK monitor; publish failures close the token as PUBLISH_REJECT
++// with no OH ack (fail-closed).  Only pre-accept drops (unknown window,
++// unmapped key/action, malformed event, axis noop) MarkProcessed
++// immediately, because no FINISHED will ever exist for them.
+ //
+ // See doc/Input_Adapter_design.html §3.3.5 for design rationale.
+ // ============================================================
+@@ -615,6 +735,8 @@
+         } else if (ohAction == OHOS::MMI::KeyEvent::KEY_ACTION_UP) {
+             androidAction = 1;
+         } else {
++            // Pre-accept drop: this event never enters the Fn05.A07 ledger,
++            // so no FINISHED will ever exist for it — ack OH immediately.
+             LOGI("OnInputEvent(KeyEvent): ohKeyCode=%d ohAction=%d not DOWN/UP, drop",
+                  ohKeyCode, ohAction);
+             keyEvent->MarkProcessed();
+@@ -623,6 +745,7 @@
+ 
+         const int32_t androidKeyCode = mapOhKeyCodeToAndroid(ohKeyCode);
+         if (androidKeyCode < 0) {
++            // Pre-accept drop (unmapped key): ack OH immediately.
+             LOGI("OnInputEvent(KeyEvent): ohKeyCode=%d unmapped, drop", ohKeyCode);
+             keyEvent->MarkProcessed();
+             return;
+@@ -636,6 +759,7 @@
+         // pop) with no cached state.
+         int32_t sessionId = static_cast<int32_t>(keyEvent->GetAgentWindowId());
+         if (!OHInputBridge::getInstance().isKnownSession(sessionId)) {
++            // Pre-accept drop (not an adapter window): ack OH immediately.
+             LOGD("OnInputEvent(KeyEvent): agentWindowId=%d not an adapter window, drop",
+                  sessionId);
+             keyEvent->MarkProcessed();
+@@ -663,11 +787,20 @@
+              sessionId, ohKeyCode, androidKeyCode, ohAction, androidAction,
+              (long long)downTimeNs, (long long)eventTimeNs);
+ 
+-        OHInputBridge::getInstance().injectKeyEvent(
++        // Fn05.A07: completion is ledger-gated.  OH MarkProcessed is invoked
++        // by the router only after the matching Android FINISHED arrives;
++        // on publish failure it is never invoked (PUBLISH_REJECT).  Only an
++        // untrackable event (no ledger token) is acked here immediately.
++        const int64_t ohEventId = keyEvent->GetId();
++        int32_t rc = OHInputBridge::getInstance().injectKeyEvent(
+             sessionId, androidAction, androidKeyCode, /*metaState=*/0,
+-            downTimeNs, eventTimeNs);
+-
+-        keyEvent->MarkProcessed();
++            downTimeNs, eventTimeNs, ohEventId,
++            [keyEvent]() { keyEvent->MarkProcessed(); });
++        if (rc == OHInputBridge::INJECT_RC_UNTRACKED) {
++            LOGD("OnInputEvent(KeyEvent): ohEvent=%lld untrackable, ack now",
++                 (long long)ohEventId);
++            keyEvent->MarkProcessed();
++        }
+     }
+ 
+     void OnInputEvent(std::shared_ptr<OHOS::MMI::PointerEvent> pointerEvent) const override {
+@@ -677,6 +810,7 @@
+         // (input_transfer_station.cpp:98).  sessionId == windowId here.
+         int32_t sessionId = static_cast<int32_t>(pointerEvent->GetAgentWindowId());
+         if (!OHInputBridge::getInstance().isKnownSession(sessionId)) {
++            // Pre-accept drop (not an adapter window): ack OH immediately.
+             LOGD("OnInputEvent(PointerEvent): agentWindowId=%d not an adapter window, drop",
+                  sessionId);
+             pointerEvent->MarkProcessed();
+@@ -686,6 +820,7 @@
+         int32_t pointerId = pointerEvent->GetPointerId();
+         OHOS::MMI::PointerEvent::PointerItem item;
+         if (!pointerEvent->GetPointerItem(pointerId, item)) {
++            // Pre-accept drop (malformed event): ack OH immediately.
+             LOGE("OnInputEvent(PointerEvent): GetPointerItem(%d) failed", pointerId);
+             pointerEvent->MarkProcessed();
+             return;
+@@ -701,6 +836,7 @@
+             case OHOS::MMI::PointerEvent::POINTER_ACTION_MOVE:    androidAction = 2; break;
+             case OHOS::MMI::PointerEvent::POINTER_ACTION_CANCEL:  androidAction = 3; break;
+             default:
++                // Pre-accept drop (unhandled action): ack OH immediately.
+                 LOGD("OnInputEvent(PointerEvent): unhandled OH action=%d, drop",
+                      pointerEvent->GetPointerAction());
+                 pointerEvent->MarkProcessed();
+@@ -757,14 +893,22 @@
+              sessionId, androidAction, pointerEvent->GetPointerAction(), x, y,
+              (long long)downTimeNs, (long long)eventTimeNs);
+ 
+-        OHInputBridge::getInstance().injectTouchEvent(
+-            sessionId, androidAction, x, y, downTimeNs, eventTimeNs);
+-
+-        pointerEvent->MarkProcessed();
++        // Fn05.A07: completion is ledger-gated (see KeyEvent path above).
++        const int64_t ohEventId = pointerEvent->GetId();
++        int32_t rc = OHInputBridge::getInstance().injectTouchEvent(
++            sessionId, androidAction, x, y, downTimeNs, eventTimeNs,
++            ohEventId,
++            [pointerEvent]() { pointerEvent->MarkProcessed(); });
++        if (rc == OHInputBridge::INJECT_RC_UNTRACKED) {
++            LOGD("OnInputEvent(PointerEvent): ohEvent=%lld untrackable, ack now",
++                 (long long)ohEventId);
++            pointerEvent->MarkProcessed();
++        }
+     }
+ 
+     void OnInputEvent(std::shared_ptr<OHOS::MMI::AxisEvent> axisEvent) const override {
+         // Axis events (wheel / pinch / etc.) — not used by HelloWorld; Phase 1 noop.
++        // Pre-accept drop: never enters the Fn05.A07 ledger, ack OH immediately.
+         if (axisEvent) axisEvent->MarkProcessed();
+     }
+ };

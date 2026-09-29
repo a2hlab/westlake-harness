@@ -1,0 +1,362 @@
+--- selected-oh61/session_stage_adapter.cpp
++++ real-work/session_stage_adapter.cpp
+@@ -1,4 +1,4 @@
+-﻿/*
++/*
+  * session_stage_adapter.cpp
+  *
+  * Implementation of SessionStageAdapter.
+@@ -7,6 +7,7 @@
+ 
+ #include "session_stage_adapter.h"
+ #include "adapter_bridge.h"
++#include "westlake_jni_attach_admission.h"
+ 
+ #include <android/log.h>
+ #include <cstdarg>
+@@ -35,9 +36,9 @@
+ {
+     ALOGI("SessionStageAdapter created");
+ 
+-    JNIEnv* env = nullptr;
+-    bool needsDetach = false;
+-    env = getJNIEnv(needsDetach);
++    westlake::jni::ScopedJniAttachment attachment(
++        jvm_, "OH_SessionStageAdapter");
++    JNIEnv* env = attachment.env();
+     if (!env) {
+         ALOGE("Failed to get JNIEnv in constructor");
+         return;
+@@ -45,17 +46,11 @@
+ 
+     androidWindow_ = env->NewGlobalRef(androidWindow);
+ 
+-    // The Java peer is packaged as adapter.window.SessionStageBridge in the
+-    // frozen framework jar.  The former callback path was stale and left a
+-    // pending ClassNotFoundException on this JNI thread.
+     jclass localBridgeClass = env->FindClass(
+         "adapter/window/SessionStageBridge");
+     if (!localBridgeClass) {
+-        ALOGE("FindClass(adapter/window/SessionStageBridge) failed");
+-        if (env->ExceptionCheck()) {
+-            env->ExceptionClear();
+-        }
+-        detachIfNeeded(needsDetach);
++        ALOGE("Failed to find SessionStageBridge class");
++        if (env->ExceptionCheck()) env->ExceptionClear();
+         return;
+     }
+     bridgeClass_ = reinterpret_cast<jclass>(env->NewGlobalRef(localBridgeClass));
+@@ -65,20 +60,51 @@
+         "(Ljava/lang/Object;)V");
+     if (!ctor) {
+         ALOGE("Failed to find SessionStageBridge constructor");
+-        detachIfNeeded(needsDetach);
++        if (env->ExceptionCheck()) env->ExceptionClear();
+         return;
+     }
+ 
+     jobject localBridgeObj = env->NewObject(bridgeClass_, ctor, androidWindow_);
+     if (!localBridgeObj) {
+         ALOGE("Failed to create SessionStageBridge instance");
+-        detachIfNeeded(needsDetach);
++        if (env->ExceptionCheck()) env->ExceptionClear();
+         return;
+     }
+     bridgeObj_ = env->NewGlobalRef(localBridgeObj);
+     env->DeleteLocalRef(localBridgeObj);
+ 
+-    detachIfNeeded(needsDetach);
++    // SessionStageBridge does not project OH focus into ViewRootImpl.  Reuse
++    // the already shipped WindowCallbackBridge, whose public callback follows
++    // the Android window-focus path used by UnityPlayer.
++    jclass localFocusBridgeClass = env->FindClass(
++        "adapter/window/WindowCallbackBridge");
++    if (!localFocusBridgeClass) {
++        ALOGE("Failed to find WindowCallbackBridge class");
++        if (env->ExceptionCheck()) env->ExceptionClear();
++        return;
++    }
++    focusBridgeClass_ = reinterpret_cast<jclass>(
++        env->NewGlobalRef(localFocusBridgeClass));
++    env->DeleteLocalRef(localFocusBridgeClass);
++
++    jmethodID focusCtor = env->GetMethodID(focusBridgeClass_, "<init>",
++        "(Ljava/lang/Object;)V");
++    if (!focusCtor) {
++        ALOGE("Failed to find WindowCallbackBridge constructor");
++        if (env->ExceptionCheck()) env->ExceptionClear();
++        return;
++    }
++
++    jobject localFocusBridgeObj = env->NewObject(
++        focusBridgeClass_, focusCtor, androidWindow_);
++    if (!localFocusBridgeObj) {
++        ALOGE("Failed to create WindowCallbackBridge instance");
++        if (env->ExceptionCheck()) env->ExceptionClear();
++        return;
++    }
++    focusBridgeObj_ = env->NewGlobalRef(localFocusBridgeObj);
++    env->DeleteLocalRef(localFocusBridgeObj);
++
+     ALOGI("SessionStageAdapter initialized successfully");
+ }
+ 
+@@ -86,15 +112,122 @@
+ {
+     ALOGI("SessionStageAdapter destroyed");
+ 
+-    JNIEnv* env = nullptr;
+-    bool needsDetach = false;
+-    env = getJNIEnv(needsDetach);
++    westlake::jni::ScopedJniAttachment attachment(
++        jvm_, "OH_SessionStageAdapter");
++    JNIEnv* env = attachment.env();
+     if (env) {
+         if (androidWindow_) { env->DeleteGlobalRef(androidWindow_); androidWindow_ = nullptr; }
+         if (bridgeObj_)     { env->DeleteGlobalRef(bridgeObj_);     bridgeObj_     = nullptr; }
+         if (bridgeClass_)   { env->DeleteGlobalRef(bridgeClass_);   bridgeClass_   = nullptr; }
+-        detachIfNeeded(needsDetach);
+-    }
++        if (focusBridgeObj_) {
++            env->DeleteGlobalRef(focusBridgeObj_);
++            focusBridgeObj_ = nullptr;
++        }
++        if (focusBridgeClass_) {
++            env->DeleteGlobalRef(focusBridgeClass_);
++            focusBridgeClass_ = nullptr;
++        }
++    }
++}
++
++void SessionStageAdapter::SetInheritsParentFocus(bool inheritsParentFocus)
++{
++    std::lock_guard<std::mutex> lock(jniMutex_);
++    inheritsParentFocus_ = inheritsParentFocus;
++}
++
++bool SessionStageAdapter::EnableRootBlastForTopLevelContent()
++{
++    OH_BR_IPC_SCOPE("SessionStage.EnableRootBlast", "");
++
++    std::lock_guard<std::mutex> lock(jniMutex_);
++    westlake::jni::ScopedJniAttachment attachment(
++        jvm_, "OH_SessionStageAdapter.EnableRootBlast");
++    JNIEnv* env = attachment.env();
++    if (!env || !androidWindow_) {
++        ALOGE("EnableRootBlast: missing JNIEnv or Android IWindow");
++        return false;
++    }
++
++    bool enabled = false;
++    jclass windowClass = nullptr;
++    jobject weakViewRoot = nullptr;
++    jclass weakReferenceClass = nullptr;
++    jobject viewRoot = nullptr;
++    jclass viewRootClass = nullptr;
++
++    windowClass = env->GetObjectClass(androidWindow_);
++    if (!windowClass) {
++        ALOGE("EnableRootBlast: Android IWindow class unavailable");
++        goto cleanup;
++    }
++
++    {
++        jfieldID viewAncestorField = env->GetFieldID(windowClass, "mViewAncestor",
++            "Ljava/lang/ref/WeakReference;");
++        if (!viewAncestorField) {
++            ALOGE("EnableRootBlast: ViewRootImpl.W.mViewAncestor unavailable");
++            goto cleanup;
++        }
++        weakViewRoot = env->GetObjectField(androidWindow_, viewAncestorField);
++    }
++    if (!weakViewRoot) {
++        ALOGE("EnableRootBlast: ViewRootImpl weak reference is null");
++        goto cleanup;
++    }
++
++    weakReferenceClass = env->FindClass("java/lang/ref/WeakReference");
++    if (!weakReferenceClass) {
++        ALOGE("EnableRootBlast: WeakReference class unavailable");
++        goto cleanup;
++    }
++    {
++        jmethodID getMethod = env->GetMethodID(weakReferenceClass, "get",
++            "()Ljava/lang/Object;");
++        if (!getMethod) {
++            ALOGE("EnableRootBlast: WeakReference.get unavailable");
++            goto cleanup;
++        }
++        viewRoot = env->CallObjectMethod(weakViewRoot, getMethod);
++    }
++    if (env->ExceptionCheck() || !viewRoot) {
++        ALOGE("EnableRootBlast: ViewRootImpl is unavailable");
++        goto cleanup;
++    }
++
++    viewRootClass = env->GetObjectClass(viewRoot);
++    if (!viewRootClass) {
++        ALOGE("EnableRootBlast: ViewRootImpl class unavailable");
++        goto cleanup;
++    }
++    {
++        jfieldID useBlastField = env->GetFieldID(viewRootClass,
++            "mUseBLASTAdapter", "Z");
++        if (!useBlastField) {
++            ALOGE("EnableRootBlast: ViewRootImpl.mUseBLASTAdapter unavailable");
++            goto cleanup;
++        }
++        const jboolean wasEnabled = env->GetBooleanField(viewRoot, useBlastField);
++        env->SetBooleanField(viewRoot, useBlastField, JNI_TRUE);
++        if (!env->ExceptionCheck()) {
++            enabled = env->GetBooleanField(viewRoot, useBlastField) == JNI_TRUE;
++            ALOGI("EnableRootBlast: mUseBLASTAdapter %{public}s -> %{public}s",
++                wasEnabled == JNI_TRUE ? "true" : "false",
++                enabled ? "true" : "false");
++        }
++    }
++
++cleanup:
++    if (env->ExceptionCheck()) {
++        ALOGE("EnableRootBlast: clearing JNI exception");
++        env->ExceptionClear();
++    }
++    if (viewRootClass) env->DeleteLocalRef(viewRootClass);
++    if (viewRoot) env->DeleteLocalRef(viewRoot);
++    if (weakReferenceClass) env->DeleteLocalRef(weakReferenceClass);
++    if (weakViewRoot) env->DeleteLocalRef(weakViewRoot);
++    if (windowClass) env->DeleteLocalRef(windowClass);
++    return enabled;
+ }
+ 
+ // ================================================================
+@@ -107,6 +240,12 @@
+ 
+     std::lock_guard<std::mutex> lock(jniMutex_);
+     callBridgeVoidMethod("onSetActive", "(Z)V", static_cast<jboolean>(active));
++    if (inheritsParentFocus_) {
++        OH_BR_IPC_SCOPE("SessionStage.InheritedParentFocus",
++                        "focused=%{public}d", static_cast<int>(active));
++        callFocusBridgeVoidMethod("onUpdateFocusStatus", "(Z)V",
++            static_cast<jboolean>(active));
++    }
+ 
+     return WSError::WS_OK;
+ }
+@@ -266,7 +405,8 @@
+                     "isFocused=%{public}d", static_cast<int>(isFocused));
+ 
+     std::lock_guard<std::mutex> lock(jniMutex_);
+-    callBridgeVoidMethod("onUpdateFocus", "(Z)V", static_cast<jboolean>(isFocused));
++    callFocusBridgeVoidMethod("onUpdateFocusStatus", "(Z)V",
++        static_cast<jboolean>(isFocused));
+ 
+     return WSError::WS_OK;
+ }
+@@ -676,43 +816,6 @@
+ // JNI Helpers
+ // ================================================================
+ 
+-JNIEnv* SessionStageAdapter::getJNIEnv(bool& needsDetach)
+-{
+-    needsDetach = false;
+-    if (!jvm_) {
+-        ALOGE("getJNIEnv: JavaVM is null");
+-        return nullptr;
+-    }
+-
+-    JNIEnv* env = nullptr;
+-    jint result = jvm_->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+-    if (result == JNI_OK) {
+-        return env;
+-    }
+-
+-    if (result == JNI_EDETACHED) {
+-        JavaVMAttachArgs args;
+-        args.version = JNI_VERSION_1_6;
+-        args.name = "OH_SessionStageAdapter";
+-        args.group = nullptr;
+-        result = jvm_->AttachCurrentThread(&env, &args);
+-        if (result == JNI_OK) {
+-            needsDetach = true;
+-            return env;
+-        }
+-        ALOGE("getJNIEnv: AttachCurrentThread failed (result=%d)", result);
+-    }
+-
+-    return nullptr;
+-}
+-
+-void SessionStageAdapter::detachIfNeeded(bool needsDetach)
+-{
+-    if (needsDetach && jvm_) {
+-        jvm_->DetachCurrentThread();
+-    }
+-}
+-
+ void SessionStageAdapter::callBridgeVoidMethod(
+     const char* methodName, const char* signature, ...)
+ {
+@@ -721,8 +824,9 @@
+         return;
+     }
+ 
+-    bool needsDetach = false;
+-    JNIEnv* env = getJNIEnv(needsDetach);
++    westlake::jni::ScopedJniAttachment attachment(
++        jvm_, "OH_SessionStageAdapter");
++    JNIEnv* env = attachment.env();
+     if (!env) {
+         ALOGE("callBridgeVoidMethod(%s): failed to get JNIEnv", methodName);
+         return;
+@@ -732,7 +836,6 @@
+     if (!method) {
+         ALOGE("callBridgeVoidMethod: method %s%s not found", methodName, signature);
+         env->ExceptionClear();
+-        detachIfNeeded(needsDetach);
+         return;
+     }
+ 
+@@ -747,7 +850,41 @@
+         env->ExceptionClear();
+     }
+ 
+-    detachIfNeeded(needsDetach);
++}
++
++void SessionStageAdapter::callFocusBridgeVoidMethod(
++    const char* methodName, const char* signature, ...)
++{
++    if (!focusBridgeObj_ || !focusBridgeClass_) {
++        ALOGW("callFocusBridgeVoidMethod(%s): focus bridge not initialized", methodName);
++        return;
++    }
++
++    westlake::jni::ScopedJniAttachment attachment(
++        jvm_, "OH_SessionStageAdapter.Focus");
++    JNIEnv* env = attachment.env();
++    if (!env) {
++        ALOGE("callFocusBridgeVoidMethod(%s): failed to get JNIEnv", methodName);
++        return;
++    }
++
++    jmethodID method = env->GetMethodID(focusBridgeClass_, methodName, signature);
++    if (!method) {
++        ALOGE("callFocusBridgeVoidMethod: method %s%s not found", methodName, signature);
++        if (env->ExceptionCheck()) env->ExceptionClear();
++        return;
++    }
++
++    va_list args;
++    va_start(args, signature);
++    env->CallVoidMethodV(focusBridgeObj_, method, args);
++    va_end(args);
++
++    if (env->ExceptionCheck()) {
++        ALOGE("callFocusBridgeVoidMethod(%s): Java exception occurred", methodName);
++        env->ExceptionDescribe();
++        env->ExceptionClear();
++    }
+ }
+ 
+ // ================================================================

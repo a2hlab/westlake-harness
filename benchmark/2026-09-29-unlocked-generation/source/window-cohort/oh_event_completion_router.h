@@ -1,0 +1,191 @@
+/*
+ * oh_event_completion_router.h
+ *
+ * Fn05.A07 integration seam between OHInputBridge (OH MMI consumer +
+ * InputChannel publisher) and the FINISHED-gated FinishedTokenLedger.
+ *
+ * Responsibilities:
+ *  - Own the per-session window generation identity used by the ledger
+ *    ("s<sessionId>-g<n>", rotated on every (re)registration).
+ *  - Hold the MarkProcessed thunk for each accepted OH event until the
+ *    ledger authorizes emission (FINISHED observed) or the token is closed
+ *    through a failure path (TIMEOUT / CANCELLED / PUBLISH_REJECT), in which
+ *    case the thunk is purged WITHOUT being called (fail-closed: OH keeps
+ *    its ANR timer and surfaces the stall upstream).
+ *  - Translate bridge-level session/seq events into ledger calls.
+ *
+ * Host-testable: depends only on finished_token_ledger.h, not on OH or AOSP
+ * headers.  The OH event object never enters this file; the bridge wraps it
+ * in a std::function thunk at accept time.
+ *
+ * Lock ordering (deadlock freedom):
+ *  - session_mutex_ and thunk_mutex_ are leaf locks; no ledger call is made
+ *    while holding thunk_mutex_.
+ *  - The ledger invokes the MarkProcessed callback while holding its own
+ *    mutex; the callback (resolveAndMark) takes thunk_mutex_ as a leaf and
+ *    invokes the thunk AFTER releasing thunk_mutex_.  Callers must not hold
+ *    thunk_mutex_ when calling into the ledger.
+ */
+
+#ifndef OH_ADAPTER_OH_EVENT_COMPLETION_ROUTER_H
+#define OH_ADAPTER_OH_EVENT_COMPLETION_ROUTER_H
+
+#include <cstdint>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "finished_token_ledger.h"
+
+namespace oh_adapter {
+namespace input {
+
+/** Closure that emits OH MarkProcessed for one accepted event. */
+using MarkProcessedThunk = std::function<void()>;
+
+class OhEventCompletionRouter {
+public:
+    explicit OhEventCompletionRouter(LedgerConfig config = LedgerConfig{});
+
+    /**
+     * Open (or re-open) a session, rotating its window generation.
+     * If the session had a previous generation, that generation is torn down
+     * in the ledger and all of its pending thunks are purged uncalled.
+     * The generation counter is persistent across close/re-open: a reopened
+     * session NEVER reuses a generation name (a reused name is permanently
+     * torn down in the ledger, which would make every later event
+     * untrackable).  Returns the new generation string.
+     */
+    std::string openSession(int32_t session_id, int64_t now_ns);
+
+    /**
+     * Close a session: teardown its generation fail-closed and purge all
+     * pending thunks uncalled.  Unknown sessions are ignored.  The
+     * generation counter is retained so a later openSession continues the
+     * sequence.
+     */
+    void closeSession(int32_t session_id, int64_t now_ns);
+
+    /** Current generation for a session, or "" when unknown. */
+    std::string generationFor(int32_t session_id) const;
+
+    bool hasSession(int32_t session_id) const;
+
+    /** Result of acceptEvent: the caller's MarkProcessed duty differs. */
+    enum class AcceptResult {
+        // Token registered; completion is ledger-gated — caller must NOT
+        // MarkProcessed.
+        ACCEPTED,
+        // Session unknown / generation unusable: no ledger token exists and
+        // no FINISHED will ever arrive — caller MUST MarkProcessed now.
+        UNTRACKED,
+        // Ledger rejected the event (e.g. LEDGER_COLLISION on a duplicate
+        // oh_event_id): the failure is already recorded fail-closed and the
+        // token lifecycle belongs to the ledger — caller must NOT
+        // MarkProcessed (acking now could release OH's ANR timer for an
+        // event whose original token is still awaiting FINISHED).
+        REJECTED,
+    };
+
+    /**
+     * Accept an OH event for injection: registers the ledger token and
+     * stores the MarkProcessed thunk.  On UNTRACKED/REJECTED nothing is
+     * stored; see AcceptResult for the caller's MarkProcessed duty.
+     */
+    AcceptResult acceptEvent(int32_t session_id,
+                             int64_t oh_event_id,
+                             MarkProcessedThunk thunk);
+
+    /**
+     * Arm an accepted event with its allocated Android seq.  Returns false
+     * on ledger rejection; the caller must then publishReject() to close
+     * the token fail-closed.
+     */
+    bool arm(int32_t session_id,
+             int64_t oh_event_id,
+             uint32_t android_seq,
+             int64_t now_ns);
+
+    /**
+     * Close a token after the Android publish (channel write) failed.
+     * Token -> CANCELLED(PUBLISH_REJECT); the thunk is purged UNCALLED
+     * (DESIGN.md §5: OH receives no MarkProcessed on publish reject).
+     * `publish_rc` is the write result/errno recorded as the §5 diagnostic.
+     */
+    void publishReject(int32_t session_id,
+                       int64_t oh_event_id,
+                       int64_t now_ns,
+                       int64_t publish_rc = 0);
+
+    /**
+     * Forward an Android FINISHED(seq) observed on the session's channel to
+     * the ledger, attributing it to the session's CURRENT generation.
+     * Unknown sessions are dropped without ledger side effects.
+     */
+    void onFinished(int32_t session_id,
+                    uint32_t android_seq,
+                    int64_t now_ns,
+                    int64_t callback_tid,
+                    int handled = -1);
+
+    /**
+     * Forward an Android FINISHED(seq) to an EXPLICIT generation — the one
+     * bound to the InputChannel fd the message was read from.  The ACK
+     * monitor must use this overload: a stale FINISHED read from a previous
+     * generation's fd must hit the old (torn-down) generation and be
+     * dropped as WRONG_GENERATION, never complete a token in the current
+     * generation (seq numbers restart when a channel is re-registered).
+     */
+    void onFinishedGeneration(const std::string& generation,
+                              uint32_t android_seq,
+                              int64_t now_ns,
+                              int64_t callback_tid,
+                              int handled = -1);
+
+    /**
+     * Drive the FINISHED deadline scan.  Tokens that time out transition to
+     * TIMEOUT and their thunks are purged UNCALLED (fail-closed; OH's own
+     * ANR timer surfaces the stall).
+     */
+    void scanTimeouts(int64_t now_ns);
+
+    /** Diagnostics/tests: read-only access to the ledger evidence rows. */
+    std::vector<LedgerRow> getRows() const;
+    size_t inFlightCount() const;
+    /** Tests: number of pending (not yet purged) thunks. */
+    size_t pendingThunkCount() const;
+
+private:
+    FinishedTokenLedger ledger_;
+
+    mutable std::mutex session_mutex_;
+    struct SessionState {
+        std::string generation;
+    };
+    std::unordered_map<int32_t, SessionState> sessions_;
+    // Persistent per-session generation counters; never erased on
+    // closeSession so a reopened session never reuses a torn-down
+    // generation name.
+    std::unordered_map<int32_t, uint64_t> counters_;
+
+    // Leaf lock.  Never call into the ledger while holding this mutex.
+    mutable std::mutex thunk_mutex_;
+    std::unordered_map<std::string,
+                       std::unordered_map<int64_t, MarkProcessedThunk>>
+        thunks_;
+
+    // Ledger MarkProcessedCallback: resolve and invoke the event's thunk.
+    // Invoked under the ledger mutex; takes thunk_mutex_ as a leaf only.
+    void resolveAndMark(const std::string& generation, int64_t oh_event_id);
+
+    // Erase without calling.  Callers must not hold thunk_mutex_.
+    void purgeThunk(const std::string& generation, int64_t oh_event_id);
+    void purgeThunks(const std::string& generation);
+};
+
+}  // namespace input
+}  // namespace oh_adapter
+
+#endif  // OH_ADAPTER_OH_EVENT_COMPLETION_ROUTER_H

@@ -1,0 +1,45 @@
+--- before/oh_anativewindow_shim.h
++++ real-work/oh_anativewindow_shim.h
+@@ -47,12 +47,6 @@
+ // Returns nullptr on allocation failure.
+ struct ANativeWindow* oh_anw_wrap(OHNativeWindow* oh);
+ 
+-// Main app-content variant. The OH ability token is retained only as an
+-// internal producer-routing key; Fn03 resolves it to an opaque capability
+-// before accepting any lifecycle receipt.
+-struct ANativeWindow* oh_anw_wrap_for_activity(OHNativeWindow* oh,
+-                                               uint64_t ohTokenAddr);
+-
+ // Free a shim allocated by oh_anw_wrap. Does NOT free the underlying OH
+ // NativeWindow — caller still owns that.
+ void oh_anw_destroy(struct ANativeWindow* aosp);
+@@ -62,10 +56,25 @@
+ // allowing call-site validation.
+ OHNativeWindow* oh_anw_get_oh(struct ANativeWindow* aosp);
+ 
+-// Record a frame only after the real EGL/NativeWindow present operation
+-// succeeds. Returns 1 when `aosp` is an activity-owned shim and the typed
+-// Fn04.A02 APP_CONTENT receipt was forwarded; returns 0 otherwise.
+-int oh_anw_notify_presented(struct ANativeWindow* aosp);
++// Bind the shim to one generation of the product-neutral direct
++// Surface->RenderService path.  The route label is emitted at the queue
++// acceptance measurement point; this does not create a broker topology.
++int oh_anw_configure_direct_path(struct ANativeWindow* aosp,
++                                 int32_t session_id,
++                                 uint64_t generation,
++                                 int32_t width,
++                                 int32_t height);
++
++// Update the live generation's geometry.  Used by relayout/rotation after the
++// WMS property and RSSurfaceNode geometry have committed.
++int oh_anw_update_direct_path_geometry(struct ANativeWindow* aosp,
++                                       uint64_t generation,
++                                       int32_t width,
++                                       int32_t height);
++
++// Seal a lost surface generation.  Subsequent dequeue/queue calls on the stale
++// AOSP handle fail with ENODEV instead of reaching the retired OH producer.
++int oh_anw_mark_surface_lost(struct ANativeWindow* aosp, uint64_t generation);
+ 
+ // G2.14ag: AdapterAnw refcount probes for AOSP NDK compat shims.
+ //

@@ -408,3 +408,7 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **2026-09-29 #66 统一运行代**：6cb40cd6 的 HelloWorld maps 为单 route ART/openjdkjvm，但已签 #58 本来有两份同路径 bridge84695d62；不能把「单 ART」擅扩成「单 bridge」拒部署。重放包必须带 B5 的完整 Android/native 根、TGR 同 inode 别名与 ZigZag 五库，按 serial+boot 记录挂载并验子进程 root SHA；见 benchmark/2026-09-29-unified-generation/。
 
 - **#67 v2 (2026-09-29)**：SQLite四个weak registrar换真实现7e1fd94e、ANL同时核search/permitted真实路径ae848463，代15728be5通过HW/ZigZag且Flutter从path-domain推进到线程READY门；B5下Thunderbird更早停KoinApplication未启动，不能以nativeOpen已注册冒充实际SQL执行。v2整代回滚6cb，见 `benchmark/2026-09-29-unified-generation-v2/`。
+
+- **B9 JNI与服务墙分层（2026-09-29,cx-t0）**：5ea桥接库编回manifest JNI后，B5 JAR下fd-android/ooniprobe providers由0变9/4，旧Koin未启动/Application强转墙消失，但后续AlarmManager/WorkManager仍失败；r8b d5000c4e复测同样未上屏。SQLite nativeOpen注册不等于调用成功。无锁代单换846桥接可启动HelloWorld/ZigZag；最初重编22df的ZigZag白屏，单换恢复846可画；照搬real-work整组window后bc1d仍白屏，去掉manifest JNI负控d0f2同样白屏，尚未定位到具体差异，不能宣称root BLAST是根因。见 `benchmark/2026-09-29-unlocked-generation/`。
+
+- **#68 v3a 改判（2026-09-29）**：统一包使用无锁74d1的host/child/provider+SQLite7e1+ANLae848，保留可画ZigZag的bridge84695d62并固定r8b d5000c4e；manifest由Java回退，不能称旧桥新增JNI导出。5ea同包HW/ZigZag自身界面，源码桥22df/bc1d/d0f2白屏另列独立实验。完整包与SHA见 `benchmark/2026-09-29-unlocked-generation/v3a-package-manifest.json`。

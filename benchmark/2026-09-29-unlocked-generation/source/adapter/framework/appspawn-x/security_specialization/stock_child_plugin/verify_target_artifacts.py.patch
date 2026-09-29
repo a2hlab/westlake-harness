@@ -1,0 +1,29 @@
+--- b67/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/verify_target_artifacts.py
++++ b68/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/verify_target_artifacts.py
+@@ -178,13 +178,16 @@
+     )
+     required_loader = (
+         "RTLD_NOW | RTLD_LOCAL", "CREATE_INHERIT_CURRENT",
+-        "return dlopen(absolute_path, flags);", "WLEI_VerifyFileHex(",
++        "return dlopen(absolute_path, flags);",
+         "IsPreloadedRegistryUnityArtifact(artifact)", "IsPreloadedBionicCompatUnityArtifact(artifact)",
+         '"/system/android/lib64/liblzma.so"', "if (inherited[artifact_index]) continue;",
+         "!AbsoluteCanonicalForm(absolute_path)",
+         "(flags & (RTLD_NOW | RTLD_GLOBAL)) != RTLD_NOW",
+         'const char prefix[] = "/system/android/lib64/";',
+     )
++    # B9: file identity enforcement moved to deployment; keep loader topology checks.
++    if "WLEI_VerifyFileHex(" in loader or "ops->verify_identity(" in loader:
++        return False
+     # V1 diagnostics look up only HiLogPrint; provider resolution stays handle-scoped.
+     plugin_without_hilog = plugin.replace('dlsym(RTLD_DEFAULT, "HiLogPrint")', 'hilog_diagnostic_lookup')
+     if (not all(item in plugin for item in required_plugin) or
+@@ -320,7 +323,7 @@
+         "child_services.open_sealed_exact = WLSCPL_OpenPreparedNamespace;",
+         "child_services.create_configured_namespaces = g_stock_host_services.create_configured_namespaces;",
+         "child_services.open_namespace = g_stock_host_services.open_namespace;",
+-        "RTLD_NOW | RTLD_LOCAL", "CREATE_INHERIT_CURRENT", "WLEI_VerifyFileHex(",
++        "RTLD_NOW | RTLD_LOCAL", "CREATE_INHERIT_CURRENT",
+         "return dlopen(absolute_path, flags);", "!AbsoluteCanonicalForm(absolute_path)",
+         "(flags & (RTLD_NOW | RTLD_GLOBAL)) != RTLD_NOW",
+         "if (inherited[artifact_index]) continue;",

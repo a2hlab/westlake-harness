@@ -1,0 +1,174 @@
+--- selected-oh61/oh_window_manager_client.cpp
++++ real-work/oh_window_manager_client.cpp
+@@ -1,4 +1,4 @@
+-﻿/*
++/*
+  * oh_window_manager_client.cpp
+  *
+  * OpenHarmony WindowManager / SceneSessionManager IPC client implementation.
+@@ -116,8 +116,6 @@
+ // hwui can use AOSP NDK offsets without crashing on OH's RefBase / virtual
+ // class layout. See doc/graphics_rendering_design.html §7.11.
+ extern "C" struct ANativeWindow* oh_anw_wrap(OHNativeWindow* oh);
+-extern "C" struct ANativeWindow* oh_anw_wrap_for_activity(
+-    OHNativeWindow* oh, uint64_t ohTokenAddr);
+ // G2.14c (2026-05-01) — pivot from SCB-style 3-hop chain to legacy
+ // IWindowManager. SA 4606 host on this OH 7.0.0.18 build is libwms.z.so's
+ // WindowManagerService (legacy), NOT libsms.z.so's MockSessionManagerService.
+@@ -251,12 +249,59 @@
+     connected_ = false;
+ }
+ 
++// Android LayoutParams flags admitted by WindowSessionAdapter. SceneBoard's
++// WindowSessionProperty carries the equivalent OH properties in the initial
++// CreateAndConnectSpecificSession transaction.
++static constexpr int32_t ANDROID_FLAG_HARDWARE_ACCELERATED    = 0x01000000;
++static constexpr int32_t ANDROID_FLAG_LAYOUT_IN_SCREEN      = 0x00000100;
++static constexpr int32_t ANDROID_FLAG_LAYOUT_INSET_DECOR    = 0x00010000;
++static constexpr int32_t ANDROID_FLAG_SPLIT_TOUCH           = 0x00800000;
++static constexpr int32_t ANDROID_FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS = 0x80000000;
++static constexpr int32_t ANDROID_FLAG_FULLSCREEN            = 0x00000400;
++static constexpr int32_t ANDROID_FLAG_KEEP_SCREEN_ON        = 0x00000080;
++static constexpr int32_t ANDROID_FLAG_SHOW_WHEN_LOCKED      = 0x00080000;
++static constexpr int32_t ANDROID_FLAG_TURN_SCREEN_ON        = 0x00200000;
++static constexpr int32_t ANDROID_FLAG_DISMISS_KEYGUARD      = 0x00400000;
++
++static void applyAndroidFlagsToWindowSessionProperty(
++    int32_t androidFlags,
++    const OHOS::sptr<OHOS::Rosen::WindowSessionProperty>& property)
++{
++    const int32_t mappedMask = ANDROID_FLAG_FULLSCREEN
++        | ANDROID_FLAG_KEEP_SCREEN_ON
++        | ANDROID_FLAG_SHOW_WHEN_LOCKED
++        | ANDROID_FLAG_TURN_SCREEN_ON
++        | ANDROID_FLAG_DISMISS_KEYGUARD;
++    const int32_t noOpAllowedMask = ANDROID_FLAG_HARDWARE_ACCELERATED
++        | ANDROID_FLAG_LAYOUT_IN_SCREEN
++        | ANDROID_FLAG_LAYOUT_INSET_DECOR
++        | ANDROID_FLAG_SPLIT_TOUCH
++        | ANDROID_FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS;
++    const int32_t extraFlags = androidFlags & ~(mappedMask | noOpAllowedMask);
++    if (extraFlags != 0) {
++        LOGW("createSession: unexpected LayoutParams flags 0x%{public}x reached native; "
++             "Java allowlist and native mapping are out of sync", extraFlags);
++    }
++
++    property->SetKeepScreenOn((androidFlags & ANDROID_FLAG_KEEP_SCREEN_ON) != 0);
++    property->SetTurnScreenOn((androidFlags & ANDROID_FLAG_TURN_SCREEN_ON) != 0);
++
++    uint32_t ohWindowFlags = 0;
++    if ((androidFlags & (ANDROID_FLAG_SHOW_WHEN_LOCKED
++            | ANDROID_FLAG_DISMISS_KEYGUARD)) != 0) {
++        ohWindowFlags |= static_cast<uint32_t>(
++            OHOS::Rosen::WindowFlag::WINDOW_FLAG_SHOW_WHEN_LOCKED);
++    }
++    property->SetWindowFlags(ohWindowFlags);
++}
++
+ OHWindowSession OHWindowManagerClient::createSession(
+     JavaVM* jvm, jobject androidWindow,
+     const std::string& bundleName, const std::string& abilityName,
+     const std::string& moduleName, const std::string& windowName,
+     int32_t androidWindowType, int32_t displayId,
+     int32_t requestedWidth, int32_t requestedHeight,
++    int32_t androidFlags,
+     uint64_t ohTokenAddr)
+ {
+     OH_BR_IPC_SCOPE("WMClient.createSession",
+@@ -382,6 +427,7 @@
+     property->SetRequestRect(rect);
+     property->SetWindowRect(rect);
+     property->SetDisplayId(static_cast<uint64_t>(displayId));
++    applyAndroidFlagsToWindowSessionProperty(androidFlags, property);
+     OHOS::Rosen::SessionInfo sessionInfo;
+     sessionInfo.bundleName_ = bundleName;
+     sessionInfo.abilityName_ = abilityName;
+@@ -446,6 +492,13 @@
+         property->SetParentPersistentId(parentPersistentId);
+         property->SetWindowType(
+             OHOS::Rosen::WindowType::WINDOW_TYPE_APP_SUB_WINDOW);
++        stage->SetInheritsParentFocus(true);
++        if (!stage->EnableRootBlastForTopLevelContent()) {
++            LOGE("createSession: failed to enable root BLAST for Android "
++                 "top-level content; refusing a null-BBQ ViewRoot");
++            result.wsErr = 1001;
++            return result;
++        }
+         LOGI("createSession: bound Android top-level content to OH MainSession "
+              "parentId=%{public}d", parentPersistentId);
+     }
+@@ -507,6 +560,10 @@
+     result.displayId = displayId;
+     result.width = requestedWidth;
+     result.height = requestedHeight;
++    result.frameLeft = 0;
++    result.frameTop = 0;
++    result.frameRight = requestedWidth;
++    result.frameBottom = requestedHeight;
+     result.valid = true;
+     result.wsErr = 0;  // §3.1.5.6.2 — explicit zero on success path
+ 
+@@ -1060,8 +1117,13 @@
+                    sessionId);
+         return nullptr;
+     }
+-    if (width <= 0) width = 1;
+-    if (height <= 0) height = 1;
++    if (width <= 0 || height <= 0) {
++        HiLogPrint(LOG_CORE, LOG_ERROR, 0xD000F00u, "OH_WindowMgrClient",
++                   "oh_rs_get_child_surface_window: invalid resolved extent "
++                   "%{public}dx%{public}d session=%{public}d",
++                   width, height, sessionId);
++        return nullptr;
++    }
+ 
+     OHOS::Rosen::RSSurfaceNodeConfig cfg;
+     cfg.SurfaceNodeName = "AdapterSurfaceView";
+@@ -1076,6 +1138,12 @@
+     child->SetBounds(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
+     child->SetFrame(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
+     child->SetVisible(true);
++    // Match the proven OpenHarmony XComponent/Tuanjie surface route: this is
++    // one self-drawing hardware layer whose producer belongs to Unity and whose
++    // consumer belongs to RenderService. Without these two properties RS never
++    // establishes the child BufferQueue as a live XCOM presentation target.
++    child->SetIsNotifyUIBufferAvailable(true);
++    child->SetHardwareEnabled(true, OHOS::Rosen::SelfDrawingNodeType::XCOM);
+     // Add to the window subtree so RS composites it (gives it a live consumer).
+     parent->AddChild(child, -1);
+     OHOS::Rosen::RSTransaction::FlushImplicitTransaction();
+@@ -1086,11 +1154,24 @@
+                    "oh_rs_get_child_surface_window: child GetSurface() null");
+         return nullptr;
+     }
++    producer->SetDefaultWidthAndHeight(width, height);
+     producer->SetQueueSize(3);
+     OHNativeWindow* nw = ::CreateNativeWindowFromSurface(&producer);
+     if (!nw) {
+         HiLogPrint(LOG_CORE, LOG_ERROR, 0xD000F00u, "OH_WindowMgrClient",
+                    "oh_rs_get_child_surface_window: CreateNativeWindowFromSurface failed");
++        return nullptr;
++    }
++    // Set geometry on the exact NativeWindow instance that Unity will dequeue
++    // from. ProducerSurface defaults alone do not update this window-local
++    // configuration on the OH 6.1 RS path.
++    int32_t geometryRc = ::OH_NativeWindow_NativeWindowHandleOpt(
++        nw, OH_NW_OP_SET_BUFFER_GEOMETRY, width, height);
++    if (geometryRc != 0) {
++        HiLogPrint(LOG_CORE, LOG_ERROR, 0xD000F00u, "OH_WindowMgrClient",
++                   "oh_rs_get_child_surface_window: initial geometry "
++                   "%{public}dx%{public}d failed rc=%{public}d",
++                   width, height, geometryRc);
+         return nullptr;
+     }
+     void* aospAnw = ::oh_anw_wrap(nw);
+@@ -1238,8 +1319,7 @@
+     // it expects; OH-side details stay hidden behind the wrapper.
+     //
+     // Reference: doc/graphics_rendering_design.html §7.11.
+-    void* aospAnw = ::oh_anw_wrap_for_activity(
+-        reinterpret_cast<OHNativeWindow*>(nw), it->second.ohTokenAddr);
++    void* aospAnw = ::oh_anw_wrap(reinterpret_cast<OHNativeWindow*>(nw));
+     if (!aospAnw) {
+         LOGE("getOhNativeWindow: oh_anw_wrap failed for sessionId=%d", sessionId);
+         return nullptr;

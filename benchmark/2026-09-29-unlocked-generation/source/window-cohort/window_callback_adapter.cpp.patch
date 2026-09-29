@@ -1,0 +1,143 @@
+--- before/window_callback_adapter.cpp
++++ real-work/window_callback_adapter.cpp
+@@ -7,6 +7,7 @@
+ 
+ #include "window_callback_adapter.h"
+ #include "adapter_bridge.h"
++#include "westlake_jni_attach_admission.h"
+ 
+ #include <android/log.h>
+ #include <cstdarg>
+@@ -30,9 +31,8 @@
+ {
+     ALOGI("WindowCallbackAdapter created");
+ 
+-    JNIEnv* env = nullptr;
+-    bool needsDetach = false;
+-    env = getJNIEnv(needsDetach);
++    westlake::jni::ScopedJniAttachment attachment(jvm_, "OH_WindowAdapter");
++    JNIEnv* env = attachment.env();
+     if (!env) {
+         ALOGE("Failed to get JNIEnv in constructor");
+         return;
+@@ -63,7 +63,6 @@
+     if (!localBridgeClass) {
+         ALOGE("FindClass(adapter/window/WindowCallbackBridge) failed");
+         if (env->ExceptionCheck()) env->ExceptionClear();
+-        detachIfNeeded(needsDetach);
+         return;
+     }
+     bridgeClass_ = reinterpret_cast<jclass>(env->NewGlobalRef(localBridgeClass));
+@@ -74,7 +73,6 @@
+     if (!ctor) {
+         ALOGE("GetMethodID(WindowCallbackBridge.<init>) failed");
+         if (env->ExceptionCheck()) env->ExceptionClear();
+-        detachIfNeeded(needsDetach);
+         return;
+     }
+ 
+@@ -82,13 +80,11 @@
+     if (!localBridgeObj) {
+         ALOGE("NewObject(WindowCallbackBridge) failed");
+         if (env->ExceptionCheck()) env->ExceptionClear();
+-        detachIfNeeded(needsDetach);
+         return;
+     }
+     bridgeObj_ = env->NewGlobalRef(localBridgeObj);
+     env->DeleteLocalRef(localBridgeObj);
+ 
+-    detachIfNeeded(needsDetach);
+     ALOGI("WindowCallbackAdapter initialized successfully");
+ }
+ 
+@@ -96,9 +92,8 @@
+ {
+     ALOGI("WindowCallbackAdapter destroyed");
+ 
+-    JNIEnv* env = nullptr;
+-    bool needsDetach = false;
+-    env = getJNIEnv(needsDetach);
++    westlake::jni::ScopedJniAttachment attachment(jvm_, "OH_WindowAdapter");
++    JNIEnv* env = attachment.env();
+     if (env) {
+         if (androidWindow_) {
+             env->DeleteGlobalRef(androidWindow_);
+@@ -112,7 +107,6 @@
+             env->DeleteGlobalRef(bridgeClass_);
+             bridgeClass_ = nullptr;
+         }
+-        detachIfNeeded(needsDetach);
+     }
+ }
+ 
+@@ -423,43 +417,6 @@
+ // JNI Helpers
+ // ================================================================
+ 
+-JNIEnv* WindowCallbackAdapter::getJNIEnv(bool& needsDetach)
+-{
+-    needsDetach = false;
+-    if (!jvm_) {
+-        ALOGE("getJNIEnv: JavaVM is null");
+-        return nullptr;
+-    }
+-
+-    JNIEnv* env = nullptr;
+-    jint result = jvm_->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+-    if (result == JNI_OK) {
+-        return env;
+-    }
+-
+-    if (result == JNI_EDETACHED) {
+-        JavaVMAttachArgs args;
+-        args.version = JNI_VERSION_1_6;
+-        args.name = "OH_WindowAdapter";
+-        args.group = nullptr;
+-        result = jvm_->AttachCurrentThread(&env, &args);
+-        if (result == JNI_OK) {
+-            needsDetach = true;
+-            return env;
+-        }
+-        ALOGE("getJNIEnv: AttachCurrentThread failed (result=%d)", result);
+-    }
+-
+-    return nullptr;
+-}
+-
+-void WindowCallbackAdapter::detachIfNeeded(bool needsDetach)
+-{
+-    if (needsDetach && jvm_) {
+-        jvm_->DetachCurrentThread();
+-    }
+-}
+-
+ void WindowCallbackAdapter::callBridgeVoidMethod(
+     const char* methodName, const char* signature, ...)
+ {
+@@ -468,8 +425,8 @@
+         return;
+     }
+ 
+-    bool needsDetach = false;
+-    JNIEnv* env = getJNIEnv(needsDetach);
++    westlake::jni::ScopedJniAttachment attachment(jvm_, "OH_WindowAdapter");
++    JNIEnv* env = attachment.env();
+     if (!env) {
+         ALOGE("callBridgeVoidMethod(%s): failed to get JNIEnv", methodName);
+         return;
+@@ -479,7 +436,6 @@
+     if (!method) {
+         ALOGE("callBridgeVoidMethod: method %s%s not found", methodName, signature);
+         env->ExceptionClear();
+-        detachIfNeeded(needsDetach);
+         return;
+     }
+ 
+@@ -494,7 +450,6 @@
+         env->ExceptionClear();
+     }
+ 
+-    detachIfNeeded(needsDetach);
+ }
+ 
+ }  // namespace oh_adapter

@@ -122,6 +122,7 @@ set -o pipefail
 ADAPTER_ROOT="${ADAPTER_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 AOSP="${AOSP_ROOT:-$HOME/aosp}"
 OH="${OH_ROOT:-$HOME/oh}"
+source "$ADAPTER_ROOT/build/inner/bridge_manifest_inputs.sh"
 OUT="$ADAPTER_ROOT/out/adapter"
 TMP="/tmp/bridge_build"
 
@@ -444,8 +445,9 @@ for src in \
     "$ADAPTER_ROOT/framework/package-manager/jni/oh_bundle_mgr_client.cpp" \
     "$ADAPTER_ROOT/framework/package-manager/jni/apk_manifest_jni.cpp" \
     "$ADAPTER_ROOT/framework/package-manager/jni/apk_manifest_parser.cpp" \
-    "$ADAPTER_ROOT/framework/package-manager/jni/axml_parser.cpp" ; do
-    [ -f "$src" ] || continue
+    "$ADAPTER_ROOT/framework/package-manager/jni/axml_parser.cpp" \
+    "$ADAPTER_ROOT/framework/package-manager/jni/arsc_resolver.cpp" ; do
+    [ -f "$src" ] || { echo "ERROR: required bridge source missing: $src" >&2; exit 1; }
     SOURCES="$SOURCES $src"
 done
 
@@ -526,13 +528,16 @@ LIBS="\
 # 2026-04-30 P2-B: minizip + zlib for apk_manifest_jni.cpp on-demand APK parse.
 # minizip is built as separate .o files (not a library), so we explicitly add
 # unzip.o + ioapi.o from OH's zlib/contrib/minizip build dir, plus libz.a static.
-MINIZIP_DIR="$OH/out/rk3568/obj/third_party/zlib/contrib/minizip/shared_libz"
-LIBZ_A="$OH/out/rk3568/obj/third_party/zlib/libz.a"
+MINIZIP_DIR="${BRIDGE_MINIZIP_DIR:-$OH/out/rk3568/obj/third_party/zlib/contrib/minizip/shared_libz}"
+LIBZ_A="${BRIDGE_LIBZ_A:-$OH/out/rk3568/obj/third_party/zlib/libz.a}"
 if [ -f "$MINIZIP_DIR/unzip.o" ] && [ -f "$MINIZIP_DIR/ioapi.o" ] && [ -f "$LIBZ_A" ]; then
     LIBS="$LIBS $MINIZIP_DIR/unzip.o $MINIZIP_DIR/ioapi.o $LIBZ_A"
     echo "Added minizip+zlib for APK manifest parsing"
 else
-    echo "WARN: minizip/zlib objects missing — apk_manifest_jni will fail to link"
+    for required in "$MINIZIP_DIR/unzip.o" "$MINIZIP_DIR/ioapi.o" "$LIBZ_A"; do
+        [ -f "$required" ] || echo "ERROR: required bridge link input missing: $required" >&2
+    done
+    exit 1
 fi
 # A.11: bridge link — added 2026-04-22
 # static dlopen sim detected 51 residual UND after relaxed link. Added 10 lib:

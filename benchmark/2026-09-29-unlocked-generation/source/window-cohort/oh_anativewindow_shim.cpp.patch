@@ -1,0 +1,457 @@
+--- before/oh_anativewindow_shim.cpp
++++ real-work/oh_anativewindow_shim.cpp
+@@ -27,9 +27,18 @@
+ #include <string.h>
+ #include <unistd.h>     // close()
+ #include <atomic>
++#include <chrono>
+ #include <mutex>
+ #include <new>          // std::nothrow
+ #include <unordered_map>
++
++#include "direct_surface_path_tracker.h"
++
++// [WALL2-FMT 2026-06-29] AOSP pixel formats (RGBA_8888=1 from EGL_NATIVE_VISUAL_ID)
++// must be mapped to OH GraphicPixelFormat (RGBA_8888=12) before OH_OP_SET_FORMAT;
++// OH format 1 = CLUT → gralloc rejects. surface/jni is already on this build's
++// -I path (INCS_LOCAL in compile_bridge_local.sh). Header-only, namespace oh_adapter.
++#include "pixel_format_mapper.h"
+ 
+ // AOSP ANativeWindow + ANativeWindowBuffer + android_native_base_t — byte-exact
+ // copy from AOSP frameworks/native/libs/nativewindow/include/system/window.h
+@@ -187,7 +196,6 @@
+ // hwui's NativeWindow is the same producer ID as the one created in
+ // OHWindowManagerClient::getOhNativeWindow.
+ int32_t OH_NativeWindow_GetSurfaceId(OHNativeWindow* window, uint64_t* surfaceId);
+-void fn03_on_app_content_present(uint64_t ohTokenAddr, uint64_t frameId);
+ 
+ // HiLog forward decl (same trick as compat_shim)
+ int HiLogPrint(int type, int level, unsigned int domain,
+@@ -215,11 +223,12 @@
+     OHNativeWindow*      oh;                 // OH side handle
+     uint32_t             magic;
+     std::atomic<int32_t> refCount;          // android_native_base_t refcount
+-    uint64_t             ohTokenAddr;        // main app-content owner; 0 for child/non-app
+-    std::atomic<uint64_t> frameId;           // per-producer successful present sequence
+     std::mutex                                 bufCacheLock;
+     std::unordered_map<OHNativeWindowBuffer*,
+                        AdapterAnwBuffer*>      bufCache;  // OH buf → wrapper
++    std::mutex                                 pathTrackerLock;
++    oh_adapter::DirectSurfacePathTracker       pathTracker;
++    std::atomic<uint64_t>                      nextFrameId;
+ };
+ 
+ inline AdapterAnw* as_adapter(struct ANativeWindow* w) {
+@@ -232,6 +241,21 @@
+ inline AdapterAnwBuffer* as_adapter_buf(struct ANativeWindowBuffer* b) {
+     auto* x = reinterpret_cast<AdapterAnwBuffer*>(b);
+     return (x && x->magic == kAdapterAnwBufMagic) ? x : nullptr;
++}
++
++uint64_t monotonicNowNs()
++{
++    return static_cast<uint64_t>(
++        std::chrono::duration_cast<std::chrono::nanoseconds>(
++            std::chrono::steady_clock::now().time_since_epoch()).count());
++}
++
++bool directPathLive(AdapterAnw* a)
++{
++    std::lock_guard<std::mutex> lock(a->pathTrackerLock);
++    const auto& snapshot = a->pathTracker.snapshot();
++    return snapshot.state == oh_adapter::DirectSurfacePathTracker::State::UNBOUND ||
++           snapshot.state == oh_adapter::DirectSurfacePathTracker::State::LIVE;
+ }
+ 
+ // Recover the AdapterAnw* containing a given android_native_base_t*.
+@@ -304,31 +328,47 @@
+ // Phase 2 (next iteration): replace each probe with the real handler
+ // once LR-trace pins down the AOSP function each slot maps to.
+ 
++// [S22-TRUNC-FIX 2026-07-09] Params were `unsigned` (32-bit). hwui calls the
++// reserved[N] slots as AOSP ANativeWindow hooks with 64-bit POINTER arguments
++// (e.g. query's `int* value` = a stack address 0x7f_xxxxxxxx). The 32-bit
++// formals truncated the pointer to its low 32 bits; the heuristic
++// `*(int*)a2 = 0` then wrote to the zero-extended truncated address →
++// deterministic RenderThread SIGSEGV (fault addr = low32 of a 0x7f.. stack
++// ptr; symbolized to oh_anw_slot3_probe+0xa0 `str wzr,[x8]`). Widen every
++// formal to uintptr_t (pointer-width) so no argument is ever truncated. The
++// real query slot (reserved[3] on this arm64 build — a1=NATIVE_WINDOW_
++// MIN_UNDEQUEUED_BUFFERS=3, a2=&value) is now bound to aanw_query directly in
++// oh_anw_wrap (see below); these probes remain only for the still-unknown
++// slots 0/1 and log without truncation.
+ static int oh_anw_slot_probe_impl(int slot,
+-                                  unsigned a0, unsigned a1, unsigned a2,
+-                                  unsigned a3) {
++                                  uintptr_t a0, uintptr_t a1, uintptr_t a2,
++                                  uintptr_t a3) {
+     void* lr = __builtin_return_address(1);
+     static std::atomic<int> s_called[4]{{0}, {0}, {0}, {0}};
+     int n = s_called[slot & 3].fetch_add(1, std::memory_order_relaxed);
+     if (n < 16) {
+-        ALOGW("[ANW slot %d call #%d] LR=%p args={%#x,%#x,%#x,%#x}",
+-              slot, n + 1, lr, a0, a1, a2, a3);
+-    }
+-    if (a2 >= 0x10000000u && a2 < 0xF0000000u) {
+-        *reinterpret_cast<int*>(static_cast<uintptr_t>(a2)) = 0;
++        ALOGW("[ANW slot %d call #%d] LR=%p args={%#lx,%#lx,%#lx,%#lx}",
++              slot, n + 1, lr, (unsigned long) a0, (unsigned long) a1,
++              (unsigned long) a2, (unsigned long) a3);
++    }
++    // a2 is now the full 64-bit pointer (no truncation). Only write when it is
++    // a plausible in-process writable address (never the truncated low-32 that
++    // used to fault). Mirrors the historical "query value-out" heuristic.
++    if (a2 >= 0x10000000ul && a2 < 0x0000800000000000ul) {
++        *reinterpret_cast<int*>(a2) = 0;
+     }
+     return 0;
+ }
+-extern "C" int oh_anw_slot0_probe(unsigned a0, unsigned a1,
+-                                  unsigned a2, unsigned a3) {
++extern "C" int oh_anw_slot0_probe(uintptr_t a0, uintptr_t a1,
++                                  uintptr_t a2, uintptr_t a3) {
+     return oh_anw_slot_probe_impl(0, a0, a1, a2, a3);
+ }
+-extern "C" int oh_anw_slot1_probe(unsigned a0, unsigned a1,
+-                                  unsigned a2, unsigned a3) {
++extern "C" int oh_anw_slot1_probe(uintptr_t a0, uintptr_t a1,
++                                  uintptr_t a2, uintptr_t a3) {
+     return oh_anw_slot_probe_impl(1, a0, a1, a2, a3);
+ }
+-extern "C" int oh_anw_slot3_probe(unsigned a0, unsigned a1,
+-                                  unsigned a2, unsigned a3) {
++extern "C" int oh_anw_slot3_probe(uintptr_t a0, uintptr_t a1,
++                                  uintptr_t a2, uintptr_t a3) {
+     return oh_anw_slot_probe_impl(3, a0, a1, a2, a3);
+ }
+ 
+@@ -339,6 +379,7 @@
+ int aanw_setSwapInterval(struct ANativeWindow* w, int interval) {
+     auto* a = as_adapter(w);
+     if (!a) return -EINVAL;
++    if (!directPathLive(a)) return -ENODEV;
+     int32_t v = interval;
+     return OH_NativeWindow_NativeWindowHandleOpt(a->oh, OH_OP_SET_SWAP_INTERVAL, v);
+ }
+@@ -347,6 +388,7 @@
+                        struct ANativeWindowBuffer** outBuf, int* outFenceFd) {
+     auto* a = as_adapter(w);
+     if (!a) return -EINVAL;
++    if (!directPathLive(a)) return -ENODEV;
+     OHNativeWindowBuffer* ohBuf = nullptr;
+     int fence = -1;
+     int32_t rc = OH_NativeWindow_NativeWindowRequestBuffer(a->oh, &ohBuf, &fence);
+@@ -365,6 +407,7 @@
+                      struct ANativeWindowBuffer* buf, int fenceFd) {
+     auto* a = as_adapter(w);
+     if (!a) return -EINVAL;
++    if (!directPathLive(a)) return -ENODEV;
+     OHNativeWindowBuffer* ohBuf = unwrap_aosp_buffer(a, buf);
+     if (!ohBuf) return -EINVAL;
+     // 2026-05-12 G2.14aw probe A.2: log uniqueId on first frames + every 60th.
+@@ -372,7 +415,8 @@
+     // the same producer ID. Counter avoids log flood at 60Hz.
+     static std::atomic<uint32_t> s_qbCount{0};
+     uint32_t n = s_qbCount.fetch_add(1, std::memory_order_relaxed);
+-    if (n < 5 || (n % 60) == 0) {
++    bool logThis = (n < 5 || (n % 60) == 0);
++    if (logThis) {
+         uint64_t uid = 0;
+         int32_t qrc = OH_NativeWindow_GetSurfaceId(a->oh, &uid);
+         ALOGI("aanw_queueBuffer[probe #%u]: AdapterAnw=%p oh=%p ohBuf=%p fence=%d uniqueId=0x%llx (rc=%d)",
+@@ -380,20 +424,45 @@
+               (unsigned long long) uid, qrc);
+     }
+     struct Region region = {0};  // empty region = full surface
++    // [Fn04.A02/A14] RenderThread buffer submission boundary.
++    if (logThis) {
++        ALOGI("[Fn04] aanw_queueBuffer pre-flush anw=%p oh=%p ohBuf=%p fence=%d",
++              (void*) a, (void*) a->oh, (void*) ohBuf, fenceFd);
++    }
+     int32_t rc = OH_NativeWindow_NativeWindowFlushBuffer(a->oh, ohBuf, fenceFd, region);
+     if (rc != 0) {
+-        ALOGW("queueBuffer rc=%d", rc);
++        // Failure path is always logged: a commit failure must not be masked.
++        ALOGE("[Fn04] aanw_queueBuffer flush failed anw=%p oh=%p ohBuf=%p fence=%d rc=%d",
++              (void*) a, (void*) a->oh, (void*) ohBuf, fenceFd, rc);
+         return -EIO;
+     }
+-    if (a->ohTokenAddr != 0) {
+-        const uint64_t frameId =
+-            a->frameId.fetch_add(1, std::memory_order_acq_rel) + 1;
+-        ALOGI("FN04_A02_PRESENT_V1 producer_action_id=Fn04.A02 "
+-              "content_origin=APP_CONTENT present_outcome=SUCCESS "
+-              "oh_token_addr=%{public}llu frame_id=%{public}llu",
+-              static_cast<unsigned long long>(a->ohTokenAddr),
+-              static_cast<unsigned long long>(frameId));
+-        fn03_on_app_content_present(a->ohTokenAddr, frameId);
++    uint64_t frameId = a->nextFrameId.fetch_add(1, std::memory_order_relaxed) + 1;
++    {
++        std::lock_guard<std::mutex> lock(a->pathTrackerLock);
++        auto snapshot = a->pathTracker.snapshot();
++        if (snapshot.state == oh_adapter::DirectSurfacePathTracker::State::LIVE) {
++            auto trackRc = a->pathTracker.recordQueue(
++                snapshot.generation, frameId, monotonicNowNs());
++            if (trackRc == oh_adapter::DirectSurfacePathTracker::Result::OK) {
++                const auto& accepted = a->pathTracker.snapshot();
++                ALOGI("DIRECT_PATH_MEASURE route=%s event=queue_accepted "
++                      "session=%d generation=%llu surface=%llu frame=%llu "
++                      "queued=%llu width=%d height=%d monotonic_ns=%llu "
++                      "present_receipt=absent",
++                      oh_adapter::DirectSurfacePathTracker::routeName(accepted.route),
++                      accepted.sessionId,
++                      (unsigned long long)accepted.generation,
++                      (unsigned long long)accepted.surfaceId,
++                      (unsigned long long)frameId,
++                      (unsigned long long)accepted.queuedFrames,
++                      accepted.width, accepted.height,
++                      (unsigned long long)accepted.lastQueueNs);
++            }
++        }
++    }
++    if (logThis) {
++        ALOGI("[Fn04] aanw_queueBuffer flush ok anw=%p oh=%p ohBuf=%p fence=%d rc=%d",
++              (void*) a, (void*) a->oh, (void*) ohBuf, fenceFd, rc);
+     }
+     return 0;
+ }
+@@ -402,6 +471,7 @@
+                       struct ANativeWindowBuffer* buf, int /*fenceFd*/) {
+     auto* a = as_adapter(w);
+     if (!a) return -EINVAL;
++    if (!directPathLive(a)) return -ENODEV;
+     OHNativeWindowBuffer* ohBuf = unwrap_aosp_buffer(a, buf);
+     if (!ohBuf) return -EINVAL;
+     return OH_NativeWindow_NativeWindowAbortBuffer(a->oh, ohBuf);
+@@ -474,7 +544,7 @@
+             *value = 1;
+             return 0;
+         case NATIVE_WINDOW_IS_VALID:
+-            *value = 1;
++            *value = directPathLive(const_cast<AdapterAnw*>(a)) ? 1 : 0;
+             return 0;
+         case NATIVE_WINDOW_DATASPACE:
+             *value = 142671872; // ADATASPACE_SRGB (matches §7.9 ADisplay shim)
+@@ -493,6 +563,7 @@
+ int aanw_perform(struct ANativeWindow* w, int op, ...) {
+     auto* a = as_adapter(w);
+     if (!a) return -EINVAL;
++    if (!directPathLive(a)) return -ENODEV;
+     va_list ap;
+     va_start(ap, op);
+     int rc = 0;
+@@ -512,15 +583,40 @@
+             if (op == NATIVE_WINDOW_SET_BUFFERS_GEOMETRY) {
+                 format = va_arg(ap, int);
+             }
++            // Android uses 0x0 as "keep the current dimensions" on several
++            // paths.  Preserve the live OH geometry; never substitute a
++            // board- or application-specific panel size.
++            if (width <= 0 || height <= 0) {
++                int32_t currentHeight = 0;
++                int32_t currentWidth = 0;
++                int32_t currentFormat = 0;
++                int32_t queryRc = OH_NativeWindow_NativeWindowHandleOpt(
++                    a->oh, OH_OP_GET_BUFFER_GEOMETRY,
++                    &currentHeight, &currentWidth, &currentFormat);
++                if (queryRc != 0 || currentWidth <= 0 || currentHeight <= 0) {
++                    ALOGE("perform SET_BUFFERS_GEOMETRY rejected %dx%d: "
++                          "no live geometry rc=%d current=%dx%d",
++                          width, height, queryRc, currentWidth, currentHeight);
++                    rc = -EINVAL;
++                    break;
++                }
++                width = currentWidth;
++                height = currentHeight;
++            }
+             rc = OH_NativeWindow_NativeWindowHandleOpt(a->oh, OH_OP_SET_BUFFER_GEOMETRY, width, height);
+             if (rc == 0 && format > 0) {
+-                OH_NativeWindow_NativeWindowHandleOpt(a->oh, OH_OP_SET_FORMAT, format);
++                // [WALL2-FMT] AOSP visual-id format → OH GraphicPixelFormat
++                int32_t ohFormat = oh_adapter::androidToOHPixelFormat(format);
++                OH_NativeWindow_NativeWindowHandleOpt(a->oh, OH_OP_SET_FORMAT, ohFormat);
+             }
+             break;
+         }
+         case NATIVE_WINDOW_SET_BUFFERS_FORMAT: {
+             int32_t format = va_arg(ap, int);
+-            rc = OH_NativeWindow_NativeWindowHandleOpt(a->oh, OH_OP_SET_FORMAT, format);
++            // [WALL2-FMT] AOSP visual-id format → OH GraphicPixelFormat
++            int32_t ohFormat = (format > 0) ? oh_adapter::androidToOHPixelFormat(format)
++                                            : format;
++            rc = OH_NativeWindow_NativeWindowHandleOpt(a->oh, OH_OP_SET_FORMAT, ohFormat);
+             break;
+         }
+         case NATIVE_WINDOW_SET_BUFFERS_TRANSFORM: {
+@@ -601,12 +697,11 @@
+ 
+ // Forward decls for slot probes defined above with extern "C" linkage —
+ // re-declared at namespace scope so they're addressable from oh_anw_wrap.
+-extern "C" int oh_anw_slot0_probe(unsigned, unsigned, unsigned, unsigned);
+-extern "C" int oh_anw_slot1_probe(unsigned, unsigned, unsigned, unsigned);
+-extern "C" int oh_anw_slot3_probe(unsigned, unsigned, unsigned, unsigned);
+-
+-extern "C" struct ANativeWindow* oh_anw_wrap_for_activity(
+-        OHNativeWindow* oh, uint64_t ohTokenAddr) {
++extern "C" int oh_anw_slot0_probe(uintptr_t, uintptr_t, uintptr_t, uintptr_t);
++extern "C" int oh_anw_slot1_probe(uintptr_t, uintptr_t, uintptr_t, uintptr_t);
++extern "C" int oh_anw_slot3_probe(uintptr_t, uintptr_t, uintptr_t, uintptr_t);
++
++extern "C" struct ANativeWindow* oh_anw_wrap(OHNativeWindow* oh) {
+     if (!oh) {
+         ALOGE("oh_anw_wrap: oh handle is null");
+         return nullptr;
+@@ -634,15 +729,18 @@
+     // query call succeeds and writes a real value (was: noop returned 0
+     // without writing *value → stack-garbage triggered "window->query
+     // failed value=-166522112" and stalled the RT pipeline).
+-    // HanBing's 32-bit libhwui used reserved[2]. The current ARM64 AOSP14
+-    // libhwui is independently proven by CanvasContext::setupPipelineSurface
+-    // disassembly to load its query hook from ANativeWindow+0x20, which is
+-    // reserved[3] in this 64-bit layout. Bind both proven slots to the same
+-    // real query implementation; a diagnostic probe here truncates the ARM64
+-    // output pointer and leaves MIN_UNDEQUEUED_BUFFERS as stack garbage.
++    // Slots 0/1/3 get individual LR-tracing probes (phase 1 of G2.14aj).
++    // Phase 2 will swap them for real handlers once we know what AOSP
++    // function each slot maps to.
+     a->aosp.common.reserved[0] = (void*) &oh_anw_slot0_probe;
+     a->aosp.common.reserved[1] = (void*) &oh_anw_slot1_probe;
+     a->aosp.common.reserved[2] = (void*) &aanw_query;
++    // [S22-TRUNC-FIX 2026-07-09] On this arm64 hwui build the query dispatch
++    // lands on reserved[3] (privacy-off trace: slot 3 called with
++    // a1=NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS=3, a2=&value). Bind the real
++    // aanw_query here (64-bit signature, full-pointer, writes the correct
++    // value back) instead of the 32-bit truncating probe that SIGSEGV'd the
++    // RenderThread. Same handler already proven at reserved[2].
+     a->aosp.common.reserved[3] = (void*) &aanw_query;
+     a->aosp.common.incRef = anw_base_incRef;
+     a->aosp.common.decRef = anw_base_decRef;
+@@ -671,11 +769,12 @@
+     // calloc'd memory (their default ctors run; std::atomic gets value 0,
+     // std::mutex gets unlocked, unordered_map gets empty).
+     new (&a->refCount) std::atomic<int32_t>(1);
+-    new (&a->frameId) std::atomic<uint64_t>(0);
+     new (&a->bufCacheLock) std::mutex();
+     new (&a->bufCache) std::unordered_map<OHNativeWindowBuffer*, AdapterAnwBuffer*>();
++    new (&a->pathTrackerLock) std::mutex();
++    new (&a->pathTracker) oh_adapter::DirectSurfacePathTracker();
++    new (&a->nextFrameId) std::atomic<uint64_t>(0);
+     a->oh    = oh;
+-    a->ohTokenAddr = ohTokenAddr;
+     a->magic = kAdapterAnwMagic;
+ 
+     // 2026-05-12 G2.14aw probe A.2: verify wrap didn't swap backing surface.
+@@ -690,10 +789,6 @@
+     return reinterpret_cast<struct ANativeWindow*>(a);
+ }
+ 
+-extern "C" struct ANativeWindow* oh_anw_wrap(OHNativeWindow* oh) {
+-    return oh_anw_wrap_for_activity(oh, 0);
+-}
+-
+ extern "C" void oh_anw_destroy(struct ANativeWindow* aosp) {
+     auto* a = as_adapter(aosp);
+     if (!a) return;
+@@ -708,27 +803,88 @@
+     // Run dtors on placement-new'd metadata members, then free raw memory.
+     a->bufCache.~unordered_map();
+     a->bufCacheLock.~mutex();
++    a->pathTracker.~DirectSurfacePathTracker();
++    a->pathTrackerLock.~mutex();
++    a->nextFrameId.~atomic();
+     a->refCount.~atomic();
+     std::free(a);
+ }
+ 
+ extern "C" OHNativeWindow* oh_anw_get_oh(struct ANativeWindow* aosp) {
+     auto* a = as_adapter(aosp);
+-    return a ? a->oh : nullptr;
+-}
+-
+-extern "C" int oh_anw_notify_presented(struct ANativeWindow* aosp) {
++    return a && directPathLive(a) ? a->oh : nullptr;
++}
++
++extern "C" int oh_anw_configure_direct_path(struct ANativeWindow* aosp,
++                                             int32_t sessionId,
++                                             uint64_t generation,
++                                             int32_t width,
++                                             int32_t height) {
+     auto* a = as_adapter(aosp);
+-    if (!a || a->ohTokenAddr == 0) return 0;
+-    const uint64_t frameId =
+-        a->frameId.fetch_add(1, std::memory_order_acq_rel) + 1;
+-    ALOGI("FN04_A02_PRESENT_V1 producer_action_id=Fn04.A02 "
+-          "content_origin=APP_CONTENT present_outcome=SUCCESS "
+-          "oh_token_addr=%{public}llu frame_id=%{public}llu",
+-          static_cast<unsigned long long>(a->ohTokenAddr),
+-          static_cast<unsigned long long>(frameId));
+-    fn03_on_app_content_present(a->ohTokenAddr, frameId);
+-    return 1;
++    if (!a) return -EINVAL;
++    uint64_t surfaceId = 0;
++    if (OH_NativeWindow_GetSurfaceId(a->oh, &surfaceId) != 0 || surfaceId == 0) {
++        return -ENODEV;
++    }
++    std::lock_guard<std::mutex> lock(a->pathTrackerLock);
++    auto rc = a->pathTracker.bind(
++        oh_adapter::DirectSurfacePathTracker::Route::DIRECT,
++        sessionId, generation, surfaceId, width, height);
++    if (rc != oh_adapter::DirectSurfacePathTracker::Result::OK) {
++        return -EINVAL;
++    }
++    ALOGI("DIRECT_PATH_MEASURE route=direct event=bound session=%d "
++          "generation=%llu surface=%llu width=%d height=%d "
++          "monotonic_ns=%llu present_receipt=absent",
++          sessionId, (unsigned long long)generation,
++          (unsigned long long)surfaceId, width, height,
++          (unsigned long long)monotonicNowNs());
++    return 0;
++}
++
++extern "C" int oh_anw_update_direct_path_geometry(struct ANativeWindow* aosp,
++                                                    uint64_t generation,
++                                                    int32_t width,
++                                                    int32_t height) {
++    auto* a = as_adapter(aosp);
++    if (!a) return -EINVAL;
++    std::lock_guard<std::mutex> lock(a->pathTrackerLock);
++    auto rc = a->pathTracker.resize(generation, width, height);
++    if (rc != oh_adapter::DirectSurfacePathTracker::Result::OK) {
++        return rc == oh_adapter::DirectSurfacePathTracker::Result::SURFACE_LOST
++            ? -ENODEV : -EINVAL;
++    }
++    int32_t nativeRc = OH_NativeWindow_NativeWindowHandleOpt(
++        a->oh, OH_OP_SET_BUFFER_GEOMETRY, width, height);
++    if (nativeRc == 0) {
++        ALOGI("DIRECT_PATH_MEASURE route=direct event=geometry_committed "
++              "session=%d generation=%llu surface=%llu width=%d height=%d "
++              "monotonic_ns=%llu present_receipt=absent",
++              a->pathTracker.snapshot().sessionId,
++              (unsigned long long)generation,
++              (unsigned long long)a->pathTracker.snapshot().surfaceId,
++              width, height, (unsigned long long)monotonicNowNs());
++    }
++    return nativeRc;
++}
++
++extern "C" int oh_anw_mark_surface_lost(struct ANativeWindow* aosp,
++                                         uint64_t generation) {
++    auto* a = as_adapter(aosp);
++    if (!a) return -EINVAL;
++    std::lock_guard<std::mutex> lock(a->pathTrackerLock);
++    auto rc = a->pathTracker.markLost(generation);
++    if (rc != oh_adapter::DirectSurfacePathTracker::Result::OK) return -EINVAL;
++    const auto& snapshot = a->pathTracker.snapshot();
++    ALOGI("DIRECT_PATH_MEASURE route=%s event=surface_lost session=%d "
++          "generation=%llu surface=%llu queued=%llu monotonic_ns=%llu "
++          "present_receipt=absent",
++          oh_adapter::DirectSurfacePathTracker::routeName(snapshot.route),
++          snapshot.sessionId, (unsigned long long)snapshot.generation,
++          (unsigned long long)snapshot.surfaceId,
++          (unsigned long long)snapshot.queuedFrames,
++          (unsigned long long)monotonicNowNs());
++    return 0;
+ }
+ 
+ // G2.14ag: refcount probes for AOSP NDK compat shims (see header for

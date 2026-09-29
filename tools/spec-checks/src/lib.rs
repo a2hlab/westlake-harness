@@ -158,3 +158,38 @@ fn white_window_offline() {
 fn ability_stage_offline() {
     run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_ability_stage.py"]);
 }
+
+#[test]
+fn b9_single_bridge_swap_accepted() {
+    run(&["benchmark/2026-09-29-unlocked-generation/verify.py", "swap"]);
+}
+
+#[test]
+fn b9_bridge_exports_manifest_jni() {
+    run(&["benchmark/2026-09-29-unlocked-generation/verify.py", "exports"]);
+}
+
+#[test]
+fn b9_custom_application_created() {
+    run(&["benchmark/2026-09-29-unlocked-generation/verify.py", "application"]);
+}
+
+#[test]
+fn b9_bridge_build_fails_on_missing_source() {
+    run(&["benchmark/2026-09-29-unlocked-generation/verify.py", "missing"]);
+}
+
+#[test]
+fn b9_no_regression() {
+    run(&["benchmark/2026-09-29-unlocked-generation/verify.py", "regression"]);
+}
+
+#[test]
+fn b9_deploy_tool_rejects_mismatch() {
+    run(&["benchmark/2026-09-29-unlocked-generation/verify.py", "mismatch"]);
+}
+
+#[test]
+fn b9_rollback_on_failed_deploy() {
+    run(&["benchmark/2026-09-29-unlocked-generation/verify.py", "rollback"]);
+}

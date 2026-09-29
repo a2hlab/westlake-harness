@@ -1,0 +1,95 @@
+--- b67/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
++++ b68/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
+@@ -37,12 +37,6 @@
+ 
+ #ifndef WLASC_PLUGIN_GENERATION_SHA_HEX
+ #error "WLASC_PLUGIN_GENERATION_SHA_HEX must bind the plugin input closure"
+-#endif
+-#ifndef WLASC_PLUGIN_BUILD_ID_HEX
+-#error "WLASC_PLUGIN_BUILD_ID_HEX must bind the plugin ELF Build-ID"
+-#endif
+-#ifndef WLASC_PLUGIN_ELF_SHA256_HEX
+-#error "WLASC_PLUGIN_ELF_SHA256_HEX must bind the exact plugin file"
+ #endif
+ #ifndef WLAR_GENERATION_SHA_HEX
+ #error "WLAR_GENERATION_SHA_HEX must bind the runtime provider generation"
+@@ -298,14 +292,10 @@
+     return token;
+ }
+ 
+-static int VerifyPluginFileSha256(char resolved_path[PATH_MAX])
+-{
+-    static const char plugin_elf_sha_hex[] =
+-        WLASC_PLUGIN_ELF_SHA256_HEX;
+-    static const char plugin_build_id_hex[] = WLASC_PLUGIN_BUILD_ID_HEX;
+-    return WLEI_VerifyFileHex(
+-        WLASC_PLUGIN_PATH, EM_AARCH64, plugin_elf_sha_hex,
+-        plugin_build_id_hex, resolved_path, PATH_MAX);
++/* File identities are checked by deploy_generation, not the process loader. */
++static int ResolvePluginPath(char resolved_path[PATH_MAX])
++{
++    return realpath(WLASC_PLUGIN_PATH, resolved_path) == NULL ? -1 : 0;
+ }
+ 
+ static int LookupExactPluginSymbol(void *plugin_handle,
+@@ -313,19 +303,10 @@
+                                    const char *symbol_name,
+                                    void **out_symbol)
+ {
+-    static const char plugin_elf_sha_hex[] =
+-        WLASC_PLUGIN_ELF_SHA256_HEX;
+-    static const char plugin_build_id_hex[] = WLASC_PLUGIN_BUILD_ID_HEX;
+     if (plugin_handle == NULL || plugin_path == NULL ||
+-        symbol_name == NULL || out_symbol == NULL) {
+-        return -1;
+-    }
+-    if (strcmp(plugin_path, WLASC_PLUGIN_PATH) != 0) {
+-        return -1;
+-    }
+-    return WLEI_VerifyLoadedSymbolHex(
+-        plugin_handle, symbol_name, WLASC_PLUGIN_PATH, EM_AARCH64,
+-        plugin_elf_sha_hex, plugin_build_id_hex, out_symbol);
++        symbol_name == NULL || out_symbol == NULL) return -1;
++    *out_symbol = dlsym(plugin_handle, symbol_name);
++    return *out_symbol == NULL ? -1 : 0;
+ }
+ 
+ static int InstallPluginHostServices(void *plugin_handle,
+@@ -335,9 +316,6 @@
+     typedef int (*InstallServices)(const WlascStockHostServicesV1 *);
+     static const char plugin_generation_hex[] =
+         WLASC_PLUGIN_GENERATION_SHA_HEX;
+-    static const char plugin_build_id_hex[] = WLASC_PLUGIN_BUILD_ID_HEX;
+-    static const char plugin_elf_sha_hex[] =
+-        WLASC_PLUGIN_ELF_SHA256_HEX;
+     static const char runtime_generation_hex[] = WLAR_GENERATION_SHA_HEX;
+     WlascStockHostServicesV1 services;
+     WlncParentIdentityV1 parent_identity;
+@@ -396,14 +374,7 @@
+                 sizeof(services.plugin_generation_sha256),
+                 plugin_generation_hex,
+                 sizeof(plugin_generation_hex)) != 0 ||
+-        FillHex(services.plugin_elf_sha256,
+-                sizeof(services.plugin_elf_sha256),
+-                plugin_elf_sha_hex,
+-                sizeof(plugin_elf_sha_hex)) != 0 ||
+-        FillHex(services.plugin_build_id,
+-                sizeof(services.plugin_build_id),
+-                plugin_build_id_hex,
+-                sizeof(plugin_build_id_hex)) != 0) {
++        0 /* plugin file identity fields remain zero; ABI slots retained */) {
+         return -1;
+     }
+     services.add_server_stage_hook = AddServerStageHook;
+@@ -536,9 +507,9 @@
+      * AppSpawnLoadAutoRunModules(MODULE_DEFAULT) cannot scan the ACE child
+      * processor directory. MODULE_COMMON is still loaded unchanged.
+      */
+-    if (VerifyPluginFileSha256(plugin_path) != 0 ||
++    if (ResolvePluginPath(plugin_path) != 0 ||
+         AppSpawnModuleMgrInstall(WLASC_PLUGIN_NAME) != 0 ||
+-        VerifyPluginFileSha256(plugin_path_after_load) != 0 ||
++        ResolvePluginPath(plugin_path_after_load) != 0 ||
+         strcmp(plugin_path, plugin_path_after_load) != 0) {
+         return 1;
+     }

@@ -1,0 +1,23 @@
+--- b67/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_android_child_plugin.c
++++ b68/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_android_child_plugin.c
+@@ -329,7 +329,6 @@
+ {
+     static const char plugin_generation_hex[] =
+         WLASC_PLUGIN_GENERATION_SHA_HEX;
+-    static const char plugin_build_id_hex[] = WLASC_PLUGIN_BUILD_ID_HEX;
+     static const char runtime_generation_hex[] = WLAR_GENERATION_SHA_HEX;
+     return services != (const WlascStockHostServicesV1 *)0 &&
+         services->abi_version == WLASC_STOCK_HOST_SERVICES_ABI_VERSION &&
+@@ -342,11 +341,7 @@
+         BytesMatchHex(services->plugin_generation_sha256,
+                       WLASC_SHA256_SIZE, plugin_generation_hex,
+                       sizeof(plugin_generation_hex)) &&
+-        !BytesAllZero(services->plugin_elf_sha256,
+-                      sizeof(services->plugin_elf_sha256)) &&
+-        BytesMatchHex(services->plugin_build_id,
+-                      WLASC_BUILD_ID_SIZE, plugin_build_id_hex,
+-                      sizeof(plugin_build_id_hex)) &&
++        /* #68: no file SHA/build-id admission for the child plugin. */
+         services->reserved_identity_zero == UINT32_C(0) &&
+         services->add_server_stage_hook != 0 &&
+         services->add_app_spawn_hook != 0 &&
