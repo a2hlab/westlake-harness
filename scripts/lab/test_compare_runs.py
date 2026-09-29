@@ -30,6 +30,24 @@ class CompareRunsTests(unittest.TestCase):
         self.assertIn("key tusky", out)
         self.assertTrue(out[-1].startswith("verdict: 2 variables differ"))
 
+    def test_installer_pair_on_one_board_is_one_variable(self):
+        with tempfile.TemporaryDirectory() as t:
+            pair = ("/system/lib64/libbms.z.so", "/system/lib64/libapk_installer.so")
+            a = make(f"{t}/a", B6, {pair[0]: "1", pair[1]: "2"}, {})
+            b = make(f"{t}/b", B6, {pair[0]: "3", pair[1]: "4"}, {})
+            out = compare_runs.compare(a, b)
+        self.assertEqual(out[0], "variables: 1")
+        self.assertTrue(out[1].startswith("  installer: "))
+
+    def test_reboot_between_runs_is_a_variable(self):
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", B6, {"/lib/art.so": "1"}, {})
+            b = make(f"{t}/b", B6, {"/lib/art.so": "1"}, {})
+            for run, boot in ((a, "aaaaaaaa-1"), (b, "bbbbbbbb-2")):
+                (pathlib.Path(run) / B6 / "baseline.json").write_text(f'{{"boot_id": "{boot}"}}')
+            out = compare_runs.compare(a, b)
+        self.assertEqual(out[:2], ["variables: 1", "  reboot aaaaaaaa -> bbbbbbbb"])
+
     def test_same_board_one_file_is_single_variable(self):
         with tempfile.TemporaryDirectory() as t:
             a = make(f"{t}/a", A5, {"/fw/runtime.jar": "4"}, {"x": ("no", "no")})

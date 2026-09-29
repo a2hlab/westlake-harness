@@ -4,17 +4,24 @@
     compare_runs.py <run-A> <run-B> [--keys k1,k2,...]
 
 A run is a bms_batch run directory (<run>/<serial>/..., or the <serial> directory itself). The variables are
-the board (serial) and every path whose sha256 differs in runtime-fingerprint.txt, including paths present in
-only one run. For each key it prints both facts.txt lines; without --keys it prints the keys whose t5/t20
+the board (serial), a reboot on the same board (baseline.json boot_id), and every path whose sha256 differs in
+runtime-fingerprint.txt, including paths present in only one run; files in GROUPS count once. For each key it prints both facts.txt lines; without --keys it prints the keys whose t5/t20
 liveness differs.
 
 The last line is the attribution rule (FLAW-008): exactly one variable = a single-variable comparison;
 more than one = any single-cause statement is a hypothesis and needs a discriminating run; zero variables
 with a flipped key = repeat that key (nondeterminism) before blaming anything.
 """
+import json
 import pathlib
 import re
 import sys
+
+
+# files that are only ever deployed together count as one variable
+GROUPS = {
+    "installer": {"/system/lib64/libbms.z.so", "/system/lib64/libapk_installer.so"},
+}
 
 
 def device_dir(run):
@@ -39,6 +46,13 @@ def fingerprint(d):
     return out
 
 
+def boot_id(d):
+    try:
+        return json.loads((d / "baseline.json").read_text()).get("boot_id")
+    except (OSError, ValueError):
+        return None
+
+
 def facts(d):
     f = d / "facts.txt"
     rows = {}
@@ -61,9 +75,19 @@ def compare(a, b, keys=None):
     variables = []
     if da.name != db.name:
         variables.append(f"board {da.name[:8]} -> {db.name[:8]}")
+    elif boot_id(da) and boot_id(db) and boot_id(da) != boot_id(db):
+        variables.append(f"reboot {boot_id(da)[:8]} -> {boot_id(db)[:8]}")
+    grouped = {}
     for path in sorted(set(fa) | set(fb)):
         if fa.get(path) != fb.get(path):
-            variables.append(f"{path} {(fa.get(path) or 'absent')[:8]} -> {(fb.get(path) or 'absent')[:8]}")
+            change = f"{path} {(fa.get(path) or 'absent')[:8]} -> {(fb.get(path) or 'absent')[:8]}"
+            group = next((g for g, members in GROUPS.items() if path in members), None)
+            if group:
+                grouped.setdefault(group, []).append(change)
+            else:
+                variables.append(change)
+    for group, changes in grouped.items():
+        variables.append(f"{group}: " + "; ".join(changes))
     ra, rb = facts(da), facts(db)
     if keys is None:
         keys = [k for k in sorted(set(ra) & set(rb), key=str.lower) if alive(ra[k]) != alive(rb[k])]
