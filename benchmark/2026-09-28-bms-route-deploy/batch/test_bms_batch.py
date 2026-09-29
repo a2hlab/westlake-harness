@@ -387,8 +387,10 @@ class BatchTests(unittest.TestCase):
         self.assertFalse(rec['screenshots'][0]['accepted'])
         self.assertTrue(rec['screenshots'][1]['accepted'])
         self.assertEqual(rec['screenshots'][0]['foreground']['pid'],777)
-        self.assertFalse(rec['screenshots'][0]['captured'])
-        self.assertEqual(sum(x.startswith('snapshot_display') for x in board.calls),1)
+        # focus unconfirmed: the picture is still taken for the outer loop, but never accepted
+        self.assertTrue(rec['screenshots'][0]['captured'])
+        self.assertTrue(rec['screenshots'][0]['focus_unconfirmed'])
+        self.assertEqual(sum(x.startswith('snapshot_display') for x in board.calls),2)
 
     def test_focus_check_applies_to_default_early_shot(self):
         board=FakeBoard();board.wrong_focus=True

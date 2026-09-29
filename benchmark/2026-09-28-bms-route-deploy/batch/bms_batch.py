@@ -598,8 +598,17 @@ def timed_collection(board, uid, out, remote, rec, wait_seconds, shots, focus_ch
                     shot = capture(board, remote+'/'+tag+'.jpeg', out/(tag+'.jpeg'), before_snapshot=check_focus)
                     shot.update(captured=True, accepted=observation['confirmed'] and not shot['known_black_frame'])
                 except FocusMismatch as exc:
-                    shot = {'captured': False, 'accepted': False, 'known_black_frame': False,
-                            'reason': str(exc), 'visual_verdict': 'pending_review'}
+                    # The focus gate misses real screens (AppManager/Droid-ify were on screen in #78 with 0
+                    # captures), so still take the picture: it is not accepted, but the outer loop can read it.
+                    try:
+                        shot = capture(board, remote+'/'+tag+'.jpeg', out/(tag+'.jpeg'))
+                        shot.update(captured=True, accepted=False, focus_unconfirmed=True, reason=str(exc))
+                    except (AppFailure, BatchStop) as capture_exc:
+                        if isinstance(capture_exc, BatchStop):
+                            raise
+                        shot = {'captured': False, 'accepted': False, 'known_black_frame': False,
+                                'reason': f'{exc}; unconfirmed capture failed: {capture_exc}',
+                                'visual_verdict': 'pending_review'}
                 shot.update(scheduled_seconds=offset, elapsed_seconds=time.monotonic()-start,
                             foreground=observation)
                 rec['screenshots'].append(shot)
