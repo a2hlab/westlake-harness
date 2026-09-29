@@ -27,8 +27,12 @@ public final class B8BindExtras {
     // that only need a non-null binder so getSystemService does not NPE (#70 revision).
     // connectivity + jobscheduler are handled by OnlineConnectivityManager (SystemServiceRegistry
     // fetcher replacement, #90), not by an sCache binder stub, so they are not listed here.
+    // r17b (#F): batterystats + batteryproperties added -- newpipe reads BatteryManager.getIntProperty
+    // while starting its main activity; without both binders BatteryManager NPEs. LocalServiceBinders
+    // answers batteryproperties.getProperty with idle-charged constants.
     private static final String[] SERVICES = {"appops", "uimode", "locale", "account", "alarm",
-            "notification", "location", "webviewupdate", "shortcut"};
+            "notification", "location", "webviewupdate", "shortcut",
+            "batterystats", "batteryproperties"};
 
     private B8BindExtras() {}
 

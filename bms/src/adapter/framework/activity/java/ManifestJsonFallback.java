@@ -146,10 +146,19 @@ public final class ManifestJsonFallback {
         p.put("name", name);
         p.put("authorities", authorities == null ? "" : authorities);
         p.put("exported", boolAttr(xml, android.R.attr.exported, false));
+        // r17b (#B): android:permission is the fallback for read/write when they are not set
+        // individually. DocumentsProvider.attachInfo rejects a provider whose readPermission or
+        // writePermission is not exactly MANAGE_DOCUMENTS, and fd-client's DocumentsStorageProvider
+        // declares only android:permission -- without this fallback both project as "" and it throws
+        // "Provider must be protected by MANAGE_DOCUMENTS".
+        String permission = strAttr(xml, android.R.attr.permission, "");
+        if (permission == null) permission = "";
         String read = strAttr(xml, android.R.attr.readPermission, "");
-        p.put("readPermission", read == null ? "" : read);
+        if (read == null || read.isEmpty()) read = permission;
+        p.put("readPermission", read);
         String write = strAttr(xml, android.R.attr.writePermission, "");
-        p.put("writePermission", write == null ? "" : write);
+        if (write == null || write.isEmpty()) write = permission;
+        p.put("writePermission", write);
         p.put("grantUriPermissions", boolAttr(xml, android.R.attr.grantUriPermissions, false));
         p.put("multiprocess", boolAttr(xml, android.R.attr.multiprocess, false));
         p.put("initOrder", intAttr(xml, android.R.attr.initOrder, 0));

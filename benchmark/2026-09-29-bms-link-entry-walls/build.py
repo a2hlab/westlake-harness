@@ -77,7 +77,10 @@ for p in online_kept:
 tls_src = [src / 'WestlakeTlsInstall.java', src / 'OhTrustBridge.java',
            src / 'OhTrustManagerFactorySpi.java', src / 'OhSystemTrustManager.java',
            src / 'OhPeerCertificates.java', src / 'WestlakeSecureRandomSpi.java',
-           src / 'WestlakeSSLSocket.java', src / 'WestlakeSSLSession.java']
+           src / 'WestlakeSSLSocket.java', src / 'WestlakeSSLSession.java',
+           # r17b (#tagsoup): tagsoup-free Html.fromHtml replacement (android.text.* -> needs the
+           # android.jar bootclasspath pass), called by oc-t4's libwestlake_html_compat.so.
+           src / 'HtmlCompatFallback.java']
 tls_classes = BUILD / 'tls-classes'; tls_classes.mkdir()
 run(['javac', '-source', '8', '-target', '8', '-bootclasspath', INPUT / 'android.jar',
      '-cp', INPUT / 'android.jar', '-d', tls_classes, '-nowarn', *tls_src])
