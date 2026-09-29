@@ -79,6 +79,17 @@ public final class B7BindFixes {
         } catch (Throwable t) {
             System.err.println("[SELF-UID] not installed: " + t);
         }
+        // r17d (#media_session): a MediaSessionCompat-based service (noice/fossify-musicplayer's
+        // SoundPlaybackService / MediaSessionService) constructs a platform MediaSession, whose <init>
+        // calls MediaSessionManager.createSession(); route-A has no MEDIA_SESSION_SERVICE, so the
+        // manager is null and it NPEs before the service reaches its UI. WlMediaSession (verbatim
+        // Westlake) registers a local ISessionManager (sCache binder + SystemServiceRegistry fetcher)
+        // whose createSession returns a no-op ISession.
+        try {
+            System.err.println("[B8-MSESSION] " + adapter.compat.WlMediaSession.install());
+        } catch (Throwable t) {
+            System.err.println("[B8-MSESSION] not installed: " + t);
+        }
         // r17 (#93): Westlake HTTPS/TLS Java side. OhTrustBridge restores the BC JCA registrations the
         // trimmed BCP dropped (MessageDigest, AES, X.509 CertificateFactory, RSA/EC signatures, EC
         // KeyFactory) and publishes SecureRandom.WestlakeKernel + TrustManagerFactory.OH-PKIX/PKIX/X509
@@ -104,6 +115,11 @@ public final class B7BindFixes {
      * (TLS first). Called from apply() so the caller class loader is the runtime PathClassLoader.
      */
     static void loadWestlakeNativeLibs() {
+        // r17d: give the runtime PathClassLoader a native dependency domain first. Without a
+        // librarySearchPath it has none, so native_loader rejects every System.load of a
+        // /system/android/lib64 soname ("no native dependency domain for ClassLoader",
+        // native_loader_registry.cpp:332). Creating the namespace explicitly is the fix.
+        createNativeNamespace();
         // Framework JNI gap-fill first (56b5295c): supplies Process.getElapsedCpuTime, FileObserver,
         // Camera.getNumberOfCameras, EGLImpl._nativeClassInit and ActivityManagerAdapter.
         // nativeStopServiceAbility -- the native symbols apps reach once the receiver/broadcast guards
@@ -131,6 +147,74 @@ public final class B7BindFixes {
         } catch (Throwable t) {
             System.err.println("[B8-NATIVE] System.load(" + path + ") failed: " + t);
         }
+    }
+
+    /**
+     * r17d: reflectively call com.android.internal.os.ClassLoaderFactory.createClassloaderNamespace to
+     * build a native-library namespace for the runtime PathClassLoader with librarySearchPath =
+     * /system/android/lib64. The signature is OH-version-specific, so discover the method by name and
+     * fill its parameters by type/position: ClassLoader -> runtime loader, int -> targetSdk, the first
+     * two Strings -> the lib search + permitted paths, the next String -> the runtime JAR dexPath,
+     * booleans -> false, any trailing arg -> null. A null return means success.
+     */
+    private static void createNativeNamespace() {
+        try {
+            Class<?> factory = Class.forName("com.android.internal.os.ClassLoaderFactory");
+            ClassLoader runtimeCl = B7BindFixes.class.getClassLoader();
+            java.lang.reflect.Method create = null;
+            for (java.lang.reflect.Method m : factory.getDeclaredMethods()) {
+                if (m.getName().equals("createClassloaderNamespace")) { create = m; break; }
+            }
+            if (create == null) {
+                System.err.println("[B8-NATIVE] createClassloaderNamespace not found; libs will be rejected");
+                return;
+            }
+            create.setAccessible(true);
+            final String lib = "/system/android/lib64";
+            final String dexPath = runtimeJarPath(runtimeCl);
+            Class<?>[] pt = create.getParameterTypes();
+            Object[] args = new Object[pt.length];
+            int stringSeen = 0;
+            for (int i = 0; i < pt.length; i++) {
+                Class<?> t = pt[i];
+                if (t == ClassLoader.class) {
+                    args[i] = runtimeCl;
+                } else if (t == int.class) {
+                    args[i] = Integer.valueOf(34);           // targetSdkVersion
+                } else if (t == boolean.class) {
+                    args[i] = Boolean.FALSE;                 // isShared / isForVendor
+                } else if (t == String.class) {
+                    // order: librarySearchPath, libraryPermittedPath, dexPath, [name...]
+                    args[i] = stringSeen < 2 ? lib : (stringSeen == 2 ? dexPath : null);
+                    stringSeen++;
+                } else {
+                    args[i] = null;
+                }
+            }
+            Object result = create.invoke(null, args);
+            if (result == null) {
+                System.err.println("[B8-NATIVE] native namespace created for runtime CL (search=" + lib + ")");
+            } else {
+                System.err.println("[B8-NATIVE] createClassloaderNamespace returned: " + result);
+            }
+        } catch (Throwable t) {
+            System.err.println("[B8-NATIVE] createNativeNamespace failed: " + t);
+        }
+    }
+
+    /** The runtime JAR path from the PathClassLoader's toString, else the known deploy target. */
+    private static String runtimeJarPath(ClassLoader cl) {
+        try {
+            String s = String.valueOf(cl);
+            int z = s.indexOf("zip file \"");
+            if (z >= 0) {
+                int start = z + "zip file \"".length();
+                int end = s.indexOf('"', start);
+                if (end > start) return s.substring(start, end);
+            }
+        } catch (Throwable ignore) {
+        }
+        return "/system/android/framework/oh-adapter-runtime.jar";
     }
 
     static void installTolerantUncaughtHandler() {

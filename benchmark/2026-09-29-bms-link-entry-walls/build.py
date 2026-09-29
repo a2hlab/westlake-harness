@@ -50,7 +50,10 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
                src / 'WindowSessionProxy.java', src / 'ActivityManagerBindProxy.java',
                # r17 (cc-wiki): own-uid getPackagesForUid/getNameForUid so StorageManager.getVolumeList
                # asks the child-local mount binder instead of returning empty (amaze AppConfig <clinit>).
-               src / 'SelfUidPackages.java']
+               src / 'SelfUidPackages.java',
+               # r17d (#media_session): verbatim Westlake local ISessionManager so a MediaSessionCompat
+               # service (noice/musicplayer) does not NPE on a null MediaSessionManager.
+               src / 'WlMediaSession.java']
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 # r16 (#90): cc-wiki's OnlineConnectivityManager compiles against the Westlake android.net sources
 # (ConnectivityManager/Network/NetworkInfo/NetworkCapabilities/NetworkRequest, which expose the
