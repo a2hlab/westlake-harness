@@ -371,3 +371,7 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **2026-09-29 #64 三板实采纠偏**：14:46 CST 三板158路径=153同/5异，active6cb目录29件全同；5cd JAR实为r8b `d5000c4e`（非口述r7b `c432d987`），installer双件`1ebf78ab`对其他板`675536e8`，余2异在61b未映射的旧74e6目录。`ps NAME=appspawn-x` 可是HelloWorld子进程，须结合stat comm+完整APK maps+PPID；5ea29584/61b14337已据此纠正角色。报告 `benchmark/2026-09-29-board-parity/README.md`；5cd HelloWorld补采待解锁，不能拿磁盘一致代替子进程证据。
 
 - **#77 安装墙离线实锤（2026-09-29，cx-bms）**：B3 x/头条 -2005 是 JSON 99625/242663+NUL 超过调用方 65536（repo/real-work 已有 1MiB，修在 libbms）；Seal ec=8519936 是三个 `.zip.so` 实为 ZIP 数据，头条扩容后还会撞 arm64 目录 ELF32 `libcvt.so`；58份APK/377项扫描与40+12项主机正反例见 `benchmark/2026-09-29-install-walls/README.md`，原样提取4项精确SHA例外仅草案，未上板、不能推称可加载/可上屏。
+
+- **B10 v3（2026-09-29，cx-bms，#72）**：本地real-work冻结AOSP16-r2/99b01a65注册表+包内ELF实表/STT_FILE，每包补归属1434个JNI；认可例外不改，v3剩335 unknown仍拒。#75致命点首墙事后1/12→5/12、候选11/12，receipt缺APK实测SHA；#78冻结2d8c9a54仅1/13有预测，OONI前置JobScheduler命中1/1但最终WorkManager标签0/1，二者不得混计。见 `benchmark/2026-09-29-static-wall-prediction/README.md`，运行时行为仍unknown。
+
+- **#72 v3 类缺失门（2026-09-29）**：r13 f1325297 的14个反射代理接口里，v3a boot JAR定义只缺 IConnectivityManager；Wikipedia eba82a0f 的 ConnectionStateMonitor 两服务调用有启动静态路径，源码有桩不等于接口可加载。#69 20+#78 13为33成员/32唯一APK(OONI重复)，connectivity缺类涉及15个静态启动图/28个全量引用，受分支约束、非实测故障数；证据 `benchmark/2026-09-29-static-wall-prediction/v3/classes/`。

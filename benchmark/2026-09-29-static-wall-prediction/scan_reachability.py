@@ -6,7 +6,7 @@ androidx.startup metadata. Exact calls and uniquely-resolved inheritance are
 followed. Ambiguous interface/virtual targets, framework callbacks, reflection,
 async work and branch feasibility are not guessed.
 """
-import collections,concurrent.futures,json,re,subprocess,tempfile,zipfile
+import collections,concurrent.futures,inspect,json,re,subprocess,tempfile,zipfile
 from pathlib import Path
 from scan_jni import HERE,DEXDUMP,sha
 from scan_apps import HEADER,INSN,INVOKE,load_apps
@@ -31,7 +31,7 @@ def manifest(apk):
   if not s:return None
   if s.startswith('.'):return pkg+s
   return s if '.' in s else pkg+'.'+s
- def enabled(n):return n['attrs'].get('enabled','true')!='false'
+ def enabled(n):return n['attrs'].get('enabled','true') not in {'false','(type 0x12)0x0','0x0'}
  main_process=app['attrs'].get('process',pkg)
  launch=[];providers=[];initializers=[]
  for n in app['children']:
@@ -83,13 +83,19 @@ def compute_paths(methods,parents,interfaces,roots):
    elif not resolved:unresolved['external_or_unresolved_call']+=1
  return discovered,dict(unresolved),resolve
 
-def scan(app):
- apk=Path(app['apk']);key=app['key'];mf=manifest(apk);raw=mf.pop('raw');(HERE/'evidence'/f'manifest-{key}.txt').write_text(raw)
+def scan(app, output_dir=None, inspect_method=None):
+ output_dir=Path(output_dir) if output_dir else HERE/'evidence';output_dir.mkdir(parents=True,exist_ok=True)
+ apk=Path(app['apk']);key=app['key']
+ if sha(apk)!=app['sha256']:raise ValueError('APK hash mismatch: '+key)
+ mf=manifest(apk);raw=mf.pop('raw');(output_dir/f'manifest-{key}.txt').write_text(raw)
+ extra=[]
  methods={};parents={};interfaces={};cls=None;interface_block=False
  with zipfile.ZipFile(apk) as archive,tempfile.TemporaryDirectory(prefix='b10-graph-') as td:
   for entry in sorted(n for n in archive.namelist() if re.fullmatch(r'classes\d*\.dex',n)):
    path=Path(td)/entry;path.write_bytes(archive.read(entry));proc=subprocess.Popen([str(DEXDUMP),'-d',str(path)],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,errors='replace')
-   current=None
+   current=None;insns=[]
+   def flush():
+    if inspect_method and current:extra.extend(inspect_method(current,entry,insns))
    for lineno,line in enumerate(proc.stdout,1):
     if 'Class descriptor' in line:
      cls=re.search(r"'L([^;]+);'",line)[1];interfaces.setdefault(cls,[]);interface_block=False
@@ -103,11 +109,12 @@ def scan(app):
      elif 'fields' in line or 'methods' in line:interface_block=False
     h=HEADER.search(line)
     if h:
-     current=method_id(h[1]);methods[current]={'dex':entry,'line':lineno,'edges':[]};continue
+     flush();insns=[];current=method_id(h[1]);methods[current]={'dex':entry,'line':lineno,'edges':[]};continue
     if current is None:continue
     m=INSN.search(line)
     if not m:continue
     offset,text=m.groups();inv=INVOKE.search(text)
+    if inspect_method:insns.append((offset,lineno,text))
     if inv:
      kind,args,owner,name,sig=inv.groups();methods[current]['edges'].append({'target':owner+'.'+name+sig,'kind':kind,'dex':entry,'offset':offset,'line':lineno})
     # Constructing a class or calling a static member can trigger its <clinit>.
@@ -117,7 +124,7 @@ def scan(app):
     c=re.search(r'const-class v\d+, L([^;]+);',text)
     if c and '.dependencies()' in current:
      methods[current]['edges'].append({'target':c[1]+'.create(Landroid/content/Context;)Ljava/lang/Object;','kind':'startup-dependency','dex':entry,'offset':offset,'line':lineno})
-   err=proc.stderr.read()
+   flush();err=proc.stderr.read()
    if proc.wait():raise RuntimeError(err)
  def root_methods(name,suffixes,category,line):
   if not name:return []
@@ -154,7 +161,10 @@ def scan(app):
    for feature,needle in needles.items():
     if edge['target'].startswith(needle) and features.get(feature,{}).get('startup_reachable')!='yes-static':features[feature]={**evidence_for(caller),'reference':edge}
  result={'key':key,'apk_sha256':app['sha256'],'scanner_sha256':sha(Path(__file__)),'manifest':mf,'roots':roots,'method_count':len(methods),'reachable_method_count':len(paths),'unresolved_edges':unresolved,'calls':calls,'features':features,'scope':__doc__}
- (HERE/'evidence'/f'reachability-{key}.json').write_text(json.dumps(result,indent=2)+'\n');print(key,len(methods),len(paths),sum(x['startup_reachable']=='yes-static' for x in calls),flush=True);return result
+ if inspect_method:
+  result['extra_calls']=[{**c,**evidence_for(c['method'])} for c in extra]
+  result['method_inspector_sha256']=sha(Path(inspect.getsourcefile(inspect_method)))
+ (output_dir/f'reachability-{key}.json').write_text(json.dumps(result,indent=2)+'\n');print(key,len(methods),len(paths),sum(x['startup_reachable']=='yes-static' for x in calls),flush=True);return result
 
 def main():
  apps=load_apps()

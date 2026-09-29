@@ -40,7 +40,7 @@ def cached(path,package):
     r=matches[0]
     if digest(SCAN)!=r.get('scanner_sha256'):raise ValueError('scanner changed; rescan')
     if digest(manifest)!=r['package_manifest_sha256']:raise ValueError('stale package manifest; rescan')
-    for item in r['inputs']+r.get('source_inputs',[]):
+    for item in r['inputs']+r.get('source_inputs',[])+r.get('scanner_dependencies',[]):
         if digest(Path(item['path']))!=item['sha256']:raise ValueError('stale matrix input: '+item['path'])
     return r
 

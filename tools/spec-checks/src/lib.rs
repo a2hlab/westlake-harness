@@ -162,3 +162,33 @@ fn b77_candidate_patch_regressions() {
 fn b77_impact_and_provenance() {
     run(&["benchmark/2026-09-29-install-walls/test_walls.py", "Walls.test_impact"]);
 }
+
+#[test]
+fn b10_v3_registration_ownership() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_v3.py", "V3Tests.test_registration"]);
+}
+
+#[test]
+fn b10_v3_cache_and_exceptions() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_v3.py", "V3Tests.test_cache"]);
+}
+
+#[test]
+fn b10_v3_risk_rules() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_v3.py", "V3Tests.test_risks"]);
+}
+
+#[test]
+fn b10_v3_fatal_backtest() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_v3.py", "V3Tests.test_backtest"]);
+}
+
+#[test]
+fn b10_v3_class_presence() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_classes_v3.py", "ClassesTests.test_presence"]);
+}
+
+#[test]
+fn b10_v3_class_reachability() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_classes_v3.py", "ClassesTests.test_paths"]);
+}

@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-09-29-static-wall-prediction/`** | **B10 v3: AOSP JNI ownership, 134 startup risk rows + 32-APK class availability and frozen/fatal backtests; unresolved methods keep the gate closed.** |
 | **`benchmark/2026-09-29-install-walls/`** | **#77 offline install causes, 58-APK impact scan, two candidate patches and exact-payload exception draft.** |
 | **`benchmark/2026-09-29-board-parity/`** | **#64 three-board runtime parity: 158 paths, 153 equal / 5 different; inherited process-name correction, r8b JAR attribution and mapped identities; 5cd HelloWorld pending.** |
 | **`benchmark/2026-09-29-white-window/`** | **#61/#62 offline white-window diagnosis: 9 target logs, separate bind failures, native AbilityStage replies and a 49/49 JNI-layout match to the no-reply generation; no device execution.** |

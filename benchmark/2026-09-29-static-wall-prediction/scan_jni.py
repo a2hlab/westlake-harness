@@ -9,6 +9,10 @@ DEXDUMP=Path.home()/'Library/Android/sdk/build-tools/37.0.0/dexdump'
 PACKAGES={'6cb40cd6':BASE/'westlake-generation-6cb40cd6','v3-74d1d6d4':BASE/'westlake-generation-v3-74d1d6d4'}
 R8=BASE/'vm-copies/r8b-runtime-jar/oh-adapter-runtime.jar'
 R8HASH='d5000c4e19e74e3ec7a72300ed425fa2c5ba521aa4b04cb6e688e165e6ba5554'
+REGISTRATION_SOURCE=HERE/'registration_sources.py'
+_registration_spec=importlib.util.spec_from_file_location('b10_registration_sources',REGISTRATION_SOURCE)
+registration_sources=importlib.util.module_from_spec(_registration_spec)
+_registration_spec.loader.exec_module(registration_sources)
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def identity(path):return {'path':str(path),'sha256':sha(path),'bytes':path.stat().st_size}
@@ -129,7 +133,11 @@ def classify(decl, libraries, sources):
         for table in lib['tables_by_sig'].get((name,sig),[]):
             matches=[]
             for src in sources.get((cls,name,sig),[]):
-                if Path(src['path']).name in lib['compiled_sources'] and any(re.search(r'(?<![A-Za-z_])'+re.escape(t)+r'(?:E|[^A-Za-z_]|$)', sym) for t in src['function_tokens'] for sym in table['function_symbols']):matches.append(src)
+                if 'function_names' in src:
+                    function_matches=registration_sources.symbol_matches(src,table['function_symbols'])
+                else:
+                    function_matches=any(re.search(r'(?<![A-Za-z_])'+re.escape(t)+r'(?:E|[^A-Za-z_]|$)', sym) for t in src['function_tokens'] for sym in table['function_symbols'])
+                if Path(src['path']).name in lib['compiled_sources'] and function_matches:matches.append(src)
             item={'library':lib['path'],**table,'source':matches}
             if matches:registered.append(item)
             else:ambiguous.append(item)
@@ -168,11 +176,15 @@ def scan(package,overlay=R8):
         jar_inputs.append(identity(overlay))
         for d in declarations(overlay):decls[d['id']]=d
     sources,source_inputs=source_tables({d['class'] for d in decls.values()})
+    explicit,extra_inputs,source_unknown=registration_sources.source_tables({d['class'] for d in decls.values()})
+    for key,proofs in explicit.items():sources[key].extend(proofs)
+    source_inputs=list({x['path']:x for x in source_inputs+extra_inputs}.values())
     rows=[]
     for d in sorted(decls.values(),key=lambda x:x['id']):
         status,evidence,reason=classify(d,libs,sources)
         rows.append({**d,'status':status,'evidence':evidence,'reason':reason})
-    return {'scanner_sha256':sha(Path(__file__)), 'package':str(package),'package_manifest_sha256':sha(package/'package.json'),'generation':meta['generation'],'overlay':identity(overlay) if overlay else None,'inputs':inputs+jar_inputs,'source_inputs':source_inputs,'counts':dict(collections.Counter(r['status'] for r in rows)), 'methods':rows}
+    return {'scanner_version':3,'scanner_dependencies':[identity(REGISTRATION_SOURCE)],'source_attribution_unknown':source_unknown,
+            'scanner_sha256':sha(Path(__file__)), 'package':str(package),'package_manifest_sha256':sha(package/'package.json'),'generation':meta['generation'],'overlay':identity(overlay) if overlay else None,'inputs':inputs+jar_inputs,'source_inputs':source_inputs,'counts':dict(collections.Counter(r['status'] for r in rows)), 'methods':rows}
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--package',type=Path);p.add_argument('--output',type=Path);a=p.parse_args()

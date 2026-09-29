@@ -15,6 +15,10 @@ def csvwrite(name,rows,fields):
   for r in rows:w.writerow({k:json.dumps(r[k],separators=(',',':')) if isinstance(r[k],(dict,list)) else r[k] for k in fields})
 
 def main():
+ # Preserve accepted v3 outputs and outer approvals when an older command is reused.
+ if (HERE/'v3/jni-summary.json').exists():
+  from finalize_v3 import main as finalize_current
+  return finalize_current()
  reach_path=HERE/'reachability-results.json';reach={x['key']:x for x in json.loads(reach_path.read_text())} if reach_path.exists() else {}
  jni=json.loads((HERE/'jni-results.json').read_text());apps=load_apps();runtime=json.loads((HERE/'evidence/runtime-disassembly.json').read_text())
  def proof(method,pattern=None):

@@ -3,6 +3,7 @@
 import concurrent.futures, csv, hashlib, json, re, subprocess, tempfile, zipfile
 from pathlib import Path
 from scan_jni import HERE, BASE, DEXDUMP, sha
+from scan_io import load
 INPUT=BASE/'westlake-harness-b4/benchmark/2026-09-29-manifest-classes'
 # Android API class names; unresolved/obfuscated class constants remain unknown.
 CLASS_SERVICE={'UserManager':'user','NotificationManager':'notification','AlarmManager':'alarm','UiModeManager':'uimode','LocaleManager':'locale','AccountManager':'account','AppOpsManager':'appops','ClipboardManager':'clipboard','PowerManager':'power','AudioManager':'audio','ConnectivityManager':'connectivity','LocationManager':'location','InputMethodManager':'input_method','WindowManager':'window','DisplayManager':'display','ActivityManager':'activity','LayoutInflater':'layout_inflater','SensorManager':'sensor','Vibrator':'vibrator','VibratorManager':'vibrator_manager','TelephonyManager':'phone','WifiManager':'wifi','JobScheduler':'jobscheduler','StorageManager':'storage','CameraManager':'camera','DownloadManager':'download','KeyguardManager':'keyguard','AccessibilityManager':'accessibility','SearchManager':'search','NfcManager':'nfc','BluetoothManager':'bluetooth','TextServicesManager':'textservices','DevicePolicyManager':'device_policy','FingerprintManager':'fingerprint','BiometricManager':'biometric','InputManager':'input','RoleManager':'role','PermissionManager':'permissionmgr'}
@@ -82,9 +83,9 @@ def scan(app,native_ids):
     print(key,len(calls),len(natives),flush=True);return result
 
 def load_apps():
-    data=json.loads((HERE/'app-results.json').read_text())
+    data=load(HERE/'app-results.json')
     if isinstance(data,list):return data
-    return [json.loads((HERE/x['evidence']).read_text()) for x in data['apps']]
+    return [load(HERE/x['evidence']) for x in data['apps']]
 
 def main():
     matrix=json.loads((HERE/'jni-results.json').read_text());ids={m['id'] for x in matrix.values() for m in x['methods']}

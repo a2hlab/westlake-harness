@@ -1,24 +1,26 @@
-# B10 offline static scan — first delivery + requested v2 columns
+# B10 scanner v3 — offline, timeboxed
 
-Run from the worktree root (Python 3, Android build-tools 37.0.0 `dexdump`/`aapt2`; inputs are pinned by SHA-256). No device command is used.
+V2 left compiled AOSP JNI tables unattributed and confused startup risks with final fatal causes. V3 adds explicit class/table ownership, compiled ELF evidence and separate fatal/prerequisite backtests. No device operations or runtime repairs were performed.
+
+Run from this worktree with the pinned local package/APK inputs (Python 3 and Android build-tools 37.0.0):
 
 ```sh
-python3 benchmark/2026-09-29-static-wall-prediction/scan_jni.py
-python3 benchmark/2026-09-29-static-wall-prediction/scan_apps.py
-python3 benchmark/2026-09-29-static-wall-prediction/extract_runtime.py
-python3 benchmark/2026-09-29-static-wall-prediction/scan_reachability.py
-python3 benchmark/2026-09-29-static-wall-prediction/audit_build.py
-python3 benchmark/2026-09-29-static-wall-prediction/finalize.py
+python3 benchmark/2026-09-29-static-wall-prediction/scan_jni.py --output benchmark/2026-09-29-static-wall-prediction/v3/jni-results.json
+python3 benchmark/2026-09-29-static-wall-prediction/publish_jni_v3.py
+python3 benchmark/2026-09-29-static-wall-prediction/scan_risks_v3.py
+python3 benchmark/2026-09-29-static-wall-prediction/finalize_v3.py
 cargo test --manifest-path tools/spec-checks/Cargo.toml b10_
-python3 scripts/lab/jni_gate.py --package /Users/zhaoyue/orca/workspaces/westlake-generation-6cb40cd6 --allowlist benchmark/2026-09-29-static-wall-prediction/jni-allowlist.json
+python3 scripts/lab/jni_gate.py --package /Users/zhaoyue/orca/workspaces/westlake-generation-v3-74d1d6d4 --matrix benchmark/2026-09-29-static-wall-prediction/jni-results.json.gz --allowlist benchmark/2026-09-29-static-wall-prediction/jni-allowlist.json.gz
 ```
 
-The gate currently rejects both packages: missing/stub/unknown are uncovered, and every exception is still **proposed**. Review requires exact method, generation, overlay hash, status, reason, evidence and `approved_by`. `--matrix benchmark/2026-09-29-static-wall-prediction/jni-results.json` uses a cache only after checking package/input/source/scanner hashes; omit it for a fresh deployment check. The test removes the bridge ELF from a local package and verifies rejection, then tests complete fixture-only exceptions. No real approval is created.
+AOSP source is the existing read-only real-work frozen slice, `frameworks/base` commit **99b01a65**, tagged **android-16.0.0_r2**; no download was needed. Exact paths/tags are in `v3/evidence/aosp-provenance.json:1`; every attribution includes source file/line, explicit registration, ELF table address, function symbol and compiled-file check. ART's AOSP14 version was not used to infer the framework version.
 
-Known answers: all **6/6** match. In 6cb40cd6, `nativeParseManifestJson`/`nativeGetSysProp` are missing and `SQLiteConnection.nativeOpen` is stub; in v3 74d1d6d4, they are exported/exported/registered. The `notification` route for fd-etar is missing; `user` is an r8b stub. Current Java source has later stubs that are absent from the pinned r8b d5000c4e JAR, so coverage uses compiled bytes. JNI totals are 5,406 declarations/package; **4,726 unknown/package** are not counted as covered. Evidence/provenance is in `jni-results.json`, per-app evidence, and `evidence/runtime-disassembly.json`.
+Each package gains **1,434 registered methods**. Known JNI answers remain **6/6**. After the unchanged **6,554 approved exceptions**, v3 has **335 unknown blockers** (previously 1,450); 6cb has **335 unknown + 4 missing + 50 stub**. Both gates still reject. Of the remaining unknowns, 155/package have direct calls in the 20 APKs; nothing was automatically approved (`v3/jni-summary.json:1`, `v3/jni-blockers.csv:1`). A source table alone is insufficient; cache validation also hashes the attribution scanner and its source inputs.
 
-Use `service-matrix.csv` (421 rows, 20 apps), `predictions.csv` (40 app/profile rows), and `wall-ranking.csv`. V2 adds `startup_reachable`, path evidence and separate `stub_ok` / `needs_real` queues. Ranking uses `startup_affected_apps`; `full_reference_apps` remains separate. `yes-static` means a bounded APK call path from manifest Application/launcher Activity/provider or explicit androidx.startup metadata, conditional on initialization and branch execution. Unresolved dispatch/reflection/framework callbacks remain **unknown**, not “off startup.” `stub_ok` is the user's first-screen policy and still requires the caller's return-value contract. Flutter path behavior is a `needs_real` runtime follow-up, outside this static verdict. The Typeface candidate cites the requested ZigZag log at line 3819 and remains unapproved.
+Machine entrypoints: `jni-matrix.csv.gz`, `service-matrix.csv.gz` (unchanged 421-row v2 inventory), `predictions.csv` (40 rows), `wall-ranking.csv`; new `v3/risk-matrix.csv.gz`, `v3/jni-delta.csv.gz`, `v3/jni-blockers.csv`, `v3/backtest.csv`, and `v3/coverage-gaps.csv`. Rich evidence is in the corresponding JSON/gzip files. The **134 risk rows** cover dlopen/Flutter paths, Koin, WorkManager and nullable startup service/context contracts. Risks remain conditional; startup counts are bounded static paths. `stub_ok` and `needs_real` remain separate (`v3/risk-results.json`, `v3/wall-ranking.json`).
 
-Retrospective first-wall agreement: **v1 4/7; v2 5/7 (71.4%)**. This is not prospective accuracy: observations were already available. `backtest.json` records every comparison/exclusion for #63/#65/#68/#69/#71. Missing fatal receipts, different configurations and runtime namespace failures are unscored. #71's missing child logs are a **measurement gap** (outer correction: 256K buffer/private logging), not evidence about JAR behavior. No screenshot or liveness total is claimed here.
+Backtest (`v3/backtest.json:1`): #75 final-fatal first-wall agreement is **v2 1/12 → v3 5/12**; any-candidate coverage is **11/12**, with the display/window failure still missed. This is retrospective, and the receipt lacks observed APK hashes: exact-identity denominator **0**. The shared caught theme-sync exception is not counted as the fatal cause. #78 uses the original frozen **2d8c9a54** predictions: coverage **1/13**, OONI's evidenced JobScheduler prerequisite **1/1**, exact final-fatal label **0/1** (WorkManager initialization). v3/v3a are different profiles; service comparison is conditional, exact-generation denominator **0**. The other 12 APKs stay unscored, including the different-SHA noice alias.
 
-Build checks: `build-audit.json` records 65 changed regions in 27 scripts; actual P2-B source-collection checks reject four independent missing inputs and print their paths. Full cross-compilation was not run. Remaining archival/conditional candidates are listed as unknown under the requested first-version timebox; this is not a claim that the entire legacy script tree has been hardened. B9's exact required-bridge-source diagnostic is reused. Source implementation pointers are in the prediction rows.
+Validation: **14 tests pass**, including real bridge-removal rejection, wrong-class/overload negatives, source/dependency cache invalidation and approved-exception preservation. Contract lint **100%**, four v3 scenarios pass (`v3/evidence/lifecycle.json`, `regressions.txt`, `gate-regression.txt`). Unresolved JNI, runtime namespace/initialization behavior, screenshots and process survival remain unknown. Commit is left to the outer lane.
+
+Class-absence extension (#80): `scan_classes_v3.py --cohort benchmark/2026-09-29-static-wall-prediction/v3/classes/cohort.json`, then `finalize_classes_v3.py` and `package_v3.py`. See `v3/classes/README.md`: **33 memberships / 32 unique APKs**, 38,872 grouped rows; r13 **13/14 interfaces have definitions**, missing `IConnectivityManager` reaches **15 bounded startup graphs**. Known answer 1/1 retrospective; class presence is not loading/initialization success. Two added scenarios pass.
