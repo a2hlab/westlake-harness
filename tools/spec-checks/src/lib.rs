@@ -87,3 +87,8 @@ fn bms_rerun_offline() {
         .expect("run three-shard FakeBoard plans and offline v4 aggregation checks");
     assert!(status.success(), "B4 rerun preparation checks failed");
 }
+
+#[test]
+fn white_window_offline() {
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_*.py"]);
+}

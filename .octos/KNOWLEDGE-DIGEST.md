@@ -361,3 +361,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **2026-09-29 #57 批量工具统一**: `bms_batch.py --reinstall --hilog [秒] --shots 5,20 --focus-check` 合并一次性脚本；BM rc0须验成功文本、包名缺省先读app-input、WMS名含空格需按数字列尾解析，每张严格截图核目标UID的焦点PID，不用进程活着/离开桌面弱判据；36627B只标已知黑图，其他大小不等于点亮；app空目录可预建，旧证据拒覆写（FakeBoard离线verified，板上unverified）。
 
 - **2026-09-29 #59 B4 v4 汇总防混轮**: v3 的 merge_v3 只覆盖分类等字段，旧 observed_pids/record_status 可能仍是前轮；分片可借历史分类，v4 直方图必须从同一run-id/serial/boot的新record重算，禁止借v3填未跑key；见 `benchmark/2026-09-28-bms-route-deploy/batch/b4-rerun-plan.md`，三片22/22/22离线FakeBoard验证，未上板。
+
+- **2026-09-29 #61 白启动窗离线核验**：#48 的 9 个 15s 存活 PID 全无 ScheduleLaunchAbility/VSync 首帧链；7 个 bind 明确失败(4 Startup ProviderInfo、1 FileProvider metadata、2 namespace 目录)，stk/mindustry bind OK；跨后续 app 的全板 hilog 按 PID+UID+包名可归属 8 个约 30s 后 Add Ability Stage TimeOut（mindustry 未捕获），故需并查 OH stage 完成握手与 Android bind，不能把存活/白窗统归 VSync 卡死；原始行号、哈希及 R2 边界见 `benchmark/2026-09-29-white-window/README.md`。
