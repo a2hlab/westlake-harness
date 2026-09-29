@@ -314,6 +314,7 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **B4 v2(61b,66 key,`feat/bms-sweep` ac23a1d8)**:拉起后早退 55,其中 faultlog 首帧为 B6 `ContextImpl.getTheme` 空指针的 **29 个**(最大的墙)、无 cppcrash 的 22 个(多为 Java 异常,需 per-app hilog);存活 7,读图仅 fd-notes 为自身界面、anki 显示的是 APK 内 LeakCanary 的启动 Activity(一个 APK 有多个 launcher 时,BMS 桌面入口可能是调试库的)。
 - **B2/B3 结论(5cd,`feat/bms-label-resolve` f97cf6c/f3ec81c)**:桌面名全是 Hello World 的根因是 `compile_apk_installer.sh` 漏编 `apk_label_resolver.cpp`,外加 label 常为 `@string` 引用(Res_value 0x01)要沿链解析;两处修后 Wikipedia/Markor/Aegis/Termux 的 `bm dump` label 全对。图标按 manifest id 在 arsc 各密度桶取最高位图(混淆资源名也能命中)。fd-seal/x/toutiao 装不上与图标无关(BMSInstalld 原生库校验 ec=8519936;manifest 校验 -2005)。⚠️ 换 installer 时重启 foundation 后 5cd 屏幕全黑、截图是同一张 36627 B 黑图——部署完成必须附非黑桌面截图。
 - **B6 为什么慢(2026-09-29)**:板上 route-A R155 是在 ECS `oh-build`(ecs-9f6c)上编的,补丁版 ART 源码、构建树与工具链只在那台机器上,**只有产物进了 git**;机器已释放。结果修一个现成的 libsigchain 要按 `provider-v12/base-inputs.sha256` 指纹反推源码(android-14.0.0_r1 + hanbin 旧补丁 + tinyxml2 main 418229dc)、按 real-work 配方补 libart 附加源,还要从 R155 反汇编补回无源码的语义修复(`DexCache::GetResolvedType` 的 PRIMCLASS-GUARD:单字符描述符且缓存非 primitive 时返回 null,缺了会把 `Z/V` 读成 `Object` 报 LinkageError)。规则:**上板的每一代运行时,源码快照、补丁序列、工具链哈希与构建脚本必须和产物一起入库或存到持久位置**;只存产物等于把修复锁死在一台会消失的机器上。
+- **Westlake 如何让 ART 先于 DFX 接 SIGSEGV(2026-09-29 只读调研)**:Westlake 没有独立 libsigchain,把自写 `stubs/sigchain_musl.cc`(VM `~/a2hlab/ws/art-build*/stubs/`,a2hlab/art-build 9acbaec8;`Makefile.ohos-arm64` L808–817)静态链进 libart,`AddSpecialSignalHandlerFn` 转调 OH musl 的 `add_special_signal_handler` → 占 special 槽 0;DFX 用 `add_special_handler_at_last` 占槽 3;musl 先按槽 0→3 派发、再派 user action,ART 认领后直接返回,DFX 不运行。板上日志 `[SIGCHAIN] ART registered in OHOS special-handler chain`。route-A 用独立 AOSP libsigchain(ea7becd0)走 sigaction,被 musl `intercept_sigaction` 降为 user action、排在 DFX 之后(#31 实测晚 670 ms)。`bms/.../sigchain_muslcompat.cc` 就是 Westlake 做法的独立 DSO 版。**更正**:下方「#48 preload handler 输给 sigchain」的原因不是「每 2 ms 重装」(日志从未走到那一支),更可能是预载 handler 经 sigaction 注册被降为 user action、排在所有 special 槽之后。
 
 ## F. 13 图标常驻 demo + 头条上屏运维 + 视频/自启两道墙(2026-09-28,claude 外环,板 61b06572/5cd1e3dd)
 - **桌面图标 = 每 bundle 一个**:OH SceneBoard 只给每个 bundle 的主 ability 出一个图标,单 HAP 多 ability 只出一个。13 图标 = 12 个独立单-ability HAP(`org.westlake.la0..la11`)+ 头条 host。图标 onCreate 写 app-key 到自己沙箱 `files/wl_open.req`(app 沙箱写不了 `/data/local/tmp`),root 常驻 `open_broker.sh` 扫这些文件并 HOST_SPAWN。详见 `benchmark/2026-09-28-persistent-demo/`。
@@ -343,3 +344,18 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **B1沙箱修后新分叉（2026-09-28,#27）**：原样prepare_sandbox补齐10根后，Wikipedia child4789 spawn result0、RAC/LSP/provider和ActivityThread.main均到达；随后把桌面alias `org.wikipedia.DefaultIcon`当Java类实例化，ClassNotFoundException后exit1（BMS targetAbility空）。目录同HelloWorld/幂等均过；不能称已点亮，62项重跑未启。证据 `benchmark/2026-09-28-bms-route-deploy/sandbox-prep/`，B1 lifecycle 3pass/1fail。
 
 - BMS B5（2026-09-28，5ea）：按原 APK manifest 仅补 ActivityInfo.targetActivity 后，Wikipedia DefaultIcon→MainActivity、旧 ClassNotFound 消失，继而 Activity.attach/getTheme/getApplicationInfo SIGSEGV（后续根因未证）；HelloWorld 原入口仍上屏，缺目标类独立负控明确 ClassNotFound+exit1。66 key 按实际 BMS 入口计 13 alias，不能与“任一启用 launcher alias”15 混用；证据 `benchmark/2026-09-28-bms-route-deploy/alias-entry/`。
+
+## E.8 BMS 执行准备取证（2026-09-28，cx-bms，#15；未上板）
+
+- 同名 T006 v3 包不能互换：选 `~/t006/pack/t006-baseline-v3.tar.gz`（274575597 B、SHA e30a9199…71145），上层旧包 274574386 B；设备载荷相同，新包补 HelloWorld 防卸载、uitest 预热与路径归一，详见 `benchmark/2026-09-28-bms-route-study/`。
+- 本机 OH7 PAC 实名无 `-oh-7` 后缀，但 3514798293 B / SHA 4046781b…cb0b8 匹配留存核验；只凭文件名判 OH6.1 会误判，刷后仍须核 `OpenHarmony-7.0.0.38` + `Release`。
+- BMS 服务存活或 shell 全局库 hash 不能证明补丁加载；历史 foundation 保留旧挂载视图，须验 `/proc/<foundation>/root` 的实际库 hash + maps + APK 安装回读；T006 本地两轮安装成功但启动失败，不计点亮。
+- E.7 的 BMS 直查描述仅代表旧代：当前 `00.Workspace` cd5b329 的 resolveService 走 canonical component-state/catalog/package-store 链；新源码≠选定旧包字节，不能混代断言。
+- 后续用户纠偏：#15 的 T006/OH7 核对仅作历史参考；实际战役走 `01.OH61AOSP16` OH6.1 R130+R155（#19），不刷机、不用 T006 包；#20 只借其桌面图标启动实现。
+- #20 批量脚本已离线准备（未上板）：13 controls +43 blocked +10 tail=66 key；桌面图标精确 ID `AppIconCommonView_<package>.<activity>`，可有多页；WMS Focus window 必须关联本包 BMS UID 的 PID，仍不等于上屏；`x`/`noice` 身份由实际 app-input 核hash后补齐。见 `benchmark/2026-09-28-bms-route-deploy/batch/`。
+
+- **2026-09-29 B6 静态比对防混代 (#53)**: `task52/static` 的三 NEW 哈希与旧 provider 均非 #53 指定件;指定 R155 provider `977fb347` 的 HostServices +112/+120 要求全零、NEW `8d109259` 要求均非零且删除原 `WLNL_InstallSealedOpenV1` 安装调用;但原版 child 内嵌 provider SHA 为 `80c9aee0`(非派单 system 副本 `977fb347`),实际 sealed 基线须另核——恢复须核完整六 hash 与 host/child/provider 契约,不可把符号同名/去地址指令相等当运行等价;证据 `benchmark/2026-09-29-b6-static-diff/`(静态 verified、因果 unverified)。
+
+- **2026-09-29 #56 更正上条 #53 provider 基线**: 外环确认现役封存件为 `80c9aee0`，`977fb347` 的 provider 恢复建议作废；80c9 与 NEW 的 HostServicesInstall 93 条归一化指令一致、+112/+120 均须非零，sealed-open 安装是 installer→Constructors 时机迁移；R155 已含 startVm(false)/Typeface no-op/延后 adapter 初始化，须保留；三件按服务表、namespace/V1序列、VM、stdio 四组恢复，见 `benchmark/2026-09-29-b6-static-diff/RESTORE-PLAN.md`（静态 verified、源码建议 partially、运行因果 unverified）。
+
+- **2026-09-29 #57 批量工具统一**: `bms_batch.py --reinstall --hilog [秒] --shots 5,20 --focus-check` 合并一次性脚本；BM rc0须验成功文本、包名缺省先读app-input、WMS名含空格需按数字列尾解析，每张严格截图核目标UID的焦点PID，不用进程活着/离开桌面弱判据；36627B只标已知黑图，其他大小不等于点亮；app空目录可预建，旧证据拒覆写（FakeBoard离线verified，板上unverified）。

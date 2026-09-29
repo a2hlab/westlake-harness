@@ -1,0 +1,41 @@
+--- R155/RevokeChildHookTable
++++ NEW/RevokeChildHookTable
+@@ -1,25 +1,18 @@
+-stp x29, x30, [sp, #-32]!
+-adrp x8, <PAGE>
+-add x8, x8, <object:g_child_hook_control+0x50>
+-str x19, [sp, #16]
+-mov x29, sp
+-ldar x8, [x8]
+-cmp x8, #2
+-b.ne <RevokeChildHookTable+0x34>
++stp x29, x30, [sp, #-16]!
++mov w1, w0
+ adrp x0, <PAGE>
+ add x0, x0, <object:g_child_hook_control>
+-mov w1, #-3
++mov x29, sp
+ bl <westlake_child_hook_table_v1_revoke>
+-cbz w0, <RevokeChildHookTable+0x40>
+-ldr x19, [sp, #16]
+-ldp x29, x30, [sp], #32
++cbnz w0, <RevokeChildHookTable+0x2c>
++adrp x0, <PAGE>
++add x0, x0, <object:g_child_hook_control>
++bl <westlake_child_hook_table_v1_drain>
++cbz w0, <RevokeChildHookTable+0x34>
++ldp x29, x30, [sp], #16
+ ret
+-adrp x19, <PAGE>
+-add x19, x19, <object:g_child_hook_control>
+-mov x0, x19
+-bl <westlake_child_hook_table_v1_drain>
+-mov x0, x19
+-ldr x19, [sp, #16]
+-mov w1, #1
+-ldp x29, x30, [sp], #32
++adrp x0, <PAGE>
++add x0, x0, <object:g_child_hook_control>
++mov w1, wzr
++ldp x29, x30, [sp], #16
+ b <westlake_child_hook_table_v1_invalidate>

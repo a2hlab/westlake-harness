@@ -1,0 +1,49 @@
+--- R155/WlascGateMarker
++++ NEW/WlascGateMarker
+@@ -1,41 +1,12 @@
+-sub sp, sp, #48
+-str x19, [sp, #32]
+-mov x19, x0
+-stp x29, x30, [sp, #16]
+-add x29, sp, #16
++stp x29, x30, [sp, #-16]!
+ mov x2, x1
++mov x1, x0
+ mov w0, #2
+-mov x1, x19
+-str xzr, [x29, #24]
++mov x29, sp
+ bl <write@plt>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'\n'>
+ mov w0, #2
+ mov w2, #1
+-bl <write@plt>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'HiLogPrint'>
+-mov x0, xzr
+-bl <dlsym@plt>
+-str x0, [sp, #8]
+-cbz x0, <WlascGateMarker+0x94>
+-add x0, x29, #24
+-add x1, sp, #8
+-mov w2, #8
+-bl <memcpy@plt>
+-ldr x8, [x29, #24]
+-cbz x8, <WlascGateMarker+0x94>
+-mov w2, #11281
+-adrp x3, <PAGE>
+-add x3, x3, <string:'APPSPAWN'>
+-adrp x4, <PAGE>
+-add x4, x4, <string:'%{public}s'>
+-mov w0, #3
+-mov w1, #4
+-movk w2, #3328, lsl #16
+-mov x5, x19
+-blr x8
+-ldp x29, x30, [sp, #16]
+-ldr x19, [sp, #32]
+-add sp, sp, #48
+-ret
++ldp x29, x30, [sp], #16
++b <write@plt>

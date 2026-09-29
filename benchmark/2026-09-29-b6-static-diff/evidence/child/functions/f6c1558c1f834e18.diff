@@ -1,0 +1,124 @@
+--- R155/WlgrIfProductionReadReceipt
++++ NEW/WlgrIfProductionReadReceipt
+@@ -0,0 +1,121 @@
++stp x29, x30, [sp, #-48]!
++str x28, [sp, #16]
++mov x29, sp
++stp x20, x19, [sp, #32]
++sub sp, sp, #576
++mov x19, x0
++mov w0, #-1
++cbz x19, <WlgrIfProductionReadReceipt+0xec>
++cbz x1, <WlgrIfProductionReadReceipt+0xec>
++ldr x9, [x19]
++cbz x9, <WlgrIfProductionReadReceipt+0xe8>
++ldr x9, [x19, #8]
++cbz x9, <WlgrIfProductionReadReceipt+0xe8>
++ldr x0, [x19, #16]
++cbz x0, <WlgrIfProductionReadReceipt+0xe8>
++ldr w10, [x9]
++cmp w10, #1
++b.ne <WlgrIfProductionReadReceipt+0xe8>
++ldr w10, [x9, #4]
++cmp w10, #56
++b.ne <WlgrIfProductionReadReceipt+0xe8>
++ldr x10, [x9, #8]
++cbz x10, <WlgrIfProductionReadReceipt+0xe8>
++ldr w10, [x9, #20]
++cmp w10, #1
++b.ne <WlgrIfProductionReadReceipt+0xe8>
++ldr w10, [x9, #24]
++cmp w10, #1
++b.ne <WlgrIfProductionReadReceipt+0xe8>
++ldr w10, [x9, #28]
++cmp w10, #1
++b.ne <WlgrIfProductionReadReceipt+0xe8>
++ldr w10, [x9, #32]
++cmp w10, #1
++b.ne <WlgrIfProductionReadReceipt+0xe8>
++ldr w11, [x9, #36]
++mov w10, #6000
++cmp w11, w10
++b.ne <WlgrIfProductionReadReceipt+0xe8>
++ldr w11, [x9, #40]
++cmp w11, w10
++b.ne <WlgrIfProductionReadReceipt+0xe8>
++ldrb w10, [x9, #44]
++ldrb w11, [x9, #45]
++ldrb w12, [x9, #46]
++ldrb w13, [x9, #47]
++orr w10, w11, w10
++ldrb w11, [x9, #48]
++orr w10, w10, w12
++ldrb w12, [x9, #49]
++orr w10, w10, w13
++ldrb w13, [x9, #50]
++orr w10, w10, w11
++ldrb w9, [x9, #51]
++orr w10, w10, w12
++orr w10, w10, w13
++orr w9, w10, w9
++cbz w9, <WlgrIfProductionReadReceipt+0x100>
++mov w0, #-1
++add sp, sp, #576
++ldp x20, x19, [sp, #32]
++ldr x28, [sp, #16]
++ldp x29, x30, [sp], #48
++ret
++mov x20, x1
++bl <WlgrIfValidateMetadata>
++cbz w0, <WlgrIfProductionReadReceipt+0xe8>
++ldp x0, x8, [x19]
++mov x9, x19
++ldr x10, [x0, #16]
++ldr x9, [x8, #8]
++cmp x9, x10
++b.ne <WlgrIfProductionReadReceipt+0xe8>
++ldr w8, [x8, #16]
++ldr x9, [x0, #8]
++cmp x9, x8
++b.ne <WlgrIfProductionReadReceipt+0xe8>
++ldr x9, [x19, #16]
++ldr x9, [x9, #72]
++cmp x9, x8
++b.ne <WlgrIfProductionReadReceipt+0xe8>
++mov x1, sp
++bl <RequestKey>
++cbz w0, <WlgrIfProductionReadReceipt+0xe8>
++mov x0, x20
++mov w1, wzr
++mov w2, #728
++bl <memset@plt>
++adrp x8, <PAGE>
++mov x9, #20529
++movk x9, #17731, lsl #16
++add x0, x20, #16
++movk x9, #18258, lsl #32
++mov x1, sp
++movk x9, #22348, lsl #48
++ldr d0, [x8, <.rodata+0x78>]
++mov w2, #576
++str x9, [x20]
++str d0, [x20, #8]
++bl <memcpy@plt>
++ldr x8, [x19, #16]
++add x0, x20, #592
++mov w2, #16
++add x1, x8, #16
++bl <memcpy@plt>
++ldr x8, [x19, #16]
++add x0, x20, #608
++mov w2, #32
++add x1, x8, #32
++bl <memcpy@plt>
++ldr x8, [x19, #16]
++add x9, x20, #648
++add x1, x20, #664
++ldr x8, [x8, #64]
++str x8, [x20, #640]
++ldr x8, [x19]
++ldur q0, [x8, #24]
++str q0, [x9]
++ldr x0, [x19, #8]
++bl <WlgrIfDigestStockReceipt>
++b <WlgrIfProductionReadReceipt+0xec>

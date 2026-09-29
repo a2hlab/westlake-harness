@@ -1,0 +1,305 @@
+--- R155/InstallPluginHostServices
++++ NEW/InstallPluginHostServices
+@@ -1,192 +1,219 @@
+-sub sp, sp, #400
+-stp x29, x30, [sp, #352]
+-stp x28, x21, [sp, #368]
+-stp x20, x19, [sp, #384]
+-add x29, sp, #352
+-cbz x1, <InstallPluginHostServices+0x68>
++sub sp, sp, #432
++stp x29, x30, [sp, #368]
++str x28, [sp, #384]
++stp x22, x21, [sp, #400]
++stp x20, x19, [sp, #416]
++add x29, sp, #368
++cbz x1, <InstallPluginHostServices+0x6c>
+ mov x19, x1
+ mov x20, x0
+ adrp x1, <PAGE>
+ add x1, x1, <string:'/system/lib64/appspawn/libwestlake_android_child.z.so'>
+ mov x0, x19
+ bl <strcmp@plt>
+-cbnz w0, <InstallPluginHostServices+0x68>
++cbnz w0, <InstallPluginHostServices+0x6c>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'WLASC_GetContractV1'>
+ adrp x2, <PAGE>
+ add x2, x2, <string:'/system/lib64/appspawn/libwestlake_android_child.z.so'>
+ nop
+ adr x4, <object:LookupExactPluginSymbol.plugin_elf_sha_hex>
+ nop
+ adr x5, <object:LookupExactPluginSymbol.plugin_build_id_hex>
+-add x6, sp, #8
++add x6, sp, #24
+ mov x0, x20
+ mov w3, #183
+ bl <WLEI_VerifyLoadedSymbolHex>
+-cbz w0, <InstallPluginHostServices+0x80>
++cbz w0, <InstallPluginHostServices+0x88>
+ mov w0, #-1
+-ldp x20, x19, [sp, #384]
+-ldp x28, x21, [sp, #368]
+-ldp x29, x30, [sp, #352]
+-add sp, sp, #400
++ldp x20, x19, [sp, #416]
++ldp x22, x21, [sp, #400]
++ldp x29, x30, [sp, #368]
++ldr x28, [sp, #384]
++add sp, sp, #432
+ ret
+-ldr x8, [sp, #8]
++ldr x8, [sp, #24]
+ blr x8
+-cbz x0, <InstallPluginHostServices+0x68>
++cbz x0, <InstallPluginHostServices+0x6c>
+ ldr w8, [x0]
+ cmp w8, #1
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ ldr w8, [x0, #4]
+ cmp w8, #48
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ ldr w8, [x0, #8]
+ cmp w8, #3001
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ ldr w8, [x0, #12]
+ cmp w8, #20
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ ldr w8, [x0, #16]
+ cmp w8, #31
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ ldr w8, [x0, #20]
+ mov w9, #6000
+ cmp w8, w9
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ ldr w8, [x0, #24]
+ cmp w8, #7
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ ldr w8, [x0, #28]
+ cmp w8, #13
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ ldr w8, [x0, #32]
+ cmp w8, #1
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ ldr w8, [x0, #36]
+ cmp w8, #1
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ ldr w8, [x0, #40]
+ cmp w8, #936
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ ldr w8, [x0, #44]
+ cmp w8, #56
+-b.ne <InstallPluginHostServices+0x68>
++b.ne <InstallPluginHostServices+0x6c>
+ adrp x2, <PAGE>
+ add x2, x2, <string:'WLASC_InstallStockHostServicesV1'>
+-mov x3, sp
++add x3, sp, #16
+ mov x0, x20
+ mov x1, x19
+ bl <LookupExactPluginSymbol>
+-cbnz w0, <InstallPluginHostServices+0x68>
++cbnz w0, <InstallPluginHostServices+0x6c>
++adrp x2, <PAGE>
++add x2, x2, <string:'WLSCPL_InheritAndroidRuntimeV1'>
++add x3, sp, #8
++mov x0, x20
++mov x1, x19
++ldr x22, [sp, #16]
++bl <LookupExactPluginSymbol>
++cbnz w0, <InstallPluginHostServices+0x6c>
+ movi v0.2d, #0000000000000000
+-adrp x8, <PAGE>
+-add x21, sp, #96
++add x8, sp, #112
++adrp x9, <PAGE>
++add x20, sp, #112
++add x19, x20, #16
+ nop
+ adr x2, <object:InstallPluginHostServices.runtime_generation_hex>
+-add x19, x21, #16
+ mov x0, x19
++stp q0, q0, [x8, #32]
+ mov w1, #32
+-stp q0, q0, [sp, #112]
++stp q0, q0, [x8, #64]
+ mov w3, #65
+-stp q0, q0, [sp, #144]
+-ldr x20, [sp]
+-stp q0, q0, [sp, #176]
+-str q0, [sp, #208]
+-ldr d0, [x8, <.rodata+0x10>]
+-mov x8, #32120
+-str xzr, [sp, #224]
+-movk x8, #30216, lsl #16
+-movk x8, #63321, lsl #32
+-str d0, [sp, #96]
+-movk x8, #29926, lsl #48
+-str x8, [sp, #104]
+-bl <FillHex>
+-cbnz w0, <InstallPluginHostServices+0x68>
+-add x0, x21, #48
++stp q0, q0, [x8, #96]
++mov x8, #55693
++movk x8, #3296, lsl #16
++str q0, [sp, #128]
++movk x8, #28926, lsl #32
++ldr d0, [x9, <.rodata+0x10>]
++movk x8, #58782, lsl #48
++ldr x21, [sp, #8]
++str xzr, [sp, #240]
++str d0, [sp, #112]
++str x8, [sp, #120]
++bl <FillHex>
++cbnz w0, <InstallPluginHostServices+0x6c>
++add x0, x20, #48
+ nop
+ adr x2, <object:InstallPluginHostServices.plugin_generation_hex>
+ mov w1, #32
+ mov w3, #65
+ bl <FillHex>
+-cbnz w0, <InstallPluginHostServices+0x68>
+-add x21, sp, #96
++cbnz w0, <InstallPluginHostServices+0x6c>
++add x20, sp, #112
+ nop
+ adr x2, <object:InstallPluginHostServices.plugin_elf_sha_hex>
+-add x0, x21, #80
++add x0, x20, #80
+ mov w1, #32
+ mov w3, #65
+ bl <FillHex>
+-cbnz w0, <InstallPluginHostServices+0x68>
+-add x0, x21, #112
++cbnz w0, <InstallPluginHostServices+0x6c>
++add x0, x20, #112
+ nop
+ adr x2, <object:InstallPluginHostServices.plugin_build_id_hex>
+ mov w1, #20
+ mov w3, #41
+ bl <FillHex>
+-cbnz w0, <InstallPluginHostServices+0x68>
++cbnz w0, <InstallPluginHostServices+0x6c>
+ adrp x8, <PAGE>
+ adrp x9, <PAGE>
+ adrp x10, <PAGE>
+ adrp x11, <PAGE>
+-add x0, sp, #96
+ ldr x8, [x8, <reloc:1027:AddServerStageHook>]
+ ldr x9, [x9, <reloc:1027:AddAppSpawnHook>]
+ ldr x10, [x10, <reloc:1027:GetAppSpawnMsgInfo>]
+-stp x8, x9, [sp, #232]
++stp x8, x9, [sp, #248]
+ adrp x8, <PAGE>
+ adrp x9, <PAGE>
+ ldr x8, [x8, <reloc:1027:CheckAppSpawnMsgFlag>]
+ ldr x9, [x9, <reloc:1027:RegChildLooper>]
+ ldr x11, [x11, <reloc:1027:AppSpawnEnvClear>]
+-stp x10, x8, [sp, #248]
++stp x10, x8, [sp, #264]
+ adrp x10, <PAGE>
+ nop
+ adr x8, <function:CurrentThreadToken+0x0>
+-stp x9, x11, [sp, #264]
++stp x9, x11, [sp, #280]
+ adrp x9, <PAGE>
+ adrp x11, <PAGE>
+ ldr x9, [x9, <reloc:1027:westlake_native_compat_prepare_parent_runtime>]
+ ldr x10, [x10, <reloc:1027:westlake_native_compat_verify_parent_preload_thread_ready>]
+ ldr x11, [x11, <reloc:1027:westlake_native_compat_prepare_main_thread>]
+-stp x8, x9, [sp, #280]
+-adrp x8, <PAGE>
+-adrp x9, <PAGE>
+-stp x10, x11, [sp, #296]
++stp x8, x9, [sp, #296]
++adrp x8, <PAGE>
++adrp x9, <PAGE>
++stp x10, x11, [sp, #312]
+ adrp x10, <PAGE>
+ ldr x8, [x8, <reloc:1027:westlake_native_compat_verify_current_thread_ready>]
+ ldr x9, [x9, <reloc:1027:westlake_native_compat_get_audit_snapshot>]
+ ldr x10, [x10, <reloc:1027:westlake_native_compat_get_pthread_bridge_ops>]
+-stp x8, x9, [sp, #312]
++stp x8, x9, [sp, #328]
+ nop
+ adr x8, <function:StockCreateConfiguredNamespaces+0x0>
+-stp x10, x8, [sp, #328]
++stp x10, x8, [sp, #344]
+ nop
+ adr x8, <function:StockOpenNamespace+0x0>
+-str x8, [sp, #344]
+-blr x20
+-cbnz w0, <InstallPluginHostServices+0x68>
++str x8, [sp, #360]
+ bl <getpid@plt>
+ cmp w0, #1
+-b.lt <InstallPluginHostServices+0x68>
+-adrp x9, <PAGE>
+-ldr x8, [sp, #104]
++b.lt <InstallPluginHostServices+0x6c>
++adrp x8, <PAGE>
++mov w20, w0
++ldr w9, [x8, <object:g_stock_host_parent_pid>]
++cbz w9, <InstallPluginHostServices+0x2dc>
++cmp w9, w20
++b.ne <InstallPluginHostServices+0x6c>
++add x0, sp, #112
++str w20, [x8, #3844]
++blr x22
++mov w8, w0
++mov w0, #-1
++cbnz w8, <InstallPluginHostServices+0x70>
++cbz x21, <InstallPluginHostServices+0x70>
++adrp x8, <PAGE>
++ldr x9, [x8, <object:g_inherit_android_runtime>]
++cbz x9, <InstallPluginHostServices+0x30c>
++cmp x9, x21
++b.ne <InstallPluginHostServices+0x6c>
++str x21, [x8, #3848]
++adrp x8, <PAGE>
+ movi v0.2d, #0000000000000000
+-str xzr, [sp, #88]
+-str w0, [sp, #32]
+-ldr d1, [x9, <.rodata+0x20>]
+-str x8, [sp, #24]
++ldr x9, [sp, #120]
++str xzr, [sp, #104]
++ldr d1, [x8, <.rodata+0x20>]
++str w20, [sp, #48]
++str x9, [sp, #40]
++stur q0, [sp, #56]
+ stur q0, [sp, #72]
+-stur q0, [sp, #56]
+-stur q0, [sp, #40]
+-str d1, [sp, #16]
++stur q0, [sp, #88]
++str d1, [sp, #32]
+ bl <getuid@plt>
+-str w0, [sp, #36]
++str w0, [sp, #52]
+ bl <getgid@plt>
+ ldp q0, q1, [x19]
+-str w0, [sp, #40]
+-add x0, sp, #16
+-ldr x8, [sp, #288]
+-stp q0, q1, [sp, #48]
++str w0, [sp, #56]
++add x0, sp, #32
++ldr x8, [sp, #304]
++stp q0, q1, [sp, #64]
+ blr x8
+ cmp w0, #0
+ csetm w0, ne
+-b <InstallPluginHostServices+0x6c>
++b <InstallPluginHostServices+0x70>

@@ -1,0 +1,34 @@
+# cts-ready: **FAIL**
+
+| 项 | 状态 | 实际 |
+|---|---|---|
+| `host.python3` | ✅ FOUND | 3.14.6 |
+| `host.hdc` | ✅ FOUND | /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolc |
+| `host.jdk17` | ✅ FOUND | /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home |
+| `host.android_jar` | ✅ FOUND | ~/Library/Android/sdk/platforms/android-36/android.jar |
+| `host.d8` | ✅ FOUND | ~/Library/Android/sdk/build-tools/37.0.0/d8 |
+| `host.apksigner` | ✅ FOUND | ~/Library/Android/sdk/build-tools/37.0.0/apksigner |
+| `board_reachable` | • UNKNOWN | not supplied (--serial) |
+| `board_fullname` | • UNKNOWN | not supplied (--serial) |
+| `board_releasetype` | • UNKNOWN | not supplied (--serial) |
+| `artefact.payload` | • UNKNOWN | not supplied (--payload) |
+| `artefact.std_libs` | • UNKNOWN | needs --payload |
+| `artefact.candidate_jar` | • UNKNOWN | needs --payload |
+| `artefact.suite_module` | • UNKNOWN | not supplied (--module <dir>) |
+| `artefact.suite_index` | ✅ FOUND | ~/orca/00.Workspace/.agents/skills/cts-loop/references/su |
+| `runtime.bcp_copy` | ❌ MISSING | bcp does not exist |
+| `bcp_lane.dex2oat64` | ✅ FOUND | ~/.cache/cts-loop/art-tools/android-14.0.0_r1/dex2oat64（只 |
+
+## 缺这些，这样拿
+- **`runtime.bcp_copy`** — pull it from the board that will run the test: hdc -t <serial> file recv /system/android/framework ./bcp
+
+## 没检查（少给参数）
+- `board_reachable` — not supplied (--serial)；hdc list targets -v
+- `board_fullname` — not supplied (--serial)；hdc list targets -v
+- `board_releasetype` — not supplied (--serial)；hdc list targets -v
+- `artefact.payload` — not supplied (--payload)；download t006-baseline-v3.tar.gz from the repo releases and extract it, or run t006_baseline.py all --payload t006-baseline-v3.tar.gz --work <dir>
+- `artefact.std_libs` — needs --payload；they ship in the payload's inputs/
+- `artefact.candidate_jar` — needs --payload；the payload's inputs/ carries the pinned runtime jar
+- `artefact.suite_module` — not supplied (--module <dir>)；look it up without the suite: suite_index.py find --api <class>#<member>, then copy just those two files
+
+exit_code=1

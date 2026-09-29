@@ -1,0 +1,284 @@
+{
+  "schema": "bms-execution-preparation-v1",
+  "date": "2026-09-28",
+  "board_item": 15,
+  "supersedes": 13,
+  "scope": "Execution preparation for selected BMS route; no device execution",
+  "r2": {
+    "host_artifact_audit": "verified",
+    "historical_apps": "partially",
+    "device_deployment": "unverified",
+    "human_review": "pending_review"
+  },
+  "device_commands_executed": 0,
+  "source_revision": "cd5b3293596cc9d9f324743d6d904c5135954076",
+  "pac": {
+    "path": "~/orca/firmware/OpenHarmony-7.0-Release/wukong100_nosec_userdebug.pac",
+    "bytes": 3514798293,
+    "sha256": "4046781bfcd033ea62dc339892b671d71a34bad3fa53b6c44d914d79281cb0b8",
+    "expected_bytes": 3514798293,
+    "expected_sha256_record": "4046781bfcd033ea62dc339892b671d71a34bad3fa53b6c44d914d79281cb0b8",
+    "hash_matches_local_record": true
+  },
+  "payload_audit": {
+    "archives": [
+      {
+        "path": "~/t006/t006-baseline-v3.tar.gz",
+        "bytes": 274574386,
+        "sha256": "b4d77dc00a2bb164fdefc648131cd9441f42c2bca104cf652187c805f23f3c4c",
+        "file_members": 20
+      },
+      {
+        "path": "~/t006/pack/t006-baseline-v3.tar.gz",
+        "bytes": 274575597,
+        "sha256": "e30a91993f06fc50ce401655837d9cfdec5a177aca65a311a5810ce14ae71145",
+        "file_members": 20
+      }
+    ],
+    "different_file_members": [
+      {
+        "name": "PAYLOAD.json",
+        "root": {
+          "bytes": 3936,
+          "sha256": "0d4e7f5b3828b2720f8a3f5c248df8782ed574161229737061edbc5957227785"
+        },
+        "pack": {
+          "bytes": 4034,
+          "sha256": "ac112ee9328ecf9b4f6baec90505da04a7207ea1cd0fd30e3059169c430af49c"
+        }
+      },
+      {
+        "name": "runner.tar.gz",
+        "root": {
+          "bytes": 217588,
+          "sha256": "526f1315d6d52ca6407994348210e7ef773dc3492e50e0b73416bc57ca010a41"
+        },
+        "pack": {
+          "bytes": 218677,
+          "sha256": "fa3797ade131c7ed0b5f8d0cc51fb041200d12a605b8e021d9b89dad923560bd"
+        }
+      },
+      {
+        "name": "t006_baseline.py",
+        "root": {
+          "bytes": 58658,
+          "sha256": "b815f5787a7d21609fa5a2c920ffe1f6845bb740316253b2113642798c72acf7"
+        },
+        "pack": {
+          "bytes": 59606,
+          "sha256": "6693d60a7cf95db816d653032c4298561e57765132a1b1346a03a5937f79a6a8"
+        }
+      }
+    ]
+  },
+  "selected_payload": "~/t006/pack/t006-baseline-v3.tar.gz",
+  "selected_driver": {
+    "path": "~/t006/pack/t006_baseline.py",
+    "bytes": 59606,
+    "sha256": "6693d60a7cf95db816d653032c4298561e57765132a1b1346a03a5937f79a6a8"
+  },
+  "host_readiness": {
+    "raw_command": "PYTHONDONTWRITEBYTECODE=1 ./cts-ready",
+    "raw_exit_code": 1,
+    "host_tools_found": 6,
+    "suite_index_found": true,
+    "materials_check": "evidence/cts-ready-materials.json",
+    "remaining_missing": [
+      "runtime.bcp_copy"
+    ],
+    "unknown": [
+      "board_reachable",
+      "board_fullname",
+      "board_releasetype"
+    ],
+    "additional_downloads_indicated": false
+  },
+  "cts_inputs": [
+    {
+      "path": "00.Workspace/.work/t001-uninstall-inputs/CtsPackageManagerTestCases.apk",
+      "bytes": 112615886,
+      "sha256": "0856402e69f4b67e6bf77a9c84859cdacfff85f96be90beb9181769bb8152a41"
+    },
+    {
+      "path": "00.Workspace/.work/t001-uninstall-inputs/CtsPackageManagerTestCases.config",
+      "bytes": 26119,
+      "sha256": "38285696c47199d0c4ad8ff11c23164e47bd1960ac6ec0537ed56dacc0ad7f39"
+    }
+  ],
+  "first_hour": [
+    {
+      "step": 1,
+      "minute_window": "00-10",
+      "action": "Pin payload/driver; check assigned serial/fullname/releasetype/SELinux and doctor/check-only",
+      "pass": "Exact OH7.0.0.38 Release and read-only preflight pass",
+      "fallback": "Stop for wrong image/serial; preserve preflight",
+      "execution": "unverified",
+      "commands_in": "evidence/first-hour.md"
+    },
+    {
+      "step": 2,
+      "minute_window": "10-35",
+      "action": "After board lock, execute selected bringup once",
+      "pass": "598 bridge +26 gap +4 links, jar/ANCO/reboot/socket readbacks",
+      "fallback": "Stop first failure; rollback coverage is stage-specific",
+      "execution": "unverified",
+      "commands_in": "evidence/first-hour.md"
+    },
+    {
+      "step": 3,
+      "minute_window": "35-45",
+      "action": "Capture foundation PID/maps/mountinfo and process-root library hashes",
+      "pass": "Selected BMS bytes visible to running foundation and matching boot",
+      "fallback": "Do not trust shell-global hash or bms_alive alone",
+      "execution": "unverified",
+      "commands_in": "evidence/first-hour.md"
+    },
+    {
+      "step": 4,
+      "minute_window": "45-50",
+      "action": "Read back embedded bm install HelloWorld result",
+      "pass": "BMS record, APK hash, activity, UID20010052 and hardlink/sandbox correct",
+      "fallback": "Stop on UID drift or missing install evidence",
+      "execution": "unverified",
+      "commands_in": "evidence/first-hour.md"
+    },
+    {
+      "step": 5,
+      "minute_window": "50-60",
+      "action": "SceneBoard launch and snapshot_display image review",
+      "pass": "Human sees actual HelloWorld; process/bridge evidence recorded separately",
+      "fallback": "Blank/desktop/wrong content is not lit; return first blocker",
+      "execution": "unverified",
+      "commands_in": "evidence/first-hour.md"
+    }
+  ],
+  "historical_apps": [
+    {
+      "package": "com.example.helloworld",
+      "platform": "OH6.1 historical display; OH7 T006 install succeeded but launch did not",
+      "evidence_grade": "historical-doc-plus-negative-receipts",
+      "sweep_member": false,
+      "priority": "pinned bringup first canary; no assumed pass",
+      "sources": [
+        {
+          "path": "t006/run2/evidence/bringup-report.json",
+          "lines": [
+            92,
+            122
+          ]
+        },
+        {
+          "path": "t006/run-new/evidence/bringup-report.json",
+          "lines": [
+            92,
+            118
+          ]
+        }
+      ]
+    },
+    {
+      "package": "org.a2hlab.baseline.helloworld",
+      "platform": "OpenHarmony-7.0.0.38",
+      "serial": "61ae0be500000000000000000324012c",
+      "evidence_grade": "historical-receipt-and-images-reviewed",
+      "sweep_member": false,
+      "priority": "historical comparator; different package from T006",
+      "sources": [
+        {
+          "path": "00.Workspace/vault/tasks/task_e3bb7b54/evidence/device-r8-baseline/device-ready-receipt.json",
+          "lines": [
+            9,
+            68
+          ]
+        }
+      ]
+    },
+    {
+      "package": "com.a2hlab.bridge.zigzag",
+      "platform": "OH6.1.0.31",
+      "serial": "5583f5be00000000000000000323012c",
+      "evidence_grade": "historical-report; BMS record and later success are different generations",
+      "sweep_member": false,
+      "priority": "later port experiment",
+      "sources": [
+        {
+          "path": "00.Workspace/evidence/current-apk-lightup.md",
+          "lines": [
+            7,
+            38
+          ]
+        },
+        {
+          "path": "00.Workspace/evidence/runs/ab-compare/AB-REPORT-20260808.md",
+          "lines": [
+            44,
+            49
+          ]
+        }
+      ]
+    },
+    {
+      "package": "com.Revenko.org.CapybaraAdventure",
+      "platform": "not independently pinned here",
+      "evidence_grade": "documentation-only; raw BMS receipt not inspected",
+      "sweep_member": false,
+      "priority": "lower-confidence candidate",
+      "sources": [
+        {
+          "path": "00.Workspace/domaindb/usecase/13-部署持久化与可回滚工程.md",
+          "lines": [
+            181,
+            224
+          ]
+        }
+      ]
+    },
+    {
+      "package": "android.content.cts",
+      "platform": "OH7",
+      "evidence_grade": "installation-only; not lit",
+      "sweep_member": false,
+      "priority": "CTS separate acceptance",
+      "sources": [
+        {
+          "path": "00.Workspace/evidence/runs/cts-getpackageinfo-20260915.md",
+          "lines": [
+            143,
+            149
+          ]
+        }
+      ]
+    }
+  ],
+  "historical_lit_vs_sweep_unlit_intersection": [],
+  "intersection_scope": "Identified historical apps against inspected 09-27 blocked and tail lists; not exhaustive proof over all archive history",
+  "proposed_new_measurement_batch": [
+    "markor",
+    "newpipe",
+    "anki"
+  ],
+  "proposed_control": "aegis",
+  "execution_checklist": "evidence/first-hour.md",
+  "validation": {
+    "spec_lint_score": 1.0,
+    "human_acceptance": "pending_review",
+    "device_success_claim": false,
+    "known_answer_tests": {
+      "run": 69,
+      "skipped": 2,
+      "failed": 0
+    }
+  },
+  "commit": {
+    "status": "blocked",
+    "hash": null,
+    "reason": "Sandbox denies creation of main-worktree Git index.lock; no staging or commit occurred",
+    "branch": "analysis/bms-route-study"
+  },
+  "superseded_operational_choice": {
+    "task": 19,
+    "active_baseline": "01.OH61AOSP16 OH6.1 R130 + R155",
+    "flash": false,
+    "t006_first_hour": "reference-only; do not execute for current campaign"
+  }
+}

@@ -1,0 +1,226 @@
+--- R155/WLEI_VerifyFileHex
++++ NEW/WLEI_VerifyFileHex
+@@ -1,194 +1,37 @@
+-stp x29, x30, [sp, #-64]!
+-str x28, [sp, #16]
+-stp x22, x21, [sp, #32]
+-stp x20, x19, [sp, #48]
++stp x29, x30, [sp, #-48]!
++stp x28, x21, [sp, #16]
++stp x20, x19, [sp, #32]
+ mov x29, sp
+-sub sp, sp, #5, lsl #12 // =20480
+-sub sp, sp, #336
+-cbz x0, <WLEI_VerifyFileHex+0x44>
+-mov x22, x0
++sub sp, sp, #1, lsl #12 // =4096
++sub sp, sp, #32
++mov x19, x4
++mov x4, sp
++mov x20, x5
++bl <OpenVerifiedFileHex>
++cbz w0, <WLEI_VerifyFileHex+0x48>
+ mov w0, #-1
+-cbz x3, <WLEI_VerifyFileHex+0x48>
+-cbz x2, <WLEI_VerifyFileHex+0x48>
+-ldrb w8, [x22]
+-cmp w8, #47
+-b.ne <WLEI_VerifyFileHex+0x48>
+-ldrb w8, [x2, #64]
+-cbz w8, <WLEI_VerifyFileHex+0x64>
+-mov w0, #-1
+-add sp, sp, #5, lsl #12 // =20480
+-add sp, sp, #336
+-ldp x20, x19, [sp, #48]
+-ldp x22, x21, [sp, #32]
+-ldr x28, [sp, #16]
+-ldp x29, x30, [sp], #64
++add sp, sp, #1, lsl #12 // =4096
++add sp, sp, #32
++ldp x20, x19, [sp, #32]
++ldp x28, x21, [sp, #16]
++ldp x29, x30, [sp], #48
+ ret
+-mov x20, x5
+-mov x19, x4
+-mov w21, w1
+-mov x8, xzr
+-add x9, x2, #1
+-sub x10, x29, #32
+-mov w0, #-1
+-ldurb w11, [x9, #-1]
+-ldrb w12, [x9]
+-sub w14, w11, #97
+-sub w13, w11, #48
+-sub w11, w11, #87
+-cmp w14, #6
+-csinv w11, w11, wzr, lo
+-cmp w13, #10
+-sub w14, w12, #97
+-sub w15, w12, #48
+-csel w11, w13, w11, lo
+-sub w12, w12, #87
+-cmp w14, #6
+-mvn w13, w11
+-csinv w12, w12, wzr, lo
+-cmp w15, #10
+-and w13, w13, #0xff
+-csel w12, w15, w12, lo
+-cbz w13, <WLEI_VerifyFileHex+0x48>
+-mvn w13, w12
+-tst w13, #0xff
+-b.eq <WLEI_VerifyFileHex+0x48>
+-orr w11, w12, w11, lsl #4
+-add x9, x9, #2
+-strb w11, [x10, x8]
+-add x8, x8, #1
+-cmp x8, #32
+-b.ne <WLEI_VerifyFileHex+0x80>
+-ldrb w8, [x3, #40]
+-cbnz w8, <WLEI_VerifyFileHex+0x44>
+-mov x8, xzr
+-add x9, x3, #1
+-sub x10, x29, #52
+-mov w0, #-1
+-ldurb w11, [x9, #-1]
+-ldrb w12, [x9]
+-sub w14, w11, #97
+-sub w13, w11, #48
+-sub w11, w11, #87
+-cmp w14, #6
+-csinv w11, w11, wzr, lo
+-cmp w13, #10
+-sub w14, w12, #97
+-sub w15, w12, #48
+-csel w11, w13, w11, lo
+-sub w12, w12, #87
+-cmp w14, #6
+-mvn w13, w11
+-csinv w12, w12, wzr, lo
+-cmp w15, #10
+-and w13, w13, #0xff
+-csel w12, w15, w12, lo
+-cbz w13, <WLEI_VerifyFileHex+0x48>
+-mvn w13, w12
+-tst w13, #0xff
+-b.eq <WLEI_VerifyFileHex+0x48>
+-orr w11, w12, w11, lsl #4
+-add x9, x9, #2
+-strb w11, [x10, x8]
+-add x8, x8, #1
+-cmp x8, #20
+-b.ne <WLEI_VerifyFileHex+0x108>
+-mov x1, sp
+-mov x0, x22
+-bl <realpath@plt>
+-cbz x0, <WLEI_VerifyFileHex+0x44>
+-mov x0, sp
+-mov x1, x22
+-bl <strcmp@plt>
+-cbnz w0, <WLEI_VerifyFileHex+0x44>
+-mov w1, #32768
+-mov x0, sp
+-movk w1, #8, lsl #16
+-bl <open@plt>
+-tbnz w0, #31, <WLEI_VerifyFileHex+0x44>
+-add x1, sp, #1, lsl #12 // =4096
+-mov w22, w0
+-bl <fstat@plt>
+-cbz w0, <WLEI_VerifyFileHex+0x1c8>
+-mov w0, w22
+-bl <close@plt>
+-b <WLEI_VerifyFileHex+0x44>
+-ldr w8, [sp, #4112]
+-and w8, w8, #0xf000
+-cmp w8, #8, lsl #12 // =32768
+-b.ne <WLEI_VerifyFileHex+0x1bc>
+-ldr x8, [sp, #4144]
+-cmp x8, #1
+-b.lt <WLEI_VerifyFileHex+0x1bc>
+-add x1, sp, #1, lsl #12 // =4096
+-sub x3, x29, #52
+-mov w0, w22
+-mov w2, w21
+-bl <VerifyBuildId>
+-cbnz w0, <WLEI_VerifyFileHex+0x1bc>
+-add x0, sp, #1, lsl #12 // =4096
+-add x0, x0, #128
+-bl <WLSha256Init>
+-b <WLEI_VerifyFileHex+0x224>
+-add x0, sp, #1, lsl #12 // =4096
+-add x1, sp, #1, lsl #12 // =4096
+-add x0, x0, #128
+-add x1, x1, #240
+-bl <WLSha256Update>
+-cbnz w0, <WLEI_VerifyFileHex+0x1bc>
+-add x1, sp, #1, lsl #12 // =4096
+-mov w0, w22
+-add x1, x1, #240
+-mov w2, #16384
+-bl <read@plt>
+-mov x2, x0
+-cmp x0, #1
+-b.ge <WLEI_VerifyFileHex+0x20c>
+-tbz x2, #63, <WLEI_VerifyFileHex+0x25c>
+-bl <__errno_location@plt>
+-ldr w8, [x0]
+-cmp w8, #4
+-b.eq <WLEI_VerifyFileHex+0x224>
+-b <WLEI_VerifyFileHex+0x1bc>
+-mov w0, w22
+-bl <close@plt>
+-cbnz w0, <WLEI_VerifyFileHex+0x44>
+-add x0, sp, #1, lsl #12 // =4096
+-sub x1, x29, #96
+-add x0, x0, #128
+-bl <WLSha256Final>
+-cbnz w0, <WLEI_VerifyFileHex+0x44>
+-ldp q0, q1, [x29, #-32]
+-ldp q2, q3, [x29, #-96]
+-eor v0.16b, v2.16b, v0.16b
+-eor v1.16b, v3.16b, v1.16b
+-orr v0.16b, v1.16b, v0.16b
+-ext v1.16b, v0.16b, v0.16b, #8
+-orr v0.8b, v0.8b, v1.8b
+-umov w8, v0.b[1]
+-umov w9, v0.b[0]
+-umov w10, v0.b[2]
+-umov w11, v0.b[3]
+-umov w12, v0.b[4]
+-orr w8, w9, w8
+-umov w9, v0.b[5]
+-orr w8, w8, w10
+-umov w10, v0.b[6]
+-orr w8, w8, w11
+-umov w11, v0.b[7]
+-orr w8, w8, w12
+-orr w8, w8, w9
+-orr w8, w8, w10
+-orr w8, w8, w11
+-tst w8, #0xff
+-b.ne <WLEI_VerifyFileHex+0x44>
+-cbz x19, <WLEI_VerifyFileHex+0x300>
+-mov x0, sp
++cbz x19, <WLEI_VerifyFileHex+0x74>
++mov x8, sp
++add x21, x8, #32
++mov x0, x21
+ bl <strlen@plt>
+ cmp x0, x20
+-b.hs <WLEI_VerifyFileHex+0x44>
++b.hs <WLEI_VerifyFileHex+0x84>
+ add x2, x0, #1
+-mov x1, sp
+ mov x0, x19
++mov x1, x21
+ bl <memcpy@plt>
+-mov w0, wzr
+-b <WLEI_VerifyFileHex+0x48>
++ldr w0, [sp]
++tbnz w0, #31, <WLEI_VerifyFileHex+0x2c>
++bl <close@plt>
++b <WLEI_VerifyFileHex+0x30>
++ldr w0, [sp]
++tbnz w0, #31, <WLEI_VerifyFileHex+0x2c>
++bl <close@plt>
++b <WLEI_VerifyFileHex+0x2c>

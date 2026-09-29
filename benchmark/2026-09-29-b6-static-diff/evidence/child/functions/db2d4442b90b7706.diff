@@ -1,0 +1,125 @@
+--- R155/RequestKey
++++ NEW/RequestKey
+@@ -0,0 +1,122 @@
++stp x29, x30, [sp, #-64]!
++stp x22, x21, [sp, #32]
++mov x22, x0
++mov w0, wzr
++str x23, [sp, #16]
++stp x20, x19, [sp, #48]
++mov x29, sp
++cbz x22, <RequestKey+0x17c>
++mov x19, x1
++cbz x1, <RequestKey+0x17c>
++mov x0, x19
++mov w1, wzr
++mov w2, #576
++bl <memset@plt>
++adrp x8, <PAGE>
++mov x23, #22834
++movk x23, #19269, lsl #16
++add x21, x19, #32
++movk x23, #18258, lsl #32
++ldr x9, [x22, #8]
++ldr d0, [x8, <.rodata+0x50>]
++movk x23, #22348, lsl #48
++mov w8, #8
++add x1, x22, #40
++mov x0, x21
++mov w2, #256
++str d0, [x19, #8]
++ldr w10, [x22]
++str x23, [x19]
++str x9, [x19, #24]
++stp w8, w10, [x19, #16]
++bl <memcpy@plt>
++add x20, x19, #288
++add x1, x22, #296
++mov x0, x20
++mov w2, #256
++bl <memcpy@plt>
++ldr x8, [x19]
++mov w0, wzr
++cmp x8, x23
++b.ne <RequestKey+0x17c>
++ldr w8, [x19, #8]
++cmp w8, #2
++b.ne <RequestKey+0x178>
++ldr w8, [x19, #12]
++cmp w8, #576
++b.ne <RequestKey+0x178>
++ldr w8, [x19, #16]
++cmp w8, #8
++b.ne <RequestKey+0x178>
++ldr x8, [x19, #24]
++cbz x8, <RequestKey+0x178>
++ldrb w8, [x21]
++cbz w8, <RequestKey+0x178>
++mov w9, wzr
++mov x8, xzr
++mov w10, #1
++cbz w9, <RequestKey+0x104>
++cbnz w10, <RequestKey+0x178>
++add x8, x8, #1
++cmp x8, #256
++b.eq <RequestKey+0x124>
++ldrb w10, [x21, x8]
++mov w9, #1
++b <RequestKey+0xe4>
++cmp w10, #0
++add x8, x8, #1
++cset w9, eq
++cmp x8, #256
++b.eq <RequestKey+0x120>
++ldrb w10, [x21, x8]
++b <RequestKey+0xe4>
++cbnz w10, <RequestKey+0x178>
++ldrb w8, [x20]
++cbz w8, <RequestKey+0x178>
++mov w9, wzr
++mov x8, xzr
++mov w10, #1
++cbz w9, <RequestKey+0x158>
++cbnz w10, <RequestKey+0x178>
++add x8, x8, #1
++cmp x8, #256
++b.eq <RequestKey+0x190>
++ldrb w10, [x20, x8]
++mov w9, #1
++b <RequestKey+0x138>
++cmp w10, #0
++add x8, x8, #1
++cset w9, eq
++cmp x8, #256
++b.eq <RequestKey+0x174>
++ldrb w10, [x20, x8]
++b <RequestKey+0x138>
++cbz w10, <RequestKey+0x190>
++mov w0, wzr
++ldp x20, x19, [sp, #48]
++ldp x22, x21, [sp, #32]
++ldr x23, [sp, #16]
++ldp x29, x30, [sp], #64
++ret
++ldp q1, q0, [x19, #544]
++orr v0.16b, v1.16b, v0.16b
++ext v1.16b, v0.16b, v0.16b, #8
++orr v0.8b, v0.8b, v1.8b
++umov w8, v0.b[1]
++umov w9, v0.b[0]
++umov w10, v0.b[2]
++umov w11, v0.b[3]
++umov w12, v0.b[4]
++orr w8, w9, w8
++umov w9, v0.b[5]
++orr w8, w8, w10
++umov w10, v0.b[6]
++orr w8, w8, w11
++umov w11, v0.b[7]
++orr w8, w8, w12
++orr w8, w8, w9
++orr w8, w8, w10
++orr w8, w8, w11
++tst w8, #0xff
++cset w0, eq
++b <RequestKey+0x17c>

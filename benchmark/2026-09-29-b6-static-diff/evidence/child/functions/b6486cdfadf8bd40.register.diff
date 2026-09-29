@@ -1,0 +1,131 @@
+--- R155/PublishChildHookTable
++++ NEW/PublishChildHookTable
+@@ -1,14 +1,15 @@
+-stp xR, xR, [sp, #-32]!
+-stp xR, xR, [sp, #16]
++stp xR, xR, [sp, #-48]!
++str xR, [sp, #16]
+ mov xR, sp
+-cbz xR, <PublishChildHookTable+0x190>
++stp xR, xR, [sp, #32]
++cbz xR, <PublishChildHookTable+0x1b8>
+ adrp xR,
+ ldr xR, [xR, #16]
+ mov xR, xR
+ ldr xR, [xR, <object:g_stock_host_services+0x8>]
+ cmp xR, xR
+-b.ne <PublishChildHookTable+0x190>
++b.ne <PublishChildHookTable+0x1b8>
+ adrp xR,
+ add xR, xR, <object:g_stock_host_services+0x10>
+ ldp qR, qR, [xR]
+ orr vR.16b, vR.16b, vR.16b
+@@ -29,49 +30,20 @@
+ orr wR, wR, wR
+ orr wR, wR, wR
+ orr wR, wR, wR
+ tst wR, #0xff
+-b.eq <PublishChildHookTable+0x190>
+-ldr wR, [xR, #12]
+-adrp xR,
+-add xR, xR, <object:g_stock_host_services+0x10>
+-adrp xR,
+-add xR, xR, <object:g_child_hook_table>
+-mov xR, xR
+-eor xR, xR, xR, lsl #32
+-mov xR, #20311
+-movk xR, #20299, lsl #16
+-movk xR, #18511, lsl #32
+-movk xR, #22348, lsl #48
+-eor xR, xR, xR
+-cmp xR, #0
+-csinc xR, xR, xzr, ne
+-bl <westlake_child_hook_table_v1_prepare_candidate>
+-cbnz wR, <PublishChildHookTable+0x190>
+-ldr wR, [xR, #12]
+-adrp xR,
+-add xR, xR, <object:g_child_hook_control>
+-adrp xR,
+-add xR, xR, <object:g_child_hook_table>
+-add xR, xR, #1
+-bl <westlake_child_hook_table_v1_begin_install>
+-cbnz wR, <PublishChildHookTable+0x190>
+-adrp xR,
+-add xR, xR, <object:g_child_hook_control>
+-adrp xR,
+-add xR, xR, <object:g_child_hook_table>
+-bl <westlake_child_hook_table_v1_publish>
+-cbnz wR, <PublishChildHookTable+0x190>
++b.eq <PublishChildHookTable+0x1b8>
+ adrp xR,
+ add xR, xR, <object:g_child_hook_control+0x50>
+ ldar xR, [xR]
+ cmp xR, #2
+-b.ne <PublishChildHookTable+0x190>
++b.ne <PublishChildHookTable+0x120>
+ adrp xR,
+-add xR, xR, <object:g_child_hook_control+0x58>
+-ldar xR, [xR]
+-cmp xR, #1
+-b.ne <PublishChildHookTable+0x190>
++ldr wR, [xR, #12]
++ldr xR, [xR, <object:g_child_hook_control+0x40>]
++add xR, xR, #1
++cmp xR, xR
++b.ne <PublishChildHookTable+0x1b8>
+ adrp xR,
+ add xR, xR, <object:g_child_hook_control+0x18>
+ ldp qR, qR, [xR]
+ ldp qR, qR, [xR]
+@@ -96,9 +68,48 @@
+ orr wR, wR, wR
+ orr wR, wR, wR
+ tst wR, #0xff
+ csetm wR, ne
+-b <PublishChildHookTable+0x194>
++b <PublishChildHookTable+0x1bc>
++ldr xR, [xR, #16]
++adrp xR,
++add xR, xR, <object:g_child_hook_candidate>
++ldr wR, [xR, #12]
++adrp xR,
++add xR, xR, <object:g_stock_host_services+0x10>
++eor xR, xR, xR, lsl #32
++mov xR, #20311
++movk xR, #20299, lsl #16
++movk xR, #18511, lsl #32
++movk xR, #22348, lsl #48
++eor xR, xR, xR
++cmp xR, #0
++csinc xR, xR, xzr, ne
++bl <westlake_child_hook_table_v1_prepare_candidate>
++cbnz wR, <PublishChildHookTable+0x1b8>
++ldr wR, [xR, #12]
++adrp xR,
++add xR, xR, <object:g_child_hook_control>
++adrp xR,
++add xR, xR, <object:g_child_hook_candidate>
++add xR, xR, #1
++bl <westlake_child_hook_table_v1_begin_install>
++cbnz wR, <PublishChildHookTable+0x1b8>
++adrp xR,
++add xR, xR, <object:g_child_hook_control>
++adrp xR,
++add xR, xR, <object:g_child_hook_candidate>
++bl <westlake_child_hook_table_v1_publish>
++cbnz wR, <PublishChildHookTable+0x1b8>
++ldar xR, [xR]
++cmp xR, #2
++b.ne <PublishChildHookTable+0x1b8>
++adrp xR,
++add xR, xR, <object:g_child_hook_control+0x58>
++ldar xR, [xR]
++cmp xR, #1
++b.eq <PublishChildHookTable+0xb4>
+ mov wR, #-1
+-ldp xR, xR, [sp, #16]
+-ldp xR, xR, [sp], #32
++ldp xR, xR, [sp, #32]
++ldr xR, [sp, #16]
++ldp xR, xR, [sp], #48
+ ret
