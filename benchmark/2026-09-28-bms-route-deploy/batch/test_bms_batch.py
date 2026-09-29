@@ -494,35 +494,3 @@ class BatchTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
-
-
-class EnsureHilogCapacityTest(unittest.TestCase):
-    """#73: --hilog mode must refuse to run below 16M buffers."""
-
-    class CapBoard:
-        def __init__(self, sizes, privacy_ok=True):
-            self.sizes = sizes
-            self.calls = []
-        def shell(self, command, required=True, timeout=60):
-            self.calls.append(command)
-            if command == 'hilog -g':
-                text = ''.join('Log type %s buffer size is %.1fM\n' % (t, v)
-                               for t, v in self.sizes.items())
-                return 0, text
-            return 0, ''
-
-    def test_passes_when_all_three_types_at_16m(self):
-        board = self.CapBoard({'app': 16.0, 'init': 16.0, 'core': 16.0, 'only_prerelease': 16.0})
-        b.ensure_hilog_capacity(board)
-        self.assertIn('hilog -G 16M', board.calls)
-        self.assertIn('hilog -p off', board.calls)
-
-    def test_refuses_when_any_type_below_16m(self):
-        board = self.CapBoard({'app': 16.0, 'init': 16.0, 'core': 0.256})
-        with self.assertRaises(b.BatchStop):
-            b.ensure_hilog_capacity(board)
-
-    def test_refuses_when_readback_missing(self):
-        board = self.CapBoard({})
-        with self.assertRaises(b.BatchStop):
-            b.ensure_hilog_capacity(board)

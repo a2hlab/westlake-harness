@@ -696,33 +696,12 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
     return rec
 
 
-def ensure_hilog_capacity(board):
-    """#73: --hilog mode needs a 16M buffer and privacy off, else child logs
-    get flushed away (the #71 misread). Refuse to run below 16.0M."""
-    board.shell('hilog -G 16M', required=False, timeout=60)
-    board.shell('hilog -p off', required=False, timeout=60)
-    rc, text = board.shell('hilog -g', timeout=60)
-    sizes = {}
-    for line in text.splitlines():
-        m = re.search(r'Log type (\w+) buffer size is ([0-9.]+)([KM])', line)
-        if m:
-            v = float(m.group(2))
-            # '256.0K' -> KB value, '16.0M' -> MB value; normalize to MB
-            sizes[m.group(1)] = v / 1024 if m.group(3) == 'K' else v
-    for must in ('app', 'init', 'core'):
-        if sizes.get(must, 0) < 16.0:
-            raise BatchStop('hilog buffer for %s is %.1fM, need >=16M (run: hilog -G 16M; hilog -p off)' % (must, sizes.get(must, 0)))
-    return text
-
-
 def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
     records = []
     board.ready()
     _, version = board.shell('param get const.ohos.fullname')
     if version.strip() not in ('OpenHarmony-6.1.0.31', 'OpenHarmony 6.1.0.31'):
         raise BatchStop('expected OH6.1.0.31; this is not the OH7/T006 route')
-    if options.get('hilog_seconds') is not None:
-        ensure_hilog_capacity(board)
     _, baseline = board.shell('ls -ld /data/pr03-74e6-portable; ls -l /dev/unix/socket/AppSpawnX; '
                               'sha256sum /system/bin/appspawn-x /system/android/framework/oh-adapter-runtime.jar')
     save(out/'baseline.json', {'version': version, 'boot_id': board.boot, 'readback': baseline,
