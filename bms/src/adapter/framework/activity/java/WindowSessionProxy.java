@@ -114,13 +114,29 @@ public final class WindowSessionProxy implements InvocationHandler {
         return result;
     }
 
+    // r17r (markor): the board delegate 5bfa99ba (an older WindowSessionAdapter) fail-closes on the
+    // power/lock-screen flags -- newer adapters translate them, this one returns ADD_INVALID_TYPE.
+    // Our SUPPORTED_LAYOUT_FLAGS constant's *runtime* value on this generation is a superset that
+    // already contains these bits (0x81e90580 includes FLAG_KEEP_SCREEN_ON 0x80), so masking with it
+    // alone leaves 0x80 in and masked==original -> the retry never fired and markor died with
+    // InvalidDisplayException("window type 1 is not valid"). Strip them so the retry actually removes
+    // what the delegate refuses. They are cosmetic (keep-screen-on / show-when-locked).
+    // Device-standard literal bit values (NOT the android.jar constants: this generation's compile
+    // android.jar bakes quirky flag values -- SUPPORTED_LAYOUT_FLAGS' runtime value 0x81e90580 already
+    // carries these bits -- so the named constants cannot be trusted to strip the on-device 0x80).
+    private static final int POWER_LOCK_FLAGS =
+            0x00000080   // FLAG_KEEP_SCREEN_ON  (the flag the board delegate logs as unsupported)
+            | 0x00080000 // FLAG_SHOW_WHEN_LOCKED
+            | 0x00200000 // FLAG_TURN_SCREEN_ON
+            | 0x00400000; // FLAG_DISMISS_KEYGUARD
+
     /** On ADD_INVALID_TYPE, mask the LayoutParams flags to the supported set and retry once. */
     private Object retryAddOnInvalidType(Method method, Object[] args, Object result) throws Throwable {
         if (!(result instanceof Integer) || (Integer) result != ADD_INVALID_TYPE) return result;
         android.view.WindowManager.LayoutParams attrs = findAttrs(args);
         if (attrs == null) return result;
         int original = attrs.flags;
-        int masked = original & SUPPORTED_LAYOUT_FLAGS;
+        int masked = original & SUPPORTED_LAYOUT_FLAGS & ~POWER_LOCK_FLAGS;
         if (masked == original) return result;               // flags were not the problem
         attrs.flags = masked;
         Object retry = method.invoke(delegate, args);
