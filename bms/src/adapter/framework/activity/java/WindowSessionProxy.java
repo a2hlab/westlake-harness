@@ -92,8 +92,11 @@ public final class WindowSessionProxy implements InvocationHandler {
             if (name.startsWith("addToDisplay")) {
                 result = retryAddOnInvalidType(method, args, result);
             } else if ("relayout".equals(name)) {
-                clampRelayout(args);
-                reversePushOnce(args);
+                // Only reverse-push when the frame WAS degenerate (the 0x0 death spiral). A window that
+                // already relayouts to a real size (ZigZag) must not be disturbed by an extra
+                // IWindow.resized -- doing so on every window regressed ZigZag to a white screen (r17h).
+                boolean degenerate = clampRelayout(args);
+                if (degenerate) reversePushOnce(args);
             }
         } catch (Throwable t) {
             System.err.println("[B8-WSP] " + name + " post-process skipped: " + t);
@@ -126,24 +129,23 @@ public final class WindowSessionProxy implements InvocationHandler {
         return null;
     }
 
-    /** Clamp a degenerate (<=1px) relayout frame in the WindowRelayoutResult out-parameter. */
-    private void clampRelayout(Object[] args) throws Exception {
-        if (args == null) return;
+    /** Clamp a degenerate (<=1px) relayout frame; returns true when a frame WAS degenerate. */
+    private boolean clampRelayout(Object[] args) throws Exception {
+        if (args == null) return false;
         for (Object a : args) {
             if (a == null) continue;
             if ("android.window.WindowRelayoutResult".equals(a.getClass().getName())) {
                 Object frames = readField(a, "frames");
-                if (frames != null) clampFramesObject(frames);
-                return;
+                return frames != null && clampFramesObject(frames);
             }
             if ("android.window.ClientWindowFrames".equals(a.getClass().getName())) {
-                clampFramesObject(a);
-                return;
+                return clampFramesObject(a);
             }
         }
+        return false;
     }
 
-    private void clampFramesObject(Object frames) throws Exception {
+    private boolean clampFramesObject(Object frames) throws Exception {
         boolean any = false;
         for (String fieldName : new String[] {"frame", "displayFrame", "parentFrame"}) {
             Object rectObj = readField(frames, fieldName);
@@ -155,6 +157,7 @@ public final class WindowSessionProxy implements InvocationHandler {
             System.err.println("[B8-WSP] CLAMP48 degenerate relayout frame clamped to "
                     + sLastGoodWidth + "x" + sLastGoodHeight);
         }
+        return any;
     }
 
     /** Record the healthy size; substitute the last-good / display max bounds when an axis is <=1. */

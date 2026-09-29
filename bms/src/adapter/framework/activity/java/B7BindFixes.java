@@ -197,7 +197,14 @@ public final class B7BindFixes {
                 return;
             }
             create.setAccessible(true);
-            final String lib = "/system/android/lib64";
+            // r17j: liboh_tls_boundary dlopens the board's OpenSSL (libssl_openssl.z.so /
+            // libcrypto_openssl.z.so) from these system dirs. The namespace must search AND permit them
+            // or the ANL domain rejects the dlopen ("check ns accessible failed") and the TLS handshake
+            // self-test fails, leaving the factory dormant (oc-t4). kBridgePermittedPaths already lists
+            // platformsdk in policy; the runtime domain-creation call just was not carrying them.
+            final String base = "/system/android/lib64";
+            final String openssl = "/system/lib64/platformsdk:/system/lib64/chipset-sdk:/system/lib64/chipset-sdk-sp";
+            final String lib = base + ":" + openssl;   // both librarySearchPath and libraryPermittedPath
             final String dexPath = runtimeJarPath(runtimeCl);
             Class<?>[] pt = create.getParameterTypes();
             Object[] args = new Object[pt.length];
