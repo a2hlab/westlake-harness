@@ -35,6 +35,8 @@ RULES = [
                            "route-A-only gap (B6-family ContextImpl prefs; investigate null source)"),
     ("viewmodel",          r"Cannot create an instance of class|ViewModelProvider",
                            "route-A-only (ViewModel factory chain; needs stack)"),
+    ("clinit-failure",     r"ExceptionInInitializerError|<clinit>",
+                           "route-A-only (<clinit> initializer threw — NOT multidex; root is the initializer's own exception)"),
     ("multidex",           r"NoClassDefFoundError.*AppConfig|Didn't find class",
                            "route-A-only (multi-dex/classloader order; needs stack)"),
     ("musl-reloc",         r"symbol not found\. dso=/data/app|Error loading shared library[^:]*: \(needed by /data/app",
@@ -85,7 +87,19 @@ def triage_run(run_dir):
             def norm(ln):
                 # strip an optional leading "NNNNN: " line-number prefix (#78 excerpts)
                 return re.sub(r"^\s*\d+:\s*", "", ln)
-            for ln in lines:
+            # RULE 1 (cc-wiki r16): if ensureBindApplication FAILED is present, the
+            # root cause is the FIRST 'Caused by' under that marker (antennapod:
+            # libconscrypt_jni.so __open_2 relocation) — NOT the last downstream
+            # exception (a much later NPE from the half-bound app).
+            bind_failed_at = next((i for i, l in enumerate(lines)
+                                   if "ensureBindApplication FAILED" in l), None)
+            if bind_failed_at is not None:
+                for l in lines[bind_failed_at:bind_failed_at + 80]:
+                    l2 = norm(l)
+                    if "Caused by:" in l2:
+                        fatal = l2.strip()[:240]
+                        break
+            for ln in (lines if fatal is None else []):
                 l2 = norm(ln)
                 t = ts_of(l2)
                 if not t: continue
@@ -107,6 +121,26 @@ def triage_run(run_dir):
                             if len(f.split()) >= 3 and f.split()[2].isdigit())
                 if alive: break
         cls = seg = None
+        # RULE 3 (cc-wiki r16): a non-main-thread native crash shows as DFX
+        # signo lines (not a Java fatal). Prefer the DFX signal line over any
+        # nearby WARN, and surface the cppcrash top frame when present.
+        dfx = next((ln.strip()[:200] for ln in lines
+                    if re.search(r"DfxSignalHandler.*signo\(", ln)), None)
+        cpp = None
+        for cf in sorted(glob.glob(str(d) + "/cppcrash-*.txt")):
+            try:
+                reason = next(l.strip() for l in open(cf, errors="replace")
+                              if l.startswith("Reason:"))
+                top = next(l.strip()[:200] for l in open(cf, errors="replace")
+                           if l.startswith("#00"))
+                cpp = reason + " | " + top
+                break
+            except StopIteration:
+                continue
+        if dfx or cpp:
+            row_native = {"dfx_signal": dfx, "cppcrash_top": cpp}
+        else:
+            row_native = None
         if fatal:
             for name, rx, segment in RULES:
                 if re.search(rx, fatal):
@@ -115,8 +149,11 @@ def triage_run(run_dir):
                 cls, seg = "unclassified", "(needs manual review)"
         else:
             cls, seg = ("alive-or-quiet", "-") if alive else ("no-fatal-found", "(check hilog coverage)")
+        if row_native is not None:
+            cls, seg = "native-signal-crash", "native crash (see cppcrash top frame; not a Java wall)"
         rows.append({"key": k, "uid": uid, "pid": pid, "alive": alive,
                      "first_exception": first_ex, "fatal": fatal,
+                     "native": row_native,
                      "class": cls, "westlake_segment": seg,
                      "fix_batch": FIX_BATCH.get(seg, "not-yet"),
                      "exit_line": exit_line})
