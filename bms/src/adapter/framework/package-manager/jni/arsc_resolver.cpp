@@ -24,6 +24,7 @@
  */
 #include "arsc_resolver.h"
 
+#include <algorithm>
 #include <cstring>
 #include <vector>
 
@@ -58,6 +59,11 @@ constexpr uint16_t ENTRY_FLAG_COMPLEX     = 0x0001;
 
 // Res_value.dataType
 constexpr uint8_t  RES_VALUE_TYPE_STRING  = 0x03;
+constexpr uint8_t  RES_VALUE_TYPE_REFERENCE = 0x01;  // value.data is another resId
+
+// A label entry can alias another entry (@string/foo -> @string/bar); follow the
+// chain but never spin: cycles and deep chains give up after this many hops.
+constexpr int      MAX_REFERENCE_HOPS = 4;
 
 constexpr uint32_t NO_ENTRY_32 = 0xffffffffu;
 constexpr uint16_t NO_ENTRY_16 = 0xffffu;
@@ -444,14 +450,23 @@ bool ResolveResourceIdToString(const std::string& apkPath, uint32_t resId,
         return false;
     }
 
-    const uint32_t wantPkg = (resId >> 24) & 0xff;
-    const uint32_t wantType = (resId >> 16) & 0xff;
-    const uint32_t wantEntry = resId & 0xffff;
-
+    // Reference following (@string/foo -> @string/bar): wikipedia/markor label ids
+    // are REFERENCE entries (type 0x01) whose target holds the actual string.
+    // Bounded hops + visited-set guard so a cyclic table can never spin here.
+    uint32_t cur = resId;
+    std::vector<uint32_t> visited;
     size_t globalPoolOff = 0;
     bool haveGlobalPool = false;
     // (value, isDefaultLocale) per config variant that defines this entry.
     std::vector<std::pair<std::string, bool>> candidates;
+
+    for (int hop = 0; hop <= MAX_REFERENCE_HOPS; ++hop) {
+    candidates.clear();
+    const uint32_t wantPkg = (cur >> 24) & 0xff;
+    const uint32_t wantType = (cur >> 16) & 0xff;
+    const uint32_t wantEntry = cur & 0xffff;
+    // Reference targets seen at this hop, same (isDefaultLocale) variant rule.
+    std::vector<std::pair<uint32_t, bool>> refTargets;
 
     size_t o = tableHeaderSize;
     while (o + 8 <= arsc.size()) {
@@ -486,14 +501,21 @@ bool ResolveResourceIdToString(const std::string& apkPath, uint32_t resId,
                                         size_t val = ent + esize;  // Res_value
                                         uint8_t vtype = 0;
                                         uint32_t vdata = 0;
-                                        if (r.u8(val + 3, vtype) && r.u32(val + 4, vdata) &&
-                                            vtype == RES_VALUE_TYPE_STRING && haveGlobalPool) {
-                                            std::string s;
-                                            if (ReadPoolStringUtf8(r, globalPoolOff, vdata, s) &&
-                                                !s.empty()) {
-                                                candidates.emplace_back(
-                                                    std::move(s),
-                                                    TypeConfigHasDefaultLocale(r, no));
+                                        if (r.u8(val + 3, vtype) && r.u32(val + 4, vdata)) {
+                                            if (vtype == RES_VALUE_TYPE_STRING && haveGlobalPool) {
+                                                std::string s;
+                                                if (ReadPoolStringUtf8(r, globalPoolOff, vdata, s) &&
+                                                    !s.empty()) {
+                                                    candidates.emplace_back(
+                                                        std::move(s),
+                                                        TypeConfigHasDefaultLocale(r, no));
+                                                }
+                                            } else if (vtype == RES_VALUE_TYPE_REFERENCE && vdata != 0) {
+                                                // @string/foo -> @string/bar (wikipedia/markor labels):
+                                                // remember the target per config variant; followed,
+                                                // with a cycle guard, after this walk completes.
+                                                refTargets.emplace_back(
+                                                    vdata, TypeConfigHasDefaultLocale(r, no));
                                             }
                                         }
                                     }
@@ -507,6 +529,31 @@ bool ResolveResourceIdToString(const std::string& apkPath, uint32_t resId,
         }
         o += csize;
     }
+
+    // Hop control: string found at this hop -> break to variant selection;
+    // dead end (no string, no reference) -> break and report; otherwise follow
+    // the default-locale reference target with a cycle guard.
+    if (!candidates.empty()) {
+        break;
+    }
+    if (refTargets.empty()) {
+        break;
+    }
+    const uint32_t target = [&]() {
+        for (const auto& t : refTargets) {
+            if (t.second) return t.first;
+        }
+        return refTargets[0].first;
+    }();
+    if (std::find(visited.begin(), visited.end(), target) != visited.end()) {
+        ARSC_LOGW("ResolveResourceIdToString: reference cycle at 0x%{public}08x", target);
+        break;
+    }
+    visited.push_back(target);
+    ARSC_LOGI("ResolveResourceIdToString: 0x%{public}08x is a reference -> 0x%{public}08x (hop %{public}d)",
+              cur, target, hop + 1);
+    cur = target;
+    }  // reference-follow loop
 
     if (candidates.empty()) {
         ARSC_LOGW("ResolveResourceIdToString: 0x%{public}08x not found as a string in %{public}s",

@@ -1,7 +1,9 @@
 #include "manifest_facts_v1.h"
 
 #include "axml_parser.h"
+#include "../../application_attributes/src/manifest_version_parser.h"
 #include "sha256.h"
+#include "../../application_attributes/src/sdk_rules.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -623,26 +625,26 @@ bool GetUniqueAttribute(const AxmlParser& parser, const std::string& name,
     return matches <= 1;
 }
 
-bool ToUint64(const Attribute& attribute, uint64_t* value)
+// Identity follows Android's TypedArray resource IDs, not unqualified names.
+bool ReadSdkAttribute(const AxmlParser& parser, uint32_t id, SdkAttributeV2* output)
 {
-    if (!attribute.present) return true;
-    if (attribute.hasTyped &&
-        (attribute.typed.dataType == ResValue::TYPE_INT_DEC ||
-         attribute.typed.dataType == ResValue::TYPE_INT_HEX)) {
-        *value = attribute.typed.data;
-        return true;
-    }
-    if (attribute.text.empty()) return false;
-    uint64_t parsed = 0;
-    for (char c : attribute.text) {
-        if (c < '0' || c > '9') return false;
-        const uint64_t digit = static_cast<uint64_t>(c - '0');
-        if (parsed > (std::numeric_limits<uint64_t>::max() - digit) / 10) {
-            return false;
+    bool seen = false;
+    for (size_t i = 0; i < parser.getAttributeCount(); ++i) {
+        if (parser.getAttributeNameResID(i) != id) continue;
+        if (seen) return false;
+        seen = true;
+        ResValue value{};
+        if (parser.getAttributeValue(i, &value) != 0) return false;
+        output->present = true;
+        output->type = value.dataType;
+        output->bits = value.data;
+        if (value.dataType == ResValue::TYPE_STRING) {
+            size_t length = 0;
+            const char* text = parser.getAttributeStringValue(i, &length);
+            if (text == nullptr) return false;
+            output->text.assign(text, length);
         }
-        parsed = parsed * 10 + digit;
     }
-    *value = parsed;
     return true;
 }
 
@@ -685,7 +687,9 @@ void AddProvenance(ManifestFactsOutputV1* facts, const std::string& field,
 
 bool ParseAxml(const ManifestParseRequestV1& request,
     const ManifestParserLimitsV1& limits, const ZipManifest& manifest,
-    ManifestFactsOutputV1* facts, ManifestParseReceiptV1* rejection)
+    ManifestFactsOutputV1* facts, ManifestVersionV2* version,
+    std::vector<UsesSdkDeclarationV2>* sdkDeclarations,
+    ManifestParseReceiptV1* rejection)
 {
     std::string layoutReason;
     if (!ValidateBinaryXmlLayout(manifest.bytes, &layoutReason)) {
@@ -703,7 +707,7 @@ bool ParseAxml(const ManifestParseRequestV1& request,
     uint32_t depth = 0;
     uint32_t manifestCount = 0;
     uint32_t applicationCount = 0;
-    uint32_t usesSdkCount = 0;
+    uint32_t usesSdkDepth = 0;
     bool applicationOpen = false;
     std::set<std::pair<std::string, std::string>> components;
 
@@ -734,6 +738,7 @@ bool ParseAxml(const ManifestParseRequestV1& request,
             if (std::string(endName, endNameLength) == "application") {
                 applicationOpen = false;
             }
+            if (depth == usesSdkDepth) usesSdkDepth = 0;
             --depth;
             continue;
         }
@@ -750,6 +755,21 @@ bool ParseAxml(const ManifestParseRequestV1& request,
         const std::string element(elementName, elementLength);
         const size_t chunkOffset = parser.getCurrentOffset();
 
+        if (usesSdkDepth != 0 && depth > usesSdkDepth) {
+            // Unknown children and nested extension content are skipped as in Android.
+            if (depth == usesSdkDepth + 1 && element == "extension-sdk") {
+                ExtensionSdkDeclarationV2 extension;
+                if (!ReadSdkAttribute(parser, 0x01010610, &extension.sdk) ||
+                    !ReadSdkAttribute(parser, 0x01010611, &extension.minimum)) {
+                    *rejection = Reject(request, ManifestParseVerdict::MANIFEST_MALFORMED,
+                        "extension SDK attributes are duplicated or malformed");
+                    return false;
+                }
+                sdkDeclarations->back().extensions.push_back(std::move(extension));
+            }
+            continue;
+        }
+
         if (element == "manifest") {
             ++manifestCount;
             if (manifestCount != 1 || depth != 1) {
@@ -759,10 +779,8 @@ bool ParseAxml(const ManifestParseRequestV1& request,
                 return false;
             }
             Attribute packageName;
-            Attribute versionCode;
             Attribute versionName;
             if (!GetUniqueAttribute(parser, "package", &packageName) ||
-                !GetUniqueAttribute(parser, "versionCode", &versionCode) ||
                 !GetUniqueAttribute(parser, "versionName", &versionName)) {
                 *rejection = Reject(request,
                     ManifestParseVerdict::DECLARATION_CONFLICT,
@@ -770,43 +788,37 @@ bool ParseAxml(const ManifestParseRequestV1& request,
                 return false;
             }
             if (!packageName.present || packageName.text.empty() ||
-                !ToUint64(versionCode, &facts->versionCode)) {
+                !application_attributes::manifest_parser::ReadVersion(parser, version)) {
                 *rejection = Reject(request,
                     ManifestParseVerdict::MANIFEST_MALFORMED,
                     "manifest package/version declaration is invalid");
                 return false;
             }
             facts->packageName = packageName.text;
+            facts->versionCode = version->minor.bits;
             facts->versionName = versionName.text;
             AddProvenance(facts, "packageName", request.artifactSha256,
                 manifestSha, chunkOffset);
             AddProvenance(facts, "versionCode", request.artifactSha256,
                 manifestSha, chunkOffset);
+            AddProvenance(facts, "versionCodeMajor", request.artifactSha256,
+                manifestSha, chunkOffset);
             AddProvenance(facts, "versionName", request.artifactSha256,
                 manifestSha, chunkOffset);
         } else if (element == "uses-sdk") {
-            ++usesSdkCount;
-            if (usesSdkCount != 1 || depth != 2 || manifestCount != 1) {
-                *rejection = Reject(request,
-                    ManifestParseVerdict::DECLARATION_CONFLICT,
-                    "uses-sdk declaration is duplicated");
+            // Only direct manifest children are declarations; repeated tags replace
+            // the complete SDK state after each preceding tag has been validated.
+            if (depth != 2 || manifestCount != 1) continue;
+            UsesSdkDeclarationV2 sdk;
+            if (!ReadSdkAttribute(parser, 0x0101020c, &sdk.minimum) ||
+                !ReadSdkAttribute(parser, 0x01010270, &sdk.target) ||
+                !ReadSdkAttribute(parser, 0x01010271, &sdk.maximum)) {
+                *rejection = Reject(request, ManifestParseVerdict::MANIFEST_MALFORMED,
+                    "SDK attributes are duplicated or malformed");
                 return false;
             }
-            Attribute minSdk;
-            Attribute targetSdk;
-            uint64_t min = 0;
-            uint64_t target = 0;
-            if (!GetUniqueAttribute(parser, "minSdkVersion", &minSdk) ||
-                !GetUniqueAttribute(parser, "targetSdkVersion", &targetSdk) ||
-                !ToUint64(minSdk, &min) || !ToUint64(targetSdk, &target) ||
-                min > UINT32_MAX || target > UINT32_MAX) {
-                *rejection = Reject(request,
-                    ManifestParseVerdict::NOT_SUPPORTED,
-                    "SDK declaration is duplicated, non-numeric, or out of range");
-                return false;
-            }
-            facts->minSdk = static_cast<uint32_t>(min);
-            facts->targetSdk = static_cast<uint32_t>(target);
+            sdkDeclarations->push_back(std::move(sdk));
+            usesSdkDepth = depth;
             AddProvenance(facts, "minSdk", request.artifactSha256,
                 manifestSha, chunkOffset);
             AddProvenance(facts, "targetSdk", request.artifactSha256,
@@ -984,9 +996,34 @@ ManifestParseReceiptV1 ManifestFactsParserV1::Parse(
     ManifestFactsOutputV1 facts;
     facts.artifactSetDigest = computedSet;
     facts.parserVersion = PARSER_VERSION;
-    if (!ParseAxml(request, limits_, manifest, &facts, &rejection)) {
+    ManifestVersionV2 version;
+    std::vector<UsesSdkDeclarationV2> sdkDeclarations;
+    if (!ParseAxml(request, limits_, manifest, &facts, &version, &sdkDeclarations, &rejection)) {
         return rejection;
     }
+
+    std::optional<SdkCompatibilityResultV2> compatibility;
+    std::optional<ResolvedSdkV2> sdk;
+    if (request.sdkProfile) {
+        compatibility = application_attributes::EvaluateSdkRequirements(
+            sdkDeclarations, *request.sdkProfile, request.apkInApex);
+        sdk = compatibility->resolved;
+    } else {
+        sdk = application_attributes::ResolveNumericSdkDeclarations(sdkDeclarations);
+        if (!sdk || request.apkInApex) {
+            sdk.reset();
+            compatibility = SdkCompatibilityResultV2{SdkCompatibilityVerdictV2::PROFILE_UNAVAILABLE,
+                SdkFailureStageV2::PROFILE, "SDK compatibility requires an explicit runtime profile", {}};
+        }
+    }
+    if (!sdk) {
+        auto rejected = Reject(request, ManifestParseVerdict::NOT_SUPPORTED, compatibility->reason);
+        rejected.sdkDeclarations = std::move(sdkDeclarations);
+        rejected.sdkCompatibility = std::move(compatibility);
+        return rejected;
+    }
+    facts.minSdk = static_cast<uint32_t>(sdk->minimum);
+    facts.targetSdk = static_cast<uint32_t>(sdk->target);
 
     ManifestParseReceiptV1 receipt;
     receipt.requestId = request.requestId;
@@ -996,6 +1033,9 @@ ManifestParseReceiptV1 ManifestFactsParserV1::Parse(
     receipt.artifactSetDigest = computedSet;
     receipt.parserVersion = PARSER_VERSION;
     receipt.facts = std::move(facts);
+    receipt.versionV2 = version;
+    receipt.sdkDeclarations = std::move(sdkDeclarations);
+    receipt.sdkCompatibility = std::move(compatibility);
     return receipt;
 }
 
@@ -1084,6 +1124,27 @@ std::string ManifestParseReceiptJson(const ManifestParseReceiptV1& receipt)
         out << "],\"targetSdk\":" << facts.targetSdk
             << ",\"versionCode\":" << facts.versionCode
             << ",\"versionName\":" << Json(facts.versionName) << "}";
+    }
+    out << ",\"versionV2\":";
+    using Source = VersionValueSourceV2;
+    const auto& version = receipt.versionV2;
+    const auto known = [](const VersionFieldV2& field) {
+        return (field.source == Source::EXPLICIT && field.present) ||
+            (field.source == Source::DEFAULT && field.bits == 0);
+    };
+    if (receipt.verdict != ManifestParseVerdict::PARSED || !receipt.facts ||
+        !known(version.major) || !known(version.minor)) {
+        out << "null";
+    } else {
+        const auto source = [](Source value) {
+            return value == Source::EXPLICIT ? "explicit" : "default";
+        };
+        out << "{\"schemaVersion\":2,\"major\":" << Json(std::to_string(version.major.bits))
+            << ",\"minor\":" << Json(std::to_string(version.minor.bits))
+            << ",\"majorPresent\":" << (version.major.present ? "true" : "false")
+            << ",\"minorPresent\":" << (version.minor.present ? "true" : "false")
+            << ",\"majorSource\":" << Json(source(version.major.source))
+            << ",\"minorSource\":" << Json(source(version.minor.source)) << "}";
     }
     out << ",\"parserVersion\":" << Json(receipt.parserVersion)
         << ",\"reason\":" << Json(receipt.reason)

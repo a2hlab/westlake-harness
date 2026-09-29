@@ -91,7 +91,7 @@ INC="-I$OH/third_party/zlib/contrib/minizip -I$OH/third_party/zlib $INC $BMS_INC
 
 BC=$ADAPTER/framework/appspawn-x/bionic_compat/include
 CFLAGS="--target=aarch64-linux-ohos --sysroot=$SR -I$SR/include/aarch64-linux-ohos \
--fPIC -O2 -std=c++17 -D__OHOS__ \
+-fPIC -O2 -std=c++17 -D__OHOS__ -DWESTLAKE_LIBCXX_HAS_NATIVE_COMPAT=1 \
 -include $BC/libcxx_compat.h -I$BC \
 -include sys/types.h \
 -Wno-unused-parameter -Wno-missing-field-initializers -Wno-error -Wno-macro-redefined -Wno-c++11-narrowing"
@@ -110,7 +110,9 @@ $ADAPTER/framework/package-manager/jni/apk_verify_result.cpp \
 $ADAPTER/framework/package-manager/jni/apk_verifier_client.cpp \
 $ADAPTER/framework/package-manager/jni/axml_parser.cpp \
 $ADAPTER/framework/package-manager/jni/apk_installer.cpp \
+$ADAPTER/framework/package-manager/jni/apk_label_resolver.cpp \
 $ADAPTER/framework/package-manager/jni/icon_normalize.cpp \
+$ADAPTER/framework/package-manager/jni/adaptive_icon.cpp \
 $ADAPTER/third_party/lodepng/lodepng.cpp \
 $ADAPTER/framework/package-manager/jni/arsc_resolver.cpp \
 $ADAPTER/framework/package-manager/jni/permission_mapper.cpp \
@@ -120,11 +122,13 @@ $ADAPTER/framework/package-manager/package_authority/src/package_authority_servi
 $ADAPTER/framework/package-manager/package_query/src/package_query_v1.cpp \
 $ADAPTER/framework/package-manager/package_transaction/src/elf_prepass_analyzer.cpp \
 $ADAPTER/framework/package-manager/package_transaction/src/prepass_bundle.cpp \
-$ADAPTER/framework/package-manager/package_transaction/src/package_transaction.cpp \
+$ADAPTER/framework/package-manager/package_transaction/src/package_transaction_v1.cpp \
+$ADAPTER/framework/package-manager/jni/game_install_plan_v1.cpp \
 $ADAPTER/framework/package-manager/jni/game_install_plan_wire.cpp \
 $ADAPTER/framework/package-manager/jni/install_prepass_materializer.cpp \
 $ADAPTER/framework/package-manager/jni/prepass_context_wire.cpp \
 $ADAPTER/framework/package-manager/jni/app_data_dir_provisioner.cpp \
+$ADAPTER/framework/package-manager/jni/directory_ex_shim.cpp \
 $ADAPTER/framework/package-manager/jni/oh_adapter_install_apk_c_entry.cpp"
 
 # OH device libz.so / libshared_libz.z.so do NOT export minizip unz*/zip* APIs.

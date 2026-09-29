@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "../manifest_facts/include/manifest_version_v2.h"
 
 namespace oh_adapter {
 
@@ -89,6 +90,7 @@ public:
         // <manifest> attributes
         std::string packageName;
         int32_t versionCode = 0;
+        manifest_facts::ManifestVersionV2 versionV2;
         std::string versionName;
         int32_t minSdkVersion = 0;
         int32_t targetSdkVersion = 0;
