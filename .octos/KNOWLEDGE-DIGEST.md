@@ -333,3 +333,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - E.7 的 BMS 直查描述仅代表旧代：当前 `00.Workspace` cd5b329 的 resolveService 走 canonical component-state/catalog/package-store 链；新源码≠选定旧包字节，不能混代断言。
 - 后续用户纠偏：#15 的 T006/OH7 核对仅作历史参考；实际战役走 `01.OH61AOSP16` OH6.1 R130+R155（#19），不刷机、不用 T006 包；#20 只借其桌面图标启动实现。
 - #20 批量脚本已离线准备（未上板）：13 controls +43 blocked +10 tail=66 key；桌面图标精确 ID `AppIconCommonView_<package>.<activity>`，可有多页；WMS Focus window 必须关联本包 BMS UID 的 PID，仍不等于上屏；`x`/`noice` 身份由实际 app-input 核hash后补齐。见 `benchmark/2026-09-28-bms-route-deploy/batch/`。
+
+- **2026-09-29 B6 静态比对防混代 (#53)**: `task52/static` 的三 NEW 哈希与旧 provider 均非 #53 指定件;指定 R155 provider `977fb347` 的 HostServices +112/+120 要求全零、NEW `8d109259` 要求均非零且删除原 `WLNL_InstallSealedOpenV1` 安装调用;但原版 child 内嵌 provider SHA 为 `80c9aee0`(非派单 system 副本 `977fb347`),实际 sealed 基线须另核——恢复须核完整六 hash 与 host/child/provider 契约,不可把符号同名/去地址指令相等当运行等价;证据 `benchmark/2026-09-29-b6-static-diff/`(静态 verified、因果 unverified)。
