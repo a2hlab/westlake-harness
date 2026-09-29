@@ -87,6 +87,16 @@ public final class WindowSessionProxy implements InvocationHandler {
         if ("asBinder".equals(name)) {
             return ((android.os.IInterface) delegate).asBinder();
         }
+        // r17p (EGL): the BCP WindowSessionAdapter.relayout reverse-pushes IWindow.resized whenever the
+        // window size "changed" (app requestedWH=0x0 vs useWH=real). ViewRootImpl already has that size
+        // from the relayout RETURN, so the push is redundant and re-traverses -> HWUI rebuilds the EGL
+        // surface: repeated pushes -> BAD_ALLOC (wikipedia/newpipe/noice/antennapod), a single firstCreate
+        // push -> SURFACE_CHANGED churn -> dropped first frame / white (fd-AppManager/tusky/k9). We cannot
+        // change the delegate's method body (BCP, in oh-adapter-framework.jar), but the delegate calls
+        // resized() on the IWindow we pass IN to relayout -- so wrap it and DROP those resized() calls.
+        // The genuine 0x0 death-spiral recovery is still provided below by reversePushOnce, which targets
+        // the REAL (unwrapped) window, so ZigZag/termux keep their one bootstrap push.
+        Object realWindow = "relayout".equals(name) ? wrapRelayoutWindow(args) : null;
         Object result = method.invoke(delegate, args);
         try {
             if (name.startsWith("addToDisplay")) {
@@ -96,7 +106,7 @@ public final class WindowSessionProxy implements InvocationHandler {
                 // already relayouts to a real size (ZigZag) must not be disturbed by an extra
                 // IWindow.resized -- doing so on every window regressed ZigZag to a white screen (r17h).
                 boolean degenerate = clampRelayout(args);
-                if (degenerate) reversePushOnce(args);
+                if (degenerate && realWindow != null) reversePushOnce(realWindow);
             }
         } catch (Throwable t) {
             System.err.println("[B8-WSP] " + name + " post-process skipped: " + t);
@@ -207,6 +217,63 @@ public final class WindowSessionProxy implements InvocationHandler {
         }
     }
 
+    // ---- r17p (EGL): wrap the IWindow so the delegate's redundant resized() reverse-push is dropped --
+    // Keyed by the real IWindow's binder so one wrapper serves every relayout on that window and its
+    // asBinder() stays stable for the delegate's mSessionMap lookups.
+    private final java.util.Map<android.os.IBinder, Object> sWrappers =
+            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<android.os.IBinder, Object>());
+
+    /** For a relayout call, replace its IWindow arg with a wrapper that drops the delegate's resized()
+     *  reverse-push. Returns the REAL window (so the caller reverse-pushes it directly) or null. */
+    private Object wrapRelayoutWindow(Object[] args) {
+        try {
+            if (args == null) return null;
+            Class<?> iWindow = Class.forName("android.view.IWindow");
+            for (int i = 0; i < args.length; i++) {
+                Object a = args[i];
+                if (a == null || !iWindow.isInstance(a)) continue;
+                if (Proxy.isProxyClass(a.getClass())
+                        && Proxy.getInvocationHandler(a) instanceof DropResizedHandler) {
+                    return ((DropResizedHandler) Proxy.getInvocationHandler(a)).real;   // already wrapped
+                }
+                android.os.IBinder key = ((android.os.IInterface) a).asBinder();
+                Object wrapper = sWrappers.get(key);
+                if (wrapper == null) {
+                    wrapper = Proxy.newProxyInstance(iWindow.getClassLoader(),
+                            new Class<?>[] {iWindow}, new DropResizedHandler(a));
+                    sWrappers.put(key, wrapper);
+                }
+                args[i] = wrapper;
+                return a;
+            }
+        } catch (Throwable t) {
+            System.err.println("[B8-WSP] wrap relayout window skipped: " + t);
+        }
+        return null;
+    }
+
+    /** Forwards every IWindow call to the real window except resized(), which is dropped -- that is the
+     *  delegate's redundant size-changed reverse-push that rebuilds the EGL surface. */
+    private static final class DropResizedHandler implements InvocationHandler {
+        final Object real;
+        DropResizedHandler(Object real) { this.real = real; }
+        @Override public Object invoke(Object proxy, Method m, Object[] a) throws Throwable {
+            if ("resized".equals(m.getName())) {
+                System.err.println("[B8-WSP] delegate IWindow.resized dropped (redundant size-changed reverse-push)");
+                Class<?> rt = m.getReturnType();
+                if (rt == boolean.class) return Boolean.FALSE;
+                if (rt == int.class) return Integer.valueOf(0);
+                if (rt == long.class) return Long.valueOf(0L);
+                return null;                                   // void / object returns
+            }
+            try {
+                return m.invoke(real, a);
+            } catch (java.lang.reflect.InvocationTargetException e) {
+                throw e.getCause() != null ? e.getCause() : e;
+            }
+        }
+    }
+
     // ---- G2.14as r4: reverse-push IWindow.resized once per window --------------------------------
     // OH's server never calls IWindow.resized, so ViewRootImpl in LOCAL_LAYOUT mode measures 0x0 ->
     // relayout frame (0,0,0,0) -> measures 0 again (death spiral) and the first frame is never
@@ -216,15 +283,10 @@ public final class WindowSessionProxy implements InvocationHandler {
     private static final java.util.Set<android.os.IBinder> sReversePushed =
             java.util.Collections.synchronizedSet(new java.util.HashSet<android.os.IBinder>());
 
-    private void reversePushOnce(Object[] args) {
+    private void reversePushOnce(Object window) {
         try {
-            if (args == null) return;
-            Class<?> iWindow = Class.forName("android.view.IWindow");
-            Object window = null;
-            for (Object a : args) {
-                if (a != null && iWindow.isInstance(a)) { window = a; break; }
-            }
             if (window == null) return;
+            Class<?> iWindow = Class.forName("android.view.IWindow");
             android.os.IBinder key = ((android.os.IInterface) window).asBinder();
             if (!sReversePushed.add(key)) return;                 // once per window
             android.graphics.Rect max = maxBounds();
