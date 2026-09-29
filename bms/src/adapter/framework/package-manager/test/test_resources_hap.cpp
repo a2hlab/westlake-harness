@@ -88,17 +88,20 @@ bool FileExists(const std::string& path)
 
 int main(int argc, char** argv)
 {
-    if (argc != 3) {
-        fprintf(stderr, "usage: %s <fixture-dir> <scratch-dir>\n", argv[0]);
+    if (argc != 3 && argc != 4) {
+        fprintf(stderr, "usage: %s <fixture-dir> <scratch-dir> [vector-icon-apk]\n", argv[0]);
         return 2;
     }
     const std::string fixtures = argv[1];
     const std::string scratch = argv[2];
+    // Optional P02 input (B7): an APK whose launcher icon exists only as
+    // vector/adaptive XML, e.g. fd-k9. Not committed (APKs stay out of git).
+    const std::string xmlOnlyApk = argc == 4 ? argv[3] : "";
 
     // The production caller (BuildApkResourcesHap via base_bundle_installer)
     // always creates <dirname(outHap)>/android before ExtractFiles; the
     // side-written icon.png depends on it, so the test mirrors that contract.
-    for (const char* sub : {"p01", "n01", "n02"}) {
+    for (const char* sub : {"p01", "p02", "n01", "n02"}) {
         std::filesystem::create_directories(
             scratch + "/" + sub + "/android");
     }
@@ -133,6 +136,19 @@ int main(int argc, char** argv)
         Check(ReadZipEntryLocal(outHap, "resources/base/media/app_icon.png", packedAppIcon) &&
                 packedAppIcon == expectedIcon,
             "P01", "app_icon entry also == placeholder");
+    }
+
+    // ---- P02 (B7): icon declared, resolves only to vector/adaptive XML, no raster
+    // anywhere -> template placeholder under the DECLARED_XML_ONLY alarm.
+    if (!xmlOnlyApk.empty()) {
+        const std::string outHap = scratch + "/p02/entry.hap";
+        const bool rc = oh_adapter::ApkInstaller::ExtractAndPackResourceHap(xmlOnlyApk, outHap);
+        Check(rc, "P02", "vector-only icon packs resources hap");
+        std::vector<uint8_t> packedIcon;
+        Check(FileExists(outHap) &&
+                ReadZipEntryLocal(outHap, "resources/base/media/icon.png", packedIcon) &&
+                packedIcon == expectedIcon,
+            "P02", "packed icon == template's own placeholder (normalized)");
     }
 
     // ---- N01: truncated package -> fail-closed

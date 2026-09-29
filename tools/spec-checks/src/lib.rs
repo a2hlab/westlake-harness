@@ -78,6 +78,27 @@ fn b6_static_diff() {
 }
 
 #[test]
+fn b7_first_cause_recorded() {
+    run(&["benchmark/2026-09-29-bms-link-entry-walls/verify.py", "first_cause"]);
+}
+#[test]
+fn b7_wall_crossed() {
+    run(&["benchmark/2026-09-29-bms-link-entry-walls/verify.py", "wall_crossed"]);
+}
+#[test]
+fn b7_lit_by_outer_review() {
+    run(&["benchmark/2026-09-29-bms-link-entry-walls/verify.py", "lit"]);
+}
+#[test]
+fn b7_no_regression() {
+    run(&["benchmark/2026-09-29-bms-link-entry-walls/verify.py", "no_regression"]);
+}
+#[test]
+fn b7_blocked_reason_recorded() {
+    run(&["benchmark/2026-09-29-bms-link-entry-walls/verify.py", "blocked"]);
+}
+
+#[test]
 fn bms_rerun_offline() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let status = std::process::Command::new("python3")
@@ -86,4 +107,14 @@ fn bms_rerun_offline() {
         .status()
         .expect("run three-shard FakeBoard plans and offline v4 aggregation checks");
     assert!(status.success(), "B4 rerun preparation checks failed");
+}
+
+#[test]
+fn white_window_offline() {
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_*.py"]);
+}
+
+#[test]
+fn ability_stage_offline() {
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_ability_stage.py"]);
 }

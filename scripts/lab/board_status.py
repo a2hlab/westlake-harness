@@ -30,6 +30,8 @@ HEAD = re.compile(r"^###\s+(\d+[a-z0-9-]*)\.\s*(.*)$")
 ACK = re.compile(r"ACK\((?:(\d+[a-z0-9-]*)\s+)?(done|blocked|wontdo)\b(?!\|)")
 KEY = re.compile(r"\b[0-9a-f]{8}0{12,}[0-9a-f]{4,}\b|\b[A-Z0-9]{19}\b")
 PROGRESS = re.compile(r"^PROGRESS\((\d+[a-z0-9-]*)\):\s*(\S+)\s+(\S+)\s*(.*)$")
+# WAIT(<id>): <time> <who> <until what> -- the entry is parked on purpose; not stale until its next PROGRESS
+WAIT = re.compile(r"^WAIT\((\d+[a-z0-9-]*)\):\s*(\S+)\s+(\S+)\s*(.*)$")
 LOCKLINE = re.compile(r"^(LOCK|UNLOCK)\(([^)]+)\)\s+(\S+)\s+(\S+)\s*(.*)$")
 TS = "%Y-%m-%dT%H:%M:%S%z"
 
@@ -56,7 +58,7 @@ def parse(path):
             lane = re.search(r"\[([\w-]+)\]", title)
             cur = entries.setdefault(eid, {"id": eid, "title": title, "line": n,
                                            "lane": lane.group(1) if lane else None, "boards": [],
-                                           "spec": None, "acks": [], "progress": [], "supersedes": [],
+                                           "spec": None, "acks": [], "progress": [], "waits": [], "supersedes": [],
                                            "attached_to": None, "body": []})
             if eid not in order:
                 order.append(eid)
@@ -73,6 +75,9 @@ def parse(path):
         p = PROGRESS.match(line)
         if p:
             notes.append(("progress", n, p.groups()))
+        w = WAIT.match(line)
+        if w:
+            notes.append(("wait", n, w.groups()))
         k = LOCKLINE.match(line)
         if k:
             notes.append(("lock", n, k.groups()))
@@ -99,10 +104,11 @@ def parse(path):
             target["acks"].append({"line": n, "status": hit.group(2), "text": line.strip()[:200]})
     locks = []
     for kind, n, g in notes:
-        if kind == "progress":
+        if kind in ("progress", "wait"):
             eid, t, lane, text = g
             if eid in entries:
-                entries[eid]["progress"].append({"line": n, "time": t, "lane": lane, "text": text})
+                entries[eid]["progress" if kind == "progress" else "waits"].append(
+                    {"line": n, "time": t, "lane": lane, "text": text})
         else:
             op, serial, lane, t, why = g
             locks.append({"line": n, "op": op, "serial": serial, "lane": lane, "time": t, "why": why})
@@ -200,11 +206,17 @@ def schedule(board, stale_min=30, spec_dir=None, now=None):
         age = None
         if last and when(last["time"]):
             age = round((now - when(last["time"])).total_seconds() / 60, 1)
+        # a WAIT written after the last PROGRESS parks the entry until the lane reports again;
+        # a blocked entry waits on the outer loop by definition, so only open entries can go stale
+        wait = max(e["waits"], key=lambda w: w["line"]) if e["waits"] else None
+        if wait and last and wait["line"] < last["line"]:
+            wait = None
         lane = lanes.setdefault(e["lane"], {"lane": e["lane"], "entries": []})
         lane["entries"].append({"id": e["id"], "task": task_of(e), "state": e["state"],
                                 "attached": e.get("attached", []), "boards": e["boards"],
                                 "last_progress": last, "minutes_since_progress": age,
-                                "stale": (age is None) or age > stale_min})
+                                "waiting": wait["text"] if wait else None,
+                                "stale": not wait and e["state"] == "open" and ((age is None) or age > stale_min)})
 
     held = live_holders()
     last_lock = {}
@@ -254,7 +266,7 @@ def render(s):
         for e in lane["entries"]:
             lp = e["last_progress"]
             prog = f"{e['minutes_since_progress']} min ago: {lp['text'][:70]}" if lp else "no PROGRESS yet"
-            flag = "  STALE" if e["stale"] else ""
+            flag = "  STALE" if e["stale"] else f"  WAITING: {e['waiting'][:50]}" if e["waiting"] else ""
             extra = f" (+#{',#'.join(e['attached'])})" if e["attached"] else ""
             out.append(f"  {lane['lane']:<8} #{e['id']}{extra:<8} {e['state']:<8} {str(e['task']):<24} "
                        f"[{','.join(short(b) for b in e['boards']) or '-'}]  {prog}{flag}")

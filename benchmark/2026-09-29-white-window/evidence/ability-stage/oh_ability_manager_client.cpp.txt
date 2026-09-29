@@ -1,0 +1,17 @@
+SOURCE /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/framework/activity/jni/oh_ability_manager_client.cpp
+845: // G2.14i (2026-05-01): JNI for AppSchedulerBridge.notifyForegroundDeferred main-looper
+846: // callback. Routes ApplicationForegrounded reverse IPC to OH AppMS. Called from
+847: // Java main-looper Runnable that was posted by AppSchedulerAdapter::ScheduleForegroundApplication.
+848: // By the time this fires, AppMS::AbilityForeground has already finished
+849: // foregroundingAbilityTokens_.insert(token), so PopForegroundingAbilityTokens →
+850: // OnAbilityRequestDone → AMS::ForegroundLifecycle works.
+851: JNIEXPORT void JNICALL
+852: Java_adapter_activity_AppSchedulerBridge_nativeNotifyApplicationForegrounded(
+853:         JNIEnv* /*env*/, jclass /*clazz*/, jint recordId) {
+854:     // Update the cached recordId so subsequent calls also use the latest.
+855:     if (recordId >= 0) {
+856:         oh_adapter::OHAppMgrClient::getInstance().setRecordId(recordId);
+857:     }
+858:     oh_adapter::OHAppMgrClient::getInstance().notifyAppState(
+859:         static_cast<int>(oh_adapter::AppState::STATE_FOREGROUND));
+860: }

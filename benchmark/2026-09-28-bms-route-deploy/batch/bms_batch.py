@@ -420,6 +420,10 @@ def desktop_launch(board, app, remote, out, record, pages=10):
                 record['clicked'] = True
                 record['click_monotonic'] = time.monotonic()
                 record['clicked_at'] = time.time()
+                # Every uitest call leaves the screen-off override at 10 s (5cd/5ea/61b:
+                # "OverrideTimeout=10000ms"), so without this the lock screen covers the
+                # app before a t+20 capture. The click is the last uitest call of a launch.
+                board.shell('power-shell timeout -o 86400000', required=False)
                 return
             if screen is None:
                 raise AppFailure('cannot determine screen size for page search')

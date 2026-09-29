@@ -1,0 +1,96 @@
+SOURCE /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/framework/activity/jni/app_scheduler_adapter.cpp
+333: void AppSchedulerAdapter::ScheduleLaunchApplication(const OHOS::AppExecFwk::AppLaunchData &data,
+334:                                                      const OHOS::AppExecFwk::Configuration &config)
+335: {
+336:     // 2026-04-30 方向 3 真适配: OH IPC ScheduleLaunchApplication 是 OH AppMgr 在
+337:     // AttachApplication 后的反向 callback, 时机对应 AOSP IApplicationThread.bindApplication
+338:     // → handleBindApplication。本入口路由到 Java AppSchedulerBridge.nativeOnScheduleLaunchApplication
+339:     // 让 AOSP 自己跑完整 bind 流程 (LoadedApk / Application / Instrumentation / onCreate)。
+340:     const std::string& bundleName = data.GetApplicationInfo().bundleName;
+341:     const std::string& processName = data.GetProcessInfo().GetProcessName();
+342:     pid_t pid = data.GetProcessInfo().GetPid();
+343:     int32_t recordId = data.GetRecordId();
+344:     ALOGI("[BRIDGED] ScheduleLaunchApplication -> bindApplication: bundle=%s process=%s pid=%d recordId=%d",
+345:           bundleName.c_str(), processName.c_str(), pid, recordId);
+346: 
+347:     // G2.14i: cache recordId so async ApplicationForegrounded reverse callback
+348:     // (from ScheduleForegroundApplication) reaches the right OH AppRunningRecord.
+349:     OHAppMgrClient::getInstance().setRecordId(recordId);
+350: 
+351:     std::lock_guard<std::mutex> lock(jni_mutex_);
+352: 
+353:     if (app_thread_ == nullptr || app_thread_class_ == nullptr) {
+354:         ALOGW("ScheduleLaunchApplication: IApplicationThread ref is null");
+355:         return;
+356:     }
+357: 
+358:     westlake::jni::ScopedJniAttachment attachment(jvm_, "OH_BinderThread");
+359:     JNIEnv* env = attachment.env();
+360:     if (env == nullptr) {
+361:         logAttachmentFailure("ScheduleLaunchApplication", attachment);
+362:         return;
+363:     }
+364: 
+365:     // Set process state to TOP (existing OH state sync)
+366:     jmethodID setProcessState = env->GetMethodID(app_thread_class_, "setProcessState", "(I)V");
+367:     if (setProcessState != nullptr) {
+368:         env->CallVoidMethod(app_thread_, setProcessState, static_cast<jint>(PROCESS_STATE_TOP));
+369:         if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); }
+409:     ALOGI("[B39-LA] routing to Java nativeOnScheduleLaunchApplication");
+410:     jclass bridgeClass = adapter_bridge_load_class(env, "adapter.activity.AppSchedulerBridge");
+411:     if (bridgeClass != nullptr) {
+412:         jmethodID onLaunchApp = env->GetStaticMethodID(bridgeClass,
+413:             "nativeOnScheduleLaunchApplication",
+414:             "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;I[Ljava/lang/String;)V");
+415:         if (onLaunchApp != nullptr) {
+416:             jstring jBundle = env->NewStringUTF(bundleName.c_str());
+417:             jstring jProc = env->NewStringUTF(processName.c_str());
+418:             env->CallStaticVoidMethod(bridgeClass, onLaunchApp, app_thread_,
+419:                                       jBundle, jProc, static_cast<jint>(pid), jKvArr);
+420:             env->DeleteLocalRef(jBundle);
+421:             env->DeleteLocalRef(jProc);
+422:             if (env->ExceptionCheck()) {
+423:                 ALOGE("[B39-LA] Java exception thrown by nativeOnScheduleLaunchApplication");
+424:                 env->ExceptionDescribe();
+425:                 env->ExceptionClear();
+426:             } else {
+427:                 ALOGI("[B39-LA] nativeOnScheduleLaunchApplication returned without exception");
+428:             }
+429:         } else {
+430:             ALOGW("[B39-LA] nativeOnScheduleLaunchApplication method not found");
+431:             if (env->ExceptionCheck()) env->ExceptionClear();
+432:         }
+433:         env->DeleteLocalRef(bridgeClass);
+434:     } else {
+435:         ALOGE("[B39-LA] AppSchedulerBridge class not loaded — cannot trigger bindApplication");
+436:     }
+437:     env->DeleteLocalRef(jKvArr);
+438: 
+439: }
+448: void AppSchedulerAdapter::ScheduleAbilityStage(const OHOS::AppExecFwk::HapModuleInfo &hapModuleInfo)
+449: {
+450:     // [S19 LIFECYCLE-FIX] OH AppMgrService calls this after ScheduleLaunchApplication
+451:     // and then blocks waiting for AddAbilityStageDone(recordId). Without the reply,
+452:     // AMS raises "Add Ability Stage TimeOut!" -> LIFECYCLE_HALF_TIMEOUT and
+453:     // handleLaunchActivity/onCreate never fire (the current-tree LIFECYCLE wall).
+454:     // AOSP has no per-module AbilityStage object, so there is nothing to construct;
+455:     // we simply complete the OH handshake so the launch sequence advances into
+456:     // ScheduleLaunchAbility. Matches deployed bridge 048b7576's behavior.
+457:     ALOGI("[BRIDGED] ScheduleAbilityStage(module=%s) -> AddAbilityStageDone "
+458:           "(complete OH AMS handshake, no Android AbilityStage object needed)",
+459:           hapModuleInfo.moduleName.c_str());
+460:     OHAppMgrClient::getInstance().addAbilityStageDone();
+838: void AppSchedulerAdapter::ScheduleAcceptWant(const OHOS::AAFwk::Want &want,
+839:                                               const std::string &moduleName)
+840: {
+841:     // [S19 LIFECYCLE-FIX #2] OH AMS calls this in the specified-ability start path
+842:     // (after AddAbilityStageDone) and BLOCKS waiting for ScheduleAcceptWantDone
+843:     // before dispatching ScheduleLaunchAbility. Without the reply, AMS raises
+844:     // "Start Specified Ability TimeOut!" -> LIFECYCLE_HALF_TIMEOUT and
+845:     // handleLaunchActivity never fires. AOSP has no AbilityStage.onAcceptWant, so
+846:     // we reply with flag=moduleName (a stable process key), matching deployed
+847:     // bridge 048b7576. This completes the handshake so the launch advances.
+848:     ALOGI("[BRIDGED] ScheduleAcceptWant(module=%s) -> ScheduleAcceptWantDone "
+849:           "(complete OH specified-ability handshake)", moduleName.c_str());
+850:     OHAppMgrClient::getInstance().scheduleAcceptWantDone(want, moduleName);
+851: }

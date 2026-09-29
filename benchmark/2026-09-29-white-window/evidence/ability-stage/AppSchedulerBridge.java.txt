@@ -1,0 +1,54 @@
+SOURCE /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/framework/activity/java/AppSchedulerBridge.java
+97:     public static void nativeOnScheduleLaunchApplication(Object appThread,
+98:                                                           String bundleName,
+99:                                                           String processName,
+100:                                                           int pid,
+101:                                                           String[] ohConfigKv) {
+102:         System.err.println("[B43-LA] nativeOnScheduleLaunchApplication ENTRY bundle=" + bundleName
+103:                 + " process=" + processName + " pid=" + pid
+104:                 + " ohConfigKv.len=" + (ohConfigKv == null ? -1 : ohConfigKv.length));
+105:         Log.i(TAG, "nativeOnScheduleLaunchApplication: bundle=" + bundleName
+106:                 + ", process=" + processName + ", pid=" + pid);
+107: 
+108:         try {
+109:             ActivityThread activityThread = ActivityThread.currentActivityThread();
+110:             if (activityThread == null) {
+111:                 System.err.println("[B43-LA] ActivityThread.currentActivityThread() == null");
+112:                 return;
+113:             }
+114:             ensureBindApplication(activityThread, bundleName, ohConfigKv);
+115:         } catch (Throwable t) {
+116:             System.err.println("[B43-LA] FAILED: " + t);
+117:             t.printStackTrace(System.err);
+118:         }
+119:     }
+270:             java.lang.reflect.Method handleBind =
+271:                     ActivityThread.class.getDeclaredMethod(
+272:                             "handleBindApplication", appBindDataCls);
+273:             handleBind.setAccessible(true);
+274:             handleBind.invoke(activityThread, data);
+275: 
+276:             System.err.println("[B43-BIND] handleBindApplication returned OK");
+277:             android.app.Application application = activityThread.getApplication();
+278:             if (application != null) {
+279:                 adapter.audio.AudioCompatBootstrap.load(
+280:                         bundleName, application.getClassLoader());
+281:             }
+282:             sBindAppDone = true;
+325:         } catch (Throwable t) {
+326:             System.err.println("[B43-BIND] ensureBindApplication FAILED: " + t);
+327:             t.printStackTrace(System.err);
+328:             // Don't mark done — let next ScheduleLaunchAbility retry.
+329:         }
+1889:      * [PARTIAL] ScheduleAbilityStage -> IApplicationThread.scheduleTransaction
+1890:      *
+1891:      * OH notifies app to create an AbilityStage (module-level lifecycle).
+1892:      * Android has no direct module-level lifecycle concept.
+1893:      * Impact: LOW - AbilityStage is typically used for module initialization.
+1894:      * Strategy: Map to Application.onCreate or ignore if already initialized.
+1895:      */
+1896:     public void onScheduleAbilityStage(String moduleName) {
+1897:         logPartial("ScheduleAbilityStage",
+1898:                 "-> Application init (no direct Android AbilityStage concept)");
+1899:     }
+1900: 

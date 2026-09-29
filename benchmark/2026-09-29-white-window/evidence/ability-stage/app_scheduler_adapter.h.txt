@@ -1,0 +1,35 @@
+SOURCE /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/framework/activity/jni/app_scheduler_adapter.h
+20: #include <mutex>
+21: 
+22: #include "app_scheduler_host.h"
+23: 
+24: namespace oh_adapter {
+25: 
+26: class AppSchedulerAdapter : public OHOS::AppExecFwk::AppSchedulerHost {
+27: public:
+28:     /**
+29:      * Constructor.
+30:      * @param vm           JavaVM pointer for obtaining JNIEnv on Binder threads.
+31:      * @param appThread    Java IApplicationThread.Stub instance (local ref).
+32:      *                     A global ref is created and stored internally.
+33:      */
+34:     AppSchedulerAdapter(JavaVM* vm, jobject appThread);
+35:     AppSchedulerAdapter(JavaVM* vm, JNIEnv* env, jobject appThread);
+36:     ~AppSchedulerAdapter() override;
+81:     void ScheduleLaunchApplication(const OHOS::AppExecFwk::AppLaunchData &data,
+82:                                    const OHOS::AppExecFwk::Configuration &config) override;
+83: 
+84:     // [OH_ONLY] Module installation update
+85:     void ScheduleUpdateApplicationInfoInstalled(const OHOS::AppExecFwk::ApplicationInfo &appInfo,
+86:                                                 const std::string &bundleName) override;
+87: 
+88:     // [OH_ONLY] AbilityStage lifecycle
+89:     void ScheduleAbilityStage(const OHOS::AppExecFwk::HapModuleInfo &hapModuleInfo) override;
+108:     // [OH_ONLY] Profile change
+109:     void ScheduleProfileChanged(const OHOS::AppExecFwk::Profile &profile) override;
+110: 
+111:     // --- Service / Process ---
+112:     // [OH_ONLY] Accept want for specified process
+113:     void ScheduleAcceptWant(const OHOS::AAFwk::Want &want, const std::string &moduleName) override;
+114: 
+115:     // [OH_ONLY] Prepare terminate
