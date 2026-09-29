@@ -374,19 +374,10 @@ int ANL_CreateDomain(const AnlDomainConfig* config, AnlDomain** out_domain) {
     const char* search_paths = config->app_search_paths;
     const char* permitted_paths = config->app_permitted_paths;
     if (wants_bridge) {
-        /* The generated DT_NEEDED graph includes every packaged runtime
-         * library and representative app native inputs. OH dependencies span
-         * system/lib64 and four public/platform subdirectories. These fixed
-         * roots affect dependency lookup; direct app path checks stay intact. */
+        /* OH libraries are inherited directly from the default owner by the
+         * host callback. Never put OH paths in LOCAL_NS_PREFERED app roots:
+         * that can instantiate a second DFX library with a fresh g_hasInit. */
         const char* platform_root = "";
-#if defined(__OHOS__)
-        if (validate_path_list(kOhDependencyRoots,
-                               "OH runtime dependency root", false) != 0) {
-            free(domain);
-            return -1;
-        }
-        platform_root = kOhDependencyRoots;
-#endif
         int sn = snprintf(dependency_search, sizeof(dependency_search), "%s%s%s:%s",
                           config->bridge_search_paths, platform_root[0] ? ":" : "", platform_root,
                           config->app_search_paths);
@@ -402,9 +393,9 @@ int ANL_CreateDomain(const AnlDomainConfig* config, AnlDomain** out_domain) {
         permitted_paths = dependency_permitted;
         fprintf(stderr, "[B87-NS] runtime dependency search=%s\n", search_paths);
     }
-    /* Preserve the B87 bridge supply, extending it with the full generated
+    /* Preserve the B87 bridge supply, extending it with the direct generated
      * OH dependency set. Size for validated caller text plus generated names;
-     * the OH closure exceeds PATH_MAX and must never be truncated. */
+     * the caller list and generated boundary must never be truncated. */
     char log_shared_sonames[4096 + sizeof(kOhSharedDependencies) + 1];
     const char* shared_sonames = config->bridge_shared_sonames;
     const char* log_name = wants_bridge ? strstr(shared_sonames, "liblog.so") : NULL;

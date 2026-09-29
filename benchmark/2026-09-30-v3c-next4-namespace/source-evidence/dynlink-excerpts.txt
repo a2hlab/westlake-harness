@@ -1,0 +1,69 @@
+2397: {
+2398:    int fd = -1;
+2399:    /* Only check system app. */
+2400:    if (((ns->flag & LOCAL_NS_PREFERED) != 0) && ns->lib_paths) {
+2401:        char tmp_buf[PATH_MAX + 1];
+2402:        fd = path_open(so_name, ns->lib_paths, tmp_buf, sizeof tmp_buf);
+2403:    }
+2404:    return fd;
+2405: }
+2406: 
+2407: /* Find loaded so by name */
+2408: static struct dso *find_library_by_name(const char *name, const ns_t *ns, bool check_inherited)
+2409: {
+2410: 	LD_LOGD("find_library_by_name name:%{public}s, ns_name:%{public}s, check_inherited:%{public}d",
+2411: 		name,
+2412: 		ns ? ns->ns_name : "NULL",
+2413: 		!!check_inherited);
+2414: 	struct dso *p = search_dso_by_name(name, ns);
+2415: 	if (p) return p;
+2416: 	if (check_inherited && ns->ns_inherits) {
+2417: 		for (size_t i = 0; i < ns->ns_inherits->num; i++) {
+2418: 			ns_inherit * inherit = ns->ns_inherits->inherits[i];
+2419: 			p = search_dso_by_name(name, inherit->inherited_ns);
+2420: 			if (p && is_sharable(inherit, name)) {
+2421: 			    if (app_has_same_name_so(name, ns) != -1) {
+2422: 			        return NULL;
+2423: 			    }
+2424: 			    return p;
+2425: 			}
+2426: 		}
+2427: 	}
+2428: 	return NULL;
+2429: }
+2551: 	if (fd < 0) {
+2552: 		if (!check_inherited || !namespace->ns_inherits) return 0;
+2553: 		/* Load lib in inherited namespace. Do not check inherited again.*/
+2554: 		for (size_t i = 0; i < namespace->ns_inherits->num; i++) {
+2555: 			ns_inherit *inherit = namespace->ns_inherits->inherits[i];
+2556: 			if (strchr(name, '/') == 0 && !is_sharable(inherit, name)) continue;
+2557: 			p = load_library(name, needed_by, inherit->inherited_ns, false, reserved_params);
+2558: 			if (p) {
+2559: 				LD_LOGD("load_library search in inherited, found p ,inherited_ns name:%{public}s",
+2560: 						inherit->inherited_ns->ns_name);
+2561: 				return p;
+2562: 			}
+2563: 		}
+2564: 		return 0;
+2565: 	}
+2566: 	if (fstat(fd, &st) < 0) {
+4921: 		pthread_rwlock_unlock(&lock);
+4922: 		return ENOMEM;
+4923: 	}
+4924: 	ns_set_name(ns, dlns->name);
+4925: 	ns_set_flag(ns, flags);
+4926: 	ns_add_dso(ns, get_default_ns()->ns_dsos->dsos[0]); /* add main app to this namespace*/
+4927: 	nslist_add_ns(ns); /* add ns to list*/
+4928: 	ns_set_lib_paths(ns, lib_path);
+4929: 
+4930: 	if ((flags & CREATE_INHERIT_DEFAULT) != 0) {
+4931: 		ns_add_inherit(ns, get_default_ns(), NULL);
+4932: 	}
+4933: 
+4934: 	if ((flags & CREATE_INHERIT_CURRENT) != 0) {
+4935: 		struct dso *caller;
+4936: 		caller_addr = __builtin_return_address(0);
+4937: 		caller = (struct dso *)addr2dso((size_t)caller_addr);
+4938: 		if (caller && caller->namespace) {
+4939: 			ns_add_inherit(ns, caller->namespace, NULL);
+4940: 		}

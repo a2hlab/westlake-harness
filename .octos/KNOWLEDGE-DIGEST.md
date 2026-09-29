@@ -458,3 +458,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 next2实测仍拒签：5cd ANL1162a6fc补8NDK后ZZ由hitrace推进到bridge→libwm.z.so不可见；离线310库清单已含/system/lib64/libwm，说明物理闭包不等于namespace依赖边可达，后续须按加载域核全图。VLC三AudioSystem注册后仍缺newAudioSessionId；Anki旧installer只到LeakCanary，无librsdroid装载证据不能算过。见 benchmark/2026-09-30-v3c-next2-device/。
 
 - 2026-09-30 next3仍拒签：全runtime+9类app原生件闭包407 ELF→292 OH名/5目录，补齐可见性后ZZ不再缺libwm，但libmain dlopen→DFX InitHandler→add_special_handler_at_last容量中止；HelloWorld maps单份DFX不代表Unity，重复实例须现场maps核，不能改信号检查掩盖。ANL LOCAL_NS_PREFERED与本地域新系统搜索路径的复用语义是下一步假设，尚未证根。见 benchmark/2026-09-30-v3c-next3-closure/。
+
+- 2026-09-30 cx-t0 next4: OH musl `add_special_handler_at_last`只检查槽3，已有即abort，不代表4槽都满；DFX `g_hasInit`只对同DSO实例幂等。musl namespace继承只走一跳，LOCAL_NS_PREFERED的app搜索根放OH目录可能复制系统库；修复须处理库所属域，不能只加大signal表。源码/负控见 benchmark/2026-09-30-v3c-next4-namespace/。

@@ -542,8 +542,8 @@ static void test_log_dependency_inheritance(const Fixture* fixture) {
           "log's C++ dependency not shared");
     CHECK(strstr(MockDlnsGet()->last_inherited_libs, ":libwm.z.so:") != NULL,
           "bridge window-manager dependency not shared");
-    CHECK(strlen(MockDlnsGet()->last_inherited_libs) > 4096,
-          "full OH dependency list truncated to the old buffer size");
+    CHECK(strlen(MockDlnsGet()->last_inherited_libs) < 4096,
+          "direct OH boundary unexpectedly expanded to full transitive graph");
     CHECK(strstr(MockDlnsGet()->last_inherited_libs, ":libzuri.z.so") != NULL,
           "tail of complete OH dependency list was truncated");
     int before = MockDlnsGet()->dlopen_calls;

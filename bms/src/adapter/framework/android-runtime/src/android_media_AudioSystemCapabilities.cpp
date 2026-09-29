@@ -28,7 +28,13 @@ jint JNICALL listAudioProductStrategies(JNIEnv*, jclass, jobject) {
     return 0;
 }
 
+// Westlake art-build/stubs/audiosystem_jni_stub.cc:248. No Android
+// AudioFlinger exists here; zero is AUDIO_UNIQUE_ID_ALLOCATE, not a claimed
+// unique ID or successful playback. Keep the framework fallback explicit.
+jint JNICALL newAudioSessionId(JNIEnv*, jclass) { return 0; }
+
 const JNINativeMethod kMethods[] = {
+    { "newAudioSessionId", "()I", reinterpret_cast<void*>(newAudioSessionId) },
     { "native_getMaxChannelCount", "()I", reinterpret_cast<void*>(getMaxChannelCount) },
     { "native_getMaxSampleRate",   "()I", reinterpret_cast<void*>(getMaxSampleRate) },
     { "native_getMinSampleRate",   "()I", reinterpret_cast<void*>(getMinSampleRate) },
