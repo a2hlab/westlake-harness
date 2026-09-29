@@ -450,3 +450,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 B11 HWUI(host verified/device pending): VM hwui15/a11c 非 R155；154对象线可用 AOSP14 源+OH6.1 真板 EGL/Skia/libc 重编；SDK EGL stub 缺扩展，v3c liblog 的 fprintf@@LIBC 会被 -llog 提前选中并新增 NEEDED，移除冗余 -llog 后 a578b949 保持 R155 15项依赖顺序。整库有解码/探针差异，须 HW/ZZ/Wikipedia 读图回归，详见 benchmark/2026-09-30-egl-colorspace-retry/。
 
 - 2026-09-30 v3c-next双板回归：ANL b66f1b60+runtime f87dcdf9虽过SHA/单ART门，ZZ因app域找不到libandroid.so的libhitrace_ndk.z.so依赖退出；5cd/61b保持r17m不变撤next回v3c668e均恢复菜单，117文件指纹仅三native路径变。两板最终v3c+r17m；Droidify另因Sun provider/Conscrypt CNFE退出，见 benchmark/2026-09-30-v3c-next-rollout/。
+
+- 2026-09-30 next2离线：B87 ANL仅补chipset-sdk-sp，漏OH6.1 /system/lib64/ndk；libandroid→hitrace_ndk在原字节NEEDED可见，不能只扫liblog依赖。310 ELF递归清单给出8个NDK共享名，ANL1162a6fc双编/142host检查/旧b66负控/三板dry-run过，next2包61cecc5a仍未上板；libm/libdl独立文件缺口保留，不宣称全动态闭包通过。见 benchmark/2026-09-30-v3c-next2-ndk/。

@@ -367,23 +367,24 @@ int ANL_CreateDomain(const AnlDomainConfig* config, AnlDomain** out_domain) {
     /* Westlake resolves native dependencies from its runtime root before APK
      * archive entries. Reuse the already-validated bridge roots for dependency
      * lookup here; direct app loads still use domain->app_paths and the original
-     * permitted-path check. Only the fixed OH platform root below is added by this adapter. */
+     * permitted-path check. Only the fixed OH dependency roots below are added by this adapter. */
     char dependency_search[PATH_MAX];
     char dependency_permitted[PATH_MAX];
     const char* search_paths = config->app_search_paths;
     const char* permitted_paths = config->app_permitted_paths;
     if (wants_bridge) {
-        /* OH6.1 keeps the runtime C++ library in chipset-sdk-sp, outside
-         * platformsdk. Match the platform runtime root already used by the
-         * parent process; never use arbitrary LD_LIBRARY_PATH from the app. */
+        /* OH6.1 splits C++ runtime and public NDK libraries between these
+         * fixed roots. Unity -> libandroid needs libhitrace_ndk.z.so; the
+         * chipset root alone cannot resolve that edge. Preserve the caller
+         * path validation above; never use app LD_LIBRARY_PATH here. */
         const char* platform_root = "";
 #if defined(__OHOS__)
-        if (validate_path_list("/system/lib64/chipset-sdk-sp",
+        if (validate_path_list("/system/lib64/chipset-sdk-sp:/system/lib64/ndk",
                                "OH runtime dependency root", false) != 0) {
             free(domain);
             return -1;
         }
-        platform_root = ":/system/lib64/chipset-sdk-sp";
+        platform_root = ":/system/lib64/chipset-sdk-sp:/system/lib64/ndk";
 #endif
         int sn = snprintf(dependency_search, sizeof(dependency_search), "%s%s:%s",
                           config->bridge_search_paths, platform_root,
@@ -400,9 +401,10 @@ int ANL_CreateDomain(const AnlDomainConfig* config, AnlDomain** out_domain) {
         permitted_paths = dependency_permitted;
         fprintf(stderr, "[B87-NS] runtime dependency search=%s\n", search_paths);
     }
-    /* liblog's OH6.1 NEEDED closure must be inherited by name too. The
-     * default namespace already owns these platform libraries; do not add
-     * broad system directories to the app's permitted paths. */
+    /* liblog and the OH NDK closure of libandroid/Unity must be inherited
+     * by SONAME too. These public NDK names were audited against the retained
+     * OH6.1 ELF inputs (including hilog/ace entry points); keep the list
+     * explicit rather than inheriting every library from the default domain. */
     char log_shared_sonames[PATH_MAX];
     const char* shared_sonames = config->bridge_shared_sonames;
     const char* log_name = wants_bridge ? strstr(shared_sonames, "liblog.so") : NULL;
@@ -412,7 +414,9 @@ int ANL_CreateDomain(const AnlDomainConfig* config, AnlDomain** out_domain) {
         int n = snprintf(log_shared_sonames, sizeof(log_shared_sonames),
                          "%s:libbionic_compat.so:libc++.so:libhilog.so:"
                          "libbegetutil.z.so:libsec_shared.z.so:libconfigpolicy_util.z.so:"
-                         "libsystemparam.z.so:libc.so",
+                         "libsystemparam.z.so:libc.so:libhitrace_ndk.z.so:libhilog_ndk.z.so:"
+                         "libace_ndk.z.so:libffrt.so:libpixelmap.so:libpixelmap_ndk.z.so:"
+                         "libsync_fence.z.so:libudmf.so",
                          shared_sonames);
         if (n < 0 || (size_t)n >= sizeof(log_shared_sonames)) {
             free(domain);
