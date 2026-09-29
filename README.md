@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-09-29-white-window/`** | **#61 offline white-window diagnosis: 9 target logs, 7 bind failures, 2 bind-success controls and 8 delayed AbilityStage timeout joins; no device execution.** |
 | **`benchmark/2026-09-28-bms-route-deploy/`** | **OH 6.1 BMS: three-board HelloWorld/ZigZag baseline, 66-key batch installation and desktop capture, retained failure receipts, per-key Westlake comparisons, and HelloWorld/Wikipedia spawn A/B diagnosis (`spawn-ab/`), sandbox preparation, and activity-alias resolution with a missing-target negative (`alias-entry/`).** |
 | `benchmark/2026-09-28-bms-route-deploy/batch/b4-rerun-plan.md` | **#59 B4 rerun: 66 keys in three balanced 22-key shards, full commands/artifact roots, current-round v4 aggregation and FakeBoard-only verification.** |
 | `benchmark/2026-09-28-bms-route-deploy/batch/task57-results.json` | **#57 unified BMS runner: reinstall, timed hilog/new faultlogs, per-shot focus gates and black-frame rejection; FakeBoard verification only.** |
