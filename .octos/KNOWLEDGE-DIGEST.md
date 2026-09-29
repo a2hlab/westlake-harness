@@ -331,3 +331,15 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
   - 在 demo 板上 stage 新 app 前确认不动头条运行时 `a2hlab-source-c91d26bf…`(61b 曾因此头条起不来)。**别在唯一能用的 demo 板上做重启实验**:本轮为测自启重启了能用的 5cd,头条随之掉线,只能靠 provision 拉回。
   - 板子经 hub 接 Mac 时 USB 在 provision/remount 瞬间掉过三次,最长 50 分钟不回,只能物理重插。
   - 头条运行时目录会膨胀:61b 上 31GB,其中 `profile-backups/` 22GB、`private-tmp/*.stderr` 5.7GB(单个 743MB,几乎全是 `[TOUCH21-POLL]`)。grep stderr 先 `wc -l` 记基线,再 `tail -n +BASE | grep -v TOUCH21-POLL`。
+
+- 2026-09-28 BMS 复现器迁移：`reproduce-oh61-game-suite` 没有 `check`（单 app 才有）；APFS 克隆会保留 ZigZag `current` 的旧绝对路径，改底层 serial 白名单也会触发 wrapper 固定 DRIVER_SHA，须显式记录迁移，不能把输入门禁失败归为板端失败；HelloWorld restore 三板首帧/触摸变红已证，见 `benchmark/2026-09-28-bms-route-deploy/`。
+- 2026-09-28 ZigZag wrapper 的 `create_run_dir` 仅 `UTC秒-模式`，三板同秒并发会共用 driver.log/receipt 并串写（61b 汇总曾指向5cd）；逻辑不改时错开≥2秒启动，保持并发，逐个核对 receipt board 与 envstamp.board。
+- 2026-09-28 BMS 批量实测：桌面入口取 `bm dump.hapModuleInfos[entryModuleName].mainAbility`，不能套旧 direct-launch Activity（Wikipedia DefaultIcon / Termux HomeActivity）；Java Activity 可含 `$`（NfcAPI$NfcActivity）；首装后同包再次 `bm install -p` 曾返回9568260，补采须记录首装来源并读回已装base.apk哈希，不能把重装失败改成成功。
+
+- **BMS 66-key 实测（2026-09-28, cx-t0）**：三板各22项，62 key原APK首装成功并完成桌面点击/截图，fd-seal/toutiao/x报9568260且BMS不可查询，subwaysurfers输入SHA不符在写板前拒绝；62项机器状态均foreground_unconfirmed，不能称点亮。126张证据图待外环逐图终判，已抽读Aegis/OONI/markor均OH桌面。见 `benchmark/2026-09-28-bms-route-deploy/`；HelloWorld/ZigZag通过不外推为66 app兼容。
+
+- **BMS启动前置缺失（2026-09-28, #24同boot A/B）**：5ea上Wikipedia并非未fork：AppSpawnX子PID26163出现约22ms，因`el1/100/database/org.wikipedia`缺失在stock sandbox hook31返回`0xd000008`，未到WLCGATE/Android入口；UID轮询与15s末快照均可能漏掉。HelloWorld PID25183正常；restore在bm install后另建10个沙箱根目录并设UID/mode/label，而批量脚本遗漏。外环#23终判0/62上屏；此根因只验证Wikipedia，不外推62项或称补目录必亮。installed两包resources.index相同且含Hello World，标签为独立模板缺陷。证据：`benchmark/2026-09-28-bms-route-deploy/spawn-ab/`。
+
+- **B1沙箱修后新分叉（2026-09-28,#27）**：原样prepare_sandbox补齐10根后，Wikipedia child4789 spawn result0、RAC/LSP/provider和ActivityThread.main均到达；随后把桌面alias `org.wikipedia.DefaultIcon`当Java类实例化，ClassNotFoundException后exit1（BMS targetAbility空）。目录同HelloWorld/幂等均过；不能称已点亮，62项重跑未启。证据 `benchmark/2026-09-28-bms-route-deploy/sandbox-prep/`，B1 lifecycle 3pass/1fail。
+
+- BMS B5（2026-09-28，5ea）：按原 APK manifest 仅补 ActivityInfo.targetActivity 后，Wikipedia DefaultIcon→MainActivity、旧 ClassNotFound 消失，继而 Activity.attach/getTheme/getApplicationInfo SIGSEGV（后续根因未证）；HelloWorld 原入口仍上屏，缺目标类独立负控明确 ClassNotFound+exit1。66 key 按实际 BMS 入口计 13 alias，不能与“任一启用 launcher alias”15 混用；证据 `benchmark/2026-09-28-bms-route-deploy/alias-entry/`。

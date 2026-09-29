@@ -82,3 +82,11 @@
 - **codex 窗格会弹交互式提问**(屏幕显示 `? 1 question  ⌥+↑ to answer`,herdr 状态 `blocked`):这时 `herdr agent prompt` 只会进队列,不回答问题,车道会一直卡住。处理:`herdr pane send-keys <pane> alt+up` 调出问题,读选项,`enter` 提交(或用方向键换选项)。`lane_watch.sh` 把 blocked 当作停下,能抓到。octoscode 的排队消息则要 `esc` 才会中断当前轮并发送;Claude Code 的消息会在轮中自动插入。
 - herdr server 必须由用户自己起,不要从 agent 会话里 nohup。octoscode stdio 模式要带 `--session <名>`。
 - 复验:`git worktree add --detach ~/.octos/outer/verify/<名> <commit>` → 逐字重跑验收 → 落判词 → 删 worktree。
+
+- BMS 复现器克隆迁移（2026-09-28）：四游戏 suite 无 `check`，用单 app `check`；HelloWorld `restore` 会重启，完成后再次核对板时钟。61b 使用 `date -s @<Mac epoch>` 同步并回读差值（本次 -1s）；`current` 绝对路径与 wrapper driver SHA 的变更须记录为迁移，证据见 `benchmark/2026-09-28-bms-route-deploy/`。
+- `reproduce-zigzag-apk quick` 多板并发须错开≥2秒启动（上游运行目录只含秒级时间，不含 serial）；完成后同时核对 wrapper receipt 的 board 和底层 envstamp 的 board，不能只看三个 PASS。
+- BMS批量恢复：原attempt留存，新的run-id只跑未完成key；已首装成功但截图缺失的key走 `batch/capture_existing.py`，先核对 prior record + 当前 `.../android/base.apk` SHA 再精确点BMS主入口。`mac held`/`hdc list targets` 曾rc0但stdout为空，守卫应停；只读重新确认锁、目标、boot不变后才能新run-id续跑。
+
+- BMS启动A/B采证：同boot和runtime SHA，先核BMS UID及精确图标；点击前`hilog -r`并连续采日志，板端约100–220ms轮询UID进程至少15s，配合AppSpawnChild/返回码/子退出日志。`success pid`后仍须看result；hook31沙箱初始化失败可有PID、exit0且无fault文件，末时刻无PID不能判从未fork。复现器`prepare_sandbox`是bm install之外的必要目录/UID/mode/label准备，批量部署必须显式核对；#24未执行补目录干预。
+
+- B5 JAR 最小覆盖（2026-09-28）：先锁板并核 baseline SHA；保留原 JAR，只 bind-mount 新 JAR，分别核 shell 与 AppSpawnX /proc/PID/root 中 SHA，子进程新增日志证活。回滚仅卸最上层该 JAR mount 并核 baseline SHA；须核 boot/PID，不能跨重启照抄 PID。5ea B5 临时覆盖 SHA250958dc… 留存，负控包已卸载；具体路径、回滚与原始证据见 `benchmark/2026-09-28-bms-route-deploy/alias-entry/README.md`。

@@ -1,0 +1,63 @@
+# Task Contract: B1 批量安装补上沙箱准备
+
+## Intent
+条目 24 的同板 A/B 证实:批量安装后 app 拉不起,是因为缺了 restore 在 `bm install` 之后做的沙箱准备——AppSpawnX child 强制 bind mount `el1/100/database/<pkg>` 时 ENOENT,22 ms 后退出。本任务把 HelloWorld restore 与 ZigZag `prepare_sandbox` 的沙箱准备原样抄成按包名参数化的函数,接进批量脚本。
+
+## Must
+- 系统保持 OpenHarmony 6.1.0.31,不刷机;运行代用 `bms/` 复现器部署的那一份
+- 修法优先照搬 `bms/` 与 00.Workspace 已有的代码与产物,只在找不到现成实现时才新写
+- 上板前 `board_note.sh lock`;只对条目写明的独占板下写命令
+- 点亮判据只认外环读图签认的截图;`bm install` 成功、进程存活、`bm dump` 可查都不算点亮
+- 补丁版 BMS 生效的判据:`/proc/<foundation pid>/root` 下实际加载的库哈希与 maps,不看全局库哈希
+- 只在本地 commit,不推送;APK、HAP、`.so`、payload 不入 git
+
+## Decisions
+- 名字与图标都在 `bms/src/adapter/framework/package-manager/jni/apk_installer.cpp` 合成资源 HAP 的流程里修;两项由同一车道先后做,避免同文件冲突
+- native 库用 `westlake-inputs/tools/dockbuild.sh` 按锁定工具链为 OH 6.1 编;换 installer 的步骤必须带回滚
+- 沙箱准备照搬 HelloWorld restore 与 ZigZag `prepare_sandbox` 的逻辑,参数化为包名与 uid
+- 函数照搬来源写明文件与行号:`bms/.agents/skills/reproduce-helloworld/scripts/reproduce.sh` 与 ZigZag `prepare_sandbox`;只改包名与 uid 参数
+- 准备内容:10 个沙箱根目录、owner uid/gid、mode、SELinux label,以及逐项 chcon
+- 执行时机:`bm install` 成功之后、桌面点击之前
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-09-28-bms-route-deploy/**
+- tools/spec-checks/**
+Forbidden:
+- 不修改 APK
+- 不改动 BMS 补丁库与共享运行代
+Out of scope:
+- 名字与图标(见 B2、B3)
+- 对 app 私有 native 库的补丁
+
+## Completion Criteria
+Scenario: Wikipedia 补上沙箱准备后进程存活并上屏
+  Test:
+    Filter: b1_wikipedia_lit_after_sandbox_prep
+  Given Wikipedia 已 `bm install` 且执行了沙箱准备函数
+  When 从桌面点击它的图标并等待 15 s
+  Then 该 app 的 BMS uid 下有进程持续存活
+  And 外环读图签认截图是 Wikipedia 自身界面
+
+Scenario: 10 个沙箱根目录属性与 HelloWorld 一致
+  Test:
+    Filter: b1_sandbox_roots_match_helloworld
+  Given 同一块板上 HelloWorld 与 Wikipedia 都做过准备
+  When 比对两者 10 个沙箱根目录
+  Then 每个目录都存在,owner 为各自 uid,mode 与 SELinux label 与 HelloWorld 同类目录一致
+
+Scenario: 沙箱准备失败时不点击
+  Test:
+    Filter: b1_prep_failure_skips_launch
+  Given 某个沙箱根目录创建或 chcon 失败
+  When 批量脚本处理该 app
+  Then 该 app 记 `sandbox_prep_failed` 并附失败命令与返回值
+  And 不对它执行桌面点击
+
+Scenario: 准备函数可重复执行
+  Test:
+    Filter: b1_prep_is_idempotent
+  Given 某 app 的沙箱已准备过一次
+  When 再次执行准备函数
+  Then 返回成功且目录属性不变
+

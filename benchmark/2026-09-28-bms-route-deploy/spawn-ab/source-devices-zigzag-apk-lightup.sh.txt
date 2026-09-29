@@ -1,0 +1,67 @@
+2336: prepare_sandbox()
+2337: {
+2338:     local bundle=$1 uid=$2
+2339:     D "set -e; for d in /data/app/el1/100/base /data/app/el1/100/database /data/app/el2/100/base /data/app/el2/100/database /data/app/el2/100/sharefiles /data/app/el3/100/base /data/app/el3/100/database /data/app/el4/100/base /data/app/el4/100/database; do mkdir -p \${d}/'$bundle'; done; mkdir -p /data/app/el2/100/log/'$bundle'; for s in cache code_cache databases files haps no_backup preferences shared_prefs temp; do mkdir -p /data/app/el2/100/base/'$bundle'/\${s}; done; chown -R '$uid':'$uid' /data/app/el1/100/base/'$bundle' /data/app/el1/100/database/'$bundle' /data/app/el2/100/base/'$bundle' /data/app/el2/100/database/'$bundle' /data/app/el2/100/sharefiles/'$bundle' /data/app/el3/100/base/'$bundle' /data/app/el3/100/database/'$bundle' /data/app/el4/100/base/'$bundle' /data/app/el4/100/database/'$bundle'; chown '$uid':log /data/app/el2/100/log/'$bundle'; chmod -R 0700 /data/app/el1/100/base/'$bundle' /data/app/el2/100/base/'$bundle' /data/app/el2/100/sharefiles/'$bundle' /data/app/el3/100/base/'$bundle' /data/app/el4/100/base/'$bundle'; chmod 0770 /data/app/el1/100/database/'$bundle' /data/app/el2/100/database/'$bundle' /data/app/el2/100/log/'$bundle' /data/app/el3/100/database/'$bundle' /data/app/el4/100/database/'$bundle'; chcon -R u:object_r:appdat:s0 /data/app/el1/100/base/'$bundle' /data/app/el1/100/database/'$bundle' /data/app/el2/100/base/'$bundle' /data/app/el2/100/database/'$bundle' /data/app/el2/100/sharefiles/'$bundle' /data/app/el3/100/base/'$bundle' /data/app/el3/100/database/'$bundle' /data/app/el4/100/base/'$bundle' /data/app/el4/100/database/'$bundle'; chcon u:object_r:data_app_el2_file:s0 /data/app/el2/100/log/'$bundle'" >/dev/null
+2340: }
+2341: 
+2342: hello_regression()
+2343: {
+2344:     local candidate=$1 run uid child="" attempt logs before after
+2345:     run="$EVIDENCE_ROOT/ab-compare/$(date +%Y%m%d-%H%M%S)-${BOARD_LABEL}-helloworld-candidate"
+2346:     mkdir -p "$run"
+2347:     printf '%s\n' "$run" > "$PAYLOAD_ROOT/last-hello-run"
+2348:     uid=$(bundle_uid "$HELLO_BUNDLE")
+2349:     [ -n "$uid" ] || return 1
+2350:     prepare_sandbox "$HELLO_BUNDLE" "$uid"
+2351:     D "power-shell wakeup; aa force-stop '$HELLO_BUNDLE' >/dev/null 2>&1 || true; hilog -r >/dev/null 2>&1 || true" >/dev/null
+2352:     D "aa start -a '$HELLO_ABILITY' -b '$HELLO_BUNDLE' -W" > "$run/launch.txt"
+2400: 
+2401: install_zigzag()
+2402: {
+2403:     local remote="$REMOTE_ROOT/zigzag.apk" result dump uid
+2404:     require_hash "$ZIGZAG_SHA" "$ZIGZAG_APK"
+2405:     D "mkdir -p '$REMOTE_ROOT'" >/dev/null
+2406:     H file send "$ZIGZAG_APK" "$remote" >/dev/null
+2407:     [ "$(device_hash "$remote")" = "$ZIGZAG_SHA" ] || return 1
+2408:     D "aa force-stop '$ZIGZAG_BUNDLE' >/dev/null 2>&1 || true; for target in '$ZIGZAG_LIBMAIN_TARGET' '$ZIGZAG_LIBIL2CPP_TARGET' '$ZIGZAG_LIBTUANJIE_TARGET' '$ZIGZAG_MEDIANDK_TARGET' '$ZIGZAG_SIGNAL_BOX_TARGET'; do if grep -F \" \$target \" /proc/self/mountinfo | grep -q '/zigzag-apk-lightup/'; then umount \"\$target\"; fi; done; rm -f '$ZIGZAG_MEDIANDK_TARGET' '$ZIGZAG_SIGNAL_BOX_TARGET'; bm uninstall -n '$ZIGZAG_BUNDLE' >/dev/null 2>&1 || true" >/dev/null
+2409:     result=$(D "bm install -p '$remote'")
+2410:     printf '%s\n' "$result"
+2411:     printf '%s\n' "$result" | grep -q 'install bundle successfully' || return 1
+2412:     [ "$(device_hash "/data/app/el1/bundle/public/$ZIGZAG_BUNDLE/android/base.apk")" = "$ZIGZAG_SHA" ] || return 1
+2413:     dump=$(D "bm dump -n '$ZIGZAG_BUNDLE'")
+2414:     printf '%s\n' "$dump" | grep -q '"bundleType": 10' || return 1
+2415:     uid=$(printf '%s\n' "$dump" | grep -oE '"uid": *[0-9]+' | head -n 1 | grep -oE '[0-9]+$')
+2416:     [ -n "$uid" ] || return 1
+2417:     prepare_sandbox "$ZIGZAG_BUNDLE" "$uid"
+2418: }
+2420: mount_zigzag_native_patch()
+2421: {
+2422:     local candidate=$1 id remote expected il2cpp_expected tuanjie_expected media_expected signal_expected
+2423:     id=$(manifest_value "$candidate/manifest.env" CANDIDATE_ID)
+2424:     remote="$REMOTE_ROOT/candidates/$id/libmain.so"
+2425:     expected=$(manifest_value "$candidate/manifest.env" PATCHED_LIBMAIN_SHA)
+2426:     il2cpp_expected=$(manifest_value "$candidate/manifest.env" PATCHED_LIBIL2CPP_SHA)
+2427:     tuanjie_expected=$(manifest_value "$candidate/manifest.env" PATCHED_LIBTUANJIE_SHA)
+2428:     media_expected=$(manifest_value "$candidate/manifest.env" MEDIANDK_SHA)
+2429:     signal_expected=$(manifest_value "$candidate/manifest.env" SIGNAL_BOX_SHA)
+2430:     [ "$(device_hash "$remote")" = "$expected" ] || return 1
+2431:     [ "$(device_hash "$REMOTE_ROOT/candidates/$id/libil2cpp.so")" = "$il2cpp_expected" ] \
+2432:         || return 1
+2433:     [ "$(device_hash "$REMOTE_ROOT/candidates/$id/libtuanjie.so")" = "$tuanjie_expected" ] \
+2434:         || return 1
+2435:     [ "$(device_hash "$REMOTE_ROOT/candidates/$id/libmediandk.so")" = "$media_expected" ] \
+2436:         || return 1
+2437:     [ "$(device_hash "$REMOTE_ROOT/candidates/$id/libwestlake_bionic_signal_box.so")" = \
+2438:         "$signal_expected" ] || return 1
+2439:     [ "$(device_hash "$ZIGZAG_LIBMAIN_TARGET")" = "$ZIGZAG_LIBMAIN_RAW_SHA" ] || return 1
+2440:     [ "$(device_hash "$ZIGZAG_LIBIL2CPP_TARGET")" = "$ZIGZAG_LIBIL2CPP_RAW_SHA" ] \
+2441:         || return 1
+2442:     [ "$(device_hash "$ZIGZAG_LIBTUANJIE_TARGET")" = "$ZIGZAG_LIBTUANJIE_RAW_SHA" ] \
+2443:         || return 1
+2444:     [ -z "$(device_hash "$ZIGZAG_MEDIANDK_TARGET")" ] || return 1
+2445:     [ -z "$(device_hash "$ZIGZAG_SIGNAL_BOX_TARGET")" ] || return 1
+2446:     D "touch '$ZIGZAG_MEDIANDK_TARGET' '$ZIGZAG_SIGNAL_BOX_TARGET' && chown 0:0 '$ZIGZAG_MEDIANDK_TARGET' '$ZIGZAG_SIGNAL_BOX_TARGET' && chmod 0644 '$ZIGZAG_MEDIANDK_TARGET' '$ZIGZAG_SIGNAL_BOX_TARGET' && chcon u:object_r:data_app_el1_file:s0 '$ZIGZAG_MEDIANDK_TARGET' '$ZIGZAG_SIGNAL_BOX_TARGET' && mount --bind '$REMOTE_ROOT/candidates/$id/libmediandk.so' '$ZIGZAG_MEDIANDK_TARGET' && mount --bind '$REMOTE_ROOT/candidates/$id/libwestlake_bionic_signal_box.so' '$ZIGZAG_SIGNAL_BOX_TARGET' && mount --bind '$remote' '$ZIGZAG_LIBMAIN_TARGET' && mount --bind '$REMOTE_ROOT/candidates/$id/libil2cpp.so' '$ZIGZAG_LIBIL2CPP_TARGET' && mount --bind '$REMOTE_ROOT/candidates/$id/libtuanjie.so' '$ZIGZAG_LIBTUANJIE_TARGET' && chmod 0755 '$ZIGZAG_LIBMAIN_TARGET' '$ZIGZAG_LIBIL2CPP_TARGET' '$ZIGZAG_LIBTUANJIE_TARGET' '$ZIGZAG_SIGNAL_BOX_TARGET' && chcon u:object_r:data_app_el1_file:s0 '$ZIGZAG_LIBMAIN_TARGET' '$ZIGZAG_LIBIL2CPP_TARGET' '$ZIGZAG_LIBTUANJIE_TARGET' '$ZIGZAG_SIGNAL_BOX_TARGET'" >/dev/null || return 1
+2447:     [ "$(device_hash "$ZIGZAG_LIBMAIN_TARGET")" = "$expected" ] \
+2448:         && [ "$(device_hash "$ZIGZAG_LIBIL2CPP_TARGET")" = "$il2cpp_expected" ] \
+2449:         && [ "$(device_hash "$ZIGZAG_LIBTUANJIE_TARGET")" = "$tuanjie_expected" ] \
+2450:         && [ "$(device_hash "$ZIGZAG_MEDIANDK_TARGET")" = "$media_expected" ] \
