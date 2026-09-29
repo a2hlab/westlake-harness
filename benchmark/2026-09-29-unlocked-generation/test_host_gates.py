@@ -21,6 +21,13 @@ class Gates(unittest.TestCase):
  def test_live_sha_mismatch(self):
   old=self.manifest();new=copy.deepcopy(old);new['files'][SRC]='c'*64
   with self.assertRaisesRegex(ValueError,'SHA/target'):d.validate_replacement(old,new,T)
+ def test_host_replacement_is_exactly_scoped(self):
+  old=self.manifest();target='/system/bin/appspawn-x';source='payload/runtime/appspawn-x'
+  old['mounts'].append({'target':target,'source':source});old['files'][source]='1'*64;old['live_hashes'][target]='1'*64
+  new=copy.deepcopy(old);new['files'][source]='2'*64;new['live_hashes'][target]='2'*64
+  self.assertEqual(d.validate_replacement(old,new,target),source)
+  with self.assertRaisesRegex(ValueError,'declared native'):
+   d.replacement_source(old,'/system/bin/other')
  def test_locked_generation_not_eligible(self):
   old=self.manifest();old.pop('runtime_identity')
   with self.assertRaisesRegex(ValueError,'unlocked'):d.validate_replacement(old,copy.deepcopy(old),T)

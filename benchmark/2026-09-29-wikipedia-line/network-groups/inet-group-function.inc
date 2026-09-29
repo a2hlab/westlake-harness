@@ -1,0 +1,27 @@
+/* Route-A Android children need AID_INET in the stock DAC request.
+ * Preserve all BMS groups; stock SetUidGid remains the only setgroups owner.
+ * Do not add AID_NET_RAW or storage groups, or change OH internet policy. */
+static int WestlakeAddInetGroup(AppSpawningCtx *property)
+{
+    const gid_t androidInet = 3003;
+    AppSpawnMsgDacInfo *dac = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
+    AppSpawnMsgInternetInfo *internet =
+        (AppSpawnMsgInternetInfo *)GetAppProperty(property, TLV_INTERNET_INFO);
+    if (dac == NULL || dac->gidCount > APP_MAX_GIDS) {
+        return APPSPAWN_MSG_INVALID;
+    }
+    for (uint32_t i = 0; i < dac->gidCount; ++i) {
+        if (dac->gidTable[i] == androidInet) {
+            return 0;
+        }
+    }
+    if (dac->gidCount == APP_MAX_GIDS) {
+        APPSPAWN_LOGE("WLNET: no room for AID_INET, uid=%{public}u", dac->uid);
+        return APPSPAWN_MSG_INVALID;
+    }
+    dac->gidTable[dac->gidCount++] = androidInet;
+    APPSPAWN_LOGI("WLNET: uid=%{public}u add_gid=3003 groups=%{public}u internet_set=%{public}d allow=%{public}d",
+        dac->uid, dac->gidCount, internet ? internet->setAllowInternet : -1,
+        internet ? internet->allowInternet : -1);
+    return 0;
+}

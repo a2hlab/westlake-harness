@@ -424,3 +424,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **#87(2026-09-29,61b)**：Westlake VelocityTracker 中性桩须在 AndroidRuntime 启动表注册(7 JNI)，runtime c835a93e 使 Auxio 五 tab 主界面获外环签认；ABI版 liblog8c81 保留 LIBC 节点且无丢失导出。ANL前置runtime+OH依赖目录实验能映射Anki librsdroid/NetGuard libnetguard，却让ZigZag误入libandroid→GLESv2缺依赖；三层ANL已回滚，HW/Zig恢复。不能把版本化导出或旧错误消失当稳定ABI供给；完整证据见 benchmark/2026-09-29-native-abi-port/。
 
 - **B11/#88 现成工具别串代(2026-09-29)**:VM out-aot42/out/out.75d82d5 三份 dex2oat 同SHA8f959217，实测OAT247/image118，不能配BMS R155的230/108；R155 boot.art声明9组件，mainline是secondary而非独立extension。cc-wiki运行时ConnectivityManager子类已越过connectivity墙，故不重编镜像；证据 `benchmark/2026-09-29-wikipedia-line/host-extension/`。
+
+- **BMS联网权限待补正(#80,2026-09-29)**:Wikipedia安装记录reqPermissions=[]，现役BMS样本子进程仅Groups3099；临时host候选d977bd15按授权补3003交cc-wiki实测，不能仅凭EPERM判根因。OH还读TLV_INTERNET_INFO并可能DisallowInternet；通用后续应保留APK INTERNET→BMS权限/凭据派生，勿把临时无条件加组当正解。证据 `benchmark/2026-09-29-wikipedia-line/network-groups/`。

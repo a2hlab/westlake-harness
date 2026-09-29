@@ -85,8 +85,8 @@ def rollback_order(state, boot, top_mounts):
     return list(reversed(rows))
 
 def replacement_source(m, target):
-    if not target.endswith('.so'):
-        raise ValueError('replacement must be a declared native library: ' + target)
+    if not target.endswith('.so') and target != '/system/bin/appspawn-x':
+        raise ValueError('replacement must be a declared native library or appspawn-x: ' + target)
     rows = sorted(m['mounts'], key=lambda r: len(r['target']), reverse=True)
     for row in rows:
         if target == row['target'] or target.startswith(row['target'] + '/'):
@@ -213,7 +213,8 @@ class Deployment:
         remote = self.d['remote'] + '/single-' + str(time.time_ns()) + '.so'
         self.board.send(self.package / source, remote)
         if self.hashes([remote])[remote] != self.m['files'][source]: raise RuntimeError('replacement staging SHA mismatch: ' + target)
-        self.shell('chmod 0644 ' + remote + ' && chcon u:object_r:system_file:s0 ' + remote)
+        mode = '0755' if target == '/system/bin/appspawn-x' else '0644'
+        self.shell('chmod ' + mode + ' ' + remote + ' && chcon u:object_r:system_file:s0 ' + remote)
         self.stop()
         row = {'target': target, 'remote': remote, 'previous_root': self.top_mounts().get(target),
                'previous_package': str(old_package), 'previous_package_sha256': self.d['package_sha256']}
