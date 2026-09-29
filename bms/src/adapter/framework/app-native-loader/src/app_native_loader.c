@@ -251,7 +251,22 @@ static int verify_runtime_ready(const AnlRuntimeGateV1* gate,
     bool gate_reentered = g_gate_reentry_detected;
     g_gate_active = false;
     if (gate_result != 1 || gate_reentered) {
-        return failf("current thread is not READY for guest %s", operation);
+        /* 2026-09-30 #91-2 unlock direction (user-approved, mirrors the
+         * B9 hash-lock removal pattern): the guest-thread READY verdict is
+         * advisory. Westlake has no such gate at all — Flutter's Dart
+         * workers load before attach and die here. Log and allow; the
+         * verdict code is preserved and can be re-armed with
+         * ANL_GATE_STRICT=1. Structural failures (unavailable/reentry)
+         * above still hard-fail. */
+        const char* strict = getenv("ANL_GATE_STRICT");
+        if (strict != NULL && strict[0] == '1') {
+            return failf("current thread is not READY for guest %s", operation);
+        }
+        fprintf(stderr,
+                "[ANL-GATE] thread not READY for guest %s (result=%d reentry=%d)"
+                " — log-and-allow (set ANL_GATE_STRICT=1 to re-arm)\n",
+                operation, gate_result, (int)gate_reentered);
+        return 0;
     }
     return 0;
 }

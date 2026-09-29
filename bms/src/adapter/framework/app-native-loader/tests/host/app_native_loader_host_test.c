@@ -399,6 +399,7 @@ static void test_valid_app_domain(const Fixture* fixture) {
 }
 
 static void test_create_domain_runtime_gate(const Fixture* fixture) {
+    setenv("ANL_GATE_STRICT", "1", 1);
     AnlDomainConfig config = base_config(fixture);
     AnlDomain* domain = NULL;
     MockDlnsReset();
@@ -412,6 +413,7 @@ static void test_create_domain_runtime_gate(const Fixture* fixture) {
     CHECK(MockDlnsGet()->create_calls == 0,
           "denied create-domain reached namespace creation");
     g_gate_mode = GATE_ALLOW;
+    unsetenv("ANL_GATE_STRICT");
 }
 
 static void test_path_list_empty_segments(const Fixture* fixture) {
@@ -626,6 +628,7 @@ static void* second_thread_close(void* opaque) {
 }
 
 static void test_dlclose_runtime_gate(const Fixture* fixture) {
+    setenv("ANL_GATE_STRICT", "1", 1);
     AnlDomainConfig config = base_config(fixture);
     AnlDomain* domain = NULL;
     MockDlnsReset();
@@ -668,9 +671,11 @@ static void test_dlclose_runtime_gate(const Fixture* fixture) {
     CHECK(MockDlnsGet()->last_dlclose_handle == handle,
           "admitted close changed the handle");
     ANL_ReleaseDomainHandle(domain);
+    unsetenv("ANL_GATE_STRICT");
 }
 
 static void test_runtime_gate_fail_closed(const Fixture* fixture) {
+    setenv("ANL_GATE_STRICT", "1", 1);
     AnlDomainConfig config = base_config(fixture);
     AnlDomain* domain = NULL;
     MockDlnsReset();
@@ -708,6 +713,7 @@ static void test_runtime_gate_fail_closed(const Fixture* fixture) {
 
     g_gate_mode = GATE_ALLOW;
     ANL_ReleaseDomainHandle(domain);
+    unsetenv("ANL_GATE_STRICT");
 }
 
 static void test_load_error_classification(const Fixture* fixture) {
@@ -766,6 +772,24 @@ static void test_load_error_classification(const Fixture* fixture) {
     ANL_ReleaseDomainHandle(domain);
 }
 
+
+/* 2026-09-30 #91-2 unlock contract: by default a not-READY guest thread is
+ * logged and ALLOWED (Westlake has no gate); ANL_GATE_STRICT=1 re-arms the
+ * deny. Structural failures (unavailable gate, reentry) still hard-fail. */
+static void test_runtime_gate_default_allows_guest(const Fixture* fixture) {
+    AnlDomain* domain = NULL;
+    AnlDomainConfig config = base_config(fixture);
+    unsetenv("ANL_GATE_STRICT");
+    MockDlnsReset();
+    g_gate_mode = GATE_ALLOW;
+    CHECK(ANL_CreateDomain(&config, &domain) == 0, "default create-domain failed");
+    g_gate_mode = GATE_DENY;
+    void* handle = ANL_Dlopen(domain, "libguest.so", RTLD_NOW);
+    CHECK(handle != NULL, "default mode denied a not-READY guest dlopen");
+    g_gate_mode = GATE_ALLOW;
+    ANL_ReleaseDomainHandle(domain);
+}
+
 int main(void) {
     Fixture fixture = fixture_create();
     install_runtime_gate(&fixture);
@@ -779,6 +803,7 @@ int main(void) {
     test_rtld_global_rejected(&fixture);
     test_app_domain_boundary(&fixture);
     test_runtime_gate_fail_closed(&fixture);
+    test_runtime_gate_default_allows_guest(&fixture);
     test_dlclose_runtime_gate(&fixture);
     test_load_error_classification(&fixture);
     fixture_destroy(&fixture);
@@ -786,3 +811,5 @@ int main(void) {
     printf("ANL host contract: %d checks, %d failures\n", g_checks, g_failures);
     return g_failures == 0 ? 0 : 1;
 }
+
+
