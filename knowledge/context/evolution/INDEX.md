@@ -8,5 +8,6 @@
 | FLAW-004 | closed | Measurement, Lifecycle | — | — |
 | FLAW-005 | open | Design, Verification | — | — |
 | FLAW-006 | closed | Governance | — | — |
+| FLAW-007 | closed | Verification | — | — |
 
 retired_prose: 0
