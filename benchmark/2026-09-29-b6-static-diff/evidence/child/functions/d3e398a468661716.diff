@@ -1,0 +1,59 @@
+--- R155/RealOpenLocalNow
++++ NEW/RealOpenLocalNow
+@@ -1,56 +0,0 @@
+-stp x29, x30, [sp, #-64]!
+-str x28, [sp, #16]
+-mov x29, sp
+-stp x22, x21, [sp, #32]
+-stp x20, x19, [sp, #48]
+-sub sp, sp, #1, lsl #12 // =4096
+-adrp x22, <PAGE>
+-mov w19, w2
+-mov x20, x1
+-ldrb w8, [x22, <object:g_namespace_prepared>]
+-tbz w8, #0, <RealOpenLocalNow+0x44>
+-adrp x0, <PAGE>
+-add x0, x0, <object:g_closure_namespace>
+-mov x1, x20
+-mov w2, w19
+-bl <dlopen_ns@plt>
+-b <RealOpenLocalNow+0xbc>
+-mov x0, x20
+-bl <strlen@plt>
+-sub x8, x0, #1, lsl #12 // =4096
+-cmn x8, #4095
+-b.lo <RealOpenLocalNow+0xb8>
+-add x2, x0, #1
+-mov x0, sp
+-mov x1, x20
+-mov x21, sp
+-bl <memcpy@plt>
+-mov x0, sp
+-mov w1, #47
+-bl <strrchr@plt>
+-cmp x0, x21
+-cset w8, eq
+-cbz x0, <RealOpenLocalNow+0xb8>
+-tbnz w8, #0, <RealOpenLocalNow+0xb8>
+-adrp x21, <PAGE>
+-add x21, x21, <object:g_closure_namespace>
+-strb wzr, [x0]
+-adrp x1, <PAGE>
+-add x1, x1, <string:'westlake.sealed.child'>
+-mov x0, x21
+-bl <dlns_init@plt>
+-mov x1, sp
+-mov x0, x21
+-mov w2, #2
+-bl <dlns_create2@plt>
+-cbz w0, <RealOpenLocalNow+0xd4>
+-mov x0, xzr
+-add sp, sp, #1, lsl #12 // =4096
+-ldp x20, x19, [sp, #48]
+-ldp x22, x21, [sp, #32]
+-ldr x28, [sp, #16]
+-ldp x29, x30, [sp], #64
+-ret
+-mov w8, #1
+-strb w8, [x22, #1120]
+-b <RealOpenLocalNow+0x2c>

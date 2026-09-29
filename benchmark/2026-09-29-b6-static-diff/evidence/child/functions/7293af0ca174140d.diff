@@ -1,0 +1,902 @@
+--- R155/LoadSealedProviderAfterHooks
++++ NEW/LoadSealedProviderAfterHooks
+@@ -1,208 +1,588 @@
+-sub sp, sp, #288
+-stp x20, x19, [sp, #272]
++stp x29, x30, [sp, #-80]!
++str x28, [sp, #16]
++mov x29, sp
++stp x24, x23, [sp, #32]
++stp x22, x21, [sp, #48]
++stp x20, x19, [sp, #64]
++sub sp, sp, #3824
+ mov x19, x1
+ mov x20, x0
+ adrp x1, <PAGE>
+ add x1, x1, <string:'WLCGATE:LSP:ENTER'>
+ mov w0, #2
+ mov w2, #17
+-stp x29, x30, [sp, #224]
+-stp x28, x23, [sp, #240]
+-add x29, sp, #224
+-stp x22, x21, [sp, #256]
+-str xzr, [sp]
+ bl <write@plt>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'\n'>
+ mov w0, #2
+ mov w2, #1
+ bl <write@plt>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'HiLogPrint'>
+-mov x0, xzr
+-bl <dlsym@plt>
+-stur x0, [x29, #-48]
+-cbz x0, <LoadSealedProviderAfterHooks+0xa8>
+-mov x0, sp
+-sub x1, x29, #48
+-mov w2, #8
+-bl <memcpy@plt>
+-ldr x8, [sp]
+-cbz x8, <LoadSealedProviderAfterHooks+0xa8>
+-mov w2, #11281
+-adrp x3, <PAGE>
+-add x3, x3, <string:'APPSPAWN'>
+-adrp x4, <PAGE>
+-add x4, x4, <string:'%{public}s'>
+-adrp x5, <PAGE>
+-add x5, x5, <string:'WLCGATE:LSP:ENTER'>
+-mov w0, #3
+-mov w1, #4
+-movk w2, #3328, lsl #16
+-blr x8
+-cbz x20, <LoadSealedProviderAfterHooks+0x3d8>
+-cbz x19, <LoadSealedProviderAfterHooks+0x3d8>
++mov w0, #-126
++cbz x20, <LoadSealedProviderAfterHooks+0x1a8>
++cbz x19, <LoadSealedProviderAfterHooks+0x1a8>
+ ldr x8, [x19, #8]
+ ldr x9, [x20, #16]
+ cmp x8, x9
+-b.ne <LoadSealedProviderAfterHooks+0x3d8>
++b.ne <LoadSealedProviderAfterHooks+0x1a4>
++ldr w8, [x20, #12]
++cbz w8, <LoadSealedProviderAfterHooks+0x1a4>
++ldr w9, [x19, #16]
++cmp w9, w8
++b.ne <LoadSealedProviderAfterHooks+0x1a4>
+ ldr w8, [x19, #24]
+ cmp w8, #1
+-b.ne <LoadSealedProviderAfterHooks+0x3d8>
++b.ne <LoadSealedProviderAfterHooks+0x1c4>
+ ldr w8, [x19, #28]
+ cmp w8, #1
+-b.ne <LoadSealedProviderAfterHooks+0x3d8>
++b.ne <LoadSealedProviderAfterHooks+0x1c4>
+ adrp x8, <PAGE>
+ add x8, x8, <object:g_child_hook_control+0x50>
+-adrp x9, <PAGE>
+-add x9, x9, <object:g_stock_host_services+0xb8>
+ ldar x8, [x8]
+-ldp q1, q0, [x9, #32]
+-cmeq v1.2d, v1.2d, #0
+-ldp q3, q2, [x9]
+-cmeq v0.2d, v0.2d, #0
+-uzp1 v0.4s, v1.4s, v0.4s
+-cmeq v3.2d, v3.2d, #0
+-cmeq v2.2d, v2.2d, #0
+-uzp1 v1.4s, v3.4s, v2.4s
+-uzp1 v0.8h, v1.8h, v0.8h
+-xtn v0.8b, v0.8h
+-umaxv b0, v0.8b
+-fmov w10, s0
+-tbnz w10, #0, <LoadSealedProviderAfterHooks+0x3d8>
+-ldr x9, [x9, #64]
+-cbz x9, <LoadSealedProviderAfterHooks+0x3d8>
+ cmp x8, #2
+-b.ne <LoadSealedProviderAfterHooks+0x3d8>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'WLCGATE:LSP:PASS_PRECONDITION'>
+-mov w0, #2
+-mov w2, #29
+-str xzr, [sp]
+-bl <write@plt>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'\n'>
+-mov w0, #2
+-mov w2, #1
+-bl <write@plt>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'HiLogPrint'>
+-mov x0, xzr
+-bl <dlsym@plt>
+-stur x0, [x29, #-48]
+-cbz x0, <LoadSealedProviderAfterHooks+0x1b8>
+-mov x0, sp
+-sub x1, x29, #48
+-mov w2, #8
+-bl <memcpy@plt>
+-ldr x8, [sp]
+-cbz x8, <LoadSealedProviderAfterHooks+0x1b8>
+-mov w2, #11281
+-adrp x3, <PAGE>
+-add x3, x3, <string:'APPSPAWN'>
+-adrp x4, <PAGE>
+-add x4, x4, <string:'%{public}s'>
+-adrp x5, <PAGE>
+-add x5, x5, <string:'WLCGATE:LSP:PASS_PRECONDITION'>
+-mov w0, #3
+-mov w1, #4
+-movk w2, #3328, lsl #16
+-blr x8
++b.ne <LoadSealedProviderAfterHooks+0x1cc>
++adrp x8, <PAGE>
++add x8, x8, <object:g_stock_host_services+0xb8>
++mov w0, #-138
++ldr x9, [x8]
++cbz x9, <LoadSealedProviderAfterHooks+0x1a8>
++ldr x9, [x8, #8]
++cbz x9, <LoadSealedProviderAfterHooks+0x1a8>
++ldr x9, [x8, #16]
++cbz x9, <LoadSealedProviderAfterHooks+0x1a8>
++ldr x9, [x8, #24]
++cbz x9, <LoadSealedProviderAfterHooks+0x1a8>
++ldr x9, [x8, #32]
++cbz x9, <LoadSealedProviderAfterHooks+0x1a8>
++ldr x9, [x8, #40]
++cbz x9, <LoadSealedProviderAfterHooks+0x1a8>
++ldr x8, [x8, #48]
++cbz x8, <LoadSealedProviderAfterHooks+0x1a8>
++adrp x8, <PAGE>
++add x8, x8, <object:g_stock_host_services+0xf0>
++mov w0, #-139
++ldr x9, [x8]
++cbz x9, <LoadSealedProviderAfterHooks+0x1a8>
++ldr x8, [x8, #8]
++cbz x8, <LoadSealedProviderAfterHooks+0x1a8>
++adrp x0, <PAGE>
++add x0, x0, <string:'WLCGATE:LSP:PASS_PRECONDITION'>
++mov w1, #29
++bl <WlascGateMarker>
+ bl <WLSCPL_GetBuildGeneratedManifest>
+-cbz x0, <LoadSealedProviderAfterHooks+0x480>
++cbz x0, <LoadSealedProviderAfterHooks+0x1d4>
+ ldr w8, [x0]
+ mov x21, x0
+-cmp w8, #1
+-b.ne <LoadSealedProviderAfterHooks+0x480>
++cmp w8, #2
++b.ne <LoadSealedProviderAfterHooks+0x1d4>
+ ldr w8, [x21, #4]
+-cmp w8, #40
+-b.ne <LoadSealedProviderAfterHooks+0x480>
+-ldr x8, [x21, #24]
+-ldr x9, [x20, #16]
+-cmp x8, x9
+-b.ne <LoadSealedProviderAfterHooks+0x480>
++cmp w8, #72
++b.ne <LoadSealedProviderAfterHooks+0x1d4>
++bl <WlgrIfGetBuildGeneratedMetadata>
++bl <WlgrIfValidateMetadata>
++cbz w0, <LoadSealedProviderAfterHooks+0x1d4>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'WLCGATE:LSP:PASS_MANIFEST'>
+ mov w1, #25
+ bl <WlascGateMarker>
+ bl <getpid@plt>
+ mov w22, w0
++sxtw x8, w22
++str x8, [x29, #24]
+ bl <getppid@plt>
+-cbz w22, <LoadSealedProviderAfterHooks+0x4fc>
+-cbz w0, <LoadSealedProviderAfterHooks+0x4fc>
+-cmp w22, w0
+-b.eq <LoadSealedProviderAfterHooks+0x4fc>
+-sxtw x23, w0
+-adrp x0, <PAGE>
+-add x0, x0, <string:'WLCGATE:LSP:PASS_PID'>
+-mov w1, #20
+-sxtw x22, w22
++mov w8, w0
++mov w0, #-129
++cbz w22, <LoadSealedProviderAfterHooks+0x1a8>
++cbz w8, <LoadSealedProviderAfterHooks+0x1a8>
++cmp w22, w8
++b.eq <LoadSealedProviderAfterHooks+0x1a8>
++add x1, x29, #24
++add x2, sp, #136
++mov x0, xzr
++mov x23, x8
++bl <WlgrIfProductionReadProcess>
++cbz w0, <LoadSealedProviderAfterHooks+0x1dc>
++mov w0, #-129
++b <LoadSealedProviderAfterHooks+0x1a8>
++mov w0, #-135
++add sp, sp, #3824
++ldp x20, x19, [sp, #64]
++ldp x22, x21, [sp, #48]
++ldp x24, x23, [sp, #32]
++ldr x28, [sp, #16]
++ldp x29, x30, [sp], #80
++ret
++mov w0, #-136
++b <LoadSealedProviderAfterHooks+0x1a8>
++mov w0, #-137
++b <LoadSealedProviderAfterHooks+0x1a8>
++mov w0, #-128
++b <LoadSealedProviderAfterHooks+0x1a8>
++movi v0.2d, #0000000000000000
++ldr w8, [x20, #24]
++movi v1.2d, #0000000000000000
++add x22, sp, #2352
++ldr w9, [x20, #12]
++add x0, x22, #40
++ldr x10, [x20, #16]
++add x1, x20, #580
++str q0, [sp, #2352]
++ldr x11, [sp, #136]
++str q0, [sp, #2368]
++mov w2, #256
++str q0, [sp, #2384]
++str q0, [sp, #2400]
++str q0, [sp, #2416]
++str q0, [sp, #2432]
++str q0, [sp, #2448]
++str q0, [sp, #2464]
++str q0, [sp, #2480]
++str q0, [sp, #2496]
++str q0, [sp, #2512]
++str q0, [sp, #2528]
++str q0, [sp, #2544]
++str q0, [sp, #2560]
++str q0, [sp, #2576]
++str q0, [sp, #2592]
++str q0, [sp, #2608]
++str q0, [sp, #2624]
++str q0, [sp, #2640]
++str q0, [sp, #2656]
++str q0, [sp, #2672]
++str q0, [sp, #2688]
++str q0, [sp, #2704]
++str q0, [sp, #2720]
++str q0, [sp, #2736]
++str q0, [sp, #2752]
++str q0, [sp, #2768]
++str q0, [sp, #2784]
++str q0, [sp, #2800]
++str q0, [sp, #2816]
++movi v0.2d, #0000000000000000
++str w8, [sp, #2352]
++ldr x8, [x29, #24]
++str q1, [sp, #2832]
++str q1, [sp, #2848]
++str x9, [sp, #2360]
++str x10, [sp, #2368]
++str x8, [sp, #2376]
++str x11, [sp, #2384]
++str q1, [sp, #2864]
++str q1, [sp, #2880]
++str d0, [sp, #2896]
++bl <memcpy@plt>
++add x0, x22, #296
++add x1, x20, #324
++mov w2, #256
++bl <memcpy@plt>
++bl <WlgrIfGetBuildGeneratedMetadata>
++ldp q0, q1, [x0]
++movi v4.2d, #0000000000000000
++add x1, sp, #160
++mov w2, #64
++str q4, [sp, #144]
++ldr q2, [x0, #32]
++str q0, [sp, #2112]
++str q1, [sp, #2128]
++str q2, [sp, #2144]
++ldp q1, q0, [x0, #80]
++ldp q2, q3, [x0, #48]
++str q0, [sp, #2208]
++str q1, [sp, #2192]
++str q2, [sp, #2160]
++str q3, [sp, #2176]
++ldp q2, q3, [x0, #112]
++ldp q1, q0, [x0, #144]
++str q2, [sp, #2224]
++movi v2.2d, #0000000000000000
++str q3, [sp, #2240]
++str q1, [sp, #2256]
++str q0, [sp, #2272]
++stp q2, q2, [sp, #160]
++ldp q1, q0, [x0, #208]
++stp q2, q2, [sp, #192]
++ldp q2, q3, [x0, #176]
++mov x0, xzr
++str q0, [sp, #2336]
++str q1, [sp, #2320]
++str q2, [sp, #2288]
++str q3, [sp, #2304]
++bl <WlgrIfProductionReadBootId>
++cbz w0, <LoadSealedProviderAfterHooks+0x360>
++adrp x0, <PAGE>
++add x0, x0, <string:'WLCGATE:LSP:FAIL_BOOT_REBIND_READ'>
++mov w1, #33
++bl <WlascGateMarker>
++mov w0, #-130
++b <LoadSealedProviderAfterHooks+0x1a8>
++add x0, sp, #160
++add x1, sp, #144
++bl <WlgrIfParseBootId>
++cbz w0, <LoadSealedProviderAfterHooks+0x348>
++add x22, sp, #2112
++add x1, sp, #144
++add x0, x22, #16
++mov w2, #16
++bl <memcpy@plt>
++movi v0.2d, #0000000000000000
++ldr x8, [sp, #2360]
++add x1, x22, #176
++add x0, sp, #2112
++str x8, [sp, #2184]
++str q0, [sp, #2288]
++str q0, [sp, #2304]
++bl <WlgrIfDigestMetadata>
++cbz w0, <LoadSealedProviderAfterHooks+0x3c0>
++adrp x0, <PAGE>
++add x0, x0, <string:'WLCGATE:LSP:FAIL_BOOT_REBIND_DIGEST'>
++mov w1, #35
++bl <WlascGateMarker>
++mov w0, #-131
++b <LoadSealedProviderAfterHooks+0x1a8>
++add x0, sp, #2112
++bl <WlgrIfValidateMetadata>
++cbz w0, <LoadSealedProviderAfterHooks+0x3a8>
++adrp x0, <PAGE>
++add x0, x0, <string:'WLCGATE:LSP:PASS_BOOT_REBIND'>
++mov w1, #28
+ bl <WlascGateMarker>
+ movi v0.2d, #0000000000000000
+ adrp x8, <PAGE>
++mov x9, #18481
++add x10, sp, #2016
++movk x9, #21315, lsl #16
++add x0, x10, #32
++movk x9, #18248, lsl #32
++ldr d1, [x8, <.rodata+0x48>]
++str q0, [sp, #2016]
++movk x9, #22348, lsl #48
++str q0, [sp, #2032]
++mov w8, #1023
++str q0, [sp, #2048]
++str q0, [sp, #2064]
++str q0, [sp, #2080]
++str q0, [sp, #2096]
++movi v0.4h, #8
++str d1, [sp, #2024]
++str x9, [sp, #2016]
++str x8, [sp, #2032]
++str d0, [sp, #2040]
++bl <WlgrIfProduceHookSchemaDigest>
++cbz w0, <LoadSealedProviderAfterHooks+0x440>
++mov w0, #-132
++b <LoadSealedProviderAfterHooks+0x1a8>
++add x0, sp, #1976
++add x1, sp, #2352
++add x3, sp, #2112
++add x4, sp, #2016
++mov x2, x19
++bl <WlgrIfProductionContextInit>
++cbz w0, <LoadSealedProviderAfterHooks+0x464>
++mov w0, #-133
++b <LoadSealedProviderAfterHooks+0x1a8>
++add x0, sp, #1976
++add x1, sp, #1912
++bl <WlgrIfProductionOps>
++cbz w0, <LoadSealedProviderAfterHooks+0x47c>
++mov w0, #-134
++b <LoadSealedProviderAfterHooks+0x1a8>
++adrp x8, <PAGE>
++add x0, sp, #2352
++movi v0.2d, #0000000000000000
++add x1, sp, #1912
++movi v1.2d, #0000000000000000
++add x2, sp, #1088
++ldr x8, [x8, <reloc:1027:WlgrIfProductionReadProcess>]
++add x3, sp, #1840
++ldr x9, [sp, #1968]
++str wzr, [sp, #1888]
++str q0, [sp, #1840]
++str x8, [sp, #1896]
++str x9, [sp, #1904]
++str q0, [sp, #1856]
++str q0, [sp, #1872]
++str q0, [sp, #1088]
++str q0, [sp, #1104]
++str q0, [sp, #1120]
++str q0, [sp, #1136]
++str q0, [sp, #1152]
++str q0, [sp, #1168]
++str q0, [sp, #1184]
++str q0, [sp, #1200]
++str q0, [sp, #1216]
++str q0, [sp, #1232]
++str q0, [sp, #1248]
++str q0, [sp, #1264]
++str q0, [sp, #1280]
++str q0, [sp, #1296]
++str q0, [sp, #1312]
++str q0, [sp, #1328]
++str q0, [sp, #1344]
++str q0, [sp, #1360]
++str q0, [sp, #1376]
++str q0, [sp, #1392]
++str q0, [sp, #1408]
++str q0, [sp, #1424]
++str q0, [sp, #1440]
++str q0, [sp, #1456]
++str q0, [sp, #1472]
++str q0, [sp, #1488]
++str q0, [sp, #1504]
++str q0, [sp, #1520]
++str q0, [sp, #1536]
++str q0, [sp, #1552]
++str q0, [sp, #1568]
++str q0, [sp, #1584]
++str q0, [sp, #1600]
++str q0, [sp, #1616]
++str q0, [sp, #1632]
++str q0, [sp, #1648]
++str q0, [sp, #1664]
++str q0, [sp, #1680]
++str q0, [sp, #1696]
++str q0, [sp, #1712]
++str q0, [sp, #1728]
++str q0, [sp, #1744]
++str q0, [sp, #1760]
++str q0, [sp, #1776]
++str q0, [sp, #1792]
++str q0, [sp, #1808]
++str d1, [sp, #1824]
++stp q0, q0, [sp, #224]
++stp q0, q0, [sp, #256]
++stp q0, q0, [sp, #288]
++stp q0, q0, [sp, #320]
++stp q0, q0, [sp, #352]
++stp q0, q0, [sp, #384]
++stp q0, q0, [sp, #416]
++stp q0, q0, [sp, #448]
++stp q0, q0, [sp, #480]
++stp q0, q0, [sp, #512]
++stp q0, q0, [sp, #544]
++stp q0, q0, [sp, #576]
++stp q0, q0, [sp, #608]
++stp q0, q0, [sp, #640]
++stp q0, q0, [sp, #672]
++stp q0, q0, [sp, #704]
++stp q0, q0, [sp, #736]
++stp q0, q0, [sp, #768]
++stp q0, q0, [sp, #800]
++stp q0, q0, [sp, #832]
++stp q0, q0, [sp, #864]
++stp q0, q0, [sp, #896]
++stp q0, q0, [sp, #928]
++stp q0, q0, [sp, #960]
++stp q0, q0, [sp, #992]
++str q0, [sp, #1024]
++str q0, [sp, #1040]
++str q0, [sp, #1056]
++str q0, [sp, #1072]
++bl <WlgrIfAcquire>
++cbz w0, <LoadSealedProviderAfterHooks+0x610>
++mov w22, w0
++adrp x0, <PAGE>
++add x0, x0, <string:'WLCGATE:LSP:FAIL_ACQUIRE'>
++mov w1, w22
++bl <WlascGateMarkerValue>
++mov w8, #-140
++sub w0, w8, w22
++b <LoadSealedProviderAfterHooks+0x1a8>
++add x0, sp, #224
++add x1, sp, #1088
++add x2, sp, #1896
++bl <WlgrIpBuild>
++cbz w0, <LoadSealedProviderAfterHooks+0x644>
++mov w22, w0
++adrp x0, <PAGE>
++add x0, x0, <string:'WLCGATE:LSP:FAIL_IDENTITY_BUILD'>
++mov w1, w22
++bl <WlascGateMarkerValue>
++mov w8, #-160
++sub w0, w8, w22
++b <LoadSealedProviderAfterHooks+0x1a8>
++add x0, sp, #224
++add x1, sp, #1088
++add x2, sp, #1896
++bl <WlgrIpValidate>
++mov w24, w0
++add x0, sp, #224
++bl <WlgrIpGetIdentity>
++cbz w24, <LoadSealedProviderAfterHooks+0x680>
++adrp x0, <PAGE>
++add x0, x0, <string:'WLCGATE:LSP:FAIL_IDENTITY_VALIDATE'>
++mov w1, w24
++bl <WlascGateMarkerValue>
++mov w8, #-170
++sub w0, w8, w24
++b <LoadSealedProviderAfterHooks+0x1a8>
++mov x22, x0
++cbz x0, <LoadSealedProviderAfterHooks+0x82c>
++mov x0, x22
++bl <wlgr_v2_identity_valid>
++cbz w0, <LoadSealedProviderAfterHooks+0x82c>
++adrp x0, <PAGE>
++add x0, x0, <string:'WLCGATE:LSP:PASS_PID'>
++mov w1, #20
++sxtw x23, w23
++bl <WlascGateMarker>
++movi v0.2d, #0000000000000000
++adrp x8, <PAGE>
++movi v1.2d, #0000000000000000
+ adrp x0, <PAGE>
+ add x0, x0, <object:g_sealed_child_loader>
+ sub x1, x29, #48
+-sub x2, x29, #96
+-sturh wzr, [x29, #-48]
+-stur d0, [x29, #-28]
+-stp q0, q0, [x29, #-96]
+-stur d0, [x29, #-64]
+-ldr q0, [x8, <.rodata+0xd0>]
++add x2, sp, #2912
++sturh wzr, [x29, #-16]
++stp q0, q0, [x29, #-48]
++str q0, [sp, #2912]
++str q0, [sp, #2928]
++str q0, [sp, #2944]
++str q0, [sp, #2960]
++str q0, [sp, #2976]
++str q0, [sp, #2992]
++str q0, [sp, #3008]
++str q0, [sp, #3024]
++str q0, [sp, #3040]
++str q0, [sp, #3056]
++str q0, [sp, #3072]
++str q0, [sp, #3088]
++str q0, [sp, #3104]
++str q0, [sp, #3120]
++str q0, [sp, #3136]
++str q0, [sp, #3152]
++str q0, [sp, #3168]
++str q0, [sp, #3184]
++str q0, [sp, #3200]
++str q0, [sp, #3216]
++str q0, [sp, #3232]
++str q0, [sp, #3248]
++str q0, [sp, #3264]
++str q0, [sp, #3280]
++str q0, [sp, #3296]
++str q0, [sp, #3312]
++str q0, [sp, #3328]
++str q0, [sp, #3344]
++str q0, [sp, #3360]
++str q0, [sp, #3376]
++str q0, [sp, #3392]
++str q0, [sp, #3408]
++str q0, [sp, #3424]
++str q0, [sp, #3440]
++str q0, [sp, #3456]
++str q0, [sp, #3472]
++str q0, [sp, #3488]
++str q0, [sp, #3504]
++str q0, [sp, #3520]
++str q0, [sp, #3536]
++str q0, [sp, #3552]
++str q0, [sp, #3568]
++str q0, [sp, #3584]
++str q0, [sp, #3600]
++str q0, [sp, #3616]
++str q0, [sp, #3632]
++str q0, [sp, #3648]
++str q0, [sp, #3664]
++str q0, [sp, #3680]
++str q0, [sp, #3696]
++str q0, [sp, #3712]
++str q0, [sp, #3728]
++ldr q0, [x8, <.rodata+0xf0>]
+ mov w8, #1
+-sturb wzr, [x29, #-46]
+-sturh wzr, [x29, #-44]
+-sturb wzr, [x29, #-42]
+-sturh wzr, [x29, #-40]
+-sturb wzr, [x29, #-38]
+-sturh wzr, [x29, #-36]
+-sturb wzr, [x29, #-34]
+-sturh wzr, [x29, #-20]
+-stur wzr, [x29, #-16]
+-sturh wzr, [x29, #-12]
+-stur wzr, [x29, #-8]
+-sturb wzr, [x29, #-4]
++str d1, [sp, #3744]
++str d1, [sp, #3752]
++str d1, [sp, #3760]
+ stur q0, [x29, #-48]
+ stur w8, [x29, #-32]
+ stp x23, x22, [x29, #-24]
+ stur x21, [x29, #-8]
+ bl <WLSCPL_LoadSealedProvider>
+-mov w1, w0
+-cbnz w0, <LoadSealedProviderAfterHooks+0x50c>
+-ldur w8, [x29, #-96]
+-cmp w8, #1
+-b.ne <LoadSealedProviderAfterHooks+0x50c>
+-ldur w8, [x29, #-92]
+-cmp w8, #40
+-b.ne <LoadSealedProviderAfterHooks+0x50c>
+-ldur w8, [x29, #-88]
+-cbnz w8, <LoadSealedProviderAfterHooks+0x50c>
+-ldur w8, [x29, #-84]
++mov w23, w0
++adrp x0, <PAGE>
++add x0, x0, <string:'WLCGATE:LSP:LOAD_ERROR'>
++mov w1, w23
++bl <WlascGateMarkerValue>
++ldr w1, [sp, #2920]
++adrp x0, <PAGE>
++add x0, x0, <string:'WLCGATE:LSP:LOAD_RESULT_ERROR'>
++bl <WlascGateMarkerValue>
++ldr w1, [sp, #2924]
++adrp x0, <PAGE>
++add x0, x0, <string:'WLCGATE:LSP:LOAD_VALIDATED_COUNT'>
++bl <WlascGateMarkerValue>
++cbz w23, <LoadSealedProviderAfterHooks+0x834>
++cmp w23, #8
++b.ne <LoadSealedProviderAfterHooks+0x9a0>
++ldr w8, [sp, #2924]
++cmp w8, #34
++b.hi <LoadSealedProviderAfterHooks+0x9a0>
++bl <WLSCPL_GetLastArtifactIdentityDetail>
++ldr w8, [sp, #2924]
++cmp w8, #31
++b.hi <LoadSealedProviderAfterHooks+0x9ac>
++mov w9, #-64
++sub w0, w9, w8
++b <LoadSealedProviderAfterHooks+0x1a8>
++mov w0, #-179
++b <LoadSealedProviderAfterHooks+0x1a8>
++ldr w8, [sp, #2912]
++mov w0, #-204
++cmp w8, #2
++b.ne <LoadSealedProviderAfterHooks+0x1a8>
++ldr w8, [sp, #2916]
++cmp w8, #856
++b.ne <LoadSealedProviderAfterHooks+0x1a8>
++ldr w8, [sp, #2920]
++cbnz w8, <LoadSealedProviderAfterHooks+0x1a8>
++ldr w8, [sp, #2924]
+ ldr w9, [x21, #12]
+ cmp w8, w9
+-b.ne <LoadSealedProviderAfterHooks+0x50c>
+-ldur x8, [x29, #-80]
+-cmp x8, x22
+-b.ne <LoadSealedProviderAfterHooks+0x50c>
+-ldur x8, [x29, #-72]
+-ldr x9, [x20, #16]
+-cmp x8, x9
+-b.ne <LoadSealedProviderAfterHooks+0x50c>
+-ldur x8, [x29, #-64]
+-cbz x8, <LoadSealedProviderAfterHooks+0x50c>
++b.ne <LoadSealedProviderAfterHooks+0x9c8>
++add x8, sp, #2912
++mov x1, x22
++add x0, x8, #32
++bl <wlgr_v2_identity_equal>
++cbz w0, <LoadSealedProviderAfterHooks+0x9c8>
++ldur q0, [x21, #28]
++mov w0, #-204
++ldr q1, [sp, #3648]
++ldr q2, [sp, #3664]
++ldur q3, [x21, #44]
++eor v0.16b, v0.16b, v1.16b
++eor v1.16b, v3.16b, v2.16b
++orr v0.16b, v1.16b, v0.16b
++ext v1.16b, v0.16b, v0.16b, #8
++orr v0.8b, v0.8b, v1.8b
++umov w8, v0.b[1]
++umov w9, v0.b[0]
++umov w10, v0.b[2]
++umov w11, v0.b[3]
++umov w12, v0.b[4]
++orr w8, w9, w8
++umov w9, v0.b[5]
++orr w8, w8, w10
++umov w10, v0.b[6]
++orr w8, w8, w11
++umov w11, v0.b[7]
++orr w8, w8, w12
++orr w8, w8, w9
++orr w8, w8, w10
++orr w8, w8, w11
++tst w8, #0xff
++b.ne <LoadSealedProviderAfterHooks+0x1a8>
++ldr x8, [sp, #3760]
++cbz x8, <LoadSealedProviderAfterHooks+0x1a8>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'WLCGATE:LSP:PASS_LOAD_RESULT'>
+ mov w1, #28
+ bl <WlascGateMarker>
+ adrp x8, <PAGE>
+ mov x9, sp
+ movi v0.2d, #0000000000000000
+-adrp x21, <PAGE>
+-add x21, x21, <object:g_stock_host_services+0x10>
++adrp x22, <PAGE>
++add x22, x22, <object:g_stock_host_services+0x10>
+ add x0, x9, #16
+-ldr d1, [x8, <.rodata+0x18>]
+-mov x1, x21
++ldr d1, [x8, <.rodata+0x30>]
++mov x1, x22
+ ldr x8, [x20, #16]
+ mov w2, #32
+ stp q0, q0, [sp]
+ stp q0, q0, [sp, #32]
+@@ -210,130 +590,39 @@
+ stp q0, q0, [sp, #96]
+ str d1, [sp]
+ str x8, [sp, #8]
+ bl <memcpy@plt>
+-ldr x8, [x21, #168]
+-adrp x10, <PAGE>
+-ldr q0, [x21, #176]
+-adrp x0, <PAGE>
+-add x0, x0, <string:'WLCGATE:LSP:INVOKE_PROVIDER'>
+-ldr x9, [x21, #192]
++ldr x9, [x22, #192]
++mov x1, sp
++ldr x8, [x22, #168]
++add x5, sp, #2912
++ldr q0, [x22, #176]
++mov x2, x20
++str x9, [sp, #72]
++adrp x9, <PAGE>
+ str x8, [sp, #48]
+-mov w1, #27
++mov x3, x19
++ldp x8, x10, [x22, #216]
+ stur q0, [sp, #56]
+-ldr x10, [x10, <reloc:1027:WLSCPL_OpenPreparedNamespace>]
+-str x9, [sp, #72]
+-ldp x8, x9, [x21, #216]
+-ldur q0, [x21, #200]
+-stp x8, x10, [sp, #96]
+-ldr x8, [x21, #232]
++mov x4, x21
++ldur q0, [x22, #200]
++ldr x9, [x9, <reloc:1027:WLSCPL_OpenPreparedNamespace>]
++ldr x11, [x22, #232]
++ldr x0, [sp, #3760]
+ str q0, [sp, #80]
+-stp x9, x8, [sp, #112]
+-bl <WlascGateMarker>
+-ldur x0, [x29, #-64]
+-mov x1, sp
+-mov x2, x20
+-mov x3, x19
+-bl <InvokeProviderChildEntryWithResolver>
+-adrp x8, <PAGE>
+-add x8, x8, <string:'WLCGATE:LSP:FAIL_PROVIDER'>
+-adrp x9, <PAGE>
+-add x9, x9, <string:'WLCGATE:LSP:PASS_PROVIDER'>
+-cmp w0, #0
+-mov w19, w0
+-csel x0, x9, x8, eq
+-mov w1, #7
+-bl <WlascGateMarker>
+-b <LoadSealedProviderAfterHooks+0x464>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'WLCGATE:LSP:FAIL_PRECONDITION'>
+-mov w0, #2
+-mov w2, #29
+-str xzr, [sp]
+-bl <write@plt>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'\n'>
+-mov w0, #2
+-mov w2, #1
+-bl <write@plt>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'HiLogPrint'>
+-mov x0, xzr
+-bl <dlsym@plt>
+-stur x0, [x29, #-48]
+-cbz x0, <LoadSealedProviderAfterHooks+0x460>
+-mov x0, sp
+-sub x1, x29, #48
+-mov w2, #8
+-bl <memcpy@plt>
+-ldr x8, [sp]
+-cbz x8, <LoadSealedProviderAfterHooks+0x460>
+-mov w2, #11281
+-adrp x3, <PAGE>
+-add x3, x3, <string:'APPSPAWN'>
+-adrp x4, <PAGE>
+-add x4, x4, <string:'%{public}s'>
+-adrp x5, <PAGE>
+-add x5, x5, <string:'WLCGATE:LSP:FAIL_PRECONDITION'>
+-mov w0, #3
+-mov w1, #4
+-movk w2, #3328, lsl #16
+-blr x8
+-mov w19, #-1
+-mov w0, w19
+-ldp x20, x19, [sp, #272]
+-ldp x22, x21, [sp, #256]
+-ldp x28, x23, [sp, #240]
+-ldp x29, x30, [sp, #224]
+-add sp, sp, #288
+-ret
+-adrp x1, <PAGE>
+-add x1, x1, <string:'WLCGATE:LSP:FAIL_MANIFEST'>
+-mov w0, #2
+-mov w2, #25
+-str xzr, [sp]
+-bl <write@plt>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'\n'>
+-mov w0, #2
+-mov w2, #1
+-bl <write@plt>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'HiLogPrint'>
+-mov x0, xzr
+-bl <dlsym@plt>
+-stur x0, [x29, #-48]
+-cbz x0, <LoadSealedProviderAfterHooks+0x460>
+-mov x0, sp
+-sub x1, x29, #48
+-mov w2, #8
+-bl <memcpy@plt>
+-ldr x8, [sp]
+-cbz x8, <LoadSealedProviderAfterHooks+0x460>
+-mov w2, #11281
+-adrp x3, <PAGE>
+-add x3, x3, <string:'APPSPAWN'>
+-adrp x4, <PAGE>
+-add x4, x4, <string:'%{public}s'>
+-adrp x5, <PAGE>
+-add x5, x5, <string:'WLCGATE:LSP:FAIL_MANIFEST'>
+-b <LoadSealedProviderAfterHooks+0x450>
+-adrp x0, <PAGE>
+-add x0, x0, <string:'WLCGATE:LSP:FAIL_PID'>
+-mov w1, #20
+-b <LoadSealedProviderAfterHooks+0x544>
+-adrp x0, <PAGE>
+-add x0, x0, <string:'WLCGATE:LSP:LOAD_ERROR'>
+-bl <WlascGateMarkerValue>
+-ldur w1, [x29, #-88]
+-adrp x0, <PAGE>
+-add x0, x0, <string:'WLCGATE:LSP:RESULT_ERROR'>
+-bl <WlascGateMarkerValue>
+-ldur w1, [x29, #-84]
+-adrp x0, <PAGE>
+-add x0, x0, <string:'WLCGATE:LSP:VALIDATED_COUNT'>
+-bl <WlascGateMarkerValue>
+-adrp x0, <PAGE>
+-add x0, x0, <string:'WLCGATE:LSP:FAIL_LOAD_RESULT'>
+-mov w1, #28
+-bl <WlascGateMarker>
+-b <LoadSealedProviderAfterHooks+0x460>
++stp x8, x9, [sp, #96]
++stp x10, x11, [sp, #112]
++bl <InvokeProviderA06ThenA02>
++mov w0, #-210
++b <LoadSealedProviderAfterHooks+0x1a8>
++mov w8, #-190
++sub w0, w8, w23
++b <LoadSealedProviderAfterHooks+0x1a8>
++mov w8, #-240
++sub w9, w0, #1
++sub w8, w8, w0
++cmp w9, #14
++mov w9, #-123
++csel w0, w8, w9, lo
++b <LoadSealedProviderAfterHooks+0x1a8>
++mov w0, #-204
++b <LoadSealedProviderAfterHooks+0x1a8>

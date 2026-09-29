@@ -94,3 +94,46 @@ fn b6_sigchain_exports_cover_libart_imports() {
 fn b6_generation_passes_identity_gate() {
     run(&["benchmark/2026-09-28-bms-route-deploy/latest-source-generation/verify.py", "identity"]);
 }
+
+#[test]
+fn bms_route_study_evidence() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let status = std::process::Command::new("python3")
+        .arg(root.join("benchmark/2026-09-28-bms-route-study/verify.py"))
+        .current_dir(&root)
+        .status()
+        .expect("run BMS evidence checks");
+    assert!(status.success(), "BMS handoff evidence did not validate");
+}
+
+#[test]
+fn b6_static_diff() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let status = std::process::Command::new("python3")
+        .arg(root.join("benchmark/2026-09-29-b6-static-diff/verify.py"))
+        .current_dir(&root)
+        .status()
+        .expect("run offline B6 ELF evidence and normalization checks");
+    assert!(status.success(), "B6 static comparison evidence failed");
+}
+
+#[test]
+fn bms_rerun_offline() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let status = std::process::Command::new("python3")
+        .args(["-m", "unittest", "discover", "-s", "benchmark/2026-09-28-bms-route-deploy/batch", "-p", "test_b4_rerun.py"])
+        .current_dir(&root)
+        .status()
+        .expect("run three-shard FakeBoard plans and offline v4 aggregation checks");
+    assert!(status.success(), "B4 rerun preparation checks failed");
+}
+
+#[test]
+fn white_window_offline() {
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_*.py"]);
+}
+
+#[test]
+fn ability_stage_offline() {
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_ability_stage.py"]);
+}

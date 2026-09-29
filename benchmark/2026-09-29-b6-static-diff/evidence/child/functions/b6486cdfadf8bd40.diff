@@ -1,0 +1,171 @@
+--- R155/PublishChildHookTable
++++ NEW/PublishChildHookTable
+@@ -1,77 +1,49 @@
+-stp x29, x30, [sp, #-32]!
+-stp x20, x19, [sp, #16]
++stp x29, x30, [sp, #-48]!
++str x21, [sp, #16]
+ mov x29, sp
+-cbz x0, <PublishChildHookTable+0x190>
+-adrp x9, <PAGE>
+-ldr x8, [x0, #16]
++stp x20, x19, [sp, #32]
++cbz x0, <PublishChildHookTable+0x1b8>
++adrp x8, <PAGE>
++ldr x9, [x0, #16]
+ mov x19, x0
+-ldr x9, [x9, <object:g_stock_host_services+0x8>]
+-cmp x8, x9
+-b.ne <PublishChildHookTable+0x190>
+-adrp x9, <PAGE>
+-add x9, x9, <object:g_stock_host_services+0x10>
+-ldp q1, q0, [x9]
++ldr x8, [x8, <object:g_stock_host_services+0x8>]
++cmp x9, x8
++b.ne <PublishChildHookTable+0x1b8>
++adrp x20, <PAGE>
++add x20, x20, <object:g_stock_host_services+0x10>
++ldp q1, q0, [x20]
+ orr v0.16b, v1.16b, v0.16b
+ ext v1.16b, v0.16b, v0.16b, #8
+ orr v0.8b, v0.8b, v1.8b
+-umov w9, v0.b[1]
+-umov w10, v0.b[0]
+-umov w11, v0.b[2]
+-umov w12, v0.b[3]
+-umov w13, v0.b[4]
+-orr w9, w10, w9
+-umov w10, v0.b[5]
+-orr w9, w9, w11
+-umov w11, v0.b[6]
+-orr w9, w9, w12
+-umov w12, v0.b[7]
+-orr w9, w9, w13
+-orr w9, w9, w10
+-orr w9, w9, w11
+-orr w9, w9, w12
+-tst w9, #0xff
+-b.eq <PublishChildHookTable+0x190>
++umov w8, v0.b[1]
++umov w9, v0.b[0]
++umov w10, v0.b[2]
++umov w11, v0.b[3]
++umov w12, v0.b[4]
++orr w8, w9, w8
++umov w9, v0.b[5]
++orr w8, w8, w10
++umov w10, v0.b[6]
++orr w8, w8, w11
++umov w11, v0.b[7]
++orr w8, w8, w12
++orr w8, w8, w9
++orr w8, w8, w10
++orr w8, w8, w11
++tst w8, #0xff
++b.eq <PublishChildHookTable+0x1b8>
++adrp x21, <PAGE>
++add x21, x21, <object:g_child_hook_control+0x50>
++ldar x8, [x21]
++cmp x8, #2
++b.ne <PublishChildHookTable+0x120>
++adrp x8, <PAGE>
+ ldr w9, [x19, #12]
+-adrp x20, <PAGE>
+-add x20, x20, <object:g_stock_host_services+0x10>
+-adrp x0, <PAGE>
+-add x0, x0, <object:g_child_hook_table>
+-mov x1, x20
+-eor x8, x8, x9, lsl #32
+-mov x9, #20311
+-movk x9, #20299, lsl #16
+-movk x9, #18511, lsl #32
+-movk x9, #22348, lsl #48
+-eor x8, x8, x9
+-cmp x8, #0
+-csinc x2, x8, xzr, ne
+-bl <westlake_child_hook_table_v1_prepare_candidate>
+-cbnz w0, <PublishChildHookTable+0x190>
+-ldr w8, [x19, #12]
+-adrp x0, <PAGE>
+-add x0, x0, <object:g_child_hook_control>
+-adrp x1, <PAGE>
+-add x1, x1, <object:g_child_hook_table>
+-add x2, x8, #1
+-bl <westlake_child_hook_table_v1_begin_install>
+-cbnz w0, <PublishChildHookTable+0x190>
+-adrp x0, <PAGE>
+-add x0, x0, <object:g_child_hook_control>
+-adrp x1, <PAGE>
+-add x1, x1, <object:g_child_hook_table>
+-bl <westlake_child_hook_table_v1_publish>
+-cbnz w0, <PublishChildHookTable+0x190>
+-adrp x8, <PAGE>
+-add x8, x8, <object:g_child_hook_control+0x50>
+-ldar x8, [x8]
+-cmp x8, #2
+-b.ne <PublishChildHookTable+0x190>
+-adrp x8, <PAGE>
+-add x8, x8, <object:g_child_hook_control+0x58>
+-ldar x8, [x8]
+-cmp x8, #1
+-b.ne <PublishChildHookTable+0x190>
++ldr x8, [x8, <object:g_child_hook_control+0x40>]
++add x9, x9, #1
++cmp x8, x9
++b.ne <PublishChildHookTable+0x1b8>
+ adrp x8, <PAGE>
+ add x8, x8, <object:g_child_hook_control+0x18>
+ ldp q2, q3, [x20]
+ ldp q0, q1, [x8]
+@@ -96,9 +68,48 @@
+ orr w8, w8, w10
+ orr w8, w8, w11
+ tst w8, #0xff
+ csetm w0, ne
+-b <PublishChildHookTable+0x194>
++b <PublishChildHookTable+0x1bc>
++ldr x8, [x19, #16]
++adrp x0, <PAGE>
++add x0, x0, <object:g_child_hook_candidate>
++ldr w9, [x19, #12]
++adrp x1, <PAGE>
++add x1, x1, <object:g_stock_host_services+0x10>
++eor x8, x8, x9, lsl #32
++mov x9, #20311
++movk x9, #20299, lsl #16
++movk x9, #18511, lsl #32
++movk x9, #22348, lsl #48
++eor x8, x8, x9
++cmp x8, #0
++csinc x2, x8, xzr, ne
++bl <westlake_child_hook_table_v1_prepare_candidate>
++cbnz w0, <PublishChildHookTable+0x1b8>
++ldr w8, [x19, #12]
++adrp x0, <PAGE>
++add x0, x0, <object:g_child_hook_control>
++adrp x1, <PAGE>
++add x1, x1, <object:g_child_hook_candidate>
++add x2, x8, #1
++bl <westlake_child_hook_table_v1_begin_install>
++cbnz w0, <PublishChildHookTable+0x1b8>
++adrp x0, <PAGE>
++add x0, x0, <object:g_child_hook_control>
++adrp x1, <PAGE>
++add x1, x1, <object:g_child_hook_candidate>
++bl <westlake_child_hook_table_v1_publish>
++cbnz w0, <PublishChildHookTable+0x1b8>
++ldar x8, [x21]
++cmp x8, #2
++b.ne <PublishChildHookTable+0x1b8>
++adrp x8, <PAGE>
++add x8, x8, <object:g_child_hook_control+0x58>
++ldar x8, [x8]
++cmp x8, #1
++b.eq <PublishChildHookTable+0xb4>
+ mov w0, #-1
+-ldp x20, x19, [sp, #16]
+-ldp x29, x30, [sp], #32
++ldp x20, x19, [sp, #32]
++ldr x21, [sp, #16]
++ldp x29, x30, [sp], #48
+ ret

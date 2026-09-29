@@ -1,0 +1,83 @@
+--- R155/WlgrIpValidate
++++ NEW/WlgrIpValidate
+@@ -0,0 +1,80 @@
++stp x29, x30, [sp, #-64]!
++str x28, [sp, #16]
++mov x29, sp
++stp x22, x21, [sp, #32]
++stp x20, x19, [sp, #48]
++sub sp, sp, #848
++mov x22, x0
++mov w0, #8
++cbz x22, <WlgrIpValidate+0xa0>
++mov x19, x1
++cbz x1, <WlgrIpValidate+0xa0>
++mov x21, x2
++cbz x2, <WlgrIpValidate+0xa0>
++ldr w8, [x22]
++cmp w8, #1
++b.ne <WlgrIpValidate+0x9c>
++ldr w8, [x22, #4]
++cmp w8, #864
++b.ne <WlgrIpValidate+0x9c>
++ldr w8, [x22, #8]
++cmp w8, #1
++b.ne <WlgrIpValidate+0x9c>
++mov x0, sp
++add x20, x22, #16
++bl <WLSha256Init>
++mov x0, sp
++mov x1, x20
++mov w2, #816
++bl <WLSha256Update>
++cbnz w0, <WlgrIpValidate+0x9c>
++mov x0, sp
++sub x1, x29, #32
++bl <WLSha256Final>
++cbnz w0, <WlgrIpValidate+0x9c>
++add x1, x22, #832
++sub x0, x29, #32
++mov w2, #32
++bl <memcmp@plt>
++cbz w0, <WlgrIpValidate+0xb8>
++mov w0, #8
++add sp, sp, #848
++ldp x20, x19, [sp, #48]
++ldp x22, x21, [sp, #32]
++ldr x28, [sp, #16]
++ldp x29, x30, [sp], #64
++ret
++mov x0, x19
++bl <SourceFactsValid>
++cbz w0, <WlgrIpValidate+0x9c>
++ldr x8, [x21]
++cbz x8, <WlgrIpValidate+0x130>
++ldr x0, [x21, #8]
++sub x1, x29, #32
++add x2, x29, #24
++blr x8
++mov w8, w0
++mov w0, #3
++cbnz w8, <WlgrIpValidate+0xa0>
++ldur x2, [x29, #-32]
++cmp x2, #2
++b.lo <WlgrIpValidate+0xa0>
++ldr x3, [x29, #24]
++cbz x3, <WlgrIpValidate+0xa0>
++mov x0, sp
++mov x1, x19
++bl <BuildIdentity>
++mov x0, sp
++bl <wlgr_v2_identity_valid>
++cbz w0, <WlgrIpValidate+0x138>
++mov x1, sp
++mov x0, x20
++bl <wlgr_v2_identity_equal>
++cmp w0, #0
++cset w8, eq
++lsl w0, w8, #3
++b <WlgrIpValidate+0xa0>
++mov w0, #3
++b <WlgrIpValidate+0xa0>
++mov w0, #7
++b <WlgrIpValidate+0xa0>

@@ -1,0 +1,40 @@
+--- R155/fflush
++++ NEW/fflush
+@@ -0,0 +1,37 @@
++stp xR, xR, [sp, #-32]!
++str xR, [sp, #16]
++mov xR, sp
++mov xR, xR
++nop
++adr xR, <object:g_host_stdio_once>
++nop
++adr xR, <function:WlResolveHostStdio+0x0>
++bl <pthread_once@plt>
++adrp xR,
++ldr xR, [xR, <object:g_host_fflush>]
++cbz xR, <fflush+0x68>
++nop
++adr xR, <object:__sF>
++cmp xR, xR
++b.eq <fflush+0x70>
++add xR, xR, #152
++cmp xR, xR
++b.eq <fflush+0x7c>
++adrp xR,
++add xR, xR, #304
++cmp xR, xR
++ldr xR, [xR, <reloc:1025:stderr>]
++ldr xR, [xR]
++csel xR, xR, xR, eq
++b <fflush+0x88>
++mov xR, xzr
++b <fflush+0x88>
++adrp xR,
++ldr xR, [xR, <reloc:1025:stdin>]
++b <fflush+0x84>
++adrp xR,
++ldr xR, [xR, <reloc:1025:stdout>]
++ldr xR, [xR]
++ldr xR, [sp, #16]
++ldp xR, xR, [sp], #32
++br xR

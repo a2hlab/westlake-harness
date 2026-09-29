@@ -1,0 +1,224 @@
+--- R155/WLEI_VerifyFileHex
++++ NEW/WLEI_VerifyFileHex
+@@ -1,194 +1,37 @@
+-stp xR, xR, [sp, #-64]!
+-str xR, [sp, #16]
++stp xR, xR, [sp, #-48]!
++stp xR, xR, [sp, #16]
+ mov xR, sp
+ stp xR, xR, [sp, #32]
+-stp xR, xR, [sp, #48]
+-sub sp, sp, #5, lsl #12 // =20480
+-sub sp, sp, #336
+-cbz xR, <WLEI_VerifyFileHex+0x44>
++sub sp, sp, #1, lsl #12 // =4096
++sub sp, sp, #32
+ mov xR, xR
++mov xR, sp
++mov xR, xR
++bl <OpenVerifiedFileHex>
++cbz wR, <WLEI_VerifyFileHex+0x48>
+ mov wR, #-1
+-cbz xR, <WLEI_VerifyFileHex+0x48>
+-cbz xR, <WLEI_VerifyFileHex+0x48>
+-ldrb wR, [xR]
+-cmp wR, #47
+-b.ne <WLEI_VerifyFileHex+0x48>
+-ldrb wR, [xR, #64]
+-cbz wR, <WLEI_VerifyFileHex+0x64>
+-mov wR, #-1
+-add sp, sp, #5, lsl #12 // =20480
+-add sp, sp, #336
+-ldp xR, xR, [sp, #48]
++add sp, sp, #1, lsl #12 // =4096
++add sp, sp, #32
+ ldp xR, xR, [sp, #32]
+-ldr xR, [sp, #16]
+-ldp xR, xR, [sp], #64
++ldp xR, xR, [sp, #16]
++ldp xR, xR, [sp], #48
+ ret
++cbz xR, <WLEI_VerifyFileHex+0x74>
++mov xR, sp
++add xR, xR, #32
++mov xR, xR
++bl <strlen@plt>
++cmp xR, xR
++b.hs <WLEI_VerifyFileHex+0x84>
++add xR, xR, #1
+ mov xR, xR
+ mov xR, xR
+-mov wR, wR
+-mov xR, xzr
+-add xR, xR, #1
+-sub xR, xR, #32
+-mov wR, #-1
+-ldurb wR, [xR, #-1]
+-ldrb wR, [xR]
+-sub wR, wR, #97
+-sub wR, wR, #48
+-sub wR, wR, #87
+-cmp wR, #6
+-csinv wR, wR, wzr, lo
+-cmp wR, #10
+-sub wR, wR, #97
+-sub wR, wR, #48
+-csel wR, wR, wR, lo
+-sub wR, wR, #87
+-cmp wR, #6
+-mvn wR, wR
+-csinv wR, wR, wzr, lo
+-cmp wR, #10
+-and wR, wR, #0xff
+-csel wR, wR, wR, lo
+-cbz wR, <WLEI_VerifyFileHex+0x48>
+-mvn wR, wR
+-tst wR, #0xff
+-b.eq <WLEI_VerifyFileHex+0x48>
+-orr wR, wR, wR, lsl #4
+-add xR, xR, #2
+-strb wR, [xR, xR]
+-add xR, xR, #1
+-cmp xR, #32
+-b.ne <WLEI_VerifyFileHex+0x80>
+-ldrb wR, [xR, #40]
+-cbnz wR, <WLEI_VerifyFileHex+0x44>
+-mov xR, xzr
+-add xR, xR, #1
+-sub xR, xR, #52
+-mov wR, #-1
+-ldurb wR, [xR, #-1]
+-ldrb wR, [xR]
+-sub wR, wR, #97
+-sub wR, wR, #48
+-sub wR, wR, #87
+-cmp wR, #6
+-csinv wR, wR, wzr, lo
+-cmp wR, #10
+-sub wR, wR, #97
+-sub wR, wR, #48
+-csel wR, wR, wR, lo
+-sub wR, wR, #87
+-cmp wR, #6
+-mvn wR, wR
+-csinv wR, wR, wzr, lo
+-cmp wR, #10
+-and wR, wR, #0xff
+-csel wR, wR, wR, lo
+-cbz wR, <WLEI_VerifyFileHex+0x48>
+-mvn wR, wR
+-tst wR, #0xff
+-b.eq <WLEI_VerifyFileHex+0x48>
+-orr wR, wR, wR, lsl #4
+-add xR, xR, #2
+-strb wR, [xR, xR]
+-add xR, xR, #1
+-cmp xR, #20
+-b.ne <WLEI_VerifyFileHex+0x108>
+-mov xR, sp
+-mov xR, xR
+-bl <realpath@plt>
+-cbz xR, <WLEI_VerifyFileHex+0x44>
+-mov xR, sp
+-mov xR, xR
+-bl <strcmp@plt>
+-cbnz wR, <WLEI_VerifyFileHex+0x44>
+-mov wR, #32768
+-mov xR, sp
+-movk wR, #8, lsl #16
+-bl <open@plt>
+-tbnz wR, #31, <WLEI_VerifyFileHex+0x44>
+-add xR, sp, #1, lsl #12 // =4096
+-mov wR, wR
+-bl <fstat@plt>
+-cbz wR, <WLEI_VerifyFileHex+0x1c8>
+-mov wR, wR
++bl <memcpy@plt>
++ldr wR, [sp]
++tbnz wR, #31, <WLEI_VerifyFileHex+0x2c>
+ bl <close@plt>
+-b <WLEI_VerifyFileHex+0x44>
+-ldr wR, [sp, #4112]
+-and wR, wR, #0xf000
+-cmp wR, #8, lsl #12 // =32768
+-b.ne <WLEI_VerifyFileHex+0x1bc>
+-ldr xR, [sp, #4144]
+-cmp xR, #1
+-b.lt <WLEI_VerifyFileHex+0x1bc>
+-add xR, sp, #1, lsl #12 // =4096
+-sub xR, xR, #52
+-mov wR, wR
+-mov wR, wR
+-bl <VerifyBuildId>
+-cbnz wR, <WLEI_VerifyFileHex+0x1bc>
+-add xR, sp, #1, lsl #12 // =4096
+-add xR, xR, #128
+-bl <WLSha256Init>
+-b <WLEI_VerifyFileHex+0x224>
+-add xR, sp, #1, lsl #12 // =4096
+-add xR, sp, #1, lsl #12 // =4096
+-add xR, xR, #128
+-add xR, xR, #240
+-bl <WLSha256Update>
+-cbnz wR, <WLEI_VerifyFileHex+0x1bc>
+-add xR, sp, #1, lsl #12 // =4096
+-mov wR, wR
+-add xR, xR, #240
+-mov wR, #16384
+-bl <read@plt>
+-mov xR, xR
+-cmp xR, #1
+-b.ge <WLEI_VerifyFileHex+0x20c>
+-tbz xR, #63, <WLEI_VerifyFileHex+0x25c>
+-bl <__errno_location@plt>
+-ldr wR, [xR]
+-cmp wR, #4
+-b.eq <WLEI_VerifyFileHex+0x224>
+-b <WLEI_VerifyFileHex+0x1bc>
+-mov wR, wR
++b <WLEI_VerifyFileHex+0x30>
++ldr wR, [sp]
++tbnz wR, #31, <WLEI_VerifyFileHex+0x2c>
+ bl <close@plt>
+-cbnz wR, <WLEI_VerifyFileHex+0x44>
+-add xR, sp, #1, lsl #12 // =4096
+-sub xR, xR, #96
+-add xR, xR, #128
+-bl <WLSha256Final>
+-cbnz wR, <WLEI_VerifyFileHex+0x44>
+-ldp qR, qR, [xR, #-32]
+-ldp qR, qR, [xR, #-96]
+-eor vR.16b, vR.16b, vR.16b
+-eor vR.16b, vR.16b, vR.16b
+-orr vR.16b, vR.16b, vR.16b
+-ext vR.16b, vR.16b, vR.16b, #8
+-orr vR.8b, vR.8b, vR.8b
+-umov wR, vR.b[1]
+-umov wR, vR.b[0]
+-umov wR, vR.b[2]
+-umov wR, vR.b[3]
+-umov wR, vR.b[4]
+-orr wR, wR, wR
+-umov wR, vR.b[5]
+-orr wR, wR, wR
+-umov wR, vR.b[6]
+-orr wR, wR, wR
+-umov wR, vR.b[7]
+-orr wR, wR, wR
+-orr wR, wR, wR
+-orr wR, wR, wR
+-orr wR, wR, wR
+-tst wR, #0xff
+-b.ne <WLEI_VerifyFileHex+0x44>
+-cbz xR, <WLEI_VerifyFileHex+0x300>
+-mov xR, sp
+-bl <strlen@plt>
+-cmp xR, xR
+-b.hs <WLEI_VerifyFileHex+0x44>
+-add xR, xR, #1
+-mov xR, sp
+-mov xR, xR
+-bl <memcpy@plt>
+-mov wR, wzr
+-b <WLEI_VerifyFileHex+0x48>
++b <WLEI_VerifyFileHex+0x2c>

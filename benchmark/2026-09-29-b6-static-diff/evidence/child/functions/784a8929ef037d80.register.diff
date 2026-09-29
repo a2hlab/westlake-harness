@@ -1,0 +1,32 @@
+--- R155/DigestEqual
++++ NEW/DigestEqual
+@@ -0,0 +1,29 @@
++sub sp, sp, #176
++stp xR, xR, [sp, #160]
++mov xR, xR
++add xR, xR, #16
++add xR, sp, #32
++stp xR, xR, [sp, #144]
++add xR, sp, #144
++bl <WLSha256Init>
++add xR, sp, #32
++mov xR, xR
++mov wR, #816
++bl <WLSha256Update>
++cbnz wR, <DigestEqual+0x44>
++add xR, sp, #32
++mov xR, sp
++bl <WLSha256Final>
++cbz wR, <DigestEqual+0x58>
++mov wR, wzr
++ldp xR, xR, [sp, #160]
++ldp xR, xR, [sp, #144]
++add sp, sp, #176
++ret
++add xR, xR, #832
++mov xR, sp
++mov wR, #32
++bl <memcmp@plt>
++cmp wR, #0
++cset wR, eq
++b <DigestEqual+0x48>
