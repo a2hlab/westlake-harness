@@ -73,3 +73,7 @@ cargo test --manifest-path tools/spec-checks/Cargo.toml bms_batch_offline
 ```
 
 `test_bms_batch.py` uses FakeBoard transport, synthetic APK/JPEG/log bytes and a fake monotonic clock. It covers positive/negative install text, missing inputs/packages, reinstall ordering, empty/stale directories, exact aliases, sandbox failure, screenshot timing and per-shot focus, known-black rejection, new-fault selection, mid-diagnostics detach, lock/boot checks, bounded retries and malformed CLI timing. Results and lifecycle evidence: `task57-results.json`, `task57-tests.log`, `task57-lifecycle.json`. R2: offline behavior **verified**; real device timing/diagnostic availability and on-screen result **unverified**. Outer loop owns commit; no commit or push is performed by this lane.
+
+## B4 three-board rerun preparation (#59)
+
+See [b4-rerun-plan.md](b4-rerun-plan.md) for the 22/22/22 shard commands, explicit artifact directories and current-round v4 aggregation. [b4-rerun-shards.json](b4-rerun-shards.json) pins the accepted runner and full 66-key coverage; `b4_rerun.py plan` is offline only. FakeBoard results are labeled synthetic, with no real v4 outcomes claimed.

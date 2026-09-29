@@ -359,3 +359,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **2026-09-29 #56 更正上条 #53 provider 基线**: 外环确认现役封存件为 `80c9aee0`，`977fb347` 的 provider 恢复建议作废；80c9 与 NEW 的 HostServicesInstall 93 条归一化指令一致、+112/+120 均须非零，sealed-open 安装是 installer→Constructors 时机迁移；R155 已含 startVm(false)/Typeface no-op/延后 adapter 初始化，须保留；三件按服务表、namespace/V1序列、VM、stdio 四组恢复，见 `benchmark/2026-09-29-b6-static-diff/RESTORE-PLAN.md`（静态 verified、源码建议 partially、运行因果 unverified）。
 
 - **2026-09-29 #57 批量工具统一**: `bms_batch.py --reinstall --hilog [秒] --shots 5,20 --focus-check` 合并一次性脚本；BM rc0须验成功文本、包名缺省先读app-input、WMS名含空格需按数字列尾解析，每张严格截图核目标UID的焦点PID，不用进程活着/离开桌面弱判据；36627B只标已知黑图，其他大小不等于点亮；app空目录可预建，旧证据拒覆写（FakeBoard离线verified，板上unverified）。
+
+- **2026-09-29 #59 B4 v4 汇总防混轮**: v3 的 merge_v3 只覆盖分类等字段，旧 observed_pids/record_status 可能仍是前轮；分片可借历史分类，v4 直方图必须从同一run-id/serial/boot的新record重算，禁止借v3填未跑key；见 `benchmark/2026-09-28-bms-route-deploy/batch/b4-rerun-plan.md`，三片22/22/22离线FakeBoard验证，未上板。

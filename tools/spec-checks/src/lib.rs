@@ -76,3 +76,14 @@ fn b6_static_diff() {
         .expect("run offline B6 ELF evidence and normalization checks");
     assert!(status.success(), "B6 static comparison evidence failed");
 }
+
+#[test]
+fn bms_rerun_offline() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let status = std::process::Command::new("python3")
+        .args(["-m", "unittest", "discover", "-s", "benchmark/2026-09-28-bms-route-deploy/batch", "-p", "test_b4_rerun.py"])
+        .current_dir(&root)
+        .status()
+        .expect("run three-shard FakeBoard plans and offline v4 aggregation checks");
+    assert!(status.success(), "B4 rerun preparation checks failed");
+}
