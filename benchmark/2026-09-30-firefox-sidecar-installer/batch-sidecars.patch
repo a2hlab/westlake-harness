@@ -1,0 +1,367 @@
+diff --git a/benchmark/2026-09-28-bms-route-deploy/batch/apps.json b/benchmark/2026-09-28-bms-route-deploy/batch/apps.json
+index 394e0db6..ca191a1e 100644
+--- a/benchmark/2026-09-28-bms-route-deploy/batch/apps.json
++++ b/benchmark/2026-09-28-bms-route-deploy/batch/apps.json
+@@ -482,6 +482,7 @@
+     },
+     {
+       "key": "firefox",
++      "native_sidecar_count": 18,
+       "phase": "tail",
+       "package": "org.mozilla.firefox",
+       "apk_sha256": "eba96cc660d0a49116db37c97535d01d809b21e217d4f24909eb33bf912882fc",
+diff --git a/benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py b/benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py
+index 6ddb7306..5124fca6 100644
+--- a/benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py
++++ b/benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py
+@@ -18,6 +18,7 @@ import subprocess
+ import sys
+ import time
+ import uuid
++import zipfile
+ 
+ SERIALS = {'5ea34a4500000000000000001123012c',
+            '5cd1e3dd00000000000000000923012c',
+@@ -128,9 +129,109 @@ def resolve_input(root, entry):
+         raise AppFailure('original APK with app-input hash not found')
+     # Split APK requirements are evidence, not silently installed as a monolithic app.
+     split_hint = bool(meta.get('splits') or app.get('splits') or 'with-splits' in str(app.get('kind', '')))
++    apk = sorted(matches)[0].resolve()
++    sidecars = resolve_native_sidecars(directory, apk, entry, meta)
+     return dict(entry, package=package, apk_sha256=digest, launch_activity=ability,
+                 apk=str(sorted(matches)[0].resolve()), input_sha256=sha(meta_path),
+-                split_hint=split_hint, apk_candidates=len(candidates))
++                split_hint=split_hint, apk_candidates=len(candidates), native_sidecars=sidecars)
++
++
++def resolve_native_sidecars(directory, apk, entry, meta):
++    """Inventory extracted input libraries; never rewrite or re-sign the APK."""
++    libdir = directory / 'lib' / 'arm64-v8a'
++    files = sorted(libdir.glob('*.so'))
++    declared = meta.get('native_libraries') or {}
++    if not isinstance(declared, dict):
++        raise AppFailure('invalid native_libraries metadata')
++    declared = {k: v for k, v in declared.items() if k.startswith('lib/arm64-v8a/')}
++    if declared and (files or entry.get('native_sidecar_count')) and set(declared) != {'lib/arm64-v8a/' + p.name for p in files}:
++        raise AppFailure('native sidecar inventory differs from app-input')
++    expected = entry.get('native_sidecar_count')
++    if expected is not None and (type(expected) is not int or expected < 1):
++        raise AppFailure('invalid native_sidecar_count')
++    if expected is not None and len(files) != expected:
++        raise AppFailure(f'native sidecar count differs: expected {expected}, found {len(files)}')
++    if not files:
++        return []
++    rows = []
++    for p in files:
++        if not re.fullmatch(r'[A-Za-z0-9_.+-]+\.so', p.name) or not p.is_file() or p.is_symlink() or not p.resolve().is_relative_to(directory.resolve()):
++            raise AppFailure('invalid native sidecar file: ' + p.name)
++        with p.open('rb') as stream:
++            header = stream.read(64)
++        if (len(header) != 64 or header[:6] != b'\x7fELF\x02\x01'
++                or int.from_bytes(header[16:18], 'little') != 3
++                or int.from_bytes(header[18:20], 'little') != 183):
++            raise AppFailure('native sidecar is not an AArch64 shared ELF: ' + p.name)
++        digest = sha(p)
++        pin = declared.get('lib/arm64-v8a/' + p.name)
++        if pin is not None and (not isinstance(pin, dict) or pin.get('sha256') != digest or pin.get('bytes', p.stat().st_size) != p.stat().st_size):
++            raise AppFailure('native sidecar hash/size differs from app-input: ' + p.name)
++        rows.append({'name': p.name, 'path': str(p.resolve()), 'sha256': digest,
++                     'bytes': p.stat().st_size, 'abi': 'arm64-v8a'})
++    try:
++        with zipfile.ZipFile(apk) as archive:
++            for row in rows:
++                name = 'lib/arm64-v8a/' + row['name']
++                if name in archive.namelist() and hashlib.sha256(archive.read(name)).hexdigest() != row['sha256']:
++                    raise AppFailure('sidecar conflicts with embedded APK library: ' + row['name'])
++    except zipfile.BadZipFile as exc:
++        raise AppFailure('sidecar APK is not a valid ZIP') from exc
++    return rows
++
++
++def assemble_native_sidecars(board, app, remote, out, record):
++    """Called only after BMS readback and a verified cold stop; fail before click."""
++    rows = app.get('native_sidecars') or []
++    receipt = {'status': 'not_needed' if not rows else 'started', 'files': [],
++               'split_dex_resources': 'not_installed_by_this_step'}
++    record['native_assembly'] = receipt
++    if not rows:
++        return
++    code = '/data/app/el1/bundle/public/' + app['package'] + '/android'
++    dest = code + '/lib/arm64-v8a'
++    receipt.update(installed_apk=code+'/base.apk', destination=dest,
++                   lookup='B7BindFixes.fixNativeLibraryDir: APK-parent/lib/arm64-v8a')
++    save(out/'native-assembly.json', receipt)
++    try:
++        _, text = board.shell('sha256sum ' + shlex.quote(code+'/base.apk'))
++        if not text.split() or text.split()[0] != app['apk_sha256']:
++            raise AppFailure('sidecar installed APK hash differs')
++        # Stage and verify every file before changing the package's library directory.
++        stage = remote + '/native-sidecars'
++        board.shell('mkdir -p ' + shlex.quote(stage))
++        for row in rows:
++            if sha(row['path']) != row['sha256']:
++                raise AppFailure('native sidecar input changed: ' + row['name'])
++            staged = stage + '/' + row['name']
++            board.send(row['path'], staged)
++            _, text = board.shell('sha256sum ' + shlex.quote(staged))
++            if not text.split() or text.split()[0] != row['sha256']:
++                raise AppFailure('staged native sidecar hash differs: ' + row['name'])
++        board.shell('mkdir -p ' + shlex.quote(dest) + ' && chmod 755 ' + shlex.quote(code+'/lib') + ' ' + shlex.quote(dest))
++        for row in rows:
++            target = dest + '/' + row['name']
++            # Never silently replace an existing different library from BMS/a prior install.
++            rc, text = board.shell('if test -e ' + shlex.quote(target) + '; then sha256sum ' + shlex.quote(target) + '; else (exit 44); fi', required=False)
++            if rc == 0:
++                if not text.split() or text.split()[0] != row['sha256']:
++                    raise AppFailure('installed native sidecar conflicts: ' + row['name'])
++            elif rc == 44:
++                board.shell('cp ' + shlex.quote(stage+'/'+row['name']) + ' ' + shlex.quote(target))
++            else:
++                raise AppFailure('cannot inspect installed native sidecar: ' + row['name'])
++            board.shell('chmod 755 ' + shlex.quote(target))
++            _, text = board.shell('sha256sum ' + shlex.quote(target))
++            if not text.split() or text.split()[0] != row['sha256']:
++                raise AppFailure('installed native sidecar hash differs: ' + row['name'])
++            receipt['files'].append(dict(row, installed_path=target, verified=True))
++            save(out/'native-assembly.json', receipt)
++        receipt['status'] = 'verified'
++    except (AppFailure, BatchStop, OSError) as exc:
++        receipt.update(status='failed', error=str(exc))
++        raise
++    finally:
++        save(out/'native-assembly.json', receipt)
+ 
+ 
+ def attributes(layout):
+@@ -676,6 +777,7 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
+         rec['cold_stop_verified'] = cold_stop(board, app['package'], uid, out)
+         if not rec['cold_stop_verified']:
+             raise AppFailure('cold start identity unconfirmed')
++        assemble_native_sidecars(board, app, remote, out, rec)
+         rec['sandbox_preparation'] = prepare_sandbox(board, app['package'], uid, out)
+         rec['desktop_activity'] = rec['bms'].get('desktop_activity') or app.get('launch_activity')
+         desktop_app = dict(app, launch_activity=rec['desktop_activity'])
+@@ -838,6 +940,7 @@ def main(argv=None):
+     ap.add_argument('--phase', choices=['all','controls','blocked','tail'], default='all')
+     ap.add_argument('--keys', help='comma-separated subset, original phase order retained')
+     ap.add_argument('--input-root', default=str(Path.home()/'a2hlab/app-inputs'))
++    ap.add_argument('--resolve-inputs', action='store_true', help='offline plan: verify APK and inventory native sidecars from input-root')
+     ap.add_argument('--execute', action='store_true', help='perform device operations; absent = offline plan only')
+     ap.add_argument('--serial', choices=sorted(SERIALS))
+     ap.add_argument('--lane')
+@@ -863,6 +966,8 @@ def main(argv=None):
+                    shots=args.shots, focus_check=args.focus_check)
+     entries = load_apps(args.manifest,args.phase,args.keys)
+     if not args.execute:
++        if args.resolve_inputs:
++            entries = [resolve_input(args.input_root, entry) for entry in entries]
+         print(json.dumps({'execution':'not-requested','count':len(entries),'apps':entries,'options':options},indent=2))
+         return 0
+     if not args.serial or not args.lane or not args.out or not KEY.fullmatch(args.run_id) or not 3 <= args.wait <= 300:
+diff --git a/benchmark/2026-09-28-bms-route-deploy/batch/test_native_sidecars.py b/benchmark/2026-09-28-bms-route-deploy/batch/test_native_sidecars.py
+new file mode 100644
+index 00000000..ed9fee2c
+--- /dev/null
++++ b/benchmark/2026-09-28-bms-route-deploy/batch/test_native_sidecars.py
+@@ -0,0 +1,201 @@
++"""Exercise sidecar orchestration with a byte-addressed FakeBoard; no devices."""
++import contextlib
++import hashlib
++import io
++import json
++from pathlib import Path
++import shlex
++import subprocess
++import tempfile
++import unittest
++from unittest.mock import patch
++import zipfile
++
++import bms_batch as b
++from test_bms_batch import FakeBoard, PKG, ABILITY
++
++CODE = '/data/app/el1/bundle/public/' + PKG + '/android'
++LIB = CODE + '/lib/arm64-v8a/'
++
++
++def elf(machine=183):
++    h = bytearray(64)
++    h[:6] = b'\x7fELF\x02\x01'
++    h[16:18] = (3).to_bytes(2, 'little')
++    h[18:20] = machine.to_bytes(2, 'little')
++    return bytes(h)
++
++
++class NativeBoard(FakeBoard):
++    def __init__(self, apk):
++        super().__init__()
++        self.files = {CODE+'/base.apk': apk, LIB+'unrelated.so': b'preserve me'}
++        self.corrupt_stage = False
++        self.corrupt_installed = False
++        self.original_send = None
++
++    def send(self, local, remote):
++        super().send(local, remote)
++        data = Path(local).read_bytes()
++        if remote.endswith('original.apk'):
++            self.original_send = data
++        if self.corrupt_stage and '/native-sidecars/' in remote:
++            data += b'corruption'
++        self.files[remote] = data
++
++    def shell(self, command, required=True, timeout=60):
++        if command.startswith('sha256sum ') and shlex.split(command)[1] in self.files:
++            self.calls.append(command)
++            path = shlex.split(command)[1]
++            return 0, hashlib.sha256(self.files[path]).hexdigest()+'  '+path
++        if command.startswith('if test -e '):
++            self.calls.append(command)
++            path = shlex.split(command)[3].rstrip(';')
++            return ((0, hashlib.sha256(self.files[path]).hexdigest()+'  '+path)
++                    if path in self.files else (44, ''))
++        if command.startswith('cp '):
++            self.calls.append(command)
++            _, source, target = shlex.split(command)
++            self.files[target] = self.files[source] + (b'bad' if self.corrupt_installed else b'')
++            return 0, ''
++        return super().shell(command, required, timeout)
++
++
++class NativeSidecarTests(unittest.TestCase):
++    def setUp(self):
++        self.temp = tempfile.TemporaryDirectory()
++        self.root = Path(self.temp.name)
++        self.inputs = self.root/'inputs'
++        self.appdir = self.inputs/'app1'
++        self.libdir = self.appdir/'lib/arm64-v8a'
++        self.libdir.mkdir(parents=True)
++        self.apk = self.appdir/'base.apk'
++        with zipfile.ZipFile(self.apk, 'w') as archive:
++            archive.writestr('AndroidManifest.xml', b'fixture manifest')
++        self.original = self.apk.read_bytes()
++        self.metadata = {'application': {'package': PKG, 'launch_activity': ABILITY,
++                        'kind': 'original-apk-with-splits'}, 'apk_sha256': b.sha(self.apk)}
++        for name in ('liba.so', 'libb.so'):
++            (self.libdir/name).write_bytes(elf()+name.encode())
++        self.entry = {'key': 'app1', 'phase': 'tail', 'native_sidecar_count': 2}
++        self.write_metadata()
++
++    def write_metadata(self):
++        self.metadata['native_libraries'] = {
++            'lib/arm64-v8a/'+p.name: {'sha256': b.sha(p), 'bytes': p.stat().st_size}
++            for p in self.libdir.glob('*.so')}
++        (self.appdir/'app-input.json').write_text(json.dumps(self.metadata))
++
++    def tearDown(self):
++        self.temp.cleanup()
++
++    def collect(self, board=None, **kwargs):
++        board = board or NativeBoard(self.original)
++        with patch.object(b.time, 'sleep'):
++            record = b.collect_app(board, self.entry, self.inputs, self.root/'out', '/stage',
++                                   wait_seconds=3, **kwargs)
++        return board, record
++
++    def test_installs_after_cold_stop_before_click_preserves_apk(self):
++        board, record = self.collect(reinstall=True, shots=[1], hilog_seconds=2, focus_check=True)
++        self.assertEqual(record['native_assembly']['status'], 'verified')
++        self.assertEqual(len(record['native_assembly']['files']), 2)
++        self.assertTrue(record['clicked'])
++        self.assertEqual(board.original_send, self.original)
++        self.assertEqual(self.apk.read_bytes(), self.original)
++        self.assertEqual(board.files[LIB+'unrelated.so'], b'preserve me')
++        for name in ('liba.so', 'libb.so'):
++            self.assertEqual(board.files[LIB+name], (self.libdir/name).read_bytes())
++        cp = next(i for i,c in enumerate(board.calls) if c.startswith('cp '))
++        stop = next(i for i,c in enumerate(board.calls) if c.startswith('aa force-stop '))
++        click = board.calls.index('uitest uiInput click 200 300')
++        self.assertLess(stop, cp)
++        self.assertLess(cp, click)
++
++    def test_missing_sidecars_stops_before_device(self):
++        (self.libdir/'liba.so').unlink()
++        board, record = self.collect()
++        self.assertEqual(record['status'], 'app_failed')
++        self.assertFalse(board.calls)
++
++    def test_wrong_architecture_stops_before_device(self):
++        (self.libdir/'liba.so').write_bytes(elf(40))
++        self.write_metadata()
++        board, record = self.collect()
++        self.assertIn('not an AArch64', record['error'])
++        self.assertFalse(board.calls)
++
++    def test_input_metadata_digest_mismatch(self):
++        (self.libdir/'liba.so').write_bytes(elf()+b'changed')
++        board, record = self.collect()
++        self.assertIn('differs from app-input', record['error'])
++        self.assertFalse(board.calls)
++
++    def test_staged_corruption_prevents_all_package_copies(self):
++        board = NativeBoard(self.original); board.corrupt_stage = True
++        board, record = self.collect(board)
++        self.assertIn('staged native sidecar hash', record['error'])
++        self.assertFalse(record['clicked'])
++        self.assertFalse(any(c.startswith('cp ') for c in board.calls))
++
++    def test_installed_corruption_prevents_launch_and_records_failure(self):
++        board = NativeBoard(self.original); board.corrupt_installed = True
++        board, record = self.collect(board)
++        self.assertIn('installed native sidecar hash', record['error'])
++        self.assertFalse(record['clicked'])
++        self.assertEqual(json.loads((self.root/'out/native-assembly.json').read_text())['status'], 'failed')
++
++    def test_launch_only_rejects_wrong_installed_apk(self):
++        board = NativeBoard(b'other APK')
++        board, record = self.collect(board, launch_only=True)
++        self.assertIn('installed APK hash differs', record['error'])
++        self.assertFalse(record['clicked'])
++        self.assertFalse(any(c.startswith('bm install') or c.startswith('cp ') for c in board.calls))
++
++    def test_launch_only_matching_existing_libraries_reused(self):
++        board = NativeBoard(self.original)
++        for p in self.libdir.glob('*.so'): board.files[LIB+p.name] = p.read_bytes()
++        board, record = self.collect(board, launch_only=True)
++        self.assertTrue(record['clicked'])
++        self.assertFalse(any(c.startswith('cp ') or c.startswith('bm install') for c in board.calls))
++
++    def test_existing_conflict_preserved_and_refused(self):
++        board = NativeBoard(self.original); board.files[LIB+'liba.so'] = b'old different lib'
++        board, record = self.collect(board)
++        self.assertIn('installed native sidecar conflicts', record['error'])
++        self.assertFalse(record['clicked'])
++        self.assertEqual(board.files[LIB+'liba.so'], b'old different lib')
++
++    def test_missing_remote_file_preserves_transport_status_marker(self):
++        board, _ = self.collect()
++        command = next(c for c in board.calls if c.startswith('if test -e '))
++        command = command.replace(LIB, str(self.root/'missing')+'/')
++        result = subprocess.run(['sh', '-c', command+'; sidecar_rc=$?; printf "__RC__%s" "$sidecar_rc"'],
++                                capture_output=True, text=True, check=True)
++        self.assertEqual(result.stdout, '__RC__44')
++
++    def test_input_symlink_escape_rejected(self):
++        external = self.root/'external.so'; external.write_bytes(elf())
++        (self.libdir/'liba.so').unlink(); (self.libdir/'liba.so').symlink_to(external)
++        board, record = self.collect()
++        self.assertIn('invalid native sidecar', record['error'])
++        self.assertFalse(board.calls)
++
++    def test_embedded_conflict_rejected(self):
++        with zipfile.ZipFile(self.apk, 'a') as archive:
++            archive.writestr('lib/arm64-v8a/liba.so', elf()+b'other version')
++        self.metadata['apk_sha256'] = b.sha(self.apk); self.write_metadata()
++        board, record = self.collect()
++        self.assertIn('conflicts with embedded APK', record['error'])
++        self.assertFalse(board.calls)
++
++    def test_resolved_plan_is_offline_and_lists_sidecars(self):
++        manifest = self.root/'apps.json'; manifest.write_text(json.dumps({'apps': [self.entry]}))
++        with patch.object(b.subprocess, 'run', side_effect=AssertionError('offline')), contextlib.redirect_stdout(io.StringIO()) as stdout:
++            b.main(['--manifest',str(manifest),'--input-root',str(self.inputs),'--resolve-inputs'])
++        plan = json.loads(stdout.getvalue())
++        self.assertEqual(plan['execution'], 'not-requested')
++        self.assertEqual(len(plan['apps'][0]['native_sidecars']), 2)
++
++
++if __name__ == '__main__': unittest.main()
