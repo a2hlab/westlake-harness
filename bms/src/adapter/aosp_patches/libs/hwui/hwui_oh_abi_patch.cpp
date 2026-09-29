@@ -778,13 +778,16 @@ EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
         // strip EGL_GL_COLORSPACE_KHR (+value) and any wide-color/HDR attrs
         std::vector<EGLint> stripped;
         for (const EGLint* a = attrib_list; *a != kEglAttribNone; a += 2) {
+            // Attribute KEY values verified against the toolchain's
+            // sysroot EGL/eglext.h (2026-09-30): EGL_GL_COLORSPACE_KHR=0x309D;
+            // BT2020 PQ=0x3340 HLG=0x3540 (0x3230/31 are VALUES not keys);
+            // SMPTE2086 metadata keys span 0x3341..0x334A (display primaries
+            // 8 + white point 2 + max/min luminance); CTA861_3 light levels
+            // 0x3360/0x3361 ride along in the same metadata family.
             if (*a == 0x309D /*EGL_GL_COLORSPACE_KHR*/ ||
-                *a == 0x3230 /*EGL_GL_COLORSPACE_BT2020_PQ_EXT*/ ||
-                *a == 0x3231 /*EGL_GL_COLORSPACE_BT2020_HLG_EXT*/ ||
-                *a == 0x3272 /*EGL_SMPTE2086_DISPLAY_PRIMARY_*/ ||
-                *a == 0x3273 /*EGL_SMPTE2086_WHITE_POINT_EXT*/ ||
-                *a == 0x3274 /*EGL_SMPTE2086_MAX_LUMINANCE*/ ||
-                *a == 0x3275 /*EGL_SMPTE2086_MIN_LUMINANCE*/) {
+                (*a >= 0x3340 && *a <= 0x334A) /*BT2020 PQ/HLG + SMPTE2086 x10*/ ||
+                *a == 0x3360 || *a == 0x3361 /*CTA861_3 light levels*/ ||
+                *a == 0x333F /*EGL_GL_COLORSPACE_BT2020_LINEAR_EXT*/) {
                 continue;  // drop attribute AND its value
             }
             stripped.push_back(*a);
