@@ -147,6 +147,7 @@ kind of work from where the corpus started
 | `benchmark/2026-09-30-egl-colorspace-retry/` | **OH6.1 HWUI source rebuild with EGL metadata retry: exact device link inputs, unchanged 15-library dependency order, single-file rollback package; board verdict pending.** |
 | `benchmark/2026-09-30-egl-surface-lifecycle/` | **Read-only EGL duplicate-window evidence and exclusive-owner lifecycle proposal; no surface implementation or deployment.** |
 | `benchmark/2026-09-30-v3c-next2-device/` | **5cd next2 measured regression: Unity dependency advances to libwm; six-app screenshots/facts and native rollback with Java held fixed.** |
+| `benchmark/2026-09-30-v3c-next3-closure/` | **Generated full OH dependency namespace policy: 407 ELF inputs, 292 names, truncation tests and next2 negative control.** |
 | `benchmark/2026-09-30-v3c-next2-ndk/` | **ANL OH6.1 NDK dependency fix: full ELF inventory, b66 negative control, reproducible 1162a6fc candidate and three-board offline dry-runs; no device writes.** |
 | `benchmark/2026-09-30-v3c-next-rollout/` | **Two-board v3c-next/r17m test: Unity hitrace dependency regression, exact native-only rollback A/B, screenshots and verbatim facts; both boards retained on v3c/r17m.** |
 | `benchmark/2026-09-30-v3c-next-native/` | **VLC AudioSystem registration and Anki dependency namespace: strict, reproducible offline candidates; v3c alias transaction and controls pending.** |

@@ -16,6 +16,7 @@
 
 #include "app_native_loader.h"
 #include "oh_dlns_abi.h"
+#include "oh_system_dependencies.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -373,24 +374,24 @@ int ANL_CreateDomain(const AnlDomainConfig* config, AnlDomain** out_domain) {
     const char* search_paths = config->app_search_paths;
     const char* permitted_paths = config->app_permitted_paths;
     if (wants_bridge) {
-        /* OH6.1 splits C++ runtime and public NDK libraries between these
-         * fixed roots. Unity -> libandroid needs libhitrace_ndk.z.so; the
-         * chipset root alone cannot resolve that edge. Preserve the caller
-         * path validation above; never use app LD_LIBRARY_PATH here. */
+        /* The generated DT_NEEDED graph includes every packaged runtime
+         * library and representative app native inputs. OH dependencies span
+         * system/lib64 and four public/platform subdirectories. These fixed
+         * roots affect dependency lookup; direct app path checks stay intact. */
         const char* platform_root = "";
 #if defined(__OHOS__)
-        if (validate_path_list("/system/lib64/chipset-sdk-sp:/system/lib64/ndk",
+        if (validate_path_list(kOhDependencyRoots,
                                "OH runtime dependency root", false) != 0) {
             free(domain);
             return -1;
         }
-        platform_root = ":/system/lib64/chipset-sdk-sp:/system/lib64/ndk";
+        platform_root = kOhDependencyRoots;
 #endif
-        int sn = snprintf(dependency_search, sizeof(dependency_search), "%s%s:%s",
-                          config->bridge_search_paths, platform_root,
+        int sn = snprintf(dependency_search, sizeof(dependency_search), "%s%s%s:%s",
+                          config->bridge_search_paths, platform_root[0] ? ":" : "", platform_root,
                           config->app_search_paths);
-        int pn = snprintf(dependency_permitted, sizeof(dependency_permitted), "%s%s:%s",
-                          config->bridge_permitted_paths, platform_root,
+        int pn = snprintf(dependency_permitted, sizeof(dependency_permitted), "%s%s%s:%s",
+                          config->bridge_permitted_paths, platform_root[0] ? ":" : "", platform_root,
                           config->app_permitted_paths);
         if (sn < 0 || (size_t)sn >= sizeof(dependency_search) ||
             pn < 0 || (size_t)pn >= sizeof(dependency_permitted)) {
@@ -401,23 +402,17 @@ int ANL_CreateDomain(const AnlDomainConfig* config, AnlDomain** out_domain) {
         permitted_paths = dependency_permitted;
         fprintf(stderr, "[B87-NS] runtime dependency search=%s\n", search_paths);
     }
-    /* liblog and the OH NDK closure of libandroid/Unity must be inherited
-     * by SONAME too. These public NDK names were audited against the retained
-     * OH6.1 ELF inputs (including hilog/ace entry points); keep the list
-     * explicit rather than inheriting every library from the default domain. */
-    char log_shared_sonames[PATH_MAX];
+    /* Preserve the B87 bridge supply, extending it with the full generated
+     * OH dependency set. Size for validated caller text plus generated names;
+     * the OH closure exceeds PATH_MAX and must never be truncated. */
+    char log_shared_sonames[4096 + sizeof(kOhSharedDependencies) + 1];
     const char* shared_sonames = config->bridge_shared_sonames;
     const char* log_name = wants_bridge ? strstr(shared_sonames, "liblog.so") : NULL;
     if (log_name != NULL &&
         (log_name == shared_sonames || log_name[-1] == ':') &&
         (log_name[9] == '\0' || log_name[9] == ':')) {
         int n = snprintf(log_shared_sonames, sizeof(log_shared_sonames),
-                         "%s:libbionic_compat.so:libc++.so:libhilog.so:"
-                         "libbegetutil.z.so:libsec_shared.z.so:libconfigpolicy_util.z.so:"
-                         "libsystemparam.z.so:libc.so:libhitrace_ndk.z.so:libhilog_ndk.z.so:"
-                         "libace_ndk.z.so:libffrt.so:libpixelmap.so:libpixelmap_ndk.z.so:"
-                         "libsync_fence.z.so:libudmf.so",
-                         shared_sonames);
+                         "%s:%s", shared_sonames, kOhSharedDependencies);
         if (n < 0 || (size_t)n >= sizeof(log_shared_sonames)) {
             free(domain);
             return failf("log dependency sonames exceed namespace limit");

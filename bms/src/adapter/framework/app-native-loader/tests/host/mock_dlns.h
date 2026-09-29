@@ -21,8 +21,8 @@ typedef struct MockDlnsState {
     char last_dlopen_file[512];
     char last_dlsym_symbol[128];
     void* last_dlclose_handle;
-    char last_inherited_libs[512];
-    char last_allowed_libs[512];
+    char last_inherited_libs[16384];
+    char last_allowed_libs[16384];
 } MockDlnsState;
 
 void MockDlnsReset(void);

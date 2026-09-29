@@ -540,6 +540,12 @@ static void test_log_dependency_inheritance(const Fixture* fixture) {
     CHECK(ANL_CreateDomain(&config, &domain) == 0, "log namespace rejected");
     CHECK(strstr(MockDlnsGet()->last_inherited_libs, ":libc++.so:") != NULL,
           "log's C++ dependency not shared");
+    CHECK(strstr(MockDlnsGet()->last_inherited_libs, ":libwm.z.so:") != NULL,
+          "bridge window-manager dependency not shared");
+    CHECK(strlen(MockDlnsGet()->last_inherited_libs) > 4096,
+          "full OH dependency list truncated to the old buffer size");
+    CHECK(strstr(MockDlnsGet()->last_inherited_libs, ":libzuri.z.so") != NULL,
+          "tail of complete OH dependency list was truncated");
     int before = MockDlnsGet()->dlopen_calls;
     CHECK(ANL_Dlopen(domain, fixture->outside_so, RTLD_NOW) == NULL,
           "runtime dependency sharing broadened direct app file access");
