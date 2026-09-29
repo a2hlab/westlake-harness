@@ -83,6 +83,8 @@
 - **codex 窗格 `Reconnecting... n/5` / `Transport error: network error`**:Mac 的模型流量走本机 Surge 代理(`https_proxy=127.0.0.1:6152`),AI 相关域名归 Surge 的 AI 分组。先测 `curl -s -o /dev/null -w "%{http_code}" --max-time 8 https://api.openai.com/v1/models`——401 是通,000/超时是不通,国内站(baidu)通而它不通就是 AI 分组当前节点坏了,请用户在 Surge 里换该分组节点(2026-09-29 一批节点同时 Failed,换到测速通过的节点即恢复)。codex 重连 5 次失败会结束本轮,恢复后要检查车道是否停在 idle、需要重发条目。
 - **codex 窗格会弹交互式提问**(屏幕显示 `? 1 question  ⌥+↑ to answer`,herdr 状态 `blocked`):这时 `herdr agent prompt` 只会进队列,不回答问题,车道会一直卡住。处理:`herdr pane send-keys <pane> alt+up` 调出问题,读选项,`enter` 提交(或用方向键换选项)。自由文本回答用 `herdr pane send-text <pane> "<答复>"` 再 `send-keys enter`;提交后要回读窗格确认问题框已消失、状态回到 Working,实测有一次第一下 enter 没提交、要再按一次。问题提示有 `⌥+↑` 与 `shift+←` 两种写法,按屏幕上写的键调出。`lane_watch.sh` 把 blocked 当作停下,能抓到。octoscode 的排队消息则要 `esc` 才会中断当前轮并发送;Claude Code 的消息会在轮中自动插入。
 - herdr server 必须由用户自己起,不要从 agent 会话里 nohup。octoscode stdio 模式要带 `--session <名>`。
+- **hilog 缓冲重启即回 256K**(2026-09-29 实测:5cd 16M、重启过的 61b 与 5ea 都是 256K,且 `hilog.private.on=true` 把 `%{private}` 参数打成 `<private>`)。256K 下 app 子进程的几万行会被冲掉,`run_facts.py` 的 child_hilog=0 看着像子进程没打日志、甚至像 JAR 没生效(#71 误判)。每次开 `--hilog` 批跑前先 `hilog -G 16M` 与 `hilog -p off`,再 `hilog -g` 回读三类都是 16.0M。
+- ACK 里的截图数与存活数用 `scripts/lab/run_facts.py <运行目录>` 数(VM 上的目录:`orb -m a2hlab bash -c "python3 - <目录>" < scripts/lab/run_facts.py`)。
 - 外环读图用 `scripts/lab/contact_sheet.sh <out.jpeg> --run <bms_batch 运行目录> [--shot final|t3] [--cols 7]` 把一批截图拼成一张再读(一次看 14 张);缺图给灰块,stdout 按「行 列 key 路径」列出每格对应的 app(Homebrew ffmpeg 没有 drawtext,格子上不印字)。逐张读只用于拼图里看不清、要签认点亮的那几张。
 - 复验:`git worktree add --detach ~/.octos/outer/verify/<名> <commit>` → 逐字重跑验收 → 落判词 → 删 worktree。
 

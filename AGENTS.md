@@ -20,7 +20,7 @@
 ## 判定
 - **截图是地面真相**。进程活着、`state=READY`、脚本打印 PASS 都不算上屏;以 `snapshot_display` 截图为准(DIGEST B.7)。
 - 查进程计数别用裸 `pgrep -f`(会匹配到自己),见 RUNBOOK。
-- ACK 里的截图数、存活数必须从 `record.json` 的 `captured` 字段与进程表逐项数出来,不按计划写;数不出来写 unknown(#63 把 0 张报成 26 张)。
+- ACK 里的截图数、存活数一律贴 `scripts/lab/run_facts.py <运行目录>` 的原样输出(它从 `record.json` 的 `captured` 与进程表逐项数),不按计划写;数不出来写 unknown(#63、#71 两次把 0 张报成 26 张)。
 
 ## 板子纪律
 - 板子写操作前先做只读检查。
