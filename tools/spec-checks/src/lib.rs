@@ -97,3 +97,24 @@ fn b7_no_regression() {
 fn b7_blocked_reason_recorded() {
     run(&["benchmark/2026-09-29-bms-link-entry-walls/verify.py", "blocked"]);
 }
+
+#[test]
+fn bms_rerun_offline() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let status = std::process::Command::new("python3")
+        .args(["-m", "unittest", "discover", "-s", "benchmark/2026-09-28-bms-route-deploy/batch", "-p", "test_b4_rerun.py"])
+        .current_dir(&root)
+        .status()
+        .expect("run three-shard FakeBoard plans and offline v4 aggregation checks");
+    assert!(status.success(), "B4 rerun preparation checks failed");
+}
+
+#[test]
+fn white_window_offline() {
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_*.py"]);
+}
+
+#[test]
+fn ability_stage_offline() {
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_ability_stage.py"]);
+}

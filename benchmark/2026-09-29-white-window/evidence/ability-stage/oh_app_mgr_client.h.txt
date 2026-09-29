@@ -1,0 +1,44 @@
+SOURCE /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/framework/activity/jni/oh_app_mgr_client.h
+76:      * The deployed monolithic bridge 048b7576 sends this reply from
+77:      * ScheduleAbilityStage; the split current tree dropped it (ScheduleAbilityStage
+78:      * became a no-op) -> the LIFECYCLE wall. This restores parity. Called on the
+79:      * OH binder thread (a direct reverse IPC, mirrors notifyAppState / 048b7576).
+80:      */
+81:     void addAbilityStageDone();
+82: 
+83:     /**
+84:      * [S19 LIFECYCLE-FIX #2] Complete the OH specified-ability handshake.
+85:      *
+86:      * After AddAbilityStageDone, OH AMS calls AppScheduler->ScheduleAcceptWant(
+87:      * want, moduleName) and BLOCKS on IAppMgr::ScheduleAcceptWantDone(recordId,
+88:      * want, flag) before it will dispatch ScheduleLaunchAbility. Without the
+89:      * reply, AMS raises "Start Specified Ability TimeOut!" -> LIFECYCLE_HALF_TIMEOUT
+90:      * (ScheduleLaunchAbility / handleLaunchActivity never fire).
+91:      *
+92:      * The deployed monolithic bridge 048b7576 replies with flag=moduleName (the
+93:      * default AbilityStage.onAcceptWant would return; AOSP has no AbilityStage so
+94:      * moduleName is a stable process key). The split current tree dropped this
+95:      * (ScheduleAcceptWant became a no-op). This restores parity. Called on the OH
+96:      * binder thread (direct reverse IPC, mirrors addAbilityStageDone / 048b7576).
+97:      */
+98:     void scheduleAcceptWantDone(const OHOS::AAFwk::Want& want, const std::string& flag);
+99: 
+100:     /**
+101:      * G2.14i: cache the recordId received via ScheduleLaunchApplication.AppLaunchData
+102:      * so subsequent ApplicationForegrounded/Backgrounded calls reach the right
+103:      * AppRunningRecord on the OH AppMS side. Default -1 hits "get appRecord fail".
+104:      */
+105:     void setRecordId(int32_t recordId) { recordId_ = recordId; }
+106:     int32_t getRecordId() const { return recordId_; }
+113:     bool isConnected() const { return connected_; }
+114: 
+115: private:
+116:     OHAppMgrClient() = default;
+117:     ~OHAppMgrClient() = default;
+118: 
+119:     bool connected_ = false;
+120:     int pid_ = 0;
+121:     int uid_ = 0;
+122:     int32_t recordId_ = -1;
+123:     std::string bundleName_;
+124:     OHOS::sptr<OHOS::AppExecFwk::IAppMgr> proxy_ = nullptr;

@@ -12,9 +12,16 @@ import json, re, subprocess, sys, time
 # status lines of a pane that is still busy: octoscode "state ✧ Working|Orchestrating|Thinking", codex "• Working ("
 BUSY = re.compile(r"^\s*state\s+\S+\s+(Working|Orchestrating|Thinking)|^\s*• Working \(", re.M)
 
+# octoscode's own status line when its octos serve session broke (connection_closed, cursor_expired,
+# session_open_rejected): herdr may still report the pane idle or working, so it is checked separately
+ERRORED = re.compile(r"^\s*state\s+x\s+Error", re.M)
+
+def tail_of(pane):
+    out = subprocess.run(["herdr", "pane", "read", pane], capture_output=True, text=True).stdout
+    return "\n".join(out.splitlines()[-12:])
+
 def busy(pane):
-    tail = subprocess.run(["herdr", "pane", "read", pane], capture_output=True, text=True).stdout
-    return bool(BUSY.search("\n".join(tail.splitlines()[-12:])))
+    return bool(BUSY.search(tail_of(pane)))
 
 args = sys.argv[1:]
 interval = 20
@@ -30,7 +37,9 @@ while True:
         continue
     for pane in args:
         st = agents.get(pane, "gone")
-        if st in ("idle", "blocked", "done", "gone") and not (st in ("idle", "done") and busy(pane)):
+        if st != "gone" and ERRORED.search(tail_of(pane)):
+            st = "session-error"
+        if st in ("idle", "blocked", "done", "gone", "session-error") and not (st in ("idle", "done") and busy(pane)):
             if pane in seen:
                 print(f"LANE-STOPPED {pane} {st} {time.strftime('%H:%M:%S')}", flush=True)
                 tail = subprocess.run(["herdr", "pane", "read", pane], capture_output=True, text=True).stdout
