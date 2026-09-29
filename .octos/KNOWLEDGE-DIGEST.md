@@ -464,3 +464,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 cx-t0 next4(5cd/r17m): 收窄39个OH直接入口并从default共享后本轮无DFX at_last abort，但ZZ进TuanjieMain后在vendor ANativeWindow_getFormat+60→Mali→OH EGL崩；HW/Auxio/NetGuard保UI，VLC补newAudioSessionId后推进到libvlc `__pthread_cleanup_push`缺符号。next4拒签回滚；早期maps单DFX/ART不等于崩溃时maps，窗口新根因未定。
 
 - **2026-09-30 graphics session/BLAST**: r17p c0742d1c Wikipedia L55630 `SC.create OH_Surface_297 sessionId=298`→DefaultIcon BBQ先占welcome298的NW32FC86F0→欢迎页首次创建BAD_ALLOC；两个firstCreate属297/298，非同owner重建。修复先显式session继承，勿强destroy。v3c BLAST四条注册失败是旧签名表(9/13)，VM Westlake22b94532已有匹配实际DEX的13项保守实现(sync=false/gather有效空Transaction)。候选32dfac83只离线验证，白屏是否解除待板验；见 benchmark/2026-09-30-graphics-session-sync/。
+
+- 2026-09-30 graphics@5cd：32df+r17q 实测BLAST13/13、SC名称/自身session一致，HW/Auxio/Droidify保UI、AppManager验证页可见；K9/Tusky/Termux仍白且采集内未见SC.create/RS flush，注册过门≠白屏解除。ZZ --reinstall会丢5个本代app native bind，缺libmediandk而FatalError；原账本5件恢复后同runtime/JAR launch-only菜单正常，勿误判本轮native回退或外推历史随机崩溃。见benchmark/2026-09-30-graphics-session-sync/device-5cd/。

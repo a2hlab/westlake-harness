@@ -146,3 +146,7 @@ or installer change is part of this experiment.
 [Three board packages and exact apply/rollback commands](board-packages/README.md)
 are prepared from the current boot-matched ledgers. No board writes; 5ea first,
 5cd/61b gated on its acceptance.
+
+## Authorized 5cd follow-up (2026-09-30)
+
+The user subsequently released 5cd and requested immediate deployment before 5ea. [Device evidence](device-5cd/README.md) supersedes the earlier scheduling restriction only: 32df+r17q deployed, BLAST13/13 confirmed, HW/Auxio/Droidify UI retained, AppManager validation frame visible, K9/Tusky/Termux still white. Restoring original ZigZag sidecar mounts after reinstall recovers its menu. 5cd released with graphics resident; 5ea/Wikipedia remains outer-owned.
