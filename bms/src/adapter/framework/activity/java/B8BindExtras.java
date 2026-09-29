@@ -25,8 +25,10 @@ public final class B8BindExtras {
     // #72 service-matrix: r8b-stub (appops/uimode/locale/account/alarm), missing (notification,
     // jobscheduler), westlake-only (connectivity, location) -- the first-frame-irrelevant services
     // that only need a non-null binder so getSystemService does not NPE (#70 revision).
+    // connectivity + jobscheduler are handled by OnlineConnectivityManager (SystemServiceRegistry
+    // fetcher replacement, #90), not by an sCache binder stub, so they are not listed here.
     private static final String[] SERVICES = {"appops", "uimode", "locale", "account", "alarm",
-            "notification", "jobscheduler", "connectivity", "location", "webviewupdate"};
+            "notification", "location", "webviewupdate", "shortcut"};
 
     private B8BindExtras() {}
 

@@ -49,6 +49,22 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
                # and IActivityManager (in-app bindService), installed from B7BindFixes at bind.
                src / 'WindowSessionProxy.java', src / 'ActivityManagerBindProxy.java']
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
+# r16 (#90): cc-wiki's OnlineConnectivityManager compiles against the Westlake android.net sources
+# (ConnectivityManager/Network/NetworkInfo/NetworkCapabilities/NetworkRequest, which expose the
+# public ctors the compile android.jar hides), and ONLY its adapter.activity.OnlineConnectivityManager*
+# classes go into the dex -- android.net.* resolve to the boot android at runtime. B7BindFixes calls
+# install() reflectively so it needs no compile-time reference.
+wl_net_dir = REPORT / 'onlinecm-deps/android/net'
+wl_net = [wl_net_dir / (c + '.java') for c in
+          ('ConnectivityManager', 'Network', 'NetworkInfo', 'NetworkCapabilities', 'NetworkRequest')]
+online_classes = BUILD / 'online-classes'; online_classes.mkdir()
+run(['javac', '-source', '8', '-target', '8', '-bootclasspath', INPUT / 'android.jar',
+     '-cp', INPUT / 'android.jar', '-d', online_classes, '-nowarn',
+     src / 'OnlineConnectivityManager.java', *wl_net])
+online_kept = sorted((online_classes / 'adapter' / 'activity').glob('OnlineConnectivityManager*.class'))
+assert online_kept, 'no OnlineConnectivityManager classes compiled'
+for p in online_kept:
+    shutil.copyfile(p, classes / 'adapter/activity' / p.name)
 run(['java', '-cp', INPUT / 'd8.jar', 'com.android.tools.r8.D8', '--release', '--min-api', '22',
      '--lib', INPUT / 'android.jar', '--output', dex, *classes.rglob('*.class')])
 with zipfile.ZipFile(BASE_JAR) as z:

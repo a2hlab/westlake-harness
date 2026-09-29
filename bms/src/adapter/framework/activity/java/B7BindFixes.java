@@ -54,6 +54,15 @@ public final class B7BindFixes {
         // PackageManagerProjectionProxy; each install is idempotent and defensive.
         try { WindowSessionProxy.install(); } catch (Throwable t) { System.err.println("[B8-WSP] " + t); }
         try { ActivityManagerBindProxy.install(); } catch (Throwable t) { System.err.println("[B8-AMB] " + t); }
+        // r16 (#90): cc-wiki's OnlineConnectivityManager -- replaces the SystemServiceRegistry
+        // connectivity (+ jobscheduler) fetchers with an online-reporting ConnectivityManager
+        // subclass (Wikipedia onGoOffline, WorkManager). Called reflectively so this class does not
+        // need the Westlake-sourced OnlineConnectivityManager on its compile classpath.
+        try {
+            Class.forName("adapter.activity.OnlineConnectivityManager").getMethod("install").invoke(null);
+        } catch (Throwable t) {
+            System.err.println("[B8-OCM] not installed: " + t);
+        }
     }
 
     /**

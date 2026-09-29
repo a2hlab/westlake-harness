@@ -103,6 +103,11 @@ public final class LocalServiceBinders {
                     // Chromium lib on disk (deployment, Westlake WebViewUpdateServiceAdapter), deferred.
                     binder = proxy(name, "android.webkit.IWebViewUpdateService", LocalServiceBinders::stub);
                     break;
+                case "shortcut":
+                    // #90 (fd-fitness): getSystemService("shortcut") non-null; getManifest/DynamicShortcuts
+                    // answer an empty list via the generic default so a null binder does not NPE.
+                    binder = proxy(name, "android.content.pm.IShortcutService", LocalServiceBinders::stub);
+                    break;
                 // BatteryManager's fetcher requires two services and throws if either is missing,
                 // so registering one of them changes nothing.
                 case "batterystats":
