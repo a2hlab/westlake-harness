@@ -146,7 +146,7 @@ def main():
     def keep(rel, name):
         (shots / name).write_bytes((RUNS / rel).read_bytes())
         return {'path': 'evidence/screens/' + name, 'sha256': sha(shots / name), 'source': 'runs/' + rel}
-    build = json.loads((HERE / 'build-result.json').read_text())
+    build = json.loads((HERE / 'build-result-r3.json').read_text())
     results['fixes'] = {
         'runtime_jar_overlay': {'baseline_sha256': build['baseline_sha256'], 'output_sha256': build['output_sha256'],
                                 'changed_existing_classes': build['changed_existing_classes'],

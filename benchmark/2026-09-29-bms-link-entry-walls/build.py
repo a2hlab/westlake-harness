@@ -16,7 +16,9 @@ BUILD.mkdir(exist_ok=False)
 # pr03: 5cd before the #63 generation switch; zigzag: the 5ea/ZigZag candidate generation
 # (strict-20260809T160651Z-21101), which already ships User/Storage/Display projection proxies.
 BASELINES = {'pr03': ('baseline.jar', '06141543bec26c5036931d8d2d71b0efaa45d5ffd73434557d165cd42672be0d'),
-             'zigzag': ('baseline-9161b507.jar', '9161b50756d3ffdfb2a8908ea7ec13f908214688321b2785365977ac40b28dea')}
+             'zigzag': ('baseline-9161b507.jar', '9161b50756d3ffdfb2a8908ea7ec13f908214688321b2785365977ac40b28dea'),
+             # B5 JAR = zigzag + B5 alias helpers and call (alias-entry/build-result.json).
+             'b5': ('baseline-250958dc.jar', '250958dc3f133b67fb38c5da3caf81714fd6958e2247556e327d917b1f0d3146')}
 BASE_NAME = sys.argv[2] if len(sys.argv) > 2 else 'pr03'
 BASE_JAR = INPUT / BASELINES[BASE_NAME][0]
 BASELINE = BASELINES[BASE_NAME][1]
@@ -35,7 +37,9 @@ src = ROOT / 'bms/src/adapter/framework/activity/java'
 helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java',
                # B5 alias fix, verbatim sources (alias-entry/build.py): 5cd never carried the
                # B5 JAR (built on the ZigZag-generation 9161b507), so it rides on this overlay.
-               src / 'LaunchActivityAliasProjection.java', src / 'BinaryAndroidManifestOrientation.java']
+               src / 'LaunchActivityAliasProjection.java', src / 'BinaryAndroidManifestOrientation.java',
+               # B8 (#65) items 1-2: 00.Workspace ManifestComponentProjection (verbatim) + driver/hook.
+               src / 'ManifestComponentProjection.java', src / 'SelfComponentFallback.java']
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 run(['java', '-cp', INPUT / 'd8.jar', 'com.android.tools.r8.D8', '--release', '--min-api', '22',
      '--lib', INPUT / 'android.jar', '--output', dex, *classes.rglob('*.class')])
@@ -48,7 +52,11 @@ run(['java', '-cp', cp, 'org.jf.baksmali.Main', 'disassemble', dex / 'classes.de
 # A helper the baseline already ships (UserManagerProjectionProxy on zigzag) is compiled only so
 # B7BindFixes links against it; the baseline's own class is kept.
 ALREADY_SHIPPED = {'adapter/activity/UserManagerProjectionProxy.smali',
-                   'adapter/activity/UserManagerProjectionProxy$UserBinder.smali'}
+                   'adapter/activity/UserManagerProjectionProxy$UserBinder.smali',
+                   'adapter/activity/LaunchActivityAliasProjection.smali',
+                   'adapter/activity/BinaryAndroidManifestOrientation.smali',
+                   'adapter/activity/BinaryAndroidManifestOrientation$StringPool.smali'}
+B5_SHIPPED = 'adapter/activity/LaunchActivityAliasProjection.smali' in original
 for p in helpers.rglob('*.smali'):
     dest = smali / p.relative_to(helpers)
     if str(p.relative_to(helpers)) in original:
@@ -76,9 +84,27 @@ text = text[:start] + body.replace(anchor, call) + text[end:]
 pattern = r'(?m)(^    invoke-static[^\n]*->buildActivityInfoFromAbility\([^\n]+\n\s*\n?    move-result-object ([vp]\d+))'
 hits = list(re.finditer(pattern, text)); assert len(hits) == 1, len(hits)
 h = hits[0]
-text = (text[:h.end()] + '\n\n    invoke-static {' + h[2] +
-        '}, Ladapter/activity/LaunchActivityAliasProjection;->apply(Landroid/content/pm/ActivityInfo;)V' + text[h.end():])
+if B5_SHIPPED:
+    assert text.count('LaunchActivityAliasProjection;->apply(') == 1, 'B5 baseline must already call the alias fix once'
+else:
+    text = (text[:h.end()] + '\n\n    invoke-static {' + h[2] +
+            '}, Ladapter/activity/LaunchActivityAliasProjection;->apply(Landroid/content/pm/ActivityInfo;)V' + text[h.end():])
 scheduler.write_text(text)
+
+# B8: in PackageManagerProjectionProxy.invoke (zigzag/B5 baselines), pass the delegate's answer
+# through SelfComponentFallback right after the delegate call, while p2=Method and p3=args are intact.
+pm_proxy = smali / 'adapter/activity/PackageManagerProjectionProxy.smali'
+if pm_proxy.exists():
+    ptext = pm_proxy.read_text()
+    ps = ptext.index('.method public invoke(Ljava/lang/Object;Ljava/lang/reflect/Method;[Ljava/lang/Object;)Ljava/lang/Object;')
+    pe = ptext.index('.end method', ps)
+    pbody = ptext[ps:pe]
+    hook = re.compile(r'(    invoke-virtual \{p2, p1, p3\}, Ljava/lang/reflect/Method;->invoke\(Ljava/lang/Object;\[Ljava/lang/Object;\)Ljava/lang/Object;\n\n    move-result-object p1\n    :try_end_\w+\n    \.catch Ljava/lang/reflect/InvocationTargetException; \{:try_start_\w+ \.\. :try_end_\w+\} :catch_\w+\n)')
+    hits = hook.findall(pbody); assert len(hits) == 1, len(hits)
+    pbody = hook.sub(lambda m: m.group(1) + '\n    invoke-static {p2, p3, p1}, Ladapter/activity/SelfComponentFallback;->apply('
+                     'Ljava/lang/reflect/Method;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;\n\n'
+                     '    move-result-object p1\n', pbody)
+    pm_proxy.write_text(ptext[:ps] + pbody + ptext[pe:])
 
 run(['java', '-cp', cp, 'org.jf.smali.Main', 'assemble', smali, '-o', BUILD / 'classes.dex'])
 run(['java', '-cp', cp, 'org.jf.baksmali.Main', 'disassemble', BUILD / 'classes.dex', '-o', post])
@@ -87,7 +113,9 @@ run(['java', '-cp', cp, 'org.jf.baksmali.Main', 'disassemble', BUILD / 'classes.
 norm = lambda b: re.sub(rb'(?m)^(\.field [^\n]*:Z) = false$', rb'\1', b)
 changed = [n for n, d in original.items()
            if not (post / n).exists() or norm((post / n).read_bytes()) != norm(d)]
-assert changed == ['adapter/activity/AppSchedulerBridge.smali'], changed
+expected = ['adapter/activity/AppSchedulerBridge.smali'] + (
+    ['adapter/activity/PackageManagerProjectionProxy.smali'] if pm_proxy.exists() else [])
+assert sorted(changed) == sorted(expected), changed
 post_scheduler = (post / 'adapter/activity/AppSchedulerBridge.smali').read_text()
 assert post_scheduler.count('B7BindFixes;->apply(') == 1
 assert post_scheduler.count('LaunchActivityAliasProjection;->apply(') == 1
@@ -107,5 +135,5 @@ result = {
     'sources': {str(p.relative_to(ROOT)): sha(p) for p in helpers_src},
     'inputs': {p.name: sha(p) for p in sorted(INPUT.glob('*.jar'))},
 }
-(REPORT / 'build-result.json').write_text(json.dumps(result, indent=2) + '\n')
+(REPORT / ('build-result-' + BUILD.name[len('build-'):] + '.json')).write_text(json.dumps(result, indent=2) + '\n')
 print(json.dumps(result, indent=2))

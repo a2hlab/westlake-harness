@@ -8,7 +8,7 @@ The runtime JAR is loaded per child through a PathClassLoader after fork (not in
 the boot image, not mapped by the appspawn-x daemon), so new children pick the
 overlay up without restarting anything. The mount is not reboot-persistent.
 """
-import json, subprocess, sys
+import json, os, subprocess, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -20,7 +20,7 @@ HDC = '/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchai
 LOCK = str(Path.home() / 'orca/workspaces/westlake-inputs/tools/board_note.sh')
 TARGET = '/system/android/framework/oh-adapter-runtime.jar'
 REMOTE_DIR = '/data/local/tmp/b7-walls'
-BUILD = json.loads((HERE / 'build-result.json').read_text())
+BUILD = json.loads((HERE / ('build-result-' + os.environ.get('B7_BUILD', 'r3') + '.json')).read_text())
 
 
 def board():

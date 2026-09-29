@@ -37,6 +37,9 @@ public final class B7BindFixes {
         } catch (Throwable t) {
             System.err.println("[B7] nativeLibraryDir check failed: " + t);
         }
+        // B8 (#65): record the bound self ApplicationInfo for the self-package
+        // getProviderInfo/resolveContentProvider fallback (SelfComponentFallback).
+        SelfComponentFallback.bind(ai);
     }
 
     static void fixNativeLibraryDir(ApplicationInfo ai) {
