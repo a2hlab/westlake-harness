@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| `benchmark/2026-09-28-bms-route-deploy/batch/task57-results.json` | **#57 unified BMS runner: reinstall, timed hilog/new faultlogs, per-shot focus gates and black-frame rejection; FakeBoard verification only.** |
 | `benchmark/2026-09-29-b6-static-diff/` | **B6 #53/#56: six hash-pinned ELFs, corrected sealed provider 80c9aee0, complete function comparison and four-group RESTORE-PLAN; no device execution.** |
 | `benchmark/2026-09-28-bms-route-deploy/batch/` | **OH6.1 BMS batch preparation (#20): 66-key install/readback, exact SceneBoard tap, foreground observations and fresh screenshots; offline tested, device unverified.** |
 | `benchmark/2026-09-28-bms-route-study/` | **BMS execution preparation (#15): PAC/payload hash audit, host readiness, first-hour deployment gates, and historically evidenced app priorities. No device execution.** |
