@@ -568,13 +568,18 @@ def cold_stop(board, package, uid, out, tag='before'):
     parents = [r['pid'] for r in rows if r['uid'] == 0 and r['ppid'] == 1 and r['name'] == 'appspawn-x']
     target = [r for r in rows if uid is not None and r['uid'] == uid]
     if target:
-        if len(parents) != 1 or any(r['ppid'] != parents[0] or r['name'] != 'appspawn-x' for r in target):
+        # Roots are appspawn-x children; an app may fork its own helpers (VLC runs `sh`), which carry the
+        # app UID and have a root as parent. Anything else with the app UID is not ours to kill.
+        roots = [r for r in target if len(parents) == 1 and r['ppid'] == parents[0] and r['name'] == 'appspawn-x']
+        root_pids = {r['pid'] for r in roots}
+        helpers = [r for r in target if r['pid'] not in root_pids and r['ppid'] in root_pids]
+        if not roots or len(roots) + len(helpers) != len(target):
             raise AppFailure('target still alive; cannot safely identify cold-stop child')
-        for row in target:
-            pid = row['pid']
+        for row in helpers + roots:
+            pid, ppid = row['pid'], row['ppid']
             # Re-check kernel identity in the same command immediately before kill.
             board.shell(f'test "$(sed -n \'s/^Uid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {uid} && '
-                        f'test "$(sed -n \'s/^PPid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {parents[0]} && kill -9 {pid}')
+                        f'test "$(sed -n \'s/^PPid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {ppid} && kill -9 {pid}')
     for _ in range(10):
         _, ps = board.shell('ps -A -o PID,PPID,UID,NAME')
         if uid is not None and not any(r['uid'] == uid for r in processes(ps)):
