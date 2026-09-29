@@ -31,6 +31,11 @@ ICON_PREFIX = 'AppIconCommonView_'
 LAUNCHER = 'com.ohos.sceneboard'
 BLACK_FRAME_BYTES = 36627
 FAULT_ROOT = '/data/log/faultlog/faultlogger'
+# Uniform board settings every batch starts from (see preflight). A reboot resets hilog to 256K with
+# privacy masking on; at 256K an app's child-process lines are overwritten before collection (#71).
+HILOG_MIN_BYTES = 16 << 20
+SCREEN_OFF_MS = 86400000
+CLOCK_TOLERANCE_S = 120
 
 
 class AppFailure(RuntimeError):
@@ -696,9 +701,76 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
     return rec
 
 
+def size_bytes(text):
+    m = re.fullmatch(r'([\d.]+)\s*([KMG]?)B?', text.strip(), re.I)
+    if not m:
+        return None
+    return int(float(m.group(1)) * {'': 1, 'K': 1 << 10, 'M': 1 << 20, 'G': 1 << 30}[m.group(2).upper()])
+
+
+def preflight(board, out, host_epoch=None):
+    """Set and read back hilog buffer, hilog privacy, screen-off timeout and board clock; refuse to run if unmet."""
+    host_epoch = int(time.time() if host_epoch is None else host_epoch)
+    result = {'host_epoch': host_epoch, 'problems': []}
+    for name, command in (('hilog_size_set', 'hilog -G 16M'), ('hilog_private_set', 'hilog -p off'),
+                          ('screen_off_set', f'power-shell timeout -o {SCREEN_OFF_MS}')):
+        rc, text = board.shell(command, required=False)
+        result[name] = {'command': command, 'return_code': rc, 'output': text[-300:]}
+    if result['screen_off_set']['return_code']:
+        result['problems'].append('power-shell timeout -o failed')
+
+    def clock():
+        _, text = board.shell('date +%s', required=False)
+        return int(text.strip()) - host_epoch if text.strip().isdigit() else None
+    skew = clock()
+    if skew is None or abs(skew) > CLOCK_TOLERANCE_S:
+        rc, text = board.shell(f'date -s @{host_epoch}', required=False)
+        result['clock_set'] = {'skew_before_s': skew, 'return_code': rc, 'output': text[-200:]}
+        skew = clock()
+    result['clock_skew_s'] = skew
+    if skew is None or abs(skew) > CLOCK_TOLERANCE_S:
+        result['problems'].append(f'board clock off by {skew} s after date -s')
+
+    _, sizes = board.shell('hilog -g', required=False)
+    buffers = dict(re.findall(r'Log type (\w+) buffer size is (\S+)', sizes))
+    result['hilog_buffers'] = buffers
+    small = [k for k, v in buffers.items() if (size_bytes(v) or 0) < HILOG_MIN_BYTES]
+    if not buffers or small:
+        result['problems'].append('hilog buffer below 16M: ' + (', '.join(f'{k}={buffers[k]}' for k in small) or 'unreadable'))
+    _, private = board.shell('param get hilog.private.on', required=False)
+    result['hilog_private_on'] = private.strip()
+    if private.strip() != 'false':
+        result['problems'].append('hilog privacy masking still on: ' + private.strip()[:40])
+    save(out/'preflight.json', result)
+    if result['problems']:
+        raise BatchStop('preflight not met: ' + '; '.join(result['problems']))
+    return {k: result[k] for k in ('hilog_buffers', 'hilog_private_on', 'clock_skew_s')} | {
+        'screen_off_ms': SCREEN_OFF_MS, 'path': str(out/'preflight.json')}
+
+
+def write_facts(out):
+    """facts.txt = scripts/lab/run_facts.py over this run; ACKs quote it instead of counting by hand."""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'scripts'/'lab'))
+        import run_facts
+        rows = [run_facts.facts(d) for d in sorted(p for p in Path(out).iterdir() if (p/'record.json').is_file())]
+    except Exception as exc:  # the facts are a report; a missing helper must not hide the run's own result
+        (Path(out)/'facts.txt').write_text(f'facts unavailable: {exc}\n')
+        return None
+    cap, slots = sum(f['captured'] for f in rows), sum(f['slots'] for f in rows)
+    a5, a20 = sum(1 for f in rows if f['alive_t5']), sum(1 for f in rows if f['alive_t20'])
+    lines = [f"{f['key']:<20} shots {f['captured']}/{f['slots']}  alive t5={run_facts.mark(f['alive_t5'])} "
+             f"t20={run_facts.mark(f['alive_t20'])}  child_hilog={run_facts.mark(f['child_hilog_lines'])}  {f['status']}"
+             for f in rows]
+    total = f'TOTAL keys={len(rows)} screenshots_captured={cap}/{slots} alive_t5={a5} alive_t20={a20}'
+    (Path(out)/'facts.txt').write_text('\n'.join(lines + [total]) + '\n')
+    return total
+
+
 def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
     records = []
     board.ready()
+    settings = preflight(board, out)
     _, version = board.shell('param get const.ohos.fullname')
     if version.strip() not in ('OpenHarmony-6.1.0.31', 'OpenHarmony 6.1.0.31'):
         raise BatchStop('expected OH6.1.0.31; this is not the OH7/T006 route')
@@ -711,6 +783,8 @@ def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
         try:
             record = collect_app(board, entry, input_root, app_out,
                                  f'/data/local/tmp/bms-batch-{run_id}/{entry["key"]}', wait_seconds, **options)
+            record['preflight'] = settings
+            save(app_out/'record.json', record)
             records.append(record)
         except BatchStop as exc:
             stale = isinstance(exc, StaleEvidence)
@@ -718,9 +792,13 @@ def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
                 records.append(json.loads((app_out/'record.json').read_text()))
             remaining = entries[i:] if stale else entries[i+1:]
             save(out/'summary.json', {'records':records,'not_run':[x['key'] for x in remaining],'batch_error':str(exc),'review':'pending_review'})
+            write_facts(out)
             raise
         save(out/'summary.json', {'records':records,'not_run':[x['key'] for x in entries[i+1:]],'review':'pending_review'})
         print(f'{i+1}/{len(entries)} {entry["key"]}: {record["status"]}', flush=True)
+    total = write_facts(out)
+    if total:
+        print(total + '  (facts.txt; quote it verbatim in ACKs)', flush=True)
     return records
 
 

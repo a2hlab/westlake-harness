@@ -47,6 +47,10 @@ class FakeBoard:
         self.fault_listing_count=0
         self.faults_before=['/data/log/faultlog/faultlogger/old-crash']
         self.faults_after=self.faults_before+['/data/log/faultlog/faultlogger/new-crash']
+        self.hilog_size='16.0M'
+        self.private='false'
+        self.clock_offset=0
+        self.clock_settable=True
     def ready(self):pass
     def shell(self, command, required=True, timeout=60):
         self.calls.append(command)
@@ -74,6 +78,11 @@ class FakeBoard:
             return 0,'WindowName DisplayId Pid WinId Type Mode Flag ZOrd\n'+row+'\nFocus window: 66\n'
         if command=='uitest uiInput click 200 300':self.clicked=True
         if command.startswith('aa force-stop '):self.clicked=False
+        if command=='hilog -g':
+            return 0,''.join(f'Log type {t} buffer size is {self.hilog_size}\n' for t in ('app','init','core'))
+        if command=='param get hilog.private.on':return 0,self.private
+        if command=='date +%s':return 0,str(int(b.time.time())+self.clock_offset)
+        if command.startswith('date -s @') and self.clock_settable:self.clock_offset=0
         if command.startswith('param get'):return 0,'OpenHarmony-6.1.0.31'
         return 0,''
     def send(self, local, remote):
@@ -482,6 +491,44 @@ class BatchTests(unittest.TestCase):
         rec=json.loads((self.root/'run/record.json').read_text())
         self.assertTrue(rec['install']['success_text'])
         self.assertEqual(rec['status'],'batch_interrupted')
+
+    def run_one(self, board):
+        with patch.object(b.time,'sleep'), contextlib.redirect_stdout(io.StringIO()):
+            return b.run_batch(board,[self.entry],self.root/'inputs',self.root,'unit',3)
+
+    def test_preflight_recorded_in_every_record_and_facts_written(self):
+        board=FakeBoard()
+        records=self.run_one(board)
+        self.assertIn('hilog -G 16M',board.calls);self.assertIn('hilog -p off',board.calls)
+        self.assertIn(f'power-shell timeout -o {b.SCREEN_OFF_MS}',board.calls)
+        saved=json.loads((self.root/self.entry['key']/'record.json').read_text())
+        self.assertEqual(saved['preflight']['hilog_buffers']['app'],'16.0M')
+        self.assertEqual(saved['preflight']['hilog_private_on'],'false')
+        self.assertEqual(records[0]['preflight'],saved['preflight'])
+        facts=(self.root/'facts.txt').read_text()
+        self.assertRegex(facts,r'TOTAL keys=1 screenshots_captured=\d+/\d+')
+
+    def test_preflight_refuses_small_hilog_buffer(self):
+        board=FakeBoard();board.hilog_size='256.0K'
+        with self.assertRaises(b.BatchStop) as cm:self.run_one(board)
+        self.assertIn('hilog buffer below 16M',str(cm.exception))
+        self.assertFalse(any(c.startswith('bm install') for c in board.calls))
+        self.assertTrue(json.loads((self.root/'preflight.json').read_text())['problems'])
+
+    def test_preflight_refuses_privacy_masking(self):
+        board=FakeBoard();board.private='true'
+        with self.assertRaises(b.BatchStop) as cm:self.run_one(board)
+        self.assertIn('privacy masking',str(cm.exception))
+
+    def test_preflight_sets_clock_and_refuses_if_it_stays_off(self):
+        board=FakeBoard();board.clock_offset=-86400*300
+        self.run_one(board)
+        self.assertTrue(any(c.startswith('date -s @') for c in board.calls))
+        board=FakeBoard();board.clock_offset=-86400*300;board.clock_settable=False
+        (self.root/self.entry['key']).rename(self.root/'first-run')
+        for name in ('preflight.json','facts.txt','summary.json'):(self.root/name).unlink(missing_ok=True)
+        with self.assertRaises(b.BatchStop) as cm:self.run_one(board)
+        self.assertIn('board clock off',str(cm.exception))
 
     def test_stale_record_never_becomes_current_batch_result(self):
         directory=self.root/'app1';directory.mkdir()
