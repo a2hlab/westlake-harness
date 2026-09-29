@@ -530,6 +530,23 @@ static void test_bridge_all_or_none(const Fixture* fixture) {
     ANL_ReleaseDomainHandle(domain);
 }
 
+static void test_log_dependency_inheritance(const Fixture* fixture) {
+    AnlDomainConfig config = base_config(fixture);
+    config.bridge_search_paths = fixture->bridge;
+    config.bridge_permitted_paths = fixture->bridge;
+    config.bridge_shared_sonames = "liblog.so";
+    AnlDomain* domain = NULL;
+    MockDlnsReset();
+    CHECK(ANL_CreateDomain(&config, &domain) == 0, "log namespace rejected");
+    CHECK(strstr(MockDlnsGet()->last_inherited_libs, ":libc++.so:") != NULL,
+          "log's C++ dependency not shared");
+    int before = MockDlnsGet()->dlopen_calls;
+    CHECK(ANL_Dlopen(domain, fixture->outside_so, RTLD_NOW) == NULL,
+          "runtime dependency sharing broadened direct app file access");
+    CHECK(MockDlnsGet()->dlopen_calls == before, "foreign path reached loader");
+    ANL_ReleaseDomainHandle(domain);
+}
+
 static void test_bridge_bootstrap(const Fixture* fixture) {
     AnlDomainConfig config = base_config(fixture);
     config.bridge_search_paths = fixture->bridge;
@@ -824,6 +841,7 @@ int main(void) {
     test_forbidden_paths(&fixture);
     test_archive_search_paths(&fixture);
     test_bridge_all_or_none(&fixture);
+    test_log_dependency_inheritance(&fixture);
     test_bridge_bootstrap(&fixture);
     test_rtld_global_rejected(&fixture);
     test_app_domain_boundary(&fixture);

@@ -364,17 +364,73 @@ int ANL_CreateDomain(const AnlDomainConfig* config, AnlDomain** out_domain) {
     }
     snprintf(app_name, sizeof(app_name), "westlake.anl.app.%ld.%lu",
              (long)getpid(), id);
+    /* Westlake resolves native dependencies from its runtime root before APK
+     * archive entries. Reuse the already-validated bridge roots for dependency
+     * lookup here; direct app loads still use domain->app_paths and the original
+     * permitted-path check. Only the fixed OH platform root below is added by this adapter. */
+    char dependency_search[PATH_MAX];
+    char dependency_permitted[PATH_MAX];
+    const char* search_paths = config->app_search_paths;
+    const char* permitted_paths = config->app_permitted_paths;
+    if (wants_bridge) {
+        /* OH6.1 keeps the runtime C++ library in chipset-sdk-sp, outside
+         * platformsdk. Match the platform runtime root already used by the
+         * parent process; never use arbitrary LD_LIBRARY_PATH from the app. */
+        const char* platform_root = "";
+#if defined(__OHOS__)
+        if (validate_path_list("/system/lib64/chipset-sdk-sp",
+                               "OH runtime dependency root", false) != 0) {
+            free(domain);
+            return -1;
+        }
+        platform_root = ":/system/lib64/chipset-sdk-sp";
+#endif
+        int sn = snprintf(dependency_search, sizeof(dependency_search), "%s%s:%s",
+                          config->bridge_search_paths, platform_root,
+                          config->app_search_paths);
+        int pn = snprintf(dependency_permitted, sizeof(dependency_permitted), "%s%s:%s",
+                          config->bridge_permitted_paths, platform_root,
+                          config->app_permitted_paths);
+        if (sn < 0 || (size_t)sn >= sizeof(dependency_search) ||
+            pn < 0 || (size_t)pn >= sizeof(dependency_permitted)) {
+            free(domain);
+            return failf("runtime dependency paths exceed namespace limit");
+        }
+        search_paths = dependency_search;
+        permitted_paths = dependency_permitted;
+        fprintf(stderr, "[B87-NS] runtime dependency search=%s\n", search_paths);
+    }
+    /* liblog's OH6.1 NEEDED closure must be inherited by name too. The
+     * default namespace already owns these platform libraries; do not add
+     * broad system directories to the app's permitted paths. */
+    char log_shared_sonames[PATH_MAX];
+    const char* shared_sonames = config->bridge_shared_sonames;
+    const char* log_name = wants_bridge ? strstr(shared_sonames, "liblog.so") : NULL;
+    if (log_name != NULL &&
+        (log_name == shared_sonames || log_name[-1] == ':') &&
+        (log_name[9] == '\0' || log_name[9] == ':')) {
+        int n = snprintf(log_shared_sonames, sizeof(log_shared_sonames),
+                         "%s:libbionic_compat.so:libc++.so:libhilog.so:"
+                         "libbegetutil.z.so:libsec_shared.z.so:libconfigpolicy_util.z.so:"
+                         "libsystemparam.z.so:libc.so",
+                         shared_sonames);
+        if (n < 0 || (size_t)n >= sizeof(log_shared_sonames)) {
+            free(domain);
+            return failf("log dependency sonames exceed namespace limit");
+        }
+        shared_sonames = log_shared_sonames;
+    }
     void* bootstrap_handle = NULL;
     int rc = domain->runtime_gate.namespace_host_ops.create_configured_namespaces(
         wants_bridge ? &domain->bridge : NULL,
         wants_bridge ? bridge_name : NULL,
         wants_bridge ? config->bridge_search_paths : NULL,
         wants_bridge ? config->bridge_permitted_paths : NULL,
-        wants_bridge ? config->bridge_shared_sonames : NULL,
+        wants_bridge ? shared_sonames : NULL,
         wants_bridge ? config->bridge_bootstrap_soname : NULL,
         wants_bridge ? &domain->runtime_gate.pthread_bridge_ops : NULL,
         &bootstrap_handle, &domain->app, app_name,
-        config->app_search_paths, config->app_permitted_paths);
+        search_paths, permitted_paths);
     if (rc != 0) {
         free(domain);
         return failf("default-owner namespace configuration failed: %d", rc);
