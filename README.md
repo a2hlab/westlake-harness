@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-09-30-installer-61b-ab/`** | **61b r17p installer-only background-activation A/B: permission traces, fixed native hashes and 17-key screenshot/facts evidence.** |
 | **`benchmark/2026-09-30-jni-gapfill-package/`** | **Declared gapfill addition across three resident packages; SHA/rollback and B87-based v3c input.** |
 | **`benchmark/2026-09-30-commonevent-registration/`** | **B91: five JNI bindings onto the retained CommonEvent backend, c835 runtime plus VelocityTracker/SQLite.** |
 | **`benchmark/2026-09-30-installer-background-launcher/`** | Background-start ACL/preauthorization and own-package launcher installer pair; HAP tests, strict ELF checks and guarded rollback handoff. |
