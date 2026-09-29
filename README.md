@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-09-30-tls-native-handoff/`** | **B93: declared TLS/HTML additions, SHA gates, transactional rollback and child loading handoff.** |
 | **`benchmark/2026-09-30-child-stack-default/`** | **B92: initial-stack probe, Westlake big-pthread port, ANL compatibility and rollback evidence.** |
 | **[Network rollout on 61b and 5cd](benchmark/2026-09-29-network-rollout/)** | **#90 cx-t0: Mac HDC deployment, exact installer rollback, reboot replay preserving VT/r16, HW/ZigZag screenshots and facts.** |
 | **[BMS network-permission handoff](benchmark/2026-09-29-bms-network-permissions/)** | **#89: APK declarations → HAP/BMS/ATM, two-library build, actual HAP tests and exact rollback package for cc-wiki.** |

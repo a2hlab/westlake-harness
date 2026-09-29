@@ -1,0 +1,95 @@
+# Task Contract: B9 拆掉运行代的哈希锁,并把 manifest 解析 JNI 编回桥接库
+
+## Intent
+route-A 运行代有三层哈希锁:appspawn-x 钉 child 插件 SHA、child 的 sealed loader 逐个核 28 个 provider 的 SHA/build-id(`WLSCPL_ERROR_ARTIFACT_IDENTITY`)、appspawn-x/provider 编译期钉运行时库与桥接库 SHA(`exact adapter bridge admission failed`,单换桥接库退出码 123)。它让任何 native 改动都要整代重生成,B6、B7、#67 都被它拖慢;用户 2026-09-29 批准拆锁。同时 B8 #65 查明 14 个 app 统一死在 `onCreate` 的第一类墙:当前桥接库 84695d62 不导出 `Java_adapter_activity_AppSchedulerBridge_nativeParseManifestJson`(也没有 `nativeGetSysProp`),`[B43-BIND] providers populated:0`,`<application android:name>` 不生效,Koin 等自定义 Application 从不初始化。实现已在库里(`bms/src/adapter/framework/package-manager/jni/apk_manifest_jni.cpp`,00.Workspace 验证过),只是本代桥接库没编进去。本任务一次重生成「无锁代」,之后 native 库可以单文件替换。
+
+## Must
+- 系统保持 OpenHarmony 6.1.0.31,不刷机;运行代用 `bms/` 复现器部署的那一份
+- 修法优先照搬 `bms/` 与 00.Workspace 已有的代码与产物,只在找不到现成实现时才新写
+- 上板前 `board_note.sh lock`;只对条目写明的独占板下写命令
+- 点亮判据只认外环读图签认的截图;`bm install` 成功、进程存活、`bm dump` 可查都不算点亮
+- 补丁版 BMS 生效的判据:`/proc/<foundation pid>/root` 下实际加载的库哈希与 maps,不看全局库哈希
+- 只在本地 commit,不推送;APK、HAP、`.so`、payload 不入 git
+
+## Decisions
+- 名字与图标都在 `bms/src/adapter/framework/package-manager/jni/apk_installer.cpp` 合成资源 HAP 的流程里修;两项由同一车道先后做,避免同文件冲突
+- native 库用 `westlake-inputs/tools/dockbuild.sh` 按锁定工具链为 OH 6.1 编;换 installer 的步骤必须带回滚
+- 沙箱准备照搬 HelloWorld restore 与 ZigZag `prepare_sandbox` 的逻辑,参数化为包名与 uid
+- 拆锁方式(2026-09-29 用户定):运行时加载器不再做封存——appspawn-x 不钉 child 插件 SHA、child 的 sealed loader 不核 provider 的 SHA/build-id、bridge/runtime admission 不比 SHA;按路径正常加载。正常的桥接层(含 Westlake)都不在运行时加载器里做这种封存
+- 「库配错当场报错」的保护挪到部署工具:`tools/deploy_generation.sh` 部署前核包内清单 SHA,部署后核板上关键件 SHA、单份 ART、桥接库版本与子进程 `/proc/<pid>/maps`,任一不符即回滚
+- `deploy_generation.sh` 增加单文件替换模式:换一个库时更新包内清单、bind-mount 该文件、跑同一组部署后检查,不符即只回滚这一个文件
+- appspawn-x、child 插件、provider 三者本次一起重建,这是最后一次整代重建;之后 native 改动都走单文件替换
+- 桥接库按 `bms/src/adapter/build/inner/compile_oh_adapter_bridge.sh` 的 P2-B 段编入 `apk_manifest_jni.cpp`、`apk_manifest_parser.cpp`、`axml_parser.cpp` 与 minizip+zlib;脚本对缺失源文件是静默 `continue`、对缺 minizip 只打 WARN,本任务把这两处改成缺了就构建失败
+- 基于 #67 的 v2(`15728be5`,含 SQLite JNI 与 Flutter app-domain 修复)生成 v3;打包与部署沿用 `tools/deploy_generation.sh`,带回滚;源码快照、补丁、工具链哈希按 AGENTS.md 入库或存 hw248 `/home/alvin/`
+- 在 5ea 上开发验证;验收过后交 5cd、61b 换代
+
+## Boundaries
+Allowed changes:
+- bms/src/adapter/framework/appspawn-x/**
+- bms/src/adapter/build/**
+- bms/src/adapter/framework/package-manager/jni/**
+- benchmark/2026-09-29-unlocked-generation/**
+- tools/spec-checks/**
+- tools/deploy_generation.sh
+- scripts/lab/deploy_generation.sh
+Forbidden:
+- 不修改 APK
+- 不改 installer(`libapk_installer.so`)
+- 不在 5ea 以外的板上部署,直到外环签认 v3
+Out of scope:
+- installer 与安装墙(fd-seal、x、toutiao)
+- Java 侧的 manifest 回退(B8 r8b 在 5cd 并行做)
+
+## Completion Criteria
+Scenario: 无锁代上单换桥接库被接受
+  Test:
+    Filter: b9_single_bridge_swap_accepted
+  Given v3 已部署到 5ea,HelloWorld 正常
+  When 只把 `liboh_adapter_bridge.so` 换成另一份 SHA 不同的构建并从桌面拉起 HelloWorld
+  Then hilog 不出现 `exact adapter bridge admission failed`、`LOAD_ERROR` 与 `WLSCPL_ERROR_ARTIFACT_IDENTITY`
+  And 子进程 maps 映射的是换上去的桥接库
+
+Scenario: 桥接库导出 manifest 解析 JNI
+  Test:
+    Filter: b9_bridge_exports_manifest_jni
+  Given v3 的桥接库已构建
+  When 对它跑 `llvm-nm -D --defined-only`
+  Then 输出含 `Java_adapter_activity_AppSchedulerBridge_nativeParseManifestJson` 与 `Java_adapter_activity_AppSchedulerBridge_nativeGetSysProp`
+
+Scenario: 自定义 Application 被实例化
+  Test:
+    Filter: b9_custom_application_created
+  Given v3 已部署到 5ea
+  When 从桌面拉起 fd-android(Thunderbird,与 fd-k9 同为 Koin 入口;5ea 的 installer 装不上 fd-k9)与 ooniprobe 并采 hilog
+  Then `[B43-BIND] providers populated` 的数字大于 0
+  And 不再出现 `KoinApplication has not been started` 与 Application 强转失败,越过的附原文
+
+Scenario: 缺源文件时构建失败
+  Test:
+    Filter: b9_bridge_build_fails_on_missing_source
+  Given 构建目录里去掉 `apk_manifest_jni.cpp` 或 minizip 目标文件
+  When 运行桥接库构建
+  Then 构建以非零退出码结束并打印缺失的路径,不产出桥接库
+
+Scenario: 无锁代不让已亮的 app 回退
+  Test:
+    Filter: b9_no_regression
+  Given v3 已部署到 5ea
+  When 拉起 HelloWorld 与 ZigZag
+  Then 外环读图签认两者截图仍是各自界面
+
+Scenario: 部署工具拦下配错的库
+  Test:
+    Filter: b9_deploy_tool_rejects_mismatch
+  Given v3 已部署到 5ea
+  When 用单文件替换模式换上一个与包内清单 SHA 不符的库,或换后子进程 maps 出现两份 libart
+  Then `deploy_generation.sh` 以非零退出码结束并打印不符的组件
+  And 该文件被回滚,板上 SHA 回到替换前
+
+Scenario: 部署失败时回滚到 6cb40cd6
+  Test:
+    Filter: b9_rollback_on_failed_deploy
+  Given v3 部署后 HelloWorld 不能上屏或出现双份 libart
+  When 执行 `deploy_generation.sh --rollback`
+  Then 5ea 回到 6cb40cd6,板上关键件 SHA 与 6cb40cd6 清单一致
+

@@ -132,3 +132,5 @@ Installer两处更新并重启foundation后可能黑屏；按明确授权整机�
 `prepare_generation_replacement.py` / `deploy_generation.sh --replace` 可替换包 `files` 已声明但未进入 `live_hashes` 的 `.so`：先按旧包核目标实物SHA，再把新值纳入 shell/child-root 核验；未声明目标仍拒。多层单换按 `--replace <target> --rollback` 倒序撤销，每层回读旧包SHA。采证后若其他Android测试子进程仍活着，部署器拒停host；先按包名与UID用master `bms_batch.cold_stop` 停止本任务进程，不跳过门禁。#87保留包为 `westlake-generation-b87-vt-c835a93e`(v3a/r8b+liblog8c81+runtime c835)，ANL实验仅归档。
 
 - **host单文件替换(#80,2026-09-29)**:`deploy_generation.sh --replace /system/bin/appspawn-x` 已支持严格限定的host目标(0755)，回滚同参加`--rollback`。独立Java覆盖须由其持有者按收据暂退到包内JAR，完整SHA/maps门验host后再挂回最新JAR；不可改state或跳过hash来吞掉覆盖差异。
+
+- 2026-09-30 cx-t0 (#93): 新增 native 库用 `prepare_generation_replacement.py --add` 声明 files/live_hashes，再 `deploy_generation.sh SERIAL PACKAGE --add /system/android/lib64/libNAME.so`；仅目标原本不存在时可建挂载点，`--add TARGET --rollback` 撤销最后一件。双库包 `westlake-b93-tls-html-8ecf6250-26ac847b/deploy_bundle.py` 先预检两包再逐件部署、失败反序回滚；实验 JAR 须先退回包内版本让 SHA 门真实通过，不能忽略其哈希。见 benchmark/2026-09-30-tls-native-handoff/。

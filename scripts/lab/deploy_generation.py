@@ -95,12 +95,19 @@ def replacement_source(m, target):
     raise ValueError('replacement target has no package file: ' + target)
 
 
-def validate_replacement(old, new, target):
+def validate_replacement(old, new, target, adding=False):
     if old.get('runtime_identity') != 'deployment-only' or new.get('runtime_identity') != 'deployment-only':
         raise ValueError('single-file mode requires an unlocked generation')
     if old['generation'] != new['generation'] or old['mounts'] != new['mounts'] or old['prerequisites'] != new['prerequisites']:
         raise ValueError('single-file replacement changes generation, mounts or platform')
     source = replacement_source(new, target)
+    if adding:
+        if not re.fullmatch(r'/system/android/lib64/lib[A-Za-z0-9_+-]+\.so', target):
+            raise ValueError('addition must be one Android native library')
+        if source in old['files'] or target in old['live_hashes']:
+            raise ValueError('addition already exists in resident manifest')
+    elif source not in old['files']:
+        raise ValueError('new library requires --add')
     changed = {k for k in old['files'].keys() | new['files'].keys() if old['files'].get(k) != new['files'].get(k)}
     if changed != {source}: raise ValueError('replacement must change exactly one package file: ' + str(sorted(changed)))
     changed_live = {k for k in old['live_hashes'].keys() | new['live_hashes'].keys() if old['live_hashes'].get(k) != new['live_hashes'].get(k)}
@@ -187,9 +194,21 @@ class Deployment:
             raise RuntimeError('rollback package changed')
         self.stop()
         if current == row['remote'][len('/data'):]: self.shell('umount ' + shlex.quote(row['target']))
-        old_digest = old['files'][replacement_source(old, row['target'])]
-        if self.hashes([row['target']])[row['target']] != old_digest:
-            raise RuntimeError('single-file rollback SHA mismatch: ' + row['target'])
+        if row.get('addition'):
+            # The bind covers a newly created, empty mountpoint. Refuse to
+            # delete anything that no longer matches that owned placeholder.
+            target = shlex.quote(row['target'])
+            exists = self.shell('if [ -e ' + target + ' ]; then echo EXISTS; else echo ABSENT; fi').strip()
+            if exists == 'EXISTS':
+                if self.hashes([row['target']])[row['target']] != hashlib.sha256(b'').hexdigest():
+                    raise RuntimeError('addition mountpoint changed; refuse removal')
+                self.shell('rm ' + target)
+            elif exists != 'ABSENT':
+                raise RuntimeError('cannot determine addition rollback state')
+        else:
+            old_digest = old['files'][replacement_source(old, row['target'])]
+            if self.hashes([row['target']])[row['target']] != old_digest:
+                raise RuntimeError('single-file rollback SHA mismatch: ' + row['target'])
         rows.pop()
         self.package, self.m = old_package, old
         self.d['package_path'] = str(old_package)
@@ -198,17 +217,20 @@ class Deployment:
         self.d['status'] = 'active'; self.record()
         if verify: self.verify()
 
-    def replace(self, target):
+    def replace(self, target, adding=False):
         if not self.d or self.d['status'] != 'active_verified':
             raise RuntimeError('single-file mode requires a verified resident generation')
         old_package = Path(self.d['package_path'])
         if old_package == self.package: raise ValueError('keep the prior package intact; use a separate updated package')
         old = load_package(old_package)
         if sha(old_package / 'package.json') != self.d['package_sha256']: raise ValueError('resident package changed')
-        source = validate_replacement(old, self.m, target)
+        source = validate_replacement(old, self.m, target, adding=adding)
         self.verify_mounts()
         if self.hashes(list(old['live_hashes'])) != old['live_hashes']: raise RuntimeError('resident SHA mismatch before replacement')
-        if self.hashes([target])[target] != old['files'][replacement_source(old, target)]:
+        if adding:
+            absent = self.shell('if [ ! -e ' + shlex.quote(target) + ' ] && [ ! -L ' + shlex.quote(target) + ' ]; then echo ABSENT; fi').strip()
+            if absent != 'ABSENT': raise RuntimeError('addition target already exists')
+        elif self.hashes([target])[target] != old['files'][replacement_source(old, target)]:
             raise RuntimeError('declared replacement target SHA mismatch before replacement')
         remote = self.d['remote'] + '/single-' + str(time.time_ns()) + '.so'
         self.board.send(self.package / source, remote)
@@ -218,9 +240,12 @@ class Deployment:
         self.stop()
         row = {'target': target, 'remote': remote, 'previous_root': self.top_mounts().get(target),
                'previous_package': str(old_package), 'previous_package_sha256': self.d['package_sha256']}
+        if adding: row['addition'] = True
         self.d.setdefault('single_replacements', []).append(row)
         self.d['status'] = 'replacing'; self.record()  # persist intent before the bind
         try:
+            if adding:
+                self.shell('set -C; : > ' + shlex.quote(target))
             self.shell('mount --bind ' + remote + ' ' + shlex.quote(target))
             self.d['package_path'] = str(self.package)
             self.d['package_sha256'] = sha(self.package / 'package.json')
@@ -350,7 +375,9 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('serial', choices=sorted(SERIALS)); p.add_argument('package', type=Path)
     mode = p.add_mutually_exclusive_group(); mode.add_argument('--rollback', action='store_true'); mode.add_argument('--dry-run', action='store_true')
-    p.add_argument('--replace', metavar='ABSOLUTE_TARGET', help='one-file replacement from a separately updated package; with --rollback undo the last replacement')
+    files = p.add_mutually_exclusive_group()
+    files.add_argument('--replace', metavar='ABSOLUTE_TARGET', help='one-file replacement from a separately updated package; with --rollback undo the last replacement')
+    files.add_argument('--add', metavar='ABSOLUTE_TARGET', help='add one declared native library; with --rollback remove the last owned addition')
     p.add_argument('--lane', default=os.environ.get('WESTLAKE_LANE', 'cx-t0'))
     p.add_argument('--tools', default='/Users/zhaoyue/orca/workspaces/westlake-inputs/tools')
     p.add_argument('--state-root', type=Path, default=Path('/Users/zhaoyue/orca/workspaces/westlake-generation-state'))
@@ -362,16 +389,19 @@ def main(argv=None):
         command = ['python3', str(Path(__file__).resolve()), a.serial, str(a.package), '--lane', a.lane, '--tools', a.tools, '--state-root', str(a.state_root.resolve())]
         if a.rollback: command.append('--rollback')
         if a.replace: command.extend(['--replace', a.replace])
+        if a.add: command.extend(['--add', a.add])
         raise SystemExit(subprocess.call(['orb', '-m', 'a2hlab', 'bash', '-lc', shlex.join(command)]))
     sys.path.insert(0, str(a.package / 'tools'))
     import bms_batch as b
     d = Deployment(a, m, b)
-    if a.rollback and a.replace:
-        if not d.d or not d.d.get('single_replacements') or d.d['single_replacements'][-1]['target'] != a.replace:
+    target = a.replace or a.add
+    if a.rollback and target:
+        if not d.d or not d.d.get('single_replacements') or d.d['single_replacements'][-1]['target'] != target:
             raise RuntimeError('rollback target is not the last replacement')
         d.rollback_single()
     elif a.rollback: d.rollback()
     elif a.replace: d.replace(a.replace)
+    elif a.add: d.replace(a.add, adding=True)
     else: d.deploy()
     print(json.dumps({'state': str(d.statepath), 'evidence': str(d.out), 'status': d.d['status']}, indent=2))
 
