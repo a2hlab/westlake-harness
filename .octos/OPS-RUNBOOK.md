@@ -105,3 +105,9 @@
 Installer两处更新并重启foundation后可能黑屏；按明确授权整机重启，核 `/proc/<新foundation>/root` 两处SHA及非黑图。PR03启动恢复可能延迟，先只读核挂载，勿立即重复挂载。B5完整恢复还需保存的R155系统覆盖、B5 JAR和ZigZag的5个app原生库挂载；漏后者会使原始libmain报android_set_abort_message缺失。核源SHA后按重启前mountinfo恢复，复验HW+ZigZag；一般HelloWorld restore会覆盖installer，保留新installer时不要盲跑。实跑回执/带boot ID保护脚本见 benchmark/2026-09-28-bms-route-deploy/latest-source-generation/task52/installer/ 与 recipes/。
 
 - B6失败回滚后AMS可能暂留已死候选PID：`aa force-stop` 可exit0但文本10106401 kill process failed；不能只看rc或末时刻无PID判冷启动成功。保留日志，核新parent子PID并用新的run-id正常桌面重试；#58稍后重试恢复B5 HelloWorld，无需重启。
+
+## 统一运行代 6cb40cd6 的部署与断电重放（#66）
+
+包在 Mac `/Users/zhaoyue/orca/workspaces/westlake-generation-6cb40cd6`；入口为仓库 `scripts/lab/deploy_generation.sh <完整serial> <包目录>`，或包内 `tools/deploy_generation.sh`。先以自己的 lane 取得 board_note 锁并 held 确认；`--dry-run` 仅离线核包，真正部署加 `--lane <车道>`（默认 cx-t0），Mac 入口自动经 a2hlab VM。脚本支持三板但只操作传入序列号，依赖现有 OH6.1 PR03/BMS 与三项控制 app 已装。
+
+重启后原命令重放；同 boot 重跑只校验+HelloWorld 冒烟，不叠加挂载。新状态写 Mac `westlake-generation-state/<serial>/<boot_id>.json`，保留它才能 `--rollback`（仅卸本次挂载、校验原 SHA、重启原 parent，跨 boot/其他覆盖拒绝）。#66 成功代保持常驻，**不要因 Wikipedia 仍回桌面回滚**。包会恢复 B5 JAR250958dc，新 Java 修正须部署后按所属任务重加；installer 不变。两份 bridge 映射可与已签基线一致，要求其 SHA84695d62；ART 与 openjdkjvm 必须各只有一份且在本代 route-a。
