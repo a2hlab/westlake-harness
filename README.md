@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-09-30-jni-gapfill-package/`** | **Declared gapfill addition across three resident packages; SHA/rollback and B87-based v3c input.** |
 | **`benchmark/2026-09-30-commonevent-registration/`** | **B91: five JNI bindings onto the retained CommonEvent backend, c835 runtime plus VelocityTracker/SQLite.** |
 | **`benchmark/2026-09-30-tls-native-handoff/`** | **B93: declared TLS/HTML additions, SHA gates, transactional rollback and child loading handoff.** |
 | **`benchmark/2026-09-30-child-stack-default/`** | **B92: initial-stack probe, Westlake big-pthread port, ANL compatibility and rollback evidence.** |
