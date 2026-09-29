@@ -1,0 +1,91 @@
+{
+ "task": "#71 r8b rerun of 13 white-window apps (61b, r8b jar d5000c4e)",
+ "deployment": {
+  "jar": "d5000c4e19e74e3e",
+  "verified": "shell + appspawn-x /proc/<pid>/root dual readback",
+  "smoke": "HW uid20010155 alive 80532B sha b570641c; ZigZag uid20010156 alive 92938B sha 0ea23693",
+  "rollback": "cp /home/zhaoyue/a2hlab/build-runs/20260928-oh6.1.0.31-b5r2/build/oh-adapter-runtime.jar (e84255d2) over /system/android/framework/oh-adapter-runtime.jar + restart appspawn"
+ },
+ "per_app": {
+  "ooniprobe": {
+   "alive_t5": 0,
+   "shots": 2,
+   "exit": "fg 09:19:13.936 -> launcher 'handle app exit' 09:19:14.531 (~0.6 s)",
+   "c00f00_lines": 0
+  },
+  "fd-etar": {
+   "alive_t5": 0,
+   "shots": 2,
+   "exit": "scene destroyed ~2.3 s after click, no child logs",
+   "c00f00_lines": 0
+  },
+  "fd-fluffychat": {
+   "alive_t5": 0,
+   "shots": 2,
+   "c00f00_lines": 0
+  },
+  "fd-immich": {
+   "alive_t5": 0,
+   "shots": 2,
+   "c00f00_lines": 0
+  },
+  "fd-kitchenowl": {
+   "alive_t5": 0,
+   "shots": 2,
+   "c00f00_lines": 0
+  },
+  "fd-minetest": {
+   "alive_t5": 0,
+   "shots": 2,
+   "c00f00_lines": 0
+  },
+  "fd-mobile": {
+   "alive_t5": 0,
+   "shots": 2,
+   "c00f00_lines": 0
+  },
+  "fd-stk": {
+   "alive_t5": 0,
+   "shots": 2,
+   "c00f00_lines": 0
+  },
+  "localsend": {
+   "alive_t5": 0,
+   "shots": 2,
+   "c00f00_lines": 0
+  },
+  "mindustry": {
+   "alive_t5": 0,
+   "shots": 2,
+   "c00f00_lines": 0
+  },
+  "noice": {
+   "alive_t5": 0,
+   "shots": 2,
+   "c00f00_lines": 0
+  },
+  "burgerking": {
+   "alive_t5": 0,
+   "shots": 2,
+   "c00f00_lines": 0
+  },
+  "fd-binaryeye": {
+   "alive_t20": 1,
+   "shots": 2,
+   "c00f00_lines": 382,
+   "new_markers": [
+    "[G2.5-PIB] ApplicationInfo de.markusfisch.android.binaryeye icon/iconRes/labelRes/theme zeroed",
+    "[G2.14as-VIS] x6"
+   ],
+   "providers_populated_marker": "absent",
+   "manifest_fallback_marker": "absent"
+  }
+ },
+ "findings": {
+  "screenshots": "26 captured (2/app, t+5/t+20) per record.json; status all foreground_unconfirmed (known WMS transient-window gate artifact)",
+  "markers_absent": "[B43-BIND]/providers-populated/[B8-R8B] manifest-fallback markers appear in ZERO of 13 hilogs — the r8b jar does not emit them on the 6cb40cd6 generation stack (b5r2 e84255d2 did emit B43 in #69), so providers-count and manifest-fallback cannot be measured here",
+  "dead_12": "12/13 die <1 s after foreground (ooniprobe 0.6 s measured), no faultlogger files, no AppSpawnX child lines -> same wall as #63 r5 cohort; r8b jar did not change their outcome",
+  "binaryeye": "still spawn-stuck like #69 but now with explicit [G2.5-PIB] ApplicationInfo ... zeroed marker (manifest projection not engaged / appInfo zeroed)",
+  "prediction_check": "#69's manifest-only prediction is NEITHER confirmed NOR refuted: the verifying markers do not exist on this stack; the 0.6 s exit cohort suggests a wall before Application onCreate, not a manifest-content wall"
+ }
+}
