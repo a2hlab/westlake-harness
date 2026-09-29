@@ -78,7 +78,7 @@ reproducer first if the fresh board does not meet the platform gate. Take the
 board lock and expose package r8b before either operation; a Java overlay is an
 explicit separate transaction. Reapply the selected JAR only after verification.
 
-For this 5cd session, `jar_overlay_5cd.py expose-new` verifies/removes r17g,
+For this 5cd session, `jar_overlay_5cd.py expose` verifies/removes original r17c (the final selected overlay after rejecting r17h),
 then `deploy_generation.sh SERIAL PACKAGE --rollback --lane cx-t0` restores the
 previous package/layers; `jar_overlay_5cd.py restore` restores old r17c. This
 helper pins this boot and receipt and must not be reused on another board.
@@ -90,3 +90,54 @@ requires native manifest exports deliberately absent from retained 84695d62;
 the user-selected v3a/v3c uses Java manifest fallback. No spec/test was weakened.
 Historical B9 evidence does not certify v3c app behavior. New results and facts
 are reported separately. 5ea and 61b are not deployed by this session.
+
+## App findings and Java isolation
+
+With r17g, NetGuard shows its main UI. Anki launches the wrong LeakCanary entry
+under this board's older installer; its alive process is not Anki validation.
+OONI returns to desktop with `libjnidispatch.so` failing to resolve `__errno`.
+Auxio's VelocityTracker registration succeeds but its fragment construction
+fails because BC loads `adapter.compat.WestlakeSecureRandomSpi` through the boot
+class loader. Noice similarly fails to find
+`adapter.security.OhTrustManagerFactorySpi`.
+
+Following cc-t3's published request, r17h b8d74dd5 replaces r17g; the earlier
+r17c overlay was briefly restored for a guarded transition, but no r17c app run
+was made. `jar-ab-fingerprint-diff.json` proves that only the JAR changed across
+all 115 fingerprinted files. Auxio now shows its five-tab music main UI and
+logs successful SecureRandom. Noice still has the TrustManagerFactory CNFE.
+Both are handed to cc-t3 with exact log paths. TLS39c and gapfilld1a load, but
+TLS reports a failed native handshake self-test and a dormant socket factory;
+this does not establish working HTTPS.
+
+Screenshots and unedited master `facts.txt` are in `evidence/`. Focus parsing
+remains unconfirmed, independent of screenshot review. The five-app predictions
+were partly correct: NetGuard's ABI wall and Auxio's VT wall are removed; Java
+provider loading and JNA's ABI lookup remain separate walls. This is a 5cd
+native deployment result, not a claim that all apps or all three boards work.
+
+Deployer frozen handoff: `/Users/zhaoyue/orca/workspaces/westlake-v3c-deployer-5fa85f77/`.
+The candidate package bytes remain unchanged. Use this revision for other boards
+only after their locks are assigned. No 5ea/61b write was performed here.
+
+### r17h control regression
+
+Final screenshot review found ZigZag white under r17h despite a live child;
+HelloWorld remained normal. The previous r17g run of the same native package
+showed ZigZag's menu. Therefore r17h is not accepted as a unified Java layer.
+The failure was handed to cc-t3; the additional relayout change is a candidate
+cause, not established here. The original r17c was restored and Auxio/HW/ZigZag
+are checked again. Auxio again shows its five-tab music UI. Native package bytes did not change in this isolation.
+
+### Final state and handoff
+
+5cd remains on native package 668e4f7c plus its original r17c 2b201bda.
+After restoration, HelloWorld, ZigZag menu and Auxio five-tab UI all appear in
+actual t20 screenshots. Final SHA readback validates every declared live path,
+with the external JAR explicitly substituted. The board lock is released after
+verification. No other board was changed. Adopt this native package independently
+of the pending unified Java choice; r17g and r17h are not regression-free here.
+
+All screenshots referenced here are committed; raw full logs stay in the local
+runs directories and selected failure lines are retained under evidence/. Raw
+maps/process outputs preserve their original trailing whitespace.

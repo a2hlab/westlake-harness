@@ -35,7 +35,11 @@
   "jar": {
     "before": "2b201bda4655fb36498d87b64c0389249b96e04a74f3e42567e5633f2a27bae1",
     "tested": "a35a782e0ad255e25b4dbb9f0d84baa3c95a9730bc8e80120163735e21ba10f2",
-    "impact_run": "in_progress"
+    "impact_run": "complete",
+    "current": "2b201bda4655fb36498d87b64c0389249b96e04a74f3e42567e5633f2a27bae1",
+    "ab_test": "Auxio recovered after r17g to r17h; Noice TrustManagerFactory remains",
+    "native_fingerprint_changes": [],
+    "r17c_regression_test": "complete; HW, ZigZag and Auxio lit"
   },
   "tests": {
     "upgrade": {
@@ -63,5 +67,63 @@
     "reviewer": "cx-t0; outer pending"
   },
   "initial_controls_failure": "missing explicit input root; before launch; rerun retained",
-  "r2": "device deployment gates verified; rollout acceptance pending app/JAR isolation"
+  "r2": "5cd native deployment and selected controls verified; outer image acceptance pending; TLS/Noice/OONI/Anki entry unresolved; 5ea/61b not deployed",
+  "impact_r17g": {
+    "facts": "RUNTIME fingerprint=463ba6e43317 files=115 (runtime-fingerprint.txt; compare before blaming the JAR across boards)\nanki                 shots 2/2  alive t5=yes t20=yes  child_hilog=11787  foreground_unconfirmed\nfd-auxio             shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed\nfd-netguard          shots 2/2  alive t5=yes t20=yes  child_hilog=13051  foreground_unconfirmed\nfd-noice             shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed\nooniprobe            shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed\nTOTAL keys=5 screenshots_captured=10/10 alive_t5=2 alive_t20=2\n",
+    "visual": {
+      "fd-netguard": "main UI",
+      "anki": "LeakCanary UI; wrong launcher; not Anki validation",
+      "fd-auxio": "desktop; SecureRandom SPI boot loader CNFE",
+      "fd-noice": "desktop; TrustManagerFactory SPI boot loader CNFE",
+      "ooniprobe": "desktop; JNA libjnidispatch __errno relocation failure"
+    },
+    "prediction": {
+      "fd-netguard": "hit",
+      "anki": "unknown: incorrect entry",
+      "fd-auxio": "VT wall removed, lighting missed due Java regression",
+      "fd-noice": "JNI libraries load, earlier Java provider wall discovered",
+      "ooniprobe": "old ANL wall absent, new JNA ABI wall"
+    }
+  },
+  "lifecycle": {
+    "failed": 1,
+    "passed": 5,
+    "pending_review": 1,
+    "skipped": 0,
+    "total": 7,
+    "uncertain": 0
+  },
+  "deployer_commit": "5fa85f77",
+  "r17h_ab": {
+    "facts": "RUNTIME fingerprint=70f921935799 files=115 (runtime-fingerprint.txt; compare before blaming the JAR across boards)\nfd-auxio             shots 2/2  alive t5=yes t20=yes  child_hilog=40931  foreground_unconfirmed\nfd-noice             shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed\nTOTAL keys=2 screenshots_captured=4/4 alive_t5=1 alive_t20=1\n",
+    "visual": {
+      "fd-auxio": "music main UI with five tabs and source button",
+      "fd-noice": "desktop"
+    },
+    "tls": "library loads; handshake self-test not passed; socket factory dormant"
+  },
+  "r17h_controls": {
+    "facts": "RUNTIME fingerprint=70f921935799 files=115 (runtime-fingerprint.txt; compare before blaming the JAR across boards)\nhelloworld           shots 2/2  alive t5=yes t20=yes  child_hilog=5723  foreground_unconfirmed\nzigzag               shots 2/2  alive t5=yes t20=yes  child_hilog=13262  foreground_unconfirmed\nTOTAL keys=2 screenshots_captured=4/4 alive_t5=2 alive_t20=2\n",
+    "visual": {
+      "helloworld": "lit",
+      "zigzag": "white screen despite alive process"
+    },
+    "decision": "reject r17h for unified rollout; restore original r17c and test"
+  },
+  "r17c_auxio": {
+    "facts": "RUNTIME fingerprint=69e174c86eaa files=115 (runtime-fingerprint.txt; compare before blaming the JAR across boards)\nfd-auxio             shots 2/2  alive t5=yes t20=yes  child_hilog=41017  foreground_unconfirmed\nTOTAL keys=1 screenshots_captured=2/2 alive_t5=1 alive_t20=1\n",
+    "visual": "five-tab music UI"
+  },
+  "r17c_controls": {
+    "facts": "RUNTIME fingerprint=69e174c86eaa files=115 (runtime-fingerprint.txt; compare before blaming the JAR across boards)\nhelloworld           shots 2/2  alive t5=yes t20=yes  child_hilog=5585  foreground_unconfirmed\nzigzag               shots 2/2  alive t5=yes t20=yes  child_hilog=13100  foreground_unconfirmed\nTOTAL keys=2 screenshots_captured=4/4 alive_t5=2 alive_t20=2\n",
+    "visual": {
+      "helloworld": "lit",
+      "zigzag": "menu/TAP TO PLAY"
+    }
+  },
+  "final_selected_state": {
+    "native_package_sha256": "668e4f7c74bfe635c57ca7133e1373acb0c675959d5953a20708e70293d27107",
+    "jar": "2b201bda4655fb36498d87b64c0389249b96e04a74f3e42567e5633f2a27bae1",
+    "readback": "final-readback.json"
+  }
 }
