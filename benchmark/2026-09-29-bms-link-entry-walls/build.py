@@ -108,6 +108,23 @@ for p in tls_kept:
     dest = classes / p.relative_to(tls_classes)
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(p, dest)
+# r17l (#AndroidKeyStore): SoftwareAndroidKeyStore compiles against a compile-only stub for
+# com.android.internal.org.bouncycastle.x509.X509V3CertificateGenerator (absent from android.jar,
+# present in the runtime BCP); only adapter.core.SoftwareAndroidKeyStore* enter the dex -- the stub is
+# dropped, so the real BCP class resolves at runtime. Same shape as the OnlineConnectivityManager route.
+ks_stub = REPORT / 'keystore-deps/com/android/internal/org/bouncycastle/x509/X509V3CertificateGenerator.java'
+ks_classes = BUILD / 'keystore-classes'; ks_classes.mkdir()
+# --release 8 (JDK bootclasspath) not -bootclasspath android.jar: SoftwareAndroidKeyStore uses
+# lambdas/method-refs, and android.jar's LambdaMetafactory is a stub without metafactory(); the JDK
+# rt.jar has it. android.security.keystore.* + the X509 stub resolve from -cp.
+run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', ks_classes, '-nowarn',
+     src / 'SoftwareAndroidKeyStore.java', ks_stub])
+ks_kept = sorted((ks_classes / 'adapter' / 'core').glob('SoftwareAndroidKeyStore*.class'))
+assert ks_kept, 'no SoftwareAndroidKeyStore classes compiled'
+for p in ks_kept:
+    dest = classes / 'adapter/core' / p.name
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(p, dest)
 run(['java', '-cp', INPUT / 'd8.jar', 'com.android.tools.r8.D8', '--release', '--min-api', '22',
      '--lib', INPUT / 'android.jar', '--output', dex, *classes.rglob('*.class')])
 with zipfile.ZipFile(BASE_JAR) as z:
