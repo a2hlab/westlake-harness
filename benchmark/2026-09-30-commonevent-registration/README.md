@@ -65,3 +65,31 @@ IPC or callback delivery; preserve callback-initialization/service errors too.
 No board writes in this preparation. 61b remains held by the outer full sweep.
 R2: host build/ABI checks verified, device effect unverified. B8 lifecycle six
 Skip (selectors match zero tests), not pass.
+
+## 61b device result, 2026-09-30
+
+CommonEvent binding and backend calls are now **verified**: Gallery and Etar
+log `Subscribe successful`; VLC logs `Publish successful`. ZigZag also makes
+two successful subscriptions. This does not prove callback delivery.
+Gallery/VLC next hit `ohos.permission.START_ABILITIES_FROM_BACKGROUND:
+PERMISSION_DENIED`; Etar reaches a `PowerExemptionManager.isAllowListed` NPE.
+
+The runtime swap and subsequent gapfill addition each passed the deployer SHA,
+child maps, single-ART and retained bridge gates. The r17b overlay was removed
+to expose package r8b only during these checks, then restored to SHA 8636782c.
+Gapfill is declared and present, but r17b has no load point: **activation is
+unverified**, and no app improvement is attributed to it. Provider dlopen is
+a fallback; the next Java revision owns runtime classloader namespace setup.
+
+All t5/t20 pairs have matching SHA within their app. Inspected images show
+Auxio, HelloWorld and ZigZag UI; Gallery, VLC and Termux white content; Etar
+back at OH desktop. Outer review is pending. Facts and original records are
+in `evidence-61b/`; every record keeps `foreground_unconfirmed` honestly.
+The previous sweep had no RUNTIME line: `device-61b/before-facts.txt` is the
+unaltered original, and the separate pre-write readback fingerprint was
+5bdfa62a41fa / 109 files. The two new runs agree on 22d3245795f9 / 110 files.
+
+61b remains on CE + gapfill + r17b; its lock was released after testing.
+`device-lifecycle.json`: all six B8 scenarios Skip (no selected tests),
+not Pass. Runtime verification is partially complete, with callback delivery
+and gapfill execution explicitly outstanding.

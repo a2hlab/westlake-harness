@@ -436,3 +436,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 cx-t0 (#92/#93): 5ea 初始线程的 pthread_getattr_np 只见135168 B（默认已8 MiB，setattr_default无效）；照抄Westlake新pthread后ART见8390896 B，Wikipedia越过栈崩溃，HW/ZigZag t20回归通过；Wikipedia仍受tagsoup/TLS墙。新增.so不能绕部署清单塞rw payload，须 files+live_hashes 声明并带独立挂载回滚；System.load 的null/boot loader仍受4件静态清单限制，新增TLS/HTML应由runtime PathClassLoader子进程发起并实测JNI_OnLoad注册结果。证据 benchmark/2026-09-30-child-stack-default/ 与 2026-09-30-tls-native-handoff/。
 
 - 2026-09-30 cx-t0 (#91,静态已证/板验待做): 84695d62 已导出 OHCommonEventClient 的全部 subscribe/publish/finish/sticky 后端；5 JNI可独立注册进c835 runtime，无需重建桥。候选9e14bf20保持22件NEEDED顺序、VT/SQLite，新增6个UND全由原桥供给；两次编译同字节。证据 benchmark/2026-09-30-commonevent-registration/。
+
+- 2026-09-30 #91：保留 84695d62 bridge 后，runtime 单独注册 5 个 CommonEvent JNI 即可真实 Subscribe/Publish successful（61b Gallery/Etar/VLC）；随后 Gallery/VLC 卡 OH START_ABILITIES_FROM_BACKGROUND，Etar 卡 PowerExemptionManager NPE。CE 成功不等于首屏点亮；gapfill 文件部署但 r17b 无加载点也不算生效。证据 benchmark/2026-09-30-commonevent-registration/evidence-61b/。
