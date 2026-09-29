@@ -51,8 +51,11 @@ class FakeBoard:
             return 0,digest+'  file'
         if command.startswith('stat '):return 0,f'{len(JPEG)} 1800000000'
         if command.startswith('ps '):
-            return 0,'PID PPID UID NAME\n10 1 0 appspawn-x\n'+('42 10 20010055 appspawn-x\n' if self.clicked else '')
-        if command.startswith('hidumper '):return 0,'WindowName DisplayId Pid WinId Type Mode Flag ZOrd\napp 0 42 66 1 1 0 100\nFocus window: 66\n'
+            return 0,'PID PPID UID NAME\n10 1 0 appspawn-x\n1997 1 1003 com.ohos.sceneboard\n'+('42 10 20010055 appspawn-x\n' if self.clicked else '')
+        if command.startswith('hidumper '):
+            return 0,('WindowName DisplayId Pid WinId Type Mode Flag ZOrd\n'
+                'scene 0 1997 7 1 1 0 100\napp 0 42 66 1 1 0 100\nFocus window: %s\n'
+                % ('66' if self.clicked else '7'))
         if command=='uitest uiInput click 200 300':self.clicked=True
         if command.startswith('aa force-stop '):self.clicked=False
         if command.startswith('param get'):return 0,'OpenHarmony-6.1.0.31'
