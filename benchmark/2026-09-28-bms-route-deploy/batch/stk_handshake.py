@@ -20,7 +20,7 @@ import bms_batch as b
 
 SERIAL = '61b0657200000000000000000324012c'
 LANE = 'oc-t4'
-RUN = 'b4-60-stk-handshake-61b-20260929T1445'
+RUN = 'b4-60-stk-handshake-61b-20260929T1605'
 out = Path.home() / 'a2hlab/board' / RUN
 out.mkdir(parents=True, exist_ok=False)
 board = b.Board(SERIAL, '/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh',
@@ -98,13 +98,28 @@ def snap(tag):
     (d / ('wchan-%s.txt' % tag)).write_text(wchan)
     return {'pids': sorted(pids), 'probed_pid': pid}
 
+# extended window (>=50s) to catch the ~30s-after-launch 'Add Ability Stage
+# TimeOut' receipts from #61; periodic appends defeat buffer rollover
+HL = remote + '/stk-hilog-appended.txt'
+board.shell('rm -f ' + HL + '; true')
+def drain():
+    # r8 lesson: screen DIMmed at t+23 (PowerState TIMEOUT) and hilog flow
+    # stopped — wake before every drain so the ~30s AppMS receipt is not
+    # frozen out by suspend
+    board.shell('power-shell wakeup >/dev/null 2>&1; true')
+    board.shell('hilog -x >> ' + HL + ' 2>&1; true')
 time.sleep(max(0, 8.0 - (time.time() - t0)))
-rec['t8'] = snap('t8')
-time.sleep(max(0, 30.0 - (time.time() - t0)))
-rec['t30'] = snap('t30')
-time.sleep(max(0, 35.0 - (time.time() - t0)))
-board.shell('hilog -x > ' + remote + '/stk-full-hilog.txt 2>&1; true')
-board.receive(remote + '/stk-full-hilog.txt', d / 'stk-full-hilog.txt')
+rec['t8'] = snap('t8'); drain()
+time.sleep(max(0, 22.0 - (time.time() - t0)))
+drain()
+time.sleep(max(0, 36.0 - (time.time() - t0)))
+rec['t30'] = snap('t30'); drain()
+time.sleep(max(0, 52.0 - (time.time() - t0)))
+drain()
+time.sleep(max(0, 65.0 - (time.time() - t0)))
+drain()
+board.shell('power-shell wakeup >/dev/null 2>&1; hilog -x >> ' + HL + ' 2>&1; true')  # final flush
+board.receive(HL, d / 'stk-full-hilog.txt')
 
 # offline-ish scan of the captured hilog for this pid
 pid = rec['t30'].get('probed_pid') or rec['t8'].get('probed_pid')
