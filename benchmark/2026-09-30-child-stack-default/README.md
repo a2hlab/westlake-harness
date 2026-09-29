@@ -56,4 +56,31 @@ no writes. ANL precedes the big-stack provider. Actual route-a paths are the
 experimental targets; existing Android alias binds remain old until v3c.
 The unified package must make both aliases refer to the same bytes.
 
-Device validation, facts and screenshot review are pending. R2: **partially**.
+## Device result (cc-wiki, 5ea)
+
+With provider 0509fe23, ANL a9c9187d and Java v4 2fbfd8bc:
+`[CM-BIGSTACK] launcher DetachCurrentThread before join rc=0` and
+`[CM-BIGSTACK] ActivityThread on dedicated pthread stack=8390896 bytes`.
+Wikipedia no longer hits the small-stack SIGSEGV. At t5 it shows its own
+Wikipedia home; t20 is the OH desktop. The next main-thread failure is
+`NoSuchMethodError: No virtual method setProperty(Ljava/lang/String;Ljava/lang/Object;)V
+in class Lorg/ccil/cowan/tagsoup/Parser;`. Background networking still throws
+`UnsupportedOperationException: TLS shim: no real networking (construct-only SSLContext on OH)`.
+This fixes the stack wall, **not stable Wikipedia or TLS**.
+
+Deployer HelloWorld SHA/maps checks passed: one ART, route-a openjdkjvm,
+846 bridge. The later controls run shows HelloWorld's lifecycle/button UI
+and ZigZag's TAP TO PLAY/BEST SCORE menu at t20. Outer review accepted them
+in PROGRESS(92), 2026-09-30 01:02:43. Screens and process evidence are under
+`evidence/`; facts.txt is copied verbatim:
+
+```text
+wikipedia            shots 2/2  alive t5=yes t20=no  child_hilog=54415  foreground_unconfirmed
+TOTAL keys=1 screenshots_captured=2/2 alive_t5=1 alive_t20=0
+helloworld           shots 2/2  alive t5=yes t20=yes  child_hilog=5238  foreground_unconfirmed
+zigzag               shots 2/2  alive t5=yes t20=yes  child_hilog=12475  foreground_unconfirmed
+TOTAL keys=2 screenshots_captured=4/4 alive_t5=2 alive_t20=2
+```
+
+R2: stack and control regression **verified**; full Wikipedia B11 acceptance
+**partially**, with tagsoup and TLS still pending. Lifecycle Skip is not pass.
