@@ -37,14 +37,26 @@ public final class ManifestJsonFallback {
     /** current if the native parse already produced JSON, else the Java-parsed JSON. */
     public static String orFallback(String current, String bundleName) {
         if (current != null && !current.isEmpty()) return current;
+        return parseManifestJson(bundleName);
+    }
+
+    /**
+     * Drop-in replacement for the native {@code nativeParseManifestJson} at EVERY call site (#73):
+     * both {@code ensureBindApplication} and the {@code [WL-THEME-SYNC]} appTheme path call it, and
+     * the bridge on 6cb40cd6 (and the v3a 846 bridge) exports neither, so the native call throws
+     * {@code UnsatisfiedLinkError} at both. This has the same {@code (String)->String} signature and
+     * never throws (a broken parse returns ""), so substituting it for the native call fixes all
+     * sites uniformly. The JSON is isomorphic to the native producer (apk_manifest_jni.cpp schema).
+     */
+    public static String parseManifestJson(String bundleName) {
         try {
             String json = manifestJson(bundleName);
-            System.err.println("[B8-MANIFEST] java fallback produced len=" + json.length()
+            System.err.println("[B8-MANIFEST] java parse produced len=" + json.length()
                     + " bundle=" + bundleName);
             return json;
         } catch (Throwable t) {
-            System.err.println("[B8-MANIFEST] java fallback failed bundle=" + bundleName + ": " + t);
-            return current == null ? "" : current;
+            System.err.println("[B8-MANIFEST] java parse failed bundle=" + bundleName + ": " + t);
+            return "";
         }
     }
 
@@ -156,6 +168,69 @@ public final class ManifestJsonFallback {
     private static String resolveProcess(String pkg, String name) {
         if (name == null || name.isEmpty()) return "";
         return name.startsWith(":") ? pkg + name : name;
+    }
+
+    /**
+     * B8 (#70) wall 1: give a launching activity its own manifest theme when OH's abilityJson left
+     * ActivityInfo.theme == 0. ScheduleLaunchAbility (buildActivityInfoFromAbility) runs BEFORE
+     * bindApplication enriches appInfo.theme, so the theme cannot come from appInfo here; it must be
+     * read from the APK manifest. Without this, activities that inherit the application theme
+     * (opencamera) or declare their own (minetest, catima) reach onCreate with theme 0 and AppCompat
+     * throws "You need to use a Theme.AppCompat theme". Called from buildActivityInfoFromAbility.
+     */
+    public static void resolveActivityTheme(android.content.pm.ActivityInfo ai) {
+        if (ai == null || ai.theme != 0 || ai.name == null || ai.packageName == null) return;
+        try {
+            int theme = activityTheme(ai.packageName, ai.name);
+            if (theme != 0) {
+                ai.theme = theme;
+                System.err.println("[B8-ATHEME] " + ai.name + " theme=0x" + Integer.toHexString(theme));
+            }
+        } catch (Throwable t) {
+            System.err.println("[B8-ATHEME] activity theme lookup failed for " + ai.name + ": " + t);
+        }
+    }
+
+    /** The activity's own {@code android:theme} resource id, else the application theme, else 0.
+     *  Per-activity theme is read the same way 00.Workspace ManifestComponentProjection reads a
+     *  component's {@code android.R.attr.theme}; the application theme is the fallback. */
+    static int activityTheme(String bundleName, String activityClassName) throws Exception {
+        if (bundleName == null || activityClassName == null) return 0;
+        String apkPath = resolveApkPath(bundleName);
+        if (apkPath == null) return 0;
+        AssetManager assets = AssetManager.class.getDeclaredConstructor().newInstance();
+        try {
+            int cookie = (Integer) AssetManager.class.getMethod("addAssetPath", String.class)
+                    .invoke(assets, apkPath);
+            if (cookie == 0) return 0;
+            int appTheme = 0;
+            boolean inApplication = false;
+            try (XmlResourceParser xml = assets.openXmlResourceParser(cookie, "AndroidManifest.xml")) {
+                for (int event = xml.next(); event != XmlResourceParser.END_DOCUMENT; event = xml.next()) {
+                    if (event == XmlResourceParser.END_TAG && xml.getDepth() == 2
+                            && "application".equals(xml.getName())) {
+                        inApplication = false;
+                        continue;
+                    }
+                    if (event != XmlResourceParser.START_TAG) continue;
+                    String tag = xml.getName();
+                    int depth = xml.getDepth();
+                    if (depth == 2 && "application".equals(tag)) {
+                        inApplication = true;
+                        appTheme = resAttr(xml, android.R.attr.theme, 0);
+                    } else if (inApplication && depth == 3
+                            && ("activity".equals(tag) || "activity-alias".equals(tag))) {
+                        if (activityClassName.equals(resolveClass(bundleName, strAttr(xml, android.R.attr.name, "")))) {
+                            int t = resAttr(xml, android.R.attr.theme, 0);
+                            return t != 0 ? t : appTheme;
+                        }
+                    }
+                }
+            }
+            return appTheme;   // activity not found: the application theme still beats 0
+        } finally {
+            assets.close();
+        }
     }
 
     // Binary-manifest attribute reads by android.R.attr resource id (AOSP PackageParser idiom):

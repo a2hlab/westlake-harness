@@ -84,6 +84,18 @@ public final class LocalServiceBinders {
                 case "locale":
                     binder = proxy(name, "android.app.ILocaleManager", LocalServiceBinders::locale);
                     break;
+                case "notification":
+                    binder = proxy(name, "android.app.INotificationManager", LocalServiceBinders::notification);
+                    break;
+                case "jobscheduler":
+                    binder = proxy(name, "android.app.job.IJobScheduler", LocalServiceBinders::jobScheduler);
+                    break;
+                case "connectivity":
+                    binder = proxy(name, "android.net.IConnectivityManager", LocalServiceBinders::stub);
+                    break;
+                case "location":
+                    binder = proxy(name, "android.location.ILocationManager", LocalServiceBinders::stub);
+                    break;
                 // BatteryManager's fetcher requires two services and throws if either is missing,
                 // so registering one of them changes nothing.
                 case "batterystats":
@@ -182,6 +194,74 @@ public final class LocalServiceBinders {
                 // getOverrideLocaleConfig answers null -- no override was ever recorded.
                 return DEFAULT;
         }
+    }
+
+    /**
+     * The notification service. fd-etar's AllInOneActivity.onCreate calls
+     * NotificationManager.createNotificationChannelGroups during startup and does not null-check the
+     * binder, so the missing "notification" service took the activity down with an NPE.
+     *
+     * Answers as the verified route-A adapter stub does (original BMS
+     * 00.Workspace .../adapter/core/svcstub/NotificationManagerStub.java, a 625-line
+     * INotificationManager.Stub subclass): every channel/group create and enqueue is a no-op, and
+     * the two truthy answers apps branch on are hardcoded -- areNotificationsEnabled -> true and
+     * getPackageImportance -> IMPORTANCE_DEFAULT (3). Nothing here posts a notification; the crash
+     * clears the moment the binder is non-null and the void channel calls return.
+     */
+    private static Object notification(String method, Object[] args) {
+        switch (method) {
+            case "areNotificationsEnabled":
+                return Boolean.TRUE;
+            case "getPackageImportance":
+                return 3;   // NotificationManager.IMPORTANCE_DEFAULT
+            default:
+                // getNotificationChannels/Groups return a ParceledListSlice the caller unwraps with
+                // getList() (fd-etar) -- the generic default answers those with an empty slice.
+                // createNotificationChannel* / enqueue* / register* are accepted and dropped.
+                return DEFAULT;
+        }
+    }
+
+    private static Object emptyParceledListSlice() {
+        try {
+            Class<?> slice = Class.forName("android.content.pm.ParceledListSlice");
+            java.lang.reflect.Constructor<?> ctor = slice.getDeclaredConstructor(java.util.List.class);
+            ctor.setAccessible(true);
+            return ctor.newInstance(new java.util.ArrayList<>());
+        } catch (Throwable t) {
+            return DEFAULT;
+        }
+    }
+
+    /**
+     * JobScheduler (#70/#72 wall). WorkManager's SystemJobScheduler and apps that schedule jobs call
+     * getSystemService("jobscheduler") and NPE on a null binder. Neither Westlake nor the original
+     * BMS ship a jobscheduler stub (#72 wall-ranking: "both missing"), so this is a minimal one:
+     * scheduling reports success but nothing is ever run, and the pending-job list is empty.
+     */
+    private static Object jobScheduler(String method, Object[] args) {
+        switch (method) {
+            case "schedule":
+            case "enqueue":
+            case "scheduleAsPackage":
+                return 1;   // JobScheduler.RESULT_SUCCESS
+            default:
+                // getAllPendingJobs -> empty ParceledListSlice (generic default); getPendingJob ->
+                // null; cancel/cancelAll -> void. Nothing is ever run (no real implementation, #72).
+                return DEFAULT;
+        }
+    }
+
+    /**
+     * The generic AIDL stub (#70 revision): every method answers its return type's harmless
+     * non-null default (empty list/array/slice, false, 0, "", no-op) via defaultValue. Used for
+     * first-frame-irrelevant services that only need to not be null -- connectivity (Westlake's
+     * ConnectivityManagerAdapter reports real OH network state, needs OH network native; this reads
+     * "offline"), location (Westlake LocationManagerAdapter; this reads "location off"), and any
+     * other batch/long-tail service. defaultValue logs [B8-STUB] for opaque object returns.
+     */
+    private static Object stub(String method, Object[] args) {
+        return DEFAULT;
     }
 
     /**
@@ -343,20 +423,37 @@ public final class LocalServiceBinders {
             return java.lang.reflect.Array.newInstance(type.getComponentType(), 0);
         }
         // Collections likewise: an empty one is what a service with nothing to report returns, and
-        // a null List of audio devices or playback configurations throws in the caller's loop.
-        if (type == java.util.List.class) return new ArrayList<>();
+        // a null List of audio devices or notification channels throws in the caller's loop.
+        if (type == java.util.List.class || type == java.util.Collection.class
+                || type == java.util.ArrayList.class || type == java.lang.Iterable.class) return new ArrayList<>();
         if (type == java.util.Map.class) return new HashMap<>();
         if (type == java.util.Set.class) return new HashSet<>();
-        if (type == null || !type.isPrimitive()) return null;
-        if (type == boolean.class) return Boolean.FALSE;
-        if (type == byte.class) return (byte) 0;
-        if (type == short.class) return (short) 0;
-        if (type == char.class) return (char) 0;
-        if (type == int.class) return 0;
-        if (type == long.class) return 0L;
-        if (type == float.class) return 0f;
-        if (type == double.class) return 0d;
-        return null;   // void
+        if (type != null && type.isPrimitive()) {
+            if (type == boolean.class) return Boolean.FALSE;
+            if (type == byte.class) return (byte) 0;
+            if (type == short.class) return (short) 0;
+            if (type == char.class) return (char) 0;
+            if (type == int.class) return 0;
+            if (type == long.class) return 0L;
+            if (type == float.class) return 0f;
+            if (type == double.class) return 0d;
+            return null;   // void.class
+        }
+        if (type == null) return null;   // void
+        // ParceledListSlice is the AIDL wrapper the caller immediately unwraps with getList(); a null
+        // one NPEs (fd-etar getNotificationChannels). Build an empty one reflectively.
+        if ("android.content.pm.ParceledListSlice".equals(type.getName())) {
+            Object slice = emptyParceledListSlice();
+            if (slice != DEFAULT) return slice;
+        }
+        // Strings stay null: callers null-check them, and "" changed a Unity splash-Dialog control
+        // flow. Opaque object returns (NetworkInfo, Location, JobInfo, ...) are null too; log the
+        // type once so the long tail of unstubbed returns is visible.
+        if (type != String.class && type != CharSequence.class
+                && sSeen.add("stub-null:" + type.getName())) {
+            System.err.println("[B8-STUB] default null for " + type.getName());
+        }
+        return null;
     }
 
     /** Reflective access to the five hidden framework members the Westlake source calls directly. */
