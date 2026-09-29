@@ -460,3 +460,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 next3仍拒签：全runtime+9类app原生件闭包407 ELF→292 OH名/5目录，补齐可见性后ZZ不再缺libwm，但libmain dlopen→DFX InitHandler→add_special_handler_at_last容量中止；HelloWorld maps单份DFX不代表Unity，重复实例须现场maps核，不能改信号检查掩盖。ANL LOCAL_NS_PREFERED与本地域新系统搜索路径的复用语义是下一步假设，尚未证根。见 benchmark/2026-09-30-v3c-next3-closure/。
 
 - 2026-09-30 cx-t0 next4: OH musl `add_special_handler_at_last`只检查槽3，已有即abort，不代表4槽都满；DFX `g_hasInit`只对同DSO实例幂等。musl namespace继承只走一跳，LOCAL_NS_PREFERED的app搜索根放OH目录可能复制系统库；修复须处理库所属域，不能只加大signal表。源码/负控见 benchmark/2026-09-30-v3c-next4-namespace/。
+
+- 2026-09-30 cx-t0 next4(5cd/r17m): 收窄39个OH直接入口并从default共享后本轮无DFX at_last abort，但ZZ进TuanjieMain后在vendor ANativeWindow_getFormat+60→Mali→OH EGL崩；HW/Auxio/NetGuard保UI，VLC补newAudioSessionId后推进到libvlc `__pthread_cleanup_push`缺符号。next4拒签回滚；早期maps单DFX/ART不等于崩溃时maps，窗口新根因未定。
