@@ -335,3 +335,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - #20 批量脚本已离线准备（未上板）：13 controls +43 blocked +10 tail=66 key；桌面图标精确 ID `AppIconCommonView_<package>.<activity>`，可有多页；WMS Focus window 必须关联本包 BMS UID 的 PID，仍不等于上屏；`x`/`noice` 身份由实际 app-input 核hash后补齐。见 `benchmark/2026-09-28-bms-route-deploy/batch/`。
 
 - **2026-09-29 B6 静态比对防混代 (#53)**: `task52/static` 的三 NEW 哈希与旧 provider 均非 #53 指定件;指定 R155 provider `977fb347` 的 HostServices +112/+120 要求全零、NEW `8d109259` 要求均非零且删除原 `WLNL_InstallSealedOpenV1` 安装调用;但原版 child 内嵌 provider SHA 为 `80c9aee0`(非派单 system 副本 `977fb347`),实际 sealed 基线须另核——恢复须核完整六 hash 与 host/child/provider 契约,不可把符号同名/去地址指令相等当运行等价;证据 `benchmark/2026-09-29-b6-static-diff/`(静态 verified、因果 unverified)。
+
+- **2026-09-29 #56 更正上条 #53 provider 基线**: 外环确认现役封存件为 `80c9aee0`，`977fb347` 的 provider 恢复建议作废；80c9 与 NEW 的 HostServicesInstall 93 条归一化指令一致、+112/+120 均须非零，sealed-open 安装是 installer→Constructors 时机迁移；R155 已含 startVm(false)/Typeface no-op/延后 adapter 初始化，须保留；三件按服务表、namespace/V1序列、VM、stdio 四组恢复，见 `benchmark/2026-09-29-b6-static-diff/RESTORE-PLAN.md`（静态 verified、源码建议 partially、运行因果 unverified）。

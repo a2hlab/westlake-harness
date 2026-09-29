@@ -1,6 +1,6 @@
 # All differing functions and supplemental linker blocks
 
-Provider rows compare the assigned system copy (old 977fb347), while old child embeds sealed-provider hash 80c9aee0; see provider-baseline-caveat.json before any provider rollback. Each row has a bounded static recommendation. `restore` means restore to reproduce R155, not a proven fix. `retain-*` differences are intentional or useful changes that are not proven harmless and should not be blindly reverted. `unchanged-code` records remain in each functions.json. Raw line references and a register-erased diff accompany every changed row.
+Provider rows now compare sealed R155 80c9aee0 against NEW 8d109259 (task56); the former 977fb347 provider interpretation is superseded. Each row has a bounded static recommendation. `restore` means restore to reproduce R155, not a proven fix. `retain-*` differences are intentional or useful changes that are not proven harmless and should not be blindly reverted. `unchanged-code` records remain in each functions.json. Raw line references and a register-erased diff accompany every changed row.
 
 ## host
 
@@ -412,10 +412,9 @@ Provider rows compare the assigned system copy (old 977fb347), while old child e
 | `VerifyBuildId` | modified | retain-hardening | [evidence/runtime-provider/functions/a8aec7a83b11727c.diff](evidence/runtime-provider/functions/a8aec7a83b11727c.diff) |
 | `WLAR_EnterAndroidAfterStockSpecialization` | modified | restore | [evidence/runtime-provider/functions/3228fee5dd0320f9.diff](evidence/runtime-provider/functions/3228fee5dd0320f9.diff) |
 | `WLAR_GetRuntimeIdentity` | modified | retain-generation | [evidence/runtime-provider/functions/13e1e8ffa5fa3a79.diff](evidence/runtime-provider/functions/13e1e8ffa5fa3a79.diff) |
-| `WLAR_HostServicesGetNamespaceCallbacks` | added | restore-with-protocol | [evidence/runtime-provider/functions/ade19426b5548e16.diff](evidence/runtime-provider/functions/ade19426b5548e16.diff) |
-| `WLAR_HostServicesInstall` | modified | resolve-baseline-first | [evidence/runtime-provider/functions/f9e41293f04b3d10.diff](evidence/runtime-provider/functions/f9e41293f04b3d10.diff) |
+| `WLAR_HostServicesGetNamespaceCallbacks` | modified | restore-with-protocol | [evidence/runtime-provider/functions/ade19426b5548e16.diff](evidence/runtime-provider/functions/ade19426b5548e16.diff) |
 | `WLAR_HostServicesIsInstalled` | removed | restore-with-protocol | [evidence/runtime-provider/functions/4846f53075b28962.diff](evidence/runtime-provider/functions/4846f53075b28962.diff) |
-| `WLAR_InstallHostRuntimeServices` | modified | resolve-baseline-first | [evidence/runtime-provider/functions/3e1af20b69614705.diff](evidence/runtime-provider/functions/3e1af20b69614705.diff) |
+| `WLAR_InstallHostRuntimeServices` | modified | restore-with-protocol | [evidence/runtime-provider/functions/3e1af20b69614705.diff](evidence/runtime-provider/functions/3e1af20b69614705.diff) |
 | `WLAR_LoaderPhaseFail` | removed | restore-with-protocol | [evidence/runtime-provider/functions/54cd42f867e35941.diff](evidence/runtime-provider/functions/54cd42f867e35941.diff) |
 | `WLAR_PrepareA02PrerequisiteBundleV2` | added | restore | [evidence/runtime-provider/functions/9772286fc273ebf2.diff](evidence/runtime-provider/functions/9772286fc273ebf2.diff) |
 | `WLEI_VerifyFileHex` | modified | retain-hardening | [evidence/runtime-provider/functions/9d3ec6012099fd07.diff](evidence/runtime-provider/functions/9d3ec6012099fd07.diff) |
@@ -445,9 +444,11 @@ Provider rows compare the assigned system copy (old 977fb347), while old child e
 | `_ZN12_GLOBAL__N_120LoaderAdmissionValidEPK16WlscplManifestV2PK18WlscplLoadResultV2` | added | restore-with-protocol | [evidence/runtime-provider/functions/f9400d4d2b8706ac.diff](evidence/runtime-provider/functions/f9400d4d2b8706ac.diff) |
 | `_ZN12_GLOBAL__N_120RevokeChildAdmissionEPv` | removed | restore-with-protocol | [evidence/runtime-provider/functions/58c82053b963941e.diff](evidence/runtime-provider/functions/58c82053b963941e.diff) |
 | `_ZN12_GLOBAL__N_121ConstructChildRuntimeEPv` | removed | restore | [evidence/runtime-provider/functions/393b8f6894fd9fae.diff](evidence/runtime-provider/functions/393b8f6894fd9fae.diff) |
+| `_ZN12_GLOBAL__N_122OpenNamespaceFromStockEP12Dl_namespacePKci` | removed | restore-with-protocol | [evidence/runtime-provider/functions/f5889a63798e63ad.diff](evidence/runtime-provider/functions/f5889a63798e63ad.diff) |
 | `_ZN12_GLOBAL__N_123VerifyLoaderThreadReadyEPv` | removed | restore-with-protocol | [evidence/runtime-provider/functions/9971afcbd73b8c22.diff](evidence/runtime-provider/functions/9971afcbd73b8c22.diff) |
 | `_ZN12_GLOBAL__N_124InvalidateChildAdmissionEPv` | removed | restore-with-protocol | [evidence/runtime-provider/functions/6b4b636d7da23943.diff](evidence/runtime-provider/functions/6b4b636d7da23943.diff) |
 | `_ZN12_GLOBAL__N_12VmEPv` | added | restore-with-protocol | [evidence/runtime-provider/functions/35af11dc6fb75994.diff](evidence/runtime-provider/functions/35af11dc6fb75994.diff) |
+| `_ZN12_GLOBAL__N_135CreateConfiguredNamespacesFromStockEP12Dl_namespacePKcS3_S3_S3_S3_PK13WlpbHostOpsV1PPvS1_S3_S3_S3_` | removed | restore-with-protocol | [evidence/runtime-provider/functions/321c56dab4437bec.diff](evidence/runtime-provider/functions/321c56dab4437bec.diff) |
 | `_ZN12_GLOBAL__N_13JniEPv` | added | restore-with-protocol | [evidence/runtime-provider/functions/c3ea0174d82cf0f6.diff](evidence/runtime-provider/functions/c3ea0174d82cf0f6.diff) |
 | `_ZN12_GLOBAL__N_13NowEPv` | added | restore-with-protocol | [evidence/runtime-provider/functions/8f7efd3bbaaa2153.diff](evidence/runtime-provider/functions/8f7efd3bbaaa2153.diff) |
 | `_ZN12_GLOBAL__N_13TidEPv` | added | restore-with-protocol | [evidence/runtime-provider/functions/0fa7e7a8caac1bd5.diff](evidence/runtime-provider/functions/0fa7e7a8caac1bd5.diff) |
@@ -465,14 +466,9 @@ Provider rows compare the assigned system copy (old 977fb347), while old child e
 | `_ZN19wlar_child_sequenceL4FailEPNS_6LedgerERKNS_10OperationsEjiiPKhP33westlake_runtime_stage_receipt_v2` | added | restore-with-protocol | [evidence/runtime-provider/functions/88e0bea3b82efcd1.diff](evidence/runtime-provider/functions/88e0bea3b82efcd1.diff) |
 | `_ZN19wlar_child_sequenceL4HashERKNS_10OperationsEPKvmPh` | added | restore-with-protocol | [evidence/runtime-provider/functions/923cf466e6181bba.diff](evidence/runtime-provider/functions/923cf466e6181bba.diff) |
 | `_ZN8westlake3jni18AttachStatusStringENS0_12AttachStatusE` | modified | harmless-layout | [evidence/runtime-provider/functions/91d3a1467349fdf4.diff](evidence/runtime-provider/functions/91d3a1467349fdf4.diff) |
-| `_ZN9appspawnx12_GLOBAL__N_118TypefaceWarmUpNoOpEP7_JNIEnvP7_jclassP8_jstring` | added | restore-with-caller | [evidence/runtime-provider/functions/3ebe4b8fef3032f4.diff](evidence/runtime-provider/functions/3ebe4b8fef3032f4.diff) |
-| `_ZN9appspawnx16AppSpawnXRuntime18resolveZygoteHooksEP7_JNIEnv` | removed | restore-with-protocol | [evidence/runtime-provider/functions/9fa455caf096d6e5.diff](evidence/runtime-provider/functions/9fa455caf096d6e5.diff) |
-| `_ZN9appspawnx16AppSpawnXRuntime19zygotePostForkChildEv` | removed | restore-with-protocol | [evidence/runtime-provider/functions/2a05dd132babe266.diff](evidence/runtime-provider/functions/2a05dd132babe266.diff) |
-| `_ZN9appspawnx16AppSpawnXRuntime20zygotePostForkCommonEv` | removed | restore-with-protocol | [evidence/runtime-provider/functions/85cb79f1de11c8bf.diff](evidence/runtime-provider/functions/85cb79f1de11c8bf.diff) |
 | `_ZN9appspawnx16AppSpawnXRuntime7preloadEv` | modified | restore | [evidence/runtime-provider/functions/6d5a1aaa444cdd18.diff](evidence/runtime-provider/functions/6d5a1aaa444cdd18.diff) |
-| `_ZN9appspawnx16AppSpawnXRuntime7startVmEb` | added | restore | [evidence/runtime-provider/functions/5377bb33fa19d9f6.diff](evidence/runtime-provider/functions/5377bb33fa19d9f6.diff) |
-| `_ZN9appspawnx16AppSpawnXRuntime7startVmEv` | removed | restore-with-protocol | [evidence/runtime-provider/functions/ccfa28bf431c2c09.diff](evidence/runtime-provider/functions/ccfa28bf431c2c09.diff) |
-| `_ZN9appspawnx9ChildMain27runAfterStockSpecializationERKNS_8SpawnMsgEPNS_16AppSpawnXRuntimeE` | modified | restore | [evidence/runtime-provider/functions/f8463b3e55a8975d.diff](evidence/runtime-provider/functions/f8463b3e55a8975d.diff) |
+| `_ZN9appspawnx16AppSpawnXRuntime7startVmEb` | modified | restore | [evidence/runtime-provider/functions/5377bb33fa19d9f6.diff](evidence/runtime-provider/functions/5377bb33fa19d9f6.diff) |
+| `_ZN9appspawnx9ChildMain27runAfterStockSpecializationERKNS_8SpawnMsgEPNS_16AppSpawnXRuntimeE` | modified | harmless-constant-relocation | [evidence/runtime-provider/functions/f8463b3e55a8975d.diff](evidence/runtime-provider/functions/f8463b3e55a8975d.diff) |
 | `_ZN9appspawnxL23logArtAbortAndTerminateEv` | added | restore-with-protocol | [evidence/runtime-provider/functions/badba79270d8828f.diff](evidence/runtime-provider/functions/badba79270d8828f.diff) |
 | `_ZNKSt3__h6vectorIiNS_9allocatorIiEEE20__throw_length_errorB6v15004Ev` | removed | harmless-codegen | [evidence/runtime-provider/functions/3db580e26ae8d07b.diff](evidence/runtime-provider/functions/3db580e26ae8d07b.diff) |
 | `__emutls_unregister_key` | modified | restore-hardening | [evidence/runtime-provider/functions/c6a96413af3f8e89.diff](evidence/runtime-provider/functions/c6a96413af3f8e89.diff) |
@@ -1504,7 +1500,7 @@ Evidence: `evidence/child/new/disassembly.txt:9854`.
 
 Verified-open/ELF identity family: NEW accepts 16/20-byte build IDs, retains an open descriptor, checks final device/inode/size, and removes the old fixed-length zero helper. Runtime admission changes, but not a justified R155 rollback target. Keep full expected-hash verification; test any compatibility failure separately.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:9018`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:8790`.
 
 ### runtime-provider `OpenVerifiedFileHex`
 
@@ -1516,49 +1512,43 @@ Evidence: `evidence/runtime-provider/new/disassembly.txt:10177`.
 
 Verified-open/ELF identity family: NEW accepts 16/20-byte build IDs, retains an open descriptor, checks final device/inode/size, and removes the old fixed-length zero helper. Runtime admission changes, but not a justified R155 rollback target. Keep full expected-hash verification; test any compatibility failure separately.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:8700`, `evidence/runtime-provider/new/disassembly.txt:10554`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:8472`, `evidence/runtime-provider/new/disassembly.txt:10554`.
 
 ### runtime-provider `WLAR_EnterAndroidAfterStockSpecialization`
 
 R155 drives constructor/VM/JNI/main sequence directly. NEW validates a previously prepared request and A02 bundle, compares persisted identity/receipt data, then commits A02 handoff. Same exported name now has different preconditions and sequencing.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:6219`, `evidence/runtime-provider/new/disassembly.txt:7545`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:5890`, `evidence/runtime-provider/new/disassembly.txt:7545`.
 
 ### runtime-provider `WLAR_GetRuntimeIdentity`
 
 Same output layout and null check; NEW vector-copies the 32-byte digest and emits a different generation token. Preserve identity values matching the deployed generation; do not paste R155 digest constants into NEW code.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:6028`, `evidence/runtime-provider/new/disassembly.txt:7464`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:5699`, `evidence/runtime-provider/new/disassembly.txt:7464`.
 
 ### runtime-provider `WLAR_HostServicesGetNamespaceCallbacks`
 
-Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
+R155 getter has two outputs (create namespaces, open namespace); NEW adds open_sealed_exact as the first of three outputs. Restore declarations and callers together with installer-time sealed-open registration; public service fields +112/+120 remain mandatory nonzero in both artifacts.
 
-Evidence: `evidence/runtime-provider/new/disassembly.txt:9854`.
-
-### runtime-provider `WLAR_HostServicesInstall`
-
-Assigned old 977fb347 requires both host-service fields +112/+120 zero; NEW requires each nonzero. However old child embeds provider hash 80c9aee0, so first establish which old provider contract is active. Do not restore the zero requirement blindly; this row proves only the assigned-pair predicate change.
-
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7706`, `evidence/runtime-provider/new/disassembly.txt:9344`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7952`, `evidence/runtime-provider/new/disassembly.txt:9854`.
 
 ### runtime-provider `WLAR_HostServicesIsInstalled`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7804`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7530`.
 
 ### runtime-provider `WLAR_InstallHostRuntimeServices`
 
-NEW removes the call WLNL_InstallSealedOpenV1 relative to assigned old 977fb347. Old child embeds different provider 80c9aee0: resolve that runtime-copy caveat before deciding whether this call belongs to the sealed R155 baseline. The specified-pair change is functional, not logging alone.
+R155 calls WLNL_InstallSealedOpenV1(services->open_sealed_exact at +104) before publishing ADMISSION_READY. NEW moves the call into Constructors. Restore installer-time binding and fail-closed state publication, not a duplicate call.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:6179`, `evidence/runtime-provider/new/disassembly.txt:7485`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:5850`, `evidence/runtime-provider/new/disassembly.txt:7485`.
 
 ### runtime-provider `WLAR_LoaderPhaseFail`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:8375`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:8147`.
 
 ### runtime-provider `WLAR_PrepareA02PrerequisiteBundleV2`
 
@@ -1570,25 +1560,25 @@ Evidence: `evidence/runtime-provider/new/disassembly.txt:8310`.
 
 Verified-open/ELF identity family: NEW accepts 16/20-byte build IDs, retains an open descriptor, checks final device/inode/size, and removes the old fixed-length zero helper. Runtime admission changes, but not a justified R155 rollback target. Keep full expected-hash verification; test any compatibility failure separately.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:8504`, `evidence/runtime-provider/new/disassembly.txt:10435`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:8276`, `evidence/runtime-provider/new/disassembly.txt:10435`.
 
 ### runtime-provider `WLEI_VerifyLoadedSymbolHex`
 
 Verified-open/ELF identity family: NEW accepts 16/20-byte build IDs, retains an open descriptor, checks final device/inode/size, and removes the old fixed-length zero helper. Runtime admission changes, but not a justified R155 rollback target. Keep full expected-hash verification; test any compatibility failure separately.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:8924`, `evidence/runtime-provider/new/disassembly.txt:10474`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:8696`, `evidence/runtime-provider/new/disassembly.txt:10474`.
 
 ### runtime-provider `WLSha256Final`
 
 Only .rodata load offsets differ; the exact 1/4/8/16 bytes loaded at every differing operand were compared and match. Numeric structure offsets were not erased.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:9256`, `evidence/runtime-provider/new/disassembly.txt:11092`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:9028`, `evidence/runtime-provider/new/disassembly.txt:11092`.
 
 ### runtime-provider `WLSha256Init`
 
 Only .rodata load offsets differ; the exact 1/4/8/16 bytes loaded at every differing operand were compared and match. Numeric structure offsets were not erased.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:9050`, `evidence/runtime-provider/new/disassembly.txt:10886`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:8822`, `evidence/runtime-provider/new/disassembly.txt:10886`.
 
 ### runtime-provider `_GLOBAL__sub_I_westlake_android_runtime_provider.cpp`
 
@@ -1660,43 +1650,43 @@ Evidence: `evidence/runtime-provider/new/disassembly.txt:7813`.
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7624`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7332`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_114EnterChildMainEPv`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7649`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7358`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_115DrainChildCallsEPv`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7666`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7375`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_116CompleteChildJniEPv`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7632`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7341`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_116TranslateRequestERK26WlascAndroidChildRequestV1`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:6903`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:6574`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_117FillGenerationShaEPh`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:6110`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:5781`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_118AuditSnapshotValidERK19WlncAuditSnapshotV1m`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:6806`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:6477`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_119CommitAuditSnapshotEPv`
 
@@ -1720,31 +1710,43 @@ Evidence: `evidence/runtime-provider/new/disassembly.txt:8645`.
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7661`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7370`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_121ConstructChildRuntimeEPv`
 
 Removed R155 callback contains setenv calls, stack-limit setup and runtime construction. Deleted environment literals include ICU/TZDATA/I18N/DEX2OAT settings. NEW Constructors callback must be assessed with its callers; three-file evidence does not prove equivalent setup occurs elsewhere.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7247`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:6918`.
+
+### runtime-provider `_ZN12_GLOBAL__N_122OpenNamespaceFromStockEP12Dl_namespacePKci`
+
+Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
+
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7427`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_123VerifyLoaderThreadReadyEPv`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7679`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7388`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_124InvalidateChildAdmissionEPv`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7669`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7378`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_12VmEPv`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
 Evidence: `evidence/runtime-provider/new/disassembly.txt:8213`.
+
+### runtime-provider `_ZN12_GLOBAL__N_135CreateConfiguredNamespacesFromStockEP12Dl_namespacePKcS3_S3_S3_S3_PK13WlpbHostOpsV1PPvS1_S3_S3_S3_`
+
+Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
+
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7415`.
 
 ### runtime-provider `_ZN12_GLOBAL__N_13JniEPv`
 
@@ -1810,13 +1812,13 @@ Evidence: `evidence/runtime-provider/new/disassembly.txt:5811`.
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:5904`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:5575`.
 
 ### runtime-provider `_ZN19wlar_child_sequence4FailEPNS_6LedgerERKNS_10OperationsEi`
 
 Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:5874`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:5545`.
 
 ### runtime-provider `_ZN19wlar_child_sequenceL18AuditSnapshotValidERKNS_21LosslessAuditSnapshotEm`
 
@@ -1846,55 +1848,25 @@ Evidence: `evidence/runtime-provider/new/disassembly.txt:6230`.
 
 Only the address of the read-only relative string lookup table changes. Return-string choices and bounds logic remain the same; no ABI change.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:4178`, `evidence/runtime-provider/new/disassembly.txt:3961`.
-
-### runtime-provider `_ZN9appspawnx12_GLOBAL__N_118TypefaceWarmUpNoOpEP7_JNIEnvP7_jclassP8_jstring`
-
-New ret-only JNI target is installed by ChildMain to disable Typeface warmup. The body is trivial but its registration changes behavior; restore caller and native binding together.
-
-Evidence: `evidence/runtime-provider/new/disassembly.txt:5656`.
-
-### runtime-provider `_ZN9appspawnx16AppSpawnXRuntime18resolveZygoteHooksEP7_JNIEnv`
-
-Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
-
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:3614`.
-
-### runtime-provider `_ZN9appspawnx16AppSpawnXRuntime19zygotePostForkChildEv`
-
-Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
-
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:3820`.
-
-### runtime-provider `_ZN9appspawnx16AppSpawnXRuntime20zygotePostForkCommonEv`
-
-Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
-
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:3978`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:3695`, `evidence/runtime-provider/new/disassembly.txt:3961`.
 
 ### runtime-provider `_ZN9appspawnx16AppSpawnXRuntime7preloadEv`
 
-NEW inserts exact adapter-bridge identity verification before JNI registration and reorganizes the existing native-registration sequence. This is an admission/order change, not a new Typeface override (that override is in ChildMain, row 14). Preserve a coherent R155 initialization order for a parity control; retain identity checks in any new design.
+NEW moves registerNativeMethods and cacheJavaReferences from startVm into preload, preceded by VerifyLoadedAdapterBridge. Restore the R155 phase boundary together with startVm; retain exact adapter-bridge verification. Typeface behavior already exists in R155 and needs no restoration.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:2604`, `evidence/runtime-provider/new/disassembly.txt:2835`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:2620`, `evidence/runtime-provider/new/disassembly.txt:2835`.
 
 ### runtime-provider `_ZN9appspawnx16AppSpawnXRuntime7startVmEb`
 
-NEW startVm(bool) replaces startVm(), adds an abort option and conditionally omits -Xzygote for a specialized child; it adds Java System.loadLibrary("javacore") bootstrap. R155 unconditionally follows the older VM path. Restore VM mode and boot-library ordering together for the baseline experiment.
+Both artifacts already implement startVm(bool) and non-zygote mode. NEW adds the abort VM option and Java System.loadLibrary(javacore), and moves registerNativeMethods/cacheJavaReferences out to preload. Restore R155 ordering and dependencies as a unit; retain startVm(false) for the specialized child. R155 calls are at disassembly lines 1261/1264/1267.
 
-Evidence: `evidence/runtime-provider/new/disassembly.txt:232`.
-
-### runtime-provider `_ZN9appspawnx16AppSpawnXRuntime7startVmEv`
-
-Provider callback/sequence implementation belongs to the changed constructor→VM→JNI→main versus V2 prepare/commit lifecycle. Added/removed callbacks are not independent harmless renames: context fields, identity/receipt state and call ordering differ. Restore its R155 counterpart as part of the provider protocol, preserving verification.
-
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:232`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:232`, `evidence/runtime-provider/new/disassembly.txt:232`.
 
 ### runtime-provider `_ZN9appspawnx9ChildMain27runAfterStockSpecializationERKNS_8SpawnMsgEPNS_16AppSpawnXRuntimeE`
 
-NEW calls startVm(bool), omits former ZygoteHooks postForkChild/postForkCommon calls, adds mandatory Typeface nativeWarmUpCache no-op registration, and defers adapter initialization to Java policy. Restore these caller semantics consistently with VM mode and the removed ZygoteHooks helpers.
+Correct R155 80c9aee0 already has the Typeface nativeWarmUpCache no-op, omits zygote post-fork calls and defers adapter initialization. Only one unresolved rodata displacement differs; both resolve to nativeWarmUpCache (provider-focused-evidence.json). Withdraw the earlier behavioral rollback recommendation.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:4561`, `evidence/runtime-provider/new/disassembly.txt:4344`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:4078`, `evidence/runtime-provider/new/disassembly.txt:4344`.
 
 ### runtime-provider `_ZN9appspawnxL23logArtAbortAndTerminateEv`
 
@@ -1906,11 +1878,11 @@ Evidence: `evidence/runtime-provider/new/disassembly.txt:1593`.
 
 Removed local vector throw helper reflects changed template instantiation; no exported ABI entry removed. Runtime allocation/error paths are assessed with startVm/provider sequence.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7672`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:7381`.
 
 ### runtime-provider `__emutls_unregister_key`
 
 R155 starts with bti c; NEW omits it. Remaining instructions match. Preserve the landing-pad hardening in rebuild flags; no GNU_PROPERTY BTI requirement was observed, so device fault causality is unverified.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:9413`, `evidence/runtime-provider/new/disassembly.txt:11249`.
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:9185`, `evidence/runtime-provider/new/disassembly.txt:11249`.
 

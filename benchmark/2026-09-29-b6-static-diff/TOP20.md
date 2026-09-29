@@ -1,6 +1,6 @@
-# First 20 function assessments (assigned six artifacts)
+# First 20 function assessments (task56 corrected baseline)
 
-Provider caveat: old child embeds 80c9aee0, while the assigned old system provider is 977fb347 (provider-baseline-caveat.json:1); determine the active runtime copy before applying provider restoration suggestions. The task52 reference fails input identity matching: all three NEW hashes and the old provider differ. See `reference-identity.json:1`. Its function names were reused as leads only; every row below was checked against the exact task53 ELF pair. `restore` means required to reproduce R155 behavior, not proven necessary to fix a crash. `retain-hardening` is deliberately not mislabeled harmless: evidence does not justify removing verification.
+Provider compares sealed R155 80c9aee0 against NEW 8d109259. All task52 NEW hashes still differ; old hashes now match. The earlier 977fb347 provider judgments are superseded. Restore means R155 parity, not proven crash causality. See RESTORE-PLAN.md.
 
 ## 1. host: `WlResolveHostStdio` — restore
 
@@ -66,7 +66,7 @@ Evidence: `evidence/child/new/disassembly.txt:9480`; [evidence/child/functions/8
 
 R155 drives constructor/VM/JNI/main sequence directly. NEW validates a previously prepared request and A02 bundle, compares persisted identity/receipt data, then commits A02 handoff. Same exported name now has different preconditions and sequencing.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:6219`, `evidence/runtime-provider/new/disassembly.txt:7545`; [evidence/runtime-provider/functions/3228fee5dd0320f9.diff](evidence/runtime-provider/functions/3228fee5dd0320f9.diff).
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:5890`, `evidence/runtime-provider/new/disassembly.txt:7545`; [evidence/runtime-provider/functions/3228fee5dd0320f9.diff](evidence/runtime-provider/functions/3228fee5dd0320f9.diff).
 
 ## 12. runtime-provider: `WLAR_PrepareA02PrerequisiteBundleV2` — restore
 
@@ -76,27 +76,27 @@ Evidence: `evidence/runtime-provider/new/disassembly.txt:8310`; [evidence/runtim
 
 ## 13. runtime-provider: `_ZN9appspawnx16AppSpawnXRuntime7startVmEb` — restore
 
-NEW startVm(bool) replaces startVm(), adds an abort option and conditionally omits -Xzygote for a specialized child; it adds Java System.loadLibrary("javacore") bootstrap. R155 unconditionally follows the older VM path. Restore VM mode and boot-library ordering together for the baseline experiment.
+Both artifacts already implement startVm(bool) and non-zygote mode. NEW adds the abort VM option and Java System.loadLibrary(javacore), and moves registerNativeMethods/cacheJavaReferences out to preload. Restore R155 ordering and dependencies as a unit; retain startVm(false) for the specialized child. R155 calls are at disassembly lines 1261/1264/1267.
 
-Evidence: `evidence/runtime-provider/new/disassembly.txt:232`; [evidence/runtime-provider/functions/5377bb33fa19d9f6.diff](evidence/runtime-provider/functions/5377bb33fa19d9f6.diff).
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:232`, `evidence/runtime-provider/new/disassembly.txt:232`; [evidence/runtime-provider/functions/5377bb33fa19d9f6.diff](evidence/runtime-provider/functions/5377bb33fa19d9f6.diff).
 
-## 14. runtime-provider: `_ZN9appspawnx9ChildMain27runAfterStockSpecializationERKNS_8SpawnMsgEPNS_16AppSpawnXRuntimeE` — restore
+## 14. runtime-provider: `_ZN9appspawnx9ChildMain27runAfterStockSpecializationERKNS_8SpawnMsgEPNS_16AppSpawnXRuntimeE` — harmless-constant-relocation
 
-NEW calls startVm(bool), omits former ZygoteHooks postForkChild/postForkCommon calls, adds mandatory Typeface nativeWarmUpCache no-op registration, and defers adapter initialization to Java policy. Restore these caller semantics consistently with VM mode and the removed ZygoteHooks helpers.
+Correct R155 80c9aee0 already has the Typeface nativeWarmUpCache no-op, omits zygote post-fork calls and defers adapter initialization. Only one unresolved rodata displacement differs; both resolve to nativeWarmUpCache (provider-focused-evidence.json). Withdraw the earlier behavioral rollback recommendation.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:4561`, `evidence/runtime-provider/new/disassembly.txt:4344`; [evidence/runtime-provider/functions/f8463b3e55a8975d.diff](evidence/runtime-provider/functions/f8463b3e55a8975d.diff).
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:4078`, `evidence/runtime-provider/new/disassembly.txt:4344`; [evidence/runtime-provider/functions/f8463b3e55a8975d.diff](evidence/runtime-provider/functions/f8463b3e55a8975d.diff).
 
 ## 15. runtime-provider: `_ZN9appspawnx16AppSpawnXRuntime7preloadEv` — restore
 
-NEW inserts exact adapter-bridge identity verification before JNI registration and reorganizes the existing native-registration sequence. This is an admission/order change, not a new Typeface override (that override is in ChildMain, row 14). Preserve a coherent R155 initialization order for a parity control; retain identity checks in any new design.
+NEW moves registerNativeMethods and cacheJavaReferences from startVm into preload, preceded by VerifyLoadedAdapterBridge. Restore the R155 phase boundary together with startVm; retain exact adapter-bridge verification. Typeface behavior already exists in R155 and needs no restoration.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:2604`, `evidence/runtime-provider/new/disassembly.txt:2835`; [evidence/runtime-provider/functions/6d5a1aaa444cdd18.diff](evidence/runtime-provider/functions/6d5a1aaa444cdd18.diff).
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:2620`, `evidence/runtime-provider/new/disassembly.txt:2835`; [evidence/runtime-provider/functions/6d5a1aaa444cdd18.diff](evidence/runtime-provider/functions/6d5a1aaa444cdd18.diff).
 
 ## 16. runtime-provider: `_ZN12_GLOBAL__N_121ConstructChildRuntimeEPv` — restore
 
 Removed R155 callback contains setenv calls, stack-limit setup and runtime construction. Deleted environment literals include ICU/TZDATA/I18N/DEX2OAT settings. NEW Constructors callback must be assessed with its callers; three-file evidence does not prove equivalent setup occurs elsewhere.
 
-Evidence: `evidence/runtime-provider/r155/disassembly.txt:7247`; [evidence/runtime-provider/functions/393b8f6894fd9fae.diff](evidence/runtime-provider/functions/393b8f6894fd9fae.diff).
+Evidence: `evidence/runtime-provider/r155/disassembly.txt:6918`; [evidence/runtime-provider/functions/393b8f6894fd9fae.diff](evidence/runtime-provider/functions/393b8f6894fd9fae.diff).
 
 ## 17. child: `westlake_child_hook_table_v1_prepare_candidate` — restore
 

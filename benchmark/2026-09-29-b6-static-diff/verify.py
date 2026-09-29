@@ -49,11 +49,27 @@ class EvidenceTests(unittest.TestCase):
    embedded=data[offset+8:offset+8+64].decode()
    self.assertEqual(embedded,evidence[version]['first_record_printable'][0]['text'])
    self.assertEqual(data[offset+114:offset+242].split(b'\0')[0],b'libwestlake_android_runtime_provider.so')
-   if version=='r155':self.assertNotEqual(embedded,evidence[version]['assigned_provider_sha256'])
-   else:self.assertEqual(embedded,evidence[version]['assigned_provider_sha256'])
+   self.assertEqual(embedded,evidence[version]['assigned_provider_sha256'])
  def test_reference_mismatch_is_not_silently_reused(self):
   d=json.loads((R/'reference-identity.json').read_text())
   self.assertTrue(d['host']['old_matches']);self.assertTrue(d['child']['old_matches'])
-  self.assertFalse(d['runtime-provider']['old_matches'])
+  self.assertTrue(d['runtime-provider']['old_matches'])
   self.assertTrue(all(not v['new_matches'] for v in d.values()))
+ def test_correct_provider_protocol_is_pinned(self):
+  fs=json.loads((R/'evidence/runtime-provider/functions.json').read_text())
+  f=next(x for x in fs if x['name']=='WLAR_HostServicesInstall')
+  self.assertEqual(f['state'],'normalized_equal')
+  for v in ('r155','new'):
+   lines=(R/'evidence/runtime-provider'/v/'disassembly.txt').read_text().splitlines()
+   body='\n'.join(lines[f[v]['line']-1:f[v]['line']+93])
+   self.assertRegex(body,r'ldr\s+x8, \[x3, #112\]\n[^\n]*cbz\s+x8')
+   self.assertRegex(body,r'ldr\s+x8, \[x3, #120\]\n[^\n]*str[^\n]*\n[^\n]*cbz\s+x8')
+  installer=(R/'evidence/runtime-provider/functions/3e1af20b69614705.diff').read_text()
+  ctor=(R/'evidence/runtime-provider/functions/fc7370b5c8fafe96.diff').read_text()
+  self.assertIn('-bl <WLNL_InstallSealedOpenV1@plt>',installer)
+  self.assertIn('+bl <WLNL_InstallSealedOpenV1@plt>',ctor)
+ def test_host_child_evidence_unchanged(self):
+  baseline=json.loads((R/'host-child-preserved.json').read_text())
+  for path,digest in baseline.items():
+   self.assertEqual(c.sha((R/path).read_bytes()),digest,path)
 if __name__=='__main__':unittest.main(verbosity=2)
