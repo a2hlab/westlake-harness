@@ -870,6 +870,20 @@ def preflight(board, out, host_epoch=None):
         'screen_off_ms': SCREEN_OFF_MS, 'path': str(out/'preflight.json')}
 
 
+# Every file on the child's load path that a single-file swap may have changed. Two boards give different
+# results for one key when these differ (auxio 5cd vs 61b, 2026-09-30), so each run records them.
+FINGERPRINT_PATHS = ('/system/bin/appspawn-x /system/android/framework/oh-adapter-runtime.jar '
+                     '/system/android/lib64/*.so /system/lib64/westlake/route-a/*/*.so')
+
+
+def runtime_fingerprint(board, out):
+    """sha256 of the runtime load path -> runtime-fingerprint.txt; returns a short hash of the whole set."""
+    _, text = board.shell(f'sha256sum {FINGERPRINT_PATHS} 2>/dev/null', required=False)
+    lines = sorted(l.strip() for l in text.splitlines() if re.match(r'^[0-9a-f]{64}\s', l.strip()))
+    (Path(out)/'runtime-fingerprint.txt').write_text('\n'.join(lines) + '\n')
+    return hashlib.sha256('\n'.join(lines).encode()).hexdigest()[:12] if lines else None
+
+
 def write_facts(out):
     """facts.txt = scripts/lab/run_facts.py over this run; ACKs quote it instead of counting by hand."""
     try:
@@ -885,6 +899,12 @@ def write_facts(out):
              f"t20={run_facts.mark(f['alive_t20'])}  child_hilog={run_facts.mark(f['child_hilog_lines'])}  {f['status']}"
              for f in rows]
     total = f'TOTAL keys={len(rows)} screenshots_captured={cap}/{slots} alive_t5={a5} alive_t20={a20}'
+    fp = Path(out)/'runtime-fingerprint.txt'
+    if fp.is_file():
+        body = fp.read_text().strip()
+        short = hashlib.sha256(body.encode()).hexdigest()[:12] if body else 'unknown'
+        lines.insert(0, f'RUNTIME fingerprint={short} files={len(body.splitlines()) if body else 0} '
+                        '(runtime-fingerprint.txt; compare before blaming the JAR across boards)')
     (Path(out)/'facts.txt').write_text('\n'.join(lines + [total]) + '\n')
     return total
 
@@ -898,7 +918,9 @@ def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
         raise BatchStop('expected OH6.1.0.31; this is not the OH7/T006 route')
     _, baseline = board.shell('ls -ld /data/pr03-74e6-portable; ls -l /dev/unix/socket/AppSpawnX; '
                               'sha256sum /system/bin/appspawn-x /system/android/framework/oh-adapter-runtime.jar')
+    fingerprint = runtime_fingerprint(board, out)
     save(out/'baseline.json', {'version': version, 'boot_id': board.boot, 'readback': baseline,
+                              'runtime_fingerprint': fingerprint,
                               'baseline_acceptance': 'executor must have accepted task19; these are observations'})
     for i, entry in enumerate(entries):
         app_out = out/entry['key']
