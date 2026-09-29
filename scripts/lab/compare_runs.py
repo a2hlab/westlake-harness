@@ -53,6 +53,15 @@ def boot_id(d):
         return None
 
 
+def keeps_app_data(d):
+    """True when the run launched already-installed apps, so data left by an earlier crash carries over."""
+    try:
+        options = json.loads((d / "plan.json").read_text()).get("options", {})
+    except (OSError, ValueError):
+        return None
+    return bool(options.get("launch_only")) or not options.get("reinstall", False)
+
+
 def facts(d):
     f = d / "facts.txt"
     rows = {}
@@ -88,6 +97,9 @@ def compare(a, b, keys=None):
                 variables.append(change)
     for group, changes in grouped.items():
         variables.append(f"{group}: " + "; ".join(changes))
+    carried = [name for name, d in (("A", da), ("B", db)) if keeps_app_data(d)]
+    if carried:
+        variables.append(f"app data carried over from earlier runs in {'/'.join(carried)} (no --reinstall)")
     ra, rb = facts(da), facts(db)
     if keys is None:
         keys = [k for k in sorted(set(ra) & set(rb), key=str.lower) if alive(ra[k]) != alive(rb[k])]

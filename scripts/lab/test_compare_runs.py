@@ -48,6 +48,15 @@ class CompareRunsTests(unittest.TestCase):
             out = compare_runs.compare(a, b)
         self.assertEqual(out[:2], ["variables: 1", "  reboot aaaaaaaa -> bbbbbbbb"])
 
+    def test_launch_only_run_counts_app_data_as_a_variable(self):
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", A5, {"/fw/runtime.jar": "4"}, {})
+            b = make(f"{t}/b", A5, {"/fw/runtime.jar": "5"}, {})
+            (pathlib.Path(b) / A5 / "plan.json").write_text('{"options": {"reinstall": false, "launch_only": true}}')
+            out = compare_runs.compare(a, b)
+        self.assertEqual(out[0], "variables: 2")
+        self.assertIn("  app data carried over from earlier runs in B (no --reinstall)", out)
+
     def test_same_board_one_file_is_single_variable(self):
         with tempfile.TemporaryDirectory() as t:
             a = make(f"{t}/a", A5, {"/fw/runtime.jar": "4"}, {"x": ("no", "no")})
