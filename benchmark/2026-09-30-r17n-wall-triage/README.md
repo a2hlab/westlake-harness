@@ -64,11 +64,24 @@ first-fatal-Java-wall taxonomy of the 25 completed apps in the v3c+r17j sweep.
   antennapod, and tusky (androidx.startup path). `AppSpawnXInit.overrideJcaProvidersForOH` already
   handles the separate `Providers.<clinit>` provider-list assertion; this lazy JAR-verification path
   is additional.
-- **cc-t3 (me), candidate JAR, held pending exact stack** — `fd-calendar` JobScheduler-null and
-  `fd-etar` PowerExemptionManager-null. Note `adapter.activity.OnlineConnectivityManager$OnlineJobScheduler`
-  already exists as a stub class, so this is a `getSystemService` wiring gap, not a missing fetcher —
-  it needs the precise NPE stack (not the class_linker vtable dump) before building, so it is NOT
-  built blind here.
+- **cc-t3 (me), fd-calendar — root-caused and FIXED in source (r17n JAR).** The exact stack (local
+  sweep hilog, not a board pull) is `MainActivity` start → `JobScheduler.cancel(int)` on null. The
+  jobscheduler *fetcher* was already installed (`[ONLINE-CM] jobscheduler fetcher replaced
+  (prev=null)`), yet the service was null 1.2 s later. `prev=null` is the tell: route-A never
+  stock-registered "jobscheduler" at all, so `SYSTEM_SERVICE_NAMES` (the Class→name map) lacks
+  `JobScheduler.class`. Fossify's typed `getSystemService(JobScheduler::class.java)` resolves the name
+  to null and returns null **before** the by-name fetcher is ever consulted. AOSP `registerService`
+  writes *both* maps; `OnlineConnectivityManager.replaceFetcher` only wrote `SYSTEM_SERVICE_FETCHERS`.
+  Fix: `OnlineConnectivityManager.install()` now also calls
+  `registerServiceName("android.app.job.JobScheduler","jobscheduler")` (mirrors Westlake
+  `AppSpawnXInit` `nameMap.put(schedulerType,"jobscheduler")`). This is why alarm (consumed by the
+  `ALARM_SERVICE` string) worked but jobscheduler (consumed by Class) did not. Build + on-board verify
+  pending a free board (5ea busy until ~04:40).
+- **cc-t3 (me), fd-etar — held.** `AllInOneActivity.dozeDisabled → PowerManager
+  .isIgnoringBatteryOptimizations → mPowerExemptionManager.isAllowListed` NPE: the BCP `PowerManager`
+  instance's private `mPowerExemptionManager` is null. Not a fetcher/name gap; needs `PowerManager`
+  field injection (a deviceidle binder or a reflective `mPowerExemptionManager` stub). Deferred behind
+  the jobscheduler fix.
 
 ## Files
 

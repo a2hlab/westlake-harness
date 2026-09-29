@@ -204,6 +204,13 @@ public class OnlineConnectivityManager extends ConnectivityManager {
         replaceFetcher("connectivity", new OnlineConnectivityManager());
         try {
             replaceFetcher("jobscheduler", new OnlineJobScheduler());
+            // r17n: route-A never registered "jobscheduler" at all (fetcher prev=null above), so
+            // SYSTEM_SERVICE_NAMES lacks JobScheduler.class -> getSystemService(JobScheduler.class),
+            // the typed API fossify/androidx use, resolves the name to null and returns null BEFORE
+            // the by-name fetcher is ever consulted (fossify calendar MainActivity JobScheduler
+            // .cancel(int) NPE, v3c+r17j 5ea sweep). AOSP registerService writes BOTH maps; mirror
+            // Westlake AppSpawnXInit nameMap.put(schedulerType,"jobscheduler").
+            registerServiceName("android.app.job.JobScheduler", "jobscheduler");
         } catch (Throwable t) {
             log("jobscheduler stub not installed: " + t);
         }
@@ -278,6 +285,28 @@ public class OnlineConnectivityManager extends ConnectivityManager {
             log(name + " fetcher replaced (prev=" + (prev == null ? "null" : prev.getClass().getName()) + ")");
         } catch (Throwable t) {
             log(name + " fetcher replace failed: " + t);
+        }
+    }
+
+    /**
+     * Map an API Class -> service name in SystemServiceRegistry.SYSTEM_SERVICE_NAMES so
+     * getSystemService(ApiClass.class) resolves. Needed when route-A never stock-registered the
+     * service (fetcher prev=null), which leaves the class map empty and makes the typed
+     * getSystemService(Class) path return null before the by-name fetcher is consulted. Harmless if
+     * the mapping already exists (put overwrites with the same name). Reached entirely by reflection.
+     */
+    @SuppressWarnings("unchecked")
+    private static void registerServiceName(String apiClassName, String name) {
+        try {
+            Class<?> ssr = Class.forName("android.app.SystemServiceRegistry");
+            Class<?> apiClass = Class.forName(apiClassName);
+            Field f = ssr.getDeclaredField("SYSTEM_SERVICE_NAMES");
+            f.setAccessible(true);
+            java.util.Map<Class<?>, String> names = (java.util.Map<Class<?>, String>) f.get(null);
+            String prev = names.put(apiClass, name);
+            log(name + " class->name registered for " + apiClassName + " (prev=" + prev + ")");
+        } catch (Throwable t) {
+            log(name + " class->name register failed: " + t);
         }
     }
 }
