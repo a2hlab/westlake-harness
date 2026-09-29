@@ -375,3 +375,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **B6/#52**：frame初始化PC0x29dcc来自HiLogPrint GOT只含符号offset（缺load bias），不应放开页执行权限；恢复host NEEDED顺序仍在libandroid缺WLTG符号处失败并回滚。B5活体provider为route-a80c9aee0，system/android的977fb347未映射，静态恢复必须比实际加载件；installer675536e8在5ea重启后四哈希与非黑桌面通过，见 latest-source-generation/task52/。
 
 - B6/#58：G1–G4整组恢复、26件原字节保留后身份门通过，SIGSEGV实录ART special槽0先于DFX槽3；HelloWorld在系统libopenjdkjvm!JVM_NativeLoad+100读空Runtime::instance_崩溃，maps同时有route/system两份ART，具体namespace绑定因果未证。Java NPE/SIGBUS未验；七挂载回滚+B5双图恢复，见 latest-source-generation/task58/。
+
+- B6/#58续验静态纠正：OpenPreparedNamespace的局部prefix数组使R155 `b dlopen`变成`bl dlopen`；OH musl将x30传给dlopen_impl，尾调用差异会改变namespace调用者，不能归为无害。改static后恢复原版指令形态；候选6cb40cd6部署后全USB掉线，尚未验app，因果待单ART maps复验，见 task58-route/。

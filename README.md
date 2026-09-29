@@ -149,6 +149,7 @@ kind of work from where the corpus started
 | `benchmark/2026-09-28-persistent-demo/` | **13 tappable desktop icons on 61b06572 that survive a reboot**: SceneBoard shows one icon per bundle, so each app is its own single-ability HAP that writes a request file into its sandbox; a root broker picks it up and spawns the bridged app into the host window. After a reboot one command (`persist_demo.sh 61b06572 up`) restores it. `autostart/` records why an on-board init autostart does not yet reach the Toutiao feed: the `su` domain locks KEEP_CAPS so the spawn child aborts on `PR_SET_KEEPCAPS(0)`, and the `sh` domain does not run the script at all. |
 | `benchmark/2026-09-28-toutiao-video-playback/` | **Why Toutiao videos show only their cover frame**: the ByteDance software decoders are all present; the video's secondary Surface gets no buffers because the bridge stubs `ReliableSurface` (`reserveNext` returns OK without reserving) and OH's BufferQueue rejects the surface metadata (`SetMetadata -5`). Text and images draw on the main EGL window, which is bridged. |
 | **B6 R155 protocol restoration (task 58)** | [Evidence, source delta and whole-generation trial](benchmark/2026-09-28-bms-route-deploy/latest-source-generation/task58/README.md) |
+| **[B6 R155 dlopen caller restoration](benchmark/2026-09-28-bms-route-deploy/latest-source-generation/task58-route/)** | **Task 58 follow-up: tail-call namespace parity and single-ART device gate.** |
 
 ---
 

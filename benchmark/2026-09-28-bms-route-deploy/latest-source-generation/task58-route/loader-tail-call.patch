@@ -1,0 +1,16 @@
+--- a/src/sealed_child_provider_loader.c
++++ b/src/sealed_child_provider_loader.c
+@@ -241,7 +241,12 @@
+ 
+ void *WLSCPL_OpenPreparedNamespace(const char *absolute_path, int flags)
+ {
+-    const char prefix[] = "/system/android/lib64/";
++    /* R155 ends this wrapper with a sibling call to dlopen. OH musl uses
++     * the return address to select the caller namespace; keep the caller in
++     * the sealed provider, not in this default-namespace plugin. A stack
++     * array here prevents the sibling call with the locked compiler. The
++     * post-link instruction check is part of admission for this wrapper. */
++    static const char prefix[] = "/system/android/lib64/";
+     if (namespace_prepared != 1 || !AbsoluteCanonicalForm(absolute_path) ||
+         strncmp(absolute_path, prefix, sizeof(prefix) - 1U) != 0 ||
+         absolute_path[sizeof(prefix) - 1U] == '\0' ||
