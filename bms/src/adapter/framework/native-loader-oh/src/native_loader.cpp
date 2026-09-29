@@ -102,6 +102,25 @@ bool BuildExplicitConfig(JNIEnv* env, int32_t target_sdk, bool is_shared,
   return true;
 }
 
+bool BuildImplicitConfigFromString(int32_t target_sdk, const std::string& search,
+                                   Config* config, std::string* error) {
+  if (!SplitColonStrict(search, "libraryPath", &config->app_search_paths,
+                        error)) {
+    return false;
+  }
+  if (config->app_search_paths.empty()) return false;
+  config->target_sdk = target_sdk;
+  config->is_shared = false;
+  config->origin = Config::Origin::kImplicitCustomLoader;
+  config->app_permitted_paths = config->app_search_paths;
+  config->bridge_search_paths = OwnPolicy(policy::kBridgeSearchPaths);
+  config->bridge_permitted_paths = OwnPolicy(policy::kBridgePermittedPaths);
+  config->bridge_shared_sonames = OwnPolicy(policy::kBridgeSharedSonames);
+  config->bridge_bootstrap_soname =
+      std::string(policy::kBridgeBootstrapSoname);
+  return true;
+}
+
 bool BuildImplicitConfig(JNIEnv* env, int32_t target_sdk, jstring library_path,
                          Config* config, std::string* error) {
   std::optional<std::string> search;
@@ -184,6 +203,26 @@ void* OpenNativeLibrary(JNIEnv* env, int32_t target_sdk_version,
       if (!config_error.empty()) return nullptr;
     } else {
       implicit = &implicit_config;
+    }
+  }
+  // 2026-09-30 (#r17c runtime-loader domain): the runtime JAR's
+  // PathClassLoader reaches System.load with NO library_path (Runtime passes
+  // null for loaders without an android.libraryPath), so no implicit domain
+  // could be created and Registry::Open rejected with "no native dependency
+  // domain for ClassLoader" — blocking TLS/HTML/gapfill System.load in the
+  // child. Fall back to the process LD_LIBRARY_PATH the appspawn-x child
+  // already seeds (main.cpp seedRequiredEnvs: /system/android/lib64 + system
+  // lib dirs) so the runtime loader gets the same domain semantics as the
+  // app loaders. Only the fallback path changes; explicit CreateClassLoader
+  // Namespace callers and the v2 path/READY fixes are untouched.
+  if (implicit == nullptr) {
+    const char* envPath = getenv("LD_LIBRARY_PATH");
+    if (envPath != nullptr && envPath[0] != '\0') {
+      std::string search(envPath);
+      if (BuildImplicitConfigFromString(target_sdk_version, search,
+                                        &implicit_config, &config_error)) {
+        implicit = &implicit_config;
+      }
     }
   }
   return GlobalRegistry().Open(env, class_loader, implicit, path, RTLD_NOW,
