@@ -72,6 +72,18 @@ public final class SelfComponentFallback {
         return null;
     }
 
+    /** Manifest facts for one of this package's own providers (bind-time provider list, item 3). */
+    static ProviderInfo manifestProvider(String className, long flags) {
+        try {
+            ManifestComponentProjection projection = projection(bound == null ? null : bound.packageName);
+            if (projection == null) return null;
+            return (ProviderInfo) projection.component(className, "provider", bound, flags);
+        } catch (Throwable t) {
+            System.err.println("[B8-PM] manifest provider lookup failed: " + t);
+            return null;
+        }
+    }
+
     private static synchronized ManifestComponentProjection projection(String packageName) throws Exception {
         if (bound == null || packageName == null || !packageName.equals(bound.packageName)) return null;
         if (bound.uid != Process.myUid()) return null;

@@ -40,6 +40,8 @@ public final class B7BindFixes {
         // B8 (#65): record the bound self ApplicationInfo for the self-package
         // getProviderInfo/resolveContentProvider fallback (SelfComponentFallback).
         SelfComponentFallback.bind(ai);
+        // B8 (#65) items 6/7: appops/uimode/locale/account/alarm answered in process.
+        B8BindExtras.installServiceStubs();
     }
 
     static void fixNativeLibraryDir(ApplicationInfo ai) {

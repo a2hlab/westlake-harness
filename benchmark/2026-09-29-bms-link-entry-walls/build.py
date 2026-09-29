@@ -39,7 +39,9 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
                # B5 JAR (built on the ZigZag-generation 9161b507), so it rides on this overlay.
                src / 'LaunchActivityAliasProjection.java', src / 'BinaryAndroidManifestOrientation.java',
                # B8 (#65) items 1-2: 00.Workspace ManifestComponentProjection (verbatim) + driver/hook.
-               src / 'ManifestComponentProjection.java', src / 'SelfComponentFallback.java']
+               src / 'ManifestComponentProjection.java', src / 'SelfComponentFallback.java',
+               # B8 (#65) items 6/7/15: Westlake LocalServiceBinders + CompatChangeTable.
+               src / 'LocalServiceBinders.java', src / 'CompatChangeTable.java', src / 'B8BindExtras.java']
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 run(['java', '-cp', INPUT / 'd8.jar', 'com.android.tools.r8.D8', '--release', '--min-api', '22',
      '--lib', INPUT / 'android.jar', '--output', dex, *classes.rglob('*.class')])
@@ -89,6 +91,20 @@ if B5_SHIPPED:
 else:
     text = (text[:h.end()] + '\n\n    invoke-static {' + h[2] +
             '}, Ladapter/activity/LaunchActivityAliasProjection;->apply(Landroid/content/pm/ActivityInfo;)V' + text[h.end():])
+# B8 item 3: right after setField(data, "providers", buildProvidersFromManifest(...)).
+prov = re.compile(r'(    const-string (v\d+), "providers"\n\n'
+                  r'    invoke-static \{(v\d+), \2, v\d+\}, Ladapter/activity/AppSchedulerBridge;->setField'
+                  r'\(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;\)V\n)')
+phits = prov.findall(text); assert len(phits) == 1, len(phits)
+text = prov.sub(lambda m: m.group(1) + '\n    invoke-static {' + m.group(3) +
+                '}, Ladapter/activity/B8BindExtras;->afterProviders(Ljava/lang/Object;)V\n', text)
+# B8 item 15: right after setField(data, "disabledCompatChanges", new long[0]).
+compat = re.compile(r'(    const-string (v\d+), "disabledCompatChanges"\n\n(?:    [^\n]+\n\n){0,3}?'
+                    r'    invoke-static \{(v\d+), \2, v\d+\}, Ladapter/activity/AppSchedulerBridge;->setField'
+                    r'\(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;\)V\n)')
+chits = compat.findall(text); assert len(chits) == 1, len(chits)
+text = compat.sub(lambda m: m.group(1) + '\n    invoke-static {' + m.group(3) +
+                  '}, Ladapter/activity/B8BindExtras;->afterBindData(Ljava/lang/Object;)V\n', text)
 scheduler.write_text(text)
 
 # B8: in PackageManagerProjectionProxy.invoke (zigzag/B5 baselines), pass the delegate's answer
@@ -119,6 +135,8 @@ assert sorted(changed) == sorted(expected), changed
 post_scheduler = (post / 'adapter/activity/AppSchedulerBridge.smali').read_text()
 assert post_scheduler.count('B7BindFixes;->apply(') == 1
 assert post_scheduler.count('LaunchActivityAliasProjection;->apply(') == 1
+assert post_scheduler.count('B8BindExtras;->afterBindData(') == 1
+assert post_scheduler.count('B8BindExtras;->afterProviders(') == 1
 output = BUILD / 'oh-adapter-runtime.jar'
 with zipfile.ZipFile(BASE_JAR) as source, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as dest:
     for item in source.infolist():
