@@ -58,6 +58,11 @@ not explained by it. Discriminating experiment: install the background-launch
 installer on 61b and rerun these seven keys with the same JAR. Until that runs, this
 is a hypothesis, not a cause.
 
+**Correction (07:00).** In cc-t3's r17r batch on 61b, still on the old installer,
+AntennaPod shows its home page at t20. AntennaPod is therefore removed from the
+installer hypothesis. The fingerprint shows which files differ between two boards; it
+does not show that every per-app difference comes from those files.
+
 ## Files
 
 - `evidence/facts-5ea.txt`, `evidence/facts-61b.txt`: unedited batch facts
