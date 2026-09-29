@@ -1,7 +1,7 @@
 spec: task
 name: "B4 BMS 路线横向点亮重跑"
 inherits: project
-depends: [b1-sandbox-prep, b5-activity-alias]
+depends: [b1-sandbox-prep, b5-activity-alias, b6-attach-theme-context]
 tags: [bms, sweep, oc-t4]
 ---
 
@@ -12,7 +12,8 @@ B1 与 B5 把沙箱与 alias 两堵墙补上后,回到横向点亮:用 BMS 路�
 ## 已定决策
 
 - 使用 #20 批量脚本加 B1 的沙箱准备与 B5 的 alias 修复;先在 61b 单板跑,其他板空出后按 `--keys` 分片加入;名字与图标(B2/B3)只影响桌面显示,不阻塞本任务,生效后再补一轮
-- 每 app 记:安装结果、`bm dump` 回读、桌面名、图标来源桶、沙箱准备结果、进程时间线、t+3 与 final 截图
+- 每 app 记:安装结果(按 `bm install` 输出文本判,返回码 0 不算;已装旧版先 `bm uninstall`)、`bm dump` 回读、桌面名、图标来源桶、沙箱准备结果、进程时间线、t+3 与 final 截图、拉起前清缓冲后 15 s 的 hilog 与新增 faultlog
+- 每次点击前核 boot_id 未变且前台是桌面,任一不满足即停
 - 未亮的 app 取首个 blocker:沙箱、spawn、alias/入口、Activity.attach、ART 入口、首帧之一,并附原始日志行;按 blocker 汇总直方图,决定下一批修哪堵墙
 
 ## 边界

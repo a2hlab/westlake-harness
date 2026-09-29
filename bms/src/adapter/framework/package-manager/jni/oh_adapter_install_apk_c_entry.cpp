@@ -10,7 +10,7 @@
  *   (clang Itanium ABI). Across toolchain refreshes the mangled names can
  *   shift; libbms can't safely dlsym a mangled name. This one C entry stays
  *   shift. The current typed entry is:
- *     extern "C" int oh_adapter_prepare_install(...);
+extern "C" int oh_adapter_prepare_install(...);
  *
  * Why not in apk_installer.cpp directly:
  *   Keeps the C bridge surface clean and isolated from the C++ implementation
@@ -22,19 +22,27 @@
 #include "apk_manifest_parser.h"
 #include "apk_native_inventory.h"
 #include "apk_verifier_client.h"
+#include "game_install_plan_wire.h"
+#include "prepass_context_wire.h"
 #include "apk_verified_session_c_api.h"
 #include "app_data_dir_provisioner.h"
 #include "launcher_activity.h"
 #include "install_prepass_materializer.h"
+#include "prepass_bundle.h"
 #include "native_payload_inspector.h"
 #include "permission_mapper.h"
 
 #include <hilog/log.h>
 #include <nlohmann/json.hpp>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <unistd.h>
+
+// forward decl: definition is later in this TU; header declares only _v1
+extern "C" void oh_adapter_close_game_install_plan(GameInstallPlanWire* plan);
 
 #undef LOG_DOMAIN
 #define LOG_DOMAIN 0xD001150
@@ -163,16 +171,52 @@ extern "C" int oh_adapter_prepare_install(const char* apkPath, int32_t userId,
             signerSha256.size() + 1);
     }
 
-    std::vector<oh_adapter::ApkNativeArtifact> artifacts;
-    oh_adapter::ApkNativeInventoryLimits inventoryLimits;
-    if (!oh_adapter::ReadApkNativeInventory(immutablePath, "arm64-v8a",
-        inventoryLimits, &artifacts, &error)) {
+    // Sealed-fd inventory (wire generation API): length from fstat on the
+    // verified sealed fd, digest from the verified identity, profile pinned
+    // to the runtime we install for (arm64-v8a, on-device page size).
+    struct stat sealedStat {};
+    if (fstat(session.sealedFd, &sealedStat) != 0 || sealedStat.st_size <= 0) {
         oh_adapter::ApkVerifierClient::Close(&session);
         return OH_ADAPTER_APK_VERIFY_PREPASS_FAILED;
     }
+    oh_adapter::NativeInventoryProfile inventoryProfile;
+    inventoryProfile.abis.available = true;
+    inventoryProfile.abis.supportedAbis = {"arm64-v8a"};
+    inventoryProfile.pageSize = static_cast<uint64_t>(sysconf(_SC_PAGESIZE));
+    oh_adapter::ApkNativeInventoryLimits inventoryLimits;
+    const oh_adapter::ApkNativeInventory inventory = oh_adapter::ReadApkNativeInventory(
+        session.sealedFd, static_cast<uint64_t>(sealedStat.st_size), apkSha256,
+        inventoryProfile, inventoryLimits);
+    if (inventory.verdict != oh_adapter::NativeInventoryVerdict::MATCHED_NATIVE &&
+        inventory.verdict != oh_adapter::NativeInventoryVerdict::NO_NATIVE) {
+        oh_adapter::ApkVerifierClient::Close(&session);
+        return OH_ADAPTER_APK_VERIFY_PREPASS_FAILED;
+    }
+    const std::vector<oh_adapter::ApkNativeArtifact>& artifacts = inventory.artifacts;
+    // Prepass bundle via the shipped codec (fixture-mapped binding fields).
+    oh_adapter::package_transaction::PrepassBundle bundle;
+    bundle.requestId = context->requestId;
+    bundle.packageName = context->packageName;
+    bundle.userId = context->userId;
+    bundle.packageGeneration = context->candidateGeneration;
+    bundle.apkDigest = apkSha256;
+    bundle.contractDigest = context->contractSha256Hex;
+    bundle.policyDigest = context->policySha256Hex;
+    bundle.toolDigest = context->toolSha256Hex;
+    bundle.topologyDigest = context->topologySha256Hex;
+    bundle.runtimeGenerationSealDigest = context->runtimeGenerationSealSha256Hex;
+    bundle.disposition = artifacts.empty()
+        ? oh_adapter::package_transaction::PrepassDisposition::NO_NATIVE_ELF
+        : oh_adapter::package_transaction::PrepassDisposition::HAS_NATIVE_ELF;
+    bundle.nativeEntryCount = static_cast<uint32_t>(artifacts.size());
+    for (const auto& artifact : artifacts) {
+        if (artifact.elfFacts.has_value()) {
+            bundle.elfFacts.push_back(*artifact.elfFacts);
+        }
+    }
     oh_adapter::package_transaction::wire::PrepassBundleRecord prepass;
-    if (!oh_adapter::BuildInstallPrepass(*context, apkSha256, artifacts,
-        &prepass, &error) || !oh_adapter::WriteCanonicalPrepassFd(
+    if (!oh_adapter::package_transaction::PrepassBundleCodec::Encode(
+        bundle, &prepass, &error) || !oh_adapter::WriteCanonicalPrepassFd(
         prepass.canonicalPayload, &plan->prepassFd)) {
         oh_adapter::ApkVerifierClient::Close(&session);
         oh_adapter_close_game_install_plan(plan);

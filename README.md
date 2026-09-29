@@ -93,6 +93,11 @@ kind of work from where the corpus started
 | Path | Contents |
 |---|---|
 | **`benchmark/2026-09-28-bms-route-deploy/`** | **OH 6.1 BMS: three-board HelloWorld/ZigZag baseline, 66-key batch installation and desktop capture, retained failure receipts, per-key Westlake comparisons, and HelloWorld/Wikipedia spawn A/B diagnosis (`spawn-ab/`), sandbox preparation, and activity-alias resolution with a missing-target negative (`alias-entry/`).** |
+| `benchmark/2026-09-28-bms-route-deploy/batch/b4-rerun-plan.md` | **#59 B4 rerun: 66 keys in three balanced 22-key shards, full commands/artifact roots, current-round v4 aggregation and FakeBoard-only verification.** |
+| `benchmark/2026-09-28-bms-route-deploy/batch/task57-results.json` | **#57 unified BMS runner: reinstall, timed hilog/new faultlogs, per-shot focus gates and black-frame rejection; FakeBoard verification only.** |
+| `benchmark/2026-09-29-b6-static-diff/` | **B6 #53/#56: six hash-pinned ELFs, corrected sealed provider 80c9aee0, complete function comparison and four-group RESTORE-PLAN; no device execution.** |
+| `benchmark/2026-09-28-bms-route-deploy/batch/` | **OH6.1 BMS batch preparation (#20): 66-key install/readback, exact SceneBoard tap, foreground observations and fresh screenshots; offline tested, device unverified.** |
+| `benchmark/2026-09-28-bms-route-study/` | **BMS execution preparation (#15): PAC/payload hash audit, host readiness, first-hour deployment gates, and historically evidenced app priorities. No device execution.** |
 | `requirements/APK-GAP-PROBE-PROCESS.md` | **The process specification (v0.3).** Taxonomy, phases, stage ladder, gap registry, prioritisation, roadmap, done-criteria. Start here. |
 | `requirements/APK-COMPATIBILITY-ARCHITECTURE.md` | The compatibility architecture this process measures against. |
 | `analysis/APK-GAP-PROBE-REVIEW.md` | **Critical review of the process**, in two passes: missing detectors, then internal consistency. Every criticism cites a specific measured defect. |

@@ -1,0 +1,77 @@
+{
+  "task": "app-lighting #28 (oc-t0): B2 label resolve — REFERENCE chain following (supersedes #25)",
+  "date": "2026-09-28",
+  "board": "5cd1e3dd00000000000000000923012c",
+  "previous_attempt": {
+    "deployed_sha256_prefix": "3de38f09",
+    "verdict": "wikipedia 0x7f120084 / markor 0x7f1100a1 fail ResolveLabelResId with LOGW 'cannot resolve label' -> fallback to package name; termux/aegis resolve (plain STRING entries)",
+    "offline_probe": "scripts/arsc_probe.py on the same APKs: wikipedia 0x7f120084 = REFERENCE -> 0x7f120087 = STRING 'Wikipedia'; markor 0x7f1100a1 = REFERENCE -> 0x7f1100a2 = STRING 'Markor'; termux 0x7f100039 = STRING 'Termux' (direct)"
+  },
+  "fix": {
+    "file": "bms/src/adapter/framework/package-manager/jni/arsc_resolver.cpp (worktree westlake-harness-label, branch feat/bms-label-resolve)",
+    "change": "ResolveResourceIdToString now follows RES_VALUE_TYPE_REFERENCE (0x01) chains: bounded MAX_REFERENCE_HOPS=4, visited-set cycle guard, per-config-variant default-locale target selection preserved; LOGI per hop + LOGW on cycle",
+    "rationale": "wikipedia/markor application labels are @string references to other @string entries; the old resolver only accepted direct STRING values"
+  },
+  "build": {
+    "host": "hw248 /opt/build-runs/2026-09-28-oh6.1.0.31-bms-label-resolve/full-src (the wire-generation tree that contains all 26 jni sources)",
+    "script": "build/inner/compile_apk_installer.sh via BUILD_INNER_INVOKED=1 (patches to make the tree compile are scripts/patch_c_entry_*.py + patch_enum_prepass_failed.py, committed here)",
+    "result": "Compiled: 29/29 (all green), strict link OK, 1.3M",
+    "raw_output_sha256_prefix": "81a41793",
+    "final_artifact": "staging/libapk_installer.b2-final.so sha256 c9f1d01a0dd28ab1… (1438793 B)",
+    "patchelf": "DT_NEEDED libz.so rewritten to libshared_libz.z.so: libz.so is absent from /system/lib64 and unmapped in foundation, while libshared_libz.z.so is already mapped and exports all 7 needed zlib symbols (crc32/deflate*/inflate*); after rewrite the export set is byte-for-byte symbol-identical (299 T symbols) to the raw build",
+    "mac_dockbuild_failure_note": "local oh61-bms-kit + dockbuild run gave Compiled 4/28 (generation mismatch: this branch's jni dir is the v1 generation, the compile script is wire generation) — per RUNBOOK §5 warning; the hw248 full-src tree is the same generation as the script, so the build was done there"
+  },
+  "deploy": {
+    "backup_before_swap": "/data/local/tmp/b2-backup/{libapk_installer.sys64.so,libapk_installer.platformsdk.so} both sha 3de38f09 (rollback: mount -o rw,remount / ; cp back; chmod/chown; restorecon; begetctl stop_service foundation && start_service foundation)",
+    "swapped": "both /system/lib64/libapk_installer.so and /system/lib64/platformsdk/libapk_installer.so -> c9f1d01a (1438793 B, root:root 0755, u:object_r:system_lib_file:s0), root remounted ro after",
+    "foundation": "stopped via begetctl (old pid 5904), restarted (pid 15340); /proc/15340/root/system/lib64/libapk_installer.so sha = c9f1d01a; libapk_installer not in maps at idle (dlopen-on-demand) — first install maps it",
+    "system_partition_note": "on 5cd /system is the root partition: remount via 'mount -o rw,remount /' ('mount /system' fails with 'not in /proc/mounts')"
+  },
+  "apps": [
+    {
+      "key": "wikipedia",
+      "package": "org.wikipedia",
+      "expected_real_name": "Wikipedia",
+      "bm_dump_label": "Wikipedia",
+      "verdict": "PASS",
+      "hilog": "09-28 22:38:16.011 I OH_ArscResolver: ResolveResourceIdToString: 0x7f120084 is a reference -> 0x7f120087 (hop 1); 22:38:16.014 I ApkInstaller: ResolveLabelResId: @string 0x7f120084 -> Wikipedia"
+    },
+    {
+      "key": "markor",
+      "package": "net.gsantner.markor",
+      "expected_real_name": "Markor",
+      "bm_dump_label": "Markor",
+      "verdict": "PASS",
+      "hilog": "09-28 22:38:28.124 I ApkInstaller: ResolveLabelResId: @string 0x7f1100a1 -> Markor"
+    },
+    {
+      "key": "aegis",
+      "package": "com.beemdevelopment.aegis",
+      "expected_real_name": "Aegis",
+      "bm_dump_label": "Aegis",
+      "verdict": "PASS",
+      "hilog": "label correct via bm dump (plain STRING entry, no reference hop needed)"
+    },
+    {
+      "key": "termux",
+      "package": "com.termux",
+      "expected_real_name": "Termux",
+      "bm_dump_label": "Termux",
+      "verdict": "PASS (installed this round; prior session's 'no bm dump record' not reproduced)",
+      "hilog": "install bundle successfully at 22:38:42; label resolves directly (STRING)"
+    }
+  ],
+  "contract_scenario_status": {
+    "b2_labels_are_real_names": "PASS (4/4)",
+    "b2_new_installer_loaded_in_foundation": "PASS (proc-root sha c9f1d01a; dlopen-on-demand so maps-population is install-time)",
+    "b2_unresolvable_label_falls_back_to_package": "PASS (observed in previous attempt with 3de38f09: wikipedia/markor fell back to package name; no 'Hello World')"
+  },
+  "screenshot_for_outer_loop": "evidence/desktop-ref-follow.jpeg (36627 bytes, sha256 prefix f6fa2c03a3734c77; board /data/local/tmp/b2/desktop-ref-follow.jpeg)",
+  "r2_honesty": {
+    "reference_chain_offline_probe": "verified (arsc_probe.py on both APKs)",
+    "build_all_green": "verified (29/29 + strict link; hw248 log)",
+    "board_swap_and_foundation_load": "verified (on-board sha checks + proc-root sha)",
+    "labels_via_bm_dump": "verified (board-side bm dump this session: Wikipedia/Markor/Aegis/Termux)",
+    "desktop_icon_text_matches_bm_dump_labels": "unverified (outer loop reads the image — no image reading in this lane)"
+  }
+}

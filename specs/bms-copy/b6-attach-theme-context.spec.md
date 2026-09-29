@@ -15,7 +15,11 @@ B5 之后 Wikipedia 的 child 已实例化 `org.wikipedia.main.MainActivity`,但
 - 先定位再修:把 `Activity.attach+112` 到 `getTheme` 之间的解释帧还原成具体 Java 方法(app 自己的 `attachBaseContext`、AppCompat delegate,或适配层代码),证据是日志行或 baksmali 出的 smali 片段,写进 `results.json.caller`
 - 真机对照:同一个 Wikipedia APK 装到安卓参考机 `N100CU025C18D000128` 上从桌面启动,截图证明 APK 本身能用
 - 顺带判定并记录:本运行时里编译代码的空指针解引用是抛 `NullPointerException` 还是直接 SIGSEGV(ART 隐式空检查的故障处理是否生效),写进 `results.json.null_check_mode` 并附证据;这决定 app 自己 catch 的 NPE 会不会变成崩溃
-- 修复落点在改动最少处:适配层运行时 JAR,或 `aosp_patches/` 里的 framework 补丁;部署沿用 B5 的覆盖方式并带回滚,板上实际加载的产物 SHA 写进 `results.json`
+- 根因(#31 实证):OH musl 先派发 special 信号处理器,DFX 占 special 槽先收 SIGSEGV,ART 的 libsigchain 只登记为 user handler、晚 670 ms 才收到,隐式空检查转不成 NPE。修复照搬现成的 musl 桥:用 `bms/src/adapter/build/inner/compile_sigchain_muslcompat.sh` 把 `aosp_patches/art/sigchainlib/sigchain_muslcompat.cc` 编成 aarch64 `libsigchain.so`,替换 route-a 的 `libsigchain.so`(现为 ea7becd0,无 `add_special_signal_handler` 导入)。不重建 boot image,不改 framework
+- 替换前核对:新库导出覆盖 route-a `libart.so` 从 `libsigchain.so` 导入的全部符号,缺一个就不部署
+- route-a 的 child 插件把每个 provider 的 SHA/build-id 封进 sealed manifest,loader 映射前校验;只换 `libsigchain.so` 会被拒(#33:`WLCGATE:LSP:LOAD_ERROR:8`,`WLSCPL_ERROR_ARTIFACT_IDENTITY`)。所以按 `stock_child_plugin/build_target_in_container.sh` 既有构建流重生成一代:新 `libsigchain.so` 进 provider 清单 → 重生成 `sealed_provider_manifest.c` 并重编 child 插件 → 把新插件 SHA 钉进 appspawn-x。不绕过、不关闭身份校验
+- 2026-09-28 用户决定:板上 R155 这一代(child 0976dee8、appspawn-x 1f6cf53b)找不到同版源码,改用 00.Workspace 最新源码整代重建——libart 与全部 provider、native roots、child 插件、appspawn-x 同源同配置一起构建;若新 libart 与板上 boot image 不兼容,同源重建 boot image。不混用板上旧件与新源码产物
+- 部署走 `bms/` 复现器的候选代机制(`var/state/<skill>/candidates/`)或 B5 的覆盖方式,整代一起换、一起回滚;板上实际加载的 libsigchain、child 插件、appspawn-x 的 SHA 写进 `results.json`
 
 ## 边界
 
@@ -72,6 +76,20 @@ B5 之后 Wikipedia 的 child 已实例化 `org.wikipedia.main.MainActivity`,但
   假设 已取得本运行时一次编译代码空指针解引用的现场
   当 查看 `results.json.null_check_mode`
   那么 值为 `npe` 或 `sigsegv` 之一并附 faultlog 或 hilog 原文
+  并且 替换 libsigchain 后重新取证,修复生效时该值为 `npe`
+
+场景: 重生成的一代通过 loader 身份校验
+  测试: b6_generation_passes_identity_gate
+  假设 新一代(libsigchain、child 插件、appspawn-x)已部署到 5ea
+  当 从桌面拉起 HelloWorld
+  那么 hilog 不出现 `LOAD_ERROR` 与 `FAIL_SEALED_PROVIDER`
+  并且 child 的 `/proc/<pid>/maps` 映射的是新 `libsigchain.so`
+
+场景: 新 libsigchain 缺符号时不部署
+  测试: b6_sigchain_exports_cover_libart_imports
+  假设 新编的 `libsigchain.so` 少导出 route-a `libart.so` 需要的某个符号
+  当 执行部署前核对
+  那么 部署中止,`results.json` 列出缺失符号,板上仍是原库
 
 ## 排除范围
 

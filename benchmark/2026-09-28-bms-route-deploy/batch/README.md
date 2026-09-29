@@ -1,77 +1,79 @@
-> Execution-lane adaptation for item 23: the original preparation notes follow below.
-> The execution copy selects the BMS entry-module `mainAbility` (including Java nested-class names)
-> instead of assuming the historical direct activity is the desktop alias. Three-board evidence
-> and retained failed attempts live in the parent directory. `capture_existing.py` supplements
-> missed captures only after matching a prior successful installation receipt and the current
-> installed original-APK hash; it never reinstalls or relabels a failed reinstall successful.
-> Current offline checks: 25 passing tests. Screenshot verdicts remain external.
+# OH6.1 BMS batch runner — items 20 / 57
 
-# OH6.1 BMS batch runner — item 20
+The earlier one-off runners duplicated reinstall, log capture and screenshot logic, lost x/noice when the manifest package was null, and could collide with a pre-created app directory. These capabilities now use **one `bms_batch.py` entry point**, retaining the master launcher/sandbox/identity gates. This revision was developed and tested offline: **50 FakeBoard tests**, no device execution. Sources and preserved master baseline are recorded in [task57-source-baseline.json](task57-source-baseline.json).
 
-**Prepared offline; no board execution.** This runner consumes the R130+R155 baseline supplied by item 19. It installs original APK bytes through BMS, opens the exact SceneBoard icon, records foreground observations, and captures screenshots for the outer reviewer's visual verdict. It does not deploy a runtime or use the superseded T006/OH7 payload.
+## Usage
 
-The old shortcut “install returned success / process alive = lit” is not accepted here. Each stage has separate evidence and screenshots always retain `pending_review`. Source precedent: `~/t006/t006_baseline.py:645-655,704-737`; R151D capture script `:42-60,63-83,85-136` (full identities in [sources.json](sources.json)).
+Offline plan (no HDC, lock, OrbStack, subprocess or APK reads):
 
-## One command after item 19 is accepted
+```sh
+python3 benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py \
+  --keys x,noice --reinstall --hilog 15 --shots 5,20 --focus-check
+```
 
-The execution lane must already own the exact board lock and have accepted item 19's baseline. Run from the Mac; the absolute worktree path is shared into the VM, while the APK inputs remain in the VM. Replace `BATCH` with this directory and `RUN` with a fresh run ID. The wrapper locates sibling `westlake-inputs/tools`; override `BMS_TOOLS` if needed.
+Execution recipe for the assigned lane **after it owns the full serial's lock and has accepted the OH6.1 R130+R155 baseline**:
 
 ```sh
 BATCH="$(pwd)/benchmark/2026-09-28-bms-route-deploy/batch"
 RUN="bms-$(date +%Y%m%dT%H%M%S)"
 orb -m a2hlab bash "$BATCH/run-batch.sh" \
   --execute --serial 5ea34a4500000000000000001123012c --lane cx-t0 \
-  --run-id "$RUN" --out /tmp/bms-batch-runs
+  --run-id "$RUN" --out /tmp/bms-batch-runs \
+  --keys aegis,wikipedia --reinstall --hilog 15 --shots 5,20 --focus-check
 ```
 
-This is an **unexecuted run recipe**. It uses VM `~/a2hlab/app-inputs/<key>/app-input.json`, Mac-forwarded `hdc_mac.sh`, and `mac board_note.sh held <serial>`. Output is on the VM under the supplied output root. Use an absolute VM output path when invoking from an uncertain working directory. For the first assigned canary pass, append `--keys aegis,wikipedia`; for separate cohorts use `--phase controls`, `blocked`, or `tail`. Entries retain manifest phase order even when `--keys` is supplied in another order. No extra confirmation prompt is introduced.
+This is an unexecuted recipe. Use the merged master copy after outer-loop review/commit. The Mac path is shared into the VM; inputs default to VM `~/a2hlab/app-inputs`. `BMS_TOOLS` can override the sibling `westlake-inputs/tools` location. The wrapper passes `hdc_mac.sh` and `mac board_note.sh`; all options reach `bms_batch.py`. The runner never acquires, borrows or releases another lane's lock.
 
-The executor acquires/releases its lock with the existing campaign `board_note.sh`; this script verifies the invoking `--lane` before every device command and never borrows or releases another lane's lock. It accepts the campaign's three full serials only. A missing lock, detached serial, changed boot ID or lost remote status marker stops the batch before later writes. A wrong OH version stops before APK installation. Missing R130 files/socket/observed runtime hashes are captured as read-only baseline evidence; **that record does not replace item 19's acceptance**.
+| Parameter | Default | Behavior |
+|---|---|---|
+| `--execute` | off | Enables device operations; otherwise prints the manifest selection and options only. |
+| `--manifest PATH` | sibling apps.json | Frozen 66-key corpus. |
+| `--phase all/controls/blocked/tail` | all | Selects cohort while preserving phase order. |
+| `--keys a,b` | all selected | Unique keys; aliases remain separate records. |
+| `--input-root PATH` | ~/a2hlab/app-inputs | Reads `<key>/app-input.json` and hash-matched original APK bytes at execution. |
+| `--serial SERIAL` | required for execution | One of the three full campaign serials; no prefix matching. |
+| `--lane NAME` | required for execution | Must match the current lock holder before every device command. |
+| `--out PATH`, `--run-id ID` | explicit out, generated ID | Fresh `<out>/<run-id>/<serial>`; app directories are created before any per-app output. |
+| `--wait SECONDS` | 15 | Final process observation offset, finite 3–300 seconds. Legacy screenshots remain t+3 and t+wait unless `--shots` is set. |
+| `--reinstall` | off | Query installed target, cold-stop its identified UID, uninstall it, then install original APK. An explicitly absent target skips uninstall. Unknown query/uninstall failure fails that app. |
+| `--hilog [SECONDS]` | off | Snapshot fault filenames and `hilog -r` before launch; at the given offset, `hilog -x` to a unique remote file, receive it and newly named faultlog files. Bare `--hilog` uses `--wait`. Offset must be finite, >0 and ≤300. |
+| `--shots 5,20` | legacy t3/final | 1–32 strictly increasing unique finite offsets in (0,300]; enables strict focus checking before **each** requested image. |
+| `--focus-check` | off | Also requires target focus for every legacy/default screenshot. Does not weaken the mandatory launcher focus gate. |
+| `--hdc-cmd`, `--lock-cmd` | hdc, campaign board_note.sh | Command prefixes, normally supplied by run-batch.sh inside the VM. |
 
-## Offline plan and checks
+All offsets are measured from completion of the desktop click, using a monotonic clock. HDC/guard latency can make a capture late; both requested and actual offsets are recorded. The batch waits through the latest requested screenshot, diagnostic or final observation before stopping the app. It does not sleep each full offset successively. `--reinstall` intentionally uninstalls the selected package; it is only enabled by that explicit option.
+
+## Per-app behavior and evidence
+
+1. Create the app directory with `exist_ok=True` before writing anything. An existing **empty** directory is supported; nonempty evidence is refused, and the run root must be fresh. Resolve `application.package` and `apk_sha256` from app-input before any device access, so null manifest packages such as x/noice work in reinstall as well as install. Validate fixed pins and find the unchanged original APK by SHA-256; missing/mismatched input fails locally. Shell identifiers are validated/quoted. The corpus is read-only.
+2. Send the original APK and verify its remote hash. With `--reinstall`, require a valid BMS target or an explicit absence response; an installed target is cold-stopped by its observed UID before `bm uninstall -n`. Preserve query, uninstall and install text/return codes. **rc=0 alone never passes:** both operations require their positive `install/uninstall bundle successfully` receipt without error/failure text. Post-install `bm dump` must identify the package; an old bundle record cannot override an install error.
+3. Cold-stop only that package. Any surviving child must match a unique root appspawn-x parent and the target UID/name; recheck kernel UID/PPID before targeted kill. Run the already accepted master `prepare_sandbox.sh` recipe and retain command/hash/return receipt. Its body is unchanged; failure prohibits launch. BMS entry-module `mainAbility` overrides stale direct-launch activities, including aliases/nested Java class names.
+4. The launcher gate wakes/Home and verifies the focused WMS PID is SceneBoard. Unknown/missing focus rows get at most three attempts; an identified foreign owner stops immediately. Search bounded desktop pages for one visible/enabled/clickable exact package/activity icon. No `aa start` fallback or hardcoded icon coordinates.
+5. Before every screenshot, wake the display and refresh target-UID process IDs plus WMS focus. WMS row parsing accepts names with spaces and negative Z order; missing/ambiguous/unknown owner is unconfirmed. With `--shots` or `--focus-check`, failed ownership saves a **rejected probe and takes no image** at that offset; later offsets still run. A live process or focus merely leaving the desktop is insufficient. Default legacy collection still records ownership for each shot, with final focus determining collection status.
+6. Capture to a fresh per-run path; verify remote SHA, local JPEG magic and matching received hash. A **36627-byte known black frame** is retained with `known_black_frame: true`, `accepted: false`, and `capture_rejected` status. Other sizes are **not proof of a non-black image**; visual verdict remains `pending_review`. Capture rejection never becomes a LIT result.
+7. With `--hilog`, retain `hilog-reset.txt`, `hilog.txt`, `diagnostics.json`, fault listings before/after, and `faultlogs/<new-name>` plus hashes. Only names absent before launch are pulled. Faults are from the board-wide interval; no automatic causal attribution to the target app. Overwritten existing fault filenames are outside this new-file comparison. A capture/app error attempts available diagnostics before cleanup; lock/boot/transport loss performs no speculative cleanup or further writes.
+8. Stop the target after evidence collection; cleanup uncertainty stops the batch. Per-app errors retain records and continue; batch identity/transport failures retain `not_run` keys and stop. Boot ID, full serial and lock holder are checked before every shell/send/receive. Empty rc=0 lock/target output gets one bounded retry, while a different holder/serial or changed boot is refused.
+
+Files include `record.json`, install/uninstall receipts, bundle JSON, `sandbox-*`, per-shot `processes-<tag>.txt` and `windows-<tag>.txt`, images, diagnostics, run-level `summary.json` and raw command stdout/stderr. A rejected focus probe has `captured: false` without an image path. Screenshot records retain focus window ID/PID, observed app PIDs, scheduled/actual time, hash/size and acceptance separate from visual review.
+
+Exit status: `0` means collection gates passed; `1` means app failure, rejected image or unconfirmed foreground; `2` means batch identity/transport refusal. **None means LIT.** Real screenshot review is still required. No runtime deployment, installer-library swap or ROM changes are implemented by this task.
+
+## Corpus and source lineage
+
+The manifest has **66 keys: 13 controls, 43 blocked, 10 tail**. `x` and `noice` have no guessed package/hash; execution resolves actual app-input. Multiple copies with identical APK bytes are interchangeable. Split inputs are recorded as `split_hint`; this remains a single-original-APK install route, not a split merge/repack/signing tool. The original source derivation and pins remain in [sources.json](sources.json).
+
+Master `a5259c0e` provides alias selection, sandbox preparation, launcher gating and lock empty-output retry. #38 `rerun956_61b.py` supplies reinstall/output adjudication lessons; #48 `probe_unknown22.py` supplies per-app log timing; #51 `alive16_shots.py` supplies multiple capture times and WMS rows with spaces. Its weak fallback (process alive and focus left SceneBoard) was **not** carried into strict ownership checks. No one-off runner is executed or extended here. `capture_existing.py` is the unchanged master compatibility helper needed by the inherited regression tests.
+
+## Offline verification
 
 ```sh
-python3 benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py
-python3 -m unittest discover -s benchmark/2026-09-28-bms-route-deploy/batch -p 'test_*.py' -v
+python3 -m unittest discover \
+  -s benchmark/2026-09-28-bms-route-deploy/batch -p 'test_bms_batch.py' -v
 cargo test --manifest-path tools/spec-checks/Cargo.toml bms_batch_offline
 ```
 
-Without `--execute`, planning reads only `apps.json` and does not call HDC, OrbStack, locks or subprocesses. These checks were run here with synthetic transport/APK/JPEG fixtures. Real VM metadata access was attempted once but OrbStack timed out starting the VM; consequently this task does not claim real-input parsing or a live desktop result.
+`test_bms_batch.py` uses FakeBoard transport, synthetic APK/JPEG/log bytes and a fake monotonic clock. It covers positive/negative install text, missing inputs/packages, reinstall ordering, empty/stale directories, exact aliases, sandbox failure, screenshot timing and per-shot focus, known-black rejection, new-fault selection, mid-diagnostics detach, lock/boot checks, bounded retries and malformed CLI timing. Results and lifecycle evidence: `task57-results.json`, `task57-tests.log`, `task57-lifecycle.json`. R2: offline behavior **verified**; real device timing/diagnostic availability and on-screen result **unverified**. Outer loop owns commit; no commit or push is performed by this lane.
 
-## Manifest and identity
+## B4 three-board rerun preparation (#59)
 
-`apps.json` contains **66 distinct keys in launch order: 13 historical lit controls, 43 historical blocked, 10 tail**. The first 56 identities derive from the fixed T0 manifest. Tail order derives from the old 66-key file. Eight tail package/APK hashes are available from the input lock; **`x` and `noice` remain explicitly unresolved until their actual `app-input.json` is read**. No packages or hashes are guessed. All 66 get separate records; aliases such as noice/fd-noice and the burgerking label anomaly are not merged. Sources and SHA-256 pins are in `sources.json`.
-
-Before a device write for an app, the runner reads `application.package`, `apk_sha256`, and optional `application.launch_activity`, verifies any fixed package/hash, and finds the unchanged `.apk` by its actual SHA-256. It also supports top-level `apk`, `apk_path`, and `source_apk` string paths. Multiple copies with identical bytes are interchangeable; it picks a deterministic path. It records current app-input metadata hash rather than demanding the old T0 metadata hash, since launch configuration may change while APK bytes stay fixed. Missing or mismatched APKs fail that app before device access.
-
-The command is the requested **single-APK** `bm install -p`. No repack/resign or merged split APK is produced. Multi-APK inputs are recorded (`apk_candidates`, `split_hint`); base-only installation can therefore fail or lack split resources/native libraries. Treat that as a reported limitation for the later deployment lane, not a solved split-install route. The original corpus remains read-only.
-
-## Per-app sequence and output
-
-1. Create a fresh local `<out>/<run-id>/<serial>/<key>/` and unique device directory. Transfer the hash-matched APK, check its device readback, run `bm install -p`, preserve remote return code and output. Remove only this runner's transferred temporary APK after the install command returns.
-2. Run `bm dump -n <package>`, preserve raw JSON/output, confirm package identity and derive a unique UID from BMS. A previous BMS record alone cannot override a failed installer result.
-3. Cold-stop only this package (`aa force-stop`). If a child remains, require the unique root/PPID1 appspawn-x parent, the observed BMS UID and matching child parent/name before terminating it. Recheck UID/PPID immediately before the targeted kill. No broad appspawn kill, hardcoded app UID, data clear or uninstall. If cold state cannot be verified, retain failure and move on.
-4. Wake, Home, dump UI hierarchy, handle the known USB dialog/unlock screen, then search bounded desktop pages in both directions. Click only one actionable SceneBoard node whose ID exactly matches `AppIconCommonView_<package>.<activity>`. If activity is absent, require a unique exact package-prefix icon. Ambiguous/invisible/missing icons fail explicitly. There is **no `aa start` fallback**. The bounds are read from hierarchy; no fixed screen coordinates are borrowed.
-5. Capture one early JPEG and one final JPEG (default final wait at least 15 seconds after click; command latency can extend it). Every capture removes only its unique destination first, requires successful `snapshot_display`, records device stat/hash, receives into a nonexistent local path, checks JPEG magic and byte hash. Save process table and WMS dump; foreground is confirmed only when its focused window PID belongs to the observed target UID. Neither that confirmation nor a valid JPEG is a visual light-up verdict.
-6. Stop only the collected package after the successful path; retain installed apps and evidence for review. App failures are recorded and the batch continues. Transport/lock/boot failures stop it, save remaining keys as `not_run`, and perform no speculative cleanup writes. Before the next app, a known installed UID is cold-stopped again and verified; cleanup uncertainty stops the batch for inspection.
-
-`record.json` includes key, phase, serial/boot ID, package, original APK hash, input metadata hash, installer return/text path, BMS query result/UID, launch method, selected icon/click, cold-stop result, observed PIDs, foreground evidence, screenshot paths/hashes and `review: pending_review`. `summary.json` retains completed/failed records and unattempted keys. `commands/` saves intended argv plus raw stdout/stderr and exit status. Unique run IDs and local `exist_ok=False` prevent overwriting evidence. Device staging/screenshot files remain under this run's namespace; cleanup or uninstallation is intentionally an operator decision after review.
-
-Exit status: `0` means the selected entries reached collection with foreground confirmation; **it does not mean LIT**. `1` means at least one app failed or foreground remained unconfirmed. `2` means the batch was interrupted/refused by identity/transport checks. No image-based auto-classification is implemented.
-
-## Source adaptations and limits
-
-- Installation provenance: `~/workspace/hanbin_adapter/memory/project_bm_install_progress.md:12-29` describes the `.apk` BMS branch. Its April 2026 ARM32 paths, permissive SELinux and chmod workarounds are historical and are **not copied**.
-- Exact icon selector/desktop settling: `00.Workspace/tests/instrumentation/cts_entry_launch.py:24-178`. Adapted locally to avoid importing its deployment/CTS machinery; added bounded multi-page search. No OH7 fullname/BCP admission rules were copied.
-- Cold-start identity and recording: `01.OH61AOSP16/real-work/.state/zigzag-longtask-r6i-r151d-device-stage/run-r151d.sh:63-83,85-136`. Target UID is derived from BMS, and its `aa start` is replaced by the requested SceneBoard click. Global hilog reset/privacy toggles and automatic game touches are not needed for this batch.
-- Screen timeout is not changed; wake is repeated at UI/capture boundaries. A lock-screen image still remains possible and requires human review. Native app errors, dialogs, split loading and aliases remain measured outcomes.
-
-R2: **verified** offline tests/manifest shape; **unverified** real-board installation, foreground matching, visual success and OH6.1 launcher layout compatibility. The old T006 driver is a source reference only. No real device command was executed during preparation.
-
-Validation: 19 offline tests passed; known-answer suite 69 ran / 2 skipped / 0 failed; agent-spec lint score 100%, lifecycle 2 pass / 0 fail; Bash syntax and default offline-plan checks passed. These are host/synthetic results only. See `results.json` and `lifecycle.json`. The outer reviewer committed the previous #15 report as `637afe4`; #20 remains a separate change set.
-
-Local staging/commit is blocked in this sandbox: creation of the parent repository Git `index.lock` returns `Operation not permitted`. #20 files are ready in this worktree for the outer reviewer to stage and commit; no #20 commit hash is claimed and nothing was pushed.
-
-## Post-install sandbox preparation (B1)
-
-`prepare_sandbox.sh` preserves HelloWorld restore lines 291–294 exactly and takes package/UID parameters. Both fresh installation and `capture_existing.py` run it after BMS identity/cold-stop checks and before clicking. Failure is `sandbox_prep_failed`, with command, return code and output retained. See [intervention report](../sandbox-prep/README.md): preparation fixes the stock sandbox failure, but Wikipedia still exits on unresolved DefaultIcon; the broader rerun remains gated.
+See [b4-rerun-plan.md](b4-rerun-plan.md) for the 22/22/22 shard commands, explicit artifact directories and current-round v4 aggregation. [b4-rerun-shards.json](b4-rerun-shards.json) pins the accepted runner and full 66-key coverage; `b4_rerun.py plan` is offline only. FakeBoard results are labeled synthetic, with no real v4 outcomes claimed.

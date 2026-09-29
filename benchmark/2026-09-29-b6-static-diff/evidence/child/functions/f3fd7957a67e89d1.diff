@@ -1,0 +1,100 @@
+--- R155/WlgrIfProductionReadProcess
++++ NEW/WlgrIfProductionReadProcess
+@@ -0,0 +1,97 @@
++stp x29, x30, [sp, #-80]!
++str x28, [sp, #16]
++mov x29, sp
++stp x24, x23, [sp, #32]
++stp x22, x21, [sp, #48]
++stp x20, x19, [sp, #64]
++sub sp, sp, #1, lsl #12 // =4096
++mov w0, #-1
++cbz x1, <WlgrIfProductionReadProcess+0x9c>
++mov x19, x2
++cbz x2, <WlgrIfProductionReadProcess+0x9c>
++mov x20, x1
++adrp x0, <PAGE>
++add x0, x0, <string:'/proc/self/stat'>
++mov w1, #524288
++bl <open@plt>
++tbnz w0, #31, <WlgrIfProductionReadProcess+0x98>
++mov x1, sp
++mov w2, #4095
++mov w21, w0
++mov x23, sp
++bl <read@plt>
++mov x22, x0
++mov w0, w21
++bl <close@plt>
++cmp x22, #1
++b.lt <WlgrIfProductionReadProcess+0x98>
++mov x0, sp
++mov w1, #41
++strb wzr, [x23, x22]
++bl <strrchr@plt>
++cbz x0, <WlgrIfProductionReadProcess+0x98>
++sub x23, x0, #1
++ldrb w8, [x23, #2]
++add x23, x23, #1
++cmp w8, #32
++b.eq <WlgrIfProductionReadProcess+0x84>
++cbnz w8, <WlgrIfProductionReadProcess+0xb8>
++mov w0, #-1
++add sp, sp, #1, lsl #12 // =4096
++ldp x20, x19, [sp, #64]
++ldp x22, x21, [sp, #48]
++ldp x24, x23, [sp, #32]
++ldr x28, [sp, #16]
++ldp x29, x30, [sp], #80
++ret
++orr w8, w8, #0x20
++and w8, w8, #0xff
++cmp w8, #32
++b.eq <WlgrIfProductionReadProcess+0xd4>
++ldrb w8, [x23, #2]
++add x23, x23, #1
++b <WlgrIfProductionReadProcess+0xb8>
++ldrb w8, [x23, #1]!
++cmp w8, #32
++b.eq <WlgrIfProductionReadProcess+0xd4>
++bl <__errno_location@plt>
++mov x21, x0
++str wzr, [x0]
++add x1, x29, #24
++mov x0, x23
++mov w2, #10
++bl <strtoull@plt>
++mov x22, x0
++ldr w8, [x21]
++mov w0, #-1
++cbnz w8, <WlgrIfProductionReadProcess+0x9c>
++ldr x8, [x29, #24]
++cmp x23, x8
++b.eq <WlgrIfProductionReadProcess+0x9c>
++mov w24, #4
++sub x23, x8, #1
++ldrb w8, [x23, #1]!
++cmp w8, #32
++b.eq <WlgrIfProductionReadProcess+0x120>
++cmp w24, #22
++b.eq <WlgrIfProductionReadProcess+0x16c>
++add x1, x29, #24
++mov x0, x23
++mov w2, #10
++str wzr, [x21]
++bl <strtoull@plt>
++mov x22, x0
++ldr w8, [x21]
++mov w0, #-1
++cbnz w8, <WlgrIfProductionReadProcess+0x9c>
++ldr x8, [x29, #24]
++add w24, w24, #1
++cmp x23, x8
++b.ne <WlgrIfProductionReadProcess+0x11c>
++b <WlgrIfProductionReadProcess+0x9c>
++bl <getpid@plt>
++sxtw x8, w0
++mov w0, wzr
++str x8, [x20]
++str x22, [x19]
++b <WlgrIfProductionReadProcess+0x9c>

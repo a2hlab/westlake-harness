@@ -7,6 +7,8 @@
 #include <vector>
 
 #include "package_transaction_v1.h"
+#include "manifest_version_v2.h"
+#include "sdk_declaration_v2.h"
 
 namespace oh_adapter::manifest_facts {
 
@@ -54,6 +56,8 @@ struct ManifestParseRequestV1 {
     std::string artifactSha256;
     package_transaction::PackageArtifactSetV1 artifactSet;
     bool requireLinuxSeals = true;
+    std::optional<SdkProfileV2> sdkProfile;
+    bool apkInApex = false;
 };
 
 struct ManifestParseReceiptV1 {
@@ -64,6 +68,9 @@ struct ManifestParseReceiptV1 {
     std::string artifactSetDigest;
     std::string parserVersion;
     std::optional<ManifestFactsOutputV1> facts;
+    ManifestVersionV2 versionV2;
+    std::vector<UsesSdkDeclarationV2> sdkDeclarations;
+    std::optional<SdkCompatibilityResultV2> sdkCompatibility;
 };
 
 class ManifestFactsParserV1 {
