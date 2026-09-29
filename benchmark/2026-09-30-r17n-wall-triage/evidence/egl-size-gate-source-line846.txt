@@ -1,0 +1,23 @@
+        long sizeKey = (((long) width) << 32) | (height & 0xffffffffL);
+        Long lastPushed = mLastPushedSize.get(sessionId);
+        if (lastPushed == null || lastPushed.longValue() != sizeKey) {
+            try {
+                ClientWindowFrames pushedFrames = new ClientWindowFrames();
+                pushedFrames.frame.set(0, 0, width, height);
+                pushedFrames.displayFrame.set(0, 0, width, height);
+                pushedFrames.parentFrame.set(0, 0, width, height);
+                pushedFrames.attachedFrame = new Rect(0, 0, width, height);
+                android.util.MergedConfiguration cfg = new android.util.MergedConfiguration();
+                // 2026-05-25 (b): carry the SAME real config as outMergedConfiguration
+                // (shared winCfg) so handleResized does not reset lastReported to 0x0.
+                cfg.setOverrideConfiguration(winCfg);
+                cfg.setGlobalConfiguration(new Configuration(winCfg));
+                InsetsState pushedInsets = new InsetsState();
+                // displayId for default display
+                int displayId = 0;
+                window.resized(pushedFrames, false /* reportDraw */, cfg, pushedInsets,
+                        false /* forceLayout — was true; true caused the infinite relayout loop */,
+                        false /* alwaysConsumeSystemBars */,
+                        displayId, 0 /* syncSeqId */, false /* dragResizing */);
+                mLastPushedSize.put(sessionId, sizeKey);
+                System.err.println("[OH_WSA-relayout] reverse-pushed via IWindow.resized (size changed): "
