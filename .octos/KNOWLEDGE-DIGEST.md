@@ -454,3 +454,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 next2离线：B87 ANL仅补chipset-sdk-sp，漏OH6.1 /system/lib64/ndk；libandroid→hitrace_ndk在原字节NEEDED可见，不能只扫liblog依赖。310 ELF递归清单给出8个NDK共享名，ANL1162a6fc双编/142host检查/旧b66负控/三板dry-run过，next2包61cecc5a仍未上板；libm/libdl独立文件缺口保留，不宣称全动态闭包通过。见 benchmark/2026-09-30-v3c-next2-ndk/。
 
 - 2026-09-30 EGL 生命周期只读：a578 两 app 同 shim/NW/config 重建均 0x3003，strip colorspace 无效；HWUI setSurface 已 destroy 自己旧句柄，现日志缺 destroy，需 owner token 区分另一 pipeline 与销毁未完成。裸缓存复用会双重释放，create 时强拆会伤活引用；方案采用显式独占 owner/交还，未知 owner 冲突不假成功。另 wrapper 先读 eglGetError 会吞调用者错误。见 benchmark/2026-09-30-egl-surface-lifecycle/（尚未实现）。
+
+- 2026-09-30 next2实测仍拒签：5cd ANL1162a6fc补8NDK后ZZ由hitrace推进到bridge→libwm.z.so不可见；离线310库清单已含/system/lib64/libwm，说明物理闭包不等于namespace依赖边可达，后续须按加载域核全图。VLC三AudioSystem注册后仍缺newAudioSessionId；Anki旧installer只到LeakCanary，无librsdroid装载证据不能算过。见 benchmark/2026-09-30-v3c-next2-device/。
