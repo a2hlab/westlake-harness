@@ -30,6 +30,16 @@ public final class WestlakeTlsInstall {
         if (done) return;
         done = true;                       // one attempt per process; never loop on a partial failure
         try {
+            // r17f: the OHOS Bouncy Castle AndroidDigestFactory.<clinit> asserts "Provider
+            // AndroidOpenSSL must exist" unless WESTLAKE_USE_BC_DIGESTS=1, in which case it selects the
+            // pure-Java BC digest backend (CONSCRYPT=null) -- route-A has no Conscrypt. Westlake sets
+            // this in the boot/appspawn env; route-A's child does not, so set it here BEFORE the first
+            // touch of AndroidDigestFactory (OhTrustBridge.initializeBouncyCastleDigests below).
+            try {
+                android.system.Os.setenv("WESTLAKE_USE_BC_DIGESTS", "1", true);
+            } catch (Throwable t) {
+                System.err.println("[B8-TLS] setenv WESTLAKE_USE_BC_DIGESTS failed: " + t);
+            }
             Provider bc = Security.getProvider("BC");
             if (bc == null) {
                 System.err.println("[B8-TLS] BC provider absent; TLS chain not installed");
