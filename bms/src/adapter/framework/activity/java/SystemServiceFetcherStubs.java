@@ -23,8 +23,62 @@ public final class SystemServiceFetcherStubs {
         replaceFetcher("alarm", new Builder() {
             @Override public Object build(Object context) throws Throwable { return buildAlarmManager(context); }
         });
+        // media_session (noice/musicplayer): the plain MediaSessionManager(Context) constructor calls
+        // MediaFrameworkPlatformInitializer.getMediaServiceManager(), a NoSuchMethodError on this
+        // generation, so WlMediaSession's fetcher returns null and getSystemService(MEDIA_SESSION_
+        // SERVICE) is null. Allocate the Manager without its constructor and force mService instead.
+        replaceFetcher("media_session", new Builder() {
+            @Override public Object build(Object context) throws Throwable { return buildMediaSessionManager(context); }
+        });
         // vibrator_manager is deferred: VibratorManager/Vibrator have package-private constructors, so a
         // subclass stub will not compile; it needs an IVibratorManagerService-level proxy instead.
+    }
+
+    /**
+     * A MediaSessionManager whose constructor path (MediaFrameworkPlatformInitializer) is broken on
+     * route-A: allocate it without running any constructor and set mService to a type-zero
+     * ISessionManager whose createSession returns a non-null ISession proxy.
+     */
+    private static Object buildMediaSessionManager(Object context) throws Throwable {
+        Class<?> mgr = Class.forName("android.media.session.MediaSessionManager");
+        Object instance = allocateInstance(mgr);
+        Class<?> iSessionManager = Class.forName("android.media.session.ISessionManager");
+        Object service = Proxy.newProxyInstance(iSessionManager.getClassLoader(),
+                new Class<?>[] {iSessionManager}, new TypeZeroHandler());
+        setField(instance, "mService", service);
+        trySetField(instance, "mContext", context);
+        System.err.println("[B8-FETCH] media_session MediaSessionManager allocated (mService stubbed)");
+        return instance;
+    }
+
+    /** Allocate an instance without invoking any constructor (sun.misc.Unsafe, reachable on ART). */
+    private static Object allocateInstance(Class<?> type) throws Throwable {
+        Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+        Field theUnsafe = unsafeClass.getDeclaredField("theUnsafe");
+        theUnsafe.setAccessible(true);
+        Object unsafe = theUnsafe.get(null);
+        Method allocate = unsafeClass.getMethod("allocateInstance", Class.class);
+        return allocate.invoke(unsafe, type);
+    }
+
+    private static void setField(Object obj, String name, Object value) throws Throwable {
+        for (Class<?> c = obj.getClass(); c != null; c = c.getSuperclass()) {
+            try {
+                Field f = c.getDeclaredField(name);
+                f.setAccessible(true);
+                f.set(obj, value);
+                return;
+            } catch (NoSuchFieldException ignore) {
+            }
+        }
+        throw new NoSuchFieldException(name + " on " + obj.getClass().getName());
+    }
+
+    private static void trySetField(Object obj, String name, Object value) {
+        try {
+            setField(obj, name, value);
+        } catch (Throwable ignore) {
+        }
     }
 
     private interface Builder {
@@ -70,6 +124,15 @@ public final class SystemServiceFetcherStubs {
             if (t == int.class) return Integer.valueOf(0);
             if (t == long.class) return Long.valueOf(0L);
             if (t == void.class) return null;
+            // Return a non-null nested stub for interface returns (e.g. ISessionManager.createSession
+            // -> ISession), so a caller that dereferences the result does not NPE.
+            if (t.isInterface()) {
+                try {
+                    return Proxy.newProxyInstance(t.getClassLoader(), new Class<?>[] {t}, new TypeZeroHandler());
+                } catch (Throwable ignore) {
+                    return null;
+                }
+            }
             return null;
         }
     }
