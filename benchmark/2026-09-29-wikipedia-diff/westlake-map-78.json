@@ -1,0 +1,81 @@
+{
+ "task": "#82 westlake-map-78: route-A death points -> Westlake implementations, ranked by apps-saved-per-segment (top 5 of 30-min window)",
+ "source": "~/a2hlab/westlake-current (first-hand line numbers); input #78 triage-summary",
+ "top5": [
+  {
+   "segment": "bindService bridge",
+   "apps_direct": [
+    "termux"
+   ],
+   "apps_indirect": "all bindService-on-launch-path apps",
+   "westlake": "framework/activity/java/ActivityManagerAdapter.java L355-375 [BRIDGED] bindService (in-process via ServiceConnectionRegistry+bindInProcessService, else IntentWantConverter->nativeConnectAbility); bindServiceInstance L377+",
+   "route_a_death": "termux: RuntimeException bindService() failed (J_invokeStaticMain_main_threw)"
+  },
+  {
+   "segment": "VelocityTracker runtime registration",
+   "apps_direct": [
+    "fd-auxio"
+   ],
+   "apps_indirect": "CoordinatorLayout/BottomSheet apps (mcdonalds precedent in file header)",
+   "westlake": "framework/android-runtime/src/android_view_VelocityTracker.cpp + AndroidRuntime.cpp L162/L265 (neutral values: non-zero handle, velocity 0)",
+   "route_a_death": "fd-auxio: UnsatisfiedLinkError nativeInitialize"
+  },
+  {
+   "segment": "JobScheduler stub",
+   "apps_direct": [
+    "ooniprobe"
+   ],
+   "apps_indirect": "WorkManager/JobInfo family",
+   "westlake": "AppSpawnXInit.java L2058-2110 installJobSchedulerStub() (reflection swap of SYSTEM_SERVICE_FETCHERS, accepts/queries/cancels, never fires) + mainline-stubs JobSchedulerFrameworkInitializer no-op",
+   "route_a_death": "ooniprobe: IllegalStateException WorkManager is not initialized (getSystemService(jobscheduler) path, pinned APK nr2.a line10)"
+  },
+  {
+   "segment": "addToDisplay window-type bridge",
+   "apps_direct": [
+    "aegis"
+   ],
+   "apps_indirect": "apps adding non-standard window types",
+   "westlake": "framework/window/java/WindowSessionAdapter.java L593-660 addToDisplay: no Android window-type whitelist; attrs.type mapped into OH CreateAndConnectSpecificSession; MATCH_PARENT resolved in place (G2.14ak); token via OhTokenRegistry",
+   "route_a_death": "aegis: InvalidDisplayException window type 1 is not valid"
+  },
+  {
+   "segment": "theme pair (already r13)",
+   "apps_direct": [
+    "fd-fitness",
+    "fd-noice",
+    "fd-minetest",
+    "wikipedia(#78)"
+   ],
+   "apps_indirect": "Theme.AppCompat family",
+   "westlake": "delivered as #81 activity-theme-segment.md (5-step chain + ASX_KEEP_THEME); r13 resolveActivityTheme matches; cc-t3 5cd verified minetest/opencamera past it",
+   "route_a_death": "fd-fitness You need to use a Theme.AppCompat; fd-noice InflateException line #26"
+  }
+ ],
+ "not_in_top5": [
+  {
+   "app": "antennapod",
+   "death": "SharedPreferences.getString NPE",
+   "note": "no standalone Westlake prefs impl (full BCP ContextImpl provides it); needs route-A-side investigation of who returns null prefs"
+  },
+  {
+   "app": "fd-com-amaze",
+   "death": "NoClassDefFoundError AppConfig",
+   "note": "suspect multi-dex/classloader order"
+  },
+  {
+   "app": "fd-com-kunzisoft",
+   "death": "Cannot create instance of DatabaseViewModel",
+   "note": "ViewModel factory chain"
+  },
+  {
+   "app": "fd-netguard",
+   "death": "MUSL-LDSO __errno relocating failed",
+   "note": "bionic/musl symbol compat, non-Java, separate track"
+  },
+  {
+   "app": "fd-AppManager / fd-droidify",
+   "death": "alive_at_samples (no death)",
+   "note": "not applicable"
+  }
+ ]
+}
