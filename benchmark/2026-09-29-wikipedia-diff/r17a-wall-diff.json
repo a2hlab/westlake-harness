@@ -1,0 +1,90 @@
+{
+ "task": "r17a full sweep — wall ranking + r16→r17a per-key diff (auto_triage R1-R3)",
+ "source": [
+  "benchmark/2026-09-30-r17a-sweep/runs/r17a-A-5cd",
+  "r17a-B-61b"
+ ],
+ "outer_read": {
+  "newly_lit": [
+   "fd-netguard",
+   "fd-minetest(Luanti loading page)"
+  ],
+  "cumulative": 13,
+  "noice_regress_61b": "PendingIntent null + publishCommonEvent ULE"
+ },
+ "diff_highlights": {
+  "guard_fixed (r16 wall gone or moved deeper)": [
+   "fd-netguard@61b: commonevent-jni -> ALIVE+lit (outer-confirmed) — #86 libc.so live",
+   "fd-minetest@5cd: provider-permission persists but deeper (Luanti loading reached, lit)",
+   "fd-etar@5cd: commonevent-jni -> npe (walked PAST CommonEvent into app logic)",
+   "fd-tasks@61b / x@61b / mcdonalds@61b / fd-immich@5cd: provider-install -> other/deeper (guard swallowed provider ULE)"
+  ],
+  "regressions_or_new": [
+   "noice@61b + fd-noice@61b: -> commonevent-jni (publishCommonEvent ULE; outer: PendingIntent null + publish ULE)",
+   "fd-gallery@5cd: -> coroutines-cnfe (now VISIBLE — was masked)",
+   "firefox@61b: provider-install -> jna (assembly gap confirmed as next wall)",
+   "burgerking@5cd: -> SoLoader 'couldn't find DSO to load' (new signature)"
+  ]
+ },
+ "r17a_wall_ranking_dead": [
+  {
+   "wall": "jni-noimpl cluster (missing natives surfaced by guard/sofar)",
+   "apps": 7,
+   "detail": "fd-catima(nativeStopServiceAbility), fd-com-amaze(android.os.FileObserver), fd-im-vector-app+fd-meet(android.os.Process.getElapsedCpuTime), fd-shatteredpixeldungeon(EGLImpl._nativeClassInit), opencamera(android.hardware.Camera.getNumberOfCameras), fd-plus",
+   "westlake": "per-symbol in framework/android-runtime/src (Process: android_os_Process.cpp; FileObserver/EGL/Camera in android-runtime src tree)"
+  },
+  {
+   "wall": "npe (null-service casts, deeper than r16)",
+   "apps": 7,
+   "detail": "fd-droidify,fd-etar,fd-feeder,fd-reader,fd-uhabits,fd-wifianalyzer,newpipe",
+   "westlake": "AppSpawnXInit L2058-2110 installJobSchedulerStub fetcher-swap + LocalServiceBinders L49+ proxy table (battery etc.)"
+  },
+  {
+   "wall": "flutter-gate (not READY for guest dlopen)",
+   "apps": 5,
+   "detail": "fd-fluffychat,fd-kitchenowl,fd-libre@5cd; fd-saber,localsend@61b",
+   "westlake": "no such gate — ANL log-and-allow (#91) built, awaiting r17b"
+  },
+  {
+   "wall": "dlopen-reloc (bionic ABI)",
+   "apps": 5,
+   "detail": "antennapod(libconscrypt __open_2),fd-app(libstdc++),fd-breezyweather(__errno),fd-organicmaps(libGLESv2),mindustry(libOpenSLES)",
+   "westlake": "#86 bionic-abi map + #91 shims cover 4; libGLESv2 shim befb6ec7 built"
+  },
+  {
+   "wall": "commonevent-jni (publish side now visible)",
+   "apps": 3,
+   "detail": "fd-noice@61b,noice@61b,vlc@61b",
+   "westlake": "#91 westlake-commonevent package f6a60fc0 (activity_manager_adapter L140-250)"
+  },
+  {
+   "wall": "provider-permission (MANAGE_DOCUMENTS)",
+   "apps": 2,
+   "detail": "fd-client@5cd,termux@61b",
+   "westlake": "PackageManagerAdapter L1403-1406 (readPermission/writePermission projection)"
+  },
+  {
+   "wall": "jna (libjnidispatch extraction)",
+   "apps": 2,
+   "detail": "fd-fennec_fdroid@5cd,firefox@61b",
+   "westlake": "assembly-side (sidecar lib/ push + nativeLibraryDir per PackageInfoBuilder L205-242)"
+  },
+  {
+   "wall": "provider-install residual",
+   "apps": 2,
+   "detail": "fd-immich@5cd(InitializationProvider VerifyError->flutter),mcdonalds@61b",
+   "westlake": "B8 item1 + tolerant handler"
+  },
+  {
+   "wall": "singles",
+   "apps": 6,
+   "detail": "fd-auxio(velocitytracker #86 pkg), fd-calendar(jobscheduler fetcher), fd-api(theme residual), markor(addToDisplay), fd-seal(StackOverflowError), fd-tutanota(unable-to-start)",
+   "westlake": "per #82/#91 segments"
+  },
+  {
+   "wall": "misc-deeper",
+   "apps": 6,
+   "detail": "fd-android/fd-k9/fd-libretube/fd-musicplayer/fd-tasks/x: Unable to create application (deeper app-init); fd-tutanota; burgerking(SoLoader DSO); wikipedia+ppsspp(GLESv3 native crash path)"
+  }
+ ]
+}

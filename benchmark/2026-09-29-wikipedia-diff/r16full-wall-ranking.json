@@ -1,0 +1,139 @@
+{
+ "task": "r16 full sweep wall ranking (auto_triage w/ R1-R3 rules), A=5cd B=61b",
+ "source": "benchmark/2026-09-30-r16-sweep/runs/{r16full-A-5cd, r16full-B-61b}",
+ "outer_confirmed": {
+  "fd-auxio@5cd": "VelocityTracker JNI missing (61b #87 c835a93e has it)",
+  "fd-droidify@5cd": "in-process Service.startForeground -> IActivityManager null"
+ },
+ "wall_ranking": [
+  {
+   "wall": "flutter guest-dlopen not-READY gate",
+   "apps": 5,
+   "instances": [
+    "fd-fluffychat@5cd",
+    "fd-kitchenowl@5cd",
+    "fd-libre@5cd",
+    "fd-saber@61b",
+    "localsend@61b"
+   ],
+   "note": "#91 ANL log-and-allow already built (f47113d8 lineage, cx-t0 porting to v3a source); immich@5cd separate provider-install"
+  },
+  {
+   "wall": "provider-install (androidx.startup / InitializationProvider)",
+   "apps": 9,
+   "instances": [
+    "burgerking",
+    "fd-client",
+    "fd-immich",
+    "fd-minetest",
+    "fd-tasks",
+    "firefox",
+    "mcdonalds",
+    "termux",
+    "x"
+   ],
+   "note": "B8 item 1 own-package getProviderInfo + tolerant bind handler (#81 segments 1-2)"
+  },
+  {
+   "wall": "CommonEvent JNI missing (nativeSubscribe/PublishCommonEvent)",
+   "apps": 5,
+   "instances": [
+    "fd-etar@5cd",
+    "fd-netguard@61b",
+    "wikipedia@61b",
+    "vlc@61b",
+    "fd-com-kunzisoft-keepass-libre@5cd"
+   ],
+   "note": "#91 westlake-commonevent package built, awaiting cx-t0 integration"
+  },
+  {
+   "wall": "dlopen_ns app-lib dependency gaps (bionic surface)",
+   "apps": 6,
+   "instances": [
+    "anki(librsdroid/liblog.so)",
+    "antennapod(libconscrypt_jni __open_2)",
+    "fd-app(libgdx/libstdc++.so)",
+    "fd-breezyweather(libnrb.so)",
+    "fd-organicmaps(liborganicmaps.so)",
+    "mindustry(libarc.so/libOpenSLES.so)"
+   ],
+   "note": "#86 westlake-bionic libc/liblog + #91 libstdc++.so/libOpenSLES.so shims cover anki/antennapod/fd-app/mindustry; libnrb.so+liborganicmaps.so are new app-lib deps to inspect"
+  },
+  {
+   "wall": "null-service getClass (jobscheduler/alarm wrapper casts)",
+   "apps": 4,
+   "instances": [
+    "fd-calendar",
+    "fd-feeder",
+    "fd-wifianalyzer",
+    "newpipe"
+   ],
+   "note": "r13/r15 stubs must return castable non-null proxies (Westlake LocalServiceBinders semantics)"
+  },
+  {
+   "wall": "startForeground null IActivityManager (in-process service)",
+   "apps": 1,
+   "instances": [
+    "fd-droidify@5cd"
+   ],
+   "note": "outer-confirmed"
+  },
+  {
+   "wall": "VelocityTracker JNI missing",
+   "apps": 1,
+   "instances": [
+    "fd-auxio@5cd"
+   ],
+   "note": "#86 package has the .o; #87 c835a93e on 61b already fixes — needs porting to 5cd shard"
+  },
+  {
+   "wall": "JNA libjnidispatch not extracted",
+   "apps": 1,
+   "instances": [
+    "fd-fennec_fdroid@5cd"
+   ],
+   "note": "JNA resource extraction, separate"
+  },
+  {
+   "wall": "theme residual",
+   "apps": 1,
+   "instances": [
+    "fd-api"
+   ],
+   "note": "single residual after r13"
+  },
+  {
+   "wall": "window-type (markor)",
+   "apps": 1,
+   "instances": [
+    "markor@61b"
+   ],
+   "note": "addToDisplay bridge"
+  },
+  {
+   "wall": "clinit-failure (amaze)",
+   "apps": 1,
+   "instances": [
+    "fd-com-amaze-filemanager@5cd"
+   ],
+   "note": "initializer bug, route-A-only investigation"
+  },
+  {
+   "wall": "unable-to-start-activity (fd-tutanota)",
+   "apps": 1,
+   "instances": [
+    "fd-tutanota@61b"
+   ]
+  },
+  {
+   "wall": "native-signal-crash (anki@61b)",
+   "apps": 1,
+   "instances": [
+    "anki@61b"
+   ],
+   "note": "see cppcrash top frame in native field"
+  }
+ ],
+ "fitness_10min_verdict": "libGLESv3 dlopen ndk-namespace denial happens IDENTICALLY on 5cd (00:13:37 same two MUSL-LDSO lines), but on 5cd fd-fitness stays ALIVE (uid 20010238 in processes-t5, no TextBlob crash, zero new faultlogs) — RenderThread SIGSEGV is 5ea-board/generation-specific or flaky, NOT a deterministic GLESv3 consequence. Copy-list stays low priority per outer.",
+ "method_note": "class fields from auto_triage R1-R3; unsat-link refined by native-symbol signature; provider-install/dlopen/getClass groups from cause-line text. Apps counted per app (boards merged)."
+}
