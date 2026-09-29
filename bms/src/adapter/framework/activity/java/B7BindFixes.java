@@ -27,6 +27,12 @@ public final class B7BindFixes {
     private B7BindFixes() {}
 
     public static void apply(ApplicationInfo ai) {
+        // r17c: load cx-t0's TLS + HTML boundary libraries (fixed child paths) from THIS class's loader
+        // -- the runtime PathClassLoader. native-loader-oh only allows the legacy four soname for the
+        // boot/null loader and rejects these new names, so the caller must be a runtime-JAR class. TLS
+        // first, then HTML; each ships a JNI_OnLoad that registers WestlakeSSLSocket's natives /
+        // rewrites Html.fromHtml to call HtmlCompatFallback. A missing lib must not fail the bind.
+        loadWestlakeNativeLibs();
         try {
             UserManagerProjectionProxy.install();
         } catch (Throwable t) {
@@ -93,6 +99,35 @@ public final class B7BindFixes {
      * Westlake's AppSpawnXInit tolerant handler but as a per-bind Thread default handler in the
      * runtime JAR, so no boot-image change is needed.
      */
+    /**
+     * r17c: System.load the TLS boundary and HTML-compat libraries by absolute child path, in order
+     * (TLS first). Called from apply() so the caller class loader is the runtime PathClassLoader.
+     */
+    static void loadWestlakeNativeLibs() {
+        // TLS boundary first (8ecf6250): its JNI_OnLoad registers WestlakeSSLSocket's seven natives.
+        loadLib("/system/android/lib64/liboh_tls_boundary.so");
+        // HTML compat (26ac847b): the native JNI_OnLoad rewrites android.text.Html.fromHtml into a call
+        // to the class named by WESTLAKE_HTML_COMPAT_CLASS, gated by WESTLAKE_HTML_COMPAT=1. Both envs
+        // must be set in this child BEFORE the library loads (cx-t0 handoff 2026-09-30-tls-native-handoff).
+        try {
+            android.system.Os.setenv("WESTLAKE_HTML_COMPAT", "1", true);
+            android.system.Os.setenv("WESTLAKE_HTML_COMPAT_CLASS", "adapter.compat.HtmlCompatFallback", true);
+            System.err.println("[B8-NATIVE] WESTLAKE_HTML_COMPAT env set");
+        } catch (Throwable t) {
+            System.err.println("[B8-NATIVE] setenv WESTLAKE_HTML_COMPAT failed: " + t);
+        }
+        loadLib("/system/android/lib64/libwestlake_html_compat.so");
+    }
+
+    private static void loadLib(String path) {
+        try {
+            System.load(path);
+            System.err.println("[B8-NATIVE] loaded " + path);
+        } catch (Throwable t) {
+            System.err.println("[B8-NATIVE] System.load(" + path + ") failed: " + t);
+        }
+    }
+
     static void installTolerantUncaughtHandler() {
         try {
             final Thread.UncaughtExceptionHandler original = Thread.getDefaultUncaughtExceptionHandler();

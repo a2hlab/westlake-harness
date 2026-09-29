@@ -87,6 +87,41 @@ public final class ActivityManagerBindProxy implements InvocationHandler {
                 System.err.println("[B8-AMB] in-app bind intercept skipped: " + t);
             }
         }
+        // r17c (#noice): PendingIntent.getActivity/getService/getBroadcast/getForegroundService call
+        // IActivityManager.getIntentSender(WithFeature). route-A returns null, so PendingIntent is null
+        // and Noice's <get-mainActivityPi>/getValue NPE and System.exit(1) once the receiver guard lets
+        // its playback service run this far. Hand back a local no-op IIntentSender so the PendingIntent
+        // constructs; its send() does nothing (no notification actions on the first screen).
+        if ("getIntentSender".equals(name) || "getIntentSenderWithFeature".equals(name)) {
+            Object real = null;
+            try {
+                real = method.invoke(delegate, args);
+            } catch (java.lang.reflect.InvocationTargetException e) {
+                // fall through to the stub
+            }
+            if (real != null) return real;
+            Object stub = intentSenderStub();
+            if (stub != null) {
+                System.err.println("[B8-AMB] " + name + " -> local no-op IIntentSender stub");
+                return stub;
+            }
+        }
+        // r17c (#noice): sendBroadcast -> broadcastIntent(WithFeature) hits nativePublishCommonEvent's
+        // missing JNI (UnsatisfiedLinkError). Tolerate it the same way the receiver guard tolerates
+        // registerReceiver, so a foreground/playback broadcast does not take the app down.
+        if (name.startsWith("broadcastIntent")) {
+            try {
+                return method.invoke(delegate, args);
+            } catch (java.lang.reflect.InvocationTargetException e) {
+                Throwable c = e.getCause();
+                if (c instanceof UnsatisfiedLinkError) {
+                    System.err.println("[B8-AMB] " + name + " -> missing CommonEvent JNI, no-op ("
+                            + c.getMessage() + ")");
+                    return method.getReturnType() == void.class ? null : Integer.valueOf(0);
+                }
+                throw c != null ? c : e;
+            }
+        }
         // r17 (#93/cc-wiki): unwrap InvocationTargetException so the delegate's real exception crosses
         // this proxy transparently. Otherwise a checked ITE from Method.invoke is re-wrapped by the
         // Proxy runtime into UndeclaredThrowableException, and a guard stacked outside us
@@ -191,6 +226,29 @@ public final class ActivityManagerBindProxy implements InvocationHandler {
                     });
         } catch (Throwable t) {
             System.err.println("[B8-AMB] service IActivityManager stub not built: " + t);
+            return null;
+        }
+    }
+
+    /**
+     * r17c (#noice): a fresh no-op android.content.IIntentSender for getIntentSender*. Each call gets
+     * its own Binder so distinct PendingIntents stay distinct; send() and every other method are
+     * type-correct no-ops. Reflection throughout -- IIntentSender is not in the compile android.jar.
+     */
+    private static Object intentSenderStub() {
+        try {
+            final Class<?> iface = Class.forName("android.content.IIntentSender");
+            final android.os.Binder binder = new android.os.Binder();
+            return Proxy.newProxyInstance(iface.getClassLoader(), new Class<?>[] {iface},
+                    new InvocationHandler() {
+                        @Override
+                        public Object invoke(Object p, Method m, Object[] a) {
+                            if ("asBinder".equals(m.getName())) return binder;
+                            return defaultReturn(m.getReturnType());
+                        }
+                    });
+        } catch (Throwable t) {
+            System.err.println("[B8-AMB] IIntentSender stub not built: " + t);
             return null;
         }
     }
