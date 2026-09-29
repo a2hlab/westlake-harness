@@ -1,0 +1,14 @@
+30:
+31: inline uint32_t String::ClassSize(PointerSize pointer_size) {
+32: #ifdef USE_D8_DESUGAR
+33:   // Two lambdas in CharSequence:
+34:   //   lambda$chars$0$CharSequence
+35:   //   lambda$codePoints$1$CharSequence
+36:   // which were virtual functions in standalone desugar, becomes
+37:   // direct functions with D8 desugaring.
+38:   uint32_t vtable_entries = Object::kVTableLength + 67;
+39: #else
+40:   uint32_t vtable_entries = Object::kVTableLength + 69;
+41: #endif
+42:   return Class::ComputeClassSize(true, vtable_entries, 3, 0, 0, 1, 2, pointer_size);
+43: }

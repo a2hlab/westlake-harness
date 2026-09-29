@@ -1,0 +1,17 @@
+602: void ClassLinker::CheckSystemClass(Thread* self, Handle<mirror::Class> c1, const char* descriptor) {
+603:   ObjPtr<mirror::Class> c2 = FindSystemClass(self, descriptor);
+604:   if (c2 == nullptr) {
+605:     LOG(FATAL) << "Could not find class " << descriptor;
+606:     UNREACHABLE();
+607:   }
+608:   if (c1.Get() != c2) {
+609:     std::ostringstream os1, os2;
+610:     c1->DumpClass(os1, mirror::Class::kDumpClassFullDetail);
+611:     c2->DumpClass(os2, mirror::Class::kDumpClassFullDetail);
+612:     LOG(FATAL) << "InitWithoutImage: Class mismatch for " << descriptor
+613:                << ". This is most likely the result of a broken build. Make sure that "
+614:                << "libcore and art projects match.\n\n"
+615:                << os1.str() << "\n\n" << os2.str();
+616:     UNREACHABLE();
+617:   }
+618: }

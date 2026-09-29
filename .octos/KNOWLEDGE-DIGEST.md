@@ -362,3 +362,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - B6/#44 更正#41：real-work配方把art_abort_message_bridge.cpp编入libart，r1 runtime_common.cc已有GetFaultMessageForAbortLogging；漏附加源才导致C桥缺符号。原样补入并只重链ART即可严格链接real-work provider；4项R155旧导出在2760板文件筛查+46 ELF中无UND消费者，按外环裁定不造诊断桩。
 
 - B6/#44 real-work入口+补桥ART的4af23ed3代已实测CHILD_A02，pid5337实映射新host/child/ART/sigchain；随后HelloWorld因UserBinder.onTransact boolean vs Binder Object的LinkageError exit1（更早HiLogOutputStream void vs Object），根因未定位，不能称NPE已修。两轮36挂载全回滚，B5两图复验正常，见 latest-source-generation/task44/。
+
+- B6/#45：无UND消费者不能判inline导出仅诊断；R155 GetResolvedType的PRIMCLASS-GUARD确会对单字符descriptor+非primitive缓存返回null。按反汇编补回并全量重编ART后HelloWorld仍Z/V→Object；无镜像实进InitWithoutImage却因String类不匹配SIGABRT，不能称不支持无镜像或NPE已修。两轮整代回滚+B5双图复验，见 latest-source-generation/task45/。

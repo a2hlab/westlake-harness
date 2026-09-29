@@ -11,28 +11,28 @@
     "explanation": "R8-inlined delegate probes the not-yet-attached outer Activity theme inside an NPE catch before calling super.attachBaseContext."
   },
   "sigchain_sha256": "6d5d5538ff45c057208186f5cb74b9b5c2402d693aa2756a99327fd4b9f8c400",
-  "board_item": 45,
+  "board_item": 44,
   "status": "blocked",
   "policy_block": false,
   "lit_delta": 0,
   "deployed": false,
-  "board_write_commands": "Task45 guard and imageless trials; both 36-mount generations fully rolled back and B5 controls observed",
+  "board_write_commands": "Two task44 whole-generation trials; each failed trial fully rolled back (36 mounts) and B5 controls observed",
   "lock_acquired": true,
   "source_matched": false,
   "candidate_identity": {
-    "host": "dd2fc4aa38127137ff7c8d22b43d8e62b7eb39ea8abbab6055513f0c43c962c2",
-    "child": "693d7dea24c7d0eb91af5fc1626adb1f9910748b2826e802b21b8f37c47cba73",
+    "host": "8125006b52601f293458e6ab4281ea044430ae634b3b45cffb13db8c22750073",
+    "child": "c2952931a27b056957dab18272ac78b80f5d2d7f99e79e48ab2bd4e079106598",
     "libsigchain": "6d5d5538ff45c057208186f5cb74b9b5c2402d693aa2756a99327fd4b9f8c400"
   },
   "child_proof": {
-    "host": "dd2fc4aa38127137ff7c8d22b43d8e62b7eb39ea8abbab6055513f0c43c962c2",
-    "child": "693d7dea24c7d0eb91af5fc1626adb1f9910748b2826e802b21b8f37c47cba73",
+    "host": "8125006b52601f293458e6ab4281ea044430ae634b3b45cffb13db8c22750073",
+    "child": "c2952931a27b056957dab18272ac78b80f5d2d7f99e79e48ab2bd4e079106598",
     "libsigchain": "6d5d5538ff45c057208186f5cb74b9b5c2402d693aa2756a99327fd4b9f8c400",
-    "libart": "2d1074b8c53f1c544ec5811a63b1cd3ce80e53c6d8c7358ec4d0ad151c4d6679",
+    "libart": "073a54cba5abab4b97ab73b763012a9bf1ff6740dd19a9993e930d4bd8a8f7b2",
     "mapped_new_sigchain": true,
-    "pid": 1816,
-    "evidence": "task45/noimage-trial/candidate-helloworld/child-proof-1816.late-sha256",
-    "maps": "task45/noimage-trial/candidate-helloworld/child-proof-1816.late-maps"
+    "pid": 5337,
+    "evidence": "task44/trial2/helloworld/child-proof-5337.late-sha256",
+    "maps": "task44/trial2/helloworld/child-proof-5337.late-maps"
   },
   "identity_gate_passed": true,
   "closure_passed": true,
@@ -41,23 +41,24 @@
   "quick_accepted": false,
   "new_art_built": true,
   "symbol_coverage_against_new_art": true,
-  "null_check_mode": "unverified",
-  "null_check_mode_provenance": "Neither task45 trial reached the implicit-null test. Earlier baseline SIGSEGV remains historical; imageless SIGABRT is not a null-check verdict.",
+  "null_check_mode": "sigsegv",
+  "null_check_mode_provenance": "Task31 original baseline only; task44 no implicit-null retest reached",
   "regressions": [
     "helloworld"
   ],
-  "regression_provenance": "Guard candidate still fails primitive-return LinkageError; imageless candidate fails String class bootstrap consistency. Neither reaches own UI.",
+  "regression_provenance": "Task44 corrected-pin trial2 reaches CHILD_A02 then HelloWorld exits1 with Java LinkageError before UI. Candidate ZigZag/Wikipedia not run after first control failure.",
   "screenshots": [
-    "task45/guard-trial/helloworld/final.jpeg",
-    "task45/noimage-trial/candidate-helloworld/final.jpeg"
+    "task44/trial1/helloworld/final.jpeg",
+    "task44/trial2/helloworld/final.jpeg"
   ],
   "next_blocker": {
-    "classification": "ART/libcore bootstrap class inconsistency without image; guard-only image trial retains primitive-return LinkageError",
-    "phase": "ClassLinker::InitWithoutImage -> CheckSystemClass(java.lang.String)",
-    "error": "InitWithoutImage: Class mismatch for Ljava/lang/String;. Make sure that libcore and art projects match.",
-    "signal": "SIGABRT",
-    "evidence": "task45/noimage-trial/string-mismatch-abort.txt",
-    "root_cause": "Exact missing source/cohort difference not established. Primitive cache guard alone insufficient; no-image experiment entered the path but exposed another consistency failure."
+    "classification": "primitive return-type resolution mismatch during child Java initialization",
+    "phase": "AppSpawnXInit.initChild -> UserManagerProjectionProxy.install",
+    "error": "LinkageError: UserBinder.onTransact boolean vs superclass Binder java.lang.Object",
+    "earlier_error": "HiLogOutputStream.write void vs superclass OutputStream java.lang.Object",
+    "child_exit": 1,
+    "evidence": "task44/trial2/helloworld/hilog-excerpt.txt",
+    "root_cause": "Not yet localized; consistent with primitive resolution/boot cohort mismatch, not proven caused by the omitted diagnostic exports"
   },
   "build": {
     "adapter_commit": "cd5b3293596cc9d9f324743d6d904c5135954076",
@@ -68,28 +69,46 @@
     "native_runtime_built": true,
     "whole_generation_built": true,
     "startup_adapter_commit": "be16148da9ae7bb89c62e81e144ed0bceb5c4669",
-    "libart_sha256": "2d1074b8c53f1c544ec5811a63b1cd3ce80e53c6d8c7358ec4d0ad151c4d6679",
-    "art_translation_units": 246
+    "libart_sha256": "073a54cba5abab4b97ab73b763012a9bf1ff6740dd19a9993e930d4bd8a8f7b2"
   },
   "R2": {
     "verified": [
-      "Parent/child DEX Z/V signatures, nine-entry BCP and three unchanged adapter class bodies",
-      "R155 semantic guard reconstructed as source patch; all 246 ART units rebuilt; other 26 library SHAs unchanged",
-      "Strict deterministic provider/child/host links, identity pins, 338-library/3024-edge closure and negatives",
-      "Both candidates admitted, child ART/sigchain mappings verified; exact failure messages captured",
-      "Two whole-generation rollbacks; final B5 HelloWorld/ZigZag own UI inspected; lock released"
+      "Original art_abort_message_bridge source linked into libart; bridge rebuilt twice identically",
+      "Only libart changes in original 26 provider outputs",
+      "No UND consumers for four R155-only exports in 46 ELFs, with 2760 board-file preselection and positive control",
+      "Strict deterministic real-work provider/child/host builds and host/child ABI gates",
+      "338-library/3024-edge closure and all negative controls",
+      "Actual new host/child/ART/sigchain mapping hashes and raw CHILD_A02 admission",
+      "Corrected-pin HelloWorld exits1 with return-type LinkageError",
+      "Both trials rolled back all 36 mounts; final B5 HelloWorld and ZigZag visually observed, no new faults; 5ea lock released"
     ],
     "partially": [
-      "ART/libcore/boot cohort compatibility localized, not repaired; sampled layout fields and image checks agree"
+      "New VM initialized and Java child entry reached; overall boot-image semantic compatibility fails before HelloWorld UI"
     ],
     "unverified": [
-      "Candidate Wikipedia UI and implicit NPE delivery",
-      "Candidate ZigZag",
-      "Successful imageless cold-start UI latency"
+      "Wikipedia UI",
+      "Implicit-null conversion to NPE",
+      "Candidate ZigZag"
     ]
   },
   "baseline_readback_unchanged": true,
-  "baseline_evidence": "task45/noimage-trial/rollback-identity-after.txt",
+  "baseline_evidence": "task44/trial2/rollback-identity.txt",
+  "lifecycle": {
+    "pass": [
+      "getTheme 的调用者被具名",
+      "板上产物不是本次构建时判失败",
+      "重生成的一代通过 loader 身份校验",
+      "新 libsigchain 缺符号时不部署"
+    ],
+    "fail": [
+      "Wikipedia 从桌面启动后上屏",
+      "修复后 HelloWorld 与 ZigZag 不回退",
+      "越过 getTheme 但仍未上屏时记下一堵墙",
+      "空指针处理方式有记录"
+    ],
+    "skip": 0,
+    "pending_review": 0
+  },
   "known_answer_tests": {
     "run": 69,
     "skipped": 2,
@@ -158,20 +177,5 @@
     "task44/trial2/rollback-helloworld/final.jpeg",
     "task44/trial2/rollback-zigzag/final.jpeg"
   ],
-  "task44_report": "task44/README.md",
-  "lock_released": true,
-  "lifecycle": {
-    "fail": [
-      "Wikipedia \u4ece\u684c\u9762\u542f\u52a8\u540e\u4e0a\u5c4f",
-      "\u4fee\u590d\u540e HelloWorld \u4e0e ZigZag \u4e0d\u56de\u9000",
-      "\u8d8a\u8fc7 getTheme \u4f46\u4ecd\u672a\u4e0a\u5c4f\u65f6\u8bb0\u4e0b\u4e00\u5835\u5899",
-      "\u7a7a\u6307\u9488\u5904\u7406\u65b9\u5f0f\u6709\u8bb0\u5f55"
-    ],
-    "pass": [
-      "getTheme \u7684\u8c03\u7528\u8005\u88ab\u5177\u540d",
-      "\u677f\u4e0a\u4ea7\u7269\u4e0d\u662f\u672c\u6b21\u6784\u5efa\u65f6\u5224\u5931\u8d25",
-      "\u91cd\u751f\u6210\u7684\u4e00\u4ee3\u901a\u8fc7 loader \u8eab\u4efd\u6821\u9a8c",
-      "\u65b0 libsigchain \u7f3a\u7b26\u53f7\u65f6\u4e0d\u90e8\u7f72"
-    ]
-  }
+  "task44_report": "task44/README.md"
 }
