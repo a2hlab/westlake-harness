@@ -15,7 +15,7 @@ tags: [bms, framework, westlake, port]
 - 盘点表逐项记:修复名、解决的现象、Westlake 中的类与方法、route-A 中对应的类与方法、状态(已有 / 缺 / 不适用)、移植方式
 - 移植落点:route-A 适配层的 Java 源码 `bms/src/adapter/framework/**`,构建出新的 `oh-adapter-runtime.jar`;部署沿用 B5 的覆盖方式,带回滚;不改 route-A 的 28 个 provider 与封存清单
 - 优先级:先搬与「系统未下发 ScheduleLaunchAbility / AbilityStage 超时」「bind 期间 ProviderInfo / FileProvider 异常」相关的,再搬首帧 / Surface / 服务桩类
-- 验证统一用 master 的 `bms_batch.py`(`--reinstall --hilog --shots --focus-check`),在 61b 上跑 09-27 Westlake 亮过的 13 个 app 与白窗 13 个
+- 验证统一用 master 的 `bms_batch.py`(`--reinstall --hilog --shots --focus-check`),移植在 5cd 上开发验证,61b 做回归与白窗 13 个、09-27 Westlake 亮过的 13 个的重跑
 
 ## 边界
 
@@ -27,7 +27,7 @@ tags: [bms, framework, westlake, port]
 ### 禁止
 - 不修改 APK
 - 不改 route-A 的 28 个 provider 与封存清单(B6 的范围)
-- 不在 61b 以外的板上部署
+- 不在 5cd、61b 以外的板上部署(5ea 留给 B6)
 
 ## 验收标准
 
@@ -39,7 +39,7 @@ tags: [bms, framework, westlake, port]
 
 场景: 搬过来的修复在 route-A 上生效
   测试: b8_ported_fix_effective
-  假设 一批移植已构建进新的 `oh-adapter-runtime.jar` 并部署到 61b,板上 SHA 与记录一致
+  假设 一批移植已构建进新的 `oh-adapter-runtime.jar` 并部署到 5cd 或 61b,板上 SHA 与记录一致
   当 用 `bms_batch.py` 拉起相关 app 并采 hilog
   那么 每项移植都有该修复生效的正证据(日志行或调用成功),原错误行不再出现
 
