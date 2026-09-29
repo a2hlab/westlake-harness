@@ -462,3 +462,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 cx-t0 next4: OH musl `add_special_handler_at_last`只检查槽3，已有即abort，不代表4槽都满；DFX `g_hasInit`只对同DSO实例幂等。musl namespace继承只走一跳，LOCAL_NS_PREFERED的app搜索根放OH目录可能复制系统库；修复须处理库所属域，不能只加大signal表。源码/负控见 benchmark/2026-09-30-v3c-next4-namespace/。
 
 - 2026-09-30 cx-t0 next4(5cd/r17m): 收窄39个OH直接入口并从default共享后本轮无DFX at_last abort，但ZZ进TuanjieMain后在vendor ANativeWindow_getFormat+60→Mali→OH EGL崩；HW/Auxio/NetGuard保UI，VLC补newAudioSessionId后推进到libvlc `__pthread_cleanup_push`缺符号。next4拒签回滚；早期maps单DFX/ART不等于崩溃时maps，窗口新根因未定。
+
+- **2026-09-30 graphics session/BLAST**: r17p c0742d1c Wikipedia L55630 `SC.create OH_Surface_297 sessionId=298`→DefaultIcon BBQ先占welcome298的NW32FC86F0→欢迎页首次创建BAD_ALLOC；两个firstCreate属297/298，非同owner重建。修复先显式session继承，勿强destroy。v3c BLAST四条注册失败是旧签名表(9/13)，VM Westlake22b94532已有匹配实际DEX的13项保守实现(sync=false/gather有效空Transaction)。候选32dfac83只离线验证，白屏是否解除待板验；见 benchmark/2026-09-30-graphics-session-sync/。

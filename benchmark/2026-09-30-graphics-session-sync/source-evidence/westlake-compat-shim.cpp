@@ -31,43 +31,14 @@
 
 #include <jni.h>
 #include <cstring>  // 2026-05-02 G2.14r: std::strncpy / std::strcpy in BBQ alloc
-#include <cstdlib>  // getenv for explicit runtime diagnostics
-#include <cstdint>  // uint64_t NativeWindow usage bits
-#include <cstdio>   // [STAGE2-UNITY] fprintf(stderr) render checkpoints
-#include <unistd.h> // [STAGE2-UNITY] usleep for eglCreateWindowSurface retry
-// [WALL2-FMT 2026-06-29] AOSP EGL_NATIVE_VISUAL_ID pixel formats (RGBA_8888=1)
-// must be translated to OH GraphicPixelFormat (RGBA_8888=12) before they reach
-// OH_OP_SET_FORMAT — OH format 1 = CLUT (garbage) → gralloc rejects. Single
-// source of truth = the existing surface/jni mapper (build adds its -I path).
-#include "pixel_format_mapper.h"
+#include <cstdio>   // WESTLAKE §441: stderr/fprintf were arriving only transitively
+#include <cstdlib>
 
 extern "C" int HiLogPrint(int type, int level, unsigned int domain,
                           const char* tag, const char* fmt, ...)
     __attribute__((__format__(printf, 5, 6)));
 #define ALOGI(...) HiLogPrint(3, 4, 0xD000F00u, "OH_GfxShim", __VA_ARGS__)
 #define ALOGW(...) HiLogPrint(3, 5, 0xD000F00u, "OH_GfxShim", __VA_ARGS__)
-#define ALOGE(...) HiLogPrint(3, 6, 0xD000F00u, "OH_GfxShim", __VA_ARGS__)
-
-struct ANativeWindow;
-extern "C" int32_t ANativeWindow_getWidth(ANativeWindow* window);
-extern "C" int32_t ANativeWindow_getHeight(ANativeWindow* window);
-extern "C" int32_t ANativeWindow_query(
-    const ANativeWindow* window, int32_t what, int32_t* value);
-
-// [STAGE2-UNITY 2026-06-28] Weak no-op fallbacks for the SQLite JNI register
-// group that 2026-06-28 added to AndroidRuntime.cpp's gRegJNI table. The
-// unity/render runtime build (compile_runtime_local.sh) does NOT compile
-// android_database_SQLite*.cpp (no libsqlite), so without these the table's
-// references are UNDEFINED imports → child [JNI-REG-CHILD] dlopen relocation
-// "symbol not found" SIGSEGV (regressed the render runtime). Declared weak so
-// the REAL impls (noice build, which compiles the SQLite .cpp) override; for
-// Unity/eglprobe (no Android SQLite) the no-op is harmless.
-namespace android {
-__attribute__((weak)) int register_android_database_SQLiteConnection(JNIEnv*) { return 0; }
-__attribute__((weak)) int register_android_database_SQLiteGlobal(JNIEnv*)     { return 0; }
-__attribute__((weak)) int register_android_database_SQLiteDebug(JNIEnv*)      { return 0; }
-__attribute__((weak)) int register_android_database_CursorWindow(JNIEnv*)     { return 0; }
-}  // namespace android
 
 namespace android {
 namespace {
@@ -132,6 +103,49 @@ const JNINativeMethod kImageDecoderMethods[] = {
 };
 
 // =====================================================================
+// android.graphics.Canvas.nSetCompatibilityVersion (no-op)
+// 2026-07-11: missing from the deployed libhwui register_android_graphics_Canvas,
+// so ensureBindApplication → Canvas.<clinit> hit UnsatisfiedLinkError → bind
+// failed → child exited before MainActivity. It only sets a legacy API-level
+// compat flag; a no-op is correct here. Registered one-method, last-wins — does
+// NOT touch the real libhwui draw natives (which stay bound).
+// =====================================================================
+void Canvas_nSetCompatibilityVersion(JNIEnv*, jclass, jint /*apiLevel*/) { }
+
+const JNINativeMethod kCanvasMethods[] = {
+    { "nSetCompatibilityVersion", "(I)V",
+      reinterpret_cast<void*>(Canvas_nSetCompatibilityVersion) },
+};
+
+// com.android.icu.util.LocaleNative.setDefaultNative(String) — no-op.
+// 2026-07-11: unregistered by the device icu_jni → ensureBindApplication's
+// locale init hit UnsatisfiedLinkError → bind failed. Setting ICU's default
+// locale is non-essential for reaching a frame (ICU falls back to root);
+// no-op unblocks bind.
+void LocaleNative_setDefaultNative(JNIEnv*, jclass, jstring /*languageTag*/) { }
+
+const JNINativeMethod kLocaleNativeMethods[] = {
+    { "setDefaultNative", "(Ljava/lang/String;)V",
+      reinterpret_cast<void*>(LocaleNative_setDefaultNative) },
+};
+
+// android.graphics.Typeface.nativeGetReleaseFunc() — return a no-op free func.
+// 2026-07-11: unregistered by the device libhwui register_android_graphics_Typeface
+// → Typeface.<clinit>'s NativeAllocationRegistry.createMalloced(cl, nativeGetReleaseFunc())
+// threw UnsatisfiedLinkError → Typeface class erroneous → sDefaultTypeface null →
+// bind's synchronized(Typeface) → NPE. Must return a NON-ZERO valid function pointer
+// (NativeAllocationRegistry rejects 0); a no-op leaks the native Typeface but is safe.
+void oh_typeface_noop_free(void* /*ptr*/) { }
+jlong Typeface_nativeGetReleaseFunc(JNIEnv*, jclass) {
+    return reinterpret_cast<jlong>(reinterpret_cast<void*>(&oh_typeface_noop_free));
+}
+
+const JNINativeMethod kTypefaceMethods[] = {
+    { "nativeGetReleaseFunc", "()J",
+      reinterpret_cast<void*>(Typeface_nativeGetReleaseFunc) },
+};
+
+// =====================================================================
 // android.view.Surface (subset — most-frequently called by ViewRootImpl)
 // =====================================================================
 // AOSP register_android_view_Surface lives in libandroid_runtime.so which
@@ -144,6 +158,7 @@ const JNINativeMethod kImageDecoderMethods[] = {
 // We are already inside `namespace android { namespace { ... } }`, so these
 // land in the same anonymous namespace as the definitions in the BBQ block.
 extern "C" int32_t oh_sc_get_session(jlong scNativeObject);
+static int32_t oh_wm_get_last_session();
 static void*   oh_wm_get_native_window(int32_t sessionId);
 
 // OhBlastBufferQueue moved up here (was in BBQ section ~line 299) so Surface
@@ -168,19 +183,45 @@ static OhBlastBufferQueue* as_bbq(jlong p) {
 }
 
 // Resolve a SurfaceControl* to a real OHNativeWindow* (the same handle BBQ
-// stamps into Java Surface.mNativeObject). Only the SC's own session is
-// accepted. An unresolved owner returns 0 —
+// stamps into Java Surface.mNativeObject). Falls back to "last attached
+// session" hint when the SurfaceControl has no sessionId attached yet (mirror
+// of BBQ_nativeUpdate's logic). Returns 0 if no window can be resolved —
 // hwui's ANativeWindow_fromSurface treats that as "no surface, retry".
 static jlong sc_to_oh_native_window(jlong surfaceControl) {
     int32_t scSessionId = surfaceControl ? oh_sc_get_session(surfaceControl) : 0;
     int32_t sessionId = scSessionId;
     int32_t lastSessionId = 0;
     if (sessionId == 0) {
+        lastSessionId = oh_wm_get_last_session();
+        sessionId = lastSessionId;
+    }
+    // WESTLAKE §283b: this function decides whether ViewRootImpl.mSurface becomes valid, so
+    // it is the single most important value in the whole render bring-up.  Its existing
+    // diagnostics go to HiLog, which on this board is unreliable (empty / rate-limited /
+    // `hilog -x` hangs).  Mirror them to the child's stderr, which is captured verbatim.
+    {
+        // §283h: print BEFORE touching oh_wm_get_native_window.  The previous version computed
+        // nw first, so when that call blocked the probe printed NOTHING and I could not tell
+        // "blocked inside" from "never entered".  Two lines now bracket the suspect call.
+        static int wl_gn = 0;
+        if (wl_gn < 12) {
+            wl_gn++;
+            fprintf(stderr,
+                    "[WESTLAKE-SC2NW] #%d ENTER sc=0x%llx scSession=%d lastSession=%d -> session=%d\n",
+                    wl_gn, (long long) surfaceControl, scSessionId, lastSessionId, sessionId);
+            fflush(stderr);
+        }
+    }
+    if (sessionId == 0) {
         ALOGW("[DEBUG] sc_to_oh_native_window: sc=0x%llx scSessionId=0 lastSessionId=0 -> 0",
               (long long)surfaceControl);
         return 0;
     }
+    fprintf(stderr, "[WESTLAKE-SC2NW]   -> calling oh_wm_get_native_window(%d)\n", sessionId);
+    fflush(stderr);
     void* nw = oh_wm_get_native_window(sessionId);
+    fprintf(stderr, "[WESTLAKE-SC2NW]   <- oh_wm_get_native_window(%d) returned %p\n", sessionId, nw);
+    fflush(stderr);
     if (!nw) {
         ALOGW("[DEBUG] sc_to_oh_native_window: sc=0x%llx scSessionId=%d lastSessionId=%d sessionId=%d "
               "oh_wm_get_native_window returned nullptr -> 0",
@@ -192,10 +233,18 @@ static jlong sc_to_oh_native_window(jlong surfaceControl) {
     return reinterpret_cast<jlong>(nw);
 }
 
-jlong S_nativeCreateFromSurfaceTexture(JNIEnv*, jclass, jobject /*surfaceTexture*/) {
-    // Real impl: take the SurfaceTexture's IGraphicBufferProducer and wrap in
-    // an OH NativeWindow.  HelloWorld doesn't use SurfaceTexture; return 0.
-    return 0;
+extern "C" jlong oh_surface_texture_get_native_window(JNIEnv* env, jobject surfaceTexture);
+
+jlong S_nativeCreateFromSurfaceTexture(JNIEnv* env, jclass, jobject surfaceTexture) {
+    // WESTLAKE §700: SurfaceTexture's Android-side contract is a producer endpoint.  The OH
+    // boundary creates the equivalent IConsumerSurface/producer Surface pair and returns its
+    // OHNativeWindow here, which is already the native-object representation used by this
+    // port's android.view.Surface and ANativeWindow_fromSurface implementations.
+    const jlong window = oh_surface_texture_get_native_window(env, surfaceTexture);
+    fprintf(stderr, "[WESTLAKE-SURFACETEXTURE] Surface.nativeCreate -> window=0x%llx\n",
+            static_cast<unsigned long long>(window));
+    fflush(stderr);
+    return window;
 }
 jlong S_nativeCreateFromSurfaceControl(JNIEnv*, jclass, jlong surfaceControl) {
     // 2026-05-08 G2.14ae: real bridge — was returning 0xCAFE5C01 sentinel,
@@ -213,12 +262,7 @@ jlong S_nativeCreateFromSurfaceControlNew(JNIEnv*, jclass,
 }
 void S_nativeRelease(JNIEnv*, jclass, jlong /*nativeObject*/) { }
 jboolean S_nativeIsValid(JNIEnv*, jclass, jlong nativeObject) {
-    if (nativeObject == 0) return JNI_FALSE;
-    int32_t valid = 0;
-    return ::ANativeWindow_query(
-               reinterpret_cast<const ::ANativeWindow*>(nativeObject),
-               6 /* NATIVE_WINDOW_IS_VALID */, &valid) == 0 && valid != 0
-        ? JNI_TRUE : JNI_FALSE;
+    return nativeObject != 0 ? JNI_TRUE : JNI_FALSE;
 }
 jboolean S_nativeIsConsumerRunningBehind(JNIEnv*, jclass, jlong /*nativeObject*/) {
     return JNI_FALSE;
@@ -227,21 +271,25 @@ jlong S_nativeReadFromParcel(JNIEnv*, jclass, jlong nativeObject, jobject /*parc
     return nativeObject;
 }
 void S_nativeWriteToParcel(JNIEnv*, jclass, jlong /*nativeObject*/, jobject /*parcel*/) { }
-jlong S_nativeLockCanvas(JNIEnv*, jclass, jlong /*nativeObject*/, jobject /*canvas*/, jobject /*dirtyRect*/) {
-    // Without a real surface buffer to lock, lockCanvas can't return a real
-    // canvas.  HelloWorld doesn't use Surface.lockCanvas (hwui owns drawing).
-    return 0;
+jlong S_nativeLockCanvas(JNIEnv*, jclass, jlong nativeObject, jobject /*canvas*/, jobject /*dirtyRect*/) {
+    // WESTLAKE §407: return the surface pointer, exactly as AOSP does (it returns an extra
+    // reference to the same Surface, which unlockCanvasAndPost then passes to nativeRelease).
+    //
+    // Returning 0 here was FATAL, not merely a no-draw: Surface.lockCanvas stores the result in
+    // mLockedObject, and Surface.unlockCanvasAndPost throws
+    // `IllegalStateException: Surface was not locked` when it is 0.  On the main thread that
+    // escapes ActivityThread.main and the whole child exits(1) — which is what killed noice as
+    // soon as a small software-drawn window (a 202x96 popup during AppIntro) appeared.
+    //
+    // We still do not hand back a real locked buffer, so such windows draw nothing; but they no
+    // longer take the process down, and S_nativeRelease is a no-op so the extra "reference" is
+    // harmless.  hwui owns the real drawing for every window that matters here.
+    return nativeObject;
 }
 void S_nativeUnlockCanvasAndPost(JNIEnv*, jclass, jlong /*nativeObject*/, jobject /*canvas*/) { }
 void S_nativeAllocateBuffers(JNIEnv*, jclass, jlong /*nativeObject*/) { }
-jint S_nativeGetWidth(JNIEnv*, jclass, jlong nativeObject) {
-    return nativeObject == 0 ? 0 : ::ANativeWindow_getWidth(
-        reinterpret_cast<::ANativeWindow*>(nativeObject));
-}
-jint S_nativeGetHeight(JNIEnv*, jclass, jlong nativeObject) {
-    return nativeObject == 0 ? 0 : ::ANativeWindow_getHeight(
-        reinterpret_cast<::ANativeWindow*>(nativeObject));
-}
+jint S_nativeGetWidth(JNIEnv*, jclass, jlong /*nativeObject*/) { return 720; }
+jint S_nativeGetHeight(JNIEnv*, jclass, jlong /*nativeObject*/) { return 1280; }
 // 2026-05-01 G2.14n: AOSP Surface.java declares these as `int` returns; we were
 // registering with `(...)V` signatures and void-returning impls.  RegisterNatives
 // in ART silently accepts mismatched signatures; Java callers then read garbage
@@ -274,13 +322,23 @@ jlong S_nativeGetFromSurfaceControl(JNIEnv*, jclass, jlong /*nativeObject*/, jlo
 // if it were ANativeWindow*, which hwui then dereferenced as OHNativeWindow
 // (different layout) → crash. Now extract b->ohNativeWindow set by
 // BBQ_nativeUpdate. If BBQ.update has not yet run, fall back to the
-// explicit BBQ session; an unbound BBQ stays unresolved.
+// last-attached-session hint (same fallback BBQ_nativeUpdate uses).
 jlong S_nativeGetFromBlastBufferQueue(JNIEnv*, jclass, jlong /*nativeObject*/, jlong blastBufferQueue) {
     auto* b = as_bbq(blastBufferQueue);
     if (b && b->ohNativeWindow) {
         ALOGI("S_nativeGetFromBlastBufferQueue(bbq=0x%llx sessionId=%d) -> ohNativeWindow=%p",
               (long long)blastBufferQueue, b->sessionId, b->ohNativeWindow);
         return reinterpret_cast<jlong>(b->ohNativeWindow);
+    }
+    int32_t sid = oh_wm_get_last_session();
+    if (sid != 0) {
+        void* nw = oh_wm_get_native_window(sid);
+        if (nw) {
+            ALOGI("S_nativeGetFromBlastBufferQueue(bbq=0x%llx) BBQ.update not yet run; "
+                  "using last-session=%d -> ohNativeWindow=%p",
+                  (long long)blastBufferQueue, sid, nw);
+            return reinterpret_cast<jlong>(nw);
+        }
     }
     ALOGW("S_nativeGetFromBlastBufferQueue(bbq=0x%llx): unresolved -> 0",
           (long long)blastBufferQueue);
@@ -382,7 +440,9 @@ jlong BBQ_nativeCreate(JNIEnv* env, jclass, jstring jname, jboolean /*updateDest
     OhBlastBufferQueue* b = alloc_bbq(nameUtf);
     if (jname && nameUtf) env->ReleaseStringUTFChars(jname, nameUtf);
     ALOGI("BBQ.create name=%s ptr=%p", b->name, b);
-    fprintf(stderr, "[BBQ-CP] nativeCreate name=%s ptr=%p\n", b->name ? b->name : "(null)", b); fflush(stderr);
+    if (std::getenv("WESTLAKE_SOURCE_LOG_STDERR")) {
+        std::fprintf(stderr, "[SOURCE-BLAST] create name=%s ptr=%p\n", b->name, b);
+    }
     return reinterpret_cast<jlong>(b);
 }
 
@@ -408,14 +468,12 @@ void BBQ_nativeDestroy(JNIEnv*, jclass, jlong ptr) {
 // found" at dlopen of liboh_android_runtime.so.  Cached after first lookup.
 #include <dlfcn.h>
 typedef void* (*oh_wm_get_native_window_fn_t)(int32_t);
-// 2026-06-28 [STAGE2-SURFACEVIEW]: child SurfaceView surface composition.
-typedef void* (*oh_rs_get_child_surface_window_fn_t)(int32_t, int64_t, int32_t, int32_t);
+typedef int32_t (*oh_wm_get_last_session_fn_t)();
 static oh_wm_get_native_window_fn_t g_oh_wm_get_native_window_fn = nullptr;
-static oh_rs_get_child_surface_window_fn_t g_oh_rs_get_child_surface_window_fn = nullptr;
+static oh_wm_get_last_session_fn_t  g_oh_wm_get_last_session_fn  = nullptr;
 static void resolve_oh_wm_funcs() {
     static bool s_logged = false;
-    if (g_oh_wm_get_native_window_fn &&
-        g_oh_rs_get_child_surface_window_fn) return;
+    if (g_oh_wm_get_native_window_fn && g_oh_wm_get_last_session_fn) return;
 
     // 2026-05-09 G2.14ac: previous code used dlsym(RTLD_DEFAULT, ...) which on
     // OH only searches the caller's linker namespace and the main executable
@@ -423,38 +481,52 @@ static void resolve_oh_wm_funcs() {
     // lives in a different namespace, so RTLD_DEFAULT misses them — dlerror
     // confirmed: "Symbol not found ... so=/system/bin/appspawn-x".
     //
-    // The runtime has an exact DT_NEEDED edge to liboh_adapter_bridge.so.
-    // Resolve only that already-loaded object. A fresh-by-name/absolute-path
-    // fallback can create a second namespace instance and split the window
-    // session state, so a NOLOAD miss is a hard boundary failure.
+    // Fix: dlopen the bridge .so explicitly to obtain a per-namespace handle,
+    // then dlsym against that handle. RTLD_NOLOAD first to reuse the already-
+    // loaded image (OHEnvironment static init loaded it earlier on the adapter
+    // bridge namespace), fall back to a fresh dlopen if NOLOAD misses (e.g.
+    // namespace boundary still hides it; OH dynamic linker then searches the
+    // file from default lib paths).
     static void* s_bridgeHandle = nullptr;
     if (!s_bridgeHandle) {
         s_bridgeHandle = dlopen("liboh_adapter_bridge.so", RTLD_NOW | RTLD_NOLOAD);
+        const char* mode = "RTLD_NOLOAD";
+        if (!s_bridgeHandle) {
+            (void)dlerror();
+            s_bridgeHandle = dlopen("liboh_adapter_bridge.so", RTLD_NOW);
+            mode = "fresh dlopen";
+        }
+        if (!s_bridgeHandle) {
+            (void)dlerror();
+            s_bridgeHandle = dlopen("/system/lib/liboh_adapter_bridge.so", RTLD_NOW);
+            mode = "abs path /system/lib";
+        }
         if (s_bridgeHandle) {
-            ALOGI("[DEBUG] resolve_oh_wm_funcs: exact loaded bridge handle=%p",
-                  s_bridgeHandle);
+            ALOGI("[DEBUG] resolve_oh_wm_funcs: liboh_adapter_bridge.so handle=%p (%s)",
+                  s_bridgeHandle, mode);
         } else {
             const char* err = dlerror();
-            ALOGE("[DEBUG] resolve_oh_wm_funcs: required loaded bridge absent dlerror='%s'",
+            ALOGW("[DEBUG] resolve_oh_wm_funcs: dlopen liboh_adapter_bridge.so FAILED dlerror='%s'",
                   err ? err : "(null)");
-            return;
         }
     }
 
+    void* lookupHandle = s_bridgeHandle ? s_bridgeHandle : RTLD_DEFAULT;
     if (!g_oh_wm_get_native_window_fn) {
         g_oh_wm_get_native_window_fn = reinterpret_cast<oh_wm_get_native_window_fn_t>(
-            dlsym(s_bridgeHandle, "oh_wm_get_native_window"));
+            dlsym(lookupHandle, "oh_wm_get_native_window"));
     }
-    if (!g_oh_rs_get_child_surface_window_fn) {
-        g_oh_rs_get_child_surface_window_fn = reinterpret_cast<oh_rs_get_child_surface_window_fn_t>(
-            dlsym(s_bridgeHandle, "oh_rs_get_child_surface_window"));
+    if (!g_oh_wm_get_last_session_fn) {
+        g_oh_wm_get_last_session_fn = reinterpret_cast<oh_wm_get_last_session_fn_t>(
+            dlsym(lookupHandle, "oh_wm_get_last_session"));
     }
     if (!s_logged) {
         const char* err = dlerror();
-        ALOGI("[DEBUG] resolve_oh_wm_funcs: get_native_window_fn=%p dlerror='%s'",
+        ALOGI("[DEBUG] resolve_oh_wm_funcs: get_native_window_fn=%p get_last_session_fn=%p dlerror='%s'",
               (void*)g_oh_wm_get_native_window_fn,
+              (void*)g_oh_wm_get_last_session_fn,
               err ? err : "(null)");
-        if (g_oh_wm_get_native_window_fn) {
+        if (g_oh_wm_get_native_window_fn && g_oh_wm_get_last_session_fn) {
             s_logged = true;
         }
     }
@@ -463,33 +535,16 @@ static void* oh_wm_get_native_window(int32_t sessionId) {
     resolve_oh_wm_funcs();
     return g_oh_wm_get_native_window_fn ? g_oh_wm_get_native_window_fn(sessionId) : nullptr;
 }
-// 2026-06-28 [STAGE2-SURFACEVIEW]: resolve a dedicated, RS-composited child
-// surface for a SurfaceView (so its EGL producer has a live consumer instead of
-// colliding with the main window's APP_WINDOW_NODE producer). See
-// oh_window_manager_client.cpp::oh_rs_get_child_surface_window.
-static void* oh_rs_get_child_surface_window(int32_t sessionId, int64_t childKey,
-                                            int32_t w, int32_t h) {
+static int32_t oh_wm_get_last_session() {
     resolve_oh_wm_funcs();
-    return g_oh_rs_get_child_surface_window_fn
-        ? g_oh_rs_get_child_surface_window_fn(sessionId, childKey, w, h) : nullptr;
+    return g_oh_wm_get_last_session_fn ? g_oh_wm_get_last_session_fn() : 0;
 }
 
-// Geometry helpers are defined with the ANativeWindow bridge below.  Apply the
-// BLAST dimensions only at nativeUpdate, where they are generation-resolved;
-// later handoffs merely validate that geometry and must not invent a fallback.
-extern "C" __attribute__((visibility("hidden"))) void nwfs_apply_window_geometry(
-        void* nw, int32_t width, int32_t height, const char* where);
-extern "C" void nwfs_seed_window_geometry(void* nw, const char* where);
-
-// [STAGE2-UNITY 2026-06-28] Signature aligned to THIS framework.jar's
-// BLASTBufferQueue.java: nativeUpdate(long ptr, long sc, long width,
-// long height, int format) = (JJJJI)V. Prior shim used (JJJIIIJ)V (7-arg,
-// different framework gen) → RegisterNatives silently failed → SurfaceView
-// (eglprobe / UnityPlayerActivity) hit UnsatisfiedLinkError on first traversal.
+// Keep this entry point byte-for-byte ABI-compatible with the pinned Android
+// 15 BLASTBufferQueue.java declaration. Width and height are long in that API
+// even though the OH native-window boundary ultimately stores 32-bit sizes.
 void BBQ_nativeUpdate(JNIEnv*, jclass, jlong bbqPtr, jlong scPtr,
                       jlong width, jlong height, jint format) {
-    fprintf(stderr, "[BBQ-CP] nativeUpdate ENTER bbq=0x%llx sc=0x%llx %lldx%lld fmt=%d\n",
-            (long long)bbqPtr, (long long)scPtr, (long long)width, (long long)height, format); fflush(stderr);
     auto* b = as_bbq(bbqPtr);
     if (!b) {
         ALOGW("BBQ.update: invalid bbqPtr=%lld", (long long)bbqPtr);
@@ -499,53 +554,48 @@ void BBQ_nativeUpdate(JNIEnv*, jclass, jlong bbqPtr, jlong scPtr,
     b->height = static_cast<int32_t>(height);
     b->format = format;
     int32_t sessionId = oh_sc_get_session(scPtr);
-    if (b->sessionId != sessionId) b->ohNativeWindow = nullptr;
+    if (sessionId == 0) {
+        // 2026-05-02 G2.14r: fall back to "last attached session" hint set by
+        // OHWindowManagerClient::createSession.  Avoids needing a BCP-jar
+        // native method to attach session to SurfaceControl (which would
+        // require boot image rebuild on every change to that BCP class).
+        // Each child appspawn-x process spawns one app with one session, so
+        // process-global last-session is unambiguous in our model.
+        sessionId = oh_wm_get_last_session();
+        if (sessionId != 0) {
+            ALOGI("BBQ.update: SurfaceControl had no sessionId — falling back to "
+                  "last-attached-session hint sessionId=%d", sessionId);
+        }
+    }
     b->sessionId = sessionId;
     if (sessionId == 0) {
-        ALOGW("BBQ.update: no sessionId resolvable (no explicit SC owner); "
+        ALOGW("BBQ.update: no sessionId resolvable (no SC attach + no last hint); "
               "render will use empty Surface");
+        if (std::getenv("WESTLAKE_SOURCE_LOG_STDERR")) {
+            std::fprintf(stderr, "[SOURCE-BLAST] update failed: no session\n");
+        }
         return;
     }
-    // 2026-06-28 [STAGE2-SURFACEVIEW]: route SurfaceView BBQs to a dedicated
-    // RS-composited child surface node; keep the main window (ViewRootImpl) BBQ
-    // on the APP_WINDOW_NODE producer.  AOSP names the SurfaceView's BBQ
-    // "SurfaceView[<title>]" (SurfaceView.java:1055/1160) vs the main window's
-    // "ViewRootImpl[<title>]" (ViewRootImpl.java mTag) — name disambiguates.
-    // Without a dedicated child node the SurfaceView's EGL collides with the
-    // main producer -> eglCreateWindowSurface EGL_BAD_ALLOC (§12-13).
-    bool isSurfaceView = (std::strstr(b->name, "SurfaceView") != nullptr);
-    void* nw = nullptr;
-    if (isSurfaceView) {
-        nw = oh_rs_get_child_surface_window(sessionId, bbqPtr,
-                                            static_cast<int32_t>(width),
-                                            static_cast<int32_t>(height));
-        if (!nw) {
-            ALOGW("BBQ.update: child surface window null for SurfaceView '%s' "
-                  "session=%d; falling back to main producer", b->name, sessionId);
-            nw = oh_wm_get_native_window(sessionId);
-        } else {
-            ALOGI("BBQ.update: SurfaceView '%s' -> dedicated child surface anw=%p",
-                  b->name, nw);
-            fprintf(stderr, "[BBQ-CP] nativeUpdate SurfaceView '%s' -> child anw=%p\n",
-                    b->name, nw); fflush(stderr);
-        }
-    } else {
-        // Resolve sessionId → OHNativeWindow*.  Cached per-session in
-        // OHWindowManagerClient so repeated update() calls get the same pointer.
-        nw = oh_wm_get_native_window(sessionId);
-    }
+    // Resolve sessionId → OHNativeWindow*.  Cached per-session in
+    // OHWindowManagerClient so repeated update() calls get the same pointer.
+    void* nw = oh_wm_get_native_window(sessionId);
     if (!nw) {
         ALOGW("BBQ.update: getOhNativeWindow(sessionId=%d) returned null", sessionId);
+        if (std::getenv("WESTLAKE_SOURCE_LOG_STDERR")) {
+            std::fprintf(stderr, "[SOURCE-BLAST] update failed: session=%d has no window\n",
+                         sessionId);
+        }
         return;
     }
     b->ohNativeWindow = nw;
-    nwfs_apply_window_geometry(
-        nw, static_cast<int32_t>(width), static_cast<int32_t>(height),
-        "BBQ.update-stamp");
     ALOGI("BBQ.update: sessionId=%d → OHNativeWindow=%p (%dx%d fmt=%d)",
-          sessionId, nw, (int)width, (int)height, format);
-    fprintf(stderr, "[BBQ-CP] nativeUpdate RESOLVED sessionId=%d OHNativeWindow=%p (%lldx%lld)\n",
-            sessionId, nw, (long long)width, (long long)height); fflush(stderr);
+          sessionId, nw, static_cast<int>(width), static_cast<int>(height), format);
+    if (std::getenv("WESTLAKE_SOURCE_LOG_STDERR")) {
+        std::fprintf(stderr,
+                "[SOURCE-BLAST] update session=%d window=%p size=%lldx%lld format=%d\n",
+                sessionId, nw, static_cast<long long>(width),
+                static_cast<long long>(height), format);
+    }
 }
 
 // Forward declaration: AOSP exposes a JNI helper to construct a Java Surface
@@ -560,37 +610,6 @@ jobject BBQ_nativeGetSurface(JNIEnv* env, jclass, jlong bbqPtr,
     if (!b) {
         ALOGW("BBQ.getSurface: invalid bbqPtr=%lld", (long long)bbqPtr);
         return nullptr;
-    }
-    fprintf(stderr, "[BBQ-CP] getSurface ENTER bbq=0x%llx ohNativeWindow=%p sessionId=%d\n",
-            (long long)bbqPtr, b->ohNativeWindow, b->sessionId); fflush(stderr);
-    // [PATCH-B / WALL2 2026-06-29] Lazy window resolution.  Unity inits its
-    // GfxDevice by calling getSurface() and (unlike hwui) does NOT retry on a
-    // null window — so if BBQ_nativeUpdate hasn't run yet, returning an empty
-    // Surface (mNativeObject=0) permanently strands Unity with no EGL window.
-    // Before giving up, attempt the SAME resolution chain BBQ_nativeUpdate uses
-    // so mNativeObject is a real OHNativeWindow* by the time we fromSurface.
-    if (!b->ohNativeWindow) {
-        int32_t sessionId = b->sessionId;
-        if (sessionId != 0) {
-            b->sessionId = sessionId;
-            void* nw = nullptr;
-            bool isSurfaceView = (std::strstr(b->name, "SurfaceView") != nullptr);
-            if (isSurfaceView) {
-                nw = oh_rs_get_child_surface_window(sessionId, bbqPtr,
-                                                    b->width, b->height);
-            } else {
-                nw = oh_wm_get_native_window(sessionId);
-            }
-            if (nw) {
-                b->ohNativeWindow = nw;
-                nwfs_seed_window_geometry(nw, "BBQ.getSurface-lazy");  // [S23 cut5 belt]
-                ALOGI("BBQ.getSurface: lazy-resolved sessionId=%d -> OHNativeWindow=%p "
-                      "(BBQ.update had not run before Unity GfxDevice init)",
-                      sessionId, nw);
-                fprintf(stderr, "[BBQ-CP] getSurface LAZY-RESOLVED sessionId=%d nw=%p\n",
-                        sessionId, nw); fflush(stderr);
-            }
-        }
     }
     if (!b->ohNativeWindow) {
         ALOGW("BBQ.getSurface: ohNativeWindow null (sessionId=%d not attached "
@@ -657,6 +676,10 @@ jobject BBQ_nativeGetSurface(JNIEnv* env, jclass, jlong bbqPtr,
     env->SetLongField(surface, mNativeObjectFid, reinterpret_cast<jlong>(b->ohNativeWindow));
     ALOGI("BBQ.getSurface: returning Surface with mNativeObject=%p (sessionId=%d)",
           b->ohNativeWindow, b->sessionId);
+    if (std::getenv("WESTLAKE_SOURCE_LOG_STDERR")) {
+        std::fprintf(stderr, "[SOURCE-BLAST] surface session=%d native=%p\n",
+                     b->sessionId, b->ohNativeWindow);
+    }
     env->DeleteLocalRef(surfaceCls);
     return surface;
 }
@@ -837,219 +860,31 @@ int registerOne(JNIEnv* env, const char* className,
 // of whether libhwui or stub is bound here).
 // =====================================================================
 
-// =====================================================================
-// [UNITY-CW] hwui HardwareRenderer RenderThread neuter  (2026-07-01)
-// =====================================================================
-// WHY (device-confirmed, host-source-proven):
-//   The bionic UnityPlayer requests FLAG_HARDWARE_ACCELERATED on its window.
-//   ViewRootImpl.setView -> enableHardwareAcceleration (Java/BCP) -> ThreadedRenderer
-//   .create() -> HardwareRenderer ctor -> nCreateProxy(real libhwui, registered
-//   above by the kHwuiRegFns dlsym loop as register_android_view_ThreadedRenderer)
-//   -> new RenderProxy -> RenderThread::getInstance() SPAWNS the hwui RenderThread
-//   + its OH RenderService client (RSRenderThread / RSInterfaces, in-process).
-//   This happens DURING setView, BEFORE WindowSessionAdapter.addToDisplay runs.
-//   addToDisplay -> nativeCreateSession -> OHWindowManagerClient::createSession then
-//   issues synchronous OH RS IPC (RSSurfaceNode::Create, RSInterfaces::
-//   GetDefaultScreenId).  The freshly-spawned hwui RenderThread's RS-client init
-//   contends with / DEADLOCKS that IPC -> [OH_WSA] PRE-native logged, POST-native
-//   never.  tj_shell (plain SurfaceView, HW_ACCEL=false) spawns NO RenderThread and
-//   createSession completes — that is the exact state we force here.
-//
-// WHY NOT strip FLAG_HARDWARE_ACCELERATED in the native createSession shim:
-//   (a) IMPOSSIBLE — nativeCreateSession's JNI signature carries NO flags arg
-//       (window_session_adapter.cpp / WindowSessionAdapter.java: type/displayId/
-//       w/h/token only); attrs.flags never crosses into native.
-//   (b) MOOT — even if it did, the RenderThread is already spawned (in setView,
-//       upstream of addToDisplay), so a strip at createSession is too late.
-//   The boundary-correct, timing-correct, NON-BCP fix is here: make nCreateProxy
-//   a no-op so the RenderThread is never born.  We do NOT touch ViewRootImpl /
-//   ThreadedRenderer Java (AonB black-box law) — only last-wins RegisterNatives
-//   at the JNI boundary in our own liboh_android_runtime.so.
-//
-// DEMO-SAFETY (this .so is SHARED — also serves demos via $SA/lib64):
-//   GATED on OHUB_VARIANT naming a known Unity/CW-shell variant (originally
-//   just "cardwords"; 2026-07-10 widened to an enumerated allowlist OR'd with
-//   OHUB_UNITY_LIBDIR presence — see the widened gate implementation below,
-//   in register_android_graphics_compat_shim()) set in the Unity/CW launch
-//   env (launch_asx_unityshell.sh / launch_game1r*.sh / launch_game2r*.sh /
-//   betweenworlds variants).  Demo processes set neither -> they keep the
-//   REAL libhwui HardwareRenderer + RenderThread (they DO render UI via
-//   hwui).  A prior unconditional HardwareRenderer stub (G2.14ao) was
-//   correctly reverted for the noice/demo line for exactly this reason; the
-//   env gate is what makes the Unity-only neuter coexist with demo rendering
-//   in shared source.
-//
-// CONSEQUENCE (intended): the Unity DecorView window no longer renders via hwui;
-//   Unity draws on its own SurfaceView EGL surface (libunity eglCreateWindowSurface
-//   on the OH-backed ANativeWindow) — the tj_shell model.  All proxy-handle-taking
-//   natives are no-op'd so ViewRootImpl's later draw path cannot deref the fake
-//   proxy handle.
-static const jlong kHRNeuterFakeHandle = 1L;
-void     HRN_v0(JNIEnv*, jclass) {}
-void     HRN_v1(JNIEnv*, jclass, jlong) {}
-void     HRN_v2str(JNIEnv*, jclass, jstring, jstring) {}
-jlong    HRN_make(JNIEnv*, jclass) { return kHRNeuterFakeHandle; }
-jlong    HRN_proxy(JNIEnv*, jclass, jboolean, jlong) { return kHRNeuterFakeHandle; }
-jlong    HRN_layer(JNIEnv*, jclass, jlong) { return kHRNeuterFakeHandle; }
-jboolean HRN_false_j(JNIEnv*, jclass, jlong) { return JNI_FALSE; }
-jboolean HRN_false0(JNIEnv*, jclass) { return JNI_FALSE; }
-jboolean HRN_true0(JNIEnv*, jclass) { return JNI_TRUE; }
-jint     HRN_zero_j(JNIEnv*, jclass, jlong) { return 0; }
-jfloat   HRN_one_ji(JNIEnv*, jclass, jlong, jint) { return 1.0f; }
-jint     HRN_sync(JNIEnv*, jclass, jlong, jlongArray, jint) { return 0; }
-
-// =====================================================================
-// 2026-07-10 coverage-gap fix (route3-rssurface-stack-confirmed memory,
-// "RenderThread正交墙未证明完整覆盖" side-finding follow-up):
-//
-// The original 39-entry table above only neuters natives that are reached
-// THROUGH a `HardwareRenderer` Java instance (i.e. downstream of nCreateProxy,
-// which is itself stubbed).  Source audit of AOSP frameworks/base found TWO
-// static natives on the SAME `android/graphics/HardwareRenderer` class whose
-// C++ impl (libs/hwui/renderthread/RenderProxy.cpp) calls
-// `RenderThread::getInstance()` UNCONDITIONALLY (no `hasInstance()` guard),
-// and are NOT gated by nCreateProxy at all — a caller can reach them without
-// ever constructing a HardwareRenderer object:
-//
-//   - "preload" ()V -> RenderProxy::preload() -> RenderThread::getInstance()
-//     (comment in AOSP source literally: "Create RenderThread object and
-//     start the thread.").  Reachable UNCONDITIONALLY, BEFORE any Activity/
-//     View/HardwareRenderer object exists: ActivityThread.handleLaunchActivity()
-//     calls `HardwareRenderer.preload()` directly, gated only on
-//     `ThreadedRenderer.sRendererEnabled` (AOSP default true; only false for
-//     system_server-class processes) && activityInfo.FLAG_HARDWARE_ACCELERATED
-//     (this adapter's AppSchedulerBridge.java:787 FORCES this flag on for
-//     every ability by default).  This call happens BEFORE
-//     performLaunchActivity() -> BEFORE ViewRootImpl.setView -> BEFORE
-//     nCreateProxy.  So on THIS adapter, `preload()` is expected to run on
-//     essentially every activity launch and construct the REAL global
-//     RenderThread singleton regardless of whether nCreateProxy is later
-//     stubbed — the "no proxy => no RenderThread" invariant the original
-//     comment block above relies on does not hold once this entry point is
-//     considered.  This is assessed (2026-07-10, source-only, not yet
-//     device-confirmed) as the most likely mechanism behind the previously
-//     unexplained 2/12 truly-cold RenderThread crash recurrence recorded in
-//     route3-rssurface-stack-confirmed.md ("追查上一节side finding" section):
-//     RenderThread is silently alive on every run via preload(); it only
-//     crashes on the runs where its SurfaceView-position-update upcall race
-//     wins against the older UnityMain SIGSEGV that otherwise kills the
-//     process first.
-//   - "nOverrideProperty" (Ljava/lang/String;Ljava/lang/String;)V ->
-//     RenderProxy::overrideProperty() -> RenderThread::getInstance()
-//     (also unconditional).  No automatic AOSP framework caller was found
-//     (public @hide dev-tool API, not on the activity-launch path) — added
-//     defensively for structural completeness while this table was already
-//     being audited, not because a concrete reachable call site was found.
-//
-// Both stubbed as pure no-ops below (matches the "no proxy => no RenderThread"
-// intent of the rest of this table).
-// =====================================================================
-
-#define HRN_SF "Landroid/view/Surface;"
-const JNINativeMethod kHardwareRendererNeuterMethods[] = {
-    // RenderThread birth — the load-bearing entries: no proxy, and no other
-    // reachable entry point, => no RenderThread.
-    {"nCreateRootRenderNode", "()J",            (void*)HRN_make},
-    {"nCreateProxy",          "(ZJ)J",          (void*)HRN_proxy},
-    {"nDeleteProxy",          "(J)V",           (void*)HRN_v1},
-    // 2026-07-10: RenderThread::getInstance() entry points that bypass
-    // nCreateProxy entirely (see block comment above).
-    {"preload",               "()V",            (void*)HRN_v0},
-    {"nOverrideProperty",     "(Ljava/lang/String;Ljava/lang/String;)V",
-                                                 (void*)HRN_v2str},
-    // proxy-handle-taking lifecycle/draw natives — no-op so the fake handle is
-    // never dereferenced by libhwui once ViewRootImpl tries to draw the decor.
-    {"nGetRenderThreadTid",   "(J)I",           (void*)HRN_zero_j},
-    {"nLoadSystemProperties", "(J)Z",           (void*)HRN_false_j},
-    {"nSetName",              "(JLjava/lang/String;)V", (void*)HRN_v1},
-    {"nSetSurface",           "(J" HRN_SF "Z)V",(void*)HRN_v0},
-    {"nSetSurfaceControl",    "(JJ)V",           (void*)HRN_v0},
-    {"nPause",                "(J)Z",            (void*)HRN_false_j},
-    {"nSetStopped",           "(JZ)V",           (void*)HRN_v0},
-    {"nSetLightGeometry",     "(JFFFF)V",        (void*)HRN_v0},
-    {"nSetLightAlpha",        "(JFF)V",          (void*)HRN_v0},
-    {"nSetOpaque",            "(JZ)V",           (void*)HRN_v0},
-    {"nSetColorMode",         "(JI)F",           (void*)HRN_one_ji},
-    {"nSetTargetSdrHdrRatio", "(JF)V",           (void*)HRN_v0},
-    {"nSetSdrWhitePoint",     "(JF)V",           (void*)HRN_v0},
-    {"nSyncAndDrawFrame",     "(J[JI)I",         (void*)HRN_sync},
-    {"nDestroy",              "(JJ)V",           (void*)HRN_v0},
-    {"nRegisterAnimatingRenderNode","(JJ)V",     (void*)HRN_v0},
-    {"nRegisterVectorDrawableAnimator","(JJ)V",  (void*)HRN_v0},
-    {"nCreateTextureLayer",   "(J)J",            (void*)HRN_layer},
-    {"nBuildLayer",           "(JJ)V",           (void*)HRN_v0},
-    {"nPushLayerUpdate",      "(JJ)V",           (void*)HRN_v0},
-    {"nCancelLayerUpdate",    "(JJ)V",           (void*)HRN_v0},
-    {"nDetachSurfaceTexture", "(JJ)V",           (void*)HRN_v0},
-    {"nDestroyHardwareResources","(J)V",         (void*)HRN_v1},
-    {"nFence",                "(J)V",            (void*)HRN_v1},
-    {"nStopDrawing",          "(J)V",            (void*)HRN_v1},
-    {"nNotifyFramePending",   "(J)V",            (void*)HRN_v1},
-    {"nAddRenderNode",        "(JJZ)V",          (void*)HRN_v0},
-    {"nRemoveRenderNode",     "(JJ)V",           (void*)HRN_v0},
-    {"nDrawRenderNode",       "(JJ)V",           (void*)HRN_v0},
-    {"nSetContentDrawBounds", "(JIIII)V",        (void*)HRN_v0},
-    {"nForceDrawNextFrame",   "(J)V",            (void*)HRN_v1},
-    {"nAddObserver",          "(JJ)V",           (void*)HRN_v0},
-    {"nRemoveObserver",       "(JJ)V",           (void*)HRN_v0},
-    {"nAllocateBuffers",      "(J)V",            (void*)HRN_v1},
-    {"nSetForceDark",         "(JZ)V",           (void*)HRN_v0},
-    {"nIsDrawingEnabled",     "()Z",             (void*)HRN_true0},
-};
-
 }  // namespace
 
 // Public entry called by AndroidRuntime::startReg AFTER libhwui's
 // register_X loop, so our overrides win (last-wins JNI semantics).
 int register_android_graphics_compat_shim(JNIEnv* env) {
+#ifndef WESTLAKE_SOURCE_HWUI15
     registerOne(env, "android/graphics/ImageDecoder",
                 kImageDecoderMethods,
                 sizeof(kImageDecoderMethods) / sizeof(kImageDecoderMethods[0]));
+    registerOne(env, "android/graphics/Canvas",
+                kCanvasMethods,
+                sizeof(kCanvasMethods) / sizeof(kCanvasMethods[0]));
+    registerOne(env, "com/android/icu/util/LocaleNative",
+                kLocaleNativeMethods,
+                sizeof(kLocaleNativeMethods) / sizeof(kLocaleNativeMethods[0]));
+    registerOne(env, "android/graphics/Typeface",
+                kTypefaceMethods,
+                sizeof(kTypefaceMethods) / sizeof(kTypefaceMethods[0]));
+#endif
     registerOne(env, "android/view/Surface",
                 kSurfaceMethods,
                 sizeof(kSurfaceMethods) / sizeof(kSurfaceMethods[0]));
     registerOne(env, "android/graphics/BLASTBufferQueue",
                 kBlastBufferQueueMethods,
                 sizeof(kBlastBufferQueueMethods) / sizeof(kBlastBufferQueueMethods[0]));
-    // [UNITY-CW] neuter hwui HardwareRenderer (no RenderThread) for the Unity/CW
-    // engine process ONLY — gated below on an OHUB_VARIANT allowlist OR
-    // OHUB_UNITY_LIBDIR presence (see 2026-07-10 note immediately below) so
-    // demo processes (served by $SA/lib64) keep the real libhwui RenderThread.
-    // See the
-    // kHardwareRendererNeuterMethods block above for the full causal chain
-    // (prevents the hwui RenderThread RS-client deadlock vs createSession's RS IPC).
-    // 2026-07-10 (route3-rssurface-stack-confirmed memory, "RenderThread正交墙
-    // 修复方案钉死"): the original gate below only matched OHUB_VARIANT=="cardwords".
-    // route3's own launch scripts (launch_game1r.sh / launch_game1r_g34.sh /
-    // launch_game2r.sh / launch_cw_g34.sh / betweenworlds variants) all pass
-    // OHUB_VARIANT=game1|game2|betweenworlds — never "cardwords" — so this
-    // fully-implemented neuter was 100% dead code for every route3 process.
-    // Widened to (a) an enumerated allowlist of every known Unity-bridge-shell
-    // variant string observed across all launch scripts, OR'd with (b) presence
-    // of OHUB_UNITY_LIBDIR (set pairwise with OHUB_VARIANT by every one of those
-    // launch scripts; never set by non-Unity/demo processes) as a
-    // forward-compatible catch-all so a future variant-name rename can't silently
-    // re-introduce this same dead-code trap.
-    {
-        const char* variant = getenv("OHUB_VARIANT");
-        const bool variant_match = variant && (
-            strcmp(variant, "cardwords") == 0 ||
-            strcmp(variant, "game1") == 0 ||
-            strcmp(variant, "game2") == 0 ||
-            strcmp(variant, "betweenworlds") == 0);
-        const bool unity_libdir_present = getenv("OHUB_UNITY_LIBDIR") != nullptr;
-        if (variant_match || unity_libdir_present) {
-            ALOGI("compat_shim: [UNITY-CW] neutering hwui HardwareRenderer "
-                  "(OHUB_VARIANT=%s, OHUB_UNITY_LIBDIR%s) -> no RenderThread, "
-                  "createSession unblocks",
-                  variant ? variant : "(null)",
-                  unity_libdir_present ? " set" : " unset");
-            registerOne(env, "android/graphics/HardwareRenderer",
-                        kHardwareRendererNeuterMethods,
-                        sizeof(kHardwareRendererNeuterMethods)
-                            / sizeof(kHardwareRendererNeuterMethods[0]));
-        }
-    }
     // 2026-05-11 G2.14ar — G2.14an BaseCanvas probe + G2.14ao HardwareRenderer
     // probe registerOne() calls REMOVED.  BaseCanvas / Canvas / Paint /
     // HardwareRenderer / RenderNode JNI now bind only to the AOSP-native
@@ -1102,19 +937,8 @@ struct OHNativeWindow;
 extern "C" int32_t NativeObjectReference(void *obj);
 extern "C" int32_t NativeObjectUnreference(void *obj);
 extern "C" int32_t NativeWindowHandleOpt(OHNativeWindow *window, int code, ...);
-#define OH_OP_SET_BUFFER_GEOMETRY 0
 #define OH_OP_GET_BUFFER_GEOMETRY 1
 #define OH_OP_GET_FORMAT          2
-
-// OH NDK surface identity query used by the real on-screen window path.
-extern "C" int32_t OH_NativeWindow_GetSurfaceId(OHNativeWindow* window, uint64_t* surfaceId);
-// NativeWindowOperation codes / GraphicPixelFormat / BufferUsage values mirror
-// graphic_surface/interfaces/inner_api/surface/{external_window.h,surface_type.h}.
-#define OH_OP_SET_USAGE                 5
-#define GRAPHIC_PIXEL_FMT_RGBA_8888     12
-#define BUFFER_USAGE_MEM_DMA            (1ULL << 3)
-#define BUFFER_USAGE_HW_RENDER          (1ULL << 8)
-#define BUFFER_USAGE_HW_TEXTURE         (1ULL << 9)
 
 // G2.14ag: AdapterAnw shim probes (impl in framework/window/jni/
 // oh_anativewindow_shim.cpp, packed into liboh_adapter_bridge.so). We
@@ -1130,11 +954,7 @@ extern "C" struct OHNativeWindow* oh_anw_get_oh(struct ANativeWindow* aosp);
 static inline OHNativeWindow* anw_unwrap(ANativeWindow* w) {
     if (!w) return nullptr;
     OHNativeWindow* oh = oh_anw_get_oh(w);
-    if (oh) return oh;
-    // A recognized AdapterAnw with no OH handle is a sealed/lost generation;
-    // never reinterpret its AOSP ABI bytes as a raw OH C++ object.
-    if (oh_anw_try_acquire(w)) return nullptr;
-    return reinterpret_cast<OHNativeWindow*>(w);
+    return oh ? oh : reinterpret_cast<OHNativeWindow*>(w);
 }
 
 // HiLogPrint forward-decl above (line 35) takes int level. Use the same magic
@@ -1155,91 +975,9 @@ static inline bool is_sentinel_handle(jlong h) {
     return (magic & 0xFFFFFFF0) == 0xCAFE5C00;
 }
 
-// [S23 cut5 2026-07-09] Seed the geometry of the EXACT OHNativeWindow instance
-// Unity dequeues from, on the last-mile handoff. cut4 proved SET_BUFFER_GEOMETRY
-// (rc=0) reaches window->config, but the bridge poked a sibling nw
-// (oh_rs_get_child_surface_window's 0x..B50) while Unity uses the instance stamped
-// into Surface.mNativeObject / returned by ANativeWindow_fromSurface (0x..A20).
-// native_window.cpp:229 NativeWindowRequestBuffer reads THIS instance's config;
-// if it is 0x0 the server allocs Buffer[0 0] -> NO_BUFFER 50002000 storm, no pixels.
-// Validate here (creation/stamp + handoff) that the exact dequeued instance
-// already carries generation-resolved geometry before its first RequestBuffer.
-// The window/session owner seeds that geometry from live DisplayManager state;
-// this compatibility edge must not inject an app- or board-specific fallback.
-extern "C" __attribute__((visibility("hidden"))) void nwfs_apply_window_geometry(
-        void* nw, int32_t width, int32_t height, const char* where) {
-    if (!nw) return;
-    if (width <= 0 || height <= 0) {
-        HiLogPrint(3, 6, 0xD000F00u, "OH_NWSeed",
-                   "[%{public}s] rejected non-positive BLAST geometry "
-                   "%{public}dx%{public}d",
-                   where, width, height);
-        return;
-    }
-    OHNativeWindow* oh = anw_unwrap(reinterpret_cast<ANativeWindow*>(nw));
-    if (!oh) {
-        HiLogPrint(3, 6, 0xD000F00u, "OH_NWSeed",
-                   "[%{public}s] surface generation is sealed shim=%{public}p",
-                   where, nw);
-        return;
-    }
-    int32_t rc = NativeWindowHandleOpt(
-        oh, OH_OP_SET_BUFFER_GEOMETRY, width, height);
-    int32_t observedHeight = 0;
-    int32_t observedWidth = 0;
-    int32_t observedFormat = 0;
-    int32_t queryRc = NativeWindowHandleOpt(
-        oh, OH_OP_GET_BUFFER_GEOMETRY,
-        &observedHeight, &observedWidth, &observedFormat);
-    if (rc != 0 || queryRc != 0 || observedWidth != width || observedHeight != height) {
-        HiLogPrint(3, 6, 0xD000F00u, "OH_NWSeed",
-                   "[%{public}s] BLAST geometry apply failed shim=%{public}p "
-                   "oh=%{public}p requested=%{public}dx%{public}d "
-                   "observed=%{public}dx%{public}d rc=%{public}d queryRc=%{public}d",
-                   where, nw, (void*)oh, width, height,
-                   observedWidth, observedHeight, rc, queryRc);
-        return;
-    }
-    HiLogPrint(3, 4, 0xD000F00u, "OH_NWSeed",
-               "[%{public}s] BLAST geometry applied shim=%{public}p "
-               "oh=%{public}p %{public}dx%{public}d rc=%{public}d",
-               where, nw, (void*)oh, width, height, rc);
-}
-
-extern "C" void nwfs_seed_window_geometry(void* nw, const char* where) {
-    if (!nw) return;
-    // [S23 cut5.1] nw handed to Unity is the AdapterAnw shim (AOSP ABI), NOT a raw
-    // OHNativeWindow. SET_BUFFER_GEOMETRY on the shim -> rc=0x40001000 (invalid arg).
-    // Unwrap to the shim's embedded real OHNativeWindow first (same pattern as
-    // ANativeWindow_getWidth line ~1140). This is the SAME underlying producer
-    // Unity's RequestBuffer (shim wrapper -> OH_NativeWindow_NativeWindowRequestBuffer)
-    // dequeues from, so config now reaches the storming path.
-    OHNativeWindow* oh = anw_unwrap(reinterpret_cast<ANativeWindow*>(nw));
-    if (!oh) {
-        HiLogPrint(3, 6, 0xD000F00u, "OH_NWSeed",
-                   "[%{public}s] surface generation is sealed shim=%{public}p",
-                   where, nw);
-        return;
-    }
-    int32_t h = 0;
-    int32_t w = 0;
-    int32_t format = 0;
-    int32_t rc = NativeWindowHandleOpt(
-        oh, 1 /* OH_OP_GET_BUFFER_GEOMETRY */, &h, &w, &format);
-    if (rc != 0 || w <= 0 || h <= 0) {
-        HiLogPrint(3, 6, 0xD000F00u, "OH_NWSeed",
-                   "[%{public}s] invalid generation geometry shim=%{public}p "
-                   "oh=%{public}p %{public}dx%{public}d rc=%{public}d",
-                   where, nw, (void*)oh, w, h, rc);
-        return;
-    }
-    HiLogPrint(3, 4, 0xD000F00u, "OH_NWSeed",
-               "[%{public}s] generation geometry ready shim=%{public}p "
-               "oh=%{public}p %{public}dx%{public}d rc=%{public}d",
-               where, nw, (void*)oh, w, h, rc);
-}
-
+#ifndef WESTLAKE_SOURCE_HWUI15
 extern "C" ANativeWindow* ANativeWindow_fromSurface(JNIEnv* env, jobject surface) {
+    fprintf(stderr, "[WESTLAKE-ANW] fromSurface ENTER\n"); fflush(stderr);
     NWFS_INFO("[STAGE0] ENTER env=%{public}p surface=%{public}p",
               (void*)env, (void*)surface);
     if (!env || !surface) {
@@ -1268,12 +1006,9 @@ extern "C" ANativeWindow* ANativeWindow_fromSurface(JNIEnv* env, jobject surface
     }
     // Real OHNativeWindow* set by BBQ_nativeGetSurface above. On OH,
     // OHNativeWindow ≡ ANativeWindow, so hand it back to hwui directly.
-    // [S23 cut5 PRIMARY] last-mile: this is the exact instance Unity dequeues
-    // from — validate its generation geometry before returning so its first
-    // RequestBuffer cannot silently use Buffer[0 0].
-    nwfs_seed_window_geometry(reinterpret_cast<void*>(nativeObj), "STAGE0-handoff");
     NWFS_INFO("[STAGE0] returning OHNativeWindow=%{public}p directly",
               reinterpret_cast<void*>(nativeObj));
+    fprintf(stderr, "[WESTLAKE-ANW] fromSurface RETURNING ok\n"); fflush(stderr);
     return reinterpret_cast<ANativeWindow*>(nativeObj);
 }
 
@@ -1283,8 +1018,10 @@ extern "C" ANativeWindow* ANativeWindow_fromSurface(JNIEnv* env, jobject surface
 // doc/graphics_rendering_design.html §7.13 (ref counting).
 extern "C" void ANativeWindow_acquire(ANativeWindow* w) {
     if (!w) return;
-    if (oh_anw_try_acquire(w)) return;          // shim path
+    fprintf(stderr, "[WESTLAKE-ANW] acquire ENTER\n"); fflush(stderr);
+    if (oh_anw_try_acquire(w)) { fprintf(stderr, "[WESTLAKE-ANW] acquire EXIT via shim\n"); fflush(stderr); return; }
     NativeObjectReference(reinterpret_cast<void*>(w));
+    fprintf(stderr, "[WESTLAKE-ANW] acquire EXIT via NativeObjectReference\n"); fflush(stderr);
 }
 
 extern "C" void ANativeWindow_release(ANativeWindow* w) {
@@ -1295,207 +1032,205 @@ extern "C" void ANativeWindow_release(ANativeWindow* w) {
 
 extern "C" int32_t ANativeWindow_getWidth(ANativeWindow* w) {
     if (!w) return 0;
-    OHNativeWindow* oh = anw_unwrap(w);
-    if (!oh) return 0;
     int32_t width = 0, height = 0, format = 0;
-    NativeWindowHandleOpt(oh, OH_OP_GET_BUFFER_GEOMETRY,
-                          &height, &width, &format);
+    NativeWindowHandleOpt(anw_unwrap(w),        // G2.14ag: unwrap shim
+                           OH_OP_GET_BUFFER_GEOMETRY, &height, &width, &format);
     return width;
 }
 
 extern "C" int32_t ANativeWindow_getHeight(ANativeWindow* w) {
     if (!w) return 0;
-    OHNativeWindow* oh = anw_unwrap(w);
-    if (!oh) return 0;
     int32_t width = 0, height = 0, format = 0;
-    NativeWindowHandleOpt(oh, OH_OP_GET_BUFFER_GEOMETRY,
-                          &height, &width, &format);
+    NativeWindowHandleOpt(anw_unwrap(w),        // G2.14ag: unwrap shim
+                           OH_OP_GET_BUFFER_GEOMETRY, &height, &width, &format);
     return height;
 }
 
 extern "C" int32_t ANativeWindow_getFormat(ANativeWindow* w) {
     if (!w) return 0;
-    OHNativeWindow* oh = anw_unwrap(w);
-    if (!oh) return 0;
     int32_t format = 0;
-    NativeWindowHandleOpt(oh, OH_OP_GET_FORMAT, &format);
+    NativeWindowHandleOpt(anw_unwrap(w),        // G2.14ag: unwrap shim
+                           OH_OP_GET_FORMAT, &format);
     return format;
 }
 
-// [UNITY-PATCH-C] NDK buffer-config + query shims.
-// Unity's EGL bring-up (and AOSP hwui via libandroid.so dlsym) calls these
-// NDK entry points on the ANativeWindow returned by ANativeWindow_fromSurface.
-// Before this patch they were absent → dlsym(nullptr) → Unity aborted before
-// the first eglSwapBuffers. Route geometry/format to OH NativeWindowHandleOpt;
-// dataspace is advisory (OH RSSurfaceNode owns colorspace).
-#define OH_OP_SET_BUFFER_GEOMETRY 0
-#define OH_OP_SET_FORMAT          3
-extern "C" int32_t ANativeWindow_setBuffersGeometry(ANativeWindow* w,
-        int32_t width, int32_t height, int32_t format) {
-    if (!w) return -1;
-    OHNativeWindow* oh = anw_unwrap(w);
-    if (!oh) return -1;
-    if (width <= 0 || height <= 0) {
-        int32_t currentHeight = 0;
-        int32_t currentWidth = 0;
-        int32_t currentFormat = 0;
-        int32_t queryRc = NativeWindowHandleOpt(
-            oh, OH_OP_GET_BUFFER_GEOMETRY,
-            &currentHeight, &currentWidth, &currentFormat);
-        if (queryRc != 0 || currentWidth <= 0 || currentHeight <= 0) {
-            NWFS_WARN("ANativeWindow_setBuffersGeometry rejected %{public}dx%{public}d: "
-                      "no live geometry rc=%{public}d current=%{public}dx%{public}d",
-                      width, height, queryRc, currentWidth, currentHeight);
-            return -1;
-        }
-        width = currentWidth;
-        height = currentHeight;
-    }
-    int32_t rc = NativeWindowHandleOpt(oh, OH_OP_SET_BUFFER_GEOMETRY, width, height);
-    if (format > 0) {
-        // [WALL2-FMT 2026-06-29] Translate AOSP visual-id pixel format → OH
-        // GraphicPixelFormat (e.g. RGBA_8888 1 → 12). androidToOHPixelFormat
-        // clamps unknown/1/0 to OH RGBA_8888=12, never passing CLUT (1) to OH.
-        int32_t ohFormat = oh_adapter::androidToOHPixelFormat(format);
-        NativeWindowHandleOpt(oh, OH_OP_SET_FORMAT, ohFormat);
-        NWFS_INFO("ANativeWindow_setBuffersGeometry fmt-map AOSP=%{public}d -> OH=%{public}d",
-                  format, ohFormat);
-    }
-    NWFS_INFO("ANativeWindow_setBuffersGeometry w=%{public}d h=%{public}d fmt=%{public}d rc=%{public}d",
-              width, height, format, rc);
-    return 0;
+#endif
+
+#ifndef WESTLAKE_SOURCE_HWUI15
+// 2026-07-11: Typeface.nativeGetReleaseFunc via JNI AUTO-RESOLUTION (exported symbol).
+// The compat_shim's RegisterNatives for this didn't stick (libhwui's
+// register_android_graphics_Typeface re-registers Typeface after the shim, or FindClass
+// timing). JNI auto-resolution looks up exactly this symbol on the first unresolved
+// call, so exporting it is order-independent. Returns a no-op free func (non-zero, as
+// NativeAllocationRegistry requires) — native Typeface leaks but no crash.
+extern "C" void oh_tf_noop_free_export(void* /*ptr*/) { }
+extern "C" long Java_android_graphics_Typeface_nativeGetReleaseFunc(void* /*env*/, void* /*clazz*/) {
+    return reinterpret_cast<long>(reinterpret_cast<void*>(&oh_tf_noop_free_export));
 }
-extern "C" int32_t ANativeWindow_setBuffersDataSpace(ANativeWindow* w, int32_t dataSpace) {
-    if (!w) return -1;
-    NWFS_INFO("ANativeWindow_setBuffersDataSpace ds=%{public}d (advisory no-op)", dataSpace);
-    return 0;
+
+// 2026-07-21 (arm64 board): same trick for android.graphics.fonts.Font.  libhwui's
+// register_android_graphics_fonts_Font reports success and the tolerant registrar skips
+// nothing, yet nGetReleaseNativeFont still resolves to the generic trampoline —
+// identical symptom to Typeface above.  With the ART dlsym(RTLD_DEFAULT) fallback in
+// JavaVMExt::FindCodeForNativeMethod, exporting the JNI name is enough.  Font declares
+// it @CriticalNative (no env/clazz), so take no parameters: any register-passed extras
+// are simply ignored on aarch64.  Must return NON-ZERO — NativeAllocationRegistry
+// rejects a null free-function (that is what made Font.<clinit> fail and left
+// registerNativeAllocation being invoked on a null registry).
+extern "C" void oh_font_noop_free_export(void* /*ptr*/) { }
+extern "C" long Java_android_graphics_fonts_Font_nGetReleaseNativeFont() {
+    return reinterpret_cast<long>(reinterpret_cast<void*>(&oh_font_noop_free_export));
 }
-extern "C" int32_t ANativeWindow_query(const ANativeWindow* w, int32_t what, int32_t* value) {
-    if (!w || !value) return -1;
-    OHNativeWindow* oh = anw_unwrap(const_cast<ANativeWindow*>(w));
-    if (!oh) {
-        if (what == 6 /* NATIVE_WINDOW_IS_VALID */) {
-            *value = 0;
-            return 0;
+
+// The same "registered-but-unresolved" symptom hits every NativeAllocationRegistry
+// release-func native in libhwui's font/text JNI.  android-14 libs/hwui/jni has exactly
+// four of them; Typeface's and Font's are above, these are the rest:
+//   nGetReleaseNativeFamily -> android/graphics/fonts/FontFamily$Builder
+//   nGetReleaseFunc         -> android/graphics/text/MeasuredText$Builder
+//   nGetReleaseResultFunc   -> android/graphics/text/LineBreaker
+// All are @CriticalNative (no env/clazz) and must return a NON-ZERO free function.
+extern "C" void oh_fontfamily_noop_free_export(void* /*ptr*/) { }
+extern "C" long Java_android_graphics_fonts_FontFamily_00024Builder_nGetReleaseNativeFamily() {
+    return reinterpret_cast<long>(reinterpret_cast<void*>(&oh_fontfamily_noop_free_export));
+}
+extern "C" void oh_measuredtext_noop_free_export(void* /*ptr*/) { }
+extern "C" long Java_android_graphics_text_MeasuredText_00024Builder_nGetReleaseFunc() {
+    return reinterpret_cast<long>(reinterpret_cast<void*>(&oh_measuredtext_noop_free_export));
+}
+extern "C" void oh_linebreaker_noop_free_export(void* /*ptr*/) { }
+extern "C" long Java_android_graphics_text_LineBreaker_nGetReleaseResultFunc() {
+    return reinterpret_cast<long>(reinterpret_cast<void*>(&oh_linebreaker_noop_free_export));
+}
+
+// 2026-07-21 (arm64 board): libcore.io.Linux.chown(String,int,int) is unimplemented in
+// this runtime's libcore natives, and ActivityThread.handleBindApplication calls it while
+// preparing the app data dirs -> UnsatisfiedLinkError -> bind fails.  It is literally
+// chown(2); export it under its JNI name so ART's dlsym fallback binds it.  Linux.* are
+// INSTANCE methods, hence the jobject.  Errors are swallowed: the adapter runs as the app
+// uid and the dirs are already owned correctly, so a failed chown must not abort bind.
+#include <unistd.h>
+#include <errno.h>
+extern "C" void Java_libcore_io_Linux_chown(void* envv, void* /*thiz*/, void* pathStr,
+                                            int uid, int gid) {
+    JNIEnv* env = reinterpret_cast<JNIEnv*>(envv);
+    jstring js = reinterpret_cast<jstring>(pathStr);
+    if (env == nullptr || js == nullptr) return;
+    const char* path = env->GetStringUTFChars(js, nullptr);
+    if (path != nullptr) {
+        if (::chown(path, static_cast<uid_t>(uid), static_cast<gid_t>(gid)) != 0) {
+            ALOGW("Linux.chown(%s, %d, %d) failed errno=%d (ignored)", path, uid, gid, errno);
         }
-        return -1;
-    }
-    switch (what) {
-        case 0: {  // NATIVE_WINDOW_WIDTH
-            int32_t h = 0, ww = 0, f = 0;
-            NativeWindowHandleOpt(oh, OH_OP_GET_BUFFER_GEOMETRY, &h, &ww, &f);
-            *value = ww; return 0;
-        }
-        case 1: {  // NATIVE_WINDOW_HEIGHT
-            int32_t h = 0, ww = 0, f = 0;
-            NativeWindowHandleOpt(oh, OH_OP_GET_BUFFER_GEOMETRY, &h, &ww, &f);
-            *value = h; return 0;
-        }
-        case 2: {  // NATIVE_WINDOW_FORMAT
-            int32_t f = 1;
-            NativeWindowHandleOpt(oh, OH_OP_GET_FORMAT, &f);
-            *value = f; return 0;
-        }
-        case 6:  // NATIVE_WINDOW_IS_VALID
-            *value = 1; return 0;
-        default:
-            *value = 0; return 0;
+        env->ReleaseStringUTFChars(js, path);
     }
 }
 
-// [UNITY-EGL-UNWRAP]  Wall 4 — eglCreateWindowSurface de-wrap interposer.
-//
-// libunity.so calls eglCreateWindowSurface() with the AOSP ANativeWindow it
-// got from ANativeWindow_fromSurface().  On OH that handle is an AdapterAnw
-// wrapper (magic '_wnd') around the real OHNativeWindow; OH's libEGL only
-// accepts the bare OHNativeWindow, so the wrapped pointer would be rejected
-// (EGL_NO_SURFACE / fatal).  We unwrap via oh_anw_get_oh() (strong T symbol in
-// liboh_adapter_bridge.so, forward-declared at the top of this file) and call
-// through to OH's real eglCreateWindowSurface resolved by name from libEGL.so.
-//
-// Why this binds without LD_PRELOAD / -Bsymbolic: libunity's DT_NEEDED lists
-// libandroid.so (== this runtime) BEFORE libEGL.so, so the breadth-first
-// global symbol resolution binds libunity's eglCreateWindowSurface reference to
-// our strong definition here.  Non-wrapped windows (magic != '_wnd') return
-// nullptr from oh_anw_get_oh and are passed through untouched, so hwui's own
-// EGL path is not disturbed.
-//
-// libEGL.so is an exact DT_NEEDED dependency of this runtime. Reuse only the
-// already-loaded provider; never create a second/global/absolute-path instance.
-typedef void*    EGLDisplay;
-typedef void*    EGLConfig;
-typedef void*    EGLSurface;
-typedef int32_t  EGLint;
-typedef EGLSurface (*PFN_eglCreateWindowSurface)(EGLDisplay, EGLConfig, void*,
-                                                 const EGLint*);
-
-extern "C" EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig cfg,
-                                             void* win, const EGLint* attrs) {
-    static PFN_eglCreateWindowSurface s_real = nullptr;
-    static bool s_resolved = false;
-    if (!s_resolved) {
-        s_resolved = true;
-        // dlfcn.h was #included inside namespace android above, so the dl*
-        // symbols live in android:: — qualify them from this global scope.
-        void* h = android::dlopen("libEGL.so", RTLD_NOW | RTLD_NOLOAD);
-        if (h) {
-            s_real = reinterpret_cast<PFN_eglCreateWindowSurface>(
-                android::dlsym(h, "eglCreateWindowSurface"));
+// Same story for the rest of the libcore.io.Linux group that ActivityThread's
+// app-data-dir setup touches (ContextImpl.setUpApplicationDirs -> Os.mkdir/chmod/
+// setxattr).  All are instance methods; all failures are ignored — the child already
+// runs as the app uid with the dirs in place, and an errno here must not abort bind.
+#include <sys/stat.h>
+#include <sys/xattr.h>
+extern "C" void Java_libcore_io_Linux_chmod(void* envv, void* /*thiz*/, void* pathStr, int mode) {
+    JNIEnv* env = reinterpret_cast<JNIEnv*>(envv);
+    jstring js = reinterpret_cast<jstring>(pathStr);
+    if (env == nullptr || js == nullptr) return;
+    const char* path = env->GetStringUTFChars(js, nullptr);
+    if (path != nullptr) {
+        if (::chmod(path, static_cast<mode_t>(mode)) != 0) {
+            ALOGW("Linux.chmod(%s, 0%o) failed errno=%d (ignored)", path, mode, errno);
         }
-        NWFS_INFO("[UNITY-EGL] resolve eglCreateWindowSurface handle=%{public}p real=%{public}p",
-                  h, reinterpret_cast<void*>(s_real));
+        env->ReleaseStringUTFChars(js, path);
     }
-    if (!s_real) {
-        NWFS_WARN("[UNITY-EGL] real eglCreateWindowSurface unresolved -> EGL_NO_SURFACE");
-        return nullptr;   // EGL_NO_SURFACE
-    }
-    OHNativeWindow* oh = win ? oh_anw_get_oh(reinterpret_cast<ANativeWindow*>(win))
-                             : nullptr;
-
-    if (!oh) {
-        NWFS_WARN("[UNITY-EGL] adapter window has no OHNativeWindow; fail closed");
-        return nullptr;
-    }
-
-    // [STAGE2-UNITY 2026-06-28] Prime the unwrapped OH window with GPU-render
-    // usage + format BEFORE eglCreateWindowSurface. The RSSurfaceNode producer
-    // from the SurfaceView/BLAST path has no HW_RENDER usage by default → OH's
-    // libEGL can't allocate GPU-renderable buffers → EGL_BAD_ALLOC (0x3003).
-    // (eglprobe FAILed here with err=0x3003; offscreen path already did this.)
-    if (oh) {
-        int32_t gh = 0, gw = 0, gf = 0;
-        NativeWindowHandleOpt(oh, OH_OP_GET_BUFFER_GEOMETRY, &gh, &gw, &gf);
-        int32_t qsz = -1;
-        NativeWindowHandleOpt(oh, 17 /*GET_BUFFERQUEUE_SIZE*/, &qsz);
-        NWFS_INFO("[STAGE2-EGL] pre-prime window geometry h=%{public}d w=%{public}d fmt=%{public}d QUEUE_SIZE=%{public}d", gh, gw, gf, qsz);
-        NativeWindowHandleOpt(oh, OH_OP_SET_FORMAT, GRAPHIC_PIXEL_FMT_RGBA_8888);
-        NativeWindowHandleOpt(oh, OH_OP_SET_USAGE,
-                              (uint64_t)(BUFFER_USAGE_HW_RENDER |
-                                         BUFFER_USAGE_HW_TEXTURE |
-                                         BUFFER_USAGE_MEM_DMA));
-        if (gw <= 0 || gh <= 0) {
-            NWFS_WARN("[STAGE2-EGL] invalid generation geometry; fail closed");
-            return nullptr;
-        }
-        NativeWindowHandleOpt(oh, OH_OP_SET_BUFFER_GEOMETRY, gw, gh);
-    }
-    void* target = reinterpret_cast<void*>(oh);
-    NWFS_INFO("[UNITY-EGL] eglCreateWindowSurface win=%{public}p oh=%{public}p (%{public}s)",
-              win, reinterpret_cast<void*>(oh), oh ? "unwrapped" : "passthrough");
-    // [STAGE2-UNITY 2026-06-28 W11] RETRY: noice/HWUI succeeds because it calls
-    // eglCreateWindowSurface/getOhNativeWindow REPEATEDLY in its render loop —
-    // the RSSurfaceNode producer's RenderService consumer isn't acquire-ready on
-    // the FIRST try → first eglCreateWindowSurface returns EGL_NO_SURFACE
-    // (EGL_BAD_ALLOC). Java EGL14 callers (eglprobe / Unity) call ONCE and give
-    // up. Retry internally (blocking the render thread briefly during init) so
-    // the consumer has time to connect/acquire, mirroring HWUI's loop.
-    EGLSurface result = s_real(dpy, cfg, target, attrs);
-    if (result == (EGLSurface)0 /*EGL_NO_SURFACE*/ && oh) {
-        for (int i = 0; i < 60 && result == (EGLSurface)0; ++i) {
-            usleep(25000);  // 25ms; up to ~1.5s total
-            result = s_real(dpy, cfg, target, attrs);
-        }
-        NWFS_INFO("[STAGE2-EGL] eglCreateWindowSurface RETRY done result=%{public}p", result);
-    }
-    return result;
 }
+// 2026-07-22 (arm64 board): libcore.io.Linux.statvfs(String) is likewise unimplemented, and
+// SQLiteDatabase's free-space check calls it on every open once the DB actually opens (which
+// only started happening after the SQLite JNI landed).  Without it the open path throws and
+// Room/WorkManager retry forever — the child logs "Opened connection" over and over.
+// It is statvfs(3); build the android.system.StructStatVfs the caller expects.  A failed
+// statvfs returns plausible non-zero values rather than throwing: the caller only wants to
+// know there is room, and an ErrnoException here would abort the DB open we just enabled.
+#include <sys/statvfs.h>
+#include <string.h>
+extern "C" jobject Java_libcore_io_Linux_statvfs(void* envv, void* /*thiz*/, void* pathStr) {
+    JNIEnv* env = reinterpret_cast<JNIEnv*>(envv);
+    jstring js = reinterpret_cast<jstring>(pathStr);
+    if (env == nullptr) return nullptr;
+    struct statvfs sb;
+    memset(&sb, 0, sizeof(sb));
+    int rc = -1;
+    if (js != nullptr) {
+        const char* path = env->GetStringUTFChars(js, nullptr);
+        if (path != nullptr) {
+            rc = ::statvfs(path, &sb);
+            if (rc != 0) ALOGW("Linux.statvfs(%s) failed errno=%d (using defaults)", path, errno);
+            env->ReleaseStringUTFChars(js, path);
+        }
+    }
+    if (rc != 0) {   // plausible 4GB-free filesystem
+        sb.f_bsize = 4096;      sb.f_frsize = 4096;
+        sb.f_blocks = 1u << 21; sb.f_bfree = 1u << 20; sb.f_bavail = 1u << 20;
+        sb.f_files = 1u << 17;  sb.f_ffree = 1u << 16; sb.f_favail = 1u << 16;
+        sb.f_fsid = 0;          sb.f_flag = 0;         sb.f_namemax = 255;
+    }
+    jclass cls = env->FindClass("android/system/StructStatVfs");
+    if (cls == nullptr) { env->ExceptionClear();
+        fprintf(stderr, "[WESTLAKE-STATVFS] StructStatVfs class not found\n"); return nullptr; }
+    // AOSP ctor: (bsize, frsize, blocks, bfree, bavail, files, ffree, favail, fsid, flag, namemax)
+    jmethodID ctor = env->GetMethodID(cls, "<init>", "(JJJJJJJJJJJ)V");
+    if (ctor == nullptr) { env->ExceptionClear();
+        fprintf(stderr, "[WESTLAKE-STATVFS] StructStatVfs ctor (JJJJJJJJJJJ)V not found\n");
+        return nullptr; }
+    jobject o = env->NewObject(cls, ctor,
+        (jlong)sb.f_bsize, (jlong)sb.f_frsize, (jlong)sb.f_blocks, (jlong)sb.f_bfree,
+        (jlong)sb.f_bavail, (jlong)sb.f_files, (jlong)sb.f_ffree, (jlong)sb.f_favail,
+        (jlong)sb.f_fsid, (jlong)sb.f_flag, (jlong)sb.f_namemax);
+    if (env->ExceptionCheck()) { env->ExceptionClear();
+        fprintf(stderr, "[WESTLAKE-STATVFS] NewObject threw\n"); return nullptr; }
+    return o;
+}
+
+// WESTLAKE 2026-07-22 (§161): libcore.io.Linux.gettid() is unimplemented here; it surfaced as the
+// next UnsatisfiedLinkError after the CursorWindow fix (swallowed by the no-op uncaught handler).
+// It is literally gettid(2). Instance method, hence the jobject.
+#include <sys/syscall.h>
+extern "C" int Java_libcore_io_Linux_gettid(void* /*envv*/, void* /*thiz*/) {
+    return static_cast<int>(::syscall(SYS_gettid));
+}
+
+extern "C" void Java_libcore_io_Linux_mkdir(void* envv, void* /*thiz*/, void* pathStr, int mode) {
+    JNIEnv* env = reinterpret_cast<JNIEnv*>(envv);
+    jstring js = reinterpret_cast<jstring>(pathStr);
+    if (env == nullptr || js == nullptr) return;
+    const char* path = env->GetStringUTFChars(js, nullptr);
+    if (path != nullptr) {
+        if (::mkdir(path, static_cast<mode_t>(mode)) != 0 && errno != EEXIST) {
+            ALOGW("Linux.mkdir(%s, 0%o) failed errno=%d (ignored)", path, mode, errno);
+        }
+        env->ReleaseStringUTFChars(js, path);
+    }
+}
+extern "C" void Java_libcore_io_Linux_setxattr(void* envv, void* /*thiz*/, void* pathStr,
+                                               void* nameStr, void* valueArr, int flags) {
+    JNIEnv* env = reinterpret_cast<JNIEnv*>(envv);
+    jstring jp = reinterpret_cast<jstring>(pathStr);
+    jstring jn = reinterpret_cast<jstring>(nameStr);
+    jbyteArray jv = reinterpret_cast<jbyteArray>(valueArr);
+    if (env == nullptr || jp == nullptr || jn == nullptr) return;
+    const char* path = env->GetStringUTFChars(jp, nullptr);
+    const char* name = env->GetStringUTFChars(jn, nullptr);
+    jsize len = (jv != nullptr) ? env->GetArrayLength(jv) : 0;
+    jbyte* val = (jv != nullptr) ? env->GetByteArrayElements(jv, nullptr) : nullptr;
+    if (path != nullptr && name != nullptr) {
+        if (::setxattr(path, name, val, static_cast<size_t>(len), flags) != 0) {
+            ALOGW("Linux.setxattr(%s, %s) failed errno=%d (ignored)", path, name, errno);
+        }
+    }
+    if (val != nullptr) env->ReleaseByteArrayElements(jv, val, JNI_ABORT);
+    if (name != nullptr) env->ReleaseStringUTFChars(jn, name);
+    if (path != nullptr) env->ReleaseStringUTFChars(jp, path);
+}
+
+// (PackageManagerAdapter JSON queries now live in package-manager/jni/apk_manifest_jni.cpp,
+// where the real manifest parser is available.)
+
+#endif

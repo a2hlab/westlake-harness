@@ -1,0 +1,235 @@
+--- a/android_graphics_compat_shim.cpp
++++ b/android_graphics_compat_shim.cpp
+@@ -138,7 +138,6 @@
+ // We are already inside `namespace android { namespace { ... } }`, so these
+ // land in the same anonymous namespace as the definitions in the BBQ block.
+ extern "C" int32_t oh_sc_get_session(jlong scNativeObject);
+-static int32_t oh_wm_get_last_session();
+ static void*   oh_wm_get_native_window(int32_t sessionId);
+ 
+ // OhBlastBufferQueue moved up here (was in BBQ section ~line 299) so Surface
+@@ -163,18 +162,13 @@
+ }
+ 
+ // Resolve a SurfaceControl* to a real OHNativeWindow* (the same handle BBQ
+-// stamps into Java Surface.mNativeObject). Falls back to "last attached
+-// session" hint when the SurfaceControl has no sessionId attached yet (mirror
+-// of BBQ_nativeUpdate's logic). Returns 0 if no window can be resolved —
++// stamps into Java Surface.mNativeObject). Only the SC's own session is
++// accepted. An unresolved owner returns 0 —
+ // hwui's ANativeWindow_fromSurface treats that as "no surface, retry".
+ static jlong sc_to_oh_native_window(jlong surfaceControl) {
+     int32_t scSessionId = surfaceControl ? oh_sc_get_session(surfaceControl) : 0;
+     int32_t sessionId = scSessionId;
+     int32_t lastSessionId = 0;
+-    if (sessionId == 0) {
+-        lastSessionId = oh_wm_get_last_session();
+-        sessionId = lastSessionId;
+-    }
+     if (sessionId == 0) {
+         ALOGW("[DEBUG] sc_to_oh_native_window: sc=0x%llx scSessionId=0 lastSessionId=0 -> 0",
+               (long long)surfaceControl);
+@@ -263,23 +257,13 @@
+ // if it were ANativeWindow*, which hwui then dereferenced as OHNativeWindow
+ // (different layout) → crash. Now extract b->ohNativeWindow set by
+ // BBQ_nativeUpdate. If BBQ.update has not yet run, fall back to the
+-// last-attached-session hint (same fallback BBQ_nativeUpdate uses).
++// explicit BBQ session; an unbound BBQ stays unresolved.
+ jlong S_nativeGetFromBlastBufferQueue(JNIEnv*, jclass, jlong /*nativeObject*/, jlong blastBufferQueue) {
+     auto* b = as_bbq(blastBufferQueue);
+     if (b && b->ohNativeWindow) {
+         ALOGI("S_nativeGetFromBlastBufferQueue(bbq=0x%llx sessionId=%d) -> ohNativeWindow=%p",
+               (long long)blastBufferQueue, b->sessionId, b->ohNativeWindow);
+         return reinterpret_cast<jlong>(b->ohNativeWindow);
+-    }
+-    int32_t sid = oh_wm_get_last_session();
+-    if (sid != 0) {
+-        void* nw = oh_wm_get_native_window(sid);
+-        if (nw) {
+-            ALOGI("S_nativeGetFromBlastBufferQueue(bbq=0x%llx) BBQ.update not yet run; "
+-                  "using last-session=%d -> ohNativeWindow=%p",
+-                  (long long)blastBufferQueue, sid, nw);
+-            return reinterpret_cast<jlong>(nw);
+-        }
+     }
+     ALOGW("S_nativeGetFromBlastBufferQueue(bbq=0x%llx): unresolved -> 0",
+           (long long)blastBufferQueue);
+@@ -407,15 +391,13 @@
+ // found" at dlopen of liboh_android_runtime.so.  Cached after first lookup.
+ #include <dlfcn.h>
+ typedef void* (*oh_wm_get_native_window_fn_t)(int32_t);
+-typedef int32_t (*oh_wm_get_last_session_fn_t)();
+ // 2026-06-28 [STAGE2-SURFACEVIEW]: child SurfaceView surface composition.
+ typedef void* (*oh_rs_get_child_surface_window_fn_t)(int32_t, int64_t, int32_t, int32_t);
+ static oh_wm_get_native_window_fn_t g_oh_wm_get_native_window_fn = nullptr;
+-static oh_wm_get_last_session_fn_t  g_oh_wm_get_last_session_fn  = nullptr;
+ static oh_rs_get_child_surface_window_fn_t g_oh_rs_get_child_surface_window_fn = nullptr;
+ static void resolve_oh_wm_funcs() {
+     static bool s_logged = false;
+-    if (g_oh_wm_get_native_window_fn && g_oh_wm_get_last_session_fn &&
++    if (g_oh_wm_get_native_window_fn &&
+         g_oh_rs_get_child_surface_window_fn) return;
+ 
+     // 2026-05-09 G2.14ac: previous code used dlsym(RTLD_DEFAULT, ...) which on
+@@ -446,21 +428,16 @@
+         g_oh_wm_get_native_window_fn = reinterpret_cast<oh_wm_get_native_window_fn_t>(
+             dlsym(s_bridgeHandle, "oh_wm_get_native_window"));
+     }
+-    if (!g_oh_wm_get_last_session_fn) {
+-        g_oh_wm_get_last_session_fn = reinterpret_cast<oh_wm_get_last_session_fn_t>(
+-            dlsym(s_bridgeHandle, "oh_wm_get_last_session"));
+-    }
+     if (!g_oh_rs_get_child_surface_window_fn) {
+         g_oh_rs_get_child_surface_window_fn = reinterpret_cast<oh_rs_get_child_surface_window_fn_t>(
+             dlsym(s_bridgeHandle, "oh_rs_get_child_surface_window"));
+     }
+     if (!s_logged) {
+         const char* err = dlerror();
+-        ALOGI("[DEBUG] resolve_oh_wm_funcs: get_native_window_fn=%p get_last_session_fn=%p dlerror='%s'",
++        ALOGI("[DEBUG] resolve_oh_wm_funcs: get_native_window_fn=%p dlerror='%s'",
+               (void*)g_oh_wm_get_native_window_fn,
+-              (void*)g_oh_wm_get_last_session_fn,
+               err ? err : "(null)");
+-        if (g_oh_wm_get_native_window_fn && g_oh_wm_get_last_session_fn) {
++        if (g_oh_wm_get_native_window_fn) {
+             s_logged = true;
+         }
+     }
+@@ -468,10 +445,6 @@
+ static void* oh_wm_get_native_window(int32_t sessionId) {
+     resolve_oh_wm_funcs();
+     return g_oh_wm_get_native_window_fn ? g_oh_wm_get_native_window_fn(sessionId) : nullptr;
+-}
+-static int32_t oh_wm_get_last_session() {
+-    resolve_oh_wm_funcs();
+-    return g_oh_wm_get_last_session_fn ? g_oh_wm_get_last_session_fn() : 0;
+ }
+ // 2026-06-28 [STAGE2-SURFACEVIEW]: resolve a dedicated, RS-composited child
+ // surface for a SurfaceView (so its EGL producer has a live consumer instead of
+@@ -507,22 +480,10 @@
+     b->height = static_cast<int32_t>(height);
+     b->format = format;
+     int32_t sessionId = oh_sc_get_session(scPtr);
+-    if (sessionId == 0) {
+-        // 2026-05-02 G2.14r: fall back to "last attached session" hint set by
+-        // OHWindowManagerClient::createSession.  Avoids needing a BCP-jar
+-        // native method to attach session to SurfaceControl (which would
+-        // require boot image rebuild on every change to that BCP class).
+-        // Each child appspawn-x process spawns one app with one session, so
+-        // process-global last-session is unambiguous in our model.
+-        sessionId = oh_wm_get_last_session();
+-        if (sessionId != 0) {
+-            ALOGI("BBQ.update: SurfaceControl had no sessionId — falling back to "
+-                  "last-attached-session hint sessionId=%d", sessionId);
+-        }
+-    }
++    if (b->sessionId != sessionId) b->ohNativeWindow = nullptr;
+     b->sessionId = sessionId;
+     if (sessionId == 0) {
+-        ALOGW("BBQ.update: no sessionId resolvable (no SC attach + no last hint); "
++        ALOGW("BBQ.update: no sessionId resolvable (no explicit SC owner); "
+               "render will use empty Surface");
+         return;
+     }
+@@ -589,7 +550,6 @@
+     // so mNativeObject is a real OHNativeWindow* by the time we fromSurface.
+     if (!b->ohNativeWindow) {
+         int32_t sessionId = b->sessionId;
+-        if (sessionId == 0) sessionId = oh_wm_get_last_session();
+         if (sessionId != 0) {
+             b->sessionId = sessionId;
+             void* nw = nullptr;
+@@ -597,7 +557,6 @@
+             if (isSurfaceView) {
+                 nw = oh_rs_get_child_surface_window(sessionId, bbqPtr,
+                                                     b->width, b->height);
+-                if (!nw) nw = oh_wm_get_native_window(sessionId);
+             } else {
+                 nw = oh_wm_get_native_window(sessionId);
+             }
+@@ -681,18 +640,40 @@
+     return surface;
+ }
+ 
+-void BBQ_nativeSetNextTransaction(JNIEnv*, jclass, jlong, jlong) { }
+-// [STAGE2-UNITY 2026-06-28] createBlastSurfaceControls() also calls
+-// setTransactionHangCallback → nativeSetTransactionHangCallback(long, cb).
+-// OH has no SF transaction-hang watchdog; no-op. Without it registered,
+-// SurfaceView first traversal throws UnsatisfiedLinkError (eglprobe/Unity).
+-void BBQ_nativeSetTransactionHangCallback(JNIEnv*, jclass, jlong, jobject) { }
+-void BBQ_nativeSetSyncTransaction(JNIEnv*, jclass, jlong, jlong, jboolean) { }
++// Android 15 exposes the sync callback API directly. The OH queue does not
++// have SurfaceFlinger's transaction-acquisition callback, so report that no
++// callback was armed. Callers retain their transaction and can submit it via
++// the ordinary SurfaceControl path.
++jboolean BBQ_nativeSyncNextTransaction(JNIEnv*, jclass, jlong, jobject, jboolean) {
++    return JNI_FALSE;
++}
++void BBQ_nativeStopContinuousSyncTransaction(JNIEnv*, jclass, jlong) { }
++void BBQ_nativeClearSyncTransaction(JNIEnv*, jclass, jlong) { }
+ void BBQ_nativeMergeWithNextTransaction(JNIEnv*, jclass, jlong, jlong, jlong) { }
+ jlong BBQ_nativeGetLastAcquiredFrameNum(JNIEnv*, jclass, jlong) { return 0; }
+-void BBQ_nativeFlushShadowQueue(JNIEnv*, jclass, jlong) { }
+ void BBQ_nativeApplyPendingTransactions(JNIEnv*, jclass, jlong, jlong) { }
+-jlong BBQ_nativeGatherPendingTransactions(JNIEnv*, jclass, jlong, jlong) { return 0; }
++jobject BBQ_nativeGatherPendingTransactions(JNIEnv* env, jclass, jlong, jlong) {
++    // Match AOSP's ownership contract: return a live Transaction object whose
++    // native state is owned by that Java wrapper. There is no pending SF-side
++    // transaction to merge in the OH implementation.
++    jclass transaction = env->FindClass("android/view/SurfaceControl$Transaction");
++    if (!transaction || env->ExceptionCheck()) {
++        std::fprintf(stderr, "[SOURCE-BLAST] gather FindClass failed exception=%d\n",
++                     env->ExceptionCheck() ? 1 : 0);
++        return nullptr;
++    }
++    jmethodID ctor = env->GetMethodID(transaction, "<init>", "()V");
++    if (!ctor || env->ExceptionCheck()) {
++        std::fprintf(stderr, "[SOURCE-BLAST] gather constructor failed exception=%d\n",
++                     env->ExceptionCheck() ? 1 : 0);
++        env->DeleteLocalRef(transaction);
++        return nullptr;
++    }
++    jobject result = env->NewObject(transaction, ctor);
++    env->DeleteLocalRef(transaction);
++    return result;
++}
++void BBQ_nativeSetTransactionHangCallback(JNIEnv*, jclass, jlong, jobject) { }
+ 
+ // 2026-05-20 R5: BBQ.isSameSurfaceControl — compare by sessionId, not by ptr.
+ // AOSP uses SF IBinder handle for stable SC identity; OH has no SF so adapter
+@@ -720,28 +701,26 @@
+       reinterpret_cast<void*>(BBQ_nativeDestroy) },
+     { "nativeGetSurface", "(JZ)Landroid/view/Surface;",
+       reinterpret_cast<void*>(BBQ_nativeGetSurface) },
+-    { "nativeSetNextTransaction", "(JJ)V",
+-      reinterpret_cast<void*>(BBQ_nativeSetNextTransaction) },
++    { "nativeSyncNextTransaction", "(JLjava/util/function/Consumer;Z)Z",
++      reinterpret_cast<void*>(BBQ_nativeSyncNextTransaction) },
++    { "nativeStopContinuousSyncTransaction", "(J)V",
++      reinterpret_cast<void*>(BBQ_nativeStopContinuousSyncTransaction) },
++    { "nativeClearSyncTransaction", "(J)V",
++      reinterpret_cast<void*>(BBQ_nativeClearSyncTransaction) },
+     { "nativeUpdate", "(JJJJI)V",
+       reinterpret_cast<void*>(BBQ_nativeUpdate) },
+-    { "nativeSetSyncTransaction", "(JJZ)V",
+-      reinterpret_cast<void*>(BBQ_nativeSetSyncTransaction) },
+     { "nativeMergeWithNextTransaction", "(JJJ)V",
+       reinterpret_cast<void*>(BBQ_nativeMergeWithNextTransaction) },
+     { "nativeGetLastAcquiredFrameNum", "(J)J",
+       reinterpret_cast<void*>(BBQ_nativeGetLastAcquiredFrameNum) },
+-    { "nativeFlushShadowQueue", "(J)V",
+-      reinterpret_cast<void*>(BBQ_nativeFlushShadowQueue) },
+     { "nativeApplyPendingTransactions", "(JJ)V",
+       reinterpret_cast<void*>(BBQ_nativeApplyPendingTransactions) },
+-    { "nativeGatherPendingTransactions", "(JJ)J",
++    { "nativeGatherPendingTransactions", "(JJ)Landroid/view/SurfaceControl$Transaction;",
+       reinterpret_cast<void*>(BBQ_nativeGatherPendingTransactions) },
+     // 2026-05-20 R5: register IsSameSurfaceControl so BBQ.isSameSurfaceControl
+     // routes to adapter (compares by sessionId, not by ptr / SF binder handle).
+     { "nativeIsSameSurfaceControl", "(JJ)Z",
+       reinterpret_cast<void*>(BBQ_nativeIsSameSurfaceControl) },
+-    // [STAGE2-UNITY 2026-06-28] SurfaceView.createBlastSurfaceControls calls
+-    // this on every traversal; no-op (OH has no SF transaction-hang watchdog).
+     { "nativeSetTransactionHangCallback",
+       "(JLandroid/graphics/BLASTBufferQueue$TransactionHangCallback;)V",
+       reinterpret_cast<void*>(BBQ_nativeSetTransactionHangCallback) },

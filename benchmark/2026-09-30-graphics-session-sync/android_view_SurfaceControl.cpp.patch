@@ -1,0 +1,84 @@
+--- a/android_view_SurfaceControl.cpp
++++ b/android_view_SurfaceControl.cpp
+@@ -43,6 +43,7 @@
+ #include <cstring>
+ #include <dlfcn.h>
+ #include <jni.h>
++#include "surface_session_identity.h"
+ #include <mutex>
+ 
+ // 2026-05-06 — Per design §5.6 / §9.1 三件套 condition #3:
+@@ -59,14 +60,12 @@
+ using FnSetVisible     = void (*)(int32_t, int32_t);
+ using FnSetOpaque      = void (*)(int32_t, int32_t);   // G2.14al
+ using FnFlushTx        = void (*)();
+-using FnGetLastSession = int32_t (*)();                // G2.14al
+ 
+ FnSetBounds      g_oh_rs_set_layer_bounds  = nullptr;
+ FnSetAlpha       g_oh_rs_set_layer_alpha   = nullptr;
+ FnSetVisible     g_oh_rs_set_layer_visible = nullptr;
+ FnSetOpaque      g_oh_rs_set_layer_opaque  = nullptr;   // G2.14al
+ FnFlushTx        g_oh_rs_flush_transaction = nullptr;
+-FnGetLastSession g_oh_wm_get_last_session  = nullptr;   // G2.14al
+ std::once_flag g_rs_route_resolve_once;
+ 
+ void resolve_rs_routes() {
+@@ -81,27 +80,9 @@
+             dlsym(RTLD_DEFAULT, "oh_rs_set_layer_opaque"));  // G2.14al
+         g_oh_rs_flush_transaction = reinterpret_cast<FnFlushTx>(
+             dlsym(RTLD_DEFAULT, "oh_rs_flush_transaction"));
+-        g_oh_wm_get_last_session  = reinterpret_cast<FnGetLastSession>(
+-            dlsym(RTLD_DEFAULT, "oh_wm_get_last_session"));  // G2.14al
+     });
+ }
+ 
+-// 2026-05-11 G2.14al — resolve effective sessionId.
+-// If SurfaceControl wasn't directly stamped with sessionId (because the
+-// AOSP-side SC creation path took the SurfaceControl.Builder.build() route
+-// without going through oh_sc_attach_session — G2.14r's BBQ shortcut relies
+-// on a process-global last-attached-session thread-local instead), fall
+-// back to the most recent attached session.  Safe for single-foreground-
+-// app scenarios (HelloWorld baseline); revisit if we ever support multi-
+-// session multi-window apps.
+-int32_t resolve_effective_session(int32_t scSessionId) {
+-    if (scSessionId != 0) return scSessionId;
+-    resolve_rs_routes();
+-    if (g_oh_wm_get_last_session) {
+-        return g_oh_wm_get_last_session();
+-    }
+-    return 0;
+-}
+ }  // namespace
+ 
+ // Direct HiLogPrint (innerAPI libhilog.so) — same domain as §3.2 / §3.5 bridges
+@@ -225,18 +206,13 @@
+ jlong SC_nativeCreate(JNIEnv* env, jclass /*clazz*/,
+                      jobject /*session*/, jstring nameStr,
+                      jint w, jint h, jint format, jint flags,
+-                     jlong /*parentObject*/, jobject /*metadata*/) {
++                     jlong parentObject, jobject /*metadata*/) {
+     const char* nameC = nameStr ? env->GetStringUTFChars(nameStr, nullptr) : nullptr;
+     OhSurfaceControl* sc = alloc_sc(nameC);
+     sc->width = w;  sc->height = h;
+     sc->format = format;  sc->flags = flags;
+-    // 2026-05-20 R5: stamp sessionId from thread-local last-attached-session so
+-    // BBQ::isSameSurfaceControl (also added in this round) can compare two SCs
+-    // by stable session identity — adapter equivalent of AOSP IBinder handle.
+-    // Without this every relayout's builder.build() returns SC with sessionId=0,
+-    // BBQ sees "different" each frame, rebuilds itself, drives hwui setSurface
+-    // storm → destroy/create EGLSurface on same OH NativeWindow → flicker.
+-    sc->sessionId = resolve_effective_session(0);
++    auto* parent = as_sc(parentObject);
++    sc->sessionId = oh_surface_session_identity(nameC, parent ? parent->sessionId : 0);
+     if (nameStr && nameC) env->ReleaseStringUTFChars(nameStr, nameC);
+     ALOGI("SC.create '%s' %dx%d fmt=%d flags=0x%x ptr=%p sessionId=%d",
+           sc->name, sc->width, sc->height, sc->format, sc->flags, sc, sc->sessionId);
+@@ -376,7 +352,7 @@
+     p->flags = (p->flags & ~mask) | (flags & mask);
+     static constexpr jint SURFACE_OPAQUE = 0x02;
+     if ((mask & SURFACE_OPAQUE) == 0) return;
+-    int32_t effSession = resolve_effective_session(p->sessionId);
++    int32_t effSession = p->sessionId;
+     int isOpaque = (flags & SURFACE_OPAQUE) != 0 ? 1 : 0;
+     ALOGI("[G2.14al] setOpaque sc=%p scSession=%d effSession=%d isOpaque=%d",
+           p, p->sessionId, effSession, isOpaque);

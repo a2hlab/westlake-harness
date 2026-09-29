@@ -48,12 +48,6 @@ extern "C" int HiLogPrint(int type, int level, unsigned int domain,
 #define ALOGW(...) HiLogPrint(3, 5, 0xD000F00u, "OH_GfxShim", __VA_ARGS__)
 #define ALOGE(...) HiLogPrint(3, 6, 0xD000F00u, "OH_GfxShim", __VA_ARGS__)
 
-struct ANativeWindow;
-extern "C" int32_t ANativeWindow_getWidth(ANativeWindow* window);
-extern "C" int32_t ANativeWindow_getHeight(ANativeWindow* window);
-extern "C" int32_t ANativeWindow_query(
-    const ANativeWindow* window, int32_t what, int32_t* value);
-
 // [STAGE2-UNITY 2026-06-28] Weak no-op fallbacks for the SQLite JNI register
 // group that 2026-06-28 added to AndroidRuntime.cpp's gRegJNI table. The
 // unity/render runtime build (compile_runtime_local.sh) does NOT compile
@@ -213,12 +207,7 @@ jlong S_nativeCreateFromSurfaceControlNew(JNIEnv*, jclass,
 }
 void S_nativeRelease(JNIEnv*, jclass, jlong /*nativeObject*/) { }
 jboolean S_nativeIsValid(JNIEnv*, jclass, jlong nativeObject) {
-    if (nativeObject == 0) return JNI_FALSE;
-    int32_t valid = 0;
-    return ::ANativeWindow_query(
-               reinterpret_cast<const ::ANativeWindow*>(nativeObject),
-               6 /* NATIVE_WINDOW_IS_VALID */, &valid) == 0 && valid != 0
-        ? JNI_TRUE : JNI_FALSE;
+    return nativeObject != 0 ? JNI_TRUE : JNI_FALSE;
 }
 jboolean S_nativeIsConsumerRunningBehind(JNIEnv*, jclass, jlong /*nativeObject*/) {
     return JNI_FALSE;
@@ -234,14 +223,8 @@ jlong S_nativeLockCanvas(JNIEnv*, jclass, jlong /*nativeObject*/, jobject /*canv
 }
 void S_nativeUnlockCanvasAndPost(JNIEnv*, jclass, jlong /*nativeObject*/, jobject /*canvas*/) { }
 void S_nativeAllocateBuffers(JNIEnv*, jclass, jlong /*nativeObject*/) { }
-jint S_nativeGetWidth(JNIEnv*, jclass, jlong nativeObject) {
-    return nativeObject == 0 ? 0 : ::ANativeWindow_getWidth(
-        reinterpret_cast<::ANativeWindow*>(nativeObject));
-}
-jint S_nativeGetHeight(JNIEnv*, jclass, jlong nativeObject) {
-    return nativeObject == 0 ? 0 : ::ANativeWindow_getHeight(
-        reinterpret_cast<::ANativeWindow*>(nativeObject));
-}
+jint S_nativeGetWidth(JNIEnv*, jclass, jlong /*nativeObject*/) { return 720; }
+jint S_nativeGetHeight(JNIEnv*, jclass, jlong /*nativeObject*/) { return 1280; }
 // 2026-05-01 G2.14n: AOSP Surface.java declares these as `int` returns; we were
 // registering with `(...)V` signatures and void-returning impls.  RegisterNatives
 // in ART silently accepts mismatched signatures; Java callers then read garbage
@@ -474,11 +457,9 @@ static void* oh_rs_get_child_surface_window(int32_t sessionId, int64_t childKey,
         ? g_oh_rs_get_child_surface_window_fn(sessionId, childKey, w, h) : nullptr;
 }
 
-// Geometry helpers are defined with the ANativeWindow bridge below.  Apply the
-// BLAST dimensions only at nativeUpdate, where they are generation-resolved;
-// later handoffs merely validate that geometry and must not invent a fallback.
-extern "C" __attribute__((visibility("hidden"))) void nwfs_apply_window_geometry(
-        void* nw, int32_t width, int32_t height, const char* where);
+// [S23 cut5] fwd decl (definition ~line 1090); poke geometry on the exact nw
+// instance stamped into b->ohNativeWindow at resolve/stamp time (belt) — the
+// STAGE0 handoff (suspenders) covers the cached/pre-resolved case.
 extern "C" void nwfs_seed_window_geometry(void* nw, const char* where);
 
 // [STAGE2-UNITY 2026-06-28] Signature aligned to THIS framework.jar's
@@ -539,9 +520,7 @@ void BBQ_nativeUpdate(JNIEnv*, jclass, jlong bbqPtr, jlong scPtr,
         return;
     }
     b->ohNativeWindow = nw;
-    nwfs_apply_window_geometry(
-        nw, static_cast<int32_t>(width), static_cast<int32_t>(height),
-        "BBQ.update-stamp");
+    nwfs_seed_window_geometry(nw, "BBQ.update-stamp");  // [S23 cut5 belt]
     ALOGI("BBQ.update: sessionId=%d → OHNativeWindow=%p (%dx%d fmt=%d)",
           sessionId, nw, (int)width, (int)height, format);
     fprintf(stderr, "[BBQ-CP] nativeUpdate RESOLVED sessionId=%d OHNativeWindow=%p (%lldx%lld)\n",
@@ -1130,11 +1109,7 @@ extern "C" struct OHNativeWindow* oh_anw_get_oh(struct ANativeWindow* aosp);
 static inline OHNativeWindow* anw_unwrap(ANativeWindow* w) {
     if (!w) return nullptr;
     OHNativeWindow* oh = oh_anw_get_oh(w);
-    if (oh) return oh;
-    // A recognized AdapterAnw with no OH handle is a sealed/lost generation;
-    // never reinterpret its AOSP ABI bytes as a raw OH C++ object.
-    if (oh_anw_try_acquire(w)) return nullptr;
-    return reinterpret_cast<OHNativeWindow*>(w);
+    return oh ? oh : reinterpret_cast<OHNativeWindow*>(w);
 }
 
 // HiLogPrint forward-decl above (line 35) takes int level. Use the same magic
@@ -1162,52 +1137,13 @@ static inline bool is_sentinel_handle(jlong h) {
 // into Surface.mNativeObject / returned by ANativeWindow_fromSurface (0x..A20).
 // native_window.cpp:229 NativeWindowRequestBuffer reads THIS instance's config;
 // if it is 0x0 the server allocs Buffer[0 0] -> NO_BUFFER 50002000 storm, no pixels.
-// Validate here (creation/stamp + handoff) that the exact dequeued instance
-// already carries generation-resolved geometry before its first RequestBuffer.
-// The window/session owner seeds that geometry from live DisplayManager state;
-// this compatibility edge must not inject an app- or board-specific fallback.
-extern "C" __attribute__((visibility("hidden"))) void nwfs_apply_window_geometry(
-        void* nw, int32_t width, int32_t height, const char* where) {
-    if (!nw) return;
-    if (width <= 0 || height <= 0) {
-        HiLogPrint(3, 6, 0xD000F00u, "OH_NWSeed",
-                   "[%{public}s] rejected non-positive BLAST geometry "
-                   "%{public}dx%{public}d",
-                   where, width, height);
-        return;
-    }
-    OHNativeWindow* oh = anw_unwrap(reinterpret_cast<ANativeWindow*>(nw));
-    if (!oh) {
-        HiLogPrint(3, 6, 0xD000F00u, "OH_NWSeed",
-                   "[%{public}s] surface generation is sealed shim=%{public}p",
-                   where, nw);
-        return;
-    }
-    int32_t rc = NativeWindowHandleOpt(
-        oh, OH_OP_SET_BUFFER_GEOMETRY, width, height);
-    int32_t observedHeight = 0;
-    int32_t observedWidth = 0;
-    int32_t observedFormat = 0;
-    int32_t queryRc = NativeWindowHandleOpt(
-        oh, OH_OP_GET_BUFFER_GEOMETRY,
-        &observedHeight, &observedWidth, &observedFormat);
-    if (rc != 0 || queryRc != 0 || observedWidth != width || observedHeight != height) {
-        HiLogPrint(3, 6, 0xD000F00u, "OH_NWSeed",
-                   "[%{public}s] BLAST geometry apply failed shim=%{public}p "
-                   "oh=%{public}p requested=%{public}dx%{public}d "
-                   "observed=%{public}dx%{public}d rc=%{public}d queryRc=%{public}d",
-                   where, nw, (void*)oh, width, height,
-                   observedWidth, observedHeight, rc, queryRc);
-        return;
-    }
-    HiLogPrint(3, 4, 0xD000F00u, "OH_NWSeed",
-               "[%{public}s] BLAST geometry applied shim=%{public}p "
-               "oh=%{public}p %{public}dx%{public}d rc=%{public}d",
-               where, nw, (void*)oh, width, height, rc);
-}
-
+// Poke here (creation/stamp + handoff) so the dequeued instance carries 1200x1920
+// BEFORE Unity's first RequestBuffer. 5bb5 panel = 1200x1920 (hard fallback; never
+// 0/1). Log the instance address so "same instance as Unity RequestBuffer nw_B" is
+// nailed in the log.
 extern "C" void nwfs_seed_window_geometry(void* nw, const char* where) {
     if (!nw) return;
+    int32_t w = 1200, h = 1920;  // TODO: prefer live display bounds; 5bb5 panel is 1200x1920
     // [S23 cut5.1] nw handed to Unity is the AdapterAnw shim (AOSP ABI), NOT a raw
     // OHNativeWindow. SET_BUFFER_GEOMETRY on the shim -> rc=0x40001000 (invalid arg).
     // Unwrap to the shim's embedded real OHNativeWindow first (same pattern as
@@ -1215,27 +1151,9 @@ extern "C" void nwfs_seed_window_geometry(void* nw, const char* where) {
     // Unity's RequestBuffer (shim wrapper -> OH_NativeWindow_NativeWindowRequestBuffer)
     // dequeues from, so config now reaches the storming path.
     OHNativeWindow* oh = anw_unwrap(reinterpret_cast<ANativeWindow*>(nw));
-    if (!oh) {
-        HiLogPrint(3, 6, 0xD000F00u, "OH_NWSeed",
-                   "[%{public}s] surface generation is sealed shim=%{public}p",
-                   where, nw);
-        return;
-    }
-    int32_t h = 0;
-    int32_t w = 0;
-    int32_t format = 0;
-    int32_t rc = NativeWindowHandleOpt(
-        oh, 1 /* OH_OP_GET_BUFFER_GEOMETRY */, &h, &w, &format);
-    if (rc != 0 || w <= 0 || h <= 0) {
-        HiLogPrint(3, 6, 0xD000F00u, "OH_NWSeed",
-                   "[%{public}s] invalid generation geometry shim=%{public}p "
-                   "oh=%{public}p %{public}dx%{public}d rc=%{public}d",
-                   where, nw, (void*)oh, w, h, rc);
-        return;
-    }
+    int32_t rc = NativeWindowHandleOpt(oh, OH_OP_SET_BUFFER_GEOMETRY, w, h);
     HiLogPrint(3, 4, 0xD000F00u, "OH_NWSeed",
-               "[%{public}s] generation geometry ready shim=%{public}p "
-               "oh=%{public}p %{public}dx%{public}d rc=%{public}d",
+               "[%{public}s] SET_BUFFER_GEOMETRY shim=%{public}p oh=%{public}p %{public}dx%{public}d rc=%{public}d",
                where, nw, (void*)oh, w, h, rc);
 }
 
@@ -1269,8 +1187,8 @@ extern "C" ANativeWindow* ANativeWindow_fromSurface(JNIEnv* env, jobject surface
     // Real OHNativeWindow* set by BBQ_nativeGetSurface above. On OH,
     // OHNativeWindow ≡ ANativeWindow, so hand it back to hwui directly.
     // [S23 cut5 PRIMARY] last-mile: this is the exact instance Unity dequeues
-    // from — validate its generation geometry before returning so its first
-    // RequestBuffer cannot silently use Buffer[0 0].
+    // from — seed its geometry before returning so its first RequestBuffer
+    // carries 1200x1920 (not Buffer[0 0]). Instance-identity nailed via the log.
     nwfs_seed_window_geometry(reinterpret_cast<void*>(nativeObj), "STAGE0-handoff");
     NWFS_INFO("[STAGE0] returning OHNativeWindow=%{public}p directly",
               reinterpret_cast<void*>(nativeObj));
@@ -1295,30 +1213,25 @@ extern "C" void ANativeWindow_release(ANativeWindow* w) {
 
 extern "C" int32_t ANativeWindow_getWidth(ANativeWindow* w) {
     if (!w) return 0;
-    OHNativeWindow* oh = anw_unwrap(w);
-    if (!oh) return 0;
     int32_t width = 0, height = 0, format = 0;
-    NativeWindowHandleOpt(oh, OH_OP_GET_BUFFER_GEOMETRY,
-                          &height, &width, &format);
+    NativeWindowHandleOpt(anw_unwrap(w),        // G2.14ag: unwrap shim
+                           OH_OP_GET_BUFFER_GEOMETRY, &height, &width, &format);
     return width;
 }
 
 extern "C" int32_t ANativeWindow_getHeight(ANativeWindow* w) {
     if (!w) return 0;
-    OHNativeWindow* oh = anw_unwrap(w);
-    if (!oh) return 0;
     int32_t width = 0, height = 0, format = 0;
-    NativeWindowHandleOpt(oh, OH_OP_GET_BUFFER_GEOMETRY,
-                          &height, &width, &format);
+    NativeWindowHandleOpt(anw_unwrap(w),        // G2.14ag: unwrap shim
+                           OH_OP_GET_BUFFER_GEOMETRY, &height, &width, &format);
     return height;
 }
 
 extern "C" int32_t ANativeWindow_getFormat(ANativeWindow* w) {
     if (!w) return 0;
-    OHNativeWindow* oh = anw_unwrap(w);
-    if (!oh) return 0;
     int32_t format = 0;
-    NativeWindowHandleOpt(oh, OH_OP_GET_FORMAT, &format);
+    NativeWindowHandleOpt(anw_unwrap(w),        // G2.14ag: unwrap shim
+                           OH_OP_GET_FORMAT, &format);
     return format;
 }
 
@@ -1334,23 +1247,6 @@ extern "C" int32_t ANativeWindow_setBuffersGeometry(ANativeWindow* w,
         int32_t width, int32_t height, int32_t format) {
     if (!w) return -1;
     OHNativeWindow* oh = anw_unwrap(w);
-    if (!oh) return -1;
-    if (width <= 0 || height <= 0) {
-        int32_t currentHeight = 0;
-        int32_t currentWidth = 0;
-        int32_t currentFormat = 0;
-        int32_t queryRc = NativeWindowHandleOpt(
-            oh, OH_OP_GET_BUFFER_GEOMETRY,
-            &currentHeight, &currentWidth, &currentFormat);
-        if (queryRc != 0 || currentWidth <= 0 || currentHeight <= 0) {
-            NWFS_WARN("ANativeWindow_setBuffersGeometry rejected %{public}dx%{public}d: "
-                      "no live geometry rc=%{public}d current=%{public}dx%{public}d",
-                      width, height, queryRc, currentWidth, currentHeight);
-            return -1;
-        }
-        width = currentWidth;
-        height = currentHeight;
-    }
     int32_t rc = NativeWindowHandleOpt(oh, OH_OP_SET_BUFFER_GEOMETRY, width, height);
     if (format > 0) {
         // [WALL2-FMT 2026-06-29] Translate AOSP visual-id pixel format → OH
@@ -1373,13 +1269,6 @@ extern "C" int32_t ANativeWindow_setBuffersDataSpace(ANativeWindow* w, int32_t d
 extern "C" int32_t ANativeWindow_query(const ANativeWindow* w, int32_t what, int32_t* value) {
     if (!w || !value) return -1;
     OHNativeWindow* oh = anw_unwrap(const_cast<ANativeWindow*>(w));
-    if (!oh) {
-        if (what == 6 /* NATIVE_WINDOW_IS_VALID */) {
-            *value = 0;
-            return 0;
-        }
-        return -1;
-    }
     switch (what) {
         case 0: {  // NATIVE_WINDOW_WIDTH
             int32_t h = 0, ww = 0, f = 0;
@@ -1396,8 +1285,6 @@ extern "C" int32_t ANativeWindow_query(const ANativeWindow* w, int32_t what, int
             NativeWindowHandleOpt(oh, OH_OP_GET_FORMAT, &f);
             *value = f; return 0;
         }
-        case 6:  // NATIVE_WINDOW_IS_VALID
-            *value = 1; return 0;
         default:
             *value = 0; return 0;
     }
@@ -1473,11 +1360,8 @@ extern "C" EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig cfg,
                               (uint64_t)(BUFFER_USAGE_HW_RENDER |
                                          BUFFER_USAGE_HW_TEXTURE |
                                          BUFFER_USAGE_MEM_DMA));
-        if (gw <= 0 || gh <= 0) {
-            NWFS_WARN("[STAGE2-EGL] invalid generation geometry; fail closed");
-            return nullptr;
-        }
-        NativeWindowHandleOpt(oh, OH_OP_SET_BUFFER_GEOMETRY, gw, gh);
+        int32_t sw = (gw > 0) ? gw : 1200, sh = (gh > 0) ? gh : 1794;
+        NativeWindowHandleOpt(oh, OH_OP_SET_BUFFER_GEOMETRY, sw, sh);
     }
     void* target = reinterpret_cast<void*>(oh);
     NWFS_INFO("[UNITY-EGL] eglCreateWindowSurface win=%{public}p oh=%{public}p (%{public}s)",

@@ -147,6 +147,7 @@ kind of work from where the corpus started
 | `benchmark/2026-09-30-egl-colorspace-retry/` | **OH6.1 HWUI source rebuild with EGL metadata retry: exact device link inputs, unchanged 15-library dependency order, single-file rollback package; board verdict pending.** |
 | `benchmark/2026-09-30-egl-surface-lifecycle/` | **Read-only EGL duplicate-window evidence and exclusive-owner lifecycle proposal; no surface implementation or deployment.** |
 | `benchmark/2026-09-30-v3c-next2-device/` | **5cd next2 measured regression: Unity dependency advances to libwm; six-app screenshots/facts and native rollback with Java held fixed.** |
+| **`benchmark/2026-09-30-graphics-session-sync/`** | **Explicit SC/BBQ owner isolation, Westlake BLAST JNI port, offline runtime 32dfac83 and scheduled A/B criteria.** |
 | **`benchmark/2026-09-30-v3c-next4-namespace/`** | **Bounded OH owner inheritance, DFX slot-3 root cause, AudioSystem JNI and five-app device validation.** |
 | `benchmark/2026-09-30-v3c-next3-closure/` | **Generated full OH dependency namespace policy: 407 ELF inputs, 292 names, truncation tests and next2 negative control.** |
 | `benchmark/2026-09-30-v3c-next2-ndk/` | **ANL OH6.1 NDK dependency fix: full ELF inventory, b66 negative control, reproducible 1162a6fc candidate and three-board offline dry-runs; no device writes.** |
