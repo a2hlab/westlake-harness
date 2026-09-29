@@ -1,0 +1,86 @@
+{
+ "task": "r17a rank-2 null-service NPE x7 — service stub table (machine-readable)",
+ "source": "r17a hilog (deepest Caused by + preceding getService null lines)",
+ "stubs": [
+  {
+   "rank": 1,
+   "service": "IActivityManager.setServiceForeground",
+   "apps": [
+    "fd-droidify"
+   ],
+   "npe": "interface 'void android.app.IActivityManager.setServiceForeground(...)' on null @ Service.startForeground:775 <- coil3 startForegroundSafe <- SyncService",
+   "fix": "no-op setServiceForeground (OH has no foreground-service concept)",
+   "westlake": "ActivityManagerAdapter.java L460-466 — ALREADY EXISTS as [STUB]; fix is exposing it on the proxy object, not a new stub"
+  },
+  {
+   "rank": 2,
+   "service": "jobscheduler/WorkManager cast path",
+   "apps": [
+    "fd-feeder",
+    "fd-calendar@r16",
+    "fd-wifianalyzer"
+   ],
+   "npe": "getClass() on null inside WorkManager enqueue lambda (schedulePeriodicRssSync)",
+   "fix": "getSystemService(JOB_SCHEDULER_SERVICE) must return castable non-null JobScheduler",
+   "westlake": "AppSpawnXInit.java L2058-2110 installJobSchedulerStub() — SYSTEM_SERVICE_FETCHERS swap building JobSchedulerImpl(ctx, noopBinder); called at L1086; copy WHOLE fetcher-swap, not a service proxy"
+  },
+  {
+   "rank": 3,
+   "service": "PowerExemptionManager",
+   "apps": [
+    "fd-etar"
+   ],
+   "npe": "virtual 'boolean android.os.PowerExemptionManager.isAllow...(...)' (thermalservice real-routed, manager not)",
+   "fix": "isApplicationExempted/isAllowLowerPowerProcess -> false",
+   "westlake": "no class; LocalServiceBinders.java L49+ power-case pattern -> add powerexemption case, default false"
+  },
+  {
+   "rank": 4,
+   "service": "BatteryManager / batterystats",
+   "apps": [
+    "newpipe"
+   ],
+   "npe": "virtual 'int android.os.BatteryManager.getIntProperty(int)' on null; preceding getService(\"batterystats\") -> null",
+   "fix": "getIntProperty -> 0; batterystats binder = castable proxy",
+   "westlake": "LocalServiceBinders.java L49+ add battery/batterystats case (zero-value semantics)"
+  },
+  {
+   "rank": 5,
+   "service": "vibrator_manager array API",
+   "apps": [
+    "fd-reader"
+   ],
+   "npe": "get length of null array (after getService('vibrator_manager') real-routed)",
+   "fix": "array-returning methods -> EMPTY ARRAY, never null",
+   "westlake": "LocalServiceBinders pattern: type-zero-value returns"
+  },
+  {
+   "rank": 6,
+   "service": "PendingIntent.getBroadcast",
+   "apps": [
+    "fd-uhabits",
+    "noice@61b(outer-confirmed regression)"
+   ],
+   "npe": "getBroadcast(...) must not be null @ PendingIntentFactory.updateWidgets:150 (Kotlin non-null assert)",
+   "fix": "return NON-NULL PendingIntent stub (wrapped intent, send no-op)",
+   "westlake": "framework/appspawn-x/java/adapter/compat/ (WlShortcutService family); non-null is the hard requirement"
+  },
+  {
+   "rank": 7,
+   "service": "connectivity/network_management/game (null stubs, not primary killer)",
+   "apps": [
+    "fd-wifianalyzer pre-lines"
+   ],
+   "npe": "MainActivity.onCreate getClass-null (jobscheduler family); connectivity nulls adjacent",
+   "fix": "LocalServiceBinders connectivity case + WESTLAKE_NET_HELPER_PATH env",
+   "westlake": "LocalServiceBinders.java L49+; #76 run.sh WESTLAKE_CONNECTIVITY_HELPER_PATH precedent"
+  }
+ ],
+ "execution_order": [
+  "copy ActivityManagerAdapter L460-466 (proxy wiring)",
+  "copy AppSpawnXInit L2058-2110 fetcher swap",
+  "LocalServiceBinders +3 cases (powerexemption false / battery 0 / vibrator empty-array)",
+  "PendingIntent.getBroadcast non-null stub",
+  "iron rule: stub returns = type-zero-value, never null"
+ ]
+}
