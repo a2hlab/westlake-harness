@@ -30,8 +30,56 @@ public final class SystemServiceFetcherStubs {
         replaceFetcher("media_session", new Builder() {
             @Override public Object build(Object context) throws Throwable { return buildMediaSessionManager(context); }
         });
+        // r17q (etar): PowerManager.isIgnoringBatteryOptimizations -> getPowerExemptionManager() ->
+        // getSystemService(PowerExemptionManager.class), whose stock fetcher does new
+        // PowerExemptionManager(ctx) -> ctx.getSystemService(DeviceIdleManager.class).getService(),
+        // and DeviceIdleManager is null on route-A, so the fetcher NPEs and returns null;
+        // getPowerExemptionManager() then returns null and isAllowListed NPEs (etar
+        // AllInOneActivity.dozeDisabled). Allocate a PowerExemptionManager without its constructor and
+        // give it a type-zero IDeviceIdleController so isAllowListed -> isPowerSaveWhitelistApp -> false.
+        replaceFetcher("power_exemption", new Builder() {
+            @Override public Object build(Object context) throws Throwable { return buildPowerExemptionManager(context); }
+        });
+        registerServiceName("android.os.PowerExemptionManager", "power_exemption");
         // vibrator_manager is deferred: VibratorManager/Vibrator have package-private constructors, so a
         // subclass stub will not compile; it needs an IVibratorManagerService-level proxy instead.
+    }
+
+    /**
+     * A PowerExemptionManager whose constructor path fetches the (null-on-route-A) DeviceIdleManager;
+     * allocate it without a constructor and set its final IDeviceIdleController mService to a type-zero
+     * proxy so isAllowListed()/isPowerSaveWhitelistApp() answer false instead of NPEing.
+     */
+    private static Object buildPowerExemptionManager(Object context) throws Throwable {
+        Class<?> pem = Class.forName("android.os.PowerExemptionManager");
+        Object instance = allocateInstance(pem);
+        Class<?> ideviceidle = Class.forName("android.os.IDeviceIdleController");
+        Object service = Proxy.newProxyInstance(ideviceidle.getClassLoader(),
+                new Class<?>[] {ideviceidle}, new TypeZeroHandler());
+        setField(instance, "mService", service);
+        trySetField(instance, "mContext", context);
+        System.err.println("[B8-FETCH] power_exemption PowerExemptionManager allocated (mService stubbed)");
+        return instance;
+    }
+
+    /**
+     * Map an API Class -> service name in SystemServiceRegistry.SYSTEM_SERVICE_NAMES so
+     * getSystemService(ApiClass.class) resolves to our replaced fetcher (harmless if already mapped).
+     */
+    @SuppressWarnings("unchecked")
+    private static void registerServiceName(String apiClassName, String name) {
+        try {
+            Class<?> ssr = Class.forName("android.app.SystemServiceRegistry");
+            Class<?> apiClass = Class.forName(apiClassName);
+            Field f = ssr.getDeclaredField("SYSTEM_SERVICE_NAMES");
+            f.setAccessible(true);
+            java.util.Map<Class<?>, String> names = (java.util.Map<Class<?>, String>) f.get(null);
+            String prev = names.put(apiClass, name);
+            System.err.println("[B8-FETCH] " + name + " class->name registered for " + apiClassName
+                    + " (prev=" + prev + ")");
+        } catch (Throwable t) {
+            System.err.println("[B8-FETCH] " + name + " class->name register failed: " + t);
+        }
     }
 
     /**
