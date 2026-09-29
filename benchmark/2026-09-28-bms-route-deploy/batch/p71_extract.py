@@ -8,7 +8,7 @@ ScheduleLaunchAbility arrival. Compares against #69 predictions.
 import json, glob, os, re, sys
 from pathlib import Path
 
-RUN_ROOT = sorted(glob.glob("/home/zhaoyue/a2hlab/board/b4-71-white14/2026*"))[-1]
+RUN_ROOT = sorted(glob.glob("/home/zhaoyue/a2hlab/board/b4-73b-white14/2026*"))[-1]
 
 PRED_69 = {
     "fd-binaryeye": "manifest-only", "fd-catima": "manifest-only", "noice": "manifest-only",
