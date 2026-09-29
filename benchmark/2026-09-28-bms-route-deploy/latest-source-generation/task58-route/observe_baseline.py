@@ -10,9 +10,10 @@ parser=argparse.ArgumentParser()
 parser.add_argument('--run',default='b6-musl-fixed-5ea')
 parser.add_argument('--case',action='append',help='key:package; defaults to Wikipedia and HelloWorld')
 parser.add_argument('--parent',type=int,help='Explicit restored parent after a separately recorded reboot')
+parser.add_argument('--baseline-state',default='deployment.json')
 args=parser.parse_args()
 RUN=args.run
-DEPLOY=json.loads((ROOT/'deployment.json').read_text())
+DEPLOY=json.loads((ROOT/args.baseline_state).read_text())
 assert DEPLOY.get('rolled_back')
 GEN='74e6f75976087d7890088b29c08482f17573a588fa5857cb6ca39264838ce16d'
 PARENT=args.parent or DEPLOY['rollback_parent']

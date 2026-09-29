@@ -39,21 +39,21 @@ B5 之后 Wikipedia 的 child 已实例化 `org.wikipedia.main.MainActivity`,但
 
 | Total | Passed | Failed | Skipped | Uncertain | Pass Rate |
 | --- | --- | --- | --- | --- | --- |
-| 8 | 3 | 5 | 0 | 0 | 37.5% |
+| 8 | 5 | 2 | 0 | 0 | 62.5% |
 
 - ❌ Wikipedia 从桌面启动后上屏
   - test: `b6_wikipedia_lit`
 - ✅ getTheme 的调用者被具名
   - test: `b6_caller_identified`
-- ❌ 修复后 HelloWorld 与 ZigZag 不回退
+- 👁️ 修复后 HelloWorld 与 ZigZag 不回退
   - test: `b6_no_regression_helloworld_zigzag`
-- ❌ 越过 getTheme 但仍未上屏时记下一堵墙
+- ✅ 越过 getTheme 但仍未上屏时记下一堵墙
   - test: `b6_next_wall_recorded`
 - ✅ 板上产物不是本次构建时判失败
   - test: `b6_fix_absent_detected`
 - ❌ 空指针处理方式有记录
   - test: `b6_null_check_mode_recorded`
-- ❌ 重生成的一代通过 loader 身份校验
+- ✅ 重生成的一代通过 loader 身份校验
   - test: `b6_generation_passes_identity_gate`
 - ✅ 新 libsigchain 缺符号时不部署
   - test: `b6_sigchain_exports_cover_libart_imports`
@@ -64,9 +64,9 @@ B5 之后 Wikipedia 的 child 已实例化 `org.wikipedia.main.MainActivity`,但
 |------|----------|------|-------|---------|------------|
 | — | Wikipedia 从桌面启动后上屏 | b6_wikipedia_lit | found | fail | computational |
 | — | getTheme 的调用者被具名 | b6_caller_identified | found | pass | computational |
-| — | 修复后 HelloWorld 与 ZigZag 不回退 | b6_no_regression_helloworld_zigzag | found | fail | computational |
-| — | 越过 getTheme 但仍未上屏时记下一堵墙 | b6_next_wall_recorded | found | fail | computational |
+| — | 修复后 HelloWorld 与 ZigZag 不回退 | b6_no_regression_helloworld_zigzag | found | pending_review | computational |
+| — | 越过 getTheme 但仍未上屏时记下一堵墙 | b6_next_wall_recorded | found | pass | computational |
 | — | 板上产物不是本次构建时判失败 | b6_fix_absent_detected | found | pass | computational |
 | — | 空指针处理方式有记录 | b6_null_check_mode_recorded | found | fail | computational |
-| — | 重生成的一代通过 loader 身份校验 | b6_generation_passes_identity_gate | found | fail | computational |
+| — | 重生成的一代通过 loader 身份校验 | b6_generation_passes_identity_gate | found | pass | computational |
 | — | 新 libsigchain 缺符号时不部署 | b6_sigchain_exports_cover_libart_imports | found | pass | computational |

@@ -12,11 +12,11 @@ assert json.loads((R/'closure-negatives.json').read_text())['passed']
 assert json.loads((R/'static-dispositions.json').read_text())['passed']
 assert json.loads((R/'v1-host-tests.json').read_text())['passed']
 gen=v['route_a_input_generation_sha256'];serial='5ea34a4500000000000000001123012c'
-remote='/data/local/tmp/b6-generation-'+gen[:12]+'-attempt2';route='/system/lib64/westlake/route-a/'+gen
-out=Path.home()/'a2hlab/board'/('b6-task58-route-'+gen[:12]+'-attempt2');out.mkdir(parents=True,exist_ok=True)
+remote='/data/local/tmp/b6-generation-'+gen[:12]+'-reboot1';route='/system/lib64/westlake/route-a/'+gen
+out=Path.home()/'a2hlab/board'/('b6-task58-route-'+gen[:12]+'-reboot1');out.mkdir(parents=True,exist_ok=True)
 state=out/'deployment.json'
 board=b.Board(serial,str(Path(__file__).resolve().parents[4].parent/'westlake-inputs/tools/hdc_mac.sh'),'mac '+str(Path(__file__).resolve().parents[4].parent/'westlake-inputs/tools/board_note.sh'),'cx-t0',out/('commands-'+sys.argv[1]+'-'+str(time.time_ns())))
-board.ready();assert board.boot=='42f125dc-5d9e-405e-91b4-0f9e929c3c5f'
+board.ready();assert board.boot=='e36781a9-2ba1-4804-b8e5-2a1125c39a47'
 baseline={'/system/bin/appspawn-x':'1f6cf53be7b3225a6d0a2b5f66278c32f5d9f5f99a0f56ece3f57a630db4d908','/system/lib64/appspawn/libwestlake_android_child.z.so':'0976dee89c0464cd6aeaf7d4c3c4afd1466926b7d69dc8e01d4910f92bf12e40','/system/android/framework/oh-adapter-runtime.jar':'250958dc3f133b67fb38c5da3caf81714fd6958e2247556e327d917b1f0d3146'}
 baseline.update({p:'675536e8a43ac747cbffc0e130d5681ba7bcf2bd3fd305f3d0d357ca797a793d' for p in ['/system/lib64/libapk_installer.so','/system/lib64/platformsdk/libapk_installer.so']})
 def hashes(paths):
@@ -75,7 +75,9 @@ for name,path in payload.items():
 pack=ROOT/'bms/src/.work/b6-generation.tar'
 with tarfile.open(pack,'w') as t:
  for name,p in payload.items():t.add(p,arcname=name)
-board.shell('test ! -e '+remote+' && test ! -e '+route+' && mkdir '+remote)
+# The empty route mountpoint may survive a reboot; never reuse a mounted/nonempty one.
+_,mi=board.shell('cat /proc/self/mountinfo');assert not any(l.split()[4]==route for l in mi.splitlines())
+board.shell('test ! -e '+remote+' && { test ! -e '+route+' || test -z "$(ls -A '+route+')"; } && mkdir '+remote)
 board.send(pack,remote+'/payload.tar');board.shell('tar -xf '+remote+'/payload.tar -C '+remote)
 staged=hashes([remote+'/'+n for n in payload]);assert staged=={remote+'/'+n:b.sha(p) for n,p in payload.items()}
 board.shell('find '+remote+' -type f -exec chmod 0644 {} \\; && chmod 0755 '+remote+'/runtime/appspawn-x && chcon -R u:object_r:system_file:s0 '+remote)
@@ -99,7 +101,7 @@ try:
  root=next(line.split() for line in mounts.splitlines() if line.split()[1]=='/')
  readonly='ro' in root[3].split(',')
  if readonly: board.shell('mount -o remount,rw /')
- try: board.shell('mkdir '+route+' && chcon u:object_r:system_file:s0 '+route)
+ try: board.shell('mkdir -p '+route+' && chcon u:object_r:system_file:s0 '+route)
  finally:
   if readonly: board.shell('mount -o remount,ro /')
  d['root_mount_temporarily_rw_for_mountpoint']=readonly

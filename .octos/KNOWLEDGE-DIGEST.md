@@ -377,3 +377,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - B6/#58：G1–G4整组恢复、26件原字节保留后身份门通过，SIGSEGV实录ART special槽0先于DFX槽3；HelloWorld在系统libopenjdkjvm!JVM_NativeLoad+100读空Runtime::instance_崩溃，maps同时有route/system两份ART，具体namespace绑定因果未证。Java NPE/SIGBUS未验；七挂载回滚+B5双图恢复，见 latest-source-generation/task58/。
 
 - B6/#58续验静态纠正：OpenPreparedNamespace的局部prefix数组使R155 `b dlopen`变成`bl dlopen`；OH musl将x30传给dlopen_impl，尾调用差异会改变namespace调用者，不能归为无害。改static后恢复原版指令形态；候选6cb40cd6部署后全USB掉线，尚未验app，因果待单ART maps复验，见 task58-route/。
+
+- B6/#58续验已证：static prefix恢复`b dlopen`后6cb40cd6 HelloWorld只有一份route ART与route openjdkjvm，HW/ZigZag均上屏；Wikipedia两次ART槽0消费SIGSEGV继续到performCreate，随后finishActivity→System.exit(0)无fault回桌面，退出决策未定位。NPE类型仅间接支持、SIGBUS未证；见 task58-route/，不能把tail-call差异判无害。
