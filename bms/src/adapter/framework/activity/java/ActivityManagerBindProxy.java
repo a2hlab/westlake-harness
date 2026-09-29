@@ -87,7 +87,16 @@ public final class ActivityManagerBindProxy implements InvocationHandler {
                 System.err.println("[B8-AMB] in-app bind intercept skipped: " + t);
             }
         }
-        return method.invoke(delegate, args);
+        // r17 (#93/cc-wiki): unwrap InvocationTargetException so the delegate's real exception crosses
+        // this proxy transparently. Otherwise a checked ITE from Method.invoke is re-wrapped by the
+        // Proxy runtime into UndeclaredThrowableException, and a guard stacked outside us
+        // (OnlineConnectivityManager.installReceiverGuard, which answers registerReceiver's missing-JNI
+        // UnsatisfiedLinkError as a no-op) can no longer recognise the original cause.
+        try {
+            return method.invoke(delegate, args);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            throw e.getCause() != null ? e.getCause() : e;
+        }
     }
 
     /** True if comp targets a service in this app's own package. */
@@ -115,7 +124,7 @@ public final class ActivityManagerBindProxy implements InvocationHandler {
                         Class<?> svcClass = ((ClassLoader) app.getClass().getMethod("getClassLoader")
                                 .invoke(app)).loadClass(cls);
                         svc = svcClass.getDeclaredConstructor().newInstance();
-                        attachService(svc, app, thread, cls);
+                        attachService(svc, app, thread, cls, serviceActivityManager());
                         svc.getClass().getMethod("onCreate").invoke(svc);
                         sServices.put(cls, svc);
                         System.err.println("[B8-AMB] created in-process service " + cls);
@@ -130,18 +139,69 @@ public final class ActivityManagerBindProxy implements InvocationHandler {
         });
     }
 
-    /** Service.attach(Context, ActivityThread, String, IBinder, Application, Object) via reflection. */
-    private static void attachService(Object svc, Object app, Object thread, String cls) throws Exception {
+    /** Service.attach(Context, ActivityThread, String, IBinder, Application, Object activityManager). */
+    private static void attachService(Object svc, Object app, Object thread, String cls,
+            Object activityManager) throws Exception {
         for (Method m : Class.forName("android.app.Service").getDeclaredMethods()) {
             if (!"attach".equals(m.getName())) continue;
             Class<?>[] p = m.getParameterTypes();
             if (p.length == 6) {
                 m.setAccessible(true);
-                m.invoke(svc, app, thread, cls, new Binder(), app, null);
+                // 6th arg is the IActivityManager the Service keeps as mActivityManager: a running
+                // in-process Service calls it back (startForeground -> setServiceForeground). It must
+                // not be null (r17/#droidify: fd-droidify's SyncService NPE'd Service.startForeground).
+                m.invoke(svc, app, thread, cls, new Binder(), app, activityManager);
                 return;
             }
         }
         throw new NoSuchMethodException("Service.attach(6-arg) not found");
+    }
+
+    /**
+     * r17 (#droidify): a non-null IActivityManager for the in-process Service's mActivityManager.
+     * OH's route-A adapter cannot service the lifecycle callbacks a running Service makes -- notably
+     * Service.startForeground -> IActivityManager.setServiceForeground -- so answer those as harmless
+     * no-ops and delegate every other call to the real adapter (unwrapping InvocationTargetException
+     * so the delegate's own exceptions stay recognisable). Non-first-frame notification plumbing is a
+     * no-op by the B8 stub rule; the Service still reaches its onCreate/onBind UI work.
+     */
+    private Object serviceActivityManager() {
+        try {
+            final Class<?> iface = Class.forName("android.app.IActivityManager");
+            return Proxy.newProxyInstance(iface.getClassLoader(), new Class<?>[] {iface},
+                    new InvocationHandler() {
+                        @Override
+                        public Object invoke(Object p, Method m, Object[] a) throws Throwable {
+                            String n = m.getName();
+                            if ("asBinder".equals(n)) {
+                                return ((android.os.IInterface) delegate).asBinder();
+                            }
+                            if (n.equals("setServiceForeground") || n.equals("stopServiceToken")
+                                    || n.equals("serviceDoneExecuting") || n.equals("publishService")
+                                    || n.equals("unbindFinished") || n.equals("setServiceForegroundNode")
+                                    || n.equals("requestServiceBinding")) {
+                                return defaultReturn(m.getReturnType());
+                            }
+                            try {
+                                return m.invoke(delegate, a);
+                            } catch (java.lang.reflect.InvocationTargetException e) {
+                                throw e.getCause() != null ? e.getCause() : e;
+                            }
+                        }
+                    });
+        } catch (Throwable t) {
+            System.err.println("[B8-AMB] service IActivityManager stub not built: " + t);
+            return null;
+        }
+    }
+
+    /** Type-correct harmless default for a stubbed IActivityManager method (B8 no-op rule). */
+    private static Object defaultReturn(Class<?> type) {
+        if (type == boolean.class) return Boolean.TRUE;   // "accepted / done" for service callbacks
+        if (type == int.class || type == long.class || type == short.class || type == byte.class) {
+            return type == long.class ? (Object) 0L : (Object) 0;
+        }
+        return null;                                       // void and object returns
     }
 
     /** IServiceConnection.connected(ComponentName, IBinder, boolean) via reflection. */

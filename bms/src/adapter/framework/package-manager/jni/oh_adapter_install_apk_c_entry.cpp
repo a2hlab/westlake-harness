@@ -140,13 +140,10 @@ extern "C" int oh_adapter_prepare_install(const char* apkPath, int32_t userId,
         return OH_ADAPTER_APK_VERIFY_RESPONSE_REJECTED;
     }
 
-    const oh_adapter::ApkManifestParser::ActivityData* launcher = nullptr;
-    for (const auto& activity : manifest.activities) {
-        if (oh_adapter::IsAndroidLauncherActivity(activity)) {
-            launcher = &activity;
-            break;
-        }
-    }
+    // Prefer the app's own-package launcher over a merged-library launcher (e.g. leakcanary's
+    // LeakLauncherActivity); a plain first-launcher pick registered the diagnostic UI as the icon.
+    const oh_adapter::ApkManifestParser::ActivityData* launcher =
+        oh_adapter::SelectLauncherActivity(manifest);
     if (launcher == nullptr ||
         !CopyPlanString(plan->packageName, sizeof(plan->packageName), manifest.packageName) ||
         !CopyPlanString(plan->versionName, sizeof(plan->versionName), manifest.versionName) ||
@@ -359,6 +356,11 @@ extern "C" int oh_adapter_install_apk_with_manifest(
     json["debuggable"] = manifest.debuggable;
 
     nlohmann::json abilities = nlohmann::json::array();
+    // Only the single chosen launcher (own-package preferred) is the desktop mainAbility: base_bundle
+    // installer sets moduleInfo.mainAbility from isMainAbility, so marking every MAIN+LAUNCHER activity
+    // let a merged-library launcher (leakcanary) win. Match the plan's launcher selection here.
+    const oh_adapter::ApkManifestParser::ActivityData* chosenMainAbility =
+        oh_adapter::SelectLauncherActivity(manifest);
     for (const auto& activity : manifest.activities) {
         nlohmann::json ability;
         ability["name"] = activity.name;
@@ -369,7 +371,7 @@ extern "C" int oh_adapter_install_apk_with_manifest(
         ability["exported"] = activity.exported;
         nlohmann::json actions = nlohmann::json::array();
         nlohmann::json categories = nlohmann::json::array();
-        const bool isMain = oh_adapter::IsAndroidLauncherActivity(activity);
+        const bool isMain = (chosenMainAbility == &activity);
         for (const auto& filter : activity.intentFilters) {
             for (const auto& action : filter.actions) {
                 actions.push_back(action);

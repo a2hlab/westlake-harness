@@ -63,6 +63,28 @@ public final class B7BindFixes {
         } catch (Throwable t) {
             System.err.println("[B8-OCM] not installed: " + t);
         }
+        // r17 (cc-wiki): answer IPackageManager.getPackagesForUid/getNameForUid for this process's own
+        // uid. route-A's package projection returns nothing for self-uid, so StorageManager.getVolumeList
+        // logs "Missing package names" and returns an empty StorageVolume[] without asking the (already
+        // installed) child-local mount binder; amaze-filemanager's AppConfig <clinit> then indexes [0] of
+        // the empty array and dies. Passthrough for every other call.
+        try {
+            SelfUidPackages.install(ai);
+        } catch (Throwable t) {
+            System.err.println("[SELF-UID] not installed: " + t);
+        }
+        // r17 (#93): Westlake HTTPS/TLS Java side. OhTrustBridge restores the BC JCA registrations the
+        // trimmed BCP dropped (MessageDigest, AES, X.509 CertificateFactory, RSA/EC signatures, EC
+        // KeyFactory) and publishes SecureRandom.WestlakeKernel + TrustManagerFactory.OH-PKIX/PKIX/X509
+        // backed by the platform CA bundle (OhSystemTrustManager). WestlakeSSLSocket declares the seven
+        // OpenSSL-boundary natives so cx-t0's wl_register_tls_natives binds. Called reflectively (the
+        // TLS classes compile in a separate android-bootclasspath pass) at bind in the forked child --
+        // clear of AppSpawnXInit's parent Security.getProviders() clinit trap (L296-303).
+        try {
+            Class.forName("adapter.security.WestlakeTlsInstall").getMethod("install").invoke(null);
+        } catch (Throwable t) {
+            System.err.println("[B8-TLS] not installed: " + t);
+        }
     }
 
     /**

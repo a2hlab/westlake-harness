@@ -47,7 +47,10 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
                src / 'ManifestJsonFallback.java',
                # B8 (#82) r15: runtime-JAR proxies over the BCP IWindowSession (addToDisplay + CLAMP48)
                # and IActivityManager (in-app bindService), installed from B7BindFixes at bind.
-               src / 'WindowSessionProxy.java', src / 'ActivityManagerBindProxy.java']
+               src / 'WindowSessionProxy.java', src / 'ActivityManagerBindProxy.java',
+               # r17 (cc-wiki): own-uid getPackagesForUid/getNameForUid so StorageManager.getVolumeList
+               # asks the child-local mount binder instead of returning empty (amaze AppConfig <clinit>).
+               src / 'SelfUidPackages.java']
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 # r16 (#90): cc-wiki's OnlineConnectivityManager compiles against the Westlake android.net sources
 # (ConnectivityManager/Network/NetworkInfo/NetworkCapabilities/NetworkRequest, which expose the
@@ -65,6 +68,25 @@ online_kept = sorted((online_classes / 'adapter' / 'activity').glob('OnlineConne
 assert online_kept, 'no OnlineConnectivityManager classes compiled'
 for p in online_kept:
     shutil.copyfile(p, classes / 'adapter/activity' / p.name)
+# r17 (#93): Westlake HTTPS/TLS Java side, compiled against android.jar as BOOTCLASSPATH so the
+# SSLSocket/SSLSession/X509ExtendedTrustManager abstract sets match the platform exactly (a
+# --release 8 pass binds the JDK's abstract set instead -> AbstractMethodError at class load). Chain:
+# adapter.security.{OhTrustBridge, OhTrustManagerFactorySpi, OhSystemTrustManager, OhPeerCertificates,
+# WestlakeTlsInstall} + adapter.compat.{WestlakeSecureRandomSpi, WestlakeSSLSocket, WestlakeSSLSession}.
+# B7BindFixes calls adapter.security.WestlakeTlsInstall.install() reflectively (no compile-time ref).
+tls_src = [src / 'WestlakeTlsInstall.java', src / 'OhTrustBridge.java',
+           src / 'OhTrustManagerFactorySpi.java', src / 'OhSystemTrustManager.java',
+           src / 'OhPeerCertificates.java', src / 'WestlakeSecureRandomSpi.java',
+           src / 'WestlakeSSLSocket.java', src / 'WestlakeSSLSession.java']
+tls_classes = BUILD / 'tls-classes'; tls_classes.mkdir()
+run(['javac', '-source', '8', '-target', '8', '-bootclasspath', INPUT / 'android.jar',
+     '-cp', INPUT / 'android.jar', '-d', tls_classes, '-nowarn', *tls_src])
+tls_kept = sorted(tls_classes.rglob('*.class'))
+assert tls_kept, 'no TLS classes compiled'
+for p in tls_kept:
+    dest = classes / p.relative_to(tls_classes)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(p, dest)
 run(['java', '-cp', INPUT / 'd8.jar', 'com.android.tools.r8.D8', '--release', '--min-api', '22',
      '--lib', INPUT / 'android.jar', '--output', dex, *classes.rglob('*.class')])
 with zipfile.ZipFile(BASE_JAR) as z:
@@ -204,7 +226,7 @@ result = {
     'changed_existing_classes': changed,
     'added_classes': sorted(str(p.relative_to(post)) for p in post.rglob('*.smali')
                             if str(p.relative_to(post)) not in original),
-    'sources': {str(p.relative_to(ROOT)): sha(p) for p in helpers_src},
+    'sources': {str(p.relative_to(ROOT)): sha(p) for p in helpers_src + tls_src},
     'inputs': {p.name: sha(p) for p in sorted(INPUT.glob('*.jar'))},
 }
 (REPORT / ('build-result-' + BUILD.name[len('build-'):] + '.json')).write_text(json.dumps(result, indent=2) + '\n')
