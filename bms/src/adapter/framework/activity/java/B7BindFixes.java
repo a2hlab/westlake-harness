@@ -45,6 +45,43 @@ public final class B7BindFixes {
         // B8 (#70/INVENTORY 19): Flutter Impeller fallback -- add EnableImpeller=false to the app's
         // metaData Bundle so a Flutter engine that honours the opt-out uses the Skia GLES path.
         applyImpellerFallback(ai);
+        // B8 (#82/r15): tolerant uncaught-exception handler. AOSP RuntimeInit's KillApplicationHandler
+        // calls System.exit on ANY uncaught exception, so a crash on a background worker takes the
+        // whole app down (many "exit 1"). Westlake keeps only the main thread fatal.
+        installTolerantUncaughtHandler();
+        // B8 (#82/r15): runtime-JAR proxies over the BCP IWindowSession (addToDisplay flag-allow +
+        // relayout CLAMP48) and IActivityManager (in-app bindService). Same reflect.Proxy pattern as
+        // PackageManagerProjectionProxy; each install is idempotent and defensive.
+        try { WindowSessionProxy.install(); } catch (Throwable t) { System.err.println("[B8-WSP] " + t); }
+        try { ActivityManagerBindProxy.install(); } catch (Throwable t) { System.err.println("[B8-AMB] " + t); }
+    }
+
+    /**
+     * Non-main-thread uncaught exceptions end only that thread (logged), not the process; the main
+     * thread is handed back to the original handler (AOSP's exit behaviour). Copies the intent of
+     * Westlake's AppSpawnXInit tolerant handler but as a per-bind Thread default handler in the
+     * runtime JAR, so no boot-image change is needed.
+     */
+    static void installTolerantUncaughtHandler() {
+        try {
+            final Thread.UncaughtExceptionHandler original = Thread.getDefaultUncaughtExceptionHandler();
+            final Thread mainThread = android.os.Looper.getMainLooper().getThread();
+            Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+                @Override
+                public void uncaughtException(Thread thread, Throwable ex) {
+                    if (thread == mainThread) {
+                        if (original != null) original.uncaughtException(thread, ex);
+                        return;
+                    }
+                    System.err.println("[B8-UEH] background thread '" + thread.getName()
+                            + "' uncaught, thread ended (process kept alive): " + ex);
+                    ex.printStackTrace();
+                }
+            });
+            System.err.println("[B8-UEH] tolerant uncaught-exception handler installed");
+        } catch (Throwable t) {
+            System.err.println("[B8-UEH] not installed: " + t);
+        }
     }
 
     static void applyImpellerFallback(ApplicationInfo ai) {

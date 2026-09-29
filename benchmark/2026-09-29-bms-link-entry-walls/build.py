@@ -44,7 +44,10 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
                src / 'LocalServiceBinders.java', src / 'CompatChangeTable.java', src / 'B8BindExtras.java',
                # B8 (#65) r8b: Java manifest parse feeding the isomorphic JSON back through
                # AppSchedulerBridge's own path when nativeParseManifestJson is missing (6cb40cd6).
-               src / 'ManifestJsonFallback.java']
+               src / 'ManifestJsonFallback.java',
+               # B8 (#82) r15: runtime-JAR proxies over the BCP IWindowSession (addToDisplay + CLAMP48)
+               # and IActivityManager (in-app bindService), installed from B7BindFixes at bind.
+               src / 'WindowSessionProxy.java', src / 'ActivityManagerBindProxy.java']
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 run(['java', '-cp', INPUT / 'd8.jar', 'com.android.tools.r8.D8', '--release', '--min-api', '22',
      '--lib', INPUT / 'android.jar', '--output', dex, *classes.rglob('*.class')])
