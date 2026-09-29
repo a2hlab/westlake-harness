@@ -26,7 +26,7 @@ public final class B8BindExtras {
     // jobscheduler), westlake-only (connectivity, location) -- the first-frame-irrelevant services
     // that only need a non-null binder so getSystemService does not NPE (#70 revision).
     private static final String[] SERVICES = {"appops", "uimode", "locale", "account", "alarm",
-            "notification", "jobscheduler", "connectivity", "location"};
+            "notification", "jobscheduler", "connectivity", "location", "webviewupdate"};
 
     private B8BindExtras() {}
 

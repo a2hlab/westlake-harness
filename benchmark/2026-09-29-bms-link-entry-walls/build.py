@@ -108,25 +108,18 @@ compat = re.compile(r'(    const-string (v\d+), "disabledCompatChanges"\n\n(?:  
 chits = compat.findall(text); assert len(chits) == 1, len(chits)
 text = compat.sub(lambda m: m.group(1) + '\n    invoke-static {' + m.group(3) +
                   '}, Ladapter/activity/B8BindExtras;->afterBindData(Ljava/lang/Object;)V\n', text)
-# B8 r8b: right before buildProvidersFromManifest(bundleName, manifestJson), overwrite the
-# manifestJson register with ManifestJsonFallback.orFallback(manifestJson, bundleName). When the
-# native nativeParseManifestJson is missing (6cb40cd6 / v3a 846 bridge) the native call throws
-# UnsatisfiedLinkError, v14 stays "", and orFallback (after the try) feeds the isomorphic Java JSON
-# into the existing path so providers + className/theme are populated. group(2)=bundleName,
-# group(3)=manifestJson.
-#
-# We hook ONLY this (ensureBindApplication) call site, NOT the WL-THEME-SYNC one at
-# nativeOnScheduleLaunchAbility: substituting there makes the Java parse open a THIRD AssetManager on
-# the APK on the SLA thread at that timing, which corrupts ZigZag/Unity's splash-Dialog window token
-# ("window type 2 is not valid"). WL-THEME-SYNC's native call is left to throw and be caught -- it is
-# a harmless concomitant (outer loop #75), only reads the application appTheme (also delivered here).
-mfb = re.compile(r'(    invoke-static \{(v\d+), (v\d+)\}, Ladapter/activity/AppSchedulerBridge;'
-                 r'->buildProvidersFromManifest\(Ljava/lang/String;Ljava/lang/String;\)Ljava/util/List;\n)')
-mhits = mfb.findall(text); assert len(mhits) == 1, len(mhits)
-text = mfb.sub(lambda m: '    invoke-static {' + m.group(3) + ', ' + m.group(2)
-               + '}, Ladapter/activity/ManifestJsonFallback;->orFallback'
-               '(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;\n\n'
-               '    move-result-object ' + m.group(3) + '\n\n' + m.group(1), text)
+# B8 #73/r14: replace the native nativeParseManifestJson call at EVERY call site
+# (ensureBindApplication AND the WL-THEME-SYNC appTheme path) with ManifestJsonFallback.parseManifestJson.
+# The bridge on 6cb40cd6 and the v3a 846 (84695d62) bridge export neither, so the native call throws
+# UnsatisfiedLinkError at both; the Java replacement has the same (String)->String signature, never
+# throws, and returns the isomorphic JSON so providers + className/theme + the WL-THEME-SYNC appTheme
+# all get their data. (On v3a the ZigZag control has its westlake libs, so the extra manifest parse on
+# the SLA thread is harmless -- the earlier "window type 2" was a missing-lib environmental issue.)
+npm = re.compile(r'invoke-static \{(v\d+)\}, Ladapter/activity/AppSchedulerBridge;'
+                 r'->nativeParseManifestJson\(Ljava/lang/String;\)Ljava/lang/String;')
+nhits = npm.findall(text); assert len(nhits) >= 2, nhits
+text = npm.sub(lambda m: 'invoke-static {' + m.group(1) + '}, Ladapter/activity/ManifestJsonFallback;'
+               '->parseManifestJson(Ljava/lang/String;)Ljava/lang/String;', text)
 # B8 #70 wall 1 (per-activity theme): in buildActivityInfoFromAbility, resolve the launching
 # activity's own manifest theme before the (single) return. ScheduleLaunchAbility runs before
 # bindApplication enriches appInfo.theme, so OH's abilityJson leaves ActivityInfo.theme 0 and the
@@ -176,7 +169,8 @@ assert post_scheduler.count('B7BindFixes;->apply(') == 1
 assert post_scheduler.count('LaunchActivityAliasProjection;->apply(') == 1
 assert post_scheduler.count('B8BindExtras;->afterBindData(') == 1
 assert post_scheduler.count('B8BindExtras;->afterProviders(') == 1
-assert post_scheduler.count('ManifestJsonFallback;->orFallback(') == 1
+assert post_scheduler.count('ManifestJsonFallback;->parseManifestJson(') >= 2
+assert post_scheduler.count('AppSchedulerBridge;->nativeParseManifestJson(') == 0
 assert post_scheduler.count('ManifestJsonFallback;->resolveActivityTheme(') == 1
 output = BUILD / 'oh-adapter-runtime.jar'
 with zipfile.ZipFile(BASE_JAR) as source, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as dest:

@@ -46,10 +46,15 @@ def main():
     receipt = {'mode': mode, 'serial': SERIAL, 'boot_id': bd.boot,
                'before_sha256': target_hash(bd), 'mounts_before': mounted(bd)}
     if mode == 'apply':
-        assert receipt['before_sha256'] == BUILD['baseline_sha256'], receipt
-        # The ZigZag generation itself bind-mounts its candidate JAR here; stack on top of it
-        # (B5 method) but never twice.
-        assert not any(REMOTE_DIR[len('/data'):] in m for m in receipt['mounts_before']), 'B7 overlay already mounted'
+        # The overlay stacks on the generation's own runtime JAR. Accept the b5 baseline
+        # (250958dc) or the v3a generation's shipped r8b JAR (d5000c4e) as the valid underlay.
+        V3A_R8B = 'd5000c4e19e74e3ec7a72300ed425fa2c5ba521aa4b04cb6e688e165e6ba5554'
+        assert receipt['before_sha256'] in (BUILD['baseline_sha256'], V3A_R8B), receipt
+        # The generation bind-mounts its own JAR here; stack on top (B5 method). A generation switch
+        # (v3a) can leave a stale/shadowed b7-walls mount underneath its /system/android dir mount --
+        # harmless, and the before_sha256 check above already proves no ACTIVE overlay is on top (an
+        # active one would change the served hash). Refuse only if the top served hash is our overlay.
+        assert receipt['before_sha256'] != BUILD['output_sha256'], 'this B7 overlay already active on top'
         local = out / 'oh-adapter-runtime.jar'
         subprocess.run(['orb', '-m', 'a2hlab', 'cat', BUILD['output']], stdout=local.open('wb'), check=True)
         assert b.sha(local) == BUILD['output_sha256']

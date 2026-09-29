@@ -96,6 +96,13 @@ public final class LocalServiceBinders {
                 case "location":
                     binder = proxy(name, "android.location.ILocationManager", LocalServiceBinders::stub);
                     break;
+                case "webviewupdate":
+                    // #70/INVENTORY 12: make getSystemService("webviewupdate") non-null so the null
+                    // binder does not NPE (McDonald's/burgerking WebView retries). This is the
+                    // service-non-null subset only; a rendering-capable provider needs the sideloaded
+                    // Chromium lib on disk (deployment, Westlake WebViewUpdateServiceAdapter), deferred.
+                    binder = proxy(name, "android.webkit.IWebViewUpdateService", LocalServiceBinders::stub);
+                    break;
                 // BatteryManager's fetcher requires two services and throws if either is missing,
                 // so registering one of them changes nothing.
                 case "batterystats":

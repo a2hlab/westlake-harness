@@ -42,6 +42,22 @@ public final class B7BindFixes {
         SelfComponentFallback.bind(ai);
         // B8 (#65) items 6/7: appops/uimode/locale/account/alarm answered in process.
         B8BindExtras.installServiceStubs();
+        // B8 (#70/INVENTORY 19): Flutter Impeller fallback -- add EnableImpeller=false to the app's
+        // metaData Bundle so a Flutter engine that honours the opt-out uses the Skia GLES path.
+        applyImpellerFallback(ai);
+    }
+
+    static void applyImpellerFallback(ApplicationInfo ai) {
+        try {
+            if (ai == null) return;
+            if (ai.metaData == null) ai.metaData = new android.os.Bundle();
+            if (!ai.metaData.containsKey("io.flutter.embedding.android.EnableImpeller")) {
+                ai.metaData.putBoolean("io.flutter.embedding.android.EnableImpeller", false);
+                System.err.println("[B8-IMPELLER] EnableImpeller=false injected into metaData");
+            }
+        } catch (Throwable t) {
+            System.err.println("[B8-IMPELLER] not applied: " + t);
+        }
     }
 
     static void fixNativeLibraryDir(ApplicationInfo ai) {
