@@ -55,40 +55,69 @@ void logf(const char* fmt, ...) {
     if (n > 0) { ssize_t w = write(2, b, static_cast<size_t>(n)); (void)w; }
 }
 
-// native 实现:转发给 runtime JAR 的替代类(类名由 env 注入,
-// 方法签名 static String fromHtmlCompat(String,int)——cc-t3 定稿)
-jstring JNICALL html_from_html_native(JNIEnv* env, jclass, jstring src, jint flags,
+// native 实现:转发给 runtime JAR 的替代类(类名由 env 注入)。返回类型与
+// Html.fromHtml 声明一致 = android.text.Spanned;替代类签名为
+//   static android.text.Spanned fromHtmlCompat(String source, int flags,
+//       Html.ImageGetter ig, Html.TagHandler th)
+// (外环 2026-09-30 修订①:jstring 返回会类型错乱;缺类/缺方法时返回
+//   new SpannedString(source) 而非原串。)
+jobject JNICALL html_from_html_native(JNIEnv* env, jclass, jstring src, jint flags,
                                       jobject imageGetter, jobject tagHandler) {
-    (void)imageGetter; (void)tagHandler;   // 纯文本实现不需要
     static jmethodID compat = nullptr;
     static jclass compatClass = nullptr;
+    static jclass spannedStringClass = nullptr;
+    static jmethodID spannedStringCtor = nullptr;
+    // fallback: new SpannedString(source) — a real Spanned even when src is null
+    auto fallback = [&]() -> jobject {
+        if (spannedStringCtor == nullptr) {
+            jclass sc = env->FindClass("android/text/SpannedString");
+            if (sc == nullptr || env->ExceptionCheck()) {
+                env->ExceptionClear();
+                logf("[HTML-COMPAT] SpannedString unavailable; returning null\n");
+                return nullptr;
+            }
+            spannedStringClass = static_cast<jclass>(env->NewGlobalRef(sc));
+            env->DeleteLocalRef(sc);
+            spannedStringCtor = env->GetMethodID(
+                spannedStringClass, "<init>", "(Ljava/lang/CharSequence;)V");
+            if (spannedStringCtor == nullptr || env->ExceptionCheck()) {
+                env->ExceptionClear();
+                logf("[HTML-COMPAT] SpannedString ctor missing; returning null\n");
+                return nullptr;
+            }
+        }
+        return env->NewObject(spannedStringClass, spannedStringCtor, src);
+    };
     if (compat == nullptr) {
         const char* clsName = getenv("WESTLAKE_HTML_COMPAT_CLASS");
         if (clsName == nullptr || clsName[0] == '\0') {
-            logf("[HTML-COMPAT] WESTLAKE_HTML_COMPAT_CLASS unset; returning input\n");
-            return src ? static_cast<jstring>(env->NewLocalRef(src)) : nullptr;
+            logf("[HTML-COMPAT] WESTLAKE_HTML_COMPAT_CLASS unset; fallback SpannedString(source)\n");
+            return fallback();
         }
         jclass c = env->FindClass(clsName);
         if (c == nullptr || env->ExceptionCheck()) {
             env->ExceptionClear();
-            logf("[HTML-COMPAT] class %s not found; returning input\n", clsName);
-            return src ? static_cast<jstring>(env->NewLocalRef(src)) : nullptr;
+            logf("[HTML-COMPAT] class %s not found; fallback SpannedString(source)\n", clsName);
+            return fallback();
         }
         compatClass = static_cast<jclass>(env->NewGlobalRef(c));
         env->DeleteLocalRef(c);
-        compat = env->GetStaticMethodID(compatClass, "fromHtmlCompat",
-                                        "(Ljava/lang/String;I)Ljava/lang/String;");
+        compat = env->GetStaticMethodID(
+            compatClass, "fromHtmlCompat",
+            "(Ljava/lang/String;ILandroid/text/Html$ImageGetter;"
+            "Landroid/text/Html$TagHandler;)Landroid/text/Spanned;");
         if (compat == nullptr || env->ExceptionCheck()) {
             env->ExceptionClear();
-            logf("[HTML-COMPAT] fromHtmlCompat(String,int) missing in %s; returning input\n", clsName);
+            logf("[HTML-COMPAT] fromHtmlCompat(String,int,ImageGetter,TagHandler)Spanned "
+                 "missing in %s; fallback SpannedString(source)\n", clsName);
             compat = reinterpret_cast<jmethodID>(1);  // sentinel: no forward
         }
     }
     if (compat == reinterpret_cast<jmethodID>(1) || src == nullptr) {
-        return src ? static_cast<jstring>(env->NewLocalRef(src)) : nullptr;
+        return fallback();
     }
-    return static_cast<jstring>(
-        env->CallStaticObjectMethod(compatClass, compat, src, flags));
+    return env->CallStaticObjectMethod(compatClass, compat,
+                                       src, flags, imageGetter, tagHandler);
 }
 
 // 位修:写前读回校验 + kAccNative 置位 + kAccFastNative 清位(照抄 L468-525 的
@@ -142,7 +171,7 @@ void install(JNIEnv* env) {
         return;
     }
     jmethodID id = env->GetStaticMethodID(
-        html, "fromHtml", "(Ljava/lang/String;ILandroid/text/Html$ImageGetter;Landroid/text/Html$TagHandler;)Ljava/lang/String;");
+        html, "fromHtml", "(Ljava/lang/String;ILandroid/text/Html$ImageGetter;Landroid/text/Html$TagHandler;)Landroid/text/Spanned;");
     if (id == nullptr || env->ExceptionCheck()) {
         env->ExceptionClear();
         logf("[HTML-COMPAT] fromHtml(String,int,ImageGetter,TagHandler) not found — skip\n");
@@ -156,14 +185,43 @@ void install(JNIEnv* env) {
     }
     JNINativeMethod m = {
         const_cast<char*>("fromHtml"),
-        const_cast<char*>("(Ljava/lang/String;ILandroid/text/Html$ImageGetter;Landroid/text/Html$TagHandler;)Ljava/lang/String;"),
+        const_cast<char*>("(Ljava/lang/String;ILandroid/text/Html$ImageGetter;Landroid/text/Html$TagHandler;)Landroid/text/Spanned;"),
         reinterpret_cast<void*>(&html_from_html_native)};
     const jint rc = env->RegisterNatives(html, &m, 1);
     if (env->ExceptionCheck()) env->ExceptionClear();
     logf("[HTML-COMPAT] RegisterNatives(Html.fromHtml) rc=%d\n", static_cast<int>(rc));
+
+    // —— 生效性核验与修补(外环 2026-09-30 修订②)——
+    // RegisterNatives 只写 JNI 入口表;若 Html 已在父进程被 AOT 初始化,
+    // quick 入口(@+0x18)仍指 OAT 代码,改写不生效。读回 quick 与
+    // art_quick_generic_jni_trampoline(Westlake art_runtime_stubs.cpp L384 证实
+    // libart 导出该符号;dlsym 取本进程真值)比对:不同则按同一 trampoline 目标
+    // 写回(imageless Westlake 运行时做同样转换的落点)。两路都打 before/after。
+    dlerror();
+    auto genericTrampoline = reinterpret_cast<uintptr_t>(
+        dlsym(RTLD_DEFAULT, "art_quick_generic_jni_trampoline"));
+    const char* symErr = dlerror();
+    uintptr_t quick = 0;
+    const uintptr_t art = reinterpret_cast<uintptr_t>(id);
+    bool readOk = safe_read(art + kQuickEntryOff, &quick, sizeof quick);
+    if (genericTrampoline == 0 || symErr != nullptr) {
+        logf("[HTML-COMPAT] generic trampoline unavailable (%s); quick before=%#lx "
+             "— CANNOT verify/repair, leaving as RegisterNatives left it\n",
+             symErr ? symErr : "dlsym null", (unsigned long)quick);
+    } else if (!readOk) {
+        logf("[HTML-COMPAT] quick entry unreadable @%p — leaving untouched\n", (void*)art);
+    } else if (quick == genericTrampoline) {
+        logf("[HTML-COMPAT] quick already generic-JNI (%#lx) — effective\n",
+             (unsigned long)quick);
+    } else {
+        __atomic_store_n(reinterpret_cast<uintptr_t*>(art + kQuickEntryOff),
+                         genericTrampoline, __ATOMIC_RELEASE);
+        uintptr_t after = 0;
+        safe_read(art + kQuickEntryOff, &after, sizeof after);
+        logf("[HTML-COMPAT] quick repointed AOT %#lx -> generic-JNI %#lx (verify read=%#lx)\n",
+             (unsigned long)quick, (unsigned long)genericTrampoline, (unsigned long)after);
+    }
     env->DeleteLocalRef(html);
-    // 注:quick 入口由 ART 在 RegisterNatives 后重发布 generic JNI trampoline
-    // (Westlake L475-477 的机制说明);我们不直写 entry point。
 }
 
 }  // namespace
