@@ -41,7 +41,10 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
                # B8 (#65) items 1-2: 00.Workspace ManifestComponentProjection (verbatim) + driver/hook.
                src / 'ManifestComponentProjection.java', src / 'SelfComponentFallback.java',
                # B8 (#65) items 6/7/15: Westlake LocalServiceBinders + CompatChangeTable.
-               src / 'LocalServiceBinders.java', src / 'CompatChangeTable.java', src / 'B8BindExtras.java']
+               src / 'LocalServiceBinders.java', src / 'CompatChangeTable.java', src / 'B8BindExtras.java',
+               # B8 (#65) r8b: Java manifest parse feeding the isomorphic JSON back through
+               # AppSchedulerBridge's own path when nativeParseManifestJson is missing (6cb40cd6).
+               src / 'ManifestJsonFallback.java']
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 run(['java', '-cp', INPUT / 'd8.jar', 'com.android.tools.r8.D8', '--release', '--min-api', '22',
      '--lib', INPUT / 'android.jar', '--output', dex, *classes.rglob('*.class')])
@@ -105,6 +108,18 @@ compat = re.compile(r'(    const-string (v\d+), "disabledCompatChanges"\n\n(?:  
 chits = compat.findall(text); assert len(chits) == 1, len(chits)
 text = compat.sub(lambda m: m.group(1) + '\n    invoke-static {' + m.group(3) +
                   '}, Ladapter/activity/B8BindExtras;->afterBindData(Ljava/lang/Object;)V\n', text)
+# B8 r8b: right before buildProvidersFromManifest(bundleName, manifestJson), overwrite the
+# manifestJson register with ManifestJsonFallback.orFallback(manifestJson, bundleName). When the
+# native nativeParseManifestJson is missing (6cb40cd6) this feeds the isomorphic Java-parsed JSON
+# back through the existing path, so buildProvidersFromManifest + applyManifestFieldsToAppInfoLocal
+# populate providers and set className/theme with no other change. group(2)=bundleName, group(3)=manifestJson.
+mfb = re.compile(r'(    invoke-static \{(v\d+), (v\d+)\}, Ladapter/activity/AppSchedulerBridge;'
+                 r'->buildProvidersFromManifest\(Ljava/lang/String;Ljava/lang/String;\)Ljava/util/List;\n)')
+mhits = mfb.findall(text); assert len(mhits) == 1, len(mhits)
+text = mfb.sub(lambda m: '    invoke-static {' + m.group(3) + ', ' + m.group(2)
+               + '}, Ladapter/activity/ManifestJsonFallback;->orFallback'
+               '(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;\n\n'
+               '    move-result-object ' + m.group(3) + '\n\n' + m.group(1), text)
 scheduler.write_text(text)
 
 # B8: in PackageManagerProjectionProxy.invoke (zigzag/B5 baselines), pass the delegate's answer
@@ -137,6 +152,7 @@ assert post_scheduler.count('B7BindFixes;->apply(') == 1
 assert post_scheduler.count('LaunchActivityAliasProjection;->apply(') == 1
 assert post_scheduler.count('B8BindExtras;->afterBindData(') == 1
 assert post_scheduler.count('B8BindExtras;->afterProviders(') == 1
+assert post_scheduler.count('ManifestJsonFallback;->orFallback(') == 1
 output = BUILD / 'oh-adapter-runtime.jar'
 with zipfile.ZipFile(BASE_JAR) as source, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as dest:
     for item in source.infolist():

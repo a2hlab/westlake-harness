@@ -67,6 +67,8 @@ def app_record(run_dir, key):
     out['hilog'] = {'file': str(hilog), 'sha256': sha(hilog), 'child_pids': sorted(pids)}
     out['markers'] = {item: first(rows, pat) for item, pat in MARKERS.items()}
     out['original_error_counts'] = {item: sum(1 for _, l in rows if re.search(pat, l)) for item, pat in ORIGINAL.items()}
+    out['manifest_fallback'] = first(rows, r'\[B8-MANIFEST\] java fallback produced')
+    out['appinfo_enriched'] = first(rows, r'\[B43-BIND\] appInfo enriched: className=')
     out['schedule_launch_ability'] = first(rows, r'\[BRIDGED\] ScheduleLaunchAbility|\[B47-SLA\] ENTRY')
     out['first_frame'] = first(rows, r'OH_SwapHijack|nativeQueueBuffer|QueueBuffer OK|first frame|reportFullyDrawn')
     out['next_wall'] = first(rows, r'J_invokeStaticMain_main_threw|Caused by: |exit with (code|signal)', limit=3)
@@ -75,7 +77,8 @@ def app_record(run_dir, key):
 
 def main():
     ctl, apps = HERE / 'runs' / sys.argv[1] / SERIAL, HERE / 'runs' / sys.argv[2] / SERIAL
-    build = json.loads((HERE.parent / '2026-09-29-bms-link-entry-walls/build-result-r7b.json').read_text())
+    tag = sys.argv[3] if len(sys.argv) > 3 else 'r8b'
+    build = json.loads((HERE.parent / ('2026-09-29-bms-link-entry-walls/build-result-' + tag + '.json')).read_text())
     res = {'serial': SERIAL, 'generation': '6cb40cd610ec29a69e320b8cc7d766ccffc675cbd7e94b709cc5d2462b9cddb0',
            'overlay': {'sha256': build['output_sha256'], 'baseline_sha256': build['baseline_sha256']},
            'runs': {'controls': str(ctl), 'apps': str(apps)}, 'apps': {}}
