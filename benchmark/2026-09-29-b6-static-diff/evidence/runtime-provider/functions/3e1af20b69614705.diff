@@ -1,0 +1,82 @@
+--- R155/WLAR_InstallHostRuntimeServices
++++ NEW/WLAR_InstallHostRuntimeServices
+@@ -1,38 +1,58 @@
+ stp x29, x30, [sp, #-32]!
+ stp x20, x19, [sp, #16]
+ mov x29, sp
++mov w2, #11281
+ mov x19, x0
++adrp x3, <PAGE>
++add x3, x3, <string:'APPSPAWN'>
++adrp x4, <PAGE>
++add x4, x4, <string:'%{public}s'>
++nop
++adr x5, <string:'WLCGATE:PROVIDER:INSTALL_ENTER'>
++mov w0, #3
++mov w1, #4
++movk w2, #3328, lsl #16
++bl <HiLogPrint@plt>
+ mov w8, #1
+ nop
+ adr x20, <object:_ZN12_GLOBAL__N_115gAdmissionStateE>
+ ldaxr w9, [x20]
+-cbnz w9, <WLAR_InstallHostRuntimeServices+0x64>
++cbnz w9, <WLAR_InstallHostRuntimeServices+0xa0>
+ stlxr w9, w8, [x20]
+-cbnz w9, <WLAR_InstallHostRuntimeServices+0x1c>
+-mov x1, #32120
++cbnz w9, <WLAR_InstallHostRuntimeServices+0x48>
++mov x1, #55693
+ nop
+-adr x0, <object:_ZN12_GLOBAL__N_121gHostServicesRegistryE>
+-movk x1, #30216, lsl #16
+-movk x1, #63321, lsl #32
++adr x0, <object:_ZN12_GLOBAL__N_113gHostServicesE>
++movk x1, #3296, lsl #16
++movk x1, #28926, lsl #32
+ nop
+-adr x2, <object:_ZN12_GLOBAL__N_122kProviderGenerationShaE>
+-movk x1, #29926, lsl #48
++adr x2, <object:_ZN12_GLOBAL__N_112kProviderShaE>
++movk x1, #58782, lsl #48
+ mov x3, x19
+ bl <WLAR_HostServicesInstall>
+-cbz w0, <WLAR_InstallHostRuntimeServices+0x70>
+-mov w0, #-1
+-mov w8, #3
+-b <WLAR_InstallHostRuntimeServices+0x88>
+-mov w0, #-1
++cmp w0, #0
++mov w8, #2
++cset w9, ne
++cinc w8, w8, ne
++lsl x6, x9, #1
++csetm w19, ne
++stlr w8, [x20]
++b <WLAR_InstallHostRuntimeServices+0xac>
++mov w19, #-1
++mov w6, #1
+ clrex
+-b <WLAR_InstallHostRuntimeServices+0x8c>
+-ldr x0, [x19, #104]
+-bl <WLNL_InstallSealedOpenV1@plt>
+-mov w8, #2
+-cmp w0, #0
+-cinc w8, w8, ne
+-csetm w0, ne
+-stlr w8, [x20]
++mov w2, #11281
++adrp x3, <PAGE>
++add x3, x3, <string:'APPSPAWN'>
++adrp x4, <PAGE>
++add x4, x4, <string:'%{public}s:%{public}llu'>
++adrp x5, <PAGE>
++add x5, x5, <string:'WLCGATE:PROVIDER:INSTALL_CAUSE'>
++mov w0, #3
++mov w1, #4
++movk w2, #3328, lsl #16
++bl <HiLogPrint@plt>
++mov w0, w19
+ ldp x20, x19, [sp, #16]
+ ldp x29, x30, [sp], #32
+ ret

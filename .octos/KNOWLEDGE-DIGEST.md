@@ -344,3 +344,18 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **B1沙箱修后新分叉（2026-09-28,#27）**：原样prepare_sandbox补齐10根后，Wikipedia child4789 spawn result0、RAC/LSP/provider和ActivityThread.main均到达；随后把桌面alias `org.wikipedia.DefaultIcon`当Java类实例化，ClassNotFoundException后exit1（BMS targetAbility空）。目录同HelloWorld/幂等均过；不能称已点亮，62项重跑未启。证据 `benchmark/2026-09-28-bms-route-deploy/sandbox-prep/`，B1 lifecycle 3pass/1fail。
 
 - BMS B5（2026-09-28，5ea）：按原 APK manifest 仅补 ActivityInfo.targetActivity 后，Wikipedia DefaultIcon→MainActivity、旧 ClassNotFound 消失，继而 Activity.attach/getTheme/getApplicationInfo SIGSEGV（后续根因未证）；HelloWorld 原入口仍上屏，缺目标类独立负控明确 ClassNotFound+exit1。66 key 按实际 BMS 入口计 13 alias，不能与“任一启用 launcher alias”15 混用；证据 `benchmark/2026-09-28-bms-route-deploy/alias-entry/`。
+
+## E.8 BMS 执行准备取证（2026-09-28，cx-bms，#15；未上板）
+
+- 同名 T006 v3 包不能互换：选 `~/t006/pack/t006-baseline-v3.tar.gz`（274575597 B、SHA e30a9199…71145），上层旧包 274574386 B；设备载荷相同，新包补 HelloWorld 防卸载、uitest 预热与路径归一，详见 `benchmark/2026-09-28-bms-route-study/`。
+- 本机 OH7 PAC 实名无 `-oh-7` 后缀，但 3514798293 B / SHA 4046781b…cb0b8 匹配留存核验；只凭文件名判 OH6.1 会误判，刷后仍须核 `OpenHarmony-7.0.0.38` + `Release`。
+- BMS 服务存活或 shell 全局库 hash 不能证明补丁加载；历史 foundation 保留旧挂载视图，须验 `/proc/<foundation>/root` 的实际库 hash + maps + APK 安装回读；T006 本地两轮安装成功但启动失败，不计点亮。
+- E.7 的 BMS 直查描述仅代表旧代：当前 `00.Workspace` cd5b329 的 resolveService 走 canonical component-state/catalog/package-store 链；新源码≠选定旧包字节，不能混代断言。
+- 后续用户纠偏：#15 的 T006/OH7 核对仅作历史参考；实际战役走 `01.OH61AOSP16` OH6.1 R130+R155（#19），不刷机、不用 T006 包；#20 只借其桌面图标启动实现。
+- #20 批量脚本已离线准备（未上板）：13 controls +43 blocked +10 tail=66 key；桌面图标精确 ID `AppIconCommonView_<package>.<activity>`，可有多页；WMS Focus window 必须关联本包 BMS UID 的 PID，仍不等于上屏；`x`/`noice` 身份由实际 app-input 核hash后补齐。见 `benchmark/2026-09-28-bms-route-deploy/batch/`。
+
+- **2026-09-29 B6 静态比对防混代 (#53)**: `task52/static` 的三 NEW 哈希与旧 provider 均非 #53 指定件;指定 R155 provider `977fb347` 的 HostServices +112/+120 要求全零、NEW `8d109259` 要求均非零且删除原 `WLNL_InstallSealedOpenV1` 安装调用;但原版 child 内嵌 provider SHA 为 `80c9aee0`(非派单 system 副本 `977fb347`),实际 sealed 基线须另核——恢复须核完整六 hash 与 host/child/provider 契约,不可把符号同名/去地址指令相等当运行等价;证据 `benchmark/2026-09-29-b6-static-diff/`(静态 verified、因果 unverified)。
+
+- **2026-09-29 #56 更正上条 #53 provider 基线**: 外环确认现役封存件为 `80c9aee0`，`977fb347` 的 provider 恢复建议作废；80c9 与 NEW 的 HostServicesInstall 93 条归一化指令一致、+112/+120 均须非零，sealed-open 安装是 installer→Constructors 时机迁移；R155 已含 startVm(false)/Typeface no-op/延后 adapter 初始化，须保留；三件按服务表、namespace/V1序列、VM、stdio 四组恢复，见 `benchmark/2026-09-29-b6-static-diff/RESTORE-PLAN.md`（静态 verified、源码建议 partially、运行因果 unverified）。
+
+- **2026-09-29 #57 批量工具统一**: `bms_batch.py --reinstall --hilog [秒] --shots 5,20 --focus-check` 合并一次性脚本；BM rc0须验成功文本、包名缺省先读app-input、WMS名含空格需按数字列尾解析，每张严格截图核目标UID的焦点PID，不用进程活着/离开桌面弱判据；36627B只标已知黑图，其他大小不等于点亮；app空目录可预建，旧证据拒覆写（FakeBoard离线verified，板上unverified）。

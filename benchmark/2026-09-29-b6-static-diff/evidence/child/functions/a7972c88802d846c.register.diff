@@ -1,0 +1,53 @@
+--- R155/WLSCPL_OpenPreparedNamespace
++++ NEW/WLSCPL_OpenPreparedNamespace
+@@ -1,32 +1,22 @@
+-stp xR, xR, [sp, #-32]!
+-adrp xR,
+-stp xR, xR, [sp, #16]
+-mov xR, sp
+-ldrb wR, [xR, <object:g_namespace_prepared>]
+-cmp wR, #1
+-b.ne <WLSCPL_OpenPreparedNamespace+0x44>
++sub sp, sp, #32
+ mov wR, wR
+ mov xR, xR
+-bl <AbsoluteCanonicalForm>
+-cbz wR, <WLSCPL_OpenPreparedNamespace+0x44>
+-nop
+-adr xR, <string:'/system/android/lib64/'>
+-mov xR, xR
+-mov wR, #22
+-bl <strncmp@plt>
+-cbz wR, <WLSCPL_OpenPreparedNamespace+0x54>
++mov xR, xzr
++stp xR, xR, [sp, #16]
++add xR, sp, #16
++cbz xR, <WLSCPL_OpenPreparedNamespace+0x4c>
++adrp xR,
++ldrb wR, [xR, <object:g_sealed_namespace_prepared>]
++cbz wR, <WLSCPL_OpenPreparedNamespace+0x4c>
++ldrb wR, [xR]
++cbz wR, <WLSCPL_OpenPreparedNamespace+0x48>
++adrp xR,
++add xR, xR, <object:g_sealed_namespace>
++bl <dlopen_ns@plt>
++str xR, [sp, #8]
++ldr xR, [sp, #8]
++b <WLSCPL_OpenPreparedNamespace+0x4c>
++mov xR, xzr
+ ldp xR, xR, [sp, #16]
+-mov xR, xzr
+-ldp xR, xR, [sp], #32
++add sp, sp, #32
+ ret
+-mov wR, #258
+-and wR, wR, wR
+-cmp wR, #2
+-b.ne <WLSCPL_OpenPreparedNamespace+0x44>
+-ldrb wR, [xR, #22]
+-cbz wR, <WLSCPL_OpenPreparedNamespace+0x44>
+-mov xR, xR
+-mov wR, wR
+-ldp xR, xR, [sp, #16]
+-ldp xR, xR, [sp], #32
+-b <dlopen@plt>

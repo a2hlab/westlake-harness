@@ -1,0 +1,100 @@
+--- R155/MapsState
++++ NEW/MapsState
+@@ -0,0 +1,97 @@
++stp xR, xR, [sp, #-80]!
++stp xR, xR, [sp, #16]
++mov xR, sp
++stp xR, xR, [sp, #32]
++stp xR, xR, [sp, #48]
++stp xR, xR, [sp, #64]
++sub sp, sp, #1, lsl #12 // =4096
++sub sp, sp, #272
++mov xR, xR
++mov xR, xR
++adrp xR,
++add xR, xR, <string:'/proc/self/maps'>
++adrp xR,
++add xR, xR, <string:'re'>
++mov wR, wR
++bl <fopen@plt>
++cbz xR, <MapsState+0x154>
++mov xR, xR
++add xR, sp, #16
++mov wR, #4352
++mov xR, xR
++bl <fgets@plt>
++mov wR, wzr
++cbz xR, <MapsState+0x148>
++add xR, xR, #114
++adrp xR,
++add xR, xR, <string:'%*llx-%*llx %*4s %*llx %x:%x %llu'>
++b <MapsState+0x84>
++add xR, sp, #16
++mov wR, #4352
++mov xR, xR
++bl <fgets@plt>
++cbz xR, <MapsState+0x148>
++add xR, sp, #16
++mov wR, #47
++stp xzr, xzr, [sp]
++bl <strchr@plt>
++cbz xR, <MapsState+0x70>
++mov wR, #47
++mov xR, xR
++bl <strrchr@plt>
++cmp xR, #0
++mov wR, #10
++csinc xR, xR, xR, eq
++mov xR, xR
++bl <strchr@plt>
++cbz xR, <MapsState+0xc0>
++strb wzr, [xR]
++mov xR, xR
++mov xR, xR
++bl <strcmp@plt>
++cmp wR, #0
++csinc wR, wR, wzr, ne
++cbnz wR, <MapsState+0xdc>
++cbnz wR, <MapsState+0x70>
++add xR, sp, #16
++add xR, sp, #12
++add xR, sp, #8
++mov xR, sp
++mov xR, xR
++bl <sscanf@plt>
++cmp wR, #3
++b.ne <MapsState+0x70>
++ldr xR, [sp]
++ldr xR, [xR, #16]
++cmp xR, xR
++b.ne <MapsState+0x70>
++ldr xR, [xR, #8]
++ldr wR, [sp, #12]
++lsr xR, xR, #32
++bfxil wR, wR, #8, #12
++cmp wR, wR
++b.ne <MapsState+0x70>
++ldr wR, [sp, #8]
++lsr xR, xR, #12
++bfxil wR, wR, #0, #8
++cmp wR, wR
++b.ne <MapsState+0x70>
++mov xR, xR
++bl <fclose@plt>
++mov wR, #1
++b <MapsState+0x164>
++mov xR, xR
++bl <fclose@plt>
++cbz wR, <MapsState+0x15c>
++mov wR, #-1
++b <MapsState+0x164>
++cmp wR, #0
++csel wR, wR, wzr, eq
++add sp, sp, #1, lsl #12 // =4096
++add sp, sp, #272
++ldp xR, xR, [sp, #64]
++ldp xR, xR, [sp, #48]
++ldp xR, xR, [sp, #32]
++ldp xR, xR, [sp, #16]
++ldp xR, xR, [sp], #80
++ret

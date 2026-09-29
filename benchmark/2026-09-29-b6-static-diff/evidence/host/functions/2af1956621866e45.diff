@@ -1,0 +1,259 @@
+--- R155/OpenVerifiedFileHex
++++ NEW/OpenVerifiedFileHex
+@@ -0,0 +1,256 @@
++stp x29, x30, [sp, #-80]!
++str x28, [sp, #16]
++stp x24, x23, [sp, #32]
++stp x22, x21, [sp, #48]
++stp x20, x19, [sp, #64]
++mov x29, sp
++sub sp, sp, #5, lsl #12 // =20480
++sub sp, sp, #464
++mov w23, #-1
++stp xzr, xzr, [x29, #-56]
++stur wzr, [x29, #-40]
++cbz x0, <OpenVerifiedFileHex+0x5c>
++mov x19, x4
++cbz x4, <OpenVerifiedFileHex+0x5c>
++mov w23, #-1
++cbz x2, <OpenVerifiedFileHex+0x5c>
++ldrb w8, [x0]
++mov x21, x0
++cmp w8, #47
++b.ne <OpenVerifiedFileHex+0x5c>
++ldrb w8, [x2, #64]
++cbz w8, <OpenVerifiedFileHex+0x80>
++mov w23, #-1
++mov w0, w23
++add sp, sp, #5, lsl #12 // =20480
++add sp, sp, #464
++ldp x20, x19, [sp, #64]
++ldp x22, x21, [sp, #48]
++ldp x24, x23, [sp, #32]
++ldr x28, [sp, #16]
++ldp x29, x30, [sp], #80
++ret
++mov x24, x3
++mov w20, w1
++mov x8, xzr
++add x9, x2, #1
++sub x10, x29, #32
++mov w23, #-1
++ldurb w11, [x9, #-1]
++ldrb w12, [x9]
++sub w14, w11, #97
++sub w13, w11, #48
++sub w11, w11, #87
++cmp w14, #6
++csinv w11, w11, wzr, lo
++cmp w13, #10
++sub w14, w12, #97
++sub w15, w12, #48
++csel w11, w13, w11, lo
++sub w12, w12, #87
++cmp w14, #6
++mvn w13, w11
++csinv w12, w12, wzr, lo
++cmp w15, #10
++and w13, w13, #0xff
++csel w12, w15, w12, lo
++cbz w13, <OpenVerifiedFileHex+0x5c>
++mvn w13, w12
++tst w13, #0xff
++b.eq <OpenVerifiedFileHex+0x5c>
++orr w11, w12, w11, lsl #4
++add x9, x9, #2
++strb w11, [x10, x8]
++add x8, x8, #1
++cmp x8, #32
++b.ne <OpenVerifiedFileHex+0x98>
++cbz x24, <OpenVerifiedFileHex+0x58>
++mov x0, x24
++bl <strlen@plt>
++and x8, x0, #0xfffffffffffffff7
++cmp x8, #32
++b.ne <OpenVerifiedFileHex+0x58>
++add x8, x0, #1
++orr x9, x0, #0x1
++cmp x9, x8
++b.ne <OpenVerifiedFileHex+0x58>
++ldrb w8, [x24, x0]
++cbnz w8, <OpenVerifiedFileHex+0x58>
++mov x8, xzr
++lsr x22, x0, #1
++add x9, x24, #1
++sub x10, x29, #56
++mov w23, #-1
++ldurb w11, [x9, #-1]
++ldrb w12, [x9]
++sub w14, w11, #97
++sub w13, w11, #48
++sub w11, w11, #87
++cmp w14, #6
++csinv w11, w11, wzr, lo
++cmp w13, #10
++sub w14, w12, #97
++sub w15, w12, #48
++csel w11, w13, w11, lo
++sub w12, w12, #87
++cmp w14, #6
++mvn w13, w11
++csinv w12, w12, wzr, lo
++cmp w15, #10
++and w13, w13, #0xff
++csel w12, w15, w12, lo
++cbz w13, <OpenVerifiedFileHex+0x5c>
++mvn w13, w12
++tst w13, #0xff
++b.eq <OpenVerifiedFileHex+0x5c>
++orr w11, w12, w11, lsl #4
++add x9, x9, #2
++strb w11, [x10, x8]
++add x8, x8, #1
++cmp x22, x8
++b.ne <OpenVerifiedFileHex+0x14c>
++add x1, sp, #128
++mov x0, x21
++bl <realpath@plt>
++cbz x0, <OpenVerifiedFileHex+0x58>
++add x0, sp, #128
++mov x1, x21
++bl <strcmp@plt>
++cbnz w0, <OpenVerifiedFileHex+0x58>
++add x0, sp, #128
++bl <strlen@plt>
++mov w23, #-1
++cmp x0, #4095
++b.hi <OpenVerifiedFileHex+0x5c>
++mov x0, x19
++mov w1, wzr
++mov w2, #4128
++bl <memset@plt>
++mov w1, #32768
++add x0, sp, #128
++movk w1, #8, lsl #16
++str w23, [x19]
++bl <open@plt>
++tbnz w0, #31, <OpenVerifiedFileHex+0x23c>
++add x1, sp, #1, lsl #12 // =4096
++mov w21, w0
++add x1, x1, #128
++bl <fstat@plt>
++cbz w0, <OpenVerifiedFileHex+0x244>
++mov w0, w21
++bl <close@plt>
++mov w23, #-3
++b <OpenVerifiedFileHex+0x5c>
++mov w23, #-2
++b <OpenVerifiedFileHex+0x5c>
++ldr w8, [sp, #4240]
++and w8, w8, #0xf000
++cmp w8, #8, lsl #12 // =32768
++b.ne <OpenVerifiedFileHex+0x22c>
++ldr x8, [sp, #4272]
++cmp x8, #0
++b.le <OpenVerifiedFileHex+0x22c>
++add x1, sp, #1, lsl #12 // =4096
++sub x3, x29, #56
++add x1, x1, #128
++mov w0, w21
++mov w2, w20
++mov x4, x22
++bl <VerifyBuildId>
++cbz w0, <OpenVerifiedFileHex+0x290>
++mov w0, w21
++bl <close@plt>
++mov w23, #-4
++b <OpenVerifiedFileHex+0x5c>
++add x0, sp, #1, lsl #12 // =4096
++add x0, x0, #256
++bl <WLSha256Init>
++b <OpenVerifiedFileHex+0x2b8>
++add x0, sp, #1, lsl #12 // =4096
++add x1, sp, #1, lsl #12 // =4096
++add x0, x0, #256
++add x1, x1, #368
++bl <WLSha256Update>
++cbnz w0, <OpenVerifiedFileHex+0x2ec>
++add x1, sp, #1, lsl #12 // =4096
++mov w0, w21
++add x1, x1, #368
++mov w2, #16384
++bl <read@plt>
++mov x2, x0
++cmp x0, #1
++b.ge <OpenVerifiedFileHex+0x2a0>
++tbz x2, #63, <OpenVerifiedFileHex+0x2fc>
++bl <__errno_location@plt>
++ldr w8, [x0]
++cmp w8, #4
++b.eq <OpenVerifiedFileHex+0x2b8>
++mov w0, w21
++bl <close@plt>
++mov w23, #-5
++b <OpenVerifiedFileHex+0x5c>
++add x0, sp, #1, lsl #12 // =4096
++sub x1, x29, #96
++add x0, x0, #256
++bl <WLSha256Final>
++cbnz w0, <OpenVerifiedFileHex+0x3c0>
++mov x1, sp
++mov w0, w21
++bl <fstat@plt>
++cbnz w0, <OpenVerifiedFileHex+0x3c0>
++ldr x8, [sp]
++ldr x9, [sp, #4224]
++cmp x8, x9
++b.ne <OpenVerifiedFileHex+0x3c0>
++ldr x9, [sp, #8]
++ldr x10, [sp, #4232]
++cmp x9, x10
++b.ne <OpenVerifiedFileHex+0x3c0>
++ldr x10, [sp, #48]
++ldr x11, [sp, #4272]
++cmp x10, x11
++b.ne <OpenVerifiedFileHex+0x3c0>
++ldp q0, q1, [x29, #-32]
++ldp q2, q3, [x29, #-96]
++eor v0.16b, v2.16b, v0.16b
++eor v1.16b, v3.16b, v1.16b
++orr v0.16b, v1.16b, v0.16b
++ext v1.16b, v0.16b, v0.16b, #8
++orr v0.8b, v0.8b, v1.8b
++umov w11, v0.b[1]
++umov w12, v0.b[0]
++umov w13, v0.b[2]
++umov w14, v0.b[3]
++umov w15, v0.b[4]
++orr w11, w12, w11
++umov w12, v0.b[5]
++orr w11, w11, w13
++umov w13, v0.b[6]
++orr w11, w11, w14
++umov w14, v0.b[7]
++orr w11, w11, w15
++orr w11, w11, w12
++orr w11, w11, w13
++orr w11, w11, w14
++tst w11, #0xff
++b.eq <OpenVerifiedFileHex+0x3d0>
++mov w0, w21
++bl <close@plt>
++mov w23, #-7
++b <OpenVerifiedFileHex+0x5c>
++mov w0, w21
++bl <close@plt>
++mov w23, #-6
++b <OpenVerifiedFileHex+0x5c>
++add x0, sp, #128
++str w21, [x19]
++add x20, x19, #32
++stp x8, x9, [x19, #8]
++str x10, [x19, #24]
++bl <strlen@plt>
++add x2, x0, #1
++add x1, sp, #128
++mov x0, x20
++bl <memcpy@plt>
++mov w23, wzr
++b <OpenVerifiedFileHex+0x5c>

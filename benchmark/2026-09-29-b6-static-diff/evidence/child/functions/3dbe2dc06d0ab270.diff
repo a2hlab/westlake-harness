@@ -1,0 +1,140 @@
+--- R155/WlgrIpBuild
++++ NEW/WlgrIpBuild
+@@ -0,0 +1,137 @@
++stp x29, x30, [sp, #-64]!
++stp x28, x23, [sp, #16]
++mov x29, sp
++stp x22, x21, [sp, #32]
++stp x20, x19, [sp, #48]
++sub sp, sp, #976
++mov x19, x0
++mov w0, #1
++cbz x19, <WlgrIpBuild+0x180>
++mov x20, x1
++cbz x1, <WlgrIpBuild+0x180>
++mov x21, x2
++cbz x2, <WlgrIpBuild+0x180>
++ldr x22, [x21]
++cbz x22, <WlgrIpBuild+0x174>
++mov x0, x20
++bl <SourceFactsValid>
++cbz w0, <WlgrIpBuild+0x17c>
++ldr x0, [x21, #8]
++add x1, sp, #8
++mov x2, sp
++blr x22
++mov w8, w0
++mov w0, #3
++cbnz w8, <WlgrIpBuild+0x180>
++ldr x22, [sp, #8]
++cmp x22, #2
++b.lo <WlgrIpBuild+0x180>
++ldr x23, [sp]
++cbz x23, <WlgrIpBuild+0x180>
++add x0, sp, #48
++mov w1, wzr
++mov w2, #816
++add x21, sp, #48
++bl <memset@plt>
++adrp x8, <PAGE>
++mov x9, #22066
++movk x9, #18756, lsl #16
++add x0, x21, #24
++movk x9, #18258, lsl #32
++mov x1, x20
++movk x9, #22348, lsl #48
++ldr d0, [x8, <.rodata+0x80>]
++mov w8, #8
++mov w2, #576
++str x9, [sp, #48]
++str d0, [sp, #56]
++str w8, [sp, #64]
++bl <memcpy@plt>
++add x0, x21, #600
++add x1, x20, #576
++mov w2, #16
++bl <memcpy@plt>
++add x0, x21, #616
++add x1, x20, #592
++mov w2, #32
++bl <memcpy@plt>
++ldr x8, [x20, #624]
++add x0, x21, #672
++add x1, x20, #632
++mov w2, #32
++str x22, [sp, #704]
++str x8, [sp, #696]
++str x23, [sp, #712]
++bl <memcpy@plt>
++add x0, x21, #704
++add x1, x20, #664
++mov w2, #32
++bl <memcpy@plt>
++add x0, x21, #736
++add x1, x20, #696
++mov w2, #32
++bl <memcpy@plt>
++add x0, x21, #768
++add x1, x20, #728
++mov w2, #16
++bl <memcpy@plt>
++add x0, sp, #48
++bl <wlgr_v2_identity_valid>
++cbz w0, <WlgrIpBuild+0x16c>
++sub x0, x29, #112
++bl <WLSha256Init>
++sub x0, x29, #112
++add x1, sp, #48
++mov w2, #816
++bl <WLSha256Update>
++cbnz w0, <WlgrIpBuild+0x16c>
++sub x0, x29, #112
++add x1, sp, #16
++bl <WLSha256Final>
++cbz w0, <WlgrIpBuild+0x198>
++mov w0, #7
++b <WlgrIpBuild+0x180>
++mov w0, #1
++b <WlgrIpBuild+0x180>
++mov w0, #2
++add sp, sp, #976
++ldp x20, x19, [sp, #48]
++ldp x22, x21, [sp, #32]
++ldp x28, x23, [sp, #16]
++ldp x29, x30, [sp], #64
++ret
++ldr w8, [x19, #8]
++cbz w8, <WlgrIpBuild+0x1d8>
++cmp w8, #1
++b.ne <WlgrIpBuild+0x1d0>
++mov x0, x19
++bl <DigestEqual>
++cbz w0, <WlgrIpBuild+0x1d0>
++add x0, x19, #16
++add x1, sp, #48
++bl <wlgr_v2_identity_equal>
++mov w8, #5
++cmp w0, #0
++cinc w0, w8, eq
++b <WlgrIpBuild+0x180>
++mov w0, #6
++b <WlgrIpBuild+0x180>
++mov x0, x19
++mov w1, wzr
++mov w2, #864
++bl <memset@plt>
++adrp x8, <PAGE>
++add x0, x19, #16
++add x1, sp, #48
++mov w2, #816
++ldr d0, [x8, <.rodata+0x60>]
++mov w8, #1
++str d0, [x19]
++str w8, [x19, #8]
++bl <memcpy@plt>
++add x0, x19, #832
++add x1, sp, #16
++mov w2, #32
++bl <memcpy@plt>
++mov w0, wzr
++b <WlgrIpBuild+0x180>

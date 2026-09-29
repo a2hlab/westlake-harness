@@ -1,0 +1,84 @@
+--- R155/CompleteStockChildReply
++++ NEW/CompleteStockChildReply
+@@ -1,19 +1,19 @@
+-sub sp, sp, #64
+-stp x20, x19, [sp, #48]
++sub sp, sp, #48
++stp x29, x30, [sp, #16]
++add x29, sp, #16
++stp x20, x19, [sp, #32]
+ mov x8, x0
+ ldr w19, [x1, #28]
+ mov w0, #-1
+-stp x29, x30, [sp, #32]
+-add x29, sp, #32
+-str wzr, [sp, #12]
+-tbnz w19, #31, <CompleteStockChildReply+0x100>
++stur wzr, [x29, #-4]
++tbnz w19, #31, <CompleteStockChildReply+0xa0>
+ adrp x9, <PAGE>
+ str w0, [x1, #28]
+ mov x0, x8
+ ldr x9, [x9, <object:g_stock_host_services+0xb0>]
+ blr x9
+-add x1, sp, #12
++sub x1, x29, #4
+ mov w0, w19
+ mov w2, #4
+ bl <write@plt>
+ mov x20, x0
+@@ -23,49 +23,25 @@
+ cmp w8, #4
+ b.eq <CompleteStockChildReply+0x38>
+ mov w0, w19
+ bl <close@plt>
+-cbnz w0, <CompleteStockChildReply+0x110>
++cbnz w0, <CompleteStockChildReply+0xb0>
+ cmp x20, #4
+-b.ne <CompleteStockChildReply+0x110>
++b.ne <CompleteStockChildReply+0xb0>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'WLCGATE:RAC:PASS_STOCK_REPLY'>
+ mov w0, #2
+ mov w2, #28
+-stur xzr, [x29, #-8]
+ bl <write@plt>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'\n'>
+ mov w0, #2
+ mov w2, #1
+ bl <write@plt>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'HiLogPrint'>
+-mov x0, xzr
+-bl <dlsym@plt>
+-str x0, [sp, #16]
+-cbz x0, <CompleteStockChildReply+0xfc>
+-sub x0, x29, #8
+-add x1, sp, #16
+-mov w2, #8
+-bl <memcpy@plt>
+-ldur x8, [x29, #-8]
+-cbz x8, <CompleteStockChildReply+0xfc>
+-mov w2, #11281
+-adrp x3, <PAGE>
+-add x3, x3, <string:'APPSPAWN'>
+-adrp x4, <PAGE>
+-add x4, x4, <string:'%{public}s'>
+-adrp x5, <PAGE>
+-add x5, x5, <string:'WLCGATE:RAC:PASS_STOCK_REPLY'>
+-mov w0, #3
+-mov w1, #4
+-movk w2, #3328, lsl #16
+-blr x8
+ mov w0, wzr
+-ldp x20, x19, [sp, #48]
+-ldp x29, x30, [sp, #32]
+-add sp, sp, #64
++ldp x20, x19, [sp, #32]
++ldp x29, x30, [sp, #16]
++add sp, sp, #48
+ ret
+ adrp x0, <PAGE>
+ add x0, x0, <string:'WLCGATE:RAC:FAIL_STOCK_REPLY_WRITE'>
+ mov w1, #34

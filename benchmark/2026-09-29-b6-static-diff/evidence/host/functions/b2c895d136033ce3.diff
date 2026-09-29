@@ -1,0 +1,108 @@
+--- R155/WLEI_VerifyLoadedSymbolHex
++++ NEW/WLEI_VerifyLoadedSymbolHex
+@@ -1,55 +1,78 @@
+-stp x29, x30, [sp, #-48]!
+-stp x28, x21, [sp, #16]
+-stp x20, x19, [sp, #32]
++stp x29, x30, [sp, #-64]!
++str x28, [sp, #16]
++stp x22, x21, [sp, #32]
++stp x20, x19, [sp, #48]
+ mov x29, sp
+ sub sp, sp, #2, lsl #12 // =8192
+-sub sp, sp, #32
++sub sp, sp, #64
+ mov x20, x0
+ mov w0, #-1
+-cbz x20, <WLEI_VerifyLoadedSymbolHex+0x5c>
++cbz x20, <WLEI_VerifyLoadedSymbolHex+0x68>
+ mov x21, x1
+-cbz x1, <WLEI_VerifyLoadedSymbolHex+0x5c>
++cbz x1, <WLEI_VerifyLoadedSymbolHex+0x68>
+ mov x19, x6
+-cbz x6, <WLEI_VerifyLoadedSymbolHex+0x5c>
++cbz x6, <WLEI_VerifyLoadedSymbolHex+0x68>
+ mov x8, x4
+ add x4, sp, #1, lsl #12 // =4096
++add x4, x4, #32
+ mov x0, x2
+ mov w1, w3
+ mov x2, x8
+ mov x3, x5
+-mov w5, #4096
+-bl <WLEI_VerifyFileHex>
+-cbz w0, <WLEI_VerifyLoadedSymbolHex+0x74>
++add x22, sp, #1, lsl #12 // =4096
++add x22, x22, #32
++bl <OpenVerifiedFileHex>
++cbz w0, <WLEI_VerifyLoadedSymbolHex+0x84>
+ mov w0, #-1
+ add sp, sp, #2, lsl #12 // =8192
+-add sp, sp, #32
+-ldp x20, x19, [sp, #32]
+-ldp x28, x21, [sp, #16]
+-ldp x29, x30, [sp], #48
++add sp, sp, #64
++ldp x20, x19, [sp, #48]
++ldp x22, x21, [sp, #32]
++ldr x28, [sp, #16]
++ldp x29, x30, [sp], #64
+ ret
++add x22, x22, #32
++mov x0, x22
++bl <strlen@plt>
++cmp x0, #1, lsl #12 // =4096
++b.hs <WLEI_VerifyLoadedSymbolHex+0x128>
++add x2, x0, #1
++mov x0, sp
++mov x1, x22
++bl <memcpy@plt>
++ldr w0, [sp, #4128]
++tbnz w0, #31, <WLEI_VerifyLoadedSymbolHex+0x64>
++bl <close@plt>
++cbnz w0, <WLEI_VerifyLoadedSymbolHex+0x64>
+ bl <dlerror@plt>
+ mov x0, x20
+ mov x1, x21
+ bl <dlsym@plt>
+-cbz x0, <WLEI_VerifyLoadedSymbolHex+0x58>
++cbz x0, <WLEI_VerifyLoadedSymbolHex+0x64>
+ mov x20, x0
+ bl <dlerror@plt>
+-cbnz x0, <WLEI_VerifyLoadedSymbolHex+0x58>
+-sub x1, x29, #32
++cbnz x0, <WLEI_VerifyLoadedSymbolHex+0x64>
++add x1, sp, #1, lsl #12 // =4096
+ mov x0, x20
+ bl <dladdr@plt>
+ mov w8, w0
+ mov w0, #-1
+-cbz w8, <WLEI_VerifyLoadedSymbolHex+0x5c>
+-ldur x8, [x29, #-32]
+-cbz x8, <WLEI_VerifyLoadedSymbolHex+0x5c>
++cbz w8, <WLEI_VerifyLoadedSymbolHex+0x68>
++ldr x8, [sp, #4096]
++cbz x8, <WLEI_VerifyLoadedSymbolHex+0x68>
++add x1, sp, #1, lsl #12 // =4096
++mov x0, x8
++add x1, x1, #32
++bl <realpath@plt>
++cbz x0, <WLEI_VerifyLoadedSymbolHex+0x64>
++add x0, sp, #1, lsl #12 // =4096
+ mov x1, sp
+-mov x0, x8
+-bl <realpath@plt>
+-cbz x0, <WLEI_VerifyLoadedSymbolHex+0x58>
+-mov x0, sp
+-add x1, sp, #1, lsl #12 // =4096
++add x0, x0, #32
+ bl <strcmp@plt>
+-cbnz w0, <WLEI_VerifyLoadedSymbolHex+0x58>
++cbnz w0, <WLEI_VerifyLoadedSymbolHex+0x64>
+ str x20, [x19]
+-b <WLEI_VerifyLoadedSymbolHex+0x5c>
++b <WLEI_VerifyLoadedSymbolHex+0x68>
++ldr w0, [sp, #4128]
++tbnz w0, #31, <WLEI_VerifyLoadedSymbolHex+0x64>
++bl <close@plt>
++b <WLEI_VerifyLoadedSymbolHex+0x64>

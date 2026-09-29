@@ -1,0 +1,48 @@
+--- R155/vfprintf
++++ NEW/vfprintf
+@@ -0,0 +1,45 @@
++sub sp, sp, #80
++stp x29, x30, [sp, #32]
++str x21, [sp, #48]
++stp x20, x19, [sp, #64]
++add x29, sp, #32
++mov x19, x1
++mov x21, x0
++nop
++adr x0, <object:g_host_stdio_once>
++nop
++adr x1, <function:WlResolveHostStdio+0x0>
++mov x20, x2
++bl <pthread_once@plt>
++adrp x9, <PAGE>
++adrp x8, <PAGE>
++ldr x9, [x9, <reloc:1027:__sF>]
++ldr x8, [x8, <object:g_host_vfprintf>]
++cmp x21, x9
++b.eq <vfprintf+0x74>
++add x10, x9, #152
++cmp x21, x10
++b.eq <vfprintf+0x80>
++adrp x10, <PAGE>
++add x9, x9, #304
++cmp x21, x9
++ldr x10, [x10, <reloc:1025:stderr>]
++ldr x10, [x10]
++csel x0, x10, x21, eq
++b <vfprintf+0x8c>
++adrp x9, <PAGE>
++ldr x9, [x9, <reloc:1025:stdin>]
++b <vfprintf+0x88>
++adrp x9, <PAGE>
++ldr x9, [x9, <reloc:1025:stdout>]
++ldr x0, [x9]
++ldp q0, q1, [x20]
++mov x2, sp
++mov x1, x19
++stp q0, q1, [sp]
++blr x8
++ldp x20, x19, [sp, #64]
++ldp x29, x30, [sp, #32]
++ldr x21, [sp, #48]
++add sp, sp, #80
++ret

@@ -1,0 +1,85 @@
+--- R155/wlgr_v2_runtime_key_valid
++++ NEW/wlgr_v2_runtime_key_valid
+@@ -0,0 +1,82 @@
++cbz x0, <wlgr_v2_runtime_key_valid+0x130>
++mov x9, #22834
++ldr x8, [x0]
++movk x9, #19269, lsl #16
++movk x9, #18258, lsl #32
++movk x9, #22348, lsl #48
++cmp x8, x9
++b.ne <wlgr_v2_runtime_key_valid+0x140>
++ldr w8, [x0, #8]
++cmp w8, #2
++b.ne <wlgr_v2_runtime_key_valid+0x140>
++ldr w8, [x0, #12]
++cmp w8, #576
++b.ne <wlgr_v2_runtime_key_valid+0x140>
++ldr w8, [x0, #16]
++cmp w8, #8
++b.ne <wlgr_v2_runtime_key_valid+0x140>
++ldr x8, [x0, #24]
++cbz x8, <wlgr_v2_runtime_key_valid+0x140>
++mov x8, x0
++ldrb w9, [x8, #32]!
++cbz w9, <wlgr_v2_runtime_key_valid+0x140>
++mov w10, wzr
++mov x9, xzr
++b <wlgr_v2_runtime_key_valid+0x78>
++cmp w11, #0
++add x9, x9, #1
++cset w10, eq
++cmp x9, #256
++b.eq <wlgr_v2_runtime_key_valid+0x134>
++ldrb w11, [x8, x9]
++cbz w10, <wlgr_v2_runtime_key_valid+0x64>
++cbnz w11, <wlgr_v2_runtime_key_valid+0x140>
++add x9, x9, #1
++mov w10, #1
++cmp x9, #256
++b.ne <wlgr_v2_runtime_key_valid+0x78>
++ldrb w8, [x0, #288]
++cbz w8, <wlgr_v2_runtime_key_valid+0x140>
++mov w10, wzr
++mov x8, xzr
++add x9, x0, #288
++b <wlgr_v2_runtime_key_valid+0xc0>
++cmp w11, #0
++add x8, x8, #1
++cset w10, eq
++cmp x8, #256
++b.eq <wlgr_v2_runtime_key_valid+0x13c>
++ldrb w11, [x9, x8]
++cbz w10, <wlgr_v2_runtime_key_valid+0xac>
++cbnz w11, <wlgr_v2_runtime_key_valid+0x140>
++add x8, x8, #1
++mov w10, #1
++cmp x8, #256
++b.ne <wlgr_v2_runtime_key_valid+0xc0>
++ldp q1, q0, [x0, #544]
++orr v0.16b, v1.16b, v0.16b
++ext v1.16b, v0.16b, v0.16b, #8
++orr v0.8b, v0.8b, v1.8b
++umov w8, v0.b[1]
++umov w9, v0.b[0]
++umov w10, v0.b[2]
++umov w11, v0.b[3]
++umov w12, v0.b[4]
++orr w8, w9, w8
++umov w9, v0.b[5]
++orr w8, w8, w10
++umov w10, v0.b[6]
++orr w8, w8, w11
++umov w11, v0.b[7]
++orr w8, w8, w12
++orr w8, w8, w9
++orr w8, w8, w10
++orr w8, w8, w11
++tst w8, #0xff
++cset w0, eq
++ret
++cbnz w11, <wlgr_v2_runtime_key_valid+0x140>
++b <wlgr_v2_runtime_key_valid+0x94>
++cbz w11, <wlgr_v2_runtime_key_valid+0xdc>
++mov w0, wzr
++ret

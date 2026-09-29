@@ -9,6 +9,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -28,6 +29,8 @@ SHA = re.compile(r'[0-9a-f]{64}\Z')
 BOUNDS = re.compile(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]\Z')
 ICON_PREFIX = 'AppIconCommonView_'
 LAUNCHER = 'com.ohos.sceneboard'
+BLACK_FRAME_BYTES = 36627
+FAULT_ROOT = '/data/log/faultlog/faultlogger'
 
 
 class AppFailure(RuntimeError):
@@ -36,6 +39,14 @@ class AppFailure(RuntimeError):
 
 class BatchStop(RuntimeError):
     """Identity, lock or transport lost: no more device writes."""
+
+
+class StaleEvidence(BatchStop):
+    """Existing evidence belongs to an earlier attempt and must not be reused."""
+
+
+class FocusMismatch(AppFailure):
+    """Scheduled screenshot lacks target window ownership; retain the failed probe."""
 
 
 class SandboxPreparationFailure(AppFailure):
@@ -222,19 +233,31 @@ def processes(text):
     return rows
 
 
-def foreground(wm, pids):
+def focused_window(wm):
     focus = re.search(r'^Focus window:\s*(\d+)', wm, re.M)
     if not focus:
         return {'confirmed': False, 'reason': 'focus window missing'}
     wid = int(focus.group(1))
+    # WMS names contain spaces; anchor on the full numeric column tail.
+    row = re.compile(r'^.+?\s+\d+\s+(?P<pid>\d+)\s+(?P<wid>\d+)'
+                     r'\s+\d+\s+\d+\s+\d+\s+-?\d+(?:\s|$)')
+    owners = set()
     for line in wm.splitlines():
-        fields = line.split()
-        if len(fields) >= 8 and all(v.isdigit() for v in fields[1:4]):
-            if int(fields[3]) == wid:
-                pid = int(fields[2])
-                return {'confirmed': pid in pids, 'window_id': wid, 'pid': pid,
-                        'reason': 'focused PID belongs to observed target UID' if pid in pids else 'focused PID is not target'}
-    return {'confirmed': False, 'window_id': wid, 'reason': 'focus row missing'}
+        m = row.match(line)
+        if m and int(m['wid']) == wid:
+            owners.add(int(m['pid']))
+    if len(owners) != 1:
+        return {'confirmed': False, 'window_id': wid, 'reason': 'focus row missing or ambiguous'}
+    return {'window_id': wid, 'pid': owners.pop()}
+
+
+def foreground(wm, pids):
+    result = focused_window(wm)
+    if 'pid' not in result:
+        return result
+    confirmed = result['pid'] in pids
+    return dict(result, confirmed=confirmed,
+                reason='focused PID belongs to observed target UID' if confirmed else 'focused PID is not target')
 
 
 class Board:
@@ -284,6 +307,9 @@ class Board:
         if rc or not held.split() or held.split()[0] != self.lane:
             raise BatchStop('invoking lane does not hold board lock')
         rc, targets = self.command(self.hdc + ['list', 'targets'], 15)
+        if not rc and not targets.split():
+            time.sleep(2)
+            rc, targets = self.command(self.hdc + ['list', 'targets'], 15)
         if rc or self.serial not in targets.split():
             raise BatchStop('assigned serial detached')
         rc, boot = self.raw_shell('cat /proc/sys/kernel/random/boot_id')
@@ -342,21 +368,12 @@ def launcher_focused(board, attempts=3):
         board.shell('power-shell wakeup')
         board.shell('uitest uiInput keyEvent Home')
         _, wm = board.shell("hidumper -s WindowManagerService -a '-a'")
-        focus = re.search(r'^Focus window:\s*(\d+)', wm, re.M)
-        if not focus:
-            last = 'focus window missing; desktop state unknown'
-            time.sleep(2)
-            continue
-        wid = int(focus.group(1))
-        pid = None
-        for line in wm.splitlines():
-            fields = line.split()
-            if len(fields) >= 8 and all(v.isdigit() for v in fields[1:4]) and int(fields[3]) == wid:
-                pid = int(fields[2])
-                break
+        observation = focused_window(wm)
+        pid = observation.get('pid')
         if pid is None:
-            last = 'focus window row missing; desktop state unknown'
-            time.sleep(2)
+            last = observation['reason'] + '; desktop state unknown'
+            if attempt + 1 < attempts:
+                time.sleep(2)
             continue
         _, ps = board.shell('ps -A -o PID,PPID,UID,NAME')
         name = next((r['name'] for r in processes(ps) if r['pid'] == pid), '')
@@ -401,6 +418,8 @@ def desktop_launch(board, app, remote, out, record, pages=10):
                 x, y = chosen['center']
                 board.shell(f'uitest uiInput click {x} {y}')
                 record['clicked'] = True
+                record['click_monotonic'] = time.monotonic()
+                record['clicked_at'] = time.time()
                 return
             if screen is None:
                 raise AppFailure('cannot determine screen size for page search')
@@ -411,9 +430,11 @@ def desktop_launch(board, app, remote, out, record, pages=10):
     raise AppFailure('exact desktop icon absent across searched pages')
 
 
-def capture(board, remote, local):
+def capture(board, remote, local, before_snapshot=None):
     board.shell('rm -f ' + shlex.quote(remote))
     board.shell('power-shell wakeup')
+    if before_snapshot is not None:
+        before_snapshot()
     board.shell('snapshot_display -f ' + shlex.quote(remote), timeout=45)
     _, info = board.shell('stat -c "%s %Y" ' + shlex.quote(remote))
     _, remote_hash = board.shell('sha256sum ' + shlex.quote(remote))
@@ -425,6 +446,7 @@ def capture(board, remote, local):
     if len(data) < 4 or data[:2] != b'\xff\xd8' or sha(local) != digest:
         raise AppFailure('screenshot malformed or receive hash mismatch')
     return {'path': str(local), 'sha256': digest, 'remote_stat': info,
+            'bytes': len(data), 'known_black_frame': len(data) == BLACK_FRAME_BYTES,
             'captured_at': time.time(), 'visual_verdict': 'pending_review'}
 
 
@@ -472,12 +494,130 @@ def prepare_sandbox(board, package, uid, out):
     return receipt
 
 
-def collect_app(board, entry, input_root, out, remote, wait_seconds=15):
-    out.mkdir(parents=True, exist_ok=False)
+def bm_success(rc, text, action):
+    """BMS can return rc=0 with an error; require its positive operation receipt."""
+    return (rc == 0 and bool(re.search(r'\b' + action + r'\s+bundle\s+success(?:fully)?\b', text, re.I))
+            and not re.search(r'\b(?:error|failed|failure)\b', text, re.I))
+
+
+def uninstall_existing(board, app, out):
+    rc, text = board.shell('bm dump -n ' + shlex.quote(app['package']), required=False)
+    (out/'bundle-before-reinstall.txt').write_text(text)
+    try:
+        current = parse_bundle(text, app['package'])
+        if rc:
+            raise AppFailure('BMS pre-reinstall query failed')
+    except AppFailure:
+        # Only a named BMS absence response is absence; malformed JSON is not.
+        if not re.search(r'failed to get (?:bundle )?information|bundle (?:does not exist|not found)|\b9568386\b', text, re.I):
+            raise
+        return {'attempted': False, 'reason': 'not installed', 'query_return_code': rc}
+    if current['uid'] is None or not cold_stop(board, app['package'], current['uid'], out, 'uninstall'):
+        raise AppFailure('cannot identify installed target for reinstall')
+    rc, text = board.shell('bm uninstall -n ' + shlex.quote(app['package']), required=False, timeout=180)
+    (out/'uninstall.txt').write_text(text)
+    receipt = {'attempted': True, 'return_code': rc, 'success_text': bm_success(rc, text, 'uninstall'),
+               'output': str(out/'uninstall.txt')}
+    save(out/'uninstall.json', receipt)
+    if not receipt['success_text']:
+        raise AppFailure('uninstall failed; refusing reinstall')
+    return receipt
+
+
+def fault_files(board, out, tag):
+    _, text = board.shell('find ' + FAULT_ROOT + ' -maxdepth 1 -type f -print')
+    (out/('faults-'+tag+'.txt')).write_text(text)
+    files = set()
+    for path in text.splitlines():
+        if not path.startswith(FAULT_ROOT + '/') or not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]*', path[len(FAULT_ROOT)+1:]):
+            raise AppFailure('invalid faultlog listing')
+        files.add(path)
+    return files
+
+
+def finish_diagnostics(board, out, remote, before):
+    target = remote + '/hilog.txt'
+    rc, text = board.shell('hilog -x > ' + shlex.quote(target) + ' 2>&1', required=False, timeout=60)
+    board.receive(target, out/'hilog.txt')
+    result = {'return_code': rc, 'path': str(out/'hilog.txt'), 'sha256': sha(out/'hilog.txt'),
+              'complete': False, 'faultlogs': [], 'attribution': 'new since prelaunch; not proof target caused each fault'}
+    save(out/'diagnostics.json', result)
+    if rc:
+        raise AppFailure('hilog dump failed')
+    after = fault_files(board, out, 'after')
+    (out/'faultlogs').mkdir(exist_ok=True)
+    for path in sorted(after - before):
+        local = out/'faultlogs'/Path(path).name
+        board.receive(path, local)
+        result['faultlogs'].append({'remote': path, 'path': str(local), 'sha256': sha(local)})
+        save(out/'diagnostics.json', result)
+    result['complete'] = True
+    save(out/'diagnostics.json', result)
+    return result
+
+
+def timed_collection(board, uid, out, remote, rec, wait_seconds, shots, focus_check, hilog_seconds, faults_before):
+    start = rec['click_monotonic']
+    selected = shots if shots is not None else [3.0, wait_seconds]
+    # Keep legacy t3/final filenames even when --wait=3 requests two captures.
+    schedule = [(offset, 'shot', ('t'+str(float(offset)).removesuffix('.0')) if shots is not None else ('t3' if i == 0 else 'final'))
+                for i, offset in enumerate(selected)]
+    if hilog_seconds is not None:
+        schedule.append((hilog_seconds, 'hilog', 'hilog'))
+    schedule.append((max(wait_seconds, max(selected)), 'observe', 'after'))
+    for offset, event, tag in sorted(schedule, key=lambda x: x[0]):
+        time.sleep(max(0, offset - (time.monotonic() - start)))
+        if event == 'hilog':
+            rec['diagnostics'] = finish_diagnostics(board, out, remote, faults_before)
+            rec['diagnostics']['elapsed_seconds'] = time.monotonic() - start
+        else:
+            observation = {}
+            def observe():
+                _, ps = board.shell('ps -A -o PID,PPID,UID,NAME')
+                (out/('processes-'+tag+'.txt')).write_text(ps)
+                pids = [r['pid'] for r in processes(ps) if r['uid'] == uid]
+                _, wm = board.shell("hidumper -s WindowManagerService -a '-a'")
+                (out/('windows-'+tag+'.txt')).write_text(wm)
+                observation.update(foreground(wm, pids), observed_pids=pids,
+                                   checked_at=time.time(), elapsed_seconds=time.monotonic()-start)
+            if event == 'shot':
+                def check_focus():
+                    observe()
+                    if (focus_check or shots is not None) and not observation['confirmed']:
+                        raise FocusMismatch(observation['reason'])
+                try:
+                    shot = capture(board, remote+'/'+tag+'.jpeg', out/(tag+'.jpeg'), before_snapshot=check_focus)
+                    shot.update(captured=True, accepted=observation['confirmed'] and not shot['known_black_frame'])
+                except FocusMismatch as exc:
+                    shot = {'captured': False, 'accepted': False, 'known_black_frame': False,
+                            'reason': str(exc), 'visual_verdict': 'pending_review'}
+                shot.update(scheduled_seconds=offset, elapsed_seconds=time.monotonic()-start,
+                            foreground=observation)
+                rec['screenshots'].append(shot)
+            else:
+                observe()
+                (out/'windows.txt').write_text((out/('windows-'+tag+'.txt')).read_text())
+            rec['foreground'] = observation
+            rec['observed_pids'] = observation['observed_pids']
+        save(out/'record.json', rec)
+    strict = focus_check or shots is not None
+    valid = (all(x['accepted'] for x in rec['screenshots']) if strict else
+             rec['foreground']['confirmed'] and not any(x['known_black_frame'] for x in rec['screenshots']))
+    rec['status'] = 'captured' if valid else 'foreground_unconfirmed'
+    if any(x['known_black_frame'] for x in rec['screenshots']):
+        rec['status'] = 'capture_rejected'
+
+
+def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
+                reinstall=False, hilog_seconds=None, shots=None, focus_check=False):
+    out.mkdir(parents=True, exist_ok=True)
+    if any(out.iterdir()):
+        raise StaleEvidence('refuse stale app evidence: ' + str(out))
     rec = dict(key=entry['key'], phase=entry['phase'], serial=board.serial, boot_id=board.boot,
                package=entry.get('package'), apk_sha256=entry.get('apk_sha256'),
                status='started', launch_method='desktop', clicked=False,
                install=None, bms={'queryable': False}, screenshots=[], review='pending_review')
+    faults_before = None
     try:
         app = resolve_input(input_root, entry)
         rec.update({k: v for k, v in app.items() if k != 'apk'})
@@ -489,10 +629,13 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15):
         _, readback = board.shell('sha256sum ' + shlex.quote(remote_apk))
         if not readback.split() or readback.split()[0] != app['apk_sha256']:
             raise AppFailure('staged APK hash differs')
+        if reinstall:
+            rec['uninstall'] = uninstall_existing(board, app, out)
         rc, response = board.shell('bm install -p ' + shlex.quote(remote_apk), required=False, timeout=180)
         (out / 'install.txt').write_text(response)
+        rec['install'] = {'return_code': rc, 'success_text': bm_success(rc, response, 'install'), 'output': str(out / 'install.txt')}
+        save(out/'record.json', rec)
         board.shell('rm -f ' + shlex.quote(remote_apk))
-        rec['install'] = {'return_code': rc, 'success_text': bool(re.search(r'\bsuccess(?:fully)?\b', response, re.I)), 'output': str(out / 'install.txt')}
         rc, response = board.shell('bm dump -n ' + shlex.quote(app['package']), required=False)
         (out / 'bundle.txt').write_text(response)
         rec['bms']['return_code'] = rc
@@ -507,20 +650,13 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15):
         rec['sandbox_preparation'] = prepare_sandbox(board, app['package'], uid, out)
         rec['desktop_activity'] = rec['bms'].get('desktop_activity') or app.get('launch_activity')
         desktop_app = dict(app, launch_activity=rec['desktop_activity'])
+        if hilog_seconds is not None:
+            faults_before = fault_files(board, out, 'before')
+            _, text = board.shell('hilog -r')
+            (out/'hilog-reset.txt').write_text(text)
         desktop_launch(board, desktop_app, remote, out, rec)
-        start = time.monotonic()
-        time.sleep(min(3, wait_seconds))
-        rec['screenshots'].append(capture(board, remote+'/t3.jpeg', out/'t3.jpeg'))
-        time.sleep(max(0, wait_seconds-(time.monotonic()-start)))
-        _, ps = board.shell('ps -A -o PID,PPID,UID,NAME')
-        (out / 'processes-after.txt').write_text(ps)
-        pids = [r['pid'] for r in processes(ps) if uid is not None and r['uid'] == uid]
-        rec['observed_pids'] = pids
-        _, wm = board.shell("hidumper -s WindowManagerService -a '-a'")
-        (out / 'windows.txt').write_text(wm)
-        rec['foreground'] = foreground(wm, pids)
-        rec['screenshots'].append(capture(board, remote+'/final.jpeg', out/'final.jpeg'))
-        rec['status'] = 'captured' if rec['foreground']['confirmed'] else 'foreground_unconfirmed'
+        timed_collection(board, uid, out, remote, rec, wait_seconds,
+                         shots, focus_check, hilog_seconds, faults_before)
         # App-specific stop only. Keep installed app and evidence for the reviewer.
         rec['cleanup_stopped'] = cold_stop(board, app['package'], uid, out, 'cleanup')
         if not rec['cleanup_stopped']:
@@ -530,6 +666,16 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15):
         raise BatchStop(str(exc) or 'interrupted') from exc
     except (AppFailure, OSError, ValueError, KeyError) as exc:
         rec.update(status='sandbox_prep_failed' if isinstance(exc, SandboxPreparationFailure) else 'app_failed', error=str(exc))
+        if faults_before is not None and not (out/'diagnostics.json').exists():
+            try:
+                rec['diagnostics'] = finish_diagnostics(board, out, remote, faults_before)
+            except BatchStop as diagnostic_exc:
+                rec.update(status='batch_interrupted', diagnostic_error=str(diagnostic_exc))
+                raise
+            except (AppFailure, OSError) as diagnostic_exc:
+                rec['diagnostic_error'] = str(diagnostic_exc)
+        if (out/'uninstall.json').exists():
+            rec['uninstall'] = json.loads((out/'uninstall.json').read_text())
         if rec['bms'].get('queryable') and rec['bms'].get('uid') is not None:
             try:
                 rec['cleanup_stopped'] = cold_stop(board, rec['package'], rec['bms']['uid'], out, 'cleanup')
@@ -539,12 +685,14 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15):
                 rec.update(status='batch_interrupted', cleanup_error=str(cleanup_exc))
                 raise BatchStop(str(cleanup_exc)) from cleanup_exc
     finally:
+        if 'diagnostics' not in rec and (out/'diagnostics.json').exists():
+            rec['diagnostics'] = json.loads((out/'diagnostics.json').read_text())
         rec['finished_at'] = time.time()
         save(out / 'record.json', rec)
     return rec
 
 
-def run_batch(board, entries, input_root, out, run_id, wait_seconds):
+def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
     records = []
     board.ready()
     _, version = board.shell('param get const.ohos.fullname')
@@ -558,15 +706,28 @@ def run_batch(board, entries, input_root, out, run_id, wait_seconds):
         app_out = out/entry['key']
         try:
             record = collect_app(board, entry, input_root, app_out,
-                                 f'/data/local/tmp/bms-batch-{run_id}/{entry["key"]}', wait_seconds)
+                                 f'/data/local/tmp/bms-batch-{run_id}/{entry["key"]}', wait_seconds, **options)
             records.append(record)
         except BatchStop as exc:
-            if (app_out/'record.json').exists():records.append(json.loads((app_out/'record.json').read_text()))
-            save(out/'summary.json', {'records':records,'not_run':[x['key'] for x in entries[i+1:]],'batch_error':str(exc),'review':'pending_review'})
+            stale = isinstance(exc, StaleEvidence)
+            if not stale and (app_out/'record.json').exists():
+                records.append(json.loads((app_out/'record.json').read_text()))
+            remaining = entries[i:] if stale else entries[i+1:]
+            save(out/'summary.json', {'records':records,'not_run':[x['key'] for x in remaining],'batch_error':str(exc),'review':'pending_review'})
             raise
         save(out/'summary.json', {'records':records,'not_run':[x['key'] for x in entries[i+1:]],'review':'pending_review'})
         print(f'{i+1}/{len(entries)} {entry["key"]}: {record["status"]}', flush=True)
     return records
+
+
+def shot_offsets(text):
+    try:
+        values = [float(x) for x in text.split(',')]
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError('shots must be comma-separated seconds') from exc
+    if not values or len(values) > 32 or any(not math.isfinite(x) or not 0 < x <= 300 for x in values) or values != sorted(set(values)):
+        raise argparse.ArgumentTypeError('shots must be 1..32 increasing unique offsets in (0, 300]')
+    return values
 
 
 def main(argv=None):
@@ -583,19 +744,30 @@ def main(argv=None):
     ap.add_argument('--out', type=Path)
     ap.add_argument('--run-id', default=datetime.datetime.now().strftime('%Y%m%dT%H%M%S')+'-'+uuid.uuid4().hex[:8])
     ap.add_argument('--wait', type=float, default=15)
+    ap.add_argument('--reinstall', action='store_true', help='uninstall a confirmed installed target before installation')
+    ap.add_argument('--hilog', nargs='?', const=True, type=float, metavar='SECONDS', help='reset before launch, dump after SECONDS (default: --wait) and pull new faultlogs')
+    ap.add_argument('--shots', type=shot_offsets, metavar='5,20', help='click-relative screenshot offsets; implies strict per-shot focus check')
+    ap.add_argument('--focus-check', action='store_true', help='require target focus for every screenshot')
     args = ap.parse_args(argv)
+    if not math.isfinite(args.wait) or not 3 <= args.wait <= 300:
+        ap.error('wait must be finite and in 3..300')
+    hilog_seconds = args.wait if args.hilog is True else args.hilog
+    if hilog_seconds is not None and (not math.isfinite(hilog_seconds) or not 0 < hilog_seconds <= 300):
+        ap.error('hilog seconds must be finite and in (0, 300]')
+    options = dict(reinstall=args.reinstall, hilog_seconds=hilog_seconds,
+                   shots=args.shots, focus_check=args.focus_check)
     entries = load_apps(args.manifest,args.phase,args.keys)
     if not args.execute:
-        print(json.dumps({'execution':'not-requested','count':len(entries),'apps':entries},indent=2))
+        print(json.dumps({'execution':'not-requested','count':len(entries),'apps':entries,'options':options},indent=2))
         return 0
     if not args.serial or not args.lane or not args.out or not KEY.fullmatch(args.run_id) or not 3 <= args.wait <= 300:
         ap.error('execution requires serial/lane/fresh out, safe run-id and wait 3..300')
     out=args.out.expanduser().resolve()/args.run_id/args.serial
     out.mkdir(parents=True,exist_ok=False)
-    save(out/'plan.json',{'apps':entries,'run_id':args.run_id,'serial':args.serial,'review':'pending_review'})
+    save(out/'plan.json',{'apps':entries,'run_id':args.run_id,'serial':args.serial,'options':options,'review':'pending_review'})
     try:
         board=Board(args.serial,args.hdc_cmd,args.lock_cmd,args.lane,out/'commands')
-        records=run_batch(board,entries,args.input_root,out,args.run_id,args.wait)
+        records=run_batch(board,entries,args.input_root,out,args.run_id,args.wait,**options)
         return 0 if all(r['status']=='captured' for r in records) else 1
     except (BatchStop,KeyboardInterrupt) as exc:
         save(out/'batch-stop.json',{'error':str(exc),'review':'pending_review','device_result':'unverified'})

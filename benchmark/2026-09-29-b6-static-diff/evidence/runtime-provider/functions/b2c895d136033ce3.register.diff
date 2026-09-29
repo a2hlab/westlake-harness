@@ -1,0 +1,106 @@
+--- R155/WLEI_VerifyLoadedSymbolHex
++++ NEW/WLEI_VerifyLoadedSymbolHex
+@@ -1,55 +1,78 @@
+-stp xR, xR, [sp, #-48]!
+-stp xR, xR, [sp, #16]
++stp xR, xR, [sp, #-64]!
++str xR, [sp, #16]
+ stp xR, xR, [sp, #32]
++stp xR, xR, [sp, #48]
+ mov xR, sp
+ sub sp, sp, #2, lsl #12 // =8192
+-sub sp, sp, #32
++sub sp, sp, #64
+ mov xR, xR
+ mov wR, #-1
+-cbz xR, <WLEI_VerifyLoadedSymbolHex+0x5c>
++cbz xR, <WLEI_VerifyLoadedSymbolHex+0x68>
+ mov xR, xR
+-cbz xR, <WLEI_VerifyLoadedSymbolHex+0x5c>
++cbz xR, <WLEI_VerifyLoadedSymbolHex+0x68>
+ mov xR, xR
+-cbz xR, <WLEI_VerifyLoadedSymbolHex+0x5c>
++cbz xR, <WLEI_VerifyLoadedSymbolHex+0x68>
+ mov xR, xR
+ add xR, sp, #1, lsl #12 // =4096
++add xR, xR, #32
+ mov xR, xR
+ mov wR, wR
+ mov xR, xR
+ mov xR, xR
+-mov wR, #4096
+-bl <WLEI_VerifyFileHex>
+-cbz wR, <WLEI_VerifyLoadedSymbolHex+0x74>
++add xR, sp, #1, lsl #12 // =4096
++add xR, xR, #32
++bl <OpenVerifiedFileHex>
++cbz wR, <WLEI_VerifyLoadedSymbolHex+0x84>
+ mov wR, #-1
+ add sp, sp, #2, lsl #12 // =8192
+-add sp, sp, #32
++add sp, sp, #64
++ldp xR, xR, [sp, #48]
+ ldp xR, xR, [sp, #32]
+-ldp xR, xR, [sp, #16]
+-ldp xR, xR, [sp], #48
++ldr xR, [sp, #16]
++ldp xR, xR, [sp], #64
+ ret
++add xR, xR, #32
++mov xR, xR
++bl <strlen@plt>
++cmp xR, #1, lsl #12 // =4096
++b.hs <WLEI_VerifyLoadedSymbolHex+0x128>
++add xR, xR, #1
++mov xR, sp
++mov xR, xR
++bl <memcpy@plt>
++ldr wR, [sp, #4128]
++tbnz wR, #31, <WLEI_VerifyLoadedSymbolHex+0x64>
++bl <close@plt>
++cbnz wR, <WLEI_VerifyLoadedSymbolHex+0x64>
+ bl <dlerror@plt>
+ mov xR, xR
+ mov xR, xR
+ bl <dlsym@plt>
+-cbz xR, <WLEI_VerifyLoadedSymbolHex+0x58>
++cbz xR, <WLEI_VerifyLoadedSymbolHex+0x64>
+ mov xR, xR
+ bl <dlerror@plt>
+-cbnz xR, <WLEI_VerifyLoadedSymbolHex+0x58>
+-sub xR, xR, #32
++cbnz xR, <WLEI_VerifyLoadedSymbolHex+0x64>
++add xR, sp, #1, lsl #12 // =4096
+ mov xR, xR
+ bl <dladdr@plt>
+ mov wR, wR
+ mov wR, #-1
+-cbz wR, <WLEI_VerifyLoadedSymbolHex+0x5c>
+-ldur xR, [xR, #-32]
+-cbz xR, <WLEI_VerifyLoadedSymbolHex+0x5c>
++cbz wR, <WLEI_VerifyLoadedSymbolHex+0x68>
++ldr xR, [sp, #4096]
++cbz xR, <WLEI_VerifyLoadedSymbolHex+0x68>
++add xR, sp, #1, lsl #12 // =4096
++mov xR, xR
++add xR, xR, #32
++bl <realpath@plt>
++cbz xR, <WLEI_VerifyLoadedSymbolHex+0x64>
++add xR, sp, #1, lsl #12 // =4096
+ mov xR, sp
+-mov xR, xR
+-bl <realpath@plt>
+-cbz xR, <WLEI_VerifyLoadedSymbolHex+0x58>
+-mov xR, sp
+-add xR, sp, #1, lsl #12 // =4096
++add xR, xR, #32
+ bl <strcmp@plt>
+-cbnz wR, <WLEI_VerifyLoadedSymbolHex+0x58>
++cbnz wR, <WLEI_VerifyLoadedSymbolHex+0x64>
+ str xR, [xR]
+-b <WLEI_VerifyLoadedSymbolHex+0x5c>
++b <WLEI_VerifyLoadedSymbolHex+0x68>
++ldr wR, [sp, #4128]
++tbnz wR, #31, <WLEI_VerifyLoadedSymbolHex+0x64>
++bl <close@plt>
++b <WLEI_VerifyLoadedSymbolHex+0x64>
