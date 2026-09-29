@@ -85,7 +85,7 @@ def rollback_order(state, boot, top_mounts):
     return list(reversed(rows))
 
 def replacement_source(m, target):
-    if target not in m['live_hashes'] or not target.endswith('.so'):
+    if not target.endswith('.so'):
         raise ValueError('replacement must be a declared native library: ' + target)
     rows = sorted(m['mounts'], key=lambda r: len(r['target']), reverse=True)
     for row in rows:
@@ -187,7 +187,8 @@ class Deployment:
             raise RuntimeError('rollback package changed')
         self.stop()
         if current == row['remote'][len('/data'):]: self.shell('umount ' + shlex.quote(row['target']))
-        if self.hashes([row['target']])[row['target']] != old['live_hashes'][row['target']]:
+        old_digest = old['files'][replacement_source(old, row['target'])]
+        if self.hashes([row['target']])[row['target']] != old_digest:
             raise RuntimeError('single-file rollback SHA mismatch: ' + row['target'])
         rows.pop()
         self.package, self.m = old_package, old
@@ -207,6 +208,8 @@ class Deployment:
         source = validate_replacement(old, self.m, target)
         self.verify_mounts()
         if self.hashes(list(old['live_hashes'])) != old['live_hashes']: raise RuntimeError('resident SHA mismatch before replacement')
+        if self.hashes([target])[target] != old['files'][replacement_source(old, target)]:
+            raise RuntimeError('declared replacement target SHA mismatch before replacement')
         remote = self.d['remote'] + '/single-' + str(time.time_ns()) + '.so'
         self.board.send(self.package / source, remote)
         if self.hashes([remote])[remote] != self.m['files'][source]: raise RuntimeError('replacement staging SHA mismatch: ' + target)

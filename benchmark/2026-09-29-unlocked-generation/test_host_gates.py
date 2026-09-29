@@ -10,6 +10,14 @@ class Gates(unittest.TestCase):
   self.assertEqual(d.validate_replacement(old,new,T),SRC)
   new['files']['payload/other']='d'*64
   with self.assertRaisesRegex(ValueError,'exactly one'):d.validate_replacement(old,new,T)
+ def test_declared_library_can_enter_live_checks(self):
+  old=self.manifest();new=copy.deepcopy(old)
+  other='/system/android/lib64/liblog.so';source='payload/android/lib64/liblog.so'
+  old['files'][source]='1'*64;new['files'][source]='2'*64;new['live_hashes'][other]='2'*64
+  self.assertEqual(d.validate_replacement(old,new,other),source)
+  self.assertEqual(d.replacement_source(old,other),source)
+  with self.assertRaisesRegex(ValueError,'no package file'):
+   d.replacement_source(old,'/system/android/lib64/not-declared.so')
  def test_live_sha_mismatch(self):
   old=self.manifest();new=copy.deepcopy(old);new['files'][SRC]='c'*64
   with self.assertRaisesRegex(ValueError,'SHA/target'):d.validate_replacement(old,new,T)

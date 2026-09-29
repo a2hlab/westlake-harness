@@ -126,3 +126,7 @@ Installer两处更新并重启foundation后可能黑屏；按明确授权整机�
 ### #79 BMS 两库复现与恢复（61b, 2026-09-29）
 
 完整私有构建kit归档hw248 `/home/alvin/westlake-oh6.1-b79-bms-2220df48-installs-51e1b525/oh61-bms-kit-b79-r3-final.tar.gz`（SHA 61ff2def…）；按 benchmark/2026-09-29-install-wall-validation/README.md 用dockbuild重放。不要仅取共享树base/installd对象：须带原APK stream/zip路由并确认BundleUtil编译后含.apk。两库换lib64/platformsdk四路径，验foundation/installs的root SHA与maps；foundation热重启本次黑屏，整机重启后重放同一v3a包恢复。swap_services.py保留首轮四原文件备份，rollback后重启再verify（先黑板通告）。
+
+### #87 已声明库的单文件替换
+
+`prepare_generation_replacement.py` / `deploy_generation.sh --replace` 可替换包 `files` 已声明但未进入 `live_hashes` 的 `.so`：先按旧包核目标实物SHA，再把新值纳入 shell/child-root 核验；未声明目标仍拒。多层单换按 `--replace <target> --rollback` 倒序撤销，每层回读旧包SHA。采证后若其他Android测试子进程仍活着，部署器拒停host；先按包名与UID用master `bms_batch.cold_stop` 停止本任务进程，不跳过门禁。#87保留包为 `westlake-generation-b87-vt-c835a93e`(v3a/r8b+liblog8c81+runtime c835)，ANL实验仅归档。

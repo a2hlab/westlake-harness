@@ -1,0 +1,117 @@
+
+			z_info->file_offset = c_dir_entry.local_header_offset + sizeof(zip_file_header) +
+									zip_file_header.name_size + zip_file_header.extra_size;
+			if (zip_file_header.compression_method != COMPRESS_STORED || z_info->file_offset % PAGE_SIZE != 0) {
+				LD_LOGW("Open uncompressed library: open %{public}s in %{public}s failed because of misalignment or saved with compression."
+						"compress method %{public}d, file offset %{public}lu",
+						lib_path, zip_file_path, zip_file_header.compression_method, z_info->file_offset);
+				fclose(zip_file);
+				return -2;
+			}
+			z_info->found = true;
+			break;
+		}
+
+		memset(file_name, 0, sizeof(file_name));
+		current_dir_pos += sizeof(c_dir_entry);
+		current_dir_pos += c_dir_entry.name_size + c_dir_entry.extra_size + c_dir_entry.comment_size;
+	}
+	if (!z_info->found) {
+		LD_LOGW("Open uncompressed library: %{public}s was not found in %{public}s.", lib_path, zip_file_path);
+		fclose(zip_file);
+		return -3;
+	}
+	z_info->fd = fileno(zip_file);
+
+	return 0;
+}
+
+static bool task_check_xpm(struct loadtask *task)
+{
+	size_t mapLen = sizeof(Ehdr);
+	void *map = mmap(0, mapLen, PROT_READ, MAP_PRIVATE | MAP_XPM, task->fd, task->file_offset);
+	if (map == MAP_FAILED) {
+		LD_LOGW("Xpm check failed for %{public}s, errno for mmap is: %{public}d", task->name, errno);
+		return false;
+	}
+	munmap(map, mapLen);
+	return true;
+}
+
+static bool map_library_header(struct loadtask *task)
+{
+	off_t off_start;
+	Phdr *ph;
+	size_t i;
+	size_t str_size;
+	off_t str_table;
+	if (!task_check_xpm(task)) {
+		return false;
+	}
+
+	bool tls_appeared = false;
+
+	ssize_t l = pread(task->fd, task->ehdr_buf, sizeof task->ehdr_buf, task->file_offset);
+	task->eh = task->ehdr_buf;
+	if (l < 0) {
+		LD_LOGW("Error mapping header %{public}s: failed to read fd errno: %{public}d", task->name, errno);
+		return false;
+	}
+	if (l < sizeof(Ehdr) || (task->eh->e_type != ET_DYN && task->eh->e_type != ET_EXEC)) {
+		LD_LOGW("Error mapping header %{public}s: invaliled Ehdr l=%{public}d e_type=%{public}hu",
+		}
+		 
+		if (adlt_load_library_header_extra(task, namespace)) {
+			return true;
+		}
+ 
+		LD_LOGW("load %{public}s failed, namespace=%{public}s, errno=%{public}d",
+			task->name, namespace->ns_name, topLayerErrno);
+		return false;
+	}
+	/* This is where the library file should be opened */
+	if (fstat(task->fd, &st) < 0) {
+		LD_LOGW("Error loading header %{public}s: failed to get file state errno=%{public}d", task->name, errno);
+		close(task->fd);
+		task->fd = -1;
+		return false;
+	}
+	/* Search in namespace */
+	task->adlt = find_adlt_by_fstat(&st);
+	if (__predict_false(task->adlt)) {
+		/* There are cases where task->pathname points to the actual
+		* path+name of the adlt library file. So we use task->name
+		* to calculate the index of nDSO.*/
+		task->file_offset = task->adlt->file_offset;
+		task->adlt_ndso_index = get_adlt_library_index2(task->adlt, task->fullname);
+		task->p = find_library_by_adlt_index(task->adlt, namespace, check_inherited, task->adlt_ndso_index);
+	} else {
+		task->p = find_library_by_fstat(&st, namespace, check_inherited, task->file_offset);
+	}
+	if (task->p) {
+		/* If this library was previously loaded with a
+		* pathname but a search found the same inode,
+		* setup its shortname so it can be found by name. */
+		if (!task->p->shortname && task->pathname != name) {
+			char *delimiter = strrchr(task->p->name, '/');
+			task->p->shortname = delimiter ? delimiter + 1 : task->p->name;
+		}
+		close(task->fd);
+		task->fd = -1;
+		task->isloaded = true;
+		LD_LOGD("find_library_by_fstat(name=%{public}s ns=%{public}s) already loaded by %{public}s in %{public}s namespace  ",
+				name, namespace->ns_name, task->p->name, task->p->namespace->ns_name);
+		return true;
+	}
+
+	adlt = task->adlt;
+	map = noload ? 0 : map_library_header(task);
+	if (!map) {
+		LD_LOGW("Error loading header %{public}s: failed to map header", task->name);
+		close(task->fd);
+		task->fd = -1;
+		return false;
+	}
+	if (__predict_false(task->adlt))
+		is_adlt_known = true;
+

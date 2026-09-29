@@ -420,3 +420,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-29 #79：OH共享输出对象可与相邻源码不同步（旧bundle_util.o无.apk分支），导出/NEEDED相同不保APK语义；原样补齐stream/zip与bundle_util/bundle_installer路由后，61b libbms2220df48+libinstalls51e1b525使Seal/头条/X均安装可查，四条例外字节相符，HW/ZigZag回归上屏，但三app末帧仍桌面（后续native/Java墙）。见 benchmark/2026-09-29-install-wall-validation/。
 - **BMS 路线首批点亮与焦点门漏拍(2026-09-29,5ea v3a+r13,外环读图)**:fd-AppManager(启动页「正在验证…」4.1.1)与 fd-droidify(探索/已安装/更新主界面)上屏,是 HelloWorld/ZigZag 之外第一批外环签认的点亮;#78 里它俩 t5/t20 都活着却 0/26 截图——`bms_batch --focus-check` 的焦点门(focused PID 不是目标 / 焦点行缺失)把真画面拒掉了。规则:焦点门只决定 accepted,不阻止截图(cd2798e2);「存活到 t20 但没截图」一律补拍交外环读,不能按 0 张算没亮。Wikipedia 同轮越过主题墙(r13 按 activity 从 manifest 取 android:theme),下一堵是 `IConnectivityManager` 不在 route-A framework(Android 12+ 在 connectivity 模块),按 AIDL 接口做的空桩建不出来。
 
+
+- **#87(2026-09-29,61b)**：Westlake VelocityTracker 中性桩须在 AndroidRuntime 启动表注册(7 JNI)，runtime c835a93e 使 Auxio 五 tab 主界面获外环签认；ABI版 liblog8c81 保留 LIBC 节点且无丢失导出。ANL前置runtime+OH依赖目录实验能映射Anki librsdroid/NetGuard libnetguard，却让ZigZag误入libandroid→GLESv2缺依赖；三层ANL已回滚，HW/Zig恢复。不能把版本化导出或旧错误消失当稳定ABI供给；完整证据见 benchmark/2026-09-29-native-abi-port/。

@@ -109,6 +109,8 @@ extern int register_android_view_KeyCharacterMap(JNIEnv* env);
 // to avoid pulling libinput.so / libui.so / ui::Transform / HmacKeyManager /
 // IInputConstants AIDL chain into liboh_android_runtime.
 extern int register_android_view_MotionEvent(JNIEnv* env);
+// Westlake 532633d: register before the first view attaches.
+extern int register_android_view_VelocityTracker(JNIEnv* env);
 
 // 2026-05-26: register_android_view_KeyEvent — 3 natives (nativeNextId /
 // nativeKeyCodeToString / nativeKeyCodeFromString).  android.view.KeyEvent
@@ -221,6 +223,7 @@ static const RegJNIRec kRegJNI[] = {
     // android_view_MotionEvent_aosp.cpp (replaces AOSP direct-reference
     // MotionEvent.cpp; class layout under adapter control, no ABI drift).
     { "register_android_view_MotionEvent",    register_android_view_MotionEvent },
+    { "register_android_view_VelocityTracker", register_android_view_VelocityTracker },
     // 2026-05-26: KeyEvent natives (nativeNextId) — register before
     // InputEventReceiver, same rationale as MotionEvent above: the worker
     // thread's dispatchKeyFromWorker constructs KeyEvent via JNI NewObject,

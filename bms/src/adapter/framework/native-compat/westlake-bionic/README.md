@@ -2,6 +2,8 @@
 
 来源(Mac 副本 `/Users/zhaoyue/orca/workspaces/vm-copies/westlake-current/`,原树 `~/a2hlab/westlake-current`,#84 定案):**原样拷贝,未改动一行**。
 
+**#87 实编更正**：下面的 `build.sh` 是未验通的初稿，缺 `bionic/malloc.h` 等输入，不能直接当部署配方；`liblog_android_supplement.cpp` 只声明常用日志接口，主体在 AOSP `system/logging/liblog`。实际移植保留完整 liblog 实现和 LIBC version node，把 assert/stdio 两件接入 liblog，不替换 musl 的同名 `libc.so`；VelocityTracker 接入 AndroidRuntime 启动注册表。实编脚本、输入归档与板上结果见 [#87 报告](../../../../../../benchmark/2026-09-29-native-abi-port/README.md)。ABI 加载是否成功须看该报告，不能仅凭导出表判定。
+
 ## 文件 → 解的符号(对照 #84 符号清单)
 
 | 文件 | 解什么 | 关键行 |
