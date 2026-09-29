@@ -31,6 +31,11 @@ ICON_PREFIX = 'AppIconCommonView_'
 LAUNCHER = 'com.ohos.sceneboard'
 BLACK_FRAME_BYTES = 36627
 FAULT_ROOT = '/data/log/faultlog/faultlogger'
+# Uniform board settings every batch starts from (see preflight). A reboot resets hilog to 256K with
+# privacy masking on; at 256K an app's child-process lines are overwritten before collection (#71).
+HILOG_MIN_BYTES = 16 << 20
+SCREEN_OFF_MS = 86400000
+CLOCK_TOLERANCE_S = 120
 
 
 class AppFailure(RuntimeError):
@@ -593,8 +598,17 @@ def timed_collection(board, uid, out, remote, rec, wait_seconds, shots, focus_ch
                     shot = capture(board, remote+'/'+tag+'.jpeg', out/(tag+'.jpeg'), before_snapshot=check_focus)
                     shot.update(captured=True, accepted=observation['confirmed'] and not shot['known_black_frame'])
                 except FocusMismatch as exc:
-                    shot = {'captured': False, 'accepted': False, 'known_black_frame': False,
-                            'reason': str(exc), 'visual_verdict': 'pending_review'}
+                    # The focus gate misses real screens (AppManager/Droid-ify were on screen in #78 with 0
+                    # captures), so still take the picture: it is not accepted, but the outer loop can read it.
+                    try:
+                        shot = capture(board, remote+'/'+tag+'.jpeg', out/(tag+'.jpeg'))
+                        shot.update(captured=True, accepted=False, focus_unconfirmed=True, reason=str(exc))
+                    except (AppFailure, BatchStop) as capture_exc:
+                        if isinstance(capture_exc, BatchStop):
+                            raise
+                        shot = {'captured': False, 'accepted': False, 'known_black_frame': False,
+                                'reason': f'{exc}; unconfirmed capture failed: {capture_exc}',
+                                'visual_verdict': 'pending_review'}
                 shot.update(scheduled_seconds=offset, elapsed_seconds=time.monotonic()-start,
                             foreground=observation)
                 rec['screenshots'].append(shot)
@@ -613,7 +627,7 @@ def timed_collection(board, uid, out, remote, rec, wait_seconds, shots, focus_ch
 
 
 def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
-                reinstall=False, hilog_seconds=None, shots=None, focus_check=False):
+                reinstall=False, hilog_seconds=None, shots=None, focus_check=False, launch_only=False):
     out.mkdir(parents=True, exist_ok=True)
     if any(out.iterdir()):
         raise StaleEvidence('refuse stale app evidence: ' + str(out))
@@ -628,23 +642,34 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
         rec['input_apk'] = app['apk']
         save(out / 'record.json', rec)
         board.shell('mkdir -p ' + shlex.quote(remote))
-        remote_apk = remote + '/original.apk'
-        board.send(app['apk'], remote_apk)
-        _, readback = board.shell('sha256sum ' + shlex.quote(remote_apk))
-        if not readback.split() or readback.split()[0] != app['apk_sha256']:
-            raise AppFailure('staged APK hash differs')
-        if reinstall:
-            rec['uninstall'] = uninstall_existing(board, app, out)
-        rc, response = board.shell('bm install -p ' + shlex.quote(remote_apk), required=False, timeout=180)
-        (out / 'install.txt').write_text(response)
-        rec['install'] = {'return_code': rc, 'success_text': bm_success(rc, response, 'install'), 'output': str(out / 'install.txt')}
-        save(out/'record.json', rec)
-        board.shell('rm -f ' + shlex.quote(remote_apk))
+        if launch_only:
+            # Only the runtime changed (e.g. a JAR swap): keep the installed app, skip the ~1 min reinstall.
+            rec['install'] = {'skipped': 'launch_only', 'return_code': 0, 'success_text': True}
+        else:
+            remote_apk = remote + '/original.apk'
+            board.send(app['apk'], remote_apk)
+            _, readback = board.shell('sha256sum ' + shlex.quote(remote_apk))
+            if not readback.split() or readback.split()[0] != app['apk_sha256']:
+                raise AppFailure('staged APK hash differs')
+            if reinstall:
+                rec['uninstall'] = uninstall_existing(board, app, out)
+            rc, response = board.shell('bm install -p ' + shlex.quote(remote_apk), required=False, timeout=180)
+            (out / 'install.txt').write_text(response)
+            rec['install'] = {'return_code': rc, 'success_text': bm_success(rc, response, 'install'), 'output': str(out / 'install.txt')}
+            save(out/'record.json', rec)
+            board.shell('rm -f ' + shlex.quote(remote_apk))
         rc, response = board.shell('bm dump -n ' + shlex.quote(app['package']), required=False)
         (out / 'bundle.txt').write_text(response)
         rec['bms']['return_code'] = rc
         if rc == 0:
-            rec['bms'].update(parse_bundle(response, app['package']))
+            try:
+                rec['bms'].update(parse_bundle(response, app['package']))
+            except AppFailure as exc:
+                if launch_only:
+                    raise AppFailure('--launch-only needs the app already installed: ' + str(exc)) from exc
+                raise
+        if launch_only and not rec['bms']['queryable']:
+            raise AppFailure('--launch-only needs the app already installed; BMS cannot find it')
         if not rec['install']['success_text'] or rec['install']['return_code'] or not rec['bms']['queryable']:
             raise AppFailure('install or BMS readback failed')
         uid = rec['bms']['uid']
@@ -696,9 +721,76 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
     return rec
 
 
+def size_bytes(text):
+    m = re.fullmatch(r'([\d.]+)\s*([KMG]?)B?', text.strip(), re.I)
+    if not m:
+        return None
+    return int(float(m.group(1)) * {'': 1, 'K': 1 << 10, 'M': 1 << 20, 'G': 1 << 30}[m.group(2).upper()])
+
+
+def preflight(board, out, host_epoch=None):
+    """Set and read back hilog buffer, hilog privacy, screen-off timeout and board clock; refuse to run if unmet."""
+    host_epoch = int(time.time() if host_epoch is None else host_epoch)
+    result = {'host_epoch': host_epoch, 'problems': []}
+    for name, command in (('hilog_size_set', 'hilog -G 16M'), ('hilog_private_set', 'hilog -p off'),
+                          ('screen_off_set', f'power-shell timeout -o {SCREEN_OFF_MS}')):
+        rc, text = board.shell(command, required=False)
+        result[name] = {'command': command, 'return_code': rc, 'output': text[-300:]}
+    if result['screen_off_set']['return_code']:
+        result['problems'].append('power-shell timeout -o failed')
+
+    def clock():
+        _, text = board.shell('date +%s', required=False)
+        return int(text.strip()) - host_epoch if text.strip().isdigit() else None
+    skew = clock()
+    if skew is None or abs(skew) > CLOCK_TOLERANCE_S:
+        rc, text = board.shell(f'date -s @{host_epoch}', required=False)
+        result['clock_set'] = {'skew_before_s': skew, 'return_code': rc, 'output': text[-200:]}
+        skew = clock()
+    result['clock_skew_s'] = skew
+    if skew is None or abs(skew) > CLOCK_TOLERANCE_S:
+        result['problems'].append(f'board clock off by {skew} s after date -s')
+
+    _, sizes = board.shell('hilog -g', required=False)
+    buffers = dict(re.findall(r'Log type (\w+) buffer size is (\S+)', sizes))
+    result['hilog_buffers'] = buffers
+    small = [k for k, v in buffers.items() if (size_bytes(v) or 0) < HILOG_MIN_BYTES]
+    if not buffers or small:
+        result['problems'].append('hilog buffer below 16M: ' + (', '.join(f'{k}={buffers[k]}' for k in small) or 'unreadable'))
+    _, private = board.shell('param get hilog.private.on', required=False)
+    result['hilog_private_on'] = private.strip()
+    if private.strip() != 'false':
+        result['problems'].append('hilog privacy masking still on: ' + private.strip()[:40])
+    save(out/'preflight.json', result)
+    if result['problems']:
+        raise BatchStop('preflight not met: ' + '; '.join(result['problems']))
+    return {k: result[k] for k in ('hilog_buffers', 'hilog_private_on', 'clock_skew_s')} | {
+        'screen_off_ms': SCREEN_OFF_MS, 'path': str(out/'preflight.json')}
+
+
+def write_facts(out):
+    """facts.txt = scripts/lab/run_facts.py over this run; ACKs quote it instead of counting by hand."""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'scripts'/'lab'))
+        import run_facts
+        rows = [run_facts.facts(d) for d in sorted(p for p in Path(out).iterdir() if (p/'record.json').is_file())]
+    except Exception as exc:  # the facts are a report; a missing helper must not hide the run's own result
+        (Path(out)/'facts.txt').write_text(f'facts unavailable: {exc}\n')
+        return None
+    cap, slots = sum(f['captured'] for f in rows), sum(f['slots'] for f in rows)
+    a5, a20 = sum(1 for f in rows if f['alive_t5']), sum(1 for f in rows if f['alive_t20'])
+    lines = [f"{f['key']:<20} shots {f['captured']}/{f['slots']}  alive t5={run_facts.mark(f['alive_t5'])} "
+             f"t20={run_facts.mark(f['alive_t20'])}  child_hilog={run_facts.mark(f['child_hilog_lines'])}  {f['status']}"
+             for f in rows]
+    total = f'TOTAL keys={len(rows)} screenshots_captured={cap}/{slots} alive_t5={a5} alive_t20={a20}'
+    (Path(out)/'facts.txt').write_text('\n'.join(lines + [total]) + '\n')
+    return total
+
+
 def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
     records = []
     board.ready()
+    settings = preflight(board, out)
     _, version = board.shell('param get const.ohos.fullname')
     if version.strip() not in ('OpenHarmony-6.1.0.31', 'OpenHarmony 6.1.0.31'):
         raise BatchStop('expected OH6.1.0.31; this is not the OH7/T006 route')
@@ -711,6 +803,8 @@ def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
         try:
             record = collect_app(board, entry, input_root, app_out,
                                  f'/data/local/tmp/bms-batch-{run_id}/{entry["key"]}', wait_seconds, **options)
+            record['preflight'] = settings
+            save(app_out/'record.json', record)
             records.append(record)
         except BatchStop as exc:
             stale = isinstance(exc, StaleEvidence)
@@ -718,9 +812,13 @@ def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
                 records.append(json.loads((app_out/'record.json').read_text()))
             remaining = entries[i:] if stale else entries[i+1:]
             save(out/'summary.json', {'records':records,'not_run':[x['key'] for x in remaining],'batch_error':str(exc),'review':'pending_review'})
+            write_facts(out)
             raise
         save(out/'summary.json', {'records':records,'not_run':[x['key'] for x in entries[i+1:]],'review':'pending_review'})
         print(f'{i+1}/{len(entries)} {entry["key"]}: {record["status"]}', flush=True)
+    total = write_facts(out)
+    if total:
+        print(total + '  (facts.txt; quote it verbatim in ACKs)', flush=True)
     return records
 
 
@@ -749,6 +847,7 @@ def main(argv=None):
     ap.add_argument('--run-id', default=datetime.datetime.now().strftime('%Y%m%dT%H%M%S')+'-'+uuid.uuid4().hex[:8])
     ap.add_argument('--wait', type=float, default=15)
     ap.add_argument('--reinstall', action='store_true', help='uninstall a confirmed installed target before installation')
+    ap.add_argument('--launch-only', action='store_true', help='skip install; launch the already-installed app (runtime-only change)')
     ap.add_argument('--hilog', nargs='?', const=True, type=float, metavar='SECONDS', help='reset before launch, dump after SECONDS (default: --wait) and pull new faultlogs')
     ap.add_argument('--shots', type=shot_offsets, metavar='5,20', help='click-relative screenshot offsets; implies strict per-shot focus check')
     ap.add_argument('--focus-check', action='store_true', help='require target focus for every screenshot')
@@ -758,7 +857,9 @@ def main(argv=None):
     hilog_seconds = args.wait if args.hilog is True else args.hilog
     if hilog_seconds is not None and (not math.isfinite(hilog_seconds) or not 0 < hilog_seconds <= 300):
         ap.error('hilog seconds must be finite and in (0, 300]')
-    options = dict(reinstall=args.reinstall, hilog_seconds=hilog_seconds,
+    if args.launch_only and args.reinstall:
+        ap.error('--launch-only and --reinstall are exclusive')
+    options = dict(reinstall=args.reinstall, launch_only=args.launch_only, hilog_seconds=hilog_seconds,
                    shots=args.shots, focus_check=args.focus_check)
     entries = load_apps(args.manifest,args.phase,args.keys)
     if not args.execute:

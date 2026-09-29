@@ -53,7 +53,7 @@ route-A 运行代有三层哈希锁:appspawn-x 钉 child 插件 SHA、child 的 
 场景: 自定义 Application 被实例化
   测试: b9_custom_application_created
   假设 v3 已部署到 5ea
-  当 从桌面拉起 fd-k9 与 ooniprobe 并采 hilog
+  当 从桌面拉起 fd-android(Thunderbird,与 fd-k9 同为 Koin 入口;5ea 的 installer 装不上 fd-k9)与 ooniprobe 并采 hilog
   那么 `[B43-BIND] providers populated` 的数字大于 0
   并且 不再出现 `KoinApplication has not been started` 与 Application 强转失败,越过的附原文
 

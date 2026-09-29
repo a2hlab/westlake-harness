@@ -15,6 +15,9 @@ tags: [bms, framework, westlake, port]
 - 盘点表逐项记:修复名、解决的现象、Westlake 中的类与方法、route-A 中对应的类与方法、状态(已有 / 缺 / 不适用)、移植方式
 - 移植落点:route-A 适配层的 Java 源码 `bms/src/adapter/framework/**`,构建出新的 `oh-adapter-runtime.jar`;部署沿用 B5 的覆盖方式,带回滚;不改 route-A 的 28 个 provider 与封存清单
 - 优先级:先搬与「系统未下发 ScheduleLaunchAbility / AbilityStage 超时」「bind 期间 ProviderInfo / FileProvider 异常」相关的,再搬首帧 / Surface / 服务桩类
+- 2026-09-29 用户决定:同一个问题 Westlake 与原 BMS(00.Workspace、real-work)都做过时,比较两边谁做得多、做得好就抄谁,两边都可以抄;Westlake bridge 的 native 部分与 Impeller 回退也照此办,不以「依赖 Westlake 专有组件」为由直接判不适用——只有两边都没有可用实现时才判不适用
+- 2026-09-29 用户决定:点亮首屏用不到的系统服务(notification、jobscheduler、connectivity、location、Google 推送等,国内本来也用不了 Google 推送)一律打空桩,只求不崩——返回类型正确的无害默认值(空列表、false/0、成功码、无操作),不返回 null(UserManager 为 null 正是 catima/fennec 的死因);沿用 r8b 的 LocalServiceBinders 一次成批加,剩下的长尾服务用一个按接口给默认值的通用桩兜底
+- 运行代的哈希锁由 B9 拆除;需要改 native 库的移植项等 B9 的无锁代,之后单文件替换,不再整代重生成
 - 验证统一用 master 的 `bms_batch.py`(`--reinstall --hilog --shots --focus-check`),移植在 5cd 上开发验证,61b 做回归与白窗 13 个、09-27 Westlake 亮过的 13 个的重跑
 
 ## 边界
@@ -67,6 +70,7 @@ tags: [bms, framework, westlake, port]
   假设 某项 Westlake 修复在 route-A 上不适用或依赖 route-A 没有的组件
   当 结束本任务
   那么 盘点表写明原因与证据
+  并且 同时写明原 BMS(00.Workspace、real-work)对同一问题有无实现、为什么两边都不能抄
 
 ## 排除范围
 

@@ -8,7 +8,7 @@
 **Mac(控制端)**
 - hdc:`/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc`。`-t` 必须用**完整 connect-key**,8 位前缀会报 `Not match target founded`:
   `5ea34a4500000000000000001123012c`、`5cd1e3dd00000000000000000923012c`、`61b0657200000000000000000324012c`。
-- 板子经 hub 接 USB,provision/remount 瞬间掉线过多次,最长 50 分钟不回,只能物理重插。演示前尽量直连。
+- 板子经 hub 接 USB,provision/remount 瞬间掉线过多次,最长 50 分钟不回,只能物理重插。演示前尽量直连。2026-09-29 61b 在 `swap_installer.sh` 触发 foundation 重启→整机重启后从 USB 枚举消失(`ioreg -p IOUSB` 里没有该序列号),用户手动重启才回来;会导致重启的操作(换 installer、restore、remount)优先放在直连的板上,上 hub 的板做之前先告诉用户可能要重插。
 - 环境:`source ~/orca/workspaces/westlake-inputs/env-mac.sh`(cc/readelf/sha256sum shim + mise 固定的 JDK/Python)。有它 67/69 测试过,没有它 2 fail 4 error。
 - **shell 陷阱**:`ls`=eza(带 OSC-8 超链接)、`du`=dust、`grep`=ugrep(复杂正则会超限)、`cat`=bat → 解析输出时用 `/bin/ls`、`/usr/bin/grep`、`command du`。zsh **不拆分 `$var`**(用 `${=var}` 或数组/glob),把整串当一个文件名且被 `2>/dev/null` 吞掉时会得到"假干净"。macOS 自带 bash 3.2 没有 `mapfile`。
 - `pgrep -f`/`pkill -f` 会匹配到自己的命令行(在 `hdc shell "…"` 里计数恒 +1)→ 用 `scripts/lab/stop_by_pattern.sh` 或 `pgrep -f '[x]yz'`。
@@ -77,15 +77,20 @@
 - **VM 里经 `mac <命令>` 调 Mac 侧工具,偶发退出码 0 但输出为空**(OrbStack mac 桥瞬时故障;B4 批量 20:25 因 `board_note.sh held` 空输出误判丢锁而停在 61/66)。以 Mac 侧命令输出做门禁的脚本,对空输出隔几秒重试一次再判停。
 
 - 黑板 `.octos/OUTER_LOOP_REVIEW.md` 只追加,写入用 `~/workspace/octoscode/scripts/olp-board-append.sh`;机读视图 `scripts/lab/board_status.py --lane <车道> --open`(旧的 `board_acks.py` 认不出 `ACK(done: …)`)。
-- **结构化调度**(Markdown 仍是唯一事实源,只加行首定式):车道用 `board_note.sh` 写 `PROGRESS(N)`(每里程碑或 ≤20 分钟)与 `LOCK/UNLOCK(<serial>)`(flock 持有进程真互斥,exit 75=别人持有);依赖取 spec 的 `depends:`。外环看 `board_status.py <板> --schedule --text`,哨用 `--watch`(ACK、可派发、停滞、锁异常即退出)。看板:`board_dash.sh --loop 30`(herdr `app-lighting` 工作区 `dash` 标签页)。
+- **结构化调度**(Markdown 仍是唯一事实源,只加行首定式):车道用 `board_note.sh` 写 `PROGRESS(N)`(每里程碑或 ≤20 分钟)与 `LOCK/UNLOCK(<serial>)`(flock 持有进程真互斥,exit 75=别人持有);依赖取 spec 的 `depends:`。外环看 `board_status.py <板> --schedule --text`,哨用 `--watch`(ACK、可派发、停滞、锁异常即退出)。有意停放的条目(等别的板/别的条目)写 `WAIT(N): <时间> <署名> <等什么>`,在该车道下一条 PROGRESS 之前不算停滞,`--schedule` 显示 WAITING。看板:`board_dash.sh --loop 30`(herdr `app-lighting` 工作区 `dash` 标签页)。
 - **一个战役一块新黑板**(2026-09-28 用户决定):`.octos/boards/<战役>.md`,编号从 #1 起;`.octos/OUTER_LOOP_REVIEW.md` 只做索引。车道名写在条目标题 `[cc-tN]`,`board_status.py <板> --lane <车道> --open` 取自己的条目。
 - **旧板归档方法**:在 `flock -x <板>.lock` 下把旧内容 `head -n <边界前一行>` 原样移进 `.octos/archive/OUTER_LOOP_REVIEW-<年月>-<战役>.md`,用 `cat 归档 <(tail -n +<边界>) | cmp - 原板` 证明逐字节无损,再写新头部 + 在途条目。换本前先确认没有挂着的侦听哨(哨按行数基线判定)。2026-09-28 头条战役 #1–#50(4009 行)已归档,新板从 #51 起。
-- **codex 窗格会弹交互式提问**(屏幕显示 `? 1 question  ⌥+↑ to answer`,herdr 状态 `blocked`):这时 `herdr agent prompt` 只会进队列,不回答问题,车道会一直卡住。处理:`herdr pane send-keys <pane> alt+up` 调出问题,读选项,`enter` 提交(或用方向键换选项)。`lane_watch.sh` 把 blocked 当作停下,能抓到。octoscode 的排队消息则要 `esc` 才会中断当前轮并发送;Claude Code 的消息会在轮中自动插入。
+- **codex 窗格 `Reconnecting... n/5` / `Transport error: network error`**:Mac 的模型流量走本机 Surge 代理(`https_proxy=127.0.0.1:6152`),AI 相关域名归 Surge 的 AI 分组。先测 `curl -s -o /dev/null -w "%{http_code}" --max-time 8 https://api.openai.com/v1/models`——401 是通,000/超时是不通,国内站(baidu)通而它不通就是 AI 分组当前节点坏了,请用户在 Surge 里换该分组节点(2026-09-29 一批节点同时 Failed,换到测速通过的节点即恢复)。codex 重连 5 次失败会结束本轮,恢复后要检查车道是否停在 idle、需要重发条目。
+- **codex 窗格会弹交互式提问**(屏幕显示 `? 1 question  ⌥+↑ to answer`,herdr 状态 `blocked`):这时 `herdr agent prompt` 只会进队列,不回答问题,车道会一直卡住。处理:`herdr pane send-keys <pane> alt+up` 调出问题,读选项,`enter` 提交(或用方向键换选项)。自由文本回答用 `herdr pane send-text <pane> "<答复>"` 再 `send-keys enter`;提交后要回读窗格确认问题框已消失、状态回到 Working,实测有一次第一下 enter 没提交、要再按一次。问题提示有 `⌥+↑` 与 `shift+←` 两种写法,按屏幕上写的键调出。`lane_watch.sh` 把 blocked 当作停下,能抓到。octoscode 的排队消息则要 `esc` 才会中断当前轮并发送;Claude Code 的消息会在轮中自动插入。
 - herdr server 必须由用户自己起,不要从 agent 会话里 nohup。octoscode stdio 模式要带 `--session <名>`。
+- **hilog 缓冲重启即回 256K**(2026-09-29 实测:5cd 16M、重启过的 61b 与 5ea 都是 256K,且 `hilog.private.on=true` 把 `%{private}` 参数打成 `<private>`)。256K 下 app 子进程的几万行会被冲掉,`run_facts.py` 的 child_hilog=0 看着像子进程没打日志、甚至像 JAR 没生效(#71 误判)。master 的 `bms_batch.py`(`83ab7bb8` 之后)开跑前自动 `preflight`:设 `hilog -G 16M`、`hilog -p off`、`power-shell timeout -o 86400000`、板钟与主机差 >120 s 时 `date -s @<主机 epoch>`,逐项回读写进 `preflight.json` 和每个 `record.json` 的 `preflight` 字段,不达标拒跑;跑完写 `facts.txt`(run_facts 汇总),ACK 原样引用。各车道一律直接跑 master 工作树里的这份(`/Users/zhaoyue/orca/workspaces/westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py`,VM 里同路径可见),不用自己分支里的旧副本。
+- ACK 里的截图数与存活数用 `scripts/lab/run_facts.py <运行目录>` 数(VM 上的目录:`orb -m a2hlab bash -c "python3 - <目录>" < scripts/lab/run_facts.py`)。
+- 外环读图用 `scripts/lab/contact_sheet.sh <out.jpeg> --run <bms_batch 运行目录> [--shot final|t3] [--cols 7]` 把一批截图拼成一张再读(一次看 14 张);缺图给灰块,stdout 按「行 列 key 路径」列出每格对应的 app(Homebrew ffmpeg 没有 drawtext,格子上不印字)。逐张读只用于拼图里看不清、要签认点亮的那几张。
 - 复验:`git worktree add --detach ~/.octos/outer/verify/<名> <commit>` → 逐字重跑验收 → 落判词 → 删 worktree。
 
 - BMS 复现器克隆迁移（2026-09-28）：四游戏 suite 无 `check`，用单 app `check`；HelloWorld `restore` 会重启，完成后再次核对板时钟。61b 使用 `date -s @<Mac epoch>` 同步并回读差值（本次 -1s）；`current` 绝对路径与 wrapper driver SHA 的变更须记录为迁移，证据见 `benchmark/2026-09-28-bms-route-deploy/`。
 - `reproduce-zigzag-apk quick` 多板并发须错开≥2秒启动（上游运行目录只含秒级时间，不含 serial）；完成后同时核对 wrapper receipt 的 board 和底层 envstamp 的 board，不能只看三个 PASS。
+- 换代后必须回读 installer（2026-09-29 #63，61b）：用 bms-suite `quick` 切整代会把 `libapk_installer.so` 恢复成 stock `184d40a5`，B2/B3 的 `675536e8`（名字/图标/XML-only 图标兜底）随之丢失，随后 13 个 app 全部 `install internal error code:9568260`，看着像新代把安装弄坏了。`tools/deploy_generation.sh` 不动 installer（5ea 换代前后都是 675536e8）。任何换代之后、批量安装之前，先在 shell 与 foundation 的 `/proc/<pid>/root` 两条路径回读 installer SHA，不是 675536e8 再用 `swap_installer.sh`；swap 会让 foundation 重启、整机可能随之重启，板在 hub 上时可能掉线，要预留物理重插。
 - BMS批量恢复：原attempt留存，新的run-id只跑未完成key；已首装成功但截图缺失的key走 `batch/capture_existing.py`，先核对 prior record + 当前 `.../android/base.apk` SHA 再精确点BMS主入口。`mac held`/`hdc list targets` 曾rc0但stdout为空，守卫应停；只读重新确认锁、目标、boot不变后才能新run-id续跑。
 
 - BMS启动A/B采证：同boot和runtime SHA，先核BMS UID及精确图标；点击前`hilog -r`并连续采日志，板端约100–220ms轮询UID进程至少15s，配合AppSpawnChild/返回码/子退出日志。`success pid`后仍须看result；hook31沙箱初始化失败可有PID、exit0且无fault文件，末时刻无PID不能判从未fork。复现器`prepare_sandbox`是bm install之外的必要目录/UID/mode/label准备，批量部署必须显式核对；#24未执行补目录干预。
