@@ -1,0 +1,339 @@
+{
+ "source": "INVENTORY.md",
+ "items": [
+  {
+   "id": "1 ★W",
+   "fix": "own-package `getProviderInfo`",
+   "symptom": "androidx.startup NameNotFoundException (ooniprobe, fluffychat, immich, kitchenowl)",
+   "westlake": "WL/packagemanager/PackageManagerAdapter.smali:3408 via SourcePackageRegistry.packageInfo (PackageParser + generatePackageInfo with metaData), fallback ProviderInfoResolver.resolve",
+   "route_a": "RA/package-manager/java/PackageManagerAdapter.java:1057 logStub → null",
+   "status": "missing (V)",
+   "port_approach": "move SourcePackageRegistry + ProviderInfoResolver into the runtime jar; intercept own-package getProviderInfo in the projection proxy",
+   "num": 1,
+   "port": {
+    "files": [
+     "bms/src/adapter/framework/activity/java/ManifestComponentProjection.java",
+     "bms/src/adapter/framework/activity/java/SelfComponentFallback.java"
+    ],
+    "source": "00.Workspace cd5b32935 src/adapter/framework/activity/java/ManifestComponentProjection.java (verbatim) + the component parse loop of InstalledApkApplicationProjection",
+    "hook": "PackageManagerProjectionProxy.invoke: SelfComponentFallback.apply after the delegate call (null self-package answers only)",
+    "evidence_marker": "[B8-PM] projected getProviderInfo",
+    "overlay": "benchmark/2026-09-29-bms-link-entry-walls/build-result-r7b.json",
+    "overlay_sha256": "c432d9874f40d5874457e3cffb2f70eed2cdde6deee6a0b60a670c75f1e8c9cc",
+    "overlay_baseline_sha256": "250958dc3f133b67fb38c5da3caf81714fd6958e2247556e327d917b1f0d3146",
+    "board_evidence": "pending (#66 generation)"
+   }
+  },
+  {
+   "id": "2 ★",
+   "fix": "`resolveContentProvider`",
+   "symptom": "FileProvider \"Couldn't find meta-data for provider with authority\" (minetest)",
+   "westlake": "same smali :5274, authority (`;`-split) match over getProvidersForPackage(packageForUid) with metaData",
+   "route_a": "same file :1217 stub → null",
+   "status": "missing (V)",
+   "port_approach": "with 1",
+   "num": 2,
+   "port": {
+    "files": [
+     "bms/src/adapter/framework/activity/java/SelfComponentFallback.java"
+    ],
+    "source": "same as item 1 (resolveProvider)",
+    "hook": "same as item 1",
+    "evidence_marker": "[B8-PM] projected resolveContentProvider",
+    "overlay": "benchmark/2026-09-29-bms-link-entry-walls/build-result-r7b.json",
+    "overlay_sha256": "c432d9874f40d5874457e3cffb2f70eed2cdde6deee6a0b60a670c75f1e8c9cc",
+    "overlay_baseline_sha256": "250958dc3f133b67fb38c5da3caf81714fd6958e2247556e327d917b1f0d3146",
+    "board_evidence": "pending (#66 generation)"
+   }
+  },
+  {
+   "id": "3 ★W",
+   "fix": "provider list metaData + applicationInfo at bind",
+   "symptom": "providers without metaData, fake `/system/app/<pkg>/<pkg>.apk` appInfo",
+   "westlake": "WL AppSchedulerBridge.ensureBindApplication: getProvidersForPackage → manifest fallback, filtered by process",
+   "route_a": "RA/activity/java/AppSchedulerBridge.java buildProvidersFromManifest (~655–700) sets no metaData",
+   "status": "partial (V)",
+   "port_approach": "real appInfo + parsed metaData",
+   "num": 3,
+   "port": {
+    "files": [
+     "bms/src/adapter/framework/activity/java/B8BindExtras.java"
+    ],
+    "source": "new: manifest metaData + real appInfo into AppBindData.providers",
+    "hook": "after setField(data, \"providers\", ...) in ensureBindApplication",
+    "evidence_marker": "[B8-PROV]",
+    "overlay": "benchmark/2026-09-29-bms-link-entry-walls/build-result-r7b.json",
+    "overlay_sha256": "c432d9874f40d5874457e3cffb2f70eed2cdde6deee6a0b60a670c75f1e8c9cc",
+    "overlay_baseline_sha256": "250958dc3f133b67fb38c5da3caf81714fd6958e2247556e327d917b1f0d3146",
+    "board_evidence": "pending (#66 generation)"
+   }
+  },
+  {
+   "id": "4 ★",
+   "fix": "pure-Java app `nativeLibraryDir` / ABI",
+   "symptom": "classloader namespace creation fails on `/system/app/<pkg>/lib/armeabi-v7a` (etar, burgerking)",
+   "westlake": "WL PackageInfoBuilder mapAbi + probes `/lib/arm*`; SourcePackageRegistry sets arm64-v8a",
+   "route_a": "RA/package-manager/java/PackageInfoBuilder.java:371-376 fake fallback; AppSchedulerBridge.java:1210 only fixes existing dirs",
+   "status": "partial (V; effect on these apps I)",
+   "port_approach": "in the projection, point to an existing dir and set arm64-v8a when missing",
+   "num": 4,
+   "port": {
+    "files": [
+     "bms/src/adapter/framework/activity/java/B7BindFixes.java"
+    ],
+    "source": "B7 #54 (nativeLibraryDir -> package code dir)",
+    "hook": "ensureBindApplication after \"resolved ApplicationInfo\"",
+    "evidence_marker": "[B7] nativeLibraryDir",
+    "overlay": "benchmark/2026-09-29-bms-link-entry-walls/build-result-r7b.json",
+    "overlay_sha256": "c432d9874f40d5874457e3cffb2f70eed2cdde6deee6a0b60a670c75f1e8c9cc",
+    "overlay_baseline_sha256": "250958dc3f133b67fb38c5da3caf81714fd6958e2247556e327d917b1f0d3146",
+    "board_evidence": "pending (#66 generation)"
+   }
+  },
+  {
+   "id": "5 ★",
+   "fix": "OH AbilityStage / specified handshake",
+   "symptom": "no ScheduleLaunchAbility; AbilityStage/Specified timeout after ~30 s",
+   "westlake": "none — Westlake launches via directLaunchNoBms",
+   "route_a": "source RA/activity/jni/app_scheduler_adapter.cpp:448-460, 838-852 has the S19 replies; bridge 7db99e1b only logs",
+   "status": "n/a, prime lead",
+   "port_approach": "board check: 5ea bridge 84695d62 answers, 5cd/61b 7db99e1b does not (#62, DIGEST 2230d8ab) → swap (#63)",
+   "num": 5,
+   "not_ported_reason": "handled by generation, not by the runtime JAR: bridge 84695d62 pairs with its provider (single-library swap measured: admission failed, exit 123; #54); all boards move to 6cb40cd6 (#66)"
+  },
+  {
+   "id": "6 ★W",
+   "fix": "appops no-op binder",
+   "symptom": "getService(\"appops\") → null (minetest)",
+   "westlake": "WL/core/LocalServiceBinders.smali appOps via OHServiceManager.lookupAdapter",
+   "route_a": "RA/core/java/OHServiceManager.java lookupAdapter default null",
+   "status": "missing (V)",
+   "port_approach": "LocalServiceBinders in the runtime jar, into sCache",
+   "num": 6,
+   "port": {
+    "files": [
+     "bms/src/adapter/framework/activity/java/LocalServiceBinders.java",
+     "bms/src/adapter/framework/activity/java/B8BindExtras.java"
+    ],
+    "source": "Westlake e5666e4 framework/core/java/LocalServiceBinders.java (package adapter.activity, thermalservice case dropped, six hidden-API uses via reflection)",
+    "hook": "B7BindFixes.apply -> B8BindExtras.installServiceStubs (sCache only when getService is null)",
+    "evidence_marker": "[B8-SVC] appops",
+    "overlay": "benchmark/2026-09-29-bms-link-entry-walls/build-result-r7b.json",
+    "overlay_sha256": "c432d9874f40d5874457e3cffb2f70eed2cdde6deee6a0b60a670c75f1e8c9cc",
+    "overlay_baseline_sha256": "250958dc3f133b67fb38c5da3caf81714fd6958e2247556e327d917b1f0d3146",
+    "board_evidence": "pending (#66 generation)"
+   }
+  },
+  {
+   "id": "7 W",
+   "fix": "uimode / locale / account / alarm stubs",
+   "symptom": "AppCompat night mode, per-app locale, AccountManager, WorkManager get null services",
+   "westlake": "LocalServiceBinders",
+   "route_a": "missing",
+   "status": "missing (V; relevance I via wikipedia gap map svc:*)",
+   "port_approach": "as 6",
+   "num": 7,
+   "port": {
+    "files": [
+     "bms/src/adapter/framework/activity/java/LocalServiceBinders.java",
+     "bms/src/adapter/framework/activity/java/B8BindExtras.java"
+    ],
+    "source": "same as item 6",
+    "hook": "same as item 6 (uimode, locale, account, alarm)",
+    "evidence_marker": "[B8-SVC]",
+    "overlay": "benchmark/2026-09-29-bms-link-entry-walls/build-result-r7b.json",
+    "overlay_sha256": "c432d9874f40d5874457e3cffb2f70eed2cdde6deee6a0b60a670c75f1e8c9cc",
+    "overlay_baseline_sha256": "250958dc3f133b67fb38c5da3caf81714fd6958e2247556e327d917b1f0d3146",
+    "board_evidence": "pending (#66 generation)"
+   }
+  },
+  {
+   "id": "8",
+   "fix": "telephony.registry stub",
+   "symptom": "X PhoneStateListener NPE",
+   "westlake": "a3069ada patch_smali.py changes 1-2; `framework-fix.patch`",
+   "route_a": "missing",
+   "status": "missing (V)",
+   "port_approach": "as 6",
+   "num": 8,
+   "not_ported_reason": "later batch (X/Twitter only)"
+  },
+  {
+   "id": "9",
+   "fix": "batteryproperties / batterystats",
+   "symptom": "null services",
+   "westlake": "LocalServiceBinders",
+   "route_a": "missing",
+   "status": "missing (V)",
+   "port_approach": "as 6, low priority",
+   "num": 9,
+   "not_ported_reason": "later batch, low priority"
+  },
+  {
+   "id": "10",
+   "fix": "power / thermal / audio / clipboard",
+   "symptom": "PowerManager ctor errors",
+   "westlake": "LocalServiceBinders",
+   "route_a": "RA/core/java/unitysvc/*",
+   "status": "present (V)",
+   "port_approach": "—",
+   "num": 10,
+   "not_ported_reason": "already present in route-A"
+  },
+  {
+   "id": "11 W",
+   "fix": "connectivity",
+   "symptom": "ConnectivityManager null, NetworkCallback silent",
+   "westlake": "WL/core/ConnectivityManagerAdapter + OhConnectivityState",
+   "route_a": "explicit null in OHServiceManager",
+   "status": "missing (V)",
+   "port_approach": "needs OH network native, medium",
+   "num": 11,
+   "not_ported_reason": "needs OH network native side; later batch"
+  },
+  {
+   "id": "12 W",
+   "fix": "webviewupdate + WebView",
+   "symptom": "no WebView provider (McDonald's retries)",
+   "westlake": "WebViewUpdateServiceAdapter, OhWebViewBridge, releaseWebViewSupportHold",
+   "route_a": "missing",
+   "status": "missing (V)",
+   "port_approach": "after first frame",
+   "num": 12,
+   "not_ported_reason": "after first frame"
+  },
+  {
+   "id": "13",
+   "fix": "location / permissionmgr",
+   "symptom": "null services",
+   "westlake": "LocationManagerAdapter, PermissionManagerAdapter",
+   "route_a": "missing",
+   "status": "missing (V)",
+   "port_approach": "later",
+   "num": 13,
+   "not_ported_reason": "later batch"
+  },
+  {
+   "id": "14",
+   "fix": "in-process settings provider",
+   "symptom": "Settings.* provider not found",
+   "westlake": "WlSettingsProvider added to bind providers",
+   "route_a": "AppSpawnXInit.java:1538-1660 NameValueCache; ContentProviderUriConverter → settingsdata",
+   "status": "partial (V)",
+   "port_approach": "add to bind provider list",
+   "num": 14,
+   "not_ported_reason": "later batch (settings provider)"
+  },
+  {
+   "id": "15 W",
+   "fix": "CompatChangeTable",
+   "symptom": "compat changes by targetSdk",
+   "westlake": "CompatChangeTable.disabledFor",
+   "route_a": "AppSchedulerBridge.java:237 `new long[0]`",
+   "status": "missing (V)",
+   "port_approach": "port the table",
+   "num": 15,
+   "port": {
+    "files": [
+     "bms/src/adapter/framework/activity/java/CompatChangeTable.java",
+     "bms/src/adapter/framework/activity/java/B8BindExtras.java"
+    ],
+    "source": "Westlake e5666e4 framework/activity/java/CompatChangeTable.java (verbatim)",
+    "hook": "after setField(data, \"disabledCompatChanges\", new long[0])",
+    "evidence_marker": "[B8-COMPAT]",
+    "overlay": "benchmark/2026-09-29-bms-link-entry-walls/build-result-r7b.json",
+    "overlay_sha256": "c432d9874f40d5874457e3cffb2f70eed2cdde6deee6a0b60a670c75f1e8c9cc",
+    "overlay_baseline_sha256": "250958dc3f133b67fb38c5da3caf81714fd6958e2247556e327d917b1f0d3146",
+    "board_evidence": "pending (#66 generation)"
+   }
+  },
+  {
+   "id": "16",
+   "fix": "software AndroidKeyStore",
+   "symptom": "\"AndroidKeyStore\" provider missing",
+   "westlake": "WL/core/SoftwareAndroidKeyStore",
+   "route_a": "missing",
+   "status": "missing (V)",
+   "port_approach": "install before bind",
+   "num": 16,
+   "not_ported_reason": "later batch"
+  },
+  {
+   "id": "17",
+   "fix": "TLS trust",
+   "symptom": "certificate validation",
+   "westlake": "WL/security/OhTrust*",
+   "route_a": "PR03 TlsShimProvider",
+   "status": "present, different (equivalence unchecked)",
+   "port_approach": "compare",
+   "num": 17,
+   "not_ported_reason": "present with a different mechanism; equivalence unchecked"
+  },
+  {
+   "id": "18",
+   "fix": "in-process own Service binding",
+   "symptom": "bindService to own Service",
+   "westlake": "InProcessServiceBinder",
+   "route_a": "ServiceBindingCoordinator / AbilityConnectionBridge",
+   "status": "different mechanism (I)",
+   "port_approach": "leave",
+   "num": 18,
+   "not_ported_reason": "different mechanism, left as is"
+  },
+  {
+   "id": "19",
+   "fix": "application `<meta-data>`",
+   "symptom": "ApplicationInfo.metaData empty",
+   "westlake": "ApplicationMetaDataReader",
+   "route_a": "PackageInfoBuilder.buildMetaData depends on installer; smali adds an empty Bundle",
+   "status": "partial (V)",
+   "port_approach": "fill from PackageParser; the Impeller=false injection had no effect on Westlake, do not port",
+   "num": 19,
+   "not_ported_reason": "later batch; the Impeller=false injection had no effect on Westlake"
+  },
+  {
+   "id": "20",
+   "fix": "CLAMP48",
+   "symptom": "degenerate 1 px wide session, `Layout -79`",
+   "westlake": "only in the Toutiao jar ea5d8b27; `benchmark/2026-09-26-operator-layout79fix-48`",
+   "route_a": "RA/window/java/WindowSessionAdapter.java:692 no clamp",
+   "status": "missing (V)",
+   "port_approach": "after first frame; BCP change needs a boot image rebuild",
+   "num": 20,
+   "not_ported_reason": "BCP change (WindowSessionAdapter) needs a boot image rebuild; after first frame"
+  },
+  {
+   "id": "21 W",
+   "fix": "ART before DFX on SIGSEGV",
+   "symptom": "implicit null checks not turned into NPEs",
+   "westlake": "a2hlab/art-build stubs/sigchain_musl.cc",
+   "route_a": "aosp_patches/art/sigchainlib/sigchain_muslcompat.cc",
+   "status": "source present, B6",
+   "port_approach": "B6",
+   "num": 21,
+   "not_ported_reason": "B6 scope (signal chain)"
+  },
+  {
+   "id": "22",
+   "fix": "direct-launch-only fixes (touch offset, OHTouchInjector, DestroyActivityItem, window placement, dim)",
+   "symptom": "direct-launch window/input",
+   "westlake": "westlake 5e91ebc, 4fbb09b, f6dc615",
+   "route_a": "route-A uses real OH sessions and input",
+   "status": "n/a (I)",
+   "port_approach": "—",
+   "num": 22,
+   "not_ported_reason": "direct-launch only, not applicable to route-A"
+  },
+  {
+   "id": "23",
+   "fix": "native / Toutiao-only (shims, hollow engines, sscronet, sigaction, JIT/AOT, GLESv1_CM stub, libandroid ASurfaceControl/AConfiguration)",
+   "symptom": "native crashes",
+   "westlake": "DIGEST A.2–A.22, E.6",
+   "route_a": "—",
+   "status": "out of B8 scope",
+   "port_approach": "revisit per app",
+   "num": 23,
+   "not_ported_reason": "native / Toutiao-only, out of B8 scope"
+  }
+ ]
+}

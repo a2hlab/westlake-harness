@@ -118,3 +118,28 @@ fn white_window_offline() {
 fn ability_stage_offline() {
     run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_ability_stage.py"]);
 }
+
+#[test]
+fn b8_inventory_complete() {
+    run(&["benchmark/2026-09-29-westlake-port/verify.py", "inventory"]);
+}
+#[test]
+fn b8_ported_fix_effective() {
+    run(&["benchmark/2026-09-29-westlake-port/verify.py", "effective"]);
+}
+#[test]
+fn b8_white_window_advanced() {
+    run(&["benchmark/2026-09-29-westlake-port/verify.py", "white_window"]);
+}
+#[test]
+fn b8_lit_by_outer_review() {
+    run(&["benchmark/2026-09-29-westlake-port/verify.py", "lit"]);
+}
+#[test]
+fn b8_no_regression() {
+    run(&["benchmark/2026-09-29-westlake-port/verify.py", "no_regression"]);
+}
+#[test]
+fn b8_not_ported_reason_recorded() {
+    run(&["benchmark/2026-09-29-westlake-port/verify.py", "not_ported"]);
+}
