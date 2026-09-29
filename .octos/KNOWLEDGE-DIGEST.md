@@ -448,3 +448,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 v3c-next(host verified/device pending): AudioSystemCapabilities.cpp 已有实现但 B91 配方未编/未注册；沿用原文件注册后 runtime=f87dcdf9；Anki 的 liblog 依赖域可复用 B87 R4，ANL=b66f1b60/142 checks，v3c 的 GLESv2 垫片只补齐前轮缺件，ZigZag 仍须回归，详见 benchmark/2026-09-30-v3c-next-native/。
 
 - 2026-09-30 B11 HWUI(host verified/device pending): VM hwui15/a11c 非 R155；154对象线可用 AOSP14 源+OH6.1 真板 EGL/Skia/libc 重编；SDK EGL stub 缺扩展，v3c liblog 的 fprintf@@LIBC 会被 -llog 提前选中并新增 NEEDED，移除冗余 -llog 后 a578b949 保持 R155 15项依赖顺序。整库有解码/探针差异，须 HW/ZZ/Wikipedia 读图回归，详见 benchmark/2026-09-30-egl-colorspace-retry/。
+
+- 2026-09-30 v3c-next双板回归：ANL b66f1b60+runtime f87dcdf9虽过SHA/单ART门，ZZ因app域找不到libandroid.so的libhitrace_ndk.z.so依赖退出；5cd/61b保持r17m不变撤next回v3c668e均恢复菜单，117文件指纹仅三native路径变。两板最终v3c+r17m；Droidify另因Sun provider/Conscrypt CNFE退出，见 benchmark/2026-09-30-v3c-next-rollout/。
