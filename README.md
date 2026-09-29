@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-09-29-bms-link-entry-walls/`** | **B7 #54 (5cd): first causes of the 7 UnsatisfiedLinkError/"ART entry" apps; runtime JAR overlay (user binder, nativeLibraryDir fallback, B5 alias) crosses two walls; installer DECLARED_XML_ONLY placeholder lets fd-k9 install; SQLite/Flutter blocked on route-A pins.** |
 | **`benchmark/2026-09-28-bms-route-deploy/`** | **OH 6.1 BMS: three-board HelloWorld/ZigZag baseline, 66-key batch installation and desktop capture, retained failure receipts, per-key Westlake comparisons, and HelloWorld/Wikipedia spawn A/B diagnosis (`spawn-ab/`), sandbox preparation, and activity-alias resolution with a missing-target negative (`alias-entry/`).** |
 | `benchmark/2026-09-28-bms-route-deploy/batch/task57-results.json` | **#57 unified BMS runner: reinstall, timed hilog/new faultlogs, per-shot focus gates and black-frame rejection; FakeBoard verification only.** |
 | `benchmark/2026-09-29-b6-static-diff/` | **B6 #53/#56: six hash-pinned ELFs, corrected sealed provider 80c9aee0, complete function comparison and four-group RESTORE-PLAN; no device execution.** |

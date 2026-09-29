@@ -1,0 +1,484 @@
+{
+ "task": "#54 B7",
+ "serial": "5cd1e3dd00000000000000000923012c",
+ "apps": {
+  "opencamera": {
+   "package": "net.sourceforge.opencamera",
+   "first_cause": {
+    "file": "runs/repro-20260929T112407-five/opencamera/hilog.txt",
+    "sha256": "f11fa7d26ee1da2e857774a10fda693109ad2fe97f5cd92cecf0a3ceca6c12f8",
+    "lines": [
+     {
+      "line": 24327,
+      "text": "09-29 11:24:27.059 20851 20851 I C00f00/AppSpawnXJava: [stderr] Caused by: java.lang.UnsatisfiedLinkError: Unable to create namespace for the classloader dalvik.system.PathClassLoader[DexPathList[[zip file \"/data/app/el1/bundle/public/net.sourceforge.opencamera/android/base.apk\"],nativeLibraryDirectories=[/system/app/net.sourceforge.opencamera/lib/armeabi-v7a, /data/app/el1/bundle/public/net.sourceforge.opencamera/android/base.apk!/lib/armeabi-v7a, /system/android/lib64, /system/lib64/chipset-sdk-sp, /system/lib64, /system/lib64/platformsdk, /system/lib64/chipset-sdk, /system/lib64/ndk]]]: app"
+     }
+    ],
+    "pid": "20851"
+   },
+   "after_fix": {
+    "hilog": "runs/b7final3-20260929T123636/5cd1e3dd00000000000000000923012c/opencamera/hilog.txt",
+    "pid": "19439",
+    "original_error_count": 0,
+    "next_stage": [
+     {
+      "line": 24912,
+      "text": "09-29 12:36:57.686 19439 19439 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.RuntimeException: Unable to start activity ComponentInfo{net.sourceforge.opencamera/net.sourceforge.opencamera.MainActivity}: java.lang.IllegalStateException: You need to use a Theme.AppCompat theme (or descendant) with this activity."
+     }
+    ],
+    "positive_marker": [
+     {
+      "line": 20229,
+      "text": "09-29 12:36:56.652 19439 19439 I C00f00/AppSpawnXJava: [stderr] [B7] nativeLibraryDir /system/app/net.sourceforge.opencamera/lib/armeabi-v7a does not exist; using /data/app/el1/bundle/public/net.sourceforge.opencamera/android"
+     }
+    ]
+   },
+   "wall": "crossed",
+   "lit": false
+  },
+  "fd-android": {
+   "package": "net.thunderbird.android",
+   "first_cause": {
+    "file": "runs/repro-20260929T112311-android/fd-android/hilog.txt",
+    "sha256": "0211d1f76c9301148e90cbaf0b76768bb1f11a84376239510677673fb268b421",
+    "lines": [
+     {
+      "line": 42254,
+      "text": "09-29 11:23:27.288 19241 19241 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.UnsatisfiedLinkError: No implementation found for long android.database.sqlite.SQLiteConnection.nativeOpen(java.lang.String, int, java.lang.String, boolean, boolean, int, int) (tried Java_android_database_sqlite_SQLiteConnection_nativeOpen and Java_android_database_sqlite_SQLiteConnection_nativeOpen__Ljava_lang_String_2ILjava_lang_String_2ZZII) - is the library loaded, e.g. System.loadLibrary?"
+     }
+    ],
+    "pid": "19241"
+   },
+   "after_fix": {
+    "hilog": "runs/b7final3-20260929T123636/5cd1e3dd00000000000000000923012c/fd-android/hilog.txt",
+    "pid": "20699",
+    "original_error_count": 1,
+    "next_stage": [
+     {
+      "line": 37964,
+      "text": "09-29 12:37:38.751 20699 20699 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.UnsatisfiedLinkError: No implementation found for long android.database.sqlite.SQLiteConnection.nativeOpen(java.lang.String, int, java.lang.String, boolean, boolean, int, int) (tried Java_android_database_sqlite_SQLiteConnection_nativeOpen and Java_android_database_sqlite_SQLiteConnection_nativeOpen__Ljava_lang_String_2ILjava_lang_String_2ZZII) - is the library loaded, e.g. System.loadLibrary?"
+     }
+    ]
+   },
+   "class": "jni-sqlite",
+   "blocked_reason": "liboh_android_runtime.so 9ccf64f8 on 5cd links the weak no-op registrars (android_graphics_compat_shim.cpp:66-69: mov w0,wzr; ret) because neither real-work compile_oh_android_runtime.sh nor compile_oh_android_runtime_arm64_stage2unity.sh lists android_database_*.cpp/sqlite3.c; the real sources exist in bms/ and real-work (android_database_SQLiteConnection.cpp:962). Rebuilding the library is not deployable in B7: the route-A provider is compiled with -DWLAR_ANDROID_RUNTIME_SHA256_HEX (build_route_a_generation_in_container.sh:690) and embeds 9ccf64f8 as text, so a new runtime library needs a regenerated provider (route-A provider/sealed manifest are forbidden to B7; belongs with the B6 whole-generation rebuild).",
+   "fix_site": "bms/src/adapter/build/inner/compile_oh_android_runtime*.sh SRCS + route-A generation",
+   "wall": "blocked",
+   "lit": false
+  },
+  "fd-k9": {
+   "package": "com.fsck.k9",
+   "install_before": {
+    "install_txt": {
+     "file": "runs/repro-20260929T112212-k9/fd-k9/install.txt",
+     "sha256": "daed1dfe02bc23ac851635eec4dc6f284efe72682508f731f2a15b8e616eafee",
+     "lines": [
+      {
+       "line": 2,
+       "text": "code:9568260"
+      }
+     ]
+    },
+    "hilog": {
+     "file": "runs/k9-install-before-hilog.txt",
+     "sha256": "d8dd4a74b3cc98990601db2bc0f274be0e4fb07a1bd366d540644510958b48b7",
+     "lines": [
+      {
+       "line": 203,
+       "text": "09-29 11:22:33.516 17797 17797 W C01802/ApkInstaller: [a92abb2ef8e1648, 392629e, 0] ReadIconByManifest: adaptive composition failed for 0x7f0800f1 (res/qr.xml), falling back"
+      },
+      {
+       "line": 207,
+       "text": "09-29 11:22:33.690 17797 17797 E C01802/ApkInstaller: [a92abb2ef8e1648, 392629e, 0] ExtractAndPackResourceHap: no launcher icon; refusing template placeholder"
+      },
+      {
+       "line": 223,
+       "text": "09-29 11:22:33.703 18114 18115 I C01123/BMSTool: [a92abb2ef8e1648, 93d1c1, 0] [status_receiver_impl.cpp(OnFinished:43)]on finished result is 9568260, [ERR_INSTALL_INTERNAL_ERROR]"
+      }
+     ]
+    }
+   },
+   "install_after": {
+    "file": "runs/b7final3-20260929T123636/5cd1e3dd00000000000000000923012c/fd-k9/install.txt",
+    "sha256": "da7908cc3f726bbdc3a6ba6638f509bbed2d967bb20d5c3b472a17ef3191be5d",
+    "lines": [
+     {
+      "line": 1,
+      "text": "install bundle successfully."
+     }
+    ]
+   },
+   "first_cause": {
+    "file": "runs/b7final3-20260929T123636/5cd1e3dd00000000000000000923012c/fd-k9/hilog.txt",
+    "sha256": "1477fb953c239c96c1415fc8c9f339bdd2adc404a8f242c8d022208cce89c5e8",
+    "lines": [
+     {
+      "line": 44112,
+      "text": "09-29 12:39:58.162 24870 24870 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.UnsatisfiedLinkError: No implementation found for long android.database.sqlite.SQLiteConnection.nativeOpen(java.lang.String, int, java.lang.String, boolean, boolean, int, int) (tried Java_android_database_sqlite_SQLiteConnection_nativeOpen and Java_android_database_sqlite_SQLiteConnection_nativeOpen__Ljava_lang_String_2ILjava_lang_String_2ZZII) - is the library loaded, e.g. System.loadLibrary?"
+     }
+    ],
+    "pid": "24870"
+   },
+   "after_fix": {
+    "hilog": "runs/b7final3-20260929T123636/5cd1e3dd00000000000000000923012c/fd-k9/hilog.txt",
+    "pid": "24870",
+    "original_error_count": 1,
+    "next_stage": [
+     {
+      "line": 44112,
+      "text": "09-29 12:39:58.162 24870 24870 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.UnsatisfiedLinkError: No implementation found for long android.database.sqlite.SQLiteConnection.nativeOpen(java.lang.String, int, java.lang.String, boolean, boolean, int, int) (tried Java_android_database_sqlite_SQLiteConnection_nativeOpen and Java_android_database_sqlite_SQLiteConnection_nativeOpen__Ljava_lang_String_2ILjava_lang_String_2ZZII) - is the library loaded, e.g. System.loadLibrary?"
+     }
+    ]
+   },
+   "class": "jni-sqlite",
+   "blocked_reason": "liboh_android_runtime.so 9ccf64f8 on 5cd links the weak no-op registrars (android_graphics_compat_shim.cpp:66-69: mov w0,wzr; ret) because neither real-work compile_oh_android_runtime.sh nor compile_oh_android_runtime_arm64_stage2unity.sh lists android_database_*.cpp/sqlite3.c; the real sources exist in bms/ and real-work (android_database_SQLiteConnection.cpp:962). Rebuilding the library is not deployable in B7: the route-A provider is compiled with -DWLAR_ANDROID_RUNTIME_SHA256_HEX (build_route_a_generation_in_container.sh:690) and embeds 9ccf64f8 as text, so a new runtime library needs a regenerated provider (route-A provider/sealed manifest are forbidden to B7; belongs with the B6 whole-generation rebuild).",
+   "fix_site": "bms/src/adapter/build/inner/compile_oh_android_runtime*.sh SRCS + route-A generation",
+   "wall": "blocked",
+   "lit": false,
+   "install_after_hilog": {
+    "file": "runs/k9-install-after-hilog.txt",
+    "sha256": "96a7a1db82d9dd605a5fe0bc13a8753a35256fd63d0c3645eba988a62270e7d8",
+    "lines": [
+     {
+      "line": 736,
+      "text": "09-29 13:00:13.424  1285  2033 W C01802/ApkInstaller: [a92abe45dcc6d53, 13894fb, 0] ReadIconByManifest: adaptive composition failed for 0x7f0800f1 (res/qr.xml), falling back"
+     },
+     {
+      "line": 778,
+      "text": "09-29 13:00:13.751  1285  2033 E C01802/ApkInstaller: [a92abe45dcc6d53, 13894fb, 0] ICONLESS_APK_TEMPLATE_PLACEHOLDER: apk=/data/service/el1/public/bms/bundle_manager_service/stream_install/17906580123/k9.apk class=DECLARED_XML_ONLY — APK provably has no launcher icon; packaging the template's own generic placeholder so install can proceed. Desktop icon will be generic; reinstall an icon-bearing build to replace it."
+     },
+     {
+      "line": 1502,
+      "text": "09-29 13:00:14.006  8953  8958 I C01123/BMSTool: [a92abe45dcc6d53, 2a40903, 0] [status_receiver_impl.cpp(OnFinished:43)]on finished result is 0, [SUCCESS]"
+     }
+    ]
+   }
+  },
+  "fd-libre": {
+   "package": "deckers.thibault.aves.libre",
+   "first_cause": {
+    "file": "runs/repro-20260929T112407-five/fd-libre/hilog.txt",
+    "sha256": "6282a9e252b4cc44f05d5d38ceb3682e9ee903d1ded0bd515188fb95fb7a1849",
+    "lines": [
+     {
+      "line": 31396,
+      "text": "09-29 11:25:11.035 22153 22153 E C00f00/FlutterLoader: java.util.concurrent.ExecutionException: java.lang.UnsatisfiedLinkError: path is outside app domain: /data/app/el2/100/base/deckers.thibault.aves.libre/app_lib/libflutter.so"
+     }
+    ],
+    "pid": "22153"
+   },
+   "after_fix": {
+    "hilog": "runs/b7final3-20260929T123636/5cd1e3dd00000000000000000923012c/fd-libre/hilog.txt",
+    "pid": "26222",
+    "original_error_count": 1,
+    "next_stage": [
+     {
+      "line": 28757,
+      "text": "09-29 12:40:43.538 26222 26222 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.RuntimeException: java.util.concurrent.ExecutionException: java.lang.UnsatisfiedLinkError: path is outside app domain: /data/app/el2/100/base/deckers.thibault.aves.libre/app_lib/libflutter.so"
+     }
+    ]
+   },
+   "class": "flutter-native-load",
+   "blocked_reason": "FlutterJNI.loadLibrary is ReLinker-based (dexdump: \"Loading the library normally failed: %s\" logged through an R8-emptied lambda), so the first System.loadLibrary(\"flutter\") failure is never logged; libflutter.so is never mapped (no MUSL-LDSO line). The fallback System.load(<dataDir>/app_lib/libflutter.so) is refused by app_native_loader.c path_is_in_app_domain, which compares only app_search_paths (domain->app_paths, line 337) while AOSP also permits the class-loader permitted path (dataDir); Westlake v3-hbc OpenNativeLibrary is a plain dlopen(path, RTLD_NOW) with neither the domain check nor the per-thread READY gate. libapp_native_loader.so is a route-A provider dependency (verify_route_a_generation.py:693), outside B7.",
+   "fix_site": "bms/src/adapter/framework/app-native-loader/src/app_native_loader.c (route-A generation)",
+   "wall": "blocked",
+   "lit": false
+  },
+  "fd-saber": {
+   "package": "com.adilhanney.saber",
+   "first_cause": {
+    "file": "runs/repro-20260929T112407-five/fd-saber/hilog.txt",
+    "sha256": "1466042ab0322ef9ad46267c338e51cf52e96faa1a520ff2582f27a8bc82f0bc",
+    "lines": [
+     {
+      "line": 27225,
+      "text": "09-29 11:25:53.242 23464 23464 E C00f00/FlutterLoader: java.util.concurrent.ExecutionException: java.lang.UnsatisfiedLinkError: path is outside app domain: /data/app/el2/100/base/com.adilhanney.saber/app_lib/libflutter.so"
+     }
+    ],
+    "pid": "23464"
+   },
+   "after_fix": {
+    "hilog": "runs/b7final3-20260929T123636/5cd1e3dd00000000000000000923012c/fd-saber/hilog.txt",
+    "pid": "27573",
+    "original_error_count": 1,
+    "next_stage": [
+     {
+      "line": 24570,
+      "text": "09-29 12:41:27.432 27573 27573 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.RuntimeException: Unable to start activity ComponentInfo{com.adilhanney.saber/com.adilhanney.saber.MainActivity}: java.lang.RuntimeException: java.util.concurrent.ExecutionException: java.lang.UnsatisfiedLinkError: path is outside app domain: /data/app/el2/100/base/com.adilhanney.saber/app_lib/libflutter.so"
+     }
+    ]
+   },
+   "class": "flutter-native-load",
+   "blocked_reason": "FlutterJNI.loadLibrary is ReLinker-based (dexdump: \"Loading the library normally failed: %s\" logged through an R8-emptied lambda), so the first System.loadLibrary(\"flutter\") failure is never logged; libflutter.so is never mapped (no MUSL-LDSO line). The fallback System.load(<dataDir>/app_lib/libflutter.so) is refused by app_native_loader.c path_is_in_app_domain, which compares only app_search_paths (domain->app_paths, line 337) while AOSP also permits the class-loader permitted path (dataDir); Westlake v3-hbc OpenNativeLibrary is a plain dlopen(path, RTLD_NOW) with neither the domain check nor the per-thread READY gate. libapp_native_loader.so is a route-A provider dependency (verify_route_a_generation.py:693), outside B7.",
+   "fix_site": "bms/src/adapter/framework/app-native-loader/src/app_native_loader.c (route-A generation)",
+   "wall": "blocked",
+   "lit": false
+  },
+  "fd-catima": {
+   "package": "me.hackerchick.catima",
+   "first_cause": {
+    "file": "runs/repro-20260929T112407-five/fd-catima/hilog.txt",
+    "sha256": "67ef65d943ad433bacf2ab7651f7982edafbe990385a4b0efdd254e481e972ea",
+    "lines": [
+     {
+      "line": 34071,
+      "text": "09-29 11:26:35.401 24688 24688 I C00f00/AppSpawnXJava: [stderr] Caused by: java.lang.NullPointerException: Attempt to invoke virtual method 'boolean android.os.UserManager.isUserUnlockingOrUnlocked(int)' on a null object reference"
+     }
+    ],
+    "pid": "24688"
+   },
+   "after_fix": {
+    "hilog": "runs/b7final3-20260929T123636/5cd1e3dd00000000000000000923012c/fd-catima/hilog.txt",
+    "pid": "22048",
+    "original_error_count": 0,
+    "next_stage": [
+     {
+      "line": 30716,
+      "text": "09-29 12:38:22.480 22048 22048 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.RuntimeException: Unable to start activity ComponentInfo{me.hackerchick.catima/protect.card_locker.MainActivity}: android.view.InflateException: Binary XML file line #18 in me.hackerchick.catima:layout/main_activity: Binary XML file line #18 in me.hackerchick.catima:layout/main_activity: Error inflating class com.google.android.material.floatingactionbutton.FloatingActionButton"
+     }
+    ],
+    "positive_marker": [
+     {
+      "line": 26968,
+      "text": "09-29 12:38:21.726 22048 22048 I C00f00/AppSpawnXJava: [stderr] [ZZ-USER] isUserUnlockingOrUnlocked user=200 result=true"
+     }
+    ]
+   },
+   "wall": "crossed",
+   "lit": false
+  },
+  "fd-fennec_fdroid": {
+   "package": "org.mozilla.fennec_fdroid",
+   "first_cause": {
+    "file": "runs/repro-20260929T112407-five/fd-fennec_fdroid/hilog.txt",
+    "sha256": "a4a52b6ca2996682dccf643e637a2f942c508230b2787db8116e4a8ad77bd9cc",
+    "lines": [
+     {
+      "line": 27683,
+      "text": "09-29 11:27:23.850 26136 26136 I C00f00/AppSpawnXJava: [stderr] Caused by: java.lang.NullPointerException: Attempt to invoke virtual method 'boolean android.os.UserManager.isUserUnlockingOrUnlocked(int)' on a null object reference"
+     }
+    ],
+    "pid": "26136"
+   },
+   "after_fix": {
+    "hilog": "runs/b7final3-20260929T123636/5cd1e3dd00000000000000000923012c/fd-fennec_fdroid/hilog.txt",
+    "pid": "23501",
+    "original_error_count": 0,
+    "next_stage": [
+     {
+      "line": 23494,
+      "text": "09-29 12:39:13.024 23501 23501 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.RuntimeException: Unable to instantiate activity ComponentInfo{org.mozilla.fennec_fdroid/org.mozilla.fennec_fdroid.App}: java.lang.ClassNotFoundException: Didn't find class \"org.mozilla.fennec_fdroid.App\" on path: DexPathList[[zip file \"/data/app/el1/bundle/public/org.mozilla.fennec_fdroid/android/base.apk\"],nativeLibraryDirectories=[/data/app/el1/bundle/public/org.mozilla.fennec_fdroid/android/lib/arm64-v8a, /data/app/el1/bundle/public/org.mozilla.fennec_fdroid/android/base.apk!"
+     }
+    ],
+    "positive_marker": [
+     {
+      "line": 23394,
+      "text": "09-29 12:39:12.997 23501 23501 I C00f00/AppSpawnXJava: [stderr] [ZZ-USER] isUserUnlockingOrUnlocked user=200 result=true"
+     }
+    ]
+   },
+   "wall": "crossed",
+   "lit": false
+  }
+ },
+ "fixes": {
+  "runtime_jar_overlay": {
+   "baseline_sha256": "06141543bec26c5036931d8d2d71b0efaa45d5ffd73434557d165cd42672be0d",
+   "output_sha256": "5aff7a2b5137e1a696b535f3d99503a998007f4b801e2a653c865d3df275414c",
+   "changed_existing_classes": [
+    "adapter/activity/AppSchedulerBridge.smali"
+   ],
+   "added_classes": [
+    "adapter/activity/B7BindFixes.smali",
+    "adapter/activity/BinaryAndroidManifestOrientation$StringPool.smali",
+    "adapter/activity/BinaryAndroidManifestOrientation.smali",
+    "adapter/activity/LaunchActivityAliasProjection.smali",
+    "adapter/activity/UserManagerProjectionProxy$UserBinder.smali",
+    "adapter/activity/UserManagerProjectionProxy.smali"
+   ],
+   "generations": {
+    "r2 a92f8135c70c1a76b462c9a1e71ec8443aaed111c73d812e82f13bea331fc1eb": "B7 only; used by fix1, b7final*, b7ww",
+    "r3 5aff7a2b5137e1a696b535f3d99503a998007f4b801e2a653c865d3df275414c": "B5 alias (verbatim) + B7; used by b7r3, b7ww2 (boot 64a531ef)"
+   },
+   "deploy": "deploy.py apply (bind mount over /system/android/framework/oh-adapter-runtime.jar); rollback: deploy.py rollback",
+   "receipts": [
+    "runs/deploy-20260929T114542/receipt.json",
+    "runs/deploy-20260929T120929/receipt.json",
+    "runs/deploy-20260929T122131/receipt.json",
+    "runs/deploy-20260929T122345/receipt.json",
+    "runs/deploy-20260929T125753/receipt.json"
+   ]
+  },
+  "installer": {
+   "baseline_sha256": "675536e8a43ac747cbffc0e130d5681ba7bcf2bd3fd305f3d0d357ca797a793d",
+   "head_rebuild_sha256": "675536e8a43ac747cbffc0e130d5681ba7bcf2bd3fd305f3d0d357ca797a793d",
+   "output_sha256": "1ebf78ab2bbe4573dfbe146b9f99e6b06e3a581fb9d16721c2272bc18e6cdfa5",
+   "raw_sha256": "5520f69e4fd06c8f275ee6dc58096009f1c7e988c9a62d6d7e6b9df5b2f72845",
+   "artifacts": "VM /home/zhaoyue/a2hlab/build-runs/20260929-oh6.1.0.31-b7/installer/",
+   "build_log": "installer-build-20260929T1156.log",
+   "host_test": "evidence/installer/host-test-run.log",
+   "receipt": "runs/installer-apply-20260929T120416/receipt.json",
+   "desktop_after_foundation_restart": {
+    "path": "evidence/screens/installer-black-after-foundation.jpeg",
+    "sha256": "f6fa2c03a3734c77efb5e8c9cb32e0a1597136ff84458deeb36e026570e94ab6",
+    "source": "runs/installer-apply-20260929T120416/desktop.jpeg"
+   },
+   "desktop_after_reboot": {
+    "path": "evidence/screens/installer-desktop-after-reboot.jpeg",
+    "sha256": "0a774726d3d5f2db3f3517f4a863c534bc6d984b3442bbdc18b54a3319df3de6",
+    "source": "runs/installer-apply-20260929T120416/desktop-after-reboot.jpeg"
+   },
+   "rollback": "deploy_installer.py rollback (backups /data/local/tmp/b7-installer-backup/{0,1}.so)"
+  }
+ },
+ "no_regression": {
+  "helloworld": {
+   "with_both_fixes": {
+    "path": "evidence/screens/helloworld-both-fixes-t20.jpeg",
+    "sha256": "b8ce2408dca1f94bdffd10a1c00d57d7808a8b6b0cc4d18f633c9517ad5ddbc5",
+    "source": "runs/b7final-20260929T122347/5cd1e3dd00000000000000000923012c/helloworld/final.jpeg"
+   },
+   "installer_only_no_jar_overlay": {
+    "path": "evidence/screens/helloworld-installer-only-t20.jpeg",
+    "sha256": "6502e4ce71b1b6371a20caf59b5493777e9a265b8c480eab9f4c246ad04a7d07",
+    "source": "runs/b7hw-legacy-20260929T122237/5cd1e3dd00000000000000000923012c/helloworld/final.jpeg"
+   },
+   "record": "runs/b7final-20260929T122347/5cd1e3dd00000000000000000923012c/helloworld/record.json",
+   "observed_pids": [
+    29019
+   ],
+   "visual_verdict": "pending_review"
+  },
+  "zigzag": {
+   "launched": false,
+   "reason": "5cd runs the pr03-touch generation (runtime JAR 06141543); ZigZag needs its own candidate generation (JAR 9161b507 etc.), and reproduce-zigzag-apk quick would redeploy the generation. The B7 JAR overlay is built on 06141543 and cannot be live there; the installer change only touches icon classification after both icon readers fail. reproduce-zigzag-apk check = PASS (static). Outer loop to decide whether to switch 5cd."
+  }
+ },
+ "white_window_followup": {
+  "ooniprobe": {
+   "b7_marker": [],
+   "bind_failure": [
+    {
+     "line": 17646,
+     "text": "09-29 12:46:02.271 32195 32195 I C00f00/AppSpawnXJava: [stderr] Caused by: android.content.pm.PackageManager$NameNotFoundException: ComponentInfo{org.openobservatory.ooniprobe/androidx.startup.InitializationProvider}"
+    }
+   ],
+   "run": "runs/b7ww-20260929T124542/5cd1e3dd00000000000000000923012c",
+   "namespace_error_count": 0,
+   "observed_pids": [
+    32195
+   ]
+  },
+  "fd-etar": {
+   "b7_marker": [
+    {
+     "line": 13839,
+     "text": "09-29 12:46:41.534  1675  1675 I C00f00/AppSpawnXJava: [stderr] [B7] nativeLibraryDir /system/app/ws.xsoh.etar/lib/armeabi-v7a does not exist; using /data/app/el1/bundle/public/ws.xsoh.etar/android"
+    }
+   ],
+   "bind_failure": [
+    {
+     "line": 14273,
+     "text": "09-29 12:46:41.855  1675  1675 I C00f00/AppSpawnXJava: [stderr] Caused by: android.content.pm.PackageManager$NameNotFoundException: ComponentInfo{ws.xsoh.etar/androidx.startup.InitializationProvider}"
+    }
+   ],
+   "run": "runs/b7ww-20260929T124542/5cd1e3dd00000000000000000923012c",
+   "namespace_error_count": 0,
+   "observed_pids": [
+    1675
+   ]
+  },
+  "fd-fluffychat": {
+   "b7_marker": [],
+   "bind_failure": [
+    {
+     "line": 25976,
+     "text": "09-29 12:47:28.575  3319  3319 I C00f00/AppSpawnXJava: [stderr] Caused by: android.content.pm.PackageManager$NameNotFoundException: ComponentInfo{chat.fluffy.fluffychat/androidx.startup.InitializationProvider}"
+    }
+   ],
+   "run": "runs/b7ww-20260929T124542/5cd1e3dd00000000000000000923012c",
+   "namespace_error_count": 0,
+   "observed_pids": [
+    3319
+   ]
+  },
+  "burgerking": {
+   "b7_marker": [
+    {
+     "line": 20322,
+     "text": "09-29 13:03:12.031 14134 14134 I C00f00/AppSpawnXJava: [stderr] [B7] nativeLibraryDir /system/app/com.emn8.mobilem8.nativeapp.bk/lib/armeabi-v7a does not exist; using /data/app/el1/bundle/public/com.emn8.mobilem8.nativeapp.bk/android"
+    }
+   ],
+   "bind_failure": [
+    {
+     "line": 20610,
+     "text": "09-29 13:03:12.352 14134 14134 I C00f00/AppSpawnXJava: [stderr] Caused by: android.content.pm.PackageManager$NameNotFoundException: ComponentInfo{com.emn8.mobilem8.nativeapp.bk/androidx.startup.InitializationProvider}"
+    }
+   ],
+   "run": "runs/b7ww2-20260929T130032/5cd1e3dd00000000000000000923012c",
+   "namespace_error_count": 0,
+   "observed_pids": [
+    14134
+   ]
+  },
+  "fd-immich": {
+   "b7_marker": [],
+   "bind_failure": [
+    {
+     "line": 20928,
+     "text": "09-29 13:00:57.809 10062 10062 I C00f00/AppSpawnXJava: [stderr] Caused by: android.content.pm.PackageManager$NameNotFoundException: ComponentInfo{app.alextran.immich/androidx.startup.InitializationProvider}"
+    }
+   ],
+   "run": "runs/b7ww2-20260929T130032/5cd1e3dd00000000000000000923012c",
+   "namespace_error_count": 0,
+   "observed_pids": [
+    10062
+   ]
+  },
+  "fd-kitchenowl": {
+   "b7_marker": [],
+   "bind_failure": [
+    {
+     "line": 13908,
+     "text": "09-29 13:01:39.785 11367 11367 I C00f00/AppSpawnXJava: [stderr] Caused by: android.content.pm.PackageManager$NameNotFoundException: ComponentInfo{com.tombursch.kitchenowl/androidx.startup.InitializationProvider}"
+    }
+   ],
+   "run": "runs/b7ww2-20260929T130032/5cd1e3dd00000000000000000923012c",
+   "namespace_error_count": 0,
+   "observed_pids": [
+    11367
+   ]
+  },
+  "fd-minetest": {
+   "b7_marker": [],
+   "bind_failure": [
+    {
+     "line": 27073,
+     "text": "09-29 13:02:27.390 12781 12781 I C00f00/AppSpawnXJava: [stderr] Caused by: java.lang.IllegalArgumentException: Couldn't find meta-data for provider with authority net.minetest.minetest.fileprovider"
+    }
+   ],
+   "run": "runs/b7ww2-20260929T130032/5cd1e3dd00000000000000000923012c",
+   "namespace_error_count": 0,
+   "observed_pids": []
+  },
+  "note": "b7ww ran 3 keys before all three boards dropped from hdc (STOP assigned serial detached); the other 4 ran in b7ww2 after the boards returned (boot 64a531ef, B5+B7 overlay r3). Namespace class (fd-etar, burgerking) crossed; every app then stops at the androidx.startup InitializationProvider getProviderInfo NameNotFound (or minetest FileProvider meta-data) = #65 items 1-3."
+ },
+ "bridge_84695d62_experiment": {
+  "run": "runs/b7bridge84-20260929T130450/5cd1e3dd00000000000000000923012c/helloworld",
+  "lines": [
+   {
+    "line": 12533,
+    "text": "09-29 13:05:05.955 16517 16517 E C00f00/AppSpawnX: exact adapter bridge admission failed before runtime load"
+   },
+   {
+    "line": 12535,
+    "text": "09-29 13:05:05.955 16517 16517 I C02c11/APPSPAWN: WLCGATE:LSP:FAIL_PROVIDER"
+   },
+   {
+    "line": 12542,
+    "text": "09-29 13:05:05.965  6306  6306 W C02c11/APPSPAWN: [appspawn_service.c:118]com.example.helloworld with pid 16517 exit with code:123"
+   }
+  ],
+  "conclusion": "provider 6787ea7d pins bridge 7db99e1b and runtime 9ccf64f8; bridge 84695d62 pairs with provider 80c9aee0 (ZigZag candidate). Bind mount rolled back."
+ },
+ "lit_candidates": []
+}

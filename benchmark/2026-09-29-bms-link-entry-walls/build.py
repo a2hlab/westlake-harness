@@ -26,7 +26,10 @@ def run(args):
 classes = BUILD / 'classes'; classes.mkdir()
 dex = BUILD / 'helper-dex'; dex.mkdir()
 src = ROOT / 'bms/src/adapter/framework/activity/java'
-helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java']
+helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java',
+               # B5 alias fix, verbatim sources (alias-entry/build.py): 5cd never carried the
+               # B5 JAR (built on the ZigZag-generation 9161b507), so it rides on this overlay.
+               src / 'LaunchActivityAliasProjection.java', src / 'BinaryAndroidManifestOrientation.java']
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 run(['java', '-cp', INPUT / 'd8.jar', 'com.android.tools.r8.D8', '--release', '--min-api', '22',
      '--lib', INPUT / 'android.jar', '--output', dex, *classes.rglob('*.class')])
@@ -57,6 +60,12 @@ call = ('invoke-virtual {v8, v0}, Ljava/io/PrintStream;->println(Ljava/lang/Stri
         '    invoke-static {v10}, Ladapter/activity/B7BindFixes;->apply(Landroid/content/pm/ApplicationInfo;)V\n\n'
         '    .line 201\n')
 text = text[:start] + body.replace(anchor, call) + text[end:]
+# B5: exactly one call after buildActivityInfoFromAbility, same pattern as alias-entry/build.py.
+pattern = r'(?m)(^    invoke-static[^\n]*->buildActivityInfoFromAbility\([^\n]+\n\s*\n?    move-result-object ([vp]\d+))'
+hits = list(re.finditer(pattern, text)); assert len(hits) == 1, len(hits)
+h = hits[0]
+text = (text[:h.end()] + '\n\n    invoke-static {' + h[2] +
+        '}, Ladapter/activity/LaunchActivityAliasProjection;->apply(Landroid/content/pm/ActivityInfo;)V' + text[h.end():])
 scheduler.write_text(text)
 
 run(['java', '-cp', cp, 'org.jf.smali.Main', 'assemble', smali, '-o', BUILD / 'classes.dex'])
@@ -67,7 +76,9 @@ norm = lambda b: re.sub(rb'(?m)^(\.field [^\n]*:Z) = false$', rb'\1', b)
 changed = [n for n, d in original.items()
            if not (post / n).exists() or norm((post / n).read_bytes()) != norm(d)]
 assert changed == ['adapter/activity/AppSchedulerBridge.smali'], changed
-assert (post / 'adapter/activity/AppSchedulerBridge.smali').read_text().count('B7BindFixes;->apply(') == 1
+post_scheduler = (post / 'adapter/activity/AppSchedulerBridge.smali').read_text()
+assert post_scheduler.count('B7BindFixes;->apply(') == 1
+assert post_scheduler.count('LaunchActivityAliasProjection;->apply(') == 1
 output = BUILD / 'oh-adapter-runtime.jar'
 with zipfile.ZipFile(INPUT / 'baseline.jar') as source, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as dest:
     for item in source.infolist():

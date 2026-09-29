@@ -76,3 +76,24 @@ fn b6_static_diff() {
         .expect("run offline B6 ELF evidence and normalization checks");
     assert!(status.success(), "B6 static comparison evidence failed");
 }
+
+#[test]
+fn b7_first_cause_recorded() {
+    run(&["benchmark/2026-09-29-bms-link-entry-walls/verify.py", "first_cause"]);
+}
+#[test]
+fn b7_wall_crossed() {
+    run(&["benchmark/2026-09-29-bms-link-entry-walls/verify.py", "wall_crossed"]);
+}
+#[test]
+fn b7_lit_by_outer_review() {
+    run(&["benchmark/2026-09-29-bms-link-entry-walls/verify.py", "lit"]);
+}
+#[test]
+fn b7_no_regression() {
+    run(&["benchmark/2026-09-29-bms-link-entry-walls/verify.py", "no_regression"]);
+}
+#[test]
+fn b7_blocked_reason_recorded() {
+    run(&["benchmark/2026-09-29-bms-link-entry-walls/verify.py", "blocked"]);
+}
