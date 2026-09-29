@@ -367,3 +367,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - B6/#44 real-work入口+补桥ART的4af23ed3代已实测CHILD_A02，pid5337实映射新host/child/ART/sigchain；随后HelloWorld因UserBinder.onTransact boolean vs Binder Object的LinkageError exit1（更早HiLogOutputStream void vs Object），根因未定位，不能称NPE已修。两轮36挂载全回滚，B5两图复验正常，见 latest-source-generation/task44/。
 
 - B6/#45：无UND消费者不能判inline导出仅诊断；R155 GetResolvedType的PRIMCLASS-GUARD确会对单字符descriptor+非primitive缓存返回null。按反汇编补回并全量重编ART后HelloWorld仍Z/V→Object；无镜像实进InitWithoutImage却因String类不匹配SIGABRT，不能称不支持无镜像或NPE已修。两轮整代回滚+B5双图复验，见 latest-source-generation/task45/。
+
+- B6/#47：R155 ART59e1已导出GetFaultMessageForAbortLogging，原样C桥独立成库可严格链接（同板libc++9466、std::__h ABI1），26件provider原字节保留；TGR双路径须同inode，Android c401与route674混用会exit203。统一后身份门与原ART启动通过、无Z/V LinkageError，但HelloWorld因app namespace找不到libbionic_compat exit1；两轮已整代回滚，Wikipedia/NPE仍unverified，见 latest-source-generation/task47/。

@@ -96,3 +96,5 @@
 - **B6 整代切换补充(2026-09-28 #35)**：stop/start appspawn-x 后核 AppSpawnX socket=`660:0:6005:u:object_r:appspawn_socket:s0`(同已验复现器)，否则AMS EACCES；thread-guard registry须同时核 `/system/lib64/` 与 `/system/android/lib64/` 的实际映射inode，漏后者会external-root校验失败(exit203)。Mac非大小写敏感卷会合并OH sysroot netfilter大小写头文件，rsync成功≠字节无损；记录16项偏差，后续使用这些头文件应在大小写敏感存储拷贝。
 
 - B6整代换源码时：overlay real-work会带回历史r45_adapter_identity.env，必须在生成ROUTE_A_INPUTS/manifest之前把bridge/runtime SHA与Build-ID逐项对齐实际native roots；只过NEEDED门仍会在VM创建后被exact adapter bridge admission拒绝。#44首轮已复现并整代回滚；构建wrapper新增实际钉值预检。
+
+- B6 retained-provider部署：先对比 `/system/android/lib64/libwestlake_thread_guard_registry.so`、`/system/lib64/libwestlake_thread_guard_registry.so` 与route清单的SHA、stat inode及parent maps；现役两别名可能异代。候选需让两路径bind到同一份清单原件，回滚两个挂载；只保留route原字节而不对齐parent实际预载会触发EXTERNAL_ROOT/exit203。

@@ -30,7 +30,17 @@ elif which == 'negative':
     # candidate's successful admission must not invalidate those negatives.
     assert not accepts(None, d['candidate_identity'], d['build']['whole_generation_built'])
 elif which == 'symbols':
-    assert d['new_art_built'] and d['symbol_coverage_against_new_art'], 'No new ART; old ART coverage is not new-generation coverage'
+    # Task 47 deliberately preserves R155 ART. Check coverage against the ART
+    # actually selected for this generation instead of requiring an ART rebuild.
+    coverage = json.loads((r / d['symbol_coverage_evidence']).read_text())
+    required = set(coverage['required'])
+    assert coverage['passed'] and required and not coverage['missing']
+    assert coverage['art_sha256'] == d['candidate_identity']['libart']
+    assert coverage['sigchain_sha256'] == d['candidate_identity']['libsigchain']
+    for symbol in required:
+        negative = coverage['negative_symbol_manifests'][symbol]
+        assert negative['passed'] is False and negative['deploy_allowed'] is False
+        assert symbol in negative['missing']
 elif which == 'identity':
     assert d['identity_gate_passed'] and accepts(d['child_proof'], d['candidate_identity'], d['build']['whole_generation_built']), 'No admitted whole generation or child mapping proof'
 elif which == 'wikipedia':
