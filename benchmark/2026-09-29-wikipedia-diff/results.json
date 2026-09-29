@@ -1,0 +1,43 @@
+{
+ "task": "#76 Westlake vs route-A Wikipedia first divergence (61b)",
+ "westlake": {
+  "method": "reuse staged a2hlab-source-0033a17c runtime; run.sh rewritten (backup .orig); host_spawn on real socket A2HSource0033a17c88394b7da128",
+  "spawn": "HOST_SPAWN result=0 pid=6592 uid=20010053",
+  "alive": "persistent during capture (appspawn-x)",
+  "hilog": "board/p76-westlake/wl-hilog.txt (94k lines, 16M buffer, privacy off)",
+  "screenshot": "wl-final.jpeg 136290B YAVG=148.18 (ffmpeg signalstats)",
+  "chain": [
+   "[B32-J] J_direct_launch_armed pkg=org.wikipedia (10:56:10.963)",
+   "OH_PMAdapter [BRIDGED] getProviderInfo: ComponentInfo{org.wikipedia/androidx.startup.InitializationProvider} (10:56:11.313)",
+   "coil3 NPE stack on BACKGROUND thread 6618, W/E level only (10:56:11.621-.625)",
+   "org.wikipedia.WikipediaApp.onCreate(:538) NPE on main thread — PRINTED AND TOLERATED (BackgroundTolerantUncaughtHandler) (10:56:11.671)",
+   "nativeOnScheduleLaunchAbility v2 (10:56:11.678) -> LaunchActivity transaction scheduled: org.wikipedia.main.MainActivity (10:56:11.679)",
+   "Intent -> Want: org.wikipedia.onboarding.InitialOnboardingActivity (10:56:11.870)"
+  ]
+ },
+ "routeA": {
+  "method": "master bms_batch.py --reinstall --hilog 20 --shots 5,20 --focus-check (r8b d5000c4e + gen 6cb40cd6)",
+  "facts": "TOTAL keys=1 screenshots_captured=0/2 alive_t5=0 alive_t20=0",
+  "pid": "10604, exit with code:1 at 17:08:58.331 (~2.3s)",
+  "chain": [
+   "[OH_AMAdapter] attachApplication ENTRY pid=10604 (17:08:56.633)",
+   "[B43-BIND] providers populated: 3 (17:08:56.703)",
+   "[B47-SLA] ScheduleLaunchAbility + MainActivity/InitialOnboardingActivity class-linking reached (17:08:56.638-57.487)",
+   "[B43-BIND] ensureBindApplication FAILED: java.lang.reflect.InvocationTargetException at AppSchedulerBridge.java:311 (17:08:57.457)",
+   "Caused by: RuntimeException Unable to get provider androidx.startup.InitializationProvider",
+   "Caused by: coil3.network.HttpException: java.lang.NullPointerException: Attempt to invoke ... getClass() on a null object reference",
+   "at androidx.startup.AppInitializer.doInitialize(:110) <- InitializationProvider.onCreate <- installContentProviders <- handleBindApplication",
+   "AppMS kill reason=OnRemoteDied (17:08:58.327) -> exit with code:1 (17:08:58.331)"
+  ]
+ },
+ "first_divergence": "handling of the SAME coil3/`getClass() on null` NPE during provider install: Westlake tolerates it (BackgroundTolerantUncaughtHandler, NPE also lands on a background coroutine there) and bind completes; route-A lets it propagate through InitializationProvider -> installContentProviders -> handleBindApplication -> ensureBindApplication(:311) and dies before WikipediaApp.onCreate.",
+ "routeA_missing": [
+  "tolerant uncaught handler + bind-path try/catch (Westlake AppSpawnXInit$BackgroundTolerantUncaughtHandler; route-A AppSchedulerBridge.ensureBindApplication Java:311 region)",
+  "own-package getProviderInfo bridging (Westlake WL/packagemanager/PackageManagerAdapter.smali:3408 via SourcePackageRegistry/ProviderInfoResolver; B8 INVENTORY item 1)"
+ ],
+ "limits": [
+  "different runtime generations (09-27 staged Westlake vs 6cb+r8b); timestamps in different domains; compared by event order only",
+  "the NULL OBJECT behind getClass() NPE is not identified in either log; tolerance fix may expose a next wall",
+  "Westlake side did not reinstall the APK (reused install); route-A side used --reinstall"
+ ]
+}
