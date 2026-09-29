@@ -74,6 +74,8 @@ INC=(
     "$PACKAGE_DIR/jni/apk_manifest_parser.cpp" \
     "$PACKAGE_DIR/jni/axml_parser.cpp" \
     "$PACKAGE_DIR/jni/icon_normalize.cpp" \
+    "$PACKAGE_DIR/jni/adaptive_icon.cpp" \
+    "$PACKAGE_DIR/jni/directory_ex_shim.cpp" \
     "$PM_ADAPTER/third_party/lodepng/lodepng.cpp" \
     "$SCRIPT_DIR/test_resources_hap.cpp" \
     "$OUT/unzip.o" "$OUT/zip.o" "$OUT/ioapi.o" \
@@ -82,7 +84,12 @@ INC=(
 python3 "$SCRIPT_DIR/make_resources_hap_fixtures.py" "$G1_APK" "$OUT/fixtures"
 
 LOG="$OUT/run.log"
-if ! "$OUT/test_resources_hap" "$OUT/fixtures" "$OUT/scratch" 2>"$LOG"; then
+# Optional B7 P02 input: RESOURCES_HAP_XML_ONLY_APK=<apk whose icon is vector/adaptive only>.
+XML_ONLY_ARGS=()
+if [[ -n "${RESOURCES_HAP_XML_ONLY_APK:-}" ]]; then
+    XML_ONLY_ARGS=("$RESOURCES_HAP_XML_ONLY_APK")
+fi
+if ! "$OUT/test_resources_hap" "$OUT/fixtures" "$OUT/scratch" "${XML_ONLY_ARGS[@]}" 2>"$LOG"; then
     echo "ERROR: test binary failed" >&2
     cat "$LOG" >&2
     exit 1
@@ -90,8 +97,11 @@ fi
 
 # Typed alarm tokens must be loud and present exactly once for the allowed
 # icon-less path, and the fail-closed refusal must fire for both tamper cases.
-test "$(grep -c 'ICONLESS_APK_TEMPLATE_PLACEHOLDER' "$LOG")" -eq 1
+test "$(grep -c 'ICONLESS_APK_TEMPLATE_PLACEHOLDER' "$LOG")" -eq $((1 + ${#XML_ONLY_ARGS[@]}))
 grep -Eq 'ICONLESS_APK_TEMPLATE_PLACEHOLDER.*class=(NOT_DECLARED|DECLARED_MISSING_ALL_BUCKETS)' "$LOG"
+if [[ ${#XML_ONLY_ARGS[@]} -eq 1 ]]; then
+    grep -q 'ICONLESS_APK_TEMPLATE_PLACEHOLDER.*class=DECLARED_XML_ONLY' "$LOG"
+fi
 test "$(grep -c 'refusing template placeholder' "$LOG")" -eq 2
 
 echo "DEVELOPER_TEST_READY_FOR_HANDOFF module=resources_hap_iconless formal_verdict=NOT_ISSUED evidence=$OUT"
