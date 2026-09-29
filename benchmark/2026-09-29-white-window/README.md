@@ -4,6 +4,8 @@ The previous `alive at 15 s` category hid two independent failure tracks. **9/9 
 
 **Rule established:** inspect both Android application binding and the OH AbilityStage/ability dispatch handshake. Search delayed service errors across the next capture, joining exact PID + UID + package. A per-app directory contains whole-board hilog; its directory name is not process attribution. The successful baseline delivers `ScheduleLaunchAbility` at line 3988 while bind completes at line 4307: these tracks overlap and must not be forced into a serial ladder.
 
+Item 62 follow-up: [AbilityStage native handshake, B5 bytecode and generation mismatch](ABILITY-STAGE.md).
+
 ## Input identity and scope
 
 - Analysis base: `456e56ca`; no device execution, VM writes, deployment, commit or push.
