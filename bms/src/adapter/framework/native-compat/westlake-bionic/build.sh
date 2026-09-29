@@ -29,6 +29,7 @@ REQUIRED=(
   libstdcxx_shim.c
   include/bionic/malloc.h
   include/sys/system_properties.h
+  libglesv2_shim.c
 )
 for f in "${REQUIRED[@]}"; do
   [ -f "$HERE/$f" ] || { echo "MISSING required source: $f"; exit 1; }
@@ -80,6 +81,15 @@ echo "built companion shims"
   -Wl,-soname,libOpenSLES.so \
   -o "$OUT/libOpenSLES.so" "$HERE/opensles_android_compat.c" -ldl
 echo "built #91 shims: libstdc++.so libOpenSLES.so"
+
+# libGLESv2.so: Android soname shim for app DSOs that DT_NEEDED it
+# (fd-organicmaps liborganicmaps.so; the board only ships libGLESv3.so and
+# that one is ndk-namespace-gated). Empty DSO satisfies the soname; upgrade
+# to a forwarding shim if apps call real GLES symbols through it.
+"$CC" -shared -fPIC -O2 -Wall --target=aarch64-linux-ohos --sysroot="$OHOS_SYSROOT" \
+  -Wl,-soname,libGLESv2.so \
+  -o "$OUT/libGLESv2.so" "$HERE/libglesv2_shim.c"
+echo "built libGLESv2.so soname shim"
 
 # android_view_VelocityTracker.cpp — registration OBJECT for the runtime jar's
 # native library to link in (not a standalone .so; it needs AndroidRuntime/JNI env)
