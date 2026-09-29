@@ -1,0 +1,112 @@
+{
+  "task": 77,
+  "mode": "offline",
+  "status": "candidate-patches-ready",
+  "inputs": [
+    {
+      "key": "fd-seal",
+      "path": "/Users/zhaoyue/orca/workspaces/vm-copies/apks-77/fd-seal/fd-seal.apk",
+      "sha256": "7070a3d4f079046912b4b8dde4edc8d1ef6eade3c9c98b02bfcaba3669c11d98",
+      "size": 43057559
+    },
+    {
+      "key": "x",
+      "path": "/Users/zhaoyue/orca/workspaces/vm-copies/apks-77/x/x.apk",
+      "sha256": "5e9c8e4bbb525a2140292f8f96ab6cc0af403dfcd07667b8678aebb44fb52354",
+      "size": 196848001
+    },
+    {
+      "key": "toutiao",
+      "path": "/Users/zhaoyue/orca/workspaces/vm-copies/apks-77/toutiao/toutiao.apk",
+      "sha256": "a1112a0c941f865847c2fab9138cf815735268fbfcd41d697412fb80992c7395",
+      "size": 138641340
+    }
+  ],
+  "causes": [
+    {
+      "apps": [
+        "x",
+        "toutiao"
+      ],
+      "code": -2005,
+      "predicate": "jsonText.size()+1 > outJsonBufSize",
+      "old_capacity": 65536,
+      "candidate_capacity": 1048576,
+      "json_bytes": {
+        "x": 99625,
+        "toutiao": 242663
+      },
+      "classification": "recorded-cause-verified",
+      "evidence": "evidence/source-excerpts.txt:572",
+      "patch": "patches/0001-reuse-manifest-1mib.patch"
+    },
+    {
+      "apps": [
+        "fd-seal"
+      ],
+      "code": 8519936,
+      "predicate": "selected .zip.so entries fail ELF magic",
+      "payloads": 3,
+      "classification": "byte-rejection-reproduced; consistent with recorded generic failure",
+      "evidence": "evidence/seal-payloads.json:18",
+      "patch": "patches/0002-native-exact-payloads.patch"
+    },
+    {
+      "apps": [
+        "toutiao"
+      ],
+      "code": 8519936,
+      "predicate": "arm64 directory libcvt.so is ELF32 EM_ARM",
+      "classification": "predicted next failure, not observed board result",
+      "evidence": "evidence/toutiao-payload.json:2",
+      "patch": "patches/0002-native-exact-payloads.patch"
+    }
+  ],
+  "scan": {
+    "unique_apk_files": 58,
+    "aliases_deduplicated": 15,
+    "selected_native_entries": 377,
+    "strict_header_reject_apps": [
+      "fd-seal",
+      "toutiao"
+    ],
+    "candidate_header_reject_apps": [],
+    "known_manifest_overflow_apps": [
+      "x",
+      "toutiao"
+    ],
+    "manifest_size_unknown": 55
+  },
+  "exceptions": {
+    "file": "native-data-exceptions.json",
+    "count": 4,
+    "approved": 0,
+    "status": "draft"
+  },
+  "validation": {
+    "contract_selectors_passed": 3,
+    "lint_score": 1.0,
+    "native_cases": 40,
+    "capacity_cases": 12,
+    "patch_apply": "passed-in-temporary-files",
+    "full_oh_build": "unverified",
+    "onboard": "not-run",
+    "screenshots_captured": "unknown",
+    "alive_processes": "unknown",
+    "boundary_only": {
+      "result": "non-passing: 3 skipped scenarios; test layer not selected",
+      "evidence": "evidence/boundary.json"
+    }
+  },
+  "component_targets": [
+    "libbms.z.so",
+    "libinstalls.z.so"
+  ],
+  "r2": {
+    "bytes_logs_host_predicates": "verified",
+    "post_patch_install": "predicted",
+    "arm32_loadability": "not enabled",
+    "first_screen": "unknown"
+  },
+  "commit": "outer-lane-to-commit"
+}

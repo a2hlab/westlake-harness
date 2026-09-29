@@ -147,3 +147,18 @@ fn b10_startup_reachability() {
 fn b10_typeface_exception_is_candidate() {
     run(&["benchmark/2026-09-29-static-wall-prediction/test_static.py", "StaticTests.test_typeface_exception_is_candidate"]);
 }
+
+#[test]
+fn b77_pinned_inputs_and_causes() {
+    run(&["benchmark/2026-09-29-install-walls/test_walls.py", "Walls.test_inputs"]);
+}
+
+#[test]
+fn b77_candidate_patch_regressions() {
+    run(&["benchmark/2026-09-29-install-walls/test_walls.py", "Walls.test_candidate"]);
+}
+
+#[test]
+fn b77_impact_and_provenance() {
+    run(&["benchmark/2026-09-29-install-walls/test_walls.py", "Walls.test_impact"]);
+}

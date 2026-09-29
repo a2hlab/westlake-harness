@@ -369,3 +369,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **2026-09-29 #64 盘点前置规则**：HelloWorld 复现器同时接受 PR03/ZigZag/Boat 多套 profile（`bms/.agents/skills/reproduce-helloworld/scripts/reproduce.sh:180–200`），`check=PASS` 不代表三板同代；磁盘路径哈希须与 maps 的 dev/inode 对上才归为活进程 backing file，B6/B7 过渡态不作 B4 统一快照。采集/判定规则见 `benchmark/2026-09-29-board-parity/`，当前新三板证据仍待外环协调采集。
 
 - **2026-09-29 #64 三板实采纠偏**：14:46 CST 三板158路径=153同/5异，active6cb目录29件全同；5cd JAR实为r8b `d5000c4e`（非口述r7b `c432d987`），installer双件`1ebf78ab`对其他板`675536e8`，余2异在61b未映射的旧74e6目录。`ps NAME=appspawn-x` 可是HelloWorld子进程，须结合stat comm+完整APK maps+PPID；5ea29584/61b14337已据此纠正角色。报告 `benchmark/2026-09-29-board-parity/README.md`；5cd HelloWorld补采待解锁，不能拿磁盘一致代替子进程证据。
+
+- **#77 安装墙离线实锤（2026-09-29，cx-bms）**：B3 x/头条 -2005 是 JSON 99625/242663+NUL 超过调用方 65536（repo/real-work 已有 1MiB，修在 libbms）；Seal ec=8519936 是三个 `.zip.so` 实为 ZIP 数据，头条扩容后还会撞 arm64 目录 ELF32 `libcvt.so`；58份APK/377项扫描与40+12项主机正反例见 `benchmark/2026-09-29-install-walls/README.md`，原样提取4项精确SHA例外仅草案，未上板、不能推称可加载/可上屏。

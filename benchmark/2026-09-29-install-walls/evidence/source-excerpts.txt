@@ -1,0 +1,686 @@
+[producer-bound] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/framework/package-manager/jni/oh_adapter_install_apk_c_entry.cpp:411-418 sha256=c227dac51d63116000dd960b41f9c56e9e0469a2459bd05c208ea053e683d9a4
+411:     const std::string jsonText = json.dump();
+412:     if (static_cast<int>(jsonText.size()) + 1 > outJsonBufSize) {
+413:         ENTRY_LOGE("JSON output (%{public}zu bytes) exceeds buffer (%{public}d bytes)",
+414:             jsonText.size(), outJsonBufSize);
+415:         oh_adapter::ApkVerifierClient::Close(&session);
+416:         return OH_ADAPTER_APK_VERIFY_MANIFEST_FAILED;
+417:     }
+418:     memcpy(outJsonBuf, jsonText.c_str(), jsonText.size() + 1);
+
+[manifest-error-enum] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/framework/package-manager/jni/apk_verified_session_c_api.h:34-45 sha256=4bd868c8bfdb9275cdf3f62b5d9a8d810a8e89de50e1ee72528d01b3ada395e9
+34: } OhAdapterVerifiedApkV1;
+35: 
+36: enum OhAdapterVerifiedApkStatusV1 {
+37:     OH_ADAPTER_APK_VERIFY_OK = 0,
+38:     OH_ADAPTER_APK_VERIFY_BAD_ARGUMENT = -2001,
+39:     OH_ADAPTER_APK_VERIFY_SNAPSHOT_FAILED = -2002,
+40:     OH_ADAPTER_APK_VERIFY_TRANSPORT_FAILED = -2003,
+41:     OH_ADAPTER_APK_VERIFY_RESPONSE_REJECTED = -2004,
+42:     OH_ADAPTER_APK_VERIFY_MANIFEST_FAILED = -2005,
+43:     OH_ADAPTER_APK_VERIFY_OUTPUT_TOO_SMALL = -2006,
+44:     OH_ADAPTER_APK_VERIFY_PREPASS_FAILED = -2007,
+45: };
+
+[old-caller] /Users/zhaoyue/orca/adapter-local/oh-headers/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp:1502-1522 sha256=136af51c1369e19957219a7e26bf41175412f93f2934c29ac46c485825c7ba6a
+1502:             if (fn == nullptr) {
+1503:                 LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest unavailable");
+1504:                 return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
+1505:             }
+1506:             constexpr int kJsonBufSize = 65536;
+1507:             std::vector<char> jsonBuf(kJsonBufSize, 0);
+1508:             for (const auto &p : bundlePaths) {
+1509:                 if (!BundleUtil::CheckFileType(p, ".apk")) continue;
+1510:                 int r = fn(p.c_str(), installParam.userId, jsonBuf.data(), kJsonBufSize);
+1511:                 if (r != 0) {
+1512:                     LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest failed: %{public}d", r);
+1513:                     return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
+1514:                 }
+1515:                 // Parse without exceptions: libbms is intentionally built with
+1516:                 // -fno-exceptions in OH 6.1 LTS. Validate every field consumed by
+1517:                 // value()/get() before conversion so malformed APK metadata fails
+1518:                 // closed instead of reaching nlohmann's throwing paths.
+1519:                 {
+1520:                     auto j = nlohmann::json::parse(std::string(jsonBuf.data()), nullptr, false);
+1521:                     const auto isInteger = [](const auto &value) {
+1522:                         return value.is_number_integer() || value.is_number_unsigned();
+
+[repository-capacity] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/ohos_patches/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp.patch:45-67 sha256=94936b0f3e68604bbd6e29e91a10266fc7a41f297c93539d43b0a2a0618f8792
+45: +            LOG_I(BMS_TAG_INSTALLER, "adapter .apk path detected, dispatching+register v2");
+46: +            void* handle = dlopen("libapk_installer.so", RTLD_NOW | RTLD_GLOBAL);
+47: +            using ApkFn2 = int (*)(const char*, int, char*, int);
+48: +            ApkFn2 fn = handle ? reinterpret_cast<ApkFn2>(
+49: +                dlsym(handle, "oh_adapter_install_apk_with_manifest")) : nullptr;
+50: +            const auto callApkFn2 = [fn](const char* path, int userId, char* manifest, int capacity)
+51: +                __attribute__((no_sanitize("cfi"))) { return fn(path, userId, manifest, capacity); };
+52: +            if (fn == nullptr) {
+53: +                LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest unavailable");
+54: +                return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
+55: +            }
+56: +            constexpr int kJsonBufSize = 1024 * 1024;
+57: +            std::vector<char> jsonBuf(kJsonBufSize, 0);
+58: +            ErrCode firstApkError = ERR_OK;
+59: +            for (const auto &p : bundlePaths) {
+60: +                if (!BundleUtil::CheckFileType(p, ".apk")) continue;
+61: +                const auto installOneApk = [&]() -> ErrCode {
+62: +                int r = callApkFn2(p.c_str(), installParam.userId, jsonBuf.data(), kJsonBufSize);
+63: +                if (r != 0) {
+64: +                    LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest failed: %{public}d", r);
+65: +                    return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
+66: +                }
+67: +                // Parse without exceptions: libbms is intentionally built with
+
+[real-work-capacity] /Users/zhaoyue/orca/workspaces/01.OH61AOSP16/real-work/src/adapter/ohos_patches/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp.patch:45-67 sha256=94936b0f3e68604bbd6e29e91a10266fc7a41f297c93539d43b0a2a0618f8792
+45: +            LOG_I(BMS_TAG_INSTALLER, "adapter .apk path detected, dispatching+register v2");
+46: +            void* handle = dlopen("libapk_installer.so", RTLD_NOW | RTLD_GLOBAL);
+47: +            using ApkFn2 = int (*)(const char*, int, char*, int);
+48: +            ApkFn2 fn = handle ? reinterpret_cast<ApkFn2>(
+49: +                dlsym(handle, "oh_adapter_install_apk_with_manifest")) : nullptr;
+50: +            const auto callApkFn2 = [fn](const char* path, int userId, char* manifest, int capacity)
+51: +                __attribute__((no_sanitize("cfi"))) { return fn(path, userId, manifest, capacity); };
+52: +            if (fn == nullptr) {
+53: +                LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest unavailable");
+54: +                return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
+55: +            }
+56: +            constexpr int kJsonBufSize = 1024 * 1024;
+57: +            std::vector<char> jsonBuf(kJsonBufSize, 0);
+58: +            ErrCode firstApkError = ERR_OK;
+59: +            for (const auto &p : bundlePaths) {
+60: +                if (!BundleUtil::CheckFileType(p, ".apk")) continue;
+61: +                const auto installOneApk = [&]() -> ErrCode {
+62: +                int r = callApkFn2(p.c_str(), installParam.userId, jsonBuf.data(), kJsonBufSize);
+63: +                if (r != 0) {
+64: +                    LOG_E(BMS_TAG_INSTALLER, "oh_adapter_install_apk_with_manifest failed: %{public}d", r);
+65: +                    return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;
+66: +                }
+67: +                // Parse without exceptions: libbms is intentionally built with
+
+[native-selection] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/framework/package-manager/jni/native_payload_inspector.h:96-113 sha256=cdac9d8d61b41cd433f6a16f1abfeb18f9c313310199d5503957fa06617a0796
+96:     const std::string fileName = entryName.substr(abiEnd + 1);
+97:     if (fileName.size() <= 3 || fileName.compare(fileName.size() - 3, 3, ".so") != 0) {
+98:         return false;
+99:     }
+100:     *abi = entryName.substr(4, abiEnd - 4);
+101:     return true;
+102: }
+103: 
+104: }  // namespace native_payload_detail
+105: 
+106: inline NativePayloadInfo InspectApkNativePayload(const std::string& apkPath)
+107: {
+108:     using namespace native_payload_detail;
+109: 
+110:     std::ifstream input(apkPath, std::ios::binary);
+111:     if (!input.is_open()) {
+112:         return {NativePayloadState::UNREADABLE, "", "open failed"};
+113:     }
+
+[native-extractor] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/ohos_patches/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_operator.cpp.patch:85-244 sha256=454d26ba2bcdfe866f54a982c0266b0129e41c1d19609a938ee5bb69f9a40a07
+85: +bool InstalldOperator::ExtractApkNativeFiles(const ExtractParam &extractParam)
+86: +{
+87: +    const std::string stagePrefix = std::string(Constants::BUNDLE_CODE_DIR) +
+88: +        ServiceConstants::PATH_SEPARATOR + ServiceConstants::BUNDLE_NEW_CODE_DIR;
+89: +    const std::string nativeSuffix = std::string("/android/lib/") + extractParam.cpuAbi;
+90: +    const bool hasExactShape = StartsWith(extractParam.targetPath, stagePrefix) &&
+91: +        EndsWith(extractParam.targetPath, nativeSuffix) &&
+92: +        extractParam.targetPath.size() > stagePrefix.size() + nativeSuffix.size();
+93: +    const std::string bundleName = hasExactShape ? extractParam.targetPath.substr(stagePrefix.size(),
+94: +        extractParam.targetPath.size() - stagePrefix.size() - nativeSuffix.size()) : std::string();
+95: +    if (extractParam.srcPath.empty() || extractParam.targetPath.empty() ||
+96: +        (extractParam.cpuAbi != "arm64-v8a" && extractParam.cpuAbi != "armeabi-v7a") ||
+97: +        !hasExactShape || !IsValidBundleName(bundleName) ||
+98: +        extractParam.targetPath != stagePrefix + bundleName + nativeSuffix) {
+99: +        LOG_E(BMS_TAG_INSTALLD, "invalid APK native extraction parameters");
+100: +        return false;
+101: +    }
+102: +
+103: +    class ApkExtractor final : public BundleExtractor {
+104: +    public:
+105: +        explicit ApkExtractor(const std::string &source) : BundleExtractor(source) {}
+106: +        const ZipEntryMap &GetEntries() const
+107: +        {
+108: +            return zipFile_.GetAllEntries();
+109: +        }
+110: +    };
+111: +
+112: +    ApkExtractor extractor(extractParam.srcPath);
+113: +    if (!extractor.Init()) {
+114: +        LOG_E(BMS_TAG_INSTALLD, "APK extractor init failed");
+115: +        return false;
+116: +    }
+117: +    const ZipEntryMap &entries = extractor.GetEntries();
+118: +    if (entries.empty()) {
+119: +        LOG_E(BMS_TAG_INSTALLD, "APK has no ZIP entries");
+120: +        return false;
+121: +    }
+122: +
+123: +    auto failAndClean = [&extractParam](const std::string &reason) {
+124: +        LOG_E(BMS_TAG_INSTALLD, "APK native extraction failed: %{public}s", reason.c_str());
+125: +        (void)DeleteDir(extractParam.targetPath);
+126: +        return false;
+127: +    };
+128: +    if (!DeleteDir(extractParam.targetPath) ||
+129: +        !MkOwnerDir(extractParam.targetPath, 0755, 0, 0)) {
+130: +        return failAndClean("cannot create an empty native stage");
+131: +    }
+132: +    // Hardened vendor SDKs (e.g. MSA OAID) zero e_ident[EI_VERSION]; tolerate
+133: +    // it here only because verifyOutput short-circuits on the CRC match before
+134: +    // checkElf runs, so file content is already authenticated (task #64 B2).
+135: +    auto checkElf = [&extractParam](const std::string &path) {
+136: +        std::ifstream input(path, std::ios::binary);
+137: +        unsigned char ident[EI_NIDENT] = {};
+138: +        if (!input.read(reinterpret_cast<char *>(ident), sizeof(ident)) ||
+139: +            memcmp(ident, ELFMAG, SELFMAG) != 0 || ident[EI_DATA] != ELFDATA2LSB) {
+140: +            return false;
+141: +        }
+142: +        input.clear();
+143: +        input.seekg(0);
+144: +        if (extractParam.cpuAbi == "arm64-v8a") {
+145: +            Elf64_Ehdr header = {};
+146: +            return input.read(reinterpret_cast<char *>(&header), sizeof(header)).good() &&
+147: +                header.e_ident[EI_CLASS] == ELFCLASS64 &&
+148: +                (header.e_ident[EI_VERSION] == EV_CURRENT || header.e_ident[EI_VERSION] == 0) &&
+149: +                header.e_version == EV_CURRENT && header.e_type == ET_DYN && header.e_machine == EM_AARCH64;
+150: +        }
+151: +        Elf32_Ehdr header = {};
+152: +        return input.read(reinterpret_cast<char *>(&header), sizeof(header)).good() &&
+153: +            header.e_ident[EI_CLASS] == ELFCLASS32 &&
+154: +            (header.e_ident[EI_VERSION] == EV_CURRENT || header.e_ident[EI_VERSION] == 0) &&
+155: +            header.e_version == EV_CURRENT && header.e_type == ET_DYN && header.e_machine == EM_ARM;
+156: +    };
+157: +    auto verifyOutput = [&checkElf](const std::string &path, const ZipEntry &entry) {
+158: +        struct stat fileStat = {};
+159: +        if (lstat(path.c_str(), &fileStat) != 0 || !S_ISREG(fileStat.st_mode) ||
+160: +            fileStat.st_uid != 0 || fileStat.st_gid != 0 || (fileStat.st_mode & 0777) != 0755 ||
+161: +            fileStat.st_size < 0 || static_cast<uint64_t>(fileStat.st_size) != entry.uncompressedSize) {
+162: +            return false;
+163: +        }
+164: +        std::ifstream input(path, std::ios::binary);
+165: +        if (!input) {
+166: +            return false;
+167: +        }
+168: +        uLong crc = crc32(0L, Z_NULL, 0);
+169: +        std::vector<char> buffer(BUFFER_SIZE);
+170: +        while (input.read(buffer.data(), buffer.size()) || input.gcount() > 0) {
+171: +            crc = crc32(crc, reinterpret_cast<const Bytef *>(buffer.data()),
+172: +                static_cast<uInt>(input.gcount()));
+173: +        }
+174: +        return !input.bad() && static_cast<uint32_t>(crc) == entry.crc && checkElf(path);
+175: +    };
+176: +
+177: +    ExtractParam fileParam = extractParam;
+178: +    fileParam.extractFileType = ExtractFileType::APK_NATIVE_SO;
+179: +    const std::string prefix = std::string("lib/") + extractParam.cpuAbi +
+180: +        ServiceConstants::PATH_SEPARATOR;
+181: +    constexpr size_t MAX_NATIVE_FILES = 1024;
+182: +    constexpr uint64_t MAX_NATIVE_FILE_BYTES = 1ULL << 30;
+183: +    constexpr uint64_t MAX_NATIVE_TOTAL_BYTES = 4ULL << 30;
+184: +    std::set<std::string> targetNames;
+185: +    size_t extractedCount = 0;
+186: +    uint64_t totalUncompressedSize = 0;
+187: +    for (const auto &entryItem : entries) {
+188: +        const std::string &entryName = entryItem.first;
+189: +        const ZipEntry &entry = entryItem.second;
+190: +        if (!StartsWith(entryName, prefix)) {
+191: +            continue;
+192: +        }
+193: +        if (entryName == prefix) {
+194: +            continue;
+195: +        }
+196: +        const std::string targetName = entryName.substr(prefix.size());
+197: +        if (targetName.empty() || targetName.find(ServiceConstants::PATH_SEPARATOR) != std::string::npos ||
+198: +            !StartsWith(targetName, "lib") || !EndsWith(targetName, ".so") ||
+199: +            !targetNames.insert(targetName).second) {
+200: +            return failAndClean("unsafe or duplicate selected-ABI entry");
+201: +        }
+202: +        const uint64_t entrySize = static_cast<uint64_t>(entry.uncompressedSize);
+203: +        if (entrySize == 0 || entrySize > MAX_NATIVE_FILE_BYTES ||
+204: +            targetNames.size() > MAX_NATIVE_FILES ||
+205: +            totalUncompressedSize > MAX_NATIVE_TOTAL_BYTES - entrySize) {
+206: +            return failAndClean("missing, empty, or excessive ZIP metadata");
+207: +        }
+208: +        totalUncompressedSize += entrySize;
+209: +        if (!ExtractTargetFile(extractor, entryName, fileParam)) {
+210: +            return failAndClean("extract/write/fsync failed");
+211: +        }
+212: +        std::string outputPath = extractParam.targetPath;
+213: +        if (outputPath.back() != ServiceConstants::FILE_SEPARATOR_CHAR) {
+214: +            outputPath.push_back(ServiceConstants::FILE_SEPARATOR_CHAR);
+215: +        }
+216: +        outputPath += targetName;
+217: +        if (!ChangeFileAttr(outputPath, 0, 0) ||
+218: +            !OHOS::ChangeModeFile(outputPath, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) ||
+219: +            !verifyOutput(outputPath, entry)) {
+220: +            return failAndClean("CRC/ELF/owner/mode verification failed");
+221: +        }
+222: +        const std::string digest = Sha256File(outputPath);
+223: +        if (digest.empty()) {
+224: +            return failAndClean("SHA-256 failed");
+225: +        }
+226: +        LOG_I(BMS_TAG_INSTALLD, "extracted APK native %{public}s sha256=%{public}s",
+227: +            targetName.c_str(), digest.c_str());
+228: +        ++extractedCount;
+229: +    }
+230: +    if (extractedCount == 0) {
+231: +        return failAndClean("no matching native libraries");
+232: +    }
+233: +    std::set<std::string> actualNames;
+234: +    std::error_code fsError;
+235: +    std::filesystem::directory_iterator iter(extractParam.targetPath, fsError);
+236: +    const std::filesystem::directory_iterator end;
+237: +    while (!fsError && iter != end) {
+238: +        const auto status = std::filesystem::symlink_status(iter->path(), fsError);
+239: +        if (fsError || !std::filesystem::is_regular_file(status) ||
+240: +            !actualNames.insert(iter->path().filename().string()).second) {
+241: +            return failAndClean("native stage contains a non-regular or duplicate output");
+242: +        }
+243: +        iter.increment(fsError);
+244: +    }
+
+[real-work-elf-policy] /Users/zhaoyue/orca/workspaces/01.OH61AOSP16/real-work/src/adapter/ohos_patches/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_operator.cpp.patch:132-176 sha256=454d26ba2bcdfe866f54a982c0266b0129e41c1d19609a938ee5bb69f9a40a07
+132: +    // Hardened vendor SDKs (e.g. MSA OAID) zero e_ident[EI_VERSION]; tolerate
+133: +    // it here only because verifyOutput short-circuits on the CRC match before
+134: +    // checkElf runs, so file content is already authenticated (task #64 B2).
+135: +    auto checkElf = [&extractParam](const std::string &path) {
+136: +        std::ifstream input(path, std::ios::binary);
+137: +        unsigned char ident[EI_NIDENT] = {};
+138: +        if (!input.read(reinterpret_cast<char *>(ident), sizeof(ident)) ||
+139: +            memcmp(ident, ELFMAG, SELFMAG) != 0 || ident[EI_DATA] != ELFDATA2LSB) {
+140: +            return false;
+141: +        }
+142: +        input.clear();
+143: +        input.seekg(0);
+144: +        if (extractParam.cpuAbi == "arm64-v8a") {
+145: +            Elf64_Ehdr header = {};
+146: +            return input.read(reinterpret_cast<char *>(&header), sizeof(header)).good() &&
+147: +                header.e_ident[EI_CLASS] == ELFCLASS64 &&
+148: +                (header.e_ident[EI_VERSION] == EV_CURRENT || header.e_ident[EI_VERSION] == 0) &&
+149: +                header.e_version == EV_CURRENT && header.e_type == ET_DYN && header.e_machine == EM_AARCH64;
+150: +        }
+151: +        Elf32_Ehdr header = {};
+152: +        return input.read(reinterpret_cast<char *>(&header), sizeof(header)).good() &&
+153: +            header.e_ident[EI_CLASS] == ELFCLASS32 &&
+154: +            (header.e_ident[EI_VERSION] == EV_CURRENT || header.e_ident[EI_VERSION] == 0) &&
+155: +            header.e_version == EV_CURRENT && header.e_type == ET_DYN && header.e_machine == EM_ARM;
+156: +    };
+157: +    auto verifyOutput = [&checkElf](const std::string &path, const ZipEntry &entry) {
+158: +        struct stat fileStat = {};
+159: +        if (lstat(path.c_str(), &fileStat) != 0 || !S_ISREG(fileStat.st_mode) ||
+160: +            fileStat.st_uid != 0 || fileStat.st_gid != 0 || (fileStat.st_mode & 0777) != 0755 ||
+161: +            fileStat.st_size < 0 || static_cast<uint64_t>(fileStat.st_size) != entry.uncompressedSize) {
+162: +            return false;
+163: +        }
+164: +        std::ifstream input(path, std::ios::binary);
+165: +        if (!input) {
+166: +            return false;
+167: +        }
+168: +        uLong crc = crc32(0L, Z_NULL, 0);
+169: +        std::vector<char> buffer(BUFFER_SIZE);
+170: +        while (input.read(buffer.data(), buffer.size()) || input.gcount() > 0) {
+171: +            crc = crc32(crc, reinterpret_cast<const Bytef *>(buffer.data()),
+172: +                static_cast<uInt>(input.gcount()));
+173: +        }
+174: +        return !input.bad() && static_cast<uint32_t>(crc) == entry.crc && checkElf(path);
+175: +    };
+176: +
+
+[native-error-mapping] /Users/zhaoyue/orca/adapter-local/oh-headers/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_host_impl.cpp:164-183 sha256=eb6a002b68cfc1c23ccb5c28bd9181673dc0a02635788e125467e18de7e02a8a
+164: }
+165: 
+166: ErrCode InstalldHostImpl::ExtractFiles(const ExtractParam &extractParam)
+167: {
+168:     LOG_D(BMS_TAG_INSTALLD, "ExtractFiles extractParam %{public}s", extractParam.ToString().c_str());
+169:     if (!InstalldPermissionMgr::VerifyCallingPermission(Constants::FOUNDATION_UID)) {
+170:         LOG_E(BMS_TAG_INSTALLD, "installd permission denied, only used for foundation process");
+171:         return ERR_APPEXECFWK_INSTALLD_PERMISSION_DENIED;
+172:     }
+173: 
+174:     if (extractParam.srcPath.empty() || extractParam.targetPath.empty()) {
+175:         LOG_E(BMS_TAG_INSTALLD, "Calling the function ExtractFiles with invalid param");
+176:         return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+177:     }
+178: 
+179:     if (!InstalldOperator::ExtractFiles(extractParam)) {
+180:         LOG_E(BMS_TAG_INSTALLD, "extract failed errno:%{public}d", errno);
+181:         return ERR_APPEXECFWK_INSTALLD_EXTRACT_FAILED;
+182:     }
+183: 
+
+[native-error-enum] /Users/zhaoyue/orca/adapter-local/oh-headers/foundation/bundlemanager/bundle_framework/interfaces/inner_api/appexecfwk_base/include/appexecfwk_errors.h:217-227 sha256=5202cef39db65f779b9b1e83f7e2ed6a49deb1e53c41a38fa31a561118ead256
+217:     ERR_APPEXECFWK_AOT_ARGS_EMPTY = 8519929,
+218:     ERR_APPEXECFWK_INSTALLD_GENERATE_KEY_FAILED = 8519930,
+219:     ERR_APPEXECFWK_INSTALLD_DELETE_KEY_FAILED = 8519931,
+220:     ERR_APPEXECFWK_INSTALLD_SIGN_AOT_FAILED = 8519932,
+221:     ERR_APPEXECFWK_INSTALLD_SIGN_AOT_DISABLE = 8519933,
+222:     ERR_APPEXECFWK_INSTALLD_AOT_EXECUTE_CRASH = 8519934,
+223:     ERR_APPEXECFWK_INSTALLD_AOT_EXECUTE_CANCELLED = 8519935,
+224:     ERR_APPEXECFWK_INSTALLD_EXTRACT_FAILED = 8519936,
+225:     ERR_APPEXECFWK_RESTORECON_PATH_FAILED = 8519937,
+226:     ERR_APPEXECFWK_INSTALLD_CHANGE_FILE_STAT_FAILED = 8519938,
+227:     ERR_APPEXECFWK_INSTALLD_COPY_DIR_FAILED = 8519940,
+
+[old-workspace-extractor] /Users/zhaoyue/orca/00.Workspace/src/adapter/framework/package-manager/jni/apk_installer.cpp:876-941 sha256=a65b82b29d8b0e11fd571830767ce9f5ce456daf7c0bfef1e3944a1711fb54b8
+876: bool ApkInstaller::ExtractNativeLibs(const std::string& apkPath,
+877:                                       const std::string& libDir,
+878:                                       const std::string& primaryAbi) {
+879:     MkdirRecursive(libDir, 0755);
+880: 
+881:     unzFile zip = unzOpen(apkPath.c_str());
+882:     if (zip == nullptr) {
+883:         LOGE("ExtractNativeLibs: failed to open APK");
+884:         return false;
+885:     }
+886: 
+887:     std::string prefix = "lib/" + primaryAbi + "/";
+888:     int extractedCount = 0;
+889: 
+890:     if (unzGoToFirstFile(zip) == UNZ_OK) {
+891:         do {
+892:             char filename[512];
+893:             unz_file_info fileInfo;
+894:             if (unzGetCurrentFileInfo(zip, &fileInfo, filename, sizeof(filename),
+895:                                        nullptr, 0, nullptr, 0) != UNZ_OK) {
+896:                 continue;
+897:             }
+898: 
+899:             std::string entryName(filename);
+900:             if (entryName.compare(0, prefix.size(), prefix) != 0) continue;
+901:             if (entryName.size() <= prefix.size()) continue;  // Skip directory entry
+902: 
+903:             // Extract .so filename
+904:             std::string soName = entryName.substr(prefix.size());
+905:             if (soName.find('/') != std::string::npos) continue;  // Skip subdirectories
+906: 
+907:             // Extract file
+908:             if (unzOpenCurrentFile(zip) != UNZ_OK) {
+909:                 LOGW("ExtractNativeLibs: failed to open entry: %{public}s", entryName.c_str());
+910:                 continue;
+911:             }
+912: 
+913:             std::string outPath = libDir + "/" + soName;
+914:             std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
+915:             if (!out) {
+916:                 LOGW("ExtractNativeLibs: failed to create: %{public}s", outPath.c_str());
+917:                 unzCloseCurrentFile(zip);
+918:                 continue;
+919:             }
+920: 
+921:             char buffer[COPY_BUFFER_SIZE];
+922:             int bytesRead;
+923:             while ((bytesRead = unzReadCurrentFile(zip, buffer, sizeof(buffer))) > 0) {
+924:                 out.write(buffer, bytesRead);
+925:             }
+926: 
+927:             out.close();
+928:             unzCloseCurrentFile(zip);
+929: 
+930:             // Set executable permission for .so files
+931:             chmod(outPath.c_str(), 0755);
+932:             extractedCount++;
+933: 
+934:             LOGI("Extracted: %{public}s", soName.c_str());
+935:         } while (unzGoToNextFile(zip) == UNZ_OK);
+936:     }
+937: 
+938:     unzClose(zip);
+939:     LOGI("ExtractNativeLibs: extracted %{public}d files from %{public}s",
+940:          extractedCount, primaryAbi.c_str());
+941:     return true;
+
+[westlake-extractor] /Users/zhaoyue/orca/westlake/westlake-deploy-ohos/v3-hbc/adapter-src/framework/package-manager/jni/apk_installer.cpp:440-505 sha256=723af56b305a30e9d82679e7732bde1d47c7fdaa1510a318c52ef5e8b2d5dae9
+440: bool ApkInstaller::ExtractNativeLibs(const std::string& apkPath,
+441:                                       const std::string& libDir,
+442:                                       const std::string& primaryAbi) {
+443:     MkdirRecursive(libDir, 0755);
+444: 
+445:     unzFile zip = unzOpen(apkPath.c_str());
+446:     if (zip == nullptr) {
+447:         LOGE("ExtractNativeLibs: failed to open APK");
+448:         return false;
+449:     }
+450: 
+451:     std::string prefix = "lib/" + primaryAbi + "/";
+452:     int extractedCount = 0;
+453: 
+454:     if (unzGoToFirstFile(zip) == UNZ_OK) {
+455:         do {
+456:             char filename[512];
+457:             unz_file_info fileInfo;
+458:             if (unzGetCurrentFileInfo(zip, &fileInfo, filename, sizeof(filename),
+459:                                        nullptr, 0, nullptr, 0) != UNZ_OK) {
+460:                 continue;
+461:             }
+462: 
+463:             std::string entryName(filename);
+464:             if (entryName.compare(0, prefix.size(), prefix) != 0) continue;
+465:             if (entryName.size() <= prefix.size()) continue;  // Skip directory entry
+466: 
+467:             // Extract .so filename
+468:             std::string soName = entryName.substr(prefix.size());
+469:             if (soName.find('/') != std::string::npos) continue;  // Skip subdirectories
+470: 
+471:             // Extract file
+472:             if (unzOpenCurrentFile(zip) != UNZ_OK) {
+473:                 LOGW("ExtractNativeLibs: failed to open entry: %{public}s", entryName.c_str());
+474:                 continue;
+475:             }
+476: 
+477:             std::string outPath = libDir + "/" + soName;
+478:             std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
+479:             if (!out) {
+480:                 LOGW("ExtractNativeLibs: failed to create: %{public}s", outPath.c_str());
+481:                 unzCloseCurrentFile(zip);
+482:                 continue;
+483:             }
+484: 
+485:             char buffer[COPY_BUFFER_SIZE];
+486:             int bytesRead;
+487:             while ((bytesRead = unzReadCurrentFile(zip, buffer, sizeof(buffer))) > 0) {
+488:                 out.write(buffer, bytesRead);
+489:             }
+490: 
+491:             out.close();
+492:             unzCloseCurrentFile(zip);
+493: 
+494:             // Set executable permission for .so files
+495:             chmod(outPath.c_str(), 0755);
+496:             extractedCount++;
+497: 
+498:             LOGI("Extracted: %{public}s", soName.c_str());
+499:         } while (unzGoToNextFile(zip) == UNZ_OK);
+500:     }
+501: 
+502:     unzClose(zip);
+503:     LOGI("ExtractNativeLibs: extracted %{public}d files from %{public}s",
+504:          extractedCount, primaryAbi.c_str());
+505:     return true;
+
+[westlake-old-capacity] /Users/zhaoyue/orca/westlake/westlake-deploy-ohos/v3-hbc/patches/ohos_patches/bundle_framework/services/bundlemgr/apply_bms_apk_register_with_manifest.py:118-130 sha256=089cafb13eadf965c7c65365bc2ef8e667b52cdfecd5ee5e48c862773b17bde3
+118:     "                dlsym(handle, \"oh_adapter_install_apk_with_manifest\")) : nullptr;\n"
+119:     "            if (fn == nullptr) {\n"
+120:     "                LOG_E(BMS_TAG_INSTALLER, \"oh_adapter_install_apk_with_manifest unavailable\");\n"
+121:     "                return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;\n"
+122:     "            }\n"
+123:     "            constexpr int kJsonBufSize = 65536;\n"
+124:     "            std::vector<char> jsonBuf(kJsonBufSize, 0);\n"
+125:     "            for (const auto &p : bundlePaths) {\n"
+126:     "                if (!(p.size() > 4 && p.compare(p.size() - 4, 4, \".apk\") == 0)) continue;\n"
+127:     "                int r = fn(p.c_str(), installParam.userId, jsonBuf.data(), kJsonBufSize);\n"
+128:     "                if (r != 0) {\n"
+129:     "                    LOG_E(BMS_TAG_INSTALLER, \"oh_adapter_install_apk_with_manifest failed: %{public}d\", r);\n"
+130:     "                    return ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR;\n"
+
+[toutiao-provisioning] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/benchmark/2026-09-27-device-provisioning/provision_toutiao.sh:40-65 sha256=6655abeec36d4ef5b0e1baf2386cc72cabcc58c2a6876f255858f65d317ac5d4
+40: dev "mkdir -p $F; touch $F/stop $D/stop $D/fresh48/stop $D/keeper.stop 2>/dev/null; for p in \$(cat $D/keeper.pid 2>/dev/null); do kill \$p 2>/dev/null; done; sleep 2; for p in \$(pidof com.ss.android.article.news appspawn-x); do kill -9 \$p 2>/dev/null; done; rm -rf $F/lock; rm -f $D/keeper.pid; sleep 1; echo cleaned" 30 >/dev/null
+41: 
+42: # 2. install host (idempotent — replaces whatever host is there)
+43: send "$BUNDLE/source-host.hap" "/data/local/tmp/tt-host.hap"
+44: r=$(dev "bm install -p /data/local/tmp/tt-host.hap" 40)
+45: echo "$r" | grep -q "successfully" || say "WARN host install: $(echo "$r" | tail -1)"
+46: 
+47: # 3. deploy RT (extract tt-rt.tar into RT; preserve owners), + AOT if requested
+48: dev "rm -rf $PROV; mkdir -p $PROV $RT" 20 >/dev/null
+49: send "$BUNDLE/tt-rt.tar" "$PROV/tt-rt.tar" 300
+50: r=$(dev "tar xpf $PROV/tt-rt.tar -C $RT && echo RT_OK" 120)
+51: echo "$r" | grep -q RT_OK || fail "RT extract: $(echo "$r" | tail -2)"
+52: if [ "$WITH_AOT" = 1 ]; then
+53:   dev "mkdir -p $RT/oat/arm64" 15 >/dev/null
+54:   for f in toutiao.art toutiao.odex toutiao.vdex; do send "$BUNDLE/aot/$f" "$RT/oat/arm64/$f" 300; done
+55:   dev "chown -R 20010053:20010053 $RT/oat; echo AOT_OK" 20 >/dev/null; say "AOT deployed"
+56: fi
+57: 
+58: # 4. deploy STAGE
+59: dev "mkdir -p $STAGE" 15 >/dev/null
+60: send "$BUNDLE/tt-stage.tar" "$PROV/tt-stage.tar"
+61: dev "tar xpf $PROV/tt-stage.tar -C $STAGE && chmod +x $STAGE/source_app_namespace $STAGE/host_spawn 2>/dev/null; echo STAGE_OK" 30 >/dev/null
+62: 
+63: # 5. deploy watchdog
+64: send "$BUNDLE/tt-wd.tar" "$PROV/tt-wd.tar"
+65: dev "tar xpf $PROV/tt-wd.tar -C $F && chmod +x $F/watchdog.sh $F/start-parent.sh $F/spawn.sh $F/screen-gate $F/onscreen_keeper.sh 2>/dev/null; echo WD_OK" 30 >/dev/null
+
+[x-prior-route] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/benchmark/2026-09-27-x-twitter-bringup/README.md:1-29 sha256=fd2e6a1bdb3eb1a88502a9e8fc2e7843e8f9d2313770b35cefbebb9d56960e9f
+1: # X/Twitter (com.twitter.android 12.17.0, Java/Kotlin) bring-up on 5ea34a45 — #48 horizontal (2026-09-27)
+2: 
+3: Goal: light X to first usable screen. Old record: past getRunningAppProcesses+provider install, stuck at
+4: Firebase service-level `<meta-data>` (fix "verifying"). Re-test on the current runtime.
+5: 
+6: ## Result: launch PASS, Firebase blocker RESOLVED (stale record), NEW blocker = telephony.registry NPE → parked
+7: | Item | Outcome |
+8: |------|---------|
+9: | Stage + launch | PASS — probe_source_app (framework-2 = a2hlab-framework-cab462ff) staged runtime `a2hlab-source-27246e1d`, spawned child 15627 |
+10: | Firebase meta-data | RESOLVED — `[SOURCE-PM] getServiceInfo HIT com.google.firebase.components.ComponentDiscoveryService flags=0x80 meta=16` (service-level meta-data returned; old blocker is past) |
+11: | First usable screen | NOT reached — exit(1) during ActivityThread init |
+12: 
+13: ## New blocker (the actual current wall)
+14: `java.lang.NullPointerException: Attempt to invoke ... 'void com.android.internal.telephony.ITelephonyRegistry.listenWithEventList(...)' on a null object reference`
+15: - at `com.twitter.util.telephony.a.run` → Twitter registers a PhoneStateListener; `TelephonyManager.listen`/`listenWithEventList`
+16:   resolves `ITelephonyRegistry` (ServiceManager "telephony.registry") which is **null** in the westlake runtime → NPE →
+17:   `launchActivityThread returned unexpectedly → child_main:_exit(1)`.
+18: - westlake has NO ITelephonyRegistry handling (grep telephony.registry/ITelephonyRegistry/listenWithEventList = empty).
+19:   Stub points exist: `framework/core/java/LocalServiceBinders.java`, `OHServiceManager.java`,
+20:   `framework/mainline-stubs/java/android/telephony/TelephonyFrameworkInitializer.java`.
+21: 
+22: ## Fix direction (framework change, NOT pure config → parked)
+23: Add a no-op `ITelephonyRegistry` stub binder registered under "telephony.registry" (or via TelephonyFrameworkInitializer's
+24: service manager) whose `listenWithEventList`/`listen` no-op and return cleanly, so TelephonyManager.listen() gets a non-null
+25: registry. Requires editing the westlake framework Java + rebuilding out/framework-java + re-staging the framework — M effort,
+26: touches the shared verify tree. Route to claude-3 / a framework-fix pass. Same class as McDonald's "phone|inert|M" gap.
+27: 
+28: ## Board state
+29: 5ea34a45, framework-2 base ready. X runtime `a2hlab-source-27246e1d` staged (child exited). 61b06572 untouched (Toutiao demo).
+
+[x-overflow] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/benchmark/2026-09-28-bms-label-resolve/evidence/b3-onboard/x-hilog.txt:1564-1565 sha256=64c63b9e1949c43a8dbd0b6ca21dca82aa9e3b0bbcef959d00d480c4441e9ca5
+1564: 09-29 00:53:25.669  3328  5562 E C01150/OH_AdapterApkEntry: [a92ab59b7d819d7, 0, 0] JSON output (99625 bytes) exceeds buffer (65536 bytes)
+1565: 09-29 00:53:25.671  3328  5562 E C01121/BMSInstaller: [a92ab59b7d819d7, 0, 0] base_bundle_installer.cpp:ProcessBundleInstall:1514 oh_adapter_install_apk_with_manifest failed: -2005
+
+[toutiao-overflow] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/benchmark/2026-09-28-bms-label-resolve/evidence/b3-onboard/toutiao-hilog.txt:909-910 sha256=2d297cd6d87330487fa3822a441bd0af55f3fc4fe74f16bd05046aaf8188e527
+909: 09-29 00:54:08.081  3328  5561 E C01150/OH_AdapterApkEntry: [a92ab69bac42b37, 0, 0] JSON output (242663 bytes) exceeds buffer (65536 bytes)
+910: 09-29 00:54:08.087  3328  5561 E C01121/BMSInstaller: [a92ab69bac42b37, 0, 0] base_bundle_installer.cpp:ProcessBundleInstall:1514 oh_adapter_install_apk_with_manifest failed: -2005
+
+[seal-manifest-fit] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/benchmark/2026-09-28-bms-label-resolve/evidence/b3-onboard/fd-seal-hilog.txt:351-351 sha256=75ac5d4c2e8b798fca800731dd463c42232c4a10d9eebcb67474a6fe5f1743a3
+351: 09-29 00:51:54.020  3328  4328 I C01150/OH_AdapterApkEntry: [a92ab49b29d6bba, 0, 0] oh_adapter_install_apk_with_manifest: parsed pkg=com.junkfood.seal uid=14757, json=2245 bytes, abilities=4 services=3
+
+[seal-native-prefix] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/benchmark/2026-09-28-bms-label-resolve/evidence/b3-onboard/fd-seal-hilog.txt:409-416 sha256=75ac5d4c2e8b798fca800731dd463c42232c4a10d9eebcb67474a6fe5f1743a3
+409: 09-29 00:51:54.247  3350  3353 I C01122/BMSInstalld: [a92ab49b29d6bba, 8a0013, 0] installd_operator.cpp:ExtractApkNativeFiles:3320 extracted APK native libaria2c.so sha256=7e7e6bd301d1faf8d933ef84179190178e48f956aeabd79c917f10b428d2923e
+410: 09-29 00:51:54.279   791  1331 E C02943/ThermalHdi: create output dir failed
+411: 09-29 00:51:54.279   791  1331 E C02943/ThermalHdi: open uncompressfile failed
+412: 09-29 00:51:54.305  3350  3353 E C01122/BMSInstalld: [a92ab49b29d6bba, 8a0013, 0] installd_operator.cpp:operator():3222 APK native extraction failed: CRC/ELF/owner/mode verification failed
+413: 09-29 00:51:54.305  3350  3353 I C01123/BMSCommon: [a92ab49b29d6bba, 8a0013, 0] del /data/app/el1/bundle/public/+new-com.junkfood.seal/android/lib/arm64-v8a
+414: 09-29 00:51:54.308  3350  3353 E C01122/BMSInstalld: [a92ab49b29d6bba, 8a0013, 0] installd_host_impl.cpp:ExtractFiles:180 extract failed errno:2
+415: 09-29 00:51:54.308  3328  4328 E C01121/BMSInstaller: [a92ab49b29d6bba, 0, 0] base_bundle_installer.cpp:ProcessBundleInstall:1708 ExtractFiles(APK_NATIVE_SO) failed abi=arm64-v8a ec=8519936
+416: 09-29 00:51:54.308  3350  3353 I C01123/BMSCommon: [a92ab49b29d6bba, 2a21831, 0] del /data/app/el1/bundle/public/+new-com.junkfood.seal
+
+[seal-first-native] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/benchmark/2026-09-28-bms-label-resolve/evidence/b3-onboard/fd-seal-hilog.txt:394-394 sha256=75ac5d4c2e8b798fca800731dd463c42232c4a10d9eebcb67474a6fe5f1743a3
+394: 09-29 00:51:54.203  3350  3353 I C01122/BMSInstalld: [a92ab49b29d6bba, 8a0013, 0] installd_operator.cpp:ExtractApkNativeFiles:3320 extracted APK native libandroidx.graphics.path.so sha256=7c28f1523b81a2cb18ecd338d6a932bbb9d0daf555991aa498f227e4bbd5f827
+
+[artifact-names] /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/build/config.sh:70-96 sha256=b2fd1a8db5afb59baa16004bf9950d391785a9975a29a081e9e74b4c4d8f0c22
+70: # one-key-restore rule.  Added so collect_build_artifacts.sh / pull keeps
+71: # adapter/out/oh-service/ aligned with ~/oh/out/rk3568/ automatically.
+72: OH_ARTIFACTS[libmission_list.z.so]="ability/ability_runtime/libmission_list.z.so"
+73: OH_ARTIFACTS[libappms.z.so]="ability/ability_runtime/libappms.z.so"
+74: OH_ARTIFACTS[libwms.z.so]="window/window_manager/libwms.z.so"
+75: OH_ARTIFACTS[libbms.z.so]="bundlemanager/bundle_framework/libbms.z.so"
+76: OH_ARTIFACTS[libscene_session.z.so]="window/window_manager/libscene_session.z.so"
+77: OH_ARTIFACTS[libscene_session_manager.z.so]="window/window_manager/libscene_session_manager.z.so"
+78: OH_ARTIFACTS[librender_service_base.z.so]="graphic/graphic_2d/librender_service_base.z.so"
+79: OH_ARTIFACTS[libskia_canvaskit.z.so]="thirdparty/skia/libskia_canvaskit.z.so"
+80: # G2.14au r5 (2026-05-11): RS server-side .so carries RT call-site probes
+81: # (RSUniRenderVisitor / RSUniRenderProcessor / RSUniRenderComposerAdapter).
+82: # Device path /system/lib/librender_service.z.so (NOT platformsdk/).
+83: OH_ARTIFACTS[librender_service.z.so]="graphic/graphic_2d/librender_service.z.so"
+84: # G2.14aw probe (2026-05-12): graphic_surface module's libsurface.z.so
+85: # carries the BufferQueue::FlushBuffer BLOGI diagnostic
+86: # (uniqueId / pid / dirtyList trace).  Device path /system/lib/libsurface.z.so.
+87: OH_ARTIFACTS[libsurface.z.so]="graphic/graphic_surface/libsurface.z.so"
+88: # 2026-05-27: collect-map 缺口收口。以下 3 个是 deploy 脚本会推、且在 ~/oh/out 编出来、
+89: # 但此前不在 OH_ARTIFACTS 的部署文件 -> collect_build_artifacts.sh 从未拷到 out/oh-service/，
+90: # 只靠本机历史 collect/手动留底（违反一键恢复：本机丢了 ECS 无从重建）。源路径均经 md5 核验。
+91: # libinstalls / libappexecfwk_common 是 OH .z.so；file_contexts 是 selinux_adapter 产物
+92: # (621 行 = 618 factory + 3 adapter)，由 deploy_to_dayu200.sh:697 推到设备。
+93: # 注：policy.31 不纳入——无任何 deploy 脚本引用，属本机 leftover（非部署文件）。
+94: OH_ARTIFACTS[libinstalls.z.so]="bundlemanager/bundle_framework/libinstalls.z.so"
+95: OH_ARTIFACTS[libappexecfwk_common.z.so]="bundlemanager/bundle_framework/libappexecfwk_common.z.so"
+96: OH_ARTIFACTS[file_contexts]="obj/base/security/selinux_adapter/file_contexts"
+
+[gn-native-target] /Users/zhaoyue/orca/adapter-local/oh-headers/foundation/bundlemanager/bundle_framework/services/bundlemgr/BUILD.gn:587-610 sha256=9f7a5bc2b4dac64fcb80a1464baa0f40e1c515265ded9271b01debbe988d08f2
+587: ohos_shared_library("installs") {
+588:   branch_protector_ret = "pac_ret"
+589: 
+590:   sanitize = {
+591:     boundary_sanitize = true
+592:     cfi = true
+593:     cfi_cross_dso = true
+594:     debug = false
+595:     integer_overflow = true
+596:     ubsan = true
+597:   }
+598: 
+599:   sources = [
+600:     "src/bundle_extractor.cpp",
+601:     "src/system_ability_helper.cpp",
+602:   ]
+603: 
+604:   use_exceptions = true
+605:   visibility = [
+606:     "//base/*",
+607:     "//foundation/*",
+608:   ]
+609: 
+610:   sources += install_daemon_sources
+
+[gn-sources] /Users/zhaoyue/orca/adapter-local/oh-headers/foundation/bundlemanager/bundle_framework/services/bundlemgr/appexecfwk_bundlemgr.gni:15-48 sha256=bb388b4ac43406fd8afb18c3c53d396da2adcca6b93e5ac05c7085538d938b7a
+15: 
+16: install_daemon_sources = [
+17:   "${services_path}/bundlemgr/src/aot/aot_args.cpp",
+18:   "${services_path}/bundlemgr/src/aot/aot_executor.cpp",
+19:   "${services_path}/bundlemgr/src/bundle_util.cpp",
+20:   "${services_path}/bundlemgr/src/code_sign_helper.cpp",
+21:   "${services_path}/bundlemgr/src/common/single_delayed_task_mgr.cpp",
+22:   "${services_path}/bundlemgr/src/installd/installd_host_impl.cpp",
+23:   "${services_path}/bundlemgr/src/installd/installd_load_callback.cpp",
+24:   "${services_path}/bundlemgr/src/installd/installd_operator.cpp",
+25:   "${services_path}/bundlemgr/src/installd/installd_permission_mgr.cpp",
+26:   "${services_path}/bundlemgr/src/installd/installd_service.cpp",
+27:   "${services_path}/bundlemgr/src/installd_client.cpp",
+28:   "${services_path}/bundlemgr/src/installd_death_recipient.cpp",
+29:   "${services_path}/bundlemgr/src/ipc/check_encryption_param.cpp",
+30:   "${services_path}/bundlemgr/src/ipc/code_signature_param.cpp",
+31:   "${services_path}/bundlemgr/src/ipc/create_dir_param.cpp",
+32:   "${services_path}/bundlemgr/src/ipc/critical_manager.cpp",
+33:   "${services_path}/bundlemgr/src/ipc/encryption_param.cpp",
+34:   "${services_path}/bundlemgr/src/ipc/extract_param.cpp",
+35:   "${services_path}/bundlemgr/src/ipc/file_stat.cpp",
+36:   "${services_path}/bundlemgr/src/ipc/install_hnp_param.cpp",
+37:   "${services_path}/bundlemgr/src/ipc/installd_host.cpp",
+38:   "${services_path}/bundlemgr/src/ipc/installd_proxy.cpp",
+39:   "${services_path}/bundlemgr/src/driver_install_ext.cpp",
+40: ]
+41: 
+42: bundle_install_sources = [
+43:   "${services_path}/bundlemgr/src/ability_manager_helper.cpp",
+44:   "${services_path}/bundlemgr/src/aot/aot_args.cpp",
+45:   "${services_path}/bundlemgr/src/aot/aot_handler.cpp",
+46:   "${services_path}/bundlemgr/src/app_service_fwk/app_service_fwk_installer.cpp",
+47:   "${services_path}/bundlemgr/src/base_bundle_installer.cpp",
+48:   "${services_path}/bundlemgr/src/bundle_exception_handler.cpp",
+
