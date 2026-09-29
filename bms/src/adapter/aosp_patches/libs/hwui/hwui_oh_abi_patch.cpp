@@ -665,6 +665,11 @@ typedef EGLSurface (*real_eglCreateWindowSurface_fn_t)(EGLDisplay, EGLConfig,
                                                        const EGLint*);
 typedef EGLBoolean (*real_eglDestroySurface_fn_t)(EGLDisplay, EGLSurface);
 
+// 2026-09-30 (#r17h): the TU carries local EGL typedefs only; eglGetError and
+// EGL_NONE are needed by the colorspace-retry below. libhwui links libEGL.
+extern "C" EGLint eglGetError(void);
+constexpr EGLint kEglAttribNone = 0x3038;  // EGL_NONE
+
 namespace {
     oh_anw_get_oh_fn_t                  g_oh_anw_get_oh_fn = nullptr;
     oh_anw_notify_presented_fn_t         g_oh_anw_notify_presented_fn = nullptr;
@@ -772,7 +777,7 @@ EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
     if (surface == EGL_NO_SURFACE && attrib_list != nullptr) {
         // strip EGL_GL_COLORSPACE_KHR (+value) and any wide-color/HDR attrs
         std::vector<EGLint> stripped;
-        for (const EGLint* a = attrib_list; *a != EGL_NONE; a += 2) {
+        for (const EGLint* a = attrib_list; *a != kEglAttribNone; a += 2) {
             if (*a == 0x309D /*EGL_GL_COLORSPACE_KHR*/ ||
                 *a == 0x3230 /*EGL_GL_COLORSPACE_BT2020_PQ_EXT*/ ||
                 *a == 0x3231 /*EGL_GL_COLORSPACE_BT2020_HLG_EXT*/ ||
@@ -785,7 +790,7 @@ EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
             stripped.push_back(*a);
             stripped.push_back(*(a + 1));
         }
-        stripped.push_back(EGL_NONE);
+        stripped.push_back(kEglAttribNone);
         HiLogPrint(3, 5, 0xD000F00, "OH_EglHijack",
                    "eglCreateWindowSurface: first attempt EGL_NO_SURFACE "
                    "err=0x%x (colorspace attribs present); retrying stripped",
