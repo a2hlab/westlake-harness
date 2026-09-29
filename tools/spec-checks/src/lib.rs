@@ -92,3 +92,8 @@ fn bms_rerun_offline() {
 fn white_window_offline() {
     run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_*.py"]);
 }
+
+#[test]
+fn ability_stage_offline() {
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_ability_stage.py"]);
+}

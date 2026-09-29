@@ -363,3 +363,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **2026-09-29 #59 B4 v4 汇总防混轮**: v3 的 merge_v3 只覆盖分类等字段，旧 observed_pids/record_status 可能仍是前轮；分片可借历史分类，v4 直方图必须从同一run-id/serial/boot的新record重算，禁止借v3填未跑key；见 `benchmark/2026-09-28-bms-route-deploy/batch/b4-rerun-plan.md`，三片22/22/22离线FakeBoard验证，未上板。
 
 - **2026-09-29 #61 白启动窗离线核验**：#48 的 9 个 15s 存活 PID 全无 ScheduleLaunchAbility/VSync 首帧链；7 个 bind 明确失败(4 Startup ProviderInfo、1 FileProvider metadata、2 namespace 目录)，stk/mindustry bind OK；跨后续 app 的全板 hilog 按 PID+UID+包名可归属 8 个约 30s 后 Add Ability Stage TimeOut（mindustry 未捕获），故需并查 OH stage 完成握手与 Android bind，不能把存活/白窗统归 VSync 卡死；原始行号、哈希及 R2 边界见 `benchmark/2026-09-29-white-window/README.md`。
+
+- **2026-09-29 #62 AbilityStage 握手与代际**：B5 `250958dc` 的 bind 异步到主线程，异常只跳过 `sBindAppDone=true`，路径里没有 AddAbilityStageDone；当前 native 源码直接在 OH IPC 回调回应 stage/accept-want。#48 九 PID 的 49/49 JNI 地址均匹配 `7db99e1b` 布局(两个回调只有 DEBUG 日志、无完成 IPC)，HelloWorld 50/50 匹配含回应的 `84695d62`；布局归属不冒充历史整文件哈希。修复应成组恢复 native stage+accept 回应并核 child 映射代际，勿在 Java finally 补 ACK；证据/行号/R2见 `benchmark/2026-09-29-white-window/ABILITY-STAGE.md`。

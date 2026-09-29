@@ -1,0 +1,83 @@
+SOURCE /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/src/adapter/framework/activity/jni/oh_app_mgr_client.cpp
+76: bool OHAppMgrClient::attachApplication(JNIEnv* env, JavaVM* jvm, jobject appThread,
+77:                                         int pid, int uid, const std::string& bundleName) {
+78:     if (!connected_ || proxy_ == nullptr) {
+79:         LOGE("Not connected to AppMgrService");
+80:         return false;
+81:     }
+82: 
+83:     pid_ = pid;
+84:     uid_ = uid;
+85:     bundleName_ = bundleName;
+86: 
+87:     LOGI("AttachApplication: pid=%d, uid=%d, bundle=%s", pid, uid, bundleName.c_str());
+88: 
+89:     // Create AppSchedulerAdapter (implements OH IAppScheduler / AppSchedulerHost)
+90:     // This stub receives all callbacks from OH AppMgr and bridges them to Android
+91:     appScheduler_ = new AppSchedulerAdapter(jvm, env, appThread);
+92: 
+93:     // Register a dummy OHOSApplication factory so OH AppKit can create an
+94:     // application host for this APK-wrapper process. Without it,
+95:     // ApplicationLoader::GetApplicationByName() returns null and ability
+96:     // lifecycle has no content host, leading to uiContent null /
+97:     // SetUIContent timeout (AppKit: [ohos_application908] not exist).
+98:     LOGI("RegisterApplication: bundle=%s", bundleName.c_str());
+99:     OHOS::AppExecFwk::ApplicationLoader::GetInstance().RegisterApplication(
+100:         bundleName,
+101:         []() -> OHOS::AppExecFwk::OHOSApplication* {
+102:             return new (std::nothrow) OHOS::AppExecFwk::OHOSApplication();
+103:         });
+104: 
+105:     // Register the scheduler with OH AppMgr
+106:     // After this call, OH AppMgr will invoke callbacks on appScheduler_:
+107:     //   - ScheduleLaunchApplication(appLaunchData, config)
+108:     //   - ScheduleLaunchAbility(abilityInfo, token, want, recordId)
+109:     //   - ScheduleForegroundApplication()
+110:     //   - ScheduleBackgroundApplication()
+111:     //   - etc.
+112:     proxy_->AttachApplication(appScheduler_);
+113: 
+114:     LOGI("AttachApplication completed: AppSchedulerAdapter registered with OH AppMgr");
+115:     return true;
+142: 
+143: void OHAppMgrClient::notifyAppState(int state) {
+144:     if (!connected_ || proxy_ == nullptr) return;
+145: 
+146:     LOGI("NotifyAppState: state=%d", state);
+147: 
+148:     switch (static_cast<AppState>(state)) {
+149:         case AppState::STATE_FOREGROUND:
+150:             proxy_->ApplicationForegrounded(recordId_);
+151:             break;
+152:         case AppState::STATE_BACKGROUND:
+153:             proxy_->ApplicationBackgrounded(recordId_);
+154:             break;
+155:         case AppState::STATE_TERMINATED:
+164: // [S19 LIFECYCLE-FIX] Reply IAppMgr::AddAbilityStageDone(recordId) so OH AMS
+165: // stops blocking on the AbilityStage handshake and proceeds to
+166: // ScheduleLaunchAbility -> handleLaunchActivity. recordId_ was cached by
+167: // ScheduleLaunchApplication (AppLaunchData.GetRecordId()) before this fires.
+168: // Mirrors notifyAppState()'s proxy-call pattern exactly (same IAppMgr proxy).
+169: void OHAppMgrClient::addAbilityStageDone() {
+170:     if (!connected_ || proxy_ == nullptr) {
+171:         LOGE("addAbilityStageDone: not connected to AppMgrService (recordId=%d)", recordId_);
+172:         return;
+173:     }
+174:     LOGI("addAbilityStageDone: recordId=%d -> IAppMgr::AddAbilityStageDone", recordId_);
+175:     proxy_->AddAbilityStageDone(recordId_);
+176: }
+177: 
+178: // [S19 LIFECYCLE-FIX #2] Reply IAppMgr::ScheduleAcceptWantDone(recordId, want, flag)
+179: // so OH AMS stops blocking on the specified-ability handshake and proceeds to
+180: // ScheduleLaunchAbility -> handleLaunchActivity. Mirrors addAbilityStageDone /
+181: // notifyAppState. flag = moduleName (as deployed bridge 048b7576 passes).
+182: void OHAppMgrClient::scheduleAcceptWantDone(const OHOS::AAFwk::Want& want,
+183:                                             const std::string& flag) {
+184:     if (!connected_ || proxy_ == nullptr) {
+185:         LOGE("scheduleAcceptWantDone: not connected to AppMgrService (recordId=%d)", recordId_);
+186:         return;
+187:     }
+188:     LOGI("scheduleAcceptWantDone: recordId=%d flag=%s -> IAppMgr::ScheduleAcceptWantDone",
+189:          recordId_, flag.c_str());
+190:     proxy_->ScheduleAcceptWantDone(recordId_, want, flag);
+191: }
