@@ -29,13 +29,23 @@ done
 echo "all ${#REQUIRED[@]} required sources present"
 mkdir -p "$OUT"
 
+# PROVEN two-step static-C++ link (2026-09-30, fixes _Znwm relocation failure
+# in the app domain): compile to .o, then link with the toolchain's explicit
+# libc++.a + libc++abi.a (clang's -static-libstdc++ is a no-op with this driver).
+LIBCXX_DIR="$VMROOT/toolchains/ohos-sdk/native/llvm/lib/aarch64-linux-ohos"
 "$CXX" --target=aarch64-linux-ohos --sysroot="$SYSROOT" \
-  -shared -fPIC -O2 -std=c++17 -Wall \
+  -fPIC -O2 -std=c++17 -Wall \
   -I"$HERE" -I"$JNI_INC" \
-  -o "$OUT/liboh_tls_boundary.so" \
+  -c -o "$OUT/wl_tls_block.o" \
   "$HERE/wl_tls_block.cpp" \
+  || { echo "compile failed"; exit 2; }
+"$CXX" --target=aarch64-linux-ohos --sysroot="$SYSROOT" \
+  -shared -fPIC \
+  -o "$OUT/liboh_tls_boundary.so" \
+  "$OUT/wl_tls_block.o" \
+  -L"$LIBCXX_DIR" -l:libc++.a -l:libc++abi.a \
   -ldl -lpthread \
-  || { echo "build failed"; exit 2; }
+  || { echo "link failed"; exit 2; }
 file "$OUT/liboh_tls_boundary.so" | head -1
 nm -D "$OUT/liboh_tls_boundary.so" | grep -q westlake_tls_child_register \
   || { echo "westlake_tls_child_register missing from output"; exit 3; }

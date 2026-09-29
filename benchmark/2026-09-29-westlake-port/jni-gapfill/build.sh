@@ -11,10 +11,19 @@ SYSROOT="$VMROOT/toolchains/ohos-sdk/native/sysroot"
 JNI_INC="${JNI_INC:-/home/zhaoyue/a2hlab/westlake-current/third_party/jni}"
 [ -x "$CXX" ] || { echo "clang-15 missing"; exit 1; }
 mkdir -p "$OUT"
+# PROVEN two-step static-C++ link (2026-09-30, fixes _Znwm relocation failure
+# in the app domain): .o then explicit libc++.a + libc++abi.a.
+LIBCXX_DIR="$VMROOT/toolchains/ohos-sdk/native/llvm/lib/aarch64-linux-ohos"
 "$CXX" --target=aarch64-linux-ohos --sysroot="$SYSROOT" \
-  -shared -fPIC -O2 -std=c++17 -Wall -I"$JNI_INC" \
-  -o "$OUT/libwestlake_jni_gapfill.so" "$HERE/westlake_jni_gapfill.cpp" \
-  || { echo "build failed"; exit 2; }
+  -fPIC -O2 -std=c++17 -Wall -I"$JNI_INC" \
+  -c -o "$OUT/westlake_jni_gapfill.o" "$HERE/westlake_jni_gapfill.cpp" \
+  || { echo "compile failed"; exit 2; }
+"$CXX" --target=aarch64-linux-ohos --sysroot="$SYSROOT" \
+  -shared -fPIC \
+  -o "$OUT/libwestlake_jni_gapfill.so" \
+  "$OUT/westlake_jni_gapfill.o" \
+  -L"$LIBCXX_DIR" -l:libc++.a -l:libc++abi.a \
+  || { echo "link failed"; exit 2; }
 file "$OUT/libwestlake_jni_gapfill.so" | head -1
 nm -D "$OUT/libwestlake_jni_gapfill.so" | grep -q " T JNI_OnLoad" || { echo "JNI_OnLoad missing"; exit 3; }
 sha256sum "$OUT/libwestlake_jni_gapfill.so"
