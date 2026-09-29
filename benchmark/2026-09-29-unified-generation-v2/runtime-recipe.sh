@@ -268,7 +268,6 @@ SRCS=(
     "$SRC/src/AndroidRuntime.cpp"
     # Task 79 A3: board ICU72 C-ABI NativeConverter (13/16) and regex
     # Pattern/Matcher (15/15) late RegisterNatives bridge.
-    "$SRC/src/westlake_icu_overrides.cpp"
     "$SRC/src/android_util_Log.cpp"
     # G2.10 (2026-04-30): android.util.EventLog — UnsatisfiedLinkError on
     # Activity.performCreate → EventLogTags.writeWmOnCreateCalled previously
@@ -344,7 +343,6 @@ SRCS=(
     "$SRC/src/android_hardware_SensorManager.cpp"
     "$SRC/src/android_ndk_libandroid_shim.cpp"
     "$SRC/src/android_window_show_native.cpp"
-    "$SRC/src/android_media_AudioSystemCapabilities.cpp"
     # 2026-07-10 (L12 视频探针，codex round2 定稿后范围订正): android.media.
     # MediaPlayer 的 49 个 native 方法桩实现（stub，不做真解码）。补的是
     # kRegJNI[] 里此前对 MediaPlayer 这一条 native 注册路径的 gap —— Java 类
@@ -364,7 +362,6 @@ SRCS=(
 # register_android_content_AssetManager / register_android_content_res_ApkAssets
 # function is referenced from kRegJNI[] in our AndroidRuntime.cpp.
 SRCS_AOSP=(
-    # Real SQLite JNI and local CursorWindow engine (OH has no libbinder).
     "$SRC/src/cutils_ashmem_shim.cpp"
     "$SRC/src/androidfw/CursorWindow.cpp"
     "$SRC/src/android_database_CursorWindow.cpp"
@@ -499,19 +496,9 @@ if [ ! -f "$LABELS_OUT" ]; then
 fi
 INC_AOSP="$INC_AOSP -I$LABELS_GEN"
 
-INC_AOSP="$INC_AOSP -I$SRC/src/sqlite"
+INC_AOSP="$INC_AOSP -I$SRC/src/sqlite -I$A/external/sqlite/android"
 objs=()
-CC="${L03_A12_CC:-$OH/prebuilts/clang/ohos/linux-x86_64/llvm/bin/clang}"
-if ! "$CC" --target=aarch64-linux-ohos --sysroot="$SR" \
-    -I"$SR/include/aarch64-linux-ohos" -fPIC -O2 \
-    -DSQLITE_ENABLE_COLUMN_METADATA -DSQLITE_ENABLE_FTS3 \
-    -DSQLITE_ENABLE_FTS3_PARENTHESIS -DSQLITE_ENABLE_FTS4 -DSQLITE_ENABLE_FTS5 \
-    -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_JSON1 -DSQLITE_ENABLE_DBSTAT_VTAB \
-    -DSQLITE_THREADSAFE=2 -DSQLITE_TEMP_STORE=3 \
-    -c "$SRC/src/sqlite/sqlite3.c" -o "$BUILD/sqlite3.o"; then
-    echo "FAIL: SQLite amalgamation compile" >&2
-    exit 1
-fi
+"$L03_A12_CC" --target=aarch64-linux-ohos --sysroot="$SR" -I"$SR/include/aarch64-linux-ohos" -fPIC -O2 -DSQLITE_ENABLE_COLUMN_METADATA -DSQLITE_ENABLE_FTS3 -DSQLITE_ENABLE_FTS3_PARENTHESIS -DSQLITE_ENABLE_FTS4 -DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_JSON1 -DSQLITE_ENABLE_DBSTAT_VTAB -DSQLITE_THREADSAFE=2 -DSQLITE_TEMP_STORE=3 -c "$SRC/src/sqlite/sqlite3.c" -o "$BUILD/sqlite3.o" || exit $?
 objs+=("$BUILD/sqlite3.o")
 for s in "${SRCS[@]}"; do
     bn=$(basename "$s" .cpp)
@@ -555,12 +542,12 @@ if $CXX --target=aarch64-linux-ohos $LDFLAGS \
     "${objs[@]}" \
     -landroidfw -lbase -lutils -lcutils -lziparchive -licuuc \
     -llog -lbionic_compat -lhitrace_ndk.z -lbegetutil.z \
-    -lnative_window \
+    "/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b6-latest/platform-pool/system/lib64/chipset-sdk-sp/libnative_window.so" \
     -l:libhilog.so \
     -loh_adapter_bridge \
     -Wl,--no-as-needed -lnativehelper \
     -Wl,--no-as-needed "$WLTG_REGISTRY" -lnativeloader \
-    -l:libz.so \
+    "/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b6-latest/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/out/route-a-generation/libshared_libz.z.so" \
     2>"$BUILD/link.err"; then
     sz=$(stat -c%s "$OUT/liboh_android_runtime.so")
     echo "  OK ($sz bytes)"

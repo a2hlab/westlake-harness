@@ -406,3 +406,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **2026-09-29 #62 AbilityStage 握手与代际**：B5 `250958dc` 的 bind 异步到主线程，异常只跳过 `sBindAppDone=true`，路径里没有 AddAbilityStageDone；当前 native 源码直接在 OH IPC 回调回应 stage/accept-want。#48 九 PID 的 49/49 JNI 地址均匹配 `7db99e1b` 布局(两个回调只有 DEBUG 日志、无完成 IPC)，HelloWorld 50/50 匹配含回应的 `84695d62`；布局归属不冒充历史整文件哈希。修复应成组恢复 native stage+accept 回应并核 child 映射代际，勿在 Java finally 补 ACK；证据/行号/R2见 `benchmark/2026-09-29-white-window/ABILITY-STAGE.md`。
 
 - **2026-09-29 #66 统一运行代**：6cb40cd6 的 HelloWorld maps 为单 route ART/openjdkjvm，但已签 #58 本来有两份同路径 bridge84695d62；不能把「单 ART」擅扩成「单 bridge」拒部署。重放包必须带 B5 的完整 Android/native 根、TGR 同 inode 别名与 ZigZag 五库，按 serial+boot 记录挂载并验子进程 root SHA；见 benchmark/2026-09-29-unified-generation/。
+
+- **#67 v2 (2026-09-29)**：SQLite四个weak registrar换真实现7e1fd94e、ANL同时核search/permitted真实路径ae848463，代15728be5通过HW/ZigZag且Flutter从path-domain推进到线程READY门；B5下Thunderbird更早停KoinApplication未启动，不能以nativeOpen已注册冒充实际SQL执行。v2整代回滚6cb，见 `benchmark/2026-09-29-unified-generation-v2/`。

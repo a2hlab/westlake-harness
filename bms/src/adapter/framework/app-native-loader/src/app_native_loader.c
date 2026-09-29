@@ -33,6 +33,7 @@ struct AnlDomain {
     Dl_namespace bridge;
     bool has_bridge;
     char app_paths[PATH_MAX];
+    char app_permitted_paths[PATH_MAX];
     AnlRuntimeGateV1 runtime_gate;
     void* bridge_bootstrap_handle;
 };
@@ -220,8 +221,8 @@ static bool path_is_in_app_domain(const AnlDomain* domain, const char* path) {
     char target[PATH_MAX];
     if (realpath(path, target) == NULL) return false;
 
-    char copy[PATH_MAX];
-    snprintf(copy, sizeof(copy), "%s", domain->app_paths);
+    char copy[2 * PATH_MAX];
+    snprintf(copy, sizeof(copy), "%s:%s", domain->app_paths, domain->app_permitted_paths);
     char* save = NULL;
     for (char* part = strtok_r(copy, ":", &save); part != NULL;
          part = strtok_r(NULL, ":", &save)) {
@@ -335,6 +336,7 @@ int ANL_CreateDomain(const AnlDomainConfig* config, AnlDomain** out_domain) {
     AnlDomain* domain = calloc(1, sizeof(*domain));
     if (domain == NULL) return failf("calloc failed: %d", errno);
     snprintf(domain->app_paths, sizeof(domain->app_paths), "%s", config->app_search_paths);
+    snprintf(domain->app_permitted_paths, sizeof(domain->app_permitted_paths), "%s", config->app_permitted_paths);
     domain->runtime_gate = g_runtime_gate;
 
     unsigned long id = atomic_fetch_add_explicit(&g_domain_id, 1, memory_order_relaxed);

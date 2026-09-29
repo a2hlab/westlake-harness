@@ -766,6 +766,35 @@ static void test_load_error_classification(const Fixture* fixture) {
     ANL_ReleaseDomainHandle(domain);
 }
 
+
+/* The Flutter ReLinker fallback is inside libraryPermittedPath, not search. */
+static void test_app_permitted_boundary(const Fixture* fixture) {
+    AnlDomainConfig config = base_config(fixture);
+    config.app_permitted_paths = fixture->outside;
+    AnlDomain* domain = NULL;
+    MockDlnsReset();
+    CHECK(ANL_CreateDomain(&config, &domain) == 0, "permitted fixture create failed");
+    CHECK(ANL_Dlopen(domain, fixture->outside_so, RTLD_NOW) != NULL,
+          "permitted absolute Flutter path rejected: %s", ANL_Dlerror());
+    CHECK(ANL_Dlopen(domain, fixture->app_so, RTLD_NOW) != NULL,
+          "search root lost when permitted root differs");
+    char escape[PATH_MAX];
+    join_path(escape, sizeof(escape), fixture->outside, "escape.so");
+    char foreign[PATH_MAX];
+    join_path(foreign, sizeof(foreign), fixture->bridge, "foreign.so");
+    make_file(foreign);
+    CHECK(symlink(foreign, escape) == 0, "create test symlink");
+    int calls_before = MockDlnsGet()->dlopen_calls;
+    CHECK(ANL_Dlopen(domain, escape, RTLD_NOW) == NULL,
+          "permitted symlink escaped into foreign directory");
+    CHECK(ANL_Dlopen(domain, foreign, RTLD_NOW) == NULL,
+          "foreign absolute path accepted");
+    CHECK(MockDlnsGet()->dlopen_calls == calls_before,
+          "foreign path reached loader backend");
+    unlink(escape); unlink(foreign);
+    ANL_ReleaseDomainHandle(domain);
+}
+
 int main(void) {
     Fixture fixture = fixture_create();
     install_runtime_gate(&fixture);
@@ -778,6 +807,7 @@ int main(void) {
     test_bridge_bootstrap(&fixture);
     test_rtld_global_rejected(&fixture);
     test_app_domain_boundary(&fixture);
+    test_app_permitted_boundary(&fixture);
     test_runtime_gate_fail_closed(&fixture);
     test_dlclose_runtime_gate(&fixture);
     test_load_error_classification(&fixture);

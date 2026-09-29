@@ -36,13 +36,16 @@ def save(path, value):
 
 def load_package(package):
     m = json.loads((package / 'package.json').read_text())
-    if m['generation'] != GEN: raise ValueError('unsupported generation')
+    if not re.fullmatch('[0-9a-f]{64}', m['generation']): raise ValueError('invalid generation')
     targets = []
     for name, digest in m['files'].items():
         p = Path(name)
         if p.is_absolute() or '..' in p.parts or (package / p).is_symlink():
             raise ValueError('unsafe package member')
         if sha(package / p) != digest: raise ValueError('package SHA mismatch: ' + name)
+    receipt = 'receipts/ROUTE_A_INPUTS.json'
+    if receipt in m['files'] and m['files'][receipt] != m['generation']:
+        raise ValueError('generation is not bound to sealed Route-A inputs')
     for row in m['mounts']:
         source, target = row['source'], row['target']
         if source not in m['files'] and not any(x.startswith(source + '/') for x in m['files']):
@@ -80,6 +83,7 @@ def rollback_order(state, boot, top_mounts):
 class Deployment:
     def __init__(self, args, m, b):
         self.a, self.m, self.b = args, m, b
+        self.gen = m['generation']
         self.package = args.package
         self.root = args.state_root / args.serial
         self.out = self.root / ('attempt-' + str(time.time_ns()))
@@ -87,7 +91,11 @@ class Deployment:
         tools = Path(args.tools)
         self.board = b.Board(args.serial, str(tools / 'hdc_mac.sh'), 'mac ' + shlex.quote(str(tools / 'board_note.sh')), args.lane, self.out / 'commands')
         self.board.ready()
-        self.statepath = self.root / (self.board.boot + '.json')
+        self.statepath = self.root / (self.board.boot + '-' + self.gen[:12] + '.json')
+        legacy = self.root / (self.board.boot + '.json')
+        if not self.statepath.exists() and legacy.exists():
+            old = json.loads(legacy.read_text())
+            if old.get('generation') == self.gen: self.statepath = legacy
         self.d = json.loads(self.statepath.read_text()) if self.statepath.exists() else None
     def shell(self, text, **kw): return self.board.shell(text, **kw)[1]
     def hashes(self, paths):
@@ -151,7 +159,10 @@ class Deployment:
     def verify(self):
         expected = self.m['live_hashes']
         if self.hashes(list(expected)) != expected: raise RuntimeError('active generation hashes differ')
-        pid = self.d['parent_pid']
+        parents = [r for r in self.ps() if r['name'] == 'appspawn-x' and r['uid'] == 0]
+        if len(parents) != 1: raise RuntimeError('no unique active appspawn parent')
+        pid = parents[0]['pid']
+        self.d['parent_pid'] = pid
         if self.hashes([f'/proc/{pid}/exe'])[f'/proc/{pid}/exe'] != expected['/system/bin/appspawn-x']: raise RuntimeError('parent is not this generation')
         if self.hashes(list(self.d['installer_before'])) != self.d['installer_before']: raise RuntimeError('installer changed')
         self.top_mounts()
@@ -168,7 +179,7 @@ class Deployment:
         if len(children) != 1: raise RuntimeError('no unique HelloWorld child under deployed parent')
         child = children[0]['pid']; maps = self.shell(f'cat /proc/{child}/maps')
         (out / 'maps.txt').write_text(maps)
-        gate = check_maps(maps)
+        gate = check_maps(maps, self.gen)
         paths = {f'/proc/{child}/root' + p: digest for p, digest in expected.items()}
         paths[f'/proc/{child}/exe'] = expected['/system/bin/appspawn-x']
         actual = self.hashes(list(paths)); save(out / 'sha256.json', actual)
@@ -186,17 +197,17 @@ class Deployment:
         if self.hashes(list(self.m['prerequisites'])) != self.m['prerequisites']: raise RuntimeError('platform ABI prerequisites differ')
         for _, pkg in APPS: self.b.parse_bundle(self.shell('bm dump -n ' + pkg), pkg)
         for row in self.m['mounts']:
-            if row['target'] != '/system/lib64/westlake/route-a/' + GEN:
+            if row['target'] != '/system/lib64/westlake/route-a/' + self.gen:
                 self.shell('test -e ' + shlex.quote(row['target']))
-        route = '/system/lib64/westlake/route-a/' + GEN
+        route = '/system/lib64/westlake/route-a/' + self.gen
         if route in self.top_mounts(): raise RuntimeError('generation route already mounted outside this transaction')
         # Current files under the future directory mount, plus every direct bind target.
         before_paths = ['/system/android/' + x[len('payload/android/'):] for x in self.m['files'] if x.startswith('payload/android/')]
         before_paths += [x['target'] for x in self.m['mounts'] if x['target'] not in ['/system/android', route]]
         before = self.hashes(sorted(set(before_paths)))
         installers = ['/system/lib64/libapk_installer.so', '/system/lib64/platformsdk/libapk_installer.so']
-        remote = '/data/local/tmp/westlake-generation-' + GEN[:12] + '-' + self.board.boot + '-' + str(time.time_ns())
-        self.d = {'serial': self.a.serial, 'boot_id': self.board.boot, 'generation': GEN, 'package_sha256': sha(self.package / 'package.json'), 'remote': remote, 'before': before, 'installer_before': self.hashes(installers), 'mounted': [], 'status': 'staging'}
+        remote = '/data/local/tmp/westlake-generation-' + self.gen[:12] + '-' + self.board.boot + '-' + str(time.time_ns())
+        self.d = {'serial': self.a.serial, 'boot_id': self.board.boot, 'generation': self.gen, 'package_sha256': sha(self.package / 'package.json'), 'remote': remote, 'before': before, 'installer_before': self.hashes(installers), 'mounted': [], 'status': 'staging'}
         self.record()
         self.shell('mkdir ' + remote)
         archive = self.out / 'payload.tar'
@@ -245,7 +256,7 @@ def main(argv=None):
     a = p.parse_args(argv); a.package = a.package.resolve()
     m = load_package(a.package)
     if a.dry_run:
-        print(json.dumps({'passed': True, 'generation': GEN, 'serial': a.serial, 'file_count': len(m['files']), 'mounts': m['mounts'], 'device_io': False}, indent=2)); return
+        print(json.dumps({'passed': True, 'generation': m['generation'], 'serial': a.serial, 'file_count': len(m['files']), 'mounts': m['mounts'], 'device_io': False}, indent=2)); return
     if platform.system() == 'Darwin':
         command = ['python3', str(Path(__file__).resolve()), a.serial, str(a.package), '--lane', a.lane, '--tools', a.tools, '--state-root', str(a.state_root.resolve())]
         if a.rollback: command.append('--rollback')

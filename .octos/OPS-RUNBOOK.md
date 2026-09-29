@@ -111,3 +111,5 @@ Installer两处更新并重启foundation后可能黑屏；按明确授权整机�
 包在 Mac `/Users/zhaoyue/orca/workspaces/westlake-generation-6cb40cd6`；入口为仓库 `scripts/lab/deploy_generation.sh <完整serial> <包目录>`，或包内 `tools/deploy_generation.sh`。先以自己的 lane 取得 board_note 锁并 held 确认；`--dry-run` 仅离线核包，真正部署加 `--lane <车道>`（默认 cx-t0），Mac 入口自动经 a2hlab VM。脚本支持三板但只操作传入序列号，依赖现有 OH6.1 PR03/BMS 与三项控制 app 已装。
 
 重启后原命令重放；同 boot 重跑只校验+HelloWorld 冒烟，不叠加挂载。新状态写 Mac `westlake-generation-state/<serial>/<boot_id>.json`，保留它才能 `--rollback`（仅卸本次挂载、校验原 SHA、重启原 parent，跨 boot/其他覆盖拒绝）。#66 成功代保持常驻，**不要因 Wikipedia 仍回桌面回滚**。包会恢复 B5 JAR250958dc，新 Java 修正须部署后按所属任务重加；installer 不变。两份 bridge 映射可与已签基线一致，要求其 SHA84695d62；ART 与 openjdkjvm 必须各只有一份且在本代 route-a。
+
+- 多代部署器状态须按 serial + boot_id + generation 分开；旧 `<boot>.json` 仅同generation复用。服务重启后重新找唯一root appspawn-x并核exe SHA，不能信旧PID。#67更新版入口可校验/回滚v1与v2；v2回滚恢复先前6cb整代，包内B5 JAR会覆盖临时Java覆盖。v2 15728be5尚缺SQLite目标app执行验收，不作三板已签基线。
