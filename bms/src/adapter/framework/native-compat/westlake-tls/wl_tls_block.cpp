@@ -664,3 +664,18 @@ extern "C" int westlake_tls_child_register(JNIEnv* env) {
     env->DeleteLocalRef(cls);
     return rc == 0 ? 0 : -2;
 }
+
+/* 2026-09-30: JNI_OnLoad so System.load() self-binds (cc-wiki request).
+ * Registers the same 7 natives on load; the explicit
+ * westlake_tls_child_register() export is kept for cx-t0's v3c wiring.
+ * A load in an environment without adapter/compat/WestlakeSSLSocket logs
+ * "TLS off" but still returns JNI_VERSION_1_6 — loading must not fail. */
+extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
+    JNIEnv* env = nullptr;
+    if (vm == nullptr || vm->GetEnv(reinterpret_cast<void**>(&env),
+                                    JNI_VERSION_1_6) != JNI_OK || env == nullptr) {
+        return JNI_ERR;
+    }
+    westlake_tls_child_register(env);
+    return JNI_VERSION_1_6;
+}
