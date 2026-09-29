@@ -118,6 +118,13 @@ public final class LocalServiceBinders {
                     binder = proxy(name, "android.os.IBatteryPropertiesRegistrar",
                             LocalServiceBinders::batteryProperties);
                     break;
+                case "deviceidle":
+                    // r17c (#null-service etar): PowerExemptionManager is built from IDeviceIdle-
+                    // Controller ("deviceidle"); route-A leaves it null, so isApplicationExempted/
+                    // isAllowLowerPowerProcess NPE. The generic stub answers every query with the
+                    // type-zero value (boolean -> false = "not exempted"), which is the safe default.
+                    binder = proxy(name, "android.os.IDeviceIdleController", LocalServiceBinders::stub);
+                    break;
                 default:
                     return null;
             }

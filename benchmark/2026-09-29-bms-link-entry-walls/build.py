@@ -78,6 +78,9 @@ tls_src = [src / 'WestlakeTlsInstall.java', src / 'OhTrustBridge.java',
            src / 'OhTrustManagerFactorySpi.java', src / 'OhSystemTrustManager.java',
            src / 'OhPeerCertificates.java', src / 'WestlakeSecureRandomSpi.java',
            src / 'WestlakeSSLSocket.java', src / 'WestlakeSSLSession.java',
+           # r17d (#93): default-HTTPS factory chain over WestlakeSSLSocket, gated on the native
+           # self-test (WestlakeTlsInstall). android.net/ssl types -> android.jar bootclasspath pass.
+           src / 'WestlakeSSLSocketFactory.java', src / 'WestlakeSSLContextSpi.java',
            # r17b (#tagsoup): tagsoup-free Html.fromHtml replacement (android.text.* -> needs the
            # android.jar bootclasspath pass), called by oc-t4's libwestlake_html_compat.so.
            src / 'HtmlCompatFallback.java']

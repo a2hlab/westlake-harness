@@ -104,7 +104,12 @@ public final class B7BindFixes {
      * (TLS first). Called from apply() so the caller class loader is the runtime PathClassLoader.
      */
     static void loadWestlakeNativeLibs() {
-        // TLS boundary first (8ecf6250): its JNI_OnLoad registers WestlakeSSLSocket's seven natives.
+        // Framework JNI gap-fill first (56b5295c): supplies Process.getElapsedCpuTime, FileObserver,
+        // Camera.getNumberOfCameras, EGLImpl._nativeClassInit and ActivityManagerAdapter.
+        // nativeStopServiceAbility -- the native symbols apps reach once the receiver/broadcast guards
+        // let them run past the early ULEs (catima/amaze/vector/meet/spd/opencamera).
+        loadLib("/system/android/lib64/libwestlake_jni_gapfill.so");
+        // TLS boundary (8ecf6250): its JNI_OnLoad registers WestlakeSSLSocket's seven natives.
         loadLib("/system/android/lib64/liboh_tls_boundary.so");
         // HTML compat (26ac847b): the native JNI_OnLoad rewrites android.text.Html.fromHtml into a call
         // to the class named by WESTLAKE_HTML_COMPAT_CLASS, gated by WESTLAKE_HTML_COMPAT=1. Both envs

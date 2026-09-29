@@ -43,10 +43,46 @@ public final class WestlakeTlsInstall {
             // OhSystemTrustManager (platform CA bundle). Its own `installed` guard dedupes as well.
             OhTrustBridge.install();
             System.err.println("[B8-TLS] Westlake HTTPS/TLS Java chain installed via " + bc.getName());
+            installSocketFactoryIfSelfTestPasses(bc);
         } catch (Throwable t) {
             // Never fail the bind for a crypto-registration problem: an app that does not do HTTPS at
             // first frame still needs to reach its UI. Report and move on.
             System.err.println("[B8-TLS] install failed (non-fatal): " + t);
+        }
+    }
+
+    /**
+     * r17d (#93): route the default HTTPS through WestlakeSSLSocket, but ONLY when the native TLS
+     * boundary has self-tested a real handshake (WestlakeSSLSocket.selfTestPassed(), fail-closed).
+     * Registering the factory routes every app's default SSLSocketFactory/SSLContext to the OH
+     * OpenSSL boundary, so gating on "loaded" would be wrong: a loaded-but-broken native would send
+     * all HTTPS down a path that always fails (worse than dormant). The self-test proves dlopen +
+     * cacert validation + SSL_set1_host actually complete before we switch anything.
+     */
+    private static void installSocketFactoryIfSelfTestPasses(Provider bc) {
+        boolean ok;
+        try {
+            ok = adapter.compat.WestlakeSSLSocket.selfTestPassed();
+        } catch (Throwable t) {
+            ok = false;
+        }
+        if (!ok) {
+            System.err.println("[B8-TLS] native handshake self-test not passed; SSLSocketFactory stays dormant");
+            return;
+        }
+        try {
+            String spi = "adapter.compat.WestlakeSSLContextSpi";
+            bc.put("SSLContext.TLS", spi);
+            bc.put("SSLContext.TLSv1.2", spi);
+            bc.put("SSLContext.TLSv1.3", spi);
+            bc.put("SSLContext.Default", spi);
+            bc.put("Alg.Alias.SSLContext.SSL", "TLS");
+            javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(
+                    new adapter.compat.WestlakeSSLSocketFactory());
+            Security.setProperty("ssl.SocketFactory.provider", "adapter.compat.WestlakeSSLSocketFactory");
+            System.err.println("[B8-TLS] WestlakeSSLSocketFactory installed as default HTTPS (self-test OK)");
+        } catch (Throwable t) {
+            System.err.println("[B8-TLS] SSLSocketFactory install failed: " + t);
         }
     }
 

@@ -32,7 +32,7 @@ public final class B8BindExtras {
     // answers batteryproperties.getProperty with idle-charged constants.
     private static final String[] SERVICES = {"appops", "uimode", "locale", "account", "alarm",
             "notification", "location", "webviewupdate", "shortcut",
-            "batterystats", "batteryproperties"};
+            "batterystats", "batteryproperties", "deviceidle"};
 
     private B8BindExtras() {}
 

@@ -50,6 +50,24 @@ public final class WestlakeSSLSocket extends SSLSocket {
     static native String nativeInfo(long handle, int which);
     static native void nativeClose(long handle);
 
+    // r17d: gate for wiring the default SSLSocketFactory. The native runs ONE handshake self-test
+    // (dlopen board OpenSSL + cacert.pem validation + SSL_set1_host against a fixed reachable host) at
+    // load and returns whether the whole chain -- not just RegisterNatives -- actually works. Until
+    // cx-t0's liboh_tls_boundary provides it, this method is unregistered and selfTestPassed() catches
+    // the UnsatisfiedLinkError and returns false, so the factory stays dormant (never routes all HTTPS
+    // to a handshake that would fail).
+    static native boolean nativeTlsSelfTestOk();
+
+    /** True only when the native TLS chain self-tested a real handshake successfully (fail-closed). */
+    public static boolean selfTestPassed() {
+        try {
+            return nativeTlsSelfTestOk();
+        } catch (Throwable t) {
+            System.err.println("[WESTLAKE-441] TLS self-test unavailable, factory stays dormant: " + t);
+            return false;
+        }
+    }
+
     private final Socket underlying;
     private final String peerHost;
     private final int peerPort;
