@@ -282,8 +282,8 @@
  },
  "fixes": {
   "runtime_jar_overlay": {
-   "baseline_sha256": "06141543bec26c5036931d8d2d71b0efaa45d5ffd73434557d165cd42672be0d",
-   "output_sha256": "5aff7a2b5137e1a696b535f3d99503a998007f4b801e2a653c865d3df275414c",
+   "baseline_sha256": "9161b50756d3ffdfb2a8908ea7ec13f908214688321b2785365977ac40b28dea",
+   "output_sha256": "2fae0344785b7654066068084f995e0f834b281a58a22c8d766f8865adc2b78a",
    "changed_existing_classes": [
     "adapter/activity/AppSchedulerBridge.smali"
    ],
@@ -291,13 +291,11 @@
     "adapter/activity/B7BindFixes.smali",
     "adapter/activity/BinaryAndroidManifestOrientation$StringPool.smali",
     "adapter/activity/BinaryAndroidManifestOrientation.smali",
-    "adapter/activity/LaunchActivityAliasProjection.smali",
-    "adapter/activity/UserManagerProjectionProxy$UserBinder.smali",
-    "adapter/activity/UserManagerProjectionProxy.smali"
+    "adapter/activity/LaunchActivityAliasProjection.smali"
    ],
    "generations": {
     "r2 a92f8135c70c1a76b462c9a1e71ec8443aaed111c73d812e82f13bea331fc1eb": "B7 only; used by fix1, b7final*, b7ww",
-    "r3 5aff7a2b5137e1a696b535f3d99503a998007f4b801e2a653c865d3df275414c": "B5 alias (verbatim) + B7; used by b7r3, b7ww2 (boot 64a531ef)"
+    "r3 2fae0344785b7654066068084f995e0f834b281a58a22c8d766f8865adc2b78a": "B5 alias (verbatim) + B7; used by b7r3, b7ww2 (boot 64a531ef)"
    },
    "deploy": "deploy.py apply (bind mount over /system/android/framework/oh-adapter-runtime.jar); rollback: deploy.py rollback",
    "receipts": [
@@ -305,7 +303,12 @@
     "runs/deploy-20260929T120929/receipt.json",
     "runs/deploy-20260929T122131/receipt.json",
     "runs/deploy-20260929T122345/receipt.json",
-    "runs/deploy-20260929T125753/receipt.json"
+    "runs/deploy-20260929T125753/receipt.json",
+    "runs/deploy-20260929T130858/receipt.json",
+    "runs/deploy-20260929T131319/receipt.json",
+    "runs/deploy-20260929T131337/receipt.json",
+    "runs/deploy-20260929T131632/receipt.json",
+    "runs/deploy-20260929T131634/receipt.json"
    ]
   },
   "installer": {
@@ -347,6 +350,34 @@
     29019
    ],
    "visual_verdict": "pending_review"
+  },
+  "zigzag_after_switch": {
+   "note": "#63: 5cd switched to the R155 ZigZag candidate generation with reproduce-zigzag-apk quick (provider 80c9aee0 + bridge 84695d62 read back from the ZigZag child maps); the reproducer installed ZigZag with the B7 installer 1ebf78ab and passed, and HelloWorld with the r4 overlay (B5+B7 on 9161b507, 2fae0344) showed its own UI. A ZigZag relaunch with r4 did not count: aa force-stop failed and aa start resumed the pre-overlay child (its root JAR read 9161b507). Then #63 was paused (#66 generation 6cb40cd6 for all boards); r4 was unmounted.",
+   "reproducer_log": {
+    "file": "runs/zigzag-quick-5cd-20260929T130910.log",
+    "sha256": "4513b09c384b0e82541e7386de2922e7386455ac11dfa3e769ef863b2420b21b",
+    "lines": [
+     {
+      "line": 8,
+      "text": "install bundle successfully."
+     },
+     {
+      "line": 17,
+      "text": "REPRODUCE_ZIGZAG_APK=PASS"
+     }
+    ]
+   },
+   "zigzag_screen": {
+    "path": "evidence/screens/zigzag-r155-candidate-after-switch.jpeg",
+    "sha256": "075c8758f9b286248fcd3f9ec5e6222f79755e7d683f476eecfd94872ee90332",
+    "source": "runs/zigzag-after-switch.jpeg"
+   },
+   "helloworld_r4_screen": {
+    "path": "evidence/screens/helloworld-r4-zigzag-generation-t20.jpeg",
+    "sha256": "525540a96f9f519bcd0ef5f929fdadde5d84b7789a876ba4c6f30dc483e7343f",
+    "source": "runs/b7r4hw2-20260929T131445/5cd1e3dd00000000000000000923012c/helloworld/final.jpeg"
+   },
+   "zigzag_with_overlay": false
   },
   "zigzag": {
    "launched": false,

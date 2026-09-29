@@ -13,10 +13,16 @@ OUT = Path('/home/zhaoyue/a2hlab/build-runs/20260929-oh6.1.0.31-b7')
 INPUT = OUT / 'inputs'
 BUILD = OUT / ('build-' + (sys.argv[1] if len(sys.argv) > 1 else 'r1'))
 BUILD.mkdir(exist_ok=False)
-BASELINE = '06141543bec26c5036931d8d2d71b0efaa45d5ffd73434557d165cd42672be0d'  # 5cd PR03 profile
+# pr03: 5cd before the #63 generation switch; zigzag: the 5ea/ZigZag candidate generation
+# (strict-20260809T160651Z-21101), which already ships User/Storage/Display projection proxies.
+BASELINES = {'pr03': ('baseline.jar', '06141543bec26c5036931d8d2d71b0efaa45d5ffd73434557d165cd42672be0d'),
+             'zigzag': ('baseline-9161b507.jar', '9161b50756d3ffdfb2a8908ea7ec13f908214688321b2785365977ac40b28dea')}
+BASE_NAME = sys.argv[2] if len(sys.argv) > 2 else 'pr03'
+BASE_JAR = INPUT / BASELINES[BASE_NAME][0]
+BASELINE = BASELINES[BASE_NAME][1]
 sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
-assert sha(INPUT / 'baseline.jar') == BASELINE
-cp = ':'.join(str(p) for p in sorted(INPUT.glob('*.jar')) if p.name not in ('android.jar', 'd8.jar', 'baseline.jar'))
+assert sha(BASE_JAR) == BASELINE
+cp = ':'.join(str(p) for p in sorted(INPUT.glob('*.jar')) if p.name not in ('android.jar', 'd8.jar') and not p.name.startswith('baseline'))
 
 
 def run(args):
@@ -33,15 +39,21 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 run(['java', '-cp', INPUT / 'd8.jar', 'com.android.tools.r8.D8', '--release', '--min-api', '22',
      '--lib', INPUT / 'android.jar', '--output', dex, *classes.rglob('*.class')])
-with zipfile.ZipFile(INPUT / 'baseline.jar') as z:
+with zipfile.ZipFile(BASE_JAR) as z:
     (BUILD / 'baseline.dex').write_bytes(z.read('classes.dex'))
 smali, helpers, post = BUILD / 'smali', BUILD / 'helper-smali', BUILD / 'postflight'
 run(['java', '-cp', cp, 'org.jf.baksmali.Main', 'disassemble', BUILD / 'baseline.dex', '-o', smali])
 original = {str(p.relative_to(smali)): p.read_bytes() for p in smali.rglob('*.smali')}
 run(['java', '-cp', cp, 'org.jf.baksmali.Main', 'disassemble', dex / 'classes.dex', '-o', helpers])
+# A helper the baseline already ships (UserManagerProjectionProxy on zigzag) is compiled only so
+# B7BindFixes links against it; the baseline's own class is kept.
+ALREADY_SHIPPED = {'adapter/activity/UserManagerProjectionProxy.smali',
+                   'adapter/activity/UserManagerProjectionProxy$UserBinder.smali'}
 for p in helpers.rglob('*.smali'):
     dest = smali / p.relative_to(helpers)
-    assert str(p.relative_to(helpers)) not in original, p
+    if str(p.relative_to(helpers)) in original:
+        assert str(p.relative_to(helpers)) in ALREADY_SHIPPED, p
+        continue
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(p, dest)
 
@@ -80,11 +92,12 @@ post_scheduler = (post / 'adapter/activity/AppSchedulerBridge.smali').read_text(
 assert post_scheduler.count('B7BindFixes;->apply(') == 1
 assert post_scheduler.count('LaunchActivityAliasProjection;->apply(') == 1
 output = BUILD / 'oh-adapter-runtime.jar'
-with zipfile.ZipFile(INPUT / 'baseline.jar') as source, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as dest:
+with zipfile.ZipFile(BASE_JAR) as source, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as dest:
     for item in source.infolist():
         dest.writestr(item, (BUILD / 'classes.dex').read_bytes() if item.filename == 'classes.dex'
                       else source.read(item.filename))
 result = {
+    'baseline': BASE_NAME,
     'baseline_sha256': BASELINE,
     'output': str(output),
     'output_sha256': sha(output),

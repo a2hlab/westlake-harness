@@ -47,7 +47,9 @@ def main():
                'before_sha256': target_hash(bd), 'mounts_before': mounted(bd)}
     if mode == 'apply':
         assert receipt['before_sha256'] == BUILD['baseline_sha256'], receipt
-        assert not receipt['mounts_before'], 'target already has a mount; roll back first'
+        # The ZigZag generation itself bind-mounts its candidate JAR here; stack on top of it
+        # (B5 method) but never twice.
+        assert not any(REMOTE_DIR[len('/data'):] in m for m in receipt['mounts_before']), 'B7 overlay already mounted'
         local = out / 'oh-adapter-runtime.jar'
         subprocess.run(['orb', '-m', 'a2hlab', 'cat', BUILD['output']], stdout=local.open('wb'), check=True)
         assert b.sha(local) == BUILD['output_sha256']
@@ -61,11 +63,12 @@ def main():
         receipt['after_sha256'] = target_hash(bd)
         assert receipt['after_sha256'] == BUILD['output_sha256'], receipt
     elif mode == 'rollback':
-        if receipt['mounts_before']:
+        # Unmount only the top layer, and only if it is this overlay.
+        if receipt['mounts_before'] and REMOTE_DIR[len('/data'):] in receipt['mounts_before'][-1]:
             bd.shell('umount ' + TARGET)
         receipt['after_sha256'] = target_hash(bd)
         assert receipt['after_sha256'] == BUILD['baseline_sha256'], receipt
-        assert not mounted(bd), 'overlay still mounted'
+        assert not any(REMOTE_DIR[len('/data'):] in m for m in mounted(bd)), 'overlay still mounted'
     receipt['mounts_after'] = mounted(bd)
     b.save(out / 'receipt.json', receipt)
     print(json.dumps(receipt, indent=2))

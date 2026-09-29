@@ -174,6 +174,17 @@ def main():
                        'record': 'runs/' + hw + '/record.json',
                        'observed_pids': json.loads((RUNS / hw / 'record.json').read_text()).get('observed_pids'),
                        'visual_verdict': 'pending_review'},
+        'zigzag_after_switch': {
+            'note': ('#63: 5cd switched to the R155 ZigZag candidate generation with reproduce-zigzag-apk quick '
+                     '(provider 80c9aee0 + bridge 84695d62 read back from the ZigZag child maps); the reproducer '
+                     'installed ZigZag with the B7 installer 1ebf78ab and passed, and HelloWorld with the r4 overlay '
+                     '(B5+B7 on 9161b507, 2fae0344) showed its own UI. A ZigZag relaunch with r4 did not count: '
+                     'aa force-stop failed and aa start resumed the pre-overlay child (its root JAR read 9161b507). '
+                     'Then #63 was paused (#66 generation 6cb40cd6 for all boards); r4 was unmounted.'),
+            'reproducer_log': grab('zigzag-quick-5cd-20260929T130910.log', r'install bundle successfully|REPRODUCE_ZIGZAG_APK=PASS', limit=2),
+            'zigzag_screen': keep('zigzag-after-switch.jpeg', 'zigzag-r155-candidate-after-switch.jpeg'),
+            'helloworld_r4_screen': keep('b7r4hw2-20260929T131445/' + SERIAL + '/helloworld/final.jpeg', 'helloworld-r4-zigzag-generation-t20.jpeg'),
+            'zigzag_with_overlay': False},
         'zigzag': {'launched': False,
                    'reason': ('5cd runs the pr03-touch generation (runtime JAR 06141543); ZigZag needs its own '
                               'candidate generation (JAR 9161b507 etc.), and reproduce-zigzag-apk quick would redeploy '

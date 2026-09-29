@@ -66,6 +66,20 @@ meta-data) — that is #65 items 1–3. No app reached its own UI, so there is n
   `exact adapter bridge admission failed before runtime load` (exit 123, rolled back). It must come with provider
   80c9aee0, i.e. the ZigZag candidate generation.
 
+## Generation switch (#63) and pause
+
+- The outer loop asked for bridge 84695d62 on 5cd. A bind-mounted bridge alone was refused at admission (above),
+  so 5cd was switched as a whole with `reproduce-zigzag-apk quick` to the R155 ZigZag candidate: the ZigZag child
+  maps read provider 80c9aee0 + bridge 84695d62; the reproducer installed ZigZag with the B7 installer 1ebf78ab and
+  passed (`REPRODUCE_ZIGZAG_APK=PASS`, HelloWorld first frame + touch included).
+- On that generation the JAR is itself bind-mounted and already carries User/Storage/Display projection proxies.
+  `build.py <tag> zigzag` builds r4 `2fae0344` (B5 helpers + B7BindFixes on 9161b507, the baseline's own
+  UserManagerProjectionProxy kept); `deploy.py` now stacks one layer and only ever unmounts its own top layer.
+  HelloWorld with r4 showed its own UI. The ZigZag relaunch with r4 did not count (the old child survived
+  `aa force-stop`, its root JAR read 9161b507).
+- Then the switch was paused: all boards move to the B6 generation 6cb40cd6 (#66). r4 is unmounted; 5cd stays on the
+  R155 ZigZag candidate with installer 1ebf78ab until #66. The 7-app retest belongs on 6cb40cd6.
+
 ## Rules learned
 
 1. A faultlog frame inside `nterp_*` is where an implicit null check faulted, not an interpreter bug; read the Java
@@ -80,6 +94,6 @@ meta-data) — that is #65 items 1–3. No app reached its own UI, so there is n
 ## Acceptance
 
 `verify.py` via `tools/spec-checks` (`b7_*`): first_cause pass, wall_crossed pass, blocked_reason pass;
-lit_by_outer_review fail (no survivor with its own UI); no_regression fail (HelloWorld verified by screenshot,
-ZigZag not launched on the pr03 generation). R2: first causes and wall crossings **verified** on board;
-lighting **not achieved**; ZigZag **unverified**.
+lit_by_outer_review fail (no survivor with its own UI); no_regression fail (HelloWorld verified by screenshot on
+both generations with the fixes; ZigZag passes its reproducer with the B7 installer, but never ran with the JAR overlay). R2: first causes and wall crossings **verified** on board;
+lighting **not achieved**; ZigZag **unverified** with the overlay (installer verified).
