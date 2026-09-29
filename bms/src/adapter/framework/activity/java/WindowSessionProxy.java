@@ -57,7 +57,17 @@ public final class WindowSessionProxy implements InvocationHandler {
             java.lang.reflect.Field field = global.getDeclaredField("sWindowSession");
             field.setAccessible(true);
             Object current = field.get(null);
-            if (current == null) return;                     // nothing to wrap yet
+            if (current == null) {
+                // sWindowSession is lazily created on the first getWindowSession() (first window
+                // add). Force it now so we can wrap it before that add; getWindowSession() caches
+                // into sWindowSession, so the later add returns our proxy.
+                try { current = global.getMethod("getWindowSession").invoke(null); } catch (Throwable ignore) {}
+                if (current == null) current = field.get(null);
+            }
+            if (current == null) {
+                System.err.println("[B8-WSP] sWindowSession still null; cannot wrap");
+                return;
+            }
             if (Proxy.isProxyClass(current.getClass())
                     && Proxy.getInvocationHandler(current) instanceof WindowSessionProxy) {
                 return;                                      // already installed

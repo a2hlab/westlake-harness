@@ -179,6 +179,11 @@ public final class ManifestJsonFallback {
      * throws "You need to use a Theme.AppCompat theme". Called from buildActivityInfoFromAbility.
      */
     public static void resolveActivityTheme(android.content.pm.ActivityInfo ai) {
+        // r15: install the IWindowSession proxy here, at ScheduleLaunchAbility. WindowManagerGlobal
+        // .sWindowSession is filled by the BCP ServiceInterceptor at bind, AFTER B7BindFixes runs, so
+        // an install at ensureBindApplication finds it null; by SLA it is set and the first window has
+        // not been added yet. Idempotent. Runs before the ai.theme early-return so it always fires.
+        try { WindowSessionProxy.install(); } catch (Throwable t) { System.err.println("[B8-WSP] " + t); }
         if (ai == null || ai.theme != 0 || ai.name == null || ai.packageName == null) return;
         try {
             int theme = activityTheme(ai.packageName, ai.name);
