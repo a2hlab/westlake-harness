@@ -8,7 +8,7 @@
 **Mac(控制端)**
 - hdc:`/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc`。`-t` 必须用**完整 connect-key**,8 位前缀会报 `Not match target founded`:
   `5ea34a4500000000000000001123012c`、`5cd1e3dd00000000000000000923012c`、`61b0657200000000000000000324012c`。
-- 板子经 hub 接 USB,provision/remount 瞬间掉线过多次,最长 50 分钟不回,只能物理重插。演示前尽量直连。
+- 板子经 hub 接 USB,provision/remount 瞬间掉线过多次,最长 50 分钟不回,只能物理重插。演示前尽量直连。2026-09-29 61b 在 `swap_installer.sh` 触发 foundation 重启→整机重启后从 USB 枚举消失(`ioreg -p IOUSB` 里没有该序列号),用户手动重启才回来;会导致重启的操作(换 installer、restore、remount)优先放在直连的板上,上 hub 的板做之前先告诉用户可能要重插。
 - 环境:`source ~/orca/workspaces/westlake-inputs/env-mac.sh`(cc/readelf/sha256sum shim + mise 固定的 JDK/Python)。有它 67/69 测试过,没有它 2 fail 4 error。
 - **shell 陷阱**:`ls`=eza(带 OSC-8 超链接)、`du`=dust、`grep`=ugrep(复杂正则会超限)、`cat`=bat → 解析输出时用 `/bin/ls`、`/usr/bin/grep`、`command du`。zsh **不拆分 `$var`**(用 `${=var}` 或数组/glob),把整串当一个文件名且被 `2>/dev/null` 吞掉时会得到"假干净"。macOS 自带 bash 3.2 没有 `mapfile`。
 - `pgrep -f`/`pkill -f` 会匹配到自己的命令行(在 `hdc shell "…"` 里计数恒 +1)→ 用 `scripts/lab/stop_by_pattern.sh` 或 `pgrep -f '[x]yz'`。
@@ -83,6 +83,7 @@
 - **codex 窗格 `Reconnecting... n/5` / `Transport error: network error`**:Mac 的模型流量走本机 Surge 代理(`https_proxy=127.0.0.1:6152`),AI 相关域名归 Surge 的 AI 分组。先测 `curl -s -o /dev/null -w "%{http_code}" --max-time 8 https://api.openai.com/v1/models`——401 是通,000/超时是不通,国内站(baidu)通而它不通就是 AI 分组当前节点坏了,请用户在 Surge 里换该分组节点(2026-09-29 一批节点同时 Failed,换到测速通过的节点即恢复)。codex 重连 5 次失败会结束本轮,恢复后要检查车道是否停在 idle、需要重发条目。
 - **codex 窗格会弹交互式提问**(屏幕显示 `? 1 question  ⌥+↑ to answer`,herdr 状态 `blocked`):这时 `herdr agent prompt` 只会进队列,不回答问题,车道会一直卡住。处理:`herdr pane send-keys <pane> alt+up` 调出问题,读选项,`enter` 提交(或用方向键换选项)。自由文本回答用 `herdr pane send-text <pane> "<答复>"` 再 `send-keys enter`;提交后要回读窗格确认问题框已消失、状态回到 Working,实测有一次第一下 enter 没提交、要再按一次。问题提示有 `⌥+↑` 与 `shift+←` 两种写法,按屏幕上写的键调出。`lane_watch.sh` 把 blocked 当作停下,能抓到。octoscode 的排队消息则要 `esc` 才会中断当前轮并发送;Claude Code 的消息会在轮中自动插入。
 - herdr server 必须由用户自己起,不要从 agent 会话里 nohup。octoscode stdio 模式要带 `--session <名>`。
+- 外环读图用 `scripts/lab/contact_sheet.sh <out.jpeg> --run <bms_batch 运行目录> [--shot final|t3] [--cols 7]` 把一批截图拼成一张再读(一次看 14 张);缺图给灰块,stdout 按「行 列 key 路径」列出每格对应的 app(Homebrew ffmpeg 没有 drawtext,格子上不印字)。逐张读只用于拼图里看不清、要签认点亮的那几张。
 - 复验:`git worktree add --detach ~/.octos/outer/verify/<名> <commit>` → 逐字重跑验收 → 落判词 → 删 worktree。
 
 - BMS 复现器克隆迁移（2026-09-28）：四游戏 suite 无 `check`，用单 app `check`；HelloWorld `restore` 会重启，完成后再次核对板时钟。61b 使用 `date -s @<Mac epoch>` 同步并回读差值（本次 -1s）；`current` 绝对路径与 wrapper driver SHA 的变更须记录为迁移，证据见 `benchmark/2026-09-28-bms-route-deploy/`。
