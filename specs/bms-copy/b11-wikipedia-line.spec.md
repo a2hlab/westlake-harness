@@ -15,7 +15,7 @@ Wikipedia 在 09-27 的 Westlake 路线上亮到了 "All the world's knowledge" 
 - Westlake 成功日志:5ea 上有 Westlake 宿主 `org.westlake.imehost` 与 a2hlab-source 运行时目录,按 09-27 的 probe 配方(VM `~/a2hlab/ws/out-appsweep-5ea34a45/wikipedia/run.sh`)在 hilog 16M、private off 下拉起 Wikipedia,保住 child stderr 与 hilog,截图到欢迎页;取不到时写明卡在哪,改用 Westlake smali(`~/a2hlab-provision/fxwork/out-smali.orig/`)与 route-A 源码做静态路径对照
 - 对照顺序:Application → provider → Activity.attach → 主题 → 包查询(QueryAbilityInfos / getProviderInfo / resolveContentProvider)→ 首帧 → Surface;记第一个分叉点与两边原文
 - 用户预先授权:单文件替换(Java 覆盖 JAR 或单个 native 库,经 `deploy_generation.sh` 单文件替换模式,带回滚)与照抄 Westlake 实现,不用请示
-- 节奏:每轮只做一次单文件替换 + 一次从桌面拉起 + 截图,15–20 分钟在黑板报一次 PROGRESS,附截图路径,外环当场读图;截图数与存活只贴 `facts.txt`
+- 节奏(用户 2026-09-29 定,速度优先):每轮替换**一个合并了多项修复的 JAR**(或一个 native 库)+ 一次从桌面拉起 + 截图;某轮出现回退或说不清哪项起作用时,再把这一轮的修复**对半拆**成两个 JAR 各跑一次定位。15–20 分钟在黑板报一次 PROGRESS,附截图路径,外环当场读图;截图数与存活只贴 `facts.txt`
 - 批跑用 master 工作树的 `bms_batch.py`(自带预检)`--keys wikipedia --reinstall --hilog 20 --shots 5,20 --focus-check`
 
 ## 边界
