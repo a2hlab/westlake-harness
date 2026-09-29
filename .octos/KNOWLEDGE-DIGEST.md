@@ -428,3 +428,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **BMS联网权限待补正(#80,2026-09-29)**:Wikipedia安装记录reqPermissions=[]，现役BMS样本子进程仅Groups3099；临时host候选d977bd15按授权补3003交cc-wiki实测，不能仅凭EPERM判根因。OH还读TLV_INTERNET_INFO并可能DisallowInternet；通用后续应保留APK INTERNET→BMS权限/凭据派生，勿把临时无条件加组当正解。证据 `benchmark/2026-09-29-wikipedia-line/network-groups/`。
 
 - **BMS APK 网络权限三断点（#89,2026-09-29）**：manifest已解析usesPermissions但C-entry JSON原先丢弃；APK专支手工InnerModuleInfo与AllocHapToken空policy不走HAP权限流程，所以只补资源module.json不足。精确映射INTERNET/ACCESS_NETWORK_STATE后须同时写BMS requestPermissions并照OH BundlePermissionMgr用InitHapToken处理system_grant；旧token权限集不同须卸载重装。本轮离线双APK真实HAP验证通过，ATM/通网仍交cc-wiki上板验，见benchmark/2026-09-29-bms-network-permissions/。
+
+- **#90双板部署复验(2026-09-30,cx-t0)**：61b换installer后foundation热重启重现黑屏，SHA正确不等于桌面可用；整机重启+原产物重放恢复，5cd直接同法通过。两板host d977bd15/BMS6f94d4f4/installer eb6824b4，5cd保留r16，61b保留r8b+VT/liblog；HW/ZigZag截图实际上屏但foreground_unconfirmed，各facts4/4。foundation root可能无/system/android，服务库在foundation核、runtime在appspawn父子核；launch-only旧token仍allow=0，联网回测必须重装。证据benchmark/2026-09-29-network-rollout/。
