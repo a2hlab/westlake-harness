@@ -88,7 +88,10 @@ tls_src = [src / 'WestlakeTlsInstall.java', src / 'OhTrustBridge.java',
            src / 'WestlakeSSLSocketFactory.java', src / 'WestlakeSSLContextSpi.java',
            # r17b (#tagsoup): tagsoup-free Html.fromHtml replacement (android.text.* -> needs the
            # android.jar bootclasspath pass), called by oc-t4's libwestlake_html_compat.so.
-           src / 'HtmlCompatFallback.java']
+           src / 'HtmlCompatFallback.java',
+           # r17g (#93): AndroidOpenSSL provider (BC low-level digests) so AndroidDigestFactory init
+           # passes on route-A's unpatched boot BC; MessageDigestSpi -> android.jar bootclasspath pass.
+           src / 'WestlakeAndroidOpenSsl.java']
 # r17f TODO: SoftwareAndroidKeyStore needs a compile-only stub for
 # com.android.internal.org.bouncycastle.x509.X509V3CertificateGenerator (absent from the compile
 # android.jar, present in the runtime BCP) before it can join the TLS pass -- same shape as the

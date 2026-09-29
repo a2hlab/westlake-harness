@@ -48,6 +48,14 @@ public final class WestlakeTlsInstall {
             registerMessageDigests(bc);
             registerAes(bc);
             registerX509CertificateFactory(bc);
+            // r17g: route-A's boot BC is the UNPATCHED AOSP one, so AndroidDigestFactory.<clinit>
+            // asserts "Provider AndroidOpenSSL must exist" regardless of WESTLAKE_USE_BC_DIGESTS.
+            // Publish a BC-low-level-backed AndroidOpenSSL provider BEFORE OhTrustBridge.install()
+            // (which is where AndroidDigestFactory is first loaded) so the assertion passes.
+            if (Security.getProvider("AndroidOpenSSL") == null) {
+                Security.addProvider(new WestlakeAndroidOpenSsl());
+                System.err.println("[B8-TLS] AndroidOpenSSL provider published (BC low-level digests)");
+            }
             // OhTrustBridge publishes SecureRandom.WestlakeKernel, restores the BC RSA/EC signature and
             // EC KeyFactory registrations, and installs TrustManagerFactory.OH-PKIX/PKIX/X509 backed by
             // OhSystemTrustManager (platform CA bundle). Its own `installed` guard dedupes as well.
