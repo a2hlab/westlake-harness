@@ -29,4 +29,7 @@
 
 ## 做事方式
 - 可行性有疑问时,别写设计文档或"N 人日"估算来回推,**立刻做最小的关键实验**:写清关键点、通过/失败判据、失败后的退路,结果说了算。agent 一小时就能写完"几人日"的代码。
+- **上板是为了确认预测**:新一批 app 或新一代运行时上板前,先跑静态扫描——JNI 覆盖矩阵、系统服务覆盖、manifest 分类、构建脚本体检(B10,`specs/bms-copy/b10-static-wall-prediction.spec.md`),产出「每个 app 预计撞哪几堵墙」的预测表,按挡住的 app 数排序,先修影响面最大的那堵。
+- 派单条目必须引用预测表里对应的行;每轮上板后对照预测与实测,预测漏掉的墙补进扫描器,下次提前抓到。
+- 能做成门禁的就做成门禁:例如 JNI 缺失清单(扣除逐条写明理由、经外环认可的例外)不为空时,`deploy_generation.sh` 拒绝部署。
 - 任务路由:codex/GPT-Astra 会以"网络安全"内容策略拦截内存破坏诊断、hook、守卫页/写拦截、二进制补丁类任务——窗格先 ACK,然后显示 `This content can't be shown … cybersecurity requests may still be limited` 并转为 idle,看着像卡住,其实是拒绝。这类任务交给 Claude agent。
