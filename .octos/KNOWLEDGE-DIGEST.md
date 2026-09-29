@@ -438,3 +438,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 cx-t0 (#91,静态已证/板验待做): 84695d62 已导出 OHCommonEventClient 的全部 subscribe/publish/finish/sticky 后端；5 JNI可独立注册进c835 runtime，无需重建桥。候选9e14bf20保持22件NEEDED顺序、VT/SQLite，新增6个UND全由原桥供给；两次编译同字节。证据 benchmark/2026-09-30-commonevent-registration/。
 
 - 2026-09-30 #91：保留 84695d62 bridge 后，runtime 单独注册 5 个 CommonEvent JNI 即可真实 Subscribe/Publish successful（61b Gallery/Etar/VLC）；随后 Gallery/VLC 卡 OH START_ABILITIES_FROM_BACKGROUND，Etar 卡 PowerExemptionManager NPE。CE 成功不等于首屏点亮；gapfill 文件部署但 r17b 无加载点也不算生效。证据 benchmark/2026-09-30-commonevent-registration/evidence-61b/。
+
+- 2026-09-30 installer：SelectLauncherActivity 新调用形态会把原 IsAndroidLauncherActivity 弱导出内联消掉；保留 used 标记可维持旧 ABI。后台启动权限需 HAP JSON、BMS requestPermissions、ATM fresh-token ACL/preAuth 同步；旧 token 缺该权限时拒绝 -r 静默声明，要求重装。候选 6aadb8b4/7048c7c5，板上实际授予仍待 cc-wiki 验，见 benchmark/2026-09-30-installer-background-launcher/。

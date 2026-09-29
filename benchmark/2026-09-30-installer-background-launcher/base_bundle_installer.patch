@@ -1,0 +1,78 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp
+@@ -1775,19 +1775,24 @@
+                     bool adapterAllocatedToken = false;
+                     if (adapterIsUpdate) {
+                         // Existing adapter updates reuse the token. Require a fresh install when
+-                        // network declarations change, rather than persist metadata the token lacks.
+-                        std::vector<std::string> oldNetworkPermissions;
++                        // projected declarations change, rather than persist metadata the token lacks.
++                        const auto adapterPermissions = oh_adapter::AdapterBackgroundLaunchPermissions();
++                        std::vector<std::string> oldProjectedPermissions;
+                         for (const auto &permission : adapterOldInfo.GetAllRequestPermissions()) {
+                             if (permission.name == "ohos.permission.INTERNET" ||
+-                                permission.name == "ohos.permission.GET_NETWORK_INFO") {
+-                                oldNetworkPermissions.emplace_back(permission.name);
++                                permission.name == "ohos.permission.GET_NETWORK_INFO" ||
++                                std::find(adapterPermissions.begin(), adapterPermissions.end(), permission.name) !=
++                                    adapterPermissions.end()) {
++                                oldProjectedPermissions.emplace_back(permission.name);
+                             }
+                         }
+-                        auto newNetworkPermissions = requestedNetworkPermissions;
+-                        std::sort(oldNetworkPermissions.begin(), oldNetworkPermissions.end());
+-                        std::sort(newNetworkPermissions.begin(), newNetworkPermissions.end());
+-                        if (oldNetworkPermissions != newNetworkPermissions) {
+-                            LOG_E(BMS_TAG_INSTALLER, "APKNET: network permission changes require uninstall/install %{public}s",
++                        auto newProjectedPermissions = requestedNetworkPermissions;
++                        newProjectedPermissions.insert(newProjectedPermissions.end(),
++                            adapterPermissions.begin(), adapterPermissions.end());
++                        std::sort(oldProjectedPermissions.begin(), oldProjectedPermissions.end());
++                        std::sort(newProjectedPermissions.begin(), newProjectedPermissions.end());
++                        if (oldProjectedPermissions != newProjectedPermissions) {
++                            LOG_E(BMS_TAG_INSTALLER, "APKNET: projected permission changes require uninstall/install %{public}s",
+                                 pkg.c_str());
+                             (void)installd->RemoveDir(stagedBundleRoot);
+                             return ERR_APPEXECFWK_INSTALL_GRANT_REQUEST_PERMISSIONS_FAILED;
+@@ -1818,11 +1823,28 @@
+                             state.grantFlags.emplace_back(Security::AccessToken::PermissionFlag::PERMISSION_DEFAULT_FLAG);
+                             hapPolicy.permStateList.emplace_back(state);
+                         }
++                        for (const auto &name : oh_adapter::AdapterBackgroundLaunchPermissions()) {
++                            Security::AccessToken::PermissionStateFull bgState;
++                            bgState.permissionName = name;
++                            bgState.isGeneral = true;
++                            bgState.resDeviceID.emplace_back(appInfo.deviceId);
++                            bgState.grantStatus.emplace_back(Security::AccessToken::PermissionState::PERMISSION_DENIED);
++                            bgState.grantFlags.emplace_back(Security::AccessToken::PermissionFlag::PERMISSION_DEFAULT_FLAG);
++                            hapPolicy.permStateList.emplace_back(bgState);
++                            hapPolicy.aclRequestedList.emplace_back(name);
++                            Security::AccessToken::PreAuthorizationInfo bgPreAuth;
++                            bgPreAuth.permissionName = name;
++                            bgPreAuth.userCancelable = false;
++                            hapPolicy.preAuthorizationInfo.emplace_back(bgPreAuth);
++                        }
+                         Security::AccessToken::HapInfoCheckResult permissionCheck;
+                         const int permissionRet = Security::AccessToken::AccessTokenKit::InitHapToken(
+                             hapInfo, hapPolicy, allocTokenIdEx, permissionCheck);
+                         LOG_I(BMS_TAG_INSTALLER, "APKNET: InitHapToken %{public}s requests=%{public}zu ret=%{public}d",
+                             pkg.c_str(), requestedNetworkPermissions.size(), permissionRet);
++                        LOG_I(BMS_TAG_INSTALLER,
++                            "BGLAUNCH: InitHapToken %{public}s acl=%{public}zu ret=%{public}d",
++                            pkg.c_str(), oh_adapter::AdapterBackgroundLaunchPermissions().size(), permissionRet);
+                         if (permissionRet != 0) {
+                             (void)installd->RemoveDir(stagedBundleRoot);
+                             return ERR_APPEXECFWK_INSTALL_GRANT_REQUEST_PERMISSIONS_FAILED;
+@@ -1863,6 +1885,12 @@
+                         request.name = name;
+                         request.moduleName = "entry";
+                         moduleInfo.requestPermissions.emplace_back(request);
++                    }
++                    for (const auto &name : oh_adapter::AdapterBackgroundLaunchPermissions()) {
++                        RequestPermission bgRequest;
++                        bgRequest.name = name;
++                        bgRequest.moduleName = "entry";
++                        moduleInfo.requestPermissions.emplace_back(bgRequest);
+                     }
+                     moduleInfo.modulePackage = "entry";
+                     moduleInfo.moduleName = "entry";

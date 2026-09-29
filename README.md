@@ -94,6 +94,7 @@ kind of work from where the corpus started
 |---|---|
 | **`benchmark/2026-09-30-jni-gapfill-package/`** | **Declared gapfill addition across three resident packages; SHA/rollback and B87-based v3c input.** |
 | **`benchmark/2026-09-30-commonevent-registration/`** | **B91: five JNI bindings onto the retained CommonEvent backend, c835 runtime plus VelocityTracker/SQLite.** |
+| **`benchmark/2026-09-30-installer-background-launcher/`** | Background-start ACL/preauthorization and own-package launcher installer pair; HAP tests, strict ELF checks and guarded rollback handoff. |
 | **`benchmark/2026-09-30-tls-native-handoff/`** | **B93: declared TLS/HTML additions, SHA gates, transactional rollback and child loading handoff.** |
 | **`benchmark/2026-09-30-child-stack-default/`** | **B92: initial-stack probe, Westlake big-pthread port, ANL compatibility and rollback evidence.** |
 | **[Network rollout on 61b and 5cd](benchmark/2026-09-29-network-rollout/)** | **#90 cx-t0: Mac HDC deployment, exact installer rollback, reboot replay preserving VT/r16, HW/ZigZag screenshots and facts.** |

@@ -741,7 +741,9 @@ bool ApkInstaller::ExtractAndPackResourceHap(const std::string& srcApkPath,
         LOGE("ExtractAndPackResourceHap: permission manifest parse failed");
         return false;
     }
-    const auto networkPermissions = MapApkNetworkPermissions(permissionManifest.usesPermissions);
+    auto projectedPermissions = MapApkNetworkPermissions(permissionManifest.usesPermissions);
+    const auto adapterPermissions = AdapterBackgroundLaunchPermissions();
+    projectedPermissions.insert(projectedPermissions.end(), adapterPermissions.begin(), adapterPermissions.end());
 
     // 1. Write embedded template HAP to a temp file so minizip can read it.
     // Use the same dir as outHapPath — caller is expected to pass a path that
@@ -819,7 +821,7 @@ bool ApkInstaller::ExtractAndPackResourceHap(const std::string& srcApkPath,
                 break;
             }
             auto requests = nlohmann::json::array();
-            for (const auto& permission : networkPermissions) {
+            for (const auto& permission : projectedPermissions) {
                 requests.push_back({{"name", permission}});
             }
             moduleJson["module"]["requestPermissions"] = requests;
@@ -827,7 +829,7 @@ bool ApkInstaller::ExtractAndPackResourceHap(const std::string& srcApkPath,
             patchedResourceIndex.assign(serialized.begin(), serialized.end());
             overrideData = &patchedResourceIndex;
             modulePatched = true;
-            LOGI("ExtractAndPackResourceHap: network requestPermissions=%{public}zu", networkPermissions.size());
+            LOGI("ExtractAndPackResourceHap: projected requestPermissions=%{public}zu", projectedPermissions.size());
         } else if (entryName == "resources.index") {
             std::vector<uint8_t> originalIndex;
             if (ReadCurrentZipEntry(src, info, originalIndex) &&
