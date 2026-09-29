@@ -414,3 +414,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **#68 v3a 改判（2026-09-29）**：统一包使用无锁74d1的host/child/provider+SQLite7e1+ANLae848，保留可画ZigZag的bridge84695d62并固定r8b d5000c4e；manifest由Java回退，不能称旧桥新增JNI导出。5ea同包HW/ZigZag自身界面，源码桥22df/bc1d/d0f2白屏另列独立实验。完整包与SHA见 `benchmark/2026-09-29-unlocked-generation/v3a-package-manifest.json`。
 
 - 2026-09-29 #78 v3a/r8b 前瞻回测：OONI 精确 APK 的 nr2.a source line10 解引用 getSystemService("jobscheduler") 空值，随后 WorkManager 未初始化致命退出；仅1/13有事前匹配预测、1/1命中，其余unknown；NetGuard包内libnetguard.so缺__errno后System.exit(1)。见 benchmark/2026-09-29-v3a-prospective-rerun/。
+
+- 2026-09-29 #79：OH共享输出对象可与相邻源码不同步（旧bundle_util.o无.apk分支），导出/NEEDED相同不保APK语义；原样补齐stream/zip与bundle_util/bundle_installer路由后，61b libbms2220df48+libinstalls51e1b525使Seal/头条/X均安装可查，四条例外字节相符，HW/ZigZag回归上屏，但三app末帧仍桌面（后续native/Java墙）。见 benchmark/2026-09-29-install-wall-validation/。

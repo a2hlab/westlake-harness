@@ -117,3 +117,7 @@ Installer两处更新并重启foundation后可能黑屏；按明确授权整机�
 - **B9 单文件换库**：`python3 scripts/lab/prepare_generation_replacement.py <当前包> <绝对.so目标> <新.so> --sha256 <SHA> --out <独立新包>`，再 `scripts/lab/deploy_generation.sh <serial> <新包> --replace <目标>`；加 `--rollback` 仅退最后一层单件。不得原地改当前包；包SHA在写板前核，写后核子进程SHA/maps/单ART，不符回滚。整代回滚先拆单件覆盖；先持板锁。见 `benchmark/2026-09-29-unlocked-generation/`。
 
 - **v3a 同包部署**：`scripts/lab/deploy_generation.sh <serial> /Users/zhaoyue/orca/workspaces/westlake-generation-v3a-74d1d6d4-r8b`，包内固定846 bridge+r8b JAR，三板使用同一目录；重启后按既有复现器恢复底座，再重放同命令。仅5ea已验证，其余板由外环派单后执行；包内哈希与live SHA一起核，不在各板另叠不同JAR。
+
+### #79 BMS 两库复现与恢复（61b, 2026-09-29）
+
+完整私有构建kit归档hw248 `/home/alvin/westlake-oh6.1-b79-bms-2220df48-installs-51e1b525/oh61-bms-kit-b79-r3-final.tar.gz`（SHA 61ff2def…）；按 benchmark/2026-09-29-install-wall-validation/README.md 用dockbuild重放。不要仅取共享树base/installd对象：须带原APK stream/zip路由并确认BundleUtil编译后含.apk。两库换lib64/platformsdk四路径，验foundation/installs的root SHA与maps；foundation热重启本次黑屏，整机重启后重放同一v3a包恢复。swap_services.py保留首轮四原文件备份，rollback后重启再verify（先黑板通告）。

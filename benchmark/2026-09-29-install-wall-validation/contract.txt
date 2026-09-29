@@ -1,0 +1,56 @@
+# Task Contract: #77 Seal native payload and X/Toutiao manifest capacity
+
+## Intent
+Find the exact installation predicates behind Seal ec=8519936 and X/Toutiao -2005, compare verified prior routes, and deliver offline-tested candidate patches with app impact evidence. User #77 supersedes the installer exclusion in B10; device validation remains separately assigned.
+
+## Must
+- #77 is explicitly offline: no hdc, board writes, installs, process starts or lock operations.
+- Original APKs and 00.Workspace/real-work/Westlake source trees are read-only.
+- Findings distinguish verified byte/log evidence from predicted post-fix behavior.
+- Candidate patches are reviewed and deployed by the outer lane; this lane cannot commit git metadata.
+
+## Decisions
+- Pin APK hashes to the B4 records and inspect real ZIP payloads, not filenames alone.
+- Reuse the existing real-work/repository 1 MiB manifest capacity when it fits measured JSON.
+- Preserve native extraction path, length, CRC, ownership and mode checks; explicitly describe any data-payload exception candidate.
+- Give source file/line references, before/after offline results, implementation provenance, and unresolved device conditions.
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-09-29-install-walls/**
+- specs/bms-install-walls/**
+- tools/spec-checks/**
+- README.md
+- .octos/KNOWLEDGE-DIGEST.md
+Forbidden:
+- No modification to APK inputs or read-only source trees.
+- No board operation, deployment, complete runtime rebuild, or git commit/push.
+Out of scope:
+- On-board success, screenshots, foundation/installd restart, and deployment scheduling.
+- Changes to app code, signatures or APK package contents.
+
+## Completion Criteria
+Scenario: 三个输入与已有错误证据吻合
+  Test:
+    Filter: b77_pinned_inputs_and_causes
+  Given Mac APK copies and B3/B4 logs are available
+  When The offline scanner verifies SHA-256 and original error predicates
+  Then All three input hashes match the original records
+  And Each failure has a file and line reference and a concrete trigger
+
+Scenario: 补丁保持提取校验并通过正反例
+  Test:
+    Filter: b77_candidate_patch_regressions
+  Given Candidate changes are applied to temporary source copies only
+  When Host checks exercise real Seal payloads and rejected malformed inputs
+  Then Seal packaged data receives an explicit bounded disposition
+  And Invalid payloads and manifest output beyond the new capacity still fail
+
+Scenario: 影响表与前人路线可复核
+  Test:
+    Filter: b77_impact_and_provenance
+  Given Other locally available APKs are scanned with the same predicates
+  When The report is generated
+  Then A machine-readable impact list distinguishes measured input failures from unverified installation success
+  And Westlake and original BMS source provenance is recorded without claiming past staging was a BMS APK installation
+
