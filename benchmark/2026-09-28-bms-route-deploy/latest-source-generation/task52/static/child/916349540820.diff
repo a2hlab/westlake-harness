@@ -1,0 +1,41 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,35 @@
+
++stp	x29, x30, [sp, #-0x20]!
++stp	x20, x19, [sp, #0x10]
++mov	x19, x0
++mov	w0, #0x16
++mov	x29, sp
++cbz	x19, <WLSCPL_InheritAndroidRuntimeV1+OFFSET>
++adrp	x8, RELOCATION_ADDRESS
++ldrb	w8, [x8, #OFFSET]
++cbz	w8, <WLSCPL_InheritAndroidRuntimeV1+OFFSET>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++nop
++adr	x2, RELOCATION_ADDRESS
++mov	x0, x19
++bl	<dlns_inherit@plt>
++cbnz	w0, <WLSCPL_InheritAndroidRuntimeV1+OFFSET>
++adrp	x20, RELOCATION_ADDRESS
++ldr	x8, [x20, #OFFSET]
++cbz	x8, <WLSCPL_InheritAndroidRuntimeV1+OFFSET>
++mov	w0, wzr
++b	<WLSCPL_InheritAndroidRuntimeV1+OFFSET>
++bl	<dlerror@plt>
++nop
++adr	x1, RELOCATION_ADDRESS
++mov	x0, x19
++mov	w2, #0x102
++bl	<dlopen_ns@plt>
++cmp	x0, #0x0
++mov	x8, x0
++cset	w9, eq
++lsl	w0, w9, #1
++str	x8, [x20, #OFFSET]
++ldp	x20, x19, [sp, #0x10]
++ldp	x29, x30, [sp], #0x20
++ret

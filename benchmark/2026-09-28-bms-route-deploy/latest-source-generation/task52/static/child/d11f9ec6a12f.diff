@@ -1,0 +1,42 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,36 @@
+
++cbz	x0, <WlgrIfProduceHookSchemaDigest+OFFSET>
++sub	sp, sp, #0xd0
++stp	x29, x30, [sp, #0xb0]
++add	x29, sp, #OFFSET
++stp	x20, x19, [sp, #0xc0]
++mov	x19, x0
++sub	x0, x29, #0x40
++mov	w1, wzr
++mov	w2, #0x40
++sub	x20, x29, #0x40
++bl	<memset@plt>
++nop
++adr	x1, RELOCATION_ADDRESS
++sub	x0, x29, #0x40
++mov	w2, #0x14
++bl	<memcpy@plt>
++add	x0, x20, #OFFSET
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	w2, #0x18
++bl	<memcpy@plt>
++mov	x0, sp
++bl	<WLSha256Init>
++mov	x0, sp
++sub	x1, x29, #0x40
++mov	w2, #0x40
++bl	<WLSha256Update>
++mov	x0, sp
++mov	x1, x19
++bl	<WLSha256Final>
++ldp	x20, x19, [sp, #0xc0]
++ldp	x29, x30, [sp, #0xb0]
++add	sp, sp, #OFFSET
++ret
++mov	w0, #-0x1
++ret

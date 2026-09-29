@@ -1,0 +1,94 @@
+--- r155
+
++++ candidate
+
+@@ -1,8 +1,9 @@
+
+-stp	x29, x30, [sp, #-0x30]!
+-stp	x28, x21, [sp, #0x10]
+-stp	x20, x19, [sp, #0x20]
++stp	x29, x30, [sp, #-0x40]!
++str	x28, [sp, #OFFSET]
++stp	x22, x21, [sp, #0x20]
++stp	x20, x19, [sp, #0x30]
+ mov	x29, sp
+ sub	sp, sp, #0x2, lsl #12
+-sub	sp, sp, #0x20
++sub	sp, sp, #0x40
+ mov	x20, x0
+ mov	w0, #-0x1
+@@ -14,18 +15,34 @@
+
+ mov	x8, x4
+ add	x4, sp, #OFFSET, lsl #12
++add	x4, x4, #OFFSET
+ mov	x0, x2
+ mov	w1, w3
+ mov	x2, x8
+ mov	x3, x5
+-mov	w5, #0x1000
+-bl	<WLEI_VerifyFileHex>
++add	x22, sp, #OFFSET, lsl #12
++add	x22, x22, #OFFSET
++bl	<OpenVerifiedFileHex>
+ cbz	w0, <WLEI_VerifyLoadedSymbolHex+OFFSET>
+ mov	w0, #-0x1
+ add	sp, sp, #OFFSET, lsl #12
+ add	sp, sp, #OFFSET
+-ldp	x20, x19, [sp, #0x20]
+-ldp	x28, x21, [sp, #0x10]
+-ldp	x29, x30, [sp], #0x30
++ldp	x20, x19, [sp, #0x30]
++ldp	x22, x21, [sp, #0x20]
++ldr	x28, [sp, #OFFSET]
++ldp	x29, x30, [sp], #0x40
+ ret
++add	x22, x22, #OFFSET
++mov	x0, x22
++bl	<strlen@plt>
++cmp	x0, #0x1, lsl #12
++b.hs	<WLEI_VerifyLoadedSymbolHex+OFFSET>
++add	x2, x0, #OFFSET
++mov	x0, sp
++mov	x1, x22
++bl	<memcpy@plt>
++ldr	w0, [sp, #OFFSET]
++tbnz	w0, #0x1f, <WLEI_VerifyLoadedSymbolHex+OFFSET>
++bl	<close@plt>
++cbnz	w0, <WLEI_VerifyLoadedSymbolHex+OFFSET>
+ bl	<dlerror@plt>
+ mov	x0, x20
+@@ -36,5 +53,5 @@
+
+ bl	<dlerror@plt>
+ cbnz	x0, <WLEI_VerifyLoadedSymbolHex+OFFSET>
+-sub	x1, x29, #0x20
++add	x1, sp, #OFFSET, lsl #12
+ mov	x0, x20
+ bl	<dladdr@plt>
+@@ -42,14 +59,20 @@
+
+ mov	w0, #-0x1
+ cbz	w8, <WLEI_VerifyLoadedSymbolHex+OFFSET>
+-ldur	x8, [x29, #-0x20]
++ldr	x8, [sp, #OFFSET]
+ cbz	x8, <WLEI_VerifyLoadedSymbolHex+OFFSET>
+-mov	x1, sp
++add	x1, sp, #OFFSET, lsl #12
+ mov	x0, x8
++add	x1, x1, #OFFSET
+ bl	<realpath@plt>
+ cbz	x0, <WLEI_VerifyLoadedSymbolHex+OFFSET>
+-mov	x0, sp
+-add	x1, sp, #OFFSET, lsl #12
++add	x0, sp, #OFFSET, lsl #12
++mov	x1, sp
++add	x0, x0, #OFFSET
+ bl	<strcmp@plt>
+ cbnz	w0, <WLEI_VerifyLoadedSymbolHex+OFFSET>
+ str	x20, [x19]
+ b	<WLEI_VerifyLoadedSymbolHex+OFFSET>
++ldr	w0, [sp, #OFFSET]
++tbnz	w0, #0x1f, <WLEI_VerifyLoadedSymbolHex+OFFSET>
++bl	<close@plt>
++b	<WLEI_VerifyLoadedSymbolHex+OFFSET>

@@ -1,0 +1,103 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,97 @@
+
++stp	x29, x30, [sp, #-0x50]!
++str	x28, [sp, #OFFSET]
++mov	x29, sp
++stp	x24, x23, [sp, #0x20]
++stp	x22, x21, [sp, #0x30]
++stp	x20, x19, [sp, #0x40]
++sub	sp, sp, #0x1, lsl #12
++mov	w0, #-0x1
++cbz	x1, <WlgrIfProductionReadProcess+OFFSET>
++mov	x19, x2
++cbz	x2, <WlgrIfProductionReadProcess+OFFSET>
++mov	x20, x1
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	w1, #0x80000
++bl	<open@plt>
++tbnz	w0, #0x1f, <WlgrIfProductionReadProcess+OFFSET>
++mov	x1, sp
++mov	w2, #0xfff
++mov	w21, w0
++mov	x23, sp
++bl	<read@plt>
++mov	x22, x0
++mov	w0, w21
++bl	<close@plt>
++cmp	x22, #0x1
++b.lt	<WlgrIfProductionReadProcess+OFFSET>
++mov	x0, sp
++mov	w1, #0x29
++strb	wzr, [x23, x22]
++bl	<strrchr@plt>
++cbz	x0, <WlgrIfProductionReadProcess+OFFSET>
++sub	x23, x0, #0x1
++ldrb	w8, [x23, #OFFSET]
++add	x23, x23, #OFFSET
++cmp	w8, #0x20
++b.eq	<WlgrIfProductionReadProcess+OFFSET>
++cbnz	w8, <WlgrIfProductionReadProcess+OFFSET>
++mov	w0, #-0x1
++add	sp, sp, #OFFSET, lsl #12
++ldp	x20, x19, [sp, #0x40]
++ldp	x22, x21, [sp, #0x30]
++ldp	x24, x23, [sp, #0x20]
++ldr	x28, [sp, #OFFSET]
++ldp	x29, x30, [sp], #0x50
++ret
++orr	w8, w8, #0x20
++and	w8, w8, #0xff
++cmp	w8, #0x20
++b.eq	<WlgrIfProductionReadProcess+OFFSET>
++ldrb	w8, [x23, #OFFSET]
++add	x23, x23, #OFFSET
++b	<WlgrIfProductionReadProcess+OFFSET>
++ldrb	w8, [x23, #OFFSET]!
++cmp	w8, #0x20
++b.eq	<WlgrIfProductionReadProcess+OFFSET>
++bl	<__errno_location@plt>
++mov	x21, x0
++str	wzr, [x0]
++add	x1, x29, #OFFSET
++mov	x0, x23
++mov	w2, #0xa
++bl	<strtoull@plt>
++mov	x22, x0
++ldr	w8, [x21]
++mov	w0, #-0x1
++cbnz	w8, <WlgrIfProductionReadProcess+OFFSET>
++ldr	x8, [x29, #OFFSET]
++cmp	x23, x8
++b.eq	<WlgrIfProductionReadProcess+OFFSET>
++mov	w24, #0x4
++sub	x23, x8, #0x1
++ldrb	w8, [x23, #OFFSET]!
++cmp	w8, #0x20
++b.eq	<WlgrIfProductionReadProcess+OFFSET>
++cmp	w24, #0x16
++b.eq	<WlgrIfProductionReadProcess+OFFSET>
++add	x1, x29, #OFFSET
++mov	x0, x23
++mov	w2, #0xa
++str	wzr, [x21]
++bl	<strtoull@plt>
++mov	x22, x0
++ldr	w8, [x21]
++mov	w0, #-0x1
++cbnz	w8, <WlgrIfProductionReadProcess+OFFSET>
++ldr	x8, [x29, #OFFSET]
++add	w24, w24, #OFFSET
++cmp	x23, x8
++b.ne	<WlgrIfProductionReadProcess+OFFSET>
++b	<WlgrIfProductionReadProcess+OFFSET>
++bl	<getpid@plt>
++sxtw	x8, w0
++mov	w0, wzr
++str	x8, [x20]
++str	x22, [x19]
++b	<WlgrIfProductionReadProcess+OFFSET>

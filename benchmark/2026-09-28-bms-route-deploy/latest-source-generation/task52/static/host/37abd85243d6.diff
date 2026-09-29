@@ -1,0 +1,48 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,42 @@
+
++stp	x29, x30, [sp, #-0x30]!
++stp	x22, x21, [sp, #0x10]
++stp	x20, x19, [sp, #0x20]
++mov	x29, sp
++mov	x20, x1
++mov	x21, x0
++nop
++adr	x0, RELOCATION_ADDRESS
++nop
++adr	x1, RELOCATION_ADDRESS
++mov	x22, x3
++mov	x19, x2
++bl	<pthread_once@plt>
++adrp	x8, RELOCATION_ADDRESS
++adrp	x9, RELOCATION_ADDRESS
++ldr	x8, [x8, #OFFSET]
++ldr	x4, [x9, #OFFSET]
++cmp	x22, x8
++b.eq	<fwrite+OFFSET>
++add	x9, x8, #OFFSET
++cmp	x22, x9
++b.eq	<fwrite+OFFSET>
++adrp	x9, RELOCATION_ADDRESS
++add	x8, x8, #OFFSET
++cmp	x22, x8
++ldr	x9, [x9, #OFFSET]
++ldr	x9, [x9]
++csel	x3, x9, x22, eq
++b	<fwrite+OFFSET>
++adrp	x8, RELOCATION_ADDRESS
++ldr	x8, [x8, #OFFSET]
++b	<fwrite+OFFSET>
++adrp	x8, RELOCATION_ADDRESS
++ldr	x8, [x8, #OFFSET]
++ldr	x3, [x8]
++mov	x0, x21
++mov	x1, x20
++mov	x2, x19
++ldp	x20, x19, [sp, #0x20]
++ldp	x22, x21, [sp, #0x10]
++ldp	x29, x30, [sp], #0x30
++br	x4

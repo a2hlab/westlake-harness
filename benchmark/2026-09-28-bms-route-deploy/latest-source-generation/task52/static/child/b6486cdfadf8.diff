@@ -1,0 +1,162 @@
+--- r155
+
++++ candidate
+
+@@ -1,74 +1,46 @@
+
+-stp	x29, x30, [sp, #-0x20]!
+-stp	x20, x19, [sp, #0x10]
++stp	x29, x30, [sp, #-0x30]!
++str	x21, [sp, #OFFSET]
+ mov	x29, sp
++stp	x20, x19, [sp, #0x20]
+ cbz	x0, <PublishChildHookTable+OFFSET>
+-adrp	x9, RELOCATION_ADDRESS
+-ldr	x8, [x0, #OFFSET]
++adrp	x8, RELOCATION_ADDRESS
++ldr	x9, [x0, #OFFSET]
+ mov	x19, x0
+-ldr	x9, [x9, #OFFSET]
+-cmp	x8, x9
++ldr	x8, [x8, #OFFSET]
++cmp	x9, x8
+ b.ne	<PublishChildHookTable+OFFSET>
+-adrp	x9, RELOCATION_ADDRESS
+-add	x9, x9, #OFFSET
+-ldp	q1, q0, [x9]
++adrp	x20, RELOCATION_ADDRESS
++add	x20, x20, #OFFSET
++ldp	q1, q0, [x20]
+ orr	v0.16b, v1.16b, v0.16b
+ ext	v1.16b, v0.16b, v0.16b, #0x8
+ orr	v0.8b, v0.8b, v1.8b
+-umov	w9, v0.b[1]
+-umov	w10, v0.b[0]
+-umov	w11, v0.b[2]
+-umov	w12, v0.b[3]
+-umov	w13, v0.b[4]
+-orr	w9, w10, w9
+-umov	w10, v0.b[5]
+-orr	w9, w9, w11
+-umov	w11, v0.b[6]
+-orr	w9, w9, w12
+-umov	w12, v0.b[7]
+-orr	w9, w9, w13
+-orr	w9, w9, w10
+-orr	w9, w9, w11
+-orr	w9, w9, w12
+-tst	w9, #0xff
++umov	w8, v0.b[1]
++umov	w9, v0.b[0]
++umov	w10, v0.b[2]
++umov	w11, v0.b[3]
++umov	w12, v0.b[4]
++orr	w8, w9, w8
++umov	w9, v0.b[5]
++orr	w8, w8, w10
++umov	w10, v0.b[6]
++orr	w8, w8, w11
++umov	w11, v0.b[7]
++orr	w8, w8, w12
++orr	w8, w8, w9
++orr	w8, w8, w10
++orr	w8, w8, w11
++tst	w8, #0xff
+ b.eq	<PublishChildHookTable+OFFSET>
+-ldr	w9, [x19, #OFFSET]
+-adrp	x20, RELOCATION_ADDRESS
+-add	x20, x20, #OFFSET
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	x1, x20
+-eor	x8, x8, x9, lsl #32
+-mov	x9, #0x4f57
+-movk	x9, #0x4f4b, lsl #16
+-movk	x9, #0x484f, lsl #32
+-movk	x9, #0x574c, lsl #48
+-eor	x8, x8, x9
+-cmp	x8, #0x0
+-csinc	x2, x8, xzr, ne
+-bl	<westlake_child_hook_table_v1_prepare_candidate>
+-cbnz	w0, <PublishChildHookTable+OFFSET>
+-ldr	w8, [x19, #OFFSET]
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-add	x2, x8, #OFFSET
+-bl	<westlake_child_hook_table_v1_begin_install>
+-cbnz	w0, <PublishChildHookTable+OFFSET>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-bl	<westlake_child_hook_table_v1_publish>
+-cbnz	w0, <PublishChildHookTable+OFFSET>
+-adrp	x8, RELOCATION_ADDRESS
+-add	x8, x8, #OFFSET
+-ldar	x8, [x8]
++adrp	x21, RELOCATION_ADDRESS
++add	x21, x21, #OFFSET
++ldar	x8, [x21]
+ cmp	x8, #0x2
+ b.ne	<PublishChildHookTable+OFFSET>
+ adrp	x8, RELOCATION_ADDRESS
+-add	x8, x8, #OFFSET
+-ldar	x8, [x8]
+-cmp	x8, #0x1
++ldr	w9, [x19, #OFFSET]
++ldr	x8, [x8, #OFFSET]
++add	x9, x9, #OFFSET
++cmp	x8, x9
+ b.ne	<PublishChildHookTable+OFFSET>
+ adrp	x8, RELOCATION_ADDRESS
+@@ -99,6 +71,45 @@
+
+ csetm	w0, ne
+ b	<PublishChildHookTable+OFFSET>
++ldr	x8, [x19, #OFFSET]
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++ldr	w9, [x19, #OFFSET]
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++eor	x8, x8, x9, lsl #32
++mov	x9, #0x4f57
++movk	x9, #0x4f4b, lsl #16
++movk	x9, #0x484f, lsl #32
++movk	x9, #0x574c, lsl #48
++eor	x8, x8, x9
++cmp	x8, #0x0
++csinc	x2, x8, xzr, ne
++bl	<westlake_child_hook_table_v1_prepare_candidate>
++cbnz	w0, <PublishChildHookTable+OFFSET>
++ldr	w8, [x19, #OFFSET]
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++add	x2, x8, #OFFSET
++bl	<westlake_child_hook_table_v1_begin_install>
++cbnz	w0, <PublishChildHookTable+OFFSET>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++bl	<westlake_child_hook_table_v1_publish>
++cbnz	w0, <PublishChildHookTable+OFFSET>
++ldar	x8, [x21]
++cmp	x8, #0x2
++b.ne	<PublishChildHookTable+OFFSET>
++adrp	x8, RELOCATION_ADDRESS
++add	x8, x8, #OFFSET
++ldar	x8, [x8]
++cmp	x8, #0x1
++b.eq	<PublishChildHookTable+OFFSET>
+ mov	w0, #-0x1
+-ldp	x20, x19, [sp, #0x10]
+-ldp	x29, x30, [sp], #0x20
++ldp	x20, x19, [sp, #0x20]
++ldr	x21, [sp, #OFFSET]
++ldp	x29, x30, [sp], #0x30
+ ret

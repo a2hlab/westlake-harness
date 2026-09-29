@@ -98,3 +98,7 @@
 - B6整代换源码时：overlay real-work会带回历史r45_adapter_identity.env，必须在生成ROUTE_A_INPUTS/manifest之前把bridge/runtime SHA与Build-ID逐项对齐实际native roots；只过NEEDED门仍会在VM创建后被exact adapter bridge admission拒绝。#44首轮已复现并整代回滚；构建wrapper新增实际钉值预检。
 
 - B6 retained-provider部署：先对比 `/system/android/lib64/libwestlake_thread_guard_registry.so`、`/system/lib64/libwestlake_thread_guard_registry.so` 与route清单的SHA、stat inode及parent maps；现役两别名可能异代。候选需让两路径bind到同一份清单原件，回滚两个挂载；只保留route原字节而不对齐parent实际预载会触发EXTERNAL_ROOT/exit203。
+
+### B5 runtime recovery after installer reboot (5ea, 2026-09-29)
+
+Installer两处更新并重启foundation后可能黑屏；按明确授权整机重启，核 `/proc/<新foundation>/root` 两处SHA及非黑图。PR03启动恢复可能延迟，先只读核挂载，勿立即重复挂载。B5完整恢复还需保存的R155系统覆盖、B5 JAR和ZigZag的5个app原生库挂载；漏后者会使原始libmain报android_set_abort_message缺失。核源SHA后按重启前mountinfo恢复，复验HW+ZigZag；一般HelloWorld restore会覆盖installer，保留新installer时不要盲跑。实跑回执/带boot ID保护脚本见 benchmark/2026-09-28-bms-route-deploy/latest-source-generation/task52/installer/ 与 recipes/。

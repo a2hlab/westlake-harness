@@ -1,0 +1,107 @@
+--- r155
+
++++ candidate
+
+@@ -6,5 +6,5 @@
+
+ stp	x22, x21, [sp, #0x40]
+ stp	x20, x19, [sp, #0x50]
+-sub	sp, sp, #0x400
++sub	sp, sp, #0x3f0
+ mov	x19, x1
+ mov	x20, x0
+@@ -13,5 +13,4 @@
+
+ mov	w0, #0x2
+ mov	w2, #0x11
+-str	xzr, [sp, #OFFSET]
+ bl	<write@plt>
+ adrp	x1, RELOCATION_ADDRESS
+@@ -20,27 +19,4 @@
+
+ mov	w2, #0x1
+ bl	<write@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, xzr
+-bl	<dlsym@plt>
+-str	x0, [sp, #OFFSET]
+-cbz	x0, <WestlakeRunAndroidChild+OFFSET>
+-add	x0, sp, #OFFSET
+-add	x1, sp, #OFFSET
+-mov	w2, #0x8
+-bl	<memcpy@plt>
+-ldr	x8, [sp, #OFFSET]
+-cbz	x8, <WestlakeRunAndroidChild+OFFSET>
+-mov	w2, #0x2c11
+-adrp	x3, RELOCATION_ADDRESS
+-add	x3, x3, #OFFSET
+-adrp	x4, RELOCATION_ADDRESS
+-add	x4, x4, #OFFSET
+-adrp	x5, RELOCATION_ADDRESS
+-add	x5, x5, #OFFSET
+-mov	w0, #0x3
+-mov	w1, #0x4
+-movk	w2, #0xd00, lsl #16
+-blr	x8
+ bl	<ImmutableGenerationReady>
+ cbz	x19, <WestlakeRunAndroidChild+OFFSET>
+@@ -264,4 +240,5 @@
+
+ mov	w1, #0x21
+ bl	<WlascGateMarker>
++mov	w0, #-0x3
+ bl	<RevokeChildHookTable>
+ b	<WestlakeRunAndroidChild+OFFSET>
+@@ -273,5 +250,4 @@
+
+ mov	w0, #0x2
+ mov	w2, #0x20
+-stur	xzr, [x29, #-0x8]
+ bl	<write@plt>
+ adrp	x1, RELOCATION_ADDRESS
+@@ -280,27 +256,4 @@
+
+ mov	w2, #0x1
+ bl	<write@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, xzr
+-bl	<dlsym@plt>
+-stur	x0, [x29, #-0x10]
+-cbz	x0, <WestlakeRunAndroidChild+OFFSET>
+-sub	x0, x29, #0x8
+-sub	x1, x29, #0x10
+-mov	w2, #0x8
+-bl	<memcpy@plt>
+-ldur	x8, [x29, #-0x8]
+-cbz	x8, <WestlakeRunAndroidChild+OFFSET>
+-mov	w2, #0x2c11
+-adrp	x3, RELOCATION_ADDRESS
+-add	x3, x3, #OFFSET
+-adrp	x4, RELOCATION_ADDRESS
+-add	x4, x4, #OFFSET
+-adrp	x5, RELOCATION_ADDRESS
+-add	x5, x5, #OFFSET
+-mov	w0, #0x3
+-mov	w1, #0x4
+-movk	w2, #0xd00, lsl #16
+-blr	x8
+ mov	w0, #-0x1
+ add	sp, sp, #OFFSET
+@@ -343,9 +296,12 @@
+
+ mov	w0, #0x7a
+ bl	<_exit@plt>
++mov	w19, w0
++bl	<RevokeChildHookTable>
+ adrp	x0, RELOCATION_ADDRESS
+ add	x0, x0, #OFFSET
+ mov	w1, #0x20
+ bl	<WlascGateMarker>
+-bl	<RevokeChildHookTable>
+-mov	w0, #0x7b
++cmn	w19, #0xff
++mov	w8, #0x7b
++csneg	w0, w8, w19, lo
+ bl	<_exit@plt>

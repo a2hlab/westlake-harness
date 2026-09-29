@@ -1,0 +1,103 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,97 @@
+
++stp	x29, x30, [sp, #-0x50]!
++stp	x28, x25, [sp, #0x10]
++mov	x29, sp
++stp	x24, x23, [sp, #0x20]
++stp	x22, x21, [sp, #0x30]
++stp	x20, x19, [sp, #0x40]
++sub	sp, sp, #0x1, lsl #12
++sub	sp, sp, #0x110
++mov	x21, x1
++mov	x22, x0
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	w19, w2
++bl	<fopen@plt>
++cbz	x0, <MapsState+OFFSET>
++mov	x20, x0
++add	x0, sp, #OFFSET
++mov	w1, #0x1100
++mov	x2, x20
++bl	<fgets@plt>
++mov	w25, wzr
++cbz	x0, <MapsState+OFFSET>
++add	x22, x22, #OFFSET
++adrp	x23, RELOCATION_ADDRESS
++add	x23, x23, #OFFSET
++b	<MapsState+OFFSET>
++add	x0, sp, #OFFSET
++mov	w1, #0x1100
++mov	x2, x20
++bl	<fgets@plt>
++cbz	x0, <MapsState+OFFSET>
++add	x0, sp, #OFFSET
++mov	w1, #0x2f
++stp	xzr, xzr, [sp]
++bl	<strchr@plt>
++cbz	x0, <MapsState+OFFSET>
++mov	w1, #0x2f
++mov	x24, x0
++bl	<strrchr@plt>
++cmp	x0, #0x0
++mov	w1, #0xa
++csinc	x24, x24, x0, eq
++mov	x0, x24
++bl	<strchr@plt>
++cbz	x0, <MapsState+OFFSET>
++strb	wzr, [x0]
++mov	x0, x24
++mov	x1, x22
++bl	<strcmp@plt>
++cmp	w0, #0x0
++csinc	w25, w25, wzr, ne
++cbnz	w19, <MapsState+OFFSET>
++cbnz	w0, <MapsState+OFFSET>
++add	x0, sp, #OFFSET
++add	x2, sp, #OFFSET
++add	x3, sp, #OFFSET
++mov	x4, sp
++mov	x1, x23
++bl	<sscanf@plt>
++cmp	w0, #0x3
++b.ne	<MapsState+OFFSET>
++ldr	x8, [sp]
++ldr	x9, [x21, #OFFSET]
++cmp	x8, x9
++b.ne	<MapsState+OFFSET>
++ldr	x8, [x21, #OFFSET]
++ldr	w9, [sp, #OFFSET]
++lsr	x10, x8, #32
++bfxil	w10, w8, #8, #12
++cmp	w9, w10
++b.ne	<MapsState+OFFSET>
++ldr	w9, [sp, #OFFSET]
++lsr	x10, x8, #12
++bfxil	w10, w8, #0, #8
++cmp	w9, w10
++b.ne	<MapsState+OFFSET>
++mov	x0, x20
++bl	<fclose@plt>
++mov	w0, #0x1
++b	<MapsState+OFFSET>
++mov	x0, x20
++bl	<fclose@plt>
++cbz	w0, <MapsState+OFFSET>
++mov	w0, #-0x1
++b	<MapsState+OFFSET>
++cmp	w19, #0x0
++csel	w0, w25, wzr, eq
++add	sp, sp, #OFFSET, lsl #12
++add	sp, sp, #OFFSET
++ldp	x20, x19, [sp, #0x40]
++ldp	x22, x21, [sp, #0x30]
++ldp	x24, x23, [sp, #0x20]
++ldp	x28, x25, [sp, #0x10]
++ldp	x29, x30, [sp], #0x50
++ret

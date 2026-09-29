@@ -1,0 +1,31 @@
+--- r155
+
++++ candidate
+
+@@ -1,25 +0,0 @@
+
+-stp	x29, x30, [sp, #-0x10]!
+-mov	x29, sp
+-nop
+-adr	x8, RELOCATION_ADDRESS
+-cmp	x0, x8
+-b.eq	<(anonymous namespace)::VerifyLoaderThreadReady(void*)+OFFSET>
+-mov	w0, wzr
+-ldp	x29, x30, [sp], #0x10
+-ret
+-bl	<getpid@plt>
+-cmp	w0, #0x1
+-b.lt	<(anonymous namespace)::VerifyLoaderThreadReady(void*)+OFFSET>
+-mov	w1, w0
+-nop
+-adr	x0, RELOCATION_ADDRESS
+-bl	<WLAR_LoaderPhaseIsChildReady>
+-cmp	w0, #0x1
+-b.ne	<(anonymous namespace)::VerifyLoaderThreadReady(void*)+OFFSET>
+-nop
+-adr	x0, RELOCATION_ADDRESS
+-bl	<WLAR_HostServicesVerifyCurrentThreadReady>
+-cmp	w0, #0x0
+-cset	w0, eq
+-ldp	x29, x30, [sp], #0x10
+-ret

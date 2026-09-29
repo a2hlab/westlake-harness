@@ -1,0 +1,127 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,121 @@
+
++stp	x29, x30, [sp, #-0x30]!
++str	x28, [sp, #OFFSET]
++mov	x29, sp
++stp	x20, x19, [sp, #0x20]
++sub	sp, sp, #0x240
++mov	x19, x0
++mov	w0, #-0x1
++cbz	x19, <WlgrIfProductionReadReceipt+OFFSET>
++cbz	x1, <WlgrIfProductionReadReceipt+OFFSET>
++ldr	x9, [x19]
++cbz	x9, <WlgrIfProductionReadReceipt+OFFSET>
++ldr	x9, [x19, #OFFSET]
++cbz	x9, <WlgrIfProductionReadReceipt+OFFSET>
++ldr	x0, [x19, #OFFSET]
++cbz	x0, <WlgrIfProductionReadReceipt+OFFSET>
++ldr	w10, [x9]
++cmp	w10, #0x1
++b.ne	<WlgrIfProductionReadReceipt+OFFSET>
++ldr	w10, [x9, #OFFSET]
++cmp	w10, #0x38
++b.ne	<WlgrIfProductionReadReceipt+OFFSET>
++ldr	x10, [x9, #OFFSET]
++cbz	x10, <WlgrIfProductionReadReceipt+OFFSET>
++ldr	w10, [x9, #OFFSET]
++cmp	w10, #0x1
++b.ne	<WlgrIfProductionReadReceipt+OFFSET>
++ldr	w10, [x9, #OFFSET]
++cmp	w10, #0x1
++b.ne	<WlgrIfProductionReadReceipt+OFFSET>
++ldr	w10, [x9, #OFFSET]
++cmp	w10, #0x1
++b.ne	<WlgrIfProductionReadReceipt+OFFSET>
++ldr	w10, [x9, #OFFSET]
++cmp	w10, #0x1
++b.ne	<WlgrIfProductionReadReceipt+OFFSET>
++ldr	w11, [x9, #OFFSET]
++mov	w10, #0x1770
++cmp	w11, w10
++b.ne	<WlgrIfProductionReadReceipt+OFFSET>
++ldr	w11, [x9, #OFFSET]
++cmp	w11, w10
++b.ne	<WlgrIfProductionReadReceipt+OFFSET>
++ldrb	w10, [x9, #OFFSET]
++ldrb	w11, [x9, #OFFSET]
++ldrb	w12, [x9, #OFFSET]
++ldrb	w13, [x9, #OFFSET]
++orr	w10, w11, w10
++ldrb	w11, [x9, #OFFSET]
++orr	w10, w10, w12
++ldrb	w12, [x9, #OFFSET]
++orr	w10, w10, w13
++ldrb	w13, [x9, #OFFSET]
++orr	w10, w10, w11
++ldrb	w9, [x9, #OFFSET]
++orr	w10, w10, w12
++orr	w10, w10, w13
++orr	w9, w10, w9
++cbz	w9, <WlgrIfProductionReadReceipt+OFFSET>
++mov	w0, #-0x1
++add	sp, sp, #OFFSET
++ldp	x20, x19, [sp, #0x20]
++ldr	x28, [sp, #OFFSET]
++ldp	x29, x30, [sp], #0x30
++ret
++mov	x20, x1
++bl	<WlgrIfValidateMetadata>
++cbz	w0, <WlgrIfProductionReadReceipt+OFFSET>
++ldp	x0, x8, [x19]
++mov	x9, x19
++ldr	x10, [x0, #OFFSET]
++ldr	x9, [x8, #OFFSET]
++cmp	x9, x10
++b.ne	<WlgrIfProductionReadReceipt+OFFSET>
++ldr	w8, [x8, #OFFSET]
++ldr	x9, [x0, #OFFSET]
++cmp	x9, x8
++b.ne	<WlgrIfProductionReadReceipt+OFFSET>
++ldr	x9, [x19, #OFFSET]
++ldr	x9, [x9, #OFFSET]
++cmp	x9, x8
++b.ne	<WlgrIfProductionReadReceipt+OFFSET>
++mov	x1, sp
++bl	<RequestKey>
++cbz	w0, <WlgrIfProductionReadReceipt+OFFSET>
++mov	x0, x20
++mov	w1, wzr
++mov	w2, #0x2d8
++bl	<memset@plt>
++adrp	x8, RELOCATION_ADDRESS
++mov	x9, #0x5031
++movk	x9, #0x4543, lsl #16
++add	x0, x20, #OFFSET
++movk	x9, #0x4752, lsl #32
++mov	x1, sp
++movk	x9, #0x574c, lsl #48
++ldr	d0, [x8, #OFFSET]
++mov	w2, #0x240
++str	x9, [x20]
++str	d0, [x20, #OFFSET]
++bl	<memcpy@plt>
++ldr	x8, [x19, #OFFSET]
++add	x0, x20, #OFFSET
++mov	w2, #0x10
++add	x1, x8, #OFFSET
++bl	<memcpy@plt>
++ldr	x8, [x19, #OFFSET]
++add	x0, x20, #OFFSET
++mov	w2, #0x20
++add	x1, x8, #OFFSET
++bl	<memcpy@plt>
++ldr	x8, [x19, #OFFSET]
++add	x9, x20, #OFFSET
++add	x1, x20, #OFFSET
++ldr	x8, [x8, #OFFSET]
++str	x8, [x20, #OFFSET]
++ldr	x8, [x19]
++ldur	q0, [x8, #0x18]
++str	q0, [x9]
++ldr	x0, [x19, #OFFSET]
++bl	<WlgrIfDigestStockReceipt>
++b	<WlgrIfProductionReadReceipt+OFFSET>

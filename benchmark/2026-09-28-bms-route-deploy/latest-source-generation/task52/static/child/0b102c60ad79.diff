@@ -1,0 +1,53 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,47 @@
+
++stp	x29, x30, [sp, #-0x30]!
++mov	w0, #-0x1
++stp	x22, x21, [sp, #0x10]
++stp	x20, x19, [sp, #0x20]
++mov	x29, sp
++cbz	x1, <WlgrIfProductionReadBootId+OFFSET>
++mov	x20, x2
++cmp	x2, #0x25
++b.lo	<WlgrIfProductionReadBootId+OFFSET>
++mov	x19, x1
++nop
++adr	x0, RELOCATION_ADDRESS
++mov	w1, #0x80000
++bl	<open@plt>
++tbnz	w0, #0x1f, <WlgrIfProductionReadBootId+OFFSET>
++sub	x21, x20, #0x1
++mov	x1, x19
++mov	x2, x21
++mov	w22, w0
++bl	<read@plt>
++mov	x20, x0
++mov	w0, w22
++bl	<close@plt>
++mov	w0, #-0x1
++tbnz	x20, #0x3f, <WlgrIfProductionReadBootId+OFFSET>
++cmp	x20, x21
++b.hs	<WlgrIfProductionReadBootId+OFFSET>
++cbz	x20, <WlgrIfProductionReadBootId+OFFSET>
++sub	x8, x19, #0x1
++ldrb	w9, [x8, x20]
++cmp	w9, #0xd
++ccmp	w9, #0xa, #0x4, ne
++b.ne	<WlgrIfProductionReadBootId+OFFSET>
++sub	x20, x20, #0x1
++add	x9, x20, #OFFSET
++cmp	x9, #0x1
++b.hi	<WlgrIfProductionReadBootId+OFFSET>
++mov	x20, xzr
++cmp	x20, #0x24
++strb	wzr, [x19, x20]
++csetm	w0, ne
++b	<WlgrIfProductionReadBootId+OFFSET>
++mov	w0, #-0x1
++ldp	x20, x19, [sp, #0x20]
++ldp	x22, x21, [sp, #0x10]
++ldp	x29, x30, [sp], #0x30
++ret

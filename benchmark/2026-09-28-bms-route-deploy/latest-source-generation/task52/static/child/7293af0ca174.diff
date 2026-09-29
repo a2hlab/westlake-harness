@@ -1,0 +1,885 @@
+--- r155
+
++++ candidate
+
+@@ -1,4 +1,9 @@
+
+-sub	sp, sp, #0x120
+-stp	x20, x19, [sp, #0x110]
++stp	x29, x30, [sp, #-0x50]!
++str	x28, [sp, #OFFSET]
++mov	x29, sp
++stp	x24, x23, [sp, #0x20]
++stp	x22, x21, [sp, #0x30]
++stp	x20, x19, [sp, #0x40]
++sub	sp, sp, #0xef0
+ mov	x19, x1
+ mov	x20, x0
+@@ -7,9 +12,4 @@
+
+ mov	w0, #0x2
+ mov	w2, #0x11
+-stp	x29, x30, [sp, #0xe0]
+-stp	x28, x23, [sp, #0xf0]
+-add	x29, sp, #OFFSET
+-stp	x22, x21, [sp, #0x100]
+-str	xzr, [sp]
+ bl	<write@plt>
+ adrp	x1, RELOCATION_ADDRESS
+@@ -18,27 +18,5 @@
+
+ mov	w2, #0x1
+ bl	<write@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, xzr
+-bl	<dlsym@plt>
+-stur	x0, [x29, #-0x30]
+-cbz	x0, <LoadSealedProviderAfterHooks+OFFSET>
+-mov	x0, sp
+-sub	x1, x29, #0x30
+-mov	w2, #0x8
+-bl	<memcpy@plt>
+-ldr	x8, [sp]
+-cbz	x8, <LoadSealedProviderAfterHooks+OFFSET>
+-mov	w2, #0x2c11
+-adrp	x3, RELOCATION_ADDRESS
+-add	x3, x3, #OFFSET
+-adrp	x4, RELOCATION_ADDRESS
+-add	x4, x4, #OFFSET
+-adrp	x5, RELOCATION_ADDRESS
+-add	x5, x5, #OFFSET
+-mov	w0, #0x3
+-mov	w1, #0x4
+-movk	w2, #0xd00, lsl #16
+-blr	x8
++mov	w0, #-0x7e
+ cbz	x20, <LoadSealedProviderAfterHooks+OFFSET>
+ cbz	x19, <LoadSealedProviderAfterHooks+OFFSET>
+@@ -47,4 +25,9 @@
+
+ cmp	x8, x9
+ b.ne	<LoadSealedProviderAfterHooks+OFFSET>
++ldr	w8, [x20, #OFFSET]
++cbz	w8, <LoadSealedProviderAfterHooks+OFFSET>
++ldr	w9, [x19, #OFFSET]
++cmp	w9, w8
++b.ne	<LoadSealedProviderAfterHooks+OFFSET>
+ ldr	w8, [x19, #OFFSET]
+ cmp	w8, #0x1
+@@ -55,71 +38,47 @@
+
+ adrp	x8, RELOCATION_ADDRESS
+ add	x8, x8, #OFFSET
+-adrp	x9, RELOCATION_ADDRESS
+-add	x9, x9, #OFFSET
+ ldar	x8, [x8]
+-ldp	q1, q0, [x9, #0x20]
+-cmeq	v1.2d, v1.2d, #0
+-ldp	q3, q2, [x9]
+-cmeq	v0.2d, v0.2d, #0
+-uzp1	v0.4s, v1.4s, v0.4s
+-cmeq	v3.2d, v3.2d, #0
+-cmeq	v2.2d, v2.2d, #0
+-uzp1	v1.4s, v3.4s, v2.4s
+-uzp1	v0.8h, v1.8h, v0.8h
+-xtn	v0.8b, v0.8h
+-umaxv	b0, v0.8b
+-fmov	w10, s0
+-tbnz	w10, #0x0, <LoadSealedProviderAfterHooks+OFFSET>
+-ldr	x9, [x9, #OFFSET]
++cmp	x8, #0x2
++b.ne	<LoadSealedProviderAfterHooks+OFFSET>
++adrp	x8, RELOCATION_ADDRESS
++add	x8, x8, #OFFSET
++mov	w0, #-0x8a
++ldr	x9, [x8]
+ cbz	x9, <LoadSealedProviderAfterHooks+OFFSET>
+-cmp	x8, #0x2
+-b.ne	<LoadSealedProviderAfterHooks+OFFSET>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	w0, #0x2
+-mov	w2, #0x1d
+-str	xzr, [sp]
+-bl	<write@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	w0, #0x2
+-mov	w2, #0x1
+-bl	<write@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, xzr
+-bl	<dlsym@plt>
+-stur	x0, [x29, #-0x30]
+-cbz	x0, <LoadSealedProviderAfterHooks+OFFSET>
+-mov	x0, sp
+-sub	x1, x29, #0x30
+-mov	w2, #0x8
+-bl	<memcpy@plt>
+-ldr	x8, [sp]
++ldr	x9, [x8, #OFFSET]
++cbz	x9, <LoadSealedProviderAfterHooks+OFFSET>
++ldr	x9, [x8, #OFFSET]
++cbz	x9, <LoadSealedProviderAfterHooks+OFFSET>
++ldr	x9, [x8, #OFFSET]
++cbz	x9, <LoadSealedProviderAfterHooks+OFFSET>
++ldr	x9, [x8, #OFFSET]
++cbz	x9, <LoadSealedProviderAfterHooks+OFFSET>
++ldr	x9, [x8, #OFFSET]
++cbz	x9, <LoadSealedProviderAfterHooks+OFFSET>
++ldr	x8, [x8, #OFFSET]
+ cbz	x8, <LoadSealedProviderAfterHooks+OFFSET>
+-mov	w2, #0x2c11
+-adrp	x3, RELOCATION_ADDRESS
+-add	x3, x3, #OFFSET
+-adrp	x4, RELOCATION_ADDRESS
+-add	x4, x4, #OFFSET
+-adrp	x5, RELOCATION_ADDRESS
+-add	x5, x5, #OFFSET
+-mov	w0, #0x3
+-mov	w1, #0x4
+-movk	w2, #0xd00, lsl #16
+-blr	x8
++adrp	x8, RELOCATION_ADDRESS
++add	x8, x8, #OFFSET
++mov	w0, #-0x8b
++ldr	x9, [x8]
++cbz	x9, <LoadSealedProviderAfterHooks+OFFSET>
++ldr	x8, [x8, #OFFSET]
++cbz	x8, <LoadSealedProviderAfterHooks+OFFSET>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	w1, #0x1d
++bl	<WlascGateMarker>
+ bl	<WLSCPL_GetBuildGeneratedManifest>
+ cbz	x0, <LoadSealedProviderAfterHooks+OFFSET>
+ ldr	w8, [x0]
+ mov	x21, x0
+-cmp	w8, #0x1
++cmp	w8, #0x2
+ b.ne	<LoadSealedProviderAfterHooks+OFFSET>
+ ldr	w8, [x21, #OFFSET]
+-cmp	w8, #0x28
+-b.ne	<LoadSealedProviderAfterHooks+OFFSET>
+-ldr	x8, [x21, #OFFSET]
+-ldr	x9, [x20, #OFFSET]
+-cmp	x8, x9
+-b.ne	<LoadSealedProviderAfterHooks+OFFSET>
++cmp	w8, #0x48
++b.ne	<LoadSealedProviderAfterHooks+OFFSET>
++bl	<WlgrIfGetBuildGeneratedMetadata>
++bl	<WlgrIfValidateMetadata>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
+ adrp	x0, RELOCATION_ADDRESS
+ add	x0, x0, #OFFSET
+@@ -128,39 +87,408 @@
+
+ bl	<getpid@plt>
+ mov	w22, w0
++sxtw	x8, w22
++str	x8, [x29, #OFFSET]
+ bl	<getppid@plt>
++mov	w8, w0
++mov	w0, #-0x81
+ cbz	w22, <LoadSealedProviderAfterHooks+OFFSET>
+-cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
+-cmp	w22, w0
++cbz	w8, <LoadSealedProviderAfterHooks+OFFSET>
++cmp	w22, w8
+ b.eq	<LoadSealedProviderAfterHooks+OFFSET>
+-sxtw	x23, w0
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	w1, #0x14
+-sxtw	x22, w22
++add	x1, x29, #OFFSET
++add	x2, sp, #OFFSET
++mov	x0, xzr
++mov	x23, x8
++bl	<WlgrIfProductionReadProcess>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++mov	w0, #-0x81
++b	<LoadSealedProviderAfterHooks+OFFSET>
++mov	w0, #-0x87
++add	sp, sp, #OFFSET
++ldp	x20, x19, [sp, #0x40]
++ldp	x22, x21, [sp, #0x30]
++ldp	x24, x23, [sp, #0x20]
++ldr	x28, [sp, #OFFSET]
++ldp	x29, x30, [sp], #0x50
++ret
++mov	w0, #-0x88
++b	<LoadSealedProviderAfterHooks+OFFSET>
++mov	w0, #-0x89
++b	<LoadSealedProviderAfterHooks+OFFSET>
++mov	w0, #-0x80
++b	<LoadSealedProviderAfterHooks+OFFSET>
++movi	v0.2d, #0000000000000000
++ldr	w8, [x20, #OFFSET]
++movi	v1.2d, #0000000000000000
++add	x22, sp, #OFFSET
++ldr	w9, [x20, #OFFSET]
++add	x0, x22, #OFFSET
++ldr	x10, [x20, #OFFSET]
++add	x1, x20, #OFFSET
++str	q0, [sp, #OFFSET]
++ldr	x11, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++mov	w2, #0x100
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++movi	v0.2d, #0000000000000000
++str	w8, [sp, #OFFSET]
++ldr	x8, [x29, #OFFSET]
++str	q1, [sp, #OFFSET]
++str	q1, [sp, #OFFSET]
++str	x9, [sp, #OFFSET]
++str	x10, [sp, #OFFSET]
++str	x8, [sp, #OFFSET]
++str	x11, [sp, #OFFSET]
++str	q1, [sp, #OFFSET]
++str	q1, [sp, #OFFSET]
++str	d0, [sp, #OFFSET]
++bl	<memcpy@plt>
++add	x0, x22, #OFFSET
++add	x1, x20, #OFFSET
++mov	w2, #0x100
++bl	<memcpy@plt>
++bl	<WlgrIfGetBuildGeneratedMetadata>
++ldp	q0, q1, [x0]
++movi	v4.2d, #0000000000000000
++add	x1, sp, #OFFSET
++mov	w2, #0x40
++str	q4, [sp, #OFFSET]
++ldr	q2, [x0, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q1, [sp, #OFFSET]
++str	q2, [sp, #OFFSET]
++ldp	q1, q0, [x0, #0x50]
++ldp	q2, q3, [x0, #0x30]
++str	q0, [sp, #OFFSET]
++str	q1, [sp, #OFFSET]
++str	q2, [sp, #OFFSET]
++str	q3, [sp, #OFFSET]
++ldp	q2, q3, [x0, #0x70]
++ldp	q1, q0, [x0, #0x90]
++str	q2, [sp, #OFFSET]
++movi	v2.2d, #0000000000000000
++str	q3, [sp, #OFFSET]
++str	q1, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++stp	q2, q2, [sp, #0xa0]
++ldp	q1, q0, [x0, #0xd0]
++stp	q2, q2, [sp, #0xc0]
++ldp	q2, q3, [x0, #0xb0]
++mov	x0, xzr
++str	q0, [sp, #OFFSET]
++str	q1, [sp, #OFFSET]
++str	q2, [sp, #OFFSET]
++str	q3, [sp, #OFFSET]
++bl	<WlgrIfProductionReadBootId>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	w1, #0x21
++bl	<WlascGateMarker>
++mov	w0, #-0x82
++b	<LoadSealedProviderAfterHooks+OFFSET>
++add	x0, sp, #OFFSET
++add	x1, sp, #OFFSET
++bl	<WlgrIfParseBootId>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++add	x22, sp, #OFFSET
++add	x1, sp, #OFFSET
++add	x0, x22, #OFFSET
++mov	w2, #0x10
++bl	<memcpy@plt>
++movi	v0.2d, #0000000000000000
++ldr	x8, [sp, #OFFSET]
++add	x1, x22, #OFFSET
++add	x0, sp, #OFFSET
++str	x8, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++bl	<WlgrIfDigestMetadata>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	w1, #0x23
++bl	<WlascGateMarker>
++mov	w0, #-0x83
++b	<LoadSealedProviderAfterHooks+OFFSET>
++add	x0, sp, #OFFSET
++bl	<WlgrIfValidateMetadata>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	w1, #0x1c
+ bl	<WlascGateMarker>
+ movi	v0.2d, #0000000000000000
+ adrp	x8, RELOCATION_ADDRESS
++mov	x9, #0x4831
++add	x10, sp, #OFFSET
++movk	x9, #0x5343, lsl #16
++add	x0, x10, #OFFSET
++movk	x9, #0x4748, lsl #32
++ldr	d1, [x8, #OFFSET]
++str	q0, [sp, #OFFSET]
++movk	x9, #0x574c, lsl #48
++str	q0, [sp, #OFFSET]
++mov	w8, #0x3ff
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++movi	v0.4h, #0x8
++str	d1, [sp, #OFFSET]
++str	x9, [sp, #OFFSET]
++str	x8, [sp, #OFFSET]
++str	d0, [sp, #OFFSET]
++bl	<WlgrIfProduceHookSchemaDigest>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++mov	w0, #-0x84
++b	<LoadSealedProviderAfterHooks+OFFSET>
++add	x0, sp, #OFFSET
++add	x1, sp, #OFFSET
++add	x3, sp, #OFFSET
++add	x4, sp, #OFFSET
++mov	x2, x19
++bl	<WlgrIfProductionContextInit>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++mov	w0, #-0x85
++b	<LoadSealedProviderAfterHooks+OFFSET>
++add	x0, sp, #OFFSET
++add	x1, sp, #OFFSET
++bl	<WlgrIfProductionOps>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++mov	w0, #-0x86
++b	<LoadSealedProviderAfterHooks+OFFSET>
++adrp	x8, RELOCATION_ADDRESS
++add	x0, sp, #OFFSET
++movi	v0.2d, #0000000000000000
++add	x1, sp, #OFFSET
++movi	v1.2d, #0000000000000000
++add	x2, sp, #OFFSET
++ldr	x8, [x8, #OFFSET]
++add	x3, sp, #OFFSET
++ldr	x9, [sp, #OFFSET]
++str	wzr, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	x8, [sp, #OFFSET]
++str	x9, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	d1, [sp, #OFFSET]
++stp	q0, q0, [sp, #0xe0]
++stp	q0, q0, [sp, #0x100]
++stp	q0, q0, [sp, #0x120]
++stp	q0, q0, [sp, #0x140]
++stp	q0, q0, [sp, #0x160]
++stp	q0, q0, [sp, #0x180]
++stp	q0, q0, [sp, #0x1a0]
++stp	q0, q0, [sp, #0x1c0]
++stp	q0, q0, [sp, #0x1e0]
++stp	q0, q0, [sp, #0x200]
++stp	q0, q0, [sp, #0x220]
++stp	q0, q0, [sp, #0x240]
++stp	q0, q0, [sp, #0x260]
++stp	q0, q0, [sp, #0x280]
++stp	q0, q0, [sp, #0x2a0]
++stp	q0, q0, [sp, #0x2c0]
++stp	q0, q0, [sp, #0x2e0]
++stp	q0, q0, [sp, #0x300]
++stp	q0, q0, [sp, #0x320]
++stp	q0, q0, [sp, #0x340]
++stp	q0, q0, [sp, #0x360]
++stp	q0, q0, [sp, #0x380]
++stp	q0, q0, [sp, #0x3a0]
++stp	q0, q0, [sp, #0x3c0]
++stp	q0, q0, [sp, #0x3e0]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++bl	<WlgrIfAcquire>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++mov	w22, w0
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	w1, w22
++bl	<WlascGateMarkerValue>
++mov	w8, #-0x8c
++sub	w0, w8, w22
++b	<LoadSealedProviderAfterHooks+OFFSET>
++add	x0, sp, #OFFSET
++add	x1, sp, #OFFSET
++add	x2, sp, #OFFSET
++bl	<WlgrIpBuild>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++mov	w22, w0
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	w1, w22
++bl	<WlascGateMarkerValue>
++mov	w8, #-0xa0
++sub	w0, w8, w22
++b	<LoadSealedProviderAfterHooks+OFFSET>
++add	x0, sp, #OFFSET
++add	x1, sp, #OFFSET
++add	x2, sp, #OFFSET
++bl	<WlgrIpValidate>
++mov	w24, w0
++add	x0, sp, #OFFSET
++bl	<WlgrIpGetIdentity>
++cbz	w24, <LoadSealedProviderAfterHooks+OFFSET>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	w1, w24
++bl	<WlascGateMarkerValue>
++mov	w8, #-0xaa
++sub	w0, w8, w24
++b	<LoadSealedProviderAfterHooks+OFFSET>
++mov	x22, x0
++cbz	x0, <LoadSealedProviderAfterHooks+OFFSET>
++mov	x0, x22
++bl	<wlgr_v2_identity_valid>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	w1, #0x14
++sxtw	x23, w23
++bl	<WlascGateMarker>
++movi	v0.2d, #0000000000000000
++adrp	x8, RELOCATION_ADDRESS
++movi	v1.2d, #0000000000000000
+ adrp	x0, RELOCATION_ADDRESS
+ add	x0, x0, #OFFSET
+ sub	x1, x29, #0x30
+-sub	x2, x29, #0x60
+-sturh	wzr, [x29, #-0x30]
+-stur	d0, [x29, #-0x1c]
+-stp	q0, q0, [x29, #-0x60]
+-stur	d0, [x29, #-0x40]
++add	x2, sp, #OFFSET
++sturh	wzr, [x29, #-0x10]
++stp	q0, q0, [x29, #-0x30]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
+ ldr	q0, [x8, #OFFSET]
+ mov	w8, #0x1
+-sturb	wzr, [x29, #-0x2e]
+-sturh	wzr, [x29, #-0x2c]
+-sturb	wzr, [x29, #-0x2a]
+-sturh	wzr, [x29, #-0x28]
+-sturb	wzr, [x29, #-0x26]
+-sturh	wzr, [x29, #-0x24]
+-sturb	wzr, [x29, #-0x22]
+-sturh	wzr, [x29, #-0x14]
+-stur	wzr, [x29, #-0x10]
+-sturh	wzr, [x29, #-0xc]
+-stur	wzr, [x29, #-0x8]
+-sturb	wzr, [x29, #-0x4]
++str	d1, [sp, #OFFSET]
++str	d1, [sp, #OFFSET]
++str	d1, [sp, #OFFSET]
+ stur	q0, [x29, #-0x30]
+ stur	w8, [x29, #-0x20]
+@@ -168,26 +496,78 @@
+
+ stur	x21, [x29, #-0x8]
+ bl	<WLSCPL_LoadSealedProvider>
+-mov	w1, w0
+-cbnz	w0, <LoadSealedProviderAfterHooks+OFFSET>
+-ldur	w8, [x29, #-0x60]
+-cmp	w8, #0x1
+-b.ne	<LoadSealedProviderAfterHooks+OFFSET>
+-ldur	w8, [x29, #-0x5c]
+-cmp	w8, #0x28
+-b.ne	<LoadSealedProviderAfterHooks+OFFSET>
+-ldur	w8, [x29, #-0x58]
++mov	w23, w0
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	w1, w23
++bl	<WlascGateMarkerValue>
++ldr	w1, [sp, #OFFSET]
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++bl	<WlascGateMarkerValue>
++ldr	w1, [sp, #OFFSET]
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++bl	<WlascGateMarkerValue>
++cbz	w23, <LoadSealedProviderAfterHooks+OFFSET>
++cmp	w23, #0x8
++b.ne	<LoadSealedProviderAfterHooks+OFFSET>
++ldr	w8, [sp, #OFFSET]
++cmp	w8, #0x22
++b.hi	<LoadSealedProviderAfterHooks+OFFSET>
++bl	<WLSCPL_GetLastArtifactIdentityDetail>
++ldr	w8, [sp, #OFFSET]
++cmp	w8, #0x1f
++b.hi	<LoadSealedProviderAfterHooks+OFFSET>
++mov	w9, #-0x40
++sub	w0, w9, w8
++b	<LoadSealedProviderAfterHooks+OFFSET>
++mov	w0, #-0xb3
++b	<LoadSealedProviderAfterHooks+OFFSET>
++ldr	w8, [sp, #OFFSET]
++mov	w0, #-0xcc
++cmp	w8, #0x2
++b.ne	<LoadSealedProviderAfterHooks+OFFSET>
++ldr	w8, [sp, #OFFSET]
++cmp	w8, #0x358
++b.ne	<LoadSealedProviderAfterHooks+OFFSET>
++ldr	w8, [sp, #OFFSET]
+ cbnz	w8, <LoadSealedProviderAfterHooks+OFFSET>
+-ldur	w8, [x29, #-0x54]
++ldr	w8, [sp, #OFFSET]
+ ldr	w9, [x21, #OFFSET]
+ cmp	w8, w9
+ b.ne	<LoadSealedProviderAfterHooks+OFFSET>
+-ldur	x8, [x29, #-0x50]
+-cmp	x8, x22
+-b.ne	<LoadSealedProviderAfterHooks+OFFSET>
+-ldur	x8, [x29, #-0x48]
+-ldr	x9, [x20, #OFFSET]
+-cmp	x8, x9
+-b.ne	<LoadSealedProviderAfterHooks+OFFSET>
+-ldur	x8, [x29, #-0x40]
++add	x8, sp, #OFFSET
++mov	x1, x22
++add	x0, x8, #OFFSET
++bl	<wlgr_v2_identity_equal>
++cbz	w0, <LoadSealedProviderAfterHooks+OFFSET>
++ldur	q0, [x21, #0x1c]
++mov	w0, #-0xcc
++ldr	q1, [sp, #OFFSET]
++ldr	q2, [sp, #OFFSET]
++ldur	q3, [x21, #0x2c]
++eor	v0.16b, v0.16b, v1.16b
++eor	v1.16b, v3.16b, v2.16b
++orr	v0.16b, v1.16b, v0.16b
++ext	v1.16b, v0.16b, v0.16b, #0x8
++orr	v0.8b, v0.8b, v1.8b
++umov	w8, v0.b[1]
++umov	w9, v0.b[0]
++umov	w10, v0.b[2]
++umov	w11, v0.b[3]
++umov	w12, v0.b[4]
++orr	w8, w9, w8
++umov	w9, v0.b[5]
++orr	w8, w8, w10
++umov	w10, v0.b[6]
++orr	w8, w8, w11
++umov	w11, v0.b[7]
++orr	w8, w8, w12
++orr	w8, w8, w9
++orr	w8, w8, w10
++orr	w8, w8, w11
++tst	w8, #0xff
++b.ne	<LoadSealedProviderAfterHooks+OFFSET>
++ldr	x8, [sp, #OFFSET]
+ cbz	x8, <LoadSealedProviderAfterHooks+OFFSET>
+ adrp	x0, RELOCATION_ADDRESS
+@@ -198,9 +578,9 @@
+
+ mov	x9, sp
+ movi	v0.2d, #0000000000000000
+-adrp	x21, RELOCATION_ADDRESS
+-add	x21, x21, #OFFSET
++adrp	x22, RELOCATION_ADDRESS
++add	x22, x22, #OFFSET
+ add	x0, x9, #OFFSET
+ ldr	d1, [x8, #OFFSET]
+-mov	x1, x21
++mov	x1, x22
+ ldr	x8, [x20, #OFFSET]
+ mov	w2, #0x20
+@@ -212,128 +592,37 @@
+
+ str	x8, [sp, #OFFSET]
+ bl	<memcpy@plt>
+-ldr	x8, [x21, #OFFSET]
+-adrp	x10, RELOCATION_ADDRESS
+-ldr	q0, [x21, #OFFSET]
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-ldr	x9, [x21, #OFFSET]
++ldr	x9, [x22, #OFFSET]
++mov	x1, sp
++ldr	x8, [x22, #OFFSET]
++add	x5, sp, #OFFSET
++ldr	q0, [x22, #OFFSET]
++mov	x2, x20
++str	x9, [sp, #OFFSET]
++adrp	x9, RELOCATION_ADDRESS
+ str	x8, [sp, #OFFSET]
+-mov	w1, #0x1b
++mov	x3, x19
++ldp	x8, x10, [x22, #0xd8]
+ stur	q0, [sp, #0x38]
+-ldr	x10, [x10, #OFFSET]
+-str	x9, [sp, #OFFSET]
+-ldp	x8, x9, [x21, #0xd8]
+-ldur	q0, [x21, #0xc8]
+-stp	x8, x10, [sp, #0x60]
+-ldr	x8, [x21, #OFFSET]
+-str	q0, [sp, #OFFSET]
+-stp	x9, x8, [sp, #0x70]
+-bl	<WlascGateMarker>
+-ldur	x0, [x29, #-0x40]
+-mov	x1, sp
+-mov	x2, x20
+-mov	x3, x19
+-bl	<InvokeProviderChildEntryWithResolver>
+-adrp	x8, RELOCATION_ADDRESS
+-add	x8, x8, #OFFSET
+-adrp	x9, RELOCATION_ADDRESS
+-add	x9, x9, #OFFSET
+-cmp	w0, #0x0
+-mov	w19, w0
+-csel	x0, x9, x8, eq
+-mov	w1, #0x7
+-bl	<WlascGateMarker>
+-b	<LoadSealedProviderAfterHooks+OFFSET>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	w0, #0x2
+-mov	w2, #0x1d
+-str	xzr, [sp]
+-bl	<write@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	w0, #0x2
+-mov	w2, #0x1
+-bl	<write@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, xzr
+-bl	<dlsym@plt>
+-stur	x0, [x29, #-0x30]
+-cbz	x0, <LoadSealedProviderAfterHooks+OFFSET>
+-mov	x0, sp
+-sub	x1, x29, #0x30
+-mov	w2, #0x8
+-bl	<memcpy@plt>
+-ldr	x8, [sp]
+-cbz	x8, <LoadSealedProviderAfterHooks+OFFSET>
+-mov	w2, #0x2c11
+-adrp	x3, RELOCATION_ADDRESS
+-add	x3, x3, #OFFSET
+-adrp	x4, RELOCATION_ADDRESS
+-add	x4, x4, #OFFSET
+-adrp	x5, RELOCATION_ADDRESS
+-add	x5, x5, #OFFSET
+-mov	w0, #0x3
+-mov	w1, #0x4
+-movk	w2, #0xd00, lsl #16
+-blr	x8
+-mov	w19, #-0x1
+-mov	w0, w19
+-ldp	x20, x19, [sp, #0x110]
+-ldp	x22, x21, [sp, #0x100]
+-ldp	x28, x23, [sp, #0xf0]
+-ldp	x29, x30, [sp, #0xe0]
+-add	sp, sp, #OFFSET
+-ret
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	w0, #0x2
+-mov	w2, #0x19
+-str	xzr, [sp]
+-bl	<write@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	w0, #0x2
+-mov	w2, #0x1
+-bl	<write@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, xzr
+-bl	<dlsym@plt>
+-stur	x0, [x29, #-0x30]
+-cbz	x0, <LoadSealedProviderAfterHooks+OFFSET>
+-mov	x0, sp
+-sub	x1, x29, #0x30
+-mov	w2, #0x8
+-bl	<memcpy@plt>
+-ldr	x8, [sp]
+-cbz	x8, <LoadSealedProviderAfterHooks+OFFSET>
+-mov	w2, #0x2c11
+-adrp	x3, RELOCATION_ADDRESS
+-add	x3, x3, #OFFSET
+-adrp	x4, RELOCATION_ADDRESS
+-add	x4, x4, #OFFSET
+-adrp	x5, RELOCATION_ADDRESS
+-add	x5, x5, #OFFSET
+-b	<LoadSealedProviderAfterHooks+OFFSET>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	w1, #0x14
+-b	<LoadSealedProviderAfterHooks+OFFSET>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-bl	<WlascGateMarkerValue>
+-ldur	w1, [x29, #-0x58]
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-bl	<WlascGateMarkerValue>
+-ldur	w1, [x29, #-0x54]
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-bl	<WlascGateMarkerValue>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	w1, #0x1c
+-bl	<WlascGateMarker>
+-b	<LoadSealedProviderAfterHooks+OFFSET>
++mov	x4, x21
++ldur	q0, [x22, #0xc8]
++ldr	x9, [x9, #OFFSET]
++ldr	x11, [x22, #OFFSET]
++ldr	x0, [sp, #OFFSET]
++str	q0, [sp, #OFFSET]
++stp	x8, x9, [sp, #0x60]
++stp	x10, x11, [sp, #0x70]
++bl	<InvokeProviderA06ThenA02>
++mov	w0, #-0xd2
++b	<LoadSealedProviderAfterHooks+OFFSET>
++mov	w8, #-0xbe
++sub	w0, w8, w23
++b	<LoadSealedProviderAfterHooks+OFFSET>
++mov	w8, #-0xf0
++sub	w9, w0, #0x1
++sub	w8, w8, w0
++cmp	w9, #0xe
++mov	w9, #-0x7b
++csel	w0, w8, w9, lo
++b	<LoadSealedProviderAfterHooks+OFFSET>
++mov	w0, #-0xcc
++b	<LoadSealedProviderAfterHooks+OFFSET>

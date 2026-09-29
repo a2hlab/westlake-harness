@@ -1,0 +1,23 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,17 @@
+
++sub	sp, sp, #0x20
++stp	x29, x30, [sp, #0x10]
++add	x29, sp, #OFFSET
++mov	x1, sp
++mov	w0, #0x1
++stp	xzr, xzr, [sp]
++bl	<clock_gettime@plt>
++ldp	x8, x9, [sp]
++mov	w10, #0xca00
++cmp	w0, #0x0
++movk	w10, #0x3b9a, lsl #16
++ldp	x29, x30, [sp, #0x10]
++nop
++madd	x8, x8, x10, x9
++csel	x0, x8, xzr, eq
++add	sp, sp, #OFFSET
++ret

@@ -1,0 +1,48 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,42 @@
+
++stp	x29, x30, [sp, #-0x20]!
++stp	x20, x19, [sp, #0x10]
++mov	x29, sp
++mov	x20, x0
++nop
++adr	x0, RELOCATION_ADDRESS
++bl	<WLAR_HostServicesMarkChildConsumed>
++cbz	w0, <(anonymous namespace)::CommitAuditSnapshot(void*)+OFFSET>
++mov	w19, #-0xbbf
++mov	w6, #0x6
++b	<(anonymous namespace)::CommitAuditSnapshot(void*)+OFFSET>
++add	x1, x20, #OFFSET
++nop
++adr	x0, RELOCATION_ADDRESS
++bl	<WLAR_HostServicesGetPthreadBridgeOps>
++mov	w19, #-0xbbf
++cbz	w0, <(anonymous namespace)::CommitAuditSnapshot(void*)+OFFSET>
++mov	w6, #0x7
++b	<(anonymous namespace)::CommitAuditSnapshot(void*)+OFFSET>
++ldr	x1, [x20, #OFFSET]
++nop
++adr	x0, RELOCATION_ADDRESS
++bl	<WLAR_LoaderPhaseMarkChildReady>
++cmp	w0, #0x0
++cset	w8, ne
++csel	w19, wzr, w19, eq
++lsl	x6, x8, #3
++mov	w2, #0x2c11
++adrp	x3, RELOCATION_ADDRESS
++add	x3, x3, #OFFSET
++adrp	x4, RELOCATION_ADDRESS
++add	x4, x4, #OFFSET
++adrp	x5, RELOCATION_ADDRESS
++add	x5, x5, #OFFSET
++mov	w0, #0x3
++mov	w1, #0x4
++movk	w2, #0xd00, lsl #16
++bl	<HiLogPrint@plt>
++mov	w0, w19
++ldp	x20, x19, [sp, #0x10]
++ldp	x29, x30, [sp], #0x20
++ret

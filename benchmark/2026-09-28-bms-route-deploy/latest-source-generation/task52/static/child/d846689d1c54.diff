@@ -1,0 +1,31 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,25 @@
+
++sub	sp, sp, #0xd0
++stp	x29, x30, [sp, #0xb0]
++add	x29, sp, #OFFSET
++str	x19, [sp, #OFFSET]
++cbz	x1, <WlgrIfDigestStockReceipt+OFFSET>
++mov	x19, x1
++sub	x1, x29, #0x34
++mov	w2, #0x34
++bl	<WlgrIfSerializeStockReceipt>
++cbz	w0, <WlgrIfDigestStockReceipt+OFFSET>
++mov	w0, #-0x1
++b	<WlgrIfDigestStockReceipt+OFFSET>
++add	x0, sp, #OFFSET
++bl	<WLSha256Init>
++add	x0, sp, #OFFSET
++sub	x1, x29, #0x34
++mov	w2, #0x34
++bl	<WLSha256Update>
++add	x0, sp, #OFFSET
++mov	x1, x19
++bl	<WLSha256Final>
++ldp	x29, x30, [sp, #0xb0]
++ldr	x19, [sp, #OFFSET]
++add	sp, sp, #OFFSET
++ret

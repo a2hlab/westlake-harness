@@ -1,0 +1,128 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,122 @@
+
++stp	x29, x30, [sp, #-0x40]!
++stp	x22, x21, [sp, #0x20]
++mov	x22, x0
++mov	w0, wzr
++str	x23, [sp, #OFFSET]
++stp	x20, x19, [sp, #0x30]
++mov	x29, sp
++cbz	x22, <RequestKey+OFFSET>
++mov	x19, x1
++cbz	x1, <RequestKey+OFFSET>
++mov	x0, x19
++mov	w1, wzr
++mov	w2, #0x240
++bl	<memset@plt>
++adrp	x8, RELOCATION_ADDRESS
++mov	x23, #0x5932
++movk	x23, #0x4b45, lsl #16
++add	x21, x19, #OFFSET
++movk	x23, #0x4752, lsl #32
++ldr	x9, [x22, #OFFSET]
++ldr	d0, [x8, #OFFSET]
++movk	x23, #0x574c, lsl #48
++mov	w8, #0x8
++add	x1, x22, #OFFSET
++mov	x0, x21
++mov	w2, #0x100
++str	d0, [x19, #OFFSET]
++ldr	w10, [x22]
++str	x23, [x19]
++str	x9, [x19, #OFFSET]
++stp	w8, w10, [x19, #0x10]
++bl	<memcpy@plt>
++add	x20, x19, #OFFSET
++add	x1, x22, #OFFSET
++mov	x0, x20
++mov	w2, #0x100
++bl	<memcpy@plt>
++ldr	x8, [x19]
++mov	w0, wzr
++cmp	x8, x23
++b.ne	<RequestKey+OFFSET>
++ldr	w8, [x19, #OFFSET]
++cmp	w8, #0x2
++b.ne	<RequestKey+OFFSET>
++ldr	w8, [x19, #OFFSET]
++cmp	w8, #0x240
++b.ne	<RequestKey+OFFSET>
++ldr	w8, [x19, #OFFSET]
++cmp	w8, #0x8
++b.ne	<RequestKey+OFFSET>
++ldr	x8, [x19, #OFFSET]
++cbz	x8, <RequestKey+OFFSET>
++ldrb	w8, [x21]
++cbz	w8, <RequestKey+OFFSET>
++mov	w9, wzr
++mov	x8, xzr
++mov	w10, #0x1
++cbz	w9, <RequestKey+OFFSET>
++cbnz	w10, <RequestKey+OFFSET>
++add	x8, x8, #OFFSET
++cmp	x8, #0x100
++b.eq	<RequestKey+OFFSET>
++ldrb	w10, [x21, x8]
++mov	w9, #0x1
++b	<RequestKey+OFFSET>
++cmp	w10, #0x0
++add	x8, x8, #OFFSET
++cset	w9, eq
++cmp	x8, #0x100
++b.eq	<RequestKey+OFFSET>
++ldrb	w10, [x21, x8]
++b	<RequestKey+OFFSET>
++cbnz	w10, <RequestKey+OFFSET>
++ldrb	w8, [x20]
++cbz	w8, <RequestKey+OFFSET>
++mov	w9, wzr
++mov	x8, xzr
++mov	w10, #0x1
++cbz	w9, <RequestKey+OFFSET>
++cbnz	w10, <RequestKey+OFFSET>
++add	x8, x8, #OFFSET
++cmp	x8, #0x100
++b.eq	<RequestKey+OFFSET>
++ldrb	w10, [x20, x8]
++mov	w9, #0x1
++b	<RequestKey+OFFSET>
++cmp	w10, #0x0
++add	x8, x8, #OFFSET
++cset	w9, eq
++cmp	x8, #0x100
++b.eq	<RequestKey+OFFSET>
++ldrb	w10, [x20, x8]
++b	<RequestKey+OFFSET>
++cbz	w10, <RequestKey+OFFSET>
++mov	w0, wzr
++ldp	x20, x19, [sp, #0x30]
++ldp	x22, x21, [sp, #0x20]
++ldr	x23, [sp, #OFFSET]
++ldp	x29, x30, [sp], #0x40
++ret
++ldp	q1, q0, [x19, #0x220]
++orr	v0.16b, v1.16b, v0.16b
++ext	v1.16b, v0.16b, v0.16b, #0x8
++orr	v0.8b, v0.8b, v1.8b
++umov	w8, v0.b[1]
++umov	w9, v0.b[0]
++umov	w10, v0.b[2]
++umov	w11, v0.b[3]
++umov	w12, v0.b[4]
++orr	w8, w9, w8
++umov	w9, v0.b[5]
++orr	w8, w8, w10
++umov	w10, v0.b[6]
++orr	w8, w8, w11
++umov	w11, v0.b[7]
++orr	w8, w8, w12
++orr	w8, w8, w9
++orr	w8, w8, w10
++orr	w8, w8, w11
++tst	w8, #0xff
++cset	w0, eq
++b	<RequestKey+OFFSET>

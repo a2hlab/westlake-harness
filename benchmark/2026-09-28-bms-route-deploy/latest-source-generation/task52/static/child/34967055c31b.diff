@@ -1,0 +1,53 @@
+--- r155
+
++++ candidate
+
+@@ -1,11 +1,7 @@
+
+-sub	sp, sp, #0x30
+-str	x19, [sp, #OFFSET]
+-mov	x19, x0
+-stp	x29, x30, [sp, #0x10]
+-add	x29, sp, #OFFSET
++stp	x29, x30, [sp, #-0x10]!
+ mov	x2, x1
++mov	x1, x0
+ mov	w0, #0x2
+-mov	x1, x19
+-str	xzr, [x29, #OFFSET]
++mov	x29, sp
+ bl	<write@plt>
+ adrp	x1, RELOCATION_ADDRESS
+@@ -13,29 +9,4 @@
+
+ mov	w0, #0x2
+ mov	w2, #0x1
+-bl	<write@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, xzr
+-bl	<dlsym@plt>
+-str	x0, [sp, #OFFSET]
+-cbz	x0, <WlascGateMarker+OFFSET>
+-add	x0, x29, #OFFSET
+-add	x1, sp, #OFFSET
+-mov	w2, #0x8
+-bl	<memcpy@plt>
+-ldr	x8, [x29, #OFFSET]
+-cbz	x8, <WlascGateMarker+OFFSET>
+-mov	w2, #0x2c11
+-adrp	x3, RELOCATION_ADDRESS
+-add	x3, x3, #OFFSET
+-adrp	x4, RELOCATION_ADDRESS
+-add	x4, x4, #OFFSET
+-mov	w0, #0x3
+-mov	w1, #0x4
+-movk	w2, #0xd00, lsl #16
+-mov	x5, x19
+-blr	x8
+-ldp	x29, x30, [sp, #0x10]
+-ldr	x19, [sp, #OFFSET]
+-add	sp, sp, #OFFSET
+-ret
++ldp	x29, x30, [sp], #0x10
++b	<write@plt>

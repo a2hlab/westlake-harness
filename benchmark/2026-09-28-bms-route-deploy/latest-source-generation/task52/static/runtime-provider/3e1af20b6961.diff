@@ -1,0 +1,77 @@
+--- r155
+
++++ candidate
+
+@@ -2,5 +2,16 @@
+
+ stp	x20, x19, [sp, #0x10]
+ mov	x29, sp
++mov	w2, #0x2c11
+ mov	x19, x0
++adrp	x3, RELOCATION_ADDRESS
++add	x3, x3, #OFFSET
++adrp	x4, RELOCATION_ADDRESS
++add	x4, x4, #OFFSET
++nop
++adr	x5, RELOCATION_ADDRESS
++mov	w0, #0x3
++mov	w1, #0x4
++movk	w2, #0xd00, lsl #16
++bl	<HiLogPrint@plt>
+ mov	w8, #0x1
+ nop
+@@ -10,28 +21,37 @@
+
+ stlxr	w9, w8, [x20]
+ cbnz	w9, <WLAR_InstallHostRuntimeServices+OFFSET>
+-mov	x1, #0x7d78
++mov	x1, #0x9a74
+ nop
+ adr	x0, RELOCATION_ADDRESS
+-movk	x1, #0x7608, lsl #16
+-movk	x1, #0xf759, lsl #32
++movk	x1, #0xb65b, lsl #16
++movk	x1, #0x7ced, lsl #32
+ nop
+ adr	x2, RELOCATION_ADDRESS
+-movk	x1, #0x74e6, lsl #48
++movk	x1, #0x336d, lsl #48
+ mov	x3, x19
+ bl	<WLAR_HostServicesInstall>
+-cbz	w0, <WLAR_InstallHostRuntimeServices+OFFSET>
+-mov	w0, #-0x1
+-mov	w8, #0x3
++cmp	w0, #0x0
++mov	w8, #0x2
++cset	w9, ne
++cinc	w8, w8, ne
++lsl	x6, x9, #1
++csetm	w19, ne
++stlr	w8, [x20]
+ b	<WLAR_InstallHostRuntimeServices+OFFSET>
+-mov	w0, #-0x1
++mov	w19, #-0x1
++mov	w6, #0x1
+ clrex
+-b	<WLAR_InstallHostRuntimeServices+OFFSET>
+-ldr	x0, [x19, #OFFSET]
+-bl	<WLNL_InstallSealedOpenV1@plt>
+-mov	w8, #0x2
+-cmp	w0, #0x0
+-cinc	w8, w8, ne
+-csetm	w0, ne
+-stlr	w8, [x20]
++mov	w2, #0x2c11
++adrp	x3, RELOCATION_ADDRESS
++add	x3, x3, #OFFSET
++adrp	x4, RELOCATION_ADDRESS
++add	x4, x4, #OFFSET
++adrp	x5, RELOCATION_ADDRESS
++add	x5, x5, #OFFSET
++mov	w0, #0x3
++mov	w1, #0x4
++movk	w2, #0xd00, lsl #16
++bl	<HiLogPrint@plt>
++mov	w0, w19
+ ldp	x20, x19, [sp, #0x10]
+ ldp	x29, x30, [sp], #0x20

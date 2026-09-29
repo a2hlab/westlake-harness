@@ -1,0 +1,70 @@
+--- r155
+
++++ candidate
+
+@@ -1,10 +1,10 @@
+
+-sub	sp, sp, #0x40
+-stp	x20, x19, [sp, #0x30]
++sub	sp, sp, #0x30
++stp	x29, x30, [sp, #0x10]
++add	x29, sp, #OFFSET
++stp	x20, x19, [sp, #0x20]
+ mov	x8, x0
+ ldr	w19, [x1, #OFFSET]
+ mov	w0, #-0x1
+-stp	x29, x30, [sp, #0x20]
+-add	x29, sp, #OFFSET
+-str	wzr, [sp, #OFFSET]
++stur	wzr, [x29, #-0x4]
+ tbnz	w19, #0x1f, <CompleteStockChildReply+OFFSET>
+ adrp	x9, RELOCATION_ADDRESS
+@@ -13,5 +13,5 @@
+
+ ldr	x9, [x9, #OFFSET]
+ blr	x9
+-add	x1, sp, #OFFSET
++sub	x1, x29, #0x4
+ mov	w0, w19
+ mov	w2, #0x4
+@@ -32,5 +32,4 @@
+
+ mov	w0, #0x2
+ mov	w2, #0x1c
+-stur	xzr, [x29, #-0x8]
+ bl	<write@plt>
+ adrp	x1, RELOCATION_ADDRESS
+@@ -39,30 +38,7 @@
+
+ mov	w2, #0x1
+ bl	<write@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, xzr
+-bl	<dlsym@plt>
+-str	x0, [sp, #OFFSET]
+-cbz	x0, <CompleteStockChildReply+OFFSET>
+-sub	x0, x29, #0x8
+-add	x1, sp, #OFFSET
+-mov	w2, #0x8
+-bl	<memcpy@plt>
+-ldur	x8, [x29, #-0x8]
+-cbz	x8, <CompleteStockChildReply+OFFSET>
+-mov	w2, #0x2c11
+-adrp	x3, RELOCATION_ADDRESS
+-add	x3, x3, #OFFSET
+-adrp	x4, RELOCATION_ADDRESS
+-add	x4, x4, #OFFSET
+-adrp	x5, RELOCATION_ADDRESS
+-add	x5, x5, #OFFSET
+-mov	w0, #0x3
+-mov	w1, #0x4
+-movk	w2, #0xd00, lsl #16
+-blr	x8
+ mov	w0, wzr
+-ldp	x20, x19, [sp, #0x30]
+-ldp	x29, x30, [sp, #0x20]
++ldp	x20, x19, [sp, #0x20]
++ldp	x29, x30, [sp, #0x10]
+ add	sp, sp, #OFFSET
+ ret

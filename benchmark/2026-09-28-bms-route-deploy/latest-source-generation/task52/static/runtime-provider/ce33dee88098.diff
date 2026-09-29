@@ -1,0 +1,1197 @@
+--- r155
+
++++ candidate
+
+@@ -1,14 +1,23 @@
+
+-sub	sp, sp, #0xb0
++sub	sp, sp, #0xa0
+ stp	x29, x30, [sp, #0x50]
+-str	x27, [sp, #OFFSET]
+-stp	x26, x25, [sp, #0x70]
+-stp	x24, x23, [sp, #0x80]
+-stp	x22, x21, [sp, #0x90]
+-stp	x20, x19, [sp, #0xa0]
++stp	x26, x25, [sp, #0x60]
++stp	x24, x23, [sp, #0x70]
++stp	x22, x21, [sp, #0x80]
++stp	x20, x19, [sp, #0x90]
+ add	x29, sp, #OFFSET
+-ldr	x8, [x0, #OFFSET]
++mov	x20, x0
++ldr	x0, [x0, #OFFSET]
++cbz	x0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++bl	<appspawnx::VerifyLoadedAdapterBridge(void*)>
++tbz	w0, #0x0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++mov	x0, x20
++bl	<appspawnx::AppSpawnXRuntime::registerNativeMethods()>
++cbnz	w0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++mov	x0, x20
++bl	<appspawnx::AppSpawnXRuntime::cacheJavaReferences()>
++cbnz	w0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++ldr	x8, [x20, #OFFSET]
+ cbz	x8, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-mov	x22, x0
+-ldr	x8, [x0, #OFFSET]
++ldr	x8, [x20, #OFFSET]
+ cbnz	x8, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ nop
+@@ -35,34 +44,105 @@
+
+ adrp	x0, RELOCATION_ADDRESS
+ add	x0, x0, #OFFSET
+-mov	x2, x20
+-bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-mov	w0, #-0x1
+-ldp	x20, x19, [sp, #0xa0]
+-ldp	x22, x21, [sp, #0x90]
+-ldp	x24, x23, [sp, #0x80]
+-ldp	x26, x25, [sp, #0x70]
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++nop
++adr	x19, RELOCATION_ADDRESS
++adrp	x20, RELOCATION_ADDRESS
++add	x20, x20, #OFFSET
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x6
++movk	w2, #0xd00, lsl #16
++mov	x3, x19
++mov	x4, x20
++bl	<HiLogPrint@plt>
++adrp	x8, RELOCATION_ADDRESS
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++ldr	x8, [x8, #OFFSET]
++ldr	x21, [x8]
++mov	x0, x21
++mov	x2, x19
++bl	<fprintf@plt>
++mov	x0, x21
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	x2, x20
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++mov	w19, #-0x1
++mov	w0, w19
++ldp	x20, x19, [sp, #0x90]
++ldp	x22, x21, [sp, #0x80]
++ldp	x24, x23, [sp, #0x70]
++ldp	x26, x25, [sp, #0x60]
+ ldp	x29, x30, [sp, #0x50]
+-ldr	x27, [sp, #OFFSET]
+ add	sp, sp, #OFFSET
+ ret
+-ldr	x0, [x22, #OFFSET]
++nop
++adr	x20, RELOCATION_ADDRESS
++adrp	x21, RELOCATION_ADDRESS
++add	x21, x21, #OFFSET
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x6
++movk	w2, #0xd00, lsl #16
++mov	x3, x20
++mov	x4, x21
++mov	w5, #-0x1
++mov	w19, #-0x1
++bl	<HiLogPrint@plt>
++adrp	x8, RELOCATION_ADDRESS
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++nop
++adr	x20, RELOCATION_ADDRESS
++adrp	x21, RELOCATION_ADDRESS
++add	x21, x21, #OFFSET
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x6
++movk	w2, #0xd00, lsl #16
++mov	x3, x20
++mov	x4, x21
++mov	w5, #-0x1
++mov	w19, #-0x1
++bl	<HiLogPrint@plt>
++adrp	x8, RELOCATION_ADDRESS
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++ldr	x8, [x8, #OFFSET]
++ldr	x22, [x8]
++mov	x0, x22
++mov	x2, x20
++mov	w3, #-0x1
++bl	<fprintf@plt>
++mov	x0, x22
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	x2, x21
++mov	w3, #-0x1
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++ldr	x0, [x20, #OFFSET]
+ cbz	x0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ bl	<appspawnx::VerifyLoadedAdapterBridge(void*)>
+ tbz	w0, #0x0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ nop
+-adr	x20, RELOCATION_ADDRESS
+-adrp	x21, RELOCATION_ADDRESS
+-add	x21, x21, #OFFSET
++adr	x21, RELOCATION_ADDRESS
++adrp	x22, RELOCATION_ADDRESS
++add	x22, x22, #OFFSET
+ mov	w2, #0xf00
+ mov	w0, #0x3
+ mov	w1, #0x4
+ movk	w2, #0xd00, lsl #16
+-mov	x3, x20
+-mov	x4, x21
++mov	x3, x21
++mov	x4, x22
+ bl	<HiLogPrint@plt>
+ adrp	x8, RELOCATION_ADDRESS
+ adrp	x1, RELOCATION_ADDRESS
+ add	x1, x1, #OFFSET
+-mov	x2, x20
++mov	x2, x21
+ ldr	x8, [x8, #OFFSET]
+ ldr	x19, [x8]
+@@ -73,41 +153,41 @@
+
+ adrp	x0, RELOCATION_ADDRESS
+ add	x0, x0, #OFFSET
+-mov	x2, x21
+-bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-mov	x27, x22
+-ldr	x0, [x27, #OFFSET]!
+-ldp	x1, x2, [x27, #0x20]
++mov	x2, x22
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++mov	x25, x20
++ldr	x0, [x25, #OFFSET]!
++ldp	x1, x2, [x25, #0x20]
+ bl	<_JNIEnv::CallStaticVoidMethod(_jclass*, _jmethodID*, ...)>
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-nop
+-adr	x20, RELOCATION_ADDRESS
++ldr	x0, [x25]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
+ tst	w0, #0xff
+ b.ne	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-adrp	x21, RELOCATION_ADDRESS
+-add	x21, x21, #OFFSET
++nop
++adr	x21, RELOCATION_ADDRESS
++adrp	x22, RELOCATION_ADDRESS
++add	x22, x22, #OFFSET
+ mov	w2, #0xf00
+ mov	w0, #0x3
+ mov	w1, #0x4
+ movk	w2, #0xd00, lsl #16
+-mov	x3, x20
+-mov	x4, x21
+-bl	<HiLogPrint@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x19
+-mov	x2, x20
+-bl	<fprintf@plt>
+-mov	x0, x19
+-bl	<fflush@plt>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	x2, x21
+-bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-ldr	x8, [x22, #OFFSET]
++mov	x3, x21
++mov	x4, x22
++bl	<HiLogPrint@plt>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x19
++mov	x2, x21
++bl	<fprintf@plt>
++mov	x0, x19
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	x2, x22
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++ldr	x8, [x20, #OFFSET]
+ cbnz	x8, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-mov	w0, wzr
++mov	w19, wzr
+ b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ nop
+@@ -125,68 +205,64 @@
+
+ adrp	x1, RELOCATION_ADDRESS
+ add	x1, x1, #OFFSET
+-mov	x2, x19
+-ldr	x8, [x8, #OFFSET]
+-ldr	x21, [x8]
+-mov	x0, x21
+-bl	<fprintf@plt>
+-mov	x0, x21
+-bl	<fflush@plt>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-adrp	x21, RELOCATION_ADDRESS
+-add	x21, x21, #OFFSET
+-mov	w2, #0xf00
+-mov	w0, #0x3
+-mov	w1, #0x6
+-movk	w2, #0xd00, lsl #16
+-mov	x3, x20
+-mov	x4, x21
+-bl	<HiLogPrint@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x19
+-mov	x2, x20
+-bl	<fprintf@plt>
+-mov	x0, x19
+-bl	<fflush@plt>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	x2, x21
+-bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-ldr	x20, [x22, #OFFSET]
+-cbz	x20, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-mov	x0, x20
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++nop
++adr	x20, RELOCATION_ADDRESS
++adrp	x21, RELOCATION_ADDRESS
++add	x21, x21, #OFFSET
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x6
++movk	w2, #0xd00, lsl #16
++mov	x3, x20
++mov	x4, x21
++bl	<HiLogPrint@plt>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x19
++mov	x2, x20
++bl	<fprintf@plt>
++mov	x0, x19
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	x2, x21
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++ldr	x0, [x25]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++ldr	x0, [x25]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++ldr	x8, [x20, #OFFSET]
++cbz	x8, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++mov	x0, x8
++mov	x23, x20
++str	x8, [sp]
+ bl	<appspawnx::VerifyLoadedAdapterBridge(void*)>
++ldr	x8, [sp]
+ tbz	w0, #0x0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ adrp	x1, RELOCATION_ADDRESS
+ add	x1, x1, #OFFSET
+-mov	x0, x20
++mov	x0, x8
+ bl	<dlsym@plt>
+ cbnz	x0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ nop
+-adr	x21, RELOCATION_ADDRESS
+-adrp	x23, RELOCATION_ADDRESS
+-add	x23, x23, #OFFSET
+-mov	w2, #0xf00
+-mov	w0, #0x3
+-mov	w1, #0x6
+-movk	w2, #0xd00, lsl #16
+-mov	x3, x21
+-mov	x4, x23
+-bl	<HiLogPrint@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x19
+-mov	x2, x21
++adr	x20, RELOCATION_ADDRESS
++adrp	x21, RELOCATION_ADDRESS
++add	x21, x21, #OFFSET
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x6
++movk	w2, #0xd00, lsl #16
++mov	x3, x20
++mov	x4, x21
++bl	<HiLogPrint@plt>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x19
++mov	x2, x20
+ bl	<fprintf@plt>
+ mov	x0, x19
+@@ -221,7 +297,7 @@
+
+ adrp	x10, RELOCATION_ADDRESS
+ add	x10, x10, #OFFSET
+-ldr	x8, [x22, #OFFSET]
++ldr	x8, [x23, #OFFSET]
+ str	x0, [sp, #OFFSET]
+-ldr	x1, [x22, #OFFSET]
++ldr	x1, [x23, #OFFSET]
+ add	x2, sp, #OFFSET
+ stp	x9, x10, [sp, #0x8]
+@@ -233,28 +309,28 @@
+
+ cbnz	w0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ nop
+-adr	x21, RELOCATION_ADDRESS
+-adrp	x23, RELOCATION_ADDRESS
+-add	x23, x23, #OFFSET
++adr	x20, RELOCATION_ADDRESS
++adrp	x21, RELOCATION_ADDRESS
++add	x21, x21, #OFFSET
+ mov	w2, #0xf00
+ mov	w0, #0x3
+ mov	w1, #0x4
+ movk	w2, #0xd00, lsl #16
+-mov	x3, x21
+-mov	x4, x23
+-bl	<HiLogPrint@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x19
+-mov	x2, x21
+-bl	<fprintf@plt>
+-mov	x0, x19
+-bl	<fflush@plt>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	x2, x23
+-bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-ldr	x8, [x22, #OFFSET]
++mov	x3, x20
++mov	x4, x21
++bl	<HiLogPrint@plt>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x19
++mov	x2, x20
++bl	<fprintf@plt>
++mov	x0, x19
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	x2, x21
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++ldr	x8, [x23, #OFFSET]
+ cbz	x8, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-ldr	x8, [x22, #OFFSET]
++ldr	x8, [x23, #OFFSET]
+ cbnz	x8, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ nop
+@@ -280,127 +356,6 @@
+
+ mov	x2, x21
+ bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-mov	w0, wzr
+-b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-mov	w21, w0
+-nop
+-adr	x23, RELOCATION_ADDRESS
+-adrp	x24, RELOCATION_ADDRESS
+-add	x24, x24, #OFFSET
+-mov	w2, #0xf00
+-mov	w0, #0x3
+-mov	w1, #0x6
+-movk	w2, #0xd00, lsl #16
+-mov	x3, x23
+-mov	x4, x24
+-mov	w5, w21
+-bl	<HiLogPrint@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x19
+-mov	x2, x23
+-mov	w3, w21
+-bl	<fprintf@plt>
+-mov	x0, x19
+-bl	<fflush@plt>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	x2, x24
+-mov	w3, w21
+-bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-tst	w0, #0xff
+-b.eq	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x20
+-bl	<dlsym@plt>
+-cbnz	x0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-nop
+-adr	x21, RELOCATION_ADDRESS
+-adrp	x23, RELOCATION_ADDRESS
+-add	x23, x23, #OFFSET
+-mov	w2, #0xf00
+-mov	w0, #0x3
+-mov	w1, #0x6
+-movk	w2, #0xd00, lsl #16
+-mov	x3, x21
+-mov	x4, x23
+-bl	<HiLogPrint@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x19
+-mov	x2, x21
+-bl	<fprintf@plt>
+-mov	x0, x19
+-bl	<fflush@plt>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-ldp	x1, x2, [x22, #0x58]
+-mov	x8, x0
+-ldr	x0, [x22, #OFFSET]
+-blr	x8
+-nop
+-adr	x21, RELOCATION_ADDRESS
+-adrp	x23, RELOCATION_ADDRESS
+-add	x23, x23, #OFFSET
+-mov	w2, #0xf00
+-mov	w0, #0x3
+-mov	w1, #0x4
+-movk	w2, #0xd00, lsl #16
+-mov	x3, x21
+-mov	x4, x23
+-bl	<HiLogPrint@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x19
+-mov	x2, x21
+-bl	<fprintf@plt>
+-mov	x0, x19
+-bl	<fflush@plt>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	x2, x23
+-bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-ldr	x8, [x22, #OFFSET]
+-mov	x21, xzr
+-cbz	x8, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-ldr	x8, [x22, #OFFSET]
+-cbz	x8, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-ldr	x0, [x22, #OFFSET]
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-ldp	x1, x2, [x22, #0x58]
+-mov	x23, x0
+-ldr	x0, [x22, #OFFSET]
+-mov	x3, x23
+-bl	<_JNIEnv::CallObjectMethod(_jobject*, _jmethodID*, ...)>
+-mov	x21, x0
+-ldr	x0, [x22, #OFFSET]
+-mov	x1, x23
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-ldr	x0, [x22, #OFFSET]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-tst	w0, #0xff
+-b.eq	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++mov	w20, w0
+ nop
+ adr	x21, RELOCATION_ADDRESS
+@@ -409,13 +364,15 @@
+
+ mov	w2, #0xf00
+ mov	w0, #0x3
+-mov	w1, #0x5
++mov	w1, #0x6
+ movk	w2, #0xd00, lsl #16
+ mov	x3, x21
+ mov	x4, x22
+-bl	<HiLogPrint@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x19
+-mov	x2, x21
++mov	w5, w20
++bl	<HiLogPrint@plt>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x19
++mov	x2, x21
++mov	w3, w20
+ bl	<fprintf@plt>
+ mov	x0, x19
+@@ -424,22 +381,143 @@
+
+ add	x0, x0, #OFFSET
+ mov	x2, x22
+-bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-mov	x21, xzr
+-ldr	x0, [x27]
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-mov	x22, x0
+-ldr	x0, [x27]
++mov	w3, w20
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++ldr	x0, [x25]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++tst	w0, #0xff
++b.eq	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++ldr	x0, [x25]
++mov	x20, x25
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++ldr	x0, [x25]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++ldr	x0, [sp]
++bl	<dlsym@plt>
++cbnz	x0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++nop
++adr	x20, RELOCATION_ADDRESS
++adrp	x21, RELOCATION_ADDRESS
++add	x21, x21, #OFFSET
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x6
++movk	w2, #0xd00, lsl #16
++mov	x3, x20
++mov	x4, x21
++bl	<HiLogPrint@plt>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x19
++mov	x2, x20
++bl	<fprintf@plt>
++mov	x0, x19
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++ldp	x1, x2, [x23, #0x58]
++mov	x8, x0
++ldr	x0, [x23, #OFFSET]
++blr	x8
++nop
++adr	x20, RELOCATION_ADDRESS
++adrp	x21, RELOCATION_ADDRESS
++add	x21, x21, #OFFSET
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x4
++movk	w2, #0xd00, lsl #16
++mov	x3, x20
++mov	x4, x21
++bl	<HiLogPrint@plt>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x19
++mov	x2, x20
++bl	<fprintf@plt>
++mov	x0, x19
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	x2, x21
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++ldr	x8, [x23, #OFFSET]
++mov	x20, xzr
++cbz	x8, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++ldr	x8, [x23, #OFFSET]
++cbz	x8, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++ldr	x0, [x23, #OFFSET]
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++ldp	x1, x2, [x23, #0x58]
++mov	x21, x0
++ldr	x0, [x23, #OFFSET]
++mov	x3, x21
++bl	<_JNIEnv::CallObjectMethod(_jobject*, _jmethodID*, ...)>
++mov	x20, x0
++ldr	x0, [x23, #OFFSET]
++mov	x1, x21
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++ldr	x0, [x23, #OFFSET]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++tst	w0, #0xff
++b.eq	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++nop
++adr	x20, RELOCATION_ADDRESS
++adrp	x21, RELOCATION_ADDRESS
++add	x21, x21, #OFFSET
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x5
++movk	w2, #0xd00, lsl #16
++mov	x3, x20
++mov	x4, x21
++bl	<HiLogPrint@plt>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x19
++mov	x2, x20
++bl	<fprintf@plt>
++mov	x0, x19
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	x2, x21
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++ldr	x0, [x25]
++mov	x20, x25
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++ldr	x0, [x25]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++mov	x20, xzr
++ldr	x0, [x25]
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x22, x25
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++mov	x21, x0
++ldr	x0, [x25]
+ ldr	x8, [x0]
+ ldr	x8, [x8, #OFFSET]
+@@ -447,6 +525,6 @@
+
+ tst	w0, #0xff
+ b.ne	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-cbnz	x22, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ cbnz	x21, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++cbnz	x20, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ nop
+ adr	x20, RELOCATION_ADDRESS
+@@ -463,158 +541,161 @@
+
+ add	x1, x1, #OFFSET
+ b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-cbz	x22, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x20
++ldr	x0, [x25]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++cbz	x21, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++ldr	x23, [sp]
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x23
++bl	<dlsym@plt>
++mov	x22, x0
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x23
+ bl	<dlsym@plt>
+ mov	x23, x0
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x20
+-bl	<dlsym@plt>
+-mov	x26, x0
++cbz	x22, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ cbz	x23, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-cbz	x26, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-adrp	x9, RELOCATION_ADDRESS
+-add	x9, x9, #OFFSET
+-adrp	x10, RELOCATION_ADDRESS
+-add	x10, x10, #OFFSET
+-ldr	x0, [x27]
+-add	x2, sp, #OFFSET
+-mov	x1, x22
+-mov	w3, #0x2
+-stp	x9, x10, [sp, #0x8]
+-adrp	x9, RELOCATION_ADDRESS
+-add	x9, x9, #OFFSET
+-stp	x10, x26, [sp, #0x28]
+-stp	x23, x9, [sp, #0x18]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-cbnz	w0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-nop
+-adr	x23, RELOCATION_ADDRESS
+-adrp	x24, RELOCATION_ADDRESS
+-add	x24, x24, #OFFSET
+-mov	w2, #0xf00
+-mov	w0, #0x3
+-mov	w1, #0x4
+-movk	w2, #0xd00, lsl #16
+-mov	x3, x23
+-mov	x4, x24
+-bl	<HiLogPrint@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x19
+-mov	x2, x23
+-bl	<fprintf@plt>
+-mov	x0, x19
+-bl	<fflush@plt>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	x2, x24
+-bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-nop
+-adr	x24, RELOCATION_ADDRESS
+-adrp	x25, RELOCATION_ADDRESS
+-add	x25, x25, #OFFSET
+-mov	w2, #0xf00
+-mov	w0, #0x3
+-mov	w1, #0x5
+-movk	w2, #0xd00, lsl #16
+-mov	x3, x24
+-mov	x4, x25
+-mov	x5, x23
+-mov	x6, x26
+-bl	<HiLogPrint@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x19
+-mov	x2, x24
+-mov	x3, x23
+-mov	x4, x26
+-bl	<fprintf@plt>
+-mov	x0, x19
+-bl	<fflush@plt>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	x2, x25
+-mov	x3, x23
+-mov	x4, x26
+-bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-mov	w23, w0
+-nop
+-adr	x24, RELOCATION_ADDRESS
+-adrp	x25, RELOCATION_ADDRESS
+-add	x25, x25, #OFFSET
+-mov	w2, #0xf00
+-mov	w0, #0x3
+-mov	w1, #0x5
+-movk	w2, #0xd00, lsl #16
+-mov	x3, x24
+-mov	x4, x25
+-mov	w5, w23
+-bl	<HiLogPrint@plt>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x19
+-mov	x2, x24
+-mov	w3, w23
+-bl	<fprintf@plt>
+-mov	x0, x19
+-bl	<fflush@plt>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	x2, x25
+-mov	w3, w23
+-bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-tst	w0, #0xff
+-b.eq	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-ldr	x0, [x27]
+-mov	x1, x22
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-cbz	x21, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x20
+-bl	<dlsym@plt>
+-mov	x23, x0
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x20
+-bl	<dlsym@plt>
+-mov	x22, x0
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x20
+-bl	<dlsym@plt>
+-cbnz	x23, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-mov	w20, wzr
+-b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ adrp	x8, RELOCATION_ADDRESS
+ add	x8, x8, #OFFSET
+ adrp	x9, RELOCATION_ADDRESS
+ add	x9, x9, #OFFSET
+-mov	w20, #0x1
++ldr	x0, [x25]
++add	x2, sp, #OFFSET
++mov	x1, x21
++mov	w3, #0x2
++stp	x8, x9, [sp, #0x8]
++adrp	x8, RELOCATION_ADDRESS
++add	x8, x8, #OFFSET
++stp	x9, x23, [sp, #0x28]
++stp	x22, x8, [sp, #0x18]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++cbnz	w0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++nop
++adr	x22, RELOCATION_ADDRESS
++adrp	x23, RELOCATION_ADDRESS
++add	x23, x23, #OFFSET
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x4
++movk	w2, #0xd00, lsl #16
++mov	x3, x22
++mov	x4, x23
++bl	<HiLogPrint@plt>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x19
++mov	x2, x22
++bl	<fprintf@plt>
++mov	x0, x19
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	x2, x23
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++nop
++adr	x24, RELOCATION_ADDRESS
++adrp	x26, RELOCATION_ADDRESS
++add	x26, x26, #OFFSET
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x5
++movk	w2, #0xd00, lsl #16
++mov	x3, x24
++mov	x4, x26
++mov	x5, x22
++mov	x6, x23
++bl	<HiLogPrint@plt>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x19
++mov	x2, x24
++mov	x3, x22
++mov	x4, x23
++bl	<fprintf@plt>
++mov	x0, x19
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	x2, x26
++mov	x3, x22
++mov	x4, x23
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++mov	w22, w0
++nop
++adr	x23, RELOCATION_ADDRESS
++adrp	x24, RELOCATION_ADDRESS
++add	x24, x24, #OFFSET
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x5
++movk	w2, #0xd00, lsl #16
++mov	x3, x23
++mov	x4, x24
++mov	w5, w22
++bl	<HiLogPrint@plt>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x19
++mov	x2, x23
++mov	w3, w22
++bl	<fprintf@plt>
++mov	x0, x19
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	x2, x24
++mov	w3, w22
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++ldr	x0, [x25]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++tst	w0, #0xff
++b.eq	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++ldr	x0, [x25]
++mov	x22, x25
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++ldr	x0, [x25]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++ldr	x0, [x25]
++mov	x1, x21
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++cbz	x20, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++ldr	x21, [sp]
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x21
++bl	<dlsym@plt>
++mov	x23, x0
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x21
++bl	<dlsym@plt>
++mov	x22, x0
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x21
++bl	<dlsym@plt>
++cbnz	x23, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++mov	w21, wzr
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++adrp	x8, RELOCATION_ADDRESS
++add	x8, x8, #OFFSET
++adrp	x9, RELOCATION_ADDRESS
++add	x9, x9, #OFFSET
++mov	w21, #0x1
+ str	x23, [sp, #OFFSET]
+ stp	x8, x9, [sp, #0x8]
+@@ -624,14 +705,14 @@
+
+ adrp	x10, RELOCATION_ADDRESS
+ add	x10, x10, #OFFSET
+-umaddl	x8, w20, w8, x9
++umaddl	x8, w21, w8, x9
+ adrp	x9, RELOCATION_ADDRESS
+ add	x9, x9, #OFFSET
+-add	w20, w20, #OFFSET
++add	w21, w21, #OFFSET
+ stp	x9, x10, [x8]
+ str	x22, [x8, #OFFSET]
+ cbnz	x0, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-cbnz	w20, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-nop
+-adr	x20, RELOCATION_ADDRESS
++cbnz	w21, <appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++nop
++adr	x21, RELOCATION_ADDRESS
+ adrp	x22, RELOCATION_ADDRESS
+ add	x22, x22, #OFFSET
+@@ -640,5 +721,5 @@
+
+ mov	w1, #0x5
+ movk	w2, #0xd00, lsl #16
+-mov	x3, x20
++mov	x3, x21
+ mov	x4, x22
+ bl	<HiLogPrint@plt>
+@@ -646,5 +727,5 @@
+
+ add	x1, x1, #OFFSET
+ mov	x0, x19
+-mov	x2, x20
++mov	x2, x21
+ bl	<fprintf@plt>
+ mov	x0, x19
+@@ -659,14 +740,14 @@
+
+ adrp	x10, RELOCATION_ADDRESS
+ add	x10, x10, #OFFSET
+-umaddl	x8, w20, w8, x9
++umaddl	x8, w21, w8, x9
+ adrp	x9, RELOCATION_ADDRESS
+ add	x9, x9, #OFFSET
+-add	w20, w20, #OFFSET
++add	w21, w21, #OFFSET
+ stp	x9, x10, [x8]
+ str	x0, [x8, #OFFSET]
+-ldr	x0, [x27]
++ldr	x0, [x25]
+ add	x2, sp, #OFFSET
+-mov	x1, x21
+-mov	w3, w20
++mov	x1, x20
++mov	w3, w21
+ ldr	x8, [x0]
+ ldr	x8, [x8, #OFFSET]
+@@ -683,5 +764,5 @@
+
+ mov	x3, x22
+ mov	x4, x23
+-mov	w5, w20
++mov	w5, w21
+ bl	<HiLogPrint@plt>
+ adrp	x1, RELOCATION_ADDRESS
+@@ -689,5 +770,5 @@
+
+ mov	x0, x19
+ mov	x2, x22
+-mov	w3, w20
++mov	w3, w21
+ bl	<fprintf@plt>
+ mov	x0, x19
+@@ -696,10 +777,10 @@
+
+ add	x0, x0, #OFFSET
+ mov	x2, x23
+-mov	w3, w20
++mov	w3, w21
+ bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+ b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+ mov	w22, w0
+ nop
+-adr	x20, RELOCATION_ADDRESS
++adr	x21, RELOCATION_ADDRESS
+ adrp	x23, RELOCATION_ADDRESS
+ add	x23, x23, #OFFSET
+@@ -708,5 +789,5 @@
+
+ mov	w1, #0x6
+ movk	w2, #0xd00, lsl #16
+-mov	x3, x20
++mov	x3, x21
+ mov	x4, x23
+ mov	w5, w22
+@@ -715,5 +796,5 @@
+
+ add	x1, x1, #OFFSET
+ mov	x0, x19
+-mov	x2, x20
++mov	x2, x21
+ mov	w3, w22
+ bl	<fprintf@plt>
+@@ -725,5 +806,5 @@
+
+ mov	w3, w22
+ bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
+-ldr	x0, [x27]
++ldr	x0, [x25]
+ ldr	x8, [x0]
+ ldr	x8, [x8, #OFFSET]
+@@ -731,17 +812,17 @@
+
+ tst	w0, #0xff
+ b.eq	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-ldr	x0, [x27]
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-ldr	x0, [x27]
+-mov	x1, x21
+-ldr	x8, [x0]
+-ldr	x8, [x8, #OFFSET]
+-blr	x8
+-mov	w0, wzr
+-b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>
++ldr	x0, [x25]
++mov	x19, x25
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++ldr	x0, [x25]
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++ldr	x0, [x25]
++mov	x1, x20
++ldr	x8, [x0]
++ldr	x8, [x8, #OFFSET]
++blr	x8
++b	<appspawnx::AppSpawnXRuntime::preload()+OFFSET>

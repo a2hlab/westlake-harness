@@ -1,0 +1,36 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,30 @@
+
++sub	sp, sp, #0xa0
++stp	x29, x30, [sp, #0x70]
++str	x21, [sp, #OFFSET]
++stp	x20, x19, [sp, #0x90]
++add	x29, sp, #OFFSET
++movi	v0.2d, #0000000000000000
++mov	x0, sp
++mov	x19, x3
++mov	x20, x2
++mov	x21, x1
++stp	q0, q0, [sp, #0x10]
++stp	q0, q0, [sp, #0x30]
++stp	q0, q0, [sp, #0x50]
++str	q0, [sp]
++bl	<WLSha256Init>
++mov	x0, sp
++mov	x1, x21
++mov	x2, x20
++bl	<WLSha256Update>
++cbz	w0, <(anonymous namespace)::Digest(void*, void const*, unsigned long, unsigned char*)+OFFSET>
++mov	w0, #-0x1
++b	<(anonymous namespace)::Digest(void*, void const*, unsigned long, unsigned char*)+OFFSET>
++mov	x0, sp
++mov	x1, x19
++bl	<WLSha256Final>
++ldp	x20, x19, [sp, #0x90]
++ldp	x29, x30, [sp, #0x70]
++ldr	x21, [sp, #OFFSET]
++add	sp, sp, #OFFSET
++ret

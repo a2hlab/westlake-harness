@@ -1,0 +1,335 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,329 @@
+
++stp	x29, x30, [sp, #-0x20]!
++stp	x20, x19, [sp, #0x10]
++mov	x29, sp
++mov	x19, x1
++mov	x20, x0
++bl	<wlgr_v2_identity_valid>
++cbz	w0, <wlgr_v2_identity_equal+OFFSET>
++mov	x0, x19
++bl	<wlgr_v2_identity_valid>
++cbz	w0, <wlgr_v2_identity_equal+OFFSET>
++add	x0, x20, #OFFSET
++bl	<wlgr_v2_runtime_key_valid>
++cbz	w0, <wlgr_v2_identity_equal+OFFSET>
++add	x0, x19, #OFFSET
++bl	<wlgr_v2_runtime_key_valid>
++cbz	w0, <wlgr_v2_identity_equal+OFFSET>
++ldr	w8, [x20, #OFFSET]
++ldr	w9, [x19, #OFFSET]
++cmp	w8, w9
++b.ne	<wlgr_v2_identity_equal+OFFSET>
++ldr	x8, [x20, #OFFSET]
++ldr	x9, [x19, #OFFSET]
++cmp	x8, x9
++b.ne	<wlgr_v2_identity_equal+OFFSET>
++ldur	q0, [x20, #0x38]
++add	x8, x19, #OFFSET
++ldur	q2, [x19, #0x38]
++add	x9, x20, #OFFSET
++ldur	q4, [x20, #0x58]
++ldur	q6, [x19, #0x58]
++ldur	q1, [x20, #0x48]
++ldur	q3, [x19, #0x48]
++ldur	q5, [x20, #0x68]
++eor	v0.16b, v2.16b, v0.16b
++ldur	q2, [x19, #0x68]
++eor	v4.16b, v6.16b, v4.16b
++ldur	q6, [x20, #0x88]
++orr	v0.16b, v4.16b, v0.16b
++ldur	q4, [x19, #0x88]
++eor	v1.16b, v3.16b, v1.16b
++ldur	q3, [x20, #0x78]
++eor	v2.16b, v2.16b, v5.16b
++ldur	q5, [x19, #0x78]
++orr	v1.16b, v2.16b, v1.16b
++ldur	q2, [x20, #0x98]
++eor	v4.16b, v4.16b, v6.16b
++ldur	q6, [x19, #0x98]
++eor	v3.16b, v5.16b, v3.16b
++ldur	q5, [x20, #0xa8]
++orr	v0.16b, v3.16b, v0.16b
++ldur	q3, [x19, #0xa8]
++eor	v2.16b, v6.16b, v2.16b
++ldur	q6, [x20, #0xc8]
++orr	v0.16b, v2.16b, v0.16b
++ldur	q2, [x19, #0xc8]
++orr	v1.16b, v4.16b, v1.16b
++ldur	q4, [x20, #0xb8]
++eor	v3.16b, v3.16b, v5.16b
++ldur	q5, [x19, #0xb8]
++orr	v1.16b, v3.16b, v1.16b
++ldur	q3, [x20, #0xd8]
++eor	v2.16b, v2.16b, v6.16b
++ldur	q6, [x19, #0xd8]
++eor	v4.16b, v5.16b, v4.16b
++ldur	q5, [x20, #0xe8]
++orr	v0.16b, v4.16b, v0.16b
++ldur	q4, [x19, #0xe8]
++orr	v1.16b, v2.16b, v1.16b
++ldur	q2, [x20, #0xf8]
++eor	v3.16b, v6.16b, v3.16b
++ldur	q6, [x19, #0xf8]
++eor	v4.16b, v4.16b, v5.16b
++orr	v0.16b, v3.16b, v0.16b
++orr	v1.16b, v4.16b, v1.16b
++ldp	q3, q4, [x9]
++eor	v2.16b, v6.16b, v2.16b
++orr	v0.16b, v2.16b, v0.16b
++ldp	q5, q6, [x8]
++eor	v3.16b, v5.16b, v3.16b
++orr	v1.16b, v3.16b, v1.16b
++ldr	q5, [x9, #OFFSET]
++ldr	q2, [x8, #OFFSET]
++eor	v3.16b, v6.16b, v4.16b
++orr	v0.16b, v3.16b, v0.16b
++eor	v2.16b, v2.16b, v5.16b
++orr	v1.16b, v2.16b, v1.16b
++orr	v0.16b, v1.16b, v0.16b
++ext	v1.16b, v0.16b, v0.16b, #0x8
++orr	v0.8b, v0.8b, v1.8b
++umov	w10, v0.b[1]
++umov	w11, v0.b[0]
++umov	w12, v0.b[2]
++umov	w13, v0.b[3]
++umov	w14, v0.b[4]
++orr	w10, w11, w10
++umov	w11, v0.b[5]
++orr	w10, w10, w12
++umov	w12, v0.b[6]
++orr	w10, w10, w13
++umov	w13, v0.b[7]
++orr	w10, w10, w14
++orr	w10, w10, w11
++orr	w10, w10, w12
++orr	w10, w10, w13
++tst	w10, #0xff
++b.ne	<wlgr_v2_identity_equal+OFFSET>
++ldp	q0, q1, [x9, #0x30]
++ldp	q2, q3, [x8, #0x30]
++eor	v0.16b, v2.16b, v0.16b
++ldp	q4, q5, [x9, #0x50]
++eor	v1.16b, v3.16b, v1.16b
++ldp	q6, q2, [x8, #0x50]
++eor	v4.16b, v6.16b, v4.16b
++orr	v0.16b, v4.16b, v0.16b
++ldp	q3, q6, [x9, #0x70]
++eor	v2.16b, v2.16b, v5.16b
++orr	v1.16b, v2.16b, v1.16b
++ldp	q5, q4, [x8, #0x70]
++eor	v3.16b, v5.16b, v3.16b
++orr	v0.16b, v3.16b, v0.16b
++ldp	q2, q5, [x9, #0x90]
++eor	v4.16b, v4.16b, v6.16b
++orr	v1.16b, v4.16b, v1.16b
++ldp	q6, q3, [x8, #0x90]
++eor	v2.16b, v6.16b, v2.16b
++orr	v0.16b, v2.16b, v0.16b
++ldp	q4, q6, [x9, #0xb0]
++eor	v3.16b, v3.16b, v5.16b
++orr	v1.16b, v3.16b, v1.16b
++ldp	q5, q2, [x8, #0xb0]
++eor	v4.16b, v5.16b, v4.16b
++orr	v0.16b, v4.16b, v0.16b
++ldp	q3, q5, [x9, #0xd0]
++eor	v2.16b, v2.16b, v6.16b
++orr	v1.16b, v2.16b, v1.16b
++ldp	q6, q4, [x8, #0xd0]
++eor	v3.16b, v6.16b, v3.16b
++orr	v0.16b, v3.16b, v0.16b
++ldp	q2, q6, [x9, #0xf0]
++eor	v4.16b, v4.16b, v5.16b
++orr	v1.16b, v4.16b, v1.16b
++ldp	q5, q3, [x8, #0xf0]
++eor	v2.16b, v5.16b, v2.16b
++orr	v0.16b, v2.16b, v0.16b
++ldp	q4, q5, [x9, #0x110]
++eor	v3.16b, v3.16b, v6.16b
++orr	v1.16b, v3.16b, v1.16b
++ldp	q6, q2, [x8, #0x110]
++eor	v3.16b, v6.16b, v4.16b
++orr	v0.16b, v3.16b, v0.16b
++eor	v2.16b, v2.16b, v5.16b
++orr	v1.16b, v2.16b, v1.16b
++orr	v0.16b, v1.16b, v0.16b
++ext	v1.16b, v0.16b, v0.16b, #0x8
++orr	v0.8b, v0.8b, v1.8b
++umov	w10, v0.b[1]
++umov	w11, v0.b[0]
++umov	w12, v0.b[2]
++umov	w13, v0.b[3]
++umov	w14, v0.b[4]
++orr	w10, w11, w10
++umov	w11, v0.b[5]
++orr	w10, w10, w12
++umov	w12, v0.b[6]
++orr	w10, w10, w13
++umov	w13, v0.b[7]
++orr	w10, w10, w14
++orr	w10, w10, w11
++orr	w10, w10, w12
++orr	w10, w10, w13
++tst	w10, #0xff
++b.ne	<wlgr_v2_identity_equal+OFFSET>
++ldr	q0, [x9, #OFFSET]
++ldr	q1, [x8, #OFFSET]
++eor	v0.16b, v1.16b, v0.16b
++ext	v1.16b, v0.16b, v0.16b, #0x8
++orr	v0.8b, v0.8b, v1.8b
++umov	w10, v0.b[1]
++umov	w11, v0.b[0]
++umov	w12, v0.b[2]
++umov	w13, v0.b[3]
++umov	w14, v0.b[4]
++orr	w10, w11, w10
++umov	w11, v0.b[5]
++orr	w10, w10, w12
++umov	w12, v0.b[6]
++orr	w10, w10, w13
++umov	w13, v0.b[7]
++orr	w10, w10, w14
++orr	w10, w10, w11
++orr	w10, w10, w12
++orr	w10, w10, w13
++tst	w10, #0xff
++b.ne	<wlgr_v2_identity_equal+OFFSET>
++ldp	q0, q1, [x9, #0x160]
++ldp	q2, q3, [x8, #0x160]
++eor	v0.16b, v2.16b, v0.16b
++eor	v1.16b, v3.16b, v1.16b
++orr	v0.16b, v1.16b, v0.16b
++ext	v1.16b, v0.16b, v0.16b, #0x8
++orr	v0.8b, v0.8b, v1.8b
++umov	w8, v0.b[1]
++umov	w9, v0.b[0]
++umov	w10, v0.b[2]
++umov	w11, v0.b[3]
++umov	w12, v0.b[4]
++orr	w8, w9, w8
++umov	w9, v0.b[5]
++orr	w8, w8, w10
++umov	w10, v0.b[6]
++orr	w8, w8, w11
++umov	w11, v0.b[7]
++orr	w8, w8, w12
++orr	w8, w8, w9
++orr	w8, w8, w10
++orr	w8, w8, w11
++tst	w8, #0xff
++b.ne	<wlgr_v2_identity_equal+OFFSET>
++ldr	x8, [x20, #OFFSET]
++ldr	x9, [x19, #OFFSET]
++cmp	x8, x9
++b.ne	<wlgr_v2_identity_equal+OFFSET>
++ldr	x8, [x20, #OFFSET]
++ldr	x9, [x19, #OFFSET]
++cmp	x8, x9
++b.ne	<wlgr_v2_identity_equal+OFFSET>
++ldr	x8, [x20, #OFFSET]
++ldr	x9, [x19, #OFFSET]
++cmp	x8, x9
++b.ne	<wlgr_v2_identity_equal+OFFSET>
++ldp	q0, q1, [x20, #0x2a0]
++ldp	q2, q3, [x19, #0x2a0]
++eor	v0.16b, v2.16b, v0.16b
++eor	v1.16b, v3.16b, v1.16b
++orr	v0.16b, v1.16b, v0.16b
++ext	v1.16b, v0.16b, v0.16b, #0x8
++orr	v0.8b, v0.8b, v1.8b
++umov	w8, v0.b[1]
++umov	w9, v0.b[0]
++umov	w10, v0.b[2]
++umov	w11, v0.b[3]
++umov	w12, v0.b[4]
++orr	w8, w9, w8
++umov	w9, v0.b[5]
++orr	w8, w8, w10
++umov	w10, v0.b[6]
++orr	w8, w8, w11
++umov	w11, v0.b[7]
++orr	w8, w8, w12
++orr	w8, w8, w9
++orr	w8, w8, w10
++orr	w8, w8, w11
++tst	w8, #0xff
++b.ne	<wlgr_v2_identity_equal+OFFSET>
++ldp	q0, q1, [x20, #0x2c0]
++ldp	q2, q3, [x19, #0x2c0]
++eor	v0.16b, v2.16b, v0.16b
++eor	v1.16b, v3.16b, v1.16b
++orr	v0.16b, v1.16b, v0.16b
++ext	v1.16b, v0.16b, v0.16b, #0x8
++orr	v0.8b, v0.8b, v1.8b
++umov	w8, v0.b[1]
++umov	w9, v0.b[0]
++umov	w10, v0.b[2]
++umov	w11, v0.b[3]
++umov	w12, v0.b[4]
++orr	w8, w9, w8
++umov	w9, v0.b[5]
++orr	w8, w8, w10
++umov	w10, v0.b[6]
++orr	w8, w8, w11
++umov	w11, v0.b[7]
++orr	w8, w8, w12
++orr	w8, w8, w9
++orr	w8, w8, w10
++orr	w8, w8, w11
++tst	w8, #0xff
++b.ne	<wlgr_v2_identity_equal+OFFSET>
++ldp	q0, q1, [x20, #0x2e0]
++ldp	q2, q3, [x19, #0x2e0]
++eor	v0.16b, v2.16b, v0.16b
++eor	v1.16b, v3.16b, v1.16b
++orr	v0.16b, v1.16b, v0.16b
++ext	v1.16b, v0.16b, v0.16b, #0x8
++orr	v0.8b, v0.8b, v1.8b
++umov	w8, v0.b[1]
++umov	w9, v0.b[0]
++umov	w10, v0.b[2]
++umov	w11, v0.b[3]
++umov	w12, v0.b[4]
++orr	w8, w9, w8
++umov	w9, v0.b[5]
++orr	w8, w8, w10
++umov	w10, v0.b[6]
++orr	w8, w8, w11
++umov	w11, v0.b[7]
++orr	w8, w8, w12
++orr	w8, w8, w9
++orr	w8, w8, w10
++orr	w8, w8, w11
++tst	w8, #0xff
++b.eq	<wlgr_v2_identity_equal+OFFSET>
++mov	w0, wzr
++ldp	x20, x19, [sp, #0x10]
++ldp	x29, x30, [sp], #0x20
++ret
++ldr	q0, [x20, #OFFSET]
++ldr	q1, [x19, #OFFSET]
++eor	v0.16b, v1.16b, v0.16b
++ext	v1.16b, v0.16b, v0.16b, #0x8
++orr	v0.8b, v0.8b, v1.8b
++umov	w8, v0.b[1]
++umov	w9, v0.b[0]
++umov	w10, v0.b[2]
++umov	w11, v0.b[3]
++umov	w12, v0.b[4]
++orr	w8, w9, w8
++umov	w9, v0.b[5]
++orr	w8, w8, w10
++umov	w10, v0.b[6]
++orr	w8, w8, w11
++umov	w11, v0.b[7]
++orr	w8, w8, w12
++orr	w8, w8, w9
++orr	w8, w8, w10
++orr	w8, w8, w11
++tst	w8, #0xff
++cset	w0, eq
++b	<wlgr_v2_identity_equal+OFFSET>

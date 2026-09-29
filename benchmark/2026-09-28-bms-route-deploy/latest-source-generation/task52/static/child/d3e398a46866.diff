@@ -1,0 +1,62 @@
+--- r155
+
++++ candidate
+
+@@ -1,56 +0,0 @@
+
+-stp	x29, x30, [sp, #-0x40]!
+-str	x28, [sp, #OFFSET]
+-mov	x29, sp
+-stp	x22, x21, [sp, #0x20]
+-stp	x20, x19, [sp, #0x30]
+-sub	sp, sp, #0x1, lsl #12
+-adrp	x22, RELOCATION_ADDRESS
+-mov	w19, w2
+-mov	x20, x1
+-ldrb	w8, [x22, #OFFSET]
+-tbz	w8, #0x0, <RealOpenLocalNow+OFFSET>
+-adrp	x0, RELOCATION_ADDRESS
+-add	x0, x0, #OFFSET
+-mov	x1, x20
+-mov	w2, w19
+-bl	<dlopen_ns@plt>
+-b	<RealOpenLocalNow+OFFSET>
+-mov	x0, x20
+-bl	<strlen@plt>
+-sub	x8, x0, #0x1, lsl #12
+-cmn	x8, #0xfff
+-b.lo	<RealOpenLocalNow+OFFSET>
+-add	x2, x0, #OFFSET
+-mov	x0, sp
+-mov	x1, x20
+-mov	x21, sp
+-bl	<memcpy@plt>
+-mov	x0, sp
+-mov	w1, #0x2f
+-bl	<strrchr@plt>
+-cmp	x0, x21
+-cset	w8, eq
+-cbz	x0, <RealOpenLocalNow+OFFSET>
+-tbnz	w8, #0x0, <RealOpenLocalNow+OFFSET>
+-adrp	x21, RELOCATION_ADDRESS
+-add	x21, x21, #OFFSET
+-strb	wzr, [x0]
+-adrp	x1, RELOCATION_ADDRESS
+-add	x1, x1, #OFFSET
+-mov	x0, x21
+-bl	<dlns_init@plt>
+-mov	x1, sp
+-mov	x0, x21
+-mov	w2, #0x2
+-bl	<dlns_create2@plt>
+-cbz	w0, <RealOpenLocalNow+OFFSET>
+-mov	x0, xzr
+-add	sp, sp, #OFFSET, lsl #12
+-ldp	x20, x19, [sp, #0x30]
+-ldp	x22, x21, [sp, #0x20]
+-ldr	x28, [sp, #OFFSET]
+-ldp	x29, x30, [sp], #0x40
+-ret
+-mov	w8, #0x1
+-strb	w8, [x22, #OFFSET]
+-b	<RealOpenLocalNow+OFFSET>

@@ -371,3 +371,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - B6/#47：R155 ART59e1已导出GetFaultMessageForAbortLogging，原样C桥独立成库可严格链接（同板libc++9466、std::__h ABI1），26件provider原字节保留；TGR双路径须同inode，Android c401与route674混用会exit203。统一后身份门与原ART启动通过、无Z/V LinkageError，但HelloWorld因app namespace找不到libbionic_compat exit1；两轮已整代回滚，Wikipedia/NPE仍unverified，见 latest-source-generation/task47/。
 
 - B6/#50：namespace真正配置在host StockCreateConfiguredNamespaces，R155 provider只转发；恢复044127fce同函数后233条归一指令与原版相同，26件原字节保留，HelloWorld过身份门并进onCreate。新墙为VSync→RsFrameReportExt::Init→do_init_fini在PC0x29dcc SEGV_ACCERR，根因与NPE仍未定；七挂载回滚+B5双图恢复，见 latest-source-generation/task50/。
+
+- **B6/#52**：frame初始化PC0x29dcc来自HiLogPrint GOT只含符号offset（缺load bias），不应放开页执行权限；恢复host NEEDED顺序仍在libandroid缺WLTG符号处失败并回滚。B5活体provider为route-a80c9aee0，system/android的977fb347未映射，静态恢复必须比实际加载件；installer675536e8在5ea重启后四哈希与非黑桌面通过，见 latest-source-generation/task52/。

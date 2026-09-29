@@ -1,0 +1,85 @@
+--- r155
+
++++ candidate
+
+@@ -1,4 +1,4 @@
+
+ stp	x29, x30, [sp, #-0x20]!
+-str	x19, [sp, #OFFSET]
++stp	x20, x19, [sp, #0x10]
+ mov	x19, x0
+ mov	w0, #-0x1
+@@ -31,48 +31,37 @@
+
+ cmp	w8, #0x8
+ b.ne	<westlake_child_hook_table_v1_revoke+OFFSET>
+-ldur	q0, [x19, #0x28]
+-ldur	q1, [x19, #0x18]
+-orr	v0.16b, v1.16b, v0.16b
+-ext	v1.16b, v0.16b, v0.16b, #0x8
+-orr	v0.8b, v0.8b, v1.8b
+-umov	w8, v0.b[1]
+-umov	w9, v0.b[0]
+-umov	w10, v0.b[2]
+-umov	w11, v0.b[3]
+-umov	w12, v0.b[4]
+-orr	w8, w9, w8
+-umov	w9, v0.b[5]
+-orr	w8, w8, w10
+-umov	w10, v0.b[6]
+-orr	w8, w8, w11
+-umov	w11, v0.b[7]
+-orr	w8, w8, w12
+-orr	w8, w8, w9
+-orr	w8, w8, w10
+-orr	w8, w8, w11
+-tst	w8, #0xff
+-b.eq	<westlake_child_hook_table_v1_revoke+OFFSET>
++add	x0, x19, #OFFSET
++mov	w20, w1
++bl	<BytesAllZero>
++cbz	w0, <westlake_child_hook_table_v1_revoke+OFFSET>
++mov	w0, #-0x1
++ldp	x20, x19, [sp, #0x10]
++ldp	x29, x30, [sp], #0x20
++ret
+ ldr	x8, [x19, #OFFSET]
+ cbz	x8, <westlake_child_hook_table_v1_revoke+OFFSET>
+ mov	w0, #-0x1
+-tbz	w1, #0x1f, <westlake_child_hook_table_v1_revoke+OFFSET>
++tbz	w20, #0x1f, <westlake_child_hook_table_v1_revoke+OFFSET>
+ ldr	x8, [x19, #OFFSET]
+ cbz	x8, <westlake_child_hook_table_v1_revoke+OFFSET>
+ mov	x0, x19
++mov	w1, w20
+ bl	<westlake_child_hook_table_v1_record_first_cause>
+-cbz	w0, <westlake_child_hook_table_v1_revoke+OFFSET>
+-mov	w0, #-0x1
+-ldr	x19, [sp, #OFFSET]
+-ldp	x29, x30, [sp], #0x20
+-ret
+-add	x10, x19, #OFFSET
++cbnz	w0, <westlake_child_hook_table_v1_revoke+OFFSET>
+ add	x8, x19, #OFFSET
+-mov	w9, #0x3
+-stlr	xzr, [x10]
+-ldaxr	x10, [x8]
+-cmp	x10, #0x2
++ldar	x9, [x8]
++sub	x10, x9, #0x3
++cmn	x10, #0x2
++b.hs	<westlake_child_hook_table_v1_revoke+OFFSET>
++mov	w0, #-0x7
++b	<westlake_child_hook_table_v1_revoke+OFFSET>
++add	x11, x19, #OFFSET
++mov	w10, #0x3
++stlr	xzr, [x11]
++ldaxr	x11, [x8]
++cmp	x11, x9
+ b.ne	<westlake_child_hook_table_v1_revoke+OFFSET>
+-stlxr	w10, x9, [x8]
+-cbnz	w10, <westlake_child_hook_table_v1_revoke+OFFSET>
++stlxr	w11, x10, [x8]
++cbnz	w11, <westlake_child_hook_table_v1_revoke+OFFSET>
+ mov	w8, #0x1
+ b	<westlake_child_hook_table_v1_revoke+OFFSET>

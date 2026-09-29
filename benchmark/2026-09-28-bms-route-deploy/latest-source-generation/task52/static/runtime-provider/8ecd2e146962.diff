@@ -1,0 +1,35 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,29 @@
+
++stp	x29, x30, [sp, #-0x20]!
++str	x19, [sp, #OFFSET]
++mov	x29, sp
++mov	x19, x0
++bl	<getpid@plt>
++mov	w8, w0
++mov	w0, wzr
++nop
++adr	x9, RELOCATION_ADDRESS
++cmp	x19, x9
++b.ne	<(anonymous namespace)::VerifyReady(void*)+OFFSET>
++cmp	w8, #0x2
++b.lt	<(anonymous namespace)::VerifyReady(void*)+OFFSET>
++mov	w1, w8
++nop
++adr	x0, RELOCATION_ADDRESS
++bl	<WLAR_LoaderPhaseIsChildReady>
++cmp	w0, #0x1
++b.ne	<(anonymous namespace)::VerifyReady(void*)+OFFSET>
++nop
++adr	x0, RELOCATION_ADDRESS
++bl	<WLAR_HostServicesVerifyCurrentThreadReady>
++cmp	w0, #0x0
++cset	w0, eq
++b	<(anonymous namespace)::VerifyReady(void*)+OFFSET>
++mov	w0, wzr
++ldr	x19, [sp, #OFFSET]
++ldp	x29, x30, [sp], #0x20
++ret

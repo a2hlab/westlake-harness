@@ -1,0 +1,66 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,60 @@
+
++stp	x29, x30, [sp, #-0x40]!
++stp	x28, x23, [sp, #0x10]
++stp	x22, x21, [sp, #0x20]
++stp	x20, x19, [sp, #0x30]
++mov	x29, sp
++sub	sp, sp, #0x1, lsl #12
++mov	x0, sp
++mov	w1, wzr
++mov	w2, #0x1000
++mov	x20, sp
++bl	<memset@plt>
++mov	x0, sp
++mov	w1, #0x1000
++bl	<westlake_art_copy_fault_message_for_abort_logging@plt>
++ldrb	w8, [sp]
++adrp	x9, RELOCATION_ADDRESS
++add	x9, x9, #OFFSET
++mov	x19, x0
++nop
++adr	x21, RELOCATION_ADDRESS
++cmp	w8, #0x0
++adrp	x22, RELOCATION_ADDRESS
++add	x22, x22, #OFFSET
++csel	x20, x9, x20, eq
++mov	w2, #0xf00
++mov	w0, #0x3
++mov	w1, #0x6
++movk	w2, #0xd00, lsl #16
++mov	x3, x21
++mov	x4, x22
++mov	x5, x19
++mov	x6, x20
++bl	<HiLogPrint@plt>
++adrp	x8, RELOCATION_ADDRESS
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x2, x21
++mov	x3, x19
++mov	x4, x20
++ldr	x8, [x8, #OFFSET]
++ldr	x23, [x8]
++mov	x0, x23
++bl	<fprintf@plt>
++mov	x0, x23
++bl	<fflush@plt>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++mov	x2, x22
++mov	x3, x19
++mov	x4, x20
++bl	<appspawnx_file_log_fmt(char const*, char const*, char const*, ...)>
++adrp	x1, RELOCATION_ADDRESS
++add	x1, x1, #OFFSET
++mov	x0, x23
++mov	x2, x19
++mov	x3, x20
++bl	<fprintf@plt>
++mov	x0, x23
++bl	<fflush@plt>
++bl	<abort@plt>

@@ -1,0 +1,212 @@
+--- r155
+
++++ candidate
+
+@@ -1,6 +1,7 @@
+
+-sub	sp, sp, #0x190
+-stp	x29, x30, [sp, #0x160]
+-stp	x28, x21, [sp, #0x170]
+-stp	x20, x19, [sp, #0x180]
++sub	sp, sp, #0x1b0
++stp	x29, x30, [sp, #0x170]
++str	x28, [sp, #OFFSET]
++stp	x22, x21, [sp, #0x190]
++stp	x20, x19, [sp, #0x1a0]
+ add	x29, sp, #OFFSET
+ cbz	x1, <InstallPluginHostServices+OFFSET>
+@@ -26,7 +27,8 @@
+
+ cbz	w0, <InstallPluginHostServices+OFFSET>
+ mov	w0, #-0x1
+-ldp	x20, x19, [sp, #0x180]
+-ldp	x28, x21, [sp, #0x170]
+-ldp	x29, x30, [sp, #0x160]
++ldp	x20, x19, [sp, #0x1a0]
++ldp	x22, x21, [sp, #0x190]
++ldp	x29, x30, [sp, #0x170]
++ldr	x28, [sp, #OFFSET]
+ add	sp, sp, #OFFSET
+ ret
+@@ -73,34 +75,43 @@
+
+ adrp	x2, RELOCATION_ADDRESS
+ add	x2, x2, #OFFSET
+-mov	x3, sp
++add	x3, sp, #OFFSET
+ mov	x0, x20
+ mov	x1, x19
+ bl	<LookupExactPluginSymbol>
+ cbnz	w0, <InstallPluginHostServices+OFFSET>
++adrp	x2, RELOCATION_ADDRESS
++add	x2, x2, #OFFSET
++add	x3, sp, #OFFSET
++mov	x0, x20
++mov	x1, x19
++ldr	x22, [sp, #OFFSET]
++bl	<LookupExactPluginSymbol>
++cbnz	w0, <InstallPluginHostServices+OFFSET>
+ movi	v0.2d, #0000000000000000
+-adrp	x8, RELOCATION_ADDRESS
+-add	x21, sp, #OFFSET
+-nop
+-adr	x2, RELOCATION_ADDRESS
+-add	x19, x21, #OFFSET
++add	x8, sp, #OFFSET
++adrp	x9, RELOCATION_ADDRESS
++add	x20, sp, #OFFSET
++add	x19, x20, #OFFSET
++nop
++adr	x2, RELOCATION_ADDRESS
+ mov	x0, x19
++stp	q0, q0, [x8, #0x20]
+ mov	w1, #0x20
+-stp	q0, q0, [sp, #0x70]
++stp	q0, q0, [x8, #0x40]
+ mov	w3, #0x41
+-stp	q0, q0, [sp, #0x90]
+-ldr	x20, [sp]
+-stp	q0, q0, [sp, #0xb0]
++stp	q0, q0, [x8, #0x60]
++mov	x8, #0x9a74
++movk	x8, #0xb65b, lsl #16
+ str	q0, [sp, #OFFSET]
+-ldr	d0, [x8, #OFFSET]
+-mov	x8, #0x7d78
++movk	x8, #0x7ced, lsl #32
++ldr	d0, [x9, #OFFSET]
++movk	x8, #0x336d, lsl #48
++ldr	x21, [sp, #OFFSET]
+ str	xzr, [sp, #OFFSET]
+-movk	x8, #0x7608, lsl #16
+-movk	x8, #0xf759, lsl #32
+ str	d0, [sp, #OFFSET]
+-movk	x8, #0x74e6, lsl #48
+ str	x8, [sp, #OFFSET]
+ bl	<FillHex>
+ cbnz	w0, <InstallPluginHostServices+OFFSET>
+-add	x0, x21, #OFFSET
++add	x0, x20, #OFFSET
+ nop
+ adr	x2, RELOCATION_ADDRESS
+@@ -109,13 +120,13 @@
+
+ bl	<FillHex>
+ cbnz	w0, <InstallPluginHostServices+OFFSET>
+-add	x21, sp, #OFFSET
+-nop
+-adr	x2, RELOCATION_ADDRESS
+-add	x0, x21, #OFFSET
++add	x20, sp, #OFFSET
++nop
++adr	x2, RELOCATION_ADDRESS
++add	x0, x20, #OFFSET
+ mov	w1, #0x20
+ mov	w3, #0x41
+ bl	<FillHex>
+ cbnz	w0, <InstallPluginHostServices+OFFSET>
+-add	x0, x21, #OFFSET
++add	x0, x20, #OFFSET
+ nop
+ adr	x2, RELOCATION_ADDRESS
+@@ -128,9 +139,8 @@
+
+ adrp	x10, RELOCATION_ADDRESS
+ adrp	x11, RELOCATION_ADDRESS
+-add	x0, sp, #OFFSET
+ ldr	x8, [x8, #OFFSET]
+ ldr	x9, [x9, #OFFSET]
+ ldr	x10, [x10, #OFFSET]
+-stp	x8, x9, [sp, #0xe8]
++stp	x8, x9, [sp, #0xf8]
+ adrp	x8, RELOCATION_ADDRESS
+ adrp	x9, RELOCATION_ADDRESS
+@@ -138,9 +148,9 @@
+
+ ldr	x9, [x9, #OFFSET]
+ ldr	x11, [x11, #OFFSET]
+-stp	x10, x8, [sp, #0xf8]
++stp	x10, x8, [sp, #0x108]
+ adrp	x10, RELOCATION_ADDRESS
+ nop
+ adr	x8, RELOCATION_ADDRESS
+-stp	x9, x11, [sp, #0x108]
++stp	x9, x11, [sp, #0x118]
+ adrp	x9, RELOCATION_ADDRESS
+ adrp	x11, RELOCATION_ADDRESS
+@@ -148,34 +158,51 @@
+
+ ldr	x10, [x10, #OFFSET]
+ ldr	x11, [x11, #OFFSET]
+-stp	x8, x9, [sp, #0x118]
+-adrp	x8, RELOCATION_ADDRESS
+-adrp	x9, RELOCATION_ADDRESS
+-stp	x10, x11, [sp, #0x128]
++stp	x8, x9, [sp, #0x128]
++adrp	x8, RELOCATION_ADDRESS
++adrp	x9, RELOCATION_ADDRESS
++stp	x10, x11, [sp, #0x138]
+ adrp	x10, RELOCATION_ADDRESS
+ ldr	x8, [x8, #OFFSET]
+ ldr	x9, [x9, #OFFSET]
+ ldr	x10, [x10, #OFFSET]
+-stp	x8, x9, [sp, #0x138]
++stp	x8, x9, [sp, #0x148]
+ nop
+ adr	x8, RELOCATION_ADDRESS
+-stp	x10, x8, [sp, #0x148]
++stp	x10, x8, [sp, #0x158]
+ nop
+ adr	x8, RELOCATION_ADDRESS
+ str	x8, [sp, #OFFSET]
+-blr	x20
+-cbnz	w0, <InstallPluginHostServices+OFFSET>
+ bl	<getpid@plt>
+ cmp	w0, #0x1
+ b.lt	<InstallPluginHostServices+OFFSET>
+-adrp	x9, RELOCATION_ADDRESS
+-ldr	x8, [sp, #OFFSET]
++adrp	x8, RELOCATION_ADDRESS
++mov	w20, w0
++ldr	w9, [x8, #OFFSET]
++cbz	w9, <InstallPluginHostServices+OFFSET>
++cmp	w9, w20
++b.ne	<InstallPluginHostServices+OFFSET>
++add	x0, sp, #OFFSET
++str	w20, [x8, #OFFSET]
++blr	x22
++mov	w8, w0
++mov	w0, #-0x1
++cbnz	w8, <InstallPluginHostServices+OFFSET>
++cbz	x21, <InstallPluginHostServices+OFFSET>
++adrp	x8, RELOCATION_ADDRESS
++ldr	x9, [x8, #OFFSET]
++cbz	x9, <InstallPluginHostServices+OFFSET>
++cmp	x9, x21
++b.ne	<InstallPluginHostServices+OFFSET>
++str	x21, [x8, #OFFSET]
++adrp	x8, RELOCATION_ADDRESS
+ movi	v0.2d, #0000000000000000
++ldr	x9, [sp, #OFFSET]
+ str	xzr, [sp, #OFFSET]
+-str	w0, [sp, #OFFSET]
+-ldr	d1, [x9, #OFFSET]
+-str	x8, [sp, #OFFSET]
++ldr	d1, [x8, #OFFSET]
++str	w20, [sp, #OFFSET]
++str	x9, [sp, #OFFSET]
++stur	q0, [sp, #0x38]
+ stur	q0, [sp, #0x48]
+-stur	q0, [sp, #0x38]
+-stur	q0, [sp, #0x28]
++stur	q0, [sp, #0x58]
+ str	d1, [sp, #OFFSET]
+ bl	<getuid@plt>
+@@ -186,5 +213,5 @@
+
+ add	x0, sp, #OFFSET
+ ldr	x8, [sp, #OFFSET]
+-stp	q0, q1, [sp, #0x30]
++stp	q0, q1, [sp, #0x40]
+ blr	x8
+ cmp	w0, #0x0

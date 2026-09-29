@@ -1,0 +1,419 @@
+--- r155
+
++++ candidate
+
+@@ -1,29 +1,33 @@
+
+-sub	sp, sp, #0x100
+-stp	x24, x23, [sp, #0xd0]
+-ands	w23, w2, #0xffff
+-stp	x22, x21, [sp, #0xe0]
+-mov	w21, w0
++sub	sp, sp, #0x130
++stp	x24, x23, [sp, #0x100]
++ands	w24, w2, #0xffff
++stp	x22, x21, [sp, #0x110]
++mov	w22, w0
+ mov	w0, #-0x1
+-stp	x29, x30, [sp, #0xa0]
+-stp	x28, x27, [sp, #0xb0]
++stp	x29, x30, [sp, #0xd0]
++stp	x28, x27, [sp, #0xe0]
+ add	x29, sp, #OFFSET
+-stp	x26, x25, [sp, #0xc0]
+-stp	x20, x19, [sp, #0xf0]
+-b.eq	<VerifyBuildId+OFFSET>
+-mov	x20, x1
++stp	x26, x25, [sp, #0xf0]
++stp	x20, x19, [sp, #0x120]
++b.eq	<VerifyBuildId+OFFSET>
++mov	x21, x1
+ cbz	x1, <VerifyBuildId+OFFSET>
+-mov	x19, x3
++mov	x20, x3
+ cbz	x3, <VerifyBuildId+OFFSET>
+-mov	x22, xzr
+-sub	x24, x29, #0x40
+-mov	w25, #0x40
+-b	<VerifyBuildId+OFFSET>
+-add	x22, x0, x22
+-cmp	x22, #0x40
+-b.hs	<VerifyBuildId+OFFSET>
+-add	x1, x24, x22
+-sub	x2, x25, x22
+-mov	w0, w21
+-mov	x3, x22
++mov	x19, x4
++and	x8, x4, #0xfffffffffffffffb
++cmp	x8, #0x10
++b.ne	<VerifyBuildId+OFFSET>
++mov	x23, xzr
++sub	x25, x29, #0x48
++mov	w26, #0x40
++b	<VerifyBuildId+OFFSET>
++add	x23, x0, x23
++cmp	x23, #0x40
++b.hs	<VerifyBuildId+OFFSET>
++add	x1, x25, x23
++sub	x2, x26, x23
++mov	w0, w22
++mov	x3, x23
+ bl	<pread@plt>
+ cmp	x0, #0x1
+@@ -37,5 +41,5 @@
+
+ nop
+ adr	x1, RELOCATION_ADDRESS
+-sub	x0, x29, #0x40
++sub	x0, x29, #0x48
+ mov	w2, #0x4
+ bl	<memcmp@plt>
+@@ -43,26 +47,26 @@
+
+ mov	w0, #-0x1
+ cbnz	w8, <VerifyBuildId+OFFSET>
+-ldurb	w8, [x29, #-0x3c]
++ldurb	w8, [x29, #-0x44]
+ cmp	w8, #0x2
+ b.ne	<VerifyBuildId+OFFSET>
+-ldurb	w8, [x29, #-0x3b]
++ldurb	w8, [x29, #-0x43]
+ cmp	w8, #0x1
+ b.ne	<VerifyBuildId+OFFSET>
+-ldurh	w8, [x29, #-0x30]
++ldurh	w8, [x29, #-0x38]
+ cmp	w8, #0x3
+ b.ne	<VerifyBuildId+OFFSET>
+-ldurh	w8, [x29, #-0x2e]
++ldurh	w8, [x29, #-0x36]
+ mov	w0, #-0x1
+-cmp	w8, w23
+-b.ne	<VerifyBuildId+OFFSET>
+-ldurh	w8, [x29, #-0xa]
++cmp	w8, w24
++b.ne	<VerifyBuildId+OFFSET>
++ldurh	w8, [x29, #-0x12]
+ cmp	w8, #0x38
+ b.ne	<VerifyBuildId+OFFSET>
+-ldurh	w8, [x29, #-0x8]
++ldurh	w8, [x29, #-0x10]
+ cbz	w8, <VerifyBuildId+OFFSET>
+ cmp	w8, #0x80
+ b.hi	<VerifyBuildId+OFFSET>
+-ldur	x9, [x29, #-0x20]
+-ldr	x10, [x20, #OFFSET]
++ldur	x9, [x29, #-0x28]
++ldr	x10, [x21, #OFFSET]
+ subs	x9, x10, x9
+ b.lo	<VerifyBuildId+OFFSET>
+@@ -72,33 +76,38 @@
+
+ b.ls	<VerifyBuildId+OFFSET>
+ mov	w0, #-0x1
+-ldp	x20, x19, [sp, #0xf0]
+-ldp	x22, x21, [sp, #0xe0]
+-ldp	x24, x23, [sp, #0xd0]
+-ldp	x26, x25, [sp, #0xc0]
+-ldp	x28, x27, [sp, #0xb0]
+-ldp	x29, x30, [sp, #0xa0]
++ldp	x20, x19, [sp, #0x120]
++ldp	x22, x21, [sp, #0x110]
++ldp	x24, x23, [sp, #0x100]
++ldp	x26, x25, [sp, #0xf0]
++ldp	x28, x27, [sp, #0xe0]
++ldp	x29, x30, [sp, #0xd0]
+ add	sp, sp, #OFFSET
+ ret
+-mov	x0, x19
+-bl	<IsAllZeros>
+-cbz	w0, <VerifyBuildId+OFFSET>
+-mov	w0, wzr
+-b	<VerifyBuildId+OFFSET>
+-mov	w25, wzr
++and	x8, x19, #0x18
++and	x11, x19, #0xffffffffffffffe0
+ mov	w26, wzr
+-mov	x27, xzr
+-mov	w28, #0x38
+-add	x22, sp, #OFFSET
+-ldur	x8, [x29, #-0x20]
+-mov	x24, xzr
+-madd	x23, x27, x28, x8
+-b	<VerifyBuildId+OFFSET>
+-add	x24, x0, x24
+-cmp	x24, #0x38
+-b.hs	<VerifyBuildId+OFFSET>
+-add	x1, x22, x24
+-sub	x2, x28, x24
+-add	x3, x23, x24
+-mov	w0, w21
++mov	w28, wzr
++mov	x9, xzr
++add	x10, x20, #OFFSET
++str	x8, [sp, #OFFSET]
++and	x8, x19, #0xfffffffffffffff8
++mov	w27, #0x38
++add	x23, sp, #OFFSET
++stp	x8, x11, [sp, #0x20]
++neg	x8, x8
++stp	x10, x8, [sp, #0x10]
++ldur	x8, [x29, #-0x28]
++mov	x25, xzr
++str	x9, [sp, #OFFSET]
++nop
++madd	x24, x9, x27, x8
++b	<VerifyBuildId+OFFSET>
++add	x25, x0, x25
++cmp	x25, #0x38
++b.hs	<VerifyBuildId+OFFSET>
++add	x1, x23, x25
++sub	x2, x27, x25
++add	x3, x24, x25
++mov	w0, w22
+ bl	<pread@plt>
+ cmp	x0, #0x1
+@@ -119,5 +128,5 @@
+
+ b.lo	<VerifyBuildId+OFFSET>
+ ldr	x8, [sp, #OFFSET]
+-ldr	x9, [x20, #OFFSET]
++ldr	x9, [x21, #OFFSET]
+ subs	x8, x9, x8
+ b.lo	<VerifyBuildId+OFFSET>
+@@ -125,45 +134,41 @@
+
+ b.hi	<VerifyBuildId+OFFSET>
+ bl	<malloc@plt>
+-mov	x23, x0
++mov	x24, x0
+ cbz	x0, <VerifyBuildId+OFFSET>
+ ldr	x2, [sp, #OFFSET]
+-mov	w0, w21
++mov	w0, w22
+ ldr	x3, [sp, #OFFSET]
+-mov	x1, x23
++mov	x1, x24
+ bl	<ReadExactAt>
+ cbnz	w0, <VerifyBuildId+OFFSET>
+ ldr	x8, [sp, #OFFSET]
+-str	x27, [sp, #OFFSET]
+-stp	w26, w25, [sp, #0x10]
++str	w26, [sp, #OFFSET]
+ cmp	x8, #0xc
+ b.hs	<VerifyBuildId+OFFSET>
+-mov	x0, x23
++mov	x0, x24
+ bl	<free@plt>
+-ldp	w26, w25, [sp, #0x10]
+-ldr	x27, [sp, #OFFSET]
+-ldurh	w8, [x29, #-0x8]
+-add	x27, x27, #OFFSET
+-cmp	x27, x8
++ldr	w26, [sp, #OFFSET]
++ldr	x9, [sp, #OFFSET]
++ldurh	w8, [x29, #-0x10]
++add	x9, x9, #OFFSET
++cmp	x9, x8
+ b.lo	<VerifyBuildId+OFFSET>
+ b	<VerifyBuildId+OFFSET>
+ mov	x8, xzr
++add	x9, x24, #OFFSET
+ mov	w25, #0xc
+-b	<VerifyBuildId+OFFSET>
+-ldr	x9, [sp, #OFFSET]
+-add	x8, x26, x25
+-add	x25, x8, #OFFSET
+-cmp	x25, x9
+-b.hi	<VerifyBuildId+OFFSET>
+-add	x1, x23, x8
++str	x9, [sp]
++add	x1, x24, x8
+ add	x0, sp, #OFFSET
+ mov	w2, #0xc
++mov	x23, x24
+ bl	<memcpy@plt>
+-ldp	w8, w9, [sp, #0x18]
++ldp	w8, w9, [sp, #0x40]
+ ldr	x10, [sp, #OFFSET]
+ add	x11, x8, #OFFSET
+ add	x12, x9, #OFFSET
+-and	x27, x11, #0x1fffffffc
++and	x24, x11, #0x1fffffffc
+ and	x11, x12, #0x1fffffffc
+-add	x26, x11, x27
++add	x26, x11, x24
+ sub	x10, x10, x25
+ cmp	x26, x10
+@@ -174,58 +179,127 @@
+
+ cmp	w8, #0x4
+ b.ne	<VerifyBuildId+OFFSET>
+-cmp	w9, #0x14
+-b.ne	<VerifyBuildId+OFFSET>
+-add	x24, x23, x25
++cmp	x9, x19
++b.ne	<VerifyBuildId+OFFSET>
++add	x0, x23, x25
+ adrp	x1, RELOCATION_ADDRESS
+ add	x1, x1, #OFFSET
+-mov	x0, x24
+ mov	w2, #0x4
+ bl	<memcmp@plt>
+-cbnz	w0, <VerifyBuildId+OFFSET>
+-add	x8, x24, x27
+-ldr	q0, [x19]
+-ldr	s3, [x19, #OFFSET]
+-ldr	q1, [x8]
+-ldr	s2, [x8, #OFFSET]
+-ushll	v3.8h, v3.8b, #0x0
+-eor	v0.16b, v0.16b, v1.16b
+-ushll	v1.8h, v2.8b, #0x0
+-ext	v2.16b, v0.16b, v0.16b, #0x8
+-eor	v1.8b, v3.8b, v1.8b
+-umov	w13, v1.h[1]
+-umov	w15, v1.h[0]
+-umov	w11, v1.h[2]
+-umov	w8, v1.h[3]
+-orr	v0.8b, v0.8b, v2.8b
+-umov	w9, v0.b[1]
+-umov	w10, v0.b[0]
+-umov	w12, v0.b[2]
+-umov	w14, v0.b[3]
+-umov	w16, v0.b[4]
+-orr	w9, w10, w9
+-umov	w10, v0.b[5]
+-orr	w9, w9, w12
+-umov	w12, v0.b[6]
+-orr	w9, w9, w14
+-umov	w14, v0.b[7]
+-orr	w9, w9, w16
+-orr	w9, w9, w10
+-orr	w10, w15, w13
+-orr	w9, w9, w12
+-orr	w10, w10, w11
+-orr	w9, w9, w14
+-orr	w8, w10, w8
+-orr	w8, w9, w8
+-ldr	w9, [sp, #OFFSET]
+-orr	w9, w8, w9
++cbz	w0, <VerifyBuildId+OFFSET>
++mov	x24, x23
++ldr	x9, [sp, #OFFSET]
++add	x8, x26, x25
++add	x23, sp, #OFFSET
++add	x25, x8, #OFFSET
++cmp	x25, x9
++b.ls	<VerifyBuildId+OFFSET>
++b	<VerifyBuildId+OFFSET>
+ ldr	w8, [sp, #OFFSET]
+ add	w8, w8, #OFFSET
+-stp	w9, w8, [sp, #0x10]
++str	w8, [sp, #OFFSET]
++cbz	x19, <VerifyBuildId+OFFSET>
++cmp	x19, #0x8
++b.hs	<VerifyBuildId+OFFSET>
++mov	x9, xzr
++b	<VerifyBuildId+OFFSET>
++cmp	x19, #0x20
++b.hs	<VerifyBuildId+OFFSET>
++mov	x10, xzr
++b	<VerifyBuildId+OFFSET>
++movi	v0.2d, #0000000000000000
++ldr	x9, [sp]
++add	x8, x25, x24
++ldr	x10, [sp, #OFFSET]
++movi	v1.2d, #0000000000000000
++add	x8, x9, x8
++ldr	x9, [sp, #OFFSET]
++mov	v0.b[0], w28
++ldp	q2, q3, [x8, #-0x10]
++add	x8, x8, #OFFSET
++subs	x9, x9, #0x20
++ldp	q4, q5, [x10, #-0x10]
++add	x10, x10, #OFFSET
++eor	v2.16b, v4.16b, v2.16b
++orr	v0.16b, v2.16b, v0.16b
++eor	v3.16b, v5.16b, v3.16b
++orr	v1.16b, v3.16b, v1.16b
++b.ne	<VerifyBuildId+OFFSET>
++orr	v0.16b, v1.16b, v0.16b
++ext	v1.16b, v0.16b, v0.16b, #0x8
++orr	v0.8b, v0.8b, v1.8b
++umov	w8, v0.b[1]
++umov	w9, v0.b[0]
++umov	w10, v0.b[2]
++umov	w11, v0.b[3]
++umov	w12, v0.b[4]
++orr	w8, w9, w8
++umov	w9, v0.b[5]
++orr	w8, w8, w10
++umov	w10, v0.b[6]
++orr	w8, w8, w11
++umov	w11, v0.b[7]
++orr	w8, w8, w12
++orr	w8, w8, w9
++ldr	x9, [sp, #OFFSET]
++orr	w8, w8, w10
++orr	w28, w8, w11
++cmp	x9, x19
++b.eq	<VerifyBuildId+OFFSET>
++mov	x10, x9
++ldr	x8, [sp, #OFFSET]
++cbz	x8, <VerifyBuildId+OFFSET>
++movi	d0, #0000000000000000
++ldr	x11, [sp, #OFFSET]
++add	x8, x25, x10
++add	x9, x20, x10
++add	x8, x8, x24
++add	x8, x23, x8
++add	x10, x11, x10
++mov	v0.b[0], w28
++ldr	d1, [x8], #OFFSET
++ldr	d2, [x9], #OFFSET
++adds	x10, x10, #OFFSET
++eor	v1.8b, v2.8b, v1.8b
++orr	v0.8b, v1.8b, v0.8b
++b.ne	<VerifyBuildId+OFFSET>
++umov	w8, v0.b[1]
++umov	w9, v0.b[0]
++umov	w10, v0.b[2]
++umov	w11, v0.b[3]
++umov	w12, v0.b[4]
++orr	w8, w9, w8
++umov	w9, v0.b[5]
++orr	w8, w8, w10
++umov	w10, v0.b[6]
++orr	w8, w8, w11
++umov	w11, v0.b[7]
++orr	w8, w8, w12
++orr	w8, w8, w9
++orr	w8, w8, w10
++orr	w28, w8, w11
++ldr	x8, [sp, #OFFSET]
++mov	x9, x8
++cmp	x8, x19
++b.eq	<VerifyBuildId+OFFSET>
++add	x10, x9, x25
++sub	x8, x19, x9
++add	x10, x10, x24
++add	x9, x20, x9
++mov	x24, x23
++add	x10, x23, x10
++ldrb	w11, [x10], #OFFSET
++ldrb	w12, [x9], #OFFSET
++subs	x8, x8, #0x1
++eor	w11, w12, w11
++orr	w28, w11, w28
++b.ne	<VerifyBuildId+OFFSET>
+ b	<VerifyBuildId+OFFSET>
+ mov	x0, x23
++b	<VerifyBuildId+OFFSET>
++mov	x0, x24
+ bl	<free@plt>
+ b	<VerifyBuildId+OFFSET>
+-tst	w26, #0xff
+-ccmp	w25, #0x1, #0x0, eq
++tst	w28, #0xff
++ccmp	w26, #0x1, #0x0, eq
+ cset	w8, ne
+ sbfx	w0, w8, #0, #1

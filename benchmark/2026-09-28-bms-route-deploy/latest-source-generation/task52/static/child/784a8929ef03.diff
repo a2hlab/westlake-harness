@@ -1,0 +1,35 @@
+--- r155
+
++++ candidate
+
+@@ -0,0 +1,29 @@
+
++sub	sp, sp, #0xb0
++stp	x20, x19, [sp, #0xa0]
++mov	x19, x0
++add	x20, x0, #OFFSET
++add	x0, sp, #OFFSET
++stp	x29, x30, [sp, #0x90]
++add	x29, sp, #OFFSET
++bl	<WLSha256Init>
++add	x0, sp, #OFFSET
++mov	x1, x20
++mov	w2, #0x330
++bl	<WLSha256Update>
++cbnz	w0, <DigestEqual+OFFSET>
++add	x0, sp, #OFFSET
++mov	x1, sp
++bl	<WLSha256Final>
++cbz	w0, <DigestEqual+OFFSET>
++mov	w0, wzr
++ldp	x20, x19, [sp, #0xa0]
++ldp	x29, x30, [sp, #0x90]
++add	sp, sp, #OFFSET
++ret
++add	x1, x19, #OFFSET
++mov	x0, sp
++mov	w2, #0x20
++bl	<memcmp@plt>
++cmp	w0, #0x0
++cset	w0, eq
++b	<DigestEqual+OFFSET>

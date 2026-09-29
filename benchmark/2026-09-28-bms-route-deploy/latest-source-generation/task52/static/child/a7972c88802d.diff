@@ -1,0 +1,56 @@
+--- r155
+
++++ candidate
+
+@@ -1,32 +1,22 @@
+
+-stp	x29, x30, [sp, #-0x20]!
++sub	sp, sp, #0x20
++mov	w2, w1
++mov	x1, x0
++mov	x0, xzr
++stp	x29, x30, [sp, #0x10]
++add	x29, sp, #OFFSET
++cbz	x1, <WLSCPL_OpenPreparedNamespace+OFFSET>
+ adrp	x8, RELOCATION_ADDRESS
+-stp	x20, x19, [sp, #0x10]
+-mov	x29, sp
+ ldrb	w8, [x8, #OFFSET]
+-cmp	w8, #0x1
+-b.ne	<WLSCPL_OpenPreparedNamespace+OFFSET>
+-mov	w19, w1
+-mov	x20, x0
+-bl	<AbsoluteCanonicalForm>
+-cbz	w0, <WLSCPL_OpenPreparedNamespace+OFFSET>
+-nop
+-adr	x1, RELOCATION_ADDRESS
+-mov	x0, x20
+-mov	w2, #0x16
+-bl	<strncmp@plt>
+-cbz	w0, <WLSCPL_OpenPreparedNamespace+OFFSET>
+-ldp	x20, x19, [sp, #0x10]
++cbz	w8, <WLSCPL_OpenPreparedNamespace+OFFSET>
++ldrb	w8, [x1]
++cbz	w8, <WLSCPL_OpenPreparedNamespace+OFFSET>
++adrp	x0, RELOCATION_ADDRESS
++add	x0, x0, #OFFSET
++bl	<dlopen_ns@plt>
++str	x0, [sp, #OFFSET]
++ldr	x0, [sp, #OFFSET]
++b	<WLSCPL_OpenPreparedNamespace+OFFSET>
+ mov	x0, xzr
+-ldp	x29, x30, [sp], #0x20
++ldp	x29, x30, [sp, #0x10]
++add	sp, sp, #OFFSET
+ ret
+-mov	w8, #0x102
+-and	w8, w19, w8
+-cmp	w8, #0x2
+-b.ne	<WLSCPL_OpenPreparedNamespace+OFFSET>
+-ldrb	w8, [x20, #OFFSET]
+-cbz	w8, <WLSCPL_OpenPreparedNamespace+OFFSET>
+-mov	x0, x20
+-mov	w1, w19
+-ldp	x20, x19, [sp, #0x10]
+-ldp	x29, x30, [sp], #0x20
+-b	<dlopen@plt>
