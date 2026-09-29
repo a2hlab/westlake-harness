@@ -456,3 +456,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 EGL 生命周期只读：a578 两 app 同 shim/NW/config 重建均 0x3003，strip colorspace 无效；HWUI setSurface 已 destroy 自己旧句柄，现日志缺 destroy，需 owner token 区分另一 pipeline 与销毁未完成。裸缓存复用会双重释放，create 时强拆会伤活引用；方案采用显式独占 owner/交还，未知 owner 冲突不假成功。另 wrapper 先读 eglGetError 会吞调用者错误。见 benchmark/2026-09-30-egl-surface-lifecycle/（尚未实现）。
 
 - 2026-09-30 next2实测仍拒签：5cd ANL1162a6fc补8NDK后ZZ由hitrace推进到bridge→libwm.z.so不可见；离线310库清单已含/system/lib64/libwm，说明物理闭包不等于namespace依赖边可达，后续须按加载域核全图。VLC三AudioSystem注册后仍缺newAudioSessionId；Anki旧installer只到LeakCanary，无librsdroid装载证据不能算过。见 benchmark/2026-09-30-v3c-next2-device/。
+
+- 2026-09-30 next3仍拒签：全runtime+9类app原生件闭包407 ELF→292 OH名/5目录，补齐可见性后ZZ不再缺libwm，但libmain dlopen→DFX InitHandler→add_special_handler_at_last容量中止；HelloWorld maps单份DFX不代表Unity，重复实例须现场maps核，不能改信号检查掩盖。ANL LOCAL_NS_PREFERED与本地域新系统搜索路径的复用语义是下一步假设，尚未证根。见 benchmark/2026-09-30-v3c-next3-closure/。

@@ -60,3 +60,41 @@ known unimplemented AudioSystem.newAudioSessionId call. That existing failure
 is reported separately from new regressions. Any control regression rejects
 next3 and requires rollback. Device results and screenshots are recorded after
 execution; host gates alone do not sign this package.
+
+
+## Device finding: candidate rejected
+
+The next3 ZigZag log has no previous hitrace/libwm fatal error, but it still
+returns to the desktop. First fatal, line 18977:
+
+```
+MUSL-SIGCHAIN: Add too many the special handlers at last!
+```
+
+The crash follows `libmain.so -> dlopen_impl -> do_init_fini ->
+platformsdk/libdfx_signalhandler.z.so::InitHandler -> add_special_handler_at_last`.
+Lines 19119–19127 contain this stack. This proves DFX initialization aborts
+while Unity loads libraries; it does not prove the precise duplicate mapping
+or namespace owner. The earlier HelloWorld deployment maps contain one DFX
+load (one offset-zero mapping), but cannot substitute for ZigZag crash maps.
+Do not disable signal-chain checks or call the failed package a baseline.
+
+Follow-up hypothesis, not a change in this task: the existing app namespace
+uses LOCAL_NS_PREFERED. Making full system directories locally searchable may
+instantiate libraries instead of reusing the already initialized default-domain
+instances. Verify actual namespace reuse and mappings before changing priority.
+The complete name inventory should remain reusable; another missing-name patch
+is not the next diagnostic step.
+
+
+All five requested apps ran with master preflight (16M/private off/24h/clock
+readback), fixed r17m and the original APKs. t20 screenshots show HelloWorld,
+Auxio and NetGuard UI; ZigZag shows the desktop and VLC remains white with
+`AudioSystem.newAudioSessionId()` missing (line 41304). These are screenshot
+observations, not automatic foreground verdicts. The runner's exact counters
+are in facts-verbatim.txt; full logs stay in runs and small evidence is archived.
+
+Final recovery: v3c 668e4f7c + the identical r17m JAR, original boot and
+installer retained. The post-rollback ZigZag t20 screenshot shows TAP TO PLAY.
+Full live SHA, active ledger and installer readback pass (final/receipt.json).
+next3 remains rejected; R2 partially, rendering sign-off stays with the outer loop.
