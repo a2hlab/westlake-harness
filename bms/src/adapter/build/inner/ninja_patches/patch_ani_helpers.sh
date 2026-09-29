@@ -11,8 +11,7 @@ PROD="${OH_PRODUCT_NAME:-rk3568}"
 NINJA_FILE="${OH_ROOT:-$HOME/oh}/out/$PROD/obj/arkcompiler/runtime_core/static_core/plugins/ets/runtime/libani_helpers/ani_helpers.ninja"
 
 if [ ! -f "$NINJA_FILE" ]; then
-    echo "[patch_ani_helpers] WARN: $NINJA_FILE not found — skipping (gn gen not run yet?)" >&2
-    exit 0
+    echo "[patch_ani_helpers] ERROR: $NINJA_FILE not found — skipping (gn gen not run yet?)" >&2; exit 1
 fi
 
 LINE=$(grep -nE "^build arkcompiler/runtime_core/libani_helpers\.z\.so " "$NINJA_FILE" 2>/dev/null | head -1 | cut -d: -f1)

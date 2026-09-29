@@ -97,3 +97,53 @@ fn white_window_offline() {
 fn ability_stage_offline() {
     run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_ability_stage.py"]);
 }
+
+#[test]
+fn board_parity_offline() {
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-board-parity", "-p", "test_*.py"]);
+}
+
+#[test]
+fn board_parity_live_evidence() {
+    run(&["benchmark/2026-09-29-board-parity/verify_live.py"]);
+}
+
+#[test]
+fn b10_jni_matrix_known_answers() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_static.py", "StaticTests.test_jni_matrix_known_answers"]);
+}
+
+#[test]
+fn b10_jni_gate_blocks_new_missing() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_static.py", "StaticTests.test_jni_gate_blocks_new_missing"]);
+}
+
+#[test]
+fn b10_unknown_marked_not_guessed() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_static.py", "StaticTests.test_unknown_marked_not_guessed"]);
+}
+
+#[test]
+fn b10_service_matrix_known_gaps() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_static.py", "StaticTests.test_service_matrix_known_gaps"]);
+}
+
+#[test]
+fn b10_prediction_backtest() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_static.py", "StaticTests.test_prediction_backtest"]);
+}
+
+#[test]
+fn b10_build_silent_skip_fails() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_static.py", "StaticTests.test_build_silent_skip_fails"]);
+}
+
+#[test]
+fn b10_startup_reachability() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_static.py", "StaticTests.test_startup_reachability"]);
+}
+
+#[test]
+fn b10_typeface_exception_is_candidate() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_static.py", "StaticTests.test_typeface_exception_is_candidate"]);
+}

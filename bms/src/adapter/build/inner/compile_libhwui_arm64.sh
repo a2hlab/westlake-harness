@@ -964,7 +964,7 @@ compile_files() {
         fi
 
         if [ ! -f "$full_path" ]; then
-            echo "NOT FOUND"; fl=$((fl+1)); continue
+            echo "ERROR: required source missing: $full_path" >&2; exit 1
         fi
 
         # A full-file adapter override lives outside the AOSP source
@@ -995,7 +995,7 @@ compile_native_files() {
         src=$(echo "$src" | xargs)  # trim
         outname=$(echo "$outname" | xargs)
         [ -z "$src" ] && continue
-        [ ! -f "$src" ] && { echo "  $src ... NOT FOUND"; fl=$((fl+1)); continue; }
+        [ -f "$src" ] || { echo "ERROR: required source missing: $src" >&2; exit 1; }
         echo -n "  $(basename $src) ... "
         $CXX $CB $INC -c "$src" -o "$OBJ/$outname" 2>"$LOG/$outname.err"
         if [ $? -eq 0 ]; then
@@ -1319,7 +1319,7 @@ phase2c() {
         echo "  verify shim coverage against libhwui .o UND set ..."
         bash "$SCRIPT_DIR/check_skia_rtti_coverage.sh" || die "phase 2c coverage check failed — Sk* class list drift, rerun discover_skia_rtti_syms.sh"
     else
-        log_warn "  check_skia_rtti_coverage.sh missing — skipping coverage check"
+        printf '%s\n' "ERROR:   $SCRIPT_DIR/check_skia_rtti_coverage.sh missing"; exit 1
     fi
 }
 
@@ -1421,7 +1421,7 @@ phase4() {
 
     local WHITELIST=$SCRIPT_DIR/libhwui_und_whitelist_arm64.txt
     if [ ! -f "$WHITELIST" ]; then
-        log_warn "  UND whitelist missing: $WHITELIST — skipping audit (treat as soft fail)"
+        printf '%s\n' "ERROR:   UND whitelist missing: $WHITELIST"; exit 1
         log_info "  to seed it: nm -D /path/to/known-good/libhwui.so | grep ' U ' | awk '{print \$2}' | sort -u > $WHITELIST"
         return 0
     fi

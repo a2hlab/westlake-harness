@@ -90,3 +90,5 @@
 - BMS启动A/B采证：同boot和runtime SHA，先核BMS UID及精确图标；点击前`hilog -r`并连续采日志，板端约100–220ms轮询UID进程至少15s，配合AppSpawnChild/返回码/子退出日志。`success pid`后仍须看result；hook31沙箱初始化失败可有PID、exit0且无fault文件，末时刻无PID不能判从未fork。复现器`prepare_sandbox`是bm install之外的必要目录/UID/mode/label准备，批量部署必须显式核对；#24未执行补目录干预。
 
 - B5 JAR 最小覆盖（2026-09-28）：先锁板并核 baseline SHA；保留原 JAR，只 bind-mount 新 JAR，分别核 shell 与 AppSpawnX /proc/PID/root 中 SHA，子进程新增日志证活。回滚仅卸最上层该 JAR mount 并核 baseline SHA；须核 boot/PID，不能跨重启照抄 PID。5ea B5 临时覆盖 SHA250958dc… 留存，负控包已卸载；具体路径、回滚与原始证据见 `benchmark/2026-09-28-bms-route-deploy/alias-entry/README.md`。
+
+- **BMS 子进程角色取证（#64）**：toybox `ps -A -o PID,PPID,NAME` 的 NAME 可能继承 appspawn-x；不要据此认定 HelloWorld 不在。用 `/proc/PID/stat` 的 comm（HelloWorld 截为 `com.example.hel`）、PPID 对已知父进程、maps 中完整 `com.example.helloworld/android/base.apk` 三者联合归属；保留PID starttime与maps前后读数。采集器把文件名标 appspawn 不影响原始maps，可在汇总层纠正角色并保留original_role。见 `benchmark/2026-09-29-board-parity/summarize.py`。

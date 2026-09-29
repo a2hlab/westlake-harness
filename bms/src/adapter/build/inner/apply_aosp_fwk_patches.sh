@@ -40,7 +40,7 @@ apply_aosp_fwk_patches() {
     for rel in "${A3_PATCHES[@]}"; do
         patch_file="$ADAPTER_ROOT/aosp_patches/$rel"
         if [ ! -f "$patch_file" ]; then
-            log_warn "A3 SKIP — patch missing: $rel"
+            printf '%s\n' "ERROR: A3 SKIP — patch missing: $rel"; exit 1
             A3_MISSING=$((A3_MISSING+1))
             continue
         fi

@@ -1,0 +1,21 @@
+SOURCE /Users/zhaoyue/orca/workspaces/westlake-harness-walls/benchmark/2026-09-29-westlake-port/README.md
+23: ## Evidence (board run, screenshots are ground truth)
+24: 
+25: - Board `5cd1e3dd00000000000000000923012c`, generation
+26:   `6cb40cd610…b9cddb0` (#66, deployed `active_verified`; single route ART `59e1bb45`,
+27:   route `openjdkjvm` `8b462862`, bridge `84695d62`, provider `3aa5d169`, JAR `250958dc`).
+28: - Overlay: r7b `c432d987` (baseline = the generation's own JAR `250958dc`), one stacked
+29:   bind-mount layer; rollback unmounts only that layer.
+30: - Controls run `b8r7b-ctl-20260929T135518`, apps run `b8r7b-apps-20260929T135720`.
+31: - Per-item marker counts (`results.json:effective`): item 4 (nativeLibraryDir) 3 apps;
+32:   items 6/7 (LocalServiceBinders: appops/uimode/locale/account/alarm) and item 15
+33:   (CompatChangeTable) 16 processes each (14 apps + 2 controls); **items 1/2/3 zero** — built
+34:   but never triggered (see rule above).
+35: - No regression: HelloWorld and ZigZag both fully lit with the overlay mounted
+36:   (`runs/…/helloworld/final.jpeg`, `runs/…/zigzag/final.jpeg`), live pids at t+20.
+37: 
+38: All 14 apps now cross `bindApplication` and reach `ScheduleLaunchAbility` + first frame
+39: (`nativeQueueBuffer`), then crash in the activity's `onCreate`. Visual verdict from the
+40: final screenshots: **0/14 lit** (each falls back to the launcher). The walls collapsed
+41: from scattered bind-time failures into five clean `onCreate` classes:
+42: 

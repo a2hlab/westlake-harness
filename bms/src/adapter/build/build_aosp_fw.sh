@@ -196,7 +196,7 @@ if [ "${NO_APPLY:-0}" = "1" ]; then
 elif [ "$NEEDS_AOSP_FW" = "1" ]; then
     log_info "Phase 0: apply AOSP framework L5 reflection patches (apply_aosp_fwk_patches)"
     source "$SCRIPT_DIR/inner/apply_aosp_fwk_patches.sh"
-    apply_aosp_fwk_patches || log_warn "Phase 0: some L5 patches failed (see above) — framework.jar adapter injection may be missing"
+    apply_aosp_fwk_patches || { log_error "Phase 0: required L5 patches failed (see missing paths above)"; exit 1; }
 fi
 
 if [ "$NEEDS_AOSP_FW" = "1" ]; then

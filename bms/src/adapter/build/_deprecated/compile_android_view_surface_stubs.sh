@@ -111,7 +111,7 @@ rm -f $OUT_OBJ/android_view_surface_stubs.o
 RT_OBJ_DIR=/tmp/cc100/android_runtime
 if [ ! -d "$RT_OBJ_DIR" ] || [ -z "$(ls $RT_OBJ_DIR/*.o 2>/dev/null)" ]; then
     echo ""
-    echo "WARN: $RT_OBJ_DIR not populated — libandroid_runtime.so NOT re-linked."
+    echo "ERROR: $RT_OBJ_DIR not populated — libandroid_runtime.so NOT re-linked."; exit 1
     echo "      Run cross_compile_arm32.sh to regenerate the .o cache."
     exit 0
 fi

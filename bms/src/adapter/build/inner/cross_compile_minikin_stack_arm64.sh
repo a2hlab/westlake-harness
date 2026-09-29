@@ -273,7 +273,7 @@ EOF
     for dir in common i18n; do
         ok=0; fl=0
         for s in $ICU/$dir/*.cpp; do
-            [ -f "$s" ] || continue
+            [ -f "$s" ] || { echo "ERROR: required source missing: $s" >&2; exit 1; }
             # 2026-04-16: number_longnames.cpp now compiles with abs in compat header
             case "$(basename $s)" in
                 "") continue ;;

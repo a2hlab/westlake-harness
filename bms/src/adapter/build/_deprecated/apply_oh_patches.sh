@@ -61,12 +61,12 @@ apply_build_patches() {
         local full_patch="$SCRIPT_DIR/oh_build_patches/$patch_file"
 
         if [ ! -f "$full_patch" ]; then
-            log_warn "Patch file not found: $full_patch - skipping"
+            printf '%s\n' "ERROR: Patch file not found: $full_patch"; exit 1
             continue
         fi
 
         if [ ! -f "$full_target" ]; then
-            log_warn "Target file not found: $full_target - skipping"
+            printf '%s\n' "ERROR: Target file not found: $full_target"; exit 1
             continue
         fi
 
@@ -137,7 +137,7 @@ apply_functional_patches() {
         local target="$OH_ROOT/$oh_base/$file_rel"
 
         if [ ! -f "$source" ]; then
-            log_warn "Source file not found: $source - skipping"
+            printf '%s\n' "ERROR: Source file not found: $source"; exit 1
             continue
         fi
 
@@ -155,7 +155,7 @@ apply_functional_patches() {
         local oh_base="${OH_FUNC_PATCH_DIRS[$component_key]}"
 
         if [ ! -f "$patch_file" ]; then
-            log_warn "Patch file not found: $patch_file - skipping"
+            printf '%s\n' "ERROR: Patch file not found: $patch_file"; exit 1
             continue
         fi
 
@@ -165,7 +165,7 @@ apply_functional_patches() {
         local target="$OH_ROOT/$oh_base/$file_rel"
 
         if [ ! -f "$target" ]; then
-            log_warn "Target file not found: $target - skipping"
+            printf '%s\n' "ERROR: Target file not found: $target"; exit 1
             continue
         fi
 

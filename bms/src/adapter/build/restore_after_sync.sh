@@ -215,7 +215,7 @@ if [ -d "$PRODUCT_SRC" ]; then
     done
     log_ok "A1 done"
 else
-    log_warn "A1 skipped — $PRODUCT_SRC not found"
+    printf '%s\n' "ERROR: A1 skipped — $PRODUCT_SRC not found"; exit 1
 fi
 
 # ---- A2. AOSP build-tree setup (product config + build_patches + bp-disable + CTS stubs) ----
@@ -223,10 +223,10 @@ fi
 # 构建树准备,非单纯 patch 应用)。内部仍含 build_patches 应用(已自带 reverse-check 幂等)。
 log_info "A2. Setup AOSP build tree via setup_aosp_build_tree.sh"
 if [ -f "$SCRIPT_DIR/inner/setup_aosp_build_tree.sh" ]; then
-    run "bash \"$SCRIPT_DIR/inner/setup_aosp_build_tree.sh\" --aosp-root=\"$AOSP_ROOT\" || true"
+    run "bash \"$SCRIPT_DIR/inner/setup_aosp_build_tree.sh\" --aosp-root=\"$AOSP_ROOT\""
     log_ok "A2 done (setup_aosp_build_tree.sh: product/build_patches/bp-disable/cts)"
 else
-    log_warn "A2 skipped — setup_aosp_build_tree.sh not found"
+    printf '%s\n' "ERROR: A2 skipped — $SCRIPT_DIR/inner/setup_aosp_build_tree.sh not found"; exit 1
 fi
 
 # ---- A2b. Apply Phase 1 (2026-04-28) libandroidfw modern-API patches ----
@@ -284,7 +284,7 @@ if [ -f "$ADAPTER_ROOT/aosp_patches/build_patches/install_app_spawn_x_init.sh" ]
     run "ADAPTER_ROOT=\"$ADAPTER_ROOT\" AOSP_ROOT=\"$AOSP_ROOT\" bash \"$ADAPTER_ROOT/aosp_patches/build_patches/install_app_spawn_x_init.sh\""
     log_ok "A3b done"
 else
-    log_warn "A3b skipped — install_app_spawn_x_init.sh not found"
+    printf '%s\n' "ERROR: A3b skipped — $ADAPTER_ROOT/aosp_patches/build_patches/install_app_spawn_x_init.sh not found"; exit 1
 fi
 
 # ---- A3c. Sync local PackageManagerAdapter.java to AOSP oh_adapter_framework ----
@@ -297,7 +297,7 @@ if [ -f "$PMA_SRC" ] && [ -d "$(dirname "$PMA_DST")" ]; then
     run "cp \"$PMA_SRC\" \"$PMA_DST\""
     log_ok "A3c done"
 else
-    log_warn "A3c skipped — source or destination missing"
+    printf '%s\n' "ERROR: A3c skipped — source or destination missing: $PMA_SRC -> $PMA_DST"; exit 1
 fi
 
 # ---- A3c2. Cross-compile ARM32 core AOSP native stack (21 .so) ----
@@ -316,7 +316,7 @@ elif [ -f "$SCRIPT_DIR/inner/cross_compile_arm32.sh" ]; then
     run "bash "$SCRIPT_DIR/inner/cross_compile_arm32.sh""
     log_ok "A3c2 done"
 else
-    log_warn "A3c2 skipped — cross_compile_arm32.sh not found"
+    printf '%s\n' "ERROR: A3c2 skipped — $SCRIPT_DIR/inner/cross_compile_arm32.sh not found"; exit 1
 fi
 
 # ---- A3d. Fetch minikin/harfbuzz_ng/freetype source trees (gap P10.C.full) ----
@@ -329,7 +329,7 @@ if [ -f "$ADAPTER_ROOT/aosp_patches/build_patches/fetch_minikin_deps.sh" ]; then
     run "AOSP_ROOT=\"$AOSP_ROOT\" bash \"$ADAPTER_ROOT/aosp_patches/build_patches/fetch_minikin_deps.sh\""
     log_ok "A3d done"
 else
-    log_warn "A3d skipped — fetch_minikin_deps.sh not found"
+    printf '%s\n' "ERROR: A3d skipped — $ADAPTER_ROOT/aosp_patches/build_patches/fetch_minikin_deps.sh not found"; exit 1
 fi
 
 # ---- A3e. Cross-compile minikin stack (libft2/libicuuc/libicui18n/libharfbuzz_ng/libminikin/libandroidfw) ----
@@ -343,7 +343,7 @@ elif [ -f "$SCRIPT_DIR/inner/cross_compile_minikin_stack.sh" ]; then
     run "bash \"$SCRIPT_DIR/inner/cross_compile_minikin_stack.sh\""
     log_ok "A3e done"
 else
-    log_warn "A3e skipped — cross_compile_minikin_stack.sh not found"
+    printf '%s\n' "ERROR: A3e skipped — $SCRIPT_DIR/inner/cross_compile_minikin_stack.sh not found"; exit 1
 fi
 
 # ---- A4: (removed 2026-04-11) per-file hwui patches ----
@@ -388,7 +388,7 @@ for stub in "${!HWUI_STUB_SRC[@]}"; do
             run "cp -v \"$src\" \"$HWUI_TARGET_DIR/$stub\""
             log_ok "A8: deployed $stub"
         else
-            log_warn "A8: target dir $HWUI_TARGET_DIR not found, $stub stays at source location only"
+            printf '%s\n' "ERROR: A8: target dir $HWUI_TARGET_DIR not found, $stub stays at source location only"; exit 1
         fi
     fi
 done
@@ -454,7 +454,7 @@ if [ -f "$BUILD_SH_PATCH" ] && [ -f "$OH_ROOT/build.sh" ]; then
     fi
     cd "$ADAPTER_ROOT"
 else
-    log_warn "B0 skipped — patch or ~/oh/build.sh not found"
+    printf '%s\n' "ERROR: B0 skipped — patch/build script missing: $BUILD_SH_PATCH $OH_ROOT/build.sh"; exit 1
 fi
 
 # ---- B1+B2+B3 REMOVED 2026-05-21 Phase 7 ----
@@ -556,7 +556,7 @@ log_phase "Phase C — Cross-cutting fixes"
 # ---- C1. skia_compat_headers/ already lives at $ADAPTER_ROOT/aosp_patches/libs/hwui/skia_compat_headers ----
 log_info "C1. skia_compat_headers/ — staying at $ADAPTER_ROOT/aosp_patches/libs/hwui/skia_compat_headers (referenced by hwui compile scripts via -I)"
 if [ ! -d "$ADAPTER_ROOT/aosp_patches/libs/hwui/skia_compat_headers" ]; then
-    log_warn "C1: skia_compat_headers/ not found — hwui compile will fail"
+    printf '%s\n' "ERROR: C1: $ADAPTER_ROOT/aosp_patches/libs/hwui/skia_compat_headers not found — hwui compile will fail"; exit 1
 fi
 
 # ---- C1.1 (2026-05-02 G2.14p): assert NO stub minikin/ directory ----
@@ -600,13 +600,13 @@ SKIA_RTTI_SHIM_SRC="$ADAPTER_ROOT/framework/surface/jni/skia_rtti_shim"
 SKIA_RTTI_BUILD="$SCRIPT_DIR/compile_skia_rtti_shim.sh"
 SKIA_RTTI_OUT="$ADAPTER_ROOT/out/skia-rtti-shim/liboh_skia_rtti_shim.so"
 if [ ! -d "$SKIA_RTTI_SHIM_SRC" ]; then
-    log_warn "C3 skipped — shim source dir missing: $SKIA_RTTI_SHIM_SRC"
+    printf '%s\n' "ERROR: C3 skipped — shim source dir missing: $SKIA_RTTI_SHIM_SRC"; exit 1
 elif [ ! -f "$SKIA_RTTI_BUILD" ]; then
-    log_warn "C3 skipped — build script missing: $SKIA_RTTI_BUILD"
+    printf '%s\n' "ERROR: C3 skipped — build script missing: $SKIA_RTTI_BUILD"; exit 1
 else
     for f in skia_rtti_shim.cpp skia_class_list.inc skia_rtti_shim.ver; do
         if [ ! -f "$SKIA_RTTI_SHIM_SRC/$f" ]; then
-            log_warn "C3: missing $SKIA_RTTI_SHIM_SRC/$f — shim build may fail"
+            printf '%s\n' "ERROR: C3: missing $SKIA_RTTI_SHIM_SRC/$f — shim build may fail"; exit 1
         fi
     done
     run "bash \"$SKIA_RTTI_BUILD\""
@@ -643,28 +643,28 @@ C4_FILES=(
 )
 for f in "${C4_FILES[@]}"; do
     if [ ! -f "$f" ]; then
-        log_warn "C4: missing $f"
+        printf '%s\n' "ERROR: C4: missing $f"; exit 1
         C4_MISSING=$((C4_MISSING + 1))
     fi
 done
 # Verify cross_compile_arm32.sh has the libcxx_array_aosp -isystem flag and
 # bionic_compat srcs include liblog_android_supplement.cpp.
 if ! grep -q "libcxx_array_aosp" "$ADAPTER_ROOT/build/inner/cross_compile_arm32.sh" 2>/dev/null; then
-    log_warn "C4: cross_compile_arm32.sh missing '-isystem libcxx_array_aosp' flag"
+    printf '%s\n' "ERROR: C4: cross_compile_arm32.sh missing '-isystem libcxx_array_aosp' flag"; exit 1
     C4_MISSING=$((C4_MISSING + 1))
 fi
 if ! grep -q "liblog_android_supplement" "$ADAPTER_ROOT/build/inner/cross_compile_arm32.sh" 2>/dev/null; then
-    log_warn "C4: cross_compile_arm32.sh missing liblog_android_supplement.cpp in bionic_compat srcs"
+    printf '%s\n' "ERROR: C4: cross_compile_arm32.sh missing liblog_android_supplement.cpp in bionic_compat srcs"; exit 1
     C4_MISSING=$((C4_MISSING + 1))
 fi
 if ! grep -q "oh_skia_ahb_shim" "$ADAPTER_ROOT/build/compile_hwui_shims.sh" 2>/dev/null; then
-    log_warn "C4: compile_hwui_shims.sh missing oh_skia_ahb_shim step"
+    printf '%s\n' "ERROR: C4: compile_hwui_shims.sh missing oh_skia_ahb_shim step"; exit 1
     C4_MISSING=$((C4_MISSING + 1))
 fi
 if [ "$C4_MISSING" -eq 0 ]; then
     log_ok "C4 done: all 2026-04-17 Phase 2/3 assets present"
 else
-    log_warn "C4: $C4_MISSING asset(s) missing — build will fail until restored"
+    printf '%s\n' "ERROR: C4: $C4_MISSING asset(s) missing — build will fail until restored"; exit 1
 fi
 
 # ============================================================================
@@ -715,5 +715,5 @@ if [ -f "$ASM_SRC" ]; then
     cp "$ASM_SRC" "$ASM_DST"
     echo "  Copied from $ASM_SRC (ARM32, POINTER_SIZE=4)"
 else
-    echo "  WARNING: $ASM_SRC not found, asm_defines.h NOT restored"
+    echo "  ERROR: $ASM_SRC not found, asm_defines.h NOT restored"; exit 1
 fi

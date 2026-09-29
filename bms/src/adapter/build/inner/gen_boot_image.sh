@@ -191,8 +191,7 @@ if [ -z "$CUSTOM_JARS" ]; then
     if [ -f "$ADAPTER_OUT/oh-adapter-framework.jar" ]; then
         JARS="$JARS oh-adapter-framework.jar"
     else
-        echo "WARNING: oh-adapter-framework.jar not found in $ADAPTER_OUT/"
-        echo "         L5 reflection chain will FAIL on device. See gap 0.1."
+        echo "ERROR: oh-adapter-framework.jar not found in $ADAPTER_OUT/"; exit 1
     fi
 else
     JARS=$CUSTOM_JARS

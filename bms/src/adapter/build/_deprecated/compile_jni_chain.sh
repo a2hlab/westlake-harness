@@ -42,7 +42,7 @@ compile_filelist() {
     local objdir="$TMP/$name.objs"
     mkdir -p "$objdir"
     for src in "$@"; do
-        [ -f "$src" ] || { echo "  miss: $src" >> "$LOG"; continue; }
+        [ -f "$src" ] || { echo "ERROR: required source missing: $src" >&2; exit 1; }
         total=$((total+1))
         local b="$(basename "$src")"
         local stem="${b%.*}"

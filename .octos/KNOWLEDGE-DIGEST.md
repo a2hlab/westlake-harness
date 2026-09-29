@@ -365,3 +365,7 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **2026-09-29 #61 白启动窗离线核验**：#48 的 9 个 15s 存活 PID 全无 ScheduleLaunchAbility/VSync 首帧链；7 个 bind 明确失败(4 Startup ProviderInfo、1 FileProvider metadata、2 namespace 目录)，stk/mindustry bind OK；跨后续 app 的全板 hilog 按 PID+UID+包名可归属 8 个约 30s 后 Add Ability Stage TimeOut（mindustry 未捕获），故需并查 OH stage 完成握手与 Android bind，不能把存活/白窗统归 VSync 卡死；原始行号、哈希及 R2 边界见 `benchmark/2026-09-29-white-window/README.md`。
 
 - **2026-09-29 #62 AbilityStage 握手与代际**：B5 `250958dc` 的 bind 异步到主线程，异常只跳过 `sBindAppDone=true`，路径里没有 AddAbilityStageDone；当前 native 源码直接在 OH IPC 回调回应 stage/accept-want。#48 九 PID 的 49/49 JNI 地址均匹配 `7db99e1b` 布局(两个回调只有 DEBUG 日志、无完成 IPC)，HelloWorld 50/50 匹配含回应的 `84695d62`；布局归属不冒充历史整文件哈希。修复应成组恢复 native stage+accept 回应并核 child 映射代际，勿在 Java finally 补 ACK；证据/行号/R2见 `benchmark/2026-09-29-white-window/ABILITY-STAGE.md`。
+
+- **2026-09-29 #64 盘点前置规则**：HelloWorld 复现器同时接受 PR03/ZigZag/Boat 多套 profile（`bms/.agents/skills/reproduce-helloworld/scripts/reproduce.sh:180–200`），`check=PASS` 不代表三板同代；磁盘路径哈希须与 maps 的 dev/inode 对上才归为活进程 backing file，B6/B7 过渡态不作 B4 统一快照。采集/判定规则见 `benchmark/2026-09-29-board-parity/`，当前新三板证据仍待外环协调采集。
+
+- **2026-09-29 #64 三板实采纠偏**：14:46 CST 三板158路径=153同/5异，active6cb目录29件全同；5cd JAR实为r8b `d5000c4e`（非口述r7b `c432d987`），installer双件`1ebf78ab`对其他板`675536e8`，余2异在61b未映射的旧74e6目录。`ps NAME=appspawn-x` 可是HelloWorld子进程，须结合stat comm+完整APK maps+PPID；5ea29584/61b14337已据此纠正角色。报告 `benchmark/2026-09-29-board-parity/README.md`；5cd HelloWorld补采待解锁，不能拿磁盘一致代替子进程证据。

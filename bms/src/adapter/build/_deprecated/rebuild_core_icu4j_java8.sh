@@ -64,7 +64,7 @@ for c in CacheValue CacheValue\$1 CacheValue\$NullValue CacheValue\$Strength Cac
     SRC="$WORK/java8_classes/android/icu/impl/${c}.class"
     DST="$WORK/merged/android/icu/impl/${c}.class"
     if [ ! -f "$SRC" ]; then
-        echo "  WARN: $SRC missing"
+        echo "  ERROR: $SRC missing"; exit 1
         continue
     fi
     cp "$SRC" "$DST"

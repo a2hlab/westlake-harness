@@ -30,9 +30,7 @@ if [ ! -f "$SRC" ]; then
 fi
 
 if [ ! -d "$AOSP_ROOT/device/adapter/oh_adapter_framework" ]; then
-    echo "WARN: AOSP oh_adapter_framework dir not found: $AOSP_ROOT/device/adapter/oh_adapter_framework"
-    echo "      (restore_after_sync.sh A1 should have created it — skipping for now)"
-    exit 0
+    echo "ERROR: AOSP oh_adapter_framework dir not found: $AOSP_ROOT/device/adapter/oh_adapter_framework"; exit 1
 fi
 
 mkdir -p "$DST_DIR"

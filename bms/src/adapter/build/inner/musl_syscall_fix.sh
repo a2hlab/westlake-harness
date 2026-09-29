@@ -27,8 +27,7 @@ OH_OUT="${1:?Usage: musl_syscall_fix.sh <oh_output_dir>}"
 SYSCALL_H=$(find "$OH_OUT/obj/third_party/musl" -path "*/include/bits/syscall.h" 2>/dev/null | head -1)
 
 if [ -z "$SYSCALL_H" ]; then
-    echo "[musl_fix] WARNING: syscall.h not found in $OH_OUT - GN gen may not have run yet"
-    exit 0
+    echo "[musl_fix] ERROR: syscall.h not found in $OH_OUT - GN gen may not have run yet"; exit 1
 fi
 
 # Check if SYS_ aliases already exist

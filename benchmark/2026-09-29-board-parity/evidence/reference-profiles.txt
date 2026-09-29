@@ -1,0 +1,54 @@
+SOURCE /Users/zhaoyue/orca/workspaces/westlake-harness-bms/bms/.agents/skills/reproduce-helloworld/scripts/reproduce.sh
+23: GENERATION="74e6f75976087d7890088b29c08482f17573a588fa5857cb6ca39264838ce16d"
+24: PROVIDER_TARGET="/system/lib64/westlake/route-a/$GENERATION/libwestlake_android_runtime_provider.so"
+25: 
+26: RESTORE_DRIVER_SHA="dc98e77e1fc1f54d827d5b5b80badc43752e659bbcd2778b961b2f5d8d01e61b"
+27: RECOVERY_SCRIPT_SHA="8dde8c4a19926d87a0fb6ef1833a66a0fbdd42d01680188df883838c2c91965b"
+28: RECOVERY_CFG_SHA="e2d68c9f921fad83db1a2593cf32eebf3306ed4538b2abaa4117cdb417b8581a"
+29: 
+30: PR03_APPSPAWN_SHA="43d5a319fa43e30fb712c2e39d29ba55e4bf82d171e97af1e6da9fcacc28920c"
+31: PR03_CHILD_SHA="66afb06c10db5e986d294a465cf787f4be3302ce6be3a17d49309b368b1ec090"
+32: PR03_PROVIDER_SHA="6787ea7d3c4ec0a382621360e3434885b0167446e22217a439b8d17745e54630"
+33: PR03_RUNTIME_SHA="9ccf64f8d1f6e1748665057273eaa4c2770098934d39afa160f2c6b4c18b06db"
+34: PR03_ADAPTER_SHA="7db99e1b760cf843b1a99db1382a3299f189c8cbca786ec411b7c35a2af6ffb9"
+35: PR03_JAR_SHA="06141543bec26c5036931d8d2d71b0efaa45d5ffd73434557d165cd42672be0d"
+36: 
+37: ZIGZAG_APPSPAWN_SHA="1f6cf53be7b3225a6d0a2b5f66278c32f5d9f5f99a0f56ece3f57a630db4d908"
+38: ZIGZAG_CHILD_SHA="0976dee89c0464cd6aeaf7d4c3c4afd1466926b7d69dc8e01d4910f92bf12e40"
+39: ZIGZAG_PROVIDER_SHA="80c9aee0f39b860b1ce8d72af106e4fde49c0dbf41ef1b426c1e3103086d9b2f"
+40: ZIGZAG_RUNTIME_SHA="$PR03_RUNTIME_SHA"
+41: ZIGZAG_ADAPTER_SHA="84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a"
+42: ZIGZAG_JAR_SHA="9161b50756d3ffdfb2a8908ea7ec13f908214688321b2785365977ac40b28dea"
+169: 
+170: detect_runtime_profile()
+171: {
+172:     RUNTIME_APPSPAWN_SHA="$(device_hash /system/bin/appspawn-x)"
+173:     RUNTIME_CHILD_SHA="$(device_hash /system/lib64/appspawn/libwestlake_android_child.z.so)"
+174:     RUNTIME_PROVIDER_SHA="$(device_hash "$PROVIDER_TARGET")"
+175:     RUNTIME_RUNTIME_SHA="$(device_hash /system/android/lib64/liboh_android_runtime.so)"
+176:     RUNTIME_ADAPTER_SHA="$(device_hash /system/android/lib64/liboh_adapter_bridge.so)"
+177:     RUNTIME_JAR_SHA="$(device_hash /system/android/framework/oh-adapter-runtime.jar)"
+178:     RUNTIME_PROFILE=UNKNOWN
+179: 
+180:     if [ "$RUNTIME_APPSPAWN_SHA" = "$PR03_APPSPAWN_SHA" ] \
+181:         && [ "$RUNTIME_CHILD_SHA" = "$PR03_CHILD_SHA" ] \
+182:         && [ "$RUNTIME_PROVIDER_SHA" = "$PR03_PROVIDER_SHA" ] \
+183:         && [ "$RUNTIME_RUNTIME_SHA" = "$PR03_RUNTIME_SHA" ] \
+184:         && [ "$RUNTIME_ADAPTER_SHA" = "$PR03_ADAPTER_SHA" ] \
+185:         && [ "$RUNTIME_JAR_SHA" = "$PR03_JAR_SHA" ]; then
+186:         RUNTIME_PROFILE=pr03-touch
+187:     elif [ "$RUNTIME_APPSPAWN_SHA" = "$ZIGZAG_APPSPAWN_SHA" ] \
+188:         && [ "$RUNTIME_CHILD_SHA" = "$ZIGZAG_CHILD_SHA" ] \
+189:         && [ "$RUNTIME_PROVIDER_SHA" = "$ZIGZAG_PROVIDER_SHA" ] \
+190:         && [ "$RUNTIME_RUNTIME_SHA" = "$ZIGZAG_RUNTIME_SHA" ] \
+191:         && [ "$RUNTIME_ADAPTER_SHA" = "$ZIGZAG_ADAPTER_SHA" ] \
+192:         && [ "$RUNTIME_JAR_SHA" = "$ZIGZAG_JAR_SHA" ]; then
+193:         RUNTIME_PROFILE=zigzag-accepted-superset
+194:     elif [ "$RUNTIME_APPSPAWN_SHA" = "$BOAT_APPSPAWN_SHA" ] \
+195:         && [ "$RUNTIME_CHILD_SHA" = "$BOAT_CHILD_SHA" ] \
+196:         && [ "$RUNTIME_PROVIDER_SHA" = "$BOAT_PROVIDER_SHA" ] \
+197:         && [ "$RUNTIME_RUNTIME_SHA" = "$BOAT_RUNTIME_SHA" ] \
+198:         && [ "$RUNTIME_ADAPTER_SHA" = "$BOAT_ADAPTER_SHA" ] \
+199:         && [ "$RUNTIME_JAR_SHA" = "$BOAT_JAR_SHA" ]; then
+200:         RUNTIME_PROFILE=boat-accepted-superset
+201:     fi

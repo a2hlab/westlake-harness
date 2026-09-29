@@ -92,7 +92,7 @@ ls "$SRC_STAGING" | wc -l | xargs echo "  Total staged: "
 # Verify shim dir
 if [ ! -d "$SHIM_DIR" ]; then
     echo ""
-    echo "[2/5] WARN: shim dir not found at $SHIM_DIR — first run will likely fail with"
+    echo "[2/5] ERROR: shim dir not found at $SHIM_DIR — first run will likely fail with"; exit 1
     echo "          missing-symbol errors; create stubs in $SHIM_DIR/ for missing"
     echo "          androidx.annotation.* / android.system.OsConstants / IConnectivityManager etc."
     mkdir -p "$SHIM_DIR"
