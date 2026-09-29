@@ -140,3 +140,9 @@ scripts/lab/deploy_generation.sh "$SERIAL" "$CANDIDATE" \
 
 The deployer verifies hashes/maps and restarts appspawn-x; no foundation restart
 or installer change is part of this experiment.
+
+## Per-board rebases
+
+[Three board packages and exact apply/rollback commands](board-packages/README.md)
+are prepared from the current boot-matched ledgers. No board writes; 5ea first,
+5cd/61b gated on its acceptance.
