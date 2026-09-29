@@ -1,0 +1,54 @@
+Source: bms/src/.work/b6-art14-recovery/aosp-restoration/art/dex2oat/dex2oat.cc
+SHA256: c84bbb1834c1491ecaa7a4711316944d685eb598597b264c9269a9b0961cdf85
+Lines 1574-1624:
+    ArrayRef<const DexFile* const> bcp_dex_files(runtime_->GetClassLinker()->GetBootClassPath());
+    if (IsBootImage() || IsBootImageExtension()) {
+      // Check boot class path dex files and, if compiling an extension, the images it depends on.
+      if ((IsBootImage() && bcp_dex_files.size() != dex_files.size()) ||
+          (IsBootImageExtension() && bcp_dex_files.size() <= dex_files.size())) {
+        LOG(ERROR) << "Unexpected number of boot class path dex files for boot image or extension, "
+            << bcp_dex_files.size() << (IsBootImage() ? " != " : " <= ") << dex_files.size();
+        return dex2oat::ReturnCode::kOther;
+      }
+      if (!std::equal(dex_files.begin(), dex_files.end(), bcp_dex_files.end() - dex_files.size())) {
+        LOG(ERROR) << "Boot class path dex files do not end with the compiled dex files.";
+        return dex2oat::ReturnCode::kOther;
+      }
+      size_t bcp_df_pos = 0u;
+      size_t bcp_df_end = bcp_dex_files.size();
+      for (const std::string& bcp_location : runtime_->GetBootClassPathLocations()) {
+        if (bcp_df_pos == bcp_df_end || bcp_dex_files[bcp_df_pos]->GetLocation() != bcp_location) {
+          LOG(ERROR) << "Missing dex file for boot class component " << bcp_location;
+          return dex2oat::ReturnCode::kOther;
+        }
+        CHECK(!DexFileLoader::IsMultiDexLocation(bcp_dex_files[bcp_df_pos]->GetLocation().c_str()));
+        ++bcp_df_pos;
+        while (bcp_df_pos != bcp_df_end &&
+            DexFileLoader::IsMultiDexLocation(bcp_dex_files[bcp_df_pos]->GetLocation().c_str())) {
+          ++bcp_df_pos;
+        }
+      }
+      if (bcp_df_pos != bcp_df_end) {
+        LOG(ERROR) << "Unexpected dex file in boot class path "
+            << bcp_dex_files[bcp_df_pos]->GetLocation();
+        return dex2oat::ReturnCode::kOther;
+      }
+      auto lacks_image = [](const DexFile* df) {
+        if (kIsDebugBuild && df->GetOatDexFile() != nullptr) {
+          const OatFile* oat_file = df->GetOatDexFile()->GetOatFile();
+          CHECK(oat_file != nullptr);
+          const auto& image_spaces = Runtime::Current()->GetHeap()->GetBootImageSpaces();
+          CHECK(std::any_of(image_spaces.begin(),
+                            image_spaces.end(),
+                            [=](const ImageSpace* space) {
+                              return oat_file == space->GetOatFile();
+                            }));
+        }
+        return df->GetOatDexFile() == nullptr;
+      };
+      if (std::any_of(bcp_dex_files.begin(), bcp_dex_files.end() - dex_files.size(), lacks_image)) {
+        LOG(ERROR) << "Missing required boot image(s) for boot image extension.";
+        return dex2oat::ReturnCode::kOther;
+      }
+    }
+
