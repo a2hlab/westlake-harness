@@ -1,0 +1,63 @@
+--- a/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
++++ b/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
+@@ -126,3 +125,0 @@
+-    void *app_bionic_compat_handle = NULL;
+-    pid_t current_pid = 0;
+-    int bionic_compat_mode = 0;
+@@ -150,5 +147 @@
+-        void *bionic_compat_handle;
+-
+-        current_pid = getpid();
+-        if (current_pid <= 0 || g_stock_host_parent_pid <= 0 ||
+-            !NamespaceNameOwnedByCurrentProcess(bridge_name, "bridge") ||
++        if (!NamespaceNameOwnedByCurrentProcess(bridge_name, "bridge") ||
+@@ -212,24 +204,0 @@
+-
+-        /*
+-         * dlns_inherit() only exposes objects that are already resident in
+-         * the inherited namespace; an allowed SONAME is not loaded by the
+-         * allowlist itself.  Keep bionic compatibility resident in the
+-         * bridge namespace before the app namespace inherits it so guest
+-         * OH musl removes an RTLD_LOCAL object's symbols after relocating its
+-         * own dependency group.  Keep the appspawn parent local, but promote
+-         * the narrow safe-compat provider in a forked app child so later
+-         * guest DSOs without a direct DT_NEEDED edge can resolve bionic libc
+-         * ABI symbols (including versioned android_set_abort_message@LIBC).
+-         * Fork makes the child's global symbol table private from the parent.
+-         * The handle intentionally has process lifetime, matching the
+-         * namespace bootstrap handle retained by the domain.
+-         */
+-        bionic_compat_mode = RTLD_NOW |
+-            (current_pid == g_stock_host_parent_pid ?
+-                RTLD_LOCAL : RTLD_GLOBAL);
+-        dlerror();
+-        bionic_compat_handle = dlopen_ns(
+-            bridge_namespace, "libbionic_compat.so", bionic_compat_mode);
+-        if (bionic_compat_handle == NULL) {
+-            return NamespaceResultFence(ENOENT);
+-        }
+@@ -256,24 +224,0 @@
+-        if (result != 0) {
+-            return NamespaceResultFence(result);
+-        }
+-        /*
+-         * Inheritance admits the already verified bridge object, but OH
+-         * musl does not place that object on the target namespace's future
+-         * relocation chain.  Reopen the exact inherited file in the app
+-         * namespace before any APK DSO is loaded.  The fstat identity match
+-         * returns the resident bridge object, while RTLD_GLOBAL in the forked
+-         * child keeps private compatibility entry points available to
+-         * rewritten guest imports.  Canonical libc names still follow OH
+-         * musl's process-global order.  The appspawn parent remains RTLD_LOCAL.
+-         */
+-        dlerror();
+-        app_bionic_compat_handle = dlopen_ns(
+-            app_namespace, "libbionic_compat.so",
+-            bionic_compat_mode);
+-        if (app_bionic_compat_handle == NULL) {
+-            return NamespaceResultFence(ENOENT);
+-        }
+-        if (g_inherit_android_runtime == NULL) {
+-            return NamespaceResultFence(ENOSYS);
+-        }
+-        result = g_inherit_android_runtime(app_namespace);

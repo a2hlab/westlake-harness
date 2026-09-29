@@ -1,0 +1,118 @@
+static WLASC_NOINLINE int StockCreateConfiguredNamespaces(
+    void *bridge_namespace_opaque, const char *bridge_name,
+    const char *bridge_search_paths, const char *bridge_permitted_paths,
+    const char *bridge_shared_sonames, const char *bridge_bootstrap_soname,
+    const WlpbHostOpsV1 *pthread_bridge_ops,
+    void **out_bridge_bootstrap_handle, void *app_namespace_opaque,
+    const char *app_name, const char *app_search_paths,
+    const char *app_permitted_paths)
+{
+    Dl_namespace *bridge_namespace =
+        (Dl_namespace *)bridge_namespace_opaque;
+    Dl_namespace *app_namespace = (Dl_namespace *)app_namespace_opaque;
+    void *bootstrap_handle = NULL;
+    int result;
+    const bool wants_bridge = bridge_namespace != NULL;
+
+    if (out_bridge_bootstrap_handle == NULL || app_namespace == NULL ||
+        !NamespaceNameOwnedByCurrentProcess(app_name, "app") ||
+        !NamespaceInputsPresent(app_search_paths, app_permitted_paths)) {
+        return NamespaceResultFence(EINVAL);
+    }
+    *out_bridge_bootstrap_handle = NULL;
+    if (wants_bridge != (bridge_name != NULL) ||
+        wants_bridge != (bridge_search_paths != NULL) ||
+        wants_bridge != (bridge_permitted_paths != NULL) ||
+        wants_bridge != (bridge_shared_sonames != NULL)) {
+        return NamespaceResultFence(EINVAL);
+    }
+    if (!wants_bridge &&
+        (bridge_bootstrap_soname != NULL || pthread_bridge_ops != NULL)) {
+        return NamespaceResultFence(EINVAL);
+    }
+
+    if (wants_bridge) {
+        if (!NamespaceNameOwnedByCurrentProcess(bridge_name, "bridge") ||
+            !NamespaceInputsPresent(bridge_search_paths,
+                                    bridge_permitted_paths) ||
+            bridge_shared_sonames[0] == '\0' ||
+            (bridge_bootstrap_soname != NULL &&
+             (bridge_bootstrap_soname[0] == '\0' ||
+              strchr(bridge_bootstrap_soname, '/') != NULL ||
+              pthread_bridge_ops == NULL))) {
+            return NamespaceResultFence(EINVAL);
+        }
+        dlns_init(bridge_namespace, bridge_name);
+        result = dlns_create2(bridge_namespace, bridge_search_paths,
+                              CREATE_INHERIT_DEFAULT);
+        if (result != 0) {
+            return NamespaceResultFence(result);
+        }
+        result = dlns_set_namespace_separated(bridge_namespace->name, true);
+        if (result != 0) {
+            return NamespaceResultFence(result);
+        }
+        result = dlns_set_namespace_permitted_paths(
+            bridge_namespace->name, bridge_permitted_paths);
+        if (result != 0) {
+            return NamespaceResultFence(result);
+        }
+        result = dlns_set_namespace_allowed_libs(
+            bridge_namespace->name, bridge_shared_sonames);
+        if (result != 0) {
+            return NamespaceResultFence(result);
+        }
+
+        if (bridge_bootstrap_soname != NULL) {
+            typedef int (*InstallBridgeOps)(const WlpbHostOpsV1 *ops);
+            InstallBridgeOps install = NULL;
+            void *symbol;
+
+            dlerror();
+            bootstrap_handle = dlopen_ns(
+                bridge_namespace, bridge_bootstrap_soname,
+                RTLD_NOW | RTLD_LOCAL);
+            if (bootstrap_handle == NULL) {
+                return NamespaceResultFence(ENOENT);
+            }
+            dlerror();
+            symbol = dlsym(bootstrap_handle, "WLPB_InstallHostOps");
+            if (symbol == NULL || dlerror() != NULL ||
+                sizeof(symbol) != sizeof(install)) {
+                (void)dlclose(bootstrap_handle);
+                return NamespaceResultFence(ENOEXEC);
+            }
+            (void)memcpy(&install, &symbol, sizeof(install));
+            result = install(pthread_bridge_ops);
+            if (result != 0) {
+                (void)dlclose(bootstrap_handle);
+                return NamespaceResultFence(result);
+            }
+            *out_bridge_bootstrap_handle = bootstrap_handle;
+        }
+    }
+
+    dlns_init(app_namespace, app_name);
+    result = dlns_create2(app_namespace, app_search_paths,
+                          LOCAL_NS_PREFERED);
+    if (result != 0) {
+        return NamespaceResultFence(result);
+    }
+    result = dlns_set_namespace_separated(app_namespace->name, true);
+    if (result != 0) {
+        return NamespaceResultFence(result);
+    }
+    result = dlns_set_namespace_permitted_paths(
+        app_namespace->name, app_permitted_paths);
+    if (result != 0) {
+        return NamespaceResultFence(result);
+    }
+    if (wants_bridge) {
+        result = dlns_inherit(app_namespace, bridge_namespace,
+                              bridge_shared_sonames);
+        if (result != 0) {
+            return NamespaceResultFence(result);
+        }
+    }
+    return NamespaceResultFence(0);
+}
