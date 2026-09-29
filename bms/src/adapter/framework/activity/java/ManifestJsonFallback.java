@@ -193,12 +193,21 @@ public final class ManifestJsonFallback {
         // an install at ensureBindApplication finds it null; by SLA it is set and the first window has
         // not been added yet. Idempotent. Runs before the ai.theme early-return so it always fires.
         try { WindowSessionProxy.install(); } catch (Throwable t) { System.err.println("[B8-WSP] " + t); }
-        if (ai == null || ai.theme != 0 || ai.name == null || ai.packageName == null) return;
+        if (ai == null || ai.name == null || ai.packageName == null) return;
         try {
+            // r17m: apply the manifest's authoritative activity theme even when ai.theme is already
+            // non-zero. The projected ActivityInfo can arrive with the APPLICATION theme instead of the
+            // activity's own android:theme (vlc org.videolan.vlc.gui.onboarding.OnboardingActivity got
+            // the app theme 0x7f1402f9, not its declared 0x7f1402ec, so ConstraintLayout could not
+            // resolve a ?attr/ the onboarding theme defines and setContentView crashed). activityTheme
+            // reads the manifest directly (activity's own theme, else the app theme), so overriding when
+            // it differs corrects the mis-projected theme without touching a correctly-set one.
             int theme = activityTheme(ai.packageName, ai.name);
-            if (theme != 0) {
+            if (theme != 0 && theme != ai.theme) {
+                int prev = ai.theme;
                 ai.theme = theme;
-                System.err.println("[B8-ATHEME] " + ai.name + " theme=0x" + Integer.toHexString(theme));
+                System.err.println("[B8-ATHEME] " + ai.name + " theme=0x" + Integer.toHexString(theme)
+                        + (prev != 0 ? " (was 0x" + Integer.toHexString(prev) + ")" : ""));
             }
         } catch (Throwable t) {
             System.err.println("[B8-ATHEME] activity theme lookup failed for " + ai.name + ": " + t);
