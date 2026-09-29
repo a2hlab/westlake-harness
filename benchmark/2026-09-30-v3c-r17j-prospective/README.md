@@ -22,7 +22,7 @@ The start time of the upcoming sweep was not supplied. Only launches **after thi
 | libapk_installer | `7048c7c50a828fc744b5f06e4e9ec50ac317a2272f33789249fc63e43a655a18` |
 | Installer behavior | Reinstall/grant actually effective; SelectLauncher active |
 | Batch behavior | Existing native-sidecar assembly enabled; no undeclared new validation exceptions |
-| Boards | 5cd first, 61b separately; never select each key's best board result |
+| Boards | Frozen: 5cd/61b. Authorized execution amendment adds 5ea; score each board separately. |
 
 [Profile](freezes/v2/profile.json) pins full identities. All 27 Java source files were read from `d50325c6` and checked against the r17j build receipt; the actual Mac JAR hash also matches. [Build receipt](freezes/v2/evidence/build-result-r17j.json). Native file hashes and ELF exports are preserved under [native inputs](freezes/v2/evidence/native-inputs.json). Export presence is static evidence, not proof of a live app's link graph or JNI binding.
 
@@ -62,16 +62,25 @@ Useful pinned source anchors: [B7BindFixes.java:145](freezes/v2/evidence/B7BindF
 
 ## Later backtest
 
-Copy [observation-template.json](observation-template.json), which contains 132 board/key slots with unknown outcomes. Fill only observed slots. For each, record exact APK, package/JAR/installer hashes, live-profile evidence, effective grant, actual launcher selection, timezone-qualified click time and the relevant screenshots/logs. Runtime fingerprint evidence must establish the **actual overlay**, not merely the manifest file on Mac. A changed native/JAR/batch behavioral profile requires a new forecast; do not retrofit v2.
+The [execution amendment](execution-amendment-5ea.json) adds 5ea because it alone has the authorized installer; it changes no frozen predictions or artifact expectations. The original [observation-template.json](observation-template.json) retains its 132 historical board/key slots. For this run, supply only 5ea observations with key, adjudicated outcome and evidence paths. For each, record exact APK, package/JAR/installer hashes, live-profile evidence, effective grant, actual launcher selection, timezone-qualified click time and the relevant screenshots/logs. Runtime fingerprint evidence must establish the **actual overlay**, not merely the manifest file on Mac. A changed native/JAR/batch behavioral profile requires a new forecast; do not retrofit v2.
 
 ```sh
 python3 benchmark/2026-09-30-v3c-r17j-prospective/test_forecast.py
 python3 benchmark/2026-09-30-v3c-r17j-prospective/score.py \
   --freeze benchmark/2026-09-30-v3c-r17j-prospective/freezes/v2 \
+  --run /path/to/v3c-all-5ea/5ea34a4500000000000000001123012c \
+  --run /path/to/v3c-all-5ea-c/5ea34a4500000000000000001123012c \
+  --installer-readback /path/to/installer-readback.txt \
   --observations /path/to/adjudicated-observations.json \
   --out /path/to/new-backtest.json
 ```
 
+Interrupted batches use [the continuation policy](continuation-policy.json): retain the first terminal record per key in chronological run order, including a captured attempt whose cleanup failed. Each observation names `source_run`; both runs are audited separately. The repeated FileManager attempt is retained as a diagnostic, never substituted for the first outcome. Fingerprints `b094154c95f5` and `3829b2d68cbb` differ only because the latter includes the two installer hashes. Controls are outside the 66-key forecast. v2 explicitly excluded extra batch behavioral patches: the `e98d00c9` cold-stop change is therefore disclosed as an execution amendment, with original-batch-only and continuation strata reported separately from the combined metrics. The combined result is not described as an unchanged-batch-protocol experiment.
+
+The scorer derives APK, click time, boot, grant, launcher and sidecar facts from each actual `record.json` and its bundle/process evidence; manual identity claims cannot override these. It checks the first `facts.txt` RUNTIME line against the SHA of `runtime-fingerprint.txt` with its trailing newline removed, and validates 87 expected runtime paths. The package identity basis also includes the outer active_verified attestation; unsampled package paths are explicitly reported. Installer readback must match in both shell and foundation roots on the same boot. This run-start snapshot does not claim continuous per-process mapping verification. Missing or inconsistent evidence excludes that row.
+
 `lit` requires screenshot evidence. `advance` requires evidence crossing the row's exact `progress_checkpoint`. An unchanged outcome requires no UI, no advance and positive evidence of the **same** named wall. Missing evidence stays unknown. The scorer checks immutable hashes, rejects duplicate board/key observations and output overwrite, excludes identity/profile/timing failures, and reports board/exposure strata. Exact four-label accuracy counts “predicted advance, actually lit” as a label mismatch; **minimum-promised-outcome accuracy** separately counts that as exceeding the promise. Coverage and abstentions are always reported, so those two rates cannot be silently substituted.
 
-Current hit rate is **pending**. No new board operations, screenshot captures or process measurements were performed; those counts are **unknown** for the upcoming sweep. [results.json](results.json) and [lifecycle.json](lifecycle.json) cover offline validation only. Shared Git metadata is read-only; outer submits the report.
+For a completed split sweep, `finalize_backtest.py` requires all 66 explicit review rows, verifies both source runs, retains the first attempt per key, and writes the score, per-key CSV, quoted evidence context, source records and process tables. Pass repeated `--run` arguments in chronological order, `--installer-readback`, `--reviewed backtests/v2-5ea/reviewed.tsv`, and a fresh `--out`. It refuses an incomplete continuation and output overwrite. The scorer uses only Python's standard library. `review_sheet.py` is an optional Pillow-based local contact-sheet helper; original captures remain unchanged.
+
+**5ea backtest completed:** [report](backtests/v2-5ea/README.md), [66-row CSV](backtests/v2-5ea/backtest.csv), [results](backtests/v2-5ea/results.json). Execution-amended combined exact score **30/45 (66.7%)**, minimum promise **30/49 (61.2%)**; 63 eligible keys, 16 unknown four-class outcomes, and two known frozen abstentions. Original-batch and cold-stop-continuation strata remain separate. Counts: 126 verified captures; 19 live apps / 22 app processes at each sample; 13 keys show own content, including loading/logo pages, pending outer visual acceptance. No new board operations or Git commits were performed by this lane; shared Git metadata is read-only.
