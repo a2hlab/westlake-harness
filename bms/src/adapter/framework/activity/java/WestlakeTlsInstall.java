@@ -61,7 +61,7 @@ public final class WestlakeTlsInstall {
             // OhSystemTrustManager (platform CA bundle). Its own `installed` guard dedupes as well.
             OhTrustBridge.install();
             System.err.println("[B8-TLS] Westlake HTTPS/TLS Java chain installed via " + bc.getName());
-            fixSecureRandomService(bc);
+            fixRuntimeClassServices(bc);
             installSocketFactoryIfSelfTestPasses(bc);
         } catch (Throwable t) {
             // Never fail the bind for a crypto-registration problem: an app that does not do HTTPS at
@@ -70,30 +70,50 @@ public final class WestlakeTlsInstall {
         }
     }
 
+    /** Instantiator for a re-registered service (avoids the boot-loader class-name lookup). */
+    private interface Spi {
+        Object make();
+    }
+
     /**
-     * r17h (#93): OhTrustBridge registers SecureRandom.WestlakeKernel on the BC provider by class
-     * NAME ("adapter.compat.WestlakeSecureRandomSpi"). BC is a boot-classpath provider, so
-     * Provider.Service.getImplClass resolves that name with BC's BootClassLoader, which cannot see the
-     * runtime-JAR class -> ClassNotFoundException -> System.exit(1) the first time anything instantiates
-     * the service (Wikipedia regression once install() reached this far). Re-register it with a Service
-     * whose newInstance() constructs the SPI directly, so no boot-loader class lookup happens.
+     * r17h/r17i (#93): OhTrustBridge registers several services on the BC provider by class NAME where
+     * the class lives in the RUNTIME JAR: SecureRandom.WestlakeKernel = adapter.compat.
+     * WestlakeSecureRandomSpi, and TrustManagerFactory.OH-PKIX/PKIX/X509 = adapter.security.
+     * OhTrustManagerFactorySpi. BC is a boot provider, so Provider.Service.getImplClass resolves those
+     * names with BC's BootClassLoader, which cannot see runtime-JAR classes -> ClassNotFoundException
+     * -> System.exit(1) the first time each service is instantiated (Wikipedia/Auxio on SecureRandom,
+     * Noice on TrustManagerFactory). Re-register each with a Service whose newInstance() constructs the
+     * SPI directly, so no boot-loader class lookup happens.
      */
-    private static void fixSecureRandomService(Provider bc) {
+    private static void fixRuntimeClassServices(Provider bc) {
+        putDirectService(bc, "SecureRandom", "WestlakeKernel",
+                "adapter.compat.WestlakeSecureRandomSpi", new Spi() {
+                    @Override public Object make() { return new adapter.compat.WestlakeSecureRandomSpi(); }
+                });
+        Spi tmf = new Spi() {
+            @Override public Object make() { return new OhTrustManagerFactorySpi(); }
+        };
+        putDirectService(bc, "TrustManagerFactory", "OH-PKIX", "adapter.security.OhTrustManagerFactorySpi", tmf);
+        putDirectService(bc, "TrustManagerFactory", "PKIX", "adapter.security.OhTrustManagerFactorySpi", tmf);
+        putDirectService(bc, "TrustManagerFactory", "X509", "adapter.security.OhTrustManagerFactorySpi", tmf);
+    }
+
+    private static void putDirectService(Provider bc, String type, String algorithm, String className,
+            final Spi spi) {
         try {
-            Provider.Service svc = new Provider.Service(bc, "SecureRandom", "WestlakeKernel",
-                    "adapter.compat.WestlakeSecureRandomSpi", null, null) {
+            Provider.Service svc = new Provider.Service(bc, type, algorithm, className, null, null) {
                 @Override
                 public Object newInstance(Object constructorParameter) {
-                    return new adapter.compat.WestlakeSecureRandomSpi();
+                    return spi.make();
                 }
             };
             // Provider.putService is protected; reflect past the access check to register on BC.
             java.lang.reflect.Method put = Provider.class.getDeclaredMethod("putService", Provider.Service.class);
             put.setAccessible(true);
             put.invoke(bc, svc);
-            System.err.println("[B8-TLS] SecureRandom.WestlakeKernel re-registered with direct newInstance");
+            System.err.println("[B8-TLS] " + type + "." + algorithm + " re-registered with direct newInstance");
         } catch (Throwable t) {
-            System.err.println("[B8-TLS] SecureRandom service fix failed: " + t);
+            System.err.println("[B8-TLS] " + type + "." + algorithm + " service fix failed: " + t);
         }
     }
 
