@@ -19,7 +19,7 @@ import java.security.Provider;
  * AndroidDigestFactory and would recurse. Every BC class is reached by reflection (absent from the
  * compile android.jar, present in the runtime BCP).
  */
-public final class WestlakeAndroidOpenSsl extends Provider {
+public class WestlakeAndroidOpenSsl extends Provider {   // non-final: OpenSSLProvider extends it
     private static final long serialVersionUID = 1L;
 
     public WestlakeAndroidOpenSsl() {
