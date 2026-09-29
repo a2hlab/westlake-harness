@@ -412,3 +412,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **B9 JNI与服务墙分层（2026-09-29,cx-t0）**：5ea桥接库编回manifest JNI后，B5 JAR下fd-android/ooniprobe providers由0变9/4，旧Koin未启动/Application强转墙消失，但后续AlarmManager/WorkManager仍失败；r8b d5000c4e复测同样未上屏。SQLite nativeOpen注册不等于调用成功。无锁代单换846桥接可启动HelloWorld/ZigZag；最初重编22df的ZigZag白屏，单换恢复846可画；照搬real-work整组window后bc1d仍白屏，去掉manifest JNI负控d0f2同样白屏，尚未定位到具体差异，不能宣称root BLAST是根因。见 `benchmark/2026-09-29-unlocked-generation/`。
 
 - **#68 v3a 改判（2026-09-29）**：统一包使用无锁74d1的host/child/provider+SQLite7e1+ANLae848，保留可画ZigZag的bridge84695d62并固定r8b d5000c4e；manifest由Java回退，不能称旧桥新增JNI导出。5ea同包HW/ZigZag自身界面，源码桥22df/bc1d/d0f2白屏另列独立实验。完整包与SHA见 `benchmark/2026-09-29-unlocked-generation/v3a-package-manifest.json`。
+
+- 2026-09-29 #78 v3a/r8b 前瞻回测：OONI 精确 APK 的 nr2.a source line10 解引用 getSystemService("jobscheduler") 空值，随后 WorkManager 未初始化致命退出；仅1/13有事前匹配预测、1/1命中，其余unknown；NetGuard包内libnetguard.so缺__errno后System.exit(1)。见 benchmark/2026-09-29-v3a-prospective-rerun/。

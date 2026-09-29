@@ -1,0 +1,90 @@
+# Task Contract: B10 离线静态扫描:JNI 覆盖、系统服务覆盖、按 app 预测卡点、构建脚本体检
+
+## Intent
+到 #71 为止,每轮上板只发现一堵墙:桥接库缺 `nativeParseManifestJson`、SQLite JNI 是弱桩、子进程拿不到 UserManager、AlarmManager 空指针、缺 notification 服务——这些都能离线看出来。本任务做一轮静态扫描,把上板从「发现墙」变成「确认预测」:列出运行时 native 方法与导出/注册的覆盖矩阵,列出 20 个 app 会取的系统服务与 route-A 子进程能提供的服务的对照,合并 #69 的 manifest 分类给每个 app 预测卡点,按「一堵墙挡住几个 app」排序;再把构建脚本里「缺文件静默跳过」「只打 WARN」的地方改成失败。全程离线,不占板子。
+
+## Must
+- 系统保持 OpenHarmony 6.1.0.31,不刷机;运行代用 `bms/` 复现器部署的那一份
+- 修法优先照搬 `bms/` 与 00.Workspace 已有的代码与产物,只在找不到现成实现时才新写
+- 上板前 `board_note.sh lock`;只对条目写明的独占板下写命令
+- 点亮判据只认外环读图签认的截图;`bm install` 成功、进程存活、`bm dump` 可查都不算点亮
+- 补丁版 BMS 生效的判据:`/proc/<foundation pid>/root` 下实际加载的库哈希与 maps,不看全局库哈希
+- 只在本地 commit,不推送;APK、HAP、`.so`、payload 不入 git
+
+## Decisions
+- 名字与图标都在 `bms/src/adapter/framework/package-manager/jni/apk_installer.cpp` 合成资源 HAP 的流程里修;两项由同一车道先后做,避免同文件冲突
+- native 库用 `westlake-inputs/tools/dockbuild.sh` 按锁定工具链为 OH 6.1 编;换 installer 的步骤必须带回滚
+- 沙箱准备照搬 HelloWorld restore 与 ZigZag `prepare_sandbox` 的逻辑,参数化为包名与 uid
+- 输入:运行代包 `/Users/zhaoyue/orca/workspaces/westlake-generation-6cb40cd6`(payload 下的 framework jar 与全部 .so)与 v3 包 `/Users/zhaoyue/orca/workspaces/westlake-generation-v3-74d1d6d4`;Java 覆盖 r8b `/Users/zhaoyue/orca/workspaces/vm-copies/r8b-runtime-jar/oh-adapter-runtime.jar`(SHA d5000c4e…);20 个 app 的 APK 与 manifest 分类取 `westlake-harness-b4/benchmark/2026-09-29-manifest-classes/`(#69,keys-27.json);Westlake 服务桩取 `benchmark/2026-09-29-westlake-port/INVENTORY.md` 与 `~/orca/westlake/westlake-deploy-ohos/v3-hbc/`
+- 工具:`dexdump`、`aapt2`(`~/Library/Android/sdk/build-tools/37.0.0/`)、`apkanalyzer`、`llvm-nm`;全程离线
+- JNI 覆盖矩阵:对 framework jar 与运行时 JAR 里每个 `native` 方法,判定为 `exported`(某个 .so 有对应 `Java_…` 导出)、`registered`(源码 `bms/src/adapter/**` 或 AOSP `core/jni` 的 `JNINativeMethod` 表登记、且该源文件编进了包里的某个 .so)、`stub`(落到已知弱桩,如 `android_graphics_compat_shim.cpp` 里的实现)、`missing` 或 `unknown`;判不出的记 `unknown` 并写原因,不算覆盖
+- 部署门禁(用户定):JNI 缺失清单扣除例外表后不为空,`deploy_generation.sh` 拒绝部署;例外表 `benchmark/2026-09-29-static-wall-prediction/jni-allowlist.json` 逐条写方法、理由(如「无 app 调用」附证据)与认可人,初版由本任务按扫描结果起草、外环认可;门禁脚本 `scripts/lab/jni_gate.py` 以非零退出码拒绝并列出方法
+- 系统服务覆盖:从每个 app 的 dex 抽 `getSystemService(String)` 的常量参数、`getSystemService(Class)` 的类常量与 `ServiceManager.getService` 的名字;对照 route-A 运行时 JAR 的 `SystemServiceRegistry` 取值器、r8b 的 LocalServiceBinders/投影代理、Westlake 桩清单,每个服务标 `provided`/`r8b-stub`/`westlake-only`/`missing`/`unknown`
+- 按 app 预测:合并 #69 分类(Flutter、Activity 级 AppCompat 主题、Koin、WorkManager、JNA/原生库与 ABI、SQLite)与上两项,给每个 app 列预计撞的墙及顺序;墙按挡住的 app 数排序,每堵墙附可抄的实现来源(Westlake / 00.Workspace / real-work 的路径)
+- 回测:对已上板跑过的 app(#63、#65、#68、#69、#71),用预测的第一堵墙对照实测第一堵墙,报命中率与逐个不符的原因
+- 构建脚本体检:扫 `bms/src/adapter/build/**` 与 `stock_child_plugin/*.sh` 里 `[ -f … ] || continue`、缺文件只 `echo WARN` 之类的写法,逐处改成失败并打印缺失路径;`compile_oh_adapter_bridge.sh` 的 P2-B 段 B9 也要求改,两边改法一致,由外环合并
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-09-29-static-wall-prediction/**
+- bms/src/adapter/build/**
+- bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/*.sh
+- scripts/lab/jni_gate.py
+- tools/spec-checks/**
+Forbidden:
+- 不上板,不发 hdc 命令
+- 不修改 APK
+- 不改运行时代码(Java 与 native 源码),只改构建脚本
+Out of scope:
+- 修墙本身(由 #70、#71 与后续条目按排序去修)
+- 安装墙(fd-seal、x、toutiao)
+
+## Completion Criteria
+Scenario: JNI 覆盖矩阵对已知答案判对
+  Test:
+    Filter: b10_jni_matrix_known_answers
+  Given 矩阵已对 6cb40cd6 与 v3 两个包各生成一次
+  When 查看 `results.json` 的 JNI 部分
+  Then 6cb40cd6 中 `AppSchedulerBridge.nativeParseManifestJson` 与 `nativeGetSysProp` 为 `missing`,`SQLiteConnection.nativeOpen` 为 `stub`
+  And v3 中这三个方法为 `exported` 或 `registered`
+
+Scenario: 部署门禁拦下例外表以外的缺失
+  Test:
+    Filter: b10_jni_gate_blocks_new_missing
+  Given 以 6cb40cd6 的矩阵为基线
+  When 对一个删掉了某个已覆盖 native 实现、且该方法不在例外表里的测试包运行 `scripts/lab/jni_gate.py`
+  Then 以非零退出码结束并列出缺失的方法
+  And 对缺失全部在例外表内的包运行时退出码为 0
+
+Scenario: 判不出的方法与服务记 unknown
+  Test:
+    Filter: b10_unknown_marked_not_guessed
+  Given 某个 native 方法经 `RegisterNatives` 动态注册、源码表找不到,或某个服务名来自运行时拼接的字符串
+  When 生成矩阵
+  Then 该项记为 `unknown` 并写明原因
+  And 不计入覆盖数
+
+Scenario: 系统服务覆盖列出已知的缺口
+  Test:
+    Filter: b10_service_matrix_known_gaps
+  Given 20 个 app 的服务调用已从 dex 抽出
+  When 查看服务矩阵
+  Then `notification` 对 fd-etar 标 `missing` 或 `westlake-only`
+  And `user` 标 `provided` 或 `r8b-stub`,每个服务附取用它的 app 列表
+
+Scenario: 预测回测给出命中率
+  Test:
+    Filter: b10_prediction_backtest
+  Given 已上板跑过的 app 的实测第一堵墙已从各条目取得
+  When 用预测对照实测
+  Then `results.json` 记命中数、总数与逐个不符的原因
+  And 墙按挡住的 app 数从多到少排序,每堵墙附可抄实现的来源路径或「两边都没有」
+
+Scenario: 构建脚本缺源文件时失败
+  Test:
+    Filter: b10_build_silent_skip_fails
+  Given 体检已把静默跳过与只打 WARN 的地方改成失败
+  When 去掉某个脚本列出的一个源文件后运行该脚本的检查段
+  Then 以非零退出码结束并打印缺失路径
+  And `results.json` 列出改动的每一处 `文件:行号`
+
