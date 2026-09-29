@@ -878,7 +878,8 @@ def preflight(board, out, host_epoch=None):
 # Every file on the child's load path that a single-file swap may have changed. Two boards give different
 # results for one key when these differ (auxio 5cd vs 61b, 2026-09-30), so each run records them.
 FINGERPRINT_PATHS = ('/system/bin/appspawn-x /system/android/framework/oh-adapter-runtime.jar '
-                     '/system/android/lib64/*.so /system/lib64/westlake/route-a/*/*.so')
+                     '/system/android/lib64/*.so /system/lib64/westlake/route-a/*/*.so '
+                     '/system/lib64/libbms.z.so /system/lib64/libapk_installer.so')
 
 
 def runtime_fingerprint(board, out):
