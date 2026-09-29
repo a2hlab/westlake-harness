@@ -446,3 +446,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **2026-09-30 v3c/JAR A/B**：5cd同一native包668e4f7c上，r17g Auxio因BC用boot CL找WestlakeSecureRandomSpi退出，r17h修后恢复五tab；但r17h ZigZag白屏而r17g菜单正常，不能以alive/facts签JAR无回退；Noice两版均OhTrustManagerFactorySpi CNFE，TLS库load成功不等于握手self-test通过。见 `benchmark/2026-09-30-v3c-rollout/`。
 
 - 2026-09-30 v3c-next(host verified/device pending): AudioSystemCapabilities.cpp 已有实现但 B91 配方未编/未注册；沿用原文件注册后 runtime=f87dcdf9；Anki 的 liblog 依赖域可复用 B87 R4，ANL=b66f1b60/142 checks，v3c 的 GLESv2 垫片只补齐前轮缺件，ZigZag 仍须回归，详见 benchmark/2026-09-30-v3c-next-native/。
+
+- 2026-09-30 B11 HWUI(host verified/device pending): VM hwui15/a11c 非 R155；154对象线可用 AOSP14 源+OH6.1 真板 EGL/Skia/libc 重编；SDK EGL stub 缺扩展，v3c liblog 的 fprintf@@LIBC 会被 -llog 提前选中并新增 NEEDED，移除冗余 -llog 后 a578b949 保持 R155 15项依赖顺序。整库有解码/探针差异，须 HW/ZZ/Wikipedia 读图回归，详见 benchmark/2026-09-30-egl-colorspace-retry/。

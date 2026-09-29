@@ -657,6 +657,8 @@ typedef int32_t  EGLint;
 typedef void*    EGLNativeWindowType;
 typedef unsigned EGLBoolean;
 #define EGL_NO_SURFACE ((EGLSurface) 0)
+#define EGL_NONE 0x3038
+extern "C" EGLint eglGetError(void);
 
 typedef void* (*oh_anw_get_oh_fn_t)(void* aosp);
 typedef int (*oh_anw_notify_presented_fn_t)(void* aosp);
@@ -757,8 +759,46 @@ EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
         return EGL_NO_SURFACE;
     }
 
+    // 2026-09-30 (#r17h colorspace retry): hwui passes EGL_GL_COLORSPACE_KHR
+    // (wide-color) when hasColorSpaceSupport_ is set; the OH composer chain can
+    // reject that attribute (RSUniRenderComposerAdapter SetBufferColorSpace
+    // fail -> EGL_NO_SURFACE -> hwui ASSERT drawRenderNode aborts the process).
+    // Westlake's own surface adapter never sends the attribute (it passes
+    // nullptr at oh_egl_surface_adapter.cpp:237), so the failure mode does not
+    // exist there. Retry once with the colorspace attributes stripped; only
+    // return EGL_NO_SURFACE when the stripped attempt also fails. Both
+    // attempts' attribs and eglGetError are logged.
     EGLSurface surface = g_real_eglCreateWindowSurface_fn(
         dpy, config, actualWindow, attrib_list);
+    EGLint firstError = eglGetError();
+    if (surface == EGL_NO_SURFACE && attrib_list != nullptr) {
+        // strip EGL_GL_COLORSPACE_KHR (+value) and any wide-color/HDR attrs
+        std::vector<EGLint> stripped;
+        for (const EGLint* a = attrib_list; *a != EGL_NONE; a += 2) {
+            // Attribute keys from the frozen OH EGL/eglext.h. PQ/HLG are
+            // values of EGL_GL_COLORSPACE_KHR, not separate attribute keys.
+            if (*a == 0x309D /* EGL_GL_COLORSPACE_KHR */ ||
+                (*a >= 0x3341 && *a <= 0x334A) /* SMPTE2086 metadata */ ||
+                *a == 0x3360 /* EGL_CTA861_3_MAX_CONTENT_LIGHT_LEVEL_EXT */ ||
+                *a == 0x3361 /* EGL_CTA861_3_MAX_FRAME_AVERAGE_LEVEL_EXT */) {
+                continue;  // drop attribute AND its value
+            }
+            stripped.push_back(*a);
+            stripped.push_back(*(a + 1));
+        }
+        stripped.push_back(EGL_NONE);
+        HiLogPrint(3, 5, 0xD000F00, "OH_EglHijack",
+                   "eglCreateWindowSurface: first attempt EGL_NO_SURFACE "
+                   "err=0x%x (colorspace attribs present); retrying stripped",
+                   firstError);
+        surface = g_real_eglCreateWindowSurface_fn(
+            dpy, config, actualWindow, stripped.data());
+        EGLint secondError = eglGetError();
+        HiLogPrint(3, 5, 0xD000F00, "OH_EglHijack",
+                   "eglCreateWindowSurface: retry(no colorspace) -> "
+                   "EGLSurface=%p err=0x%x",
+                   (void*)surface, secondError);
+    }
     if (surface != EGL_NO_SURFACE && actualWindow != window &&
         g_oh_anw_notify_presented_fn) {
         std::lock_guard<std::mutex> lock(g_egl_surface_owner_mutex);
