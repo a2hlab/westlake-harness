@@ -613,7 +613,7 @@ def timed_collection(board, uid, out, remote, rec, wait_seconds, shots, focus_ch
 
 
 def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
-                reinstall=False, hilog_seconds=None, shots=None, focus_check=False):
+                reinstall=False, hilog_seconds=None, shots=None, focus_check=False, launch_only=False):
     out.mkdir(parents=True, exist_ok=True)
     if any(out.iterdir()):
         raise StaleEvidence('refuse stale app evidence: ' + str(out))
@@ -628,30 +628,46 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
         rec['input_apk'] = app['apk']
         save(out / 'record.json', rec)
         board.shell('mkdir -p ' + shlex.quote(remote))
+        if launch_only:
+            # Reuse the installed app untouched (e.g. ZigZag, whose native libraries the #66
+            # generation bind-mounts into its install directory); only its bytes are checked.
+            rc, response = board.shell('bm dump -n ' + shlex.quote(app['package']), required=False)
+            (out / 'bundle.txt').write_text(response)
+            rec['bms']['return_code'] = rc
+            if rc == 0:
+                rec['bms'].update(parse_bundle(response, app['package']))
+            _, installed = board.shell('sha256sum /data/app/el1/bundle/public/' + app['package']
+                                       + '/android/base.apk', required=False)
+            installed_sha = installed.split()[0] if installed.split() else None
+            rec['install'] = {'launch_only': True, 'installed_apk_sha256': installed_sha}
+            if not rec['bms']['queryable'] or installed_sha != app['apk_sha256']:
+                raise AppFailure('launch-only: app not installed or installed base.apk differs from the input')
         remote_apk = remote + '/original.apk'
-        board.send(app['apk'], remote_apk)
-        _, readback = board.shell('sha256sum ' + shlex.quote(remote_apk))
-        if not readback.split() or readback.split()[0] != app['apk_sha256']:
-            raise AppFailure('staged APK hash differs')
-        if reinstall:
-            rec['uninstall'] = uninstall_existing(board, app, out)
-        rc, response = board.shell('bm install -p ' + shlex.quote(remote_apk), required=False, timeout=180)
-        (out / 'install.txt').write_text(response)
-        rec['install'] = {'return_code': rc, 'success_text': bm_success(rc, response, 'install'), 'output': str(out / 'install.txt')}
-        save(out/'record.json', rec)
-        board.shell('rm -f ' + shlex.quote(remote_apk))
-        rc, response = board.shell('bm dump -n ' + shlex.quote(app['package']), required=False)
-        (out / 'bundle.txt').write_text(response)
-        rec['bms']['return_code'] = rc
-        if rc == 0:
-            rec['bms'].update(parse_bundle(response, app['package']))
-        if not rec['install']['success_text'] or rec['install']['return_code'] or not rec['bms']['queryable']:
-            raise AppFailure('install or BMS readback failed')
+        if not launch_only:
+            board.send(app['apk'], remote_apk)
+            _, readback = board.shell('sha256sum ' + shlex.quote(remote_apk))
+            if not readback.split() or readback.split()[0] != app['apk_sha256']:
+                raise AppFailure('staged APK hash differs')
+            if reinstall:
+                rec['uninstall'] = uninstall_existing(board, app, out)
+            rc, response = board.shell('bm install -p ' + shlex.quote(remote_apk), required=False, timeout=180)
+            (out / 'install.txt').write_text(response)
+            rec['install'] = {'return_code': rc, 'success_text': bm_success(rc, response, 'install'), 'output': str(out / 'install.txt')}
+            save(out/'record.json', rec)
+            board.shell('rm -f ' + shlex.quote(remote_apk))
+            rc, response = board.shell('bm dump -n ' + shlex.quote(app['package']), required=False)
+            (out / 'bundle.txt').write_text(response)
+            rec['bms']['return_code'] = rc
+            if rc == 0:
+                rec['bms'].update(parse_bundle(response, app['package']))
+            if not rec['install']['success_text'] or rec['install']['return_code'] or not rec['bms']['queryable']:
+                raise AppFailure('install or BMS readback failed')
         uid = rec['bms']['uid']
         rec['cold_stop_verified'] = cold_stop(board, app['package'], uid, out)
         if not rec['cold_stop_verified']:
             raise AppFailure('cold start identity unconfirmed')
-        rec['sandbox_preparation'] = prepare_sandbox(board, app['package'], uid, out)
+        if not launch_only:
+            rec['sandbox_preparation'] = prepare_sandbox(board, app['package'], uid, out)
         rec['desktop_activity'] = rec['bms'].get('desktop_activity') or app.get('launch_activity')
         desktop_app = dict(app, launch_activity=rec['desktop_activity'])
         if hilog_seconds is not None:
@@ -752,14 +768,18 @@ def main(argv=None):
     ap.add_argument('--hilog', nargs='?', const=True, type=float, metavar='SECONDS', help='reset before launch, dump after SECONDS (default: --wait) and pull new faultlogs')
     ap.add_argument('--shots', type=shot_offsets, metavar='5,20', help='click-relative screenshot offsets; implies strict per-shot focus check')
     ap.add_argument('--focus-check', action='store_true', help='require target focus for every screenshot')
+    ap.add_argument('--launch-only', action='store_true',
+                    help='do not send/install/prepare: click the installed app after checking its base.apk hash')
     args = ap.parse_args(argv)
+    if args.launch_only and args.reinstall:
+        ap.error('--launch-only and --reinstall are exclusive')
     if not math.isfinite(args.wait) or not 3 <= args.wait <= 300:
         ap.error('wait must be finite and in 3..300')
     hilog_seconds = args.wait if args.hilog is True else args.hilog
     if hilog_seconds is not None and (not math.isfinite(hilog_seconds) or not 0 < hilog_seconds <= 300):
         ap.error('hilog seconds must be finite and in (0, 300]')
     options = dict(reinstall=args.reinstall, hilog_seconds=hilog_seconds,
-                   shots=args.shots, focus_check=args.focus_check)
+                   shots=args.shots, focus_check=args.focus_check, launch_only=args.launch_only)
     entries = load_apps(args.manifest,args.phase,args.keys)
     if not args.execute:
         print(json.dumps({'execution':'not-requested','count':len(entries),'apps':entries,'options':options},indent=2))

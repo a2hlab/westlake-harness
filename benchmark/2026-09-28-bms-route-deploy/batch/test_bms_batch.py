@@ -450,7 +450,7 @@ class BatchTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(b.main(['--keys','x,noice','--reinstall','--hilog','12','--shots','5,20','--focus-check']),0)
             options=json.loads(output.getvalue())['options']
-            self.assertEqual(options,dict(reinstall=True,hilog_seconds=12,shots=[5,20],focus_check=True))
+            self.assertEqual(options,dict(reinstall=True,hilog_seconds=12,shots=[5,20],focus_check=True,launch_only=False))
             for args in (['--shots','20,5'],['--shots','5,5'],['--shots','nan'],['--shots','0,20'],['--hilog','nan'],['--hilog','-1'],['--wait','inf']):
                 with self.subTest(args=args),contextlib.redirect_stderr(io.StringIO()):
                     with self.assertRaises(SystemExit):b.main(args)
