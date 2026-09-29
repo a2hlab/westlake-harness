@@ -1,0 +1,62 @@
+{
+  "task": "B11 Wikipedia line — route-A first-screen bring-up on 5ea (v3a+r8b), copy Westlake by divergence",
+  "board": "5ea34a4500000000000000001123012c",
+  "baseline_pkg": "westlake-generation-v3a-74d1d6d4-r8b",
+  "target_jar": "/system/android/framework/oh-adapter-runtime.jar",
+  "westlake_log": {
+    "obtained_by": "oc-t4 on 61b (board framework already route-A; lifecycle reference only, not on-screen)",
+    "source_vm": "/home/zhaoyue/a2hlab/board/p76-westlake/wl-hilog.txt",
+    "local_copy": "benchmark/2026-09-29-wikipedia-line/westlake-reference-hilog.txt",
+    "ran_westlake_route_on_5ea": false,
+    "why_not": "Outer ring directed: board framework is already route-A's, so the p76 log is the lifecycle reference; no need to re-run Westlake route on 5ea.",
+    "reference_chain": [
+      "J_direct_launch_armed pkg=org.wikipedia act=org.wikipedia.main.MainActivity",
+      "WikipediaApp.onCreate:538 NPE (tolerated)",
+      "nativeOnScheduleLaunchAbility v2 MainActivity recordId=1",
+      "getActivityInfo org.wikipedia/.main.MainActivity",
+      "Intent -> Want InitialOnboardingActivity",
+      "nativeStartAbility InitialOnboardingActivity + new Mission",
+      "performCreate InitialOnboardingActivity / performCreate MainActivity",
+      "WMClient.createSession MAIN_WINDOW -> RSRenderService CreateNodeAndSurface (surface built)",
+      "InitialOnboardingActivity.show / RESUME_ACTIVITY"
+    ]
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "deployed_jar": "oh-adapter-runtime.jar (cc-t3 r13: Activity-level theme + service no-op stubs)",
+      "deployed_sha256": "f132529710a8c45c2bb3579c5abe281e47616ce310228b3ddb69b83c6bc2f1e8",
+      "source": "/Users/zhaoyue/orca/workspaces/vm-copies/r13-runtime-jar/oh-adapter-runtime.jar (from cc-t3 #70)",
+      "deploy_method": "bind-mount overlay (3rd layer on top of d5000c4e); appspawn-x shares shell mnt ns 4026531841; verified shell+appspawnx SHA == r13",
+      "baseline_sha256": "d5000c4e19e74e3ec7a72300ed425fa2c5ba521aa4b04cb6e688e165e6ba5554",
+      "rollback_receipt": "benchmark/2026-09-29-wikipedia-line/deploy/r13-round1/receipt.json",
+      "run_dir": "benchmark/2026-09-29-wikipedia-line/runs/20260929T171807-3200456a",
+      "progress_vs_78": "Theme wall GONE: 'Attribute not found; ID=2130969834' now absent (0 hits). appInfo enriched theme=0x7f130026 resolves. Flow reaches MainActivity performCreate and even issues nativeStartAbility InitialOnboardingActivity (matches reference).",
+      "first_divergence": "MainActivity.onGoOffline NPE kills process ~300ms after the onboarding startAbility, before any window/surface is created.",
+      "routeA_original": [
+        "[OHServiceManager] getService(\"connectivity\") -> null (stub)",
+        "[WESTLAKE-LOCAL-SERVICE] connectivity unavailable: java.lang.ClassNotFoundException: android.net.IConnectivityManager",
+        "nativeStartAbility InitialOnboardingActivity (17:18:42.580)",
+        "Caused by: java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference",
+        "  at org.wikipedia.main.MainFragment.getCurrentFragment",
+        "  at org.wikipedia.main.MainActivity.onGoOffline",
+        "  at org.wikipedia.connectivity.ConnectionStateMonitor$$ExternalSyntheticLambda0.run",
+        "  at android.os.Handler.handleCallback(Handler.java:958)",
+        "AppSpawnXInit: initChild failed / System.exit called, status: 1",
+        "APPSPAWN: org.wikipedia with pid 28063 exit with code:1"
+      ],
+      "westlake_original": [
+        "Intent -> Want InitialOnboardingActivity (10:56:11.870) — reference proceeds to onboarding window without an onGoOffline crash; connectivity reported usable, so ConnectionStateMonitor did not post a fatal offline callback"
+      ],
+      "root_cause": "OHServiceManager.getService('connectivity') returns null (android.net.IConnectivityManager ClassNotFound). Wikipedia's ConnectionStateMonitor treats this as offline and posts MainActivity.onGoOffline to the main Handler; it runs while first-run redirect to onboarding has left MainFragment uninitialised, so MainFragment.getCurrentFragment() NPEs and the uncaught exception exits the process.",
+      "next_fix_candidate": "Provide a connectivity service stub that reports a validated/connected network (copy Westlake connectivity bridge), so ConnectionStateMonitor never fires onGoOffline. Framework dirs: system-service / inet-shim. Merge into next JAR per speed-first rhythm.",
+      "screenshots": {
+        "t3": "runs/20260929T171807-3200456a/5ea34a4500000000000000001123012c/wikipedia/t3.jpeg",
+        "final_t20": "runs/20260929T171807-3200456a/5ea34a4500000000000000001123012c/wikipedia/final.jpeg",
+        "visual_verdict_agent": "OH desktop (app grid). Wikipedia crashed to launcher; NOT lit. Outer-ring sign-off pending but expected NOT-lit."
+      },
+      "facts_txt": "wikipedia            shots 2/2  alive t5=? t20=?  child_hilog=0  foreground_unconfirmed\nTOTAL keys=1 screenshots_captured=2/2 alive_t5=0 alive_t20=0",
+      "verdict": "NOT lit; theme wall cleared, new wall = onGoOffline/connectivity-null NPE"
+    }
+  ]
+}
