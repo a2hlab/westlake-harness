@@ -61,11 +61,39 @@ public final class WestlakeTlsInstall {
             // OhSystemTrustManager (platform CA bundle). Its own `installed` guard dedupes as well.
             OhTrustBridge.install();
             System.err.println("[B8-TLS] Westlake HTTPS/TLS Java chain installed via " + bc.getName());
+            fixSecureRandomService(bc);
             installSocketFactoryIfSelfTestPasses(bc);
         } catch (Throwable t) {
             // Never fail the bind for a crypto-registration problem: an app that does not do HTTPS at
             // first frame still needs to reach its UI. Report and move on.
             System.err.println("[B8-TLS] install failed (non-fatal): " + t);
+        }
+    }
+
+    /**
+     * r17h (#93): OhTrustBridge registers SecureRandom.WestlakeKernel on the BC provider by class
+     * NAME ("adapter.compat.WestlakeSecureRandomSpi"). BC is a boot-classpath provider, so
+     * Provider.Service.getImplClass resolves that name with BC's BootClassLoader, which cannot see the
+     * runtime-JAR class -> ClassNotFoundException -> System.exit(1) the first time anything instantiates
+     * the service (Wikipedia regression once install() reached this far). Re-register it with a Service
+     * whose newInstance() constructs the SPI directly, so no boot-loader class lookup happens.
+     */
+    private static void fixSecureRandomService(Provider bc) {
+        try {
+            Provider.Service svc = new Provider.Service(bc, "SecureRandom", "WestlakeKernel",
+                    "adapter.compat.WestlakeSecureRandomSpi", null, null) {
+                @Override
+                public Object newInstance(Object constructorParameter) {
+                    return new adapter.compat.WestlakeSecureRandomSpi();
+                }
+            };
+            // Provider.putService is protected; reflect past the access check to register on BC.
+            java.lang.reflect.Method put = Provider.class.getDeclaredMethod("putService", Provider.Service.class);
+            put.setAccessible(true);
+            put.invoke(bc, svc);
+            System.err.println("[B8-TLS] SecureRandom.WestlakeKernel re-registered with direct newInstance");
+        } catch (Throwable t) {
+            System.err.println("[B8-TLS] SecureRandom service fix failed: " + t);
         }
     }
 

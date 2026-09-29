@@ -93,6 +93,7 @@ public final class WindowSessionProxy implements InvocationHandler {
                 result = retryAddOnInvalidType(method, args, result);
             } else if ("relayout".equals(name)) {
                 clampRelayout(args);
+                reversePushOnce(args);
             }
         } catch (Throwable t) {
             System.err.println("[B8-WSP] " + name + " post-process skipped: " + t);
@@ -201,5 +202,96 @@ public final class WindowSessionProxy implements InvocationHandler {
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    // ---- G2.14as r4: reverse-push IWindow.resized once per window --------------------------------
+    // OH's server never calls IWindow.resized, so ViewRootImpl in LOCAL_LAYOUT mode measures 0x0 ->
+    // relayout frame (0,0,0,0) -> measures 0 again (death spiral) and the first frame is never
+    // committed (termux TermuxActivity, fd-mobile: alive, mWindowAdded, but blank/black). After each
+    // relayout we reverse-push the real display frame exactly once so ViewRootImpl.handleResized ->
+    // setFrame breaks the spiral. Copied from Westlake WindowSessionAdapter L1044-1060.
+    private static final java.util.Set<android.os.IBinder> sReversePushed =
+            java.util.Collections.synchronizedSet(new java.util.HashSet<android.os.IBinder>());
+
+    private void reversePushOnce(Object[] args) {
+        try {
+            if (args == null) return;
+            Class<?> iWindow = Class.forName("android.view.IWindow");
+            Object window = null;
+            for (Object a : args) {
+                if (a != null && iWindow.isInstance(a)) { window = a; break; }
+            }
+            if (window == null) return;
+            android.os.IBinder key = ((android.os.IInterface) window).asBinder();
+            if (!sReversePushed.add(key)) return;                 // once per window
+            android.graphics.Rect max = maxBounds();
+            int width = max != null && max.width() > 1 ? max.width()
+                    : (sLastGoodWidth > 1 ? sLastGoodWidth : 1080);
+            int height = max != null && max.height() > 1 ? max.height()
+                    : (sLastGoodHeight > 1 ? sLastGoodHeight : 1920);
+            Object frames = buildClientWindowFrames(width, height);
+            if (frames == null) { sReversePushed.remove(key); return; }
+            Object cfg = Class.forName("android.util.MergedConfiguration").getDeclaredConstructor().newInstance();
+            Object insets = Class.forName("android.view.InsetsState").getDeclaredConstructor().newInstance();
+            Method resized = findResized(iWindow);
+            if (resized == null) { sReversePushed.remove(key); return; }
+            resized.setAccessible(true);
+            Object[] ra = buildResizedArgs(resized.getParameterTypes(), frames, cfg, insets);
+            resized.invoke(window, ra);
+            System.err.println("[B8-WSP] reverse-pushed IWindow.resized (once): " + width + "x" + height);
+        } catch (Throwable t) {
+            System.err.println("[B8-WSP] reverse-push skipped: " + t);
+        }
+    }
+
+    /** ClientWindowFrames with frame/displayFrame/parentFrame/attachedFrame = (0,0,width,height). */
+    private static Object buildClientWindowFrames(int width, int height) {
+        try {
+            Object frames = Class.forName("android.window.ClientWindowFrames")
+                    .getDeclaredConstructor().newInstance();
+            android.graphics.Rect r = new android.graphics.Rect(0, 0, width, height);
+            for (String f : new String[] {"frame", "displayFrame", "parentFrame"}) {
+                Object rectObj = readField(frames, f);
+                if (rectObj instanceof android.graphics.Rect) ((android.graphics.Rect) rectObj).set(r);
+            }
+            try {
+                java.lang.reflect.Field af = frames.getClass().getField("attachedFrame");
+                af.set(frames, new android.graphics.Rect(r));
+            } catch (Throwable ignore) {
+            }
+            return frames;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** The IWindow.resized overload whose first parameter is ClientWindowFrames (the modern one). */
+    private static Method findResized(Class<?> iWindow) {
+        Method best = null;
+        for (Method m : iWindow.getMethods()) {
+            if (!"resized".equals(m.getName())) continue;
+            Class<?>[] p = m.getParameterTypes();
+            if (p.length > 0 && "android.window.ClientWindowFrames".equals(p[0].getName())) return m;
+            if (best == null || p.length > best.getParameterTypes().length) best = m;
+        }
+        return best;
+    }
+
+    /** Fill resized() args: frames/cfg/insets by type, ints 0, forceLayout (2nd boolean) true else
+     *  false, everything else null -- matches Westlake's resized(frames,false,cfg,insets,true,...). */
+    private static Object[] buildResizedArgs(Class<?>[] pt, Object frames, Object cfg, Object insets) {
+        Object[] a = new Object[pt.length];
+        int boolIdx = 0;
+        for (int i = 0; i < pt.length; i++) {
+            Class<?> t = pt[i];
+            String n = t.getName();
+            if ("android.window.ClientWindowFrames".equals(n)) a[i] = frames;
+            else if ("android.util.MergedConfiguration".equals(n)) a[i] = cfg;
+            else if ("android.view.InsetsState".equals(n)) a[i] = insets;
+            else if (t == int.class) a[i] = Integer.valueOf(0);
+            else if (t == boolean.class) { a[i] = Boolean.valueOf(boolIdx == 1); boolIdx++; }
+            else a[i] = null;
+        }
+        return a;
     }
 }

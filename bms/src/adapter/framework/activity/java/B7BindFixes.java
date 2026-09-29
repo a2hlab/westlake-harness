@@ -33,6 +33,10 @@ public final class B7BindFixes {
         // first, then HTML; each ships a JNI_OnLoad that registers WestlakeSSLSocket's natives /
         // rewrites Html.fromHtml to call HtmlCompatFallback. A missing lib must not fail the bind.
         loadWestlakeNativeLibs();
+        // r17h (#first-frame): wrap IWindowSession as EARLY as possible -- before any Activity's
+        // ViewRootImpl caches it -- so its first relayout goes through the proxy (reverse-push). This
+        // is idempotent with the later install() from resolveActivityTheme; whichever wins is fine.
+        try { WindowSessionProxy.install(); } catch (Throwable t) { System.err.println("[B8-WSP] early " + t); }
         try {
             UserManagerProjectionProxy.install();
         } catch (Throwable t) {
