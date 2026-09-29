@@ -1,0 +1,122 @@
+--- R155/westlake_child_hook_table_v1_drain
++++ NEW/westlake_child_hook_table_v1_drain
+@@ -1,34 +1,38 @@
+-mov w8, #-1
+-cbz x0, <westlake_child_hook_table_v1_drain+0x11c>
+-and x9, x0, #0x7
+-cbnz x9, <westlake_child_hook_table_v1_drain+0x11c>
++stp x29, x30, [sp, #-32]!
++stp x20, x19, [sp, #16]
++mov x19, x0
++mov w0, #-1
++mov x29, sp
++cbz x19, <westlake_child_hook_table_v1_drain+0x144>
++and x8, x19, #0x7
++cbnz x8, <westlake_child_hook_table_v1_drain+0x144>
+ mov x9, #22065
+-ldr x8, [x0]
++ldr x8, [x19]
+ movk x9, #20299, lsl #16
+ movk x9, #18511, lsl #32
+ movk x9, #22348, lsl #48
+ cmp x8, x9
+-b.ne <westlake_child_hook_table_v1_drain+0x124>
+-ldrh w8, [x0, #8]
++b.ne <westlake_child_hook_table_v1_drain+0x140>
++ldrh w8, [x19, #8]
+ cmp w8, #1
+-b.ne <westlake_child_hook_table_v1_drain+0x124>
+-ldrh w8, [x0, #10]
+-cbnz w8, <westlake_child_hook_table_v1_drain+0x124>
+-ldr w8, [x0, #12]
++b.ne <westlake_child_hook_table_v1_drain+0x140>
++ldrh w8, [x19, #10]
++cbnz w8, <westlake_child_hook_table_v1_drain+0x140>
++ldr w8, [x19, #12]
+ cmp w8, #112
+-b.ne <westlake_child_hook_table_v1_drain+0x124>
+-ldr w8, [x0, #16]
++b.ne <westlake_child_hook_table_v1_drain+0x140>
++ldr w8, [x19, #16]
+ cmp w8, #8
+-b.ne <westlake_child_hook_table_v1_drain+0x124>
+-ldrh w8, [x0, #20]
++b.ne <westlake_child_hook_table_v1_drain+0x140>
++ldrh w8, [x19, #20]
+ cmp w8, #8
+-b.ne <westlake_child_hook_table_v1_drain+0x124>
+-ldrh w8, [x0, #22]
++b.ne <westlake_child_hook_table_v1_drain+0x140>
++ldrh w8, [x19, #22]
+ cmp w8, #8
+-b.ne <westlake_child_hook_table_v1_drain+0x124>
+-ldur q0, [x0, #40]
+-ldur q1, [x0, #24]
++b.ne <westlake_child_hook_table_v1_drain+0x140>
++ldur q0, [x19, #40]
++ldur q1, [x19, #24]
+ orr v0.16b, v1.16b, v0.16b
+ ext v1.16b, v0.16b, v0.16b, #8
+ orr v0.8b, v0.8b, v1.8b
+ umov w8, v0.b[1]
+@@ -46,35 +50,42 @@
+ orr w8, w8, w9
+ orr w8, w8, w10
+ orr w8, w8, w11
+ tst w8, #0xff
+-b.eq <westlake_child_hook_table_v1_drain+0x124>
+-ldr x8, [x0, #56]
+-cbz x8, <westlake_child_hook_table_v1_drain+0x124>
+-ldr x8, [x0, #64]
+-cbz x8, <westlake_child_hook_table_v1_drain+0x124>
+-add x8, x0, #80
++b.eq <westlake_child_hook_table_v1_drain+0x140>
++ldr x8, [x19, #56]
++cbz x8, <westlake_child_hook_table_v1_drain+0x140>
++ldr x8, [x19, #64]
++cbz x8, <westlake_child_hook_table_v1_drain+0x140>
++add x8, x19, #80
+ ldar x9, [x8]
+ cmp x9, #4
+-b.eq <westlake_child_hook_table_v1_drain+0x108>
++b.eq <westlake_child_hook_table_v1_drain+0x118>
+ cmp x9, #3
+-b.ne <westlake_child_hook_table_v1_drain+0x12c>
++b.ne <westlake_child_hook_table_v1_drain+0x150>
+ mov w9, #4
+ ldaxr x10, [x8]
+ cmp x10, #3
+-b.ne <westlake_child_hook_table_v1_drain+0x134>
++b.ne <westlake_child_hook_table_v1_drain+0x160>
+ stlxr w10, x9, [x8]
+-cbnz w10, <westlake_child_hook_table_v1_drain+0xf4>
+-add x8, x0, #96
++cbnz w10, <westlake_child_hook_table_v1_drain+0x104>
++mov w20, #34464
++movk w20, #1, lsl #16
++add x8, x19, #96
+ ldar x8, [x8]
+-cmp x8, #0
+-mov w8, #-8
+-csel w8, wzr, w8, eq
+-mov w0, w8
+-ret
++cbz x8, <westlake_child_hook_table_v1_drain+0x158>
++bl <sched_yield@plt>
++subs w20, w20, #1
++mov w0, #-8
++b.ne <westlake_child_hook_table_v1_drain+0x120>
++b <westlake_child_hook_table_v1_drain+0x144>
+ mov w0, #-1
++ldp x20, x19, [sp, #16]
++ldp x29, x30, [sp], #32
+ ret
+ mov w0, #-7
+-ret
++b <westlake_child_hook_table_v1_drain+0x144>
++mov w0, wzr
++b <westlake_child_hook_table_v1_drain+0x144>
+ mov w0, #-7
+ clrex
+-ret
++b <westlake_child_hook_table_v1_drain+0x144>

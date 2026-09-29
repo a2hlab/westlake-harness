@@ -1,0 +1,36 @@
+--- R155/WlgrIfProductionRandom
++++ NEW/WlgrIfProductionRandom
+@@ -0,0 +1,33 @@
++stp x29, x30, [sp, #-48]!
++mov w0, #-1
++str x21, [sp, #16]
++stp x20, x19, [sp, #32]
++mov x29, sp
++cbz x1, <WlgrIfProductionRandom+0x74>
++mov x19, x2
++cbz x2, <WlgrIfProductionRandom+0x74>
++mov x20, x1
++mov x21, xzr
++b <WlgrIfProductionRandom+0x44>
++bl <__errno_location@plt>
++ldr w8, [x0]
++cmp w8, #4
++b.ne <WlgrIfProductionRandom+0x70>
++cmp x21, x19
++b.hs <WlgrIfProductionRandom+0x68>
++add x0, x20, x21
++sub x1, x19, x21
++mov w2, wzr
++bl <getrandom@plt>
++tbnz x0, #63, <WlgrIfProductionRandom+0x2c>
++cbz x0, <WlgrIfProductionRandom+0x70>
++add x21, x0, x21
++cmp x21, x19
++b.lo <WlgrIfProductionRandom+0x44>
++mov w0, wzr
++b <WlgrIfProductionRandom+0x74>
++mov w0, #-1
++ldp x20, x19, [sp, #32]
++ldr x21, [sp, #16]
++ldp x29, x30, [sp], #48
++ret

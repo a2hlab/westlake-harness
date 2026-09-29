@@ -1,0 +1,39 @@
+--- R155/fputs
++++ NEW/fputs
+@@ -0,0 +1,36 @@
++stp x29, x30, [sp, #-32]!
++stp x20, x19, [sp, #16]
++mov x29, sp
++mov x20, x1
++mov x19, x0
++nop
++adr x0, <object:g_host_stdio_once>
++nop
++adr x1, <function:WlResolveHostStdio+0x0>
++bl <pthread_once@plt>
++adrp x8, <PAGE>
++adrp x9, <PAGE>
++ldr x8, [x8, <reloc:1027:__sF>]
++ldr x2, [x9, <object:g_host_fputs>]
++cmp x20, x8
++b.eq <fputs+0x68>
++add x9, x8, #152
++cmp x20, x9
++b.eq <fputs+0x74>
++adrp x9, <PAGE>
++add x8, x8, #304
++cmp x20, x8
++ldr x9, [x9, <reloc:1025:stderr>]
++ldr x9, [x9]
++csel x1, x9, x20, eq
++b <fputs+0x80>
++adrp x8, <PAGE>
++ldr x8, [x8, <reloc:1025:stdin>]
++b <fputs+0x7c>
++adrp x8, <PAGE>
++ldr x8, [x8, <reloc:1025:stdout>]
++ldr x1, [x8]
++mov x0, x19
++ldp x20, x19, [sp, #16]
++ldp x29, x30, [sp], #32
++br x2

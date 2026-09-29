@@ -1,0 +1,32 @@
+--- R155/_ZN12_GLOBAL__N_111VerifyReadyEPv
++++ NEW/_ZN12_GLOBAL__N_111VerifyReadyEPv
+@@ -0,0 +1,29 @@
++stp x29, x30, [sp, #-32]!
++str x19, [sp, #16]
++mov x29, sp
++mov x19, x0
++bl <getpid@plt>
++mov w8, w0
++mov w0, wzr
++nop
++adr x9, <object:_ZN12_GLOBAL__N_112gLoaderPhaseE>
++cmp x19, x9
++b.ne <_ZN12_GLOBAL__N_111VerifyReadyEPv+0x68>
++cmp w8, #2
++b.lt <_ZN12_GLOBAL__N_111VerifyReadyEPv+0x68>
++mov w1, w8
++nop
++adr x0, <object:_ZN12_GLOBAL__N_112gLoaderPhaseE>
++bl <WLAR_LoaderPhaseIsChildReady>
++cmp w0, #1
++b.ne <_ZN12_GLOBAL__N_111VerifyReadyEPv+0x64>
++nop
++adr x0, <object:_ZN12_GLOBAL__N_113gHostServicesE>
++bl <WLAR_HostServicesVerifyCurrentThreadReady>
++cmp w0, #0
++cset w0, eq
++b <_ZN12_GLOBAL__N_111VerifyReadyEPv+0x68>
++mov w0, wzr
++ldr x19, [sp, #16]
++ldp x29, x30, [sp], #32
++ret

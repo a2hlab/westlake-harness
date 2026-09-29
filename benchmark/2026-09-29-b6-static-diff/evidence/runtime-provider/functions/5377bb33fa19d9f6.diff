@@ -1,0 +1,1232 @@
+--- R155/_ZN9appspawnx16AppSpawnXRuntime7startVmEb
++++ NEW/_ZN9appspawnx16AppSpawnXRuntime7startVmEb
+@@ -40,10 +40,10 @@
+ mov x0, x19
+ bl <fprintf@plt>
+ mov x0, x19
+ bl <fflush@plt>
+-mov w20, #-1
+-mov w0, w20
++mov w19, #-1
++mov w0, w19
+ ldp x20, x19, [sp, #192]
+ ldp x22, x21, [sp, #176]
+ ldp x24, x23, [sp, #160]
+ ldp x26, x25, [sp, #144]
+@@ -61,21 +61,36 @@
+ mov x0, x19
+ bl <fflush@plt>
+ stp xzr, xzr, [x29, #-24]
+ stur xzr, [x29, #-8]
+-tbz w22, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x134>
+ mov w0, #16
++bl <_Znwm@plt>
++mov x23, x0
++adrp x8, <PAGE>
++add x8, x8, <string:'abort'>
++nop
++adr x9, <function:_ZN9appspawnxL23logArtAbortAndTerminateEv+0x0>
++add x10, x0, #16
++stp x8, x9, [x0]
++stp x0, x10, [x29, #-24]
++stur x10, [x29, #-8]
++tbz w22, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x170>
++mov w0, #32
+ bl <_Znwm@plt>
+ adrp x8, <PAGE>
+ add x8, x8, <string:'-Xzygote'>
+-add x9, x0, #16
++ldr q0, [x23]
++stp x8, xzr, [x0, #16]
++add x8, x0, #32
++str q0, [x0]
++stp x0, x8, [x29, #-24]
++mov x0, x23
++stur x8, [x29, #-8]
++bl <_ZdlPv@plt>
++adrp x0, <PAGE>
++add x0, x0, <string:'[AppSpawnX][VM] Step 2: legacy pre-fork VM uses zygote runtime mode\n'>
+ mov w1, #68
+-stp x8, xzr, [x0]
+-stp x0, x9, [x29, #-24]
+-adrp x0, <PAGE>
+-add x0, x0, <string:'[AppSpawnX][VM] Step 2: legacy pre-fork VM uses zygote runtime mode\n'>
+-stur x9, [x29, #-8]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x140>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x17c>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'[AppSpawnX][VM] Step 2: specialized-child VM uses non-zygote runtime mode\n'>
+ mov w1, #74
+ mov w2, #1
+@@ -87,19 +102,19 @@
+ add x0, x0, <string:'BOOTCLASSPATH'>
+ bl <getenv@plt>
+ stp xzr, xzr, [x29, #-48]
+ stur xzr, [x29, #-32]
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x178>
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1b4>
+ mov x22, x0
+ ldrb w8, [x0]
+-cbnz w8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x194>
++cbnz w8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1d0>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'[AppSpawnX][VM] Step 2: WARNING - BOOTCLASSPATH not set\n'>
+ mov w1, #56
+ mov w2, #1
+ mov x3, x19
+ bl <fwrite@plt>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x2e8>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x324>
+ adrp x9, <PAGE>
+ add x9, x9, <string:'-Xbootclasspath:'>
+ mov w8, #32
+ strb wzr, [sp, #57]
+@@ -117,9 +132,9 @@
+ stur x8, [sp, #6]
+ stp xzr, xzr, [x0, #8]
+ str xzr, [x0]
+ ldurb w8, [x29, #-48]
+-tbz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1ec>
++tbz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x228>
+ ldur x0, [x29, #-32]
+ bl <_ZdlPv@plt>
+ sub x9, x29, #48
+ ldr x8, [sp]
+@@ -129,41 +144,41 @@
+ orr x25, x9, #0x1
+ sturb w23, [x29, #-48]
+ stur x8, [x29, #-46]
+ stp x10, x24, [x29, #-40]
+-tbz w11, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x224>
++tbz w11, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x260>
+ ldr x0, [sp, #56]
+ bl <_ZdlPv@plt>
+ ldurb w23, [x29, #-48]
+ ldur x24, [x29, #-32]
+ ldp x9, x8, [x29, #-16]
+ tst w23, #0x1
+ csel x26, x25, x24, eq
+ cmp x9, x8
+-b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x248>
++b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x284>
+ add x8, x9, #16
+ stp x26, xzr, [x9]
+ stur x8, [x29, #-16]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x2d4>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x310>
+ ldur x23, [x29, #-24]
+ sub x24, x9, x23
+ asr x27, x24, #4
+ add x9, x27, #1
+ lsr x10, x9, #60
+-cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x120c>
++cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x13dc>
+ sub x8, x8, x23
+ mov x11, #9223372036854775792
+ asr x10, x8, #3
+ cmp x10, x9
+ csel x9, x10, x9, hi
+ cmp x8, x11
+ mov x8, #1152921504606846975
+ csel x28, x9, x8, lo
+-cbnz x28, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x28c>
++cbnz x28, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x2c8>
+ mov x25, xzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x2a0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x2dc>
+ lsr x8, x28, #60
+-cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1260>
++cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1430>
+ lsl x0, x28, #4
+ bl <_Znwm@plt>
+ mov x25, x0
+ add x8, x25, x27, lsl #4
+@@ -175,9 +190,9 @@
+ stp x26, xzr, [x8]
+ bl <memmove@plt>
+ stp x25, x28, [x29, #-24]
+ stur x27, [x29, #-8]
+-cbz x23, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x2d4>
++cbz x23, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x310>
+ mov x0, x23
+ bl <_ZdlPv@plt>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'[AppSpawnX][VM] Step 2: BOOTCLASSPATH=%s\n'>
+@@ -190,12 +205,12 @@
+ add x0, x0, <string:'ANDROID_BOOT_IMAGE'>
+ bl <getenv@plt>
+ stp xzr, xzr, [sp, #40]
+ str xzr, [sp, #56]
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x474>
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x4b0>
+ mov x22, x0
+ ldrb w8, [x0]
+-cbz w8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x474>
++cbz w8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x4b0>
+ mov x9, #22573
+ mov w8, #16
+ movk x9, #28009, lsl #16
+ strb wzr, [sp, #9]
+@@ -214,9 +229,9 @@
+ str xzr, [x0]
+ ldrb w10, [sp, #40]
+ str x9, [sp, #24]
+ stur x8, [sp, #30]
+-tbz w10, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x370>
++tbz w10, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x3ac>
+ ldr x0, [sp, #56]
+ bl <_ZdlPv@plt>
+ add x9, sp, #40
+ ldr x8, [sp, #24]
+@@ -226,41 +241,41 @@
+ orr x25, x9, #0x1
+ strb w23, [sp, #40]
+ stur x8, [sp, #42]
+ stp x10, x24, [sp, #48]
+-tbz w11, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x3a8>
++tbz w11, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x3e4>
+ ldr x0, [sp, #16]
+ bl <_ZdlPv@plt>
+ ldrb w23, [sp, #40]
+ ldr x24, [sp, #56]
+ ldp x9, x8, [x29, #-16]
+ tst w23, #0x1
+ csel x26, x25, x24, eq
+ cmp x9, x8
+-b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x3cc>
++b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x408>
+ add x8, x9, #16
+ stp x26, xzr, [x9]
+ stur x8, [x29, #-16]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x458>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x494>
+ ldur x23, [x29, #-24]
+ sub x24, x9, x23
+ asr x27, x24, #4
+ add x9, x27, #1
+ lsr x10, x9, #60
+-cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1214>
++cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x13e4>
+ sub x8, x8, x23
+ mov x11, #9223372036854775792
+ asr x10, x8, #3
+ cmp x10, x9
+ csel x9, x10, x9, hi
+ cmp x8, x11
+ mov x8, #1152921504606846975
+ csel x28, x9, x8, lo
+-cbnz x28, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x410>
++cbnz x28, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x44c>
+ mov x25, xzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x424>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x460>
+ lsr x8, x28, #60
+-cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1264>
++cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1434>
+ lsl x0, x28, #4
+ bl <_Znwm@plt>
+ mov x25, x0
+ add x8, x25, x27, lsl #4
+@@ -272,9 +287,9 @@
+ stp x26, xzr, [x8]
+ bl <memmove@plt>
+ stp x25, x28, [x29, #-24]
+ stur x27, [x29, #-8]
+-cbz x23, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x458>
++cbz x23, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x494>
+ mov x0, x23
+ bl <_ZdlPv@plt>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'[AppSpawnX][VM] Step 2: Boot image=%s\n'>
+@@ -285,41 +300,41 @@
+ bl <fflush@plt>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'APPSPAWNX_VERBOSE_STARTUP'>
+ bl <getenv@plt>
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x5a4>
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x5e0>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'1'>
+ bl <strcmp@plt>
+-cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x5a4>
++cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x5e0>
+ ldp x8, x9, [x29, #-16]
+ cmp x8, x9
+-b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x4b8>
++b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x4f4>
+ adrp x9, <PAGE>
+ add x9, x9, <string:'-verbose:startup'>
+ add x10, x8, #16
+ stp x9, xzr, [x8]
+ stur x10, [x29, #-16]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x54c>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x588>
+ ldur x22, [x29, #-24]
+ sub x23, x8, x22
+ asr x25, x23, #4
+ add x8, x25, #1
+ lsr x10, x8, #60
+-cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1204>
++cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x13d4>
+ sub x9, x9, x22
+ mov x11, #9223372036854775792
+ asr x10, x9, #3
+ cmp x10, x8
+ csel x8, x10, x8, hi
+ cmp x9, x11
+ mov x9, #1152921504606846975
+ csel x26, x8, x9, lo
+-cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x4fc>
++cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x538>
+ mov x24, xzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x510>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x54c>
+ lsr x8, x26, #60
+-cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x125c>
++cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x142c>
+ lsl x0, x26, #4
+ bl <_Znwm@plt>
+ mov x24, x0
+ add x8, x24, x25, lsl #4
+@@ -333,9 +348,9 @@
+ stp x9, xzr, [x8]
+ bl <memmove@plt>
+ stp x24, x26, [x29, #-24]
+ stur x25, [x29, #-8]
+-cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x54c>
++cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x588>
+ mov x0, x22
+ bl <_ZdlPv@plt>
+ mov w2, #3840
+ nop
+@@ -361,41 +376,41 @@
+ bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'APPSPAWNX_VERBOSE_GC'>
+ bl <getenv@plt>
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x790>
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x7cc>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'1'>
+ bl <strcmp@plt>
+-cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x790>
++cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x7cc>
+ ldp x8, x9, [x29, #-16]
+ cmp x8, x9
+-b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x5e8>
++b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x624>
+ adrp x9, <PAGE>
+ add x9, x9, <string:'-verbose:gc'>
+ add x25, x8, #16
+ stp x9, xzr, [x8]
+ stur x25, [x29, #-16]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x680>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x6bc>
+ ldur x22, [x29, #-24]
+ sub x23, x8, x22
+ asr x25, x23, #4
+ add x8, x25, #1
+ lsr x10, x8, #60
+-cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x121c>
++cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x13ec>
+ sub x9, x9, x22
+ mov x11, #9223372036854775792
+ asr x10, x9, #3
+ cmp x10, x8
+ csel x8, x10, x8, hi
+ cmp x9, x11
+ mov x9, #1152921504606846975
+ csel x26, x8, x9, lo
+-cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x62c>
++cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x668>
+ mov x24, xzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x640>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x67c>
+ lsr x8, x26, #60
+-cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1268>
++cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1438>
+ lsl x0, x26, #4
+ bl <_Znwm@plt>
+ mov x24, x0
+ add x8, x24, x25, lsl #4
+@@ -409,40 +424,40 @@
+ stp x9, xzr, [x8]
+ bl <memmove@plt>
+ stp x24, x25, [x29, #-24]
+ stur x26, [x29, #-8]
+-cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x680>
++cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x6bc>
+ mov x0, x22
+ bl <_ZdlPv@plt>
+ ldur x25, [x29, #-16]
+ ldur x8, [x29, #-8]
+ cmp x25, x8
+-b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x6a4>
++b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x6e0>
+ adrp x8, <PAGE>
+ add x8, x8, <string:'-verbose:collector'>
+ add x9, x25, #16
+ stp x8, xzr, [x25]
+ stur x9, [x29, #-16]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x738>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x774>
+ ldur x22, [x29, #-24]
+ sub x23, x25, x22
+ asr x25, x23, #4
+ add x9, x25, #1
+ lsr x10, x9, #60
+-cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x122c>
++cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x13fc>
+ sub x8, x8, x22
+ mov x11, #9223372036854775792
+ asr x10, x8, #3
+ cmp x10, x9
+ csel x9, x10, x9, hi
+ cmp x8, x11
+ mov x8, #1152921504606846975
+ csel x26, x9, x8, lo
+-cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x6e8>
++cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x724>
+ mov x24, xzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x6fc>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x738>
+ lsr x8, x26, #60
+-cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1270>
++cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1440>
+ lsl x0, x26, #4
+ bl <_Znwm@plt>
+ mov x24, x0
+ add x8, x24, x25, lsl #4
+@@ -456,9 +471,9 @@
+ stp x9, xzr, [x8]
+ bl <memmove@plt>
+ stp x24, x26, [x29, #-24]
+ stur x25, [x29, #-8]
+-cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x738>
++cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x774>
+ mov x0, x22
+ bl <_ZdlPv@plt>
+ mov w2, #3840
+ nop
+@@ -484,41 +499,41 @@
+ bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'APPSPAWNX_VERBOSE_CLASS'>
+ bl <getenv@plt>
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x8c0>
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x8fc>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'1'>
+ bl <strcmp@plt>
+-cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x8c0>
++cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x8fc>
+ ldp x8, x9, [x29, #-16]
+ cmp x8, x9
+-b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x7d4>
++b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x810>
+ adrp x9, <PAGE>
+ add x9, x9, <string:'-verbose:class'>
+ add x10, x8, #16
+ stp x9, xzr, [x8]
+ stur x10, [x29, #-16]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x868>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x8a4>
+ ldur x22, [x29, #-24]
+ sub x23, x8, x22
+ asr x25, x23, #4
+ add x8, x25, #1
+ lsr x10, x8, #60
+-cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1224>
++cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x13f4>
+ sub x9, x9, x22
+ mov x11, #9223372036854775792
+ asr x10, x9, #3
+ cmp x10, x8
+ csel x8, x10, x8, hi
+ cmp x9, x11
+ mov x9, #1152921504606846975
+ csel x26, x8, x9, lo
+-cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x818>
++cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x854>
+ mov x24, xzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x82c>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x868>
+ lsr x8, x26, #60
+-cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x126c>
++cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x143c>
+ lsl x0, x26, #4
+ bl <_Znwm@plt>
+ mov x24, x0
+ add x8, x24, x25, lsl #4
+@@ -532,9 +547,9 @@
+ stp x9, xzr, [x8]
+ bl <memmove@plt>
+ stp x24, x26, [x29, #-24]
+ stur x25, [x29, #-8]
+-cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x868>
++cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x8a4>
+ mov x0, x22
+ bl <_ZdlPv@plt>
+ mov w2, #3840
+ nop
+@@ -560,41 +575,41 @@
+ bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'APPSPAWNX_VERBOSE_VERIFIER'>
+ bl <getenv@plt>
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x9f0>
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xa2c>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'1'>
+ bl <strcmp@plt>
+-cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x9f0>
++cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xa2c>
+ ldp x8, x9, [x29, #-16]
+ cmp x8, x9
+-b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x904>
++b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x940>
+ adrp x9, <PAGE>
+ add x9, x9, <string:'-verbose:verifier'>
+ add x10, x8, #16
+ stp x9, xzr, [x8]
+ stur x10, [x29, #-16]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x998>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x9d4>
+ ldur x22, [x29, #-24]
+ sub x23, x8, x22
+ asr x25, x23, #4
+ add x8, x25, #1
+ lsr x10, x8, #60
+-cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1234>
++cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1404>
+ sub x9, x9, x22
+ mov x11, #9223372036854775792
+ asr x10, x9, #3
+ cmp x10, x8
+ csel x8, x10, x8, hi
+ cmp x9, x11
+ mov x9, #1152921504606846975
+ csel x26, x8, x9, lo
+-cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x948>
++cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x984>
+ mov x24, xzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x95c>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x998>
+ lsr x8, x26, #60
+-cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1274>
++cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1444>
+ lsl x0, x26, #4
+ bl <_Znwm@plt>
+ mov x24, x0
+ add x8, x24, x25, lsl #4
+@@ -608,9 +623,9 @@
+ stp x9, xzr, [x8]
+ bl <memmove@plt>
+ stp x24, x26, [x29, #-24]
+ stur x25, [x29, #-8]
+-cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x998>
++cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x9d4>
+ mov x0, x22
+ bl <_ZdlPv@plt>
+ mov w2, #3840
+ nop
+@@ -636,41 +651,41 @@
+ bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'APPSPAWNX_FAST_DEV'>
+ bl <getenv@plt>
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb20>
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb5c>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'1'>
+ bl <strcmp@plt>
+-cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb20>
++cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb5c>
+ ldp x8, x9, [x29, #-16]
+ cmp x8, x9
+-b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xa34>
++b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xa70>
+ adrp x9, <PAGE>
+ add x9, x9, <string:'-Xverify:none'>
+ add x10, x8, #16
+ stp x9, xzr, [x8]
+ stur x10, [x29, #-16]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xac8>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb04>
+ ldur x22, [x29, #-24]
+ sub x23, x8, x22
+ asr x25, x23, #4
+ add x8, x25, #1
+ lsr x10, x8, #60
+-cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x123c>
++cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x140c>
+ sub x9, x9, x22
+ mov x11, #9223372036854775792
+ asr x10, x9, #3
+ cmp x10, x8
+ csel x8, x10, x8, hi
+ cmp x9, x11
+ mov x9, #1152921504606846975
+ csel x26, x8, x9, lo
+-cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xa78>
++cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xab4>
+ mov x24, xzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xa8c>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xac8>
+ lsr x8, x26, #60
+-cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1278>
++cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1448>
+ lsl x0, x26, #4
+ bl <_Znwm@plt>
+ mov x24, x0
+ add x8, x24, x25, lsl #4
+@@ -684,9 +699,9 @@
+ stp x9, xzr, [x8]
+ bl <memmove@plt>
+ stp x24, x26, [x29, #-24]
+ stur x25, [x29, #-8]
+-cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xac8>
++cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb04>
+ mov x0, x22
+ bl <_ZdlPv@plt>
+ mov w2, #3840
+ nop
+@@ -712,41 +727,41 @@
+ bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'APPSPAWNX_NO_JIT'>
+ bl <getenv@plt>
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xc50>
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xc8c>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'1'>
+ bl <strcmp@plt>
+-cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xc50>
++cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xc8c>
+ ldp x8, x9, [x29, #-16]
+ cmp x8, x9
+-b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb64>
++b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xba0>
+ adrp x9, <PAGE>
+ add x9, x9, <string:'-Xusejit:false'>
+ add x10, x8, #16
+ stp x9, xzr, [x8]
+ stur x10, [x29, #-16]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xbf8>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xc34>
+ ldur x22, [x29, #-24]
+ sub x23, x8, x22
+ asr x25, x23, #4
+ add x8, x25, #1
+ lsr x10, x8, #60
+-cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1244>
++cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1414>
+ sub x9, x9, x22
+ mov x11, #9223372036854775792
+ asr x10, x9, #3
+ cmp x10, x8
+ csel x8, x10, x8, hi
+ cmp x9, x11
+ mov x9, #1152921504606846975
+ csel x26, x8, x9, lo
+-cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xba8>
++cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xbe4>
+ mov x24, xzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xbbc>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xbf8>
+ lsr x8, x26, #60
+-cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x127c>
++cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x144c>
+ lsl x0, x26, #4
+ bl <_Znwm@plt>
+ mov x24, x0
+ add x8, x24, x25, lsl #4
+@@ -760,9 +775,9 @@
+ stp x9, xzr, [x8]
+ bl <memmove@plt>
+ stp x24, x26, [x29, #-24]
+ stur x25, [x29, #-8]
+-cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xbf8>
++cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xc34>
+ mov x0, x22
+ bl <_ZdlPv@plt>
+ mov w2, #3840
+ nop
+@@ -788,41 +803,41 @@
+ bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'APPSPAWNX_FORCE_INT'>
+ bl <getenv@plt>
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xd80>
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xdbc>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'1'>
+ bl <strcmp@plt>
+-cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xd80>
++cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xdbc>
+ ldp x8, x9, [x29, #-16]
+ cmp x8, x9
+-b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xc94>
++b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xcd0>
+ adrp x9, <PAGE>
+ add x9, x9, <string:'-Xint'>
+ add x10, x8, #16
+ stp x9, xzr, [x8]
+ stur x10, [x29, #-16]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xd28>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xd64>
+ ldur x22, [x29, #-24]
+ sub x23, x8, x22
+ asr x25, x23, #4
+ add x8, x25, #1
+ lsr x10, x8, #60
+-cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x124c>
++cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x141c>
+ sub x9, x9, x22
+ mov x11, #9223372036854775792
+ asr x10, x9, #3
+ cmp x10, x8
+ csel x8, x10, x8, hi
+ cmp x9, x11
+ mov x9, #1152921504606846975
+ csel x26, x8, x9, lo
+-cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xcd8>
++cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xd14>
+ mov x24, xzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xcec>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xd28>
+ lsr x8, x26, #60
+-cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1280>
++cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1450>
+ lsl x0, x26, #4
+ bl <_Znwm@plt>
+ mov x24, x0
+ add x8, x24, x25, lsl #4
+@@ -836,9 +851,9 @@
+ stp x9, xzr, [x8]
+ bl <memmove@plt>
+ stp x24, x26, [x29, #-24]
+ stur x25, [x29, #-8]
+-cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xd28>
++cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xd64>
+ mov x0, x22
+ bl <_ZdlPv@plt>
+ mov w2, #3840
+ nop
+@@ -864,41 +879,41 @@
+ bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'APPSPAWNX_CHECK_JNI'>
+ bl <getenv@plt>
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xeb0>
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xeec>
+ adrp x1, <PAGE>
+ add x1, x1, <string:'1'>
+ bl <strcmp@plt>
+-cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xeb0>
++cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xeec>
+ ldp x8, x9, [x29, #-16]
+ cmp x8, x9
+-b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xdc4>
++b.hs <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xe00>
+ adrp x9, <PAGE>
+ add x9, x9, <string:'-Xcheck:jni'>
+ add x10, x8, #16
+ stp x9, xzr, [x8]
+ stur x10, [x29, #-16]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xe58>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xe94>
+ ldur x22, [x29, #-24]
+ sub x23, x8, x22
+ asr x25, x23, #4
+ add x8, x25, #1
+ lsr x10, x8, #60
+-cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1254>
++cbnz x10, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1424>
+ sub x9, x9, x22
+ mov x11, #9223372036854775792
+ asr x10, x9, #3
+ cmp x10, x8
+ csel x8, x10, x8, hi
+ cmp x9, x11
+ mov x9, #1152921504606846975
+ csel x26, x8, x9, lo
+-cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xe08>
++cbnz x26, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xe44>
+ mov x24, xzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xe1c>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xe58>
+ lsr x8, x26, #60
+-cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1284>
++cbnz x8, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1454>
+ lsl x0, x26, #4
+ bl <_Znwm@plt>
+ mov x24, x0
+ add x8, x24, x25, lsl #4
+@@ -912,9 +927,9 @@
+ stp x9, xzr, [x8]
+ bl <memmove@plt>
+ stp x24, x26, [x29, #-24]
+ stur x25, [x29, #-8]
+-cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xe58>
++cbz x22, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xe94>
+ mov x0, x22
+ bl <_ZdlPv@plt>
+ mov w2, #3840
+ nop
+@@ -954,9 +969,9 @@
+ mov x0, x19
+ bl <fflush@plt>
+ ldr w8, [sp, #4]
+ cmp w8, #1
+-b.lt <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xf3c>
++b.lt <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xf78>
+ mov x24, xzr
+ mov x22, xzr
+ adrp x23, <PAGE>
+ add x23, x23, <string:'[AppSpawnX][VM]   option[%d]: %s\n'>
+@@ -971,21 +986,22 @@
+ ldrsw x8, [sp, #4]
+ add x22, x22, #1
+ add x24, x24, #16
+ cmp x22, x8
+-b.lt <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xf08>
++b.lt <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xf44>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'[AppSpawnX][VM] Step 4: Calling JNI_CreateJavaVM...\n'>
+ mov w1, #52
+ mov w2, #1
+ mov x3, x19
+ bl <fwrite@plt>
+ mov x0, x19
+ bl <fflush@plt>
+-add x22, x20, #8
+-add x1, x20, #16
++add x23, x20, #8
++add x22, x20, #16
+ mov x2, sp
+-mov x0, x22
++mov x0, x23
++mov x1, x22
+ blr x21
+ mov w21, w0
+ adrp x1, <PAGE>
+ add x1, x1, <string:'[AppSpawnX][VM] Step 4: JNI_CreateJavaVM returned %d\n'>
+@@ -993,9 +1009,9 @@
+ mov w2, w21
+ bl <fprintf@plt>
+ mov x0, x19
+ bl <fflush@plt>
+-cbnz w21, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1094>
++cbnz w21, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1174>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'[AppSpawnX][VM] Step 4: JavaVM created successfully\n'>
+ mov w1, #52
+ mov w2, #1
+@@ -1027,26 +1043,153 @@
+ add x2, x2, <string:'NativeLoader initialized for appspawn-x JavaVM'>
+ bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
+ add x0, x20, #40
+ bl <_ZN9appspawnx25LoadVerifiedAdapterBridgeEPPv>
+-tbz w0, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x10bc>
+-mov x0, x20
+-bl <_ZN9appspawnx16AppSpawnXRuntime21registerNativeMethodsEv>
+-cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x111c>
+-mov x0, x20
+-bl <_ZN9appspawnx16AppSpawnXRuntime19cacheJavaReferencesEv>
+-cbnz w0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1154>
++tbz w0, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x11a4>
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #48]
++adrp x1, <PAGE>
++add x1, x1, <string:'java/lang/System'>
++blr x8
++mov x20, x0
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x10c8>
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #904]
++adrp x2, <PAGE>
++add x2, x2, <string:'loadLibrary'>
++adrp x3, <PAGE>
++add x3, x3, <string:'(Ljava/lang/String;)V'>
++mov x1, x20
++blr x8
++mov x21, x0
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x10c8>
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #1336]
++adrp x1, <PAGE>
++add x1, x1, <string:'javacore'>
++blr x8
++mov x23, x0
++cbnz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x121c>
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #1824]
++blr x8
++tst w0, #0xff
++b.eq <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1100>
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #128]
++blr x8
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #136]
++blr x8
++cbz x20, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1118>
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #184]
++mov x1, x20
++blr x8
+ mov w2, #3840
+ nop
+ adr x3, <string:'AppSpawnX'>
+ adrp x4, <PAGE>
+-add x4, x4, <string:'ART VM initialization complete'>
++add x4, x4, <string:'ART boot-ClassLoader libjavacore request unavailable'>
++mov w0, #3
++mov w1, #6
++movk w2, #3328, lsl #16
++bl <HiLogPrint@plt>
++adrp x1, <PAGE>
++add x1, x1, <string:'[%s][E] ART boot-ClassLoader libjavacore request unavailable\n'>
++nop
++adr x2, <string:'AppSpawnX'>
++mov x0, x19
++bl <fprintf@plt>
++mov x0, x19
++bl <fflush@plt>
++adrp x0, <PAGE>
++add x0, x0, <string:'E'>
++adrp x2, <PAGE>
++add x2, x2, <string:'ART boot-ClassLoader libjavacore request unavailable'>
++bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x11fc>
++adrp x1, <PAGE>
++add x1, x1, <string:'[AppSpawnX][VM] ERROR: JNI_CreateJavaVM failed, rc=%d\n'>
++mov x0, x19
++mov w2, w21
++bl <fprintf@plt>
++mov x0, x19
++bl <fflush@plt>
++mov w19, #-1
++stp xzr, xzr, [x23]
++ldrb w8, [sp, #40]
++tbnz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x132c>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1208>
++mov w2, #3840
++nop
++adr x3, <string:'AppSpawnX'>
++adrp x4, <PAGE>
++add x4, x4, <string:'exact adapter bridge admission failed before boot-library load'>
++mov w0, #3
++mov w1, #6
++movk w2, #3328, lsl #16
++bl <HiLogPrint@plt>
++adrp x1, <PAGE>
++add x1, x1, <string:'[%s][E] exact adapter bridge admission failed before boot-library load\n'>
++nop
++adr x2, <string:'AppSpawnX'>
++mov x0, x19
++bl <fprintf@plt>
++mov x0, x19
++bl <fflush@plt>
++adrp x0, <PAGE>
++add x0, x0, <string:'E'>
++adrp x2, <PAGE>
++add x2, x2, <string:'exact adapter bridge admission failed before boot-library load'>
++bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
++mov w19, #-1
++ldrb w8, [sp, #40]
++tbnz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x132c>
++ldurb w8, [x29, #-48]
++tbnz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x133c>
++ldur x0, [x29, #-24]
++cbnz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x134c>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb0>
++ldr x0, [x22]
++mov x1, x20
++mov x2, x21
++mov x3, x23
++bl <_ZN7_JNIEnv20CallStaticVoidMethodEP7_jclassP10_jmethodIDz>
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #184]
++mov x1, x23
++blr x8
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #184]
++mov x1, x20
++blr x8
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #1824]
++blr x8
++tst w0, #0xff
++b.ne <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1358>
++mov w2, #3840
++nop
++adr x3, <string:'AppSpawnX'>
++adrp x4, <PAGE>
++add x4, x4, <string:'ART boot-ClassLoader libjavacore bootstrap committed'>
+ mov w0, #3
+ mov w1, #4
+ movk w2, #3328, lsl #16
+ bl <HiLogPrint@plt>
+ adrp x1, <PAGE>
+-add x1, x1, <string:'[%s] ART VM initialization complete\n'>
++add x1, x1, <string:'[%s] ART boot-ClassLoader libjavacore bootstrap committed\n'>
+ nop
+ adr x2, <string:'AppSpawnX'>
+ mov x0, x19
+ bl <fprintf@plt>
+@@ -1054,33 +1197,57 @@
+ bl <fflush@plt>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'I'>
+ adrp x2, <PAGE>
+-add x2, x2, <string:'ART VM initialization complete'>
++add x2, x2, <string:'ART boot-ClassLoader libjavacore bootstrap committed'>
+ bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
+-mov w20, wzr
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x11bc>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'[AppSpawnX][VM] ERROR: JNI_CreateJavaVM failed, rc=%d\n'>
+-mov x0, x19
+-mov w2, w21
+-bl <fprintf@plt>
+-mov x0, x19
+-bl <fflush@plt>
+-mov w20, #-1
+-stp xzr, xzr, [x22]
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x11bc>
+ mov w2, #3840
+ nop
+ adr x3, <string:'AppSpawnX'>
+ adrp x4, <PAGE>
+-add x4, x4, <string:'exact adapter bridge admission failed before runtime load'>
++add x4, x4, <string:'ART VM creation commit complete'>
++mov w0, #3
++mov w1, #4
++movk w2, #3328, lsl #16
++bl <HiLogPrint@plt>
++adrp x1, <PAGE>
++add x1, x1, <string:'[%s] ART VM creation commit complete\n'>
++nop
++adr x2, <string:'AppSpawnX'>
++mov x0, x19
++bl <fprintf@plt>
++mov x0, x19
++bl <fflush@plt>
++adrp x0, <PAGE>
++add x0, x0, <string:'I'>
++adrp x2, <PAGE>
++add x2, x2, <string:'ART VM creation commit complete'>
++bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
++mov w19, wzr
++ldrb w8, [sp, #40]
++tbz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1208>
++ldr x0, [sp, #56]
++bl <_ZdlPv@plt>
++ldurb w8, [x29, #-48]
++tbz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1210>
++ldur x0, [x29, #-32]
++bl <_ZdlPv@plt>
++ldur x0, [x29, #-24]
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb0>
++stur x0, [x29, #-16]
++bl <_ZdlPv@plt>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb0>
++mov w2, #3840
++nop
++adr x3, <string:'AppSpawnX'>
++adrp x4, <PAGE>
++add x4, x4, <string:'ART boot-ClassLoader libjavacore bootstrap failed'>
+ mov w0, #3
+ mov w1, #6
+ movk w2, #3328, lsl #16
+ bl <HiLogPrint@plt>
+ adrp x1, <PAGE>
+-add x1, x1, <string:'[%s][E] exact adapter bridge admission failed before runtime load\n'>
++add x1, x1, <string:'[%s][E] ART boot-ClassLoader libjavacore bootstrap failed\n'>
+ nop
+ adr x2, <string:'AppSpawnX'>
+ mov x0, x19
+ bl <fprintf@plt>
+@@ -1088,70 +1255,19 @@
+ bl <fflush@plt>
+ adrp x0, <PAGE>
+ add x0, x0, <string:'E'>
+ adrp x2, <PAGE>
+-add x2, x2, <string:'exact adapter bridge admission failed before runtime load'>
++add x2, x2, <string:'ART boot-ClassLoader libjavacore bootstrap failed'>
+ bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
+-mov w20, #-1
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x11bc>
+-adrp x21, <PAGE>
+-add x21, x21, <string:'registerNativeMethods failed, ret=%d'>
+-mov w2, #3840
+-nop
+-adr x3, <string:'AppSpawnX'>
+-mov w0, #3
+-mov w1, #6
+-movk w2, #3328, lsl #16
+-mov x4, x21
+-mov w5, #-1
+-bl <HiLogPrint@plt>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'[%s][E] registerNativeMethods failed, ret=%d\n'>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1188>
+-adrp x21, <PAGE>
+-add x21, x21, <string:'cacheJavaReferences failed, ret=%d'>
+-mov w2, #3840
+-nop
+-adr x3, <string:'AppSpawnX'>
+-mov w0, #3
+-mov w1, #6
+-movk w2, #3328, lsl #16
+-mov x4, x21
+-mov w5, #-1
+-bl <HiLogPrint@plt>
+-adrp x1, <PAGE>
+-add x1, x1, <string:'[%s][E] cacheJavaReferences failed, ret=%d\n'>
+-nop
+-adr x2, <string:'AppSpawnX'>
+-mov x0, x19
+-mov w3, #-1
+-mov w20, #-1
+-bl <fprintf@plt>
+-mov x0, x19
+-bl <fflush@plt>
+-adrp x0, <PAGE>
+-add x0, x0, <string:'E'>
+-mov x2, x21
+-mov w3, #-1
+-bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
+-ldrb w8, [sp, #40]
+-tbnz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x11d8>
+-ldurb w8, [x29, #-48]
+-tbnz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x11e8>
+-ldur x0, [x29, #-24]
+-cbnz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x11f8>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb0>
+-ldr x0, [sp, #56]
+-bl <_ZdlPv@plt>
+-ldurb w8, [x29, #-48]
+-tbz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x11cc>
+-ldur x0, [x29, #-32]
+-bl <_ZdlPv@plt>
+-ldur x0, [x29, #-24]
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb0>
+-stur x0, [x29, #-16]
+-bl <_ZdlPv@plt>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0xb0>
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #128]
++blr x8
++ldr x0, [x22]
++ldr x8, [x0]
++ldr x8, [x8, #136]
++blr x8
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x11fc>
+ sub x0, x29, #24
+ bl <_ZNKSt3__h6vectorI12JavaVMOptionNS_9allocatorIS1_EEE20__throw_length_errorB6v15004Ev>
+ sub x0, x29, #24
+ bl <_ZNKSt3__h6vectorI12JavaVMOptionNS_9allocatorIS1_EEE20__throw_length_errorB6v15004Ev>
+@@ -1183,54 +1299,61 @@
+ bl <_ZSt28__throw_bad_array_new_lengthB6v15004v>
+ bl <_ZSt28__throw_bad_array_new_lengthB6v15004v>
+ bl <_ZSt28__throw_bad_array_new_lengthB6v15004v>
+ bl <_ZSt28__throw_bad_array_new_lengthB6v15004v>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
+ mov x19, x0
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1318>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1504>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
+ ldrb w8, [sp]
+ mov x19, x0
+-tbz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1308>
++tbz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f4>
+ ldr x0, [sp, #16]
+ bl <_ZdlPv@plt>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1308>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f4>
+ ldrb w8, [sp, #40]
+ mov x19, x0
+-tbnz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1310>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1318>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
+-b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1304>
++tbnz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14fc>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1504>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14dc>
++mov x19, x0
++ldur x0, [x29, #-24]
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1514>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x152c>
++b <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x14f0>
+ mov x19, x0
+ ldrb w8, [sp, #40]
+-tbz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1318>
++tbz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1504>
+ ldr x0, [sp, #56]
+ bl <_ZdlPv@plt>
+ ldurb w8, [x29, #-48]
+-tbnz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1330>
++tbnz w8, #0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x151c>
+ ldur x0, [x29, #-24]
+-cbnz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1340>
++cbnz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x152c>
+ mov x0, x19
+ bl <_Unwind_Resume@plt>
+ ldur x0, [x29, #-32]
+ bl <_ZdlPv@plt>
+ ldur x0, [x29, #-24]
+-cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1328>
++cbz x0, <_ZN9appspawnx16AppSpawnXRuntime7startVmEb+0x1514>
+ stur x0, [x29, #-16]
+ bl <_ZdlPv@plt>
+ mov x0, x19
+ bl <_Unwind_Resume@plt>

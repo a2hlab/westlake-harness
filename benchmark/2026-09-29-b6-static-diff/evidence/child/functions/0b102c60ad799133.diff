@@ -1,0 +1,50 @@
+--- R155/WlgrIfProductionReadBootId
++++ NEW/WlgrIfProductionReadBootId
+@@ -0,0 +1,47 @@
++stp x29, x30, [sp, #-48]!
++mov w0, #-1
++stp x22, x21, [sp, #16]
++stp x20, x19, [sp, #32]
++mov x29, sp
++cbz x1, <WlgrIfProductionReadBootId+0xac>
++mov x20, x2
++cmp x2, #37
++b.lo <WlgrIfProductionReadBootId+0xac>
++mov x19, x1
++nop
++adr x0, <string:'/proc/sys/kernel/random/boot_id'>
++mov w1, #524288
++bl <open@plt>
++tbnz w0, #31, <WlgrIfProductionReadBootId+0xa8>
++sub x21, x20, #1
++mov x1, x19
++mov x2, x21
++mov w22, w0
++bl <read@plt>
++mov x20, x0
++mov w0, w22
++bl <close@plt>
++mov w0, #-1
++tbnz x20, #63, <WlgrIfProductionReadBootId+0xac>
++cmp x20, x21
++b.hs <WlgrIfProductionReadBootId+0xac>
++cbz x20, <WlgrIfProductionReadBootId+0x98>
++sub x8, x19, #1
++ldrb w9, [x8, x20]
++cmp w9, #13
++ccmp w9, #10, #4, ne
++b.ne <WlgrIfProductionReadBootId+0x98>
++sub x20, x20, #1
++add x9, x20, #1
++cmp x9, #1
++b.hi <WlgrIfProductionReadBootId+0x74>
++mov x20, xzr
++cmp x20, #36
++strb wzr, [x19, x20]
++csetm w0, ne
++b <WlgrIfProductionReadBootId+0xac>
++mov w0, #-1
++ldp x20, x19, [sp, #32]
++ldp x22, x21, [sp, #16]
++ldp x29, x30, [sp], #48
++ret

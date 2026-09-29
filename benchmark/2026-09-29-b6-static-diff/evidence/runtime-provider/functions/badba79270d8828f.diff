@@ -1,0 +1,63 @@
+--- R155/_ZN9appspawnxL23logArtAbortAndTerminateEv
++++ NEW/_ZN9appspawnxL23logArtAbortAndTerminateEv
+@@ -0,0 +1,60 @@
++stp x29, x30, [sp, #-64]!
++stp x28, x23, [sp, #16]
++stp x22, x21, [sp, #32]
++stp x20, x19, [sp, #48]
++mov x29, sp
++sub sp, sp, #1, lsl #12 // =4096
++mov x0, sp
++mov w1, wzr
++mov w2, #4096
++mov x20, sp
++bl <memset@plt>
++mov x0, sp
++mov w1, #4096
++bl <westlake_art_copy_fault_message_for_abort_logging@plt>
++ldrb w8, [sp]
++adrp x9, <PAGE>
++add x9, x9, <string:'(missing)'>
++mov x19, x0
++nop
++adr x21, <string:'AppSpawnX'>
++cmp w8, #0
++adrp x22, <PAGE>
++add x22, x22, <string:'WLCGATE:ART:ABORT_MESSAGE:length=%{public}zu text=%{public}s'>
++csel x20, x9, x20, eq
++mov w2, #3840
++mov w0, #3
++mov w1, #6
++movk w2, #3328, lsl #16
++mov x3, x21
++mov x4, x22
++mov x5, x19
++mov x6, x20
++bl <HiLogPrint@plt>
++adrp x8, <PAGE>
++adrp x1, <PAGE>
++add x1, x1, <string:'[%s][E] WLCGATE:ART:ABORT_MESSAGE:length=%{public}zu text=%{public}s\n'>
++mov x2, x21
++mov x3, x19
++mov x4, x20
++ldr x8, [x8, <reloc:1025:stderr>]
++ldr x23, [x8]
++mov x0, x23
++bl <fprintf@plt>
++mov x0, x23
++bl <fflush@plt>
++adrp x0, <PAGE>
++add x0, x0, <string:'E'>
++mov x2, x22
++mov x3, x19
++mov x4, x20
++bl <_ZL22appspawnx_file_log_fmtPKcS0_S0_z>
++adrp x1, <PAGE>
++add x1, x1, <string:'ART ABORT: length=%zu text=%s\n'>
++mov x0, x23
++mov x2, x19
++mov x3, x20
++bl <fprintf@plt>
++mov x0, x23
++bl <fflush@plt>
++bl <abort@plt>

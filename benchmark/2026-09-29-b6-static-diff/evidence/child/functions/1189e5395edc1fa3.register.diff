@@ -1,0 +1,41 @@
+--- R155/WlgrIpGetIdentity
++++ NEW/WlgrIpGetIdentity
+@@ -0,0 +1,38 @@
++sub sp, sp, #176
++stp xR, xR, [sp, #144]
++add xR, sp, #144
++stp xR, xR, [sp, #160]
++cbz xR, <WlgrIpGetIdentity+0x80>
++ldr wR, [xR, #8]
++mov xR, xR
++cmp wR, #1
++b.ne <WlgrIpGetIdentity+0x80>
++ldr wR, [xR]
++cmp wR, #1
++b.ne <WlgrIpGetIdentity+0x80>
++ldr wR, [xR, #4]
++cmp wR, #864
++b.ne <WlgrIpGetIdentity+0x80>
++add xR, sp, #32
++add xR, xR, #16
++bl <WLSha256Init>
++add xR, sp, #32
++mov xR, xR
++mov wR, #816
++bl <WLSha256Update>
++cbnz wR, <WlgrIpGetIdentity+0x80>
++add xR, sp, #32
++mov xR, sp
++bl <WLSha256Final>
++cbnz wR, <WlgrIpGetIdentity+0x80>
++add xR, xR, #832
++mov xR, sp
++mov wR, #32
++bl <memcmp@plt>
++cbz wR, <WlgrIpGetIdentity+0x84>
++mov xR, xzr
++mov xR, xR
++ldp xR, xR, [sp, #160]
++ldp xR, xR, [sp, #144]
++add sp, sp, #176
++ret

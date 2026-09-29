@@ -1,0 +1,38 @@
+--- R155/WLSCPL_InheritAndroidRuntimeV1
++++ NEW/WLSCPL_InheritAndroidRuntimeV1
+@@ -0,0 +1,35 @@
++stp x29, x30, [sp, #-32]!
++stp x20, x19, [sp, #16]
++mov x19, x0
++mov w0, #22
++mov x29, sp
++cbz x19, <WLSCPL_InheritAndroidRuntimeV1+0x80>
++adrp x8, <PAGE>
++ldrb w8, [x8, <object:g_sealed_namespace_prepared>]
++cbz w8, <WLSCPL_InheritAndroidRuntimeV1+0x80>
++adrp x1, <PAGE>
++add x1, x1, <object:g_sealed_namespace>
++nop
++adr x2, <object:WLSCPL_InheritAndroidRuntimeV1.kAndroidRuntimeSoname>
++mov x0, x19
++bl <dlns_inherit@plt>
++cbnz w0, <WLSCPL_InheritAndroidRuntimeV1+0x80>
++adrp x20, <PAGE>
++ldr x8, [x20, <object:g_published_android_runtime_handle>]
++cbz x8, <WLSCPL_InheritAndroidRuntimeV1+0x54>
++mov w0, wzr
++b <WLSCPL_InheritAndroidRuntimeV1+0x80>
++bl <dlerror@plt>
++nop
++adr x1, <string:'/system/android/lib64/liboh_android_runtime.so'>
++mov x0, x19
++mov w2, #258
++bl <dlopen_ns@plt>
++cmp x0, #0
++mov x8, x0
++cset w9, eq
++lsl w0, w9, #1
++str x8, [x20, #288]
++ldp x20, x19, [sp, #16]
++ldp x29, x30, [sp], #32
++ret
