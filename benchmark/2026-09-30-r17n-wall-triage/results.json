@@ -1,57 +1,38 @@
 {
   "date": "2026-09-30",
   "author": "cc-t3",
-  "source_sweep": {
-    "path": "benchmark/2026-09-30-v3c-5ea-sweep/runs/v3c-all-5ea/5ea34a4500000000000000001123012c",
-    "jar": "v3c + r17j (pre-r17k conscrypt, pre-r17l keystore, pre-r17m theme)",
-    "board": "5ea34a45",
-    "note": "status=foreground_unconfirmed for all; screenshots remain ground truth. First-fatal-Java-wall taxonomy below is from per-app hilog.txt."
-  },
-  "headline_findings": [
-    {
-      "id": "r17n-1-egl",
-      "title": "Wikipedia B11 last wall (EGL BAD_ALLOC) is NOT safely fixable in the runtime JAR",
-      "verdict": "route-to-cx-t0-native",
-      "proof": "delegate adapter.window.WindowSessionAdapter (oh-adapter-framework.jar, md5 5bfa99ba = live board jar) reverse-pushes IWindow.resized on a SIZE gate: `long sizeKey=((long)w<<32)|(h&0xffffffffL); Long lastPushed=mLastPushedSize.get(sessionId); if(lastPushed==null||lastPushed.longValue()!=sizeKey){push;put}`. Pure-reflection 'size-gate -> once-per-window' is impossible: (1) compare unboxes via lastPushed.longValue() (primitive !=), so no equals-sentinel; (2) Long is final, cannot override longValue(); (3) delegate check-casts get() result to Long, so a non-Long poison throws CCE inside relayout; (4) sizeKey is a relayout-internal local, my WindowSessionProxy post-processing cannot see or predict it before the delegate's own push. Confirmed by source (line 848) AND cc-wiki independent smali read (.line 839-840). Changing relayout input args (requestedWH 0x0 -> useWH) was forbidden by directive (WRAP_CONTENT semantics).",
-      "westlake_correct_form": "vm-copies/westlake-current/framework/window/java/WindowSessionAdapter.java:1076-1081 gates by window.asBinder() once-per-window ([G2.8-RELAYOUT-LOOP]); route-A build regressed to the size gate.",
-      "recommended_fix": "cx-t0 native libhwui single-swap westlake-b11-egl-a578b949 (colorspace-retry + eglGetError) — addresses EGL surface recreation at root regardless of push count; OR rebuild oh-adapter-framework.jar WindowSessionAdapter to the binder gate (boot-AOT, needs boot recompile, not single-file overlay).",
-      "my_r17j_status": "0x0-degenerate once-per-window reverse-push in WindowSessionProxy is a DIFFERENT path (only fires on degenerate frames), correct for ZigZag, retained, NOT the EGL cause."
-    },
-    {
-      "id": "r17n-2-conscrypt",
-      "title": "conscrypt 'Sun provider not found' is boot-side (JAR signature verification), r17k cannot reach it",
-      "verdict": "route-to-cx-t0-boot",
-      "proof": "App startup triggers JAR verification: JarVerifier.beginEntry -> ManifestEntryVerifier.setEntry -> ManifestEntryVerifier$SunProviderHolder.<clinit> -> sun.security.jca.Providers.getSunProvider(:128) `Class.forName(\"com.android.org.conscrypt.OpenSSLProvider\")` -> ClassNotFoundException -> RuntimeException(:135) 'Sun provider not found'. Providers is a BCP class so Class.forName uses BootClassLoader, which cannot see the runtime-JAR OpenSSLProvider (r17k). AppConfig.<clinit> (amaze) / main (newpipe) die on the resulting ExceptionInInitializerError/NoClassDefFoundError.",
-      "recommended_fix": "cx-t0 boot: patch sun.security.jca.Providers.getSunProvider() (core-oj.jar) to return the BouncyCastle provider instead of Class.forName-ing conscrypt, OR ship com.android.org.conscrypt.OpenSSLProvider in a boot jar. AppSpawnXInit.overrideJcaProvidersForOH already fixes the Providers.<clinit> provider-LIST path (Security.props rewrite) but NOT this lazy JAR-verification getSunProvider path.",
-      "affected_apps": ["fd-com-amaze-filemanager", "newpipe", "fd-droidify", "fd-catima", "antennapod", "tusky (androidx.startup, per cc-wiki)"],
-      "note": "r17k OpenSSLProvider still fixes the APP-SIDE case (app code `new com.android.org.conscrypt.OpenSSLProvider()`, app classloader, e.g. vlc). Two distinct walls, same class name."
-    }
+  "base": "b5 250958dc (cumulative overlay on v3c generation)",
+  "unified_candidate": "r17r dd4f0eae",
+  "increments": [
+    {"rev": "r17n", "wall": "getSystemService(JobScheduler.class) returns null -> JobScheduler.cancel NPE (fossify calendar)",
+     "fix": "OnlineConnectivityManager.install() also registers SYSTEM_SERVICE_NAMES[android.app.job.JobScheduler]='jobscheduler'; route-A only wrote the by-name SYSTEM_SERVICE_FETCHERS entry, so the typed getSystemService(Class) path resolved to null",
+     "lit": "fossify calendar (month grid)", "file": "OnlineConnectivityManager.java"},
+    {"rev": "r17o", "wall": "conscrypt 'Sun provider not found' (9 apps, biggest regression): sun.security.jca.Providers.getSunProvider Class.forName(jarVerificationProviders[0]=conscrypt) under BootClassLoader during JAR signature verification",
+     "fix": "B7BindFixes rewrites Providers.jarVerificationProviders[0] conscrypt->com.android.org.bouncycastle.jce.provider.BouncyCastleProvider (boot-visible); final locks the array reference, elements are writable; leaves the AndroidOpenSSL provider intact for Wikipedia's BC AndroidDigestFactory",
+     "lit": "Droid-ify (main UI, cross-board); newpipe/catima/antennapod/amaze clear the wall", "file": "B7BindFixes.java"},
+    {"rev": "r17p", "wall": "EGL: BCP WindowSessionAdapter reverse-pushes redundant IWindow.resized on size-changed -> HWUI rebuilds surface -> BAD_ALLOC (wikipedia/newpipe/noice) / firstCreate SURFACE_CHANGED white (AppManager)",
+     "fix": "WindowSessionProxy wraps the relayout IWindow (Proxy) and drops the delegate's resized(); the genuine 0x0 death-spiral recovery still runs via reversePushOnce on the REAL window (ZigZag/termux preserved)",
+     "lit": "fd-AppManager (verify splash); wikipedia/newpipe main UI at t5 (t20 not stable)", "file": "WindowSessionProxy.java"},
+    {"rev": "r17q", "sha256": "94424d60b64468b494a9c1f7e0be0fb2bb763585d13cdcb795659089a044bac1",
+     "wall": "PowerManager.isIgnoringBatteryOptimizations -> getPowerExemptionManager -> getSystemService(PowerExemptionManager.class) null (its ctor needs the null DeviceIdleManager) -> isAllowListed NPE (etar)",
+     "fix": "SystemServiceFetcherStubs: power_exemption fetcher (allocate PowerExemptionManager, stub mService IDeviceIdleController -> isPowerSaveWhitelistApp false) + register Class->name",
+     "lit": "Etar (week calendar)", "file": "SystemServiceFetcherStubs.java"},
+    {"rev": "r17r", "sha256": "dd4f0eaecb646ecddca291769cec7a70590defb65e73a4372f0e89f5039e5057",
+     "wall": "markor addToDisplayAsUser FLAG_KEEP_SCREEN_ON(0x80) -> board delegate 5bfa99ba returns ADD_INVALID_TYPE(-10) -> ViewRootImpl throws InvalidDisplayException('window type 1 is not valid')",
+     "fix": "retryAddOnInvalidType masks original & SUPPORTED & ~POWER_LOCK_FLAGS using device-standard literal bits (0x80|0x80000|0x200000|0x400000); our SUPPORTED_LAYOUT_FLAGS runtime value 0x81e90580 already carried 0x80 so the prior mask was a no-op (masked==original, retry never fired) -- proven with on-board debug JARs a60ad048/d7cf8576",
+     "lit": "Markor (doc browser)", "file": "WindowSessionProxy.java"}
   ],
-  "first_wall_taxonomy": {
-    "conscrypt_getSunProvider_boot_cx-t0": ["fd-com-amaze-filemanager", "newpipe", "fd-droidify", "fd-catima", "antennapod"],
-    "native_cx-t0": {
-      "wikipedia": "EGL size-gate BAD_ALLOC (a578b949)",
-      "anki": "librsdroid.so dlopen_ns 'Error loading shared library'",
-      "fd-app_unciv": "libgdx.so dlopen_ns + MediaStore.scanFile NoSuchMethodError (BCP)",
-      "fd-api_termux-api": "android.net.LocalSocketImpl.bindLocal no JNI impl",
-      "opencamera": "AudioProductStrategy.native_list_audio_product_strategies no JNI impl",
-      "ooniprobe": "com/sun/jna/android-aarch64/libjnidispatch.so not in resource path (JNA packaging)"
-    },
-    "service_null_npe_cc-t3_candidate": {
-      "fd-calendar": "JobScheduler.cancel(int) on null — OnlineConnectivityManager$OnlineJobScheduler stub class exists but getSystemService(JOB_SCHEDULER_SERVICE) wiring gap; needs exact NPE stack",
-      "fd-etar": "PowerExemptionManager.isAllowListed(String,boolean) on null — deviceidle/power service wiring gap"
-    },
-    "downstream_or_triage": {
-      "fd-netguard": "CharSequence.toString() on null (app logic, likely downstream)",
-      "fd-breezyweather": "Object.getClass() on null",
-      "fd-feeder": "Object.getClass() on null"
-    },
-    "no_new_java_wall_recheck_on_r17m": ["aegis", "fd-AppManager", "fd-auxio", "fd-com-kunzisoft-keepass-libre", "fd-fitness", "fd-noice", "markor", "fd-android_thunderbird"],
-    "non_fatal_noise": {
-      "kotlinx.coroutines.CoroutineStart CNF": "adapter.activity.AppSchedulerBridge.primeCoroutineStart already attempts a warm-up prime; logged '(non-fatal)'; termux survived it (foreground-gate issue, not a Java death). Appears in breezyweather/calendar/feeder/netguard/ooniprobe/termux.",
-      "[B8-KEYSTORE] ClassNotFoundException adapter.core.SoftwareAndroidKeyStore": "STALE — fixed in r17l (sweep jar is r17j).",
-      "[B8-NATIVE] libwestlake_html_compat.so 'path is outside app domain'": "universal; tagsoup Java HtmlCompatFallback covers it (non-fatal)."
-    }
+  "regression_controls_stayed_lit": ["fd-auxio", "fd-droidify", "helloworld", "antennapod", "fd-com-amaze-filemanager", "fd-etar"],
+  "gen_specific_not_jar_regression": {
+    "zigzag": "cppcrash on 61b+5cd on r17m baseline (no wrapper) 3/3 identical to r17q 3/3 (--launch-only experiment); alive on 5ea (cc-wiki)",
+    "tusky_k9": "BLAST TransactionHangCallback white on 61b gen; app renders first frame (finishDrawing/first frame) but the buffer transaction hangs -> cx-t0 graphics-native"
   },
-  "r17n_deliverable": "This is a findings + routing package, NOT a new runtime JAR: the two directed items (EGL #1, conscrypt ①) are both proven boot/native and cannot be fixed in oh-adapter-runtime.jar. Candidate JAR wins (calendar/etar service wiring) are held pending exact crash-stack triage rather than built blind."
+  "routed_to_cx-t0": {
+    "wikipedia_B11_onboarding": "v3c-native surface double-create (onboarding window firstCreate SURFACE_CHANGED x2, no eglDestroy) -> BAD_ALLOC; not the reverse-push (dropped)",
+    "BLAST_hang": "AppManager/k9/tusky first frame not committed"
+  },
+  "open_di_null_getclass": {
+    "apps": ["fd-breezyweather", "fd-catima", "fd-feeder"],
+    "finding": "NOT a missing system service; getClass() on a null Kotlin app-internal object (viewModel/binding/repository). Per-app roots: breezyweather ObjectBox native DB, feeder NetworkSpecifier.getNetworkSpecifier NoSuchMethodError, catima ACRA StartupProcessor+SQLCipher. CoroutineStart CNF is our own primeCoroutineStart warm-up (red herring)."
+  }
 }
