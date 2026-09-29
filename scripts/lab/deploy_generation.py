@@ -116,6 +116,22 @@ def validate_replacement(old, new, target, adding=False):
     return source
 
 
+def validate_upgrade(old, new):
+    """A whole-package transaction keeps the platform and mount layout fixed."""
+    if any(m.get('runtime_identity') != 'deployment-only' for m in [old, new]):
+        raise ValueError('upgrade requires deployment-only identity')
+    for key in ['generation', 'mounts', 'prerequisites']:
+        if old[key] != new[key]: raise ValueError('upgrade changes ' + key)
+    # Longest mount target wins, just as the actual nested binds do. In
+    # particular, route-backed Android aliases must agree with their source.
+    rows = sorted(new['mounts'], key=lambda row: len(row['target']), reverse=True)
+    for target, digest in new['live_hashes'].items():
+        source = next((row['source'] + target[len(row['target']):] for row in rows
+                       if target == row['target'] or target.startswith(row['target'] + '/')), None)
+        if source not in new['files'] or new['files'][source] != digest:
+            raise ValueError('upgrade alias/source SHA mismatch: ' + target)
+
+
 class Deployment:
     def __init__(self, args, m, b):
         self.a, self.m, self.b = args, m, b
@@ -143,6 +159,24 @@ class Deployment:
             if len(f) == 2 and re.fullmatch('[0-9a-f]{64}', f[0]): result[f[1]] = f[0]
         if set(result) != set(paths): raise RuntimeError('incomplete SHA readback')
         return result
+    def snapshot_files(self, paths, allow_absent=()):
+        paths = sorted(set(paths)); allowed = set(allow_absent)
+        command = ('for p in ' + ' '.join(map(shlex.quote, paths)) +
+                   '; do if [ -f "$p" ]; then sha256sum "$p" || exit 1; '
+                   'elif [ ! -e "$p" ] && [ ! -L "$p" ]; then echo "ABSENT $p"; '
+                   'else exit 1; fi; done')
+        hashes, absent = {}, []
+        for line in self.shell(command).splitlines():
+            fields = line.split()
+            if len(fields) != 2: raise RuntimeError('invalid file snapshot')
+            digest, path = fields
+            if path not in paths or path in hashes or path in absent:
+                raise RuntimeError('unexpected or duplicate file snapshot')
+            if digest == 'ABSENT' and path in allowed: absent.append(path)
+            elif re.fullmatch('[0-9a-f]{64}', digest): hashes[path] = digest
+            else: raise RuntimeError('required file absent or invalid: ' + path)
+        if set(hashes) | set(absent) != set(paths): raise RuntimeError('incomplete file snapshot')
+        return hashes, sorted(absent)
     def ps(self): return self.b.processes(self.shell('ps -A -o PID,PPID,UID,NAME'))
     def record(self): save(self.statepath, self.d)
     def top_mounts(self):
@@ -264,6 +298,12 @@ class Deployment:
     def rollback(self):
         if not self.d or self.d['status'] == 'rolled_back': raise RuntimeError('no active deployment in this boot')
         while self.d.get('single_replacements'): self.rollback_single(verify=False)
+        previous = self.d.get('previous_deployment')
+        if previous:
+            previous_package = Path(previous['package_path'])
+            previous_manifest = load_package(previous_package)
+            if sha(previous_package / 'package.json') != previous['package_sha256']:
+                raise RuntimeError('previous upgrade package changed')
         tops = self.top_mounts()
         pending = self.d.get('pending_mount')
         if pending:
@@ -278,9 +318,25 @@ class Deployment:
         for row in rows:
             self.shell('umount ' + shlex.quote(row['target']))
             self.d['mounted'].remove(row); self.record()
-        if self.hashes(list(self.d['before'])) != self.d['before']: raise RuntimeError('rollback SHA mismatch')
-        self.d['parent_pid'] = self.start(self.d['before']['/system/bin/appspawn-x'])
-        self.d['status'] = 'rolled_back'; self.record()
+        absent = self.d.get('before_absent', [])
+        if absent:
+            actual, now_absent = self.snapshot_files(list(self.d['before']) + absent, absent)
+            if actual != self.d['before'] or now_absent != absent:
+                raise RuntimeError('rollback SHA/absence mismatch')
+        elif self.hashes(list(self.d['before'])) != self.d['before']:
+            raise RuntimeError('rollback SHA mismatch')
+        parent_sha = self.d['before']['/system/bin/appspawn-x']
+        if previous:
+            save(self.out / 'upgrade-rollback.json', {'from_package': self.d['package_path'],
+                 'restored_package': previous['package_path'], 'before_absent': absent})
+            self.package, self.m, self.d = previous_package, previous_manifest, previous
+            self.verify_mounts()
+            self.d['parent_pid'] = self.start(parent_sha)
+            self.d['status'] = 'active'; self.record()
+            self.verify()
+        else:
+            self.d['parent_pid'] = self.start(parent_sha)
+            self.d['status'] = 'rolled_back'; self.record()
     def verify(self):
         expected = self.m['live_hashes']
         if self.hashes(list(expected)) != expected: raise RuntimeError('active generation hashes differ')
@@ -313,11 +369,23 @@ class Deployment:
         if not gate['passed'] or not gate['sha256_passed']: raise RuntimeError('child maps/SHA gate failed')
         self.b.capture(self.board, remote + '/final.jpeg', out / 'final.jpeg')
         self.d['verification'] = str(out); self.d['status'] = 'active_verified'; self.record()
-    def deploy(self):
+    def deploy(self, upgrade=False):
+        previous = None
         if self.d and self.d['status'] != 'rolled_back':
-            if self.d['package_sha256'] != sha(self.package / 'package.json'): raise RuntimeError('different package active in this boot')
             if self.d['status'] not in ['active', 'active_verified']: raise RuntimeError('interrupted activation; run --rollback first')
-            self.verify(); return
+            if self.d['package_sha256'] == sha(self.package / 'package.json'):
+                self.verify(); return
+            if not upgrade: raise RuntimeError('different package active in this boot')
+            old_package = Path(self.d['package_path']); old = load_package(old_package)
+            if sha(old_package / 'package.json') != self.d['package_sha256']:
+                raise RuntimeError('resident package changed before upgrade')
+            validate_upgrade(old, self.m)
+            self.verify_mounts()
+            if self.hashes(list(old['live_hashes'])) != old['live_hashes']:
+                raise RuntimeError('resident SHA mismatch before upgrade')
+            previous = json.loads(json.dumps(self.d))
+        elif upgrade:
+            raise RuntimeError('upgrade requires an active owned generation')
         # Read-only compatibility checks before any write.
         if self.hashes(list(self.m['prerequisites'])) != self.m['prerequisites']: raise RuntimeError('platform ABI prerequisites differ')
         for _, pkg in APPS: self.b.parse_bundle(self.shell('bm dump -n ' + pkg), pkg)
@@ -325,27 +393,30 @@ class Deployment:
             if row['target'] != '/system/lib64/westlake/route-a/' + self.gen:
                 self.shell('test -e ' + shlex.quote(row['target']))
         route = '/system/lib64/westlake/route-a/' + self.gen
-        if route in self.top_mounts(): raise RuntimeError('generation route already mounted outside this transaction')
+        if not previous and route in self.top_mounts(): raise RuntimeError('generation route already mounted outside this transaction')
         # Current files under the future directory mount, plus every direct bind target.
         before_paths = ['/system/android/' + x[len('payload/android/'):] for x in self.m['files'] if x.startswith('payload/android/')]
         before_paths += [x['target'] for x in self.m['mounts'] if x['target'] not in ['/system/android', route]]
-        before = self.hashes(sorted(set(before_paths)))
+        if previous: before_paths += list(old['live_hashes'])
+        optional = [p for p in before_paths if re.fullmatch(r'/system/android/lib64/lib[A-Za-z0-9_+.-]+\.so', p)]
+        before, before_absent = self.snapshot_files(before_paths, optional)
         installers = ['/system/lib64/libapk_installer.so', '/system/lib64/platformsdk/libapk_installer.so']
         remote = '/data/local/tmp/westlake-generation-' + self.gen[:12] + '-' + self.board.boot + '-' + str(time.time_ns())
-        self.d = {'serial': self.a.serial, 'boot_id': self.board.boot, 'generation': self.gen, 'package_path': str(self.package), 'package_sha256': sha(self.package / 'package.json'), 'remote': remote, 'before': before, 'installer_before': self.hashes(installers), 'mounted': [], 'status': 'staging'}
+        self.d = {'serial': self.a.serial, 'boot_id': self.board.boot, 'generation': self.gen, 'package_path': str(self.package), 'package_sha256': sha(self.package / 'package.json'), 'remote': remote, 'before': before, 'before_absent': before_absent, 'installer_before': self.hashes(installers), 'mounted': [], 'status': 'staging'}
+        if previous: self.d['previous_deployment'] = previous
         self.record()
-        self.shell('mkdir ' + remote)
-        archive = self.out / 'payload.tar'
-        with tarfile.open(archive, 'w') as tar:
-            for name in self.m['files']:
-                if name.startswith('payload/'): tar.add(self.package / name, arcname=name)
-        self.board.send(archive, remote + '/payload.tar')
-        self.shell('tar -xf ' + remote + '/payload.tar -C ' + remote, timeout=180)
-        staged = {remote + '/' + n: h for n, h in self.m['files'].items() if n.startswith('payload/')}
-        if self.hashes(list(staged)) != staged: raise RuntimeError('staging SHA mismatch')
-        self.shell('find ' + remote + '/payload -type d -exec chmod 0755 {} \\; && chmod 0755 ' + remote + '/payload/runtime/appspawn-x && chcon -R u:object_r:system_file:s0 ' + remote + '/payload')
-        self.stop()
         try:
+            self.shell('mkdir ' + remote)
+            archive = self.out / 'payload.tar'
+            with tarfile.open(archive, 'w') as tar:
+                for name in self.m['files']:
+                    if name.startswith('payload/'): tar.add(self.package / name, arcname=name)
+            self.board.send(archive, remote + '/payload.tar')
+            self.shell('tar -xf ' + remote + '/payload.tar -C ' + remote, timeout=180)
+            staged = {remote + '/' + n: h for n, h in self.m['files'].items() if n.startswith('payload/')}
+            if self.hashes(list(staged)) != staged: raise RuntimeError('staging SHA mismatch')
+            self.shell('find ' + remote + '/payload -type d -exec chmod 0755 {} \\; && chmod 0755 ' + remote + '/payload/runtime/appspawn-x && chcon -R u:object_r:system_file:s0 ' + remote + '/payload')
+            self.stop()
             root = next(l.split() for l in self.shell('cat /proc/mounts').splitlines() if l.split()[1] == '/')
             readonly = 'ro' in root[3].split(',')
             if readonly: self.shell('mount -o remount,rw /')
@@ -376,6 +447,7 @@ def main(argv=None):
     p.add_argument('serial', choices=sorted(SERIALS)); p.add_argument('package', type=Path)
     mode = p.add_mutually_exclusive_group(); mode.add_argument('--rollback', action='store_true'); mode.add_argument('--dry-run', action='store_true')
     files = p.add_mutually_exclusive_group()
+    files.add_argument('--upgrade', action='store_true', help='transactionally overlay a complete same-platform package; rollback restores the previous owned generation')
     files.add_argument('--replace', metavar='ABSOLUTE_TARGET', help='one-file replacement from a separately updated package; with --rollback undo the last replacement')
     files.add_argument('--add', metavar='ABSOLUTE_TARGET', help='add one declared native library; with --rollback remove the last owned addition')
     p.add_argument('--lane', default=os.environ.get('WESTLAKE_LANE', 'cx-t0'))
@@ -388,6 +460,7 @@ def main(argv=None):
     if platform.system() == 'Darwin':
         command = ['python3', str(Path(__file__).resolve()), a.serial, str(a.package), '--lane', a.lane, '--tools', a.tools, '--state-root', str(a.state_root.resolve())]
         if a.rollback: command.append('--rollback')
+        if a.upgrade: command.append('--upgrade')
         if a.replace: command.extend(['--replace', a.replace])
         if a.add: command.extend(['--add', a.add])
         raise SystemExit(subprocess.call(['orb', '-m', 'a2hlab', 'bash', '-lc', shlex.join(command)]))
@@ -402,7 +475,7 @@ def main(argv=None):
     elif a.rollback: d.rollback()
     elif a.replace: d.replace(a.replace)
     elif a.add: d.replace(a.add, adding=True)
-    else: d.deploy()
+    else: d.deploy(upgrade=a.upgrade)
     print(json.dumps({'state': str(d.statepath), 'evidence': str(d.out), 'status': d.d['status']}, indent=2))
 
 if __name__ == '__main__': main()

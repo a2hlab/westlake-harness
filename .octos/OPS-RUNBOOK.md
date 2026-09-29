@@ -134,3 +134,6 @@ Installer两处更新并重启foundation后可能黑屏；按明确授权整机�
 - **host单文件替换(#80,2026-09-29)**:`deploy_generation.sh --replace /system/bin/appspawn-x` 已支持严格限定的host目标(0755)，回滚同参加`--rollback`。独立Java覆盖须由其持有者按收据暂退到包内JAR，完整SHA/maps门验host后再挂回最新JAR；不可改state或跳过hash来吞掉覆盖差异。
 
 - 2026-09-30 cx-t0 (#93): 新增 native 库用 `prepare_generation_replacement.py --add` 声明 files/live_hashes，再 `deploy_generation.sh SERIAL PACKAGE --add /system/android/lib64/libNAME.so`；仅目标原本不存在时可建挂载点，`--add TARGET --rollback` 撤销最后一件。双库包 `westlake-b93-tls-html-8ecf6250-26ac847b/deploy_bundle.py` 先预检两包再逐件部署、失败反序回滚；实验 JAR 须先退回包内版本让 SHA 门真实通过，不能忽略其哈希。见 benchmark/2026-09-30-tls-native-handoff/。
+
+### v3c 整包升级（2026-09-30）
+已有同平台活动代用 `scripts/lab/deploy_generation.sh SERIAL PACKAGE --upgrade --lane LANE`；新boot无活动账本时省略 `--upgrade`。先持锁、核boot、按JAR receipt退叠层到包内r8b；部署核别名/SHA/单ART后再叠选定JAR。失败回滚撤新挂载层并恢复旧活动账本/单换层；before_absent必须仍缺席，异常底层文件不删。v3c-candidate/handoff内是旧部署器，须用本仓修订版。实证与测试见 `benchmark/2026-09-30-v3c-rollout/`。

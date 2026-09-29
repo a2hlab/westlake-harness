@@ -440,3 +440,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 #91：保留 84695d62 bridge 后，runtime 单独注册 5 个 CommonEvent JNI 即可真实 Subscribe/Publish successful（61b Gallery/Etar/VLC）；随后 Gallery/VLC 卡 OH START_ABILITIES_FROM_BACKGROUND，Etar 卡 PowerExemptionManager NPE。CE 成功不等于首屏点亮；gapfill 文件部署但 r17b 无加载点也不算生效。证据 benchmark/2026-09-30-commonevent-registration/evidence-61b/。
 
 - 2026-09-30 installer：SelectLauncherActivity 新调用形态会把原 IsAndroidLauncherActivity 弱导出内联消掉；保留 used 标记可维持旧 ABI。后台启动权限需 HAP JSON、BMS requestPermissions、ATM fresh-token ACL/preAuth 同步；旧 token 缺该权限时拒绝 -r 静默声明，要求重装。候选 6aadb8b4/7048c7c5，板上实际授予仍待 cc-wiki 验，见 benchmark/2026-09-30-installer-background-launcher/。
+
+- **2026-09-30 v3c 部署**：fresh板对新增库直接sha256sum会在写前失败；整包升级须把route/android别名同事务绑定，记录before_absent，撤新目录挂载自然恢复缺席并核旧SHA/旧单换层，不能盲删底层新出现文件；5cd已过单ART+bridge846与HW首屏，见 `benchmark/2026-09-30-v3c-rollout/`。
