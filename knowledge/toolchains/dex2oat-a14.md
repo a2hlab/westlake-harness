@@ -130,3 +130,12 @@ m -j32 build-art-host libart                 # host dex2oat set + arm64 libart f
 - **kv 静态比对**:bootclasspath 值 = 9 段 `/system/android/framework/*.jar` 逐字与板一致;kv 含 debuggable/native-debuggable/compiler-filter= speed/bootclasspath/classpath/requires-image=false(注:我们 false,板上记录 requires-image 未比)/concurrent-copying/apex-versions;**bootclasspath-checksums 与 compilation-reason 两个 key 在我们产物 kv 中缺失**——下一轮与板上 kv 全 key 集对照。
 - **判读**:dex-location 逐字复刻没有改变 L1 命中数(vdex 早已全中,art/oat 的差异主体不是 dex-location 串——残差仍在 kv 区外 53KB 与 checksum)。**但 L2 死因未必是 L1**:板上 app 用的 image/vdex 加载路径要看 vdex 与 art 的关系;vdex 全中却仍死,指向 art/oat 的内容差(或 checksum/头部指纹被运行时校验拒绝)。
 - **产物**:hw248 `/opt/build-trees/.work/fn03-r29-boot-20260728T0635Z/boardpath/`(27 文件 + run.log + local.sha256)。
+
+## T5 首轮:R155 树 dex2oat64 生成 27 文件(2026-09-30 oc-t4)
+
+工具:art-r155(T3 产物,dex2oat64 sha16 `8a125a256a743820`)。命令:fn03 同形 image/oat 路径 + dex-location=/system/android/framework/* + `--compilation-reason=boot`,9 jar = payload v3a-r8b。**7.017s 出 27 文件**(`r155/run.log`;`[DBG]/[ABCP_CP]/[RDFL_CP]` 行是 R155 补丁序列自带的调试桩,非致命——主行正常结束)。
+
+- **L1 vs 板清单:9/27**(=9 vdex 逐位;18 差 = 9 art + 9 oat)——与纯 r16 版持平,vdex 层稳定全中。
+- **boot.oat kv**:`compilation-reason=boot` **HAVE**;`bootclasspath-checksums` 仍 **MISS**(r1 源同 r16:boot image 主编路径不写该 key,板上原件有 ⇒ 属 d600 构建侧补丁,不在 R155 运行时补丁序列内);magic `oat\n230` ✓;checksum 0x31a3e81e(序列:纯 r16 三值→R155 0x31a3e81e,板上 0xd369f830 仍未中)。
+- **判读**:R155 运行时补丁不改变镜像字节级输出主体;art/oat 残差与 checksum 仍未收——下一步归因重点 = **构建侧差异**(d600 的 Soong 环境/CL/构建号指纹)而非运行时补丁。
+- 产物:hw248 `/opt/build-trees/.work/fn03-r29-boot-20260728T0635Z/r155/`(27 文件 + run.log + local.sha256)。
