@@ -91,6 +91,12 @@ fi
 have a2hlab-vm.tar.zst || orb -m a2hlab bash -lc 'cd ~/a2hlab && tar -cf - ws/toolchains ws/android-source ws/inputs ws/westlake ws/westlake-all0925 ws/art-108-e6af1cd8 tools manifest' \
   | zstd -q -T0 -3 --long=31 -c | split -b $PART -d -a 2 - "$OUT/a2hlab-vm.tar.zst.part"
 
+# 4b. the bms bridge payload the reproduce scripts read from $HOME/orca/.bridge-payload
+if [ -d "$HOME/orca/.bridge-payload" ] && ! have bridge-payload.tar.zst; then
+  $PACK "$OUT/bridge-payload.tar.zst" --root "$HOME/orca" --path "$HOME/orca/.bridge-payload"
+  split_file "$OUT/bridge-payload.tar.zst"; rm -f "$OUT/bridge-payload.tar.zst"
+fi
+
 # 5. archival state already packed for hw248
 for a in harness-untracked workspaces-history companion-untracked; do
   have "$a.tar.zst" || split_file "$STAGE/$a.tar.zst"; cp "$STAGE/$a.tar.zst.files" "$OUT/"

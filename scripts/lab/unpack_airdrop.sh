@@ -58,6 +58,7 @@ un companion-untracked.tar.zst "$ROOT"
 un harness-untracked.tar.zst "$ROOT"
 un octos-state.tar.zst "$ROOT"
 un a2hlab-vm.tar.zst "$ROOT/_a2hlab"
+un bridge-payload.tar.zst "$HOME/orca"
 
 echo "== relink absolute symlinks that pointed into the old machine's tree"
 OLD_WORKSPACES=; OLD_HOME=; [ -f "$SRC/meta.env" ] && . "$SRC/meta.env"
