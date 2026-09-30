@@ -191,8 +191,11 @@ def deploy_and_verify(a, binds, exp_map, exp_paths, out):
 
 
 def run_sweep(a, out):
+    # an empty --lock-cmd overrode bms_batch's own default and stopped every batch at once ("hdc, lock command and
+    # lane required", U7 05:36); pass it only when set
+    lock = ['--lock-cmd', a.lock_cmd] if a.lock_cmd else []
     cmd = [sys.executable, a.bms_batch, '--execute', '--serial', a.serial, '--lane', a.lane,
-           '--hdc-cmd', a.bms_hdc_cmd, '--lock-cmd', a.lock_cmd, '--manifest', a.manifest,
+           '--hdc-cmd', a.bms_hdc_cmd, *lock, '--manifest', a.manifest,
            '--input-root', a.input_root, '--keys', a.keys, '--out', out, '--reinstall',
            '--hilog', '20', '--shots', '5,20', '--focus-check']
     print('SWEEP:', ' '.join(cmd))
