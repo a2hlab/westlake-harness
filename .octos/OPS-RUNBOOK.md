@@ -129,3 +129,11 @@
 ## T4b 镜像编译开关门（2026-09-30，离线）
 
 `python3 knowledge/toolchains/art-r155/t4b_build_switch_gate.py --libart <部署目标libart> --oat <候选boot.oat> --build <对应BUILD.md> --out <新JSON路径>`：0=本门一致、2=已知错配/坏输入、3=缺证待外环审；消费verdict/deploy_allowed，不能只看consistency。BUILD需单个t4b-build-json围栏、完整SHA绑定、5环境开关+native_debug_build，模板见benchmark/2026-09-30-t4b-build-switch-gate/BUILD.template.md。无历史回执不代填；同一路径不同代BUILD按commit/SHA冻结。完整T4布局与T6读图仍是独立门，本命令不授权上板。
+## spec-checks 回归门（2026-10-01）
+
+- 在目标 checkout 运行 `python3 scripts/lab/spec_checks.py`；也可用 `--repo <checkout>`，默认读取该 checkout 的 `knowledge/gates/spec-check-exceptions.json`，`--exceptions <json>` 仅用于显式指定表。
+- 包装器在 `tools/spec-checks` 执行完整 `cargo test --no-fail-fast`，保留原 stdout/stderr；表内失败打印 `EXCEPTED`，仍然是测试失败，不是验收通过。表外失败、编译/运行异常、解析不完整、过滤/忽略测试或例外选择器缺席均退 1。
+- 例外实际通过打印 `STALE`，单独不阻断门（退 0）；外环核对解除条件后删表项，不自动改表、不以截图缺失或测试 skip 冒充通过。历史设备验收仍须外环逐图签认。
+- 初始 7 条来自 ACK(90) 的 4 个未验收门、2 个同源旧 pin、1 个固化路径；这是选择器级例外，不是错误签名匹配，表内选择器的新失败仍需看原日志。加/删例外只改表，已有 Rust 选择器不改。
+- 包装器自测：`python3 scripts/lab/test_spec_checks.py -v`，或 `cargo test --manifest-path tools/spec-checks/Cargo.toml --test spec_check_gate`。Mac 若环境把链接器指到交叉工具链，可设置 `CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=/usr/bin/cc`；其他依赖沿用现有测试环境。
+- **跨 worktree 别共用 spec-checks 的 `CARGO_TARGET_DIR`**(2026-10-01 外环):测试二进制把 `CARGO_MANIFEST_DIR` 编进去当仓库根;在临时 worktree 里用主目录的 target 跑过一次、再删掉那个 worktree,之后主目录的 cargo 认为源码没变、复用旧二进制,每个选择器都在启动 python3 时报 `Os { code: 2, NotFound }`(实例:spec_checks.py 一度报 21 败 / 14 例外外)。修:`cargo clean`(或不共享 target)。

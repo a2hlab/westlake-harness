@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "approved_by": "outer",
+  "approved_at": "2026-10-01T00:19:07+08:00",
+  "approval": "app-lighting ACK(90); explicit exceptions, existing selectors unchanged",
+  "baseline_commit": "a579cd4e604b5bc42967e411cfc6354528f5d6bb",
+  "exceptions": [
+    {
+      "selector": "b1_wikipedia_lit_after_sandbox_prep",
+      "category": "open-acceptance",
+      "reason": "Historical B1 Wikipedia exits with DefaultIcon ClassNotFoundException; pids_after is empty and outer visual acceptance is pending. The failing gate is truthful.",
+      "evidence": [
+        "benchmark/2026-09-28-bms-route-deploy/sandbox-prep/results.json",
+        "benchmark/2026-09-28-bms-route-deploy/sandbox-prep/verify.py"
+      ],
+      "removal_condition": "Outer accepts an identity-bound Wikipedia own-UI t20 screenshot and survival evidence for the applicable sandbox-prep scenario, and explicitly reconciles the historical gate without rewriting the old failed run; selector then passes."
+    },
+    {
+      "selector": "b5_wikipedia_lit",
+      "category": "open-acceptance",
+      "reason": "B5 resolves the alias but Wikipedia exits at Activity.attach/getTheme/getApplicationInfo; historical pids_after remains empty. Alias resolution is not own-UI acceptance.",
+      "evidence": [
+        "benchmark/2026-09-28-bms-route-deploy/alias-entry/results.json",
+        "benchmark/2026-09-28-bms-route-deploy/alias-entry/verify.py"
+      ],
+      "removal_condition": "Outer accepts an identity-bound alias-launch Wikipedia own-UI t20 screenshot and survival evidence, approves how the historical gate consumes the new evidence without falsifying history, and the selector passes."
+    },
+    {
+      "selector": "b7_lit_by_outer_review",
+      "category": "open-acceptance",
+      "reason": "The B7 historical lit_candidates list is empty; no accepted own-window candidate exists in that retained run.",
+      "evidence": [
+        "benchmark/2026-09-29-bms-link-entry-walls/results.json",
+        "benchmark/2026-09-29-bms-link-entry-walls/verify.py"
+      ],
+      "removal_condition": "A B7 app crosses its wall and has outer-reviewed own-UI t20 evidence tied to APK/runtime identity; outer approves reconciliation of this historical gate, preserving old results, and the selector passes."
+    },
+    {
+      "selector": "b7_no_regression",
+      "category": "open-acceptance",
+      "reason": "Historical HelloWorld evidence passes, but ZigZag was not launched because its candidate generation differs from the active generation; no_regression.zigzag.launched is false.",
+      "evidence": [
+        "benchmark/2026-09-29-bms-link-entry-walls/results.json",
+        "benchmark/2026-09-29-bms-link-entry-walls/verify.py"
+      ],
+      "removal_condition": "Outer accepts HelloWorld and ZigZag t20 screenshots plus generation-bound launch evidence for the intended comparison, approves reconciliation without altering old facts, and the selector passes."
+    },
+    {
+      "selector": "bms_batch_offline",
+      "category": "superseded-pin",
+      "reason": "The B4 rerun setup pins obsolete apps.json and bms_batch.py hashes; both changed legitimately. The batch discovery includes the same failing B4 setup as bms_rerun_offline.",
+      "evidence": [
+        "benchmark/2026-09-28-bms-route-deploy/batch/b4-rerun-shards.json",
+        "benchmark/2026-09-28-bms-route-deploy/batch/b4_rerun.py"
+      ],
+      "removal_condition": "An outer-approved fixture/plan update separates the historical plan from current runner inputs, retaining identity/hash-drift rejection tests; complete batch discovery passes, not just the B4 setup."
+    },
+    {
+      "selector": "bms_rerun_offline",
+      "category": "superseded-pin",
+      "reason": "The B4 plan still expects old manifest and runner hashes; load_plan rejects drift before the rerun unit cases start. This shares the batch-offline root cause.",
+      "evidence": [
+        "benchmark/2026-09-28-bms-route-deploy/batch/b4-rerun-shards.json",
+        "benchmark/2026-09-28-bms-route-deploy/batch/b4_rerun.py"
+      ],
+      "removal_condition": "Outer approves fixture isolation or a reviewed current plan with consistent identities and runner arguments; all rerun cases, including hash-drift negative controls, execute and pass."
+    },
+    {
+      "selector": "white_window_offline",
+      "category": "baked-path",
+      "reason": "The retained baseline.source.path embeds the original worktree. Rebuilding identical source bytes in another checkout changes exactly that one JSON leaf and fails whole-document equality.",
+      "evidence": [
+        "benchmark/2026-09-29-white-window/results.json",
+        "benchmark/2026-09-29-white-window/test_analyze.py"
+      ],
+      "removal_condition": "An approved path-portable comparison retains source-byte hashes and all observations, and passes from a distinct clean checkout with captures available; hiding inputs to skip the test does not qualify."
+    }
+  ]
+}
