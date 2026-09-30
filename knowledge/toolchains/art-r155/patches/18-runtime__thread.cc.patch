@@ -1,0 +1,23 @@
+--- a/runtime/thread.cc
++++ b/runtime/thread.cc
+@@ -961,6 +961,7 @@
+   // we can handshake with the corresponding native thread when it's ready.) Check this native
+   // thread hasn't been through here already...
+   CHECK(Thread::Current() == nullptr);
++  fprintf(stderr, "[DBG] Thread::Init this=%p\n", (void*)this); fflush(stderr);
+ 
+   // Set pthread_self_ ahead of pthread_setspecific, that makes Thread::Current function, this
+   // avoids pthread_self_ ever being invalid when discovered from Thread::Current().
+@@ -1029,8 +1030,12 @@
+       return nullptr;
+     } else {
+       Runtime::Current()->StartThreadBirth();
++      fprintf(stderr, "[DBG] before new Thread()\n"); fflush(stderr);
+       self = new Thread(as_daemon);
++      fprintf(stderr, "[DBG] new Thread() returned self=%p\n", (void*)self); fflush(stderr);
++      fprintf(stderr, "[DBG] calling self->Init(), self=%p\n", (void*)self); fflush(stderr);
+       bool init_success = self->Init(runtime->GetThreadList(), runtime->GetJavaVM());
++      fprintf(stderr, "[DBG] Init returned %d\n", init_success); fflush(stderr);
+       Runtime::Current()->EndThreadBirth();
+       if (!init_success) {
+         delete self;

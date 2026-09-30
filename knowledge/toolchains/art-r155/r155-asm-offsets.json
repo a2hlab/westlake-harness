@@ -1,0 +1,17 @@
+{
+  "title": "T4 layer C baseline: ART offset immediates disassembled from R155 libart (non-circular board ground truth)",
+  "r155_libart": {
+    "sha256_prefix": "59e1bb45",
+    "note": "板上同一 R155 libart(payload/route/libart.so);cppcrash-9465 的 CheckSystemClass abort 是 8c2796fc,同 R155 家族、偏移一致"
+  },
+  "method": "disassemble art_quick_* entrypoints, read ldr/str [Xt,#imm] immediates; anchored to runtime/arch/arm64/quick_entrypoints_arm64.S. Extensible via ANCHORS in t4_asm_offsets.py.",
+  "offsets": {
+    "MIRROR_OBJECT_CLASS_OFFSET": 0,
+    "MIRROR_CLASS_COMPONENT_TYPE_OFFSET": 12,
+    "THREAD_CARD_TABLE_OFFSET": 152,
+    "THREAD_ID_OFFSET": 8
+  },
+  "gate": "compare vs T3 asm_support_gen.h (t4_asm_offsets.py compare <r155-libart.so> <asm_support_gen.h>); mismatches must be 0.",
+  "must_check_from_cppcrash_9465": "CheckSystemClass+544 (0x339a60) aborted rejecting the r16 image; the 6 covered classes (Object/String/DexCache/ClassExt/Class/Reference) are all in scope. Backtrace does not pinpoint one class (that is in the DumpClass hilog output).",
+  "extend": "add anchors: MIRROR_OBJECT_LOCK_WORD_OFFSET (lock_object,x0), MIRROR_STRING_COUNT_OFFSET (string_compareto,x0), MIRROR_ARRAY_LENGTH_OFFSET (alloc_array), THREAD_FLAGS/EXCEPTION/TOP_QUICK_FRAME (x19) — each anchored to a verified .S instruction."
+}

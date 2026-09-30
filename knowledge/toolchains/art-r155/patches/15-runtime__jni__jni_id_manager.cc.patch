@@ -1,0 +1,64 @@
+--- a/runtime/jni/jni_id_manager.cc
++++ b/runtime/jni/jni_id_manager.cc
+@@ -424,22 +424,58 @@
+ }
+ 
+ void JniIdManager::Init(Thread* self) {
++  fprintf(stderr, "[JID_CP] A_entry self=%p\n", (void*)self); fflush(stderr);
+   // When compiling we don't want to have anything to do with any of this, which is fine since JNI
+   // ids won't be created during AOT compilation. This also means we don't need to do any
+   // complicated stuff with the image-writer.
+   if (!Runtime::Current()->IsAotCompiler()) {
++    fprintf(stderr, "[JID_CP] B_not_AotCompiler\n"); fflush(stderr);
+     // Allocate the marker
+     StackHandleScope<3> hs(self);
+-    Handle<mirror::Object> marker_obj(
+-        hs.NewHandle(GetClassRoot<mirror::Object>()->AllocObject(self)));
++    fprintf(stderr, "[JID_CP] C_after_SHS\n"); fflush(stderr);
++    ObjPtr<mirror::Class> _jid_obj_root = GetClassRoot<mirror::Object>();
++    fprintf(stderr, "[JID_CP] D_GetClassRoot_Object root=%p\n", (void*)_jid_obj_root.Ptr()); fflush(stderr);
++    { auto* _jid_heap = Runtime::Current()->GetHeap();
++      fprintf(stderr, "[JID_CP] E1_got_heap=%p\n", (void*)_jid_heap); fflush(stderr);
++      int _jid_alloc = (int)_jid_heap->GetCurrentAllocator();
++      fprintf(stderr, "[JID_CP] E2_allocator=%d\n", _jid_alloc); fflush(stderr);
++      uint32_t _jid_osz = _jid_obj_root->GetObjectSize();
++      fprintf(stderr, "[JID_CP] E3_object_size=%u\n", _jid_osz); fflush(stderr);
++      bool _jid_inst = _jid_obj_root->IsInstantiable();
++      fprintf(stderr, "[JID_CP] E4_is_instantiable=%d\n", (int)_jid_inst); fflush(stderr);
++      int _jid_tstate = (int)self->GetState();
++      fprintf(stderr, "[JID_CP] E5_thread_state=%d (kRunnable=4)\n", _jid_tstate); fflush(stderr);
++// DIAG-DISABLED (private IsGcConcurrent):       bool _jid_gcrun = _jid_heap->IsGcConcurrent();
++// DIAG-DISABLED (private IsGcConcurrent):       fprintf(stderr, "[JID_CP] E6_is_gc_concurrent=%d\n", (int)_jid_gcrun); fflush(stderr);
++    }
++    { gc::Heap* _hh = Runtime::Current()->GetHeap();
++      void* _rs = (void*)_hh->GetRegionSpace();
++      void* _bp = (void*)_hh->GetBumpPointerSpace();
++      void* _nm = (void*)_hh->GetNonMovingSpace();
++      void* _ra = (void*)_hh->GetRosAllocSpace();
++      fprintf(stderr, "[JID_CP] E8_spaces region=%p bump=%p nonmoving=%p rosalloc=%p\n", _rs, _bp, _nm, _ra); fflush(stderr); }
++    fprintf(stderr, "[JID_CP] E7_before_AllocObject_call\n"); fflush(stderr);
++    ObjPtr<mirror::Object> _jid_raw_marker = _jid_obj_root->AllocObject(self);
++    fprintf(stderr, "[JID_CP] E_after_AllocObject raw=%p\n", (void*)_jid_raw_marker.Ptr()); fflush(stderr);
++    Handle<mirror::Object> marker_obj(hs.NewHandle(_jid_raw_marker));
++    fprintf(stderr, "[JID_CP] F_after_NewHandle_marker\n"); fflush(stderr);
+     CHECK(!marker_obj.IsNull());
++    fprintf(stderr, "[JID_CP] G_after_null_check\n"); fflush(stderr);
+     pointer_marker_ = GcRoot<mirror::Object>(marker_obj.Get());
++    fprintf(stderr, "[JID_CP] H_after_GcRoot_assign\n"); fflush(stderr);
+     // Manually mark class-ext as having all pointer-ids to avoid any annoying loops.
+-    Handle<mirror::Class> class_ext_class(hs.NewHandle(GetClassRoot<mirror::ClassExt>()));
++    ObjPtr<mirror::Class> _jid_ce_root = GetClassRoot<mirror::ClassExt>();
++    fprintf(stderr, "[JID_CP] I_GetClassRoot_ClassExt root=%p\n", (void*)_jid_ce_root.Ptr()); fflush(stderr);
++    Handle<mirror::Class> class_ext_class(hs.NewHandle(_jid_ce_root));
++    fprintf(stderr, "[JID_CP] J_before_EnsureExtDataPresent\n"); fflush(stderr);
+     mirror::Class::EnsureExtDataPresent(class_ext_class, self);
++    fprintf(stderr, "[JID_CP] K_after_EnsureExtDataPresent\n"); fflush(stderr);
+     Handle<mirror::ClassExt> class_ext_ext(hs.NewHandle(class_ext_class->GetExtData()));
++    fprintf(stderr, "[JID_CP] L_after_GetExtData_NewHandle\n"); fflush(stderr);
+     class_ext_ext->SetIdsArraysForClassExtExtData(marker_obj.Get());
++    fprintf(stderr, "[JID_CP] M_after_SetIds\n"); fflush(stderr);
+   }
++  fprintf(stderr, "[JID_CP] Z_exit\n"); fflush(stderr);
+ }
+ 
+ void JniIdManager::VisitReflectiveTargets(ReflectiveValueVisitor* rvv) {

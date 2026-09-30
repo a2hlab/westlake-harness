@@ -145,6 +145,21 @@ capture_evidence(){
   log "  evidence[$tag]: rb/mismatch hilog hits=$(wc -l < "$OUT/rb-hits-$tag.txt" 2>/dev/null | tr -d ' ') faultlogs=$(grep -c . "$OUT/faultlog-$tag.list" 2>/dev/null || echo 0)"
 }
 
+# HW/ZZ are NOT bms_batch apps.json keys — launch them directly and snapshot. Own-UI is ground truth;
+# a lit HelloWorld/ZigZag under the overlaid image is the PASS signal for formal T6 (T5b). Under an
+# RB-mismatched image they go blank (~38 KB) instead of their UI (~78-88 KB) — READ the jpeg, size is a hint.
+hw_zz_probe(){
+  for spec in "helloworld com.example.helloworld com.example.helloworld.MainActivity" \
+              "zigzag com.a2hlab.bridge.zigzag com.unity3d.player.UnityPlayerActivity"; do
+    set -- $spec
+    hdc shell "aa start -b $2 -a $3" >/dev/null 2>&1
+    sleep 5
+    hdc shell "snapshot_display -f /data/local/tmp/t6-$1.jpeg" >/dev/null 2>&1
+    hdc file recv /data/local/tmp/t6-$1.jpeg "$OUT/$1.jpeg" >/dev/null 2>&1
+    log "  $1 screenshot=$OUT/$1.jpeg $(wc -c < "$OUT/$1.jpeg" 2>/dev/null | tr -d ' ')B (read it: lit ~78-88KB, blank ~38KB)"
+  done
+}
+
 # ---------------- 4. overlay (bind-mount; libart NOT touched) ----------------
 guard
 hdc shell "hilog -r" 2>/dev/null   # clear buffer BEFORE the restart; hilog -x otherwise returns a stale buffer that misses it
@@ -166,6 +181,7 @@ fi
 # ---------------- 5. run HW/ZZ only if the image was accepted ----------------
 if [ "$REJECTED" = 0 ]; then
   guard
+  hw_zz_probe   # HW/ZZ own-UI (formal-T6 PASS signal); not bms_batch keys
   python3 "$BMS_BATCH" --manifest "$(dirname "$BMS_BATCH")/apps.json" --serial "$SERIAL" --lane "$LANE" \
     --hdc-cmd "$HDC" --keys "$APPS" --hilog 20 --shots 5,20 --execute --out "$OUT/batch" --run-id "t6" >/dev/null 2>&1
   capture_evidence postrun

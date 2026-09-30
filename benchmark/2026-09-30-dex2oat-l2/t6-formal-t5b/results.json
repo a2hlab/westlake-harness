@@ -1,0 +1,28 @@
+{
+  "experiment": "Formal T6 acceptance attempt with T5b (read-barrier-OFF boot image)",
+  "date": "2026-09-30T22:42-22:52+0800",
+  "lane": "cc-wiki",
+  "board": "5cd1e3dd00000000000000000923012c",
+  "image": {
+    "source": "/Users/zhaoyue/orca/workspaces/_hw248-t5b (oc-t4 T3b RB-off dex2oat + t5_gen_image.sh)",
+    "boot_oat_sha16": "90f827190482b849",
+    "boot_art_sha16": "eb34a7b9b0804ef8",
+    "integrity": "27/27 match its own SHA256SUMS",
+    "rb_gate": "check_boot_oat_rb.py PASS: concurrent-copying=false, oat230/image108, 8 kv all match board ref"
+  },
+  "method": "single variable — bind-mount 27 T5b files over /system/android/framework/arm64/*; resident libart = board R155 (8c2796fc) UNCHANGED; runtime fingerprint 0b81cdbe0ed9 throughout; begetctl only, never kill -9; board never rebooted (boot_id 0139c39f).",
+  "verdict": "FAIL (does not pass formal T6) — but PROGRESS over RB-on T5.",
+  "what_improved_vs_RB_on_T5": "RB-off fixes the zygote-level failure: the OH system UI (SceneBoard desktop) renders fully, appspawn-x forks app processes, and the Android runtime init runs (no zygote SIGILL storm, no blank system). RB-on T5 by contrast left the whole screen blank.",
+  "remaining_failure": {
+    "symptom": "HelloWorld does NOT foreground — after aa start, its app process spawns then ABORTS; screen stays on the launcher desktop (01-t5b-HW-crashed-desktop.jpeg). Reproduced with generous 8s+10s timing.",
+    "cppcrash": "cppcrash-13606 (pid 13606, app uid 20010609)",
+    "signal": "SIGABRT (self-abort via HiLogAborter, not a hardware fault)",
+    "fatal_message": "ABORT: Invalid address for an implicit NullPointerException check: 0x0, at const-string v0, \"persist.oh.adapter.enabled\" // string@3603 in boolean adapter.core.OHEnvironment.isOHEnvironment() ohos.appexecfwk.AppScheduler",
+    "backtrace_key": "#05 art::ThrowNullPointerExceptionFromDexPC -> #06 artThrowNullPointerExceptionFromSignal -> #07 art_quick_throw_null_pointer_exception_from_signal -> #08 boot-oh-adapter-framework.vdex (compiled code)",
+    "interpretation": "AOT compiled code in the T5b boot image does a const-string load that resolves to 0x0 and is then implicitly-null-checked; the board R155 libart signal handler decodes the faulting PC, finds it is NOT a registered implicit-null-check site, and aborts. i.e. the T5b image's compiled code / dex-cache-resolved-strings disagree with what the board R155 libart expects."
+  },
+  "signal_4_note": "The many 'MUSL-SIGCHAIN ... for signal: 4' lines are NOT the failure — they appear in every process that loads the runtime (even the `aa` CLI tool, which continued normally afterward). The t6_board_test.sh RB grep should NOT treat signal 4 as rejection; the real signal is app foreground + cppcrash.",
+  "hypothesis": "Beyond read barrier, the T5b HOST dex2oat (T3b: Soong + env ART_USE_READ_BARRIER=false ART_DEFAULT_GC_TYPE=CMS) does not carry the full device-libart ART_DEFS the board R155 was built with (recipe cross_compile_arm64.sh line 201: -DIMT_SIZE=43 -DART_FRAME_SIZE_LIMIT=1736 -DART_BASE_ADDRESS=0x70000000 -DART_STACK_OVERFLOW_GAP_*=8192 -DART_DEFAULT_GC_TYPE_IS_CMS). A mismatch there changes the compiled-code / image ABI the board R155 libart expects. See knowledge/toolchains/art-r155/recipe/ (just archived).",
+  "board_state_after": "rolled back to U3: boot.art 2e4f8049, fingerprint 0b81cdbe0ed9, socket 660:0:6005:appspawn_socket, HelloWorld own-UI lit (02-rollback-U3-HW-lit.jpeg, 78274B), boot_id 0139c39f unchanged, unlocked.",
+  "next": "Outer ring: T5b is not yet board-compatible despite RB-off. Recommend rebuilding the device libart / host dex2oat per the archived recipe's exact ART_DEFS (not just Soong env), then regenerate the boot image and retry. The recipe cross-check (recipe/README.md) matched all 5 GC/RB switches by binary evidence, but the numeric ART_DEFS (IMT_SIZE/frame-size/base/stack-gap) are the next suspect."
+}

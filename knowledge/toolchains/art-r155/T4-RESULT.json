@@ -1,0 +1,18 @@
+{
+  "title": "T4 layout gate RESULT: new libart (r1+T1 21 patches) vs board R155 libart — PASS",
+  "date": "2026-09-30",
+  "method": "binary-to-binary (new libart built by T3, board R155 libart 59e1bb45). Layer A: image/oat version constants. Layer C: art_quick_* asm entrypoint offset immediates (asm_support offsets baked as ldr/str [xSELF,#imm]). GOT/global loads (adrp+ldr) and disasm-window overflow excluded (both were false positives caught during analysis).",
+  "new_libart": "hw248 /home/alvin/aosp-14.0.0_r1-art/out/target/product/generic_arm64/symbols/apex/com.android.art/lib64/libart.so (r1 + T1 series f880cd746, aosp_arm64-userdebug)",
+  "board_r155_libart": "westlake-generation-*/payload/route/libart.so (sha 59e1bb45; board same file)",
+  "layer_A_versions": {"kImageVersion": "108 == 108", "kOatVersion": "230 == 230", "verdict": "MATCH"},
+  "layer_C_asm_offsets": {
+    "named_anchors": "MIRROR_OBJECT_CLASS_OFFSET=0, MIRROR_CLASS_COMPONENT_TYPE_OFFSET=12, THREAD_CARD_TABLE_OFFSET=152, THREAD_ID_OFFSET=8 — identical R155 vs NEW",
+    "thread_offset_set": "13 distinct Thread(x19) offsets, IDENTICAL across all 244 common art_quick entrypoints",
+    "verdict": "MATCH (mismatches=0)"
+  },
+  "false_positives_ruled_out": [
+    "adrp+ldr GOT/global-data loads (e.g. ldr x16,[x16,#0xb58] after adrp) differ by data-section layout between two independently-linked binaries — NOT a struct offset; excluded (only x19/xSELF Thread accesses compared).",
+    "fixed-512-byte disasm window overflowed into neighbouring functions (method_exit_hook) capturing their offsets [16,96] — bounded to each symbol's actual size via nm --print-size."
+  ],
+  "verdict": "T4 PASS: the new libart's mirror(6-class-relevant offsets) + Thread layout + image/oat versions match the board R155. => proceed to T5. The r16 image was rejected by CheckSystemClass because the r16 libart differs; the T1-reconstructed libart does NOT."
+}
