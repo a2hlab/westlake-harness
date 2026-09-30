@@ -17,8 +17,24 @@ import sys
 import tarfile
 import time
 
-SERIALS = {'5ea34a4500000000000000001123012c', '5cd1e3dd00000000000000000923012c',
-           '61b0657200000000000000000324012c'}
+def _board_whitelist():
+    """OH boards this deployer may touch: <main checkout>/knowledge/boards.json via scripts/lab/lab_paths.py
+    (data, not code, so a new board is one JSON entry). Found from this file's repo, else from the main
+    checkout under WORKSPACES / the nearest ancestor holding westlake-inputs/ (copies inside packages)."""
+    here = Path(__file__).resolve()
+    roots = [d for d in here.parents if (d / 'scripts/lab/lab_paths.py').is_file()]
+    ws = os.environ.get('WORKSPACES') or next((str(d) for d in here.parents if (d / 'westlake-inputs').is_dir()), None)
+    if ws:
+        roots.append(Path(ws) / 'westlake-harness')
+    for r in roots:
+        if (r / 'scripts/lab/lab_paths.py').is_file():
+            sys.path.insert(0, str(r / 'scripts/lab'))
+            import lab_paths
+            return set(lab_paths.boards('oh'))
+    sys.exit('deploy_generation: cannot find scripts/lab/lab_paths.py for the board whitelist; set WORKSPACES')
+
+
+SERIALS = _board_whitelist()
 GEN = '6cb40cd610ec29a69e320b8cc7d766ccffc675cbd7e94b709cc5d2462b9cddb0'
 BRIDGE = '84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a'
 APPS = [('helloworld', 'com.example.helloworld'), ('zigzag', 'com.a2hlab.bridge.zigzag'),
