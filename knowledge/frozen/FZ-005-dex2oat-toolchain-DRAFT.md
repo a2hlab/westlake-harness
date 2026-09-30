@@ -85,6 +85,25 @@ dex2oat64 --android-root=/system --instruction-set=arm64 --base=0x70000000 --com
 见同目录 `reproduce-dex2oat-toolchain.sh`(说明稿,非自动跑):从 hw248 r1 树 + series 22 补丁
 重编 dex2oat64 → t5_gen_image.sh 出镜像 → check_boot_oat_rb.py + t4b_build_switch_gate.py 过门。
 
+
+## 可复现性证据(2026-10-01 01:04,oc-t4 实跑,外环 01:11 复核采认)
+
+`scripts/lab/reproduce_dex2oat_toolchain.sh`(master 已代提交)在 hw248 实跑:
+
+- **树校验**:HEAD=`3c05e56`、series 22 补丁目标文件全呈修改态、3 语义锚点在
+  (#22 `implicit_suspend_checks_=false` / #08 `CLI_CP×7` / #21 `apex_available`)。
+- **强制重编**(删 `out/host/linux-x86/bin/dex2oat64` + soong intermediates,同 6 项环境,
+  `m -j32 dex2oat`,26s 增量绿):产物 sha256 = `ae865ddd6a7e4b25a18b7c07402920c69e5599b329778eff647a08803948322b`,
+  **与本稿上表记录值程序化比对 MATCH(逐字节复现)**。外环 01:11 ssh 复核同值。
+- **镜像**:27/27 出件,vdex 9/9 与 T5c 逐字节同;唯一差异 = `boot.art`/`boot.oat` 两件,
+  非确定性来源 = OatHeader 嵌入 `dex2oat-cmdline` 的输出路径串(`oc-t4-reproduce` vs
+  `oc-t4-t5c`;同路径出件则逐字节一致,official-r16 先例已证)。
+- **门**:rb 门 `check_boot_oat_rb.py` PASS(`concurrent-copying=false`);
+  t4b 门 `t4b_build_switch_gate.py` pass exit 0, deploy_allowed=true(回执程序生成)。
+- 过程披露:脚本骨架 5 处修复(reverse-apply 不适用于补丁叠加、marker 过滤误吃 `//` 行、
+  pipefail 空 grep 杀脚本、set -e 下 envsetup/lunch 非零、m function 非交互丢失→改 bash -c 子壳);
+  期望哈希常量一度从 16 位前缀外推后缀报错「不一致」,已改为从本稿读取(不留常量)。
+
 ## 登记规则提醒(冻结门槛)
 
 按 frozen.json rule:T6c(HW/ZZ own-UI)与 T7c 板上 app 验完、截图/facts 落入上表后,

@@ -18,7 +18,8 @@
 #   T5_GEN         t5_gen_image.sh 路径               默认 /home/alvin/cc-wiki-t5/tool/t5_gen_image.sh
 #   RB_GATE        check_boot_oat_rb.py 路径           默认 knowledge/toolchains/art-r155/check_boot_oat_rb.py(本机)
 #   T4B_GATE       t4b_build_switch_gate.py 路径       默认 knowledge/toolchains/art-r155/t4b_build_switch_gate.py
-#   EXPECT_DEX2OAT 期望的 dex2oat64 sha256            默认 ae865ddd…(T3c 产物)
+#   EXPECT_DEX2OAT 期望的 dex2oat64 sha256            默认从 FZ-005 草稿读取(FZ005_DRAFT),可覆盖
+#   FZ005_DRAFT    FZ-005 草稿路径                    默认 knowledge/frozen/FZ-005-dex2oat-toolchain-DRAFT.md
 #   SKIP_BUILD=1   跳过编译(只核树状态+出镜像+过门)
 #   SKIP_IMAGE=1   跳过出镜像(只核树状态+编译)
 #
@@ -40,7 +41,12 @@ CHECK_SERIES="${CHECK_SERIES:-$SERIES_DIR/check_series.py}"
 T5_GEN="${T5_GEN:-/home/alvin/cc-wiki-t5/tool/t5_gen_image.sh}"
 RB_GATE="${RB_GATE:-/home/alvin/t4b-gate/k/check_boot_oat_rb.py}"
 T4B_GATE="${T4B_GATE:-/home/alvin/t4b-gate/k/t4b_build_switch_gate.py}"
-EXPECT_DEX2OAT="${EXPECT_DEX2OAT:-ae865ddd6a7e4b25a18b7c07402920c69e5599b329778eff647a08803948322b}"
+FZ005_DRAFT="${FZ005_DRAFT:-/home/alvin/FZ-005-dex2oat-toolchain-DRAFT.md}"
+# 期望哈希从 FZ-005 草稿读取(不留常量;草稿不在时必须显式传 EXPECT_DEX2OAT)
+EXPECT_DEX2OAT="${EXPECT_DEX2OAT:-}"
+if [ -z "$EXPECT_DEX2OAT" ] && [ -f "$FZ005_DRAFT" ]; then
+  EXPECT_DEX2OAT=$(grep -oE '`[0-9a-f]{64}`' "$FZ005_DRAFT" | head -1 | tr -d '`')
+fi
 
 log() { echo "[reproduce $(date +%H:%M:%S)] $*"; }
 die() { echo "[reproduce FAIL] $*" >&2; exit 1; }
