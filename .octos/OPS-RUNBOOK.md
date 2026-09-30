@@ -51,6 +51,7 @@
 ## 3. 头条
 
 - 上屏:`bash benchmark/2026-09-27-device-provisioning/provision_toutiao.sh <完整 connect-key>`。热板 25–40 s、刚开机 90–150 s 到 READY+feed。交付包在 `~/a2hlab-provision/ttbundle`(MANIFEST 校验)。脚本 150 s 窗口在刚开机的板上会超时误判 FAIL,**以截图为准**。
+- **桌面焦点卡在已销毁的窗口上**(2026-10-01 05:47,5cd,外环恢复):bms_batch 焦点门报「focus row missing or ambiguous」;WMS 里「Focus window: 339」但表中没有 339 这一行,另有残留的系统 `com.ohos.filemanager` 窗口。`aa force-stop` 残留包、Home、拉起再退出都不换焦点;**`power-shell suspend` → `power-shell wakeup` → 上滑解锁(`uitest uiInput swipe 600 1700 600 300 2000`)→ Home** 后焦点回到 SCBDesktop(win 11),截图见桌面。不用重启(重启会丢 bind 挂载的运行时,要按 5ea 那条重放)。
 - 状态:`/data/local/tmp/operator45/selfheal48/state`(重启不清,先删再验);黑屏先看 ZOrder:`hidumper -s WindowManagerService -a '-a' | grep -E 'SCBScreenLock|imehost0'`。截图:`snapshot_display -f /data/local/tmp/x.jpeg`(后缀必须 .jpeg)再 `hdc file recv`。
 - 首启会弹"个人信息保护指引",点"同意"(`uinput -T -c 595 1270`)。
 - 13 图标常驻 demo(61b):开机后 `persist_demo.sh 61b06572 up`(参数顺序 `<SERIAL> <CMD>`)。
