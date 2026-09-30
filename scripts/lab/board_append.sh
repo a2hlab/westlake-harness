@@ -16,6 +16,20 @@ case $BOARD in /*) ;; *) echo "REFUSE: board path must be absolute: $BOARD" >&2;
 if [ $# -gt 0 ]; then BODY="$*"; else BODY=$(cat); fi
 FIRST=$(printf '%s\n' "$BODY" | grep -m1 -v '^[[:space:]]*$' || true)
 [ -n "$FIRST" ] || { echo "REFUSE: empty body, nothing appended" >&2; exit 2; }
+# 2026-09-30, twice in one evening (oc-t4 22:10, the outer loop 22:08): an entry carried a hand-written time
+# minutes in the future. Refuse a first-line ISO timestamp more than 60 s ahead of the clock; take it from date.
+AHEAD=$(printf '%s' "$FIRST" | python3 -c '
+import re, sys, time
+from datetime import datetime
+m = re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?([+-]\d{2}:?\d{2})?", sys.stdin.read())
+if m:
+    s = m.group(0) if m.group(1) else m.group(0)[:16] + ":00" + m.group(0)[16:]
+    t = datetime.fromisoformat(s)
+    t = t.timestamp() if t.tzinfo else time.mktime(t.timetuple())
+    print(int(t - time.time()))
+else:
+    print(0)')
+[ "$AHEAD" -le 60 ] || { echo "REFUSE: entry time is ${AHEAD}s in the future; write it with \$(date +%Y-%m-%dT%H:%M:%S%z)" >&2; exit 2; }
 # EVO-0033..0036 (same disease, 5th time on 2026-09-30): an adoption ("采认") restated a lane's inference without
 # naming the object it was checked against. Warn when an adopting entry carries no evidence anchor (a hash of
 # >= 7 hex digits or a file path); the entry is still appended.
