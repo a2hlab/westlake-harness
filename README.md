@@ -92,6 +92,8 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **benchmark/2026-09-30-native-freeze-audit/** | **Native freeze evidence inventory, tiered-policy deployment and rollback checks.** |
+| **benchmark/2026-09-30-flutter-r5/** | **Single ANL default-owner callback attempt: controls held, private dependencies still blocked; candidate rolled back.** |
 | **benchmark/2026-09-30-asset-fd-runtime/** | **One-helper runtime repair from a byte-reproduced 9e14 baseline, same-board clean-install A/B for NewPipe/uhabits plus five controls.** |
 | **`benchmark/2026-09-30-asset-fd-plan/`** | **Existing Westlake PFD helper replaces the OH Implement-me fallback; single-runtime plan for NewPipe/uhabits, not yet deployed.** |
 | **`benchmark/2026-09-30-flutter-candidate/`** | **Flutter r4: six engines reach a caller-namespace permission failure; controls retained, frozen build/closure evidence and rollback record.** |
@@ -525,4 +527,3 @@ Paths in these documents are written as environment variables (`$WESTLAKE_ROOT`,
 `$OHOS_SDK`, `$HDC`, `$BOARD_SERIAL`, …) rather than absolute local paths. See `env.sample.sh`.
 Device serials, usernames and host paths are deliberately excluded from this repo.
 
-| **Native freeze audit (2026-09-30)** | [Evidence inventory and deploy gate](benchmark/2026-09-30-native-freeze-audit/README.md) |

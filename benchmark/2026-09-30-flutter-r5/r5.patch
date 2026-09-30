@@ -1,0 +1,113 @@
+--- benchmark/2026-09-30-flutter-candidate/src/app_native_loader.c
++++ benchmark/2026-09-30-flutter-r5/src/app_native_loader.c
+@@ -32,6 +32,10 @@
+ struct AnlDomain {
+     Dl_namespace app;
+     Dl_namespace flutter;
++    Dl_namespace flutter_bridge;
++    char flutter_bridge_search[PATH_MAX];
++    char flutter_bridge_permitted[PATH_MAX];
++    void* flutter_bootstrap_handle;
+     int flutter_state;
+     bool flutter_selected;
+     void* flutter_handles[3];
+@@ -358,6 +362,14 @@
+     if (domain == NULL) return failf("calloc failed: %d", errno);
+     snprintf(domain->app_paths, sizeof(domain->app_paths), "%s", config->app_search_paths);
+     snprintf(domain->app_permitted_paths, sizeof(domain->app_permitted_paths), "%s", config->app_permitted_paths);
++    if (has_complete_bridge &&
++        (snprintf(domain->flutter_bridge_search, sizeof(domain->flutter_bridge_search),
++                  "%s", config->bridge_search_paths) >= (int)sizeof(domain->flutter_bridge_search) ||
++         snprintf(domain->flutter_bridge_permitted, sizeof(domain->flutter_bridge_permitted),
++                  "%s", config->bridge_permitted_paths) >= (int)sizeof(domain->flutter_bridge_permitted))) {
++        free(domain);
++        return failf("Flutter bridge paths exceed limits");
++    }
+     domain->runtime_gate = g_runtime_gate;
+     pthread_mutex_init(&domain->flutter_mutex, NULL);
+ 
+@@ -420,7 +432,8 @@
+     if (prepared != 0) return NULL;
+     dlerror();
+     void* handle = selected
+-        ? dlopen_ns(&domain->flutter, path, mode | RTLD_LOCAL)
++        ? domain->runtime_gate.namespace_host_ops.open_namespace(
++            &domain->flutter, path, mode | RTLD_LOCAL)
+         : domain->runtime_gate.namespace_host_ops.open_namespace(
+             &domain->app, path, mode | RTLD_LOCAL);
+     if (handle == NULL) {
+--- benchmark/2026-09-30-flutter-candidate/src/flutter_domain.inc
++++ benchmark/2026-09-30-flutter-r5/src/flutter_domain.inc
+@@ -15,47 +15,43 @@
+     }
+     return false;
+ }
+-static int flutter_inherit(Dl_namespace* target, const char* owner, const char* names) {
+-    Dl_namespace parent;
+-    if (dlns_get(owner, &parent) != 0 || dlns_inherit(target, &parent, names) != 0)
+-        return failf("Flutter owner unavailable: %s", owner);
+-    fprintf(stderr, "[ANL-FLUTTER] owner=%s names=%s\n", owner, names);
+-    return 0;
+-}
+ static int flutter_prepare(AnlDomain* domain) {
+     if (domain->flutter_state != 0) return domain->flutter_state == 1 ? 0 : -1;
+     domain->flutter_state = -1;
+-    char name[NS_NAME_MAX + 1], permitted[3 * PATH_MAX], search[2 * PATH_MAX];
++    if (!domain->has_bridge) return failf("Flutter pthread bridge configuration missing");
+     const char* private_root = "/system/android/lib64/westlake_flutter";
+-    snprintf(name, sizeof(name), "westlake.flutter.%ld.%lu", (long)getpid(),
+-             atomic_fetch_add_explicit(&g_domain_id, 1, memory_order_relaxed));
++    char app_name[NS_NAME_MAX + 1], bridge_name[NS_NAME_MAX + 1];
++    char search[2 * PATH_MAX], permitted[3 * PATH_MAX];
++    unsigned long id = atomic_fetch_add_explicit(&g_domain_id, 1, memory_order_relaxed);
++    /* Exact owned-name grammar required by the existing stock-host callbacks. */
++    snprintf(app_name, sizeof(app_name), "westlake.anl.app.%ld.%lu", (long)getpid(), id);
++    snprintf(bridge_name, sizeof(bridge_name), "westlake.anl.bridge.%ld.%lu", (long)getpid(), id);
+     if (snprintf(search, sizeof(search), "%s:%s", private_root, domain->app_paths) >= (int)sizeof(search) ||
+         snprintf(permitted, sizeof(permitted), "%s:%s:%s", private_root,
+                  domain->app_paths, domain->app_permitted_paths) >= (int)sizeof(permitted))
+         return failf("Flutter namespace paths exceed limits");
+-    dlns_init(&domain->flutter, name);
+-    if (dlns_create2(&domain->flutter, search, 0) != 0 ||
+-        dlns_set_namespace_separated(name, true) != 0 ||
+-        dlns_set_namespace_permitted_paths(name, permitted) != 0)
+-        return failf("Flutter namespace configuration failed");
+-    /* One-hop edges: never copy OH libraries into an app-local search root. */
+-    if (flutter_inherit(&domain->flutter, "default",
+-            "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so") != 0 ||
+-        flutter_inherit(&domain->flutter, "westlake.sealed.child",
+-            "liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so") != 0)
+-        return -1;
+-    if (!domain->has_bridge || dlns_inherit(&domain->flutter, &domain->bridge,
+-            "libwestlake_bionic_pthread_bridge.so") != 0)
+-        return failf("Flutter pthread bridge owner unavailable");
+-    const char* preload[] = {
+-        "libandroid.so", "libGLESv2.so", "libjnigraphics.so"
+-    };
++
++    /* Host owns all namespace operations in default. Its existing bridge has
++     * CREATE_INHERIT_DEFAULT; the app gets only this explicit shared-name list.
++     * Do not call dlns_* directly from the sealed ANL DSO. */
++    const char* shared =
++        "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:"
++        "liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:"
++        "libwestlake_bionic_pthread_bridge.so";
++    int rc = domain->runtime_gate.namespace_host_ops.create_configured_namespaces(
++        &domain->flutter_bridge, bridge_name,
++        domain->flutter_bridge_search, domain->flutter_bridge_permitted, shared,
++        "libwestlake_bionic_pthread_bridge.so", &domain->runtime_gate.pthread_bridge_ops,
++        &domain->flutter_bootstrap_handle, &domain->flutter, app_name, search, permitted);
++    if (rc != 0) return failf("Flutter default-owner namespace configuration failed: %d", rc);
++    const char* preload[] = {"libandroid.so", "libGLESv2.so", "libjnigraphics.so"};
+     for (size_t i = 0; i < sizeof(preload)/sizeof(preload[0]); ++i) {
+-        domain->flutter_handles[i] = dlopen_ns(&domain->flutter, preload[i], RTLD_NOW|RTLD_LOCAL);
++        domain->flutter_handles[i] = domain->runtime_gate.namespace_host_ops.open_namespace(
++            &domain->flutter, preload[i], RTLD_NOW | RTLD_LOCAL);
+         if (domain->flutter_handles[i] == NULL)
+             return failf("Flutter private preload %s: %s", preload[i], dlerror());
+     }
+     domain->flutter_state = 1;
+-    fprintf(stderr, "[ANL-FLUTTER] configured %s; private providers ready\n", name);
++    fprintf(stderr, "[ANL-FLUTTER] default-owner configured %s; private providers ready\n", app_name);
+     return 0;
+ }
