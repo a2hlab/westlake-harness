@@ -65,7 +65,11 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
                # service (noice/musicplayer) does not NPE on a null MediaSessionManager.
                src / 'WlMediaSession.java',
                # r17e (#alarm): ALARM_SERVICE fetcher replacement (binder -> AlarmManager last mile).
-               src / 'SystemServiceFetcherStubs.java']
+               src / 'SystemServiceFetcherStubs.java',
+               # freeze split (AGENTS.md 做事方式 3): single-fix files extracted for independent freezing.
+               src / 'JarVerificationProviderFix.java',   # r17o conscrypt (from B7BindFixes)
+               src / 'AlarmVibratorFetcher.java',         # r17e alarm + J04 vibrator (from SystemServiceFetcherStubs)
+               src / 'SelfServiceFallback.java']          # J1 binaryeye getServiceInfo (from SelfComponentFallback)
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 # r16 (#90): cc-wiki's OnlineConnectivityManager compiles against the Westlake android.net sources
 # (ConnectivityManager/Network/NetworkInfo/NetworkCapabilities/NetworkRequest, which expose the

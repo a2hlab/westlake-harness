@@ -20,9 +20,8 @@ public final class SystemServiceFetcherStubs {
     private SystemServiceFetcherStubs() {}
 
     public static void install() {
-        replaceFetcher("alarm", new Builder() {
-            @Override public Object build(Object context) throws Throwable { return buildAlarmManager(context); }
-        });
+        // r17e alarm + J04 vibrator moved to AlarmVibratorFetcher (its own freeze unit).
+        AlarmVibratorFetcher.install();
         // media_session (noice/musicplayer): the plain MediaSessionManager(Context) constructor calls
         // MediaFrameworkPlatformInitializer.getMediaServiceManager(), a NoSuchMethodError on this
         // generation, so WlMediaSession's fetcher returns null and getSystemService(MEDIA_SESSION_
@@ -49,8 +48,6 @@ public final class SystemServiceFetcherStubs {
             @Override public Object build(Object context) throws Throwable { return buildRestrictionsManager(context); }
         });
         registerServiceName("android.content.RestrictionsManager", "restrictions");
-        // vibrator_manager is deferred: VibratorManager/Vibrator have package-private constructors, so a
-        // subclass stub will not compile; it needs an IVibratorManagerService-level proxy instead.
     }
 
     /** RestrictionsManager(Context, IRestrictionsManager) with a stub service returning empty Bundles. */
@@ -166,30 +163,6 @@ public final class SystemServiceFetcherStubs {
         Object build(Object context) throws Throwable;
     }
 
-    /** AlarmManager(IAlarmManager, Context) built from a type-zero IAlarmManager proxy. */
-    private static Object buildAlarmManager(Object context) throws Throwable {
-        Class<?> iAlarm = Class.forName("android.app.IAlarmManager");
-        Object service = Proxy.newProxyInstance(iAlarm.getClassLoader(), new Class<?>[] {iAlarm},
-                new TypeZeroHandler());
-        Class<?> alarmManager = Class.forName("android.app.AlarmManager");
-        Class<?> contextType = Class.forName("android.content.Context");
-        for (Constructor<?> c : alarmManager.getDeclaredConstructors()) {
-            Class<?>[] p = c.getParameterTypes();
-            if (p.length == 2 && p[0].isAssignableFrom(iAlarm) && p[1].isAssignableFrom(contextType)) {
-                c.setAccessible(true);
-                return c.newInstance(service, context);
-            }
-        }
-        // Fallback: some builds expose only AlarmManager(Context). Better a Manager than null.
-        for (Constructor<?> c : alarmManager.getDeclaredConstructors()) {
-            Class<?>[] p = c.getParameterTypes();
-            if (p.length == 1 && p[0].isAssignableFrom(contextType)) {
-                c.setAccessible(true);
-                return c.newInstance(context);
-            }
-        }
-        throw new NoSuchMethodException("no usable AlarmManager constructor");
-    }
 
     /** A type-correct-zero InvocationHandler for a stubbed IInterface (mirrors LocalServiceBinders). */
     private static final class TypeZeroHandler implements InvocationHandler {

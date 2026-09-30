@@ -32,7 +32,7 @@ public final class B7BindFixes {
         // "Sun provider not found" on route-A (no Conscrypt). Runs first, before any app class that
         // verifies a signed JAR (droidify MainActivity.onCreate, amaze AppConfig.<clinit>, newpipe,
         // catima, antennapod). Process-global + idempotent, so doing it per-bind is harmless.
-        fixJarVerificationProvider();
+        JarVerificationProviderFix.apply();
         // r17c: load cx-t0's TLS + HTML boundary libraries (fixed child paths) from THIS class's loader
         // -- the runtime PathClassLoader. native-loader-oh only allows the legacy four soname for the
         // boot/null loader and rejects these new names, so the caller must be a runtime-JAR class. TLS
@@ -423,48 +423,4 @@ public final class B7BindFixes {
         }
     }
 
-    /**
-     * r17o: route-A's sun.security.jca.Providers.getSunProvider() -- called by JAR signature
-     * verification (sun.security.util.ManifestEntryVerifier$SunProviderHolder.<clinit>) and by
-     * java.security.SecureRandom -- does Class.forName(jarVerificationProviders[0]) =
-     * "com.android.org.conscrypt.OpenSSLProvider" under the boot loader, then falls back to
-     * BACKUP_PROVIDER_CLASSNAME = "sun.security.provider.VerificationProvider". Neither exists on
-     * route-A (no Conscrypt JNI, no sun.security.provider), so it throws
-     * RuntimeException("Sun provider not found"). Any app that verifies a signed JAR during startup
-     * dies there: v3c sweep showed fd-droidify (MainActivity.onCreate -> JarVerifier), amaze
-     * (AppConfig.<clinit>), newpipe, fd-catima, antennapod -- 5 apps regressed to a bind-stage death.
-     *
-     * This is NOT caused by our "AndroidOpenSSL" provider: getSunProvider ignores the registered
-     * provider list and only Class.forName's the hardcoded classnames. Array element [1] is already
-     * "com.android.org.bouncycastle.jce.provider.BouncyCastleProvider" -- pure-Java, on the boot
-     * classpath (route-A's crypto provider) -- but getSunProvider only consults [0] and BACKUP.
-     *
-     * jarVerificationProviders is `private static final String[]`; `final` locks only the reference,
-     * so the elements are writable. Rewrite [0] to the BC classname so getSunProvider loads a
-     * boot-visible provider and JAR verification uses BC's MessageDigests. Leaves the "AndroidOpenSSL"
-     * provider (WestlakeTlsInstall, for Wikipedia's BC AndroidDigestFactory assertion) untouched --
-     * both are satisfied. Reflection from this runtime-JAR class reaches the boot Providers class
-     * fine. Idempotent: the length/equality guards make repeat binds a no-op.
-     */
-    static void fixJarVerificationProvider() {
-        final String BC = "com.android.org.bouncycastle.jce.provider.BouncyCastleProvider";
-        try {
-            Class<?> providers = Class.forName("sun.security.jca.Providers");
-            java.lang.reflect.Field f = providers.getDeclaredField("jarVerificationProviders");
-            f.setAccessible(true);
-            Object arr = f.get(null);
-            if (!(arr instanceof String[])) {
-                System.err.println("[B8-JARVERIFY] jarVerificationProviders not String[]: " + arr);
-                return;
-            }
-            String[] jvp = (String[]) arr;
-            if (jvp.length == 0) { System.err.println("[B8-JARVERIFY] array empty"); return; }
-            String was = jvp[0];
-            if (BC.equals(was)) return;                    // already fixed this process
-            jvp[0] = BC;
-            System.err.println("[B8-JARVERIFY] jarVerificationProviders[0] " + was + " -> " + BC);
-        } catch (Throwable t) {
-            System.err.println("[B8-JARVERIFY] not applied: " + t);
-        }
-    }
 }
