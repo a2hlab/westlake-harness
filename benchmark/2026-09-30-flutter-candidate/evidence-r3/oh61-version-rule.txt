@@ -1,0 +1,51 @@
+775: UT_STATIC int check_verinfo(Verdef *def, int16_t *versym, uint32_t index, struct verinfo *verinfo, char *strings)
+776: {
+777: 	/* if the versym and verinfo is null , then not need version. */
+778: 	if (!versym || !def) {
+779: 		if (strlen(verinfo->v) == 0) {
+780: 			return 1;
+781: 		} else {
+782: 			LD_LOGD("check_verinfo versym or def is null and verinfo->v exist, s:%{public}s v:%{public}s.",
+783: 				verinfo->s, verinfo->v);
+784: 			return 0;
+785: 		}
+786: 	}
+787: 
+788: 	int16_t vsym = versym[index];
+789: 
+790: 	/* find the verneed symbol. */
+791: 	if (verinfo->use_vna_hash) {
+792: 		if (vsym != VER_NDX_LOCAL && versym != (int16_t *)VER_NDX_GLOBAL) {
+793: 			return check_vna_hash(def, vsym, verinfo->vna_hash);
+794: 		}
+795: 	}
+796: 
+797: 	/* if the version length is zero and vsym not less than zero, then library hava default version symbol. */
+798: 	if (strlen(verinfo->v) == 0) {
+799: 		if (vsym >= 0) {
+800: 			return 1;
+801: 		} else {
+802: 			LD_LOGD("check_verinfo not default version. vsym:%{public}d s:%{public}s", vsym, verinfo->s);
+803: 			return 0;
+804: 		}
+805: 	}
+806: 
+807: 	/* find the version of symbol. */
+808: 	vsym &= 0x7fff;
+809: 	for (;;) {
+810: 		if (!(def->vd_flags & VER_FLG_BASE) && (def->vd_ndx & 0x7fff) == vsym) {
+811: 			break;
+812: 		}
+813: 		if (def->vd_next == 0) {
+814: 			return 0;
+815: 		}
+816: 		def = (Verdef *)((char *)def + def->vd_next);
+817: 	}
+818: 
+819: 	Verdaux *aux = (Verdaux *)((char *)def + def->vd_aux);
+820: 
+821: 	int ret = !strcmp(verinfo->v, strings + aux->vda_name);
+822: #if (LD_LOG_LEVEL & LD_LOG_DEBUG)
+823: 	if (!ret) {
+824: 		LD_LOGD("check_verinfo version not match. s=%{public}s v=%{public}s vsym=%{public}d vda_name=%{public}s",
+825: 			verinfo->s, verinfo->v, vsym, strings + aux->vda_name);

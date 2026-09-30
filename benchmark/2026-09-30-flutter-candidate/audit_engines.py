@@ -3,7 +3,7 @@
 import argparse, hashlib, json, re, subprocess
 from pathlib import Path
 from collections import deque
-P=argparse.ArgumentParser();P.add_argument('--inputs',type=Path,required=True);P.add_argument('--package',type=Path,required=True);P.add_argument('--pool',type=Path,required=True);P.add_argument('--out',type=Path,required=True);a=P.parse_args()
+P=argparse.ArgumentParser();P.add_argument('--inputs',type=Path,required=True);P.add_argument('--package',type=Path,required=True);P.add_argument('--pool',type=Path,required=True);P.add_argument('--out',type=Path,required=True);P.add_argument('--candidate',type=Path);a=P.parse_args()
 keys=['fd-fluffychat','fd-immich','fd-kitchenowl','fd-libre','fd-saber','localsend']
 roots=[a.package/'payload/android/lib64',a.package/'payload/route']+[a.pool/('system/lib64'+s) for s in ['','/platformsdk','/chipset-sdk','/chipset-sdk-sp','/ndk']]
 index={}
@@ -15,6 +15,9 @@ index['libandroid.so']=a.package/'payload/android/lib64/liboh_android_runtime.so
 index['libGLESv2.so']=a.pool/'system/lib64/platformsdk/libGLESv3.so'
 # OH libc owns dl/m. Record alias rather than mark physical absence as success.
 index['libdl.so']=a.pool/'system/lib64/libc.so';index['libm.so']=index['libdl.so']
+if a.candidate:
+ for soname,filename in [('libandroid.so','libwestlake_flutter_android.so'),('libGLESv2.so','libwestlake_flutter_gles2.so'),('libjnigraphics.so','libwestlake_flutter_jnigraphics.so')]:
+  index[soname]=a.candidate/filename
 cache={}
 def elf(f):
  k=str(f)

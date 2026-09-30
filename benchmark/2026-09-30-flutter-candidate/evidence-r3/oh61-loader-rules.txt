@@ -1,0 +1,72 @@
+775: UT_STATIC int check_verinfo(Verdef *def, int16_t *versym, uint32_t index, struct verinfo *verinfo, char *strings)
+776: {
+777: 	/* if the versym and verinfo is null , then not need version. */
+778: 	if (!versym || !def) {
+779: 		if (strlen(verinfo->v) == 0) {
+780: 			return 1;
+781: 		} else {
+782: 			LD_LOGD("check_verinfo versym or def is null and verinfo->v exist, s:%{public}s v:%{public}s.",
+783: 				verinfo->s, verinfo->v);
+784: 			return 0;
+785: 		}
+786: 	}
+787: 
+788: 	int16_t vsym = versym[index];
+789: 
+790: 	/* find the verneed symbol. */
+791: 	if (verinfo->use_vna_hash) {
+792: 		if (vsym != VER_NDX_LOCAL && versym != (int16_t *)VER_NDX_GLOBAL) {
+793: 			return check_vna_hash(def, vsym, verinfo->vna_hash);
+794: 		}
+795: 	}
+796: 
+797: 	/* if the version length is zero and vsym not less than zero, then library hava default version symbol. */
+798: 	if (strlen(verinfo->v) == 0) {
+799: 		if (vsym >= 0) {
+800: 			return 1;
+801: 		} else {
+802: 			LD_LOGD("check_verinfo not default version. vsym:%{public}d s:%{public}s", vsym, verinfo->s);
+803: 			return 0;
+804: 		}
+805: 	}
+806: 
+807: 	/* find the version of symbol. */
+808: 	vsym &= 0x7fff;
+809: 	for (;;) {
+810: 		if (!(def->vd_flags & VER_FLG_BASE) && (def->vd_ndx & 0x7fff) == vsym) {
+1374: 	sym_index = R_SYM(rel[1]);
+1375: 	if (sym_index) {
+1376: 		sym = syms + sym_index;
+1377: 		name = strings + sym->st_name;
+1378: 		ctx = type==REL_COPY ? head->syms_next : head;
+1379: 		struct verinfo vinfo = { .s = name, .v = ""};
+1380:  
+1381: 		vinfo.use_vna_hash = get_vna_hash(dso, sym_index, &vinfo.vna_hash);
+1382: 		if (!vinfo.use_vna_hash && dso->versym && (dso->versym[sym_index] & 0x7fff) >= 0) {
+1383: 			get_verinfo(dso, sym_index, &vinfo);
+1384: 		}
+1385: 		// temporary solution for libc.so relocation cache problem
+1386: 		if (dso->cache_sym_index == sym_index && dso != libc_dso) {
+2371: static struct dso *search_dso_by_name(const char *name, const ns_t *ns) {
+2372: 	LD_LOGD("search_dso_by_name name:%{public}s, ns_name:%{public}s", name, ns ? ns->ns_name: "NULL");
+2373: 	for (size_t i = 0; i < ns->ns_dsos->num; i++) {
+2374: 		struct dso *p = ns->ns_dsos->dsos[i];
+2375: 		if (p->shortname && !strcmp(p->shortname, name)) {
+2376: 			LD_LOGD("search_dso_by_name found name:%{public}s, ns_name:%{public}s", name, ns ? ns->ns_name: "NULL");
+2377: 			return p;
+2378: 		}
+2379: 	}
+2380: 	return NULL;
+2381: }
+2382: 
+2620: 	memcpy(p, &temp_dso, sizeof temp_dso);
+2621: 	p->dev = st.st_dev;
+2622: 	p->ino = st.st_ino;
+2623: 	p->needed_by = needed_by;
+2624: 	p->name = p->buf;
+2625: 	p->runtime_loaded = runtime;
+2626: 	strcpy(p->name, pathname);
+2627: 	/* Add a shortname only if name arg was not an explicit pathname. */
+2628: 	if (pathname != name) p->shortname = strrchr(p->name, '/')+1;
+2629: 	if (p->tls.image) {
+2630: 		p->tls_id = ++tls_cnt;

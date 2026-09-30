@@ -120,3 +120,57 @@ not safe to deploy without its private providers and has not been packaged.
 still pass the import/version closure and package gates before the ≤30-minute
 61b control-first sequence. In particular, actual namespace owner lookup,
 private SONAME reuse, and OH version matching are not yet runtime-verified.
+
+## Authorized attempt 3: build passed; namespace gate rejected
+
+The corrected mount command completed all four strict links:
+
+| File | SHA prefix | Actual SONAME |
+|---|---|---|
+| libapp_native_loader.so | 5c63ac49 | libapp_native_loader.so |
+| libwestlake_flutter_android.so | 5babd5a4 | libandroid.so |
+| libwestlake_flutter_gles2.so | 4b653941 | libGLESv2.so |
+| libwestlake_flutter_jnigraphics.so | 3016cf48 | libjnigraphics.so |
+
+`evidence-r3/summary.json`: all six engines now have **zero missing strong
+symbol names and zero unresolved NEEDED names** in the optimistic physical
+closure. No other runtime/provider was rebuilt. The existing 292/293 non-exact
+version matches are explained by the inspected OH6.1 relocation path:
+`vinfo.v` starts empty, imported versions set `use_vna_hash`, and an unversioned
+provider passes `check_verinfo` while v is empty. A versioned provider instead
+checks the requested hash. This source analysis does not prove namespace access.
+See `evidence-r3/oh61-loader-rules.txt`; source is the existing local
+`bms/src/.work/next4-oh61-dynlink.c` from the earlier OH6.1 investigation.
+
+**The candidate is not deployable.** The independent namespace gate found two
+implementation mistakes before any device run:
+
+1. The native-window/native-buffer link inputs declare **libsurface.z.so**.
+   The direct owner edge lists their input filenames, omitting this real NEEDED
+   name. This would block the Android compatibility provider.
+2. OH's `search_dso_by_name` checks `p->shortname`, and load_library derives that
+   from the opened filename rather than DT_SONAME. Preloading a private unique
+   filename does not make it discoverable under libandroid/GLES2/jnigraphics.
+   A private directory with the canonical basenames, searched only by the six
+   Flutter domains, is required; open those libraries by basename in that domain.
+
+`check_domain.py` returns nonzero and records exactly the missing owner and
+three name mismatches. This supersedes the earlier assumption that preloading
+arbitrary filenames with canonical SONAMEs was sufficient.
+
+An **offline-only** package was assembled at
+`/Users/zhaoyue/orca/workspaces/westlake-flutter-r3-offline-5c63ac49`.
+Its manifest declares all three new files and both ANL aliases; the ordinary
+package dry-run passes (`device_io=false`). It carries `rollout_ready=false`
+and `DO-NOT-DEPLOY.txt`. Hash/package consistency does not validate loader
+semantics. No claim of successful candidate deployment is made.
+
+Proposed correction: retain the three built private libraries byte-for-byte,
+place them under a declared `payload/android/lib64/westlake_flutter/` directory
+with their canonical basenames, change only the Flutter-domain ANL search/preload
+and actual libsurface owner name, and recompile ANL once. Existing flat `--add`
+rejects nested destinations; an existing whole-package `--upgrade` can switch
+that declared directory and both ANL aliases atomically with other bytes intact.
+A further ANL compile would exceed the explicit three-attempt window, so this
+correction is pending authorization, not performed. cc-t3 still owns 61b;
+there have been no device commands or lock acquisitions.
