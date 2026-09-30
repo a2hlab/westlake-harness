@@ -36,6 +36,20 @@ else:
 if printf '%s' "$BODY" | sed -E 's/(未|不)采认//g' | grep '采认' >/dev/null && ! printf '%s' "$BODY" | grep -E '[0-9a-f]{7,}|/[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+' >/dev/null; then
   echo "WARN: 采认 without an evidence anchor (hash or path of the object it was checked against) -- EVO-0036" >&2
 fi
+# EVO-0049 (2026-10-01 06:25/06:31): two outer ACKs cited "外环 06:0x 5ea 签认", a sign-off that existed only in the
+# outer loop's private notes; a lane then copied the wrong shard's sign-off. Warn on a wildcard time ("06:0x") and on
+# a cited HH:MM:SS that no board line carries (typo'd or never published); hilog times (HH:MM:SS.mmm) are skipped.
+# The entry is still appended.
+printf '%s' "$BODY" | python3 -c '
+import re, sys
+body, board = sys.stdin.read(), open(sys.argv[1], errors="replace").read()
+for w in sorted(set(re.findall(r"\b\d{2}:\d?x\b", body))):
+    print(f"WARN: wildcard time {w} cited -- cite the board line with its exact timestamp (EVO-0049)", file=sys.stderr)
+own = set(re.findall(r"T(\d{2}:\d{2}:\d{2})", body.splitlines()[0] if body else ""))
+for t in sorted(set(re.findall(r"(?<![\d:T])(\d{2}:\d{2}:\d{2})(?![\d:.])", body)) - own):
+    if "T" + t not in board:
+        print(f"WARN: cited time {t} is not on the board (never published, or a typo) (EVO-0049)", file=sys.stderr)
+' "$BOARD"
 printf '%s\n' "$BODY" | "$APPEND" "$BOARD"
 if tail -n 400 "$BOARD" | grep -F -- "$FIRST" >/dev/null; then  # no -q under pipefail (RUNBOOK)
   echo "appended: ${FIRST:0:100}"
