@@ -13,6 +13,8 @@
 - 环境:`source ~/orca/workspaces/westlake-inputs/env-mac.sh`(cc/readelf/sha256sum shim + mise 固定的 JDK/Python)。有它 67/69 测试过,没有它 2 fail 4 error。
 - **shell 陷阱**:`ls`=eza(带 OSC-8 超链接)、`du`=dust、`grep`=ugrep(复杂正则会超限)、`cat`=bat → 解析输出时用 `/bin/ls`、`/usr/bin/grep`、`command du`。zsh **不拆分 `$var`**(用 `${=var}` 或数组/glob),把整串当一个文件名且被 `2>/dev/null` 吞掉时会得到"假干净"。macOS 自带 bash 3.2 没有 `mapfile`。
 - `pgrep -f`/`pkill -f` 会匹配到自己的命令行(在 `hdc shell "…"` 里计数恒 +1)→ 用 `scripts/lab/stop_by_pattern.sh` 或 `pgrep -f '[x]yz'`。
+- **长跑的 bash 脚本别在运行中改它**:bash 按字节偏移边读边执行,改了前面的行,当前复合命令跑完后会从错位处读下一条(2026-09-30 迁移上传差点中招)。要跑几小时的脚本先 `cp` 一份副本再 `bash <副本>`,仓库里的原件随便改。
+- **换机**:按根目录 `env.md`。OLP 黑板(`.octos/boards/`、`OUTER_LOOP_REVIEW.md`、`EVOLUTION.md`)按设计不入 git,换机靠 hw248 的 `octos-state` 包带过去;`scripts/lab/push_lab_state.sh` 只在 hw248 与本机校验清单完全一致时跳过,切换前重跑一遍即可刷新。
 
 **OH 板**:DAYU600,OpenHarmony 6.1.0.31,1200×1920,纯 64 位用户态。板上 toybox 没有 `awk`/`tr`/`ip`/`route`/`wpa_cli`/`ndc`;hdc shell 是 root、`u:r:su:s0`(permissive)。
 
