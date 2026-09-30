@@ -1,0 +1,54 @@
+{
+  "title": "Next-wall triage: NewPipe PlayerService bind / SPD libgdx+GLImpl / AppManager ADB-connect — layer + routing",
+  "author": "cc-wiki (#80)",
+  "date": "2026-09-30",
+  "dispatch": "outer ring: (1) AppManager 正在验证 = ADB connect not fast-failing on OH? record one line for cx-t0, don't deep-dive; (2) NewPipe next wall after asset-fd = PlayerService bind (cx-bms saw only InvocationTargetException, inner cause unknown) -> find cause chain, JAR-layer to cc-t3 J2; (3) SPD libgdx missing libstdc++ then GLImpl ULE -> native assembly vs graphics JNI, to cx-t0. Pure local log reads.",
+  "method": "read existing U0 (asset-fd 53f + r17r) sweep hilogs; cross-board confirm. FLAW-007 n/a (layer triage from logs, not lit claims). cx-bms next-walls.json line refs verified against source hilog.",
+
+  "newpipe_playerservice_bind": {
+    "verdict": "JAR / framework PackageManager adapter -> cc-t3 (J2)",
+    "boards_confirmed": ["5cd", "61b"],
+    "logs": {
+      "5cd": "westlake-harness/benchmark/2026-09-30-unified-assetfd-5cd-sweep/runs/unified-assetfd-5cd/5cd1e3dd00000000000000000923012c/newpipe/hilog.txt",
+      "61b": "westlake-harness-bms-deploy/benchmark/2026-09-30-asset-fd-runtime/device-61b/runs/asset-fd-after-61b/61b0657200000000000000000324012c/newpipe/hilog.txt"
+    },
+    "status": "NewPipe MAIN UI is LIT (outer-ring t20 = own Live/直播 page). PlayerService bind is a PLAYBACK-time secondary wall, NOT a first-screen blocker. NewPipe process stays alive (no crash/SIGKILL at hilog tail).",
+    "cause_chain": "Same-thread same-millisecond sequence immediately precedes the wrapped exception on BOTH boards (5cd tid 29970 @10:18:11.690; 61b tid 31683 @09:53:32.795): BMS 'GET_BUNDLE_INFO_PRIVILEGED ... denied' -> BMSQuery 'GetBundleInfo fail -n android -u 100 -f 4160' -> OHBundleMgrClient 'GetBundleInfo failed for: android' -> OH_PMAdapter 'getPackageInfo: not found: android' -> next ms '[B8-AMB] in-process bind failed for ...PlayerService: java.lang.reflect.InvocationTargetException'.",
+    "inner_cause": "InvocationTargetException.getCause() is NOT printed by [B8-AMB], but the immediate precursor is a hard PackageManager.getPackageInfo(\"android\") NameNotFound on the same app thread. PlayerService extends androidx.media.MediaBrowserServiceCompat; onCreate builds a MediaSessionCompat which resolves platform/media-button package info via getPackageInfo. The OH BMS adapter does not synthesize the framework 'android' package and denies GET_BUNDLE_INFO_PRIVILEGED -> NameNotFoundException -> wrapped as InvocationTargetException by the reflective in-process bind.",
+    "line_refs": {
+      "5cd_bind_start": "40684 [B8-AMB] bindServiceInstance -> in-process ...PlayerService",
+      "5cd_pm_fail": "10:18:11.690 GetBundleInfo fail -n android / OH_PMAdapter getPackageInfo: not found: android (tid 29970)",
+      "5cd_bind_failed": "42968 [B8-AMB] in-process bind failed ...PlayerService: InvocationTargetException",
+      "61b_bind_failed": "58217 (same sequence, tid 31683)"
+    },
+    "fix_direction": "cc-t3 JAR: make the OH PackageManager adapter answer getPackageInfo(\"android\") for the synthetic framework package (analogous to commit a08270c0 SelfUidPackages answering getPackagesForUid/getNameForUid for own uid; here a by-name 'android' framework-package answer). Cheap observability add: [B8-AMB] should log InvocationTargetException.getCause() so the inner cause stops being lost.",
+    "correction_to_cx_bms": "cx-bms flagged 'InvocationTargetException, inner cause unknown'. The wrapper is real (line 42968), but note the benign look-alike at 12561 ('[B32-J][EARLY-TF] nativePrimeDefaultTypeface reflect FAILED: InvocationTargetException', INFO-level, unrelated) must not be conflated. The bind's true inner cause is the getPackageInfo(\"android\") NameNotFound precursor."
+  },
+
+  "spd_shatteredpixeldungeon": {
+    "verdict": "native (BOTH: app-namespace native-lib closure + graphics/GLES JNI registration) -> cx-t0 (N1)",
+    "board": "61b",
+    "log": "westlake-harness/benchmark/2026-09-30-unified-assetfd-5cd-sweep/runs/unified-assetfd-rest-61b/61b0657200000000000000000324012c/fd-shatteredpixeldungeon/hilog.txt",
+    "status": "NOT past wall. Game PID 18885 dies; second PID 18913 renders SPD's own error Activity ('Shattered Pixel Dungeon failed to access some of its internal code'). facts alive t20=yes is the error-page PID, NOT gameplay -> not lit.",
+    "cause_chain_two_stage": [
+      "STAGE 1 (native lib namespace closure): 18885 @10:37:43.543 MUSL-LDSO 'Error loading shared library libstdc++.so: (needed by /data/app/.../libgdx.so)'. libgdx.so (game native, libGDX) DT_NEEDED libstdc++.so is not visible/resolvable in the app namespace.",
+      "STAGE 2 (graphics JNI registration): 18885 @10:37:43.706 [CHILD_CK] J_invokeStaticMain_main_threw java.lang.UnsatisfiedLinkError 'No implementation found for void com.google.android.gles_jni.GLImpl._nativeClassInit() ... is the library loaded, e.g. System.loadLibrary?'. The GLES1 JNI class (com.google.android.gles_jni.GLImpl) native _nativeClassInit is not registered/loaded."
+    ],
+    "line_refs": {"libstdcpp": "27727", "glimpl_ule": "28941", "error_activity": "36878 (PID 18913 TextView 'failed to access some of its internal code')"},
+    "fix_direction": "cx-t0 N1: (a) app-namespace dependency closure so libgdx.so can resolve libstdc++.so (make libstdc++ visible in the app linker namespace, N03-style); (b) GLES JNI closure so com.google.android.gles_jni.GLImpl._nativeClassInit resolves (register/load the GLES1 JNI). Both are native/graphics-JNI, cx-t0 domain. Matches cx-bms verdict 'N1 needs both app namespace dependency and GLES closure'."
+  },
+
+  "appmanager_adb_connect": {
+    "verdict": "platform-difference wall (OH loopback TCP does not fast-refuse a closed port) -> one line for cx-t0, NOT deep-dived (per dispatch)",
+    "board_evidence": "5cd (U0) fd-AppManager/hilog.txt: MaterialTextView text='正在验证…' unchanged at T=1500ms and T=5000ms (line 36235, 36993); no ECONNREFUSED / 'Connection refused' / connect error / thread return anywhere; background mode-detection thread silent through t20. libcore.io.Linux::socket hook is registered (line 10169).",
+    "reasoning": "Earlier layer report (board PROGRESS(80) 2026-09-30 10:04, dexdump SplashActivity/SecurityAndOpsViewModel): SplashActivity.doAuthenticate -> setModeOfOps -> Ops.autoConnectWirelessDebugging -> Ops.connectAdb (TCP to localhost ADB port) -> blocks; has Ops.fallbackToNoRoot but never reaches it. Real Android: connect() to 127.0.0.1:<closed adb port> returns ECONNREFUSED (errno 111) immediately (kernel RST) -> AppManager catches -> fallbackToNoRoot -> no-root MainActivity lights. OH observed: the connect neither returns an error nor completes (silent thread, permanent '正在验证') -> OH loopback does not send a fast RST for a closed port the way Linux/Android does.",
+    "one_line_for_cx_t0": "AppManager '正在验证' hang = OH loopback TCP connect to a CLOSED localhost port does not fast-refuse (no immediate ECONNREFUSED/RST) as Linux/Android does; AppManager's Ops.connectAdb blocks and never reaches fallbackToNoRoot. Platform/network-layer diff (not app/JAR/native-lib). cx-t0 to confirm with a direct connect-to-closed-loopback-port probe and restore fast-refuse (or provide a bounded connect timeout).",
+    "confidence": "OH-hang is observed-inferred (silent thread + no ECONNREFUSED + permanent 正在验证 through t20); a direct board connect probe would make it definitive. Not run here per 'don't deep-dive'."
+  },
+
+  "routing_summary": {
+    "cc-t3 (J2)": "NewPipe PlayerService bind: OH PackageManager adapter answer getPackageInfo(\"android\") synthetic framework package; also log InvocationTargetException.getCause() in [B8-AMB].",
+    "cx-t0 (N1)": "SPD: libgdx->libstdc++ app-namespace closure + GLImpl GLES JNI registration.",
+    "cx-t0 (platform)": "AppManager: OH loopback connect fast-refuse for closed ports (or bounded timeout)."
+  }
+}
