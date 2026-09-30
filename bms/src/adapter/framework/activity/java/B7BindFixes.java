@@ -97,6 +97,13 @@ public final class B7BindFixes {
         } catch (Throwable t) {
             System.err.println("[SELF-UID] not installed: " + t);
         }
+        // J2 (#newpipe): answer getPackageInfo("android") with a synthesized system package (BMS denies
+        // GET_BUNDLE_INFO_PRIVILEGED). Chains over SelfUidPackages' IPackageManager proxy.
+        try {
+            AndroidFrameworkPackage.install();
+        } catch (Throwable t) {
+            System.err.println("[B8-ANDROIDPKG] not installed: " + t);
+        }
         // r17d (#media_session): a MediaSessionCompat-based service (noice/fossify-musicplayer's
         // SoundPlaybackService / MediaSessionService) constructs a platform MediaSession, whose <init>
         // calls MediaSessionManager.createSession(); route-A has no MEDIA_SESSION_SERVICE, so the
