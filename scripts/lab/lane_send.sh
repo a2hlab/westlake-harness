@@ -27,7 +27,9 @@ if ! is_octos; then
   # 2026-10-01: dispatches to busy Claude lanes sat queued for 10-20 min behind a long turn (cc-t3 03:14, cc-wiki
   # 05:16) while boards stood idle. Say so, so an urgent dispatch can interrupt (Escape) and resend. A queued
   # message is delivered but shown only partly, so it is not probed (06:57 the probe resent a queued dispatch).
-  if herdr pane read "$PANE" 2>/dev/null | grep -q 'queued messages'; then
+  # Claude shows "queued messages"; codex shows "Messages to be submitted after next tool call" / "Queued follow-up
+  # inputs" with the text cut short (07:35 the probe missed that and a codex dispatch went in twice).
+  if herdr pane read "$PANE" 2>/dev/null | grep -qE 'queued messages|Messages to be submitted after next tool call|Queued follow-up inputs'; then
     echo "lane_send: $PANE is busy; the dispatch is QUEUED behind the running turn (Escape + resend if urgent)"
     exit 0
   fi
