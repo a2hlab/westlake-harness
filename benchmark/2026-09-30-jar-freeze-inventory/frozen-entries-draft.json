@@ -1,54 +1,47 @@
 {
-  "_note": "DRAFT frozen.json entries for outer-loop review (cc-t3, 2026-09-30). Threshold (relaxed by user 2026-09-30): a fix is frozen when >=2 different apps PASS its wall -- >=1 confirmed lit by t20 screenshot, the rest proven by logs that the specific API failure disappeared. Each JAR fix here still lives in a SHARED file; per AGENTS.md 做事方式 3 it must be split into a single-fix file and re-verified BEFORE the outer loop registers it, so `sources[].blob` is TBD-after-split (the current shared-file blob is given for reference only). Paths are workspace-relative (like FZ-001).",
+  "_note": "DRAFT frozen.json entries for outer-loop review + registration (cc-t3, 2026-09-30, updated post-split). Each ready fix is now SPLIT into its own single-fix file (J1-final faf0782b, walls cdb82fe5) and its behaviour is re-verified by the one J1-final board run (per the outer loop). sources[].blob = the split file's git blob @ walls cdb82fe5. Threshold (relaxed by user): >=2 different apps PASS the wall -- >=1 confirmed lit by t20, the rest proven by logs the API failure disappeared. Paths workspace-relative.",
   "entries_draft": [
     {
       "id": "FZ-JAR-conscrypt",
-      "api": "sun.security.jca.Providers.jarVerificationProviders[0] rewritten conscrypt->BouncyCastle so getSunProvider() stops throwing 'Sun provider not found' during JAR signature verification on route-A (no Conscrypt)",
+      "api": "sun.security.jca.Providers.jarVerificationProviders[0] rewritten conscrypt->BouncyCastle so getSunProvider() stops throwing 'Sun provider not found' during JAR signature verification on route-A",
       "rev": "r17o",
-      "current_file": "bms/src/adapter/framework/activity/java/B7BindFixes.java (fixJarVerificationProvider) -- SHARED",
-      "split_target": "bms/src/adapter/framework/activity/java/JarVerificationProviderFix.java (extract before freeze)",
-      "current_blob_ref": "dc8e5350f5588db6eaed6a238fb1c318bc373c71 (B7BindFixes.java @ walls a4d58ba4)",
-      "sources": [{"repo_path": "bms/src/adapter/framework/activity/java/JarVerificationProviderFix.java", "blob": "TBD-after-split"}],
-      "source_record": "feat/bms-walls commit 891ca9a0/b3e159a1, benchmark/2026-09-30-r17n-wall-triage/",
+      "sources": [{"repo_path": "bms/src/adapter/framework/activity/java/JarVerificationProviderFix.java", "blob": "c7b15f75511ec20e66bca2411fc1a872e61c7521"}],
+      "source_record": "feat/bms-walls commit cdb82fe5 (split out of B7BindFixes), benchmark/2026-09-30-r17n-wall-triage/",
       "verified_apps": [
         {"app": "fd-droidify", "board": "61b", "change": "was 'Sun provider not found' getSunProvider CNF -> main UI", "t20": "westlake-harness/benchmark/2026-09-30-r17p-61b-sweep/runs/r17p-all-61b/61b0657200000000000000000324012c/fd-droidify/t20.jpeg", "facts": "fd-droidify          shots 2/2  alive t5=yes t20=yes  child_hilog=33399  foreground_unconfirmed"},
         {"app": "fd-com-amaze-filemanager", "board": "61b", "t20": "westlake-harness/benchmark/2026-09-30-r17p-61b-sweep/runs/r17p-all-61b/61b0657200000000000000000324012c/fd-com-amaze-filemanager/t20.jpeg", "facts": "fd-com-amaze-filemanager shots 2/2  alive t5=yes t20=yes  child_hilog=30518  foreground_unconfirmed"},
         {"app": "antennapod", "board": "5ea", "t20": "westlake-harness/benchmark/2026-09-30-r17p-5ea-sweep/runs/r17p-all-5ea/5ea34a4500000000000000001123012c/antennapod/t20.jpeg", "facts": "antennapod           shots 2/2  alive t5=yes t20=yes  child_hilog=32090  foreground_unconfirmed"}
       ],
-      "ready": "YES (>=2 distinct apps t20 lit); pending file split + re-verify"
+      "ready": "YES (>=2 distinct apps t20 lit; outer loop confirmed this entry). Re-verified by the J1-final board run (split unchanged logic)."
     },
     {
-      "id": "FZ-JAR-alarm-vibrator",
-      "api": "ALARM_SERVICE + vibrator_manager SystemServiceRegistry fetchers replaced so getSystemService(ALARM_SERVICE) is non-null (AndroidAlarmManager.<init> stops NPEing) and getVibratorIds() returns a non-null array",
+      "id": "FZ-JAR-alarm",
+      "api": "ALARM_SERVICE SystemServiceRegistry fetcher replaced with AlarmManager(IAlarmManager,Context) off a type-zero IAlarmManager, so getSystemService(ALARM_SERVICE) is non-null and AndroidAlarmManager.<init> stops NPEing",
       "rev": "r17e",
-      "current_file": "bms/src/adapter/framework/activity/java/SystemServiceFetcherStubs.java -- SHARED (also power_exemption r17q, restrictions r17s)",
-      "split_target": "bms/src/adapter/framework/activity/java/AlarmVibratorFetcher.java (extract before freeze)",
-      "current_blob_ref": "0d2b4ec12614cb9965331eccf87fa2a80d1dafdb (SystemServiceFetcherStubs.java @ walls a4d58ba4)",
-      "sources": [{"repo_path": "bms/src/adapter/framework/activity/java/AlarmVibratorFetcher.java", "blob": "TBD-after-split"}],
-      "source_record": "feat/bms-walls, benchmark/2026-09-30-r17n-wall-triage/",
+      "sources": [{"repo_path": "bms/src/adapter/framework/activity/java/AlarmVibratorFetcher.java", "blob": "9309104882fc982e885ed164f89345d526560b41"}],
+      "source_record": "feat/bms-walls commit cdb82fe5 (split out of SystemServiceFetcherStubs; also carries J04 vibrator), benchmark/2026-09-30-r17n-wall-triage/",
       "verified_apps": [
-        {"app": "fd-k9", "board": "61b", "change": "was AndroidAlarmManager.<init> null ALARM_SERVICE NPE -> own database-upgrade page", "t20": "westlake-harness/benchmark/2026-09-30-r17p-61b-sweep/runs/r17p-all-61b/61b0657200000000000000000324012c/fd-k9/t20.jpeg", "facts": "fd-k9                shots 2/2  alive t5=yes t20=yes  child_hilog=36754  foreground_unconfirmed"},
-        {"app": "fd-android", "board": "61b", "t20": "westlake-harness/benchmark/2026-09-30-r17p-61b-sweep/runs/r17p-all-61b/61b0657200000000000000000324012c/fd-android/t20.jpeg", "facts": "fd-android           shots 2/2  alive t5=yes t20=yes  child_hilog=36727  foreground_unconfirmed"}
+        {"app": "fd-k9", "board": "5cd (unified r17r sweep -- corrected from the 61b r17p old-installer white screens)", "change": "was AndroidAlarmManager.<init> null ALARM_SERVICE NPE -> own page; hilog '[B8-FETCH] alarm fetcher replaced (prev=SystemServiceRegistry$7)', 0 fatal, no AndroidAlarmManager NPE", "t20": "westlake-harness/benchmark/2026-09-30-unified-r17r-5cd-sweep/runs/unified-r17r-5cd/5cd1e3dd00000000000000000923012c/fd-k9/t20.jpeg", "facts": "fd-k9                shots 2/2  alive t5=yes t20=yes  child_hilog=63384  foreground_unconfirmed"},
+        {"app": "fd-android", "board": "5cd (unified r17r sweep)", "t20": "westlake-harness/benchmark/2026-09-30-unified-r17r-5cd-sweep/runs/unified-r17r-5cd/5cd1e3dd00000000000000000923012c/fd-android/t20.jpeg", "facts": "fd-android           shots 2/2  alive t5=yes t20=yes  child_hilog=61702  foreground_unconfirmed"}
       ],
-      "ready": "YES (2 distinct apps t20 lit); pending file split + re-verify"
+      "ready": "YES (2 distinct apps t20 lit on 5cd unified state; evidence corrected per outer loop). Re-verified by the J1-final board run.",
+      "note_vibrator": "AlarmVibratorFetcher ALSO carries the new J04 vibrator fix (SystemVibratorManager getVibratorIds->int[0], fd-reader). That is NEW (unverified until J1-final board run); the alarm evidence above is what makes THIS entry ready. Once fd-reader passes on J1-final, the entry description can note the vibrator half too."
     },
     {
       "id": "FZ-JAR-binaryeye-getServiceInfo",
-      "api": "IPackageManager.getServiceInfo for the app's OWN package answered from the parsed AndroidManifest with the service's <meta-data>, so androidx.camera's getServiceInfo(self MetadataHolderService, GET_META_DATA) no longer throws NameNotFoundException -> CameraX configures -> no System.exit(1)",
-      "rev": "r17u/J1",
-      "current_file": "bms/src/adapter/framework/activity/java/SelfComponentFallback.java -- SHARED (also self getProviderInfo/resolveContentProvider, getActivityInfo theme, resolveService)",
-      "split_target": "bms/src/adapter/framework/activity/java/SelfServiceFallback.java (extract before freeze)",
-      "sources": [{"repo_path": "bms/src/adapter/framework/activity/java/SelfServiceFallback.java", "blob": "TBD-after-split"}],
-      "source_record": "feat/bms-walls commit 9729ae9b, benchmark/2026-09-30-jar-freeze-inventory/",
+      "api": "IPackageManager.getServiceInfo (+ explicit resolveService) for the app's OWN package answered from the parsed manifest with the service's <meta-data>, so androidx.camera's getServiceInfo(self MetadataHolderService, GET_META_DATA) stops throwing NameNotFoundException -> CameraX configures -> no System.exit(1)",
+      "rev": "J1",
+      "sources": [{"repo_path": "bms/src/adapter/framework/activity/java/SelfServiceFallback.java", "blob": "185c2299ff00baa3622fee1bf4e8dee0d6a4dfbe"}],
+      "source_record": "feat/bms-walls commit cdb82fe5 (split out of SelfComponentFallback), benchmark/2026-09-30-jar-freeze-inventory/",
       "verified_apps": [
-        {"app": "fd-binaryeye", "board": "5ea (32df, r17u 1eac63a6)", "change": "was getServiceInfo(MetadataHolderService) NameNotFoundException -> CameraX not configured -> exit(1); now BinaryEye scan UI renders", "t20": "westlake-harness-wiki/benchmark/2026-09-30-graphics-32df-5ea-deploy-prep/runs/r17u-verify3-20260930T102150/5ea34a4500000000000000001123012c/fd-binaryeye/t20.jpeg", "facts": "fd-binaryeye         shots 2/2  alive t5=yes t20=yes", "hilog": "[B8-PM] projected getServiceInfo .../androidx.camera.core.impl.MetadataHolderService metaData=1; CameraActivity performCreate, no NameNotFound, no exit (cc-wiki self-read)"}
+        {"app": "fd-binaryeye", "board": "5ea (32df, r17u 1eac63a6)", "change": "was getServiceInfo(MetadataHolderService) NameNotFoundException -> CameraX not configured -> exit(1); now BinaryEye scan UI renders", "t20": "westlake-harness-wiki/benchmark/2026-09-30-graphics-32df-5ea-deploy-prep/runs/r17u-verify3-20260930T102150/5ea34a4500000000000000001123012c/fd-binaryeye/t20.jpeg", "facts": "fd-binaryeye         shots 2/2  alive t5=yes t20=yes", "hilog": "[B8-PM] projected getServiceInfo .../androidx.camera.core.impl.MetadataHolderService metaData=1; no NameNotFound, no exit (cc-wiki self-read)"}
       ],
-      "ready": "NOT YET -- 1 confirmed app. Needs a 2nd app that passes the same wall (another CameraX/self-<service> app whose log shows getServiceInfo NameNotFound gone). cc-wiki scanning for a candidate."
+      "ready": "NOT YET -- 1 confirmed app. Needs a 2nd app that passes the same wall (cc-wiki scanning for another CameraX/self-<service> app whose log shows getServiceInfo NameNotFound gone)."
     }
   ],
   "relaxed_threshold_candidates_needing_2nd_app_by_logs": {
-    "power_exemption (r17q, SystemServiceFetcherStubs->PowerExemptionFetcher)": "fd-etar t20 lit (61b + 5cd, 1 app). Need a 2nd app calling isIgnoringBatteryOptimizations whose hilog shows the PowerExemptionManager NPE gone.",
-    "addToDisplay flag filter (r17r, WindowSessionProxy->AddToDisplayFlagFilter)": "markor t20 lit (61b + 5cd, 1 app). Need a 2nd app whose addToDisplay stops returning ADD_INVALID_TYPE(-10).",
-    "getSystemService(JobScheduler.class) name map (r17n, OnlineConnectivityManager)": "fd-calendar t20 lit (61b+5ea, 1 app). Need a 2nd typed getSystemService(Class) caller."
+    "power_exemption (r17q, in SystemServiceFetcherStubs -- not yet split)": "fd-etar t20 lit (61b + 5cd, 1 app). Need a 2nd isIgnoringBatteryOptimizations caller whose hilog shows the PowerExemptionManager NPE gone.",
+    "addToDisplay flag filter (r17r, in WindowSessionProxy -- not yet split)": "markor t20 lit (61b + 5cd, 1 app). Need a 2nd app whose addToDisplay stops returning ADD_INVALID_TYPE(-10).",
+    "getSystemService(JobScheduler.class) name map (r17n, OnlineConnectivityManager)": "fd-calendar t20 lit (1 app). Need a 2nd typed getSystemService(Class) caller."
   }
 }
