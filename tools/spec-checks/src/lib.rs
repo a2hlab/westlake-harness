@@ -193,3 +193,28 @@ fn b9_deploy_tool_rejects_mismatch() {
 fn b9_rollback_on_failed_deploy() {
     run(&["benchmark/2026-09-29-unlocked-generation/verify.py", "rollback"]);
 }
+
+#[test]
+fn n1_frozen_sources_and_package() {
+    run(&["benchmark/2026-09-30-n1-native/verify.py", "frozen"]);
+}
+
+#[test]
+fn n1_cluster_dispositions() {
+    run(&["benchmark/2026-09-30-n1-native/verify.py", "clusters"]);
+}
+
+#[test]
+fn n1_host_closure_and_negative() {
+    run(&["benchmark/2026-09-30-n1-native/verify.py", "host"]);
+}
+
+#[test]
+fn n1_device_evidence() {
+    run(&["benchmark/2026-09-30-n1-native/verify.py", "device"]);
+}
+
+#[test]
+fn n1_rollback_handoff() {
+    run(&["benchmark/2026-09-30-n1-native/verify.py", "handoff"]);
+}

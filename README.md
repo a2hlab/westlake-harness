@@ -94,6 +94,7 @@ kind of work from where the corpus started
 |---|---|
 | **benchmark/2026-09-30-native-freeze-audit/** | **Native freeze evidence inventory, tiered-policy deployment and rollback checks.** |
 | **benchmark/2026-09-30-flutter-r5/** | **Single ANL default-owner callback attempt: controls held, private dependencies still blocked; candidate rolled back.** |
+| **benchmark/2026-09-30-n1-native/** | **Native cluster candidate combining frozen asset FD, graphics, bounded Flutter/JNA ABI loading and SoundPool; explicit gaps and device gates.** |
 | **benchmark/2026-09-30-asset-fd-runtime/** | **One-helper runtime repair from a byte-reproduced 9e14 baseline, same-board clean-install A/B for NewPipe/uhabits plus five controls.** |
 | **`benchmark/2026-09-30-asset-fd-plan/`** | **Existing Westlake PFD helper replaces the OH Implement-me fallback; single-runtime plan for NewPipe/uhabits, not yet deployed.** |
 | **`benchmark/2026-09-30-flutter-candidate/`** | **Flutter r4: six engines reach a caller-namespace permission failure; controls retained, frozen build/closure evidence and rollback record.** |
