@@ -45,3 +45,15 @@ CheckSystemClass 内部(class_linker.cc:602+)比 c1(运行时类)对象大小与
 - **B 源码 offsetof(等 T3 树)**:6 个 mirror 类 + Thread + ImageHeader/OatHeader 全字段偏移,用 ART 自带 `cpp-define-generator`(T3 构建即产)在 (r1 + 本目录 series) 与 T3 树上各跑一次、逐项 diff==0。R155 源基线 = (r1 + T1 series)(T1 已证逐字节复现 art-hanbin);A 层把格式版本钉到真板二进制,使 B 不纯自证。
 
 **给外环的一条**:R155 libart 二进制因无 mirror DWARF、访问器内联,不能直接吐出 CheckSystemClass 那 6 类的字段偏移期望;能二进制钉死的是 image/oat 格式版本(108/230)。全字段布局比对须在 T3 交出 ART 树后走 cpp-define-generator 源码级 diff(脚本与基线已备)。T3 请一并交出其 `out/.../asm_support_gen.h`(或允许我在其树跑 cpp-define-generator),我即出布局差异表。
+
+## 更新 2(layer C:art_quick_* 反汇编抽偏移立即数,非循环)
+
+外环指出 layer B 循环(比 (r1+series) 对 T3 树而 T3 就是 r1+series,diff 恒 0)。补 **layer C**——从 R155 libart(59e1bb45)反汇编 `art_quick_*` 汇编入口(244 个,全在 .symtab),读它们把 asm_support_gen.h 偏移编成的 `ldr/str [Xt,#imm]` 立即数,是**非循环的板级 ground truth**;T3 交 asm_support_gen.h 后逐项对、不一致=0 才过 T4。
+
+已验证 4 锚点(art_quick_aput_obj + lock_object,精确吻合 quick_entrypoints_arm64.S):
+`MIRROR_OBJECT_CLASS_OFFSET=0`、`MIRROR_CLASS_COMPONENT_TYPE_OFFSET=12`、`THREAD_CARD_TABLE_OFFSET=152`、`THREAD_ID_OFFSET=8`。
+脚本 `t4_asm_offsets.py`(dump/compare)+ 基线 `r155-asm-offsets.json`;ANCHORS 可扩(LOCK_WORD/STRING_COUNT/ARRAY_LENGTH/THREAD_FLAGS 等,每条锚到已核 .S 指令)。
+
+必查(cppcrash-9465,libart 8c2796fc):CheckSystemClass+544(0x339a60)拒 r16 镜像;6 类全在范围,backtrace 未点单类(在 DumpClass hilog)。
+
+**T4 三层**:A 版本(108/230,现)、B 源码 offsetof(等 T3 树,自证)、**C art_quick 立即数 vs T3 asm_support_gen.h(非循环,现基线已抽)**。过 T4 = A∧C 不一致=0(B 作辅助全字段视图)。
