@@ -14,11 +14,16 @@
 #           bms/src/.work), older generation packages and one-off trees, companion repos' untracked files
 # Before each upload it refuses to go on when hw248 has less than MIN_FREE_GB (default 30) left.
 set -euo pipefail
+# workspaces = $WORKSPACES, else the nearest ancestor of this script that holds westlake-inputs/ (works from
+# scripts/lab/ in the repo and from its copy in westlake-inputs/tools/); no user-specific literals (AGENTS.md)
+lab_workspaces() { local d; d=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+  while [ "$d" != / ] && [ ! -d "$d/westlake-inputs" ]; do d=$(dirname "$d"); done
+  [ -d "$d/westlake-inputs" ] && echo "$d"; }
 STEPS=live,git,vm,archives; WAIT=
 while [ $# -gt 0 ]; do case $1 in --steps) STEPS=$2; shift 2;; --wait-pid) WAIT=$2; shift 2;; *) exit 2;; esac; done
-W=${WORKSPACES:-/Users/zhaoyue/orca/workspaces}
+W=${WORKSPACES:-$(lab_workspaces)}; [ -n "$W" ] || { echo "cannot find the workspaces dir; set WORKSPACES"; exit 2; }
 H=${LAB_STATE_HOST:-hw248}
-DEST=${LAB_STATE_DIR:-/home/alvin/westlake-oh6.1-lab-state-20260930}
+DEST=${LAB_STATE_DIR:?set LAB_STATE_DIR to the mirror dir on hw248 (env.md §5)}
 OUT=${LAB_STATE_STAGE:-$W/_lab-state-stage}
 MIN_FREE_GB=${MIN_FREE_GB:-30}
 PACK="python3 $W/westlake-harness/scripts/lab/pack_lab_archive.py"
