@@ -1,4 +1,21 @@
-# U7 provisional shard scoring
+# U7 scoring: formal 66-key result and preserved preliminary snapshot
+
+## Formal result
+
+The signed 66-key report is [formal-66/SCORING.md](formal-66/SCORING.md) and [formal-66/results.json](formal-66/results.json): first wall **48 hit / 18 unknown**; checkpoint **51 NA / 15 unknown**; t20 **59 hit / 1 false positive / 6 unknown**. t20 accuracy is **59/60 = 98.33%** on scored predictions, **59/66 = 89.39%** across all keys. Frozen counts remain **28 own UI / 32 unlit / 6 unknown**, SHA `fa92c5b9` unchanged.
+
+Outer screenshot authorities are **5ea 06:33:44 / 5cd 06:25:18 / 61b 06:39:59**. Actual signed output is **34 own UI / 24 desktop / 6 white / 1 black / 1 no capture**. See [signed-44/GAINS.md](signed-44/GAINS.md) for Reader/Organic Maps raw U6-to-U7 causal comparison and [formal-66/SCAN-GAPS.md](formal-66/SCAN-GAPS.md) for all unknown coverage gaps. No newly confirmed fatal-wall miss justifies fabricating a missing-API rule. The separate [trampoline scan](../2026-10-01-trampoline-scan/README.md) adds a conditional lifecycle risk detector instead.
+
+```sh
+python3 benchmark/2026-10-01-u7-scoring/signed_intake.py --shard 5cd
+python3 benchmark/2026-10-01-u7-scoring/signed_intake.py --shard 61b
+python3 benchmark/2026-10-01-u7-scoring/signed_score.py --full --markdown
+python3 benchmark/2026-10-01-u7-scoring/test_followup.py
+```
+
+`followup-landing-paths.txt` and `followup-validation.json` describe only this followup delivery; the old preliminary validation and result files below remain historical and unchanged.
+
+## Historical preliminary snapshot
 
 ## Corrected assumptions
 
