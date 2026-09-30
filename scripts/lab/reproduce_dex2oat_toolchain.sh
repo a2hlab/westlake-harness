@@ -7,15 +7,15 @@
 #   3. t5_gen_image.sh 出镜像 → 与 T5c 27 件逐个比
 #   4. rb 门(check_boot_oat_rb.py)+ t4b 门(t4b_build_switch_gate.py,回执程序生成)
 #
-# 路径全走环境变量(不写死 /home/alvin):
-#   AOSP_R1_ROOT   AOSP r1 树(含 art/、out/)           默认 /home/alvin/aosp-14.0.0_r1-art
+# 路径全走环境变量(不写死用户目录;hw248 上的实验目录由 LAB_HOME 给出,默认 $HOME):
+#   AOSP_R1_ROOT   AOSP r1 树(含 art/、out/)           默认 $LAB_HOME/aosp-14.0.0_r1-art
 #   SERIES_DIR     series/patches 所在目录             默认 $AOSP_R1_ROOT/../art-r155/art-r155
-#   JARS_DIR       9 个 jar 所在目录                   默认 /home/alvin/cc-wiki-t5/jars
-#   OUT_DIR        镜像输出目录                        默认 /home/alvin/oc-t4-reproduce
+#   JARS_DIR       9 个 jar 所在目录                   默认 $LAB_HOME/cc-wiki-t5/jars
+#   OUT_DIR        镜像输出目录                        默认 $LAB_HOME/oc-t4-reproduce
 #   BOARD_LIBART   板上 R155 libart.so(门用)          默认 westlake-generation-v3c-candidate 的 payload
-#   T5C_DIR        T5c 参考件目录(逐件比)             默认 /home/alvin/oc-t4-t5c
+#   T5C_DIR        T5c 参考件目录(逐件比)             默认 $LAB_HOME/oc-t4-t5c
 #   CHECK_SERIES   check_series.py 路径               默认 $SERIES_DIR/check_series.py
-#   T5_GEN         t5_gen_image.sh 路径               默认 /home/alvin/cc-wiki-t5/tool/t5_gen_image.sh
+#   T5_GEN         t5_gen_image.sh 路径               默认 $LAB_HOME/cc-wiki-t5/tool/t5_gen_image.sh
 #   RB_GATE        check_boot_oat_rb.py 路径           默认 knowledge/toolchains/art-r155/check_boot_oat_rb.py(本机)
 #   T4B_GATE       t4b_build_switch_gate.py 路径       默认 knowledge/toolchains/art-r155/t4b_build_switch_gate.py
 #   EXPECT_DEX2OAT 期望的 dex2oat64 sha256            默认从 FZ-005 草稿读取(FZ005_DRAFT),可覆盖
@@ -31,17 +31,18 @@
 # 红线:不从别处拷 dex2oat;不改 frozen.json;不一致就列非确定性来源(时间戳/路径/环境)。
 set -euo pipefail
 
-AOSP_R1_ROOT="${AOSP_R1_ROOT:-/home/alvin/aosp-14.0.0_r1-art}"
+LAB_HOME="${LAB_HOME:-$HOME}"   # hw248 lab dir (AGENTS.md: hw248 paths come from the environment)
+AOSP_R1_ROOT="${AOSP_R1_ROOT:-$LAB_HOME/aosp-14.0.0_r1-art}"
 SERIES_DIR="${SERIES_DIR:-$AOSP_R1_ROOT/../art-r155/art-r155}"
-JARS_DIR="${JARS_DIR:-/home/alvin/cc-wiki-t5/jars}"
-OUT_DIR="${OUT_DIR:-/home/alvin/oc-t4-reproduce}"
-BOARD_LIBART="${BOARD_LIBART:-/home/alvin/t4b-gate/board-r155-libart.so}"
-T5C_DIR="${T5C_DIR:-/home/alvin/oc-t4-t5c}"
+JARS_DIR="${JARS_DIR:-$LAB_HOME/cc-wiki-t5/jars}"
+OUT_DIR="${OUT_DIR:-$LAB_HOME/oc-t4-reproduce}"
+BOARD_LIBART="${BOARD_LIBART:-$LAB_HOME/t4b-gate/board-r155-libart.so}"
+T5C_DIR="${T5C_DIR:-$LAB_HOME/oc-t4-t5c}"
 CHECK_SERIES="${CHECK_SERIES:-$SERIES_DIR/check_series.py}"
-T5_GEN="${T5_GEN:-/home/alvin/cc-wiki-t5/tool/t5_gen_image.sh}"
-RB_GATE="${RB_GATE:-/home/alvin/t4b-gate/k/check_boot_oat_rb.py}"
-T4B_GATE="${T4B_GATE:-/home/alvin/t4b-gate/k/t4b_build_switch_gate.py}"
-FZ005_DRAFT="${FZ005_DRAFT:-/home/alvin/FZ-005-dex2oat-toolchain-DRAFT.md}"
+T5_GEN="${T5_GEN:-$LAB_HOME/cc-wiki-t5/tool/t5_gen_image.sh}"
+RB_GATE="${RB_GATE:-$LAB_HOME/t4b-gate/k/check_boot_oat_rb.py}"
+T4B_GATE="${T4B_GATE:-$LAB_HOME/t4b-gate/k/t4b_build_switch_gate.py}"
+FZ005_DRAFT="${FZ005_DRAFT:-$LAB_HOME/FZ-005-dex2oat-toolchain-DRAFT.md}"
 # 期望哈希从 FZ-005 草稿读取(不留常量;草稿不在时必须显式传 EXPECT_DEX2OAT)
 EXPECT_DEX2OAT="${EXPECT_DEX2OAT:-}"
 if [ -z "$EXPECT_DEX2OAT" ] && [ -f "$FZ005_DRAFT" ]; then
@@ -217,7 +218,7 @@ print(f"""```t4b-build-json
 }}
 ```""")
 PYEOF
-    PYTHONPATH="/home/alvin/t4b-gate/t5-attr:/home/alvin/t4b-gate/k" python3 "$T4B_GATE" --libart "$BOARD_LIBART" --oat "$OUT_DIR/boot.oat" --build "$RECEIPT_DIR/receipt.md" 2>&1 | python3 -c "import sys,json; d=json.load(sys.stdin); print('  t4b 门:',d['verdict'],'exit',d['exit_code'],'deploy_allowed',d['deploy_allowed'])"
+    PYTHONPATH="$LAB_HOME/t4b-gate/t5-attr:$LAB_HOME/t4b-gate/k" python3 "$T4B_GATE" --libart "$BOARD_LIBART" --oat "$OUT_DIR/boot.oat" --build "$RECEIPT_DIR/receipt.md" 2>&1 | python3 -c "import sys,json; d=json.load(sys.stdin); print('  t4b 门:',d['verdict'],'exit',d['exit_code'],'deploy_allowed',d['deploy_allowed'])"
     rm -rf "$RECEIPT_DIR"
   else
     log "  WARN: t4b 门脚本或 BOARD_LIBART 不存在,跳过"
