@@ -74,7 +74,8 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
                src / 'AliasTargetTheme.java',             # J3 fd-api: activity-alias target keeps its own theme
                src / 'WlMediaRouter.java',                # J4 noice: local IMediaRouterService (media_router)
                src / 'WestlakeWebViewInstall.java',       # J5 webview: Java side of N3b publication (prime/publish + provider)
-               src / 'WebViewPackageFallback.java']       # J5 webview: PM projection answers for the provider
+               src / 'WebViewPackageFallback.java',       # J5 webview: PM projection answers for the provider
+               src / 'WebViewUpdateServiceAdapter.java']  # J5b webview: the class N3b native prime/publish resolves by name
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 # r16 (#90): cc-wiki's OnlineConnectivityManager compiles against the Westlake android.net sources
 # (ConnectivityManager/Network/NetworkInfo/NetworkCapabilities/NetworkRequest, which expose the

@@ -3,13 +3,6 @@ package adapter.core;
 
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
-import android.os.Binder;
-import android.os.IBinder;
-import android.os.IInterface;
-
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 
 /**
  * J5 (#webview): the Java half of benchmark/2026-09-30-n3b-webview/JAVA-HANDOFF.md, paired with cx-t0's
@@ -56,19 +49,20 @@ public final class WestlakeWebViewInstall {
     }
 
     /**
-     * Pre-bind (call after the service/package adapters install, BEFORE Application bind): route the
-     * webviewupdate service and prime the native side. No-op (records unavailable) when no provider APK
-     * is staged, so the feature stays false. Returns a short status for the [B8-WEBVIEW] log.
+     * Pre-bind (call after the package adapter installs, BEFORE Application bind): link the runtime and
+     * call nativePrime. nativePrime resolves adapter.core.WebViewUpdateServiceAdapter by name, reads its
+     * getInstance(), and SEEDS ServiceManager.sCache itself with the exact WebViewFactory.
+     * WEBVIEW_UPDATE_SERVICE_NAME String object (Java must not pre-seed with a different key -- see
+     * WebViewUpdateServiceAdapter). No-op (records unavailable) when no provider APK is staged, so the
+     * feature stays false. Returns a short status for the [B8-WEBVIEW] log.
      */
     public static String install() {
         try {
             if (!isAvailable()) return "unavailable (no ASX_WEBVIEW_APK provider)";
-            String route = routeWebViewUpdateService();
             boolean linked = linkRuntime();
             boolean primed = linked && nativePrimeSafe();
-            return "provider=" + WEBVIEW_PACKAGE + " route=" + route
-                    + " nativeLinked=" + linked + " primed=" + primed
-                    + " (feature held false until publishAfterBind reports true)";
+            return "provider=" + WEBVIEW_PACKAGE + " nativeLinked=" + linked + " primed=" + primed
+                    + " (native seeds the sCache; feature held false until publishAfterBind reports true)";
         } catch (Throwable t) {
             return "not installed: " + t;
         }
@@ -117,83 +111,6 @@ public final class WestlakeWebViewInstall {
         return sNativeLinked;
     }
 
-    /** Put a local IWebViewUpdateService into ServiceManager.sCache under "webviewupdate" (WlMediaRouter shape). */
-    private static String routeWebViewUpdateService() {
-        try {
-            ClassLoader loader = WestlakeWebViewInstall.class.getClassLoader();
-            Class<?> iface = Class.forName(IFACE, false, loader);
-            Class<?> ibinder = Class.forName("android.os.IBinder", false, loader);
-            final Binder binder = new Binder();
-            Object svc = Proxy.newProxyInstance(loader, new Class<?>[] { iface, ibinder },
-                    new WebViewUpdateHandler(binder, loader));
-            binder.attachInterface((IInterface) svc, IFACE);
-            Class<?> sm = Class.forName("android.os.ServiceManager", false, loader);
-            java.lang.reflect.Field f = sm.getDeclaredField("sCache");
-            f.setAccessible(true);
-            Object value = f.get(null);
-            if (!(value instanceof java.util.Map)) return "sCache-not-map";
-            @SuppressWarnings("unchecked")
-            java.util.Map<String, IBinder> cache = (java.util.Map<String, IBinder>) value;
-            cache.put("webviewupdate", binder);
-            return "cached";
-        } catch (Throwable t) {
-            return "route-failed:" + t;
-        }
-    }
-
-    /**
-     * Answers the IWebViewUpdateService methods WebViewFactory calls, from getSideloadedWebViewPackageInfo.
-     * Return types WebViewProviderResponse / WebViewProviderInfo are hidden, so they are built by
-     * reflection only when actually needed; everything else is a harmless typed default.
-     */
-    private static final class WebViewUpdateHandler implements InvocationHandler {
-        private final IBinder binder;
-        private final ClassLoader loader;
-        WebViewUpdateHandler(IBinder binder, ClassLoader loader) { this.binder = binder; this.loader = loader; }
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] args) {
-            String n = method.getName();
-            if ("asBinder".equals(n)) return binder;
-            if ("toString".equals(n)) return "WestlakeWebViewUpdateService";
-            if ("hashCode".equals(n)) return Integer.valueOf(System.identityHashCode(proxy));
-            if ("equals".equals(n)) return Boolean.valueOf(args != null && args.length == 1 && args[0] == proxy);
-            if ("getCurrentWebViewPackage".equals(n)) return getSideloadedWebViewPackageInfo();
-            if ("getCurrentWebViewPackageName".equals(n)) {
-                PackageInfo pi = getSideloadedWebViewPackageInfo();
-                return pi != null ? pi.packageName : null;
-            }
-            if ("changeProviderAndSetting".equals(n)) {
-                PackageInfo pi = getSideloadedWebViewPackageInfo();
-                return pi != null ? pi.packageName : null;
-            }
-            if ("waitForAndGetProvider".equals(n)) return buildProviderResponse();
-            if ("isMultiProcessEnabled".equals(n)) return Boolean.FALSE;
-            Class<?> t = method.getReturnType();
-            if (t == void.class) return null;
-            if (t == boolean.class) return Boolean.FALSE;
-            if (t == int.class || t == short.class || t == byte.class || t == char.class) return Integer.valueOf(0);
-            if (t == long.class) return Long.valueOf(0L);
-            if (t.isArray()) return java.lang.reflect.Array.newInstance(t.getComponentType(), 0);
-            return null;
-        }
-
-        /** new WebViewProviderResponse(pi, pi != null ? 0 : 4) via reflection (LIBLOAD_SUCCESS / _NULL). */
-        private Object buildProviderResponse() {
-            try {
-                PackageInfo pi = getSideloadedWebViewPackageInfo();
-                Class<?> resp = Class.forName("android.webkit.WebViewProviderResponse", false, loader);
-                for (java.lang.reflect.Constructor<?> c : resp.getDeclaredConstructors()) {
-                    Class<?>[] p = c.getParameterTypes();
-                    if (p.length == 2 && p[0] == PackageInfo.class && p[1] == int.class) {
-                        c.setAccessible(true);
-                        return c.newInstance(pi, pi != null ? 0 : 4);
-                    }
-                }
-            } catch (Throwable ignore) { /* fall through */ }
-            return null;
-        }
-    }
 
     /**
      * The provider PackageInfo, gated on ASX_WEBVIEW_APK -> an existing file (verbatim from Westlake
