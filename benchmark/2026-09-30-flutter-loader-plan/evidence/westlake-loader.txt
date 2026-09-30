@@ -1,0 +1,50 @@
+176: // 1. libnativeloader stubs
+177: // ============================================================
+178: // ART uses libnativeloader for dlopen with namespace isolation.
+179: // On OH, we use plain dlopen.
+180: 
+181: struct NativeLoaderNamespace;
+182: 
+183: void* OpenNativeLibrary(
+184:     void* env,
+185:     int32_t target_sdk_version,
+186:     const char* path,
+187:     void* class_loader,
+188:     const char* caller_location,
+189:     void* library_path,
+190:     bool* needs_native_bridge,
+191:     char** error_msg) {
+192:     (void)env; (void)target_sdk_version; (void)class_loader;
+193:     (void)caller_location; (void)library_path;
+194:     if (needs_native_bridge) *needs_native_bridge = false;
+195:     void* handle = dlopen(path, RTLD_NOW);
+196:     if (!handle && error_msg) {
+197:         const char* err = dlerror();
+198:         *error_msg = err ? strdup(err) : strdup("unknown dlopen error");
+199:     }
+200:     return handle;
+201: }
+202: 
+203: bool CloseNativeLibrary(void* handle, bool needs_native_bridge, char** error_msg) {
+204:     (void)needs_native_bridge;
+205:     if (dlclose(handle) != 0) {
+206:         if (error_msg) {
+207:             const char* err = dlerror();
+208:             *error_msg = err ? strdup(err) : strdup("dlclose failed");
+209:         }
+210:         return false;
+211:     }
+212:     return true;
+213: }
+214: 
+215: void NativeLoaderFreeErrorMessage(char* msg) {
+216:     free(msg);
+217: }
+218: 
+219: struct NativeLoaderNamespace* FindNativeLoaderNamespaceByClassLoader(
+220:     void* env, void* class_loader) {
+221:     (void)env; (void)class_loader;
+222:     return nullptr;
+223: }
+224: 
+225: void* FindSymbolInNativeLoaderNamespace(

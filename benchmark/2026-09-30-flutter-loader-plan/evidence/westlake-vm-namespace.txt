@@ -1,0 +1,146 @@
+/*
+ * Generic OH native-loader boundary for Android-built DSOs that need an
+ * isolated musl namespace.  Selection is launcher policy expressed as
+ * basename lists; ART and the class library contain no package knowledge.
+ * JavaVMExt still owns the SharedLibrary/ClassLoader association and JNI
+ * symbol lookup around the handle returned here.
+ */
+typedef void (*WestlakeDlnsInitFn)(Dl_namespace*, const char*);
+typedef int (*WestlakeDlnsGetFn)(const char*, Dl_namespace*);
+typedef int (*WestlakeDlnsCreate2Fn)(Dl_namespace*, const char*, int);
+typedef int (*WestlakeDlnsInheritFn)(Dl_namespace*, Dl_namespace*, const char*);
+typedef void* (*WestlakeDlopenNsFn)(Dl_namespace*, const char*, int);
+
+static pthread_mutex_t g_android_ns_mutex = PTHREAD_MUTEX_INITIALIZER;
+static Dl_namespace g_android_ns;
+static WestlakeDlopenNsFn g_dlopen_ns;
+static int g_android_ns_state;
+static void* g_android_ns_preload;
+
+static bool BasenameInList(const char* path, const char* list) {
+    if (path == nullptr || list == nullptr || list[0] == '\0') return false;
+    const char* basename = strrchr(path, '/');
+    basename = basename != nullptr ? basename + 1 : path;
+    const size_t basename_length = strlen(basename);
+    for (const char* item = list; *item != '\0';) {
+        const char* end = strchr(item, ':');
+        const size_t item_length = end != nullptr
+                ? static_cast<size_t>(end - item) : strlen(item);
+        if (item_length == basename_length &&
+            memcmp(item, basename, basename_length) == 0) {
+            return true;
+        }
+        if (end == nullptr) break;
+        item = end + 1;
+    }
+    return false;
+}
+
+static void* OpenInAndroidNamespace(const char* path, bool use_anchor) {
+    const char* search_path = getenv("WESTLAKE_ANDROID_NATIVE_SEARCH_PATH");
+    const char* inherit_list = getenv("WESTLAKE_ANDROID_NATIVE_INHERIT");
+    const char* open_path = use_anchor
+            ? getenv("WESTLAKE_ANDROID_NATIVE_ANCHOR") : path;
+    if (open_path == nullptr || open_path[0] == '\0' ||
+        search_path == nullptr || search_path[0] == '\0') {
+        return nullptr;
+    }
+    if (inherit_list == nullptr || inherit_list[0] == '\0') {
+        inherit_list =
+                "libc.so:libdl.so:libm.so:libz.so:libbionic_abi_shim.so";
+    }
+
+    pthread_mutex_lock(&g_android_ns_mutex);
+    if (g_android_ns_state == 0) {
+        auto init_fn = reinterpret_cast<WestlakeDlnsInitFn>(
+                dlsym(RTLD_DEFAULT, "dlns_init"));
+        auto get_fn = reinterpret_cast<WestlakeDlnsGetFn>(
+                dlsym(RTLD_DEFAULT, "dlns_get"));
+        auto create_fn = reinterpret_cast<WestlakeDlnsCreate2Fn>(
+                dlsym(RTLD_DEFAULT, "dlns_create2"));
+        auto inherit_fn = reinterpret_cast<WestlakeDlnsInheritFn>(
+                dlsym(RTLD_DEFAULT, "dlns_inherit"));
+        g_dlopen_ns = reinterpret_cast<WestlakeDlopenNsFn>(
+                dlsym(RTLD_DEFAULT, "dlopen_ns"));
+
+        Dl_namespace parent{};
+        memset(&g_android_ns, 0, sizeof(g_android_ns));
+        const int get_result = get_fn != nullptr ? get_fn(nullptr, &parent) : -1;
+        if (init_fn == nullptr || create_fn == nullptr || inherit_fn == nullptr ||
+            g_dlopen_ns == nullptr || get_result != 0) {
+            g_android_ns_state = -1;
+        } else {
+            init_fn(&g_android_ns, "westlake_android_app");
+            const int create_result = create_fn(&g_android_ns, search_path, 0);
+            const int inherit_result = create_result == 0
+                    ? inherit_fn(&g_android_ns, &parent, inherit_list) : -1;
+            g_android_ns_state =
+                    create_result == 0 && inherit_result == 0 ? 1 : -1;
+
+            const char* preload = getenv("WESTLAKE_ANDROID_NATIVE_PRELOAD");
+            if (g_android_ns_state == 1 && preload != nullptr &&
+                preload[0] != '\0') {
+                g_android_ns_preload = g_dlopen_ns(
+                        &g_android_ns, preload, RTLD_NOW | RTLD_GLOBAL);
+                if (g_android_ns_preload == nullptr) {
+                    g_android_ns_state = -1;
+                }
+            }
+        }
+    }
+    WestlakeDlopenNsFn open_fn = g_dlopen_ns;
+    const bool ready = g_android_ns_state == 1;
+    pthread_mutex_unlock(&g_android_ns_mutex);
+    return ready && open_fn != nullptr
+            ? open_fn(&g_android_ns, open_path, RTLD_NOW | RTLD_GLOBAL)
+            : nullptr;
+}
+
+/*
+ * bionic's soinfo::call_array() skips init/fini entries that are null or -1:
+ *
+ *     if (function == nullptr || reinterpret_cast<uintptr_t>(function) == -1) continue;
+ *
+ * musl's do_init_fini() has no such guard and calls every slot, so an Android
+ * DSO that leaves a null in DT_INIT_ARRAY -- which several shipping obfuscators
+ * do once their initialiser has run -- loads fine on Android and jumps to
+ * address 0 here. Toutiao's libEncryptor.so has exactly one INIT_ARRAY entry and
+ * it is null, so loading it killed the process in do_init_fini+444.
+ *
+ * Drop those slots before musl sees them, which reproduces bionic's behaviour
+ * exactly: the entries bionic would have skipped are the entries removed. The
+ * rewrite goes to an anonymous memfd, so the app's own file is never touched and
+ * nothing is left behind on disk. Returns a /proc/self/fd path to dlopen, or an
+            path, getenv("WESTLAKE_ANDROID_NATIVE_TARGETS"));
+    // Android DSOs may carry init slots bionic skips; hand musl a copy without
+    // them rather than let it jump to a null function pointer.
+    const std::string adjusted = SanitizeInitArray(path);
+    const char* open_path = adjusted.empty() ? path : adjusted.c_str();
+    void* handle = use_namespace
+            ? OpenInAndroidNamespace(open_path, use_anchor)
+            : dlopen(open_path, RTLD_NOW | RTLD_LOCAL);
+    // dlopen has mapped it; the name is no longer needed either way.
+    if (!adjusted.empty() && adjusted.compare(0, 6, "/proc/") != 0) unlink(adjusted.c_str());
+    if (handle == nullptr && error_msg != nullptr) {
+        const char* error = dlerror();
+        *error_msg = strdup(error != nullptr
+                ? error
+                : (use_namespace
+                    ? "OH Android native namespace load failed"
+                    : "dlopen failed"));
+    }
+    return handle;
+}
+int CloseNativeLibrary(void* handle, void*, void*) {
+    return handle == nullptr ? 0 : dlclose(handle);
+}
+void NativeLoaderFreeErrorMessage(char* message) { free(message); }
+#endif
+
+// === LZMA ===
+void Lzma2EncProps_Init(void*) {}
+void Lzma2EncProps_Normalize(void*) {}
+int Xz_Encode(void*, void*, void*, void*) { return -1; }
+void XzProps_Init(void*) {}
+void XzUnpacker_Construct(void*, void*) {}
+3f7e87a93a1707ad6039c7a676916d045276b4a2aa758f84eed1ce8d7acc98ab  /home/zhaoyue/a2hlab/ws/art-build/stubs/link_stubs_arm64.cc

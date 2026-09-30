@@ -1,0 +1,29 @@
+1: #!/usr/bin/env python3
+2: """Strictly link source HWUI, Binder, runtime and OH bridge libraries."""
+3: import argparse
+4: import json
+5: from pathlib import Path
+6: import re
+7: import subprocess
+8: from build_hwui_objects import sha
+9: 
+10: DEPENDENCIES = {
+11:     'libandroid.so': ['libhwui.so', 'liboh_android_runtime.so', 'libwestlake_binder.so',
+12:                       'libandroidfw.so', 'libutils.so', 'libbase.so', 'liblog.so'],
+13:     'libjnigraphics.so': ['libhwui.so', 'libandroid.so', 'liblog.so'],
+14:     'libjpeg.so': [],
+15:     'libwebp.so': [],
+16:     'libwestlake_securec.so': [],
+17:     'libwuffs.so': [],
+18:     'libstdc++.so': [],
+19:     'libwestlake_bionic.so': [],
+20:     'liboh_permission_queries.so': [],
+21:     'liboh_account_state.so': ['libnativehelper.so', 'liblog.so'],
+22:     'libstats_jni.so': ['libstatssocket.so', 'liblog.so'],
+23:     'libframework-connectivity-tiramisu-jni.so': ['libandroid.so', 'libnativehelper.so', 'liblog.so'],
+24:     # Core framework-connectivity JNI. android.net.NetworkUtils loads exactly this
+25:     # soname, and until it existed NetworkUtils.<clinit> raised UnsatisfiedLinkError,
+26:     # which failed handleBindApplication through ConnectivityManager.getDefaultProxy().
+27:     # Distinct from the tiramisu library above, which only carries TrafficStats.
+28:     'libframework-connectivity-jni.so': ['libandroid.so', 'libnativehelper.so', 'liblog.so'],
+29:     'libwestlake_libcore_linux.so': ['libnativehelper.so', 'libbase.so', 'liblog.so'],

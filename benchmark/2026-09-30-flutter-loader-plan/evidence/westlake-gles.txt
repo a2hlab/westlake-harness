@@ -1,0 +1,16 @@
+845: /*
+846:  * WESTLAKE §734: select the working OHOS GLES entry-point library for the
+847:  * Android-built WebView.
+848:  *
+849:  * Chromium asks Android's loader for libGLESv2.so.  On this board that name
+850:  * resolves to /system/lib64/ndk/libGLESv2.so.  The NDK facade requires an
+851:  * Android EGL thread hook table which OHOS's platform EGL does not install:
+852:  * even with a valid current context, glGetString returns NULL and
+853:  * glGetIntegerv leaves GL_MAX_VERTEX_ATTRIBS untouched.  The platform GLESv3
+854:  * library exports the GLES2 ABI as well and reports the live Mali context
+855:  * correctly through the same EGL display/context.
+856:  *
+857:  * Keep the translation at the Android/OH boundary and scope it to direct
+858:  * libwebviewchromium callers.  OH-native code and every other library request
+859:  * retain the system loader's normal behavior.
+860:  */

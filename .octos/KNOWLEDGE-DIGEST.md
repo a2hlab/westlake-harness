@@ -470,3 +470,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 61b installer A/B：同r17p a0ed5c4f与原v3c native(117路径仅installer两件差)换6aadb8b4/7048c7c5后17/17背景权限granted，原14拒绝key中12有同trace WMS canStartAbilityFromBackground:1；Thunderbird/K9本轮无后续激活观察。Tusky登录页可见，Wikipedia仍HWUI无surface断言、AppManager白屏，授权过门≠全体点亮；重启/重装是协变量。见benchmark/2026-09-30-installer-61b-ab/。
 
 - 2026-09-30 5cd新installer6aadb8b4/7048c7c5+32df+r17q重装AntennaPod仍首页，本次无NPE/main_threw，未复现安装器×32df必现失败；compare_runs本板variables:2(重启+installer)，对5ea同native/JAR为2(板+5ea数据未重装)，板级因果仍未定。邮件数据库页/Tusky登录/FileManager工具栏均可见；随后按用户回9e14+r17r。见benchmark/2026-09-30-installer-5cd-ab/。
+
+- 2026-09-30 Flutter 离线：v3c 的 libandroid.so 为9ccf64f8、现役runtime为9e14bf20，字节不同但前者SONAME=liboh_android_runtime.so(22 NEEDED)，libGLESv2.so 只有空壳无 GL 导出；六 app 两板首错为3 android/3 GLES2，不能只加两个库名就宣称解决。Westlake §734 对 WebView 用 platform GLESv3 供 GLES2，迁移到 Flutter 仍待验证；见 benchmark/2026-09-30-flutter-loader-plan/。

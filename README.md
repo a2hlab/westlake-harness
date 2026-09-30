@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-09-30-flutter-loader-plan/`** | **Offline Flutter loader plan: 12 two-board failures, real GLES provider versus empty shim, scoped owner inheritance and six conditional predictions.** |
 | **`benchmark/2026-09-30-installer-5cd-ab/`** | **5cd installer/32df interaction experiment: AntennaPod retained, explicit reboot/data covariates, final 9e14+r17r convergence.** |
 | **`benchmark/2026-09-30-installer-61b-ab/`** | **61b r17p installer-only background-activation A/B: permission traces, fixed native hashes and 17-key screenshot/facts evidence.** |
 | **`benchmark/2026-09-30-jni-gapfill-package/`** | **Declared gapfill addition across three resident packages; SHA/rollback and B87-based v3c input.** |
