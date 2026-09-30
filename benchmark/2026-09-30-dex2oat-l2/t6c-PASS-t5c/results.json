@@ -1,0 +1,33 @@
+{
+  "experiment": "Formal T6c acceptance — T5c (RB-off, oatdump-entrypoints matching v3c) boot image",
+  "date": "2026-10-01T00:31-00:34+0800",
+  "lane": "cc-wiki",
+  "board": "61b0657200000000000000000324012c",
+  "verdict": "PASS — dex2oat-once acceptance met",
+  "image": {
+    "source": "/home/alvin/oc-t4-t5c (oc-t4: T3b RB-off dex2oat + oatdump-entrypoint fix so entrypoints match v3c)",
+    "boot_oat_sha16": "0e7dc0e457463b3d",
+    "boot_art_sha16": "6e909d6c4930bd32",
+    "bootimage_fingerprint": "fe3253e38cc9 (36 files while overlaid)",
+    "integrity": "27/27 match SHA256SUMS.txt (rsync)"
+  },
+  "gates": {
+    "rb": "PASS — check_boot_oat_rb.py: concurrent-copying=false, oat230/image108, 8 kv all match board ref",
+    "t4b": "consistency=pass, mismatches=[] (read_barrier libart 59e1bb45=false == oat=false); verdict=pending_review only because no T5c BUILD.md was provided (provenance gap, not incompatibility)"
+  },
+  "method": "single variable — bind-mount 27 T5c files over /system/android/framework/arm64/*; resident libart = board R155 (8c2796fc) UNCHANGED; runtime fingerprint 0b81cdbe0ed9 throughout; begetctl only, never kill -9; board never rebooted (boot_id 37178298).",
+  "results": {
+    "appspawn_parent": "up (=1)",
+    "zygote_sigill": "none (rb/mismatch hits=0 at overlay)",
+    "helloworld": "LIT — own UI (01-t5c-HW-lit.jpeg, 78268 B)",
+    "zigzag": "LIT — Unity game rendering: isometric 3D path + ball + 'Trial Version' (02-t5c-ZZ-lit.jpeg, 73155 B)",
+    "aegis": "alive t5=yes t20=yes, child_hilog=21380",
+    "ooniprobe": "alive t5=yes t20=yes, child_hilog=46429",
+    "facts": "TOTAL keys=2 screenshots_captured=4/4 alive_t5=2 alive_t20=2",
+    "checksystemclass_abort": "none",
+    "one_postrun_grep_hit": "benign — a class_linker.cc:8744 [IFACE-IF] IMT log for IPackageManager.requestPackageChecksums (matched the word 'checksum'); normal interface-method-table resolution, not a read-barrier rejection — evidence the runtime is class-linking apps normally."
+  },
+  "rollback": "boot.art restored to v3c 2e4f8049 (resident 27 byte-identical); runtime fingerprint 0b81cdbe0ed9; HelloWorld own-UI lit at U3 (78278 B); boot_id 37178298 unchanged; unlocked.",
+  "vs_T5b": "T5b (RB-off but entrypoints NOT matching v3c) FAILED — HW blank/desktop, app processes aborted in OHEnvironment.isOHEnvironment const-string implicit-NPE-check. T5c adds the oatdump-entrypoint fix (entrypoints match v3c) and now HW/ZZ light and real apps stay alive. The entrypoint alignment was the missing piece beyond read barrier.",
+  "conclusion": "Our own toolchain (T3b read-barrier-OFF host dex2oat + T5c boot image) produces a 27-file boot image the board R155 libart ACCEPTS and runs apps from, with the resident libart unchanged (image-only swap). dex2oat-once is achieved: boot classes (tagsoup, MediaStore fields, etc.) can now be regenerated offline without archaeology."
+}
