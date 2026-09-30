@@ -911,6 +911,14 @@ def write_facts(out):
         short = hashlib.sha256(body.encode()).hexdigest()[:12] if body else 'unknown'
         lines.insert(0, f'RUNTIME fingerprint={short} files={len(body.splitlines()) if body else 0} '
                         '(runtime-fingerprint.txt; compare before blaming the JAR across boards)')
+        try:  # frozen public-API fixes (AGENTS.md 做事方式 3): a run on a board that drifted from them says so
+            import check_frozen
+            checked, bad = check_frozen.check_artifacts(check_frozen.load(check_frozen.REPO/'knowledge/frozen/frozen.json'),
+                                                        check_frozen.fingerprint_hashes(fp), 'board')
+            lines.insert(1, f'FROZEN checked={len(checked)} violations={bad}'
+                            + ''.join(f'\n  {l}' for l in checked if l.startswith('FROZEN-VIOLATION')))
+        except Exception as exc:
+            lines.insert(1, f'FROZEN unavailable: {exc}')
     (Path(out)/'facts.txt').write_text('\n'.join(lines + [total]) + '\n')
     return total
 
