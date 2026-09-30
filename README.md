@@ -166,6 +166,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-u5-investigate/`** | **U5 alive/no-fatal blank screens re-selected by application PID (the old script counted compositor render lines and read the time column as PID): 5 white keys, per-key last own-log evidence; `knowledge/gates/benign-log-signatures.json` lists 17 log signatures that also appear in lit apps, for triage only.** |
 | **`benchmark/2026-10-01-u6-sweep/`** | **U6 three-board sweep (U5 native + J7b + T7c image and stubs + merged split inputs): 27 own-UI at t20, all 24 U5 keys kept, new catima/opencamera/feeder; facts of the four runs and the outer sign-off.** |
 | **`benchmark/2026-10-01-u7-prospective/`** | **Frozen U7 v1 fa92c5b9: 66 actual inputs, U6 J7b/native plus accepted full-tagsoup T7d; t20 28 own UI/32 unlit/6 unknown, independent checkpoint/first-wall criteria; historical skeleton retained.** |
+| **`benchmark/2026-10-01-first-frame-suspects/`** | **78 PID/time-scoped U6/T7d attempts, seven N9 investigation keys, corrected non-execution present/finishDrawing counts and 34 lit controls exposing five VSync-score false alarms; no automatic diagnosis.** |
 
 ---
 
