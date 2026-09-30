@@ -1,0 +1,180 @@
+{
+  "apks": [
+    {
+      "bytes": 62519159,
+      "path": "fd-libre.apk",
+      "sha256": "25f986a8cae2c2086c939b0ca17f10d1cafdf82e7db20679810cb93018e6a39a"
+    }
+  ],
+  "declared_sidecars": [
+    "lib/arm64-v8a/libapp.so",
+    "lib/arm64-v8a/libdartjni.so",
+    "lib/arm64-v8a/libdatastore_shared_counter.so",
+    "lib/arm64-v8a/libflutter.so",
+    "lib/arm64-v8a/libicu4x.so",
+    "lib/arm64-v8a/libimageOps.so",
+    "lib/arm64-v8a/libjpeg.so",
+    "lib/arm64-v8a/libmediakitandroidhelper.so",
+    "lib/arm64-v8a/libmpv.so",
+    "lib/arm64-v8a/libtiff.so"
+  ],
+  "dex": [
+    {
+      "bytes": 4123184,
+      "path": "classes.dex",
+      "sha256": "37ce12950d75f9dcbdcc8cfd1bee3399162baa56e9660e276bcedd7cfb4c2374"
+    },
+    {
+      "bytes": 1000,
+      "path": "classes2.dex",
+      "sha256": "c7528e6419eeebfe097d12425eb13e1e12d8cde258aed22209fd8aa0a2c69e9e"
+    }
+  ],
+  "dex_calls": [
+    {
+      "dex": "classes.dex",
+      "dex_sha256": "37ce12950d75f9dcbdcc8cfd1bee3399162baa56e9660e276bcedd7cfb4c2374",
+      "instruction": "invoke-virtual/range {v5, v6, v7, v8, v9, v10, v11, v12}, Lio/flutter/embedding/engine/FlutterJNI;.runBundleAndSnapshotFromLibrary:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Landroid/content/res/AssetManager;Ljava/util/List;J)V // method@2944",
+      "line": 203944,
+      "method": "bh.run:()V",
+      "offset": "0258"
+    }
+  ],
+  "entry": {
+    "apk_sha256": "25f986a8cae2c2086c939b0ca17f10d1cafdf82e7db20679810cb93018e6a39a",
+    "key": "fd-libre",
+    "launch_activity": "deckers.thibault.aves.MainActivity",
+    "package": "deckers.thibault.aves.libre"
+  },
+  "input_findings": [],
+  "libraries": [],
+  "metadata_apk_sha256": "25f986a8cae2c2086c939b0ca17f10d1cafdf82e7db20679810cb93018e6a39a",
+  "metadata_inventory_matches": true,
+  "metadata_package": "deckers.thibault.aves.libre",
+  "metadata_sha256": "fdefef839179b62b64efaf4ae2dada558512943afe23ad8d2dc1527b95f312cd",
+  "native_and_dex_requirements": [
+    {
+      "active_wall": "unknown",
+      "condition": "DEX invoke instruction referencing FlutterJNI runBundleAndSnapshotFromLibrary or nativeRunBundleAndSnapshotFromLibrary",
+      "evidence": [
+        {
+          "dex": "classes.dex",
+          "dex_sha256": "37ce12950d75f9dcbdcc8cfd1bee3399162baa56e9660e276bcedd7cfb4c2374",
+          "instruction": "invoke-virtual/range {v5, v6, v7, v8, v9, v10, v11, v12}, Lio/flutter/embedding/engine/FlutterJNI;.runBundleAndSnapshotFromLibrary:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Landroid/content/res/AssetManager;Ljava/util/List;J)V // method@2944",
+          "line": 203944,
+          "method": "bh.run:()V",
+          "offset": "0258"
+        }
+      ],
+      "family": "flutter-jni-field-id",
+      "requirement": "FlutterJNI native field IDs must be initialized before GetLongField; DEX presence does not prove a null ID",
+      "resolution": "unknown",
+      "signature": "fid == null + GetLongField + FlutterJNI.nativeRunBundleAndSnapshotFromLibrary",
+      "startup_reachable": "unknown",
+      "verdict": "conditional-runtime-requirement"
+    },
+    {
+      "active_wall": "unknown",
+      "condition": "FlutterJNI bundle invocation AND private westlake_flutter/libandroid.so DT_NEEDED liboh_android_runtime.so",
+      "evidence": [
+        {
+          "dex": "classes.dex",
+          "dex_sha256": "37ce12950d75f9dcbdcc8cfd1bee3399162baa56e9660e276bcedd7cfb4c2374",
+          "instruction": "invoke-virtual/range {v5, v6, v7, v8, v9, v10, v11, v12}, Lio/flutter/embedding/engine/FlutterJNI;.runBundleAndSnapshotFromLibrary:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Landroid/content/res/AssetManager;Ljava/util/List;J)V // method@2944",
+          "line": 203944,
+          "method": "bh.run:()V",
+          "offset": "0258"
+        },
+        {
+          "bytes": 189216,
+          "header": "valid-ELF64-AArch64",
+          "imports": [],
+          "needed": [
+            "libc.so",
+            "liboh_android_runtime.so",
+            "libsurface.z.so"
+          ],
+          "path": "payload/android/lib64/westlake_flutter/libandroid.so",
+          "sha256": "ee2fb82c6351b1b8461ce214e8ef39c9b33731523f154f92137991afa0e26c45",
+          "symbol_status": "parsed"
+        }
+      ],
+      "family": "private-runtime-reload",
+      "requirement": "Private preload must reuse the resident runtime in its effective namespace; neither file presence nor DT_NEEDED proves XPM failure",
+      "resolution": "unknown",
+      "signature": "Flutter private preload libandroid.so + Xpm check failed for liboh_android_runtime.so, errno for mmap is: 22",
+      "startup_reachable": "unknown",
+      "verdict": "conditional-runtime-requirement"
+    }
+  ],
+  "scan_errors": [],
+  "scan_mode": "sha-revalidated-unchanged-u5-static-facts",
+  "selected_apk": {
+    "bytes": 62519159,
+    "path": "fd-libre.apk",
+    "sha256": "25f986a8cae2c2086c939b0ca17f10d1cafdf82e7db20679810cb93018e6a39a"
+  },
+  "sidecars": [
+    {
+      "bytes": 22283144,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libapp.so",
+      "sha256": "c4b8f337fa5e81e45684ee11d3afc890721e5ba539d588c43b2b4a6aebe230f5"
+    },
+    {
+      "bytes": 131248,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libdartjni.so",
+      "sha256": "66c699018337e658616b9bda421451245279da8e2eff5dc439106285208b9a15"
+    },
+    {
+      "bytes": 7112,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libdatastore_shared_counter.so",
+      "sha256": "d3e48717c9aa147e0ab21063ba0e8e0211cabf8bf40b222640829519edbf58e1"
+    },
+    {
+      "bytes": 11747864,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libflutter.so",
+      "sha256": "d70bbedc2b157630f90123a32ca894a6fa1816ec10cda9f335bada0692b376ee"
+    },
+    {
+      "bytes": 1596056,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libicu4x.so",
+      "sha256": "a5764a4e18c57143f8c95394a0502e22429c86f8bb3cf655e6fd7d3dac664b3d"
+    },
+    {
+      "bytes": 317280,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libimageOps.so",
+      "sha256": "9a9faef0875147625f41ef26fbbbba6117cd51bcffd584130af740a5b50c20ab"
+    },
+    {
+      "bytes": 248152,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libjpeg.so",
+      "sha256": "f077ef34363cfc141b47a7f825fc8a3ffd80c946368fd02ca7f9ed436070efa2"
+    },
+    {
+      "bytes": 386584,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libmediakitandroidhelper.so",
+      "sha256": "a6862031015e390aa8a64536411132cf4df6a5a9dcf782f0d68b995380a1cccb"
+    },
+    {
+      "bytes": 21549184,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libmpv.so",
+      "sha256": "201cf7c92fb211bc817ab1553977a7d70641815169517d4ba53da6a76afca251"
+    },
+    {
+      "bytes": 518880,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libtiff.so",
+      "sha256": "3faa03aa3274a7dc76b47b0a369f4e1aeb23910283bd7ec5838f9034b7a131fe"
+    }
+  ]
+}
+

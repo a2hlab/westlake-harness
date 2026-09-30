@@ -1,0 +1,193 @@
+{
+  "status": "draft-source-priors",
+  "t7d": {
+    "source_commit": "f4a059ef0",
+    "original_spec_commit": "d32b314b7",
+    "artifact_sha256": null,
+    "boot_files": null,
+    "owner_evidence_status": "cc-wiki source report only; require final candidate BCP class map and G3 receipt",
+    "groups": [
+      {
+        "id": "T7d-ssl",
+        "keys": [
+          "wikipedia",
+          "noice",
+          "fd-noice"
+        ],
+        "owner": "android.net.ssl.SSLSockets",
+        "methods": [
+          "isSupportedSocket(Ljavax/net/ssl/SSLSocket;)Z",
+          "setUseSessionTickets(Ljavax/net/ssl/SSLSocket;Z)V"
+        ],
+        "semantics": "false / no-op; select another OkHttp adapter",
+        "limit": "TLS/provider/network success is not supplied",
+        "positive_evidence": [
+          "SSLSockets class resolves",
+          "target OkHttp execution enters fallback adapter"
+        ],
+        "evidence": {
+          "source": "t7d-patch",
+          "first_line": 69,
+          "last_line": 87
+        }
+      },
+      {
+        "id": "T7d-media-permission",
+        "keys": [
+          "fd-gallery"
+        ],
+        "owner": "android.provider.MediaStore",
+        "methods": [
+          "canManageMedia(Landroid/content/Context;)Z"
+        ],
+        "semantics": "return false",
+        "limit": "Media provider permissions and actual data are not supplied",
+        "positive_evidence": [
+          "canManageMedia returns false",
+          "non-privileged gallery branch executes"
+        ],
+        "evidence": {
+          "source": "t7d-patch",
+          "first_line": 18,
+          "last_line": 27
+        }
+      },
+      {
+        "id": "T7d-media-files",
+        "keys": [
+          "fd-gallery"
+        ],
+        "owner": "android.provider.MediaStore$Files",
+        "methods": [
+          "getContentUri(Ljava/lang/String;)Landroid/net/Uri;"
+        ],
+        "semantics": "content://media/<volume>/file",
+        "limit": "URI construction does not provide a media provider",
+        "positive_evidence": [
+          "Files.getContentUri returns expected URI",
+          "query caller executes after URI construction"
+        ],
+        "evidence": {
+          "source": "t7d-patch",
+          "first_line": 28,
+          "last_line": 38
+        }
+      },
+      {
+        "id": "T7d-saturation",
+        "keys": [
+          "fd-plus"
+        ],
+        "owner": "android.graphics.ColorMatrix",
+        "methods": [
+          "setSaturation(F)V"
+        ],
+        "semantics": "no-op in actual patch (not full saturation math)",
+        "limit": "Does not implement a color transform or repair later OsmandMap state",
+        "positive_evidence": [
+          "setSaturation resolves and caller continues"
+        ],
+        "evidence": {
+          "source": "t7d-patch",
+          "first_line": 1,
+          "last_line": 15
+        }
+      },
+      {
+        "id": "T7d-signal",
+        "keys": [
+          "x"
+        ],
+        "owner": "android.net.NetworkCapabilities",
+        "methods": [
+          "getSignalStrength()I"
+        ],
+        "semantics": "Integer.MIN_VALUE / unspecified",
+        "limit": "Does not supply a network or repair app dependency graph",
+        "positive_evidence": [
+          "getSignalStrength returns unspecified",
+          "caller progresses beyond signal query"
+        ],
+        "evidence": {
+          "source": "t7d-patch",
+          "first_line": 39,
+          "last_line": 52
+        }
+      },
+      {
+        "id": "T7d-request-network",
+        "keys": [
+          "vlc"
+        ],
+        "owner": "android.net.ConnectivityManager",
+        "methods": [
+          "requestNetwork(Landroid/net/NetworkRequest;Landroid/net/ConnectivityManager$NetworkCallback;)V"
+        ],
+        "semantics": "no-op",
+        "limit": "Callback never fires; wait/hang remains possible",
+        "positive_evidence": [
+          "requestNetwork invocation returns",
+          "separately record callback waiting or progress"
+        ],
+        "evidence": {
+          "source": "t7d-patch",
+          "first_line": 53,
+          "last_line": 68
+        }
+      }
+    ],
+    "excluded": [
+      "MediaServiceManager / getMediaServiceManager: dropped for new BCP shadowing",
+      "InputManagerGlobal.sService: caught reflection probe; not a first-wall repair",
+      "IConnectivityManager: caught shim/AIDL gap",
+      "fd-libretube and fd-feeder: no T7d android/java member repair asserted"
+    ]
+  },
+  "n6": {
+    "id": "N6-flutter-window",
+    "keys": [
+      "fd-fluffychat",
+      "fd-immich",
+      "fd-kitchenowl",
+      "fd-libre",
+      "fd-saber",
+      "localsend"
+    ],
+    "package": "westlake-generation-n6-b70b3d00",
+    "manifest_sha256": "423ea1ff84627c71d445bbfef18766cba9646421bc0d73d94ab07389d1110d16",
+    "private_abi_sha256": "b70b3d0001772d181d99a7e9e964149e98557f6eced0ab50f5fa167e3b996391",
+    "source_commit": "be16148da9ae7bb89c62e81e144ed0bceb5c4669",
+    "delta_from_u5": "N5 two ANL aliases plus Flutter-private ABI replacement; NOT the same native generation as U6",
+    "mechanism": "AdapterAnw to OH NativeWindow conversion, successful-create ownership, successful-swap notification and successful-destroy erasure",
+    "positive_evidence": [
+      "target PID [OH_EglHijack] detected ANW shim ... unwrapped ...",
+      "successful EGL surface creation beyond ANativeWindow_getFormat",
+      "successful swap notification if reached"
+    ],
+    "limits": [
+      "Exports do not prove Flutter binds this wrapper",
+      "Earlier JNI fid=null or provider VerifyError may mask this checkpoint",
+      "Same-board U5 maps required: compare duplicate inode counts and payload SHA sets, not absolute single mapping",
+      "N1 28 + N2 156 exceptions only authorized for one candidate-bound short window; NOT automatic U7 permission",
+      "No inference of missing GL from adjacent libGLESv3.so path warning"
+    ],
+    "controls": [
+      "HW",
+      "ZZ",
+      "aegis",
+      "catima"
+    ],
+    "evidence": [
+      {
+        "source": "n5-stack",
+        "first_line": 4,
+        "last_line": 12
+      },
+      {
+        "source": "n6-readme",
+        "first_line": 25,
+        "last_line": 49
+      }
+    ]
+  }
+}

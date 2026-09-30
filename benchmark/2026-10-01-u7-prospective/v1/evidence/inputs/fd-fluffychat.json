@@ -1,0 +1,173 @@
+{
+  "apks": [
+    {
+      "bytes": 185599421,
+      "path": "fd-fluffychat.apk",
+      "sha256": "edcdf6171c09ab39ed76447c1ee11c66503d922dfe4f36f2dd429f2f9c652481"
+    }
+  ],
+  "declared_sidecars": [
+    "lib/arm64-v8a/libImaging.so",
+    "lib/arm64-v8a/libapp.so",
+    "lib/arm64-v8a/libdartjni.so",
+    "lib/arm64-v8a/libdatastore_shared_counter.so",
+    "lib/arm64-v8a/libflutter.so",
+    "lib/arm64-v8a/libjingle_peerconnection_so.so",
+    "lib/arm64-v8a/libsqlcipher.so",
+    "lib/arm64-v8a/libvodozemac_bindings_dart.so",
+    "lib/arm64-v8a/libwebcrypto.so"
+  ],
+  "dex": [
+    {
+      "bytes": 6931524,
+      "path": "classes.dex",
+      "sha256": "6eeceea6b96715f4480fb1ca63297c06fcc0877bc65608f9237ec69800fb125e"
+    },
+    {
+      "bytes": 220344,
+      "path": "classes2.dex",
+      "sha256": "c492f8f4b84f0d6725985c4e02c5060721492b782de6f3c7013df1ab4e065125"
+    }
+  ],
+  "dex_calls": [
+    {
+      "dex": "classes.dex",
+      "dex_sha256": "6eeceea6b96715f4480fb1ca63297c06fcc0877bc65608f9237ec69800fb125e",
+      "instruction": "invoke-virtual/range {v3, v4, v5, v6, v7, v8, v9, v10}, Lio/flutter/embedding/engine/FlutterJNI;.runBundleAndSnapshotFromLibrary:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Landroid/content/res/AssetManager;Ljava/util/List;J)V // method@9f20",
+      "line": 1363676,
+      "method": "a5.a.i:(La5/a$b;)V",
+      "offset": "0035"
+    }
+  ],
+  "entry": {
+    "apk_sha256": "edcdf6171c09ab39ed76447c1ee11c66503d922dfe4f36f2dd429f2f9c652481",
+    "key": "fd-fluffychat",
+    "launch_activity": "chat.fluffy.fluffychat.MainActivity",
+    "package": "chat.fluffy.fluffychat"
+  },
+  "input_findings": [],
+  "libraries": [],
+  "metadata_apk_sha256": "edcdf6171c09ab39ed76447c1ee11c66503d922dfe4f36f2dd429f2f9c652481",
+  "metadata_inventory_matches": true,
+  "metadata_package": "chat.fluffy.fluffychat",
+  "metadata_sha256": "4b1882e1cb407b2d760e54d74a07cc9c04cd9a047a4f9beb4f1a582bdf69002c",
+  "native_and_dex_requirements": [
+    {
+      "active_wall": "unknown",
+      "condition": "DEX invoke instruction referencing FlutterJNI runBundleAndSnapshotFromLibrary or nativeRunBundleAndSnapshotFromLibrary",
+      "evidence": [
+        {
+          "dex": "classes.dex",
+          "dex_sha256": "6eeceea6b96715f4480fb1ca63297c06fcc0877bc65608f9237ec69800fb125e",
+          "instruction": "invoke-virtual/range {v3, v4, v5, v6, v7, v8, v9, v10}, Lio/flutter/embedding/engine/FlutterJNI;.runBundleAndSnapshotFromLibrary:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Landroid/content/res/AssetManager;Ljava/util/List;J)V // method@9f20",
+          "line": 1363676,
+          "method": "a5.a.i:(La5/a$b;)V",
+          "offset": "0035"
+        }
+      ],
+      "family": "flutter-jni-field-id",
+      "requirement": "FlutterJNI native field IDs must be initialized before GetLongField; DEX presence does not prove a null ID",
+      "resolution": "unknown",
+      "signature": "fid == null + GetLongField + FlutterJNI.nativeRunBundleAndSnapshotFromLibrary",
+      "startup_reachable": "unknown",
+      "verdict": "conditional-runtime-requirement"
+    },
+    {
+      "active_wall": "unknown",
+      "condition": "FlutterJNI bundle invocation AND private westlake_flutter/libandroid.so DT_NEEDED liboh_android_runtime.so",
+      "evidence": [
+        {
+          "dex": "classes.dex",
+          "dex_sha256": "6eeceea6b96715f4480fb1ca63297c06fcc0877bc65608f9237ec69800fb125e",
+          "instruction": "invoke-virtual/range {v3, v4, v5, v6, v7, v8, v9, v10}, Lio/flutter/embedding/engine/FlutterJNI;.runBundleAndSnapshotFromLibrary:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Landroid/content/res/AssetManager;Ljava/util/List;J)V // method@9f20",
+          "line": 1363676,
+          "method": "a5.a.i:(La5/a$b;)V",
+          "offset": "0035"
+        },
+        {
+          "bytes": 189216,
+          "header": "valid-ELF64-AArch64",
+          "imports": [],
+          "needed": [
+            "libc.so",
+            "liboh_android_runtime.so",
+            "libsurface.z.so"
+          ],
+          "path": "payload/android/lib64/westlake_flutter/libandroid.so",
+          "sha256": "ee2fb82c6351b1b8461ce214e8ef39c9b33731523f154f92137991afa0e26c45",
+          "symbol_status": "parsed"
+        }
+      ],
+      "family": "private-runtime-reload",
+      "requirement": "Private preload must reuse the resident runtime in its effective namespace; neither file presence nor DT_NEEDED proves XPM failure",
+      "resolution": "unknown",
+      "signature": "Flutter private preload libandroid.so + Xpm check failed for liboh_android_runtime.so, errno for mmap is: 22",
+      "startup_reachable": "unknown",
+      "verdict": "conditional-runtime-requirement"
+    }
+  ],
+  "scan_errors": [],
+  "scan_mode": "sha-revalidated-unchanged-u5-static-facts",
+  "selected_apk": {
+    "bytes": 185599421,
+    "path": "fd-fluffychat.apk",
+    "sha256": "edcdf6171c09ab39ed76447c1ee11c66503d922dfe4f36f2dd429f2f9c652481"
+  },
+  "sidecars": [
+    {
+      "bytes": 182168,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libImaging.so",
+      "sha256": "54f84b46e543f3e0da609bb3a6311ff49638ab603a4a7263bdafedf784853074"
+    },
+    {
+      "bytes": 23004048,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libapp.so",
+      "sha256": "01cb26a7e0b6056301c5757310983988c5473216a07c7fd0f2ecde58ce1bfdb4"
+    },
+    {
+      "bytes": 124592,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libdartjni.so",
+      "sha256": "9d35bf5efa8bf861fb43e9c5682606cd4d65bfb5a385265ffc96dc909f51b94f"
+    },
+    {
+      "bytes": 7112,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libdatastore_shared_counter.so",
+      "sha256": "d3e48717c9aa147e0ab21063ba0e8e0211cabf8bf40b222640829519edbf58e1"
+    },
+    {
+      "bytes": 11581856,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libflutter.so",
+      "sha256": "151099d0b73b3025d7545c8431af4d7f23bf3e7fe5767d9fec6323fa372ef743"
+    },
+    {
+      "bytes": 12092568,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libjingle_peerconnection_so.so",
+      "sha256": "a8da9b8888be7afda6e1e1595f21d955f0d423a66d9b92fd5c3bdb944b8c60b2"
+    },
+    {
+      "bytes": 5080752,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libsqlcipher.so",
+      "sha256": "434b5862737328d913964bd5eefac7db8748cd979ac863b3dfc09952e89f9cbd"
+    },
+    {
+      "bytes": 1650928,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libvodozemac_bindings_dart.so",
+      "sha256": "cdf762d228860886ae6cc26bd48ded4f4a32ae7a7a857b8e608b91ee36db41ba"
+    },
+    {
+      "bytes": 2418824,
+      "header": "valid-ELF64-AArch64",
+      "path": "lib/arm64-v8a/libwebcrypto.so",
+      "sha256": "e6184fa8409376bd403aac5f59f093c812f0fd36bf15f000dca5426d2d25133d"
+    }
+  ]
+}
+

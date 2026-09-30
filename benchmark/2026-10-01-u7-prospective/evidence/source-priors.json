@@ -1,0 +1,1121 @@
+{
+  "status": "source-priors-not-board-results",
+  "sources": [
+    {
+      "id": "t7d-spec",
+      "worktree": "westlake-harness-wiki",
+      "path": "benchmark/2026-10-01-image-predeploy-gate/t7d-stub-spec/T7D-STUB-SPEC.md",
+      "sha256": "63f07f2f00ca539a19ff057f7494ae18a182316ab5f669a296c95a437b7d3570",
+      "head": "f4a059ef0fa88bec1a7cf1086896922274aa6898",
+      "lines": [
+        {
+          "line": 1,
+          "text": "# T7d stub-jar additions — spec for oc-t4/cc-t3 to build the T7d adapter-mainline-stubs.jar"
+        },
+        {
+          "line": 2,
+          "text": ""
+        },
+        {
+          "line": 3,
+          "text": "Scan of the U5 three-board hilog corpus (330 hilog files, ~1.77 GB, boards 5ea/5cd/61b, 2026-09-30..10-01)"
+        },
+        {
+          "line": 4,
+          "text": "plus 740 non-hilog evidence files (0 extra members). Base = `feat/bms-walls` `44ab7862e` (T7c stubs: tagsoup"
+        },
+        {
+          "line": 5,
+          "text": "Parser + NetworkRequest.getNetworkSpecifier / NetworkInfo.getState / NetworkCapabilities.getLink*BandwidthKbps"
+        },
+        {
+          "line": 6,
+          "text": "/ MediaStore.*.EXTERNAL_CONTENT_URI). T7d adds the members below. Every method-level miss's log says"
+        },
+        {
+          "line": 7,
+          "text": "*\"declaration … appears in …/adapter-mainline-stubs.jar\"* → the class is already in the jar; add the member."
+        },
+        {
+          "line": 8,
+          "text": ""
+        },
+        {
+          "line": 9,
+          "text": "## Priority — FATAL misses fixable in adapter-mainline-stubs (add these)"
+        },
+        {
+          "line": 10,
+          "text": ""
+        },
+        {
+          "line": 11,
+          "text": "| target app | class#member | signature | stub body | sev |"
+        },
+        {
+          "line": 12,
+          "text": "|---|---|---|---|---|"
+        },
+        {
+          "line": 13,
+          "text": "| **fd-gallery** | `android.provider.MediaStore#canManageMedia` | `(Landroid/content/Context;)Z` static | `return false;` (app takes the non-privileged path) | FATAL (main threw) |"
+        },
+        {
+          "line": 14,
+          "text": "| **fd-gallery** | `android.provider.MediaStore$Files#getContentUri` | `(Ljava/lang/String;)Landroid/net/Uri;` static | `return android.net.Uri.parse(\"content://media/\" + volumeName + \"/file\");` | FATAL (worker) |"
+        },
+        {
+          "line": 15,
+          "text": "| **fd-plus** | `android.graphics.ColorMatrix#setSaturation` | `(F)V` virtual | prefer the real AOSP saturation math (pure, no platform dep) if the stub holds the 4x5 array; else `{ /* no-op: clears resolution */ }` | FATAL |"
+        },
+        {
+          "line": 16,
+          "text": "| **x** | `android.net.NetworkCapabilities#getSignalStrength` | `()I` virtual | `return Integer.MIN_VALUE;` // SIGNAL_STRENGTH_UNSPECIFIED | FATAL |"
+        },
+        {
+          "line": 17,
+          "text": "| **wikipedia** | `android.net.ssl.SSLSockets` (NEW class) | 2 static methods | see below | FATAL (kills OkHttp Dispatcher → no network) |"
+        },
+        {
+          "line": 18,
+          "text": ""
+        },
+        {
+          "line": 19,
+          "text": "### New class `android/net/ssl/SSLSockets.java`"
+        },
+        {
+          "line": 20,
+          "text": "```java"
+        },
+        {
+          "line": 21,
+          "text": "// [T7d 2026-10-01] wikipedia/noice/fd-noice: NoClassDefFoundError android.net.ssl.SSLSockets in OkHttp"
+        },
+        {
+          "line": 22,
+          "text": "// AndroidPlatform. isSupportedSocket=false makes OkHttp fall back to the standard SSLSocket path (no"
+        },
+        {
+          "line": 23,
+          "text": "// Android-specific TLS extensions) instead of crashing the Dispatcher thread. setUseSessionTickets is a"
+        },
+        {
+          "line": 24,
+          "text": "// no-op (session tickets are an optimization, not required for TLS to work)."
+        },
+        {
+          "line": 25,
+          "text": "package android.net.ssl;"
+        },
+        {
+          "line": 26,
+          "text": "public final class SSLSockets {"
+        },
+        {
+          "line": 27,
+          "text": "    private SSLSockets() {}"
+        },
+        {
+          "line": 28,
+          "text": "    public static boolean isSupportedSocket(javax.net.ssl.SSLSocket socket) { return false; }"
+        },
+        {
+          "line": 29,
+          "text": "    public static void setUseSessionTickets(javax.net.ssl.SSLSocket socket, boolean useSessionTickets) {}"
+        },
+        {
+          "line": 30,
+          "text": "}"
+        },
+        {
+          "line": 31,
+          "text": "```"
+        },
+        {
+          "line": 32,
+          "text": ""
+        },
+        {
+          "line": 33,
+          "text": "## Bonus — FATAL misses from other corpus apps (fold in if in scope)"
+        },
+        {
+          "line": 34,
+          "text": ""
+        },
+        {
+          "line": 35,
+          "text": "| app | class#member | signature | stub body |"
+        },
+        {
+          "line": 36,
+          "text": "|---|---|---|---|"
+        },
+        {
+          "line": 37,
+          "text": "| vlc | `android.net.ConnectivityManager#requestNetwork` | `(Landroid/net/NetworkRequest;Landroid/net/ConnectivityManager$NetworkCallback;)V` virtual | `{}` no-op (no network → callback never fires; app doesn't crash) |"
+        },
+        {
+          "line": 38,
+          "text": "| noice | `android.media.MediaFrameworkPlatformInitializer#getMediaServiceManager` | `()Landroid/media/MediaServiceManager;` static | `return new android.media.MediaServiceManager();` + NEW empty class `android/media/MediaServiceManager.java` (`public final class MediaServiceManager { public MediaServiceManager() {} }`). LOW priority — already CAUGHT (WESTLAKE-469), non-fatal. |"
+        },
+        {
+          "line": 39,
+          "text": ""
+        },
+        {
+          "line": 40,
+          "text": "## Do NOT add to adapter-mainline-stubs (flagged)"
+        },
+        {
+          "line": 41,
+          "text": ""
+        },
+        {
+          "line": 42,
+          "text": "- `android.hardware.input.InputManagerGlobal#sService` — **29 apps** but the field lives in `framework.jar!classes2.dex`, not this jar, and it is a **CAUGHT** `[AdapterIIM]` reflection probe (info-level, process survives). Fixing it means patching framework.jar / the AdapterIIM shim, not the stub jar. Highest app-count but lowest value; leave it."
+        },
+        {
+          "line": 43,
+          "text": "- `android.net.IConnectivityManager` — AIDL binder interface (Stub/Proxy/asInterface/txn codes), **not** a simple stub; currently caught by the Westlake local-service shim (`connectivity unavailable`, non-fatal). Leave to the shim."
+        },
+        {
+          "line": 44,
+          "text": "- Out of scope (not android.*/java.*): `kotlinx.coroutines.CoroutineStart` (caught by [COROUTINE-FIX]), conscrypt/Westlake keystore probes, `org.wikipedia.DefaultIcon` / logback (app/third-party classes)."
+        },
+        {
+          "line": 45,
+          "text": ""
+        },
+        {
+          "line": 46,
+          "text": "## Honest coverage note — 2 of the 6 target apps are NOT stub-fixable"
+        },
+        {
+          "line": 47,
+          "text": ""
+        },
+        {
+          "line": 48,
+          "text": "- **fd-libretube**: no android.*/java.* member blocker in the T7c run — only the caught `sService` probe. Its"
+        },
+        {
+          "line": 49,
+          "text": "  remaining blocker (if any) is not an API resolution failure — look at conscrypt / native / UI, separately."
+        },
+        {
+          "line": 50,
+          "text": "- **fd-feeder**: no android.*/java.* member blocker — only caught `sService` + out-of-scope"
+        },
+        {
+          "line": 51,
+          "text": "  `kotlinx.coroutines.CoroutineStart`. Not fixable by T7d stubs."
+        },
+        {
+          "line": 52,
+          "text": ""
+        },
+        {
+          "line": 53,
+          "text": "So T7d (stubs) can plausibly move **4 of the 6** targets past their API wall (wikipedia, fd-gallery, fd-plus,"
+        },
+        {
+          "line": 54,
+          "text": "x) + 2 bonus corpus apps (vlc, noice). fd-libretube/fd-feeder need a different track. Ground truth on board"
+        },
+        {
+          "line": 55,
+          "text": "still decides \"lit\" (screenshots)."
+        },
+        {
+          "line": 56,
+          "text": ""
+        },
+        {
+          "line": 57,
+          "text": "## Build + gate + board (division of labor)"
+        },
+        {
+          "line": 58,
+          "text": ""
+        },
+        {
+          "line": 59,
+          "text": "1. **cc-t3/oc-t4**: apply the additions above onto `feat/bms-walls` mainline-stubs, build one"
+        },
+        {
+          "line": 60,
+          "text": "   `adapter-mainline-stubs.jar` (`build_aosp_fw.sh --target=mainline-stubs.jar`, needs the hw248 AOSP mainline"
+        },
+        {
+          "line": 61,
+          "text": "   tree + turbine + d8), then re-gen the 27-file image with `t5_gen_image.sh` (dex2oat64 `ae865ddd`) = T7d"
+        },
+        {
+          "line": 62,
+          "text": "   image + jar."
+        },
+        {
+          "line": 63,
+          "text": "2. **cc-wiki**: run `image_predeploy_gate.py --swap adapter-mainline-stubs --cand-bcp-dir <T7d bcp>"
+        },
+        {
+          "line": 64,
+          "text": "   --oatdump scripts/lab/oatdump_remote.sh` (G1 image↔BCP + G2 suspend-check); gate-fail ⇒ no board."
+        },
+        {
+          "line": 65,
+          "text": "3. **cc-wiki**: after G1/G2 pass AND 61b is released (watch the blackboard lock, do NOT grab it), LOCK 61b"
+        },
+        {
+          "line": 66,
+          "text": "   ≤30 min, package-deploy (27 image + T7d jar), run the 4 targets + vlc/noice + HW/ZZ/aegis/ooniprobe"
+        },
+        {
+          "line": 67,
+          "text": "   controls, all `--reinstall`; rollback to U5 (resident byte-identical), UNLOCK."
+        },
+        {
+          "line": 68,
+          "text": ""
+        },
+        {
+          "line": 69,
+          "text": "## Build status (2026-10-01, cc-wiki self-build attempt)"
+        },
+        {
+          "line": 70,
+          "text": ""
+        },
+        {
+          "line": 71,
+          "text": "**Done (cc-wiki):**"
+        },
+        {
+          "line": 72,
+          "text": "- Stub edits applied to all 6 members (`t7d-stub-edits.patch`, on `feat/bms-walls` 44ab7862e base): ColorMatrix.setSaturation, MediaStore.canManageMedia, MediaStore$Files.getContentUri (`content://media/<vol>/file`), NetworkCapabilities.getSignalStrength, ConnectivityManager.requestNetwork, + new `android/net/ssl/SSLSockets.java`. 112 source files, uploaded to hw248 `/home/alvin/cc-wiki-t7d/src`."
+        },
+        {
+          "line": 73,
+          "text": "- **Dropped MediaServiceManager / getMediaServiceManager** (noice bonus): `MediaServiceManager` is defined only in framework.jar, so adding it to the stubs jar would be a NEW shadow — G3 rejects it."
+        },
+        {
+          "line": 74,
+          "text": "- **G3 built + tested** (`image_predeploy_gate.py --g3-*`): dex class-def map proves all 6 additions are safe — ColorMatrix/MediaStore/MediaStore$Files/NetworkCapabilities/ConnectivityManager are ALREADY in the stubs jar (adding methods, not classes); `SSLSockets` is defined in NO other BCP jar (new, no shadow). On THIS route-A board framework.jar does NOT define ColorMatrix (contrary to stock AOSP) — it is already a stub-jar class, so extending it is safe."
+        },
+        {
+          "line": 75,
+          "text": ""
+        },
+        {
+          "line": 76,
+          "text": "**BLOCKER — jar build needs FWK_TURBINE (framework-minus-apex), not on hw248:**"
+        },
+        {
+          "line": 77,
+          "text": "- The mainline-stub sources reference ~10 `@hide` framework types (`MediaServiceManager`, `StatsServiceManager`, `BluetoothServiceManager`, `NfcServiceManager`, `DeviceConfigServiceManager`, `TelephonyServiceManager`) + framework-internal annotations (`android.annotation.SystemApi/IntDef/RequiresPermission/NonNull/Nullable/CallbackExecutor`, `com.android.internal.annotations.*`). These live only in `framework-minus-apex` (the FWK_TURBINE interface jar), NOT in the SDK `android.jar` (javac against `prebuilts/sdk/current/system/android.jar` fails on all 10 + the annotations)."
+        },
+        {
+          "line": 78,
+          "text": "- FWK_TURBINE is absent from hw248 (`find` = none). The r16 tree `out/` is empty (no prior Soong build), so building it = a cold full-framework Soong build: hours, and hw248 is at **96% disk (44 GB free)** — a framework build risks filling a shared disk. Not run."
+        },
+        {
+          "line": 79,
+          "text": "- oc-t4's T7c jar came from an environment that already has FWK_TURBINE built. That environment (not hw248) is where the mechanical compile belongs."
+        },
+        {
+          "line": 80,
+          "text": ""
+        },
+        {
+          "line": 81,
+          "text": "**Next (needs a decision):** (a) run the compile in the env that has FWK_TURBINE (oc-t4's), using the uploaded sources / this patch; or (b) point cc-wiki to a prebuilt framework-minus-apex.jar; or (c) authorize a cold `m framework-minus-apex` on hw248 despite the disk risk. Once the T7d jar exists: G3 → t5_gen_image.sh → G1/G2 → board 61b (after it frees)."
+        }
+      ]
+    },
+    {
+      "id": "t7d-patch",
+      "worktree": "westlake-harness-wiki",
+      "path": "benchmark/2026-10-01-image-predeploy-gate/t7d-stub-spec/t7d-stub-edits.patch",
+      "sha256": "a3afa4b6c0b41b4b1448b859d5b0a6335012928418932a0f5ea4404aeb4121ca",
+      "head": "f4a059ef0fa88bec1a7cf1086896922274aa6898",
+      "lines": [
+        {
+          "line": 1,
+          "text": "diff --git tmp/t7dbase/android/graphics/ColorMatrix.java tmp/t7d-src-1790795646/bms/src/adapter/framework/mainline-stubs/java/android/graphics/ColorMatrix.java"
+        },
+        {
+          "line": 2,
+          "text": "old mode 100644"
+        },
+        {
+          "line": 3,
+          "text": "new mode 100755"
+        },
+        {
+          "line": 4,
+          "text": "index 09474f114..2303737cd"
+        },
+        {
+          "line": 5,
+          "text": "--- tmp/t7dbase/android/graphics/ColorMatrix.java"
+        },
+        {
+          "line": 6,
+          "text": "+++ tmp/t7d-src-1790795646/bms/src/adapter/framework/mainline-stubs/java/android/graphics/ColorMatrix.java"
+        },
+        {
+          "line": 7,
+          "text": "@@ -6,4 +6,7 @@ package android.graphics;"
+        },
+        {
+          "line": 8,
+          "text": " "
+        },
+        {
+          "line": 9,
+          "text": " public class ColorMatrix {"
+        },
+        {
+          "line": 10,
+          "text": "     public ColorMatrix() {}"
+        },
+        {
+          "line": 11,
+          "text": "+    // [T7d 2026-10-01] fd-plus: NoSuchMethodError setSaturation(F)V. No-op clears method resolution"
+        },
+        {
+          "line": 12,
+          "text": "+    // (identity saturation); the app runs, color effect is a separate, non-boot-jar concern."
+        },
+        {
+          "line": 13,
+          "text": "+    public void setSaturation(float sat) {}"
+        },
+        {
+          "line": 14,
+          "text": " }"
+        },
+        {
+          "line": 15,
+          "text": "diff --git tmp/t7dbase/android/provider/MediaStore.java tmp/t7d-src-1790795646/bms/src/adapter/framework/mainline-stubs/java/android/provider/MediaStore.java"
+        },
+        {
+          "line": 16,
+          "text": "old mode 100644"
+        },
+        {
+          "line": 17,
+          "text": "new mode 100755"
+        },
+        {
+          "line": 18,
+          "text": "index 557887cac..780223c99"
+        },
+        {
+          "line": 19,
+          "text": "--- tmp/t7dbase/android/provider/MediaStore.java"
+        },
+        {
+          "line": 20,
+          "text": "+++ tmp/t7d-src-1790795646/bms/src/adapter/framework/mainline-stubs/java/android/provider/MediaStore.java"
+        },
+        {
+          "line": 21,
+          "text": "@@ -6,6 +6,9 @@ package android.provider;"
+        },
+        {
+          "line": 22,
+          "text": " "
+        },
+        {
+          "line": 23,
+          "text": " public class MediaStore {"
+        },
+        {
+          "line": 24,
+          "text": "     public MediaStore() {}"
+        },
+        {
+          "line": 25,
+          "text": "+    // [T7d 2026-10-01] fd-gallery: NoSuchMethodError canManageMedia(Context)Z. App is not a media manager"
+        },
+        {
+          "line": 26,
+          "text": "+    // -> false, the app takes the non-privileged path."
+        },
+        {
+          "line": 27,
+          "text": "+    public static boolean canManageMedia(android.content.Context context) { return false; }"
+        },
+        {
+          "line": 28,
+          "text": "     // [J4-boot-api 2026-09-30] fd-gallery: NoSuchFieldError EXTERNAL_CONTENT_URI (Landroid/net/Uri;) in"
+        },
+        {
+          "line": 29,
+          "text": "     // MediaStore$Images$Media in this stub (sget-object at load; no JAR hook, so it must exist in the boot"
+        },
+        {
+          "line": 30,
+          "text": "     // jar). Provide the standard content:// table URIs (Uri.parse is a pure string parse, no I/O). Note:"
+        },
+        {
+          "line": 31,
+          "text": "@@ -23,6 +26,10 @@ public class MediaStore {"
+        },
+        {
+          "line": 32,
+          "text": "     }"
+        },
+        {
+          "line": 33,
+          "text": "     public static class Files {"
+        },
+        {
+          "line": 34,
+          "text": "         public Files() {}"
+        },
+        {
+          "line": 35,
+          "text": "+        // [T7d 2026-10-01] fd-gallery: NoSuchMethodError getContentUri(String)Uri. Standard Files table URI."
+        },
+        {
+          "line": 36,
+          "text": "+        public static android.net.Uri getContentUri(String volumeName) {"
+        },
+        {
+          "line": 37,
+          "text": "+            return android.net.Uri.parse(\"content://media/\" + volumeName + \"/file\");"
+        },
+        {
+          "line": 38,
+          "text": "+        }"
+        },
+        {
+          "line": 39,
+          "text": "     }"
+        },
+        {
+          "line": 40,
+          "text": "     public static class Images {"
+        },
+        {
+          "line": 41,
+          "text": "         public Images() {}"
+        },
+        {
+          "line": 42,
+          "text": "diff --git tmp/t7dbase/android/net/NetworkCapabilities.java tmp/t7d-src-1790795646/bms/src/adapter/framework/mainline-stubs/java/android/net/NetworkCapabilities.java"
+        },
+        {
+          "line": 43,
+          "text": "old mode 100644"
+        },
+        {
+          "line": 44,
+          "text": "new mode 100755"
+        },
+        {
+          "line": 45,
+          "text": "index dc28c4d17..cdba45e35"
+        },
+        {
+          "line": 46,
+          "text": "--- tmp/t7dbase/android/net/NetworkCapabilities.java"
+        },
+        {
+          "line": 47,
+          "text": "+++ tmp/t7d-src-1790795646/bms/src/adapter/framework/mainline-stubs/java/android/net/NetworkCapabilities.java"
+        },
+        {
+          "line": 48,
+          "text": "@@ -16,4 +16,7 @@ public class NetworkCapabilities {"
+        },
+        {
+          "line": 49,
+          "text": "     // No network -> 0 Kbps, the real API's \"unknown/unspecified\" value."
+        },
+        {
+          "line": 50,
+          "text": "     public int getLinkUpstreamBandwidthKbps() { return 0; }"
+        },
+        {
+          "line": 51,
+          "text": "     public int getLinkDownstreamBandwidthKbps() { return 0; }"
+        },
+        {
+          "line": 52,
+          "text": "+    // [T7d 2026-10-01] x (Twitter): NoSuchMethodError getSignalStrength()I. Integer.MIN_VALUE ="
+        },
+        {
+          "line": 53,
+          "text": "+    // SIGNAL_STRENGTH_UNSPECIFIED, the real API's 'unknown' value."
+        },
+        {
+          "line": 54,
+          "text": "+    public int getSignalStrength() { return Integer.MIN_VALUE; }"
+        },
+        {
+          "line": 55,
+          "text": " }"
+        },
+        {
+          "line": 56,
+          "text": "diff --git tmp/t7dbase/android/net/ConnectivityManager.java tmp/t7d-src-1790795646/bms/src/adapter/framework/mainline-stubs/java/android/net/ConnectivityManager.java"
+        },
+        {
+          "line": 57,
+          "text": "old mode 100644"
+        },
+        {
+          "line": 58,
+          "text": "new mode 100755"
+        },
+        {
+          "line": 59,
+          "text": "index a5dd3028e..5cf676226"
+        },
+        {
+          "line": 60,
+          "text": "--- tmp/t7dbase/android/net/ConnectivityManager.java"
+        },
+        {
+          "line": 61,
+          "text": "+++ tmp/t7d-src-1790795646/bms/src/adapter/framework/mainline-stubs/java/android/net/ConnectivityManager.java"
+        },
+        {
+          "line": 62,
+          "text": "@@ -41,6 +41,9 @@ public class ConnectivityManager {"
+        },
+        {
+          "line": 63,
+          "text": "     public void registerDefaultNetworkCallback(NetworkCallback callback) {}"
+        },
+        {
+          "line": 64,
+          "text": " "
+        },
+        {
+          "line": 65,
+          "text": "     public void registerNetworkCallback(NetworkRequest request, NetworkCallback callback) {}"
+        },
+        {
+          "line": 66,
+          "text": "+    // [T7d 2026-10-01] vlc: NoSuchMethodError requestNetwork(NetworkRequest,NetworkCallback)V. No-op:"
+        },
+        {
+          "line": 67,
+          "text": "+    // no network here, so the callback never fires; the app does not crash."
+        },
+        {
+          "line": 68,
+          "text": "+    public void requestNetwork(NetworkRequest request, NetworkCallback callback) {}"
+        },
+        {
+          "line": 69,
+          "text": " "
+        },
+        {
+          "line": 70,
+          "text": "     public void unregisterNetworkCallback(NetworkCallback callback) {}"
+        },
+        {
+          "line": 71,
+          "text": " "
+        },
+        {
+          "line": 72,
+          "text": "diff --git tmp/t7dbase/android/net/ssl/SSLSockets.java tmp/t7d-src-1790795646/bms/src/adapter/framework/mainline-stubs/java/android/net/ssl/SSLSockets.java"
+        },
+        {
+          "line": 73,
+          "text": "index e69de29bb..8012644b7 100644"
+        },
+        {
+          "line": 74,
+          "text": "--- tmp/t7dbase/android/net/ssl/SSLSockets.java"
+        },
+        {
+          "line": 75,
+          "text": "+++ tmp/t7d-src-1790795646/bms/src/adapter/framework/mainline-stubs/java/android/net/ssl/SSLSockets.java"
+        },
+        {
+          "line": 76,
+          "text": "@@ -0,0 +1,11 @@"
+        },
+        {
+          "line": 77,
+          "text": "+// [T7d 2026-10-01] wikipedia/noice/fd-noice: NoClassDefFoundError android.net.ssl.SSLSockets in OkHttp"
+        },
+        {
+          "line": 78,
+          "text": "+// AndroidPlatform. isSupportedSocket=false -> OkHttp falls back to the standard SSLSocket path instead of"
+        },
+        {
+          "line": 79,
+          "text": "+// crashing the Dispatcher thread. setUseSessionTickets is a no-op (session tickets are an optimization)."
+        },
+        {
+          "line": 80,
+          "text": "+// NEW class: not defined in any other BCP jar (G3-checked), so no shadowing."
+        },
+        {
+          "line": 81,
+          "text": "+package android.net.ssl;"
+        },
+        {
+          "line": 82,
+          "text": "+"
+        },
+        {
+          "line": 83,
+          "text": "+public final class SSLSockets {"
+        },
+        {
+          "line": 84,
+          "text": "+    private SSLSockets() {}"
+        },
+        {
+          "line": 85,
+          "text": "+    public static boolean isSupportedSocket(javax.net.ssl.SSLSocket socket) { return false; }"
+        },
+        {
+          "line": 86,
+          "text": "+    public static void setUseSessionTickets(javax.net.ssl.SSLSocket socket, boolean useSessionTickets) {}"
+        },
+        {
+          "line": 87,
+          "text": "+}"
+        }
+      ]
+    },
+    {
+      "id": "n6-readme",
+      "worktree": "westlake-harness-bms-deploy",
+      "path": "benchmark/2026-10-01-n6-native/README.md",
+      "sha256": "a2c3266e0423a27a1fdd70158a88a60330776a535a903f1635cf37ef4519e720",
+      "head": "c5a4878eda8710c1bb47d59130427ddeefd57474",
+      "lines": [
+        {
+          "line": 1,
+          "text": "# N6: Flutter window boundary through the existing route-a implementation"
+        },
+        {
+          "line": 2,
+          "text": ""
+        },
+        {
+          "line": 3,
+          "text": "The earlier GL-missing attribution was wrong. N5 LocalSend PID 16312 already mapped"
+        },
+        {
+          "line": 4,
+          "text": "platformsdk EGL/GLESv3 and Mali. Its raster-thread stack enters platform"
+        },
+        {
+          "line": 5,
+          "text": "`eglCreateWindowSurface` and dies in vendor `ANativeWindow_getFormat`."
+        },
+        {
+          "line": 6,
+          "text": "The nearby `/system/lib64/libGLESv3.so` warning comes from OH EGL's"
+        },
+        {
+          "line": 7,
+          "text": "`FindBuiltinWrapper`; that function has a driver fallback. It is not proof that"
+        },
+        {
+          "line": 8,
+          "text": "GL was unavailable. See `source-evidence/n5-localsend-stack.txt` and the preserved"
+        },
+        {
+          "line": 9,
+          "text": "N5 maps/hilog in `../2026-10-01-n5-window/`."
+        },
+        {
+          "line": 10,
+          "text": ""
+        },
+        {
+          "line": 11,
+          "text": "## Existing route and candidate"
+        },
+        {
+          "line": 12,
+          "text": ""
+        },
+        {
+          "line": 13,
+          "text": "Ordinary framework EGL JNI (`native-checks/egl.cpp`) unwraps its Java Surface's"
+        },
+        {
+          "line": 14,
+          "text": "AdapterAnw using `oh_anw_get_oh` before calling EGL. HWUI has the equivalent"
+        },
+        {
+          "line": 15,
+          "text": "native boundary in sections 4/5 of real-work"
+        },
+        {
+          "line": 16,
+          "text": "`src/adapter/aosp_patches/libs/hwui/hwui_oh_abi_patch.cpp`, commit"
+        },
+        {
+          "line": 17,
+          "text": "`be16148da9ae7bb89c62e81e144ed0bceb5c4669`, SHA `f3913dd335d8bd1a0a651def3239d3a41821879ac8f82d6ae9be2a842e7b89a8`."
+        },
+        {
+          "line": 18,
+          "text": "The preserved source exactly matches that checkout. R155 HWUI is the signed U5"
+        },
+        {
+          "line": 19,
+          "text": "`be59260f` artifact; we do not rebuild it."
+        },
+        {
+          "line": 20,
+          "text": ""
+        },
+        {
+          "line": 21,
+          "text": "`src/flutter_egl.cpp` copies that existing window conversion, successful-create"
+        },
+        {
+          "line": 22,
+          "text": "owner bookkeeping, successful-swap notification and successful-destroy erasure."
+        },
+        {
+          "line": 23,
+          "text": "Adaptations: omit pixel-readback diagnostics and their GL imports; use the"
+        },
+        {
+          "line": 24,
+          "text": "already visible logging entry point rather than add a hilog dependency. No"
+        },
+        {
+          "line": 25,
+          "text": "surface is forcibly destroyed, no EGL error is synthesized, no missing function"
+        },
+        {
+          "line": 26,
+          "text": "is treated as success. The R155 lazy function-resolution behavior is retained."
+        },
+        {
+          "line": 27,
+          "text": ""
+        },
+        {
+          "line": 28,
+          "text": "Candidate `westlake-generation-n6-b70b3d00` (beside this worktree), manifest"
+        },
+        {
+          "line": 29,
+          "text": "`423ea1ff84627c71d445bbfef18766cba9646421bc0d73d94ab07389d1110d16`, is based on"
+        },
+        {
+          "line": 30,
+          "text": "N5 `b446d8db`. Exactly one payload differs from N5:"
+        },
+        {
+          "line": 31,
+          "text": "`payload/android/lib64/westlake_flutter/libwestlake_native_abi.so`, SHA"
+        },
+        {
+          "line": 32,
+          "text": "`b70b3d0001772d181d99a7e9e964149e98557f6eced0ab50f5fa167e3b996391`."
+        },
+        {
+          "line": 33,
+          "text": "The non-Flutter `westlake_native` copy stays `d2053066`; host, ANL, runtime,"
+        },
+        {
+          "line": 34,
+          "text": "platform EGL/GLES, JAR, installer and boot images stay unchanged from N5."
+        },
+        {
+          "line": 35,
+          "text": "Relative to U5 this is the two N5 ANL aliases plus one Flutter-private ABI."
+        },
+        {
+          "line": 36,
+          "text": ""
+        },
+        {
+          "line": 37,
+          "text": "The existing host selects this ABI only for the six Flutter package paths."
+        },
+        {
+          "line": 38,
+          "text": "The old ABI already has `DF_1_GLOBAL`; N6 retains it and adds four `LIBEGL`"
+        },
+        {
+          "line": 39,
+          "text": "exports. OH musl's `decode_dyn` and `add_can_search_so_list_in_dso` make that"
+        },
+        {
+          "line": 40,
+          "text": "object available during engine relocation. **Actual engine binding remains a"
+        },
+        {
+          "line": 41,
+          "text": "required device observation**, not a conclusion from the export table."
+        },
+        {
+          "line": 42,
+          "text": "Require `[OH_EglHijack] detected ANW shim ... unwrapped ...` in the Flutter"
+        },
+        {
+          "line": 43,
+          "text": "process, a surface result, and t20 screenshots. A wrapper that never executes"
+        },
+        {
+          "line": 44,
+          "text": "has not tested the intended repair. EGL/GLES driver identities must stay the"
+        },
+        {
+          "line": 45,
+          "text": "same; the missing absolute-path warning may persist independently."
+        },
+        {
+          "line": 46,
+          "text": ""
+        },
+        {
+          "line": 47,
+          "text": "## Checks and remaining gate"
+        },
+        {
+          "line": 48,
+          "text": ""
+        },
+        {
+          "line": 49,
+          "text": "- Same frozen OH clang `b107ce03`; VM direct build previously authorized."
+        },
+        {
+          "line": 50,
+          "text": "- Strict link (`-z defs`, `--no-undefined`, fatal warnings); two identical builds."
+        },
+        {
+          "line": 51,
+          "text": "- Eight deterministic window/owner paths exercise the copied production code."
+        },
+        {
+          "line": 52,
+          "text": "- All 26 old exports retained; four EGL exports added. Twelve new strong imports"
+        },
+        {
+          "line": 53,
+          "text": "  have definitions in exact libc/libc++ inputs. N5 already maps this libc++."
+        },
+        {
+          "line": 54,
+          "text": "- Frozen registry check passes; no frozen source changed."
+        },
+        {
+          "line": 55,
+          "text": "- N1 rejects 28 and N2 rejects 156 findings. No gate relaxed and no exception"
+        },
+        {
+          "line": 56,
+          "text": "  installed. `EXCEPTION-PROPOSAL.md/json` bind 184 rows to this candidate and"
+        },
+        {
+          "line": 57,
+          "text": "  complete inputs: 126 U5-common, 57 N5 traversal, one new libc++ edge."
+        },
+        {
+          "line": 58,
+          "text": "- Deployment dry-run must reject before Board access until outer approval."
+        },
+        {
+          "line": 59,
+          "text": ""
+        },
+        {
+          "line": 60,
+          "text": "The superseded draft `westlake-generation-n6-1f6549ae` adds an unnecessary hilog"
+        },
+        {
+          "line": 61,
+          "text": "edge and is **not for deployment**. Only `b70b3d00` is proposed."
+        },
+        {
+          "line": 62,
+          "text": ""
+        },
+        {
+          "line": 63,
+          "text": "## Predictions and authorized-window protocol"
+        },
+        {
+          "line": 64,
+          "text": ""
+        },
+        {
+          "line": 65,
+          "text": "All six Flutter apps are predicted to pass the N5 dependency layer; window"
+        },
+        {
+          "line": 66,
+          "text": "translation may move LocalSend's raster failure past native-window setup."
+        },
+        {
+          "line": 67,
+          "text": "Plugin, texture, Vulkan and rendering failures remain possible; no UI success"
+        },
+        {
+          "line": 68,
+          "text": "is predicted as certain. HW/ZZ/aegis/catima should retain U5 behavior."
+        },
+        {
+          "line": 69,
+          "text": ""
+        },
+        {
+          "line": 70,
+          "text": "After candidate-bound outer exception approval: lock 5ea for <=30 minutes,"
+        },
+        {
+          "line": 71,
+          "text": "read boot/U5 fingerprint and J6 receipt, collect U5 samples for the six targets"
+        },
+        {
+          "line": 72,
+          "text": "with early process maps, then expose the package JAR only for transactional"
+        },
+        {
+          "line": 73,
+          "text": "native deployment and restore J6. Run HW/ZZ first, then six Flutter targets and"
+        },
+        {
+          "line": 74,
+          "text": "aegis/catima using master batch `--reinstall --hilog 20 --shots 5,20` (controls"
+        },
+        {
+          "line": 75,
+          "text": "use their manifest). Compare each app against same-board U5: adapter bridge,"
+        },
+        {
+          "line": 76,
+          "text": "runtime, appexecfwk base, liblog, bionic compat inode counts **and payload SHA"
+        },
+        {
+          "line": 77,
+          "text": "sets must not gain duplicates**. Missing baseline maps are unknown, not a pass."
+        },
+        {
+          "line": 78,
+          "text": "LocalSend's known U5 two-inode liblog is allowed only as that observed baseline."
+        },
+        {
+          "line": 79,
+          "text": "Collect EGL/GLES/libc++ identities and wrapper-dispatch logs too."
+        },
+        {
+          "line": 80,
+          "text": ""
+        },
+        {
+          "line": 81,
+          "text": "Any control regression or newly duplicated singleton stops the window. Restore"
+        },
+        {
+          "line": 82,
+          "text": "`westlake-generation-n4-order-216b68fb` using the captured U5 rollback state,"
+        },
+        {
+          "line": 83,
+          "text": "restore J6 `2488052f`, verify runtime `73ecf422dba2` and bootimage `0876029078e2`,"
+        },
+        {
+          "line": 84,
+          "text": "and unlock. Use explicit state receipt rather than an inferred generation name."
+        },
+        {
+          "line": 85,
+          "text": "Post raw facts, t20 paths and first fatal stack for external visual review."
+        },
+        {
+          "line": 86,
+          "text": ""
+        },
+        {
+          "line": 87,
+          "text": "**Current status: offline only; no N6 device writes, no N6 screenshots, runtime"
+        },
+        {
+          "line": 88,
+          "text": "binding and rendering unverified.** Gate exceptions need approval before a"
+        },
+        {
+          "line": 89,
+          "text": "concrete deployment command is enabled; no bypass flag is provided."
+        }
+      ]
+    },
+    {
+      "id": "n5-stack",
+      "worktree": "westlake-harness-bms-deploy",
+      "path": "benchmark/2026-10-01-n6-native/source-evidence/n5-localsend-stack.txt",
+      "sha256": "8b3d43217490406c41f32046ab3c33646325dc3a0a23cf9689fa7a94ca3f7e87",
+      "head": "c5a4878eda8710c1bb47d59130427ddeefd57474",
+      "lines": [
+        {
+          "line": 1,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: Timestamp:2026-10-01 02:42:18.935"
+        },
+        {
+          "line": 2,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: Pid:16312"
+        },
+        {
+          "line": 3,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: Uid:20010434"
+        },
+        {
+          "line": 4,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: Tid:16353, Name:1.raster"
+        },
+        {
+          "line": 5,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: #00 pc 0000000000005c68 /vendor/lib64/libnativewindow.z.so(ANativeWindow_getFormat+60)(4939e2fabf7005bb34b9ea142c722961)"
+        },
+        {
+          "line": 6,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: #01 pc 000000000061f408 /vendor/lib64/chipsetsdk/libGLES_mali.z.so(new_window_surface(egl_winsys_display*, void*, void*, void*, egl_winsys_config const*, egl_winsys_surface**, unsigned int, int)+116)(02dfbf5e592e45bd24b48c16ab80777b)"
+        },
+        {
+          "line": 7,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: #02 pc 0000000000346bcc /vendor/lib64/chipsetsdk/libGLES_mali.z.so(eglp_window_surface_specific_initialization+652)(02dfbf5e592e45bd24b48c16ab80777b)"
+        },
+        {
+          "line": 8,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: #03 pc 0000000000342608 /vendor/lib64/chipsetsdk/libGLES_mali.z.so(eglp_create_surface+1188)(02dfbf5e592e45bd24b48c16ab80777b)"
+        },
+        {
+          "line": 9,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: #04 pc 0000000000346934 /vendor/lib64/chipsetsdk/libGLES_mali.z.so(eglCreateWindowSurface+12)(02dfbf5e592e45bd24b48c16ab80777b)"
+        },
+        {
+          "line": 10,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: #05 pc 000000000002628c /system/lib64/platformsdk/libEGL.so(OHOS::EglWrapperDisplay::CreateEglSurface(void*, NativeWindow*, int const*)+492)(60996c6a01d1c7648f4508d17395137c)"
+        },
+        {
+          "line": 11,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: #06 pc 0000000000019a40 /system/lib64/platformsdk/libEGL.so(eglCreateWindowSurface+164)(60996c6a01d1c7648f4508d17395137c)"
+        },
+        {
+          "line": 12,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: #07 pc 00000000008b6fb4 /data/app/el1/bundle/public/org.localsend.localsend_app/android/lib/arm64-v8a/libflutter.so(0d216f3f630e1105257f8a3f74e22c9b43c22a51)"
+        },
+        {
+          "line": 13,
+          "text": "10-01 02:42:19.328 16378 16378 I C02d11/DfxFaultLogger: #08 pc 00000000004b5e84 /data/app/el1/bundle/public/org.localsend.localsend_app/android/lib/arm64-v8a/libflutter.so(0d216f3f630e1105257f8a3f74e22c9b43c22a51)"
+        }
+      ]
+    }
+  ]
+}
