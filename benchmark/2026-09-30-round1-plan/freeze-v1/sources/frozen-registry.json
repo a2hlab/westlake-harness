@@ -1,0 +1,163 @@
+{
+  "rule": "AGENTS.md 做事方式 3 (tiered): freeze when >=2 different apps pass the wall (>=1 lit at t20, others by log: that API's failure gone, first fatal moved elsewhere); no silent change. The outer loop may register a new version only for reason defect|platform|extension, with a single-variable compare_runs, every earlier evidence app back to the same level and a non-regressing unified full sweep; removing or weakening a frozen behaviour needs the user.",
+  "entries": [
+    {
+      "id": "FZ-001",
+      "api": "START_ABILITIES_FROM_BACKGROUND for BMS-installed Android bundles (installer grants the permission via APL_NORMAL + ACL + preAuthorizationInfo, and prefers the app's own launcher entry)",
+      "frozen_at": "2026-09-30T10:05:00+08:00",
+      "artifacts": [
+        {
+          "path": "/system/lib64/libbms.z.so",
+          "sha256": "6aadb8b4ca9ad7d1dbaf6d99ca70f4603e3e7a2ec152fb60aee49137751afbf9"
+        },
+        {
+          "path": "/system/lib64/libapk_installer.so",
+          "sha256": "7048c7c50a828fc744b5f06e4e9ec50ac317a2272f33789249fc63e43a655a18"
+        }
+      ],
+      "sources": [],
+      "source_record": "branch feat/bms-route-deploy commit b5a67c62, benchmark/2026-09-30-installer-background-launcher/{base_bundle_installer.patch,build-bms.sh,build-installer.sh,HANDOFF.md}",
+      "verified_apps": [
+        {
+          "app": "fd-tusky",
+          "board": "61b",
+          "change": "white -> own login page with only the installer changed (+ reboot)",
+          "t20": "westlake-harness-bms-deploy/benchmark/2026-09-30-installer-61b-ab/runs/installer-r17p-61b-resume/61b0657200000000000000000324012c/fd-tusky/t20.jpeg",
+          "facts": "fd-tusky             shots 2/2  alive t5=yes t20=yes  child_hilog=61996  foreground_unconfirmed"
+        },
+        {
+          "app": "fd-k9",
+          "board": "61b",
+          "change": "white -> own database upgrade page",
+          "t20": "westlake-harness-bms-deploy/benchmark/2026-09-30-installer-61b-ab/runs/installer-r17p-61b-resume/61b0657200000000000000000324012c/fd-k9/t20.jpeg",
+          "facts": "fd-k9                shots 2/2  alive t5=yes t20=yes  child_hilog=63802  foreground_unconfirmed"
+        },
+        {
+          "app": "fd-android (Thunderbird)",
+          "board": "61b",
+          "change": "white -> own database upgrade page",
+          "t20": "westlake-harness-bms-deploy/benchmark/2026-09-30-installer-61b-ab/runs/installer-r17p-61b-resume/61b0657200000000000000000324012c/fd-android/t20.jpeg",
+          "facts": "fd-android           shots 2/2  alive t5=yes t20=yes  child_hilog=65413  foreground_unconfirmed"
+        },
+        {
+          "app": "fd-filemanager",
+          "board": "61b",
+          "change": "white -> own list with three tabs",
+          "t20": "westlake-harness-bms-deploy/benchmark/2026-09-30-installer-61b-ab/runs/installer-r17p-61b-resume/61b0657200000000000000000324012c/fd-filemanager/t20.jpeg",
+          "facts": "fd-filemanager       shots 2/2  alive t5=yes t20=yes  child_hilog=45703  foreground_unconfirmed"
+        },
+        {
+          "app": "fd-k9 / fd-tusky / fd-android / fd-filemanager",
+          "board": "5cd",
+          "change": "same four, reproduced on a second board",
+          "t20": "westlake-harness-bms-deploy/benchmark/2026-09-30-installer-5cd-ab/runs/installer-32df-r17q-5cd/5cd1e3dd00000000000000000923012c/",
+          "facts": "TOTAL keys=6 screenshots_captured=12/12 alive_t5=6 alive_t20=6"
+        }
+      ],
+      "mechanism": "same trace goes from a WMS background denial to canStartAbilityFromBackground:1 (cx-t0 log-evidence, 61b and 5cd)",
+      "version": 1,
+      "status": "frozen",
+      "history": []
+    },
+    {
+      "id": "FZ-002",
+      "api": "Android child ActivityThread runs on an explicit 8 MiB pthread (big-stack runtime provider)",
+      "frozen_at": "2026-09-30T10:15:00+08:00",
+      "artifacts": [
+        {
+          "path": "/system/android/lib64/libwestlake_android_runtime_provider.so",
+          "sha256": "0509fe235a7883b5cd9b57477221cb868465de944c6f70ed0cf2835b0fe4a97c"
+        },
+        {
+          "path": "/system/lib64/westlake/route-a/74d1d6d48210ec5bf66ae43598655c3486b8873513821f13c2ffe15f0de552ac/libwestlake_android_runtime_provider.so",
+          "sha256": "0509fe235a7883b5cd9b57477221cb868465de944c6f70ed0cf2835b0fe4a97c"
+        }
+      ],
+      "sources": [],
+      "source_record": "westlake-harness-bms-deploy benchmark/2026-09-30-child-stack-default/{child_main_after_stock.cpp,build-provider.sh,source-link-inputs.json}; audit benchmark/2026-09-30-native-freeze-audit (cx-t0 2b3960ee)",
+      "verified_apps": [
+        {
+          "app": "fd-tusky",
+          "board": "5cd",
+          "change": "Tusky own UI at t20 with ActivityThread on the dedicated 8 MiB pthread ([CM-BIGSTACK] stack=8390896 in its hilog)",
+          "t20": "benchmark/2026-09-30-unified-r17r-5cd-sweep/runs/unified-r17r-5cd/5cd1e3dd00000000000000000923012c/fd-tusky/t20.jpeg",
+          "facts": "fd-tusky             shots 2/2  alive t5=yes t20=yes  child_hilog=61998  foreground_unconfirmed"
+        },
+        {
+          "app": "antennapod",
+          "board": "5cd",
+          "change": "AntennaPod own UI at t20 with ActivityThread on the dedicated 8 MiB pthread ([CM-BIGSTACK] stack=8390896 in its hilog)",
+          "t20": "benchmark/2026-09-30-unified-r17r-5cd-sweep/runs/unified-r17r-5cd/5cd1e3dd00000000000000000923012c/antennapod/t20.jpeg",
+          "facts": "antennapod           shots 2/2  alive t5=yes t20=yes  child_hilog=32046  foreground_unconfirmed"
+        },
+        {
+          "app": "markor",
+          "board": "5cd",
+          "change": "Markor own UI at t20 with ActivityThread on the dedicated 8 MiB pthread ([CM-BIGSTACK] stack=8390896 in its hilog)",
+          "t20": "benchmark/2026-09-30-unified-r17r-5cd-sweep/runs/unified-r17r-5cd/5cd1e3dd00000000000000000923012c/markor/t20.jpeg",
+          "facts": "markor               shots 2/2  alive t5=yes t20=yes  child_hilog=17106  foreground_unconfirmed"
+        },
+        {
+          "app": "fd-k9",
+          "board": "5cd",
+          "change": "K-9 own UI at t20 with ActivityThread on the dedicated 8 MiB pthread ([CM-BIGSTACK] stack=8390896 in its hilog)",
+          "t20": "benchmark/2026-09-30-unified-r17r-5cd-sweep/runs/unified-r17r-5cd/5cd1e3dd00000000000000000923012c/fd-k9/t20.jpeg",
+          "facts": "fd-k9                shots 2/2  alive t5=yes t20=yes  child_hilog=63384  foreground_unconfirmed"
+        },
+        {
+          "app": "fd-auxio",
+          "board": "5cd",
+          "change": "Auxio own UI at t20 with ActivityThread on the dedicated 8 MiB pthread ([CM-BIGSTACK] stack=8390896 in its hilog)",
+          "t20": "benchmark/2026-09-30-unified-r17r-5cd-sweep/runs/unified-r17r-5cd/5cd1e3dd00000000000000000923012c/fd-auxio/t20.jpeg",
+          "facts": "fd-auxio             shots 2/2  alive t5=yes t20=yes  child_hilog=40392  foreground_unconfirmed"
+        },
+        {
+          "app": "helloworld / zigzag",
+          "board": "61b",
+          "change": "controls, same log line and own UI (cx-t0 native freeze audit)",
+          "t20": "westlake-harness-bms-deploy/benchmark/2026-09-30-asset-fd-runtime/device-61b/runs/asset-fd-{hw,zz}-61b/",
+          "facts": "see westlake-harness-bms-deploy/benchmark/2026-09-30-native-freeze-audit/frozen-draft.json"
+        }
+      ],
+      "mechanism": "[CM-BIGSTACK] ActivityThread on dedicated pthread stack=8390896 bytes in every child",
+      "version": 1,
+      "status": "frozen",
+      "history": []
+    },
+    {
+      "id": "FZ-003",
+      "api": "AssetManager.nativeOpenAssetFd returns a real ParcelFileDescriptor for an uncompressed asset (was 'Implement me')",
+      "frozen_at": "2026-09-30T10:25:00+08:00",
+      "artifacts": [],
+      "sources": [
+        {
+          "repo_path": "benchmark/2026-09-30-asset-fd-runtime/src/android_util_AssetManager_aosp.cpp",
+          "blob": "e47ede07fda2a9a7c3f6f41ce0fd4dcdef733f49",
+          "commit": "8560fd68",
+          "branch": "feat/bms-route-deploy"
+        }
+      ],
+      "source_record": "westlake-harness-bms-deploy 8560fd68 benchmark/2026-09-30-asset-fd-runtime (copied from Westlake 532633da ReturnParcelFileDescriptor; only this object changed in liboh_android_runtime.so 9e14bf20 -> 53f00423)",
+      "verified_apps": [
+        {
+          "app": "newpipe",
+          "board": "61b",
+          "evidence": "t20_lit",
+          "change": "t20 desktop -> own 直播 page (compare_runs variables: 1, runtime only)",
+          "t20": "westlake-harness-bms-deploy/benchmark/2026-09-30-asset-fd-runtime/device-61b/runs/asset-fd-after-61b/61b0657200000000000000000324012c/newpipe/t20.jpeg",
+          "facts": "newpipe              shots 2/2  alive t5=yes t20=yes  child_hilog=38139  foreground_unconfirmed"
+        },
+        {
+          "app": "fd-uhabits",
+          "board": "61b",
+          "evidence": "wall_passed",
+          "change": "UnsupportedOperationException 'Implement me' from nativeOpenAssetFd gone; first fatal moved to hwui 'drawRenderNode called on a context with no surface'",
+          "log": "before westlake-harness-bms-deploy/benchmark/2026-09-30-asset-fd-runtime/device-61b/runs/asset-fd-before-61b/61b0657200000000000000000324012c/fd-uhabits/hilog.txt:32526 (ListHabitsActivity UnsupportedOperationException); after westlake-harness-bms-deploy/benchmark/2026-09-30-asset-fd-runtime/device-61b/runs/asset-fd-after-61b/61b0657200000000000000000324012c/fd-uhabits/hilog.txt: 0 'Implement me', line 40721 skia ASSERT mEglSurface == EGL_NO_SURFACE"
+        }
+      ],
+      "version": 1,
+      "status": "frozen",
+      "history": []
+    }
+  ]
+}
