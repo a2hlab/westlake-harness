@@ -1,5 +1,13 @@
 # JAR public-API freeze inventory — DRAFT for outer-loop review (2026-09-30)
 
+> **2026-09-30 13:5x (outer-loop ACK 93): `registrable-entries.json` is the outer-loop-ready output.**
+> `FZ-002` (conscrypt, 3 apps) and `FZ-003` (alarm, 2 apps) are in the EXACT frozen.json schema and
+> **pass `check_frozen.validate()` (no problems) + `check_sources` against feat/bms-walls (0 blob
+> violations)** — paste into `knowledge/frozen/frozen.json` entries[] as-is (renumber / set frozen_at).
+> binaryeye stays HOLD (1 distinct app; needs a 2nd). `frozen-entries-draft.json` is the fuller working
+> draft with per-entry `split_reverify_j1final` evidence.
+
+
 Per AGENTS.md 做事方式 3 (tiered freeze, user 2026-09-30): a public-API fix verified on **≥2 different
 apps by t20 screenshots** is frozen; frozen source files never change (only the user unfreezes; the outer
 loop may register a new version only for defect|platform|extension with a single-variable compare_runs +

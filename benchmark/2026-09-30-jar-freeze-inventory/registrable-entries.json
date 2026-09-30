@@ -1,0 +1,44 @@
+{
+  "_note": "cc-t3 2026-09-30 (per outer-loop ACK 93 @13:46): JAR freeze entries in the EXACT knowledge/frozen/frozen.json schema (matches FZ-001 + check_frozen.py validate: >=2 distinct verified_apps, >=1 evidence=t20_lit, wall_passed needs a log). READY entries below can be pasted into frozen.json entries[] as-is (renumber FZ-00N if taken; set frozen_at to registration time). git blobs re-verified current on feat/bms-walls (git hash-object). NOT-READY items list what's missing. Paths are workspace-relative.",
+  "ready_to_register": [
+    {
+      "id": "FZ-002",
+      "api": "JAR-layer: sun.security.jca.Providers.jarVerificationProviders[0] rewritten conscrypt->BouncyCastle so getSunProvider() stops throwing 'Sun provider not found' during JAR signature verification on route-A (JarVerificationProviderFix.apply, called from B7BindFixes at bind)",
+      "frozen_at": "2026-09-30T13:55:00+08:00",
+      "artifacts": [],
+      "sources": [
+        {"repo_path": "bms/src/adapter/framework/activity/java/JarVerificationProviderFix.java", "blob": "c7b15f75511ec20e66bca2411fc1a872e61c7521"}
+      ],
+      "source_record": "feat/bms-walls commit cdb82fe5 (split out of B7BindFixes; carried unchanged through J1-final faf0782b, J2 0715c964, J3 75c2068c). build-result-{j1final,j2,j3}.json show the split as an added class; changed_existing stayed the 2 injection targets.",
+      "verified_apps": [
+        {"app": "fd-droidify", "board": "61b", "change": "was 'Sun provider not found' getSunProvider CNF during JAR verify -> main UI", "t20": "westlake-harness/benchmark/2026-09-30-r17p-61b-sweep/runs/r17p-all-61b/61b0657200000000000000000324012c/fd-droidify/t20.jpeg", "facts": "fd-droidify shots 2/2 alive t5=yes t20=yes child_hilog=33399", "evidence": "t20_lit"},
+        {"app": "fd-com-amaze-filemanager", "board": "61b", "change": "conscrypt-path JAR verify no longer throws -> main UI", "t20": "westlake-harness/benchmark/2026-09-30-r17p-61b-sweep/runs/r17p-all-61b/61b0657200000000000000000324012c/fd-com-amaze-filemanager/t20.jpeg", "facts": "fd-com-amaze-filemanager shots 2/2 alive t5=yes t20=yes child_hilog=30518", "evidence": "t20_lit"},
+        {"app": "antennapod", "board": "5ea", "change": "conscrypt-path JAR verify no longer throws -> main UI", "t20": "westlake-harness/benchmark/2026-09-30-r17p-5ea-sweep/runs/r17p-all-5ea/5ea34a4500000000000000001123012c/antennapod/t20.jpeg", "facts": "antennapod shots 2/2 alive t5=yes t20=yes child_hilog=32090", "evidence": "t20_lit"}
+      ]
+    },
+    {
+      "id": "FZ-003",
+      "api": "JAR-layer: ALARM_SERVICE SystemServiceRegistry fetcher replaced with AlarmManager(IAlarmManager, Context) off a type-zero IAlarmManager, so getSystemService(ALARM_SERVICE) is non-null and AndroidAlarmManager.<init> stops NPEing (AlarmVibratorFetcher.install; the same file also carries the J04 vibrator fix)",
+      "frozen_at": "2026-09-30T13:55:00+08:00",
+      "artifacts": [],
+      "sources": [
+        {"repo_path": "bms/src/adapter/framework/activity/java/AlarmVibratorFetcher.java", "blob": "9309104882fc982e885ed164f89345d526560b41"}
+      ],
+      "source_record": "feat/bms-walls commit cdb82fe5 (split out of SystemServiceFetcherStubs; unchanged through J1-final/J2/J3). Also carries J04 vibrator (SystemVibratorManager getVibratorIds->int[0]).",
+      "verified_apps": [
+        {"app": "fd-k9", "board": "5cd", "change": "was AndroidAlarmManager.<init> null ALARM_SERVICE NPE -> own page; hilog '[B8-FETCH] alarm fetcher replaced (prev=android.app.SystemServiceRegistry$7)', 0 fatal, no AndroidAlarmManager NPE", "t20": "westlake-harness/benchmark/2026-09-30-unified-r17r-5cd-sweep/runs/unified-r17r-5cd/5cd1e3dd00000000000000000923012c/fd-k9/t20.jpeg", "facts": "fd-k9 shots 2/2 alive t5=yes t20=yes child_hilog=63384", "evidence": "t20_lit"},
+        {"app": "fd-android", "board": "5cd", "change": "ALARM_SERVICE fetcher non-null -> own page (same 5cd unified state)", "t20": "westlake-harness/benchmark/2026-09-30-unified-r17r-5cd-sweep/runs/unified-r17r-5cd/5cd1e3dd00000000000000000923012c/fd-android/t20.jpeg", "facts": "fd-android shots 2/2 alive t5=yes t20=yes child_hilog=61702", "evidence": "t20_lit"}
+      ],
+      "reverify_note": "J1-final 5ea re-verify: fd-k9 in the protected group t20=yes, hilog '[B8-FETCH] alarm fetcher replaced' at benchmark/2026-09-30-j1final-5ea/runs/j1final-5ea/5ea34a4500000000000000001123012c/fd-k9/hilog.txt. J04 vibrator half confirmed on J1-final (fd-reader vibrator wall passed). This note is not a schema field; drop it on registration or move to source_record."
+    }
+  ],
+  "not_ready": [
+    {
+      "id": "FZ-JAR-binaryeye-getServiceInfo (HOLD)",
+      "api": "JAR-layer: IPackageManager.getServiceInfo (+ explicit resolveService) for the app's OWN package answered from the parsed manifest meta-data, so androidx.camera's getServiceInfo(self MetadataHolderService, GET_META_DATA) stops NameNotFound -> CameraX configures -> no System.exit(1) (SelfServiceFallback)",
+      "source": {"repo_path": "bms/src/adapter/framework/activity/java/SelfServiceFallback.java", "blob": "185c2299ff00baa3622fee1bf4e8dee0d6a4dfbe"},
+      "verified_apps": 1,
+      "missing": "Only fd-binaryeye passes this wall (lit on r17u 5ea + J1-final 5ea + J2/J3 carry it). Needs a 2nd DISTINCT app whose hilog shows a self-package getServiceInfo/resolveService NameNotFound disappearing (another CameraX or self-<service>-metadata app). cc-wiki is scanning. Until then the >=2-distinct-app gate is unmet; do NOT register."
+    }
+  ]
+}
