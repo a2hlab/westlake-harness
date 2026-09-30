@@ -119,6 +119,8 @@ git fetch --all
 
 ## 4. 工具清单(控制端 Mac)
 
+**一键**:解包后在新 Mac 上 `scripts/lab/setup_new_mac.sh`(只报告缺什么)→ `scripts/lab/setup_new_mac.sh install`(装能自动装的:brew 包、OrbStack、Android SDK、mise 的 JDK/Python、venv〔`scripts/lab/venv-requirements.txt`〕、agent-spec、建 VM 并同步 `_a2hlab`、bind mount、dockbuild 镜像)→ 再跑一次 `check` 直到 ALL OK。标 MANUAL 的(Xcode 命令行工具、Homebrew 本身、DevEco Studio、agent CLI、凭据)要你亲手做。下表是它背后的清单。
+
 | 工具 | 本机版本 | 装法 / 备注 |
 |---|---|---|
 | Homebrew | — | `git gh python@3.14 ffmpeg coreutils zig jq zstd rsync mise node` |
