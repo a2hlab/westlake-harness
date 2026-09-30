@@ -9,6 +9,16 @@ import hashlib, json, re, shutil, subprocess, sys, zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 REPORT = Path(__file__).resolve().parent
+
+# Freeze guard (AGENTS.md 做事方式 3, user 2026-09-30): refuse to build the runtime JAR if a frozen
+# source file's git blob changed. Tolerant while this worktree lacks the registry (it lives on master);
+# once knowledge/frozen/frozen.json + scripts/lab/check_frozen.py are present here it is a hard gate.
+_check_frozen = ROOT / 'scripts' / 'lab' / 'check_frozen.py'
+if _check_frozen.exists() and (ROOT / 'knowledge' / 'frozen' / 'frozen.json').exists():
+    subprocess.run([sys.executable, str(_check_frozen), '--source-root', str(ROOT)], check=True)
+else:
+    print('[freeze] check_frozen.py/frozen.json absent in this worktree; freeze guard skipped '
+          '(merge knowledge/frozen/ + scripts/lab/check_frozen.py from master to activate)', file=sys.stderr)
 OUT = Path('/home/zhaoyue/a2hlab/build-runs/20260929-oh6.1.0.31-b7')
 INPUT = OUT / 'inputs'
 BUILD = OUT / ('build-' + (sys.argv[1] if len(sys.argv) > 1 else 'r1'))
