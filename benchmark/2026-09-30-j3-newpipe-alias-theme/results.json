@@ -1,0 +1,29 @@
+{
+  "date": "2026-09-30",
+  "author": "cc-t3",
+  "jar": "J3 75c2068ca9818ea8a61cd2d7e258ef70b36fb426c87036f2f8e2c472d47e6697 (base J2 0715c964 over b5 250958dc; walls feat/bms-walls build-result-j3.json; vm-copies/j3-75c2068c/)",
+  "changed_existing_classes": ["adapter/activity/AppSchedulerBridge.smali", "adapter/activity/PackageManagerProjectionProxy.smali"],
+  "adds_over_j2": {
+    "1_newpipe_bind_diagnostic": {
+      "file": "ActivityManagerBindProxy.java (added helper, edited in place)",
+      "change": "in-process bind failure print -> dumpBindFailure(comp,t): walks full getCause() chain + prints ROOT cause top-5 stack frames. Diagnostic only (the NewPipe fix follows the board chain).",
+      "expected": "[B8-AMB] in-process bind failed for <PlayerService> : <ITE> \\n [B8-AMB]   caused by: <real cause> \\n [B8-AMB]   at <frame> x5",
+      "why": "J2 synthesizes getPackageInfo('android') yet the bind still ITEs in the same ms; the one-line print hid the real internal cause inside the reflective ITE."
+    },
+    "2_fd_api_alias_target_theme": {
+      "file": "AliasTargetTheme.java (NEW added helper) + AppSchedulerBridge injection after LaunchActivityAliasProjection.apply",
+      "change": "activity-alias TARGET re-resolves its OWN manifest theme (ManifestJsonFallback.activityTheme(pkg, targetActivity)) instead of keeping the alias's theme.",
+      "root_cause": "TermuxAPILauncherActivity is an activity-alias -> LaunchActivityAliasProjection rewrites class to TermuxAPIMainActivity (AppCompatActivity) but keeps the alias theme 0x1030237 (@android:Theme.Translucent.NoTitleBar) -> AppCompat onCreate throws 'You need to use a Theme.AppCompat theme'.",
+      "expected": "[B8-ALIASTHEME] com.termux.api.activities.TermuxAPIMainActivity theme re-resolved 0x1030237 -> 0x<AppCompat>; TermuxAPIMainActivity past the AppCompat gate.",
+      "build_note": "LaunchActivityAliasProjection is in build.py ALREADY_SHIPPED (b5 baseline keeps its own copy), so editing that file is dropped. First J3 build 3cfad314 hit this (change silently absent); real J3 75c2068c uses a new helper + injection so changed_existing stays 2."
+    }
+  },
+  "vlc_routed_out": {
+    "verdict": "NOT JAR (resource layer)",
+    "evidence": "J1-final 5ea vlc hilog: [B47-SLA]/[G2.5-SLA-PRE] show OnboardingActivity activityInfo.theme=0x7f1402ec flowed into LaunchActivityItem (resolveActivityTheme already correct); crash is a nested forced ContextThemeWrapper (TintContextWrapper.setTheme) under Theme.VLC.Transparent 0x7f1402f9 where VLC attr 0x7f040072 (index 13) fails to resolve in OH's resource system.",
+    "route": "resource-projection lane (libresourcemanager / OhResourceProjection), not cc-t3 JAR. Three JAR seams exhausted (resolveActivityTheme ai.theme correct-but-not-the-crash-context; getActivityInfo not queried at launch; the crash theme is a nested forced wrapper, native attr resolution)."
+  },
+  "freeze_pass": "3 split blobs re-confirmed current (c7b15f75/9309104882/185c2299, unchanged by J3); each entry gained split_reverify_j1final (J1-final 5ea concrete signal + J2 no-regression note). See benchmark/2026-09-30-jar-freeze-inventory/.",
+  "verify_keys_pending_outer_loop": ["newpipe (read [B8-AMB] cause chain)", "fd-api (expect [B8-ALIASTHEME] + AppCompat gate passed)", "protected group + HW no regression (17+HW as J1-final)", "vlc unchanged (out of JAR)"],
+  "boards": "no lock held; 5ea@cc-wiki (Skia), 5cd@oc-t4 (L2), 61b@N1 to ~12:08. U1 full sweep on 5ea/61b to ~12:55. J3 queued after publish."
+}
