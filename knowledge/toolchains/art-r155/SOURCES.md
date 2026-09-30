@@ -1,7 +1,7 @@
 # R155 ART 补丁序列来源(SOURCES.md)
 
 底座: android-14.0.0 (art-r1 = b6-art14-recovery/art-r1, describe=android-platform-14.0.0_r19, commit 3c05e56adf; R155 同底 kImageVersion 108/kOatVersion 230)。
-目标: 逐字节复现 B6 重建树 art-hanbin(b6-art14-recovery/art-hanbin)在 19 个差异文件上;#20 PRIMCLASS-GUARD 为反汇编补回(art-hanbin 未含)。
+目标: 逐字节复现 B6 重建树 art-hanbin(b6-art14-recovery/art-hanbin)在 19 个差异文件上;#20 PRIMCLASS-GUARD 反汇编补回、#21 apex_available 构建层补回(均 art-hanbin 未含,单列)。
 对账: 两版寒冰补丁 hanbin_adapter/aosp_patches(106)与 HanBingChen/adapter/aosp_patches(108),逐文件应用到 r1 验哪版命中 art-hanbin(43 处不同的逐文件裁决见下)。
 验证: 全 20 补丁 plain `git apply` 到 fresh r1 = ok=20/fail=0,19 文件与 art-hanbin mismatches=0(见 tools/spec-checks d1_patch_series_applies_to_r1)。
 
@@ -27,5 +27,7 @@
 | 18 | 18-runtime__thread.cc.patch | runtime/thread.cc | B6 重建树 art-hanbin 直取(两版寒冰均无此补丁) | 02a7dc13353fc55bbfef1323b7f159e7721156c2d6e949924b3b8956ef30083c |
 | 19 | 19-runtime__thread.h.patch | runtime/thread.h | ~/workspace/hanbin_adapter/aosp_patches/art + ~/orca/HanBingChen/adapter/aosp_patches/art (两版一致) | b7f95cf832b62d8e0f5e7d3e026803beb97e8bed6b5b6ec845dbf9d4c1a44902 |
 | 20 | 20-runtime__mirror__dex_cache-inl.h.patch | runtime/mirror/dex_cache-inl.h | R155 反汇编推回(DIGEST E.7 PRIMCLASS-GUARD;B6 art-hanbin 快照未含,须单列) | 31e8ecf25e786cf269fb23ef0b2f6aa939f0d661b07629773265d0bc15c4c2b2 |
+
+| 21 | 21-apex_available_platform.patch | (28 个 Android.bp,3 与#04/#06/#07 重叠) | HanBingChen apex_available_platform.patch —— 仅构建层(Android.bp),不改运行时代码,T3 平台构建必需;因 art-hanbin 已含部分(unsafe_ignore/frameworks-base),本补丁按 git 3-way merge 生成为 apex 对 (r1+#01-19) 的增量(只加 //apex_available:platform,保留 art-hanbin compile_multilib both) | ce34ce8725307bf30b45c980f6c973545ca3fd006265c46a67969fdd960c913c |
 
 ## 无来源补丁数: 0(每条均标 寒冰目录 / B6 重建树 / 反汇编依据)

@@ -38,10 +38,15 @@ def series_list():
 def sha256(p):
     return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
 
-def patch_target(pf):
-    # first line: --- a/<relpath>
-    first = (PATCHES / pf).read_text().splitlines()[0]
-    return first.split("a/", 1)[1].strip()
+def patch_targets(pf):
+    # all files a patch touches. handles both hand-made (--- a/<path>) and git-diff
+    # (diff --git a/<path> b/<path>) formats. returns list of relpaths.
+    out = []
+    for line in (PATCHES / pf).read_text().splitlines():
+        m = re.match(r"^--- a/(.+)$", line)
+        if m:
+            out.append(m.group(1).strip())
+    return out
 
 def check_apply():
     rec = recovery_dir()
@@ -51,12 +56,20 @@ def check_apply():
               f"(set ART_R155_RECOVERY). Cannot verify apply without art-r1/art-hanbin.")
         return 0
     series = series_list()
-    # target rel paths of each patch
-    targets = [patch_target(pf) for pf in series]
-    diff19 = [t for t in targets if t != "runtime/mirror/dex_cache-inl.h"]  # the 19 r1-vs-hanbin files
+    # all files touched by any patch (for staging the fresh r1 subtree)
+    all_targets = sorted({t for pf in series for t in patch_targets(pf)})
+    # the 19 art-hanbin-derived files = single-file patches numbered 01..19
+    the19 = [patch_targets(pf)[0] for pf in series if re.match(r"^(0[1-9]|1[0-9])-", pf)]
+    # additions that art-hanbin lacks: #20 PRIMCLASS (dex_cache-inl.h, not in the 19) and
+    # #21 apex_available (build-layer; overlaps 3 of the 19 Android.bp -> those become
+    # art-hanbin UNION apex, so exclude them from the byte-identical-vs-art-hanbin check).
+    ADDITION_TOUCHED = {"runtime/mirror/dex_cache-inl.h",
+                        "dexoptanalyzer/Android.bp", "profman/Android.bp",
+                        "libartservice/service/Android.bp"}
+    diff19 = [t for t in the19 if t not in ADDITION_TOUCHED]  # 16 files must match art-hanbin exactly
     with tempfile.TemporaryDirectory() as td:
         td = pathlib.Path(td)
-        for t in targets:
+        for t in all_targets:
             dst = td / t
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(r1 / t, dst)
@@ -73,6 +86,12 @@ def check_apply():
         # PRIMCLASS-GUARD present on the 20th file
         if "PRIMCLASS-GUARD" not in (td / "runtime/mirror/dex_cache-inl.h").read_text():
             print("FAIL: PRIMCLASS-GUARD not applied to dex_cache-inl.h")
+            return 1
+        # #21 apex_available: platform build config present on the overlapping Android.bp,
+        # and art-hanbin's compile_multilib "both" preserved (union not clobbered).
+        dxo = (td / "dexoptanalyzer/Android.bp").read_text()
+        if "//apex_available:platform" not in dxo or '"both"' not in dxo:
+            print("FAIL: apex_available:platform / compile_multilib both missing on dexoptanalyzer")
             return 1
     print(f"OK d1_patch_series_applies_to_r1: {len(series)} patches applied, "
           f"{len(diff19)} files byte-identical to art-hanbin, PRIMCLASS-GUARD applied.")
