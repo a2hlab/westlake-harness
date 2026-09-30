@@ -424,6 +424,47 @@
    "status": "frozen",
    "history": [],
    "approved_by": "outer (claude) 2026-10-01 04:06, after T6c (5cd/61b) and T7c (61b) board passes; draft by cc-wiki 168718b88"
+  },
+  {
+   "id": "FZ-006",
+   "api": "android.os.VibratorManager.getVibratorIds() -> int[0] on route-A: SystemVibratorManager allocated without its constructor, IVibratorManagerService.getVibratorIds() stubbed to int[0], and the constructor-only final mLock seeded so getVibratorIds()'s synchronized(mLock) block runs instead of monitor-entering null.",
+   "frozen_at": "2026-10-01T04:47:08+08:00",
+   "artifacts": [],
+   "sources": [
+    {
+     "repo_path": "bms/src/adapter/framework/activity/java/VibratorFetcher.java",
+     "blob": "e502d0397f52f051397c8b3afa5c77a9f06b073a",
+     "commit": "11e3b4cbd8fc198c75789f592fbe7a302743ff80",
+     "branch": "feat/bms-walls",
+     "note": "single-purpose freeze unit: only replaceFetcher(\"vibrator_manager\"). mLock and the mService int[0] stub act on the SAME allocated SystemVibratorManager instance in one build(), so they are one inseparable fix; the file cannot be split further. Not yet on master (feat/bms-walls; land with the J7b jar)."
+    }
+   ],
+   "source_record": "J7 a6a2537f9 (mLock added) on top of the J04 vibrator_manager split; U6 unified state ACK(95) 2026-10-01 04:36. | carried in oh-adapter-runtime.jar J7b 381110a6 (the jar also carries other fixes, so the freeze is on the source blob, like FZ-004).",
+   "verified_apps": [
+    {
+     "app": "fd-feeder",
+     "board": "5cd",
+     "evidence": "t20_lit",
+     "change": "U5 t20=no -> U6 own-UI at t20 (alive gained U5->U6); the vibrator_manager fetcher clears the getVibratorIds path Feeder hits during startup",
+     "t20": "benchmark/2026-10-01-u6-sweep/5cd/u6-5cd-20261001T034305/5cd1e3dd00000000000000000923012c/fd-feeder/t20.jpeg",
+     "facts": "fd-feeder            shots 2/2  alive t5=yes t20=yes  child_hilog=45559  foreground_unconfirmed"
+    },
+    {
+     "app": "fd-reader",
+     "board": "5ea",
+     "evidence": "wall_passed",
+     "change": "vibrator getVibratorIds NPE cleared; first-fatal moved past the vibrator wall to the tagsoup/XMLReader boot-jar wall",
+     "log": "[B8-FETCH] vibrator_manager SystemVibratorManager allocated (mLock set, getVibratorIds -> int[0])  |  then first-fatal = java.lang.IncompatibleClassChangeError: Class 'org.ccil.cowan.tagsoup.Parser' does not implement interface 'org.xml.sax.XMLReader' ... (android.text.HtmlToSpannedConverter, framework.jar!classes3.dex) -- a different wall, not the vibrator NPE",
+     "t20": "benchmark/2026-10-01-u6-sweep/5ea-resume/u6-5ea-resume/5ea34a4500000000000000001123012c/fd-reader/hilog.txt",
+     "facts": "fd-reader            shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed (wall passed at log level; not lit -- next wall is tagsoup, a boot-jar/T7d matter)"
+    }
+   ],
+   "gates": "compile OK; changed_existing invariant {AppSchedulerBridge, PackageManagerProjectionProxy} held; check_frozen --git 0 violations; G3 0 violations (all verified at J7b build 11e3b4cbd).",
+   "mechanism": "adapter.activity.VibratorFetcher.install() replaces SystemServiceRegistry SYSTEM_SERVICE_FETCHERS[\"vibrator_manager\"] with a fetcher that allocateInstance(SystemVibratorManager) (skips the ctor that would asInterface a null binder), sets mService to a type-zero IVibratorManagerService proxy (getVibratorIds -> int[0]), sets mContext, and seeds the constructor-only final mLock with a fresh Object so SystemVibratorManager.getVibratorIds()'s synchronized(mLock) runs instead of monitor-entering null.",
+   "version": 1,
+   "status": "frozen",
+   "history": [],
+   "approved_by": "outer (claude) 2026-10-01, after the U6 three-board sweep (fd-feeder lit at t20; fd-reader past the vibrator wall); draft by cc-t3"
   }
  ]
 }
