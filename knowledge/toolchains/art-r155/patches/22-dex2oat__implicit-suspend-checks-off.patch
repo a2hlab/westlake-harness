@@ -1,0 +1,17 @@
+# T3c(#91,oc-t4):arm64 关隐式挂起检查 implicit_suspend_checks_ = false。
+# 证据:① oatdump 对照(OATDUMP-DIFF.md)isOHEnvironment() 入口 v3c=显式「ldr w16,[tr];tst #0x7;b.ne」
+#   vs T5b=隐式「ldr x21,[x21]」(R155 未给 x21 装挂起触发页指针 → 读地址 0 被当隐式空检查 abort);
+#   ② r1+21 dex2oat.cc 对 arm64 写死 true;③ Westlake 先例 aosp-art-15 dex2oat.cc
+#   westlake_explicit_null_checks=1 时同关 implicit_suspend_checks_(source-excerpts.txt:886-891)。
+#   只动挂起检查;空检查两版已一致,不动。
+--- a/dex2oat/dex2oat.cc
++++ b/dex2oat/dex2oat.cc
+@@ -856,7 +856,7 @@
+     // Set the compilation target's implicit checks options.
+     switch (compiler_options_->GetInstructionSet()) {
+       case InstructionSet::kArm64:
+-        compiler_options_->implicit_suspend_checks_ = true;
++        compiler_options_->implicit_suspend_checks_ = false;
+         FALLTHROUGH_INTENDED;
+       case InstructionSet::kArm:
+       case InstructionSet::kThumb2:

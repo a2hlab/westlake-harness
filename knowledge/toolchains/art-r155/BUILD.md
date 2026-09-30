@@ -114,6 +114,39 @@ b67b2c08d08acc08 boot-framework.art       6bf57954c60389d6 boot-framework.oat   
 
 ---
 
+## T3c(补丁 #22:arm64 关隐式挂起检查,2026-10-01 00:20,oc-t4)
+
+派单(板 ACK(91) 00:13):oatdump 对照(OATDUMP-DIFF.md)证 T5b 在板上 abort 的强假设是**隐式挂起检查**——isOHEnvironment() 入口 v3c=显式「ldr w16,[tr];tst #0x7;b.ne」vs T5b=隐式「ldr x21,[x21]」(R155 运行时未给 x21 装挂起触发页指针,入口读地址 0 被当首条 dex 指令的隐式空检查 → 「Invalid address for an implicit NullPointerException check: 0x0, at const-string」)。r1+21 dex2oat.cc:859 对 arm64 写死 implicit_suspend_checks_=true ⇒ 21 补丁缺编译器侧这一项。
+
+补丁 #22 `22-dex2oat__implicit-suspend-checks-off.patch`(sha16 b984703ac6767034):dex2oat.cc:859 `true→false`,**只动挂起检查**(空检查两版已一致,不动)。先例:Westlake aosp-art-15 dex2oat.cc 在 `WESTLAKE_EXPLICIT_NULL_CHECKS=1` 时同关 `implicit_suspend_checks_`(westlake-harness-aot42 source-excerpts.txt:886-891)。已入 series(现 22 补丁)。
+
+构建(增量,同 T3b 六环境变量):
+
+```sh
+export ART_USE_READ_BARRIER=false ART_DEFAULT_GC_TYPE=CMS ART_USE_GENERATIONAL_CC=false ART_HEAP_POISONING=false ART_TEST_DEBUG_GC=false
+export ALLOW_MISSING_DEPENDENCIES=true
+source build/envsetup.sh && lunch aosp_arm64-userdebug
+m -j32 dex2oat   # 增量 04:19 绿,log t3c-build.log
+```
+
+产物(host dex2oat64,T3c):
+
+| 文件 | sha256 前 16 |
+|---|---|
+| `out/host/linux-x86/bin/dex2oat64` | `ae865ddd6a7e4b25` |
+
+### T5c 镜像(2026-10-01 00:23,hw248 `/home/alvin/oc-t4-t5c/`)
+
+同 T5b 9 jar(原 adapter-mainline-stubs.jar,非 T7 合一版)+ 同参数,T3c dex2oat64。27/27 出件,vdex 9/9 逐字节同,oat230/image108 OK,kv `concurrent-copying=false`(rb 门 check_boot_oat_rb.py PASS)。boot.oat sha16 `0e7dc0e457463b3d`,boot.art sha16 `6e909d6c4930bd32`。
+
+**oatdump 验证(派单验收点)**:isOHEnvironment() 入口已变显式挂起检查,与 v3c 同型——`sub x16,sp,#0x2000`+`ldr wzr,[x16]`(显式栈探测)、`ldr w16,[tr];state_and_flags`+`tst w16,#0x7`(显式挂起轮询),CodeSize 回 316、code_offset 回 0x4c9f0(与 v3c 同)。T5b 的隐式 `ldr x21,[x21]` 已消除。
+
+t4b 回执:gate 限一文件一围栏,T3c/T5c 回执在 `benchmark/2026-09-30-t4b-build-switch-gate/evidence/T3c-T5c-BUILD-snapshot.md`(6 项环境同 T3b,boot_oat 绑 T5c `0e7dc0e457463b3d991e589c727e0f6bae19e11eedb6ac6fb7ee28ffcdde21b3`,libart 同绑部署件 R155 59e1bb45…,native_debug_build=false);t4b_build_switch_gate.py 对 T5c **pass exit 0**(mismatches=0,exceptions=0,deploy_allowed=true)。
+
+出件后等外环排板做 T6c。
+
+---
+
 ## T3(原始,读屏障开,2026-09-30 20:33)
 
 树:hw248 `/home/alvin/aosp-14.0.0_r1-art`(T2 同步,钉版见 `../aosp-14.0.0_r1-pinned-manifest.xml`)。
