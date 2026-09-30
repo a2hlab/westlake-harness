@@ -40,13 +40,16 @@ The machine-readable registry is `frozen.json`; this page is the readable view. 
 | FZ-001 | START_ABILITIES_FROM_BACKGROUND for BMS-installed bundles (installer grant + own launcher) | libbms.z.so `6aadb8b4…`, libapk_installer.so `7048c7c5…` (source: feat/bms-route-deploy b5a67c62, `benchmark/2026-09-30-installer-background-launcher/`) | Tusky, K-9, Thunderbird, File Manager go from white to their own pages with only the installer changed, on 61b and again on 5cd; same trace goes from WMS denial to `canStartAbilityFromBackground:1` |
 | FZ-002 | Android child ActivityThread on an explicit 8 MiB pthread (big-stack runtime provider) | libwestlake_android_runtime_provider.so `0509fe23…` (Android alias + route-a 74d1 alias; source westlake-harness-bms-deploy `benchmark/2026-09-30-child-stack-default/`) | Tusky, AntennaPod, Markor, K-9, Auxio show their own UI at t20 in the 5cd unified sweep, each hilog has `[CM-BIGSTACK] ActivityThread on dedicated pthread stack=8390896`; HW/ZZ controls on 61b |
 | FZ-003 | `AssetManager.nativeOpenAssetFd` returns a real ParcelFileDescriptor (was 'Implement me') | source blob `e47ede07` of `benchmark/2026-09-30-asset-fd-runtime/src/android_util_AssetManager_aosp.cpp` (feat/bms-route-deploy 8560fd68; copied from Westlake 532633da) | NewPipe lit at t20 on 61b (single variable, runtime only); uhabits passed the wall by log ('Implement me' gone, first fatal moved to hwui no-surface) |
+| FZ-004 | `sun.security.jca.Providers.jarVerificationProviders[0]` rewritten conscrypt → BouncyCastle so JAR signature verification stops throwing "Sun provider not found" (JarVerificationProviderFix, called from B7BindFixes at bind) | source blob `c7b15f75` of `bms/src/adapter/framework/activity/java/JarVerificationProviderFix.java` (feat/bms-walls cdb82fe5, split out; unchanged through J1-final/J2/J3) | Droid-ify (61b), Amaze and AntennaPod (5ea) own UI at t20 in the J3 sweep; each hilog shows the helper rewrite and no Sun-provider failure (audit: westlake-harness-bms benchmark/2026-09-30-freeze-audit-u4, 82b3d42b) |
 
 ## Candidates awaiting an evidence check
+
+- AlarmVibratorFetcher (K-9, Thunderbird lit): held — one file replaces both the alarm and the vibrator_manager service; split the alarm-only part into its own file, re-verify, then freeze (cx-bms audit 82b3d42b).
 
 Listed so they are not forgotten; each needs the ≥2-app t20 evidence and the file-level split before
 it is frozen.
 
-- JAR: conscrypt → BC for `jarVerificationProviders` (r17o), `getSystemService(Class)` name mapping
+- JAR: `getSystemService(Class)` name mapping
   (r17n), SoftwareAndroidKeyStore (r17l), SelfUidPackages, real TLS SSLContext registration (r17s),
   PowerExemptionManager stub (r17q), addToDisplay flag filter (r17r), receiver guard (r17a).
 - Native: appspawn-x AID_INET group (d977bd15),
