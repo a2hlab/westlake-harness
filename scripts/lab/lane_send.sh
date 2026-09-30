@@ -24,6 +24,13 @@ idle() { status | grep -qE 'state (· Idle|✓ Done)'; }
 if ! is_octos; then
   herdr pane run "$PANE" "$TEXT" >/dev/null
   sleep 3
+  # 2026-10-01: dispatches to busy Claude lanes sat queued for 10-20 min behind a long turn (cc-t3 03:14, cc-wiki
+  # 05:16) while boards stood idle. Say so, so an urgent dispatch can interrupt (Escape) and resend. A queued
+  # message is delivered but shown only partly, so it is not probed (06:57 the probe resent a queued dispatch).
+  if herdr pane read "$PANE" 2>/dev/null | grep -q 'queued messages'; then
+    echo "lane_send: $PANE is busy; the dispatch is QUEUED behind the running turn (Escape + resend if urgent)"
+    exit 0
+  fi
   # 2026-10-01 06:50: a dispatch to a codex pane that was just finishing its turn never reached the session
   # (the pane showed only its idle prompt). Check that the text is on screen; resend once if not.
   # Compare the LAST 12 non-space characters (dispatches share their opening words) with all whitespace
@@ -37,14 +44,9 @@ sys.exit(0 if probe in screen else 1)' "$TEXT"; }
     sleep 3
     on_screen || { echo "lane_send: $PANE does not show the dispatch after two sends" >&2; exit 2; }
     echo "lane_send: $PANE needed a resend"
+    exit 0
   fi
-  # 2026-10-01: dispatches to busy Claude lanes sat queued for 10-20 min behind a long turn (cc-t3 03:14, cc-wiki
-  # 05:16) while boards stood idle. Say so, so an urgent dispatch can interrupt (Escape) and resend.
-  if herdr pane read "$PANE" 2>/dev/null | grep -q 'queued messages'; then
-    echo "lane_send: $PANE is busy; the dispatch is QUEUED behind the running turn (Escape + resend if urgent)"
-  else
-    echo "lane_send: $PANE is not an octoscode pane; sent"
-  fi
+  echo "lane_send: $PANE is not an octoscode pane; sent"
   exit 0
 fi
 waited=0
