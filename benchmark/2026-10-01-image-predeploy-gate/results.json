@@ -1,0 +1,35 @@
+{
+  "experiment": "image_predeploy_gate.py — offline G1 (image<->BCP dex-checksum) + G2 (compiled-code suspend-check) gates run before a board window",
+  "date": "2026-10-01",
+  "lane": "cc-wiki",
+  "dispatch": "ACK(95): write knowledge/toolchains/art-r155/image_predeploy_gate.py (G1+G2) and wire into t5_gen_image.sh & t6_board_test.sh; G2 SKIPPED must count as FAIL when the deploy swaps the image or a BCP jar; G1 reads oc-t4 deploy-plan.json; replay T7c-package / T5b / T5c then hand to outer ring to re-run before landing.",
+  "board": "none — fully offline; oatdump is the aosp-14.0.0_r1-art host build on hw248",
+  "reference_image": {"name": "v3c (cc-wiki-v3c-ref)", "role": "board resident good image", "boot_oat_sha16": "25d92cf7df9c86ca"},
+  "gates": {
+    "G1": "image<->BCP dex-checksum consistency: parse each boot-<jar>.vdex kChecksumSection (version 027); compare candidate vs reference per segment; a differing segment not in swap_jars = reject. Replicates the board runtime's load-time checksum verification, offline.",
+    "G2": "compiled-code suspend-check shape: oatdump a loop-bearing probe (java.lang.String#hashCode) from candidate and reference, compare normalized instruction sequence (absolute addresses stripped). Difference = reject. Distinguishes implicit `ldr xN,[xN]` (T5b) from explicit `ldr w16,[tr];tst;bl pTestSuspend` (T5c/v3c).",
+    "skipped_is_fail": "if swap_image or swap_jars (compiled code changes), G2 is REQUIRED; oatdump unavailable => G2=FAIL, not SKIPPED. G2 may be skipped only when changes_compiled_code=false."
+  },
+  "replays": [
+    {"id": "A", "candidate": "T5c", "boot_oat_sha16": "0e7dc0e457463b3d", "deploy": "image-only", "G1": "PASS", "G2": "PASS (hashCode 36==36 insns identical)", "verdict": "PASS", "expected": "PASS", "match": true},
+    {"id": "B", "candidate": "T5b", "boot_oat_sha16": "90f827190482b849", "deploy": "image-only", "G1": "PASS", "G2": "FAIL (32 vs 36 insns; first divergence @insn24 cand 'ldr x21, [x21]' vs ref 'ldr w16, [tr] ; state_and_flags')", "verdict": "FAIL", "expected": "FAIL", "match": true},
+    {"id": "C", "candidate": "T7c", "boot_oat_sha16": "3a2737cd4430f236", "deploy": "image-only (the deploy that aborted on board in CheckSystemClass)", "G1": "FAIL (adapter-mainline-stubs cand 0xf731efbe != ref 0x6bb8936f)", "G2": "FAIL (image rejects oatdump with resident jar)", "verdict": "FAIL", "expected": "FAIL", "match": true},
+    {"id": "D", "candidate": "T7c", "boot_oat_sha16": "3a2737cd4430f236", "deploy": "package: image + adapter-mainline-stubs jar together (--swap adapter-mainline-stubs, cand-bcp = T7c jars)", "G1": "PASS (segment swapped, deployed together)", "G2": "PASS (hashCode 36==36 insns)", "verdict": "PASS", "expected": "PASS", "match": true}
+  ],
+  "provenance": {
+    "T7c_mainline_jar_sha16": "366acc276a39e4fc",
+    "resident_mainline_jar_sha16": "beb369a1173eec0c",
+    "candidate_images_flat27": ["oc-t4-t5c", "oc-t4-t5b", "oc-t4-t7c"],
+    "candidate_bcp_for_T7c": "cc-wiki-t7c-bcp (8 resident jars + T7c adapter-mainline-stubs.jar)",
+    "vdex_version": "027",
+    "probe": "java.lang.String#hashCode"
+  },
+  "wiring": {
+    "gate": "knowledge/toolchains/art-r155/image_predeploy_gate.py",
+    "t5_gen_image.sh": "post-generation gate via env GATE_REF[+GATE_OATDUMP/GATE_BCP/GATE_CAND_BCP/GATE_SWAP] or GATE_PLAN; FAIL -> exit 7",
+    "t6_board_test.sh": "fail-fast preflight BEFORE board lock; FAIL -> refuse deploy, board untouched; unset GATE_REF/GATE_PLAN -> loud warning"
+  },
+  "oatdump_remote_integration": "DONE — driven from the Mac via oc-t4's scripts/lab/oatdump_remote.sh (master 13de64544, LAB_HOME=/home/alvin): T5c vs v3c -> PASS (G1 PASS, G2 36==36), T5b vs v3c -> FAIL (G1 PASS, G2 32 vs 36, insn24 'ldr x21,[x21]' vs 'ldr w16,[tr]'). Identical verdicts to the raw-oatdump replays, proving oatdump_remote.sh is a correct drop-in for --oatdump. The gate picks the --image form by extension: *.sh wrapper gets the real <dir>/arm64/boot.art (it strips arch), raw oatdump gets the <dir>/boot.art location (it inserts arch). Evidence: g2-oatdump_remote-integration.txt.",
+  "next": "hand to outer ring to re-run the 4 replays; land to master after sign-off; then T7c board re-test as a package deploy (replay D config) after U5 wraps.",
+  "verdict": "All 4 replays match expectation. G1 catches T7c offline; G2 catches T5b offline; correct package deploy passes; SKIPPED->FAIL enforced."
+}

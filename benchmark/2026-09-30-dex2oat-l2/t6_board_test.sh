@@ -83,6 +83,31 @@ for rel in $IMG_FILES; do [ -f "$IMGDIR/$rel" ] || { echo "MISSING image file: $
 # L1 verify: the provided files match the reference manifest sha256
 ( cd "$IMGDIR" && shasum -a 256 -c "$SHA_MANIFEST" >/dev/null 2>&1 ) && log "L1: 27 files match boot-image-inputs.sha256" || log "WARN: files differ from reference sha256 (new build = expected; recorded)"
 
+# ---------------- pre-deploy gate (ACK95): refuse an image the board would reject/fault ----------------
+# image_predeploy_gate.py runs OFFLINE (no board): G1 = each image .oat's recorded dex checksum vs the BCP
+# jars that will be in effect after deploy (catches T7c = image-only over a swapped mainline-stubs jar);
+# G2 = a loop-bearing probe method's compiled-code suspend-check shape vs a known-good reference image
+# (catches T5b = implicit `ldr xN,[xN]` suspend check the board R155 libart faults on). Fail-fast: this
+# runs before the board is locked. Configure via env: GATE_REF (resident good image dir, e.g. v3c) is the
+# minimum for G1; add GATE_OATDUMP (oc-t4 oatdump_remote.sh) + GATE_BCP [+ GATE_CAND_BCP for jar swaps]
+# for G2; GATE_SWAP lists jars deployed alongside the image; GATE_PLAN points at a deploy-plan.json.
+GATE="$(cd "$(dirname "$0")" && pwd)/../../knowledge/toolchains/art-r155/image_predeploy_gate.py"
+if [ -n "${GATE_PLAN:-}${GATE_REF:-}" ]; then
+  gargs=(--image "$IMGDIR")
+  [ -n "${GATE_PLAN:-}" ]     && gargs+=(--plan "$GATE_PLAN")
+  [ -n "${GATE_REF:-}" ]      && gargs+=(--reference "$GATE_REF")
+  [ -n "${GATE_SWAP:-}" ]     && gargs+=(--swap "$GATE_SWAP")
+  [ -n "${GATE_OATDUMP:-}" ]  && gargs+=(--oatdump "$GATE_OATDUMP")
+  [ -n "${GATE_BCP:-}" ]      && gargs+=(--bcp-dir "$GATE_BCP")
+  [ -n "${GATE_CAND_BCP:-}" ] && gargs+=(--cand-bcp-dir "$GATE_CAND_BCP")
+  [ -n "${GATE_ARTLIB:-}" ]   && gargs+=(--art-lib "$GATE_ARTLIB")
+  log "pre-deploy gate: image_predeploy_gate.py ${gargs[*]}"
+  if python3 "$GATE" "${gargs[@]}"; then log "pre-deploy gate PASS"; else
+    log "PRE-DEPLOY GATE FAILED -> refusing to deploy (no board locked/touched)"; exit 7; fi
+else
+  log "WARNING: GATE_REF/GATE_PLAN unset -> pre-deploy gate NOT run (ACK95 hole; set GATE_REF[+GATE_OATDUMP] to enforce)"
+fi
+
 if [ "$DRY" = 1 ]; then
   log "DRY-RUN plan:"
   log "  lock $SERIAL ($LANE); preflight boot_id + runtime fingerprint (expect $EXPECT_FP)"

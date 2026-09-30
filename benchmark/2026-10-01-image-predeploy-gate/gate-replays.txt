@@ -1,0 +1,90 @@
+### oatdump_remote.sh present? ###
+---
+======== (A) T5c vs v3c image-only [expect PASS] ========
+# deploy: image=/home/alvin/oc-t4-t5c reference=/home/alvin/cc-wiki-v3c-ref swap_jars=[] changes_compiled_code=True (G2 REQUIRED)
+
+== G1 image<->BCP consistency ==
+  core-oj                cand=['0xc5921b7e'] ref=['0xc5921b7e'] -> ok
+  core-libart            cand=['0xda18313c'] ref=['0xda18313c'] -> ok
+  core-icu4j             cand=['0xb275f87b'] ref=['0xb275f87b'] -> ok
+  okhttp                 cand=['0x828cf469'] ref=['0x828cf469'] -> ok
+  bouncycastle           cand=['0x5b93edde'] ref=['0x5b93edde'] -> ok
+  apache-xml             cand=['0xf5f651c3'] ref=['0xf5f651c3'] -> ok
+  adapter-mainline-stubs cand=['0x6bb8936f'] ref=['0x6bb8936f'] -> ok
+  framework              cand=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] ref=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] -> ok
+  oh-adapter-framework   cand=['0xae231119'] ref=['0xae231119'] -> ok
+  G1: PASS (all segments match the jars in effect)
+== G2 compiled-code suspend-check shape ==
+  probe java.lang.String#hashCode: cand=36 insns, ref=36 insns -> identical
+  G2: PASS
+
+VERDICT: PASS  (G1=PASS G2=PASS)
+exit=0
+======== (B) T5b vs v3c image-only [expect FAIL: G2 implicit suspend] ========
+# deploy: image=/home/alvin/oc-t4-t5b reference=/home/alvin/cc-wiki-v3c-ref swap_jars=[] changes_compiled_code=True (G2 REQUIRED)
+
+== G1 image<->BCP consistency ==
+  core-oj                cand=['0xc5921b7e'] ref=['0xc5921b7e'] -> ok
+  core-libart            cand=['0xda18313c'] ref=['0xda18313c'] -> ok
+  core-icu4j             cand=['0xb275f87b'] ref=['0xb275f87b'] -> ok
+  okhttp                 cand=['0x828cf469'] ref=['0x828cf469'] -> ok
+  bouncycastle           cand=['0x5b93edde'] ref=['0x5b93edde'] -> ok
+  apache-xml             cand=['0xf5f651c3'] ref=['0xf5f651c3'] -> ok
+  adapter-mainline-stubs cand=['0x6bb8936f'] ref=['0x6bb8936f'] -> ok
+  framework              cand=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] ref=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] -> ok
+  oh-adapter-framework   cand=['0xae231119'] ref=['0xae231119'] -> ok
+  G1: PASS (all segments match the jars in effect)
+== G2 compiled-code suspend-check shape ==
+  probe java.lang.String#hashCode: cand=32 insns, ref=36 insns -> MISMATCH
+    first divergence @insn 24: cand='ldr x21, [x21]' ref='ldr w16, [tr] ; state_and_flags'
+  G2: FAIL
+
+VERDICT: FAIL  (G1=PASS G2=FAIL)
+exit=1
+======== (C) T7c vs v3c IMAGE-ONLY no-swap [expect FAIL: G1 mainline mismatch = board abort] ========
+# deploy: image=/home/alvin/oc-t4-t7c reference=/home/alvin/cc-wiki-v3c-ref swap_jars=[] changes_compiled_code=True (G2 REQUIRED)
+
+== G1 image<->BCP consistency ==
+  core-oj                cand=['0xc5921b7e'] ref=['0xc5921b7e'] -> ok
+  core-libart            cand=['0xda18313c'] ref=['0xda18313c'] -> ok
+  core-icu4j             cand=['0xb275f87b'] ref=['0xb275f87b'] -> ok
+  okhttp                 cand=['0x828cf469'] ref=['0x828cf469'] -> ok
+  bouncycastle           cand=['0x5b93edde'] ref=['0x5b93edde'] -> ok
+  apache-xml             cand=['0xf5f651c3'] ref=['0xf5f651c3'] -> ok
+  adapter-mainline-stubs cand=['0xf731efbe'] ref=['0x6bb8936f'] -> MISMATCH
+  framework              cand=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] ref=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] -> ok
+  oh-adapter-framework   cand=['0xae231119'] ref=['0xae231119'] -> ok
+  G1: FAIL (segments not matching the resident jar and not in swap_jars: ['adapter-mainline-stubs'])
+== G2 compiled-code suspend-check shape ==
+  G2: FAIL (empty probe disasm: cand=0 ref=36 insns for java.lang.String#hashCode)
+
+VERDICT: FAIL  (G1=FAIL G2=FAIL)
+exit=1
+======== (D) T7c PACKAGE --swap adapter-mainline-stubs cand-bcp=T7c [expect PASS] ========
+# deploy: image=/home/alvin/oc-t4-t7c reference=/home/alvin/cc-wiki-v3c-ref swap_jars=['adapter-mainline-stubs'] changes_compiled_code=True (G2 REQUIRED)
+
+== G1 image<->BCP consistency ==
+  core-oj                cand=['0xc5921b7e'] ref=['0xc5921b7e'] -> ok
+  core-libart            cand=['0xda18313c'] ref=['0xda18313c'] -> ok
+  core-icu4j             cand=['0xb275f87b'] ref=['0xb275f87b'] -> ok
+  okhttp                 cand=['0x828cf469'] ref=['0x828cf469'] -> ok
+  bouncycastle           cand=['0x5b93edde'] ref=['0x5b93edde'] -> ok
+  apache-xml             cand=['0xf5f651c3'] ref=['0xf5f651c3'] -> ok
+  adapter-mainline-stubs cand=['0xf731efbe'] ref=['0x6bb8936f'] -> swap(deployed together)
+  framework              cand=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] ref=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] -> ok
+  oh-adapter-framework   cand=['0xae231119'] ref=['0xae231119'] -> ok
+  G1: PASS (all segments match the jars in effect)
+== G2 compiled-code suspend-check shape ==
+  probe java.lang.String#hashCode: cand=36 insns, ref=36 insns -> identical
+  G2: PASS
+
+VERDICT: PASS  (G1=PASS G2=PASS)
+exit=0
+======== ENV / provenance ========
+oatdump: /home/alvin/aosp-14.0.0_r1-art/out/host/linux-x86/bin/oatdump (Unknown argument --version)
+images(flat27): oc-t4-t5c oc-t4-t5b oc-t4-t7c ; reference: cc-wiki-v3c-ref
+  oc-t4-t5c/boot.oat: 0e7dc0e457463b3d
+  oc-t4-t5b/boot.oat: 90f827190482b849
+  oc-t4-t7c/boot.oat: 3a2737cd4430f236
+  cc-wiki-v3c-ref/boot.oat: 25d92cf7df9c86ca
+T7c mainline jar: 366acc276a39e4fc  resident: beb369a1173eec0c

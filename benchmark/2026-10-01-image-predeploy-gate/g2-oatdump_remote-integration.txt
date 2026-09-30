@@ -1,0 +1,42 @@
+###### G2 integration via oatdump_remote.sh (Mac -> hw248) ######
+###### (A) T5c vs v3c image-only [expect PASS] ######
+# deploy: image=/Users/zhaoyue/orca/workspaces/_hw248-t5c reference=/Users/zhaoyue/orca/workspaces/westlake-generation-v3c-candidate/payload/android/framework swap_jars=[] changes_compiled_code=True (G2 REQUIRED)
+
+== G1 image<->BCP consistency ==
+  core-oj                cand=['0xc5921b7e'] ref=['0xc5921b7e'] -> ok
+  core-libart            cand=['0xda18313c'] ref=['0xda18313c'] -> ok
+  core-icu4j             cand=['0xb275f87b'] ref=['0xb275f87b'] -> ok
+  okhttp                 cand=['0x828cf469'] ref=['0x828cf469'] -> ok
+  bouncycastle           cand=['0x5b93edde'] ref=['0x5b93edde'] -> ok
+  apache-xml             cand=['0xf5f651c3'] ref=['0xf5f651c3'] -> ok
+  adapter-mainline-stubs cand=['0x6bb8936f'] ref=['0x6bb8936f'] -> ok
+  framework              cand=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] ref=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] -> ok
+  oh-adapter-framework   cand=['0xae231119'] ref=['0xae231119'] -> ok
+  G1: PASS (all segments match the jars in effect)
+== G2 compiled-code suspend-check shape ==
+  probe java.lang.String#hashCode: cand=36 insns, ref=36 insns -> identical
+  G2: PASS
+
+VERDICT: PASS  (G1=PASS G2=PASS)
+exit=0
+###### (B) T5b vs v3c image-only [expect FAIL] ######
+# deploy: image=/Users/zhaoyue/orca/workspaces/_hw248-t5b reference=/Users/zhaoyue/orca/workspaces/westlake-generation-v3c-candidate/payload/android/framework swap_jars=[] changes_compiled_code=True (G2 REQUIRED)
+
+== G1 image<->BCP consistency ==
+  core-oj                cand=['0xc5921b7e'] ref=['0xc5921b7e'] -> ok
+  core-libart            cand=['0xda18313c'] ref=['0xda18313c'] -> ok
+  core-icu4j             cand=['0xb275f87b'] ref=['0xb275f87b'] -> ok
+  okhttp                 cand=['0x828cf469'] ref=['0x828cf469'] -> ok
+  bouncycastle           cand=['0x5b93edde'] ref=['0x5b93edde'] -> ok
+  apache-xml             cand=['0xf5f651c3'] ref=['0xf5f651c3'] -> ok
+  adapter-mainline-stubs cand=['0x6bb8936f'] ref=['0x6bb8936f'] -> ok
+  framework              cand=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] ref=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] -> ok
+  oh-adapter-framework   cand=['0xae231119'] ref=['0xae231119'] -> ok
+  G1: PASS (all segments match the jars in effect)
+== G2 compiled-code suspend-check shape ==
+  probe java.lang.String#hashCode: cand=32 insns, ref=36 insns -> MISMATCH
+    first divergence @insn 24: cand='ldr x21, [x21]' ref='ldr w16, [tr] ; state_and_flags'
+  G2: FAIL
+
+VERDICT: FAIL  (G1=PASS G2=FAIL)
+exit=1

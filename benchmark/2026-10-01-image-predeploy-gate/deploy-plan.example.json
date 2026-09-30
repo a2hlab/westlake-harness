@@ -1,0 +1,41 @@
+{
+  "_comment": "deploy-plan.json schema consumed by image_predeploy_gate.py (--plan). oc-t4 authors this per board deploy. CLI flags override plan fields. Two worked examples below; use ONE object as the actual plan.",
+
+  "_example_T5c_image_only": {
+    "image_dir": "/home/alvin/oc-t4-t5c",
+    "reference_dir": "/home/alvin/cc-wiki-v3c-ref",
+    "swap_jars": [],
+    "swap_image": true,
+    "changes_compiled_code": true,
+    "oatdump": "/home/alvin/oatdump_remote.sh",
+    "bcp_dir": "/home/alvin/cc-wiki-t5/jars",
+    "art_lib": "/home/alvin/aosp-14.0.0_r1-art/out/host/linux-x86/lib64",
+    "probe": "java.lang.String#hashCode"
+  },
+
+  "_example_T7c_package": {
+    "image_dir": "/home/alvin/oc-t4-t7c",
+    "reference_dir": "/home/alvin/cc-wiki-v3c-ref",
+    "swap_jars": ["adapter-mainline-stubs"],
+    "cand_bcp_dir": "/home/alvin/cc-wiki-t7c-bcp",
+    "swap_image": true,
+    "changes_compiled_code": true,
+    "oatdump": "/home/alvin/oatdump_remote.sh",
+    "bcp_dir": "/home/alvin/cc-wiki-t5/jars",
+    "art_lib": "/home/alvin/aosp-14.0.0_r1-art/out/host/linux-x86/lib64",
+    "probe": "java.lang.String#hashCode"
+  },
+
+  "_fields": {
+    "image_dir": "candidate 27-file image dir (arm64/boot.art, or flat boot.art)",
+    "reference_dir": "board resident good image dir (e.g. v3c); the jars in effect after deploy are represented by it",
+    "swap_jars": "BCP jar basenames deployed ALONGSIDE the image (their image segment is self-consistent, skipped by G1)",
+    "cand_bcp_dir": "post-deploy BCP for the candidate (resident jars with swap_jars replaced); needed so oatdump can load a candidate whose jar checksum differs from resident. Defaults to bcp_dir when no jar is swapped",
+    "swap_image": "is a new boot image being deployed at all (true for any image deploy)",
+    "changes_compiled_code": "set false ONLY for a data-only redeploy; false lets G2 be skipped if oatdump is absent. Any image/jar swap => true => G2 REQUIRED (SKIPPED counts as FAIL)",
+    "oatdump": "oatdump binary OR a wrapper (oc-t4 oatdump_remote.sh) accepting --image + --class-filter/--method-filter",
+    "bcp_dir": "the 9 BCP jars used to oatdump the REFERENCE image (raw oatdump -Xbootclasspath)",
+    "art_lib": "LD_LIBRARY_PATH for the raw oatdump host libs; a remote wrapper handles its own",
+    "probe": "class#method for G2; default java.lang.String#hashCode (universal, has a loop back-edge)"
+  }
+}
