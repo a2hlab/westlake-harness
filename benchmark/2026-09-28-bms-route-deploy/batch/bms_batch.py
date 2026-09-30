@@ -913,7 +913,7 @@ def write_facts(out):
                         '(runtime-fingerprint.txt; compare before blaming the JAR across boards)')
         try:  # frozen public-API fixes (AGENTS.md 做事方式 3): a run on a board that drifted from them says so
             import check_frozen
-            checked, bad = check_frozen.check_artifacts(check_frozen.load(check_frozen.REPO/'knowledge/frozen/frozen.json'),
+            checked, bad = check_frozen.check_artifacts(check_frozen.active(check_frozen.load(check_frozen.REPO/'knowledge/frozen/frozen.json')),
                                                         check_frozen.fingerprint_hashes(fp), 'board')
             lines.insert(1, f'FROZEN checked={len(checked)} violations={bad}'
                             + ''.join(f'\n  {l}' for l in checked if l.startswith('FROZEN-VIOLATION')))

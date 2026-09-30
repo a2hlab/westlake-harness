@@ -12,8 +12,14 @@
 --source-root  a worktree of this repo: every frozen source file must exist with the frozen git blob id.
 
 A frozen artifact that a fingerprint/package does not mention is not a violation (that input does not touch
-it). Prints one line per checked item and exits 1 on any mismatch. There is no exception list: only the
-user can unfreeze, by editing the registry.
+it). Prints one line per checked item and exits 1 on any mismatch.
+
+The registry itself is validated first (exit 2 if malformed), because registering a new version is the only
+way to change a frozen file (tiered freeze):
+  - a new version (version > 1) needs `change` = {reason: defect|platform|extension, compare_runs,
+    reverified: every app of the previous version re-lit at t20, full_sweep, approved_by: outer|user}
+    and the previous version kept in `history`;
+  - status "removed" (dropping or weakening the behaviour) needs `removed.approved_by` = "user".
 """
 import argparse
 import hashlib
@@ -27,6 +33,49 @@ REPO = pathlib.Path(__file__).resolve().parents[2]
 
 def load(registry):
     return json.loads(pathlib.Path(registry).read_text())["entries"]
+
+
+REASONS = {"defect", "platform", "extension"}
+
+
+def apps(verified):
+    return {v["app"] for v in verified}
+
+
+def validate(entries):
+    """Registry problems that make a change unauthorised; empty list = registry is well-formed."""
+    problems = []
+    for e in entries:
+        eid, version, status = e.get("id", "?"), e.get("version", 1), e.get("status", "frozen")
+        if status == "removed":
+            if (e.get("removed") or {}).get("approved_by") != "user":
+                problems.append(f"{eid}: removing/weakening a frozen behaviour needs removed.approved_by=user")
+            continue
+        if status != "frozen":
+            problems.append(f"{eid}: unknown status {status!r}")
+        if len(apps(e.get("verified_apps", []))) < 2:
+            problems.append(f"{eid}: frozen with evidence from fewer than 2 apps")
+        history = e.get("history", [])
+        if len(history) != version - 1:
+            problems.append(f"{eid}: version {version} but {len(history)} earlier version(s) kept in history")
+        if version > 1:
+            c = e.get("change") or {}
+            if c.get("reason") not in REASONS:
+                problems.append(f"{eid}: change.reason must be one of {sorted(REASONS)}")
+            for k in ("compare_runs", "full_sweep"):
+                if not c.get(k):
+                    problems.append(f"{eid}: change.{k} missing")
+            if c.get("approved_by") not in ("outer", "user"):
+                problems.append(f"{eid}: change.approved_by must be outer or user")
+            if history:
+                missing = apps(history[-1].get("verified_apps", [])) - set(c.get("reverified", []))
+                if missing:
+                    problems.append(f"{eid}: previous evidence apps not re-lit: {sorted(missing)}")
+    return problems
+
+
+def active(entries):
+    return [e for e in entries if e.get("status", "frozen") == "frozen"]
 
 
 def git_blob(path):
@@ -81,6 +130,11 @@ def main(argv):
     ap.add_argument("--source-root", action="append", default=[])
     a = ap.parse_args(argv)
     entries = load(a.registry)
+    problems = validate(entries)
+    if problems:
+        print("\n".join(f"REGISTRY-INVALID {p}" for p in problems))
+        return 2
+    entries = active(entries)
     lines, bad = [], 0
     for f in a.fingerprint:
         l, b = check_artifacts(entries, fingerprint_hashes(f), f)
