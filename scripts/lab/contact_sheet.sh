@@ -34,7 +34,7 @@ if [[ -n $run ]]; then
         k=$(basename "$d")
         [[ -f $d/record.json || -f $d/$shot.jpeg ]] || continue
         imgs+=("$d/$shot.jpeg"); labels+=("$k")
-    done < <(find "$base" -mindepth 1 -maxdepth 1 -type d | sort)
+    done < <(find -L "$base" -mindepth 1 -maxdepth 1 -type d | sort)   # -L: index views (final/) link each key dir
 fi
 n=${#imgs[@]}
 [[ $n -gt 0 ]] || { echo "contact_sheet: no images" >&2; exit 1; }
