@@ -17,6 +17,27 @@ BUSY = re.compile(r"^\s*state\s+\S+\s+(Working|Orchestrating|Thinking)|^\s*• W
 # session_open_rejected): herdr may still report the pane idle or working, so it is checked separately
 ERRORED = re.compile(r"^\s*state\s+x\s+Error", re.M)
 
+# a pane that stopped because its model/API connection broke looks "done"/"idle" to herdr but did not finish its
+# task: claude "API Error: Connection dropped|lost", codex "Error running remote compact task: Connection failed",
+# octoscode "Turn error runtime_error". Reported as "interrupted" so the outer loop resumes it instead of waiting
+# for an ACK that will never come (2026-09-30: five such stops in one night, each found only by reading the pane).
+INTERRUPTED = re.compile(r"API Error: Connection|Connection lost mid-response|Error running remote .{0,40}Connection"
+                         r"|Turn error runtime_error|failed to send streaming")
+
+
+def classify(status, tail):
+    """herdr status + screen tail -> one of working/idle/blocked/done/gone/session-error/interrupted."""
+    if status == "gone":
+        return "gone"
+    if ERRORED.search(tail):
+        return "session-error"
+    if status in ("idle", "done") and BUSY.search(tail):
+        return "working"
+    if status in ("idle", "done") and INTERRUPTED.search(tail):
+        return "interrupted"
+    return status
+
+
 def tail_of(pane):
     out = subprocess.run(["herdr", "pane", "read", pane], capture_output=True, text=True).stdout
     return "\n".join(out.splitlines()[-12:])
@@ -24,29 +45,32 @@ def tail_of(pane):
 def busy(pane):
     return bool(BUSY.search(tail_of(pane)))
 
-args = sys.argv[1:]
-interval = 20
-if args[:1] == ["--interval"]:
-    interval, args = float(args[1]), args[2:]
-seen = set()
-while True:
-    try:
-        out = subprocess.run(["herdr", "agent", "list"], capture_output=True, text=True, timeout=30).stdout
-        agents = {a["pane_id"]: a.get("status") or a.get("agent_status") for a in json.loads(out)["result"]["agents"]}
-    except Exception:
+def main(args):
+    interval = 20
+    if args[:1] == ["--interval"]:
+        interval, args = float(args[1]), args[2:]
+    seen = set()
+    while True:
+        try:
+            out = subprocess.run(["herdr", "agent", "list"], capture_output=True, text=True, timeout=30).stdout
+            agents = {a["pane_id"]: a.get("status") or a.get("agent_status") for a in json.loads(out)["result"]["agents"]}
+        except Exception:
+            time.sleep(interval)
+            continue
+        for pane in args:
+            st = agents.get(pane, "gone")
+            st = classify(st, tail_of(pane)) if st != "gone" else st
+            if st in ("idle", "blocked", "done", "gone", "session-error", "interrupted"):
+                if pane in seen:
+                    print(f"LANE-STOPPED {pane} {st} {time.strftime('%H:%M:%S')}", flush=True)
+                    tail = subprocess.run(["herdr", "pane", "read", pane], capture_output=True, text=True).stdout
+                    print("\n".join(tail.splitlines()[-25:]))
+                    sys.exit(0)
+                seen.add(pane)
+            else:
+                seen.discard(pane)
         time.sleep(interval)
-        continue
-    for pane in args:
-        st = agents.get(pane, "gone")
-        if st != "gone" and ERRORED.search(tail_of(pane)):
-            st = "session-error"
-        if st in ("idle", "blocked", "done", "gone", "session-error") and not (st in ("idle", "done") and busy(pane)):
-            if pane in seen:
-                print(f"LANE-STOPPED {pane} {st} {time.strftime('%H:%M:%S')}", flush=True)
-                tail = subprocess.run(["herdr", "pane", "read", pane], capture_output=True, text=True).stdout
-                print("\n".join(tail.splitlines()[-25:]))
-                sys.exit(0)
-            seen.add(pane)
-        else:
-            seen.discard(pane)
-    time.sleep(interval)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
