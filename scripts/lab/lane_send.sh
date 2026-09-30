@@ -24,6 +24,20 @@ idle() { status | grep -qE 'state (· Idle|✓ Done)'; }
 if ! is_octos; then
   herdr pane run "$PANE" "$TEXT" >/dev/null
   sleep 3
+  # 2026-10-01 06:50: a dispatch to a codex pane that was just finishing its turn never reached the session
+  # (the pane showed only its idle prompt). Check that the text is on screen; resend once if not.
+  # Compare the LAST 12 non-space characters (dispatches share their opening words) with all whitespace
+  # removed from the screen: the TUI wraps and indents long input. herdr keeps only about a screen of history, so
+  # this runs 3 s after sending, while the typed text is still above the composer.
+  on_screen() { herdr pane read "$PANE" 2>/dev/null | python3 -c '
+import sys; probe = "".join(sys.argv[1].split())[-12:]; screen = "".join(sys.stdin.read().split())
+sys.exit(0 if probe in screen else 1)' "$TEXT"; }
+  if ! on_screen; then
+    herdr pane run "$PANE" "$TEXT" >/dev/null
+    sleep 3
+    on_screen || { echo "lane_send: $PANE does not show the dispatch after two sends" >&2; exit 2; }
+    echo "lane_send: $PANE needed a resend"
+  fi
   # 2026-10-01: dispatches to busy Claude lanes sat queued for 10-20 min behind a long turn (cc-t3 03:14, cc-wiki
   # 05:16) while boards stood idle. Say so, so an urgent dispatch can interrupt (Escape) and resend.
   if herdr pane read "$PANE" 2>/dev/null | grep -q 'queued messages'; then
