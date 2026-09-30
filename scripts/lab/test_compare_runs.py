@@ -130,6 +130,29 @@ class CompareRunsTests(unittest.TestCase):
             out = compare_runs.compare(a, b)
         self.assertEqual(out[0], "variables: 2")
 
+    def test_flaky_key_single_variable_needs_repeats(self):
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", A5, {"/lib/anl.so": "7"}, {"fd-noice": ("yes", "yes")})
+            b = make(f"{t}/b", A5, {"/lib/anl.so": "e"}, {"fd-noice": ("yes", "yes")})
+            out = compare_runs.compare(a, b)
+        self.assertEqual(out[0], "variables: 1")
+        self.assertTrue(out[-1].startswith("verdict: flaky key(s) fd-noice"), out[-1])
+
+    def test_non_flaky_key_single_variable_unchanged(self):
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", A5, {"/lib/anl.so": "7"}, {"aegis": ("yes", "no")})
+            b = make(f"{t}/b", A5, {"/lib/anl.so": "e"}, {"aegis": ("yes", "yes")})
+            out = compare_runs.compare(a, b)
+        self.assertTrue(out[-1].startswith("verdict: single-variable"), out[-1])
+
+    def test_flaky_key_among_others_adds_caution(self):
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", A5, {"/lib/anl.so": "7"}, {"aegis": ("yes", "yes"), "fd-noice": ("yes", "yes")})
+            b = make(f"{t}/b", A5, {"/lib/anl.so": "e"}, {"aegis": ("yes", "yes"), "fd-noice": ("yes", "yes")})
+            out = compare_runs.compare(a, b)
+        self.assertTrue(out[-1].startswith("verdict: single-variable"), out[-1])
+        self.assertTrue(any(l.startswith("caution: flaky key(s) fd-noice") for l in out))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,10 +6,10 @@ repo: A2OH/westlake-harness
 layers: [Verification]
 status: closed
 severity: S2
-recurrence: 5
+recurrence: 7
 fingerprint: verification/ack-counts-not-from-evidence
 issue:
-cards: [EVO-0001, EVO-0010, EVO-0011, EVO-0016, EVO-0036]
+cards: [EVO-0001, EVO-0010, EVO-0011, EVO-0016, EVO-0036, EVO-0039, EVO-0040]
 filed: 2026-09-29
 ---
 
@@ -21,6 +21,7 @@ filed: 2026-09-29
 - EVO-0011(#71):规则广播之后同一错误再犯(0/26 报成 26)。
 - EVO-0016(#76):把 `YAVG=148`(不黑不白)当成「真实内容」,四张实为桌面。
 - EVO-0036(#91,2026-09-30 20:52):外环把车道推断「T5 生成物缺 bootclasspath-checksums 键」当事实采认并据此派单;直接解析板上 boot.oat 只有 8 个 kv 键、本来就没有这个键。同病换了对象:声明没对照它说的那个实物。工具:`scripts/lab/board_append.sh` 对不带对照物(≥7 位哈希或路径)的「采认」告警;同夜另两次手写值(超前的时间戳、从 16 位前缀外推的 SHA)分别由 board_append 的超前时间拒收与 T4b 门的全 SHA 比对拦下。
+- 2026-10-01 EVO-0039:外环把车道「21 补丁缺 2 个 R155 方法」几分钟内写进 DIGEST,没自己 grep 一次(是 grep 截掉数字后缀的误报)。EVO-0040:外环报「路径门 0 违例」时脚本尚未跟踪、门禁没扫到它(实为 17 处),随后又用 `gate | tail -1 && commit` 让失败的门禁照样提交。同病第 7 次:**声明没对照它说的那个实物——这回实物是「门禁实际扫了什么」**。工具:check_user_paths --untracked;RUNBOOK:门禁看自身退出码。
 
 ## 责任步
 

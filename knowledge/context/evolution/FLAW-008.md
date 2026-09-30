@@ -6,10 +6,10 @@ repo: A2OH/westlake-harness
 layers: [Verification]
 status: closed
 severity: S2
-recurrence: 7
+recurrence: 8
 fingerprint: verification/single-cause-without-control
 issue:
-cards: [EVO-0028, EVO-0029, EVO-0030, EVO-0031, EVO-0037]
+cards: [EVO-0028, EVO-0029, EVO-0030, EVO-0031, EVO-0037, EVO-0038]
 filed: 2026-09-30
 ---
 
@@ -25,6 +25,7 @@ filed: 2026-09-30
 
 - 07:25 外环以「32df 在 5ea 的独有损失是 AntennaPod」回滚 32df;cc-wiki 07:41 清装矩阵表明是 r17r 与 app 数据损坏(一次崩溃写坏 WorkManager 库,不重装就一直崩),32df 未经受控验证(EVO-0031)。第 6 次,并暴露第三类变量:app 数据状态。
 - 22:19 外环采认「读屏障是 T6 的根因(功能性坐实)」:T6 判别换的是整套 27 个 boot 镜像文件,读屏障只是 T5 与 v3c 之间众多差异之一,runtime-fingerprint.txt 却「不变」(它不含 boot 镜像);当作症状的「子进程集体 SIGILL」是常规 sigchain 行。正式 T6 用读屏障关的 T5b 仍不亮(EVO-0037)。第 7 次,并暴露第四类变量:指纹没覆盖的 boot 镜像。
+- 2026-10-01 00:10 外环据「逐件换回」二分(每步只跑 1 次)采认「fd-noice 回退 = N3b 的 ANL」并写进 DIGEST 与 N4 定版;双板单变量 A/B 各 3 次:两版 ANL 都是 2/6 亮(EVO-0038)。第 8 次,新形态:**不稳定 app 的单次观测**;且白屏时进程仍活,存活表不翻转,compare_runs 原先看不见它。工具:knowledge/gates/flaky-keys.json + compare_runs 对登记的 key 降级判词为「每边 ≥3 次」,重放该二分现在给出 flaky 判词。
 
 ## 责任步
 

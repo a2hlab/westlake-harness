@@ -80,6 +80,14 @@ def alive(line):
     return m.groups() if m else None
 
 
+def flaky_keys(path=None):
+    path = pathlib.Path(path) if path else pathlib.Path(__file__).resolve().parents[2] / "knowledge/gates/flaky-keys.json"
+    try:
+        return {e["key"] for e in json.loads(path.read_text())["keys"]}
+    except (OSError, ValueError, KeyError, TypeError):
+        return set()
+
+
 def compare(a, b, keys=None):
     da, db = device_dir(a), device_dir(b)
     fa, fb = fingerprint(da), fingerprint(db)
@@ -127,7 +135,17 @@ def compare(a, b, keys=None):
     lines = [f"variables: {len(variables)}"] + [f"  {v}" for v in variables] + notes
     for k in keys:
         lines += [f"key {k}", f"  A {ra.get(k, '?')}", f"  B {rb.get(k, '?')}"]
-    if len(variables) == 1:
+    # EVO-0038: a single-run bisect step on fd-noice was taken as the cause; it lights ~1 in 3 on any build, and its
+    # white screen leaves the process alive, so it never shows up as a liveness flip -- check every key compared
+    present = set(ra) & set(rb)
+    flaky = sorted(present & flaky_keys())
+    caution = (f"flaky key(s) {', '.join(flaky)} (knowledge/gates/flaky-keys.json): one run per side cannot "
+               "attribute their result; repeat >=3 runs per side and compare rates")
+    if flaky and len(variables) == 1 and present <= set(flaky):
+        lines.append("verdict: " + caution)
+    elif len(variables) == 1:
+        if flaky:
+            lines.append("caution: " + caution)
         lines.append("verdict: single-variable comparison; a difference may be attributed to it")
     elif variables:
         lines.append(f"verdict: {len(variables)} variables differ; any single-cause attribution is a hypothesis "
