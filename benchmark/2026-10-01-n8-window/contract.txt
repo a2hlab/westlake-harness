@@ -1,0 +1,42 @@
+# Task Contract: N8 bounded control window
+
+## Intent
+Verify or reject N8 without leaving a changed board behind.
+
+## Must
+- Only 61b, held by cx-t0, for at most 30 minutes; rollback U5 before release.
+- ZigZag requires same-window U5 t20 and three N8 t20 images; any failure ends candidate tests.
+- The 185 candidate exceptions are temporary and exact-bound; permanent table contains only the approved 257 A entries.
+- No push; do not edit master or other lanes' files.
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-01-n8-window/**
+- scripts/lab/deployment_native_gate.py
+- specs/native-n8-window/**
+- tools/spec-checks/tests/native_n8_window.rs
+- README.md
+Forbidden:
+- Changes to payload bytes or commands to other boards
+
+## Completion Criteria
+Scenario: Exact one-window grant
+  Test:
+    Filter: n8_window_grant
+  Given approved N8 identity and 185 findings
+  When serial expiry status or counts differ
+  Then activation is refused and U5 restoration remains possible
+
+Scenario: Cleanup owns every exit
+  Test:
+    Filter: n8_window_cleanup
+  Given a control or activation failure
+  When the supervisor exits
+  Then it restores U5 before unlocking and failed restore retains the lock
+
+Scenario: Evidence and final identity
+  Test:
+    Filter: n8_window_evidence
+  Given the completed short window
+  When raw facts t20 images and final receipt are collected
+  Then the result distinguishes controls from unrun targets and records verified U5 restoration

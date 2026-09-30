@@ -1,0 +1,54 @@
+# Task Contract: N7 offline owner routing and shim candidate
+
+## Intent
+Route six Flutter packages through the existing U5 window adapter and integrate the accepted bionic shims.
+
+## Decisions
+- Identify actual U5 library owners from app-scoped maps before selecting the wrapper.
+- Reuse resident HWUI window conversion and platform EGL/GLES implementations; global exports alone are insufficient.
+- Copy oc-t4's two shim sources, retain existing exports and compare N1/N2 findings to U5.
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-01-n7-native/**
+- bms/src/adapter/framework/appspawn-x/bionic_compat/src/strerror_r_compat.cpp
+- bms/src/adapter/framework/appspawn-x/bionic_compat/src/dlopen_ext_compat.cpp
+- specs/native-n7/**
+- tools/spec-checks/**
+- README.md
+- .octos/KNOWLEDGE-DIGEST.md
+Forbidden:
+- Board writes and gate bypasses
+- Claiming ELF exports prove runtime binding or rendering
+
+## Completion Criteria
+Scenario: Explicit dispatch and unchanged controls
+  Test:
+    Filter: n7_dispatch
+  Given U5 app-scoped maps and resident wrapper symbols
+  When direct EGL calls and proc-address calls use the candidate
+  Then window calls reach the supplied wrapper and unrelated calls reach the supplied platform owner
+  And control domains retain their previous configuration
+
+Scenario: Accepted bionic additions
+  Test:
+    Filter: n7_bionic
+  Given the two accepted oc-t4 sources
+  When compiling and testing the candidate
+  Then both exports exist and previous exports remain available
+
+Scenario: Source-bound candidate gates
+  Test:
+    Filter: n7_package
+  Given an offline candidate with exact payload and source hashes
+  When N1 and N2 are compared with signed U5
+  Then new findings are listed separately and unapproved findings still reject deployment
+  And device binding rendering and duplicate outcomes remain unverified
+
+Scenario: Realm zlib alias
+  Test:
+    Filter: n7_zlib
+  Given the accepted r109c 1904-byte alias
+  When Realm resolves libz.so in the Westlake native domain
+  Then the alias declares SONAME libz.so and NEEDED libshared_libz.z.so
+  And no OH system library bytes or SONAME are changed

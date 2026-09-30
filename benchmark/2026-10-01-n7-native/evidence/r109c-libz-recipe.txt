@@ -1,0 +1,17 @@
+build_android_zlib_soname_alias()
+{
+    local pass=$1
+    local dir=$OUT/$pass/zlib
+    record "$CC" \
+        "--target=$TARGET" \
+        "--sysroot=$SYSROOT" \
+        -B"$TOOLCHAIN/bin" -B"$TARGET_LIB" \
+        -fuse-ld=lld -nostdlib -shared \
+        -Wl,-z,defs -Wl,-z,now -Wl,-z,relro \
+        -Wl,--no-undefined -Wl,--fatal-warnings \
+        -Wl,--build-id=sha1 -Wl,--hash-style=both \
+        -Wl,-soname,libz.so \
+        -L"$dir" \
+        -Wl,--no-as-needed -l:libshared_libz.z.so \
+        -o "$dir/libz.so"
+}

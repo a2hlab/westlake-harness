@@ -1,0 +1,23 @@
+--- N4/AndroidRuntime.cpp
++++ N4-order/AndroidRuntime.cpp
+@@ -663,15 +663,17 @@
+         // for (Surface / BLASTBufferQueue / DisplayEventReceiver).
+         // MUST run AFTER libhwui's register loop above so our overrides win.
+         register_android_graphics_compat_shim(env);
++        // GetFieldID below initializes EGLContextImpl -> EGLContext -> GLImpl.
++        // Bind GLImpl natives first, before that Java initialization can run.
++        if (n2_register_GLImpl(env) != 0 || env->ExceptionCheck()) {
++            env->ExceptionDescribe(); env->ExceptionClear();
++        }
+         if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {
+             if (env->ExceptionCheck()) env->ExceptionDescribe();
+             fprintf(stderr, "[N4-EGLImpl] registration/field cache failed\n");
+             env->PopLocalFrame(nullptr);
+             return -1;
+         } else fprintf(stderr, "[N3-EGLImpl] full Westlake table registered\n");
+-        if (n2_register_GLImpl(env) != 0 || env->ExceptionCheck()) {
+-            env->ExceptionDescribe(); env->ExceptionClear();
+-        }
+         if (register_n2_Camera(env) != 0 || env->ExceptionCheck()) {
+             env->ExceptionDescribe(); env->ExceptionClear();
+         }

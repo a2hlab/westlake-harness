@@ -94,6 +94,18 @@ kind of work from where the corpus started
 |---|---|
 | **[Bridge 846 provenance](benchmark/2026-10-01-bridge-846-provenance/)** | Exact artifact archive; partial frozen source; missing reproducible build chain; native gate handoff. |
 | **[N9 damage investigation](benchmark/2026-10-01-n9-first-damage/)** | OH6.1 empty-Region fallback is full-window damage; candidate paused, first-frame dimensions unobserved. |
+| **[N8 bounded window](benchmark/2026-10-01-n8-window/)** | ZZ 3/3 own UI; Flutter incomplete acceptance, U5 restored; raw evidence. |
+| **`benchmark/2026-10-01-n7-native/`** | Explicit Flutter EGL owner candidate, bionic additions and r109c Realm zlib alias; offline gates and one-window proposal. |
+| **`benchmark/2026-10-01-n8-native/`** | Offline N7 root-zlib removal candidate, exact retained hashes and fresh native-gate binding; no inherited window grant. |
+| **`benchmark/2026-10-01-u7-generation-format/`** | Offline compound generation format: 27 images/stubs group, runtime JAR and native; real G1/G2, freeze checks, rollback plan and rejection tests. |
+| **`benchmark/2026-10-01-n7-window/`** | N7 on 61b: HW renders, ZigZag inflateInit2_ fatal; control gate rejected and U5 restored within the window. |
+| **[`benchmark/2026-10-01-n6-native/`](benchmark/2026-10-01-n6-native/)** | R155 window unwrapping in the six-package private ABI; strict gate and bounded device evidence. |
+| **`benchmark/2026-10-01-n5-window/`** | Approved expiring N5 window, LocalSend five-library maps comparison, and verified U5 rollback; double liblog is preexisting. |
+| **`benchmark/2026-10-01-n5-baseline-gates/`** | Read-only 5ea ELF snapshot, matched U5/N5 strict gates, and per-finding exception proposal awaiting outer review. |
+| **`benchmark/2026-10-01-n5-native/`** | Six-package Flutter lookup candidate and strict N1/N2 deployment preflight; offline candidate remains rejected with disclosed unknowns. |
+| **`benchmark/2026-10-01-u5-flaky-probe/`** | Nine single-key clean-install U5 repeats on 5ea, fixed fingerprints and per-trial screenshots/facts. |
+| **`benchmark/2026-10-01-u5-sweep/`** | U5 J6 + N4-order, 66-key three-board shards, control evidence and retained candidate fingerprints. |
+| **`benchmark/2026-10-01-j6-n4-sweep/`** | N4 dual-board startup failure, EGL/GL JNI registration-order correction and bounded probes (planned J6 sweep did not start). |
 | **`benchmark/2026-10-01-native-gate-landing/`** | Deployment pre-dispatch N1/N2 wiring and 257 explicitly approved baseline exceptions, with U5 pass/N8 refusal dry-runs. |
 | **`benchmark/2026-09-29-bms-link-entry-walls/`** | **B7 #54 (5cd): first causes of the 7 UnsatisfiedLinkError/"ART entry" apps; runtime JAR overlay (user binder, nativeLibraryDir fallback, B5 alias) crosses two walls; installer DECLARED_XML_ONLY placeholder lets fd-k9 install; SQLite/Flutter blocked on route-A pins.** |
 | **`benchmark/2026-09-29-white-window/`** | **#61/#62 offline white-window diagnosis: 9 target logs, separate bind failures, native AbilityStage replies and a 49/49 JNI-layout match to the no-reply generation; no device execution.** |
