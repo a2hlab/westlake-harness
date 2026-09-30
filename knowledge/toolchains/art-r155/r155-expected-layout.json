@@ -1,0 +1,19 @@
+{
+  "title": "T4 baseline: R155 board libart layout expectations (binary + source)",
+  "r155_libart": {"sha256_prefix": "59e1bb45", "local_copy": "westlake-generation-*/payload/route/libart.so (板上同一文件)"},
+  "binary_ground_truth": {
+    "kImageVersion": "108",
+    "kOatVersion": "230",
+    "note": "extracted from libart.so via art\\n108 / oat\\n230 magic+version scan; kImageVersion cross-checked against ImageHeader::kImageVersion symbol .rodata bytes (31 30 38 00)."
+  },
+  "check_system_class_covered": [
+    "Ljava/lang/Object; -> mirror::Object (runtime/mirror/object.h)",
+    "Ljava/lang/String; -> mirror::String (runtime/mirror/string.h)",
+    "Ljava/lang/DexCache; -> mirror::DexCache (runtime/mirror/dex_cache.h)",
+    "Ldalvik/system/ClassExt; -> mirror::ClassExt (runtime/mirror/class_ext.h)",
+    "Ljava/lang/Class; -> mirror::Class (runtime/mirror/class.h)",
+    "Ljava/lang/ref/Reference; -> mirror::Reference (runtime/mirror/reference.h)"
+  ],
+  "method_finding": "R155 libart.so has full .symtab but MINIMAL DWARF (only musl crt CUs; 0 mirror types) and inlined mirror accessors and NO CheckAsmSupportOffsetsAndSizes symbol -> per-field mirror OFFSETS are NOT directly binary-extractable. Layout gate = (A) binary version cross-check [this JSON + t4_layout_compare.py] + (B) source offsetof via cpp-define-generator on (r1 + T1 series) vs T3 tree.",
+  "gate": "d4_mirror_layouts_match_board: layer A versions match board R155 (108/230); layer B mirror(6)+Thread+ImageHeader/OatHeader field offsets diff == 0 (needs T3 tree)."
+}

@@ -33,3 +33,15 @@ CheckSystemClass 内部(class_linker.cc:602+)比 c1(运行时类)对象大小与
 
 ## 待 T3
 需 T3 产出新编 libart(及其 art 源树 + build flags)才能编 dumper;板上 R155 libart 59e1bb45 的期望值可先离线从反汇编/boot.art 预取。
+
+## 更新(offline T4-prep 勘查 R155 libart 二进制,cc-wiki)
+
+对本地 R155 libart.so(sha 59e1bb45,板上同一文件,`westlake-generation-*/payload/route/libart.so`)勘查:
+- **有全 .symtab(17566 符号,含 `ClassLinker::CheckSystemClass` @0x339840)**,但 **DWARF 极小**(仅 musl crt CU,0 个 mirror 类型)、**mirror 访问器内联**、**无 `CheckAsmSupportOffsetsAndSizes` 符号** → **per-field mirror 偏移无法直接从 R155 二进制取**。
+- **二进制可取的 ground truth = 版本常量**:`art\n108`(ImageHeader kImageVersion,另经 `ImageHeader::kImageVersion` 符号 .rodata 字节 `31 30 38 00` 交叉核)、`oat\n230`(OatHeader kOatVersion)。
+
+因此 T4 布局闸门分两层:
+- **A 二进制交叉核(现可跑,非循环)**:`t4_layout_compare.py compare <r155-libart.so> <new-libart.so>` —— kImageVersion/kOatVersion 必须与板上 R155 一致(108/230)。基线 `r155-expected-layout.json`。
+- **B 源码 offsetof(等 T3 树)**:6 个 mirror 类 + Thread + ImageHeader/OatHeader 全字段偏移,用 ART 自带 `cpp-define-generator`(T3 构建即产)在 (r1 + 本目录 series) 与 T3 树上各跑一次、逐项 diff==0。R155 源基线 = (r1 + T1 series)(T1 已证逐字节复现 art-hanbin);A 层把格式版本钉到真板二进制,使 B 不纯自证。
+
+**给外环的一条**:R155 libart 二进制因无 mirror DWARF、访问器内联,不能直接吐出 CheckSystemClass 那 6 类的字段偏移期望;能二进制钉死的是 image/oat 格式版本(108/230)。全字段布局比对须在 T3 交出 ART 树后走 cpp-define-generator 源码级 diff(脚本与基线已备)。T3 请一并交出其 `out/.../asm_support_gen.h`(或允许我在其树跑 cpp-define-generator),我即出布局差异表。
