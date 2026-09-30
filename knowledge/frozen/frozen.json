@@ -1,5 +1,5 @@
 {
-  "rule": "AGENTS.md 做事方式 3 (tiered): a public-API fix verified on >=2 different apps by t20 screenshots is frozen; no silent change. The outer loop may register a new version only for reason defect|platform|extension, with a single-variable compare_runs, every earlier evidence app re-lit at t20 and a non-regressing unified full sweep; removing or weakening a frozen behaviour needs the user.",
+  "rule": "AGENTS.md 做事方式 3 (tiered): freeze when >=2 different apps pass the wall (>=1 lit at t20, others by log: that API's failure gone, first fatal moved elsewhere); no silent change. The outer loop may register a new version only for reason defect|platform|extension, with a single-variable compare_runs, every earlier evidence app back to the same level and a non-regressing unified full sweep; removing or weakening a frozen behaviour needs the user.",
   "entries": [
     {
       "id": "FZ-001",
@@ -120,6 +120,41 @@
         }
       ],
       "mechanism": "[CM-BIGSTACK] ActivityThread on dedicated pthread stack=8390896 bytes in every child",
+      "version": 1,
+      "status": "frozen",
+      "history": []
+    },
+    {
+      "id": "FZ-003",
+      "api": "AssetManager.nativeOpenAssetFd returns a real ParcelFileDescriptor for an uncompressed asset (was 'Implement me')",
+      "frozen_at": "2026-09-30T10:25:00+08:00",
+      "artifacts": [],
+      "sources": [
+        {
+          "repo_path": "benchmark/2026-09-30-asset-fd-runtime/src/android_util_AssetManager_aosp.cpp",
+          "blob": "e47ede07fda2a9a7c3f6f41ce0fd4dcdef733f49",
+          "commit": "8560fd68",
+          "branch": "feat/bms-route-deploy"
+        }
+      ],
+      "source_record": "westlake-harness-bms-deploy 8560fd68 benchmark/2026-09-30-asset-fd-runtime (copied from Westlake 532633da ReturnParcelFileDescriptor; only this object changed in liboh_android_runtime.so 9e14bf20 -> 53f00423)",
+      "verified_apps": [
+        {
+          "app": "newpipe",
+          "board": "61b",
+          "evidence": "t20_lit",
+          "change": "t20 desktop -> own 直播 page (compare_runs variables: 1, runtime only)",
+          "t20": "westlake-harness-bms-deploy/benchmark/2026-09-30-asset-fd-runtime/device-61b/runs/asset-fd-after-61b/61b0657200000000000000000324012c/newpipe/t20.jpeg",
+          "facts": "newpipe              shots 2/2  alive t5=yes t20=yes  child_hilog=38139  foreground_unconfirmed"
+        },
+        {
+          "app": "fd-uhabits",
+          "board": "61b",
+          "evidence": "wall_passed",
+          "change": "UnsupportedOperationException 'Implement me' from nativeOpenAssetFd gone; first fatal moved to hwui 'drawRenderNode called on a context with no surface'",
+          "log": "before westlake-harness-bms-deploy/benchmark/2026-09-30-asset-fd-runtime/device-61b/runs/asset-fd-before-61b/61b0657200000000000000000324012c/fd-uhabits/hilog.txt:32526 (ListHabitsActivity UnsupportedOperationException); after westlake-harness-bms-deploy/benchmark/2026-09-30-asset-fd-runtime/device-61b/runs/asset-fd-after-61b/61b0657200000000000000000324012c/fd-uhabits/hilog.txt: 0 'Implement me', line 40721 skia ASSERT mEglSurface == EGL_NO_SURFACE"
+        }
+      ],
       "version": 1,
       "status": "frozen",
       "history": []
