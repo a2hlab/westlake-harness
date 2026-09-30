@@ -1,0 +1,11 @@
+# Native frozen-fix inventory and deployment gate
+
+Previous handoffs mixed shipped bytes, library presence, and actual repaired API behavior. This audit records the v3c manifest's real SHA, not superseded handoff hashes: TLS is 39c2cfe9 and gapfill is d1a1961d. The four extra bionic/NDK facade files (libc, GLESv2, stdc++, OpenSLES) and the separately rebuilt liblog are listed independently.
+
+inventory.json includes every requested family. Only the big-stack provider has two directly correlated examples here: HW and ZigZag execute the dedicated 8 MiB thread path, then show their own t20 UI. The t20/facts/record paths and exact mechanism lines are attached. frozen-draft.json is for outer registration, not a silent registry change. The proof is for dedicated-thread startup, not Wikipedia stability. Other items retain explicit gaps; controls are not invented as consumers of an unrelated fix. Repeated Auxio on two boards is one app, and loaded TLS is not a successful real handshake.
+
+VelocityTracker is a source-freeze candidate, not a whole-runtime SHA freeze. Its implementation file blob is recorded, but the shared AndroidRuntime.cpp registration must first be separated and a second affected app validated. No source was split or rebuilt in this read-only inventory. Asset-fd has one affected t20 success and is not eligible.
+
+deploy_generation.sh delegates to deploy_generation.py. That entry point now invokes the repository check_frozen.py --package before dry-run, Mac VM dispatch, or device construction. It uses the repository registry, never a checker supplied by the package. All deployment modes share the check. Rollback checks the actual previous package and raw underlay SHA/absence before stop/unmount, including automatic recovery. Policy violations raise and prevent writes; no exception/disable flag exists. CLI stdout remains JSON-compatible; checker diagnostics go to stderr. Tests include deliberate changed-installer input, unrelated input, every mode before dispatch, changed/absent rollback and single rollback before stop.
+
+No board access was needed. No unsupported claim of lifecycle completion: board 90 assigns no spec. Register ready drafts only after outer review; unresolved items remain unfrozen until the required evidence exists.

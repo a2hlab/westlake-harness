@@ -524,3 +524,5 @@ at a time; structured events carry package, APK hash, runtime lock, run, and sce
 Paths in these documents are written as environment variables (`$WESTLAKE_ROOT`, `$BRIDGE_ARM64`,
 `$OHOS_SDK`, `$HDC`, `$BOARD_SERIAL`, …) rather than absolute local paths. See `env.sample.sh`.
 Device serials, usernames and host paths are deliberately excluded from this repo.
+
+| **Native freeze audit (2026-09-30)** | [Evidence inventory and deploy gate](benchmark/2026-09-30-native-freeze-audit/README.md) |

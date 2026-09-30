@@ -62,6 +62,32 @@ def load_package(package):
         raise ValueError('wrong stage/accept-want bridge')
     return m
 
+def check_frozen_package(package):
+    """Use the repository registry, never a package-supplied checker/registry."""
+    checker = Path(__file__).with_name('check_frozen.py')
+    result = subprocess.run([sys.executable, str(checker), '--package', str(package)],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result.stdout: print(result.stdout, file=sys.stderr, end='')
+    if result.stderr: print(result.stderr, file=sys.stderr, end='')
+    if result.returncode:
+        raise RuntimeError('frozen API package gate refused deployment')
+
+
+def check_frozen_restore(hashes, absent=()):
+    """Raw underlay rollback must also preserve frozen artifact identities."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("deployment_frozen_checker", Path(__file__).with_name("check_frozen.py"))
+    check_frozen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(check_frozen)
+    entries = check_frozen.load(Path(__file__).resolve().parents[2] /
+                                'knowledge/frozen/frozen.json')
+    candidate = dict(hashes)
+    candidate.update({path: 'absent' for path in absent})
+    lines, bad = check_frozen.check_artifacts(entries, candidate, 'rollback')
+    if bad:
+        raise RuntimeError('frozen API rollback gate refused: ' + '; '.join(lines))
+
+
 def check_maps(text, generation=GEN):
     found = {n: [] for n in ['libart.so', 'libopenjdkjvm.so', 'liboh_adapter_bridge.so']}
     for line in text.splitlines():
@@ -235,6 +261,8 @@ class Deployment:
             raise RuntimeError('replacement mount changed externally: ' + row['target'])
         old_package = Path(row['previous_package'])
         old = load_package(old_package)
+        check_frozen_package(old_package)
+        if row.get('addition'): check_frozen_restore({}, [row['target']])
         if sha(old_package / 'package.json') != row['previous_package_sha256']:
             raise RuntimeError('rollback package changed')
         self.stop()
@@ -308,6 +336,13 @@ class Deployment:
 
     def rollback(self):
         if not self.d or self.d['status'] == 'rolled_back': raise RuntimeError('no active deployment in this boot')
+        # Check the complete restore sequence before the first stop/unmount.
+        check_frozen_restore(self.d.get('before', {}), self.d.get('before_absent', []))
+        for row in self.d.get('single_replacements', []):
+            check_frozen_package(Path(row['previous_package']))
+            if row.get('addition'): check_frozen_restore({}, [row['target']])
+        previous = self.d.get('previous_deployment')
+        if previous: check_frozen_package(Path(previous['package_path']))
         while self.d.get('single_replacements'): self.rollback_single(verify=False)
         previous = self.d.get('previous_deployment')
         if previous:
@@ -466,6 +501,7 @@ def main(argv=None):
     p.add_argument('--state-root', type=Path, default=Path('/Users/zhaoyue/orca/workspaces/westlake-generation-state'))
     a = p.parse_args(argv); a.package = a.package.resolve()
     m = load_package(a.package)
+    check_frozen_package(a.package)
     if a.dry_run:
         print(json.dumps({'passed': True, 'generation': m['generation'], 'serial': a.serial, 'file_count': len(m['files']), 'mounts': m['mounts'], 'device_io': False}, indent=2)); return
     if platform.system() == 'Darwin':
