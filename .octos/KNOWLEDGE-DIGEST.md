@@ -510,3 +510,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **累计 24(2026-09-30 10:00,61b)**:NewPipe 亮——`AssetManager.nativeOpenAssetFd` 原为『Implement me』,照抄 Westlake 532633da 的 ReturnParcelFileDescriptor,runtime 只换一个对象(9e14→53f00423),compare_runs 单变量;t20 自身『直播』页(内容空不算缺陷)。uhabits 过了原墙但撞 hwui no-surface,asset-fd 目前 1 个 app 截图证实,未到冻结门槛。
 
 - 2026-09-30 Flutter r5: ANL改走namespace_host_ops后LocalSend/Immich不再报sealed caller权限，却分别卡私有libandroid的runtime/surface依赖(owner不可见)；shared名字与物理闭包都齐仍不代表live owner可达。90320ecb唯一一轮，HW/ZZ保住，未亮即整包回滚a9c9187d并保留asset53f；不扩四包。证据 benchmark/2026-09-30-flutter-r5/。
+||||||| 3af0b90b
+- **调度规则四改(2026-09-30 10:20,用户放开)**:①三板保持同一统一态,全量三板分片(约 30 分钟一轮),专项实验短窗叠加后回滚;②冻结门槛 = ≥2 个 app 过这堵墙(≥1 个 t20 亮,其余日志证明该 API 失败消失、首个致命点换到别处),check_frozen 用 evidence=t20_lit/wall_passed 校验;③按簇批量出版:每轮 JAR 一版合所有 JAR 层簇、native 一版合所有 native 层簇,一次三板全量;④构建轮数只数源码/链接失败,环境失败不计;批量验证上板窗口可到 45 分钟。codex 额度放开,不再为省额度待命。

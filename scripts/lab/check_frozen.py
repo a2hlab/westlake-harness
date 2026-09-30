@@ -20,6 +20,9 @@ way to change a frozen file (tiered freeze):
     reverified: every app of the previous version re-lit at t20, full_sweep, approved_by: outer|user}
     and the previous version kept in `history`;
   - status "removed" (dropping or weakening the behaviour) needs `removed.approved_by` = "user".
+Freezing needs >=2 different apps past the wall: each verified app has evidence "t20_lit" (default) or
+"wall_passed" (with `log`: the API failure is gone and the first fatal moved elsewhere), and at least one
+app is t20_lit.
 """
 import argparse
 import hashlib
@@ -53,8 +56,14 @@ def validate(entries):
             continue
         if status != "frozen":
             problems.append(f"{eid}: unknown status {status!r}")
-        if len(apps(e.get("verified_apps", []))) < 2:
+        verified = e.get("verified_apps", [])
+        if len(apps(verified)) < 2:
             problems.append(f"{eid}: frozen with evidence from fewer than 2 apps")
+        if not any(v.get("evidence", "t20_lit") == "t20_lit" for v in verified):
+            problems.append(f"{eid}: no app lit at t20 (evidence=t20_lit); log-only wall passes need one lit app")
+        for v in verified:
+            if v.get("evidence", "t20_lit") == "wall_passed" and not v.get("log"):
+                problems.append(f"{eid}: {v.get('app')} counted as wall_passed without the log lines that show it")
         history = e.get("history", [])
         if len(history) != version - 1:
             problems.append(f"{eid}: version {version} but {len(history)} earlier version(s) kept in history")

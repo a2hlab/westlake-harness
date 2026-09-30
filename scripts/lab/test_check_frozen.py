@@ -69,6 +69,19 @@ class RegistryTests(unittest.TestCase):
     def test_well_formed_first_version_passes(self):
         self.assertEqual(check_frozen.validate([self.V1]), [])
 
+    def test_one_lit_app_plus_one_wall_pass_is_enough(self):
+        e = dict(self.V1, verified_apps=[{"app": "a1"}, {"app": "a2", "evidence": "wall_passed", "log": "hilog L10"}])
+        self.assertEqual(check_frozen.validate([e]), [])
+
+    def test_wall_passes_only_are_not_enough(self):
+        e = dict(self.V1, verified_apps=[{"app": "a1", "evidence": "wall_passed", "log": "x"},
+                                         {"app": "a2", "evidence": "wall_passed", "log": "y"}])
+        self.assertTrue(any("no app lit" in p for p in check_frozen.validate([e])))
+
+    def test_wall_pass_needs_its_log(self):
+        e = dict(self.V1, verified_apps=[{"app": "a1"}, {"app": "a2", "evidence": "wall_passed"}])
+        self.assertTrue(any("without the log" in p for p in check_frozen.validate([e])))
+
     def test_single_app_evidence_is_not_enough(self):
         self.assertTrue(check_frozen.validate([dict(self.V1, verified_apps=[{"app": "a1"}])]))
 
