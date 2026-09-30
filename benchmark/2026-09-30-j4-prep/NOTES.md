@@ -41,3 +41,32 @@ only after that table lands.
 - cx-bms U2-scoring J4 cluster table (ACK 3285) — fold these two in by priority (apps-blocked count).
 - After J3 board results (outer loop, 5ea+61b): if the NewPipe `[B8-AMB]` cause chain names a
   JAR-fixable internal cause, that becomes a J4 target too.
+
+## J4 delivered (1c1bbef) + J4.json triage (19 items) — 2026-09-30
+
+**J4 = 1c1bbef** (base J3 75c2068c): NewPipe platform signature (AndroidFrameworkPackage) + noice
+IMediaRouterService (WlMediaRouter). Built after OrbStack recovery; host-verified (cert parses X.509).
+fd-api routed OUT (resource layer; cx-bms J4.json also labels it 层=资源).
+
+**cx-bms J4.json triage by layer:**
+- runtime-JAR (mine): noice (DONE) · fd-musicplayer (J5 candidate, see below) · maybe fd-meet /
+  fd-im-vector (need diagnosis) · J4-null-producer 3 (fd-breezyweather/catima/wifianalyzer — getClass
+  NPE, null producer unknown = investigation).
+- NOT mine: J4-boot-api 5 (fd-feeder/gallery/plus/wikipedia/x = boot-jar missing method/field in
+  adapter-mainline-stubs.jar; wikipedia = my T7) · fd-api (资源→oc-t4) · J4-tls-java 2 (fd-client
+  SSLEngine / fd-noice SSLSockets = cc-wiki TLS or boot).
+
+**fd-musicplayer (J4-media-session) — J5 candidate, JAR-fixable but native wall behind it:**
+Wall: androidx.media3 `SessionToken(context, ComponentName(PlaybackService))` calls
+`queryIntentServices(new Intent("androidx.media3.session.MediaSessionService").setPackage(self))` and
+PlaybackService is not in the results, so it throws "Failed to resolve SessionToken ... Manifest doesn't
+declare one of MediaSessionService/...". The OH BMS PM does not project the self-package's services with
+their `<intent-filter><action>` for queryIntentServices. Fix = extend SelfServiceFallback (my binaryeye
+getServiceInfo helper's domain) to answer `queryIntentServices` for the self-package by matching the
+requested action against the manifest's per-service intent-filter actions. PREREQ to verify offline:
+does ManifestComponentProjection / ManifestJsonFallback capture service `<intent-filter><action>`? (The
+binaryeye path used getServiceInfo + meta-data, not intent-filter actions — may need to add action
+parsing.) CAVEAT: a native/framework wall is right behind it —
+`IllegalArgumentException: can't create bitmap without a color space` (fd-musicplayer hilog line 52109,
+j3-61b) — so a SessionToken JAR fix advances the wall but does NOT light the app; lighting needs the
+bitmap-color-space fix too (framework/native → cx-t0). Lower priority than a lighting fix.
