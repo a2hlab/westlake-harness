@@ -1,5 +1,5 @@
 {
-  "_note": "DRAFT frozen.json entries for outer-loop review + registration (cc-t3, 2026-09-30, updated post-split). Each ready fix is now SPLIT into its own single-fix file (J1-final faf0782b, walls cdb82fe5) and its behaviour is re-verified by the one J1-final board run (per the outer loop). sources[].blob = the split file's git blob @ walls cdb82fe5. Threshold (relaxed by user): >=2 different apps PASS the wall -- >=1 confirmed lit by t20, the rest proven by logs the API failure disappeared. Paths workspace-relative.",
+  "_note": "DRAFT frozen.json entries for outer-loop review + registration (cc-t3, 2026-09-30; J3 pass: split-file git blobs re-confirmed against the current feat/bms-walls source (unchanged by J3's LaunchActivityAliasProjection/ActivityManagerBindProxy edits), and each entry now carries split_reverify_j1final = the concrete J1-final 5ea run evidence + the note that J2 0715c964 carried the same splits with no regression -- two build generations exercise each split unchanged). Each ready fix is a single-fix file (J1-final faf0782b, walls cdb82fe5). sources[].blob = the split file's git blob (git hash-object), re-verified current. Threshold (relaxed by user): >=2 different apps PASS the wall -- >=1 confirmed lit by t20, the rest proven by logs the API failure disappeared. Paths workspace-relative.",
   "entries_draft": [
     {
       "id": "FZ-JAR-conscrypt",
@@ -12,7 +12,8 @@
         {"app": "fd-com-amaze-filemanager", "board": "61b", "t20": "westlake-harness/benchmark/2026-09-30-r17p-61b-sweep/runs/r17p-all-61b/61b0657200000000000000000324012c/fd-com-amaze-filemanager/t20.jpeg", "facts": "fd-com-amaze-filemanager shots 2/2  alive t5=yes t20=yes  child_hilog=30518  foreground_unconfirmed"},
         {"app": "antennapod", "board": "5ea", "t20": "westlake-harness/benchmark/2026-09-30-r17p-5ea-sweep/runs/r17p-all-5ea/5ea34a4500000000000000001123012c/antennapod/t20.jpeg", "facts": "antennapod           shots 2/2  alive t5=yes t20=yes  child_hilog=32090  foreground_unconfirmed"}
       ],
-      "ready": "YES (>=2 distinct apps t20 lit; outer loop confirmed this entry). Re-verified by the J1-final board run (split unchanged logic)."
+      "ready": "YES (>=2 distinct apps t20 lit; outer loop confirmed this entry). Re-verified by the J1-final board run (split unchanged logic).",
+      "split_reverify_j1final": "JarVerificationProviderFix rewrites jarVerificationProviders[0] at every bind; the J1-final 5ea run (benchmark/2026-09-30-j1final-5ea/) bound all 17 keys + HW with NO 'Sun provider not found' regression and changed_existing=2. No conscrypt app was in the J1-final key set, so the direct t20 re-verify for THIS entry stays the r17p/antennapod evidence above; J1-final proves the split load is inert to non-conscrypt apps. J2 (0715c964, outer-loop 5ea run) carried the same split with no regression -- two build generations (J1-final, J2) exercise it unchanged."
     },
     {
       "id": "FZ-JAR-alarm",
@@ -25,7 +26,8 @@
         {"app": "fd-android", "board": "5cd (unified r17r sweep)", "t20": "westlake-harness/benchmark/2026-09-30-unified-r17r-5cd-sweep/runs/unified-r17r-5cd/5cd1e3dd00000000000000000923012c/fd-android/t20.jpeg", "facts": "fd-android           shots 2/2  alive t5=yes t20=yes  child_hilog=61702  foreground_unconfirmed"}
       ],
       "ready": "YES (2 distinct apps t20 lit on 5cd unified state; evidence corrected per outer loop). Re-verified by the J1-final board run.",
-      "note_vibrator": "AlarmVibratorFetcher ALSO carries the new J04 vibrator fix (SystemVibratorManager getVibratorIds->int[0], fd-reader). That is NEW (unverified until J1-final board run); the alarm evidence above is what makes THIS entry ready. Once fd-reader passes on J1-final, the entry description can note the vibrator half too."
+      "note_vibrator": "AlarmVibratorFetcher ALSO carries the new J04 vibrator fix (SystemVibratorManager getVibratorIds->int[0], fd-reader). That is NEW (unverified until J1-final board run); the alarm evidence above is what makes THIS entry ready. Once fd-reader passes on J1-final, the entry description can note the vibrator half too.",
+      "split_reverify_j1final": "fd-k9 in the J1-final 5ea protected group (t20=yes, no regression); hilog '[B8-FETCH] alarm fetcher replaced (prev=android.app.SystemServiceRegistry$7)' at benchmark/2026-09-30-j1final-5ea/runs/j1final-5ea/5ea34a4500000000000000001123012c/fd-k9/hilog.txt -- the split fires identically to the pre-split SystemServiceFetcherStubs. The J04 vibrator half is now CONFIRMED on J1-final (fd-reader: vibrator wall passed, '[B8-FETCH] vibrator_manager SystemVibratorManager allocated (getVibratorIds->int[0])', old 'get length of null array' gone). J2 (0715c964, outer-loop 5ea run) no regression -- two build generations exercise it unchanged."
     },
     {
       "id": "FZ-JAR-binaryeye-getServiceInfo",
@@ -36,7 +38,8 @@
       "verified_apps": [
         {"app": "fd-binaryeye", "board": "5ea (32df, r17u 1eac63a6)", "change": "was getServiceInfo(MetadataHolderService) NameNotFoundException -> CameraX not configured -> exit(1); now BinaryEye scan UI renders", "t20": "westlake-harness-wiki/benchmark/2026-09-30-graphics-32df-5ea-deploy-prep/runs/r17u-verify3-20260930T102150/5ea34a4500000000000000001123012c/fd-binaryeye/t20.jpeg", "facts": "fd-binaryeye         shots 2/2  alive t5=yes t20=yes", "hilog": "[B8-PM] projected getServiceInfo .../androidx.camera.core.impl.MetadataHolderService metaData=1; no NameNotFound, no exit (cc-wiki self-read)"}
       ],
-      "ready": "NOT YET -- 1 confirmed app. Needs a 2nd app that passes the same wall (cc-wiki scanning for another CameraX/self-<service> app whose log shows getServiceInfo NameNotFound gone)."
+      "ready": "NOT YET -- 1 confirmed app. Needs a 2nd app that passes the same wall (cc-wiki scanning for another CameraX/self-<service> app whose log shows getServiceInfo NameNotFound gone).",
+      "split_reverify_j1final": "fd-binaryeye LIT on the J1-final 5ea run (scan UI); hilog '[B8-PM] projected getServiceInfo de.markusfisch.android.binaryeye/androidx.camera.core.impl.MetadataHolderService metaData=1' at benchmark/2026-09-30-j1final-5ea/runs/j1final-5ea/5ea34a4500000000000000001123012c/fd-binaryeye/hilog.txt -- SelfServiceFallback split fires as the pre-split SelfComponentFallback did. Carried again in J2 (0715c964) with no regression. Still 1 DISTINCT app (same fd-binaryeye across r17u + J1-final + J2); the >=2-distinct-app threshold is unmet."
     }
   ],
   "relaxed_threshold_candidates_needing_2nd_app_by_logs": {
