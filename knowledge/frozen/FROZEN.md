@@ -36,6 +36,7 @@ The machine-readable registry is `frozen.json`; this page is the readable view. 
 | id | API | frozen | evidence (≥2 apps, t20) |
 |---|---|---|---|
 | FZ-001 | START_ABILITIES_FROM_BACKGROUND for BMS-installed bundles (installer grant + own launcher) | libbms.z.so `6aadb8b4…`, libapk_installer.so `7048c7c5…` (source: feat/bms-route-deploy b5a67c62, `benchmark/2026-09-30-installer-background-launcher/`) | Tusky, K-9, Thunderbird, File Manager go from white to their own pages with only the installer changed, on 61b and again on 5cd; same trace goes from WMS denial to `canStartAbilityFromBackground:1` |
+| FZ-002 | Android child ActivityThread on an explicit 8 MiB pthread (big-stack runtime provider) | libwestlake_android_runtime_provider.so `0509fe23…` (Android alias + route-a 74d1 alias; source westlake-harness-bms-deploy `benchmark/2026-09-30-child-stack-default/`) | Tusky, AntennaPod, Markor, K-9, Auxio show their own UI at t20 in the 5cd unified sweep, each hilog has `[CM-BIGSTACK] ActivityThread on dedicated pthread stack=8390896`; HW/ZZ controls on 61b |
 
 ## Candidates awaiting an evidence check
 
@@ -45,6 +46,6 @@ it is frozen.
 - JAR: conscrypt → BC for `jarVerificationProviders` (r17o), `getSystemService(Class)` name mapping
   (r17n), SoftwareAndroidKeyStore (r17l), SelfUidPackages, real TLS SSLContext registration (r17s),
   PowerExemptionManager stub (r17q), addToDisplay flag filter (r17r), receiver guard (r17a).
-- Native: appspawn-x AID_INET group (d977bd15), big-stack ActivityThread provider (0509fe23),
+- Native: appspawn-x AID_INET group (d977bd15),
   VelocityTracker registration, bionic libc/GLESv2/stdc++/OpenSLES shims, TLS boundary (39c2cfe9),
   JNI gap-fill (d1a1961d).
