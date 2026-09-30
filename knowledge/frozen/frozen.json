@@ -465,6 +465,93 @@
    "status": "frozen",
    "history": [],
    "approved_by": "outer (claude) 2026-10-01, after the U6 three-board sweep (fd-feeder lit at t20; fd-reader past the vibrator wall); draft by cc-t3"
+  },
+  {
+   "id": "FZ-007",
+   "api": "Full AOSP android-14.0.0_r1 external/tagsoup in the boot-classpath adapter-mainline-stubs jar (org.ccil.cowan.tagsoup.Parser extends DefaultHandler implements ScanHandler, XMLReader, LexicalHandler), replacing the incomplete 2-file stub. The BCP tagsoup shadows an app's bundled tagsoup (AOSP keeps full tagsoup on the boot classpath); a stub Parser lacking 'implements org.xml.sax.XMLReader' crashed apps with java.lang.IncompatibleClassChangeError when they use tagsoup as an XMLReader.",
+   "frozen_at": "2026-10-01T05:03:56+08:00",
+   "artifacts": [],
+   "sources": [
+    {
+     "repo_path": "benchmark/2026-10-01-image-predeploy-gate/t7d-stub-spec/sources/tagsoup/Parser.java",
+     "blob": "66d2922c71ae3ff0990943cdcddd57414bd54d9e",
+     "commit": "6b2e921203ab1489d2d88a58c740590369369cf2",
+     "branch": "feat/wikipedia-line"
+    },
+    {
+     "repo_path": "benchmark/2026-10-01-image-predeploy-gate/t7d-stub-spec/sources/tagsoup/AOSP-r1-tagsoup-SHA256SUMS.txt",
+     "blob": "d10296e1927b0729b4fea653074e3119f589ee92",
+     "commit": "6b2e921203ab1489d2d88a58c740590369369cf2",
+     "branch": "feat/wikipedia-line"
+    }
+   ],
+   "source_record": "AOSP android-14.0.0_r1 external/tagsoup src/**/*.java (15 files; Parser.java sha aa68cc4d04869aee...; byte-identical on hw248 aosp-14.0.0_r1-art and a2hlab android-source/external-tagsoup). Compiled into adapter-mainline-stubs.jar via dockbuild (a2hlab-b5-java:24.04, 4 compile-only jars) -> T7d jar d8b2406e. The other 6 android stub additions are unchanged from the T7c base. | carried in adapter-mainline-stubs.jar T7d d8b2406e (hw248 /home/alvin/cc-wiki-t7d-stubs.jar); frozen on the source blobs because the stubs jar carries other stubs (outer 2026-10-01, same rule as FZ-006).",
+   "verified_apps": [
+    {
+     "app": "fd-libretube",
+     "board": "5cd",
+     "change": "System.exit(1) (IncompatibleClassChangeError: tagsoup Parser does not implement XMLReader, MainActivity.onCreate) -> full native UI (LibreTube home, search + empty-state + Retry/Change-instance + bottom nav)",
+     "evidence": "t20_lit",
+     "t20": "benchmark/2026-10-01-image-predeploy-gate/t7d-board-5cd/01-fd-libretube-LIT.jpeg",
+     "facts": "fd-libretube 2/2 alive t5=yes t20=yes child_hilog=31023 (T7d 5cd)"
+    },
+    {
+     "app": "wikipedia",
+     "board": "5cd",
+     "change": "tagsoup IncompatibleClassChangeError (Compose feed ErrorState/WikiErrorView) gone -> process no longer System.exit(1) (now alive t20; residual blank is a separate Compose-render wall)",
+     "evidence": "wall_passed",
+     "log": "post-T7d hilog: IncompatibleClassChangeError/tagsoup = 0; wikipedia alive t5=yes t20=yes (was exit code:1 under T7c)"
+    }
+   ],
+   "mechanism": "BCP-order (adapter-mainline-stubs before framework) makes the stubs-jar tagsoup the effective class; a complete Parser (implements XMLReader) resolves the interface cast the incomplete stub failed. Verified image-only-safe: G3 confirms the 14 tagsoup classes are in no other BCP jar.",
+   "version": 1,
+   "status": "frozen",
+   "history": [],
+   "approved_by": "outer (claude) 2026-10-01, after the T7d board window on 5cd (04:47) and the ZigZag single-variable check (04:55); draft by cc-wiki ad8f43a4c"
+  },
+  {
+   "id": "FZ-008",
+   "api": "android.net.ssl.SSLSockets stub in the boot-classpath adapter-mainline-stubs jar (public static isSupportedSocket(SSLSocket)->false, setUseSessionTickets(SSLSocket,boolean)->no-op). OkHttp's AndroidPlatform probes SSLSockets; without the class it throws NoClassDefFoundError on the OkHttp Dispatcher, killing the app's network. isSupportedSocket=false makes OkHttp fall back to the standard SSLSocket TLS path.",
+   "frozen_at": "2026-10-01T05:03:56+08:00",
+   "artifacts": [],
+   "sources": [
+    {
+     "repo_path": "benchmark/2026-10-01-image-predeploy-gate/t7d-stub-spec/sources/android/net/ssl/SSLSockets.java",
+     "blob": "958e2cc5fd10c6bb72b3bf69b3de93f454662855",
+     "commit": "6b2e921203ab1489d2d88a58c740590369369cf2",
+     "branch": "feat/wikipedia-line"
+    }
+   ],
+   "source_record": "benchmark/2026-10-01-image-predeploy-gate/t7d-stub-spec/sources/android/net/ssl/SSLSockets.java (new class, not in any other BCP jar -> G3-safe). Compiled into adapter-mainline-stubs.jar via dockbuild -> T7d jar d8b2406e. | carried in adapter-mainline-stubs.jar T7d d8b2406e (hw248 /home/alvin/cc-wiki-t7d-stubs.jar); frozen on the source blobs because the stubs jar carries other stubs (outer 2026-10-01, same rule as FZ-006).",
+   "verified_apps": [
+    {
+     "app": "noice",
+     "board": "5cd",
+     "change": "blank (caught SSLSockets NoClassDefFoundError) -> noice AppIntro welcome own-UI (欢迎 + logo + Skip)",
+     "evidence": "t20_lit",
+     "t20": "benchmark/2026-10-01-image-predeploy-gate/t7d-board-5cd/03-noice-LIT.jpeg",
+     "facts": "noice 2/2 alive t5=yes t20=yes child_hilog=30722 (T7d 5cd)"
+    },
+    {
+     "app": "wikipedia",
+     "board": "5cd",
+     "change": "18x SSLSockets NoClassDefFoundError on OkHttp Dispatcher (TLS dead) gone -> OkHttp TLS resolves",
+     "evidence": "wall_passed",
+     "log": "post-T7d hilog: SSLSockets = 0 across wikipedia/noice/fd-noice"
+    },
+    {
+     "app": "fd-noice",
+     "board": "5cd",
+     "change": "SSLSockets CNF gone (3 runs)",
+     "evidence": "wall_passed",
+     "log": "post-T7d hilog: SSLSockets=0; fd-noice alive t5=yes t20=yes x3"
+    }
+   ],
+   "mechanism": "SSLSockets is a NEW class (no other BCP jar defines it -> G3-safe, no shadowing). Resolving the class lets OkHttp AndroidPlatform.buildIfSupported take the fallback path instead of crashing the Dispatcher.",
+   "version": 1,
+   "status": "frozen",
+   "history": [],
+   "approved_by": "outer (claude) 2026-10-01, after the T7d board window on 5cd (04:47) and the ZigZag single-variable check (04:55); draft by cc-wiki ad8f43a4c"
   }
  ]
 }
