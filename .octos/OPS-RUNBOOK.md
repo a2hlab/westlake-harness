@@ -139,3 +139,5 @@ Installer两处更新并重启foundation后可能黑屏；按明确授权整机�
 已有同平台活动代用 `scripts/lab/deploy_generation.sh SERIAL PACKAGE --upgrade --lane LANE`；新boot无活动账本时省略 `--upgrade`。先持锁、核boot、按JAR receipt退叠层到包内r8b；部署核别名/SHA/单ART后再叠选定JAR。失败回滚撤新挂载层并恢复旧活动账本/单换层；before_absent必须仍缺席，异常底层文件不删。v3c-candidate/handoff内是旧部署器，须用本仓修订版。实证与测试见 `benchmark/2026-09-30-v3c-rollout/`。
 
 - 2026-09-30 graphics@5cd：native单换前JAR可能有多层叠挂（本次r17m→r17q），捕获全部source/SHA，逐层退到包内r8b，换后自底向上恢复，不以旧receipt推定只有一层。ZigZag重装会移除本代5个APK native bind；回归需核账本挂载和SHA，恢复原件后launch-only另跑，原始--reinstall结果保留。安全恢复/回执见benchmark/2026-09-30-graphics-session-sync/device-5cd/{jar_overlay.py,restore_control_mounts.py,README.md}。
+
+- 2026-09-30 Flutter构建：dockbuild.sh 在Mac Bash空extra_mounts数组会报unbound variable，显式DOCKBUILD_MOUNTS含当前worktree；构建若链接相邻generation包实物，还须把该包单独列入冒号分隔挂载，PWD挂载不覆盖兄弟目录。两轮失败原文与未执行复跑入口见benchmark/2026-09-30-flutter-candidate/。

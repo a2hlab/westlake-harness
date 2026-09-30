@@ -2,8 +2,8 @@
 
 The approved two-file proposal (ANL plus a private GLES2 facade) does not yet
 satisfy the six engines' strong-import closure. The initial two-board logs
-reported the first missing name, not all load requirements. No candidate was
-compiled or deployed; build attempts are **0**, not two failed builds.
+reported the first missing name, not all load requirements. At that initial gate no build was attempted. The later approved expansion and
+two stopped build attempts are recorded below; nothing was deployed.
 
 ## Measured result
 
@@ -82,5 +82,41 @@ modify the baseline source, package or devices.
   **device_io=false**. This is not a candidate dry-run: no candidate exists yet.
 
 No board lock, device I/O, screenshots or process samples. cc-t3 retains priority
-for r17s if ready; this rejected preflight consumes no device slot. Construction
-and source persistence for the expanded candidate remain pending approval.
+for r17s if ready; this rejected preflight consumes no device slot. The expanded source and build outcome are recorded below.
+
+## Approved expansion; two attempts exhausted
+
+Outer approved the private compatibility set after the initial gate rejection.
+The implementation inputs are now archived under `src/`, including the original
+Westlake Android and jnigraphics files, exact extracted strerror/cmsg functions,
+JNI/bitmap headers, and an ANL snapshot with the scoped namespace adaptation.
+`evidence/build-source-identities.json` records every source hash and the frozen
+clang/sysroot and runtime input hashes. ANL keeps the old path for all domains
+except the six approved package path components after a libflutter request.
+The planned three private files use unique filenames but Android SONAMEs; the
+existing runtime remains a dependency owned by the existing namespace.
+
+| Attempt | Actual outcome |
+|---|---|
+| 1 | dockbuild stopped before clang: `extra_mounts[@]: unbound variable` when no extra mount was set. |
+| 2 | With the worktree explicitly mounted, ANL compiled/linked, Android and bionic objects compiled; private Android provider link failed because the sibling v3c package was not mounted in the container. |
+
+Exact final error:
+
+```text
+clang-15: error: no such file or directory: '/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/../westlake-generation-v3c-candidate/payload/android/lib64/liboh_android_runtime.so'
+```
+
+The file exists on Mac (SHA9e14bf20); this is a container input visibility error,
+not a proven source ABI or unresolved-symbol failure. There was one harmless
+`_GNU_SOURCE` redefinition warning before the link command. We counted the
+launcher failure as an attempt and stopped at **two** as instructed. No third
+compile, package dry-run, lock or device action occurred. The partial ANL is
+not safe to deploy without its private providers and has not been packaged.
+
+`retry-build.sh` now supplies both worktree and sibling-package mounts, and
+`build.sh` checks the runtime input before invoking clang. This correction is
+**prepared, not run**; another build window is required. A completed build must
+still pass the import/version closure and package gates before the ≤30-minute
+61b control-first sequence. In particular, actual namespace owner lookup,
+private SONAME reuse, and OH version matching are not yet runtime-verified.
