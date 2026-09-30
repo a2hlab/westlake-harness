@@ -25,6 +25,7 @@
 #include "arsc_resolver.h"
 
 #include <cstring>
+#include <algorithm>
 #include <vector>
 
 #include <unzip.h>  // minizip
@@ -58,6 +59,7 @@ constexpr uint16_t ENTRY_FLAG_COMPLEX     = 0x0001;
 
 // Res_value.dataType
 constexpr uint8_t  RES_VALUE_TYPE_STRING  = 0x03;
+constexpr uint8_t  RES_VALUE_TYPE_REFERENCE = 0x01;
 
 constexpr uint32_t NO_ENTRY_32 = 0xffffffffu;
 constexpr uint16_t NO_ENTRY_16 = 0xffffu;
@@ -343,9 +345,6 @@ bool ResolveResourceIdToFile(const std::string& apkPath, uint32_t resId,
     }
 
     const uint32_t wantPkg = (resId >> 24) & 0xff;
-    const uint32_t wantType = (resId >> 16) & 0xff;
-    const uint32_t wantEntry = resId & 0xffff;
-
     size_t globalPoolOff = 0;
     bool haveGlobalPool = false;
     std::vector<std::string> candidates;
