@@ -472,3 +472,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 5cd新installer6aadb8b4/7048c7c5+32df+r17q重装AntennaPod仍首页，本次无NPE/main_threw，未复现安装器×32df必现失败；compare_runs本板variables:2(重启+installer)，对5ea同native/JAR为2(板+5ea数据未重装)，板级因果仍未定。邮件数据库页/Tusky登录/FileManager工具栏均可见；随后按用户回9e14+r17r。见benchmark/2026-09-30-installer-5cd-ab/。
 
 - 2026-09-30 Flutter 离线：v3c 的 libandroid.so 为9ccf64f8、现役runtime为9e14bf20，字节不同但前者SONAME=liboh_android_runtime.so(22 NEEDED)，libGLESv2.so 只有空壳无 GL 导出；六 app 两板首错为3 android/3 GLES2，不能只加两个库名就宣称解决。Westlake §734 对 WebView 用 platform GLESv3 供 GLES2，迁移到 Flutter 仍待验证；见 benchmark/2026-09-30-flutter-loader-plan/。
+
+- 2026-09-30 Flutter构建前闭包：6个APK原件engine各476/477强导入，即便假设libandroid接现役runtime/GLES2接OH GLES3仍共同缺libjnigraphics及8符号(Window锁/提交2、Bitmap3、bionic3)；整包导出也缺。Westlake webview-shim有对应源码；仅ANL+GLES2两件门不过，版本化导入匹配未版本化musl需另核，不把292/293项误报全失败。见benchmark/2026-09-30-flutter-candidate/。
