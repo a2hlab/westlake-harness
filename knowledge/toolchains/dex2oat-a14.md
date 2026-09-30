@@ -118,3 +118,15 @@ m -j32 build-art-host libart                 # host dex2oat set + arm64 libart f
 - 产物:hw248 `/opt/build-trees/.work/fn03-r29-boot-20260728T0635Z/`(27 文件 + run.log + local.sha256)。
 
 **判定不变:vdex 层 L1 全中;L2 静态头字段全中(checksum 单点归因路径+源树差);L2 板测因 5cd 失联中止,叠加读验(11:28:12)已证明 27 bind 全部生效后被系统读到。**
+
+## boardpath 逐字复刻轮(2026-09-30 oc-t4,续 fn03 归因后)
+
+背景:L2 板测(2026-09-30-l2-official-image-5cd)官方镜像下 5 已亮 app 全死(Etar 子进程 spawn 后 ~0.8s SIGABRT,卸载叠加立刻恢复)——头号嫌疑是产物嵌 `/tmp/...` dex 路径而板上 BCP 用 `/system/android/framework/*.jar`。本轮在 hw248 按板上 boot.oat 记录的 cmdline 逐字复刻重编。
+
+- **boardpath 轮**:`--dex-file` 指本地 incoming(symlink 同 9 jar),`--dex-location` 逐字 `/system/android/framework/<name>.jar`,`--image/--oat-file` 指 fn03 同形路径。6.799s 出 27 文件。
+- **自查发现并修复一处 typo**:初版 `--dex-location=/system/android/android/framework/adapter-mainline-stubs.jar`(`android/android`,多打一段;从产物 bootclasspath kv 亲验发现),修复重跑后 kv 内 9 段路径全部逐字正确。
+- **L1 vs 板清单:仍 9/27**(=9 vdex 逐位;18 差仍是全部 .art+.oat)。
+- **boot.oat 头**:checksum 0x9c3d2e02(typo 修复后;序列 0x50af7eed→0xa5f169b2→0x9c3d2e02,板上 0xd369f830 仍未中);oat_dex_files_offset 随 cmdline 长度平移(Δ124)。
+- **kv 静态比对**:bootclasspath 值 = 9 段 `/system/android/framework/*.jar` 逐字与板一致;kv 含 debuggable/native-debuggable/compiler-filter= speed/bootclasspath/classpath/requires-image=false(注:我们 false,板上记录 requires-image 未比)/concurrent-copying/apex-versions;**bootclasspath-checksums 与 compilation-reason 两个 key 在我们产物 kv 中缺失**——下一轮与板上 kv 全 key 集对照。
+- **判读**:dex-location 逐字复刻没有改变 L1 命中数(vdex 早已全中,art/oat 的差异主体不是 dex-location 串——残差仍在 kv 区外 53KB 与 checksum)。**但 L2 死因未必是 L1**:板上 app 用的 image/vdex 加载路径要看 vdex 与 art 的关系;vdex 全中却仍死,指向 art/oat 的内容差(或 checksum/头部指纹被运行时校验拒绝)。
+- **产物**:hw248 `/opt/build-trees/.work/fn03-r29-boot-20260728T0635Z/boardpath/`(27 文件 + run.log + local.sha256)。
