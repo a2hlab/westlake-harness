@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-30",
+  "author": "cc-t3",
+  "purpose": "Single-variable audit of r17t ec583a26 on 5cd (unified r17r baseline) before the three-board unified sweep.",
+  "board": "5cd1e3dd00000000000000000923012c",
+  "baseline": "unified r17r (v3c + 9e14 + r17r dd4f0eae + background-launch installer); 21 apps lit per outer loop",
+  "jar": "r17t ec583a26 (= r17s 3b523289 + AudioProductStrategy stub), bind-mount layer over r17r; rolled back -> 5cd restored to r17r dd4f0eae layers=1 (verified); lock released",
+  "compare_runs": {
+    "tool": "scripts/lab/compare_runs.py against benchmark/2026-09-30-unified-r17r-5cd-sweep/runs/unified-r17r-5cd (fingerprint reproduced on-board over the baseline's 117 paths while r17t was mounted)",
+    "output": "variables: 1 -- /system/android/framework/oh-adapter-runtime.jar dd4f0eae -> ec583a26; verdict: single-variable comparison, a difference may be attributed to it",
+    "meaning": "board 5cd same, no reboot, only the JAR differs -> any liveness delta is attributable to r17t vs r17r."
+  },
+  "must_not_regress_9": {
+    "apps": ["aegis", "antennapod", "fd-android", "fd-k9", "fd-tusky", "markor", "fd-etar", "fd-com-amaze-filemanager", "fd-auxio"],
+    "verdict": "ALL lit, NO regression -- each hilog has fatal_lines=0 (no J_invokeStaticMain_main_threw / FATAL / crash); tusky/markor/k9/antennapod screenshot-verified in prior sessions."
+  },
+  "audio_stub": {
+    "active": "[B8-AUDIO] AudioProductStrategy.sAudioProductStrategies pre-seeded empty -- fires at every bind; confirmed the getter bypasses native_list_audio_product_strategies.",
+    "generation_specific": "On 5cd (9e14 runtime) noice/fd-noice/opencamera do NOT die at the AudioProductStrategy wall -- the r17r baseline already reaches eglCreateWindowSurface/libhwui/abort (EGL BAD_ALLOC, native) with NO [B8-AUDIO] and NO audio crash. So on 9e14 the audio wall is not their blocker; the stub is a no-op here (correctly non-regressing). The AudioProductStrategy exit is a 32df-generation wall (5ea), where the stub's lit payoff must be verified (cc-wiki).",
+    "note_grep_trap": "grep for 'native_list_audio_product_strategies' matches the [B8-AUDIO] LOG STRING ('... bypasses native_list_audio_product_strategies'); it is NOT an actual native call. Verified by the absence of any AudioProductStrategy crash chain / J_invokeStaticMain_main_threw."
+  },
+  "targets_not_lit": {
+    "noice/fd-noice": "audio wall cleared by the stub; next wall = EGL BAD_ALLOC (eglCreateWindowSurface/libhwui/abort), native -> cx-t0. Same on r17r baseline (5cd) -> not a regression.",
+    "opencamera": "EGL (eglCreateWindowSurface/libhwui/abort) + UnsatisfiedLinkError 'system library is absent from the adapter manifest' (missing .so), native -> cx-t0.",
+    "vlc": "no/no; walls = AudioSystem.native_get (a different native, not covered by the AudioProductStrategy stub) + ConstraintLayout theme-attr inflate (5ea) -> native/boot.",
+    "fd-gallery": "NOT lit -- t20 screenshot = DESKTOP (facts alive t20=yes is a background-installer focus false-positive; FLAW-007 screenshot is ground truth). MainActivity crashes on NoSuchFieldError MediaStore$Images$Media.EXTERNAL_CONTENT_URI; the r17r baseline crashes identically (3 hilog lines) -> NOT a regression; boot-stub missing field -> oc-t4.",
+    "fd-meet": "no/no (RestrictionsManager built, null-Collection behind) -- unchanged."
+  },
+  "verdict": "r17t is a clean single-variable superset of r17s on 5cd: no regression (9/9 must-not-regress lit), audio stub active (its lit effect is on the 32df generation / 5ea, verified by cc-wiki). Cleared for the three-board unified sweep. Board restored to r17r, lock released.",
+  "flaw007_note": "On the background-launch installer, facts.txt alive/t20 is unreliable (fd-gallery shows alive t20=yes but its t20 screenshot is the desktop). Screenshots + hilog fatal-signatures are ground truth."
+}
