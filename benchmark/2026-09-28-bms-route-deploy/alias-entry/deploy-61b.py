@@ -7,13 +7,14 @@ from pathlib import Path
 import json, sys
 root = Path(__file__).resolve().parent
 sys.path.insert(0, str(root.parent / 'batch')); import bms_batch as b
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'scripts/lab'));import lab_paths  # <repo>/scripts/lab
 
 SERIAL = '61b0657200000000000000000324012c'
 LANE = 'oc-t4'
 out = Path.home() / "a2hlab" / "board" / "b5-alias-deploy-61b"; out.parent.mkdir(parents=True, exist_ok=True); out.mkdir(exist_ok=False)
 build = json.loads((root / 'build-result.json').read_text())
-board = b.Board(SERIAL, '/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh',
-                                'mac /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/board_note.sh', LANE, out / 'commands')
+board = b.Board(SERIAL, str(lab_paths.tools()/'hdc_mac.sh'),
+                                'mac '+str(lab_paths.tools()/'board_note.sh'), LANE, out / 'commands')
 board.ready()
 
 target = '/system/android/framework/oh-adapter-runtime.jar'

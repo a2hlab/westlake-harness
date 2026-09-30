@@ -11,30 +11,37 @@
 # `file recv` lands there and is copied back to the VM destination afterwards.
 MAC_HDC=${MAC_HDC:-/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc}
 BIND=/home/dspfac/a2hlab/source-closure/verify
+# The VM user's home ($HOME here) and the Mac user's home need not share a user name. The VM always sees
+# ~/OrbStack/<machine>, the Mac only while the NFS view is mounted -- so ask the Mac, once, for both its home
+# and whether the view is there (override the home with MAC_HOME).
+MAC_VIEW=0
+if [ -n "${MAC_HOME:-}" ]; then
+  mac test -d "$MAC_HOME/OrbStack/a2hlab/home" 2>/dev/null && MAC_VIEW=1
+else
+  read -r MAC_HOME MAC_VIEW < <(mac sh -c 'v=0; test -d "$HOME/OrbStack/a2hlab/home" && v=1; printf "%s %s\n" "$HOME" "$v"' 2>/dev/null)
+fi
+case "${MAC_HOME:-}" in /Users/?*) ;; *) echo "hdc_mac: cannot read the Mac home via OrbStack's mac (set MAC_HOME)" >&2; exit 1 ;; esac
 
 to_mac() {
   case "$1" in
     /Users/*) printf '%s' "$1" ;;
     /mnt/mac/*) printf '%s' "${1#/mnt/mac}" ;;
-    "$BIND"|"$BIND"/*) printf '/Users/zhaoyue/OrbStack/a2hlab/home/zhaoyue/a2hlab/ws%s' "${1#"$BIND"}" ;;
-    /*) printf '/Users/zhaoyue/OrbStack/a2hlab%s' "$1" ;;
+    "$BIND"|"$BIND"/*) printf '%s/OrbStack/a2hlab%s/a2hlab/ws%s' "$MAC_HOME" "$HOME" "${1#"$BIND"}" ;;
+    /*) printf '%s/OrbStack/a2hlab%s' "$MAC_HOME" "$1" ;;
     *) printf '%s' "$1" ;;
   esac
 }
-# The VM always sees ~/OrbStack/<machine>, the Mac only while the NFS view is mounted -- so ask the Mac, once.
-MAC_VIEW=0
-mac test -d /Users/zhaoyue/OrbStack/a2hlab/home 2>/dev/null && MAC_VIEW=1
 visible() {  # visible <mac-path>: will the Mac-side hdc find it?
   case "$1" in
-    /Users/zhaoyue/OrbStack/*) [ "$MAC_VIEW" = 1 ] ;;
+    "$MAC_HOME"/OrbStack/*) [ "$MAC_VIEW" = 1 ] ;;
     /Users/*) [ -e "$1" ] ;;
     *) return 1 ;;
   esac
 }
 
 STAGE=""
-stage_dir() { [ -n "$STAGE" ] || STAGE=$(mktemp -d "/Users/zhaoyue/.cache/hdc_mac.XXXXXX"); }
-mkdir -p /Users/zhaoyue/.cache
+stage_dir() { [ -n "$STAGE" ] || STAGE=$(mktemp -d "$MAC_HOME/.cache/hdc_mac.XXXXXX"); }
+mkdir -p "$MAC_HOME/.cache"
 # stage_local <vm-path>: set STAGED to a Mac-visible path holding the same content (no subshell, so the
 # staging dir is created -- and later removed -- by this process)
 stage_local() {

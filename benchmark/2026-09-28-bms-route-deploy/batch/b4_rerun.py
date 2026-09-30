@@ -41,7 +41,7 @@ def load_plan(path=ROOT/'b4-rerun-shards.json'):
         expected = ['--execute', '--serial', shard['serial'], '--lane', shard['lane'],
                     '--run-id', shard['run_id'], '--out', config['run_root'],
                     '--manifest', config['master_batch_directory']+'/apps.json',
-                    '--input-root', '/home/zhaoyue/a2hlab/app-inputs',
+                    '--input-root', str(Path(config['run_root']).parent/'app-inputs'),
                     '--keys', ','.join(selected), '--reinstall', '--hilog', '15',
                     '--shots', '5,20', '--focus-check', '--wait', '20']
         if args != expected or shard['command_argv'] != ['orb', '-m', 'a2hlab', 'bash', config['master_batch_directory']+'/run-batch.sh']+args:

@@ -5,7 +5,8 @@
 # Default board: the app-lighting campaign board.
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
-BOARD=/Users/zhaoyue/orca/workspaces/westlake-harness/.octos/boards/app-lighting.md
+. "$HERE/lab_paths.sh" || exit 1
+BOARD=$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md
 TAIL=20 LOOP=0 STALE=30
 while [ $# -gt 0 ]; do
   case "$1" in

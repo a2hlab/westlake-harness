@@ -9,14 +9,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 import bms_batch as b
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'scripts/lab'));import lab_paths  # <repo>/scripts/lab
 
 SERIAL = '61b0657200000000000000000324012c'
 LANE = 'oc-t4'
 RUN = 'b4-36-reverify-61b-20260928T2235'
 out = Path.home() / 'a2hlab/board' / RUN
 out.mkdir(parents=True, exist_ok=False)
-board = b.Board(SERIAL, '/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh',
-                'mac /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/board_note.sh', LANE, out / 'commands')
+board = b.Board(SERIAL, str(lab_paths.tools()/'hdc_mac.sh'),
+                'mac '+str(lab_paths.tools()/'board_note.sh'), LANE, out / 'commands')
 board.ready()
 manifest = {a['key']: a for a in json.load(open(ROOT / 'apps.json'))['apps']}
 remote = '/data/local/tmp/' + RUN

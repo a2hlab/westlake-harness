@@ -1,7 +1,8 @@
 """Operational audit only: read frozen inputs and reports, emit evidence; no device operations."""
 import collections,gzip,hashlib,io,json,struct,sys,zipfile
 from pathlib import Path
-P=Path('/Users/zhaoyue/orca/workspaces/westlake-inputs')
+import lab_paths
+P=lab_paths.inputs()
 d=Path.home()/'a2hlab/static'; out=Path(sys.argv[1]);out.mkdir(parents=True,exist_ok=True)
 c=json.loads((P/'corpus100.json').read_text());cache=P/'audit-static100-cache';cache.mkdir(exist_ok=True)
 def sha(p):

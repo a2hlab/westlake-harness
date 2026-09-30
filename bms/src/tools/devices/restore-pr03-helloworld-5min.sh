@@ -10,7 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"
-PAYLOAD_ROOT="${BRIDGE_PAYLOAD:-/Users/zhaoyue/orca/.bridge-payload/pr03-74e6-portable}"
+PAYLOAD_ROOT="${BRIDGE_PAYLOAD:-$HOME/orca/.bridge-payload/pr03-74e6-portable}"
 HDC_BIN="${HDC_BIN:-/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc}"
 FFMPEG_BIN="${FFMPEG_BIN:-$(command -v ffmpeg || true)}"
 PACKAGE="com.example.helloworld"

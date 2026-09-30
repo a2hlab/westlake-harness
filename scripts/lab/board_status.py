@@ -24,7 +24,7 @@ import re
 import sys
 import time
 
-BOARD = "/Users/zhaoyue/orca/workspaces/westlake-harness/.octos/OUTER_LOOP_REVIEW.md"
+BOARD = ".octos/OUTER_LOOP_REVIEW.md"  # default board, under the main checkout <WORKSPACES>/westlake-harness
 LOCKS = pathlib.Path(os.environ.get("BOARD_LOCK_DIR", pathlib.Path.home() / ".octos/board-locks"))
 HEAD = re.compile(r"^###\s+(\d+[a-z0-9-]*)\.\s*(.*)$")
 ACK = re.compile(r"ACK\((?:(\d+[a-z0-9-]*)\s+)?(done|blocked|wontdo)\b(?!\|)")
@@ -324,7 +324,11 @@ def main(argv):
     lane, one = opt("--lane"), opt("--id")
     stale, interval, spec_dir = opt("--stale-min", 30, float), opt("--interval", 60, float), opt("--specs")
     only_open, sched, text, watch = flag("--open"), flag("--schedule"), flag("--text"), flag("--watch")
-    board = args[0] if args else BOARD
+    if args:
+        board = args[0]
+    else:
+        import lab_paths
+        board = str(lab_paths.harness() / BOARD)
     if watch:
         base = schedule(board, stale, spec_dir)
         started, silent_reported = time.time(), set()

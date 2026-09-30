@@ -5,11 +5,12 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT.parent/'batch'))
 import bms_batch as b
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'scripts/lab'));import lab_paths  # <repo>/scripts/lab
 SERIAL='5ea34a4500000000000000001123012c'
 RUN='sandbox-prep-5ea-20260928T1841'
 out=Path.home()/'a2hlab/board'/RUN
 out.mkdir(parents=True,exist_ok=False)
-board=b.Board(SERIAL,'/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh','mac /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/board_note.sh','cx-t0',out/'commands')
+board=b.Board(SERIAL,str(lab_paths.tools()/'hdc_mac.sh'),'mac '+str(lab_paths.tools()/'board_note.sh'),'cx-t0',out/'commands')
 board.ready()
 identity="cat /proc/sys/kernel/random/boot_id; sha256sum /system/bin/appspawn-x /system/lib64/appspawn/libwestlake_android_child.z.so /system/android/framework/oh-adapter-runtime.jar /system/android/lib64/liboh_android_runtime.so; ps -A -o PID,PPID,UID,NAME"
 _,before=board.shell(identity);(out/'identity-before.txt').write_text(before)

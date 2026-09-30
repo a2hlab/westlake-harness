@@ -6,10 +6,12 @@
 # coordinates (the #8 touch fix maps them to the right window).
 set -u
 S=$1; FW=$2; TAG=$3; shift 3; EXTRA="$*"
+. "$(dirname "${BASH_SOURCE[0]}")/lab_paths.sh" || exit 1
 H=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc
-HDC=/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh
-D=/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/ttdrive.sh
-RUN=/home/zhaoyue/a2hlab/board/$S/$TAG
+HDC=$WORKSPACES/westlake-inputs/tools/hdc_mac.sh
+D=$WORKSPACES/westlake-inputs/tools/ttdrive.sh
+VMH=$(lab_vm_home) || exit 1
+RUN=$VMH/a2hlab/board/$S/$TAG
 dev() { "$H" -t "$S" shell "$1" | LC_ALL=C tr -d '\r'; }
 alive() { dev "[ -d /proc/$CHILD ] && echo 1 || echo 0"; }
 texts() {  # distinct quoted texts in the current view tree

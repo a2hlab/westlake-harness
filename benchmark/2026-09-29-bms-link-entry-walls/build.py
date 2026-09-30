@@ -9,7 +9,7 @@ import hashlib, json, re, shutil, subprocess, sys, zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 REPORT = Path(__file__).resolve().parent
-OUT = Path('/home/zhaoyue/a2hlab/build-runs/20260929-oh6.1.0.31-b7')
+OUT = Path.home() / 'a2hlab/build-runs/20260929-oh6.1.0.31-b7'  # dockbuild: $HOME is the VM user's home
 INPUT = OUT / 'inputs'
 BUILD = OUT / ('build-' + (sys.argv[1] if len(sys.argv) > 1 else 'r1'))
 BUILD.mkdir(exist_ok=False)

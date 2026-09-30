@@ -3,9 +3,10 @@ from pathlib import Path
 import json,sys
 root=Path(__file__).resolve().parent
 sys.path.insert(0,str(root.parent/'batch'));import bms_batch as b
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'scripts/lab'));import lab_paths  # <repo>/scripts/lab
 out=Path.home()/'a2hlab/board/b5-alias-deploy-5ea';out.mkdir(exist_ok=False)
 build=json.loads((root/'build-result.json').read_text())
-board=b.Board('5ea34a4500000000000000001123012c','/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh','mac /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/board_note.sh','cx-t0',out/'commands')
+board=b.Board('5ea34a4500000000000000001123012c',str(lab_paths.tools()/'hdc_mac.sh'),'mac '+str(lab_paths.tools()/'board_note.sh'),'cx-t0',out/'commands')
 board.ready();target='/system/android/framework/oh-adapter-runtime.jar';remote='/data/local/tmp/b5-alias-20260928'
 _,before=board.shell('sha256sum '+target)
 assert before.split()[0]==build['baseline_sha256'],before

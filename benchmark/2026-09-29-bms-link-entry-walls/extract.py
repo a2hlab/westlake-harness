@@ -159,7 +159,7 @@ def main():
                       'head_rebuild_sha256': '675536e8a43ac747cbffc0e130d5681ba7bcf2bd3fd305f3d0d357ca797a793d',
                       'output_sha256': '1ebf78ab2bbe4573dfbe146b9f99e6b06e3a581fb9d16721c2272bc18e6cdfa5',
                       'raw_sha256': '5520f69e4fd06c8f275ee6dc58096009f1c7e988c9a62d6d7e6b9df5b2f72845',
-                      'artifacts': 'VM /home/zhaoyue/a2hlab/build-runs/20260929-oh6.1.0.31-b7/installer/',
+                      'artifacts': 'VM ~/a2hlab/build-runs/20260929-oh6.1.0.31-b7/installer/',
                       'build_log': 'installer-build-20260929T1156.log',
                       'host_test': 'evidence/installer/host-test-run.log',
                       'receipt': 'runs/installer-apply-20260929T120416/receipt.json',

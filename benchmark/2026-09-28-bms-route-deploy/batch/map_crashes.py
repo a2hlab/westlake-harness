@@ -10,13 +10,15 @@ Rules (raw-file backed, no rerun):
   Activity.attach.
 """
 import json, os, re, sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "scripts", "lab"))
+import lab_paths  # <repo>/scripts/lab
 
-TEMP = "/home/zhaoyue/a2hlab/board/b4-36-faultlog/temp"
+TEMP = os.path.expanduser("~/a2hlab/board/b4-36-faultlog/temp")
 RUNS = [
-    "/home/zhaoyue/a2hlab/board/bms-61b-20260928T195314/61b0657200000000000000000324012c",
-    "/home/zhaoyue/a2hlab/board/bms-61b-resume-20260928T2040/61b0657200000000000000000324012c",
+    os.path.expanduser("~/a2hlab/board/bms-61b-20260928T195314/61b0657200000000000000000324012c"),
+    os.path.expanduser("~/a2hlab/board/bms-61b-resume-20260928T2040/61b0657200000000000000000324012c"),
 ]
-MANIFEST = "/Users/zhaoyue/orca/workspaces/westlake-harness-b4/benchmark/2026-09-28-bms-route-deploy/batch/apps.json"
+MANIFEST = str(lab_paths.workspaces() / "westlake-harness-b4/benchmark/2026-09-28-bms-route-deploy/batch/apps.json")
 # batch window: 19:53:14 start .. 20:58:40 last crash observed; widen to 19:50-21:10
 WINDOW = ("2026-09-28 19:50", "2026-09-28 21:10")
 

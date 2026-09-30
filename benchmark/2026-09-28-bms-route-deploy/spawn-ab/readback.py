@@ -4,8 +4,9 @@ from pathlib import Path
 root=Path(__file__).resolve().parent
 sys.path.insert(0,str(root.parent/'batch'))
 import bms_batch as b
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'scripts/lab'));import lab_paths  # <repo>/scripts/lab
 out=root/'evidence/readback';out.mkdir(exist_ok=True)
-board=b.Board('5ea34a4500000000000000001123012c','/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh','mac /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/board_note.sh','cx-t0',out/'commands')
+board=b.Board('5ea34a4500000000000000001123012c',str(lab_paths.tools()/'hdc_mac.sh'),'mac '+str(lab_paths.tools()/'board_note.sh'),'cx-t0',out/'commands')
 board.ready()
 board.boot=json.loads((root/'evidence/results.json').read_text())['boot_id']
 for pkg in ['com.example.helloworld','org.wikipedia']:

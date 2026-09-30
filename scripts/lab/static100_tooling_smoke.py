@@ -7,7 +7,8 @@ s={'inventory':{'native_resolution':{'target_abi':'arm64-v8a'},'elfs':[{'abi':'a
 r=resolve(s,set(),{});assert [m['symbol'] for m in r['missing']]==['required64']
 assert _attr(Element('provider',{'name':'bare'}),'name')=='bare'
 assert _attr(Element('provider',{'name':'bare','{http://schemas.android.com/apk/res/android}name':'namespaced'}),'name')=='namespaced'
-c=json.load(open('/Users/zhaoyue/orca/workspaces/westlake-inputs/corpus100.json'))
+import lab_paths
+c=json.load(open(lab_paths.inputs()/'corpus100.json'))
 f=manifest_facts(Path(c['apps']['co-p2pmobile']['input']));providers=[p for p in f['components'] if p['kind']=='provider']
 assert len(providers)==22 and all(p['name'] for p in providers)
 print('PASS: selected ABI import/export isolation; namespace precedence; PayPal 22/22 provider identities recovered')

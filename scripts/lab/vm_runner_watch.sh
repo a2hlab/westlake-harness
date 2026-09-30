@@ -3,7 +3,7 @@
 # Exits (so the outer loop wakes) as soon as a watched log gains a Traceback it did not have when the
 # watch started, printing the log tail. Lanes that idle while "their monitor" waits have missed dead
 # runners twice (B4 #32 lock hiccup, #38 FileExistsError/TypeError), so the outer loop watches too.
-#   vm_runner_watch.sh [--interval S] '<glob under the VM, e.g. /home/zhaoyue/a2hlab/board/b4-*.log>'
+#   vm_runner_watch.sh [--interval S] '<glob under the VM, e.g. ~/a2hlab/board/b4-*.log>'
 set -euo pipefail
 interval=60
 [ "${1:-}" = --interval ] && { interval=$2; shift 2; }
