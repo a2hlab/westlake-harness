@@ -94,3 +94,7 @@
 - **BMS 子进程角色取证（#64）**：toybox `ps -A -o PID,PPID,NAME` 的 NAME 可能继承 appspawn-x；不要据此认定 HelloWorld 不在。用 `/proc/PID/stat` 的 comm（HelloWorld 截为 `com.example.hel`）、PPID 对已知父进程、maps 中完整 `com.example.helloworld/android/base.apk` 三者联合归属；保留PID starttime与maps前后读数。采集器把文件名标 appspawn 不影响原始maps，可在汇总层纠正角色并保留original_role。见 `benchmark/2026-09-29-board-parity/summarize.py`。
 
 - U1 三板离线分片/汇总：benchmark/2026-09-30-round1-plan/shard/shard_plan.py 按历史 summary 的同板同 boot 完成间隔估算、LPT 均衡 22/22/22；缺完整起点/安装前失败用中位数，不能叫精确运行耗时。merge_facts.py --plan <shards.json> --shard <名称>=<运行serial目录> --expected-fingerprint <已采认U1指纹> --out <新目录> 重数 captured 与 UID/name 进程表，缺片unknown、混代/重复/身份错拒合、亮须另读外环截图签认；详见该目录 README。
+
+## U3 JAR重放（2026-09-30，离线工具已测，真板待验）
+
+先 `bash scripts/lab/replay_unified_state.sh --check-inputs` 核WORKSPACES下N2清单与vm-copies/J2、J3；待外环恢复板窗、按board_note取锁后，`REPLAY_LANE="$LANE" bash scripts/lab/replay_unified_state.sh "$SERIAL" --out "$RUN_DIR"`。只读核native/FZ-001双视图，再叠缺少的J2/J3层；已有完整层不重复挂。native缺件/哈希偏差须先走原统一态恢复流程，本工具不替换native/installer、不启停服务。stdout单行JSON，失败非零；回滚只退本轮层，连接/boot/PID变化记unverified。板窗持有者负责最终核验与解锁。四分片在 benchmark/2026-09-30-round1-plan/four-board-v1/；D片未绑定，安卓参考机不可代替第四OH板。

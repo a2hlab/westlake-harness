@@ -411,3 +411,11 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 U0 asset-fd 回测：SPD 首次自身错误页来自第二 PID，首 PID 仍先缺 libgdx→libstdc++ 再 GLImpl JNI；错误页不能算过墙。66 个 record 也非 66 次完成：LibreTube 停批中断无 hilog/t20，必须 unknown；NewPipe 已亮后的 PlayerService bind 只见 InvocationTargetException，内因未记录。证据行号见 benchmark/2026-09-30-round1-plan/u0-assetfd-feedback/next-walls.json。
 
 - 2026-09-30 U2 分簇：4份 FDSAN faultlog 是 DEBUG SIGNAL(42)，同PID随后继续报依赖错误并exit(1)，不能将faultlog自动等同首致命；SPD/Unciv当前是EGLImpl._eglGetDisplay(不是旧GLImpl)，noice首致命是IMediaRouterService空，fd-noice仅后台SSLSockets缺类且进程保留。42未亮=34有明确致命/5无进程致命/3主机输入拒绝；原文行号/哈希与J4/N3表见 benchmark/2026-09-30-round1-plan/u2-feedback/。
+
+- 2026-09-30 U2解冻补判：Firefox/Fennec末端JNA resource错误掩盖前置relocation——U0缺__errno、U2缺__sF，不能按相同Java异常判同墙命中；VLC原APK的Transparent/Empty父链本无background_default、Onboarding有，需查上下文选择，不足以证明OH资源解析器错。逐PID原文/独立aapt2图及修订J4/N3表见 benchmark/2026-09-30-round1-plan/u2-feedback-addendum/。
+
+- 2026-09-30 离线输入/J3：host 侧车 ELF 门禁需复用 #77 四条精确批准数据例外（APK/包/ABI/文件名/SHA/大小+原APK成员一致），只过主机预检不等于板端可装；Subway 当前配对 APK 是新 SHA 队列，旧冻结不改。J3 fd-api alias ID 修正后同 AppCompat 异常仍在，NewPipe 平台签名与已亮 fd-noice 的 SSLSockets 均属功能墙，不能重复计新亮；见 input-recovery 与 round1-plan/j3-feedback。
+
+- 2026-09-30 U3重放：N2包内JAR仍d5000c4e，U3是J2 0715c964→J3 75c2068c两层bind；包清单/顶层SHA不能替代shell与appspawn-x根目录双视图核验。replay_unified_state.sh只重放JAR，38个其余live项+1前置库+2冻结安装器项不符即停；FakeBoard已验，真板重放未验。见 benchmark/2026-09-30-unified-replay/。
+
+- 2026-09-30 冻结/U4：AlarmVibratorFetcher同文件含alarm与vibrator_manager，两app闹钟过墙不能冻结尚待修的振动器；Conscrypt独立blob已有J3三app拆分后复验。J5 dbce2eee + N3b7c9c要求的adapter/core/WebViewUpdateServiceAdapter在12个实际JAR定义中缺失，native FindClass失败即return false，不能以反射服务proxy或补provider APK视为契约齐；证据/66key冻结见 benchmark/2026-09-30-freeze-audit-u4/。

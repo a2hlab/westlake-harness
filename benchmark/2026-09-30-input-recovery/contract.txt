@@ -1,0 +1,52 @@
+# Task Contract: Repair three host input gates without weakening identity checks
+
+## Intent
+Resolve Seal and Toutiao's already approved data payloads at host preflight and explicitly reconcile the current Subway Surfers input. Publish J3-based J4/N3 expectations separately from historical predictions.
+
+## Must
+- No device access, APK rewrite, input-root edits, or changes to historical cohort freezes.
+- Reuse approved #77 exact payload exceptions; keep all other input checks strict.
+
+## Decisions
+- Reuse native-data-exceptions.json approved bundle/ABI/name/APK SHA/payload SHA/size entries; data exceptions must also match an embedded original APK member.
+- Retain invalid-ELF, symlink, inventory, hash, staging and installed-file checks for all other inputs.
+- Pin any verified input revision explicitly in apps.json and record its old identity; do not rewrite historical freezes or claim old observations cover new bytes.
+- Base J3 lighting only on the outer signature; distinguish first walls, secondary failures and unknown causal links.
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-09-28-bms-route-deploy/batch/**
+- benchmark/2026-09-30-input-recovery/**
+- benchmark/2026-09-30-round1-plan/j3-feedback/**
+- specs/bms-input-recovery/**
+- tools/spec-checks/**
+- README.md
+- .octos/KNOWLEDGE-DIGEST.md
+Forbidden:
+- No device commands, writes to input APKs/metadata, changed runtime binaries, or historical freeze edits.
+Out of scope:
+- Installing packages, loading ARM32 binaries in ARM64, changing signatures, and signing off screenshots.
+
+## Completion Criteria
+Scenario: 已批准精确数据按原字节装配
+  Test:
+    Filter: bms_input_exception_roundtrip
+  Given Approved exact ZIP-data and ARM32 payload fixtures match the original APK
+  When The production FakeBoard collection path executes
+  Then Payloads are preserved verbatim and hashes are checked before click
+
+Scenario: 错误身份与未批准数据仍拒绝
+  Test:
+    Filter: bms_input_exception_rejection
+  Given A payload SHA, APK SHA, package, approval status, size or archive membership differs
+  When Offline preflight validates the candidate
+  Then Input is rejected before any board command
+
+Scenario: 当前输入及J3预测交接
+  Test:
+    Filter: bms_input_recovery_receipt
+  Given Three local app inputs and signed J3 runs are available
+  When The offline receipt is validated
+  Then Three inputs have verified hashes or an explicit unresolved reason
+  And J4 and N3 each list expected unlocked apps without claiming on-device success
+

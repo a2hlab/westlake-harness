@@ -1,0 +1,146 @@
+{
+  "file": "westlake-harness-bms-deploy/benchmark/2026-09-30-n3b-webview/src/webview_publication.cpp",
+  "sha256": "ba5a3fe23d4a72f0406427e38b51259cc7c8fd0d04a7c78237d9f6d3fccac210",
+  "lines": [
+    {
+      "line": 90,
+      "text": "static bool wl_prime_webview_update_service_impl("
+    },
+    {
+      "line": 91,
+      "text": "        JNIEnv* env, bool publishFeatureAfterBind) {"
+    },
+    {
+      "line": 92,
+      "text": "    jclass updateClass = env->FindClass("
+    },
+    {
+      "line": 93,
+      "text": "        \"adapter/core/WebViewUpdateServiceAdapter\");"
+    },
+    {
+      "line": 94,
+      "text": "    if (env->ExceptionCheck() || updateClass == nullptr) {"
+    },
+    {
+      "line": 95,
+      "text": "        wl_log_and_clear_webview_exception(env, \"WebViewUpdateServiceAdapter lookup\");"
+    },
+    {
+      "line": 96,
+      "text": "        return false;"
+    },
+    {
+      "line": 97,
+      "text": "    }"
+    },
+    {
+      "line": 98,
+      "text": ""
+    },
+    {
+      "line": 99,
+      "text": "    jmethodID isAvailable = env->GetStaticMethodID("
+    },
+    {
+      "line": 100,
+      "text": "        updateClass, \"isAvailable\", \"()Z\");"
+    },
+    {
+      "line": 101,
+      "text": "    jboolean available = isAvailable != nullptr"
+    },
+    {
+      "line": 102,
+      "text": "        ? env->CallStaticBooleanMethod(updateClass, isAvailable) : JNI_FALSE;"
+    },
+    {
+      "line": 103,
+      "text": "    if (env->ExceptionCheck()) {"
+    },
+    {
+      "line": 104,
+      "text": "        wl_log_and_clear_webview_exception(env, \"WebViewUpdateServiceAdapter.isAvailable\");"
+    },
+    {
+      "line": 105,
+      "text": "        env->DeleteLocalRef(updateClass);"
+    },
+    {
+      "line": 106,
+      "text": "        return false;"
+    },
+    {
+      "line": 107,
+      "text": "    }"
+    },
+    {
+      "line": 108,
+      "text": "    if (available != JNI_TRUE) {"
+    },
+    {
+      "line": 109,
+      "text": "        fprintf(stderr,"
+    },
+    {
+      "line": 110,
+      "text": "                \"[WESTLAKE-WEBVIEW-PROVIDER] configured provider unavailable\\n\");"
+    },
+    {
+      "line": 111,
+      "text": "        fflush(stderr);"
+    },
+    {
+      "line": 112,
+      "text": "        env->DeleteLocalRef(updateClass);"
+    },
+    {
+      "line": 113,
+      "text": "        return false;"
+    },
+    {
+      "line": 114,
+      "text": "    }"
+    },
+    {
+      "line": 115,
+      "text": ""
+    },
+    {
+      "line": 116,
+      "text": "    jmethodID getInstance = env->GetStaticMethodID("
+    },
+    {
+      "line": 117,
+      "text": "        updateClass, \"getInstance\","
+    },
+    {
+      "line": 118,
+      "text": "        \"()Ladapter/core/WebViewUpdateServiceAdapter;\");"
+    },
+    {
+      "line": 119,
+      "text": "    jobject updateService = getInstance != nullptr"
+    },
+    {
+      "line": 120,
+      "text": "        ? env->CallStaticObjectMethod(updateClass, getInstance) : nullptr;"
+    },
+    {
+      "line": 121,
+      "text": "    if (env->ExceptionCheck() || updateService == nullptr) {"
+    },
+    {
+      "line": 122,
+      "text": "        wl_log_and_clear_webview_exception(env, \"WebViewUpdateServiceAdapter.getInstance\");"
+    },
+    {
+      "line": 123,
+      "text": "        env->DeleteLocalRef(updateClass);"
+    },
+    {
+      "line": 124,
+      "text": "        return false;"
+    }
+  ]
+}

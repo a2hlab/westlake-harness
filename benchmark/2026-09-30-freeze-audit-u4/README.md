@@ -1,0 +1,36 @@
+# JAR freeze audit and U4 forecast
+
+The submitted entries reused occupied FZ-002/FZ-003 IDs and called the combined alarm/vibrator file a single freeze unit. **One API is eligible after metadata cleanup; one must wait for a real split.** The independent U4 forecast covers **66 keys: 47 unchanged, 18 checkpoint advances, 1 new-light prediction (noice)**. No board command, runtime modification, registry write or historical-forecast edit occurred.
+
+| Candidate | Verified evidence | Source | Decision / remaining work |
+|---|---|---|---|
+| JarVerificationProviderFix | 3 distinct packages; earlier Sun-provider failures; J3 same-PID rewrite logs, failure gone, outer-signed own t20 UI | Independent file, blob `c7b15f75511ec20e66bca2411fc1a872e61c7521`; emitted unchanged through J1-final/J3/J4/J5 | Eligible. Use a free ID (proposal FZ-004), actual registration time, and make the pinned source available in the checked build root. |
+| AlarmVibratorFetcher | K-9 and Thunderbird own UI, alarm replacement logs; source blob matches | `9309104882fc982e885ed164f89345d526560b41`; `install()` calls both alarm and vibrator_manager replacements | HOLD. Split alarm-only implementation from vibrator implementation, pin the new blob and reverify. Alarm evidence cannot freeze the vibrator half. |
+
+Machine-readable handoff: [registration-table.csv](registration-table.csv), [audit.json](audit.json), [registration-proposal.json](registration-proposal.json). The proposal is not an actual registration or an ID reservation. Both submitted IDs collide with already-frozen native APIs. The two source files exist at `westlake-harness-walls/bms/src/adapter/framework/activity/java/` in commit `cdb82fe5`; they are absent from current master. The proposal's source check passes against that worktree; blindly using master as `--source-root` would fail. Preserve/materialize the exact source before enabling the source gate. This is metadata/setup work, not a need to re-prove the Conscrypt behavior.
+
+Conscrypt evidence now includes **post-split J3** direct consumers, fixing the earlier draft's reliance on pre-split r17p screenshots plus a J1-final batch with no Conscrypt consumer. J3 helper lines: Droid-ify `hilog.txt:25574`, Amaze `:19432`, AntennaPod `:13345`. Each is PID-attributed and matched to the captured t20 file SHA. The current J3 Droid-ify and Amaze images were visually rechecked (own app lists); external lighting conclusions remain unchanged. [audit.json](audit.json) links the exact run paths, before/after snippets, original-submission evidence, hashes and original facts lines. No causal claim is made from a helper print alone: earlier failing JAR-verification paths and later own UI are both included.
+
+Alarm helper lines in J3 are K-9 `hilog.txt:32687`, Thunderbird `:32718`. The source's two replacements occur in `AlarmVibratorFetcher.java:29` and `:38`; these are separate behavior surfaces. J3 fd-reader still fails at `SystemVibratorManager.getVibratorIds` (monitor-enter on a null lock), so the earlier “vibrator wall passed” only covered the old null-array checkpoint. No second distinct vibrator consumer was submitted. A file blob freezes the whole file; describing only the alarm half does not isolate it. This audit does not edit the implementation. The separately held SelfServiceFallback remains outside this two-entry review; no second app was invented.
+
+The **actual U4 profile** is pinned in [profile.json](profile.json): full N3b package `53bb18d1…`, runtime `7c9c6240…`, J5 `dbce2eea…` (includes J4 `1c1bbef5…`), unchanged FZ-001 installer. N3b changes **11 payload paths relative to N2**, not just the single-runtime N3→N3b increment; [native-delta.json](native-delta.json) records them. Boot repairs from #91/T7 are not part of this profile. Fourth OH serial remains unknown. This forecast does not authorize rollout.
+
+Predictions are in [predictions.csv](predictions.csv) / [predictions.json](predictions.json):
+
+- Protect the 25 J3 lights. NewPipe predicts passing the platform-signature PlayerService checkpoint, but it is **already lit**, so this adds zero lights.
+- **noice** is the sole new-light point forecast (medium confidence): J4's media_router repair removes its first recorded fatal. Later behavior/TLS remains uncertain. This is a prediction, not a signature.
+- **14 native-wall apps** predict passing named loader/JNI checkpoints; later UI stays unknown. Three repaired host-input apps predict reaching an installation attempt; BMS extractor behavior is still unknown. Thus lighting coverage is **49/66**: 26 predicted lit, 23 predicted unlit, 17 explicitly unknown. Do not report 26 as a guaranteed final count.
+- **Tutanota stays blocked** in the shipped profile: no declared provider APK/Chromium inputs, and a newly confirmed Java/native contract gap below. Immich's verifier and VLC's context/theme failure stay first-screen blockers even if their secondary native checkpoints improve. The five boot API walls are unchanged.
+
+**J5/N3b contract gap:** N3b `src/webview_publication.cpp:92–96` calls `FindClass("adapter/core/WebViewUpdateServiceAdapter")` and returns false when absent. Lines 99–118 then require `isAvailable()Z` and `getInstance()Ladapter/core/WebViewUpdateServiceAdapter;`. A scan of **12 supplied JARs** (all candidate framework JARs, excluding replaced runtime, plus J5) finds **no definition** of that class. J5 adds `WestlakeWebViewInstall` and a reflective service proxy, which do not supply the required class/method contract. The exact class string also occurs in runtime `7c9c6240` at file offset **400268**. Therefore adding provider bytes alone does not close this gap. Evidence: [webview-contract-gap.json](webview-contract-gap.json), [webview-source-evidence.json](webview-source-evidence.json). A corrected JAR/provider combination is a new profile requiring a new prediction revision; the gap was reported to the outer loop before this handoff.
+
+[freeze.json](freeze.json) fixes timestamp **2026-09-30T12:45:44.594713+00:00** and hashes for the forecast/profile/evidence inputs. Only exact-APK, exact-profile records with clicked_at after that time belong in the prospective score. Score named checkpoint passage, functional repair and lighting separately; report unknown coverage. The generator refuses to overwrite this freeze. Validate current receipt and input pins with:
+
+```sh
+python3 benchmark/2026-09-30-freeze-audit-u4/test_review.py -v
+agent-spec lifecycle specs/freeze-audit-u4/t1-audit.spec.md --code tools/spec-checks --layers lint,test
+```
+
+**5 tests, 3/3 contract selectors passed; lint 100%.** Tests include duplicate-app/mixed-scope/wrong-blob/no-lit negatives, real DEX definitions versus native requirements, 66-key identity/coverage, and SHA mutation rejection. Source drift is an explicit validation failure; do not refresh an old forecast in place. R2: archived observations, source blobs and static artifact gap verified; U4 execution/UI remain unverified. New screenshots/alive counts are unknown because no U4 run occurred.
+
+Delivery: user-path gate checked 22 files with zero violations. Local staging succeeded once, but the subsequent Git operation failed creating the worktree `index.lock` (`Operation not permitted`); no new commit or push. Outer-loop commit is still required.

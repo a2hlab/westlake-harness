@@ -362,3 +362,48 @@ fn r17p_description_rejection() {
 fn r17p_description_handoff() {
     run(&["benchmark/2026-09-30-r17p-61b-comparison/test_compare.py", "Handoff"]);
 }
+
+#[test]
+fn bms_input_exception_roundtrip() {
+    run(&["benchmark/2026-09-28-bms-route-deploy/batch/test_input_recovery.py", "ExactPayloadTests.test_exact_data_roundtrip"]);
+}
+
+#[test]
+fn bms_input_exception_rejection() {
+    run(&["benchmark/2026-09-28-bms-route-deploy/batch/test_input_recovery.py", "ExactPayloadTests"]);
+}
+
+#[test]
+fn bms_input_recovery_receipt() {
+    run(&["benchmark/2026-09-30-input-recovery/test_receipt.py", "ReceiptTests"]);
+}
+
+#[test]
+fn unified_replay_success() {
+    run(&["benchmark/2026-09-30-unified-replay/test_replay.py", "SuccessTests"]);
+}
+
+#[test]
+fn unified_replay_rejection() {
+    run(&["benchmark/2026-09-30-unified-replay/test_replay.py", "RejectionTests"]);
+}
+
+#[test]
+fn unified_replay_shards() {
+    run(&["benchmark/2026-09-30-unified-replay/test_replay.py", "ShardTests"]);
+}
+
+#[test]
+fn freeze_u4_eligibility() {
+    run(&["benchmark/2026-09-30-freeze-audit-u4/test_review.py", "EligibilityTests"]);
+}
+
+#[test]
+fn freeze_u4_contract_gap() {
+    run(&["benchmark/2026-09-30-freeze-audit-u4/test_review.py", "ContractTests"]);
+}
+
+#[test]
+fn freeze_u4_predictions() {
+    run(&["benchmark/2026-09-30-freeze-audit-u4/test_review.py", "PredictionTests"]);
+}

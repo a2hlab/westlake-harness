@@ -92,7 +92,12 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-09-30-freeze-audit-u4/`** | **JAR freeze admission audit and 66-key U4 forecast; mixed alarm/vibrator scope held, exact J5/N3b WebView class gap pinned.** |
+| **`benchmark/2026-09-30-unified-replay/`** | **Offline-tested N2/FZ-001 preflight and idempotent J2/J3 replay; 66 keys balanced across four slots with the fourth OH board pending.** |
+| **`benchmark/2026-09-30-input-recovery/`** | **Three offline input repairs: exact #77 data exceptions, verified Subway cohort revision, FakeBoard and actual-input receipts.** |
+| **`benchmark/2026-09-30-round1-plan/j3-feedback/`** | **J3 25-light/41-unlit refresh; explicit J4/N3/boot unlock app sets, functional-only repairs and unknowns separated.** |
 | **`benchmark/2026-09-30-round1-plan/u0-assetfd-feedback/`** | **U0 asset-fd 66-key checkpoint receipt: 21 signed lights, SPD dual native walls, NewPipe PlayerService failure, incomplete LibreTube preserved.** |
+| **`benchmark/2026-09-30-round1-plan/u2-feedback-addendum/`** | **Thaw handoff: U2 JNA relocation-order and VLC context corrections; complete ranked J4/N3 lists, original receipt preserved.** |
 | **`benchmark/2026-09-30-round1-plan/u2-feedback/`** | **U2 42 unlit apps: faultlog-first triage, U0 checkpoint comparison, ranked J4/N3 batch manifests and verified three-shard facts.** |
 | **`benchmark/2026-09-30-round1-plan/`** | **Round-one J1/N1/boot cluster routing, immutable 66-key forecasts, source-coverage audit and pending three-board U1 scoring/facts handoff.** |
 | **`benchmark/2026-09-29-static-wall-prediction/`** | **B10 v3: AOSP JNI ownership, 134 startup risk rows, 32-APK class availability, task85 five-family detectors and frozen/fatal backtests; task90 66-key r15c successor, dual-layer network shortlist, full-batch evaluator and 224-row feedback scan; unresolved methods keep the gate closed.** |

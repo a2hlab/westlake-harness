@@ -136,6 +136,23 @@ def resolve_input(root, entry):
                 split_hint=split_hint, apk_candidates=len(candidates), native_sidecars=sidecars)
 
 
+NATIVE_DATA_EXCEPTIONS = Path(__file__).resolve().parents[2] / '2026-09-29-install-walls/native-data-exceptions.json'
+
+
+def approved_native_data(apk, meta, name, digest, size):
+    """Reuse #77 approvals for exact packaged bytes, never arbitrary non-ELF data."""
+    try:
+        approvals = json.loads(NATIVE_DATA_EXCEPTIONS.read_text())
+    except (OSError, ValueError) as exc:
+        raise AppFailure('cannot read native data approvals') from exc
+    if not isinstance(approvals, list) or not all(isinstance(x, dict) for x in approvals):
+        raise AppFailure('invalid native data approvals')
+    identity = dict(bundle=meta['application']['package'], abi='arm64-v8a',
+                    filename=name, sha256=digest, bytes=size, apk_sha256=sha(apk))
+    return next((x for x in approvals if x.get('status') == 'approved'
+                 and all(x.get(k) == v for k, v in identity.items())), None)
+
+
 def resolve_native_sidecars(directory, apk, entry, meta):
     """Inventory extracted input libraries; never rewrite or re-sign the APK."""
     libdir = directory / 'lib' / 'arm64-v8a'
@@ -159,20 +176,28 @@ def resolve_native_sidecars(directory, apk, entry, meta):
             raise AppFailure('invalid native sidecar file: ' + p.name)
         with p.open('rb') as stream:
             header = stream.read(64)
+        digest = sha(p)
+        payload_exception = None
         if (len(header) != 64 or header[:6] != b'\x7fELF\x02\x01'
                 or int.from_bytes(header[16:18], 'little') != 3
                 or int.from_bytes(header[18:20], 'little') != 183):
-            raise AppFailure('native sidecar is not an AArch64 shared ELF: ' + p.name)
-        digest = sha(p)
+            payload_exception = approved_native_data(apk, meta, p.name, digest, p.stat().st_size)
+            if payload_exception is None:
+                raise AppFailure('native sidecar is not an AArch64 shared ELF: ' + p.name)
         pin = declared.get('lib/arm64-v8a/' + p.name)
         if pin is not None and (not isinstance(pin, dict) or pin.get('sha256') != digest or pin.get('bytes', p.stat().st_size) != p.stat().st_size):
             raise AppFailure('native sidecar hash/size differs from app-input: ' + p.name)
         rows.append({'name': p.name, 'path': str(p.resolve()), 'sha256': digest,
                      'bytes': p.stat().st_size, 'abi': 'arm64-v8a'})
+        if payload_exception:
+            rows[-1].update(payload_kind='approved-packaged-data',
+                            payload_exception=payload_exception)
     try:
         with zipfile.ZipFile(apk) as archive:
             for row in rows:
                 name = 'lib/arm64-v8a/' + row['name']
+                if row.get('payload_exception') and name not in archive.namelist():
+                    raise AppFailure('approved data is not embedded in original APK: ' + row['name'])
                 if name in archive.namelist() and hashlib.sha256(archive.read(name)).hexdigest() != row['sha256']:
                     raise AppFailure('sidecar conflicts with embedded APK library: ' + row['name'])
     except zipfile.BadZipFile as exc:
