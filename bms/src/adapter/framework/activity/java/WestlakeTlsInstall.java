@@ -137,15 +137,37 @@ public final class WestlakeTlsInstall {
             return;
         }
         try {
-            String spi = "adapter.compat.WestlakeSSLContextSpi";
-            bc.put("SSLContext.TLS", spi);
-            bc.put("SSLContext.TLSv1.2", spi);
-            bc.put("SSLContext.TLSv1.3", spi);
-            bc.put("SSLContext.Default", spi);
+            // r17s (cc-wiki TLS wiring): register the SSLContext SPI with a DIRECT-newInstance
+            // Provider.Service, NOT bc.put(type, className). BC is a boot provider, so a class-NAME
+            // registration makes SSLContext.getInstance("TLS") resolve WestlakeSSLContextSpi under BC's
+            // BootClassLoader -> ClassNotFoundException -> JCA falls through to the appended
+            // TlsShimProvider (the only other SSLContext.TLS on route-A) -> okhttp gets
+            // ShimSocketFactory -> UnsupportedOperationException on connect. Direct newInstance skips
+            // the boot-loader class lookup, so BC (ahead of the appended shim) wins
+            // SSLContext.getInstance("TLS"). Same fix fixRuntimeClassServices already applies to
+            // SecureRandom.WestlakeKernel and TrustManagerFactory.OH-PKIX.
+            Spi ctxSpi = new Spi() {
+                @Override public Object make() { return new adapter.compat.WestlakeSSLContextSpi(); }
+            };
+            putDirectService(bc, "SSLContext", "TLS", "adapter.compat.WestlakeSSLContextSpi", ctxSpi);
+            putDirectService(bc, "SSLContext", "TLSv1.2", "adapter.compat.WestlakeSSLContextSpi", ctxSpi);
+            putDirectService(bc, "SSLContext", "TLSv1.3", "adapter.compat.WestlakeSSLContextSpi", ctxSpi);
+            putDirectService(bc, "SSLContext", "Default", "adapter.compat.WestlakeSSLContextSpi", ctxSpi);
             bc.put("Alg.Alias.SSLContext.SSL", "TLS");
             javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(
                     new adapter.compat.WestlakeSSLSocketFactory());
             Security.setProperty("ssl.SocketFactory.provider", "adapter.compat.WestlakeSSLSocketFactory");
+            // r17s: also make SSLContext.getDefault() return Westlake, resolved EXPLICITLY from BC so
+            // no provider ordering can send us back to the shim. Belt-and-suspenders for any path that
+            // uses getDefault() rather than getInstance("TLS").
+            try {
+                javax.net.ssl.SSLContext westlakeCtx = javax.net.ssl.SSLContext.getInstance("TLS", bc);
+                westlakeCtx.init(null, null, null);   // WestlakeSSLContextSpi.engineInit is a no-op
+                javax.net.ssl.SSLContext.setDefault(westlakeCtx);
+                System.err.println("[B8-TLS] SSLContext.TLS -> Westlake (direct newInstance) + setDefault; okhttp beats TlsShimProvider");
+            } catch (Throwable t) {
+                System.err.println("[B8-TLS] SSLContext.setDefault(Westlake) failed (non-fatal): " + t);
+            }
             System.err.println("[B8-TLS] WestlakeSSLSocketFactory installed as default HTTPS (self-test OK)");
         } catch (Throwable t) {
             System.err.println("[B8-TLS] SSLSocketFactory install failed: " + t);

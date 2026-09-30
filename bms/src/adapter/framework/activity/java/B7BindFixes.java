@@ -53,6 +53,14 @@ public final class B7BindFixes {
         } catch (Throwable t) {
             System.err.println("[B7] nativeLibraryDir check failed: " + t);
         }
+        // r17s (dlopen_ns experiment): append /system/lib64 + /system/android/lib64 to the app
+        // classloader's native search path so unciv/mindustry/nextcloud can (maybe) reach their
+        // missing system deps. Discriminates JAR-fixable vs native-owned; fail-safe, log-only.
+        try {
+            extendAppNativeLibrarySearchPath();
+        } catch (Throwable t) {
+            System.err.println("[B8-DLEXP] not run: " + t);
+        }
         // B8 (#65): record the bound self ApplicationInfo for the self-package
         // getProviderInfo/resolveContentProvider fallback (SelfComponentFallback).
         SelfComponentFallback.bind(ai);
@@ -304,6 +312,77 @@ public final class B7BindFixes {
         ai.nativeLibraryDir = replacement;
         System.err.println("[B7] nativeLibraryDir " + current + " does not exist; using "
                 + replacement);
+    }
+
+    /**
+     * r17s (dlopen_ns DISCRIMINATING EXPERIMENT, cc-t3 -- NOT a confirmed fix). Several apps' own
+     * native libs fail to load a system/NDK dependency that EXISTS on the image but is unreachable
+     * from the app's linker namespace: unciv libgdx.so -> libstdc++.so (/system/android/lib64),
+     * mindustry libarc.so -> libOpenSLES.so (/system/lib64), nextcloud libconscrypt_jni.so ->
+     * liblog.so (/system/android/lib64). The app namespace's search+permitted paths are built
+     * natively (native-loader-oh/appspawn-x); no runtime-JAR Java class assembles them. This probe
+     * appends the two dep dirs to the app classloader's DexPathList native search path by reflection.
+     * If OH's native-loader consults DexPathList.nativeLibraryPathElements for a later
+     * System.loadLibrary, the deps resolve (JAR-fixable); if the frozen native namespace wins,
+     * nothing changes (native-owned -> cx-t0). Fail-safe, log-only, additive.
+     */
+    static void extendAppNativeLibrarySearchPath() {
+        final String[] extra = {"/system/lib64", "/system/android/lib64"};
+        try {
+            ClassLoader appCl = Thread.currentThread().getContextClassLoader();
+            if (appCl == null || appCl == B7BindFixes.class.getClassLoader()) {
+                System.err.println("[B8-DLEXP] app classloader unavailable (ctx=" + appCl + "); skipped");
+                return;
+            }
+            if (!(appCl instanceof dalvik.system.BaseDexClassLoader)) {
+                System.err.println("[B8-DLEXP] context classloader not BaseDexClassLoader: " + appCl.getClass());
+                return;
+            }
+            java.lang.reflect.Field plF = dalvik.system.BaseDexClassLoader.class.getDeclaredField("pathList");
+            plF.setAccessible(true);
+            Object pathList = plF.get(appCl);
+            java.lang.reflect.Field ndF = pathList.getClass().getDeclaredField("nativeLibraryDirectories");
+            ndF.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            java.util.List<java.io.File> dirs = (java.util.List<java.io.File>) ndF.get(pathList);
+            System.err.println("[B8-DLEXP] app nativeLibraryDirectories BEFORE = " + dirs);
+            boolean added = false;
+            for (String d : extra) {
+                boolean present = false;
+                for (java.io.File e : dirs) { if (e != null && d.equals(e.getPath())) { present = true; break; } }
+                if (!present) { dirs.add(new java.io.File(d)); added = true; }
+            }
+            if (!added) {
+                System.err.println("[B8-DLEXP] app path already had the dep dirs; nothing to add");
+                return;
+            }
+            java.lang.reflect.Field elF = null;
+            try { elF = pathList.getClass().getDeclaredField("nativeLibraryPathElements"); }
+            catch (NoSuchFieldException nsf) { /* older/other DexPathList */ }
+            Object rebuilt = null;
+            if (elF != null) {
+                for (java.lang.reflect.Method m : pathList.getClass().getDeclaredMethods()) {
+                    if (m.getName().equals("makePathElements")
+                            && m.getParameterTypes().length == 1
+                            && java.util.List.class.isAssignableFrom(m.getParameterTypes()[0])) {
+                        m.setAccessible(true);
+                        rebuilt = m.invoke(null, dirs);
+                        break;
+                    }
+                }
+                if (rebuilt != null) {
+                    elF.setAccessible(true);
+                    elF.set(pathList, rebuilt);
+                    System.err.println("[B8-DLEXP] appended " + java.util.Arrays.toString(extra)
+                            + " + rebuilt nativeLibraryPathElements (experiment ACTIVE)");
+                    return;
+                }
+            }
+            System.err.println("[B8-DLEXP] dirs appended but nativeLibraryPathElements NOT rebuilt (makePathElements(List) absent on "
+                    + pathList.getClass() + "); loader likely ignores -> expect no change (native-owned)");
+        } catch (Throwable t) {
+            System.err.println("[B8-DLEXP] app native-search-path extend failed (non-fatal): " + t);
+        }
     }
 
     /**
