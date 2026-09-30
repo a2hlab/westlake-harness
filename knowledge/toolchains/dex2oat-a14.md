@@ -105,3 +105,16 @@ m -j32 build-art-host libart                 # host dex2oat set + arm64 libart f
 - 产物持久:hw248 `/home/alvin/official9-boot-repro/`(160M,27 文件 + run.log + local.sha256)。
 
 **判定:vdex 层 L1 全中;L2 静态头字段全中(除 checksum,已归因路径串);L2 板测待批。**
+
+## 同形 work 路径重跑与逐项归因(2026-09-30 oc-t4,fn03-r29-boot 复刻)
+
+重跑:`--image`/`--dex-file` 全部指 `/opt/build-trees/.work/fn03-r29-boot-20260728T0635Z/...`(板上原件 cmdline 同形,incoming symlink 到同 9 jar)。6.747s 出 27 文件。
+
+- **L1 vs 板清单:仍 9/27**(=全部 vdex 逐位;18 差 = 9 `.art`+9 `.oat`)。
+- **vs 首跑只改 2 文件**:`boot.art`、`boot.oat`(其余 25 文件路径重跑后逐位不变——它们的 kv 不含 --image/--dex-file 串)。
+- **路径串级联定量化(boot.oat)**:cmdline kv 串长 1220→1663(**Δ443**),`oat_dex_files_offset` 0x1e51a5→0x1e5361(**Δ444**)——kv 变长把其后所有偏移整体推移,级联 1.92MB 差异字节(窗口密度 ~97%);**kv 区外真实差异仅 53,447B**。
+- **checksum 三值**:首跑 0x50af7eed → fn03 同形 0xa5f169b2;板上 0xd369f830 仍未中。
+- **残差归因(待续)**:fn03 路径已是板上同形,残差(53KB + checksum)来自 kv 区外内容——候选:板上工具是 `/opt/build-trees/aosp-arm64-d600` 树(≠精确 release r16 的源内细节,如 CL 号/构建号指纹),或 build 时间戳。要 L1 全中需拿到 d600 树的源(或其 art/ 的精确 git 状态)。
+- 产物:hw248 `/opt/build-trees/.work/fn03-r29-boot-20260728T0635Z/`(27 文件 + run.log + local.sha256)。
+
+**判定不变:vdex 层 L1 全中;L2 静态头字段全中(checksum 单点归因路径+源树差);L2 板测因 5cd 失联中止,叠加读验(11:28:12)已证明 27 bind 全部生效后被系统读到。**
