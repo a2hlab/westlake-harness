@@ -153,6 +153,7 @@ kind of work from where the corpus started
 | `benchmark/2026-09-30-r17a-sweep/` | **13 lit after r17a**: the receiver guard (now unwrapping two proxy layers) lets NetGuard and Luanti past the missing CommonEvent JNI; Noice regresses because the deeper-running service hits a null `PendingIntent` — rule: a tolerance guard ships with non-null stubs for what the code touches next |
 | `benchmark/2026-09-30-r17p-full-sweep/` | **22 lit after r17p**: AntennaPod, Amaze and Tusky show their own UI for the first time; the two boards' runtime fingerprints differ only in the installer pair (115/117 files identical) — rule: diff fingerprints before calling a cross-board difference nondeterminism |
 | `benchmark/2026-09-30-unified-r17r-5cd-sweep/` | **21 of 23 signed apps on one board**: v3c + runtime 9e14 + JAR r17r + background-launch installer on 5cd; AppManager (white second Activity) and Noice (audio JNI) are the two missing — rule: full sweeps start from this state and change one variable at a time |
+| **`benchmark/2026-09-30-u2-sweep/`** | **U2 (N2 native + J2) on all three boards, 66 keys sharded 22/22/22: 24 lit, AnkiDroid new (cumulative 27); uhabits lit 1 of 3 on same-state reruns — rule: a white screen on one run is not a regression until a `--reinstall` rerun fails again** |
 
 ---
 
