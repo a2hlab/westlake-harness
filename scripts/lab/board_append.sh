@@ -46,7 +46,9 @@ body, board = sys.stdin.read(), open(sys.argv[1], errors="replace").read()
 for w in sorted(set(re.findall(r"\b\d{2}:\d?x\b", body))):
     print(f"WARN: wildcard time {w} cited -- cite the board line with its exact timestamp (EVO-0049)", file=sys.stderr)
 own = set(re.findall(r"T(\d{2}:\d{2}:\d{2})", body.splitlines()[0] if body else ""))
-for t in sorted(set(re.findall(r"(?<![\d:T])(\d{2}:\d{2}:\d{2})(?![\d:.])", body)) - own):
+# only times cited as board entries (07:32: hilog times without milliseconds were flagged)
+cited = {m.group(2) for m in re.finditer(r"(ACK|PROGRESS|签认|采认|黑板|那条|LOCK)[^\n]{0,24}?(?<![\d:T])(\d{2}:\d{2}:\d{2})(?![\d:.])", body)}
+for t in sorted(cited - own):
     if "T" + t not in board:
         print(f"WARN: cited time {t} is not on the board (never published, or a typo) (EVO-0049)", file=sys.stderr)
 ' "$BOARD"
