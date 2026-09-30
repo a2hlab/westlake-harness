@@ -92,7 +92,8 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
-| **`benchmark/2026-09-30-flutter-candidate/`** | **Flutter pre-build gate: six APK-verified engines share eight missing strong symbols plus libjnigraphics; no build/device changes.** |
+| **`benchmark/2026-09-30-asset-fd-plan/`** | **Existing Westlake PFD helper replaces the OH Implement-me fallback; single-runtime plan for NewPipe/uhabits, not yet deployed.** |
+| **`benchmark/2026-09-30-flutter-candidate/`** | **Flutter r4: six engines reach a caller-namespace permission failure; controls retained, frozen build/closure evidence and rollback record.** |
 | **`benchmark/2026-09-30-flutter-loader-plan/`** | **Offline Flutter loader plan: 12 two-board failures, real GLES provider versus empty shim, scoped owner inheritance and six conditional predictions.** |
 | **`benchmark/2026-09-30-installer-5cd-ab/`** | **5cd installer/32df interaction experiment: AntennaPod retained, explicit reboot/data covariates, final 9e14+r17r convergence.** |
 | **`benchmark/2026-09-30-installer-61b-ab/`** | **61b r17p installer-only background-activation A/B: permission traces, fixed native hashes and 17-key screenshot/facts evidence.** |

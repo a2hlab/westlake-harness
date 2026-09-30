@@ -7,7 +7,7 @@ FROZEN=$ROOT/.work/product-tls-generation/frozen
 TC=$FROZEN/toolchain
 SYS=$FROZEN/sysroot
 POOL=$ROOT/platform-pool/system/lib64
-OUT=$REPO/bms/src/.work/flutter-candidate
+OUT=${FLUTTER_BUILD_OUT:-$REPO/bms/src/.work/flutter-candidate}
 SRC=$HERE/src
 TARGET=aarch64-linux-ohos
 export LD_LIBRARY_PATH=$TC/runtime
@@ -20,6 +20,10 @@ test -f "$RUNTIME" || { echo "Missing mounted runtime input: $RUNTIME" >&2; exit
 mkdir -p "$OUT"
 "$CC" "${COMMON[@]}" -std=c11 -Wall -Wextra -Werror -fvisibility=hidden -c "$SRC/app_native_loader.c" -o "$OUT/anl.o"
 "$CC" "${LINK[@]}" -Wl,-soname,libapp_native_loader.so -Wl,--version-script=$SRC/app_native_loader.map "$OUT/anl.o" -lc -o "$OUT/libapp_native_loader.so"
+if [[ "${1:-}" == "--anl-only" ]]; then
+    sha256sum "$OUT/libapp_native_loader.so"
+    exit 0
+fi
 "$CC" "${COMMON[@]}" -std=c11 -c "$SRC/libandroid_webview_shim.c" -o "$OUT/android.o"
 "$CC" "${COMMON[@]}" -std=c11 -c "$SRC/bionic_extra.c" -o "$OUT/bionic.o"
 # R155-compatible current runtime; keep it a dependency, not a copied instance.

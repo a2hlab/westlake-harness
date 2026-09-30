@@ -132,6 +132,17 @@ def validate_upgrade(old, new):
             raise ValueError('upgrade alias/source SHA mismatch: ' + target)
 
 
+def optional_native_additions(manifest, previous, paths):
+    # New directory-mounted libraries may be absent; resident members may not.
+    declared = {'/system/android/' + p[len('payload/android/'):]
+                for p in manifest['files'] if p.startswith('payload/android/')}
+    resident = set(previous['live_hashes']) if previous else set()
+    if previous:
+        resident.update('/system/android/' + p[len('payload/android/'):]
+                        for p in previous.get('files', {}) if p.startswith('payload/android/'))
+    return [p for p in paths if p in declared and p not in resident
+            and re.fullmatch(r'/system/android/lib64/(?:[A-Za-z0-9_+.-]+/)*lib[A-Za-z0-9_+.-]+\.so', p)]
+
 class Deployment:
     def __init__(self, args, m, b):
         self.a, self.m, self.b = args, m, b
@@ -398,7 +409,7 @@ class Deployment:
         before_paths = ['/system/android/' + x[len('payload/android/'):] for x in self.m['files'] if x.startswith('payload/android/')]
         before_paths += [x['target'] for x in self.m['mounts'] if x['target'] not in ['/system/android', route]]
         if previous: before_paths += list(old['live_hashes'])
-        optional = [p for p in before_paths if re.fullmatch(r'/system/android/lib64/lib[A-Za-z0-9_+.-]+\.so', p)]
+        optional = optional_native_additions(self.m, old if previous else None, before_paths)
         before, before_absent = self.snapshot_files(before_paths, optional)
         installers = ['/system/lib64/libapk_installer.so', '/system/lib64/platformsdk/libapk_installer.so']
         remote = '/data/local/tmp/westlake-generation-' + self.gen[:12] + '-' + self.board.boot + '-' + str(time.time_ns())

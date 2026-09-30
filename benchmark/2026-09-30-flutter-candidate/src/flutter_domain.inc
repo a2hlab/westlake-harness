@@ -25,19 +25,22 @@ static int flutter_inherit(Dl_namespace* target, const char* owner, const char* 
 static int flutter_prepare(AnlDomain* domain) {
     if (domain->flutter_state != 0) return domain->flutter_state == 1 ? 0 : -1;
     domain->flutter_state = -1;
-    char name[NS_NAME_MAX + 1], permitted[3 * PATH_MAX];
+    char name[NS_NAME_MAX + 1], permitted[3 * PATH_MAX], search[2 * PATH_MAX];
+    const char* private_root = "/system/android/lib64/westlake_flutter";
     snprintf(name, sizeof(name), "westlake.flutter.%ld.%lu", (long)getpid(),
              atomic_fetch_add_explicit(&g_domain_id, 1, memory_order_relaxed));
-    snprintf(permitted, sizeof(permitted), "%s:%s:/system/android/lib64",
-             domain->app_paths, domain->app_permitted_paths);
+    if (snprintf(search, sizeof(search), "%s:%s", private_root, domain->app_paths) >= (int)sizeof(search) ||
+        snprintf(permitted, sizeof(permitted), "%s:%s:%s", private_root,
+                 domain->app_paths, domain->app_permitted_paths) >= (int)sizeof(permitted))
+        return failf("Flutter namespace paths exceed limits");
     dlns_init(&domain->flutter, name);
-    if (dlns_create2(&domain->flutter, domain->app_paths, 0) != 0 ||
+    if (dlns_create2(&domain->flutter, search, 0) != 0 ||
         dlns_set_namespace_separated(name, true) != 0 ||
         dlns_set_namespace_permitted_paths(name, permitted) != 0)
         return failf("Flutter namespace configuration failed");
     /* One-hop edges: never copy OH libraries into an app-local search root. */
     if (flutter_inherit(&domain->flutter, "default",
-            "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libnative_window.so:libnative_buffer.so") != 0 ||
+            "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so") != 0 ||
         flutter_inherit(&domain->flutter, "westlake.sealed.child",
             "liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so") != 0)
         return -1;
@@ -45,9 +48,7 @@ static int flutter_prepare(AnlDomain* domain) {
             "libwestlake_bionic_pthread_bridge.so") != 0)
         return failf("Flutter pthread bridge owner unavailable");
     const char* preload[] = {
-        "/system/android/lib64/libwestlake_flutter_android.so",
-        "/system/android/lib64/libwestlake_flutter_gles2.so",
-        "/system/android/lib64/libwestlake_flutter_jnigraphics.so"
+        "libandroid.so", "libGLESv2.so", "libjnigraphics.so"
     };
     for (size_t i = 0; i < sizeof(preload)/sizeof(preload[0]); ++i) {
         domain->flutter_handles[i] = dlopen_ns(&domain->flutter, preload[i], RTLD_NOW|RTLD_LOCAL);

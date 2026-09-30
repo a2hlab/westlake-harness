@@ -1,0 +1,63 @@
+--- a/framework/android-runtime/src/android_util_AssetManager_aosp.cpp
++++ b/framework/android-runtime/src/android_util_AssetManager_aosp.cpp
+@@ -226,7 +226,6 @@
+   return env->NewStringUTF(result.c_str());
+ }
+ 
+-#ifdef __ANDROID__ // Layoutlib does not support parcel
+ static jobject ReturnParcelFileDescriptor(JNIEnv* env, std::unique_ptr<Asset> asset,
+                                           jlongArray out_offsets) {
+   off64_t start_offset, length;
+@@ -256,26 +255,32 @@
+     close(fd);
+     return nullptr;
+   }
+-  // G2.14u r2: ParcelFileDescriptor wrapping requires libbinder Java↔C++ bridge
+-  // (android_util_Binder.cpp::newParcelFileDescriptor); adapter does not link
+-  // libbinder.  AssetManager.openFd() / openNonAssetFd() callers receive null
+-  // here.  HelloWorld first-frame path uses the int-fd / Asset path, not the
+-  // PFD wrapper, so this null is acceptable bring-up state.  Real AOSP-app
+-  // ContentProvider paths that depend on PFD will need a future binder bridge.
+-  HiLogPrint(LOG_CORE, LOG_WARN, 0xD000F00u, "OH_AssetManager",
+-             "[stub] newParcelFileDescriptor: returning null (no binder bridge)");
+-  close(fd);
+-  return nullptr;
+-}
+-#else
+-static jobject ReturnParcelFileDescriptor(JNIEnv* env, std::unique_ptr<Asset> asset,
+-                                          jlongArray out_offsets) {
+-  jniThrowException(env, "java/lang/UnsupportedOperationException",
+-                    "Implement me");
+-  // never reached
+-  return nullptr;
+-}
+-#endif
++
++  // This is the implementation of android::newParcelFileDescriptor used by
++  // AOSP android_util_Binder.cpp: construct the local Java owner directly.
++  // No Binder transaction or native Parcel operation is involved.
++  jclass pfd_class = env->FindClass("android/os/ParcelFileDescriptor");
++  if (pfd_class == nullptr) {
++    close(fd);
++    return nullptr;
++  }
++  jmethodID constructor = env->GetMethodID(
++      pfd_class, "<init>", "(Ljava/io/FileDescriptor;)V");
++  if (constructor == nullptr) {
++    close(fd);
++    env->DeleteLocalRef(pfd_class);
++    return nullptr;
++  }
++  jobject parcel_fd = env->NewObject(pfd_class, constructor, file_desc);
++  env->DeleteLocalRef(pfd_class);
++  env->DeleteLocalRef(file_desc);
++  if (parcel_fd == nullptr) {
++    close(fd);
++    return nullptr;
++  }
++  // Ownership of fd has transferred to ParcelFileDescriptor.
++  return parcel_fd;
++}
+ 
+ static jint NativeGetGlobalAssetCount(JNIEnv* /*env*/, jobject /*clazz*/) {
+   return Asset::getGlobalCount();

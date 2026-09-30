@@ -476,3 +476,7 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 Flutter构建前闭包：6个APK原件engine各476/477强导入，即便假设libandroid接现役runtime/GLES2接OH GLES3仍共同缺libjnigraphics及8符号(Window锁/提交2、Bitmap3、bionic3)；整包导出也缺。Westlake webview-shim有对应源码；仅ANL+GLES2两件门不过，版本化导入匹配未版本化musl需另核，不把292/293项误报全失败。见benchmark/2026-09-30-flutter-candidate/。
 
 - 2026-09-30 Flutter r3：四库严格链接通过、六engine物理符号/NEEDED缺口归零但域门拒绝；OH6.1 musl按shortname(打开文件名)匹配，预载私有异名文件+DT_SONAME不构成原名别名，需私有目录保留canonical basename；native_window/native_buffer链接输入实为libsurface.z.so，应按产物NEEDED设owner边。包dry-run通过不代表域可达，见benchmark/2026-09-30-flutter-candidate/evidence-r3/。
+
+- 2026-09-30 AssetManager.openFd：OH 构建的 ReturnParcelFileDescriptor 走 __ANDROID__ 之外的 Implement me，另一分支也因误认需 Binder 而返 null；Mac Westlake532633da已有直接构造 ParcelFileDescriptor(FileDescriptor) 的真实 helper，保持 offset/length 与 fd ownership 即可，勿仅打开 __ANDROID__ 宏。NewPipe/uhabits 共墙，源码方案见 benchmark/2026-09-30-asset-fd-plan/，尚未上板验证。
+
+- 2026-09-30 Flutter r4：ANL位于westlake.sealed.child，直接调dlns_init/create返回musl caller ns have no permission；原ANL用namespace_host_ops的default-owner回调，不能在扩展路径绕开。canonical文件名/物理闭包/owner继承表静态通过仍不足，须核创建API的调用者owner。61b HW/ZZ正常，Flutter私有加载尚未执行，见flutter-candidate/evidence-r4/caller-gate.json。

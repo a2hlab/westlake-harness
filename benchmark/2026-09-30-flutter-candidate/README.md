@@ -1,9 +1,12 @@
-# Flutter candidate: pre-build closure gate rejected
+# Flutter r4: blocked by caller namespace permission
 
-The approved two-file proposal (ANL plus a private GLES2 facade) does not yet
-satisfy the six engines' strong-import closure. The initial two-board logs
-reported the first missing name, not all load requirements. At that initial gate no build was attempted. The later approved expansion and
-two stopped build attempts are recorded below; nothing was deployed.
+**Current result:** r4 built and deployed successfully; fixed-JAR HW/ZZ controls
+remain on their own screens. All six Flutter apps fail before private-library loading: musl rejects the sealed
+ANL caller creating westlake.flutter.*. All six t20 images show the launcher.
+The original v3c package and exact r17p JAR were restored and verified. No fifth build.
+
+The original gate below records why the initial two-file proposal was expanded.
+Its old missing-symbol list is historical, not the current four-library closure.
 
 ## Measured result
 
@@ -174,3 +177,100 @@ that declared directory and both ANL aliases atomically with other bytes intact.
 A further ANL compile would exceed the explicit three-attempt window, so this
 correction is pending authorization, not performed. cc-t3 still owns 61b;
 there have been no device commands or lock acquisitions.
+
+## Approved r4: canonical private directory
+
+Outer approved one additional ANL-only build. ANL is now 09a9f016; the three r3 compatibility libraries retain their original SHA. The package westlake-generation-flutter-r4 changes only the two ANL aliases and adds three canonical names under android/lib64/westlake_flutter. Six package names are the only trigger. The real libsurface.z.so owner edge is present. evidence-r4/domain-gate.json passes; the old r3 source/package fails the same check. The package and upgrade dry-run pass. Existing known-answer tests: 69 run, 2 skipped, OK.
+
+On 61b we captured the actual JAR as r17p a0ed5c4f, not an assumed r17s. Control inputs originally pointed at the app-only directory; both records failed before launch, with zero screenshot slots. A separate corrected baseline run uses westlake-b90-controls-inputs. Controls use launch-only to preserve ZigZag's five existing native bind mounts; Flutter apps use clean reinstall.
+
+
+## Device caller gate: the offline check was incomplete
+
+Immich hilog line 47200: caller ns: westlake.sealed.child have no permission,
+target is westlake.flutter.21485.3; LocalSend line 28360 reports the same denial.
+The following Java error is UnsatisfiedLinkError: Flutter namespace configuration
+failed. This is before owner inheritance or facade preloading. The old ANL
+uses runtime_gate.namespace_host_ops.create_configured_namespaces/open_namespace
+to execute through the default owner. r4 incorrectly called dlns APIs directly
+from the sealed provider. The local OH6.1 source checks the caller DSO namespace
+against its permitted set; westlake.sealed.child is not one of them.
+
+evidence-r4/caller-gate.json and musl-caller-policy.txt record the missing gate.
+Do not use the earlier name/identity-only domain-gate PASS as deployment approval.
+A future implementation must preserve the existing default-owner callback flow
+for creating/configuring/opening namespaces; no runtime policy relaxation has
+been made. The fourth build budget is exhausted.
+
+Use this worktree's scripts/lab/deploy_generation.sh for the tested transaction.
+The immutable candidate package still embeds the older deployer; it does not
+support absent nested private libraries. The entry-point fix permits only
+manifest-declared native additions and still requires resident live-hash members.
+Nineteen deployer tests and 69 known-answer tests (2 skipped) pass.
+
+## Final board state and verbatim facts
+
+61b was held from 09:13 to 09:35, then released. No boot or installer change.
+The original package 668e4f7c and JAR a0ed5c4f are restored; the rollback gate
+verifies SHA, one ART instance and all three added paths absent. Final HW t20
+is its own UI. Screenshots were self-reviewed; outer review remains the signoff.
+
+flutter-r4-baseline-fixed-61b
+
+```text
+RUNTIME fingerprint=71ccc587850e files=117 (runtime-fingerprint.txt; compare before blaming the JAR across boards)
+helloworld           shots 2/2  alive t5=yes t20=yes  child_hilog=5858  foreground_unconfirmed
+zigzag               shots 2/2  alive t5=yes t20=yes  child_hilog=12871  foreground_unconfirmed
+TOTAL keys=2 screenshots_captured=4/4 alive_t5=2 alive_t20=2
+```
+
+- benchmark/2026-09-30-flutter-candidate/device-61b/runs/flutter-r4-baseline-fixed-61b/61b0657200000000000000000324012c/helloworld/t20.jpeg
+- benchmark/2026-09-30-flutter-candidate/device-61b/runs/flutter-r4-baseline-fixed-61b/61b0657200000000000000000324012c/zigzag/t20.jpeg
+flutter-r4-controls-61b
+
+```text
+RUNTIME fingerprint=5f2cfcb18c9e files=117 (runtime-fingerprint.txt; compare before blaming the JAR across boards)
+helloworld           shots 2/2  alive t5=yes t20=yes  child_hilog=5864  foreground_unconfirmed
+zigzag               shots 2/2  alive t5=yes t20=yes  child_hilog=13554  foreground_unconfirmed
+TOTAL keys=2 screenshots_captured=4/4 alive_t5=2 alive_t20=2
+```
+
+- benchmark/2026-09-30-flutter-candidate/device-61b/runs/flutter-r4-controls-61b/61b0657200000000000000000324012c/helloworld/t20.jpeg
+- benchmark/2026-09-30-flutter-candidate/device-61b/runs/flutter-r4-controls-61b/61b0657200000000000000000324012c/zigzag/t20.jpeg
+flutter-r4-first2-61b
+
+```text
+RUNTIME fingerprint=5f2cfcb18c9e files=117 (runtime-fingerprint.txt; compare before blaming the JAR across boards)
+fd-immich            shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+localsend            shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+TOTAL keys=2 screenshots_captured=4/4 alive_t5=0 alive_t20=0
+```
+
+- benchmark/2026-09-30-flutter-candidate/device-61b/runs/flutter-r4-first2-61b/61b0657200000000000000000324012c/fd-immich/t20.jpeg
+- benchmark/2026-09-30-flutter-candidate/device-61b/runs/flutter-r4-first2-61b/61b0657200000000000000000324012c/localsend/t20.jpeg
+flutter-r4-rest4-61b
+
+```text
+RUNTIME fingerprint=5f2cfcb18c9e files=117 (runtime-fingerprint.txt; compare before blaming the JAR across boards)
+fd-fluffychat        shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+fd-kitchenowl        shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+fd-libre             shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+fd-saber             shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+TOTAL keys=4 screenshots_captured=8/8 alive_t5=0 alive_t20=0
+```
+
+- benchmark/2026-09-30-flutter-candidate/device-61b/runs/flutter-r4-rest4-61b/61b0657200000000000000000324012c/fd-fluffychat/t20.jpeg
+- benchmark/2026-09-30-flutter-candidate/device-61b/runs/flutter-r4-rest4-61b/61b0657200000000000000000324012c/fd-kitchenowl/t20.jpeg
+- benchmark/2026-09-30-flutter-candidate/device-61b/runs/flutter-r4-rest4-61b/61b0657200000000000000000324012c/fd-libre/t20.jpeg
+- benchmark/2026-09-30-flutter-candidate/device-61b/runs/flutter-r4-rest4-61b/61b0657200000000000000000324012c/fd-saber/t20.jpeg
+flutter-r4-rollback-61b
+
+```text
+RUNTIME fingerprint=71ccc587850e files=117 (runtime-fingerprint.txt; compare before blaming the JAR across boards)
+helloworld           shots 2/2  alive t5=yes t20=yes  child_hilog=5863  foreground_unconfirmed
+TOTAL keys=1 screenshots_captured=2/2 alive_t5=1 alive_t20=1
+```
+
+- benchmark/2026-09-30-flutter-candidate/device-61b/runs/flutter-r4-rollback-61b/61b0657200000000000000000324012c/helloworld/t20.jpeg
+
+The initial incorrectly rooted input attempt was a setup failure before launch, recorded separately in flutter-r4-baseline-61b (0 screenshot slots). Caller-gate failure supersedes the original name-only static pass. No lifecycle spec was assigned to this continuation (board #90 spec=null).

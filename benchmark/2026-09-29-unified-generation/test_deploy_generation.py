@@ -14,6 +14,17 @@ class DeploymentGuards(unittest.TestCase):
     def maps(self, extra=''):
         route='/system/lib64/westlake/route-a/'+d.GEN+'/'
         return '\n'.join('1000-2000 r--p 00000000 00:00 1 '+p for p in [route+'libart.so',route+'libopenjdkjvm.so','/system/android/lib64/liboh_adapter_bridge.so'])+extra
+    def test_private_native_addition_does_not_relax_resident_or_undeclared_files(self):
+        private='/system/android/lib64/westlake_flutter/libandroid.so'
+        resident='/system/android/lib64/libart.so'
+        resident_unlisted='/system/android/lib64/libnot_live.so'
+        undeclared='/system/android/lib64/private/libmissing.so'
+        jar='/system/android/framework/new.jar'
+        m={'files':{p.replace('/system/android/','payload/android/'): 'hash'
+                    for p in [private,resident,resident_unlisted,jar]}}
+        old={'live_hashes':{resident:'hash'}, 'files':{'payload/android/lib64/libnot_live.so':'hash'}}
+        self.assertEqual(d.optional_native_additions(m,old,[private,resident,resident_unlisted,undeclared,jar]),[private])
+
     def test_single_art(self): self.assertTrue(d.check_maps(self.maps())['passed'])
     def test_second_art_instance_rejected_even_same_path(self):
         self.assertFalse(d.check_maps(self.maps('\n3000-4000 r--p 00000000 00:00 1 /system/lib64/westlake/route-a/'+d.GEN+'/libart.so'))['passed'])
