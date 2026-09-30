@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-10-01-u7-scoring/`** | **Frozen fa92c5b9: completed 5ea 22-key preliminary three-axis scoring, terminal-first causal evidence, separate analyst image preview and pending outer signoff; not a full U7 result.** |
 | **[Bridge 846 provenance](benchmark/2026-10-01-bridge-846-provenance/)** | Exact artifact archive; partial frozen source; missing reproducible build chain; native gate handoff. |
 | **[N9 damage investigation](benchmark/2026-10-01-n9-first-damage/)** | OH6.1 empty-Region fallback is full-window damage; candidate paused, first-frame dimensions unobserved. |
 | **[N8 bounded window](benchmark/2026-10-01-n8-window/)** | ZZ 3/3 own UI; Flutter incomplete acceptance, U5 restored; raw evidence. |
