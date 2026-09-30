@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-30",
+  "author": "cc-t3",
+  "board": "61b0657200000000000000000324012c",
+  "board_state": "v3c + 9e14 + r17p (a0ed5c4f) + background-launch installer; boot_id 58aef9fc-13ff-406e-871a-ee97e750a3ff",
+  "jar_under_test": "r17s rev2 3b523289cd49d97399e0c1c6f893c487a19616ea23cc7e5a018d9d288d83e4d0 (walls commit 53f3e8ad; supersedes 606dd2e3)",
+  "built": "dockbuild a2hlab-b5-java:24.04, build.py r17s3 b5; changed_existing_classes = adapter/activity/{AppSchedulerBridge,PackageManagerProjectionProxy}.smali ONLY (the two injection targets)",
+  "deploy": "bind-mount overlay on r17p (layer2); r17r dd4f0eae stacked layer3 for antennapod A/B; both rolled back LIFO -> 61b restored to r17p a0ed5c4f layers=1 (verified shell==appspawnx); lock released",
+  "caveat_focus": "background-launch installer steals foreground focus -> bms_batch focus-check reports focused-PID-not-target for every key; facts.txt alive/child_hilog are process-liveness only. Screenshots + raw hilog are ground truth (FLAW-007).",
+  "three_fixes": {
+    "a_tls_wiring": {
+      "goal": "cc-wiki's r17s TLS spec: make okhttp use real WestlakeSSLSocket chain instead of TlsShimProvider$ShimSocketFactory (which throws UnsupportedOperationException on connect).",
+      "change": "WestlakeTlsInstall.installSocketFactoryIfSelfTestPasses now registers SSLContext.TLS/TLSv1.2/TLSv1.3/Default via putDirectService(new WestlakeSSLContextSpi()) [direct newInstance, no boot-loader class lookup] instead of bc.put(type,className) [which CNFEs under BC's BootClassLoader -> JCA falls through to the appended TlsShimProvider]; + SSLContext.setDefault(westlakeCtx). All inside WestlakeSSLSocket.selfTestPassed() gate (fail-closed).",
+      "verdict_61b": "WORKS + NO REGRESSION. hilog: '[B8-TLS] SSLContext.TLS/TLSv1.2/TLSv1.3/Default re-registered with direct newInstance' + '[B8-TLS] SSLContext.TLS -> Westlake (direct newInstance) + setDefault; okhttp beats TlsShimProvider' + 'WestlakeSSLSocketFactory installed as default HTTPS (self-test OK)' -> the whole block ran, so the native self-test PASSED on 61b. tusky (TLS-heavy mastodon client) reaches its login page; amaze/etar/markor/antennapod all lit -> the provider swap did not break any app.",
+      "verdict_5ea_ccwiki": "ACCEPTED by cc-wiki on 5ea (32df): same markers; okhttp no longer hits TlsShimProvider (the 11 ShimSocketFactory lines were class_linker link noise, 0 'no real networking' throws after) -> now goes WestlakeSSLSocketFactory -> Android10Platform.configureTlsExtensions -> ConnectPlan.connectTls -> real TCP connect.",
+      "real_handshake": "UNVERIFIED on both boards: 61b clean-install apps have no credentials/feeds to fetch; 5ea wikipedia is DNS-poisoned/GFW-blocked (TCP connect timeout to fake IPv6 2001::1:443) so it never reaches WestlakeSSLSocket.nativeHandshake. The provider WIRING is proven; the native handshake needs a reachable HTTPS endpoint (open, infra/network)."
+    },
+    "b_restrictions": {
+      "goal": "fd-meet (jitsi) getApplicationRestrictions() null NPE",
+      "verdict": "fetcher WORKS: hilog '[B8-FETCH] restrictions RestrictionsManager built (empty-Bundle service)'; fd-meet advances PAST the RestrictionsManager NPE but hits a new wall 'NPE: Collection.iterator() on null' -> Unable to start activity org.jitsi.meet.MainActivity. Honest progress, NOT lit (unchanged from 606dd2e3)."
+    },
+    "c_dlopen_experiment": {
+      "goal": "discriminate JAR-fixable vs native for unciv/mindustry/nextcloud missing deps",
+      "verdict": "NO-OP. hilog '[B8-DLEXP] app classloader unavailable (ctx=null); skipped' -- Thread.currentThread().getContextClassLoader() is NULL at B7BindFixes.apply() time in the OH child, so the app classloader's DexPathList could not be reached. The dlopen targets are unchanged (fd-app libgdx->libstdc++.so, mindustry libarc->libOpenSLES.so, fd-client libconscrypt_jni->liblog.so, fd-im-vector librealm-jni UNSUPPORTED-SYMBOL all still fail). Reinforces native ownership: the JAR cannot even reach the app namespace from the bind hook. dlopen stays -> cx-t0. (A proper future attempt would fetch the app CL via LoadedApk/ActivityThread reflection, not contextClassLoader.)"
+    }
+  },
+  "batch_facts_r17s_reinstall": {
+    "lit_t5_t20": ["antennapod (32051)", "fd-com-amaze-filemanager (30565)", "fd-etar (24493)", "fd-tusky (61972, login page screenshot)", "markor (17149)"],
+    "not_lit": {
+      "fd-meet": "RestrictionsManager built, new null-Collection NPE",
+      "fd-app": "dlopen libgdx.so->libstdc++.so (native)",
+      "fd-client": "dlopen libconscrypt_jni->liblog.so + app-internal accountManager NPE",
+      "fd-im-vector-app": "librealm-jni UNSUPPORTED-SYMBOL (native relocation)",
+      "mindustry": "dlopen libarc.so->libOpenSLES.so (native)",
+      "wikipedia": "network-blocked feed (GFW); needs 32df + reachable net (cc-wiki 5ea)"
+    },
+    "totals": "keys=11 screenshots 22/22 alive_t5=5 alive_t20=5",
+    "regressions": "NONE -- every previously-lit control (antennapod/amaze/etar/tusky/markor) stayed lit under the TLS+dlopen r17s"
+  },
+  "antennapod_AB": {
+    "method": "same board 61b, same boot_id 58aef9fc (no reboot), same APK, same --reinstall; only variable = JAR",
+    "r17s_3b523289": "LIT (alive t5=yes t20=yes child_hilog=32051; NO FeedUpdateManager NPE / NO FATAL)",
+    "r17r_dd4f0eae": "LIT (alive t5=yes t20=yes child_hilog=32263)",
+    "flaw008_byhand": "single variable (JAR), both LIT -> the 5ea r17r clean-install FeedUpdateManager NPE is a board (5ea x 32df) difference, not a JAR regression; reconfirmed on 61b under the new r17s."
+  },
+  "hw_helloworld": "NOT RUN -- helloworld is not a key in the default apps.json manifest (nor b4-final-61b{,-v2}.json). The five lit controls above establish no-regression; HW can be run via the outer loop's own manifest if required.",
+  "board_restored": "r17p a0ed5c4f, layers=1, shell==appspawnx verified; lock released"
+}
