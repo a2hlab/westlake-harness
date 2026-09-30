@@ -23,7 +23,14 @@ idle() { status | grep -qE 'state (· Idle|✓ Done)'; }
 
 if ! is_octos; then
   herdr pane run "$PANE" "$TEXT" >/dev/null
-  echo "lane_send: $PANE is not an octoscode pane; sent (it queues input while busy)"
+  sleep 3
+  # 2026-10-01: dispatches to busy Claude lanes sat queued for 10-20 min behind a long turn (cc-t3 03:14, cc-wiki
+  # 05:16) while boards stood idle. Say so, so an urgent dispatch can interrupt (Escape) and resend.
+  if herdr pane read "$PANE" 2>/dev/null | grep -q 'queued messages'; then
+    echo "lane_send: $PANE is busy; the dispatch is QUEUED behind the running turn (Escape + resend if urgent)"
+  else
+    echo "lane_send: $PANE is not an octoscode pane; sent"
+  fi
   exit 0
 fi
 waited=0
