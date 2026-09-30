@@ -23,6 +23,28 @@ m -j32 build-art-host libart
 
 log:hw248 `/home/alvin/aosp-14.0.0_r1-art/t3b-build2.log`(误启 2 开关本 `t3b-build.log` 已杀;首轮 5 开关缺 ALLOW_MISSING_DEPENDENCIES 败本同名,已覆写)。
 
+```t4b-build-json
+{
+  "schema": 1,
+  "evidence_kind": "build_receipt",
+  "artifacts": {
+    "libart_sha256": "59e1bb45294b9dd587dc9b81bad719b60675aa98c9c6cfced426449bcad0fe5f",
+    "boot_oat_sha256": "90f827190482b849f71bceb9ab3d2482c8b42adf70b8b084af887728cb43f248"
+  },
+  "environment": {
+    "ART_USE_READ_BARRIER": "false",
+    "ART_DEFAULT_GC_TYPE": "CMS",
+    "ART_USE_GENERATIONAL_CC": "false",
+    "ART_HEAP_POISONING": "false",
+    "ART_TEST_DEBUG_GC": "false",
+    "ALLOW_MISSING_DEPENDENCIES": "true"
+  },
+  "native_debug_build": false
+}
+```
+
+注:`libart_sha256` 为**部署件**——板上 R155 libart.so(`59e1bb45…`,cross_compile_arm64.sh 手工交叉编译,非 Soong 产物);Soong target libart `30f196c04a99e06b` 仅对照件不进部署。`boot_oat_sha256` 为 T5b `/home/alvin/oc-t4-t5b/boot.oat`(`90f82719…`)。`native_debug_build=false` 据 cc-wiki 配方归档(R155 cross_compile_arm64.sh ART_DEFS 有 `-DNDEBUG`)。
+
 ### 产物(2026-09-30 22:21,read barrier OFF + GC=CMS)
 
 | 文件 | 大小 | sha256 前 16 |
@@ -38,6 +60,57 @@ log:hw248 `/home/alvin/aosp-14.0.0_r1-art/t3b-build2.log`(误启 2 开关本 `t3
 | dex2oat64 | `8a125a256a743820` |
 | target libart.so | `65d8058f518cd22f` |
 | host libart.so | `940580332e578783` |
+
+---
+
+## T7(mainline-stubs 合一版镜像,2026-09-30 22:59,oc-t4)
+
+派单(板 ACK(91) 22:57):合一版 `adapter-mainline-stubs.jar`(tagsoup Parser `5094f8459` + cc-t3 J4-boot-api 桩 `44ab7862e`)→ 用 T3b dex2oat64 `89b8b3d4`(读屏障关)出镜像到 `/home/alvin/oc-t4-t7/`,核 kv `concurrent-copying=false`。
+
+### jar 构建(dockbuild,本机)
+
+源树:westlake-harness-t3 `44ab7862e` 的 `bms/src/adapter/framework/mainline-stubs/java`(111 个 `.java` + 4 个 `.pre-wlconn-bak` 备份不参编,与 VM westlake 树基线一致)。编译(dockbuild `a2hlab-b5-java:24.04` 镜像,`t7-stubs-build/`):
+
+```sh
+CP=out/core-java/java/core-all-compile-only.jar:out/core-java/java/core-libart.classes.jar:\
+   out/framework-runtime/core-compile-only.jar:out/framework-runtime/framework.classes.jar
+javac -encoding UTF-8 -classpath $CP -d classes @srcs.txt   # 190 类
+d8 --classpath <4 jar 各一 --classpath> --output dex classes/*.class   # classes.dex 181,944 B
+jar(META-INF/MANIFEST.MF + classes.dex 薄壳)
+```
+
+注:`compile_mainline_real.sh` 路径已死(FWK_TURBINE / bcp_gap_report.txt / mainline-stubs-handwritten 三处依赖均不存在,脚本标 DEPRECATED),以上为实测等效配方旁路。
+
+| 产物 | sha256 前 32 | 大小 |
+|---|---|---|
+| `adapter-mainline-stubs.jar` | `366acc276a39e4fc17dc6911f4151093` | 52,609 B |
+| 内 `classes.dex` | `55cfe5894bfcbd367b186ebbf0a2bdc0` | 181,944 B |
+
+**逐类比对(vs 板上基线 jar `beb369a1` = VM `bootimg-repro/jars/` 同件,dexdump 结构 diff)**:类清单 base 190 / new 191,唯一新增 `Landroid/net/NetworkInfo$State;`(fd-plus 桩自带嵌套枚举),无类删除。方法/字段新增全部落在派单两项内:tagsoup `setProperty/getProperty`+4 属性常量、`NetworkRequest.getNetworkSpecifier`、`NetworkInfo.getState`+State 6 值、`NetworkCapabilities.getLinkUp/DownstreamBandwidthKbps`、`MediaStore.{Images,Video,Audio}.Media.EXTERNAL/INTERNAL_CONTENT_URI`。无意外改动。
+
+### T7 镜像(hw248,`/home/alvin/oc-t4-t7/`)
+
+t4b-build-json 结构化回执:gate 限定一文件一围栏,T7 回执在 `benchmark/2026-09-30-t4b-build-switch-gate/evidence/T7-BUILD-snapshot.md`(6 项环境与 T3b 相同,boot_oat 绑本节 T7 `4a46e40f…`,libart 同绑部署件 R155 `59e1bb45…`,native_debug_build=false);T5b/T7 gate 均 exit 0(pass,deploy_allowed=true)。
+
+9 输入 = T5 原 8 件 + 新 stubs jar(`366acc27` 替换 `beb369a1`,其余 8 件哈希不变);dex2oat64 = T3b `89b8b3d4`。22:57:36 起,22:59 完成,27/27 生成。boot.oat oat230 / boot.art image108 OK。**kv `concurrent-copying=false`**(另 compiler-filter=speed、debuggable=false、native-debuggable=false、requires-image=true,8 键集与 R155 一致)。
+
+**L1 判读(重要,勿误读为失败)**:vdex **8/9**——`boot-adapter-mainline-stubs.{vdex,oat,art}` 三件差是**预期**(jar 内容本身变了,vdex 不可能再逐字节同);其余 8 个 vdex 与参考逐字节同。t5_gen_image.sh 的 exit 6 是其 L1 判据针对"jar 不变"场景,不适用于 T7(jar 变更场景)。
+
+27 件哈希(hw248 `/home/alvin/oc-t4-t7/SHA256SUMS.txt`,前 16):
+
+```
+bfb7137e5468cff9 boot-adapter-mainline-stubs.art   ┐
+674f0863c73a129d boot-adapter-mainline-stubs.oat   ├ 预期差(jar 变)
+93a9d32744c9d608 boot-adapter-mainline-stubs.vdex  ┘
+74546feb1927aef1 boot-apache-xml.art      d3c26179a19e574b boot-apache-xml.oat   5cdf56053f7118ec boot-apache-xml.vdex
+04c6a15c3f6484cc boot-bouncycastle.art    9f9d4f55bc4aa3b4 boot-bouncycastle.oat 51d42e85675ee724 boot-bouncycastle.vdex
+264991613fe20395 boot-core-icu4j.art      049d09d04f46519e boot-core-icu4j.oat   8da239f3c7c297f0 boot-core-icu4j.vdex
+e242165991fc86cc boot-core-libart.art     22576fc77430d7d8 boot-core-libart.oat  a5a90304c7b06136 boot-core-libart.vdex
+b67b2c08d08acc08 boot-framework.art       6bf57954c60389d6 boot-framework.oat    531de30496b0780d boot-framework.vdex
+5a1a1ea70a4cf199 boot-oh-adapter-framework.art 449055b533e386ed boot-oh-adapter-framework.oat 5e0557427f19acd3 boot-oh-adapter-framework.vdex
+023ff69965bc4eb6 boot-okhttp.art          6cadc570b07cfd42 boot-okhttp.oat       bfad17177cb49196 boot-okhttp.vdex
+15c9f7b792377db0 boot.art   4a46e40fa7ffb1d1 boot.oat   23c1f5b05f1b103f boot.vdex
+```
 
 ---
 
