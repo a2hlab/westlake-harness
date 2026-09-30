@@ -26,6 +26,9 @@ entries() {
 case $CMD in
   show) entries ;;
   wait) while :; do out=$(entries); [ -n "$out" ] && { printf '%s\n' "$out"; exit 0; }; sleep "${OUTER_CURSOR_POLL:-30}"; done ;;
-  advance) [ -f "$CUR.seen" ] || { echo "run show or wait first" >&2; exit 2; }; cp "$CUR.seen" "$CUR"; echo "cursor at line $(cat "$CUR")" ;;
+  # advance names what it marks as read (06:56 an entry was skipped by `show >/dev/null; advance` inside a sentinel).
+  advance) [ -f "$CUR.seen" ] || { echo "run show or wait first" >&2; exit 2; }
+           n=$(sed -n "$(( $(cat "$CUR") + 1 )),$(cat "$CUR.seen")p" "$BOARD" | grep -E '^(PROGRESS|ACK\(|LOCK|UNLOCK)' | grep -vc '外环(claude)' || true)
+           cp "$CUR.seen" "$CUR"; echo "cursor at line $(cat "$CUR") (marked $n lane entries read)" ;;
   *) echo "unknown command: $CMD" >&2; exit 2 ;;
 esac
