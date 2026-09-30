@@ -1,3 +1,5 @@
+Task85 adds five wall-family detectors and a frozen r14 backtest: see [v4-r2/README.md](v4-r2/README.md), hits.csv (160 verdicts), and predictions-v3a-r13.csv (32 APKs).
+
 # B10 scanner v3 — offline, timeboxed
 
 V2 left compiled AOSP JNI tables unattributed and confused startup risks with final fatal causes. V3 adds explicit class/table ownership, compiled ELF evidence and separate fatal/prerequisite backtests. No device operations or runtime repairs were performed.
@@ -24,3 +26,9 @@ Backtest (`v3/backtest.json:1`): #75 final-fatal first-wall agreement is **v2 1/
 Validation: **14 tests pass**, including real bridge-removal rejection, wrong-class/overload negatives, source/dependency cache invalidation and approved-exception preservation. Contract lint **100%**, four v3 scenarios pass (`v3/evidence/lifecycle.json`, `regressions.txt`, `gate-regression.txt`). Unresolved JNI, runtime namespace/initialization behavior, screenshots and process survival remain unknown. Commit is left to the outer lane.
 
 Class-absence extension (#80): `scan_classes_v3.py --cohort benchmark/2026-09-29-static-wall-prediction/v3/classes/cohort.json`, then `finalize_classes_v3.py` and `package_v3.py`. See `v3/classes/README.md`: **33 memberships / 32 unique APKs**, 38,872 grouped rows; r13 **13/14 interfaces have definitions**, missing `IConnectivityManager` reaches **15 bounded startup graphs**. Known answer 1/1 retrospective; class presence is not loading/initialization success. Two added scenarios pass.
+
+Task90 r15c successor: [machine-readable predictions and independent wall priorities](task90-r15c/README.md). Frozen v4-r2 is preserved; 66 observed keys, 32 exact static identities, two conditional network-content recovery candidates.
+
+Task90 queue continuation: [frozen v4-r2 → full r15c backtest](task90-backtest-r15c/README.md) and [seven missed-family static requirements, 224 rows / 32 APKs](task90-feedback-static/README.md); use the latter frozen predictions for the next completed batch.
+
+Unified r17r feedback: [66-key cross-profile scoring and missed startup walls](unified-r17r-feedback/README.md). Outer image labels remain 21 lit. Frozen r17o/r17p lit hits are 15/16, with 6/5 unpredicted lit apps and 0/3 false lit alerts. First startup-family coverage is 23/33; the new framework-audio requirement rule covers two missed apps via two distinct mechanisms. Thirteen tests pass; DEX reference alerts remain conditional, and the v3 freeze is unchanged.

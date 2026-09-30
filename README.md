@@ -92,7 +92,20 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
-| **`benchmark/2026-09-29-static-wall-prediction/`** | **B10 v3: AOSP JNI ownership, 134 startup risk rows + 32-APK class availability and frozen/fatal backtests; unresolved methods keep the gate closed.** |
+| **`benchmark/2026-09-30-round1-plan/u0-assetfd-feedback/`** | **U0 asset-fd 66-key checkpoint receipt: 21 signed lights, SPD dual native walls, NewPipe PlayerService failure, incomplete LibreTube preserved.** |
+| **`benchmark/2026-09-30-round1-plan/`** | **Round-one J1/N1/boot cluster routing, immutable 66-key forecasts, source-coverage audit and pending three-board U1 scoring/facts handoff.** |
+| **`benchmark/2026-09-29-static-wall-prediction/`** | **B10 v3: AOSP JNI ownership, 134 startup risk rows, 32-APK class availability, task85 five-family detectors and frozen/fatal backtests; task90 66-key r15c successor, dual-layer network shortlist, full-batch evaluator and 224-row feedback scan; unresolved methods keep the gate closed.** |
+| **`benchmark/2026-09-30-v2-scanner-feedback/`** | **Post-v2 B10 secondary-Activity and boot-provider detectors, 66-key calibration, and runtime-only EGL discriminator; frozen forecasts preserved.** |
+| **`benchmark/2026-09-30-r16-prospective/`** | **Frozen 66-key r16 lighting/first-wall forecasts, immutable scoring policy, and separate outcome-blind/pre-click evaluation.** |
+| **`benchmark/2026-09-30-r17p-61b-comparison/`** | **Separate 61b r17p profile, 66-key descriptive comparison with accepted 5ea v2, installed grant/launcher evidence and trace-linked background denials; UI pending outer review.** |
+| **`benchmark/2026-09-30-r17op-execution-revision/`** | **Separate hwui rollback notice and actual-fingerprint strata; changed native components and unforecast JARs excluded from v3 same-profile scoring.** |
+| **`benchmark/2026-09-30-r17op-prospective/`** | **Frozen v3 66-key r17o/r17p paired forecasts, exact 5ea hwui/installer profile and evidence-gated per-JAR scoring.** |
+| **`benchmark/2026-09-30-v3c-r17j-prospective/`** | **Frozen v2 66-key forecast for exact v3c/r17j/installer inputs, with board-specific future scoring.** |
+| **`benchmark/2026-09-30-background-start-prospective/`** | **Frozen 66-key background-Activity permission forecast, DEX transition witnesses and evidence-gated prospective scoring.** |
+| **`benchmark/2026-09-30-v3c-candidate/`** | **Offline v3c composition, pinned native provenance, coherent aliases and three-board migration limits.** |
+| **`benchmark/2026-09-30-framework-jni-gaps/`** | **Full v3a native inventory, 66-key coverage, ranked gapfill candidates and a strict exception gate.** |
+| **`benchmark/2026-09-30-firefox-sidecar-installer/`** | **Firefox original-APK native sidecar assembly: 18 pinned libraries, FakeBoard tests, r17a lookup evidence and outer-loop run handoff.** |
+| **`benchmark/2026-09-30-r16-feedback/`** | **Post-r16 eight-family service/provider/JNI requirement scan: 32 APKs, 256 rows, no retrospective score inflation.** |
 | **`benchmark/2026-09-29-install-walls/`** | **#77 offline install causes, 58-APK impact scan, two candidate patches and exact-payload exception draft.** |
 | **`benchmark/2026-09-29-board-parity/`** | **#64 three-board runtime parity: 158 paths, 153 equal / 5 different; inherited process-name correction, r8b JAR attribution and mapped identities; 5cd HelloWorld pending.** |
 | **`benchmark/2026-09-29-white-window/`** | **#61/#62 offline white-window diagnosis: 9 target logs, separate bind failures, native AbilityStage replies and a 49/49 JNI-layout match to the no-reply generation; no device execution.** |

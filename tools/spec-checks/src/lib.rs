@@ -192,3 +192,173 @@ fn b10_v3_class_presence() {
 fn b10_v3_class_reachability() {
     run(&["benchmark/2026-09-29-static-wall-prediction/test_classes_v3.py", "ClassesTests.test_paths"]);
 }
+
+#[test]
+fn b85_static_rules() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test85.py", "Task85Tests.test_rules"]);
+}
+
+#[test]
+fn b85_prediction_freeze() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test85.py", "Task85Tests.test_freeze"]);
+}
+
+#[test]
+fn b85_backtest_partition() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test85.py", "Task85Tests.test_backtest"]);
+}
+
+#[test]
+fn b90_observations() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test90.py", "Task90Tests.test_observations"]);
+}
+
+#[test]
+fn b90_network() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test90.py", "Task90Tests.test_network"]);
+}
+
+#[test]
+fn b90_rankings() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test90.py", "Task90Tests.test_rankings"]);
+}
+
+#[test]
+fn b90_batch_feedback() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_feedback90.py", "Feedback90Tests.test_batch"]);
+}
+
+#[test]
+fn b90_feedback_rules() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_feedback90.py", "Feedback90Tests.test_rules"]);
+}
+
+#[test]
+fn b90_feedback_coverage() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_feedback90.py", "Feedback90Tests.test_coverage"]);
+}
+
+#[test]
+fn r16_prospective_freeze() {
+    run(&["benchmark/2026-09-30-r16-prospective/test_prospective.py", "ProspectiveTests.test_freeze"]);
+}
+
+#[test]
+fn r16_prospective_scoring() {
+    run(&["benchmark/2026-09-30-r16-prospective/test_prospective.py", "ProspectiveTests.test_scoring"]);
+}
+
+#[test]
+fn r16_feedback_rules() {
+    run(&["benchmark/2026-09-30-r16-feedback/test_feedback.py", "FeedbackTests.test_rules"]);
+}
+
+#[test]
+fn r16_feedback_matrix() {
+    run(&["benchmark/2026-09-30-r16-feedback/test_feedback.py", "FeedbackTests.test_matrix"]);
+}
+
+#[test]
+fn bms_native_sidecars() {
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-28-bms-route-deploy/batch", "-p", "test_native_sidecars.py"]);
+}
+
+#[test]
+fn bms_native_sidecar_receipt() {
+    run(&["benchmark/2026-09-30-firefox-sidecar-installer/verify_receipt.py"]);
+}
+
+#[test]
+fn framework_jni_gap_rules() {
+    run(&["benchmark/2026-09-30-framework-jni-gaps/test_gaps.py", "GapTests.test_rules"]);
+}
+
+#[test]
+fn framework_jni_gap_inventory() {
+    run(&["benchmark/2026-09-30-framework-jni-gaps/test_gaps.py", "GapTests.test_inventory"]);
+}
+
+#[test]
+fn v3c_candidate_rules() {
+    run(&["benchmark/2026-09-30-v3c-candidate/test_candidate.py", "CandidateTests.test_rules"]);
+}
+
+#[test]
+fn v3c_candidate_inventory() {
+    run(&["benchmark/2026-09-30-v3c-candidate/test_candidate.py", "CandidateTests.test_inventory"]);
+}
+
+#[test]
+fn background_start_rules() {
+    run(&["benchmark/2026-09-30-background-start-prospective/test_prediction.py", "PredictionTests.test_rules"]);
+}
+
+#[test]
+fn background_start_freeze() {
+    run(&["benchmark/2026-09-30-background-start-prospective/test_prediction.py", "PredictionTests.test_freeze"]);
+}
+
+#[test]
+fn v3c_r17j_freeze() {
+    run(&["benchmark/2026-09-30-v3c-r17j-prospective/test_forecast.py", "ForecastTests.test_freeze"]);
+}
+
+#[test]
+fn v3c_r17j_scoring() {
+    run(&["benchmark/2026-09-30-v3c-r17j-prospective/test_forecast.py", "ForecastTests.test_scoring"]);
+}
+
+#[test]
+fn v3c_5ea_profile() {
+    run(&["benchmark/2026-09-30-v3c-r17j-prospective/test_audit.py", "AuditTests.test_profile"]);
+}
+
+#[test]
+fn v3c_5ea_rejection() {
+    run(&["benchmark/2026-09-30-v3c-r17j-prospective/test_audit.py", "AuditTests.test_rejection"]);
+}
+
+#[test]
+fn v2_feedback_rules() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_feedback_v2.py", "RuleTests"]);
+}
+
+#[test]
+fn v2_feedback_matrix() {
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_feedback_v2.py", "MatrixTests"]);
+}
+
+#[test]
+fn r17op_freeze() {
+    run(&["benchmark/2026-09-30-r17op-prospective/test_forecast.py", "FreezeTests"]);
+}
+
+#[test]
+fn r17op_scoring() {
+    run(&["benchmark/2026-09-30-r17op-prospective/test_forecast.py", "ScoreTests"]);
+}
+
+#[test]
+fn r17op_execution_profiles() {
+    run(&["benchmark/2026-09-30-r17op-execution-revision/test_revision.py", "ProfileTests"]);
+}
+
+#[test]
+fn r17op_execution_integrity() {
+    run(&["benchmark/2026-09-30-r17op-execution-revision/test_revision.py", "IntegrityTests"]);
+}
+
+#[test]
+fn r17p_description_rules() {
+    run(&["benchmark/2026-09-30-r17p-61b-comparison/test_compare.py", "Rules"]);
+}
+
+#[test]
+fn r17p_description_rejection() {
+    run(&["benchmark/2026-09-30-r17p-61b-comparison/test_compare.py", "Rejection"]);
+}
+
+#[test]
+fn r17p_description_handoff() {
+    run(&["benchmark/2026-09-30-r17p-61b-comparison/test_compare.py", "Handoff"]);
+}

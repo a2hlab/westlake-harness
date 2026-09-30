@@ -375,3 +375,37 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **B10 v3（2026-09-29，cx-bms，#72）**：本地real-work冻结AOSP16-r2/99b01a65注册表+包内ELF实表/STT_FILE，每包补归属1434个JNI；认可例外不改，v3剩335 unknown仍拒。#75致命点首墙事后1/12→5/12、候选11/12，receipt缺APK实测SHA；#78冻结2d8c9a54仅1/13有预测，OONI前置JobScheduler命中1/1但最终WorkManager标签0/1，二者不得混计。见 `benchmark/2026-09-29-static-wall-prediction/README.md`，运行时行为仍unknown。
 
 - **#72 v3 类缺失门（2026-09-29）**：r13 f1325297 的14个反射代理接口里，v3a boot JAR定义只缺 IConnectivityManager；Wikipedia eba82a0f 的 ConnectionStateMonitor 两服务调用有启动静态路径，源码有桩不等于接口可加载。#69 20+#78 13为33成员/32唯一APK(OONI重复)，connectivity缺类涉及15个静态启动图/28个全量引用，受分支约束、非实测故障数；证据 `benchmark/2026-09-29-static-wall-prediction/v3/classes/`。
+
+- **#85 五族扫描回测（2026-09-29）**：32APK×5族=160判定，18:11:36先冻结后读r14全量66记录；候选已知6/6、未看结果fd-stk 1/1（freeze早于其clicked_at），首墙仅2/6和0/1，API覆盖不可冒充执行顺序。#83原系统libGLESv3 header日志不是app .so墙，沿#84修正分诊；native ELF头合法≠运行时加载成功、VelocityTracker unknown≠missing；见 benchmark/2026-09-29-static-wall-prediction/v4-r2/。
+
+- 2026-09-29 #90: r15c target-PID exceptions must be separated from tolerated errors on externally accepted UI; fd-fitness is JobScheduler provider NPE (not ShortcutManager), noice/fd-noice have own UI plus INTERNET/EPERM and require both gid3003 and installed HAP INTERNET; 13 t5 alive is not six UI acceptances, missing t20 is unknown. Evidence: benchmark/2026-09-29-static-wall-prediction/task90-r15c/{README.md,predictions.csv,evidence/logs/}.
+
+- 2026-09-30 #90 r16 前瞻：00:15:05 CST 未读全量结果前冻结66项(预计亮16/不亮50)及评分规则；运行已先启动，必须分结果盲与 clicked_at>freeze 的严格事前子集，unknown首墙另报覆盖率，截图裁决不得借存活。证据 benchmark/2026-09-30-r16-prospective/{freeze.json,policy.json,predictions.csv}。
+
+- 2026-09-30 #90 r16前瞻回测：freeze后46次点击、全批65个有效截图身份；亮预测56/65、严格40/46，但全阴性基线分别56/65与43/46，不能只报accuracy；预计亮precision8/16、recall8/9。首墙已判49中含unknown预测保守23/49；输入SHA失败的subwaysurfers排除、Noice亮UI仍网络错误。证据 benchmark/2026-09-30-r16-prospective/{results.json,backtest.csv,observed/outer-adjudication.json}。
+
+- 2026-09-30 Firefox original-apk-with-splits: base APK eba96cc6 has zero lib/ entries; 18 arm64 sidecars (including libjnidispatch.so) match split 6bbda34b. r17a 4bbea1f6 B7BindFixes actually selects installed APK-parent/lib/arm64-v8a when the old nativeLibraryDir does not exist; batch now verifies/copies before desktop launch without rewriting APK. Offline verified; board effect unknown (benchmark/2026-09-30-firefox-sidecar-installer/).
+
+- 2026-09-30 JNI全量：OH_RegHook在真正RegisterNatives调用前打印，不是成功回执；5406声明中额外用ART/libcore源码+ELF表归属562项，避免将VM原生方法当gapfill缺口。v3a静态有表但r17a ULE的nativeStop/SubscribeCommonEvent应先核绑定；65原APK+SubwaySurfers身份unknown，零路径不证明首屏不可达。证据 benchmark/2026-09-30-framework-jni-gaps/。
+
+- 2026-09-30 v3c offline assembly: B92 route ANL/provider and Android aliases can legitimately differ after single-target bind replacements; deploy_generation --dry-run checks package files only, not fresh-mount live-hash coherence or resident migration. Audit aliases and absent-file preflight separately; see benchmark/2026-09-30-v3c-candidate/ (new TLS39c/gapfilld1a, HTML excluded).
+
+- 2026-09-30 background-start预测：Wikipedia MainActivity.onCreate 经 ActivityResultLauncher.launch(Object, options) 到 InitialOnboarding，单搜 startActivity 会漏；Gallery/FileManager 的 Splash 回调静态可达性仍 unknown，已知板验校准不得冒称静态命中。v1 66项02:57:04 CST冻结，严格前瞻要求 freeze<实际grant<click；v3c/JAR/launcher同时变更另分层。证据 benchmark/2026-09-30-background-start-prospective/。
+
+- 2026-09-30 background-start v0回测：5ea授权后校准推进4/5、上屏1/5，Anki unknown弃权/Wikipedia按外环排除；VLC StartAbility=0在退出前已推进，不能用t5死亡反推没过授权。BinaryEye CameraX resume异常、Gallery MediaStore.EXTERNAL_CONTENT_URI缺字段、Tusky/VLC provider初始化暴露后继墙；14 captures与4/7存活app(5进程，剔除同UID sh)分别逐项数。证据 benchmark/2026-09-30-background-start-prospective/backtests/v0-bglaunch-5ea/。
+
+- 2026-09-30 v2前瞻：03:22:58 CST冻结66项(亮12/推进27/不变23/unknown4)，钉668e4f7c+20dcb71b+installer6aadb8b4/7048c7c5；库在磁盘≠app域可见(OONI v3c仍__errno)，Seal/头条batch侧车预检拒绝早于installer，HTML声明不等于加载。按板/既有profile暴露分层，四类精确命中与达到最低预测分别报；证据 benchmark/2026-09-30-v3c-r17j-prospective/。
+
+- 2026-09-30 v2/5ea回测：首次终态取样(原27+续40减FileManager重复=66)，同运行件但冷停e98为执行修订须分层；63纳入，精确30/45、最低承诺30/49，16结果unknown。预计推进27仅2证实/16失败/9未知，系统liblog/GLES/SONAME在位仍不等于app域能加载；Shattered的EGLImpl构造栈+冻结DEX可证明旧静态JNI已过，后继GLImpl缺口不可混为旧墙。126 captures与19存活app/22进程逐表核(helpers排除2/1)，见 benchmark/2026-09-30-v3c-r17j-prospective/backtests/v2-5ea/。
+
+- 2026-09-30 B10 v2反馈：Aegis Intro 走 typed ActivityResultLauncher.launch(Intent)，与 launch(Object) 均须认；sget/sput 可触发 ServiceLoader 相关 clinit。getSunProvider 属 boot 按名找 OpenSSLProvider/VerificationProvider，runtime JAR 同名类不证 boot 可见；Thunderbird/K9 本轮 B5-ALIAS 直接 UpgradeDatabaseActivity，不能把升级页都归因背景授权。同窗 EGL 重建只能 runtime-only，须带窗口 generation/create/destroy 轨迹；证据 benchmark/2026-09-30-v2-scanner-feedback/。
+
+- 2026-09-30 v3双JAR预测：05:22:23 CST冻结66项，r17o cd06/ r17p a0ed分列；base668e上单换hwui a578须按runtime-fingerprint显式覆盖校验，不能仅认package SHA。按实际JAR选列、点击晚于freeze、已暴露r17o14样本分层，禁止回测挑较有利列；证据 benchmark/2026-09-30-r17op-prospective/。
+
+- 2026-09-30 v3 执行修订：外环报告 hwui 05:20 回滚早于 05:22:23 冻结，通知晚到不能追认同 profile；按 facts/runtime-fingerprint 的实际完整 SHA 分层，已知 JAR+native 偏差只做描述，未知 JAR 不套冻结列；104 冻结件不改。见 `benchmark/2026-09-30-r17op-execution-revision/`。
+
+- 2026-09-30 61b r17p/旧installer：Wikipedia app PID5923 的 StartAbility 返回0(hilog:51700)后，同trace a92ab12e3082cbf 的 WMS 仍以无背景权限拒绝(:51702)；须由app目标→AMS目标trace→WMS拒绝串证，不能用返回0判二级窗口通过；Anki入口实为LeakCanary，与5ea v2 IntentHandler不同。见 `benchmark/2026-09-30-r17p-61b-comparison/`；66项已收尾：126/126图哈希通过、t5/t20活26/24(3项未知)，63个可比app背景权限全部granted→absent，14个同trace异步拒绝，INTERNET无丢失；只独立profile描述，UI待外环。
+
+- 2026-09-30 第1轮 addendum：无 J_invokeStaticMain_main_threw 不等于无致命——Feeder 在 W-ROOM-SURVIVE 主线程 uncaught 中缺 boot NetworkRequest.getNetworkSpecifier 后 exit(1)，PPSSPP 捕获 app 域 libGLESv2 缺失后 exit(-1)；fd-mobile 的 nativeOpenAssetFd 则明确仅后台线程结束、进程保留。Immich APK 有 d7/c，但其 NSD DiscoveryListener 接口在所核 v3c+r17r JAR 中无定义（仅静态候选，不等同活体加载结论）。来源/行号/原冻结保留见 benchmark/2026-09-30-round1-plan/addendum/。
+
+- 2026-09-30 U0 asset-fd 回测：SPD 首次自身错误页来自第二 PID，首 PID 仍先缺 libgdx→libstdc++ 再 GLImpl JNI；错误页不能算过墙。66 个 record 也非 66 次完成：LibreTube 停批中断无 hilog/t20，必须 unknown；NewPipe 已亮后的 PlayerService bind 只见 InvocationTargetException，内因未记录。证据行号见 benchmark/2026-09-30-round1-plan/u0-assetfd-feedback/next-walls.json。
