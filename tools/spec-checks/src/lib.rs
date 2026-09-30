@@ -118,3 +118,13 @@ fn white_window_offline() {
 fn ability_stage_offline() {
     run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_ability_stage.py"]);
 }
+
+// specs/dex2oat-once T1: R155 ART patch series (knowledge/toolchains/art-r155)
+#[test]
+fn d1_patch_series_applies_to_r1() {
+    run(&["knowledge/toolchains/art-r155/check_series.py", "apply"]);
+}
+#[test]
+fn d1_every_patch_has_source() {
+    run(&["knowledge/toolchains/art-r155/check_series.py", "sources"]);
+}

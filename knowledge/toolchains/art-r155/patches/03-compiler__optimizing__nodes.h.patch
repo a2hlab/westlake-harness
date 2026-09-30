@@ -1,0 +1,28 @@
+--- a/compiler/optimizing/nodes.h
++++ b/compiler/optimizing/nodes.h
+@@ -20,7 +20,6 @@
+ #include <algorithm>
+ #include <array>
+ #include <type_traits>
+-
+ #include "art_method.h"
+ #include "base/arena_allocator.h"
+ #include "base/arena_bit_vector.h"
+@@ -4029,7 +4028,7 @@
+     DCHECK(DataType::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
+     DCHECK_NE(GetBias(), ComparisonBias::kNoBias);
+     // Handle the bias.
+-    return std::isunordered(x, y) ? (IsGtBias() ? 1 : -1) : Compare(x, y);
++    return __builtin_isunordered(x, y) ? (IsGtBias() ? 1 : -1) : Compare(x, y);
+   }
+ 
+   // Return an integer constant containing the result of a condition evaluated at compile time.
+@@ -4488,7 +4487,7 @@
+     DCHECK(DataType::IsFloatingPointType(InputAt(0)->GetType())) << InputAt(0)->GetType();
+     DCHECK_NE(GetBias(), ComparisonBias::kNoBias);
+     // Handle the bias.
+-    return std::isunordered(x, y) ? (IsGtBias() ? 1 : -1) : Compute(x, y);
++    return __builtin_isunordered(x, y) ? (IsGtBias() ? 1 : -1) : Compute(x, y);
+   }
+ 
+   HConstant* Evaluate(HIntConstant* x, HIntConstant* y) const override {

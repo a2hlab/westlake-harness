@@ -1,0 +1,34 @@
+--- a/runtime/elf_file.cc
++++ b/runtime/elf_file.cc
+@@ -1489,11 +1489,15 @@
+                        bool program_header_only,
+                        bool low_4gb,
+                        /*out*/std::string* error_msg) {
++  fprintf(stderr, "[EF_CP] A_entry\n"); fflush(stderr);
++  fprintf(stderr, "[EF_CP] A_path=%s len=%lld\n", file->GetPath().c_str(), (long long)file->GetLength()); fflush(stderr);
+   if (file->GetLength() < EI_NIDENT) {
++  fprintf(stderr, "[EF_CP] B_too_short\n"); fflush(stderr);
+     *error_msg = StringPrintf("File %s is too short to be a valid ELF file",
+                               file->GetPath().c_str());
+     return nullptr;
+   }
++  fprintf(stderr, "[EF_CP] C_before_mmap\n"); fflush(stderr);
+   MemMap map = MemMap::MapFile(EI_NIDENT,
+                                PROT_READ,
+                                MAP_PRIVATE,
+@@ -1502,10 +1506,15 @@
+                                low_4gb,
+                                file->GetPath().c_str(),
+                                error_msg);
++  fprintf(stderr, "[EF_CP] D_after_mmap\n"); fflush(stderr);
++  fprintf(stderr, "[EF_CP] D_map_valid=%d size=%zu err=%s\n", (int)map.IsValid(), map.IsValid()?map.Size():(size_t)0, error_msg->c_str()); fflush(stderr);
+   if (!map.IsValid() || map.Size() != EI_NIDENT) {
++  fprintf(stderr, "[EF_CP] E_mmap_bad\n"); fflush(stderr);
+     return nullptr;
+   }
+   uint8_t* header = map.Begin();
++  fprintf(stderr, "[EF_CP] F_after_header\n"); fflush(stderr);
++  fprintf(stderr, "[EF_CP] F_eiclass=0x%02x\n", header[EI_CLASS]); fflush(stderr);
+   if (header[EI_CLASS] == ELFCLASS64) {
+     ElfFileImpl64* elf_file_impl = ElfFileImpl64::Open(file,
+                                                        writable,
