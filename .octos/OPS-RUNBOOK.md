@@ -89,6 +89,7 @@
 - **octoscode 车道忙时收到的 `herdr pane run` 会丢**(2026-09-30 oc-t4 两次:外环 08:32、09:21 的批复它都没看到,回合结束后仍写「待外环批」)。给 octoscode 派单后 10 秒内读窗格,状态栏要出现新的 `Step 1`/`Working`;没有就等它回合结束(`state · Idle`)再发一次。
 - **给 octoscode 车道派单用 `scripts/lab/lane_send.sh <pane> <text>`**(2026-10-01,oc-t4 一晚丢了两次派单,车道随后报「无剩余工作」):它等状态栏变成 Idle/Done 再发,发后 20 秒内确认车道离开 Idle,没接住就再发一次;codex/claude 窗格会排队,直接发。「离开 Idle」只证明开了一轮,不证明在做这单(04:24 oc-t4 开了一轮却只总结了上一单):派单里写明产物文件名,之后以该文件出现为准。
 - **octoscode 车道会按黑板里出现的绝对路径直接改 master 工作树**(2026-10-01 oc-t4 三次:INSTALL-MULTIPLE-PLAN、native-symbol-clusters、以及现役工具 bms_batch.py 的未提交改动):派单里写它自己 worktree 的绝对路径(如 `…/westlake-harness-t4/…`),别写 master 的;它交件后外环跑一次 `git -C <master> status --short | grep -v "^??"`,有未提交的已跟踪改动就存成补丁挪进车道 worktree 再还原 master——尤其全量要用的 bms_batch.py、sweep 脚本不能带未提交改动开跑。
+- **按车道长处派活(2026-10-01 夜,外环统计)**:octoscode/kimi 车道(oc-t4)当晚的归因类交件(install-multiple、公共域墙、首个致命点重判、缺库 v1、libmediandk v1、u6-blank)多数被打回——常见错法是把最早的一行当致命、按 SONAME 而非文件名判缺库、引用没核过的「已亮」名单;它做得好的是按清单执行的活(合包、quarantine、源码行号查证、补丁+单测)。根因归因、首个致命点、负对照这类活优先派给 Claude 或 codex 车道;给 kimi 的派单写成逐步清单并附验收判据。
 - **VM 里经 `mac <命令>` 调 Mac 侧工具,偶发退出码 0 但输出为空**(OrbStack mac 桥瞬时故障;B4 批量 20:25 因 `board_note.sh held` 空输出误判丢锁而停在 61/66)。以 Mac 侧命令输出做门禁的脚本,对空输出隔几秒重试一次再判停。
 
 - 黑板 `.octos/OUTER_LOOP_REVIEW.md` 只追加,写入用 `scripts/lab/board_append.sh <绝对路径> "<正文>"`(或正文走 stdin):它拒绝空正文与相对路径,经 `olp-board-append.sh` 加锁追加后回读,没落板就退 1。**直接调 `olp-board-append.sh` 时正文只能走 stdin**——当参数传会被静默丢弃、零输出退 0(EVO-0034:13:22 的 U2 签认就这样落空,外环还报了已签认);机读视图 `scripts/lab/board_status.py --lane <车道> --open`(旧的 `board_acks.py` 认不出 `ACK(done: …)`)。
