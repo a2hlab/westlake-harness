@@ -124,6 +124,23 @@ public final class B7BindFixes {
         } catch (Throwable t) {
             System.err.println("[B8-MROUTER] not installed: " + t);
         }
+        // J5 (#webview): the Java half of the N3b WebView publication contract (JAVA-HANDOFF.md). Pre-bind:
+        // route the webviewupdate service + WebView package answers, then nativePrime (holds the feature
+        // false). Post-bind: nativePublishAfterBind on the main thread AFTER Application.onCreate, before
+        // the first Activity -- a Handler.post here runs after the bind message (and thus onCreate)
+        // completes. INERT with no ASX_WEBVIEW_APK: isAvailable() is false, nothing is routed/primed, the
+        // feature stays false. Honors the boolean result -- feature=published alone is not success.
+        try {
+            adapter.core.WebViewPackageFallback.install();
+            System.err.println("[B8-WEBVIEW] " + adapter.core.WestlakeWebViewInstall.install());
+            if (adapter.core.WestlakeWebViewInstall.isAvailable()) {
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(new Runnable() {
+                    @Override public void run() { adapter.core.WestlakeWebViewInstall.publishAfterBind(); }
+                });
+            }
+        } catch (Throwable t) {
+            System.err.println("[B8-WEBVIEW] not installed: " + t);
+        }
         // r17t (#audio/noice): AudioProductStrategy.getAudioProductStrategies() lazy-loads via the native
         // native_list_audio_product_strategies, which route-A does not export -> the JNI throws and
         // RuntimeInit calls System.exit(1) before the UI (noice, and the same audio-JNI family reaches
