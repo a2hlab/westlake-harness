@@ -62,6 +62,9 @@ if op=='prepare':
  s=stat(c['child']);c['birth']=s.rsplit(') ',1)[1].split()[19] if s else None
  c['profile_backup']=profile;c['real_metasec_sha256']=base['metasec_sha256'];c['candidate_metasec_sha256']=dev('sha256sum '+src).split()[0]
  (r/'device-report.json').write_text(json.dumps(c,indent=2)+'\n')
+ fd=dev('ls -l /proc/'+str(c['child'])+'/fd')
+ (r/'recorder-fd-at-spawn.txt').write_text(fd)
+ assert '/data/local/tmp/asx/private-tmp/crash42' in fd,'recorder not initialized in original child'
  t=(ROOT/'scripts/watchdog-isolated.sh.in').read_text()
  for k,v in {'RUNTIME':shlex.quote(runtime),'STAGE':shlex.quote(stage),'SOCKET':shlex.quote(c['socket']),'UID':'20010053','PARENT_COMMAND':c['parent_command'],'SPAWN_COMMAND':c['spawn_command']}.items():t=t.replace('@@'+k+'@@',v)
  p=r/'watchdog.sh';p.write_text(t);send(p,D+'/watchdog.sh')
