@@ -7,21 +7,62 @@
 For every key it prints: screenshots captured / slots (record.json `screenshots[].captured`), whether a
 process with the app's BMS uid is in processes-t5.txt / processes-t20.txt (UID column), how many hilog
 lines the child process wrote (by the uid's PIDs), and the record status. The last line is the totals.
+The first lines give the run's identity, in the same format bms_batch.py writes at the top of facts.txt:
+RUNTIME / FROZEN / BOOTIMAGE fingerprints and the TOOL line. 2026-10-01 a lane regenerated facts.txt with this
+script and the U7 5cd facts lost which runtime and boot image they were counted on.
 
 ACKs quote this output verbatim for screenshot and liveness counts (AGENTS.md 判定), so they are counted,
 not taken from the plan. Unknown (file missing) is printed as `?`, never as a guess.
 """
+import hashlib
 import json
 import pathlib
 import re
 import sys
 
 
-def keys(run):
+def base_dir(run):
     run = pathlib.Path(run)
     subs = [d for d in run.iterdir() if d.is_dir() and re.search(r"0{7}", d.name)]
-    base = subs[0] if len(subs) == 1 else run
+    return subs[0] if len(subs) == 1 else run
+
+
+def keys(run):
+    base = base_dir(run)
     return sorted(d for d in base.iterdir() if (d / "record.json").is_file())
+
+
+def identity(run):
+    """RUNTIME/FROZEN/BOOTIMAGE/TOOL lines as bms_batch.write_facts prints them; missing inputs are said, not skipped."""
+    base, out = base_dir(run), []
+    fp, bp = base / "runtime-fingerprint.txt", base / "boot-image-fingerprint.txt"
+    for label, path, note in (("RUNTIME", fp, "compare before blaming the JAR across boards"),
+                              ("BOOTIMAGE", bp, "not part of RUNTIME")):
+        if not path.is_file():
+            out.append(f"{label} fingerprint=unknown ({path.name} missing)")
+            continue
+        body = path.read_text().strip()
+        short = hashlib.sha256(body.encode()).hexdigest()[:12] if body else "unknown"
+        out.append(f"{label} fingerprint={short} files={len(body.splitlines()) if body else 0} ({path.name}; {note})")
+        if label == "RUNTIME":
+            try:
+                sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+                import check_frozen
+                checked, bad = check_frozen.check_artifacts(
+                    check_frozen.active(check_frozen.load(check_frozen.REPO / "knowledge/frozen/frozen.json")),
+                    check_frozen.fingerprint_hashes(fp), "board")
+                out.append(f"FROZEN checked={len(checked)} violations={bad}"
+                           + "".join(f"\n  {l}" for l in checked if l.startswith("FROZEN-VIOLATION")))
+            except Exception as exc:
+                out.append(f"FROZEN unavailable: {exc}")
+    try:
+        tool = json.loads((base / "plan.json").read_text()).get("tool") or {}
+    except (OSError, ValueError):
+        tool = {}
+    out.append(f"TOOL bms_batch={tool.get('bms_batch_sha256', '?')[:8]} head={(tool.get('git_head') or '?')[:9]} "
+               f"manifest={tool.get('manifest_sha256', '?')[:8]} (plan.json tool)" if tool
+               else "TOOL unknown (plan.json has no tool identity)")
+    return out
 
 
 def pids_for_uid(path, uid):
@@ -84,6 +125,8 @@ def main(argv):
     if "--json" in argv:
         print(json.dumps(rows, ensure_ascii=False, indent=1))
         return 0
+    for line in identity(argv[1]):
+        print(line)
     for f in rows:
         why = ";".join(f["not_captured_reasons"])
         print(f"{f['key']:<20} shots {f['captured']}/{f['slots']}  alive t5={mark(f['alive_t5'])} "
