@@ -1,0 +1,54 @@
+{
+  "title": "antennapod @ 5cd U0 — FLAW-008 single-variable repeat (runtime 9e14->53f/asset-fd hypothesis)",
+  "author": "cc-wiki (#80)",
+  "date": "2026-09-30",
+  "dispatch": "outer ring ACK(90): U0 full-sweep saw AntennaPod go lit->desktop on 5cd; claimed unique variable = runtime 9e14->53f00423 (asset-fd, FZ-003). FLAW-008: repeat 3x --reinstall on 5cd U0; if all 3 die, deploy_generation swap runtime back to 9e14, 3x again, single-variable verdict; read hilog for real first-fatal.",
+  "board_state_U0": {
+    "serial": "5cd1e3dd00000000000000000923012c",
+    "runtime_so_sha256": "53f00423e0a6ddb310029554ee4db785a8f28c6c422abe4f0ba27f6f47dd4fe6",
+    "jar_sha256": "dd4f0eaecb646ecddca291769cec7a70590defb65e73a4372f0e89f5039e5057 (r17r)",
+    "runtime_fingerprint": "8281e90f8aa0 (identical across all 3 runs -> runtime NEVER changed; U0 held throughout)",
+    "frozen_gate_each_run": "FROZEN checked=4 violations=0",
+    "note": "verified read-only AFTER the 3 runs: runtime + JAR unchanged. No swap was performed (gate not met, see verdict)."
+  },
+  "method": "bms_batch.py --reinstall (fresh app data each run) x3, same U0 config (53f runtime + r17r JAR). FLAW-007: t20 self-read for the two alive runs; FLAW-008: zero-variable flip across identical config = nondeterminism.",
+  "runs": [
+    {
+      "run": "r1",
+      "dir": "benchmark/2026-09-30-graphics-32df-5ea-deploy-prep/runs/u0-antenna-5cd-r1-20260930T104850",
+      "facts_verbatim": "antennapod           shots 2/2  alive t5=yes t20=yes  child_hilog=30099  foreground_unconfirmed  |  TOTAL keys=1 screenshots_captured=2/2 alive_t5=1 alive_t20=1",
+      "t20_self_read": "AntennaPod OWN home page: 「欢迎使用 AntennaPod!您尚未订阅任何播客。请打开菜单添加播客。」 + antenna logo + bottom nav (首页/队列/收件箱/订阅/更多) + onboarding arrow",
+      "verdict": "LIT"
+    },
+    {
+      "run": "r2",
+      "dir": "benchmark/2026-09-30-graphics-32df-5ea-deploy-prep/runs/u0-antenna-5cd-r2-20260930T104940",
+      "facts_verbatim": "antennapod           shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed  |  TOTAL keys=1 screenshots_captured=2/2 alive_t5=0 alive_t20=0",
+      "first_fatal": "appspawn: de.danoeh.antennapod pid 4688 exit with signal:11 (SIGSEGV)",
+      "crash_thread": "DfxSignalHandler signo(11) threadName(RenderThread) (hilog line 50657)",
+      "crash_reason": "Signal:SIGSEGV(SEGV_MAPERR)@0x00007f2baaa33400 (hilog line 51073)",
+      "pre_crash_context": "line 50626 WM-WorkerWrapper 'Worker result SUCCESS for FeedUpdateWorker' (WorkManager OK, NOT a FeedUpdateManager NPE); line 50635 activityResumed (first-frame); crash immediately after first-frame on RenderThread",
+      "verdict": "CRASH (RenderThread native SIGSEGV, NOT Java System.exit, NOT FeedUpdateManager NPE)"
+    },
+    {
+      "run": "r3",
+      "dir": "benchmark/2026-09-30-graphics-32df-5ea-deploy-prep/runs/u0-antenna-5cd-r3-20260930T105030",
+      "facts_verbatim": "antennapod           shots 2/2  alive t5=yes t20=yes  child_hilog=30132  foreground_unconfirmed  |  TOTAL keys=1 screenshots_captured=2/2 alive_t5=1 alive_t20=1",
+      "t20_self_read": "AntennaPod OWN home page identical to r1 (欢迎使用 AntennaPod! + bottom nav)",
+      "verdict": "LIT"
+    }
+  ],
+  "verdict": {
+    "result": "2/3 LIT, 1/3 CRASH under IDENTICAL U0 config (53f runtime, r17r JAR, fresh data each run) = NONDETERMINISTIC.",
+    "flaw_008": "Zero variables changed across the 3 runs, yet the key flipped (lit -> crash -> lit). Per FLAW-008 this is nondeterminism, NOT a clean single-variable attribution. The outer-ring 'runtime 9e14->53f is the unique regression variable' hypothesis is REFUTED: a deterministic 53f regression would kill all 3; instead 53f lit antennapod 2/3.",
+    "gate_not_met": "The dispatch's swap trigger was '3 次都死' (all 3 die). Run1 and Run3 are LIT (own UI self-read). Therefore the runtime swap 53f->9e14 is NOT triggered. FZ-003 (asset-fd, resident in 53f) was NOT touched.",
+    "true_first_fatal": "The single crash (r2) is a RenderThread SIGSEGV(SEGV_MAPERR) AFTER first-frame — the SAME intermittent skia text/glyph RenderThread native wall documented for antennapod@61b in benchmark/2026-09-30-r17p-firstwall-diff (persisting_v3c_native_for_cx_t0: 'RenderThread skia TextBlobRedrawCoordinator SIGSEGV (fd-fitness@5ea, antennapod@61b)'). Owner: cx-t0 (v3c native render substrate), NOT the runtime asset-fd difference.",
+    "reconciliation": "The U0 full-sweep 'AntennaPod lit->desktop' single observation was one unlucky draw of this pre-existing ~1/3 RenderThread SIGSEGV, mis-read as a runtime regression because runtime was the only KNOWN changed variable in that sweep. The controlled 3x repeat exposes the flakiness that a single sweep hides."
+  },
+  "fz002_caveat": "FZ-002 (bigstack provider) freeze evidence lists 'AntennaPod shows own UI at t20 in 5cd unified sweep'. That evidence is a single-draw observation of a ~2/3-lit flaky app; it is CONSISTENT with these results but antennapod is NOT a reliable freeze-evidence app on route-A boards due to the intermittent RenderThread SIGSEGV. FZ-002 still stands on its other evidence (Tusky/Markor/K-9/Auxio). Recommend outer ring not rely on antennapod alone for any freeze re-light gate.",
+  "actions": {
+    "runtime_swap": "NOT performed (gate not met).",
+    "board_restore": "None needed — runtime + JAR never changed; U0 verified intact read-only after the runs (runtime 53f00423, JAR dd4f0eae).",
+    "handoff": "RenderThread SIGSEGV(SEGV_MAPERR) intermittent text/glyph native wall -> cx-t0 (already tracked, same signature fd-fitness@5ea + antennapod@61b)."
+  }
+}
