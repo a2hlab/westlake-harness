@@ -91,3 +91,17 @@ m -j32 build-art-host libart                 # host dex2oat set + arm64 libart f
 - 其余头字段:oat_checksum 0xd369f830、dex_file_count=1(boot.oat 自身,其余 jar 各在 boot-<name>.oat)、executable_offset 0x1e6000、bcp_bss_info_offset 0
 
 注:此前 5-jar 顺序(core-oj/core-libart/core-icu4j/stubs/framework)缺 4 jar 且顺序不同(okhttp/bouncycastle/apache-xml 在 stubs 前)——一切复现以本节 9-jar 顺序为准。
+
+## 官方 aosp-14.0.0_r16 复现结果(2026-09-30 oc-t4,L1/L2 判定)
+
+工具:官方树构建(pinned-manifest.xml 同源)host `dex2oat64` sha16 `1a2f5a22ebe1a722`(x86-64,glibc-only,hw248 原生);arm64 `libart.so` sha16 `adf4da23e3093b1d`。输入:9 jar(payload v3a-r8b,9/9 与本清单 MATCH),命令=boot.oat 内 `dex2oat-cmdline` 抄录(上节),dex-location 全部指 /system/android/framework。
+
+- **R155 风险检查(通过)**:官方 libart `ComputeAndSetHashCode` 反汇编与板上 59e1bb45 逐指令同形(count@8 + bit0 压缩标志 tbnz / hash 写回@12 / 字符数据@16);`art\n108\0`×2 同数;源码级 oat=230/image=108。无 R155 级布局差,官方树可直接作复现工具。
+- **复现跑成**:7.086s(52.157s cpu,32 threads)出全部 27 文件。对照:c-route r16 同输入死于 570s 看门狗——挂起病在 c-route 树,官方工具链无。
+- **L1(27 文件逐字节)**:**9 一致 / 18 差 / 0 缺失**。一致 = 全部 9 个 `.vdex`;差异 = 全部 9 `.oat` + 9 `.art`。
+- **L2(静态头字段,boot.oat)**:magic `oat\n230` ✓、isa=2 feats=0x3 ✓、`dex_file_count=1` ✓、**`executable_offset=0x1e6000` 精确相等** ✓、`bcp_bss_info_offset=0` ✓;boot.art 头 `art\n108` ✓。唯一头差:`oat_checksum` 0x50af7eed(我们)vs 0xd369f830(板)。
+- **.oat/.art 差异归因(已知成分)**:OatHeader key-value 嵌 `dex2oat-cmdline`,我们产物嵌 `/tmp/official9/...` 路径,板上原件嵌 `/opt/build-trees/.work/fn03-r29-boot-20260728T0635Z`——路径串不同必然改哈希与 adler32。若要 L1 逼近,可用相同 work 路径(`--image`/`--dex-file` 指 `/opt/build-trees/.work/fn03-r29-boot...` 形式)重跑一次;剩余差异(若有)才是编译器/时间戳性。
+- **L2 板测(待批)**:产物推 5cd `/data/local/tmp/oc-t4-boot/l2/`,叠加现役 9 段后验 HW/ZZ 与 ≥5 已亮 app t20 仍是自身界面。
+- 产物持久:hw248 `/home/alvin/official9-boot-repro/`(160M,27 文件 + run.log + local.sha256)。
+
+**判定:vdex 层 L1 全中;L2 静态头字段全中(除 checksum,已归因路径串);L2 板测待批。**
