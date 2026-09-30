@@ -50,6 +50,8 @@ case "$MODE" in
     *) usage; exit 2 ;;
 esac
 
+# boards beyond the ones listed here: knowledge/boards.json (via the repo's scripts/lab/lab_paths.py)
+lab_board_label() { python3 "${REPO_ROOT:-$SCRIPT_DIR/../../../../..}/scripts/lab/lab_paths.py" board-label "$1"; }
 case "$BOARD" in
     "$BOARD_61AE") BOARD_LABEL=61ae ;;
     "$BOARD_8605") BOARD_LABEL=8605 ;;
@@ -57,7 +59,7 @@ case "$BOARD" in
     "5ea34a4500000000000000001123012c") BOARD_LABEL=5ea ;;
     "61b0657200000000000000000324012c") BOARD_LABEL=61b ;;
     "5cd1e3dd00000000000000000923012c") BOARD_LABEL=5cd ;;
-    *) die "unsupported or missing board serial: $BOARD" ;;
+    *) BOARD_LABEL=$(lab_board_label "$BOARD") || die "unsupported or missing board serial: $BOARD" ;;
 esac
 
 for driver in "$HELLOWORLD" "$ZIGZAG" "$CAPYBARA" "$BOAT_ATTACK"; do

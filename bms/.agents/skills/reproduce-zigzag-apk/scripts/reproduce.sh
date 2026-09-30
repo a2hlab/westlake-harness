@@ -34,6 +34,8 @@ RUN_ROOT="$REPO_ROOT/var/state/reproduce-zigzag-apk"
 
 MODE="${1:-check}"
 BOARD="${2:-$BOARD_ONLY}"
+# boards beyond the ones listed here: knowledge/boards.json (via the repo's scripts/lab/lab_paths.py)
+lab_board_label() { python3 "${REPO_ROOT:-$SCRIPT_DIR/../../../../..}/scripts/lab/lab_paths.py" board-label "$1"; }
 case "$BOARD" in
     "$BOARD_ONLY") BOARD_LABEL=61ae ;;
     "$BOARD_8605") BOARD_LABEL=8605 ;;
@@ -41,7 +43,7 @@ case "$BOARD" in
     "5ea34a4500000000000000001123012c") BOARD_LABEL=5ea ;;
     "61b0657200000000000000000324012c") BOARD_LABEL=61b ;;
     "5cd1e3dd00000000000000000923012c") BOARD_LABEL=5cd ;;
-    *) BOARD_LABEL=unsupported ;;
+    *) BOARD_LABEL=$(lab_board_label "$BOARD") || BOARD_LABEL=unsupported ;;
 esac
 CHANNEL_FILE="$CHANNEL_ROOT/reproduce-zigzag-apk-$BOARD_LABEL.md"
 LOCK_DIR="$LOCK_ROOT/$BOARD.lock"
@@ -188,7 +190,7 @@ device_preflight()
 {
     case "$BOARD" in
         "$BOARD_ONLY"|"$BOARD_8605"|"$BOARD_5EA1"|"5ea34a4500000000000000001123012c"|"61b0657200000000000000000324012c"|"5cd1e3dd00000000000000000923012c") ;;
-        *) die "unsupported direct board: $BOARD" ;;
+        *) [ "$BOARD_LABEL" != unsupported ] || die "unsupported direct board: $BOARD" ;;
     esac
     "$HDC_BIN" list targets 2>/dev/null | tr -d '\r' | grep -qx "$BOARD" \
         || die "$BOARD_LABEL is not connected: $BOARD"

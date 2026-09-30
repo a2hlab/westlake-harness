@@ -235,6 +235,16 @@ orb -m a2hlab bash -lc 'git clone https://github.com/a2hlab/westlake.git ~/a2hla
 - **绝不 `kill -9` appspawn-x 主进程**(init 会崩、整机掉线);停起用 `begetctl stop_service/start_service appspawn-x`。
 - 板子要连 WiFi 才能跑联网 app;Wikipedia 在本地网络下受 DNS 污染,需要代理/VPN(DIGEST)。
 
+### 7b. 换成新板(同为 DAYU600 + OpenHarmony 6.1.0.31,但没有我们的任何改动)
+
+可以,但**还没有人在干净板上一口气走通过**——现有三块板是分层叠出来的,第一块新板预留几小时排错。
+
+1. 新板加进 `knowledge/boards.json`(serial、label、kind=oh);所有工具的白名单都从这里读,不用改代码。
+2. `python3 scripts/lab/bringup_clean_board.py check <serial>`:白名单、在线、ROM 名称、aarch64、47 个库的固件门(`knowledge/firmware/oh61-firmware-libs.sha256`)。不过就停,多半是镜像不同。
+3. `python3 scripts/lab/bringup_clean_board.py plan`:按序列出布板链路(上手 → PR03 恢复 → FZ-001 安装器 `swap_installer.py` → v3c → N2 → J2 叠层)和每步命令。
+4. 每布完一步跑 `bringup_clean_board.py diff <serial>`:与 `benchmark/2026-09-30-board-inventory/5ea/` 逐文件比,缺的/不同的文件都会列出本机哪个运行包里有同哈希的来源。报告 0 missing / 0 different、横扫 facts 首行指纹为 `937e2a6d0d88` 才算到 U2。
+5. 旧板的 `westlake-generation-state/<旧序列号>/` 对新板无用;新板第一次部署会自己建。
+
 ---
 
 ## 8. 凭据与账号(不入库,找操作者要)

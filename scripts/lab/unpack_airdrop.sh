@@ -60,6 +60,12 @@ un octos-state.tar.zst "$ROOT"
 un a2hlab-vm.tar.zst "$ROOT/_a2hlab"
 un bridge-payload.tar.zst "$HOME/orca"
 
+echo "== repair worktree links"  # an archive may carry a worktree's .git file with the old machine's absolute path
+while IFS=$'\t' read -r name rel ref; do
+  main=$(dest "$(awk -F'\t' -v n="$name" '$1==n{print $2}' "$SRC/git/repos.tsv")")
+  [ -e "$ROOT/$rel/.git" ] && git -C "$main" worktree repair "$ROOT/$rel" 2>/dev/null || true
+done < "$SRC/git/worktrees.tsv"
+
 echo "== relink absolute symlinks that pointed into the old machine's tree"
 OLD_WORKSPACES=; OLD_HOME=; [ -f "$SRC/meta.env" ] && . "$SRC/meta.env"
 n=0

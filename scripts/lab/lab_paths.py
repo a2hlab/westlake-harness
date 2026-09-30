@@ -63,3 +63,40 @@ def vm_home():
     if not out.startswith('/'):
         raise LabPathError('cannot read the a2hlab VM home; set A2HLAB_VM_HOME')
     return out
+
+
+def boards_file():
+    """The board whitelist: $LAB_BOARDS, else <workspaces>/westlake-harness/knowledge/boards.json (the main
+    checkout is the single source of truth, also for scripts run from a lane worktree or a package copy),
+    else the copy in this file's own repo."""
+    env = os.environ.get('LAB_BOARDS')
+    if env:
+        return Path(env).expanduser()
+    candidates = []
+    try:
+        candidates.append(harness() / 'knowledge/boards.json')
+    except LabPathError:
+        pass
+    candidates.append(Path(__file__).resolve().parents[2] / 'knowledge/boards.json')
+    for c in candidates:
+        if c.is_file():
+            return c
+    raise LabPathError('no knowledge/boards.json found; set LAB_BOARDS')
+
+
+def boards(kind=None):
+    """{serial: label} of whitelisted boards, optionally only one kind ('oh' / 'android')."""
+    import json
+    data = json.loads(boards_file().read_text())['boards']
+    return {b['serial']: b['label'] for b in data if kind is None or b.get('kind') == kind}
+
+
+if __name__ == '__main__':  # shell use: python3 lab_paths.py board-label <serial>  (exit 1 if not whitelisted)
+    import sys
+    if len(sys.argv) == 3 and sys.argv[1] == 'board-label':
+        label = boards().get(sys.argv[2])
+        if label is None:
+            sys.exit(1)
+        print(label)
+    else:
+        print(workspaces())
