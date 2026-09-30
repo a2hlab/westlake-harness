@@ -9,6 +9,7 @@
 - hdc:`/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc`。`-t` 必须用**完整 connect-key**,8 位前缀会报 `Not match target founded`:
   `5ea34a4500000000000000001123012c`、`5cd1e3dd00000000000000000923012c`、`61b0657200000000000000000324012c`。
 - 板子经 hub 接 USB,provision/remount 瞬间掉线过多次,最长 50 分钟不回,只能物理重插。演示前尽量直连。2026-09-29 61b 在 `swap_installer.sh` 触发 foundation 重启→整机重启后从 USB 枚举消失(`ioreg -p IOUSB` 里没有该序列号),用户手动重启才回来;会导致重启的操作(换 installer、restore、remount)优先放在直连的板上,上 hub 的板做之前先告诉用户可能要重插。
+- **boot 镜像叠加测试也是会让板掉线的操作(2026-09-30 5cd)**:oc-t4 把 27 个镜像文件 bind 到 `/system/android/framework/arm64/` 并重启 appspawn-x 后,5cd 从 USB 枚举消失 >15 分钟,需人工重启。这类测试和换 installer 同级:先在黑板预告、优先放直连的板、做之前告诉用户可能要重插;叠加前先确认有不需要重启进程的读法(例如只起一个子进程验证镜像能否加载)。
 - 环境:`source ~/orca/workspaces/westlake-inputs/env-mac.sh`(cc/readelf/sha256sum shim + mise 固定的 JDK/Python)。有它 67/69 测试过,没有它 2 fail 4 error。
 - **shell 陷阱**:`ls`=eza(带 OSC-8 超链接)、`du`=dust、`grep`=ugrep(复杂正则会超限)、`cat`=bat → 解析输出时用 `/bin/ls`、`/usr/bin/grep`、`command du`。zsh **不拆分 `$var`**(用 `${=var}` 或数组/glob),把整串当一个文件名且被 `2>/dev/null` 吞掉时会得到"假干净"。macOS 自带 bash 3.2 没有 `mapfile`。
 - `pgrep -f`/`pkill -f` 会匹配到自己的命令行(在 `hdc shell "…"` 里计数恒 +1)→ 用 `scripts/lab/stop_by_pattern.sh` 或 `pgrep -f '[x]yz'`。
