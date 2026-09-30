@@ -70,7 +70,8 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
                src / 'JarVerificationProviderFix.java',   # r17o conscrypt (from B7BindFixes)
                src / 'AlarmVibratorFetcher.java',         # r17e alarm + J04 vibrator (from SystemServiceFetcherStubs)
                src / 'SelfServiceFallback.java',          # J1 binaryeye getServiceInfo (from SelfComponentFallback)
-               src / 'AndroidFrameworkPackage.java']      # J2 newpipe getPackageInfo("android") synthesis
+               src / 'AndroidFrameworkPackage.java',      # J2 newpipe getPackageInfo("android") synthesis
+               src / 'AliasTargetTheme.java']             # J3 fd-api: activity-alias target keeps its own theme
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 # r16 (#90): cc-wiki's OnlineConnectivityManager compiles against the Westlake android.net sources
 # (ConnectivityManager/Network/NetworkInfo/NetworkCapabilities/NetworkRequest, which expose the
@@ -188,6 +189,16 @@ if B5_SHIPPED:
 else:
     text = (text[:h.end()] + '\n\n    invoke-static {' + h[2] +
             '}, Ladapter/activity/LaunchActivityAliasProjection;->apply(Landroid/content/pm/ActivityInfo;)V' + text[h.end():])
+# J3 (#fd-api): an activity-alias TARGET must keep its OWN theme. LaunchActivityAliasProjection ships in
+# the b5 baseline (kept, not overlaid), so re-resolve the target theme via a NEW added helper injected
+# right after the (baseline or above-injected) alias apply call -- same ActivityInfo register. Without
+# this the target class (an AppCompatActivity) is created with the alias's non-AppCompat theme and
+# AppCompat's onCreate throws "You need to use a Theme.AppCompat theme".
+alias_theme = re.compile(r'(invoke-static \{([vp]\d+)\}, Ladapter/activity/LaunchActivityAliasProjection;'
+                         r'->apply\(Landroid/content/pm/ActivityInfo;\)V\n)')
+athits = alias_theme.findall(text); assert len(athits) == 1, len(athits)
+text = alias_theme.sub(lambda m: m.group(1) + '\n    invoke-static {' + m.group(2) +
+                       '}, Ladapter/activity/AliasTargetTheme;->apply(Landroid/content/pm/ActivityInfo;)V\n', text)
 # B8 item 3: right after setField(data, "providers", buildProvidersFromManifest(...)).
 prov = re.compile(r'(    const-string (v\d+), "providers"\n\n'
                   r'    invoke-static \{(v\d+), \2, v\d+\}, Ladapter/activity/AppSchedulerBridge;->setField'
@@ -261,6 +272,7 @@ assert sorted(changed) == sorted(expected), changed
 post_scheduler = (post / 'adapter/activity/AppSchedulerBridge.smali').read_text()
 assert post_scheduler.count('B7BindFixes;->apply(') == 1
 assert post_scheduler.count('LaunchActivityAliasProjection;->apply(') == 1
+assert post_scheduler.count('AliasTargetTheme;->apply(') == 1  # J3 (#fd-api): injected after the alias apply
 assert post_scheduler.count('B8BindExtras;->afterBindData(') == 1
 assert post_scheduler.count('B8BindExtras;->afterProviders(') == 1
 assert post_scheduler.count('ManifestJsonFallback;->parseManifestJson(') >= 2

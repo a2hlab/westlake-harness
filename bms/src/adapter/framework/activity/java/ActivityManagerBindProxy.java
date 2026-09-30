@@ -168,10 +168,38 @@ public final class ActivityManagerBindProxy implements InvocationHandler {
                     deliverConnected(connection, comp, binder);
                     System.err.println("[B8-AMB] connected " + cls + " binder=" + binder);
                 } catch (Throwable t) {
-                    System.err.println("[B8-AMB] in-process bind failed for " + comp + ": " + t);
+                    dumpBindFailure(comp, t);
                 }
             }
         });
+    }
+
+    /**
+     * J3 (#newpipe): after AndroidFrameworkPackage synthesizes getPackageInfo("android"), NewPipe's
+     * PlayerService in-process bind still throws in the same millisecond, but the old one-line print
+     * showed only the outermost InvocationTargetException ("... : java.lang.reflect.Invocation-
+     * TargetException") and hid the real internal cause. Walk the whole getCause() chain and print the
+     * root cause's top 5 stack frames so the actual culprit (whatever PlayerService.onCreate/onBind
+     * fails on next) is legible in hilog. Diagnostic only -- the fix follows once the chain is read.
+     */
+    private static void dumpBindFailure(ComponentName comp, Throwable t) {
+        StringBuilder sb = new StringBuilder("[B8-AMB] in-process bind failed for ").append(comp);
+        Throwable root = t;
+        int depth = 0;
+        for (Throwable c = t; c != null && depth < 12; depth++) {
+            sb.append(depth == 0 ? ": " : "\n[B8-AMB]   caused by: ").append(c.getClass().getName());
+            String msg = c.getMessage();
+            if (msg != null) sb.append(": ").append(msg);
+            root = c;
+            Throwable next = c.getCause();
+            if (next == c) break;
+            c = next;
+        }
+        StackTraceElement[] frames = root.getStackTrace();
+        int n = Math.min(5, frames.length);
+        for (int i = 0; i < n; i++) sb.append("\n[B8-AMB]   at ").append(frames[i]);
+        System.err.println(sb.toString());
+        System.err.flush();
     }
 
     /** Service.attach(Context, ActivityThread, String, IBinder, Application, Object activityManager). */
