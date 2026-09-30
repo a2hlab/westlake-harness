@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-30",
+  "author": "cc-t3",
+  "purpose": "Outer-loop audit of r17s 3b523289 on 61b before the three-board unified full sweep (JAR SHA unchanged — cc-wiki holds the same 3b523289 on 5ea as the unified JAR).",
+  "board": "61b0657200000000000000000324012c",
+  "board_state": "v3c + 9e14 + r17p (a0ed5c4f) + background-launch installer; boot_id 58aef9fc (same boot as cx-t0's r17p A/B -> no reboot variable)",
+  "jar": "r17s 3b523289cd49d97399e0c1c6f893c487a19616ea23cc7e5a018d9d288d83e4d0 (deployed layer2 over r17p, rolled back -> 61b restored to r17p a0ed5c4f layers=1, verified; lock released)",
+  "method": "bms_batch --reinstall (clean install), --hilog 20 --shots 5,20 --focus-check. Background-installer board: facts.txt liveness is process-based; screenshots ground truth (FLAW-007).",
+  "verdict": "AUDIT PASSED. All 9 must-not-regress apps lit; TLS wiring active with no regression; RestrictionsManager fetcher active; dlopen four unchanged (native).",
+  "must_not_regress_9": {
+    "fd-etar": "yes/yes (24489)", "markor": "yes/yes (17143)", "antennapod": "yes/yes (32191)",
+    "fd-com-amaze-filemanager": "yes/yes (30558)", "fd-tusky": "yes/yes (61716, login page)",
+    "fd-k9": "yes/yes (63610, 'updating database' screen)", "fd-android": "yes/yes (65346)",
+    "aegis": "yes/yes (21306)", "fd-auxio": "yes/yes (40504)",
+    "all_lit": true
+  },
+  "fd_meet": "no/no -- [B8-FETCH] restrictions RestrictionsManager built (empty-Bundle service); advances past the RestrictionsManager NPE, hits null-Collection.iterator (unchanged). Honest progress, not lit.",
+  "dlopen_four": {
+    "fd-app": "no/no (libgdx->libstdc++.so)", "fd-client": "no/no (libconscrypt_jni->liblog.so + accountManager NPE)",
+    "fd-im-vector-app": "no/no (librealm-jni UNSUPPORTED-SYMBOL)", "mindustry": "no/no (libarc->libOpenSLES.so)",
+    "c_experiment": "[B8-DLEXP] app classloader unavailable (ctx=null); skipped -- contextClassLoader is null at B7BindFixes.apply() in the OH child, so the DexPathList append never ran. dlopen stays native (cx-t0). The proper app-CL reflection experiment needs a throwaway build (see follow-up)."
+  },
+  "hw_control": "helloworld alive t5=yes t20=yes child_hilog=5877 (via hw-manifest + --input-root westlake-b90-controls-inputs). Lit.",
+  "tls_active_evidence": "[B8-TLS] SSLContext.TLS -> Westlake (direct newInstance) + setDefault; okhttp beats TlsShimProvider -- present in every app's bind; the 9 lit apps prove the provider swap regresses nothing.",
+  "compare_runs_vs_r17p": {
+    "tool": "compare_runs.py could not auto-run (these bms_batch runs predate runtime-fingerprint.txt).",
+    "byhand_single_variable": "board=61b (same) | boot_id=58aef9fc (same, no reboot) | method=--reinstall (same) | JAR = 3b523289(r17s) vs a0ed5c4f(r17p) = EXACTLY ONE variable.",
+    "delta": {
+      "held_lit_r17p_and_r17s": ["aegis", "antennapod", "fd-android", "fd-k9", "fd-tusky"],
+      "r17s_WIN_over_r17p": "markor: r17p A/B = no/no (child_hilog=0), r17s = yes/yes -- the r17r addToDisplay/power-flag fix (carried into r17s) lights markor that r17p could not.",
+      "unchanged_dead": ["fd-meet (RestrictionsManager built, null-Collection)", "fd-app/fd-client/fd-im-vector-app/mindustry (dlopen, native)"],
+      "conclusion": "single variable (the JAR); r17s adds markor over r17p and regresses nothing -> r17s >= r17p on 61b."
+    }
+  },
+  "follow_up_dlopen_appcl_experiment": {
+    "why_deferred": "40-min window + the unified JAR SHA must stay 3b523289 (cc-wiki holds it on 5ea). A real app-CL experiment needs a source change to (c) + a rebuild = a different SHA, so it must run on a THROWAWAY JAR, not the unified one.",
+    "hook": "get the app classloader at bind via android.app.ActivityThread.currentActivityThread().mBoundApplication.info.getClassLoader() (LoadedApk), not Thread.currentThread().getContextClassLoader() (null at apply()).",
+    "prediction": "likely still native-owned: OH's native-loader uses the namespace frozen at classloader creation, not DexPathList.nativeLibraryPathElements at load time, so appending dirs to the app CL's DexPathList probably won't let libgdx/libarc reach libstdc++/libOpenSLES. The experiment would confirm cx-t0 ownership."
+  }
+}
