@@ -528,3 +528,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 N3/U2 首墙校正(cx-t0):JNA 的资源缺失前有 `__sF@LIBC` reloc;VLC APK Transparent/Empty 父链无 background_default、Onboarding 父链有,不能凭 TypedArray 失败判 OH 解析器坏;LocalSend 的 runtime not-found 前先有 Xpm header mmap EINVAL。源码照抄与静态门见 `benchmark/2026-09-30-n3-native/`,设备效果未验。
 
 - 2026-09-30 N3离线补查：Tutanota U3 的无消息 WebViewFactory.getProvider UOE 对应现役 DEX isWebViewSupported=false；oh-adapter-framework PM 仅声明6个hardware feature，J3非空webviewupdate binder不够。Westlake 532633da 有完整feature/PackageInfo/服务/native发布配方，须配真实provider APK一起移植，不能只改true（benchmark/2026-09-30-n3-native/offline-followup/）。
+
+- 2026-09-30 N3b：532633da WebView发布helper依赖真实provider isAvailable + ServiceManager cache/public双身份回读，pre-bind只prime/hold false，post-bind有Application才publish；可只加runtime显式JNI接线，不能把PM feature=true或stub binder当provider闭包。N3b 7c9c6240已过12个真实JVM JNI用例，设备/J4配套待验（benchmark/2026-09-30-n3b-webview/）。

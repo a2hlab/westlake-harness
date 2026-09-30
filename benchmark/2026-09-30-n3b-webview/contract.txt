@@ -1,0 +1,51 @@
+# Task Contract: N3b runtime publication candidate
+
+## Intent
+原N3没有WebView发布函数，单有webviewupdate应答不能通过feature门。移植真实provider可用性检查、cache/public双回读及post-bind发布，打成单runtime替换包；输入缺件和Java接线写清，不声称Chromium上屏。
+
+## Must
+- 只离线，不向任何板发命令；不改变已导出N3包。
+- 冻结源与provider不变；JAR/APK/boot/ART/host/ANL/installer不变。
+- native原逻辑整段照抄，Java入口薄包装另文件；无provider或Application时不发布true。
+
+## Decisions
+- 以532633da的三个helper和两个公开函数为来源，保留可用性、Application与readback条件。
+- 新增明确的JNI prime/post-bind入口供cc-t3调用，不依赖日志字符串触发，不复制头条专用wrapper修复。
+- 只编新增对象，再按N3原顺序重链；先无新增对象重链核基线逐字节一致。
+- 非目标app无自动行为；调用由Java配套决定且真实provider缺失必须返回false。
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-09-30-n3b-webview/**
+- specs/native-n3b/**
+- tools/spec-checks/**
+- README.md 与 .octos/KNOWLEDGE-DIGEST.md
+Forbidden:
+- 任何板操作，修改N3导出包或冻结源
+- 修改生产JAR/APK、ART/boot、provider/host/ANL、installer
+- 用空provider或强制true冒充真实WebView能力
+
+## Completion Criteria
+Scenario: 整段来源与真实JNI主机测试
+  Test:
+    Filter: n3b_publication_host
+  Given 532633da源和JDK可读取
+  When 编译原helper并在真实JVM执行JNI
+  Then 无provider和无Application均不发布true且公有cache回读失败不报成功
+  And post-bind成功后迟到的prime不撤销feature且负控被拒
+
+Scenario: 最小构建与替换包
+  Test:
+    Filter: n3b_single_runtime_package
+  Given N3原对象和冻结工具链可用
+  When 原样重链基线再加入一个对象重链候选
+  Then 基线逐字节命中且候选仅runtime一个声明路径改变
+  And 导出不减少、严格链接和check_frozen及dry-run通过
+
+Scenario: 跨层交接与效果边界
+  Test:
+    Filter: n3b_java_handoff
+  Given 板仍离线且生产JAR未修改
+  When 交付Java方法签名、发布时机和真实provider输入清单
+  Then 配套未完成不放行且回滚命令可复核
+  And 截图与新增点亮写unknown

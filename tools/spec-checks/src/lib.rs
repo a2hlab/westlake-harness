@@ -270,3 +270,18 @@ fn n3_device_evidence() {
 fn n3_device_restored() {
     run(&["benchmark/2026-09-30-n3-61b/verify.py", "restored"]);
 }
+
+#[test]
+fn n3b_publication_host() {
+    run(&["benchmark/2026-09-30-n3b-webview/verify.py", "host"]);
+}
+
+#[test]
+fn n3b_single_runtime_package() {
+    run(&["benchmark/2026-09-30-n3b-webview/verify.py", "package"]);
+}
+
+#[test]
+fn n3b_java_handoff() {
+    run(&["benchmark/2026-09-30-n3b-webview/verify.py", "handoff"]);
+}
