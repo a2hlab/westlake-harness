@@ -18,7 +18,17 @@ MAC_VIEW=0
 if [ -n "${MAC_HOME:-}" ]; then
   mac test -d "$MAC_HOME/OrbStack/a2hlab/home" 2>/dev/null && MAC_VIEW=1
 else
-  read -r MAC_HOME MAC_VIEW < <(mac sh -c 'v=0; test -d "$HOME/OrbStack/a2hlab/home" && v=1; printf "%s %s\n" "$HOME" "$v"' 2>/dev/null)
+  # the mac bridge occasionally answers empty right after OrbStack restarts (2026-09-30 U4 sweep stopped twice):
+  # retry, then fall back to the /Users/<name> prefix of this script's own path (the VM sees the Mac's /Users)
+  for _try in 1 2 3; do
+    read -r MAC_HOME MAC_VIEW < <(mac sh -c 'v=0; test -d "$HOME/OrbStack/a2hlab/home" && v=1; printf "%s %s\n" "$HOME" "$v"' 2>/dev/null)
+    case "${MAC_HOME:-}" in /Users/?*) break ;; esac; sleep 1
+  done
+  if [ -z "${MAC_HOME:-}" ]; then
+    _self=$(cd "$(dirname "$0")" && pwd -P)
+    case "$_self" in /Users/*/*) MAC_HOME=/Users/$(printf '%s' "$_self" | cut -d/ -f3)
+      mac test -d "$MAC_HOME/OrbStack/a2hlab/home" 2>/dev/null && MAC_VIEW=1 ;; esac
+  fi
 fi
 case "${MAC_HOME:-}" in /Users/?*) ;; *) echo "hdc_mac: cannot read the Mac home via OrbStack's mac (set MAC_HOME)" >&2; exit 1 ;; esac
 
