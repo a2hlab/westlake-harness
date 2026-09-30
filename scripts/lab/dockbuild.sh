@@ -39,7 +39,7 @@ mounts=(
 )
 # Extra Mac directories at their own paths: DOCKBUILD_MOUNTS="$HOME/kit:$HOME/src" (e.g. an OH header kit).
 IFS=: read -r -a extra_mounts <<< "${DOCKBUILD_MOUNTS:-}"
-for m in "${extra_mounts[@]}"; do [ -n "$m" ] && mounts+=(-v "$m:$m"); done
+for m in ${extra_mounts[@]+"${extra_mounts[@]}"}; do [ -n "$m" ] && mounts+=(-v "$m:$m"); done  # ${a[@]+...}: bash 3.2 + set -u
 # $PWD is mounted at its own path so relative arguments keep working (Mac paths only; VM paths are above).
 case "$PWD" in /Users/*|/private/*|/tmp/*) mounts+=(-v "$PWD:$PWD") ;; esac
 
