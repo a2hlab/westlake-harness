@@ -54,3 +54,23 @@ boolean, never `feature=published` alone). **rollout_ready = false. No new lit a
   (prime held-unsupported, post-bind published, provider native load, one ART in child maps, Tutanota t20)
   needs the real APK **and** a board — both currently unavailable (boards offline for machine migration;
   no provider APK). Board validation is the outer loop's to schedule once the provider payload lands.
+
+## J5b (ce2c3baf) — closes the N3b JNI contract gap
+
+cx-bms's `webview-contract-gap.json` found J5 shipped no `adapter.core.WebViewUpdateServiceAdapter`, yet
+N3b's `webview_publication.cpp:92-118` resolves that class BY NAME (`FindClass`) and calls its static
+`isAvailable()Z` / `getInstance()Ladapter/core/WebViewUpdateServiceAdapter;`, then seeds
+`ServiceManager.sCache` itself with the exact `WebViewFactory.WEBVIEW_UPDATE_SERVICE_NAME` String object.
+So J5's native prime aborted at `FindClass`, and its Java-side route used a freshly-allocated
+`"webviewupdate"` key the cpp explicitly warns can miss under the ART String/ArrayMap defect.
+
+**J5b sha256 = `ce2c3baf7586b3a6f50202fc4b8a75740cbf5beb7e953ab97693566f1d2c3652`** (walls faf99918;
+jar `vm-copies/j5b-ce2c3baf/`). Adds `WebViewUpdateServiceAdapter extends android.os.Binder` (public, so
+its `getInstance()` result is the `IBinder` the native caches) with a reflective `IWebViewUpdateService`
+proxy attached (no compile-time hidden API) and the two static entries the native needs.
+`WestlakeWebViewInstall` drops `routeWebViewUpdateService` — the native seeds the cache with the correct
+String; `install()` = `linkRuntime` + `nativePrime`. changed_existing stays 2.
+
+**Host gate (authoritative)**: `cx-t0 scripts/lab/check_webview_jni.py` (pins the N3b source+`.so` SHAs,
+extracts the JNI contract, checks the DEX): **J5b `passed=true` (exit 0); J5 `passed=false` (exit 1).**
+Still INERT without a provider APK; rollout_ready=false; board+APK gated.
