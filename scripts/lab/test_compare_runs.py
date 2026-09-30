@@ -111,6 +111,25 @@ class CompareRunsTests(unittest.TestCase):
         self.assertEqual(out[0], "variables: 0")
         self.assertTrue(any(l.startswith("note: boot-image-fingerprint.txt missing in A") for l in out))
 
+    def test_same_library_under_two_alias_paths_is_one_variable(self):
+        # 5ea bisect step 2: libapp_native_loader.so in lib64/ and route-a/<hash>/ changed together
+        paths = ("/system/android/lib64/libapp_native_loader.so",
+                 "/system/lib64/westlake/route-a/74d1/libapp_native_loader.so")
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", A5, {p: "7" for p in paths}, {})
+            b = make(f"{t}/b", A5, {p: "e" for p in paths}, {})
+            out = compare_runs.compare(a, b)
+        self.assertEqual(out[0], "variables: 1")
+        self.assertIn("(+1 alias path(s) with the same change)", out[1])
+
+    def test_alias_paths_changing_differently_stay_separate(self):
+        paths = ("/a/libx.so", "/b/libx.so")
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", A5, {paths[0]: "1", paths[1]: "1"}, {})
+            b = make(f"{t}/b", A5, {paths[0]: "2", paths[1]: "3"}, {})
+            out = compare_runs.compare(a, b)
+        self.assertEqual(out[0], "variables: 2")
+
 
 if __name__ == "__main__":
     unittest.main()

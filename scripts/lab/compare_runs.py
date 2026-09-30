@@ -93,12 +93,19 @@ def compare(a, b, keys=None):
         if fa.get(path) != fb.get(path):
             change = f"{path} {(fa.get(path) or 'absent')[:8]} -> {(fb.get(path) or 'absent')[:8]}"
             group = next((g for g, members in GROUPS.items() if path in members), None)
+            # one library installed under several paths (lib64/ and route-a/<hash>/ aliases) that changed from the
+            # same old to the same new hash is one variable (5ea bisect step 2, 2026-09-30, reported variables: 2)
+            group = group or f"alias {pathlib.PurePosixPath(path).name} {fa.get(path)} {fb.get(path)}"
             if group:
                 grouped.setdefault(group, []).append(change)
             else:
                 variables.append(change)
     for group, changes in grouped.items():
-        variables.append(f"{group}: " + "; ".join(changes))
+        if group.startswith("alias "):
+            variables.append(changes[0] if len(changes) == 1 else
+                             f"{changes[0]} (+{len(changes) - 1} alias path(s) with the same change)")
+        else:
+            variables.append(f"{group}: " + "; ".join(changes))
     # the boot image and boot class path jars (boot-image-fingerprint.txt) change together: one variable
     notes = []
     ia, ib = (fingerprint(d, "boot-image-fingerprint.txt", required=False) for d in (da, db))
