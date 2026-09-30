@@ -3,13 +3,18 @@
 
     check_frozen.py [--registry knowledge/frozen/frozen.json]
                     [--fingerprint runtime-fingerprint.txt]... [--package <generation dir>]...
-                    [--source-root <worktree>]...
+                    [--source-root <worktree>]... [--git [<repo>]]
 
 --fingerprint  a bms_batch runtime-fingerprint.txt ("<sha256>  <path>" lines): every frozen artifact path it
                lists must carry the frozen sha256.
 --package      a deploy_generation package: its package.json `live_hashes` must carry the frozen sha256 for
                every frozen artifact path it declares.
 --source-root  a worktree of this repo: every frozen source file must exist with the frozen git blob id.
+--git          [<repo>, default this repo] check each frozen source against the git blob of its own
+               `<commit-or-branch>:<repo_path>` in the object store, so sources pinned on different branches
+               are checked without a checkout of each. A source with neither `commit` nor `branch` is a
+               REGISTRY-INVALID (exit 2); a resolvable ref whose blob differs, or a ref/path git cannot
+               resolve, is a FROZEN-VIOLATION.
 
 A frozen artifact that a fingerprint/package does not mention is not a violation (that input does not touch
 it). Prints one line per checked item and exits 1 on any mismatch.
@@ -29,6 +34,7 @@ import hashlib
 import json
 import pathlib
 import re
+import subprocess
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
@@ -131,12 +137,44 @@ def check_sources(entries, root):
     return lines, bad
 
 
+def git_ref_blob(repo, ref, repo_path):
+    """The git blob id of `<ref>:<repo_path>` in repo's object store, or None if the ref or path is absent.
+    `git rev-parse <ref>:<path>` already yields the blob object id, so it equals a git-hash-object blob."""
+    try:
+        out = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "-q", f"{ref}:{repo_path}"],
+                             capture_output=True, text=True)
+    except (OSError, ValueError):
+        return None
+    return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else None
+
+
+def check_git(entries, repo):
+    """--git: compare each frozen source's registered blob to the git blob of its own commit-or-branch:path.
+    Returns (lines, bad, invalid); `invalid` lists sources with no ref (REGISTRY-INVALID) -- the caller then
+    exits 2 rather than reporting a violation, because a missing ref is a registry defect, not a change."""
+    lines, bad, invalid = [], 0, []
+    for e in entries:
+        for s in e.get("sources", []):
+            ref = s.get("commit") or s.get("branch")
+            if not ref:
+                invalid.append(f"{e['id']}: source {s['repo_path']} has neither commit nor branch for --git")
+                continue
+            got = git_ref_blob(repo, ref, s["repo_path"])
+            ok = got == s["blob"]
+            bad += not ok
+            lines.append(f"{'ok' if ok else 'FROZEN-VIOLATION'} {e['id']} {repo}@{ref} {s['repo_path']} "
+                         f"{(got or 'absent')[:8]} (frozen {s['blob'][:8]})")
+    return lines, bad, invalid
+
+
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--registry", default=str(REPO / "knowledge/frozen/frozen.json"))
     ap.add_argument("--fingerprint", action="append", default=[])
     ap.add_argument("--package", action="append", default=[])
     ap.add_argument("--source-root", action="append", default=[])
+    ap.add_argument("--git", nargs="?", const=str(REPO), default=None,
+                    help="check frozen sources against git <commit-or-branch>:<repo_path> blobs (default: this repo)")
     a = ap.parse_args(argv)
     entries = load(a.registry)
     problems = validate(entries)
@@ -153,6 +191,12 @@ def main(argv):
         lines += l; bad += b
     for r in a.source_root:
         l, b = check_sources(entries, r)
+        lines += l; bad += b
+    if a.git is not None:
+        l, b, invalid = check_git(entries, a.git)
+        if invalid:
+            print("\n".join(f"REGISTRY-INVALID {p}" for p in invalid))
+            return 2
         lines += l; bad += b
     print("\n".join(lines))
     print(f"frozen: {len(entries)} entries, {len(lines)} checked, {bad} violation(s)")

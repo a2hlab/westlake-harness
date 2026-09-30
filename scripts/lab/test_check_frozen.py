@@ -56,6 +56,47 @@ class CheckFrozenTests(unittest.TestCase):
             self.assertEqual(check_frozen.main(["--registry", reg, "--source-root", d]), 1)
 
 
+class GitCheckTests(unittest.TestCase):
+    def _repo(self, d):
+        import subprocess
+        def g(*a):
+            subprocess.run(["git", "-C", d, "-c", "commit.gpgsign=false", *a], check=True, capture_output=True)
+        g("init", "-q")
+        g("config", "user.email", "t@example.invalid")
+        g("config", "user.name", "t")
+        src = pathlib.Path(d) / "src" / "Fix.java"
+        src.parent.mkdir()
+        src.write_text("class Fix {}\n")
+        g("add", "src/Fix.java")
+        g("commit", "-q", "-m", "add fix")
+        rev = lambda *a: subprocess.run(["git", "-C", d, "rev-parse", *a], capture_output=True, text=True).stdout.strip()
+        return rev("HEAD"), check_frozen.git_blob(src), rev("--abbrev-ref", "HEAD")
+
+    def test_matching_blob_at_ref_passes(self):
+        with tempfile.TemporaryDirectory() as d:
+            commit, blob, _ = self._repo(d)
+            reg = registry(d, [{"repo_path": "src/Fix.java", "blob": blob, "commit": commit}])
+            self.assertEqual(check_frozen.main(["--registry", reg, "--git", d]), 0)
+
+    def test_registered_blob_mismatch_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            _, _, branch = self._repo(d)
+            reg = registry(d, [{"repo_path": "src/Fix.java", "blob": "0" * 40, "branch": branch}])
+            self.assertEqual(check_frozen.main(["--registry", reg, "--git", d]), 1)
+
+    def test_unresolvable_ref_is_a_violation(self):
+        with tempfile.TemporaryDirectory() as d:
+            _, blob, _ = self._repo(d)
+            reg = registry(d, [{"repo_path": "src/Fix.java", "blob": blob, "branch": "no-such-branch"}])
+            self.assertEqual(check_frozen.main(["--registry", reg, "--git", d]), 1)
+
+    def test_source_without_ref_is_registry_invalid(self):
+        with tempfile.TemporaryDirectory() as d:
+            _, blob, _ = self._repo(d)
+            reg = registry(d, [{"repo_path": "src/Fix.java", "blob": blob}])
+            self.assertEqual(check_frozen.main(["--registry", reg, "--git", d]), 2)
+
+
 class RegistryTests(unittest.TestCase):
     V1 = {"id": "FZ-V", "version": 1, "status": "frozen", "history": [],
           "verified_apps": [{"app": "a1"}, {"app": "a2"}], "artifacts": [], "sources": []}

@@ -20,8 +20,12 @@ The machine-readable registry is `frozen.json`; this page is the readable view. 
 
 - `python3 scripts/lab/check_frozen.py --package <generation dir>` before `deploy_generation.sh`,
   `--source-root <worktree>` before building a JAR or native library, `--fingerprint <run>/runtime-fingerprint.txt`
-  to audit a board. Exit 1 on any change to a frozen file; exit 2 if the registry itself breaks the
-  rules above (a version change without its reason/evidence, a removal not approved by the user).
+  to audit a board, or `--git` to check each frozen source against the git blob of its own
+  `commit`-or-`branch` `:repo_path` in the object store (so sources pinned on different branches — FZ-003
+  on `feat/bms-route-deploy`, FZ-004 on `feat/bms-walls` — verify from any checkout without a per-branch
+  worktree). Exit 1 on any change to a frozen file; exit 2 if the registry itself breaks the rules above
+  (a version change without its reason/evidence, a removal not approved by the user, or a `--git` source
+  with neither `commit` nor `branch`).
 - Every `bms_batch.py` run writes a `FROZEN checked=N violations=M` line under `RUNTIME fingerprint` in
   `facts.txt`; violations are listed below it.
 
