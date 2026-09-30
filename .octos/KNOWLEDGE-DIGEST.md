@@ -480,3 +480,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 AssetManager.openFd：OH 构建的 ReturnParcelFileDescriptor 走 __ANDROID__ 之外的 Implement me，另一分支也因误认需 Binder 而返 null；Mac Westlake532633da已有直接构造 ParcelFileDescriptor(FileDescriptor) 的真实 helper，保持 offset/length 与 fd ownership 即可，勿仅打开 __ANDROID__ 宏。NewPipe/uhabits 共墙，源码方案见 benchmark/2026-09-30-asset-fd-plan/，尚未上板验证。
 
 - 2026-09-30 Flutter r4：ANL位于westlake.sealed.child，直接调dlns_init/create返回musl caller ns have no permission；原ANL用namespace_host_ops的default-owner回调，不能在扩展路径绕开。canonical文件名/物理闭包/owner继承表静态通过仍不足，须核创建API的调用者owner。61b HW/ZZ正常，Flutter私有加载尚未执行，见flutter-candidate/evidence-r4/caller-gate.json。
+
+- 2026-09-30 asset-fd: OH AssetManager helper误走layoutlib Implement me；照抄Westlake 532633da的ParcelFileDescriptor构造后，同板同JAR只差runtime 9e14→53f，NewPipe t20自身UI，uhabits越过原异常后HWUI abort；仅1目标亮，尚不满足双app冻结。证据 benchmark/2026-09-30-asset-fd-runtime/。
