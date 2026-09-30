@@ -920,6 +920,21 @@ def boot_image_fingerprint(board, out):
     return runtime_fingerprint(board, out, BOOT_IMAGE_PATHS, 'boot-image-fingerprint.txt')
 
 
+def tool_identity(manifest=None):
+    """Which bms_batch.py (and manifest) produced a run. 2026-10-01: a lane ran a stale copy from an old worktree;
+    its facts silently lacked the BOOTIMAGE line and nothing said which script version wrote them."""
+    me = Path(__file__).resolve()
+    ident = {'bms_batch_sha256': hashlib.sha256(me.read_bytes()).hexdigest(), 'git_head': None}
+    try:
+        ident['git_head'] = subprocess.run(['git', '-C', str(me.parent), 'rev-parse', 'HEAD'], capture_output=True,
+                                           text=True, check=True).stdout.strip() or None
+    except (OSError, subprocess.CalledProcessError):
+        pass
+    if manifest is not None:
+        ident['manifest_sha256'] = hashlib.sha256(Path(manifest).read_bytes()).hexdigest()
+    return ident
+
+
 def write_facts(out):
     """facts.txt = scripts/lab/run_facts.py over this run; ACKs quote it instead of counting by hand."""
     try:
@@ -956,6 +971,14 @@ def write_facts(out):
         lines.insert(2 if fp.is_file() else 0,  # after RUNTIME and FROZEN, which the block above always writes
                      f'BOOTIMAGE fingerprint={short} files={len(body.splitlines()) if body else 0} '
                      '(boot-image-fingerprint.txt; not part of RUNTIME)')
+    try:
+        tool = json.loads((Path(out)/'plan.json').read_text()).get('tool') or {}
+    except (OSError, ValueError):
+        tool = {}
+    if tool:
+        at = sum(1 for l in lines if l.startswith(('RUNTIME ', 'FROZEN ', 'BOOTIMAGE ')))
+        lines.insert(at, f"TOOL bms_batch={tool.get('bms_batch_sha256', '?')[:8]} head={(tool.get('git_head') or '?')[:9]} "
+                         f"manifest={tool.get('manifest_sha256', '?')[:8]} (plan.json tool)")
     (Path(out)/'facts.txt').write_text('\n'.join(lines + [total]) + '\n')
     return total
 
@@ -1048,7 +1071,8 @@ def main(argv=None):
         ap.error('execution requires serial/lane/fresh out, safe run-id and wait 3..300')
     out=args.out.expanduser().resolve()/args.run_id/args.serial
     out.mkdir(parents=True,exist_ok=False)
-    save(out/'plan.json',{'apps':entries,'run_id':args.run_id,'serial':args.serial,'options':options,'review':'pending_review'})
+    save(out/'plan.json',{'apps':entries,'run_id':args.run_id,'serial':args.serial,'options':options,
+                          'tool':tool_identity(args.manifest),'review':'pending_review'})
     try:
         board=Board(args.serial,args.hdc_cmd,args.lock_cmd,args.lane,out/'commands')
         records=run_batch(board,entries,args.input_root,out,args.run_id,args.wait,**options)

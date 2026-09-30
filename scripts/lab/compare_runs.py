@@ -64,6 +64,13 @@ def keeps_app_data(d):
     return bool(options.get("launch_only")) or not options.get("reinstall", False)
 
 
+def tool(d):
+    try:
+        return json.loads((d / "plan.json").read_text()).get("tool")
+    except (OSError, ValueError):
+        return None
+
+
 def facts(d):
     f = d / "facts.txt"
     rows = {}
@@ -126,6 +133,18 @@ def compare(a, b, keys=None):
         notes.append("note: boot-image-fingerprint.txt missing in "
                      + "/".join(n for n, f in (("A", ia), ("B", ib)) if f is None)
                      + "; a boot image swap would not show up as a variable (T6, 2026-09-30)")
+    # which bms_batch.py wrote each run (plan.json "tool", 2026-10-01): not a device variable, but a stale script copy
+    # can drop facts lines (a lane's run had no BOOTIMAGE line) and a different manifest can pin different APKs
+    ta, tb = tool(da), tool(db)
+    if ta is None or tb is None:
+        notes.append("note: plan.json tool identity missing in " + "/".join(n for n, t in (("A", ta), ("B", tb))
+                                                                          if t is None)
+                     + "; which bms_batch.py wrote that run is unknown")
+    else:
+        for field, label in (("bms_batch_sha256", "bms_batch.py"), ("manifest_sha256", "manifest")):
+            if ta.get(field) != tb.get(field):
+                notes.append(f"note: runs used different {label} ({(ta.get(field) or '?')[:8]} -> "
+                             f"{(tb.get(field) or '?')[:8]}); check the facts lines and pins before comparing")
     carried = [name for name, d in (("A", da), ("B", db)) if keeps_app_data(d)]
     if carried:
         variables.append(f"app data carried over from earlier runs in {'/'.join(carried)} (no --reinstall)")

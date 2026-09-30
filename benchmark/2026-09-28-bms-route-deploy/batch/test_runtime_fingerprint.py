@@ -62,6 +62,26 @@ class RuntimeFingerprintTests(unittest.TestCase):
             self.assertTrue(lines[1].startswith('FROZEN'), lines[1])
             self.assertTrue(lines[2].startswith('BOOTIMAGE fingerprint=') and 'files=1' in lines[2], lines[2])
 
+    def test_tool_line_follows_the_fingerprint_lines(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            bms_batch.runtime_fingerprint(FakeBoard(f'{A}  /x.so\n'), out)
+            bms_batch.boot_image_fingerprint(FakeBoard(f'{B}  /system/android/framework/arm64/boot.oat\n'), out)
+            (out/'plan.json').write_text(json.dumps({'tool': bms_batch.tool_identity(Path(bms_batch.__file__))}))
+            key = out/'app'
+            key.mkdir()
+            (key/'record.json').write_text(json.dumps({'status': 'foreground_unconfirmed', 'screenshots': []}))
+            bms_batch.write_facts(out)
+            lines = (out/'facts.txt').read_text().splitlines()
+            self.assertTrue(lines[3].startswith('TOOL bms_batch='), lines[3])
+            self.assertTrue(lines[4].startswith('app '), lines[4])
+
+    def test_tool_identity_hashes_this_script(self):
+        import hashlib
+        ident = bms_batch.tool_identity()
+        self.assertEqual(ident['bms_batch_sha256'], hashlib.sha256(Path(bms_batch.__file__).resolve().read_bytes()).hexdigest())
+        self.assertNotIn('manifest_sha256', ident)
+
 
 if __name__ == '__main__':
     unittest.main()

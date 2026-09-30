@@ -153,6 +153,25 @@ class CompareRunsTests(unittest.TestCase):
         self.assertTrue(out[-1].startswith("verdict: single-variable"), out[-1])
         self.assertTrue(any(l.startswith("caution: flaky key(s) fd-noice") for l in out))
 
+    def test_different_bms_batch_versions_add_a_note_not_a_variable(self):
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", A5, {"/lib/art.so": "1"}, {})
+            b = make(f"{t}/b", A5, {"/lib/art.so": "1"}, {})
+            for run, sha in ((a, "a" * 64), (b, "b" * 64)):
+                (pathlib.Path(run) / A5 / "plan.json").write_text(
+                    '{"options": {"reinstall": true}, "tool": {"bms_batch_sha256": "%s", "manifest_sha256": "c"}}' % sha)
+            out = compare_runs.compare(a, b)
+        self.assertEqual(out[0], "variables: 0")
+        self.assertTrue(any(l.startswith("note: runs used different bms_batch.py (aaaaaaaa -> bbbbbbbb)") for l in out), out)
+
+    def test_missing_tool_identity_is_named(self):
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", A5, {"/lib/art.so": "1"}, {})
+            b = make(f"{t}/b", A5, {"/lib/art.so": "1"}, {})
+            (pathlib.Path(b) / A5 / "plan.json").write_text('{"options": {"reinstall": true}, "tool": {"bms_batch_sha256": "b"}}')
+            out = compare_runs.compare(a, b)
+        self.assertIn("note: plan.json tool identity missing in A; which bms_batch.py wrote that run is unknown", out)
+
 
 if __name__ == "__main__":
     unittest.main()
