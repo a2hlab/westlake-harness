@@ -1,0 +1,657 @@
+{
+  "note": "Source semantics and candidate repair locations; not proof these source HEADs built the deployed U5 JAR. cc-t3 draft outputs are superseded, not reused as verdicts.",
+  "sources": [
+    {
+      "id": "cc-t3-investigate",
+      "source": "cc-t3 session scratchpad/investigate.py",
+      "sha256": "28aee5c258a65bb2ac23242e9ea5a25b6e7332dd5c8204e163f153801796a985",
+      "commit": null,
+      "lines": [
+        {
+          "line": 11,
+          "text": "NET=re.compile(r'UnknownHostException|ConnectException|SocketTimeout|failed to connect|getaddrinfo|No address associated|Network is unreachable|okhttp|Retrofit|SSLHandshake|timeout',re.I)"
+        },
+        {
+          "line": 12,
+          "text": "PERM=re.compile(r'SecurityException|Permission Denial|requires.*permission|permission denied|not granted|checkSelfPermission',re.I)"
+        },
+        {
+          "line": 13,
+          "text": "EXC=re.compile(r'Exception|Error:|Caused by|\\bthrew\\b|NullPointer|IllegalState|UnsupportedOperation|RuntimeException|NoClassDefFound|NoSuchMethod|NoSuchField')"
+        },
+        {
+          "line": 14,
+          "text": "STDERR=re.compile(r'C00f00/AppSpawnXJava: \\[stderr\\] (.*)$')"
+        },
+        {
+          "line": 15,
+          "text": ""
+        },
+        {
+          "line": 16,
+          "text": "def analyze(hp):"
+        },
+        {
+          "line": 17,
+          "text": "    app_pid=None"
+        },
+        {
+          "line": 18,
+          "text": "    stderr_lines=[]      # (ts, text)"
+        },
+        {
+          "line": 20,
+          "text": "    main_last=None"
+        },
+        {
+          "line": 21,
+          "text": "    exc=[]               # swallowed exception-ish lines (app stderr)"
+        },
+        {
+          "line": 22,
+          "text": "    net=0; perm=0"
+        },
+        {
+          "line": 23,
+          "text": "    last_app=None"
+        },
+        {
+          "line": 24,
+          "text": "    for ln in open(hp,errors='replace'):"
+        },
+        {
+          "line": 25,
+          "text": "        if RENDER.search(ln): render+=1"
+        },
+        {
+          "line": 26,
+          "text": "        m=STDERR.search(ln)"
+        },
+        {
+          "line": 27,
+          "text": "        if m:"
+        },
+        {
+          "line": 28,
+          "text": "            txt=m.group(1).rstrip()"
+        },
+        {
+          "line": 29,
+          "text": "            parts=ln.split()"
+        },
+        {
+          "line": 30,
+          "text": "            pid=parts[1] if len(parts)>1 else ''"
+        },
+        {
+          "line": 31,
+          "text": "            if app_pid is None and ('[B43-BIND]' in txt or 'bindApplication' in txt or '[B8-' in txt):"
+        },
+        {
+          "line": 32,
+          "text": "                app_pid=pid"
+        },
+        {
+          "line": 33,
+          "text": "            stderr_lines.append(txt)"
+        },
+        {
+          "line": 34,
+          "text": "            last_app=txt"
+        },
+        {
+          "line": 35,
+          "text": "            if EXC.search(txt): exc.append(txt)"
+        },
+        {
+          "line": 36,
+          "text": "            if NET.search(txt): net+=1"
+        },
+        {
+          "line": 37,
+          "text": "            if PERM.search(txt): perm+=1"
+        },
+        {
+          "line": 38,
+          "text": "    # main thread last: lines where pid==tid==app_pid"
+        },
+        {
+          "line": 39,
+          "text": "    if app_pid:"
+        },
+        {
+          "line": 40,
+          "text": "        mt=[]"
+        },
+        {
+          "line": 41,
+          "text": "        for ln in open(hp,errors='replace'):"
+        },
+        {
+          "line": 42,
+          "text": "            p=ln.split()"
+        },
+        {
+          "line": 43,
+          "text": "            if len(p)>2 and p[1]==app_pid and p[2]==app_pid:"
+        },
+        {
+          "line": 44,
+          "text": "                mt.append(ln.rstrip())"
+        },
+        {
+          "line": 45,
+          "text": "        main_last=mt[-1][:150] if mt else None"
+        }
+      ]
+    },
+    {
+      "id": "swap-order",
+      "source": "westlake-harness/bms/src/adapter/aosp_patches/libs/hwui/hwui_oh_abi_patch.cpp",
+      "sha256": "f3913dd335d8bd1a0a651def3239d3a41821879ac8f82d6ae9be2a842e7b89a8",
+      "commit": "a3474d7587fdade2ac53da3b26a67ac3844fc8af",
+      "lines": [
+        {
+          "line": 898,
+          "text": "        // glClearColor(1.0f, 0.0f, 0.0f, 1.0f);"
+        },
+        {
+          "line": 899,
+          "text": "        // glClear(GL_COLOR_BUFFER_BIT);"
+        },
+        {
+          "line": 900,
+          "text": "        // glFinish();"
+        },
+        {
+          "line": 901,
+          "text": "        GLenum err = glGetError();"
+        },
+        {
+          "line": 902,
+          "text": "        if (frame_n < 5 || (frame_n % 60) == 0) {"
+        },
+        {
+          "line": 903,
+          "text": "            HiLogPrint(3, 4, 0xD000F00, \"OH_SwapHijack\","
+        },
+        {
+          "line": 904,
+          "text": "                       \"[G2.14ax r2d %s #%u] post-clear gl_err=0x%x\","
+        },
+        {
+          "line": 905,
+          "text": "                       tag, frame_n, err);"
+        },
+        {
+          "line": 906,
+          "text": "        }"
+        },
+        {
+          "line": 907,
+          "text": "    }"
+        },
+        {
+          "line": 908,
+          "text": ""
+        },
+        {
+          "line": 909,
+          "text": "    void notify_presented_after_success(EGLSurface surface) {"
+        },
+        {
+          "line": 910,
+          "text": "        EGLNativeWindowType owner = nullptr;"
+        },
+        {
+          "line": 911,
+          "text": "        {"
+        },
+        {
+          "line": 912,
+          "text": "            std::lock_guard<std::mutex> lock(g_egl_surface_owner_mutex);"
+        },
+        {
+          "line": 913,
+          "text": "            const auto found = g_egl_surface_owner.find(surface);"
+        },
+        {
+          "line": 914,
+          "text": "            if (found != g_egl_surface_owner.end()) owner = found->second;"
+        },
+        {
+          "line": 915,
+          "text": "        }"
+        },
+        {
+          "line": 916,
+          "text": "        if (owner && g_oh_anw_notify_presented_fn) {"
+        },
+        {
+          "line": 917,
+          "text": "            (void)g_oh_anw_notify_presented_fn(owner);"
+        },
+        {
+          "line": 918,
+          "text": "        }"
+        },
+        {
+          "line": 919,
+          "text": "    }"
+        },
+        {
+          "line": 920,
+          "text": "}  // anonymous namespace"
+        },
+        {
+          "line": 921,
+          "text": ""
+        },
+        {
+          "line": 922,
+          "text": "extern \"C\" __attribute__((visibility(\"default\")))"
+        },
+        {
+          "line": 923,
+          "text": "EGLBoolean eglSwapBuffersWithDamageKHR(EGLDisplay dpy, EGLSurface surface,"
+        },
+        {
+          "line": 924,
+          "text": "                                        const EGLint* rects, EGLint n_rects) {"
+        },
+        {
+          "line": 925,
+          "text": "    resolve_swap_hijack_funcs();"
+        },
+        {
+          "line": 926,
+          "text": "    static std::atomic<uint32_t> s_swapDmgCnt{0};"
+        },
+        {
+          "line": 927,
+          "text": "    uint32_t n = s_swapDmgCnt.fetch_add(1, std::memory_order_relaxed);"
+        },
+        {
+          "line": 928,
+          "text": "    inject_red_clear(n, \"SwapDmgKHR\");"
+        },
+        {
+          "line": 929,
+          "text": "    if (!g_real_eglSwapBuffersWithDamageKHR_fn) {"
+        },
+        {
+          "line": 930,
+          "text": "        HiLogPrint(3, 7, 0xD000F00, \"OH_SwapHijack\","
+        },
+        {
+          "line": 931,
+          "text": "                   \"[G2.14ax] real eglSwapBuffersWithDamageKHR not resolved\");"
+        },
+        {
+          "line": 932,
+          "text": "        return 0;"
+        },
+        {
+          "line": 933,
+          "text": "    }"
+        },
+        {
+          "line": 934,
+          "text": "    const EGLBoolean result ="
+        },
+        {
+          "line": 935,
+          "text": "        g_real_eglSwapBuffersWithDamageKHR_fn(dpy, surface, rects, n_rects);"
+        },
+        {
+          "line": 936,
+          "text": "    if (result) notify_presented_after_success(surface);"
+        },
+        {
+          "line": 937,
+          "text": "    return result;"
+        },
+        {
+          "line": 938,
+          "text": "}"
+        },
+        {
+          "line": 939,
+          "text": ""
+        },
+        {
+          "line": 940,
+          "text": "extern \"C\" __attribute__((visibility(\"default\")))"
+        },
+        {
+          "line": 941,
+          "text": "EGLBoolean eglSwapBuffers(EGLDisplay dpy, EGLSurface surface) {"
+        }
+      ]
+    },
+    {
+      "id": "service-route",
+      "source": "westlake-harness-walls/bms/src/adapter/framework/activity/java/ActivityManagerAdapter.java",
+      "sha256": "7f1d39b846a639ae133a61da588b81d9fc90ea4af6395ca41624104ec88e28dc",
+      "commit": "11e3b4cbd8fc198c75789f592fbe7a302743ff80",
+      "lines": [
+        {
+          "line": 327,
+          "text": "    // [BRIDGED] startService -> OH IAbilityManager.StartAbility (ServiceExtension)"
+        },
+        {
+          "line": 328,
+          "text": "    @Override"
+        },
+        {
+          "line": 329,
+          "text": "    public ComponentName startService(IApplicationThread caller, Intent service,"
+        },
+        {
+          "line": 330,
+          "text": "            String resolvedType, boolean requireForeground, String callingPackage,"
+        },
+        {
+          "line": 331,
+          "text": "            String callingFeatureId, int userId) throws RemoteException {"
+        },
+        {
+          "line": 332,
+          "text": "        logBridged(\"startService\", \"-> OH IAbilityManager.StartAbility (ServiceExtension)\");"
+        },
+        {
+          "line": 333,
+          "text": "        if (service != null) {"
+        },
+        {
+          "line": 334,
+          "text": "            IntentWantConverter.WantParams want = IntentWantConverter.intentToWant(service);"
+        },
+        {
+          "line": 335,
+          "text": "            // startService has no Activity-token caller — pass 0 (system-caller"
+        },
+        {
+          "line": 336,
+          "text": "            // path).  Acceptable because services are not subject to the same"
+        },
+        {
+          "line": 337,
+          "text": "            // [ABMS1361] check as activity-to-activity launches."
+        },
+        {
+          "line": 338,
+          "text": "            nativeStartAbility(want.bundleName, want.abilityName,"
+        },
+        {
+          "line": 339,
+          "text": "                    want.action, want.uri, want.extrasJson, /*callerOhTokenAddr=*/0L);"
+        },
+        {
+          "line": 340,
+          "text": "        }"
+        },
+        {
+          "line": 341,
+          "text": "        return service != null ? service.getComponent() : null;"
+        },
+        {
+          "line": 342,
+          "text": "    }"
+        },
+        {
+          "line": 343,
+          "text": ""
+        },
+        {
+          "line": 344,
+          "text": "    // [BRIDGED] stopService -> OH IAbilityManager.StopServiceAbility(Want)"
+        }
+      ]
+    },
+    {
+      "id": "finish-result",
+      "source": "westlake-harness-walls/bms/src/adapter/framework/activity/java/ActivityClientControllerAdapter.java",
+      "sha256": "5b8895ed169cb08bf630e1b0329fe6bdc3babab2da55d113e92382eeb46a4f54",
+      "commit": "11e3b4cbd8fc198c75789f592fbe7a302743ff80",
+      "lines": [
+        {
+          "line": 168,
+          "text": "    @Override"
+        },
+        {
+          "line": 169,
+          "text": "    public void activityResumed(IBinder token, boolean handleSplashScreenExit) {"
+        },
+        {
+          "line": 170,
+          "text": "        if (token == null) {"
+        },
+        {
+          "line": 171,
+          "text": "            Log.w(TAG, \"activityResumed: null token\");"
+        },
+        {
+          "line": 172,
+          "text": "            return;"
+        },
+        {
+          "line": 173,
+          "text": "        }"
+        },
+        {
+          "line": 174,
+          "text": "        try {"
+        },
+        {
+          "line": 175,
+          "text": "            Long ohAddr = adapter.core.OhTokenRegistry.findOhToken(token);"
+        },
+        {
+          "line": 176,
+          "text": "            if (ohAddr == null || ohAddr == 0L) {"
+        },
+        {
+          "line": 177,
+          "text": "                Log.w(TAG, \"activityResumed: no OH token mapping for \" + token);"
+        },
+        {
+          "line": 178,
+          "text": "                return;"
+        },
+        {
+          "line": 179,
+          "text": "            }"
+        },
+        {
+          "line": 180,
+          "text": "            long windowGeneration;"
+        },
+        {
+          "line": 181,
+          "text": "            synchronized (sForegroundGeneration) {"
+        },
+        {
+          "line": 182,
+          "text": "                Long prior = sForegroundGeneration.get(token);"
+        },
+        {
+          "line": 183,
+          "text": "                windowGeneration = prior == null ? 1L : prior.longValue() + 1L;"
+        },
+        {
+          "line": 184,
+          "text": "                sForegroundGeneration.put(token, windowGeneration);"
+        },
+        {
+          "line": 185,
+          "text": "            }"
+        },
+        {
+          "line": 186,
+          "text": "            String owner = android.app.ActivityThread.currentPackageName();"
+        },
+        {
+          "line": 187,
+          "text": "            if (owner == null || owner.isEmpty()) {"
+        },
+        {
+          "line": 188,
+          "text": "                owner = \"unknown.android.owner\";"
+        },
+        {
+          "line": 189,
+          "text": "            }"
+        },
+        {
+          "line": 190,
+          "text": "            String transitionId = \"foreground:\""
+        },
+        {
+          "line": 191,
+          "text": "                    + Integer.toHexString(System.identityHashCode(token))"
+        },
+        {
+          "line": 192,
+          "text": "                    + \":\" + windowGeneration;"
+        },
+        {
+          "line": 193,
+          "text": "            int rc = nativeOpenForegroundTransition(ohAddr.longValue(), owner,"
+        },
+        {
+          "line": 194,
+          "text": "                    System.identityHashCode(token), windowGeneration, transitionId);"
+        },
+        {
+          "line": 195,
+          "text": "            if (rc == 0) {"
+        },
+        {
+          "line": 196,
+          "text": "                Log.i(TAG, \"Fn03.A10 foreground join open; waiting for typed \""
+        },
+        {
+          "line": 197,
+          "text": "                        + \"Fn04.A02 APP_CONTENT receipt transition=\" + transitionId);"
+        },
+        {
+          "line": 198,
+          "text": "            } else {"
+        },
+        {
+          "line": 199,
+          "text": "                Log.e(TAG, \"Fn03.A10 foreground join rejected rc=\" + rc"
+        },
+        {
+          "line": 200,
+          "text": "                        + \" transition=\" + transitionId);"
+        },
+        {
+          "line": 201,
+          "text": "            }"
+        },
+        {
+          "line": 202,
+          "text": "        } catch (Throwable t) {"
+        },
+        {
+          "line": 203,
+          "text": "            Log.e(TAG, \"Fn03.A10 foreground join failed closed\", t);"
+        },
+        {
+          "line": 204,
+          "text": "        }"
+        },
+        {
+          "line": 273,
+          "text": "    @Override"
+        },
+        {
+          "line": 274,
+          "text": "    public boolean finishActivity(IBinder token, int code, Intent data, int finishTask) {"
+        },
+        {
+          "line": 275,
+          "text": "        try {"
+        },
+        {
+          "line": 276,
+          "text": "            // 2026-05-26 Layer 2 dedup (mission_group_design.html §15): the App is"
+        },
+        {
+          "line": 277,
+          "text": "            // finishing this Activity locally, so the reverse ScheduleCleanAbility OH"
+        },
+        {
+          "line": 278,
+          "text": "            // sends back must NOT redispatch a second DestroyActivityItem (hazard B)."
+        },
+        {
+          "line": 279,
+          "text": "            adapter.core.OhTokenRegistry.markDestroying(token);"
+        },
+        {
+          "line": 280,
+          "text": "            // G2.14f — direct BCP call (see reportOhLifecycle for rationale)."
+        },
+        {
+          "line": 281,
+          "text": "            Long ohAddr = adapter.core.OhTokenRegistry.findOhToken(token);"
+        },
+        {
+          "line": 282,
+          "text": "            if (ohAddr != null && ohAddr != 0L) {"
+        },
+        {
+          "line": 283,
+          "text": "                int rc = nativeTerminateAbilityByTokenAddr(ohAddr, code);"
+        },
+        {
+          "line": 284,
+          "text": "                Log.i(TAG, \"finishActivity: OH TerminateAbility(token=0x\""
+        },
+        {
+          "line": 285,
+          "text": "                        + Long.toHexString(ohAddr) + \", code=\" + code + \") rc=\" + rc);"
+        },
+        {
+          "line": 286,
+          "text": "            } else {"
+        },
+        {
+          "line": 287,
+          "text": "                Log.w(TAG, \"finishActivity: no OH token mapping for \""
+        },
+        {
+          "line": 288,
+          "text": "                        + token + \" — finish-only Android-side\");"
+        },
+        {
+          "line": 289,
+          "text": "            }"
+        },
+        {
+          "line": 290,
+          "text": "        } catch (Throwable t) {"
+        },
+        {
+          "line": 291,
+          "text": "            Log.e(TAG, \"finishActivity reverse callback failed\", t);"
+        },
+        {
+          "line": 292,
+          "text": "        }"
+        },
+        {
+          "line": 293,
+          "text": "        return true;"
+        },
+        {
+          "line": 294,
+          "text": "    }"
+        }
+      ]
+    }
+  ]
+}

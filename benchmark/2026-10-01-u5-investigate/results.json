@@ -1,0 +1,239 @@
+{
+  "status": "offline-retrospective-classification",
+  "cohort": 66,
+  "selected_keys": 5,
+  "visuals": {
+    "white": 5,
+    "desktop": 0
+  },
+  "categories": {
+    "waiting-network": 0,
+    "waiting-permission-or-dialog": 0,
+    "window-without-frame": 0,
+    "caught-exception": 2,
+    "other": 3
+  },
+  "controls": [
+    "aegis",
+    "anki"
+  ],
+  "boundary_cases": {
+    "fd-gallery": "excluded: PID15685 main_threw while PID15650 survives; same UID sibling processes, not parent/child",
+    "fd-mobile": "excluded from requested white/desktop scope: outer-reviewed black; retained as negative visual control"
+  },
+  "rows": [
+    {
+      "key": "fd-AppManager",
+      "category": "other",
+      "visual": "white",
+      "candidate": "LIFECYCLE-result-return",
+      "confidence": "hypothesis",
+      "finding": "KeyStoreActivity is started then terminates with code=0; the original activity retains a content window and enters one swap. No pending permission/dialog callback is established.",
+      "witnesses": [
+        34521,
+        35000,
+        35732,
+        35350,
+        36657,
+        38277
+      ],
+      "next": "Trace caller/resultWho/requestCode, return Intent and destination token across finishActivity; verify whether SplashActivity resumes/authentication completes. Do not infer a permission dialog from linked DialogInterface classes.",
+      "repair_location": "ActivityClientControllerAdapter.finishActivity: token/code forwarded, Intent data is not forwarded in inspected source. Candidate only: preserve Android result delivery and token ownership before considering automatic key-store fallback.",
+      "evidence": "evidence/app-fd-AppManager.json",
+      "last_process_logs": [
+        {
+          "pid": 4371,
+          "line": 38277,
+          "java_main_tid": 4397,
+          "java_main_last_line": 38277
+        }
+      ],
+      "application_logger_last_line": null,
+      "thread_state": "unknown: no sampled main-thread stack/state",
+      "first_frame_submission": "unknown: swap entry and lifecycle callback are not successful buffer submission",
+      "baseline_noise_lines": 18
+    },
+    {
+      "key": "fd-noice",
+      "category": "caught-exception",
+      "visual": "white",
+      "candidate": "TLS-caught-SSLSockets",
+      "confidence": "observed-caught-exception; blank-screen-causality-unproven",
+      "finding": "SubscriptionRepository logs an IOException wrapping missing android.net.ssl.SSLSockets and continues. Window creation and five swap-entry probes exist; this is not evidence of no frames or pure network latency.",
+      "witnesses": [
+        40958,
+        40959,
+        44153,
+        33564,
+        41856,
+        44142
+      ],
+      "next": "Reuse T7d SSLSockets class candidate; require the same repository call to reach fallback/completion and review first t20 separately. A fallback socket API does not supply a working network/provider.",
+      "repair_location": "cc-wiki f4a059ef0 t7d-stub-edits.patch android/net/ssl/SSLSockets.java; mainline-stubs ownership/G3 and candidate board validation still required.",
+      "evidence": "evidence/app-fd-noice.json",
+      "last_process_logs": [
+        {
+          "pid": 28902,
+          "line": 44219,
+          "java_main_tid": 28926,
+          "java_main_last_line": 44142
+        }
+      ],
+      "application_logger_last_line": 44185,
+      "thread_state": "unknown: no sampled main-thread stack/state",
+      "first_frame_submission": "unknown: swap entry and lifecycle callback are not successful buffer submission",
+      "baseline_noise_lines": 20
+    },
+    {
+      "key": "fd-organicmaps",
+      "category": "other",
+      "visual": "white",
+      "candidate": "LIFECYCLE-activity-relay",
+      "confidence": "hypothesis; incomplete process coverage",
+      "finding": "SplashActivity and DownloadResourcesLegacyActivity relay across multiple same-UID processes; three finishes occur before t20. Resource warnings and missing World maps coexist with completed async loading, so neither proves a network wait.",
+      "witnesses": [
+        20194,
+        20222,
+        36665,
+        36693,
+        58166,
+        58168,
+        58180,
+        58221
+      ],
+      "next": "Trace target Activity/process/launchMode and reuse semantics across each StartAbility; compare intended DownloadResourcesActivity with actual legacy relay. Obtain missing earlier-process logs and bounded Java-main stacks before diagnosing a wait.",
+      "repair_location": "ActivityManagerAdapter activity launch / IntentWantConverter / LifecycleAdapter; candidate process reuse, intent flags and activity result/finish sequencing. Do not patch asset warnings as the root cause.",
+      "evidence": "evidence/app-fd-organicmaps.json",
+      "last_process_logs": [
+        {
+          "pid": 6320,
+          "line": 37071,
+          "java_main_tid": null,
+          "java_main_last_line": null
+        },
+        {
+          "pid": 6419,
+          "line": 17749,
+          "java_main_tid": null,
+          "java_main_last_line": null
+        },
+        {
+          "pid": 6473,
+          "line": 37158,
+          "java_main_tid": null,
+          "java_main_last_line": null
+        },
+        {
+          "pid": 6558,
+          "line": 53956,
+          "java_main_tid": null,
+          "java_main_last_line": null
+        },
+        {
+          "pid": 6584,
+          "line": 62875,
+          "java_main_tid": 6597,
+          "java_main_last_line": 62875
+        },
+        {
+          "pid": 6644,
+          "line": 57793,
+          "java_main_tid": 6660,
+          "java_main_last_line": 57793
+        },
+        {
+          "pid": 6690,
+          "line": 59760,
+          "java_main_tid": 6714,
+          "java_main_last_line": 59760
+        },
+        {
+          "pid": 6787,
+          "line": 65356,
+          "java_main_tid": 6809,
+          "java_main_last_line": 65356
+        }
+      ],
+      "application_logger_last_line": 58168,
+      "thread_state": "unknown: no sampled main-thread stack/state",
+      "first_frame_submission": "unknown: swap entry and lifecycle callback are not successful buffer submission",
+      "baseline_noise_lines": 45
+    },
+    {
+      "key": "noice",
+      "category": "caught-exception",
+      "visual": "white",
+      "candidate": "TLS-caught-SSLSockets",
+      "confidence": "observed-caught-exception; blank-screen-causality-unproven",
+      "finding": "Same missing SSLSockets cancellation in SubscriptionRepository on another APK pin/run. The dedicated Java main thread keeps producing ONLINE-CM diagnostics, not a sampled blocked stack.",
+      "witnesses": [
+        53346,
+        54009,
+        55825,
+        55822
+      ],
+      "next": "Validate repository completion after T7d; keep this APK key separate from fd-noice and retain flaky history. Do not count two distinct newly lit apps.",
+      "repair_location": "Same T7d class candidate, not the dropped MediaServiceManager addition.",
+      "evidence": "evidence/app-noice.json",
+      "last_process_logs": [
+        {
+          "pid": 8768,
+          "line": 55898,
+          "java_main_tid": 8792,
+          "java_main_last_line": 55822
+        }
+      ],
+      "application_logger_last_line": 55858,
+      "thread_state": "unknown: no sampled main-thread stack/state",
+      "first_frame_submission": "unknown: swap entry and lifecycle callback are not successful buffer submission",
+      "baseline_noise_lines": 20
+    },
+    {
+      "key": "termux",
+      "category": "other",
+      "visual": "white",
+      "candidate": "LIFECYCLE-service-start",
+      "confidence": "hypothesis",
+      "finding": "TermuxService start is requested, then TermuxActivity finishes. Repeated dumps explicitly show mFinished=true, mWindowAdded=false, decorClass=null. A lifecycle first-frame callback exists despite no window-creation or swap-entry witness.",
+      "witnesses": [
+        17334,
+        18139,
+        18313,
+        18336,
+        18992
+      ],
+      "next": "Capture service creation/bind callback and bootstrap failure/finish reason, preserve native StartAbility result, then validate real Activity content. No evidence here proves a permission wait or missing bootstrap files.",
+      "repair_location": "ActivityManagerAdapter.startService lines 329-341 discards nativeStartAbility result and returns the ComponentName in inspected source; distinguish request acceptance from actual Android Service lifecycle.",
+      "evidence": "evidence/app-termux.json",
+      "last_process_logs": [
+        {
+          "pid": 25164,
+          "line": 18992,
+          "java_main_tid": 25189,
+          "java_main_last_line": 18992
+        }
+      ],
+      "application_logger_last_line": 17334,
+      "thread_state": "unknown: no sampled main-thread stack/state",
+      "first_frame_submission": "unknown: swap entry and lifecycle callback are not successful buffer submission",
+      "baseline_noise_lines": 26
+    }
+  ],
+  "limitations": [
+    "No new device run or screenshot verdict",
+    "No five-way forced distribution; three buckets have zero evidence-supported members",
+    "Caught exception is proven; its sufficiency to explain white UI is not",
+    "All log claims are target-PID and pre-t20 capture, not system compositor output",
+    "No actual main-thread stack snapshots; last diagnostic line is not a blocking location"
+  ],
+  "source_priors": [
+    "cc-t3 investigate.py/json draft (superseded)",
+    "cc-t3 a0c60190c multidex tool and a2a0c3210 NULL-PRODUCERS reviewed; fd-client remains outside alive/no-fatal cohort"
+  ],
+  "validation": "validation.json",
+  "benign_registry": "knowledge/gates/benign-log-signatures.json",
+  "benign_signatures": 17,
+  "lit_control_packages": 24,
+  "mined_common_candidates": 112,
+  "classification_after_benign_subtraction": true
+}
