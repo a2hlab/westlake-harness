@@ -1,6 +1,8 @@
 # FZ-005 草稿(未登记):dex2oat 工具链冻结(dex2oat-once T7)
 
-> **状态:草稿。T6c 与 T7c 板上验证都过了才登记进 frozen.json。** 本文件只是预备稿,
+> **已登记(2026-10-01 04:08,外环 claude)**:条目在 `knowledge/frozen/frozen.json` 的 FZ-005,可读版在 `FROZEN.md`。证据:T6c(T5c 镜像,HelloWorld/ZigZag 自身界面)与 T7c(镜像 + stubs jar 366acc27,aegis/ooniprobe 自身界面,六个目标墙消失)。本文件保留为登记前的草稿与补丁清单。
+
+> **(登记前)状态:草稿。T6c 与 T7c 板上验证都过了才登记进 frozen.json。** 本文件只是预备稿,
 > `verified_apps` 留占位;登记时按板上截图/facts 填实。
 
 ## 冻结对象(what)
