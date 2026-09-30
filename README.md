@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-10-01-u7-sweep/`** | **U7 (J7b + T7d 27 images/stubs d8b2406e, N4-order native) three-board 66-key sweep: 34 lit (5ea 15 / 5cd 10 / 61b 9), +5 over U6 with zero regressions; raw run_facts per shard and verbatim outer sign-offs.** |
 | **`benchmark/2026-10-01-trampoline-scan/`** | **Exact 66-APK launcher lifecycle routing scan: literal startActivity and modern ActivityResult candidates, signed symptom intersections, source-pinned DEX witnesses and honest single-Activity controls; static risk, not scene-defect proof.** |
 | **`benchmark/2026-10-01-u7-scoring/`** | **Frozen fa92c5b9 formal 66-key scoring: first wall 48 hit/18 unknown; checkpoints 51 NA/15 unknown; signed t20 59 hit/1 false positive/6 unknown, 59/60 scored accuracy; preserved preliminary snapshots and U6 causal comparison.** |
 | **[Bridge 846 provenance](benchmark/2026-10-01-bridge-846-provenance/)** | Exact artifact archive; partial frozen source; missing reproducible build chain; native gate handoff. |
