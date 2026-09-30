@@ -523,3 +523,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - **累计 27(2026-09-30 13:20,U2 三板分片全量,`benchmark/2026-09-30-u2-sweep/`)**:AnkiDroid 亮——自身 DeckPicker(菜单/标题/加号),不是 LeakCanary 入口。U2(N2 51a78bde + J2)t20 共 24 个:U1 的 22 个保住 21 个,AntennaPod/FitoTrack 这轮亮。唯一掉的 uhabits 在 5ea 同态 `--reinstall` 复跑 r2 亮、r3 白 → 间歇白屏(3 次亮 1 次),不是 N2 确定性回退;U2 留板。规则:亮过的 app 单次白屏不算回退,同态 `--reinstall` 复跑再白才算。
 - 2026-09-30 N2离线：ANL按load/search/permitted识别包而host仅按search会漏私有域补边；OH musl dynlink.c按dlopen的RTLD_GLOBAL保留全局供给，不能只凭ELF DF_1_GLOBAL判定。新增实际ANL加载路径与host回调负控，旧N1被拒；7个LIBC导出精确匹配目标导入，板上可见性仍unverified。见 benchmark/2026-09-30-n2-native/。
 
+
+- 2026-09-30 N3/U2 首墙校正(cx-t0):JNA 的资源缺失前有 `__sF@LIBC` reloc;VLC APK Transparent/Empty 父链无 background_default、Onboarding 父链有,不能凭 TypedArray 失败判 OH 解析器坏;LocalSend 的 runtime not-found 前先有 Xpm header mmap EINVAL。源码照抄与静态门见 `benchmark/2026-09-30-n3-native/`,设备效果未验。

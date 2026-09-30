@@ -235,3 +235,23 @@ fn n2_package_and_frozen() {
 fn n2_handoff() {
     run(&["benchmark/2026-09-30-n2-native/verify.py", "handoff"]);
 }
+
+#[test]
+fn n3_cluster_sources() {
+    run(&["benchmark/2026-09-30-n3-native/verify.py", "sources"]);
+}
+
+#[test]
+fn n3_jni_and_domains() {
+    run(&["benchmark/2026-09-30-n3-native/verify.py", "namespace"]);
+}
+
+#[test]
+fn n3_package_frozen() {
+    run(&["benchmark/2026-09-30-n3-native/verify.py", "package"]);
+}
+
+#[test]
+fn n3_handoff() {
+    run(&["benchmark/2026-09-30-n3-native/verify.py", "handoff"]);
+}
