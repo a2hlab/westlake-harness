@@ -92,6 +92,8 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[Bridge 846 provenance](benchmark/2026-10-01-bridge-846-provenance/)** | Exact artifact archive; partial frozen source; missing reproducible build chain; native gate handoff. |
+| **[N9 damage investigation](benchmark/2026-10-01-n9-first-damage/)** | OH6.1 empty-Region fallback is full-window damage; candidate paused, first-frame dimensions unobserved. |
 | **`benchmark/2026-10-01-native-gate-landing/`** | Deployment pre-dispatch N1/N2 wiring and 257 explicitly approved baseline exceptions, with U5 pass/N8 refusal dry-runs. |
 | **`benchmark/2026-09-29-bms-link-entry-walls/`** | **B7 #54 (5cd): first causes of the 7 UnsatisfiedLinkError/"ART entry" apps; runtime JAR overlay (user binder, nativeLibraryDir fallback, B5 alias) crosses two walls; installer DECLARED_XML_ONLY placeholder lets fd-k9 install; SQLite/Flutter blocked on route-A pins.** |
 | **`benchmark/2026-09-29-white-window/`** | **#61/#62 offline white-window diagnosis: 9 target logs, separate bind failures, native AbilityStage replies and a 49/49 JNI-layout match to the no-reply generation; no device execution.** |
