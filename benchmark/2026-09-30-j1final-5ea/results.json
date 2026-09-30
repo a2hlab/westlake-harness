@@ -1,0 +1,32 @@
+{
+  "date": "2026-09-30",
+  "author": "cc-t3",
+  "board": "5ea34a4500000000000000001123012c",
+  "board_state": "U0 = v3c + 53f00423 + r17r dd4f0eae + background-launch installer",
+  "jar": "J1-final faf0782bb3a6dbf67a59022c35f95a1e3d33f35401f36d3a4ddbef309888180e (bind-mount layer over r17r; rolled back -> 5ea restored to r17r dd4f0eae layers=1, verified; lock released)",
+  "method": "bms_batch --reinstall, 17 keys + HW control; single JAR swap r17r->faf0782b, no reboot.",
+  "compare_runs": {
+    "baseline": "westlake-harness/benchmark/2026-09-30-unified-assetfd-5cd-sweep/runs/unified-assetfd-5cd",
+    "output": "variables: 2 -- board 5cd1e3dd -> 5ea34a45, oh-adapter-runtime.jar dd4f0eae -> faf0782b. verdict: 2 variables (JAR + board); single-cause is a hypothesis until a same-board run.",
+    "note": "The 117 runtime files are identical (same 53f00423/assetfd runtime), so the only variables are the JAR and the board serial (as the outer loop noted). Within-run hilog + screenshots are the direct attribution."
+  },
+  "frozen_check": "facts.txt: FROZEN checked=4 violations=0 (the freeze gate ran on 5ea and found no violation).",
+  "j1_targets": {
+    "fd-binaryeye": "LIT (J01) -- t20 = BinaryEye scan UI (扫码 title + history/+/flash/crop + slider; centre black = camera native video, cx-t0). hilog [B8-PM] projected getServiceInfo .../MetadataHolderService, no NameNotFound, no exit. facts alive t5=yes t20=yes child_hilog=26899.",
+    "fd-reader": "J04 vibrator PASSED its wall -- hilog [B8-FETCH] vibrator_manager SystemVibratorManager allocated (getVibratorIds->int[0]); the old 'Attempt to get length of null array' is GONE, replaced by an app-internal 'Null reference used for synchronization (monitor-enter)' NPE. Not lit (later app-internal wall), but the vibrator API failure disappeared -- plan.csv J04 '过墙' met.",
+    "vlc": "J02 theme INEFFECTIVE -- no '[B8-PM] corrected getActivityInfo theme' log fired (the Activity does not re-query getActivityInfo, so the correction hook is never hit); vlc still crashes 'Failed to resolve attribute at index 13'. t5 lit, t20 no. The getActivityInfo route is the wrong seam for this theme flow; needs a different fix next round.",
+    "fd-api": "not lit (same activity-theme-contract; the getActivityInfo correction did not take).",
+    "fd-gallery": "NOT lit -- t20 = DESKTOP (facts alive t20=yes is a background-installer false-positive; FLAW-007). Boot wall MediaStore$Images$Media.EXTERNAL_CONTENT_URI (oc-t4), unchanged -> not a regression.",
+    "fd-meet": "not lit (RestrictionsManager built, null-Collection behind) -- unchanged.",
+    "opencamera/fd-noice/noice/fd-musicplayer/fd-im-vector-app": "not lit -- native/app-internal walls behind the JAR fixes (EGL, bitmap-color-space, native realm __FD_SET_chk); audio stub cleared but EGL/native remain (cx-t0)."
+  },
+  "protected_group_no_regression": {
+    "apps": ["aegis (21255)", "fd-k9 (64733)", "fd-tusky (62099)", "markor (17188)", "fd-etar (24505)", "newpipe (37910)"],
+    "hw_control": "helloworld alive t5=yes t20=yes child_hilog=5927",
+    "verdict": "ALL lit -- NO regression from J1-final (splits + J04 + theme + audio)."
+  },
+  "totals": "keys=17 screenshots 34/34 alive_t5=9 alive_t20=8 + HW lit",
+  "split_reverify": "The 3 freeze splits (JarVerificationProviderFix, AlarmVibratorFetcher, SelfServiceFallback) are exercised in this run: alarm/vibrator fetchers replaced ([B8-FETCH]), getServiceInfo projected ([B8-PM]), conscrypt apps (amaze in the r17p evidence) unaffected. No changed_existing beyond the 2 injection targets -> the split did not disturb any baseline class. The one J1-final board run IS the post-split re-verification.",
+  "verdict": "J1-final: binaryeye LIT + J04 vibrator passes its wall + NO regression (6 protected + HW). J02 theme (vlc/fd-api) INEFFECTIVE via getActivityInfo -- needs a different seam. gallery + noice-SSLSockets remain boot (oc-t4). Cleared for U1 three-board full sweep; the FZ-JAR-conscrypt/alarm splits are re-verified.",
+  "j2_note": "cc-wiki (6f0f16f8): NewPipe PlayerService in-process-bind ITE = PackageManager.getPackageInfo('android') NameNotFound (OH BMS synthesizes no 'android' framework package). NewPipe main UI already lit; this is a secondary (playback) wall. Fix seam: PM adapter answers getPackageInfo('android') with a synthesized framework package (analogous to SelfUidPackages). -> J2."
+}
