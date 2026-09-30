@@ -137,3 +137,4 @@
 - 初始 7 条来自 ACK(90) 的 4 个未验收门、2 个同源旧 pin、1 个固化路径；这是选择器级例外，不是错误签名匹配，表内选择器的新失败仍需看原日志。加/删例外只改表，已有 Rust 选择器不改。
 - 包装器自测：`python3 scripts/lab/test_spec_checks.py -v`，或 `cargo test --manifest-path tools/spec-checks/Cargo.toml --test spec_check_gate`。Mac 若环境把链接器指到交叉工具链，可设置 `CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=/usr/bin/cc`；其他依赖沿用现有测试环境。
 - **跨 worktree 别共用 spec-checks 的 `CARGO_TARGET_DIR`**(2026-10-01 外环):测试二进制把 `CARGO_MANIFEST_DIR` 编进去当仓库根;在临时 worktree 里用主目录的 target 跑过一次、再删掉那个 worktree,之后主目录的 cargo 认为源码没变、复用旧二进制,每个选择器都在启动 python3 时报 `Os { code: 2, NotFound }`(实例:spec_checks.py 一度报 21 败 / 14 例外外)。修:`cargo clean`(或不共享 target)。
+- **上板失败定因后,必答「哪条静态检查本可以在上板前拦住它」**(2026-10-01 用户点评,黑板 #95):能写成门就当轮写成门,接进出包/出镜像/部署的预检,门禁用例外表写法。今晚的对照:N3b 的 RTLD_NOLOAD 与 N4 的 JNI 注册顺序 → 门 N1(scan_native_initialization);Flutter 私有域传递 DT_NEEDED → 门 N2(域内 NEEDED 闭包);T7c 镜像与板上 jar 的 dex checksum 不符 → 门 G1(镜像-BCP 一致性);T5b 的隐式挂起检查 → 门 G2(对已知能用镜像比编译码入口)。**T4b 只管编译开关,不管生成码**:T5b、T7c 都过了 T4b,上板都失败。
