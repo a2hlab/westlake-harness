@@ -118,3 +118,28 @@ fn white_window_offline() {
 fn ability_stage_offline() {
     run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_ability_stage.py"]);
 }
+
+#[test]
+fn d4b_reference_and_receipt() {
+    run(&["benchmark/2026-09-30-t4b-build-switch-gate/test_gate.py", "ReferenceTests"]);
+}
+
+#[test]
+fn d4b_t5b_artifact() {
+    run(&["benchmark/2026-09-30-t4b-build-switch-gate/test_gate.py", "T5bTests"]);
+}
+
+#[test]
+fn d4b_mismatch_rejection() {
+    run(&["benchmark/2026-09-30-t4b-build-switch-gate/test_gate.py", "MismatchTests"]);
+}
+
+#[test]
+fn d4b_unknown_review() {
+    run(&["benchmark/2026-09-30-t4b-build-switch-gate/test_gate.py", "UnknownTests"]);
+}
+
+#[test]
+fn d4b_cli_integrity() {
+    run(&["benchmark/2026-09-30-t4b-build-switch-gate/test_gate.py", "IntegrityTests"]);
+}

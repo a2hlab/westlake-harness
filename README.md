@@ -155,6 +155,7 @@ kind of work from where the corpus started
 | `benchmark/2026-09-30-unified-r17r-5cd-sweep/` | **21 of 23 signed apps on one board**: v3c + runtime 9e14 + JAR r17r + background-launch installer on 5cd; AppManager (white second Activity) and Noice (audio JNI) are the two missing — rule: full sweeps start from this state and change one variable at a time |
 | **`benchmark/2026-09-30-u2-sweep/`** | **U2 (N2 native + J2) on all three boards, 66 keys sharded 22/22/22: 24 lit, AnkiDroid new (cumulative 27); uhabits lit 1 of 3 on same-state reruns — rule: a white screen on one run is not a regression until a `--reinstall` rerun fails again** |
 | **`benchmark/2026-09-30-j3-u3-sweep/`** | **J3 on U2 (5ea+61b, 66 keys): 25 lit, U2's 24 all kept, fd-noice back; fd-api past the AppCompat-theme wall, NewPipe's bind cause finally named (`Platform signature not found`) → U3 = U2 + J3 on all three boards** |
+| **[benchmark/2026-09-30-t4b-build-switch-gate/](benchmark/2026-09-30-t4b-build-switch-gate/)** | **T4b: SHA-bound native/OAT/build-receipt consistency, T5 rejection, v3c known-match control and explicit unknown review.** |
 
 ---
 

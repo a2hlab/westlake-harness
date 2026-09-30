@@ -1,0 +1,89 @@
+# Task Contract: T4 新编 libart 与板上 R155 libart 的布局对照
+
+## Intent
+CheckSystemClass 比对的是 libart 编进去的系统类布局。在上板前用离线探针比较新编 libart 与板上 R155 libart(59e1bb45)的 mirror 类大小与字段偏移、Thread 偏移、ImageHeader/OatHeader 布局;对不上就回到 T1 补齐补丁,不上板。
+
+## Must
+- 源码只认 AOSP 官方 tag 加入库的补丁文件;补丁序列放 `knowledge/toolchains/art-r155/patches/`,每个补丁写来源(寒冰两版目录之一、B6 重建树、或按 R155 反汇编补写)
+- 构建只在 hw248 自建目录 `/home/alvin/aosp-14.0.0_r1-art/` 下进行,共享树只读;磁盘剩余低于 30 GB 即停
+- 板上验证只用短窗叠加:叠加前 board_note.sh lock,≤30 分钟,结束卸载回 U2 并核 runtime fingerprint 937e2a6d0d88 后 unlock;绝不 kill -9 appspawn-x,停起用 begetctl
+- 只对 knowledge/boards.json 白名单内的板下命令
+- 判定以 t20 截图为准,ACK 的数字原样引用 facts.txt
+- 不提交密码、服务器账号;提交信息不带 Claude 署名行;不推送,等外环
+
+## Decisions
+- 底子用 android-14.0.0_r1(R155 同底,kImageVersion 108 / kOatVersion 230,与板上一致),不用 r16
+- 补丁基线先取 B6 重建树 `bms/src/.work/b6-art14-recovery/art-hanbin` 相对 `art-r1` 的 20 个差异文件,再与 `~/workspace/hanbin_adapter/aosp_patches` 和 `~/orca/HanBingChen/adapter/aosp_patches` 两版逐一对账
+- 板上现役 libart 不动为首选路径(只换镜像);只有镜像在现役 libart 下仍被拒,才改为 libart 与镜像同换,并按分级冻结走全量回归
+- 输入 jar 与镜像文件的参考哈希以 `knowledge/toolchains/boot-image-inputs.sha256` 为准
+- 复用 cc-wiki 的 offsetof/sizeof 探针方法(DIGEST B.23)
+- 比对清单覆盖 CheckSystemClass 检查的全部系统类
+- T4b 只读实物：以完整 SHA256 绑定 R155 libart 的已核二进制谓词，解析 arm64 OAT230 的真实 KV；不能执行或修改输入。
+- KV读取复用cc-wiki的check_boot_oat_rb.read_kv；既有compare_oat.parse只作有界结构交叉核验，扫描值与结构值不一致硬拒。
+- BUILD.md 用唯一 `t4b-build-json` 围栏提供环境与部署 libart/OAT SHA256；历史无回执不补写为事实。普通 shell 文本只作待审证据。
+- 已知不一致返回 2，缺证返回 3 并列 exceptions，完整一致返回 0；stdout 为 JSON，`--out` 同内容且拒绝覆盖输入或现有输出。
+- v3c 为已知值一致正控、T5 为读屏障错配反控；v3c 缺历史 BUILD.md 时 consistency=pass 而 verdict=pending_review，不能冒充构建证据齐全。
+- 原系统类布局场景保留，本子项不以编译开关测试替代它；不要求编造 OAT 没有的 GC/poisoning 键，不从 debuggable 推导 native debug。
+- unknown 不能自动豁免，例外由外环审核；T5b 通过同一 CLI 补验，不绑定路径名字判断候选。
+
+## Boundaries
+Allowed changes:
+- knowledge/toolchains/art-r155/**
+- tools/spec-checks/**
+- specs/dex2oat-once/**
+- benchmark/2026-09-30-t4b-build-switch-gate/**
+- README.md
+- .octos/KNOWLEDGE-DIGEST.md
+- .octos/OPS-RUNBOOK.md
+Forbidden:
+- 不上板
+
+## Completion Criteria
+Scenario: 系统类布局与板上 libart 一致
+  Test:
+    Filter: d4_mirror_layouts_match_board
+  Given 新编 libart 与从板上拉回的 R155 libart
+  When 对 CheckSystemClass 覆盖的系统类逐个比较对象大小与字段偏移
+  Then 不一致项为 0
+  And Thread 偏移与 ImageHeader/OatHeader 字段偏移不一致项为 0
+
+Scenario: T4b v3c 实物正控与完整回执
+  Test:
+    Filter: d4b_reference_and_receipt
+  Given SHA256 匹配的 R155 libart 与 v3c boot.oat 实物
+  When 比对二进制谓词、KV 和测试用完整 BUILD.md 回执
+  Then 读屏障为 false、GC 为 CMS、generational CC 与 heap poisoning 为 false 且返回 0
+  And 测试回执标为合成夹具而非 v3c 历史构建事实
+
+Scenario: T4b T5 与构建开关矛盾硬拒
+  Test:
+    Filter: d4b_mismatch_rejection
+  Given T5 boot.oat concurrent-copying 为 true 或 BUILD.md 开关与二进制不一致
+  When 运行检查器
+  Then 返回 2 并逐项列出 mismatch 的值与证据
+  And 缺失其他字段不能掩盖已知不一致
+
+Scenario: T4b T5b 第三组实物与回执缺项
+  Test:
+    Filter: d4b_t5b_artifact
+  Given T5b 本机副本27件SHA256与外环提供的清单一致且BUILD.md声明五开关
+  When 对比R155二进制、T5b真实KV与该BUILD.md
+  Then 7项已知比较一致且consistency为pass
+  And 缺结构回执、两项SHA绑定与native release声明保持4项exceptions并返回3
+
+Scenario: T4b 缺证与未知二进制待审
+  Test:
+    Filter: d4b_unknown_review
+  Given BUILD.md 缺失、无结构回执或 libart 不属于已核 SHA256
+  When 运行检查器
+  Then 返回 3 并输出非空 exceptions 且 deploy_allowed 为 false
+  And 原 v3c 历史缺证保持 pending_review 而已知一致性为 pass
+
+Scenario: T4b 身份错误与 CLI 输入保护
+  Test:
+    Filter: d4b_cli_integrity
+  Given 回执 SHA256 错误、OAT 损坏或输出路径为输入文件
+  When 使用 CLI 的 --out 输出 JSON
+  Then 身份或结构错误返回 2、拒覆盖返回 2
+  And 原输入 SHA256 不变且合法输出与 stdout 一致
+
