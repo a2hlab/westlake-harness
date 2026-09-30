@@ -1,0 +1,39 @@
+{
+  "experiment": "T6 read-barrier discriminative experiment",
+  "date": "2026-09-30T22:04+0800",
+  "lane": "cc-wiki",
+  "board": "5cd1e3dd00000000000000000923012c",
+  "dispatch": "board ACK(91) 2026-09-30T21:38:00 — run existing (read-barrier-ON) T5 image as a discriminative experiment; predict R155 (RB-off) rejects it",
+  "hypothesis_under_test": "board R155 ART built ART_USE_READ_BARRIER=false (kv concurrent-copying=false); T5 image kv concurrent-copying=true. A read-barrier-ON boot image cannot be used by the read-barrier-OFF board runtime.",
+  "single_variable": "only the 27 boot-image files under /system/android/framework/arm64/* changed (bind-mount); resident libart, JAR stack, everything else identical. Runtime fingerprint 0b81cdbe0ed9 unchanged across the whole run.",
+  "baseline_U3": {
+    "boot_art_sha16": "2e4f8049b77c915a",
+    "runtime_fingerprint": "0b81cdbe0ed9",
+    "runtime_jar_sha16": "75c2068ca9818ea8 (J3)",
+    "installer_sha16": "7048c7c50a828fc7 (FZ-001)",
+    "helloworld": "LIT — own UI rendered (01-u3-baseline-HW-lit.jpeg)"
+  },
+  "overlay_RB_on": {
+    "boot_art_sha16": "f9524d82ae5e73ba (T5, concurrent-copying=true)",
+    "appspawn_parent": "started (pid 9925) — the OH parent process comes up",
+    "zygote_candidate_children": "SIGILL — signal 4 (illegal instruction) in forked children 9929/9933/9934/9935/9936 at 22:04:53-58 (appspawn-restart-rbON-SIGILL.txt)",
+    "helloworld": "NOT LIT — blank screen, no app UI (02-rbON-image-HW-blank.jpeg, 38665 B vs 78-88 KB when lit)",
+    "clean_ValidateOatFile_rejection": "NOT observed — no explicit 'read barrier'/'concurrent-copying'/'ValidateOatFile'/'oat file incompatible' log, and no new cppcrash faultlog. The mismatched RB-compiled quick code EXECUTED and SIGILL'd rather than being cleanly rejected."
+  },
+  "rollback_U3": {
+    "boot_art_sha16": "2e4f8049b77c915a (restored, byte-identical)",
+    "runtime_fingerprint": "0b81cdbe0ed9 (restored)",
+    "socket": "660:0:6005:u:object_r:appspawn_socket:s0 (re-applied; appspawn-x recreates the socket on start so the fix must run AFTER start settles)",
+    "helloworld": "LIT again after a clean appspawn-x restart (03-rollback-U3-HW-lit.jpeg)",
+    "boot_id": "0139c39f-90d1-40c6-b9f3-ae2158fa22c6 — unchanged for the entire experiment; board NEVER rebooted; no kill -9"
+  },
+  "verdict": "CONFIRMED (functional): the read-barrier-ON T5 boot image is unusable by the read-barrier-OFF board R155 runtime — app spawns SIGILL and no UI renders. Root-cause hypothesis (ART_USE_READ_BARRIER mismatch) is supported by a clean single-variable board test.",
+  "caveat": "The failure mode is SIGILL execution of mismatched quick code, NOT a clean ValidateOatFile rejection with an explicit read-barrier mismatch log. So the board R155's image validation does NOT hard-reject on the concurrent-copying kv the way r1-tree image_space.cc:3445 (cx-bms) suggests it should; the RB-mismatched code runs and crashes instead. Either path proves incompatibility, but the observed one is more severe.",
+  "next": "Formal T6 acceptance must use oc-t4's T3b/T5b (rebuilt with ART_USE_READ_BARRIER=false) so the generated image's concurrent-copying=false matches the board.",
+  "evidence": [
+    "01-u3-baseline-HW-lit.jpeg",
+    "02-rbON-image-HW-blank.jpeg",
+    "03-rollback-U3-HW-lit.jpeg",
+    "appspawn-restart-rbON-SIGILL.txt"
+  ]
+}
