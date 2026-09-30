@@ -100,3 +100,19 @@ libflutter/JNA mappings, one ART/runtime/DFX, inherited libsurface owner, and
 SoundPool registration/backend logs. Report exact facts and first fatal, hand
 screenshots to outer. Short-window completion rolls back to U0 and releases the
 board; only outer acceptance can promote this candidate into U1 sharded sweep.
+
+## Cache correction before the complete batch
+
+The initial runtime-only discriminator d40ae63f used an existing cached AudioSystemCapabilities object. Its three capability methods were present, but newAudioSessionId was absent despite the candidate source containing it. The authenticated cache restorer now invalidates all five changed translation units regardless of timestamp. The complete candidate runtime is 77639b80; the deployed d40 discriminator remains immutable and is not evidence for newAudioSessionId. FZ-003 source is unchanged.
+
+## First device discriminator (61b, same boot and r17r)
+
+Only `/system/android/lib64/liboh_android_runtime.so` changed: 53f00423 to d40ae63f (`device-61b/compare-runtime.txt`, variables: 1). HelloWorld and ZigZag t20 showed their own interfaces. NewPipe retained its live-page UI (network-error controls rendered); uhabits changed from exited/desktop to alive/white, which is not lighting. AntennaPod rendered its welcome/home UI. Fitness returned to the desktop after RenderThread SIGSEGV at 0x590, top frame OH Skia StrikeCache::generateStrike+156. The complete 11-file candidate was withheld and the discriminator rolled back. U0 exact declared SHAs, r17r SHA and boot identity were read back successfully; a clean U0 Fitness repeat is used to distinguish a pre-existing intermittent failure from a candidate regression.
+
+All three U0 Fitness clean repeats rendered its own workout/setup screen at t20. Each comparison with the failing discriminator reports variables: 1. There was only one failing candidate trial; this is a reproducible U0 recovery and a control concern, not a claim of deterministic causality. The full N1 acceptance gate remains closed.
+
+## Window closure
+
+61b was restored to U0 and unlocked before the 45-minute limit. The final readback covers every declared live SHA, r17r overlay and unchanged boot; recovery HelloWorld/ZigZag t20 show their own interfaces. Exact per-run facts are in facts-all.txt, review paths in device-index.json, and final identity in device-61b/final-identity.json. No other board was written. Complete-N1 device verification is deliberately false in device-verdicts.json; the selector must fail rather than turn an unrun full batch into a pass.
+
+Lifecycle: lint quality 1.0; frozen, cluster dispositions, host closure/negative, and rollback/handoff pass. The complete device/control scenario fails intentionally because the full candidate was withheld. This is not a successful N1 acceptance. Known-answer suite: 69 tests, 2 skipped. Raw process-table headers retain their captured trailing spaces; source-code whitespace checks pass.

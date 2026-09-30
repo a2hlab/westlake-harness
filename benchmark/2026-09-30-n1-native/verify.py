@@ -30,6 +30,13 @@ elif mode=='host':
   try:load_package(dst)
   except ValueError as e:assert 'SHA mismatch' in str(e)
   else:raise AssertionError('corrupt library accepted')
+ # A copied frozen source mutation must fail without touching the real source.
+ with tempfile.TemporaryDirectory() as tmp:
+  rel=Path('benchmark/2026-09-30-asset-fd-runtime/src/android_util_AssetManager_aosp.cpp')
+  target=Path(tmp)/rel;target.parent.mkdir(parents=True);target.write_bytes((R/rel).read_bytes()+b'\n// negative-control\n')
+  result=subprocess.run([sys.executable,str(R/'scripts/lab/check_frozen.py'),'--source-root',tmp],text=True,capture_output=True)
+  assert result.returncode!=0 and 'FZ-003' in result.stdout+result.stderr
+  (P/'frozen-negative.txt').write_text(result.stdout+result.stderr)
 elif mode=='device':
  d=json.loads((P/'device-verdicts.json').read_text());assert d['controls_reviewed'] and d['frozen_evidence_preserved']
  for f in d['facts_files']:assert 'TOTAL keys=' in (R/f).read_text()

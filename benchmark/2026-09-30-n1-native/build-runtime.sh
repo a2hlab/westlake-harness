@@ -16,4 +16,5 @@ export L03_A12_AIDL=/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/b
 export L03_A12_CC=/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/product-tls-generation/frozen/toolchain/bin/clang-15
 mkdir -p "$ADAPTER_OUT_DIR"
 cp /Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b91-common-event/runtime-out/libwestlake_thread_guard_registry.so "$ADAPTER_OUT_DIR/"
+python3 /Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/benchmark/2026-09-30-n1-native/restore_cache.py
 bash /Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/benchmark/2026-09-30-n1-native/runtime-recipe.sh
