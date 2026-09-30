@@ -4,7 +4,27 @@
   "date": "2026-09-30",
   "dispatch": "outer ring (reassigned from cc-t3): read 3 cppcrash faultlogs (AntennaPod ~1/3 @0x7f2baaa33400; FitoTrack 5ea r17p + 61b d40 StrikeCache::generateStrike+156 @0x590); judge among font/glyph data source (typeface prime), thread race (StrikeCache lock), or libhwui/libskia runtime version/ABI mismatch; reproduce on 5ea (5x each), record crash rate; write minimal fix + ownership.",
 
-  "headline": "The 'glyph cache' cluster is NOT one bug. It is >=2 distinct RenderThread crash families, BOTH at the libhwui->libskia_canvaskit boundary. Typeface hypothesis REFUTED. Leading root: libhwui (compiled against hand-maintained hwui-shim/skia_compat_headers) vs OH system libskia_canvaskit.z.so (build 2f7219f2) STRUCT-LAYOUT/ABI skew -> libhwui builds public Skia objects (GrGLInterface, SkFont/SkPaint) at shim layout that libskia reads at real layout -> garbage/null pointers -> intermittent SIGSEGV.",
+  "headline": "The 'glyph cache' cluster is NOT one bug. It is >=2 distinct RenderThread crash families, BOTH at the libhwui->libskia_canvaskit boundary. Typeface hypothesis REFUTED. *** UPDATE 2026-09-30 (layout probe): the define-driven STRUCT-LAYOUT ABI hypothesis is ALSO REFUTED — see abi_layout_probe below. libhwui and OH libskia use the SAME m133 headers; a two-config offsetof/sizeof probe shows the crash-path structs (GrGLInterface, SkPaint, SkFont, SkGlyph, SkScalerContextRec) are BYTE-IDENTICAL across the two define sets. Only GrContextOptions differs (tail-only, benign). So rebuilding/aligning headers will NOT fix it. Root is DYNAMIC (lifetime/UAF/heap-corruption or a GL-proc/CFI code issue), not a build-time struct layout. ***",
+
+  "abi_layout_probe": {
+    "method": "Same Skia milestone confirmed m133 (SK_MILESTONE=133) on BOTH sides; device libskia_canvaskit.z.so build-id 2f7219f2 embeds ../../third_party/skia/m133/ paths. libhwui and OH production libskia compile the SAME m133 headers with DIFFERENT SK_* defines (libhwui: GPU_TEST_UTILS=1, SK_BUILD_FOR_ANDROID, SK_BUILD_FOR_ANDROID_FRAMEWORK, SK_OHOS_EXTENSION, SKIA_OHOS_SINGLE_OWNER, SKIA_DLL; OH prod: SKIA_DFX_FOR_RECORD_VKIMAGE, USE_M133_SKIA, SK_USE_LEGACY_BLUR_RASTER, SK_HAS_ANDROID_CODEC, SK_XML/SVG/PDF, ...). Built a struct-layout dumper on a2hlab (g++ x86_64; LP64 + Itanium C++ ABI => sizeof/offsetof identical to arm64 for these POD/vtable structs; comparing A-vs-B under the same compiler is valid). Compiled twice: config A = libhwui defines, config B = OH-libskia defines.",
+    "results": {
+      "GrGLInterface": "A=8248, B=8248 IDENTICAL (Functions=8200 both; fActiveTexture=0, fBindFramebuffer=280, fDisable=1800, fViewport=7520 all identical)",
+      "SkPaint": "A=80, B=80 IDENTICAL",
+      "SkFont": "A=24, B=24 IDENTICAL",
+      "SkGlyph": "A=56, B=56 IDENTICAL",
+      "SkScalerContextRec": "A=56, B=56 IDENTICAL",
+      "SkGlyphDigest": "A=16, B=16 IDENTICAL",
+      "SkImageInfo/SkSurfaceProps": "IDENTICAL",
+      "GrContextOptions": "A=216, B=192 DIFFERS by 24 bytes = the GPU_TEST_UTILS tail block (12 members). BUT prefix offsets identical (fGlyphsAsPathsFontSize=116, clearSmallTexture=137 both). Passed to GrDirectContexts::MakeGL by const ref -> libskia reads the 192-byte prefix correctly, ignores the extra tail. BENIGN for memory safety (matches the existing RenderThread.cpp patch comment: 'libskia never reads from' the hwui-side tail offset)."
+    },
+    "verdict": "The crash-path Skia structs do NOT differ by define. The define-driven struct-layout ABI-skew hypothesis is REFUTED. Neither GPU_TEST_UTILS nor SK_BUILD_FOR_ANDROID_FRAMEWORK shifts a crash-path struct (verified in-header: SK_BUILD_FOR_ANDROID_FRAMEWORK hits only add an enum type (SkCanvas.h:222 ColorBehavior) and a non-virtual method (SkRegion.h:435 toString) and a pure-vs-concrete onDrawEdgeAAQuad (same vtable slot) — none change layout). Rebuilding libhwui with aligned defines will NOT change these already-identical structs, so it will NOT fix the crashes.",
+    "provenance": {
+      "oh_skia_m133_source": "/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b6-latest/oh/third_party/skia/m133 (Mac); /home/zhaoyue/a2hlab/ws/android-source/oh-skia/m133 (a2hlab)",
+      "real_libskia_2f7219f2_copies": ["/Users/zhaoyue/orca/workspaces/01.OH61AOSP16/real-work/.state/m1-full-generation-20260823-r22/meta/immutable-base/system/lib64/libskia_canvaskit.z.so", "/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b6-latest/platform-pool/system/lib64/libskia_canvaskit.z.so"],
+      "libhwui_build_recipe": "bms/src/adapter/build/inner/compile_libhwui_arm64.sh (skia headers from $OH/third_party/skia/m133/include; skia_compat_headers are thin forwarders, no separate SkMilestone)"
+    }
+  },
 
   "samples": [
     {
@@ -50,13 +70,12 @@
   },
 
   "ownership_and_fix": {
-    "owner": "cx-t0 (native/graphics runtime build). NOT cc-t3 (not a JAR-layer issue). NOT app bug (identical app binaries render fine on Android reference).",
-    "real_fix": "Audit hwui-shim/skia_compat_headers struct layouts (esp. GrGLInterface / GrGLassembledInterface, SkFont, SkPaint, SkTypeface, GrDirectContext/GrRecordingContext) against OH libskia_canvaskit 2f7219f2's ACTUAL ABI, and correct any field-offset/size divergence. Extract real layout from the OH skia build (headers or reversing). This is the durable fix; heavy (needs OH skia ABI ground truth).",
-    "cheaper_mitigations": [
-      "Self-heal watchdog: detect RenderThread SIGSEGV (appspawn 'exit with signal:11' + DfxSignalHandler RenderThread) -> restart the app fresh. Matches the DIGEST 'self-heal ceiling' delivery for intermittent, not-cheaply-fixable render crashes. App is usable ~2/3-3/4 of launches; restart recovers.",
-      "For the GL-context family specifically: pin/rebuild the GrGLInterface assembly so onResetContext's function-pointer table is validated (null/range check GL fn-ptrs before blr) -- a targeted libhwui guard, still cx-t0."
-    ],
-    "not_a_fix": "Priming the default typeface (already non-null in crash runs) will NOT help -- typeface refuted."
+    "owner": "cx-t0 (native/graphics). NOT cc-t3 (not JAR). NOT app bug.",
+    "REVISED_after_probe": "The define-alignment/header-rebuild fix is REFUTED by the layout probe — crash-path structs are already byte-identical, so there is nothing to align. Do NOT spend effort rebuilding libhwui to change struct layouts.",
+    "real_fix_direction": "Root is DYNAMIC. Two tractable next diagnostics for cx-t0: (1) DIGEST-established intermittent-wild-pointer method — a malloc interposer / heap-write guard (LD_PRELOAD; malloc is a libc symbol so it works in OH musl globally) with guard pages, to catch WHO writes the bad pointer at fault time (see DIGEST A.14/B.18/#251 on the mallocng wild-write saga; same 'victim varies across subsystems, intermittent ~1/3, board-dependent' profile). (2) GPU-object lifetime/thread audit — GrDirectContext/Ganesh is single-threaded per Skia's contract; verify the OH adapter never touches the GrDirectContext or GL resources off the RenderThread (a UAF from cross-thread GPU-resource free would produce exactly these varied dangling-pointer crashes).",
+    "delivery_ceiling": "Self-heal watchdog: detect RenderThread SIGSEGV (appspawn 'exit with signal:11' + DfxSignalHandler threadName=RenderThread) -> restart the app fresh. Matches DIGEST self-heal-ceiling for intermittent render crashes; app usable ~2/3-3/4 of launches, restart recovers. Given the static-fix refutation, this may be the practical delivery until a dynamic root is pinned.",
+    "gl_guard_note": "The outer ring called the GL fn-ptr range-check guard 'only a fallback'. Given the struct-layout root is refuted, a guard (validate GL fn-ptr before blr in onResetContext path, or null/range-check) is NOT merely cosmetic — it may be the cheapest containment for the GL family until the dynamic writer is found. Still cx-t0.",
+    "not_a_fix": ["typeface priming (refuted)", "aligning libhwui skia defines / rebuilding libhwui for struct layout (refuted by probe — structs already identical)"]
   },
 
   "cluster_correction": "Outer ring registered this as 'Skia glyph cache RenderThread SIGSEGV' with AntennaPod as a member. AntennaPod's @0x7f2baaa33400 crash is GrGLGpu::onResetContext (GL context / GrGLInterface, an INSTRUCTION abort), NOT glyph/StrikeCache. It shares the libhwui<->libskia ABI boundary root with the FitoTrack text crashes but is a distinct family. Report both families under one root, not one glyph bug."
