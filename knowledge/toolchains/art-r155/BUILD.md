@@ -112,6 +112,12 @@ b67b2c08d08acc08 boot-framework.art       6bf57954c60389d6 boot-framework.oat   
 15c9f7b792377db0 boot.art   4a46e40fa7ffb1d1 boot.oat   23c1f5b05f1b103f boot.vdex
 ```
 
+### T7c(T7 用 T3c dex2oat64 重出,2026-10-01 00:30,oc-t4)
+
+派单(板 ACK(91) 00:28):同一版 stubs jar(`366acc27`),其余 8 jar 与 T5c 相同;dex2oat64 = T3c `ae865ddd6a7e4b25`(补丁 #22 显式挂起轮询)。27/27 出件到 `/home/alvin/oc-t4-t7c/`,oat230/image108 OK,kv `concurrent-copying=false`(rb 门 PASS)。oatdump 抽查 isOHEnvironment() 入口仍为显式挂起轮询(`sub x16,sp,#0x2000`+`ldr wzr,[x16]`+`ldr w16,[tr]`+`tst #0x7`,code_offset 0x4c9f0,size 316,与 v3c/T5c 同型)。
+
+与 T5c 差异件清单:`boot-adapter-mainline-stubs.{art,oat,vdex}`(jar 内容变了,预期)+ 其余 8 jar 的 `.oat`/`.art` 与 `boot.{art,oat}`(嵌 cmdline 路径串,预期);全部 9 个 `.vdex` 除 adapter-mainline-stubs 外逐字节同。t4b 回执 `evidence/T7c-BUILD-snapshot.md`(gate pass exit 0)。T7c boot.oat 拷本机 `_hw248-t7c/arm64/`。等 T6c 板上过后接着上板验 wikipedia/tagsoup 与 4 个 boot-api app。
+
 ---
 
 ## T3c(补丁 #22:arm64 关隐式挂起检查,2026-10-01 00:20,oc-t4)
