@@ -50,6 +50,12 @@ class GateTests(unittest.TestCase):
             write(d, 'tools/run.sh', f'#!/bin/bash\nHDC={MAC_PATH}/orca/workspaces/westlake-inputs/tools/hdc_mac.sh\n')
             self.assertEqual(run(d), 1)
 
+    def test_session_scratchpad_is_caught(self):
+        with tempfile.TemporaryDirectory() as d:
+            scratch = '/private/tmp/' + 'claude-' + '501/-X-orca-ws/abc/scratchpad/lib.so'  # split: the repo is scanned too
+            write(d, 'trace.py', f"IN = '{scratch}'\n")
+            self.assertEqual(run(d), 1)
+
     def test_default_expansion_and_bare_home_are_caught(self):
         with tempfile.TemporaryDirectory() as d:
             write(d, 'a.sh', 'W=${WORKSPACES:-' + MAC_PATH + '/orca/workspaces}\n')

@@ -29,7 +29,9 @@ HERE = pathlib.Path(__file__).resolve().parent
 SKIP_SUFFIXES = {'.md', '.json', '.jsonl', '.txt', '.csv', '.log', '.tsv', '.xml', '.html', '.htm',
                  '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.pdf'}
 NAME = r'[A-Za-z0-9_][A-Za-z0-9_.@-]*'
-HIT = re.compile(r'(?<![A-Za-z0-9_.])/(?:Users|home)/' + NAME)
+HIT = re.compile(r'(?<![A-Za-z0-9_.])/(?:Users|home)/' + NAME +
+                 # an agent session scratchpad (…/claude-<uid>/-Users-<name>-…): user-named and gone after the session
+                 r'|(?<![A-Za-z0-9_.])/(?:private/)?tmp/claude-\d+/')
 WORDCHAR = re.compile(r'[A-Za-z0-9_.@-]')
 
 
