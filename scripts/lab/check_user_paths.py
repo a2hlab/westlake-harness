@@ -110,6 +110,9 @@ def main(argv=None):
     ap.add_argument('--root', type=pathlib.Path)
     ap.add_argument('--exceptions', type=pathlib.Path)
     ap.add_argument('paths', nargs='*', help='repo-relative paths to scan (default: git ls-files)')
+    # 2026-10-01: a new script was checked while still untracked, reported 0 violations, then committed with 17.
+    ap.add_argument('--untracked', action='store_true',
+                    help='also scan untracked, not-ignored files (run this before `git add` of new files)')
     args = ap.parse_args(argv)
     root = (args.root or repo_root(HERE) or repo_root(pathlib.Path.cwd()) or HERE.parents[1]).resolve()
     table = args.exceptions or root / 'knowledge/gates/user-path-exceptions.json'
@@ -125,7 +128,8 @@ def main(argv=None):
         rels = [str(pathlib.Path(p).resolve().relative_to(root)) if pathlib.Path(p).is_absolute() else p
                 for p in args.paths]
     else:
-        rels = subprocess.run(['git', '-C', str(root), 'ls-files', '-z'], capture_output=True,
+        extra = ['--cached', '--others', '--exclude-standard'] if args.untracked else []
+        rels = subprocess.run(['git', '-C', str(root), 'ls-files', '-z', *extra], capture_output=True,
                               check=True).stdout.decode('utf-8', 'replace').split('\0')
         rels = [r for r in rels if r]
     hits = scan(root, rels, entries)
