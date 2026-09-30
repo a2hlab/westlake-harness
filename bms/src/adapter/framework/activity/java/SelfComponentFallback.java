@@ -4,6 +4,7 @@ import android.content.ComponentName;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.ComponentInfo;
 import android.content.pm.ProviderInfo;
+import android.content.pm.ServiceInfo;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
@@ -51,6 +52,24 @@ public final class SelfComponentFallback {
                 ComponentInfo info = projection.component(component.getClassName(), "provider", bound, (Long) args[1]);
                 if (info != null) {
                     System.err.println("[B8-PM] projected getProviderInfo " + component.flattenToShortString()
+                            + " metaData=" + (info.metaData == null ? 0 : info.metaData.size()));
+                }
+                return info;
+            }
+            // r17u (#binaryeye): the OH BMS bridge returns null for the app's own <service>, so
+            // ApplicationPackageManager.getServiceInfo throws NameNotFoundException. androidx.camera's
+            // MetadataHolderService lookup (getServiceInfo(self, GET_META_DATA)) then makes CameraX
+            // report "not configured properly" and the app System.exit(1)s in onResume. Answer from the
+            // bound APK's own manifest with the service's <meta-data> (CameraXConfig$Provider is read
+            // from it), exactly as getProviderInfo does for a self <provider>.
+            if ("getServiceInfo".equals(name) && args.length >= 3 && args[0] instanceof ComponentName
+                    && args[1] instanceof Long) {
+                ComponentName component = (ComponentName) args[0];
+                ManifestComponentProjection projection = projection(component.getPackageName());
+                if (projection == null) return null;
+                ComponentInfo info = projection.component(component.getClassName(), "service", bound, (Long) args[1]);
+                if (info != null) {
+                    System.err.println("[B8-PM] projected getServiceInfo " + component.flattenToShortString()
                             + " metaData=" + (info.metaData == null ? 0 : info.metaData.size()));
                 }
                 return info;
