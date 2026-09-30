@@ -49,6 +49,8 @@ def main(args):
     interval = 20
     if args[:1] == ["--interval"]:
         interval, args = float(args[1]), args[2:]
+    if not args:  # with no panes the loop below watches nothing and never exits: a sentinel that looks armed
+        sys.exit("usage: lane_watch.sh [--interval S] <pane-id>...")
     seen = set()
     while True:
         try:
