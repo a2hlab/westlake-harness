@@ -32,8 +32,8 @@ else:
 [ "$AHEAD" -le 60 ] || { echo "REFUSE: entry time is ${AHEAD}s in the future; write it with \$(date +%Y-%m-%dT%H:%M:%S%z)" >&2; exit 2; }
 # EVO-0033..0036 (same disease, 5th time on 2026-09-30): an adoption ("采认") restated a lane's inference without
 # naming the object it was checked against. Warn when an adopting entry carries no evidence anchor (a hash of
-# >= 7 hex digits or a file path); the entry is still appended.
-if printf '%s' "$BODY" | grep '采认' >/dev/null && ! printf '%s' "$BODY" | grep -E '[0-9a-f]{7,}|/[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+' >/dev/null; then
+# >= 7 hex digits or a file path); the entry is still appended. A rejection ("未采认"/"不采认") adopts nothing.
+if printf '%s' "$BODY" | sed -E 's/(未|不)采认//g' | grep '采认' >/dev/null && ! printf '%s' "$BODY" | grep -E '[0-9a-f]{7,}|/[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+' >/dev/null; then
   echo "WARN: 采认 without an evidence anchor (hash or path of the object it was checked against) -- EVO-0036" >&2
 fi
 printf '%s\n' "$BODY" | "$APPEND" "$BOARD"
