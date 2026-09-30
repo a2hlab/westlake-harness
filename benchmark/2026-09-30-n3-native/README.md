@@ -90,3 +90,7 @@ later loader failure, not proof of FDSAN abort; no FDSAN suppression was added.
 These are explicit scope/results limits, not claims that N3 fixes every white screen.
 
 Verification: `agent-spec lifecycle specs/native-n3/t1-native-batch.spec.md --code tools/spec-checks` yields three pass and one pendingreview, lint 100%. The initial run inherited env-mac’s Android `cc` shim and could not link Mach-O test objects; the rerun used a clean host PATH and `CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=/usr/bin/cc`. This was a host test-environment failure, not a passing attempt; `lifecycle-env-failure.json` is retained. Repository known answers: 82 run, 3 skipped, zero failures (`known-answers.txt`).
+
+## Post-disconnect continuation
+
+See `offline-followup/README.md` for the corrected 20-key table, actual DEX WebView feature gate, and pinned whole Westlake provider sources. No candidate bytes changed. The interrupted U3 baseline window is archived separately in `../2026-09-30-n3-61b/`.

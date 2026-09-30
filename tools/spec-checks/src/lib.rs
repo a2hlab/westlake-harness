@@ -255,3 +255,18 @@ fn n3_package_frozen() {
 fn n3_handoff() {
     run(&["benchmark/2026-09-30-n3-native/verify.py", "handoff"]);
 }
+
+#[test]
+fn n3_device_baseline() {
+    run(&["benchmark/2026-09-30-n3-61b/verify.py", "baseline"]);
+}
+
+#[test]
+fn n3_device_evidence() {
+    run(&["benchmark/2026-09-30-n3-61b/verify.py", "evidence"]);
+}
+
+#[test]
+fn n3_device_restored() {
+    run(&["benchmark/2026-09-30-n3-61b/verify.py", "restored"]);
+}

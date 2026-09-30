@@ -17,6 +17,7 @@ if mode=='sources':
  for rel,h in json.loads((P/'source-sha256.json').read_text()).items():assert sha(P/rel)==h,rel
  assert D['skia']['status']=='not_received_not_merged'
  run(P/'audit_resources.py')
+ run(P/'offline-followup/verify.py')
  assert len(json.loads((P/'toolchain-identities.json').read_text()))>=3
 elif mode=='namespace':
  for name in ['test_namespace.py','test_load_paths.py','test_native_abi.py','test_stdio.py','audit_abi.py','audit_jni.py','audit_extra.py']:run(P/name)

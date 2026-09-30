@@ -1,0 +1,50 @@
+# Task Contract: N3 61b controls targets rollback
+
+## Intent
+实测离线候选 N3 8a7880fa 是否越过 U2 native 墙，以截图和首致命点报告，不把符号闭包当上屏。
+
+## Must
+- 只在外环通知放行后的 61b 锁内写板，总窗不超过 45 分钟。
+- 不改候选源码、JAR、安装器、ART、boot image 或冻结项。
+- 控制回退立即撤；结束回滚并核 U3 指纹 0b81cdbe0ed9 后解锁。
+
+## Decisions
+- 原 JAR 记录 receipt，部署前露出包内 r8b，部署后恢复同一 J3。
+- 使用 master bms_batch 与 16M 预检，HW/ZZ 在前，Firefox/Fennec、VLC、SPD、Termux 和保护组在后。
+- 每组保存 facts 原文、t20 截图及实际差异；单次保护失败先按剩余窗口复验，明确回退就撤。
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-09-30-n3-61b/**
+- specs/native-n3-device/**
+- tools/spec-checks/**
+- README.md 与 .octos/KNOWLEDGE-DIGEST.md
+Forbidden:
+- 其他板写入，改变 N3 包或 U2 内容，kill -9 appspawn-x 主进程
+- 把未跑或无截图的 key 写成已亮
+
+## Completion Criteria
+Scenario: 授权与基线留档
+  Test:
+    Filter: n3_device_baseline
+  Given 外环已放行且 cx-t0 持 61b 完整 key 锁
+  When 首次写板之前读取 U3 与 JAR receipt
+  Then 指纹是 0b81cdbe0ed9 且候选 SHA 与冻结门通过
+  And 保存原 boot 和包路径
+
+Scenario: 控制与目标证据
+  Test:
+    Filter: n3_device_evidence
+  Given 先完成 HW 与 ZigZag 控制
+  When 收集目标与保护组运行结果或控制回退中止原因
+  Then facts 由 record 和进程表生成并列截图路径
+  And 首致命点与 N3 预测对应且 compare_runs 差异如实列出
+
+Scenario: 回滚并释放
+  Test:
+    Filter: n3_device_restored
+  Given 设备窗口结束或候选失败
+  When 按部署器回滚再恢复原 JAR
+  Then U3 全路径 SHA 与指纹 0b81cdbe0ed9 恢复
+  And 记录解锁且窗口不超过 45 分钟
+
