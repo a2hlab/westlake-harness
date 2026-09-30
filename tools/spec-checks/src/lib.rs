@@ -300,3 +300,13 @@ fn u4_commands_fail_closed() {
 fn u4_experiment_protocols() {
     run(&["benchmark/2026-09-30-u4-plan/verify.py", "probes"]);
 }
+
+#[test]
+fn webview_jni_exact_definitions() {
+    run(&["benchmark/2026-09-30-webview-jni-contract/verify.py", "exact"]);
+}
+
+#[test]
+fn webview_jni_real_pair() {
+    run(&["benchmark/2026-09-30-webview-jni-contract/verify.py", "pair"]);
+}

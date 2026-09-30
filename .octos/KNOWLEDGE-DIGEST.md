@@ -530,3 +530,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 N3离线补查：Tutanota U3 的无消息 WebViewFactory.getProvider UOE 对应现役 DEX isWebViewSupported=false；oh-adapter-framework PM 仅声明6个hardware feature，J3非空webviewupdate binder不够。Westlake 532633da 有完整feature/PackageInfo/服务/native发布配方，须配真实provider APK一起移植，不能只改true（benchmark/2026-09-30-n3-native/offline-followup/）。
 
 - 2026-09-30 N3b：532633da WebView发布helper依赖真实provider isAvailable + ServiceManager cache/public双身份回读，pre-bind只prime/hold false，post-bind有Application才publish；可只加runtime显式JNI接线，不能把PM feature=true或stub binder当provider闭包。N3b 7c9c6240已过12个真实JVM JNI用例，设备/J4配套待验（benchmark/2026-09-30-n3b-webview/）。
+
+- 2026-09-30 WebView JNI契约：N3b 7c9c6240按名要求WebViewUpdateServiceAdapter及self-typed getInstance()，J5 dbce2eee仅有代理不满足；真实J5b ce2c3baf已过4项DEX定义/完整描述符/static/native门。scripts/lab/check_webview_jni.py保留J5负控，字符串引用不算实现；静态过门不等于ClassLoader/cache/provider/UI通过（benchmark/2026-09-30-webview-jni-contract/）。

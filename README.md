@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-09-30-webview-jni-contract/`** | N3b/J5b exact JNI-to-DEX contract gate with real J5 negative control and multidex/flag fixtures. |
 | **`benchmark/2026-09-30-u4-plan/`** | U4 four-shard plan, 66 app predictions, causal bisection and offline-built VLC/Termux probes. |
 | **`benchmark/2026-09-30-n3-61b/`** | Interrupted U3 baseline window: N3 not deployed, J3 untouched, original facts and release receipt. |
 | **`benchmark/2026-09-30-n3b-webview/`** | N3b single-runtime WebView publication candidate; pinned Westlake bodies, real JVM JNI tests and Java/provider handoff. |
