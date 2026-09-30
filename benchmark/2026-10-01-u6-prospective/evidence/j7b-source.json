@@ -1,0 +1,436 @@
+{
+  "bms/src/adapter/framework/activity/java/AppWidgetFetcher.java": {
+    "commit": "11e3b4cbd8fc198c75789f592fbe7a302743ff80",
+    "lines": [
+      {
+        "line": 12,
+        "text": " * J7 (#fd-catima): AppWidgetManager.getInstance(Context) resolves to Context.getSystemService(appwidget),"
+      },
+      {
+        "line": 16,
+        "text": " * and set its IAppWidgetService mService to a type-zero stub so getInstance is non-null and its calls answer"
+      },
+      {
+        "line": 17,
+        "text": " * type-zero (empty id arrays / false). Both the \"appwidget\" name and the AppWidgetManager.class->name mapping"
+      },
+      {
+        "line": 18,
+        "text": " * are registered, since getInstance uses getSystemService(AppWidgetManager.class) on newer API levels."
+      },
+      {
+        "line": 26,
+        "text": "        replaceFetcher(\"appwidget\", new Builder() {"
+      },
+      {
+        "line": 29,
+        "text": "        registerServiceName(\"android.appwidget.AppWidgetManager\", \"appwidget\");"
+      },
+      {
+        "line": 32,
+        "text": "    /** AppWidgetManager (allocated) whose IAppWidgetService mService is a type-zero stub. */"
+      },
+      {
+        "line": 34,
+        "text": "        Class<?> awm = Class.forName(\"android.appwidget.AppWidgetManager\");"
+      },
+      {
+        "line": 36,
+        "text": "        Class<?> iaws = Class.forName(\"com.android.internal.appwidget.IAppWidgetService\");"
+      },
+      {
+        "line": 39,
+        "text": "        setField(instance, \"mService\", service);"
+      },
+      {
+        "line": 43,
+        "text": "        System.err.println(\"[B8-FETCH] appwidget AppWidgetManager allocated (mService stubbed, type-zero)\");"
+      },
+      {
+        "line": 50,
+        "text": "            Class<?> ssr = Class.forName(\"android.app.SystemServiceRegistry\");"
+      },
+      {
+        "line": 124,
+        "text": "            Class<?> ssr = Class.forName(\"android.app.SystemServiceRegistry\");"
+      },
+      {
+        "line": 125,
+        "text": "            Class<?> fetcherIface = Class.forName(\"android.app.SystemServiceRegistry$ServiceFetcher\");"
+      }
+    ],
+    "sha256": "2468225508867299182ce8012e7ee13be54231a7f5b94874bf56e5109449d125"
+  },
+  "bms/src/adapter/framework/activity/java/B7BindFixes.java": {
+    "commit": "11e3b4cbd8fc198c75789f592fbe7a302743ff80",
+    "lines": [
+      {
+        "line": 12,
+        "text": " *    getSystemService(UserManager.class) for credential-protected contexts"
+      },
+      {
+        "line": 81,
+        "text": "        // r16 (#90): cc-wiki's OnlineConnectivityManager -- replaces the SystemServiceRegistry"
+      },
+      {
+        "line": 111,
+        "text": "        // Westlake) registers a local ISessionManager (sCache binder + SystemServiceRegistry fetcher)"
+      },
+      {
+        "line": 118,
+        "text": "        // J4 (#noice): getSystemService(MEDIA_ROUTER_SERVICE) -> MediaRouter.<init> -> rebindAsUser ->"
+      },
+      {
+        "line": 120,
+        "text": "        // Same sCache-binder shape as WlMediaSession: a no-op local IMediaRouterService so Noice's"
+      },
+      {
+        "line": 131,
+        "text": "            System.err.println(\"[B8-SEARCH] \" + adapter.compat.WlSearchService.install());"
+      },
+      {
+        "line": 135,
+        "text": "        // J7b (#fd-reader): after VibratorFetcher's mLock fix, reader reaches WallpaperManager.getWallpaperColors"
+      },
+      {
+        "line": 136,
+        "text": "        // which NPEs on the null static sGlobals; seed sGlobals with a type-zero-service Globals."
+      },
+      {
+        "line": 138,
+        "text": "            System.err.println(\"[B8-WALLPAPER] \" + adapter.compat.WlWallpaperColors.install());"
+      },
+      {
+        "line": 171,
+        "text": "        // OH's SystemServiceRegistry fetcher for ALARM_SERVICE does not consume our in-process \"alarm\""
+      },
+      {
+        "line": 172,
+        "text": "        // binder, so getSystemService(ALARM_SERVICE) returns null and k9/fd-android's"
+      },
+      {
+        "line": 177,
+        "text": "            SystemServiceFetcherStubs.install();"
+      }
+    ],
+    "sha256": "dc0e532a2dc0bfb580c535399f2e20dafc68bef125eea843c24f1ebaf0347f07"
+  },
+  "bms/src/adapter/framework/activity/java/OnlineConnectivityManager.java": {
+    "commit": "11e3b4cbd8fc198c75789f592fbe7a302743ff80",
+    "lines": [
+      {
+        "line": 25,
+        "text": " * getSystemService(\"connectivity\") hand out this online subclass by replacing the"
+      },
+      {
+        "line": 26,
+        "text": " * SystemServiceRegistry fetcher at bind time (B7BindFixes.apply -> install())."
+      },
+      {
+        "line": 198,
+        "text": "     * Replace the SystemServiceRegistry fetchers for the services whose board stubs return null in a"
+      },
+      {
+        "line": 208,
+        "text": "            // SYSTEM_SERVICE_NAMES lacks JobScheduler.class -> getSystemService(JobScheduler.class),"
+      },
+      {
+        "line": 261,
+        "text": "                            // J7b (#opencamera): ONLY ACTION_BATTERY_CHANGED (an always-present sticky) gets a"
+      },
+      {
+        "line": 266,
+        "text": "                                log(n + \" -> synthetic ACTION_BATTERY_CHANGED sticky Intent\");"
+      },
+      {
+        "line": 282,
+        "text": "            Class<?> ssr = Class.forName(\"android.app.SystemServiceRegistry\");"
+      },
+      {
+        "line": 283,
+        "text": "            Class<?> fetcherIface = Class.forName(\"android.app.SystemServiceRegistry$ServiceFetcher\");"
+      },
+      {
+        "line": 303,
+        "text": "     * Map an API Class -> service name in SystemServiceRegistry.SYSTEM_SERVICE_NAMES so"
+      },
+      {
+        "line": 304,
+        "text": "     * getSystemService(ApiClass.class) resolves. Needed when route-A never stock-registered the"
+      },
+      {
+        "line": 306,
+        "text": "     * getSystemService(Class) path return null before the by-name fetcher is consulted. Harmless if"
+      },
+      {
+        "line": 312,
+        "text": "            Class<?> ssr = Class.forName(\"android.app.SystemServiceRegistry\");"
+      },
+      {
+        "line": 324,
+        "text": "    // cannot reference a helper from the main pass). ACTION_BATTERY_CHANGED is the only sticky we synthesise."
+      },
+      {
+        "line": 325,
+        "text": "    private static final String BATTERY_ACTION = \"android.intent.action.BATTERY_CHANGED\";"
+      },
+      {
+        "line": 336,
+        "text": "    /** A sticky ACTION_BATTERY_CHANGED Intent with level/scale/status/plugged; full-charge/plugged default. */"
+      },
+      {
+        "line": 339,
+        "text": "        i.putExtra(\"level\", 100);"
+      },
+      {
+        "line": 340,
+        "text": "        i.putExtra(\"scale\", 100);"
+      },
+      {
+        "line": 341,
+        "text": "        i.putExtra(\"status\", android.os.BatteryManager.BATTERY_STATUS_FULL);"
+      },
+      {
+        "line": 342,
+        "text": "        i.putExtra(\"plugged\", android.os.BatteryManager.BATTERY_PLUGGED_AC);"
+      },
+      {
+        "line": 343,
+        "text": "        i.putExtra(\"health\", android.os.BatteryManager.BATTERY_HEALTH_GOOD);"
+      },
+      {
+        "line": 344,
+        "text": "        i.putExtra(\"present\", true);"
+      },
+      {
+        "line": 345,
+        "text": "        i.putExtra(\"technology\", \"Li-ion\");"
+      },
+      {
+        "line": 346,
+        "text": "        i.putExtra(\"temperature\", 250);"
+      },
+      {
+        "line": 347,
+        "text": "        i.putExtra(\"voltage\", 4200);"
+      },
+      {
+        "line": 348,
+        "text": "        i.putExtra(\"icon-small\", 0);"
+      }
+    ],
+    "sha256": "57f18067565ab96ec400ed9583ee4c3781524f1cb6cc4e2825f4bea8c4a968f9"
+  },
+  "bms/src/adapter/framework/activity/java/VibratorFetcher.java": {
+    "commit": "11e3b4cbd8fc198c75789f592fbe7a302743ff80",
+    "lines": [
+      {
+        "line": 13,
+        "text": " * SystemVibratorManager.mService.getVibratorIds(), null on route-A -> SystemVibrator \"Attempt to get"
+      },
+      {
+        "line": 15,
+        "text": " * asInterface a null binder) and set its IVibratorManagerService mService to a stub whose getVibratorIds()"
+      },
+      {
+        "line": 40,
+        "text": "        setField(instance, \"mService\", service);"
+      },
+      {
+        "line": 42,
+        "text": "        // J7 (#fd-reader): SystemVibratorManager.getVibratorIds() does synchronized(mLock); mLock is a final"
+      },
+      {
+        "line": 44,
+        "text": "        // null NPE at getVibratorIds:66 (before the mService.getVibratorIds() call the old fix covered). Give"
+      },
+      {
+        "line": 46,
+        "text": "        trySetField(instance, \"mLock\", new Object());"
+      },
+      {
+        "line": 47,
+        "text": "        System.err.println(\"[B8-FETCH] vibrator_manager SystemVibratorManager allocated (mLock set, getVibratorIds -> int[0])\");"
+      },
+      {
+        "line": 112,
+        "text": "            Class<?> ssr = Class.forName(\"android.app.SystemServiceRegistry\");"
+      },
+      {
+        "line": 113,
+        "text": "            Class<?> fetcherIface = Class.forName(\"android.app.SystemServiceRegistry$ServiceFetcher\");"
+      }
+    ],
+    "sha256": "11bfe963d4ca47b10bce7777fcdffbd0e23d68ad766bdf3a7fe0c935f3455dd3"
+  },
+  "bms/src/adapter/framework/activity/java/WifiFetcher.java": {
+    "commit": "11e3b4cbd8fc198c75789f592fbe7a302743ff80",
+    "lines": [
+      {
+        "line": 12,
+        "text": " * J7 (#fd-wifianalyzer): route-A's SystemServiceRegistry WIFI_SERVICE fetcher returns null, so"
+      },
+      {
+        "line": 13,
+        "text": " * com.vrem.wifianalyzer.MainActivity.onCreate does {@code getSystemService(\"wifi\").getClass()} (an R8/Kotlin"
+      },
+      {
+        "line": 14,
+        "text": " * not-null check on the result) on null and NPEs (NULL-PRODUCERS.md: getSystemService(\"wifi\") -> null)."
+      },
+      {
+        "line": 16,
+        "text": " * IWifiManager mService to a type-zero stub so getSystemService(WIFI_SERVICE) is non-null and its calls"
+      },
+      {
+        "line": 29,
+        "text": "    /** WifiManager (allocated) whose IWifiManager mService is a type-zero stub. */"
+      },
+      {
+        "line": 32,
+        "text": "        // but the hidden service interface android.net.wifi.IWifiManager is NOT on this OH build (J7 failed with"
+      },
+      {
+        "line": 33,
+        "text": "        // ClassNotFoundException IWifiManager). So allocate a bare WifiManager (enough to clear fd-wifianalyzer's"
+      },
+      {
+        "line": 34,
+        "text": "        // getSystemService(\"wifi\").getClass() not-null check) and set mService ONLY if IWifiManager exists."
+      },
+      {
+        "line": 39,
+        "text": "            Class<?> iwifi = Class.forName(\"android.net.wifi.IWifiManager\");"
+      },
+      {
+        "line": 42,
+        "text": "            trySetField(instance, \"mService\", service);"
+      },
+      {
+        "line": 44,
+        "text": "            System.err.println(\"[B8-FETCH] wifi IWifiManager absent on this build; bare WifiManager (non-null only)\");"
+      },
+      {
+        "line": 113,
+        "text": "            Class<?> ssr = Class.forName(\"android.app.SystemServiceRegistry\");"
+      },
+      {
+        "line": 114,
+        "text": "            Class<?> fetcherIface = Class.forName(\"android.app.SystemServiceRegistry$ServiceFetcher\");"
+      }
+    ],
+    "sha256": "b13b5118a08fb1d9371e289b10691b49e5e2ca5160edac3502ae00f3285ce0b5"
+  },
+  "bms/src/adapter/framework/activity/java/WlSearchService.java": {
+    "commit": "11e3b4cbd8fc198c75789f592fbe7a302743ff80",
+    "lines": [
+      {
+        "line": 16,
+        "text": " * (IllegalStateException). Publish a local no-op ISearchManager under \"search\" in ServiceManager.sCache so"
+      },
+      {
+        "line": 17,
+        "text": " * asInterface's queryLocalInterface returns the proxy and SearchManager initialises. Same sCache-binder shape"
+      },
+      {
+        "line": 20,
+        "text": "public final class WlSearchService {"
+      },
+      {
+        "line": 25,
+        "text": "    private WlSearchService() {}"
+      },
+      {
+        "line": 37,
+        "text": "            if (\"toString\".equals(n)) return \"WlSearchManagerService\";"
+      },
+      {
+        "line": 54,
+        "text": "            ClassLoader loader = WlSearchService.class.getClassLoader();"
+      },
+      {
+        "line": 62,
+        "text": "            java.lang.reflect.Field f = sm.getDeclaredField(\"sCache\");"
+      },
+      {
+        "line": 65,
+        "text": "            if (!(value instanceof java.util.Map)) return \"sCache is not a Map\";"
+      }
+    ],
+    "sha256": "2193de98908d85a6ef9c7ff8b1d3d3f421e8f6a1414f96a13ecd5c679c7b3054"
+  },
+  "bms/src/adapter/framework/activity/java/WlWallpaperColors.java": {
+    "commit": "11e3b4cbd8fc198c75789f592fbe7a302743ff80",
+    "lines": [
+      {
+        "line": 1,
+        "text": "/* J7b (#fd-reader): single-purpose file (freeze unit) -- WallpaperManager.sGlobals seed. */"
+      },
+      {
+        "line": 11,
+        "text": " * J7b (#fd-reader): after VibratorFetcher's mLock fix clears the getVibratorIds NPE, fd-reader reaches"
+      },
+      {
+        "line": 12,
+        "text": " * WallpaperManager.getWallpaperColors(), whose body calls sGlobals.getWallpaperColors(...). The static"
+      },
+      {
+        "line": 13,
+        "text": " * WallpaperManager.sGlobals is only created from a Context-carrying entry point; on route-A it is null here,"
+      },
+      {
+        "line": 15,
+        "text": " * WallpaperManager$Globals without its constructor, set its IWallpaperManager mService to a type-zero stub"
+      },
+      {
+        "line": 16,
+        "text": " * (getWallpaperColors -> null, not a crash), and seed the static sGlobals so getWallpaperColors returns null"
+      },
+      {
+        "line": 17,
+        "text": " * colours instead of NPEing. Idempotent: leaves an existing non-null sGlobals alone."
+      },
+      {
+        "line": 19,
+        "text": "public final class WlWallpaperColors {"
+      },
+      {
+        "line": 21,
+        "text": "    private WlWallpaperColors() {}"
+      },
+      {
+        "line": 25,
+        "text": "            ClassLoader loader = WlWallpaperColors.class.getClassLoader();"
+      },
+      {
+        "line": 27,
+        "text": "            Field sGlobals = wm.getDeclaredField(\"sGlobals\");"
+      },
+      {
+        "line": 28,
+        "text": "            sGlobals.setAccessible(true);"
+      },
+      {
+        "line": 29,
+        "text": "            if (sGlobals.get(null) != null) return \"already present\";"
+      },
+      {
+        "line": 34,
+        "text": "            Object service = Proxy.newProxyInstance(loader, new Class<?>[] {iwp}, new ZeroHandler(\"WlWallpaperStub\"));"
+      },
+      {
+        "line": 35,
+        "text": "            trySetField(instance, \"mService\", service);"
+      },
+      {
+        "line": 36,
+        "text": "            sGlobals.set(null, instance);"
+      },
+      {
+        "line": 37,
+        "text": "            return \"seeded sGlobals (mService stubbed)\";"
+      }
+    ],
+    "sha256": "63506e9780d1b4cf7e4f489acc04424e15087262d7e3b90ba8e3c727159bc412"
+  }
+}

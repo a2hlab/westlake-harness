@@ -162,6 +162,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-b10-path-port/`** | **Ten temporary B10 path entries audited: six migrated memberships removed, four live SHA pins retained; immutable frozen copies and relocation checks.** |
 | **`benchmark/2026-09-30-u4-sweep/J6N4-SCORING.md`** | **U5 first-attempt scoring against the frozen J6/N4 criteria: 38 hits, two false positives, 26 unknowns; 24 outer-reviewed UI keys and seven unforecast signature families.** |
 | **`benchmark/2026-10-01-u5-feedback-v1/`** | **Seven key-independent U5 static requirement rules, 66-key versioned replay covering fourteen known misses, and separate split/sidecar/pin input blockers.** |
+| **`benchmark/2026-10-01-u6-prospective/`** | **Pre-sweep 66-key U6-T7c/J7b first-wall freeze, exact candidate/API inventory, five merged-input rescans and two honestly retained input blockers.** |
 
 ---
 
