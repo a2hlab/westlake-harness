@@ -1,13 +1,15 @@
 # Frozen public-API fixes
 
 Rule (AGENTS.md 做事方式 3, set by the user 2026-09-30, tiered the same day): once a fix for a
-public-API wall found by the scanners is shown working on **at least two different apps by t20
-screenshots**, it is frozen. A frozen file never changes silently.
+public-API wall found by the scanners gets **at least two different apps past the wall** — at least
+one lit at t20 by screenshot, the others shown by log to lose that API's failure with the first fatal
+moved elsewhere (this verifies the API, not the app) — it is frozen (user, 2026-09-30). A frozen file never changes silently.
 
 - The outer loop may register a new version for three reasons only: **defect** (a single-variable
   `compare_runs.py` run shows the frozen item itself fails), **platform** (an OH/ART/ABI change forces a
   rebuild), **extension** (new behaviour added to the same artifact, old behaviour kept). The new version
-  must re-light every app of the previous version's evidence at t20 and a unified full sweep must not
+  must bring every app of the previous version's evidence back to the same level (lit stays lit,
+  past-the-wall stays past) and a unified full sweep must not
   regress. Register first (`version`, `change`, previous version in `history`), deploy second, and report
   it to the user in the morning summary.
 - Removing or weakening a frozen behaviour (status `removed`) needs the user.
