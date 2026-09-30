@@ -62,6 +62,15 @@ source build/envsetup.sh && lunch aosp_arm64-userdebug
 m -j32 build-art-host libart                 # host dex2oat set + arm64 libart for the R155 layout check
 ```
 
+## Build result (2026-09-30 11:12, 20 min on hw248)
+
+`#### build completed successfully (20:11 (mm:ss)) ####`, 0 FAILED lines.
+
+| artifact | sha256 (first 16) | notes |
+|---|---|---|
+| `out/host/linux-x86/bin/dex2oat64` | `1a2f5a22ebe1a722` | x86-64 PIE, only glibc deps (libdl, libpthread, libm, librt, libgcc_s, libc); runs natively on hw248 |
+| `out/target/product/generic_arm64/apex/com.android.art/lib64/libart.so` | `adf4da23e3093b1d` | official arm64 libart for the R155 layout comparison; contains the `230` oat version string |
+
 ## To record when done
 
 - Pinned manifest (`repo manifest -r`) committed next to this page.
@@ -69,3 +78,16 @@ m -j32 build-art-host libart                 # host dex2oat set + arm64 libart f
 - The exact dex2oat command line that reproduces the board's 9 segments, taken from the board
   `boot.oat` key-value store (`dex2oat-cmdline`), and the per-segment checksum comparison.
 - Once the 9 segments reproduce, register the tool in `knowledge/frozen/` so it cannot drift.
+
+## OatHeader key-value(板上 boot.oat 实测,2026-09-30 oc-t4)
+
+来源:5ea `/system/android/framework/arm64/boot.oat`(sha16 25d92cf7df9c86ca,= 清单 arm64/boot.oat 行),ELF 内 oat 段 @0x1000,`oat\n230\0`。
+
+- `[dex2oat-cmdline]`(逐字节抄录):
+  `/opt/build-trees/aosp-arm64-d600/out/host/linux-x86/bin/dex2oat64 --android-root=/system --instruction-set=arm64 --base=0x70000000 --compiler-filter=speed --runtime-arg -Xms64m --runtime-arg -Xmx512m --runtime-arg -Xverify:none --image=<work>/products/arm64/boot.art --oat-file=<work>/products/arm64/boot.oat --dex-file=<work>/incoming/core-oj.jar --dex-location=/system/android/framework/core-oj.jar --dex-file=…core-libart… --dex-file=…core-icu4j… --dex-file=…okhttp… --dex-file=…bouncycastle… --dex-file=…apache-xml… --dex-file=…adapter-mainline-stubs… --dex-file=…framework… --dex-file=…oh-adapter-framework…`(每个 jar 同款 dex-file/dex-location 对;work = `/opt/build-trees/.work/fn03-r29-boot-20260728T0635Z`,原产物路径)
+- `[compiler-filter]=speed`、`[concurrent-copying]=false`、`[debuggable]=false`、`[native-debuggable]=false`、`[requires-image]=true`、`[apex-versions]=`(空)
+- 9 jar 顺序(bootclasspath 与 cmdline 一致):**core-oj → core-libart → core-icu4j → okhttp → bouncycastle → apache-xml → adapter-mainline-stubs → framework → oh-adapter-framework**
+- isa features:OatHeader bitmap = 0x3(arm64);dex2oat.cmdline 无显式 `--instruction-set-features`(即默认/detected)
+- 其余头字段:oat_checksum 0xd369f830、dex_file_count=1(boot.oat 自身,其余 jar 各在 boot-<name>.oat)、executable_offset 0x1e6000、bcp_bss_info_offset 0
+
+注:此前 5-jar 顺序(core-oj/core-libart/core-icu4j/stubs/framework)缺 4 jar 且顺序不同(okhttp/bouncycastle/apache-xml 在 stubs 前)——一切复现以本节 9-jar 顺序为准。
