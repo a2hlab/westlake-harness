@@ -1,0 +1,72 @@
+{
+  "date": "2026-09-30",
+  "author": "cc-t3",
+  "source_runs": "benchmark/2026-09-30-r17p-{5ea,61b}-sweep (r17p full-66, both boards); raw dlopen lines from <app>/hilog.txt",
+  "question": "outer loop: for the 4 dlopen_ns native apps, is the fix JAR-layer (classloader->namespace mapping, cc-t3) or native-loader (cx-t0)? Table first, then act.",
+  "board_facts_readonly": {
+    "app_namespace_search_path_observed": "/system/android/lib64:/system/lib64/platformsdk:/system/lib64/chipset-sdk:/system/lib64/chipset-sdk-sp",
+    "dep_locations_on_board": {
+      "liblog.so": "/system/android/lib64/liblog.so (also westlake/route-a/*/liblog.so); NOT in /system/lib64 proper",
+      "libstdc++.so": "/system/android/lib64/libstdc++.so; nowhere else",
+      "libOpenSLES.so": "/system/lib64/libOpenSLES.so; NOT in /system/android/lib64, NOT in /system/lib64/ndk",
+      "libc++.so": "/system/lib64/chipset-sdk-sp/libc++.so"
+    },
+    "native_policy_native_bridge_policy_h": {
+      "kBridgeSearchPaths": ["/system/android/lib64", "/system/lib64/platformsdk"],
+      "kBridgePermittedPaths": ["/system/android/lib64", "/system/lib64/platformsdk"],
+      "kBridgeSharedSonames": ["libandroid.so", "libEGL.so", "liblog.so", "...(6 total)"]
+    }
+  },
+  "decisive_source_fact": {
+    "file": "bms/src/adapter/framework/native-loader-oh/src/native_loader.cpp",
+    "finding": "BuildAppConfig (lines 64-90) reads the app's library_path AND permitted_path as JStrings passed from Java, and splits them into app_search_paths / app_permitted_paths. Only bridge_search_paths/bridge_permitted_paths come from the C++ policy (OwnPolicy(kBridge*)). So the app namespace's search+permitted paths ARE Java-supplied.",
+    "but": "Grepping the runtime-JAR Java sources (bms/src/adapter/framework/*/java) for anyone building that library_path/permitted_path string returns ONLY B7BindFixes.java -- and that is createNativeNamespace for the RUNTIME classloader (the WESTLAKE .so namespace), NOT the app's. No Java class in oh-adapter-runtime.jar assembles the APP's library_path/permitted_path; that string is built by native-loader-oh / appspawn-x (native).",
+    "corroborating_error": "fd-client hilog: 'UnsatisfiedLinkError: path is outside app domain: /system/android/lib64/libwestlake_html_compat.so' == a permitted-paths rejection, which is enforced by native-loader-oh, not the runtime JAR."
+  },
+  "apps": [
+    {
+      "key": "fd-app",
+      "package": "com.unciv.app",
+      "app_so": "libgdx.so (installed+verified at /data/app/el1/bundle/public/com.unciv.app/android/lib/arm64-v8a/)",
+      "raw": "dlopen_ns failed for .../libgdx.so: Error loading shared library libstdc++.so: (needed by .../libgdx.so)",
+      "missing_dep": "libstdc++.so",
+      "dep_exists_at": "/system/android/lib64/libstdc++.so",
+      "why_not_found": "libstdc++.so lives in /system/android/lib64 (a kBridge-searchable dir) but is NOT a kBridgeSharedSoname, so the bridge does not expose it to the app namespace; and the app's own search+permitted paths do not include it as a resolvable soname.",
+      "layer": "native (app search/permitted paths are native-built; fix = add libstdc++.so to kBridgeSharedSonames, or add /system/android/lib64 to the app path in native-loader-oh/appspawn-x) -> cx-t0",
+      "jar_angle": "SPECULATIVE: reflectively append /system/android/lib64 to the app library_path+permitted_path before native createClassloaderNamespace. Not confirmed; no JAR class currently builds that string."
+    },
+    {
+      "key": "mindustry",
+      "package": "io.anuke.mindustry",
+      "app_so": "libarc.so (+libarc-freetype.so) installed+verified",
+      "raw": "dlopen_ns failed for .../libarc.so: Error loading shared library libOpenSLES.so: (needed by .../libarc.so)",
+      "missing_dep": "libOpenSLES.so",
+      "dep_exists_at": "/system/lib64/libOpenSLES.so",
+      "why_not_found": "libOpenSLES.so is in /system/lib64, which is in NEITHER the app namespace search/permitted paths NOR kBridgeSearchPaths/kBridgePermittedPaths, and it is not a shared soname. Unreachable from the app namespace.",
+      "layer": "native (add /system/lib64 to kBridgeSearchPaths+kBridgePermittedPaths + libOpenSLES.so soname, OR to the app path builder in native-loader-oh/appspawn-x) -> cx-t0",
+      "jar_angle": "SPECULATIVE: same as fd-app (append /system/lib64 to the app path). Not confirmed."
+    },
+    {
+      "key": "fd-client",
+      "package": "com.nextcloud.client",
+      "app_so": "libconscrypt_jni.so installed+verified",
+      "raw_dlopen": "dlopen_ns failed for .../libconscrypt_jni.so: Error loading shared library liblog.so: (needed by .../libconscrypt_jni.so)",
+      "raw_fatal": "Caused by: java.lang.NullPointerException: Parameter specified as non-null is null: method com.nextcloud.client.mixins.SessionMixin.<init>, parameter accountManager -> Unable to start activity ComponentInfo{com.nextcloud.client/com.nmc.android.ui.LauncherActivity}",
+      "missing_dep": "liblog.so (IS a kBridgeSharedSoname, exists at /system/android/lib64)",
+      "why_not_found": "liblog.so is both bridge-searchable and a shared soname yet still 'not found' for conscrypt -- points to a namespace-link gap (native-loader-oh), not a path the JAR sets.",
+      "lit_blocker": "NOT the dlopen. The activity crash is an app-internal DI NPE (accountManager null in SessionMixin), same family as fd-reader. So fixing conscrypt's liblog would NOT light fd-client.",
+      "layer": "conscrypt/liblog = native namespace-link (cx-t0); lit-blocker = app-internal (parked, not JAR)"
+    },
+    {
+      "key": "fd-im-vector-app",
+      "package": "im.vector.app",
+      "app_so": "librealm-jni.so installed+verified",
+      "raw": "F02-A12-UNSUPPORTED-SYMBOL: dlopen_ns failed for /data/app/el2/100/base/im.vector.app/app_lib/librealm-jni.so",
+      "missing_dep": "n/a -- SYMBOL/RELOCATION error, not 'library not found'. The .so is reached but a symbol it needs is unresolved.",
+      "why_not_found": "ABI/symbol mismatch (unsupported symbol), independent of search/permitted paths.",
+      "layer": "native ABI/symbol -> cx-t0. A path fix cannot help a relocation error."
+    }
+  ],
+  "verdict": "None of the 4 is a runtime-JAR classloader->namespace fix that cc-t3 owns today: the app namespace's library_path/permitted_path is built in native-loader-oh/appspawn-x (no Java class in oh-adapter-runtime.jar assembles it), the missing sonames/paths are governed by the C++ kBridge policy, fd-im-vector is a native relocation error, and fd-client's lit-blocker is an app-internal NPE. Route the dlopen/namespace half to cx-t0 (native-loader-oh).",
+  "discriminating_experiment_if_JAR_angle_pursued": "Reflectively append '/system/lib64:/system/android/lib64' to the app library_path AND permitted_path just before the native createClassloaderNamespace call (intercept ApplicationLoaders/LoadedApk from the runtime JAR). Re-run mindustry (libOpenSLES exists in /system/lib64) and fd-app (libstdc++ exists in /system/android/lib64). If both load their deps -> a JAR increment is viable after all. If they still fail with 'path is outside app domain'/'not found' -> the path is native-built and the fix is cx-t0's. This is a hypothesis, NOT an attribution."
+}

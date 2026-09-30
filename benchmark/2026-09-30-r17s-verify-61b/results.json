@@ -1,0 +1,33 @@
+{
+  "date": "2026-09-30",
+  "author": "cc-t3",
+  "board": "61b0657200000000000000000324012c",
+  "board_state": "v3c + background-launch installer + r17p (a0ed5c4f) baseline; cx-t0 released 07:31",
+  "jar_under_test": "r17s 606dd2e36905f3ce2e2d2f3f39c22f30b9dbafe2bb0689ca590b2b06895c0e5c",
+  "deploy": "bind-mount overlay on top of r17p (layer2); r17r dd4f0eae stacked as layer3 for the antennapod A/B; both rolled back LIFO -> board restored to r17p a0ed5c4f, layers=1, verified",
+  "caveat_focus": "This board runs the background-launch installer, which steals foreground focus at launch. bms_batch focus-check reports 'focused PID is not target' for every key, so facts.txt alive/child_hilog counts are UNRELIABLE here (e.g. vlc facts child_hilog=0 but hilog.txt has 55605 lines). Screenshots + raw child hilog are ground truth (FLAW-007).",
+  "target_fd_meet": {
+    "wall": "getSystemService(RestrictionsManager.class) / getApplicationRestrictions() -> null NPE (r17s adds the 'restrictions' fetcher stub)",
+    "fetcher_active": "hilog: '[B8-FETCH] restrictions fetcher replaced (prev=android.app.SystemServiceRegistry$65)' -> the r17s stub IS installed and hit",
+    "result": "ADVANCED past the RestrictionsManager NPE, but NOT lit: new wall behind it -> 'NPE: Attempt to invoke interface method java.util.Iterator java.util.Collection.iterator() on a null object reference' -> Unable to start activity ComponentInfo{org.jitsi.meet/org.jitsi.meet.MainActivity}",
+    "verdict": "honest progress, not a lit claim; the null-Collection NPE is the next fd-meet wall (app-internal or a second missing/empty projection)"
+  },
+  "regression_controls": {
+    "markor": "LIT (t20 = document browser, school/travel/work + Files/To-Do tabs) -- r17r fix preserved",
+    "fd-etar": "alive t5=yes t20=yes child_hilog=24251 (Etar week calendar; r17q fix preserved)",
+    "fd-com-amaze-filemanager": "alive t5=yes t20=yes child_hilog=30484",
+    "vlc": "RAN (VLCApplication.onCreate, 55605 child-hilog lines, no FATAL) but t20 screenshot = desktop (not on-screen at t20). facts child_hilog=0 is a background-installer PID-detection miss, NOT a crash. Regression-vs-r17p is NOT attributable: launch-only vs r17p's reinstall + JAR differ = multiple variables (FLAW-008).",
+    "fd-api": "dead t5=no (termux.api / Theme.AppCompat cluster, dropped per outer loop; expected)"
+  },
+  "antennapod_reinstall_AB": {
+    "why": "outer loop: on the background-launch installer, antennapod MUST be clean-installed (--reinstall); launch-only relaunches an already-configured app and skips the first-run restartUpdateAlarm/WorkManager path where the 5ea r17r NPE (FeedUpdateManager instance null) was seen.",
+    "method": "same board 61b, same boot_id 58aef9fc-13ff-406e-871a-ee97e750a3ff (no reboot), same APK (apk_sha256 3f43a4337a...), same --reinstall; only variable = oh-adapter-runtime.jar",
+    "r17s_606dd2e3": "LIT -- t20 = AntennaPod welcome ('欢迎使用 AntennaPod! 您尚未订阅任何播客') + 首页/队列/收件箱/订阅/更多 nav; hilog has NO FATAL / FeedUpdateManager NPE / restartUpdateAlarm",
+    "r17r_dd4f0eae": "LIT -- t20 = same AntennaPod welcome; no FATAL",
+    "flaw008_byhand": "compare_runs.py could not run (runs predate runtime-fingerprint.txt). By hand: board=61b (same), boot_id=58aef9fc (same, no reboot), jar 606dd2e3(r17s) vs dd4f0eae(r17r) = EXACTLY ONE variable. Both runs LIT -> the JAR is NOT the cause; the 5ea r17r clean-install NPE is a BOARD (5ea vs 61b) difference, not reproduced on 61b under either r17s or r17r.",
+    "note_feedupdatemanager": "r17r/r17s hilog do show appspawn-x class_linker vtable diagnostics for FeedUpdateManager ('garbageSetBits=1 (EXPECT 0 => uninitialized BitVector => spurious append-skip => clone@slot0)') -- the same [IFACE-BITS] family seen for vlc's VLCApplication. Latent vtable-clone warning; it did NOT fault on 61b. Candidate mechanism for the 5ea NPE, but that lives in the generation's class-linker, not this runtime JAR."
+  },
+  "verified_lit_this_session": ["markor", "fd-etar", "antennapod (clean-install, both r17s and r17r)"],
+  "not_lit": ["fd-meet (advanced past RestrictionsManager NPE -> new null-Collection NPE)", "vlc (ran but t20 off-screen; not attributable)", "fd-api (dropped)"],
+  "board_restored": "r17p a0ed5c4f, layers=1, shell==appspawnx verified; lock released 07:5x"
+}
