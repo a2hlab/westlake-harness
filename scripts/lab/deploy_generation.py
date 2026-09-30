@@ -81,6 +81,9 @@ def check_frozen_restore(hashes, absent=()):
     spec.loader.exec_module(check_frozen)
     entries = check_frozen.load(Path(__file__).resolve().parents[2] /
                                 'knowledge/frozen/frozen.json')
+    problems = check_frozen.validate(entries)
+    if problems: raise RuntimeError('invalid frozen registry: ' + '; '.join(problems))
+    entries = check_frozen.active(entries)
     candidate = dict(hashes)
     candidate.update({path: 'absent' for path in absent})
     lines, bad = check_frozen.check_artifacts(entries, candidate, 'rollback')
