@@ -60,6 +60,20 @@ un octos-state.tar.zst "$ROOT"
 un a2hlab-vm.tar.zst "$ROOT/_a2hlab"
 un bridge-payload.tar.zst "$HOME/orca"
 
+echo "== restore tracked files an archive overwrote"  # archives carry only files git did not track when they were
+# packed; a file committed later arrives as a stale copy and clobbers the checkout (EVO-0035). Nothing tracked can
+# legitimately differ on a fresh unpack, so put every tracked file back and prove the trees are clean.
+checkouts=(); while IFS=$'\t' read -r name d ref url; do checkouts+=("$(dest "$d")"); done < "$SRC/git/repos.tsv"
+while IFS=$'\t' read -r name rel ref; do checkouts+=("$ROOT/$rel"); done < "$SRC/git/worktrees.tsv"
+dirty=0
+for c in "${checkouts[@]}"; do
+  [ -e "$c/.git" ] || continue
+  git -C "$c" restore . 2>/dev/null || true
+  n=$(git -C "$c" status --porcelain --untracked-files=no 2>/dev/null | wc -l | tr -d ' ')
+  [ "$n" = 0 ] || { echo "  still dirty ($n): $c"; dirty=$((dirty+1)); }
+done
+echo "tracked files clean in $((${#checkouts[@]} - dirty))/${#checkouts[@]} checkouts"
+
 echo "== repair worktree links"  # an archive may carry a worktree's .git file with the old machine's absolute path
 while IFS=$'\t' read -r name rel ref; do
   main=$(dest "$(awk -F'\t' -v n="$name" '$1==n{print $2}' "$SRC/git/repos.tsv")")

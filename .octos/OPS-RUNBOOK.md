@@ -13,6 +13,8 @@
 - 环境:`source ~/orca/workspaces/westlake-inputs/env-mac.sh`(cc/readelf/sha256sum shim + mise 固定的 JDK/Python)。有它 67/69 测试过,没有它 2 fail 4 error。
 - **shell 陷阱**:`ls`=eza(带 OSC-8 超链接)、`du`=dust、`grep`=ugrep(复杂正则会超限)、`cat`=bat → 解析输出时用 `/bin/ls`、`/usr/bin/grep`、`command du`。zsh **不拆分 `$var`**(用 `${=var}` 或数组/glob),把整串当一个文件名且被 `2>/dev/null` 吞掉时会得到"假干净"。macOS 自带 bash 3.2 没有 `mapfile`。
 - `pgrep -f`/`pkill -f` 会匹配到自己的命令行(在 `hdc shell "…"` 里计数恒 +1)→ 用 `scripts/lab/stop_by_pattern.sh` 或 `pgrep -f '[x]yz'`。
+- **`set -o pipefail` 下别写 `cmd | grep -q`**:grep 命中即退出,上游收到 SIGPIPE,整条管道被判失败,判断会随机翻转(2026-09-30 setup_new_mac.sh 的 VM 检查因此被静默跳过)。改写成 `cmd | grep pat >/dev/null`,或先把输出存进变量再判。
+- **交给另一台机器的步骤要先在模拟新环境里逐字跑一遍**(EVO-0035):用临时 HOME 和新 root 执行用户将执行的原命令,核对 `git status --porcelain --untracked-files=no` 为空、`git describe --tags` 是约定标签,再发给用户。归档只收打包当时未跟踪的文件,之后入库的文件会以旧副本覆盖克隆——`unpack_airdrop.sh` 已在解档后对每个 checkout 自动 `git restore .` 并核干净。
 - **长跑的 bash 脚本别在运行中改它**:bash 按字节偏移边读边执行,改了前面的行,当前复合命令跑完后会从错位处读下一条(2026-09-30 迁移上传差点中招)。要跑几小时的脚本先 `cp` 一份副本再 `bash <副本>`,仓库里的原件随便改。
 - **路径不绑用户名**(用户 2026-09-30 定):脚本的工作区目录 = 环境变量 `WORKSPACES`;没设就从脚本自身的真实位置往上找第一个含 `westlake-inputs/` 或 `westlake-harness/` 的目录(`scripts/lab/` 与其镜像 `westlake-inputs/tools/` 深度不同,不能写固定 `../..`)。bash 用 `. "$(dirname "${BASH_SOURCE[0]}")/lab_paths.sh"`,Python 用 `import lab_paths`(镜像两处都要有这两个文件);VM 家目录 `lab_vm_home` / `lab_paths.vm_home()`(Mac 上问 VM,`A2HLAB_VM_HOME` 可覆盖),VM 里要 Mac 家目录用 `lab_mac_home`(`MAC_HOME`)。门禁 `python3 scripts/lab/check_user_paths.py`,例外表 `knowledge/gates/user-path-exceptions.json`。
 - **换机**:按根目录 `env.md`。OLP 黑板(`.octos/boards/`、`OUTER_LOOP_REVIEW.md`、`EVOLUTION.md`)按设计不入 git,换机靠 hw248 的 `octos-state` 包带过去;`scripts/lab/push_lab_state.sh` 只在 hw248 与本机校验清单完全一致时跳过,切换前重跑一遍即可刷新。
