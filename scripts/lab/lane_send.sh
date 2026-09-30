@@ -6,7 +6,9 @@
 # octoscode drops text sent while a turn is running (RUNBOOK; 2026-10-01 oc-t4 lost two dispatches in one
 # night: the outer loop sent, saw no error, and the lane later reported "no remaining work"). For an
 # octoscode pane this waits until the status line shows Idle/Done (up to --wait-max seconds, default 900),
-# sends, then checks within 20 s that the lane left Idle; if it did not, it sends once more.
+# sends, then checks within 20 s that the lane left Idle; if it did not, it sends once more. Leaving Idle only
+# proves a turn started (2026-10-01 04:24 a lane opened a turn and only summarised its previous task): name the
+# expected output file in the dispatch and check that it appears.
 # Codex and Claude panes queue input while busy, so they are sent to directly.
 # Exit 0 = sent and picked up (or sent to a queueing pane); 1 = never became idle; 2 = sent twice, no pickup.
 set -euo pipefail
