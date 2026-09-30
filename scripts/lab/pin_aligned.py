@@ -13,8 +13,10 @@ import sys
 import zipfile
 from pathlib import Path
 
+import lab_paths
+
 AAPT2 = Path.home() / "a2hlab/ws/toolchains/android-build-tools35/android-15/aapt2"
-INPUTS = Path("/Users/zhaoyue/orca/workspaces/westlake-inputs")
+INPUTS = lab_paths.inputs()
 
 
 def sha(path):

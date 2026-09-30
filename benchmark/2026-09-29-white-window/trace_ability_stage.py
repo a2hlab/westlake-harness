@@ -8,13 +8,16 @@ from pathlib import Path
 import re
 import struct
 import subprocess
+import sys
 import zipfile
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
+sys.path.insert(0, str(REPO / 'scripts/lab'))
+import lab_paths  # noqa: E402
 OUT = HERE / 'evidence/ability-stage'
-JAR = Path('/Users/zhaoyue/orca/workspaces/vm-copies/b5-runtime-jar/oh-adapter-runtime.jar')
-WORK = Path('/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work')
+JAR = lab_paths.workspaces() / 'vm-copies/b5-runtime-jar/oh-adapter-runtime.jar'
+WORK = lab_paths.workspaces() / 'westlake-harness-bms-deploy/bms/src/.work'
 TOOLS = WORK / 'b6-task45/inputs'
 BRIDGES = {
     'reply': (WORK / 'b6-task52/baseline-native/liboh_adapter_bridge.so',

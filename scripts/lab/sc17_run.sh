@@ -5,11 +5,13 @@
 # usage: sc17_run.sh <serial> <framework-report (VM)> <webview-candidate dir (VM)> <tag> [extra probe args...]
 set -u
 S=$1; FW=$2; CAND=$3; TAG=$4; shift 4; EXTRA="$*"
+. "$(dirname "${BASH_SOURCE[0]}")/lab_paths.sh" || exit 1
 H=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc
-HDC=/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh
-D=/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/ttdrive.sh
-RUN=/home/zhaoyue/a2hlab/board/$S/$TAG
-LOCAL=/Users/zhaoyue/OrbStack/a2hlab/home/zhaoyue/a2hlab/board/$S/$TAG
+HDC=$WORKSPACES/westlake-inputs/tools/hdc_mac.sh
+D=$WORKSPACES/westlake-inputs/tools/ttdrive.sh
+VMH=$(lab_vm_home) || exit 1
+RUN=$VMH/a2hlab/board/$S/$TAG
+LOCAL=$HOME/OrbStack/a2hlab$VMH/a2hlab/board/$S/$TAG   # the same directory through OrbStack's Mac view
 dev() { "$H" -t "$S" shell "$1" | LC_ALL=C tr -d '\r'; }
 texts() {
   VT_WAIT=6 "$D" "$S" "$RUN" vt 2>/dev/null | python3 -c '
@@ -64,4 +66,4 @@ f=$(dev "ls /data/log/faultlog/temp/ | grep -- '-$CHILD-' | head -1")
 [ -n "$f" ] && dev "grep -m1 Reason /data/log/faultlog/temp/$f; grep -m1 -A1 'Fault thread' /data/log/faultlog/temp/$f; grep -m1 '#00 pc' /data/log/faultlog/temp/$f"
 dev "cat $LOG" > "$LOCAL/child.stderr" 2>/dev/null
 "$H" -t "$S" file recv /data/local/tmp/sc17.pcap "$LOCAL/consent.pcap" >/dev/null 2>&1 && \
-  python3 /Users/zhaoyue/orca/workspaces/westlake-harness/probes/network-capture/read.py "$LOCAL/consent.pcap" | sed -n '1,/TLS SNI/p;/TLS SNI/,/^$/p' | head -20
+  python3 "$WORKSPACES/westlake-harness/probes/network-capture/read.py" "$LOCAL/consent.pcap" | sed -n '1,/TLS SNI/p;/TLS SNI/,/^$/p' | head -20

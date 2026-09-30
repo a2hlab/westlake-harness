@@ -3,9 +3,10 @@ from pathlib import Path
 import sys,json
 root=Path(__file__).resolve().parent
 sys.path.insert(0,str(root.parents[1]/'batch'));import bms_batch as b
+sys.path.insert(0,str(Path(__file__).resolve().parents[4]/'scripts/lab'));import lab_paths  # <repo>/scripts/lab
 out=Path.home()/'a2hlab/board/b5-negative-cleanup-5ea';out.mkdir(exist_ok=False)
 f=json.loads((root/'installation.json').read_text());pkg=f['fixture']['package']
-board=b.Board(f['serial'],'/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh','mac /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/board_note.sh','cx-t0',out/'commands');board.ready()
+board=b.Board(f['serial'],str(lab_paths.tools()/'hdc_mac.sh'),'mac '+str(lab_paths.tools()/'board_note.sh'),'cx-t0',out/'commands');board.ready()
 assert b.cold_stop(board,pkg,f['bms']['uid'],out)
 rc,text=board.shell('bm uninstall -n '+pkg,required=False,timeout=120);assert rc==0 and 'success' in text.lower(),text
 _,all_bundles=board.shell('bm dump -a');assert pkg not in all_bundles

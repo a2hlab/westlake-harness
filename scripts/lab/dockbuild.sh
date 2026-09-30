@@ -13,19 +13,31 @@
 # Board work (probe_source_app.py, hdc) stays in the VM: hdc_mac.sh needs OrbStack's `mac` command.
 set -euo pipefail
 IMG=${DOCKBUILD_IMAGE:-a2hlab-build:24.04}
-VMH=/mnt/machines/a2hlab/home/zhaoyue
-BIND=/home/dspfac/a2hlab/source-closure/verify
-INPUTS=/Users/zhaoyue/orca/workspaces/westlake-inputs
-OH=$BIND/toolchains/ohos-sdk/native
 HERE=$(cd "$(dirname "$0")" && pwd)
+. "$HERE/lab_paths.sh" || exit 1
+# The container runs as the VM user at the VM user's home, so files written into the shared workspace keep
+# their owner and the build scripts see the paths they see in the VM. The Mac and VM user names need not
+# match, so ask the VM (override all four: A2HLAB_VM_USER, A2HLAB_VM_UID, A2HLAB_VM_GID, A2HLAB_VM_HOME).
+if [ -n "${A2HLAB_VM_USER:-}" ] && [ -n "${A2HLAB_VM_UID:-}" ] && [ -n "${A2HLAB_VM_GID:-}" ] && [ -n "${A2HLAB_VM_HOME:-}" ]; then
+  VM_USER=$A2HLAB_VM_USER VM_UID=$A2HLAB_VM_UID VM_GID=$A2HLAB_VM_GID VM_HOME=$A2HLAB_VM_HOME
+elif command -v orb >/dev/null 2>&1; then
+  read -r VM_USER VM_UID VM_GID VM_HOME < <(orb -m a2hlab bash -c 'echo "$(id -un) $(id -u) $(id -g) $HOME"') || true
+else  # inside the VM itself
+  VM_USER=$(id -un) VM_UID=$(id -u) VM_GID=$(id -g) VM_HOME=$HOME
+fi
+[ -n "${VM_HOME:-}" ] || { echo "dockbuild: cannot read the a2hlab VM user; set A2HLAB_VM_USER/_UID/_GID/_HOME" >&2; exit 1; }
+VMH=/mnt/machines/a2hlab$VM_HOME
+BIND=/home/dspfac/a2hlab/source-closure/verify
+INPUTS=$WORKSPACES/westlake-inputs
+OH=$BIND/toolchains/ohos-sdk/native
 
 mounts=(
-  -v "$VMH/a2hlab:/home/zhaoyue/a2hlab"            # manifest, logs, tools/libmap32bit.so, ws, board outputs
+  -v "$VMH/a2hlab:$VM_HOME/a2hlab"                  # manifest, logs, tools/libmap32bit.so, ws, board outputs
   -v "$VMH/a2hlab/ws:$BIND"                         # the author path (VM: sudo mount --bind ~/a2hlab/ws)
-  -v "$VMH/.cache/ccache:/home/zhaoyue/.cache/ccache"  # shared with the VM
+  -v "$VMH/.cache/ccache:$VM_HOME/.cache/ccache"    # shared with the VM
   -v "$INPUTS:$INPUTS"                              # the build scripts call $INPUTS/tools/*.sh
 )
-# Extra Mac directories at their own paths: DOCKBUILD_MOUNTS="/Users/a/kit:/Users/b/src" (e.g. an OH header kit).
+# Extra Mac directories at their own paths: DOCKBUILD_MOUNTS="$HOME/kit:$HOME/src" (e.g. an OH header kit).
 IFS=: read -r -a extra_mounts <<< "${DOCKBUILD_MOUNTS:-}"
 for m in "${extra_mounts[@]}"; do [ -n "$m" ] && mounts+=(-v "$m:$m"); done
 # $PWD is mounted at its own path so relative arguments keep working (Mac paths only; VM paths are above).
@@ -34,13 +46,14 @@ case "$PWD" in /Users/*|/private/*|/tmp/*) mounts+=(-v "$PWD:$PWD") ;; esac
 drun() {  # drun NAME CMD...
   local name=$1; shift
   docker run --rm --platform linux/amd64 --name "$name" "${mounts[@]}" -w "$PWD" \
-    -e CCACHE_DIR=/home/zhaoyue/.cache/ccache "$IMG" "$@"
+    -e CCACHE_DIR="$VM_HOME/.cache/ccache" "$IMG" "$@"
 }
 
 cmd=${1:-}; shift || true
 case "$cmd" in
   image)
-    docker build --platform linux/amd64 -t "$IMG" "$HERE/docker" ;;
+    docker build --platform linux/amd64 -t "$IMG" --build-arg LAB_USER="$VM_USER" --build-arg LAB_UID="$VM_UID" \
+      --build-arg LAB_GID="$VM_GID" --build-arg LAB_HOME="$VM_HOME" "$HERE/docker" ;;
   run)
     name="dockbuild-$$"
     if [ "${1:-}" = -n ]; then name=$2; shift 2; fi
@@ -54,8 +67,8 @@ case "$cmd" in
     drun "dockbuild-check-$$" bash -c "
       set -e
       test -x $OH/llvm/bin/clang-15 && $OH/llvm/bin/clang-15 --version | head -1
-      test \"\$(stat -c %i $BIND)\" = \"\$(stat -c %i /home/zhaoyue/a2hlab/ws)\" && echo 'author path = ~/a2hlab/ws'
-      test -f /home/zhaoyue/a2hlab/tools/libmap32bit.so && echo 'libmap32bit.so present'
+      test \"\$(stat -c %i $BIND)\" = \"\$(stat -c %i $VM_HOME/a2hlab/ws)\" && echo 'author path = ~/a2hlab/ws'
+      test -f $VM_HOME/a2hlab/tools/libmap32bit.so && echo 'libmap32bit.so present'
       mountpoint -q $BIND && echo 'author path is a mountpoint (build scripts skip their sudo mount)'
       id" ;;
   *)

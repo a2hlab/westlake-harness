@@ -15,14 +15,16 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / '2026-09-28-bms-route-deploy' / 'batch'))
 import bms_batch as b  # noqa: E402
+sys.path.insert(0, str(HERE.parents[1] / 'scripts' / 'lab'))
+import lab_paths  # noqa: E402
 
 SERIAL = '5cd1e3dd00000000000000000923012c'
 HDC = '/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc'
-LOCK = str(Path.home() / 'orca/workspaces/westlake-inputs/tools/board_note.sh')
+LOCK = str(lab_paths.tools() / 'board_note.sh')
 PATHS = ['/system/lib64/libapk_installer.so', '/system/lib64/platformsdk/libapk_installer.so']
 BASELINE = '675536e8a43ac747cbffc0e130d5681ba7bcf2bd3fd305f3d0d357ca797a793d'   # B3, current on 5cd
 NEW = '1ebf78ab2bbe4573dfbe146b9f99e6b06e3a581fb9d16721c2272bc18e6cdfa5'        # B7 (DECLARED_XML_ONLY)
-NEW_VM = '/home/zhaoyue/a2hlab/build-runs/20260929-oh6.1.0.31-b7/installer/libapk_installer.b7.so'
+NEW_VM = 'a2hlab/build-runs/20260929-oh6.1.0.31-b7/installer/libapk_installer.b7.so'  # under the VM user's home
 BACKUP = '/data/local/tmp/b7-installer-backup'
 
 
@@ -89,7 +91,7 @@ def main():
         _, text = bd.shell(f'sha256sum {BACKUP}/0.so {BACKUP}/1.so')
         assert all(l.split()[0] == BASELINE for l in text.splitlines() if l.strip()), text
         local = out / 'libapk_installer.b7.so'
-        subprocess.run(['orb', '-m', 'a2hlab', 'cat', NEW_VM], stdout=local.open('wb'), check=True)
+        subprocess.run(['orb', '-m', 'a2hlab', 'cat', lab_paths.vm_home() + '/' + NEW_VM], stdout=local.open('wb'), check=True)
         assert b.sha(local) == NEW
         bd.send(local, BACKUP + '/new.so')
         _, text = bd.shell(f'sha256sum {BACKUP}/new.so')

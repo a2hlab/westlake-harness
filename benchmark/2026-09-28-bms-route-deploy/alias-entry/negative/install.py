@@ -3,9 +3,10 @@ from pathlib import Path
 import sys,json
 root=Path(__file__).resolve().parent
 sys.path.insert(0,str(root.parents[1]/'batch'));import bms_batch as b
+sys.path.insert(0,str(Path(__file__).resolve().parents[4]/'scripts/lab'));import lab_paths  # <repo>/scripts/lab
 f=json.loads((root/'fixture.json').read_text());pkg=f['package']
 out=Path.home()/'a2hlab/board/b5-negative-install-5ea-attempt2';out.mkdir(exist_ok=False)
-board=b.Board('5ea34a4500000000000000001123012c','/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh','mac /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/board_note.sh','cx-t0',out/'commands');board.ready()
+board=b.Board('5ea34a4500000000000000001123012c',str(lab_paths.tools()/'hdc_mac.sh'),'mac '+str(lab_paths.tools()/'board_note.sh'),'cx-t0',out/'commands');board.ready()
 _,prior=board.shell('bm dump -n '+pkg,required=False)
 assert 'failed to get information' in prior,prior
 _,all_bundles=board.shell('bm dump -a');assert pkg not in all_bundles

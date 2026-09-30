@@ -8,8 +8,10 @@ import argparse
 import json
 from pathlib import Path
 import shlex
+import sys
 import time
 import bms_batch as b
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'scripts/lab'));import lab_paths  # <repo>/scripts/lab
 
 
 def capture(board, entry, input_root, out, remote, prior_path):
@@ -71,8 +73,8 @@ def main():
     if not b.KEY.fullmatch(args.run_id):ap.error('invalid run id')
     root=Path.home()/'a2hlab/board/bms-batch-runs'
     out=root/args.run_id/args.serial;out.mkdir(parents=True,exist_ok=False)
-    board=b.Board(args.serial,'/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh',
-        'mac /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/board_note.sh','cx-t0',out/'commands')
+    board=b.Board(args.serial,str(lab_paths.tools()/'hdc_mac.sh'),
+        'mac '+str(lab_paths.tools()/'board_note.sh'),'cx-t0',out/'commands')
     entries=b.load_apps(Path(__file__).with_name('apps.json'),keys=args.keys)
     board.ready();records=[]
     for i,entry in enumerate(entries):

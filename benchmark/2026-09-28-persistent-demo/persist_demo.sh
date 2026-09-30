@@ -29,8 +29,9 @@ case "$SERIAL" in 5cd1e3dd*|5ea34a45*) echo "REFUSE: $SERIAL is a protected boar
 S61="$SERIAL"
 
 HDC="/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc"
-HDC_MAC="/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+. "$HERE/../../scripts/lab/lab_paths.sh" || exit 1
+HDC_MAC="$WORKSPACES/westlake-inputs/tools/hdc_mac.sh"
 KEEPER_SRC="$HERE/../2026-09-27-device-provisioning/onscreen_keeper.sh"
 BROKER_SRC="$HERE/open_broker.sh"
 HOST=org.westlake.imehost

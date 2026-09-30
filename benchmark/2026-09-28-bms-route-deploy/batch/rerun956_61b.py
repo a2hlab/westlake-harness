@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 import bms_batch as b
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'scripts/lab'));import lab_paths  # <repo>/scripts/lab
 
 SERIAL = '61b0657200000000000000000324012c'
 LANE = 'oc-t4'
@@ -16,15 +17,15 @@ RUN = 'b4-38-rerun956-61b-20260928T2350'
 out = Path.home() / 'a2hlab/board' / RUN
 out.mkdir(parents=True, exist_ok=False)
 un_dir = out / 'uninstall'; un_dir.mkdir()
-board = b.Board(SERIAL, '/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh',
-                'mac /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/board_note.sh', LANE, out / 'commands')
+board = b.Board(SERIAL, str(lab_paths.tools()/'hdc_mac.sh'),
+                'mac '+str(lab_paths.tools()/'board_note.sh'), LANE, out / 'commands')
 board.ready()
 manifest = {a['key']: a for a in json.load(open(ROOT / 'apps.json'))['apps']}
 if len(sys.argv) > 1 and sys.argv[1] == '--keys':
     keys = sys.argv[2].split(',')
 else:
     keys = [r['key'] for r in json.load(open(
-        '/home/zhaoyue/a2hlab/board/b4-36-faultlog/b4-final.json'))['records']
+        Path.home()/'a2hlab/board/b4-36-faultlog/b4-final.json'))['records']
         if r['category'] == 'install-failed-9568260']
 print('keys:', len(keys), keys, flush=True)
 summary = []

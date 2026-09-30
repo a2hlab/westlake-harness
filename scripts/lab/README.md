@@ -4,8 +4,10 @@ The board / VM / build scripts the campaign runs every day live in `~/orca/works
 which is **not a git repository**. This directory is a byte-identical, versioned copy of its
 `tools/*.{sh,py,c}`, `env-mac.sh`, `mise.toml` and `toolshim/`, taken 2026-09-28.
 
-The live copy stays where it is: 14 of these scripts hard-code `westlake-inputs/` paths, and the VM
-`a2hlab` and the inner-loop agents call them there. Edit the live copy, then re-sync:
+The live copy stays where it is: the VM `a2hlab` and the inner-loop agents call the scripts there. They
+find `westlake-inputs/` through `lab_paths.sh` / `lab_paths.py` (env `WORKSPACES`, else walk up from the
+script's own location), so both copies work and no script names a user's home (gate:
+`check_user_paths.py`); keep `lab_paths.*` in both places. Edit the live copy, then re-sync:
 
 ```
 W=~/orca/workspaces/westlake-inputs

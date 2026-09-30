@@ -19,9 +19,11 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
+import lab_paths
+
 A = Path('/home/dspfac/a2hlab/source-closure/verify')
 O = A / 'out'
-HARNESS = Path('/Users/zhaoyue/orca/workspaces/westlake-harness')
+HARNESS = lab_paths.harness()
 TOOL = str(Path.home() / 'a2hlab/harness-venv/bin/westlake-apk-gap')
 SDK_LIBS = A / 'toolchains/ohos-sdk/native/sysroot/usr/lib/aarch64-linux-ohos'
 LIB_DIRS = [SDK_LIBS, O / 'native-imports', O / 'native-runtime']

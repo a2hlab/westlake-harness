@@ -1,7 +1,8 @@
 #!/bin/bash
 # Full board-free rebuild against the westlake checkout in the workspace; every stage is resumable.
 set -u
-T=/Users/zhaoyue/orca/workspaces/westlake-inputs/tools; O=/home/dspfac/a2hlab/source-closure/verify/out; L=$HOME/a2hlab/logs/build
+. "$(dirname "${BASH_SOURCE[0]}")/lab_paths.sh" || exit 1
+T=$WORKSPACES/westlake-inputs/tools; O=/home/dspfac/a2hlab/source-closure/verify/out; L=$HOME/a2hlab/logs/build
 for s in build_runtime build_phase2a build_phase2b build_phase3a build_phase3b build_phase3c build_phase3d; do
   echo "=== $s $(date +%T)"; bash $T/$s.sh 2>&1 | grep -E "^(OK|FAIL|START)"
 done

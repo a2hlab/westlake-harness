@@ -7,9 +7,10 @@ import sys
 from pathlib import Path
 import shutil
 
-P=Path('/Users/zhaoyue/orca/workspaces/westlake-inputs')
+import lab_paths
+P=lab_paths.inputs()
 D=Path.home()/'a2hlab/static'
-OUT=Path('/Users/zhaoyue/orca/workspaces/westlake-harness-static-100/benchmark/2026-09-24-static-100')
+OUT=lab_paths.workspaces()/'westlake-harness-static-100/benchmark/2026-09-24-static-100'
 LOGS=Path.home()/'a2hlab/logs'
 sys.path.insert(0,str(P/'tools'))
 import static_pipeline as pipeline

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-source = Path('/home/zhaoyue/a2hlab/ws/westlake-touchfix/framework/window/jni/oh_input_bridge.cpp')
+source = Path.home() / 'a2hlab/ws/westlake-touchfix/framework/window/jni/oh_input_bridge.cpp'  # run in the VM
 s = source.read_text()
 needle = '\n\nOHInputBridge& OHInputBridge::getInstance() {'
 helper = '''

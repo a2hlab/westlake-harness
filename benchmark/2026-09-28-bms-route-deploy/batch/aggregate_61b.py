@@ -21,13 +21,15 @@ Categories per key:
      absent crash file => unknown (recorded explicitly)
 """
 import collections, hashlib, json, os, sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "scripts", "lab"))
+import lab_paths  # <repo>/scripts/lab
 
 RUNS = [
-    ("/home/zhaoyue/a2hlab/board/bms-61b-20260928T195314/61b0657200000000000000000324012c"),
-    ("/home/zhaoyue/a2hlab/board/bms-61b-resume-20260928T2040/61b0657200000000000000000324012c"),
+    os.path.expanduser("~/a2hlab/board/bms-61b-20260928T195314/61b0657200000000000000000324012c"),
+    os.path.expanduser("~/a2hlab/board/bms-61b-resume-20260928T2040/61b0657200000000000000000324012c"),
 ]
-MANIFEST = "/Users/zhaoyue/orca/workspaces/westlake-harness-b4/benchmark/2026-09-28-bms-route-deploy/batch/apps.json"
-CRASHMAP = "/home/zhaoyue/a2hlab/board/b4-36-faultlog/crash-map.json"
+MANIFEST = str(lab_paths.workspaces() / "westlake-harness-b4/benchmark/2026-09-28-bms-route-deploy/batch/apps.json")
+CRASHMAP = os.path.expanduser("~/a2hlab/board/b4-36-faultlog/crash-map.json")
 
 def sha256(p):
     h = hashlib.sha256()

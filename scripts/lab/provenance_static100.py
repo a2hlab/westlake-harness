@@ -1,6 +1,7 @@
 import hashlib,json,subprocess
 from pathlib import Path
-d=Path.home()/'a2hlab/static';a=Path('/home/dspfac/a2hlab/source-closure/verify');p=Path('/Users/zhaoyue/orca/workspaces/westlake-inputs')
+import lab_paths
+d=Path.home()/'a2hlab/static';a=Path('/home/dspfac/a2hlab/source-closure/verify');p=lab_paths.inputs()
 def sha(x):return hashlib.sha256(x.read_bytes()).hexdigest()
 lock=json.loads((d/'runtime-lock.json').read_text());checks=[]
 for group in ['boot_classpath','bridge_libraries','system_libraries']:

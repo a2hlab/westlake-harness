@@ -12,6 +12,7 @@
 - **进化环**(octoloop outer 第 5 步):改判/R2 记档由常驻哨采进 `.octos/EVOLUTION.md`,定期 `olp-evo-harvest.sh`+`olp-evo-retro.sh`(`OLP_EVO_REVIEW_BOARD=.octos/boards/app-lighting.md`)出简报;外环人工判跨条目复发,落成 `knowledge/context/evolution/FLAW-NNN.md` 记录(每次最多 3 条),同时把规则精炼成一行进 DIGEST/RUNBOOK、能改工具的改工具。
 - `*.png/*.jpeg/*.jar/*.stderr` 默认被 `.gitignore` 忽略;README 引用到的证据截图用 `git add -f`,大二进制和 stderr 日志不入库。
 - **仓库是公开的**(github.com/A2OH/westlake-harness):不提交密码、服务器账号、个人数据。
+- **脚本不写死跟用户绑定的绝对路径**(用户 2026-09-30 定,`/Users/<名>`、`/home/<名>` 都不行):工作区用 `WORKSPACES`(`scripts/lab/lab_paths.sh` / `lab_paths.py` 解析)、家目录用 `$HOME`/`Path.home()`、仓库用脚本自身位置、hw248 路径走环境变量;门禁 `python3 scripts/lab/check_user_paths.py`,例外只进 `knowledge/gates/user-path-exceptions.json`(录制的证据、作者原构建路径等)。
 - 上板的运行时产物(.so / jar / boot image),其源码快照、补丁序列、工具链哈希与构建脚本必须一并入库或存到持久位置(大文件放 hw248 `/home/alvin/`,仓库里记路径与哈希)。只留产物会让修复锁死在一台会消失的构建机上(DIGEST E.7「B6 为什么慢」)。
 
 ## 提交与推送
