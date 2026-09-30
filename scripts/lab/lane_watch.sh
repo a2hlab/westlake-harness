@@ -11,7 +11,7 @@ import json, re, subprocess, sys, time
 
 # status lines of a pane that is still busy: octoscode "state ✧ Working|Orchestrating|Thinking", codex "• Working (",
 # claude between turns while its own background job runs "· 1 shell still running" (it resumes when the job ends)
-BUSY = re.compile(r"^\s*state\s+\S+\s+(Working|Orchestrating|Thinking)|^\s*• Working \(|\d+ shells? still running", re.M)
+BUSY = re.compile(r"^\s*state\s+\S+\s+(Working|Orchestrating|Thinking)|^\s*• Working \(|\d+ shells? still\s+running", re.M)  # \s+: the pane wraps "still / running" (07:14)
 
 # octoscode's own status line when its octos serve session broke (connection_closed, cursor_expired,
 # session_open_rejected): herdr may still report the pane idle or working, so it is checked separately
