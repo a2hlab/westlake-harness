@@ -1,7 +1,8 @@
 """Compare the new frozen analysis with the accepted v1 summary."""
 import json
 from pathlib import Path
-p=Path('/Users/zhaoyue/orca/workspaces/westlake-harness-static-100/benchmark/2026-09-24-static-100')
+import lab_paths
+p=lab_paths.workspaces()/'westlake-harness-static-100/benchmark/2026-09-24-static-100'
 old=json.loads((p/'evidence/v1-summary.json').read_text());a=json.loads((p/'audit.json').read_text());new=json.loads((p/'gap-analysis.json').read_text());board=json.loads((p/'leaderboard.json').read_text())
 metrics={'app_count':(len(old['apps']),len(a['apps'])),'gap_count':(old['gap_count'],len(new['gaps'])),'hard_gap_count':(old['hard_gap_count'],sum(x['hard_apps']>0 for x in new['gaps'])),'missing_member_count':(old['missing_member_count'],len(new['missing_members']))}
 rows=[]

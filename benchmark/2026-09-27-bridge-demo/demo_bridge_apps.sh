@@ -29,8 +29,9 @@ esac
 S61="$SERIAL"
 
 HDC="/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc"
-HDC_MAC="/Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+. "$HERE/../../scripts/lab/lab_paths.sh" || exit 1
+HDC_MAC="$WORKSPACES/westlake-inputs/tools/hdc_mac.sh"
 KEEPER_SRC="$HERE/../2026-09-27-device-provisioning/onscreen_keeper.sh"   # proven keyguard-dismiss daemon
 D="/data/local/tmp/operator45"; F="$D/selfheal48"
 RUNTAG="$(date +%m%d-%H%M%S)"

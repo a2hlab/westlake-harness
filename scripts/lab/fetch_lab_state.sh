@@ -11,9 +11,14 @@
 # VM-side bundles (a2hlab-toolchains, a2hlab-source) land in $A2HLAB_STAGE (default $WORKSPACES/_a2hlab);
 # --into-vm then copies that into the OrbStack VM's ~/a2hlab (the VM sees the Mac's /Users paths).
 set -euo pipefail
+# workspaces = $WORKSPACES, else the nearest ancestor of this script that holds westlake-inputs/ (works from
+# scripts/lab/ in the repo and from its copy in westlake-inputs/tools/); no user-specific literals (AGENTS.md)
+lab_workspaces() { local d; d=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+  while [ "$d" != / ] && [ ! -d "$d/westlake-inputs" ]; do d=$(dirname "$d"); done
+  [ -d "$d/westlake-inputs" ] && echo "$d"; }
 H=${LAB_STATE_HOST:-hw248}
-DEST=${LAB_STATE_DIR:-/home/alvin/westlake-oh6.1-lab-state-20260930}
-W=${WORKSPACES:-$HOME/orca/workspaces}
+DEST=${LAB_STATE_DIR:?set LAB_STATE_DIR to the mirror dir on hw248 (env.md §5)}
+W=${WORKSPACES:-$(lab_workspaces)}; [ -n "$W" ] || { echo "cannot find the workspaces dir; set WORKSPACES"; exit 2; }
 A2=${A2HLAB_STAGE:-$W/_a2hlab}
 ARC=$W/_lab-archives
 export RSYNC_RSH="ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=10"

@@ -11,9 +11,15 @@ RUN sed -i -e 's#http://archive.ubuntu.com/ubuntu#http://mirrors.huaweicloud.com
       build-essential ccache git git-lfs curl ca-certificates file make patch rsync \
       unzip zip xz-utils zstd bzip2 python3 python3-yaml python3-venv util-linux xxd sudo \
  && rm -rf /var/lib/apt/lists/*
-# Same uid/gid as the VM user, so files written into the shared workspace keep their owner.
+# Same user name, uid/gid and home as the VM user, so files written into the shared workspace keep their
+# owner and the VM's ~/a2hlab paths hold in the container. dockbuild.sh image passes the VM user's values.
+ARG LAB_USER=lab
+ARG LAB_UID=501
+ARG LAB_GID=501
+ARG LAB_HOME=/home/${LAB_USER}
 RUN (userdel -r ubuntu 2>/dev/null || true) \
- && groupadd -g 501 zhaoyue && useradd -u 501 -g 501 -m -d /home/zhaoyue -s /bin/bash zhaoyue \
- && echo 'zhaoyue ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/zhaoyue
-USER zhaoyue
-ENV HOME=/home/zhaoyue
+ && groupadd -g "${LAB_GID}" "${LAB_USER}" \
+ && useradd -u "${LAB_UID}" -g "${LAB_GID}" -m -d "${LAB_HOME}" -s /bin/bash "${LAB_USER}" \
+ && echo "${LAB_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${LAB_USER}"
+USER ${LAB_USER}
+ENV HOME=${LAB_HOME}

@@ -14,6 +14,7 @@
 - **shell 陷阱**:`ls`=eza(带 OSC-8 超链接)、`du`=dust、`grep`=ugrep(复杂正则会超限)、`cat`=bat → 解析输出时用 `/bin/ls`、`/usr/bin/grep`、`command du`。zsh **不拆分 `$var`**(用 `${=var}` 或数组/glob),把整串当一个文件名且被 `2>/dev/null` 吞掉时会得到"假干净"。macOS 自带 bash 3.2 没有 `mapfile`。
 - `pgrep -f`/`pkill -f` 会匹配到自己的命令行(在 `hdc shell "…"` 里计数恒 +1)→ 用 `scripts/lab/stop_by_pattern.sh` 或 `pgrep -f '[x]yz'`。
 - **长跑的 bash 脚本别在运行中改它**:bash 按字节偏移边读边执行,改了前面的行,当前复合命令跑完后会从错位处读下一条(2026-09-30 迁移上传差点中招)。要跑几小时的脚本先 `cp` 一份副本再 `bash <副本>`,仓库里的原件随便改。
+- **路径不绑用户名**(用户 2026-09-30 定):脚本的工作区目录 = 环境变量 `WORKSPACES`;没设就从脚本自身的真实位置往上找第一个含 `westlake-inputs/` 或 `westlake-harness/` 的目录(`scripts/lab/` 与其镜像 `westlake-inputs/tools/` 深度不同,不能写固定 `../..`)。bash 用 `. "$(dirname "${BASH_SOURCE[0]}")/lab_paths.sh"`,Python 用 `import lab_paths`(镜像两处都要有这两个文件);VM 家目录 `lab_vm_home` / `lab_paths.vm_home()`(Mac 上问 VM,`A2HLAB_VM_HOME` 可覆盖),VM 里要 Mac 家目录用 `lab_mac_home`(`MAC_HOME`)。门禁 `python3 scripts/lab/check_user_paths.py`,例外表 `knowledge/gates/user-path-exceptions.json`。
 - **换机**:按根目录 `env.md`。OLP 黑板(`.octos/boards/`、`OUTER_LOOP_REVIEW.md`、`EVOLUTION.md`)按设计不入 git,换机靠 hw248 的 `octos-state` 包带过去;`scripts/lab/push_lab_state.sh` 只在 hw248 与本机校验清单完全一致时跳过,切换前重跑一遍即可刷新。
 
 **OH 板**:DAYU600,OpenHarmony 6.1.0.31,1200×1920,纯 64 位用户态。板上 toybox 没有 `awk`/`tr`/`ip`/`route`/`wpa_cli`/`ndc`;hdc shell 是 root、`u:r:su:s0`(permissive)。
@@ -80,7 +81,7 @@
 - **octoscode 车道忙时收到的 `herdr pane run` 会丢**(2026-09-30 oc-t4 两次:外环 08:32、09:21 的批复它都没看到,回合结束后仍写「待外环批」)。给 octoscode 派单后 10 秒内读窗格,状态栏要出现新的 `Step 1`/`Working`;没有就等它回合结束(`state · Idle`)再发一次。
 - **VM 里经 `mac <命令>` 调 Mac 侧工具,偶发退出码 0 但输出为空**(OrbStack mac 桥瞬时故障;B4 批量 20:25 因 `board_note.sh held` 空输出误判丢锁而停在 61/66)。以 Mac 侧命令输出做门禁的脚本,对空输出隔几秒重试一次再判停。
 
-- 黑板 `.octos/OUTER_LOOP_REVIEW.md` 只追加,写入用 `~/workspace/octoscode/scripts/olp-board-append.sh`;机读视图 `scripts/lab/board_status.py --lane <车道> --open`(旧的 `board_acks.py` 认不出 `ACK(done: …)`)。
+- 黑板 `.octos/OUTER_LOOP_REVIEW.md` 只追加,写入用 `scripts/lab/board_append.sh <绝对路径> "<正文>"`(或正文走 stdin):它拒绝空正文与相对路径,经 `olp-board-append.sh` 加锁追加后回读,没落板就退 1。**直接调 `olp-board-append.sh` 时正文只能走 stdin**——当参数传会被静默丢弃、零输出退 0(EVO-0034:13:22 的 U2 签认就这样落空,外环还报了已签认);机读视图 `scripts/lab/board_status.py --lane <车道> --open`(旧的 `board_acks.py` 认不出 `ACK(done: …)`)。
 - **结构化调度**(Markdown 仍是唯一事实源,只加行首定式):车道用 `board_note.sh` 写 `PROGRESS(N)`(每里程碑或 ≤20 分钟)与 `LOCK/UNLOCK(<serial>)`(flock 持有进程真互斥,exit 75=别人持有);依赖取 spec 的 `depends:`。外环看 `board_status.py <板> --schedule --text`,哨用 `--watch`(ACK、可派发、停滞、锁异常即退出)。有意停放的条目(等别的板/别的条目)写 `WAIT(N): <时间> <署名> <等什么>`,在该车道下一条 PROGRESS 之前不算停滞,`--schedule` 显示 WAITING。看板:`board_dash.sh --loop 30`(herdr `app-lighting` 工作区 `dash` 标签页)。
 - **一个战役一块新黑板**(2026-09-28 用户决定):`.octos/boards/<战役>.md`,编号从 #1 起;`.octos/OUTER_LOOP_REVIEW.md` 只做索引。车道名写在条目标题 `[cc-tN]`,`board_status.py <板> --lane <车道> --open` 取自己的条目。
 - **旧板归档方法**:在 `flock -x <板>.lock` 下把旧内容 `head -n <边界前一行>` 原样移进 `.octos/archive/OUTER_LOOP_REVIEW-<年月>-<战役>.md`,用 `cat 归档 <(tail -n +<边界>) | cmp - 原板` 证明逐字节无损,再写新头部 + 在途条目。换本前先确认没有挂着的侦听哨(哨按行数基线判定)。2026-09-28 头条战役 #1–#50(4009 行)已归档,新板从 #51 起。

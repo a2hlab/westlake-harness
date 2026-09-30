@@ -11,11 +11,22 @@
 
 | 内容 | 位置 | 说明 |
 |---|---|---|
-| 代码、知识、全部分支 | `github.com/a2hlab/westlake-harness`(公开) | master + 所有特性/分析分支 + `wip/20260930/*`(换机时各车道 worktree 里未提交的工作快照) |
-| 不进 git 的一切(运行包、板状态备份、JAR、工具链、APK、VM 源码、原始运行记录、历史代包) | hw248 `/home/alvin/westlake-oh6.1-lab-state-20260930/` | **只放 hw248,不上 GitHub**(仓库公开;商业 APK 有版权)。每个包带 `<包>.SHA256SUMS`,取的时候逐文件校验 |
-| 整库 git bundle | hw248 同目录 `git/westlake-harness-all.bundle` | GitHub 不通时 `git clone westlake-harness-all.bundle` 也能拿到全部分支 |
+| 代码、知识、全部分支 | `github.com/a2hlab/westlake-harness`(公开) | master + 所有特性/分析分支 + `wip/20260930/*`(换机时各车道 worktree 里未提交的工作快照)。**用这个**,两个同名仓库的区别见下 |
+| **一次搬完(首选)** | 旧 Mac 上 `scripts/lab/pack_airdrop.sh` 打出的一个文件夹(4 GB 分卷 + SHA256SUMS + 解包脚本),AirDrop 或移动硬盘带过去 | 内含全部仓库的 git bundle、全部 worktree 清单、黑板、运行包、板状态、JAR、APK、VM 工具链与源码、原始运行记录。新 Mac 上 `bash <文件夹>/unpack_airdrop.sh <workspaces 目录>` 一条命令还原(§5) |
+| 不进 git 的一切的服务器镜像 | hw248 上 `$LAB_STATE_DIR`(操作者告知的目录) | **只放 hw248,不上 GitHub**(仓库公开;商业 APK 有版权)。每个包带 `<包>.SHA256SUMS`;AirDrop 不方便时用 `fetch_lab_state.sh` 从这里拉 |
 | 伴随仓库 | `A2OH/westlake`、`a2hlab/westlake`(私有)、`a2hlab/00.Workspace`、`a2hlab/01.OH61AOSP16`(分支 `zhao`)、`a2hlab/manifest`(分支 `local-pins-main`)、`a2hlab/harmony` | 换机时均已与远端同步;它们不进 git 的文件在 hw248 的 `companion-untracked` 包 |
-| agent 工具 | `octos-org/octoscode`、`hagency-org/herdr`(分支 `feat/octoscode-agent`)、npm `@octos-org/octos` | 见 §4 |
+| agent 工具 | `octos-org/octoscode`、`hagency-org/herdr`(分支 `feat/octoscode-agent`)、npm `@octos-org/octos` | 新 Mac 自行安装(§4),不在搬运包里 |
+
+**两个 westlake-harness 的区别**(2026-09-30 核对):
+
+| | `A2OH/westlake-harness` | `a2hlab/westlake-harness` |
+|---|---|---|
+| 身份 | **原始仓库**(上游,2026-08-20 建,A2OH 组织) | **你自己上传的**(2026-09-29 在 a2hlab 组织新建,不是 fork) |
+| 内容 | master 停在 `60afc31d`(2026-09-26,PR #20),6 个分支 | master = 原始 master 全部内容 + 本次战役 213 个提交,71 个分支(含全部车道分支与 `wip/20260930/*`) |
+| 权限 | 当前 gh 账号只读(push=false) | 可推(admin) |
+| 本地 remote 名 | `origin`(只读上游,用来看别人的新提交) | `a2hlab`(日常 push 到这里) |
+
+两者没有冲突:原始 master 的每个提交都包含在 a2hlab 的 master 里(`git merge-base --is-ancestor origin/master a2hlab/master` 为真)。以后要回馈上游,从 a2hlab 的分支向 A2OH 提 PR。
 
 取制品:`scripts/lab/fetch_lab_state.sh`(§5)。旧机器上生成/补传镜像:`scripts/lab/push_lab_state.sh`(可续传,已校验的包自动跳过)。
 
@@ -32,13 +43,13 @@
 
 ---
 
-## 2. 目录布局(脚本写死了路径)
+## 2. 目录布局
 
-`scripts/lab/` 里 20 多个脚本和 `.octos/` 文档写死了 `/Users/zhaoyue/orca/workspaces/...`、`~/workspace/octoscode`、`~/.octos`。**最省事:新机器用户名也叫 `zhaoyue`**;否则 `sudo ln -s "$HOME" /Users/zhaoyue`,再按下面的布局放。
+**workspaces 目录 = 本仓库的上一级目录**,放在哪、叫什么都行(例如新 Mac 上的 `~/alvin/`)。脚本不写任何带用户名的绝对路径(用户 2026-09-30 定,门禁 `scripts/lab/check_user_paths.py`):先看环境变量 `WORKSPACES`,没有就从脚本自身位置往上找含 `westlake-inputs/` 的目录;家目录下的东西一律 `$HOME/...`。不需要建 `/Users/<旧用户名>` 软链。黑板和旧文档里出现的 `/Users/zhaoyue/orca/workspaces/...` 是旧机器上的历史路径,读的时候换成你的 workspaces 目录。
 
 ```
 ~/orca/westlake/                          A2OH/westlake(Westlake 主仓,抄验证过的实现从这里找)
-~/orca/workspaces/
+<workspaces>/
   westlake-harness/                       本仓库 master(外环在这里)
   westlake-harness-<名>/                  各车道 worktree,见 §3 表
   westlake-inputs/                        APK 语料 apks/(18 GB)+ tools/ + webview/ + board/ + venv/ + *.json 语料清单
@@ -58,7 +69,7 @@
 ~/.octos/                                 octos 状态:profiles/(含 key,不入库)、board-locks/、outer/evo/
 ```
 
-VM `a2hlab` 里(`~` = `/home/zhaoyue`):
+VM `a2hlab` 里(`~` = VM 用户的家目录,OrbStack 下与 Mac 用户同名):
 
 ```
 ~/a2hlab/ws/                    构建工作区;必须 bind mount 到作者原路径 /home/dspfac/a2hlab/source-closure/verify
@@ -74,16 +85,18 @@ VM `a2hlab` 里(`~` = `/home/zhaoyue`):
 
 ## 3. 仓库
 
+用 §5a 的解包脚本时仓库已经就位、remote 已配好,这一节可跳过。手工克隆:
+
 ```sh
-mkdir -p ~/orca/workspaces && cd ~/orca/workspaces
-git clone https://github.com/a2hlab/westlake-harness.git
+cd <workspaces>                                                       # 例如 ~/alvin
+git clone https://github.com/a2hlab/westlake-harness.git              # 你自己上传的那份(全)
 cd westlake-harness
 git remote rename origin a2hlab
-git remote add origin https://github.com/A2OH/westlake-harness   # 上游,只读
+git remote add origin https://github.com/A2OH/westlake-harness        # 原始上游,只读
 git fetch --all
 ```
 
-- **推送去 `a2hlab`**(A2OH 上游当前账号无推送权限)。推送一律等用户明示(AGENTS.md)。
+- **推送去 `a2hlab`**(原始仓库 A2OH 当前账号无推送权限)。推送一律等用户明示(AGENTS.md)。
 - commit-msg 钩子:本机放在 `~/.config/git/hooks`(`git config --global core.hooksPath ~/.config/git/hooks`),拒收 Claude 署名行。新机器照样配,不要 `--no-verify`。
 - 车道 worktree 按需重建,例如 `git worktree add ../westlake-harness-bms-deploy feat/bms-route-deploy`。当前车道对应关系:
 
@@ -105,6 +118,8 @@ git fetch --all
 ---
 
 ## 4. 工具清单(控制端 Mac)
+
+**一键**:解包后在新 Mac 上 `scripts/lab/setup_new_mac.sh`(只报告缺什么)→ `scripts/lab/setup_new_mac.sh install`(装能自动装的:brew 包、OrbStack、Android SDK、mise 的 JDK/Python、venv〔`scripts/lab/venv-requirements.txt`〕、agent-spec、建 VM 并同步 `_a2hlab`、bind mount、dockbuild 镜像)→ 再跑一次 `check` 直到 ALL OK。标 MANUAL 的(Xcode 命令行工具、Homebrew 本身、DevEco Studio、agent CLI、凭据)要你亲手做。下表是它背后的清单。
 
 | 工具 | 本机版本 | 装法 / 备注 |
 |---|---|---|
@@ -128,40 +143,56 @@ git fetch --all
 | kimi-code | `~/.kimi-code/bin/kimi` | kimi 车道 |
 | agent-spec | 1.4.0 | `agent-spec lint specs/<主题>/t*.spec.md --min-score 0.7` |
 
-每次开工前:`source ~/orca/workspaces/westlake-inputs/env-mac.sh`(cc/readelf/sha256sum shim + mise 钉住的 JDK/Python;不 source 时测试 2 fail 4 error)。
+每次开工前:`source <workspaces>/westlake-inputs/env-mac.sh`(cc/readelf/sha256sum shim + mise 钉住的 JDK/Python;不 source 时测试 2 fail 4 error)。
 
 **shell 陷阱**:本机 `ls/cat/grep/du/df` 被别名成 eza/bat/ugrep/dust/duf,脚本里一律写 `/bin/ls`、`/usr/bin/grep`、`command du`;zsh 不拆分 `$var`。新机器若没有这些别名,反而更干净。
 
 ---
 
-## 5. 取制品
+## 5. 搬运代码与制品
+
+### 5a. AirDrop / 移动硬盘(首选,一次搬完)
+
+旧 Mac:
 
 ```sh
-cd ~/orca/workspaces/westlake-harness
-scripts/lab/fetch_lab_state.sh --list                  # hw248 上有哪些包、多大
-scripts/lab/fetch_lab_state.sh --into-vm               # 默认 6 个包:上板要的全部 + VM 工具链,校验后放进 VM ~/a2hlab
-scripts/lab/fetch_lab_state.sh a2hlab-source --into-vm # 要重编运行时再拉
-scripts/lab/fetch_lab_state.sh harness-untracked workspaces-history companion-untracked dot-octos-outer git   # 完整复现/复核旧结论
+scripts/lab/pack_airdrop.sh            # 输出 <workspaces>/_airdrop-<日期>/,约 50 GB;可重跑,只补缺的
 ```
 
-需要 `ssh hw248` 能登录(§8)、本机有 `rsync zstd`。可续传,断了重跑同一条命令。
+把整个 `_airdrop-<日期>/` 文件夹 AirDrop(或拷移动硬盘)到新 Mac,然后在新 Mac 上:
 
-| 包 | 形式 | 解到 | 内容 |
-|---|---|---|---|
-| `generations` | 目录 | `~/orca/workspaces/` | v3c 底座、N2(当前)、N1(回滚用)、asset-fd runtime、FZ-001 安装器(含源码 tar) |
-| `generation-state` | 目录 | `~/orca/workspaces/` | 三块板的部署状态与原厂文件备份——**回滚与 `deploy_generation.sh --upgrade` 都要读它**;旧机器之后若又部署过,要补传(`push_lab_state.sh --steps live`) |
-| `vm-copies` | 目录 | `~/orca/workspaces/` | 全部 JAR 版本 |
-| `inputs` | 目录 | `~/orca/workspaces/` | `westlake-inputs`(不含 apks、venv)、`oh61-bms-kit`、`westlake-b90-controls-inputs` |
-| `apks` | 目录 | `~/orca/workspaces/` | `westlake-inputs/apks/`(18 GB,含商业 APK) |
-| `a2hlab-toolchains` | 目录 | `_a2hlab/ws/` → VM `~/a2hlab/ws/` | 锁定构建工具链 clang-15(feef13a3)、ohos-sdk、jdk21、build-tools35、kotlin、rust;逐字节复现只认这一份 |
-| `a2hlab-source` | tar.zst | `_a2hlab/` → VM `~/a2hlab/` | `ws/android-source`(16 GB)、`ws/inputs`、`ws/westlake-all0925`、`ws/art-108-e6af1cd8`、`tools/`(libmap32bit.so)、`manifest/` |
-| `harness-untracked` | tar.zst | `~/orca/workspaces/` | 本仓库全部 61 个 worktree 里 git 不跟踪的文件:各次横扫的原始运行目录(截图、hilog、faultlog)、`bms/src/.work` 构建工作区(route-A 各代生成物与冻结工具链) |
-| `workspaces-history` | tar.zst | `~/orca/workspaces/` | 历史代包(v2/v3/b87/b92/b93/flutter/html-compat…)、一次性源码树、`westlake-bms-suite` 以外的其余目录 |
-| `companion-untracked` | tar.zst | `~/orca/workspaces/` | 00.Workspace、real-work(18 GB 构建产物)、westlake-bms-suite、harmony-main-adapter 里 git 不跟踪的文件 |
-| `dot-octos-outer` | tar.zst | `~/.octos/` | 外环状态(进化环采集游标 `outer/evo/`、watch-board 脚本);不含 profiles(有 key) |
-| `git` | bundle | `_lab-archives/git/` | 整库 bundle,含全部分支 |
+```sh
+brew install zstd
+bash ~/Downloads/_airdrop-<日期>/unpack_airdrop.sh ~/alvin     # 参数 = 你的 workspaces 目录
+```
 
-tar.zst 包按文件名排序打包,用 `zstd --long=31` 去重(历史代包之间大量同名同内容文件),手工解包:`zstd -d --long=31 -c <包> | tar -xf - -C <目标>`;同目录的 `<包>.tar.zst.files` 是成员清单。
+它依次:①逐文件核 SHA256SUMS;②从 bundle 克隆 westlake-harness(远程 `a2hlab` 指回 GitHub,`origin` 为只读上游)、Westlake(到 `~/orca/westlake`)、00.Workspace、real-work、harmony;③重建 61 个 worktree(含 `wip/20260930/*` 以外的全部车道分支);④解运行状态,顺序为 live → inputs-tools → 历史代包 → 伴随仓库未跟踪文件 → 原始运行记录 → 黑板(最后,保证最新)→ VM 包(到 `<workspaces>/_a2hlab/`)。重跑会跳过已完成的部分。新 Mac 需约 200 GB 空闲。
+
+| 分卷成员 | 解到 | 内容 |
+|---|---|---|
+| `git/*.bundle` + `repos.tsv` + `worktrees.tsv` | 各仓库位置 | 全部 ref;worktree 清单(路径 + 分支) |
+| `live` | `<workspaces>/` | 当前运行包(v3c 底座、N2、N1、asset-fd、FZ-001 安装器)、`westlake-generation-state`(三板部署状态与原厂备份,回滚必需)、`vm-copies`(全部 JAR)、`westlake-inputs`(含 18 GB APK,不含 venv/tools)、`oh61-bms-kit`、`westlake-b90-controls-inputs` |
+| `inputs-tools` | `<workspaces>/westlake-inputs/tools/` | 车道日常调用的脚本副本(每次打包都重打,保证与仓库一致) |
+| `a2hlab-vm` | `<workspaces>/_a2hlab/` → VM `~/a2hlab/` | 锁定工具链 clang-15(feef13a3)/ohos-sdk/jdk21/build-tools35/kotlin/rust、`android-source`(16 GB)、构建输入、`westlake` 源码、`westlake-all0925`、`art-108`、`tools/`(libmap32bit.so)、`manifest/` |
+| `harness-untracked` | `<workspaces>/` | 61 个 worktree 里 git 不跟踪的文件:各次横扫原始运行目录(截图、hilog、faultlog)、`bms/src/.work`(route-A 各代生成物与冻结工具链) |
+| `workspaces-history` | `<workspaces>/` | 历史代包(v2/v3/b87/b92/b93/flutter/html-compat…)与一次性源码树 |
+| `companion-untracked` | `<workspaces>/` | 00.Workspace、real-work(18 GB 构建产物)、westlake-bms-suite、harmony-main-adapter 里 git 不跟踪的文件 |
+| `octos-state` | `<workspaces>/westlake-harness/.octos/` | OLP 黑板(按设计不入 git) |
+
+大成员按 4000 MB 分卷,AirDrop 中断只需重传失败的那一卷。tar.zst 按文件名排序后用 `zstd --long=31` 去重(52 GiB 原始运行记录压到约 4 GiB);手工解包:`cat <成员>.part* | zstd -d --long=31 | tar -xf - -C <目标>`,同目录 `<成员>.tar.zst.files` 是成员清单。
+
+### 5b. 从 hw248 拉(不在一处时)
+
+同一批制品在 hw248 上有镜像(不含 git bundle 以外的仓库),目录由操作者告知:
+
+```sh
+export LAB_STATE_DIR=<hw248 上的镜像目录>
+scripts/lab/fetch_lab_state.sh --list
+scripts/lab/fetch_lab_state.sh --into-vm               # 上板要的全部 + VM 工具链
+scripts/lab/fetch_lab_state.sh a2hlab-source harness-untracked workspaces-history companion-untracked git
+```
+
+旧机器补传:`LAB_STATE_DIR=… scripts/lab/push_lab_state.sh`(只在 hw248 与本机校验清单完全一致时跳过)。
 
 制品没下完也能先跑代码侧:单测、静态扫描、`check_frozen.py`。上板必须先有 `generations` + `generation-state` + `vm-copies` + `apks`。
 
@@ -206,6 +237,16 @@ orb -m a2hlab bash -lc 'git clone https://github.com/a2hlab/westlake.git ~/a2hla
 - **绝不 `kill -9` appspawn-x 主进程**(init 会崩、整机掉线);停起用 `begetctl stop_service/start_service appspawn-x`。
 - 板子要连 WiFi 才能跑联网 app;Wikipedia 在本地网络下受 DNS 污染,需要代理/VPN(DIGEST)。
 
+### 7b. 换成新板(同为 DAYU600 + OpenHarmony 6.1.0.31,但没有我们的任何改动)
+
+可以,但**还没有人在干净板上一口气走通过**——现有三块板是分层叠出来的,第一块新板预留几小时排错。
+
+1. 新板加进 `knowledge/boards.json`(serial、label、kind=oh);所有工具的白名单都从这里读,不用改代码。
+2. `python3 scripts/lab/bringup_clean_board.py check <serial>`:白名单、在线、ROM 名称、aarch64、47 个库的固件门(`knowledge/firmware/oh61-firmware-libs.sha256`)。不过就停,多半是镜像不同。
+3. `python3 scripts/lab/bringup_clean_board.py plan`:按序列出布板链路(上手 → PR03 恢复 → FZ-001 安装器 `swap_installer.py` → v3c → N2 → J2 叠层)和每步命令。
+4. 每布完一步跑 `bringup_clean_board.py diff <serial>`:与 `benchmark/2026-09-30-board-inventory/5ea/` 逐文件比,缺的/不同的文件都会列出本机哪个运行包里有同哈希的来源。报告 0 missing / 0 different、横扫 facts 首行指纹为 `937e2a6d0d88` 才算到 U2。
+5. 旧板的 `westlake-generation-state/<旧序列号>/` 对新板无用;新板第一次部署会自己建。
+
 ---
 
 ## 8. 凭据与账号(不入库,找操作者要)
@@ -223,14 +264,14 @@ orb -m a2hlab bash -lc 'git clone https://github.com/a2hlab/westlake.git ~/a2hla
 ## 9. 冒烟自检(按顺序,全过才算环境就绪)
 
 ```sh
-source ~/orca/workspaces/westlake-inputs/env-mac.sh
-cd ~/orca/workspaces/westlake-harness
+source <workspaces>/westlake-inputs/env-mac.sh
+cd <workspaces>/westlake-harness
 python3 -m unittest scripts/lab/test_check_frozen.py scripts/lab/test_compare_runs.py   # 15 + 7 通过
 python3 scripts/lab/check_frozen.py --package ../westlake-generation-n2-51a78bde         # 0 violation
 (cd tools/spec-checks && cargo test)                                                     # agent-spec 测试层
 $HDC list targets                                                                        # 三块板
 scripts/lab/dockbuild.sh check                                                           # 构建挂载
-ssh hw248 'ls /home/alvin/westlake-oh6.1-lab-state-20260930'                             # 制品镜像可达
+ssh hw248 "ls $LAB_STATE_DIR"                                                            # 制品镜像可达(用 5b 时)
 herdr --version && octos --version && octoscode --version && codex --version && claude --version
 ```
 

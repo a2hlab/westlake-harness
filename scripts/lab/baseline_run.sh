@@ -5,6 +5,7 @@
 # Runs the manifest launcher inside VM a2hlab through tools/hdc_mac.sh; screenshots land in ~/.octos/outer/board/<tag>/.
 set -u
 S=$1; FW=$2; TAG=$3; shift 3
+. "$(dirname "${BASH_SOURCE[0]}")/lab_paths.sh" || exit 1
 H=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc
 WAIT=${WAIT:-35}
 SHOTS=~/.octos/outer/board/$TAG; mkdir -p "$SHOTS"
@@ -22,7 +23,7 @@ for key in "$@"; do
   [ "$key" = toutiao ] && extra="--android-native-target libvision_core.so --android-native-target libc++_shared.so"
   out=$(orb -m a2hlab bash -lc "W=/home/dspfac/a2hlab/source-closure/verify; cd ~/a2hlab/manifest && python3 tools/probe_source_app.py \
     --workspace \$W --westlake-source \$W/westlake --framework-report $FW --app-input ~/a2hlab/app-inputs/$key --app $key \
-    --hdc /Users/zhaoyue/orca/workspaces/westlake-inputs/tools/hdc_mac.sh --serial $S --out ~/a2hlab/board/$S/$TAG/$key \
+    --hdc $WORKSPACES/westlake-inputs/tools/hdc_mac.sh --serial $S --out ~/a2hlab/board/$S/$TAG/$key \
     --host-build \$W/out/signed-host --webview-input \$W/out/webview-input-source $extra 2>&1 | tail -3")
   spawned=$(printf '%s\n' "$out" | grep -o 'SOURCE_APP_SPAWNED.*')
   if [ -z "$spawned" ]; then

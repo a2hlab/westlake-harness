@@ -20,9 +20,24 @@ import time
 import uuid
 import zipfile
 
-SERIALS = {'5ea34a4500000000000000001123012c',
-           '5cd1e3dd00000000000000000923012c',
-           '61b0657200000000000000000324012c'}
+def _board_whitelist():
+    """OH boards this tool may touch: knowledge/boards.json via scripts/lab/lab_paths.py (data, not code, so a
+    new board is one JSON entry). Found from this file's repo, else from the main checkout in WORKSPACES /
+    the nearest ancestor holding westlake-inputs/ (copies of this file inside generation packages)."""
+    here = Path(__file__).resolve()
+    roots = [d for d in here.parents if (d / 'scripts/lab/lab_paths.py').is_file()]
+    ws = os.environ.get('WORKSPACES') or next((str(d) for d in here.parents if (d / 'westlake-inputs').is_dir()), None)
+    if ws:
+        roots.append(Path(ws) / 'westlake-harness')
+    for r in roots:
+        if (r / 'scripts/lab/lab_paths.py').is_file():
+            sys.path.insert(0, str(r / 'scripts/lab'))
+            import lab_paths
+            return set(lab_paths.boards('oh'))
+    sys.exit('bms_batch: cannot find scripts/lab/lab_paths.py for the board whitelist; set WORKSPACES')
+
+
+SERIALS = _board_whitelist()
 IDENT = re.compile(r'[A-Za-z_][A-Za-z0-9_.]*\Z')
 ACTIVITY = re.compile(r'[A-Za-z_][A-Za-z0-9_.$]*\Z')
 KEY = re.compile(r'[A-Za-z0-9_-]+\Z')

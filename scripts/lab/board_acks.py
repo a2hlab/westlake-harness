@@ -13,7 +13,11 @@ if "--since-line" in args:
     i = args.index("--since-line")
     since = int(args[i + 1])
     del args[i:i + 2]
-board = args[0] if args else "/Users/zhaoyue/orca/workspaces/westlake-harness/.octos/OUTER_LOOP_REVIEW.md"
+if args:
+    board = args[0]
+else:
+    import lab_paths  # default: the board in the main checkout <WORKSPACES>/westlake-harness
+    board = str(lab_paths.harness() / ".octos/OUTER_LOOP_REVIEW.md")
 
 entry, acks, entries = None, {}, []
 for n, line in enumerate(open(board, encoding="utf-8", errors="replace"), 1):

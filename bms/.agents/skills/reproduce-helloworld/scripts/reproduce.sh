@@ -17,13 +17,13 @@ BOARD_5EA1="5ea1719200000000000000001123012c"
 ROM_ONLY="OpenHarmony-6.1.0.31"
 PACKAGE="com.example.helloworld"
 ABILITY="com.example.helloworld.MainActivity"
-APK_PATH="/Users/zhaoyue/orca/.bridge-payload/pr03-74e6-portable/apk/HelloWorld.apk"
+APK_PATH="$HOME/orca/.bridge-payload/pr03-74e6-portable/apk/HelloWorld.apk"
 APK_TARGET="/data/app/el1/bundle/public/$PACKAGE/android/base.apk"
 APK_SHA="2d122a7973ffd68c799700aaaaaa0593e5deec30bac83e22a9dc1bf9f64319fd"
 GENERATION="74e6f75976087d7890088b29c08482f17573a588fa5857cb6ca39264838ce16d"
 PROVIDER_TARGET="/system/lib64/westlake/route-a/$GENERATION/libwestlake_android_runtime_provider.so"
 
-RESTORE_DRIVER_SHA="dc98e77e1fc1f54d827d5b5b80badc43752e659bbcd2778b961b2f5d8d01e61b"
+RESTORE_DRIVER_SHA="76ffae6d306c84ef54a9cb014820b4be79b23e81ceb07acd1054d2eb51eae293"
 RECOVERY_SCRIPT_SHA="8dde8c4a19926d87a0fb6ef1833a66a0fbdd42d01680188df883838c2c91965b"
 RECOVERY_CFG_SHA="e2d68c9f921fad83db1a2593cf32eebf3306ed4538b2abaa4117cdb417b8581a"
 
@@ -56,6 +56,8 @@ RUN_ROOT="$REPO_ROOT/var/state/reproduce-helloworld"
 
 MODE="${1:-check}"
 BOARD="${2:-$BOARD_ONLY}"
+# boards beyond the ones listed here: knowledge/boards.json (via the repo's scripts/lab/lab_paths.py)
+lab_board_label() { python3 "${REPO_ROOT:-$SCRIPT_DIR/../../../../..}/scripts/lab/lab_paths.py" board-label "$1"; }
 case "$BOARD" in
     "$BOARD_ONLY") BOARD_LABEL=61ae ;;
     "$BOARD_8605") BOARD_LABEL=8605 ;;
@@ -63,7 +65,7 @@ case "$BOARD" in
     "5ea34a4500000000000000001123012c") BOARD_LABEL=5ea ;;
     "61b0657200000000000000000324012c") BOARD_LABEL=61b ;;
     "5cd1e3dd00000000000000000923012c") BOARD_LABEL=5cd ;;
-    *) BOARD_LABEL=unsupported ;;
+    *) BOARD_LABEL=$(lab_board_label "$BOARD") || BOARD_LABEL=unsupported ;;
 esac
 CHANNEL_FILE="$CHANNEL_ROOT/reproduce-helloworld-$BOARD_LABEL.md"
 LOCK_DIR="$LOCK_ROOT/$BOARD.lock"
@@ -156,7 +158,7 @@ device_preflight()
 {
     case "$BOARD" in
         "$BOARD_ONLY"|"$BOARD_8605"|"$BOARD_5EA1"|"5ea34a4500000000000000001123012c"|"61b0657200000000000000000324012c"|"5cd1e3dd00000000000000000923012c") ;;
-        *) die "unsupported direct board: $BOARD" ;;
+        *) [ "$BOARD_LABEL" != unsupported ] || die "unsupported direct board: $BOARD" ;;
     esac
     "$HDC_BIN" list targets 2>/dev/null | tr -d '\r' | grep -qx "$BOARD" \
         || die "$BOARD_LABEL is not connected: $BOARD"

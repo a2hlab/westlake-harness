@@ -3,7 +3,7 @@ from pathlib import Path
 import hashlib,json,re,shutil,subprocess,zipfile
 ROOT=Path(__file__).resolve().parents[3]
 REPORT=Path(__file__).resolve().parent
-OUT=Path('/home/zhaoyue/a2hlab/build-runs/20260928-oh6.1.0.31-b5')
+OUT=Path.home()/'a2hlab/build-runs/20260928-oh6.1.0.31-b5'  # dockbuild: $HOME is the VM user's home
 INPUT=OUT/'inputs';BUILD=OUT/'build';BUILD.mkdir(exist_ok=False)
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 for item in json.loads((REPORT/'build-inputs.json').read_text()):assert sha(INPUT/item['name'])==item['sha256'],item['name']

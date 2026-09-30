@@ -1,0 +1,114 @@
+{
+  "schema": "user-path-exceptions-v1",
+  "gate": "scripts/lab/check_user_paths.py",
+  "rule": "User rule 2026-09-30: tracked scripts must not hard-code an absolute path tied to a user's home (/Users/<name>, /home/<name>). Use WORKSPACES (scripts/lab/lab_paths.sh, lab_paths.py), $HOME / Path.home(), the script's own location, or an env var. The gate is strict; loosening = add an entry here (outer loop reviews it), tightening = delete one. `pattern` starting with '/' is an allowed absolute path prefix (optional `files` globs limit where); any other pattern is an fnmatch glob of repo-relative files that are exempt as a whole.",
+  "exceptions": [
+    {
+      "pattern": "/home/dspfac/a2hlab/source-closure/verify",
+      "reason": "The original author's build path of the source-closure workspace, not this lab's user. The VM bind-mounts ~/a2hlab/ws there on purpose (dockbuild.sh mounts it in containers too) so build outputs and their hashes match the recorded manifests; it must stay literal.",
+      "evidence": ".octos/OPS-RUNBOOK.md section 1 (build VM a2hlab: bind mount at the author path so hashes match the manifest); env.md section 2; scripts/lab/dockbuild.sh header"
+    },
+    {
+      "pattern": "benchmark/*/evidence/*",
+      "reason": "Recorded run evidence. The receipts under benchmark/2026-09-28-bms-route-deploy/evidence/<serial>/ (restore-source.env, receipt.env, result.env, DEVELOPER-REPRODUCIBLE-LIGHT.env) were written by the bms reproduce scripts during the runs and record the payload paths actually used; editing them would falsify the record.",
+      "evidence": "benchmark/2026-09-28-bms-route-deploy/BASELINE.md and baseline-results.json (three-board HelloWorld + ZigZag evidence); the files are outputs of bms/.agents/skills/reproduce-*/scripts/reproduce.sh"
+    },
+    {
+      "pattern": "benchmark/2026-09-28-bms-route-deploy/proposed-zigzag-relocation.patch",
+      "reason": "A recorded proposal: the diff's '-' side is the ZigZag payload pointer as it was found (an old checkout path), the '+' side what was proposed. Rewriting it changes what was proposed; it is not executed.",
+      "evidence": "benchmark/2026-09-28-bms-route-deploy/BASELINE.md (the cloned ZigZag current pointer named an absolute path in games-c-5ea1), script-changes.json"
+    },
+    {
+      "pattern": "benchmark/2026-09-27-app-breadth-sweep/sweep_config.5ea34a45.sh",
+      "reason": "Self-declared verbatim record of the probe_source_app.py command the 2026-09-27 sweep ran ('Concrete example (X), verbatim'); its example() is never called, the file is a copy-paste reference kept as history.",
+      "evidence": "the file's own header (it is the only file in benchmark/2026-09-27-app-breadth-sweep/)"
+    },
+    {
+      "pattern": "/Users/Shared",
+      "reason": "macOS's system-wide shared folder, not a user's home.",
+      "evidence": "bms/src/tools/run_ax_human_board_remote.sh (AX_HUMAN_BOARD_SHARED_OUTPUT default)"
+    },
+    {
+      "pattern": "/home/HanBingChen",
+      "files": [
+        "bms/*"
+      ],
+      "reason": "Upstream developer's build host, inside the verbatim copy of the BMS route (bms/, commit a11565443); deprecated/inner build scripts this lab does not run. Limited to bms/, so a new path of this lab's users there is still caught.",
+      "evidence": "bms/README.md 'Where it came from' (00.Workspace games/boatattack-repro 43ec24af9); git log: the hits date from a11565443"
+    },
+    {
+      "pattern": "/home/alexyang",
+      "files": [
+        "bms/*"
+      ],
+      "reason": "Upstream author's Linux home in the verbatim bms/ copy (a11565443): gz05/WSL build helpers not run by this lab.",
+      "evidence": "bms/README.md; git log (a11565443)"
+    },
+    {
+      "pattern": "/home/AlexYang",
+      "files": [
+        "bms/*"
+      ],
+      "reason": "Upstream author's gz05 build home in the verbatim bms/ copy (a11565443); not run by this lab.",
+      "evidence": "bms/src/adapter/build/run_gz05_container_build.sh; git log (a11565443)"
+    },
+    {
+      "pattern": "/Users/alexyang",
+      "files": [
+        "bms/*"
+      ],
+      "reason": "Upstream author's Mac home in the verbatim bms/ copy (a11565443): kimi/review launchers, launchd plists, SDK defaults of upstream tools this lab does not run.",
+      "evidence": "bms/README.md; git log (a11565443)"
+    },
+    {
+      "pattern": "/Users/yao",
+      "files": [
+        "bms/*"
+      ],
+      "reason": "Upstream collaborator's JDK/signing paths as overridable defaults (JH, SIGN_SRC) in the verbatim bms/ copy (a11565443); the signing tools are not called by lab scripts.",
+      "evidence": "bms/src/tools/wl-tools/resign.sh, bms/src/tools/task79-swap-window/resign-hap.sh; git log (a11565443)"
+    },
+    {
+      "pattern": "/home/yao",
+      "files": [
+        "bms/*"
+      ],
+      "reason": "Upstream collaborator's build host in a comment of the verbatim bms/ copy (a11565443).",
+      "evidence": "bms/src/tools/task79-swap-window/deploy-fix93.sh; git log (a11565443)"
+    },
+    {
+      "pattern": "/Users/mac-server",
+      "files": [
+        "bms/*"
+      ],
+      "reason": "Upstream remote Mac's hdc path in the verbatim bms/ copy (a11565443); not run by this lab.",
+      "evidence": "bms/src/tools/task79-swap-window/msboard.sh; git log (a11565443)"
+    },
+    {
+      "pattern": "/home/aosp",
+      "files": [
+        "bms/src/adapter/build/start_container_build_on_gz05.sh"
+      ],
+      "reason": "Source-tree directory on the upstream gz05 build server (docker -v /home/aosp:/aosp), not a user home; verbatim bms/ copy (a11565443).",
+      "evidence": "the file; git log (a11565443)"
+    },
+    {
+      "pattern": "/home/oh",
+      "files": [
+        "bms/src/adapter/build/start_container_build_on_gz05.sh"
+      ],
+      "reason": "Source-tree directory on the upstream gz05 build server (docker -v /home/oh:/oh), not a user home; verbatim bms/ copy (a11565443).",
+      "evidence": "the file; git log (a11565443)"
+    },
+    {
+      "pattern": "bms/src/adapter/framework/android-runtime/src/sqlite/sqlite3.[ch]",
+      "reason": "Upstream SQLite amalgamation; /home/fred, /home/bill, /home/user1, /Users/me are documentation examples in its comments.",
+      "evidence": "the files (SQLite public-domain amalgamation), copied in a11565443"
+    },
+    {
+      "pattern": "bms/src/adapter/frozen/references/*",
+      "reason": "Verbatim OpenHarmony appspawn source kept as a frozen reference; /home/axw/... is an upstream unit-test fixture path.",
+      "evidence": "bms/src/adapter/frozen/references/oh-appspawn-security-v7/ (upstream OH source), copied in a11565443"
+    }
+  ]
+}

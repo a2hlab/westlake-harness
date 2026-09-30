@@ -26,7 +26,7 @@ FILES_MANIFEST_SHA="e9b27d092d33af3742d73ca3de51ce632753d81ffd939bf0b699271dfcb9
 CANDIDATE_MANIFEST_SHA="c76bba256156be2fc8b8a6503a071d34456d5620f669b0032553d45e529c4f8d"
 RECOVERY_SHA="7eaf26fbbaf69227fcde865bd259fb3a4f8ffae9cd5aab00b4a6c2302ac5b4ab"
 DRIVER_SHA="e2fdbafbe9aaf3adbdb0f4eac9f50fa0336d66d62527d5bd1a67b58c461b2d59"
-RESTORE_DRIVER_SHA="dc98e77e1fc1f54d827d5b5b80badc43752e659bbcd2778b961b2f5d8d01e61b"
+RESTORE_DRIVER_SHA="76ffae6d306c84ef54a9cb014820b4be79b23e81ceb07acd1054d2eb51eae293"
 
 CHANNEL_ROOT="$REPO_ROOT/var/state/agent-channel"
 LOCK_ROOT="$CHANNEL_ROOT/.locks"
@@ -34,6 +34,8 @@ RUN_ROOT="$REPO_ROOT/var/state/reproduce-zigzag-apk"
 
 MODE="${1:-check}"
 BOARD="${2:-$BOARD_ONLY}"
+# boards beyond the ones listed here: knowledge/boards.json (via the repo's scripts/lab/lab_paths.py)
+lab_board_label() { python3 "${REPO_ROOT:-$SCRIPT_DIR/../../../../..}/scripts/lab/lab_paths.py" board-label "$1"; }
 case "$BOARD" in
     "$BOARD_ONLY") BOARD_LABEL=61ae ;;
     "$BOARD_8605") BOARD_LABEL=8605 ;;
@@ -41,7 +43,7 @@ case "$BOARD" in
     "5ea34a4500000000000000001123012c") BOARD_LABEL=5ea ;;
     "61b0657200000000000000000324012c") BOARD_LABEL=61b ;;
     "5cd1e3dd00000000000000000923012c") BOARD_LABEL=5cd ;;
-    *) BOARD_LABEL=unsupported ;;
+    *) BOARD_LABEL=$(lab_board_label "$BOARD") || BOARD_LABEL=unsupported ;;
 esac
 CHANNEL_FILE="$CHANNEL_ROOT/reproduce-zigzag-apk-$BOARD_LABEL.md"
 LOCK_DIR="$LOCK_ROOT/$BOARD.lock"
@@ -188,7 +190,7 @@ device_preflight()
 {
     case "$BOARD" in
         "$BOARD_ONLY"|"$BOARD_8605"|"$BOARD_5EA1"|"5ea34a4500000000000000001123012c"|"61b0657200000000000000000324012c"|"5cd1e3dd00000000000000000923012c") ;;
-        *) die "unsupported direct board: $BOARD" ;;
+        *) [ "$BOARD_LABEL" != unsupported ] || die "unsupported direct board: $BOARD" ;;
     esac
     "$HDC_BIN" list targets 2>/dev/null | tr -d '\r' | grep -qx "$BOARD" \
         || die "$BOARD_LABEL is not connected: $BOARD"

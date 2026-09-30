@@ -1,10 +1,11 @@
 import collections,hashlib,json,sys
 from pathlib import Path
 from westlake_gap.ohresolve import index_exports,resolve
-sys.path.insert(0,'/Users/zhaoyue/orca/workspaces/westlake-inputs/tools')
+import lab_paths
+sys.path.insert(0,str(lab_paths.tools()))
 import static_pipeline
 version=static_pipeline.tool_version()
-p=Path(sys.argv[1]);d=Path.home()/'a2hlab/static';src=Path('/Users/zhaoyue/orca/workspaces/westlake-inputs');c=json.loads((src/'corpus100.json').read_text())['apps'];audit=json.loads((p/'audit.json').read_text());assert audit['complete']
+p=Path(sys.argv[1]);d=Path.home()/'a2hlab/static';src=lab_paths.inputs();c=json.loads((src/'corpus100.json').read_text())['apps'];audit=json.loads((p/'audit.json').read_text());assert audit['complete']
 def sha(path):
  h=hashlib.sha256()
  with path.open('rb') as f:

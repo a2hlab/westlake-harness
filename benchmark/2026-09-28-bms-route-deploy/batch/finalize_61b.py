@@ -2,18 +2,18 @@
 """#36 finalize: fold reverify + firefox crash + aegis experiment into the
 corrected aggregate. Every number traces to a raw file:
 - base: b4-aggregate-corrected.json (aggregate_61b.py over the two run dirs)
-- firefox: /home/zhaoyue/a2hlab/board/b4-36-diag/new/cppcrash-17133-40103657
+- firefox: ~/a2hlab/board/b4-36-diag/new/cppcrash-17133-40103657 (VM)
   (Uid 20010125 == firefox, thread org.mozilla.fir, #05 ContextImpl.getTheme)
 - reverify: b4-36-reverify-61b-20260928T2235/results.json (clicked/sandbox/
   pids/shots per key)
 - aegis: b4-36-aegis-experiment/{uninstall,reinstall,dump-after}.txt
 """
-import collections, json, re, sys
+import collections, json, os, re, sys
 
-BASE = "/home/zhaoyue/a2hlab/board/b4-36-faultlog/b4-aggregate-corrected.json"
-FF_CRASH = "/home/zhaoyue/a2hlab/board/b4-36-diag/new/cppcrash-17133-40103657"
-REVERIFY = "/home/zhaoyue/a2hlab/board/b4-36-reverify-61b-20260928T2235/results.json"
-AEGIS = "/home/zhaoyue/a2hlab/board/b4-36-aegis-experiment"
+BASE = os.path.expanduser("~/a2hlab/board/b4-36-faultlog/b4-aggregate-corrected.json")
+FF_CRASH = os.path.expanduser("~/a2hlab/board/b4-36-diag/new/cppcrash-17133-40103657")
+REVERIFY = os.path.expanduser("~/a2hlab/board/b4-36-reverify-61b-20260928T2235/results.json")
+AEGIS = os.path.expanduser("~/a2hlab/board/b4-36-aegis-experiment")
 
 def main(out):
     res = json.load(open(BASE))

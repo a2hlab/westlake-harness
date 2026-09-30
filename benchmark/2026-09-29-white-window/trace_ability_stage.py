@@ -8,18 +8,22 @@ from pathlib import Path
 import re
 import struct
 import subprocess
+import sys
 import zipfile
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
+sys.path.insert(0, str(REPO / 'scripts/lab'))
+import lab_paths  # noqa: E402
 OUT = HERE / 'evidence/ability-stage'
-JAR = Path('/Users/zhaoyue/orca/workspaces/vm-copies/b5-runtime-jar/oh-adapter-runtime.jar')
-WORK = Path('/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work')
+JAR = lab_paths.workspaces() / 'vm-copies/b5-runtime-jar/oh-adapter-runtime.jar'
+WORK = lab_paths.workspaces() / 'westlake-harness-bms-deploy/bms/src/.work'
 TOOLS = WORK / 'b6-task45/inputs'
 BRIDGES = {
     'reply': (WORK / 'b6-task52/baseline-native/liboh_adapter_bridge.so',
               '84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a'),
-    'no_reply': (Path('/private/tmp/claude-501/-Users-zhaoyue-orca-workspaces-westlake-harness-t3/b189571d-4d62-4c2d-ac1e-59c0f209879f/scratchpad/5cd/liboh_adapter_bridge.so'),
+    # same bytes as the copy first used from a lane's session scratchpad (hash-pinned below)
+    'no_reply': (lab_paths.workspaces() / 'westlake-bms-suite/src/adapter/frozen/r45-dynamic-roots/liboh_adapter_bridge.so',
                  '7db99e1b760cf843b1a99db1382a3299f189c8cbca786ec411b7c35a2af6ffb9'),
 }
 JAR_HASH = '250958dc3f133b67fb38c5da3caf81714fd6958e2247556e327d917b1f0d3146'

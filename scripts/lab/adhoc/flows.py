@@ -3,8 +3,9 @@ usage: flows.py <pcap> <local-ip>"""
 import struct
 import sys
 from collections import defaultdict
+from pathlib import Path
 
-sys.path.insert(0, "/Users/zhaoyue/orca/workspaces/westlake-harness/probes/network-capture")
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "probes/network-capture"))  # <repo>/probes
 from read import frames, ipv4_payload, tls_sni  # noqa: E402
 
 pcap, local = sys.argv[1], sys.argv[2]
