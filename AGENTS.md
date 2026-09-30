@@ -8,7 +8,7 @@
 ## 怎么积累
 - 发现写成 `benchmark/<YYYY-MM-DD>-<主题>/`:`README.md`(英文、证据先行、给数字、先写原来错在哪、这次立下什么规则)+ `results.json` + 小的证据文件;再在根 `README.md` 的 Layout 表加一行加粗。
 - 多步任务用 agent-spec 契约规划:`specs/<主题>/` 下放 `project.spec.md`(共享约束)+ `t<N>-<名>.spec.md`(用 `depends:` 连依赖)。交给 agent 前 `agent-spec lint specs/<主题>/t*.spec.md --min-score 0.7` 必须过(project spec 没有场景,不进这道门)。agent-spec 的测试层只会跑 `cargo test`,所以 `测试:` 选择器指向 `tools/spec-checks/` 里的 Rust 测试,由它转调真正的检查器(Python unittest / 脚本 / 板上 probe);要读截图才能判的场景标 `审核: human`,测试通过也只到 pendingreview。
-- 不写 `knowledge/context/evolution/` 记录(那是别的仓库的约定)。
+- **进化环**(octoloop outer 第 5 步):改判/R2 记档由常驻哨采进 `.octos/EVOLUTION.md`,定期 `olp-evo-harvest.sh`+`olp-evo-retro.sh`(`OLP_EVO_REVIEW_BOARD=.octos/boards/app-lighting.md`)出简报;外环人工判跨条目复发,落成 `knowledge/context/evolution/FLAW-NNN.md` 记录(每次最多 3 条),同时把规则精炼成一行进 DIGEST/RUNBOOK、能改工具的改工具。
 - `*.png/*.jpeg/*.jar/*.stderr` 默认被 `.gitignore` 忽略;README 引用到的证据截图用 `git add -f`,大二进制和 stderr 日志不入库。
 - **仓库是公开的**(github.com/A2OH/westlake-harness):不提交密码、服务器账号、个人数据。
 - 上板的运行时产物(.so / jar / boot image),其源码快照、补丁序列、工具链哈希与构建脚本必须一并入库或存到持久位置(大文件放 hw248 `/home/alvin/`,仓库里记路径与哈希)。只留产物会让修复锁死在一台会消失的构建机上(DIGEST E.7「B6 为什么慢」)。
@@ -32,8 +32,13 @@
 
 ### 每轮怎么做
 1. **验证过的就抄**:修墙先在 Westlake、00.Workspace、real-work 里找验证过的实现,谁做得全抄谁;都没有才自己写。README 写来源路径与 commit。
+   **找源码的顺序**(用户 2026-09-30 定):先本地(Mac `~/orca/workspaces/` 下各树与 vm-copies)→ 再 OrbStack 机器(`orb -m a2hlab`)→ 再远程 hw248;三处都没有,就在 hw248 上下载(AOSP/OH 上游对应版本),不凭记忆推断源码。
 2. **先预测再上板**:新一批 app 或新一代运行时上板前跑静态扫描(B10:JNI 覆盖、系统服务覆盖、manifest 分类、构建脚本体检),出机器可读的预测表,按挡住的 app 数排序,先修影响面最大的墙;派单引用预测表的行。扫描限时、能用就收,板子不等扫描。
-3. **默认单文件替换**:运行时加载器不做封存;「库配错」由 `deploy_generation.sh` 把关(SHA、单份 ART、桥接库版本、子进程 maps)。native 与 Java 改动默认单文件替换、带回滚,不整代重建(B9)。
+3. **修好并验证过的公共 API 就冻结,冻结的永不改动**(用户 2026-09-30 定,程序靠冻结积累):扫描发现的公共 API 墙(系统服务、JNI、manifest 投影、安装器授权……)修好后,只要在 **≥2 个不同 app** 上用 t20 截图证实生效,外环当轮就登记进 `knowledge/frozen/frozen.json`(可读版 `knowledge/frozen/FROZEN.md`):API、实现文件路径 + git blob 或产物 SHA、验证过的 app 与截图/facts 证据。冻结后:
+   - 任何构建与部署前跑 `python3 scripts/lab/check_frozen.py`,冻结文件的 blob/SHA 一变就拒,不设例外表;
+   - 新修复另起文件,不往冻结文件里加东西;冻结前先把实现拆成只含这一项的独立文件;
+   - 要改冻结项,只有用户明示解冻,agent 和外环都无权解冻。
+   未冻结的改动默认单文件替换、带回滚,由 `deploy_generation.sh` 把关(SHA、单份 ART、桥接库版本、子进程 maps),不整代重建(B9)。
 4. **一批修复一次上板,读截图确认,再回测**:每轮把多项修复合进一个 JAR(或一个库)一次上板跑全量;出现回退再对半拆定位。对照预测与实测,漏掉的墙补进扫描器。每轮修掉一批墙,不是一堵。
 5. **门禁用例外表写法**:判据按最严写,另设例外表,每条写对象、理由、证据,外环认可才进表;扣除例外后仍有问题就拒绝(例:JNI 缺失扣除例外后不为空,`deploy_generation.sh` 拒绝部署)。放宽加例外,收紧删例外,门禁代码不动。
 6. **提问不阻塞**:能按契约和黑板判断的自己定,写进 PROGRESS;只有越出契约边界(改禁止路径、动别的板、改验收标准)才问。

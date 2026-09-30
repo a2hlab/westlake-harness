@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 import uuid
+import zipfile
 
 SERIALS = {'5ea34a4500000000000000001123012c',
            '5cd1e3dd00000000000000000923012c',
@@ -128,9 +129,109 @@ def resolve_input(root, entry):
         raise AppFailure('original APK with app-input hash not found')
     # Split APK requirements are evidence, not silently installed as a monolithic app.
     split_hint = bool(meta.get('splits') or app.get('splits') or 'with-splits' in str(app.get('kind', '')))
+    apk = sorted(matches)[0].resolve()
+    sidecars = resolve_native_sidecars(directory, apk, entry, meta)
     return dict(entry, package=package, apk_sha256=digest, launch_activity=ability,
                 apk=str(sorted(matches)[0].resolve()), input_sha256=sha(meta_path),
-                split_hint=split_hint, apk_candidates=len(candidates))
+                split_hint=split_hint, apk_candidates=len(candidates), native_sidecars=sidecars)
+
+
+def resolve_native_sidecars(directory, apk, entry, meta):
+    """Inventory extracted input libraries; never rewrite or re-sign the APK."""
+    libdir = directory / 'lib' / 'arm64-v8a'
+    files = sorted(libdir.glob('*.so'))
+    declared = meta.get('native_libraries') or {}
+    if not isinstance(declared, dict):
+        raise AppFailure('invalid native_libraries metadata')
+    declared = {k: v for k, v in declared.items() if k.startswith('lib/arm64-v8a/')}
+    if declared and (files or entry.get('native_sidecar_count')) and set(declared) != {'lib/arm64-v8a/' + p.name for p in files}:
+        raise AppFailure('native sidecar inventory differs from app-input')
+    expected = entry.get('native_sidecar_count')
+    if expected is not None and (type(expected) is not int or expected < 1):
+        raise AppFailure('invalid native_sidecar_count')
+    if expected is not None and len(files) != expected:
+        raise AppFailure(f'native sidecar count differs: expected {expected}, found {len(files)}')
+    if not files:
+        return []
+    rows = []
+    for p in files:
+        if not re.fullmatch(r'[A-Za-z0-9_.+-]+\.so', p.name) or not p.is_file() or p.is_symlink() or not p.resolve().is_relative_to(directory.resolve()):
+            raise AppFailure('invalid native sidecar file: ' + p.name)
+        with p.open('rb') as stream:
+            header = stream.read(64)
+        if (len(header) != 64 or header[:6] != b'\x7fELF\x02\x01'
+                or int.from_bytes(header[16:18], 'little') != 3
+                or int.from_bytes(header[18:20], 'little') != 183):
+            raise AppFailure('native sidecar is not an AArch64 shared ELF: ' + p.name)
+        digest = sha(p)
+        pin = declared.get('lib/arm64-v8a/' + p.name)
+        if pin is not None and (not isinstance(pin, dict) or pin.get('sha256') != digest or pin.get('bytes', p.stat().st_size) != p.stat().st_size):
+            raise AppFailure('native sidecar hash/size differs from app-input: ' + p.name)
+        rows.append({'name': p.name, 'path': str(p.resolve()), 'sha256': digest,
+                     'bytes': p.stat().st_size, 'abi': 'arm64-v8a'})
+    try:
+        with zipfile.ZipFile(apk) as archive:
+            for row in rows:
+                name = 'lib/arm64-v8a/' + row['name']
+                if name in archive.namelist() and hashlib.sha256(archive.read(name)).hexdigest() != row['sha256']:
+                    raise AppFailure('sidecar conflicts with embedded APK library: ' + row['name'])
+    except zipfile.BadZipFile as exc:
+        raise AppFailure('sidecar APK is not a valid ZIP') from exc
+    return rows
+
+
+def assemble_native_sidecars(board, app, remote, out, record):
+    """Called only after BMS readback and a verified cold stop; fail before click."""
+    rows = app.get('native_sidecars') or []
+    receipt = {'status': 'not_needed' if not rows else 'started', 'files': [],
+               'split_dex_resources': 'not_installed_by_this_step'}
+    record['native_assembly'] = receipt
+    if not rows:
+        return
+    code = '/data/app/el1/bundle/public/' + app['package'] + '/android'
+    dest = code + '/lib/arm64-v8a'
+    receipt.update(installed_apk=code+'/base.apk', destination=dest,
+                   lookup='B7BindFixes.fixNativeLibraryDir: APK-parent/lib/arm64-v8a')
+    save(out/'native-assembly.json', receipt)
+    try:
+        _, text = board.shell('sha256sum ' + shlex.quote(code+'/base.apk'))
+        if not text.split() or text.split()[0] != app['apk_sha256']:
+            raise AppFailure('sidecar installed APK hash differs')
+        # Stage and verify every file before changing the package's library directory.
+        stage = remote + '/native-sidecars'
+        board.shell('mkdir -p ' + shlex.quote(stage))
+        for row in rows:
+            if sha(row['path']) != row['sha256']:
+                raise AppFailure('native sidecar input changed: ' + row['name'])
+            staged = stage + '/' + row['name']
+            board.send(row['path'], staged)
+            _, text = board.shell('sha256sum ' + shlex.quote(staged))
+            if not text.split() or text.split()[0] != row['sha256']:
+                raise AppFailure('staged native sidecar hash differs: ' + row['name'])
+        board.shell('mkdir -p ' + shlex.quote(dest) + ' && chmod 755 ' + shlex.quote(code+'/lib') + ' ' + shlex.quote(dest))
+        for row in rows:
+            target = dest + '/' + row['name']
+            # Never silently replace an existing different library from BMS/a prior install.
+            rc, text = board.shell('if test -e ' + shlex.quote(target) + '; then sha256sum ' + shlex.quote(target) + '; else (exit 44); fi', required=False)
+            if rc == 0:
+                if not text.split() or text.split()[0] != row['sha256']:
+                    raise AppFailure('installed native sidecar conflicts: ' + row['name'])
+            elif rc == 44:
+                board.shell('cp ' + shlex.quote(stage+'/'+row['name']) + ' ' + shlex.quote(target))
+            else:
+                raise AppFailure('cannot inspect installed native sidecar: ' + row['name'])
+            board.shell('chmod 755 ' + shlex.quote(target))
+            _, text = board.shell('sha256sum ' + shlex.quote(target))
+            if not text.split() or text.split()[0] != row['sha256']:
+                raise AppFailure('installed native sidecar hash differs: ' + row['name'])
+            receipt['files'].append(dict(row, installed_path=target, verified=True))
+            save(out/'native-assembly.json', receipt)
+        receipt['status'] = 'verified'
+    except (AppFailure, BatchStop, OSError) as exc:
+        receipt.update(status='failed', error=str(exc))
+        raise
+    finally:
+        save(out/'native-assembly.json', receipt)
 
 
 def attributes(layout):
@@ -467,13 +568,18 @@ def cold_stop(board, package, uid, out, tag='before'):
     parents = [r['pid'] for r in rows if r['uid'] == 0 and r['ppid'] == 1 and r['name'] == 'appspawn-x']
     target = [r for r in rows if uid is not None and r['uid'] == uid]
     if target:
-        if len(parents) != 1 or any(r['ppid'] != parents[0] or r['name'] != 'appspawn-x' for r in target):
+        # Roots are appspawn-x children; an app may fork its own helpers (VLC runs `sh`), which carry the
+        # app UID and have a root as parent. Anything else with the app UID is not ours to kill.
+        roots = [r for r in target if len(parents) == 1 and r['ppid'] == parents[0] and r['name'] == 'appspawn-x']
+        root_pids = {r['pid'] for r in roots}
+        helpers = [r for r in target if r['pid'] not in root_pids and r['ppid'] in root_pids]
+        if not roots or len(roots) + len(helpers) != len(target):
             raise AppFailure('target still alive; cannot safely identify cold-stop child')
-        for row in target:
-            pid = row['pid']
+        for row in helpers + roots:
+            pid, ppid = row['pid'], row['ppid']
             # Re-check kernel identity in the same command immediately before kill.
             board.shell(f'test "$(sed -n \'s/^Uid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {uid} && '
-                        f'test "$(sed -n \'s/^PPid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {parents[0]} && kill -9 {pid}')
+                        f'test "$(sed -n \'s/^PPid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {ppid} && kill -9 {pid}')
     for _ in range(10):
         _, ps = board.shell('ps -A -o PID,PPID,UID,NAME')
         if uid is not None and not any(r['uid'] == uid for r in processes(ps)):
@@ -676,6 +782,7 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
         rec['cold_stop_verified'] = cold_stop(board, app['package'], uid, out)
         if not rec['cold_stop_verified']:
             raise AppFailure('cold start identity unconfirmed')
+        assemble_native_sidecars(board, app, remote, out, rec)
         rec['sandbox_preparation'] = prepare_sandbox(board, app['package'], uid, out)
         rec['desktop_activity'] = rec['bms'].get('desktop_activity') or app.get('launch_activity')
         desktop_app = dict(app, launch_activity=rec['desktop_activity'])
@@ -768,6 +875,21 @@ def preflight(board, out, host_epoch=None):
         'screen_off_ms': SCREEN_OFF_MS, 'path': str(out/'preflight.json')}
 
 
+# Every file on the child's load path that a single-file swap may have changed. Two boards give different
+# results for one key when these differ (auxio 5cd vs 61b, 2026-09-30), so each run records them.
+FINGERPRINT_PATHS = ('/system/bin/appspawn-x /system/android/framework/oh-adapter-runtime.jar '
+                     '/system/android/lib64/*.so /system/lib64/westlake/route-a/*/*.so '
+                     '/system/lib64/libbms.z.so /system/lib64/libapk_installer.so')
+
+
+def runtime_fingerprint(board, out):
+    """sha256 of the runtime load path -> runtime-fingerprint.txt; returns a short hash of the whole set."""
+    _, text = board.shell(f'sha256sum {FINGERPRINT_PATHS} 2>/dev/null', required=False)
+    lines = sorted(l.strip() for l in text.splitlines() if re.match(r'^[0-9a-f]{64}\s', l.strip()))
+    (Path(out)/'runtime-fingerprint.txt').write_text('\n'.join(lines) + '\n')
+    return hashlib.sha256('\n'.join(lines).encode()).hexdigest()[:12] if lines else None
+
+
 def write_facts(out):
     """facts.txt = scripts/lab/run_facts.py over this run; ACKs quote it instead of counting by hand."""
     try:
@@ -783,6 +905,20 @@ def write_facts(out):
              f"t20={run_facts.mark(f['alive_t20'])}  child_hilog={run_facts.mark(f['child_hilog_lines'])}  {f['status']}"
              for f in rows]
     total = f'TOTAL keys={len(rows)} screenshots_captured={cap}/{slots} alive_t5={a5} alive_t20={a20}'
+    fp = Path(out)/'runtime-fingerprint.txt'
+    if fp.is_file():
+        body = fp.read_text().strip()
+        short = hashlib.sha256(body.encode()).hexdigest()[:12] if body else 'unknown'
+        lines.insert(0, f'RUNTIME fingerprint={short} files={len(body.splitlines()) if body else 0} '
+                        '(runtime-fingerprint.txt; compare before blaming the JAR across boards)')
+        try:  # frozen public-API fixes (AGENTS.md 做事方式 3): a run on a board that drifted from them says so
+            import check_frozen
+            checked, bad = check_frozen.check_artifacts(check_frozen.load(check_frozen.REPO/'knowledge/frozen/frozen.json'),
+                                                        check_frozen.fingerprint_hashes(fp), 'board')
+            lines.insert(1, f'FROZEN checked={len(checked)} violations={bad}'
+                            + ''.join(f'\n  {l}' for l in checked if l.startswith('FROZEN-VIOLATION')))
+        except Exception as exc:
+            lines.insert(1, f'FROZEN unavailable: {exc}')
     (Path(out)/'facts.txt').write_text('\n'.join(lines + [total]) + '\n')
     return total
 
@@ -796,7 +932,9 @@ def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
         raise BatchStop('expected OH6.1.0.31; this is not the OH7/T006 route')
     _, baseline = board.shell('ls -ld /data/pr03-74e6-portable; ls -l /dev/unix/socket/AppSpawnX; '
                               'sha256sum /system/bin/appspawn-x /system/android/framework/oh-adapter-runtime.jar')
+    fingerprint = runtime_fingerprint(board, out)
     save(out/'baseline.json', {'version': version, 'boot_id': board.boot, 'readback': baseline,
+                              'runtime_fingerprint': fingerprint,
                               'baseline_acceptance': 'executor must have accepted task19; these are observations'})
     for i, entry in enumerate(entries):
         app_out = out/entry['key']
@@ -838,6 +976,7 @@ def main(argv=None):
     ap.add_argument('--phase', choices=['all','controls','blocked','tail'], default='all')
     ap.add_argument('--keys', help='comma-separated subset, original phase order retained')
     ap.add_argument('--input-root', default=str(Path.home()/'a2hlab/app-inputs'))
+    ap.add_argument('--resolve-inputs', action='store_true', help='offline plan: verify APK and inventory native sidecars from input-root')
     ap.add_argument('--execute', action='store_true', help='perform device operations; absent = offline plan only')
     ap.add_argument('--serial', choices=sorted(SERIALS))
     ap.add_argument('--lane')
@@ -863,6 +1002,8 @@ def main(argv=None):
                    shots=args.shots, focus_check=args.focus_check)
     entries = load_apps(args.manifest,args.phase,args.keys)
     if not args.execute:
+        if args.resolve_inputs:
+            entries = [resolve_input(args.input_root, entry) for entry in entries]
         print(json.dumps({'execution':'not-requested','count':len(entries),'apps':entries,'options':options},indent=2))
         return 0
     if not args.serial or not args.lane or not args.out or not KEY.fullmatch(args.run_id) or not 3 <= args.wait <= 300:
