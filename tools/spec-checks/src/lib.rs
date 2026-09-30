@@ -285,3 +285,18 @@ fn n3b_single_runtime_package() {
 fn n3b_java_handoff() {
     run(&["benchmark/2026-09-30-n3b-webview/verify.py", "handoff"]);
 }
+
+#[test]
+fn u4_predictions_cover_cohort() {
+    run(&["benchmark/2026-09-30-u4-plan/verify.py", "predictions"]);
+}
+
+#[test]
+fn u4_commands_fail_closed() {
+    run(&["benchmark/2026-09-30-u4-plan/verify.py", "commands"]);
+}
+
+#[test]
+fn u4_experiment_protocols() {
+    run(&["benchmark/2026-09-30-u4-plan/verify.py", "probes"]);
+}
