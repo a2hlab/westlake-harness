@@ -159,6 +159,8 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-native-predeploy-gates/`** | **Candidate-bound N1 initialization and same-domain N2 DT_NEEDED gates, strict unknowns/exact exceptions, real N4/N4-order replays, and deployment-lane hook handoff.** |
 | **`benchmark/2026-10-01-b10-landing/`** | **Pinned additive B10 import: 2,659 paths, 31 lib.rs bridges plus three native selectors, eight recovered frozen inputs, and an explicit two-exception staging gate.** |
 | **`benchmark/2026-10-01-image-predeploy-gate/`** | **Two offline gates that reject a bad boot image BEFORE a board window: G1 image↔BCP dex-checksum (catches T7c image-only-over-swapped-jar, `0xf731efbe`≠`0x6bb8936f`), G2 compiled-code suspend-check (catches T5b implicit `ldr x21,[x21]` vs explicit); 4 replays A/B/C/D match; SKIPPED counts as FAIL when the deploy swaps image/jar; wired into `t5_gen_image.sh` + `t6_board_test.sh`.** |
+| **`benchmark/2026-10-01-b10-path-port/`** | **Ten temporary B10 path entries audited: six migrated memberships removed, four live SHA pins retained; immutable frozen copies and relocation checks.** |
+| **`benchmark/2026-09-30-u4-sweep/J6N4-SCORING.md`** | **U5 first-attempt scoring against the frozen J6/N4 criteria: 38 hits, two false positives, 26 unknowns; 24 outer-reviewed UI keys and seven unforecast signature families.** |
 
 ---
 

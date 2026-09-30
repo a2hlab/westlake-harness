@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Gate on 66 completed records; never infer screenshot content from processes."""
-import argparse,datetime,hashlib,json
+import argparse,datetime,hashlib,json,sys
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
-DEFAULT=Path('/Users/zhaoyue/orca/workspaces/westlake-harness/benchmark/2026-09-30-r16-sweep/runs')
+sys.path.insert(0,str(HERE.parents[1]/'scripts/lab'))
+from lab_paths import workspaces
+DEFAULT=workspaces()/'westlake-harness/benchmark/2026-09-30-r16-sweep/runs'
 PARTS=('r16full-A-5cd','r16full-B-61b')
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def read(p):return json.loads(p.read_text())

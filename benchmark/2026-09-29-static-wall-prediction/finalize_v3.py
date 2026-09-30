@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Publish static lists, then separately score frozen/updated predictions against receipts."""
-import collections,csv,gzip,hashlib,json,subprocess
+import collections,csv,gzip,hashlib,json,subprocess,sys
 from pathlib import Path
-from scan_jni import HERE,BASE,REPO,sha,R8HASH
+from scan_jni import HERE,REPO,sha,R8HASH
 from scan_apps import load_apps
+sys.path.insert(0,str(REPO/'scripts/lab'))
+from lab_paths import workspaces
+BASE=workspaces()
 OUT=HERE/'v3'
 P75=BASE/'westlake-harness-b4/benchmark/2026-09-29-manifest-classes/p73-fatal.json'
 P78=BASE/'westlake-harness-bms-deploy/benchmark/2026-09-29-v3a-prospective-rerun'
@@ -107,7 +110,7 @@ def copy_source(wall):
     paths={'dlopen-namespace':root/'native-loader-oh/src/native_loader_registry.cpp',
       'flutter-native-path':root/'native-loader-oh/src/native_loader.cpp',
       'koin-initialization':root/'activity/java/AppSchedulerBridge.java',
-      'workmanager-initialization':Path('/Users/zhaoyue/orca/00.Workspace/src/adapter/framework/activity/java/ManifestComponentProjection.java'),
+      'workmanager-initialization':BASE.parent/'00.Workspace/src/adapter/framework/activity/java/ManifestComponentProjection.java',
       'attach-service-contract':root/'core/java/OHServiceManager.java',
       'attach-context-contract':root/'activity/java/AppSchedulerBridge.java'}
     p=paths.get(wall)

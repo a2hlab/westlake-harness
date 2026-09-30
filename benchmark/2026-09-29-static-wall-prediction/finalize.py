@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Derive bounded static candidates first, then join existing observations."""
-import collections,csv,json,re,subprocess
+import collections,csv,json,re,subprocess,sys
 from pathlib import Path
-from scan_jni import HERE,BASE,REPO,R8HASH,sha
+from scan_jni import HERE,REPO,R8HASH,sha
 from scan_apps import INPUT,load_apps
+sys.path.insert(0,str(REPO/'scripts/lab'))
+from lab_paths import workspaces
+BASE=workspaces()
 WL=BASE/'westlake-harness-walls/benchmark/2026-09-29-westlake-port'
 INV=BASE/'westlake-harness/benchmark/2026-09-29-westlake-port/INVENTORY.md'
-WLSRC=Path('/Users/zhaoyue/orca/westlake/westlake-deploy-ohos/v3-hbc')
-WORKSPACE=Path('/Users/zhaoyue/orca/00.Workspace/src/adapter')
+WLSRC=BASE.parent/'westlake/westlake-deploy-ohos/v3-hbc'
+WORKSPACE=BASE.parent/'00.Workspace/src/adapter'
 def dump(name,data):(HERE/name).write_text(json.dumps(data,indent=2)+'\n')
 def csvwrite(name,rows,fields):
  with (HERE/name).open('w') as f:
@@ -86,7 +89,7 @@ def main():
    # These known transitively-used classes are never exception candidates.
    if m['class'].startswith(('android/database/','android/graphics/','android/view/')):continue
    exceptions.append({'method':m['id'],'generation':data['generation'],'overlay_sha256':R8HASH,'status':m['status'],'approval':'proposed','approved_by':None,'reason':'No exact direct invoke in the scanned 20 APK dex sets; framework-transitive/reflection use remains unknown. Review required before approval.','evidence':['evidence/no-direct-call-scope.json',m['declaration']]})
- tf_log=Path('/Users/zhaoyue/orca/00.Workspace/evidence/runs/ab-compare/20260817-014130-8605-zigzag-apk-light-manual/hilog.log')
+ tf_log=BASE.parent/'00.Workspace/evidence/runs/ab-compare/20260817-014130-8605-zigzag-apk-light-manual/hilog.log'
  tf_lines=tf_log.read_text(errors='replace').splitlines();tf_rows=[{'file':str(tf_log),'line':n,'text':line,'sha256':sha(tf_log)} for n,line in enumerate(tf_lines,1) if '[EARLY-TF]' in line and 'reflect FAILED' in line and 'nativePrimeDefaultTypeface' in line]
  dump('evidence/typeface-tolerated.json',{'observed':tf_rows,'outer_observation':'Outer #72 reports ZigZag was lit in this run; this scan does not re-adjudicate screenshots. Tolerance is a candidate exception, not proof for every app/generation.'})
  for gen,data in jni.items():

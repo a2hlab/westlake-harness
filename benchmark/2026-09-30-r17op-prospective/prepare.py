@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Only prior accepted evidence and pinned code inputs; no future run reads."""
-import collections,csv,hashlib,json,shutil,subprocess
+import collections,csv,hashlib,json,shutil,subprocess,sys
 from pathlib import Path
-H=Path(__file__).resolve().parent;R=H.parents[1];W=Path('/Users/zhaoyue/orca/workspaces')
+H=Path(__file__).resolve().parent;R=H.parents[1]
+sys.path.insert(0,str(R/'scripts/lab'))
+from lab_paths import workspaces
+W=workspaces()
 V2=R/'benchmark/2026-09-30-v3c-r17j-prospective';FB=R/'benchmark/2026-09-30-v2-scanner-feedback';SRC=W/'westlake-harness-walls'
 def load(p):return json.loads(p.read_text())
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()

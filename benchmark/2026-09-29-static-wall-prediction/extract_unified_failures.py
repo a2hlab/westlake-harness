@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Read PID-attributed startup failures; never equate every error with a wall."""
-import json,re,hashlib
+import json,re,hashlib,sys
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
-SOURCE=Path('/Users/zhaoyue/orca/workspaces/westlake-harness/benchmark/2026-09-30-unified-r17r-5cd-sweep')
+sys.path.insert(0,str(HERE.parents[1]/'scripts/lab'))
+from lab_paths import workspaces
+SOURCE=workspaces()/'westlake-harness/benchmark/2026-09-30-unified-r17r-5cd-sweep'
 RUN=SOURCE/'runs/unified-r17r-5cd/5cd1e3dd00000000000000000923012c'
 OUT=HERE/'unified-r17r-feedback'
 PID=re.compile(r'^\S+ \S+\s+(\d+)\s+\d+ ')
