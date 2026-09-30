@@ -156,6 +156,8 @@ kind of work from where the corpus started
 | **`benchmark/2026-09-30-u2-sweep/`** | **U2 (N2 native + J2) on all three boards, 66 keys sharded 22/22/22: 24 lit, AnkiDroid new (cumulative 27); uhabits lit 1 of 3 on same-state reruns — rule: a white screen on one run is not a regression until a `--reinstall` rerun fails again** |
 | **`benchmark/2026-09-30-j3-u3-sweep/`** | **J3 on U2 (5ea+61b, 66 keys): 25 lit, U2's 24 all kept, fd-noice back; fd-api past the AppCompat-theme wall, NewPipe's bind cause finally named (`Platform signature not found`) → U3 = U2 + J3 on all three boards** |
 | **[benchmark/2026-09-30-t4b-build-switch-gate/](benchmark/2026-09-30-t4b-build-switch-gate/)** | **T4b: SHA-bound native/OAT/build-receipt consistency, T5 rejection, v3c known-match control and explicit unknown review.** |
+| **`benchmark/2026-10-01-native-predeploy-gates/`** | **Candidate-bound N1 initialization and same-domain N2 DT_NEEDED gates, strict unknowns/exact exceptions, real N4/N4-order replays, and deployment-lane hook handoff.** |
+| **`benchmark/2026-10-01-b10-landing/`** | **Pinned additive B10 import: 2,659 paths, 31 lib.rs bridges plus three native selectors, eight recovered frozen inputs, and an explicit two-exception staging gate.** |
 
 ---
 

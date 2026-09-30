@@ -1,0 +1,1 @@
+Unpublished 05:21:10 seal rejected by the primary-evidence completeness test: prelaunch failures fd-seal/toutiao/subwaysurfers had no PID-filtered log artifact. Original bytes retained. The final seal uses the already-accepted v2 continuation/record evidence, with identical prediction CSV. This directory is not the scoring freeze.

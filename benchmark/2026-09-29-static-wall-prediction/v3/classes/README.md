@@ -1,0 +1,17 @@
+# Framework class availability — v3a + r13
+
+The old service inventory could call a proxy stub present even when its reflected interface did not exist. This pass checks actual DEX class definitions separately from references. Inputs are read-only; no device commands were run.
+
+Run: `python3 benchmark/2026-09-29-static-wall-prediction/scan_classes_v3.py` (Wikipedia first). Use `--cohort benchmark/2026-09-29-static-wall-prediction/v3/classes/cohort.json`, then run `finalize_classes_v3.py` and `package_v3.py` from this benchmark directory for the expanded deliverable. The baseline runtime JAR is replaced, not unioned, with r13 `f1325297`. Full hashes are in `class-inventory.json.gz`.
+
+Wikipedia APK `eba82a0f` matches #78. Known answer **passes**: `android.net.IConnectivityManager` is absent. The other **13/14** literal interfaces required by r13 LocalServiceBinders have definitions. See `service-interface-matrix.json`; r13 bytecode evidence is `evidence/r13-dexdump.txt.gz` original line 11858 (interface literal) and the `proxy_proof` lines in `service-requirements.json` (Class.forName).
+
+Wikipedia has **20 absent classes / 119 reference-or-prerequisite rows**. Only **IConnectivityManager** has bounded startup paths (**11 rows**, including direct service calls and conditional manager prerequisites). `ConnectionStateMonitor.ensureNetworkCallbackRegistered` and `updateOnlineState` are reached from manifest startup roots; full paths are in `wikipedia-delivery.json`, with DEX line/offset in `wikipedia-class-risks.csv`. Remaining absent references are unresolved for startup, including future/legacy APIs; do not treat all as fatal. Unknown service-name/interface joins remain unknown.
+
+`wikipedia-class-matrix.csv` groups every extracted framework reference and service prerequisite by class/kind, retaining full and startup method-reference counts; `wikipedia-class-risks.csv` filters absent/unknown. The corresponding `*-evidence.json` (or `.gz`) contains representative instructions and paths; large complete intermediates remain local and can be regenerated. Presence means **definition present**, never proven initialization/load success. The scan does not execute branches, resolve framework bodies/async callbacks, prove API guards, or reproduce device classloader order. Manager-to-interface rows are explicitly conditional. No runtime repair or screen/liveness claim is made.
+
+Expanded cohort: **33 source memberships / 32 unique APKs**, all scanned; OONI appears in both #69 (20) and #78 (13). Exact hashes and this overlap are in `cohort.json`; no distinct 33rd app was invented. Machine entrypoints are `class-availability.csv.gz` (**38,872 grouped rows**), `class-risks.csv`, `class-wall-ranking.csv`, `apps-summary.csv` and `predictions-v3a-r13.csv`. This profile is separate from the earlier JNI/r8b predictions.
+
+Highest static startup exposure: **IConnectivityManager 15 apps** (28 with any reference/prerequisite), **android.view.RenderNode 8** (10 any), followed by individual networking classes. These are conditional graph paths: SDK checks/legacy branches may make them infeasible, particularly old `android.view.RenderNode`; they are not 15/8 observed failures. The supplied #80 R1 known answer is **1/1 retrospective**, not a prospective hit rate.
+
+Validation: two class scenarios pass, contract lint **100%**, with reference-only DEX and app-only interface negative cases. The public evidence is compact; `scan_classes_v3.py` recreates detailed local intermediates when needed. No runtime behavior claim or device change.

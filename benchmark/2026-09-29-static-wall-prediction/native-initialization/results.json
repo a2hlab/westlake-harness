@@ -1,0 +1,964 @@
+{
+  "schema_version": 1,
+  "prospective": false,
+  "device_access": false,
+  "scope": "bounded static initialization risks; no finding does not prove runtime success",
+  "manifest_sha256": "dd3a25be840143ee7010ff5fb0147e6cbfe72dc96ea8c697f4d9b5de67e80d13",
+  "profiles": [
+    {
+      "profile": "N2",
+      "identity": {
+        "package": "westlake-generation-n2-51a78bde",
+        "manifest_sha256": "51a78bde7075305758bd40b0af3169753dc4be343509e8a8e3d8909fb5d9df09",
+        "artifact": "payload/runtime/appspawn-x",
+        "artifact_sha256": "42c35453b34f78ad8bdde00c7e539b3790cc50414429cdcb11d7c5157f5402e8"
+      },
+      "findings": [],
+      "unknown": [
+        {
+          "function": "main",
+          "namespace": "default",
+          "library": null,
+          "target_expression": "plugin_path",
+          "evidence": {
+            "source": "n2-host.c",
+            "line": 586,
+            "text": "plugin_handle = dlopen(plugin_path, RTLD_NOW | RTLD_NOLOAD);"
+          },
+          "reason": "fresh namespace or literal target not established"
+        }
+      ],
+      "checked": []
+    },
+    {
+      "profile": "N3b",
+      "identity": {
+        "package": "westlake-generation-n3b-53bb18d1",
+        "manifest_sha256": "53bb18d1743a69bee9be98b4704afc5e684f57c002687fc2771678c2edd575d3",
+        "artifact": "payload/runtime/appspawn-x",
+        "artifact_sha256": "c8fdfc7609a6c2b6efabd260888b069379df42f3bc15e49fb59675e5e4a83b1c"
+      },
+      "findings": [
+        {
+          "function": "StockCreateConfiguredNamespaces",
+          "namespace": "app_namespace",
+          "library": "/system/android/lib64/liboh_android_runtime.so",
+          "target_expression": "\"/system/android/lib64/liboh_android_runtime.so\"",
+          "evidence": {
+            "source": "n3b-host.c",
+            "line": 281,
+            "text": "void* resident = dlopen_ns(app_namespace,"
+          },
+          "family": "noload-before-namespace-mapping",
+          "verdict": "static-risk",
+          "namespace_creation": {
+            "source": "n3b-host.c",
+            "line": 233,
+            "text": "result = dlns_create2(app_namespace, app_search_paths,"
+          },
+          "reason": "NOLOAD cannot establish a first local mapping; no dominating guarded same-namespace load found"
+        }
+      ],
+      "unknown": [
+        {
+          "function": "main",
+          "namespace": "default",
+          "library": null,
+          "target_expression": "plugin_path",
+          "evidence": {
+            "source": "n3b-host.c",
+            "line": 616,
+            "text": "plugin_handle = dlopen(plugin_path, RTLD_NOW | RTLD_NOLOAD);"
+          },
+          "reason": "fresh namespace or literal target not established"
+        }
+      ],
+      "checked": []
+    },
+    {
+      "profile": "N4",
+      "identity": {
+        "package": "westlake-generation-n4-1617080a",
+        "manifest_sha256": "1617080a6a42651016937816ee3c9900554c5326379e5cf635b08227a00744d8",
+        "artifact": "payload/android/lib64/liboh_android_runtime.so",
+        "artifact_sha256": "71f79c84a1c1f6149091790bd796db82580b0aed936f589e8808bf41c51b1f3e"
+      },
+      "findings": [
+        {
+          "cache": {
+            "class_name": "com/google/android/gles_jni/EGLContextImpl",
+            "operation": "GetFieldID",
+            "sequence": 70,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 113,
+              "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-runtime.cpp",
+                "line": 666,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 549,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 133,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 113,
+                "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+              }
+            ]
+          },
+          "dependency": {
+            "class_name": "com/google/android/gles_jni/GLImpl",
+            "method": "_nativeClassInit",
+            "descriptor": "()V",
+            "chain": [
+              {
+                "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                "edge": "super",
+                "target": "javax/microedition/khronos/egl/EGLContext"
+              },
+              {
+                "class_name": "javax/microedition/khronos/egl/EGLContext",
+                "method": "<clinit>",
+                "descriptor": "()V",
+                "offset": 4,
+                "opcode": "invoke-direct",
+                "output": "v0, Lcom/google/android/gles_jni/EGLImpl;-><init>()V"
+              },
+              {
+                "class_name": "com/google/android/gles_jni/EGLImpl",
+                "method": "<init>",
+                "descriptor": "()V",
+                "offset": 14,
+                "opcode": "invoke-direct",
+                "output": "v0, v1, v2, Lcom/google/android/gles_jni/EGLContextImpl;-><init>(J)V"
+              },
+              {
+                "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                "method": "<init>",
+                "descriptor": "(J)V",
+                "offset": 10,
+                "opcode": "new-instance",
+                "output": "v0, Lcom/google/android/gles_jni/GLImpl;"
+              },
+              {
+                "class_name": "com/google/android/gles_jni/GLImpl",
+                "method": "<clinit>",
+                "descriptor": "()V",
+                "offset": 0,
+                "opcode": "invoke-static",
+                "output": "Lcom/google/android/gles_jni/GLImpl;->_nativeClassInit()V"
+              }
+            ]
+          },
+          "registration": {
+            "sequence": 86,
+            "evidence": {
+              "source": "gl-register.cpp",
+              "line": 9294,
+              "text": "err = android::AndroidRuntime::registerNativeMethods(_env, classPathName, methods, NELEM(methods));"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-runtime.cpp",
+                "line": 672,
+                "text": "if (n2_register_GLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "n2_register_GLImpl",
+                "source": "gl-wrapper.cpp",
+                "line": 6,
+                "text": "int rc=register_com_google_android_gles_jni_GLImpl(env);"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_GLImpl",
+                "source": "gl-register.cpp",
+                "line": 9294,
+                "text": "err = android::AndroidRuntime::registerNativeMethods(_env, classPathName, methods, NELEM(methods));"
+              }
+            ]
+          },
+          "family": "jni-cache-before-native-registration",
+          "verdict": "static-risk",
+          "reason": "cache lookup can initialize a class whose native registration call occurs later"
+        }
+      ],
+      "checked": [
+        {
+          "cache": {
+            "class_name": "com/google/android/gles_jni/EGLContextImpl",
+            "operation": "GetFieldID",
+            "sequence": 70,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 113,
+              "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-runtime.cpp",
+                "line": 666,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 549,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 133,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 113,
+                "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+              }
+            ]
+          },
+          "dependency": {
+            "class_name": "com/google/android/gles_jni/EGLImpl",
+            "method": "_nativeClassInit",
+            "descriptor": "()V",
+            "chain": [
+              {
+                "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                "edge": "super",
+                "target": "javax/microedition/khronos/egl/EGLContext"
+              },
+              {
+                "class_name": "javax/microedition/khronos/egl/EGLContext",
+                "method": "<clinit>",
+                "descriptor": "()V",
+                "offset": 0,
+                "opcode": "new-instance",
+                "output": "v0, Lcom/google/android/gles_jni/EGLImpl;"
+              },
+              {
+                "class_name": "com/google/android/gles_jni/EGLImpl",
+                "method": "<clinit>",
+                "descriptor": "()V",
+                "offset": 0,
+                "opcode": "invoke-static",
+                "output": "Lcom/google/android/gles_jni/EGLImpl;->_nativeClassInit()V"
+              }
+            ]
+          },
+          "registration": {
+            "sequence": 57,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 546,
+              "text": "err = android::AndroidRuntime::registerNativeMethods(_env,"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-runtime.cpp",
+                "line": 666,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 546,
+                "text": "err = android::AndroidRuntime::registerNativeMethods(_env,"
+              }
+            ]
+          },
+          "status": "registration-call-precedes-cache"
+        }
+      ],
+      "unknown": [
+        {
+          "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+          "operation": "GetMethodID",
+          "sequence": 65,
+          "evidence": {
+            "source": "egl.cpp",
+            "line": 103,
+            "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+          },
+          "trace": [
+            {
+              "function": "startReg",
+              "source": "n4-runtime.cpp",
+              "line": 666,
+              "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+            },
+            {
+              "function": "register_com_google_android_gles_jni_EGLImpl",
+              "source": "egl.cpp",
+              "line": 549,
+              "text": "android::nativeClassInit(_env, nullptr);"
+            },
+            {
+              "function": "nativeClassInit",
+              "source": "egl.cpp",
+              "line": 133,
+              "text": "bool ready = cacheEglFields(env);"
+            },
+            {
+              "function": "cacheEglFields",
+              "source": "egl.cpp",
+              "line": 103,
+              "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+            }
+          ],
+          "reason": "incomplete DEX initialization closure",
+          "missing": [
+            "javax/microedition/khronos/egl/EGLConfig"
+          ]
+        },
+        {
+          "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+          "operation": "GetFieldID",
+          "sequence": 66,
+          "evidence": {
+            "source": "egl.cpp",
+            "line": 105,
+            "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+          },
+          "trace": [
+            {
+              "function": "startReg",
+              "source": "n4-runtime.cpp",
+              "line": 666,
+              "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+            },
+            {
+              "function": "register_com_google_android_gles_jni_EGLImpl",
+              "source": "egl.cpp",
+              "line": 549,
+              "text": "android::nativeClassInit(_env, nullptr);"
+            },
+            {
+              "function": "nativeClassInit",
+              "source": "egl.cpp",
+              "line": 133,
+              "text": "bool ready = cacheEglFields(env);"
+            },
+            {
+              "function": "cacheEglFields",
+              "source": "egl.cpp",
+              "line": 105,
+              "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+            }
+          ],
+          "reason": "incomplete DEX initialization closure",
+          "missing": [
+            "javax/microedition/khronos/egl/EGLConfig"
+          ]
+        },
+        {
+          "class_name": "com/google/android/gles_jni/EGLDisplayImpl",
+          "operation": "GetFieldID",
+          "sequence": 68,
+          "evidence": {
+            "source": "egl.cpp",
+            "line": 109,
+            "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+          },
+          "trace": [
+            {
+              "function": "startReg",
+              "source": "n4-runtime.cpp",
+              "line": 666,
+              "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+            },
+            {
+              "function": "register_com_google_android_gles_jni_EGLImpl",
+              "source": "egl.cpp",
+              "line": 549,
+              "text": "android::nativeClassInit(_env, nullptr);"
+            },
+            {
+              "function": "nativeClassInit",
+              "source": "egl.cpp",
+              "line": 133,
+              "text": "bool ready = cacheEglFields(env);"
+            },
+            {
+              "function": "cacheEglFields",
+              "source": "egl.cpp",
+              "line": 109,
+              "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+            }
+          ],
+          "reason": "incomplete DEX initialization closure",
+          "missing": [
+            "javax/microedition/khronos/egl/EGLDisplay"
+          ]
+        },
+        {
+          "class_name": "com/google/android/gles_jni/EGLContextImpl",
+          "operation": "GetFieldID",
+          "sequence": 70,
+          "evidence": {
+            "source": "egl.cpp",
+            "line": 113,
+            "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+          },
+          "trace": [
+            {
+              "function": "startReg",
+              "source": "n4-runtime.cpp",
+              "line": 666,
+              "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+            },
+            {
+              "function": "register_com_google_android_gles_jni_EGLImpl",
+              "source": "egl.cpp",
+              "line": 549,
+              "text": "android::nativeClassInit(_env, nullptr);"
+            },
+            {
+              "function": "nativeClassInit",
+              "source": "egl.cpp",
+              "line": 133,
+              "text": "bool ready = cacheEglFields(env);"
+            },
+            {
+              "function": "cacheEglFields",
+              "source": "egl.cpp",
+              "line": 113,
+              "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+            }
+          ],
+          "reason": "incomplete DEX initialization closure",
+          "missing": [
+            "java/lang/Object",
+            "javax/microedition/khronos/egl/EGLDisplay",
+            "javax/microedition/khronos/egl/EGLSurface"
+          ]
+        },
+        {
+          "class_name": "com/google/android/gles_jni/EGLSurfaceImpl",
+          "operation": "GetFieldID",
+          "sequence": 72,
+          "evidence": {
+            "source": "egl.cpp",
+            "line": 117,
+            "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+          },
+          "trace": [
+            {
+              "function": "startReg",
+              "source": "n4-runtime.cpp",
+              "line": 666,
+              "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+            },
+            {
+              "function": "register_com_google_android_gles_jni_EGLImpl",
+              "source": "egl.cpp",
+              "line": 549,
+              "text": "android::nativeClassInit(_env, nullptr);"
+            },
+            {
+              "function": "nativeClassInit",
+              "source": "egl.cpp",
+              "line": 133,
+              "text": "bool ready = cacheEglFields(env);"
+            },
+            {
+              "function": "cacheEglFields",
+              "source": "egl.cpp",
+              "line": 117,
+              "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+            }
+          ],
+          "reason": "incomplete DEX initialization closure",
+          "missing": [
+            "javax/microedition/khronos/egl/EGLSurface"
+          ]
+        }
+      ],
+      "unresolved_calls": [
+        "ExceptionCheck",
+        "ExceptionClear",
+        "ExceptionDescribe",
+        "GetJavaVM",
+        "HiLogPrint",
+        "NELEM",
+        "NewGlobalRef",
+        "PopLocalFrame",
+        "PushLocalFrame",
+        "dlerror",
+        "dlopen",
+        "dlsym",
+        "fn",
+        "fprintf",
+        "int",
+        "jint",
+        "jniThrowException",
+        "memcpy",
+        "onload",
+        "proc",
+        "register_android_graphics_compat_shim",
+        "register_n2_Camera"
+      ],
+      "coverage": "bounded-source-order-not-runtime-success"
+    },
+    {
+      "profile": "N4-order",
+      "identity": {
+        "package": "westlake-generation-n4-order-216b68fb",
+        "manifest_sha256": "7bc02de79f989d48cedb1e5020df1be3b5cd58f6d2229df8f1a3f08cc4f5ffbe",
+        "artifact": "payload/android/lib64/liboh_android_runtime.so",
+        "artifact_sha256": "216b68fbb3a40b5ac7a90b726f6d8184fa7cdba848ccde56c809abd400a660df"
+      },
+      "findings": [],
+      "checked": [
+        {
+          "cache": {
+            "class_name": "com/google/android/gles_jni/EGLContextImpl",
+            "operation": "GetFieldID",
+            "sequence": 78,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 113,
+              "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 671,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 549,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 133,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 113,
+                "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+              }
+            ]
+          },
+          "dependency": {
+            "class_name": "com/google/android/gles_jni/EGLImpl",
+            "method": "_nativeClassInit",
+            "descriptor": "()V",
+            "chain": [
+              {
+                "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                "edge": "super",
+                "target": "javax/microedition/khronos/egl/EGLContext"
+              },
+              {
+                "class_name": "javax/microedition/khronos/egl/EGLContext",
+                "method": "<clinit>",
+                "descriptor": "()V",
+                "offset": 0,
+                "opcode": "new-instance",
+                "output": "v0, Lcom/google/android/gles_jni/EGLImpl;"
+              },
+              {
+                "class_name": "com/google/android/gles_jni/EGLImpl",
+                "method": "<clinit>",
+                "descriptor": "()V",
+                "offset": 0,
+                "opcode": "invoke-static",
+                "output": "Lcom/google/android/gles_jni/EGLImpl;->_nativeClassInit()V"
+              }
+            ]
+          },
+          "registration": {
+            "sequence": 65,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 546,
+              "text": "err = android::AndroidRuntime::registerNativeMethods(_env,"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 671,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 546,
+                "text": "err = android::AndroidRuntime::registerNativeMethods(_env,"
+              }
+            ]
+          },
+          "status": "registration-call-precedes-cache"
+        },
+        {
+          "cache": {
+            "class_name": "com/google/android/gles_jni/EGLContextImpl",
+            "operation": "GetFieldID",
+            "sequence": 78,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 113,
+              "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 671,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 549,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 133,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 113,
+                "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+              }
+            ]
+          },
+          "dependency": {
+            "class_name": "com/google/android/gles_jni/GLImpl",
+            "method": "_nativeClassInit",
+            "descriptor": "()V",
+            "chain": [
+              {
+                "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                "edge": "super",
+                "target": "javax/microedition/khronos/egl/EGLContext"
+              },
+              {
+                "class_name": "javax/microedition/khronos/egl/EGLContext",
+                "method": "<clinit>",
+                "descriptor": "()V",
+                "offset": 4,
+                "opcode": "invoke-direct",
+                "output": "v0, Lcom/google/android/gles_jni/EGLImpl;-><init>()V"
+              },
+              {
+                "class_name": "com/google/android/gles_jni/EGLImpl",
+                "method": "<init>",
+                "descriptor": "()V",
+                "offset": 14,
+                "opcode": "invoke-direct",
+                "output": "v0, v1, v2, Lcom/google/android/gles_jni/EGLContextImpl;-><init>(J)V"
+              },
+              {
+                "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                "method": "<init>",
+                "descriptor": "(J)V",
+                "offset": 10,
+                "opcode": "new-instance",
+                "output": "v0, Lcom/google/android/gles_jni/GLImpl;"
+              },
+              {
+                "class_name": "com/google/android/gles_jni/GLImpl",
+                "method": "<clinit>",
+                "descriptor": "()V",
+                "offset": 0,
+                "opcode": "invoke-static",
+                "output": "Lcom/google/android/gles_jni/GLImpl;->_nativeClassInit()V"
+              }
+            ]
+          },
+          "registration": {
+            "sequence": 58,
+            "evidence": {
+              "source": "gl-register.cpp",
+              "line": 9294,
+              "text": "err = android::AndroidRuntime::registerNativeMethods(_env, classPathName, methods, NELEM(methods));"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 668,
+                "text": "if (n2_register_GLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "n2_register_GLImpl",
+                "source": "gl-wrapper.cpp",
+                "line": 6,
+                "text": "int rc=register_com_google_android_gles_jni_GLImpl(env);"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_GLImpl",
+                "source": "gl-register.cpp",
+                "line": 9294,
+                "text": "err = android::AndroidRuntime::registerNativeMethods(_env, classPathName, methods, NELEM(methods));"
+              }
+            ]
+          },
+          "status": "registration-call-precedes-cache"
+        }
+      ],
+      "unknown": [
+        {
+          "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+          "operation": "GetMethodID",
+          "sequence": 73,
+          "evidence": {
+            "source": "egl.cpp",
+            "line": 103,
+            "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+          },
+          "trace": [
+            {
+              "function": "startReg",
+              "source": "n4-order-runtime.cpp",
+              "line": 671,
+              "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+            },
+            {
+              "function": "register_com_google_android_gles_jni_EGLImpl",
+              "source": "egl.cpp",
+              "line": 549,
+              "text": "android::nativeClassInit(_env, nullptr);"
+            },
+            {
+              "function": "nativeClassInit",
+              "source": "egl.cpp",
+              "line": 133,
+              "text": "bool ready = cacheEglFields(env);"
+            },
+            {
+              "function": "cacheEglFields",
+              "source": "egl.cpp",
+              "line": 103,
+              "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+            }
+          ],
+          "reason": "incomplete DEX initialization closure",
+          "missing": [
+            "javax/microedition/khronos/egl/EGLConfig"
+          ]
+        },
+        {
+          "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+          "operation": "GetFieldID",
+          "sequence": 74,
+          "evidence": {
+            "source": "egl.cpp",
+            "line": 105,
+            "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+          },
+          "trace": [
+            {
+              "function": "startReg",
+              "source": "n4-order-runtime.cpp",
+              "line": 671,
+              "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+            },
+            {
+              "function": "register_com_google_android_gles_jni_EGLImpl",
+              "source": "egl.cpp",
+              "line": 549,
+              "text": "android::nativeClassInit(_env, nullptr);"
+            },
+            {
+              "function": "nativeClassInit",
+              "source": "egl.cpp",
+              "line": 133,
+              "text": "bool ready = cacheEglFields(env);"
+            },
+            {
+              "function": "cacheEglFields",
+              "source": "egl.cpp",
+              "line": 105,
+              "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+            }
+          ],
+          "reason": "incomplete DEX initialization closure",
+          "missing": [
+            "javax/microedition/khronos/egl/EGLConfig"
+          ]
+        },
+        {
+          "class_name": "com/google/android/gles_jni/EGLDisplayImpl",
+          "operation": "GetFieldID",
+          "sequence": 76,
+          "evidence": {
+            "source": "egl.cpp",
+            "line": 109,
+            "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+          },
+          "trace": [
+            {
+              "function": "startReg",
+              "source": "n4-order-runtime.cpp",
+              "line": 671,
+              "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+            },
+            {
+              "function": "register_com_google_android_gles_jni_EGLImpl",
+              "source": "egl.cpp",
+              "line": 549,
+              "text": "android::nativeClassInit(_env, nullptr);"
+            },
+            {
+              "function": "nativeClassInit",
+              "source": "egl.cpp",
+              "line": 133,
+              "text": "bool ready = cacheEglFields(env);"
+            },
+            {
+              "function": "cacheEglFields",
+              "source": "egl.cpp",
+              "line": 109,
+              "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+            }
+          ],
+          "reason": "incomplete DEX initialization closure",
+          "missing": [
+            "javax/microedition/khronos/egl/EGLDisplay"
+          ]
+        },
+        {
+          "class_name": "com/google/android/gles_jni/EGLContextImpl",
+          "operation": "GetFieldID",
+          "sequence": 78,
+          "evidence": {
+            "source": "egl.cpp",
+            "line": 113,
+            "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+          },
+          "trace": [
+            {
+              "function": "startReg",
+              "source": "n4-order-runtime.cpp",
+              "line": 671,
+              "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+            },
+            {
+              "function": "register_com_google_android_gles_jni_EGLImpl",
+              "source": "egl.cpp",
+              "line": 549,
+              "text": "android::nativeClassInit(_env, nullptr);"
+            },
+            {
+              "function": "nativeClassInit",
+              "source": "egl.cpp",
+              "line": 133,
+              "text": "bool ready = cacheEglFields(env);"
+            },
+            {
+              "function": "cacheEglFields",
+              "source": "egl.cpp",
+              "line": 113,
+              "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+            }
+          ],
+          "reason": "incomplete DEX initialization closure",
+          "missing": [
+            "java/lang/Object",
+            "javax/microedition/khronos/egl/EGLDisplay",
+            "javax/microedition/khronos/egl/EGLSurface"
+          ]
+        },
+        {
+          "class_name": "com/google/android/gles_jni/EGLSurfaceImpl",
+          "operation": "GetFieldID",
+          "sequence": 80,
+          "evidence": {
+            "source": "egl.cpp",
+            "line": 117,
+            "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+          },
+          "trace": [
+            {
+              "function": "startReg",
+              "source": "n4-order-runtime.cpp",
+              "line": 671,
+              "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+            },
+            {
+              "function": "register_com_google_android_gles_jni_EGLImpl",
+              "source": "egl.cpp",
+              "line": 549,
+              "text": "android::nativeClassInit(_env, nullptr);"
+            },
+            {
+              "function": "nativeClassInit",
+              "source": "egl.cpp",
+              "line": 133,
+              "text": "bool ready = cacheEglFields(env);"
+            },
+            {
+              "function": "cacheEglFields",
+              "source": "egl.cpp",
+              "line": 117,
+              "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+            }
+          ],
+          "reason": "incomplete DEX initialization closure",
+          "missing": [
+            "javax/microedition/khronos/egl/EGLSurface"
+          ]
+        }
+      ],
+      "unresolved_calls": [
+        "ExceptionCheck",
+        "ExceptionClear",
+        "ExceptionDescribe",
+        "GetJavaVM",
+        "HiLogPrint",
+        "NELEM",
+        "NewGlobalRef",
+        "PopLocalFrame",
+        "PushLocalFrame",
+        "dlerror",
+        "dlopen",
+        "dlsym",
+        "fn",
+        "fprintf",
+        "int",
+        "jint",
+        "jniThrowException",
+        "memcpy",
+        "onload",
+        "proc",
+        "register_android_graphics_compat_shim",
+        "register_n2_Camera"
+      ],
+      "coverage": "bounded-source-order-not-runtime-success"
+    }
+  ]
+}

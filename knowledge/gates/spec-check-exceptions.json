@@ -74,6 +74,32 @@
         "benchmark/2026-09-29-white-window/test_analyze.py"
       ],
       "removal_condition": "An approved path-portable comparison retains source-byte hashes and all observations, and passes from a distinct clean checkout with captures available; hiding inputs to skip the test does not qualify."
+    },
+    {
+      "selector": "b10_build_silent_skip_fails",
+      "category": "open-acceptance",
+      "reason": "The pinned master bridge build script still silently continues when a required JNI source is absent. The source branch has fail-closed edits, but replacing existing build scripts is outside the additive B10 import. The unchanged selector correctly observes return code 0 instead of a failure.",
+      "evidence": [
+        "benchmark/2026-09-29-static-wall-prediction/test_static.py",
+        "bms/src/adapter/build/inner/compile_oh_adapter_bridge.sh",
+        "benchmark/2026-10-01-b10-landing/evidence/additive-gate.log"
+      ],
+      "removal_condition": "Outer separately reviews and imports the fail-closed build changes; the unchanged selector must reject every missing required JNI source and pass in a fresh master export. Remove this exception after that real pass.",
+      "approval_status": "proposed-pending-outer-adoption",
+      "approved_by": "outer (claude) 2026-10-01 ACK(95)"
+    },
+    {
+      "selector": "b10_installer_background",
+      "category": "baked-path",
+      "reason": "The unchanged installer inventory test compares regenerated JSON with a frozen matrix containing the original worktree's absolute paths as input keys and manifest_source values. In a distinct export, all 66 rows differ, but substituting only the checkout root in memory makes the complete matrices equal; 4 other module tests pass.",
+      "evidence": [
+        "benchmark/2026-09-29-static-wall-prediction/test_installer_background.py",
+        "benchmark/2026-09-29-static-wall-prediction/installer-background-r17p/matrix.json",
+        "benchmark/2026-10-01-b10-landing/results.json"
+      ],
+      "removal_condition": "Outer approves a checkout-portable comparison preserving every input SHA and semantic observation; all 5 installer module cases pass from another clean checkout. Do not rewrite the historical matrix or skip inventory coverage.",
+      "approval_status": "proposed-pending-outer-adoption",
+      "approved_by": "outer (claude) 2026-10-01 ACK(95)"
     }
   ]
 }
