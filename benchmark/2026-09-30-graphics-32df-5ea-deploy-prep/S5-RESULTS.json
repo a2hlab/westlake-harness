@@ -1,0 +1,30 @@
+{
+  "title": "5ea graphics 32df (single-file liboh_android_runtime.so 9e14bf20->32dfac83) — S5 device test results",
+  "author": "cc-wiki (#80)",
+  "date": "2026-09-30",
+  "board_state": "v3c 668e4f7c + 32df runtime + r17p a0ed5c4f JAR; RUNTIME fingerprint=d16d9faa2d61",
+  "deploy_verified": "S3 gate.passed=true, sha256_passed=true, resident runtime=32dfac83, bridge=84695d62, single ART, no stale 9e14bf20; ledger active_verified single_replacement recorded",
+  "flaw_007": "every verdict below from first-hand t20 (and t5 where noted) self-read by cc-wiki this session; facts rows verbatim from run_facts.py",
+  "run_dir": "benchmark/2026-09-30-graphics-32df-5ea-deploy-prep/runs/32df-5ea-main-20260930T065214/5ea34a4500000000000000001123012c (antennapod recheck: 32df-5ea-antenna-recheck-20260930T070117)",
+  "results": [
+    {"key":"helloworld","role":"control","facts":"shots 2/2 alive t5=yes t20=yes","t20":"Hello World! full UI (title, CHANGE COLOR, lifecycle log, buttons)","verdict":"LIT","note":"32df did not break baseline rendering"},
+    {"key":"wikipedia","role":"B11 target","facts":"shots 2/2 alive t5=yes t20=no child_hilog=54830","t5":"WELCOME PAGE / onboarding InitialOnboardingActivity: WIKIPEDIA wordmark + 「全世界的知识」(All the world's knowledge) + intro + globe logo + → next","t20":"OH launcher (dead)","verdict":"首屏未稳定 (B11 welcome page ON SCREEN at t5) / DEEPER","r17p_baseline":"hwui abort exit134 at render bring-up (never reached UI)","terminal_wall":"UnsupportedOperationException TLS shim no real networking (06:52:37) -> content fetch fails -> error card Html.fromHtml -> tagsoup Parser.setProperty NoSuchMethodError (adapter-mainline-stubs.jar) -> System.exit(1) (06:52:47)","significance":"32df solved the 5ea double-eglCreateWindowSurface abort; welcome page renders. To stabilize: TLS-shim real networking OR tagsoup real impl (cc-t3 domain)."},
+    {"key":"fd-tusky","role":"RED LINE","facts":"shots 2/2 alive t5=yes t20=yes","t20":"Tusky login page (mammoth + 哪个实例? + 用 Tusky 登录)","verdict":"LIT","red_line":"HELD (identical to r17p)"},
+    {"key":"fd-k9","role":"RED LINE","facts":"shots 2/2 alive t5=yes t20=yes","t20":"K-9/Thunderbird 更新数据库 / 正在更新数据库…","verdict":"LIT","red_line":"HELD (identical to r17p)"},
+    {"key":"antennapod","role":"RED LINE","facts":"shots 2/2 alive t5=no t20=no child_hilog=0 (TWO runs, consistent)","t20":"OH launcher (dead)","verdict":"REGRESSION","red_line":"BREACHED","cause":"MainActivity: FeedUpdateManager instance is null -> restartUpdateAlarm(Context,boolean) NPE -> System.exit(1). Deterministic (2/2 runs).","discriminator":"r17p baseline hilog: 'restartUpdateAlarm' appears only as class_linker [IFACE-BITS]/[VTLEN] linking NOISE, NO NPE/System.exit; r17p reached home (欢迎使用 AntennaPod!) alive t20=yes LIT. Only variable r17p->32df = runtime 9e14bf20->32dfac83 (JAR identical r17p a0ed5c4f). => 32df introduced this regression.","likely_fixable":"service/DI singleton null, app-internal Java NPE (analogous class to fd-calendar JobScheduler-null which r17n fixed by-class in JAR); candidate cc-t3 framework/JAR fix, NOT a fundamental graphics break"},
+    {"key":"fd-AppManager","facts":"shots 2/2 alive t5=yes t20=yes","t20":"WHITE (blank, status bar only)","verdict":"SAME (white)","r17p_baseline":"white","note":"32df did NOT fix AppManager on 5ea (contrast 5cd where it showed splash); no regression, no improvement"},
+    {"key":"newpipe","facts":"shots 2/2 alive t5=no t20=no","verdict":"SAME (dead t20)","r17p_baseline":"conscrypt fixed -> ACRA onAbilityDied -> SIGKILL, dead t20"},
+    {"key":"fd-noice","facts":"shots 2/2 alive t5=no t20=no","verdict":"SAME (dead)","r17p_baseline":"hwui abort exit134"}
+  ],
+  "summary": {
+    "b11_win": "Wikipedia welcome page 「全世界的知识」 renders on screen (t5) — campaign goal first-hand confirmed. 32df solved the 5ea EGL double-create render abort.",
+    "red_lines": "Tusky HELD, K-9 HELD, AntennaPod BREACHED (lit->NPE dead, deterministic)",
+    "other": "HW control LIT; AppManager same-white; newpipe/noice same-dead. No new regressions beyond antennapod.",
+    "decision_point": "32df delivers the B11 welcome page but breaches the AntennaPod red line. KEEP (B11 win + file antennapod FeedUpdateManager-null as a cc-t3 JAR wall) vs ROLLBACK (per stated red line, loses B11). Outer ring's call; rollback needs outer ring to run deploy_generation --rollback."
+  },
+  "rollback_ready": {
+    "step_a_cc_wiki": "deploy_jar.sh rollback <r17p-restore-receipt>  (retire r17p -> baked d5000c4e)",
+    "step_b_outer": "orb -m a2hlab bash -lc '.../deploy_generation.sh 5ea... <32df-pkg> --replace /system/android/lib64/liboh_android_runtime.so --rollback --lane cc-wiki'  (restore runtime 9e14bf20)",
+    "step_c_cc_wiki": "deploy_jar.sh deploy <vm-copies/r17p-a0ed5c4f/oh-adapter-runtime.jar> a0ed5c4f... r17p-after-rollback <receipt>  (restore r17p overlay)"
+  }
+}

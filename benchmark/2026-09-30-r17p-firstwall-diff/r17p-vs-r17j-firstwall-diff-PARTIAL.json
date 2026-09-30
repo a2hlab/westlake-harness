@@ -1,0 +1,80 @@
+{
+  "analysis": "r17p (jar a0ed5c4f) vs r17j (jar 20dcb71b) first-wall diff, two boards — PARTIAL snapshot (~06:01, sweep still live)",
+  "author": "cc-wiki (#80)",
+  "date": "2026-09-30",
+  "status": "PARTIAL — 5ea 30/66 done, 61b 34/66 done; full 66-key diff scheduled after ~07:00 sweep completion",
+  "baseline_r17j": "/Users/zhaoyue/orca/workspaces/westlake-harness/benchmark/2026-09-30-v3c-5ea-sweep/v3c-vs-r17c-firstwall-diff-66.json (per_key[].v3c_first_fatal = r17j@5ea; used as baseline for BOTH boards)",
+  "runs": {
+    "5ea": "/Users/zhaoyue/orca/workspaces/westlake-harness/benchmark/2026-09-30-r17p-5ea-sweep/runs/r17p-all-5ea/5ea34a4500000000000000001123012c",
+    "61b": "/Users/zhaoyue/orca/workspaces/westlake-harness/benchmark/2026-09-30-r17p-61b-sweep/runs/r17p-all-61b/61b0657200000000000000000324012c"
+  },
+  "facts_source": "scripts/lab/run_facts.py per serial dir (alive t5/t20 verbatim)",
+  "flaw_007": "lit judged ONLY from t20 image read. wikipedia (B11 target) t20+t5 on BOTH boards self-read by cc-wiki this session. The broader lit list is subagent (aa3ce320) t20 reads within cc-wiki lane, with screen descriptions; outer ring signs off by its own read.",
+  "provenance": {
+    "cc_wiki_self_read": ["wikipedia@5ea", "wikipedia@61b"],
+    "subagent_t20_read_in_lane": "all other lit/not-lit calls below (aa3ce320)"
+  },
+  "corrections_to_subagent": [
+    "61b wikipedia terminal wall is tagsoup Parser.setProperty NoSuchMethodError (via Html.fromHtml in feed error card), NOT 'TLS-shim UnsupportedOp'. Self-verified at System.exit(1) stack (hilog line ~90943): ForYouCardKt.HomeScreen -> CommunityContentTab -> ErrorState -> WikiErrorView -> LanguageUtil.fromHtml -> tagsoup. TLS shim (BC+CertPath, TlsShimProvider.engineInit) is present and did NOT throw; no SSLHandshake/UnknownHost/Connect in window.",
+    "61b wikipedia is 首屏未稳定 (NOT dead-blank): t5 shows real Wikipedia feed HomeScreen chrome rendered (WIKIPEDIA wordmark + 社群/推荐给你 tabs + ZH-CN + center loading spinner + bottom nav 首页/已保存/搜索/活动/更多). alive t5=yes t20=no."
+  ],
+  "wikipedia_b11_deep_dive": {
+    "5ea": {
+      "verdict_vs_r17j": "SAME",
+      "facts": "shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed",
+      "t20": "OH launcher home screen (app dead by t20)",
+      "terminal_wall": "double eglCreateWindowSurface on SAME NativeWindow 0x...3008D3D0 -> 1st EGLSurface=0x...3009DCF0 ok, 2nd/3rd 'egl.eglCreateWindowSurface error' EGLSurface=NULL -> libhwui abort -> exit code:134",
+      "hilog_anchors": "55090 (1st surface ok), 65518/65573 (2nd/3rd surface NULL), 65812 (exit code:134)",
+      "owner": "cx-t0 (v3c-native onboarding last-session mis-bind -> same NativeWindow double-create)",
+      "note": "reached Compose (VerticalScrollLayoutModifier @65214) before the 2nd surface create"
+    },
+    "61b": {
+      "verdict_vs_r17j": "DEEPER",
+      "facts": "shots 2/2  alive t5=yes t20=no  child_hilog=55016  foreground_unconfirmed",
+      "t5": "REAL Wikipedia feed HomeScreen chrome ON SCREEN (WIKIPEDIA wordmark, 社群/推荐给你 tabs, ZH-CN, center loading spinner, bottom nav) — first confirmed wikipedia UI on display",
+      "t20": "OH launcher home screen (app dead by t20)",
+      "verdict_screen": "首屏未稳定",
+      "terminal_wall": "feed content fetch failed -> error card -> Html.fromHtml -> tagsoup org.ccil.cowan.tagsoup.Parser.setProperty(String,Object) NoSuchMethodError (constructor-only stub in adapter-mainline-stubs.jar, boot-AOT) -> [W-ROOM-SURVIVE] uncaught on main Thread-1 -> System.exit(1) code:1",
+      "hilog_anchors": "18151 eglSwapBuffers hook, 90943 System.exit status:1, 91064 exit code:1; NO hwui SIGABRT (contrast 5ea)",
+      "owner_terminal": "boot-AOT tagsoup (adapter-mainline-stubs.jar Parser stub) — oc-t4 investigated; v7 pure-Java MainLooperGuard abandoned",
+      "upstream": "error card only appears because feed content fetch failed; if networking/content worked, tagsoup path is never hit. Two independent ways to light 61b wikipedia: (a) real tagsoup / Html.fromHtml fallback in boot image, or (b) feed content loads (network)."
+    },
+    "board_divergence_root": "the native last-session mis-bind causing the 2nd same-window eglCreateWindowSurface fires on 5ea's v3c native substrate but NOT 61b's — so 5ea dies at EGL double-create (render) while 61b passes render and dies at tagsoup (content)."
+  },
+  "verdict_counts_partial": {
+    "5ea_30": {"FIXED": 4, "DEEPER": 3, "REGRESSION": 1, "SAME": 22, "NEW": 0},
+    "61b_34": {"FIXED": 4, "DEEPER": 5, "REGRESSION": 0, "SAME": 25, "NEW": 0}
+  },
+  "fixed_confirmed_conscrypt_r17o": {
+    "note": "conscrypt getSunProvider boot CNF (top wall in baseline, 9 apps) FIXED by cc-t3 r17o. Confirmed gone on both boards for: antennapod, amaze, droidify (-> lit) and catima, im-vector, newpipe (-> revealed deeper wall).",
+    "to_lit": ["antennapod(5ea)", "fd-com-amaze-filemanager", "fd-droidify"],
+    "to_deeper": ["fd-catima", "fd-im-vector-app", "newpipe", "antennapod(61b, skia RenderThread SIGSEGV)"]
+  },
+  "lit_counts_partial_t20_confirmed": {
+    "5ea_11": ["aegis", "antennapod", "fd-android", "fd-auxio", "fd-calendar", "fd-com-amaze-filemanager", "fd-com-kunzisoft-keepass-libre", "fd-droidify", "fd-filemanager", "fd-netguard", "ooniprobe"],
+    "61b_9": ["aegis", "fd-auxio", "fd-calendar", "fd-com-amaze-filemanager", "fd-com-kunzisoft-keepass-libre", "fd-droidify", "fd-fitness", "fd-netguard", "ooniprobe"]
+  },
+  "regressions": [
+    {"key": "fd-fitness", "board": "5ea", "detail": "RenderThread SIGSEGV libskia_canvaskit TextBlobRedrawCoordinator (signal11) — was alive in r17j. Same skia TextBlob signature hits antennapod on 61b. Intermittent RenderThread text/glyph native wall.", "owner": "cx-t0"}
+  ],
+  "board_differences_same_jar": [
+    {"key": "antennapod", "5ea": "FIXED+LIT (home)", "61b": "DEEPER (RenderThread skia TextBlob SIGSEGV, SEGV_MAPERR @0x10000000f)"},
+    {"key": "fd-fitness", "5ea": "REGRESSION (skia RenderThread SIGSEGV)", "61b": "SAME+LIT (FitoTrack up)"},
+    {"key": "wikipedia", "5ea": "SAME (EGL double-create hwui abort exit134)", "61b": "DEEPER (feed UI on screen t5, tagsoup exit1)"},
+    {"key": "fd-android", "5ea": "LIT", "61b": "white"},
+    {"key": "fd-filemanager", "5ea": "LIT", "61b": "white"},
+    {"key": "fd-gallery", "5ea": "SAME (NoSuchFieldError crash)", "61b": "FIXED-crash-but-white"},
+    {"key": "fd-AppManager", "5ea": "white (BLAST-hang)", "61b": "splash 正在验证 (首屏未稳定)"}
+  ],
+  "persisting_v3c_native_for_cx_t0": [
+    "wikipedia@5ea onboarding double eglCreateWindowSurface -> hwui abort exit134",
+    "fd-noice hwui abort exit134 (both boards)",
+    "fd-AppManager BLAST-white (5ea) / fd-k9 BLAST-white (61b) — 4 sync-transaction natives unregistered",
+    "intermittent RenderThread skia TextBlobRedrawCoordinator SIGSEGV (fd-fitness@5ea, antennapod@61b)"
+  ],
+  "method_caveats": [
+    "alive t20 from uid-in-process-table can be a secondary proc while the main activity crashed (anki, fd-gallery@5ea read as desktop despite alive=yes) — FLAW-007 t20 read is what caught it.",
+    "signal-exits (SIGKILL9 newpipe both boards after ACRA onAbilityDied; SIGSEGV11 fd-fitness@5ea + antennapod@61b) are missed by 'exit with code' grep; verified via appspawn_service.c 'exit with signal'.",
+    "fd-immich(5ea) and fd-meet(61b) were still in-progress at snapshot."
+  ]
+}

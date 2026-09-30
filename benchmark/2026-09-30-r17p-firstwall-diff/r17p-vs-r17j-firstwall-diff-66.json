@@ -1,0 +1,51 @@
+{
+  "title": "r17p vs r17j — 66-key first-wall diff, both boards (5ea / 61b), RUNTIME-fingerprint layered",
+  "author": "cc-wiki (#80)",
+  "date": "2026-09-30",
+  "baseline": "r17j@5ea = benchmark/2026-09-30-v3c-5ea-sweep/v3c-vs-r17c-firstwall-diff-66.json per_key[].v3c_first_fatal",
+  "per_board_detail": {
+    "5ea": "benchmark/2026-09-30-r17p-firstwall-diff/5ea-per-key.json",
+    "61b": "benchmark/2026-09-30-r17p-firstwall-diff/61b-per-key.json"
+  },
+  "method": "first fatal after [B43-BIND] ensureBind: deepest Caused-by / native ULE / signal / exit; child pid from J_initChild_entry + 'exit with code|signal'. Noise ignored: MUSL-SIGCHAIN, class_linker VTLEN/IFACE-BITS (linking logs, NOT throws), DFX signo(42), [B8-UEH] kept-alive, Implement-me stubs, html_compat, kotlinx CoroutineStart. FLAW-007: every alive-t20 key's t20.jpeg read; t5.jpeg read for not-lit alive-t20 keys + newpipe.",
+  "runs": {
+    "5ea": {"dir":"benchmark/2026-09-30-r17p-5ea-sweep/runs/r17p-all-5ea/5ea34a4500000000000000001123012c","fingerprint":"71ccc587850e","shots":"126/126","alive_t5":25,"alive_t20":24},
+    "61b": {"dir":"benchmark/2026-09-30-r17p-61b-sweep/runs/r17p-all-61b/61b0657200000000000000000324012c","fingerprint":"f2421c7197f7","shots":"126/126","alive_t5":26,"alive_t20":24}
+  },
+  "verdict_counts": {
+    "5ea": {"FIXED":6,"DEEPER":5,"SAME":51,"REGRESSION":1,"NEW":0,"app_failed":3,"scored":63},
+    "61b": {"FIXED":4,"DEEPER":12,"SAME":44,"REGRESSION":0,"NEW":0,"board_divergence":3,"app_failed":3,"scored":63}
+  },
+  "app_failed_both": ["fd-seal","subwaysurfers","toutiao"],
+  "lit": {
+    "5ea_18": ["aegis","antennapod","fd-android","fd-auxio","fd-calendar","fd-com-amaze-filemanager","fd-com-kunzisoft-keepass-libre","fd-droidify","fd-filemanager","fd-k9","fd-minetest","fd-mpv","fd-netguard","fd-notes","fd-stk","fd-tasks","fd-tusky","ooniprobe"],
+    "61b_12": ["aegis","fd-auxio","fd-calendar","fd-com-amaze-filemanager","fd-com-kunzisoft-keepass-libre","fd-droidify","fd-fitness","fd-mpv","fd-netguard","fd-notes","fd-tasks","ooniprobe"],
+    "61b_splash_only": ["fd-AppManager (正在验证 splash)","fd-minetest (加载中)","fd-stk (logo splash)"],
+    "note": "lit = app's own functional UI from t20 read (FLAW-007). 5ea>61b because 5ea lit antennapod/fd-android/fd-filemanager/fd-k9/fd-minetest/fd-stk where 61b white/splash/skia-crash; 61b lit fd-fitness where 5ea REGRESSION."
+  },
+  "unstable_first_screen": {
+    "5ea": ["newpipe (t5 MainActivity red toolbar; profileinstaller AssetManager UOE -> SIGKILL before t20)"],
+    "61b": ["wikipedia (t5 feed HomeScreen: WIKIPEDIA + 社群/推荐给你 + spinner + nav; tagsoup NSME -> exit1)","newpipe (t5 Live tab; Implement-me UOE via ACRA -> SIGKILL)"]
+  },
+  "net_fixed_r17p_vs_r17j": {
+    "conscrypt_getSunProvider_boot_CNF": {"apps":9,"status":"FIXED (cc-t3 r17o) confirmed BOTH boards — 0 'Sun provider not found' thrown","to_lit":["antennapod(5ea)","fd-com-amaze-filemanager","fd-droidify"],"to_deeper":["fd-catima","fd-im-vector-app","newpipe","fd-reader","fd-uhabits"]},
+    "reverse_push_size_gate_EGL_BAD_ALLOC":"ELIMINATED — 0 literal EGL_BAD_ALLOC across all 63 5ea hilogs; only benign [OH_WSA-relayout] reverse-pushed logs remain",
+    "fd-calendar_JobScheduler_NPE":"FIXED (r17n by-class SYSTEM_SERVICE_NAMES) — LIT both boards (month view)",
+    "fd-tasks_KeyStore":"FIXED — Tasks.org onboarding LIT both boards"
+  },
+  "regression_5ea": {"key":"fd-fitness","detail":"r17j survives -> r17p RenderThread SIGSEGV(SEGV_MAPERR) libskia_canvaskit TextBlobRedrawCoordinator (skia text/glyph), exit signal:11","owner":"cx-t0","note":"r16-triage 'RenderThread text' wall (0ef2bcf1); same skia signature LIT-crashes fd-fitness@5ea but on 61b same-family hits antennapod"},
+  "board_divergences_5ea_vs_61b": [
+    {"key":"fd-noice/noice","5ea":"libhwui abort exit134","61b":"NO hwui abort — AudioProductStrategy.native_list_audio_product_strategies audio-JNI ULE -> exit1 (same audio wall as opencamera)","correction":"the earlier '61b noice hwui exit134' anchor was WRONG; skia lines in log were SceneBoard pid-844 compositor noise"},
+    {"key":"wikipedia","5ea":"onboarding 2nd eglCreateWindowSurface same NativeWindow -> NULL surface -> libhwui abort exit134 (t5=t20=launcher, alive t5=no)","61b":"NO hwui abort -> reaches feed HomeScreen (t5 real UI) -> tagsoup Parser.setProperty NSME -> exit1 (首屏未稳定)","root":"native last-session mis-bind double-create fires on 5ea substrate, not 61b"},
+    {"key":"antennapod","5ea":"conscrypt FIXED -> home LIT","61b":"RenderThread skia SIGSEGV signal11 (DFX signo(11) threadName RenderThread)","root":"61b substrate render-thread skia-text crash"},
+    {"key":"vlc","5ea_r17j":"audio ULE serviced -> theme InflateException @OnboardingActivity","61b":"AudioSystem.native_getMaxChannelCount audio-JNI ULE -> exit1 before onboarding","root":"61b lacks audio-JNI servicing 5ea had"},
+    {"key":"anki/fd-binaryeye/fd-gallery","61b":"baseline fatal wall (librsdroid bind-fail / CameraX ISE / EXTERNAL_CONTENT_URI NSFE) becomes non-fatal -> app survives but white (anki shows bundled LeakCanary, not deck list)"}
+  ],
+  "persisting_v3c_native_for_cx_t0": [
+    "wikipedia@5ea + noice/fd-noice@5ea: libhwui abort exit134 (EGL double-create / render)",
+    "fd-AppManager@5ea + fd-k9@61b: BLAST-white (sync-transaction natives unregistered)",
+    "fd-fitness@5ea + antennapod@61b: RenderThread skia TextBlobRedrawCoordinator SIGSEGV (intermittent text/glyph)",
+    "audio-JNI no-impl (AudioProductStrategy / AudioSystem native_*): opencamera(5ea), noice/fd-noice/vlc(61b)"
+  ],
+  "handoff": "cx-bms re-test; cc-t3 (tagsoup Html.fromHtml stub, BLAST white, catima/reader/uhabits NPEs); cx-t0 (EGL double-create, RenderThread skia-text SIGSEGV, audio-JNI no-impl, BLAST sync-transaction natives)"
+}
