@@ -6,10 +6,10 @@ repo: A2OH/westlake-harness
 layers: [Verification]
 status: closed
 severity: S2
-recurrence: 5
+recurrence: 6
 fingerprint: verification/single-cause-without-control
 issue:
-cards: [EVO-0028, EVO-0029, EVO-0030]
+cards: [EVO-0028, EVO-0029, EVO-0030, EVO-0031]
 filed: 2026-09-30
 ---
 
@@ -23,6 +23,8 @@ filed: 2026-09-30
 - 07:05 cc-wiki 判「32df 确定性杀 AntennaPod(唯一变量)」;外环 5cd 全量里 32df 下 AntennaPod 亮。
 - 07:07 外环接着判「问题在 32df×r17p 组合」,让 cc-wiki 换 r17r;r17p/r17q/r17r 下 5ea 都 NPE,真正相关的是 5ea 这块板。
 
+- 07:25 外环以「32df 在 5ea 的独有损失是 AntennaPod」回滚 32df;cc-wiki 07:41 清装矩阵表明是 r17r 与 app 数据损坏(一次崩溃写坏 WorkManager 库,不重装就一直崩),32df 未经受控验证(EVO-0031)。第 6 次,并暴露第三类变量:app 数据状态。
+
 ## 责任步
 
 比较两次运行时,只数了自己关心的那一个变量。06:35 的「两板只差安装器」漏数了板子本身;07:05 的「唯一变量」只在 5ea 上成立,5cd 的结果一出来就不唯一了。
@@ -33,7 +35,7 @@ filed: 2026-09-30
 
 ## 修复
 
-`scripts/lab/compare_runs.py <run-A> <run-B> [--keys …]`:板子也算一个变量,再加上指纹里每个 sha 不同或只在一边出现的路径;列出 t5/t20 存活翻转的 key 的两行 facts;最后一行给判词——恰好 1 个变量才叫单变量对照,多于 1 个一律是假设,0 个变量而 key 翻转则先重复 ≥3 次。单测 `scripts/lab/test_compare_runs.py`。用 r17p 全量两板实跑:`variables: 3`(板 + 安装器两件),06:35 的「只差安装器」按判词只能写成假设。
+`scripts/lab/compare_runs.py <run-A> <run-B> [--keys …]`:板子也算一个变量,再加上指纹里每个 sha 不同或只在一边出现的路径;列出 t5/t20 存活翻转的 key 的两行 facts;最后一行给判词——恰好 1 个变量才叫单变量对照,多于 1 个一律是假设,0 个变量而 key 翻转则先重复 ≥3 次。单测 `scripts/lab/test_compare_runs.py`。之后又补两类变量:同板重启(baseline.json 的 boot_id)与未 `--reinstall` 的运行(app 数据延续)。用 r17p 全量两板实跑:`variables: 3`(板 + 安装器两件),06:35 的「只差安装器」按判词只能写成假设。
 
 ## 预防
 
