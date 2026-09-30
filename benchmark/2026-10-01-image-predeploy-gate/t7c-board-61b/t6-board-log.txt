@@ -1,0 +1,52 @@
+[t6] image files in manifest: 27 (expect 27)
+[t6] L1: 27 files match boot-image-inputs.sha256
+[t6] pre-deploy gate: image_predeploy_gate.py --image /Users/zhaoyue/orca/workspaces/_hw248-t7c --reference /Users/zhaoyue/orca/workspaces/westlake-generation-v3c-candidate/payload/android/framework --swap adapter-mainline-stubs --oatdump /Users/zhaoyue/orca/workspaces/westlake-harness/scripts/lab/oatdump_remote.sh --bcp-dir /Users/zhaoyue/orca/workspaces/westlake-generation-v3c-candidate/payload/android/framework --cand-bcp-dir /Users/zhaoyue/orca/workspaces/_cc-wiki-t7c-bcp-local
+# deploy: image=/Users/zhaoyue/orca/workspaces/_hw248-t7c reference=/Users/zhaoyue/orca/workspaces/westlake-generation-v3c-candidate/payload/android/framework swap_jars=['adapter-mainline-stubs'] changes_compiled_code=True (G2 REQUIRED)
+
+== G1 image<->BCP consistency ==
+  core-oj                cand=['0xc5921b7e'] ref=['0xc5921b7e'] -> ok
+  core-libart            cand=['0xda18313c'] ref=['0xda18313c'] -> ok
+  core-icu4j             cand=['0xb275f87b'] ref=['0xb275f87b'] -> ok
+  okhttp                 cand=['0x828cf469'] ref=['0x828cf469'] -> ok
+  bouncycastle           cand=['0x5b93edde'] ref=['0x5b93edde'] -> ok
+  apache-xml             cand=['0xf5f651c3'] ref=['0xf5f651c3'] -> ok
+  adapter-mainline-stubs cand=['0xf731efbe'] ref=['0x6bb8936f'] -> swap(deployed together)
+  framework              cand=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] ref=['0x20c3947a', '0x314ba86a', '0x985c1587', '0x339f8e43', '0xbb037aa1'] -> ok
+  oh-adapter-framework   cand=['0xae231119'] ref=['0xae231119'] -> ok
+  G1: PASS (all segments match the jars in effect)
+== G2 compiled-code suspend-check shape ==
+  probe java.lang.String#hashCode: cand=36 insns, ref=36 insns -> identical
+  G2: PASS
+
+VERDICT: PASS  (G1=PASS G2=PASS)
+[t6] pre-deploy gate PASS
+[t6] boot_id=37178298-afd2-45dc-a634-4228f5e20f1e
+[t6] backed up resident BCP jar /system/android/framework/adapter-mainline-stubs.jar (for jar swap)
+[t6] backed up resident 27 files (hashes: /Users/zhaoyue/orca/workspaces/westlake-harness-wiki/benchmark/2026-09-30-dex2oat-l2/runs/t6-61b0657200000000000000000324012c-20261001T021447/resident-before.sha256)
+[t6] staged swap jar adapter-mainline-stubs.jar (local /Users/zhaoyue/orca/workspaces/_hw248-t7c/adapter-mainline-stubs.jar)
+Log type core,app,only_prerelease buffer clear successfully
+[t6] bind-mounted swap jar over /system/android/framework/adapter-mainline-stubs.jar
+[t6] appspawn-x parent up=1 socket=660:0:6005:u:object_r:appspawn_socket:s0 (want 660:0:6005:u:object_r:appspawn_socket:s0)
+[t6]   evidence[overlay]: rb/mismatch hilog hits=0 faultlogs=8
+[t6] UNEXPECTED: appspawn-x parent ALIVE under T5 (RB-ON) image -> running HW/ZZ to see if apps spawn.
+[t6]   helloworld screenshot=/Users/zhaoyue/orca/workspaces/westlake-harness-wiki/benchmark/2026-09-30-dex2oat-l2/runs/t6-61b0657200000000000000000324012c-20261001T021447/helloworld.jpeg 78243B (read it: lit ~78-88KB, blank ~38KB)
+[t6]   zigzag screenshot=/Users/zhaoyue/orca/workspaces/westlake-harness-wiki/benchmark/2026-09-30-dex2oat-l2/runs/t6-61b0657200000000000000000324012c-20261001T021447/zigzag.jpeg 76116B (read it: lit ~78-88KB, blank ~38KB)
+[t6]   evidence[postrun]: rb/mismatch hilog hits=1 faultlogs=8
+[t6] facts:
+RUNTIME fingerprint=73ecf422dba2 files=119 (runtime-fingerprint.txt; compare before blaming the JAR across boards)
+BOOTIMAGE fingerprint=f25f230f5c77 files=36 (boot-image-fingerprint.txt; not part of RUNTIME)
+aegis                shots 2/2  alive t5=yes t20=yes  child_hilog=21544  foreground_unconfirmed
+fd-feeder            shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+fd-gallery           shots 2/2  alive t5=yes t20=yes  child_hilog=17730  foreground_unconfirmed
+fd-libretube         shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+fd-plus              shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+ooniprobe            shots 2/2  alive t5=yes t20=yes  child_hilog=45936  foreground_unconfirmed
+wikipedia            shots 2/2  alive t5=yes t20=no  child_hilog=55994  foreground_unconfirmed
+x                    shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+TOTAL keys=8 screenshots_captured=16/16 alive_t5=4 alive_t20=3
+[t6] ROLLBACK
+[t6] appspawn-x parent up=1 socket=660:0:6005:u:object_r:appspawn_socket:s0 (want 660:0:6005:u:object_r:appspawn_socket:s0)
+[t6] post-rollback runtime fingerprint= (expect 0b81cdbe0ed9)
+[t6] resident files restored byte-identical (27 image + swapped jar)
+[t6] T6(discriminative) done. REJECTED=0 rb_hit=none
+[t6] VERDICT: image ACCEPTED + apps ran (UNEXPECTED given RB mismatch; read t20 for own-UI, human review per d6)

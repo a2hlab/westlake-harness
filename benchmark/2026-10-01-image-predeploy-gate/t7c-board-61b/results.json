@@ -1,0 +1,37 @@
+{
+  "experiment": "T7c package deploy (image + adapter-mainline-stubs jar together) on board 61b, gated by image_predeploy_gate.py",
+  "date": "2026-10-01T02:14-02:20+0800",
+  "lane": "cc-wiki",
+  "board": "61b0657200000000000000000324012c",
+  "dispatch": "ACK(95): on 61b, first pass G1+G2 (oatdump_remote.sh) -- gate fail => no board; if pass, swap image + stubs jar together, run HW/ZZ/aegis/ooniprobe + wikipedia/libretube/feeder/gallery/plus/x, <=30min, rollback to U5 verify fingerprint, unlock.",
+  "gate_preflight": {
+    "tool": "image_predeploy_gate.py (inline in t6_board_test.sh, BEFORE board lock)",
+    "config": "--image _hw248-t7c --reference v3c --swap adapter-mainline-stubs --oatdump scripts/lab/oatdump_remote.sh --bcp-dir v3c --cand-bcp-dir <8 resident + T7c mainline>",
+    "G1": "PASS (adapter-mainline-stubs 0xf731efbe deployed together; other 8 segments match resident)",
+    "G2": "PASS (java.lang.String#hashCode 36==36 insns vs v3c)",
+    "verdict": "PASS -> cleared to board"
+  },
+  "deploy": {
+    "method": "package: bind-mount 27 image files over /system/android/framework/arm64/* AND bind-mount T7c adapter-mainline-stubs.jar (366acc27) over /system/android/framework/adapter-mainline-stubs.jar (resident beb369a1). Resident libart UNTOUCHED. begetctl stop/start appspawn-x, socket fix; never kill -9.",
+    "boot_id": "37178298 (unchanged, no reboot)",
+    "appspawn_parent": "up=1, socket 660:0:6005:appspawn_socket",
+    "checksystemclass_abort": "NONE (decisive contrast with T7c image-only, which aborted in ClassLinker::CheckSystemClass)",
+    "rb_mismatch_hits": 0,
+    "bootimage_fingerprint_during_overlay": "f25f230f5c77 (T7c image active; U5 baseline was 0876029078e2)",
+    "runtime_fingerprint_during_overlay": "73ecf422dba2 (== U5; libart/runtime untouched, only boot image + 1 jar swapped)"
+  },
+  "results_ground_truth": {
+    "note": "screenshots are ground truth (FLAW-007); 'alive' = process up != visually lit. Read the jpegs.",
+    "lit_own_ui": ["helloworld (own-UI: Hello World! + buttons)", "zigzag (Unity 3D isometric path + ball + Trial Version)", "aegis (welcome / 2FA onboarding)", "ooniprobe (What is OONI Probe onboarding)"],
+    "alive_but_not_foreground": ["wikipedia (t5 blank white; alive t5=yes)", "fd-gallery (t20 shows launcher/desktop; alive t5+t20)"],
+    "not_alive": ["fd-feeder", "fd-libretube", "fd-plus", "x"],
+    "facts_txt_verbatim": "RUNTIME fingerprint=73ecf422dba2 files=119 | FROZEN checked=4 violations=0 | BOOTIMAGE fingerprint=f25f230f5c77 files=36 | aegis 2/2 alive t5=yes t20=yes | fd-feeder 2/2 alive t5=no t20=no | fd-gallery 2/2 alive t5=yes t20=yes | fd-libretube 2/2 alive t5=no t20=no | fd-plus 2/2 alive t5=no t20=no | ooniprobe 2/2 alive t5=yes t20=yes | wikipedia 2/2 alive t5=yes t20=no | x 2/2 alive t5=no t20=no | TOTAL keys=8 screenshots_captured=16/16 alive_t5=4 alive_t20=3"
+  },
+  "rollback": {
+    "method": "umount 27 image binds + the jar bind; begetctl restart appspawn-x",
+    "resident_restored": "byte-identical (27 image files + swapped jar) -- resident-before.sha256 == resident-after.sha256",
+    "boot_id": "37178298 unchanged",
+    "unlock": "61b unlocked (board_note held => empty)"
+  },
+  "conclusion": "T7c PACKAGE deploy PASSES on 61b: the image we built with our own toolchain carrying tagsoup (Parser.set/getProperty) + 4 boot-api stubs (366acc27 mainline-stubs jar), deployed image+jar together, is ACCEPTED by board R155 libart with NO CheckSystemClass abort, and runs apps that render real UI (HW/ZZ/aegis/ooniprobe genuinely lit). The predeploy gate's D-replay prediction (package = PASS, image-only = FAIL) is confirmed on the board. wikipedia/gallery blank-or-desktop and feeder/libretube/plus/x not-alive are app-specific walls independent of T7c (the image accepts and 4 apps render); attribution needs a U5 baseline. Rollback restored U5 byte-identically; board unlocked."
+}

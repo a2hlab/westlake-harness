@@ -30,6 +30,12 @@ FW=/system/android/framework
 ARM64=$FW/arm64
 APPSPAWN_SVC="${APPSPAWN_SVC:-appspawn-x}"        # begetctl service name (confirmed on 5cd 2026-09-30: begetctl {stop,start}_service appspawn-x)
 SOCK="${SOCK:-/dev/unix/socket/AppSpawnX}"        # appspawn socket; owner/mode/label reset on every restart (deploy_generation.py:261)
+# Optional BCP-jar swap (T7-class "image + jar together" deploy, e.g. T7c adapter-mainline-stubs). When set,
+# SWAP_JAR (a local jar file) is bind-mounted over SWAP_JAR_DEST alongside the 27 image files, and rolled back
+# with them. An image that changed a BCP jar MUST swap that jar too or the board rejects the image (T7c
+# ROOT-CAUSE): keep the gate's GATE_SWAP/GATE_CAND_BCP consistent with this.
+SWAP_JAR="${SWAP_JAR:-}"
+SWAP_JAR_DEST="${SWAP_JAR_DEST:-$FW/adapter-mainline-stubs.jar}"
 # HW + ZZ + 5 reliably-lit U2 apps (adjust to the live U2 lit list at run time):
 APPS="${APPS:-helloworld,zigzag,fd-droidify,fd-auxio,aegis,fd-calendar,ooniprobe}"
 WIN_SECS=1800
@@ -80,6 +86,7 @@ log "image files in manifest: $NIMG (expect 27)"
 miss=0
 for rel in $IMG_FILES; do [ -f "$IMGDIR/$rel" ] || { echo "MISSING image file: $IMGDIR/$rel"; miss=$((miss+1)); }; done
 [ "$miss" = 0 ] || { echo "FAIL: $miss image files missing from $IMGDIR"; exit 3; }
+[ -z "$SWAP_JAR" ] || [ -f "$SWAP_JAR" ] || { echo "FAIL: SWAP_JAR not found: $SWAP_JAR"; exit 3; }
 # L1 verify: the provided files match the reference manifest sha256
 ( cd "$IMGDIR" && shasum -a 256 -c "$SHA_MANIFEST" >/dev/null 2>&1 ) && log "L1: 27 files match boot-image-inputs.sha256" || log "WARN: files differ from reference sha256 (new build = expected; recorded)"
 
@@ -135,21 +142,32 @@ guard(){ [ $(( $(date +%s) - START )) -lt $WIN_SECS ] || { echo "WINDOW EXCEEDED
 hdc shell "mkdir -p /data/local/tmp/t6-backup/arm64" 2>/dev/null
 hdc shell "cd $ARM64 && sha256sum *.art *.oat *.vdex 2>/dev/null" > "$OUT/resident-before.sha256"
 for rel in $IMG_FILES; do bn=$(basename "$rel"); hdc shell "cp -a $ARM64/$bn /data/local/tmp/t6-backup/arm64/$bn" 2>/dev/null; done
+if [ -n "$SWAP_JAR" ]; then
+  hdc shell "cp -a $SWAP_JAR_DEST /data/local/tmp/t6-backup/$(basename "$SWAP_JAR_DEST")" 2>/dev/null
+  hdc shell "sha256sum $SWAP_JAR_DEST 2>/dev/null" >> "$OUT/resident-before.sha256"
+  log "backed up resident BCP jar $SWAP_JAR_DEST (for jar swap)"
+fi
 log "backed up resident 27 files (hashes: $OUT/resident-before.sha256)"
 
 # ---------------- 3. stage T5 files on board ----------------
 hdc shell "mkdir -p /data/local/tmp/t6-new/arm64" 2>/dev/null
 for rel in $IMG_FILES; do bn=$(basename "$rel"); hdc file send "$IMGDIR/$rel" /data/local/tmp/t6-new/arm64/$bn >/dev/null 2>&1; done
+if [ -n "$SWAP_JAR" ]; then
+  hdc file send "$SWAP_JAR" /data/local/tmp/t6-new/$(basename "$SWAP_JAR_DEST") >/dev/null 2>&1
+  log "staged swap jar $(basename "$SWAP_JAR_DEST") (local $SWAP_JAR)"
+fi
 
 rollback(){
   log "ROLLBACK"
   appspawn_stop
   for rel in $IMG_FILES; do bn=$(basename "$rel"); hdc shell "umount $ARM64/$bn 2>/dev/null"; done
+  [ -n "$SWAP_JAR" ] && hdc shell "umount $SWAP_JAR_DEST 2>/dev/null"
   appspawn_start
   FP1=$(runtime_fp)
   log "post-rollback runtime fingerprint=$FP1 (expect $EXPECT_FP)"
   hdc shell "cd $ARM64 && sha256sum *.art *.oat *.vdex 2>/dev/null" > "$OUT/resident-after.sha256"
-  if diff -q "$OUT/resident-before.sha256" "$OUT/resident-after.sha256" >/dev/null 2>&1; then log "resident 27 files restored byte-identical"; else echo "WARN resident files differ after rollback — see $OUT"; fi
+  [ -n "$SWAP_JAR" ] && hdc shell "sha256sum $SWAP_JAR_DEST 2>/dev/null" >> "$OUT/resident-after.sha256"
+  if diff -q "$OUT/resident-before.sha256" "$OUT/resident-after.sha256" >/dev/null 2>&1; then log "resident files restored byte-identical (27 image$([ -n "$SWAP_JAR" ] && echo ' + swapped jar'))"; else echo "WARN resident files differ after rollback — see $OUT"; fi
   "$BOARD_NOTE" unlock "$BOARD_MD" "$SERIAL" "$LANE"
 }
 runtime_fp(){ hdc shell "cat /data/local/tmp/asx/runtime-fingerprint.txt 2>/dev/null" 2>/dev/null | grep -oE '[0-9a-f]{12}' | head -1; }
@@ -190,6 +208,7 @@ guard
 hdc shell "hilog -r" 2>/dev/null   # clear buffer BEFORE the restart; hilog -x otherwise returns a stale buffer that misses it
 appspawn_stop
 for rel in $IMG_FILES; do bn=$(basename "$rel"); hdc shell "mount --bind /data/local/tmp/t6-new/arm64/$bn $ARM64/$bn" 2>/dev/null; done
+[ -n "$SWAP_JAR" ] && { hdc shell "mount --bind /data/local/tmp/t6-new/$(basename "$SWAP_JAR_DEST") $SWAP_JAR_DEST" 2>/dev/null; log "bind-mounted swap jar over $SWAP_JAR_DEST"; }
 appspawn_start
 sleep 2
 capture_evidence overlay

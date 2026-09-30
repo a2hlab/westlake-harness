@@ -66,6 +66,20 @@ verdicts as the raw-oatdump replays: T5c vs v3c PASS (G2 36==36), T5b vs v3c FAI
 real `<dir>/arm64/boot.art` (it strips the arch itself); the raw oatdump binary gets the `<dir>/boot.art`
 location (it inserts the arch). So `oatdump_remote.sh` is a correct drop-in for `GATE_OATDUMP`.
 
+## On-board validation (T7c package deploy, 61b, 2026-10-01)
+
+The gate's D-replay prediction was confirmed on the board (`t7c-board-61b/`). T7c was deployed as a **package**
+(27 image files + the T7c `adapter-mainline-stubs.jar` `366acc27` bind-mounted over the resident `beb369a1`),
+after the inline gate passed (G1 PASS, G2 PASS). Result: board R155 libart **accepted** the image with **no
+CheckSystemClass abort** (the decisive contrast with T7c image-only) — `appspawn-x` up, rb/mismatch hits=0.
+Four apps rendered real own-UI (screenshots are ground truth): **HelloWorld, ZigZag, aegis, ooniprobe**
+(`01..04-*-lit.jpeg`); wikipedia was blank and fd-gallery fell to the launcher (`05-wikipedia-blank.jpeg`) —
+alive-but-not-foreground, app-specific walls independent of T7c. `facts.txt`: `TOTAL keys=8
+screenshots_captured=16/16 alive_t5=4 alive_t20=3`. Rollback restored the resident 27 image files + the
+swapped jar **byte-identically** (boot_id unchanged, RUNTIME fingerprint `73ecf422dba2` = U5, libart
+untouched); 61b unlocked. So a T7-class image that changes a BCP jar must deploy that jar with it — the gate
+catches the image-only mistake offline, and the package deploy works on the board.
+
 ## Wiring
 
 - `knowledge/toolchains/art-r155/image_predeploy_gate.py` — the gate.
