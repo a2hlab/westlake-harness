@@ -16,8 +16,14 @@ case $BOARD in /*) ;; *) echo "REFUSE: board path must be absolute: $BOARD" >&2;
 if [ $# -gt 0 ]; then BODY="$*"; else BODY=$(cat); fi
 FIRST=$(printf '%s\n' "$BODY" | grep -m1 -v '^[[:space:]]*$' || true)
 [ -n "$FIRST" ] || { echo "REFUSE: empty body, nothing appended" >&2; exit 2; }
+# EVO-0033..0036 (same disease, 5th time on 2026-09-30): an adoption ("采认") restated a lane's inference without
+# naming the object it was checked against. Warn when an adopting entry carries no evidence anchor (a hash of
+# >= 7 hex digits or a file path); the entry is still appended.
+if printf '%s' "$BODY" | grep '采认' >/dev/null && ! printf '%s' "$BODY" | grep -E '[0-9a-f]{7,}|/[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+' >/dev/null; then
+  echo "WARN: 采认 without an evidence anchor (hash or path of the object it was checked against) -- EVO-0036" >&2
+fi
 printf '%s\n' "$BODY" | "$APPEND" "$BOARD"
-if tail -n 400 "$BOARD" | grep -qF -- "$FIRST"; then
+if tail -n 400 "$BOARD" | grep -F -- "$FIRST" >/dev/null; then  # no -q under pipefail (RUNBOOK)
   echo "appended: ${FIRST:0:100}"
 else
   echo "FAILED: entry not found on the board after append: ${FIRST:0:100}" >&2; exit 1
