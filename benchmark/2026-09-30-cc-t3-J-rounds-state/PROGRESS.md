@@ -35,8 +35,8 @@ Every build: changed_existing_classes = ONLY `adapter/activity/{AppSchedulerBrid
 |---|---|---|---|
 | fd-binaryeye | LIT | (lit; camera native video black region only) | done (JAR); camera video = native/cx-t0 |
 | fd-reader | desktop | `Null reference used for synchronization (monitor-enter)` (app-internal null object) | **app-internal** (vibrator wall passed) |
-| vlc | t5 only | `Failed to resolve attribute at index 13` ConstraintLayout (theme still app-theme 0x7f1402f9) | **NOT JAR** — hilog shows `setTheme`×1: OnboardingActivity `setTheme(Theme.VLC.Transparent 0x7f1402f9)` in code overrides ActivityInfo theme (so getActivityInfo订正 never reads); that theme lacks attr 0x7f040072 → resource/主题解析层, **oc-t4 资源线** |
-| fd-api | desktop | Theme.AppCompat ISE (same activity-theme-contract as vlc) | **NOT JAR** — same app-setTheme + missing-attr class → oc-t4 资源线 |
+| vlc | t5 only | `Failed to resolve attribute at index 13` ConstraintLayout (theme still 0x7f1402f9) | **JAR (theme-flow), cc-t3 NEXT ROUND** — CORRECTED (was wrongly closed as oc-t4). The single `setTheme`×1 is the framework's `performLaunchActivity` applying `r.activityInfo.getThemeResource()`, NOT app-forced: my `[B8-ATHEME]` resolveActivityTheme computed the CORRECT 0x7f1402ec at ability-launch but the crash uses a different theme → the framework applies `r.activityInfo` (from the launch transaction), a DIFFERENT object than the one I corrected. Right seam = **LaunchActivityItem / ActivityClientRecord.activityInfo** (reachable via ActivityThread reflection from the runtime JAR); getActivityInfo is the wrong seam (not queried at launch). cc-wiki (graphics) concurs. |
+| fd-api | desktop | Theme.AppCompat ISE (same activity-theme-contract as vlc) | **JAR (theme-flow), cc-t3 NEXT ROUND** — same ActivityClientRecord.activityInfo seam |
 | fd-meet | desktop | `NPE Collection.iterator() on null` (behind RestrictionsManager, built OK) | app-internal or a 2nd empty-projection |
 | noice/fd-noice | desktop | EGL BAD_ALLOC (eglCreateWindowSurface/libhwui/abort); on 32df downstream `NoClassDefFoundError android.net.ssl.SSLSockets` | **native EGL → cx-t0**; SSLSockets → **boot/oc-t4** (non-BCP runtime JAR can't supply a boot class) |
 | opencamera | desktop | EGL + `UnsatisfiedLinkError: system library is absent from the adapter manifest` | native → cx-t0 |
@@ -44,7 +44,7 @@ Every build: changed_existing_classes = ONLY `adapter/activity/{AppSchedulerBrid
 | fd-im-vector-app | desktop | `UnsatisfiedLinkError librealm-jni.so __FD_SET_chk symbol not found` (native realm); Sentry DSN is behind it | native → cx-t0 |
 | fd-gallery | desktop | `NoSuchFieldError MediaStore$Images$Media.EXTERNAL_CONTENT_URI` | **boot/oc-t4** (field absent from adapter-mainline-stubs.jar; sget-object bytecode, no JAR hook) |
 
-**JAR-layer new walls to still fix**: NONE. vlc/fd-api theme is now closed as NOT-JAR (three seams exhausted: r17m resolveActivityTheme changed ai.theme but it never flowed to the Activity; J1 getActivityInfo correction — the Activity doesn't read it; and the app itself calls `setTheme(0x7f1402f9)` which overrides ActivityInfo entirely, into a theme missing attr 0x7f040072 = resource/theme-resolution layer → oc-t4). Everything else is app-internal / native (cx-t0) / boot (oc-t4). **J2 0715c964 has no further JAR-layer additions available.**
+**JAR-layer new walls to still fix**: **vlc/fd-api theme-flow** (J02) remains JAR-layer for cc-t3 NEXT ROUND — but via the `ActivityClientRecord.activityInfo` / LaunchActivityItem seam, NOT getActivityInfo (proven not-queried-at-launch) and NOT ability-launch resolveActivityTheme (proven not the object the framework applies). This needs no J2 rebuild (J2 is this round's final); it's the next increment's target. Everything else is app-internal / native (cx-t0) / boot (oc-t4). **J2 0715c964 has no further JAR-layer additions THIS round.**
 
 ## Freeze inventory (benchmark/2026-09-30-jar-freeze-inventory/)
 
@@ -63,7 +63,7 @@ Directive: J2 (base faf0782b, one JAR merging all JAR clusters):
 2. **J1 targets still on desktop** — analysis above. Only **vlc/fd-api theme-flow** is JAR-layer and unfixed; the rest are app-internal/native/boot (documented above → outer loop routes). The theme-flow needs the correct seam.
 3. **3 freeze splits** — DONE in faf0782b (J2's base) + re-verified.
 
-So J2 0715c964 is FINAL for this round: it covers (1) NewPipe + (3) splits, and (2)'s only JAR candidate (vlc/fd-api theme) is now closed as NOT-JAR (app setTheme + missing attr → oc-t4). No J2 rebuild needed. Note: AndroidFrameworkPackage.java already logs `[B8-ANDROIDPKG] getPackageInfo(android) threw <ITE.getCause()>` on the getPackageInfo interception (line 51); the separate "in-process bind site" ITE.getCause() diagnostic is a secondary/optional probe on an already-lit app and was NOT added (near-full context; not worth a rebuild for a diagnostic-only line).
+So J2 0715c964 is FINAL for this round: it covers (1) NewPipe + (3) splits. (2)'s only JAR candidate — vlc/fd-api theme — stays JAR-layer but moves to NEXT ROUND (ActivityClientRecord.activityInfo seam), so no J2 rebuild this round. Note: AndroidFrameworkPackage.java already logs `[B8-ANDROIDPKG] getPackageInfo(android) threw <ITE.getCause()>` on the getPackageInfo interception (line 51); the separate "in-process bind site" ITE.getCause() diagnostic is a secondary/optional probe on an already-lit app and was NOT added (near-full context; not worth a rebuild for a diagnostic-only line).
 
 Also pending from outer loop: J1-final **U1 three-board full 66 sweep**; **J2 board verify** (NewPipe); **register FZ-JAR-conscrypt + FZ-JAR-alarm**.
 
