@@ -28,13 +28,14 @@ have() { [ -e "$OUT/$1.part00" ]; }
 split_file() { split -b $PART -d -a 2 "$1" "$OUT/$(basename "$1").part"; }
 
 # 1. code: one bundle per repo (every ref) + where each checkout and worktree goes on the new Mac
-: > "$OUT/git/repos.tsv.new"; : > "$OUT/git/worktrees.tsv.new"
+: > "$OUT/git/repos.tsv.new"; : > "$OUT/git/worktrees.tsv.new"; : > "$OUT/git/sources.tsv"
 repo() { # <name> <repo> <dest: ROOT/... or $HOME-relative> <branch> <url>
   git -C "$2" rev-parse -q --verify "refs/heads/$4" >/dev/null || { echo "no local branch $4 in $2"; exit 1; }
   if [ "$(git -C "$2" rev-parse --is-shallow-repository)" = true ]; then  # a bundle cannot carry a shallow boundary
     [ -s "$OUT/git/$1.tar" ] || tar -cf "$OUT/git/$1.tar" -C "$2" .   # whole checkout, .git and local edits included
   else [ -s "$OUT/git/$1.bundle" ] || git -C "$2" bundle create -q "$OUT/git/$1.bundle" --all; fi
   printf '%s\t%s\t%s\t%s\n' "$1" "$3" "$4" "$5" >> "$OUT/git/repos.tsv.new"
+  printf '%s\t%s\n' "$1" "$2" >> "$OUT/git/sources.tsv"
   local p h b; p=; h=; b=  # worktrees of this repo that live under $W: <repo> <path under ROOT> <branch|@sha>
   while IFS= read -r l; do case $l in
     "worktree "*) p=${l#worktree }; h=; b=;; "HEAD "*) h=${l#HEAD };; "branch refs/heads/"*) b=${l#branch refs/heads/};;
@@ -47,7 +48,19 @@ repo westlake "${WESTLAKE_REPO:-$HOME/orca/westlake}" orca/westlake main https:/
 repo 00.Workspace "${ZERO_WORKSPACE_REPO:-$HOME/orca/00.Workspace}" ROOT/00.Workspace main https://github.com/a2hlab/00.Workspace.git
 repo real-work "$W/01.OH61AOSP16/real-work" ROOT/01.OH61AOSP16/real-work zhao git@github.com:a2hlab/01.OH61AOSP16.git
 repo harmony "${HARMONY_REPO:-$HOME/orca/harmony}" orca/harmony main https://github.com/a2hlab/harmony
-mv "$OUT/git/repos.tsv.new" "$OUT/git/repos.tsv"; mv "$OUT/git/worktrees.tsv.new" "$OUT/git/worktrees.tsv"
+# checkouts under $W that borrow a bundled repo's worktree admin dir without being registered there (a copied
+# worktree, e.g. westlake-bms-suite): recreate them as ordinary worktrees on the same branch
+while IFS=$'\t' read -r name src; do
+  cd_=$(cd "$src" && cd "$(git rev-parse --git-common-dir)" && pwd -P)
+  for d in "$W"/*/; do d=${d%/}; [ -f "$d/.git" ] || continue
+    [ "$(cd "$d" && cd "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd -P)" = "$cd_" ] || continue
+    cut -f2 "$OUT/git/worktrees.tsv.new" | grep -qxF "${d#$W/}" && continue
+    b=$(git -C "$d" branch --show-current); printf '%s\t%s\t%s\n' "$name" "${d#$W/}" "${b:-@$(git -C "$d" rev-parse HEAD)}" >> "$OUT/git/worktrees.tsv.new"
+  done
+done < "$OUT/git/sources.tsv"
+mv "$OUT/git/repos.tsv.new" "$OUT/git/repos.tsv"; mv "$OUT/git/worktrees.tsv.new" "$OUT/git/worktrees.tsv"; rm -f "$OUT/git/sources.tsv"
+# where this tree lived, so unpack can repoint absolute symlinks (values from this run, not literals)
+printf 'OLD_WORKSPACES=%q\nOLD_HOME=%q\n' "$W" "$(cd "$HOME" && pwd -P)" > "$OUT/meta.env"
 echo "git: $(wc -l < "$OUT/git/repos.tsv") repos, $(wc -l < "$OUT/git/worktrees.tsv") worktrees"
 
 # 2. the OLP boards (git-ignored by design), packed fresh every run so the newest board travels

@@ -4,7 +4,8 @@
 #   bash <folder>/unpack_airdrop.sh <workspaces root>      e.g. bash ~/Downloads/_airdrop-20260930/unpack_airdrop.sh ~/alvin
 #
 # 1 verifies every file against SHA256SUMS; 2 clones every repo from its bundle and points the remote back at
-# GitHub; 3 recreates the worktrees; 4 unpacks the lab state (boards last, so the newest board wins).
+# GitHub; 3 recreates the worktrees; 4 unpacks the lab state (boards last, so the newest board wins); then
+# repoints absolute symlinks that targeted the old machine's tree (old paths come from meta.env).
 # <root> is the workspaces dir: the repo lands in <root>/westlake-harness and the lab scripts find <root> by
 # themselves (nearest ancestor holding westlake-inputs/), so no symlinks and no user-specific paths.
 # Re-running skips what is already there. Needs zstd (brew install zstd) and ~200 GB free.
@@ -57,6 +58,17 @@ un companion-untracked.tar.zst "$ROOT"
 un harness-untracked.tar.zst "$ROOT"
 un octos-state.tar.zst "$ROOT"
 un a2hlab-vm.tar.zst "$ROOT/_a2hlab"
+
+echo "== relink absolute symlinks that pointed into the old machine's tree"
+OLD_WORKSPACES=; OLD_HOME=; [ -f "$SRC/meta.env" ] && . "$SRC/meta.env"
+n=0
+if [ -n "$OLD_WORKSPACES" ]; then
+  while IFS= read -r -d '' l; do t=$(readlink "$l")
+    case $t in "$OLD_WORKSPACES"/*) nt="$ROOT/${t#"$OLD_WORKSPACES"/}";; "$OLD_HOME"/*) nt="$HOME/${t#"$OLD_HOME"/}";; *) continue;; esac
+    ln -sfn "$nt" "$l"; n=$((n+1))
+  done < <(find "$ROOT" "$HOME/orca" -type l -print0 2>/dev/null)
+fi
+echo "relinked: $n"
 
 cat <<EOF
 
