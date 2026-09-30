@@ -1,7 +1,10 @@
 package adapter.activity;
 
 import android.content.ComponentName;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.ResolveInfo;
 import android.content.pm.ComponentInfo;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ServiceInfo;
@@ -39,11 +42,25 @@ public final class SelfComponentFallback {
         failed = false;
     }
 
-    /** IPackageManager proxy hook: returns the delegate result unless it is a null self-package answer. */
+    /** IPackageManager proxy hook: returns the delegate result unless it is a null self-package answer.
+     *  getActivityInfo is the one exception: its result is non-null but carries the wrong theme, so it is
+     *  corrected in place (see below) before the null-answer short-circuit. */
     public static Object apply(Method method, Object[] args, Object result) {
-        if (result != null || method == null || args == null) return result;
+        if (method == null || args == null) return result;
         try {
             String name = method.getName();
+            // r17u (#vlc/#fd-api activity-theme-contract): the OH bridge projects a self-package
+            // ActivityInfo with the APPLICATION theme, not the activity's own android:theme. An activity
+            // whose layout reads a ?attr/ that only its declared theme defines then crashes in
+            // setContentView (vlc OnboardingActivity ConstraintLayout "Failed to resolve attribute at
+            // index 13", fd-api Theme.AppCompat ISE). getActivityInfo returns a NON-null wrong-theme info,
+            // so correct its theme from the bound APK's manifest (activity's own android:theme).
+            if ("getActivityInfo".equals(name) && result instanceof android.content.pm.ActivityInfo
+                    && args.length >= 1 && args[0] instanceof ComponentName) {
+                correctSelfActivityTheme((android.content.pm.ActivityInfo) result, (ComponentName) args[0]);
+                return result;
+            }
+            if (result != null) return result;
             if ("getProviderInfo".equals(name) && args.length >= 3 && args[0] instanceof ComponentName
                     && args[1] instanceof Long) {
                 ComponentName component = (ComponentName) args[0];
@@ -74,6 +91,21 @@ public final class SelfComponentFallback {
                 }
                 return info;
             }
+            // r17u (#binaryeye): an explicit resolveService(new Intent(self, MetadataHolderService)) that
+            // the bridge answers null with -- resolve it from this package's own manifest (never widens
+            // to another package; a null match keeps the delegate's own answer).
+            if ("resolveService".equals(name) && args.length >= 3 && args[0] instanceof Intent
+                    && args[2] instanceof Long) {
+                ManifestComponentProjection projection = projection(bound == null ? null : bound.packageName);
+                if (projection == null) return null;
+                String resolvedType = args[1] instanceof String ? (String) args[1] : null;
+                ResolveInfo ri = projection.resolveComponent((Intent) args[0], resolvedType, "service", bound, (Long) args[2]);
+                if (ri != null && ri.serviceInfo != null) {
+                    System.err.println("[B8-PM] projected resolveService -> " + ri.serviceInfo.name
+                            + " metaData=" + (ri.serviceInfo.metaData == null ? 0 : ri.serviceInfo.metaData.size()));
+                }
+                return ri;
+            }
             if ("resolveContentProvider".equals(name) && args.length >= 3 && args[0] instanceof String
                     && args[1] instanceof Long) {
                 ManifestComponentProjection projection = projection(bound == null ? null : bound.packageName);
@@ -100,6 +132,25 @@ public final class SelfComponentFallback {
         } catch (Throwable t) {
             System.err.println("[B8-PM] manifest provider lookup failed: " + t);
             return null;
+        }
+    }
+
+    /** r17u (#vlc/#fd-api): set a self-package activity's theme to its own android:theme from the manifest
+     *  when the bridge handed back the application theme. Read via ManifestJsonFallback.activityTheme
+     *  (activity's own theme, else the app theme), same source resolveActivityTheme uses at launch. */
+    private static void correctSelfActivityTheme(ActivityInfo ai, ComponentName component) {
+        try {
+            if (ai == null || component == null || bound == null || bound.packageName == null) return;
+            if (!bound.packageName.equals(component.getPackageName()) || bound.uid != Process.myUid()) return;
+            int manifestTheme = ManifestJsonFallback.activityTheme(component.getPackageName(), component.getClassName());
+            if (manifestTheme != 0 && manifestTheme != ai.theme) {
+                int prev = ai.theme;
+                ai.theme = manifestTheme;
+                System.err.println("[B8-PM] corrected getActivityInfo theme " + component.flattenToShortString()
+                        + " -> 0x" + Integer.toHexString(manifestTheme) + " (was 0x" + Integer.toHexString(prev) + ")");
+            }
+        } catch (Throwable t) {
+            System.err.println("[B8-PM] activity theme correction failed: " + t);
         }
     }
 
