@@ -1,0 +1,32 @@
+{
+  "task": "Path-2: build device libart via recipe cross_compile_arm64.sh on the r1+21 tree, compare exported symbols vs board R155 libart 59e1bb45",
+  "date": "2026-09-30T23:xx+0800",
+  "lane": "cc-wiki",
+  "offline": true,
+  "build": {
+    "host": "hw248",
+    "dir": "/opt/build-runs/2026-09-30-oh6.1.0.31-cc-wiki-device-libart",
+    "script": "recipe cross_compile_arm64.sh (fd306585, from b6-r155)",
+    "inputs": {
+      "art_source": "/home/alvin/aosp-14.0.0_r1-art (r1 + 21 T1 patches)",
+      "oh_root": "merged: clang+musl from /opt/build-trees/oh610_lts_source (OH clang 15.0.4 feef13a3), platformsdk syms symlinked (libbegetutil.z/libhilog/libutils.z/libz->libshared_libz.z/crypto/ssl)",
+      "adapter": "b6-r155 recipe adapter (copied to build-run) + 12 missing helper scripts filled from an m1-route-a adapter (b6-r155 snapshot was missing scripts/, incl. rewrite_sigchain_libc.py)",
+      "libcxx": "libcxx-ohos/include/c++/v1 (has __config_site for the ohos target)"
+    },
+    "result": "partial: 238 ART runtime .o compiled OK; 17 dep .so built (bionic_compat/log/base/cutils/utils/nativehelper/sigchain/artpalette*/vixl/lz4/ziparchive/tinyxml2/artbase/dexfile/nativebridge/profile). libart.so did NOT auto-link: liblzma fails (Threads.h 'HANDLE' -> needs a single-thread define), libunwindstack (Demangle/Maps) and libnativeloader (-lapp_native_loader missing) fail. These are build-ORCHESTRATION gaps (the recipe is meant to run via build_adapter.sh which builds app_native_loader etc.), not ART-source gaps.",
+    "note": "cross_compile_arm64.sh needs BUILD_INNER_INVOKED=1 (internal-helper guard) and L03_A12_LIBCXX_INCLUDE pointing at libcxx-ohos (for __config_site)."
+  },
+  "symbol_compare": {
+    "method": "llvm-nm --defined-only --extern-only on the 238 art .o (my global-defined symbols) vs llvm-nm -D --defined-only on board 59e1bb45 (its dynamic export table). NOT perfectly apples-to-apples: my side is the .o superset (no visibility hiding), board side is the visibility-filtered .so exports.",
+    "my_defined_extern": 10847,
+    "board_exports": 10083,
+    "board_exports_i_also_define": 9874,
+    "board_exports_i_lack": 209,
+    "i_define_board_lacks": 973,
+    "match_pct_of_board_exports": "97.9% (9874/10083)",
+    "board_only_209_composition": "mostly art::/std:: template instantiations (art::VariantMap<...>::ScopedRemove/ReleaseOrDefault, InternTable::AddTableFromMemory<VoidFunctor>, FlagMetaBase, BufferedRootVisitor) + a few vtables/methods. NONE are from the un-built deps (unwindstack/nativeloader/lzma) — those are not art:: symbols. The 973 'I have, board lacks' is largely the .o-superset vs .so-exports visibility difference.",
+    "decisive_finding": "Of the 118 non-template art::Class::method names among the 209 board-only symbols, exactly TWO are genuinely ABSENT from the r1+21 art source (grep of $A/art = 0 hits); the other 116 exist (so they are visibility/inlining differences from the .o-superset-vs-.so-exports comparison, not source gaps). The two missing R155-specific methods are: (1) art::ClassLinker::DumpBootObjectFields(char const*) [_ZN3art11ClassLinker20DumpBootObjectFieldsEPKc] — a boot-object-fields diagnostic; (2) art::Runtime::RecordWriteField — a field-write recording method. So the T1 21-patch series does NOT fully reconstruct the R155 source: these two methods are missing. RecordWriteField is especially worth investigating — a field-write instrumentation hook is potentially on the codegen/field-access path that the formal-T6 (T5b) abort hit (const-string/new-instance implicit-NPE-check)."
+  },
+  "verdict": "The recipe on r1+21 reproduces ~97.9% of the board R155 libart's exported symbols. The residual has exactly two genuine source gaps: art::ClassLinker::DumpBootObjectFields and art::Runtime::RecordWriteField exist in the board R155 libart but nowhere in r1+21. This corroborates the formal-T6 (T5b) failure — the r1+21 ART source is very close to R155 but not identical (2 missing methods), so a dex2oat built from it emits boot-image code the board R155 libart cannot fully run.",
+  "next": "Recover the R155 source for ClassLinker::DumpBootObjectFields and (higher priority) Runtime::RecordWriteField — find them in the R155 recovery trees / by disassembling the board 59e1bb45, add them to the T1 series, rebuild libart+dex2oat, and retry T5b. Prioritise RecordWriteField as it may change field-access codegen (the T5b abort path)."
+}
