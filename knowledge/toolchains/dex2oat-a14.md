@@ -56,9 +56,10 @@ export REPO_URL=https://mirrors.tuna.tsinghua.edu.cn/git/git-repo
 repo init --repo-rev=stable -u https://mirrors.tuna.tsinghua.edu.cn/git/AOSP/platform/manifest \
   -b android-14.0.0_r16 --depth=1 --no-clone-bundle
 repo sync -c -j16 --no-tags --no-clone-bundle --fail-fast
-# next steps, filled in as they are done:
-# source build/envsetup.sh && lunch <target> && m dex2oat   (host tool, out/host/linux-x86/bin)
-# repo manifest -r -o pinned-manifest.xml
+# sync finished 2026-09-30 10:55, 111 GB
+repo manifest -r -o pinned-manifest.xml     # pinned project revisions, copy kept next to this page
+source build/envsetup.sh && lunch aosp_arm64-userdebug
+m -j32 build-art-host libart                 # host dex2oat set + arm64 libart for the R155 layout check
 ```
 
 ## To record when done
