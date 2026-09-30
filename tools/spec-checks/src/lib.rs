@@ -407,3 +407,18 @@ fn freeze_u4_contract_gap() {
 fn freeze_u4_predictions() {
     run(&["benchmark/2026-09-30-freeze-audit-u4/test_review.py", "PredictionTests"]);
 }
+
+#[test]
+fn t5_oat_evidence() {
+    run(&["benchmark/2026-09-30-t5-oat-attribution/test_compare.py", "EvidenceTests"]);
+}
+
+#[test]
+fn t5_oat_rejection() {
+    run(&["benchmark/2026-09-30-t5-oat-attribution/test_compare.py", "RejectionTests"]);
+}
+
+#[test]
+fn t5_art_flags() {
+    run(&["benchmark/2026-09-30-t5-oat-attribution/test_compare.py", "FlagTests"]);
+}

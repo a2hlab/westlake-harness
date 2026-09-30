@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[benchmark/2026-09-30-t5-oat-attribution/](benchmark/2026-09-30-t5-oat-attribution/)** | **T5: 27-file residuals, false missing-key premise, R155 read-barrier/CMS build flags and T4 gate recommendation.** |
 | **`benchmark/2026-09-30-freeze-audit-u4/`** | **JAR freeze admission audit and 66-key U4 forecast; mixed alarm/vibrator scope held, exact J5/N3b WebView class gap pinned.** |
 | **`benchmark/2026-09-30-unified-replay/`** | **Offline-tested N2/FZ-001 preflight and idempotent J2/J3 replay; 66 keys balanced across four slots with the fourth OH board pending.** |
 | **`benchmark/2026-09-30-input-recovery/`** | **Three offline input repairs: exact #77 data exceptions, verified Subway cohort revision, FakeBoard and actual-input receipts.** |

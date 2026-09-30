@@ -1,0 +1,2954 @@
+{
+  "commit": "3c05e56adf5b268ec5b20bf8aec460815e45161c",
+  "files": {
+    "runtime/oat.h": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/oat.h",
+      "sha256": "8b640ea3bb8e48ee00e4f494ac8b451c06ddd50901db4d47e452df70ce2c8c4d",
+      "lines": [
+        {
+          "line": 141,
+          "text": "  std::array<uint8_t, 4> magic_;"
+        },
+        {
+          "line": 142,
+          "text": "  std::array<uint8_t, 4> version_;"
+        },
+        {
+          "line": 143,
+          "text": "  uint32_t oat_checksum_;"
+        },
+        {
+          "line": 144,
+          "text": ""
+        },
+        {
+          "line": 145,
+          "text": "  InstructionSet instruction_set_;"
+        },
+        {
+          "line": 146,
+          "text": "  uint32_t instruction_set_features_bitmap_;"
+        },
+        {
+          "line": 147,
+          "text": "  uint32_t dex_file_count_;"
+        },
+        {
+          "line": 148,
+          "text": "  uint32_t oat_dex_files_offset_;"
+        },
+        {
+          "line": 149,
+          "text": "  uint32_t bcp_bss_info_offset_;"
+        },
+        {
+          "line": 150,
+          "text": "  uint32_t executable_offset_;"
+        },
+        {
+          "line": 151,
+          "text": "  uint32_t jni_dlsym_lookup_trampoline_offset_;"
+        },
+        {
+          "line": 152,
+          "text": "  uint32_t jni_dlsym_lookup_critical_trampoline_offset_;"
+        },
+        {
+          "line": 153,
+          "text": "  uint32_t quick_generic_jni_trampoline_offset_;"
+        },
+        {
+          "line": 154,
+          "text": "  uint32_t quick_imt_conflict_trampoline_offset_;"
+        },
+        {
+          "line": 155,
+          "text": "  uint32_t quick_resolution_trampoline_offset_;"
+        },
+        {
+          "line": 156,
+          "text": "  uint32_t quick_to_interpreter_bridge_offset_;"
+        },
+        {
+          "line": 157,
+          "text": "  uint32_t nterp_trampoline_offset_;"
+        },
+        {
+          "line": 158,
+          "text": ""
+        },
+        {
+          "line": 159,
+          "text": "  uint32_t key_value_store_size_;"
+        },
+        {
+          "line": 160,
+          "text": "  uint8_t key_value_store_[0];  // note variable width data at end"
+        }
+      ]
+    },
+    "runtime/oat.cc": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/oat.cc",
+      "sha256": "0f4d1aabb070a1ea12a9cb157f31d235cc3811e992f0b826d94f6bd7367345e3",
+      "lines": [
+        {
+          "line": 439,
+          "text": "  const char* key_value = GetStoreValueByKey(kCompilerFilter);"
+        },
+        {
+          "line": 440,
+          "text": "  CHECK(key_value != nullptr) << \"compiler-filter not found in oat header\";"
+        },
+        {
+          "line": 441,
+          "text": "  CHECK(CompilerFilter::ParseCompilerFilter(key_value, &filter))"
+        },
+        {
+          "line": 442,
+          "text": "      << \"Invalid compiler-filter in oat header: \" << key_value;"
+        },
+        {
+          "line": 443,
+          "text": "  return filter;"
+        },
+        {
+          "line": 444,
+          "text": "}"
+        },
+        {
+          "line": 445,
+          "text": ""
+        },
+        {
+          "line": 446,
+          "text": "bool OatHeader::KeyHasValue(const char* key, const char* value, size_t value_size) const {"
+        },
+        {
+          "line": 447,
+          "text": "  const char* key_value = GetStoreValueByKey(key);"
+        },
+        {
+          "line": 448,
+          "text": "  return (key_value != nullptr && strncmp(key_value, value, value_size) == 0);"
+        },
+        {
+          "line": 449,
+          "text": "}"
+        },
+        {
+          "line": 450,
+          "text": ""
+        },
+        {
+          "line": 451,
+          "text": "bool OatHeader::IsKeyEnabled(const char* key) const {"
+        },
+        {
+          "line": 452,
+          "text": "  return KeyHasValue(key, kTrueValue, sizeof(kTrueValue));"
+        },
+        {
+          "line": 453,
+          "text": "}"
+        },
+        {
+          "line": 454,
+          "text": ""
+        },
+        {
+          "line": 455,
+          "text": "void OatHeader::Flatten(const SafeMap<std::string, std::string>* key_value_store) {"
+        },
+        {
+          "line": 456,
+          "text": "  char* data_ptr = reinterpret_cast<char*>(&key_value_store_);"
+        },
+        {
+          "line": 457,
+          "text": "  if (key_value_store != nullptr) {"
+        },
+        {
+          "line": 458,
+          "text": "    SafeMap<std::string, std::string>::const_iterator it = key_value_store->begin();"
+        },
+        {
+          "line": 459,
+          "text": "    SafeMap<std::string, std::string>::const_iterator end = key_value_store->end();"
+        },
+        {
+          "line": 460,
+          "text": "    for ( ; it != end; ++it) {"
+        },
+        {
+          "line": 461,
+          "text": "      strlcpy(data_ptr, it->first.c_str(), it->first.length() + 1);"
+        },
+        {
+          "line": 462,
+          "text": "      data_ptr += it->first.length() + 1;"
+        },
+        {
+          "line": 463,
+          "text": "      strlcpy(data_ptr, it->second.c_str(), it->second.length() + 1);"
+        },
+        {
+          "line": 464,
+          "text": "      data_ptr += it->second.length() + 1;"
+        },
+        {
+          "line": 465,
+          "text": "    }"
+        },
+        {
+          "line": 466,
+          "text": "  }"
+        },
+        {
+          "line": 467,
+          "text": "  key_value_store_size_ = data_ptr - reinterpret_cast<char*>(&key_value_store_);"
+        },
+        {
+          "line": 468,
+          "text": "}"
+        }
+      ]
+    },
+    "dex2oat/dex2oat.cc": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/dex2oat/dex2oat.cc",
+      "sha256": "c84bbb1834c1491ecaa7a4711316944d685eb598597b264c9269a9b0961cdf85",
+      "lines": [
+        {
+          "line": 963,
+          "text": "        if (i > 0) {"
+        },
+        {
+          "line": 964,
+          "text": "          oss << ' ';"
+        },
+        {
+          "line": 965,
+          "text": "        }"
+        },
+        {
+          "line": 966,
+          "text": "        oss << argv[i];"
+        },
+        {
+          "line": 967,
+          "text": "      }"
+        },
+        {
+          "line": 968,
+          "text": "      key_value_store_->Put(OatHeader::kDex2OatCmdLineKey, oss.str());"
+        },
+        {
+          "line": 969,
+          "text": "    }"
+        },
+        {
+          "line": 970,
+          "text": "    key_value_store_->Put(OatHeader::kDebuggableKey, compiler_options_->debuggable_);"
+        },
+        {
+          "line": 971,
+          "text": "    key_value_store_->Put(OatHeader::kNativeDebuggableKey,"
+        },
+        {
+          "line": 972,
+          "text": "                          compiler_options_->GetNativeDebuggable());"
+        },
+        {
+          "line": 973,
+          "text": "    key_value_store_->Put(OatHeader::kCompilerFilter,"
+        },
+        {
+          "line": 974,
+          "text": "                          CompilerFilter::NameOfFilter(compiler_options_->GetCompilerFilter()));"
+        },
+        {
+          "line": 975,
+          "text": "    key_value_store_->Put(OatHeader::kConcurrentCopying, gUseReadBarrier);"
+        },
+        {
+          "line": 976,
+          "text": "    if (invocation_file_.get() != -1) {"
+        },
+        {
+          "line": 1625,
+          "text": "    if (!compilation_reason_.empty()) {"
+        },
+        {
+          "line": 1626,
+          "text": "      key_value_store_->Put(OatHeader::kCompilationReasonKey, compilation_reason_);"
+        },
+        {
+          "line": 1627,
+          "text": "    }"
+        },
+        {
+          "line": 1628,
+          "text": ""
+        },
+        {
+          "line": 1629,
+          "text": "    Runtime* runtime = Runtime::Current();"
+        },
+        {
+          "line": 1630,
+          "text": ""
+        },
+        {
+          "line": 1631,
+          "text": "    if (IsBootImage()) {"
+        },
+        {
+          "line": 1632,
+          "text": "      // If we're compiling the boot image, store the boot classpath into the Key-Value store."
+        },
+        {
+          "line": 1633,
+          "text": "      // We use this when loading the boot image."
+        },
+        {
+          "line": 1634,
+          "text": "      key_value_store_->Put(OatHeader::kBootClassPathKey, android::base::Join(dex_locations_, ':'));"
+        },
+        {
+          "line": 1635,
+          "text": "    } else if (IsBootImageExtension()) {"
+        },
+        {
+          "line": 1636,
+          "text": "      // Validate the boot class path and record the dependency on the loaded boot images."
+        },
+        {
+          "line": 1637,
+          "text": "      TimingLogger::ScopedTiming t3(\"Loading image checksum\", timings_);"
+        },
+        {
+          "line": 1638,
+          "text": "      std::string full_bcp = android::base::Join(runtime->GetBootClassPathLocations(), ':');"
+        },
+        {
+          "line": 1639,
+          "text": "      std::string extension_part = \":\" + android::base::Join(dex_locations_, ':');"
+        },
+        {
+          "line": 1640,
+          "text": "      if (!android::base::EndsWith(full_bcp, extension_part)) {"
+        },
+        {
+          "line": 1641,
+          "text": "        LOG(ERROR) << \"Full boot class path does not end with extension parts, full: \" << full_bcp"
+        },
+        {
+          "line": 1642,
+          "text": "            << \", extension: \" << extension_part.substr(1u);"
+        },
+        {
+          "line": 1643,
+          "text": "        return dex2oat::ReturnCode::kOther;"
+        },
+        {
+          "line": 1644,
+          "text": "      }"
+        },
+        {
+          "line": 1645,
+          "text": "      std::string bcp_dependency = full_bcp.substr(0u, full_bcp.size() - extension_part.size());"
+        },
+        {
+          "line": 1646,
+          "text": "      key_value_store_->Put(OatHeader::kBootClassPathKey, bcp_dependency);"
+        },
+        {
+          "line": 1647,
+          "text": "      ArrayRef<const DexFile* const> bcp_dex_files_dependency ="
+        },
+        {
+          "line": 1648,
+          "text": "          bcp_dex_files.SubArray(/*pos=*/ 0u, bcp_dex_files.size() - dex_files.size());"
+        },
+        {
+          "line": 1649,
+          "text": "      ArrayRef<ImageSpace* const> image_spaces(runtime->GetHeap()->GetBootImageSpaces());"
+        },
+        {
+          "line": 1650,
+          "text": "      key_value_store_->Put("
+        },
+        {
+          "line": 1651,
+          "text": "          OatHeader::kBootClassPathChecksumsKey,"
+        },
+        {
+          "line": 1652,
+          "text": "          gc::space::ImageSpace::GetBootClassPathChecksums(image_spaces, bcp_dex_files_dependency));"
+        },
+        {
+          "line": 1653,
+          "text": "    } else {"
+        },
+        {
+          "line": 1654,
+          "text": "      if (CompilerFilter::DependsOnImageChecksum(original_compiler_filter)) {"
+        },
+        {
+          "line": 1655,
+          "text": "        TimingLogger::ScopedTiming t3(\"Loading image checksum\", timings_);"
+        },
+        {
+          "line": 1656,
+          "text": "        key_value_store_->Put(OatHeader::kBootClassPathKey,"
+        },
+        {
+          "line": 1657,
+          "text": "                              android::base::Join(runtime->GetBootClassPathLocations(), ':'));"
+        },
+        {
+          "line": 1658,
+          "text": "        ArrayRef<ImageSpace* const> image_spaces(runtime->GetHeap()->GetBootImageSpaces());"
+        },
+        {
+          "line": 1659,
+          "text": "        key_value_store_->Put("
+        },
+        {
+          "line": 1660,
+          "text": "            OatHeader::kBootClassPathChecksumsKey,"
+        },
+        {
+          "line": 1661,
+          "text": "            gc::space::ImageSpace::GetBootClassPathChecksums(image_spaces, bcp_dex_files));"
+        },
+        {
+          "line": 1662,
+          "text": "      }"
+        },
+        {
+          "line": 1703,
+          "text": "    if (IsBootImage() ||"
+        },
+        {
+          "line": 1704,
+          "text": "        IsBootImageExtension() ||"
+        },
+        {
+          "line": 1705,
+          "text": "        CompilerFilter::DependsOnImageChecksum(original_compiler_filter)) {"
+        },
+        {
+          "line": 1706,
+          "text": "      std::string versions ="
+        },
+        {
+          "line": 1707,
+          "text": "          apex_versions_argument_.empty() ? runtime->GetApexVersions() : apex_versions_argument_;"
+        },
+        {
+          "line": 1708,
+          "text": "      key_value_store_->Put(OatHeader::kApexVersionsKey, versions);"
+        },
+        {
+          "line": 1709,
+          "text": "    }"
+        },
+        {
+          "line": 1710,
+          "text": ""
+        },
+        {
+          "line": 1711,
+          "text": "    // Now that we have adjusted whether we generate an image, encode it in the"
+        },
+        {
+          "line": 1712,
+          "text": "    // key/value store."
+        },
+        {
+          "line": 1713,
+          "text": "    key_value_store_->Put(OatHeader::kRequiresImage, compiler_options_->IsGeneratingImage());"
+        },
+        {
+          "line": 1714,
+          "text": ""
+        },
+        {
+          "line": 1715,
+          "text": "    // Now that we have finalized key_value_store_, start writing the .rodata section."
+        },
+        {
+          "line": 1716,
+          "text": "    // Among other things, this creates type lookup tables that speed up the compilation."
+        },
+        {
+          "line": 1717,
+          "text": "    {"
+        },
+        {
+          "line": 1718,
+          "text": "      TimingLogger::ScopedTiming t_dex(\"Starting .rodata\", timings_);"
+        },
+        {
+          "line": 1719,
+          "text": "      rodata_.reserve(oat_writers_.size());"
+        },
+        {
+          "line": 1720,
+          "text": "      for (size_t i = 0, size = oat_writers_.size(); i != size; ++i) {"
+        },
+        {
+          "line": 1721,
+          "text": "        rodata_.push_back(elf_writers_[i]->StartRoData());"
+        },
+        {
+          "line": 1722,
+          "text": "        if (!oat_writers_[i]->StartRoData(dex_files_per_oat_file_[i],"
+        },
+        {
+          "line": 1723,
+          "text": "                                          rodata_.back(),"
+        },
+        {
+          "line": 1724,
+          "text": "                                          (i == 0u) ? key_value_store_.get() : nullptr)) {"
+        },
+        {
+          "line": 1725,
+          "text": "          return dex2oat::ReturnCode::kOther;"
+        }
+      ]
+    },
+    "dex2oat/linker/oat_writer.cc": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/dex2oat/linker/oat_writer.cc",
+      "sha256": "d0bd6ead8c5443636fa6036ec8d126048f45949c915f9e3e571cf94e4f5d2377",
+      "lines": [
+        {
+          "line": 116,
+          "text": "class OatWriter::ChecksumUpdatingOutputStream : public OutputStream {"
+        },
+        {
+          "line": 117,
+          "text": " public:"
+        },
+        {
+          "line": 118,
+          "text": "  ChecksumUpdatingOutputStream(OutputStream* out, OatWriter* writer)"
+        },
+        {
+          "line": 119,
+          "text": "      : OutputStream(out->GetLocation()), out_(out), writer_(writer) { }"
+        },
+        {
+          "line": 120,
+          "text": ""
+        },
+        {
+          "line": 121,
+          "text": "  bool WriteFully(const void* buffer, size_t byte_count) override {"
+        },
+        {
+          "line": 122,
+          "text": "    if (buffer != nullptr) {"
+        },
+        {
+          "line": 123,
+          "text": "      const uint8_t* bytes = reinterpret_cast<const uint8_t*>(buffer);"
+        },
+        {
+          "line": 124,
+          "text": "      uint32_t old_checksum = writer_->oat_checksum_;"
+        },
+        {
+          "line": 125,
+          "text": "      writer_->oat_checksum_ = adler32(old_checksum, bytes, byte_count);"
+        },
+        {
+          "line": 126,
+          "text": "    } else {"
+        },
+        {
+          "line": 127,
+          "text": "      DCHECK_EQ(0U, byte_count);"
+        },
+        {
+          "line": 128,
+          "text": "    }"
+        },
+        {
+          "line": 129,
+          "text": "    return out_->WriteFully(buffer, byte_count);"
+        },
+        {
+          "line": 130,
+          "text": "  }"
+        },
+        {
+          "line": 131,
+          "text": ""
+        },
+        {
+          "line": 132,
+          "text": "  off_t Seek(off_t offset, Whence whence) override {"
+        },
+        {
+          "line": 133,
+          "text": "    return out_->Seek(offset, whence);"
+        },
+        {
+          "line": 134,
+          "text": "  }"
+        },
+        {
+          "line": 135,
+          "text": ""
+        },
+        {
+          "line": 2703,
+          "text": "bool OatWriter::WriteHeader(OutputStream* out) {"
+        },
+        {
+          "line": 2704,
+          "text": "  CHECK(write_state_ == WriteState::kWriteHeader);"
+        },
+        {
+          "line": 2705,
+          "text": ""
+        },
+        {
+          "line": 2706,
+          "text": "  // Update checksum with header data."
+        },
+        {
+          "line": 2707,
+          "text": "  DCHECK_EQ(oat_header_->GetChecksum(), 0u);  // For checksum calculation."
+        },
+        {
+          "line": 2708,
+          "text": "  const uint8_t* header_begin = reinterpret_cast<const uint8_t*>(oat_header_.get());"
+        },
+        {
+          "line": 2709,
+          "text": "  const uint8_t* header_end = oat_header_->GetKeyValueStore() + oat_header_->GetKeyValueStoreSize();"
+        },
+        {
+          "line": 2710,
+          "text": "  uint32_t old_checksum = oat_checksum_;"
+        },
+        {
+          "line": 2711,
+          "text": "  oat_checksum_ = adler32(old_checksum, header_begin, header_end - header_begin);"
+        },
+        {
+          "line": 2712,
+          "text": "  oat_header_->SetChecksum(oat_checksum_);"
+        },
+        {
+          "line": 2713,
+          "text": ""
+        },
+        {
+          "line": 3831,
+          "text": "size_t OatWriter::OatDexFile::SizeOf() const {"
+        },
+        {
+          "line": 3832,
+          "text": "  return sizeof(dex_file_location_size_)"
+        },
+        {
+          "line": 3833,
+          "text": "          + dex_file_location_size_"
+        },
+        {
+          "line": 3834,
+          "text": "          + sizeof(dex_file_location_checksum_)"
+        },
+        {
+          "line": 3835,
+          "text": "          + sizeof(dex_file_offset_)"
+        },
+        {
+          "line": 3836,
+          "text": "          + sizeof(class_offsets_offset_)"
+        },
+        {
+          "line": 3837,
+          "text": "          + sizeof(lookup_table_offset_)"
+        },
+        {
+          "line": 3838,
+          "text": "          + sizeof(method_bss_mapping_offset_)"
+        },
+        {
+          "line": 3839,
+          "text": "          + sizeof(type_bss_mapping_offset_)"
+        },
+        {
+          "line": 3840,
+          "text": "          + sizeof(public_type_bss_mapping_offset_)"
+        },
+        {
+          "line": 3841,
+          "text": "          + sizeof(package_type_bss_mapping_offset_)"
+        },
+        {
+          "line": 3842,
+          "text": "          + sizeof(string_bss_mapping_offset_)"
+        },
+        {
+          "line": 3843,
+          "text": "          + sizeof(dex_sections_layout_offset_);"
+        },
+        {
+          "line": 3844,
+          "text": "}"
+        },
+        {
+          "line": 3850,
+          "text": "  if (!out->WriteFully(&dex_file_location_size_, sizeof(dex_file_location_size_))) {"
+        },
+        {
+          "line": 3851,
+          "text": "    PLOG(ERROR) << \"Failed to write dex file location length to \" << out->GetLocation();"
+        },
+        {
+          "line": 3852,
+          "text": "    return false;"
+        },
+        {
+          "line": 3853,
+          "text": "  }"
+        },
+        {
+          "line": 3854,
+          "text": "  oat_writer->size_oat_dex_file_location_size_ += sizeof(dex_file_location_size_);"
+        },
+        {
+          "line": 3855,
+          "text": ""
+        },
+        {
+          "line": 3856,
+          "text": "  if (!out->WriteFully(dex_file_location_data_, dex_file_location_size_)) {"
+        },
+        {
+          "line": 3857,
+          "text": "    PLOG(ERROR) << \"Failed to write dex file location data to \" << out->GetLocation();"
+        },
+        {
+          "line": 3858,
+          "text": "    return false;"
+        },
+        {
+          "line": 3859,
+          "text": "  }"
+        },
+        {
+          "line": 3860,
+          "text": "  oat_writer->size_oat_dex_file_location_data_ += dex_file_location_size_;"
+        },
+        {
+          "line": 3861,
+          "text": ""
+        },
+        {
+          "line": 3862,
+          "text": "  if (!out->WriteFully(&dex_file_location_checksum_, sizeof(dex_file_location_checksum_))) {"
+        },
+        {
+          "line": 3863,
+          "text": "    PLOG(ERROR) << \"Failed to write dex file location checksum to \" << out->GetLocation();"
+        },
+        {
+          "line": 3864,
+          "text": "    return false;"
+        },
+        {
+          "line": 3865,
+          "text": "  }"
+        },
+        {
+          "line": 3866,
+          "text": "  oat_writer->size_oat_dex_file_location_checksum_ += sizeof(dex_file_location_checksum_);"
+        },
+        {
+          "line": 3867,
+          "text": ""
+        },
+        {
+          "line": 3868,
+          "text": "  if (!out->WriteFully(&dex_file_offset_, sizeof(dex_file_offset_))) {"
+        },
+        {
+          "line": 3869,
+          "text": "    PLOG(ERROR) << \"Failed to write dex file offset to \" << out->GetLocation();"
+        },
+        {
+          "line": 3870,
+          "text": "    return false;"
+        },
+        {
+          "line": 3871,
+          "text": "  }"
+        },
+        {
+          "line": 3872,
+          "text": "  oat_writer->size_oat_dex_file_offset_ += sizeof(dex_file_offset_);"
+        },
+        {
+          "line": 3873,
+          "text": ""
+        },
+        {
+          "line": 3874,
+          "text": "  if (!out->WriteFully(&class_offsets_offset_, sizeof(class_offsets_offset_))) {"
+        },
+        {
+          "line": 3875,
+          "text": "    PLOG(ERROR) << \"Failed to write class offsets offset to \" << out->GetLocation();"
+        },
+        {
+          "line": 3876,
+          "text": "    return false;"
+        },
+        {
+          "line": 3877,
+          "text": "  }"
+        },
+        {
+          "line": 3878,
+          "text": "  oat_writer->size_oat_dex_file_class_offsets_offset_ += sizeof(class_offsets_offset_);"
+        },
+        {
+          "line": 3879,
+          "text": ""
+        },
+        {
+          "line": 3880,
+          "text": "  if (!out->WriteFully(&lookup_table_offset_, sizeof(lookup_table_offset_))) {"
+        },
+        {
+          "line": 3881,
+          "text": "    PLOG(ERROR) << \"Failed to write lookup table offset to \" << out->GetLocation();"
+        },
+        {
+          "line": 3882,
+          "text": "    return false;"
+        },
+        {
+          "line": 3883,
+          "text": "  }"
+        },
+        {
+          "line": 3884,
+          "text": "  oat_writer->size_oat_dex_file_lookup_table_offset_ += sizeof(lookup_table_offset_);"
+        },
+        {
+          "line": 3885,
+          "text": ""
+        },
+        {
+          "line": 3886,
+          "text": "  if (!out->WriteFully(&dex_sections_layout_offset_, sizeof(dex_sections_layout_offset_))) {"
+        },
+        {
+          "line": 3887,
+          "text": "    PLOG(ERROR) << \"Failed to write dex section layout info to \" << out->GetLocation();"
+        },
+        {
+          "line": 3888,
+          "text": "    return false;"
+        },
+        {
+          "line": 3889,
+          "text": "  }"
+        },
+        {
+          "line": 3890,
+          "text": "  oat_writer->size_oat_dex_file_dex_layout_sections_offset_ += sizeof(dex_sections_layout_offset_);"
+        },
+        {
+          "line": 3891,
+          "text": ""
+        },
+        {
+          "line": 3892,
+          "text": "  if (!out->WriteFully(&method_bss_mapping_offset_, sizeof(method_bss_mapping_offset_))) {"
+        },
+        {
+          "line": 3893,
+          "text": "    PLOG(ERROR) << \"Failed to write method bss mapping offset to \" << out->GetLocation();"
+        },
+        {
+          "line": 3894,
+          "text": "    return false;"
+        },
+        {
+          "line": 3895,
+          "text": "  }"
+        },
+        {
+          "line": 3896,
+          "text": "  oat_writer->size_oat_dex_file_method_bss_mapping_offset_ += sizeof(method_bss_mapping_offset_);"
+        },
+        {
+          "line": 3897,
+          "text": ""
+        },
+        {
+          "line": 3898,
+          "text": "  if (!out->WriteFully(&type_bss_mapping_offset_, sizeof(type_bss_mapping_offset_))) {"
+        },
+        {
+          "line": 3899,
+          "text": "    PLOG(ERROR) << \"Failed to write type bss mapping offset to \" << out->GetLocation();"
+        },
+        {
+          "line": 3900,
+          "text": "    return false;"
+        },
+        {
+          "line": 3901,
+          "text": "  }"
+        },
+        {
+          "line": 3902,
+          "text": "  oat_writer->size_oat_dex_file_type_bss_mapping_offset_ += sizeof(type_bss_mapping_offset_);"
+        },
+        {
+          "line": 3903,
+          "text": ""
+        },
+        {
+          "line": 3904,
+          "text": "  if (!out->WriteFully(&public_type_bss_mapping_offset_, sizeof(public_type_bss_mapping_offset_))) {"
+        },
+        {
+          "line": 3905,
+          "text": "    PLOG(ERROR) << \"Failed to write public type bss mapping offset to \" << out->GetLocation();"
+        },
+        {
+          "line": 3906,
+          "text": "    return false;"
+        },
+        {
+          "line": 3907,
+          "text": "  }"
+        },
+        {
+          "line": 3908,
+          "text": "  oat_writer->size_oat_dex_file_public_type_bss_mapping_offset_ +="
+        },
+        {
+          "line": 3909,
+          "text": "      sizeof(public_type_bss_mapping_offset_);"
+        },
+        {
+          "line": 3910,
+          "text": ""
+        },
+        {
+          "line": 3911,
+          "text": "  if (!out->WriteFully(&package_type_bss_mapping_offset_,"
+        },
+        {
+          "line": 3912,
+          "text": "                       sizeof(package_type_bss_mapping_offset_))) {"
+        },
+        {
+          "line": 3913,
+          "text": "    PLOG(ERROR) << \"Failed to write package type bss mapping offset to \" << out->GetLocation();"
+        },
+        {
+          "line": 3914,
+          "text": "    return false;"
+        },
+        {
+          "line": 3915,
+          "text": "  }"
+        },
+        {
+          "line": 3916,
+          "text": "  oat_writer->size_oat_dex_file_package_type_bss_mapping_offset_ +="
+        },
+        {
+          "line": 3917,
+          "text": "      sizeof(package_type_bss_mapping_offset_);"
+        },
+        {
+          "line": 3918,
+          "text": ""
+        },
+        {
+          "line": 3919,
+          "text": "  if (!out->WriteFully(&string_bss_mapping_offset_, sizeof(string_bss_mapping_offset_))) {"
+        },
+        {
+          "line": 3920,
+          "text": "    PLOG(ERROR) << \"Failed to write string bss mapping offset to \" << out->GetLocation();"
+        },
+        {
+          "line": 3921,
+          "text": "    return false;"
+        },
+        {
+          "line": 3922,
+          "text": "  }"
+        },
+        {
+          "line": 3923,
+          "text": "  oat_writer->size_oat_dex_file_string_bss_mapping_offset_ += sizeof(string_bss_mapping_offset_);"
+        },
+        {
+          "line": 3924,
+          "text": ""
+        },
+        {
+          "line": 3925,
+          "text": "  return true;"
+        }
+      ]
+    },
+    "runtime/image.h": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/image.h",
+      "sha256": "60f7a75970853482b71bae5a3dd9e256bbc5f56559a0598fbf5dd0afa7d028b5",
+      "lines": [
+        {
+          "line": 450,
+          "text": "  uint8_t magic_[4];"
+        },
+        {
+          "line": 451,
+          "text": "  uint8_t version_[4];"
+        },
+        {
+          "line": 452,
+          "text": ""
+        },
+        {
+          "line": 453,
+          "text": "  // The total memory reservation size for the image."
+        },
+        {
+          "line": 454,
+          "text": "  // For boot image or boot image extension, the primary image includes the reservation"
+        },
+        {
+          "line": 455,
+          "text": "  // for all image files and oat files, secondary images have the reservation set to 0."
+        },
+        {
+          "line": 456,
+          "text": "  // App images have reservation equal to `image_size_` rounded up to page size because"
+        },
+        {
+          "line": 457,
+          "text": "  // their oat files are mmapped independently."
+        },
+        {
+          "line": 458,
+          "text": "  uint32_t image_reservation_size_ = 0u;"
+        },
+        {
+          "line": 459,
+          "text": ""
+        },
+        {
+          "line": 460,
+          "text": "  // The number of components (jar files contributing to the image)."
+        },
+        {
+          "line": 461,
+          "text": "  // For boot image or boot image extension, the primary image stores the total number"
+        },
+        {
+          "line": 462,
+          "text": "  // of components, secondary images have this set to 0. App images have 1 component."
+        },
+        {
+          "line": 463,
+          "text": "  // The component count usually matches the total number of images (one image per component), but"
+        },
+        {
+          "line": 464,
+          "text": "  // if multiple components are compiled with --single-image there will only be 1 image associated"
+        },
+        {
+          "line": 465,
+          "text": "  // with those components."
+        },
+        {
+          "line": 466,
+          "text": "  uint32_t component_count_ = 0u;"
+        },
+        {
+          "line": 467,
+          "text": ""
+        },
+        {
+          "line": 468,
+          "text": "  // Required base address for mapping the image."
+        },
+        {
+          "line": 469,
+          "text": "  uint32_t image_begin_ = 0u;"
+        },
+        {
+          "line": 470,
+          "text": ""
+        },
+        {
+          "line": 471,
+          "text": "  // Image size, not page aligned."
+        },
+        {
+          "line": 472,
+          "text": "  uint32_t image_size_ = 0u;"
+        },
+        {
+          "line": 473,
+          "text": ""
+        },
+        {
+          "line": 474,
+          "text": "  // Image file checksum (calculated with the checksum field set to 0)."
+        },
+        {
+          "line": 475,
+          "text": "  uint32_t image_checksum_ = 0u;"
+        },
+        {
+          "line": 476,
+          "text": ""
+        },
+        {
+          "line": 477,
+          "text": "  // Checksum of the oat file we link to for load time consistency check."
+        },
+        {
+          "line": 478,
+          "text": "  uint32_t oat_checksum_ = 0u;"
+        },
+        {
+          "line": 479,
+          "text": ""
+        },
+        {
+          "line": 480,
+          "text": "  // Start address for oat file. Will be before oat_data_begin_ for .so files."
+        },
+        {
+          "line": 481,
+          "text": "  uint32_t oat_file_begin_ = 0u;"
+        },
+        {
+          "line": 482,
+          "text": ""
+        },
+        {
+          "line": 483,
+          "text": "  // Required oat address expected by image Method::GetCode() pointers."
+        },
+        {
+          "line": 484,
+          "text": "  uint32_t oat_data_begin_ = 0u;"
+        },
+        {
+          "line": 485,
+          "text": ""
+        },
+        {
+          "line": 486,
+          "text": "  // End of oat data address range for this image file."
+        },
+        {
+          "line": 487,
+          "text": "  uint32_t oat_data_end_ = 0u;"
+        },
+        {
+          "line": 488,
+          "text": ""
+        },
+        {
+          "line": 489,
+          "text": "  // End of oat file address range. will be after oat_data_end_ for"
+        },
+        {
+          "line": 490,
+          "text": "  // .so files. Used for positioning a following alloc spaces."
+        },
+        {
+          "line": 491,
+          "text": "  uint32_t oat_file_end_ = 0u;"
+        }
+      ]
+    },
+    "runtime/gc/space/image_space.cc": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/gc/space/image_space.cc",
+      "sha256": "72da4a1f4a059e4a345950b8eb534a9e03abd429c7b79f2ce411be581b20ab30",
+      "lines": [
+        {
+          "line": 3433,
+          "text": "bool ImageSpace::ValidateOatFile(const OatFile& oat_file,"
+        },
+        {
+          "line": 3434,
+          "text": "                                 std::string* error_msg,"
+        },
+        {
+          "line": 3435,
+          "text": "                                 ArrayRef<const std::string> dex_filenames,"
+        },
+        {
+          "line": 3436,
+          "text": "                                 ArrayRef<const int> dex_fds,"
+        },
+        {
+          "line": 3437,
+          "text": "                                 const std::string& apex_versions) {"
+        },
+        {
+          "line": 3438,
+          "text": "  if (!ValidateApexVersions(oat_file.GetOatHeader(),"
+        },
+        {
+          "line": 3439,
+          "text": "                            apex_versions,"
+        },
+        {
+          "line": 3440,
+          "text": "                            oat_file.GetLocation(),"
+        },
+        {
+          "line": 3441,
+          "text": "                            error_msg)) {"
+        },
+        {
+          "line": 3442,
+          "text": "    return false;"
+        },
+        {
+          "line": 3443,
+          "text": "  }"
+        },
+        {
+          "line": 3444,
+          "text": ""
+        },
+        {
+          "line": 3445,
+          "text": "  // For a boot image, the key value store only exists in the first OAT file. Skip other OAT files."
+        },
+        {
+          "line": 3446,
+          "text": "  if (oat_file.GetOatHeader().GetKeyValueStoreSize() != 0 &&"
+        },
+        {
+          "line": 3447,
+          "text": "      oat_file.GetOatHeader().IsConcurrentCopying() != gUseReadBarrier) {"
+        },
+        {
+          "line": 3448,
+          "text": "    *error_msg ="
+        },
+        {
+          "line": 3449,
+          "text": "        \"ValidateOatFile found read barrier state mismatch (oat file: {}, runtime: {})\"_format("
+        },
+        {
+          "line": 3450,
+          "text": "            oat_file.GetOatHeader().IsConcurrentCopying(), gUseReadBarrier);"
+        },
+        {
+          "line": 3451,
+          "text": "    return false;"
+        },
+        {
+          "line": 3452,
+          "text": "  }"
+        }
+      ]
+    },
+    "build/art.go": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/build/art.go",
+      "sha256": "73973245665ad93640c488299a9298baf7727622225de7277fb279ebb0e2c604",
+      "lines": [
+        {
+          "line": 38,
+          "text": "\topt := ctx.Config().GetenvWithDefault(\"ART_NDEBUG_OPT_FLAG\", \"-O3\")"
+        },
+        {
+          "line": 39,
+          "text": "\tcflags = append(cflags, opt)"
+        },
+        {
+          "line": 40,
+          "text": ""
+        },
+        {
+          "line": 41,
+          "text": "\ttlab := false"
+        },
+        {
+          "line": 42,
+          "text": "\tgcType := ctx.Config().GetenvWithDefault(\"ART_DEFAULT_GC_TYPE\", \"CMC\")"
+        },
+        {
+          "line": 43,
+          "text": ""
+        },
+        {
+          "line": 44,
+          "text": "\tif ctx.Config().IsEnvTrue(\"ART_TEST_DEBUG_GC\") {"
+        },
+        {
+          "line": 45,
+          "text": "\t\tgcType = \"SS\""
+        },
+        {
+          "line": 46,
+          "text": "\t\ttlab = true"
+        },
+        {
+          "line": 47,
+          "text": "\t}"
+        },
+        {
+          "line": 48,
+          "text": ""
+        },
+        {
+          "line": 49,
+          "text": "\tcflags = append(cflags, \"-DART_DEFAULT_GC_TYPE_IS_\"+gcType)"
+        },
+        {
+          "line": 50,
+          "text": ""
+        },
+        {
+          "line": 51,
+          "text": "\tif ctx.Config().IsEnvTrue(\"ART_HEAP_POISONING\") {"
+        },
+        {
+          "line": 52,
+          "text": "\t\tcflags = append(cflags, \"-DART_HEAP_POISONING=1\")"
+        },
+        {
+          "line": 53,
+          "text": "\t\tasflags = append(asflags, \"-DART_HEAP_POISONING=1\")"
+        },
+        {
+          "line": 54,
+          "text": "\t}"
+        },
+        {
+          "line": 55,
+          "text": "\tif ctx.Config().IsEnvTrue(\"ART_USE_CXX_INTERPRETER\") {"
+        },
+        {
+          "line": 56,
+          "text": "\t\tcflags = append(cflags, \"-DART_USE_CXX_INTERPRETER=1\")"
+        },
+        {
+          "line": 57,
+          "text": "\t}"
+        },
+        {
+          "line": 58,
+          "text": ""
+        },
+        {
+          "line": 59,
+          "text": "\tif !ctx.Config().IsEnvFalse(\"ART_USE_READ_BARRIER\") && ctx.Config().ArtUseReadBarrier() {"
+        },
+        {
+          "line": 60,
+          "text": "\t\t// Used to change the read barrier type. Valid values are BAKER, TABLELOOKUP."
+        },
+        {
+          "line": 61,
+          "text": "\t\t// The default is BAKER."
+        },
+        {
+          "line": 62,
+          "text": "\t\tbarrierType := ctx.Config().GetenvWithDefault(\"ART_READ_BARRIER_TYPE\", \"BAKER\")"
+        },
+        {
+          "line": 63,
+          "text": "\t\tcflags = append(cflags,"
+        },
+        {
+          "line": 64,
+          "text": "\t\t\t\"-DART_USE_READ_BARRIER=1\","
+        },
+        {
+          "line": 65,
+          "text": "\t\t\t\"-DART_READ_BARRIER_TYPE_IS_\"+barrierType+\"=1\")"
+        },
+        {
+          "line": 66,
+          "text": "\t\tasflags = append(asflags,"
+        },
+        {
+          "line": 67,
+          "text": "\t\t\t\"-DART_USE_READ_BARRIER=1\","
+        },
+        {
+          "line": 68,
+          "text": "\t\t\t\"-DART_READ_BARRIER_TYPE_IS_\"+barrierType+\"=1\")"
+        },
+        {
+          "line": 69,
+          "text": ""
+        },
+        {
+          "line": 70,
+          "text": "\t\tif !ctx.Config().IsEnvFalse(\"ART_USE_GENERATIONAL_CC\") {"
+        },
+        {
+          "line": 71,
+          "text": "\t\t\tcflags = append(cflags, \"-DART_USE_GENERATIONAL_CC=1\")"
+        },
+        {
+          "line": 72,
+          "text": "\t\t}"
+        },
+        {
+          "line": 73,
+          "text": "\t\t// Force CC only if ART_USE_READ_BARRIER was set to true explicitly during"
+        },
+        {
+          "line": 74,
+          "text": "\t\t// build time."
+        },
+        {
+          "line": 75,
+          "text": "\t\tif ctx.Config().IsEnvTrue(\"ART_USE_READ_BARRIER\") {"
+        },
+        {
+          "line": 76,
+          "text": "\t\t\tcflags = append(cflags, \"-DART_FORCE_USE_READ_BARRIER=1\")"
+        },
+        {
+          "line": 77,
+          "text": "\t\t}"
+        },
+        {
+          "line": 78,
+          "text": "\t\ttlab = true"
+        },
+        {
+          "line": 79,
+          "text": "\t} else if gcType == \"CMC\" {"
+        },
+        {
+          "line": 80,
+          "text": "\t\ttlab = true"
+        },
+        {
+          "line": 81,
+          "text": "\t}"
+        },
+        {
+          "line": 82,
+          "text": ""
+        },
+        {
+          "line": 83,
+          "text": "\tif tlab {"
+        },
+        {
+          "line": 84,
+          "text": "\t\tcflags = append(cflags, \"-DART_USE_TLAB=1\")"
+        },
+        {
+          "line": 85,
+          "text": "\t}"
+        },
+        {
+          "line": 86,
+          "text": ""
+        },
+        {
+          "line": 87,
+          "text": "\tcdexLevel := ctx.Config().GetenvWithDefault(\"ART_DEFAULT_COMPACT_DEX_LEVEL\", \"fast\")"
+        },
+        {
+          "line": 94,
+          "text": "\t//       the debug version. So make the gap consistent (and adjust for the worst)."
+        },
+        {
+          "line": 95,
+          "text": "\tif len(ctx.Config().SanitizeDevice()) > 0 || len(ctx.Config().SanitizeHost()) > 0 {"
+        },
+        {
+          "line": 96,
+          "text": "\t\tcflags = append(cflags,"
+        },
+        {
+          "line": 97,
+          "text": "\t\t\t\"-DART_STACK_OVERFLOW_GAP_arm=16384\","
+        },
+        {
+          "line": 98,
+          "text": "\t\t\t\"-DART_STACK_OVERFLOW_GAP_arm64=16384\","
+        },
+        {
+          "line": 99,
+          "text": "\t\t\t\"-DART_STACK_OVERFLOW_GAP_riscv64=16384\","
+        },
+        {
+          "line": 100,
+          "text": "\t\t\t\"-DART_STACK_OVERFLOW_GAP_x86=16384\","
+        },
+        {
+          "line": 101,
+          "text": "\t\t\t\"-DART_STACK_OVERFLOW_GAP_x86_64=20480\")"
+        },
+        {
+          "line": 102,
+          "text": "\t} else {"
+        },
+        {
+          "line": 103,
+          "text": "\t\tcflags = append(cflags,"
+        },
+        {
+          "line": 104,
+          "text": "\t\t\t\"-DART_STACK_OVERFLOW_GAP_arm=8192\","
+        },
+        {
+          "line": 105,
+          "text": "\t\t\t\"-DART_STACK_OVERFLOW_GAP_arm64=8192\","
+        },
+        {
+          "line": 106,
+          "text": "\t\t\t\"-DART_STACK_OVERFLOW_GAP_riscv64=8192\","
+        },
+        {
+          "line": 107,
+          "text": "\t\t\t\"-DART_STACK_OVERFLOW_GAP_x86=8192\","
+        },
+        {
+          "line": 108,
+          "text": "\t\t\t\"-DART_STACK_OVERFLOW_GAP_x86_64=8192\")"
+        },
+        {
+          "line": 109,
+          "text": "\t}"
+        },
+        {
+          "line": 110,
+          "text": ""
+        },
+        {
+          "line": 111,
+          "text": "\tif ctx.Config().IsEnvTrue(\"ART_ENABLE_ADDRESS_SANITIZER\") {"
+        },
+        {
+          "line": 112,
+          "text": "\t\t// Used to enable full sanitization, i.e., user poisoning, under ASAN."
+        },
+        {
+          "line": 113,
+          "text": "\t\tcflags = append(cflags, \"-DART_ENABLE_ADDRESS_SANITIZER=1\")"
+        },
+        {
+          "line": 114,
+          "text": "\t\tasflags = append(asflags, \"-DART_ENABLE_ADDRESS_SANITIZER=1\")"
+        },
+        {
+          "line": 115,
+          "text": "\t}"
+        },
+        {
+          "line": 116,
+          "text": ""
+        }
+      ]
+    },
+    "runtime/read_barrier_config.h": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/read_barrier_config.h",
+      "sha256": "4901faa8985767db966d81c75e27ea6f255f04dcc067589562ac1cc90359e72a",
+      "lines": [
+        {
+          "line": 28,
+          "text": "// table-lookup read barriers."
+        },
+        {
+          "line": 29,
+          "text": ""
+        },
+        {
+          "line": 30,
+          "text": "#ifdef ART_USE_READ_BARRIER"
+        },
+        {
+          "line": 31,
+          "text": "#if ART_READ_BARRIER_TYPE_IS_BAKER"
+        },
+        {
+          "line": 32,
+          "text": "#define USE_BAKER_READ_BARRIER"
+        },
+        {
+          "line": 33,
+          "text": "#elif ART_READ_BARRIER_TYPE_IS_TABLELOOKUP"
+        },
+        {
+          "line": 34,
+          "text": "#define USE_TABLE_LOOKUP_READ_BARRIER"
+        },
+        {
+          "line": 35,
+          "text": "#else"
+        },
+        {
+          "line": 36,
+          "text": "#error \"ART read barrier type must be set\""
+        },
+        {
+          "line": 37,
+          "text": "#endif"
+        },
+        {
+          "line": 38,
+          "text": "#endif  // ART_USE_READ_BARRIER"
+        },
+        {
+          "line": 39,
+          "text": ""
+        },
+        {
+          "line": 40,
+          "text": "#if defined(USE_BAKER_READ_BARRIER) || defined(USE_TABLE_LOOKUP_READ_BARRIER)"
+        },
+        {
+          "line": 41,
+          "text": "#define USE_READ_BARRIER"
+        },
+        {
+          "line": 42,
+          "text": "#endif"
+        },
+        {
+          "line": 74,
+          "text": "// Only if read-barrier isn't forced (see build/art.go) but is selected, that we need"
+        },
+        {
+          "line": 75,
+          "text": "// to see if we support userfaultfd GC. All the other cases can be constexpr here."
+        },
+        {
+          "line": 76,
+          "text": "#ifdef ART_FORCE_USE_READ_BARRIER"
+        },
+        {
+          "line": 77,
+          "text": "constexpr bool gUseReadBarrier = kUseBakerReadBarrier || kUseTableLookupReadBarrier;"
+        },
+        {
+          "line": 78,
+          "text": "constexpr bool gUseUserfaultfd = !gUseReadBarrier;"
+        },
+        {
+          "line": 79,
+          "text": "static_assert(!gUseUserfaultfd);"
+        },
+        {
+          "line": 80,
+          "text": "#else"
+        },
+        {
+          "line": 81,
+          "text": "#ifndef ART_USE_READ_BARRIER"
+        },
+        {
+          "line": 82,
+          "text": "constexpr bool gUseReadBarrier = false;"
+        },
+        {
+          "line": 83,
+          "text": "#ifdef ART_DEFAULT_GC_TYPE_IS_CMC"
+        },
+        {
+          "line": 84,
+          "text": "constexpr bool gUseUserfaultfd = true;"
+        },
+        {
+          "line": 85,
+          "text": "#else"
+        },
+        {
+          "line": 86,
+          "text": "constexpr bool gUseUserfaultfd = false;"
+        },
+        {
+          "line": 87,
+          "text": "#endif"
+        },
+        {
+          "line": 88,
+          "text": "#else"
+        },
+        {
+          "line": 89,
+          "text": "extern const bool gUseReadBarrier;"
+        },
+        {
+          "line": 90,
+          "text": "extern const bool gUseUserfaultfd;"
+        },
+        {
+          "line": 91,
+          "text": "#endif"
+        },
+        {
+          "line": 92,
+          "text": "#endif"
+        },
+        {
+          "line": 93,
+          "text": ""
+        },
+        {
+          "line": 94,
+          "text": "// Disabled for performance reasons."
+        }
+      ]
+    },
+    "runtime/read_barrier-inl.h": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/read_barrier-inl.h",
+      "sha256": "f158e0edf92f2c306ffcdb943324e686e6ad63a7a4cc731369c28a7bd0be18bb",
+      "lines": [
+        {
+          "line": 35,
+          "text": "inline MirrorType* ReadBarrier::Barrier("
+        },
+        {
+          "line": 36,
+          "text": "    mirror::Object* obj, MemberOffset offset, mirror::HeapReference<MirrorType>* ref_addr) {"
+        },
+        {
+          "line": 37,
+          "text": "  constexpr bool with_read_barrier = kReadBarrierOption == kWithReadBarrier;"
+        },
+        {
+          "line": 38,
+          "text": "  if (gUseReadBarrier && with_read_barrier) {"
+        },
+        {
+          "line": 39,
+          "text": "    if (kCheckDebugDisallowReadBarrierCount) {"
+        },
+        {
+          "line": 40,
+          "text": "      Thread* const self = Thread::Current();"
+        },
+        {
+          "line": 41,
+          "text": "      CHECK(self != nullptr);"
+        },
+        {
+          "line": 42,
+          "text": "      CHECK_EQ(self->GetDebugDisallowReadBarrierCount(), 0u);"
+        },
+        {
+          "line": 43,
+          "text": "    }"
+        },
+        {
+          "line": 44,
+          "text": "    if (kUseBakerReadBarrier) {"
+        },
+        {
+          "line": 45,
+          "text": "      // fake_address_dependency (must be zero) is used to create artificial data dependency from"
+        },
+        {
+          "line": 72,
+          "text": "    } else if (kUseTableLookupReadBarrier) {"
+        },
+        {
+          "line": 73,
+          "text": "      MirrorType* ref = ref_addr->template AsMirrorPtr<kIsVolatile>();"
+        },
+        {
+          "line": 74,
+          "text": "      MirrorType* old_ref = ref;"
+        },
+        {
+          "line": 75,
+          "text": "      // The heap or the collector can be null at startup. TODO: avoid the need for this null check."
+        },
+        {
+          "line": 76,
+          "text": "      gc::Heap* heap = Runtime::Current()->GetHeap();"
+        },
+        {
+          "line": 77,
+          "text": "      if (heap != nullptr && heap->GetReadBarrierTable()->IsSet(old_ref)) {"
+        },
+        {
+          "line": 78,
+          "text": "        ref = reinterpret_cast<MirrorType*>(Mark(old_ref));"
+        },
+        {
+          "line": 79,
+          "text": "        // Update the field atomically. This may fail if mutator updates before us, but it's ok."
+        },
+        {
+          "line": 80,
+          "text": "        if (ref != old_ref) {"
+        },
+        {
+          "line": 81,
+          "text": "          obj->CasFieldObjectWithoutWriteBarrier<false, false>(offset,"
+        },
+        {
+          "line": 82,
+          "text": "                                                               old_ref,"
+        },
+        {
+          "line": 83,
+          "text": "                                                               ref,"
+        },
+        {
+          "line": 84,
+          "text": "                                                               CASMode::kStrong,"
+        },
+        {
+          "line": 85,
+          "text": "                                                               std::memory_order_release);"
+        },
+        {
+          "line": 86,
+          "text": "        }"
+        },
+        {
+          "line": 87,
+          "text": "      }"
+        },
+        {
+          "line": 88,
+          "text": "      AssertToSpaceInvariant(obj, offset, ref);"
+        },
+        {
+          "line": 89,
+          "text": "      return ref;"
+        },
+        {
+          "line": 90,
+          "text": "    } else {"
+        },
+        {
+          "line": 91,
+          "text": "      LOG(FATAL) << \"Unexpected read barrier type\";"
+        },
+        {
+          "line": 92,
+          "text": "      UNREACHABLE();"
+        },
+        {
+          "line": 93,
+          "text": "    }"
+        },
+        {
+          "line": 94,
+          "text": "  } else if (kReadBarrierOption == kWithFromSpaceBarrier) {"
+        },
+        {
+          "line": 95,
+          "text": "    DCHECK(gUseUserfaultfd);"
+        },
+        {
+          "line": 96,
+          "text": "    MirrorType* old = ref_addr->template AsMirrorPtr<kIsVolatile>();"
+        },
+        {
+          "line": 97,
+          "text": "    mirror::Object* ref ="
+        },
+        {
+          "line": 98,
+          "text": "        Runtime::Current()->GetHeap()->MarkCompactCollector()->GetFromSpaceAddrFromBarrier(old);"
+        },
+        {
+          "line": 99,
+          "text": "    return reinterpret_cast<MirrorType*>(ref);"
+        },
+        {
+          "line": 100,
+          "text": "  } else {"
+        },
+        {
+          "line": 101,
+          "text": "    // No read barrier."
+        },
+        {
+          "line": 102,
+          "text": "    return ref_addr->template AsMirrorPtr<kIsVolatile>();"
+        },
+        {
+          "line": 103,
+          "text": "  }"
+        }
+      ]
+    },
+    "runtime/runtime_globals.h": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/runtime_globals.h",
+      "sha256": "04600f21a066d67423011bf5003322bc838b94a8157db92e3e43a33af3636892",
+      "lines": [
+        {
+          "line": 43,
+          "text": "// When using the Concurrent Copying (CC) collector, if"
+        },
+        {
+          "line": 44,
+          "text": "// `ART_USE_GENERATIONAL_CC` is true, enable generational collection by default,"
+        },
+        {
+          "line": 45,
+          "text": "// i.e. use sticky-bit CC for minor collections and (full) CC for major"
+        },
+        {
+          "line": 46,
+          "text": "// collections."
+        },
+        {
+          "line": 47,
+          "text": "// This default value can be overridden with the runtime option"
+        },
+        {
+          "line": 48,
+          "text": "// `-Xgc:[no]generational_cc`."
+        },
+        {
+          "line": 49,
+          "text": "//"
+        },
+        {
+          "line": 50,
+          "text": "// TODO(b/67628039): Consider either:"
+        },
+        {
+          "line": 51,
+          "text": "// - renaming this to a better descriptive name (e.g."
+        },
+        {
+          "line": 52,
+          "text": "//   `ART_USE_GENERATIONAL_CC_BY_DEFAULT`); or"
+        },
+        {
+          "line": 53,
+          "text": "// - removing `ART_USE_GENERATIONAL_CC` and having a fixed default value."
+        },
+        {
+          "line": 54,
+          "text": "// Any of these changes will require adjusting users of this preprocessor"
+        },
+        {
+          "line": 55,
+          "text": "// directive and the corresponding build system environment variable (e.g. in"
+        },
+        {
+          "line": 56,
+          "text": "// ART's continuous testing)."
+        },
+        {
+          "line": 57,
+          "text": "#ifdef ART_USE_GENERATIONAL_CC"
+        },
+        {
+          "line": 58,
+          "text": "static constexpr bool kEnableGenerationalCCByDefault = true;"
+        },
+        {
+          "line": 59,
+          "text": "#else"
+        },
+        {
+          "line": 60,
+          "text": "static constexpr bool kEnableGenerationalCCByDefault = false;"
+        },
+        {
+          "line": 61,
+          "text": "#endif"
+        },
+        {
+          "line": 62,
+          "text": ""
+        },
+        {
+          "line": 63,
+          "text": "// If true, enable the tlab allocator by default."
+        },
+        {
+          "line": 64,
+          "text": "#ifdef ART_USE_TLAB"
+        },
+        {
+          "line": 65,
+          "text": "static constexpr bool kUseTlab = true;"
+        },
+        {
+          "line": 66,
+          "text": "#else"
+        },
+        {
+          "line": 67,
+          "text": "static constexpr bool kUseTlab = false;"
+        },
+        {
+          "line": 68,
+          "text": "#endif"
+        }
+      ]
+    },
+    "runtime/gc/collector_type.h": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/gc/collector_type.h",
+      "sha256": "85c4bc92a827114567ab563b852769e97272f4befa218c04c7e8ec75e215a61c",
+      "lines": [
+        {
+          "line": 26,
+          "text": "enum CollectorType {"
+        },
+        {
+          "line": 27,
+          "text": "  // No collector selected."
+        },
+        {
+          "line": 28,
+          "text": "  kCollectorTypeNone,"
+        },
+        {
+          "line": 29,
+          "text": "  // Non concurrent mark-sweep."
+        },
+        {
+          "line": 30,
+          "text": "  kCollectorTypeMS,"
+        },
+        {
+          "line": 31,
+          "text": "  // Concurrent mark-sweep."
+        },
+        {
+          "line": 32,
+          "text": "  kCollectorTypeCMS,"
+        },
+        {
+          "line": 33,
+          "text": "  // Concurrent mark-compact."
+        },
+        {
+          "line": 34,
+          "text": "  kCollectorTypeCMC,"
+        },
+        {
+          "line": 35,
+          "text": "  // Semi-space / mark-sweep hybrid, enables compaction."
+        },
+        {
+          "line": 36,
+          "text": "  kCollectorTypeSS,"
+        },
+        {
+          "line": 37,
+          "text": "  // Heap trimming collector, doesn't do any actual collecting."
+        },
+        {
+          "line": 38,
+          "text": "  kCollectorTypeHeapTrim,"
+        },
+        {
+          "line": 39,
+          "text": "  // A (mostly) concurrent copying collector."
+        },
+        {
+          "line": 40,
+          "text": "  kCollectorTypeCC,"
+        },
+        {
+          "line": 67,
+          "text": "static constexpr CollectorType kCollectorTypeDefault ="
+        },
+        {
+          "line": 68,
+          "text": "#if ART_DEFAULT_GC_TYPE_IS_CMC"
+        },
+        {
+          "line": 69,
+          "text": "    kCollectorTypeCMC"
+        },
+        {
+          "line": 70,
+          "text": "#elif ART_DEFAULT_GC_TYPE_IS_SS"
+        },
+        {
+          "line": 71,
+          "text": "    kCollectorTypeSS"
+        },
+        {
+          "line": 72,
+          "text": "#elif ART_DEFAULT_GC_TYPE_IS_CMS"
+        },
+        {
+          "line": 73,
+          "text": "    kCollectorTypeCMS"
+        },
+        {
+          "line": 74,
+          "text": "#else"
+        },
+        {
+          "line": 75,
+          "text": "#error \"ART default GC type must be set\""
+        },
+        {
+          "line": 76,
+          "text": "#endif"
+        },
+        {
+          "line": 77,
+          "text": "    ;  // NOLINT [whitespace/semicolon] [5]"
+        },
+        {
+          "line": 78,
+          "text": ""
+        }
+      ]
+    },
+    "cmdline/cmdline_types.h": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/cmdline/cmdline_types.h",
+      "sha256": "95d8d1c51ea4b8605e58b9dafa9341356f92b28ccc248e331058383b2c4f6b54",
+      "lines": [
+        {
+          "line": 537,
+          "text": "struct XGcOption {"
+        },
+        {
+          "line": 538,
+          "text": "  // These defaults are used when the command line arguments for -Xgc:"
+        },
+        {
+          "line": 539,
+          "text": "  // are either omitted completely or partially."
+        },
+        {
+          "line": 540,
+          "text": "  gc::CollectorType collector_type_ = gc::kCollectorTypeDefault;"
+        },
+        {
+          "line": 541,
+          "text": "  bool verify_pre_gc_heap_ = false;"
+        },
+        {
+          "line": 542,
+          "text": "  bool verify_pre_sweeping_heap_ = kIsDebugBuild;"
+        },
+        {
+          "line": 543,
+          "text": "  bool generational_cc = kEnableGenerationalCCByDefault;"
+        },
+        {
+          "line": 544,
+          "text": "  bool verify_post_gc_heap_ = kIsDebugBuild;"
+        },
+        {
+          "line": 545,
+          "text": "  bool verify_pre_gc_rosalloc_ = kIsDebugBuild;"
+        },
+        {
+          "line": 546,
+          "text": "  bool verify_pre_sweeping_rosalloc_ = false;"
+        },
+        {
+          "line": 547,
+          "text": "  bool verify_post_gc_rosalloc_ = false;"
+        },
+        {
+          "line": 548,
+          "text": "  // Do no measurements for kUseTableLookupReadBarrier to avoid test timeouts. b/31679493"
+        },
+        {
+          "line": 549,
+          "text": "  bool measure_ = kIsDebugBuild && !kUseTableLookupReadBarrier;"
+        },
+        {
+          "line": 550,
+          "text": "  bool gcstress_ = false;"
+        },
+        {
+          "line": 551,
+          "text": "};"
+        },
+        {
+          "line": 552,
+          "text": ""
+        },
+        {
+          "line": 553,
+          "text": "template <>"
+        },
+        {
+          "line": 554,
+          "text": "struct CmdlineType<XGcOption> : CmdlineTypeParser<XGcOption> {"
+        },
+        {
+          "line": 555,
+          "text": "  Result Parse(const std::string& option) {  // -Xgc: already stripped"
+        },
+        {
+          "line": 556,
+          "text": "    XGcOption xgc{};"
+        },
+        {
+          "line": 557,
+          "text": ""
+        },
+        {
+          "line": 558,
+          "text": "    std::vector<std::string> gc_options;"
+        }
+      ]
+    },
+    "runtime/heap_poisoning.h": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/heap_poisoning.h",
+      "sha256": "6a3ee1ae747f8c38f96fae80d11d58389cd86744bfbe706a814dd758dba3acd7",
+      "lines": [
+        {
+          "line": 22,
+          "text": "#ifdef ART_HEAP_POISONING"
+        },
+        {
+          "line": 23,
+          "text": "#define USE_HEAP_POISONING"
+        },
+        {
+          "line": 24,
+          "text": "#endif"
+        },
+        {
+          "line": 25,
+          "text": ""
+        },
+        {
+          "line": 26,
+          "text": "#ifdef __cplusplus"
+        },
+        {
+          "line": 27,
+          "text": ""
+        },
+        {
+          "line": 28,
+          "text": "namespace art {"
+        },
+        {
+          "line": 29,
+          "text": ""
+        },
+        {
+          "line": 30,
+          "text": "// If true, references within the heap are poisoned (negated)."
+        },
+        {
+          "line": 31,
+          "text": "#ifdef USE_HEAP_POISONING"
+        },
+        {
+          "line": 32,
+          "text": "static constexpr bool kPoisonHeapReferences = true;"
+        },
+        {
+          "line": 33,
+          "text": "#else"
+        },
+        {
+          "line": 34,
+          "text": "static constexpr bool kPoisonHeapReferences = false;"
+        },
+        {
+          "line": 35,
+          "text": "#endif"
+        },
+        {
+          "line": 36,
+          "text": ""
+        },
+        {
+          "line": 37,
+          "text": "}  // namespace art"
+        }
+      ]
+    },
+    "runtime/mirror/object_reference.h": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/mirror/object_reference.h",
+      "sha256": "5f1af8940289377829ec70a26a19e9f3471b54489ef6fb0b7a1e1ef105638d65",
+      "lines": [
+        {
+          "line": 100,
+          "text": "    return kPoisonReferences ? -as_bits : as_bits;"
+        },
+        {
+          "line": 101,
+          "text": "  }"
+        },
+        {
+          "line": 102,
+          "text": ""
+        },
+        {
+          "line": 103,
+          "text": "  // Uncompress an encoded reference from its bit representation."
+        },
+        {
+          "line": 104,
+          "text": "  static MirrorType* Decompress(uint32_t ref) {"
+        },
+        {
+          "line": 105,
+          "text": "    uint32_t as_bits = kPoisonReferences ? -ref : ref;"
+        },
+        {
+          "line": 106,
+          "text": "    return reinterpret_cast32<MirrorType*>(as_bits);"
+        },
+        {
+          "line": 167,
+          "text": "template<class MirrorType>"
+        },
+        {
+          "line": 168,
+          "text": "class MANAGED HeapReference {"
+        },
+        {
+          "line": 169,
+          "text": " private:"
+        },
+        {
+          "line": 170,
+          "text": "  using Compression = PtrCompression<kPoisonHeapReferences, MirrorType>;"
+        },
+        {
+          "line": 171,
+          "text": ""
+        },
+        {
+          "line": 172,
+          "text": " public:"
+        },
+        {
+          "line": 173,
+          "text": "  HeapReference() REQUIRES_SHARED(Locks::mutator_lock_) : HeapReference(nullptr) {}"
+        },
+        {
+          "line": 174,
+          "text": ""
+        },
+        {
+          "line": 175,
+          "text": "  template <bool kIsVolatile = false>"
+        },
+        {
+          "line": 176,
+          "text": "  MirrorType* AsMirrorPtr() const REQUIRES_SHARED(Locks::mutator_lock_) {"
+        },
+        {
+          "line": 177,
+          "text": "    return Compression::Decompress("
+        },
+        {
+          "line": 178,
+          "text": "        kIsVolatile ? reference_.load(std::memory_order_seq_cst) : reference_.LoadJavaData());"
+        },
+        {
+          "line": 179,
+          "text": "  }"
+        },
+        {
+          "line": 180,
+          "text": ""
+        }
+      ]
+    },
+    "runtime/gc/collector/mark_compact.cc": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/gc/collector/mark_compact.cc",
+      "sha256": "348c8c902cc0142476b6030f7b519dd3e6ffb8d57c125203c9aef4619b3b0b31",
+      "lines": [
+        {
+          "line": 153,
+          "text": "// The other cases are defined as constexpr in runtime/read_barrier_config.h"
+        },
+        {
+          "line": 154,
+          "text": "#if !defined(ART_FORCE_USE_READ_BARRIER) && defined(ART_USE_READ_BARRIER)"
+        },
+        {
+          "line": 155,
+          "text": "// Returns collector type asked to be used on the cmdline."
+        },
+        {
+          "line": 156,
+          "text": "static gc::CollectorType FetchCmdlineGcType() {"
+        },
+        {
+          "line": 157,
+          "text": "  std::string argv;"
+        },
+        {
+          "line": 158,
+          "text": "  gc::CollectorType gc_type = gc::CollectorType::kCollectorTypeNone;"
+        },
+        {
+          "line": 159,
+          "text": "  if (android::base::ReadFileToString(\"/proc/self/cmdline\", &argv)) {"
+        },
+        {
+          "line": 160,
+          "text": "    if (argv.find(\"-Xgc:CMC\") != std::string::npos) {"
+        },
+        {
+          "line": 161,
+          "text": "      gc_type = gc::CollectorType::kCollectorTypeCMC;"
+        },
+        {
+          "line": 162,
+          "text": "    } else if (argv.find(\"-Xgc:CC\") != std::string::npos) {"
+        },
+        {
+          "line": 163,
+          "text": "      gc_type = gc::CollectorType::kCollectorTypeCC;"
+        },
+        {
+          "line": 164,
+          "text": "    }"
+        },
+        {
+          "line": 165,
+          "text": "  }"
+        },
+        {
+          "line": 166,
+          "text": "  return gc_type;"
+        },
+        {
+          "line": 167,
+          "text": "}"
+        },
+        {
+          "line": 168,
+          "text": ""
+        },
+        {
+          "line": 169,
+          "text": "#ifdef ART_TARGET_ANDROID"
+        },
+        {
+          "line": 256,
+          "text": "#endif"
+        },
+        {
+          "line": 257,
+          "text": ""
+        },
+        {
+          "line": 258,
+          "text": "static bool ShouldUseUserfaultfd() {"
+        },
+        {
+          "line": 259,
+          "text": "  static_assert(kUseBakerReadBarrier || kUseTableLookupReadBarrier);"
+        },
+        {
+          "line": 260,
+          "text": "#ifdef __linux__"
+        },
+        {
+          "line": 261,
+          "text": "  // Use CMC/CC if that is being explicitly asked for on cmdline. Otherwise,"
+        },
+        {
+          "line": 262,
+          "text": "  // always use CC on host. On target, use CMC only if system properties says so"
+        },
+        {
+          "line": 263,
+          "text": "  // and the kernel supports it."
+        },
+        {
+          "line": 264,
+          "text": "  gc::CollectorType gc_type = FetchCmdlineGcType();"
+        },
+        {
+          "line": 265,
+          "text": "  return gc_type == gc::CollectorType::kCollectorTypeCMC ||"
+        },
+        {
+          "line": 266,
+          "text": "         (gc_type == gc::CollectorType::kCollectorTypeNone &&"
+        },
+        {
+          "line": 267,
+          "text": "          kIsTargetAndroid &&"
+        },
+        {
+          "line": 268,
+          "text": "          SysPropSaysUffdGc() &&"
+        },
+        {
+          "line": 269,
+          "text": "          KernelSupportsUffd());"
+        },
+        {
+          "line": 270,
+          "text": "#else"
+        },
+        {
+          "line": 271,
+          "text": "  return false;"
+        },
+        {
+          "line": 272,
+          "text": "#endif"
+        },
+        {
+          "line": 273,
+          "text": "}"
+        },
+        {
+          "line": 274,
+          "text": ""
+        },
+        {
+          "line": 275,
+          "text": "const bool gUseUserfaultfd = ShouldUseUserfaultfd();"
+        },
+        {
+          "line": 276,
+          "text": "const bool gUseReadBarrier = !gUseUserfaultfd;"
+        },
+        {
+          "line": 277,
+          "text": "#endif"
+        },
+        {
+          "line": 4220,
+          "text": "bool MarkCompact::IsNullOrMarkedHeapReference(mirror::HeapReference<mirror::Object>* obj,"
+        },
+        {
+          "line": 4221,
+          "text": "                                              bool do_atomic_update ATTRIBUTE_UNUSED) {"
+        },
+        {
+          "line": 4222,
+          "text": "  mirror::Object* ref = obj->AsMirrorPtr();"
+        },
+        {
+          "line": 4223,
+          "text": "  if (ref == nullptr) {"
+        },
+        {
+          "line": 4224,
+          "text": "    return true;"
+        },
+        {
+          "line": 4225,
+          "text": "  }"
+        },
+        {
+          "line": 4226,
+          "text": "  return IsMarked(ref);"
+        },
+        {
+          "line": 4227,
+          "text": "}"
+        }
+      ]
+    },
+    "runtime/native/dalvik_system_VMRuntime.cc": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/native/dalvik_system_VMRuntime.cc",
+      "sha256": "3f235559005b05ecd5aaea93661612b7b24b752de8b9e3c0e34ff4af245852e8",
+      "lines": [
+        {
+          "line": 219,
+          "text": "}"
+        },
+        {
+          "line": 220,
+          "text": ""
+        },
+        {
+          "line": 221,
+          "text": "static jstring VMRuntime_vmLibrary(JNIEnv* env, jobject) {"
+        },
+        {
+          "line": 222,
+          "text": "  return env->NewStringUTF(kIsDebugBuild ? \"libartd.so\" : \"libart.so\");"
+        },
+        {
+          "line": 223,
+          "text": "}"
+        },
+        {
+          "line": 224,
+          "text": ""
+        }
+      ]
+    },
+    "libartbase/base/globals.h": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/libartbase/base/globals.h",
+      "sha256": "c3abbeedb75e1aaaa4b08b41cc69c4902c1d356e26324fb8bd9192e2c81db086",
+      "lines": [
+        {
+          "line": 52,
+          "text": "// Clion, clang analyzer, etc can falsely believe that \"if (kIsDebugBuild)\" always"
+        },
+        {
+          "line": 53,
+          "text": "// returns the same value. By wrapping into a call to another constexpr function, we force it"
+        },
+        {
+          "line": 54,
+          "text": "// to realize that is not actually always evaluating to the same value."
+        },
+        {
+          "line": 55,
+          "text": "static constexpr bool GlobalsReturnSelf(bool self) { return self; }"
+        },
+        {
+          "line": 56,
+          "text": ""
+        },
+        {
+          "line": 57,
+          "text": "// Whether or not this is a debug build. Useful in conditionals where NDEBUG isn't."
+        },
+        {
+          "line": 58,
+          "text": "// TODO: Use only __clang_analyzer__ here. b/64455231"
+        },
+        {
+          "line": 59,
+          "text": "#if defined(NDEBUG) && !defined(__CLION_IDE__)"
+        },
+        {
+          "line": 60,
+          "text": "static constexpr bool kIsDebugBuild = GlobalsReturnSelf(false);"
+        },
+        {
+          "line": 61,
+          "text": "#else"
+        },
+        {
+          "line": 62,
+          "text": "static constexpr bool kIsDebugBuild = GlobalsReturnSelf(true);"
+        },
+        {
+          "line": 63,
+          "text": "#endif"
+        },
+        {
+          "line": 64,
+          "text": ""
+        }
+      ]
+    },
+    "runtime/entrypoints/quick/quick_field_entrypoints.cc": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/entrypoints/quick/quick_field_entrypoints.cc",
+      "sha256": "5b8a9d09d70dc27f6f37186ecfaf6d06a9bb7aefedf0a4b40a8c206c049cd3ee",
+      "lines": [
+        {
+          "line": 418,
+          "text": "extern \"C\" mirror::Object* artReadBarrierMark(mirror::Object* obj) {"
+        },
+        {
+          "line": 419,
+          "text": "  DCHECK(gUseReadBarrier);"
+        },
+        {
+          "line": 420,
+          "text": "  return ReadBarrier::Mark(obj);"
+        },
+        {
+          "line": 421,
+          "text": "}"
+        },
+        {
+          "line": 422,
+          "text": ""
+        },
+        {
+          "line": 423,
+          "text": "extern \"C\" mirror::Object* artReadBarrierSlow(mirror::Object* ref ATTRIBUTE_UNUSED,"
+        },
+        {
+          "line": 424,
+          "text": "                                              mirror::Object* obj,"
+        },
+        {
+          "line": 425,
+          "text": "                                              uint32_t offset) {"
+        },
+        {
+          "line": 426,
+          "text": "  // Used only in connection with non-volatile loads."
+        },
+        {
+          "line": 427,
+          "text": "  DCHECK(gUseReadBarrier);"
+        },
+        {
+          "line": 428,
+          "text": "  uint8_t* raw_addr = reinterpret_cast<uint8_t*>(obj) + offset;"
+        },
+        {
+          "line": 429,
+          "text": "  mirror::HeapReference<mirror::Object>* ref_addr ="
+        },
+        {
+          "line": 430,
+          "text": "     reinterpret_cast<mirror::HeapReference<mirror::Object>*>(raw_addr);"
+        },
+        {
+          "line": 431,
+          "text": "  mirror::Object* result ="
+        },
+        {
+          "line": 432,
+          "text": "      ReadBarrier::Barrier<mirror::Object, /* kIsVolatile= */ false, kWithReadBarrier>("
+        },
+        {
+          "line": 433,
+          "text": "        obj,"
+        },
+        {
+          "line": 434,
+          "text": "        MemberOffset(offset),"
+        },
+        {
+          "line": 435,
+          "text": "        ref_addr);"
+        },
+        {
+          "line": 436,
+          "text": "  return result;"
+        },
+        {
+          "line": 437,
+          "text": "}"
+        },
+        {
+          "line": 438,
+          "text": ""
+        },
+        {
+          "line": 439,
+          "text": "extern \"C\" mirror::Object* artReadBarrierForRootSlow(GcRoot<mirror::Object>* root) {"
+        },
+        {
+          "line": 440,
+          "text": "  DCHECK(gUseReadBarrier);"
+        },
+        {
+          "line": 441,
+          "text": "  return root->Read();"
+        },
+        {
+          "line": 442,
+          "text": "}"
+        }
+      ]
+    },
+    "runtime/arch/arm64/quick_entrypoints_arm64.S": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/runtime/arch/arm64/quick_entrypoints_arm64.S",
+      "sha256": "e0466be0c9be8f23723a4aedc6f2cea5c01b60d0b869eb455ce5f98eba381e7f",
+      "lines": [
+        {
+          "line": 2528,
+          "text": "// x0 contains the class, x8 contains the inline cache. x9-x15 can be used."
+        },
+        {
+          "line": 2529,
+          "text": "ENTRY art_quick_update_inline_cache"
+        },
+        {
+          "line": 2530,
+          "text": "#if (INLINE_CACHE_SIZE != 5)"
+        },
+        {
+          "line": 2531,
+          "text": "#error \"INLINE_CACHE_SIZE not as expected.\""
+        },
+        {
+          "line": 2532,
+          "text": "#endif"
+        },
+        {
+          "line": 2533,
+          "text": "#if defined(USE_READ_BARRIER) && defined(USE_BAKER_READ_BARRIER)"
+        },
+        {
+          "line": 2534,
+          "text": "    // Don't update the cache if we are marking."
+        },
+        {
+          "line": 2535,
+          "text": "    cbnz wMR, .Ldone"
+        },
+        {
+          "line": 2536,
+          "text": "#endif"
+        },
+        {
+          "line": 2537,
+          "text": ".Lentry1:"
+        },
+        {
+          "line": 2538,
+          "text": "    ldr w9, [x8, #INLINE_CACHE_CLASSES_OFFSET]"
+        },
+        {
+          "line": 2539,
+          "text": "    cmp w9, w0"
+        },
+        {
+          "line": 2540,
+          "text": "    beq .Ldone"
+        }
+      ]
+    },
+    "compiler/optimizing/code_generator_arm64.cc": {
+      "path": "westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/art-r1/compiler/optimizing/code_generator_arm64.cc",
+      "sha256": "e18c70d30681c3b1201e5e0f793f38d7fc9e410283b388a6df0361e11802030a",
+      "lines": [
+        {
+          "line": 2135,
+          "text": "}"
+        },
+        {
+          "line": 2136,
+          "text": ""
+        },
+        {
+          "line": 2137,
+          "text": "void LocationsBuilderARM64::HandleFieldGet(HInstruction* instruction,"
+        },
+        {
+          "line": 2138,
+          "text": "                                           const FieldInfo& field_info) {"
+        },
+        {
+          "line": 2139,
+          "text": "  DCHECK(instruction->IsInstanceFieldGet() ||"
+        },
+        {
+          "line": 2140,
+          "text": "         instruction->IsStaticFieldGet() ||"
+        },
+        {
+          "line": 2141,
+          "text": "         instruction->IsPredicatedInstanceFieldGet());"
+        },
+        {
+          "line": 2142,
+          "text": ""
+        },
+        {
+          "line": 2143,
+          "text": "  bool is_predicated = instruction->IsPredicatedInstanceFieldGet();"
+        },
+        {
+          "line": 2144,
+          "text": ""
+        },
+        {
+          "line": 2145,
+          "text": "  bool object_field_get_with_read_barrier ="
+        },
+        {
+          "line": 2146,
+          "text": "      gUseReadBarrier && (instruction->GetType() == DataType::Type::kReference);"
+        },
+        {
+          "line": 2147,
+          "text": "  LocationSummary* locations ="
+        },
+        {
+          "line": 2148,
+          "text": "      new (GetGraph()->GetAllocator()) LocationSummary(instruction,"
+        },
+        {
+          "line": 2149,
+          "text": "                                                       object_field_get_with_read_barrier"
+        },
+        {
+          "line": 2150,
+          "text": "                                                           ? LocationSummary::kCallOnSlowPath"
+        },
+        {
+          "line": 2151,
+          "text": "                                                           : LocationSummary::kNoCall);"
+        },
+        {
+          "line": 2152,
+          "text": "  if (object_field_get_with_read_barrier && kUseBakerReadBarrier) {"
+        },
+        {
+          "line": 2153,
+          "text": "    locations->SetCustomSlowPathCallerSaves(RegisterSet::Empty());  // No caller-save registers."
+        },
+        {
+          "line": 2154,
+          "text": "    // We need a temporary register for the read barrier load in"
+        },
+        {
+          "line": 2155,
+          "text": "    // CodeGeneratorARM64::GenerateFieldLoadWithBakerReadBarrier()"
+        },
+        {
+          "line": 2156,
+          "text": "    // only if the field is volatile or the offset is too big."
+        },
+        {
+          "line": 2157,
+          "text": "    if (field_info.IsVolatile() ||"
+        },
+        {
+          "line": 2158,
+          "text": "        field_info.GetFieldOffset().Uint32Value() >= kReferenceLoadMinFarOffset) {"
+        },
+        {
+          "line": 2159,
+          "text": "      locations->AddTemp(FixedTempLocation());"
+        },
+        {
+          "line": 2160,
+          "text": "    }"
+        },
+        {
+          "line": 2161,
+          "text": "  }"
+        },
+        {
+          "line": 2162,
+          "text": "  // Input for object receiver."
+        },
+        {
+          "line": 2163,
+          "text": "  locations->SetInAt(is_predicated ? 1 : 0, Location::RequiresRegister());"
+        },
+        {
+          "line": 2164,
+          "text": "  if (DataType::IsFloatingPointType(instruction->GetType())) {"
+        },
+        {
+          "line": 2165,
+          "text": "    if (is_predicated) {"
+        }
+      ]
+    }
+  },
+  "note": "Local clean r1 source identifies mechanisms; this is not a recovered d600 build command."
+}

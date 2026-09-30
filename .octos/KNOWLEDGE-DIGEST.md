@@ -419,3 +419,5 @@ WebView shim 85c789f4(含 #46 GLES + #49 拒堆库) + bridge mc46 d4fae8e5 + lib
 - 2026-09-30 U3重放：N2包内JAR仍d5000c4e，U3是J2 0715c964→J3 75c2068c两层bind；包清单/顶层SHA不能替代shell与appspawn-x根目录双视图核验。replay_unified_state.sh只重放JAR，38个其余live项+1前置库+2冻结安装器项不符即停；FakeBoard已验，真板重放未验。见 benchmark/2026-09-30-unified-replay/。
 
 - 2026-09-30 冻结/U4：AlarmVibratorFetcher同文件含alarm与vibrator_manager，两app闹钟过墙不能冻结尚待修的振动器；Conscrypt独立blob已有J3三app拆分后复验。J5 dbce2eee + N3b7c9c要求的adapter/core/WebViewUpdateServiceAdapter在12个实际JAR定义中缺失，native FindClass失败即return false，不能以反射服务proxy或补provider APK视为契约齐；证据/66key冻结见 benchmark/2026-09-30-freeze-audit-u4/。
+
+- 2026-09-30 T5归因：SHA匹配R155 boot.oat25d92cf7原本只有8键，无bootclasspath-checksums/compilation-reason；T5实物08837079(checksum0424c4ee，非旧31a3e81e)的concurrent-copying=true而参考false，9段.text均异，不能只修kv。R155 libart59e1bb45反汇编确认拒true、默认CMS(enum2)、generational默认false/heap poisoning off/release；T3b须RB=false且GC=CMS，T4除布局还须核编译开关。两套各自ART↔OAT配对9/9一致，checksum不等于旧值本身不判L2失败；证据见benchmark/2026-09-30-t5-oat-attribution/。
