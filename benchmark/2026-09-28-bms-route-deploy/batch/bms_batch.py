@@ -897,12 +897,27 @@ FINGERPRINT_PATHS = ('/system/bin/appspawn-x /system/android/framework/oh-adapte
                      '/system/lib64/libbms.z.so /system/lib64/libapk_installer.so')
 
 
-def runtime_fingerprint(board, out):
+# The boot class path jars and the boot image are on the load path too, but they are not in FINGERPRINT_PATHS:
+# T6 (2026-09-30) bind-swapped all 27 boot-image files and runtime-fingerprint.txt stayed "unchanged", so a
+# whole-image swap passed for a single-variable run. They get their own file, which keeps the runtime
+# fingerprints already on record (0b81cdbe0ed9 ...) comparable; compare_runs.py counts a boot image change.
+BOOT_IMAGE_PATHS = ('/system/android/framework/arm64/* ' + ' '.join(
+    f'/system/android/framework/{j}.jar' for j in ('core-oj', 'core-libart', 'core-icu4j', 'okhttp', 'bouncycastle',
+                                                    'apache-xml', 'adapter-mainline-stubs', 'framework',
+                                                    'oh-adapter-framework')))
+
+
+def runtime_fingerprint(board, out, paths=FINGERPRINT_PATHS, name='runtime-fingerprint.txt'):
     """sha256 of the runtime load path -> runtime-fingerprint.txt; returns a short hash of the whole set."""
-    _, text = board.shell(f'sha256sum {FINGERPRINT_PATHS} 2>/dev/null', required=False)
+    _, text = board.shell(f'sha256sum {paths} 2>/dev/null', required=False)
     lines = sorted(l.strip() for l in text.splitlines() if re.match(r'^[0-9a-f]{64}\s', l.strip()))
-    (Path(out)/'runtime-fingerprint.txt').write_text('\n'.join(lines) + '\n')
+    (Path(out)/name).write_text('\n'.join(lines) + '\n')
     return hashlib.sha256('\n'.join(lines).encode()).hexdigest()[:12] if lines else None
+
+
+def boot_image_fingerprint(board, out):
+    """sha256 of the boot image and boot class path jars -> boot-image-fingerprint.txt."""
+    return runtime_fingerprint(board, out, BOOT_IMAGE_PATHS, 'boot-image-fingerprint.txt')
 
 
 def write_facts(out):
@@ -934,6 +949,13 @@ def write_facts(out):
                             + ''.join(f'\n  {l}' for l in checked if l.startswith('FROZEN-VIOLATION')))
         except Exception as exc:
             lines.insert(1, f'FROZEN unavailable: {exc}')
+    bp = Path(out)/'boot-image-fingerprint.txt'
+    if bp.is_file():
+        body = bp.read_text().strip()
+        short = hashlib.sha256(body.encode()).hexdigest()[:12] if body else 'unknown'
+        lines.insert(2 if fp.is_file() else 0,  # after RUNTIME and FROZEN, which the block above always writes
+                     f'BOOTIMAGE fingerprint={short} files={len(body.splitlines()) if body else 0} '
+                     '(boot-image-fingerprint.txt; not part of RUNTIME)')
     (Path(out)/'facts.txt').write_text('\n'.join(lines + [total]) + '\n')
     return total
 
@@ -950,6 +972,7 @@ def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
     fingerprint = runtime_fingerprint(board, out)
     save(out/'baseline.json', {'version': version, 'boot_id': board.boot, 'readback': baseline,
                               'runtime_fingerprint': fingerprint,
+                              'boot_image_fingerprint': boot_image_fingerprint(board, out),
                               'baseline_acceptance': 'executor must have accepted task19; these are observations'})
     for i, entry in enumerate(entries):
         app_out = out/entry['key']

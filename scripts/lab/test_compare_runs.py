@@ -10,10 +10,12 @@ A5 = "5ea34a4500000000000000001123012c"
 B6 = "61b0657200000000000000000324012c"
 
 
-def make(root, serial, shas, facts):
+def make(root, serial, shas, facts, boot=None):
     d = pathlib.Path(root) / serial
     d.mkdir(parents=True)
     (d / "runtime-fingerprint.txt").write_text("".join(f"{s * 64}  {p}\n" for p, s in shas.items()))
+    if boot is not None:
+        (d / "boot-image-fingerprint.txt").write_text("".join(f"{s * 64}  {p}\n" for p, s in boot.items()))
     (d / "facts.txt").write_text("".join(
         f"{k:<20} shots 2/2  alive t5={a} t20={b}  child_hilog=1  foreground_unconfirmed\n"
         for k, (a, b) in facts.items()))
@@ -80,6 +82,34 @@ class CompareRunsTests(unittest.TestCase):
             b = make(f"{t}/b", A5, {"/lib/art.so": "1", "/lib/new.so": "6"}, {})
             out = compare_runs.compare(a, b)
         self.assertIn("  /lib/new.so absent -> 66666666", out)
+
+    def test_boot_image_swap_with_same_runtime_is_one_variable(self):
+        # T6 (2026-09-30): 27 boot-image files bind-swapped while runtime-fingerprint.txt stayed the same
+        img_a = {f"/fw/arm64/boot-{i}.oat": "1" for i in range(27)}
+        img_b = {f"/fw/arm64/boot-{i}.oat": "2" for i in range(27)}
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", A5, {"/lib/art.so": "1"}, {"hw": ("yes", "yes")}, img_a)
+            b = make(f"{t}/b", A5, {"/lib/art.so": "1"}, {"hw": ("no", "no")}, img_b)
+            out = compare_runs.compare(a, b)
+        self.assertEqual(out[0], "variables: 1")
+        self.assertTrue(out[1].startswith("  boot image: 27 file(s) differ"), out[1])
+
+    def test_same_boot_image_adds_no_variable(self):
+        img = {"/fw/arm64/boot.oat": "1"}
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", A5, {"/fw/runtime.jar": "4"}, {}, img)
+            b = make(f"{t}/b", A5, {"/fw/runtime.jar": "5"}, {}, img)
+            out = compare_runs.compare(a, b)
+        self.assertEqual(out[0], "variables: 1")
+        self.assertFalse(any("boot image" in l for l in out))
+
+    def test_missing_boot_image_record_is_a_note_not_a_variable(self):
+        with tempfile.TemporaryDirectory() as t:
+            a = make(f"{t}/a", A5, {"/lib/art.so": "1"}, {})
+            b = make(f"{t}/b", A5, {"/lib/art.so": "1"}, {}, {"/fw/arm64/boot.oat": "1"})
+            out = compare_runs.compare(a, b)
+        self.assertEqual(out[0], "variables: 0")
+        self.assertTrue(any(l.startswith("note: boot-image-fingerprint.txt missing in A") for l in out))
 
 
 if __name__ == "__main__":

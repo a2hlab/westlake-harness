@@ -34,9 +34,11 @@ def device_dir(run):
     return subs[0]
 
 
-def fingerprint(d):
-    f = d / "runtime-fingerprint.txt"
+def fingerprint(d, name="runtime-fingerprint.txt", required=True):
+    f = d / name
     if not f.is_file():
+        if not required:
+            return None
         sys.exit(f"compare_runs: {f} missing (run predates the fingerprint; compare boards by hand)")
     out = {}
     for line in f.read_text().splitlines():
@@ -97,13 +99,25 @@ def compare(a, b, keys=None):
                 variables.append(change)
     for group, changes in grouped.items():
         variables.append(f"{group}: " + "; ".join(changes))
+    # the boot image and boot class path jars (boot-image-fingerprint.txt) change together: one variable
+    notes = []
+    ia, ib = (fingerprint(d, "boot-image-fingerprint.txt", required=False) for d in (da, db))
+    if ia is not None and ib is not None:
+        changed = sorted(p for p in set(ia) | set(ib) if ia.get(p) != ib.get(p))
+        if changed:
+            variables.append(f"boot image: {len(changed)} file(s) differ, e.g. {changed[0]} "
+                             f"{(ia.get(changed[0]) or 'absent')[:8]} -> {(ib.get(changed[0]) or 'absent')[:8]}")
+    else:
+        notes.append("note: boot-image-fingerprint.txt missing in "
+                     + "/".join(n for n, f in (("A", ia), ("B", ib)) if f is None)
+                     + "; a boot image swap would not show up as a variable (T6, 2026-09-30)")
     carried = [name for name, d in (("A", da), ("B", db)) if keeps_app_data(d)]
     if carried:
         variables.append(f"app data carried over from earlier runs in {'/'.join(carried)} (no --reinstall)")
     ra, rb = facts(da), facts(db)
     if keys is None:
         keys = [k for k in sorted(set(ra) & set(rb), key=str.lower) if alive(ra[k]) != alive(rb[k])]
-    lines = [f"variables: {len(variables)}"] + [f"  {v}" for v in variables]
+    lines = [f"variables: {len(variables)}"] + [f"  {v}" for v in variables] + notes
     for k in keys:
         lines += [f"key {k}", f"  A {ra.get(k, '?')}", f"  B {rb.get(k, '?')}"]
     if len(variables) == 1:
