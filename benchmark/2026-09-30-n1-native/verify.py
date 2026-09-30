@@ -3,7 +3,7 @@
 import hashlib,json,subprocess,sys,tempfile,shutil
 from pathlib import Path
 R=Path(__file__).resolve().parents[2];P=Path(__file__).resolve().parent
-PKG=R.parent/'westlake-generation-n1-candidate'
+PKG=R.parent/'westlake-generation-n1-aa57845c'
 sys.path.insert(0,str(R/'scripts/lab'))
 from deploy_generation import load_package,validate_upgrade
 mode=sys.argv[1]
@@ -41,8 +41,9 @@ elif mode=='device':
  d=json.loads((P/'device-verdicts.json').read_text());assert d['controls_reviewed'] and d['frozen_evidence_preserved']
  for f in d['facts_files']:assert 'TOTAL keys=' in (R/f).read_text()
  assert d['compare_runs'] and d['first_fatal_files']
+ for f in d['compare_runs'] + d['first_fatal_files']:assert (R/f).is_file()
 elif mode=='handoff':
- d=json.loads((P/'device-61b/final-identity.json').read_text());assert d['u0_restored'] and d['lock_released']
+ d=json.loads((P/'device-61b-r2/final-identity.json').read_text());assert d['u0_restored'] and d['lock_released']
  assert (P/'HANDOFF.md').is_file()
 else:raise ValueError(mode)
 print('PASS N1',mode)

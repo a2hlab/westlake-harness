@@ -4,7 +4,7 @@ The previous Flutter iterations confused a complete filesystem dependency list
 with a reachable namespace owner. The host only installed app → bridge; OH musl
 stops inheritance after one hop. JNA's last resource error was also misleading:
 both original APKs contain libjnidispatch, and their earlier failure is
-`__errno@LIBC` relocation. The candidate corrects these specific boundaries,
+`__errno@LIBC` relocation. The candidate attempts to correct these boundaries,
 retains frozen asset FD behavior, and combines the previously tested graphics
 and audio registrations. It is **not a signed runtime** until device review.
 
@@ -109,10 +109,70 @@ The initial runtime-only discriminator d40ae63f used an existing cached AudioSys
 
 Only `/system/android/lib64/liboh_android_runtime.so` changed: 53f00423 to d40ae63f (`device-61b/compare-runtime.txt`, variables: 1). HelloWorld and ZigZag t20 showed their own interfaces. NewPipe retained its live-page UI (network-error controls rendered); uhabits changed from exited/desktop to alive/white, which is not lighting. AntennaPod rendered its welcome/home UI. Fitness returned to the desktop after RenderThread SIGSEGV at 0x590, top frame OH Skia StrikeCache::generateStrike+156. The complete 11-file candidate was withheld and the discriminator rolled back. U0 exact declared SHAs, r17r SHA and boot identity were read back successfully; a clean U0 Fitness repeat is used to distinguish a pre-existing intermittent failure from a candidate regression.
 
-All three U0 Fitness clean repeats rendered its own workout/setup screen at t20. Each comparison with the failing discriminator reports variables: 1. There was only one failing candidate trial; this is a reproducible U0 recovery and a control concern, not a claim of deterministic causality. The full N1 acceptance gate remains closed.
+All three U0 Fitness clean repeats rendered its own workout/setup screen at t20. Each comparison with the failing discriminator reports variables: 1. There was only one failing candidate trial; this is a reproducible U0 recovery and a control concern, not a claim of deterministic causality. At the end of round one, the full N1 acceptance gate remained closed; the authorized three-repeat decision and complete N1 run are recorded below.
 
-## Window closure
+## Round-one window closure (historical)
 
-61b was restored to U0 and unlocked before the 45-minute limit. The final readback covers every declared live SHA, r17r overlay and unchanged boot; recovery HelloWorld/ZigZag t20 show their own interfaces. Exact per-run facts are in facts-all.txt, review paths in device-index.json, and final identity in device-61b/final-identity.json. No other board was written. Complete-N1 device verification is deliberately false in device-verdicts.json; the selector must fail rather than turn an unrun full batch into a pass.
+61b was restored to U0 and unlocked before the 45-minute limit. The final readback covers every declared live SHA, r17r overlay and unchanged boot; recovery HelloWorld/ZigZag t20 show their own interfaces. Exact per-run facts are in facts-all.txt, review paths in device-index.json, and final identity in device-61b/final-identity.json. No other board was written. Complete-N1 device verification was deliberately false; this state is preserved in device-verdicts-r1.json and lifecycle-r1.json rather than overwritten as a successful run.
 
 Lifecycle: lint quality 1.0; frozen, cluster dispositions, host closure/negative, and rollback/handoff pass. The complete device/control scenario fails intentionally because the full candidate was withheld. This is not a successful N1 acceptance. Known-answer suite: 69 tests, 2 skipped. Raw process-table headers retain their captured trailing spaces; source-code whitespace checks pass.
+
+
+## Round two: outer-authorized Fitness gate and complete N1
+
+The single d40 Fitness crash was insufficient to label a deterministic regression.
+The outer loop authorized three clean same-board repeats, with >=2/3 own workout
+pages required before expanding to the complete candidate. All three repeats
+rendered the own workout/setup page. Each comparison against the earlier failed
+d40 run reports zero runtime variables. This satisfies the outer loop's
+intermittent-Skia exception; it is not independent proof of the glyph-cache root
+cause. See device-61b-r2/fitness-gate.json and fitness3-t20.jpeg.
+
+The complete immutable aa57845c package was then deployed, retaining r17r and the
+installer. Its deployment smoke passed SHA, child-root maps, single ART and
+bridge identity. The full-package HW/ZZ screenshots and five protections
+(Aegis, Auxio, Droid-ify, NetGuard, NewPipe) retain their own interfaces.
+The thirteen targets are separate from those seven controls. White windows and
+SPD's explicit cannot-start error page are not counted as working app screens.
+
+Attribution has an instrumentation limit: compare_runs reports eight changed
+paths, while package-changes.json declares eleven. Master's fingerprint glob
+omits the three private westlake_flutter/*.so files. They were independently
+read back through the child's root and match the package. See
+`device-61b-r2/fingerprint-coverage.json`. No individual N1 component gets sole causal credit
+from this eleven-file batch.
+
+Read device-61b-r2/first-fatal-summary.json for exact log lines, visual-review.json
+for screenshot interpretation, maps-summary.json for sampled process mappings,
+and facts-r2.txt for unchanged master facts output. This round performs no
+new native build and no U1 full sweep. Remaining API failures must stay in the
+original eleven-row prediction denominator.
+
+
+### N1 target outcomes (self-read, outer review pending)
+
+| Targets | t20 | First observed blocking checkpoint |
+| --- | --- | --- |
+| LocalSend, FluffyChat, KitchenOwl | Launcher | Flutter private libandroid cannot resolve liboh_android_runtime.so |
+| Immich, Libre, Saber | Launcher | libflutter relocation: __system_property_get not found |
+| Firefox, Fennec | Launcher | libjnidispatch relocation: __errno@LIBC not found; com.sun.jna.Native initialization then fails |
+| OpenCamera | Launcher | SoundPool reaches OH_AVPlayer_Create twice; next fatal Camera._getCameraInfo JNI missing |
+| VLC | Launcher | libc++_shared relocation: android_set_abort_message absent; onboarding then fails theme attribute resolution at index 13 |
+| SPD | Own cannot-start error page | GLImpl._nativeClassInit missing, an explicitly unimplemented row |
+| uhabits, Noice | White app window | EGLSurface created; no main-thread fatal in captured log. uhabits has a caught/background AppWidgetManager NPE |
+
+VLC's newAudioSessionId is registered; actual playback is unverified. Neither
+JNA sample maps the new ABI DSO. None of the sampled Flutter processes maps a
+completed libflutter load. These are time-sampled observations, not proof of the
+entire loading history. All captured samples contain one ART path; Libre,
+Saber and LocalSend exited between samples and have no maps evidence.
+
+The seven control/protection screenshots retain their own interfaces, but no
+new target has a normal working UI. N1 is an experimentally evaluated partial
+candidate, not a unified signed generation. N03/Flutter predictions failed
+live despite their filesystem-level static gates; the next namespace gate must
+exercise the exact loader path and owner, not just match exported names.
+
+61b was restored and unlocked at 2026-09-30T12:00:49.606801+08:00. The complete window was 2238.6 seconds (37m18.6s), within 45 minutes. All 30 declared U0/JAR SHA paths match, and boot ID is unchanged; see final-identity.json and rollback-state.json under device-61b-r2.
+
+Current lifecycle: four pass and one pendingreview (device screenshots); zero failed. The known-answer suite ran 69 tests with two skips. Representative maps listed in device-61b-r2/maps-evidence-files.txt are committed; other raw samples/hilog remain at the recorded local paths with excerpt hashes.

@@ -1,12 +1,12 @@
 # N1 native candidate: controlled acceptance pending
 
-The first short-window discriminator changed only runtime U0 53f00423 to
-d40ae63f. HelloWorld/ZigZag displayed their own interfaces. NewPipe retained
-its own interface; uhabits survived to t20 with a blank white window. Fitness
-crashed in RenderThread, so expansion to the complete native candidate stopped.
-U0 clean recovery rendered Fitness in three consecutive t20 runs. This remains a control concern, not proof of deterministic causality from one candidate trial.
-The complete package and six-package host owner callback have NOT been tested
-on the device in this window. Do not promote to U1 from static tests alone.
+Round two completed the outer-authorized Fitness gate: three clean d40 runs
+all rendered workout/setup UI. The complete aa57845c candidate was then tested
+with unchanged r17r/installer. HW/ZZ and five lit protections retain their own
+interfaces. Target failures and white/error pages are recorded in
+`device-61b-r2/visual-review.json` and `first-fatal-summary.json`.
+The complete package remains **not promoted to U1**: Flutter/JNA live namespace
+failures remain, and N07/N09 are unimplemented. See README for the exact limits.
 
 ## Immutable complete candidate
 
@@ -16,7 +16,7 @@ See `release.json` for complete manifest and runtime hashes. Runtime 77639b80
 includes the corrected newAudioSessionId object. The runtime-only d40 package
 is a separate immutable artifact and lacks that one method.
 
-After the control concern is adjudicated, on an explicitly allocated board:
+For any separately authorized follow-up on an allocated board:
 
 1. Record current U0 ledger, boot, JAR receipt and fingerprint; acquire its lock.
 2. Retire the recorded r17r overlay to the package's baked r8b JAR.
@@ -34,7 +34,7 @@ scripts/lab/deploy_generation.sh "$SERIAL" /Users/zhaoyue/orca/workspaces/westla
    VLC audio, Anki/BurgerKing ABI and NewPipe/uhabits frozen evidence.
 5. Stop on a control regression. Retire JAR, undo with the same package and
    `--rollback`, then restore the receipt. Read SHA/boot back and unlock.
-   `device-61b/rollback.sh runtime` undoes the discriminator specifically;
+   `device-61b-r2/rollback.sh runtime` undoes the discriminator specifically;
    its `full` mode is only for a full package layered over that discriminator.
 
 Do not copy the 61b-specific JAR helper to another board unchanged.
@@ -48,3 +48,5 @@ The three key lists must be passed to master bms_batch on their declared serials
 use that directory's merge_facts.py to reject mixed fingerprints or missing
 records. Retain all 66 keys and the N07/N09 unimplemented and N08 Java-boundary
 rows in the denominator. `rollout_ready=false` remains intentional.
+
+Round-two handoff: 61b returned to asset-fd U0 53f00423 + r17r, original boot unchanged, lock empty at 12:00:49. Read `device-61b-r2/final-identity.json` for the current receipt; the `device-61b/` receipt is round-one history.
