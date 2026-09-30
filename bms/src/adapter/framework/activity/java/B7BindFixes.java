@@ -115,6 +115,15 @@ public final class B7BindFixes {
         } catch (Throwable t) {
             System.err.println("[B8-MSESSION] not installed: " + t);
         }
+        // J4 (#noice): getSystemService(MEDIA_ROUTER_SERVICE) -> MediaRouter.<init> -> rebindAsUser ->
+        // registerClientAsUser on a null IMediaRouterService (route-A returns null for "media_router").
+        // Same sCache-binder shape as WlMediaSession: a no-op local IMediaRouterService so Noice's
+        // SystemMediaRouteProvider builds instead of NPEing before its player UI.
+        try {
+            System.err.println("[B8-MROUTER] " + adapter.compat.WlMediaRouter.install());
+        } catch (Throwable t) {
+            System.err.println("[B8-MROUTER] not installed: " + t);
+        }
         // r17t (#audio/noice): AudioProductStrategy.getAudioProductStrategies() lazy-loads via the native
         // native_list_audio_product_strategies, which route-A does not export -> the JNI throws and
         // RuntimeInit calls System.exit(1) before the UI (noice, and the same audio-JNI family reaches

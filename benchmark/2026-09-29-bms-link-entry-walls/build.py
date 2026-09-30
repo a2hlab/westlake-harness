@@ -71,7 +71,8 @@ helpers_src = [src / 'B7BindFixes.java', src / 'UserManagerProjectionProxy.java'
                src / 'AlarmVibratorFetcher.java',         # r17e alarm + J04 vibrator (from SystemServiceFetcherStubs)
                src / 'SelfServiceFallback.java',          # J1 binaryeye getServiceInfo (from SelfComponentFallback)
                src / 'AndroidFrameworkPackage.java',      # J2 newpipe getPackageInfo("android") synthesis
-               src / 'AliasTargetTheme.java']             # J3 fd-api: activity-alias target keeps its own theme
+               src / 'AliasTargetTheme.java',             # J3 fd-api: activity-alias target keeps its own theme
+               src / 'WlMediaRouter.java']                # J4 noice: local IMediaRouterService (media_router)
 run(['javac', '--release', '8', '-cp', INPUT / 'android.jar', '-d', classes, *helpers_src])
 # r16 (#90): cc-wiki's OnlineConnectivityManager compiles against the Westlake android.net sources
 # (ConnectivityManager/Network/NetworkInfo/NetworkCapabilities/NetworkRequest, which expose the
