@@ -16,10 +16,16 @@ case $BOARD in /*) ;; *) echo "board path must be absolute" >&2; exit 2;; esac
 DIR=${OUTER_CURSOR_DIR:-$HOME/.octos/outer}; mkdir -p "$DIR"
 CUR="$DIR/board-cursor-$(printf '%s' "$BOARD" | shasum -a 256 | cut -c1-12)"
 [ -f "$CUR" ] || wc -l < "$BOARD" | tr -d ' ' > "$CUR"
-entries() { tail -n +$(( $(cat "$CUR") + 1 )) "$BOARD" | grep -E '^(PROGRESS|ACK\(|LOCK|UNLOCK)' | grep -v '外环(claude)' || true; }
+# `advance` moves only to the last line that show/wait actually looked at (recorded in $CUR.seen), not to the end
+# of the file: 05:26 an entry written between `wait` returning and `advance` running was skipped.
+entries() {
+  local end; end=$(wc -l < "$BOARD" | tr -d ' ')
+  echo "$end" > "$CUR.seen"
+  sed -n "$(( $(cat "$CUR") + 1 )),${end}p" "$BOARD" | grep -E '^(PROGRESS|ACK\(|LOCK|UNLOCK)' | grep -v '外环(claude)' || true
+}
 case $CMD in
   show) entries ;;
   wait) while :; do out=$(entries); [ -n "$out" ] && { printf '%s\n' "$out"; exit 0; }; sleep "${OUTER_CURSOR_POLL:-30}"; done ;;
-  advance) wc -l < "$BOARD" | tr -d ' ' > "$CUR"; echo "cursor at line $(cat "$CUR")" ;;
+  advance) [ -f "$CUR.seen" ] || { echo "run show or wait first" >&2; exit 2; }; cp "$CUR.seen" "$CUR"; echo "cursor at line $(cat "$CUR")" ;;
   *) echo "unknown command: $CMD" >&2; exit 2 ;;
 esac
