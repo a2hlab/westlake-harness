@@ -108,6 +108,17 @@ public final class B7BindFixes {
         } catch (Throwable t) {
             System.err.println("[B8-MSESSION] not installed: " + t);
         }
+        // r17t (#audio/noice): AudioProductStrategy.getAudioProductStrategies() lazy-loads via the native
+        // native_list_audio_product_strategies, which route-A does not export -> the JNI throws and
+        // RuntimeInit calls System.exit(1) before the UI (noice, and the same audio-JNI family reaches
+        // opencamera/vlc). Pre-seed the static cache with an empty list so the getter never enters its
+        // lazy branch and never touches native. Same idea as the Providers array rewrite; no ArtMethod
+        // patch (which SIGSEGVs on this generation's ART).
+        try {
+            stubAudioProductStrategies();
+        } catch (Throwable t) {
+            System.err.println("[B8-AUDIO] not stubbed: " + t);
+        }
         // r17e (#alarm/#vibrator): the last mile from a LocalServiceBinders binder to its Manager.
         // OH's SystemServiceRegistry fetcher for ALARM_SERVICE does not consume our in-process "alarm"
         // binder, so getSystemService(ALARM_SERVICE) returns null and k9/fd-android's
@@ -312,6 +323,33 @@ public final class B7BindFixes {
         ai.nativeLibraryDir = replacement;
         System.err.println("[B7] nativeLibraryDir " + current + " does not exist; using "
                 + replacement);
+    }
+
+    /**
+     * r17t (#audio/noice, cc-wiki 09:06): stub android.media.audiopolicy.AudioProductStrategy so
+     * getAudioProductStrategies() returns an empty list without the native list call. The class caches
+     * its result in a private static field `sAudioProductStrategies` and only enters its lazy branch
+     * (initializeAudioProductStrategies -> native_list_audio_product_strategies, which route-A does not
+     * export -> System.exit(1)) when that field is null. Pre-seed the field with an unmodifiable empty
+     * list at bind, before the app touches audio-policy, so the native path is never taken. Empty-list
+     * is safe for the downstream callers (getVolumeGroupIdForAudioAttributes -> DEFAULT_GROUP, legacy
+     * stream-type lookups -> none). Reflection on a boot class, same shape as fixJarVerificationProvider.
+     */
+    static void stubAudioProductStrategies() {
+        try {
+            Class<?> aps = Class.forName("android.media.audiopolicy.AudioProductStrategy");
+            java.lang.reflect.Field f = aps.getDeclaredField("sAudioProductStrategies");
+            f.setAccessible(true);
+            if (f.get(null) != null) {
+                System.err.println("[B8-AUDIO] AudioProductStrategy cache already populated; left as-is");
+                return;
+            }
+            f.set(null, java.util.Collections.emptyList());
+            System.err.println("[B8-AUDIO] AudioProductStrategy.sAudioProductStrategies pre-seeded empty "
+                    + "(getAudioProductStrategies bypasses native_list_audio_product_strategies)");
+        } catch (Throwable t) {
+            System.err.println("[B8-AUDIO] stubAudioProductStrategies failed (non-fatal): " + t);
+        }
     }
 
     /**
