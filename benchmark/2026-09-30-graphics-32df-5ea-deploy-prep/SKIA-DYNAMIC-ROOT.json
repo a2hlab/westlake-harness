@@ -1,0 +1,35 @@
+{
+  "title": "Skia RenderThread SIGSEGV — dynamic root investigation (60-min box): GL-family precise fault mechanism + cheap-hypothesis eliminations",
+  "author": "cc-wiki (#80)",
+  "date": "2026-09-30",
+  "context": "Follows the layout-probe refutation (SKIA-RENDERTHREAD-SIGSEGV-CLUSTER.json abi_layout_probe): crash-path structs identical across define sets, so root is dynamic. Outer ring dispatched: (1) cheap check for off-RenderThread GrDirectContext/GL access; (2) wild-writer capture on 5cd if needed; (3) GL fn-ptr guard as fallback.",
+
+  "step1_cheap_eliminations": {
+    "cross_thread_gpu_access": "RULED OUT. Empirically: in the antennapod r2 crash hilog, ALL GL/EGL/skia activity (OpenGLWrapper, CreateEglSurface, C01406/skia) is on tid 4726 (RenderThread) only; no other app thread touches GL/skia. Source: Readback/DeferredLayerUpdater/SkiaPipeline/layer-surface all use mRenderThread.getGrContext() on the RenderThread.",
+    "hardware_bitmap_uploader": "RULED OUT (dead code on OH). HardwareBitmapUploader.cpp.patch: allocateHardwareBitmap returns nullptr (Bitmap::createFrom gated by __ANDROID__, not built); VkUploader dead under HWUI_NO_VULKAN. So no separate-thread hardware-bitmap upload sharing the GrContext.",
+    "gles_load_failure": "RULED OUT (benign). 'OpenGLWrapper: Failed to load GLES library using dl open' appears 66x in EVERY run (r1 lit, r2 crash, r3 lit — identical count) and all runs then load libGLESv3 (4x). It is OpenGLWrapper probing multiple lib names; identical in crash and survive => not the discriminator.",
+    "typeface": "RULED OUT earlier (sDefaultTypeface non-null identical in crash vs survive).",
+    "abi_struct_layout": "RULED OUT earlier (two-config offsetof/sizeof probe; crash-path structs identical)."
+  },
+
+  "step1_disassembly_precise_mechanism": {
+    "method": "Disassembled GrGLGpu::onResetContext in the real libskia_canvaskit.z.so (build 2f7219f2, copy at westlake-harness-bms-deploy/.../b6-latest/platform-pool/system/lib64/) with llvm-objdump; crash frame pc=0x123d25c.",
+    "code": "0x123d248 ldr x8,[x19,#0xb0] (x19=GrGLGpu this) ; 0x123d24c mov w1,#0xb71 (=GL_DEPTH_TEST) ; 0x123d250 ldr x8,[x8,#0x8] ; 0x123d254 ldr x9,[x8,#0x730] (fn-ptr) ; 0x123d258 add x0,x8,#0x738 ; 0x123d25c blr x9  <-- CRASH",
+    "confirmation": "crash register x1=0xb71 exactly matches the mov w1,#0xb71 at 0x123d24c => this is definitively the faulting instruction. It is a GL state-reset call (GL_DEPTH_TEST) in onResetContext.",
+    "root_pointer": "crash register x8=0x00007f34b12bbf is MISALIGNED (not 8-byte aligned; ends 0xbbf) and lies in the SAME heap region as this (x19=0x7f34b273a0). x8 = *(*(GrGLGpu+0xb0)+0x8) = the GL context/interface pointer chain. So the corrupted value is a POINTER FIELD holding a misaligned value. x9 = *(0x7f34b12bbf+0x730) = garbage 0x7f2baaa33400 -> blr -> unmapped -> instruction abort (esr 0x82000004).",
+    "verdict": "GL-family root = a corrupted (misaligned) GL-context/interface pointer inside the GrGLGpu object at runtime. NOT a struct layout issue (probe-refuted). A pointer field is overwritten with a misaligned value from the same heap region -> heap corruption or a use-after-free/reuse of the GrGLContext/GrGLInterface memory."
+  },
+
+  "step2_writer_capture_attempt": {
+    "board": "5cd (U0, 53f), locked cc-wiki, no runtime change, appspawn-x never killed, U0 verified intact after (runtime 53f) then released.",
+    "result": "antennapod x6 --reinstall: 0/6 crashed (all alive t5=yes, no signal:11, no new cppcrash tombstone on device). The crash did NOT reproduce this session (earlier 5cd rate ~1/3; now 0/6) -> too intermittent to catch a fresh full-memory tombstone within the box.",
+    "implication": "A live guard-page / malloc-interposer capture would need many runs to hit the ~1/3-or-lower intermittent crash; not box-able. Note DIGEST A.19/#251: guard-page/canary interposers already FAILED to catch the analogous mallocng wild-write class (shared musl group/meta corruption, victim not the guarded user chunk). If this is the same class, a user-chunk guard won't catch it either; a page-level MTE/GWP-ASan-style sampler or a targeted watchpoint on the GrGLContext pointer would be needed."
+  },
+
+  "step3_gl_guard_assessment": {
+    "feasibility": "WEAK as a real fix. The faulting blr is INSIDE libskia's onResetContext (can't patch without rebuilding libskia). A libhwui-side guard could validate the GrGLInterface fn-ptrs at build time (before MakeGL), but the corruption is POST-build (the GL-context/interface POINTER FIELD is corrupted at runtime, not the fn-ptrs at construction) -> a build-time guard won't catch it. So the GL guard is not an effective containment here.",
+    "recommendation": "Given the corruption is runtime pointer overwrite in a libskia-internal object, the practical delivery is the self-heal watchdog (process-level): detect RenderThread signal:11 -> fresh restart. A real fix needs the writer identified (watchpoint on the GrGLContext pointer, or MTE) — a dedicated effort, not box-able, cx-t0/native."
+  },
+
+  "conclusion_for_cx_t0": "GL-family = runtime corruption (misaligned pointer 0x7f34b12bbf) of the GrGLGpu GL-context/interface pointer field ([GrGLGpu+0xb0]+0x8), crashing at glDisable(GL_DEPTH_TEST) in onResetContext. Cheap causes eliminated (cross-thread, HW-bitmap-uploader, GLES-load, typeface, ABI). Not reproducible enough (0/6) to catch the writer live in a 60-min box; guard-page interposer likely hits the DIGEST #251 wall. Delivery ceiling = self-heal watchdog. Real root needs a hardware watchpoint on the GrGLContext pointer or MTE-assisted capture (dedicated effort)."
+}
