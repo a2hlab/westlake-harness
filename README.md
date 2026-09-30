@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-09-30-n2-native/`** | N2 native batch: selected-domain ABI, GLImpl and Camera metadata; offline gates, device handoff and rollback. |
 | **benchmark/2026-09-30-native-freeze-audit/** | **Native freeze evidence inventory, tiered-policy deployment and rollback checks.** |
 | **benchmark/2026-09-30-flutter-r5/** | **Single ANL default-owner callback attempt: controls held, private dependencies still blocked; candidate rolled back.** |
 | **benchmark/2026-09-30-n1-native/** | **Native cluster candidate combining frozen asset FD, graphics, bounded Flutter/JNA ABI loading and SoundPool; explicit gaps and device gates.** |

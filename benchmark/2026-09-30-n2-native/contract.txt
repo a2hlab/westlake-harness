@@ -1,0 +1,62 @@
+# Task Contract: N2 合并 N1 实测剩余 native 簇
+
+## Intent
+以已采认 N1 aa57845c 为底，合并 Flutter 域可见性与 property、JNA errno、SPD GLImpl、Camera JNI、VLC abort-message 修复。先找 Westlake 验证实现再移植，记录未实现与设备未验项；收到 cc-wiki 的 Skia 真头文件产物后核输入再并入。
+
+## Must
+- 源码按 Mac、OrbStack、hw248 顺序查找，优先复用验证过的 Westlake 实现。
+- FZ-001/002 产物及 FZ-003 源文件不变，构建与出版前检查冻结登记。
+- 只在授权且持锁的板上写入，短窗验收后回统一态并释放锁。
+- 截图终判由外环负责，facts 原样报告；不以进程存活代替点亮。
+
+## Decisions
+- 不修改 N1 包；N2 新目录、完整 SHA 清单、可回滚。
+- 保持 FZ-001/002 与 FZ-003 源字节一致；新增功能另源文件。
+- ELF 文件闭包不足以证明 namespace 可见，测试必须覆盖真实 search/permitted/load 路径与直接 owner 继承。
+- JNI 签名从现役 DEX 与同源源码核对；无硬件能力不假报成功。
+- 合成一版后交外环排板；不自行占正在 U1 的板。
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-09-30-n2-native/**
+- specs/native-n2/**
+- tools/spec-checks/**
+- README.md 与 .octos/KNOWLEDGE-DIGEST.md
+Forbidden:
+- 修改已冻结源、installer、provider、JAR、APK、ART、boot image
+- 修改已签 N1 包，或以静态测试代替设备点亮
+- 无板锁写板、加入未说明的全系统 namespace 共享
+
+## Completion Criteria
+Scenario: 六簇源码与边界逐项记录
+  Test:
+    Filter: n2_sources_and_predictions
+  Given N1 的六类首墙已有日志
+  When 按 Mac、VM、远端顺序查源并编写处理表
+  Then 六类均有原始证据、来源哈希、预测与未实现边界
+  And Skia 条目明确交付状态，不伪报已合入
+
+Scenario: 域选择与符号负控
+  Test:
+    Filter: n2_namespace_and_abi
+  Given 包身份可能仅出现在 permitted path 或加载路径
+  When 测试实际回调、JNI 表与 ELF 导入版本
+  Then 已授权包选择正确且非目标包行为保持
+  And 旧实现或删掉必要导出的负控被拒
+
+Scenario: 冻结与可回滚部署包
+  Test:
+    Filter: n2_package_and_frozen
+  Given N2 构建完成
+  When 校验 frozen、SHA、依赖闭包与部署 dry-run
+  Then 原冻结行为保留且候选包可核验回滚
+  And 构建源码、命令与工具链身份有持久记录
+
+Scenario: 设备证据诚实交接
+  Test:
+    Filter: n2_handoff
+  Given 外环统一排板
+  When 提交 N2 部署与验收命令
+  Then 明确 HW/ZZ、保护组、目标组、时限与回滚条件
+  And 未执行设备实验标 unverified，有实验时附 facts 原文和 t20
+

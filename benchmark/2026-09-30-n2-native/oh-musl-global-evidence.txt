@@ -1,0 +1,31 @@
+	if (!constructed) ctor_queue = queue_ctors(p);
+	if (!p->relocated && (mode & RTLD_LAZY)) {
+		prepare_lazy(p);
+		for (i=0; p->deps[i]; i++)
+			if (!p->deps[i]->relocated)
+				prepare_lazy(p->deps[i]);
+	}
+	if (!p->relocated || (mode & RTLD_GLOBAL)) {
+		/* Make new symbols global, at least temporarily, so we can do
+		 * relocations. If not RTLD_GLOBAL, this is reverted below. */
+		add_syms(p);
+		for (i=0; p->deps[i]; i++)
+			add_syms(p->deps[i]);
+	}
+	if (!p->relocated) {
+		reloc_all(p);
+	}
+
+	/* If RTLD_GLOBAL was not specified, undo any new additions
+	 * to the global symbol table. This is a nop if the library was
+	 * previously loaded and already global. */
+	if (!(mode & RTLD_GLOBAL))
+		revert_syms(orig_syms_tail);
+
+	/* Processing of deferred lazy relocations must not happen until
+	 * the new libraries are committed; otherwise we could end up with
+	 * relocations resolved to symbol definitions that get removed. */
+	redo_lazy_relocs();
+
+	update_tls_size();
+	if (tls_cnt != orig_tls_cnt)

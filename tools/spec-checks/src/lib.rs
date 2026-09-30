@@ -218,3 +218,20 @@ fn n1_device_evidence() {
 fn n1_rollback_handoff() {
     run(&["benchmark/2026-09-30-n1-native/verify.py", "handoff"]);
 }
+
+#[test]
+fn n2_sources_and_predictions() {
+    run(&["benchmark/2026-09-30-n2-native/verify.py", "sources"]);
+}
+#[test]
+fn n2_namespace_and_abi() {
+    run(&["benchmark/2026-09-30-n2-native/verify.py", "namespace"]);
+}
+#[test]
+fn n2_package_and_frozen() {
+    run(&["benchmark/2026-09-30-n2-native/verify.py", "package"]);
+}
+#[test]
+fn n2_handoff() {
+    run(&["benchmark/2026-09-30-n2-native/verify.py", "handoff"]);
+}
