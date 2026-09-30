@@ -152,6 +152,7 @@ kind of work from where the corpus started
 | `benchmark/2026-09-30-r16-sweep/` | **BMS route, 10 Android apps lit on OH 6.1**: r16 full-66 on 5cd/61b adds FitoTrack and mpv; two earlier-lit apps missing on 5cd trace to per-board native swaps (VelocityTracker runtime) and to a newly running service hitting a null `IActivityManager` — rules: diff board libraries before blaming the JAR, fold single-board swaps into v3c |
 | `benchmark/2026-09-30-r17a-sweep/` | **13 lit after r17a**: the receiver guard (now unwrapping two proxy layers) lets NetGuard and Luanti past the missing CommonEvent JNI; Noice regresses because the deeper-running service hits a null `PendingIntent` — rule: a tolerance guard ships with non-null stubs for what the code touches next |
 | `benchmark/2026-09-30-r17p-full-sweep/` | **22 lit after r17p**: AntennaPod, Amaze and Tusky show their own UI for the first time; the two boards' runtime fingerprints differ only in the installer pair (115/117 files identical) — rule: diff fingerprints before calling a cross-board difference nondeterminism |
+| `benchmark/2026-09-30-unified-r17r-5cd-sweep/` | **21 of 23 signed apps on one board**: v3c + runtime 9e14 + JAR r17r + background-launch installer on 5cd; AppManager (white second Activity) and Noice (audio JNI) are the two missing — rule: full sweeps start from this state and change one variable at a time |
 
 ---
 
