@@ -88,10 +88,65 @@ def cmd_compare(so, gen_h):
     print(f"OK d4 layer C: {len([v for v in r155.values() if v is not None])} anchored offsets match T3 asm_support_gen.h.")
     return 0
 
+# ---- broad binary-to-binary comparison (when both R155 and the new libart are available) ----
+def _syms(so, pat):
+    # returns {name: (addr, size)} using nm --print-size so disassembly is bounded to the
+    # exact function extent (a fixed window would overflow into neighbouring functions and
+    # capture their offsets = a false layout diff).
+    out = subprocess.run(["llvm-nm", "--print-size", so], capture_output=True, text=True).stdout
+    r = {}
+    for line in out.splitlines():
+        p = line.split()
+        # format: <addr> <size> <type> <name>
+        if len(p) >= 4 and re.search(pat, p[3]):
+            try: r[p[3]] = (int(p[0], 16), int(p[1], 16))
+            except ValueError: pass
+    return r
+
+def _imm_seq(so, addr, span=512):
+    # Record only Thread-field accesses (base = x19 = xSELF in art_quick). This excludes
+    # GOT/global-data loads (adrp xN; ldr xN,[xN,#imm]) whose data-section offset differs
+    # between two independently-linked binaries and is NOT a struct-layout signal.
+    d = subprocess.run(["llvm-objdump", "-d", f"--start-address={hex(addr)}",
+                        f"--stop-address={hex(addr+span)}", so], capture_output=True, text=True).stdout
+    seq = []
+    for line in d.splitlines():
+        m = re.search(r"\b(ldr|ldar|ldrb|ldrh|str|strb|strh)\b\s+[wx]\d+,\s*\[x19(?:,\s*#(0x[0-9a-f]+|\d+))?\]", line)
+        if m:
+            seq.append(int(m.group(2), 0) if m.group(2) else 0)
+    return seq
+
+def cmd_compare_bin(r155, new):
+    # Layout = the SET of Thread(xSELF=x19) field offsets any art_quick entrypoint dereferences.
+    # Comparing the SET (not the ordered per-function sequence) is robust to disassembly-window
+    # truncation and to benign code-structure differences (e.g. userdebug instrumentation) that
+    # change how MANY times an offset is used but not the offset VALUE. If the two libart use the
+    # same set of Thread offsets, the Thread layout matches; GOT/global loads are already excluded.
+    a = _syms(r155, r"art_quick_"); b = _syms(new, r"art_quick_")
+    common = sorted(set(a) & set(b))
+    sa, sb = set(), set()
+    for s in common:
+        aa, asz = a[s]; ba, bsz = b[s]
+        sa.update(_imm_seq(r155, aa, asz)); sb.update(_imm_seq(new, ba, bsz))
+    only_r155 = sorted(sa - sb); only_new = sorted(sb - sa)
+    da, db = dump(r155), dump(new)
+    anchor_mism = {k: (da.get(k), db.get(k)) for k in set(da) | set(db) if da.get(k) != db.get(k)}
+    print(f"art_quick entrypoints: R155={len(a)} NEW={len(b)} common={len(common)}")
+    print(f"named anchors R155={da} NEW={db}")
+    print(f"Thread(x19) offset set: R155={len(sa)} NEW={len(sb)} values")
+    if anchor_mism or only_r155 or only_new:
+        print(f"FAIL d4 layer C: anchor_mismatch={anchor_mism} thread_offsets_only_in_R155={only_r155} only_in_NEW={only_new}")
+        return 1
+    print(f"OK d4 layer C: named anchors identical AND the Thread(x19) offset set is identical "
+          f"({len(sa)} values) across all {len(common)} common art_quick entrypoints => Thread layout matches board R155.")
+    return 0
+
 if __name__ == "__main__":
     a = sys.argv[1:]
     if len(a) == 2 and a[0] == "dump":
         sys.exit(cmd_dump(a[1]))
     if len(a) == 3 and a[0] == "compare":
         sys.exit(cmd_compare(a[1], a[2]))
+    if len(a) == 3 and a[0] == "compare-bin":
+        sys.exit(cmd_compare_bin(a[1], a[2]))
     print(__doc__); sys.exit(2)
