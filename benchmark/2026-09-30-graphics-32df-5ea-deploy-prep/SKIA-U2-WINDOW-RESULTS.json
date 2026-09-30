@@ -1,0 +1,23 @@
+{
+  "title": "5cd U2 short window (cc-wiki #80): AppManager loopback probe + Skia writer watchpoint attempt",
+  "date": "2026-09-30",
+  "board": "5cd (U2: runtime .so d932f2ba unchanged, JAR 0715c964; verified intact + released; temp binaries removed; no runtime change; appspawn-x never killed)",
+  "dispatch": "ACK(80) 13:46: 5cd <=30min: (1) AppManager loopback fast-refuse probe; (2) watchpoint on whichever of AntennaPod/FitoTrack reproduces RenderThread SIGSEGV first, else record 未复现; clean DETACH, no kill-9; verify U2 fingerprint then UNLOCK.",
+
+  "appmanager_loopback_probe": {
+    "result": "REFUTES my earlier platform-diff finding. OH loopback connect() to a CLOSED port FAST-REFUSES exactly like Linux/Android.",
+    "data": "loopback_probe.ohos (aarch64-linux-ohos, built with DevEco native clang-15) on 5cd: port 59999 (closed) -> ECONNREFUSED in 0.4 ms; port 5555 (adb, closed) -> ECONNREFUSED in 0.1 ms. Linux baseline (a2hlab) = 0.1 ms. All FAST-REFUSE.",
+    "correction": "NEXTWALL-TRIAGE-newpipe-spd-appmanager.json section (3) claimed 'OH loopback TCP to a closed port does not fast-refuse (no RST) => Ops.connectAdb blocks'. That is WRONG: OH DOES send an immediate RST (0.1-0.4ms ECONNREFUSED). So the AppManager '正在验证' hang is NOT a loopback-refuse platform diff.",
+    "revised_direction": "AppManager Ops.autoConnectWirelessDebugging most likely blocks in mDNS/NSD wireless-debug SERVICE DISCOVERY (no responder -> long/never), or an adb pairing wait, NOT a plain TCP connect-to-closed-port. Re-read the autoConnectWirelessDebugging flow (mDNS/NsdManager) if pursued. Outer ring said don't deep-dive; recorded corrected. Owner remains platform/app-behavior, not a loopback-RST fix."
+  },
+
+  "watchpoint_attempt": {
+    "tooling": "watchpoint_helper.ohos built (aarch64-linux-ohos): PTRACE_SEIZE RenderThread -> SW breakpoint at libskia onResetContext (base+0x123d230) resolves per-run A=*(GrGLGpu+0xb0)+0x8 -> NT_ARM_HW_WATCH 8-byte write watchpoint on A -> dump writer on misaligned store.",
+    "feasibility_gate": "SELinux = Permissive (getenforce=Permissive, /sys/fs/selinux/enforce=0) => ptrace is NOT blocked by SELinux on 5cd. The watchpoint approach is feasible in principle.",
+    "obstacle": "OH app processes appear in the process table as 'appspawn-x --socket-name AppSpawnX' (identified by app UID, not bundle name) -> pidof <bundle> fails; must resolve by UID. More critically: within the short window, launch-only did not leave a stable, attachable, actively-rendering target, and AntennaPod's crash (when it fires, ~1/3) happens early (~2-3s after launch, post-first-frame) -> could not win the attach-before-crash race in-window. Running the full (disruptive) helper on the pre-existing unknown app pid was unsafe (would leave a BRK in a crashing process).",
+    "outcome": "未复现 / 未能 attach this window (per dispatch allowance). Helper + method are ready; needs a longer dedicated window with: resolve app pid by UID, attach immediately post-launch (poll /proc every ~50ms), or disable ASLR for stable A + pre-arm. SELinux-permissive means ptrace itself will work.",
+    "note": "A full-tombstone capture (memory-near-registers) also did not land: no fresh antennapod cppcrash appeared this window (launch-only liveness capture was ambiguous; earlier 0/6 dedicated runs)."
+  },
+
+  "one_line_for_cx_t0": "5cd U2 window: (a) AppManager — OH loopback FAST-REFUSES closed ports (ECONNREFUSED 0.1-0.4ms, = Linux); my earlier 'no fast-refuse' platform-diff is REFUTED; the hang is NOT the connect (likely mDNS/NSD wireless-debug discovery). (b) Skia writer watchpoint — SELinux Permissive (ptrace OK), helper ready, but couldn't win attach-before-crash on the intermittent early crash in the short window; recorded 未复现, needs a longer window (attach-by-UID immediately post-launch, or ASLR-off + pre-arm)."
+}

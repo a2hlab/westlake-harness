@@ -26,6 +26,7 @@
 #include <sys/uio.h>
 #include <linux/elf.h>
 #include <linux/ptrace.h>
+#include <asm/ptrace.h>   // struct user_pt_regs, struct user_hwdebug_state (aarch64 sysroot)
 
 // onResetContext entry = base + this offset (verify vs deployed build-id 2f7219f2)
 #define ONRESET_OFF 0x123d230UL
@@ -38,11 +39,7 @@ static long g_tid;
 // BAS(byte addr select)=bits5:12 (0xFF = 8 bytes). => write, 8 bytes, user.
 static uint32_t wp_ctrl_write8(void){ return (1u<<0) | (0b10u<<1) | (0b10u<<3) | (0xFFu<<5); }
 
-struct user_hwdebug_state {          // matches kernel arch/arm64 layout
-    uint32_t dbg_info;
-    uint32_t pad;
-    struct { uint64_t addr; uint32_t ctrl; uint32_t pad; } dbg_regs[16];
-};
+// struct user_hwdebug_state comes from <asm/ptrace.h> (sysroot)
 
 static int getregs(struct user_pt_regs *r){
     struct iovec io = { r, sizeof(*r) };
