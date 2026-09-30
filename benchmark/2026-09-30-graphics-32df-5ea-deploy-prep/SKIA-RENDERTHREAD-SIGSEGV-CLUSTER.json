@@ -1,0 +1,63 @@
+{
+  "title": "Skia RenderThread intermittent SIGSEGV cluster — root cause (libhwui skia_compat_headers <-> OH libskia_canvaskit ABI), two families",
+  "author": "cc-wiki (#80)",
+  "date": "2026-09-30",
+  "dispatch": "outer ring (reassigned from cc-t3): read 3 cppcrash faultlogs (AntennaPod ~1/3 @0x7f2baaa33400; FitoTrack 5ea r17p + 61b d40 StrikeCache::generateStrike+156 @0x590); judge among font/glyph data source (typeface prime), thread race (StrikeCache lock), or libhwui/libskia runtime version/ABI mismatch; reproduce on 5ea (5x each), record crash rate; write minimal fix + ownership.",
+
+  "headline": "The 'glyph cache' cluster is NOT one bug. It is >=2 distinct RenderThread crash families, BOTH at the libhwui->libskia_canvaskit boundary. Typeface hypothesis REFUTED. Leading root: libhwui (compiled against hand-maintained hwui-shim/skia_compat_headers) vs OH system libskia_canvaskit.z.so (build 2f7219f2) STRUCT-LAYOUT/ABI skew -> libhwui builds public Skia objects (GrGLInterface, SkFont/SkPaint) at shim layout that libskia reads at real layout -> garbage/null pointers -> intermittent SIGSEGV.",
+
+  "samples": [
+    {
+      "app": "AntennaPod", "board": "5cd", "run": "u0-antenna-5cd-r2 (U0 53f+r17r)",
+      "family": "GL-context",
+      "fault_addr": "0x00007f2baaa33400", "esr": "0x82000004 (EC=0x20 Instruction Abort)", "type": "jumped to UNMAPPED code via corrupted GL function pointer",
+      "stack": "#00 pc 0x7f2baaa33400 Not mapped; #01 GrGLGpu::onResetContext(unsigned int)+44 libskia_canvaskit; #02 GrProxyProvider::wrapBackendRenderTarget; #03 SkSurfaces::WrapBackendRenderTarget; #04 libhwui+0x17cd5c; #05 CanvasContext::draw(bool)+364; #06 DrawFrameTask::run()+772; #07 WorkQueue::process()+388; #08 RenderThread::threadLoop()+124; #09 libutils Thread::_threadLoop",
+      "pointer_pattern": "bad PC 0x7f2baaa33400 == a valid skia addr 0x7f2baaa334 (in the 0x7f2ba98..0x7f2babd libskia range, cf x17/lr) LEFT-SHIFTED BY 8 bits. onResetContext+44 is a blr through a GrGLInterface function-pointer slot; the slot held a mis-scaled pointer -> IABT. Classic wrong-offset/width read of a function pointer table.",
+      "log": "benchmark/2026-09-30-graphics-32df-5ea-deploy-prep/runs/u0-antenna-5cd-r2-20260930T104940/5cd1e3dd00000000000000000923012c/antennapod/hilog.txt (DfxFaultLogger ~L51073)"
+    },
+    {
+      "app": "FitoTrack", "board": "5ea", "run": "r17p-all-5ea (v3c)",
+      "family": "GPU-text",
+      "fault_addr": "0x000000010000000f", "esr": "(data abort)", "type": "corrupted pointer (bit32 | 0xf) dereferenced adding a text blob",
+      "stack": "#00 TextBlobRedrawCoordinator::internalAdd(sk_sp<TextBlob>)+7xx libskia_canvaskit; #01 addOrReturnExisting(GlyphRunList); #02 findOrCreateBlob(SkMatrix,...); #03 SurfaceDrawContext::drawGlyphRunList; #04 Device::onDrawGlyphRunList; #05 SkCanvas::onDrawGlyphRunList; #06 SkCanvas::onDrawTextBlob; #07 SkCanvas::drawTextBlob; #08 libhwui DisplayListData::draw; then deep RenderNodeDrawable::drawContent->forceDraw->SkDrawable::draw recursion (nested render nodes)",
+      "log": "benchmark/2026-09-30-r17p-5ea-sweep/runs/r17p-all-5ea/5ea34a4500000000000000001123012c/fd-fitness/hilog.txt (DfxFaultLogger ~L56533)"
+    },
+    {
+      "app": "FitoTrack", "board": "61b", "run": "n1-runtime-pair-61b (d40)",
+      "family": "GPU-text",
+      "fault_addr": "0x0000000000000590", "esr": "0x92000007 (EC=0x24 Data Abort, read, translation fault L3)", "type": "NULL base + 0x590 offset read (null SkStrike/SkScalerContext sub-object)",
+      "stack": "#00 StrikeCache::generateStrike(SkStrikeSpec const&)+156 libskia_canvaskit; #01 StrikeCache::findOrCreateStrike+216; #02 GlyphVector::packedGlyphIDToGlyph(StrikeCache*)+76; #03 GlyphVector::regenerateAtlasForGanesh; #04 DirectMaskSubRun::regenerateAtlas; #05 AtlasTextOp::onPrepareDraws+1404; #06 OpsTask::onPrepare+644; #07 GrDrawingManager::executeRenderTasks; #08 GrDrawingManager::flush; #11 GrDirectContext::flushAndSubmit+256; #12 libhwui; #13 CanvasContext::draw(bool)+364; RenderThread",
+      "log": "westlake-harness-bms-deploy/benchmark/2026-09-30-n1-native/device-61b/runs/n1-runtime-pair-61b/61b0657200000000000000000324012c/fd-fitness/hilog.txt (DfxFaultLogger L54771)"
+    }
+  ],
+
+  "hypothesis_evaluation": {
+    "font_glyph_typeface_source": "REFUTED. Compared crash vs survive runs of the SAME app: AntennaPod r2(CRASH) and r1(LIT) both '[EARLY-TF] DONE sDefaultTypeface=NON-NULL'. FitoTrack pair(CRASH) and r1(LIT) BOTH identical: 'nativePrimeDefaultTypeface reflect FAILED (ITE)' then 'sDefaultTypeface SET (non-null) BEFORE adapter/binder'. The default typeface state is IDENTICAL between crash and survive; the nativePrimeDefaultTypeface reflect-failure is benign (non-null fallback set). Typeface/font-data is NOT the discriminator.",
+    "thread_race_strikecache_lock": "UNLIKELY as primary. GrDirectContext/Ganesh is RenderThread-confined (single-threaded per Skia's model), so GrGLGpu::onResetContext (AntennaPod GL crash) cannot be a cross-thread StrikeCache-lock race. The global StrikeCache is internally locked by skia. No lock-contention/second-writer evidence in any of the 3 logs. A race does not explain the GL-context family.",
+    "libhwui_libskia_abi_mismatch": "LEADING. It is the ONLY hypothesis that covers BOTH families (GL-context AND GPU-text). Evidence: (1) libhwui.so imports GrDirectContext/GrGLGpu/SkSurfaces/StrikeCache symbols and resolves them at runtime into OH's /system/lib64/libskia_canvaskit.z.so (build 2f7219f2). (2) libhwui was compiled against bms/src/adapter/framework/hwui-shim/skia_compat_headers -- a HAND-MAINTAINED shim header set; MinikinFont.h explicitly comments 'legacy field, unused -- kept for ABI compat' and 'offset +4 ... heap-allocator metadata bytes', i.e. struct layout is manually mirrored. (3) If any shim struct (GrGLInterface, SkFont, SkPaint, SkTypeface, GrDirectContext) diverges from libskia_canvaskit 2f7219f2's real layout, libhwui builds the object at the wrong offsets and libskia reads garbage: GL fn-ptr slot -> shifted/garbage ptr -> IABT (AntennaPod); SkFont/SkPaint -> bad SkStrikeSpec -> null/garbage strike & blob (FitoTrack). (4) libhwui.so dated 2026-08-06 (ours), libskia_canvaskit.z.so dated 2026-07-16 (OH) -- built separately.",
+    "why_intermittent": "A shim/ABI offset mismatch corrupts a specific field deterministically, but a SIGSEGV only fires when the misread value happens to be an UNMAPPED pointer; often the wrong-offset value is a benign/mapped value (silent). Which frames hit the poisoned field depends on the draw content (GL context reset triggered? glyph atlas regen needed? blob cache miss?) and heap/ASLR layout -> ~1/3 crash rate. This also matches the DIGEST heap-smash profile (intermittent, victim varies across subsystems), but here the mechanism is a build-time ABI skew, not a runtime wild write."
+  },
+
+  "crash_rates": {
+    "antennapod_U0_5cd": "2 LIT / 1 crash out of 3 (~33%); crash = GL-context family (onResetContext)",
+    "fitness_d40_61b": "3 LIT / 1 crash out of 4 (~25%); crash = GPU-text family (StrikeCache)",
+    "reproduce_5ea_DONE": {
+      "antennapod_5ea": "0 crash / 5 (5/5 LIT). AntennaPod GL crash did NOT reproduce on 5ea in 5 tries -> crash rate is BOARD/SUBSTRATE-dependent (r17p diff: antennapod@5ea LIT, antennapod@61b RenderThread crash). 5cd reproduces ~1/3, 5ea ~0.",
+      "fd-fitness_5ea": "1 crash / 5 (~20%). CRUCIAL: the 5ea crash (r5) is @0x00007f0876a33400, #00 Not mapped, #01 GrGLGpu::onResetContext+44 = GL-context family, NOT the text family fd-fitness showed on 5ea r17p (TextBlob) and 61b d40 (StrikeCache).",
+      "decisive_finding": "The SAME app (fd-fitness) crashes in DIFFERENT skia subsystems across runs: TextBlobRedrawCoordinator (5ea r17p), StrikeCache (61b d40), GrGLGpu::onResetContext (5ea r5). Victim subsystem varies WITHIN one app -> rules out per-app-draw-path and app-bug; confirms a SHARED root that poisons whichever skia object is hit first.",
+      "signature_reproduces": "Both GL-family crashes across two different apps share the byte-shift pattern: AntennaPod @0x7f2baaa33400 and fd-fitness @0x7f0876a33400 are each (a valid libskia pointer 0x...a334) << 8 (low byte 00). GrGLGpu::onResetContext+44 blr's through a GrGLInterface function-pointer slot read at a byte-MISALIGNED offset -> pointer<<8 -> unmapped -> IABT. This is the concrete struct-offset ABI-mismatch mechanism, reproducible across apps."
+    }
+  },
+
+  "ownership_and_fix": {
+    "owner": "cx-t0 (native/graphics runtime build). NOT cc-t3 (not a JAR-layer issue). NOT app bug (identical app binaries render fine on Android reference).",
+    "real_fix": "Audit hwui-shim/skia_compat_headers struct layouts (esp. GrGLInterface / GrGLassembledInterface, SkFont, SkPaint, SkTypeface, GrDirectContext/GrRecordingContext) against OH libskia_canvaskit 2f7219f2's ACTUAL ABI, and correct any field-offset/size divergence. Extract real layout from the OH skia build (headers or reversing). This is the durable fix; heavy (needs OH skia ABI ground truth).",
+    "cheaper_mitigations": [
+      "Self-heal watchdog: detect RenderThread SIGSEGV (appspawn 'exit with signal:11' + DfxSignalHandler RenderThread) -> restart the app fresh. Matches the DIGEST 'self-heal ceiling' delivery for intermittent, not-cheaply-fixable render crashes. App is usable ~2/3-3/4 of launches; restart recovers.",
+      "For the GL-context family specifically: pin/rebuild the GrGLInterface assembly so onResetContext's function-pointer table is validated (null/range check GL fn-ptrs before blr) -- a targeted libhwui guard, still cx-t0."
+    ],
+    "not_a_fix": "Priming the default typeface (already non-null in crash runs) will NOT help -- typeface refuted."
+  },
+
+  "cluster_correction": "Outer ring registered this as 'Skia glyph cache RenderThread SIGSEGV' with AntennaPod as a member. AntennaPod's @0x7f2baaa33400 crash is GrGLGpu::onResetContext (GL context / GrGLInterface, an INSTRUCTION abort), NOT glyph/StrikeCache. It shares the libhwui<->libskia ABI boundary root with the FitoTrack text crashes but is a distinct family. Report both families under one root, not one glyph bug."
+}
