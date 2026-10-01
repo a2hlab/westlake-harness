@@ -171,3 +171,16 @@ the install step). **New JAR SHA:** U11e `b093243b0da702b74af1c693af93ea937652fa
 - **New JAR SHA:** U11g `73c0da44a8fb2841fa6ea8cf727778aeed36ab5636b9b5b35f1f288796c39bbd`; 197 classes; deterministic.
   Clusters in the jar: 1 phone, 3 ssl-engine, 5 content-provider(+dedup), 7 appcompat guard, 4 keystore probe
   (diagnostic). Clusters 2 (R8 map) and 6 (image lane) are out.
+
+## U11h — keystore probe selfTest version (next-round FINAL)
+
+Replaced `KeystoreBoardProbe` with cc-wiki's selfTest version (master d2d11b17d). `selfTest()` is key-independent:
+it generates its own random 256-bit AES `SecretKeySpec` and runs Tink's exact `AES/GCM/NoPadding` framing through
+the DEFAULT provider, logging `[WL-KS-PROBE] selftest cipher provider=… ivLen=… validateAead=…` — so it works at
+bind time with **no app key needed** (resolving U11g's timing caveat where the key was absent at bind).
+`run("_androidx_security_master_key_")` (unchanged post-bind wiring) now calls `selfTest()` first, then the
+per-key check only if the app key exists. **hilog channel confirmed:** the `[WL-KS-PROBE]` lines are
+`System.err.println` (verified in the compiled smali) → AppSpawnXJava `[stderr]` → hilog (same channel as
+`[B8-FETCH]`/`[WL-KEYSTORE]`). **New JAR SHA:** U11h
+`14ed34bc70ad0248a754bd046a70f8a72c9353bac6de5da208da3a6980f31044`; 197 classes; deterministic. This is the
+next-round FINAL U11 JAR (clusters 1/3/5+dedup/7 fixes + 4 keystore selfTest probe).

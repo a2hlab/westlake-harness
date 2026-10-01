@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "lane": "cc-t3",
+  "date": "2026-10-02",
+  "task": "U11 JAR v8 (next-round FINAL) = U11g with cc-wiki's KeystoreBoardProbe selfTest version (master d2d11b17d). Wiring unchanged (run calls selfTest first).",
+  "base_u10_sha256": "37465d6d7f5e3d7be52929c2b43faf99315f86f0c23cc70e4aa858cb2ff98c59",
+  "output_u11h_sha256": "14ed34bc70ad0248a754bd046a70f8a72c9353bac6de5da208da3a6980f31044",
+  "supersedes": "u11g 73c0da44; u11h is the next-round FINAL U11 JAR",
+  "deterministic": "yes (built twice)",
+  "staged_jar": "$WORKSPACES/westlake-generation-u11-staging/oh-adapter-runtime-u11h.jar",
+  "build": "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u11-jar/build/build_u11h.py",
+  "class_delta_vs_u10": {"added": ["TelephonyFetcher(+6)", "WlSSLEngine(+1)", "AppContentProviders", "KeystoreBoardProbe"], "removed": [], "note": "197 (+11). Same class set as u11g; only KeystoreBoardProbe body changed (selfTest). base adapter.core.SoftwareAndroidKeyStore unchanged (21 methods, NAME-only compile stub not in dex)."},
+  "keystore_selftest": "KeystoreBoardProbe.selfTest() (key-independent): generates its OWN random 256-bit AES SecretKeySpec and runs Tink's exact AES/GCM/NoPadding framing through the DEFAULT provider, logs '[WL-KS-PROBE] selftest cipher provider=... ivLen=... validateAead=...'. run(\"_androidx_security_master_key_\") (unchanged post-bind wiring) calls selfTest() FIRST (always logs, no app key needed -- resolves the U11g timing caveat), then the per-key check if the app key exists.",
+  "hilog_channel_confirmed": "the [WL-KS-PROBE] selftest lines are System.err.println (Ljava/io/PrintStream;->println, verified in KeystoreBoardProbe.smali) -> AppSpawnXJava [stderr] -> hilog, the same proven channel as [B8-FETCH]/[B8-PROV]/[WL-KEYSTORE].",
+  "clusters_in_jar": "1 phone (TelephonyFetcher), 3 ssl-engine (WlSSLEngine), 5 content-provider (AppContentProviders +dedup), 7 appcompat (J10dTheme alias guard), 4 keystore (KeystoreBoardProbe selfTest, diagnostic). Clusters 2 (R8 map) and 6 (BCP/boot) and toutiao-okhttp (conscrypt/BCP) are out of the runtime jar."
+}
