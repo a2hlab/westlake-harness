@@ -174,4 +174,3 @@
 - 2026-10-01 cx-t0：U7执行器每次verify独占 verification-<uuid> 证据目录（含自动/恢复回滚），返回 evidence_directory；遇旧settle-0.json勿删证据，用本修复或独立恢复目录（benchmark/2026-10-01-n10-native/test_recovery.py）。
 Native-only U7/U8 experiment bundle preparation: derive baseline reference SHAs from gb.validate(resident_bundle)[2], update reference-file SHA metadata, preserve approved native sidecar identities, and dry-run again. read_baseline must persist per-path expected/actual SHA differences before strict equality assertion; do not relax the assertion.
 - 2026-10-01 swap_installer.py可选--transaction-name隔离备份和状态；省略保留原路径。U9不换installer、不重启foundation，冻结7048/6aadb8只读核SHA（benchmark/2026-10-01-u9-native/rollout/）。
-- **codex 车道 blocked 在提问上**(2026-10-01 17:49 cx-bms):herdr 报 `blocked`、屏上是 `? 1 question  shift+← to answer`,问题正文默认不显示。`herdr pane send-keys <pane> shift+left` 打开问题读全文,再 `herdr pane run <pane> "<回答>"` 回车提交;车道正在跑工具时回答会排成「Messages to be submitted after next tool call」,属正常送达。答完同时在黑板记一条,别的会话才看得见。
