@@ -1,0 +1,80 @@
+--- a/src/sealed_child_provider_loader.c
++++ b/src/sealed_child_provider_loader.c
+@@ -271,34 +271,55 @@
+ 
+ void *WLSCPL_OpenPreparedNamespace(const char *absolute_path, int flags)
+ {
+-    /* R155 ends this wrapper with a sibling call to dlopen. OH musl uses
+-     * the return address to select the caller namespace; keep the caller in
+-     * the sealed provider, not in this default-namespace plugin. A stack
+-     * array here prevents the sibling call with the locked compiler. The
+-     * post-link instruction check is part of admission for this wrapper. */
++    /* N11g: preserve the admitted exact path/flags; every fresh open names
++     * the already-prepared closure explicitly. Never fall back to default. */
+     static const char prefix[] = "/system/android/lib64/";
++    typedef int (*LogFn)(int, int, unsigned int, const char *, const char *, ...);
++    LogFn emit = NULL;
++    void *result = NULL;
++    const char *route = "reject";
++    uint32_t owner_index = UINT32_MAX;
++    if (g_owner_handles[1] != NULL)
++        emit = (LogFn)dlsym(g_owner_handles[1], "HiLogPrint");
+     if (namespace_prepared != 1 || !AbsoluteCanonicalForm(absolute_path) ||
+         strncmp(absolute_path, prefix, sizeof(prefix) - 1U) != 0 ||
+         absolute_path[sizeof(prefix) - 1U] == '\0' ||
+-        (flags & (RTLD_NOW | RTLD_GLOBAL)) != RTLD_NOW) return NULL;
+-    /* N11f: the two JNI owners are opened in the DEFAULT namespace via this host
+-     * callback (open_sealed_exact) during runtime/JNI-owner prepare (and later
+-     * by the Java NativeLoader). Return the resident sealed-owner handle instead
+-     * of dlopen'ing a second copy -- the branch-3 OWNER_MISMATCH root. */
++        (flags & (RTLD_NOW | RTLD_GLOBAL)) != RTLD_NOW) {
++        N11eFailure(WLSCPL_FAILB_ARTIFACT_DLOPEN, UINT32_MAX, NULL,
++                    "N11g rejected unprepared namespace or invalid path/flags");
++        goto record;
++    }
+     for (size_t owner = 0U; owner < 2U; ++owner) {
+         if (strcmp(absolute_path, g_owner_paths[owner]) == 0) {
+-            if (g_owner_handles[owner] != NULL) return g_owner_handles[owner];
+-            /* Host asked BEFORE the provider published the owners: this dlopen
+-             * mints the default copy (branch-3 root). Record OWNER_PUBLISH_LATE
+-             * in the result struct; it is surfaced by the host's unconditional
+-             * [N11e-PROBE] done line (loader-stage stderr does NOT reach hilog,
+-             * so no fprintf here). Fall through so the host proceeds. */
+-            g_n11e_failure.branch = WLSCPL_FAILB_OWNER_PUBLISH_LATE;
+-            g_n11e_failure.index = (uint32_t)owner;
+-            break;
+-        }
+-    }
+-    return dlopen(absolute_path, flags);
++            owner_index = (uint32_t)owner;
++            result = g_owner_handles[owner];
++            if (result == NULL) {
++                N11eFailure(WLSCPL_FAILB_OWNER_PUBLISH_LATE, owner_index, NULL,
++                            "N11g protected owner missing; no default fallback");
++            } else {
++                /* Preserve N11f's resident handle contract. OH musl dlclose
++                 * does not unload; these anchors remain process-lifetime. */
++                route = "resident";
++            }
++            goto record;
++        }
++    }
++    (void)dlerror();
++    result = dlopen_ns(&closure_namespace, absolute_path, flags);
++    if (result == NULL) {
++        const char *detail = dlerror();
++        N11eFailure(WLSCPL_FAILB_ARTIFACT_DLOPEN, UINT32_MAX, detail,
++                    "N11g exact sealed namespace open failed");
++    } else {
++        route = "sealed";
++    }
++record:
++    if (emit != NULL)
++        (void)emit(3, 4, 0xD000F00u, "N11gOwner",
++                   "[N11g-SEALED-OPEN] route=%{public}s path=%{public}s owner=%{public}u handle=%{public}p",
++                   route, absolute_path == NULL ? "(null)" : absolute_path,
++                   owner_index, result);
++    return result;
+ }
+ 
+ static void *RealOpenLocalNow(void *context, const char *absolute_path,
