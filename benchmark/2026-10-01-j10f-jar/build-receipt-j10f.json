@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "lane": "cc-t3",
+  "date": "2026-10-01",
+  "task": "J10f = J10d + J10e + concrete WebSettings for WebViewProvider.getSettings(). U9's single JAR.",
+  "baseline_j10d_sha256": "57d621837eee4d065a49929f0a7f981e811becc4beba988c18b0ab847e67058c",
+  "output_j10f_sha256": "a0f8ba4531b3aefe0d61aeb880bb415a57f35f334327388b61768a0ae22f2af8",
+  "deterministic": "yes (built twice identical)",
+  "staged_jar": "/Users/zhaoyue/orca/workspaces/westlake-generation-j10f-staging/oh-adapter-runtime-j10f.jar",
+  "source_commits": [
+    "feat/bms-walls J10eWebView getSettings wiring",
+    "feat/bms-walls J10fWebSettings (generated)"
+  ],
+  "build_script": "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10f-jar/build/build_j10f.py",
+  "generator": "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10f-jar/build/gen_websettings.py",
+  "root_cause": "J10e cleared WebView.setLayoutParams/getCookieManager but the wall moved to WebViewProvider.getSettings() returning null (abstract-class return, type-zero stub) -> route-A WebView apps call getSettings().setJavaScriptEnabled(..) at launch -> NPE on null (caniwebview 'getSettings() must not be null'; jslab/degeder-yam/vaults-randomlydie/paultirk-yatoo 'setJavaScriptEnabled on null').",
+  "fix": "J10eWebView.ProviderInstance.getSettings() -> J10fWebSettings.get() = cached concrete WlWebSettings. WlWebSettings overrides ALL 104 abstract methods of AOSP 14 WebSettings (getters type-zero, setters no-op), generated from WebSettings.java by gen_websettings.py and compiled against a compile-only android.webkit.WebSettings stub (104 incl @hide/@SystemApi/@UnsupportedAppUsage, absent from public android.jar). Marker [J10f-WEBVIEW] settings stub installed.",
+  "class_delta": {
+    "added": [
+      "adapter/activity/J10fWebSettings",
+      "J10fWebSettings",
+      "(+ J10eWebView* re-applied from J10d base)"
+    ]
+  },
+  "offline_gate": "test_j10f.py 5/5 (WlWebSettings 104 overrides verified)",
+  "predicted_coverage": "caniwebview/jslab/degeder-yam/vaults-randomlydie/paultirk-yatoo (the 5 that moved to the getSettings wall); beecount/trickytripper regression-check (already lit under J10e)",
+  "window_runtime_fp": "NOT YET KNOWN (jar a0f8ba45 != prior; outer-loop offline compute)"
+}

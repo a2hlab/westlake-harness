@@ -1,0 +1,63 @@
+{
+  "serial": "5ea34a4500000000000000001123012c",
+  "lane": "cc-t3",
+  "entry": "90",
+  "why": "J10f fix window on 5ea (U9 single jar): concrete WebSettings for getSettings(); smoke [J10f-WEBVIEW] settings stub installed + [J10e-WEBVIEW] cookie + controls, then 7-key webview shard; rollback to U8",
+  "board": "/Users/zhaoyue/orca/workspaces/westlake-harness/.octos/boards/app-lighting.md",
+  "out": "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10f-window-5ea",
+  "smoke_spec": "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/knowledge/smoke/j10f.json",
+  "offline_precheck": {
+    "hypothesis": "J10e moved the 5 remaining webview apps' wall to WebViewProvider.getSettings() returning null (abstract-class return): caniwebview dies 'getSettings() must not be null', jslab/degeder-yam/vaults-randomlydie/paultirk-yatoo die on getSettings().setJavaScriptEnabled(..) NPE. J10f returns a concrete WlWebSettings (104 abstract overrides) so getSettings() is non-null and setJavaScriptEnabled/etc. are no-ops, clearing that wall.",
+    "evidence": [
+      "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10f-jar/smali-evidence/WlWebSettings.count.txt",
+      "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10f-jar/smali-evidence/B7BindFixes.inject.txt",
+      "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10e-window-5ea/v1/20261001T164148-4164c61b/5ea34a4500000000000000001123012c/cv2-eu-dfdx-jslab/hilog.txt"
+    ],
+    "result": "not-falsified",
+    "expect": {
+      "confirm": "caniwebview hilog shows [J10f-WEBVIEW] settings stub installed AND no longer 'getSettings() must not be null'; jslab/degeder-yam/vaults-randomlydie/paultirk-yatoo no longer NPE on setJavaScriptEnabled(null); beecount/trickytripper still alive_t20 (no regression)",
+      "refute": "caniwebview still 'getSettings() must not be null' after the marker, OR a NEW WebSettings crash e.g. InstantiationException/AbstractMethodError on WlWebSettings (abstract surface mismatch), OR setJavaScriptEnabled still NPEs on null"
+    }
+  },
+  "after_lock": [
+    "python3",
+    "/Users/zhaoyue/orca/workspaces/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+    "--serial",
+    "5ea34a4500000000000000001123012c",
+    "--lane",
+    "cc-t3",
+    "--bind",
+    "/Users/zhaoyue/orca/workspaces/westlake-generation-j10f-staging/oh-adapter-runtime-j10f.jar:/system/android/framework/oh-adapter-runtime.jar",
+    "--expected",
+    "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10f-jar/j10f-expected-run.json",
+    "--no-run",
+    "--no-rollback",
+    "--out",
+    "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10f-window-5ea/overlay"
+  ],
+  "before_unlock": [
+    "python3",
+    "/Users/zhaoyue/orca/workspaces/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+    "--serial",
+    "5ea34a4500000000000000001123012c",
+    "--lane",
+    "cc-t3",
+    "--bind",
+    "/Users/zhaoyue/orca/workspaces/westlake-generation-j10f-staging/oh-adapter-runtime-j10f.jar:/system/android/framework/oh-adapter-runtime.jar",
+    "--out",
+    "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10f-window-5ea/overlay",
+    "--rollback-only",
+    "--rollback-runtime-fp",
+    "e953c0921536",
+    "--rollback-boot-fp",
+    "4db882a81732"
+  ],
+  "shards": [
+    {
+      "name": "v1",
+      "manifest": "/Users/zhaoyue/orca/workspaces/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
+      "input_root": "/Users/zhaoyue/orca/workspaces/westlake-inputs/corpus-v2/app-inputs",
+      "keys_file": "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10f-jar/j10f-shard-keys.txt"
+    }
+  ]
+}
