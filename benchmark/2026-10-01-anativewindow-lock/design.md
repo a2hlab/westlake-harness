@@ -100,6 +100,58 @@ the same OH dequeue/flush but add the CPU mapping and a one-slot "locked buffer"
 dirty rect) are stashed on the `AdapterAnw` for `unlockAndPost`. No change to the hook table or `oh_anw_wrap`
 itself.
 
+## Pending items resolved (offline, from the frozen sysroot headers)
+Frozen sysroot = `westlake-inputs/oh61-oh-root/oh_mirror/foundation/graphic/graphic_surface`.
+
+### ① `BufferHandle` field order + offsets — FIXED
+`interfaces/inner_api/buffer_handle/buffer_handle.h:48–61` (included by `.../surface/external_window.h:41`, whose
+`:559 OH_NativeWindow_GetBufferHandleFromNative` returns `BufferHandle*`):
+```
+L48 typedef struct {
+L49   int32_t  fd;        // +0x00
+L50   int32_t  width;     // +0x04
+L51   int32_t  stride;    // +0x08   (BYTE stride)
+L52   int32_t  height;    // +0x0c
+L53   int32_t  size;      // +0x10
+L54   int32_t  format;    // +0x14   (OH GRAPHIC_PIXEL_FMT_*)
+L55   uint64_t usage;     // +0x18   <-- uint64_t, NOT int
+L56   void*    virAddr;   // +0x20   <-- the bits pointer
+L57   uint64_t phyAddr;   // +0x28
+L58   uint32_t reserveFds;// +0x30
+L59   uint32_t reserveInts;//+0x34
+L60   int32_t  reserve[0];// +0x38
+L61 } BufferHandle;
+```
+**Correction to the first draft**: `usage` is `uint64_t`, so after `format@0x14` there is 4 bytes of padding then
+`usage@0x18`, putting **`virAddr` at +0x20** (not +0x1c). The draft `.cpp` struct is updated to the exact
+12-field layout; `stride@0x8`, `format@0x14`, `virAddr@0x20` are the three the lock reads.
+
+### ② OH CPU usage bits + SET_USAGE op — FIXED
+`interfaces/inner_api/surface/native_buffer.h:66–79` — `enum OH_NativeBuffer_Usage`:
+`L67 NATIVEBUFFER_USAGE_CPU_READ = (1ULL << 0)`, `L68 NATIVEBUFFER_USAGE_CPU_WRITE = (1ULL << 1)` → the lock sets
+`usage = (1ULL<<0)|(1ULL<<1) = 0x3`. The op code: `.../external_window.h:101 enum NativeWindowOperation` →
+`SET_BUFFER_GEOMETRY(0) L107, GET_BUFFER_GEOMETRY(1) L113, GET_FORMAT(2) L119, SET_FORMAT(3) L125, GET_USAGE(4)
+L131, SET_USAGE(5) L137`; `SET_USAGE` takes `[in] uint64_t usage` (L133–137). So
+`OH_NativeWindow_NativeWindowHandleOpt(oh, /*SET_USAGE*/5, (uint64_t)0x3)`. (Matches the shim's existing
+`OH_OP_SET_USAGE=5`.)
+
+### Board cross-check status (honest)
+Pulled the deployed libs from **5ea (idle U9), read-only** via `hdc file recv`: `/system/lib64/chipset-sdk-sp/
+libsurface.z.so` (sha256 `8f1879f82a307d3a…`; `/system/lib64/chipset-sdk-sp/libnative_window.so` is the same
+bytes) and `/system/lib64/ndk/libnative_window_manager.so` (128680 B). The surface/native_window implementation
+lib (which holds `OH_NativeWindow_GetBufferHandleFromNative` + the `SurfaceBuffer` getters) is a **stripped** ELF
+(0 named symbols) — so a symbol-anchored disassembly **address** for a `virAddr`/`stride`/`format` field-read is
+**not** obtainable offline without symbolizing/decompressing it, which is the heavier VM work the dispatch said to
+avoid. The readable `libnative_window_manager.so` only exports the event-filter NDK (`OH_NativeWindowManager_*`),
+not the buffer ops. The offsets are nonetheless pinned: (a) the platform and our libandroid compile against the
+**same** `buffer_handle.h` (frozen oh_mirror → the board image is built from it), and (b) they are corroborated
+**empirically on-device** — westlake-current's bridge reads `h->virAddr` (offset `+0x20`) through
+`GetBufferHandleFromNative` and successfully CPU-fills+flushes a buffer (`[WESTLAKE-CPUFILL]`, oh_window_manager_
+client.cpp:1987), i.e. `virAddr@0x20` works in a running build. **Deferred to cx-bms's on-board build step** (cheap,
+on the board, not the VM): after building libandroid, log `handle->{stride,format,virAddr}` on the first
+`ANativeWindow_lock` and confirm they equal the header offsets; if any looks off, `hdc`-pull + decompress the `.z.so`
+and disassemble `OH_NativeWindow_GetBufferHandleFromNative` then.
+
 ## Patch draft
 **Authoritative draft: `anativewindow-lock-draft.cpp`** (the libandroid TU, per the gate answer above — static
 lock-state map, `oh_anw_get_oh(w)`, OH NDK via `dlsym`, whole-buffer dirty). The code block below is the earlier

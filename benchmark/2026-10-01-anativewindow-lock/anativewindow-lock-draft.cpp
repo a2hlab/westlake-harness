@@ -29,9 +29,13 @@
 extern "C" {
 struct OHNativeWindow;
 struct OHNativeWindowBuffer;
-/* (1) Confirm this field ORDER against the bms frozen sysroot's buffer_handle.h before build. */
-struct BufferHandle { int fd; int width; int stride; int height; int size;
-                      int format; int usage; void* virAddr; /* trailing OH fields unused here */ };
+/* (1) EXACT layout from the bms frozen sysroot buffer_handle.h:48-61 (oh_mirror .../graphic_surface/
+ *     interfaces/inner_api/buffer_handle/buffer_handle.h). NOTE usage is uint64_t (NOT int) -> virAddr @ +0x20.
+ *     Offsets (LP64): fd@0x0 width@0x4 stride@0x8 height@0xc size@0x10 format@0x14 usage@0x18 virAddr@0x20
+ *     phyAddr@0x28 reserveFds@0x30 reserveInts@0x34 reserve@0x38. */
+struct BufferHandle { int32_t fd; int32_t width; int32_t stride; int32_t height; int32_t size;
+                      int32_t format; uint64_t usage; void* virAddr; uint64_t phyAddr;
+                      uint32_t reserveFds; uint32_t reserveInts; int32_t reserve[0]; };
 struct OHRegionRect { int32_t x; int32_t y; uint32_t w; uint32_t h; };
 struct OHRegion     { OHRegionRect* rects; int32_t rectNumber; };
 OHNativeWindow* oh_anw_get_oh(ANativeWindow* w);        // bridge export, already imported by libandroid
