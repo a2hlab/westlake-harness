@@ -66,7 +66,7 @@ def collect(board, plan_file=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('board', choices=['5ea', '5cd', '61b', '5ea-r2-vm', '61b-r2', '5cd-r2'])
+    parser.add_argument('board', choices=['5ea', '5cd', '61b', '5ea-r2-vm', '61b-r2', '5cd-r2', '61b-r3', '61b-seal'])
     parser.add_argument('--plan', type=Path)
     args = parser.parse_args()
     collect(args.board, args.plan)

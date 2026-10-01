@@ -10,7 +10,8 @@ p=argparse.ArgumentParser();p.add_argument('--serial',required=True);p.add_argum
 proc_lock=b.serial_process_lock(a.serial)
 if proc_lock is None:sys.exit('REFUSE: active bms_batch on serial; wait for shard to finish')
 a.out.mkdir(parents=True,exist_ok=False)
-board=b.Board(a.serial,shlex.join(['orb','-m','a2hlab','env','MAC_HOME='+str(Path.home()),str(W/'westlake-inputs/tools/hdc_mac.sh')]),str(W/'westlake-inputs/tools/board_note.sh'),'cx-t0',a.out/'commands')
+hdc=os.environ.get('SEAL_HDC_CMD') or shlex.join(['orb','-m','a2hlab','env','MAC_HOME='+str(Path.home()),str(W/'westlake-inputs/tools/hdc_mac.sh')])
+board=b.Board(a.serial,hdc,str(W/'westlake-inputs/tools/board_note.sh'),'cx-t0',a.out/'commands')
 board.ready();settings=b.preflight(board,a.out)
 entry=b.load_apps(M/'benchmark/2026-09-28-bms-route-deploy/batch/apps.json',keys='fd-seal')[0]
 app=b.resolve_input(Path.home()/'a2hlab/app-inputs',entry)
