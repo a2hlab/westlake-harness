@@ -54,14 +54,44 @@ add (or reuse one if present). This byte→pixel stride conversion is the single
 (OH stride-in-bytes handed to an AOSP consumer expecting pixels paints a skewed/torn image), so it is called out
 explicitly.
 
-## Which file + relationship to `oh_anw_wrap`
-Implement in **`framework/window/jni/oh_anativewindow_shim.cpp`** — it already holds `AdapterAnw` (the wrapper that
-owns `OHNativeWindow* oh` + the buffer cache), the OH `extern "C"` decls (`RequestBuffer`/`FlushBuffer`/`AbortBuffer`/
-`HandleOpt`/`Region`), and the dequeue/queue hooks; it can `#include "../../surface/jni/pixel_format_mapper.h"`.
-Export the two functions `extern "C"`. (`oh_native_window_shim.c` is the NDK-entry file for the *other*
-`ANativeWindow_*`; its header comment should be updated to list lock/unlockAndPost as implemented — but putting the
-two in the `.cpp` avoids threading the per-window locked-buffer state and `BufferHandle`/C++ bits back into the
-`.c`. Both compile into `libandroid.so`, so the exports land either way.)
+## Shipping-library gate — ANSWERED: implement in libandroid, NOT the bridge
+**`oh_anativewindow_shim.cpp` compiles into the 846 bridge, which is #96 = not reproducible from source** — so the
+two functions must NOT go there. Evidence: the shim is listed in `native/bridge-sources.json` +
+`native/bridge15-sources.json` (not any libandroid/hwui-shim source list), and the deployed 846
+`liboh_adapter_bridge.so` *defines* `oh_anw_wrap` (`T @0xd6850`) + `oh_anw_wrap_for_activity`. Meanwhile the NDK
+entries `ANativeWindow_*` live in **libandroid** (`framework/hwui-shim/jni/oh_native_window_shim.c`, in
+`hwui-shim-sources.json`/`hwui15-platform-sources.json`; the deployed `libandroid.so` defines `ANativeWindow_acquire`
+`T @0x40a78`), and that file **already imports `oh_anw_get_oh(w)` from the bridge** (its existing
+`ANativeWindow_getWidth`/etc. call it). libandroid is rebuildable.
+
+**So implement `ANativeWindow_lock`/`ANativeWindow_unlockAndPost` in libandroid** (a new C++ TU in the
+hwui-shim/libandroid source set, e.g. `framework/hwui-shim/jni/anativewindow_lock.cpp`, added to
+`hwui-shim-sources.json` + `hwui15-platform-sources.json`; C++ for the state map + `pixel_format_mapper.h`). Export
+`extern "C"`. Wiring, with the bridge left **byte-identical** (no bridge rebuild → #96 is not in the way):
+- **OH window**: `oh_anw_get_oh(w)` — already a bridge export imported by libandroid; returns the `OHNativeWindow*`
+  for the AdapterAnw the app got from `ANativeWindow_fromSurface`.
+- **OH NDK buffer ops** (`RequestBuffer`/`GetBufferHandleFromNative`/`FlushBuffer`/`AbortBuffer`/`HandleOpt`): call
+  the OH platform exports **directly, resolved via `dlsym(RTLD_DEFAULT, "OH_NativeWindow_…")`** (they are resident in
+  the app process — the bridge pulls them in), so libandroid gains **no new DT_NEEDED edge** (keeps the N2 native
+  gate green; same `dlsym` trick the shim already uses for `SetScalingModeV2`).
+- **Locked-buffer state**: lock/unlockAndPost cannot add a field to the bridge's `AdapterAnw`, so keep a
+  **libandroid-local** `std::unordered_map<OHNativeWindow*, Locked>` + `std::mutex` (one locked buffer per window;
+  a second `lock` without `unlockAndPost` → `-EINVAL`). `Locked` = `{OHNativeWindowBuffer* ohBuf; void* mmapAddr;
+  size_t mmapSize;}` (dirty rect not needed — see refinement ③).
+
+Relationship to `oh_anw_wrap` is unchanged: `oh_anw_wrap` (bridge) builds the `AdapterAnw` + the 10-hook GPU table;
+lock/unlockAndPost (libandroid) are the CPU path that operates on the **same** OH window via `oh_anw_get_oh`, with
+their own small lock-state map — they do not touch the bridge, the hook table, or `AdapterAnw`.
+
+### Adopted refinements (outer ring 2026-10-01)
+1. **`BufferHandle` field order**: take it from the **bms frozen sysroot's `buffer_handle.h`** (not a guessed
+   layout); if in doubt, disassemble the on-board `libnative_window`/surface lib to confirm the `virAddr` offset
+   before build. A wrong `virAddr` offset makes `bits` garbage.
+2. **`.cpp`**: yes — a libandroid C++ TU (above).
+3. **No copy-forward**: on return set `inOutDirtyBounds` to the **whole buffer** (`{0,0,width,height}`) and
+   `FlushBuffer` the full-surface region. The NDK contract for `ANativeWindow_lock`
+   (`android/native_window.h`) explicitly allows the implementation to **expand** the dirty region — reporting the
+   full buffer is compliant and matches a Surface without the last-posted-buffer copy-forward optimisation.
 
 `oh_anw_wrap(OHNativeWindow*)` builds the `AdapterAnw` (AOSP `ANativeWindow` POD + the 10-hook table that hwui's
 GPU path uses). `ANativeWindow_lock/unlockAndPost` are **peers** of those hooks on the *same* `AdapterAnw`: they do
@@ -70,7 +100,11 @@ the same OH dequeue/flush but add the CPU mapping and a one-slot "locked buffer"
 dirty rect) are stashed on the `AdapterAnw` for `unlockAndPost`. No change to the hook table or `oh_anw_wrap`
 itself.
 
-## Patch draft (against `framework/window/jni/oh_anativewindow_shim.cpp`)
+## Patch draft
+**Authoritative draft: `anativewindow-lock-draft.cpp`** (the libandroid TU, per the gate answer above — static
+lock-state map, `oh_anw_get_oh(w)`, OH NDK via `dlsym`, whole-buffer dirty). The code block below is the earlier
+**bridge-targeted** sketch kept only to show the field-mapping logic; it is **SUPERSEDED** by the `.cpp` because the
+shim it edits is in the irreproducible 846 bridge — do not apply it.
 ```c
 // (1) extern "C" decl block: real BufferHandle + GetBufferHandleFromNative
 struct BufferHandle { int fd; int width; int stride; int height; int size;
