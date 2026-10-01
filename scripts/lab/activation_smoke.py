@@ -8,7 +8,8 @@ through bms_batch.py with --hilog --shots 5,20; then launches the probe app (Hel
 child process. PASS only when every check holds:
   * fingerprint  every run's facts.txt RUNTIME / BOOTIMAGE equals spec "expect" (the board is on the new state);
   * controls     every control key is alive at t20;
-  * marker       every fix's own activation log line (regex) appears in its target app's hilog;
+  * marker       every fix's own activation log line (regex) appears in its target app's hilog (install window
+                 install-hilog.txt + launch window hilog.txt, so installer-side fixes can carry markers too);
   * single-copy  each listed library is mapped from exactly one path in the probe child (/proc/<pid>/maps);
   * child-view   each listed file, read through /proc/<pid>/root, has the expected sha256.
 Screenshots are still judged by the outer loop; this gate only says whether a full sweep is worth starting.
@@ -135,8 +136,15 @@ def run_groups(spec, args, out):
             raise RuntimeError(f'group {i} produced no facts.txt (rc={rc}); see {log}')
         runs[f'group-{i}'] = parse_facts(facts[0].read_text())
         for h in gout.glob('*/*/*/hilog.txt'):
-            hilogs[h.parent.name] = h.read_text(errors='replace')
+            hilogs[h.parent.name] = key_hilog(h.parent)
     return runs, hilogs
+
+
+def key_hilog(key_dir):
+    """Launch-window hilog plus the install-window one (installer-side fixes log during bm install, before the
+    pre-launch hilog -r; bms_batch keeps that window as install-hilog.txt since 2026-10-01)."""
+    parts = [key_dir / 'install-hilog.txt', key_dir / 'hilog.txt']
+    return '\n'.join(p.read_text(errors='replace') for p in parts if p.exists())
 
 
 def probe_child(spec, args, out):

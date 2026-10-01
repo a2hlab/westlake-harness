@@ -305,6 +305,18 @@ class BatchTests(unittest.TestCase):
         self.assertTrue(rec['uninstall']['success_text'])
         self.assertTrue((self.root/'run/uninstall.txt').exists())
 
+    def test_hilog_keeps_install_window(self):
+        board,rec=self.collect(reinstall=True,hilog_seconds=3)
+        self.assertEqual(rec['status'],'captured')
+        install=next(i for i,x in enumerate(board.calls) if x.startswith('bm install '))
+        resets=[i for i,x in enumerate(board.calls) if x=='hilog -r']
+        dump=next(i for i,x in enumerate(board.calls) if 'install-hilog.txt' in x and x.startswith('hilog -x'))
+        self.assertTrue(any(r<install for r in resets))           # cleared before install
+        self.assertLess(install,dump)
+        self.assertTrue(any(r>dump for r in resets))              # pre-launch reset still happens, after the dump
+        self.assertTrue((self.root/'run/install-hilog.txt').exists())
+        self.assertEqual(rec['install']['hilog'],str(self.root/'run/install-hilog.txt'))
+
     def test_reinstall_missing_target_skips_uninstall(self):
         board=FakeBoard();board.installed=False
         _,rec=self.collect(board,reinstall=True)
@@ -363,7 +375,7 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(rec['diagnostics']['elapsed_seconds'],15)
         reset=next(i for i,x in enumerate(board.calls) if x=='hilog -r')
         self.assertLess(reset,board.calls.index('uitest uiInput click 200 300'))
-        dump=next(t for cmd,t in events if cmd.startswith('hilog -x'))
+        dump=next(t for cmd,t in events if cmd.startswith('hilog -x') and 'install-hilog' not in cmd)
         self.assertEqual(dump,115)
         received=[x for x in board.calls if x.startswith('receive /data/log')]
         self.assertEqual(received,['receive /data/log/faultlog/faultlogger/new-crash'])
