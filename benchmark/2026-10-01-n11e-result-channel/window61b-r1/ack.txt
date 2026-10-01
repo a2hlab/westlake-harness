@@ -1,0 +1,45 @@
+ACK(80 done): cx-t0 N11e 诊断窗收口；61b 已恢复 U9 并 UNLOCK(held 空)。entry + child=3f1e703c 生效，连续 hilog 先于部署；两次均命中 branch=3/index=0，源码条件为 bridge 非空句柄与 JNI owner 不同。detail 的 libartbased.so 文本可能是之前 dlerror 残留，不能归因。未到 branch=4，未跑分片。恢复冒烟首次因 scene session 残留失败，清装恢复重试 PASS；截图人工核 HW 主界面、ZZ 开始页。末次 318 断言(316 路径) diff={} absent=[]，runtime=a2919b793eb6 / boot=4db882a81732，child=dc73a28d，boot 未变。
+探针原文：
+```
+10-01 22:13:44.787 16771 16771 I C02c11/APPSPAWN: [N11e-PROBE] entry
+10-01 22:13:45.193 16771 16771 I C02c11/APPSPAWN: [N11e-PROBE] fail stage=5 branch=3 index=0 errno=22 detail=Library libartbased.so is not already loaded
+10-01 22:14:21.642 18198 18198 I C02c11/APPSPAWN: [N11e-PROBE] entry
+10-01 22:14:22.124 18198 18198 I C02c11/APPSPAWN: [N11e-PROBE] fail stage=5 branch=3 index=0 errno=22 detail=Library libartbased.so is not already loaded
+```
+
+benchmark/2026-10-01-n11e-result-channel/window61b-r1/runner/smoke/group-0/20261001T221327-cd14c941/61b0657200000000000000000324012c/facts.txt
+```
+RUNTIME fingerprint=a2919b793eb6 files=123 (runtime-fingerprint.txt; compare before blaming the JAR across boards)
+FROZEN checked=4 violations=0
+BOOTIMAGE fingerprint=4db882a81732 files=36 (boot-image-fingerprint.txt; not part of RUNTIME)
+TOOL bms_batch=a06b6d84 head=2d559cca5 manifest=27d4f919 (plan.json tool)
+helloworld           shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+zigzag               shots 2/2  alive t5=no t20=no  child_hilog=0  foreground_unconfirmed
+TOTAL keys=2 screenshots_captured=4/4 alive_t5=0 alive_t20=0
+```
+
+benchmark/2026-10-01-n11e-result-channel/window61b-r1/recovery-smoke/group-0/20261001T221747-257d2b6a/61b0657200000000000000000324012c/facts.txt
+```
+RUNTIME fingerprint=a2919b793eb6 files=123 (runtime-fingerprint.txt; compare before blaming the JAR across boards)
+FROZEN checked=4 violations=0
+BOOTIMAGE fingerprint=4db882a81732 files=36 (boot-image-fingerprint.txt; not part of RUNTIME)
+TOOL bms_batch=a06b6d84 head=905b7f61c manifest=27d4f919 (plan.json tool)
+helloworld           shots 2/2  alive t5=yes t20=yes  child_hilog=3610  foreground_unconfirmed
+TOTAL keys=1 screenshots_captured=2/2 alive_t5=1 alive_t20=1
+```
+
+benchmark/2026-10-01-n11e-result-channel/window61b-r1/recovery-smoke/group-1/20261001T221832-140c21fd/61b0657200000000000000000324012c/facts.txt
+```
+RUNTIME fingerprint=a2919b793eb6 files=123 (runtime-fingerprint.txt; compare before blaming the JAR across boards)
+FROZEN checked=4 violations=0
+BOOTIMAGE fingerprint=4db882a81732 files=36 (boot-image-fingerprint.txt; not part of RUNTIME)
+TOOL bms_batch=a06b6d84 head=905b7f61c manifest=27d4f919 (plan.json tool)
+zigzag               shots 2/2  alive t5=yes t20=yes  child_hilog=7589  foreground_unconfirmed
+TOTAL keys=1 screenshots_captured=2/2 alive_t5=1 alive_t20=1
+```
+
+t20: $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-n11e-result-channel/window61b-r1/recovery-smoke/group-0/20261001T221747-257d2b6a/61b0657200000000000000000324012c/helloworld/t20.jpeg
+
+t20: $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-n11e-result-channel/window61b-r1/recovery-smoke/group-1/20261001T221832-140c21fd/61b0657200000000000000000324012c/zigzag/t20.jpeg
+
+证据目录：$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-n11e-result-channel/window61b-r1；恢复最终回执 recovered-final/final-u9.json。下一步离线重绑 U10 r2。
