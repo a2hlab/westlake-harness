@@ -2,7 +2,7 @@ spec: project
 name: "Reproducible build chain for liboh_adapter_bridge.so 84695d62"
 ---
 ## Intent
-The deployed adapter bridge (liboh_adapter_bridge.so, sha256 84695d62…, 2.27 MB, .symtab kept, built with OHOS clang 15.0.4 llvm 99548401bd80 / LLD 15.0.4 from OH SDK 6.1.0) has no reproducible source/patch/toolchain/link chain (benchmark/2026-10-01-bridge-846-provenance). Close that gap: pin the exact source, patches, toolchain and build script, rebuild it, prove what the rebuild equals function by function, and freeze the chain so later fixes (the two-copy bridge wall, #80) can be built and single-variable tested.
+The deployed adapter bridge (liboh_adapter_bridge.so, sha256 84695d62…, 2.27 MB, .symtab kept, built with OHOS clang 15.0.4 llvm 99548401bd80 / LLD 15.0.4, i.e. the DevEco Studio bundled OH SDK clang, build-id e5e9bd8330f6…) has no reproducible source/patch/toolchain/link chain (benchmark/2026-10-01-bridge-846-provenance). Close that gap: pin the exact source, patches, toolchain and build script, rebuild it, prove what the rebuild equals function by function, and freeze the chain so later fixes (the two-copy bridge wall, #80) can be built and single-variable tested.
 ## Constraints
 - No board writes and no change to any deployed artifact; builds run offline on hw248 or a2hlab in new directories.
 - Source lookup order: Mac local trees (real-work, Westlake, 00.Workspace) -> a2hlab -> hw248; never reconstruct from memory.
