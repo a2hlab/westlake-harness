@@ -223,6 +223,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-native-missing-libraries/`** | **Four U8 missing-library walls: private r109c zlib closure, typed OH OpenSLES owner facade, corrected media_jni resident mapping; pinned donors, patches, host tests and distinguishing precheck (offline, no UI claim).** |
 | **`benchmark/2026-10-01-u8-death-clusters/no-fatal-terminations.md`** | **Eleven U8 index-blind terminations: six Java exits, two other System.exit calls, one hwui abort and two SIGKILLs with unknown senders; exact PID/line/hash evidence and notification-vs-cause replay tests.** |
 | **`benchmark/2026-10-01-u9-native/rollout/`** | U9 native/J10g composition, frozen installer assertions, sequential board plans and offline gates |
+| **`benchmark/2026-10-01-n11b-early-owner/offline-failure/`** | N11b failed-launch capture boundary and read-only OH6.1 namespace source checks |
 
 ---
 
