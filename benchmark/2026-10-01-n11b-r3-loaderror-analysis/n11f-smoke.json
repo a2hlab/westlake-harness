@@ -1,0 +1,38 @@
+{
+  "_note": "N11f branch-3 smoke. Marker = the UNCONDITIONAL host line '[N11e-PROBE] done stage=.. branch=.. index=..' (retro-20: the expect-referenced tag must be a fixes marker, and done is printed on every load return incl. success). probe.single_copy now REQUIRES liboh_adapter_bridge.so AND liboh_android_runtime.so to be loaded exactly ONCE (the N11f fix); expect_copies is empty -- the pre-N11f accepted double-load ({bridge:2, runtime:2}) is removed, so 2 copies now FAILS the gate. Base = post-U10 unified state; stack ONLY the N11f child.",
+  "expect": {
+    "boot_fp": "4db882a81732",
+    "_runtime_fp_todo": "FILL cx-t0: signed U10 61b RUNTIME fp (cx-t0 r2 expects 519148f0f41a); add as runtime_fp once U10 is signed."
+  },
+  "groups": [
+    {
+      "manifest": "knowledge/smoke/controls-apps.json",
+      "input_root": "$WORKSPACES/westlake-b90-controls-inputs",
+      "keys": ["helloworld", "zigzag"],
+      "mode": "launch-only",
+      "controls": true
+    }
+  ],
+  "fixes": [
+    {
+      "id": "N11f-PROBE-DONE",
+      "key": "helloworld",
+      "markers": ["\\[N11e-PROBE\\] done"]
+    }
+  ],
+  "probe": {
+    "package": "com.example.helloworld",
+    "single_copy": [
+      "libart.so",
+      "libopenjdkjvm.so",
+      "liboh_adapter_bridge.so",
+      "liboh_android_runtime.so"
+    ],
+    "expect_copies": {},
+    "_expect_copies_note": "empty on purpose: N11f requires bridge+runtime = 1 (they are in single_copy). Pre-N11f smokes carried {liboh_adapter_bridge.so:2, liboh_android_runtime.so:2}; removing that is how 'expect_copies bridge/runtime -> 1' is encoded.",
+    "files": {
+      "/system/lib64/appspawn/libwestlake_android_child.z.so": "<FILL cx-t0: N11f child .so sha256 (U10 child rebuilt from the 3-file N11f patch: header enum +6, loader, host done line)>"
+    }
+  },
+  "_flaky_note": "EVO-0051: zigzag is flaky; its controls-alive check is advisory. helloworld is the hard alive control + the probe carrier. Do not fail the window on a single-run dead zigzag."
+}

@@ -1,0 +1,81 @@
+{
+  "_TEMPLATE_fill_at_build": {
+    "status": "DRAFT for cx-t0 — build N11f on U10, fill the N11f child sha (here + n11f-smoke.json probe.files) and the signed U10 61b RUNTIME fp; confirm serial/out timestamp. Run AFTER the U10 three-board window is signed.",
+    "base": "post-U10 unified state (already deployed on 61b after the U10 window). Stack ONLY the N11f child over U10's child (U10 r2 kept the U9 child dc73a28d; N11f replaces it). Do NOT redeploy U10 runtime/bridge/jar.",
+    "n11f_artifact": "$WORKSPACES/westlake-n11f-build/candidate/libwestlake_android_child.z.so (cx-t0: reproduce the N11e child SHA on U10, then apply benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11f-branch3-owner-mismatch.patch; co-builds loader + host from the same header)",
+    "n11f_child_sha256": "<FILL cx-t0 after building N11f; also put in n11f-smoke.json probe.files>",
+    "n11f_abi_calls": "abi_diff --calls vs the U10 child: exports unchanged, DT_NEEDED unchanged, the only call-set delta is the removed dlns_inherit edge; check_frozen 0 violations",
+    "u10_61b_runtime_fp": "<FILL cx-t0: signed U10 61b RUNTIME fp (r2 expects 519148f0f41a)>",
+    "_flaky_note": "EVO-0051: wikipedia/fd-noice (and zigzag in controls) are flaky keys. The 18-key shard is a lit/white OBSERVATION read against n11f-window-prediction.csv, not a hard gate; helloworld is the hard must-stay-alive control, zigzag advisory. Canaries fd-k9/fd-com-amaze-filemanager/fd-libretube are the hard regression controls (predicted lit; a dead one = N11f regression)."
+  },
+  "serial": "61b0657200000000000000000324012c",
+  "_serial_note": "61b (where N11e branch-3 was observed); cx-t0: confirm it is the U10-signed idle board + set lane",
+  "lane": "cx-t0",
+  "entry": "80",
+  "why": "N11f branch-3 fix on U10: WLSCPL_OpenPreparedNamespace returns the resident sealed owner handle for liboh_adapter_bridge.so/liboh_android_runtime.so instead of dlopen'ing a 2nd copy; delete the dlns_inherit+NOLOAD verify; :373 emit non-fatal; dlerror captured at the failing call; host prints unconditional [N11e-PROBE] done. Expect single-copy bridge/runtime (the sessions_ registry becomes single) and the 18-key observation to match n11f-window-prediction.csv.",
+  "board": "$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md",
+  "out": "$WORKSPACES/_n11f-window/win-n11f-DRAFT",
+  "stop_new_tests_by_minute": 30,
+  "_deadline_note": "board_run requires 0 < stop_new_tests_by_minute <= 35 (retro); 30 leaves margin for before_unlock rollback + recovery smoke inside the 35-minute cap.",
+  "offline_precheck": {
+    "hypothesis": "N11f makes liboh_adapter_bridge.so single-copy, so the sessions_ registry (in the bridge, native/bridge-sources.json) is single; the render-thread re-query after resolve_oh_wm_funcs finds each session's own OHNativeWindow instead of the last-session-rescue lottery. The 4 sessions-miss keys (U9 content BBQ.getSurface empty) light; the 10 other-cause keys stay white; wikipedia stays lit (now deterministic); the 3 canaries stay lit.",
+    "evidence": [
+      "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11f-window-prediction.csv",
+      "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11f-window-prediction.md",
+      "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11f-branch3-patch.md",
+      "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-wikipedia-line/u8-vs-u7-lit-analysis/README.md"
+    ],
+    "result": "not-falsified",
+    "expect": {
+      "confirm": "Smoke probe: liboh_adapter_bridge.so AND liboh_android_runtime.so each loaded exactly once (single_copy), libart/libopenjdkjvm single. Host hilog shows '[N11e-PROBE] done stage=.. branch=0 index=..' (branch=0 = clean). Per-key 18-shard result matches n11f-window-prediction.csv (compare with predict_vs_actual.py compare --predictions n11f-window-prediction.csv --actual <signed N11f sign-off>): the 4 lit? keys (cv2-org-andresoviedo-dddmodel2, fd-noice, fd-uhabits, noice) now lit; 10 other-cause keys still white; wikipedia + 3 canaries lit. helloworld alive at t20.",
+      "refute": "done line shows branch=6 OWNER_PUBLISH_LATE (host asked before owners published -> N11g must publish owners earlier) OR maps still show 2 bridge/runtime copies -> single-copy not achieved. A lit? key still white = missed-wall (its sessions_-miss was not the whole story; chase resolve_oh_wm_funcs / a second copy outside the two owners). A canary or wikipedia not lit = regression (N11f took a working path down); roll back."
+    }
+  },
+  "smoke_spec": "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11f-smoke.json",
+  "after_lock": [
+    "python3",
+    "$WORKSPACES/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+    "--serial",
+    "61b0657200000000000000000324012c",
+    "--lane",
+    "cx-t0",
+    "--bind",
+    "$WORKSPACES/westlake-n11f-build/candidate/libwestlake_android_child.z.so:/system/lib64/appspawn/libwestlake_android_child.z.so",
+    "--no-run",
+    "--no-rollback",
+    "--out",
+    "$WORKSPACES/_n11f-window/win-n11f-DRAFT/deploy"
+  ],
+  "shards": [
+    {
+      "name": "n11f-original",
+      "manifest": "$WORKSPACES/westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/apps.json",
+      "input_root": "~/a2hlab/app-inputs",
+      "keys_file": "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11f-keys-original.txt"
+    },
+    {
+      "name": "n11f-cv2",
+      "manifest": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
+      "input_root": "$WORKSPACES/westlake-inputs/corpus-v2/app-inputs",
+      "keys_file": "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11f-keys-cv2.txt"
+    }
+  ],
+  "before_unlock": [
+    "python3",
+    "$WORKSPACES/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+    "--serial",
+    "61b0657200000000000000000324012c",
+    "--lane",
+    "cx-t0",
+    "--bind",
+    "$WORKSPACES/westlake-n11f-build/candidate/libwestlake_android_child.z.so:/system/lib64/appspawn/libwestlake_android_child.z.so",
+    "--rollback-only",
+    "--rollback-runtime-fp",
+    "<FILL cx-t0: signed U10 61b RUNTIME fp, r2 expects 519148f0f41a>",
+    "--rollback-boot-fp",
+    "4db882a81732",
+    "--out",
+    "$WORKSPACES/_n11f-window/win-n11f-DRAFT/deploy"
+  ],
+  "_before_unlock_note": "rollback restores the U10 base child (removes the N11f bind), verifies the U10 61b RUNTIME + BOOT fingerprints, then board_run reruns the recovery smoke (helloworld hard-alive, zigzag advisory) and the U10 identity assertion diff (must be empty) before releasing the board — same as the N11e/U10 window convention."
+}
