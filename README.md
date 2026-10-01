@@ -231,6 +231,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-u8-death-clusters/no-fatal-fixplan.md`** | **Eleven U8 deaths routed to 4 J and 7 native proposals, pinned AOSP14 source/call order, deployed JNI identities and explicit unknown SIGKILL causes.** |
 | **`benchmark/2026-10-01-n11c-probe/`** | Logging-only N11c child rebuild, exact baseline reproduction and per-function call-set gate |
 | **`benchmark/2026-10-01-toutiao-on-unified/`** | **#T Toutiao-on-unified copy-list (comparison only; MAINLINE).** User: restore Toutiao as an ordinary unified key (standard `bm` install, same U9/U10 runtime, bms_batch shard) — no dedicated runtime/provision/AOT/watchdog; each wall a generic shared-layer fix, no regression; old tt-rt route copied for generic fixes only, Toutiao hacks not ported. SHA diff: death-chain libs differ, U9 has no adapter-runtime-bcp.jar (old adapter core, not Toutiao patches). Walls: ① libflipped→libstdc++ **private-namespace closure** (generic native/host config; lib already in U9) → spec here, cx-bms builds into U10 native after review w/ regression gate; ② enableGlobal = app-map state (falls out of ①). This round = comparison; implementation after outer-loop review + non-regressing full compare. |
+| **`benchmark/2026-10-01-u9-native/rollout/approved-j10g/`** | U9 signed J10g rollout, ten-marker smoke and reviewed partial-window retention |
 
 ---
 
