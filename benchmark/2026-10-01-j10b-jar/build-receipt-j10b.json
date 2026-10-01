@@ -1,0 +1,21 @@
+{
+  "schema_version": 1, "lane": "cc-t3", "date": "2026-10-01",
+  "task": "J10b = J10 + proactively create the Application before the first activity so the NoTitle ActivityLifecycleCallbacks register and dispatch (design 3'). Fixes the J9/J10 NoTitle no-op.",
+  "baseline_j10_sha256": "ea24291a898812ff1f13c11cd15e5747392fb975966a54b7c6e73e0d123517e1",
+  "output_j10b_sha256": "cb392c96d7b863fef757eddcfe670576ae3199c08ee7d56acfd1ed290f5cb03d",
+  "deterministic": "yes -- built twice in dockbuild a2hlab-b5-java:24.04, both cb392c96",
+  "staged_jar": "/Users/zhaoyue/orca/workspaces/westlake-generation-j10b-staging/oh-adapter-runtime-j10b.jar",
+  "source_commit": "feat/bms-walls 6b0d05ee6",
+  "root_of_j10_notitle_noop": "route-A creates the Application lazily in stock performLaunchActivity->LoadedApk.makeApplicationInner, so ActivityThread.currentApplication()==mInitialApplication are null at nativeOnScheduleLaunchAbility; install() hit app==null and never registered (no [J10-NOTITLE] in knot hilog; [J10-ACTINFO] fired on the same channel). knot/dice both die on the action-bar ISE under U8 AND J10.",
+  "change": {
+    "new_class": "adapter.activity.J10bAppBootstrap (+ $Callbacks, $1)",
+    "injection": "AppSchedulerBridge.nativeOnScheduleLaunchAbility entry: invoke-static J10bAppBootstrap.schedule()",
+    "mechanism": "schedule() posts to the main looper; bootstrap() does ActivityThread.getPackageInfoNoCheck(SelfComponentFallback.boundInfo()).makeApplicationInner(false, getInstrumentation()) -> set mInitialApplication (if null) -> registerActivityLifecycleCallbacks(NoTitle). makeApplicationInner creates/returns the cached Application and does NOT call onCreate (route-A calls onCreate once via its own path, so pre-create is transparent). route-A's stock performLaunchActivity then dispatches onActivityPreCreated to the NoTitle callback.",
+    "activation_logs": ["[J10b-APP] mInitialApplication set from first Activity <pkg>", "[J10b-NOTITLE] installed", "[J10b-NOTITLE] applied <activity> (pre: windowActionBar=.. windowNoTitle=..)"],
+    "fallback": "if makeApplicationInner is unreachable, bootstrap logs '[J10b] makeApplicationInner unavailable, fall back to design-1' and does nothing (board rolls back; then design-1 Instrumentation wrapper)."
+  },
+  "class_delta": {"added": ["adapter/activity/J10bAppBootstrap", "adapter/activity/J10bAppBootstrap$1", "adapter/activity/J10bAppBootstrap$Callbacks"], "removed": [], "note": "J10's ACTINFO fix + the harmless J10 NoTitle no-op injection are retained unchanged."},
+  "offline_gate": "test_j10b.py (self-contained smali-evidence) all PASS",
+  "window_runtime_fp": "NOT YET KNOWN: J10b swaps the runtime jar (87fd463d->cb392c96) so U8 runtime_fp e953c0921536 changes; needs the J10b runtime_fp for j10b.json expect (outer-loop offline compute, as for J10's 01e1ccf7bd8f, OR read from the board's runtime-fingerprint during the install window).",
+  "build": "baksmali J10 -> javac J10bAppBootstrap (android.jar + SelfComponentFallback stub) -> d8 --min-api 28 -> add smali -> inject schedule() at method entry -> smali -j 1 -> deterministic zip."
+}
