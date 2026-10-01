@@ -1,0 +1,53 @@
+{
+  "schema": "toutiao-on-unified-copy-list-v2",
+  "lane": "cc-t3",
+  "date": "2026-10-01",
+  "decision": "MAINLINE (user, 2026-10-01): Toutiao (com.ss.android.article.news) is restored on the CURRENT code base as an ORDINARY key in the unified state -- standard `bm` install, the same U9/U10 runtime, run inside bms_batch shards. NO tt-rt dedicated runtime, NO provision_toutiao.sh, NO dedicated AOT, NO watchdog. Every wall is fixed with a GENERIC fix in the shared layer (JAR / native / config) with no regression to other apps. The old route (tt-rt.tar) is ONLY a source to copy GENERIC fixes from; Toutiao-specific hacks are NOT ported.",
+  "sources": {
+    "old_route_copy_source_only": "~/a2hlab-provision/ttbundle/tt-rt.tar (2026-09-27; read for generic fixes, not deployed)",
+    "unified": "westlake-generation-u9-j10g-238ffc14 (+ U10 base); Toutiao installs like any corpus app",
+    "reference": [
+      "deploy/operator-selfheal-48 eed2d1ee1a",
+      "deploy/operator-speed-50 2a54c5bd7a",
+      "test/merged-stability-48 bc90c65e73",
+      "benchmark/2026-08-23-toutiao/ (API-SCAN, native-analysis, gap-registry)"
+    ]
+  },
+  "install": "Toutiao enters the corpus as a normal key (toutiao.apk, com.ss.android.article.news), installed by bms like every other app; it appears in a bms_batch shard. No special staging.",
+  "not_ported_toutiao_specific": [
+    "tt-rt dedicated runtime (old fw/*.jar + boot/ image) -- U9 has its own signed runtime; copying old ones regresses ~34 lit apps and clashes with the boot image (DIGEST T7c).",
+    "fw/adapter-runtime-bcp.jar (CLAMP48 BCP) -- superseded by oh-adapter-runtime.jar; its 170 classes are the old adapter core, already re-expressed in U9.",
+    "metasec safe-value stub (ms.bd.c dispatch, operator-stub-48) -- ByteDance-specific hack; not a generic fix. Only a stability concern; revisit only if Toutiao proves unstable AFTER the walls clear, and then only via a generic mechanism.",
+    "webview-t-lib (Toutiao's own Chromium libwebviewchromium/libTTWebViewSdkFlipped) -- Toutiao renders via the unified route-A WebView path (J10e-g enrichment) like other apps; do not ship its private Chromium.",
+    "provision_toutiao.sh / dedicated AOT / watchdog / the two c91d26bf cleanup dirs -- all provisioning-specific; not used on the mainline route."
+  ],
+  "walls": [
+    {
+      "order": 1,
+      "wall": "libflipped.so private-namespace closure cannot resolve libstdc++",
+      "evidence": "DIGEST 558 (cx-bms): Toutiao Application bootstrap fails libflipped->libstdc++ private closure DESPITE U8 globally deploying that SONAME shell. libstdc++.so is present in U9 (native/payload/android/lib64/libstdc++.so 7e06cd8b); the gap is the APP PRIVATE namespace not linking it.",
+      "generic_fix": "Make libstdc++ (a shared system SONAME) resolvable from app private namespaces on route-A: add libstdc++.so to the linkable/shared set of the app private namespace the host builds (StockCreateConfiguredNamespaces), OR give the private namespace a linked edge to the namespace that already holds libstdc++. This is generic: ANY app whose bundled .so DT_NEEDs libstdc++ (not just libflipped) benefits; apps that don't need it are unaffected.",
+      "copyable_source": "the old host's namespace-closure config for libstdc++ (how tt-rt wired libstdc++ into app private namespaces) -- compare the old vs U9 StockCreateConfiguredNamespaces host logic; reference-branch benchmark/2026-08-23-toutiao/native-analysis/android11-import-resolution.json + DIGEST N3b dlopen_ns/RTLD_NOLOAD note.",
+      "target_layer": "native / host namespace config (shared)",
+      "other_app_impact": "none expected (additive: adds a resolvable SONAME to private namespaces; no app loses a resolution). Verify no duplicate-copy of libstdc++ in a second namespace.",
+      "merge": "After outer-loop review: cc-t3 specifies the namespace rule + copyable source; cx-bms builds it into U10 native (one version with the shim). NOT this round. The fix lands only with a regression control + non-regressing full compare.",
+      "status": "fix specified here; native implementation + build = cx-bms (U10 native, one version)"
+    },
+    {
+      "order": 2,
+      "wall": "MainActivity null Boolean (enableGlobal)",
+      "evidence": "DIGEST 558: 'enableGlobal null is app-map state, not platform Boolean semantics' -- a consequence of wall 1's namespace/global-linkage, not a standalone platform fix.",
+      "generic_fix": "none standalone -- re-verify after wall 1 is in; do NOT add a platform Boolean stub (that would be an app-specific hack and risks other apps).",
+      "copyable_source": "n/a",
+      "target_layer": "n/a (falls out of wall 1)",
+      "other_app_impact": "n/a",
+      "status": "re-assess after wall 1 on-board"
+    }
+  ],
+  "plan": "This round: deliver this comparison copy-list; await outer-loop review. THEN (only if approved): (1) cc-t3 specs wall-1 generic fix, cx-bms builds into U10 native with a regression control; (2) Toutiao added as an ordinary corpus key in a bms_batch shard; (3) iterate walls generically like any app, each fix gated by a non-regressing full compare. No Toutiao-specific runtime at any point.",
+  "caveats": [
+    "Wall-1's exact namespace rule is a native-host diff (StockCreateConfiguredNamespaces) -- cc-t3 provides the spec + copyable source; the build is cx-bms's (native, not Mac-reproducible).",
+    "Every fix must pass the no-regression bar: single-variable compare_runs + the unified full sweep stays non-regressing (AGENTS freeze rule)."
+  ],
+  "round_scope": "THIS ROUND = comparison copy-list ONLY. No implementation. The outer loop reviews this list before any code is written. Every Toutiao fix that later enters the unified state MUST carry a regression control and pass the full compare_runs sweep with zero regression (AGENTS freeze rule). Normal pacing, no queue-jumping."
+}
