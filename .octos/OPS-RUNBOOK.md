@@ -28,6 +28,7 @@
 **构建 VM `a2hlab`**(OrbStack,Ubuntu 24.04 amd64 走 Rosetta)
 - 工作区 `~/a2hlab/ws`,以作者原路径 `/home/dspfac/a2hlab/source-closure/verify/out` bind mount(哈希才对得上 manifest 记录;**VM 重启后要重挂**)。manifest 克隆 `~/a2hlab/manifest`,本地分支 `local-pins-main`。运行时源码是私有 `a2hlab/westlake`(verify 构建基于 main `22b9453`),不是 `A2OH/westlake`。别碰已有的 `oh7x86` 机器。
 - 没有 USB → VM 里的工具用 `scripts/lab/hdc_mac.sh` 转发到 Mac 的 hdc。
+- **重建的 native 库验收必须跑 `scripts/lab/abi_diff.py`**(用户 2026-10-01 定):`--old <现役件> --new <重建件> --consumer <调用它的库>`,除导出表增删外还报「签名漂移」(同一函数 mangled 名变了)和「消费者断链」;退出 1 就不上板,除非每条漂移都说明调用方已在同一包里按新约定重编。846 桥重建件 7cf8ebcc 就有 8 处漂移(createSession 多一个 int 等),导出表 diff 只看到「14 个缺失导出、无消费者」。
 - **车道起 board_run 一律加 `--detach`**(2026-10-01 13:43,44f8ad51c):一次 board_run 20~30 分钟,超过 agent 工具调用超时(octoscode bash 6 分钟、Claude Bash ≤10 分钟),前台跑会被连带杀掉——oc-t4 在 61b 上就这样停在 fd-uhabits 的 settle,锁的持有进程还活着、板一直锁着。`--detach` 另起会话,日志写 `<out>.board-run.log`;SIGTERM/SIGHUP 也走 before_unlock + UNLOCK。巡检看到 LOCK 久不动,先 `ps` 查 board_run / bms_batch 还在不在,不在就只读核板后代解锁、续跑。
 - **叠加窗口的回滚写进 board_run 计划的 `before_unlock`**(cx-t0 2026-10-01,eb8a9ef66):短窗叠加(N10b、J10 这类)要「跑完先回滚到统一态、核对 runtime-fingerprint,再解锁」;board_run 默认在 finally 里直接解锁,所以回滚命令写成 plan 里的 argv 列表 `before_unlock`,冒烟 FAIL 或异常也照样先执行;它返回非 0 就保锁、在黑板记一条,等人恢复。
 - **巡检加查走错黑板**(EVO-0060):`scripts/lab/stray_board_check.sh` 找各车道 worktree 里 `app-lighting*` 散落文件和对 worktree 自带 `.octos/boards/app-lighting.md` 的未提交改动,有就退 1。2026-10-01 13:37 首跑查出 cc-t3 自 09-30 07:39 起 50 条交接全写进 `westlake-harness-t3/app-lighting`(相对路径),从没上 canonical 黑板;已拷进 benchmark/2026-10-01-stray-board/、原文件改名留存。
