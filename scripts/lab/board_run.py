@@ -3,6 +3,7 @@
 
     board_run.py PLAN.json                 # execute
     board_run.py PLAN.json --dispatch      # print the dispatch text to send to a lane (no board access)
+    board_run.py PLAN.json --detach        # start in its own session, print pid + log path, return at once
 
 The steps are not optional and not re-typed per dispatch (2026-10-01: a hand-written dispatch dropped --hilog, another
 said "two shards per board" and the lane ran them in parallel, a third said "keep only record.json" and the lane
@@ -21,12 +22,16 @@ PLAN.json:
    "smoke_spec": "knowledge/smoke/<x>.json",
    "shards": [{"name": "v1", "manifest": "...", "input_root": "...", "keys_file": "..."}, ...]}
 Relative paths are resolved against the repo; $WORKSPACES is expanded.
+Lanes start it with --detach (2026-10-01 13:43: oc-t4 ran it inside an agent bash tool call; the tool's 6-minute
+timeout killed board_run and bms_batch mid-shard, after fd-uhabits was uninstalled and before it was reinstalled, and
+the board stayed locked). SIGTERM / SIGHUP now unwind through the same finally (before_unlock, then UNLOCK).
 Optional before_unlock is an argv list executed while the lock is still held, including on smoke failure.
 It must finish the authorized rollback and verification. Failure retains the lock for recovery.
 """
 import argparse
 import json
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -44,6 +49,7 @@ RULES = [
     '每块板同一时刻只跑一个 bms_batch 进程,分片顺序跑(bms_batch 自带同板进程锁)',
     '每个分片都带 --reinstall --hilog --shots 5,20,各进新目录',
     '原始运行目录一个字节不删;落库只复制',
+    '车道里用 --detach 起(agent 的工具调用超时会连带杀掉前台进程),再按日志和黑板轮询',
     '每个分片的 facts.txt TOTAL 行原样贴黑板;截图交外环读图签数',
 ]
 
@@ -72,6 +78,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('plan', type=Path)
     ap.add_argument('--dispatch', action='store_true', help='print the dispatch text and exit')
+    ap.add_argument('--detach', action='store_true', help='run in a new session (survives the caller), log beside out')
     args = ap.parse_args(argv)
     plan = json.loads(args.plan.read_text())
     for k in ('serial', 'lane', 'entry', 'why', 'board', 'out', 'smoke_spec', 'shards'):
@@ -88,6 +95,16 @@ def main(argv=None):
     out = Path(expand(plan['out']))
     if out.exists():
         sys.exit(f'output root {out} exists; every run gets a new directory')
+    if args.detach:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        log = out.parent / f'{out.name}.board-run.log'
+        with open(log, 'w') as fh:
+            child = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), str(args.plan.resolve())],
+                                     cwd=REPO, stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                     start_new_session=True)
+        print(f'board_run detached: pid {child.pid}, log {log}'); return 0
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, lambda signum, frame: sys.exit(128 + signum))
     out.mkdir(parents=True)
     rc = subprocess.run([note, 'lock', plan['board'], plan['serial'], plan['lane'],
                          f'#{plan["entry"]} {plan["why"]} (board_run.py)']).returncode

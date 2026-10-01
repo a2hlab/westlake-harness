@@ -49,6 +49,21 @@ class BoardRun(unittest.TestCase):
     def test_rollback_precedes_unlock_after_exception(self): self.transaction(smoke_error=True)
     def test_failed_rollback_keeps_lock(self): self.transaction(cleanup_rc=2)
 
+    def test_detach_starts_new_session_and_returns(self):
+        with tempfile.TemporaryDirectory() as d:
+            plan = json.loads(EXAMPLE.read_text())
+            plan.update(out=str(Path(d) / 'out'), shards=[])
+            p = Path(d) / 'p.json'; p.write_text(json.dumps(plan))
+            with patch.object(board_run.subprocess, 'Popen') as popen, \
+                 patch.object(board_run.subprocess, 'run') as run:
+                popen.return_value.pid = 4242
+                self.assertEqual(board_run.main([str(p), '--detach']), 0)
+            self.assertTrue(popen.call_args.kwargs['start_new_session'])
+            self.assertNotIn('--detach', popen.call_args.args[0])
+            run.assert_not_called()                                   # no lock taken by the parent
+            self.assertFalse((Path(d) / 'out').exists())              # the child creates it
+            self.assertTrue((Path(d) / 'out.board-run.log').exists())
+
     def test_dispatch_has_every_rule(self):
         text = board_run.dispatch_text(json.loads(EXAMPLE.read_text()), EXAMPLE)
         for rule in board_run.RULES:
