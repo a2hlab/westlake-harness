@@ -52,3 +52,18 @@ Outer note (19:32): "554 keys" in the lane's section counts `.so` rows, not keys
 own `libstdc++.so`, so adding it to the inherited SONAME set overrides nothing. Libraries that NEED only
 `libc++_shared.so` never load `libstdc++.so`, so the ODR risk the lane raises does not arise for them; fd-minetest,
 fd-mpv, fd-seal (lit, bundle libc++_shared) stay as cheap regression controls anyway.
+
+## Outer-loop reading (2026-10-01 19:30) -- key level, U9 sweep only
+
+The 606 rows are per `.so`; at key level 22 keys appear, 9 of them `co-*` commercial inputs outside the U9 sweep.
+Sweep keys whose bundled `.so` NEED the system `libstdc++.so`: **toutiao, mindustry, fd-plus** (dead), **fd-app,
+fd-shatteredpixeldungeon, termux** (white), **x** (black). Their U9 hilogs (5cd/5ea runs) show:
+
+- fd-app / shatteredpixeldungeon / termux: no libstdc++ load failure (only the benign B8-NATIVE html_compat load every
+  app logs) -- the U10 shared-SONAME change is not expected to move them; they are the **regression controls** that
+  must stay at least white.
+- mindustry: fatal `Error relocating libarc.so: slCreateEngine: symbol not found` -- U9's libOpenSLES.so facade
+  (cx-bms 452b8f18f) exports no slCreateEngine. An OpenSLES wall, not libstdc++.
+- fd-plus: `Error relocating libc++_shared.so: android_set_abort_message: symbol not found` -- the symbol U10's abort
+  visibility shim provides (so fd-plus joins meet as a beneficiary).
+- toutiao, x: not yet run on U9.
