@@ -12,7 +12,8 @@ A run is a directory holding facts.txt (bms_batch: <run>/<serial>/facts.txt with
 Per (run, key) row: run (path with $WORKSPACES), serial, runtime_fp, boot_fp, key, alive_t5, alive_t20,
 facts_status, child_hilog, unknown_session (count of "getOhNativeWindow: unknown sessionId" in the key's hilog),
 first_fatal (first FATAL EXCEPTION / Fatal signal / JNI DETECTED ERROR / Reason:Signal line, trimmed), cause (the
-exception text: the deepest 'Caused by' near the first fatal, else the first exception line),
+exception text: the deepest 'Caused by' within 60 lines after the first fatal, else the first exception line there;
+None when the fatal has no Java chain -- then first_fatal is the native signal / JNI abort line),
 install_icon (the installer's ReadIconByManifest line from install-hilog.txt when present), and run-level probe
 load counts (probe/child-*-maps.txt: load instances of bridge / runtime / libart / libnativehelper, the
 activation_smoke counting). Screenshots are not judged here -- verdicts stay with the outer loop's sign-offs.
@@ -59,12 +60,14 @@ def scan_hilog(path):
                     fatal = line.strip()[:240]
                     chain = 60
                 msg = line.split('[stderr] ', 1)[-1].strip()
-                if (fatal is not None and chain > 0) or cause is None:
+                # only inside the first fatal's chain: an exception logged elsewhere is often caught and benign
+                # (2026-10-01: a first-exception-anywhere rule grouped 14 keys under a probing ClassNotFoundException,
+                # glmark2 and ath0-rpn among them, whose real fatals are native)
+                if fatal is not None and chain > 0:
                     if 'Caused by: ' in msg:
                         cause = msg[:240]
-                    elif cause is None and re.match(r'(java|android|androidx)\.[\w.$]+(Exception|Error)(: |$)', msg):
+                    elif cause is None and re.search(r'(java|android|androidx)\.[\w.$]+(Exception|Error)(: |$)', msg):
                         cause = msg[:240]
-                if chain:
                     chain -= 1
     except OSError:
         return None, None, None
