@@ -1,0 +1,16 @@
+{
+  "cluster": "4-keystore-encryptedprefs",
+  "app": "cv2-com-lcdcode-moodcairns",
+  "onboard_error": "java.security.KeyStoreException: the master key android-keystore://_androidx_security_master_key_ exists but is unusable -> Caused by javax.crypto.AEADBadTagException: mac check in GCM failed",
+  "onboard_source": "Tink AndroidKeystoreKmsClient.validateAead() self-test (encrypt->decrypt the master key, same key, same process)",
+  "probe": "KeystoreProbe.java on desktop JDK 1.8.0_151 (crypto.policy=unlimited), real SoftwareAndroidKeyStore via SPI",
+  "probe_result": {"passed": 6, "failed": 0,
+    "checks": ["key gen 256-bit AES", "getKey stable", "encrypt iv==12", "validateAead round-trip",
+               "persistence key reloaded from file", "decrypt after reload"]},
+  "diag": "SunJCE AES/GCM encrypt-without-params IV = 12 bytes (matches Tink's IV_SIZE_IN_BYTES=12)",
+  "verdict": "keystore AES-GCM crypto + persistence are SOUND in isolation; the on-board BadTag is NOT the key material",
+  "ruled_out": ["key material / 256-bit gen", "raw-bytes persistence + reload", "GCM mechanics on SunJCE", "IV length (12)", "not-found / dual-instance (would be a different error than 'exists but unusable')"],
+  "leading_hypothesis": "Store.engineGetKey returns a plain SecretKeySpec, so on-board the DEFAULT Cipher provider (not ours) performs AES/GCM; if its encrypt-without-params IV handling diverges from SunJCE's 12-byte IV (or it requires explicit params), Tink's iv(12)||ct framing breaks -> BadTag. Cannot be reproduced on Mac (SunJCE is well-behaved).",
+  "next": "board probe (validateAead + log provider name + IV length + two-getKey byte-equality) to pin the root, THEN the one-file fix (candidate: provider-owned AES/GCM CipherSpi so IV=12 and the GCM is ours, matching Android's AndroidKeyStore).",
+  "fix_status": "NOT written blind -- Mac cleared the crypto; the one-file fix waits on the board probe's root per campaign discipline (结果说了算)."
+}
