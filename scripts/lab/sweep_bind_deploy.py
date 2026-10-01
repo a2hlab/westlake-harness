@@ -145,6 +145,28 @@ def board_note(note_cmd, action, board_md, serial, lane, why=None):
     return subprocess.run(args, capture_output=True, text=True)
 
 
+def stage_file(send, shell, hashes, local, remote, digest, executable=False):
+    """Checked staging primitive shared with the compound U7 executor."""
+    import shlex
+    send(local, remote)
+    if hashes([remote]) != {remote: digest}:
+        raise RuntimeError('staged SHA mismatch: ' + remote)
+    mode = '0755' if executable else '0644'
+    shell('chmod ' + mode + ' ' + shlex.quote(remote) +
+          ' && chcon u:object_r:system_file:s0 ' + shlex.quote(remote))
+
+
+def bind_file(shell, remote, target):
+    """One bind only. The transaction owner controls stop/start and journaling."""
+    import shlex
+    return shell('mount --bind ' + shlex.quote(remote) + ' ' + shlex.quote(target))
+
+
+def unbind_file(shell, target):
+    import shlex
+    return shell('umount ' + shlex.quote(target))
+
+
 # ----------------------------- phases -----------------------------
 
 def deploy_and_verify(a, binds, exp_map, exp_paths, out):
@@ -170,7 +192,7 @@ def deploy_and_verify(a, binds, exp_map, exp_paths, out):
     sh(hdc, serial, 'hilog -r')
     appspawn_stop(hdc, serial)
     for dest, remote in staged.items():
-        sh(hdc, serial, f'mount --bind {remote} {dest}')
+        bind_file(lambda cmd: sh(hdc, serial, cmd), remote, dest)
     appspawn_start(hdc, serial)
     up, pid = parent_up(hdc, serial), root_pid(hdc, serial)
     rec['appspawn_up'] = up

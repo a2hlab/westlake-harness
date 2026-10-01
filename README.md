@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-10-01-u7-executor/`** | **U7 production executor: one stopped-parent transaction for native + 28 boot-group files + runtime JAR, T7d reproduction (26/27, approved backtrace exception), 61b apply/rollback/reboot/host-replay evidence; no board autostart.** |
 | **`benchmark/2026-10-01-last-session-scan/`** | **U7 66-key PID-bound session/BBQ scan: 9 non-last lookup failures across 7 keys, three single-session bright controls, and separate unknown-session/GLSurfaceView IAE counts.** |
 | **`benchmark/2026-10-01-u7-death-clusters/`** | **U7 32 unlit/input-blocked keys partitioned into 22 terminal-first cause/symptom clusters: ranked counts, PID-bound B-class thread tails, exact donor commits, and conditional N8 coverage without invented unlocks.** |
 | **`benchmark/2026-10-01-u7-sweep/`** | **U7 (J7b + T7d 27 images/stubs d8b2406e, N4-order native) three-board 66-key sweep: 34 lit (5ea 15 / 5cd 10 / 61b 9), +5 over U6 with zero regressions; raw run_facts per shard and verbatim outer sign-offs.** |
