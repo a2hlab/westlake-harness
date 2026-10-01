@@ -308,7 +308,10 @@ class Transaction:
         # Revalidate original gate-bound rollback input, never candidate expiry.
         try:
             self.io.check_restore(self.plan)
-            self.io.stop();self.stopped()
+            # Only rollback may recover a known test child's cleanup refusal.
+            # Activation keeps its original no-live-child admission guard.
+            self.io.stop_for_rollback() if hasattr(self.io, 'stop_for_rollback') else self.io.stop()
+            self.stopped()
             self.state['status']='rolling_back';self.record()
             for op in reversed(self.state['operations']):
                 self.stopped()
@@ -357,6 +360,44 @@ class DeviceIO(native.Deployment):
         if boot is not None and self.board.boot != boot: raise RuntimeError('boot changed; no cross-boot rollback')
 
     def stopped(self): return not any(r['name']=='appspawn-x' for r in self.ps())
+
+    def stop_for_rollback(self):
+        """Bounded cleanup of the observed OrganicMaps residual, then retry stop.
+
+        Do not infer ownership from process NAME alone. BMS must identify the
+        test UID, and cold_stop rechecks each PID/PPID/UID before signaling.
+        Unknown apps, transport errors and persistent respawns retain the lock.
+        No uninstall, service restart, parent signal or guard relaxation here.
+        """
+        for attempt in range(3):
+            self.guard(self.boot)
+            try:
+                self.stop()
+                return
+            except RuntimeError as exc:
+                if str(exc) != 'other Android children are live; stop them before deployment' or attempt == 2:
+                    raise
+            pkg = 'app.organicmaps'
+            data = self.b.parse_bundle(self.shell('bm dump -n ' + pkg), pkg)
+            uid = data['uid']
+            rows = self.ps()
+            parents = [r['pid'] for r in rows if r['uid'] == 0 and r['ppid'] == 1 and r['name'] == 'appspawn-x']
+            residual = [r for r in rows if r['uid'] != 0 and r['name'] == 'appspawn-x']
+            if (type(uid) is not int or uid < 20000000 or len(parents) != 1 or not residual
+                    or any(r['uid'] != uid or r['ppid'] != parents[0] for r in residual)):
+                raise RuntimeError('rollback cleanup cannot identify OrganicMaps residual ownership')
+            tag = 'rollback-cold-stop-' + uuid.uuid4().hex
+            evidence = self.out / tag
+            evidence.mkdir()
+            receipt = {'package': pkg, 'uid': uid, 'parent': parents[0],
+                       'attempt': attempt + 1, 'before': rows}
+            try:
+                receipt['quiesced'] = self.b.cold_stop(self.board, pkg, uid, evidence, tag)
+                receipt['after'] = self.ps()
+            finally:
+                (evidence / 'cleanup.json').write_text(json.dumps(receipt, indent=2) + '\n')
+            # Re-enter the original stop guard even after a false result: a
+            # momentary respawn may disappear. Never proceed on this bool alone.
 
     def snapshot(self, paths, absent=()):
         result={};missing=[]

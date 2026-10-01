@@ -245,6 +245,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-02-n11g-sealed-owner-blueprint/`** | Design only: explicit sealed host-open callback, N11f duplicate-instance evidence, artifact ownership, callback timing, gates and U9 rollback. |
 | **`benchmark/2026-10-02-u10-1-bundle/`** | U10.1 final-ELF bundle gates, preserved SoundPool policy, host r3 resident compat, U11i JAR and proposed three-board plans; awaiting window review. |
 | **`benchmark/2026-10-02-u10-1-tools/`** | Stop all nonzero shards before finish; bounded read-only HDC marker retries, unchanged U10.1 supplemental plans and offline regressions. |
+| **`benchmark/2026-10-02-organicmaps-finish/`** | Bounded UID/parent-checked cold_stop retry on OrganicMaps rollback refusal; unchanged admission and fail-safe tests. |
 
 ---
 
