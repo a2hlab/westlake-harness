@@ -1,0 +1,71 @@
+{
+ "_TEMPLATE_fill_at_build": {
+  "n11d_artifact": "$WORKSPACES/westlake-n11d-probe-build/candidate/libwestlake_android_child.z.so (cx-t0: build N11c-probe child + n11d-probe-early-owner.patch)",
+  "n11d_child_sha256": "<FILL cx-t0 after building N11d; also put in n11d-smoke.json probe.files>",
+  "n11d_abi_calls": "abi_diff --calls vs N11b baseline must show ONLY WLSCPL_LoadSealedProvider changed (adds fprintf), exports 2/2, drift 0, DT_NEEDED libc.so only",
+  "status": "DRAFT for cx-t0 \u2014 fill N11d sha, confirm board serial + out timestamp; run after U9 three-board sign-off",
+  "base": "U9 (already deployed) \u2014 stack ONLY the N11d child; do not redeploy the runtime/bridge",
+  "_flaky_note": "EVO-0051: zigzag/wikipedia/fd-noice are flaky keys (knowledge/gates/flaky-keys.json). The shards are DIAGNOSTIC (read the [N11d-PROBE] branch log from each child hilog; they are NOT gated on lit), so flakiness is fine there. For the 2-lit-controls regression check, treat HELLOWORLD as the hard must-stay-alive signal (non-flaky) and ZIGZAG as advisory (flaky; a single-run dead zigzag is not a regression). cx-t0: if you want a hard 2nd control, swap zigzag for a known non-flaky lit app."
+ },
+ "serial": "61b0657200000000000000000324012c",
+ "_serial_note": "default 61b (where N11b R3 ran); cx-t0: pick an idle U9 board and set its serial + lane",
+ "lane": "cx-t0",
+ "entry": "80",
+ "why": "N11d log-only probe on U9: identify which early-owner branch produces R3's WLCGATE:LSP:LOAD_ERROR:10 -- :315 dlns_inherit vs :321/:324 dlopen_ns NOLOAD/handle-mismatch -- before writing the success-path fix. Judgment unchanged (still fatal); only adds a distinct fprintf per branch with dlerror()+owner path.",
+ "board": "$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md",
+ "out": "$WORKSPACES/_n11d-window/win-n11d-DRAFT",
+ "offline_precheck": {
+  "hypothesis": "R3's LOAD_ERROR:10 is the open_local_now NULL from exactly one of the two N11b early-owner fatal branches (dlns_inherit default<-closure, or dlopen_ns(default,owner,RTLD_NOLOAD) returning NULL/!=jni_owner_handles[owner]); libartbased.so (host-only debug ART) is the unresolved edge that makes the owner closure unverifiable in default. N11d adds log-only diagnostics so the window names the branch + dlerror + owner.",
+  "evidence": [
+   "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-n11b-r3-loaderror-analysis/README.md",
+   "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11d-probe-early-owner.patch",
+   "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-n11b-early-owner/window-r3/board61b/capture/hilog.txt",
+   "$WORKSPACES/westlake-harness/benchmark/2026-10-01-n11c-probe/abi-diff.json"
+  ],
+  "result": "not-falsified",
+  "expect": {
+   "confirm": "At least one shard child hilog shows exactly one of: [N11d-PROBE] branch=dlns_inherit names=\u2026 dlerror=<text> ; OR [N11d-PROBE] branch=owner-verify owner=<path> shared=<%p> expected=<%p> dlerror=<text>. I.e. the branch is named with its dlerror() and (branch2) owner path. helloworld (non-flaky control) remains alive at t20 = N11d did not regress the success path; zigzag alive is advisory (flaky, EVO-0051).",
+   "refute": "No [N11d-PROBE] line appears in any shard child hilog yet WLCGATE:LSP:LOAD_ERROR:10 still fires -> the NULL comes from neither early-owner branch (a third path), re-open the loader analysis; OR a lit control dies -> N11d regressed the success path."
+  }
+ },
+ "smoke_spec": "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11d-smoke.json",
+ "after_lock": [
+  "python3",
+  "$WORKSPACES/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+  "--serial",
+  "61b0657200000000000000000324012c",
+  "--lane",
+  "cx-t0",
+  "--bind",
+  "$WORKSPACES/westlake-n11d-probe-build/candidate/libwestlake_android_child.z.so:/system/lib64/appspawn/libwestlake_android_child.z.so",
+  "--no-run",
+  "--no-rollback",
+  "--out",
+  "$WORKSPACES/_n11d-window/win-n11d-DRAFT/deploy"
+ ],
+ "shards": [
+  {
+   "name": "n11d",
+   "manifest": "benchmark/2026-09-28-bms-route-deploy/batch/apps.json",
+   "input_root": "$HOME/a2hlab/app-inputs",
+   "keys_file": "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11d-keys.txt"
+  }
+ ],
+ "before_unlock": [
+  "python3",
+  "$WORKSPACES/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+  "--serial",
+  "61b0657200000000000000000324012c",
+  "--lane",
+  "cx-t0",
+  "--bind",
+  "$WORKSPACES/westlake-n11d-probe-build/candidate/libwestlake_android_child.z.so:/system/lib64/appspawn/libwestlake_android_child.z.so",
+  "--rollback-only",
+  "--rollback-runtime-fp",
+  "a8cb9a5a45a6",
+  "--rollback-boot-fp",
+  "4db882a81732",
+  "--out",
+  "$WORKSPACES/_n11d-window/win-n11d-DRAFT/deploy"
+ ]
+}

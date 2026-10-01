@@ -1,0 +1,31 @@
+{
+ "_note": "N11d is log-only (keeps the fatal LOAD_ERROR:10); this smoke gates on U9 boot_fp + the 2 lit controls staying alive (N11d must not regress the success path) + the N11d child actually deployed. The [N11d-PROBE] branch log is read OFFLINE from the shard hilogs per the plan's offline_precheck.expect, NOT asserted here.",
+ "expect": {
+  "boot_fp": "4db882a81732"
+ },
+ "groups": [
+  {
+   "manifest": "knowledge/smoke/controls-apps.json",
+   "input_root": "$WORKSPACES/westlake-b90-controls-inputs",
+   "keys": [
+    "helloworld",
+    "zigzag"
+   ],
+   "mode": "launch-only",
+   "controls": true
+  }
+ ],
+ "probe": {
+  "package": "com.example.helloworld",
+  "single_copy": [
+   "libart.so",
+   "libopenjdkjvm.so",
+   "liboh_adapter_bridge.so",
+   "liboh_android_runtime.so"
+  ],
+  "files": {
+   "/system/lib64/appspawn/libwestlake_android_child.z.so": "<FILL cx-t0: N11d child sha256>"
+  }
+ },
+ "_flaky_note": "EVO-0051: zigzag is flaky; its controls-alive check is advisory. helloworld is the hard alive control. Do not fail the window on a single-run dead zigzag."
+}
