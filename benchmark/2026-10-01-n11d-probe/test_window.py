@@ -3,11 +3,26 @@ import json
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+import tempfile,hashlib
 H=Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location('n11d_hook',H/'window_hook.py')
 h=importlib.util.module_from_spec(spec);spec.loader.exec_module(h)
 
 class Window(unittest.TestCase):
+    def test_rejects_non_deployable_or_stale_production_dry_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);package=root/'westlake-generation-n11d-child-u9-69598037'
+            package.mkdir();(package/'bundle.json').write_text('{}')
+            report={'gates_passed':True,'deployable':True,'bundle_sha256':hashlib.sha256(b'{}').hexdigest()}
+            with patch.object(h,'W',root),patch.object(h,'H',root):
+                p=root/'approved-production-dry-run.json';p.write_text(json.dumps(report))
+                self.assertEqual(h.approved_package(),package)
+                report['deployable']=False;p.write_text(json.dumps(report))
+                with self.assertRaises(AssertionError):h.approved_package()
+                report['deployable']=True;p.write_text(json.dumps(report))
+                (package/'bundle.json').write_text('{"changed":true}')
+                with self.assertRaises(AssertionError):h.approved_package()
+
     def test_same_bind_and_output_for_apply_and_rollback(self):
         with patch.object(h.subprocess,'run') as run:
             run.return_value.returncode=0

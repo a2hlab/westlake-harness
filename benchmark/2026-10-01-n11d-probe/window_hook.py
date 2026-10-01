@@ -17,7 +17,7 @@ def verify(serial, root):
 
 
 def sweep(serial,root,rollback=False):
- command=[sys.executable,str(M/'scripts/lab/sweep_bind_deploy.py'),'--serial',serial,'--lane','cx-t0','--bind',str(W/'westlake-n11d-probe-build/candidate/libwestlake_android_child.z.so')+':'+CHILD,'--out',str(root/'deploy')]
+ command=[sys.executable,str(H/'sweep_diagnostic.py'),'--serial',serial,'--lane','cx-t0','--bind',str(W/'westlake-n11d-probe-build/candidate/libwestlake_android_child.z.so')+':'+CHILD,'--out',str(root/'deploy')]
  if rollback:
   command+=['--rollback-only','--rollback-runtime-fp','565fc6fdc116','--rollback-boot-fp','4db882a81732']
  else:command+=['--no-run','--no-rollback']
@@ -34,12 +34,20 @@ def stop_capture(root):
  raise RuntimeError('collector did not stop; retain lock')
 
 
+def approved_package():
+ package=W/'westlake-generation-n11d-child-u9-69598037'
+ report=json.loads((H/'approved-production-dry-run.json').read_text())
+ assert report.get('gates_passed') and report.get('deployable'), 'production dry-run not deployable'
+ assert report['bundle_sha256']==hashlib.sha256((package/'bundle.json').read_bytes()).hexdigest(), 'bundle changed after dry-run'
+ return package
+
+
 def apply(serial,root):
  assert serial=='5ea34a4500000000000000001123012c'
  assert not (root/'deploy').exists(), 'fresh output required'
  assert hashlib.sha256((W/'westlake-n11d-probe-build/candidate/libwestlake_android_child.z.so').read_bytes()).hexdigest()==SHA
  # No board command before the trusted native admission check.
- ticket=deployment_native_gate.check(W/'westlake-generation-n11d-child-u9-69598037/native')
+ ticket=deployment_native_gate.check(approved_package()/'native')
  save(root/'native-admission.json',ticket)
  verify(serial,root/'baseline')
  capture=root/'capture'
