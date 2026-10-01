@@ -224,6 +224,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-u8-death-clusters/no-fatal-terminations.md`** | **Eleven U8 index-blind terminations: six Java exits, two other System.exit calls, one hwui abort and two SIGKILLs with unknown senders; exact PID/line/hash evidence and notification-vs-cause replay tests.** |
 | **`benchmark/2026-10-01-u9-native/rollout/`** | U9 native/J10g composition, frozen installer assertions, sequential board plans and offline gates |
 | **`benchmark/2026-10-01-n11b-early-owner/offline-failure/`** | N11b failed-launch capture boundary and read-only OH6.1 namespace source checks |
+| **`benchmark/2026-10-01-webview-shell-scan/`** | **Which corpus-v2 apps are WebView shells (white-window on route-A, not lit).** Scanned 100/100 APKs for Capacitor/Cordova signals (`assets/capacitor.config.json`, `public|www/index.html`, dex `BridgeActivity`/`CordovaActivity`). **3 Capacitor shells** (randomlydie/degeder-yam/paultirk-yatoo = the J10g targets); **no `lit`/`lit?` prediction is a hidden shell**. Anchors (randomlydie/yam/yatoo positive, caniwebview/jslab negative) 7/7. Rule: a BridgeActivity/CordovaActivity HTML-bundle app cannot be lit by a J-layer JAR on route-A (no renderer) — count it alive-white-window. |
 
 ---
 
