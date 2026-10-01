@@ -1,6 +1,6 @@
 # U10.1 window plan — SKELETON / DRAFT
 
-Round = **U10.1 native + U11h JAR** (`14ed34bc…`). Prediction = `benchmark/2026-10-01-u10.1-prediction/predictions-v5.csv`.
+Round = **U10.1 native + U11i JAR** (`5ae3dd29…`). Prediction = `benchmark/2026-10-01-u10.1-prediction/predictions-v5.csv`.
 **Status:** DRAFT — the **native合包 SHA is blank** (pending cx-bms U10.1 native) and the U10.1 host marker regex
 is cx-bms-defined. Finalize per `finalize-checklist`.
 
@@ -11,11 +11,11 @@ on-board task per board; ≤45 min; release the lock when done; screenshots are 
 
 | layer | artifact | sha / id | state |
 |---|---|---|---|
-| JAR | `/system/android/framework/oh-adapter-runtime.jar` (U11h) | `14ed34bc70ad0248a754bd046a70f8a72c9353bac6de5da208da3a6980f31044` | built, deterministic (build-receipt-u11h.json) |
+| JAR | `/system/android/framework/oh-adapter-runtime.jar` (U11i) | `5ae3dd29d45c2270e8a53a9dc4bbeeca8972b9b092f91898a15d605bc1cc0108` | built, deterministic (build-receipt-u11h.json) |
 | JAR (unchanged) | `adapter-mainline-stubs.jar` (T7e stubs) | `f3bcc9d7c76cb73487837d7ad92fccba3d595d313ada7403bed99c4f11c2a8c2` | unchanged |
 | native | U10.1 native合包 (libstdc++ policy via libnativeloader + the U10.1 host r3 shim; strerror_r/abort as in U10) | `<FILL cx-bms U10.1 native合包 SHA>` | **PENDING cx-bms** |
 
-One generation, one window: U11h JAR + the cx-bms U10.1 native payload. **Rollback target = U9**
+One generation, one window: U11i JAR + the cx-bms U10.1 native payload. **Rollback target = U9**
 (`565fc6fdc116` / `a2919b793eb6` + boot `4db882a81732` + 318 identity assertions).
 
 ## 2. Gate — `check_frozen` before deploy
@@ -25,7 +25,7 @@ python3 scripts/lab/check_frozen.py --registry knowledge/frozen/frozen.json \
   --fingerprint $WORKSPACES/westlake-generation-u11-staging/runtime-fingerprint.txt \
   --package <cx-bms U10.1 native generation dir> --source-root $WORKSPACES/westlake-harness-walls --git master
 ```
-0 violations required. U11h jar + the JAR fixes are new behaviour on non-frozen files; the native合包 must match
+0 violations required. U11i jar + the JAR fixes are new behaviour on non-frozen files; the native合包 must match
 any frozen `.so`/BCP path it declares.
 
 ## 3. Three-board keys — carry forward the U10 sharding
@@ -62,7 +62,7 @@ owned by AliasTargetTheme`; `fd-client` has no log (read t20).
 ## 5. offline_precheck (per board, `board_run.py` expect.confirm / expect.refute)
 
 - **hypothesis:** U10.1 native (repairs the U10 regression on opencamera/organicmaps; strerror_r/abort as U10,
-  observed no-ops on fd-meet/fennec) + U11h JAR (phone/ssl-engine/content-provider/appcompat-guard) match
+  observed no-ops on fd-meet/fennec) + U11i JAR (phone/ssl-engine/content-provider/appcompat-guard) match
   `predictions-v5.csv`: 112 lit + **4 lit?** (`x`, `fd-client`, `cv2-com-nononsenseapps-notepad`, `fd-api`), zero
   regression (112 lit + 3 lit→flaky = 115 baseline).
 - **evidence:** `benchmark/2026-10-01-u10.1-prediction/{predictions-v5.csv,README.md}`,
@@ -82,13 +82,13 @@ owned by AliasTargetTheme`; `fd-client` has no log (read t20).
   (5ea aegis/fd-feeder/ooniprobe; 5cd fd-droidify/markor/newpipe; 61b fd-k9/fd-com-amaze-filemanager/fd-libretube;
   FZ-001..008 evidence apps on their boards).
 - **Provider-cluster controls (79):** `benchmark/2026-10-01-u10.1-prediction/regression-controls-provider.txt` —
-  already-lit keys that declare ≥1 ContentProvider; U11h `AppContentProviders` installs app providers at bind, so
+  already-lit keys that declare ≥1 ContentProvider; U11i `AppContentProviders` installs app providers at bind, so
   these 79 must stay lit (no provider-onCreate crash).
 - **okhttp controls:** `fd-droidify`, `newpipe` (stock okhttp 4.x, no conscrypt dependency) must stay lit.
 
 ## 7. after_lock / before_unlock (FILL at finalize)
 
-`after_lock` = deploy U11h JAR + cx-bms U10.1 native, then the activation smoke (`u10.1.json`) incl. identity/
+`after_lock` = deploy U11i JAR + cx-bms U10.1 native, then the activation smoke (`u10.1.json`) incl. identity/
 fingerprint + the N copy probe. `before_unlock` = roll back to **U9** (`565fc6fdc116`/`a2919b793eb6` /
 `boot 4db882a81732`, 318 assertions), verify byte-identical RUNTIME/BOOT + 0 residual mounts. `board_run.py` argv.
 

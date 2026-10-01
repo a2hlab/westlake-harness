@@ -184,3 +184,12 @@ per-key check only if the app key exists. **hilog channel confirmed:** the `[WL-
 `[B8-FETCH]`/`[WL-KEYSTORE]`). **New JAR SHA:** U11h
 `14ed34bc70ad0248a754bd046a70f8a72c9353bac6de5da208da3a6980f31044`; 197 classes; deterministic. This is the
 next-round FINAL U11 JAR (clusters 1/3/5+dedup/7 fixes + 4 keystore selfTest probe).
+
+## U11i — cluster-5 empty-providers smoke-marker fix
+
+`AppContentProviders` returned silently when the app declares no providers, so helloworld (none declared) never
+printed `[B8-PROV-INSTALL] installed …` → the smoke's helloworld-keyed B8-PROV-INSTALL marker would false-FAIL.
+Now it logs `[B8-PROV-INSTALL] installed 0/0 app providers (none declared)` before the empty return (outer,
+2026-10-02). **New JAR SHA:** U11i `5ae3dd29d45c2270e8a53a9dc4bbeeca8972b9b092f91898a15d605bc1cc0108`; 197 classes
+(class set identical to U11h, only AppContentProviders body changed); deterministic. u10.1.json probe.files jar
+sha updated to U11i. This supersedes U11h as the next-round FINAL U11 JAR.

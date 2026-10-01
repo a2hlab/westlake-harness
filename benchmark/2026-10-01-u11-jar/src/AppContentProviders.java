@@ -56,7 +56,13 @@ public final class AppContentProviders {
             Field provField = appBindData.getClass().getDeclaredField("providers");
             provField.setAccessible(true);
             List<Object> providers = (List<Object>) provField.get(appBindData);
-            if (providers == null || providers.isEmpty()) return;
+            if (providers == null || providers.isEmpty()) {
+                // Always emit the marker (even with no providers) so the smoke's helloworld-keyed
+                // [B8-PROV-INSTALL] marker matches -- helloworld declares none, and a silent return here made
+                // the smoke false-FAIL (outer, 2026-10-02).
+                System.err.println("[B8-PROV-INSTALL] installed 0/0 app providers (none declared)");
+                return;
+            }
 
             ClassLoader cl = ((android.content.Context) ctx).getClassLoader();
             Class<?> cphClass = Class.forName("android.app.ContentProviderHolder");
