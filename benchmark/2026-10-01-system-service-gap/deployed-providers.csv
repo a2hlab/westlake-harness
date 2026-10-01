@@ -1,0 +1,16 @@
+service,provided,mechanism,source_class,evidence
+user,yes,B7BindFixes installs binder <- OHUserManager (OH account, nativeState JNI); sCache[user],Ladapter/activity/B7BindFixes + Ladapter/packagemanager/OHUserManager,"[B7] user binder not installed / [SOURCE-USER]"
+appops,yes,B8BindExtras.SERVICES reflective sCache install,Ladapter/activity/B8BindExtras,"SERVICES <clinit> = [appops,uimode,locale,account,alarm,notification,location,webviewupdate]"
+locale,yes,B8BindExtras.SERVICES reflective sCache install (Field.set),Ladapter/activity/B8BindExtras,"SERVICES <clinit>"
+account,yes,B8BindExtras.SERVICES (also LocalServiceBinders in snapshot),Ladapter/activity/B8BindExtras,"SERVICES <clinit>"
+notification,yes,B8BindExtras.SERVICES,Ladapter/activity/B8BindExtras,"SERVICES <clinit>"
+shortcut,yes,WlShortcutService native-wired -> sCache[shortcut],Ladapter/compat/WlShortcutService,AndroidRuntime.cpp:2863 FindClass+install
+media_session,yes,WlMediaSession native-wired + [B8-FETCH] MediaSessionManager (mService stubbed),Ladapter/compat/WlMediaSession,AndroidRuntime.cpp:2826 / [B8-FETCH] media_session
+alarm,yes,AlarmFetcher (SYSTEM_SERVICE_FETCHERS) + B8BindExtras.SERVICES,Ladapter/activity/AlarmFetcher,"[B8-FETCH] / SERVICES"
+appwidget,yes,AppWidgetFetcher (SYSTEM_SERVICE_FETCHERS); AppWidgetManager mService stubbed type-zero,Ladapter/activity/AppWidgetFetcher,"[B8-FETCH] appwidget AppWidgetManager allocated"
+vibrator_manager,yes,VibratorFetcher; SystemVibratorManager getVibratorIds->int[0],Ladapter/activity/VibratorFetcher,"[B8-FETCH] vibrator_manager"
+wifi,yes,WifiFetcher; bare WifiManager non-null even when IWifiManager absent,Ladapter/activity/WifiFetcher,"[B8-FETCH] wifi WifiManager allocated (non-null)"
+power_exemption,yes,[B8-FETCH] PowerExemptionManager (mService stubbed),Ladapter/activity/B8BindExtras,"[B8-FETCH] power_exemption"
+restrictions,yes,[B8-FETCH] RestrictionsManager (empty-Bundle service),Ladapter/activity/B8BindExtras,"[B8-FETCH] restrictions"
+autofill,no,not registered (only AutofillOptions data class = ApplicationInfo field type),-,"no \"autofill\" service const-string in jar; AutofillOptions only"
+_note,,"Source = DEPLOYED jar westlake-generation-u9-j10g-238ffc14/framework/oh-adapter-runtime.jar via dexdump (build-tools 37.0.0). These B8/B7/*Fetcher classes are ABSENT from the vm-copies/westlake-current snapshot (older generation) -> the snapshot-based provided-services.csv UNDERCOUNTS. Inventory from the shipped jar, not the snapshot.",,

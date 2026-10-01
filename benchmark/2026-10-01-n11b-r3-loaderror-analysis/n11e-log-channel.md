@@ -76,7 +76,7 @@ Branch / stage enums (new, in the header):
 enum { WLSCPL_FAILB_NONE=0, WLSCPL_FAILB_DLNS_INHERIT=1,      /* :313 dlns_inherit(default<-closure) != 0        */
        WLSCPL_FAILB_OWNER_NOLOAD=2,  /* :321 dlopen_ns(NOLOAD) == NULL  (owner not resident in default)        */
        WLSCPL_FAILB_OWNER_MISMATCH=3,/* :321 shared != jni_owner_handles[owner] (wrong handle identity)        */
-       WLSCPL_FAILB_EMIT_RESOLVE=4,  /* :333 dlsym(owner,"HiLogPrint")==NULL (the smoke-emit gate — remove, see §4) */
+       WLSCPL_FAILB_EMIT_RESOLVE=4,  /* :333 dlsym(owner,"HiLogPrint")==NULL — N11e RECORDS it as this branch and reports; it STAYS a gate in N11e, removal deferred to N11f (see §4) */
        WLSCPL_FAILB_ARTIFACT_DLOPEN=5 /* per-artifact dlopen in the main loop                                    */ };
 enum { WLSCPL_STAGE_ENTER=1, WLSCPL_STAGE_ARTIFACTS_DONE=2, WLSCPL_STAGE_BEFORE_INHERIT=3,
        WLSCPL_STAGE_AFTER_INHERIT=4, WLSCPL_STAGE_BEFORE_OWNER_VERIFY=5, WLSCPL_STAGE_AFTER_OWNER_VERIFY=6,
@@ -89,7 +89,7 @@ The failing branches are in a helper that returns `void*` (R3 build = the N11b e
 **file-static fail record** the helper sets, which `WLSCPL_LoadSealedProvider` copies into `*result` right before it
 sets `result->error = WLSCPL_ERROR_DLOPEN`:
 ```c
-static _Thread_local struct { uint32_t stage, branch, index; int err; char detail[160]; } g_wl_fail;
+static struct { uint32_t stage, branch, index; int err; char detail[160]; } g_wl_fail;  /* plain static (NOT _Thread_local): the sealed child is single-threaded at loader time; per outer ring */
 #define WL_STAGE(s)            (g_wl_fail.stage = (s))
 #define WL_FAIL(b,i)  do { g_wl_fail.branch=(b); g_wl_fail.index=(i); g_wl_fail.err=errno; \
                            const char* e=dlerror(); /* resolvable in sealed ns — loader already calls it at :301 */ \
@@ -111,6 +111,9 @@ for (owner=0; owner<2U; ++owner){
     (void)dlclose(shared);
 }
 WL_STAGE(WLSCPL_STAGE_AFTER_OWNER_VERIFY);
+/* :333 smoke-emit gate — KEEP in N11e (removal is N11f), only record it: */
+emit = (N10bLogFn)dlsym(jni_owner_handles[1], "HiLogPrint");
+if (emit == NULL){ WL_FAIL(WLSCPL_FAILB_EMIT_RESOLVE, 1U); (void)dlclose(handle); return NULL; }  /* :333 */
 ```
 `dlerror()` / `strlen` / `memcpy` / `errno` are plain libc and resolve in the sealed ns (the loader already uses
 `fprintf`+`dlerror()` at `:301`). **No `HiLogPrint`, no new DT_NEEDED, no `dlns` change — only stores.**
@@ -180,12 +183,14 @@ The branch detail (`[N11e-PROBE] fail stage=… branch=…`) is read **offline**
 *passes* the fail line is absent and must not fail the window. Keep `expect.boot_fp`/`runtime_fp` = U9
 (`boot 4db882a81732`, runtime per board); `probe.files` pins the N11e child `.so` sha (cx-bms fills).
 
-## §4 — a free bug this surfaces
+## §4 — a bug this surfaces (N11e records it; N11f removes it)
 Branch `:333` (`dlsym(jni_owner_handles[1],"HiLogPrint")==NULL → dlclose; return NULL`) means the loader **fatalises the
-whole provider load if its own smoke-marker symbol does not resolve** — the exact dead channel we just proved. This emit
-block should be **deleted** in N11e (it is pure diagnostics, and it is both useless *and* a failure mode). If the goal is a
-heartbeat, use the result-struct `last_stage` instead. Flag to cx-bms: removing `:328–343` is part of N11e, not a
-separate change — it cannot both be the log channel and a load gate.
+whole provider load if its own smoke-marker symbol does not resolve** — the exact dead channel we just proved. It is both
+useless (it logs nothing in the sealed ns) *and* a failure mode. **Per the outer ring, N11e does NOT delete it** — N11e
+only `WL_FAIL(WLSCPL_FAILB_EMIT_RESOLVE, 1)` before that `return NULL`, so if this is the branch that fires in R3 the host
+prints `[N11e-PROBE] fail … branch=4 …` and we learn it. Keeping the gate for one more window means N11e changes no load
+behaviour at all (pure diagnostics), which keeps it a clean not-lit-gated probe. **N11f removes `:328–343`** once the
+probe has told us whether `:313`/`:321`/`:333` is the R3 failure — removal is the fix step, not the diagnostic step.
 
 ## Fallbacks (ranked; why not primary)
 1. **dlsym `HiLogPrint` inside the loader** (N11d's approach) — **rejected**: proven NULL in `westlake.sealed.child`
@@ -207,7 +212,8 @@ Logging *from* the sealed ns (HiLogPrint or stderr) is unreliable by constructio
 
 ## Hand-off (cx-bms, U11/U-next window)
 - Files: `stock_child_plugin/include/sealed_child_provider_loader.h` (struct + enums + ABI bump);
-  `…/src/sealed_child_provider_loader.c` (stage/fail stores on each branch; **delete** the `:328–343` emit gate);
+  `…/src/sealed_child_provider_loader.c` (stage/fail stores on each branch incl. `:333` → `WL_FAIL(…EMIT_RESOLVE,1)`;
+  **keep** the `:328–343` emit gate — removal is N11f, not N11e);
   `…/src/westlake_android_child_plugin.c` (`WlascGateMarkerText` + the unconditional `[N11e-PROBE] entry` beacon + the
   `[N11e-PROBE] fail …` line in the LSP failure branch).
 - Smoke spec shipped: `benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11e-smoke.json` — `fixes[].markers` already
@@ -215,8 +221,8 @@ Logging *from* the sealed ns (HiLogPrint or stderr) is unreliable by constructio
 - Co-build and co-deploy loader `.so` + host plugin (same header); single-file replace with rollback per `deploy_generation.sh`.
 - Window: re-run the R3 repro on 61b (U9 base); **offline_precheck** = hypothesis "`[N11e-PROBE] fail stage/branch/index`
   identifies the early-owner branch", evidence = `[N11e-PROBE] entry` unconditional + the `[N11e-PROBE] fail …` line under
-  the APPSPAWN tag; expect fingerprint back to U9 on `before_unlock`. Diagnostics-only (no behavioural change beyond
-  deleting the emit gate) → not lit-gated.
+  the APPSPAWN tag; expect fingerprint back to U9 on `before_unlock`. Diagnostics-only — **no load-behaviour change at
+  all** (the `:333` gate is kept, only recorded) → not lit-gated.
 - Then N11f: fix the branch the probe names (the actual `dlns_inherit`/owner-verify repair), which was the original N11
   goal.
 

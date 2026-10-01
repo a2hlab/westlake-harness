@@ -125,10 +125,58 @@ reachable path AND dereferenced without a null-check. That is what oc-t4 is rewo
 - `location` and `input_method` are **present but degenerate** (OFF / NO_IME): binder present so AOSP doesn't throw, but
   no real OH routing. Real routing is a quality upgrade, separate from presence.
 - `storage` is provided via the `mount` binder; `content`/`audio` via local no-op stubs; `settings` via a primed
-  NameValueCache (non-binder). `user` is **not** provided by the deployed tree (the `UserManagerProjectionProxy` path is
-  `_cc-wiki-b1-src`-only) — pending oc-t4's call-site data to say whether that matters.
+  NameValueCache (non-binder). **`user` IS provided** — see the deployed-artifact correction below (my first pass read
+  the stale snapshot and wrongly called it absent).
 - Next real wall is judged by **hilog**, not by request-count correlation (Toutiao died at `libflipped`/`libstdc++`, a
   native wall, not a missing service) — which is exactly why the string-reference join was bounced.
 
 Evidence: `vm-copies/westlake-current/framework/{core,activity,window,package-manager,appspawn-x}/java/…` (lines cited).
 `provided-services.csv` = the our-source inventory (no oc-t4 columns). Join deferred to oc-t4 call-site rework.
+
+---
+
+## CORRECTION — deployed jar `238ffc14` (j10g) ≠ the `vm-copies` snapshot: the B8/B7 layer (#90 follow-up)
+
+The outer ring (board 21:36) found my inventory above missed that `user`/`appops`/`locale`/`autofill`/`shortcut` are
+answered even though they are not in `OHServiceManager` (default → null) and hilog never reports them unpublished. Root
+cause: **I inventoried the `vm-copies/westlake-current` snapshot, which is an OLDER generation than the deployed
+`oh-adapter-runtime.jar`.** Disassembling the **deployed** jar
+(`westlake-generation-u9-j10g-238ffc14/framework/oh-adapter-runtime.jar`, `dexdump` build-tools 37.0.0) shows a whole
+`B8/B7` provisioning layer that **does not exist in the snapshot source** — which is exactly why `B8BindExtras` /
+`B7BindFixes` / `installServiceStubs` (the dispatch's original words) could not be found earlier. **The deployed artifact
+is truth; the snapshot lags it.**
+
+Deployed-jar providers (dex-confirmed, `Ladapter/activity/…`), additional to the snapshot inventory:
+- **`B8BindExtras.SERVICES`** (a `<clinit>` string[] field) = **`[appops, uimode, locale, account, alarm, notification,
+  location, webviewupdate]`**, installed reflectively into `ServiceManager.sCache` (`Class.getDeclaredField` →
+  `Field.setAccessible` → `Field.set`). → **answers `appops` and `locale`** (and re-covers uimode/account/alarm/
+  location/webviewupdate that the snapshot provides by other means). Marker `[B8-SVC] service stubs not installed:`.
+- **`B7BindFixes`** → installs the **`user`** binder (marker `[B7] user binder not installed:`) backed by
+  `OHUserManager` (OH-account-backed `IUserManager` proxy, real `nativeState()` JNI; snapshot
+  `package-manager/java/OHUserManager.java`, called from `AppSchedulerBridge.java:230`) + `nativeLibraryDir` fix
+  (`[B7] nativeLibraryDir`). → **answers `user`**.
+- **SYSTEM_SERVICE_FETCHERS fetcher classes**: `AlarmFetcher`, `AppWidgetFetcher`, `VibratorFetcher`, `WifiFetcher`;
+  `[B8-FETCH]` also allocates `media_session` (MediaSessionManager, mService stubbed), `power_exemption`
+  (PowerExemptionManager), `restrictions` (RestrictionsManager, empty-Bundle), `wifi` (WifiManager non-null even when
+  IWifiManager absent). → managers non-null for `appwidget`/`vibrator`/`wifi`/`media_session`/`power_exemption`/
+  `restrictions`.
+- **Native-wired compat services** (`AndroidRuntime.cpp` `FindClass`+`install`): `WlShortcutService` →
+  `sCache["shortcut"]` (`AndroidRuntime.cpp:2863`) → **answers `shortcut`**; `WlMediaSession` (`:2826`),
+  `WlAmsBind` (`:2681`, `[B8-AMB]`), `WlAudioFocus` (`:2710`). These are wired from **native**, which is why no Java
+  `.install()` call site appears.
+
+Answer to the outer ring's five:
+| service | provided? | by (deployed jar) |
+|---|---|---|
+| `user` | **YES** | `B7BindFixes` installs binder ← `OHUserManager` (OH account); `sCache["user"]` |
+| `appops` | **YES** | `B8BindExtras.SERVICES` reflective `sCache` install |
+| `locale` | **YES** | `B8BindExtras.SERVICES` reflective `sCache` install |
+| `shortcut` | **YES** | `WlShortcutService` native-wired → `sCache["shortcut"]` |
+| `autofill` | **NO** | no `"autofill"` service const-string in the jar — only the `AutofillOptions` data class (an `ApplicationInfo` field type). Its missing "unpublished" log = caller used nullable `getService`/`AutofillManager` built client-side, not that we answer it. |
+
+**Rule set here:** inventory system-service provisioning from the **dexdump of the shipped jar**, not the `vm-copies`
+snapshot — the snapshot trails the deployed generation, and the B8/B7/fetcher layer only exists in the artifact. Full
+deployed provider set in `deployed-providers.csv` (dex-evidenced). Evidence: `dexdump` of
+`westlake-generation-u9-j10g-238ffc14/framework/oh-adapter-runtime.jar`; classes `Ladapter/activity/{B8BindExtras,
+B7BindFixes,AlarmFetcher,AppWidgetFetcher,VibratorFetcher,WifiFetcher}`, `Ladapter/packagemanager/OHUserManager`,
+`Ladapter/compat/{WlShortcutService,WlMediaSession}`; `AndroidRuntime.cpp:2681–2873`.
