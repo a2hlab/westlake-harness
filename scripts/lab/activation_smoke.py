@@ -10,7 +10,8 @@ child process. PASS only when every check holds:
   * controls     every control key is alive at t20;
   * marker       every fix's own activation log line (regex) appears in its target app's hilog (install window
                  install-hilog.txt + launch window hilog.txt, so installer-side fixes can carry markers too);
-  * single-copy  each listed library is mapped from exactly one path in the probe child (/proc/<pid>/maps);
+  * single-copy  each listed library is loaded exactly once in the probe child (/proc/<pid>/maps; the same path
+                 loaded at two addresses counts as two);
   * child-view   each listed file, read through /proc/<pid>/root, has the expected sha256.
 Screenshots are still judged by the outer loop; this gate only says whether a full sweep is worth starting.
 Exit 0 = PASS, 1 = FAIL, 2 = usage / transport error. Writes <out>/smoke-result.json.
@@ -73,15 +74,26 @@ def marker_hits(hilog_text, markers):
 
 
 def copies(maps_text, libs):
-    """Distinct mapped paths per library basename (a library mapped twice shows two paths, as N10 did)."""
-    paths = {}
+    """Loaded instances per library basename, as "path@load-address".
+
+    A load instance starts at a file-offset-0 mapping that does not directly continue the previous mapping of the same
+    file. Counting distinct paths (the first version) missed the same file loaded twice in two linker namespaces:
+    2026-10-01 the U8 child had liboh_adapter_bridge.so and liboh_android_runtime.so each mapped at two load addresses
+    from one path, two OHWindowManagerClient singletons, and "getOhNativeWindow: unknown sessionId" -- the gate said
+    "one copy" because both loads had the same path."""
+    loads, last_end = {}, {}
     for line in maps_text.splitlines():
         f = line.split()
-        if len(f) >= 6 and f[-1].startswith('/'):
-            base = os.path.basename(f[-1])
-            if base in libs:
-                paths.setdefault(base, set()).add(f[-1])
-    return {lib: sorted(paths.get(lib, ())) for lib in libs}
+        if len(f) < 6 or not f[-1].startswith('/'):
+            continue
+        path, base = f[-1], os.path.basename(f[-1])
+        if base not in libs:
+            continue
+        start, end = f[0].split('-')
+        if int(f[2], 16) == 0 and last_end.get(path) != start:
+            loads.setdefault(base, []).append(f'{path}@{start}')
+        last_end[path] = end
+    return {lib: sorted(loads.get(lib, ())) for lib in libs}
 
 
 def evaluate(spec, runs, hilogs, probe):

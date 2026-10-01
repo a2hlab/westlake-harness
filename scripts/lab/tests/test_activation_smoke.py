@@ -36,6 +36,17 @@ class Smoke(unittest.TestCase):
         self.assertEqual((f['runtime_fp'], f['boot_fp']), ('e953c0921536', '4db882a81732'))
         self.assertEqual(f['alive_t20'], {'helloworld': 'yes', 'zigzag': 'no'})
 
+    def test_same_path_loaded_twice_is_two_copies(self):
+        maps = ("7f0338-7f0343 r--p 00000000 103:30 98478 /system/android/lib64/liboh_adapter_bridge.so\n"
+                "7f0343-7f0351 r-xp 000b7000 103:30 98478 /system/android/lib64/liboh_adapter_bridge.so\n"
+                "7f0dfc-7f0e07 r--p 00000000 103:30 98478 /system/android/lib64/liboh_adapter_bridge.so\n"
+                "7f0e07-7f0e15 r-xp 000b7000 103:30 98478 /system/android/lib64/liboh_adapter_bridge.so\n")
+        got = s.copies(maps, ['liboh_adapter_bridge.so'])['liboh_adapter_bridge.so']
+        self.assertEqual(len(got), 2)
+        ok, checks = s.evaluate({'probe': {'single_copy': ['liboh_adapter_bridge.so']}}, {}, {},
+                                {'copies': {'liboh_adapter_bridge.so': got}, 'view': {}})
+        self.assertFalse(ok)
+
     def test_copies_counts_distinct_paths(self):
         self.assertEqual(len(s.copies(MAPS_ONE, ['libart.so'])['libart.so']), 1)
         self.assertEqual(len(s.copies(MAPS_TWO, ['libart.so'])['libart.so']), 2)
