@@ -2,11 +2,13 @@
  * OWN declared ContentProviders after bind, so getContentResolver().query(ownAuthority) resolves. New file. */
 package adapter.activity;
 
+import android.content.ComponentName;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * U11 (#content-provider): route-A projects the app's ProviderInfo into AppBindData.providers
@@ -63,11 +65,20 @@ public final class AppContentProviders {
             Field cphNoRelease = cphClass.getField("noReleaseNeeded");
             Method getIContentProvider = android.content.ContentProvider.class.getMethod("getIContentProvider");
 
+            Map stockLocal = localProvidersByName();   // ActivityThread.mLocalProvidersByName (ComponentName -> record)
             List<Object> holders = new ArrayList<>();
-            int ok = 0, total = providers.size();
+            int ok = 0, already = 0, total = providers.size();
             for (Object cpiObj : providers) {
                 android.content.pm.ProviderInfo cpi = (android.content.pm.ProviderInfo) cpiObj;
                 if (cpi == null || cpi.authority == null || cpi.name == null) continue;
+                // Skip providers the stock installContentProviders already instantiated, so we never run a
+                // ContentProvider's onCreate twice (and so the probe distinguishes "stock did it" from "we did it").
+                if (stockLocal != null && cpi.packageName != null
+                        && stockLocal.get(new ComponentName(cpi.packageName, cpi.name)) != null) {
+                    already++;
+                    System.err.println("[B8-PROV-INSTALL] " + cpi.authority + " already instantiated by stock; skipped");
+                    continue;
+                }
                 try {
                     Class<?> providerClass = cl.loadClass(cpi.name);
                     android.content.ContentProvider lp =
@@ -87,9 +98,25 @@ public final class AppContentProviders {
             if (!holders.isEmpty()) {
                 publish(holders);
             }
-            System.err.println("[B8-PROV-INSTALL] installed " + ok + "/" + total + " app providers");
+            System.err.println("[B8-PROV-INSTALL] installed " + ok + "/" + total + " app providers ("
+                    + already + " already instantiated by stock)");
         } catch (Throwable t) {
             System.err.println("[B8-PROV-INSTALL] app provider install skipped: " + t);
+        }
+    }
+
+    /** ActivityThread.mLocalProvidersByName (ComponentName -> ProviderClientRecord): providers stock already
+     *  instantiated locally. Used to skip double-instantiation. */
+    private static Map localProvidersByName() {
+        try {
+            Class<?> at = Class.forName("android.app.ActivityThread");
+            Object thread = at.getMethod("currentActivityThread").invoke(null);
+            if (thread == null) return null;
+            Field f = at.getDeclaredField("mLocalProvidersByName");
+            f.setAccessible(true);
+            return (Map) f.get(thread);
+        } catch (Throwable ignore) {
+            return null;
         }
     }
 

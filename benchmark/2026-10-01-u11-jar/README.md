@@ -138,3 +138,13 @@ U11c = U10 + cluster 1 (phone) + cluster 3 (ssl-engine) + **cluster 5 (app Conte
 - **Regression controls = already-lit keys that declare providers** (e.g. `fd-k9` 9, `fd-android` 9,
   `fd-droidify`, `markor`, `newpipe`, `aegis`): installing their providers must keep them lit (no new provider
   onCreate crash).
+
+### Cluster 5 dedup (U11e)
+
+Before re-instantiating a provider, `AppContentProviders` checks `ActivityThread.mLocalProvidersByName` by
+`ComponentName(packageName,name)`; if stock already instantiated it -> `[B8-PROV-INSTALL] <authority> already
+instantiated by stock; skipped` and skip (never run a provider onCreate twice). Final log counts both
+(`installed N/total app providers (M already instantiated by stock)`). On the first board run **M splits the root
+cause**: M>0 => stock's installProvider succeeded (gap = publish/registry); M=0 => stock never instantiated (gap =
+the install step). **New JAR SHA:** U11e `b093243b0da702b74af1c693af93ea937652fae08192760c0a9c536d647816c8`
+(supersedes U11d); 196 classes; deterministic. Cluster 4 (keystore) is cc-wiki's; merges in later.

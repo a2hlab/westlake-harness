@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "lane": "cc-t3",
+  "date": "2026-10-01",
+  "task": "U11 JAR v5 = U11d + cluster-5 dedup: AppContentProviders skips any provider stock already instantiated (ActivityThread.mLocalProvidersByName) before re-instantiating. Prevents double onCreate; enriches the probe.",
+  "base_u10_sha256": "37465d6d7f5e3d7be52929c2b43faf99315f86f0c23cc70e4aa858cb2ff98c59",
+  "output_u11e_sha256": "b093243b0da702b74af1c693af93ea937652fae08192760c0a9c536d647816c8",
+  "supersedes": "u11d 84c8da6b (phone+ssl+content); u11e is the current single U11 JAR version. (cluster 4 keystore reassigned to cc-wiki; merges in later.)",
+  "deterministic": "yes (built twice, identical)",
+  "staged_jar": "$WORKSPACES/westlake-generation-u11-staging/oh-adapter-runtime-u11e.jar",
+  "build": "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u11-jar/build/build_u11e.py",
+  "class_delta_vs_u10": {"added": ["TelephonyFetcher(+6)", "WlSSLEngine(+1)", "AppContentProviders"], "removed": [], "note": "196 classes (+10); same set as u11d, AppContentProviders body changed (dedup)."},
+  "cluster5_dedup": "Before instantiating a provider, AppContentProviders looks it up by ComponentName(packageName,name) in ActivityThread.mLocalProvidersByName; if stock already instantiated it -> log '[B8-PROV-INSTALL] <authority> already instantiated by stock; skipped' and skip. Final log: 'installed N/total app providers (M already instantiated by stock)'. On the first board run this M splits the root cause: M>0 means stock's installProvider succeeded (gap is publish/registry); M=0 means stock never instantiated (gap is instantiation/install step)."
+}
