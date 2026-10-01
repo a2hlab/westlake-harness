@@ -33,6 +33,7 @@ REPO = Path(os.environ.get('LAND_REPO') or Path(__file__).resolve().parents[2])
 ALLOWED = ('benchmark/', 'scripts/', 'specs/', 'tools/spec-checks/tests/', 'knowledge/smoke/')
 GATED = ('knowledge/gates/', 'knowledge/frozen/')
 DOCS = {'README.md', '.octos/KNOWLEDGE-DIGEST.md', '.octos/OPS-RUNBOOK.md'}
+MAX_BYTES = 1024 * 1024
 
 
 def lab_env():
@@ -143,6 +144,7 @@ def main(argv=None):
     ap.add_argument('--allow-gates', action='store_true')
     ap.add_argument('--docs', type=Path, help='documentation.json kept outside the worktree (in addition to listed ones)')
     ap.add_argument('--no-commit', action='store_true', help='run everything, then leave the result staged')
+    ap.add_argument('--allow-large', action='store_true', help='land files over 1 MiB (outer-reviewed)')
     args = ap.parse_args(argv)
     wt = args.worktree.expanduser().resolve()
     if sh(['git', 'status', '--porcelain', '--untracked-files=no']).stdout.strip():
@@ -151,6 +153,12 @@ def main(argv=None):
     if errors:
         sys.exit('REFUSE:\n  ' + '\n  '.join(errors))
     files = expand(wt, paths)
+    # AGENTS: large binaries and raw logs stay out of the repo (2026-10-01: a listing carried a 76k-line run hilog as
+    # "evidence"); land an excerpt with original line numbers and cite the run directory instead.
+    big = [f for f in files if (wt / f).stat().st_size > MAX_BYTES and not args.allow_large]
+    if big:
+        sys.exit(f'REFUSE: over {MAX_BYTES // 1024} KiB (land an excerpt, cite the run dir; --allow-large if reviewed):\n  '
+                 + '\n  '.join(f'{f} ({(wt / f).stat().st_size // 1024} KiB)' for f in big))
     listing_path = Path(args.listing) if Path(args.listing).is_absolute() else wt / args.listing
     listing_sha = hashlib.sha256(listing_path.read_bytes()).hexdigest()
     created, overwritten = [], []

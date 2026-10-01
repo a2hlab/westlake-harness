@@ -75,6 +75,14 @@ class Land(unittest.TestCase):
         self.assertIn('cite these files as evidence', r.stderr)
         self.assertEqual((self.repo / 'benchmark/b/results.json').read_text(), '{"approved": 1}\n')
 
+    def test_large_file_refused(self):
+        (self.wt / 'benchmark/b/hilog.txt').write_bytes(b'x' * (1024 * 1024 + 1))
+        (self.wt / 'l.txt').write_text('benchmark/b/hilog.txt\n')
+        r = self.land('l.txt')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('over 1024 KiB', r.stderr)
+        self.assertFalse((self.repo / 'benchmark/b/hilog.txt').exists())
+
     def test_gate_registry_needs_flag_and_dotdot_refused(self):
         (self.wt / 'knowledge/gates').mkdir(parents=True)
         (self.wt / 'knowledge/gates/x.json').write_text('{}')
