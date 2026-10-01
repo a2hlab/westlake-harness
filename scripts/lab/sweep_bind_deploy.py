@@ -109,7 +109,10 @@ def root_pid(hdc, serial):
 
 
 def parent_up(hdc, serial):
-    return sh(hdc, serial, 'ps -ef | grep appspawn-x | grep -v grep | grep -c root').strip()
+    # Count the root appspawn-x itself: process NAME exactly appspawn-x, parent init, user root. The old
+    # `ps -ef | grep appspawn-x | grep -c root` also counted any root process whose command line mentions appspawn-x
+    # (2026-10-01 21:03 a capture collector started before activation made it 2 and failed the N11d deploy precheck).
+    return sh(hdc, serial, 'ps -A -o PPID,USER,NAME | grep -cE "^ *1 +root +appspawn-x$"').strip()
 
 
 def appspawn_stop(hdc, serial):
