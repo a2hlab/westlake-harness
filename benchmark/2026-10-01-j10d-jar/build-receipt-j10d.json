@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "lane": "cc-t3",
+  "date": "2026-10-01",
+  "task": "J10d = J10 + restore the activity's own manifest theme before scheduleTransaction -> fix the appcompat-actionbar ISE (proven root cause from J10c).",
+  "baseline_j10_sha256": "ea24291a898812ff1f13c11cd15e5747392fb975966a54b7c6e73e0d123517e1",
+  "output_j10d_sha256": "57d621837eee4d065a49929f0a7f981e811becc4beba988c18b0ab847e67058c",
+  "deterministic": "yes (twice)",
+  "staged_jar": "/Users/zhaoyue/orca/workspaces/westlake-generation-j10d-staging/oh-adapter-runtime-j10d.jar",
+  "source_commit": "feat/bms-walls 1d691f67c",
+  "root_cause": "AppSchedulerBridge.nativeOnScheduleLaunchAbility overwrites activityInfo.theme (sEnrichedTheme / force-zero) before scheduleTransaction; AOSP performLaunchActivity:3745 getThemeResource():1585 then falls back to applicationInfo.theme (app Theme.Knot, windowActionBar=true); AppCompat createSubDecor installs a decor action bar -> ISE. J10c diagnostic confirmed: knot app windowActionBar=true@0x7f030350 (Theme.Knot), not Theme_Knot_NoActionBar 0x7f11019e.",
+  "fix": "new J10dTheme.restore(activityInfo) injected right after the ActivityInfo.banner force-zero (reusing that iput's object register = activityInfo), before scheduleTransaction. restore() sets activityInfo.theme = ManifestJsonFallback.activityTheme(pkg, name) (the activity's own manifest theme, 0x7f11019e for knot). Marker [J10d-THEME] <activity> theme=0x.. (manifest 0x..).",
+  "class_delta": {
+    "added": [
+      "adapter/activity/J10dTheme"
+    ],
+    "removed": [],
+    "note": "J10 ACTINFO + old NoTitle no-op retained; the J10b/c Application pre-creation + overlay are NOT in J10d (the overlay was the wrong lever; the theme restore is the real fix)."
+  },
+  "offline_gate": "test_j10d.py 6/6",
+  "window_runtime_fp": "NOT YET KNOWN (jar 57d62183 != prior; needs outer-loop offline compute or board read)"
+}

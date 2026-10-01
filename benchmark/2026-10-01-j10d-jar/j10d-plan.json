@@ -1,0 +1,63 @@
+{
+  "serial": "5ea34a4500000000000000001123012c",
+  "lane": "cc-t3",
+  "entry": "97",
+  "why": "J10d fix window on 5ea: restore activity manifest theme -> appcompat-actionbar; smoke [J10d-THEME] on knot + [J10-ACTINFO] on dice + controls, then 12-key appcompat/getActivityInfo shard; rollback to U8",
+  "board": "/Users/zhaoyue/orca/workspaces/westlake-harness/.octos/boards/app-lighting.md",
+  "out": "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10d-window-5ea",
+  "smoke_spec": "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/knowledge/smoke/j10d.json",
+  "offline_precheck": {
+    "hypothesis": "AppSchedulerBridge overwrites activityInfo.theme before scheduleTransaction, so performLaunchActivity.setTheme falls back to the app theme (Theme.Knot, windowActionBar=true) and AppCompat installs a decor action bar -> the action-bar ISE. Restoring activityInfo.theme = ManifestJsonFallback.activityTheme(pkg,name) (knot 0x7f11019e Theme_Knot_NoActionBar) before scheduleTransaction makes performLaunchActivity use the NoActionBar theme -> AppCompat takes the windowNoTitle branch -> no decor action bar.",
+    "evidence": [
+      "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10d-jar/smali-evidence/AOSP-theme-chain.txt",
+      "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10d-jar/smali-evidence/AppSchedulerBridge.restore-inject.txt",
+      "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10c-window-5ea/smoke/group-1/20261001T151823-86376213/5ea34a4500000000000000001123012c/cv2-com-deva-knot/hilog.txt"
+    ],
+    "result": "not-falsified",
+    "expect": {
+      "confirm": "knot hilog shows [J10d-THEME] com.deva.knot.MainActivity theme=0x7f11019e (manifest 0x7f11019e) AND knot no longer throws the action-bar IllegalStateException (reaches/keeps its UI; lit at t20)",
+      "refute": "knot still throws 'already has an action bar supplied by the window decor' after [J10d-THEME], OR [J10d-THEME] shows theme=0x0 (manifest theme not resolved)"
+    }
+  },
+  "after_lock": [
+    "python3",
+    "/Users/zhaoyue/orca/workspaces/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+    "--serial",
+    "5ea34a4500000000000000001123012c",
+    "--lane",
+    "cc-t3",
+    "--bind",
+    "/Users/zhaoyue/orca/workspaces/westlake-generation-j10d-staging/oh-adapter-runtime-j10d.jar:/system/android/framework/oh-adapter-runtime.jar",
+    "--expected",
+    "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10d-jar/j10d-expected-run.json",
+    "--no-run",
+    "--no-rollback",
+    "--out",
+    "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10d-window-5ea/overlay"
+  ],
+  "before_unlock": [
+    "python3",
+    "/Users/zhaoyue/orca/workspaces/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+    "--serial",
+    "5ea34a4500000000000000001123012c",
+    "--lane",
+    "cc-t3",
+    "--bind",
+    "/Users/zhaoyue/orca/workspaces/westlake-generation-j10d-staging/oh-adapter-runtime-j10d.jar:/system/android/framework/oh-adapter-runtime.jar",
+    "--out",
+    "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10d-window-5ea/overlay",
+    "--rollback-only",
+    "--rollback-runtime-fp",
+    "e953c0921536",
+    "--rollback-boot-fp",
+    "4db882a81732"
+  ],
+  "shards": [
+    {
+      "name": "v1",
+      "manifest": "/Users/zhaoyue/orca/workspaces/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
+      "input_root": "/Users/zhaoyue/orca/workspaces/westlake-inputs/corpus-v2/app-inputs",
+      "keys_file": "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10d-jar/j10d-shard-keys.txt"
+    }
+  ]
+}
