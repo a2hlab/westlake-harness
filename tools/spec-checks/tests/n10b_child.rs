@@ -16,3 +16,10 @@ fn batch_run(class: &str) {
 #[test] fn n10b_batch_gates() { batch_run("BatchGateTests"); }
 
 #[test] fn n10b_registration_init() { batch_run("RegistrationTests"); }
+
+#[test] fn n10b_smoke_spec() { smoke_run("SmokeTests"); }
+
+fn smoke_run(class: &str) {
+ let root=PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+ assert!(Command::new("python3").arg(root.join("benchmark/2026-10-01-n10b-child/smoke-markers/verify-u8.py")).arg(class).current_dir(root).status().unwrap().success());
+}

@@ -40,3 +40,8 @@ Scenario: No unauthorized rollout or borrowed exceptions
   Given the exact candidate source and namespace sidecars
   When production preflight is run without new approval
   Then unresolved native findings are rejected, the exception proposal binds this manifest and input SHA and no board I/O occurs
+Scenario: Activation smoke refuses an inactive fix or mixed native owners
+  Test: n10b_smoke_spec
+  Given the exact N10b fingerprint, four native activation markers and owner/view checks
+  When any marker, owner single-copy identity, child-view SHA, fingerprint or t20 control is missing or mismatched
+  Then smoke rejects, complete synthetic evidence passes, and ZigZag stays launch-only
