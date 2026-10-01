@@ -345,6 +345,17 @@ class BatchTests(unittest.TestCase):
         self.assertIn('desktop not ready',rec['error'])
         self.assertFalse(rec['clicked'])
 
+    def test_app_maps_saved_after_first_shot(self):
+        board=FakeBoard();original=board.shell
+        def shell(cmd,required=True,timeout=60):
+            if cmd.startswith('cat /proc/42/maps'):
+                board.calls.append(cmd);return 0,'7f00-7f10 r--p 00000000 fd:00 1 /system/android/lib64/libandroid.so\n'
+            return original(cmd,required,timeout)
+        board.shell=shell
+        _,rec=self.collect(board,shots=[5,20],hilog_seconds=15)
+        self.assertEqual(sum(c.startswith('cat /proc/42/maps') for c in board.calls),1)
+        self.assertIn('libandroid.so',(self.root/'run/maps-t5-42.txt').read_text())
+
     def test_reinstall_missing_target_skips_uninstall(self):
         board=FakeBoard();board.installed=False
         _,rec=self.collect(board,reinstall=True)

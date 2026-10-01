@@ -15,8 +15,8 @@ first_fatal (first FATAL EXCEPTION / Fatal signal / JNI DETECTED ERROR / Reason:
 exception text: the deepest 'Caused by' within 60 lines after the first fatal, else the first exception line there;
 None when the fatal has no Java chain -- then first_fatal is the native signal / JNI abort line),
 install_icon (the installer's ReadIconByManifest line from install-hilog.txt when present), and run-level probe
-load counts (probe/child-*-maps.txt: load instances of bridge / runtime / libart / libnativehelper, the
-activation_smoke counting). Screenshots are not judged here -- verdicts stay with the outer loop's sign-offs.
+load counts (probe/child-*-maps.txt: load instances of bridge / runtime / libart / libnativehelper / libandroid, the
+activation_smoke counting), and key_loads: the same libraries' load paths in the app's own maps-*.txt when present. Screenshots are not judged here -- verdicts stay with the outer loop's sign-offs.
 """
 import argparse
 import json
@@ -32,7 +32,7 @@ import lab_paths  # noqa: E402
 FACT_ROW = re.compile(r'^(\S+)\s+shots \S+\s+alive t5=(\S+) t20=(\S+)\s+child_hilog=(\S+)\s+(\S+)')
 FATAL = re.compile(r'FATAL EXCEPTION|Fatal signal|JNI DETECTED ERROR|Reason:Signal|Unable to start activity')
 UNKNOWN = 'getOhNativeWindow: unknown sessionId'
-PROBE_LIBS = ['liboh_adapter_bridge.so', 'liboh_android_runtime.so', 'libart.so', 'libnativehelper.so']
+PROBE_LIBS = ['liboh_adapter_bridge.so', 'liboh_android_runtime.so', 'libart.so', 'libnativehelper.so', 'libandroid.so']
 
 
 def default_index():
@@ -128,7 +128,13 @@ def build(roots, index):
                     if (kdir / 'install-hilog.txt').exists():
                         icon = next((l.strip()[:200] for l in open(kdir / 'install-hilog.txt', errors='replace')
                                      if 'ReadIconByManifest' in l), None)
-                    row = dict(run=rel(run_dir, ws), serial=run_dir.name[:8], key=key, **head, **r,
+                    key_loads = None
+                    kmaps = sorted(kdir.glob('maps-*.txt'))  # bms_batch keeps each app's maps since 2026-10-01
+                    if kmaps:
+                        import activation_smoke
+                        got = activation_smoke.copies(kmaps[0].read_text(errors='replace'), PROBE_LIBS)
+                        key_loads = {lib: [x.split('@')[0] for x in v] for lib, v in got.items() if v}
+                    row = dict(run=rel(run_dir, ws), serial=run_dir.name[:8], key=key, **head, **r, key_loads=key_loads,
                                unknown_session=unknown, first_fatal=fatal, cause=cause, install_icon=icon, probe_loads=loads)
                     out.write(json.dumps(row, ensure_ascii=False) + '\n')
                     n += 1

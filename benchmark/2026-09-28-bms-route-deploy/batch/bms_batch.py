@@ -747,6 +747,14 @@ def timed_collection(board, uid, out, remote, rec, wait_seconds, shots, focus_ch
                 shot.update(scheduled_seconds=offset, elapsed_seconds=time.monotonic()-start,
                             foreground=observation)
                 rec['screenshots'].append(shot)
+                if len(rec['screenshots']) == 1:
+                    # 2026-10-01: which copy of a library an app maps (two bridges, a per-domain libandroid whose
+                    # AssetManager offsets were never filled) was only knowable from the HelloWorld probe; keep every
+                    # app's own maps once, right after its first screenshot, so it can be read offline.
+                    for pid in observation.get('observed_pids') or []:
+                        rc, maps = board.shell(f'cat /proc/{int(pid)}/maps', required=False)
+                        if rc == 0 and maps:
+                            (out/f'maps-{tag}-{int(pid)}.txt').write_text(maps)
             else:
                 observe()
                 (out/'windows.txt').write_text((out/('windows-'+tag+'.txt')).read_text())
