@@ -17,6 +17,9 @@ rollback (umount + verify RUNTIME/BOOT fingerprints back to the U-baseline) -> u
   --dry-run     validate args + print the full plan; touch NO board.
   --no-run      deploy + verify, skip the bms_batch sweep (e.g. a single-key smoke).
   --no-rollback leave the overlay in place (caller rolls back later).
+  --rollback-only  only roll back an overlay left by --no-rollback (same --bind set and --out, whose
+                deploy-receipt.json holds the baseline shas): umount + restart + verify fingerprints. Used as
+                board_run's before_unlock (deploy = after_lock: --no-run --no-rollback, no --note-cmd).
 
 Binds: --bind LOCAL:DEST (repeatable) for individual files (jars); --images-dir DIR expands every
 *.art/*.oat/*.vdex in DIR over <arm64-dest>/<basename>. Both feed one bind set.
@@ -345,6 +348,7 @@ def main(argv=None):
     ap.add_argument('--self-test', action='store_true')
     ap.add_argument('--no-run', action='store_true')
     ap.add_argument('--no-rollback', action='store_true')
+    ap.add_argument('--rollback-only', action='store_true')
     a = ap.parse_args(argv)
 
     if a.self_test:
@@ -370,6 +374,11 @@ def main(argv=None):
         print('--serial required for a real run', file=sys.stderr)
         return 2
     Path(a.out).mkdir(parents=True, exist_ok=True)
+    if a.rollback_only:
+        if not (Path(a.out) / 'deploy-receipt.json').exists():
+            print(f'--rollback-only needs the deploy-receipt.json of the overlay in --out {a.out}', file=sys.stderr)
+            return 2
+        return 0 if rollback(a, binds, a.out) else 1
 
     if a.note_cmd and a.board_md:
         r = board_note(a.note_cmd, 'lock', a.board_md, a.serial, a.lane,

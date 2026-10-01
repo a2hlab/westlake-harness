@@ -25,6 +25,8 @@ Relative paths are resolved against the repo; $WORKSPACES is expanded.
 Lanes start it with --detach (2026-10-01 13:43: oc-t4 ran it inside an agent bash tool call; the tool's 6-minute
 timeout killed board_run and bms_batch mid-shard, after fd-uhabits was uninstalled and before it was reinstalled, and
 the board stayed locked). SIGTERM / SIGHUP now unwind through the same finally (before_unlock, then UNLOCK).
+Optional after_lock is an argv list run right after LOCK, before the smoke gate: the overlay deploy of a short window
+(e.g. sweep_bind_deploy.py --no-run --no-rollback ...). Non-zero = no smoke, no shards; before_unlock still runs.
 Optional before_unlock is an argv list executed while the lock is still held, including on smoke failure.
 It must finish the authorized rollback and verification. Failure retains the lock for recovery.
 """
@@ -85,10 +87,11 @@ def main(argv=None):
         if k not in plan:
             sys.exit(f'plan missing {k}')
     plan['board'] = expand(plan['board'])
-    cleanup = plan.get('before_unlock')
-    if cleanup is not None and (not isinstance(cleanup, list) or not cleanup or
-                                any(not isinstance(x, str) or not x for x in cleanup)):
-        sys.exit('before_unlock must be a nonempty argv list')
+    cleanup, deploy = plan.get('before_unlock'), plan.get('after_lock')
+    for name, argv_ in (('before_unlock', cleanup), ('after_lock', deploy)):
+        if argv_ is not None and (not isinstance(argv_, list) or not argv_ or
+                                  any(not isinstance(x, str) or not x for x in argv_)):
+            sys.exit(f'{name} must be a nonempty argv list')
     if args.dispatch:
         print(dispatch_text(plan, args.plan)); return 0
     note = str(lab_paths.tools() / 'board_note.sh')
@@ -113,6 +116,14 @@ def main(argv=None):
         sys.exit(f'could not take the board lock for {plan["serial"]} (held: {" ".join(held) or "none"})')
     result = {'smoke': None, 'shards': []}
     try:
+        if deploy:
+            with open(out / 'after-lock.log', 'w') as fh:
+                result['after_lock'] = subprocess.run([os.path.expandvars(x) for x in deploy], cwd=REPO,
+                                                      stdout=fh, stderr=subprocess.STDOUT).returncode
+            if result['after_lock']:
+                board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} board_run after_lock(部署)失败 '
+                                   f'rc={result["after_lock"]}({out / "after-lock.log"});不跑冒烟和分片')
+                return 1
         smoke = subprocess.run([sys.executable, str(HERE / 'activation_smoke.py'), '--spec', expand(plan['smoke_spec']),
                                 '--serial', plan['serial'], '--lane', plan['lane'], '--out', str(out / 'smoke')])
         result['smoke'] = smoke.returncode
