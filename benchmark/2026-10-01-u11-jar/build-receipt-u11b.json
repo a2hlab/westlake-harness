@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "lane": "cc-t3",
+  "date": "2026-10-01",
+  "task": "U11 JAR v2 (one version) = U10 (37465d6d) + cluster 1 phone (TelephonyFetcher) + cluster 3 ssl-engine (WlSSLEngine). New features in new files; no frozen file edited.",
+  "base_u10_sha256": "37465d6d7f5e3d7be52929c2b43faf99315f86f0c23cc70e4aa858cb2ff98c59",
+  "output_u11b_sha256": "d75e90c023353e88bc5e66a29a3c9edeacd76c7c614f62e3749b311b4090fef8",
+  "supersedes": "oh-adapter-runtime-u11.jar 277d4641 (phone only); U11b is the single U11 JAR version so far",
+  "deterministic": "yes (built twice, identical)",
+  "staged_jar": "$WORKSPACES/westlake-generation-u11-staging/oh-adapter-runtime-u11b.jar",
+  "build": "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u11-jar/build/build_u11b.py (lab_paths-based)",
+  "class_delta_vs_u10": {
+    "added": [
+      "adapter/activity/TelephonyFetcher (+6 inner)",
+      "adapter/compat/WlSSLEngine (+1 inner)"
+    ],
+    "removed": [],
+    "note": "U10 186 -> U11b 195 (+9: 7 TelephonyFetcher + 2 WlSSLEngine). U10-U11b class set diff = empty."
+  },
+  "wiring_needles": [
+    "B7BindFixes.smali: J10eWebView.install() (carried)",
+    "SystemServiceFetcherStubs.smali: TelephonyFetcher.install() after WifiFetcher.install() (cluster 1)",
+    "WestlakeSSLContextSpi.smali: both engineCreateSSLEngine() overloads return WlSSLEngine.create() instead of null (cluster 3; method-body change, x2 verified)"
+  ],
+  "frozen_safety": "no frozen source edited. FZ-008 SSLSockets.java untouched; WestlakeSSLContextSpi.java is NOT frozen; TelephonyFetcher/WlSSLEngine are new. oh-adapter-runtime.jar is not a frozen artifact. check_frozen expected 0 violations.",
+  "clusters_in_this_jar": {
+    "cluster_1_phone": "x (confirmed), apex telephony fetcher",
+    "cluster_3_ssl_engine": "fd-client: createSSLEngine non-null -> getEnabledProtocols non-null -> Dagger graph builds -> accountManager non-null (both walls from one root fix)"
+  },
+  "clusters_deferred": "4 keystore (GCM round-trip to verify), 7 appcompat (termux manifest theme to resolve), 2 null-service (R8-mapping needed; NOT a gap service), 5 content (install app providers), 6 pkg-self (getInstallSourceInfo + double-load). See impl-round1.md."
+}

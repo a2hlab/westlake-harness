@@ -81,3 +81,21 @@ python3 benchmark/2026-10-01-u11-jar/build/build_u11.py      # prints sha256 + D
 
 Next: the U11 window (jar `277d4641` + cx-bms U11 native) — `runtime_fp` self-computed at finalize; phone/wifi
 on the beneficiary shards, x + toutiao read at t20.
+
+## Cluster 3 added — ssl-engine (U11b)
+
+U11b = U10 + cluster 1 (phone) + **cluster 3 (ssl-engine)**, one jar version.
+
+- **New file:** `src/WlSSLEngine.java` (package `adapter.compat`) — a non-null stub `SSLEngine`: protocol /
+  cipher / session / mode getters return sane non-null values; `wrap`/`unwrap` throw `SSLException` (metadata
+  only, no real TLS). `WlSSLEngine.create()` is the factory.
+- **Wiring (smali needle, no frozen file):** both `WestlakeSSLContextSpi.engineCreateSSLEngine()` overloads
+  return `WlSSLEngine.create()` instead of `null` (verified x2). `WestlakeSSLContextSpi` is not frozen; the
+  change is a method-body swap, so the class set only grows by `WlSSLEngine` (+ its inner).
+- **New JAR SHA:** U11b `d75e90c023353e88bc5e66a29a3c9edeacd76c7c614f62e3749b311b4090fef8` (supersedes the
+  phone-only U11 `277d4641`); 195 classes (U10 186 + 7 TelephonyFetcher + 2 WlSSLEngine); deterministic.
+- **Expected first-wall move — `fd-client`:** `SSLContext.createSSLEngine()` → non-null → `getEnabledProtocols()`
+  non-null → MainApp TLS setup completes → the Dagger object graph builds → `SessionMixin.accountManager` is no
+  longer null. Both U9 walls (SSLEngine null **and** accountManager null, which was its consequence) clear from
+  this one root fix — so fd-client is a **light candidate**, not merely a wall-move. Lazy-TLS apps (OkHttp) never
+  call `createSSLEngine`, so null→non-null is strictly additive (no regression).
