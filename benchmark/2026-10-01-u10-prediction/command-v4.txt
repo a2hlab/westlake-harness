@@ -1,0 +1,28 @@
+# U10 prediction v4 (reproducible; run from repo root once outer-signoff.json is on the tree).
+# Baseline = U9 sign-off (master 8b0c76e402; wall regen c671f4fc89), 115/166 lit.
+# v4 change from v3 (cx-bms confirmation, outer patrol ACK(90)): libjnigraphics deferred to U11 -> U10 policy
+#   adds libstdc++ ONLY. toutiao -> dead: its libstdc++ wall clears (policy 621caec4) but the next wall is a
+#   libjnigraphics feature lib (now U11), so first wall MOVES but toutiao is not lit. lit? = 4.
+# U10 native pinned bbe46462b: policy 621caec4 (+= libstdc++ only), compat 015aa3a6 (GNU strerror_r),
+#   appspawn-x host 62debf19 (U10ShareResidentCompat: android_set_abort_message abort-owner visibility).
+
+python3 scripts/lab/predict_vs_actual.py predict \
+  --baseline benchmark/2026-10-01-u9-sweep/outer-signoff.json \
+  --clusters benchmark/2026-10-01-u8-death-clusters/clusters.json \
+  --include libstdcxx,abort-visibility,strerror_r,j10f-websettings-defaults,predicate,j10e-split \
+  --observed "toutiao=dead:libstdc++ wall clears (U10 policy 621caec4) but libjnigraphics moved to U11 -> next wall is a libjnigraphics feature lib (native-closure-prediction.md); first wall moved, NOT lit" \
+  --observed "fd-meet=lit?:android_set_abort_message abort-owner visibility via U10ShareResidentCompat (appspawn-x host 62debf19; u9-first-wall.md)" \
+  --observed "fd-fennec_fdroid=lit?:GNU strerror_r exposed via compat 015aa3a6 (U10 native)" \
+  --observed "firefox=lit?:GNU strerror_r exposed via compat 015aa3a6 (U10 native)" \
+  --observed "fd-tutanota=alive-white-window:J10f WebSettings real defaults pass the getUserAgentString wall (U10 jar 37465d6d), but the UI is the web client assets/tutanota/index.html in a WebView and there is no renderer -> white at best (outer correction 20:50, v2)" \
+  --observed "cv2-com-nbossard-packlist=lit?:com.android.internal.util.Predicate added to U10 jar 37465d6d (u10-classlist-diff.md)" \
+  --out benchmark/2026-10-01-u10-prediction/predictions-v4.csv
+
+# After the U10 window signs off, grade v4 against the new sweep:
+#   python3 scripts/lab/predict_vs_actual.py compare \
+#     --predictions benchmark/2026-10-01-u10-prediction/predictions-v4.csv \
+#     --actual benchmark/<u10-sweep>/outer-signoff.json \
+#     --json benchmark/2026-10-01-u10-prediction/compare-v4.json
+# toutiao is now a 'dead' baseline key: if U10 lights it that is unexpected-lit; the libstdc++ first-wall-move
+# (loader error for libstdc++ gone, next fatal = a libjnigraphics SONAME) is verified from its window hilog,
+# not from the sweep verdict.
