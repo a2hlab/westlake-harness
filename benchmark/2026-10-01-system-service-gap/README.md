@@ -16,7 +16,9 @@ own (see finding 3).
   build-tools 34) and look up to 6 instructions back from each `getSystemService(String|Class)` invoke on any
   receiver. A `const-string` counts only when it equals an AOSP 14 `Context.*_SERVICE` value (206 values); a
   `const-class` counts when AOSP 14 `SystemServiceRegistry` registers that class under a Context constant
-  (135 classes). Verdicts from `benchmark/2026-10-01-u9-sweep/outer-signoff.json`. Output
+  (135 classes), plus the class -> name pairs of the deployed boot `framework.jar`'s own register*Service calls
+  (apex initializers: `TelephonyManager` -> phone, `SubscriptionManager`, `CarrierConfigManager`, ...; 167 classes in
+  all, added 22:3x after `getSystemService(TelephonyManager.class)` was found uncounted). Verdicts from `benchmark/2026-10-01-u9-sweep/outer-signoff.json`. Output
   `requested-services.csv` (key, service, call_sites, form, u9_verdict, source) and `service-summary.csv`.
   166/166 keys scanned; 2 keys (cv2-anupam-acrylic, cv2-com-chessclock-android) have no call site at all.
   Spot checks against a hand run: toutiao phone 15 / wifi 5 / input_method 42; antennapod connectivity 10.
@@ -37,7 +39,7 @@ own (see finding 3).
 2. **`phone` comes back null silently.** `phone` is registered in AOSP by `TelephonyFrameworkInitializer`, not
    in `SystemServiceRegistry.java`; route-A has no fetcher for it and the request returns null with no log line.
    U9 evidence: `x` dies at `NullPointerException: null cannot be cast to non-null type
-   android.telephony.TelephonyManager` (`com.twitter.util.telephony.a.run`). 35 keys ask for it (12 lit, the
+   android.telephony.TelephonyManager` (`com.twitter.util.telephony.a.run`). 36 keys ask for it (12 lit, the
    lowest lit ratio in the table against the corpus 115/166); Toutiao asks at 15 call sites, behind its native
    walls. `bluetooth`, `wifip2p`, `servicediscovery`, `telephony_subscription_service` are the other apex-module
    names nothing answers (no U9 crash on them yet). *Corrected 22:05:* `wifi` and `media_session` are answered —

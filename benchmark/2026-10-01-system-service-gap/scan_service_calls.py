@@ -59,6 +59,35 @@ def class_map(consts):
     return out
 
 
+def deployed_class_map(names):
+    """Class -> service name from the deployed boot framework.jar's own register*Service calls.
+
+    SystemServiceRegistry.java alone misses the apex FrameworkInitializer registrations (TelephonyManager -> phone,
+    SubscriptionManager, CarrierConfigManager, ...), so getSystemService(TelephonyManager.class) went uncounted
+    (2026-10-01 22:3x, found while sorting the U11 JAR clusters). The route-A framework.jar is byte-identical across
+    generations (3e106350), so any generation's copy is the deployed one."""
+    jars = sorted(lab_paths.workspaces().glob('westlake-generation-*/payload/android/framework/framework.jar'))
+    if not jars:
+        return {}
+    out = {}
+    with tempfile.TemporaryDirectory() as tmp, zipfile.ZipFile(jars[0]) as z:
+        for n in [n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex', n)]:
+            path = Path(tmp) / n
+            path.write_bytes(z.read(n))
+            lines = subprocess.run([str(DEXDUMP), '-d', str(path)], capture_output=True, text=True,
+                                   errors='replace', timeout=300).stdout.splitlines()
+            for i, line in enumerate(lines):
+                if 'invoke-static' not in line or 'Landroid/app/SystemServiceRegistry;.register' not in line:
+                    continue
+                name = cls = None
+                for prev in reversed(lines[max(0, i - 10):i]):
+                    name = name or (m.group(1) if (m := CONST_STRING.search(prev)) else None)
+                    cls = cls or (m.group(1) if (m := CONST_CLASS.search(prev)) else None)
+                if name in names and cls:
+                    out[cls] = name
+    return out
+
+
 def apks(key):
     for source, root in ROOTS.items():
         d = root / key
@@ -109,6 +138,7 @@ def main():
     args = ap.parse_args()
     consts, names = context_services()
     classes = class_map(consts)
+    classes = {**deployed_class_map(names), **classes}
     signoff = json.loads(SIGNOFF.read_text())['keys']
     keys = args.keys.split(',') if args.keys else sorted(signoff)
     rows, errors = [], {}
