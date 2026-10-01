@@ -37,3 +37,10 @@ Changes from the v2 draft, each with its source:
 The lane draft credited all four WebView keys to J10e and the J10g keys to CookieManager; the outer loop rewrote the
 reasons from the window sign-offs (predictions unchanged key for key). `predict_vs_actual.py` now refuses an
 `--observed` key that is not in the baseline (exit 2) instead of dropping it.
+
+## v4 (2026-10-01 18:05, after the J10g window)
+
+Only change from v3: vaults-randomlydie, yam, yatoo lit? -> alive-white-window, observed in the J10g window (5ea,
+RUNTIME 11c6d27b5d07): the J10g wall is passed (no fatal, the concrete ServiceWorkerController loaded), but all three
+are WebView shell apps (Capacitor BridgeActivity / Cordova) whose whole UI is HTML in the WebView, and there is no
+WebView renderer. `command-v4.txt` -> `predictions-v4.csv`. This is the prediction the U9 sweep is compared against.
