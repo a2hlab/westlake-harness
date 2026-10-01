@@ -32,9 +32,19 @@ def main(argv):
         print(__doc__.strip(), file=sys.stderr); return 2
     exp = json.loads(expected.read_text())
     deployed = {}
-    for group in ('runtime_files', 'boot_files'):
-        for path, sha in exp.get(group, {}).items():
-            deployed.setdefault(sha, []).append(path)
+    # any {"/board/path": "<64 hex>"} pair anywhere in the JSON counts, so the executor's full 312-identity
+    # receipt (child/route-a files included) works as --expected as well as expected-run.json (09:28 cx-t0)
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if isinstance(k, str) and k.startswith('/') and isinstance(v, str) and len(v) == 64:
+                    deployed.setdefault(v, []).append(k)
+                else:
+                    walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    walk(exp)
     by_name = {}
     for paths in deployed.values():
         for p in paths:
