@@ -1051,6 +1051,7 @@ def main(argv=None):
     ap.add_argument('--hilog', nargs='?', const=True, type=float, metavar='SECONDS', help='reset before launch, dump after SECONDS (default: --wait) and pull new faultlogs')
     ap.add_argument('--shots', type=shot_offsets, metavar='5,20', help='click-relative screenshot offsets; implies strict per-shot focus check')
     ap.add_argument('--focus-check', action='store_true', help='require target focus for every screenshot')
+    ap.add_argument('--no-hilog', action='store_true', help='allow an executed sweep of 10+ keys without --hilog')
     args = ap.parse_args(argv)
     if not math.isfinite(args.wait) or not 3 <= args.wait <= 300:
         ap.error('wait must be finite and in 3..300')
@@ -1069,6 +1070,10 @@ def main(argv=None):
         return 0
     if not args.serial or not args.lane or not args.out or not KEY.fullmatch(args.run_id) or not 3 <= args.wait <= 300:
         ap.error('execution requires serial/lane/fresh out, safe run-id and wait 3..300')
+    # EVO-0056 (2026-10-01): the 100-key cv2 sweep ran without --hilog, so none of its 27 deaths could be clustered
+    # by first fatal and the 33 non-lit keys had to be re-run. A sweep must collect hilog unless waived explicitly.
+    if len(entries) >= 10 and hilog_seconds is None and not args.no_hilog:
+        ap.error(f'{len(entries)} keys without --hilog cannot be clustered by first fatal; add --hilog or pass --no-hilog')
     out=args.out.expanduser().resolve()/args.run_id/args.serial
     out.mkdir(parents=True,exist_ok=False)
     save(out/'plan.json',{'apps':entries,'run_id':args.run_id,'serial':args.serial,'options':options,

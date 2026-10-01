@@ -65,6 +65,13 @@ if re.search(r"抽检|硬门|门槛|\bgate\b", body):
     if hit:
         print("WARN: gate entry names flaky key(s) " + ", ".join(hit) + " (knowledge/gates/flaky-keys.json) -- use repeats and a rate, not a single-run gate (EVO-0051)", file=sys.stderr)
 ' "$FLAKY"
+# EVO-0057 (2026-10-01 10:54): a landing dispatch said "每 key 只留 record.json" and the lane deleted its run dirs,
+# 198 never-committed screenshots included (recovered from the boards). Warn when an entry that is not an R2 record
+# pairs keep-only/delete wording with run evidence; landing sets are copied, raw run dirs are never pruned.
+if ! printf '%s' "$FIRST" | grep -q 'R2 记档' && printf '%s' "$BODY" | grep -E '只留|只保留|删掉|删除|清理|prune|rm -rf' >/dev/null \
+   && printf '%s' "$BODY" | grep -E '运行目录|证据|截图|hilog|run dir|/runs?/' >/dev/null; then
+  echo "WARN: keep-only/delete wording next to run evidence -- say \"copy into a landing dir, never delete raw run dirs\" (EVO-0057)" >&2
+fi
 printf '%s\n' "$BODY" | "$APPEND" "$BOARD"
 if tail -n 400 "$BOARD" | grep -F -- "$FIRST" >/dev/null; then  # no -q under pipefail (RUNBOOK)
   echo "appended: ${FIRST:0:100}"
