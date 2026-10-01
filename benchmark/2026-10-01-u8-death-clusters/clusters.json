@@ -229,6 +229,83 @@
         "cause": "NullPointerException: Attempt to invoke virtual method …",
         "fix_note": "app-specific; not a single framework fix"
       }
-    ]
+    ],
+    "fix_pointers": {
+      "UnsatisfiedLinkError@Runtime.loadLibrary0": "see fixable_groups.unsatisfiedlinkerror_runtime_loadlibrary0",
+      "NPE@ViewGroup.measureChildWithMargins": "see fixable_groups.viewgroup_npe.measureChildWithMargins",
+      "NPE@ViewGroup$LayoutParams.<init>": "see fixable_groups.viewgroup_npe.LayoutParams_init",
+      "NPE@CapacitorCordovaCookieManager": "not covered here; separate WebView provider issue",
+      "NPE@app-MainActivity-onCreate": "app-specific, no framework fix"
+    }
+  },
+  "fixable_groups": {
+    "unsatisfiedlinkerror_runtime_loadlibrary0": {
+      "count": 4,
+      "keys": [
+        "cv2-com-chessclock-android",
+        "fd-im-vector-app",
+        "burgerking",
+        "mindustry"
+      ],
+      "per_key": [
+        {
+          "key": "cv2-com-chessclock-android",
+          "missing_lib": "libmediandk.so",
+          "loader": "System.loadLibrary (app native lib)",
+          "evidence": "hilog L39476: [class_linker.cc:560] Landroid/media/MediaPlayer; failed initialization: java.lang.UnsatisfiedLinkError: system library is absent from the adapter manifest; main_threw L39504 same message",
+          "board_check": "no libmediandk.so in /system/android/lib64 or /system/lib64 (checked 5ea)",
+          "fix": "add libmediandk.so to the adapter manifest / route-a (same as LIBMEDIANDK-PLAN.md; N11 native version can include it)"
+        },
+        {
+          "key": "fd-im-vector-app",
+          "missing_lib": "libz.so",
+          "loader": "DT_NEEDED of app lib (librealm-jni.so)",
+          "evidence": "hilog L28198: MUSL-LDSO Error loading shared library libz.so: (needed by /data/app/el1/bundle/public/im.vector.app/android/lib/arm64-v8a/librealm-jni.so); main_threw L37823 same",
+          "board_check": "no libz.so in /system/android/lib64 or /system/lib64 (only libzone_util.z.so, libziparchive.so — different libs)",
+          "fix": "SONAME alias: libz.so → libshared_libz.z.so (OH zlib, already in /system/lib64/chipset-sdk-sp; add a namespace-visible alias or SONAME entry, same as LIBZ-PLAN.md)"
+        },
+        {
+          "key": "burgerking",
+          "missing_lib": "libz.so",
+          "loader": "DT_NEEDED of app lib (libmmkv.so)",
+          "evidence": "hilog L69519: MUSL-LDSO Error loading shared library libz.so: (needed by /data/app/el1/bundle/public/com.emn8.mobilem8.nativeapp.bk/android/lib/arm64-v8a/libmmkv.so); NitroMmkvOnLoad L69541 UnsatisfiedLinkError",
+          "board_check": "no libz.so in /system/android/lib64 or /system/lib64 (same as above)",
+          "fix": "same SONAME alias as fd-im-vector-app (libz.so → libshared_libz.z.so)"
+        },
+        {
+          "key": "mindustry",
+          "missing_lib": "slCreateEngine symbol (in libOpenSLES.so or libaudioengine.so)",
+          "loader": "DT_NEEDED / symbol relocation of app lib (libarc.so)",
+          "evidence": "hilog L34234: UnsatisfiedLinkError: F02-A12-UNSUPPORTED-SYMBOL: dlopen_ns failed for /data/app/el1/bundle/public/io.anuke.mindustry/android/lib/arm64-v8a/libarc.so: Error relocating …: slCreateEngine: symbol not found",
+          "board_check": "libOpenSLES.so not checked; slCreateEngine is the OpenSL ES engine creation symbol",
+          "fix": "provide libOpenSLES.so (or a shim exporting slCreateEngine) in the adapter manifest / route-a; if libOpenSLES.so already exists, add it to the app namespace search path"
+        }
+      ]
+    },
+    "viewgroup_npe": {
+      "measureChildWithMargins": {
+        "count": 2,
+        "keys": [
+          "cv2-com-knirirr-beecount",
+          "cv2-de-koelle-christian-trickytripper"
+        ],
+        "common_frame": "at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7001)",
+        "cause": "NullPointerException: Attempt to read from field int android.view.ViewGroup$MarginLayoutParams.leftMargin on a null object reference in method void android.view.ViewGroup.measureChildWithMargins(android.view.View, int, int, int, int)",
+        "stack": "measureChildWithMargins → FrameLayout.onMeasure → View.measure → … (repeated measureChildWithMargins → FrameLayout.onMeasure cycles)",
+        "root_cause": "ViewGroup.measureChildWithMargins receives a child whose MarginLayoutParams is null (getLayoutParams() returned null). This is the adapter's View.getLayoutParams() / ViewGroup.generateLayoutParams() returning null for a view added without explicit layout params (e.g. a child added programmatically with addView(view) without params). Framework fix: ViewGroup.measureChildWithMargins should not NPE when MarginLayoutParams is null; either skip the margin or return zero margins."
+      },
+      "LayoutParams_init": {
+        "count": 2,
+        "keys": [
+          "cv2-com-caniwebview-android",
+          "cv2-eu-dfdx-jslab"
+        ],
+        "common_frame": "at android.view.ViewGroup$LayoutParams.<init>(ViewGroup.java:8238)",
+        "cause": "NullPointerException: Attempt to read from field int android.view.ViewGroup$LayoutParams.width on a null object reference in method void android.view.ViewGroup$LayoutParams.<init>(android.view.ViewGroup$LayoutParams)",
+        "stack": "LayoutParams.<init> → MarginLayoutParams.<init> → ConstraintLayout$LayoutParams.<init> → ConstraintLayout.generateLayoutParams → ConstraintLayout.getViewWidget → ConstraintLayout.onViewAdded → ViewGroup.dispatchViewAdded → ViewGroup.addViewInner → … (inflation of layout/fragment_webview.xml line #56)",
+        "root_cause": "ViewGroup$LayoutParams.<init>(ViewGroup$LayoutParams) receives a null LayoutParams argument (the copy constructor is called with null when generateLayoutParams returns null for a view inflated from XML without explicit layout_width/layout_height, or when the adapter's LayoutInflater produces a view whose LayoutParams are null). Framework fix: ViewGroup$LayoutParams.<init> should not NPE on null source; default to MATCH_PARENT/WRAP_CONTENT."
+      },
+      "same_root": "Both groups share the same root: the adapter's layout-inflation / layout-params path produces null LayoutParams (or null MarginLayoutParams) for views that should have them. The NPE is a symptom of a null LayoutParams being passed into ViewGroup$LayoutParams.<init> or measureChildWithMargins. A single framework fix in the layout-params construction path (default to MATCH_PARENT/WRAP_CONTENT when LayoutParams is null) would address both groups."
+    }
   }
 }

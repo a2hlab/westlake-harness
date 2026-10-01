@@ -52,3 +52,27 @@ Groups with ≥2 keys sharing a single framework-fixable root (exception class +
 | **NPE@ViewGroup.measureChildWithMargins** | 2 (cv2-com-knirirr-beecount, cv2-de-koelle-christian-trickytripper) | `at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7001)` | Single fix: ViewGroup$MarginLayoutParams construction path in the adapter |
 | **NPE@ViewGroup$LayoutParams.<init>** | 2 (cv2-com-caniwebview-android, cv2-eu-dfdx-jslab) | `at android.view.ViewGroup$LayoutParams.<init>(ViewGroup.java:8238)` | Single fix: same family as above — ViewGroup$LayoutParams construction NPE in the adapter |
 | **NPE@app-MainActivity-onCreate** | 2 (fd-tutanota, toutiao) | `at de.tutao.tutanota.MainActivity.onCreate(SourceFile:191)` / `at com.ss.android.article.news.activity.MainActivity.<init>(SourceFile:327715)` | App-specific; not a single framework fix |
+
+## Fixable groups (派修-ready)
+
+### ① UnsatisfiedLinkError@Runtime.loadLibrary0 (4 keys)
+
+Per-key missing library, loader, board presence, minimal fix:
+
+| Key | Missing lib | Loader | Board presence | Minimal fix |
+|---|---|---|---|---|
+| cv2-com-chessclock-android | `libmediandk.so` | System.loadLibrary (app native lib) | not in /system/android/lib64 or /system/lib64 (5ea checked) | add libmediandk.so to the adapter manifest / route-a (LIBMEDIANDK-PLAN.md; N11 native version) |
+| fd-im-vector-app | `libz.so` | DT_NEEDED of app lib (librealm-jni.so) | not in /system/android/lib64 or /system/lib64 (only libzone_util.z.so, libziparchive.so — different libs) | SONAME alias: libz.so → libshared_libz.z.so (OH zlib in /system/lib64/chipset-sdk-sp; LIBZ-PLAN.md) |
+| burgerking | `libz.so` | DT_NEEDED of app lib (libmmkv.so) | same as above | same SONAME alias |
+| mindustry | `slCreateEngine` symbol (in libOpenSLES.so or libaudioengine.so) | DT_NEEDED / symbol relocation of app lib (libarc.so) | libOpenSLES.so not checked; slCreateEngine is the OpenSL ES engine creation symbol | provide libOpenSLES.so (or a shim exporting slCreateEngine) in the adapter manifest / route-a; if it exists, add it to the app namespace search path |
+
+### ② ViewGroup NPE ×4 — same root
+
+Both sub-groups share the same root: the adapter's layout-inflation / layout-params path produces **null LayoutParams** (or null MarginLayoutParams) for views that should have them. The NPE is a symptom of null LayoutParams being passed into `ViewGroup$LayoutParams.<init>` or `measureChildWithMargins`.
+
+| Sub-group | Keys | Common frame | Cause chain | Framework fix point |
+|---|---|---|---|---|
+| measureChildWithMargins | cv2-com-knirirr-beecount, cv2-de-koelle-christian-trickytripper | `at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7001)` | NPE: read `MarginLayoutParams.leftMargin` on null in `measureChildWithMargins` → `FrameLayout.onMeasure` → `View.measure` → … (repeated measure cycles) | `ViewGroup.measureChildWithMargins` should not NPE when `MarginLayoutParams` is null; skip the margin or return zero margins |
+| LayoutParams.<init> | cv2-com-caniwebview-android, cv2-eu-dfdx-jslab | `at android.view.ViewGroup$LayoutParams.<init>(ViewGroup.java:8238)` | NPE: read `LayoutParams.width` on null in `LayoutParams.<init>(LayoutParams)` → `MarginLayoutParams.<init>` → `ConstraintLayout$LayoutParams.<init>` → `ConstraintLayout.generateLayoutParams` → `ConstraintLayout.getViewWidget` → `ConstraintLayout.onViewAdded` → `ViewGroup.dispatchViewAdded` → `ViewGroup.addViewInner` → … (inflation of `layout/fragment_webview.xml` line #56) | `ViewGroup$LayoutParams.<init>` should not NPE on null source; default to MATCH_PARENT/WRAP_CONTENT |
+
+**Single framework fix** (one line in the layout-params construction path): when `ViewGroup.getLayoutParams()` or `ViewGroup.generateLayoutParams()` returns null for a view added without explicit params, default to `MATCH_PARENT` (width) / `WRAP_CONTENT` (height) instead of passing null into the LayoutParams copy constructor or measure path. This addresses both sub-groups with one change.
