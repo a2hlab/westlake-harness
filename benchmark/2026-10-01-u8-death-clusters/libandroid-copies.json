@@ -1,0 +1,103 @@
+{
+  "schema": "u8-libandroid-copies-v1",
+  "dispatch": "ACK(90) 2026-10-01T16:51:20: fid==null cluster (glmark2/fluffychat/immich/saber) libandroid copies inventory",
+  "copies": [
+    {
+      "path": "native/payload/android/lib64/libandroid.so",
+      "sha256": "[hex-redacted]",
+      "domain_dir": "lib64 (default/native domain)",
+      "domain": "default",
+      "exports_AAssetManager_fromJava": true,
+      "has_gAssetManagerOffsets": true,
+      "filled_by_n10b": true,
+      "note": "asset-offsets-init.cpp targets this one (runtime/lib64 domain)"
+    },
+    {
+      "path": "native/payload/android/lib64/westlake_flutter/libandroid.so",
+      "sha256": "[hex-redacted]",
+      "domain_dir": "westlake_flutter",
+      "domain": "westlake_flutter",
+      "exports_AAssetManager_fromJava": false,
+      "has_gAssetManagerOffsets": false,
+      "filled_by_n10b": false,
+      "note": "flutter domain copy; no NDK export, no offsets cache; not filled by N10b"
+    },
+    {
+      "path": "native/payload/android/lib64/westlake_native/libandroid.so",
+      "sha256": "[hex-redacted]",
+      "domain_dir": "westlake_native",
+      "domain": "westlake_native",
+      "exports_AAssetManager_fromJava": false,
+      "has_gAssetManagerOffsets": false,
+      "filled_by_n10b": false,
+      "note": "native domain copy; no NDK export, no offsets cache; not filled by N10b"
+    }
+  ],
+  "namespaces": {
+    "westlake_flutter": {
+      "library_dirs": [
+        "/system/android/lib64/westlake_flutter"
+      ],
+      "search_paths": [
+        "/system/android/lib64/westlake_flutter"
+      ],
+      "permitted_paths": [
+        "/system/android/lib64/westlake_flutter"
+      ],
+      "shared_from": null,
+      "source_evidence": "flutter_domain.inc (sha256 43c3247d…)",
+      "packages": [
+        "chat.fluffy.fluffychat",
+        "app.alextran.immich",
+        "com.tombursch.kitchenowl",
+        "deckers.thibault.aves.libre",
+        "com.adilhanney.saber",
+        "org.localsend.localsend_app"
+      ]
+    },
+    "westlake_native": {
+      "library_dirs": [
+        "/system/android/lib64/westlake_native"
+      ],
+      "search_paths": [
+        "/system/android/lib64/westlake_native"
+      ],
+      "permitted_paths": [
+        "/system/android/lib64/westlake_native"
+      ],
+      "shared_from": null
+    },
+    "default": {
+      "library_dirs": [
+        "/system/android/lib64"
+      ],
+      "search_paths": [
+        "/system/android/lib64"
+      ],
+      "permitted_paths": [
+        "/system/android/lib64"
+      ],
+      "shared_from": null
+    }
+  },
+  "n10b_asset_offsets_target": {
+    "source": "benchmark/2026-10-01-n10b-child/src/asset-offsets-init.cpp (master)",
+    "target": "native/payload/android/lib64/libandroid.so (default/native domain)",
+    "fills": [
+      "native/payload/android/lib64/libandroid.so"
+    ],
+    "does_not_fill": [
+      "native/payload/android/lib64/westlake_flutter/libandroid.so",
+      "native/payload/android/lib64/westlake_native/libandroid.so"
+    ]
+  },
+  "impact": {
+    "fid_null_cluster": [
+      "glmark2",
+      "fluffychat",
+      "immich",
+      "saber"
+    ],
+    "note": "fid==null keys (glmark2/fluffychat/immich/saber) are in the westlake_flutter domain; their libandroid.so copy has no gAssetManagerOffsets and is not filled by N10b. The fid==null wall (N10b-NDK-ASSET-OFFSETS) is only fixed for the default/native domain; flutter domain apps still hit fid==null."
+  }
+}
