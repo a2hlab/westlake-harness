@@ -9,7 +9,7 @@ runs listed in `outer-signoff.json`); every shard was read by the outer loop fro
 
 | | U8 (signed) | U9 |
 |---|---|---|
-| lit | 99 | **114** |
+| lit | 99 | **115** |
 
 Every key U8 lit is lit again in U9 except two, neither a runtime regression: **fd-noice** (known flaky, ~50 %, white this
 run) and **fd-seal** (install failure on 5ea/5cd: their libinstalls 2c9a5294 lacks the #79 native-data exception that
@@ -22,3 +22,7 @@ shoppinglist, memory (J10d); page-bizzle.
 `predict_vs_actual.py compare`: hit 155, flaky 6, missed-wall 4, regression 1 (fd-seal, above). Missed walls:
 fd-kitchenowl and localsend (Flutter; past the N10b libandroid wall, now SIGABRT), vlc (predicted to pass with J10d,
 still dies without a logged fatal), jiten-webview (predicted lit?, white window). These four feed the next scan.
+
+Update 20:31: fd-seal ran once on 61b (libinstalls 51e1b525) and lit (its own usage-guide dialog) -- U9 **115/166**;
+compare vs v5 now hit 156, flaky 6, missed-wall 4, **regression 0** (exit 0). The only U8-lit key not lit in U9 is
+fd-noice (flaky).
