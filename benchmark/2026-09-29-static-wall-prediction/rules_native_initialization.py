@@ -104,11 +104,18 @@ class Source:
 def namespace_walls(source):
     findings, unknown, checked = [], [], []
     for function, (start, end) in source.functions.items():
-        created, loads = {}, []
+        created, inherited, loads = {}, {}, []
         for call in source.calls(start, end):
             name, args, index = call["name"], call["args"], call["index"]
             if name in {"dlns_create", "dlns_create2"} and args:
                 created[args[0]] = index
+            # 2026-10-01 21:49: U10ShareResidentCompat got a namespace from its caller (so it was never "created" here),
+            # inherited libbionic_compat.so into it, then NOLOAD-checked it there and failed hard. OH musl inherit is
+            # lazy: the library is not mapped in the receiving namespace yet, so that NOLOAD always misses -- the same
+            # wall N3b hit in U4 (11 apps, DIGEST 422). A namespace that just received an inherit edge counts as fresh.
+            if name == "dlns_inherit" and args and args[0] not in created:
+                created[args[0]] = index
+                inherited[args[0]] = index
             if name not in {"dlopen", "dlopen_ns"} or len(args) < 2:
                 continue
             namespace, target, flags = (args[0], args[1], args[2]) if name == "dlopen_ns" and len(args) == 3 else ("default", args[0], args[1])
@@ -140,7 +147,10 @@ def namespace_walls(source):
             else:
                 findings.append(dict(**witness, family=FAMILIES[0], verdict="static-risk",
                                      namespace_creation=source.witness(created[namespace]),
-                                     reason="NOLOAD cannot establish a first local mapping; no dominating guarded same-namespace load found"))
+                                     reason=("NOLOAD right after dlns_inherit into this namespace: OH musl inherit is "
+                                             "lazy, the library is not mapped here yet, so NOLOAD always misses "
+                                             "(U4 N3b, DIGEST 422)") if namespace in inherited else
+                                            "NOLOAD cannot establish a first local mapping; no dominating guarded same-namespace load found"))
     return dict(findings=findings, unknown=unknown, checked=checked)
 
 

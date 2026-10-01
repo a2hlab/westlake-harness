@@ -33,6 +33,21 @@ int create() {
     dlopen_ns(app, "libexample.so", RTLD_NOW | RTLD_NOLOAD);
 ''' + after + "\n}"))
 
+    def test_noload_after_inherit_into_caller_namespace_is_a_wall(self):
+        # U10ShareResidentCompat (2026-10-01): the namespace is a parameter, never created in this function
+        result = namespace_walls(Source("compat.h", '''
+static int share(Dl_namespace* application) {
+    Dl_namespace owner;
+    dlns_get("default", &owner);
+    void* direct = dlopen_ns(&owner, "libbionic_compat.so", RTLD_NOW | RTLD_NOLOAD);
+    int result = dlns_inherit(application, &owner, "libbionic_compat.so");
+    void* view = dlopen_ns(application, "libbionic_compat.so", RTLD_NOW | RTLD_NOLOAD);
+    return view == NULL;
+}'''))
+        self.assertEqual([f["namespace"] for f in result["findings"]], ["application"])
+        self.assertIn("inherit", result["findings"][0]["reason"])
+        self.assertEqual([u["namespace"] for u in result["unknown"]], ["&owner"])   # the owner lookup stays a review item
+
     def test_prior_mapping_requires_matching_scope_and_guard(self):
         load = 'void* handle = dlopen_ns(app, "libexample.so", RTLD_NOW); if (!handle) { return 1; }'
         result = self.detect(load)
