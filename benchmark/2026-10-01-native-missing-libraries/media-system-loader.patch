@@ -1,0 +1,33 @@
+--- a/bms/src/adapter/framework/native-loader-oh/src/system_loader.cpp
++++ b/bms/src/adapter/framework/native-loader-oh/src/system_loader.cpp
+@@ -7,6 +7,7 @@
+ #include <dlfcn.h>
+ #include <limits.h>
+ #include <stdlib.h>
++#include <stdio.h>
+ 
+ #include <atomic>
+ #include <string_view>
+@@ -173,7 +174,9 @@
+     return nullptr;
+   }
+ 
+-  void* handle = ops_->OpenExact(resolved.c_str(), RTLD_NOW | RTLD_LOCAL);
++  const bool media_owner = library->soname == "libmedia_jni.so";
++  const int flags = RTLD_NOW | RTLD_LOCAL | (media_owner ? RTLD_NOLOAD : 0);
++  void* handle = ops_->OpenExact(resolved.c_str(), flags);
+   std::string open_error;
+   if (handle == nullptr) {
+     const char* borrowed = ops_->LastError();
+@@ -186,6 +189,10 @@
+   {
+     std::lock_guard<std::mutex> lock(mutex_);
+     ++handles_[handle].open_refs;
++  }
++  if (media_owner) {
++    fprintf(stderr, "[U9-MEDIA-OWNER] request=libmedia_jni.so owner=%s handle=%p resident-only=1\n",
++            resolved.c_str(), handle);
+   }
+   return handle;
+ }
+

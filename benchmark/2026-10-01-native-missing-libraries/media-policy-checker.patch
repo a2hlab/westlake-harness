@@ -1,0 +1,14 @@
+--- a/bms/src/adapter/framework/native-loader-oh/tests/verify_bridge_policy.py
++++ b/bms/src/adapter/framework/native-loader-oh/tests/verify_bridge_policy.py
+@@ -95,7 +95,9 @@
+         fail(f"invalid system SONAME: {item['soname']}")
+     if not canonical_absolute_path(item["path"], trailing_slash=False):
+         fail(f"system library path is not canonical: {item['path']}")
+-    if item["path"] != f"/system/android/lib64/{item['soname']}":
++    media_owner_alias = (item["soname"], item["path"]) == (
++        "libmedia_jni.so", "/system/android/lib64/liboh_android_runtime.so")
++    if not media_owner_alias and item["path"] != f"/system/android/lib64/{item['soname']}":
+         fail(f"system library path is not exact: {item['path']}")
+ for soname in manifest["shared_sonames"]:
+     if "/" in soname or ".." in soname or not soname.endswith(".so"):
+

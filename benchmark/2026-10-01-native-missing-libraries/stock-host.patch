@@ -1,0 +1,49 @@
+--- a/bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
++++ b/bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
+@@ -23,6 +23,7 @@
+ #include "securec.h"
+ #include "westlake_elf_identity.h"
+ #include "westlake_stock_host_services.h"
++#include "missing-library-route.h"
+ 
+ #define WLASC_STOCK_PRELOAD "libappspawn_helper.z.so"
+ #define WLASC_PLUGIN_NAME "westlake_android_child"
+@@ -229,6 +230,18 @@
+         }
+     }
+ 
++    const char *missing_original_search = app_search_paths;
++    char missing_search[4 * PATH_MAX], missing_permitted[5 * PATH_MAX];
++    const char *missing_root = MissingLibraryRoot(app_search_paths, app_permitted_paths);
++    if (missing_root != NULL) {
++        int search_length = snprintf(missing_search, sizeof(missing_search), "%s:%s", missing_root, app_search_paths);
++        int permitted_length = snprintf(missing_permitted, sizeof(missing_permitted), "%s:%s", missing_root, app_permitted_paths);
++        if (search_length < 0 || permitted_length < 0 ||
++            search_length >= (int)sizeof(missing_search) || permitted_length >= (int)sizeof(missing_permitted))
++            return NamespaceResultFence(ENAMETOOLONG);
++        app_search_paths = missing_search;
++        app_permitted_paths = missing_permitted;
++    }
+     dlns_init(app_namespace, app_name);
+     result = dlns_create2(app_namespace, app_search_paths,
+                           LOCAL_NS_PREFERED);
+@@ -253,7 +266,7 @@
+                 strlen("/system/android/lib64/westlake_flutter:")) == 0 &&
+         (flutter_package_path(app_search_paths) || flutter_package_path(app_permitted_paths));
+     const bool native_private = wants_bridge &&
+-        strncmp(app_search_paths, "/system/android/lib64/westlake_native:",
++        strncmp(missing_original_search, "/system/android/lib64/westlake_native:",
+                 strlen("/system/android/lib64/westlake_native:")) == 0 &&
+         (native_cluster_path(app_search_paths) || native_cluster_path(app_permitted_paths));
+     if (flutter_private || native_private) {
+@@ -331,6 +344,9 @@
+         fprintf(stderr, "[N2-OWNER] %s ABI global ready; search=%s permitted=%s\n",
+                 app_name, app_search_paths, app_permitted_paths);
+     }
++    result = MissingLibraryAudioOwner(app_namespace, app_search_paths, app_permitted_paths);
++    if (result != 0) return NamespaceResultFence(result);
++    if (missing_root != NULL) APPSPAWN_LOGI("[U9-LIB-ROUTE] ns=%{public}s root=%{public}s", app_name, missing_root);
+     return NamespaceResultFence(0);
+ }
+ 
+
