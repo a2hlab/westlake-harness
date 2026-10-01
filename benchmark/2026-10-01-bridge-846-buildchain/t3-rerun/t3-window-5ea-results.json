@@ -1,0 +1,27 @@
+{
+  "window": "5ea 2026-10-01T14:27:28..14:33 (board_run --detach)",
+  "variable": "liboh_adapter_bridge.so 846 (84695d62) -> rebuilt strict 7cf8ebcc, via sweep_bind_deploy + appspawn-x restart",
+  "verdict": "FAIL — do not freeze 7cf8ebcc as a 846 replacement",
+  "after_lock": "DEPLOY OK (bridge bound, appspawn-x up)",
+  "smoke": {"boot_fp": "ok(4db882a81732)", "controls_alive_t20": {"helloworld": "no", "zigzag": "no"}, "probe_child_count": 0, "gate0_childview_sha": "not-evaluable (no live child)"},
+  "child_failure": {
+    "spawned_and_initialized": true,
+    "reached": ["bridge loaded + natives hooked", "register_OHEnvironment OK 6 methods", "nativeInitialize/Connect/AttachApplication", "ScheduleLaunchAbility MainActivity", "AttachAbilityThread rc=0", "getDisplayInfo(0)=1200x1920"],
+    "died_at": "handleResumeActivity -> WindowManagerImpl.addView -> ViewRootImpl.setView",
+    "exception": "android.view.WindowManager$InvalidDisplayException: Unable to add window -- the specified display can not be found",
+    "termination": "uncaught -> OpenjdkJvm System.exit status 1 (exit code 1); no cppcrash/tombstone; kill reason OnRemoteDied",
+    "both_controls_identical": {"helloworld_pid": 31518, "zigzag_pid": 639, "InvalidDisplayException_per_hilog": 3, "system_exit_1_per_hilog": 1}
+  },
+  "dlsym_hypothesis_cleared": {
+    "7_absent_names_dlsym_by_name_in_runtime_or_spawner": "none (strings scan: oh_anw_notify_presented/oh_anw_wrap_for_activity/SessionStageAdapter/WindowCallbackAdapter absent as literals)",
+    "createSession_bare_string_in_runtime": "x2 (but function exists in rebuild under new mangling; not an absence)",
+    "bridge_loaded_and_initialized": true,
+    "runtime_copy_caveat": "scanned a local proxy liboh_android_runtime.so; behavioral evidence is authoritative and copy-independent"
+  },
+  "root_cause": "window-session/display ABI behavioral regression, leading suspect OHWindowManagerClient::createSession signature evolution (846 ...iiiim -> rebuild ...iiiiim, +1 int): deployed U8 runtime calls it with the 846 arg layout -> wrong/invalid display -> InvalidDisplayException. NOT the 7 absent exports, NOT dlsym-by-name, NOT a load failure.",
+  "needed_diff_rebuild_extra_vs_846": ["libaccesstoken_sdk.z.so", "libbegetutil.z.so", "libos_account_innerkits.z.so", "libtokensetproc_shared.z.so"],
+  "needed_diff_note": "the +4 DT_NEEDED loaded fine (bridge loaded + initialized); not the blocker",
+  "plan_bug_owned": "before_unlock --out was .../rollback but after_lock deploy-receipt.json is at .../deploy -> --rollback-only rc=2, bind left mounted, lock held; outer ring recovered + UNLOCKed 14:33, relaxed the tool (0f9e4d427); plan fixed (before_unlock --out -> .../deploy)",
+  "next": ["offline: disassemble 846 vs rebuild createSession to confirm the +1 int is displayId and the deployed WindowSessionProxy passes the 846 layout (off-by-one slot)", "if confirmed: re-emit createSession with the 846 signature (alias/overload) = the compat-export fallback from t2-D, then re-run", "harness: add a readiness wait after the appspawn-x restart (EPIPE on some spawns = settle gap, orthogonal to the addView root)"],
+  "board_restored": "U8+846, runtime-fp e953c0921536 / boot-fp 4db882a81732, UNLOCK 14:33"
+}
