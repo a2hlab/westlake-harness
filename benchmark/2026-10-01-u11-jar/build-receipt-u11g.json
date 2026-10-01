@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "lane": "cc-t3",
+  "date": "2026-10-01",
+  "task": "U11 JAR v7 = U11e (phone/ssl/content+dedup) + cluster 7 J10dTheme alias guard + cluster 4 cc-wiki KeystoreBoardProbe (diagnostic, log-only). Clusters 2 (needs R8 map) and 6 (BCP/boot) are NOT in the runtime jar.",
+  "base_u10_sha256": "37465d6d7f5e3d7be52929c2b43faf99315f86f0c23cc70e4aa858cb2ff98c59",
+  "output_u11g_sha256": "73c0da44a8fb2841fa6ea8cf727778aeed36ab5636b9b5b35f1f288796c39bbd",
+  "supersedes": "u11e b093243b; u11g is the current single U11 JAR version",
+  "deterministic": "yes (built twice)",
+  "staged_jar": "$WORKSPACES/westlake-generation-u11-staging/oh-adapter-runtime-u11g.jar",
+  "build": "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u11-jar/build/build_u11g.py",
+  "class_delta_vs_u10": {"added": ["TelephonyFetcher(+6)", "WlSSLEngine(+1)", "AppContentProviders", "KeystoreBoardProbe"], "removed": [], "note": "197 (+11). base adapter.core.SoftwareAndroidKeyStore unchanged (21 methods) -- the NAME-only stub used to compile KeystoreBoardProbe is compile-only, not in the dex."},
+  "cluster7_j10d_guard": "needle in J10dTheme.restore entry: if ai.targetActivity != null && !isEmpty && !equals(ai.name) -> log '[J10d-THEME] <name> skipped: alias target theme owned by AliasTargetTheme' and return. Stops J10d from clobbering AliasTargetTheme's target-theme re-resolution (fd-api/termux: 0x7f120252 AppCompat vs 0x1030237 translucent). Uses only ActivityInfo (android.jar).",
+  "cluster4_keystore_probe": "cc-wiki KeystoreBoardProbe (master ffc687465) merged verbatim; wired via needle KeystoreBoardProbe.run(\"_androidx_security_master_key_\") right after AppContentProviders.install() (post-handleBindApplication). Log-only, [WL-KS-PROBE] via System.err -> hilog. TIMING CAVEAT: on a fresh run moodcairns creates the master key during its Activity flow; at the post-bind call the key may be absent -> probe logs 'key absent -> not the BadTag path'. Definitive read = when the key exists (if post-bind shows absent, a keystore-access hook is the follow-up). Wired per README option 1 (one call in the bind path).",
+  "cluster6_stop": "Option-1 reproduction gate FAILED on Mac: PackageManagerAdapter.getInstallSourceInfo is in oh-adapter-framework.jar, a BCP jar (build_aosp_fw.sh: 'ECS only'; editing a BCP jar requires an ART boot-image rebake). Not Mac-reproducible -> routed to the image/BCP lane (same bucket as musicplayer ColorSpace, clipboardeditor PhoneNumberUtil). No Proxy over IPackageManager (OHServiceManager @hide-AIDL deadlock pitfall, per outer)."
+}

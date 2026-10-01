@@ -148,3 +148,26 @@ instantiated by stock; skipped` and skip (never run a provider onCreate twice). 
 cause**: M>0 => stock's installProvider succeeded (gap = publish/registry); M=0 => stock never instantiated (gap =
 the install step). **New JAR SHA:** U11e `b093243b0da702b74af1c693af93ea937652fae08192760c0a9c536d647816c8`
 (supersedes U11d); 196 classes; deterministic. Cluster 4 (keystore) is cc-wiki's; merges in later.
+
+## U11g — cluster 7 J10d guard + cluster 4 keystore probe; cluster 6 stopped
+
+- **Cluster 7 (appcompat, fd-api/termux) — J10dTheme alias guard (needle):** `J10dTheme.restore` now returns early
+  when `ai.targetActivity != null && !ai.targetActivity.isEmpty() && !ai.targetActivity.equals(ai.name)` (an alias
+  launch whose target theme `AliasTargetTheme` already re-resolved), logging `[J10d-THEME] <name> skipped: alias
+  target theme owned by AliasTargetTheme`. Root cause was a fix-interaction: J3 re-resolved the target to the app's
+  AppCompat theme `0x7f120252`, J10d then restored the alias manifest theme `0x1030237` (translucent, non-AppCompat)
+  and won → AppCompat crash. Guard uses only `ActivityInfo` (android.jar).
+- **Cluster 4 (keystore, moodcairns) — cc-wiki KeystoreBoardProbe merged (diagnostic):** `KeystoreBoardProbe`
+  (master ffc687465, log-only) is compiled in (a compile-only `SoftwareAndroidKeyStore.NAME` stub lets it build;
+  the real class in the base is untouched) and wired via needle `KeystoreBoardProbe.run("_androidx_security_master_key_")`
+  right after `AppContentProviders.install()`. `[WL-KS-PROBE]` lines reach hilog (System.err). **Timing caveat:** on a
+  fresh run moodcairns creates the master key during its Activity flow, so at the post-bind call the key may be absent
+  (`key absent -> not the BadTag path`); if so a keystore-access hook is the follow-up. (Mac probe is 6/6; the on-board
+  divergence is the default Cipher provider.)
+- **Cluster 6 (pkg-self getInstallSourceInfo) — STOPPED per the reproduction gate:** `PackageManagerAdapter` is in
+  **`oh-adapter-framework.jar`, a BCP jar** (`build_aosp_fw.sh`: ECS-only; editing a BCP jar forces an ART boot-image
+  rebake, not Mac-reproducible). Routed to the image/BCP lane. No `IPackageManager` Proxy (OHServiceManager records the
+  @hide-AIDL Proxy deadlock).
+- **New JAR SHA:** U11g `73c0da44a8fb2841fa6ea8cf727778aeed36ab5636b9b5b35f1f288796c39bbd`; 197 classes; deterministic.
+  Clusters in the jar: 1 phone, 3 ssl-engine, 5 content-provider(+dedup), 7 appcompat guard, 4 keystore probe
+  (diagnostic). Clusters 2 (R8 map) and 6 (image lane) are out.
