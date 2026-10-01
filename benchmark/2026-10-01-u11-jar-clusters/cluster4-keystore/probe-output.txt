@@ -1,5 +1,5 @@
-probe dir = /var/folders/4b/52jp6mr96b75p8tr62l0bz2r0000gn/T/wl-keystore-probe7423109324507130726/no_backup
-[WL-KEYSTORE] installed software AndroidKeyStore provider, keys in /var/folders/4b/52jp6mr96b75p8tr62l0bz2r0000gn/T/wl-keystore-probe7423109324507130726/no_backup/westlake-android-keystore
+probe dir = /var/folders/4b/52jp6mr96b75p8tr62l0bz2r0000gn/T/wl-keystore-probe6180225381774247831/no_backup
+[WL-KEYSTORE] installed software AndroidKeyStore provider, keys in /var/folders/4b/52jp6mr96b75p8tr62l0bz2r0000gn/T/wl-keystore-probe6180225381774247831/no_backup/westlake-android-keystore
 diag: default provider = SunJCE; AES/GCM encrypt-without-params IV length = 12 bytes (matches Tink's 12)
   PASS key gen: 256-bit AES (SoftwareAndroidKeyStore SPI)  [algo=AES bytes=32]
   PASS same-process: getKey stable  [two getKey() calls equal]
@@ -7,6 +7,14 @@ diag: default provider = SunJCE; AES/GCM encrypt-without-params IV length = 12 b
   PASS same-process: validateAead round-trip  [decrypted==plaintext]
   PASS persistence: key reloaded from file  [bytes=32]
   PASS persistence: decrypt after reload  [ok]
+
+-- KeystoreBoardProbe (board diagnostic, run on Mac for smoke) --
+[WL-KS-PROBE] selftest cipher provider=SunJCE keyBits=256 ivLen=12 (Tink reads 12)
+[WL-KS-PROBE] selftest validateAead(random 256-bit SecretKeySpec)=OK -> default provider GCM is NOT the root (look elsewhere: key routing / dual provider)
+[WL-KS-PROBE] alias=_androidx_security_master_key_ present=true keyClass=javax.crypto.spec.SecretKeySpec encodedLen=32
+[WL-KS-PROBE] getKey stable=true
+[WL-KS-PROBE] cipher provider=SunJCE ivLen=12 (Tink reads 12)
+[WL-KS-PROBE] validateAead round-trip=OK (keystore usable here)
 
 ==== RESULT: 6 passed, 0 failed ====
 KEYSTORE AES-GCM ROUND-TRIP OK on this JVM -> the keystore crypto is sound; an on-board AEADBadTag is NOT the key material (see localization notes in README).

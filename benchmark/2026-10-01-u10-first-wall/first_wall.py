@@ -69,14 +69,15 @@ def verdicts(signoff):
 
 def build(runtime, run_pattern, signoff, run_index, label):
     verdict = verdicts(signoff)
+    runtimes = {r.strip() for r in runtime.split(',') if r.strip()}   # union across boards (U10 is per-board)
     rows_by_key = {}
     with open(run_index, encoding='utf-8', errors='replace') as f:
         for line in f:
             if not line.strip():
                 continue
             row = json.loads(line)
-            if row.get('runtime_fp') == runtime and run_pattern in (row.get('run', '') or ''):
-                rows_by_key.setdefault(row['key'], row)   # first match per key
+            if row.get('runtime_fp') in runtimes and run_pattern in (row.get('run', '') or ''):
+                rows_by_key.setdefault(row['key'], row)   # first match per key (keys are board-partitioned)
     results = []
     for key, v in verdict.items():
         if v.startswith('lit'):
@@ -90,6 +91,86 @@ def build(runtime, run_pattern, signoff, run_index, label):
                         'cause': (row.get('cause') or '')[:200], 'first_fatal': (row.get('first_fatal') or '')[:200],
                         'u10_covered': coverage(key, label)})
     return verdict, results
+
+
+def _alive(row):
+    v = row.get('alive_t20')
+    return v in (True, 'yes', 1, '1', 'YES')
+
+
+def build_observe(runtime, run_pattern, run_index):
+    """Observation mode (no sign-off): build the table straight from run_index rows -- for a window
+    with no outer sign-off (e.g. a failed U10 candidate). verdict is coarse process survival
+    (alive@t20 / dead@t20), NOT lit/white (that needs screenshots, read by the outer ring). Includes
+    EVERY key that ran (lit-in-U9 keys too, so rollback keys are visible)."""
+    runtimes = {r.strip() for r in runtime.split(',') if r.strip()}
+    rows_by_key = {}
+    with open(run_index, encoding='utf-8', errors='replace') as f:
+        for line in f:
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if row.get('runtime_fp') in runtimes and run_pattern in (row.get('run', '') or ''):
+                rows_by_key.setdefault(row['key'], row)   # keys are board-partitioned; first match wins
+    results = []
+    for key in sorted(rows_by_key):
+        row = rows_by_key[key]
+        results.append({'key': key, 'verdict': 'alive@t20' if _alive(row) else 'dead@t20',
+                        'family': family(row), 'cause': (row.get('cause') or '')[:200],
+                        'first_fatal': (row.get('first_fatal') or '')[:200],
+                        'runtime_fp': row.get('runtime_fp'), 'alive_t20': bool(_alive(row)), 'u10_covered': None})
+    return results
+
+
+def compare_observe(cur_label, cur_results, prev_path, out, focus):
+    """Diff a no-sign-off observation table (cur, e.g. U10) against a prior first-wall table (prev, U9).
+    Classes: unchanged | moved (-> new wall) | cleared? (U9 wall not hit; confirm lit by screenshot) |
+    not_run (key absent from cur) | regression? (lit/ok in U9, now a fatal) | ran-ok? (ran, no fatal)."""
+    prev = json.loads(Path(prev_path).read_text())
+    prev_label = prev.get('label', 'prev')
+    prev_nl = {e['key']: e for e in prev['entries']}
+    cur = {e['key']: e for e in cur_results}
+    NOFATAL = {'no-fatal', 'no-run'}
+    rows = []
+    for key in sorted(set(prev_nl) | set(cur) | set(focus)):
+        p, c = prev_nl.get(key), cur.get(key)
+        if p and not c:
+            cls, detail = 'not_run', f'{prev_label}={p["family"]}; not run in {cur_label} window'
+        elif c and not p:                                   # not a U9 non-lit wall (lit in U9, or U9-lit key)
+            if c['family'] in NOFATAL:
+                cls, detail = 'ran-ok?', f'ran {cur_label} {c["verdict"]}, no fatal (lit U9 -> likely still ok; confirm screenshot)'
+            else:
+                cls, detail = 'regression?', f'ok in {prev_label} -> {cur_label} {c["family"]}: {c["cause"][:70]}'
+        else:                                               # non-lit in U9 AND ran in U10
+            if c['family'] in NOFATAL:
+                cls, detail = 'cleared?', f'{prev_label}={p["family"]} -> {cur_label} no-fatal {c["verdict"]} (U9 wall not hit; confirm lit by screenshot)'
+            elif c['family'] == p['family'] and c['cause'][:120] == p['cause'][:120]:
+                cls, detail = 'unchanged', c['family']
+            else:
+                cls, detail = 'moved', f'{p["family"]} ({p["cause"][:45]}) -> {c["family"]} ({c["cause"][:45]})'
+        rows.append({'key': key, 'class': cls, 'prev_family': (p or {}).get('family'),
+                     'cur_family': (c or {}).get('family'), 'cur_verdict': (c or {}).get('verdict', 'not_run'),
+                     'detail': detail})
+    out = Path(out)
+    (out / f'{cur_label}-vs-{prev_label}-diff.json').write_text(json.dumps(rows, indent=2, ensure_ascii=False))
+    counts = defaultdict(int)
+    for r in rows:
+        counts[r['class']] += 1
+    with open(out / f'{cur_label}-vs-{prev_label}-diff.md', 'w') as f:
+        f.write(f'# {cur_label} vs {prev_label} first-wall diff (OBSERVATION)\n\n')
+        f.write(f'**{cur_label} is UNSIGNED — failed-candidate observation.** verdict = process survival at t20 '
+                f'(alive/dead), NOT lit/white (screenshots are ground truth, read by the outer ring).\n\n')
+        f.write('classes: unchanged | moved (U9 wall -> new U10 wall) | cleared? (U9 wall not hit; confirm lit) | '
+                'not_run (not reached this window) | regression? (ok U9 -> fatal U10) | ran-ok? (ran, no fatal)\n\n')
+        f.write(f'counts: {dict(counts)}\n\n')
+        f.write('## Focus keys\n\n| Key | Class | U10 verdict | Detail |\n|---|---|---|---|\n')
+        for k in focus:
+            r = next((x for x in rows if x['key'] == k), None)
+            f.write(f"| {k} | {r['class'] if r else 'n/a'} | {r['cur_verdict'] if r else '-'} | {r['detail'] if r else '(not in either table)'} |\n")
+        f.write('\n## All keys\n\n| Key | Class | U10 verdict | Detail |\n|---|---|---|---|\n')
+        for r in rows:
+            f.write(f"| {r['key']} | {r['class']} | {r['cur_verdict']} | {r['detail']} |\n")
+    return counts
 
 
 def write_table(out, label, results):
@@ -152,14 +233,28 @@ def compare(cur_label, cur_results, prev_path, out):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
-    ap.add_argument('--runtime', default='a8cb9a5a45a6')
+    ap.add_argument('--runtime', default='a8cb9a5a45a6', help='runtime_fp, or comma-separated set to union across boards (U10: fe5d9e139746,519148f0f41a)')
     ap.add_argument('--run-pattern', default='approved-j10g')
     ap.add_argument('--signoff', default=str(WS / 'westlake-harness/benchmark/2026-10-01-u9-sweep/outer-signoff.json'))
     ap.add_argument('--run-index', default=str(WS / 'westlake-inputs/run-index/index.jsonl'))
     ap.add_argument('--label', default='u9')
     ap.add_argument('--out', default='.')
     ap.add_argument('--compare-to', default=None, help='a previous <label>-first-wall.json to diff against')
+    ap.add_argument('--observe', action='store_true',
+                    help='no-sign-off observation: build straight from run_index rows (failed-candidate window)')
+    ap.add_argument('--focus', default='toutiao,fd-meet,fd-fennec_fdroid,fd-tutanota,cv2-com-nbossard-packlist,'
+                                       'opencamera,fd-organicmaps,fd-app,fd-plus,firefox,wikipedia',
+                    help='comma-separated keys surfaced first in the diff')
     a = ap.parse_args(argv)
+    if a.observe:
+        results = build_observe(a.runtime, a.run_pattern, a.run_index)
+        fam = write_table(a.out, a.label, results)
+        print(f'{a.label}-first-wall.{{json,md}} (OBSERVATION) written: {len(results)} ran keys; families={dict(fam)}')
+        if a.compare_to:
+            focus = [k.strip() for k in a.focus.split(',') if k.strip()]
+            counts = compare_observe(a.label, results, a.compare_to, a.out, focus)
+            print(f'{a.label}-vs-diff written: {dict(counts)}')
+        return
     verdict, results = build(a.runtime, a.run_pattern, a.signoff, a.run_index, a.label)
     fam = write_table(a.out, a.label, results)
     print(f'{a.label}-first-wall.{{json,md}} written: {len(results)} non-lit keys; families={dict(fam)}')

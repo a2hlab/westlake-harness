@@ -72,6 +72,10 @@ public final class KeystoreProbe {
         //    decrypt the earlier ciphertext (catches a serialize/reload mismatch = "exists but unusable")
         persistenceRoundTrip(ct);
 
+        // Exercise the board probe's key-independent self-test on the desktop JVM (compile + smoke).
+        System.out.println("\n-- KeystoreBoardProbe (board diagnostic, run on Mac for smoke) --");
+        adapter.core.KeystoreBoardProbe.run(ALIAS);
+
         System.out.println("\n==== RESULT: " + pass + " passed, " + fail + " failed ====");
         System.out.println(fail == 0
                 ? "KEYSTORE AES-GCM ROUND-TRIP OK on this JVM -> the keystore crypto is sound; an on-board "

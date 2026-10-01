@@ -45,10 +45,15 @@ length ≠ 12, or it requires explicit params), Tink's `iv(12)||ct` framing brea
 reproduced on this Mac (SunJCE is well-behaved), so it needs a board probe to confirm.
 
 ## Board probe (pins the root; diagnostic-only, no persistent change)
-`src/adapter/core/KeystoreBoardProbe.java` — `KeystoreBoardProbe.run("_androidx_security_master_key_")` logs, to hilog
-(`[WL-KS-PROBE]`): the key class + encoded length, two-`getKey()` byte-equality, the **default Cipher provider name**,
-the **encrypt-without-params IV length**, and the `validateAead` round-trip result. Wire it right after the master key is
-created (or as a one-shot in the U11 window). It will say exactly which of these is the root:
+`src/adapter/core/KeystoreBoardProbe.java`. **`selfTest()` (key-independent, run at BIND time)** is the primary check:
+post-bind the app master key usually does not exist yet (the merged U11g probe only reported "key absent"), so
+`selfTest()` generates its **own** random 256-bit AES `SecretKeySpec` and runs Tink's exact framing through the DEFAULT
+`AES/GCM/NoPadding` provider (encrypt-without-params → `getIV()` → `iv||ct` + AAD → decrypt). It logs `[WL-KS-PROBE]
+selftest cipher provider=… ivLen=… validateAead=…` — directly testing the leading hypothesis without any app key. On Mac
+(SunJCE) it is `ivLen=12 validateAead=OK`; on-board it shows what Conscrypt/BoringSSL actually does.
+`run(alias)` calls `selfTest()` first, then — only if the app key already exists — the per-key check:
+the key class + encoded length, two-`getKey()` byte-equality, provider name, IV length, `validateAead`. Together they say
+which is the root:
 - `ivLen != 12` → on-board default-provider GCM IV divergence (the leading hypothesis) → fix below.
 - `validateAead AEADBadTagException` with `ivLen == 12` → a deeper default-provider/AAD divergence → capture and re-localize.
 - `getKey stable=false` or `present=false` → a store/persistence divergence after all (re-open the keystore analysis).
