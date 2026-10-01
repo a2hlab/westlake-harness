@@ -196,7 +196,8 @@ def main(argv=None):
             touched += insert_docs(doc_changes(json.loads(args.docs.read_text())))
         r = sh([sys.executable, 'scripts/lab/check_user_paths.py', *files, *touched])
         if r.returncode:
-            failures.append('user-paths: ' + r.stdout.strip().splitlines()[-1])
+            hits = [l for l in r.stdout.splitlines() if l.startswith('USER-PATH')][:5]
+            failures.append('user-paths: ' + r.stdout.strip().splitlines()[-1] + ''.join('\n    ' + h[:200] for h in hits))
         r = sh([sys.executable, 'scripts/lab/check_frozen.py'])
         if r.returncode:
             failures.append('frozen: ' + r.stdout.strip()[-300:])
