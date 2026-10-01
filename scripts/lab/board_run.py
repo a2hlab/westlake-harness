@@ -36,6 +36,7 @@ It must finish the authorized rollback and verification. Failure retains the loc
 import argparse
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -102,6 +103,32 @@ def precheck_problem(pre):
     return None
 
 
+LOG_TAG = re.compile(r'\[([A-Za-z][\w.]*-[\w.-]+)\]')
+
+
+def silent_probe_problem(pre, smoke_spec):
+    """Every log tag the window's expect reads (e.g. "[N11d-PROBE] branch=...") must also be a smoke marker.
+
+    retro 20 (2026-10-01 21:10): N11d's refute was "no [N11d-PROBE] line appears", but the probe's weak HiLogPrint
+    resolved to NULL in the sealed namespace and printed nothing -- a silent probe looked exactly like the refute.
+    With the tag as a smoke marker the window stops at the gate when the probe cannot emit. Returns a reason or None."""
+    exp = (pre or {}).get('expect') or {}
+    tags = set(LOG_TAG.findall(f'{exp.get("confirm", "")} {exp.get("refute", "")}'))
+    if not tags:
+        return None
+    try:
+        spec = json.loads(Path(smoke_spec).read_text())
+    except (OSError, ValueError) as e:
+        return f'smoke spec {smoke_spec} unreadable ({e}); cannot check the probe tags {sorted(tags)} are markers'
+    markers = ' '.join(m for fix in spec.get('fixes') or [] for m in fix.get('markers') or []).replace('\\', '')
+    missing = sorted(t for t in tags if t not in markers)
+    if missing:
+        return (f'expect reads log tag(s) {missing} but the smoke spec has no marker for them; a probe that cannot '
+                'emit then reads as "tag absent". Add an unconditional entry marker under the same tag to the smoke '
+                'spec fixes[].markers so the gate fails when the probe is silent')
+    return None
+
+
 def board_append(plan, text):
     subprocess.run([str(HERE / 'board_append.sh'), plan['board'], text], check=False)
 
@@ -142,7 +169,8 @@ def main(argv=None):
             sys.exit(f'{name} must be a nonempty argv list')
     if args.dispatch:
         print(dispatch_text(plan, args.plan)); return 0
-    problem = precheck_problem(plan.get('offline_precheck'))
+    problem = (precheck_problem(plan.get('offline_precheck')) or
+               silent_probe_problem(plan.get('offline_precheck'), expand(plan['smoke_spec'])))
     if problem:
         sys.exit(f'REFUSE (offline precheck, user rule 2026-10-01): {problem}')
     note = str(lab_paths.tools() / 'board_note.sh')

@@ -111,6 +111,13 @@ class Land(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn('rewritten section', (self.repo / 'benchmark/b/README.md').read_text())
 
+    def test_preflight_prints_csv_rows_and_distinct_keys(self):
+        (self.wt / 'benchmark/b/scan.csv').write_text('key,service\naegis,audio\naegis,window\nanki,audio\n')
+        (self.wt / 'l.txt').write_text('benchmark/b/scan.csv\n')
+        r = self.land('l.txt', '--preflight')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('CSV-SHAPE benchmark/b/scan.csv rows=3 distinct key=2', r.stdout)
+
     def test_relanding_identical_bytes_is_already_landed(self):
         self.assertEqual(self.land().returncode, 0)
         r = self.land()

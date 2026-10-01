@@ -110,6 +110,17 @@ class BoardRun(unittest.TestCase):
             self.assertIn('offline precheck', str(cm.exception))
             run.assert_not_called()                                   # refused before LOCK
 
+    def test_probe_tag_in_expect_must_be_a_smoke_marker(self):
+        pre = {'expect': {'confirm': 'one [N11d-PROBE] branch=... line', 'refute': 'no [N11d-PROBE] line appears'}}
+        with tempfile.TemporaryDirectory() as d:
+            spec = Path(d) / 'smoke.json'
+            spec.write_text(json.dumps({'fixes': [{'id': 'N10b', 'markers': ['\\[N10b-JNI-OWNER\\] preloaded']}]}))
+            self.assertIn('N11d-PROBE', board_run.silent_probe_problem(pre, spec))    # the N11d r2 window
+            spec.write_text(json.dumps({'fixes': [{'id': 'N11e', 'markers': ['\\[N11d-PROBE\\] entry']}]}))
+            self.assertIsNone(board_run.silent_probe_problem(pre, spec))
+            self.assertIn('unreadable', board_run.silent_probe_problem(pre, Path(d) / 'none.json'))
+        self.assertIsNone(board_run.silent_probe_problem({'expect': {'confirm': 'key lit', 'refute': 'dark'}}, 'x'))
+
     def test_dispatch_has_every_rule(self):
         text = board_run.dispatch_text(json.loads(EXAMPLE.read_text()), EXAMPLE)
         for rule in board_run.RULES:

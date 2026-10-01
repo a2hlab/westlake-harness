@@ -22,6 +22,7 @@ Steps (any failure rolls the copy back and commits nothing):
   5. git add + commit on master; print a paste-ready summary line for the board.
 """
 import argparse
+import csv
 import hashlib
 import json
 import os
@@ -142,6 +143,21 @@ def empty_csvs(worktree, files):
     return out
 
 
+def csv_shapes(worktree, files):
+    """(file, data rows, first column name, distinct first-column values) for every non-empty CSV deliverable.
+
+    Printed, not judged: retro 20 (2026-10-01 21:23) a "166-key" service scan held rows for only 44 keys and its
+    one anchor key happened to be among them; rows and distinct keys side by side make that visible at landing."""
+    out = []
+    for f in files:
+        if f.endswith('.csv'):
+            with open(worktree / f, newline='', errors='replace') as fh:
+                rows = [r for r in csv.reader(fh) if any(c.strip() for c in r)]
+            if len(rows) > 1:
+                out.append((f, len(rows) - 1, rows[0][0] if rows[0] else '?', len({r[0] for r in rows[1:] if r})))
+    return out
+
+
 def doc_changes(doc):
     if 'changes' in doc:
         return [(c['path'], c['lines']) for c in doc['changes']]
@@ -211,6 +227,8 @@ def main(argv=None):
         homes = [] if args.allow_home_paths else home_paths_in_data(wt, files)
         for f in empty_csvs(wt, files):
             print(f'EMPTY-CSV {f} (header only -- make sure the numbers you report come from a non-empty table)')
+        for f, n, col, distinct in csv_shapes(wt, files):
+            print(f'CSV-SHAPE {f} rows={n} distinct {col}={distinct} (the counts a report may cite from this table)')
         for f, n in homes:
             print(f'HOME-PATH-IN-DATA {f} x{n} (write $WORKSPACES/... or a repo-relative path; raw recorded evidence: '
                   f'--allow-home-paths)')
@@ -264,6 +282,8 @@ def main(argv=None):
                  '\n  '.join(f'{rel}: {len(g)} line(s), e.g. {g[0][:100]!r}' for rel, g in lost.items()))
     for f in empty_csvs(wt, files):
         print(f'EMPTY-CSV {f} (header only; check the lane report does not cite rows from it)')
+    for f, n, col, distinct in csv_shapes(wt, files):
+        print(f'CSV-SHAPE {f} rows={n} distinct {col}={distinct}')
     docs =[p for p in files if p.endswith('documentation.json')]
     failures = []
     try:
