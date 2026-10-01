@@ -41,5 +41,39 @@ class RecoveryOrder(unittest.TestCase):
         self.assertEqual(self.run_finish('rolled_back'), ['verify', 'smoke', 'verify'])
 
 
+class RetentionDecision(unittest.TestCase):
+    def test_smoke_pass_retains_without_redeployment(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            smoke = root / 'runner/smoke'
+            smoke.mkdir(parents=True)
+            (smoke / 'smoke-result.json').write_text('{"passed": true}')
+            with patch.object(hook.sys, 'platform', 'linux'), patch.object(hook, 'retain_candidate') as retain, patch.object(hook, 'executor') as executor:
+                hook.finish('serial', root, Path('restored.json'))
+                retain.assert_called_once_with('serial', root)
+                executor.assert_not_called()
+
+    def test_confirmed_regression_recovers_instead_of_retaining(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / 'runner/smoke').mkdir(parents=True)
+            (root / 'runner/smoke/smoke-result.json').write_text('{"passed": true}')
+            (root / 'confirmed-regression.json').write_text('{"confirmed": true}')
+            with patch.object(hook, 'retain_candidate') as retain, patch.object(hook, 'verify') as verify, patch.object(hook.subprocess, 'run'):
+                hook.finish('serial', root, Path('restored.json'))
+                retain.assert_not_called()
+                self.assertEqual(verify.call_count, 2)
+
+    def test_final_retention_gate_failure_recovers(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / 'runner/smoke').mkdir(parents=True)
+            (root / 'runner/smoke/smoke-result.json').write_text('{"passed": true}')
+            with patch.object(hook.sys, 'platform', 'linux'), patch.object(hook, 'retain_candidate', side_effect=AssertionError('identity drift')), patch.object(hook, 'verify') as verify, patch.object(hook.subprocess, 'run'):
+                hook.finish('serial', root, Path('restored.json'))
+                self.assertTrue((root / 'retention-error.txt').exists())
+                self.assertEqual(verify.call_count, 2)
+
+
 if __name__ == '__main__':
     unittest.main()
