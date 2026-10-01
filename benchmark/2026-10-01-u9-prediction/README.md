@@ -44,3 +44,11 @@ Only change from v3: vaults-randomlydie, yam, yatoo lit? -> alive-white-window, 
 RUNTIME 11c6d27b5d07): the J10g wall is passed (no fatal, the concrete ServiceWorkerController loaded), but all three
 are WebView shell apps (Capacitor BridgeActivity / Cordova) whose whole UI is HTML in the WebView, and there is no
 WebView renderer. `command-v4.txt` -> `predictions-v4.csv`. This is the prediction the U9 sweep is compared against.
+
+## v5 (2026-10-01T18:19+0800, written after the U9 5ea window started at 18:12:52 and before any U9 result was read)
+
+oc-t4's NPE-8 audit showed two keys predicted dead whose U8 wall is the J10f wall (WebSettings null): webrtc-check
+(setJavaScriptEnabled) and tutanota (getUserAgentString). J10f is in U9, so they pass that wall; both are WebView-hosted
+UIs (webrtc-check: assets/index.html; tutanota: the web client, assets/tutanota/index.html with 3218 files), so the
+ceiling is a white window. dead -> alive-white-window. The webview-shell scan missed them because it only looks for
+Capacitor/Cordova layouts. `command-v5.txt` -> `predictions-v5.csv`; compare U9 against v5 and v4 both.
