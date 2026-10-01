@@ -237,6 +237,13 @@ def main(argv=None):
             board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} board_run 分片 {shard["name"]} '
                                f'({facts[0] if facts else sout}):「{total}」')
             seal(sout)
+            # Any nonzero shard result stops this board's remaining shards.
+            # finally still restores before unlocking, including rc=1.
+            if code != 0:
+                result['stopped_after_shard'] = shard['name']
+                board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} '
+                                   f'分片 {shard["name"]} 中止 rc={code}; 停剩余分片并执行 before_unlock')
+                return code
         return 0
     finally:
         cleanup_error = None

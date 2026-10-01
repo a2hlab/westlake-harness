@@ -410,13 +410,33 @@ class Board:
         return p.returncode, p.stdout.decode('utf-8', 'replace') + p.stderr.decode('utf-8', 'replace')
 
     def raw_shell(self, command, timeout=60):
-        marker = '__BMS_REMOTE_RC_' + uuid.uuid4().hex + '__'
-        wrapped = command + '; bms_rc=$?; printf "\\n' + marker + '%s\\n" "$bms_rc"'
-        rc, text = self.command(self.hdc + ['-t', self.serial, 'shell', wrapped], timeout)
-        m = re.search(re.escape(marker) + r'(\d+)\s*$', text)
-        if rc or not m:
-            raise BatchStop('HDC lost remote status marker')
-        return int(m.group(1)), text[:m.start()].rstrip()
+        # Lost responses do not establish whether a write executed. Never
+        # replay a write or an arbitrary shell fragment. Only these simple
+        # reads can be repeated (including the activation mountinfo read).
+        readonly = (command == 'ps -A -o PID,PPID,UID,NAME' or
+                    re.fullmatch(r'(?:cat|sha256sum)(?: /[A-Za-z0-9_./:+@-]+)+', command) is not None)
+        attempts = 3 if readonly else 1
+        deadline = time.monotonic() + timeout
+        for attempt in range(attempts):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            marker = '__BMS_REMOTE_RC_' + uuid.uuid4().hex + '__'
+            wrapped = command + '; bms_rc=$?; printf "\\n' + marker + '%s\\n" "$bms_rc"'
+            rc, text = self.command(self.hdc + ['-t', self.serial, 'shell', wrapped], remaining)
+            m = re.search(re.escape(marker) + r'(\d+)\s*$', text)
+            if rc == 0 and m:
+                # A real remote nonzero result is definitive, not retryable.
+                return int(m.group(1)), text[:m.start()].rstrip()
+            if attempt + 1 < attempts and deadline - time.monotonic() > 1:
+                save(self.out / f'marker-retry-{self.index:05d}.json',
+                     {'command': command, 'attempt': attempt + 1,
+                      'max_attempts': attempts, 'readonly': True,
+                      'reason': 'HDC lost remote status marker'})
+                time.sleep(1)
+            else:
+                break
+        raise BatchStop('HDC lost remote status marker')
 
     def ready(self):
         rc, held = self.command(self.lock + ['held', self.serial], 10)

@@ -68,6 +68,9 @@ class FakeBoard:
             self.fault_listing_count+=1
             return 0,'\n'.join(files)
         if command.startswith('sha256sum '):
+            chain_command='sha256sum '+' '.join(b.shlex.quote(p) for p in b.installation_chain.PATHS)
+            if command == chain_command:
+                return 0,'\n'.join('1'*64+'  '+p for p in b.installation_chain.PATHS)
             digest=self.digest if 'original.apk' in command else hashlib.sha256(self.image).hexdigest()
             return 0,digest+'  file'
         if command.startswith('stat '):return 0,f'{len(self.image)} 1800000000'
@@ -288,6 +291,55 @@ class BatchTests(unittest.TestCase):
             return 0,'install failed\n'+marker+'7\n'
         board.command=cmd
         self.assertEqual(board.raw_shell('false'),(7,'install failed'))
+
+    def marker_board(self, replies):
+        board=b.Board(SERIAL,'hdc','board-note','cx-t0',self.root)
+        calls=[]
+        def command(argv,timeout=60):
+            calls.append((argv,timeout));board.index+=1
+            reply=replies[min(len(calls)-1,len(replies)-1)]
+            if reply is None:return 0,'partial read, marker missing'
+            marker=b.re.search(r'(__BMS_REMOTE_RC_[0-9a-f]+__)',argv[-1]).group(1)
+            rc,text=reply
+            return 0,text+'\n'+marker+str(rc)+'\n'
+        board.command=command
+        return board,calls
+
+    def test_mountinfo_lost_marker_read_is_retried_with_fresh_marker(self):
+        board,calls=self.marker_board([None,(0,'complete mountinfo')])
+        with patch.object(b.time,'sleep') as sleep:
+            self.assertEqual(board.raw_shell('cat /proc/self/mountinfo'),(0,'complete mountinfo'))
+        self.assertEqual(len(calls),2);sleep.assert_called_once_with(1)
+        self.assertNotEqual(calls[0][0][-1],calls[1][0][-1])
+        self.assertTrue(list(self.root.glob('marker-retry-*.json')))
+
+    def test_read_marker_retry_is_bounded(self):
+        board,calls=self.marker_board([None])
+        with patch.object(b.time,'sleep'),self.assertRaises(b.BatchStop):
+            board.raw_shell('cat /proc/sys/kernel/random/boot_id')
+        self.assertEqual(len(calls),3)
+
+    def test_marker_retries_share_original_timeout_budget(self):
+        board,calls=self.marker_board([None,(0,'complete')])
+        with patch.object(b.time,'sleep'),patch.object(b.time,'monotonic',side_effect=[0,0,1,3]):
+            self.assertEqual(board.raw_shell('cat /proc/self/mountinfo',timeout=5),(0,'complete'))
+        self.assertEqual([c[1] for c in calls],[5,2])
+
+    def test_remote_failure_with_valid_marker_is_not_retried(self):
+        board,calls=self.marker_board([(1,'missing file'),(0,'unexpected')])
+        self.assertEqual(board.raw_shell('sha256sum /system/missing.so'),(1,'missing file'))
+        self.assertEqual(len(calls),1)
+
+    def test_missing_marker_never_replays_writes_or_shell_fragments(self):
+        for command in ['mount --bind /a /b','bm install -p /x',
+                        'cat /proc/self/mountinfo; reboot',
+                        'cat /proc/self/mountinfo > /data/test',
+                        'cat /proc/$(reboot)/maps']:
+            with self.subTest(command=command):
+                board,calls=self.marker_board([None,(0,'unexpected')])
+                with patch.object(b.time,'sleep') as sleep,self.assertRaises(b.BatchStop):
+                    board.raw_shell(command)
+                self.assertEqual(len(calls),1);sleep.assert_not_called()
 
     def collect(self, board=None, **options):
         board=board or FakeBoard()

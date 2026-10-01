@@ -174,6 +174,33 @@ class TransactionTests(unittest.TestCase):
             self.assertEqual(io.log.count('stop'),1)
 
 class RecoveryTests(unittest.TestCase):
+    def test_activation_marker_loss_is_failsafe_without_replaying_write(self):
+        source=ROOT/'benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py'
+        spec=importlib.util.spec_from_file_location('marker_loss_batch',source)
+        batch=importlib.util.module_from_spec(spec);spec.loader.exec_module(batch)
+        p=fixture();io=Fake(p)
+        with tempfile.TemporaryDirectory() as td:
+            transport=batch.Board(sorted(batch.SERIALS)[0],'hdc','board-note','cx-t0',Path(td))
+            calls=[]
+            def missing(argv,timeout=60):
+                calls.append(argv)
+                return 0,'response lost after remote mutation'
+            transport.command=missing
+            original=io.verify
+            def verify(expected,generation):
+                if expected==p['expected']:
+                    transport.raw_shell('mount --bind /candidate /target')
+                return original(expected,generation)
+            io.verify=verify
+            tx=u.Transaction(io,Path(td)/'journal.json',p)
+            with self.assertRaisesRegex(batch.BatchStop,'HDC lost remote status marker'):
+                tx.apply()
+            self.assertEqual(len(calls),1)
+            self.assertEqual(io.values,p['baseline'])
+            self.assertEqual(io.stack,io.original)
+            self.assertTrue(io.running)
+            self.assertEqual(tx.state['status'],'rolled_back')
+
     def test_every_bind_boundary(self):
         p=fixture()
         for position in ['before','after','crash']:

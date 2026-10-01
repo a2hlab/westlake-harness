@@ -244,6 +244,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-n11f-owner-callback/window-r1/`** | 61b N11f single-copy REFUTED: branch0, ART/JVM one, bridge/runtime two; zero target samples; 318-identity U9 recovery and snapshots. |
 | **`benchmark/2026-10-02-n11g-sealed-owner-blueprint/`** | Design only: explicit sealed host-open callback, N11f duplicate-instance evidence, artifact ownership, callback timing, gates and U9 rollback. |
 | **`benchmark/2026-10-02-u10-1-bundle/`** | U10.1 final-ELF bundle gates, preserved SoundPool policy, host r3 resident compat, U11i JAR and proposed three-board plans; awaiting window review. |
+| **`benchmark/2026-10-02-u10-1-tools/`** | Stop all nonzero shards before finish; bounded read-only HDC marker retries, unchanged U10.1 supplemental plans and offline regressions. |
 
 ---
 
