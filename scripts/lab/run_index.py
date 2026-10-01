@@ -11,7 +11,8 @@ this index a question like "which keys ever show unknown sessionId, on which run
 A run is a directory holding facts.txt (bms_batch: <run>/<serial>/facts.txt with one <key>/ directory per app).
 Per (run, key) row: run (path with $WORKSPACES), serial, runtime_fp, boot_fp, key, alive_t5, alive_t20,
 facts_status, child_hilog, unknown_session (count of "getOhNativeWindow: unknown sessionId" in the key's hilog),
-first_fatal (first FATAL EXCEPTION / Fatal signal / JNI DETECTED ERROR / Reason:Signal line, trimmed),
+first_fatal (first FATAL EXCEPTION / Fatal signal / JNI DETECTED ERROR / Reason:Signal line, trimmed), cause (the
+exception text: the deepest 'Caused by' near the first fatal, else the first exception line),
 install_icon (the installer's ReadIconByManifest line from install-hilog.txt when present), and run-level probe
 load counts (probe/child-*-maps.txt: load instances of bridge / runtime / libart / libnativehelper, the
 activation_smoke counting). Screenshots are not judged here -- verdicts stay with the outer loop's sign-offs.
@@ -42,8 +43,13 @@ def rel(p, ws):
     return s.replace(str(ws), '$WORKSPACES', 1) if s.startswith(str(ws)) else s
 
 
+CAUSE = re.compile(r'(Caused by: |^\S*\s*(java|android)\.[\w.$]+(Exception|Error): )')
+
+
 def scan_hilog(path):
-    unknown, fatal = 0, None
+    """unknown-sessionId count, first fatal line, and the exception text (last 'Caused by' of the first fatal
+    chain, else the first exception line) -- the fatal line alone ('FATAL EXCEPTION: main') carries no cause."""
+    unknown, fatal, cause, chain = 0, None, None, 0
     try:
         with open(path, errors='replace') as fh:
             for line in fh:
@@ -51,9 +57,18 @@ def scan_hilog(path):
                     unknown += 1
                 if fatal is None and FATAL.search(line):
                     fatal = line.strip()[:240]
+                    chain = 60
+                msg = line.split('[stderr] ', 1)[-1].strip()
+                if (fatal is not None and chain > 0) or cause is None:
+                    if 'Caused by: ' in msg:
+                        cause = msg[:240]
+                    elif cause is None and re.match(r'(java|android|androidx)\.[\w.$]+(Exception|Error)(: |$)', msg):
+                        cause = msg[:240]
+                if chain:
+                    chain -= 1
     except OSError:
-        return None, None
-    return unknown, fatal
+        return None, None, None
+    return unknown, fatal, cause
 
 
 def probe_loads(run_dir):
@@ -105,13 +120,13 @@ def build(roots, index):
                 loads = probe_loads(run_dir) if rows else None
                 for key, r in rows.items():
                     kdir = run_dir / key
-                    unknown, fatal = scan_hilog(kdir / 'hilog.txt')
+                    unknown, fatal, cause = scan_hilog(kdir / 'hilog.txt')
                     icon = None
                     if (kdir / 'install-hilog.txt').exists():
                         icon = next((l.strip()[:200] for l in open(kdir / 'install-hilog.txt', errors='replace')
                                      if 'ReadIconByManifest' in l), None)
                     row = dict(run=rel(run_dir, ws), serial=run_dir.name[:8], key=key, **head, **r,
-                               unknown_session=unknown, first_fatal=fatal, install_icon=icon, probe_loads=loads)
+                               unknown_session=unknown, first_fatal=fatal, cause=cause, install_icon=icon, probe_loads=loads)
                     out.write(json.dumps(row, ensure_ascii=False) + '\n')
                     n += 1
     return n
