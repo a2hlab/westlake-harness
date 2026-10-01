@@ -15,6 +15,7 @@ Families (at least the three the user named, plus lane-side ones):
   incompat-no-device   "app incompatible" without running it on the Android reference device
   shared-transport     a shared resource (hdc server, OrbStack) reset while other lanes used it
   board-write-missing  an entry or sign-off cited but never on the canonical board (wrong file, dropped write)
+  screenshot-unread    lit / failed decided from process, log or focus flags instead of the screenshots (B.7)
   decision             a 改判 record (a re-decision, not an error); counted apart
   other
 """
@@ -27,13 +28,14 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 FAMILIES = ['runtime-unverified', 'dispatch-literal', 'narrow-negative', 'wrong-board-file', 'concurrent-board',
-            'incompat-no-device', 'shared-transport', 'board-write-missing', 'decision', 'other']
+            'incompat-no-device', 'shared-transport', 'board-write-missing', 'screenshot-unread', 'decision', 'other']
 RULES = [  # first match wins; keep the patterns specific to avoid smearing everything into one family
     ('decision', r'^> 外环\([^)]*\)·改判(?!.*R2 记档)'),
     ('wrong-board-file', r'写进.{0,20}(本地|worktree).{0,10}app-lighting|写错黑板|wrong board file'),
     ('board-write-missing', r'黑板(实际)?(上)?没有(这|这些)|从没发布|零输出零报错'),
     ('concurrent-board', r'同时起了两个|同板.{0,6}并发|两个 bms_batch|same board at the same time'),
     ('incompat-no-device', r'app 不兼容|app 问题|打包怪癖|incompatible'),
+    ('screenshot-unread', r'没读截图|没看截图|不看截图|foreground_unconfirmed.{0,30}(判|当成)|截图(其实|实际)(亮|正常)'),
     ('shared-transport', r'hdc kill|hdc start|共用.{0,6}hdc|OrbStack.{0,10}重启'),
     ('narrow-negative', r'不存在|找不到|缺席|没有调用|只搜|没调用|absence'),
     ('dispatch-literal', r'照字面|没写「|派.{0,40}(写|漏)了?「|写的命令行|当 bms_batch 的 manifest|与 AGENTS.{0,20}相反|抽检.{0,20}放了'),

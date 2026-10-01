@@ -81,7 +81,7 @@ fi
 # Evolution families (user rule 2026-10-01): every R2 record carries [家族:<family>] (and [车道:<lane>] when a lane made
 # the error) so scripts/lab/evo_family.py can count recurrence by family instead of by text hash.
 if printf '%s' "$FIRST" | grep -q 'R2 记档' && ! printf '%s' "$BODY" | grep -q '\[家族:'; then
-  echo "WARN: R2 record without [家族:<family>] tag -- families: runtime-unverified dispatch-literal narrow-negative wrong-board-file concurrent-board incompat-no-device shared-transport board-write-missing (scripts/lab/evo_family.py)" >&2
+  echo "WARN: R2 record without [家族:<family>] tag -- families: runtime-unverified dispatch-literal narrow-negative wrong-board-file concurrent-board incompat-no-device shared-transport board-write-missing screenshot-unread (scripts/lab/evo_family.py)" >&2
 fi
 printf '%s\n' "$BODY" | "$APPEND" "$BOARD"
 if tail -n 400 "$BOARD" | grep -F -- "$FIRST" >/dev/null; then  # no -q under pipefail (RUNBOOK)
