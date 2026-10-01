@@ -213,6 +213,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-abi-diff/`** | **Rebuilt-library acceptance now diffs call signatures, not just exports (`scripts/lab/abi_diff.py`): the 846 bridge rebuild has 8 signature drifts (createSession +int, injectKey/TouchEvent +3 params) behind "14 missing exports, no consumers".** |
 | **`benchmark/2026-10-01-j10c-jar/`** | **J10c (J10 `ea24291a`→`c9d50c43`): diagnose the appcompat-actionbar wall.** J10b proved the NoTitle mechanism works but the platform android:windowActionBar is already false, yet the ISE fires. knot AppCompatDelegateImpl.createSubDecor reads the app's OWN androidx windowActionBar (0x7f030350), not the platform one. J10c logs the app attr resolved value in the applied line (true=route-A theme-inheritance problem; false=decor ActionBar from elsewhere). Offline gate test_j10c.py 12/12; window plan has offline_precheck + expect_copies {bridge:2,runtime:2}. |
 | **`benchmark/2026-10-01-icon-format-scan/`** | Exact installer-selected icon files across 166 keys: 130 PNG, 25 WebP-family, 11 XML; 24 canonical WebP containers have own tiles, malformed Frequent Habits does not. |
+| **`benchmark/2026-10-01-icon-invalid-fallback/`** | U9 installer patch proposal: invalid selected non-PNG headers bypass legacy lookup and reuse the template-only placeholder, with exact-source host routing and 25-member WebP replay. |
 
 ---
 

@@ -1,0 +1,127 @@
+--- a/bms/src/adapter/framework/package-manager/jni/apk_installer.cpp
++++ b/bms/src/adapter/framework/package-manager/jni/apk_installer.cpp
+@@ -466,7 +466,66 @@
+ // falls back to the legacy ic_launcher path-grep) when the manifest has no
+ // android:icon or the id cannot be resolved.
+ // See doc/helloworld_icon_diff_analysis.html for why this matters.
+-bool ReadIconByManifest(const std::string& srcApkPath, std::vector<uint8_t>& out) {
++const char* SelectedRasterHeaderFailure(const std::vector<uint8_t>& bytes)
++{
++    static const uint8_t pngHeader[] = {0x89, 'P', 'N', 'G', 13, 10, 26, 10};
++    if (bytes.size() >= sizeof(pngHeader) &&
++        std::memcmp(bytes.data(), pngHeader, sizeof(pngHeader)) == 0) {
++        return nullptr;
++    }
++    if (bytes.size() >= 4 && std::memcmp(bytes.data(), "RIFF", 4) == 0) {
++        if (bytes.size() < 20 || std::memcmp(bytes.data() + 8, "WEBP", 4) != 0) {
++            return "invalid-webp-header";
++        }
++        const uint32_t riffSize = ReadLe32(bytes, 4);
++        if (static_cast<uint64_t>(riffSize) + 8 != bytes.size()) {
++            return "invalid-webp-riff-size";
++        }
++        const uint32_t chunkSize = ReadLe32(bytes, 16);
++        if (static_cast<uint64_t>(chunkSize) + (chunkSize & 1u) > bytes.size() - 20) {
++            return "truncated-webp-first-chunk";
++        }
++        if (std::memcmp(bytes.data() + 12, "VP8X", 4) == 0 && chunkSize == 10) {
++            return nullptr;
++        }
++        if (std::memcmp(bytes.data() + 12, "VP8 ", 4) == 0 &&
++            chunkSize >= 10 && std::memcmp(bytes.data() + 23, "\x9d\x01\x2a", 3) == 0) {
++            return nullptr;
++        }
++        if (std::memcmp(bytes.data() + 12, "VP8L", 4) == 0 &&
++            chunkSize >= 5 && bytes[20] == 0x2f) {
++            return nullptr;
++        }
++        return "invalid-webp-first-chunk";
++    }
++    if (bytes.size() >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff) {
++        static const uint8_t jpegEnd[] = {0xff, 0xd9};
++        if (bytes.size() < 8 || std::search(bytes.begin() + 3, bytes.end(),
++            jpegEnd, jpegEnd + sizeof(jpegEnd)) == bytes.end()) {
++            return "truncated-jpeg-container";
++        }
++        size_t markerOffset = 3;
++        while (markerOffset < bytes.size() && bytes[markerOffset] == 0xff) {
++            ++markerOffset;
++        }
++        if (markerOffset >= bytes.size() - 4 || bytes[markerOffset] == 0 ||
++            bytes[markerOffset] == 0xd8 || bytes[markerOffset] == 0xd9 ||
++            (bytes[markerOffset] >= 0xd0 && bytes[markerOffset] <= 0xd7)) {
++            return "invalid-jpeg-first-marker";
++        }
++        const size_t segmentSize = (static_cast<size_t>(bytes[markerOffset + 1]) << 8) |
++            bytes[markerOffset + 2];
++        if (segmentSize < 2 || segmentSize > bytes.size() - markerOffset - 3) {
++            return "invalid-jpeg-first-segment";
++        }
++        return nullptr;
++    }
++    return "unsupported-or-invalid-non-png-header";
++}
++
++bool ReadIconByManifest(const std::string& srcApkPath, std::vector<uint8_t>& out,
++                        bool& invalidSelectedRaster) {
++    invalidSelectedRaster = false;
+     oh_adapter::ApkManifestParser::ManifestData md;
+     if (!oh_adapter::ApkManifestParser::Parse(srcApkPath, md)) {
+         LOGW("ReadIconByManifest: manifest parse failed for %{public}s, falling back",
+@@ -509,6 +568,13 @@
+     if (!ReadZipEntry(arscApk, entryPath, out) || out.empty()) {
+         LOGW("ReadIconByManifest: cannot read %{public}s from %{public}s, falling back",
+              entryPath.c_str(), arscApk.c_str());
++        return false;
++    }
++    if (const char* failure = SelectedRasterHeaderFailure(out)) {
++        invalidSelectedRaster = true;
++        out.clear();
++        LOGW("ReadIconByManifest: invalid selected raster file=%{public}s reason=%{public}s; "
++             "using template placeholder", entryPath.c_str(), failure);
+         return false;
+     }
+     LOGI("ReadIconByManifest: android:icon 0x%{public}08x -> %{public}s!%{public}s "
+@@ -553,6 +619,7 @@
+     NOT_DECLARED,
+     DECLARED_MISSING_ALL_BUCKETS,
+     DECLARED_XML_ONLY,
++    DECLARED_INVALID_RASTER,
+     FAIL_CLOSED,
+ };
+ 
+@@ -562,7 +629,9 @@
+         : cls == IconlessApkClass::DECLARED_MISSING_ALL_BUCKETS
+             ? "DECLARED_MISSING_ALL_BUCKETS"
+         : cls == IconlessApkClass::DECLARED_XML_ONLY
+-            ? "DECLARED_XML_ONLY" : "FAIL_CLOSED";
++            ? "DECLARED_XML_ONLY"
++        : cls == IconlessApkClass::DECLARED_INVALID_RASTER
++            ? "DECLARED_INVALID_RASTER" : "FAIL_CLOSED";
+ }
+ 
+ // Physical presence probe for the candidate icon paths. A present-but-
+@@ -663,9 +732,11 @@
+     // that only resolves to vector/adaptive XML with no raster anywhere) gets
+     // the template's own generic placeholder under a loud typed alarm; see
+     // ClassifyIconlessApk for the exact boundary.
+-    if (!ReadIconByManifest(srcApkPath, apkIconBytes) &&
+-        !ReadApkLauncherIcon(srcApkPath, apkIconBytes)) {
+-        const IconlessApkClass iconlessClass = ClassifyIconlessApk(srcApkPath);
++    bool invalidSelectedRaster = false;
++    if (!ReadIconByManifest(srcApkPath, apkIconBytes, invalidSelectedRaster) &&
++        (invalidSelectedRaster || !ReadApkLauncherIcon(srcApkPath, apkIconBytes))) {
++        const IconlessApkClass iconlessClass = invalidSelectedRaster
++            ? IconlessApkClass::DECLARED_INVALID_RASTER : ClassifyIconlessApk(srcApkPath);
+         if (iconlessClass == IconlessApkClass::FAIL_CLOSED) {
+             LOGE("ExtractAndPackResourceHap: no launcher icon; refusing template placeholder");
+             return false;
+@@ -675,7 +746,7 @@
+             return false;
+         }
+         LOGE("ICONLESS_APK_TEMPLATE_PLACEHOLDER: apk=%{public}s class=%{public}s — "
+-             "APK provably has no launcher icon; packaging the template's own generic "
++             "APK has no usable launcher icon; packaging the template's own generic "
+              "placeholder so install can proceed. Desktop icon will be generic; "
+              "reinstall an icon-bearing build to replace it.",
+              srcApkPath.c_str(), IconlessApkClassName(iconlessClass));
