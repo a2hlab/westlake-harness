@@ -41,12 +41,14 @@ def sh(cmd, **kw):
 
 def read_paths(worktree, listing, allow_gates):
     out, errors = [], []
-    for raw in (worktree / listing).read_text().splitlines():
+    for raw in Path(listing if Path(listing).is_absolute() else worktree / listing).read_text().splitlines():
         p = raw.strip()
         if not p or p.startswith('#'):
             continue
         if p.startswith('/') or '..' in Path(p).parts:
             errors.append(f'not a safe relative path: {p}'); continue
+        if p in DOCS:
+            errors.append(f'{p} must not be copied whole (it would drop master lines); put its new lines in documentation.json'); continue
         if p.startswith(GATED) and not allow_gates:
             errors.append(f'gate/frozen registry needs --allow-gates (outer approval): {p}'); continue
         if not p.startswith(ALLOWED + (GATED if allow_gates else ())):
@@ -98,6 +100,7 @@ def main(argv=None):
     ap.add_argument('listing')
     ap.add_argument('-m', '--message', required=True)
     ap.add_argument('--allow-gates', action='store_true')
+    ap.add_argument('--docs', type=Path, help='documentation.json kept outside the worktree (in addition to listed ones)')
     ap.add_argument('--no-commit', action='store_true', help='run everything, then leave the result staged')
     args = ap.parse_args(argv)
     wt = args.worktree.expanduser().resolve()
@@ -107,7 +110,8 @@ def main(argv=None):
     if errors:
         sys.exit('REFUSE:\n  ' + '\n  '.join(errors))
     files = expand(wt, paths)
-    listing_sha = hashlib.sha256((wt / args.listing).read_bytes()).hexdigest()
+    listing_path = Path(args.listing) if Path(args.listing).is_absolute() else wt / args.listing
+    listing_sha = hashlib.sha256(listing_path.read_bytes()).hexdigest()
     created, overwritten = [], []
     for rel in files:
         dst = REPO / rel
@@ -128,6 +132,8 @@ def main(argv=None):
         touched = []
         for d in docs:
             touched += insert_docs(doc_changes(json.loads((REPO / d).read_text())))
+        if args.docs:
+            touched += insert_docs(doc_changes(json.loads(args.docs.read_text())))
         r = sh([sys.executable, 'scripts/lab/check_user_paths.py', *files, *touched])
         if r.returncode:
             failures.append('user-paths: ' + r.stdout.strip().splitlines()[-1])
