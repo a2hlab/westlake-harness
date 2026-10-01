@@ -202,6 +202,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-first-frame-suspects/`** | **78 PID/time-scoped U6/T7d attempts, seven N9 investigation keys, corrected non-execution present/finishDrawing counts and 34 lit controls exposing five VSync-score false alarms; no automatic diagnosis.** |
 | **`benchmark/2026-10-01-n10b-child/`** | **U8 route-owned child preload, real OH m133 Emboss and VM/NDK field-cache initialization; exact baseline/repeats, strict gate refusal and source archive.** |
 | **`benchmark/2026-10-01-u8-rollout/`** | **U7-preserving J9/T7e assembly, strict preflight, three-board control receipts** |
+| **`benchmark/2026-10-01-b10-libart-impact/`** | **Exact deployed U8 nine-jar/all-DEX class gaps across 166 keys and PID-bound BitVector evidence from seven selected sequential runs: 99 lit positive controls, no invented causal victim count.** |
 
 ---
 
