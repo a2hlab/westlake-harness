@@ -7,8 +7,15 @@ import lab_paths,u7_executor as u,generation_bundle as gb,check_frozen as frozen
 W=lab_paths.workspaces();M=lab_paths.harness()
 def save(p,x):p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(x,indent=2)+'\n')
 def package():return W/json.loads((H/'package.json').read_text())['bundle']
-def service_hashes():
+def service_hashes(serial=None):
+ if serial is not None:
+  return json.loads((R/'benchmark/2026-10-01-installation-chain-identity/current-u9.json').read_text())['boards'][serial]['services']
  return {p:v for p,v in json.loads((H/'smoke.json').read_text())['probe']['files'].items() if Path(p).name in {'libbms.z.so','libapk_installer.so'}}
+def extended_refs(plan,serial):
+ refs={k:list(v) for k,v in plan['reference_paths'].items()}
+ refs['runtime']=sorted(set(refs['runtime']) | set(service_hashes(serial)))
+ return refs
+
 def service_gate():
  lines,bad=frozen.check_artifacts(frozen.active(frozen.load(M/'knowledge/frozen/frozen.json')),service_hashes(),'unchanged U8 installer')
  if bad:raise RuntimeError('\n'.join(lines))
@@ -20,9 +27,9 @@ def read_baseline(serial,root):
  plan=u.prepare(package(),W/'westlake-generation-u8-j9-t7e/native')
  io=u.DeviceIO(serial,'cx-t0',root/'before-device');got,absent=io.snapshot(sorted(plan['baseline']))
  diff={p:{'expected':v,'actual':got.get(p)} for p,v in plan['baseline'].items() if got.get(p)!=v}
- service=io.hashes(sorted(service_hashes()))
- save(root/'before.json',{'boot_id':io.boot,'identities':len(got),'diff':diff,'absent':absent,'fingerprints':u.fingerprints(got,plan['reference_paths']),'installer':service})
- assert not diff and not absent and service==service_hashes()
+ service=io.hashes(sorted(service_hashes(serial)))
+ save(root/'before.json',{'boot_id':io.boot,'identities':len(got),'diff':diff,'absent':absent,'fingerprints':u.fingerprints({**got,**service},extended_refs(plan,serial)),'installer':service})
+ assert not diff and not absent and service==service_hashes(serial)
 def apply(serial,root):
  # Confirm the unchanged frozen system-service identities before any board access.
  service_gate()
@@ -64,11 +71,11 @@ def verify_final(serial,root):
   subprocess.run(['orb','-m','a2hlab','bash','-lc',command],check=True)
   return
  plan=u.prepare(package(),W/'westlake-generation-u8-j9-t7e/native');io=u.DeviceIO(serial,'cx-t0',root/'final-device')
- wanted={**plan['expected'],**service_hashes()};got,absent=io.snapshot(sorted(wanted))
+ wanted={**plan['expected'],**service_hashes(serial)};got,absent=io.snapshot(sorted(wanted))
  diff={p:{'expected':v,'actual':got.get(p)} for p,v in wanted.items() if got.get(p)!=v}
  core_diff={p:{'expected':v,'actual':got.get(p)} for p,v in plan['expected'].items() if got.get(p)!=v}
- service_diff={p:{'expected':v,'actual':got.get(p)} for p,v in service_hashes().items() if got.get(p)!=v}
- save(root/'final-u9.json',{'identities':len(got),'identity_assertions':len(plan['expected'])+len(service_hashes()),'core_identities':len(plan['expected']),'service_assertions':len(service_hashes()),'overlapping_service_paths':sorted(set(plan['expected']) & set(service_hashes())),'core_diff':core_diff,'service_diff':service_diff,'diff':diff,'absent':absent,'fingerprints':u.fingerprints(got,plan['reference_paths']),'boot_id':io.boot})
+ service_diff={p:{'expected':v,'actual':got.get(p)} for p,v in service_hashes(serial).items() if got.get(p)!=v}
+ save(root/'final-u9.json',{'identities':len(got),'identity_assertions':len(plan['expected'])+len(service_hashes(serial)),'core_identities':len(plan['expected']),'service_assertions':len(service_hashes(serial)),'overlapping_service_paths':sorted(set(plan['expected']) & set(service_hashes(serial))),'core_diff':core_diff,'service_diff':service_diff,'diff':diff,'absent':absent,'fingerprints':u.fingerprints(got,extended_refs(plan,serial)),'boot_id':io.boot})
  assert not core_diff and not service_diff and not diff and not absent
 if __name__=='__main__':
  p=argparse.ArgumentParser();p.add_argument('--serial',required=True,choices=sorted(lab_paths.boards('oh')));p.add_argument('--out',type=Path,required=True);p.add_argument('--plan',type=Path)

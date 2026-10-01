@@ -43,9 +43,11 @@ ARM64 = FW + '/arm64'
 SOCK = '/dev/unix/socket/AppSpawnX'
 # the two fingerprint path-sets bms_batch uses (keep in sync with bms_batch.py FINGERPRINT_PATHS /
 # BOOT_IMAGE_PATHS); RUNTIME excludes BCP jars + boot image on purpose (a jar-only fingerprint).
+from installation_chain import PATHS as INSTALLATION_PATHS
+
 FINGERPRINT_PATHS = ('/system/bin/appspawn-x /system/android/framework/oh-adapter-runtime.jar '
                      '/system/android/lib64/*.so /system/lib64/westlake/route-a/*/*.so '
-                     '/system/lib64/libbms.z.so /system/lib64/libapk_installer.so')
+                     + ' '.join(INSTALLATION_PATHS))
 BOOT_IMAGE_PATHS = ('/system/android/framework/arm64/* ' + ' '.join(
     f'/system/android/framework/{j}.jar' for j in ('core-oj', 'core-libart', 'core-icu4j', 'okhttp',
     'bouncycastle', 'apache-xml', 'adapter-mainline-stubs', 'framework', 'oh-adapter-framework')))

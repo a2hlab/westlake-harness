@@ -65,5 +65,24 @@ class PartialRetention(unittest.TestCase):
             self.assertIn('--verify-final', command.call_args.args[0][-1])
 
 
+    def test_final_readback_checks_new_installs_aliases_without_weakening_assertions(self):
+        serial='61b0657200000000000000000324012c'
+        core={'/system/bin/appspawn-x':'a'*64, '/system/lib64/libbms.z.so':hook.service_hashes(serial)['/system/lib64/libbms.z.so']}
+        plan={'expected':core, 'reference_paths':{'runtime':list(core), 'boot':[]}}
+        good={**core, **hook.service_hashes(serial)}
+        class Device:
+            boot='test-boot'
+            def snapshot(self, paths): return dict(good), []
+        with tempfile.TemporaryDirectory() as temp, patch.object(hook.sys,'platform','linux'), patch.object(hook.u,'prepare',return_value=plan), patch.object(hook.u,'DeviceIO',return_value=Device()):
+            root=Path(temp)
+            hook.verify_final(serial, root)
+            receipt=json.loads((root/'final-u9.json').read_text())
+            self.assertEqual(receipt['service_assertions'],6)
+            self.assertEqual(receipt['fingerprints']['runtime']['files'],7)
+            good['/system/lib64/platformsdk/libinstalls.z.so']='b'*64
+            with self.assertRaises(AssertionError):hook.verify_final(serial, root)
+            receipt=json.loads((root/'final-u9.json').read_text())
+            self.assertIn('/system/lib64/platformsdk/libinstalls.z.so', receipt['service_diff'])
+
 if __name__ == '__main__':
     unittest.main()

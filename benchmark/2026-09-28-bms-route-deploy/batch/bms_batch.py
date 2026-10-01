@@ -38,6 +38,7 @@ def _board_whitelist():
 
 
 SERIALS = _board_whitelist()
+import installation_chain
 IDENT = re.compile(r'[A-Za-z_][A-Za-z0-9_.]*\Z')
 ACTIVITY = re.compile(r'[A-Za-z_][A-Za-z0-9_.$]*\Z')
 KEY = re.compile(r'[A-Za-z0-9_-]+\Z')
@@ -926,7 +927,7 @@ def preflight(board, out, host_epoch=None):
 # results for one key when these differ (auxio 5cd vs 61b, 2026-09-30), so each run records them.
 FINGERPRINT_PATHS = ('/system/bin/appspawn-x /system/android/framework/oh-adapter-runtime.jar '
                      '/system/android/lib64/*.so /system/lib64/westlake/route-a/*/*.so '
-                     '/system/lib64/libbms.z.so /system/lib64/libapk_installer.so')
+                     + ' '.join(installation_chain.PATHS))
 
 
 # The boot class path jars and the boot image are on the load path too, but they are not in FINGERPRINT_PATHS:
@@ -1024,9 +1025,13 @@ def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
         raise BatchStop('expected OH6.1.0.31; this is not the OH7/T006 route')
     _, baseline = board.shell('ls -ld /data/pr03-74e6-portable; ls -l /dev/unix/socket/AppSpawnX; '
                               'sha256sum /system/bin/appspawn-x /system/android/framework/oh-adapter-runtime.jar')
+    installation = installation_chain.collect(board, out/'installation-chain')
+    if installation['verdict'] == 'mismatch':
+        raise BatchStop('installation chain identity mismatch; see installation-chain.json')
     fingerprint = runtime_fingerprint(board, out)
     save(out/'baseline.json', {'version': version, 'boot_id': board.boot, 'readback': baseline,
                               'runtime_fingerprint': fingerprint,
+                              'installation_chain': installation,
                               'boot_image_fingerprint': boot_image_fingerprint(board, out),
                               'baseline_acceptance': 'executor must have accepted task19; these are observations'})
     for i, entry in enumerate(entries):
