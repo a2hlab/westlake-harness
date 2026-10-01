@@ -1,0 +1,173 @@
+--- a/benchmark/2026-10-01-n11e-result-channel/src/sealed_child_provider_loader.c
++++ b/benchmark/2026-10-01-n11e-result-channel/src/sealed_child_provider_loader.c
+@@ -48,15 +48,17 @@
+     g_n11e_failure.index = UINT32_MAX;
+ }
+ 
+-static void N11eFailure(uint32_t branch, uint32_t index, const char *fallback)
++static void N11eFailure(uint32_t branch, uint32_t index,
++                        const char *detail_now, const char *fallback)
+ {
+-    int saved_errno = errno;
+-    const char *detail = dlerror();
++    /* N11f: detail is captured by the caller IMMEDIATELY after the failing dl*
++     * call; do NOT call dlerror() here (it latches the last error -> stale
++     * text, e.g. R3's libartbased). */
++    const char *detail = detail_now ? detail_now : fallback;
+     size_t length;
+     g_n11e_failure.branch = branch;
+     g_n11e_failure.index = index;
+-    g_n11e_failure.error = saved_errno;
+-    if (detail == NULL) detail = fallback;
++    g_n11e_failure.error = errno;
+     if (detail == NULL) detail = "no linker detail";
+     length = strlen(detail);
+     if (length >= sizeof(g_n11e_failure.detail)) length = sizeof(g_n11e_failure.detail) - 1U;
+@@ -259,6 +261,13 @@
+ 
+ static Dl_namespace closure_namespace;
+ static int namespace_prepared;
++/* N11f: the two canonical JNI owners, resident in closure_namespace, shared to
++ * the default namespace by the open callback below (NOT by dlns_inherit). */
++static void *g_owner_handles[2];
++static const char *const g_owner_paths[2] = {
++    "/system/android/lib64/liboh_adapter_bridge.so",
++    "/system/android/lib64/liboh_android_runtime.so"
++};
+ 
+ void *WLSCPL_OpenPreparedNamespace(const char *absolute_path, int flags)
+ {
+@@ -272,6 +281,16 @@
+         strncmp(absolute_path, prefix, sizeof(prefix) - 1U) != 0 ||
+         absolute_path[sizeof(prefix) - 1U] == '\0' ||
+         (flags & (RTLD_NOW | RTLD_GLOBAL)) != RTLD_NOW) return NULL;
++    /* N11f: the Java NativeLoader opens the two JNI owners in the default
++     * namespace. Return the resident sealed-owner handle instead of dlopen'ing
++     * a second copy (the branch-3 OWNER_MISMATCH root). Single copy by
++     * construction; no dlns_inherit. */
++    for (size_t owner = 0U; owner < 2U; ++owner) {
++        if (strcmp(absolute_path, g_owner_paths[owner]) == 0) {
++            if (g_owner_handles[owner] != NULL) return g_owner_handles[owner];
++            break;  /* not published yet: fall through (ordering note in n11f-branch3-patch.md) */
++        }
++    }
+     return dlopen(absolute_path, flags);
+ }
+ 
+@@ -308,79 +327,57 @@
+          * CREATE_INHERIT_CURRENT adds an inheritance edge; it is not a
+          * snapshot. A default-owner preload would bind system ART instead.
+          * OH 6.1 musl ldso/linux/dynlink.c:4831-4983,2408-2575. */
+-        static void *jni_owner_handles[2];
+-        static const char *const owner_paths[] = {
+-            "/system/android/lib64/liboh_adapter_bridge.so",
+-            "/system/android/lib64/liboh_android_runtime.so"
+-        };
+         size_t owner;
++        (void)dlerror();
+         void *art = dlopen_ns(&closure_namespace, "libart.so",
+                               RTLD_NOW | RTLD_NOLOAD | RTLD_LOCAL);
++        const char *dl = dlerror();
+         if (art == NULL) {
+-            N11eFailure(WLSCPL_FAILB_ARTIFACT_DLOPEN, UINT32_MAX, "route-a ART NOLOAD failed");
++            N11eFailure(WLSCPL_FAILB_ARTIFACT_DLOPEN, UINT32_MAX, dl, "route-a ART NOLOAD failed");
+             (void)dlclose(handle);
+             return NULL;
+         }
+         (void)dlclose(art);
+         for (owner = 0U; owner < 2U; ++owner) {
+-            if (jni_owner_handles[owner] == NULL) {
+-                jni_owner_handles[owner] = dlopen_ns(&closure_namespace,
+-                                                     owner_paths[owner],
+-                                                     RTLD_NOW | RTLD_LOCAL);
++            if (g_owner_handles[owner] == NULL) {
++                (void)dlerror();
++                g_owner_handles[owner] = dlopen_ns(&closure_namespace,
++                                                   g_owner_paths[owner],
++                                                   RTLD_NOW | RTLD_LOCAL);
++                dl = dlerror();
+             }
+-            if (jni_owner_handles[owner] == NULL) {
+-                N11eFailure(WLSCPL_FAILB_ARTIFACT_DLOPEN, (uint32_t)owner, "JNI owner preload failed");
++            if (g_owner_handles[owner] == NULL) {
++                N11eFailure(WLSCPL_FAILB_ARTIFACT_DLOPEN, (uint32_t)owner, dl, "JNI owner preload failed");
+                 fprintf(stderr, "[N10b-JNI-OWNER] preload failed %s: %s\n",
+-                        owner_paths[owner], g_n11e_failure.detail);
++                        g_owner_paths[owner], g_n11e_failure.detail);
+                 (void)dlclose(handle);
+                 return NULL;
+             }
+         }
+-        /* N11b: provider admission uses plain dlopen before the runtime
+-         * ClassLoader domain exists. Publish the already loaded closure
+-         * owners to default before the provider registers JNI. OH musl
+-         * searches only direct inheritance; share exactly these two names.
+-         * Never perform another fresh load to make this check pass. */
+-        Dl_namespace default_namespace;
+-        dlns_init(&default_namespace, "default");
+-        g_n11e_failure.stage = WLSCPL_STAGE_BEFORE_INHERIT;
+-        if (dlns_inherit(&default_namespace, &closure_namespace,
+-                        "liboh_adapter_bridge.so:liboh_android_runtime.so") != 0) {
+-            N11eFailure(WLSCPL_FAILB_DLNS_INHERIT, UINT32_MAX, "default inheritance failed");
+-            (void)dlclose(handle);
+-            return NULL;
+-        }
+-        g_n11e_failure.stage = WLSCPL_STAGE_AFTER_INHERIT;
+-        for (owner = 0U; owner < 2U; ++owner) {
+-            g_n11e_failure.stage = WLSCPL_STAGE_BEFORE_OWNER_VERIFY;
+-            void *shared = dlopen_ns(&default_namespace, owner_paths[owner],
+-                                    RTLD_NOW | RTLD_LOCAL | RTLD_NOLOAD);
+-            if (shared == NULL || shared != jni_owner_handles[owner]) {
+-                N11eFailure(shared == NULL ? WLSCPL_FAILB_OWNER_NOLOAD : WLSCPL_FAILB_OWNER_MISMATCH,
+-                              (uint32_t)owner, shared == NULL ? "default owner NOLOAD failed" : "owner handles differ");
+-                if (shared != NULL) (void)dlclose(shared);
+-                (void)dlclose(handle);
+-                return NULL;
+-            }
+-            (void)dlclose(shared);
+-        }
++        /* N11f: the two owners are now shared to the default namespace by
++         * WLSCPL_OpenPreparedNamespace returning g_owner_handles[owner] (single
++         * copy by construction). The N11b dlns_inherit + NOLOAD-verify block is
++         * removed: it was the branch-3 OWNER_MISMATCH site (default minted its
++         * own copy, so NOLOAD found a handle != the sealed one). */
+         g_n11e_failure.stage = WLSCPL_STAGE_AFTER_OWNER_VERIFY;
+         /* HiLog ABI from OH6.1 hilog/log_c.h: LOG_CORE=3, LOG_INFO=4.
+          * Resolve through the loaded runtime owner; do not add a default
+          * preload or a new child DT_NEEDED edge just for the smoke marker. */
+         typedef int (*N10bLogFn)(int, int, unsigned int,
+                                  const char *, const char *, ...);
+-        N10bLogFn emit = (N10bLogFn)dlsym(jni_owner_handles[1], "HiLogPrint");
++        (void)dlerror();
++        N10bLogFn emit = (N10bLogFn)dlsym(g_owner_handles[1], "HiLogPrint");
+         if (emit == NULL) {
+-            /* Retain :333 as a fatal gate; N11e diagnoses, N11f may repair. */
+-            N11eFailure(WLSCPL_FAILB_EMIT_RESOLVE, UINT32_C(1), "HiLogPrint resolution failed");
+-            (void)dlclose(handle);
+-            return NULL;
++            /* N11f: diagnostic only, NON-FATAL (outer ring 22:xx). Record the
++             * branch for the result channel but DO NOT abort the load, so the
++             * branch-3 fix yields single-copy maps. */
++            N11eFailure(WLSCPL_FAILB_EMIT_RESOLVE, UINT32_C(1), dlerror(), "HiLogPrint resolution failed");
++        } else {
++            (void)emit(3, 4, 0xD000F00u, "N10bOwner",
++                       "[N10b-JNI-OWNER] bridge/runtime preloaded in westlake.sealed.child");
++            (void)emit(3, 4, 0xD000F00u, "N11bOwner",
++                       "[N11f-OWNER] default shares sealed bridge/runtime via open callback");
+         }
+-        (void)emit(3, 4, 0xD000F00u, "N10bOwner",
+-                   "[N10b-JNI-OWNER] bridge/runtime preloaded in westlake.sealed.child");
+-        (void)emit(3, 4, 0xD000F00u, "N11bOwner",
+-                   "[N11b-EARLY-OWNER] default reuses sealed bridge/runtime; handles verified");
+     }
+     return handle;
+ }
+@@ -530,7 +527,7 @@
+             RTLD_NOW | RTLD_LOCAL);
+         if (handle == NULL) {
+             if (g_n11e_failure.branch == WLSCPL_FAILB_NONE)
+-                N11eFailure(WLSCPL_FAILB_ARTIFACT_DLOPEN, artifact_index, "artifact open_local_now returned NULL");
++                N11eFailure(WLSCPL_FAILB_ARTIFACT_DLOPEN, artifact_index, dlerror(), "artifact open_local_now returned NULL");
+             return Fail(loader, request, result, WLSCPL_ERROR_DLOPEN,
+                         order_count, ops);
+         }
