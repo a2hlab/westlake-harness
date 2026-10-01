@@ -29,7 +29,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 FAMILIES = ['runtime-unverified', 'dispatch-literal', 'narrow-negative', 'wrong-board-file', 'concurrent-board',
             'incompat-no-device', 'shared-transport', 'board-write-missing', 'screenshot-unread', 'no-control',
-            'decision', 'other']
+            'claim-unverified', 'decision', 'other']
 RULES = [  # first match wins; keep the patterns specific to avoid smearing everything into one family
     ('decision', r'^> 外环\([^)]*\)·改判(?!.*R2 记档)'),
     ('wrong-board-file', r'写进.{0,20}(本地|worktree).{0,10}app-lighting|写错黑板|wrong board file'),
@@ -42,6 +42,9 @@ RULES = [  # first match wins; keep the patterns specific to avoid smearing ever
     # condition the working build shared, a white-screen rule was read off two runs, and a "rescue rate" control
     # group was padded with single-session apps where the event is trivially true
     ('no-control', r'没有对照|无对照|对照组.{0,20}(没|未|稀释|混)|两边都有|单会话.{0,10}(稀释|混)|confound'),
+    # 2026-10-01 retro 20: a lane reported a commit and a board ACK that did not exist (EVO-0085), earlier the same day
+    # "done" for work never done -- a claimed action, not a measurement, so it is not narrow-negative
+    ('claim-unverified', r'两样都没有|报.{0,12}(完成|已落|已提交).{0,20}(没做|不存在|都没有)|(commit|ACK|提交).{0,20}都不存在'),
     ('narrow-negative', r'不存在|找不到|缺席|没有调用|只搜|没调用|absence'),
     ('dispatch-literal', r'照字面|没写「|派.{0,40}(写|漏)了?「|写的命令行|当 bms_batch 的 manifest|与 AGENTS.{0,20}相反|抽检.{0,20}放了'),
     ('runtime-unverified', r'板上.{0,20}(没生效|没核|没看)|身份没核|NOT DEPLOYED|离线.{0,10}(采认|差异)|生效日志|运行态|'
