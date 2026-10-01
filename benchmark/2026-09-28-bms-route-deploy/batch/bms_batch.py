@@ -1031,6 +1031,21 @@ def shot_offsets(text):
     return values
 
 
+def serial_process_lock(serial, lock_dir=None):
+    """Exclusive non-blocking flock on <lock_dir>/<serial>.bms_batch.lock; returns the open file or None if held."""
+    import fcntl
+    lock_dir = Path(lock_dir or os.environ.get('BMS_BATCH_LOCK_DIR') or Path.home() / '.octos/board-locks')
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    fh = open(lock_dir / f'{serial}.bms_batch.lock', 'a+')
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return None
+    fh.seek(0); fh.truncate(); fh.write(f'{os.getpid()} {time.time():.0f}\n'); fh.flush()
+    return fh
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--manifest', type=Path, default=Path(__file__).with_name('apps.json'))
@@ -1074,6 +1089,12 @@ def main(argv=None):
     # by first fatal and the 33 non-lit keys had to be re-run. A sweep must collect hilog unless waived explicitly.
     if len(entries) >= 10 and hilog_seconds is None and not args.no_hilog:
         ap.error(f'{len(entries)} keys without --hilog cannot be clustered by first fatal; add --hilog or pass --no-hilog')
+    # 2026-10-01 11:50: one lane started two bms_batch processes on the same board (v1 and cv2 shards in parallel);
+    # installs, launches and screenshots interleaved and the runs were discarded. One process per serial, enforced
+    # here (the board lock alone cannot tell two processes of the same lane apart). Held until this process exits.
+    proc_lock = serial_process_lock(args.serial)
+    if proc_lock is None:
+        ap.error(f'another bms_batch is already running on {args.serial}; one process per board, run shards one after another')
     out=args.out.expanduser().resolve()/args.run_id/args.serial
     out.mkdir(parents=True,exist_ok=False)
     save(out/'plan.json',{'apps':entries,'run_id':args.run_id,'serial':args.serial,'options':options,

@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+"""Standard on-board run: the fixed steps of every board dispatch, in one command.
+
+    board_run.py PLAN.json                 # execute
+    board_run.py PLAN.json --dispatch      # print the dispatch text to send to a lane (no board access)
+
+The steps are not optional and not re-typed per dispatch (2026-10-01: a hand-written dispatch dropped --hilog, another
+said "two shards per board" and the lane ran them in parallel, a third said "keep only record.json" and the lane
+deleted 198 never-committed screenshots, a fourth went to a full sweep with two fixes that had never activated):
+  1. LOCK the board (board_note.sh), refuse if another lane holds it; UNLOCK on every exit path;
+  2. activation smoke gate (activation_smoke.py) with the plan's smoke spec: fingerprints = expected state,
+     controls alive, every fix's activation marker, single-copy libraries and child-view hashes. FAIL = stop;
+  3. shards run one after another, one bms_batch process at a time, each with --reinstall --hilog --shots 5,20,
+     each into its own new directory; nothing under the output root is ever deleted;
+  4. after each shard its facts.txt TOTAL line is appended to the board verbatim; screenshots are left for the
+     outer loop to read and sign.
+
+PLAN.json:
+  {"serial": "<connect-key>", "lane": "oc-t4", "entry": "97", "why": "U9 full sweep 5ea shard",
+   "board": "<abs path of .octos/boards/app-lighting.md>", "out": "<new dir>",
+   "smoke_spec": "knowledge/smoke/<x>.json",
+   "shards": [{"name": "v1", "manifest": "...", "input_root": "...", "keys_file": "..."}, ...]}
+Relative paths are resolved against the repo; $WORKSPACES is expanded.
+"""
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+REPO = HERE.parents[1]
+sys.path.insert(0, str(HERE))
+import lab_paths  # noqa: E402
+
+BATCH = REPO / 'benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py'
+RULES = [
+    'board_run.py 一条命令做完,不手写步骤',
+    '先 LOCK 板(board_note.sh),结束或出错都 UNLOCK',
+    '先过生效冒烟门(activation_smoke.py:指纹 / 对照 / 每个修复的生效日志 / 子进程单份库 / 子进程视图 sha),FAIL 就停',
+    '每块板同一时刻只跑一个 bms_batch 进程,分片顺序跑(bms_batch 自带同板进程锁)',
+    '每个分片都带 --reinstall --hilog --shots 5,20,各进新目录',
+    '原始运行目录一个字节不删;落库只复制',
+    '每个分片的 facts.txt TOTAL 行原样贴黑板;截图交外环读图签数',
+]
+
+
+def expand(p):
+    if '$WORKSPACES' in str(p) and not os.environ.get('WORKSPACES'):
+        os.environ['WORKSPACES'] = str(lab_paths.workspaces())
+    p = os.path.expanduser(os.path.expandvars(str(p)))
+    return p if os.path.isabs(p) else str(REPO / p)
+
+
+def dispatch_text(plan, plan_path):
+    lines = [f'上板单(#{plan["entry"]},{plan["why"]}):在 westlake-harness 下执行',
+             f'  python3 scripts/lab/board_run.py {plan_path}',
+             '这条命令固定做下面几件事,不要拆开手写:']
+    lines += [f'  {i}. {r}' for i, r in enumerate(RULES, 1)]
+    lines.append('跑完贴每个分片 facts.txt 的 TOTAL 行原样(脚本已自动贴一份),截图不自判、交外环。')
+    return '\n'.join(lines)
+
+
+def board_append(plan, text):
+    subprocess.run([str(HERE / 'board_append.sh'), plan['board'], text], check=False)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    ap.add_argument('plan', type=Path)
+    ap.add_argument('--dispatch', action='store_true', help='print the dispatch text and exit')
+    args = ap.parse_args(argv)
+    plan = json.loads(args.plan.read_text())
+    for k in ('serial', 'lane', 'entry', 'why', 'board', 'out', 'smoke_spec', 'shards'):
+        if k not in plan:
+            sys.exit(f'plan missing {k}')
+    plan['board'] = expand(plan['board'])
+    if args.dispatch:
+        print(dispatch_text(plan, args.plan)); return 0
+    note = str(lab_paths.tools() / 'board_note.sh')
+    out = Path(expand(plan['out']))
+    if out.exists():
+        sys.exit(f'output root {out} exists; every run gets a new directory')
+    out.mkdir(parents=True)
+    rc = subprocess.run([note, 'lock', plan['board'], plan['serial'], plan['lane'],
+                         f'#{plan["entry"]} {plan["why"]} (board_run.py)']).returncode
+    held = subprocess.run([note, 'held', plan['serial']], capture_output=True, text=True).stdout.split()
+    if rc or not held or held[0] != plan['lane']:
+        sys.exit(f'could not take the board lock for {plan["serial"]} (held: {" ".join(held) or "none"})')
+    result = {'smoke': None, 'shards': []}
+    try:
+        smoke = subprocess.run([sys.executable, str(HERE / 'activation_smoke.py'), '--spec', expand(plan['smoke_spec']),
+                                '--serial', plan['serial'], '--lane', plan['lane'], '--out', str(out / 'smoke')])
+        result['smoke'] = smoke.returncode
+        verdict = 'PASS' if smoke.returncode == 0 else 'FAIL'
+        board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} board_run 生效冒烟 {verdict} '
+                           f'({out / "smoke/smoke-result.json"});{"开始分片" if verdict == "PASS" else "停,不跑全量"}')
+        if smoke.returncode != 0:
+            return 1
+        for shard in plan['shards']:
+            keys = Path(expand(shard['keys_file'])).read_text().strip()
+            sout = out / shard['name']
+            cmd = [sys.executable, str(BATCH), '--execute', '--serial', plan['serial'], '--lane', plan['lane'],
+                   '--manifest', expand(shard['manifest']), '--input-root', expand(shard['input_root']),
+                   '--keys', keys, '--reinstall', '--hilog', '--shots', '5,20', '--out', str(sout)]
+            with open(out / f'{shard["name"]}.log', 'w') as fh:
+                code = subprocess.run(cmd, cwd=REPO, stdout=fh, stderr=subprocess.STDOUT).returncode
+            facts = sorted(sout.glob('*/*/facts.txt'))
+            total = facts[0].read_text().strip().splitlines()[-1] if facts else f'no facts.txt (rc={code})'
+            result['shards'].append({'name': shard['name'], 'rc': code, 'facts': str(facts[0]) if facts else None,
+                                     'total': total})
+            board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} board_run 分片 {shard["name"]} '
+                               f'({facts[0] if facts else sout}):「{total}」')
+        return 0
+    finally:
+        (out / 'board-run-result.json').write_text(json.dumps(result, indent=1, ensure_ascii=False))
+        subprocess.run([note, 'unlock', plan['board'], plan['serial'], plan['lane']])
+
+
+if __name__ == '__main__':
+    sys.exit(main())
