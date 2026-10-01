@@ -13,7 +13,7 @@ for wt in "$WS"/westlake-harness-*/; do
   [ -e "$wt/.git" ] || continue
   while IFS= read -r f; do
     echo "STRAY board copy: $f ($(wc -l < "$f" | tr -d ' ') lines, modified $(date -r "$f" +%H:%M:%S))"; found=1
-  done < <(find "$wt" -maxdepth 2 -name 'app-lighting*' -type f -not -path '*/.octos/boards/*' 2>/dev/null)
+  done < <(find "$wt" -maxdepth 2 -name 'app-lighting*' -type f -not -path '*/.octos/boards/*' -not -name '*.archived-*' 2>/dev/null)
   if git -C "$wt" diff --quiet -- .octos/boards/app-lighting.md 2>/dev/null; then :; else
     echo "STRAY board append: ${wt}.octos/boards/app-lighting.md has uncommitted changes in the lane worktree"; found=1
   fi
