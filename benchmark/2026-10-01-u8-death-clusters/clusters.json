@@ -154,5 +154,81 @@
         "n11": null
       }
     }
-  ]
+  ],
+  "corrections": {
+    "cv2-com-aptasystems-dicewarepasswordgenerator": {
+      "initial_cluster": "getactivityinfo-namenotfound",
+      "cc-t3_alternative": "action-bar ISE (U8/J10)",
+      "final_verdict": "getactivityinfo-namenotfound (correct)",
+      "evidence": [
+        "U8 hilog L48692: RuntimeException: Unable to start activity …: java.lang.IllegalArgumentException: android.content.pm.PackageManager$NameNotFoundException: ComponentInfo{…MainActivity}",
+        "Caused-by chain: IllegalArgumentException(NameNotFoundException) at NavUtils.getParentActivityName(NavUtils.java:215) → AppCompatDelegateImplV9.onCreate → AppCompatActivity.onCreate",
+        "grep \"already has an action bar\" in same hilog: 0 matches",
+        "grep \"IllegalStateException\" in same hilog: 0 matches"
+      ],
+      "conclusion": "NameNotFoundException is the fatal exception (main_threw at 12:34:04.731); no action-bar ISE exists in this hilog. cc-t3 likely confused with another key or a J10 run."
+    }
+  },
+  "subdivided_other": {
+    "method": "exception class + first non-system frame package/library, groups with ≥2 keys that share a single framework-fixable root",
+    "groups": [
+      {
+        "name": "UnsatisfiedLinkError@Runtime.loadLibrary0",
+        "count": 4,
+        "keys": [
+          "cv2-com-chessclock-android",
+          "fd-im-vector-app",
+          "burgerking",
+          "mindustry"
+        ],
+        "common_frame": "at java.lang.Runtime.loadLibrary0(Runtime.java:1082/1093)",
+        "cause": "UnsatisfiedLinkError (dlopen_ns failed, various: system library absent / UNCLASSIFIED / UNSUPPORTED-SYMBOL)",
+        "fix_note": "single fix: make the adapter manifest / namespace export the missing library or SONAME alias (same family as libz.so/libmediandk work)"
+      },
+      {
+        "name": "NPE@CapacitorCordovaCookieManager",
+        "count": 2,
+        "keys": [
+          "cv2-ca-vaults-randomlydie",
+          "cv2-com-paultirk-yatoo"
+        ],
+        "common_frame": "at com.getcapacitor.cordova.CapacitorCordovaCookieManager.<init>(CapacitorCordovaCookieManager.java:…)",
+        "cause": "NullPointerException: Attempt to invoke virtual method void android.webkit.CookieManager…",
+        "fix_note": "single fix: make android.webkit.CookieManager getInstance() non-null in the adapter (webview provider registration)"
+      },
+      {
+        "name": "NPE@ViewGroup.measureChildWithMargins",
+        "count": 2,
+        "keys": [
+          "cv2-com-knirirr-beecount",
+          "cv2-de-koelle-christian-trickytripper"
+        ],
+        "common_frame": "at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7001)",
+        "cause": "NullPointerException: Attempt to read from field int android.view.ViewGroup$MarginLayoutParams…",
+        "fix_note": "single fix: make ViewGroup$MarginLayoutParams init not NPE in the adapter (layout params construction path)"
+      },
+      {
+        "name": "NPE@ViewGroup$LayoutParams.<init>",
+        "count": 2,
+        "keys": [
+          "cv2-com-caniwebview-android",
+          "cv2-eu-dfdx-jslab"
+        ],
+        "common_frame": "at android.view.ViewGroup$LayoutParams.<init>(ViewGroup.java:8238)",
+        "cause": "NullPointerException: Attempt to read from field int android.view.ViewGroup$LayoutParams…",
+        "fix_note": "single fix: same family as above — ViewGroup$LayoutParams construction NPE in the adapter"
+      },
+      {
+        "name": "NPE@app-MainActivity-onCreate",
+        "count": 2,
+        "keys": [
+          "fd-tutanota",
+          "toutiao"
+        ],
+        "common_frame": "at de.tutao.tutanota.MainActivity.onCreate(SourceFile:191) / at com.ss.android.article.news.activity.MainActivity.<init>(SourceFile:327715)",
+        "cause": "NullPointerException: Attempt to invoke virtual method …",
+        "fix_note": "app-specific; not a single framework fix"
+      }
+    ]
+  }
 }

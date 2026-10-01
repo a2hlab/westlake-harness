@@ -31,3 +31,24 @@ U8 signed 166 keys: **99 lit, 67 non-lit** (dead 53, alive-white-window 8, alive
 - Run dirs: `westlake-harness-t4/benchmark/2026-10-01-u8-sweep/{5ea,61b}-seq-{v1,cv2}/`.
 - outer-signoff: `benchmark/2026-10-01-u8-sweep/outer-signoff.json` (master).
 - double-load mechanism: `benchmark/2026-10-01-u8-flaky-repeat/whitewin-diff/double-load/REPORT.md`.
+
+## Correction: dicewarepasswordgenerator (getactivityinfo-namenotfound, confirmed)
+
+cc-t3 said dicewarepasswordgenerator is action-bar ISE in U8/J10. Re-checked against the same U8 hilog (`westlake-harness-t4/benchmark/2026-10-01-u8-sweep/5ea-seq-cv2/20261001T122134-78628011/5ea34a4500000000000000000324012c/cv2-com-aptasystems-dicewarepasswordgenerator/hilog.txt`):
+
+- **Fatal exception (main_threw, 12:34:04.731):** `RuntimeException: Unable to start activity ComponentInfo{…MainActivity}: java.lang.IllegalArgumentException: android.content.pm.PackageManager$NameNotFoundException: ComponentInfo{…MainActivity}` (line 48692).
+- **Caused-by chain:** `IllegalArgumentException(NameNotFoundException)` at `android.support.v4.app.NavUtils.getParentActivityName(NavUtils.java:215)` → `AppCompatDelegateImplV9.onCreate` → `AppCompatActivity.onCreate`.
+- **Action-bar ISE in same hilog:** grep `already has an action bar` → **0 matches**; grep `IllegalStateException` → **0 matches**.
+- **Verdict:** NameNotFoundException is the fatal exception; no action-bar ISE exists in this hilog. cc-t3 likely confused with another key or a J10 run. Initial assignment to `getactivityinfo-namenotfound` is correct.
+
+## Subdividing 'other 37'
+
+Groups with ≥2 keys sharing a single framework-fixable root (exception class + first non-system frame package/library):
+
+| Group | Keys | Common frame | Fix note |
+|---|---|---|---|
+| **UnsatisfiedLinkError@Runtime.loadLibrary0** | 4 (chessclock-android, fd-im-vector-app, burgerking, mindustry) | `at java.lang.Runtime.loadLibrary0(Runtime.java:1082/1093)` | Single fix: make the adapter manifest / namespace export the missing library or SONAME alias (same family as libz.so / libmediandk work) |
+| **NPE@CapacitorCordovaCookieManager** | 2 (cv2-ca-vaults-randomlydie, cv2-com-paultirk-yatoo) | `at com.getcapacitor.cordova.CapacitorCordovaCookieManager.<init>` | Single fix: make `android.webkit.CookieManager.getInstance()` non-null in the adapter (webview provider registration) |
+| **NPE@ViewGroup.measureChildWithMargins** | 2 (cv2-com-knirirr-beecount, cv2-de-koelle-christian-trickytripper) | `at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7001)` | Single fix: ViewGroup$MarginLayoutParams construction path in the adapter |
+| **NPE@ViewGroup$LayoutParams.<init>** | 2 (cv2-com-caniwebview-android, cv2-eu-dfdx-jslab) | `at android.view.ViewGroup$LayoutParams.<init>(ViewGroup.java:8238)` | Single fix: same family as above — ViewGroup$LayoutParams construction NPE in the adapter |
+| **NPE@app-MainActivity-onCreate** | 2 (fd-tutanota, toutiao) | `at de.tutao.tutanota.MainActivity.onCreate(SourceFile:191)` / `at com.ss.android.article.news.activity.MainActivity.<init>(SourceFile:327715)` | App-specific; not a single framework fix |
