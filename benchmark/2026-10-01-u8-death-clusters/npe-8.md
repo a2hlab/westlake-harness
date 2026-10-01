@@ -115,3 +115,17 @@ The 8 NPE keys split into **5 clusters**:
 5. **Boolean.booleanValue() null** (1 key): `Class.newInstance` creates Activity with null Boolean field — not a framework null-return; app's field initialization order.
 
 **The WebView stub cluster (3 keys) is the only one with a single framework fix point** (`WebView.getSettings()` returning null). The other clusters are app-specific or need framework changes that accept null (Cursor) or fix the provider (SSLEngine).
+
+## Outer-loop reading (2026-10-01 18:25)
+
+- **fd-client is misattributed.** The SSLEngine NPE in `MainApp.insertConscrypt` (Application.onCreate) is caught: the
+  process goes on to start LauncherActivity. The fatal chain (main_threw at the sweep hilog's first fatal, reprinted by
+  AppSpawnXInit) is `Unable to start activity LauncherActivity` <- `NullPointerException: Parameter specified as
+  non-null is null: SessionMixin.<init>, parameter accountManager` -- an AccountManager wall, which is what run_index's
+  cause field already says. Rule: the cluster key is the exception on the fatal chain, not the first NPE in the log.
+- **Only two keys are on the J10f wall**: webrtc-check (`WebSettings.setJavaScriptEnabled` on null) and tutanota
+  (`WebSettings.getUserAgentString` on null). privacybrowser dies on `Object.getClass()` on null at
+  `MainWebViewActivity.onCreate:888` (R8-obfuscated); nothing in the trace names WebSettings, so it stays unattributed.
+- webrtc-check (assets/index.html) and tutanota (assets/tutanota/index.html, 3218 files) are WebView-hosted UIs: past
+  the J10f wall their ceiling is a white window. U9 prediction v5 (c57a44eb0) moves both dead -> alive-white-window.
+- `run` paths rewritten as `$WORKSPACES` (the lane wrote absolute paths a third time tonight).
