@@ -1,0 +1,111 @@
+{
+  "_draft": "DRAFT ONLY — not registered. The outer loop reviews and copies approved entries into knowledge/frozen/frozen.json (assigning real FZ-ids). frozen.json is NOT modified by this benchmark.",
+  "rule_ref": "knowledge/frozen/frozen.json rule (tiered freeze: >=2 apps pass the wall, >=1 lit at t20); check_frozen.py validates frozen sources by git blob id.",
+  "source_pin": {
+    "branch": "feat/bms-walls",
+    "head_commit": "8ff080357a",
+    "note": "J10eWebView.java at this HEAD ALSO carries the J10f getSettings routing and J10g getServiceWorkerController routing + sPackageInfo seed (layered into one file as the webview work evolved). A strict single-concern freeze should EITHER register the whole WebView-provider-enrichment unit once J10g is signed, OR split J10eWebView.java into J10eViewDelegate.java + J10eCookieManager.java first. This draft pins the file as-is and flags the split."
+  },
+  "draft_entries": [
+    {
+      "id": "FZ-J10d-DRAFT",
+      "api": "A launching Activity whose manifest declares a *.NoActionBar theme is themed by that theme (AppCompat sees windowActionBar=false) instead of the application's parent theme",
+      "mechanism": "AppSchedulerBridge.nativeOnScheduleLaunchAbility overwrote/zeroed activityInfo.theme before scheduleTransaction; AOSP14 performLaunchActivity:3745 -> ActivityInfo.getThemeResource:1585 then fell back to applicationInfo.theme (parent Theme, windowActionBar=true) -> AppCompatDelegateImpl.createSubDecor double-installs a decor ActionBar -> IllegalStateException. J10dTheme.restore() restores activityInfo.theme = ManifestJsonFallback.activityTheme(pkg,name) right before scheduleTransaction.",
+      "sources": [
+        {
+          "branch": "feat/bms-walls",
+          "repo_path": "bms/src/adapter/framework/activity/java/J10dTheme.java",
+          "blob": "f7429baf140476ffdd37febd2565f78f290deeaa"
+        }
+      ],
+      "verified_apps": [
+        {
+          "app": "cv2-com-deva-knot",
+          "board": "5ea",
+          "change": "first-frame fatal gone -> own UI at t20",
+          "facts": "cv2-com-deva-knot alive t5=yes t20=yes child_hilog=10576",
+          "t20": "benchmark/2026-10-01-j10d-window-5ea-r2/v1/20261001T155419-38247c74/5ea34a4500000000000000001123012c/cv2-com-deva-knot/t20.jpeg"
+        },
+        {
+          "app": "cv2-com-aptasystems-dicewarepasswordgenerator",
+          "board": "5ea",
+          "change": "first-frame fatal gone -> own UI at t20",
+          "facts": "...dicewarepasswordgenerator alive t5=yes t20=yes child_hilog=9495",
+          "t20": "benchmark/2026-10-01-j10d-window-5ea-r2/v1/20261001T155419-38247c74/5ea34a4500000000000000001123012c/cv2-com-aptasystems-dicewarepasswordgenerator/t20.jpeg"
+        }
+      ],
+      "outer_read": "ACK j10d: 10/12 of the appcompat-actionbar cluster lit on screen",
+      "status": "frozen",
+      "history": [],
+      "source_record": "feat/bms-walls 1d691f67c (J10dTheme) ; benchmark/2026-10-01-j10d-jar/ + -window-5ea-r2/",
+      "marker": "[J10d-THEME]"
+    },
+    {
+      "id": "FZ-J10e-DRAFT",
+      "api": "A route-A WebView gets a functional provider: the ViewDelegate forwards View-level calls (setLayoutParams/setFrame/...) to the real WebView via PrivateAccess.super_*, and getCookieManager() returns a concrete (non-null) CookieManager",
+      "mechanism": "J8 type-zero stub no-ops the ViewDelegate (WebView.mLayoutParams stays null -> ConstraintLayout/FrameLayout NPE) and returns null for the abstract CookieManager (NPE). J10eWebView re-seeds an enriched WebViewFactoryProvider: getViewDelegate forwards m->PrivateAccess.super_<m>, getCookieManager returns WlCookieManager.",
+      "sources": [
+        {
+          "branch": "feat/bms-walls",
+          "repo_path": "bms/src/adapter/framework/activity/java/J10eWebView.java",
+          "blob": "996437513b4fe197d75975ed9b0a7c9e524328bd",
+          "concern": "J10e = the ViewDelegate forwarding (DelegateForward) + WlCookieManager; NOTE this blob also carries J10f/J10g routing (see source_pin.note)"
+        }
+      ],
+      "verified_apps": [
+        {
+          "app": "cv2-com-knirirr-beecount",
+          "board": "5ea",
+          "change": "first-frame fatal gone -> own UI at t20",
+          "facts": "cv2-com-knirirr-beecount alive t5=yes t20=yes child_hilog=14533",
+          "t20": "benchmark/2026-10-01-j10e-window-5ea/v1/20261001T164148-4164c61b/5ea34a4500000000000000001123012c/cv2-com-knirirr-beecount/t20.jpeg"
+        },
+        {
+          "app": "cv2-de-koelle-christian-trickytripper",
+          "board": "5ea",
+          "change": "first-frame fatal gone -> own UI at t20",
+          "facts": "cv2-de-koelle-christian-trickytripper alive t5=yes t20=yes child_hilog=11697",
+          "t20": "benchmark/2026-10-01-j10e-window-5ea/v1/20261001T164148-4164c61b/5ea34a4500000000000000001123012c/cv2-de-koelle-christian-trickytripper/t20.jpeg"
+        }
+      ],
+      "outer_read": "ACK j10e: beecount + trickytripper lit; CookieManager-cluster apps' NPE gone (first fatal moved to getSettings) by log",
+      "status": "frozen",
+      "history": [],
+      "source_record": "feat/bms-walls 142fe0b01 ; benchmark/2026-10-01-j10e-jar/ + -window-5ea/",
+      "marker": "[J10e-WEBVIEW] delegate forwards setLayoutParams / CookieManager stub installed"
+    },
+    {
+      "id": "FZ-J10f-DRAFT",
+      "api": "WebViewProvider.getSettings() returns a concrete (non-null) WebSettings on route-A, so WebView apps that call getSettings().setJavaScriptEnabled(..) at launch do not NPE",
+      "mechanism": "J10e left getSettings() returning null (abstract-class return); J10fWebSettings.get() returns a concrete WlWebSettings overriding all 104 AOSP-14 WebSettings abstract methods (generated; compile-only stub).",
+      "sources": [
+        {
+          "branch": "feat/bms-walls",
+          "repo_path": "bms/src/adapter/framework/activity/java/J10fWebSettings.java",
+          "blob": "177a89382d4854715af8dbcb4fb24d00310f18e8"
+        }
+      ],
+      "verified_apps": [
+        {
+          "app": "cv2-com-caniwebview-android",
+          "board": "5ea",
+          "change": "first-frame fatal gone -> own UI at t20",
+          "facts": "cv2-com-caniwebview-android alive t5=yes t20=yes child_hilog=18054",
+          "t20": "benchmark/2026-10-01-j10f-window-5ea/v1/20261001T170857-cc406365/5ea34a4500000000000000001123012c/cv2-com-caniwebview-android/t20.jpeg"
+        },
+        {
+          "app": "cv2-eu-dfdx-jslab",
+          "board": "5ea",
+          "change": "first-frame fatal gone -> own UI at t20",
+          "facts": "cv2-eu-dfdx-jslab alive t5=yes t20=yes child_hilog=13918",
+          "t20": "benchmark/2026-10-01-j10f-window-5ea/v1/20261001T170857-cc406365/5ea34a4500000000000000001123012c/cv2-eu-dfdx-jslab/t20.jpeg"
+        }
+      ],
+      "outer_read": "ACK j10f: caniwebview + jslab lit",
+      "status": "frozen",
+      "history": [],
+      "source_record": "feat/bms-walls 793140bbe ; benchmark/2026-10-01-j10f-jar/ + -window-5ea/",
+      "marker": "[J10f-WEBVIEW] settings stub installed"
+    }
+  ]
+}
