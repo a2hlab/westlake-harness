@@ -1,0 +1,103 @@
+{
+  "_status": "DRAFT \u2014 NOT runnable yet. Finalize after cx-bms's U10 native artifacts are ready (native_bridge_policy.v1.json shared_sonames += libstdc++.so [wall-1, master 504b66cea] and += libjnigraphics.so [after oc-t4's consumer scan], rebuilt libapp_native_loader.so + the native shim). Then fill: after_lock/before_unlock (U10 jar 37465d6d bind + the cx-bms native payload, one window), runtime_fp (self-compute from the U10 native manifest), smoke_spec (markers + probe jar 37465d6d + the new runtime_fp).",
+  "serial": "5ea34a4500000000000000001123012c",
+  "lane": "cc-t3",
+  "entry": "90",
+  "why": "U10 window on 5ea: JAR 37465d6d (Predicate) + cx-bms U10 native (shared_sonames += libstdc++, libjnigraphics; + shim) in ONE window. Shard = beneficiary keys + regression controls; read first-wall change per beneficiary. Rollback to U8.",
+  "board": "$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md",
+  "out": "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-window-5ea",
+  "smoke_spec": "$WORKSPACES/westlake-harness-t3/knowledge/smoke/u10.json  (FINALIZE: runtime_fp once native lands; probe jar 37465d6d present)",
+  "deploy_note": "U10 = JAR 37465d6d (bind onto /system/android/framework/oh-adapter-runtime.jar) + cx-bms U10 native payload (the rebuilt policy/native_loader + libstdc++/libjnigraphics exposure). One generation, one window. Mechanism (sweep_bind_deploy multi-bind vs deploy_generation --upgrade) picked with cx-bms when the native package is ready.",
+  "after_lock": [
+    "FINALIZE_WHEN_NATIVE_READY \u2014 sweep_bind_deploy/deploy_generation for jar 37465d6d + cx-bms U10 native"
+  ],
+  "before_unlock": [
+    "FINALIZE_WHEN_NATIVE_READY \u2014 rollback to U8 runtime_fp e953c0921536 / boot 4db882a81732"
+  ],
+  "offline_precheck": {
+    "hypothesis": "U10 (Predicate in the jar + libstdc++ & libjnigraphics added to the app-inheritable shared_sonames) clears each beneficiary's current first wall generically (shared layer), with no regression to the controls. Toutiao's native bootstrap (libflipped->libstdc++) resolves (native-closure-prediction: libflipped has no other wall); packlist's ACRA Predicate resolves; the other beneficiaries' bundled .so that DT_NEED libstdc++/libjnigraphics now link.",
+    "evidence": [
+      "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-jar/native-closure-prediction.md",
+      "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-jar/wall1-source.md",
+      "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-jar/u10-classlist-diff.md",
+      "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-jar/j10f-websettings-defaults.md"
+    ],
+    "result": "not-falsified",
+    "expect": {
+      "confirm": "Per beneficiary, the current first fatal is GONE and the app proceeds (loader/link error for that SONAME disappears): toutiao -> libflipped->libstdc++ private-closure resolves, Application bootstrap proceeds (next wall, if any, = a libjnigraphics-needing feature lib per the prediction, NOT the libstdc++ closure); packlist -> no ClassNotFoundException com.android.internal.util.Predicate, ACRA.init proceeds; fd-meet/fd-plus/mindustry/firefox/fd-fennec_fdroid -> their bundled .so that DT_NEED libstdc++/libjnigraphics load without the dlopen/NEEDED error (mindustry also needs libOpenSLES via cx-bms's facade). Controls helloworld/zigzag + regression keys (fd-minetest/fd-mpv/fd-app/fd-shatteredpixeldungeon/termux/knot/caniwebview/fd-seal) stay at their U9 state (lit stays lit, no new loader error). fd-tutanota: getSettings().getUserAgentString()/font-family/encoding return non-null real defaults, so the WebView app no longer NPEs on null UA and proceeds past the J8/J10f webview-provider wall.",
+      "refute": "Any beneficiary still hits the SAME libstdc++/Predicate/libjnigraphics loader error after U10 (fix didn't take), OR ANY control/regression key regresses (new loader error, or a previously-lit key goes dark) -> the shared-layer change is not clean; roll back, do not land U10."
+    }
+  },
+  "shards": [
+    {
+      "name": "u6-beneficiary-regression",
+      "manifest": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-u6-prospective/apps-u6.json",
+      "input_root": "~/a2hlab/app-inputs",
+      "keys": [
+        "toutiao",
+        "fd-tutanota",
+        "fd-meet",
+        "fd-plus",
+        "mindustry",
+        "firefox",
+        "fd-fennec_fdroid",
+        "fd-minetest",
+        "fd-mpv",
+        "fd-app",
+        "fd-shatteredpixeldungeon",
+        "termux",
+        "fd-seal"
+      ],
+      "roles": {
+        "beneficiary": [
+          "toutiao",
+          "fd-meet",
+          "fd-plus",
+          "mindustry",
+          "firefox",
+          "fd-fennec_fdroid",
+          "fd-tutanota"
+        ],
+        "regression": [
+          "fd-minetest",
+          "fd-mpv",
+          "fd-app",
+          "fd-shatteredpixeldungeon",
+          "termux",
+          "fd-seal"
+        ]
+      }
+    },
+    {
+      "name": "cv2",
+      "manifest": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
+      "input_root": "$WORKSPACES/westlake-inputs/corpus-v2/app-inputs",
+      "keys": [
+        "cv2-com-nbossard-packlist",
+        "cv2-com-deva-knot",
+        "cv2-com-caniwebview-android"
+      ],
+      "roles": {
+        "beneficiary": [
+          "cv2-com-nbossard-packlist"
+        ],
+        "regression": [
+          "cv2-com-deva-knot",
+          "cv2-com-caniwebview-android"
+        ]
+      }
+    }
+  ],
+  "controls": [
+    "helloworld",
+    "zigzag"
+  ],
+  "fd_seal_note": "fd-seal included only if it installs on U10 (per outer loop '\u80fd\u88c5\u518d\u52a0'); drop from the shard at finalize if bm install fails.",
+  "finalize_checklist": [
+    "cx-bms U10 native artifacts (policy shared_sonames += libstdc++ + libjnigraphics, rebuilt native_loader, shim) staged + sha pinned",
+    "runtime_fp self-computed from the U10 native manifest (jar 37465d6d + native) and filled into u10.json + here",
+    "after_lock/before_unlock argv concretized (jar + native deploy; rollback to U8 e953c0921536/4db882a81732)",
+    "board_run precheck_problem PASS + land.py --preflight on the plan",
+    "oc-t4 libjnigraphics + libstdcxx consumer scans cross-checked against the beneficiary list"
+  ]
+}

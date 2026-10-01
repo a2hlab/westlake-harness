@@ -1,0 +1,63 @@
+{
+  "serial": "5ea34a4500000000000000001123012c",
+  "lane": "cc-t3",
+  "entry": "90",
+  "why": "U10 window on 5ea: split base + Predicate (packlist); smoke controls + probe jar 37465d6d, then shard packlist (Predicate wall) + knot/caniwebview regression; rollback to U8. fd-client account is NOT here (its 'account' binder stub pre-exists; needs a separate corpus100 diagnostic, not a U10 add).",
+  "board": "$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md",
+  "out": "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-window-5ea",
+  "smoke_spec": "$WORKSPACES/westlake-harness-t3/knowledge/smoke/u10.json",
+  "offline_precheck": {
+    "hypothesis": "packlist dies at ACRA.init with ClassNotFoundException com.android.internal.util.Predicate (pre-API-28 hidden interface removed in AOSP14). It is referenced by APP code (ACRA / IOUtils), not by a boot class, and the boot classpath does not define it; adding the interface to oh-adapter-runtime.jar (in the app classloader hierarchy) lets the app resolve it, so ACRA.init no longer NoClassDefFounds. (fd-client's 'account' binder stub pre-exists and did not fix its null accountManager in U8; it is handled separately, not in this shard.)",
+    "evidence": [
+      "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-jar/u10-classlist-diff.md",
+      "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-jar/smali-evidence/Predicate.smali",
+      "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-u8-sweep/5ea-seq-v1/20261001T120450-65131f4f"
+    ],
+    "result": "not-falsified",
+    "expect": {
+      "confirm": "packlist hilog no longer throws NoClassDefFoundError/ClassNotFoundException com.android.internal.util.Predicate; ACRA.init / Application.attachBaseContext proceeds past it (first fatal moves elsewhere or app reaches UI alive_t20). Controls + knot + caniwebview still alive_t20 (no regression).",
+      "refute": "packlist still ClassNotFoundException com.android.internal.util.Predicate after the U10 jar is bound (the runtime jar is not on the app's resolution path for com.android.internal.* -> needs the BCP stubs jar + image rebuild instead), OR any regression on controls/knot/caniwebview."
+    }
+  },
+  "after_lock": [
+    "python3",
+    "$WORKSPACES/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+    "--serial",
+    "5ea34a4500000000000000001123012c",
+    "--lane",
+    "cc-t3",
+    "--bind",
+    "$WORKSPACES/westlake-generation-u10-staging/oh-adapter-runtime-u10.jar:/system/android/framework/oh-adapter-runtime.jar",
+    "--expected",
+    "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-jar/u10-expected-run.json",
+    "--no-run",
+    "--no-rollback",
+    "--out",
+    "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-window-5ea/overlay"
+  ],
+  "before_unlock": [
+    "python3",
+    "$WORKSPACES/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+    "--serial",
+    "5ea34a4500000000000000001123012c",
+    "--lane",
+    "cc-t3",
+    "--bind",
+    "$WORKSPACES/westlake-generation-u10-staging/oh-adapter-runtime-u10.jar:/system/android/framework/oh-adapter-runtime.jar",
+    "--out",
+    "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-window-5ea/overlay",
+    "--rollback-only",
+    "--rollback-runtime-fp",
+    "e953c0921536",
+    "--rollback-boot-fp",
+    "4db882a81732"
+  ],
+  "shards": [
+    {
+      "name": "v1",
+      "manifest": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
+      "input_root": "$WORKSPACES/westlake-inputs/corpus-v2/app-inputs",
+      "keys_file": "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-jar/u10-shard-keys.txt"
+    }
+  ]
+}

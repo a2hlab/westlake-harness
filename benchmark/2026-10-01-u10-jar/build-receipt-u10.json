@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "lane": "cc-t3",
+  "date": "2026-10-01",
+  "task": "U10 JAR = split base 11974b7b + com.android.internal.util.Predicate (packlist). AccountManager 'account' stub is pre-existing (not re-added).",
+  "split_base_sha256": "11974b7b2f1af41b7dfe116ceac23f0db3c3b2a677acd4418aecc72457dcf123",
+  "output_u10_sha256": "37465d6d7f5e3d7be52929c2b43faf99315f86f0c23cc70e4aa858cb2ff98c59",
+  "runtime_fp": "1833eb39872f",
+  "boot_fp": "4db882a81732",
+  "deterministic": "yes (twice)",
+  "staged_jar": "$WORKSPACES/westlake-generation-u10-staging/oh-adapter-runtime-u10.jar",
+  "build": "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u10-jar/build/build_u10.py --extra-sources .../j10-prep/src/Predicate.java (lab_paths-based)",
+  "class_delta": {
+    "added": [
+      "com/android/internal/util/Predicate"
+    ],
+    "removed": [],
+    "note": "+1 over the split base (185->186); nothing else changed"
+  },
+  "predicate_source": "benchmark/2026-10-01-j10-prep/src/Predicate.java (package com.android.internal.util; boolean apply(T))",
+  "predicate_placement": "runtime jar (candidate per boot-assessment: app-referenced, boot lacks it; app classloader may resolve from the runtime jar). Fallback if it still NoClassDefFounds on-board: adapter-mainline-stubs.jar (BCP) + image rebuild (not Mac-reproducible).",
+  "predicate_beneficiary": "cv2-com-nbossard-packlist (1 key; run_index cause~Predicate)",
+  "accountmanager_finding": "the 'account' binder stub already exists + wired in the base (LocalServiceBinders.account + B8BindExtras SERVICES + B7BindFixes.apply), was in U8; fd-client (com.nextcloud.client) still died on null accountManager in U8 DESPITE it -> NOT a missing-stub gap; needs diagnosis (dagger/UserAccountManager or the upstream SSLEngine/Conscrypt wall), not a duplicate stub. See u10-classlist-diff.md.",
+  "offline_gate": "test_u10.py 4/4"
+}
