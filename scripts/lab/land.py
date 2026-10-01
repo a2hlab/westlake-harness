@@ -65,6 +65,8 @@ def read_paths(worktree, listing, allow_gates):
         p = raw.strip()
         if not p or p.startswith('#'):
             continue
+        if ' (' in p or '\t' in p:
+            errors.append(f'annotated line (one path per line; mark references to run dirs / sources with a leading #): {p}'); continue
         if p.startswith('/') or '..' in Path(p).parts:
             errors.append(f'not a safe relative path: {p}'); continue
         if p in DOCS:
