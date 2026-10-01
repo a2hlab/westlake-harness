@@ -2,7 +2,7 @@ spec: project
 name: "N10 native batch"
 ---
 ## Intent
-Build one traceable native candidate over signed U7, retaining the signed Java and boot-image group.
+Build one traceable native candidate over the signed generation specified by the task (currently U8), retaining the signed Java and boot-image group.
 ## Constraints
 - Work offline; no device commands or board writes in this contract.
 - Keep R155 libart and bridge 846 unchanged; retain all frozen API implementations.

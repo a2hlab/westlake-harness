@@ -1,0 +1,1 @@
+Historical U8-rollout pause ended after outer ACK97 11:51:30. N10b offline assembly resumed. Current combined runtime 7dbfac24; strict gates remain REJECT pending exact approval and a new board window. No board writes. See README.md and u8-package.json.
