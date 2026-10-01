@@ -47,18 +47,3 @@ commercial100 (TikTok / Lemon) is **not** in the U9 full corpus — not scanned.
 **0 keys** bundle their own `libstdc++.so` in `lib/arm64-v8a/` — all 554 keys with C++ runtime ship `libc++_shared.so` (the NDK shared runtime), not `libstdc++.so`. The regression risk for U10's shared SONAME set change is the **554 keys with `libc++_shared.so`**: if U10 adds `libstdc++.so` to the shared SONAME set, these keys' self-contained C++ runtime may collide with the shared one (duplicate symbols, ODR violations).
 
 **Regression candidates for U10 namespace change:** the 554 keys with `libc++_shared.so` (fd-minetest, fd-mpv, fd-seal are lit; the other 551 are dead/unknown/white-window). The lit keys are the ones to watch: if the shared SONAME change breaks them, U10 regresses.
-
-## Outer-loop reading (2026-10-01 19:30) -- key level, U9 sweep only
-
-The 606 rows are per `.so`; at key level 22 keys appear, 9 of them `co-*` commercial inputs outside the U9 sweep.
-Sweep keys whose bundled `.so` NEED the system `libstdc++.so`: **toutiao, mindustry, fd-plus** (dead), **fd-app,
-fd-shatteredpixeldungeon, termux** (white), **x** (black). Their U9 hilogs (5cd/5ea runs) show:
-
-- fd-app / shatteredpixeldungeon / termux: no libstdc++ load failure (only the benign B8-NATIVE html_compat load every
-  app logs) -- the U10 shared-SONAME change is not expected to move them; they are the **regression controls** that
-  must stay at least white.
-- mindustry: fatal `Error relocating libarc.so: slCreateEngine: symbol not found` -- U9's libOpenSLES.so facade
-  (cx-bms 452b8f18f) exports no slCreateEngine. An OpenSLES wall, not libstdc++.
-- fd-plus: `Error relocating libc++_shared.so: android_set_abort_message: symbol not found` -- the symbol U10's abort
-  visibility shim provides (so fd-plus joins meet as a beneficiary).
-- toutiao, x: not yet run on U9.
