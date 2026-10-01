@@ -130,6 +130,18 @@ def home_paths_in_data(worktree, files):
     return out
 
 
+def empty_csvs(worktree, files):
+    """CSV deliverables with a header and no data rows. Not refused (an empty scan result is legitimate), but printed:
+    2026-10-01 20:13 a lane reported "30 keys / 38 rows" over a CSV that held only its header."""
+    out = []
+    for f in files:
+        if f.endswith('.csv'):
+            lines = [l for l in (worktree / f).read_text(errors='replace').splitlines() if l.strip()]
+            if len(lines) <= 1:
+                out.append(f)
+    return out
+
+
 def doc_changes(doc):
     if 'changes' in doc:
         return [(c['path'], c['lines']) for c in doc['changes']]
@@ -197,6 +209,8 @@ def main(argv=None):
         for h in hits:
             print(h[:220])
         homes = [] if args.allow_home_paths else home_paths_in_data(wt, files)
+        for f in empty_csvs(wt, files):
+            print(f'EMPTY-CSV {f} (header only -- make sure the numbers you report come from a non-empty table)')
         for f, n in homes:
             print(f'HOME-PATH-IN-DATA {f} x{n} (write $WORKSPACES/... or a repo-relative path; raw recorded evidence: '
                   f'--allow-home-paths)')
@@ -243,6 +257,8 @@ def main(argv=None):
         sys.exit('REFUSE: overwriting would drop lines master has and the lane copy lacks (merge them into the lane '
                  'file first, or --allow-drop-lines if reviewed):\n  ' +
                  '\n  '.join(f'{rel}: {len(g)} line(s), e.g. {g[0][:100]!r}' for rel, g in lost.items()))
+    for f in empty_csvs(wt, files):
+        print(f'EMPTY-CSV {f} (header only; check the lane report does not cite rows from it)')
     docs =[p for p in files if p.endswith('documentation.json')]
     failures = []
     try:
