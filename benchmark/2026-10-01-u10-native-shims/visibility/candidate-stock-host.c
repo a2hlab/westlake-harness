@@ -319,10 +319,7 @@ static WLASC_NOINLINE int StockCreateConfiguredNamespaces(
         if (result != 0) {
             return NamespaceResultFence(result);
         }
-        result = U10ShareResidentCompat(app_namespace);
-        if (result != 0) {
-            return NamespaceResultFence(result);
-        }
+        (void)U10ShareResidentCompat(app_namespace);
     }
     if (flutter_private || native_private) {
         /* OH 6.1 musl ignores DF_1_GLOBAL: its add_syms/removal is controlled

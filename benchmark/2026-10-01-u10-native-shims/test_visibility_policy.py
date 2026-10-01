@@ -75,17 +75,30 @@ class PolicyTests(unittest.TestCase):
 
 
 class VisibilityTests(unittest.TestCase):
+    def test_delivered_patch_applies_exactly(self):
+        relative = Path("adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / relative
+            target.parent.mkdir(parents=True)
+            target.write_bytes((HERE / "visibility/baseline-stock-host.c").read_bytes())
+            subprocess.run(["/usr/bin/patch", "-p1", "-i", str(HERE / "visibility/stock-host.patch")],
+                           cwd=root, check=True, capture_output=True, text=True)
+            self.assertEqual(target.read_bytes(), (HERE / "visibility/candidate-stock-host.c").read_bytes())
+
     def test_exact_host_and_boundary(self):
-        receipt = read("evidence/host-build-receipt.json")
+        receipt = read("evidence/host-r2/build-receipt.json")
         self.assertEqual(digest(HERE / "visibility/baseline-stock-host.c"), receipt["baseline_main_sha256"])
+        self.assertEqual(digest(HERE / "visibility/candidate-stock-host.c"), receipt["candidate_main_sha256"])
+        self.assertEqual(digest(HERE / "visibility/resident-compat.h"), receipt["resident_header_sha256"])
         baseline = (HERE / "visibility/baseline-stock-host.c").read_text()
         candidate = (HERE / "visibility/candidate-stock-host.c").read_text()
         recovered = candidate.replace('#include "resident-compat.h"\n', "").replace(
-            "        result = U10ShareResidentCompat(app_namespace);\n        if (result != 0) {\n            return NamespaceResultFence(result);\n        }\n", "")
+            "        (void)U10ShareResidentCompat(app_namespace);\n", "")
         self.assertEqual(recovered, baseline)
         gate = module(HERE / "host_gate.py")
-        self.assertTrue(gate.validate(read("evidence/host-baseline-abi.json")))
-        report = read("evidence/host-candidate-abi.json")
+        self.assertTrue(gate.validate(read("evidence/host-r2/baseline-abi.json")))
+        report = read("evidence/host-r2/candidate-abi.json")
         self.assertTrue(gate.validate(report, True))
         self.assertEqual(report["new"]["sha256"], receipt["artifacts"]["candidate"])
         self.assertEqual(report["old"]["sha256"], read("evidence/u9-expected.json")["expected"]["/system/bin/appspawn-x"])
@@ -94,15 +107,22 @@ class VisibilityTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             gate.validate(bad, True)
 
-    def test_resident_owner_fail_closed(self):
+    def test_lazy_application_view_is_not_probed(self):
         with tempfile.TemporaryDirectory() as directory:
             executable = Path(directory) / "resident"
             subprocess.run(["/usr/bin/cc", "-O0", "-I" + str(HERE / "visibility/tests/include"),
                             str(HERE / "visibility/tests/resident.c"), "-o", str(executable)], check=True)
             result = subprocess.run([str(executable)], capture_output=True, text=True, check=True)
-            self.assertIn("inherited_view=default resident_view=westlake.sealed.child", result.stderr)
-            self.assertIn("inherited_view=westlake.sealed.child", result.stderr)
-            self.assertEqual(result.stderr.count("no loading fallback"), 7)
+            self.assertIn("APPSPAWN [U10-COMPAT-VISIBLE] inherit_requested view=default", result.stderr)
+            self.assertIn("inherit_requested view=westlake.sealed.child", result.stderr)
+            self.assertEqual(result.stderr.count("no loading fallback"), 5)
+            self.assertEqual(result.stderr.count("application_lookup=deferred"), 5)
+            self.assertEqual(result.stderr.count("namespace continues"), 5)
+        helper = (HERE / "visibility/resident-compat.h").read_text()
+        self.assertNotIn("dlopen_ns(application", helper)
+        self.assertNotIn("fprintf", helper)
+        self.assertIn("APPSPAWN_LOGI", helper)
+        self.assertIn("APPSPAWN_LOGE", helper)
 
 
 class OpenSLESEvidenceTests(unittest.TestCase):

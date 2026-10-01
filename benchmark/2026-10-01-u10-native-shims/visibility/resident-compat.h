@@ -3,17 +3,16 @@
 
 #include <dlfcn.h>
 #include <errno.h>
-#include <stdio.h>
 
 static int U10ShareResidentCompat(Dl_namespace* application) {
     Dl_namespace resident_namespace;
     if (dlns_get("westlake.sealed.child", &resident_namespace) != 0) {
-        fprintf(stderr, "[U10-COMPAT-VISIBLE] rejected missing resident namespace; no loading fallback\n");
+        APPSPAWN_LOGE("[U10-COMPAT-VISIBLE] unavailable missing resident namespace; no loading fallback; namespace continues");
         return ENOENT;
     }
     void* resident = dlopen_ns(&resident_namespace, "libbionic_compat.so", RTLD_NOW | RTLD_NOLOAD);
     if (resident == NULL) {
-        fprintf(stderr, "[U10-COMPAT-VISIBLE] rejected unmapped resident compat; no loading fallback\n");
+        APPSPAWN_LOGE("[U10-COMPAT-VISIBLE] unavailable unmapped resident compat; no loading fallback; namespace continues");
         return ENOENT;
     }
     const char* names[] = {"android_set_abort_message", "android_get_abort_message", "__gnu_strerror_r"};
@@ -36,20 +35,11 @@ static int U10ShareResidentCompat(Dl_namespace* application) {
         }
     }
     if (result == 0) result = dlns_inherit(application, owner_namespace, "libbionic_compat.so");
-    void* application_view = result == 0
-        ? dlopen_ns(application, "libbionic_compat.so", RTLD_NOW | RTLD_NOLOAD) : NULL;
-    if (result == 0 && application_view == NULL) result = ENOENT;
-    if (application_view != NULL) {
-        for (size_t index = 0; index < 3; ++index) {
-            if (dlsym(application_view, names[index]) != symbols[index]) result = ENOEXEC;
-        }
-        (void)dlclose(application_view);
-    }
     if (result == 0) {
-        fprintf(stderr, "[U10-COMPAT-VISIBLE] inherited_view=%s resident_view=westlake.sealed.child abort=%p getter=%p gnu=%p\n",
+        APPSPAWN_LOGI("[U10-COMPAT-VISIBLE] inherit_requested view=%{public}s resident_view=westlake.sealed.child abort=%{public}p getter=%{public}p gnu=%{public}p application_lookup=deferred",
                 owner_namespace->name, symbols[0], symbols[1], symbols[2]);
     } else {
-        fprintf(stderr, "[U10-COMPAT-VISIBLE] rejected result=%d; no loading fallback\n", result);
+        APPSPAWN_LOGE("[U10-COMPAT-VISIBLE] unavailable result=%{public}d; no loading fallback; namespace continues", result);
     }
     if (direct != NULL) (void)dlclose(direct);
     (void)dlclose(resident);

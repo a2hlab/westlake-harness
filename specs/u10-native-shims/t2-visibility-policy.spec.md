@@ -12,7 +12,7 @@ Add the outer-approved libstdc++ policy edge, expose the resident compat owner w
 
 - The policy JSON changes only shared_sonames by appending libstdc++.so; mirror that one decision in the compiled header, never add libc++.
 - The baked component is libnativeloader.so, not the unchanged ANL backend libapp_native_loader.so.
-- Bind compat against its sealed resident reference with NOLOAD checks; prefer an already-mapped default view only when all three symbol addresses match, otherwise use the sealed view and verify app identity. Never load a second default-namespace compat owner.
+- Bind compat against its sealed resident reference with NOLOAD checks; prefer an already-mapped default view only when all three symbol addresses match, otherwise use the sealed view. Never NOLOAD-probe the new application view: OH inheritance is lazy. Never load a second default-namespace compat owner; optional inheritance failures log through APPSPAWN and do not fail namespace creation.
 - Include fd-plus and Meet as abort-visibility beneficiaries, not as already repaired apps.
 - Reject direct OpenSLES casts using the SHA-pinned owner's actual IID/output layout. Distinguish public API/IIDs from compiler/runtime internals in the complete dynsym inventory; no always-failure engine stub.
 - Preserve the historical full-suite failure and record the fresh master rerun after outer's missing-receipt repair.
@@ -38,7 +38,7 @@ Add the outer-approved libstdc++ policy edge, expose the resident compat owner w
   测试: u10_abort_visibility
   假设 Resident sealed compat and an app namespace with unresolved abort and GNU imports
   当 The exact-owner visibility helper is replayed
-  那么 It inherits only that resident compat, validates symbol identity and refuses missing or wrong owners without a loading fallback
+  那么 It requests inheritance only from a validated resident owner, never probes the lazy application view, and logs optional failures through APPSPAWN without a loading fallback or fatal namespace result
 
 场景: OpenSLES admission rejects an incompatible direct cast
   测试: u10_opensles_abi_evidence

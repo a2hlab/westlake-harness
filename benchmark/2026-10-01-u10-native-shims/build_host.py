@@ -75,6 +75,8 @@ def main():
                "actual_main_command_receipt": "westlake-harness-t4/benchmark/2026-10-01-n11-single-owner/host-build-receipt.json",
                "compile_commands_sha256": digest(commands_file), "baseline_main_sha256": BASELINE_SHA,
                "compiler_sha256": digest(compiler), "reused_objects": reused,
+               "candidate_main_sha256": digest(HERE / "visibility/candidate-stock-host.c"),
+               "resident_header_sha256": digest(HERE / "visibility/resident-compat.h"),
                "commands": [[portable(value, workspaces, args.out) for value in command] for command in records],
                "artifacts": {variant: digest(args.out / ("appspawn-x-" + variant)) for variant in ["baseline", "candidate"]},
                "generation_identity": "Historical generation macros retained for isolated ABI comparison only; cx-t0 must regenerate U10 closure/plugin identities before assembly",

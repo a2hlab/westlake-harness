@@ -176,13 +176,16 @@ generation macros only for comparison; cx-t0 must regenerate final U10 identitie
 
 `visibility/stock-host.patch` and `visibility/resident-compat.h` inherit just the
 resident compat into app domains. All handle probes use `RTLD_NOLOAD`, and
-setter/getter/GNU addresses must agree between resident and app views. If an
+setter/getter/GNU addresses must agree between resident and already-mapped
+default views; the new application view is not NOLOAD-probed. If an
 already-mapped default view has the same three addresses, prefer its direct
 edge over a potentially two-hop sealed-view edge; a distinct default state is
 rejected, never loaded or selected. Missing
-namespace, missing object, inheritance failure, wrong view or missing GNU entry
-refuses without any loading fallback. The AArch64 compiled helper uses mode 6
-(`RTLD_NOW|RTLD_NOLOAD`), captured in `evidence/resident-target.asm`.
+namespace, missing object, inheritance failure, wrong resident view or missing
+GNU entry skips the optional edge, logs through APPSPAWN and continues namespace
+creation without any loading fallback. The AArch64 compiled helper uses mode 6
+(`RTLD_NOW|RTLD_NOLOAD`) only on existing resident/default views. The original
+`evidence/resident-target.asm` is historical r1 evidence, not r2 acceptance.
 The sealed namespace is a **lookup view**, not proof of the underlying physical
 mapping owner. Final target lookup/maps must show one abort state. **Meet and
 fd-plus** are candidate beneficiaries; neither is declared repaired offline.
@@ -223,3 +226,70 @@ canonical `abi_diff.py --calls --json` against the signed U9 components (plus
 `--consumer` libart for NativeLoader), then gate those fresh reports. Passing old
 reports does not certify a changed artifact. `validation.json` separates first
 delivery, expanded component tests, contract checks and full archived-master runs.
+
+## libjnigraphics omission correction and U11 disposition
+
+The U10 policy omitted the later outer assignment to include `libjnigraphics.so`.
+This was a missed scope update, **not** an intentional exclusion supported by a
+libhwui/libart duplication finding. The seven-entry policy and candidate
+`621caec4...` remain unchanged; no eight-entry candidate is claimed here.
+
+Reinspection of route-A U9 `westlake-generation-u9-j10g-238ffc14/native/payload`
+found the following exact closure evidence (`evidence/jnigraphics-closure.json`):
+
+| Package member | SHA256 | SONAME | DT_NEEDED |
+| --- | --- | --- | --- |
+| `android/lib64/westlake_native/libjnigraphics.so` | `551d943fc69dea629119026f56471a8d11ed82fb8482cdf8f8cb3f99fc092ffa` | `libjnigraphics.so` | `libc.so` only |
+| `android/lib64/westlake_flutter/libjnigraphics.so` | same | `libjnigraphics.so` | `libc.so` only |
+| `android/lib64/libc.so` | `ee6034f5a9216345724b5d844928ee76d991205466db7f53dd68180e7f4fb5b7` | `libc.so` | `libc.so` |
+
+The compat libc's same-name edge is not evidence that this shell is the loaded
+system libc owner. Neither jnigraphics member has a DT_NEEDED edge to libhwui or
+libart. Its defined API is `AndroidBitmap_getInfo`, `AndroidBitmap_lockPixels`
+and `AndroidBitmap_unlockPixels`.
+
+The package has **no `android/lib64/libjnigraphics.so` root member**. Current
+bridge search roots are `/system/android/lib64` and `/system/lib64/platformsdk`
+(`native-loader/overlay/include/nativeloader/native_bridge_policy.h:19`); these
+do not recursively search the two package-private directories. The signed U9
+production dry-run expected map also names only those two private members.
+Matching bytes in two files do not prove a single loaded mapping or an inherited
+owner. No exact resident jnigraphics/libc handle and address-identity evidence
+for the target bridge domain has been established by this offline audit.
+
+Consequently, the required **entire closure resolves to unique already-loaded
+owners** precondition is unproven. Per outer's conditional instruction,
+libjnigraphics moves to **U11**, rather than adding a nonfunctional allowlist row,
+copying another root provider, or claiming a second libhwui/libart was observed.
+U11 must bind a real provider route and its existing libc owner, prove uniqueness,
+then build the eight-entry policy and rerun ABI/call and assembled closure gates.
+U10's already-gated compat/policy/host artifacts and the frozen predictions are
+not modified by this correction.
+
+## Urgent host r2: lazy inheritance is not a fatal verification gate
+
+The earlier host `62debf19...` was wrong: it NOLOAD-probed the application
+namespace immediately after inheritance and escalated an optional compat
+visibility failure into fatal namespace configuration failure. Its ten mocked
+cases assumed eager inherited visibility, whereas the U4 N3 board evidence
+already showed OH musl's lazy inheritance returns `is not already loaded`.
+An offline mock with the wrong loader semantics cannot validate target lookup.
+
+Host r2 `d51d8d6adbe6302d53da745667552414ce705bc6a659b7525e031f11c0dd6504`
+removes that application probe entirely. Only existing resident and optional
+default views are probed (NOLOAD, never a fresh compat load). The caller ignores
+the optional helper result; missing symbols, distinct resident state or inherit
+failure log and leave normal namespace creation intact. Messages now use
+`APPSPAWN_LOGI/LOGE`, not host stderr. Success logs **inherit_requested** and
+**application_lookup=deferred**, not a proven app relocation or UI repair.
+
+`visibility/tests/resident.c` now rejects any application NOLOAD invocation,
+including lazy post-inherit views, and replays ten cases. The actual caller
+snapshot is checked against baseline with only the include plus nonfatal call.
+`evidence/host-r2/` binds source/header hashes, exact rebuild and fresh ABI/call
+reports. Original r1 receipts remain historical, not current release artifacts.
+The corrected host preserves 15/15 exports and only adds U10ShareResidentCompat
+to StockCreateConfiguredNamespaces; baseline call differences are zero.
+Compat `015aa3a6...` and seven-entry policy `621caec4...` are unchanged.
+cx-t0 must rebind the corrected host's generation identity and reassemble;
+actual Meet relocation and the APPSPAWN marker remain later window checks.

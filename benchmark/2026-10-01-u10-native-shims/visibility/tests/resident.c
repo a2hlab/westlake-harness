@@ -1,6 +1,31 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stdio.h>
+
+static void TestAppspawnLog(const char* format, ...) {
+    char normal[512];
+    size_t used = 0;
+    for (size_t index = 0; format[index] != '\0';) {
+        if (strncmp(format + index, "%{public}", 9) == 0) {
+            normal[used++] = '%';
+            index += 9;
+        } else {
+            normal[used++] = format[index++];
+        }
+    }
+    normal[used] = '\0';
+    va_list arguments;
+    va_start(arguments, format);
+    fputs("APPSPAWN ", stderr);
+    vfprintf(stderr, normal, arguments);
+    fputc('\n', stderr);
+    va_end(arguments);
+}
+
+#define APPSPAWN_LOGI(...) TestAppspawnLog(__VA_ARGS__)
+#define APPSPAWN_LOGE(...) TestAppspawnLog(__VA_ARGS__)
 
 #include "../resident-compat.h"
 
@@ -27,8 +52,8 @@ void* dlopen_ns(Dl_namespace* domain, const char* name, int flags) {
     if (strcmp(domain->name, "default") == 0) {
         return failure == 7 ? NULL : (void*)(uintptr_t)30;
     }
-    assert(strcmp(domain->name, "application") == 0);
-    return failure == 4 ? NULL : (void*)(uintptr_t)20;
+    assert(!"NOLOAD must never probe a newly inherited application namespace");
+    return NULL;
 }
 
 int dlns_inherit(Dl_namespace* application, Dl_namespace* resident, const char* names) {
@@ -49,7 +74,7 @@ void* dlsym(void* handle, const char* name) {
 }
 
 int dlclose(void* handle) {
-    assert(handle == (void*)(uintptr_t)10 || handle == (void*)(uintptr_t)20 || handle == (void*)(uintptr_t)30);
+    assert(handle == (void*)(uintptr_t)10 || handle == (void*)(uintptr_t)30);
     ++closes;
     return 0;
 }
@@ -62,10 +87,10 @@ int main(void) {
         inheritance = 0;
         closes = 0;
         int result = U10ShareResidentCompat(&application);
-        if (failure == 0 || failure == 7 || failure == 9) {
+        if (failure == 0 || failure == 4 || failure == 5 || failure == 7 || failure == 9) {
             assert(result == 0 && inheritance == 1);
-            assert(opens == (failure == 9 ? 2 : 3));
-            assert(closes == (failure == 0 ? 3 : 2));
+            assert(opens == (failure == 9 ? 1 : 2));
+            assert(closes == (failure == 7 || failure == 9 ? 1 : 2));
         } else {
             assert(result != 0);
             if (failure == 1) assert(opens == 0);
@@ -73,6 +98,7 @@ int main(void) {
             if (failure == 6) assert(inheritance == 0);
             if (failure == 8) assert(inheritance == 0 && closes == 2);
         }
+        assert(closes <= opens);
     }
     return 0;
 }
