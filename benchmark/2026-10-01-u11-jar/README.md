@@ -99,3 +99,28 @@ U11b = U10 + cluster 1 (phone) + **cluster 3 (ssl-engine)**, one jar version.
   longer null. Both U9 walls (SSLEngine null **and** accountManager null, which was its consequence) clear from
   this one root fix — so fd-client is a **light candidate**, not merely a wall-move. Lazy-TLS apps (OkHttp) never
   call `createSSLEngine`, so null→non-null is strictly additive (no regression).
+
+## Cluster 5 added — content-provider (U11c)
+
+U11c = U10 + cluster 1 (phone) + cluster 3 (ssl-engine) + **cluster 5 (app ContentProviders)**, one jar version.
+
+- **Finding (quantified):** route-A projects the app's ProviderInfo into `AppBindData.providers` but **never
+  instantiates them** — the stock `ActivityThread.installContentProviders` step is not run (confirmed: no such
+  call in the adapter; `B8BindExtras.afterProviders` only fills metaData). So `getContentResolver().query(its own
+  authority)` returns a null Cursor. **120/168 U9 keys declare >=1 provider** (366 total); notepad is the
+  evidence (its authority `content://com.nononsenseapps.notepad.MyContentAuthority`, `Cursor.moveToFirst()` on null).
+- **New file:** `src/AppContentProviders.java` — mirrors AOSP 14 `installContentProviders`/`installProvider`
+  (local path): per ProviderInfo, `loadClass(name).newInstance()` -> `attachInfo(appContext, info)` (runs its
+  onCreate) -> `getIContentProvider()` -> build `ContentProviderHolder` -> publish the batch into
+  `adapter.contentprovider.ContentProviderRegistry` (what `ActivityManagerAdapter.getContentProvider` reads).
+  All hidden APIs by reflection; per-provider try/catch (one bad provider never blocks the rest, no regression).
+- **Wiring (needle):** `AppContentProviders.install(v13)` right after `B8BindExtras.afterProviders(v13)` in
+  `AppSchedulerBridge` (v13 = AppBindData with providers set, Application already live). No frozen file touched.
+- **New JAR SHA:** U11c `7443424084bc6848f328330fee5eecb83cb45dcd4d3aafb3feb83a18db4fc062`; 196 classes
+  (U10 186 + 7 + 2 + 1); deterministic.
+- **Expected first-wall move — `notepad`:** its own ContentProvider is instantiated + published at bind, so
+  `query(content://com.nononsenseapps.notepad...)` returns a real Cursor instead of null -> `moveToFirst()` NPE
+  gone, MainActivity.onCreate proceeds (light candidate).
+- **Regression controls = already-lit keys that declare providers** (e.g. `fd-k9` 9, `fd-android` 9,
+  `fd-droidify`, `markor`, `newpipe`, `aegis`): installing their providers must keep them lit (no new provider
+  onCreate crash).

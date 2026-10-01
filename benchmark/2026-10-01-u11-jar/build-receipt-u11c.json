@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "lane": "cc-t3",
+  "date": "2026-10-01",
+  "task": "U11 JAR v3 (one version) = U10 (37465d6d) + cluster 1 phone (TelephonyFetcher) + cluster 3 ssl-engine (WlSSLEngine) + cluster 5 content-provider (AppContentProviders). New features in new files; no frozen file edited.",
+  "base_u10_sha256": "37465d6d7f5e3d7be52929c2b43faf99315f86f0c23cc70e4aa858cb2ff98c59",
+  "output_u11c_sha256": "7443424084bc6848f328330fee5eecb83cb45dcd4d3aafb3feb83a18db4fc062",
+  "supersedes": "u11 277d4641 (phone), u11b d75e90c0 (phone+ssl); u11c is the current single U11 JAR version",
+  "deterministic": "yes (built twice, identical)",
+  "staged_jar": "$WORKSPACES/westlake-generation-u11-staging/oh-adapter-runtime-u11c.jar",
+  "build": "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u11-jar/build/build_u11c.py",
+  "class_delta_vs_u10": {
+    "added": ["adapter/activity/TelephonyFetcher (+6 inner)", "adapter/compat/WlSSLEngine (+1 inner)", "adapter/activity/AppContentProviders"],
+    "removed": [],
+    "note": "U10 186 -> U11c 196 (+10: 7 TelephonyFetcher + 2 WlSSLEngine + 1 AppContentProviders). U10-U11c class set diff = empty."
+  },
+  "wiring_needles": [
+    "B7BindFixes.smali: J10eWebView.install() (carried)",
+    "SystemServiceFetcherStubs.smali: TelephonyFetcher.install() after WifiFetcher.install() (cluster 1)",
+    "WestlakeSSLContextSpi.smali: both engineCreateSSLEngine() -> WlSSLEngine.create() (cluster 3, x2)",
+    "AppSchedulerBridge.smali: AppContentProviders.install(v13) right after B8BindExtras.afterProviders(v13), v13=AppBindData with providers set (cluster 5)"
+  ],
+  "frozen_safety": "no frozen source edited. oh-adapter-runtime.jar not a frozen artifact; all three new classes are new; needles are method-body/invoke wiring on non-frozen classes. check_frozen expected 0 violations.",
+  "cluster_5_quant": "120/168 U9 keys declare >=1 ContentProvider ([B8-PROV] bind providers>0), 366 providers total; they are projected into AppBindData.providers but never instantiated (no installContentProviders call) -> query(ownAuthority) null. notepad = evidence.",
+  "runtime_fp_note": "jar-only runtime_fp computed at window finalize; combined jar+native with cx-bms U11 native."
+}
