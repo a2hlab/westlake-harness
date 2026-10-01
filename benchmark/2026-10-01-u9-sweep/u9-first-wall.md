@@ -1,6 +1,6 @@
 # U9 first-wall table (non-lit keys)
 
-Total non-lit keys: 52
+Total non-lit keys: 51
 
 | Key | Verdict | Family | Cause | First Fatal | U10 Covered |
 |---|---|---|---|---|---|
@@ -11,7 +11,6 @@ Total non-lit keys: 52
 | fd-meet | dead | java:UnsatisfiedLinkError | [CHILD_CK] J_invokeStaticMain_main_threw: com.facebook.soloa | 10-01 18:38:10.510  8502  8525 I C00f00/AppSpawnXJava: [stde | no |
 | fd-noice | alive-white-window | no-fatal |  |  | no |
 | fd-plus | dead | java:IllegalStateException | [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.IllegalS | 10-01 18:40:22.582 11035 11059 I C00f00/AppSpawnXJava: [stde | no |
-| fd-seal | app_failed | no-fatal |  |  | no |
 | fd-uhabits | alive-white-window | no-fatal |  |  | no |
 | localsend | dead | native:signal |  | 10-01 18:47:33.877 20596 20596 I C02d11/DfxFaultLogger: Reas | no |
 | mindustry | dead | java:ExceptionInInitializerError | 10-01 18:48:21.038 21493 21518 E C00f00/AppSpawnXInit: Cause | 10-01 18:48:21.036 21493 21518 I C00f00/AppSpawnXJava: [stde | OpenSLES |
@@ -59,7 +58,7 @@ Total non-lit keys: 52
 
 ## Family counts
 
-- no-fatal: 22
+- no-fatal: 21
 - native:signal: 10
 - java:NullPointerException: 9
 - java:UnsatisfiedLinkError: 3
