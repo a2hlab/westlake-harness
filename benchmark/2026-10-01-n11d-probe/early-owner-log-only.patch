@@ -1,0 +1,30 @@
+--- a/sealed_child_provider_loader.c
++++ b/sealed_child_provider_loader.c
+@@ -312,6 +312,12 @@
+         dlns_init(&default_namespace, "default");
+         if (dlns_inherit(&default_namespace, &closure_namespace,
+                         "liboh_adapter_bridge.so:liboh_android_runtime.so") != 0) {
++            /* N11d PROBE: log-only, judgment UNCHANGED (still fatal). Identify which
++             * failure branch R3 hit -- here: dlns_inherit. */
++            const char *n11d_err = dlerror();
++            fprintf(stderr, "[N11d-PROBE] branch=dlns_inherit "
++                            "names=liboh_adapter_bridge.so:liboh_android_runtime.so dlerror=%s\n",
++                    n11d_err != NULL ? n11d_err : "<none>");
+             (void)dlclose(handle);
+             return NULL;
+         }
+@@ -319,6 +325,14 @@
+             void *shared = dlopen_ns(&default_namespace, owner_paths[owner],
+                                     RTLD_NOW | RTLD_LOCAL | RTLD_NOLOAD);
+             if (shared == NULL || shared != jni_owner_handles[owner]) {
++                /* N11d PROBE: log-only, judgment UNCHANGED (still fatal). Branch:
++                 * owner-verify. dlerror() names the unresolved lib when shared==NULL
++                 * (expect libartbased.so); shared!=expected means a handle mismatch. */
++                const char *n11d_err = dlerror();
++                fprintf(stderr, "[N11d-PROBE] branch=owner-verify owner=%s "
++                                "shared=%p expected=%p dlerror=%s\n",
++                        owner_paths[owner], shared, jni_owner_handles[owner],
++                        n11d_err != NULL ? n11d_err : "<none>");
+                 if (shared != NULL) (void)dlclose(shared);
+                 (void)dlclose(handle);
+                 return NULL;

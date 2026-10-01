@@ -234,6 +234,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-u9-native/rollout/approved-j10g/`** | U9 signed J10g rollout, ten-marker smoke and reviewed partial-window retention |
 | **`benchmark/2026-10-01-u10-jar/`** | **U10 JAR = split base `11974b7b` + `com.android.internal.util.Predicate` (packlist) + boot-assessment.** dexdump diff: +1 class only (185→186). Predicate beneficiary (run_index) = 1 key (packlist); placed in the runtime jar (fallback BCP+image). **AccountManager `account` stub already exists in the base** (fd-client still died in U8 despite it → needs diagnosis, not a duplicate; corpus100, out of this shard). Bitmap+Locale = boot-image/native (not Mac). Gate `test_u10.py` 4/4; jar `a41793ce` runtime_fp `99c13a821ae4` deterministic; plan has `offline_precheck.expect`. |
 | **`benchmark/2026-10-01-installation-chain-identity/`** | Installation-service aliases, loader SHA/inode proof and pending daytime version alignment |
+| **`benchmark/2026-10-01-n11d-probe/`** | Reproducible log-only child to identify early-owner rejection branches over U9 |
 
 ---
 
