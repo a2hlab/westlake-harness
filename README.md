@@ -204,6 +204,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-u8-rollout/`** | **U7-preserving J9/T7e assembly, strict preflight, three-board control receipts** |
 | **`benchmark/2026-10-01-b10-libart-impact/`** | **Exact deployed U8 nine-jar/all-DEX class gaps across 166 keys and PID-bound BitVector evidence from seven selected sequential runs: 99 lit positive controls, no invented causal victim count.** |
 | **`benchmark/2026-10-01-j10-jar/`** | **J10 runtime JAR (J9 `87fd463d` → `ea24291a`, deterministic): repairs the two J9 no-ops, each with a one-line activation log.** AppCompatNoTitleFix now registers from `AppSchedulerBridge.nativeOnScheduleLaunchAbility` after `currentApplication()` (J9 ran it before the Application existed) → `[J10-NOTITLE] installed`; SelfActivityInfoSynthesis now calls `SelfComponentFallback.projectionFor(String)` (J9 reflected the non-existent `ManifestComponentProjection.projection`) → `[J10-ACTINFO] synthesized`. Offline gate `test_j10.py` 11/11 (self-contained smali-evidence). BOOT libphonenumber stays for T7f. |
+| **`benchmark/2026-10-01-u8-flaky-repeat/`** | **U8 flaky keys, zero-variable repeat on 61b: t20 lit fd-noice 3/6, wikipedia 3/6, fd-uhabits 2/5** (blank white window otherwise, process alive, focus flag useless). Fixes for these keys are judged by rates over ≥3 repeats; wikipedia joins flaky-keys.json. |
 
 ---
 
