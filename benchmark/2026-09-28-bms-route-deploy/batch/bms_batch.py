@@ -528,9 +528,23 @@ def desktop_launch(board, app, remote, out, record, pages=10):
     else:
         raise AppFailure('desktop not reached')
     # Home can retain the current page: search both directions with bounded swipes.
+    recoveries = 0
     for direction in (-1, 1):
-        for page in range(pages):
-            tree = layout(board, remote, out, f'icons-{direction}-{page}')
+        page = 0
+        while page < pages:
+            tag = f'icons-{direction}-{page}' + (f'-retry{recoveries}' if recoveries else '')
+            tree = layout(board, remote, out, tag)
+            if not any(str(a.get('id') or a.get('key') or '').startswith(ICON_PREFIX) for a in attributes(tree)):
+                # A dump without a single app tile is not evidence that the icon is absent: right after an overlay
+                # restart the app grid was not drawn yet (2026-10-01 U8 5cd: page-bizzle and clipboardeditor, the
+                # first two keys of the run, saw 20 tile-less dumps each and were failed; the third key saw 228 tiles).
+                if recoveries >= 3:
+                    raise AppFailure('desktop not ready: layout dumps carry no app tiles')
+                recoveries += 1
+                board.shell('uitest uiInput keyEvent Home')
+                time.sleep(5)
+                continue
+            page += 1
             screen = panel(tree, screen)
             chosen = select_icon(tree, app['package'], app.get('launch_activity'))
             if chosen:

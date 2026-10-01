@@ -317,6 +317,34 @@ class BatchTests(unittest.TestCase):
         self.assertTrue((self.root/'run/install-hilog.txt').exists())
         self.assertEqual(rec['install']['hilog'],str(self.root/'run/install-hilog.txt'))
 
+    def test_tile_less_dump_retries_instead_of_failing(self):
+        board=FakeBoard();served=[]
+        original=board.receive
+        def receive(remote, local):
+            if '/icons-' in remote and len(served) < 2:
+                served.append(remote);board.calls.append('receive '+remote)
+                Path(local).write_text(json.dumps({'attributes':{'bundleName':b.LAUNCHER},'children':[]}));return
+            return original(remote, local)
+        board.receive=receive
+        _,rec=self.collect(board)
+        self.assertEqual(rec['status'],'captured')
+        self.assertEqual(len(served),2)
+        self.assertTrue((self.root/'run/icons--1-0-retry2.json').exists())
+
+    def test_always_tile_less_is_desktop_not_ready(self):
+        board=FakeBoard()
+        original=board.receive
+        def receive(remote, local):
+            if '/icons-' in remote:
+                board.calls.append('receive '+remote)
+                Path(local).write_text(json.dumps({'attributes':{'bundleName':b.LAUNCHER},'children':[]}));return
+            return original(remote, local)
+        board.receive=receive
+        _,rec=self.collect(board)
+        self.assertEqual(rec['status'],'app_failed')
+        self.assertIn('desktop not ready',rec['error'])
+        self.assertFalse(rec['clicked'])
+
     def test_reinstall_missing_target_skips_uninstall(self):
         board=FakeBoard();board.installed=False
         _,rec=self.collect(board,reinstall=True)
