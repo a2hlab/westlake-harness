@@ -1016,7 +1016,7 @@ def write_facts(out):
     return total
 
 
-def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
+def run_batch(board, entries, input_root, out, run_id, wait_seconds, stop_new_keys_at=None, **options):
     records = []
     board.ready()
     settings = preflight(board, out)
@@ -1035,6 +1035,13 @@ def run_batch(board, entries, input_root, out, run_id, wait_seconds, **options):
                               'boot_image_fingerprint': boot_image_fingerprint(board, out),
                               'baseline_acceptance': 'executor must have accepted task19; these are observations'})
     for i, entry in enumerate(entries):
+        # Finish the in-flight app; never begin another key after the window cutoff.
+        if stop_new_keys_at is not None and time.time() >= stop_new_keys_at:
+            save(out/'summary.json', {'records': records, 'not_run': [x['key'] for x in entries[i:]],
+                                      'stop_new_keys_at': stop_new_keys_at,
+                                      'stopped_at_new_key_deadline': True, 'review': 'pending_review'})
+            print('NEW-KEY CUTOFF: remaining keys are unknown', flush=True)
+            break
         app_out = out/entry['key']
         try:
             record = collect_app(board, entry, input_root, app_out,
@@ -1103,8 +1110,11 @@ def main(argv=None):
     ap.add_argument('--hilog', nargs='?', const=True, type=float, metavar='SECONDS', help='reset before launch, dump after SECONDS (default: --wait) and pull new faultlogs')
     ap.add_argument('--shots', type=shot_offsets, metavar='5,20', help='click-relative screenshot offsets; implies strict per-shot focus check')
     ap.add_argument('--focus-check', action='store_true', help='require target focus for every screenshot')
+    ap.add_argument('--stop-new-keys-at', type=float, help='absolute Unix epoch; finish current key, leave remaining unknown')
     ap.add_argument('--no-hilog', action='store_true', help='allow an executed sweep of 10+ keys without --hilog')
     args = ap.parse_args(argv)
+    if args.stop_new_keys_at is not None and not math.isfinite(args.stop_new_keys_at):
+        ap.error('stop-new-keys-at must be finite')
     if not math.isfinite(args.wait) or not 3 <= args.wait <= 300:
         ap.error('wait must be finite and in 3..300')
     hilog_seconds = args.wait if args.hilog is True else args.hilog
@@ -1138,7 +1148,7 @@ def main(argv=None):
                           'tool':tool_identity(args.manifest),'review':'pending_review'})
     try:
         board=Board(args.serial,args.hdc_cmd,args.lock_cmd,args.lane,out/'commands')
-        records=run_batch(board,entries,args.input_root,out,args.run_id,args.wait,**options)
+        records=run_batch(board,entries,args.input_root,out,args.run_id,args.wait,stop_new_keys_at=args.stop_new_keys_at,**options)
         return 0 if all(r['status']=='captured' for r in records) else 1
     except (BatchStop,KeyboardInterrupt) as exc:
         save(out/'batch-stop.json',{'error':str(exc),'review':'pending_review','device_result':'unverified'})

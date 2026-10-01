@@ -40,6 +40,7 @@ import re
 import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -193,7 +194,13 @@ def main(argv=None):
     held = subprocess.run([note, 'held', plan['serial']], capture_output=True, text=True).stdout.split()
     if rc or not held or held[0] != plan['lane']:
         sys.exit(f'could not take the board lock for {plan["serial"]} (held: {" ".join(held) or "none"})')
-    result = {'smoke': None, 'shards': []}
+    lock_epoch = time.time()
+    minutes = plan.get('stop_new_tests_by_minute')
+    if minutes is not None and not (isinstance(minutes, (int, float)) and 0 < minutes <= 35):
+        subprocess.run([note, 'unlock', plan['board'], plan['serial'], plan['lane']])
+        sys.exit('stop_new_tests_by_minute must be in (0, 35]')
+    cutoff = lock_epoch + minutes * 60 if minutes is not None else None
+    result = {'smoke': None, 'shards': [], 'lock_epoch': lock_epoch, 'stop_new_keys_at': cutoff}
     try:
         if deploy:
             with open(out / 'after-lock.log', 'w') as fh:
@@ -219,6 +226,8 @@ def main(argv=None):
             cmd = [sys.executable, str(BATCH), '--execute', '--serial', plan['serial'], '--lane', plan['lane'],
                    '--manifest', expand(shard['manifest']), '--input-root', expand(shard['input_root']),
                    '--keys', keys, '--reinstall', '--hilog', '--shots', '5,20', '--out', str(sout)]
+            if cutoff is not None:
+                cmd += ['--stop-new-keys-at', str(cutoff)]
             with open(out / f'{shard["name"]}.log', 'w') as fh:
                 code = subprocess.run(cmd, cwd=REPO, stdout=fh, stderr=subprocess.STDOUT).returncode
             facts = sorted(sout.glob('*/*/facts.txt'))
