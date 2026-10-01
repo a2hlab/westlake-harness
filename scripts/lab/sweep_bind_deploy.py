@@ -201,6 +201,12 @@ def deploy_and_verify(a, binds, exp_map, exp_paths, out):
     rec['appspawn_up'] = up
     rec['root_pid'] = pid
     assert up == '1' and pid, f'appspawn-x unhealthy after overlay (up={up} pid={pid})'
+    # Every bound file is verified in the child view even without --expected: its own local sha256 is the want
+    # (2026-10-01 #96: no --expected meant "DEPLOY OK: 0 files match" and nothing was checked).
+    for local, dest in binds:
+        if dest not in exp_map:
+            exp_map[dest] = hashlib.sha256(Path(local).read_bytes()).hexdigest()
+            exp_paths.append(dest)
     got = board_shas(hdc, serial, exp_paths, via_pid=pid)
     mism = [{'path': p, 'got': got.get(p), 'want': exp_map[p]} for p in exp_paths if got.get(p) != exp_map[p]]
     rec['verified'] = len(exp_paths)
@@ -375,8 +381,11 @@ def main(argv=None):
         return 2
     Path(a.out).mkdir(parents=True, exist_ok=True)
     if a.rollback_only:
-        if not (Path(a.out) / 'deploy-receipt.json').exists():
-            print(f'--rollback-only needs the deploy-receipt.json of the overlay in --out {a.out}', file=sys.stderr)
+        # Without the deploy receipt (another --out) there are no baseline shas; the fingerprints then carry the check
+        # (2026-10-01 #96: a plan pointed --out elsewhere, the refusal left the overlay mounted and the board locked).
+        if not (Path(a.out) / 'deploy-receipt.json').exists() and not (a.rollback_runtime_fp and a.rollback_boot_fp):
+            print(f'--rollback-only without {a.out}/deploy-receipt.json needs --rollback-runtime-fp and '
+                  f'--rollback-boot-fp', file=sys.stderr)
             return 2
         return 0 if rollback(a, binds, a.out) else 1
 
