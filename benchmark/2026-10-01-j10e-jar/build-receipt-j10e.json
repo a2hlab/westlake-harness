@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "lane": "cc-t3",
+  "date": "2026-10-01",
+  "task": "J10e = J10d + WebView enrichment (forwarding ViewDelegate -> PrivateAccess.super_*, concrete WlCookieManager). This is U9's single JAR.",
+  "baseline_j10d_sha256": "57d621837eee4d065a49929f0a7f981e811becc4beba988c18b0ab847e67058c",
+  "output_j10e_sha256": "3c1479643420e8c844bf907596f69b1ac8ee42f0a62c2b8695620a7b207f1656",
+  "deterministic": "yes (built twice identical; smali -j 1, fixed zip date 1980-01-01)",
+  "staged_jar": "/Users/zhaoyue/orca/workspaces/westlake-generation-j10e-staging/oh-adapter-runtime-j10e.jar",
+  "source_commit": "feat/bms-walls 142fe0b01",
+  "build_script": "/Users/zhaoyue/orca/workspaces/westlake-harness-t3/benchmark/2026-10-01-j10e-jar/build/build_j10e.py",
+  "build_env": "Mac local: javac 1.8 (-source/-target 8), d8.jar via openjdk@17 (--lib android-34/android.jar), smali/baksmali 2.5.2 on Java 8",
+  "root_cause": {
+    "viewgroup_npe": "WebView.java:2658-2659 setLayoutParams only calls mProvider.getViewDelegate().setLayoutParams; J8 ZeroHandler no-ops void -> WebView.mLayoutParams null -> ConstraintLayout/FrameLayout NPE (caniwebview/jslab/beecount/trickytripper)",
+    "cookiemanager_npe": "WebViewFactoryProvider.getCookieManager() (:127) returns ABSTRACT CookieManager; ZeroHandler returns null for non-interface -> NPE (degeder-yam/vaults-randomlydie/paultirk-yatoo)"
+  },
+  "fix": "enriched WebViewFactoryProvider re-seed (install() injected after WebViewProviderFix.install in B7BindFixes.apply). getViewDelegate -> forwarding ViewDelegate: m(args) -> PrivateAccess.super_<m>(args) when a public same-named super_* with identical params exists (covers setLayoutParams/setFrame + onHoverEvent/dispatchKeyEvent/performLongClick/requestFocus/...). getCookieManager -> concrete WlCookieManager (16 abstract incl 2 @hide @SystemApi). Markers [J10e-WEBVIEW] delegate forwards setLayoutParams / CookieManager stub installed.",
+  "compile_only_stub": "android/webkit/CookieManager.java (16 abstract incl getCookie(String,boolean) & hasCookies(boolean) @hide) -- public android.jar omits the @hide abstract methods, so a subclass built against it would stay abstract at runtime. Stub is compile-only; NOT dexed (d8 only adapter/activity/J10eWebView*.class).",
+  "class_delta": {
+    "added": [
+      "adapter/activity/J10eWebView",
+      "J10eWebView",
+      "J10eWebView",
+      "J10eWebView",
+      "J10eWebView",
+      "J10eWebView",
+      "J10eWebView"
+    ],
+    "removed": []
+  },
+  "dropped_for_safety": "getWebStorage/getGeolocationPermissions keep null: their public android.jar constructors are NOT accessible to a subclass (SDK narrows the AOSP-source public ctor) and neither is in the observed NPE corpus.",
+  "offline_gate": "test_j10e.py 15/15",
+  "predicted_coverage": [
+    "cv2-com-caniwebview-android",
+    "cv2-eu-dfdx-jslab",
+    "cv2-com-knirirr-beecount",
+    "cv2-de-koelle-christian-trickytripper",
+    "cv2-com-degeder-yam",
+    "cv2-ca-vaults-randomlydie",
+    "cv2-com-paultirk-yatoo"
+  ],
+  "window_runtime_fp": "NOT YET KNOWN (jar 3c147964 != prior; outer-loop offline compute)"
+}

@@ -1,0 +1,10 @@
+AOSP 14.0.0_r1 (local: $WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java/android/webkit/)
+WebView.java:2658-2659  setLayoutParams(p) -> mProvider.getViewDelegate().setLayoutParams(p)   (no store on View itself)
+WebView.java:2465-2466  PrivateAccess.super_setLayoutParams(p) -> WebView.super.setLayoutParams(p)  (the real provider's callback that stores mLayoutParams)
+WebView.java:2449       PrivateAccess.super_setFrame(int,int,int,int)
+WebView.java:2423       public class PrivateAccess   (concrete class, reflectable super_* methods)
+WebViewProvider.java:319  /* package */ ViewDelegate getViewDelegate();
+WebViewProvider.java:348  interface ViewDelegate { ... setLayoutParams(LayoutParams); setFrame(int,int,int,int); ... }
+WebViewFactoryProvider.java:127  CookieManager getCookieManager()   (returns the ABSTRACT class CookieManager -> J8 ZeroHandler returned null -> NPE)
+CookieManager.java  16 abstract methods; getCookie(String,boolean):177 and hasCookies(boolean):254 are @hide @SystemApi (absent from public android.jar)
+ViewGroup NPE stacks (outer loop, U8 e953c0921536): ConstraintLayout.onViewAdded:1003 -> generateLayoutParams(view.getLayoutParams()):1950 reads null.width; FrameLayout.measureChildWithMargins:7001 reads null.leftMargin.

@@ -218,6 +218,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-j10d-window/`** | **J10d (restore the manifest activity theme the adapter zeroed) lights 10 of 12 appcompat / getActivityInfo keys on 5ea, all non-lit in U8.** |
 | **`benchmark/2026-10-01-u9-native/`** | U9 offline N10b core + invalid-icon installer, preserved network/background projection, declared foundation service component |
 | **`benchmark/2026-10-01-n11b-early-owner/`** | Deployed admission-path audit and child-only early JNI owner sharing, baseline repeat, fail-closed checks and explicit gate proposal |
+| **`benchmark/2026-10-01-j10e-jar/`** | **J10e (J10d `57d62183`→`3c147964`, = U9 single JAR): enrich the route-A WebView provider.** The J8 type-zero stub leaves two launch-fatal walls: ViewGroup NPE (caniwebview/jslab/beecount/trickytripper — `WebView.setLayoutParams` only forwards to the ViewDelegate, which no-ops, so `WebView.mLayoutParams` stays null) and CookieManager NPE (degeder-yam/vaults-randomlydie/paultirk-yatoo — `getCookieManager()` returns the abstract class, stubbed null). Fix: `J10eWebView` re-seeds an enriched provider whose `getViewDelegate()` forwards `m`→`PrivateAccess.super_<m>` and whose `getCookieManager()` returns a concrete `WlCookieManager` (16 abstract overrides incl. 2 `@hide`, via a compile-only stub). Offline gate `test_j10e.py` 15/15; deterministic; window plan has `offline_precheck.expect {confirm,refute}` + 7-key shard. |
 
 ---
 
