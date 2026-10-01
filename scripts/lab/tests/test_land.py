@@ -111,6 +111,13 @@ class Land(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn('rewritten section', (self.repo / 'benchmark/b/README.md').read_text())
 
+    def test_relanding_identical_bytes_is_already_landed(self):
+        self.assertEqual(self.land().returncode, 0)
+        r = self.land()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('ALREADY LANDED', r.stdout)
+        self.assertEqual(git(self.repo, 'rev-list', '--count', 'HEAD').stdout.strip(), '2')
+
     def test_preflight_fails_on_home_paths_in_lane_tables(self):
         home = Path('/Users') / Path.home().name  # this Mac's home, as a lane's table would carry it
         (self.wt / 'benchmark/b/results.json').write_text(f'{{"run": "{home}/orca/workspaces/x/run1"}}\n')

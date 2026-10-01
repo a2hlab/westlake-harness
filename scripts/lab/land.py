@@ -294,13 +294,19 @@ def main(argv=None):
         if failures:
             raise RuntimeError('gates failed')
         sh(['git', 'add', '-f', *files, *touched])
+        # 2026-10-01 21:22: a lane had already landed the same listing itself; `git commit` then exits 1 with its
+        # "nothing to commit" on stdout and an empty stderr, which printed a bare "commit failed:".
+        if not args.no_commit and sh(['git', 'diff', '--cached', '--quiet']).returncode == 0:
+            commit = sh(['git', 'rev-parse', '--short', 'HEAD']).stdout.strip()
+            print(f'ALREADY LANDED: master {commit} already has these {len(files)} files byte for byte; nothing to commit')
+            return 0
         if not args.no_commit:
             head = subprocess.run(['git', '-C', str(wt), 'rev-parse', '--short', 'HEAD'], capture_output=True,
                                   text=True).stdout.strip()
             c = sh(['git', 'commit', '-q', '-m', f'{args.message} (landed from {wt.name}@{head}, '
                                                 f'{len(files)} files, listing {listing_sha[:12]})'])
             if c.returncode:
-                raise RuntimeError('commit failed: ' + c.stderr.strip()[-300:])
+                raise RuntimeError('commit failed: ' + (c.stdout + c.stderr).strip()[-300:])
         commit = sh(['git', 'rev-parse', '--short', 'HEAD']).stdout.strip()
         print(f'LANDED {commit}: {len(files)} files ({len(created)} new, {len(overwritten)} overwritten), '
               f'docs {touched or "none"}, listing sha256 {listing_sha[:12]}; user-paths 0, frozen 0, '
