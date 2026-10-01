@@ -1,28 +1,28 @@
-# White-window diagnostic rule generalization (all keys, offline)
+# Fallback-target verification: which session the last-session fallback rescues (148 rows, offline)
 
-Dispatch (ACK(80) 2026-10-01T17:45:53): generalize the white-window diagnostic rule from wikipedia/fd-noice to all run_index rows with unknown_session>0 (runtime e953c0921536). Compare query counts vs signed t20 results; lit keys as control group.
+Dispatch (ACK(80) 2026-10-01T17:55:23): verify the new claim "the difference is which session the last-session fallback rescues" on the same 148 rows (runtime e953c0921536, unknown_session>0). Evidence from hilog; verdict joined per run (sweep → outer-signoff.json; flaky-repeat → per-round sign-off; no sign-off → unknown).
 
 ## Numbers first
 
 From run_index (runtime e953c0921536, unknown_session>0): **148 rows**.
 
-By signed t20 result (outer sign-off `benchmark/2026-10-01-u8-sweep/outer-signoff.json`):
+By signed t20 result, with `rescued_activity` = the last-session fallback returned the Activity session's OHNativeWindow, `rescued_icon` = it returned the icon session's:
 
-| t20 result | rows | query_count>=2 | query_count==1 | query_count==0 |
-|---|---|---|---|---|
-| lit | 105 | **95 (90.5%)** | 10 | 0 |
-| alive-white-window | 17 | 12 (70.6%) | 5 | 0 |
-| dead | 8 | 4 (50.0%) | 3 | 1 |
-| unknown (not in sign-off) | 14 | 14 | 0 | 0 |
+| t20 result | rows | rescued_activity | rescued_icon |
+|---|---|---|---|
+| lit | 106 | **99.1%** | **88.7%** |
+| alive-white-window | 11 | **100.0%** | **36.4%** |
+| dead | 8 | 87.5% | 87.5% |
+| unknown (no sign-off) | 19 | 100.0% | 73.7% |
 
 ## Conclusion
 
-**The diagnostic rule does NOT hold.** In the lit control group, 90.5% of rows have Activity session queried twice or more (query_count>=2) — nearly as common as in white rows (70.6%). The difference between lit and white is not the number of queries but which session is rescued by the last-session fallback (the Activity in lit, the icon in white). The rule「white = Activity session queried twice」is wrong; the real discriminator is which session's window ends up in the foreground slot (per the double-load analysis in `double-load/REPORT.md`).
+The new claim **partially holds**. In white rows, the fallback rescues the Activity session **100% of the time** but rescues the icon session only **36.4%** of the time — the icon's window is abandoned. In lit rows, the fallback rescues the Activity session **99.1%** of the time *and* the icon session **88.7%** of the time — both windows get content. So the discriminator is not "how many times the Activity session is queried" (the old rule, disproven) but **whether the fallback rescues the icon session too**: white rows abandon the icon's window, lit rows rescue both.
 
-The single row with query_count==0 is `fd-uhabits` (61b r1, lit) — a single-Activity app with no icon session, so no Activity session queries at all.
+The single lit row with query_count==0 (fd-uhabits) is a single-Activity app with no icon session — no Activity session queries at all, so it is outside this rule.
 
 ## Method
 
-- `timeline.py` (whitewin-diff) per key: extract createSession / getOhNativeWindow / unknown sessionId lines; Activity session = last createSession (highest sessionId); query_count = unknown sessionId lines for that session; first_query_interval_ms = from icon session create to first Activity query.
-- Join with outer sign-off `benchmark/2026-10-01-u8-sweep/outer-signoff.json` for t20 verdict.
+- `timeline.py` (whitewin-diff) per key: extract createSession / getOhNativeWindow / BBQ.update / unknown sessionId lines; Activity session = last createSession (highest sessionId); icon session = first createSession; rescued_sessions = sessions with BBQ.update OHNativeWindow=non-null; rescued_activity = Activity session in rescued_sessions; rescued_icon = icon session in rescued_sessions.
+- Join with outer sign-off `benchmark/2026-10-01-u8-sweep/outer-signoff.json` for sweep keys; flaky-repeat keys (wikipedia/fd-noice/fd-uhabits) use per-round sign-off (lit r1/r2b/r3 for wikipedia, lit r1/r3/r4 for fd-noice, lit r1/r4 for fd-uhabits; white r2/r4/r5 / r2/r2b/r5 / r2/r5 respectively). Keys with no sign-off are marked unknown.
 - No board writes; all files in t4 worktree.
