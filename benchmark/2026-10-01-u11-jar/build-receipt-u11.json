@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "lane": "cc-t3",
+  "date": "2026-10-01",
+  "task": "U11 JAR cluster 1 = U10 (37465d6d) + TelephonyFetcher (phone + telephony_subscription_service apex-service fetchers). New feature in a new file; no frozen file edited.",
+  "base_u10_sha256": "37465d6d7f5e3d7be52929c2b43faf99315f86f0c23cc70e4aa858cb2ff98c59",
+  "output_u11_sha256": "277d46418604b30d61264c1d09f608866ebe0c3fdc683b2b6aae9b628be1206a",
+  "deterministic": "yes (built twice, identical)",
+  "staged_jar": "$WORKSPACES/westlake-generation-u11-staging/oh-adapter-runtime-u11.jar",
+  "build": "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u11-jar/build/build_u11.py (lab_paths-based; base = j10d staging + webview-split + J10f + J10g + Predicate + TelephonyFetcher)",
+  "class_delta_vs_u10": {
+    "added": [
+      "adapter/activity/TelephonyFetcher",
+      "adapter/activity/TelephonyFetcher$1",
+      "adapter/activity/TelephonyFetcher$2",
+      "adapter/activity/TelephonyFetcher$3",
+      "adapter/activity/TelephonyFetcher$4",
+      "adapter/activity/TelephonyFetcher$Builder",
+      "adapter/activity/TelephonyFetcher$ZeroHandler"
+    ],
+    "removed": [],
+    "note": "U10 186 classes -> U11 193 (+7, all TelephonyFetcher). U10-U11 class set diff = empty."
+  },
+  "wiring_needles": [
+    "B7BindFixes.smali: J10eWebView.install() after WebViewProviderFix.install() (carried from U9/U10)",
+    "SystemServiceFetcherStubs.smali: TelephonyFetcher.install() after WifiFetcher.install() (new; method-body change, not a frozen file)"
+  ],
+  "frozen_safety": "FZ-004 JarVerificationProviderFix.java blob c7b15f75 and FZ-006 VibratorFetcher.java blob e502d039 unchanged; oh-adapter-runtime.jar is NOT a frozen artifact; SystemServiceFetcherStubs.java/WifiFetcher.java are NOT frozen. check_frozen expected 0 violations.",
+  "binder_policy": "present-but-off, nothing fabricated: ITelephony/ISub type-zero stub -> null identifiers (no fake IMEI/number/operator), 0 states (SIM_STATE_UNKNOWN / PHONE_TYPE_NONE / CALL_STATE_IDLE / DATA_DISCONNECTED), false flags. Same floor as account/location.",
+  "beneficiary": "x (com.twitter.util.telephony: getSystemService(\"phone\") as TelephonyManager); toutiao (15 phone + 5 wifi call-sites)",
+  "runtime_fp_note": "jar-only runtime_fp computed at window finalize (swap the U11 jar sha into a prior runtime-fingerprint.txt); combined jar+native fp with cx-bms U11 native."
+}
