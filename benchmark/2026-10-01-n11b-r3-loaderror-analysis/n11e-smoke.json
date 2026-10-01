@@ -1,0 +1,42 @@
+{
+  "_note": "N11e is diagnostics-only: it carries the sealed-loader failure detail out in WlscplLoadResultV1 and prints it in the HOST (the only channel that survives the sealed-child ns; R3 proved in-loader HiLogPrint AND stderr are both silent). The N11e build also DELETES the :333 dlsym(HiLogPrint)==NULL load gate. The unconditional entry beacon '[N11e-PROBE] entry' is registered below so board_run (retro-20) accepts the window; the failure line '[N11e-PROBE] fail stage=.. branch=.. index=.. errno=.. detail=..' shares the prefix and is read OFFLINE from the shard hilog (it is absent on a run where the load passes, so it must NOT be a fixes assertion).",
+  "expect": {
+    "boot_fp": "4db882a81732",
+    "_runtime_fp_todo": "FILL cx-bms: target board's U9 runtime_fp (61b for the R3 repro) from the N11d-recovered final-u9.json; added to expect as runtime_fp."
+  },
+  "groups": [
+    {
+      "manifest": "knowledge/smoke/controls-apps.json",
+      "input_root": "$WORKSPACES/westlake-b90-controls-inputs",
+      "keys": [
+        "helloworld",
+        "zigzag"
+      ],
+      "mode": "launch-only",
+      "controls": true
+    }
+  ],
+  "fixes": [
+    {
+      "id": "N11e-PROBE-ENTRY",
+      "key": "helloworld",
+      "markers": [
+        "\\[N11e-PROBE\\] entry"
+      ]
+    }
+  ],
+  "probe": {
+    "package": "com.example.helloworld",
+    "single_copy": [
+      "libart.so",
+      "libopenjdkjvm.so",
+      "liboh_adapter_bridge.so",
+      "liboh_android_runtime.so"
+    ],
+    "files": {
+      "/system/lib64/appspawn/libwestlake_android_child.z.so": "<FILL cx-bms: N11e child .so sha256 (loader + host rebuilt from the extended WlscplLoadResultV1 header; :333 emit gate removed)>"
+    }
+  },
+  "_offline_precheck_expect": "Read from the shard helloworld hilog (APPSPAWN tag): require '[N11e-PROBE] entry' present (entry-survival), then read the '[N11e-PROBE] fail stage/branch/index/errno/detail' line to name the early-owner branch (1=dlns_inherit :313, 2=owner NOLOAD :321, 3=owner handle-mismatch :321). Same tag prefix as the registered marker, so retro-20 is satisfied.",
+  "_flaky_note": "EVO-0051: zigzag is flaky; its controls-alive check is advisory. helloworld is the hard alive control + the probe carrier. Do not fail the window on a single-run dead zigzag."
+}
