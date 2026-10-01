@@ -21,6 +21,8 @@ PLAN.json:
    "smoke_spec": "knowledge/smoke/<x>.json",
    "shards": [{"name": "v1", "manifest": "...", "input_root": "...", "keys_file": "..."}, ...]}
 Relative paths are resolved against the repo; $WORKSPACES is expanded.
+Optional before_unlock is an argv list executed while the lock is still held, including on smoke failure.
+It must finish the authorized rollback and verification. Failure retains the lock for recovery.
 """
 import argparse
 import json
@@ -76,6 +78,10 @@ def main(argv=None):
         if k not in plan:
             sys.exit(f'plan missing {k}')
     plan['board'] = expand(plan['board'])
+    cleanup = plan.get('before_unlock')
+    if cleanup is not None and (not isinstance(cleanup, list) or not cleanup or
+                                any(not isinstance(x, str) or not x for x in cleanup)):
+        sys.exit('before_unlock must be a nonempty argv list')
     if args.dispatch:
         print(dispatch_text(plan, args.plan)); return 0
     note = str(lab_paths.tools() / 'board_note.sh')
@@ -114,7 +120,22 @@ def main(argv=None):
                                f'({facts[0] if facts else sout}):「{total}」')
         return 0
     finally:
+        cleanup_error = None
+        if cleanup:
+            try:
+                with open(out / 'before-unlock.log', 'w') as fh:
+                    code = subprocess.run([os.path.expandvars(x) for x in cleanup], cwd=REPO,
+                                          stdout=fh, stderr=subprocess.STDOUT).returncode
+                result['before_unlock'] = code
+                if code:
+                    cleanup_error = f'before_unlock failed (rc={code}); lock retained for recovery'
+            except Exception as exc:
+                cleanup_error = f'before_unlock failed: {exc}; lock retained for recovery'
+                result['before_unlock_error'] = str(exc)
         (out / 'board-run-result.json').write_text(json.dumps(result, indent=1, ensure_ascii=False))
+        if cleanup_error:
+            board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} {cleanup_error}')
+            raise RuntimeError(cleanup_error)
         subprocess.run([note, 'unlock', plan['board'], plan['serial'], plan['lane']])
 
 
