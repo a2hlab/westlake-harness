@@ -72,6 +72,12 @@ if ! printf '%s' "$FIRST" | grep -q 'R2 记档' && printf '%s' "$BODY" | grep -E
    && printf '%s' "$BODY" | grep -E '运行目录|证据|截图|hilog|run dir|/runs?/' >/dev/null; then
   echo "WARN: keep-only/delete wording next to run evidence -- say \"copy into a landing dir, never delete raw run dirs\" (EVO-0057)" >&2
 fi
+# EVO-0063 (family incompat-no-device): "app 问题 / 不兼容 / 不修" was concluded without running the APK on the Android
+# reference device; on the device glmark2 ran fine. Warn when such a verdict carries no reference-device evidence.
+if printf '%s' "$BODY" | grep -E 'app 不兼容|app 问题|打包怪癖|app 本身(的)?问题|判.{0,6}不修' >/dev/null \
+   && ! printf '%s' "$BODY" | grep -E '参考机|真机|reference device|N100CU' >/dev/null; then
+  echo "WARN: an 'app incompatible / not ours' verdict without a run on the Android reference device (EVO-0063)" >&2
+fi
 # Evolution families (user rule 2026-10-01): every R2 record carries [家族:<family>] (and [车道:<lane>] when a lane made
 # the error) so scripts/lab/evo_family.py can count recurrence by family instead of by text hash.
 if printf '%s' "$FIRST" | grep -q 'R2 记档' && ! printf '%s' "$BODY" | grep -q '\[家族:'; then
