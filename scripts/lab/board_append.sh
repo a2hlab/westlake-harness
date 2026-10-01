@@ -52,6 +52,19 @@ for t in sorted(cited - own):
     if "T" + t not in board:
         print(f"WARN: cited time {t} is not on the board (never published, or a typo) (EVO-0049)", file=sys.stderr)
 ' "$BOARD"
+# EVO-0051 (2026-10-01 06:58): a hard spot-check gate included noice, a two-Activity race key that flips lit/white;
+# it went white, the 61b persistence window rolled back. Warn when an entry that sets a gate (抽检/硬门/门槛/gate)
+# names a key registered in knowledge/gates/flaky-keys.json; flaky keys get repeated runs and a rate, not a gate.
+FLAKY="$(cd "$(dirname "$0")/../.." && pwd)/knowledge/gates/flaky-keys.json"
+[ -f "$FLAKY" ] && printf '%s' "$BODY" | python3 -c '
+import json, re, sys
+body = sys.stdin.read()
+if re.search(r"抽检|硬门|门槛|\bgate\b", body):
+    keys = [k["key"] for k in json.load(open(sys.argv[1])).get("keys", [])]
+    hit = [k for k in keys if re.search(r"(?<![\w-])" + re.escape(k) + r"(?![\w-])", body)]
+    if hit:
+        print("WARN: gate entry names flaky key(s) " + ", ".join(hit) + " (knowledge/gates/flaky-keys.json) -- use repeats and a rate, not a single-run gate (EVO-0051)", file=sys.stderr)
+' "$FLAKY"
 printf '%s\n' "$BODY" | "$APPEND" "$BOARD"
 if tail -n 400 "$BOARD" | grep -F -- "$FIRST" >/dev/null; then  # no -q under pipefail (RUNBOOK)
   echo "appended: ${FIRST:0:100}"
