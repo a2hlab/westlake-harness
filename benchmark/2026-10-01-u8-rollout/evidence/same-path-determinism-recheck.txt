@@ -1,0 +1,12 @@
+T7e determinism re-check (identical absolute path /home/alvin/t7e-cc-t3-v2/out)
+date: 2026-10-01T03:20:55Z
+method: mv out->out-orig ; rerun dex2oat --work $BASE/work --out $BASE/out (EXACT original paths) ; byte-compare 27 files
+RESULT: same=26 diff=1 total=27
+only-diff: boot.art  (3 bytes of 4644864 differ, at byte offsets 254906-254908)
+cmp -l out/boot.art out-orig/boot.art:
+ 254906 253  73
+ 254907 161 240
+ 254908 101 100
+cause: residual dex2oat non-determinism (PendingFuture backtrace field in boot.art); all other 26 files incl boot.oat byte-identical once the output path length matches.
+prior failed check (11:08 out-logcap): path longer by 7 chars -> boot.art +7 bytes, boot.oat shifted from offset 4105 by 1890168 bytes (path-string length, not non-determinism) -- now eliminated.
+input jars (9): see input-jars.sha256; adapter-mainline-stubs.jar = f3bcc9d7c76cb73487837d7ad92fccba3d595d313ada7403bed99c4f11c2a8c2 (T7e)
