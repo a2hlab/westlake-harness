@@ -229,6 +229,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-n11b-early-owner/window-r3/`** | N11b continuous failed-launch capture, generic loader error boundary and verified U8 recovery |
 | **`benchmark/2026-10-01-j10-freeze-draft/split/`** | **J10e split into one-fix-per-file (U10 base), proven behaviour-identical to J10g `238ffc14`.** Freeze method = split (AGENTS). `J10eWebView.java` → `J10eViewDelegate` (ViewDelegate) + `J10eCookieManager` (CookieManager) + skeleton seed; WebSettings/extras already own files. `compare_split.py` baksmali-diffs every method vs 238ffc14: **150 instruction-identical**, only diffs are the `sLoggedDelegate` log-once flag relocating into J10eViewDelegate (accessor→direct) + inner→top-level ctor visibility — behaviour-preserving. Split jar `11974b7b…` is the U10 base; merge no-fatal J-layer via `--extra-sources`. |
 | **`benchmark/2026-10-01-u8-death-clusters/no-fatal-fixplan.md`** | **Eleven U8 deaths routed to 4 J and 7 native proposals, pinned AOSP14 source/call order, deployed JNI identities and explicit unknown SIGKILL causes.** |
+| **`benchmark/2026-10-01-n11c-probe/`** | Logging-only N11c child rebuild, exact baseline reproduction and per-function call-set gate |
 
 ---
 
