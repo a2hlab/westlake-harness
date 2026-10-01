@@ -3,22 +3,36 @@
 **N11e verdict (board 22:15):** `branch=3 WLSCPL_FAILB_OWNER_MISMATCH`, `index=0` (`liboh_adapter_bridge.so`). The
 `detail` quoting `libartbased` is a **stale dlerror** (the `N11eFailure` bug, fixed below). Decision-table **row 3**.
 
-## Root cause (pinned in the N11e source)
-`benchmark/2026-10-01-n11e-result-channel/src/sealed_child_provider_loader.c`:
-- The host open callback **`WLSCPL_OpenPreparedNamespace`** (`:263`) ends in a plain **`dlopen(absolute_path, flags)`** —
-  a **default-namespace** load. When the Java NativeLoader opens `liboh_adapter_bridge.so` in `default`, this mints a
-  **fresh second copy** of the bridge.
-- The loader then tries to publish the sealed owners into `default` by `dlns_inherit` (`:347`) and verify by
-  `dlopen_ns(default, …, RTLD_NOLOAD)` (`:357`). The NOLOAD check **finds a handle** (the fresh copy) but it is
-  `!= jni_owner_handles[0]` (the sealed copy) → `OWNER_MISMATCH` (`:358`). Two bridge copies = the exact U7 double-load.
+## Premise correction (board latest ACK(80))
+N11e showed the `default` bridge copy is **already present at `:357` (provider-load stage, before Java runs)**, and 5ea
+U9's appspawn-x **parent maps have no bridge** (not fork-inherited). So it is **not** the Java NativeLoader that mints it.
+Pinning the mint site in the N11e source:
+- The loader's artifact loop uses **only** `ops->open_local_now` = `RealOpenLocalNow` → `dlopen_ns(&closure_namespace,…)`
+  (`:527`, `:304`). It **never** loads anything into `default`.
+- The **only** default-namespace `dlopen` in the whole TU is `WLSCPL_OpenPreparedNamespace` (`:275`), which is handed to
+  the host as `child_services.open_sealed_exact` (`westlake_android_child_plugin.c:691`; consumer validated
+  `host_runtime_services.c:223`). Its **caller is the OH appspawn stock host** (outside these 3 TUs), on the
+  runtime/JNI-owner-prepare path — which runs **before Java**, matching the `:357` observation.
 
-So the publish-by-inherit is the wrong lever: the fix is to stop `default` ever minting its own copy — intercept the two
-canonical owner paths in `WLSCPL_OpenPreparedNamespace` and **return the resident sealed handle**
-(`n11-single-owner`, master `c2508ebdd`: "intercept only these two canonical names/paths in the host open callback and
-return their resident sealed-owner handles"; OH6.1 musl `dynlink.c:2408-2575` direct-inherited resident objects /
-inode reuse before a new map).
+**Conclusion:** the default bridge copy is minted by the **host invoking `open_sealed_exact` (→ `WLSCPL_OpenPreparedNamespace`
+→ default `dlopen`) for the bridge during runtime-prepare**, not by the NativeLoader and not by fork inheritance. I cannot
+name the exact host call-site from this source subset (it is in the OH appspawn framework), so N11f also **adds an
+observation** (branch 6, below) that will confirm the timing on-board.
 
-## Changes (all in `sealed_child_provider_loader.c`; host plugin + manifest unchanged)
+## Root cause + fix
+`WLSCPL_OpenPreparedNamespace` (`:263`) ends in a plain **`dlopen(absolute_path, flags)`** (default ns). Whoever asks it
+for `liboh_adapter_bridge.so` (host runtime-prepare, and later the NativeLoader) gets a **fresh second copy**. The loader
+then publishes via `dlns_inherit` (`:347`) and verifies by `dlopen_ns(default, …, RTLD_NOLOAD)` (`:357`); the NOLOAD check
+**finds the host-minted copy** but it is `!= jni_owner_handles[0]` → `OWNER_MISMATCH` (`:358`). Two bridge copies = the U7
+double-load.
+
+Fix (covers **every** caller of the callback, so the premise correction does not change it): stop `default` ever minting
+its own copy — intercept the two canonical owner paths in `WLSCPL_OpenPreparedNamespace` and **return the resident sealed
+handle** (`n11-single-owner`, master `c2508ebdd`: "intercept only these two canonical names/paths in the host open
+callback and return their resident sealed-owner handles"; OH6.1 musl `dynlink.c:2408-2575`). The old `dlns_inherit`+verify
+block is deleted (it was the mismatch *detector*, not the fix).
+
+## Changes (3 files: `src/sealed_child_provider_loader.c`, one enum in `include/sealed_child_provider_loader.h`, and the host done line in `src/westlake_android_child_plugin.c`; manifest unchanged)
 
 ### 1. Promote the owner handles/paths to file-static (so the callback can read them)
 They are currently function-static inside `RealOpenLocalNow` (`:311-315`). Move them to file scope next to
@@ -46,24 +60,57 @@ void *WLSCPL_OpenPreparedNamespace(const char *absolute_path, int flags)
         strncmp(absolute_path, prefix, sizeof(prefix) - 1U) != 0 ||
         absolute_path[sizeof(prefix) - 1U] == '\0' ||
         (flags & (RTLD_NOW | RTLD_GLOBAL)) != RTLD_NOW) return NULL;
-    /* N11f: the Java NativeLoader opens the two JNI owners in the default
-     * namespace. Return the resident sealed-owner handle instead of dlopen'ing
-     * a second copy (the branch-3 OWNER_MISMATCH root). Single copy by
-     * construction; no dlns_inherit. */
+    /* N11f: the two owners are opened in default via this callback (host
+     * runtime-prepare, and later the NativeLoader). Return the resident
+     * sealed-owner handle instead of dlopen'ing a second copy (branch-3 root).
+     * Runs in the host/default context where stderr reaches hilog, so observe
+     * here directly. */
     for (size_t owner = 0U; owner < 2U; ++owner) {
         if (strcmp(absolute_path, g_owner_paths[owner]) == 0) {
             if (g_owner_handles[owner] != NULL) return g_owner_handles[owner];
-            break;  /* not published yet: fall through (ordering note below) */
+            /* Host asked BEFORE the provider published the owners: this dlopen
+             * mints the default copy (branch-3 root). Record OWNER_PUBLISH_LATE
+             * in the result struct; it is surfaced by the host's unconditional
+             * [N11e-PROBE] done line (loader-stage stderr does NOT reach hilog,
+             * so NO fprintf here). Fall through so the host proceeds. */
+            g_n11e_failure.branch = WLSCPL_FAILB_OWNER_PUBLISH_LATE;
+            g_n11e_failure.index = (uint32_t)owner;
+            break;
         }
     }
     return dlopen(absolute_path, flags);
 }
 ```
-**Ordering note:** the provider (`libwestlake_android_runtime_provider.so`) loads the two owners into `closure_namespace`
-*before* provider init, and the Java NativeLoader resolves the owners *after* that (n11-single-owner design). So
-`g_owner_handles` is populated before this callback is asked for them. If a future trace shows `default` asking first
-(handle still NULL → falls through to `dlopen` = a second copy), publish the owners from the host **before** provider
-init instead; flagged, not expected.
+New enum value (header `include/sealed_child_provider_loader.h`): `WLSCPL_FAILB_OWNER_PUBLISH_LATE = 6`.
+
+### 2a. Surface the result unconditionally — host prints `[N11e-PROBE] done` on success too (fixes two silent-observation bugs)
+Two flaws in a first-cut branch-6 observation (both corrected per board): (i) a `fprintf(stderr)` from the loader/callback
+stage does **not** reach hilog — N11e already proved this (the branch-3 fatal line came through the host, not the loader);
+(ii) the struct's `branch` was only printed by the host on the **failure** path, so after the branch-3 fix (load
+succeeds) a non-fatal branch 4/6 would never show. Fix: the **host** prints an **unconditional** done line right after
+`WLSCPL_LoadSealedProvider` returns (success *and* failure), in `westlake_android_child_plugin.c`:
+```c
+    loader_error = WLSCPL_LoadSealedProvider(&g_sealed_child_loader, &load_request, &load_result);
+    {   /* N11f: unconditional — carries non-fatal branch 4/6 out even on success */
+        char doneline[96];
+        (void)snprintf(doneline, sizeof(doneline), "done stage=%u branch=%u index=%u",
+                       load_result.last_stage, load_result.fail_branch, load_result.fail_artifact_index);
+        WlascGateMarkerText("[N11e-PROBE]", doneline);   /* host ctx: stderr + HiLog, reaches hilog */
+    }
+    if (loader_error != WLSCPL_OK || … ) { … existing failure prints … }
+```
+`WlascGateMarkerText` is the existing host marker (`:62`) that writes stderr **and** HiLog from the host context (the one
+proven to surface — the 8 `WLCGATE` lines in R3). The branch-6/4 record set in the loader/callback is copied into
+`load_result.fail_branch` at the loader's result copy-out, so the host done line prints it. **The smoke marker keys on
+`\[N11e-PROBE\] done`** (unconditional → safe to register; retro-20) — see `n11e-smoke.json`.
+
+**Branch 6 (OWNER_PUBLISH_LATE) decision.** The owners are populated in `g_owner_handles` only when the provider's
+closure-load branch runs (`:327`). If the host calls `open_sealed_exact(bridge)` on its runtime-prepare path **before**
+that, the callback falls through to `dlopen` and mints the default copy; it records branch 6, and the host done line
+reports it. Next window: **branch=0 + single-copy maps → fixed** (host asks after publication); **branch=6 + two copies →
+host asks first**, and N11g publishes owners earlier (into `closure_namespace` at child-init before the first
+`open_sealed_exact`, or a host "prepare owners" step). The callback intercept is correct either way; branch 6 only decides
+whether publication must move earlier.
 
 ### 3. Delete the `dlns_inherit` + NOLOAD-verify block (`:340-371`)
 Remove the entire `Dl_namespace default_namespace; dlns_init(..., "default"); … dlns_inherit(…) … for(owner…){ dlopen_ns(default, NOLOAD); verify } …` block. Publication is now the callback's job; the loader only has to load the owners
@@ -124,7 +171,12 @@ that call's own error. (Same change in the manifest-artifact failure at `:532`.)
 - Board maps for the app process show **exactly one** mapping each (same inode, one load base) for: `libart.so`,
   `libopenjdkjvm.so`, `liboh_adapter_bridge.so`, `liboh_android_runtime.so` — the N11 single-owner oracle
   (master `c2508ebdd`), ART/JVM already single; bridge and runtime now single (was 2+2).
-- No `[N11e-PROBE] fail branch=3` (OWNER_MISMATCH gone). `[N11e-PROBE] entry` still present (entry-survival).
+- `[N11e-PROBE] done stage=.. branch=.. index=..` prints on **every** load return (the smoke marker + branch carrier).
+  `branch=0` = clean. No `[N11e-PROBE] fail branch=3` (OWNER_MISMATCH gone).
+- **Branch-6 decision (the key new signal), read off the `done` line:** `branch=0` + single-copy maps → the host asked
+  after publication → **fixed**. `branch=6` (OWNER_PUBLISH_LATE) + bridge still two copies → the host's runtime-prepare
+  `open_sealed_exact(bridge)` runs before the provider publishes the owners → N11g must publish earlier (owners into
+  `closure_namespace` at child-init before the first `open_sealed_exact`). `branch=4` = HiLogPrint unresolved (non-fatal).
 - If anything still fails, the result struct + host `[N11e-PROBE] fail …` reports it with a **fresh** dlerror (not
   `libartbased`). Branch 4 can no longer abort (now non-fatal) — if `HiLogPrint` doesn't resolve it is recorded, not
   fatal.
@@ -133,17 +185,18 @@ that call's own error. (Same change in the manifest-artifact failure at `:532`.)
   `before_unlock` restores U9 (`boot 4db882a81732`, board runtime fp).
 
 ## Hand-off
-- Patch file: `n11f-branch3-owner-mismatch.patch` (unified diff vs `2026-10-01-n11e-result-channel/src/`). If the tree
-  drifts, this `.md`'s before/after blocks are authoritative — re-anchor the diff.
+- Patch file: `n11f-branch3-owner-mismatch.patch` — **3-file** unified diff (`include/…loader.h`, `src/…loader.c`,
+  `src/westlake_android_child_plugin.c`) vs `2026-10-01-n11e-result-channel`. If the tree drifts, this `.md`'s before/after
+  blocks are authoritative — re-anchor the diff.
 - cx-t0 builds N11f on top of the merged U10 (per board 22:15), co-building loader + host from the same header, then
-  schedules the branch-3 window with the `n11e-smoke.json` fixes-marker already set (retro-20).
+  schedules the branch-3 window with the `n11e-smoke.json` fixes-marker (`\[N11e-PROBE\] done`, retro-20) already set.
 - Scope: this patch folds in row 4 (`:373` made non-fatal) — **approved by the outer ring** ("分支 3 修掉后加载会走到那
   里"): the row-3 success criterion "maps = 1 each" requires the load to complete past `:373`. It does **not** delete the
   emit block or the reporting — only its abort; a non-resolving `HiLogPrint` is recorded (branch 4) in the result
   channel but no longer fatal.
-- Patch verified: `n11f-branch3-owner-mismatch.patch` applies `-p1` cleanly to the current
-  `2026-10-01-n11e-result-channel/src` tree (dry-run + apply reproduce the intended file; brace balance 88/88
-  unchanged). cx-t0 re-anchors if the post-U10-merge tree has drifted around these hunks.
+- Patch verified: applies `-p1` cleanly to the current `2026-10-01-n11e-result-channel` tree (dry-run + apply reproduce
+  all 3 intended files; brace balance loader 88/88, host 103/103). cx-t0 re-anchors if the post-U10-merge tree has
+  drifted around these hunks.
 
 Evidence: N11e source `2026-10-01-n11e-result-channel/src/sealed_child_provider_loader.c`
 (`WLSCPL_OpenPreparedNamespace:263`, early-owner `:305-383`, `N11eFailure:51`); N11e verdict board 22:15

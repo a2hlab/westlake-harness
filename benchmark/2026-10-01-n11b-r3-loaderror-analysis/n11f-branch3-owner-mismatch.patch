@@ -1,3 +1,35 @@
+--- a/benchmark/2026-10-01-n11e-result-channel/include/sealed_child_provider_loader.h
++++ b/benchmark/2026-10-01-n11e-result-channel/include/sealed_child_provider_loader.h
+@@ -98,7 +98,8 @@
+ enum {
+     WLSCPL_FAILB_NONE = 0, WLSCPL_FAILB_DLNS_INHERIT = 1,
+     WLSCPL_FAILB_OWNER_NOLOAD = 2, WLSCPL_FAILB_OWNER_MISMATCH = 3,
+-    WLSCPL_FAILB_EMIT_RESOLVE = 4, WLSCPL_FAILB_ARTIFACT_DLOPEN = 5
++    WLSCPL_FAILB_EMIT_RESOLVE = 4, WLSCPL_FAILB_ARTIFACT_DLOPEN = 5,
++    WLSCPL_FAILB_OWNER_PUBLISH_LATE = 6
+ };
+ enum {
+     WLSCPL_STAGE_ENTER = 1, WLSCPL_STAGE_ARTIFACTS_DONE = 2,
+--- a/benchmark/2026-10-01-n11e-result-channel/src/westlake_android_child_plugin.c
++++ b/benchmark/2026-10-01-n11e-result-channel/src/westlake_android_child_plugin.c
+@@ -644,6 +644,17 @@
+     load_request.manifest = manifest;
+     loader_error = WLSCPL_LoadSealedProvider(
+         &g_sealed_child_loader, &load_request, &load_result);
++    {
++        /* N11f: unconditional done line (success too) so a NON-FATAL branch
++         * (4 EMIT_RESOLVE / 6 OWNER_PUBLISH_LATE) recorded in the result struct
++         * still surfaces after a successful load. Host context reaches hilog;
++         * loader-stage stderr does not, so the struct is the only carrier. */
++        char doneline[96];
++        (void)snprintf(doneline, sizeof(doneline), "done stage=%u branch=%u index=%u",
++                       load_result.last_stage, load_result.fail_branch,
++                       load_result.fail_artifact_index);
++        WlascGateMarkerText("[N11e-PROBE]", doneline);
++    }
+     if (loader_error != WLSCPL_OK ||
+         load_result.abi_version != WLSCPL_ABI_VERSION ||
+         load_result.struct_size != sizeof(load_result) ||
 --- a/benchmark/2026-10-01-n11e-result-channel/src/sealed_child_provider_loader.c
 +++ b/benchmark/2026-10-01-n11e-result-channel/src/sealed_child_provider_loader.c
 @@ -48,15 +48,17 @@
@@ -10,9 +42,9 @@
  {
 -    int saved_errno = errno;
 -    const char *detail = dlerror();
-+    /* N11f: detail is captured by the caller IMMEDIATELY after the failing dl*
-+     * call; do NOT call dlerror() here (it latches the last error -> stale
-+     * text, e.g. R3's libartbased). */
++    /* N11f: detail captured by the caller IMMEDIATELY after the failing dl*
++     * call; do NOT call dlerror() here (latches the last error -> stale text,
++     * e.g. R3's libartbased). */
 +    const char *detail = detail_now ? detail_now : fallback;
      size_t length;
      g_n11e_failure.branch = branch;
@@ -37,24 +69,31 @@
  
  void *WLSCPL_OpenPreparedNamespace(const char *absolute_path, int flags)
  {
-@@ -272,6 +281,16 @@
+@@ -272,6 +281,23 @@
          strncmp(absolute_path, prefix, sizeof(prefix) - 1U) != 0 ||
          absolute_path[sizeof(prefix) - 1U] == '\0' ||
          (flags & (RTLD_NOW | RTLD_GLOBAL)) != RTLD_NOW) return NULL;
-+    /* N11f: the Java NativeLoader opens the two JNI owners in the default
-+     * namespace. Return the resident sealed-owner handle instead of dlopen'ing
-+     * a second copy (the branch-3 OWNER_MISMATCH root). Single copy by
-+     * construction; no dlns_inherit. */
++    /* N11f: the two JNI owners are opened in the DEFAULT namespace via this host
++     * callback (open_sealed_exact) during runtime/JNI-owner prepare (and later
++     * by the Java NativeLoader). Return the resident sealed-owner handle instead
++     * of dlopen'ing a second copy -- the branch-3 OWNER_MISMATCH root. */
 +    for (size_t owner = 0U; owner < 2U; ++owner) {
 +        if (strcmp(absolute_path, g_owner_paths[owner]) == 0) {
 +            if (g_owner_handles[owner] != NULL) return g_owner_handles[owner];
-+            break;  /* not published yet: fall through (ordering note in n11f-branch3-patch.md) */
++            /* Host asked BEFORE the provider published the owners: this dlopen
++             * mints the default copy (branch-3 root). Record OWNER_PUBLISH_LATE
++             * in the result struct; it is surfaced by the host's unconditional
++             * [N11e-PROBE] done line (loader-stage stderr does NOT reach hilog,
++             * so no fprintf here). Fall through so the host proceeds. */
++            g_n11e_failure.branch = WLSCPL_FAILB_OWNER_PUBLISH_LATE;
++            g_n11e_failure.index = (uint32_t)owner;
++            break;
 +        }
 +    }
      return dlopen(absolute_path, flags);
  }
  
-@@ -308,79 +327,57 @@
+@@ -308,79 +334,60 @@
           * CREATE_INHERIT_CURRENT adds an inheritance edge; it is not a
           * snapshot. A default-owner preload would bind system ART instead.
           * OH 6.1 musl ldso/linux/dynlink.c:4831-4983,2408-2575. */
@@ -129,8 +168,11 @@
 +        /* N11f: the two owners are now shared to the default namespace by
 +         * WLSCPL_OpenPreparedNamespace returning g_owner_handles[owner] (single
 +         * copy by construction). The N11b dlns_inherit + NOLOAD-verify block is
-+         * removed: it was the branch-3 OWNER_MISMATCH site (default minted its
-+         * own copy, so NOLOAD found a handle != the sealed one). */
++         * removed: it was the branch-3 OWNER_MISMATCH detector (default already
++         * held its own copy -- minted by the host open callback before
++         * publication -- so NOLOAD found a handle != the sealed one). If the
++         * callback is asked before publication it records branch 6
++         * OWNER_PUBLISH_LATE, printed by the host done line. */
          g_n11e_failure.stage = WLSCPL_STAGE_AFTER_OWNER_VERIFY;
          /* HiLog ABI from OH6.1 hilog/log_c.h: LOG_CORE=3, LOG_INFO=4.
           * Resolve through the loaded runtime owner; do not add a default
@@ -145,9 +187,9 @@
 -            N11eFailure(WLSCPL_FAILB_EMIT_RESOLVE, UINT32_C(1), "HiLogPrint resolution failed");
 -            (void)dlclose(handle);
 -            return NULL;
-+            /* N11f: diagnostic only, NON-FATAL (outer ring 22:xx). Record the
++            /* N11f: diagnostic only, NON-FATAL (outer ring approved). Record the
 +             * branch for the result channel but DO NOT abort the load, so the
-+             * branch-3 fix yields single-copy maps. */
++             * branch-3 fix yields single-copy maps; surfaced by host done line. */
 +            N11eFailure(WLSCPL_FAILB_EMIT_RESOLVE, UINT32_C(1), dlerror(), "HiLogPrint resolution failed");
 +        } else {
 +            (void)emit(3, 4, 0xD000F00u, "N10bOwner",
@@ -162,7 +204,7 @@
      }
      return handle;
  }
-@@ -530,7 +527,7 @@
+@@ -530,7 +537,7 @@
              RTLD_NOW | RTLD_LOCAL);
          if (handle == NULL) {
              if (g_n11e_failure.branch == WLSCPL_FAILB_NONE)

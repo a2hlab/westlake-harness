@@ -1,5 +1,5 @@
 {
-  "_note": "N11e is diagnostics-only: it carries the sealed-loader failure detail out in WlscplLoadResultV1 and prints it in the HOST (the only channel that survives the sealed-child ns; R3 proved in-loader HiLogPrint AND stderr are both silent). The N11e build KEEPS the :333 dlsym(HiLogPrint)==NULL gate but records it as fail branch=4 (EMIT_RESOLVE); removal is deferred to N11f, so N11e changes no load behaviour. The unconditional entry beacon '[N11e-PROBE] entry' is registered below so board_run (retro-20) accepts the window; the failure line '[N11e-PROBE] fail stage=.. branch=.. index=.. errno=.. detail=..' shares the prefix and is read OFFLINE from the shard hilog (it is absent on a run where the load passes, so it must NOT be a fixes assertion).",
+  "_note": "N11e is diagnostics-only: it carries the sealed-loader failure detail out in WlscplLoadResultV1 and prints it in the HOST (the only channel that survives the sealed-child ns; R3 proved in-loader HiLogPrint AND stderr are both silent). The N11e build KEEPS the :333 dlsym(HiLogPrint)==NULL gate but records it as fail branch=4 (EMIT_RESOLVE); removal is deferred to N11f, so N11e changes no load behaviour. N11f prints an UNCONDITIONAL host line '[N11e-PROBE] done stage=.. branch=.. index=..' after the provider load returns (success too), so a non-fatal branch (4 EMIT_RESOLVE / 6 OWNER_PUBLISH_LATE) recorded in the result struct still surfaces on a successful load. That done line is the registered smoke marker (retro-20) AND the branch carrier; the failure-only line '[N11e-PROBE] fail ...' remains for the abort path. Loader-stage stderr does NOT reach hilog, so the struct read by the host is the only carrier.",
   "expect": {
     "boot_fp": "4db882a81732",
     "_runtime_fp_todo": "FILL cx-bms: target board's U9 runtime_fp (61b for the R3 repro) from the N11d-recovered final-u9.json; added to expect as runtime_fp."
@@ -18,10 +18,10 @@
   ],
   "fixes": [
     {
-      "id": "N11e-PROBE-ENTRY",
+      "id": "N11e-PROBE-DONE",
       "key": "helloworld",
       "markers": [
-        "\\[N11e-PROBE\\] entry"
+        "\\[N11e-PROBE\\] done"
       ]
     }
   ],
@@ -37,6 +37,6 @@
       "/system/lib64/appspawn/libwestlake_android_child.z.so": "<FILL cx-bms: N11e child .so sha256 (loader + host rebuilt from the extended WlscplLoadResultV1 header; :333 emit gate KEPT, recorded as branch=4)>"
     }
   },
-  "_offline_precheck_expect": "Read from the shard helloworld hilog (APPSPAWN tag): require '[N11e-PROBE] entry' present (entry-survival), then read the '[N11e-PROBE] fail stage/branch/index/errno/detail' line to name the early-owner branch (1=dlns_inherit :313, 2=owner NOLOAD :321, 3=owner handle-mismatch :321). Same tag prefix as the registered marker, so retro-20 is satisfied.",
+  "_offline_precheck_expect": "Read from the shard helloworld hilog (APPSPAWN tag): require '[N11e-PROBE] done stage=.. branch=.. index=..' present (UNCONDITIONAL, printed on every load return incl. success). branch=0 + single-copy maps (bridge/runtime/ART/JVM each 1) = branch-3 fixed; branch=6 OWNER_PUBLISH_LATE + two bridge copies = host asked before publication -> N11g publishes owners earlier; branch=4 EMIT_RESOLVE = HiLogPrint unresolved (non-fatal). The failure-only '[N11e-PROBE] fail ...' line still prints on an abort. Same tag prefix as the registered marker, so retro-20 is satisfied.",
   "_flaky_note": "EVO-0051: zigzag is flaky; its controls-alive check is advisory. helloworld is the hard alive control + the probe carrier. Do not fail the window on a single-run dead zigzag."
 }
