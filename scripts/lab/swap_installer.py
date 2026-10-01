@@ -5,14 +5,17 @@ Portable port of <workspaces>/westlake-installer-background-launcher-6aadb8b4/sw
 copies that hard-coded one serial and the old Mac's paths). The transaction is unchanged: verified backup of
 the four live files -> atomic replace under a rw remount -> begetctl restart of foundation -> verify root and
 foundation-root SHA plus a non-stale libbms mapping. Differences: --serial (must be in knowledge/boards.json),
---kit (the package dir holding manifest.json + the two libraries), paths from lab_paths, and
+  --kit (the package dir holding manifest.json + the two libraries), paths from lab_paths, and
 --accept-baseline for a board whose starting pair is not the manifest's baseline (a clean board brought up
 elsewhere): the operator names the exact starting hashes, which are recorded in the state file.
 
     swap_installer.py {dry-run|apply|update|restart|verify|rollback} --serial <s> [--kit DIR] [--lane L]
-                      [--accept-baseline LIBBMS_SHA:LIBAPK_SHA]
+                      [--accept-baseline LIBBMS_SHA:LIBAPK_SHA] [--transaction-name NAME]
+
+An explicit transaction name keeps a new rollout's backup and receipt separate
+from prior installers. Omitting it retains the original paths exactly.
 """
-import argparse,hashlib,json,shlex,sys,time
+import argparse,hashlib,json,re,shlex,sys,time
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import lab_paths
@@ -32,14 +35,20 @@ def checked_hashes(board,paths):
 def backup_name(path):return REMOTE+'/backup/'+path.replace('/','_')
 
 def main():
- global SERIAL,KIT,MANIFEST,LIBS,PATHS,BASE
+ global SERIAL,KIT,MANIFEST,LIBS,PATHS,BASE,REMOTE
  p=argparse.ArgumentParser();p.add_argument('action',choices=['apply','update','restart','verify','rollback','dry-run'])
  p.add_argument('--serial',required=True,choices=sorted(lab_paths.boards('oh')))
  p.add_argument('--kit',type=Path,default=lab_paths.workspaces()/'westlake-installer-background-launcher-6aadb8b4')
- p.add_argument('--lane',default='outer');p.add_argument('--accept-baseline',default=None);a=p.parse_args()
+ p.add_argument('--lane',default='outer');p.add_argument('--accept-baseline',default=None)
+ p.add_argument('--transaction-name',help='isolated backup and state for a new rollout')
+ a=p.parse_args()
+ if a.transaction_name and not re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,63}',a.transaction_name):
+  p.error('transaction name must be 1-64 lowercase letters, digits, underscore or hyphen')
  SERIAL=a.serial;KIT=a.kit.resolve();MANIFEST=json.loads((KIT/'manifest.json').read_text());LIBS=MANIFEST['candidate']
  PATHS=[d+'/'+n for n in LIBS for d in ['/system/lib64','/system/lib64/platformsdk']]
- BASE=lab_paths.workspaces()/'westlake-generation-state'/SERIAL/'installer-background-launcher'
+ transaction='installer-'+a.transaction_name if a.transaction_name else 'installer-background-launcher'
+ REMOTE='/data/local/tmp/'+transaction
+ BASE=lab_paths.workspaces()/'westlake-generation-state'/SERIAL/transaction
  baseline=dict(MANIFEST['baseline'])
  if a.accept_baseline:
   bms_sha,apk_sha=a.accept_baseline.split(':');baseline={'libbms.z.so':bms_sha,'libapk_installer.so':apk_sha}
@@ -48,7 +57,7 @@ def main():
   for n,s in sources.items():
    if b.sha(s)!=LIBS[n]:raise RuntimeError('candidate changed: '+n)
  if a.action=='dry-run':
-  print(json.dumps({'serial':SERIAL,'paths':PATHS,'candidate_sha256':LIBS,'backup':REMOTE+'/backup','device_io':False},indent=2));return
+  print(json.dumps({'serial':SERIAL,'paths':PATHS,'candidate_sha256':LIBS,'backup':REMOTE+'/backup','state':str(BASE/'state.json'),'device_io':False},indent=2));return
  out=BASE/(a.action+'-'+str(time.time_ns()));out.mkdir(parents=True)
  board=b.Board(SERIAL,'/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc',str(lab_paths.tools()/'board_note.sh'),a.lane,out)
  board.ready();statepath=BASE/'state.json';state=json.loads(statepath.read_text()) if statepath.exists() else None

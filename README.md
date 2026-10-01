@@ -222,6 +222,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-j10f-jar/`** | **J10f (J10d `57d62183`→`a0f8ba45`, = U9 single JAR): concrete `WebSettings` for `WebViewProvider.getSettings()`.** J10e lit beecount/trickytripper and moved the other 5 webview apps to a new wall — `getSettings()` returns null (abstract-class return) → `getSettings().setJavaScriptEnabled(..)` NPE (caniwebview/jslab/degeder-yam/vaults-randomlydie/paultirk-yatoo). Fix: `getSettings()`→concrete `WlWebSettings` overriding **all 104** AOSP-14 `WebSettings` abstract methods (incl. `@hide`), **generated** from `WebSettings.java` + compile-only stub. Offline gate `test_j10f.py` 5/5; deterministic; window plan has `offline_precheck.expect {confirm,refute}` + 7-key shard. |
 | **`benchmark/2026-10-01-native-missing-libraries/`** | **Four U8 missing-library walls: private r109c zlib closure, typed OH OpenSLES owner facade, corrected media_jni resident mapping; pinned donors, patches, host tests and distinguishing precheck (offline, no UI claim).** |
 | **`benchmark/2026-10-01-u8-death-clusters/no-fatal-terminations.md`** | **Eleven U8 index-blind terminations: six Java exits, two other System.exit calls, one hwui abort and two SIGKILLs with unknown senders; exact PID/line/hash evidence and notification-vs-cause replay tests.** |
+| **`benchmark/2026-10-01-u9-native/rollout/`** | U9 native/J10g composition, frozen installer assertions, sequential board plans and offline gates |
 
 ---
 

@@ -173,3 +173,4 @@
 - **U7 统一态的重启恢复**:板子重启后 U7 叠层丢失、回 U5 底座。恢复:只读确认底座指纹 73ecf422dba2/0876029078e2 → 用 master 的 scripts/lab/u7_executor.py(a305b9a29 起)主机侧 apply 例子包 → 核 RUNTIME 68b7fb016253 / BOOTIMAGE 8fe2e5fd7d65 与 312 身份 → HelloWorld t20 截图。apply 前先清掉残留 app 进程(执行器会拒)。
 - 2026-10-01 cx-t0：U7执行器每次verify独占 verification-<uuid> 证据目录（含自动/恢复回滚），返回 evidence_directory；遇旧settle-0.json勿删证据，用本修复或独立恢复目录（benchmark/2026-10-01-n10-native/test_recovery.py）。
 Native-only U7/U8 experiment bundle preparation: derive baseline reference SHAs from gb.validate(resident_bundle)[2], update reference-file SHA metadata, preserve approved native sidecar identities, and dry-run again. read_baseline must persist per-path expected/actual SHA differences before strict equality assertion; do not relax the assertion.
+- 2026-10-01 swap_installer.py可选--transaction-name隔离备份和状态；省略保留原路径。U9不换installer、不重启foundation，冻结7048/6aadb8只读核SHA（benchmark/2026-10-01-u9-native/rollout/）。
