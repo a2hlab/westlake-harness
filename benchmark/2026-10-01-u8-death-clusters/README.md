@@ -76,3 +76,100 @@ Both sub-groups share the same root: the adapter's layout-inflation / layout-par
 | LayoutParams.<init> | cv2-com-caniwebview-android, cv2-eu-dfdx-jslab | `at android.view.ViewGroup$LayoutParams.<init>(ViewGroup.java:8238)` | NPE: read `LayoutParams.width` on null in `LayoutParams.<init>(LayoutParams)` → `MarginLayoutParams.<init>` → `ConstraintLayout$LayoutParams.<init>` → `ConstraintLayout.generateLayoutParams` → `ConstraintLayout.getViewWidget` → `ConstraintLayout.onViewAdded` → `ViewGroup.dispatchViewAdded` → `ViewGroup.addViewInner` → … (inflation of `layout/fragment_webview.xml` line #56) | `ViewGroup$LayoutParams.<init>` should not NPE on null source; default to MATCH_PARENT/WRAP_CONTENT |
 
 **Single framework fix** (one line in the layout-params construction path): when `ViewGroup.getLayoutParams()` or `ViewGroup.generateLayoutParams()` returns null for a view added without explicit params, default to `MATCH_PARENT` (width) / `WRAP_CONTENT` (height) instead of passing null into the LayoutParams copy constructor or measure path. This addresses both sub-groups with one change.
+
+## Root cause of ViewGroup NPE ×4 (outer-determined, confirmed)
+
+Outer loop's finding (ACK(90) 15:05:04 retro): the **WebView stub's `ViewDelegate.setLayoutParams` is a zero-value no-op** — a real provider would call `PrivateAccess.super_setLayoutParams`, so the WebView's LayoutParams are **always null** (AOSP 14 `WebView.java:2658-2660`). When the WebView is added to a ConstraintLayout, `ConstraintLayout.generateLayoutParams` calls `ConstraintLayout$LayoutParams.<init>(ViewGroup$LayoutParams)` which dereferences `source.width` — NPE. When the WebView is measured inside a FrameLayout, `ViewGroup.measureChildWithMargins` reads `MarginLayoutParams.leftMargin` — same null, same NPE.
+
+### Per-key stack excerpts
+
+**caniwebview** (`westlake-harness-t4/benchmark/2026-10-01-u8-sweep/61b-seq-cv2/20261001T122904-44eb39c6/61b0657200000000000000000324012c/cv2-com-caniwebview-android/hilog.txt`):
+```
+Caused by: java.lang.NullPointerException: Attempt to read from field 'int android.view.ViewGroup$LayoutParams.width' on a null object reference in method 'void android.view.ViewGroup$LayoutParams.<init>(android.view.ViewGroup$LayoutParams)'
+    at android.view.ViewGroup$LayoutParams.<init>(ViewGroup.java:8238)
+    at android.view.ViewGroup$MarginLayoutParams.<init>(ViewGroup.java:8559)
+    at androidx.constraintlayout.widget.ConstraintLayout$LayoutParams.<init>(ConstraintLayout.java:3430)
+    at androidx.constraintlayout.widget.ConstraintLayout.generateLayoutParams(ConstraintLayout.java:1950)
+    at androidx.constraintlayout.widget.ConstraintLayout.getViewWidget(ConstraintLayout.java:1532)
+    at androidx.constraintlayout.widget.ConstraintLayout.onViewAdded(ConstraintLayout.java:1003)
+    at android.view.ViewGroup.dispatchViewAdded(ViewGroup.java:5157)
+    at android.view.ViewGroup.addViewInner(ViewGroup.java:5329)
+    at android.view.ViewGroup.addView(ViewGroup.java:5104)
+    at android.view.ViewGroup.addView(ViewGroup.java:5076)
+    at android.view.LayoutInflater.rInflate(LayoutInflater.java:1139)
+    at android.view.LayoutInflater.inflate(LayoutInflater.java:694)
+    at com.caniwebview.android.databinding.FragmentWebviewBinding.inflate(FragmentWebviewBinding.java:60)
+    at com.caniwebview.android.ui.webview.WebViewFragment.onCreateView(WebViewFragment.kt:63)
+```
+Child class: `android.webkit.WebView` (type-zero stub). Call site: `androidx.constraintlayout.widget.ConstraintLayout.generateLayoutParams(ConstraintLayout.java:1950)` → `ConstraintLayout$LayoutParams.<init>(ConstraintLayout.java:3430)`.
+
+**jslab** (`westlake-harness-t4/benchmark/2026-10-01-u8-sweep/61b-seq-cv2/20261001T122904-44eb39c6/61b0657200000000000000000324012c/cv2-eu-dfdx-jslab/hilog.txt`):
+```
+Caused by: java.lang.NullPointerException: Attempt to read from field 'int android.view.ViewGroup$LayoutParams.width' on a null object reference in method 'void android.view.ViewGroup$LayoutParams.<init>(android.view.ViewGroup$LayoutParams)'
+    at android.view.ViewGroup$LayoutParams.<init>(ViewGroup.java:8238)
+    at android.view.ViewGroup$MarginLayoutParams.<init>(ViewGroup.java:8559)
+    at androidx.constraintlayout.widget.ConstraintLayout$LayoutParams.<init>(ConstraintLayout.java:3418)
+    at androidx.constraintlayout.widget.ConstraintLayout.generateLayoutParams(ConstraintLayout.java:1950)
+    at androidx.constraintlayout.widget.ConstraintLayout.getViewWidget(ConstraintLayout.java:1532)
+    at androidx.constraintlayout.widget.ConstraintLayout.onViewAdded(ConstraintLayout.java:1003)
+    at android.view.ViewGroup.dispatchViewAdded(ViewGroup.java:5157)
+    at android.view.ViewGroup.addViewInner(ViewGroup.java:5329)
+    at android.view.LayoutInflater.inflate(LayoutInflater.java:694)
+    at eu.dfdx.jslab.databinding.FragmentMainBinding.inflate(FragmentMainBinding.java:49)
+    at eu.dfdx.jslab.ui.main.PlaceholderFragment.onCreateView(PlaceholderFragment.java:57)
+```
+Child class: `android.webkit.WebView` (type-zero stub). Call site: `androidx.constraintlayout.widget.ConstraintLayout.generateLayoutParams(ConstraintLayout.java:1950)` → `ConstraintLayout$LayoutParams.<init>(ConstraintLayout.java:3418)`.
+
+**beecount** (`westlake-harness-t4/benchmark/2026-10-01-u8-sweep/5ea-seq-cv2/20261001T122134-78628011/5ea34a4500000000000000001123012c/cv2-com-knirirr-beecount/hilog.txt`):
+```
+Caused by: java.lang.NullPointerException: Attempt to read from field 'int android.view.ViewGroup$MarginLayoutParams.leftMargin' on a null object reference in method 'void android.view.ViewGroup.measureChildWithMargins(android.view.View, int, int, int, int)'
+    at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7001)
+    at android.widget.FrameLayout.onMeasure(FrameLayout.java:194)
+    at android.view.View.measure(View.java:27122)
+    at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7008)
+    at android.widget.FrameLayout.onMeasure(FrameLayout.java:194)
+    at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7008)
+    at android.widget.LinearLayout.measureChildBeforeLayout(LinearLayout.java:1608)
+    at android.widget.LinearLayout.measureVertical(LinearLayout.java:878)
+    at android.widget.LinearLayout.onMeasure(LinearLayout.java:721)
+    at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7008)
+    at android.widget.FrameLayout.onMeasure(FrameLayout.java:194)
+```
+Child class: `android.webkit.WebView` (type-zero stub) — the WebView is added to a FrameLayout without explicit layout params (or its container is measured with null MarginLayoutParams because the WebView's LayoutParams are null). Call site: `android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7001)`.
+
+**trickytripper** (`westlake-harness-t4/benchmark/2026-10-01-u8-sweep/5cd-seq-cv2/20261001T122027-e3c3b085/5cd1e3dd00000000000000000923012c/cv2-de-koelle-christian-trickytripper/hilog.txt`):
+```
+Caused by: java.lang.NullPointerException: Attempt to read from field 'int android.view.ViewGroup$MarginLayoutParams.leftMargin' on a null object reference in method 'void android.view.ViewGroup.measureChildWithMargins(android.view.View, int, int, int, int)'
+    at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7001)
+    at android.widget.FrameLayout.onMeasure(FrameLayout.java:194)
+    at android.view.View.measure(View.java:27122)
+    at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7008)
+    at android.widget.FrameLayout.onMeasure(FrameLayout.java:194)
+    at android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7008)
+```
+Child class: `android.webkit.WebView` (type-zero stub). Call site: `android.view.ViewGroup.measureChildWithMargins(ViewGroup.java:7001)`.
+
+### AOSP 14 ViewGroup.java line alignment
+
+| Line | Content |
+|---|---|
+| `ViewGroup.java:7001` | `final int childWidthMeasureSpec = getChildMeasureSpec(parentWidthMeasureSpec, …)` — reads `lp.leftMargin` from a null `MarginLayoutParams` |
+| `ViewGroup.java:8238` | `this.width = source.width;` — copy constructor `ViewGroup$LayoutParams.<init>(ViewGroup$LayoutParams source)` reads `source.width` from a null `source` |
+
+### Minimal patch draft (for cc-t3)
+
+The zero-value `ViewDelegate.setLayoutParams` in the WebView stub must call through to `PrivateAccess.super_setLayoutParams` instead of being a no-op. One line:
+
+```java
+// In the WebView stub's ViewDelegate.setLayoutParams (adapter source, ~02cbace-WebViewUpdateServiceAdapter.java):
+// change from:
+//   public void setLayoutParams(ViewGroup.LayoutParams params) {}
+// to:
+//   public void setLayoutParams(ViewGroup.LayoutParams params) { PrivateAccess.super_setLayoutParams(params); }
+```
+
+**Activation log line (one line, grep-able):**
+```
+[WEBVIEW-STUB] setLayoutParams forwarded to PrivateAccess.super_setLayoutParams — WebView LayoutParams non-null
+```
+When this line appears in a lit round, the WebView's LayoutParams are non-null and the NPE is gone.
