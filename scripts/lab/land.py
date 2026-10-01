@@ -78,6 +78,28 @@ def read_paths(worktree, listing, allow_gates):
     return out, errors
 
 
+def cited_evidence():
+    """Every string in the gate / frozen registries: approved rows cite their evidence files by repo path."""
+    out = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+        elif isinstance(o, str):
+            out.append(o)
+    for reg in sorted((REPO / 'knowledge').glob('*/*.json')):
+        if reg.parent.name in ('gates', 'frozen'):
+            try:
+                walk(json.loads(reg.read_text(encoding='utf-8')))
+            except ValueError:
+                pass
+    return out
+
+
 def expand(worktree, paths):
     files = []
     for p in paths:
@@ -142,7 +164,14 @@ def main(argv=None):
                 overwritten.append(rel)
         else:
             created.append(rel)
-    docs = [p for p in files if p.endswith('documentation.json')]
+    # 2026-10-01: the N10b smoke-marker rebuild rewrote batch-u8-native-gate.json in place, the file the approved
+    # 342198db exception rows cite as evidence; landing it would have swapped the evidence under approved rows.
+    cites = cited_evidence() if overwritten else []
+    pinned = [rel for rel in overwritten if any(rel in s for s in cites)]
+    if pinned:
+        sys.exit('REFUSE: approved gate/frozen rows cite these files as evidence; land the new version under a new '
+                 'name instead of overwriting:\n  ' + '\n  '.join(pinned))
+    docs =[p for p in files if p.endswith('documentation.json')]
     failures = []
     try:
         for rel in created + overwritten:

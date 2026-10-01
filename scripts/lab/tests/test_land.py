@@ -64,6 +64,17 @@ class Land(unittest.TestCase):
         self.assertNotIn('benchmark/b', (self.repo / 'README.md').read_text())
         self.assertEqual(git(self.repo, 'rev-list', '--count', 'HEAD').stdout.strip(), '1')
 
+    def test_refuses_overwriting_cited_evidence(self):
+        (self.repo / 'benchmark/b').mkdir(parents=True)
+        (self.repo / 'benchmark/b/results.json').write_text('{"approved": 1}\n')
+        (self.repo / 'knowledge/gates').mkdir(parents=True)
+        (self.repo / 'knowledge/gates/x.json').write_text('{"rows": [{"evidence": ["benchmark/b/results.json"]}]}')
+        git(self.repo, 'add', '.'); git(self.repo, '-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '-qm', 'ev')
+        r = self.land()
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('cite these files as evidence', r.stderr)
+        self.assertEqual((self.repo / 'benchmark/b/results.json').read_text(), '{"approved": 1}\n')
+
     def test_gate_registry_needs_flag_and_dotdot_refused(self):
         (self.wt / 'knowledge/gates').mkdir(parents=True)
         (self.wt / 'knowledge/gates/x.json').write_text('{}')
