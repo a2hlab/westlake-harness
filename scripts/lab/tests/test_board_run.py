@@ -78,7 +78,9 @@ class BoardRun(unittest.TestCase):
 
     def test_offline_precheck_required(self):
         self.assertIn('offline_precheck', board_run.precheck_problem(None))
-        good = {'hypothesis': 'h', 'evidence': ['.octos/KNOWLEDGE-DIGEST.md'], 'result': 'not-falsified'}
+        good = {'hypothesis': 'h', 'evidence': ['.octos/KNOWLEDGE-DIGEST.md'], 'result': 'not-falsified',
+                'expect': {'confirm': 'marker hit and key lit', 'refute': 'marker hit, same fatal'}}
+        self.assertIn('discriminate', board_run.precheck_problem(dict(good, expect={'confirm': 'x'})))
         self.assertIsNone(board_run.precheck_problem(good))
         self.assertIn('not found', board_run.precheck_problem(dict(good, evidence=['no/such/file'])))
         self.assertIn('falsified', board_run.precheck_problem(dict(good, result='falsified')))

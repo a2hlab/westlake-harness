@@ -25,8 +25,8 @@ Relative paths are resolved against the repo; $WORKSPACES is expanded.
 Lanes start it with --detach (2026-10-01 13:43: oc-t4 ran it inside an agent bash tool call; the tool's 6-minute
 timeout killed board_run and bms_batch mid-shard, after fd-uhabits was uninstalled and before it was reinstalled, and
 the board stayed locked). SIGTERM / SIGHUP now unwind through the same finally (before_unlock, then UNLOCK).
-Required offline_precheck (user rule 2026-10-01): {"hypothesis": "...", "evidence": [existing paths], "result":
-"not-falsified"} -- what this window tests and the existing evidence (run-dir maps / hilog / faultlog, DIGEST, AOSP
+Required offline_precheck (user rule 2026-10-01): {"hypothesis": "...", "evidence": [existing paths],
+"expect": {"confirm": "...", "refute": "..."}, "result": "not-falsified"} -- what this window tests and the existing evidence (run-dir maps / hilog / faultlog, DIGEST, AOSP
 source) it was checked against first; a hypothesis that existing evidence already falsifies never takes a board.
 Optional after_lock is an argv list run right after LOCK, before the smoke gate: the overlay deploy of a short window
 (e.g. sweep_bind_deploy.py --no-run --no-rollback ...). Non-zero = no smoke, no shards; before_unlock still runs.
@@ -90,6 +90,13 @@ def precheck_problem(pre):
     missing = [e for e in ev if not Path(expand(str(e).split(':')[0])).exists()]
     if missing:
         return 'offline_precheck.evidence not found: ' + ', '.join(missing)
+    exp = pre.get('expect')
+    if not (isinstance(exp, dict) and str(exp.get('confirm', '')).strip() and str(exp.get('refute', '')).strip()):
+        # retro 17 (2026-10-01): J10b's diagnostic printed the platform windowActionBar, which is identical in the
+        # parent and the NoActionBar child theme -- the window measured something that could not tell the hypotheses
+        # apart. Writing down what each outcome would look like before the window catches that.
+        return ('offline_precheck.expect needs {"confirm": what the board shows if the hypothesis holds, "refute": what '
+                'it shows if not} -- a measurement that reads the same either way does not discriminate')
     if pre.get('result') != 'not-falsified':
         return f'offline_precheck.result is {pre.get("result")!r}; a hypothesis falsified offline does not go on a board'
     return None
