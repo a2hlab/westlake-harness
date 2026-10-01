@@ -238,3 +238,28 @@ Outer loop's finding (ACK(90) latest): the four provider-init keys have four dis
 [PROVIDER-INIT] androidx.startup InitializationProvider created OK — keystore master key unwrap succeeded / theme attr resolved / WebView widget non-null / native lib loaded
 ```
 When this line appears in a lit round, the provider-init path succeeded for that key.
+
+## moodcairns keystore 墙(A vs B 判定)
+
+**Provider**:`adapter.core.SoftwareAndroidKeyStore`(源不在 Java 树,只有 smali:`bms/src/.work/u4-probes/original/adapter/core/SoftwareAndroidKeyStore.smali`)。class_linker 证实:`adapter.core.SoftwareAndroidKeyStore$Store` extends `java.security.KeyStoreSpi`(hilog L45327)。
+
+**存储位置**:`install(Ljava/io/File)` 在传入目录建 `westlake-android-keystore` 文件;moodcairns hilog L45377:「[WL-KEYSTORE] installed software AndroidKeyStore provider, keys in /data/app/el2/100/base/com.lcdcode.moodcairns/no_backup/westlake-android-keystore」——**按包名专属目录**(`/data/app/el2/<uid>/base/<pkg>/no_backup/`),非全局。
+
+**load() 实现**:`FileInputStream` → `DataInputStream` 明文读(版本号 int + 条目循环:alias UTF + type byte + creation date long + algorithm UTF + encoded bytes + cert chain int)。**全文无 Cipher.getInstance/doFinal/encrypt 引用**——密钥文件明文落盘,provider 自身不做加解密。
+
+**store() 实现**:`DataOutputStream` 明文写(同 load() 结构)。无加密。
+
+**GCM 加解密在哪**:**不在 provider 里**。moodcairns 的 `EncryptedSharedPreferences`(androidx.security)用平台 `Cipher.getInstance("AES/GCM/NoPadding")`(走 Conscrypt/OpenSSL)对主密钥 unwrap;provider 只存明文密钥字节。
+
+**卸载时删不删**:`remove(Ljava/lang/String;)` 删单条(smali :743),`:1171` 有 `File.delete()`——**卸载时删**(删整个 westlake-android-keystore 文件)。
+
+**报错链**(moodcairns hilog L56640-56721):`KeyStoreException: master key android-keystore://_androidx_security_master_key_ exists but is unusable` → `AEADBadTagException: mac check in GCM failed`。
+
+**A/B 判定**:
+
+| 假设 | 板上会看到什么 | 判定 |
+|---|---|---|
+| **A:卸载不清,重装拿旧主密钥** | 重装后 `_androidx_security_master_key_` 条目还在,但 bytes 与 EncryptedSharedPreferences 的密文不匹配 → AEADBadTag | **不成立**——`remove()` 删条目、`:1171` `File.delete()` 删文件,卸载时清;且「exists but is unusable」说明条目在但 bytes 不对(不是卸载残留,是 provider 的 KeyGenParameterSpec 生成逻辑有问题) |
+| **B:我们的 AES/GCM 加解密自身不对称** | provider 的 GCM encrypt 与 decrypt 用不同 key/IV/nonce → 同一输入两次加解密结果不同 → AEADBadTag | **不成立**——provider 的 store/load 都是明文 DataInputStream/DataOutputStream,无 Cipher 引用;GCM 加解密走平台 Conscrypt(不在 provider 里) |
+
+**真因**:provider 的 `KeyGenParameterSpec` 生成逻辑有问题——`_androidx_security_master_key_` 条目在 provider 里,但 EncryptedSharedPreferences 用平台 Cipher 对它做 GCM unwrap 时,provider 返回的密钥字节与 EncryptedSharedPreferences 加密时用的密钥字节不匹配(provider 的 `engineGetEntry`/`engineGetKey` 返回的 SecretKey 与 `engineSetEntry`/`engineSetKeyEntry` 存的 SecretKey 不一致,或 KeyGenParameterSpec 的 flags/attestation 不匹配导致 platform Cipher 拒绝)。修法:查 `SoftwareAndroidKeyStore$SecretKeyGenerator.smali` 的 generate 逻辑与 `SoftwareAndroidKeyStore.smali` 的 `engineGetEntry`/`engineGetKey` 返回路径,确保证书的 KeyGenParameterSpec 的 flags/attestation 与 EncryptedSharedPreferences 的预期一致。
