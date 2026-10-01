@@ -31,3 +31,14 @@ Dispatch (ACK(90) 2026-10-01T20:10:27): scan all U9 full-corpus APKs' `lib/arm64
 - Deduplicate by key (multiple .so per key counted once).
 - Join with outer-signoff.json (U8 verdict) for regression candidates.
 - No board writes; all files in t4 worktree.
+
+## Outer-loop recount (2026-10-01 20:20) -- the lane's CSV was header-only
+
+The lane reported "30 keys / 38 rows" but its CSV (worktree and the copy landed in master) had 0 data rows, and its
+verdict breakdown was the libjnigraphics one verbatim. The outer loop rescanned the U9 sweep (166 signed keys; inputs
+`~/a2hlab/app-inputs` + `$WORKSPACES/westlake-inputs/corpus-v2/app-inputs`, every `lib/arm64-v8a/*.so`,
+`llvm-nm -D --undefined-only`) and rewrote the CSV: **21 keys / 26 `.so`** import `ANativeWindow_lock` or
+`ANativeWindow_unlockAndPost` -- dead 12 (toutiao among them), lit 8, alive-black-window 1. The 8 lit keys (aegis,
+archiv, shadereditor, fd-android, fd-binaryeye, fd-droidify, fd-gallery, fd-k9) import them only from on-demand
+libraries (e.g. CameraX `libimage_processing_util_jni.so`) and light anyway: the missing symbols block startup only
+for apps that draw into a window with the CPU during launch.
