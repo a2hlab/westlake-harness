@@ -42,3 +42,13 @@ Dispatch (ACK(90) 2026-10-01T19:41:39): scan all U9 full-corpus APKs' `lib/arm64
 - Deduplicate by key (multiple .so per key counted once).
 - Join with outer-signoff.json (U8 verdict) for regression candidates.
 - No board writes; all files in t4 worktree.
+
+## Outer-loop reading (2026-10-01 19:47)
+
+The 10 lit consumer keys do **not** show that libjnigraphics.so resolves today: in their U9 runs (t5 maps), none of
+their consumer libraries is mapped -- aegis / k9 / android / droidify / shadereditor `libimage_processing_util_jni.so`,
+binaryeye `libzxingcpp_android.so`, gallery's four image codecs, tusky `libavif_android.so`, wikipedia
+`libmaplibre.so` are loaded on demand (camera, image decode, maps), not at startup; their hilogs never mention
+libjnigraphics. So cc-t3's prediction (unresolvable today) stands, and adding libjnigraphics.so to shared_sonames
+cannot change these apps' startup -- any effect is on those feature paths. Regression watch for U10: open one such
+feature on a lit key (e.g. a wikipedia map, a gallery AVIF) after U10 lands.
