@@ -102,6 +102,23 @@ class Land(unittest.TestCase):
         self.assertIn('would drop lines', r.stderr)
         self.assertIn('outer reading line', md.read_text())
 
+    def test_refuses_code_overwrite_from_a_lane_that_missed_masters_change(self):
+        # the lane is a real worktree of master, as on this Mac (shared object store, so ancestry is checkable)
+        tool = self.repo / 'scripts/lab/tool.py'
+        tool.write_text('v1\n')
+        git(self.repo, 'add', '.'); git(self.repo, '-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '-qm', 'v1')
+        import shutil
+        shutil.rmtree(self.wt)
+        git(self.repo, 'worktree', 'add', '-q', str(self.wt))                 # lane branches here
+        tool.write_text('v1\nmaster fix\n')                                    # master moves on
+        git(self.repo, 'add', '.'); git(self.repo, '-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '-qm', 'fix')
+        (self.wt / 'scripts/lab/tool.py').write_text('v1\nlane change\n')      # stale lane copy
+        (self.wt / 'l.txt').write_text('scripts/lab/tool.py\n')
+        r = self.land('l.txt')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('after the lane branch point', r.stderr)
+        self.assertIn('master fix', tool.read_text())
+
     def test_lane_may_rewrite_its_own_md(self):
         (self.wt / 'benchmark/b/README.md').write_text('# b\nold section\n')
         (self.wt / 'benchmark/b/landing-paths.txt').write_text('benchmark/b/README.md\n')

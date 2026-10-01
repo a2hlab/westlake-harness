@@ -276,6 +276,13 @@ def main(argv=None):
             gone = [l for l in (REPO / rel).read_text(errors='replace').splitlines() if l.strip() and l not in mine]
             if gone:
                 lost[rel] = gone
+        else:
+            # 2026-10-01 22:55: a lane re-landed board_run.py / bms_batch.py; it had merged master first, but nothing
+            # checked that. A lane copy taken before master's latest commit to the file would silently revert it.
+            last = sh(['git', 'log', '-1', '--format=%H', '--', rel]).stdout.strip()
+            lane = subprocess.run(['git', '-C', str(wt), 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()
+            if last and lane and sh(['git', 'merge-base', '--is-ancestor', last, lane]).returncode != 0:
+                lost[rel] = [f'master commit {last[:10]} touched this file after the lane branch point ({lane[:10]})']
     if lost and not args.allow_drop_lines:
         sys.exit('REFUSE: overwriting would drop lines master has and the lane copy lacks (merge them into the lane '
                  'file first, or --allow-drop-lines if reviewed):\n  ' +
