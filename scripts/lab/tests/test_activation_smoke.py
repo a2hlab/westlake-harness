@@ -47,6 +47,14 @@ class Smoke(unittest.TestCase):
                                 {'copies': {'liboh_adapter_bridge.so': got}, 'view': {}})
         self.assertFalse(ok)
 
+    def test_expect_copies_accepts_known_count(self):
+        probe = {'copies': {'liboh_adapter_bridge.so': ['a@1', 'a@2']}, 'view': {}}
+        ok, _ = s.evaluate({'probe': {'single_copy': ['liboh_adapter_bridge.so'],
+                                      'expect_copies': {'liboh_adapter_bridge.so': 2}}}, {}, {}, probe)
+        self.assertTrue(ok)
+        ok, _ = s.evaluate({'probe': {'single_copy': ['liboh_adapter_bridge.so']}}, {}, {}, probe)
+        self.assertFalse(ok)
+
     def test_copies_counts_distinct_paths(self):
         self.assertEqual(len(s.copies(MAPS_ONE, ['libart.so'])['libart.so']), 1)
         self.assertEqual(len(s.copies(MAPS_TWO, ['libart.so'])['libart.so']), 2)

@@ -29,7 +29,9 @@ SPEC (JSON):
    "fixes": [{"id": "J10-NOTITLE", "key": "cv2-com-deva-knot", "markers": ["\\\\[J10-NOTITLE\\\\] installed"]}],
    "probe": {"package": "com.example.helloworld",
              "single_copy": ["libart.so", "libopenjdkjvm.so", "liboh_adapter_bridge.so", "liboh_android_runtime.so"],
-             "files": {"/system/android/framework/oh-adapter-runtime.jar": "<sha256>"}}}
+             "files": {"/system/android/framework/oh-adapter-runtime.jar": "<sha256>"},
+             "expect_copies": {"liboh_adapter_bridge.so": 2}}}   # optional: a known, accepted count other than 1
+                                                                 # (states before N11 load bridge/runtime twice)
 Paths in the spec may use $WORKSPACES / ~ ; they are expanded.
 """
 import argparse
@@ -120,8 +122,11 @@ def evaluate(spec, runs, hilogs, probe):
         if probe.get('error'):
             checks.append({'check': 'probe', 'ok': False, 'error': probe['error']})
         else:
+            want = dict(p.get('expect_copies') or {})
             for lib, paths in probe['copies'].items():
-                checks.append({'check': 'single-copy', 'lib': lib, 'paths': paths, 'ok': len(paths) == 1})
+                n = want.get(lib, 1)
+                checks.append({'check': 'single-copy' if n == 1 else 'expected-copies', 'lib': lib, 'paths': paths,
+                               'want': n, 'ok': len(paths) == n})
             for path, want in p.get('files', {}).items():
                 got = probe['view'].get(path)
                 checks.append({'check': 'child-view', 'path': path, 'want': want, 'got': got, 'ok': got == want})
