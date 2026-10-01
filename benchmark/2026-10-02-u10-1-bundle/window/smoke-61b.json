@@ -1,0 +1,76 @@
+{
+  "_comment": "Final U10.1 template for 5ea/5cd; 61b uses window/smoke-61b.json because frozen installation chain differs. Marker proves resident-address check executed, not successful app relocation.",
+  "expect": {
+    "runtime_fp": "d6848fa2c989",
+    "boot_fp": "4db882a81732"
+  },
+  "groups": [
+    {
+      "manifest": "$WORKSPACES/westlake-harness/knowledge/smoke/controls-apps.json",
+      "input_root": "$WORKSPACES/westlake-b90-controls-inputs",
+      "keys": [
+        "helloworld",
+        "zigzag"
+      ],
+      "mode": "launch-only",
+      "controls": true
+    }
+  ],
+  "fixes": [
+    {
+      "id": "WL-KS-PROBE-SELFTEST",
+      "key": "helloworld",
+      "_comment": "cluster 4: KeystoreBoardProbe.selfTest() runs post-handleBindApplication for EVERY bridged app (key-independent, no app key needed), so helloworld prints it. Reports the on-board default Cipher provider + GCM IV length + validateAead.",
+      "markers": [
+        "\\[WL-KS-PROBE\\] selftest"
+      ]
+    },
+    {
+      "id": "B8-FETCH-PHONE",
+      "key": "helloworld",
+      "_comment": "cluster 1: TelephonyFetcher.install() replaces the phone fetcher at bind for every app, so helloworld prints it.",
+      "markers": [
+        "\\[B8-FETCH\\] phone fetcher replaced"
+      ]
+    },
+    {
+      "id": "B8-PROV-INSTALL",
+      "key": "helloworld",
+      "_comment": "cluster 5: AppContentProviders.install() runs post-bind for every app (helloworld logs 'installed 0/0' if it declares none), confirming the mechanism is live.",
+      "markers": [
+        "\\[B8-PROV-INSTALL\\] installed "
+      ]
+    },
+    {
+      "id": "U10.1-HOST-R3",
+      "key": "helloworld",
+      "_comment": "Observed call site must verify resident abort/getter/GNU addresses. It leaves existing private parent whitelists intact. App relocation is checked by its later run.",
+      "markers": [
+        "\\[U10-COMPAT-VISIBLE\\] owner_verified .*inheritance=caller_owned"
+      ]
+    }
+  ],
+  "probe": {
+    "package": "com.example.helloworld",
+    "single_copy": [
+      "libart.so",
+      "libopenjdkjvm.so",
+      "liboh_adapter_bridge.so",
+      "liboh_android_runtime.so"
+    ],
+    "expect_copies": {
+      "liboh_adapter_bridge.so": 2,
+      "liboh_android_runtime.so": 2
+    },
+    "files": {
+      "/system/android/framework/oh-adapter-runtime.jar": "5ae3dd29d45c2270e8a53a9dc4bbeeca8972b9b092f91898a15d605bc1cc0108",
+      "/system/android/framework/adapter-mainline-stubs.jar": "f3bcc9d7c76cb73487837d7ad92fccba3d595d313ada7403bed99c4f11c2a8c2",
+      "/system/android/lib64/libbionic_compat.so": "015aa3a632eabe057bd8d6ce0e0ff181209da7dcab8de22409a79addc0a56d58",
+      "/system/android/lib64/libnativeloader.so": "0718f01e237d322b5a16a1858265f8cc05cddd5ddca6d1ceb28bcc33023913a9",
+      "/system/bin/appspawn-x": "65cc3535ebf22bdf664b3c8ddf932ccd7f42d936be1c861e1221a80b12a00284",
+      "/system/lib64/westlake/route-a/74d1d6d48210ec5bf66ae43598655c3486b8873513821f13c2ffe15f0de552ac/libbionic_compat.so": "015aa3a632eabe057bd8d6ce0e0ff181209da7dcab8de22409a79addc0a56d58",
+      "/system/lib64/westlake/route-a/74d1d6d48210ec5bf66ae43598655c3486b8873513821f13c2ffe15f0de552ac/libnativeloader.so": "0718f01e237d322b5a16a1858265f8cc05cddd5ddca6d1ceb28bcc33023913a9",
+      "/system/lib64/appspawn/libwestlake_android_child.z.so": "dc73a28d2535f0a261776625ea51770edf044f33de17aa05ff5c5e789ba25d3c"
+    }
+  }
+}

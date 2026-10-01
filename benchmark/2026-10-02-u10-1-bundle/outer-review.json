@@ -1,0 +1,85 @@
+{
+  "package_manifest_sha256": "325cd0a65d57407f8d41615501d2379c7afd4b446ff7458c736eb48ae05e0ddb",
+  "inputs_sha256": "048c0479b2f181b0bf4958e5e1d8b370ba7aeafbd7d3619c2d24187c5b843c00",
+  "proposed_exceptions": [
+    {
+      "gate": "N1",
+      "package_manifest_sha256": "325cd0a65d57407f8d41615501d2379c7afd4b446ff7458c736eb48ae05e0ddb",
+      "inputs_sha256": "048c0479b2f181b0bf4958e5e1d8b370ba7aeafbd7d3619c2d24187c5b843c00",
+      "issue_id": "fa50033bad30271c0fb00ef472711f0dbae14a81a84fe67358bb779a8d241d0e",
+      "reason": "The optional r3 helper retrieves an already mapped compat owner in westlake.sealed.child using NOLOAD; a missing resident returns ENOENT without a fresh load. No application-view NOLOAD remains. Unlike rejected U10 r2, the helper cannot call dlns_inherit. Caller retains private default/sealed parent lists including libsurface; only ordinary apps add a compat edge to the verified owner. This is a conservative resident probe, not a first mapping. Final ELF is 65cc3535, exact co-build after actual U9 generation/child rebind; ABI/calls/readonly and all static consumers pass. Runtime namespace relocation remains unverified until this window.",
+      "removal_condition": "U10.1 three-board <=45 minute observation windows and proposed promotion only after screenshot/no-regression signoff; re-review if namespace ownership logic changes.",
+      "evidence": [
+        "benchmark/2026-10-02-u10-1-bundle/native-gate.json",
+        "benchmark/2026-10-02-u10-1-bundle/final-gates/results.json",
+        "benchmark/2026-10-02-u10-1-bundle/src/resident-compat.h",
+        "benchmark/2026-10-02-u10-1-bundle/host-build-receipt.json"
+      ],
+      "approval_status": "pending outer review",
+      "site": {
+        "namespace": "&resident_namespace",
+        "line": 13
+      }
+    },
+    {
+      "gate": "N1",
+      "package_manifest_sha256": "325cd0a65d57407f8d41615501d2379c7afd4b446ff7458c736eb48ae05e0ddb",
+      "inputs_sha256": "048c0479b2f181b0bf4958e5e1d8b370ba7aeafbd7d3619c2d24187c5b843c00",
+      "issue_id": "11c3adeeda008e67cf57b022e99c3d4f843401f32df5ed42d6179d37badfd5f3",
+      "reason": "The optional r3 helper retrieves an already mapped compat owner in westlake.sealed.child using NOLOAD; a missing resident returns ENOENT without a fresh load. The default lookup is also NOLOAD and is optional; its three symbol addresses must equal the resident owner before selection. No application-view NOLOAD remains. Unlike rejected U10 r2, the helper cannot call dlns_inherit. Caller retains private default/sealed parent lists including libsurface; only ordinary apps add a compat edge to the verified owner. This is a conservative resident probe, not a first mapping. Final ELF is 65cc3535, exact co-build after actual U9 generation/child rebind; ABI/calls/readonly and all static consumers pass. Runtime namespace relocation remains unverified until this window.",
+      "removal_condition": "U10.1 three-board <=45 minute observation windows and proposed promotion only after screenshot/no-regression signoff; re-review if namespace ownership logic changes.",
+      "evidence": [
+        "benchmark/2026-10-02-u10-1-bundle/native-gate.json",
+        "benchmark/2026-10-02-u10-1-bundle/final-gates/results.json",
+        "benchmark/2026-10-02-u10-1-bundle/src/resident-compat.h",
+        "benchmark/2026-10-02-u10-1-bundle/host-build-receipt.json"
+      ],
+      "approval_status": "pending outer review",
+      "site": {
+        "namespace": "&direct_namespace",
+        "line": 29
+      }
+    }
+  ],
+  "third_host_noload_site": {
+    "findings": [
+      {
+        "profile": "host",
+        "kind": "unknown",
+        "detail": {
+          "function": "main",
+          "namespace": "default",
+          "library": null,
+          "target_expression": "plugin_path",
+          "evidence": {
+            "source": "n4-host.c",
+            "line": 639,
+            "text": "plugin_handle = dlopen(plugin_path, RTLD_NOW | RTLD_NOLOAD);"
+          },
+          "reason": "fresh namespace or literal target not established"
+        },
+        "issue_id": "bdf789b6ac45d4351d18d11cc898b3b2e8393fa770ac05feb30fecd9a2819a96",
+        "disposition": "REJECT"
+      }
+    ],
+    "status": "auto-identical to previously approved main plugin probe",
+    "reason": "AppSpawnModuleMgrInstall succeeds before the exact ResolvePluginPath result is rechecked and queried with NOLOAD; unchanged U9 main path. Scanner cannot model module install."
+  },
+  "raw_readonly_review": {
+    "host_exit": 1,
+    "policy_exit": 1,
+    "compat_exit": 1,
+    "reviewed_exit": 0,
+    "host_reason": "Raw exit1 is preserved. Exact semantic rodata delta: one recorded old __FILE__ path dropped, two new source/header paths plus five APPSPAWN messages and four compat symbol/library strings added; complete 352-byte relro normalizes to identical 35 pointer targets and scalar bytes. No arbitrary binary-string noise removed without complete table equality.",
+    "policy_reason": "Raw exit1 is exactly libstdc++.so addition; deployed fb9dc937 reproduced byte-identical, all five system rows including SoundPool unchanged; reviewed exact one-name allowance exit0.",
+    "evidence": [
+      "benchmark/2026-10-02-u10-1-bundle/final-gates/host-strings-raw.txt",
+      "benchmark/2026-10-02-u10-1-bundle/final-gates/host-strings-reviewed.txt",
+      "benchmark/2026-10-02-u10-1-bundle/final-gates/policy-strings-raw.txt",
+      "benchmark/2026-10-02-u10-1-bundle/final-gates/results.json"
+    ]
+  },
+  "auto_identical": 154,
+  "new_findings": 2,
+  "status": "awaiting outer approval; no board access"
+}

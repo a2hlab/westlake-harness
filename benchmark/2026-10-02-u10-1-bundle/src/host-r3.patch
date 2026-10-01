@@ -1,0 +1,19 @@
+--- a/visibility/candidate-stock-host.c
++++ b/visibility/candidate-stock-host.c
+@@ -319,7 +319,15 @@
+         if (result != 0) {
+             return NamespaceResultFence(result);
+         }
+-        (void)U10ShareResidentCompat(app_namespace);
++        Dl_namespace compat_owner;
++        if (U10ShareResidentCompat(&compat_owner) == 0 &&
++            !flutter_private && !native_private) {
++            int compat_result = dlns_inherit(app_namespace, &compat_owner,
++                                             "libbionic_compat.so");
++            if (compat_result != 0) {
++                APPSPAWN_LOGE("[U10-COMPAT-VISIBLE] unavailable inherit result=%{public}d; namespace continues", compat_result);
++            }
++        }
+     }
+     if (flutter_private || native_private) {
+         /* OH 6.1 musl ignores DF_1_GLOBAL: its add_syms/removal is controlled
