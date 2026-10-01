@@ -83,6 +83,12 @@ class Land(unittest.TestCase):
         self.assertIn('over 1024 KiB', r.stderr)
         self.assertFalse((self.repo / 'benchmark/b/hilog.txt').exists())
 
+    def test_preflight_reports_without_copying(self):
+        r = self.land('benchmark/b/landing-paths.txt', '--preflight')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('preflight OK', r.stdout)
+        self.assertFalse((self.repo / 'benchmark/b/results.json').exists())
+
     def test_gate_registry_needs_flag_and_dotdot_refused(self):
         (self.wt / 'knowledge/gates').mkdir(parents=True)
         (self.wt / 'knowledge/gates/x.json').write_text('{}')

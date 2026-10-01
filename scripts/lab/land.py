@@ -2,6 +2,7 @@
 """Land a lane's deliverable into master from its landing-paths.txt; the outer loop only reads the result.
 
     land.py <lane-worktree> <landing-paths.txt relative to the worktree> -m "<one-line message>" [--allow-gates]
+    land.py <lane-worktree> <landing-paths.txt> -m x --preflight     # lane-side: path / size gates, copies nothing
 
 Why: codex lanes run in the workspace-write sandbox, which keeps every `.git` path read-only even when it is listed
 in sandbox_workspace_write.writable_roots (tested 2026-10-01: writable root .octos -> write OK, .git -> "Operation
@@ -149,14 +150,33 @@ def main(argv=None):
     ap.add_argument('--docs', type=Path, help='documentation.json kept outside the worktree (in addition to listed ones)')
     ap.add_argument('--no-commit', action='store_true', help='run everything, then leave the result staged')
     ap.add_argument('--allow-large', action='store_true', help='land files over 1 MiB (outer-reviewed)')
+    ap.add_argument('--preflight', action='store_true',
+                    help='lane-side check: listing, size and user-path gates on the worktree files; copies nothing')
     args = ap.parse_args(argv)
     wt = args.worktree.expanduser().resolve()
-    if sh(['git', 'status', '--porcelain', '--untracked-files=no']).stdout.strip():
+    if not args.preflight and sh(['git', 'status', '--porcelain', '--untracked-files=no']).stdout.strip():
         sys.exit('master has uncommitted tracked changes; land onto a clean tree')
     paths, errors = read_paths(wt, args.listing, args.allow_gates)
     if errors:
         sys.exit('REFUSE:\n  ' + '\n  '.join(errors))
     files = expand(wt, paths)
+    if args.preflight:
+        # retro 18 (2026-10-01): lane build scripts carried hard-coded /Users/<name> paths four times in one evening and
+        # were only caught when the outer loop landed them; lanes run this before reporting (the global git hooks path
+        # is not ours to change, so no pre-commit hook).
+        big = [f for f in files if (wt / f).stat().st_size > MAX_BYTES]
+        lab = Path(__file__).resolve().parent
+        r = subprocess.run([sys.executable, str(lab / 'check_user_paths.py'), '--root', str(wt), '--exceptions',
+                            str(lab.parents[1] / 'knowledge/gates/user-path-exceptions.json'), *files],
+                           capture_output=True, text=True)
+        hits = [l for l in r.stdout.splitlines() if l.startswith('USER-PATH')]
+        for f in big:
+            print(f'TOO LARGE {f} ({(wt / f).stat().st_size // 1024} KiB)')
+        for h in hits:
+            print(h[:220])
+        ok = not big and r.returncode == 0
+        print(f'preflight {"OK" if ok else "FAILED"}: {len(files)} files, {len(big)} too large, {len(hits)} user-path hit(s)')
+        return 0 if ok else 1
     # AGENTS: large binaries and raw logs stay out of the repo (2026-10-01: a listing carried a 76k-line run hilog as
     # "evidence"); land an excerpt with original line numbers and cite the run directory instead.
     big = [f for f in files if (wt / f).stat().st_size > MAX_BYTES and not args.allow_large]
