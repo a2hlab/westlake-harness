@@ -35,8 +35,27 @@ GATED = ('knowledge/gates/', 'knowledge/frozen/')
 DOCS = {'README.md', '.octos/KNOWLEDGE-DIGEST.md', '.octos/OPS-RUNBOOK.md'}
 
 
+def lab_env():
+    """Gates run with the lab venv first on PATH (androguard etc.), as the lanes ran them (env.md: westlake-inputs/venv)."""
+    env = dict(os.environ)
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import lab_paths
+        venv = lab_paths.inputs() / 'venv/bin'
+        if venv.is_dir():
+            env['PATH'] = f'{venv}:{env.get("PATH", "")}'
+    except Exception:
+        pass
+    return env
+
+
+ENV = lab_env()
+PY = next((str(Path(d) / 'python') for d in ENV.get('PATH', '').split(':')[:1] if (Path(d) / 'python').exists()),
+          sys.executable)
+
+
 def sh(cmd, **kw):
-    return subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, **kw)
+    return subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, env=ENV, **kw)
 
 
 def read_paths(worktree, listing, allow_gates):
@@ -141,12 +160,12 @@ def main(argv=None):
         if r.returncode:
             failures.append('frozen: ' + r.stdout.strip()[-300:])
         for t in [f for f in files if Path(f).name.startswith('test_') and f.endswith('.py')]:
-            r = sh([sys.executable, t], timeout=600)
+            r = sh([PY, t], timeout=600)
             if r.returncode:
                 failures.append(f'{t}: ' + (r.stdout + r.stderr).strip()[-300:])
         for t in [f for f in files if f.startswith('tools/spec-checks/tests/') and f.endswith('.rs')]:
             r = subprocess.run(['cargo', 'test', '--test', Path(t).stem], cwd=REPO / 'tools/spec-checks',
-                               capture_output=True, text=True, timeout=900)
+                               capture_output=True, text=True, timeout=900, env=ENV)
             if r.returncode:
                 failures.append(f'cargo {Path(t).stem}: ' + (r.stdout + r.stderr).strip()[-300:])
         if failures:
