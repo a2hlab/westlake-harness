@@ -80,8 +80,11 @@ if printf '%s' "$BODY" | grep -E 'app 不兼容|app 问题|打包怪癖|app 本�
 fi
 # Evolution families (user rule 2026-10-01): every R2 record carries [家族:<family>] (and [车道:<lane>] when a lane made
 # the error) so scripts/lab/evo_family.py can count recurrence by family instead of by text hash.
-if printf '%s' "$FIRST" | grep -q 'R2 记档' && ! printf '%s' "$BODY" | grep -q '\[家族:'; then
-  echo "WARN: R2 record without [家族:<family>] tag -- families: runtime-unverified dispatch-literal narrow-negative wrong-board-file concurrent-board incompat-no-device shared-transport board-write-missing screenshot-unread (scripts/lab/evo_family.py)" >&2
+# Only the record form ("> 外环(…)·R2 记档(#N):") counts; an ACK that merely mentions "R2 记档" is not one.
+if printf '%s' "$FIRST" | grep -qE '^> .*·R2 记档' && ! printf '%s' "$BODY" | grep -q '\[家族:'; then
+  FAMS=$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import evo_family; print(" ".join(evo_family.FAMILIES))' \
+         "$(dirname "$0")" 2>/dev/null || echo 'see scripts/lab/evo_family.py')
+  echo "WARN: R2 record without [家族:<family>] tag -- families: $FAMS (scripts/lab/evo_family.py)" >&2
 fi
 printf '%s\n' "$BODY" | "$APPEND" "$BOARD"
 if tail -n 400 "$BOARD" | grep -F -- "$FIRST" >/dev/null; then  # no -q under pipefail (RUNBOOK)
