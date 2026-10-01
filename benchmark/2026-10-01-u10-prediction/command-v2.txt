@@ -1,0 +1,25 @@
+# U10 prediction command (reproducible; run from repo root once outer-signoff.json is on the tree).
+# Baseline = U9 sign-off (master 8b0c76e402; wall regen c671f4fc89), 115/166 lit.
+# predict_vs_actual.py precedence: observed > flaky-keys.json > baseline-lit > cluster-covered > baseline.
+# The 7 U10 beneficiary keys are each --observed=lit? (named first wall covered; next wall unknown), reason cites its source.
+
+python3 scripts/lab/predict_vs_actual.py predict \
+  --baseline benchmark/2026-10-01-u9-sweep/outer-signoff.json \
+  --clusters benchmark/2026-10-01-u8-death-clusters/clusters.json \
+  --include libstdcxx,libjnigraphics,abort-visibility,strerror_r,opensles-facade,j10f-websettings-defaults,predicate,j10e-split \
+  --observed "toutiao=lit?:libstdc++ & libjnigraphics added to native_bridge_policy shared_sonames clear libflipped bootstrap (native-closure-prediction.md); java-layer-prediction.md lists further walls (null svc / libnativewindow / graphics ctors) so full-lit uncertain" \
+  --observed "fd-meet=lit?:android_set_abort_message made visible in bridge namespace (U10 native; u9-first-wall.md)" \
+  --observed "fd-fennec_fdroid=lit?:GNU strerror_r exposed to app namespace (U10 native)" \
+  --observed "firefox=lit?:GNU strerror_r exposed to app namespace (U10 native)" \
+  --observed "mindustry=lit?:OpenSLES facade ABI shim (U10 native; cx-bms Mindustry fix)" \
+  --observed "fd-tutanota=alive-white-window:J10f WebSettings real defaults pass the getUserAgentString wall (U10 jar 37465d6d), but the UI is the web client assets/tutanota/index.html in a WebView and there is no renderer -> white at best (outer correction 20:50)" \
+  --observed "cv2-com-nbossard-packlist=lit?:com.android.internal.util.Predicate added to U10 jar 37465d6d (u10-classlist-diff.md)" \
+  --out benchmark/2026-10-01-u10-prediction/predictions-v2.csv
+
+# After the U10 window signs off, grade this prediction against the new sweep:
+#   python3 scripts/lab/predict_vs_actual.py compare \
+#     --predictions benchmark/2026-10-01-u10-prediction/predictions-v2.csv \
+#     --actual benchmark/<u10-sweep>/outer-signoff.json \
+#     --json benchmark/2026-10-01-u10-prediction/compare-v1.json
+# compare classes each key: hit / regression (lit->not: exit 1) / missed-wall (lit? not lit -> feed the scanner) /
+# unexpected-lit (not-lit -> lit: find which fix did it) / flaky.

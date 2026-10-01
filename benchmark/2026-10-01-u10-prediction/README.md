@@ -72,3 +72,9 @@ signal, not a failure — it tells the scanner which Java-layer wall to model ne
   restored as an ordinary unified-state key, no toutiao-specific code.
 - **Grading:** `lit?` is a falsifiable claim about one named wall. The post-window `compare` turns every
   `missed-wall` into the next scan target, so the prediction table is the selection input for U11.
+
+## v2 (2026-10-01 20:50, outer correction, before any U10 result)
+
+Only change from v1: fd-tutanota lit? -> alive-white-window. J10f's real WebSettings defaults pass its U9 wall
+(getUserAgentString non-null), but tutanota's UI is its web client (assets/tutanota/index.html, 3218 files) inside a
+WebView and there is no WebView renderer -- the same ceiling U9 prediction v5 already recorded. Compare U10 against v2.
