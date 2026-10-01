@@ -1,0 +1,23 @@
+{
+  "verdict": "B1 built; abi_diff --old 846 --new B1 EXIT 0 (signature drift 0, consumer breaks 0)",
+  "b1_sha256": "a1f571978d320b13266b9d83a03e48d6ff4fc6e1e44a16b0ecb90b856a45605b",
+  "b1_artifact": "$WORKSPACES/_cc-wiki-t3-bridge/liboh_adapter_bridge.so.b1-846sig (ELF aarch64, strict link -z defs --no-undefined --no-allow-shlib-undefined, build-id sha1, soname liboh_adapter_bridge.so)",
+  "abi_diff": {"old_846": "84695d62… (vm-copies/bridge-84695d62)", "exports_old": 2357, "exports_new": 2661, "removed": 8, "added": 312, "signature_drift": 0, "consumer_breaks": 0, "exit": 0,
+    "removed_8_characterized": "4 genuinely-absent window-session C++ methods (SessionStageAdapter/WindowCallbackAdapter detachIfNeeded/getJNIEnv) + 2 oh_anw_* C symbols (oh_anw_notify_presented/oh_anw_wrap_for_activity) — all 0-consumer per t3-pre + abi_diff consumer scan — + 2 incidental std::__h template instantiations. None break a consumer."},
+  "reverts": {
+    "createSession": "dropped the 5th int androidFlags -> 846 4-int sig; removed applyAndroidFlagsToWindowSessionProperty call (846 carried no LayoutParams flags); callers window_session_adapter.cpp:72/:149 updated; applied in the VENDORED window cohort sources/oh61-v7-b2133b5b/framework/window/jni (the recipe's OH61_WINDOW_SOURCE_ROOT default)",
+    "injectKeyEvent_injectTouchEvent": "added 846 6-param overloads (fire-and-forget via the proven synthetic/empty-thunk path) alongside the untouched 8-param impl -> 846 symbol present, no drift, live OH-sourced input path unchanged",
+    "ComponentResolverServiceV1_ctor_Configure": "removed the =nullptr default on the +ComponentStateReaderV1* overload and added explicit 846-arity (3-arg ctor / 5-arg Configure) delegating overloads -> both symbols export, 846 present",
+    "SelfAccount_cluster": "EXCLUDED (0-in-846; os_account_manager.h unavailable in any accessible OH tree): oh_account_self_core/oh_self_account_registration/oh_self_account_jni dropped from recipe SOURCES, adapter_bridge.cpp RegisterSelfAccountNative call+include removed. SelfAccount exports were not in 846, so abi_diff unaffected."
+  },
+  "build_env": {
+    "toolchain": "DevEco clang-15 (FORCE_OH_SDK=1)", "TUs": "58/58 compiled, strict link ok",
+    "persistent_inputs": {
+      "link_libs": "$WORKSPACES/westlake-inputs/oh61-link-inputs/system-lib64 (+ flat linkinputs; libc.so = board ld-musl-aarch64.so.1 which defines __cfi_slowpath — the strict-link key)",
+      "oh_headers": "$WORKSPACES/westlake-inputs/oh61-oh-root/{oh_mirror(13414), oh610_lts_source/third_party/skia/m133, out/wukong100/gen (jsoncpp), minizip, aosplib(libnativehelper.so,liblog.so)}",
+      "adapter_source": "$WORKSPACES/_cc-wiki-b1-src/adapter (private snapshot of b68-generation + reverts)",
+      "thread_guard_registry": "846-paired from westlake-generation-v3-swap-84695d62"
+    }
+  },
+  "next": "abi_diff exit 0 gate met. Open the 5ea window with t3-b1-board-run-plan.json (offline_precheck hypothesis/evidence/result + expect{confirm,refute}) after cc-t3's J10c unlock; pass = HW/ZZ no InvalidDisplayException/System.exit(1), no U8 regression."
+}

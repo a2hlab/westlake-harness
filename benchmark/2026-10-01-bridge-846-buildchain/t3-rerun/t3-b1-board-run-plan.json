@@ -1,0 +1,71 @@
+{
+ "_TEMPLATE_fill_at_build": {
+  "b1_artifact": "$WORKSPACES/_cc-wiki-t3-bridge/liboh_adapter_bridge.so.b1-846sig-vmfallback",
+  "b1_sha256": "53257ace843983e609afed59dacb4be2048106db011cfcb8a94b7f541e8ca151",
+  "b1_abi_diff": "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-bridge-846-buildchain/t3-rerun/b1-abi-diff-846-vs-B1-vmfallback.json (abi_diff exit 0, drift 0, consumer_breaks 0)",
+  "status": "WINDOW FAILED (VMFALLBACK refuted); #96 \u5f85\u7eed \u2014 next repair = env->GetJavaVM at call-site and/or stack N11b; no window until it passes abi_diff offline",
+  "fix": "getJavaVM() out-of-line: when this bridge copy jvm_ is null (the #80 double-load leaves the createSession copy unset), recover the one process VM via dlsym(JNI_GetCreatedJavaVMs) + [B1-VMFALLBACK] log. abi_diff still exit 0 (drift 0, consumer_breaks 0)."
+ },
+ "serial": "5cd1e3dd00000000000000000923012c",
+ "lane": "cc-wiki",
+ "entry": "96",
+ "why": "t3 B1(+VMFALLBACK) re-run on 5cd (5ea busy w/ J10f): 846-faithful rebuild whose getJavaVM recovers the process VM when the double-loaded copy jvm_ is null; A/B vs prior B1 that failed on null-jvm_.",
+ "board": "$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md",
+ "out": "$WORKSPACES/_cc-wiki-t3-rerun/win-b1vmfb-5cd-20261001T171427",
+ "offline_precheck": {
+  "hypothesis": "The prior B1 was already 846-faithful (abi_diff drift 0) yet still hit WindowManager$InvalidDisplayException, because the #80 double-load leaves the liboh_adapter_bridge.so copy that runs createSession with jvm_==null -> SessionStageAdapter ctor ScopedJniAttachment gets a null JNIEnv -> androidWindow_ null -> EnableRootBlast false -> createSession null-BBQ refusal. B1(+VMFALLBACK) makes getJavaVM() recover the one process VM via dlsym(JNI_GetCreatedJavaVMs) when jvm_ is null, so the ctor gets a real JNIEnv and HW/ZZ light as under 846.",
+  "evidence": [
+   "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-bridge-846-buildchain/t3-rerun/deployed-vs-b1-createsession.md",
+   "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-bridge-846-buildchain/t3-rerun/b1-vmfallback-WINDOW-FAIL-hilog.txt",
+   "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-bridge-846-buildchain/t3-rerun/b1-vmfallback-WINDOW-FAIL-disasm.md",
+   "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-bridge-846-buildchain/t3-rerun/b1-abi-diff-846-vs-B1-vmfallback.json",
+   "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-bridge-846-buildchain/t3-rerun/b1-invaliddisplay-rootcause.md",
+   "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-bridge-846-buildchain/t3-rerun/t3-window-5ea-result.md"
+  ],
+  "result": "FALSIFIED 2026-10-01T17:15 on 5cd: [B1-VMFALLBACK] hits=0 (jvm_ non-null), still InvalidDisplay->exit1. 846-vs-B1 disasm: jvm sourced identically from AdapterBridge::getInstance().jvm_ (offset 0); failure is a foreign/wrong-copy non-null VM (the #80 double-load), not a null VM. VMFALLBACK targets the wrong failure mode.",
+  "expect": {
+   "confirm": "B1(+VMFALLBACK) is 846-faithful AND recovers the VM: a [B1-VMFALLBACK] 'recovered process VM' line appears (or jvm_ was already set), HW/ZZ child hilogs reach handleResumeActivity and addView WITHOUT WindowManager$InvalidDisplayException, no 'System.exit called, status: 1', process alive at t20, and the t20 screenshots show the app UI (lit), not the desktop; View/Compose/lit shard parity with the U8+846 baseline.",
+   "refute": "The ctor still gets a null JNIEnv: HW/ZZ child hilogs still throw android.view.WindowManager$InvalidDisplayException 'the specified display can not be found' at ViewRootImpl.setView -> OpenjdkJvm System.exit status 1; no live child at t20; the four t20 screenshots are the desktop (the prior B1/7cf8ebcc symptom recurs) -- would mean JNI_GetCreatedJavaVMs returned no VM or the thread still cannot attach."
+  }
+ },
+ "smoke_spec": "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-bridge-846-buildchain/t3-rerun/t3-smoke-b1-5ea.json",
+ "after_lock": [
+  "python3",
+  "$WORKSPACES/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+  "--serial",
+  "5cd1e3dd00000000000000000923012c",
+  "--lane",
+  "cc-wiki",
+  "--bind",
+  "$WORKSPACES/_cc-wiki-t3-bridge/liboh_adapter_bridge.so.b1-846sig-vmfallback:/system/android/lib64/liboh_adapter_bridge.so",
+  "--no-run",
+  "--no-rollback",
+  "--out",
+  "$WORKSPACES/_cc-wiki-t3-rerun/win-b1vmfb-5cd-20261001T171427/deploy"
+ ],
+ "shards": [
+  {
+   "name": "t3b1",
+   "manifest": "benchmark/2026-09-28-bms-route-deploy/batch/apps.json",
+   "input_root": "$HOME/a2hlab/app-inputs",
+   "keys_file": "$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-01-bridge-846-buildchain/t3-rerun/t3-keys.txt"
+  }
+ ],
+ "before_unlock": [
+  "python3",
+  "$WORKSPACES/westlake-harness/scripts/lab/sweep_bind_deploy.py",
+  "--serial",
+  "5cd1e3dd00000000000000000923012c",
+  "--lane",
+  "cc-wiki",
+  "--bind",
+  "$WORKSPACES/_cc-wiki-t3-bridge/liboh_adapter_bridge.so.b1-846sig-vmfallback:/system/android/lib64/liboh_adapter_bridge.so",
+  "--rollback-only",
+  "--rollback-runtime-fp",
+  "e953c0921536",
+  "--rollback-boot-fp",
+  "4db882a81732",
+  "--out",
+  "$WORKSPACES/_cc-wiki-t3-rerun/win-b1vmfb-5cd-20261001T171427/deploy"
+ ]
+}

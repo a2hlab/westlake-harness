@@ -1,0 +1,232 @@
+--- a/sources/oh61-v7-b2133b5b/framework/window/jni/oh_window_manager_client.h	2026-09-29 15:40:04
++++ b/sources/oh61-v7-b2133b5b/framework/window/jni/oh_window_manager_client.h	2026-10-01 16:14:20
+@@ -113,8 +113,7 @@
+                                    const std::string& windowName,
+                                    int32_t androidWindowType, int32_t displayId,
+                                    int32_t requestedWidth, int32_t requestedHeight,
+-                                   int32_t androidFlags,
+-                                   uint64_t ohTokenAddr);
++                                   uint64_t ohTokenAddr);  // B1: 846 sig, androidFlags dropped
+ 
+     /**
+      * Update session rectangle (relayout).
+--- a/sources/oh61-v7-b2133b5b/framework/window/jni/oh_window_manager_client.cpp	2026-09-29 15:40:04
++++ b/sources/oh61-v7-b2133b5b/framework/window/jni/oh_window_manager_client.cpp	2026-10-01 16:14:07
+@@ -263,7 +263,7 @@
+ static constexpr int32_t ANDROID_FLAG_TURN_SCREEN_ON        = 0x00200000;
+ static constexpr int32_t ANDROID_FLAG_DISMISS_KEYGUARD      = 0x00400000;
+ 
+-static void applyAndroidFlagsToWindowSessionProperty(
++[[maybe_unused]] static void applyAndroidFlagsToWindowSessionProperty(  // B1: uncalled (846 sig)
+     int32_t androidFlags,
+     const OHOS::sptr<OHOS::Rosen::WindowSessionProperty>& property)
+ {
+@@ -301,8 +301,7 @@
+     const std::string& moduleName, const std::string& windowName,
+     int32_t androidWindowType, int32_t displayId,
+     int32_t requestedWidth, int32_t requestedHeight,
+-    int32_t androidFlags,
+-    uint64_t ohTokenAddr)
++    uint64_t ohTokenAddr)  // B1: 846 sig, androidFlags dropped
+ {
+     OH_BR_IPC_SCOPE("WMClient.createSession",
+                     "bundle=%{public}s ability=%{public}s name=%{public}s w=%{public}d h=%{public}d ohToken=0x%{public}llx",
+@@ -427,7 +426,7 @@
+     property->SetRequestRect(rect);
+     property->SetWindowRect(rect);
+     property->SetDisplayId(static_cast<uint64_t>(displayId));
+-    applyAndroidFlagsToWindowSessionProperty(androidFlags, property);
++    // B1: 846 sig — androidFlags not applied (846 carried no window LayoutParams flags)
+     OHOS::Rosen::SessionInfo sessionInfo;
+     sessionInfo.bundleName_ = bundleName;
+     sessionInfo.abilityName_ = abilityName;
+--- a/sources/oh61-v7-b2133b5b/framework/window/jni/window_session_adapter.cpp	2026-09-29 15:40:04
++++ b/sources/oh61-v7-b2133b5b/framework/window/jni/window_session_adapter.cpp	2026-10-01 16:14:07
+@@ -58,7 +58,7 @@
+                                  jstring moduleNameJ, jstring windowNameJ,
+                                  jint androidWindowType, jint displayId,
+                                  jint requestedWidth, jint requestedHeight,
+-                                 jint androidFlags,
++                                 [[maybe_unused]] jint androidFlags,  // B1: 846 sig ignores flags
+                                  jlong ohTokenAddrJ) {
+     std::string bundleName  = jstr(env, bundleNameJ);
+     std::string abilityName = jstr(env, abilityNameJ);
+@@ -74,7 +74,6 @@
+             bundleName, abilityName, moduleName, windowName,
+             androidWindowType, displayId,
+             requestedWidth, requestedHeight,
+-            static_cast<int32_t>(androidFlags),
+             static_cast<uint64_t>(ohTokenAddrJ));
+ 
+     jintArray result = env->NewIntArray(10);
+@@ -136,7 +135,7 @@
+ // transition (pre-set NEED_AVOID then clear it).  Preserve that default by
+ // passing FLAG_FULLSCREEN here, so old BCP jars continue to get fullscreen
+ // layout even though their Java signature cannot express attrs.flags.
+-static constexpr int32_t LEGACY_DEFAULT_FULLSCREEN_FLAG = 0x00000400; // FLAG_FULLSCREEN
++[[maybe_unused]] static constexpr int32_t LEGACY_DEFAULT_FULLSCREEN_FLAG = 0x00000400; // FLAG_FULLSCREEN (B1: unused)
+ 
+ jintArray nativeCreateSession_compat_impl(JNIEnv* env, jclass,
+                                           jobject androidWindow,
+@@ -152,8 +151,7 @@
+             jstr(env, moduleNameJ), jstr(env, windowNameJ),
+             androidWindowType, displayId,
+             requestedWidth, requestedHeight,
+-            LEGACY_DEFAULT_FULLSCREEN_FLAG,
+-            static_cast<uint64_t>(ohTokenAddrJ));
++            static_cast<uint64_t>(ohTokenAddrJ));  // B1: 846 sig, no flags arg
+     return packLegacySession(env, session);
+ }
+ 
+--- a/sources/oh61-v7-b2133b5b/framework/window/jni/oh_input_bridge.h	2026-09-29 15:40:04
++++ b/sources/oh61-v7-b2133b5b/framework/window/jni/oh_input_bridge.h	2026-10-01 16:14:07
+@@ -139,6 +139,18 @@
+                             int64_t downTime, int64_t eventTime,
+                             int64_t ohEventId,
+                             input::MarkProcessedThunk markProcessed);
++
++    // B1 (846 ABI): the frozen 846 bridge exported injectTouchEvent/injectKeyEvent
++    // WITHOUT the Fn05.A07 ohEventId + MarkProcessed completion params. Re-emit those
++    // exact 846 signatures. They forward through the synthetic (bridge-private id +
++    // empty thunk) path, which is the already-proven control-plane injection route, so
++    // the live OH-sourced input path (the 8-arg overloads above) is untouched.
++    int32_t injectTouchEvent(int32_t sessionId, int32_t action,
++                              float x, float y,
++                              int64_t downTime, int64_t eventTime);
++    int32_t injectKeyEvent(int32_t sessionId, int32_t action,
++                            int32_t keyCode, int32_t metaState,
++                            int64_t downTime, int64_t eventTime);
+ 
+     /**
+      * Set JNI context for callbacks to Java layer.
+--- a/sources/oh61-v7-b2133b5b/framework/window/jni/oh_input_bridge.cpp	2026-09-29 15:40:04
++++ b/sources/oh61-v7-b2133b5b/framework/window/jni/oh_input_bridge.cpp	2026-10-01 16:14:07
+@@ -365,6 +365,24 @@
+         nextSyntheticEventId_.fetch_sub(1, std::memory_order_relaxed);
+     return injectTouchEvent(sessionId, action, x, y, downTime, eventTime,
+                             syntheticEventId, {});
++}
++
++// B1 (846 ABI): re-emit 846's parameterless-completion injectTouchEvent/injectKeyEvent.
++// Both route through the synthetic (bridge-private id + empty MarkProcessed thunk) path —
++// the proven control-plane injection route — so the OH-sourced 8-arg path is unchanged.
++int32_t OHInputBridge::injectTouchEvent(int32_t sessionId, int32_t action,
++                                        float x, float y,
++                                        int64_t downTime, int64_t eventTime) {
++    return injectSyntheticTouchEvent(sessionId, action, x, y, downTime, eventTime);
++}
++
++int32_t OHInputBridge::injectKeyEvent(int32_t sessionId, int32_t action,
++                                      int32_t keyCode, int32_t metaState,
++                                      int64_t downTime, int64_t eventTime) {
++    const int64_t syntheticEventId =
++        nextSyntheticEventId_.fetch_sub(1, std::memory_order_relaxed);
++    return injectKeyEvent(sessionId, action, keyCode, metaState,
++                          downTime, eventTime, syntheticEventId, {});
+ }
+ 
+ int OHInputBridge::writeMotionEvent(int fd, uint32_t seq, int32_t action,
+--- a/framework/package-manager/component_resolver/include/component_resolver_v1.h	2026-09-22 11:37:57
++++ b/framework/package-manager/component_resolver/include/component_resolver_v1.h	2026-10-01 15:50:11
+@@ -218,9 +218,15 @@
+ 
+ class ComponentResolverServiceV1 {
+ public:
++    // B1 (846 ABI): 846 exported the 3-arg ctor. Keep the 4-arg (state-reader) impl but
++    // emit the 846 3-arg symbol too via an explicit delegating ctor. The 4-arg default is
++    // removed so the 3-arg call binds the 3-arg ctor (no ambiguity); both symbols export.
+     ComponentResolverServiceV1(ComponentCatalogProviderV1* catalogProvider,
+         PackageGuardReaderV1* guardReader,
+-        ResolveFaultInjectorV1* faultInjector, ComponentStateReaderV1* stateReader = nullptr);
++        ResolveFaultInjectorV1* faultInjector);
++    ComponentResolverServiceV1(ComponentCatalogProviderV1* catalogProvider,
++        PackageGuardReaderV1* guardReader,
++        ResolveFaultInjectorV1* faultInjector, ComponentStateReaderV1* stateReader);
+ 
+     ComponentResolveResponseV1 Resolve(
+         const ComponentResolveRequestV1& request) const;
+--- a/framework/package-manager/component_resolver/include/component_resolver_runtime_v1.h	2026-09-22 11:37:57
++++ b/framework/package-manager/component_resolver/include/component_resolver_runtime_v1.h	2026-10-01 15:51:44
+@@ -74,12 +74,20 @@
+     std::unique_ptr<Impl> impl_;
+ };
+ 
++// B1 (846 ABI): 846 exported the 5-arg Configure. Keep the 6-arg (state-reader) impl and
++// emit 846's 5-arg symbol via a delegating overload; the 6-arg default is removed so a
++// 5-arg call binds the 5-arg overload (no ambiguity). Both symbols export.
+ bool ConfigureComponentResolverRuntimeV1(
+     ComponentCatalogProviderV1* catalogProvider,
+     PackageGuardReaderV1* guardReader,
+     CallerResolveContextProviderV1* callerProvider,
++    ResolveFaultInjectorV1* faultInjector, std::string* error);
++bool ConfigureComponentResolverRuntimeV1(
++    ComponentCatalogProviderV1* catalogProvider,
++    PackageGuardReaderV1* guardReader,
++    CallerResolveContextProviderV1* callerProvider,
+     ResolveFaultInjectorV1* faultInjector, std::string* error,
+-    ComponentStateReaderV1* stateReader = nullptr);
++    ComponentStateReaderV1* stateReader);
+ void ClearComponentResolverRuntimeV1();
+ 
+ std::string QueryComponentResolverRuntimeJsonV1(
+--- a/framework/package-manager/component_resolver/src/component_resolver_v1.cpp	2026-09-22 11:37:57
++++ b/framework/package-manager/component_resolver/src/component_resolver_v1.cpp	2026-10-01 15:50:42
+@@ -486,6 +486,15 @@
+ {
+ }
+ 
++// B1 (846 ABI): explicit 3-arg ctor emitting 846's symbol; delegates with no state reader.
++ComponentResolverServiceV1::ComponentResolverServiceV1(
++    ComponentCatalogProviderV1* catalogProvider,
++    PackageGuardReaderV1* guardReader,
++    ResolveFaultInjectorV1* faultInjector)
++    : ComponentResolverServiceV1(catalogProvider, guardReader, faultInjector, nullptr)
++{
++}
++
+ ComponentResolveResponseV1 ComponentResolverServiceV1::Resolve(
+     const ComponentResolveRequestV1& request) const
+ {
+--- a/framework/package-manager/component_resolver/src/component_resolver_runtime_v1.cpp	2026-09-22 11:37:57
++++ b/framework/package-manager/component_resolver/src/component_resolver_runtime_v1.cpp	2026-10-01 15:51:59
+@@ -339,10 +339,21 @@
+     return true;
+ }
+ 
++// B1 (846 ABI): 846's 5-arg Configure symbol; delegates with no state reader.
+ bool ConfigureComponentResolverRuntimeV1(
+     ComponentCatalogProviderV1* catalogProvider,
+     PackageGuardReaderV1* guardReader,
+     CallerResolveContextProviderV1* callerProvider,
++    ResolveFaultInjectorV1* faultInjector, std::string* error)
++{
++    return ConfigureComponentResolverRuntimeV1(catalogProvider, guardReader,
++        callerProvider, faultInjector, error, nullptr);
++}
++
++bool ConfigureComponentResolverRuntimeV1(
++    ComponentCatalogProviderV1* catalogProvider,
++    PackageGuardReaderV1* guardReader,
++    CallerResolveContextProviderV1* callerProvider,
+     ResolveFaultInjectorV1* faultInjector, std::string* error, ComponentStateReaderV1* stateReader)
+ {
+     if (catalogProvider == nullptr || guardReader == nullptr ||
+--- a/framework/core/jni/adapter_bridge.cpp	2026-09-21 10:52:04
++++ b/framework/core/jni/adapter_bridge.cpp	2026-10-01 16:04:32
+@@ -1,4 +1,4 @@
+-#include "../../package-manager/jni/oh_self_account_registration.h"
++// B1: SelfAccount registration include removed (cluster 0-in-846, excluded from this build).
+ /*
+  * adapter_bridge.cpp
+  *
+@@ -202,7 +202,9 @@
+         }
+         g_adapter_class_loader = newLoader;
+         g_load_class_method = loadClassMethod;
+-        if (!oh_adapter::RegisterSelfAccountNative(env, g_adapter_class_loader, g_load_class_method)) return;
++        // B1: SelfAccount cluster is 0-in-846 and excluded from this build; 846 did not
++        // register it here. (Header os_account_manager.h for oh_account_self_core is also
++        // unavailable in any accessible OH tree.)
+         ZYG_LOG_INFO("[Direction2] adapter_bridge_set_class_loader cached cl=%{public}p loadClass=%{public}p",
+             g_adapter_class_loader, g_load_class_method);
+     } else {
