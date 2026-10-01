@@ -5,10 +5,10 @@
 reads service-summary.csv + requested-services.csv (scan_service_calls.py) and cc-wiki's provided-services.csv
 (our-source inventory), writes gap-table.csv. Columns:
   fetch = how AOSP 14 SystemServiceRegistry builds the manager:
-          binder  - the fetcher calls ServiceManager.getService*/getServiceOrThrow; with no binder the fetcher
-                    throws ServiceNotFoundException and getSystemService returns null to the app
-          client  - the fetcher builds the manager in-process (LayoutInflater, SystemVibrator, ...); a missing
-                    binder can only bite later, inside a manager method
+          binder  - the fetcher calls ServiceManager.getServiceOrThrow; with no binder the fetcher throws
+                    ServiceNotFoundException and getSystemService returns null to the app
+          client  - the fetcher builds the manager in-process (LayoutInflater, SystemVibrator, AutofillManager
+                    around a nullable getService binder, ...); a missing binder can only bite later, inside a method
           module  - not registered in SystemServiceRegistry.java; an apex FrameworkInitializer registers it
                     (connectivity, phone, wifi, bluetooth, ...), so whether route-A has a fetcher at all is a
                     separate question
@@ -40,17 +40,25 @@ def fetch_kinds():
         name = consts.get(m.group(1))
         if not name:
             continue
-        binder = re.search(r'ServiceManager\.getService(OrThrow)?\(', chunk)   # chunk = this fetcher only
+        # chunk = this fetcher only. Only getServiceOrThrow makes a missing binder a null manager (the fetcher throws
+        # ServiceNotFoundException); a plain getService builds the manager around a possibly-null binder (autofill).
+        binder = re.search(r'ServiceManager\.getServiceOrThrow\(', chunk)
         kinds[name] = 'binder' if binder else kinds.get(name, 'client')
     return kinds
 
 
-def provided_map(path):
+def provided_map(path, deployed=HERE / 'deployed-providers.csv'):
     out = {}
     for row in csv.DictReader(open(path)):
         for name in re.split(r'[^a-z_]+', row['service'].lower()):
             if name:
                 out[name] = row['status']
+    # cc-wiki 21:59: the source inventory read the vm-copies snapshot, older than the deployed JAR 238ffc14; the
+    # deployed JAR's B8BindExtras / B7BindFixes / *Fetcher layer answers more names. The dexdump of the shipped JAR wins.
+    if Path(deployed).exists():
+        for row in csv.DictReader(open(deployed)):
+            if row['service'] and not row['service'].startswith('_'):
+                out[row['service']] = 'deployed-jar' if row['provided'] == 'yes' else out.get(row['service'], '-')
     return out
 
 
