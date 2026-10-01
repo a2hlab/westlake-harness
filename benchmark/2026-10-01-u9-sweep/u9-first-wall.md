@@ -8,9 +8,9 @@ Total non-lit keys: 51
 | fd-api | dead | java:IllegalStateException | Caused by: java.lang.IllegalStateException: You need to use  | 10-01 18:33:16.560  2123  2147 I C00f00/AppSpawnXJava: [stde | no |
 | fd-im-vector-app | dead | java:UnsatisfiedLinkError | [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.Unsatisf | 10-01 18:36:14.599  5981  6004 I C00f00/AppSpawnXJava: [stde | no |
 | fd-kitchenowl | dead | native:signal |  | 10-01 18:37:07.990  7113  7113 I C02d11/DfxFaultLogger: Reas | no |
-| fd-meet | dead | java:UnsatisfiedLinkError | [CHILD_CK] J_invokeStaticMain_main_threw: com.facebook.soloa | 10-01 18:38:10.510  8502  8525 I C00f00/AppSpawnXJava: [stde | no |
+| fd-meet | dead | java:UnsatisfiedLinkError | [CHILD_CK] J_invokeStaticMain_main_threw: com.facebook.soloa | 10-01 18:38:10.510  8502  8525 I C00f00/AppSpawnXJava: [stde | abort-visibility |
 | fd-noice | alive-white-window | no-fatal |  |  | no |
-| fd-plus | dead | java:IllegalStateException | [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.IllegalS | 10-01 18:40:22.582 11035 11059 I C00f00/AppSpawnXJava: [stde | no |
+| fd-plus | dead | java:IllegalStateException | [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.IllegalS | 10-01 18:40:22.582 11035 11059 I C00f00/AppSpawnXJava: [stde | U11 (Surface sw lock) |
 | fd-uhabits | alive-white-window | no-fatal |  |  | no |
 | localsend | dead | native:signal |  | 10-01 18:47:33.877 20596 20596 I C02d11/DfxFaultLogger: Reas | no |
 | mindustry | dead | java:ExceptionInInitializerError | 10-01 18:48:21.038 21493 21518 E C00f00/AppSpawnXInit: Cause | 10-01 18:48:21.036 21493 21518 I C00f00/AppSpawnXJava: [stde | OpenSLES |
