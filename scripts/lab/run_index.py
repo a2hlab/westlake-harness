@@ -188,12 +188,38 @@ def query(args):
     return 0
 
 
+# Known answers checked after every build (retro 18, 2026-10-01: a cause field taken from "the first exception anywhere"
+# produced a 14-key false cluster, and a narrow fatal pattern hid 11 real fatals; both would have failed these).
+ANCHORS = [
+    ('e953c0921536', 'cv2-org-linaro-glmark2', 'first_fatal', r'fid == null'),
+    ('e953c0921536', 'cv2-org-linaro-glmark2', 'cause', None),             # native JNI abort: no Java chain
+    ('e953c0921536', 'cv2-com-caniwebview-android', 'cause', r'LayoutParams\.width'),
+    ('e953c0921536', 'cv2-com-kaajjo-libresudoku', 'first_fatal', r'.'),   # dies via System.exit, still a fatal
+]
+
+
+def check(index):
+    rows = [json.loads(l) for l in open(index)]
+    bad = 0
+    for rt, key, field, want in ANCHORS:
+        got = [r.get(field) for r in rows if r.get('runtime_fp') == rt and r['key'] == key]
+        if not got:
+            print(f'MISSING {key} on {rt}'); bad += 1; continue
+        v = got[0]
+        ok = (v is None) if want is None else (v is not None and re.search(want, v) is not None)
+        print(f'{"ok " if ok else "BAD"} {key} {field} = {str(v)[:100]!r} (want {want!r})')
+        bad += 0 if ok else 1
+    return 1 if bad else 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
     b = sub.add_parser('build')
     b.add_argument('--root', action='append')
     b.add_argument('--index', type=Path, default=None)
+    c = sub.add_parser('check', help='verify known answers on the built index')
+    c.add_argument('--index', type=Path, default=None)
     q = sub.add_parser('query')
     q.add_argument('--index', type=Path, default=None)
     q.add_argument('--key')
@@ -209,7 +235,9 @@ def main(argv=None):
             [str(p) for p in sorted(ws.glob('_*'))]
         n = build(roots, args.index)
         print(f'indexed {n} (run, key) rows -> {args.index}')
-        return 0
+        return check(args.index)
+    if args.cmd == 'check':
+        return check(args.index)
     return query(args)
 
 

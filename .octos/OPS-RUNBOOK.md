@@ -28,6 +28,9 @@
 **构建 VM `a2hlab`**(OrbStack,Ubuntu 24.04 amd64 走 Rosetta)
 - 工作区 `~/a2hlab/ws`,以作者原路径 `/home/dspfac/a2hlab/source-closure/verify/out` bind mount(哈希才对得上 manifest 记录;**VM 重启后要重挂**)。manifest 克隆 `~/a2hlab/manifest`,本地分支 `local-pins-main`。运行时源码是私有 `a2hlab/westlake`(verify 构建基于 main `22b9453`),不是 `A2OH/westlake`。别碰已有的 `oh7x86` 机器。
 - 没有 USB → VM 里的工具用 `scripts/lab/hdc_mac.sh` 转发到 Mac 的 hdc。
+- **车道交件前跑 `land.py <worktree> <listing> -m x --preflight`**(retro 18,2026-10-01):只在车道工作树上跑清单 / 大小 / 用户路径三道门,不拷不提交;今晚车道构建脚本写死 /Users/<名> 四次,都是外环落库时才拦下。全局 git hooks 路径不归我们改,所以不做 pre-commit 钩子。
+- **派给 octoscode 车道的单子写「本轮内做完并发 PROGRESS」**(retro 18):oc-t4 三次以「继续」收尾结束本轮、实际没往下做,两次撞 doom-loop(同一条 bash 连跑三次)。octoscode 不会自己续跑:派单走 lane_send.sh,单子里点名产物路径与「本轮完成」,看到「继续」结尾就当没做完再派。
+- **run_index 每次 build 后自动跑 `check`**(已知答案:glmark2 的 first_fatal 含 fid == null、cause 为空;caniwebview 的 cause 含 LayoutParams.width;libresudoku 有 first_fatal):派生字段改了规则先过这几条再给车道用。
 - **全量前先出预测表**(用户 2026-10-01 定):每次统一态全量前,用 `scripts/lab/predict_vs_actual.py predict`(基线签认 + 死因簇 + 本版包含的修复 + 已跑窗口的观察)写出逐 key 预测,落库到 benchmark/<日期>-<版本>-prediction/;全量签认后跑 `compare`,regression(基线亮→不亮)退 1、missed-wall(预测能过却没亮)补进扫描器、unexpected-lit 找出是哪条修复带来的。U9 的预测在 benchmark/2026-10-01-u9-prediction/。
 - **历史运行证据当库查**(用户 2026-10-01 定):`python3 scripts/lab/run_index.py build`(约 75 秒,扫 $WORKSPACES/westlake-harness*/benchmark 与 $WORKSPACES/_*,索引写 $WORKSPACES/westlake-inputs/run-index/index.jsonl,同一 run 的落库副本只记一次)→ `run_index.py query --runtime <指纹> --where "unknown_session>0" --fields key --group ...`。每行 = (运行, key):两个指纹、alive、unknown sessionId 条数、首个致命行、装包期图标行、冒烟探针的加载份数。开窗前的离线核查(offline_precheck)先查这里。
 - **J 层修复先查 AOSP 源码**(用户 2026-10-01 定):涉及生命周期或时序的假设(谁先谁后、某方法会不会回调),先在本机 `$WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java`(AOSP 14 r1,与板上框架同版本)里确认调用顺序,在派单 / 交件里贴文件:行。首查例:J10b 交件写「makeApplicationInner 不调 onCreate」,而 LoadedApk.java:1477-1479 在 instrumentation 非空时会调 callApplicationOnCreate。
