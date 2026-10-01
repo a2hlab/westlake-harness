@@ -240,6 +240,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-n11e-result-channel/`** | Host-rendered sealed-loader diagnostics; branch-3 handle mismatch witnessed twice, strict U9 restoration |
 | **`benchmark/2026-10-01-u10-bundle/`** | U9-based U10 native/JAR assembly, actual host identity binding, aliases and offline admission evidence |
 | **`benchmark/2026-10-01-u11-native/`** | **Donor-based two-export root libandroid shim, 166-APK/606-native consumer replay, explicit union versus flat ABI evidence and pending owner/exception gates.** |
+| **`benchmark/2026-10-01-n11f-owner-callback/`** | N11f resident-owner callback over signed U9: exact N11e baseline, repeatable child, ABI/data review, frozen checks, native binding review and proposed bounded window. |
 
 ---
 

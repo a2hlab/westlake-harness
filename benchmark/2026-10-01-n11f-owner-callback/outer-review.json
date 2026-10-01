@@ -1,0 +1,40 @@
+{
+  "package_manifest_sha256": "774d5c4e050cfadfcff5779adc65dc93232978bd98a01bfac7bbb2d282cae455",
+  "inputs_sha256": "bd0559a42a672094fe7c8f573841adf8586305bb760d14ae61cc72d48399f7b8",
+  "new_findings": [
+    {
+      "profile": "n11f-owner-callback",
+      "kind": "findings",
+      "detail": {
+        "function": "RealOpenLocalNow",
+        "namespace": "&closure_namespace",
+        "library": "libart.so",
+        "target_expression": "\"libart.so\"",
+        "evidence": {
+          "source": "n11f-child.c",
+          "line": 339,
+          "text": "void *art = dlopen_ns(&closure_namespace, \"libart.so\","
+        },
+        "family": "noload-before-namespace-mapping",
+        "verdict": "static-risk",
+        "namespace_creation": {
+          "source": "n11f-child.c",
+          "line": 322,
+          "text": "if (dlns_create2(&closure_namespace, search_path,"
+        },
+        "reason": "NOLOAD cannot establish a first local mapping; no dominating guarded same-namespace load found"
+      },
+      "issue_id": "ab9573e6a36dcdb0f3abb3460542c875163e375160320d3d77dd241ba20207fa",
+      "disposition": "REJECT",
+      "gate": "N1"
+    }
+  ],
+  "rationale": {
+    "scope": "N11f child-only 61b <=30min short window over signed U9; candidate ART/provider/runtime/JAR unchanged",
+    "site": "Same route-a ART NOLOAD after opening provider in closure_namespace as N11e 3f1e703c; source filename now n11f-child.c. Not newly added by N11f. Scanner cannot traverse provider NEEDED load.",
+    "prior_authority": "N11e df71b899 ART site approved in master d68062ff3; N11e 61b probe branch3 proves ART lookup passed before owner mismatch",
+    "source_changes": "Approved daa880505 callback handle reuse; remove default dlns_inherit/owner NOLOAD; logger gate nonfatal; host unconditional done; current-call dlerror",
+    "gate_oracle": "ART/JVM/bridge/runtime maps each1; done branch0; HW alive; compare prediction; failure restore U9 318 identities and recovery HW/ZZ",
+    "approval_requested": true
+  }
+}
