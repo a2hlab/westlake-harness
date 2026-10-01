@@ -54,6 +54,21 @@ class BoardRun(unittest.TestCase):
         if cleanup_rc: self.assertNotIn('unlock', events)
         else: self.assertLess(events.index('rollback'), events.index('unlock'))
 
+    def test_seal_makes_run_dir_undeletable(self):
+        import os, shutil
+        d = tempfile.mkdtemp()
+        try:
+            run = Path(d) / 'v1' / 'serial' / 'key'
+            run.mkdir(parents=True)
+            (run / 'hilog.txt').write_text('x')
+            board_run.seal(Path(d) / 'v1')
+            self.assertFalse(os.access(run / 'hilog.txt', os.W_OK))
+            with self.assertRaises(PermissionError):
+                (run / 'hilog.txt').unlink()          # what git clean / rm would do
+            self.assertTrue((run / 'hilog.txt').exists())
+        finally:
+            subprocess.run(['chmod', '-R', 'u+w', d]); shutil.rmtree(d)
+
     def test_rollback_precedes_unlock_after_pass(self): self.transaction()
     def test_rollback_precedes_unlock_after_smoke_fail(self): self.transaction(smoke_rc=1)
     def test_rollback_precedes_unlock_after_exception(self): self.transaction(smoke_error=True)

@@ -240,6 +240,7 @@ def main(argv=None):
     b = sub.add_parser('build')
     b.add_argument('--root', action='append')
     b.add_argument('--index', type=Path, default=None)
+    b.add_argument('--allow-drop', action='store_true', help='accept losing rows whose run files no longer exist')
     c = sub.add_parser('check', help='verify known answers on the built index')
     c.add_argument('--index', type=Path, default=None)
     q = sub.add_parser('query')
@@ -255,7 +256,20 @@ def main(argv=None):
         ws = lab_paths.workspaces()
         roots = args.root or [str(p) for p in sorted(ws.glob('westlake-harness*/benchmark'))] + \
             [str(p) for p in sorted(ws.glob('_*'))]
-        n = build(roots, args.index)
+        # 2026-10-01 18:28 a lane's `git clean -fd` deleted the U8 sweep's raw run files; the index built before that is
+        # the only structured copy of their first_fatal / cause / loads. A rebuild must not silently drop such rows.
+        old = {}
+        if args.index.exists():
+            old = {(r['run'], r['key']): r for r in map(json.loads, open(args.index))}
+        new_path = args.index.with_suffix('.jsonl.new')
+        n = build(roots, new_path)
+        gone = set(old) - {(r['run'], r['key']) for r in map(json.loads, open(new_path))}
+        if gone and not args.allow_drop:  # carry the old rows forward, marked, instead of losing them
+            with open(new_path, 'a') as out:
+                for k in sorted(gone):
+                    out.write(json.dumps(dict(old[k], files_gone=True), ensure_ascii=False) + '\n')
+            print(f'carried forward {len(gone)} rows whose run files are gone (files_gone=true; --allow-drop drops them)')
+        new_path.replace(args.index)
         print(f'indexed {n} (run, key) rows -> {args.index}')
         return check(args.index)
     if args.cmd == 'check':

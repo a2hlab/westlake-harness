@@ -106,6 +106,24 @@ def board_append(plan, text):
     subprocess.run([str(HERE / 'board_append.sh'), plan['board'], text], check=False)
 
 
+def seal(directory):
+    """Make a finished shard's run directory read-only, directories included.
+
+    2026-10-01 18:28: a lane ran `git clean -fd benchmark/...` in its worktree to unblock a merge and deleted every
+    untracked file of the signed U8 sweep (hilog, facts, maps); only the git-ignored screenshots survived and the
+    machine had no snapshot. A file in a non-writable directory cannot be unlinked, so git clean / rm now fail loudly
+    instead. `chmod -R u+w <dir>` undoes it on purpose."""
+    directory = Path(directory)
+    if not directory.is_dir():
+        return
+    for root, dirs, files in os.walk(directory, topdown=False):
+        for name in files:
+            p = os.path.join(root, name)
+            if not os.path.islink(p):
+                os.chmod(p, os.stat(p).st_mode & ~0o222)
+        os.chmod(root, os.stat(root).st_mode & ~0o222)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('plan', type=Path)
@@ -181,6 +199,7 @@ def main(argv=None):
                                      'total': total})
             board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} board_run 分片 {shard["name"]} '
                                f'({facts[0] if facts else sout}):「{total}」')
+            seal(sout)
         return 0
     finally:
         cleanup_error = None
