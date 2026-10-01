@@ -48,12 +48,20 @@ def rel(p, ws):
 
 
 CAUSE = re.compile(r'(Caused by: |^\S*\s*(java|android)\.[\w.$]+(Exception|Error): )')
+EXC = re.compile(r'[A-Za-z_][\w$]*(?:\.[\w$]+)+(?:Exception|Error|Throwable)\b(?::.{0,200})?')
+
+
+def exc_head(text):
+    """Exception class + start of its message: names one link of a chain across reprints. None for a bare class
+    without a message (nested reflection legitimately repeats InvocationTargetException)."""
+    m = EXC.search(text.split('Caused by: ', 1)[-1])
+    return m.group(0) if m and ':' in m.group(0) else None
 
 
 def scan_hilog(path):
     """unknown-sessionId count, first fatal line, and the exception text (last 'Caused by' of the first fatal
     chain, else the first exception line) -- the fatal line alone ('FATAL EXCEPTION: main') carries no cause."""
-    unknown, fatal, cause, chain = 0, None, None, 0
+    unknown, fatal, cause, chain, seen = 0, None, None, 0, set()
     try:
         with open(path, errors='replace') as fh:
             for line in fh:
@@ -62,12 +70,25 @@ def scan_hilog(path):
                 if fatal is None and FATAL.search(line):
                     fatal = line.strip()[:240]
                     chain = 60
+                    seen = {exc_head(line)}
+                # the exit and the Java chain behind it are logged by different threads: vlc's "System.exit called"
+                # lands before its main_threw chain (2026-10-01), so a chain that starts later is the same death
+                elif fatal is not None and cause is None and chain <= 0 and 'J_invokeStaticMain_main_threw' in line:
+                    chain = 60
+                    seen = {exc_head(line)}
                 msg = line.split('[stderr] ', 1)[-1].strip()
                 # only inside the first fatal's chain: an exception logged elsewhere is often caught and benign
                 # (2026-10-01: a first-exception-anywhere rule grouped 14 keys under a probing ClassNotFoundException,
                 # glmark2 and ath0-rpn among them, whose real fatals are native)
                 if fatal is not None and chain > 0:
                     if 'Caused by: ' in msg:
+                        # AppSpawnXInit reprints the whole chain from the top right after the child's own print: a
+                        # 'Caused by' already seen (or equal to the head) is that reprint, and the chain is over
+                        head = exc_head(msg)
+                        if head is not None and head in seen:
+                            chain = 0
+                            continue
+                        seen.add(head)
                         cause = msg[:240]
                     elif cause is None and re.search(r'(java|android|androidx)\.[\w.$]+(Exception|Error)(: |$)', msg):
                         cause = msg[:240]
@@ -195,6 +216,7 @@ ANCHORS = [
     ('e953c0921536', 'cv2-org-linaro-glmark2', 'cause', None),             # native JNI abort: no Java chain
     ('e953c0921536', 'cv2-com-caniwebview-android', 'cause', r'LayoutParams\.width'),
     ('e953c0921536', 'cv2-com-kaajjo-libresudoku', 'first_fatal', r'.'),   # dies via System.exit, still a fatal
+    ('e953c0921536', 'vlc', 'cause', r'Failed to resolve attribute'),       # exit logged before its main_threw chain
 ]
 
 
