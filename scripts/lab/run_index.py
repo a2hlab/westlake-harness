@@ -30,7 +30,10 @@ sys.path.insert(0, str(HERE))
 import lab_paths  # noqa: E402
 
 FACT_ROW = re.compile(r'^(\S+)\s+shots \S+\s+alive t5=(\S+) t20=(\S+)\s+child_hilog=(\S+)\s+(\S+)')
-FATAL = re.compile(r'FATAL EXCEPTION|Fatal signal|JNI DETECTED ERROR|Reason:Signal|Unable to start activity')
+# 2026-10-01 (cx-bms): 11 "no first fatal" keys did die -- via the child's main_threw -> System.exit(1), other
+# System.exit calls, a skia/hwui ASSERT abort, or APPSPAWN "exit with signal 9"; the first pattern set missed them.
+FATAL = re.compile(r'FATAL EXCEPTION|Fatal signal|JNI DETECTED ERROR|Reason:Signal|Unable to start activity|'
+                   r'J_invokeStaticMain_main_threw|System\.exit called|ASSERT.{0,40}failed|exit with signal')
 UNKNOWN = 'getOhNativeWindow: unknown sessionId'
 PROBE_LIBS = ['liboh_adapter_bridge.so', 'liboh_android_runtime.so', 'libart.so', 'libnativehelper.so', 'libandroid.so']
 
