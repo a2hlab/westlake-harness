@@ -101,7 +101,12 @@ def main(argv=None):
             k, rest = o.split('=', 1)
             v, _, why = rest.partition(':')
             observed[k] = (v, why or 'observed in a window')
-        rows = predict(verdicts(args.baseline), json.loads(Path(args.clusters).read_text()),
+        base = verdicts(args.baseline)
+        unknown = sorted(set(observed) - set(base))
+        if unknown:  # a mistyped key would otherwise drop out of the table without a word
+            print(f'--observed keys not in the baseline: {unknown}', file=sys.stderr)
+            return 2
+        rows = predict(base, json.loads(Path(args.clusters).read_text()),
                        set(args.include.split(',')), [tuple(x.split('=', 1)) for x in args.cover], observed, flaky)
         fh = sys.stdout if args.out == '-' else open(args.out, 'w', newline='')
         w = csv.DictWriter(fh, fieldnames=list(rows[0]))
