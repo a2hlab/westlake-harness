@@ -1,0 +1,22 @@
+{
+  "key": "cv2-com-page-bizzle",
+  "verdict": "app_failed is a TOOL/harness cold-desktop race at run start, NOT an install/app/runtime defect",
+  "run": "westlake-harness-t4/benchmark/2026-10-01-u8-sweep/5cd-seq-cv2/20261001T122027-e3c3b085",
+  "install": {"install_txt": "install bundle successfully.", "bms_return_code": 0, "queryable": true,
+              "launcher_ability": {"isLauncherAbility": true, "want": ["ohos.want.action.home", "android.intent.category.LAUNCHER"], "visible": true},
+              "icon": {"android_icon": "res/_X.png", "type": "real PNG raster (compiled path), pkg 0x7f"}},
+  "capture": {"page_dumps": 20, "AppIconCommonView_tiles": 0, "SCBDesktop_markers": 0,
+              "captured_window": "com.ohos.sceneboard WindowScene (status-bar/non-app-grid scene)",
+              "note": "every one of the 20 page dumps is tile-less; bms select_icon looks for id prefix AppIconCommonView_com.page.bizzle. and found none"},
+  "run_timeline_proof": {
+    "run_started": "12:20:27",
+    "key_1_page-bizzle": {"t": "12:20:37", "status": "app_failed", "tiles": 0},
+    "key_2_clipboardeditor": {"t": "12:22:14", "status": "app_failed", "tiles": 0},
+    "key_3_zola-bmi": {"t": "12:22:48", "status": "foreground_unconfirmed", "tiles": 228},
+    "later_keys": "all foreground_unconfirmed, tiles 196..266 (grows as apps install)",
+    "conclusion": "only the first 2 keys (first ~2 min, before sceneboard finished loading the app grid) failed; desktop ready from key 3 on"},
+  "layer": "tool/harness (desktop-not-ready at run start)",
+  "not": ["install (succeeded)", "icon conversion (real raster; scheme works for 100+ sibling tiles)", "runtime (app never launched; no crash)"],
+  "fix_direction": "board_run/bms must gate the first icon search on SCBDesktop readiness (press HOME + poll until the dump contains SCBDesktop / >0 AppIconCommonView_ tiles) and classify a tile-less dump as desktop_not_ready (retry), not app_failed",
+  "distinct_from": "frequent-habits / privacyfriendlypasswordgenerator: those captured a POPULATED desktop (700+ tiles) with their OWN tile genuinely absent — a separate real launcher-placement question"
+}
