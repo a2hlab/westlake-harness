@@ -1,0 +1,436 @@
+/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b68-generation/adapter/framework/appspawn-x/src/adapter_bridge_identity.cpp
+SHA256 39fcd97e0e564654e7f5324c400556cd0cc4f8d8e5f684f69ccd9d70f0d05571
+1: #include "adapter_bridge_identity.h"
+2: #include <dlfcn.h>
+3: #ifndef WLAR_ADAPTER_BRIDGE_PATH
+4: #error "WLAR_ADAPTER_BRIDGE_PATH is required"
+5: #endif
+6: #ifndef WLAR_ANDROID_RUNTIME_PATH
+7: #error "WLAR_ANDROID_RUNTIME_PATH is required"
+8: #endif
+9: 
+10: // #68: file SHA/build-id admission belongs to the deployment transaction.
+11: // Runtime loading keeps actual dlopen failures and required ABI symbols visible.
+12: namespace appspawnx {
+13: namespace {
+14: bool HasSymbol(void *handle, const char *symbol) {
+15:     return handle != nullptr && dlsym(handle, symbol) != nullptr;
+16: }
+17: bool LoadPath(const char *path, const char *symbol, void **out) {
+18:     if (out == nullptr) return false;
+19:     *out = nullptr;
+20:     void *handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+21:     if (!HasSymbol(handle, symbol)) {
+22:         if (handle != nullptr) dlclose(handle);
+23:         return false;
+24:     }
+25:     *out = handle;
+26:     return true;
+27: }
+28: }
+29: bool LoadVerifiedAdapterBridge(void **out) {
+30:     return LoadPath(WLAR_ADAPTER_BRIDGE_PATH, "adapter_bridge_set_class_loader", out);
+31: }
+32: bool LoadVerifiedAndroidRuntime(void **out) {
+33:     return LoadPath(WLAR_ANDROID_RUNTIME_PATH,
+34:         "_ZN7android14AndroidRuntime8startRegEP7_JNIEnv", out);
+35: }
+36: bool VerifyLoadedAdapterBridge(void *handle) {
+37:     return HasSymbol(handle, "adapter_bridge_set_class_loader");
+38: }
+39: bool VerifyLoadedAndroidRuntime(void *handle) {
+40:     return HasSymbol(handle, "_ZN7android14AndroidRuntime8startRegEP7_JNIEnv");
+41: }
+42: }
+
+/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b68-generation/adapter/framework/appspawn-x/src/appspawnx_runtime.cpp
+SHA256 398acf133a2519e1b3a690e2e8c9f67ea5664825f1c517aca684941a64e325ac
+270:     LOGF("Step 4: JNI_CreateJavaVM returned %d", rc);
+271:     if (rc != JNI_OK) {
+272:         LOGF("ERROR: JNI_CreateJavaVM failed, rc=%d", rc);
+273:         javaVm_ = nullptr;
+274:         env_ = nullptr;
+275:         return -1;
+276:     }
+277:     LOGF("Step 4: JavaVM created successfully");
+278:     android::InitializeNativeLoader();
+279:     LOGI("NativeLoader initialized for appspawn-x JavaVM");
+280: 
+281:     // Admit the exact adapter root before any boot-library or framework JNI
+282:     // effect. The sealed child loader has already admitted the provider
+283:     // closure; this fixed path/hash/Build-ID check binds the remaining R45
+284:     // dynamic root used by both T10 and T11.
+285:     if (!LoadVerifiedAdapterBridge(&adapterBridgeHandle_)) {
+286:         LOGE("exact adapter bridge admission failed before boot-library load");
+287:         return -1;
+288:     }
+289: 
+290:     int ret = registerNativeMethods();
+291:     if (ret != 0) {
+292:         LOGE("registerNativeMethods failed, ret=%d", ret);
+293:         return ret;
+294:     }
+295:     ret = cacheJavaReferences();
+296:     if (ret != 0) {
+297:         LOGE("cacheJavaReferences failed, ret=%d", ret);
+298:         return ret;
+299:     }
+300: 
+301:     LOGI("ART VM creation commit complete");
+302:     return 0;
+303: }
+304: 
+305: // ---------------------------------------------------------------------------
+306: // registerNativeMethods  –  link framework JNI methods into the VM
+307: // ---------------------------------------------------------------------------
+308: int AppSpawnXRuntime::registerNativeMethods() {
+309:     LOGI("Registering framework JNI native methods");
+310: 
+311:     // Progressive-replacement strategy: load liboh_android_runtime.so —
+312:     // OH-Adapter's minimal JNI dispatcher — instead of the full AOSP
+313:     // libandroid_runtime.so. Stage 1 registers only android.util.Log; later
+314:     // stages add resources / Surface / Canvas / Binder as UI paths exercise
+315:     // them. Exported entry point keeps the AOSP mangled signature
+316:     //   android::AndroidRuntime::startReg(JNIEnv*)
+317:     //   (_ZN7android14AndroidRuntime8startRegEP7_JNIEnv)
+318:     // so the existing dlsym call site keeps working.
+319:     if (androidRuntimeHandle_ != nullptr ||
+320:         !LoadVerifiedAndroidRuntime(&androidRuntimeHandle_)) {
+321:         LOGE("exact Android runtime admission failed before JNI registration");
+322:         return -1;
+323:     }
+324: 
+325:     // The registration entry point used by AndroidRuntime
+326:     // Signature: int register_jni_procs(const RegJNIRec array[], size_t count, JNIEnv* env)
+327:     // We look for the exported AndroidRuntime::startReg instead
+328:     using StartReg_t = int (*)(JNIEnv*);
+329:     auto startReg = reinterpret_cast<StartReg_t>(
+330:         dlsym(androidRuntimeHandle_,
+331:               "_ZN7android14AndroidRuntime8startRegEP7_JNIEnv"));
+332:     if (startReg == nullptr || !VerifyLoadedAndroidRuntime(
+333:             androidRuntimeHandle_)) {
+334:         LOGE("required AndroidRuntime::startReg identity is unavailable");
+335:         return -1;
+336:     }
+337:     int rc = startReg(env_);
+338:     if (rc < 0) {
+339:         LOGE("AndroidRuntime::startReg returned %d", rc);
+340:         return -1;
+341:     }
+342:     LOGI("Framework JNI methods registered via AndroidRuntime::startReg");
+343: 
+344:     // Keep libandroid_runtime loaded for the lifetime of the process
+345:     // (do not dlclose – the JNI methods reference its code)
+346:     LOGI("JNI registration complete");
+347:     return 0;
+348: }
+349: 
+350: // ---------------------------------------------------------------------------
+
+/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b68-generation/adapter/framework/appspawn-x/src/appspawnx_runtime.cpp
+SHA256 398acf133a2519e1b3a690e2e8c9f67ea5664825f1c517aca684941a64e325ac
+510: // preload  –  invoke AppSpawnXInit.preload() to warm up the VM
+511: // ---------------------------------------------------------------------------
+512: int AppSpawnXRuntime::preload() {
+513:     if (!appSpawnXInitClass_ || !preloadMethod_) {
+514:         LOGW("Preload skipped – AppSpawnXInit class or preload method not available");
+515:         return -1;
+516:     }
+517:     if (adapterBridgeHandle_ == nullptr ||
+518:         !VerifyLoadedAdapterBridge(adapterBridgeHandle_)) {
+519:         LOGE("exact adapter bridge identity changed before Java preload");
+520:         return -1;
+521:     }
+522: 
+523:     LOGI("Calling AppSpawnXInit.preload()...");
+524:     env_->CallStaticVoidMethod(appSpawnXInitClass_, preloadMethod_);
+525: 
+526:     if (env_->ExceptionCheck()) {
+527:         LOGE("mandatory Route-A preload raised a Java Throwable:");
+528:         env_->ExceptionDescribe();
+529:         env_->ExceptionClear();
+530:         return -1;
+531:     }
+532: 
+533:     LOGI("Preload completed successfully");
+534: 
+535:     // B.34.1 (2026-04-29 EOD+1): explicit RegisterNatives for
+536:     // AppSpawnXInit.nativeHiLog (B.32 logger).  Must run AFTER preload()
+537:     // because preload triggers OHEnvironment.<clinit> → System.loadLibrary
+538:     // ("oh_adapter_bridge") which is the dlopen of bridge.so.  Before that,
+539:     // dlsym(RTLD_DEFAULT, "Java_..._nativeHiLog") returns null because the
+540:     // symbol's library is not yet in the process's search scope.
+541:     //
+542:     // Why classloader-scoped auto-dlsym fails: bridge.so loads via
+543:     // OHEnvironment.<clinit> → System.loadLibrary, binding it to BCP /
+544:     // bootstrap classloader.  AppSpawnXInit lives in oh-adapter-runtime.jar
+545:     // (PathClassLoader, non-BCP).  ART searches native libraries owned by
+546:     // the calling class's classloader chain — bridge.so is not in
+547:     // PathClassLoader's chain, so AppSpawnXInit.nativeHiLog auto-resolution
+548:     // returns UnsatisfiedLinkError, caught silently by appLog, fallback to
+549:     // System.err which is /dev/null in init service.  Result: zero [B32-J]
+550:     // markers in hilog despite Java init code running fine.
+551:     //
+552:     // RegisterNatives binds explicit method pointer to (jclass, name,
+553:     // signature) regardless of classloader scope.
+554:     // B.35.A (2026-04-29 EOD+2): use explicit dlopen handle for bridge.so.
+555:     // RTLD_DEFAULT in musl does NOT include libraries loaded via dlopen
+556:     // (such as bridge.so via System.loadLibrary).  RTLD_NOLOAD with the
+557:     // .so name returns the existing handle if already loaded; we then
+558:     // dlsym from that handle directly.
+559:     if (appSpawnXInitClass_) {
+560:         void* bridge = adapterBridgeHandle_;
+561:         if (!bridge || !VerifyLoadedAdapterBridge(bridge)) {
+562:             LOGE("[ROUTE-A] exact adapter bridge was not loaded through the typed parent admission");
+563:             return -1;
+564:         }
+565:         {
+566:             // 2026-05-19 startReg refactor: adapter_bridge.cpp renamed the
+567:             // extern "C" symbol from Java_com_android_internal_os_AppSpawnXInit_nativeHiLog
+568:             // to the short name adapter_appspawnx_native_hilog (matches the
+569:             // adapter_bridge_set_class_loader / load_class style).  The Java
+570:             // class still has nativeHiLog as its declared method; only the
+571:             // C++ symbol bound by RegisterNatives changed.
+572:             void* fn = dlsym(bridge, "adapter_appspawnx_native_hilog");
+573:             if (fn) {
+574:                 JNINativeMethod m = {
+575:                     const_cast<char*>("nativeHiLog"),
+576:                     const_cast<char*>("(Ljava/lang/String;Ljava/lang/String;)V"),
+577:                     fn
+578:                 };
+579:                 jint rc = env_->RegisterNatives(appSpawnXInitClass_, &m, 1);
+580:                 if (rc == JNI_OK) {
+581:                     LOGI("[B35.A] RegisterNatives(AppSpawnXInit.nativeHiLog) OK via dlopen handle");
+582:                 } else {
+583:                     LOGE("[B35.A] RegisterNatives failed rc=%d", rc);
+584:                     if (env_->ExceptionCheck()) {
+585:                         env_->ExceptionDescribe();
+586:                         env_->ExceptionClear();
+587:                     }
+588:                 }
+589:             } else {
+590:                 LOGE("[B35.A] dlsym(adapter_appspawnx_native_hilog) returned null — symbol not exported?");
+
+/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b68-generation/adapter/framework/appspawn-x/src/child_main_after_stock.cpp
+SHA256 3fc2060ea0f705cce50555caa509b215ea64edc343a714b20c438dba505b61d8
+150: }
+151: 
+152: bool ReinjectAdapterClassLoader(JNIEnv *env, AppSpawnXRuntime *runtime)
+153: {
+154:     jobject childLoader = runtime->getPathClassLoader();
+155:     jmethodID loadClass = runtime->getClassLoaderLoadClass();
+156:     JavaVM *vm = runtime->getJavaVM();
+157:     if (childLoader == nullptr || loadClass == nullptr || vm == nullptr) {
+158:         LOGE("[ROUTE-A] child adapter class loader unavailable");
+159:         return false;
+160:     }
+161:     void *bridge = dlopen("liboh_adapter_bridge.so", RTLD_NOLOAD | RTLD_NOW);
+162:     if (bridge == nullptr || !VerifyLoadedAdapterBridge(bridge)) {
+163:         if (bridge != nullptr) {
+164:             (void)dlclose(bridge);
+165:         }
+166:         LOGE("[ROUTE-A] exact inherited adapter bridge unavailable for child class-loader binding");
+167:         return false;
+168:     }
+169:     using SetterFunction = void (*)(JavaVM *, jobject, jmethodID);
+170:     SetterFunction setter = reinterpret_cast<SetterFunction>(
+171:         dlsym(bridge, "adapter_bridge_set_class_loader"));
+172:     if (setter == nullptr) {
+173:         LOGE("[ROUTE-A] adapter class-loader setter absent");
+174:         return false;
+175:     }
+176:     setter(vm, childLoader, loadClass);
+177:     if (env->ExceptionCheck()) {
+178:         env->ExceptionDescribe();
+179:         env->ExceptionClear();
+180:         LOGE("[ROUTE-A] adapter class-loader binding threw");
+181:         return false;
+182:     }
+183:     LOGI("[ROUTE-A] child adapter class loader bound");
+184:     return true;
+185: }
+186: 
+187: void LogPendingChildException(JNIEnv *env)
+
+/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b68-generation/adapter/framework/native-loader-oh/src/native_loader.cpp
+SHA256 cdd53c08d36d5c7bad6d80eeb8bce01cc3ba063a22bb86103ba1638b14920734
+157:   Status status = GlobalRegistry().GetOrCreate(env, class_loader, config, &error);
+158:   return status == Status::kOk ? nullptr : ErrorString(env, error);
+159: }
+160: 
+161: void* OpenNativeLibrary(JNIEnv* env, int32_t target_sdk_version,
+162:                         const char* path, jobject class_loader,
+163:                         const char* caller_location, jstring library_path,
+164:                         bool* needs_native_bridge, char** error_msg) {
+165:   using namespace westlake::nativeloader;
+166:   (void)caller_location;
+167:   if (needs_native_bridge != nullptr) *needs_native_bridge = false;
+168:   if (error_msg != nullptr) *error_msg = nullptr;
+169: 
+170:   if (class_loader == nullptr) {
+171:     return GlobalSystemLoader().Open(path, caller_location,
+172:                                      library_path != nullptr, error_msg);
+173:   }
+174: 
+175:   Config implicit_config;
+176:   std::string config_error;
+177:   const Config* implicit = nullptr;
+178:   if (env != nullptr && class_loader != nullptr && library_path != nullptr) {
+179:     if (!BuildImplicitConfig(env, target_sdk_version, library_path,
+180:                              &implicit_config, &config_error)) {
+181:       if (!config_error.empty() && error_msg != nullptr) {
+182:         *error_msg = CopyError(config_error);
+183:       }
+184:       if (!config_error.empty()) return nullptr;
+
+/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b68-generation/adapter/framework/native-loader-oh/src/system_loader.cpp
+SHA256 926cc743078e02e2d23f73d8a69fa174260e5d4b1a783750b746d0729173f00a
+14: namespace westlake::nativeloader {
+15: namespace {
+16: 
+17: std::atomic<SealedOpenFn> g_sealed_open{nullptr};
+18: 
+19: class RealSystemLoaderOps final : public SystemLoaderOps {
+20:  public:
+21:   bool ResolvePath(const char* path, std::string* resolved,
+22:                    std::string* error) const override {
+23:     char buffer[PATH_MAX];
+24:     if (realpath(path, buffer) == nullptr) {
+25:       *error = std::string("NativeLoader realpath failed: ") + path;
+26:       return false;
+27:     }
+28:     *resolved = buffer;
+29:     return true;
+30:   }
+31: 
+32:   void* OpenExact(const char* path, int flags) const override {
+33:     dlerror();
+34:     SealedOpenFn open_fn = g_sealed_open.load(std::memory_order_acquire);
+35:     return open_fn == nullptr ? nullptr : open_fn(path, flags);
+36:   }
+37: 
+38:   int CloseExact(void* handle) const override {
+39:     dlerror();
+40:     return dlclose(handle);
+41:   }
+42: 
+43:   const char* LastError() const override { return dlerror(); }
+44: };
+
+/Users/zhaoyue/orca/workspaces/westlake-harness-bms-deploy/bms/src/.work/b68-generation/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_android_runtime_provider.cpp
+SHA256 eb2c2ad228b31ce7ca5e73ee179ef06474ad115c9e67daf87f8b35a5d2556b38
+530: 
+531: extern "C" __attribute__((visibility("default")))
+532: int WLAR_InstallHostRuntimeServices(
+533:     const WlascHostRuntimeServicesV1 *services)
+534: {
+535:     uint32_t expected = PROVIDER_ADMISSION_EMPTY;
+536:     if (!__atomic_compare_exchange_n(
+537:             &gAdmissionState, &expected, PROVIDER_ADMISSION_INSTALLING,
+538:             false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+539:         return -1;
+540:     }
+541:     if (WLAR_HostServicesInstall(&gHostServicesRegistry,
+542:             ProviderGeneration(), kProviderGenerationSha, services) != 0 ||
+543:         WLNL_InstallSealedOpenV1(services->open_sealed_exact) != 0) {
+544:         __atomic_store_n(&gAdmissionState, PROVIDER_ADMISSION_FAILED,
+545:                          __ATOMIC_RELEASE);
+546:         return -1;
+547:     }
+548:     __atomic_store_n(&gAdmissionState, PROVIDER_ADMISSION_READY,
+549:                      __ATOMIC_RELEASE);
+550:     return 0;
+
+/Users/zhaoyue/orca/workspaces/westlake-harness-u7-executor/benchmark/2026-10-01-n10b-child/smoke-markers/src/sealed_child_provider_loader.c
+SHA256 d87bf4c35d17550fddac7eef00123d300e2ef2b98dc41b856c4beb2eae913fee
+230: static int namespace_prepared;
+231: 
+232: void *WLSCPL_OpenPreparedNamespace(const char *absolute_path, int flags)
+233: {
+234:     /* R155 ends this wrapper with a sibling call to dlopen. OH musl uses
+235:      * the return address to select the caller namespace; keep the caller in
+236:      * the sealed provider, not in this default-namespace plugin. A stack
+237:      * array here prevents the sibling call with the locked compiler. The
+238:      * post-link instruction check is part of admission for this wrapper. */
+239:     static const char prefix[] = "/system/android/lib64/";
+240:     if (namespace_prepared != 1 || !AbsoluteCanonicalForm(absolute_path) ||
+241:         strncmp(absolute_path, prefix, sizeof(prefix) - 1U) != 0 ||
+242:         absolute_path[sizeof(prefix) - 1U] == '\0' ||
+243:         (flags & (RTLD_NOW | RTLD_GLOBAL)) != RTLD_NOW) return NULL;
+244:     return dlopen(absolute_path, flags);
+245: }
+246: 
+247: static void *RealOpenLocalNow(void *context, const char *absolute_path,
+248:                               int flags)
+249: {
+250:     (void)context;
+251:     if (namespace_prepared == 0) {
+252:         char search_path[PATH_MAX];
+253:         char *slash;
+254:         size_t length = strlen(absolute_path);
+255:         if (length == 0U || length >= sizeof(search_path)) {
+256:             return NULL;
+257:         }
+258:         (void)memcpy(search_path, absolute_path, length + 1U);
+259:         slash = strrchr(search_path, '/');
+260:         if (slash == NULL || slash == search_path) {
+261:             return NULL;
+262:         }
+263:         *slash = '\0';
+264:         dlns_init(&closure_namespace, "westlake.sealed.child");
+265:         if (dlns_create2(&closure_namespace, search_path,
+266:                          CREATE_INHERIT_CURRENT) != 0) {
+267:             return NULL;
+268:         }
+269:         namespace_prepared = 1;
+270:     }
+271:     void *handle = dlopen_ns(&closure_namespace, absolute_path, flags);
+272:     const char *basename = strrchr(absolute_path, '/');
+273:     if (handle != NULL && basename != NULL &&
+274:         strcmp(basename + 1, "libwestlake_android_runtime_provider.so") == 0) {
+275:         /* N10b: the provider has now loaded route-a ART and openjdkjvm.
+276:          * Open both JNI owners in that same namespace, before provider init.
+277:          * CREATE_INHERIT_CURRENT adds an inheritance edge; it is not a
+278:          * snapshot. A default-owner preload would bind system ART instead.
+279:          * OH 6.1 musl ldso/linux/dynlink.c:4831-4983,2408-2575. */
+280:         static void *jni_owner_handles[2];
+281:         static const char *const owner_paths[] = {
+282:             "/system/android/lib64/liboh_adapter_bridge.so",
+283:             "/system/android/lib64/liboh_android_runtime.so"
+284:         };
+285:         size_t owner;
+286:         void *art = dlopen_ns(&closure_namespace, "libart.so",
+287:                               RTLD_NOW | RTLD_NOLOAD | RTLD_LOCAL);
+288:         if (art == NULL) {
+289:             (void)dlclose(handle);
+290:             return NULL;
+291:         }
+292:         (void)dlclose(art);
+293:         for (owner = 0U; owner < 2U; ++owner) {
+294:             if (jni_owner_handles[owner] == NULL) {
+295:                 jni_owner_handles[owner] = dlopen_ns(&closure_namespace,
+296:                                                      owner_paths[owner],
+297:                                                      RTLD_NOW | RTLD_LOCAL);
+298:             }
+299:             if (jni_owner_handles[owner] == NULL) {
+300:                 fprintf(stderr, "[N10b-JNI-OWNER] preload failed %s: %s\n",
+301:                         owner_paths[owner], dlerror());
+302:                 (void)dlclose(handle);
+303:                 return NULL;
+304:             }
+305:         }
+306:         /* HiLog ABI from OH6.1 hilog/log_c.h: LOG_CORE=3, LOG_INFO=4.
+307:          * Resolve through the loaded runtime owner; do not add a default
+308:          * preload or a new child DT_NEEDED edge just for the smoke marker. */
+309:         typedef int (*N10bLogFn)(int, int, unsigned int,
+310:                                  const char *, const char *, ...);
+311:         N10bLogFn emit = (N10bLogFn)dlsym(jni_owner_handles[1], "HiLogPrint");
+312:         if (emit == NULL) {
+313:             (void)dlclose(handle);
+314:             return NULL;
+315:         }
+316:         (void)emit(3, 4, 0xD000F00u, "N10bOwner",
+317:                    "[N10b-JNI-OWNER] bridge/runtime preloaded in westlake.sealed.child");
+318:     }
+319:     return handle;
+320: }

@@ -1,0 +1,40 @@
+--- a/sealed_child_provider_loader.c
++++ b/sealed_child_provider_loader.c
+@@ -303,6 +303,28 @@
+                 return NULL;
+             }
+         }
++        /* N11b: provider admission uses plain dlopen before the runtime
++         * ClassLoader domain exists. Publish the already loaded closure
++         * owners to default before the provider registers JNI. OH musl
++         * searches only direct inheritance; share exactly these two names.
++         * Never perform another fresh load to make this check pass. */
++        Dl_namespace default_namespace;
++        dlns_init(&default_namespace, "default");
++        if (dlns_inherit(&default_namespace, &closure_namespace,
++                        "liboh_adapter_bridge.so:liboh_android_runtime.so") != 0) {
++            (void)dlclose(handle);
++            return NULL;
++        }
++        for (owner = 0U; owner < 2U; ++owner) {
++            void *shared = dlopen_ns(&default_namespace, owner_paths[owner],
++                                    RTLD_NOW | RTLD_LOCAL | RTLD_NOLOAD);
++            if (shared == NULL || shared != jni_owner_handles[owner]) {
++                if (shared != NULL) (void)dlclose(shared);
++                (void)dlclose(handle);
++                return NULL;
++            }
++            (void)dlclose(shared);
++        }
+         /* HiLog ABI from OH6.1 hilog/log_c.h: LOG_CORE=3, LOG_INFO=4.
+          * Resolve through the loaded runtime owner; do not add a default
+          * preload or a new child DT_NEEDED edge just for the smoke marker. */
+@@ -315,6 +337,8 @@
+         }
+         (void)emit(3, 4, 0xD000F00u, "N10bOwner",
+                    "[N10b-JNI-OWNER] bridge/runtime preloaded in westlake.sealed.child");
++        (void)emit(3, 4, 0xD000F00u, "N11bOwner",
++                   "[N11b-EARLY-OWNER] default reuses sealed bridge/runtime; handles verified");
+     }
+     return handle;
+ }

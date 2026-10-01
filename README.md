@@ -217,6 +217,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-j10d-jar/`** | **J10d (J10 `ea24291a`→`57d62183`): FIX the appcompat-actionbar wall — restore the activity's own manifest theme.** J10c proved the activity is themed by the APP theme (`Theme.Knot`, androidx `windowActionBar=true@0x7f030350`), not its manifest `Theme.Knot.NoActionBar` (`0x7f11019e`), because AppSchedulerBridge overwrites/zeros `activityInfo.theme` before `scheduleTransaction` and stock `performLaunchActivity.getThemeResource()` then falls back to `applicationInfo.theme`. Fix = `J10dTheme.restore(activityInfo)` injected right after the banner force-zero, setting `activityInfo.theme = ManifestJsonFallback.activityTheme(pkg,name)` (marker `[J10d-THEME]`). Offline gate `test_j10d.py` 6/6; window plan has `offline_precheck.expect {confirm,refute}` + `expect_copies {bridge:2,runtime:2}`; class delta +`J10dTheme` only. |
 | **`benchmark/2026-10-01-j10d-window/`** | **J10d (restore the manifest activity theme the adapter zeroed) lights 10 of 12 appcompat / getActivityInfo keys on 5ea, all non-lit in U8.** |
 | **`benchmark/2026-10-01-u9-native/`** | U9 offline N10b core + invalid-icon installer, preserved network/background projection, declared foundation service component |
+| **`benchmark/2026-10-01-n11b-early-owner/`** | Deployed admission-path audit and child-only early JNI owner sharing, baseline repeat, fail-closed checks and explicit gate proposal |
 
 ---
 

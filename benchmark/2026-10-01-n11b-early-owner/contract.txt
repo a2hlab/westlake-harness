@@ -1,0 +1,46 @@
+# Task Contract: N11b child shares preloaded owners before provider JNI admission
+
+## Intent
+Cover the real provider admission path before the runtime ClassLoader exists, by sharing the resident bridge/runtime from sealed.child to default, without a fresh load fallback.
+
+## Must
+- Offline only; no board commands or rollout authorization.
+- Freeze provider, runtime, ART, bridge, Java and boot image bytes; replace child only against U8.
+- Preserve failed N11 evidence and approved exception references.
+
+## Decisions
+- Pin source and deployed ELF identities; identify the existing early child preload hook with observed N10b marker before registration.
+- Share only the two owner sonames using direct musl inheritance, then compare NOLOAD handles with the preloaded handles and refuse any mismatch.
+- Reproduce dc73a28d baseline and repeat candidate; stage child-only on U8, record all gates and keep rollout disabled until outer approval.
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-01-n11b-early-owner/**
+- benchmark/2026-10-01-n11-single-owner/offline-load-path/**
+- specs/n11b-early-owner/**
+- tools/spec-checks/tests/n11b_owner.rs
+Forbidden:
+- No frozen-source edits, provider/runtime rebuild, device access or gate-policy changes.
+
+## Completion Criteria
+Scenario: Reachable hook and admission identity
+  Test:
+    Filter: n11b_identity
+  Given the actual N11 logs and deployed provider and child ELFs
+  When callsites, DEX classes and early preload timing are compared
+  Then the hook predates provider JNI registration, real admission uses plain dlopen and address-derived Java and compat owners differ
+
+Scenario: Missing or divergent owner refuses activation
+  Test:
+    Filter: n11b_owner
+  Given mocked musl inheritance and resident handles
+  When inheritance fails, an owner is absent or handles differ
+  Then the production sharing block returns failure without any non-NOLOAD lookup
+
+Scenario: Child-only reproducible offline candidate
+  Test:
+    Filter: n11b_package
+  Given the recorded N10b compiler recipe and U8 package
+  When baseline and two candidate builds finish and a package is staged
+  Then baseline matches dc73a28d, candidates match, only child identity changes, frozen checks have no violation and rollout remains disabled
+
