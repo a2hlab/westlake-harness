@@ -166,7 +166,9 @@ def main(argv=None):
         if smoke.returncode != 0:
             return 1
         for shard in plan['shards']:
-            keys = Path(expand(shard['keys_file'])).read_text().strip()
+            # one key per line or comma-separated (2026-10-01 J10d: a newline list went in as one unknown key)
+            raw = Path(expand(shard['keys_file'])).read_text()
+            keys = ','.join(k for k in raw.replace(',', ' ').split() if not k.startswith('#'))
             sout = out / shard['name']
             cmd = [sys.executable, str(BATCH), '--execute', '--serial', plan['serial'], '--lane', plan['lane'],
                    '--manifest', expand(shard['manifest']), '--input-root', expand(shard['input_root']),
