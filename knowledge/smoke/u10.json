@@ -1,5 +1,5 @@
 {
-  "_comment": "U10 smoke; runtime_fp self-computed.",
+  "_comment": "U10 smoke. FINALIZE at window time (needs cx-bms U10 native合包): (1) replace expect.runtime_fp with the COMBINED jar+native fp (current value 1833eb39872f is JAR-ONLY placeholder); (2) add the native artifacts (policy json + libnativeloader.so) to probe.files. Everything else (controls, the [U10-COMPAT-VISIBLE] marker, boot_fp, jar/stubs probe) is final.",
   "expect": {
     "runtime_fp": "1833eb39872f",
     "boot_fp": "4db882a81732"
@@ -14,6 +14,16 @@
       ],
       "mode": "launch-only",
       "controls": true
+    }
+  ],
+  "fixes": [
+    {
+      "id": "U10-COMPAT-VISIBLE",
+      "key": "helloworld",
+      "_comment": "The host prints [U10-COMPAT-VISIBLE] inherit_requested (APPSPAWN_LOGI, resident-compat.h:39) for EVERY bridged app when it builds the app namespace -- so the marker key is helloworld (the smoke always launches it), not fd-meet (the smoke does not launch fd-meet; fd-meet's benefit is read from its first wall in the full sweep). Confirms the U10ShareResidentCompat host shim is live and non-fatal.",
+      "markers": [
+        "\\[U10-COMPAT-VISIBLE\\] inherit_requested"
+      ]
     }
   ],
   "probe": {
