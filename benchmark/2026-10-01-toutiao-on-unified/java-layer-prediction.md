@@ -67,3 +67,11 @@ Run Toutiao as an ordinary U10 key; its FIRST Java-layer wall after libflipped i
 null system service (phone/wifi) or `AAssetManager` offsets, not a render-stage native. Fix generically
 (stub the service / the N10b asset offsets) with the regression gate; `libnativewindow` + graphics
 constructors are render-stage, addressed when the app reaches them.
+
+## Outer-loop correction (2026-10-01 20:10)
+
+"libnativewindow ×35" does not hold: none of toutiao's 138 `.so` NEED libnativewindow.so and none reference
+`AHardwareBuffer_*` (oc-t4's sweep-wide scan also found 0 consumers). Seven `.so` reference eight `ANativeWindow_*`
+symbols through **libandroid.so** (already in shared_sonames). Against U9's libandroid.so export table two are missing:
+`ANativeWindow_lock` and `ANativeWindow_unlockAndPost` -- the CPU draw-into-window path, the same capability gap as
+fd-plus's Surface software-lock wall (cx-bms no-fatal-fixplan). That is the render-time native wall to plan for.
