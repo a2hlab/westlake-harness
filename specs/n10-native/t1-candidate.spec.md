@@ -1,0 +1,46 @@
+spec: task
+name: "N10 offline candidate and rollback evidence isolation"
+inherits: project
+---
+## Intent
+Combine the five ACK95 09:26 native work items into one reproducible offline candidate and a bounded board-window proposal.
+## Decisions
+- Pin child d240f8d2, runtime 216b68fb and bridge 84695d62 to signed U7 identities before editing their build sources.
+- Establish one shared bridge/runtime owner before creating westlake.sealed.child; do not rebuild bridge or ART.
+- Reuse N8 private Flutter/zlib artifacts; never add the root zlib alias that regressed ZigZag.
+- Evaluate Bitmap, Jitsi, OpenSLES and Unity donors against exact consumer imports and semantics before inclusion.
+- Assess toutiao BitVector without changing libart; record the excluded repair and evidence.
+- Each executor verification attempt gets a new evidence directory, including automatic rollback and resumed rollback.
+## Boundaries
+### Allowed
+- benchmark/2026-10-01-n10-native/**
+- specs/n10-native/**
+- scripts/lab/u7_executor.py
+- benchmark/2026-10-01-u7-executor/test_executor.py
+- tools/spec-checks/tests/n10_native.rs
+- README.md
+- .octos/KNOWLEDGE-DIGEST.md
+- .octos/OPS-RUNBOOK.md
+### Forbidden
+- Board I/O, frozen source changes, original build-input mutation, libart or bridge replacement, and weakening gate policy
+## Acceptance Criteria
+Scenario: Exact source and artifact ownership
+  Test: n10_identity
+  Given the signed U7 312-member identity map and retained build receipts
+  When N10 inputs are audited
+  Then child/runtime/bridge baselines match and each changed source is tied to its real linked artifact
+Scenario: Complete candidate and donor decisions
+  Test: n10_package
+  Given N8 artifacts and the four singleton donor slots plus BitVector evaluation
+  When N10 is assembled
+  Then all included bytes are declared, root zlib is absent, unchanged ART/bridge/frozen members match, and excluded repairs have explicit evidence-based decisions
+Scenario: Recovery reuses no capture directory
+  Test: n10_recovery
+  Given apply verification already wrote settle-0.json and fails
+  When automatic rollback and resumed verification run
+  Then each uses a new evidence directory and baseline identity verification can complete without overwriting or deleting earlier evidence
+Scenario: Strict offline gates and honest proposal
+  Test: n10_gates
+  Given candidate-bound native sidecars and exception proposals
+  When offline preflight and dry-run run
+  Then unresolved or unapproved findings refuse deployment and the report records exact counts, receipts and the proposed single-batch window

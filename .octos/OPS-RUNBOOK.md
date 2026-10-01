@@ -153,3 +153,4 @@
 - **取「一个提交自己新增的文件」用 `git show --name-only --diff-filter=A --format= <commit>`,不要用 `git diff --diff-filter=A HEAD <commit>`**(2026-10-01 外环落 B10 时):后者比的是两棵整树,分支与 master 分叉后会把分支上所有 master 没有的文件都当成「新增」——外环一度多检出 1,074 个分支独有文件进暂存区,提交前按「应落集合 = 清单 paths + 两个提交各自的新增」算差集清掉。大批量落库前先算应落集合,提交前核 `git diff --cached --name-only --diff-filter=A | wc -l` 等于它。
 - **证据包打完先自检再记哈希**:`tar -tzf <包> | head` 列出成员、`gzip -t` 通过、贴字节数,之后才写 SHA256SUMS。2026-10-01 07:01 一个 ×6 冷启动证据包只有 29 字节(截断的空 gzip),哈希照记,表因此无法复核。
 - **U7 统一态的重启恢复**:板子重启后 U7 叠层丢失、回 U5 底座。恢复:只读确认底座指纹 73ecf422dba2/0876029078e2 → 用 master 的 scripts/lab/u7_executor.py(a305b9a29 起)主机侧 apply 例子包 → 核 RUNTIME 68b7fb016253 / BOOTIMAGE 8fe2e5fd7d65 与 312 身份 → HelloWorld t20 截图。apply 前先清掉残留 app 进程(执行器会拒)。
+- 2026-10-01 cx-t0：U7执行器每次verify独占 verification-<uuid> 证据目录（含自动/恢复回滚），返回 evidence_directory；遇旧settle-0.json勿删证据，用本修复或独立恢复目录（benchmark/2026-10-01-n10-native/test_recovery.py）。

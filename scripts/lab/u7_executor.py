@@ -409,6 +409,12 @@ class DeviceIO(native.Deployment):
             raise RuntimeError('mount ownership mismatch: '+op['target'])
 
     def verify(self, expected, generation):
+        # A failed apply may already have desktop-launch captures. Automatic
+        # rollback uses this same DeviceIO, and desktop_launch correctly refuses
+        # stale settle-0.json. Keep every attempt in a fresh directory instead
+        # of overwriting or deleting the earlier evidence.
+        verification_out = self.out / ('verification-' + uuid.uuid4().hex)
+        verification_out.mkdir()
         rows=[r for r in self.ps() if r['name']=='appspawn-x' and r['uid']==0]
         if len(rows)!=1:raise RuntimeError('parent count != 1')
         parent=rows[0]['pid']
@@ -419,18 +425,19 @@ class DeviceIO(native.Deployment):
             if self.hashes([f'/proc/{pid}/exe'])[f'/proc/{pid}/exe']!=expected[HOST]:raise RuntimeError('process executable mismatch')
         view(parent)
         pkg='com.example.helloworld';data=self.b.parse_bundle(self.shell('bm dump -n '+pkg),pkg)
-        if not self.b.cold_stop(self.board,pkg,data['uid'],self.out,'verify-stop'):raise RuntimeError('control cold stop failed')
+        if not self.b.cold_stop(self.board,pkg,data['uid'],verification_out,'verify-stop'):raise RuntimeError('control cold stop failed')
         remote='/data/local/tmp/u7-smoke-'+uuid.uuid4().hex
         self.shell('mkdir '+remote)
-        self.b.desktop_launch(self.board,{'package':pkg,'launch_activity':data['desktop_activity']},remote,self.out,{'package':pkg})
+        self.b.desktop_launch(self.board,{'package':pkg,'launch_activity':data['desktop_activity']},remote,verification_out,{'package':pkg})
         time.sleep(4)
         children=[r for r in self.ps() if r['uid']==data['uid'] and r['ppid']==parent and r['name']=='appspawn-x']
         if len(children)!=1:raise RuntimeError('control child count != 1')
         pid=children[0]['pid'];view(pid)
-        maps=self.shell(f'cat /proc/{pid}/maps');(self.out/f'child-{pid}-maps.txt').write_text(maps)
+        maps=self.shell(f'cat /proc/{pid}/maps');(verification_out/f'child-{pid}-maps.txt').write_text(maps)
         verdict=native.check_maps(maps,generation)
         if not verdict['passed']:raise RuntimeError('single ART/route openjdk/bridge map gate failed')
-        return {'parent':parent,'child':pid,'maps':verdict,'screenshot_verdict':'not evaluated'}
+        return {'parent':parent,'child':pid,'maps':verdict,'evidence_directory':str(verification_out),
+                'screenshot_verdict':'not evaluated'}
 
 
 def main(argv=None):
