@@ -207,3 +207,34 @@ Outer confirmed the v2 `ClassNotFoundException@kotlinx.coroutines.CoroutineStart
 | **fdsan_signal** | 2 (fd-kitchenowl, localsend) | `I C02d11/DfxFaultLogger: Reason:Signal:DEBUG SIGNAL(FDSAN)` | fdsan signal; same family as mcdonalds fd 31 fd-san |
 | **sigsegv_sigabrt** | 2 (cv2-com-ath0-rpn, subwaysurfers) | `I C02d11/DfxFaultLogger: Reason:Signal:SIGSEGV(SIGABRT)(SEGV_MAPERR/SI_TKILL)` | Native crash; check faultlog stack top non-system frame per key |
 | **no_first_fatal** | 10 (cv2-com-nbossard-packlist, cv2-com-nononsenseapps-notepad, fd-fennec_fdroid, fd-meet, fd-musicplayer, fd-plus, cv2-com-bytehamster-flowitgame, cv2-com-kaajjo-libresudoku, firefox, ppsspp, toutiao) | cause=None and first_fatal=None (no termination found in hilog) | no-observed-termination; process-disappeared-cause-unknown or no fatal found |
+
+## provider-init ×4 拆分(outer-determined, confirmed)
+
+Outer loop's finding (ACK(90) latest): the four provider-init keys have four distinct innermost causes, not one framework fix.
+
+| Key | Innermost cause | Cluster / fix candidate | Notes |
+|---|---|---|---|
+| **vlc** | Theme attribute resolution failure (`android.view.InflateException` on a theme attr that the adapter's theme/resources can't resolve) | **J10d** (theme attr resolution) | AppCompat theme attribute lookup fails in the adapter's resource resolution path. |
+| **dev-obfusk-jiten-webview** | `ConstraintLayout$LayoutParams.widget` is null (the WebView stub's widget field is null when ConstraintLayout tries to use it as a constraint target) | **J10e** (WebView stub widget field) | Same family as the WebView stub cluster — the stub's widget/LayoutParams/widget-field is null, this time hit via ConstraintLayout's constraint resolution instead of measure/add. |
+| **cv2-com-lcdcode-moodcairns** | `javax.crypto.AEADBadTagException` (GCM mac check failed) when the app's keystore master key can't be decrypted | **单列** (keystore master key decryption) | Android Keystore master key unwrap fails in the adapter's keystore/crypto path. Not a framework fix shared with other keys; check the adapter's keystore provider / hardware-backed key store stub. |
+| **mcdonalds** | Native library `dlopen_ns` failed (missing shared library or symbol, same family as the UnsatisfiedLinkError cluster) | **missing-lib** (already in UnsatisfiedLinkError cluster) | Same as earlier mcdonalds fd 31 fd-san; the provider init fails because a native lib can't load. Already in the missing-lib cluster's fix path (SONAME alias / provide the lib). |
+
+### Innermost cause per key (from run_index / hilog)
+
+- **vlc**: `RuntimeException: Unable to start activity …: android.view.InflateException: Binary XML file line #… in com.videolan.vlc:layout/…: Failed to resolve attribute at index …` — theme attr resolution failure in the adapter's resource path.
+- **dev-obfusk-jiten-webview**: `RuntimeException: Unable to start activity …: java.lang.NullPointerException: Attempt to read from field 'int androidx.constraintlayout.widget.ConstraintLayout$LayoutParams.widget' on a null object reference` — ConstraintLayout's widget field is null (WebView stub).
+- **cv2-com-lcdcode-moodcairns**: `RuntimeException: Unable to get provider androidx.startup.InitializationProvider: javax.crypto.AEADBadTagException: mac check in GCM failed` — keystore master key unwrap fails.
+- **mcdonalds**: `RuntimeException: Unable to get provider androidx.startup.InitializationProvider: java.lang.UnsatisfiedLinkError: dlopen_ns failed for …: Error loading shared library libz.so: (needed by …)` — native lib missing.
+
+### Minimal fix draft
+
+- **vlc** (J10d): make the adapter's theme/resource resolution return the attribute (or a safe default) instead of throwing InflateException on missing theme attrs.
+- **jiten-webview** (J10e): make the WebView stub's `widget` field non-null (or ConstraintLayout skip constraint resolution when widget is null).
+- **moodcairns** (keystore): make the adapter's keystore provider return a valid master key (or a deterministic test key) for AEAD unwrap.
+- **mcdonalds** (missing-lib): same SONAME alias / provide the lib as the UnsatisfiedLinkError cluster.
+
+**Activation log line (one line, grep-able):**
+```
+[PROVIDER-INIT] androidx.startup InitializationProvider created OK — keystore master key unwrap succeeded / theme attr resolved / WebView widget non-null / native lib loaded
+```
+When this line appears in a lit round, the provider-init path succeeded for that key.
