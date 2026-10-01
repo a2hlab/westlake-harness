@@ -36,7 +36,10 @@ def strings(path):
     for section in ('.rodata', '.data.rel.ro'):
         text = subprocess.run([readelf(), '-p', section, str(path)], capture_output=True, text=True).stdout
         out |= {m.group(1) for m in re.finditer(r'^\s*\[\s*[0-9a-f]+\]\s+(.{4,})$', text, re.M)}
-    return out
+    # .data.rel.ro holds pointers whose bytes sometimes print (cx-bms 2026-10-02 00:04 on appspawn-x: "....~...~").
+    # Keep strings that look like text: mostly identifier / path / format characters and at least one letter.
+    textish = re.compile(r'[A-Za-z0-9_./+%:\[\]{}()=, -]')
+    return {x for x in out if re.search('[A-Za-z]', x) and sum(1 for c in x if textish.match(c)) >= 0.9 * len(x)}
 
 
 def main():
