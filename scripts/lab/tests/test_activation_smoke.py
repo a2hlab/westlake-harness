@@ -76,6 +76,18 @@ class Smoke(unittest.TestCase):
         ok, _ = s.evaluate(SPEC, self.runs(), {'knot': '[J10-NOTITLE] installed'}, {'error': 'child count 0'})
         self.assertFalse(ok)
 
+    def test_install_window_hilog_is_searched(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            key = Path(d) / 'knot'
+            key.mkdir()
+            (key / 'install-hilog.txt').write_text('ICONLESS_APK_TEMPLATE_PLACEHOLDER: apk=x class=DECLARED_XML_ONLY\n')
+            (key / 'hilog.txt').write_text('launch line\n')
+            text = s.key_hilog(key)
+        self.assertEqual(s.marker_hits(text, [r'ICONLESS_APK_TEMPLATE_PLACEHOLDER: apk=.* class=DECLARED_XML_ONLY',
+                                              'launch line']), {r'ICONLESS_APK_TEMPLATE_PLACEHOLDER: apk=.* class=DECLARED_XML_ONLY': 1,
+                                                                'launch line': 1})
+
 
 if __name__ == '__main__':
     unittest.main()

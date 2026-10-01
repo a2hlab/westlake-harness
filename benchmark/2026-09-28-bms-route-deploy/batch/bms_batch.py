@@ -774,9 +774,19 @@ def collect_app(board, entry, input_root, out, remote, wait_seconds=15, *,
                 raise AppFailure('staged APK hash differs')
             if reinstall:
                 rec['uninstall'] = uninstall_existing(board, app, out)
+            if hilog_seconds is not None:
+                # 2026-10-01: installer-side fixes log during bm install (B7 ICONLESS_APK_TEMPLATE_PLACEHOLDER), and the
+                # pre-launch `hilog -r` below wiped them before hilog.txt was dumped; keep the install window separately.
+                board.shell('hilog -r')
             rc, response = board.shell('bm install -p ' + shlex.quote(remote_apk), required=False, timeout=180)
             (out / 'install.txt').write_text(response)
             rec['install'] = {'return_code': rc, 'success_text': bm_success(rc, response, 'install'), 'output': str(out / 'install.txt')}
+            if hilog_seconds is not None:
+                target = remote + '/install-hilog.txt'
+                hrc, _ = board.shell('hilog -x > ' + shlex.quote(target) + ' 2>&1', required=False, timeout=60)
+                if hrc == 0:
+                    board.receive(target, out / 'install-hilog.txt')
+                    rec['install']['hilog'] = str(out / 'install-hilog.txt')
             save(out/'record.json', rec)
             board.shell('rm -f ' + shlex.quote(remote_apk))
         rc, response = board.shell('bm dump -n ' + shlex.quote(app['package']), required=False)
