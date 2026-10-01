@@ -209,6 +209,41 @@ def query(args):
     return 0
 
 
+def rate(args):
+    """How often a hilog pattern occurs in each verdict group -- the control table a discriminant claim needs.
+
+    Retro 19 (2026-10-01): three conclusions that evening rested on a comparison without a fair control (a white-screen
+    rule read off two runs, a rescue rate padded with single-session apps, a #96 cause the working build shared).
+    One row per (run, key) that still has its hilog; verdict from --signoff (one outer sign-off per run set) joined by
+    key, so only rows of the signed runs count (--run-pattern narrows them). Prints hits/rows per verdict group."""
+    keys = json.loads(Path(args.signoff).read_text())['keys']
+    verdict = {e['key']: e['verdict'] for e in keys} if isinstance(keys, list) else {k: v['verdict'] for k, v in keys.items()}
+    ws = lab_paths.workspaces()
+    pat = re.compile(args.pattern)
+    groups, missing = {}, 0
+    for r in map(json.loads, open(args.index)):
+        if args.runtime and r.get('runtime_fp') != args.runtime:
+            continue
+        if args.run_pattern and not re.search(args.run_pattern, r['run']):
+            continue
+        v = verdict.get(r['key'])
+        if v is None:
+            continue
+        hilog = Path(r['run'].replace('$WORKSPACES', str(ws))) / r['key'] / 'hilog.txt'
+        if not hilog.exists():
+            missing += 1
+            continue
+        with open(hilog, errors='replace') as fh:
+            hit = any(pat.search(line) for line in fh)
+        g = groups.setdefault(v, [0, 0])
+        g[0] += hit
+        g[1] += 1
+    print(f'pattern {args.pattern!r}  (rows without hilog skipped: {missing})')
+    for v, (hit, n) in sorted(groups.items(), key=lambda kv: -kv[1][1]):
+        print(f'  {v:28s} {hit:4d}/{n:<4d} {100 * hit / n:5.1f}%')
+    return 0
+
+
 # Known answers checked after every build (retro 18, 2026-10-01: a cause field taken from "the first exception anywhere"
 # produced a 14-key false cluster, and a narrow fatal pattern hid 11 real fatals; both would have failed these).
 ANCHORS = [
@@ -243,6 +278,12 @@ def main(argv=None):
     b.add_argument('--allow-drop', action='store_true', help='accept losing rows whose run files no longer exist')
     c = sub.add_parser('check', help='verify known answers on the built index')
     c.add_argument('--index', type=Path, default=None)
+    t = sub.add_parser('rate', help='hilog pattern hit rate per signed verdict group (the control table)')
+    t.add_argument('--index', type=Path, default=None)
+    t.add_argument('--pattern', required=True)
+    t.add_argument('--signoff', required=True, help='outer sign-off JSON with per-key verdicts')
+    t.add_argument('--runtime')
+    t.add_argument('--run-pattern', help='regex on the run path (only the signed runs)')
     q = sub.add_parser('query')
     q.add_argument('--index', type=Path, default=None)
     q.add_argument('--key')
@@ -272,6 +313,8 @@ def main(argv=None):
         new_path.replace(args.index)
         print(f'indexed {n} (run, key) rows -> {args.index}')
         return check(args.index)
+    if args.cmd == 'rate':
+        return rate(args)
     if args.cmd == 'check':
         return check(args.index)
     return query(args)
