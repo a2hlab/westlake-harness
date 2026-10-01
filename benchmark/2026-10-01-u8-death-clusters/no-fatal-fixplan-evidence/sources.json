@@ -1,0 +1,930 @@
+{
+  "schema": "u8-fixplan-sources-v1",
+  "origin": {
+    "tag": "android-14.0.0_r1",
+    "frameworks_base_head": "299fe6f5d6fc6f1af7c3411dcf4e5efdf7217368",
+    "source_note_sha256": "3c3433084c6825cc73245dcfc824a73ec4cc761055a8f2757643cdd91de8615b",
+    "sha_manifest_sha256": "05eb322ab0099ec44a0c4ca209fc0e6fa9c603f5aaa639658dc18ffbf189b5dd",
+    "manifest_entries": 6611,
+    "origin": "hw248 read-only same-tag checkout; local SOURCE.txt; libcore/bionic per-repository HEAD not supplied"
+  },
+  "sources": [
+    {
+      "id": "bitmap-java",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/graphics/java/android/graphics/Bitmap.java",
+      "sha256": "88aa989eeab261f3951b6286bc40f209910c13f29d998cabab6234bb818f2570",
+      "line_count": 2486,
+      "snippets": [
+        {
+          "start_line": 820,
+          "lines": [
+            "    public static Bitmap createScaledBitmap(@NonNull Bitmap src, int dstWidth, int dstHeight,",
+            "            boolean filter) {",
+            "        Matrix m = new Matrix();",
+            "",
+            "        final int width = src.getWidth();",
+            "        final int height = src.getHeight();",
+            "        if (width != dstWidth || height != dstHeight) {",
+            "            final float sx = dstWidth / (float) width;",
+            "            final float sy = dstHeight / (float) height;",
+            "            m.setScale(sx, sy);",
+            "        }",
+            "        return Bitmap.createBitmap(src, 0, 0, width, height, m, filter);"
+          ]
+        },
+        {
+          "start_line": 953,
+          "lines": [
+            "            }",
+            "        }",
+            "",
+            "        ColorSpace cs = source.getColorSpace();",
+            "",
+            "        if (m == null || m.isIdentity()) {",
+            "            bitmap = createBitmap(null, neww, newh, newConfig, source.hasAlpha(), cs);",
+            "            paint = null;   // not needed",
+            "        } else {"
+          ]
+        },
+        {
+          "start_line": 970,
+          "lines": [
+            "            if (transformed) {",
+            "                if (transformedConfig != Config.ARGB_8888 && transformedConfig != Config.RGBA_F16) {",
+            "                    transformedConfig = Config.ARGB_8888;",
+            "                    if (cs == null) {",
+            "                        cs = ColorSpace.get(ColorSpace.Named.SRGB);",
+            "                    }",
+            "                }",
+            "            }",
+            "",
+            "            bitmap = createBitmap(null, neww, newh, transformedConfig,",
+            "                    transformed || source.hasAlpha(), cs);"
+          ]
+        },
+        {
+          "start_line": 1200,
+          "lines": [
+            "            throw new IllegalArgumentException(\"can't create mutable bitmap with Config.HARDWARE\");",
+            "        }",
+            "        if (colorSpace == null && config != Config.ALPHA_8) {",
+            "            throw new IllegalArgumentException(\"can't create bitmap without a color space\");",
+            "        }",
+            ""
+          ]
+        },
+        {
+          "start_line": 1870,
+          "lines": [
+            "    @Nullable",
+            "    public final ColorSpace getColorSpace() {",
+            "        checkRecycled(\"getColorSpace called on a recycled bitmap\");",
+            "        if (mColorSpace == null) {",
+            "            mColorSpace = nativeComputeColorSpace(mNativePtr);",
+            "        }",
+            "        return mColorSpace;",
+            "    }"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "88aa989eeab261f3951b6286bc40f209910c13f29d998cabab6234bb818f2570  frameworks/base/graphics/java/android/graphics/Bitmap.java",
+      "repository_head": "299fe6f5d6fc6f1af7c3411dcf4e5efdf7217368"
+    },
+    {
+      "id": "bitmap-jni",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/libs/hwui/jni/Bitmap.cpp",
+      "sha256": "7bcb7148d6333f5f89b35f761de8ccecc24a4ec6ae0408a4539f3c4fbec40877",
+      "line_count": 1286,
+      "snippets": [
+        {
+          "start_line": 942,
+          "lines": [
+            "static jobject Bitmap_computeColorSpace(JNIEnv* env, jobject, jlong bitmapHandle) {",
+            "    LocalScopedBitmap bitmapHolder(bitmapHandle);",
+            "    if (!bitmapHolder.valid()) return nullptr;",
+            "",
+            "    SkColorSpace* colorSpace = bitmapHolder->info().colorSpace();",
+            "    if (colorSpace == nullptr) return nullptr;",
+            "",
+            "    return GraphicsJNI::getColorSpace(env, colorSpace, bitmapHolder->info().colorType());"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "7bcb7148d6333f5f89b35f761de8ccecc24a4ec6ae0408a4539f3c4fbec40877  frameworks/base/libs/hwui/jni/Bitmap.cpp",
+      "repository_head": "299fe6f5d6fc6f1af7c3411dcf4e5efdf7217368"
+    },
+    {
+      "id": "surface-java",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java/android/view/Surface.java",
+      "sha256": "479f3fb7a65d4bdc0dd340ddd8b963095c4f988b521324507f5ededed522895b",
+      "line_count": 1182,
+      "snippets": [
+        {
+          "start_line": 462,
+          "lines": [
+            "    public Canvas lockCanvas(Rect inOutDirty)",
+            "            throws Surface.OutOfResourcesException, IllegalArgumentException {",
+            "        synchronized (mLock) {",
+            "            checkNotReleasedLocked();",
+            "            if (mLockedObject != 0) {",
+            "                // Ideally, nativeLockCanvas() would throw in this situation and prevent the",
+            "                // double-lock, but that won't happen if mNativeObject was updated.  We can't",
+            "                // abandon the old mLockedObject because it might still be in use, so instead",
+            "                // we just refuse to re-lock the Surface.",
+            "                throw new IllegalArgumentException(\"Surface was already locked\");",
+            "            }",
+            "            mLockedObject = nativeLockCanvas(mNativeObject, mCanvas, inOutDirty);",
+            "            return mCanvas;"
+          ]
+        },
+        {
+          "start_line": 496,
+          "lines": [
+            "    private void unlockSwCanvasAndPost(Canvas canvas) {",
+            "        if (canvas != mCanvas) {",
+            "            throw new IllegalArgumentException(\"canvas object must be the same instance that \"",
+            "                    + \"was previously returned by lockCanvas\");",
+            "        }",
+            "        if (mNativeObject != mLockedObject) {",
+            "            Log.w(TAG, \"WARNING: Surface's mNativeObject (0x\" +",
+            "                    Long.toHexString(mNativeObject) + \") != mLockedObject (0x\" +",
+            "                    Long.toHexString(mLockedObject) +\")\");",
+            "        }",
+            "        if (mLockedObject == 0) {",
+            "            throw new IllegalStateException(\"Surface was not locked\");",
+            "        }",
+            "        try {",
+            "            nativeUnlockCanvasAndPost(mLockedObject, canvas);",
+            "        } finally {",
+            "            nativeRelease(mLockedObject);",
+            "            mLockedObject = 0;",
+            "        }"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "479f3fb7a65d4bdc0dd340ddd8b963095c4f988b521324507f5ededed522895b  frameworks/base/core/java/android/view/Surface.java",
+      "repository_head": "299fe6f5d6fc6f1af7c3411dcf4e5efdf7217368"
+    },
+    {
+      "id": "surface-jni",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/jni/android_view_Surface.cpp",
+      "sha256": "a70f59c5ea0b34ad374c911f83eea57a060eced2bf7de77db95847e657b7c527",
+      "line_count": 510,
+      "snippets": [
+        {
+          "start_line": 188,
+          "lines": [
+            "static jlong nativeLockCanvas(JNIEnv* env, jclass clazz,",
+            "        jlong nativeObject, jobject canvasObj, jobject dirtyRectObj) {",
+            "    sp<Surface> surface(reinterpret_cast<Surface *>(nativeObject));",
+            "",
+            "    if (!isSurfaceValid(surface)) {",
+            "        jniThrowException(env, IllegalArgumentException, NULL);",
+            "        return 0;",
+            "    }",
+            "",
+            "    if (!ACanvas_isSupportedPixelFormat(ANativeWindow_getFormat(surface.get()))) {",
+            "        native_window_set_buffers_format(surface.get(), PIXEL_FORMAT_RGBA_8888);",
+            "    }"
+          ]
+        },
+        {
+          "start_line": 212,
+          "lines": [
+            "    ANativeWindow_Buffer buffer;",
+            "    status_t err = surface->lock(&buffer, dirtyRectPtr);",
+            "    if (err < 0) {",
+            "        const char* const exception = (err == NO_MEMORY) ?",
+            "                OutOfResourcesException : IllegalArgumentException;",
+            "        jniThrowException(env, exception, NULL);",
+            "        return 0;",
+            "    }",
+            "",
+            "    graphics::Canvas canvas(env, canvasObj);",
+            "    canvas.setBuffer(&buffer, static_cast<int32_t>(surface->getBuffersDataSpace()));"
+          ]
+        },
+        {
+          "start_line": 234,
+          "lines": [
+            "",
+            "    // Create another reference to the surface and return it.  This reference",
+            "    // should be passed to nativeUnlockCanvasAndPost in place of mNativeObject,",
+            "    // because the latter could be replaced while the surface is locked.",
+            "    sp<Surface> lockedSurface(surface);",
+            "    lockedSurface->incStrong(&sRefBaseOwner);",
+            "    return (jlong) lockedSurface.get();"
+          ]
+        },
+        {
+          "start_line": 243,
+          "lines": [
+            "static void nativeUnlockCanvasAndPost(JNIEnv* env, jclass clazz,",
+            "        jlong nativeObject, jobject canvasObj) {",
+            "    sp<Surface> surface(reinterpret_cast<Surface *>(nativeObject));",
+            "    if (!isSurfaceValid(surface)) {",
+            "        return;",
+            "    }",
+            "",
+            "    // detach the canvas from the surface",
+            "    graphics::Canvas canvas(env, canvasObj);",
+            "    canvas.setBuffer(nullptr, ADATASPACE_UNKNOWN);",
+            "",
+            "    // unlock surface",
+            "    status_t err = surface->unlockAndPost();",
+            "    if (err < 0) {",
+            "        jniThrowException(env, IllegalArgumentException, NULL);",
+            "    }"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "a70f59c5ea0b34ad374c911f83eea57a060eced2bf7de77db95847e657b7c527  frameworks/base/core/jni/android_view_Surface.cpp",
+      "repository_head": "299fe6f5d6fc6f1af7c3411dcf4e5efdf7217368"
+    },
+    {
+      "id": "resolver",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java/android/content/ContentResolver.java",
+      "sha256": "0f2fddd11742c1f6afb31f513f500876b2735b37466b5d036b54c72a564df4c3",
+      "line_count": 4266,
+      "snippets": [
+        {
+          "start_line": 1213,
+          "lines": [
+            "        IContentProvider unstableProvider = acquireUnstableProvider(uri);",
+            "        if (unstableProvider == null) {",
+            "            return null;",
+            "        }",
+            "        IContentProvider stableProvider = null;",
+            "        Cursor qCursor = null;"
+          ]
+        },
+        {
+          "start_line": 1230,
+          "lines": [
+            "                        queryArgs, remoteCancellationSignal);",
+            "            } catch (DeadObjectException e) {",
+            "                // The remote process has died...  but we only hold an unstable",
+            "                // reference though, so we might recover!!!  Let's try!!!!",
+            "                // This is exciting!!1!!1!!!!1",
+            "                unstableProviderDied(unstableProvider);",
+            "                stableProvider = acquireProvider(uri);",
+            "                if (stableProvider == null) {",
+            "                    return null;",
+            "                }",
+            "                qCursor = stableProvider.query(mContext.getAttributionSource(), uri, projection,",
+            "                        queryArgs, remoteCancellationSignal);",
+            "            }",
+            "            if (qCursor == null) {",
+            "                return null;",
+            "            }",
+            "",
+            "            // Force query execution.  Might fail and throw a runtime exception here.",
+            "            qCursor.getCount();",
+            "            long durationMillis = SystemClock.uptimeMillis() - startTime;",
+            "            maybeLogQueryToEventLog(durationMillis, uri, projection, queryArgs);",
+            "",
+            "            // Wrap the cursor object into CursorWrapperInner object.",
+            "            final IContentProvider provider = (stableProvider != null) ? stableProvider",
+            "                    : acquireProvider(uri);",
+            "            final CursorWrapperInner wrapper = new CursorWrapperInner(qCursor, provider);",
+            "            stableProvider = null;",
+            "            qCursor = null;",
+            "            return wrapper;",
+            "        } catch (RemoteException e) {",
+            "            // Arbitrary and not worth documenting, as Activity",
+            "            // Manager will kill this process shortly anyway.",
+            "            return null;",
+            "        } finally {"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "0f2fddd11742c1f6afb31f513f500876b2735b37466b5d036b54c72a564df4c3  frameworks/base/core/java/android/content/ContentResolver.java",
+      "repository_head": "299fe6f5d6fc6f1af7c3411dcf4e5efdf7217368"
+    },
+    {
+      "id": "cursor-loader",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java/android/content/CursorLoader.java",
+      "sha256": "ce773e89320bff300a08fc67615a662ec27f4529112f054433fd3806c22ef84b",
+      "line_count": 251,
+      "snippets": [
+        {
+          "start_line": 64,
+          "lines": [
+            "    public Cursor loadInBackground() {",
+            "        synchronized (this) {",
+            "            if (isLoadInBackgroundCanceled()) {",
+            "                throw new OperationCanceledException();",
+            "            }",
+            "            mCancellationSignal = new CancellationSignal();",
+            "        }",
+            "        try {",
+            "            Cursor cursor = getContext().getContentResolver().query(mUri, mProjection, mSelection,",
+            "                    mSelectionArgs, mSortOrder, mCancellationSignal);",
+            "            if (cursor != null) {",
+            "                try {",
+            "                    // Ensure the cursor window is filled.",
+            "                    cursor.getCount();",
+            "                    cursor.registerContentObserver(mObserver);",
+            "                } catch (RuntimeException ex) {",
+            "                    cursor.close();",
+            "                    throw ex;",
+            "                }",
+            "            }",
+            "            return cursor;",
+            "        } finally {",
+            "            synchronized (this) {",
+            "                mCancellationSignal = null;",
+            "            }",
+            "        }",
+            "    }",
+            "",
+            "    @Override"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "ce773e89320bff300a08fc67615a662ec27f4529112f054433fd3806c22ef84b  frameworks/base/core/java/android/content/CursorLoader.java",
+      "repository_head": "299fe6f5d6fc6f1af7c3411dcf4e5efdf7217368"
+    },
+    {
+      "id": "activity-thread",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java/android/app/ActivityThread.java",
+      "sha256": "060f29dde85d10b0c074d6104aedcff7c1b392c74d2a02d59c1e5299f4688f7a",
+      "line_count": 8274,
+      "snippets": [
+        {
+          "start_line": 6957,
+          "lines": [
+            "            // If the app is being launched for full backup or restore, bring it up in",
+            "            // a restricted environment with the base application class.",
+            "            app = data.info.makeApplicationInner(data.restrictedBackupMode, null);"
+          ]
+        },
+        {
+          "start_line": 6978,
+          "lines": [
+            "",
+            "            // don't bring up providers in restricted mode; they may depend on the",
+            "            // app's custom Application class",
+            "            if (!data.restrictedBackupMode) {",
+            "                if (!ArrayUtils.isEmpty(data.providers)) {",
+            "                    installContentProviders(app, data.providers);",
+            "                }",
+            "            }"
+          ]
+        },
+        {
+          "start_line": 6996,
+          "lines": [
+            "            }",
+            "            try {",
+            "                mInstrumentation.callApplicationOnCreate(app);",
+            "            } catch (Exception e) {",
+            "                if (!mInstrumentation.onException(app, e)) {",
+            "                    throw new RuntimeException(",
+            "                      \"Unable to create application \" + app.getClass().getName()",
+            "                      + \": \" + e.toString(), e);"
+          ]
+        },
+        {
+          "start_line": 3653,
+          "lines": [
+            "    private Activity performLaunchActivity(ActivityClientRecord r, Intent customIntent) {",
+            "        ActivityInfo aInfo = r.activityInfo;",
+            "        if (r.packageInfo == null) {",
+            "            r.packageInfo = getPackageInfo(aInfo.applicationInfo, mCompatibilityInfo,",
+            "                    Context.CONTEXT_INCLUDE_CODE);",
+            "        }"
+          ]
+        },
+        {
+          "start_line": 3674,
+          "lines": [
+            "        try {",
+            "            java.lang.ClassLoader cl = appContext.getClassLoader();",
+            "            activity = mInstrumentation.newActivity(",
+            "                    cl, component.getClassName(), r.intent);",
+            "            StrictMode.incrementExpectedActivityCount(activity.getClass());",
+            "            r.intent.setExtrasClassLoader(cl);",
+            "            r.intent.prepareToEnterProcess(isProtectedComponent(r.activityInfo),"
+          ]
+        },
+        {
+          "start_line": 7753,
+          "lines": [
+            "                localProvider = packageInfo.getAppFactory()",
+            "                        .instantiateProvider(cl, info.name);",
+            "                provider = localProvider.getIContentProvider();",
+            "                if (provider == null) {",
+            "                    Slog.e(TAG, \"Failed to instantiate class \" +",
+            "                          info.name + \" from sourceDir \" +",
+            "                          info.applicationInfo.sourceDir);",
+            "                    return null;",
+            "                }",
+            "                if (DEBUG_PROVIDER) Slog.v(",
+            "                    TAG, \"Instantiating local provider \" + info.name);",
+            "                // XXX Need to create the correct context for this provider.",
+            "                localProvider.attachInfo(c, info);"
+          ]
+        },
+        {
+          "start_line": 7795,
+          "lines": [
+            "                } else {",
+            "                    holder = new ContentProviderHolder(info);",
+            "                    holder.provider = provider;",
+            "                    holder.noReleaseNeeded = true;",
+            "                    pr = installProviderAuthoritiesLocked(provider, localProvider, holder);",
+            "                    mLocalProviders.put(jBinder, pr);"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "060f29dde85d10b0c074d6104aedcff7c1b392c74d2a02d59c1e5299f4688f7a  frameworks/base/core/java/android/app/ActivityThread.java",
+      "repository_head": "299fe6f5d6fc6f1af7c3411dcf4e5efdf7217368"
+    },
+    {
+      "id": "loaded-apk",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java/android/app/LoadedApk.java",
+      "sha256": "7e7c27e3e4bc77953c1432348e3c538adff93ad73233ecc0242089e58e7da37f",
+      "line_count": 2292,
+      "snippets": [
+        {
+          "start_line": 1456,
+          "lines": [
+            "            // applications in the same process to handle discrepancies",
+            "            NetworkSecurityConfigProvider.handleNewApplication(appContext);",
+            "            app = mActivityThread.mInstrumentation.newApplication(",
+            "                    cl, appClass, appContext);",
+            "            appContext.setOuterContext(app);",
+            "        } catch (Exception e) {",
+            "            if (!mActivityThread.mInstrumentation.onException(app, e)) {",
+            "                Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);",
+            "                throw new RuntimeException(",
+            "                    \"Unable to instantiate application \" + appClass",
+            "                    + \" package \" + mPackageName + \": \" + e.toString(), e);",
+            "            }",
+            "        }"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "7e7c27e3e4bc77953c1432348e3c538adff93ad73233ecc0242089e58e7da37f  frameworks/base/core/java/android/app/LoadedApk.java",
+      "repository_head": "299fe6f5d6fc6f1af7c3411dcf4e5efdf7217368"
+    },
+    {
+      "id": "application",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java/android/app/Application.java",
+      "sha256": "6cfab1d20ff3942d49050b1d61cedd16cc8d7a6db6644047fcae8a58fbbc1e40",
+      "line_count": 650,
+      "snippets": [
+        {
+          "start_line": 345,
+          "lines": [
+            "    /* package */ final void attach(Context context) {",
+            "        attachBaseContext(context);",
+            "        mLoadedApk = ContextImpl.getImpl(context).mPackageInfo;",
+            "    }",
+            "",
+            "    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)",
+            "        /* package */ void dispatchActivityPreCreated(@NonNull Activity activity,"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "6cfab1d20ff3942d49050b1d61cedd16cc8d7a6db6644047fcae8a58fbbc1e40  frameworks/base/core/java/android/app/Application.java",
+      "repository_head": "299fe6f5d6fc6f1af7c3411dcf4e5efdf7217368"
+    },
+    {
+      "id": "locale",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/libcore/ojluni/src/main/java/java/util/Locale.java",
+      "sha256": "a608a5534b4c22fb9f50bfd50706c52fadd5c00bd1271fd8345faa68b2a4b95a",
+      "line_count": 3972,
+      "snippets": [
+        {
+          "start_line": 2173,
+          "lines": [
+            "    public String getDisplayCountry(Locale locale) {",
+            "        String countryCode = baseLocale.getRegion();",
+            "        if (countryCode.isEmpty()) {",
+            "            return \"\";",
+            "        }",
+            "",
+            "        final String normalizedRegion = normalizeAndValidateRegion(",
+            "                countryCode, false /* strict */);",
+            "        if (normalizedRegion.isEmpty()) {",
+            "            return countryCode;",
+            "        }",
+            "",
+            "        String result = LocaleNative.getDisplayCountry(this, locale);",
+            "        if (result == null) { // TODO: do we need to do this, or does ICU do it for us?",
+            "            result = LocaleNative.getDisplayCountry(this, Locale.getDefault());",
+            "        }",
+            "        return result;"
+          ]
+        },
+        {
+          "start_line": 2531,
+          "lines": [
+            "        String countryCode = baseLocale.getRegion();",
+            "        if (!countryCode.isEmpty()) {",
+            "            if (count == 1) {",
+            "                buffer.append(\" (\");",
+            "            } else if (count == 2) {",
+            "                buffer.append(\",\");",
+            "            }",
+            "            String displayCountry = getDisplayCountry(locale);",
+            "            buffer.append(displayCountry.isEmpty() ? countryCode : displayCountry);"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "a608a5534b4c22fb9f50bfd50706c52fadd5c00bd1271fd8345faa68b2a4b95a  libcore/ojluni/src/main/java/java/util/Locale.java",
+      "repository_head": null
+    },
+    {
+      "id": "abort",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/bionic/libc/bionic/android_set_abort_message.cpp",
+      "sha256": "204d5aa4166fed1e29e70084a46030bb406d3b9be26eb6532dd198095100eb6a",
+      "line_count": 99,
+      "snippets": [
+        {
+          "start_line": 71,
+          "lines": [
+            "void android_set_abort_message(const char* msg) {",
+            "  ScopedPthreadMutexLocker locker(&__libc_shared_globals()->abort_msg_lock);",
+            "",
+            "  if (__libc_shared_globals()->abort_msg != nullptr) {",
+            "    // We already have an abort message.",
+            "    // Assume that the first crash is the one most worth reporting.",
+            "    return;",
+            "  }",
+            "",
+            "  if (msg == nullptr) {",
+            "    msg = \"(null)\";",
+            "  }",
+            "",
+            "  size_t size = sizeof(magic_abort_msg_t) + strlen(msg) + 1;",
+            "  void* map = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);",
+            "  if (map == MAP_FAILED) {",
+            "    return;",
+            "  }",
+            "",
+            "  // Name the abort message mapping to make it easier for tools to find the",
+            "  // mapping.",
+            "  prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, map, size, \"abort message\");",
+            "",
+            "  magic_abort_msg_t* new_magic_abort_message = reinterpret_cast<magic_abort_msg_t*>(map);",
+            "  fill_abort_message_magic(new_magic_abort_message);",
+            "  new_magic_abort_message->msg.size = size;",
+            "  strcpy(new_magic_abort_message->msg.msg, msg);",
+            "  __libc_shared_globals()->abort_msg = &new_magic_abort_message->msg;",
+            "}"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "204d5aa4166fed1e29e70084a46030bb406d3b9be26eb6532dd198095100eb6a  bionic/libc/bionic/android_set_abort_message.cpp",
+      "repository_head": null
+    },
+    {
+      "id": "dlext",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/bionic/libdl/libdl.cpp",
+      "sha256": "57a9079aa63c342ef8061c51b3c92291ee5f9612c668fbd821f0fe56cad2f82d",
+      "line_count": 155,
+      "snippets": [
+        {
+          "start_line": 65,
+          "lines": [
+            "void __loader_android_update_LD_LIBRARY_PATH(const char* ld_library_path);",
+            "",
+            "__attribute__((__weak__, visibility(\"default\")))",
+            "void* __loader_android_dlopen_ext(const char* filename,",
+            "                                  int flag,",
+            "                                  const android_dlextinfo* extinfo,",
+            "                                  const void* caller_addr);",
+            ""
+          ]
+        },
+        {
+          "start_line": 135,
+          "lines": [
+            "void* android_dlopen_ext(const char* filename, int flag, const android_dlextinfo* extinfo) {",
+            "  const void* caller_addr = __builtin_return_address(0);",
+            "  return __loader_android_dlopen_ext(filename, flag, extinfo, caller_addr);",
+            "}"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "57a9079aa63c342ef8061c51b3c92291ee5f9612c668fbd821f0fe56cad2f82d  bionic/libdl/libdl.cpp",
+      "repository_head": null
+    },
+    {
+      "id": "strerror",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/bionic/libc/bionic/strerror.cpp",
+      "sha256": "743e64a817f6b277dceb6fe31694b16b2cf820d0eee59cd26c6e4598569dc7b3",
+      "line_count": 222,
+      "snippets": [
+        {
+          "start_line": 188,
+          "lines": [
+            "int strerror_r(int error_number, char* buf, size_t buf_len) {",
+            "  ErrnoRestorer errno_restorer;",
+            "  size_t length;",
+            "",
+            "  const char* error_name = __strerror_lookup(error_number);",
+            "  if (error_name != nullptr) {",
+            "    length = strlcpy(buf, error_name, buf_len);",
+            "  } else {",
+            "    length = async_safe_format_buffer(buf, buf_len, \"Unknown error %d\", error_number);",
+            "  }",
+            "  if (length >= buf_len) {",
+            "    return ERANGE;",
+            "  }",
+            "",
+            "  return 0;",
+            "}",
+            "",
+            "extern \"C\" char* __gnu_strerror_r(int error_number, char* buf, size_t buf_len) {",
+            "  ErrnoRestorer errno_restorer; // The glibc strerror_r doesn't set errno if it truncates...",
+            "  strerror_r(error_number, buf, buf_len);",
+            "  return buf; // ...and just returns whatever fit.",
+            "}"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "743e64a817f6b277dceb6fe31694b16b2cf820d0eee59cd26c6e4598569dc7b3  bionic/libc/bionic/strerror.cpp",
+      "repository_head": null
+    },
+    {
+      "id": "egl",
+      "path": "westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/libs/hwui/renderthread/EglManager.cpp",
+      "sha256": "a92a078d4ed5bed73cd7c29e23249280024073ef2e1dc2f833f0741e973bb90c",
+      "line_count": 769,
+      "snippets": [
+        {
+          "start_line": 294,
+          "lines": [
+            "void EglManager::initExtensions() {",
+            "    auto extensions = StringUtils::split(eglQueryString(mEglDisplay, EGL_EXTENSIONS));",
+            "",
+            "    // For our purposes we don't care if EGL_BUFFER_AGE is a result of",
+            "    // EGL_EXT_buffer_age or EGL_KHR_partial_update as our usage is covered",
+            "    // under EGL_KHR_partial_update and we don't need the expanded scope",
+            "    // that EGL_EXT_buffer_age provides.",
+            "    EglExtensions.bufferAge =",
+            "            extensions.has(\"EGL_EXT_buffer_age\") || extensions.has(\"EGL_KHR_partial_update\");",
+            "    EglExtensions.setDamage = extensions.has(\"EGL_KHR_partial_update\");",
+            "    LOG_ALWAYS_FATAL_IF(!extensions.has(\"EGL_KHR_swap_buffers_with_damage\"),",
+            "                        \"Missing required extension EGL_KHR_swap_buffers_with_damage\");",
+            ""
+          ]
+        },
+        {
+          "start_line": 602,
+          "lines": [
+            "bool EglManager::swapBuffers(const Frame& frame, const SkRect& screenDirty) {",
+            "    if (CC_UNLIKELY(Properties::waitForGpuCompletion)) {",
+            "        ATRACE_NAME(\"Finishing GPU work\");",
+            "        fence();",
+            "    }",
+            "",
+            "    EGLint rects[4];",
+            "    frame.map(screenDirty, rects);",
+            "    eglSwapBuffersWithDamageKHR(mEglDisplay, frame.mSurface, rects, screenDirty.isEmpty() ? 0 : 1);",
+            "",
+            "    EGLint err = eglGetError();",
+            "    if (CC_LIKELY(err == EGL_SUCCESS)) {",
+            "        return true;",
+            "    }",
+            "    if (err == EGL_BAD_SURFACE || err == EGL_BAD_NATIVE_WINDOW) {",
+            "        // For some reason our surface was destroyed out from under us",
+            "        // This really shouldn't happen, but if it does we can recover easily"
+          ]
+        }
+      ],
+      "tag": "android-14.0.0_r1",
+      "manifest_entry": "a92a078d4ed5bed73cd7c29e23249280024073ef2e1dc2f833f0741e973bb90c  frameworks/base/libs/hwui/renderthread/EglManager.cpp",
+      "repository_head": "299fe6f5d6fc6f1af7c3411dcf4e5efdf7217368"
+    },
+    {
+      "id": "predicate-draft",
+      "path": "westlake-harness-t3/benchmark/2026-10-01-j10-prep/src/Predicate.java",
+      "sha256": "e7d25898d9a89db4db7f607089c141c5b8f4eb5df9ec98ab1deb8d735c418d43",
+      "line_count": 14,
+      "snippets": [
+        {
+          "start_line": 10,
+          "lines": [
+            "package com.android.internal.util;",
+            "",
+            "public interface Predicate<T> {",
+            "    boolean apply(T t);",
+            "}"
+          ]
+        }
+      ],
+      "tag": null,
+      "repository_head": "a97f4fa27ac8df5f6969b08fc9c8855b5a73de96",
+      "last_change_commit": "d27ee0a2076f08ddb05e31d034f93d0efae674ad"
+    },
+    {
+      "id": "surface-donor",
+      "path": "vm-copies/westlake-current/framework/android-runtime/src/android_graphics_compat_shim.cpp",
+      "sha256": "a34b6750bf5e6aa67bec249a2a8dc5556c542aecba7d8b53868f12f76e76d640",
+      "line_count": 1236,
+      "snippets": [
+        {
+          "start_line": 274,
+          "lines": [
+            "jlong S_nativeLockCanvas(JNIEnv*, jclass, jlong nativeObject, jobject /*canvas*/, jobject /*dirtyRect*/) {",
+            "    // WESTLAKE \u00a7407: return the surface pointer, exactly as AOSP does (it returns an extra",
+            "    // reference to the same Surface, which unlockCanvasAndPost then passes to nativeRelease).",
+            "    //",
+            "    // Returning 0 here was FATAL, not merely a no-draw: Surface.lockCanvas stores the result in",
+            "    // mLockedObject, and Surface.unlockCanvasAndPost throws",
+            "    // `IllegalStateException: Surface was not locked` when it is 0.  On the main thread that",
+            "    // escapes ActivityThread.main and the whole child exits(1) \u2014 which is what killed noice as",
+            "    // soon as a small software-drawn window (a 202x96 popup during AppIntro) appeared.",
+            "    //",
+            "    // We still do not hand back a real locked buffer, so such windows draw nothing; but they no",
+            "    // longer take the process down, and S_nativeRelease is a no-op so the extra \"reference\" is",
+            "    // harmless.  hwui owns the real drawing for every window that matters here.",
+            "    return nativeObject;",
+            "}",
+            "void S_nativeUnlockCanvasAndPost(JNIEnv*, jclass, jlong /*nativeObject*/, jobject /*canvas*/) { }",
+            "void S_nativeAllocateBuffers(JNIEnv*, jclass, jlong /*nativeObject*/) { }"
+          ]
+        }
+      ],
+      "tag": null,
+      "repository_head": "532633da63b770d3d459c74683db6d7a1f82a022",
+      "last_change_commit": "e2b0bf669ca33459c74618883614f4c603fbccbb"
+    },
+    {
+      "id": "egl-donor",
+      "path": "vm-copies/westlake-current/framework/android-runtime/src/oh_egl_boundary.cpp",
+      "sha256": "6abd243545a37dcdf26256cc325614d015775212efe65c97edce6dfde8a2b410",
+      "line_count": 95,
+      "snippets": [
+        {
+          "start_line": 29,
+          "lines": [
+            "bool forced() {",
+            "    const char* value=getenv(\"WESTLAKE_EGL_TEST_NO_DAMAGE\");",
+            "    return value && strcmp(value,\"1\")==0;",
+            "}",
+            "template<class T> T driver(const char* name) {",
+            "    static void* library=dlopen(\"libEGL.so\",RTLD_NOW|RTLD_LOCAL);",
+            "    return library ? reinterpret_cast<T>(dlsym(library,name)) : nullptr;",
+            "}",
+            "}",
+            "extern \"C\" EGLAPI const char* EGLAPIENTRY eglQueryString(EGLDisplay display,EGLint name) {",
+            "    auto query=original<decltype(&eglQueryString)>(\"eglQueryString\");",
+            "    const char* result=query(display,name);",
+            "    if (name!=EGL_EXTENSIONS || !forced() || !result) return result;",
+            "    static thread_local bool logged=false;",
+            "    if (!logged) { logged=true; fprintf(stderr,\"[OH_EGL] TEST removing damage extensions pid=%d\\n\",getpid()); }"
+          ]
+        },
+        {
+          "start_line": 72,
+          "lines": [
+            "extern \"C\" EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffersWithDamageKHR(",
+            "        EGLDisplay display,EGLSurface surface,EGLint* rects,EGLint count) {",
+            "    int mode;",
+            "    {",
+            "        std::lock_guard<std::mutex> lock(mutex);",
+            "        auto item=capabilities.find(display);",
+            "        if (item==capabilities.end()) {",
+            "            const char* names=original<decltype(&eglQueryString)>(\"eglQueryString\")(display,EGL_EXTENSIONS);",
+            "            mode=forced() ? 0 : has(names,\"EGL_KHR_swap_buffers_with_damage\") ? 1",
+            "                    : has(names,\"EGL_EXT_swap_buffers_with_damage\") ? 2 : 0;",
+            "            item=capabilities.emplace(display,Capability{mode,0}).first;",
+            "            fprintf(stderr,\"[OH_EGL] swap mode=%s query=%s pid=%d\\n\",mode==1?\"KHR\":mode==2?\"EXT\":\"full\",names?\"ok\":\"null\",getpid());",
+            "        }",
+            "        mode=item->second.mode;",
+            "        ++item->second.swaps;",
+            "    }",
+            "    using Swap=EGLBoolean (*)(EGLDisplay,EGLSurface,EGLint*,EGLint);",
+            "    const char* name=mode==1 ? \"eglSwapBuffersWithDamageKHR\" : \"eglSwapBuffersWithDamageEXT\";",
+            "    auto damage=mode ? driver<Swap>(name) : nullptr;",
+            "    if (damage) return damage(display,surface,rects,count);",
+            "    auto swap=driver<decltype(&eglSwapBuffers)>(\"eglSwapBuffers\");",
+            "    if (!swap) { fprintf(stderr,\"[OH_EGL] missing core driver swap\\n\"); std::abort(); }",
+            "    return swap(display,surface);",
+            "}"
+          ]
+        }
+      ],
+      "tag": null,
+      "repository_head": "532633da63b770d3d459c74683db6d7a1f82a022",
+      "last_change_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+    },
+    {
+      "id": "abort-donor",
+      "path": "01.OH61AOSP16/real-work/src/adapter/framework/appspawn-x/bionic_compat/src/abort_message_compat.cpp",
+      "sha256": "15ad2e1c403394b1913566954826a1d53c23a22792cb091e5b83d66c883db2fe",
+      "line_count": 87,
+      "snippets": [
+        {
+          "start_line": 33,
+          "lines": [
+            "static pthread_mutex_t g_abort_message_lock = PTHREAD_MUTEX_INITIALIZER;",
+            "static AbortMessage* g_abort_message;",
+            "",
+            "static void FillAbortMessageMagic(MagicAbortMessage* mapping)",
+            "{",
+            "    mapping->magic1 = UINT64_C(0xb18e40886ac388f0);",
+            "    mapping->magic2 = UINT64_C(0xc6dfba755a1de0b5);",
+            "}",
+            "",
+            "extern \"C\" void android_set_abort_message(const char* message)",
+            "{",
+            "    if (pthread_mutex_lock(&g_abort_message_lock) != 0) return;",
+            "",
+            "    if (__atomic_load_n(&g_abort_message, __ATOMIC_ACQUIRE) != nullptr) {",
+            "        (void)pthread_mutex_unlock(&g_abort_message_lock);",
+            "        return;",
+            "    }",
+            "",
+            "    if (message == nullptr) message = \"(null)\";",
+            "    const size_t length = strlen(message);",
+            "    if (length > SIZE_MAX - sizeof(MagicAbortMessage) - 1) {",
+            "        (void)pthread_mutex_unlock(&g_abort_message_lock);",
+            "        return;",
+            "    }",
+            "",
+            "    const size_t size = sizeof(MagicAbortMessage) + length + 1;",
+            "    void* memory = mmap(nullptr, size, PROT_READ | PROT_WRITE,",
+            "                        MAP_ANON | MAP_PRIVATE, -1, 0);",
+            "    if (memory == MAP_FAILED) {",
+            "        (void)pthread_mutex_unlock(&g_abort_message_lock);",
+            "        return;",
+            "    }",
+            "",
+            "#if defined(PR_SET_VMA) && defined(PR_SET_VMA_ANON_NAME)",
+            "    // Naming is diagnostic only; unsupported kernels still retain the exact",
+            "    // magic/layout contract used by Android crash tooling.",
+            "    (void)prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, memory, size,",
+            "                \"abort message\");",
+            "#endif",
+            "",
+            "    auto* mapping = static_cast<MagicAbortMessage*>(memory);",
+            "    FillAbortMessageMagic(mapping);",
+            "    mapping->abort_message.size = size;",
+            "    memcpy(mapping->abort_message.message, message, length + 1);",
+            "    __atomic_store_n(&g_abort_message, &mapping->abort_message,",
+            "                     __ATOMIC_RELEASE);",
+            "    (void)pthread_mutex_unlock(&g_abort_message_lock);"
+          ]
+        }
+      ],
+      "tag": null,
+      "repository_head": "be16148da9ae7bb89c62e81e144ed0bceb5c4669",
+      "last_change_commit": "d29f52fe75fb353f33f1a6e0b7162de19fc7e49e"
+    },
+    {
+      "id": "stdcxx-donor",
+      "path": "vm-copies/westlake-current/framework/appspawn-x/bionic_compat/src/libstdcxx_compat.c",
+      "sha256": "602177cdaaaf334e0aa2dbfcfdd169553d8d3be743c4e92fb1e0b75ed876006b",
+      "line_count": 16,
+      "snippets": [
+        {
+          "start_line": 4,
+          "lines": [
+            " * Android kept a small libstdc++.so compatibility library after moving the",
+            " * platform and NDK to libc++.  Some APK libraries still retain a DT_NEEDED",
+            " * entry for that old SONAME even though they import no symbols from it.  OHOS",
+            " * does not ship the SONAME, so its dynamic loader rejects those otherwise",
+            " * valid APK libraries before JNI_OnLoad can register their methods.",
+            " *",
+            " * The Android app namespace also contains the APK's libc++_shared.so, which",
+            " * provides the real C++ ABI.  This intentionally empty DSO only satisfies the",
+            " * legacy dependency name; it must not redirect Android code to OH's libc++.",
+            " */",
+            "",
+            "__attribute__((visibility(\"default\")))",
+            "void westlake_android_libstdcxx_compat_anchor(void) {}"
+          ]
+        }
+      ],
+      "tag": null,
+      "repository_head": "532633da63b770d3d459c74683db6d7a1f82a022",
+      "last_change_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+    }
+  ],
+  "predicate_absence": {
+    "scope": "complete copied frameworks/base/core/java Java inventory, not all historical AOSP versions",
+    "java_files": 3592,
+    "sorted_inventory_sha256": "af07146e0c7517345dd1e80ba71bff73d6a0b9fca39f41882c5b48c3bb8e973b",
+    "found": false
+  }
+}
