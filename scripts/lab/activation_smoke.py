@@ -133,25 +133,49 @@ def evaluate(spec, runs, hilogs, probe):
     return all(c['ok'] for c in checks) and bool(checks), checks
 
 
+def stale_session_keys(gout, dead):
+    """Control keys that died only because SceneBoard reused a stale scene session.
+
+    2026-10-01 21:10 (N11d, 5ea) and 22:15 (N11e, 61b): the first HelloWorld launch after a rollback did not spawn at
+    all -- its hilog shows `WMSMain: add failed. <ability>/<package>/... (persistentId: N) already existed in array`,
+    the session left over from the candidate's failed launch; aa force-stop does not drop it. A second launch works.
+    Only a key that is dead AND carries that line for its own package qualifies."""
+    stale = []
+    for key in dead:
+        for rec in gout.glob(f'*/*/{key}/record.json'):
+            package = json.loads(rec.read_text()).get('package') or ''
+            text = (rec.parent / 'hilog.txt').read_text(errors='replace') if (rec.parent / 'hilog.txt').exists() else ''
+            if package and re.search(r'add failed\. [^\n]*/' + re.escape(package) + r'/[^\n]*already existed in array', text):
+                stale.append(key)
+    return stale
+
+
 def run_groups(spec, args, out):
     runs, hilogs = {}, {}
     for i, g in enumerate(spec['groups']):
+        def run(gout, log):
+            cmd = [sys.executable, str(BATCH), '--execute', '--serial', args.serial, '--lane', args.lane,
+                   '--manifest', expand(g['manifest']), '--keys', ','.join(g['keys']), '--shots', '5,20', '--hilog',
+                   '--out', str(gout)]
+            if g.get('input_root'):
+                cmd += ['--input-root', expand(g['input_root'])]
+            cmd += ['--launch-only'] if g.get('mode') == 'launch-only' else ['--reinstall']
+            if args.lock_cmd:
+                cmd += ['--lock-cmd', args.lock_cmd]
+            with open(log, 'w') as fh:
+                rc = subprocess.run(cmd, cwd=REPO, stdout=fh, stderr=subprocess.STDOUT).returncode
+            facts = sorted(gout.glob('*/*/facts.txt'))
+            if not facts:
+                raise RuntimeError(f'group {i} produced no facts.txt (rc={rc}); see {log}')
+            return parse_facts(facts[0].read_text())
         gout = out / f'group-{i}'
-        cmd = [sys.executable, str(BATCH), '--execute', '--serial', args.serial, '--lane', args.lane,
-               '--manifest', expand(g['manifest']), '--keys', ','.join(g['keys']), '--shots', '5,20', '--hilog',
-               '--out', str(gout)]
-        if g.get('input_root'):
-            cmd += ['--input-root', expand(g['input_root'])]
-        cmd += ['--launch-only'] if g.get('mode') == 'launch-only' else ['--reinstall']
-        if args.lock_cmd:
-            cmd += ['--lock-cmd', args.lock_cmd]
-        log = out / f'group-{i}.log'
-        with open(log, 'w') as fh:
-            rc = subprocess.run(cmd, cwd=REPO, stdout=fh, stderr=subprocess.STDOUT).returncode
-        facts = sorted(gout.glob('*/*/facts.txt'))
-        if not facts:
-            raise RuntimeError(f'group {i} produced no facts.txt (rc={rc}); see {log}')
-        runs[f'group-{i}'] = parse_facts(facts[0].read_text())
+        facts = run(gout, out / f'group-{i}.log')
+        dead = [k for k in g['keys'] if g.get('controls') and facts['alive_t20'].get(k) != 'yes']
+        stale = stale_session_keys(gout, dead)
+        if stale:   # one retry, recorded; the first attempt's directory stays as evidence
+            gout = out / f'group-{i}-stale-session-retry'
+            facts = dict(run(gout, out / f'group-{i}-stale-session-retry.log'), stale_session_retry=stale)
+        runs[f'group-{i}'] = facts
         for h in gout.glob('*/*/*/hilog.txt'):
             hilogs[h.parent.name] = key_hilog(h.parent)
     return runs, hilogs

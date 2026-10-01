@@ -31,6 +31,20 @@ class Smoke(unittest.TestCase):
     def runs(self):
         return {'group-0': s.parse_facts(FACTS)}
 
+    def test_stale_scene_session_only_for_dead_key_with_its_own_package(self):
+        import json, tempfile
+        line = ('10-01 22:15:26.417 13484 13484 W A04202/WMSMain: add failed. com.example.helloworld.MainActivity/'
+                'com.example.helloworld/entry/0(persistentId: 29)(containerId: 1) already existed in array\n')
+        with tempfile.TemporaryDirectory() as d:
+            for key, package, text in (('helloworld', 'com.example.helloworld', line),
+                                       ('zigzag', 'com.ketchapp.zigzaggame', line)):   # zigzag's hilog names another app
+                k = Path(d) / 'run' / 'serial' / key
+                k.mkdir(parents=True)
+                (k / 'record.json').write_text(json.dumps({'package': package}))
+                (k / 'hilog.txt').write_text(text)
+            self.assertEqual(s.stale_session_keys(Path(d), ['helloworld', 'zigzag']), ['helloworld'])
+            self.assertEqual(s.stale_session_keys(Path(d), []), [])               # alive keys are never retried
+
     def test_parse_facts(self):
         f = s.parse_facts(FACTS)
         self.assertEqual((f['runtime_fp'], f['boot_fp']), ('e953c0921536', '4db882a81732'))
