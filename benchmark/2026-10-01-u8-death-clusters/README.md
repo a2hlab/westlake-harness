@@ -173,3 +173,37 @@ The zero-value `ViewDelegate.setLayoutParams` in the WebView stub must call thro
 [WEBVIEW-STUB] setLayoutParams forwarded to PrivateAccess.super_setLayoutParams — WebView LayoutParams non-null
 ```
 When this line appears in a lit round, the WebView's LayoutParams are non-null and the NPE is gone.
+
+## other subdivision v2 (run_index cause field, e953c0921536)
+
+Excluded already-assigned (WebView-stub 4, missing-lib 4, appcompat 7, getactivityinfo 4). Remaining groups with ≥2 keys sharing a framework-fixable root:
+
+| Group | Keys | Cause | Fix note |
+|---|---|---|---|
+| **ClassNotFoundException@kotlinx.coroutines.CoroutineStart** | 14 (cv2-com-nononsenseapps-notepad, fd-fluffychat, fd-kitchenowl, fd-libre, fd-meet, fd-musicplayer, fd-saber, cv2-com-ath0-rpn, cv2-com-bytehamster-flowitgame, cv2-com-kaajjo-libresudoku, cv2-org-linaro-glmark2, localsend, ppsspp, subwaysurfers) | `java.lang.ClassNotFoundException: kotlinx.coroutines.CoroutineStart` | Single fix: kotlinx-coroutines-core jar in boot class path or app namespace; same family as J7b coroutine fixes |
+| **NullPointerException@various** | 8 (cv2-com-paultirk-yatoo, cv2-ca-vaults-randomlydie, cv2-com-degeder-yam, fd-breezyweather, fd-client, cv2-com-stoutner-privacybrowser-standard, cv2-timur-webrtc-check, fd-tutanota) | Various NPEs (CookieManager.setAcceptThirdPartyCookies, CookieManager.getInstance, ViewGroup, etc.) | Multiple distinct NPEs; yatoo/vaults-randomlydie/degeder-yam are CookieManager-related (WebView provider); others are app-specific |
+| **reflect.InvocationTargetException@reflection** | 5 (cv2-com-trianguloy-clipboardeditor, cv2-com-nbossard-packlist, fd-immich, fd-plus, toutiao) | `java.lang.reflect.InvocationTargetException` (reflection call failed, cause chain varies) | Wrapper exception; check inner cause per key. Some are Method.invoke on missing classes (same family as ClassNotFoundException) |
+| **RuntimeException@provider-init** | 4 (cv2-com-lcdcode-moodcairns, cv2-dev-obfusk-jiten-webview, mcdonalds, vlc) | `java.lang.RuntimeException: Unable to get provider androidx.startup.InitializationProvider / Unable to start activity …` | androidx.startup provider initialization failure; same family as mcdonalds earlier (fd 31 fd-san). Check inner cause per key |
+| **UnsatisfiedLinkError@mozglue** | 2 (fd-fennec_fdroid, firefox) | `java.lang.UnsatisfiedLinkError` (mozglue: `__gnu_strerror_r` or similar) | Same as earlier firefox/fennec libmozglue `__gnu_strerror_r`; already in N10b shim candidates |
+| **IllegalStateException@misc** | 2 (fd-api, cv2-com-github-dfa-diaspora-android) | `java.lang.IllegalStateException` (various) | App-specific; not a single framework fix |
+
+## other subdivision v3 (run_index rebuilt index, e953c0921536)
+
+Outer confirmed the v2 `ClassNotFoundException@kotlinx.coroutines.CoroutineStart` ×14 group was an **index artifact** (cause field took the first caught probe exception, not the fatal one). Rebuilt index used. Excluded already-assigned (WebView-stub 4, missing-lib 4, appcompat 7, getactivityinfo 4, WebView-cookie 3). CNF group removed. cause=None keys grouped by first_fatal (native crash / JNI abort listed separately).
+
+### Groups with ≥2 keys sharing a framework-fixable root
+
+| Group | Keys | Cause | Fix note |
+|---|---|---|---|
+| **NullPointerException@various** | 5 (fd-breezyweather, fd-client, cv2-com-stoutner-privacybrowser-standard, cv2-timur-webrtc-check, fd-tutanota) | Various NPEs (CookieManager-related or app-specific) | Multiple distinct NPEs; WebView-cookie 3 already assigned to WebView stub cluster; not a single framework fix |
+| **RuntimeException@provider-init** | 4 (cv2-com-lcdcode-moodcairns, cv2-dev-obfusk-jiten-webview, mcdonalds, vlc) | `java.lang.RuntimeException: Unable to get provider androidx.startup.InitializationProvider / Unable to start activity …` | androidx.startup provider initialization failure; same family as mcdonalds earlier (fd 31 fd-san). Check inner cause per key |
+| **IllegalStateException@misc** | 2 (fd-api, cv2-com-github-dfa-diaspora-android) | `java.lang.IllegalStateException` (various) | App-specific; not a single framework fix |
+
+### cause=None keys (grouped by first_fatal)
+
+| Group | Keys | Cause | Fix note |
+|---|---|---|---|
+| **jni_abort** | 6 (fd-fluffychat, fd-immich, fd-libre, fd-saber, cv2-org-linaro-glmark2, subwaysurfers) | `F C00f00/appspawn-x: [java_vm_ext.cc:591] JNI DETECTED ERROR IN APPLICATION` (JNI abort) | JNI abort; check inner cause per key (missing native lib or invalid JNI call) |
+| **fdsan_signal** | 2 (fd-kitchenowl, localsend) | `I C02d11/DfxFaultLogger: Reason:Signal:DEBUG SIGNAL(FDSAN)` | fdsan signal; same family as mcdonalds fd 31 fd-san |
+| **sigsegv_sigabrt** | 2 (cv2-com-ath0-rpn, subwaysurfers) | `I C02d11/DfxFaultLogger: Reason:Signal:SIGSEGV(SIGABRT)(SEGV_MAPERR/SI_TKILL)` | Native crash; check faultlog stack top non-system frame per key |
+| **no_first_fatal** | 10 (cv2-com-nbossard-packlist, cv2-com-nononsenseapps-notepad, fd-fennec_fdroid, fd-meet, fd-musicplayer, fd-plus, cv2-com-bytehamster-flowitgame, cv2-com-kaajjo-libresudoku, firefox, ppsspp, toutiao) | cause=None and first_fatal=None (no termination found in hilog) | no-observed-termination; process-disappeared-cause-unknown or no fatal found |
