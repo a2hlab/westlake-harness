@@ -28,7 +28,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 FAMILIES = ['runtime-unverified', 'dispatch-literal', 'narrow-negative', 'wrong-board-file', 'concurrent-board',
-            'incompat-no-device', 'shared-transport', 'board-write-missing', 'screenshot-unread', 'decision', 'other']
+            'incompat-no-device', 'shared-transport', 'board-write-missing', 'screenshot-unread', 'no-control',
+            'decision', 'other']
 RULES = [  # first match wins; keep the patterns specific to avoid smearing everything into one family
     ('decision', r'^> 外环\([^)]*\)·改判(?!.*R2 记档)'),
     ('wrong-board-file', r'写进.{0,20}(本地|worktree).{0,10}app-lighting|写错黑板|wrong board file'),
@@ -37,6 +38,10 @@ RULES = [  # first match wins; keep the patterns specific to avoid smearing ever
     ('incompat-no-device', r'app 不兼容|app 问题|打包怪癖|incompatible'),
     ('screenshot-unread', r'没读截图|没看截图|不看截图|foreground_unconfirmed.{0,30}(判|当成)|截图(其实|实际)(亮|正常)'),
     ('shared-transport', r'hdc kill|hdc start|共用.{0,6}hdc|OrbStack.{0,10}重启'),
+    # 2026-10-01: three conclusions in one evening rested on a comparison without a fair control -- #96 blamed a
+    # condition the working build shared, a white-screen rule was read off two runs, and a "rescue rate" control
+    # group was padded with single-session apps where the event is trivially true
+    ('no-control', r'没有对照|无对照|对照组.{0,20}(没|未|稀释|混)|两边都有|单会话.{0,10}(稀释|混)|confound'),
     ('narrow-negative', r'不存在|找不到|缺席|没有调用|只搜|没调用|absence'),
     ('dispatch-literal', r'照字面|没写「|派.{0,40}(写|漏)了?「|写的命令行|当 bms_batch 的 manifest|与 AGENTS.{0,20}相反|抽检.{0,20}放了'),
     ('runtime-unverified', r'板上.{0,20}(没生效|没核|没看)|身份没核|NOT DEPLOYED|离线.{0,10}(采认|差异)|生效日志|运行态|'
