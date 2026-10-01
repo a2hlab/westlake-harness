@@ -125,7 +125,9 @@ def insert_docs(changes):
         f = REPO / path
         text = f.read_text(encoding='utf-8')
         rows = text.split('\n')
-        new = [ln for ln in lines if ln not in rows]
+        # an entry may span lines ("## heading\nbody"): it is present if its whole text already is (2026-10-01 a
+        # documentation.json listed and also passed with --docs inserted a two-line entry twice)
+        new = [ln for ln in lines if ln not in rows and ln not in text]
         if not new:
             continue
         if path == 'README.md':
