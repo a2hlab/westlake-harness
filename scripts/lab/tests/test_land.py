@@ -102,6 +102,15 @@ class Land(unittest.TestCase):
         self.assertIn('would drop lines', r.stderr)
         self.assertIn('outer reading line', md.read_text())
 
+    def test_lane_may_rewrite_its_own_md(self):
+        (self.wt / 'benchmark/b/README.md').write_text('# b\nold section\n')
+        (self.wt / 'benchmark/b/landing-paths.txt').write_text('benchmark/b/README.md\n')
+        self.assertEqual(self.land().returncode, 0)
+        (self.wt / 'benchmark/b/README.md').write_text('# b\nrewritten section\n')   # only this lane ever wrote it
+        r = self.land()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('rewritten section', (self.repo / 'benchmark/b/README.md').read_text())
+
     def test_preflight_fails_on_home_paths_in_lane_tables(self):
         home = Path('/Users') / Path.home().name  # this Mac's home, as a lane's table would carry it
         (self.wt / 'benchmark/b/results.json').write_text(f'{{"run": "{home}/orca/workspaces/x/run1"}}\n')

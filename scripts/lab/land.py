@@ -248,6 +248,11 @@ def main(argv=None):
     # reading appended to master's copy in between. A prose file must not lose master lines on overwrite.
     lost = {}
     for rel in overwritten:
+        # a file only ever written by landings from this same worktree is the lane's own document: its rewrite may
+        # drop its old lines (20:41 a lane's legitimate design.md rewrite was refused); master edits make it shared
+        history = sh(['git', 'log', '--format=%s', '--', rel]).stdout.splitlines()
+        if history and all(f'landed from {wt.name}' in s for s in history):
+            continue
         if rel.endswith('.md'):
             mine = set((wt / rel).read_text(errors='replace').splitlines())
             gone = [l for l in (REPO / rel).read_text(errors='replace').splitlines() if l.strip() and l not in mine]
