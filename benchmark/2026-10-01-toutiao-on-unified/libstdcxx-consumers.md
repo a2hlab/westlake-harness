@@ -47,3 +47,8 @@ commercial100 (TikTok / Lemon) is **not** in the U9 full corpus — not scanned.
 **0 keys** bundle their own `libstdc++.so` in `lib/arm64-v8a/` — all 554 keys with C++ runtime ship `libc++_shared.so` (the NDK shared runtime), not `libstdc++.so`. The regression risk for U10's shared SONAME set change is the **554 keys with `libc++_shared.so`**: if U10 adds `libstdc++.so` to the shared SONAME set, these keys' self-contained C++ runtime may collide with the shared one (duplicate symbols, ODR violations).
 
 **Regression candidates for U10 namespace change:** the 554 keys with `libc++_shared.so` (fd-minetest, fd-mpv, fd-seal are lit; the other 551 are dead/unknown/white-window). The lit keys are the ones to watch: if the shared SONAME change breaks them, U10 regresses.
+
+Outer note (19:32): "554 keys" in the lane's section counts `.so` rows, not keys (the sweep has 166 keys). No key bundles its
+own `libstdc++.so`, so adding it to the inherited SONAME set overrides nothing. Libraries that NEED only
+`libc++_shared.so` never load `libstdc++.so`, so the ODR risk the lane raises does not arise for them; fd-minetest,
+fd-mpv, fd-seal (lit, bundle libc++_shared) stay as cheap regression controls anyway.
