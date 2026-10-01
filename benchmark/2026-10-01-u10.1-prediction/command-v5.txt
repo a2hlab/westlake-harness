@@ -1,0 +1,19 @@
+# U10.1 prediction v5 (pre-window): round = U10.1 native + U11g JAR (73c0da44).
+# Baseline = U9 sign-off (master 8b0c76e402), 115/166 lit. predict_vs_actual precedence:
+#   observed > flaky-keys.json > baseline-lit > cluster-covered > baseline.
+python3 scripts/lab/predict_vs_actual.py predict \
+  --baseline benchmark/2026-10-01-u9-sweep/outer-signoff.json \
+  --clusters benchmark/2026-10-01-u8-death-clusters/clusters.json \
+  --include libstdcxx,strerror_r,abort-visibility,telephony-fetcher,ssl-engine,app-content-providers,j10d-alias-guard,j10f-websettings-defaults,predicate,j10e-split \
+  --observed "opencamera=lit:reverted to U9 verdict (lit in U9; U10.1 native removes the U10 regression that hit it)" \
+  --observed "fd-organicmaps=lit:reverted to U9 verdict (organicmaps; lit in U9; U10.1 removes the U10 regression)" \
+  --observed "toutiao=dead:libstdc++ cleared by U10.1 native but first wall moved to OkHttp conscrypt (com.android.org.conscrypt.SSLParametersImpl absent -> okhttp-platform.md); not lit" \
+  --observed "fd-meet=dead:U10 window observed unchanged (android_set_abort_message visibility did not clear its wall)" \
+  --observed "fd-fennec_fdroid=dead:U10 window observed unchanged (GNU strerror_r did not clear its wall)" \
+  --observed "x=lit?:U11g TelephonyFetcher phone fetcher non-null -> getSystemService(phone) cast passes (benchmark/2026-10-01-u11-jar)" \
+  --observed "fd-client=lit?:U11g WlSSLEngine -> createSSLEngine non-null -> DI graph builds -> accountManager non-null (benchmark/2026-10-01-u11-jar)" \
+  --observed "cv2-com-nononsenseapps-notepad=lit?:U11g AppContentProviders installs the app own ContentProvider -> query non-null (benchmark/2026-10-01-u11-jar)" \
+  --observed "fd-api=lit?:U11g J10dTheme alias guard -> AliasTargetTheme AppCompat theme wins -> AppCompatActivity starts (benchmark/2026-10-01-u11-jar)" \
+  --out benchmark/2026-10-01-u10.1-prediction/predictions-v5.csv
+# After the U10.1 window signs off:
+#   predict_vs_actual.py compare --predictions predictions-v5.csv --actual <u10.1 sweep> --json compare-v5.json
