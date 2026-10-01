@@ -1,0 +1,24 @@
+{
+  "schema_version": 1, "lane": "cc-t3", "date": "2026-10-01",
+  "task": "J10 runtime JAR = J9 + repair the two J9 no-ops (AppCompatNoTitleFix install timing + SelfActivityInfoSynthesis wrong reflection target). BOOT-layer libphonenumber stays for T7f.",
+  "baseline_j9_sha256": "87fd463ddb82e803480a93bd76fc55d4bbb92a2261caa75c6a23cfd0f812c8be",
+  "output_j10_sha256": "ea24291a898812ff1f13c11cd15e5747392fb975966a54b7c6e73e0d123517e1",
+  "deterministic": "yes -- built twice in dockbuild a2hlab-b5-java:24.04, both ea24291a (smali -j 1 + fixed zip timestamps)",
+  "staged_jar": "/Users/zhaoyue/orca/workspaces/westlake-generation-j10-staging/oh-adapter-runtime-j10.jar (ea24291a)",
+  "source_commit": "feat/bms-walls 96528a021",
+  "changes": [
+    {"fix": "notitle-install-timing", "files": ["AppCompatNoTitleFix.java", "AppSchedulerBridge.java"],
+     "what": "add idempotent install(Application); register from AppSchedulerBridge.nativeOnScheduleLaunchAbility right after ActivityThread.currentApplication() (app is live, still before the first activity's onActivityPreCreated), not only at B7BindFixes.apply (which ran before the Application existed). Prints '[J10-NOTITLE] installed' on the registration that takes effect.",
+     "activation_log": "[J10-NOTITLE] installed"},
+    {"fix": "actinfo-wrong-target", "files": ["SelfActivityInfoSynthesis.java"],
+     "what": "synthFromManifest now calls SelfComponentFallback.projectionFor(String) + boundInfo() + ManifestComponentProjection.component(...) directly (compile-checked, same package) instead of reflecting the non-existent ManifestComponentProjection.projection(String) (NoSuchMethodException every call in J9). Prints '[J10-ACTINFO] synthesized' on success.",
+     "activation_log": "[J10-ACTINFO] synthesized"}
+  ],
+  "class_delta": {"replaced": ["adapter/activity/AppCompatNoTitleFix", "adapter/activity/AppCompatNoTitleFix$1", "adapter/activity/AppCompatNoTitleFix$Callbacks", "adapter/activity/SelfActivityInfoSynthesis"],
+                  "modified_by_injection": ["adapter/activity/AppSchedulerBridge (nativeOnScheduleLaunchAbility: +invoke-static/range {v9..v9}, AppCompatNoTitleFix.install(Application) after currentApplication()->move-result v9)"],
+                  "added": [], "removed": []},
+  "smali_evidence": "smali-evidence/ (SelfActivityInfoSynthesis.smali, AppCompatNoTitleFix.smali full; AppSchedulerBridge.install-invoke.txt; SelfComponentFallback.methods.txt; ManifestComponentProjection.methods.txt) -- baksmali'd from the J10 jar",
+  "offline_gate": "test_j10.py 11/11 PASS (self-contained, reads smali-evidence/, no build tools)",
+  "not_in_j10": "BOOT-layer libphonenumber (clipboardeditor) stays for T7f (westlake-generation-t7f-inputs/libphonenumber/).",
+  "build": "dockbuild a2hlab-b5-java:24.04; baksmali J9 -> recompile 2 helpers (javac -source/target 8 against android.jar + compile-only sibling stubs) -> d8 --min-api 28 -> replace smali -> inject -> smali -j 1 -> deterministic zip."
+}

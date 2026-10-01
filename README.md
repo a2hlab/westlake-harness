@@ -203,6 +203,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-n10b-child/`** | **U8 route-owned child preload, real OH m133 Emboss and VM/NDK field-cache initialization; exact baseline/repeats, strict gate refusal and source archive.** |
 | **`benchmark/2026-10-01-u8-rollout/`** | **U7-preserving J9/T7e assembly, strict preflight, three-board control receipts** |
 | **`benchmark/2026-10-01-b10-libart-impact/`** | **Exact deployed U8 nine-jar/all-DEX class gaps across 166 keys and PID-bound BitVector evidence from seven selected sequential runs: 99 lit positive controls, no invented causal victim count.** |
+| **`benchmark/2026-10-01-j10-jar/`** | **J10 runtime JAR (J9 `87fd463d` → `ea24291a`, deterministic): repairs the two J9 no-ops, each with a one-line activation log.** AppCompatNoTitleFix now registers from `AppSchedulerBridge.nativeOnScheduleLaunchAbility` after `currentApplication()` (J9 ran it before the Application existed) → `[J10-NOTITLE] installed`; SelfActivityInfoSynthesis now calls `SelfComponentFallback.projectionFor(String)` (J9 reflected the non-existent `ManifestComponentProjection.projection`) → `[J10-ACTINFO] synthesized`. Offline gate `test_j10.py` 11/11 (self-contained smali-evidence). BOOT libphonenumber stays for T7f. |
 
 ---
 
