@@ -1,0 +1,53 @@
+{
+  "expect": {
+    "runtime_fp": "519148f0f41a",
+    "boot_fp": "4db882a81732"
+  },
+  "groups": [
+    {
+      "manifest": "$WORKSPACES/westlake-harness/knowledge/smoke/controls-apps.json",
+      "input_root": "$WORKSPACES/westlake-b90-controls-inputs",
+      "keys": [
+        "helloworld",
+        "zigzag"
+      ],
+      "mode": "launch-only",
+      "controls": true
+    }
+  ],
+  "fixes": [
+    {
+      "id": "U10-COMPAT-VISIBLE",
+      "key": "helloworld",
+      "_comment": "The host prints [U10-COMPAT-VISIBLE] inherit_requested (APPSPAWN_LOGI, resident-compat.h:39) for EVERY bridged app when it builds the app namespace -- so the marker key is helloworld (the smoke always launches it), not fd-meet (the smoke does not launch fd-meet; fd-meet's benefit is read from its first wall in the full sweep). Confirms the U10ShareResidentCompat host shim is live and non-fatal.",
+      "markers": [
+        "\\[U10-COMPAT-VISIBLE\\] inherit_requested"
+      ]
+    }
+  ],
+  "probe": {
+    "package": "com.example.helloworld",
+    "single_copy": [
+      "libart.so",
+      "libopenjdkjvm.so"
+    ],
+    "expect_copies": {
+      "liboh_adapter_bridge.so": 2,
+      "liboh_android_runtime.so": 2
+    },
+    "files": {
+      "/system/android/framework/adapter-mainline-stubs.jar": "f3bcc9d7c76cb73487837d7ad92fccba3d595d313ada7403bed99c4f11c2a8c2",
+      "/system/android/framework/oh-adapter-runtime.jar": "37465d6d7f5e3d7be52929c2b43faf99315f86f0c23cc70e4aa858cb2ff98c59",
+      "/system/android/lib64/libbionic_compat.so": "015aa3a632eabe057bd8d6ce0e0ff181209da7dcab8de22409a79addc0a56d58",
+      "/system/android/lib64/libnativeloader.so": "621caec4618143aa131a87e299fe0773bfb5b11b37f65fca588bda0d73e85048",
+      "/system/android/lib64/liboh_adapter_bridge.so": "84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a",
+      "/system/android/lib64/liboh_android_runtime.so": "ac59dec077195bc7678c712505b0d802c56e07edea8d049be4a188d20485b7bf",
+      "/system/bin/appspawn-x": "71901abc64e2474b582579b7093b84c6e2d7088950086e78f7a0551b04e46298",
+      "/system/lib64/appspawn/libwestlake_android_child.z.so": "dc73a28d2535f0a261776625ea51770edf044f33de17aa05ff5c5e789ba25d3c",
+      "/system/lib64/westlake/route-a/74d1d6d48210ec5bf66ae43598655c3486b8873513821f13c2ffe15f0de552ac/libbionic_compat.so": "015aa3a632eabe057bd8d6ce0e0ff181209da7dcab8de22409a79addc0a56d58",
+      "/system/lib64/westlake/route-a/74d1d6d48210ec5bf66ae43598655c3486b8873513821f13c2ffe15f0de552ac/libnativeloader.so": "621caec4618143aa131a87e299fe0773bfb5b11b37f65fca588bda0d73e85048",
+      "/system/lib64/westlake/route-a/74e6f75976087d7890088b29c08482f17573a588fa5857cb6ca39264838ce16d/libbionic_compat.so": "aa7e77f943ab4edd791590ca6b739120249b1ad6eb40e1ece7710ba206742a08",
+      "/system/lib64/westlake/route-a/74e6f75976087d7890088b29c08482f17573a588fa5857cb6ca39264838ce16d/libnativeloader.so": "eddeb87ef17754b28f83cd732fe5b606504005af0c77b21923ac62c20e3c34ea"
+    }
+  }
+}

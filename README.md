@@ -238,6 +238,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-u10-native-shims/`** | **Pinned 30-source compat rebuild, two ABI-limited entries, twelve consumer replays, preserved real abort owner and explicit unsupported PPSSPP namespace requests.** |
 | **`benchmark/2026-10-01-system-service-gap/`** | **Call-site scan of getSystemService over 166 U9 keys + source inventory + hilog: logged service nulls are rare and never a first fatal; `phone` has no fetcher on route-A and comes back null silently — x dies on a null TelephonyManager; providers read from the deployed JAR (wifi/media_session/user/appops are answered).** |
 | **`benchmark/2026-10-01-n11e-result-channel/`** | Host-rendered sealed-loader diagnostics; branch-3 handle mismatch witnessed twice, strict U9 restoration |
+| **`benchmark/2026-10-01-u10-bundle/`** | U9-based U10 native/JAR assembly, actual host identity binding, aliases and offline admission evidence |
 
 ---
 
