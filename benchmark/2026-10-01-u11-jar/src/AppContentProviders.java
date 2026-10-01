@@ -1,5 +1,5 @@
 /* U11 (#apex-services / cluster 5 content-provider): single-purpose file (freeze unit) -- install the app's
- * OWN declared ContentProviders at bind, so getContentResolver().query(ownAuthority) resolves. New file. */
+ * OWN declared ContentProviders after bind, so getContentResolver().query(ownAuthority) resolves. New file. */
 package adapter.activity;
 
 import java.lang.reflect.Constructor;
@@ -9,32 +9,46 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * U11 (#content-provider): route-A projects the app's ProviderInfo into AppBindData.providers (AppSchedulerBridge
- * .buildProvidersFromManifest + B8BindExtras.afterProviders) but **never instantiates them** -- the stock
- * ActivityThread.installContentProviders step is not run, so the app's own ContentProvider objects are never
- * attached/published and ContentProviderRegistry has no entry for their authorities. An app that does
- * getContentResolver().query(content://<its own authority>) at startup then gets a null Cursor
- * (cv2-com-nononsenseapps-notepad: Cursor.moveToFirst() on null; its authority is
- * content://com.nononsenseapps.notepad.MyContentAuthority). 120/168 U9 keys declare >=1 provider.
+ * U11 (#content-provider): route-A projects the app's ProviderInfo into AppBindData.providers
+ * (AppSchedulerBridge.buildProvidersFromManifest) and calls the stock ActivityThread.handleBindApplication,
+ * but the app's own ContentProviders are **never published** -- U9 hilog for provider apps (notepad, fd-k9)
+ * shows `[B43-BIND] providers populated: N` + `handleBindApplication returned OK` but **no** publishContentProviders
+ * / provider instantiation. So getContentResolver().query(content://<its own authority>) gets a null Cursor
+ * (cv2-com-nononsenseapps-notepad: Cursor.moveToFirst() on null; authority
+ * content://com.nononsenseapps.notepad.MyContentAuthority). 120/168 U9 keys declare >=1 provider (366 total).
  *
  * Mirror AOSP 14 ActivityThread.installContentProviders/installProvider (local path): for each ProviderInfo,
  * load + instantiate the ContentProvider, attachInfo(appContext, info) (runs its onCreate), take its
- * IContentProvider, build a ContentProviderHolder, and publish the batch into our
- * adapter.contentprovider.ContentProviderRegistry (what ActivityManagerAdapter.getContentProvider/acquireProvider
- * reads). All hidden APIs by reflection. Called by a smali needle right AFTER B8BindExtras.afterProviders(data),
- * where the Application is already live (AppSchedulerBridge). Per-provider try/catch: one bad provider never
- * blocks the rest, and failure leaves the app exactly at its U9 state (no regression).
+ * IContentProvider, build a ContentProviderHolder, and publish the batch into
+ * adapter.contentprovider.ContentProviderRegistry (what ActivityManagerAdapter.getContentProvider reads). All
+ * hidden APIs by reflection; per-provider try/catch logs the class name and never blocks the rest (failure
+ * leaves the app at its U9 state, no regression).
+ *
+ * ORDERING: wired by a smali needle AFTER the stock handleBindApplication reflection call returns in
+ * AppSchedulerBridge (the "[B43-BIND] handleBindApplication returned OK" point), where
+ * ActivityThread.currentApplication() is non-null. AOSP installs providers inside handleBindApplication
+ * (makeApplication -> installContentProviders -> callApplicationOnCreate), i.e. before Application.onCreate;
+ * here the opaque stock handleBindApplication has already run both makeApplication AND callApplicationOnCreate,
+ * so provider onCreate runs just AFTER Application.onCreate. That is correct for apps that query their own
+ * provider at ACTIVITY-launch time (notepad: MainActivity.onCreate, which is after bind); an app that queries
+ * its own provider inside Application.onCreate is not covered by this seam (none observed; the stock path not
+ * running at all is the larger, pre-existing problem -- late install is strictly better than never).
  */
 public final class AppContentProviders {
 
     private AppContentProviders() {}
 
     @SuppressWarnings("unchecked")
-    public static void install(Object appBindData) {
+    public static void install() {
         try {
             Object ctx = appContext();
             if (ctx == null) {
-                System.err.println("[B8-PROV-INSTALL] no live Application context at bind; app providers not installed");
+                System.err.println("[B8-PROV-INSTALL] no live Application context; app providers not installed");
+                return;
+            }
+            Object appBindData = boundApplication();
+            if (appBindData == null) {
+                System.err.println("[B8-PROV-INSTALL] ActivityThread.mBoundApplication null; app providers not installed");
                 return;
             }
             Field provField = appBindData.getClass().getDeclaredField("providers");
@@ -66,8 +80,8 @@ public final class AppContentProviders {
                     holders.add(holder);
                     ok++;
                 } catch (Throwable perProvider) {
-                    System.err.println("[B8-PROV-INSTALL] " + cpi.authority + " (" + cpi.name + ") not installed: "
-                            + perProvider);
+                    System.err.println("[B8-PROV-INSTALL] provider " + cpi.name + " (authority " + cpi.authority
+                            + ") not installed: " + perProvider);
                 }
             }
             if (!holders.isEmpty()) {
@@ -76,6 +90,20 @@ public final class AppContentProviders {
             System.err.println("[B8-PROV-INSTALL] installed " + ok + "/" + total + " app providers");
         } catch (Throwable t) {
             System.err.println("[B8-PROV-INSTALL] app provider install skipped: " + t);
+        }
+    }
+
+    /** The AppBindData bound for this process (ActivityThread.mBoundApplication). */
+    private static Object boundApplication() {
+        try {
+            Class<?> at = Class.forName("android.app.ActivityThread");
+            Object thread = at.getMethod("currentActivityThread").invoke(null);
+            if (thread == null) return null;
+            Field f = at.getDeclaredField("mBoundApplication");
+            f.setAccessible(true);
+            return f.get(thread);
+        } catch (Throwable ignore) {
+            return null;
         }
     }
 

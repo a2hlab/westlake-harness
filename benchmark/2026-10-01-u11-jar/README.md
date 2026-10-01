@@ -114,10 +114,24 @@ U11c = U10 + cluster 1 (phone) + cluster 3 (ssl-engine) + **cluster 5 (app Conte
   onCreate) -> `getIContentProvider()` -> build `ContentProviderHolder` -> publish the batch into
   `adapter.contentprovider.ContentProviderRegistry` (what `ActivityManagerAdapter.getContentProvider` reads).
   All hidden APIs by reflection; per-provider try/catch (one bad provider never blocks the rest, no regression).
-- **Wiring (needle):** `AppContentProviders.install(v13)` right after `B8BindExtras.afterProviders(v13)` in
-  `AppSchedulerBridge` (v13 = AppBindData with providers set, Application already live). No frozen file touched.
-- **New JAR SHA:** U11c `7443424084bc6848f328330fee5eecb83cb45dcd4d3aafb3feb83a18db4fc062`; 196 classes
-  (U10 186 + 7 + 2 + 1); deterministic.
+- **Wiring (needle) — corrected to post-bind (U11d):** `AppContentProviders.install()` (no-arg; reads
+  `ActivityThread.mBoundApplication.providers` + `currentApplication()`) right **after the stock
+  `handleBindApplication` reflection call returns** in `AppSchedulerBridge` (the `[B43-BIND] handleBindApplication
+  returned OK` point), where `currentApplication()` is non-null. No frozen file touched.
+  - **Why not earlier:** the first wiring (U11c, after `B8BindExtras.afterProviders`) was **before**
+    `handleBindApplication`, so `makeApplication` had not run and `currentApplication()` was null → `install()`
+    skipped (the fix did not fire). AppSchedulerBridge runs `makeApplication` + `Application.onCreate` both inside
+    the single opaque `handleBindApplication(data)` call, so the only seam where the Application is live is after
+    it returns.
+  - **Ordering caveat:** AOSP installs providers inside `handleBindApplication` (before `Application.onCreate`);
+    here they install just after it, so provider `onCreate` runs **after** `Application.onCreate`. Correct for
+    apps that query their own provider at **Activity**-launch time (notepad: `MainActivity.onCreate`); an app that
+    queries its own provider inside `Application.onCreate` is not covered (none observed; the stock path not
+    running at all is the pre-existing problem — late install beats never). Verified empirically: U9 hilogs for
+    provider apps show `providers populated` + `handleBindApplication returned OK` but **no** publish/instantiation.
+- **New JAR SHA:** U11d `84c8da6bb81f8a58da4a07a62cfc29f6dff0d7339e5c03ffd46145f8ceacd44c` (supersedes the
+  mis-wired U11c `7443424084bc6848…`); 196 classes (U10 186 + 7 + 2 + 1); deterministic. Each provider failure
+  logs `[B8-PROV-INSTALL] provider <class> (authority <auth>) not installed: <ex>` (hilog-visible).
 - **Expected first-wall move — `notepad`:** its own ContentProvider is instantiated + published at bind, so
   `query(content://com.nononsenseapps.notepad...)` returns a real Cursor instead of null -> `moveToFirst()` NPE
   gone, MainActivity.onCreate proceeds (light candidate).

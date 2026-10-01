@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "lane": "cc-t3",
+  "date": "2026-10-01",
+  "task": "U11 JAR v4 = U10 + cluster 1 phone (TelephonyFetcher) + cluster 3 ssl-engine (WlSSLEngine) + cluster 5 content-provider (AppContentProviders). Corrects U11c's mis-wired cluster-5 needle (was before handleBindApplication, Application not yet live -> install skipped).",
+  "base_u10_sha256": "37465d6d7f5e3d7be52929c2b43faf99315f86f0c23cc70e4aa858cb2ff98c59",
+  "output_u11d_sha256": "84c8da6bb81f8a58da4a07a62cfc29f6dff0d7339e5c03ffd46145f8ceacd44c",
+  "supersedes": "u11 277d4641 (phone), u11b d75e90c0 (phone+ssl), u11c 74434240 (phone+ssl+content, mis-wired); u11d is the current single U11 JAR version",
+  "deterministic": "yes (built twice, identical)",
+  "staged_jar": "$WORKSPACES/westlake-generation-u11-staging/oh-adapter-runtime-u11d.jar",
+  "build": "$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-u11-jar/build/build_u11d.py",
+  "class_delta_vs_u10": {
+    "added": ["adapter/activity/TelephonyFetcher (+6 inner)", "adapter/compat/WlSSLEngine (+1 inner)", "adapter/activity/AppContentProviders"],
+    "removed": [],
+    "note": "U10 186 -> U11d 196 (+10). U10-U11d class set diff = empty. Same classes as U11c; only the AppContentProviders wiring needle moved."
+  },
+  "cluster_5_wiring_fix": {
+    "was": "U11c: install(AppBindData) needle after B8BindExtras.afterProviders -> BEFORE stock handleBindApplication -> makeApplication not run -> currentApplication() null -> install skipped (no-op).",
+    "now": "U11d: install() (no-arg; reads ActivityThread.mBoundApplication.providers + currentApplication()) needle AFTER the stock handleBindApplication reflection call returns ([B43-BIND] handleBindApplication returned OK) -> Application live.",
+    "ordering_caveat": "provider onCreate runs just AFTER Application.onCreate (both are inside the opaque handleBindApplication). Correct for Activity-launch-time queries (notepad MainActivity.onCreate); an app querying its own provider inside Application.onCreate is not covered."
+  },
+  "cluster_5_quant": "120/168 U9 keys declare >=1 provider (366 total); projected but never published (U9 hilog: providers populated + handleBindApplication returned OK, no publish). notepad = evidence.",
+  "per_provider_log": "[B8-PROV-INSTALL] provider <class> (authority <auth>) not installed: <ex> (hilog-visible, per the outer's request)",
+  "regression_controls": "ALL already-lit U9 keys that declare providers (e.g. fd-k9, fd-android, fd-droidify, markor, newpipe, aegis, antennapod, fd-tusky, ...); installing their providers must keep them lit."
+}
