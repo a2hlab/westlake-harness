@@ -1,0 +1,27 @@
+# U10 prediction v3 (reproducible; run from repo root once outer-signoff.json is on the tree).
+# Baseline = U9 sign-off (master 8b0c76e402; wall regen c671f4fc89), 115/166 lit.
+# v3 change from v2 (outer correction patrol ACK(90)): OpenSLES facade deferred to U11 -> mindustry is NOT a
+#   U10 beneficiary: its --observed line is dropped and opensles-facade leaves --include, so mindustry reverts
+#   to baseline verdict 'dead'. fd-tutanota stays alive-white-window (v2). lit? = 5.
+# U10 native pinned: bbe46462b (compat 015aa3a6, libnativeloader policy 621caec4, appspawn-x host 62debf19).
+
+python3 scripts/lab/predict_vs_actual.py predict \
+  --baseline benchmark/2026-10-01-u9-sweep/outer-signoff.json \
+  --clusters benchmark/2026-10-01-u8-death-clusters/clusters.json \
+  --include libstdcxx,libjnigraphics,abort-visibility,strerror_r,j10f-websettings-defaults,predicate,j10e-split \
+  --observed "toutiao=lit?:libstdc++ & libjnigraphics added to native_bridge_policy shared_sonames clear libflipped bootstrap (native-closure-prediction.md); java-layer-prediction.md lists further walls (null svc / libnativewindow / graphics ctors) so full-lit uncertain" \
+  --observed "fd-meet=lit?:android_set_abort_message made visible in bridge namespace (U10 native bbe46462b; u9-first-wall.md)" \
+  --observed "fd-fennec_fdroid=lit?:GNU strerror_r exposed to app namespace (U10 native bbe46462b)" \
+  --observed "firefox=lit?:GNU strerror_r exposed to app namespace (U10 native bbe46462b)" \
+  --observed "fd-tutanota=alive-white-window:J10f WebSettings real defaults pass the getUserAgentString wall (U10 jar 37465d6d), but the UI is the web client assets/tutanota/index.html in a WebView and there is no renderer -> white at best (outer correction 20:50, v2)" \
+  --observed "cv2-com-nbossard-packlist=lit?:com.android.internal.util.Predicate added to U10 jar 37465d6d (u10-classlist-diff.md)" \
+  --out benchmark/2026-10-01-u10-prediction/predictions-v3.csv
+
+# After the U10 window signs off, grade v3 against the new sweep:
+#   python3 scripts/lab/predict_vs_actual.py compare \
+#     --predictions benchmark/2026-10-01-u10-prediction/predictions-v3.csv \
+#     --actual benchmark/<u10-sweep>/outer-signoff.json \
+#     --json benchmark/2026-10-01-u10-prediction/compare-v3.json
+# compare: hit / regression (lit->not: exit 1) / missed-wall (lit? not lit -> feed the scanner) /
+# unexpected-lit (not-lit -> lit: find which fix did it) / flaky. mindustry is now a plain 'dead' baseline key;
+# if U10 lights it anyway that is an unexpected-lit to investigate (OpenSLES was expected only in U11).

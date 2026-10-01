@@ -78,3 +78,39 @@ signal, not a failure — it tells the scanner which Java-layer wall to model ne
 Only change from v1: fd-tutanota lit? -> alive-white-window. J10f's real WebSettings defaults pass its U9 wall
 (getUserAgentString non-null), but tutanota's UI is its web client (assets/tutanota/index.html, 3218 files) inside a
 WebView and there is no WebView renderer -- the same ceiling U9 prediction v5 already recorded. Compare U10 against v2.
+
+## v3 (2026-10-01, outer correction patrol ACK(90), before any U10 result)
+
+Change from v2: **OpenSLES facade is deferred to U11, so `mindustry` is no longer a U10 beneficiary** — its
+`--observed=lit?` line is dropped and `opensles-facade` leaves `--include`, so mindustry reverts to its U9
+verdict `dead`. fd-tutanota stays `alive-white-window` (v2). Everything else unchanged.
+
+- **lit? = 5** (was 6): `toutiao`, `fd-meet`, `fd-fennec_fdroid`, `firefox`, `cv2-com-nbossard-packlist`.
+- `fd-tutanota` -> `alive-white-window`; `mindustry` -> `dead` (dead 25 -> 26).
+- Lit accounting still closes: 112 lit + 3 lit->flaky = 115, zero regression. Ceiling if all 5 land: **120/166**.
+- **U10 fix set (v3):** native `libstdc++`+`libjnigraphics` (toutiao), `abort-visibility` (fd-meet),
+  `strerror_r` (firefox, fd-fennec_fdroid); jar `j10f-websettings-defaults` (fd-tutanota -> white),
+  `predicate` (packlist), `j10e-split` (no-op). **No OpenSLES in U10.**
+- **Native artifact pinned (outer ACK(90)):** U10 native = `bbe46462b` (compat `015aa3a6`, libnativeloader
+  policy `621caec4`, appspawn-x host `62debf19`). Rollback target is **U9**, not U8:
+  `565fc6fdc116` / `a2919b793eb6` + boot `4db882a81732` + 318 identity assertions.
+
+**Compare U10 against v3** (superseded by v4 below).
+
+## v4 (2026-10-01, cx-bms confirmation, outer patrol ACK(90), before any U10 result)
+
+Change from v3: **libjnigraphics is deferred to U11 — the U10 libnativeloader policy adds `libstdc++` only.**
+So `toutiao` goes `lit?` -> **`dead`**: its libstdc++ bootstrap wall clears (policy `621caec4`), but the next
+wall is a libjnigraphics-needing feature lib (now U11). The first wall **moves**; toutiao does not light in U10
+— judged by the window hilog (libstdc++ loader error gone, next fatal = a libjnigraphics SONAME), not by the
+sweep verdict. Everything else unchanged from v3.
+
+- **lit? = 4** (was 5): `fd-meet`, `fd-fennec_fdroid`, `firefox`, `cv2-com-nbossard-packlist`.
+- `toutiao` -> `dead` (first-wall-move), `mindustry` -> `dead`, `fd-tutanota` -> `alive-white-window` (dead 25 -> 27).
+- Lit accounting still closes: 112 lit + 3 lit->flaky = 115, zero regression. Ceiling if all 4 land: **119/166**.
+- **U10 native (bbe46462b) refined:** policy `621caec4` = `+= libstdc++` **only** (libjnigraphics → U11);
+  compat `015aa3a6` = GNU `strerror_r` (firefox, fd-fennec_fdroid); appspawn-x host `62debf19` =
+  `U10ShareResidentCompat` (android_set_abort_message abort-owner visibility, fd-meet). Rollback target U9
+  `565fc6fdc116` / `a2919b793eb6` + boot `4db882a81732` + 318 assertions.
+
+**Compare U10 against v4** (the current live prediction; `predictions-v4.csv`, `command-v4.txt`).
