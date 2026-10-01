@@ -1,0 +1,129 @@
+benchmark/2026-10-01-n11f-owner-callback/src/sealed_child_provider_loader.c SHA256=566de25636675c31457941dd7d36740241104ddb954abe221c886be779fd49e7
+272: void *WLSCPL_OpenPreparedNamespace(const char *absolute_path, int flags)
+273: {
+274:     /* R155 ends this wrapper with a sibling call to dlopen. OH musl uses
+275:      * the return address to select the caller namespace; keep the caller in
+276:      * the sealed provider, not in this default-namespace plugin. A stack
+277:      * array here prevents the sibling call with the locked compiler. The
+278:      * post-link instruction check is part of admission for this wrapper. */
+279:     static const char prefix[] = "/system/android/lib64/";
+280:     if (namespace_prepared != 1 || !AbsoluteCanonicalForm(absolute_path) ||
+281:         strncmp(absolute_path, prefix, sizeof(prefix) - 1U) != 0 ||
+282:         absolute_path[sizeof(prefix) - 1U] == '\0' ||
+283:         (flags & (RTLD_NOW | RTLD_GLOBAL)) != RTLD_NOW) return NULL;
+284:     /* N11f: the two JNI owners are opened in the DEFAULT namespace via this host
+285:      * callback (open_sealed_exact) during runtime/JNI-owner prepare (and later
+286:      * by the Java NativeLoader). Return the resident sealed-owner handle instead
+287:      * of dlopen'ing a second copy -- the branch-3 OWNER_MISMATCH root. */
+288:     for (size_t owner = 0U; owner < 2U; ++owner) {
+289:         if (strcmp(absolute_path, g_owner_paths[owner]) == 0) {
+290:             if (g_owner_handles[owner] != NULL) return g_owner_handles[owner];
+291:             /* Host asked BEFORE the provider published the owners: this dlopen
+292:              * mints the default copy (branch-3 root). Record OWNER_PUBLISH_LATE
+293:              * in the result struct; it is surfaced by the host's unconditional
+294:              * [N11e-PROBE] done line (loader-stage stderr does NOT reach hilog,
+295:              * so no fprintf here). Fall through so the host proceeds. */
+296:             g_n11e_failure.branch = WLSCPL_FAILB_OWNER_PUBLISH_LATE;
+297:             g_n11e_failure.index = (uint32_t)owner;
+298:             break;
+299:         }
+300:     }
+301:     return dlopen(absolute_path, flags);
+302: }
+303: 
+304: static void *RealOpenLocalNow(void *context, const char *absolute_path,
+
+benchmark/2026-10-01-n11f-owner-callback/src/sealed_child_provider_loader.c SHA256=566de25636675c31457941dd7d36740241104ddb954abe221c886be779fd49e7
+328:     void *handle = dlopen_ns(&closure_namespace, absolute_path, flags);
+329:     const char *basename = strrchr(absolute_path, '/');
+330:     if (handle != NULL && basename != NULL &&
+331:         strcmp(basename + 1, "libwestlake_android_runtime_provider.so") == 0) {
+332:         /* N10b: the provider has now loaded route-a ART and openjdkjvm.
+333:          * Open both JNI owners in that same namespace, before provider init.
+334:          * CREATE_INHERIT_CURRENT adds an inheritance edge; it is not a
+335:          * snapshot. A default-owner preload would bind system ART instead.
+336:          * OH 6.1 musl ldso/linux/dynlink.c:4831-4983,2408-2575. */
+337:         size_t owner;
+338:         (void)dlerror();
+339:         void *art = dlopen_ns(&closure_namespace, "libart.so",
+340:                               RTLD_NOW | RTLD_NOLOAD | RTLD_LOCAL);
+341:         const char *dl = dlerror();
+342:         if (art == NULL) {
+343:             N11eFailure(WLSCPL_FAILB_ARTIFACT_DLOPEN, UINT32_MAX, dl, "route-a ART NOLOAD failed");
+344:             (void)dlclose(handle);
+345:             return NULL;
+346:         }
+347:         (void)dlclose(art);
+348:         for (owner = 0U; owner < 2U; ++owner) {
+349:             if (g_owner_handles[owner] == NULL) {
+350:                 (void)dlerror();
+351:                 g_owner_handles[owner] = dlopen_ns(&closure_namespace,
+352:                                                    g_owner_paths[owner],
+353:                                                    RTLD_NOW | RTLD_LOCAL);
+354:                 dl = dlerror();
+355:             }
+356:             if (g_owner_handles[owner] == NULL) {
+357:                 N11eFailure(WLSCPL_FAILB_ARTIFACT_DLOPEN, (uint32_t)owner, dl, "JNI owner preload failed");
+358:                 fprintf(stderr, "[N10b-JNI-OWNER] preload failed %s: %s\n",
+359:                         g_owner_paths[owner], g_n11e_failure.detail);
+360:                 (void)dlclose(handle);
+361:                 return NULL;
+362:             }
+363:         }
+364:         /* N11f: the two owners are now shared to the default namespace by
+365:          * WLSCPL_OpenPreparedNamespace returning g_owner_handles[owner] (single
+
+benchmark/2026-10-01-n11f-owner-callback/src/westlake_android_child_plugin.c SHA256=5347f4bfec4c4cea0833716c83293f1a27ca98ccefebd26f60808a3fedd2ce0b
+645:     loader_error = WLSCPL_LoadSealedProvider(
+646:         &g_sealed_child_loader, &load_request, &load_result);
+647:     {
+648:         /* N11f: unconditional done line (success too) so a NON-FATAL branch
+649:          * (4 EMIT_RESOLVE / 6 OWNER_PUBLISH_LATE) recorded in the result struct
+650:          * still surfaces after a successful load. Host context reaches hilog;
+651:          * loader-stage stderr does not, so the struct is the only carrier. */
+652:         char doneline[96];
+653:         (void)snprintf(doneline, sizeof(doneline), "done stage=%u branch=%u index=%u",
+654:                        load_result.last_stage, load_result.fail_branch,
+655:                        load_result.fail_artifact_index);
+656:         WlascGateMarkerText("[N11e-PROBE]", doneline);
+657:     }
+658:     if (loader_error != WLSCPL_OK ||
+659:         load_result.abi_version != WLSCPL_ABI_VERSION ||
+660:         load_result.struct_size != sizeof(load_result) ||
+661:         load_result.error != WLSCPL_OK ||
+662:         load_result.validated_artifact_count != manifest->artifact_count ||
+663:         load_result.child_pid != child_pid ||
+664:         load_result.artifact_generation != request->runtime_generation ||
+
+benchmark/2026-10-01-n11f-owner-callback/src/westlake_android_child_plugin.c SHA256=5347f4bfec4c4cea0833716c83293f1a27ca98ccefebd26f60808a3fedd2ce0b
+681:     ZeroBytes(&child_services, sizeof(child_services));
+682:     child_services.abi_version = WLASC_HOST_SERVICES_ABI_VERSION;
+683:     child_services.struct_size = (uint32_t)sizeof(child_services);
+684:     child_services.runtime_generation = request->runtime_generation;
+685:     memcpy(child_services.runtime_provider_sha256,
+686:            g_stock_host_services.runtime_provider_sha256,
+687:            WLASC_SHA256_SIZE);
+688:     child_services.current_thread_token =
+689:         g_stock_host_services.current_thread_token;
+690:     child_services.prepare_parent_runtime =
+691:         g_stock_host_services.prepare_parent_runtime;
+692:     child_services.verify_parent_preload_thread_ready =
+693:         g_stock_host_services.verify_parent_preload_thread_ready;
+694:     child_services.prepare_main_thread =
+695:         g_stock_host_services.prepare_main_thread;
+696:     child_services.verify_current_thread_ready =
+697:         g_stock_host_services.verify_current_thread_ready;
+698:     child_services.get_audit_snapshot =
+699:         g_stock_host_services.get_audit_snapshot;
+700:     child_services.get_pthread_bridge_ops =
+701:         g_stock_host_services.get_pthread_bridge_ops;
+702:     child_services.open_sealed_exact = WLSCPL_OpenPreparedNamespace;
+703:     child_services.create_configured_namespaces = g_stock_host_services.create_configured_namespaces;
+704:     child_services.open_namespace = g_stock_host_services.open_namespace;
+705:     WLASC_GATE_MARKER("WLCGATE:LSP:INVOKE_PROVIDER");
+706:     {
+707:         int result = InvokeProviderChildEntryWithResolver(
+708:             load_result.provider_handle, &child_services, request, receipt,
+709:             ResolveProviderChildSymbol);
+710:         WLASC_GATE_MARKER(result == 0 ?
+711:             "WLCGATE:LSP:PASS_PROVIDER" : "WLCGATE:LSP:FAIL_PROVIDER");

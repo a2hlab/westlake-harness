@@ -241,6 +241,8 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-u10-bundle/`** | U9-based U10 native/JAR assembly, actual host identity binding, aliases and offline admission evidence |
 | **`benchmark/2026-10-01-u11-native/`** | **Donor-based two-export root libandroid shim, 166-APK/606-native consumer replay, explicit union versus flat ABI evidence and pending owner/exception gates.** |
 | **`benchmark/2026-10-01-n11f-owner-callback/`** | N11f resident-owner callback over signed U9: exact N11e baseline, repeatable child, ABI/data review, frozen checks, native binding review and proposed bounded window. |
+| **`benchmark/2026-10-01-n11f-owner-callback/window-r1/`** | 61b N11f single-copy REFUTED: branch0, ART/JVM one, bridge/runtime two; zero target samples; 318-identity U9 recovery and snapshots. |
+| **`benchmark/2026-10-02-n11g-sealed-owner-blueprint/`** | Design only: explicit sealed host-open callback, N11f duplicate-instance evidence, artifact ownership, callback timing, gates and U9 rollback. |
 
 ---
 
