@@ -89,6 +89,19 @@ class Land(unittest.TestCase):
         self.assertIn('preflight OK', r.stdout)
         self.assertFalse((self.repo / 'benchmark/b/results.json').exists())
 
+    def test_refuses_dropping_master_lines_from_md(self):
+        (self.wt / 'benchmark/b/README.md').write_text('# b\nlane line\n')
+        (self.wt / 'benchmark/b/landing-paths.txt').write_text('benchmark/b/README.md\n')
+        self.assertEqual(self.land().returncode, 0)
+        md = self.repo / 'benchmark/b/README.md'
+        md.write_text(md.read_text() + 'outer reading line\n')      # the outer loop appends in master
+        git(self.repo, 'add', '.'); git(self.repo, '-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '-qm', 'outer')
+        (self.wt / 'benchmark/b/README.md').write_text('# b\nlane line\nlane addition\n')   # lane re-lands its copy
+        r = self.land()
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('would drop lines', r.stderr)
+        self.assertIn('outer reading line', md.read_text())
+
     def test_preflight_fails_on_home_paths_in_lane_tables(self):
         home = Path('/Users') / Path.home().name  # this Mac's home, as a lane's table would carry it
         (self.wt / 'benchmark/b/results.json').write_text(f'{{"run": "{home}/orca/workspaces/x/run1"}}\n')

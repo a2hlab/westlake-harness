@@ -170,6 +170,8 @@ def main(argv=None):
     ap.add_argument('--allow-large', action='store_true', help='land files over 1 MiB (outer-reviewed)')
     ap.add_argument('--preflight', action='store_true',
                     help='lane-side check: listing, size and user-path gates on the worktree files; copies nothing')
+    ap.add_argument('--allow-drop-lines', action='store_true',
+                    help='overwrite a master .md even though master has lines the lane copy lacks (outer-reviewed)')
     ap.add_argument('--allow-home-paths', action='store_true',
                     help='preflight: accept /Users/<name>/ inside data files (raw recorded evidence only)')
     args = ap.parse_args(argv)
@@ -228,6 +230,19 @@ def main(argv=None):
     if pinned:
         sys.exit('REFUSE: approved gate/frozen rows cite these files as evidence; land the new version under a new '
                  'name instead of overwriting:\n  ' + '\n  '.join(pinned))
+    # 2026-10-01 19:31: a lane re-landed a README-style .md from its worktree and silently erased the outer loop's
+    # reading appended to master's copy in between. A prose file must not lose master lines on overwrite.
+    lost = {}
+    for rel in overwritten:
+        if rel.endswith('.md'):
+            mine = set((wt / rel).read_text(errors='replace').splitlines())
+            gone = [l for l in (REPO / rel).read_text(errors='replace').splitlines() if l.strip() and l not in mine]
+            if gone:
+                lost[rel] = gone
+    if lost and not args.allow_drop_lines:
+        sys.exit('REFUSE: overwriting would drop lines master has and the lane copy lacks (merge them into the lane '
+                 'file first, or --allow-drop-lines if reviewed):\n  ' +
+                 '\n  '.join(f'{rel}: {len(g)} line(s), e.g. {g[0][:100]!r}' for rel, g in lost.items()))
     docs =[p for p in files if p.endswith('documentation.json')]
     failures = []
     try:
