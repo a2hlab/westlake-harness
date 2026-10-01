@@ -1,0 +1,32 @@
+{
+  "serial": "61b0657200000000000000000324012c",
+  "lane": "cx-t0",
+  "entry": "80",
+  "why": "N11b child-only failure evidence capture; continuous hilog and proc/fault timeline; <=30min; verified U8 rollback",
+  "board": "$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md",
+  "out": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-n11b-early-owner/window-r3/board61b/runner",
+  "smoke_spec": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-n11b-early-owner/window-r3/smoke.json",
+  "offline_precheck": {
+    "hypothesis": "The N11b163da805 early-owner path rejects at a guard/dlopen or changes the loaded owner count, preventing the control child from remaining alive. R2 did not capture the actual failed launch interval.",
+    "evidence": [
+      "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-n11b-early-owner/window-r2",
+      "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-n11b-early-owner/offline-failure/README.md"
+    ],
+    "result": "not-falsified",
+    "expect": {
+      "confirm": "Continuous hilog covers the failed launch through t20; proc/fault timeline or loader log identifies which early-owner guard/dlopen caused missing or duplicate child owners.",
+      "refute": "The full interval is covered but no guard/dlopen diagnostic distinguishes the failing branch; report missing diagnostics and add probes in a subsequent candidate, do not guess."
+    }
+  },
+  "after_lock": [
+    "python3",
+    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-n11b-early-owner/window-r3/hook.py",
+    "--apply"
+  ],
+  "before_unlock": [
+    "python3",
+    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-n11b-early-owner/window-r3/hook.py",
+    "--finish"
+  ],
+  "shards": []
+}

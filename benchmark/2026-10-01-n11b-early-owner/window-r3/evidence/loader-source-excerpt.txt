@@ -1,0 +1,113 @@
+Pinned candidate source SHA256 2b5d18d1dad0e083354d56d38e7911e9ef97be9c6ad70136376e0fe76586e4d8
+247: static void *RealOpenLocalNow(void *context, const char *absolute_path,
+248:                               int flags)
+249: {
+250:     (void)context;
+251:     if (namespace_prepared == 0) {
+252:         char search_path[PATH_MAX];
+253:         char *slash;
+254:         size_t length = strlen(absolute_path);
+255:         if (length == 0U || length >= sizeof(search_path)) {
+256:             return NULL;
+257:         }
+258:         (void)memcpy(search_path, absolute_path, length + 1U);
+259:         slash = strrchr(search_path, '/');
+260:         if (slash == NULL || slash == search_path) {
+261:             return NULL;
+262:         }
+263:         *slash = '\0';
+264:         dlns_init(&closure_namespace, "westlake.sealed.child");
+265:         if (dlns_create2(&closure_namespace, search_path,
+266:                          CREATE_INHERIT_CURRENT) != 0) {
+267:             return NULL;
+268:         }
+269:         namespace_prepared = 1;
+270:     }
+271:     void *handle = dlopen_ns(&closure_namespace, absolute_path, flags);
+272:     const char *basename = strrchr(absolute_path, '/');
+273:     if (handle != NULL && basename != NULL &&
+274:         strcmp(basename + 1, "libwestlake_android_runtime_provider.so") == 0) {
+275:         /* N10b: the provider has now loaded route-a ART and openjdkjvm.
+276:          * Open both JNI owners in that same namespace, before provider init.
+277:          * CREATE_INHERIT_CURRENT adds an inheritance edge; it is not a
+278:          * snapshot. A default-owner preload would bind system ART instead.
+279:          * OH 6.1 musl ldso/linux/dynlink.c:4831-4983,2408-2575. */
+280:         static void *jni_owner_handles[2];
+281:         static const char *const owner_paths[] = {
+282:             "/system/android/lib64/liboh_adapter_bridge.so",
+283:             "/system/android/lib64/liboh_android_runtime.so"
+284:         };
+285:         size_t owner;
+286:         void *art = dlopen_ns(&closure_namespace, "libart.so",
+287:                               RTLD_NOW | RTLD_NOLOAD | RTLD_LOCAL);
+288:         if (art == NULL) {
+289:             (void)dlclose(handle);
+290:             return NULL;
+291:         }
+292:         (void)dlclose(art);
+293:         for (owner = 0U; owner < 2U; ++owner) {
+294:             if (jni_owner_handles[owner] == NULL) {
+295:                 jni_owner_handles[owner] = dlopen_ns(&closure_namespace,
+296:                                                      owner_paths[owner],
+297:                                                      RTLD_NOW | RTLD_LOCAL);
+298:             }
+299:             if (jni_owner_handles[owner] == NULL) {
+300:                 fprintf(stderr, "[N10b-JNI-OWNER] preload failed %s: %s\n",
+301:                         owner_paths[owner], dlerror());
+302:                 (void)dlclose(handle);
+303:                 return NULL;
+304:             }
+305:         }
+306:         /* N11b: provider admission uses plain dlopen before the runtime
+307:          * ClassLoader domain exists. Publish the already loaded closure
+308:          * owners to default before the provider registers JNI. OH musl
+309:          * searches only direct inheritance; share exactly these two names.
+310:          * Never perform another fresh load to make this check pass. */
+311:         Dl_namespace default_namespace;
+312:         dlns_init(&default_namespace, "default");
+313:         if (dlns_inherit(&default_namespace, &closure_namespace,
+314:                         "liboh_adapter_bridge.so:liboh_android_runtime.so") != 0) {
+315:             (void)dlclose(handle);
+316:             return NULL;
+317:         }
+318:         for (owner = 0U; owner < 2U; ++owner) {
+319:             void *shared = dlopen_ns(&default_namespace, owner_paths[owner],
+320:                                     RTLD_NOW | RTLD_LOCAL | RTLD_NOLOAD);
+321:             if (shared == NULL || shared != jni_owner_handles[owner]) {
+322:                 if (shared != NULL) (void)dlclose(shared);
+323:                 (void)dlclose(handle);
+324:                 return NULL;
+325:             }
+326:             (void)dlclose(shared);
+327:         }
+328:         /* HiLog ABI from OH6.1 hilog/log_c.h: LOG_CORE=3, LOG_INFO=4.
+329:          * Resolve through the loaded runtime owner; do not add a default
+330:          * preload or a new child DT_NEEDED edge just for the smoke marker. */
+331:         typedef int (*N10bLogFn)(int, int, unsigned int,
+332:                                  const char *, const char *, ...);
+333:         N10bLogFn emit = (N10bLogFn)dlsym(jni_owner_handles[1], "HiLogPrint");
+334:         if (emit == NULL) {
+335:             (void)dlclose(handle);
+336:             return NULL;
+337:         }
+338:         (void)emit(3, 4, 0xD000F00u, "N10bOwner",
+339:                    "[N10b-JNI-OWNER] bridge/runtime preloaded in westlake.sealed.child");
+340:         (void)emit(3, 4, 0xD000F00u, "N11bOwner",
+341:                    "[N11b-EARLY-OWNER] default reuses sealed bridge/runtime; handles verified");
+342:     }
+343:     return handle;
+344: }
+470:     for (index = 0U; index < order_count; ++index) {
+471:         uint32_t artifact_index = order[index];
+472:         if (inherited[artifact_index]) continue;
+473:         void *handle = ops->open_local_now(
+474:             ops->context,
+475:             request->manifest->artifacts[artifact_index].absolute_path,
+476:             RTLD_NOW | RTLD_LOCAL);
+477:         if (handle == NULL) {
+478:             return Fail(loader, request, result, WLSCPL_ERROR_DLOPEN,
+479:                         order_count, ops);
+480:         }
+481:         loader->handles[loader->handle_count] = handle;
+Header SHA256 5ed64c97fa1d5040011f2720926e5dc33b758345ad4e47d3cd0252c3eec1dbd6
+50: WLSCPL_ERROR_DLOPEN = 10,
