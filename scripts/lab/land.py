@@ -25,6 +25,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -112,6 +113,23 @@ def expand(worktree, paths):
     return sorted(set(files))
 
 
+DATA_SUFFIXES = {'.csv', '.tsv', '.json', '.jsonl', '.md'}
+HOME_PATH = re.compile(r'/Users/[^/\s"\',]+/')
+
+
+def home_paths_in_data(worktree, files):
+    """Lane-written tables that carry this Mac's home paths. check_user_paths.py exempts data suffixes because raw
+    recorded evidence may hold paths, but a lane's own CSV/JSON should cite runs as $WORKSPACES/... (2026-10-01: one
+    lane wrote absolute /Users paths into three deliverables in one evening although each dispatch asked otherwise)."""
+    out = []
+    for f in files:
+        if Path(f).suffix in DATA_SUFFIXES:
+            n = len(HOME_PATH.findall((worktree / f).read_text(errors='replace')))
+            if n:
+                out.append((f, n))
+    return out
+
+
 def doc_changes(doc):
     if 'changes' in doc:
         return [(c['path'], c['lines']) for c in doc['changes']]
@@ -152,6 +170,8 @@ def main(argv=None):
     ap.add_argument('--allow-large', action='store_true', help='land files over 1 MiB (outer-reviewed)')
     ap.add_argument('--preflight', action='store_true',
                     help='lane-side check: listing, size and user-path gates on the worktree files; copies nothing')
+    ap.add_argument('--allow-home-paths', action='store_true',
+                    help='preflight: accept /Users/<name>/ inside data files (raw recorded evidence only)')
     args = ap.parse_args(argv)
     wt = args.worktree.expanduser().resolve()
     if not args.preflight and sh(['git', 'status', '--porcelain', '--untracked-files=no']).stdout.strip():
@@ -174,8 +194,13 @@ def main(argv=None):
             print(f'TOO LARGE {f} ({(wt / f).stat().st_size // 1024} KiB)')
         for h in hits:
             print(h[:220])
-        ok = not big and r.returncode == 0
-        print(f'preflight {"OK" if ok else "FAILED"}: {len(files)} files, {len(big)} too large, {len(hits)} user-path hit(s)')
+        homes = [] if args.allow_home_paths else home_paths_in_data(wt, files)
+        for f, n in homes:
+            print(f'HOME-PATH-IN-DATA {f} x{n} (write $WORKSPACES/... or a repo-relative path; raw recorded evidence: '
+                  f'--allow-home-paths)')
+        ok = not big and r.returncode == 0 and not homes
+        print(f'preflight {"OK" if ok else "FAILED"}: {len(files)} files, {len(big)} too large, {len(hits)} user-path '
+              f'hit(s), {len(homes)} data file(s) with home paths')
         return 0 if ok else 1
     # AGENTS: large binaries and raw logs stay out of the repo (2026-10-01: a listing carried a 76k-line run hilog as
     # "evidence"); land an excerpt with original line numbers and cite the run directory instead.

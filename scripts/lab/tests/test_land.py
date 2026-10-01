@@ -89,6 +89,15 @@ class Land(unittest.TestCase):
         self.assertIn('preflight OK', r.stdout)
         self.assertFalse((self.repo / 'benchmark/b/results.json').exists())
 
+    def test_preflight_fails_on_home_paths_in_lane_tables(self):
+        home = Path('/Users') / Path.home().name  # this Mac's home, as a lane's table would carry it
+        (self.wt / 'benchmark/b/results.json').write_text(f'{{"run": "{home}/orca/workspaces/x/run1"}}\n')
+        r = self.land('benchmark/b/landing-paths.txt', '--preflight')
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn('HOME-PATH-IN-DATA benchmark/b/results.json x1', r.stdout)
+        r = self.land('benchmark/b/landing-paths.txt', '--preflight', '--allow-home-paths')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
     def test_gate_registry_needs_flag_and_dotdot_refused(self):
         (self.wt / 'knowledge/gates').mkdir(parents=True)
         (self.wt / 'knowledge/gates/x.json').write_text('{}')
