@@ -76,6 +76,23 @@ class BoardRun(unittest.TestCase):
             self.assertFalse((Path(d) / 'out').exists())              # the child creates it
             self.assertTrue((Path(d) / 'out.board-run.log').exists())
 
+    def test_offline_precheck_required(self):
+        self.assertIn('offline_precheck', board_run.precheck_problem(None))
+        good = {'hypothesis': 'h', 'evidence': ['.octos/KNOWLEDGE-DIGEST.md'], 'result': 'not-falsified'}
+        self.assertIsNone(board_run.precheck_problem(good))
+        self.assertIn('not found', board_run.precheck_problem(dict(good, evidence=['no/such/file'])))
+        self.assertIn('falsified', board_run.precheck_problem(dict(good, result='falsified')))
+        self.assertIn('empty', board_run.precheck_problem(dict(good, evidence=[])))
+        with tempfile.TemporaryDirectory() as d:
+            plan = json.loads(EXAMPLE.read_text()); plan.pop('offline_precheck')
+            plan.update(out=str(Path(d) / 'out'), shards=[])
+            p = Path(d) / 'p.json'; p.write_text(json.dumps(plan))
+            with patch.object(board_run.subprocess, 'run') as run:
+                with self.assertRaises(SystemExit) as cm:
+                    board_run.main([str(p)])
+            self.assertIn('offline precheck', str(cm.exception))
+            run.assert_not_called()                                   # refused before LOCK
+
     def test_dispatch_has_every_rule(self):
         text = board_run.dispatch_text(json.loads(EXAMPLE.read_text()), EXAMPLE)
         for rule in board_run.RULES:

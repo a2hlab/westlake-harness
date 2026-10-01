@@ -25,6 +25,9 @@ Relative paths are resolved against the repo; $WORKSPACES is expanded.
 Lanes start it with --detach (2026-10-01 13:43: oc-t4 ran it inside an agent bash tool call; the tool's 6-minute
 timeout killed board_run and bms_batch mid-shard, after fd-uhabits was uninstalled and before it was reinstalled, and
 the board stayed locked). SIGTERM / SIGHUP now unwind through the same finally (before_unlock, then UNLOCK).
+Required offline_precheck (user rule 2026-10-01): {"hypothesis": "...", "evidence": [existing paths], "result":
+"not-falsified"} -- what this window tests and the existing evidence (run-dir maps / hilog / faultlog, DIGEST, AOSP
+source) it was checked against first; a hypothesis that existing evidence already falsifies never takes a board.
 Optional after_lock is an argv list run right after LOCK, before the smoke gate: the overlay deploy of a short window
 (e.g. sweep_bind_deploy.py --no-run --no-rollback ...). Non-zero = no smoke, no shards; before_unlock still runs.
 Optional before_unlock is an argv list executed while the lock is still held, including on smoke failure.
@@ -52,6 +55,7 @@ RULES = [
     '每个分片都带 --reinstall --hilog --shots 5,20,各进新目录',
     '原始运行目录一个字节不删;落库只复制',
     '车道里用 --detach 起(agent 的工具调用超时会连带杀掉前台进程),再按日志和黑板轮询',
+    '上板前先用已有证据离线核这次的假设(运行目录的 maps / hilog / faultlog、DIGEST、本机 AOSP 源码),能离线证伪就不上板;plan 里写 offline_precheck(hypothesis / evidence / result=not-falsified),缺了 board_run 拒跑',
     '每个分片的 facts.txt TOTAL 行原样贴黑板;截图交外环读图签数',
 ]
 
@@ -70,6 +74,25 @@ def dispatch_text(plan, plan_path):
     lines += [f'  {i}. {r}' for i, r in enumerate(RULES, 1)]
     lines.append('跑完贴每个分片 facts.txt 的 TOTAL 行原样(脚本已自动贴一份),截图不自判、交外环。')
     return '\n'.join(lines)
+
+
+def precheck_problem(pre):
+    """The window's hypothesis must have been checked against existing evidence first (user rule 2026-10-01: run dirs'
+    maps / hilog / faultlog, DIGEST, AOSP source). Returns a refusal reason, or None."""
+    if not isinstance(pre, dict):
+        return ('plan needs "offline_precheck": {"hypothesis": ..., "evidence": [existing paths: run-dir maps / hilog / '
+                'faultlog, DIGEST lines, AOSP source], "result": "not-falsified"}')
+    if not str(pre.get('hypothesis', '')).strip():
+        return 'offline_precheck.hypothesis is empty'
+    ev = pre.get('evidence') or []
+    if not ev:
+        return 'offline_precheck.evidence is empty: name the existing evidence the hypothesis was checked against'
+    missing = [e for e in ev if not Path(expand(str(e).split(':')[0])).exists()]
+    if missing:
+        return 'offline_precheck.evidence not found: ' + ', '.join(missing)
+    if pre.get('result') != 'not-falsified':
+        return f'offline_precheck.result is {pre.get("result")!r}; a hypothesis falsified offline does not go on a board'
+    return None
 
 
 def board_append(plan, text):
@@ -94,6 +117,9 @@ def main(argv=None):
             sys.exit(f'{name} must be a nonempty argv list')
     if args.dispatch:
         print(dispatch_text(plan, args.plan)); return 0
+    problem = precheck_problem(plan.get('offline_precheck'))
+    if problem:
+        sys.exit(f'REFUSE (offline precheck, user rule 2026-10-01): {problem}')
     note = str(lab_paths.tools() / 'board_note.sh')
     out = Path(expand(plan['out']))
     if out.exists():
