@@ -215,6 +215,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-01-icon-format-scan/`** | Exact installer-selected icon files across 166 keys: 130 PNG, 25 WebP-family, 11 XML; 24 canonical WebP containers have own tiles, malformed Frequent Habits does not. |
 | **`benchmark/2026-10-01-icon-invalid-fallback/`** | U9 installer patch proposal: invalid selected non-PNG headers bypass legacy lookup and reuse the template-only placeholder, with exact-source host routing and 25-member WebP replay. |
 | **`benchmark/2026-10-01-j10d-jar/`** | **J10d (J10 `ea24291a`→`57d62183`): FIX the appcompat-actionbar wall — restore the activity's own manifest theme.** J10c proved the activity is themed by the APP theme (`Theme.Knot`, androidx `windowActionBar=true@0x7f030350`), not its manifest `Theme.Knot.NoActionBar` (`0x7f11019e`), because AppSchedulerBridge overwrites/zeros `activityInfo.theme` before `scheduleTransaction` and stock `performLaunchActivity.getThemeResource()` then falls back to `applicationInfo.theme`. Fix = `J10dTheme.restore(activityInfo)` injected right after the banner force-zero, setting `activityInfo.theme = ManifestJsonFallback.activityTheme(pkg,name)` (marker `[J10d-THEME]`). Offline gate `test_j10d.py` 6/6; window plan has `offline_precheck.expect {confirm,refute}` + `expect_copies {bridge:2,runtime:2}`; class delta +`J10dTheme` only. |
+| **`benchmark/2026-10-01-j10d-window/`** | **J10d (restore the manifest activity theme the adapter zeroed) lights 10 of 12 appcompat / getActivityInfo keys on 5ea, all non-lit in U8.** |
 
 ---
 
