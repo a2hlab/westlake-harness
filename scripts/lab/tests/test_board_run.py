@@ -79,8 +79,19 @@ class BoardRun(unittest.TestCase):
     def test_batch_stop_skips_remaining_shards_but_restores(self):
         self.shard_exit(2, expected_batches=1)
 
-    def test_nonzero_app_result_skips_remaining_shards_but_restores(self):
-        self.shard_exit(1, expected_batches=1)
+    def test_shard_rc1_all_records_wrapped_continues(self):
+        # bms_batch exits 1 even when the shard finished every key (focus gate stays foreground_unconfirmed):
+        # an all-wrapped rc=1 shard must NOT stop the board -> both shards run, board_run returns 0.
+        self.shard_rc1({'test-key': 'foreground_unconfirmed'}, expected_batches=2, expected_return=0)
+
+    def test_shard_rc1_started_record_stops(self):
+        # a 'started' (or 'batch_interrupted', or a missing) record means the shard did not finish on its own ->
+        # still stop the remaining shards; board_run returns 1.
+        self.shard_rc1({'test-key': 'started'}, expected_batches=1, expected_return=1)
+
+    def test_shard_rc1_missing_record_stops(self):
+        # rc=1 with no record written at all -> cannot confirm wrap-up -> stop.
+        self.shard_rc1({}, expected_batches=1, expected_return=1)
 
     def test_successful_shard_continues_next_shard(self):
         self.shard_exit(0, expected_batches=2)
@@ -127,6 +138,42 @@ class BoardRun(unittest.TestCase):
         else:
             unlock = next(i for i,a in enumerate(calls) if 'unlock' in a)
             self.assertLess(restore, unlock)
+
+    def shard_rc1(self, records, expected_batches, expected_return):
+        """First shard exits 1 after writing `records` ({key: status}) into <sout>/<serial>/<key>/record.json;
+        board_run continues iff every requested key wrapped up, else stops. Always a clean rollback+unlock."""
+        calls = []
+        with tempfile.TemporaryDirectory() as d:
+            plan = json.loads(EXAMPLE.read_text())
+            keys = Path(d) / 'keys.txt'; keys.write_text('test-key\n')
+            shards = [dict(name=n, keys_file=str(keys), manifest='manifest.json', input_root=d)
+                      for n in ('first', 'second')]
+            plan.update(out=str(Path(d) / 'out'), shards=shards, before_unlock=['rollback-verify'])
+            p = Path(d) / 'p.json'; p.write_text(json.dumps(plan))
+            def run(argv, **kwargs):
+                calls.append(argv)
+                if 'held' in argv:
+                    return subprocess.CompletedProcess(argv, 0, stdout=plan['lane']+' 123')
+                if str(board_run.BATCH) in argv:
+                    count = sum(str(board_run.BATCH) in a for a in calls)
+                    if count == 1:  # first shard: write records then exit 1 (the all-captured-only gate)
+                        sout = Path(argv[argv.index('--out') + 1])
+                        for key, status in records.items():
+                            rec = sout / plan['serial'] / key / 'record.json'
+                            rec.parent.mkdir(parents=True, exist_ok=True)
+                            rec.write_text(json.dumps({'status': status}))
+                        return subprocess.CompletedProcess(argv, 1)
+                    return subprocess.CompletedProcess(argv, 0)
+                return subprocess.CompletedProcess(argv, 0)
+            with patch.object(board_run.subprocess, 'run', side_effect=run):
+                self.assertEqual(board_run.main([str(p)]), expected_return)
+            report = json.loads((Path(d) / 'out/board-run-result.json').read_text())
+            self.assertEqual(len(report['shards']), expected_batches)
+            self.assertEqual(report['before_unlock'], 0)
+        self.assertEqual(sum(str(board_run.BATCH) in a for a in calls), expected_batches)
+        restore = calls.index(['rollback-verify'])
+        unlock = next(i for i, a in enumerate(calls) if 'unlock' in a)
+        self.assertLess(restore, unlock)
 
     def test_detach_starts_new_session_and_returns(self):
         with tempfile.TemporaryDirectory() as d:

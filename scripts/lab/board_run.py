@@ -152,6 +152,33 @@ def seal(directory):
         os.chmod(root, os.stat(root).st_mode & ~0o222)
 
 
+# bms_batch (benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py:1172) exits 0 only when every record is
+# 'captured'; the focus gate stays foreground_unconfirmed, so a shard that finished every key still exits 1. These
+# statuses mean "the key was launched and the run wrapped up" (no work left), so an all-wrapped rc=1 shard is a
+# finished shard, not a failure that should stop the board's remaining shards.
+WRAPPED_STATUSES = {'captured', 'foreground_unconfirmed', 'app_failed'}
+
+
+def shard_all_wrapped(sout, keylist):
+    """True iff the shard produced a record for every requested key and every record wrapped up cleanly.
+
+    A missing record, a 'started'/'batch_interrupted' status, or an unreadable/unknown status means the shard did
+    not finish on its own -> the board must still stop (return False)."""
+    records = sorted(Path(sout).glob('*/*/record.json'))
+    if not records:
+        return False
+    seen = set()
+    for rec in records:
+        try:
+            status = json.loads(rec.read_text()).get('status')
+        except Exception:
+            return False
+        if status not in WRAPPED_STATUSES:
+            return False
+        seen.add(rec.parent.name)
+    return set(keylist).issubset(seen)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('plan', type=Path)
@@ -221,7 +248,8 @@ def main(argv=None):
         for shard in plan['shards']:
             # one key per line or comma-separated (2026-10-01 J10d: a newline list went in as one unknown key)
             raw = Path(expand(shard['keys_file'])).read_text()
-            keys = ','.join(k for k in raw.replace(',', ' ').split() if not k.startswith('#'))
+            keylist = [k for k in raw.replace(',', ' ').split() if not k.startswith('#')]
+            keys = ','.join(keylist)
             sout = out / shard['name']
             cmd = [sys.executable, str(BATCH), '--execute', '--serial', plan['serial'], '--lane', plan['lane'],
                    '--manifest', expand(shard['manifest']), '--input-root', expand(shard['input_root']),
@@ -237,9 +265,15 @@ def main(argv=None):
             board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} board_run 分片 {shard["name"]} '
                                f'({facts[0] if facts else sout}):「{total}」')
             seal(sout)
-            # Any nonzero shard result stops this board's remaining shards.
-            # finally still restores before unlocking, including rc=1.
+            # A nonzero shard result stops this board's remaining shards, EXCEPT rc==1 when every record is
+            # wrapped up (see shard_all_wrapped): bms_batch exits 1 even on a fully-finished shard because the focus
+            # gate never confirms. rc>=2 or a negative (signal-killed) rc always stops. finally still restores.
             if code != 0:
+                if code == 1 and shard_all_wrapped(sout, keylist):
+                    result['shards'][-1]['continued_rc1'] = True
+                    board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} '
+                                       f'分片 {shard["name"]} rc=1(全部收尾,继续)')
+                    continue
                 result['stopped_after_shard'] = shard['name']
                 board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} '
                                    f'分片 {shard["name"]} 中止 rc={code}; 停剩余分片并执行 before_unlock')
