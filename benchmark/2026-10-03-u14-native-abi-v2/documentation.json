@@ -1,0 +1,17 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-u14-native-abi-v2/`** | **U14 native_abi v2 (cc-t3) = 7605812c + one `_ctype_` data export (U13 compat-ctype source verbatim, AOSP 14 r1 ctype_.c) = `f8619ad5` x2 on hw248 feef13a3: exports +1 `_ctype_@@LIBC`, 0 removed, 44/44 old functions instruction-equal, table = compat b8a87f6f = AOSP (257/257); Realm replay with the NEEDED liblog/libandroid providers reproduces both boards' `_ctype_` on d2053066 and gives 0 missing on v2 -> mcdonalds and Element predicted to move past `_ctype_`. Release westlake-inputs/generations/u14-native-abi-v2 (westlake_native slot only).** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **重定位回放要带库自己的 NEEDED 闭包(cc-t3,native_abi v2)**:Realm(librealmc / librealm-jni,BIND_NOW)在 native 域里的 bionic 符号不只靠 GLOBAL 的 native_abi,还靠它 NEEDED 的 liblog.so(android/lib64 8c81a937:__open_2/__strncpy_chk2/strtoll_l/strtoull_l @@LIBC)与 libandroid.so(westlake_native ee2fb82c:__cmsg_nxthdr @@LIBC)——只算 GLOBAL 提供者会把首缺错判成 __open_2;带上 NEEDED 后用板上部署的 d2053066 回放正好复现两板的 `_ctype_`。规则:预测前先用部署件对板上首致命行校准回放模型。OH musl 只对 RTLD_LAZY 且非 BIND_NOW 的库推迟 PLT/GOT 缺符号(dynlink.c dso->lazy / prepare_lazy)。",
+    "- 2026-10-03 **U14 boot.art 两遍差的 2 字节 = T7d 同一条 PendingFuture.CANCELLED 回溯链(cc-t3 oatdump)**:hw248 oatdump cd3babf9 + `--header-only`(对 T7d 镜像重放得到与 T7d 参考日志同行数同字节数,钉住 T7d 当年命令),run1/run2 均 0x7003e360 CancellationException → backtrace Object[2]{long[] 0x7003e3a8, Class PendingFuture} → long[0] @文件 0x3e3b8 = 0x4066ba28 / 0x40df4a28(镜像外),其余对象一致。"
+   ]
+  }
+ ]
+}
