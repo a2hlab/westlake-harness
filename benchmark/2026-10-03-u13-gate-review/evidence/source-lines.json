@@ -1,0 +1,590 @@
+[
+  {
+    "label": "old",
+    "sha256": "b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea",
+    "first_line": 398,
+    "lines": [
+      {
+        "line": 398,
+        "text": "static void resolve_oh_wm_funcs() {"
+      },
+      {
+        "line": 399,
+        "text": "    static bool s_logged = false;"
+      },
+      {
+        "line": 400,
+        "text": "    if (g_oh_wm_get_native_window_fn &&"
+      },
+      {
+        "line": 401,
+        "text": "        g_oh_rs_get_child_surface_window_fn) return;"
+      },
+      {
+        "line": 402,
+        "text": ""
+      },
+      {
+        "line": 403,
+        "text": "    // 2026-05-09 G2.14ac: previous code used dlsym(RTLD_DEFAULT, ...) which on"
+      },
+      {
+        "line": 404,
+        "text": "    // OH only searches the caller's linker namespace and the main executable"
+      },
+      {
+        "line": 405,
+        "text": "    // (appspawn-x). The target symbols live in liboh_adapter_bridge.so which"
+      },
+      {
+        "line": 406,
+        "text": "    // lives in a different namespace, so RTLD_DEFAULT misses them \u2014 dlerror"
+      },
+      {
+        "line": 407,
+        "text": "    // confirmed: \"Symbol not found ... so=/system/bin/appspawn-x\"."
+      },
+      {
+        "line": 408,
+        "text": "    //"
+      },
+      {
+        "line": 409,
+        "text": "    // The runtime has an exact DT_NEEDED edge to liboh_adapter_bridge.so."
+      },
+      {
+        "line": 410,
+        "text": "    // Resolve only that already-loaded object. A fresh-by-name/absolute-path"
+      },
+      {
+        "line": 411,
+        "text": "    // fallback can create a second namespace instance and split the window"
+      },
+      {
+        "line": 412,
+        "text": "    // session state, so a NOLOAD miss is a hard boundary failure."
+      },
+      {
+        "line": 413,
+        "text": "    static void* s_bridgeHandle = nullptr;"
+      },
+      {
+        "line": 414,
+        "text": "    if (!s_bridgeHandle) {"
+      },
+      {
+        "line": 415,
+        "text": "        s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+      },
+      {
+        "line": 416,
+        "text": "        if (s_bridgeHandle) {"
+      },
+      {
+        "line": 417,
+        "text": "            ALOGI(\"[DEBUG] resolve_oh_wm_funcs: exact loaded bridge handle=%p\","
+      },
+      {
+        "line": 418,
+        "text": "                  s_bridgeHandle);"
+      },
+      {
+        "line": 419,
+        "text": "        } else {"
+      },
+      {
+        "line": 420,
+        "text": "            const char* err = dlerror();"
+      },
+      {
+        "line": 421,
+        "text": "            ALOGE(\"[DEBUG] resolve_oh_wm_funcs: required loaded bridge absent dlerror='%s'\","
+      },
+      {
+        "line": 422,
+        "text": "                  err ? err : \"(null)\");"
+      },
+      {
+        "line": 423,
+        "text": "            return;"
+      },
+      {
+        "line": 424,
+        "text": "        }"
+      },
+      {
+        "line": 425,
+        "text": "    }"
+      },
+      {
+        "line": 426,
+        "text": ""
+      },
+      {
+        "line": 427,
+        "text": "    if (!g_oh_wm_get_native_window_fn) {"
+      },
+      {
+        "line": 428,
+        "text": "        g_oh_wm_get_native_window_fn = reinterpret_cast<oh_wm_get_native_window_fn_t>("
+      },
+      {
+        "line": 429,
+        "text": "            dlsym(s_bridgeHandle, \"oh_wm_get_native_window\"));"
+      },
+      {
+        "line": 430,
+        "text": "    }"
+      },
+      {
+        "line": 431,
+        "text": "    if (!g_oh_rs_get_child_surface_window_fn) {"
+      },
+      {
+        "line": 432,
+        "text": "        g_oh_rs_get_child_surface_window_fn = reinterpret_cast<oh_rs_get_child_surface_window_fn_t>("
+      },
+      {
+        "line": 433,
+        "text": "            dlsym(s_bridgeHandle, \"oh_rs_get_child_surface_window\"));"
+      },
+      {
+        "line": 434,
+        "text": "    }"
+      },
+      {
+        "line": 435,
+        "text": "    if (!s_logged) {"
+      }
+    ]
+  },
+  {
+    "label": "old",
+    "sha256": "b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea",
+    "first_line": 1309,
+    "lines": [
+      {
+        "line": 1309,
+        "text": "//"
+      },
+      {
+        "line": 1310,
+        "text": "// libEGL.so is an exact DT_NEEDED dependency of this runtime. Reuse only the"
+      },
+      {
+        "line": 1311,
+        "text": "// already-loaded provider; never create a second/global/absolute-path instance."
+      },
+      {
+        "line": 1312,
+        "text": "typedef void*    EGLDisplay;"
+      },
+      {
+        "line": 1313,
+        "text": "typedef void*    EGLConfig;"
+      },
+      {
+        "line": 1314,
+        "text": "typedef void*    EGLSurface;"
+      },
+      {
+        "line": 1315,
+        "text": "typedef int32_t  EGLint;"
+      },
+      {
+        "line": 1316,
+        "text": "typedef EGLSurface (*PFN_eglCreateWindowSurface)(EGLDisplay, EGLConfig, void*,"
+      },
+      {
+        "line": 1317,
+        "text": "                                                 const EGLint*);"
+      },
+      {
+        "line": 1318,
+        "text": ""
+      },
+      {
+        "line": 1319,
+        "text": "extern \"C\" EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig cfg,"
+      },
+      {
+        "line": 1320,
+        "text": "                                             void* win, const EGLint* attrs) {"
+      },
+      {
+        "line": 1321,
+        "text": "    static PFN_eglCreateWindowSurface s_real = nullptr;"
+      },
+      {
+        "line": 1322,
+        "text": "    static bool s_resolved = false;"
+      },
+      {
+        "line": 1323,
+        "text": "    if (!s_resolved) {"
+      },
+      {
+        "line": 1324,
+        "text": "        s_resolved = true;"
+      },
+      {
+        "line": 1325,
+        "text": "        // dlfcn.h was #included inside namespace android above, so the dl*"
+      },
+      {
+        "line": 1326,
+        "text": "        // symbols live in android:: \u2014 qualify them from this global scope."
+      },
+      {
+        "line": 1327,
+        "text": "        void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+      },
+      {
+        "line": 1328,
+        "text": "        if (h) {"
+      },
+      {
+        "line": 1329,
+        "text": "            s_real = reinterpret_cast<PFN_eglCreateWindowSurface>("
+      },
+      {
+        "line": 1330,
+        "text": "                android::dlsym(h, \"eglCreateWindowSurface\"));"
+      },
+      {
+        "line": 1331,
+        "text": "        }"
+      },
+      {
+        "line": 1332,
+        "text": "        NWFS_INFO(\"[UNITY-EGL] resolve eglCreateWindowSurface handle=%{public}p real=%{public}p\","
+      },
+      {
+        "line": 1333,
+        "text": "                  h, reinterpret_cast<void*>(s_real));"
+      },
+      {
+        "line": 1334,
+        "text": "    }"
+      },
+      {
+        "line": 1335,
+        "text": "    if (!s_real) {"
+      },
+      {
+        "line": 1336,
+        "text": "        NWFS_WARN(\"[UNITY-EGL] real eglCreateWindowSurface unresolved -> EGL_NO_SURFACE\");"
+      },
+      {
+        "line": 1337,
+        "text": "        return nullptr;   // EGL_NO_SURFACE"
+      },
+      {
+        "line": 1338,
+        "text": "    }"
+      },
+      {
+        "line": 1339,
+        "text": "    OHNativeWindow* oh = win ? oh_anw_get_oh(reinterpret_cast<ANativeWindow*>(win))"
+      },
+      {
+        "line": 1340,
+        "text": "                             : nullptr;"
+      },
+      {
+        "line": 1341,
+        "text": ""
+      }
+    ]
+  },
+  {
+    "label": "new",
+    "sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+    "first_line": 398,
+    "lines": [
+      {
+        "line": 398,
+        "text": "static void resolve_oh_wm_funcs() {"
+      },
+      {
+        "line": 399,
+        "text": "    static bool s_logged = false;"
+      },
+      {
+        "line": 400,
+        "text": "    if (g_oh_wm_get_native_window_fn &&"
+      },
+      {
+        "line": 401,
+        "text": "        g_oh_rs_get_child_surface_window_fn) return;"
+      },
+      {
+        "line": 402,
+        "text": ""
+      },
+      {
+        "line": 403,
+        "text": "    // 2026-05-09 G2.14ac: previous code used dlsym(RTLD_DEFAULT, ...) which on"
+      },
+      {
+        "line": 404,
+        "text": "    // OH only searches the caller's linker namespace and the main executable"
+      },
+      {
+        "line": 405,
+        "text": "    // (appspawn-x). The target symbols live in liboh_adapter_bridge.so which"
+      },
+      {
+        "line": 406,
+        "text": "    // lives in a different namespace, so RTLD_DEFAULT misses them \u2014 dlerror"
+      },
+      {
+        "line": 407,
+        "text": "    // confirmed: \"Symbol not found ... so=/system/bin/appspawn-x\"."
+      },
+      {
+        "line": 408,
+        "text": "    //"
+      },
+      {
+        "line": 409,
+        "text": "    // The runtime has an exact DT_NEEDED edge to liboh_adapter_bridge.so."
+      },
+      {
+        "line": 410,
+        "text": "    // Resolve only that already-loaded object. A fresh-by-name/absolute-path"
+      },
+      {
+        "line": 411,
+        "text": "    // fallback can create a second namespace instance and split the window"
+      },
+      {
+        "line": 412,
+        "text": "    // session state, so a NOLOAD miss is a hard boundary failure."
+      },
+      {
+        "line": 413,
+        "text": "    static void* s_bridgeHandle = nullptr;"
+      },
+      {
+        "line": 414,
+        "text": "    if (!s_bridgeHandle) {"
+      },
+      {
+        "line": 415,
+        "text": "        s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+      },
+      {
+        "line": 416,
+        "text": "        if (s_bridgeHandle) {"
+      },
+      {
+        "line": 417,
+        "text": "            ALOGI(\"[DEBUG] resolve_oh_wm_funcs: exact loaded bridge handle=%p\","
+      },
+      {
+        "line": 418,
+        "text": "                  s_bridgeHandle);"
+      },
+      {
+        "line": 419,
+        "text": "        } else {"
+      },
+      {
+        "line": 420,
+        "text": "            const char* err = dlerror();"
+      },
+      {
+        "line": 421,
+        "text": "            ALOGE(\"[DEBUG] resolve_oh_wm_funcs: required loaded bridge absent dlerror='%s'\","
+      },
+      {
+        "line": 422,
+        "text": "                  err ? err : \"(null)\");"
+      },
+      {
+        "line": 423,
+        "text": "            return;"
+      },
+      {
+        "line": 424,
+        "text": "        }"
+      },
+      {
+        "line": 425,
+        "text": "    }"
+      },
+      {
+        "line": 426,
+        "text": ""
+      },
+      {
+        "line": 427,
+        "text": "    if (!g_oh_wm_get_native_window_fn) {"
+      },
+      {
+        "line": 428,
+        "text": "        g_oh_wm_get_native_window_fn = reinterpret_cast<oh_wm_get_native_window_fn_t>("
+      },
+      {
+        "line": 429,
+        "text": "            dlsym(s_bridgeHandle, \"oh_wm_get_native_window\"));"
+      },
+      {
+        "line": 430,
+        "text": "    }"
+      },
+      {
+        "line": 431,
+        "text": "    if (!g_oh_rs_get_child_surface_window_fn) {"
+      },
+      {
+        "line": 432,
+        "text": "        g_oh_rs_get_child_surface_window_fn = reinterpret_cast<oh_rs_get_child_surface_window_fn_t>("
+      },
+      {
+        "line": 433,
+        "text": "            dlsym(s_bridgeHandle, \"oh_rs_get_child_surface_window\"));"
+      },
+      {
+        "line": 434,
+        "text": "    }"
+      },
+      {
+        "line": 435,
+        "text": "    if (!s_logged) {"
+      }
+    ]
+  },
+  {
+    "label": "new",
+    "sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+    "first_line": 1390,
+    "lines": [
+      {
+        "line": 1390,
+        "text": "//"
+      },
+      {
+        "line": 1391,
+        "text": "// libEGL.so is an exact DT_NEEDED dependency of this runtime. Reuse only the"
+      },
+      {
+        "line": 1392,
+        "text": "// already-loaded provider; never create a second/global/absolute-path instance."
+      },
+      {
+        "line": 1393,
+        "text": "typedef void*    EGLDisplay;"
+      },
+      {
+        "line": 1394,
+        "text": "typedef void*    EGLConfig;"
+      },
+      {
+        "line": 1395,
+        "text": "typedef void*    EGLSurface;"
+      },
+      {
+        "line": 1396,
+        "text": "typedef int32_t  EGLint;"
+      },
+      {
+        "line": 1397,
+        "text": "typedef EGLSurface (*PFN_eglCreateWindowSurface)(EGLDisplay, EGLConfig, void*,"
+      },
+      {
+        "line": 1398,
+        "text": "                                                 const EGLint*);"
+      },
+      {
+        "line": 1399,
+        "text": ""
+      },
+      {
+        "line": 1400,
+        "text": "extern \"C\" EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig cfg,"
+      },
+      {
+        "line": 1401,
+        "text": "                                             void* win, const EGLint* attrs) {"
+      },
+      {
+        "line": 1402,
+        "text": "    static PFN_eglCreateWindowSurface s_real = nullptr;"
+      },
+      {
+        "line": 1403,
+        "text": "    static bool s_resolved = false;"
+      },
+      {
+        "line": 1404,
+        "text": "    if (!s_resolved) {"
+      },
+      {
+        "line": 1405,
+        "text": "        s_resolved = true;"
+      },
+      {
+        "line": 1406,
+        "text": "        // dlfcn.h was #included inside namespace android above, so the dl*"
+      },
+      {
+        "line": 1407,
+        "text": "        // symbols live in android:: \u2014 qualify them from this global scope."
+      },
+      {
+        "line": 1408,
+        "text": "        void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+      },
+      {
+        "line": 1409,
+        "text": "        if (h) {"
+      },
+      {
+        "line": 1410,
+        "text": "            s_real = reinterpret_cast<PFN_eglCreateWindowSurface>("
+      },
+      {
+        "line": 1411,
+        "text": "                android::dlsym(h, \"eglCreateWindowSurface\"));"
+      },
+      {
+        "line": 1412,
+        "text": "        }"
+      },
+      {
+        "line": 1413,
+        "text": "        NWFS_INFO(\"[UNITY-EGL] resolve eglCreateWindowSurface handle=%{public}p real=%{public}p\","
+      },
+      {
+        "line": 1414,
+        "text": "                  h, reinterpret_cast<void*>(s_real));"
+      },
+      {
+        "line": 1415,
+        "text": "    }"
+      },
+      {
+        "line": 1416,
+        "text": "    if (!s_real) {"
+      },
+      {
+        "line": 1417,
+        "text": "        NWFS_WARN(\"[UNITY-EGL] real eglCreateWindowSurface unresolved -> EGL_NO_SURFACE\");"
+      },
+      {
+        "line": 1418,
+        "text": "        return nullptr;   // EGL_NO_SURFACE"
+      },
+      {
+        "line": 1419,
+        "text": "    }"
+      },
+      {
+        "line": 1420,
+        "text": "    OHNativeWindow* oh = win ? oh_anw_get_oh(reinterpret_cast<ANativeWindow*>(win))"
+      }
+    ]
+  }
+]

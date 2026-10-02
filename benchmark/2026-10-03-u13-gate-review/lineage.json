@@ -1,0 +1,141 @@
+{
+  "comparisons": [
+    {
+      "text": "s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);",
+      "baseline": [
+        [
+          415,
+          "        s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+        ]
+      ],
+      "candidate": [
+        [
+          415,
+          "        s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+        ]
+      ],
+      "unchanged_statement": true
+    },
+    {
+      "text": "void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);",
+      "baseline": [
+        [
+          1327,
+          "        void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+        ]
+      ],
+      "candidate": [
+        [
+          1408,
+          "        void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+        ]
+      ],
+      "unchanged_statement": true
+    }
+  ],
+  "baseline_source": "$WORKSPACES/westlake-harness-bms-deploy/benchmark/2026-09-30-n2-native/src/android_graphics_compat_shim.cpp",
+  "baseline_source_sha256": "b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea",
+  "candidate_source_sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+  "interpretation": "Two newly covered N1 source sites, not new ELF open sites. Both exact NOLOAD statements already occur in the baseline gfx source; unresolved runtime availability remains outer review, not successful resident-handle proof",
+  "runtime_sites": [
+    {
+      "artifact_sha256": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae",
+      "binary": "liboh_android_runtime.so",
+      "function": "eglCreateWindowSurface",
+      "pc": "0x197a08",
+      "callee": "dlopen",
+      "tail_call": false,
+      "namespace": [
+        "caller-default"
+      ],
+      "path": [
+        "libEGL.so"
+      ],
+      "flags": [
+        "0x6=NOW|NOLOAD"
+      ]
+    },
+    {
+      "artifact_sha256": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae",
+      "binary": "liboh_android_runtime.so",
+      "function": "_ZN7android12_GLOBAL__N_119resolve_oh_wm_funcsEv",
+      "pc": "0x19810c",
+      "callee": "dlopen",
+      "tail_call": false,
+      "namespace": [
+        "caller-default"
+      ],
+      "path": [
+        "liboh_adapter_bridge.so"
+      ],
+      "flags": [
+        "0x6=NOW|NOLOAD"
+      ]
+    },
+    {
+      "artifact_sha256": "ac59dec077195bc7678c712505b0d802c56e07edea8d049be4a188d20485b7bf",
+      "binary": "liboh_android_runtime.so",
+      "function": "eglCreateWindowSurface",
+      "pc": "0x197928",
+      "callee": "dlopen",
+      "tail_call": false,
+      "namespace": [
+        "caller-default"
+      ],
+      "path": [
+        "libEGL.so"
+      ],
+      "flags": [
+        "0x6=NOW|NOLOAD"
+      ]
+    },
+    {
+      "artifact_sha256": "ac59dec077195bc7678c712505b0d802c56e07edea8d049be4a188d20485b7bf",
+      "binary": "liboh_android_runtime.so",
+      "function": "_ZN7android12_GLOBAL__N_119resolve_oh_wm_funcsEv",
+      "pc": "0x197f30",
+      "callee": "dlopen",
+      "tail_call": false,
+      "namespace": [
+        "caller-default"
+      ],
+      "path": [
+        "liboh_adapter_bridge.so"
+      ],
+      "flags": [
+        "0x6=NOW|NOLOAD"
+      ]
+    }
+  ],
+  "old_profiles": [
+    "host",
+    "runtime",
+    "child-owner",
+    "emboss-registration",
+    "android_graphics_Typeface",
+    "asset-offsets-init",
+    "u10-1-resident-compat",
+    "u10-1-native-loader-policy",
+    "u12-mediandk-candidate.c",
+    "u12-mediandk-objects.c.inc",
+    "u12-private-zlib-route"
+  ],
+  "runtime_provenance": [
+    {
+      "path": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-02-u13-assembly-draft/.artifacts/bundle/native/payload/android/lib64/liboh_android_runtime.so",
+      "artifact_sha256": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae"
+    },
+    {
+      "path": "$WORKSPACES/westlake-inputs/generations/u12-final-j0482c9b1-s615b8bbe-icu-media-zlib-v2/bundle/native/payload/android/lib64/liboh_android_runtime.so",
+      "artifact_sha256": "ac59dec077195bc7678c712505b0d802c56e07edea8d049be4a188d20485b7bf"
+    }
+  ],
+  "new_full_gfx_profile": "u13-m1-compat-shim.cpp",
+  "old_full_gfx_absent": true,
+  "miss_behavior": {
+    "bridge": "log and return, no fresh fallback",
+    "egl": "return EGL_NO_SURFACE; s_resolved alreadytrue, no retry on subsequent call"
+  },
+  "resident_availability_proven": false,
+  "new_mapping_from_these_sites": false
+}
