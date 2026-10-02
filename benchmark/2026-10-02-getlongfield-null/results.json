@@ -40,5 +40,48 @@
   "evidence": [
     "evidence/getlongfield-fid-null-disasm.txt",
     "evidence/cache-owner-and-keys.txt"
-  ]
+  ],
+  "fix": {
+    "a_file": "libandroid.so AAssetManager_fromJava (reads libandroid own gAssetManagerOffsets.mObject, tail-calls GetLongField); 3 copies in payload: main 9ccf64f8 + westlake_flutter/westlake_native ee2fb82c (flutter/native domain copies, cache never filled by initialize_n10b)",
+    "b_source": "AOSP frameworks/base/native/android/asset_manager.cpp line 61 (hw248 /opt/wl-src/adapter/third_party/aosp_raw/... + westlake-inputs aosp-14.0.0_r1-src, byte-identical)",
+    "b_build_chain": "cx-bms adapter build_aosp_lib.sh + apply_aosp_native_patches.sh (aosp_patches/<path>/*.patch, git apply), hw248 frozen chain; NOT build_android_native.py (libandroid not in libraries.json)",
+    "patch": "patch/asset_manager.cpp.patch (git apply --check CLEAN): lazy-resolve mObject fieldID at read site if null, else original path",
+    "c_noop_proof": "whole change gated by if(gAssetManagerOffsets.mObject==nullptr); fid!=null path reaches the unchanged GetLongField return byte-for-byte; 115 lit keys either do not call AAssetManager_fromJava or hit a filled copy -> guard false -> no change. deployed_strings_diff expect additions only, no drops.",
+    "ship_as": "aosp_patches/frameworks/base/native/android/asset_manager.cpp.patch"
+  },
+  "build_status": "patch ready (verified applies); build needs cx-bms libandroid recipe (2 variants); asked on board",
+  "u12_u13": "merge into U12 if ready+proof before cx-t0 finalizes U12, else U13 (do not delay U12)",
+  "correction_build_object": {
+    "was": "libandroid.so (wrong: flutter/native ee2fb82c does not define AAssetManager_fromJava)",
+    "now": "liboh_android_runtime.so ac59dec0 (defines AAssetManager_fromJava @0x1db7a4, reads runtime gAssetManagerOffsets)",
+    "chain": "app NEEDED libandroid -> domain shim libandroid ee2fb82c (no AAssetManager_fromJava) -> NEEDED runtime -> runtime AAssetManager_fromJava; runtime double-copied, one gAssetManagerOffsets filled",
+    "build": "build_adapter.sh --target=liboh_android_runtime.so (asset_manager.cpp compiled in via stage2unity:437); OH clang + oh61-bms-kit + dockbuild (RUNBOOK E.73); runtime not in frozen.json -> single-file replace+rollback",
+    "strict": "runtime loaded by all 166 keys: deployed_strings_diff + open_site_scan vs ac59dec0 must show ONLY the one addition, symbol table/exports 0 diff",
+    "patch": "UNCHANGED (asset_manager.cpp.patch), same read-site lazy-init",
+    "main_libandroid": "9ccf64f8 on a different chain; leave unbuilt unless shown on these 4 keys chain"
+  },
+  "release": "U13 (U12 final draft already out at cx-t0 20:27); work at U13 pace",
+  "build_env_gap": {
+    "blocker": "build_adapter.sh --target=liboh_android_runtime.so needs out/aosp_lib64 (22+ prebuilt AOSP .so); MISSING locally, on hw248, and a2hlab",
+    "source_of_aosp_lib64": "pull_ecs_artifacts.sh pulls from the ECS build server oh-build:~/adapter/out/... (cx-bms build infra; no access from these worktrees)",
+    "recommendation": "cx-bms (warm adapter chain + ECS access; building runtime for U12/U13 now) applies aosp_patches/frameworks/base/native/android/asset_manager.cpp.patch and builds the next liboh_android_runtime.so; OR stage out/aosp_lib64 to me and I run build_adapter via dockbuild (oh61-bms-kit present locally).",
+    "ready_for_cx_bms": "patch verified git-apply CLEAN; one file; a/b/c + no-op proof done; verification bar = deployed_strings_diff + open_site_scan vs ac59dec0 addition-only, exports 0 diff, byte-identical x2"
+  },
+  "build_done": {
+    "host": "a2hlab OrbStack VM (x86_64 Linux; frozen toolchain is x86_64 Linux, not ECS)",
+    "recipe": "smoke-markers/build-runtime.py family (build/build-runtime-patched.py); reuse n4-registration-order objects + frozen toolchain; recompile only changed",
+    "patch_applied": "in place to .work/b87-native/adapter/.../asset_manager.cpp, backed up + RESTORED (e3e475f5)",
+    "reproduction": "baseline 216b68fb==U8; unpatched candidate ac59dec0==deployed",
+    "patched_candidate": "aa149019 (==repeat, byte-identical x2)",
+    "persisted": "hw248:/home/alvin/u12-icu-cc-wiki-20261002/n11hr2-runtime-aa149019.so",
+    "acceptance_vs_ac59dec0": {
+      "objects_differ": "asset_manager.o only (17fd7dc0->e448f07a)",
+      "exports": "IDENTICAL",
+      "undefined": "IDENTICAL",
+      "deployed_strings_diff": "0 dropped 0 added",
+      "open_site_scan": "198==198 semantically identical (name+addr only)"
+    },
+    "release": "U13, single-file runtime replace+rollback (not in frozen.json)"
+  },
+  "status": "BUILD DONE + ACCEPTED (U13 candidate aa149019)"
 }

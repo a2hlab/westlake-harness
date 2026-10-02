@@ -1,0 +1,27 @@
+# N11h-r2 / getlongfield-null — runtime build + acceptance (U13)
+# Build host: a2hlab OrbStack VM (x86_64 Linux; frozen toolchain is x86_64 Linux, cannot run on the mac).
+# Recipe: smoke-markers/build-runtime.py family (replayed as build/build-runtime-patched.py) -- reuses the
+# .work/n4-registration-order object set + frozen toolchain .work/product-tls-generation/frozen; only recompiles
+# changed sources. Patch applied in place to .work/b87-native/adapter/third_party/aosp_raw/frameworks/base/native/
+# android/asset_manager.cpp (backed up + RESTORED after; restored sha e3e475f5 == original), asset_manager.o deleted
+# to force recompile of the patched source.
+
+## Reproduction baseline
+  baseline variant sha = 216b68fb == U8 baseline_expected (recipe reproduces the signed baseline)
+  the unpatched candidate (existing westlake-n10b-build/runtime-smoke-markers/candidate) = ac59dec0 == deployed
+
+## Patched runtime (the U13 candidate)
+  candidate = aa149019ffb1   repeat = aa149019ffb1   -> byte-identical x2 (deterministic)
+  persisted: hw248:/home/alvin/u12-icu-cc-wiki-20261002/n11hr2-runtime-aa149019.so (+ n11hr2-build-candidate.log)
+
+## Acceptance vs deployed ac59dec0 (strict: runtime loads on all 166 keys)
+  objects differing (69 total): asset_manager.o ONLY (17fd7dc0 -> e448f07a)
+  exports (nm -D defined), /usr/bin/diff: IDENTICAL
+  undefined (nm -Du), /usr/bin/diff: IDENTICAL
+  deployed_strings_diff: 0 dropped, 0 added
+  open_site_scan: 198 == 198 findings; after normalizing (drop lib-name prefix + @0xADDR), SEMANTICALLY IDENTICAL
+    (the raw diff is only the filename prefix + address shift from the patched asset_manager.o enlarging .text; no
+     new/removed library-open site; my patch adds GetObjectClass/GetFieldID JNI calls, not dlopen)
+
+## Net: aa149019 differs from ac59dec0 by exactly the asset_manager.o read-site lazy-init; ABI/exports/strings/open
+## sites unchanged. Ready for U13 as a single-file runtime replacement + rollback (runtime not in frozen.json).

@@ -1,0 +1,22 @@
+# Binding chain: the 4 keys' AAssetManager_fromJava resolves to liboh_android_runtime.so, NOT the domain libandroid
+# (outer correction to 0831a39702: the flutter/native libandroid ee2fb82c does NOT define AAssetManager_fromJava).
+
+## who defines AAssetManager_fromJava in the U10.1T8 package (only two):
+   main libandroid.so 9ccf64f8  @0x7d9d8   (reads libandroid's own gAssetManagerOffsets, tail-calls GetLongField)
+   liboh_android_runtime.so ac59dec0 @0x1db7a4 (reads runtime's own gAssetManagerOffsets @0x211500, same 6 instrs)
+   flutter/native libandroid.so ee2fb82c: exports only 5 (ANativeWindow_lock/unlockAndPost@FLUTTER_ANDROID_1,
+     __cmsg_nxthdr/__gnu_strerror_r/__openat_2) -- does NOT define AAssetManager_fromJava.
+
+## chain (glmark2, westlake_native domain):
+   libglmark2-android.so  -- NEEDED --> libandroid.so
+   -> domain libandroid = westlake_native/libandroid.so (ee2fb82c), does NOT export AAssetManager_fromJava
+   -> ee2fb82c  -- NEEDED --> liboh_android_runtime.so   (the flutter/native shim is linked --no-as-needed to runtime)
+   -> runtime's AAssetManager_fromJava  reads runtime's gAssetManagerOffsets.mObject
+   runtime is double-copied (bridge/runtime double load), each copy has its own gAssetManagerOffsets global; only the
+   copy initialize_n10b ran in is filled -> the app-domain runtime copy's mObject == null -> fid == null.
+
+## => build object = liboh_android_runtime.so (NOT libandroid). The same asset_manager.cpp is compiled into runtime
+##    via compile_oh_android_runtime_arm64_stage2unity.sh:437 ([UNITY-NDK-ASSET parity]) / build_adapter.sh
+##    --target=liboh_android_runtime.so. One patched source -> both runtime copies (same file) carry the guard.
+##    Main libandroid 9ccf64f8 is on a DIFFERENT chain (apps that link it directly and stay in a domain where it
+##    defines the symbol); not on these 4 keys' chain, so leave it unbuilt (one fewer variable) unless shown otherwise.
