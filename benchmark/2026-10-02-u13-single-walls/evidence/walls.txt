@@ -1,0 +1,51 @@
+# U13 three single-key walls — first-fatal evidence (window5), ordered easy->hard
+
+## 1. cv2-com-chessclock-android (5cd) — media_jni absent from adapter manifest  [EASIEST / ALIVE]
+run: /Users/zhaoyue/orca/workspaces/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5/u101-t8-A5-20261002T083800/5cd/runner/unlit-cv2/20261002T170152-15df98ca/5cd1e3dd00000000000000000923012c/cv2-com-chessclock-android/hilog.txt
+hilog:43043  UnsatisfiedLinkError: system library is absent from the adapter manifest
+  at java.lang.System.loadLibrary  <- MediaPlayer.<clinit>(MediaPlayer.java:620)
+  <- Ringtone.createLocalMediaPlayer <- RingtoneManager.getRingtone
+  <- ChessClock.initRingtone(ChessClock.java:243) <- ChessClock.setUpGame:744 <- ChessClock.onCreate:153
+=> System.loadLibrary("media_jni") is rejected by the adapter SystemLoader: libmedia_jni.so is NOT in
+   native_bridge_policy.v1.json system_libraries (currently only: libicu_jni, libjavacore, libopenjdk,
+   liboh_adapter_bridge). The runtime liboh_android_runtime.so already REGISTERS the media_jni methods
+   (native-missing-libraries: Chessclock PID already reports 49/49 registrations, native_init=1, native_setup=1 --
+   a registered stub, not a real decoder). So only the loadLibrary gate blocks <clinit>.
+
+## 2. mcdonalds (61b) — librealmc.so needs libz.so, not visible in app namespace  [NEXT / ALIVE]
+run: /Users/zhaoyue/orca/workspaces/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5/u101-t8-A5-20261002T083800/61b/runner/unlit-original/20261002T165131-1136341e/61b0657200000000000000000324012c/mcdonalds/hilog.txt
+hilog:30948  MUSL-LDSO: Error loading shared library libz.so: (needed by .../com.mcdonalds.app/android/lib/arm64-v8a/librealmc.so)
+hilog:30968  Caused by: androidx.startup.StartupException: UnsatisfiedLinkError: F02-A12-UNCLASSIFIED: dlopen_ns failed for .../librealmc.so
+hilog:31141  NPE DataSourceHelper.getOrderingManagerHelper (SplashActivity.onCreate)  [the DOWNSTREAM consequence]
+=> librealmc.so (the app's own Realm native lib) NEEDS libz.so; the app musl namespace cannot resolve libz.so,
+   so dlopen_ns fails -> androidx.startup InitializationProvider fails -> DI graph never built -> the :31141 NPE.
+   The missing thing is libz.so in com.mcdonalds.app's namespace (symbol/namespace: a namespace/path visibility gap,
+   not a missing symbol in a present lib).
+
+## 3. fd-plus (5ea) — Surface.nativeLockCanvas returns 0  [HARDEST / ALIVE-BUT-BLOCKED, defer]
+run: /Users/zhaoyue/orca/workspaces/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5-report/5ea/records/unlit-original/fd-plus  (first fatal :30255, DIGEST 558/562)
+hilog:30255  IllegalStateException: Surface was not locked
+=> Surface.lockCanvas -> runtime JNI S_nativeLockCanvas (android_graphics_compat_shim.cpp:236) returns 0 (a STUB:
+   "Without a real surface buffer to lock, lockCanvas can't return a real canvas"). The whole Surface JNI class is
+   stubbed (comment at the file: OH has no Android Surface equivalent; real rendering goes via BLASTBufferQueue/hwui,
+   not the Surface JNI). nativeLockCanvas is the SOFTWARE-canvas path fd-plus uses.
+
+## Reviewed mechanisms already on disk (what makes #1 and #2 "copy + one line")
+- media_jni owner alias: benchmark/2026-10-01-native-missing-libraries/ (cx-bms). patches.json:
+  (a) system_loader.cpp -> RTLD_NOLOAD for libmedia_jni.so (resident-only alias to the already-mapped runtime),
+      logs [U9-MEDIA-OWNER] ... resident-only=1;
+  (b) verify_bridge_policy.py -> permit EXACTLY the alias tuple (libmedia_jni.so, /system/android/lib64/liboh_android_runtime.so),
+      all other SONAME/path mismatches still rejected.
+  DIGEST 547: "Chessclock MediaPlayer.clinit requests media_jni ... PID already registers 49/49 runtime stub methods".
+  (native-missing-libraries status: integration/board acceptance pending; the alias/owner work is the reviewed item.)
+- private zlib closure: already IN U12 final (DIGEST 682: "private zlib50b9/ab082+host2a871"; DIGEST 671 u12-private-zlib).
+  missing-library-route.h MissingLibraryRoot adds /system/android/lib64/westlake_native (holds the r109c libz.so alias
+  SONAME=libz.so NEEDED=libshared_libz.z.so, donor SHA 50b9ab6a; provider libshared_libz.z.so SHA ab0820c6) to the
+  app search/permitted paths FOR WHITELISTED PACKAGES ONLY. Current westlake_native whitelist:
+  {im.vector.app, com.emn8.mobilem8.nativeapp.bk}. ROOT alias is FORBIDDEN (DIGEST 459: the N7/ZigZag regression --
+  libtuanjie found the root libz shell first, its dep invisible -> inflateInit2_ not found -> SIGABRT). Per-package
+  scoping is exactly what avoids that.
+- fd-plus blocker: the runtime has NOT wired GraphicsJNI (AndroidRuntime.cpp:1227 "GraphicsJNI prior init that we
+  haven't wired"); libhwui (Skia engine be59260f) has NO reproducible frozen source (DIGEST 610, cx-bms deferred it).
+  So a real nativeLockCanvas (dequeue+CPU-map+flush is reusable from benchmark/2026-10-01-anativewindow-lock, but it
+  must back the returned Canvas with a GraphicsJNI SkBitmap over the mapped buffer) is NOT a single runtime .o this round.

@@ -1,0 +1,54 @@
+{
+  "task": "U13 three single-key walls, easiest-first: static dead/alive + first-fatal-move prediction + evidence",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "order_easiest_first": ["cv2-com-chessclock-android", "mcdonalds", "fd-plus"],
+  "walls": [
+    {
+      "key": "cv2-com-chessclock-android",
+      "serial": "5cd",
+      "verdict": "alive",
+      "wall": "UnsatisfiedLinkError: system library is absent from the adapter manifest; System.loadLibrary(media_jni) in MediaPlayer.<clinit>:620",
+      "chain": "ChessClock.onCreate:153 -> setUpGame:744 -> initRingtone:243 -> RingtoneManager.getRingtone -> Ringtone.createLocalMediaPlayer -> MediaPlayer.<clinit>:620 -> System.loadLibrary(media_jni)",
+      "evidence_line": "hilog:43043",
+      "root": "libmedia_jni.so not in native_bridge_policy.v1.json system_libraries (only libicu_jni/libjavacore/libopenjdk/liboh_adapter_bridge); runtime liboh_android_runtime.so already registers media_jni methods 49/49 (native_init=1, native_setup=1) -- a registered stub",
+      "fix": "add one alias row {soname:libmedia_jni.so, path:/system/android/lib64/liboh_android_runtime.so} + the reviewed mechanism (system_loader.cpp RTLD_NOLOAD resident-only + verify_bridge_policy.py permit exactly that tuple) from benchmark/2026-10-01-native-missing-libraries/patches.json; rebuild libnativeloader.so",
+      "layer": "native/config (libnativeloader policy + loader)",
+      "owner": "cx-bms",
+      "prediction": "first fatal MOVES past MediaPlayer.<clinit>; next fatal/t20 UNKNOWN (media_jni is a stub, not a decoder)",
+      "fix_spec": "fix/chessclock-media_jni.md"
+    },
+    {
+      "key": "mcdonalds",
+      "serial": "61b",
+      "verdict": "alive",
+      "wall": "librealmc.so (app's own Realm lib) NEEDS libz.so, not resolvable in com.mcdonalds.app musl namespace -> dlopen_ns fails -> androidx.startup -> DI graph never built -> NPE",
+      "evidence_line": "hilog:30948 (MUSL-LDSO libz.so needed by librealmc.so); :30968 androidx.startup ULE; :31141 downstream NPE",
+      "root": "libz.so not visible in the app namespace (namespace/path gap); the r109c libz alias was lost in U8",
+      "fix": "private-zlib closure is ALREADY in U12 final (DIGEST 682 private zlib50b9/ab082+host2a871); add one package com.mcdonalds.app to missing-library-route.h MissingLibraryRoot westlake_native whitelist {im.vector.app, com.emn8.mobilem8.nativeapp.bk}",
+      "layer": "native namespace (per-package host route; NOT a root alias)",
+      "root_alias_forbidden": "DIGEST 459 N7/ZigZag regression: root libz shell found first, dep invisible, inflateInit2_ not found, SIGABRT; per-package scoping avoids it",
+      "owner": "cx-bms",
+      "prediction": "first fatal MOVES (librealmc resolves libz -> dlopen_ns ok -> DI graph -> :31141 NPE gone); next fatal/t20 UNKNOWN",
+      "confirmation_gap": "librealmc.so may have further unmet deps/symbols beyond libz (BurgerKing's libmmkv only needed crc32 which the provider exports); read librealmc DT_NEEDED + undefined before the window, or let the window show the next wall",
+      "fix_spec": "fix/mcdonalds-libz.md"
+    },
+    {
+      "key": "fd-plus",
+      "serial": "5ea",
+      "verdict": "alive_but_blocked_defer",
+      "wall": "IllegalStateException: Surface was not locked; Surface.lockCanvas -> runtime JNI S_nativeLockCanvas (android_graphics_compat_shim.cpp:236) returns 0 (stub)",
+      "evidence_line": ":30255 (DIGEST 558/562)",
+      "premise_refuted": "dispatched as a one-.o runtime JNI; the stub IS one .o, but a working impl needs Skia Canvas backing",
+      "blocker": "runtime has NOT wired GraphicsJNI (AndroidRuntime.cpp:1227 'GraphicsJNI prior init that we haven't wired'); libhwui (Skia engine be59260f) has NO reproducible frozen source (DIGEST 610, cx-bms deferred). dequeue+CPU-map+flush is reusable (benchmark/2026-10-01-anativewindow-lock) but backing the returned Canvas with a GraphicsJNI SkBitmap is blocked",
+      "layer_when_unblocked": "runtime JNI (android_graphics_compat_shim.cpp) + GraphicsJNI/Skia software-Canvas path",
+      "recommendation": "defer from the U13-easy batch; gate on recovering a reproducible libhwui source (DIGEST 610 prerequisite); do not ship a half-impl returning a Canvas the engine cannot honor"
+    }
+  ],
+  "runtime_unaffected": "neither chessclock (libnativeloader+policy) nor mcdonalds (host route) is a runtime change; the final U13 runtime 18763dd4 (cc-t3) is unaffected",
+  "this_round_rule": "'easiest' = reviewed mechanism already on disk, per-key delta is one data line; verify the premise before writing (fd-plus's one-.o framing fails: Skia Canvas backing absent + libhwui un-reproducible -> defer); every prediction is 'first fatal moves, next fatal/t20 unknown' with the confirmation gap named",
+  "files": ["README.md", "evidence/walls.txt", "fix/chessclock-media_jni.md", "fix/mcdonalds-libz.md", "results.json", "documentation.json"]
+}
