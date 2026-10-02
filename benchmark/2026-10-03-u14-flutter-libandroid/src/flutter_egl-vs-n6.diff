@@ -1,0 +1,39 @@
+--- ../2026-10-01-n6-native/src/flutter_egl.cpp	2026-10-01 17:04:44
++++ src/flutter_egl.cpp	2026-10-03 03:57:34
+@@ -1,4 +1,10 @@
+ // Copied R155 HWUI window translation + owner notification, sections 4/5.
++// U14 (benchmark/2026-10-03-u14-flutter-libandroid): this copy of N6 14f79c5b is linked into the Flutter-private
++// westlake_flutter/libandroid.so, which libflutter searches before libEGL.so. Two changes, both for the Flutter app
++// namespace (where liboh_adapter_bridge.so is not shared by name but liboh_android_runtime.so is):
++//   (1) the bridge is reached through the already-shared runtime's handle (dlsym(handle) searches its dependencies)
++//       instead of a plain dlopen that could load a second bridge copy into this namespace;
++//   (2) HiLogPrint is looked up the same way when RTLD_DEFAULT cannot see it, so the OH_EglHijack lines reach hilog.
+ // Extraction provenance and omitted readback probes are recorded in README.
+ #include <cstdint>
+ #include <dlfcn.h>
+@@ -11,7 +17,14 @@
+     char message[768]; va_list args; va_start(args, format);
+     vsnprintf(message, sizeof(message), format, args); va_end(args);
+     typedef int (*Log)(int,int,unsigned,const char*,const char*,...);
+-    static Log log = reinterpret_cast<Log>(dlsym(RTLD_DEFAULT, "HiLogPrint"));
++    static Log log = [] {
++        Log found = reinterpret_cast<Log>(dlsym(RTLD_DEFAULT, "HiLogPrint"));
++        if (!found) {  // U14 change (2)
++            void* runtime = dlopen("liboh_android_runtime.so", RTLD_NOW | RTLD_NOLOAD);
++            if (runtime) found = reinterpret_cast<Log>(dlsym(runtime, "HiLogPrint"));
++        }
++        return found;
++    }();
+     if (log) return log(type, level, domain, tag, "%{public}s", message);
+     return fprintf(stderr, "[N6-%s] %s\n", tag, message);
+ }
+@@ -50,7 +63,8 @@
+             void* h = dlopen("liboh_adapter_bridge.so", RTLD_NOW | RTLD_NOLOAD);
+             if (!h) {
+                 (void) dlerror();
+-                h = dlopen("liboh_adapter_bridge.so", RTLD_NOW);
++                // U14 change (1): never load a second bridge copy; reach the one the shared runtime depends on.
++                h = dlopen("liboh_android_runtime.so", RTLD_NOW | RTLD_NOLOAD);
+             }
+             if (h) {
+                 g_oh_anw_get_oh_fn = reinterpret_cast<oh_anw_get_oh_fn_t>(
