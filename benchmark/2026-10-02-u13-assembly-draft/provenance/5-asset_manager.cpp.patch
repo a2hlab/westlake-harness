@@ -1,0 +1,24 @@
+diff --git a/frameworks/base/native/android/asset_manager.cpp b/frameworks/base/native/android/asset_manager.cpp
+index 69cf804..56d7edd 100644
+--- a/frameworks/base/native/android/asset_manager.cpp
++++ b/frameworks/base/native/android/asset_manager.cpp
+@@ -60,6 +60,19 @@ struct AAsset {
+  */
+ AAssetManager* AAssetManager_fromJava(JNIEnv* env, jobject assetManager)
+ {
++    // N11h-r2 (westlake): a per-domain libandroid copy whose gAssetManagerOffsets was never filled by
++    // initialize_n10b_asset_offsets (that init dlopen'd only ONE libandroid copy, in its own namespace; the
++    // westlake_flutter / westlake_native domains load a separate libandroid copy) reads a null mObject jfieldID,
++    // so GetLongField(assetManager, nullptr) hits ART's fid==null check -> JavaVMExt::JniAbort("GetLongField",
++    // "fid == null") -> SIGABRT. Lazily resolve the field id into THIS copy's cache on first use. No-op once
++    // cached: when mObject != nullptr the original single GetLongField path runs unchanged.
++    if (gAssetManagerOffsets.mObject == nullptr) {
++        jclass amClass = env->GetObjectClass(assetManager);
++        if (amClass != nullptr) {
++            gAssetManagerOffsets.mObject = env->GetFieldID(amClass, "mObject", "J");
++            env->DeleteLocalRef(amClass);
++        }
++    }
+     return (AAssetManager*) env->GetLongField(assetManager, gAssetManagerOffsets.mObject);
+ }
+ 

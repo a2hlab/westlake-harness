@@ -1,0 +1,57 @@
+--- a/policy/include/nativeloader/native_bridge_policy.h
++++ b/policy/include/nativeloader/native_bridge_policy.h
+@@ -32,13 +32,14 @@
+     "/system/framework/",
+ };
+ 
+-inline constexpr std::array<SystemLibrary, 6> kSystemLibraries = {{
++inline constexpr std::array<SystemLibrary, 7> kSystemLibraries = {{
+     {"libsoundpool.so", "/system/android/lib64/libsoundpool.so"},
+     {"libicu_jni.so", "/system/android/lib64/libicu_jni.so"},
+     {"libjavacore.so", "/system/android/lib64/libjavacore.so"},
+     {"libopenjdk.so", "/system/android/lib64/libopenjdk.so"},
+     {"liboh_adapter_bridge.so", "/system/android/lib64/liboh_adapter_bridge.so"},
+     {"libmediandk.so", "/system/android/lib64/libmediandk.so"},
++    {"libmedia_jni.so", "/system/android/lib64/liboh_android_runtime.so"},
+ }};
+ 
+ // This is adapter policy, not an app-provided allowlist. A generation is not
+--- a/policy/policy/native_bridge_policy.v1.json
++++ b/policy/policy/native_bridge_policy.v1.json
+@@ -39,6 +39,10 @@
+     {
+       "soname": "libmediandk.so",
+       "path": "/system/android/lib64/libmediandk.so"
++    },
++    {
++      "soname": "libmedia_jni.so",
++      "path": "/system/android/lib64/liboh_android_runtime.so"
+     }
+   ],
+   "shared_sonames": [
+--- a/policy/src/system_loader.cpp
++++ b/policy/src/system_loader.cpp
+@@ -173,7 +173,9 @@
+     return nullptr;
+   }
+ 
+-  void* handle = ops_->OpenExact(resolved.c_str(), RTLD_NOW | RTLD_LOCAL);
++  const bool media_owner = library->soname == "libmedia_jni.so";
++  const int flags = RTLD_NOW | RTLD_LOCAL | (media_owner ? RTLD_NOLOAD : 0);
++  void* handle = ops_->OpenExact(resolved.c_str(), flags);
+   std::string open_error;
+   if (handle == nullptr) {
+     const char* borrowed = ops_->LastError();
+--- a/policy/tests/verify_bridge_policy.py
++++ b/policy/tests/verify_bridge_policy.py
+@@ -95,7 +95,9 @@
+         fail(f"invalid system SONAME: {item['soname']}")
+     if not canonical_absolute_path(item["path"], trailing_slash=False):
+         fail(f"system library path is not canonical: {item['path']}")
+-    if item["path"] != f"/system/android/lib64/{item['soname']}":
++    media_owner_alias = (item["soname"], item["path"]) == (
++        "libmedia_jni.so", "/system/android/lib64/liboh_android_runtime.so")
++    if not media_owner_alias and item["path"] != f"/system/android/lib64/{item['soname']}":
+         fail(f"system library path is not exact: {item['path']}")
+ for soname in manifest["shared_sonames"]:
+     if "/" in soname or ".." in soname or not soname.endswith(".so"):
