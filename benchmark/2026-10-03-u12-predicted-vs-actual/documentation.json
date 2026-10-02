@@ -1,0 +1,17 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-u12-predicted-vs-actual/`** | **U12 stage A predicted vs actual (51 keys, all run in windows 1-4 on runtime 0482c9b1; terminal + earliest-wall signatures): predicted&moved 10, predicted&not 12, unpredicted moved 3 (fd-im-vector-app, mcdonalds = U12 libz alias; toutiao = variance), precision 10/22, recall 10/12; by predictor java_fix 6/6, icu 2/2, disappeared 2/6, sigabrt 0/8. Screens: fd-client signed lit; window-4 pair sheet + cc-t3 unsigned read own UI for libresudoku, notepad, packlist, clipboardeditor. Defect: U12 R3 GcmDefaultNonce never initialises its BC delegate on Android (libcore Cipher(spi,...) init returns the specified spi without engineInit) -> moodcairns now dies in our SPI and the [WL-KS-PROBE] AES/GCM self-test fails in 154/174 U12 runs; do not freeze it.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **Android 的 javax.crypto.Cipher(spi, provider, transformation) 构造出来的 Cipher,init() 不会调 spi.engineInit(cc-t3,U12 GcmDefaultNonce 缺陷)**:libcore Cipher.init → chooseProvider → SpiAndProviderUpdater.updateAndGetSpiAndProvider 里 `if (specifiedSpi != null) return new CipherSpiAndProvider(specifiedSpi, provider)`,直接返回、不初始化;OpenJDK 会初始化,所以主机测试过了。U12 R3 GcmDefaultNonce 正是用 new Cipher(bcSpi, ...) 包 BC 当 delegate → 每个进程默认 AES/GCM 都『GCM cipher needs to be initialised』(U12 174 跑里 154 跑的 [WL-KS-PROBE] 自检报这个,U10.1T8 0 跑),moodcairns 的首致命移进了我们自己的 SPI。修法:反射直接调 BC CipherSpi 的 protected engine* 方法;JCE 包装器的测试要按 Android 的 Cipher 语义跑。U12 R3 不能冻结。",
+    "- 2026-10-03 **预测对实测要比两层签名(cc-t3,U12 阶段A 总表)**:终止签名(first_fatal+cluster_first_cause)之外还要比『终止之前最早的墙』(链接/ULE/abort/缺类缺方法,跳过良性表与 COROUTINE-FIX 探针)——mcdonalds 的 DI NPE、裸 SIGABRT、『进程消失』这类后果型终止不变,底下的墙却移了(libz→_ctype_)。U12 结果:预测移且移 10、预测移未移 12、未预测却移 3(其中 2 个是 U12 私有 libz 别名带的,toutiao 是方差),按预测来源 java_fix 6/6、icu 2/2、disappeared 2/6、sigabrt 0/8;未预测的移动先归因到具体改动再计数。"
+   ]
+  }
+ ]
+}
