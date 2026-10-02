@@ -1,0 +1,147 @@
+{
+ "task": "#90 U14 hardened-bridge baseline: feasibility and difference list vs deployed 84695d62 (offline, no board)",
+ "deployed": {
+  "bridge": "84695d62f515cfec",
+  "path": "$WORKSPACES/westlake-inputs/generations/u10.1-t8-rerun-j5ae3dd29-s2f365a75-v3/bundle/native/payload/android/lib64/liboh_adapter_bridge.so"
+ },
+ "recipe": {
+  "compile_script_sha256_16": "8ca316973631b5e1",
+  "host": "Mac arm64, DevEco OH SDK (FORCE_OH_SDK=1); not a2hlab",
+  "strict_link": true,
+  "master_commits": [
+   "b94afc59c8 (v1)",
+   "31347d2de3 (v2, v3)",
+   "601b694558 (v3 repeat)"
+  ],
+  "bms_src_adapter_changed_between": false
+ },
+ "inputs": {
+  "oh61_v7_snapshot": "$WORKSPACES/westlake-inputs/sources/oh61-v7-b2133b5b-f6a498d1 (tree f6a498d193b1ca32, 14084 files; window cohort tree 7a60e05b5e9e72f6)",
+  "fn03_b6r155": "$WORKSPACES/westlake-inputs/sources/fn03-core-b6r155-1f5986de",
+  "fn03_846_recon": "$WORKSPACES/westlake-inputs/sources/fn03-core-846-recon-v1 (cpp 021e5bc07735, h b28cf1a800a1; = 1f5986de + fn03-846-recon.patch)"
+ },
+ "builds": {
+  "v1": {
+   "fn03": "dd57a00bc5c2 (snapshot)",
+   "artifact": "2f3bc923ae96d33ee4d964fc408616020ce5967b779dc579dbf8fec856dd1a61",
+   "repeat_same_sha": true,
+   "exports": "2357 -> 2384 (-6/+33)",
+   "functions_same_size": "2472/2497",
+   "classes": {
+    "a": 30,
+    "b": 41,
+    "c": 42,
+    "layout": 30
+   }
+  },
+  "v2": {
+   "fn03": "1f5986def85c (b6-r155)",
+   "artifact": "d693b2ae43eee6fe31cb135b021bdd6c2ea451582804ced24bbf4c2113f6cab2",
+   "repeat_same_sha": true,
+   "exports": "2357 -> 2356 (-5/+4)",
+   "functions_same_size": "2489/2499",
+   "classes": {
+    "a": 29,
+    "b": 41,
+    "c": 5,
+    "layout": 20
+   }
+  },
+  "v3": {
+   "fn03": "021e5bc07735 (846 reconstruction)",
+   "artifact": "9a03b2724cbed598aaadc68f6df8c4c67046f9391509fb5e7762a7caba8a304c",
+   "repeat_same_sha": true,
+   "tus": "50/50",
+   "exports": "2357 -> 2356 (-5/+4)",
+   "signature_drift": 1,
+   "consumer_breaks": 0,
+   "call_set_diffs": 8,
+   "functions": {
+    "deployed": 2507,
+    "rebuilt": 2510,
+    "common": 2499,
+    "same_size": 2490,
+    "size_differs": 9,
+    "only_deployed": 8,
+    "only_rebuilt": 11
+   },
+   "fn03_functions_same_size": "139/139",
+   "classes": {
+    "a": 29,
+    "b": 41,
+    "c": 1,
+    "layout": 21
+   }
+  }
+ },
+ "fn03_846_identity": {
+  "has": [
+   "fn03-lifecycle-mapping-v2",
+   "UNSUPPORTED_OH_STAGE_STATE",
+   "OH_CLEAN_REPLAY"
+  ],
+  "dd57_only_reason_codes_present": "0/16"
+ },
+ "b_class": {
+  "R1_focus_bridge": {
+   "action": "port from real-work session_stage_adapter.{h,cpp} 0765bc53, plain GetEnv (no ScopedJniAttachment)",
+   "v3_effect": "SessionStageBridge.onUpdateFocus is log-only -> no window focus reaches the app"
+  },
+  "R2_root_blast": {
+   "action": "port EnableRootBlastForTopLevelContent (0765bc53) + createSession refusal (0b816fe6:495-500)",
+   "runs_reached": {
+    "lit": 117,
+    "white": 14
+   }
+  },
+  "R3_process_published_rs_node": {
+   "action": "rewrite (in no local tree), 846-faithful single slot, then per-session in M1",
+   "runs_acquired": {
+    "lit": 117,
+    "white": 14
+   },
+   "runs_none": {
+    "lit": 8,
+    "white": 3,
+    "note": "exactly the M1 population"
+   }
+  }
+ },
+ "a_class": {
+  "oh_display_event": {
+   "predicted_keys_moved": 0,
+   "why": "runtime 0482c9b1 DisplayManagerProjectionProxy lacks static dispatchDisplayEvent(I)V -> returns before RegisterDisplayListener"
+  },
+  "apk_orientation": {
+   "predicted_keys_moved": 0,
+   "why": "ManifestOrientationProjection in neither U13 jar; U10.1T8 has 0 [BRIDGED] ScheduleAbilityTransaction lines",
+   "if_peer_added": {
+    "landscape": [
+     "fd-minetest",
+     "fd-stk"
+    ],
+    "launcher_orientation_166": {
+     "unspecified": 144,
+     "portrait": 17,
+     "sensorLandscape": 2,
+     "sensorPortrait": 1,
+     "user": 1,
+     "fullUser": 1
+    }
+   }
+  },
+  "capybara": {
+   "predicted_keys_moved": 0,
+   "why": "package not among the 166 keys"
+  },
+  "log_symbol_versions": {
+   "note": "__android_log_print/__android_log_set_logger bound @LIBC; watch bridge ALOG lines on board"
+  }
+ },
+ "m1_patch_port": {
+  "hunks_apply_to_snapshot_client": "2/3",
+  "destroySession_hunk": "move to snapshot destroySession (line 640)",
+  "extend_to": "WESTLAKE_RS_SURFACE_NODE_HOLDER per session"
+ },
+ "a2hlab_reboot_2026-10-02T23:05": "not affected: builds run on the Mac; last pre-reboot build ended 22:58:32; v3 repeat 23:13:43-23:14:33 same SHA"
+}
