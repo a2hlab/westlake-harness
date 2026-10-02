@@ -1,0 +1,56 @@
+{
+  "task": "Static triage of the toutiao ICU wall (cx-t0 61b long-wait, U10.1T8): disassemble libtttext_lite.so ICUWrapper ctor, explain the app-namespace ENOENT, and predict U13 + minimal fix. Merged: the app-ns public-library gap census (outer 01:58/02:03).",
+  "date": "2026-10-03",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "time_boxed": "outer 02:00, 30 min (scope extended mid-task by outer 01:51/01:58/02:03)",
+  "crash": {
+    "key": "toutiao (com.ss.android.article.news)",
+    "pid": 29496,
+    "app_namespace": "westlake.anl.app.29496.2",
+    "sequence": "01:38:33.474 load libicui18n.so failed (errno=2, ENOENT in app ns) -> 01:38:34 SIGSEGV pc=0",
+    "backtrace": "#00 pc 0 Not mapped <- #01 libtttext_lite.so ttoffice::tttext::ICUWrapper::ICUWrapper()+100 <- #02 libart.so art_quick_generic_jni_trampoline <- #03 nterp_helper",
+    "source_hilog": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-toutiao-longwait-cxt0/run-20261003T012938/trial-1/.../toutiao/hilog.txt"
+  },
+  "disasm": {
+    "lib": "vm-copies/apks-77/toutiao/lib/arm64-v8a/libtttext_lite.so",
+    "ctor": "_ZN8ttoffice6tttext10ICUWrapperC2Ev @ 0x1be50",
+    "null_call": "ctor+0x64 (0x1beb4): blr x8, x8 = ldr [x23,#0x2a0] (global fn-ptr @ 0x442a0). NO cbz x8 before the blr -- the null is never checked.",
+    "call_is": "ubrk_open(type=0, locale, text=NULL, len=0, &UErrorCode) -- args w0=0,x1=&locale,x2=0,w3=0,x4=sp+4",
+    "lazy_init": "fn-ptr filled by ttoffice::tttext::brk_open behind __cxa_guard; it dlopen()s ICU and dlsym()s the cohort into [0x442a0..]. On failure the ptr stays null.",
+    "dlopen_sonames_fallback_order": ["libkryptoni18n.so (ByteDance ICU -- NOT bundled in this apk)", "libicui18n.so", "libicuuc.so"],
+    "dlsym_names": "UNVERSIONED (ubrk_open, u_charType, u_hasBinaryProperty, ubrk_setText/first/next/close, icudt) -- no _NN suffix anywhere",
+    "imports": ["dlopen", "dlsym", "dlerror"]
+  },
+  "root_cause": "The restricted app namespace westlake.anl.app.<pid>.N (built by bms app-native-loader create_configured_namespaces) exposes an INCOMPLETE AOSP public-library set. app_search_paths/app_permitted_paths cover only the apk's own libs; bridge_shared_sonames is for the bridge ns; no argument carries the AOSP public-library list into the app ns. Any NDK public lib the app dlopen()s by soname that is not transitively pulled -> ENOENT.",
+  "correction_from_outer_0151": "Both U10.1T8 and U13 SHIP libicui18n.so in the payload (= libicui18n.z.so, 40766b54). errno=2 = ENOENT in the app ns, NOT a missing file. So U13 first-fatal does not move -> predicted 0.",
+  "why_libicuuc_ok_libicui18n_enoent": "libicuuc.so is DT_NEEDED by liboh_android_runtime + libandroidfw + libminikin (app-reachable) -> pulled transitively, masking the gap. libicui18n.so is NEEDED only by libminikin/libicu_jni (loaded in the bridge/runtime ns, not re-exported to the app ns by soname), and has no public-lib entry -> ENOENT. The runtime loads both ICU libs RTLD_LOCAL in its own ns (westlake_icu_overrides.cpp:378/385), so those copies are not nameable from the app ns.",
+  "aosp14_public_libraries": "hw248:/home/alvin/aosp-14.0.0_r1-art/system/core/rootdir/etc/public.libraries.android.txt -- includes libicui18n.so, libicuuc.so, libicu.so, libvulkan.so, libGLESv2.so, libGLESv3.so, libjnigraphics.so. So all census ENOENTs EXCEPT libandroidio/libjavacore are public libs the app ns should expose.",
+  "u12_census_first_fatal": {
+    "note": "proximity != cause; first-fatal traced ENOENT -> between -> fatal (evidence/enoent-to-fatal.txt)",
+    "toutiao_libicui18n": "WALL (first-fatal, SIGSEGV) + Wall 2 (versioning)",
+    "fd-stk_libGLESv2": "WALL (needed by libSDL2.so -> dlopen_ns fail -> F02-A12)",
+    "subwaysurfers_libGLESv3": "WALL (needed by libvkquality.so -> SIGABRT)",
+    "x_libGLESv2": "UNCONFIRMED (UnsatisfiedLinkError on libtwittermedia.so is catchable; x signed white)",
+    "flutter_vulkan_keys": "NOT the first-fatal (fd-fluffychat/fd-immich/fd-kitchenowl/fd-saber/localsend): Vulkan ENOENT -> GLES also fails to load -> survived -> fatal is GetLongField->JniAbort from libflutter.so (AAssetManager cluster, U13 18763dd4). BUT the GLES-also-missing is a LATENT second wall after the GetLongField fix.",
+    "libandroidio_libjavacore_keys": "NOT a public-lib gap (ART-internal, not public): antennapod/fd-client/fd-tusky/fd-tutanota; fd-client is lit on U12 so non-fatal there; separate root cause"
+  },
+  "wall2_symbol_versioning": "Toutiao dlsym()s UNVERSIONED names; deployed ICU (U10.1T8 and U13) exports ONLY _72-renamed names (ubrk_open_72, u_charType_72, uloc_setDefault_72). dlsym(handle,'ubrk_open') -> null -> same ICUWrapper blr-0 crash. So the namespace fix ALONE does not light toutiao; our ICU is built with U_DISABLE_RENAMING=0.",
+  "prediction_u13": {
+    "toutiao_first_fatal_moves": false,
+    "reason": "U13 has the same app-ns config and the same _72-only ICU; both walls unchanged. Matches outer 'U13 先当 0'.",
+    "next_after_icu_if_cleared": "libjnigraphics.so (already ENOENTs for toutiao at 01:38:25) once text/image init proceeds",
+    "keys_public_lib_fix_moves_as_first_fatal": ["fd-stk (GLESv2)", "subwaysurfers (GLESv3)", "x (GLESv2, confirm white root)"],
+    "keys_needing_public_lib_fix_as_second_wall": ["fd-fluffychat", "fd-immich", "fd-kitchenowl", "fd-saber", "localsend"]
+  },
+  "minimal_fix": {
+    "wall1_namespace": "Add the missing AOSP public sonames (libicui18n.so, libGLESv2.so, libGLESv3.so, libvulkan.so, libjnigraphics.so) to the app ns as LINKED SHARED LIBRARIES from the platform/default ns -- the same mechanism that already makes libicuuc.so reachable -- in the config passed to create_configured_namespaces (appspawn-x stock child plugin / the deployed appspawn namespace config; app_native_loader.c only forwards it).",
+    "double_copy": "Linking by soname resolves to the already-loaded platform copy -> NO second copy. The WRONG fix (adding /system/android/lib64 to app_search_paths) would load a fresh second libicui18n.so (+ a second libicuuc) into the app ns, distinct from the runtime's RTLD_LOCAL copy -> two ICU states/data -> mismatch. Prefer the soname link, not a search path. Do NOT add libandroidio/libjavacore (ART-internal; exposing risks double-loading ART internals).",
+    "wall2_toutiao_only": "The ns fix is necessary but not sufficient for toutiao: rebuild deployed libicuuc.so/libicui18n.so with unversioned aliases (U_DISABLE_RENAMING=1 or an alias cohort), or supply the libkryptoni18n.so toutiao looks for first. Separate artifact change."
+  },
+  "rule_this_round": "errno=2 on dlopen = 'not nameable in this namespace', not 'file absent' -- check the ns public-lib/shared-soname set before concluding missing. One public lib working (libicuuc) can mask the gap via transitive pull. dlopen success does not imply the later dlsym succeeds (symbol versioning = a second wall). And a near ENOENT is a wall only if it causes the fatal (trace ENOENT->between->fatal), not merely by proximity.",
+  "boundaries": ["offline; no board; nothing deployed", "fix points are for the runtime/appspawn owners; static triage only", "sources read read-only: apk in vm-copies/apks-77, U13 ICU in westlake-harness-bms, hilogs in westlake-harness-u7-executor, native-loader source in westlake-harness-bms, AOSP 14 on hw248"],
+  "files": ["README.md", "evidence/icuwrapper-disasm.txt", "evidence/crash-hilog.txt", "evidence/appns-publiclib-gap.txt", "evidence/enoent-to-fatal.txt", "results.json", "landing-paths.txt"]
+}

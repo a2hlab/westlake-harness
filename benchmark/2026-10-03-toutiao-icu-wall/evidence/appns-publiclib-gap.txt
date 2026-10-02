@@ -1,0 +1,70 @@
+# Root cause: the restricted app namespace westlake.anl.app.<pid>.N exposes an INCOMPLETE AOSP public-library set.
+
+## app ns construction (bms/src/adapter/framework/app-native-loader/src/app_native_loader.c)
+create_configured_namespaces(..., bridge_search_paths, bridge_permitted_paths, bridge_shared_sonames,
+                             bridge_bootstrap_soname, app_search_paths, app_permitted_paths)
+ - app_search_paths/app_permitted_paths = the apk's own libs (/data/app/.../<pkg>/lib/arm64-v8a).
+ - bridge_shared_sonames = soname allowlist, passed ONLY for the bridge ns, not a full app public-lib list.
+ There is no argument carrying the AOSP public-library set into the app ns, so the app ns can name only (a) its own
+ apk libs and (b) whatever is transitively pulled via the libs it does link. Any NDK public lib the app dlopen()s by
+ soname that is not transitively present -> ENOENT.
+
+## AOSP 14 public.libraries.android.txt (hw248:/home/alvin/aosp-14.0.0_r1-art/system/core/rootdir/etc/)
+# the libs an app IS allowed to dlopen by soname:
+libandroid libaaudio libamidi libbinder_ndk libc libcamera2ndk libclang_rt.hwasan libdl libEGL libGLESv1_CM
+libGLESv2 libGLESv3 libicu libicui18n libicuuc libjnigraphics liblog libmediandk libm libnativehelper
+libnativewindow libneuralnetworks libOpenMAXAL libOpenSLES libRS libstdc++ libsync libvulkan
+libwebviewchromium_plat_support libz
+# => libicui18n.so, libicuuc.so, libvulkan.so, libGLESv2.so, libGLESv3.so, libjnigraphics.so are ALL public.
+
+## U12 stage-A ENOENT census in namespace=westlake.anl.app (master scripts/lab/dlopen_failures.py, outer 01:58), with
+## AOSP-public? and the key's FIRST-FATAL (by hilog, not by occurrence):
+# soname          keys                                                    public?  first-fatal for...
+libvulkan.so      fd-fluffychat fd-immich fd-kitchenowl fd-saber localsend  YES    NONE (Flutter falls back to GLES; these
+                                                                                    keys' first-fatal is their AAssetManager/
+                                                                                    GetLongField wall, 2026-10-02-u13-flutter-abort-3)
+libGLESv2.so      fd-stk x                                                  YES    fd-stk YES (needed by libSDL2.so ->
+                                                                                    dlopen_ns failed, F02-A12 fatal);
+                                                                                    x: UnsatisfiedLinkError on libtwittermedia.so
+                                                                                    (may be caught; x signed white -- first-fatal
+                                                                                    not confirmed as GLES)
+libGLESv3.so      subwaysurfers                                            YES    subwaysurfers YES (needed by libvkquality.so
+                                                                                    -> dlopen_ns failed -> SIGABRT)
+libjnigraphics.so toutiao                                                  YES    NO (ENOENT 01:38:25 was non-fatal; toutiao's
+                                                                                    first-fatal is libicui18n 8 s later)
+libicui18n.so     toutiao (long-wait)                                      YES    toutiao YES (ICUWrapper SIGSEGV) -- but see
+                                                                                    WALL 2 below: the ns fix alone does NOT light it
+libandroidio.so   antennapod fd-client fd-tusky fd-tutanota                 NO     NOT a public-lib gap (ART/runtime-internal);
+libjavacore.so    antennapod fd-client fd-tusky fd-tutanota                 NO     fd-client is LIT on U12 so these ENOENTs are
+                                                                                    non-fatal there; separate root cause.
+
+## WHY libicuuc.so resolves but libicui18n.so ENOENTs (same ns, same /system/android/lib64 dir) -- DT_NEEDED pull:
+# (llvm-objdump -p, U13 payload native/payload/android/lib64)
+#   liboh_android_runtime.so   NEEDED(icu): libicuuc.so 
+#   libandroidfw.so            NEEDED(icu): libicuuc.so 
+#   libminikin.so              NEEDED(icu): libicuuc.so libicui18n.so 
+#   libicu_jni.so              NEEDED(icu): libicuuc.so libicui18n.so 
+#   libicui18n.so              NEEDED(icu): libicuuc.so 
+# libicuuc.so is DT_NEEDED by liboh_android_runtime + libandroidfw + libminikin (all reachable from the app), so it is
+# pulled into the app-reachable graph and dlopen("libicuuc.so") hits the already-loaded copy. libicui18n.so is NEEDED
+# only by libminikin + libicu_jni, which load in the BRIDGE/runtime ns; their copy of libicui18n is not re-exported to
+# the app ns by soname, and the app ns has no public-lib entry for it -> dlopen("libicui18n.so") = ENOENT. libicuuc
+# masking the gap is luck of the dependency graph, not a deliberate ICU exposure.
+
+## The runtime DOES load both ICU libs -- but RTLD_LOCAL, in its own ns (android-runtime/src/westlake_icu_overrides.cpp)
+#   dlopen("/system/android/lib64/libicuuc.so",  RTLD_NOW|RTLD_LOCAL)   (line 378)
+#   dlopen("/system/android/lib64/libicui18n.so", RTLD_NOW|RTLD_LOCAL)  (line 385)
+# RTLD_LOCAL => not added to the global scope; binds the _72 cohort for ART. These copies exist in the process but are
+# not nameable from the app ns.
+
+## WALL 2 (behind the ns wall): symbol VERSIONING. toutiao dlsym()s UNVERSIONED names; our ICU exports only _72.
+#   libicuuc.so exports for 'ubrk_open':
+#     ubrk_open_72
+#   libicuuc.so exports for 'u_charType':
+#     u_charType_72
+#   libicuuc.so exports for 'uloc_setDefault':
+#     uloc_setDefault_72
+# => only ubrk_open_72 / u_charType_72 / uloc_setDefault_72 exist; dlsym(handle,"ubrk_open") returns NULL.
+# So even if libicui18n.so is made visible to the app ns, toutiao's unversioned dlsym still returns null -> the SAME
+# ICUWrapper ctor 'blr x8' with x8=0 -> pc=0. The deployed ICU (U10.1T8 and U13 alike) is built WITH symbol renaming
+# (U_DISABLE_RENAMING=0); toutiao expects unrenamed ICU (or its own libkryptoni18n.so, which this apk does not bundle).

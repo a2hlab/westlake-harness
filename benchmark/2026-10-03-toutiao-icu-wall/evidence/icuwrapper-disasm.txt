@@ -1,0 +1,68 @@
+# libtttext_lite.so (com.ss.android.article.news apk, arm64-v8a). sha256:
+#   91b245449b8ca672783ae0047082cad4aa075e43a1d43254692913dc027e68f9
+# ICUWrapper ctor _ZN8ttoffice6tttext10ICUWrapperC2Ev @ 0x1be50; crash frame #01 = ctor+0x64 = 0x1beb4.
+# Backtrace (hilog DfxFaultLogger): #00 pc 0 Not mapped <- #01 libtttext_lite.so ICUWrapper::ICUWrapper()+100
+#   <- #02 libart.so art_quick_generic_jni_trampoline <- #03 nterp_helper  (constructed via a JNI native method, interpreted).
+
+## ctor disasm (the unchecked null call at +0x64):
+
+000000000001be50 <_ZN8ttoffice6tttext10ICUWrapperC2Ev>:
+   1be50: d10143ff     	sub	sp, sp, #0x50
+   1be54: f9000bf7     	str	x23, [sp, #0x10]
+   1be58: a90257f6     	stp	x22, x21, [sp, #0x20]
+   1be5c: a9034ff4     	stp	x20, x19, [sp, #0x30]
+   1be60: a9047bfd     	stp	x29, x30, [sp, #0x40]
+   1be64: 910103fd     	add	x29, sp, #0x40
+   1be68: d53bd055     	mrs	x21, TPIDR_EL0
+   1be6c: f94016a8     	ldr	x8, [x21, #0x28]
+   1be70: b0000156     	adrp	x22, 0x44000 <_ZZN8ttoffice6tttext20LayoutDrawerListener11GetInstanceEvE8instance>
+   1be74: 910a62d6     	add	x22, x22, #0x298
+   1be78: aa0003f3     	mov	x19, x0
+   1be7c: f90007e8     	str	x8, [sp, #0x8]
+   1be80: a9007c1f     	stp	xzr, xzr, [x0]
+   1be84: f900081f     	str	xzr, [x0, #0x10]
+   1be88: b90007ff     	str	wzr, [sp, #0x4]
+   1be8c: 08dffec8     	ldarb	w8, [x22]
+   1be90: 360006c8     	tbz	w8, #0x0, 0x1bf68 <_ZN8ttoffice6tttext10ICUWrapperC2Ev+0x118>
+   1be94: b0000157     	adrp	x23, 0x44000 <_ZZN8ttoffice6tttext20LayoutDrawerListener11GetInstanceEvE8instance>
+   1be98: f94152e8     	ldr	x8, [x23, #0x2a0]
+   1be9c: d0ffff81     	adrp	x1, 0xd000
+   1bea0: 91316021     	add	x1, x1, #0xc58
+   1bea4: 910013e4     	add	x4, sp, #0x4
+   1bea8: 2a1f03e0     	mov	w0, wzr
+   1beac: aa1f03e2     	mov	x2, xzr
+   1beb0: 2a1f03e3     	mov	w3, wzr
+   1beb4: d63f0100     	blr	x8
+   1beb8: f9400668     	ldr	x8, [x19, #0x8]
+
+## The call at 0x1beb4 is 'blr x8', x8 = ldr [x23,#0x2a0] (global fn-ptr @ 0x442a0). NO 'cbz x8' precedes it.
+## Args: w0=0, x1=&str@0xdc58, x2=0, w3=0, x4=&UErrorCode(sp+4)  => ubrk_open(type=0, locale, text=NULL, len=0, *status).
+## Lazy init (guard byte @ 0x44298): first call -> __cxa_guard_acquire -> ttoffice::tttext::brk_open init (0x1aa80),
+## which dlopen()s the ICU libs and dlsym()s the cohort into [0x442a0..], then guard_release. If init fails to
+## populate [0x442a0] (an ICU lib did not load, OR an unversioned dlsym returned null), the fp stays NULL and the
+## ctor's 'blr x8' jumps to 0 -> pc=0 SIGSEGV. The null is never checked between dlopen/dlsym and the call.
+
+## imports (app resolves ICU itself at runtime):
+  dlerror
+  dlopen
+  dlsym
+
+## dlopen target sonames + dlsym symbol names (strings, with file offsets) -- ALL UNVERSIONED:
+60e7 _ZN8ttoffice6tttext10ICUWrapper12icu_charTypeEj
+618f _ZN8ttoffice6tttext10ICUWrapper21icu_hasBinaryPropertyEi9UProperty
+db07 u_charType
+dcf4 libkryptoni18n.so
+dd44 libicui18n.so
+dd95 ubrk_setText
+de09 u_hasBinaryProperty
+de62 icudt
+de80 ubrk_first
+df55 ubrk_open
+e07f libicuuc.so
+e110 ubrk_next
+e19a Could not open libicui18n: %s
+e274 Could not open libicuuc: %s
+e2c8 ubrk_close
+## (fallback order from string table: libkryptoni18n.so [NOT bundled in this apk] -> libicui18n.so -> libicuuc.so)
+## NO versioned ICU name (_NN) appears anywhere in the binary:
+  versioned-name count: 0

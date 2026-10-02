@@ -1,0 +1,41 @@
+# "Proximity != cause": for each app-ns ENOENT the outer's --near-fatal 3 flagged, what happened BETWEEN the ENOENT and
+# the key's fatal, and whether the ENOENT is the wall. Traced from the U12 stage-A hilogs (same pid).
+
+## subwaysurfers -- libGLESv3.so ENOENT IS the wall (causal, nothing recovers between)
+  00:54:52.565  load libGLESv3.so failed, namespace=westlake.anl.app.8764.2, errno=2
+                  (needed by .../libvkquality.so)
+  00:54:52.828  E VKQUALITY: F02-A12-UNCLASSIFIED: dlopen_ns failed for libvkquality.so: ... libGLESv3.so
+  00:54:53.653  Reason:Signal:SIGABRT  #01 abort+20   <- the dlopen_ns failure aborts the launch
+  => first-fatal = libGLESv3.so (public-lib gap). WALL.
+
+## fd-stk -- libGLESv2.so ENOENT IS the wall (causal)
+  22:27:15.321  load libGLESv2.so failed, namespace=westlake.anl.app.9437.2, errno=2 (needed by .../libSDL2.so)
+                dlopen_ns failed for libSDL2.so: ... libGLESv2.so   [F02-A12-UNCLASSIFIED]
+  => SDL2 cannot init its GL context; first-fatal = libGLESv2.so (public-lib gap). WALL.
+
+## fd-saber -- libvulkan.so ENOENT is NOT the wall (pre-fatal noise); fatal is the Flutter GetLongField JNI abort
+  23:57:49.xxx  load libvulkan.so failed, namespace=westlake.anl.app.27843.3, errno=2
+  23:57:49.547  E OpenGLWrapper: Failed to load GLES library using dl open   (x10)   <- Vulkan AND GLES both unavailable
+  23:57:49.833  Reason:Signal:SIGABRT  from pid 27843
+                #02 art::Runtime::Abort   #05 art::JavaVMExt::JniAbort
+                #06 art::JNI<false>::GetLongField(env, obj, fieldID)
+                #07 .../com.adilhanney.saber/.../libflutter.so
+  => fatal = GetLongField with a null/invalid fieldID -> CheckJNI JniAbort, raised by libflutter.so. This is the
+     AAssetManager fid==null / GetLongField cluster (benchmark/2026-10-02-u13-flutter-abort-3), fixed in U13 18763dd4.
+     The libvulkan ENOENT (and the GLES-load failure right after) are logged and survived; they are NOT the first-fatal.
+     NOTE: the GLES-load failure is the SAME public-lib gap -> it is a LATENT SECOND wall: once the GetLongField wall is
+     fixed (U13), fd-saber/fd-kitchenowl/fd-immich/fd-fluffychat/localsend will next need a renderer and hit "no Vulkan,
+     no GLES" in the app ns. So the public-lib fix is required for them too, just not as their FIRST fatal.
+
+## toutiao -- libicui18n.so ENOENT IS the wall (causal), + a symbol-versioning wall behind it
+  01:38:25.636  load libjnigraphics.so failed, namespace=westlake.anl.app.29496.2, errno=2   (survived, non-fatal)
+  01:38:33.474  load libicui18n.so failed, same ns, errno=2
+  01:38:34.329  #00 pc 0  <- #01 libtttext_lite.so ICUWrapper::ICUWrapper()+100  (unchecked null ICU fn-ptr)
+  => first-fatal = libicui18n.so (public-lib gap). WALL. But the ns fix alone does not light it (Wall 2: unversioned
+     dlsym vs _72-only exports -- see appns-publiclib-gap.txt).
+
+## x (twitter) -- libGLESv2.so ENOENT present, first-fatal UNCONFIRMED
+  00:53:20.148  load libGLESv2.so failed, same ns, errno=2 (needed by .../libtwittermedia.so)
+                java.lang.UnsatisfiedLinkError: dlopen_ns failed for libtwittermedia.so: ... libGLESv2.so
+  => UnsatisfiedLinkError is a catchable Java exception (libtwittermedia may be optional media accel); x's signed
+     verdict is white. Whether GLESv2 is x's FIRST-fatal or x fails white for another reason is not confirmed here.
