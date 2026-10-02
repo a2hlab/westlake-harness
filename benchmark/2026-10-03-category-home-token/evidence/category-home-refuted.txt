@@ -1,0 +1,41 @@
+Static test of the 'category-HOME' hypothesis for the alive-white keys (x, fd-saber). Read-only.
+Conclusion: category-HOME is REFUTED as the discriminator -- it is universal (our projection), shared with lit keys.
+
+=== ① launch-intent category: HOME is in LIT keys too (not discriminating) ===
+B47-SLA launch intent (hilog) for U13-signed LIT keys:
+  helloworld  : {com.example.helloworld/.MainActivity}            action=MAIN categories={android.intent.category.HOME}
+  wikipedia   : {org.wikipedia/org.wikipedia.DefaultIcon}         action=MAIN categories={android.intent.category.HOME}
+  fd-uhabits  : {org.isoron.uhabits/.MainActivity}                action=MAIN categories={android.intent.category.HOME}
+  markor      : {net.gsantner.markor/.activity.MainActivity}      action=MAIN categories={android.intent.category.HOME}
+  (zigzag/fd-noice/newpipe launch via action=null categories=null, launchMode=2 -- a different launch path; also lit)
+WHITE keys (same HOME launch):
+  x (com.twitter.android) : {.../com.twitter.android.StartActivity} action=MAIN categories={android.intent.category.HOME}
+  fd-saber                : {.../com.adilhanney.saber.MainActivity} action=MAIN categories={android.intent.category.HOME}
+=> lit AND white both launch with CATEGORY_HOME. Per the separation rule (lit has it -> not the cause).
+
+=== ① app MANIFEST: NO app declares CATEGORY_HOME; all LAUNCHER ===
+apkanalyzer manifest print (spot): com.adilhanney.saber (white) = category.LAUNCHER; org.wikipedia (lit) = category.LAUNCHER
+  (+MULTIWINDOW_LAUNCHER activity-alias); org.isoron.uhabits (lit) = category.LAUNCHER. None declares HOME.
+Fast corpus scan (unzip -p AndroidManifest.xml | strings | grep 'category.HOME') over apks/{fdroid,fdroid100},
+corpus-v2/apks, apks-77/vm-copies: scanned 159 apks, manifest-declares-category.HOME = 0.
+=> 0/159 apps declare CATEGORY_HOME. There is no lit/white/dead split to make -- HOME is NOT an app-manifest property.
+
+=== ② where the HOME comes from: OUR installer projection (universal) ===
+bms/src/adapter/framework/package-manager/jni/apk_bundle_parser.cpp:61  (MapCategory):
+    if (androidCategory == CATEGORY_LAUNCHER)  return "entity.system.home";
+apk_bundle_parser.h: "intent-filter.category -> Skills.entities (via MapCategory)".
+So at install, every Android launcher activity's CATEGORY_LAUNCHER is projected to OH module.json skill
+entity "entity.system.home" -> OH treats the ability as the home/launcher entity -> SceneBoard launches it with
+want.action=action.system.home -> the Android intent round-trips to action=MAIN + categories={HOME} (seen in B47-SLA).
+This is the INTENDED OH launcher entity (OH apps use entity.system.home for the home-screen ability); the Android-side
+CATEGORY_HOME is a reverse-mapping artifact (it should map back to CATEGORY_LAUNCHER, not HOME -- cosmetic mismatch).
+APPLIES TO ALL 159 apps -> universal -> cannot discriminate lit from white.
+
+=== OH 6.1 AMS verificationAllToken / callerRecordList (source not local) ===
+OH AMS source (ability_manager_service.cpp StartAbilityInner / verificationAllToken / callerRecordList) is NOT in
+westlake-inputs (only compiled activity__oh_ability_manager_client.o). Needs hw248/a2hlab to read. Reasoned from behavior:
+verificationAllToken verifies the ability token against mission/caller records; `callerRecordList is empty` = launched
+with no caller (a home/desktop launch has no caller record). That empty-caller state is true for ALL home-launched apps
+(all of them, via the universal entity.system.home), yet only x/fd-saber FAIL verification -- so empty callerRecordList
+is necessary-but-not-sufficient; the failure fires on the TERMINATE/re-start path (x trampoline finish; fd-saber
+terminate before performCreate), not on the initial launch. (See 2026-10-03-u13-white-selfterminate.)

@@ -1,0 +1,35 @@
+{
+  "task": "Statically confirm/refute the 'category-HOME' leg of the alive-white common signature (x, fd-saber): which keys' launch Activity declares CATEGORY_HOME (lit/white/dead split); what our installer projects it to on OH; minimal fix + prediction.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "conclusion": "category-HOME REFUTED as the white discriminator -- it is universal (our LAUNCHER->entity.system.home projection, round-tripped to CATEGORY_HOME), shared by lit keys. strip-HOME fix moves 0 keys.",
+  "q1_who_has_home": {
+    "launch_intent_category": {
+      "lit_MAIN_HOME": ["helloworld", "wikipedia", "fd-uhabits", "markor"],
+      "lit_null_path": ["zigzag", "fd-noice", "newpipe"],
+      "white_MAIN_HOME": ["x", "fd-saber"],
+      "reading": "lit AND white launch with categories={HOME} -> not discriminating (separation rule)"
+    },
+    "app_manifest": {
+      "spot_check": "saber(white)=CATEGORY_LAUNCHER; wikipedia(lit)=CATEGORY_LAUNCHER(+MULTIWINDOW_LAUNCHER alias); uhabits(lit)=CATEGORY_LAUNCHER; none HOME",
+      "corpus_scan": "unzip AndroidManifest.xml | strings | grep category.HOME over apks/{fdroid,fdroid100}+corpus-v2/apks+apks-77/vm-copies: scanned 159 apks, declares-category.HOME=0",
+      "reading": "0/159 apps declare CATEGORY_HOME -> no lit/white/dead split; HOME is not an app property"
+    }
+  },
+  "q2_projection": {
+    "source": "bms/src/adapter/framework/package-manager/jni/apk_bundle_parser.cpp:61 MapCategory: CATEGORY_LAUNCHER -> entity.system.home",
+    "effect": "install maps every Android launcher activity's CATEGORY_LAUNCHER to OH module.json skill entity 'entity.system.home' -> OH treats it as the home/launcher entity -> SceneBoard launches via want.action=action.system.home -> Android intent round-trips to action=MAIN + categories={HOME} (B47-SLA).",
+    "intended": "entity.system.home IS OH's standard launcher entity (forward mapping intended); the Android-side CATEGORY_HOME is a reverse-mapping artifact (should map back to CATEGORY_LAUNCHER, not HOME -- cosmetic mismatch)",
+    "universal": "applies to all 159 apps -> cannot discriminate lit from white",
+    "oh_ams_source": "ability_manager_service.cpp StartAbilityInner/verificationAllToken/callerRecordList NOT in westlake-inputs (only compiled .o); needs hw248/a2hlab. Reasoned: verificationAllToken checks token vs mission/caller records; callerRecordList empty = no-caller launch (true for ALL home-launched apps); only x/fd-saber fail -> empty callerRecordList necessary-but-not-sufficient; failure fires on the terminate/re-start path, not initial launch (see u13-white-selfterminate)"
+  },
+  "q3_fix_prediction": {
+    "separation_holds": false,
+    "fix_a_strip_home": "REFUTED -- predicted keys moved = 0. Lit apps launch with HOME and render; removing HOME would not make x/fd-saber render (their white is the terminate-path failure). Also risky: entity.system.home is OH's standard launcher entity, remapping could break launchability for every app. Not recommended.",
+    "fix_b_ams_caller_record": "the real lever (u13-white-selfterminate): give the home-launched ability a proper mission/caller record so verificationAllToken passes on terminate/re-start, and carry x's trampoline hand-off to the real activity. Independent of HOME. Predicted moved: terminate-path keys (x, fd-saber, + future finish/relaunch launch abilities), NOT a HOME-category set.",
+    "optional_nit": "fix the reverse mapping so OH entity.system.home -> Android CATEGORY_LAUNCHER (not HOME); low priority, does not move the white keys",
+    "onboard_experiment": "not needed -- static separation (0/159 manifest HOME; lit share launch HOME) is conclusive"
+  },
+  "rule": "Before promoting one leg of a common signature to a cause, run the separation on THAT leg: category-HOME is universal (our CATEGORY_LAUNCHER->entity.system.home projection round-tripped to CATEGORY_HOME), present in lit keys too -> a launch-path constant, not the discriminator. The discriminator stays the terminate-path verificationAllToken failed.",
+  "boundaries": ["offline; no board; no push; static only (no on-board experiment)", "OH AMS source not local (hw248/a2hlab) -- AMS behavior reasoned not source-read", "sources read-only: corpus apks (westlake-inputs/apks, corpus-v2, apks-77/vm-copies), U13 hilogs (westlake-harness-u7-executor), installer projection source (westlake-harness/bms)"],
+  "files": ["README.md", "evidence/category-home-refuted.txt", "results.json", "documentation.json", "landing-paths.txt"]
+}
