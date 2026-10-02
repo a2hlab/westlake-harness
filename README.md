@@ -247,6 +247,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-02-u10-1-tools/`** | Stop all nonzero shards before finish; bounded read-only HDC marker retries, unchanged U10.1 supplemental plans and offline regressions. |
 | **`benchmark/2026-10-02-organicmaps-finish/`** | Bounded UID/parent-checked cold_stop retry on OrganicMaps rollback refusal; unchanged admission and fail-safe tests. |
 | **`benchmark/2026-10-02-n11g-sealed-owner/`** | Child-only explicit sealed callback candidate, actual ELF/calls/consumer/string audits and pending 61b single-owner plan. |
+| **`benchmark/2026-10-02-n11h-host-owner-blueprint/`** | Design-only host-owner routing proposal; exact U9 ELF census corrects the unsupported host-default-open attribution, with namespace/ABI gates and U9 retreat. |
 
 ---
 

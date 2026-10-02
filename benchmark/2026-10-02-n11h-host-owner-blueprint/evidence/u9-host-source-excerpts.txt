@@ -1,0 +1,269 @@
+139:     void *bridge_namespace_opaque, const char *bridge_name,
+140:     const char *bridge_search_paths, const char *bridge_permitted_paths,
+141:     const char *bridge_shared_sonames, const char *bridge_bootstrap_soname,
+142:     const WlpbHostOpsV1 *pthread_bridge_ops,
+143:     void **out_bridge_bootstrap_handle, void *app_namespace_opaque,
+144:     const char *app_name, const char *app_search_paths,
+145:     const char *app_permitted_paths)
+146: {
+147:     Dl_namespace *bridge_namespace =
+148:         (Dl_namespace *)bridge_namespace_opaque;
+149:     Dl_namespace *app_namespace = (Dl_namespace *)app_namespace_opaque;
+150:     void *bootstrap_handle = NULL;
+151:     int result;
+152:     const bool wants_bridge = bridge_namespace != NULL;
+153: 
+154:     if (out_bridge_bootstrap_handle == NULL || app_namespace == NULL ||
+155:         !NamespaceNameOwnedByCurrentProcess(app_name, "app") ||
+156:         !NamespaceInputsPresent(app_search_paths, app_permitted_paths)) {
+157:         return NamespaceResultFence(EINVAL);
+158:     }
+159:     *out_bridge_bootstrap_handle = NULL;
+160:     if (wants_bridge != (bridge_name != NULL) ||
+161:         wants_bridge != (bridge_search_paths != NULL) ||
+162:         wants_bridge != (bridge_permitted_paths != NULL) ||
+163:         wants_bridge != (bridge_shared_sonames != NULL)) {
+164:         return NamespaceResultFence(EINVAL);
+165:     }
+166:     if (!wants_bridge &&
+167:         (bridge_bootstrap_soname != NULL || pthread_bridge_ops != NULL)) {
+168:         return NamespaceResultFence(EINVAL);
+169:     }
+170: 
+171:     if (wants_bridge) {
+172:         if (!NamespaceNameOwnedByCurrentProcess(bridge_name, "bridge") ||
+173:             !NamespaceInputsPresent(bridge_search_paths,
+174:                                     bridge_permitted_paths) ||
+175:             bridge_shared_sonames[0] == '\0' ||
+176:             (bridge_bootstrap_soname != NULL &&
+177:              (bridge_bootstrap_soname[0] == '\0' ||
+178:               strchr(bridge_bootstrap_soname, '/') != NULL ||
+179:               pthread_bridge_ops == NULL))) {
+180:             return NamespaceResultFence(EINVAL);
+181:         }
+182:         dlns_init(bridge_namespace, bridge_name);
+183:         result = dlns_create2(bridge_namespace, bridge_search_paths,
+184:                               CREATE_INHERIT_DEFAULT);
+185:         if (result != 0) {
+186:             return NamespaceResultFence(result);
+187:         }
+188:         result = dlns_set_namespace_separated(bridge_namespace->name, true);
+189:         if (result != 0) {
+190:             return NamespaceResultFence(result);
+191:         }
+192:         result = dlns_set_namespace_permitted_paths(
+193:             bridge_namespace->name, bridge_permitted_paths);
+194:         if (result != 0) {
+195:             return NamespaceResultFence(result);
+196:         }
+197:         result = dlns_set_namespace_allowed_libs(
+198:             bridge_namespace->name, bridge_shared_sonames);
+199:         if (result != 0) {
+200:             return NamespaceResultFence(result);
+201:         }
+202: 
+203:         if (bridge_bootstrap_soname != NULL) {
+204:             typedef int (*InstallBridgeOps)(const WlpbHostOpsV1 *ops);
+205:             InstallBridgeOps install = NULL;
+206:             void *symbol;
+207: 
+208:             dlerror();
+209:             bootstrap_handle = dlopen_ns(
+210:                 bridge_namespace, bridge_bootstrap_soname,
+211:                 RTLD_NOW | RTLD_LOCAL);
+212:             if (bootstrap_handle == NULL) {
+213:                 return NamespaceResultFence(ENOENT);
+214:             }
+215:             dlerror();
+216:             symbol = dlsym(bootstrap_handle, "WLPB_InstallHostOps");
+217:             if (symbol == NULL || dlerror() != NULL ||
+218:                 sizeof(symbol) != sizeof(install)) {
+219:                 (void)dlclose(bootstrap_handle);
+220:                 return NamespaceResultFence(ENOEXEC);
+221:             }
+222:             (void)memcpy(&install, &symbol, sizeof(install));
+223:             result = install(pthread_bridge_ops);
+224:             if (result != 0) {
+225:                 (void)dlclose(bootstrap_handle);
+226:                 return NamespaceResultFence(result);
+227:             }
+228:             *out_bridge_bootstrap_handle = bootstrap_handle;
+229:         }
+230:     }
+231: 
+232:     dlns_init(app_namespace, app_name);
+233:     result = dlns_create2(app_namespace, app_search_paths,
+234:                           LOCAL_NS_PREFERED);
+235:     if (result != 0) {
+236:         return NamespaceResultFence(result);
+249:      * request this branch; baseline control domains do not.
+250:      * No system search roots and no extra DFX/runtime instances in the app. */
+251:     const bool flutter_private = wants_bridge &&
+252:         strncmp(app_search_paths, "/system/android/lib64/westlake_flutter:",
+253:                 strlen("/system/android/lib64/westlake_flutter:")) == 0 &&
+254:         (flutter_package_path(app_search_paths) || flutter_package_path(app_permitted_paths));
+255:     const bool native_private = wants_bridge &&
+256:         strncmp(app_search_paths, "/system/android/lib64/westlake_native:",
+257:                 strlen("/system/android/lib64/westlake_native:")) == 0 &&
+258:         (native_cluster_path(app_search_paths) || native_cluster_path(app_permitted_paths));
+259:     if (flutter_private || native_private) {
+260:         Dl_namespace system_owner, runtime_owner;
+261:         result = dlns_get("default", &system_owner);
+262:         if (result != 0) return NamespaceResultFence(result);
+263:         result = dlns_get("westlake.sealed.child", &runtime_owner);
+264:         if (result != 0) return NamespaceResultFence(result);
+265:         result = dlns_inherit(app_namespace, &system_owner,
+266:             "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:libstdc++.so:libOpenSLES.so");
+267:         if (result != 0) return NamespaceResultFence(result);
+268:         result = dlns_inherit(app_namespace, &runtime_owner,
+269:             "liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so");
+270:         if (result != 0) return NamespaceResultFence(result);
+271:         const bool needs_runtime = flutter_private ||
+272:             strstr(app_search_paths, "/com.emn8.mobilem8.nativeapp.bk/") ||
+273:             strstr(app_search_paths, "/com.mcdonalds.app/") ||
+274:             strstr(app_search_paths, "/app.organicmaps/") ||
+275:             strstr(app_search_paths, "/im.vector.app/") ||
+276:             strstr(app_search_paths, "/org.ppsspp.ppsspp/");
+277:         if (needs_runtime) {
+278:         /* real-work WLSCPL_InheritAndroidRuntimeV1 publishes the resident object
+279:          * by exact absolute path after inheritance. Ordinary lookup follows lazy
+280:          * owner edges. Device acceptance requires one runtime instance. */
+281:         void* resident = dlopen_ns(app_namespace,
+282:             "/system/android/lib64/liboh_android_runtime.so",
+283:             RTLD_NOW | RTLD_GLOBAL);
+284:         if (resident == NULL) {
+285:             APPSPAWN_LOGE("[N3-OWNER] resident runtime unavailable: %{public}s", dlerror());
+286:             return NamespaceResultFence(ENOENT);
+287:         }
+288:         APPSPAWN_LOGI("[N3-OWNER] resident runtime published for %{public}s", app_name);
+289:         }
+290:         if (native_private && (strstr(app_search_paths, "/io.anuke.mindustry/") ||
+291:                                strstr(app_permitted_paths, "/io.anuke.mindustry/") ||
+292:                                strstr(app_search_paths, "/org.ppsspp.ppsspp/") ||
+293:                                strstr(app_permitted_paths, "/org.ppsspp.ppsspp/"))) {
+294:             /* Open the OH audio implementation from its platform owner, not a
+295:              * second copy inside the app. Android extension IIDs come from the
+296:              * private Westlake ABI library loaded below. */
+297:             void* audio = dlopen_ns(app_namespace, "/system/lib64/libOpenSLES.so",
+298:                                     RTLD_NOW | RTLD_GLOBAL);
+299:             if (audio == NULL) {
+300:                 APPSPAWN_LOGE("[N4-AUDIO] app-owner open failed: %{public}s", dlerror());
+301:                 return NamespaceResultFence(ENOENT);
+302:             }
+303:             const char* audio_symbols[] = {
+304:                 "slCreateEngine", "SL_IID_ENGINE", "SL_IID_VOLUME", "SL_IID_PLAY", "SL_IID_BUFFERQUEUE"
+305:             };
+306:             for (size_t symbol_index = 0;
+307:                  symbol_index < sizeof(audio_symbols) / sizeof(audio_symbols[0]); ++symbol_index) {
+308:                 if (dlsym(audio, audio_symbols[symbol_index]) == NULL) {
+309:                     APPSPAWN_LOGE("[N4-AUDIO] provider lacks %{public}s", audio_symbols[symbol_index]);
+310:                     return NamespaceResultFence(ENOENT);
+311:                 }
+312:             }
+313:         }
+314:     }
+315:     if (wants_bridge) {
+316:         result = dlns_inherit(app_namespace, bridge_namespace,
+317:                               bridge_shared_sonames);
+318:         if (result != 0) {
+319:             return NamespaceResultFence(result);
+320:         }
+321:     }
+322:     if (flutter_private || native_private) {
+323:         /* OH 6.1 musl ignores DF_1_GLOBAL: its add_syms/removal is controlled
+324:          * by dlopen mode. Promote only the declared ABI DSO in selected app
+325:          * domains, not arbitrary app libraries or system providers. */
+326:         const char* abi = flutter_private
+327:             ? "/system/android/lib64/westlake_flutter/libwestlake_native_abi.so"
+328:             : "/system/android/lib64/westlake_native/libwestlake_native_abi.so";
+329:         void* handle = dlopen_ns(app_namespace, abi, RTLD_NOW | RTLD_GLOBAL);
+330:         if (handle == NULL) return NamespaceResultFence(ENOENT);
+331:         fprintf(stderr, "[N2-OWNER] %s ABI global ready; search=%s permitted=%s\n",
+332:                 app_name, app_search_paths, app_permitted_paths);
+333:     }
+334:     return NamespaceResultFence(0);
+335: }
+336: 
+337: static WLASC_NOINLINE void *StockOpenNamespace(
+338:     void *app_namespace_opaque, const char *path, int mode)
+339: {
+340:     Dl_namespace *app_namespace = (Dl_namespace *)app_namespace_opaque;
+341:     void *handle;
+342: 
+343:     if (app_namespace == NULL || path == NULL || path[0] == '\0' ||
+344:         !NamespaceNameOwnedByCurrentProcess(app_namespace->name, "app") ||
+345:         (mode & RTLD_GLOBAL) != 0) {
+346:         return NamespaceHandleFence(NULL);
+347:     }
+348:     handle = dlopen_ns(app_namespace, path, mode | RTLD_LOCAL);
+349:     return NamespaceHandleFence(handle);
+350: }
+351: 
+352: static uint8_t HexNibble(char value)
+500:     services.prepare_parent_runtime =
+501:         westlake_native_compat_prepare_parent_runtime;
+502:     services.verify_parent_preload_thread_ready =
+503:         westlake_native_compat_verify_parent_preload_thread_ready;
+504:     services.prepare_main_thread =
+505:         westlake_native_compat_prepare_main_thread;
+506:     services.verify_current_thread_ready =
+507:         westlake_native_compat_verify_current_thread_ready;
+508:     services.get_audit_snapshot =
+509:         westlake_native_compat_get_audit_snapshot;
+510:     services.get_pthread_bridge_ops =
+511:         westlake_native_compat_get_pthread_bridge_ops;
+512:     services.create_configured_namespaces =
+513:         StockCreateConfiguredNamespaces;
+514:     services.open_namespace = StockOpenNamespace;
+515:     install_result = install_services(&services);
+516:     if (install_result != 0) {
+517:         return -1;
+518:     }
+519: 
+520:     parent_pid = getpid();
+521:     if (parent_pid <= 0) {
+522:         return -1;
+523:     }
+524:     (void)memset(&parent_identity, 0, sizeof(parent_identity));
+525:     parent_identity.abi_version = WLNC_ABI_VERSION;
+526:     parent_identity.struct_size = sizeof(parent_identity);
+527:     parent_identity.runtime_generation = services.runtime_generation;
+528:     parent_identity.pid = (uint32_t)parent_pid;
+529:     parent_identity.uid = (uint32_t)getuid();
+530:     parent_identity.gid = (uint32_t)getgid();
+531:     (void)memcpy(parent_identity.runtime_provider_sha256,
+532:                  services.runtime_provider_sha256,
+533:                  sizeof(parent_identity.runtime_provider_sha256));
+534:     return services.prepare_parent_runtime(&parent_identity) ==
+535:                    WLNC_PREPARE_OK
+536:                ? 0
+615:     CheckPreload(argv);
+616:     (void)signal(SIGPIPE, SIG_IGN);
+617: 
+618:     /*
+619:      * This creates MODULE_DEFAULT before StartSpawnService, so its later
+620:      * AppSpawnLoadAutoRunModules(MODULE_DEFAULT) cannot scan the ACE child
+621:      * processor directory. MODULE_COMMON is still loaded unchanged.
+622:      */
+623:     if (ResolvePluginPath(plugin_path) != 0 ||
+624:         AppSpawnModuleMgrInstall(WLASC_PLUGIN_NAME) != 0 ||
+625:         ResolvePluginPath(plugin_path_after_load) != 0 ||
+626:         strcmp(plugin_path, plugin_path_after_load) != 0) {
+627:         return 1;
+628:     }
+629:     plugin_handle = dlopen(plugin_path, RTLD_NOW | RTLD_NOLOAD);
+630:     if (plugin_handle == NULL ||
+631:         InstallPluginHostServices(plugin_handle, plugin_path) != 0) {
+632:         if (plugin_handle != NULL) {
+633:             (void)dlclose(plugin_handle);
+634:         }
+635:         return 1;
+636:     }
+637:     if (dlclose(plugin_handle) != 0) {
+638:         return 1;
+639:     }
+640:     content = StartSpawnService(&start_argument, sizeof(stock_long_proc_name),
+641:                                 1, stock_argv);
+642:     if (content == (AppSpawnContent *)0 ||
+643:         content->runAppSpawn == (void (*)(AppSpawnContent *, int,
+644:                                           char *const []))0) {
