@@ -72,6 +72,38 @@ class UnlandedTests(unittest.TestCase):
         (self.repo / 'benchmark/x/landing-paths.txt').write_text('benchmark/x/a.txt\n')
         self.assertEqual([r['worktree'] for r in self.rows()], ['westlake-harness-lane'])
 
+    def test_branch_residue(self):
+        """branch_residue: a.txt master-still-at-merge-base, b.txt master-changed (not reported), c.txt missing-on-master."""
+        # use a single repo with a branch; lane worktree is that branch checked out
+        repo = self.repo
+        lane_branch = 'lane-branch'
+        # base commit on master with a.txt + b.txt
+        (repo / 'benchmark/x/a.txt').write_text('A\n')
+        (repo / 'benchmark/x/b.txt').write_text('B\n')
+        git(repo, 'add', '.')
+        git(repo, 'commit', '-qm', 'base')
+        # create lane branch, change a.txt + add c.txt there
+        git(repo, 'checkout', '-qb', lane_branch)
+        (repo / 'benchmark/x/a.txt').write_text('A-lane\n')
+        (repo / 'benchmark/x/b.txt').write_text('B-lane\n')  # also edited on master below -> must not be reported
+        (repo / 'benchmark/x/c.txt').write_text('C\n')
+        git(repo, 'add', '.')
+        git(repo, 'commit', '-qm', 'lane')
+        # back to master, change b.txt
+        git(repo, 'checkout', '-q', '-B', 'master', 'HEAD~1')
+        (repo / 'benchmark/x/b.txt').write_text('B-master\n')
+        git(repo, 'add', '.')
+        git(repo, 'commit', '-qm', 'master')
+        # lane worktree = lane branch checked out in a separate dir
+        lane_wt = self.ws / 'westlake-harness-lane-wt'
+        git(repo, 'worktree', 'add', '-q', str(lane_wt), lane_branch)
+        try:
+            res = unlanded.branch_residue(lane_wt, repo)
+            self.assertEqual([r[0] for r in res], ['benchmark/x/a.txt', 'benchmark/x/c.txt'])
+            self.assertEqual([r[1] for r in res], ['master-still-at-merge-base', 'missing-on-master'])
+        finally:
+            git(repo, 'worktree', 'remove', '--force', str(lane_wt))
+
 
 if __name__ == '__main__':
     unittest.main()
