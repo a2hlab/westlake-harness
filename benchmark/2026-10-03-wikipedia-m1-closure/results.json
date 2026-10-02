@@ -1,0 +1,23 @@
+{
+  "task": "#80 Wikipedia M1 closure: chain M1 mechanism -> U13 runtime 18763dd4 [M1-COPY] -> window1 6/6; judge wikipedia lit is real UI; freeze assessment.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 80, "offline": true, "board_deploy": false,
+  "m1_mechanism": "deployed bridge 84695d62 publishProcessWindowTarget keeps ONE session id + ONE window ptr in two process env vars; multi-window overwrites the single slot; the runtime compat-shim's bridge copy (dlopen RTLD_NOLOAD, own ns) didn't create the sessions so its sessions_ misses -> every BBQ lookup falls to the one slot -> first-created top Activity gets an empty Surface -> white. Compose apps' white was this empty Surface, not a Compose-pipeline wall (DIGEST 2026-10-01 T7d).",
+  "u13_fix": "[M1-COPY] in runtime 18763dd4 (R3 of m1-session-slots, android_graphics_compat_shim.cpp): when the shim's bridge copy returns null, ask the OTHER loaded bridge copy (dl_iterate_phdr) whose sessions_ has the window -> rescued Surface -> lit. Bridge binary untouched.",
+  "evidence_window1": {"candidate":"U13 bundle 91272eaf (5cd/5ea)","reference":"2026-10-03-u13-reference (122 lit)","wikipedia":"6/6 lit (5cd; baseline 2/3)","fd-uhabits":"6/6 lit (5ea)","fd-noice":"6/6 lit (5ea)","sizing":"6/key clears per-key alpha=0.05 (2026-10-03-lottery-baseline-kn); 6/6 rejects the baseline lottery -> lift is [M1-COPY]"},
+  "interactive_judgment": "all 6 t20 outer-signed lit (own Wikipedia UI); each run phase=controls. Caveat: stage-A capture recorded foreground_unconfirmed and did not dump view tree/input -> 'lit own-UI' firmly supported, full interactivity (input dispatch) NOT programmatically proven here (capture limitation, not a regression). If interactivity must be certified, run one focused tap/scroll probe at freeze.",
+  "freeze_assessment": {
+    "rule": ">=2 app t20 lit",
+    "met": "YES -- fd-uhabits + wikipedia (+ fd-noice = 3), each 6/6",
+    "registration": "waits for the outer after U13 promotion",
+    "split_at_freeze": [
+      "source: bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp (R3 [M1-COPY])",
+      "object: android_graphics_compat_shim.o (per-.o SHA from N10b build-runtime.py, baseline 216b68fb byte-identical)",
+      "runtime: liboh_android_runtime.so = U13 18763dd4 (carries [M1-COPY] + AAssetManager lazy-init)",
+      "not-deployed alt: bridge-m1.patch (oh_window_manager_client.cpp); R1 blocked (no 84695d62 build chain)"
+    ],
+    "sha_note": "exact .o/runtime SHAs pinned from the U13 runtime build at freeze time"
+  },
+  "rule": "An 'alive but white' app is not a render-pipeline wall by default -- check the Surface first. One Surface-rescue ([M1-COPY]) lit the whole Compose cohort. Prove a lottery lift with sized k/n (6/6 vs 2/3); separate 'lit own-UI' (signed t20) from 'interactive' (input dispatch).",
+  "boundaries": ["offline; no board; no push", "6/6 signing is the outer's (u13-stage-a-plan/window1-signoff)", "M1 freeze registration is the outer's after U13 promotion"],
+  "files": ["README.md","evidence/window1-lottery-6of6.txt","evidence/interactive-judgment.txt","results.json","documentation.json","landing-paths.txt"]
+}
