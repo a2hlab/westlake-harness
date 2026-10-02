@@ -7,7 +7,7 @@ import u7_executor as u
 from deploy_generation import load_package,validate_upgrade
 sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def save(p,d):p.write_text(json.dumps(d,indent=2)+'\n')
-def approve(root, composition_path):
+def approve(root, composition_path, authorization=None):
  """Arm the approved bundle and its drift guard together; payload/manifest stay fixed."""
  root=Path(root);composition_path=Path(composition_path)
  bundle_path=root/'bundle.json';before=bundle_path.read_bytes();previous=composition_path.read_bytes()
@@ -16,7 +16,7 @@ def approve(root, composition_path):
  assert sha(root/'native/package.json')==c['native_manifest_sha256'],'native manifest drift'
  gb.validate(root)
  b['rollout_ready']=True;b['rollout_blocker']=''
- b['window_authorization']='Outer ACK(90) 2026-10-02T01:37:54+08:00; observation only; unconditional U9 rollback'
+ b['window_authorization']=authorization or 'Outer ACK(90) 2026-10-02T01:37:54+08:00; observation only; unconditional U9 rollback'
  try:
   tmp=bundle_path.with_suffix('.json.approve-tmp');save(tmp,b);os.replace(tmp,bundle_path)
   c['rollout_ready']=True;c['bundle_sha256']=sha(bundle_path)

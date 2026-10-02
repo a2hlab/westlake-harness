@@ -48,7 +48,9 @@ class PromotionSafety(unittest.TestCase):
             self.assertIsNotNone(self.reason(d))
 
     def test_unarmed_candidate_blocks_before_vm(self):
-        with patch.object(hook.previous, 'vm') as vm:
+        # Admission tests use fixtures, not the mutable real rollout state.
+        composition = {'bundle_sha256': 'bundle', 'native_manifest_sha256': 'manifest', 'rollout_ready': False}
+        with patch.object(hook.previous, 'vm') as vm, patch.object(hook.gb, 'sha', side_effect=['bundle', 'manifest']), patch.object(hook.json, 'loads', side_effect=[composition, {'frozen_behavior_gate': 'PASS'}, {'all_required_gates_passed': True}]):
             with self.assertRaisesRegex(AssertionError, 'outer package review pending'):
                 hook.admission()
             vm.assert_not_called()
@@ -60,6 +62,7 @@ class PromotionSafety(unittest.TestCase):
         with patch.object(dispatch.subprocess, 'run') as run:
             for short in ['5ea', '5cd', '61b']:
                 plan = json.loads((H / 'window' / ('plan-' + short + '.json')).read_text())
+                plan['execution_enabled'] = False
                 with self.assertRaisesRegex(RuntimeError, 'REVIEW-ONLY plan is not executable'):
                     dispatch.prelock(plan)
             run.assert_not_called()
