@@ -1,0 +1,41 @@
+# Wall-2 fix selection: option (a) per-app /system/usr/icu remap is UNSAFE; use option (b) _74 aliases.
+# Method: the Android app process maps BOTH our Android ICU and OH platform ICU (U12 maps-t5, e.g.
+#   window1/.../helloworld/maps-t5-28322.txt):
+#     /system/android/lib64/{libicuuc.so,libicui18n.so,libicu_jni.so}   (ours, ICU 72)
+#     /system/lib64/platformsdk/{libhmicuuc.z.so,libhmicui18n.z.so,libintl_register.z.so,libintl_util.z.so,libglobal_resmgr.z.so}  (OH)
+# OH libs scanned from the local snapshot westlake-inputs/oh61-link-inputs/system-lib64/platformsdk (no board access).
+
+## OH libhmicuuc.z.so (mapped in the app process) READS /system/usr/icu and needs ICU 74:
+   data-dir string:
+     /system/usr/icu
+     icudt74_dat
+     icudt74l
+     icudt74l-
+     icudt74l-brkitr
+     icudt74l-curr
+     icudt74l-lang
+     icudt74l-region
+   ICU-74 data-setup exports/imports:
+     u_init_74
+     u_setDataDirectory_74
+     udata_setCommonData_74
+     udata_setFileAccess_74
+
+## => The OH ICU stack (libhmicuuc @ 74) shares /system/usr/icu with tttext. Remapping /system/usr/icu to an
+##    ICU-72 dir FOR THE APP PROCESS (option a) would feed icudt72l to libhmicuuc, which expects icudt74l ->
+##    breaks OH ICU (resmgr/intl/i18n) inside the app. OPTION (a) IS UNSAFE.
+
+## Our Android libicuuc.so uses its OWN data dir (ICU_DATA=/system/android/etc/icu, icudt72l), NOT /system/usr/icu:
+     icudt72_dat
+     icudt72l
+     icudt72l-
+     icudt72l-brkitr
+     icudt72l-curr
+     icudt72l-lang
+     icudt72l-region
+   (our runtime westlake_icu_overrides.cpp binds the _72 cohort from /system/android/lib64; see 2026-10-03-toutiao-icu-wall)
+
+## CONCLUSION: use option (b) -- add _74 ALIAS exports to our Android libicuuc.so/libicui18n.so. Only callers that
+## dlsym the _74 names (tttext) are affected; OH's libhmicuuc keeps its own _74 and its /system/usr/icu @ 74 data.
+## The two ICU stacks stay separate (ours 72 @ /system/android/etc/icu, OH 74 @ /system/usr/icu); tttext, which
+## dlopen()s OUR libicuuc (not libhmicuuc), gets _74 aliases resolving to the _72 impls.

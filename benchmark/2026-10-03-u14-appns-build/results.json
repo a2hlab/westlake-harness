@@ -1,0 +1,35 @@
+{
+  "task": "U14 app-ns public libs build staging: (1) safety criterion selecting the Wall-2 ICU fix; (2) locate+validate the Wall-1 appspawn-x host reproduce+patch build for the U14 native candidate.",
+  "date": "2026-10-03",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "board_access": "none (02:35 lock window respected; OH libs read from local snapshot westlake-inputs/oh61-link-inputs)",
+  "wall2_selection": {
+    "method": "Android app process maps both ICU stacks (U12 maps-t5): ours /system/android/lib64 (ICU 72), OH /system/lib64/platformsdk/libhmicuuc.z.so etc. Scanned OH libs from local snapshot.",
+    "finding": "OH libhmicuuc.z.so reads /system/usr/icu and requires ICU 74 (icudt74l, u_setDataDirectory_74, udata_setCommonData_74). It shares /system/usr/icu with tttext.",
+    "option_a": "UNSAFE/REJECTED: per-app remap of /system/usr/icu to ICU-72 would feed icudt72l to OH libhmicuuc (needs icudt74l) -> breaks OH ICU in the app process.",
+    "chosen": "option (b): add _74 alias exports to our Android libicuuc.so (aliases of the _72 impls). Only _74-dlsym callers (tttext) affected; OH libhmicuuc keeps its own _74. Alias set (from apk strings): ubrk_open/close/first/next/setText, u_charType, u_hasBinaryProperty (all stable break-iterator/property C API, all in libicuuc).",
+    "build_b": "re-link libicuuc with an alias object (.set <sym>_74,<sym>_72), keep the _72 cohort; one lib, no second copy. recipe/wall2-b-icu74-alias.md.",
+    "caveats": ["enumerate the real dlsym set from relocations", "handle the icudt74l_dat data symbol (tttext builds icudt+suffix)", "72-code-answering-74 safe only for the stable C ABI"],
+    "alternative_c1": "align our Android ICU to 74 (OH already is): rebuild libicuuc/libicui18n at 74 + icudt74l + flip westlake_icu_overrides.cpp kExpectedSuffix 72->74. Larger but removes the version-skew."
+  },
+  "wall1_build": {
+    "fix_artifact_correction": "the dlns_inherit patch compiles into the appspawn-x HOST EXECUTABLE (westlake_stock_host_main.c -> build_stock_host -> appspawn-x-stock, pass1/pass2 byte-repro built in), NOT libapp_native_loader.so nor the child .so.",
+    "base_to_reproduce": "U13 deployed host appspawn-x = 2a87118e7e8e62fb73ef71a436517cda406c308668753a478cf52331e996072e (u13-final-assembly/.artifacts/bundle-v3/native/payload/runtime/appspawn-x). Not r3 65cc3535, not n11h 65ac5089.",
+    "toolchain": "hw248:/opt/wl-src/.work/product-tls-generation + frozen clang-15 present. Direct recipe is Linux-only (checks /etc/os-release) -> build on hw248 (a2hlab reserved for the U13 executor during the lock window).",
+    "patch": "recipe/win-u14-appns-public-libs.patch (context-verified, dlns_inherit site line 217): add libicui18n.so:libicuuc.so:libGLESv2.so:libGLESv3.so:libvulkan.so:libjnigraphics.so to the app<->bridge inherit; exclude libandroidio/libjavacore.",
+    "plan": ["reproduce 2a87118e UNPATCHED x2 (N10b faithfulness gate; if no match STOP + report delta)", "apply patch, build PATCHED x2", "acceptance vs base: open_site_scan unchanged, deployed_strings_diff only the new soname string + the one LOGI/branch, exports/undefined identical", "persist + record shas on hw248"],
+    "staged_not_built": "a faithful reproduce of 2a87118e needs the EXACT U13 host source snapshot + frozen.sha256 env; u13-final-assembly records no host repro receipt; N10b discipline rejects a near-miss source. Confirm the U13 host source snapshot -> then the monitored hw248 build is a small mechanical run. Mirrors the staged-then-built JIT build.",
+    "build_not_run_this_turn": true
+  },
+  "prediction_by_first_fatal": {
+    "toutiao": "Wall 1 + Wall 2 (both); lit only with both",
+    "fd-stk": "Wall 1 only (libGLESv2 via libSDL2)",
+    "subwaysurfers": "Wall 1 only (libGLESv3 via libvkquality)",
+    "flutter_cohort": "U13 18763dd4 (GetLongField) first; Wall 1 is their second wall"
+  },
+  "boundaries": ["offline; no board access (02:35 lock window); OH libs from local snapshot", "appspawn-x host build is the runtime/appspawn owners' to deploy; candidate staging only", "sources read read-only; hw248 probed read-only"],
+  "files": ["README.md", "evidence/wall2-selection.txt", "evidence/build-staging.txt", "recipe/win-u14-appns-public-libs.patch", "recipe/wall2-b-icu74-alias.md", "results.json", "documentation.json", "landing-paths.txt"]
+}

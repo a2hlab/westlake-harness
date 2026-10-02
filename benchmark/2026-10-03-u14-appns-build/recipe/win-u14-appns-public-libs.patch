@@ -1,0 +1,41 @@
+# U14 Wall-1 candidate patch: expose the AOSP public native libraries to the restricted app namespace.
+# Target: bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
+# (the StockCreateConfiguredNamespaces impl registered at services.create_configured_namespaces). NOTE: this is NOT in
+# app_native_loader.c / libapp_native_loader.so (which only forwards app paths and holds no soname list) -- see
+# evidence/appns-inherit-mechanism.txt. The app ns inherits from the bridge exactly the sonames passed to dlns_inherit;
+# the bridge already inherits DEFAULT (CREATE_INHERIT_DEFAULT) and permits /system/android/lib64, so these resolve to
+# the single platform/bridge copy -> dlns_inherit SHARES it, no second copy. Only AOSP public.libraries.android.txt
+# sonames are added; libandroidio.so/libjavacore.so (ART-internal, not public) are deliberately excluded.
+--- a/bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
++++ b/bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
+@@
+     result = dlns_set_namespace_permitted_paths(
+         app_namespace->name, app_permitted_paths);
+     if (result != 0) {
+         return NamespaceResultFence(result);
+     }
+     if (wants_bridge) {
+-        result = dlns_inherit(app_namespace, bridge_namespace,
+-                              bridge_shared_sonames);
++        /* [U14 app-ns public libs] The app namespace inherits from the bridge ONLY the sonames named here, so any
++         * AOSP public library an app dlopen()s by soname (public.libraries.android.txt) must be shared explicitly or
++         * the app gets ENOENT: toutiao libicui18n.so, fd-stk libGLESv2.so (via libSDL2), subwaysurfers libGLESv3.so
++         * (via libvkquality), and the Flutter cohort's libGLESv2/libvulkan. The bridge inherits DEFAULT and permits
++         * /system/android/lib64, so these resolve to the single platform/bridge copy and dlns_inherit shares it (no
++         * second copy). Only public libs are added; ART-internal libandroidio.so/libjavacore.so are intentionally
++         * NOT exposed. */
++        static const char kAospPublicLibs[] =
++            "libicui18n.so:libicuuc.so:libGLESv2.so:libGLESv3.so:libvulkan.so:libjnigraphics.so";
++        char app_shared[1024];
++        int app_shared_len = snprintf(app_shared, sizeof(app_shared), "%s:%s",
++                                      bridge_shared_sonames, kAospPublicLibs);
++        if (app_shared_len < 0 || (size_t)app_shared_len >= sizeof(app_shared)) {
++            return NamespaceResultFence(ENAMETOOLONG);
++        }
++        result = dlns_inherit(app_namespace, bridge_namespace, app_shared);
+         if (result != 0) {
+             return NamespaceResultFence(result);
+         }
+     }
+     return NamespaceResultFence(0);
+ }

@@ -1,0 +1,39 @@
+# Wall-1 U14 native candidate: staged + validated for a monitored byte-reproduce + patch build on hw248.
+
+## Fix artifact (corrected): the appspawn-x HOST EXECUTABLE, not a .so
+StockCreateConfiguredNamespaces (with the dlns_inherit the patch edits) is in
+  bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
+and build_route_a_generation_direct.sh build_stock_host() compiles it (+ appspawn_service.c) and links
+  -o <dir>/appspawn-x-stock   (pass1 + pass2 -> byte-identical; the N10b two-pass repro is built in).
+The deployed object is the host executable "appspawn-x" (payload/runtime/appspawn-x), NOT libapp_native_loader.so and
+NOT the child .so libwestlake_android_child.z.so. Patch site present in current source (grep count 1, line 217).
+
+## Base to reproduce (pin): the U13 deployed host
+  U13 host appspawn-x = 2a87118e7e8e62fb73ef71a436517cda406c308668753a478cf52331e996072e
+    (benchmark/2026-10-03-u13-final-assembly/.artifacts/bundle-v3/native/payload/runtime/appspawn-x)
+  (For reference, earlier host bytes: accepted r3 65cc3535...; n11h host-owner candidate 65ac5089... -- NEITHER is the
+   U13 base; the U14 patch builds on the U13 host 2a87118e.)
+
+## Toolchain + inputs (validated)
+  hw248: /opt/wl-src/.work/product-tls-generation present; frozen clang-15 present
+         (/opt/wl-src/.work/product-tls-generation/frozen/toolchain/bin/clang-15).
+  Recipe: build_route_a_generation_direct.sh (GENERATION_ROOT=$PROJECT_ROOT/.work/product-tls-generation;
+         frozen.sha256 manifest check; a macOS-native host-test receipt; Linux host -- checks /etc/os-release, so the
+         build runs on hw248, NOT the Mac). Per the outer 02:35 window note, build on hw248 (a2hlab reserved for the
+         U13 executor during the lock window).
+
+## Launch-ready build plan (monitored, nohup + tee, single instance)
+  1. Reproduce the U13 host 2a87118e UNPATCHED x2 (byte-identical, == 2a87118e). This is the N10b faithfulness gate:
+     if it does not match, STOP and report the delta (do not build a candidate on an unfaithful base -- n11h rule:
+     "a reproduction using a different source basename is not an accepted baseline").
+  2. Apply recipe/win-u14-appns-public-libs.patch to westlake_stock_host_main.c; build PATCHED x2 (byte-identical).
+  3. Acceptance vs the U13 base: open_site_scan unchanged; deployed_strings_diff differs ONLY by the added soname
+     string "libicui18n.so:libicuuc.so:libGLESv2.so:libGLESv3.so:libvulkan.so:libjnigraphics.so" (+ the one LOGI/branch
+     the patch adds); exports/undefined identical; version-script westlake_stock_host.map unchanged.
+  4. Restore the source; persist the two .so/exe + logs + shas on hw248 and record path+hashes here.
+
+## One input to confirm before the faithful reproduce
+The byte-faithful reproduce of 2a87118e needs the EXACT U13 host SOURCE SNAPSHOT (+ the frozen.sha256 env the U13
+host was built under). The current worktree source has the patch site but may differ from the U13-deployed snapshot;
+u13-final-assembly records no host repro receipt. Confirm the U13 host source snapshot (or its recorded repro receipt)
+so step 1 reproduces 2a87118e, not a near-miss. This is the only blocker to running the monitored build.
