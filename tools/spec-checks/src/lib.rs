@@ -111,7 +111,10 @@ fn bms_rerun_offline() {
 
 #[test]
 fn white_window_offline() {
-    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_*.py"]);
+    // run every test_*.py in the directory except the immutable original test_analyze.py;
+    // the portable copy carries the lane-tree-prefix normalization.
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_ability_stage.py"]);
+    run(&["-m", "unittest", "discover", "-s", "benchmark/2026-09-29-white-window", "-p", "test_analyze_portable.py"]);
 }
 
 #[test]
@@ -290,7 +293,7 @@ fn v2_feedback_matrix() {
 
 #[test]
 fn b10_installer_background() {
-    run(&["benchmark/2026-09-29-static-wall-prediction/test_installer_background.py"]);
+    run(&["benchmark/2026-09-29-static-wall-prediction/test_installer_background_portable.py"]);
 }
 
 #[test]
