@@ -1,0 +1,17 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-02-white-unexplained-4/`** | **The 4 white-cluster keys white-vs-lit could not separate, one cause each: dddmodel2 = M1 (dialog session created first gets an empty Surface) + M5 (SceneBoard stacks sibling sub-windows by creation order, so the Activity window, zOrder 103, covers the Android dialog, 102); fd-mobile = Jellyfin's 'WebView outdated' dialog (no renderer) buried under its dark empty Activity window (M5, 103 < 104); itsdicey = not a fault (DiceView.onDraw drawARGB(255,0,0,0), hint TextView gone in the layout: the idle UI is a black canvas); fd-AppManager = M6 (translucent KeyStoreActivity finishes in onCreate, AMS had backgrounded SplashActivity and nothing re-foregrounds it; stable form white 1/16, lit 0/117). U13 (M1) moves 0 of the 4 (corrects 'dddmodel2 may move'); re-sign +1 (itsdicey); M5 +1 own dialog (dddmodel2) / +1 WebView-fallback page (fd-mobile); M6 +1 own splash (AppManager).** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-02 **OH 上同一 MainSession 下的兄弟子窗口按创建顺序叠放(M5)**(cc-t3):bridge 把 Android 的 Dialog(type 2)和 Activity 主窗口(type 1)都绑成 zLevel 0 的子窗口,SceneBoard onSubSessionZLevelChange 按 index 给 zOrder,先建的对话框就压在后建的主窗口下面(fd-mobile 636→103 < 637→104,dddmodel2 686→102 < 687→103);Android 里对话框应在上。onCreate 里就弹对话框的 app 白/黑屏 = 主窗口内容空 + 对话框被压。亮键里也有 13/117 先建对话框(secuso 首启框、NetGuard、RPN),截图里看不到对话框只因主界面有内容——修 M5 后它们的 t20 画面会变(仍是自家 UI)。判窗口要按 androidType,不按 VRI 名(对话框和 Activity 同名 VRI[MainActivity])。M1(18763dd4)单独修不动 dddmodel2。见 benchmark/2026-10-02-white-unexplained-4/。",
+    "- 2026-10-02 **M6:半透明的顶层 Activity 在 onCreate 里 finish,调用方被 OH 留在后台**(cc-t3,fd-AppManager):Splash 启动 KeyStoreActivity(AppTheme.TransparentBackground)时 AMS 把 Splash 切后台,KeyStoreActivity 立即 finish → TerminateAbility rc=0,之后没有任何事件把 Splash 拉回前台(静默 10.3 s)→ 无前台 ability → 白;Android 里半透明 Activity 不会让调用方停止。稳定形态(≥2 ability 进过前台、全部落后台、有 TerminateAbility、截断前静默≥5 s)白 1/16 亮 0/117;不加静默条件会把 fd-organicmaps 的 Splash↔DownloadResources 循环误计。另:itsdicey 的黑屏是正确界面(DiceView.onDraw 首句 drawARGB(255,0,0,0)、提示文字布局里就是 gone)——判黑屏是渲染故障前先读 onDraw。"
+   ]
+  }
+ ]
+}
