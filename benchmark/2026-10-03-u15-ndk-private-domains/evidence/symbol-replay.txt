@@ -1,0 +1,42 @@
+U15 #3 — private-domain NDK symbol replay (musl per-namespace resolution). Read-only; nm -D / objdump -T.
+
+================= immich (Flutter-private domain, westlake_flutter) =================
+app lib that imports NDK symbols: libcronet.143.0.7445.0.so (6.5 MB, 245 UND dynsyms)
+MISSING NDK public symbols (full set, not just first):
+  ATrace_beginSection   (libandroid.so NDK)
+  ATrace_endSection     (libandroid.so NDK)
+  -> cronet imports EXACTLY these 2 ATrace symbols (no other ATrace_* / ASurface / AChoreographer / etc.).
+Run evidence (u13 5cd): MUSL-LDSO relocating failed symbol not found s=ATrace_beginSection dso=.../libcronet.143.0.7445.0.so
+  (after an earlier bind VerifyError A2.b; see prediction).
+
+Flutter-domain visible set for ATrace:
+  - westlake_flutter/libandroid.so (fff9be31) = a 9-export Flutter ANW+EGL interposer shim, NOT a full NDK libandroid:
+      ANativeWindow_lock/unlockAndPost@@FLUTTER_ANDROID_1, eglCreateWindowSurface/eglDestroySurface/eglSwapBuffers/
+      eglSwapBuffersWithDamageKHR@@LIBEGL, + 3 libc re-exports. => 0 ATrace_*.
+  - inherited (westlake_stock_host_main.c:266-267 from default + :269-270 from sealed.child): libc/libdl/libm/libEGL/
+      libGLESv3/libsurface/liboh_android_runtime/libbionic_compat/liblog/libc++/libstdc++/libOpenSLES. NO libandroid, NO ATrace_*.
+  - liboh_android_runtime.so (18763dd4, inherited) exports the INTERNAL impl lowercase:
+      atrace_begin_body (T), atrace_end_body (T), atrace_get_enabled_tags (T)  -- NOT the NDK-public ATrace_* wrappers.
+AOSP 14 contract: ATrace_beginSection/ATrace_endSection are libandroid.so NDK exports (confirmed benchmark/2026-09-21-ndk-coverage
+  + mcdonalds/toutiao runtime-candidates: "libandroid.so  ATrace_beginSection"); each is a thin wrapper over atrace_begin_body/atrace_end_body.
+=> GENUINE gap: the NDK-public ATrace_* are absent from the whole Flutter domain; only the lowercase body impl exists (in the inherited runtime).
+
+================= mindustry (native domain, westlake_native) =================
+app lib: libarc.so (Arc engine audio). MISSING (full set):
+  slCreateEngine, SL_IID_ENGINE, SL_IID_PLAY, SL_IID_VOLUME   (OpenSL ES 1.0.1 core; libOpenSLES.so)
+  SL_IID_ANDROIDSIMPLEBUFFERQUEUE                               (Android extension IID)
+Run evidence (u12 5ea): MUSL-LDSO relocating failed symbol not found s=slCreateEngine dso=.../io.anuke.mindustry/.../libarc.so
+
+Providers:
+  - OH platform /system/lib64/libOpenSLES.so (arm-linux-ohos, 66 T): slCreateEngine + SL_IID_ENGINE/PLAY/VOLUME/BUFFERQUEUE/
+      ENGINECAPABILITIES/PLAYBACKRATE  (core 4/5)  -- but NO SL_IID_ANDROIDSIMPLEBUFFERQUEUE.
+  - /system/android/lib64/libOpenSLES.so (our stub, 2T _init/_fini + 2D): SL_IID_ANDROIDSIMPLEBUFFERQUEUE, SL_IID_ANDROIDCONFIGURATION (Android ext only).
+  - libwestlake_native_abi.so (native_abi): SL_IID_ANDROIDSIMPLEBUFFERQUEUE@@LIBC, SL_IID_ANDROIDCONFIGURATION@@LIBC (Android ext).
+=> the 5 split: 4 core from OH platform libOpenSLES + 1 Android-ext IID from native_abi/stub. No single lib has all 5.
+
+Host already codes the native_private audio branch (westlake_stock_host_main.c:291-313):
+  for io.anuke.mindustry / org.ppsspp.ppsspp -> dlopen_ns(app_ns, "/system/lib64/libOpenSLES.so", RTLD_NOW|RTLD_GLOBAL)
+  and verifies {slCreateEngine, SL_IID_ENGINE, SL_IID_VOLUME, SL_IID_PLAY, SL_IID_BUFFERQUEUE}.
+  (The domain ALSO soname-inherits "libOpenSLES.so" at :267 but that soname is ambiguous -- stub vs platform -- so the
+   explicit ABSOLUTE-path dlopen_ns is the reliable core provider.)
+mindustry's u12 failure = that branch not active/deployed at u12 -> the native domain had no slCreateEngine.

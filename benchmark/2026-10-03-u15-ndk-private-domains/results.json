@@ -1,0 +1,34 @@
+{
+  "task": "U15 candidate #3 private-domain NDK symbols: immich ATrace_* (Flutter-private) + mindustry slCreateEngine (native). Full missing-symbol replay per domain visible set, AOSP14 provider, minimal fix, first-fatal prediction.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "reference": "master 49e6f805da benchmark/2026-10-03-u13-first-fatal-clusters (cluster C4)",
+  "immich": {
+    "domain": "westlake_flutter (Flutter-private)",
+    "app_lib": "libcronet.143.0.7445.0.so",
+    "missing_ndk": ["ATrace_beginSection", "ATrace_endSection"],
+    "complete": "exactly 2; no other ATrace_*/ASurface/AChoreographer imported",
+    "domain_libandroid": "fff9be31 = 9-export Flutter ANW+EGL interposer shim (ANativeWindow_lock/unlockAndPost, egl*), NOT full NDK libandroid -> 0 ATrace_*",
+    "impl_present": "liboh_android_runtime.so 18763dd4 (inherited) exports lowercase atrace_begin_body/atrace_end_body/atrace_get_enabled_tags (T), NOT the NDK-public wrappers",
+    "aosp_contract": "ATrace_beginSection/endSection are libandroid.so NDK exports (benchmark/2026-09-21-ndk-coverage), each a thin wrapper over atrace_begin_body/atrace_end_body",
+    "minimal_fix": "add ATrace_beginSection/ATrace_endSection (+ATrace_isEnabled) forwarders to the private libandroid fff9, calling the inherited runtime's atrace_*_body. ('补转发 in 私有 libandroid'.) Domain-inherit-soname not viable (no full NDK libandroid to inherit); native_abi is wrong domain (Gecko/native).",
+    "fix_layer": "Flutter private libandroid (fff9) rebuild/forwarders",
+    "first_fatal": "NOT ATrace. immich's first-fatal is the Java VerifyError A2.b (Unresolved Reference d7.c, MethodChannel onMethodCall) at bind; ATrace reloc fires later at libcronet load. ATrace fix clears the cronet wall but immich stays blocked by the VerifyError -> will not light from this fix alone."
+  },
+  "mindustry": {
+    "domain": "westlake_native (native)",
+    "app_lib": "libarc.so",
+    "missing_ndk": ["slCreateEngine", "SL_IID_ENGINE", "SL_IID_PLAY", "SL_IID_VOLUME", "SL_IID_ANDROIDSIMPLEBUFFERQUEUE"],
+    "providers": {
+      "OH_platform_/system/lib64/libOpenSLES.so": "slCreateEngine + SL_IID_ENGINE/PLAY/VOLUME/BUFFERQUEUE (core 4/5); NO SL_IID_ANDROIDSIMPLEBUFFERQUEUE",
+      "native_abi + /system/android/lib64/libOpenSLES.so stub": "SL_IID_ANDROIDSIMPLEBUFFERQUEUE, SL_IID_ANDROIDCONFIGURATION (Android ext 1/5)"
+    },
+    "split": "no single lib has all 5; 4 core from OH platform libOpenSLES + 1 Android-ext IID from native_abi",
+    "host_already_codes": "westlake_stock_host_main.c:291-313 native_private audio branch: for mindustry/ppsspp dlopen_ns('/system/lib64/libOpenSLES.so', RTLD_NOW|RTLD_GLOBAL) + verify {slCreateEngine,SL_IID_ENGINE,SL_IID_VOLUME,SL_IID_PLAY,SL_IID_BUFFERQUEUE}; native_abi supplies the Android IID. u12 failure = branch not active then.",
+    "minimal_fix": "domain provisioning, NO new lib: ensure the native_private audio branch (explicit absolute-path dlopen_ns of OH /system/lib64/libOpenSLES.so RTLD_GLOBAL) + native_abi are deployed in the U15 host. ('域加载/继承' option.) Prefer the absolute-path dlopen_ns over a soname-inherit because 'libOpenSLES.so' soname is ambiguous (OH platform core vs our Android-ext stub) -- exactly why u12's soname path left slCreateEngine unresolved. Nit: add SL_IID_ANDROIDSIMPLEBUFFERQUEUE to the verify list (libarc uses it, not SL_IID_BUFFERQUEUE).",
+    "fix_layer": "host (native domain provisioning) + native_abi",
+    "first_fatal": "slCreateEngine is the terminal native-domain wall (Arc audio init); mindustry is bound. With all 5 provided, libarc resolves -> proceeds past audio init. lit medium-high (GL game)."
+  },
+  "rule": "Replay the COMPLETE NDK import set of the app's own lib against the PRIVATE domain's visible set; locate each missing symbol's AOSP owner; fix at the layer that owns that domain's copy -- export the NDK wrappers from the domain's own libandroid (Flutter fff9 forwarders over the runtime atrace_*_body), or provision the platform impl by ABSOLUTE path when the soname is ambiguous (native OpenSLES core via dlopen_ns RTLD_GLOBAL + native_abi for the Android ext). 'Missing in a private domain' != 'missing on the system'.",
+  "boundaries": ["offline; no board; no push; static symbol replay only", "fixes are the Flutter-libandroid / host owners' to build + ship", "sources read read-only: two apks, fff9/runtime/OpenSLES/native_abi (westlake-inputs/generations), host source + aosp-14.0.0_r1-src, cluster table"],
+  "files": ["README.md", "evidence/symbol-replay.txt", "results.json", "documentation.json", "landing-paths.txt"]
+}
