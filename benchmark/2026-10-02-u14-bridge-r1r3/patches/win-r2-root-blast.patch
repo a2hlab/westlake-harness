@@ -1,0 +1,144 @@
+diff --git a/oh_window_manager_client.cpp b/oh_window_manager_client.cpp
+index a0beb73..8e57b42 100755
+--- a/oh_window_manager_client.cpp
++++ b/oh_window_manager_client.cpp
+@@ -449,6 +449,13 @@ OHWindowSession OHWindowManagerClient::createSession(
+         // [U14 R1] the parent MainSession owns platform focus; project its
+         // active edge into this content stage.
+         stage->SetInheritsParentFocus(true);
++        // [U14 R2] from real-work oh_window_manager_client.cpp 0b816fe6:496-501.
++        if (!stage->EnableRootBlastForTopLevelContent()) {
++            LOGE("createSession: failed to enable root BLAST for Android "
++                 "top-level content; refusing a null-BBQ ViewRoot");
++            result.wsErr = 1001;
++            return result;
++        }
+         LOGI("createSession: bound Android top-level content to OH MainSession "
+              "parentId=%{public}d", parentPersistentId);
+     }
+diff --git a/session_stage_adapter.cpp b/session_stage_adapter.cpp
+index 38b07f9..ea9138a 100755
+--- a/session_stage_adapter.cpp
++++ b/session_stage_adapter.cpp
+@@ -153,6 +153,104 @@ void SessionStageAdapter::SetInheritsParentFocus(bool inheritsParentFocus)
+     inheritsParentFocus_ = inheritsParentFocus;
+ }
+ 
++// [U14 R2] Body from real-work session_stage_adapter.cpp 0765bc53, with the
++// deployed 84695d62 JNIEnv rule (plain GetEnv, attach only when detached)
++// instead of that file's WLTG-gated ScopedJniAttachment (DIGEST 557).
++bool SessionStageAdapter::EnableRootBlastForTopLevelContent()
++{
++    OH_BR_IPC_SCOPE("SessionStage.EnableRootBlast", "");
++
++    std::lock_guard<std::mutex> lock(jniMutex_);
++    bool needsDetach = false;
++    JNIEnv* env = getJNIEnv(needsDetach);
++    if (!env || !androidWindow_) {
++        ALOGE("EnableRootBlast: missing JNIEnv or Android IWindow");
++        detachIfNeeded(needsDetach);
++        return false;
++    }
++
++    bool enabled = false;
++    jclass windowClass = nullptr;
++    jobject weakViewRoot = nullptr;
++    jclass weakReferenceClass = nullptr;
++    jobject viewRoot = nullptr;
++    jclass viewRootClass = nullptr;
++
++    windowClass = env->GetObjectClass(androidWindow_);
++    if (!windowClass) {
++        ALOGE("EnableRootBlast: Android IWindow class unavailable");
++        goto cleanup;
++    }
++
++    {
++        jfieldID viewAncestorField = env->GetFieldID(windowClass, "mViewAncestor",
++            "Ljava/lang/ref/WeakReference;");
++        if (!viewAncestorField) {
++            ALOGE("EnableRootBlast: ViewRootImpl.W.mViewAncestor unavailable");
++            goto cleanup;
++        }
++        weakViewRoot = env->GetObjectField(androidWindow_, viewAncestorField);
++    }
++    if (!weakViewRoot) {
++        ALOGE("EnableRootBlast: ViewRootImpl weak reference is null");
++        goto cleanup;
++    }
++
++    weakReferenceClass = env->FindClass("java/lang/ref/WeakReference");
++    if (!weakReferenceClass) {
++        ALOGE("EnableRootBlast: WeakReference class unavailable");
++        goto cleanup;
++    }
++    {
++        jmethodID getMethod = env->GetMethodID(weakReferenceClass, "get",
++            "()Ljava/lang/Object;");
++        if (!getMethod) {
++            ALOGE("EnableRootBlast: WeakReference.get unavailable");
++            goto cleanup;
++        }
++        viewRoot = env->CallObjectMethod(weakViewRoot, getMethod);
++    }
++    if (env->ExceptionCheck() || !viewRoot) {
++        ALOGE("EnableRootBlast: ViewRootImpl is unavailable");
++        goto cleanup;
++    }
++
++    viewRootClass = env->GetObjectClass(viewRoot);
++    if (!viewRootClass) {
++        ALOGE("EnableRootBlast: ViewRootImpl class unavailable");
++        goto cleanup;
++    }
++    {
++        jfieldID useBlastField = env->GetFieldID(viewRootClass,
++            "mUseBLASTAdapter", "Z");
++        if (!useBlastField) {
++            ALOGE("EnableRootBlast: ViewRootImpl.mUseBLASTAdapter unavailable");
++            goto cleanup;
++        }
++        const jboolean wasEnabled = env->GetBooleanField(viewRoot, useBlastField);
++        env->SetBooleanField(viewRoot, useBlastField, JNI_TRUE);
++        if (!env->ExceptionCheck()) {
++            enabled = env->GetBooleanField(viewRoot, useBlastField) == JNI_TRUE;
++            ALOGI("EnableRootBlast: mUseBLASTAdapter %{public}s -> %{public}s",
++                wasEnabled == JNI_TRUE ? "true" : "false",
++                enabled ? "true" : "false");
++        }
++    }
++
++cleanup:
++    if (env->ExceptionCheck()) {
++        ALOGE("EnableRootBlast: clearing JNI exception");
++        env->ExceptionClear();
++    }
++    if (viewRootClass) env->DeleteLocalRef(viewRootClass);
++    if (viewRoot) env->DeleteLocalRef(viewRoot);
++    if (weakReferenceClass) env->DeleteLocalRef(weakReferenceClass);
++    if (weakViewRoot) env->DeleteLocalRef(weakViewRoot);
++    if (windowClass) env->DeleteLocalRef(windowClass);
++    detachIfNeeded(needsDetach);
++    return enabled;
++}
++
+ // ================================================================
+ // Category 1: Session Lifecycle
+ // ================================================================
+diff --git a/session_stage_adapter.h b/session_stage_adapter.h
+index f59b0fd..4625d87 100755
+--- a/session_stage_adapter.h
++++ b/session_stage_adapter.h
+@@ -52,6 +52,12 @@ public:
+     // the parent's active edge is projected through ViewRootImpl.
+     void SetInheritsParentFocus(bool inheritsParentFocus);
+ 
++    // [U14 R2] WindowSessionAdapter cannot return ADD_FLAG_USE_BLAST on this
++    // route, but the SurfaceControl/BBQ bridge supports it.  Enable the
++    // equivalent ViewRootImpl latch before the first relayout; otherwise
++    // no-buffer frame-commit callbacks see a permanently-null mBlastBufferQueue.
++    bool EnableRootBlastForTopLevelContent();
++
+     // ================================================================
+     // Category 1: Session Lifecycle
+     // ================================================================

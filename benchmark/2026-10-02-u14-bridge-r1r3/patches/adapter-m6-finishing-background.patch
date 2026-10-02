@@ -1,0 +1,89 @@
+diff --git a/framework/activity/jni/ability_scheduler_adapter.cpp b/framework/activity/jni/ability_scheduler_adapter.cpp
+index dcf0ef9..aa37ef5 100644
+--- a/framework/activity/jni/ability_scheduler_adapter.cpp
++++ b/framework/activity/jni/ability_scheduler_adapter.cpp
+@@ -42,6 +42,10 @@ extern "C" jclass adapter_bridge_load_class(JNIEnv* env, const char* binaryName)
+ #define ALOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+ #define ALOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+ 
++// [U14 M6] HiLog-visible lines for the finishing pass-through: this bridge's
++// __android_log_print output does not reach hilog on the U10.1T8 stack.
++#include "oh_br_trace.h"
++
+ namespace oh_adapter {
+ 
+ namespace {
+@@ -139,9 +143,47 @@ long long InitGraceMs() {
+     return cached;
+ }
+ 
++// [U14 M6] Is the Android Activity behind this OH token finishing?
++// ActivityClientControllerAdapter.finishActivity marks the Activity in
++// adapter.core.OhTokenRegistry (markDestroying) before it calls OH
++// TerminateAbility.  OH 6.1 defers that close while the ability's FOREGROUND is
++// still pending and later sends BACKGROUND_NEW; the termination only completes
++// after the app acknowledges BACKGROUND and INITIAL
++// (benchmark/2026-10-02-white-m6-finish-return).  That BACKGROUND_NEW arrives
++// inside the init grace window, so without this check the guard swallows it and
++// the finished Activity's windowless scene stays on top.
++bool FgGuardTokenIsFinishing(JavaVM* jvm, jlong tokenAddr) {
++    if (jvm == nullptr || tokenAddr == 0) return false;
++    ScopedJniAttach attach(jvm);
++    JNIEnv* env = attach.env();
++    if (env == nullptr) return false;
++    bool finishing = false;
++    jclass registry = adapter_bridge_load_class(env, "adapter.core.OhTokenRegistry");
++    if (registry != nullptr) {
++        jmethodID findByOhToken = env->GetStaticMethodID(
++            registry, "findByOhToken", "(J)Landroid/os/IBinder;");
++        jmethodID isDestroying = env->GetStaticMethodID(
++            registry, "isDestroying", "(Landroid/os/IBinder;)Z");
++        if (findByOhToken != nullptr && isDestroying != nullptr) {
++            jobject token = env->CallStaticObjectMethod(registry, findByOhToken, tokenAddr);
++            if (!env->ExceptionCheck() && token != nullptr) {
++                finishing = env->CallStaticBooleanMethod(registry, isDestroying, token) == JNI_TRUE;
++            }
++            if (token != nullptr) env->DeleteLocalRef(token);
++        }
++        env->DeleteLocalRef(registry);
++    }
++    if (env->ExceptionCheck()) {
++        env->ExceptionClear();
++        finishing = false;
++    }
++    return finishing;
++}
++
+ // Returns true if this transition should be VETOED (swallowed, not dispatched
+ // to Android) because it is a false init-phase STOPPED. Updates guard state.
+-bool FgGuardShouldVeto(jlong tokenAddr, int wireState) {
++// [U14 M6] finishing: the Activity asked to finish -> never veto its background.
++bool FgGuardShouldVeto(jlong tokenAddr, int wireState, bool finishing) {
+     long long grace = InitGraceMs();
+     if (grace == 0) return false;  // guard disabled (fail-open)
+ 
+@@ -170,6 +212,13 @@ bool FgGuardShouldVeto(jlong tokenAddr, int wireState) {
+         }
+         long long now = NowMonoMs();
+         long long dt = now - e.firstFgMs;
++        if (finishing) {
++            e.stable = true;  // [U14 M6]
++            OH_BR_IPC_WARN("FGGUARD", "pass-through BACKGROUND_NEW for finishing token=0x%{public}llx "
++                           "dt=%{public}lldms (not vetoed)",
++                           static_cast<unsigned long long>(tokenAddr), dt);
++            return false;
++        }
+         if (dt <= grace && !e.vetoedOnce) {
+             e.vetoedOnce = true;  // swallow only the FIRST init-phase BG
+             __android_log_print(ANDROID_LOG_WARN, "OH_AbilitySchedAdapter",
+@@ -473,7 +522,9 @@ bool AbilitySchedulerAdapter::ScheduleAbilityTransaction(
+     // We return true (transition "accepted" from AMS's view, so it won't retry
+     // or kill) but do NOT forward to Java — no StopActivityItem, no onPause,
+     // engine keeps initializing. See FGGUARD block above for full rationale.
+-    if (FgGuardShouldVeto(tokenAddr_, targetState.state)) {
++    const bool finishing = targetState.state == OH_WIRE_BACKGROUND_NEW &&
++        FgGuardTokenIsFinishing(jvm_, tokenAddr_);  // [U14 M6]
++    if (FgGuardShouldVeto(tokenAddr_, targetState.state, finishing)) {
+         return true;
+     }
+ 

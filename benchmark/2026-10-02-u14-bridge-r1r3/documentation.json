@@ -1,0 +1,17 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-02-u14-bridge-r1r3/`** | **U14 bridge baseline candidate (offline, Mac DevEco SDK): v3 + win-r1 focus bridge + win-r2 root BLAST (0765bc53/0b816fe6 bodies rewritten to 846's plain GetEnv and log strings) + win-r3 process-published RSSurfaceNode (rewritten from 846's call graph) = e34de8ab, 50/50 strict, two fresh builds same SHA. Equivalence vs deployed 84695d62 (equiv.py: every address operand resolved to string/symbol/GOT target/callee): 2694/2696 functions instruction-equal, the 2 that differ are exactly the inert OH-DISPLAY-EVENT and APK-ORIENTATION paths; with those two compiled out (proof-only patch) 2696/2696. Exports +3 (a-path) / -0, drift 0, consumer breaks 0; strings 9/23 all a-path or layout. M1 (per-session window AND RS-node holder slots), M5 (TYPE_APPLICATION -> DIALOG_SUB_WINDOW_Z_LEVEL, OH client's own rule), M6 (no FGGUARD veto for a finishing Activity via OhTokenRegistry.isDestroying) are separate patches, each touching only its functions; host test reproduces 846's two-window miss and M1's fix. Correction: U10.1T8 drops the bridge's __android_log_print lines (SessionStageAdapter created 0/133 runs vs HiLog [IPC] 131/133), so M6's 'no scheduler transaction logged' was not evidence.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-02 **U10.1T8 上 bridge 的 __android_log_print 行进不了 hilog,缺行不是证据(cc-t3,U14 r1r3)**:133 跑里 `SessionStageAdapter created`(ALOGI)0 跑出现,同一对象 HiLog 版的 `[IPC] ENTER SessionStage.SetActive` 131 跑都有;`[BRIDGED] ScheduleAbilityTransaction`/`[FGGUARD]`/`EnableRootBlast: mUseBLASTAdapter` 都是 __android_log_print,所以 M6 报告里『U10.1T8 连调度事务都没有』不成立,两代更可能都是 FGGUARD 在 3 s 宽限内否决了推迟的 BACKGROUND_NEW。(846 未带版本的 __android_log_print 可绑到 libhwui.so 的同名导出;新建 bridge 绑 liblog.so 的 @LIBC。)规则:从『某行没出现』推『某事没发生』前,先确认那行的日志通路在这套栈上能进 hilog。见 benchmark/2026-10-02-u14-bridge-r1r3/。",
+    "- 2026-10-02 **『移植好了』=对部署件逐函数指令等价,不是『从最近的源搬过来』(cc-t3,U14 r1r3)**:R1/R2 从 real-work 0765bc53 搬函数体后,还要按 846 二进制改到一致(构造里日志串是 `FindClass(adapter/window/WindowCallbackBridge) failed` 不是 real-work 的写法、全程平 getJNIEnv、R3 全局名 g_processSurfaceHolderMutex/g_processSurfaceHolders、缓冲区声明顺序、emplace_back、先 ExceptionCheck 再 Clear——每一处都先表现为寄存器分配或模板实例化差异)。工具:`calls.py`(部署函数的有序调用+字符串指纹当规格)、`equiv.py`(反汇编后把每个地址操作数解析成字符串/符号/GOT 目标/被调函数再逐条比,布局抵消、行为不抵消),外加一个去掉有意新增的 proof-only 变体证明全等(U14 候选 e34de8ab:2694/2696,去掉两条 a 路径后 2696/2696)。"
+   ]
+  }
+ ]
+}

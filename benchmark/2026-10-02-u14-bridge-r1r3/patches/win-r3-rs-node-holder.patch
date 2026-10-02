@@ -1,0 +1,132 @@
+diff --git a/oh_window_manager_client.cpp b/oh_window_manager_client.cpp
+index 8e57b42..1bcad59 100755
+--- a/oh_window_manager_client.cpp
++++ b/oh_window_manager_client.cpp
+@@ -35,6 +35,9 @@
+ #include <cstdio>
+ #include <cstdlib>
+ #include <map>
++#include <memory>
++#include <mutex>
++#include <vector>
+ 
+ #include "ipc_skeleton.h"
+ #include "iservice_registry.h"  // OHOS::SystemAbilityManagerClient
+@@ -73,18 +76,38 @@ namespace {
+ std::atomic<int32_t> g_lastAttachedSession{0};
+ constexpr const char* kSharedSessionEnv = "WESTLAKE_WINDOW_SESSION_ID_V1";
+ constexpr const char* kSharedNativeWindowEnv = "WESTLAKE_NATIVE_WINDOW_PTR_V1";
++// [U14 R3] The bridge copy that did not create the session (compat shim, other
++// linker namespace) has an empty sessions_ map.  The creating copy publishes a
++// process-lifetime holder of the session's RSSurfaceNode so the other copy can
++// share the same node (deployed 84695d62 behaviour; single slot like V1).
++constexpr const char* kSharedSurfaceHolderEnv = "WESTLAKE_RS_SURFACE_NODE_HOLDER_PTR_V1";
++std::mutex g_processSurfaceHolderMutex;
++std::vector<std::unique_ptr<std::shared_ptr<OHOS::Rosen::RSSurfaceNode>>> g_processSurfaceHolders;
+ 
+ void setLastAttachedSessionLocal(int32_t sessionId) {
+     OH_BR_IPC_SCOPE("oh_wm_set_last_session_local", "session=%{public}d", sessionId);
+     g_lastAttachedSession.store(sessionId, std::memory_order_release);
+ }
+ 
+-void publishProcessWindowTarget(int32_t sessionId, void* nativeWindow) {
++void publishProcessWindowTarget(int32_t sessionId, void* nativeWindow,
++                                const std::shared_ptr<OHOS::Rosen::RSSurfaceNode>& surfaceNode) {
+     char sessionText[16] = {};
+     char pointerText[2 + sizeof(uintptr_t) * 2 + 1] = {};
++    char holderText[2 + sizeof(uintptr_t) * 2 + 1] = {};
++    // Holders are never freed: a pointer published to the environment must stay
++    // valid for any later reader in the other copy.
++    auto holder = std::make_unique<std::shared_ptr<OHOS::Rosen::RSSurfaceNode>>(surfaceNode);
++    void* holderAddress = holder.get();
++    {
++        std::lock_guard<std::mutex> lock(g_processSurfaceHolderMutex);
++        g_processSurfaceHolders.emplace_back(std::move(holder));
++    }
+     std::snprintf(sessionText, sizeof(sessionText), "%d", sessionId);
+     std::snprintf(pointerText, sizeof(pointerText), "%p", nativeWindow);
++    std::snprintf(holderText, sizeof(holderText), "%p", holderAddress);
++    // The session id is written last: readers check it first.
+     (void)setenv(kSharedNativeWindowEnv, pointerText, 1);
++    (void)setenv(kSharedSurfaceHolderEnv, holderText, 1);
+     (void)setenv(kSharedSessionEnv, sessionText, 1);
+ }
+ 
+@@ -109,6 +132,28 @@ void* readProcessWindowTarget(int32_t sessionId) {
+     if (errno != 0 || end == text || *end != '\0' || value == 0) return nullptr;
+     return reinterpret_cast<void*>(static_cast<uintptr_t>(value));
+ }
++
++// [U14 R3] Copy of the RSSurfaceNode published by the creating bridge copy, if
++// sessionId is the published session; null otherwise.
++std::shared_ptr<OHOS::Rosen::RSSurfaceNode> acquireProcessPublishedSurface(int32_t sessionId) {
++    if (readProcessWindowSession() != sessionId) return nullptr;
++    const char* text = std::getenv(kSharedSurfaceHolderEnv);
++    if (text == nullptr || *text == '\0') return nullptr;
++    char* end = nullptr;
++    errno = 0;
++    unsigned long long value = std::strtoull(text, &end, 0);
++    if (errno != 0 || end == text || *end != '\0' || value == 0) return nullptr;
++    auto* holder = reinterpret_cast<std::shared_ptr<OHOS::Rosen::RSSurfaceNode>*>(
++        static_cast<uintptr_t>(value));
++    return *holder;
++}
++
++void unpublishProcessWindowTarget(int32_t sessionId) {
++    if (readProcessWindowSession() != sessionId) return;
++    (void)unsetenv(kSharedSessionEnv);
++    (void)unsetenv(kSharedNativeWindowEnv);
++    (void)unsetenv(kSharedSurfaceHolderEnv);
++}
+ }  // namespace
+ 
+ // 2026-05-09 G2.14ae: oh_anw_wrap from oh_anativewindow_shim.cpp wraps a raw
+@@ -527,7 +572,7 @@ OHWindowSession OHWindowManagerClient::createSession(
+     setLastAttachedSessionLocal(sessionId);
+     void* processWindowTarget = getOhNativeWindow(sessionId);
+     if (processWindowTarget != nullptr) {
+-        publishProcessWindowTarget(sessionId, processWindowTarget);
++        publishProcessWindowTarget(sessionId, processWindowTarget, surfaceNode);
+         LOGI("createSession: published process window target session=%{public}d target=%{public}p",
+              sessionId, processWindowTarget);
+     } else {
+@@ -631,6 +676,7 @@ void OHWindowManagerClient::destroySession(int32_t sessionId) {
+             sessions_.erase(it);
+         }
+     }
++    unpublishProcessWindowTarget(sessionId);  // [U14 R3]
+ 
+     // G2.14c — legacy path uses IWindowManager.RemoveWindow + DestroyWindow.
+     // sessionProxy is null in legacy path (V7-only field); skip Disconnect().
+@@ -835,17 +881,23 @@ int64_t OHWindowManagerClient::getSurfaceNodeId(int32_t sessionId) const {
+ std::shared_ptr<OHOS::Rosen::RSSurfaceNode>
+ OHWindowManagerClient::getRSSurfaceNode(int32_t sessionId) {
+     OH_BR_IPC_SCOPE("WMClient.getRSSurfaceNode", "session=%{public}d", sessionId);
+-    std::lock_guard<std::mutex> lock(sessionMutex_);
+-    auto it = sessions_.find(sessionId);
+-    if (it == sessions_.end()) {
+-        LOGE("getRSSurfaceNode: unknown sessionId=%d", sessionId);
+-        return nullptr;
++    {
++        std::lock_guard<std::mutex> lock(sessionMutex_);
++        auto it = sessions_.find(sessionId);
++        if (it != sessions_.end() && it->second.surfaceNode) {
++            return it->second.surfaceNode;
++        }
+     }
+-    if (!it->second.surfaceNode) {
+-        LOGE("getRSSurfaceNode: sessionId=%d has no RSSurfaceNode", sessionId);
++    // [U14 R3] local first, then the node published by the creating copy.
++    auto published = acquireProcessPublishedSurface(sessionId);
++    if (!published) {
++        LOGE("getRSSurfaceNode: no local or process-published RSSurfaceNode for sessionId=%d",
++             sessionId);
+         return nullptr;
+     }
+-    return it->second.surfaceNode;
++    LOGI("getRSSurfaceNode: acquired process-published cross-namespace surface sessionId=%d node=%p",
++         sessionId, published.get());
++    return published;
+ }
+ 
+ // 2026-05-02 G2.14r: stable C wrapper for cross-.so callers (e.g.,

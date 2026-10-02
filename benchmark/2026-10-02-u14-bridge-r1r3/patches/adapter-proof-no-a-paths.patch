@@ -1,0 +1,97 @@
+diff --git a/framework/activity/jni/ability_scheduler_adapter.cpp b/framework/activity/jni/ability_scheduler_adapter.cpp
+index dcf0ef9..68c709e 100644
+--- a/framework/activity/jni/ability_scheduler_adapter.cpp
++++ b/framework/activity/jni/ability_scheduler_adapter.cpp
+@@ -403,70 +403,7 @@ bool AbilitySchedulerAdapter::ScheduleAbilityTransaction(
+     ALOGI("[BRIDGED] ScheduleAbilityTransaction: tokenAddr=0x%llx targetState=%d isNewWant=%d",
+           static_cast<unsigned long long>(tokenAddr_), targetState.state, targetState.isNewWant);
+ 
+-    const std::string bundleName = want.GetElement().GetBundleName();
+-    int requestedOrientation = -1;
+-    // Capybara retains its separately accepted application-private size-compat
+-    // policy. Every other APK derives the parent-session orientation from the
+-    // original Android manifest through ManifestOrientationProjection; there
+-    // is no game identity or display-size table in this shared path.
+-    if (bundleName == "com.Revenko.org.CapybaraAdventure") {
+-        requestedOrientation = static_cast<int>(
+-            OHOS::Rosen::Orientation::AUTO_ROTATION_LANDSCAPE_RESTRICTED);
+-    } else {
+-        ScopedJniAttach orientationAttach(jvm_);
+-        JNIEnv* orientationEnv = orientationAttach.env();
+-        if (orientationEnv != nullptr) {
+-            jclass projectionClass = adapter_bridge_load_class(
+-                orientationEnv, "adapter.activity.ManifestOrientationProjection");
+-            if (projectionClass != nullptr) {
+-                jmethodID resolveMethod = orientationEnv->GetStaticMethodID(
+-                    projectionClass, "resolveOhOrientation",
+-                    "(Ljava/lang/String;Ljava/lang/String;)I");
+-                if (resolveMethod != nullptr) {
+-                    jstring jBundle = orientationEnv->NewStringUTF(bundleName.c_str());
+-                    const std::string abilityName =
+-                        want.GetElement().GetAbilityName();
+-                    jstring jAbility = orientationEnv->NewStringUTF(
+-                        abilityName.c_str());
+-                    requestedOrientation = orientationEnv->CallStaticIntMethod(
+-                        projectionClass, resolveMethod, jBundle, jAbility);
+-                    orientationEnv->DeleteLocalRef(jAbility);
+-                    orientationEnv->DeleteLocalRef(jBundle);
+-                }
+-                orientationEnv->DeleteLocalRef(projectionClass);
+-            }
+-            if (orientationEnv->ExceptionCheck()) {
+-                orientationEnv->ExceptionDescribe();
+-                orientationEnv->ExceptionClear();
+-                requestedOrientation = -1;
+-                ALOGE("[APK-ORIENTATION] Java manifest resolution failed bundle=%s",
+-                      bundleName.c_str());
+-            }
+-        }
+-    }
+-
+-    if (requestedOrientation >= static_cast<int>(OHOS::Rosen::Orientation::VERTICAL) &&
+-        requestedOrientation <= static_cast<int>(OHOS::Rosen::Orientation::END) &&
+-        sessionInfo != nullptr && sessionInfo->sessionToken != nullptr) {
+-        auto hostSession = OHOS::iface_cast<OHOS::Rosen::ISession>(
+-            sessionInfo->sessionToken);
+-        if (hostSession != nullptr) {
+-            OHOS::sptr<OHOS::Rosen::WindowSessionProperty> property =
+-                new OHOS::Rosen::WindowSessionProperty();
+-            property->SetPersistentId(sessionInfo->persistentId);
+-            property->SetRequestedOrientation(
+-                static_cast<OHOS::Rosen::Orientation>(requestedOrientation), false);
+-            const auto result = hostSession->UpdateSessionPropertyByAction(
+-                property,
+-                OHOS::Rosen::WSPropertyChangeAction::ACTION_UPDATE_ORIENTATION);
+-            ALOGE("[APK-ORIENTATION] parent MainSession bundle=%s id=%d orientation=%d result=%d",
+-                  bundleName.c_str(), sessionInfo->persistentId,
+-                  requestedOrientation, static_cast<int32_t>(result));
+-        } else {
+-            ALOGE("[APK-ORIENTATION] sessionToken is not an ISession id=%d",
+-                  sessionInfo->persistentId);
+-        }
+-    }
++    // [proof-only] APK-ORIENTATION block removed
+ 
+     // 2026-07-04 L3-FGGUARD — veto false init-phase BACKGROUND_NEW that would
+     // pause the still-initializing engine and abort PlayerInitEngineGraphics.
+@@ -493,6 +430,7 @@ bool AbilitySchedulerAdapter::ScheduleAbilityTransaction(
+     // populate covers all scenarios.  bundleName is extracted directly from
+     // OH Want.GetElement() to avoid having to parse the wantJson string
+     // (which is Want.ToString() format, not standard JSON).
++    std::string bundleName = want.GetElement().GetBundleName();
+     jstring jBundleName = env->NewStringUTF(bundleName.c_str());
+     callJavaVoidMethod("onScheduleAbilityTransaction",
+                        "(JLjava/lang/String;IZILjava/lang/String;)V",
+diff --git a/framework/window/jni/display_manager_adapter_jni.cpp b/framework/window/jni/display_manager_adapter_jni.cpp
+index c506b6c..019dc3f 100644
+--- a/framework/window/jni/display_manager_adapter_jni.cpp
++++ b/framework/window/jni/display_manager_adapter_jni.cpp
+@@ -195,7 +195,7 @@ extern "C" {
+ 
+ JNIEXPORT jint JNICALL
+ Java_adapter_window_DisplayManagerAdapter_nativeGetDefaultDisplayWidth(JNIEnv* env, jclass) {
+-    ensureDisplayEventBridge(env);
++    (void)env;  // [proof-only] OH-DISPLAY-EVENT entry removed
+     auto d = getDisplay();
+     return d ? static_cast<jint>(d->GetWidth()) : kDefaultWidth;
+ }

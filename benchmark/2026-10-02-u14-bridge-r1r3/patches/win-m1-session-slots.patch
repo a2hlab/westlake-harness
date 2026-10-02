@@ -1,0 +1,79 @@
+diff --git a/oh_window_manager_client.cpp b/oh_window_manager_client.cpp
+index 1bcad59..14888e0 100755
+--- a/oh_window_manager_client.cpp
++++ b/oh_window_manager_client.cpp
+@@ -81,6 +81,28 @@ constexpr const char* kSharedNativeWindowEnv = "WESTLAKE_NATIVE_WINDOW_PTR_V1";
+ // process-lifetime holder of the session's RSSurfaceNode so the other copy can
+ // share the same node (deployed 84695d62 behaviour; single slot like V1).
+ constexpr const char* kSharedSurfaceHolderEnv = "WESTLAKE_RS_SURFACE_NODE_HOLDER_PTR_V1";
++// [U14 M1] The V1 slots above hold one session.  With two live windows in one
++// process (launcher Activity + the Activity it starts, a dialog) only the last
++// published session resolves from the other copy, and the earlier window gets an
++// empty Surface (benchmark/2026-10-02-m1-session-slots, 367 lookups / 0
++// violations).  Each session is also published under its own names and read back
++// by the requested session id; V1 stays written and stays the fallback.
++constexpr const char* kSessionNativeWindowEnvPrefix = "WESTLAKE_NATIVE_WINDOW_PTR_V2_";
++constexpr const char* kSessionSurfaceHolderEnvPrefix = "WESTLAKE_RS_SURFACE_NODE_HOLDER_PTR_V2_";
++
++void sessionEnvName(const char* prefix, int32_t sessionId, char* out, size_t size) {
++    std::snprintf(out, size, "%s%d", prefix, sessionId);
++}
++
++void* parseProcessPointer(const char* text) {
++    if (text == nullptr || *text == '\0') return nullptr;
++    char* end = nullptr;
++    errno = 0;
++    unsigned long long value = std::strtoull(text, &end, 0);
++    if (errno != 0 || end == text || *end != '\0' || value == 0) return nullptr;
++    return reinterpret_cast<void*>(static_cast<uintptr_t>(value));
++}
++
+ std::mutex g_processSurfaceHolderMutex;
+ std::vector<std::unique_ptr<std::shared_ptr<OHOS::Rosen::RSSurfaceNode>>> g_processSurfaceHolders;
+ 
+@@ -105,6 +127,11 @@ void publishProcessWindowTarget(int32_t sessionId, void* nativeWindow,
+     std::snprintf(sessionText, sizeof(sessionText), "%d", sessionId);
+     std::snprintf(pointerText, sizeof(pointerText), "%p", nativeWindow);
+     std::snprintf(holderText, sizeof(holderText), "%p", holderAddress);
++    char slotName[64] = {};
++    sessionEnvName(kSessionNativeWindowEnvPrefix, sessionId, slotName, sizeof(slotName));
++    (void)setenv(slotName, pointerText, 1);  // [U14 M1]
++    sessionEnvName(kSessionSurfaceHolderEnvPrefix, sessionId, slotName, sizeof(slotName));
++    (void)setenv(slotName, holderText, 1);   // [U14 M1]
+     // The session id is written last: readers check it first.
+     (void)setenv(kSharedNativeWindowEnv, pointerText, 1);
+     (void)setenv(kSharedSurfaceHolderEnv, holderText, 1);
+@@ -123,6 +150,9 @@ int32_t readProcessWindowSession() {
+ }
+ 
+ void* readProcessWindowTarget(int32_t sessionId) {
++    char slotName[64] = {};
++    sessionEnvName(kSessionNativeWindowEnvPrefix, sessionId, slotName, sizeof(slotName));
++    if (void* perSession = parseProcessPointer(std::getenv(slotName))) return perSession;  // [U14 M1]
+     if (readProcessWindowSession() != sessionId) return nullptr;
+     const char* text = std::getenv(kSharedNativeWindowEnv);
+     if (text == nullptr || *text == '\0') return nullptr;
+@@ -136,6 +166,11 @@ void* readProcessWindowTarget(int32_t sessionId) {
+ // [U14 R3] Copy of the RSSurfaceNode published by the creating bridge copy, if
+ // sessionId is the published session; null otherwise.
+ std::shared_ptr<OHOS::Rosen::RSSurfaceNode> acquireProcessPublishedSurface(int32_t sessionId) {
++    char slotName[64] = {};
++    sessionEnvName(kSessionSurfaceHolderEnvPrefix, sessionId, slotName, sizeof(slotName));
++    if (void* perSession = parseProcessPointer(std::getenv(slotName))) {  // [U14 M1]
++        return *reinterpret_cast<std::shared_ptr<OHOS::Rosen::RSSurfaceNode>*>(perSession);
++    }
+     if (readProcessWindowSession() != sessionId) return nullptr;
+     const char* text = std::getenv(kSharedSurfaceHolderEnv);
+     if (text == nullptr || *text == '\0') return nullptr;
+@@ -149,6 +184,11 @@ std::shared_ptr<OHOS::Rosen::RSSurfaceNode> acquireProcessPublishedSurface(int32
+ }
+ 
+ void unpublishProcessWindowTarget(int32_t sessionId) {
++    char slotName[64] = {};
++    sessionEnvName(kSessionNativeWindowEnvPrefix, sessionId, slotName, sizeof(slotName));
++    (void)unsetenv(slotName);  // [U14 M1]
++    sessionEnvName(kSessionSurfaceHolderEnvPrefix, sessionId, slotName, sizeof(slotName));
++    (void)unsetenv(slotName);  // [U14 M1]
+     if (readProcessWindowSession() != sessionId) return;
+     (void)unsetenv(kSharedSessionEnv);
+     (void)unsetenv(kSharedNativeWindowEnv);

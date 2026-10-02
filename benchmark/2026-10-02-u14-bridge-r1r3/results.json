@@ -1,0 +1,131 @@
+{
+ "task": "#90 U14 bridge R1/R2/R3 port+rewrite, equivalence vs deployed 84695d62, M1/M5/M6 as separate patches (offline)",
+ "host": "Mac arm64, DevEco OH SDK (FORCE_OH_SDK=1); a2hlab not used",
+ "inputs": {
+  "master_bms_src_adapter": "unchanged since b94afc59c8",
+  "window_cohort": "westlake-inputs/sources/oh61-v7-b2133b5b-f6a498d1 framework/window/jni",
+  "fn03": "westlake-inputs/sources/fn03-core-846-recon-v1 (021e5bc07735)",
+  "compile_script_sha256_16": "8ca316973631b5e1"
+ },
+ "candidate": {
+  "patches": [
+   "win-r1-focus-bridge.patch",
+   "win-r2-root-blast.patch",
+   "win-r3-rs-node-holder.patch"
+  ],
+  "artifact": "e34de8aba9f39d52d5d916ae4246faf1c448b3230be1b21acb3ab9367359cbbd",
+  "builds_same_sha": 2,
+  "tus": "50/50",
+  "strict_link": true,
+  "equiv_vs_846": {
+   "functions_846": 2696,
+   "instruction_equal": 2691,
+   "equal_after_residual": 3,
+   "differ": 2,
+   "differ_names": [
+    "Java_adapter_window_DisplayManagerAdapter_nativeGetDefaultDisplayWidth (OH-DISPLAY-EVENT)",
+    "AbilitySchedulerAdapter::ScheduleAbilityTransaction (APK-ORIENTATION)"
+   ],
+   "only_846": 0,
+   "only_candidate": 12
+  },
+  "fnsize_vs_846": {
+   "named_functions_846": 2507,
+   "same_size": 2505,
+   "size_differs": 2,
+   "only_846": 0,
+   "only_candidate": 10
+  },
+  "abi_vs_846": {
+   "exports": "2357 -> 2360",
+   "added": 3,
+   "removed": 0,
+   "signature_drift": 0,
+   "consumer_breaks": 0,
+   "call_set_diffs": 2
+  },
+  "strings_vs_846": {
+   "dropped": 9,
+   "dropped_all": "non-text layout",
+   "added": 23,
+   "added_split": {
+    "oh_display_event": 12,
+    "apk_orientation_incl_capybara": 6,
+    "non_text_layout": 5
+   }
+  }
+ },
+ "proof_no_a_paths": {
+  "artifact": "aa596f26f3eb7fa3c61dbb0b342c5d95bbf90c757ddd3fadec5776dac7f439b1",
+  "equiv_vs_846": {
+   "functions_846": 2696,
+   "equal": 2696,
+   "instruction_equal": 2692,
+   "equal_after_residual": 4,
+   "only_rebuilt": [
+    "_GLOBAL__sub_I_display_manager_adapter_jni.cpp",
+    "sptr<IDisplayListener>::~sptr()"
+   ]
+  },
+  "abi": {
+   "added": 1,
+   "removed": 0,
+   "call_set_diffs": 0
+  },
+  "strings": {
+   "dropped": 4,
+   "added": 4,
+   "all": "non-text layout"
+  }
+ },
+ "stacked": {
+  "m1": {
+   "artifact": "876035d1ec276175682e2943c27a9d60c8633d4467c30e2d3488a2332296dc97",
+   "changed_functions": [
+    "publishProcessWindowTarget",
+    "getRSSurfaceNode",
+    "destroySession",
+    "oh_wm_get_native_window"
+   ]
+  },
+  "m5": {
+   "artifact": "07fd530aa4c29a1fe2dd22fcb191fc797bdb8350d808a41845baec0976c1eebf",
+   "changed_functions": [
+    "createSession"
+   ]
+  },
+  "m6": {
+   "artifact": "94cc67fad87598bf36abd6014e2cd438320e6b5df0d28e4d83a5894aa724d3cb",
+   "changed_functions": [
+    "ScheduleAbilityTransaction"
+   ],
+   "new_functions": [
+    "_JNIEnv::CallStaticBooleanMethod"
+   ]
+  },
+  "all": {
+   "artifact": "438bc94831c9f3679138fe6d8aecc2f5302057d35eb814995ea4fc0f0fad236f",
+   "changed_functions": 6
+  }
+ },
+ "host_test": {
+  "r3": "single ok; two windows: 703 ok, 702 none (846 defect)",
+  "r3_m1": "702 and 703 both resolve; destroy keeps the other"
+ },
+ "build_rounds": {
+  "source_failures": 1,
+  "which": "u14-r1r3-proof-v1 (proof patch removed bundleName still used later)"
+ },
+ "m6_correction": {
+  "u10_1t8_runs": 133,
+  "SessionStageAdapter_created_lines_runs": 0,
+  "ipc_enter_SetActive_runs": 131,
+  "meaning": "bridge __android_log_print does not reach hilog on U10.1T8; missing [BRIDGED]/[FGGUARD] lines are not evidence"
+ },
+ "predictions": {
+  "candidate": 0,
+  "m1": "noice, fd-uhabits white->lit (high); wikipedia, fd-noice lottery; 9 lit watch keys",
+  "m5": "+dddmodel2 (with M1), +fd-mobile fallback page; 13 lit dialog-first watch keys",
+  "m6": "+fd-AppManager (medium)"
+ }
+}
