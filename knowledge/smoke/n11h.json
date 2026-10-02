@@ -1,0 +1,66 @@
+{
+  "_comment": "N11h host single-owner observation smoke (61b, base U9 appspawn-x 1d3b0881; if U10.1 is promoted first, rebase on host r3 65cc3535 and refill). Markers prove the host resident-check + configured-domain inherit ran (not successful app relocation); the single_copy probe proves the N11h GOAL: liboh_adapter_bridge.so + liboh_android_runtime.so drop from 2 load-bases (U9/U10.1) to 1. Marker literals copied verbatim from the cx-bms source westlake-harness-bms/benchmark/2026-10-02-n11h-host-owner/{n11h-owner.h,stock-host.patch}. All package-identity values (runtime_fp, boot_fp, probe.files host sha) are FILL_ for cx-t0 to fill from the final N11h package.",
+  "expect": {
+    "runtime_fp": "FILL_N11H_RUNTIME_FP",
+    "boot_fp": "FILL_N11H_BOOT_FP",
+    "_fp_comment": "cx-t0 fills from the final package. The N11h host (appspawn-x) changes, so the runtime-layer fingerprint is NEW (recompute from the built host; base pre-change U9 runtime_fp was a2919b793eb6). boot_fp is expected UNCHANGED = U9 4db882a81732 (N11h is host-only, no boot image), but confirm from the final package."
+  },
+  "groups": [
+    {
+      "manifest": "$WORKSPACES/westlake-harness/knowledge/smoke/controls-apps.json",
+      "input_root": "$WORKSPACES/westlake-b90-controls-inputs",
+      "keys": [
+        "helloworld",
+        "zigzag"
+      ],
+      "mode": "launch-only",
+      "controls": true
+    }
+  ],
+  "fixes": [
+    {
+      "id": "N11H-HOST-OWNER-RESIDENT-CHECK",
+      "key": "helloworld",
+      "_comment": "N11hCheckOwners() runs on EVERY spawn in the host StockCreateConfiguredNamespaces (key-independent): N11hResidentHandle does dlopen_ns(sealed owner, <owner path>, RTLD_NOW|RTLD_LOCAL|RTLD_NOLOAD) for liboh_adapter_bridge.so then liboh_android_runtime.so. Success = owner resident, handle non-null, rc=0 (ENOENT if missing). Two lines per spawn; the helloworld control prints it. Hard smoke per blueprint ('actual resident-check marker').",
+      "markers": [
+        "\\[N11h-HOST-OWNER\\] action=resident-check target=.* owner=.* rc=0"
+      ]
+    },
+    {
+      "id": "N11H-HOST-OWNER-INHERIT",
+      "key": "helloworld",
+      "_comment": "dlns_inherit(app_namespace, sealed owner, owner_shared) runs on EVERY spawn (unconditional app-domain edge; a 2nd inherit on bridge_namespace fires when wants_bridge). owner=westlake.sealed.child is a fixed literal. Success rc=0. Hard smoke per blueprint ('domain-inherit marker').",
+      "markers": [
+        "\\[N11h-HOST-OWNER\\] action=inherit target=.* owner=westlake.sealed.child shared=.* rc=0"
+      ]
+    },
+    {
+      "id": "N11H-HOST-OPEN",
+      "key": "helloworld",
+      "conditional": true,
+      "_comment": "CONDITIONAL — do NOT hard-fail the control smoke on this. It fires only when the host StockOpenNamespace receives an exact owner-path request (N11hOwnerPath matches liboh_adapter_bridge.so / liboh_android_runtime.so): action=resident (returns the resident handle) or action=reject (handle=NULL). The owners are installed via dlns_inherit in StockCreateConfiguredNamespaces, so a spawn may find them resident WITHOUT re-requesting an owner open through this callback -- whether the helloworld control reaches this branch is UNVERIFIED. cx-t0: on the first smoke run, check if helloworld emits it; if it does not, DEMOTE this to a per-target assertion (assert on a session-miss target that reaches the owner-open path) and remove it from the control gate. Regex covers both resident and reject.",
+      "markers": [
+        "\\[N11h-HOST-OPEN\\] action=(resident|reject) path=.* target=.* rc=.*"
+      ]
+    }
+  ],
+  "probe": {
+    "package": "com.example.helloworld",
+    "single_copy": [
+      "libart.so",
+      "libopenjdkjvm.so",
+      "liboh_adapter_bridge.so",
+      "liboh_android_runtime.so"
+    ],
+    "expect_copies": {
+      "liboh_adapter_bridge.so": 1,
+      "liboh_android_runtime.so": 1
+    },
+    "_probe_comment": "N11h GOAL and the real gate: count by LOAD BASE, not inode/path. U9/U10.1 show liboh_adapter_bridge.so=2 and liboh_android_runtime.so=2 (two load-bases each; N11f/N11g proved the child is clean so the 2nd copy is host-side). N11h target = 1 each. libart.so + libopenjdkjvm.so are already single. Smoke MUST FAIL if either owner is still 2 -- that is exactly the single-owner gate.",
+    "files": {
+      "/system/bin/appspawn-x": "FILL_N11H_HOST_SHA256",
+      "/system/lib64/appspawn/libwestlake_android_child.z.so": "dc73a28d2535f0a261776625ea51770edf044f33de17aa05ff5c5e789ba25d3c",
+      "_files_comment": "appspawn-x is the ONLY file N11h changes -> FILL_ its candidate sha256 from the final build. The sealed child is kept unchanged = dc73a28d (blueprint 2: 'Keep U9 child dc73a28d'; U10.1 r2 also kept it). cx-t0 adds the remaining base-dependent pins (oh-adapter-runtime.jar, adapter-mainline-stubs.jar f3bcc9d7, libbionic_compat.so, libnativeloader.so, route-a copies) matching the chosen base: U9 j10g-238ffc14 or U10.1 host-r3 65cc3535."
+    }
+  }
+}

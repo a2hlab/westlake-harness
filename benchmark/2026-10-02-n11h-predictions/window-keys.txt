@@ -1,0 +1,39 @@
+# N11h 61b observation-window key list — ordered by the N11h prediction table (n11h-predictions.csv).
+# Window plan style follows the N11f draft (benchmark/2026-10-01-n11b-r3-loaderror-analysis/n11f-window-plan-draft.json).
+# Serial 61b0657200000000000000000324012c; base U9 (rebase on host r3 65cc3535 if U10.1 promoted).
+# Base fingerprints (pre-change, from the N11h blueprint window-proposal): runtime a2919b793eb6 / boot 4db882a81732.
+# Smoke gate before any key: knowledge/smoke/n11h.json (resident-check + inherit markers; bridge+runtime single load-base).
+# <=30 min, stop new keys at minute 20 -> run tiers 1-2 first (the blueprint's 8 priority targets); tiers 3-4 only if time remains.
+#
+# Two shards (split the keys below by prefix into two keys_files, each with its own manifest + input_root):
+#   [orig] shard  manifest=$WORKSPACES/westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/apps.json
+#                 input_root=$HOME/a2hlab/app-inputs            (fd-* and bare keys)
+#   [cv2]  shard  manifest=$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json
+#                 input_root=$WORKSPACES/westlake-inputs/corpus-v2/app-inputs   (cv2-* keys)
+# Clean reinstall; shots 5/20; verdict = t20 screenshot, outer-read (predict_vs_actual against n11h-predictions.csv).
+#
+# === TIER 1 — session-miss targets (predict LIT, high conf; the blueprint's primary N11h test) ===
+fd-noice                          # [orig] no-fatal white + session-miss -> double-copy classloader-bind
+fd-uhabits                        # [orig] no-fatal white + session-miss
+noice                             # [orig] no-fatal white + session-miss (same app as fd-noice)
+cv2-org-andresoviedo-dddmodel2    # [cv2]  no-fatal white + session-miss (no GL fatal logged)
+#
+# === TIER 2 — regression controls (predict UNCHANGED = stay lit; a regression refutes the N11h gain) ===
+wikipedia                         # [orig] currently lit; host-namespace blast radius -> watch possible-regression
+fd-k9                             # [orig] currently lit control
+fd-com-amaze-filemanager          # [orig] currently lit control
+fd-libretube                      # [orig] currently lit control
+#
+# === TIER 3 — other no-fatal white (predict LIT, medium/low conf; secondary double-copy candidates, if time remains) ===
+cv2-ca-vaults-randomlydie         # [cv2]  no-fatal white, no other wall
+cv2-com-bytehamster-flowitgame    # [cv2]  no-fatal white, light puzzle
+cv2-com-degeder-yam               # [cv2]  no-fatal white, no other wall
+cv2-com-paultirk-yatoo            # [cv2]  no-fatal white, no other wall
+fd-AppManager                     # [orig] no-fatal white; was LIT in the 2026-09-27 sweep -> strong binding-regression candidate
+fd-app                            # [orig] no-fatal white, no other wall
+termux                            # [orig] no-fatal white (LOW conf: may be the shell fork/exec path, not double-copy)
+#
+# === TIER 4 — EXCLUDED: another wall, NOT N11h gain (optional negative controls; staying white does NOT refute N11h) ===
+# x                               # [orig] real fatal: NullPointerException TelephonyManager cast -> missing-service wall
+# cv2-dev-obfusk-jiten-webview    # [cv2]  WebView render wall (separate deep wall)
+# fd-shatteredpixeldungeon        # [orig] libGDX/GL game -> GL surface/engine render wall
