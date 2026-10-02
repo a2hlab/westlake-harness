@@ -1,5 +1,7 @@
 # U14 bridge M5 / M6 as single patches on e34de8ab: three reproducible builds, diffs confined to the patched functions; M5 alone does not move dddmodel2 and raises Surface-less dialogs for 3 watchlist keys
 
+> **Correction (after the outer's review, see `../2026-10-03-u14-jar-v1/erratum-u14-bridge-m5-m6.md`):** the dddmodel2 "0" and the group-B "no Surface" conclusions below hold only on a runtime **without M1**. U14 runs the U13 runtime 18763dd4, whose compat shim already does M1 (`[M1-COPY]`), so under U14 dddmodel2 moves with M5 (+1, medium), all 13 dialog-first keys show their own dialog on top, and the bridge-side M1 (438bc948) is not needed.
+
 #90, offline. Built on the Mac with the DevEco OH SDK; a2hlab was not used and nothing went to a board.
 
 **What was built.** Three bridges, each built twice in fresh generation directories, both builds byte-identical:

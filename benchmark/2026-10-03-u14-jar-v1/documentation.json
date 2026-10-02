@@ -1,0 +1,17 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-u14-jar-v1/`** | **U14 JAR v1 = U13 JAR v3 bbc3f530 + InProcessBindOrder (termux: in-process bind before RESUMED) = `0349eb83`, deterministic, only ActivityManagerBindProxy (+3-line needle) changed + 3 new classes; class diff vs 5ae3dd29 / bbc3f530 clean. Host ART (hw248 android-14, boards' BCP): real postInProcessBind + wrapper + Activity callback dispatch, Looper allocated without natives: v1 4/4 PASS, v3 negative control reproduces U10.1T8's order (bind at state=1 mIsVisible=false). Prediction: termux first fatal → TermuxInstaller /data/data/com.termux/files not found → own error dialog. Erratum to u14-bridge-m5-m6: U13 runtime's shim M1 makes dddmodel2 move with M5.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **主线程消息顺序类的墙能在 hw248 主机 ART(板上 BCP)上复现(cc-t3,U14 JAR v1)**:Looper/MessageQueue 用 Unsafe.allocateInstance 造(不走 nativeInit)、手动 FIFO 抽队列代替 Looper.loop,SystemClock 用仅测试垫片;真跑运行时的 postInProcessBind / InProcessBindOrder 与 framework.jar 的 Handler/enqueueMessage/Activity 回调分发;进程内服务绑定用『预先往 ActivityManagerBindProxy.sServices 注册记录用 Service』观察 onBind 时刻。v3 复现 U10.1T8 termux 顺序(state=1 mIsVisible=false),v1 通过。脚本 benchmark/2026-10-03-u14-jar-v1/test/。",
+    "- 2026-10-03 **单层替换的预测要按目标代的完整部署栈算,不能按签名运行的栈(cc-t3 更正 f1f7cb5851)**:U14 的 bridge 叠在 U13 runtime 18763dd4 上,其 compat shim 已含 M1([M1-COPY]),所以 dddmodel2 单上 M5 就会动、13 个先建对话框亮键的对话框都有 Surface;『没有 M1 时对话框无 Surface』只在无 M1 的 runtime 上成立。勘误见 benchmark/2026-10-03-u14-jar-v1/erratum-u14-bridge-m5-m6.md。"
+   ]
+  }
+ ]
+}
