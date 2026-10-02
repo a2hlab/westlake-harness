@@ -21,7 +21,7 @@ apply_hwui_patches() {
     log_info "A9. Apply hwui per-file patches (aosp_patches/libs/hwui/patches/*.patch)"
     local PATCHES_DIR="$ADAPTER_ROOT/aosp_patches/libs/hwui/patches"
     if [ ! -d "$PATCHES_DIR" ]; then
-        log_warn "A9 skipped — $PATCHES_DIR not found"
+        printf '%s\n' "ERROR: A9 skipped — $PATCHES_DIR not found"; exit 1
         return 0
     fi
     local FB="$AOSP_ROOT/frameworks/base"

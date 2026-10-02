@@ -93,9 +93,9 @@ apply_aosp_libandroidfw_patches() {
                 log_warn "A2b apply FAILED for $patch_rel — manual inspection needed"
             fi
         elif [ ! -f "$target" ]; then
-            log_warn "A2b skipped (target absent): $target"
+            printf '%s\n' "ERROR: A2b skipped (target absent): $target"; exit 1
         elif [ ! -f "$p" ]; then
-            log_warn "A2b skipped (patch absent): $p"
+            printf '%s\n' "ERROR: A2b skipped (patch absent): $p"; exit 1
         fi
     done
 }
@@ -119,8 +119,8 @@ apply_aosp_jni_compat_patches() {
         p="$ADAPTER_ROOT/aosp_patches/$patch_rel"
         target_rel="${patch_rel%.patch}"
         target="$AOSP_ROOT/$target_rel"
-        if [ ! -f "$p" ]; then log_warn "A2c skipped (patch absent): $p"; continue; fi
-        if [ ! -f "$target" ]; then log_warn "A2c skipped (target absent): $target"; continue; fi
+        if [ ! -f "$p" ]; then printf '%s\n' "ERROR: A2c skipped (patch absent): $p"; exit 1; fi
+        if [ ! -f "$target" ]; then printf '%s\n' "ERROR: A2c skipped (target absent): $target"; exit 1; fi
         if [ "${DRY_RUN:-0}" = "1" ]; then
             # 同 A2b:.bak 模型天然幂等,dry-run 仅预览不改文件(避免误报 FAILED)。
             log_info "A2c [dry] $patch_rel: would restore .bak + re-apply (idempotent)"

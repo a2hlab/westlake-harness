@@ -61,7 +61,7 @@ for patch in "$PATCH_DIR"/*.patch; do
     esac
     target="$AOSP_DIR/$repo_dir"
     if [ ! -d "$target" ]; then
-        echo "  SKIP (target dir missing): $name → $repo_dir"; continue
+        echo "ERROR: required target missing: $target ($repo_dir)" >&2; exit 1
     fi
     if (cd "$target" && patch --dry-run -R -p1 < "$patch") >/dev/null 2>&1; then
         echo "  SKIP (already applied): $name"

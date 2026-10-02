@@ -87,7 +87,7 @@ if [ -f "$LIB_OUT" ]; then
     if [ "$SYMS" -gt 0 ]; then
         echo '  OK Gap 6 runtime-level integration complete'
     else
-        echo '  WARN libbms built but adapter symbols not found'
+        echo '  ERROR libbms built but adapter symbols not found'; exit 1
     fi
 else
     echo "  FAIL $LIB_OUT not produced"

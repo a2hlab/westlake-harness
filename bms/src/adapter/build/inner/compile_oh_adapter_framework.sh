@@ -234,7 +234,7 @@ if [ -d "$ADAPTER_FRAMEWORK_SRC_ROOT" ]; then
     done < <(find "$ADAPTER_FRAMEWORK_SRC_ROOT" -mindepth 3 -name '*.java' 2>/dev/null)
     echo "  Synced $sync_count files (skipped $skip_count non-BCP packages, $runtime_skip_count BCP-excluded → runtime jar)"
 else
-    echo "WARN: $ADAPTER_FRAMEWORK_SRC_ROOT not found — falling back to whatever is in $SRC_DIR"
+    echo "ERROR: $ADAPTER_FRAMEWORK_SRC_ROOT not found"; exit 1
 fi
 
 # 2026-04-17 architectural change: AppSpawnXInit.java is REMOVED from the BCP

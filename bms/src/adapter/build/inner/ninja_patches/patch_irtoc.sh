@@ -19,8 +19,7 @@ PROD="${OH_PRODUCT_NAME:-rk3568}"
 NINJA_FILE="${OH_ROOT:-$HOME/oh}/out/$PROD/toolchain.ninja"
 
 if [ ! -f "$NINJA_FILE" ]; then
-    echo "[patch_irtoc] WARN: $NINJA_FILE not found — skipping (gn gen not run yet?)" >&2
-    exit 0
+    echo "[patch_irtoc] ERROR: $NINJA_FILE not found — skipping (gn gen not run yet?)" >&2; exit 1
 fi
 
 python3 - "$NINJA_FILE" << 'PYEOF'

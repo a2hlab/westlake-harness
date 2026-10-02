@@ -196,7 +196,7 @@ if "$D8" --help >/dev/null 2>&1 && command -v strings >/dev/null; then
     if strings "$DEX_DIR/classes.dex" | grep -q 'AppSpawnXInit'; then
         echo "  OK: AppSpawnXInit symbol present in classes.dex"
     else
-        echo "  WARN: AppSpawnXInit symbol not found in classes.dex strings"
+        echo "  ERROR: AppSpawnXInit symbol not found in $DEX_DIR/classes.dex strings"; exit 1
     fi
 fi
 

@@ -469,7 +469,7 @@ if ! grep -q '^#define POINTER_SIZE 0x8$' "$ASM_DEFINES" 2>/dev/null \
         echo "ERROR: asm_defines.h missing exact POINTER_SIZE 0x8" >&2
         exit 1
     fi
-    echo "  WARN: asm_defines.h missing/not 0x8 (ARM64) — libart .S may fail"
+    echo "  ERROR: $ASM_DEFINES missing/not 0x8 (ARM64) — libart .S may fail"; exit 1
 else
     echo "  asm_defines.h: POINTER_SIZE=0x8 (ARM64) OK"
 fi

@@ -628,7 +628,7 @@ if [ ! -r "$OH/third_party/skia/m133/include/core/SkColorSpace.h" ]; then
         echo "[single-dir] OH skia m133 unreadable (dangling mount symlink?) -> external OH skia $R3_SKIA_ROOT"
         INCS_SKIA="-I$R3_SKIA_ROOT -I$R3_SKIA_ROOT/include -I$R3_SKIA_ROOT/include/core -I$R3_SKIA_ROOT/include/codec -I$R3_SKIA_ROOT/include/effects -I$R3_SKIA_ROOT/include/utils -I$R3_SKIA_ROOT/modules -I$R3_SKIA_ROOT/client_utils/android"
     else
-        echo "WARN: skia m133 headers unreadable at both \$OH and R3_SKIA_ROOT; skia-touching .cpp will fail"
+        echo "ERROR: skia m133 headers unreadable at $OH/third_party/skia and ${R3_SKIA_ROOT:-unset}; skia-touching .cpp will fail"; exit 1
     fi
 fi
 
@@ -721,7 +721,7 @@ if [ -f "$NINJA_FILE" ]; then
     COMMON="$COMMON $harvested_defs"
     echo "Harvested $ndefs -D defines from OH ninja plan"
 else
-    echo "WARN: OH ninja file not found at $NINJA_FILE; using hand-maintained flags only"
+    echo "ERROR: OH ninja file not found at $NINJA_FILE"; exit 1
 fi
 
 # ============================================================
@@ -756,7 +756,7 @@ if [ -d "$OHI" ]; then
     INCS="$MIRROR_INCS $INCS"
     echo "Prepended $(printf '%s\n' $MIRROR_INCS | grep -c '^-I') device-version (6.1.0.31) mirror -I paths from $OHI"
 else
-    echo "WARN: 6.1.0.31 header mirror not found at $OHI — bridge may carry api24 parcel skew"
+    echo "ERROR: 6.1.0.31 header mirror not found at $OHI — bridge may carry api24 parcel skew"; exit 1
 fi
 
 # E6 build-input closure guard.  These are genuine immutable OH inputs:
@@ -824,7 +824,7 @@ for srcdir in core activity window surface broadcast contentprovider; do
         source_dir="$OH61_WINDOW_SOURCE_ROOT"
     fi
     for src in "$source_dir"/*.cpp; do
-        [ -f "$src" ] || continue
+        [ -f "$src" ] || { echo "ERROR: required source missing: $src" >&2; exit 1; }
         case "$(basename "$src")" in
             *-untested-on-*.cpp) continue ;;  # reference-only variants, not build inputs
             # DisplayManager's JNI surface is version-neutral and evolves in
@@ -861,7 +861,7 @@ for src in \
     "$ADAPTER_ROOT/framework/package-manager/application_info/src/application_info_v1.cpp" \
     "$ADAPTER_ROOT/framework/package-manager/component_resolver/src/component_resolver_runtime_v1.cpp" \
     "$ADAPTER_ROOT/framework/package-manager/component_resolver/src/component_resolver_v1.cpp" ; do
-    [ -f "$src" ] || continue
+    [ -f "$src" ] || { echo "ERROR: required source missing: $src" >&2; exit 1; }
     SOURCES="$SOURCES $src"
 done
 SOURCES="$SOURCES $ADAPTER_ROOT/framework/native-compat/jni-attach-admission/src/jni_attach_admission.cpp"
