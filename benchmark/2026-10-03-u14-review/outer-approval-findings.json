@@ -1,0 +1,32 @@
+{
+ "schema": "outer-gate-approval/v1",
+ "signer": "outer(claude)",
+ "signed_at": "2026-10-03T06:24:36+08:00",
+ "review_package": "benchmark/2026-10-03-u14-final-assembly/needs-outer-review.json (579e0bc072) + static deltas; adversarial pre-review benchmark/2026-10-03-u14-review-pre (cc-wiki)",
+ "decisions": [
+  {
+   "object": "N1 x5 NOLOAD dlopen sites (bridge input channel liboh_android_runtime; Flutter libandroid fff9 resolve_egl_hijack_funcs/resolve_swap_hijack_funcs/n6_log)",
+   "decision": "approve",
+   "scope": "resident-singleton lookups (NOW|NOLOAD) plus two libEGL NOW fallbacks; libEGL is shared by name in the Flutter domain so the fallback cannot create a second copy",
+   "outer_check": "open_site output for fff9be31: 0x3880 bridge NOW|NOLOAD, 0x389c runtime NOW|NOLOAD, 0x38f4/0x3c20 libEGL NOW|NOLOAD, 0x3910/0x3c3c libEGL NOW, 0x3ec4 runtime NOW|NOLOAD; no plain dlopen of the bridge"
+  },
+  {
+   "object": "N1 x38 profile u14-bridge-m6-jni-cache (34 unresolved_calls + 4 unknown)",
+   "decision": "approve",
+   "scope": "JNI method/field lookups on the bridge's own cached adapter classes and ordinary libc/log/JNI calls; no dlopen, no namespace edge"
+  },
+  {
+   "object": "N2 x1 Flutter libandroid fff9 NEEDED libc++.so",
+   "decision": "approve",
+   "scope": "libc++.so reaches the Flutter domain only through dlns_inherit from default and westlake.sealed.child; no local copy, no second instance",
+   "outer_check": "U14 host source candidate-stock-host.patched.c:280 and :283 list libc++.so in both inherit edges for flutter_private||native_private; host 341c1260 keeps them"
+  },
+  {
+   "object": "static deltas: bridge 87ed7281, host f19b4a49, Flutter 592491ea, Gecko native_abi 05ff6c8b",
+   "decision": "approve",
+   "scope": "expected consequences of reviewed patches (bridge M5/M6 literal-pool shift on the same preload_libmali_global dlopen; app-ns public-lib inherit; Flutter EGL hijack sites; native_abi exports)"
+  }
+ ],
+ "transfer_condition": "native_abi v2 f8619ad5 (+_ctype_) changes the manifest, so issue IDs and the Gecko delta hash change. Transfer when, with binding metadata stripped, every finding is field-for-field equal to one approved here and nothing else is new; the Gecko delta may differ only by the _ctype_ data export (no new open site). Record old->new mapping. Anything else needs a new outer review.",
+ "not_approved_here": "production gates on the final U14 bundle (Mac+VM), window authorisation, the U14 transaction base (only after U13 promotion)"
+}
