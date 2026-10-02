@@ -3,13 +3,14 @@
   {
    "path": "README.md",
    "lines": [
-    "| **`benchmark/2026-10-03-u14-native-abi-gecko/`** | **Stopped at the reproduction gate: libwestlake_native_abi d2053066 (source + build-abi.sh + receipt found in bms-deploy 44b8e0b0ad) was compiled by the frozen Linux x86-64 clang feef13a3, which cannot run on the Mac; the Mac DevEco clang 99548401 build 1e2726d9 (x2 identical) is 31/31 instruction-equal and all PT_LOAD bytes equal (build-id, e_shoff masked) but differs in .comment/.debug_str/build-id; options: a2hlab after the window, hw248 + path remap, or accept the Mac baseline. android_dlopen_ext semantics source = AOSP 14 r1 bionic libdl/linker on hw248.** |"
+    "| **`benchmark/2026-10-03-u14-native-abi-gecko/`** | **libwestlake_native_abi d2053066 faithfully reproduced on hw248 with its own frozen clang-15 feef13a3 = `554bf6bc` (x2; allocated sections, .comment, PT_LOAD identical; remaining diffs only in .debug_*/.symtab and proven path-only), then +10 LIBC exports for Gecko = `86882caf` (x2): exports exactly +10 @@LIBC, strings only the implementations', musl-order replay of libmozglue/libxul 0 missing. Outer items: android_dlopen_ext (AOSP forward) is a new open site whose target __loader_android_dlopen_ext no route-A provider defines; emutls pulled in by __pthread_cleanup_*.** |"
    ]
   },
   {
    "path": ".octos/KNOWLEDGE-DIGEST.md",
    "lines": [
-    "- 2026-10-03 **复现 native 件前先看它自己的 DWARF producer / .comment(cc-t3,native_abi d2053066)**:回执写的是 frozen 工具链目录,但真正用的编译器修订只有二进制自己知道——d2053066 两个 CU 都是 clang 15.0.4 feef13a3,即 frozen toolchain 的 Linux x86-64 clang-15(在挂载 /Users 的 Linux VM 里编,comp_dir 是 Mac 路径),Mac 上跑不了;Mac DevEco clang 是 99548401、BiSheng 2ed87471。Mac 版 1e2726d9 与 d2053066 31/31 函数指令等价、4 个 PT_LOAD 掩掉 build-id 与 e_shoff 后逐字节同,只差 .comment/.debug_str/build-id。『行为等价』与『字节等价』分开报(benchmark/2026-10-03-u14-native-abi-gecko/elf_load_and_symtab.py)。"
+    "- 2026-10-03 **跨主机忠实复现 native 件:同一编译器 + 同长度根路径 + 按节判(cc-t3,native_abi d2053066 → 554bf6bc)**:在 hw248 用原 frozen clang-15(feef13a3,与件内 DW_AT_producer 一致)、镜像目录根取与原根同长(58 字符)、原配方编译行逐字执行;结果已分配节/.comment/PT_LOAD 全同,只剩 .debug_*/.symtab 差——lld 按内容排合并字符串,路径串不同会挪串位,同长占位消不掉,要用『字符串多重集相等 + dwarfdump 解析后 0 行差』证明只是路径。工具 benchmark/2026-10-03-u14-native-abi-gecko/{path_equal,dwarf_equal}.py。",
+    "- 2026-10-03 **route A 没有任何库定义 __loader_android_dlopen_ext(cc-t3)**:AOSP libdl 的 android_dlopen_ext 只是弱引用转发到链接器的 __loader_android_dlopen_ext;OH musl / libbionic_compat 015aa3a6 / native_abi / android libc 桩都不定义它,照抄 AOSP 转发=能加载但一调用就跳 0 地址。部署的 libbionic_compat 版在缺符号时 extinfo flags 为 0 才退回 dlopen。"
    ]
   }
  ]
