@@ -39,5 +39,37 @@ class BindStatus(unittest.TestCase):
             self.assertEqual(rows['key-x']['key_status'], 'bound')
 
 
+class BindFailed(unittest.TestCase):
+    def test_bind_failed_with_caused(self):
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        import bind_status as bs
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            d = root / 'run' / 'ser' / 'key-bf'
+            d.mkdir(parents=True)
+            (d / 'hilog.txt').write_text(
+                'x [B43-BIND] ensureBindApplication FAILED\n'
+                'x Caused by: java.lang.IllegalStateException: ScanCallback not registered\n')
+            rows = {r['key']: r for r in bs.scan([root])}
+            self.assertEqual(rows['key-bf']['key_status'], 'bind_failed')
+            self.assertEqual(rows['key-bf']['bind_failed_runs'], 1)
+            self.assertIn('ScanCallback', rows['key-bf']['caused'])
+
+    def test_bind_failed_beats_fatal(self):
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        import bind_status as bs
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            d = root / 'run' / 'ser' / 'key-bf2'
+            d.mkdir(parents=True)
+            (d / 'hilog.txt').write_text(
+                'x [B43-BIND] ensureBindApplication FAILED\n'
+                'x JniAbort\n')
+            rows = {r['key']: r for r in bs.scan([root])}
+            self.assertEqual(rows['key-bf2']['key_status'], 'bind_failed')
+
+
 if __name__ == '__main__':
     unittest.main()
