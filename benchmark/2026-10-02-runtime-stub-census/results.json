@@ -1,0 +1,39 @@
+{
+  "task": "Census of deliberate-stub JNI methods in runtime (liboh_android_runtime.so) + which keys reach them + first-fatal attribution, sorted by blocked-key count",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "source": {"deployed_runtime": "ac59dec0", "source_commit": "4d5cac38ff", "tree": "bms/src/adapter/framework/android-runtime/src/ (53 cpp)"},
+  "total_stubs": 325,
+  "method": {
+    "static": "a stub = function registered in a JNINativeMethod kXxxMethods[] table whose body returns a constant empty/placeholder or hard 'unsupported'; real error-path returns excluded. Enumerated by 4 parallel sub-audits.",
+    "live_check": "OH_RegHook on-device winner (ART last-RegisterNatives wins); a source stub can be overridden by libhwui/bridge",
+    "dynamic": "silent stubs leave no per-call log (generic UNSUPPORTED/stub markers are OH noise); reach attributed from the 27-cluster first-fatal backbone + a marker sweep over 56 stage-A hilogs"
+  },
+  "headline": "exactly ONE deliberate stub causes a stage-A first fatal: Surface.nativeLockCanvas (+nativeUnlockCanvasAndPost) -> fd-plus. All other first fatals are jar/native-lib/namespace/policy/libhwui/app, not runtime stubs.",
+  "blocking_stub": {
+    "stub": "android.view.Surface.nativeLockCanvas (+nativeUnlockCanvasAndPost)",
+    "file": "android_graphics_compat_shim.cpp:219/224",
+    "returns": "0 / void",
+    "live": true,
+    "blocks": ["fd-plus"],
+    "fatal": "IllegalStateException: Surface was not locked",
+    "note": "fix needs the libhwui-backed software-Canvas path; deferred with fd-plus (DIGEST 610). No other stub needs touching for current keys."
+  },
+  "high_reach_benign_example": {"stub": "SurfaceControl.nativeSetFocusedWindow", "reached_keys": 52, "blocks": 0, "note": "focus not adapter-managed; apps tolerate"},
+  "refuted_or_hazard": [
+    {"stub": "ImageDecoder.nGetColorSpace -> null", "file": "compat_shim:79", "assumption": "no UI path strict-requires non-null ColorSpace; sRGB assumed when null", "status": "REFUTED by fd-musicplayer (Bitmap.createBitmap strict-requires it), BUT musicplayer's actual first fatal is libhwui Bitmap.nativeComputeColorSpace on a resource/BitmapFactory bitmap, NOT this stub -> latent risk for ImageDecoder-decode-then-scale apps, 0 observed", "observed_first_fatals": 0},
+    {"stub": "DisplayEventReceiver.nativeGetDisplayEventReceiverFinalizer -> 0", "file": "DisplayEventReceiver:523", "assumption": "(self-flagged) 'returns 0 which feeds NAR(0) crash via ART intrinsic; TODO P1 real release fn'", "status": "SELF-FLAGGED HAZARD (NativeAllocationRegistry.applyFreeFunction(0) can crash)", "observed_first_fatals": 0},
+    {"stub": "Typeface.* fallback (16)", "file": "Typeface:66-84", "assumption": "BROKEN FALLBACK PATH; non-functional but non-crashing at ctor time", "status": "fallback-only; text non-functional if reached, no crash", "observed_first_fatals": 0},
+    {"stub": "Surface.nativeGetWidth->720 / nativeGetHeight->1280", "file": "compat_shim:226/227", "assumption": "hard-coded", "status": "wrong dims to apps querying Surface size directly", "observed_first_fatals": 0}
+  ],
+  "intentional_architecture_not_gaps": {
+    "hardware_renderer_neuter": {"count": 41, "file": "compat_shim:867-878", "note": "deliberately no-ops nCreateProxy/draw so libhwui RenderThread never born (route-A owns rendering); registered ONLY behind Unity/CW env gate (OHUB_VARIANT/OHUB_UNITY_LIBDIR)"},
+    "binderless_subsystems": {"note": "Binder/Parcel-binder/SystemProperties-write/Trace/Sensor/AudioFlinger-less caps are whole-subsystem no-ops (OH lacks Android binder/AudioFlinger/sensor HAL); apps degrade gracefully; 0 first-fatals"}
+  },
+  "counts_by_file": {"compat_shim": 72, "Typeface": 16, "SurfaceControl": 85, "DisplayEventReceiver": 1, "GraphicsEnvironment": 11, "InputChannel": 3, "InputEventReceiver": 7, "KeyCharacterMap": 9, "MotionEvent": 2, "AudioSystem": 5, "AudioTrack": 4, "MediaPlayer": 40, "EGL14": 2, "SensorManager": 16, "Binder": 16, "Debug": 1, "MessageQueue": 1, "SystemProperties": 8, "Trace": 9, "Activity": 1, "Parcel": 14, "EventLog": 2, "CursorWindow": 2},
+  "this_round_rule": "enumerate by JNI method table + body (not raw return-null lines); decide LIVE by OH_RegHook winner not source presence; attribute 'blocks a key' only from the first-fatal stack (nativeSetFocusedWindow reached by 52 keys blocks 0).",
+  "files": ["README.md", "evidence/stubs-full.txt", "evidence/dynamic-first-fatal-map.txt", "results.json", "documentation.json"]
+}

@@ -1,0 +1,229 @@
+# Complete deliberate-stub JNI census of liboh_android_runtime.so (deployed ac59dec0; source 4d5cac38ff,
+# bms/src/adapter/framework/android-runtime/src/). 325 registered-JNI stubs across 4 audited file groups.
+# Format: CLASS::method(sig) | Cfunc | file.cpp:LINE | returns | assumption. "LIVE?" and first-fatal in README table.
+
+## ==== android_graphics_compat_shim.cpp (72) ====
+### ImageDecoder (5) -- runtime stub WINS over libhwui (registered last); on the ImageDecoder decode path
+android.graphics.ImageDecoder.nGetColorSpace (J)Landroid/graphics/ColorSpace; | ID_nGetColorSpace | :79 | nullptr | "libhwui caches gColorSpace jfieldID; when it fails (framework.jar layout) fid stays null -> CheckJNI abort. Override: return null; sRGB assumed when null" [ASSUMPTION REFUTED by fd-musicplayer -- but musicplayer's actual first fatal is libhwui nativeComputeColorSpace on a resource bitmap, a different path]
+android.graphics.ImageDecoder.nGetPadding (JLandroid/graphics/Rect;)V | ID_nGetPadding | :87 | void (outRect unchanged) | "same fid/jclass cache problem; libhwui IsInstanceOf on null gNinePatchInsetsClass -> abort. leave outRect (0,0,0,0)"
+android.graphics.ImageDecoder.nClose (J)V | ID_nClose | :109 | void | "stub remaining ImageDecoder natives; HelloWorld doesn't decode images"
+android.graphics.ImageDecoder.nGetMimeType (J)Ljava/lang/String; | ID_nGetMimeType | :110 | "image/unknown" | "stub remaining ImageDecoder natives"
+android.graphics.ImageDecoder.nGetSampledSize (JI)Landroid/util/Size; | ID_nGetSampledSize | :108 | nullptr | "stub remaining ImageDecoder natives"
+### Surface (18) -- LIVE (runtime sole owner; OH has no Android Surface equiv)
+android.view.Surface.nativeCreateFromSurfaceTexture (Landroid/graphics/SurfaceTexture;)J | S_nativeCreateFromSurfaceTexture | :189 | 0 | "HelloWorld doesn't use SurfaceTexture; return 0"
+android.view.Surface.nativeRelease (J)V | S_nativeRelease | :208 | void | -
+android.view.Surface.nativeDestroy (J)V | S_nativeDestroy | :272 | void | "no-op; OH RS self-managed"
+android.view.Surface.nativeIsConsumerRunningBehind (J)Z | S_nativeIsConsumerRunningBehind | :212 | JNI_FALSE | -
+android.view.Surface.nativeReadFromParcel (JLandroid/os/Parcel;)J | S_nativeReadFromParcel | :215 | nativeObject (parcel ignored) | -
+android.view.Surface.nativeWriteToParcel (JLandroid/os/Parcel;)V | S_nativeWriteToParcel | :218 | void | -
+android.view.Surface.nativeLockCanvas (JLandroid/graphics/Canvas;Landroid/graphics/Rect;)J | S_nativeLockCanvas | :219 | 0 | "Without a real surface buffer to lock, lockCanvas can't return a real canvas. HelloWorld doesn't use Surface.lockCanvas (hwui owns drawing)." [*** BLOCKS fd-plus: ISE "Surface was not locked" ***]
+android.view.Surface.nativeUnlockCanvasAndPost (JLandroid/graphics/Canvas;)V | S_nativeUnlockCanvasAndPost | :224 | void | - [pair of nativeLockCanvas]
+android.view.Surface.nativeAllocateBuffers (J)V | S_nativeAllocateBuffers | :225 | void | -
+android.view.Surface.nativeGetWidth (J)I | S_nativeGetWidth | :226 | 720 (hard-coded) | - [latent: wrong dims to apps querying Surface size]
+android.view.Surface.nativeGetHeight (J)I | S_nativeGetHeight | :227 | 1280 (hard-coded) | - [latent: wrong dims]
+android.view.Surface.nativeGetNextFrameNumber (J)J | S_nativeGetNextFrameNumber | :273 | 0 | -
+android.view.Surface.nativeForceScopedDisconnect (J)I | S_nativeForceScopedDisconnect | :233 | 0 | "AOSP declares int returns; fixed void->int signature"
+android.view.Surface.nativeSetFrameRate (JFII)I | S_nativeSetFrameRate | :234 | 0 | "int return"
+android.view.Surface.nativeAttachAndQueueBufferWithColorSpace (JLandroid/hardware/HardwareBuffer;I)I | S_nativeAttachAndQueueBufferWithColorSpace | :232 | 0 | "int return"
+android.view.Surface.nativeSetAutoRefreshEnabled (JZ)I | S_nativeSetAutoRefreshEnabled | :274 | 0 | -
+android.view.Surface.nativeSetScalingMode (JI)I | S_nativeSetScalingMode | :275 | 0 | -
+android.view.Surface.nativeSetSharedBufferModeEnabled (JZ)I | S_nativeSetSharedBufferModeEnabled | :276 | 0 | -
+### BLASTBufferQueue (8) -- LIVE (OH queue lacks SF transaction-acquisition callback)
+android.graphics.BLASTBufferQueue.nativeSyncNextTransaction (JLjava/util/function/Consumer;Z)Z | BBQ_nativeSyncNextTransaction | :647 | JNI_FALSE | "OH queue has no SF transaction-acquisition callback; report none armed"
+android.graphics.BLASTBufferQueue.nativeStopContinuousSyncTransaction (J)V | BBQ_nativeStopContinuousSyncTransaction | :650 | void | -
+android.graphics.BLASTBufferQueue.nativeClearSyncTransaction (J)V | BBQ_nativeClearSyncTransaction | :651 | void | -
+android.graphics.BLASTBufferQueue.nativeMergeWithNextTransaction (JJJ)V | BBQ_nativeMergeWithNextTransaction | :652 | void | -
+android.graphics.BLASTBufferQueue.nativeGetLastAcquiredFrameNum (J)J | BBQ_nativeGetLastAcquiredFrameNum | :653 | 0 | -
+android.graphics.BLASTBufferQueue.nativeApplyPendingTransactions (JJ)V | BBQ_nativeApplyPendingTransactions | :654 | void | -
+android.graphics.BLASTBufferQueue.nativeGatherPendingTransactions (JJ)Landroid/view/SurfaceControl$Transaction; | BBQ_nativeGatherPendingTransactions | :655 | new empty Transaction | "return a live Transaction wrapper; no pending SF tx in OH"
+android.graphics.BLASTBufferQueue.nativeSetTransactionHangCallback (JLandroid/graphics/BLASTBufferQueue$TransactionHangCallback;)V | BBQ_nativeSetTransactionHangCallback | :676 | void | -
+### HardwareRenderer NEUTER (41) -- INTENTIONAL: neuters libhwui RenderThread (route-A renders itself); registered ONLY on Unity/CW gate (OHUB_VARIANT / OHUB_UNITY_LIBDIR)
+android.graphics.HardwareRenderer.nCreateRootRenderNode ()J | HRN_make | :870 | 1L | "RenderThread birth load-bearing entries: no proxy => no RenderThread"
+android.graphics.HardwareRenderer.nCreateProxy (ZJ)J | HRN_proxy | :871 | 1L | "make nCreateProxy a no-op so RenderThread never born"
+android.graphics.HardwareRenderer.nDeleteProxy (J)V | HRN_v1 | :868 | void | "RenderThread birth"
+android.graphics.HardwareRenderer.preload ()V | HRN_v0 | :867 | void | "getInstance entry points bypass nCreateProxy"
+android.graphics.HardwareRenderer.nOverrideProperty (Ljava/lang/String;Ljava/lang/String;)V | HRN_v2str | :869 | void | "getInstance entry points"
+android.graphics.HardwareRenderer.nGetRenderThreadTid (J)I | HRN_zero_j | :876 | 0 | "proxy-handle natives no-op"
+android.graphics.HardwareRenderer.nLoadSystemProperties (J)Z | HRN_false_j | :873 | JNI_FALSE | "proxy-handle natives no-op"
+android.graphics.HardwareRenderer.nSetName/nSetSurface/nSetSurfaceControl/nSetStopped/nSetLightGeometry/nSetLightAlpha/nSetOpaque/nSetTargetSdrHdrRatio/nSetSdrWhitePoint/nDestroy/nRegisterAnimatingRenderNode/nRegisterVectorDrawableAnimator/nBuildLayer/nPushLayerUpdate/nCancelLayerUpdate/nDetachSurfaceTexture/nAddRenderNode/nRemoveRenderNode/nDrawRenderNode/nSetContentDrawBounds/nAddObserver/nRemoveObserver/nSetForceDark (...)V | HRN_v0/HRN_v1 | :867/:868 | void | "proxy-handle lifecycle/draw no-op" [23 void no-ops, same rationale]
+android.graphics.HardwareRenderer.nDestroyHardwareResources/nFence/nStopDrawing/nNotifyFramePending/nForceDrawNextFrame/nAllocateBuffers (J)V | HRN_v1 | :868 | void | "proxy-handle no-op"
+android.graphics.HardwareRenderer.nPause (J)Z | HRN_false_j | :873 | JNI_FALSE | "proxy-handle no-op"
+android.graphics.HardwareRenderer.nSetColorMode (JI)F | HRN_one_ji | :877 | 1.0f | "proxy-handle no-op"
+android.graphics.HardwareRenderer.nSyncAndDrawFrame (J[JI)I | HRN_sync | :878 | 0 | "proxy-handle no-op"
+android.graphics.HardwareRenderer.nCreateTextureLayer (J)J | HRN_layer | :872 | 1L | "proxy-handle no-op"
+android.graphics.HardwareRenderer.nIsDrawingEnabled ()Z | HRN_true0 | :875 | JNI_TRUE | "proxy-handle no-op"
+
+## ==== android_graphics_Typeface.cpp (16) -- registered ONLY on fallback path (libhwui Typeface delegation failed); "BROKEN FALLBACK, non-functional rendering" ====
+android.graphics.Typeface.nativeCreateFromTypeface (JI)J | :66 | 1L (kFakeTypefaceHandle) | "Return non-zero fake handle so Typeface ctor accepts (rejects 0 with RuntimeException); same handle reused -> non-functional rendering"
+android.graphics.Typeface.nativeCreateFromTypefaceWithExactStyle (JIZ)J | :67 | 1L | same
+android.graphics.Typeface.nativeCreateFromTypefaceWithVariation (JLjava/util/List;)J | :68 | 1L | same
+android.graphics.Typeface.nativeCreateWeightAlias (JI)J | :69 | 1L | same
+android.graphics.Typeface.nativeCreateFromArray ([JJII)J | :70 | 1L | same
+android.graphics.Typeface.nativeGetSupportedAxes (J)[I | :71 | nullptr | "safe defaults, non-functional but non-crashing at ctor time"
+android.graphics.Typeface.nativeSetDefault (J)V | :72 | void | same
+android.graphics.Typeface.nativeGetStyle (J)I | :73 | 0 | same
+android.graphics.Typeface.nativeGetWeight (J)I | :74 | 400 (hard-coded) | same
+android.graphics.Typeface.nativeRegisterGenericFamily (Ljava/lang/String;J)V | :78 | void | same
+android.graphics.Typeface.nativeWriteTypefaces (Ljava/nio/ByteBuffer;I[J)I | :79 | 0 | same
+android.graphics.Typeface.nativeReadTypefaces (Ljava/nio/ByteBuffer;I)[J | :80 | nullptr | same
+android.graphics.Typeface.nativeForceSetStaticFinalField (Ljava/lang/String;Landroid/graphics/Typeface;)V | :81 | void | same
+android.graphics.Typeface.nativeAddFontCollections (J)V | :82 | void | same
+android.graphics.Typeface.nativeWarmUpCache (Ljava/lang/String;)V | :83 | void | same (registered via provider too)
+android.graphics.Typeface.nativeRegisterLocaleList (Ljava/lang/String;)V | :84 | void | same
+
+## ==== android_view_SurfaceControl.cpp (85) -- all no-op / log-only / null-false; LIVE; display composition / HDR / frame-stats / focus; 0 first-fatals ====
+# returns void no-op (28): nativeSetShadowRadius:419 nativeSetFrameRate:425 nativeSetTrustedOverlay:371 nativeSurfaceFlushJankData:373 nativeSetRelativeLayer:278 nativeSetTransparentRegionHint:293 nativeSetColorTransform:304 nativeSetColorSpaceAgnostic:418 nativeSetBlurRegions:368 nativeSetStretchEffect:369 nativeSetFrameRateSelectionPriority:365 nativeSetFrameTimelineVsync:423 nativeSetDefaultFrameRateCompatibility:426 nativeSetBuffer:375 nativeUnsetBuffer:376 nativeSetBufferTransform:377 nativeSetDataSpace:378 nativeSetExtendedRangeBrightness:379 nativeSetCachingHint:380 nativeSetDamageRegion:381 nativeSetDimmingEnabled:382 nativeSetTrustedPresentationCallback:383 nativeClearTrustedPresentationCallback:384 nativeSetDropInputMode:372 nativeWriteTransactionToParcel:466 nativeAddJankDataListener:626 nativeRemoveJankDataListener:629 nativeSetGlobalShadowSettings:618
+# returns void log-only (22): nativeSetLayerStack:472 nativeSetTransformHint:480 nativeSetMetadata:487 nativeAddWindowInfosReportedListener:510 nativeSetFixedTransformHint:526 nativeSanitize:615 nativeSetFocusedWindow:603 nativeSetInputWindowInfo:607 nativeSetGameContentType:596 nativeSetAutoLowLatencyMode:599 nativeSetBootDisplayMode:586 nativeClearBootDisplayMode:589 nativeSetDefaultApplyToken:650 nativeSetDisplayFlags:566 nativeSetDisplayLayerStack:569 nativeSetDisplayPowerMode:572 nativeSetDisplayProjection:575 nativeSetDisplaySize:579 nativeSetDisplaySurface:582 nativeRemoveCurrentInputFocus:611
+# returns JNI_FALSE (8): nativeGetBootDisplayModeSupport:592 nativeSetActiveColorMode:535 nativeSetDesiredDisplayModeSpecs:538 nativeSetDisplayBrightness:541 nativeGetDisplayBrightnessSupport:544 nativeSetDisplayedContentSamplingEnabled:547 nativeGetProtectedContentSupport:640
+# returns JNI_TRUE (5, "always succeeded/booted"): nativeClearContentFrameStats:385 nativeGetContentFrameStats:386 nativeClearAnimationFrameStats:387 nativeGetAnimationFrameStats:388 nativeBootFinished:622
+# returns nullptr (7): nativeGetDisplayedContentSample:550 nativeGetDisplayDecorationSupport:553 nativeGetDisplayNativePrimaries:556 nativeGetDynamicDisplayInfo:559 nativeGetStaticDisplayInfo:562 nativeGetOverlaySupport:637 nativeGetDefaultApplyToken:647
+# returns 0 / empty (3): nativeGetTransformHint:445(0=IDENTITY) nativeGetGPUContextPriority:634(0) nativeCreateJankDataListenerWrapper:630(0 null-token) nativeGetCompositionDataspaces:643(empty int[])
+# NOTE nativeSetFocusedWindow reached by 52 keys in stage-A (window setup) yet blocks 0 -- the canonical "high-reach, benign" stub.
+
+## ==== android_view_DisplayEventReceiver.cpp (1) ====
+android.view.DisplayEventReceiver.nativeGetDisplayEventReceiverFinalizer ()J | DER_nativeGetDisplayEventReceiverFinalizer | :523 | 0 | "previously returned 0 (feeds NAR(0) crash via ART intrinsic). Real DER_release caused regression; TODO P1 real release fn" [HAZARD: a 0 finalizer handed to NativeAllocationRegistry.applyFreeFunction can crash; 0 observed first-fatals]
+
+## ==== android_os_GraphicsEnvironment.cpp (11) -- all no-op / false; GPU debug-layer / ANGLE driver; 0 first-fatals ====
+android.os.GraphicsEnvironment.isDebuggable ()Z | :24 | JNI_FALSE | "non-debug build -> production path, no debug GLES layers"
+android.os.GraphicsEnvironment.setLayerPaths/setDebugLayers/setDebugLayersGLES/setDriverPathAndSphalLibraries/setGpuStats/setAngleInfo/nativeToggleAngleAsSystemDriver/hintActivityLaunch (...)V | :27-45 | void | "no-op" [8 no-ops]
+android.os.GraphicsEnvironment.getShouldUseAngle (Ljava/lang/String;)Z | :39 | JNI_FALSE | "return false"
+android.os.GraphicsEnvironment.setInjectLayersPrSetDumpable ()Z | :41 | JNI_TRUE | "caller treats failure as ok"
+
+## ==== android_view_InputChannel.cpp (3) / android_view_InputEventReceiver.cpp (3, live file) ====
+android.view.InputChannel.nativeReadFromParcel (Landroid/os/Parcel;)J | IC_nativeReadFromParcel | :185 | placeholder OhInputChannel* | "channels not Parcel-transported in adapter; alloc fresh placeholder so nativeGetName/Dispose work"
+android.view.InputChannel.nativeWriteToParcel (Landroid/os/Parcel;J)V | IC_nativeWriteToParcel | :195 | void | "read side allocates fresh"
+android.view.InputChannel.nativeGetToken (J)Landroid/os/IBinder; | IC_nativeGetToken | :224 | nullptr | "no InputDispatcher; Java callers null-check (ViewRootImpl.setView)"
+android.view.InputEventReceiver.nativeReportTimeline (JIJJ)V | IER_nativeReportTimeline | android_view_InputEventReceiver.cpp:850 | void | "Choreographer FrameInfo timeline; not needed for input"
+android.view.InputEventReceiver.nativeConsumeBatchedInputEvents (JJ)Z | IER_nativeConsumeBatchedInputEvents | :856 | JNI_FALSE | "no frame-time batching; one-per-MOVE; jank acceptable"
+android.view.InputEventReceiver.nativeDump (JLjava/lang/String;)Ljava/lang/String; | IER_nativeDump | :863 | empty string | -
+
+## ==== android_view_KeyCharacterMap_aosp.cpp (9) -- mMap permanently nullptr (no OH keymap) ====
+android.view.KeyCharacterMap.nativeReadFromParcel (Landroid/os/Parcel;)J | :143 | placeholder NativeKeyCharacterMap* | "no cross-proc KCM Parcel; fresh empty so Dispose works"
+android.view.KeyCharacterMap.nativeWriteToParcel (JLandroid/os/Parcel;)V | :151 | void | same
+android.view.KeyCharacterMap.nativeGetCharacter (JII)C | :163 | 0 | "mMap permanently nullptr"
+android.view.KeyCharacterMap.nativeGetFallbackAction (JIILandroid/view/KeyCharacterMap$FallbackAction;)Z | :174 | false | -
+android.view.KeyCharacterMap.nativeGetNumber (JI)C | :184 | 0 | -
+android.view.KeyCharacterMap.nativeGetMatch (JI[CI)C | :193 | 0 | -
+android.view.KeyCharacterMap.nativeGetDisplayLabel (JI)C | :202 | 0 | -
+android.view.KeyCharacterMap.nativeGetKeyboardType (J)I | :211 | 0 | -
+android.view.KeyCharacterMap.nativeGetEvents (J[C)[Landroid/view/KeyEvent; | :219 | empty array | -
+
+## ==== android_view_MotionEvent_aosp.cpp (2) ====
+android.view.MotionEvent.nativeReadFromParcel (JLandroid/os/Parcel;)J | :379 | throws UnsupportedOperationException, 0 | "MotionEvent Parcel I/O not implemented in Phase 1"
+android.view.MotionEvent.nativeWriteToParcel (JLandroid/os/Parcel;)V | :386 | throws UnsupportedOperationException | same
+
+## ==== android_media_AudioSystemCapabilities.cpp (5) / android_media_AudioTrack.cpp (4) -- hard-coded caps ("→2式桩") ====
+android.media.AudioSystem.newAudioSessionId ()I | :34 | 0 | "0 = AUDIO_UNIQUE_ID_ALLOCATE; no AudioFlinger"
+android.media.AudioSystem.native_getMaxChannelCount ()I | :10 | 2 | "D600 route stereo; smallest truthful value for FMOD CHANNEL_OUT_STEREO"
+android.media.AudioSystem.native_getMaxSampleRate ()I | :16 | 192000 | -
+android.media.AudioSystem.native_getMinSampleRate ()I | :20 | 4000 | -
+android.media.audiopolicy.AudioProductStrategy.native_list_audio_product_strategies (Ljava/util/ArrayList;)I | :24 | 0 (empty) | "no audio-policy service; empty -> AudioAttributes DEFAULT fallback"
+android.media.AudioTrack.native_get_output_sample_rate (I)I | :112 | 48000 | -
+android.media.AudioTrack.native_setPlayerIId (I)V | :202 | void | -
+android.media.AudioTrack.native_enableDeviceCallback ()V | :204 | void | -
+android.media.AudioTrack.native_disableDeviceCallback ()V | :204 | void | -
+
+## ==== android_media_MediaPlayer.cpp (40) -- play-state machine is REAL; these are the inert query/config/DRM/metadata methods ====
+# returns 0 / JNI_FALSE / nullptr / no-op, "don't fabricate fake resolution/progress; no real codec":
+#  getVideoWidth:312=0 getVideoHeight:313=0 getCurrentPosition:314=0 getDuration:315=0 getAudioSessionId:316=0 isLooping:317=FALSE
+#  setLooping:318 attachAuxEffect:319 getPlaybackParams:320=null getSyncParams:321=null setPlaybackParams:322 setSyncParams:323 setNextMediaPlayer:324
+#  _getAudioStreamType:328=3(STREAM_MUSIC) _notifyAt:329 _setAudioStreamType:330 _setAuxEffectSendLevel:331 _setVolume:332 _seekTo:333 _prepareDrm:334 _releaseDrm:335
+#  _setDataSource(MediaDataSource):237 _setDataSource(fd):232 nativeSetDataSource(IBinder..):241 [content ignored] native_finalize:224(no-op, avoids finalizer-clobber)
+#  native_applyVolumeShaper:336=0 native_enableDeviceCallback:337 native_getMetadata:338=FALSE native_getMetrics:339=null native_getRoutedDeviceId:340=0
+#  native_getVolumeShaperState:341=null native_invoke:342=0 native_pullBatteryData:343=0 native_setAudioSessionId:344 native_setMetadataFilter:345=0
+#  native_setOutputDevice:346=FALSE native_setRetransmitEndpoint:347=0 setParameter:348=FALSE
+# (all android_media_MediaPlayer.cpp; chessclock reaches MediaPlayer.<clinit> but dies earlier at loadLibrary(media_jni), so these are not its first fatal)
+
+## ==== android_opengl_EGL14_adapter.cpp (2) ====
+android.opengl.EGL14.eglCreatePixmapSurface (...)Landroid/opengl/EGLSurface; | :738 | throws UnsupportedOperationException, nullptr | -
+android.opengl.EGL14.eglCopyBuffers (...)Z | :1208 | throws UnsupportedOperationException, JNI_FALSE | -
+
+## ==== android_hardware_SensorManager.cpp (16) -- enumeration reports zero sensors; sentinel handles never dereferenced ====
+android.hardware.SystemSensorManager.nativeClassInit ()V | :64 | void | "no Sensor field-ID caching; never populate a Sensor"
+android.hardware.SystemSensorManager.nativeCreate (Ljava/lang/String;)J | :69 | 1 (sentinel) | "non-zero sentinel; never dereferenced"
+android.hardware.SystemSensorManager.nativeGetSensorAtIndex (JLandroid/hardware/Sensor;I)Z | :74 | JNI_FALSE | "false ends enumeration loop -> empty sensor list"
+android.hardware.SystemSensorManager.nativeGetDynamicSensors (JLjava/util/List;)V | :79 | void | "no dynamic sensors"
+android.hardware.SystemSensorManager.nativeGetRuntimeSensors (JILjava/util/List;)V | :84 | void | "no runtime sensors"
+android.hardware.SystemSensorManager.nativeIsDataInjectionEnabled (J)Z | :89 | JNI_FALSE | -
+android.hardware.SystemSensorManager.nativeCreateDirectChannel (...)I | :93 | 0 | "no channel / unsupported"
+android.hardware.SystemSensorManager.nativeDestroyDirectChannel (JI)V | :99 | void | -
+android.hardware.SystemSensorManager.nativeConfigDirectChannel (JIII)I | :103 | 0 | -
+android.hardware.SystemSensorManager.nativeSetOperationParameter (...)I | :109 | 0 | -
+android.hardware.SystemSensorManager$BaseEventQueue.nativeInitBaseEventQueue (...)J | :117 | 1 (sentinel) | -
+android.hardware.SystemSensorManager$BaseEventQueue.nativeEnableSensor (JIII)I | :124 | 0 | "never reached with zero sensors"
+android.hardware.SystemSensorManager$BaseEventQueue.nativeDisableSensor (JI)I | :129 | 0 | -
+android.hardware.SystemSensorManager$BaseEventQueue.nativeDestroySensorEventQueue (J)V | :133 | void | -
+android.hardware.SystemSensorManager$BaseEventQueue.nativeFlushSensor (J)I | :136 | 0 | -
+android.hardware.SystemSensorManager$BaseEventQueue.nativeInjectSensorData (...)I | :140 | 0 | -
+
+## ==== android_os_Binder.cpp (16) -- IPC identity/worksource/stability no-ops; no Android binder ====
+android.os.Binder.isDirectlyHandlingTransaction ()Z | :84 | JNI_FALSE
+android.os.Binder.hasExplicitIdentity ()Z | :85 | JNI_FALSE
+android.os.Binder.clearCallingIdentity ()J | :86 | 0
+android.os.Binder.restoreCallingIdentity (J)V | :87 | void
+android.os.Binder.setThreadStrictModePolicy (I)V | :88 | void
+android.os.Binder.getThreadStrictModePolicy ()I | :89 | 0
+android.os.Binder.setCallingWorkSourceUid (I)J | :90 | 0
+android.os.Binder.getCallingWorkSourceUid ()I | :91 | -1
+android.os.Binder.clearCallingWorkSource ()J | :92 | 0
+android.os.Binder.restoreCallingWorkSource (J)V | :93 | void
+android.os.Binder.flushPendingCommands ()V | :96 | void
+android.os.Binder.markVintfStability ()V | :97 | void
+android.os.Binder.forceDowngradeToSystemStability ()V | :98 | void
+android.os.Binder.blockUntilThreadAvailable ()V | :99 | void
+com.android.internal.os.BinderInternal.getContextObject ()Landroid/os/IBinder; | :102 | nullptr
+com.android.internal.os.BinderInternal.handleGc ()V | :103 | void
+
+## ==== android_os_Debug.cpp (1) ====
+android.os.Debug.getMemoryInfo (Landroid/os/Debug$MemoryInfo;)V | :58 | void (MemoryInfo left zeroed) | "no PSS/smaps backing on OH"
+
+## ==== android_os_MessageQueue.cpp (1) ====
+android.os.MessageQueue.nativeSetFileDescriptorEvents (JII)V | :128 | void | "HelloWorld doesn't install custom fd watchers"
+
+## ==== android_os_SystemProperties.cpp (8) -- handle-key variants + writes (reads via string-key are REAL) ====
+android.os.SystemProperties.native_find (Ljava/lang/String;)J | :192 | 0 | "find returns opaque handle, 0=not found"
+android.os.SystemProperties.native_get (J)Ljava/lang/String; | :200 | empty string | "handle variants always get handle=0"
+android.os.SystemProperties.native_get_int (JI)I | :205 | defVal | same
+android.os.SystemProperties.native_get_long (JJ)J | :210 | defVal | same
+android.os.SystemProperties.native_get_boolean (JZ)Z | :215 | defVal | same
+android.os.SystemProperties.native_set (Ljava/lang/String;Ljava/lang/String;)V | :222 | void | "OH has no process-writable property store; writes dropped"
+android.os.SystemProperties.native_add_change_callback ()V | :228 | void | "no change source"
+android.os.SystemProperties.native_report_sysprop_change ()V | :233 | void | "nothing to report"
+
+## ==== android_os_Trace.cpp (9) -- B.20 extra Trace natives; OH HiTrace has no analog ====
+android.os.Trace.nativeSetAppTracingAllowed(Z)V nativeSetTracingEnabled(Z)V nativeTraceCounter(JStrJ)V nativeAsyncTraceBegin(JStrI)V nativeAsyncTraceEnd(JStrI)V nativeAsyncTraceForTrackBegin(JStrStrI)V nativeAsyncTraceForTrackEnd(JStrI)V nativeInstant(JStr)V nativeInstantForTrack(JStrStr)V | :64-72 | void | "no-op; OH HiTrace NDK has no analog for app-tracing-allowed/async/counter/instant" [NOTE nativeGetEnabledTags hard-codes ~0=all-enabled to DRIVE real HiTrace -> NOT a stub]
+
+## ==== android_app_Activity.cpp (1) ====
+android.app.Activity.getDlWarning ()Ljava/lang/String; | :30 | nullptr | "OH musl has no android_dlwarning; null = no warnings"
+
+## ==== android_os_Parcel_aosp.cpp (14) -- binder/fd data-plane + global counters (string/primitive data-plane is REAL) ====
+android.os.Parcel.getGlobalAllocSize ()J | :520 | 0 | "process-wide stats -> zeros"
+android.os.Parcel.getGlobalAllocCount ()J | :521 | 0 | same
+android.os.Parcel.nativeGetOpenAshmemSize (J)J | :522 | 0 | same
+android.os.Parcel.nativeMarkForBinder (JLandroid/os/IBinder;)V | :529 | void (warn-only) | -
+android.os.Parcel.nativeWriteStrongBinder (JLandroid/os/IBinder;)V | :534 | void (writes 0-token) | "null binder marker"
+android.os.Parcel.nativeReadStrongBinder (J)Landroid/os/IBinder; | :541 | nullptr | "consume placeholder"
+android.os.Parcel.nativeWriteFileDescriptor (JLjava/io/FileDescriptor;)V | :549 | void (warn-only) | -
+android.os.Parcel.nativeReadFileDescriptor (J)Ljava/io/FileDescriptor; | :554 | nullptr | -
+android.os.Parcel.nativeHasFileDescriptors (J)Z | :560 | JNI_FALSE | -
+android.os.Parcel.nativeHasFileDescriptorsInRange (JII)Z | :564 | JNI_FALSE | -
+android.os.Parcel.nativeWriteInterfaceToken (JLjava/lang/String;)V | :569 | void (warn-only) | -
+android.os.Parcel.nativeEnforceInterface (JLjava/lang/String;)V | :574 | void | "silently accept; AIDL-stub not routed to OH IPC"
+android.os.Parcel.nativeReadCallingWorkSourceUid (J)I | :581 | -1 | "kUnsetWorkSource"
+android.os.Parcel.nativeReplaceCallingWorkSourceUid (JI)Z | :585 | JNI_FALSE | -
+
+## ==== adapter_bridge.cpp (4) -- InputEventReceiver via ierMethods[] in JNI_OnLoad ====
+android.view.InputEventReceiver.nativeFinishInputEvent (JIZ)V | :337 | void | "no-op"
+android.view.InputEventReceiver.nativeReportTimeline (JIJJ)V | :341 | void | "no-op"
+android.view.InputEventReceiver.nativeConsumeBatchedInputEvents (JJ)Z | :345 | JNI_FALSE | -
+android.view.InputEventReceiver.nativeDump (JLjava/lang/String;)Ljava/lang/String; | :349 | empty string | -
+
+## ==== android_util_EventLog.cpp (2) ====
+android.util.EventLog.readEvents ([ILjava/util/Collection;)V | :238 | void (Collection unchanged) | "no event channel on OH"
+android.util.EventLog.readEventsOnWrapping ([IJLjava/util/Collection;)V | :244 | void | same
+
+## ==== android_database_CursorWindow.cpp (2) -- Parcel/binder cross-process cursor stubbed (OH has no libbinder) ====
+android.database.CursorWindow.nativeCreateFromParcel (Landroid/os/Parcel;)J | :118 | 0 (throws UnsupportedOperationException) | "Binder marshalling stubbed; path unused; throw if reached"
+android.database.CursorWindow.nativeWriteToParcel (JLandroid/os/Parcel;)V | :138 | void (throws UnsupportedOperationException) | same
+
+## ==== Clean (no registered stubs): SurfaceSession, PropertyValuesHolder, VirtualRefBasePtr, NativeAllocationRegistry_guard, AndroidRuntime, Parcel_aosp_native, libart_log_bridge, atrace_stubs, Process, SystemClock, ClassLoaderFactory, AssetManager, StringBlock, XmlBlock, ApkAssets, SQLite*, cutils_ashmem, sqlite3_android_shim, westlake_icu_overrides, Log, Input_aosp, InputEventLabels, KeyEvent, AudioCompatLoader, ndk_libandroid_shim ====

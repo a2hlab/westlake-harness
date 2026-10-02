@@ -1,0 +1,52 @@
+# Dynamic correlation backbone: U10.1T8 stage-A window5 first fatals (benchmark/2026-10-02-candidate-first-fatal-clusters, 27 clusters)
+# mapped to CAUSE LAYER, to attribute which runtime STUBS actually block a key.
+# Method: a stub is "LIVE" iff OH_RegHook shows its class.method resolving to liboh_android_runtime.so and NOT overridden
+# by a later libhwui/bridge registration (ART: last RegisterNatives wins). A stub "blocks" a key iff that key's FIRST
+# fatal traces to it. Silent stubs that return null leave no per-call log, so "reached" is attributed via the first-fatal
+# stack (DFX backtrace / Java exception), not a generic marker (the generic UNSUPPORTED/stub markers are OH system noise,
+# thousands/key, not our stub calls -- see note).
+
+## first-fatal -> cause layer (27 clusters)
+cluster kind=signal(6) SIGABRT, 8 keys: fd-saber,fd-fluffychat,fd-kitchenowl,fd-immich,fd-libre,cv2-org-linaro-glmark2,localsend,subwaysurfers
+   - 7 (saber/fluffychat/kitchenowl/immich/libre/glmark2/localsend) = GetLongField fid==null on AssetManager.mObject.
+     NOT a deliberate stub: AssetManager.nativeCreate etc. register to the REAL runtime; the fid==null is an
+     UNINITIALIZED jfieldID CACHE (gAssetManagerOffsets.mObject not filled in some .so copies) -> a runtime INIT GAP,
+     already addressed by the asset_manager.o lazy-init in U13 runtime 18763dd4. Listed separately, not in the stub table.
+   - subwaysurfers = libunity NEEDED libmediandk missing -> not a runtime stub (missing NDK lib).
+cluster kind=no-observed-termination, 20 keys (cv2 white lottery + toutiao etc.): NO terminal -> no first fatal to attribute.
+cluster process-disappeared, 6 (burgerking,libresudoku,fennec,firefox,ppsspp,vlc): no cause captured (System.exit/SIGKILL) -> not runtime-stub.
+java-cause single-key:
+   fd-plus      = IllegalStateException "Surface was not locked"  -> Surface.nativeLockCanvas RETURNS 0 (RUNTIME STUB, LIVE). *** STUB-CAUSED FIRST FATAL ***
+   fd-musicplayer = "can't create bitmap without a color space"   -> source resource bitmap getColorSpace() null via Bitmap.nativeComputeColorSpace in LIBHWUI (NOT a runtime stub; the ImageDecoder.nGetColorSpace runtime stub's ASSUMPTION is refuted but it is not on this path). See the refuted-assumption list.
+   cv2-...-packlist = ClassNotFoundException com.android.internal.util.Predicate -> BCP/stubs jar (not runtime native).
+   x            = telephony (getTelephonyServiceManager) -> stubs jar (java-walls), not runtime native.
+   fd-api       = Theme.AppCompat -> theme resolution (framework/resources), not runtime native.
+   notepad/fd-client = Cursor.moveToFirst() NPE -> provider authority refs (runtime jar, java-walls), not a native stub.
+   mcdonalds    = DI NPE (consequence of librealmc->libz dlopen_ns fail) -> namespace, not a native stub.
+   clipboardeditor = TelephonyManager.getSimCountryIso() on null -> SystemServiceRegistry (stubs jar), not runtime native.
+   fd-breezyweather = NPE getClass() on null @ MainActivity.onCreate (app) [CoroutineStart CNFE above is benign, DIGEST 453] -> app-level, not runtime native stub.
+   fd-wifianalyzer = InflateException CountryPreference @ onCreate:214 -> custom-view inflation (app/framework), not runtime native stub.
+   fd-im-vector-app = ULE librealm-jni dlopen_ns -> namespace/native lib, not a runtime stub.
+   mindustry    = ULE UNSUPPORTED-SYMBOL (bionic-only symbol) -> bionic, not a runtime stub.
+   chessclock   = ULE "system library is absent from the adapter manifest" (media_jni) -> libnativeloader policy, not a runtime stub.
+   privacybrowser = UnsupportedOperationException androidx.webkit -> WebView support lib (jar/large), not runtime native.
+   moodcairns   = AEADBadTagException -> BouncyCastle GCM default (jar), not runtime native.
+   fd-meet      = com.facebook.soloader -> app native loader, not a runtime stub.
+
+## RegHook winner spot-checks (fd-plus hilog)
+Surface.nativeLockCanvas         -> liboh_android_runtime.so (1 registration) = LIVE runtime stub  [returns 0]
+Surface.nativeUnlockCanvasAndPost-> liboh_android_runtime.so (1 registration) = LIVE runtime stub  [no-op void]
+ImageDecoder.nGetColorSpace      -> registered TWICE (libhwui then runtime); runtime stub WINS = LIVE [returns null], but ImageDecoder path only
+Bitmap.nativeComputeColorSpace   -> libhwui (1 registration) = NOT a runtime stub (real lib)
+AssetManager.nativeCreate        -> liboh_android_runtime.so = REAL impl (the fid==null is a cache gap, not a stub)
+
+## Net dynamic result
+Of all the deliberate runtime stubs, exactly ONE is a confirmed first-fatal cause in stage-A: Surface.nativeLockCanvas
+(+ its pair nativeUnlockCanvasAndPost) -> fd-plus (1 key). Every other first fatal is a jar / native-lib / namespace /
+policy / libhwui / app issue, NOT a runtime stub. So almost all "return null/0" stubs are benign on this corpus
+(their assumption "no path strict-requires this" HOLDS here); the stub census below quantifies blocked-key count per stub.
+
+## Marker-sweep note (why "reached" is not from generic markers)
+Grepping 56 stage-A hilogs for UNSUPPORTED/stub returns thousands of hits per key -- OH system/RegHook noise, not our
+stub calls. The specific markers (U12-MEDIA-UNSUPPORTED, FEATURE_*UNSUPPORTED) are 0. So silent stubs leave no per-call
+log; "reached + first-fatal" is attributed from the first-fatal stack only.
