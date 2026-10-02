@@ -1,0 +1,4298 @@
+{
+  "files": [
+    {
+      "path": "$WORKSPACES/westlake-harness/benchmark/blockers-ledger.json",
+      "sha256": "9791b7ac6b1abfce54b105470f6f073a0b432b463f89c1e1aba7a5465c74c47c",
+      "rows": [
+        {
+          "line": 75,
+          "text": "   \"app\": \"burgerking\","
+        },
+        {
+          "line": 76,
+          "text": "   \"corpus\": \"blind-bk\","
+        },
+        {
+          "line": 77,
+          "text": "   \"row\": \"svc:uimode\","
+        },
+        {
+          "line": 78,
+          "text": "   \"symptom\": \"null cast to UiModeManager\","
+        },
+        {
+          "line": 79,
+          "text": "   \"fixed_in\": \"d689e67\""
+        },
+        {
+          "line": 80,
+          "text": "  },"
+        },
+        {
+          "line": 81,
+          "text": "  {"
+        },
+        {
+          "line": 82,
+          "text": "   \"app\": \"burgerking\","
+        },
+        {
+          "line": 83,
+          "text": "   \"corpus\": \"blind-bk\","
+        },
+        {
+          "line": 84,
+          "text": "   \"row\": \"svc:user\","
+        },
+        {
+          "line": 85,
+          "text": "   \"symptom\": \"IUserManager proxy throws for WebView policy reads\","
+        },
+        {
+          "line": 86,
+          "text": "   \"fixed_in\": \"9b8b861\""
+        },
+        {
+          "line": 87,
+          "text": "  },"
+        },
+        {
+          "line": 88,
+          "text": "  {"
+        },
+        {
+          "line": 89,
+          "text": "   \"app\": \"burgerking\","
+        },
+        {
+          "line": 90,
+          "text": "   \"corpus\": \"blind-bk\","
+        },
+        {
+          "line": 91,
+          "text": "   \"row\": \"wv:renderer-process\","
+        },
+        {
+          "line": 92,
+          "text": "   \"symptom\": \"WebView cannot start its sandboxed renderer process\","
+        },
+        {
+          "line": 93,
+          "text": "   \"fixed_in\": null"
+        },
+        {
+          "line": 94,
+          "text": "  },"
+        },
+        {
+          "line": 95,
+          "text": "  {"
+        },
+        {
+          "line": 96,
+          "text": "   \"app\": \"vlc-fdroid\","
+        },
+        {
+          "line": 97,
+          "text": "   \"corpus\": \"corpus-2\","
+        },
+        {
+          "line": 98,
+          "text": "   \"row\": null,"
+        }
+      ],
+      "last_path_commit": "b534d9509dde24db310ef78e843a9e666295747f"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness/harness/westlake_gap/gapmap.py",
+      "sha256": "94b6f57551f2648b7014f8d824c4eb893cf47a870f6040a909094a4518c85f7b",
+      "rows": [
+        {
+          "line": 658,
+          "text": "def webview_process_model(aosp_root: Path | None, westlake_root: Path) -> dict[str, Any]:"
+        },
+        {
+          "line": 659,
+          "text": "    \"\"\"Whether WebView will insist on its sandboxed renderer process, and whether anything hosts it."
+        },
+        {
+          "line": 660,
+          "text": ""
+        },
+        {
+          "line": 661,
+          "text": "    WebView runs its renderer in an isolated service process when WebViewDelegate says multiprocess."
+        },
+        {
+          "line": 662,
+          "text": "    Since the update-service flags that answer is `true` whatever IWebViewUpdateService says, so a"
+        },
+        {
+          "line": 663,
+          "text": "    runtime answering false there does not get single-process WebView."
+        },
+        {
+          "line": 664,
+          "text": "    \"\"\""
+        },
+        {
+          "line": 665,
+          "text": "    forced = {\"present\": False, \"source\": None}"
+        },
+        {
+          "line": 666,
+          "text": "    if aosp_root is not None:"
+        },
+        {
+          "line": 667,
+          "text": "        path = aosp_root / \"frameworks-base/core/java/android/webkit/WebViewDelegate.java\""
+        },
+        {
+          "line": 668,
+          "text": "        if path.exists():"
+        },
+        {
+          "line": 669,
+          "text": "            text = path.read_text(errors=\"replace\")"
+        },
+        {
+          "line": 670,
+          "text": "            body = re.search(r\"public boolean isMultiProcessEnabled\\(\\)\\s*\\{(.*?)\\n    \\}\", text, re.S)"
+        },
+        {
+          "line": 671,
+          "text": "            flag = re.search(r\"if \\((Flags\\.\\w+\\(\\))\\)\\s*\\{\\s*return true;\", body.group(1)) if body else None"
+        },
+        {
+          "line": 672,
+          "text": "            if flag:"
+        },
+        {
+          "line": 673,
+          "text": "                forced = {\"present\": True, \"flag\": flag.group(1),"
+        },
+        {
+          "line": 674,
+          "text": "                          \"source\": f\"frameworks-base/core/java/android/webkit/WebViewDelegate.java:{text.count(chr(10), 0, body.start()) + 1}\"}"
+        },
+        {
+          "line": 675,
+          "text": "    hosted = {\"present\": False, \"source\": None}"
+        },
+        {
+          "line": 676,
+          "text": "    framework = westlake_root / \"framework\""
+        },
+        {
+          "line": 677,
+          "text": "    for path in sorted(framework.rglob(\"*.java\")) if framework.exists() else []:"
+        },
+        {
+          "line": 678,
+          "text": "        text = path.read_text(errors=\"replace\")"
+        },
+        {
+          "line": 679,
+          "text": "        match = re.search(r\"SandboxedProcessService\", text)"
+        },
+        {
+          "line": 680,
+          "text": "        if match:"
+        },
+        {
+          "line": 681,
+          "text": "            hosted = {\"present\": True, \"source\": f\"{path.relative_to(westlake_root)}:{text.count(chr(10), 0, match.start()) + 1}\"}"
+        },
+        {
+          "line": 682,
+          "text": "            break"
+        },
+        {
+          "line": 683,
+          "text": "    return {\"multiprocess_forced\": forced, \"renderer_hosted\": hosted}"
+        },
+        {
+          "line": 684,
+          "text": ""
+        },
+        {
+          "line": 685,
+          "text": ""
+        },
+        {
+          "line": 833,
+          "text": "def webview_rows(scan: dict[str, Any], model: dict[str, Any]) -> list[dict[str, Any]]:"
+        },
+        {
+          "line": 834,
+          "text": "    called = scan[\"inventory\"].get(\"platform_method_names\", {}).get(\"Landroid/webkit/WebView;\", [])"
+        },
+        {
+          "line": 835,
+          "text": "    if \"<init>\" not in called:"
+        },
+        {
+          "line": 836,
+          "text": "        return []"
+        },
+        {
+          "line": 837,
+          "text": "    forced, hosted = model[\"multiprocess_forced\"], model[\"renderer_hosted\"]"
+        },
+        {
+          "line": 838,
+          "text": "    return [_row("
+        },
+        {
+          "line": 839,
+          "text": "        \"app-framework\", \"wv:renderer-process\", \"WebView's renderer runs in an isolated service process\","
+        },
+        {
+          "line": 840,
+          "text": "        oh_touchpoint=\"process spawn (appspawn): an isolated Android service process with its own sandbox\","
+        },
+        {
+          "line": 841,
+          "text": "        verdict=\"supplied\" if hosted[\"present\"] else \"missing\", shim_class=\"C0\" if hosted[\"present\"] else \"C4\","
+        },
+        {
+          "line": 842,
+          "text": "        effort=\"verify\" if hosted[\"present\"] else \"L\", confidence=STATIC,"
+        },
+        {
+          "line": 843,
+          "text": "        provider=(\"the runtime hosts WebView's sandboxed renderer service\" if hosted[\"present\"] else"
+        },
+        {
+          "line": 844,
+          "text": "                  \"direct launch starts no isolated service processes: binding the renderer fails and Chromium aborts\""
+        },
+        {
+          "line": 845,
+          "text": "                  + (f\"; answering isMultiProcessEnabled()=false does not help, WebViewDelegate returns true while \""
+        },
+        {
+          "line": 846,
+          "text": "                     f\"{forced['flag']} is on\" if forced[\"present\"] else \"\")),"
+        },
+        {
+          "line": 847,
+          "text": "        provider_source=hosted[\"source\"] or forced[\"source\"],"
+        },
+        {
+          "line": 848,
+          "text": "        app_evidence=f\"app constructs WebViews and calls {len(called)} WebView methods\","
+        },
+        {
+          "line": 849,
+          "text": "        shim=\"host the renderer: spawn an isolated child and bind Chromium's SandboxedProcessService over a local \""
+        },
+        {
+          "line": 850,
+          "text": "             \"channel; or build the framework with the update-service flag off so WebView runs single-process\","
+        },
+        {
+          "line": 851,
+          "text": "    )]"
+        },
+        {
+          "line": 852,
+          "text": ""
+        }
+      ],
+      "last_path_commit": "54cbe2ea454bfaf946c4af6653048b3557caa6e3"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness/benchmark/2026-09-28-batch16-20-blind/README.md",
+      "sha256": "5cf9035102966b645b022ebaafbc0e46e1a0e0c731603a56b62d870354644ebf",
+      "rows": [
+        {
+          "line": 1,
+          "text": "# Batches 16–20: 100 new F-Droid apps, predicted and launched blind (framework 68)"
+        },
+        {
+          "line": 2,
+          "text": ""
+        },
+        {
+          "line": 3,
+          "text": "A test of generalization. Everything below was fixed before any of these apps was launched, and"
+        },
+        {
+          "line": 4,
+          "text": "nothing in Westlake or the harness changes until all 100 have been launched and judged:"
+        },
+        {
+          "line": 5,
+          "text": ""
+        },
+        {
+          "line": 6,
+          "text": "- **Harness:** westlake-harness 13974d5, predictor rule v3 (`scripts/predict_first_screen.py`)."
+        },
+        {
+          "line": 7,
+          "text": "- **Provider:** framework 68, native runtime opengl11, runtime data tz2, bionic shim nw9."
+        },
+        {
+          "line": 8,
+          "text": "- **Runner:** each app's launch remedies are taken from its gap map (`launch_args`)."
+        },
+        {
+          "line": 9,
+          "text": ""
+        },
+        {
+          "line": 10,
+          "text": "The earlier batches mixed launching and fixing. This one measures how far the fixes made for the"
+        },
+        {
+          "line": 11,
+          "text": "first 200 apps carry to apps nobody looked at."
+        },
+        {
+          "line": 12,
+          "text": ""
+        },
+        {
+          "line": 13,
+          "text": "## Selection"
+        },
+        {
+          "line": 14,
+          "text": ""
+        },
+        {
+          "line": 15,
+          "text": "The same rule as batches 11–15, applied to the apps not yet tried. The source is the F-Droid index"
+        },
+        {
+          "line": 16,
+          "text": "(2026-09-23). Eligible apps:"
+        },
+        {
+          "line": 17,
+          "text": ""
+        },
+        {
+          "line": 18,
+          "text": "- were updated within the last 12 months;"
+        },
+        {
+          "line": 19,
+          "text": "- target SDK 30 or later;"
+        },
+        {
+          "line": 20,
+          "text": "- are at most 80 MB;"
+        },
+        {
+          "line": 21,
+          "text": "- ship arm64 native code or none."
+        },
+        {
+          "line": 22,
+          "text": ""
+        },
+        {
+          "line": 23,
+          "text": "That left 2,068 apps in 112 categories. The pick is one app per category in turn, with the most"
+        },
+        {
+          "line": 24,
+          "text": "maintained app first in each category. All 100 downloads verified against the index's sha256"
+        },
+        {
+          "line": 25,
+          "text": "(`apps.json`)."
+        },
+        {
+          "line": 26,
+          "text": ""
+        },
+        {
+          "line": 27,
+          "text": "## Prediction"
+        },
+        {
+          "line": 28,
+          "text": ""
+        },
+        {
+          "line": 29,
+          "text": "Rule v3, static maps, no Android traces: **5 of 100 predicted blocked** (`predictions.json`). v3's"
+        },
+        {
+          "line": 30,
+          "text": "recall on the first 200 apps was 0.25, so most blocked apps are expected to go unpredicted."
+        },
+        {
+          "line": 31,
+          "text": ""
+        },
+        {
+          "line": 32,
+          "text": "## Judging (pre-registered)"
+        },
+        {
+          "line": 33,
+          "text": ""
+        },
+        {
+          "line": 34,
+          "text": "Each app is launched once, with one screenshot 30 s after launch. An app **draws** when the screenshot"
+        },
+        {
+          "line": 35,
+          "text": "shows the app's own screen. That covers a splash, onboarding or main screen, the same bar as the"
+        },
+        {
+          "line": 36,
+          "text": "earlier batches, with these exclusions:"
+        },
+        {
+          "line": 37,
+          "text": ""
+        },
+        {
+          "line": 38,
+          "text": "- **Blocked:** the OH host screen (the app left or died), an empty or blank window, an app-drawn error"
+        },
+        {
+          "line": 39,
+          "text": "  page (crash report or library-load error), or a screen with part missing (a region the app should"
+        },
+        {
+          "line": 40,
+          "text": "  draw is empty)."
+        },
+        {
+          "line": 41,
+          "text": "- **Reported separately:** \"past splash\", counting apps whose screenshot shows more than a logo or"
+        },
+        {
+          "line": 42,
+          "text": "  loading splash. It is the stricter number."
+        },
+        {
+          "line": 43,
+          "text": "- **Hdc drops:** a launch the hdc connection dropped is relaunched and does not count as a result."
+        },
+        {
+          "line": 44,
+          "text": ""
+        },
+        {
+          "line": 45,
+          "text": "## Result (launched 2026-09-28, judged by the rules above)"
+        },
+        {
+          "line": 46,
+          "text": ""
+        },
+        {
+          "line": 47,
+          "text": "**79 of 100 draw; 78 past splash** (K-9's \"Upgrading databases\" is the one splash-only screen)."
+        },
+        {
+          "line": 48,
+          "text": "All 100 launched first time; no hdc drops. `outcomes.json` holds the judgement for each app and the"
+        },
+        {
+          "line": 49,
+          "text": "five screenshots the screen check passed but the rules exclude: two blank or black windows, an"
+        },
+        {
+          "line": 50,
+          "text": "app-drawn SDL error, an empty camera-preview region and an empty browser page."
+        },
+        {
+          "line": 51,
+          "text": ""
+        },
+        {
+          "line": 52,
+          "text": "For comparison on the same framework: batches 11–15, whose blockers were fixed as they were found,"
+        },
+        {
+          "line": 53,
+          "text": "draw 70 of 99. The fixes carried over to apps nobody looked at. One caution: this is the second pick"
+        },
+        {
+          "line": 54,
+          "text": "in each category, which may be simpler apps than the first."
+        },
+        {
+          "line": 55,
+          "text": ""
+        },
+        {
+          "line": 56,
+          "text": "**The predictor did not generalize.** It predicted 5 blocked. Result: precision 0.60 (3 true, 2 false"
+        },
+        {
+          "line": 57,
+          "text": "-- ndk:package on Nora and Time Tracking, both of which draw), recall 0.14 (18 of 21 blocked apps"
+        },
+        {
+          "line": 58,
+          "text": "missed). As a first-screen predictor the static map is weak. Its value is the gap list and the fix"
+        },
+        {
+          "line": 59,
+          "text": "queue, not the yes/no call."
+        },
+        {
+          "line": 60,
+          "text": ""
+        },
+        {
+          "line": 61,
+          "text": "The 21 blocked apps, by cause:"
+        },
+        {
+          "line": 62,
+          "text": ""
+        },
+        {
+          "line": 63,
+          "text": "| cause | apps |"
+        },
+        {
+          "line": 64,
+          "text": "|---|---|"
+        },
+        {
+          "line": 65,
+          "text": "| media natives unregistered at startup (MediaPlayer.native_init, AudioSystem, AudioTrack) | doorsofdoom, game, ntfy, mousepounce, musekit |"
+        },
+        {
+          "line": 66,
+          "text": "| OpenSL ES Android configuration interface (SL_IID_ANDROIDCONFIGURATION) | jigsaw, v3 |"
+        },
+        {
+          "line": 67,
+          "text": "| activity start: InflateException | clauncher, facebooknotifica |"
+        },
+        {
+          "line": 68,
+          "text": "| activity start: ArithmeticException | aat |"
+        },
+        {
+          "line": 69,
+          "text": "| stops after bind, nothing logged | drawanywhere, shortcut, insigno, playmaker |"
+        },
+        {
+          "line": 70,
+          "text": "| libGLESv1_CM.so absent (SDL) | anarchre |"
+        },
+        {
+          "line": 71,
+          "text": "| bionic getprogname unresolved | linphone |"
+        },
+        {
+          "line": 72,
+          "text": "| blank or black window | accelerace, spacebeam |"
+        },
+        {
+          "line": 73,
+          "text": "| a region empty (camera preview, web page) | fairscan, standard |"
+        },
+        {
+          "line": 74,
+          "text": "| leaves after drawing, nothing logged | wormhole2 |"
+        },
+        {
+          "line": 75,
+          "text": ""
+        },
+        {
+          "line": 76,
+          "text": "## Follow-up: the media cluster (after the blind judgement)"
+        },
+        {
+          "line": 77,
+          "text": ""
+        },
+        {
+          "line": 78,
+          "text": "Fixed afterwards in westlake `5ae6b75`, tested with the rebuilt `libwl_missing_natives.so` as a"
+        },
+        {
+          "line": 79,
+          "text": "runtime-library override on build 68. The blind numbers above are unchanged; this is the fix loop."
+        },
+        {
+          "line": 80,
+          "text": ""
+        }
+      ],
+      "last_path_commit": "b534d9509dde24db310ef78e843a9e666295747f"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness/benchmark/2026-09-26-batch11-15-blind/README.md",
+      "sha256": "66a34c9d4e9d5954de9cff258574b5a21889a84c2a1044d4c1e81c1ef13d0491",
+      "rows": [
+        {
+          "line": 1,
+          "text": "# Batches 11–15: 100 new F-Droid apps, predicted blind (framework 59)"
+        },
+        {
+          "line": 2,
+          "text": ""
+        },
+        {
+          "line": 3,
+          "text": "Written before any of these apps was launched. The outcomes are added afterwards; the"
+        },
+        {
+          "line": 4,
+          "text": "predictions here are not edited."
+        },
+        {
+          "line": 5,
+          "text": ""
+        },
+        {
+          "line": 6,
+          "text": "## Selection"
+        },
+        {
+          "line": 7,
+          "text": ""
+        },
+        {
+          "line": 8,
+          "text": "The rule was fixed before looking at individual apps. The source is the F-Droid index"
+        },
+        {
+          "line": 9,
+          "text": "(2026-09-23). Eligible apps:"
+        },
+        {
+          "line": 10,
+          "text": ""
+        },
+        {
+          "line": 11,
+          "text": "- were updated within the last 12 months;"
+        },
+        {
+          "line": 12,
+          "text": "- target SDK 30 or later;"
+        },
+        {
+          "line": 13,
+          "text": "- are at most 80 MB;"
+        },
+        {
+          "line": 14,
+          "text": "- ship arm64 native code or none;"
+        },
+        {
+          "line": 15,
+          "text": "- were not among the 101 apps already tried."
+        },
+        {
+          "line": 16,
+          "text": ""
+        },
+        {
+          "line": 17,
+          "text": "That left 2,168 apps in 113 categories. The pick is one app per category in turn; within a"
+        },
+        {
+          "line": 18,
+          "text": "category, the app with the most published versions (a proxy for a maintained app) comes first."
+        },
+        {
+          "line": 19,
+          "text": "The first 100 downloads all verified against the index's sha256. `apps.json` has the package,"
+        },
+        {
+          "line": 20,
+          "text": "version, category, sha256 and batch of each."
+        },
+        {
+          "line": 21,
+          "text": ""
+        },
+        {
+          "line": 22,
+          "text": "## Prediction"
+        },
+        {
+          "line": 23,
+          "text": ""
+        },
+        {
+          "line": 24,
+          "text": "`scripts/predict_first_screen.py` (rule v2 plus the libnativehelper lookup) runs on the static gap"
+        },
+        {
+          "line": 25,
+          "text": "maps. No Android startup traces this time: the phone was not attached. So the runtime-data rows,"
+        },
+        {
+          "line": 26,
+          "text": "which count only on a traced path, do not contribute."
+        },
+        {
+          "line": 27,
+          "text": ""
+        },
+        {
+          "line": 28,
+          "text": "- **37 of 100 predicted blocked.**"
+        },
+        {
+          "line": 29,
+          "text": "- Reasons: 54 apps flag a runtime `libandroid`/`libnativewindow`/`libnativehelper` lookup, 30 an"
+        },
+        {
+          "line": 30,
+          "text": "  engine-drawn SurfaceView, and 14 an unresolved NDK import. Several apps flag more than one."
+        },
+        {
+          "line": 31,
+          "text": "- The batch holds many more Flutter apps than the first 101, and each of them flags both the"
+        },
+        {
+          "line": 32,
+          "text": "  engine surface and the `libandroid` lookup."
+        },
+        {
+          "line": 33,
+          "text": "- `stopwatch` declares no launchable activity and cannot be launched through the direct-launch"
+        },
+        {
+          "line": 34,
+          "text": "  path; it is recorded as such, not dropped."
+        },
+        {
+          "line": 35,
+          "text": ""
+        },
+        {
+          "line": 36,
+          "text": "`predictions.json` gives each app's expected result and the rows that decided it."
+        }
+      ],
+      "last_path_commit": "a7265dca80f3784af951969cb2388989fbf5535e"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/historical/workspace/openharmony/docs/engine/OH-FIVE-GAP-REPAIR-2026-09-04.md",
+      "sha256": "911b4c36811644a28af61352aa705c49a5b0f69040a0cff0cab47685df9f3d8e",
+      "rows": [
+        {
+          "line": 1,
+          "text": "# OHOS five-gap repair — 2026-09-04"
+        },
+        {
+          "line": 2,
+          "text": ""
+        },
+        {
+          "line": 3,
+          "text": "Follow-up: [seven-gap implementation and verification](OH-SEVEN-GAP-FOLLOWUP-2026-09-04.md)."
+        },
+        {
+          "line": 4,
+          "text": "This page retains the historical candidate05 evidence. Candidate13 is experimental"
+        },
+        {
+          "line": 5,
+          "text": "and is not approved to replace that baseline."
+        },
+        {
+          "line": 6,
+          "text": ""
+        },
+        {
+          "line": 7,
+          "text": "## Outcome"
+        },
+        {
+          "line": 8,
+          "text": ""
+        },
+        {
+          "line": 9,
+          "text": "Candidate05 repairs the tested WebView, docked-keyboard, Chinese editing,"
+        },
+        {
+          "line": 10,
+          "text": "input-latency and networking paths. Unchanged Toutiao now renders search results"
+        },
+        {
+          "line": 11,
+          "text": "with text and images and scrolls them. **This is not a claim that all Android"
+        },
+        {
+          "line": 12,
+          "text": "compatibility gaps are closed or that live Toutiao matches native performance.**"
+        },
+        {
+          "line": 13,
+          "text": ""
+        },
+        {
+          "line": 14,
+          "text": "| Requested gap | Implemented and verified | Remaining limits |"
+        },
+        {
+          "line": 15,
+          "text": "| --- | --- | --- |"
+        },
+        {
+          "line": 16,
+          "text": "| 1. Blank search WebView | Restored hardware GL functor recording and real Ganesh FBO/stencil handling; fixed capability-publication race; restored EC certificate algorithms and kernel-backed SecureRandom registration. Toutiao search for 中国 renders and scrolls. | One earlier repeat had an EGL extension-initialization failure. Clean-data Toutiao also exposes a separate missing permission-service facade. |"
+        },
+        {
+          "line": 17,
+          "text": "| 2. Keyboard layout | Window-scoped IME InsetsState survives relayout; bottom editor moves above keyboard and restores after hiding. | Docked full-width keyboard only; floating keyboard, rotation and multiwindow are not certified. |"
+        },
+        {
+          "line": 18,
+          "text": "| 3. Chinese input | Code-point-safe deletion, selection replacement, queued stale-session rejection, selection notifications, serialized show/attach, decoder flush/close and learned-phrase persistence. | Android IMM enumeration/session facade still returns NO_IME; native callback generation, grapheme clusters and large-document cursor behavior remain incomplete or unverified. |"
+        },
+        {
+          "line": 19,
+          "text": "| 4. Native-speed comparison | Removed unconditional tap-release pacing; corrected the input measurement protocol; ran identical offline control APK on OHOS and attached OnePlus 6. | OnePlus has no active default network; no valid live Toutiao comparison. Small-sample callback timings are not touch-to-photon measurements or equivalence proof. |"
+        },
+        {
+          "line": 20,
+          "text": "| 5. Networking | Direct-buffer UDP offsets/positions, abstract Unix datagrams, multicast loopback, interruptible asynchronous close, poll/read/write child re-registration. | IPv6, descriptor reuse/GC stress and comprehensive negative/error-path coverage remain unverified. |"
+        },
+        {
+          "line": 21,
+          "text": ""
+        },
+        {
+          "line": 22,
+          "text": "## Reproducible candidate and evidence"
+        },
+        {
+          "line": 23,
+          "text": ""
+        },
+        {
+          "line": 24,
+          "text": "Workspace: `$HISTORICAL_HOME/bridge-build-arm64/gap-repair-20260904`."
+        },
+        {
+          "line": 25,
+          "text": ""
+        },
+        {
+          "line": 26,
+          "text": "Device runner:"
+        },
+        {
+          "line": 27,
+          "text": "`/data/local/tmp/asx/gap-repair-20260904/candidate05/run.sh`."
+        },
+        {
+          "line": 28,
+          "text": "Handoff run: `toutiao05final`, parent 5530 / child 5675; exact process identity,"
+        },
+        {
+          "line": 29,
+          "text": "private data directory and socket are recorded in `toutiao05final-processes.json`."
+        },
+        {
+          "line": 30,
+          "text": "Use `python3 stop_probe.py toutiao05final` for a guarded stop of this test run."
+        },
+        {
+          "line": 31,
+          "text": "It requires the existing ability host/window and validates framework, boot image"
+        },
+        {
+          "line": 32,
+          "text": "and runtime hashes before launch. It is not a global replacement of the accepted"
+        },
+        {
+          "line": 33,
+          "text": "runtime. `candidate05/manifest.json` pins the deployed inputs. The hardware helper"
+        },
+        {
+          "line": 34,
+          "text": "is explicitly tied to the accepted HWUI ABI; do not load it against another build."
+        },
+        {
+          "line": 35,
+          "text": ""
+        },
+        {
+          "line": 36,
+          "text": "Build and stage a **new** candidate name, rather than overwriting candidate05:"
+        },
+        {
+          "line": 37,
+          "text": ""
+        },
+        {
+          "line": 38,
+          "text": "```sh"
+        },
+        {
+          "line": 39,
+          "text": "cd $HISTORICAL_HOME/bridge-build-arm64/gap-repair-20260904"
+        },
+        {
+          "line": 40,
+          "text": "CANDIDATE=candidate06 python3 build_candidate.py"
+        },
+        {
+          "line": 41,
+          "text": "CANDIDATE=candidate06 python3 stage_candidate.py"
+        },
+        {
+          "line": 42,
+          "text": "python3 launch_probe.py --candidate candidate06 --run control06"
+        },
+        {
+          "line": 43,
+          "text": "python3 probe_log.py control06"
+        },
+        {
+          "line": 44,
+          "text": "python3 stop_probe.py control06"
+        },
+        {
+          "line": 45,
+          "text": "```"
+        },
+        {
+          "line": 46,
+          "text": ""
+        },
+        {
+          "line": 47,
+          "text": "The scripts preserve the untouched DEX entries of the accepted framework and"
+        },
+        {
+          "line": 48,
+          "text": "rebuild a matching boot image. Changed adapter classes include their nested"
+        },
+        {
+          "line": 49,
+          "text": "classes. WindowSessionAdapter is surgically patched because rebuilding its whole"
+        },
+        {
+          "line": 50,
+          "text": "source would import unrelated source/binary drift. Both SessionStageBridge DEX"
+        },
+        {
+          "line": 51,
+          "text": "definitions are patched. The pinned native bridge uses narrow boundary helpers;"
+        },
+        {
+          "line": 52,
+          "text": "the native source also contains the capability-publication fix for future builds."
+        },
+        {
+          "line": 53,
+          "text": ""
+        },
+        {
+          "line": 54,
+          "text": "Important build/evidence files:"
+        },
+        {
+          "line": 55,
+          "text": ""
+        },
+        {
+          "line": 56,
+          "text": "- `build_candidate.py`, `stage_candidate.py`, `build_hwui_probe.py`,"
+        },
+        {
+          "line": 57,
+          "text": "  `hwui_functor.cpp`, `GLFunctorDrawable.cpp`, `SkAndroidFunctorUtils.cpp`."
+        },
+        {
+          "line": 58,
+          "text": "- `launch_probe.py`, `stop_probe.py`: per-run socket/PID identity checks;"
+        },
+        {
+          "line": 59,
+          "text": "  Toutiao experiments mount a separate app-data copy in a private namespace."
+        },
+        {
+          "line": 60,
+          "text": "- `control/`, `build_control.py`, `measure_control.py`,"
+        },
+        {
+          "line": 61,
+          "text": "  `measure_without_baseline_cpu.py`, `summarize_results.py`."
+        },
+        {
+          "line": 62,
+          "text": "- `performance-results.json`: all retained measured runs, including failed runs"
+        },
+        {
+          "line": 63,
+          "text": "  and invalid legacy input timestamps; regenerated directly from raw logs."
+        },
+        {
+          "line": 64,
+          "text": "- `verify_results.py`, `verification-results.json`: verifies all 58 frozen"
+        },
+        {
+          "line": 65,
+          "text": "  candidate artifacts and explicit control-test assertions; records open gaps."
+        },
+        {
+          "line": 66,
+          "text": ""
+        },
+        {
+          "line": 67,
+          "text": "## Verification"
+        },
+        {
+          "line": 68,
+          "text": ""
+        },
+        {
+          "line": 69,
+          "text": "### Actual Toutiao"
+        },
+        {
+          "line": 70,
+          "text": ""
+        },
+        {
+          "line": 71,
+          "text": "Unchanged APK MD5: `cc99caaaa3baffbb100118753fa1d130` on both devices."
+        },
+        {
+          "line": 72,
+          "text": ""
+        },
+        {
+          "line": 73,
+          "text": "Candidate05 run `toutiao05copy` used a consistent private copy of the accepted"
+        },
+        {
+          "line": 74,
+          "text": "app state. Original `/data/data/com.ss.android.article.news` remained inode"
+        },
+        {
+          "line": 75,
+          "text": "49251. The baseline was briefly suspended while copying its SQLite/WAL files,"
+        },
+        {
+          "line": 76,
+          "text": "then resumed; no writable app-data directory was shared between the processes."
+        },
+        {
+          "line": 77,
+          "text": ""
+        },
+        {
+          "line": 78,
+          "text": "Observed on the actual OHOS screen and corroborated with process/view evidence:"
+        },
+        {
+          "line": 79,
+          "text": ""
+        },
+        {
+          "line": 80,
+          "text": "- Feed text and images: `toutiao05copy-after-start.jpeg`."
+        },
+        {
+          "line": 81,
+          "text": "- Physical Pinyin composition and candidate selection:"
+        },
+        {
+          "line": 82,
+          "text": "  `toutiao05copy-current.jpeg`, `toutiao05copy-chinese-commit.tree`."
+        },
+        {
+          "line": 83,
+          "text": "- Committed search editor contains 中国; results show text/images:"
+        },
+        {
+          "line": 84,
+          "text": "  `toutiao05copy-results.jpeg`."
+        },
+        {
+          "line": 85,
+          "text": "- Real touch scroll advances the results:"
+        },
+        {
+          "line": 86,
+          "text": "  `toutiao05copy-scrolled.jpeg`, `toutiao05copy-results-scroll.tree`."
+        },
+        {
+          "line": 87,
+          "text": "- Full process log: `toutiao05copy-final-child.log`."
+        },
+        {
+          "line": 88,
+          "text": ""
+        },
+        {
+          "line": 89,
+          "text": "Off-main-thread diagnostic WebView getters can return empty strings even while"
+        },
+        {
+          "line": 90,
+          "text": "the browser is working. They are not treated as a loading oracle. Independent"
+        },
+        {
+          "line": 91,
+          "text": "control checks use main-thread browser callbacks, JavaScript and visible pixels."
+        },
+        {
+          "line": 92,
+          "text": ""
+        },
+        {
+          "line": 93,
+          "text": "### Independent controls"
+        },
+        {
+          "line": 94,
+          "text": ""
+        },
+        {
+          "line": 95,
+          "text": "`suite05b-final-child.log` verifies:"
+        },
+        {
+          "line": 96,
+          "text": ""
+        },
+        {
+          "line": 97,
+          "text": "- Local hardware WebView, JavaScript and Chinese text."
+        },
+        {
+          "line": 98,
+          "text": "- HTTPS example.com: page-finished 374 ms, JavaScript callback 401 ms in this"
+        },
+        {
+          "line": 99,
+          "text": "  single functional run; not a network benchmark."
+        },
+        {
+          "line": 100,
+          "text": "- PASS direct-buffer UDP, abstract Unix datagram, multicast loopback, asynchronous"
+        },
+        {
+          "line": 101,
+          "text": "  DatagramSocket.close. The 113 ms close-test duration includes a deliberate"
+        },
+        {
+          "line": 102,
+          "text": "  100 ms pre-close sleep; it is not 113 ms close latency."
+        },
+        {
+          "line": 103,
+          "text": "- PASS AES-256 encrypt/decrypt and kernel-backed SecureRandom smoke test."
+        },
+        {
+          "line": 104,
+          "text": "- PASS valid EC chain; reject untrusted root, expired leaf and tampered signature."
+        },
+        {
+          "line": 105,
+          "text": ""
+        },
+        {
+          "line": 106,
+          "text": "No trust anchors were added and SSL errors are never bypassed. A separate"
+        },
+        {
+          "line": 107,
+          "text": "`TrustProbe` still reports a PKIX failure when it revalidates only the leaf"
+        },
+        {
+          "line": 108,
+          "text": "returned by the existing native HttpsURLConnection wrapper. That wrapper lacks"
+        },
+        {
+          "line": 109,
+          "text": "the full peer-chain API; it is an open API-fidelity gap, not evidence that the"
+        },
+        {
+          "line": 110,
+          "text": "successful Chromium HTTPS navigation accepted an invalid certificate."
+        },
+        {
+          "line": 163,
+          "text": "baseline suspension/resumption with a device-side automatic-resume watchdog."
+        },
+        {
+          "line": 164,
+          "text": "This materially changes the load and must not be hidden in the comparison."
+        },
+        {
+          "line": 165,
+          "text": ""
+        },
+        {
+          "line": 166,
+          "text": "The close offline medians are encouraging but **do not establish native parity**:"
+        },
+        {
+          "line": 167,
+          "text": "device resolution/density and WebView versions differ, background/thermal state"
+        },
+        {
+          "line": 168,
+          "text": "is not fully controlled, one earlier EGL startup failed, and visual-state /"
+        },
+        {
+          "line": 169,
+          "text": "Choreographer callbacks do not measure actual panel presentation. The OnePlus"
+        },
+        {
+          "line": 170,
+          "text": "must be connected to working internet before live Toutiao page-load comparisons."
+        },
+        {
+          "line": 171,
+          "text": ""
+        },
+        {
+          "line": 172,
+          "text": "## Preserved baseline and unresolved work"
+        },
+        {
+          "line": 173,
+          "text": ""
+        },
+        {
+          "line": 174,
+          "text": "`final-baseline-integrity.log` verifies the accepted ART MD5"
+        },
+        {
+          "line": 175,
+          "text": "`c8b5e7352662109ddcb9ca3b97020894`, bridge MD5"
+        },
+        {
+          "line": 176,
+          "text": "`b58ed9c01a93df2601e9c0671afdf2df`, global HWUI MD5"
+        },
+        {
+          "line": 177,
+          "text": "`7962c1a77b8f674bf01dfa612e053481`, unchanged Toutiao APK and original data inode."
+        },
+        {
+          "line": 178,
+          "text": "No Wi-Fi settings, security policy, system CA store or original app data were"
+        },
+        {
+          "line": 179,
+          "text": "rewritten. Baseline runtime files were not replaced."
+        }
+      ],
+      "last_path_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/activity/jni/activity_task_manager_adapter.cpp",
+      "sha256": "934c475063a49e7eff10228d9e9d1d23c8930509e4d70e652df2b21608e021fb",
+      "rows": [
+        {
+          "line": 419,
+          "text": "// Continue WebViewFactory's upstream provider-loading sequence from the"
+        },
+        {
+          "line": 420,
+          "text": "// selected OH update-service object.  This is used only when the factory's"
+        },
+        {
+          "line": 421,
+          "text": "// getUpdateServiceUnchecked() loses the local Stub object in bytecode"
+        },
+        {
+          "line": 422,
+          "text": "// Stub.asInterface dispatch.  Provider selection, PackageInfo construction,"
+        },
+        {
+          "line": 423,
+          "text": "// APK code/resources, and Chromium initialization still come from the generic"
+        },
+        {
+          "line": 424,
+          "text": "// WebView service/package boundary; no app URL or content is substituted."
+        },
+        {
+          "line": 425,
+          "text": "static jclass wl_get_webview_provider_class_direct("
+        },
+        {
+          "line": 426,
+          "text": "        JNIEnv* env, jobject application, jclass factoryClass) {"
+        },
+        {
+          "line": 427,
+          "text": "    auto fail = [env](const char* where) -> jclass {"
+        },
+        {
+          "line": 428,
+          "text": "        if (env->ExceptionCheck()) {"
+        },
+        {
+          "line": 429,
+          "text": "            wl_log_and_clear_webview_exception(env, where);"
+        },
+        {
+          "line": 430,
+          "text": "        } else {"
+        },
+        {
+          "line": 431,
+          "text": "            fprintf(stderr, \"[WESTLAKE-WEBVIEW-PROVIDER] %s returned null\\n\", where);"
+        },
+        {
+          "line": 432,
+          "text": "            fflush(stderr);"
+        },
+        {
+          "line": 433,
+          "text": "        }"
+        },
+        {
+          "line": 434,
+          "text": "        return nullptr;"
+        },
+        {
+          "line": 435,
+          "text": "    };"
+        },
+        {
+          "line": 436,
+          "text": ""
+        },
+        {
+          "line": 437,
+          "text": "    jclass updateClass = env->FindClass(\"adapter/core/WebViewUpdateServiceAdapter\");"
+        },
+        {
+          "line": 438,
+          "text": "    jmethodID getInstance = updateClass != nullptr"
+        },
+        {
+          "line": 439,
+          "text": "        ? env->GetStaticMethodID(updateClass, \"getInstance\","
+        },
+        {
+          "line": 440,
+          "text": "                                 \"()Ladapter/core/WebViewUpdateServiceAdapter;\")"
+        },
+        {
+          "line": 441,
+          "text": "        : nullptr;"
+        },
+        {
+          "line": 442,
+          "text": "    jobject updateService = getInstance != nullptr"
+        },
+        {
+          "line": 443,
+          "text": "        ? env->CallStaticObjectMethod(updateClass, getInstance) : nullptr;"
+        },
+        {
+          "line": 444,
+          "text": "    if (env->ExceptionCheck() || updateService == nullptr) {"
+        },
+        {
+          "line": 445,
+          "text": "        return fail(\"direct WebViewUpdateServiceAdapter.getInstance\");"
+        },
+        {
+          "line": 446,
+          "text": "    }"
+        },
+        {
+          "line": 447,
+          "text": ""
+        },
+        {
+          "line": 448,
+          "text": "    jmethodID waitForProvider = env->GetMethodID("
+        },
+        {
+          "line": 449,
+          "text": "        updateClass, \"waitForAndGetProvider\","
+        },
+        {
+          "line": 450,
+          "text": "        \"()Landroid/webkit/WebViewProviderResponse;\");"
+        },
+        {
+          "line": 451,
+          "text": "    jobject response = waitForProvider != nullptr"
+        },
+        {
+          "line": 452,
+          "text": "        ? env->CallObjectMethod(updateService, waitForProvider) : nullptr;"
+        },
+        {
+          "line": 453,
+          "text": "    if (env->ExceptionCheck() || response == nullptr) {"
+        },
+        {
+          "line": 454,
+          "text": "        return fail(\"direct waitForAndGetProvider\");"
+        },
+        {
+          "line": 455,
+          "text": "    }"
+        },
+        {
+          "line": 456,
+          "text": ""
+        },
+        {
+          "line": 457,
+          "text": "    jclass responseClass = env->FindClass(\"android/webkit/WebViewProviderResponse\");"
+        },
+        {
+          "line": 458,
+          "text": "    jfieldID statusField = responseClass != nullptr"
+        },
+        {
+          "line": 459,
+          "text": "        ? env->GetFieldID(responseClass, \"status\", \"I\") : nullptr;"
+        },
+        {
+          "line": 460,
+          "text": "    jfieldID packageInfoField = responseClass != nullptr"
+        },
+        {
+          "line": 461,
+          "text": "        ? env->GetFieldID(responseClass, \"packageInfo\","
+        },
+        {
+          "line": 462,
+          "text": "                          \"Landroid/content/pm/PackageInfo;\") : nullptr;"
+        },
+        {
+          "line": 463,
+          "text": "    jint status = statusField != nullptr ? env->GetIntField(response, statusField) : -1;"
+        },
+        {
+          "line": 464,
+          "text": "    jobject packageInfo = packageInfoField != nullptr"
+        },
+        {
+          "line": 465,
+          "text": "        ? env->GetObjectField(response, packageInfoField) : nullptr;"
+        },
+        {
+          "line": 466,
+          "text": "    if (env->ExceptionCheck() || status != 0 || packageInfo == nullptr) {"
+        },
+        {
+          "line": 467,
+          "text": "        return fail(\"direct WebViewProviderResponse\");"
+        },
+        {
+          "line": 468,
+          "text": "    }"
+        },
+        {
+          "line": 469,
+          "text": ""
+        },
+        {
+          "line": 470,
+          "text": "    jclass packageInfoClass = env->FindClass(\"android/content/pm/PackageInfo\");"
+        },
+        {
+          "line": 471,
+          "text": "    jfieldID applicationInfoField = packageInfoClass != nullptr"
+        },
+        {
+          "line": 472,
+          "text": "        ? env->GetFieldID(packageInfoClass, \"applicationInfo\","
+        },
+        {
+          "line": 473,
+          "text": "                          \"Landroid/content/pm/ApplicationInfo;\") : nullptr;"
+        },
+        {
+          "line": 474,
+          "text": "    jobject applicationInfo = applicationInfoField != nullptr"
+        },
+        {
+          "line": 475,
+          "text": "        ? env->GetObjectField(packageInfo, applicationInfoField) : nullptr;"
+        },
+        {
+          "line": 476,
+          "text": "    if (env->ExceptionCheck() || applicationInfo == nullptr) {"
+        },
+        {
+          "line": 477,
+          "text": "        return fail(\"direct provider ApplicationInfo\");"
+        },
+        {
+          "line": 478,
+          "text": "    }"
+        },
+        {
+          "line": 479,
+          "text": ""
+        },
+        {
+          "line": 480,
+          "text": "    jclass applicationClass = env->GetObjectClass(application);"
+        },
+        {
+          "line": 481,
+          "text": "    jmethodID createApplicationContext = applicationClass != nullptr"
+        },
+        {
+          "line": 482,
+          "text": "        ? env->GetMethodID(applicationClass, \"createApplicationContext\","
+        },
+        {
+          "line": 483,
+          "text": "                           \"(Landroid/content/pm/ApplicationInfo;I)Landroid/content/Context;\")"
+        },
+        {
+          "line": 484,
+          "text": "        : nullptr;"
+        },
+        {
+          "line": 485,
+          "text": "    jobject webViewContext = createApplicationContext != nullptr"
+        },
+        {
+          "line": 486,
+          "text": "        ? env->CallObjectMethod(application, createApplicationContext,"
+        },
+        {
+          "line": 487,
+          "text": "                                applicationInfo, 3 /* INCLUDE_CODE | IGNORE_SECURITY */)"
+        },
+        {
+          "line": 488,
+          "text": "        : nullptr;"
+        },
+        {
+          "line": 489,
+          "text": "    if (env->ExceptionCheck() || webViewContext == nullptr) {"
+        },
+        {
+          "line": 490,
+          "text": "        return fail(\"direct createApplicationContext\");"
+        },
+        {
+          "line": 491,
+          "text": "    }"
+        },
+        {
+          "line": 492,
+          "text": ""
+        },
+        {
+          "line": 493,
+          "text": "    jfieldID loadedPackageInfo = env->GetStaticFieldID("
+        },
+        {
+          "line": 494,
+          "text": "        factoryClass, \"sPackageInfo\", \"Landroid/content/pm/PackageInfo;\");"
+        },
+        {
+          "line": 495,
+          "text": "    if (env->ExceptionCheck() || loadedPackageInfo == nullptr) {"
+        },
+        {
+          "line": 496,
+          "text": "        return fail(\"WebViewFactory.sPackageInfo lookup\");"
+        },
+        {
+          "line": 497,
+          "text": "    }"
+        },
+        {
+          "line": 498,
+          "text": "    env->SetStaticObjectField(factoryClass, loadedPackageInfo, packageInfo);"
+        },
+        {
+          "line": 499,
+          "text": "    if (env->ExceptionCheck()) {"
+        },
+        {
+          "line": 500,
+          "text": "        return fail(\"WebViewFactory.sPackageInfo publish\");"
+        },
+        {
+          "line": 501,
+          "text": "    }"
+        },
+        {
+          "line": 502,
+          "text": ""
+        },
+        {
+          "line": 503,
+          "text": "    // Match WebViewFactory.getProviderClass(): make the provider's resource"
+        },
+        {
+          "line": 504,
+          "text": "    // table visible to the initial app before initializing its Java class."
+        },
+        {
+          "line": 505,
+          "text": "    jclass contextClass = env->FindClass(\"android/content/Context\");"
+        },
+        {
+          "line": 506,
+          "text": "    jmethodID getAssets = contextClass != nullptr"
+        },
+        {
+          "line": 507,
+          "text": "        ? env->GetMethodID(contextClass, \"getAssets\","
+        },
+        {
+          "line": 508,
+          "text": "                           \"()Landroid/content/res/AssetManager;\") : nullptr;"
+        },
+        {
+          "line": 509,
+          "text": "    jobject assets = getAssets != nullptr"
+        },
+        {
+          "line": 510,
+          "text": "        ? env->CallObjectMethod(application, getAssets) : nullptr;"
+        },
+        {
+          "line": 511,
+          "text": "    jclass applicationInfoClass = env->FindClass(\"android/content/pm/ApplicationInfo\");"
+        },
+        {
+          "line": 512,
+          "text": "    jfieldID sourceDirField = applicationInfoClass != nullptr"
+        },
+        {
+          "line": 513,
+          "text": "        ? env->GetFieldID(applicationInfoClass, \"sourceDir\", \"Ljava/lang/String;\") : nullptr;"
+        },
+        {
+          "line": 514,
+          "text": "    jstring sourceDir = sourceDirField != nullptr"
+        },
+        {
+          "line": 515,
+          "text": "        ? static_cast<jstring>(env->GetObjectField(applicationInfo, sourceDirField)) : nullptr;"
+        },
+        {
+          "line": 516,
+          "text": "    jclass assetManagerClass = env->FindClass(\"android/content/res/AssetManager\");"
+        },
+        {
+          "line": 517,
+          "text": "    jmethodID addSharedAsset = assetManagerClass != nullptr"
+        },
+        {
+          "line": 518,
+          "text": "        ? env->GetMethodID(assetManagerClass, \"addAssetPathAsSharedLibrary\","
+        },
+        {
+          "line": 519,
+          "text": "                           \"(Ljava/lang/String;)I\") : nullptr;"
+        },
+        {
+          "line": 520,
+          "text": "    jint assetCookie = (assets != nullptr && sourceDir != nullptr && addSharedAsset != nullptr)"
+        },
+        {
+          "line": 521,
+          "text": "        ? env->CallIntMethod(assets, addSharedAsset, sourceDir) : 0;"
+        },
+        {
+          "line": 522,
+          "text": "    if (env->ExceptionCheck() || assetCookie == 0) {"
+        },
+        {
+          "line": 523,
+          "text": "        return fail(\"provider addAssetPathAsSharedLibrary\");"
+        },
+        {
+          "line": 524,
+          "text": "    }"
+        },
+        {
+          "line": 525,
+          "text": ""
+        },
+        {
+          "line": 526,
+          "text": "    jmethodID getClassLoader = contextClass != nullptr"
+        },
+        {
+          "line": 527,
+          "text": "        ? env->GetMethodID(contextClass, \"getClassLoader\","
+        },
+        {
+          "line": 528,
+          "text": "                           \"()Ljava/lang/ClassLoader;\") : nullptr;"
+        },
+        {
+          "line": 529,
+          "text": "    jobject classLoader = getClassLoader != nullptr"
+        },
+        {
+          "line": 530,
+          "text": "        ? env->CallObjectMethod(webViewContext, getClassLoader) : nullptr;"
+        },
+        {
+          "line": 531,
+          "text": "    if (env->ExceptionCheck() || classLoader == nullptr) {"
+        },
+        {
+          "line": 532,
+          "text": "        return fail(\"provider Context.getClassLoader\");"
+        },
+        {
+          "line": 533,
+          "text": "    }"
+        },
+        {
+          "line": 534,
+          "text": ""
+        },
+        {
+          "line": 535,
+          "text": "    // Upstream ignores the integer load result and lets provider startup load"
+        },
+        {
+          "line": 536,
+          "text": "    // without a shared RELRO when zygote reservation is unavailable.  Preserve"
+        },
+        {
+          "line": 537,
+          "text": "    // that behavior, but surface exceptions and continue to class loading."
+        },
+        {
+          "line": 538,
+          "text": "    jmethodID getLibrary = env->GetStaticMethodID("
+        },
+        {
+          "line": 539,
+          "text": "        factoryClass, \"getWebViewLibrary\","
+        },
+        {
+          "line": 540,
+          "text": "        \"(Landroid/content/pm/ApplicationInfo;)Ljava/lang/String;\");"
+        },
+        {
+          "line": 541,
+          "text": "    jstring library = getLibrary != nullptr"
+        },
+        {
+          "line": 542,
+          "text": "        ? static_cast<jstring>(env->CallStaticObjectMethod("
+        },
+        {
+          "line": 543,
+          "text": "              factoryClass, getLibrary, applicationInfo)) : nullptr;"
+        },
+        {
+          "line": 544,
+          "text": "    jclass loaderClass = env->FindClass(\"android/webkit/WebViewLibraryLoader\");"
+        },
+        {
+          "line": 545,
+          "text": "    jmethodID loadNative = loaderClass != nullptr"
+        },
+        {
+          "line": 546,
+          "text": "        ? env->GetStaticMethodID(loaderClass, \"loadNativeLibrary\","
+        },
+        {
+          "line": 547,
+          "text": "                                 \"(Ljava/lang/ClassLoader;Ljava/lang/String;)I\")"
+        },
+        {
+          "line": 548,
+          "text": "        : nullptr;"
+        },
+        {
+          "line": 549,
+          "text": "    jint loadResult = -1;"
+        },
+        {
+          "line": 550,
+          "text": "    if (!env->ExceptionCheck() && loadNative != nullptr && library != nullptr) {"
+        },
+        {
+          "line": 551,
+          "text": "        loadResult = env->CallStaticIntMethod(loaderClass, loadNative, classLoader, library);"
+        },
+        {
+          "line": 552,
+          "text": "    }"
+        },
+        {
+          "line": 553,
+          "text": "    if (env->ExceptionCheck()) {"
+        },
+        {
+          "line": 554,
+          "text": "        wl_log_and_clear_webview_exception(env, \"WebViewLibraryLoader.loadNativeLibrary\");"
+        },
+        {
+          "line": 555,
+          "text": "    }"
+        },
+        {
+          "line": 556,
+          "text": ""
+        },
+        {
+          "line": 557,
+          "text": "    jmethodID getProviderClass = env->GetStaticMethodID("
+        },
+        {
+          "line": 558,
+          "text": "        factoryClass, \"getWebViewProviderClass\","
+        },
+        {
+          "line": 559,
+          "text": "        \"(Ljava/lang/ClassLoader;)Ljava/lang/Class;\");"
+        },
+        {
+          "line": 560,
+          "text": "    jclass providerClass = getProviderClass != nullptr"
+        },
+        {
+          "line": 561,
+          "text": "        ? static_cast<jclass>(env->CallStaticObjectMethod("
+        },
+        {
+          "line": 562,
+          "text": "              factoryClass, getProviderClass, classLoader)) : nullptr;"
+        },
+        {
+          "line": 563,
+          "text": "    if (env->ExceptionCheck() || providerClass == nullptr) {"
+        },
+        {
+          "line": 564,
+          "text": "        return fail(\"WebViewFactory.getWebViewProviderClass direct\");"
+        },
+        {
+          "line": 565,
+          "text": "    }"
+        },
+        {
+          "line": 566,
+          "text": ""
+        },
+        {
+          "line": 567,
+          "text": "    fprintf(stderr,"
+        },
+        {
+          "line": 568,
+          "text": "            \"[WESTLAKE-WEBVIEW-PROVIDER] direct provider class ready asset=%d native=%d\\n\","
+        },
+        {
+          "line": 569,
+          "text": "            assetCookie, loadResult);"
+        },
+        {
+          "line": 570,
+          "text": "    fflush(stderr);"
+        },
+        {
+          "line": 697,
+          "text": ""
+        },
+        {
+          "line": 698,
+          "text": "static void wl_stabilize_direct_launch_webview_provider(JNIEnv* env) {"
+        },
+        {
+          "line": 699,
+          "text": "    jclass activityThreadClass = env->FindClass(\"android/app/ActivityThread\");"
+        },
+        {
+          "line": 700,
+          "text": "    jmethodID currentApplication = activityThreadClass != nullptr"
+        },
+        {
+          "line": 701,
+          "text": "        ? env->GetStaticMethodID(activityThreadClass, \"currentApplication\","
+        },
+        {
+          "line": 702,
+          "text": "                                 \"()Landroid/app/Application;\") : nullptr;"
+        },
+        {
+          "line": 703,
+          "text": "    jobject application = currentApplication != nullptr"
+        },
+        {
+          "line": 704,
+          "text": "        ? env->CallStaticObjectMethod(activityThreadClass, currentApplication) : nullptr;"
+        },
+        {
+          "line": 705,
+          "text": "    if (env->ExceptionCheck() || application == nullptr) {"
+        },
+        {
+          "line": 706,
+          "text": "        wl_log_and_clear_webview_exception(env, \"currentApplication\");"
+        },
+        {
+          "line": 707,
+          "text": "        return;"
+        },
+        {
+          "line": 708,
+          "text": "    }"
+        },
+        {
+          "line": 709,
+          "text": ""
+        },
+        {
+          "line": 710,
+          "text": "    jclass applicationClass = env->GetObjectClass(application);"
+        },
+        {
+          "line": 711,
+          "text": "    jmethodID getClassLoader = applicationClass != nullptr"
+        },
+        {
+          "line": 712,
+          "text": "        ? env->GetMethodID(applicationClass, \"getClassLoader\","
+        },
+        {
+          "line": 713,
+          "text": "                           \"()Ljava/lang/ClassLoader;\") : nullptr;"
+        },
+        {
+          "line": 714,
+          "text": "    jobject classLoader = getClassLoader != nullptr"
+        },
+        {
+          "line": 715,
+          "text": "        ? env->CallObjectMethod(application, getClassLoader) : nullptr;"
+        },
+        {
+          "line": 716,
+          "text": "    if (env->ExceptionCheck() || classLoader == nullptr) {"
+        },
+        {
+          "line": 717,
+          "text": "        wl_log_and_clear_webview_exception(env, \"Application.getClassLoader\");"
+        },
+        {
+          "line": 718,
+          "text": "        return;"
+        },
+        {
+          "line": 719,
+          "text": "    }"
+        },
+        {
+          "line": 720,
+          "text": ""
+        },
+        {
+          "line": 721,
+          "text": "    jclass classLoaderClass = env->FindClass(\"java/lang/ClassLoader\");"
+        },
+        {
+          "line": 722,
+          "text": "    jmethodID loadClass = classLoaderClass != nullptr"
+        },
+        {
+          "line": 723,
+          "text": "        ? env->GetMethodID(classLoaderClass, \"loadClass\","
+        }
+      ],
+      "last_path_commit": "e2b0bf669ca33459c74618883614f4c603fbccbb"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/core/java/WebViewUpdateServiceAdapter.java",
+      "sha256": "53b93599cde83d6e417d4933b759c10e15d32fd4959232a3d3569a932865b584",
+      "rows": [
+        {
+          "line": 25,
+          "text": "        return INSTANCE;"
+        },
+        {
+          "line": 26,
+          "text": "    }"
+        },
+        {
+          "line": 27,
+          "text": ""
+        },
+        {
+          "line": 28,
+          "text": "    public static boolean isAvailable() {"
+        },
+        {
+          "line": 29,
+          "text": "        return PackageManagerAdapter.getSideloadedWebViewPackageInfo() != null;"
+        },
+        {
+          "line": 30,
+          "text": "    }"
+        },
+        {
+          "line": 31,
+          "text": ""
+        },
+        {
+          "line": 32,
+          "text": "    @Override"
+        },
+        {
+          "line": 33,
+          "text": "    public WebViewProviderResponse waitForAndGetProvider() {"
+        },
+        {
+          "line": 34,
+          "text": "        PackageInfo pi = PackageManagerAdapter.getSideloadedWebViewPackageInfo();"
+        },
+        {
+          "line": 35,
+          "text": "        System.err.println(\"[WESTLAKE-WEBVIEW] waitForAndGetProvider package=\""
+        },
+        {
+          "line": 36,
+          "text": "                + (pi != null ? pi.packageName : \"<missing>\"));"
+        },
+        {
+          "line": 37,
+          "text": "        // LIBLOAD_SUCCESS. The provider APK and native library are then loaded"
+        },
+        {
+          "line": 38,
+          "text": "        // by the normal WebViewFactory path in framework.jar."
+        },
+        {
+          "line": 39,
+          "text": "        return new WebViewProviderResponse(pi, pi != null ? 0 : 4);"
+        },
+        {
+          "line": 40,
+          "text": "    }"
+        },
+        {
+          "line": 41,
+          "text": ""
+        },
+        {
+          "line": 42,
+          "text": "    @Override"
+        },
+        {
+          "line": 43,
+          "text": "    public PackageInfo getCurrentWebViewPackage() {"
+        },
+        {
+          "line": 44,
+          "text": "        return PackageManagerAdapter.getSideloadedWebViewPackageInfo();"
+        },
+        {
+          "line": 45,
+          "text": "    }"
+        },
+        {
+          "line": 46,
+          "text": ""
+        },
+        {
+          "line": 47,
+          "text": "    @Override"
+        },
+        {
+          "line": 48,
+          "text": "    public String getCurrentWebViewPackageName() {"
+        },
+        {
+          "line": 49,
+          "text": "        PackageInfo pi = getCurrentWebViewPackage();"
+        },
+        {
+          "line": 50,
+          "text": "        return pi != null ? pi.packageName : null;"
+        },
+        {
+          "line": 51,
+          "text": "    }"
+        },
+        {
+          "line": 52,
+          "text": ""
+        },
+        {
+          "line": 53,
+          "text": "    @Override"
+        },
+        {
+          "line": 54,
+          "text": "    public String changeProviderAndSetting(String newProvider) {"
+        },
+        {
+          "line": 55,
+          "text": "        return getCurrentWebViewPackageName();"
+        },
+        {
+          "line": 56,
+          "text": "    }"
+        },
+        {
+          "line": 57,
+          "text": ""
+        },
+        {
+          "line": 58,
+          "text": "    @Override"
+        },
+        {
+          "line": 59,
+          "text": "    public WebViewProviderInfo[] getAllWebViewPackages() {"
+        },
+        {
+          "line": 60,
+          "text": "        return new WebViewProviderInfo[0];"
+        },
+        {
+          "line": 61,
+          "text": "    }"
+        },
+        {
+          "line": 62,
+          "text": ""
+        },
+        {
+          "line": 63,
+          "text": "    @Override"
+        },
+        {
+          "line": 64,
+          "text": "    public WebViewProviderInfo[] getValidWebViewPackages() {"
+        },
+        {
+          "line": 65,
+          "text": "        return new WebViewProviderInfo[0];"
+        },
+        {
+          "line": 66,
+          "text": "    }"
+        },
+        {
+          "line": 67,
+          "text": ""
+        },
+        {
+          "line": 68,
+          "text": "    @Override"
+        },
+        {
+          "line": 69,
+          "text": "    public boolean isMultiProcessEnabled() {"
+        },
+        {
+          "line": 70,
+          "text": "        // appspawn-x does not yet host Chromium renderer child services."
+        },
+        {
+          "line": 71,
+          "text": "        return false;"
+        },
+        {
+          "line": 72,
+          "text": "    }"
+        },
+        {
+          "line": 73,
+          "text": ""
+        },
+        {
+          "line": 74,
+          "text": "    @Override"
+        },
+        {
+          "line": 75,
+          "text": "    public void enableMultiProcess(boolean enable) {}"
+        },
+        {
+          "line": 76,
+          "text": ""
+        },
+        {
+          "line": 77,
+          "text": "    @Override"
+        },
+        {
+          "line": 78,
+          "text": "    public void notifyRelroCreationCompleted() {}"
+        },
+        {
+          "line": 79,
+          "text": ""
+        },
+        {
+          "line": 80,
+          "text": "    // Android 15 service boundary. Unsupported OH capabilities fail explicitly."
+        },
+        {
+          "line": 81,
+          "text": "    @Override"
+        },
+        {
+          "line": 82,
+          "text": "    public android.webkit.WebViewProviderInfo getDefaultWebViewPackage() throws android.os.RemoteException {"
+        },
+        {
+          "line": 83,
+          "text": "        PackageInfo pi = getCurrentWebViewPackage();"
+        },
+        {
+          "line": 84,
+          "text": "        return pi == null ? null : new WebViewProviderInfo(pi.packageName, \"Westlake WebView\", true, false, new String[0]);"
+        },
+        {
+          "line": 85,
+          "text": "    }"
+        },
+        {
+          "line": 86,
+          "text": "}"
+        }
+      ],
+      "last_path_commit": "e2b0bf669ca33459c74618883614f4c603fbccbb"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/package-manager/java/PackageManagerAdapter.java",
+      "sha256": "ecf5d6ed1515d696f717c51b5e509b952e480f2676654c2ac51f651e7c22e818",
+      "rows": [
+        {
+          "line": 54,
+          "text": "     * WebViewUpdateService has selected an installed provider.  appspawn-x has"
+        },
+        {
+          "line": 55,
+          "text": "     * neither Android PMS nor SystemServer, so a board-matched provider can be"
+        },
+        {
+          "line": 56,
+          "text": "     * supplied explicitly with ASX_WEBVIEW_APK.  Keeping this representation in"
+        },
+        {
+          "line": 57,
+          "text": "     * the package-manager adapter lets the unmodified framework continue through"
+        },
+        {
+          "line": 58,
+          "text": "     * WebViewFactory's normal verification, context creation, class loading, and"
+        },
+        {
+          "line": 59,
+          "text": "     * provider factory paths."
+        },
+        {
+          "line": 60,
+          "text": "     */"
+        },
+        {
+          "line": 61,
+          "text": "    private static final String SIDELOADED_WEBVIEW_PACKAGE = \"com.android.webview\";"
+        },
+        {
+          "line": 62,
+          "text": "    private static final int SIDELOADED_WEBVIEW_VERSION_CODE = 541412303;"
+        },
+        {
+          "line": 63,
+          "text": "    private static final String SIDELOADED_WEBVIEW_VERSION_NAME = \"109.0.5414.123\";"
+        },
+        {
+          "line": 64,
+          "text": ""
+        },
+        {
+          "line": 65,
+          "text": "    private static String getenv(String name, String fallback) {"
+        },
+        {
+          "line": 66,
+          "text": "        String value = System.getenv(name);"
+        },
+        {
+          "line": 67,
+          "text": "        return value == null || value.isEmpty() ? fallback : value;"
+        },
+        {
+          "line": 68,
+          "text": "    }"
+        },
+        {
+          "line": 69,
+          "text": ""
+        },
+        {
+          "line": 70,
+          "text": "    /** Returns null unless an explicitly configured provider APK exists. */"
+        },
+        {
+          "line": 71,
+          "text": "    public static PackageInfo getSideloadedWebViewPackageInfo() {"
+        },
+        {
+          "line": 72,
+          "text": "        String apkPath = System.getenv(\"ASX_WEBVIEW_APK\");"
+        },
+        {
+          "line": 73,
+          "text": "        if (apkPath == null || apkPath.isEmpty()"
+        },
+        {
+          "line": 74,
+          "text": "                || !new java.io.File(apkPath).isFile()) {"
+        },
+        {
+          "line": 75,
+          "text": "            return null;"
+        },
+        {
+          "line": 76,
+          "text": "        }"
+        },
+        {
+          "line": 77,
+          "text": ""
+        },
+        {
+          "line": 78,
+          "text": "        String libDir = getenv(\"ASX_WEBVIEW_LIB_DIR\","
+        },
+        {
+          "line": 79,
+          "text": "                \"/data/local/tmp/asx/webview-t-lib\");"
+        },
+        {
+          "line": 80,
+          "text": "        String dataDir = getenv(\"ASX_WEBVIEW_DATA_DIR\","
+        },
+        {
+          "line": 81,
+          "text": "                \"/data/local/tmp/asx/webview-t-data\");"
+        },
+        {
+          "line": 82,
+          "text": ""
+        },
+        {
+          "line": 83,
+          "text": "        ApplicationInfo ai = new ApplicationInfo();"
+        },
+        {
+          "line": 84,
+          "text": "        ai.packageName = SIDELOADED_WEBVIEW_PACKAGE;"
+        },
+        {
+          "line": 85,
+          "text": "        ai.processName = SIDELOADED_WEBVIEW_PACKAGE;"
+        },
+        {
+          "line": 86,
+          "text": "        ai.className = \"org.chromium.android_webview.nonembedded.WebViewApkApplication\";"
+        },
+        {
+          "line": 87,
+          "text": "        ai.sourceDir = apkPath;"
+        },
+        {
+          "line": 88,
+          "text": "        ai.publicSourceDir = apkPath;"
+        },
+        {
+          "line": 89,
+          "text": "        ai.scanSourceDir = apkPath;"
+        },
+        {
+          "line": 90,
+          "text": "        ai.scanPublicSourceDir = apkPath;"
+        },
+        {
+          "line": 91,
+          "text": "        ai.dataDir = dataDir;"
+        },
+        {
+          "line": 92,
+          "text": "        ai.deviceProtectedDataDir = dataDir;"
+        },
+        {
+          "line": 93,
+          "text": "        ai.credentialProtectedDataDir = dataDir;"
+        },
+        {
+          "line": 94,
+          "text": "        ai.nativeLibraryDir = libDir;"
+        },
+        {
+          "line": 95,
+          "text": "        ai.nativeLibraryRootDir = libDir;"
+        },
+        {
+          "line": 96,
+          "text": "        ai.nativeLibraryRootRequiresIsa = false;"
+        },
+        {
+          "line": 97,
+          "text": "        ai.primaryCpuAbi = \"arm64-v8a\";"
+        },
+        {
+          "line": 98,
+          "text": "        ai.uid = android.os.Process.myUid();"
+        },
+        {
+          "line": 99,
+          "text": "        ai.enabled = true;"
+        },
+        {
+          "line": 100,
+          "text": "        // This is deliberately represented as an installed data package, not"
+        },
+        {
+          "line": 101,
+          "text": "        // FLAG_SYSTEM. LoadedApk's bundled-system-app branch derives a native"
+        },
+        {
+          "line": 102,
+          "text": "        // search path from the platform install root; a provider staged at the"
+        },
+        {
+          "line": 103,
+          "text": "        // OH boundary has an explicit nativeLibraryDir instead."
+        },
+        {
+          "line": 104,
+          "text": "        ai.flags = ApplicationInfo.FLAG_HAS_CODE"
+        },
+        {
+          "line": 105,
+          "text": "                | ApplicationInfo.FLAG_INSTALLED"
+        },
+        {
+          "line": 106,
+          "text": "                | ApplicationInfo.FLAG_EXTRACT_NATIVE_LIBS"
+        },
+        {
+          "line": 107,
+          "text": "                | ApplicationInfo.FLAG_MULTIARCH;"
+        },
+        {
+          "line": 108,
+          "text": "        ai.minSdkVersion = 24;"
+        },
+        {
+          "line": 109,
+          "text": "        ai.targetSdkVersion = 33;"
+        },
+        {
+          "line": 110,
+          "text": "        ai.compileSdkVersion = 33;"
+        },
+        {
+          "line": 111,
+          "text": "        ai.versionCode = SIDELOADED_WEBVIEW_VERSION_CODE;"
+        },
+        {
+          "line": 112,
+          "text": "        ai.longVersionCode = SIDELOADED_WEBVIEW_VERSION_CODE;"
+        },
+        {
+          "line": 113,
+          "text": "        ai.splitSourceDirs = new String[0];"
+        },
+        {
+          "line": 114,
+          "text": "        ai.splitPublicSourceDirs = new String[0];"
+        },
+        {
+          "line": 115,
+          "text": "        ai.splitNames = new String[0];"
+        },
+        {
+          "line": 116,
+          "text": "        ai.splitDependencies = new android.util.SparseArray<int[]>(0);"
+        },
+        {
+          "line": 117,
+          "text": "        ai.sharedLibraryFiles = new String[0];"
+        },
+        {
+          "line": 118,
+          "text": "        ai.resourceDirs = new String[0];"
+        },
+        {
+          "line": 119,
+          "text": "        ai.seInfo = \"default\";"
+        },
+        {
+          "line": 120,
+          "text": "        ai.seInfoUser = \"\";"
+        },
+        {
+          "line": 121,
+          "text": "        ai.metaData = new android.os.Bundle();"
+        },
+        {
+          "line": 122,
+          "text": "        ai.metaData.putString(\"com.android.webview.WebViewLibrary\","
+        },
+        {
+          "line": 123,
+          "text": "                \"libwebviewchromium.so\");"
+        },
+        {
+          "line": 124,
+          "text": ""
+        },
+        {
+          "line": 125,
+          "text": "        PackageInfo pi = new PackageInfo();"
+        },
+        {
+          "line": 126,
+          "text": "        pi.packageName = SIDELOADED_WEBVIEW_PACKAGE;"
+        },
+        {
+          "line": 127,
+          "text": "        pi.versionCode = SIDELOADED_WEBVIEW_VERSION_CODE;"
+        },
+        {
+          "line": 128,
+          "text": "        pi.versionName = SIDELOADED_WEBVIEW_VERSION_NAME;"
+        },
+        {
+          "line": 129,
+          "text": "        pi.compileSdkVersion = 33;"
+        },
+        {
+          "line": 130,
+          "text": "        pi.applicationInfo = ai;"
+        },
+        {
+          "line": 131,
+          "text": "        // Both WebViewUpdateServiceAdapter and IPackageManager return an"
+        },
+        {
+          "line": 132,
+          "text": "        // equivalent unsigned package. WebViewFactory treats two null signature"
+        },
+        {
+          "line": 133,
+          "text": "        // arrays as equal, while still checking package name, version, and"
+        },
+        {
+          "line": 134,
+          "text": "        // WebViewLibrary metadata exactly as upstream does."
+        },
+        {
+          "line": 135,
+          "text": "        pi.signatures = null;"
+        },
+        {
+          "line": 136,
+          "text": "        return pi;"
+        },
+        {
+          "line": 137,
+          "text": "    }"
+        },
+        {
+          "line": 138,
+          "text": ""
+        },
+        {
+          "line": 139,
+          "text": "    private static boolean isSideloadedWebViewPackage(String packageName) {"
+        },
+        {
+          "line": 140,
+          "text": "        return SIDELOADED_WEBVIEW_PACKAGE.equals(packageName)"
+        },
+        {
+          "line": 141,
+          "text": "                && getSideloadedWebViewPackageInfo() != null;"
+        },
+        {
+          "line": 142,
+          "text": "    }"
+        },
+        {
+          "line": 143,
+          "text": ""
+        },
+        {
+          "line": 144,
+          "text": "    private static volatile PackageManagerAdapter sInstance;"
+        },
+        {
+          "line": 145,
+          "text": ""
+        },
+        {
+          "line": 146,
+          "text": "    public static PackageManagerAdapter getInstance() {"
+        },
+        {
+          "line": 147,
+          "text": "        if (sInstance == null) {"
+        },
+        {
+          "line": 148,
+          "text": "            synchronized (PackageManagerAdapter.class) {"
+        },
+        {
+          "line": 149,
+          "text": "                if (sInstance == null) {"
+        },
+        {
+          "line": 150,
+          "text": "                    sInstance = new PackageManagerAdapter();"
+        },
+        {
+          "line": 151,
+          "text": "                }"
+        },
+        {
+          "line": 152,
+          "text": "            }"
+        },
+        {
+          "line": 153,
+          "text": "        }"
+        },
+        {
+          "line": 154,
+          "text": "        return sInstance;"
+        },
+        {
+          "line": 155,
+          "text": "    }"
+        },
+        {
+          "line": 156,
+          "text": ""
+        },
+        {
+          "line": 157,
+          "text": "    public PackageManagerAdapter() { super(OHPermissionEnforcer.getInstance()); }"
+        },
+        {
+          "line": 158,
+          "text": ""
+        },
+        {
+          "line": 159,
+          "text": "    @Override"
+        },
+        {
+          "line": 160,
+          "text": "    public boolean[] canPackageQuery(String callerPackage, String[] targetPackages, int userId) {"
+        },
+        {
+          "line": 161,
+          "text": "        boolean[] r = new boolean[targetPackages != null ? targetPackages.length : 0];"
+        },
+        {
+          "line": 162,
+          "text": "        java.util.Arrays.fill(r, true);"
+        },
+        {
+          "line": 163,
+          "text": "        return r;"
+        },
+        {
+          "line": 164,
+          "text": "    }"
+        },
+        {
+          "line": 165,
+          "text": ""
+        },
+        {
+          "line": 166,
+          "text": "    @Override"
+        },
+        {
+          "line": 167,
+          "text": "    public boolean waitForHandler(long timeoutMillis, boolean forBackgroundHandler) {"
+        },
+        {
+          "line": 168,
+          "text": "        return true;"
+        },
+        {
+          "line": 169,
+          "text": "    }"
+        },
+        {
+          "line": 170,
+          "text": ""
+        },
+        {
+          "line": 171,
+          "text": "    @Override"
+        },
+        {
+          "line": 172,
+          "text": "    public void setKeepUninstalledPackages(java.util.List<String> packageNames) {"
+        },
+        {
+          "line": 173,
+          "text": "        // stub"
+        },
+        {
+          "line": 174,
+          "text": "    }"
+        },
+        {
+          "line": 175,
+          "text": ""
+        }
+      ],
+      "last_path_commit": "14157872c5b183446b2a5b10231434668f2b2612"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/window/java/OhWebViewBridge.java",
+      "sha256": "1dc2667c236157743d66e685582a09efc64fe00aa2f1a9071d20a822fd209fcf",
+      "rows": [
+        {
+          "line": 1,
+          "text": "package adapter.window;"
+        },
+        {
+          "line": 2,
+          "text": ""
+        },
+        {
+          "line": 3,
+          "text": "import android.view.View;"
+        },
+        {
+          "line": 4,
+          "text": "import android.webkit.WebView;"
+        },
+        {
+          "line": 5,
+          "text": ""
+        },
+        {
+          "line": 6,
+          "text": "/** Explicit capability fallback for OH runtimes lacking a hardware functor. */"
+        },
+        {
+          "line": 7,
+          "text": "public final class OhWebViewBridge {"
+        },
+        {
+          "line": 8,
+          "text": "    private OhWebViewBridge() {}"
+        },
+        {
+          "line": 9,
+          "text": "    public static void initialized(View view) {"
+        },
+        {
+          "line": 10,
+          "text": "        if (\"1\".equals(System.getenv(\"WESTLAKE_WEBVIEW_DEBUG\"))) {"
+        },
+        {
+          "line": 11,
+          "text": "            WebView.setWebContentsDebuggingEnabled(true);"
+        },
+        {
+          "line": 12,
+          "text": "            System.err.println(\"[OH_WEBVIEW] debugging enabled for diagnostic launch\");"
+        },
+        {
+          "line": 13,
+          "text": "        }"
+        },
+        {
+          "line": 14,
+          "text": "        if (\"1\".equals(System.getenv(\"WESTLAKE_WEBVIEW_SOFTWARE_FALLBACK\"))) {"
+        },
+        {
+          "line": 15,
+          "text": "            view.setLayerType(View.LAYER_TYPE_SOFTWARE, null);"
+        },
+        {
+          "line": 16,
+          "text": "            System.err.println(\"[OH_WEBVIEW] software fallback; hardware functor unavailable\");"
+        },
+        {
+          "line": 17,
+          "text": "        }"
+        },
+        {
+          "line": 18,
+          "text": "    }"
+        },
+        {
+          "line": 19,
+          "text": "}"
+        }
+      ],
+      "last_path_commit": "f216957627b976b59a493b558b228df41237636a"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/android-runtime/src/oh_webview_startup_order.cpp",
+      "sha256": "aa7eb153c6b8c2abb7d8cd69fb8c4c08f2fc59daf1b5d6a2dd85dc4db311c59a",
+      "rows": [
+        {
+          "line": 1,
+          "text": "/* Narrow transition shim for the pinned bridge's exported startup hooks."
+        },
+        {
+          "line": 2,
+          "text": " * Serialize cache priming and post-bind publication; a late background refresh"
+        },
+        {
+          "line": 3,
+          "text": " * must not withdraw a capability already published for this child. Delegate"
+        },
+        {
+          "line": 4,
+          "text": " * provider availability, app-context and package verification unchanged."
+        },
+        {
+          "line": 5,
+          "text": " */"
+        },
+        {
+          "line": 6,
+          "text": "#include <jni.h>"
+        },
+        {
+          "line": 7,
+          "text": "#include <dlfcn.h>"
+        },
+        {
+          "line": 8,
+          "text": "#include <mutex>"
+        },
+        {
+          "line": 9,
+          "text": "#include <unistd.h>"
+        },
+        {
+          "line": 10,
+          "text": "#include <cstdio>"
+        },
+        {
+          "line": 11,
+          "text": "#include <cstdlib>"
+        },
+        {
+          "line": 12,
+          "text": "namespace {"
+        },
+        {
+          "line": 13,
+          "text": "std::recursive_mutex mutex;"
+        },
+        {
+          "line": 14,
+          "text": "bool published = false;"
+        },
+        {
+          "line": 15,
+          "text": "bool networkRegistered = false;"
+        },
+        {
+          "line": 16,
+          "text": "bool hardwareInstalled = false;"
+        },
+        {
+          "line": 17,
+          "text": "bool tlsInstalled = false;"
+        },
+        {
+          "line": 18,
+          "text": "pid_t owner = 0;"
+        },
+        {
+          "line": 19,
+          "text": "using Hook = bool (*)(JNIEnv*);"
+        },
+        {
+          "line": 20,
+          "text": "bool call(JNIEnv* env, bool afterBind) {"
+        },
+        {
+          "line": 21,
+          "text": "    std::lock_guard<std::recursive_mutex> lock(mutex);"
+        },
+        {
+          "line": 22,
+          "text": "    if (owner != getpid()) { owner = getpid(); published = false; networkRegistered = false; hardwareInstalled = false; tlsInstalled = false; }"
+        },
+        {
+          "line": 23,
+          "text": "    if (afterBind && !tlsInstalled) {"
+        },
+        {
+          "line": 24,
+          "text": "        const char* path = getenv(\"WESTLAKE_TLS_HELPER_PATH\");"
+        },
+        {
+          "line": 25,
+          "text": "        if (path && *path) {"
+        },
+        {
+          "line": 26,
+          "text": "            void* helper = dlopen(path, RTLD_NOW);"
+        },
+        {
+          "line": 27,
+          "text": "            auto install = helper ? reinterpret_cast<int (*)(JNIEnv*)>(dlsym(helper, \"westlake_tls_child_register\")) : nullptr;"
+        },
+        {
+          "line": 28,
+          "text": "            if (!install || !install(env)) {"
+        },
+        {
+          "line": 29,
+          "text": "                fprintf(stderr, \"[OH_WEBVIEW_ORDER] TLS chain helper registration failed\\n\");"
+        },
+        {
+          "line": 30,
+          "text": "                return false;"
+        },
+        {
+          "line": 31,
+          "text": "            }"
+        },
+        {
+          "line": 32,
+          "text": "        }"
+        },
+        {
+          "line": 33,
+          "text": "        tlsInstalled = true;"
+        },
+        {
+          "line": 34,
+          "text": "    }"
+        },
+        {
+          "line": 35,
+          "text": "    if (afterBind && !networkRegistered) {"
+        },
+        {
+          "line": 36,
+          "text": "        const char* path = getenv(\"WESTLAKE_NET_HELPER_PATH\");"
+        },
+        {
+          "line": 37,
+          "text": "        void* helper = path ? dlopen(path, RTLD_NOW | RTLD_NOLOAD) : nullptr;"
+        },
+        {
+          "line": 38,
+          "text": "        auto install = helper ? reinterpret_cast<int (*)(JNIEnv*)>(dlsym(helper, \"westlake_network_child_register\")) : nullptr;"
+        },
+        {
+          "line": 39,
+          "text": "        // Older baseline helpers have no re-registration hook. Leave those"
+        },
+        {
+          "line": 40,
+          "text": "        // configurations alone; only the new candidate exports it."
+        },
+        {
+          "line": 41,
+          "text": "        bool ok = !install || install(env);"
+        },
+        {
+          "line": 42,
+          "text": "        if (helper) dlclose(helper);"
+        },
+        {
+          "line": 43,
+          "text": "        if (!ok) { fprintf(stderr, \"[OH_WEBVIEW_ORDER] network boundary registration failed\\n\"); return false; }"
+        },
+        {
+          "line": 44,
+          "text": "        networkRegistered = true;"
+        },
+        {
+          "line": 45,
+          "text": "    }"
+        },
+        {
+          "line": 46,
+          "text": "    if (afterBind && !hardwareInstalled) {"
+        },
+        {
+          "line": 47,
+          "text": "        const char* path = getenv(\"WESTLAKE_HWUI_HELPER_PATH\");"
+        },
+        {
+          "line": 48,
+          "text": "        if (path && *path) {"
+        },
+        {
+          "line": 49,
+          "text": "            // Retain the DSO: RecordingCanvas now holds its native entry point."
+        },
+        {
+          "line": 50,
+          "text": "            void* helper = dlopen(path, RTLD_NOW);"
+        },
+        {
+          "line": 51,
+          "text": "            auto install = helper ? reinterpret_cast<int (*)(JNIEnv*)>(dlsym(helper, \"westlake_install_webview_functor\")) : nullptr;"
+        },
+        {
+          "line": 52,
+          "text": "            if (!install || !install(env)) {"
+        },
+        {
+          "line": 53,
+          "text": "                fprintf(stderr, \"[OH_WEBVIEW_ORDER] hardware helper failed: %s\\n\", dlerror());"
+        },
+        {
+          "line": 54,
+          "text": "                return false;"
+        },
+        {
+          "line": 55,
+          "text": "            }"
+        },
+        {
+          "line": 56,
+          "text": "        }"
+        },
+        {
+          "line": 57,
+          "text": "        hardwareInstalled = true;"
+        },
+        {
+          "line": 58,
+          "text": "    }"
+        },
+        {
+          "line": 59,
+          "text": "    const bool publish = afterBind || published;"
+        },
+        {
+          "line": 60,
+          "text": "    const char* name = publish ? \"_Z44wl_publish_webview_update_service_after_bindP7_JNIEnv\""
+        },
+        {
+          "line": 61,
+          "text": "                              : \"_Z31wl_prime_webview_update_serviceP7_JNIEnv\";"
+        },
+        {
+          "line": 62,
+          "text": "    auto original = reinterpret_cast<Hook>(dlsym(RTLD_NEXT, name));"
+        },
+        {
+          "line": 63,
+          "text": "    if (!original) { fprintf(stderr, \"[OH_WEBVIEW_ORDER] missing original startup hook\\n\"); return false; }"
+        },
+        {
+          "line": 64,
+          "text": "    bool ok = original(env);"
+        },
+        {
+          "line": 65,
+          "text": "    if (ok && publish) {"
+        },
+        {
+          "line": 66,
+          "text": "        published = true;"
+        },
+        {
+          "line": 67,
+          "text": "        fprintf(stderr, \"[OH_WEBVIEW_ORDER] published capability retained pid=%d\\n\", owner);"
+        },
+        {
+          "line": 68,
+          "text": "    }"
+        },
+        {
+          "line": 69,
+          "text": "    return ok;"
+        },
+        {
+          "line": 70,
+          "text": "}"
+        },
+        {
+          "line": 71,
+          "text": "}"
+        },
+        {
+          "line": 72,
+          "text": "bool wl_prime_webview_update_service(JNIEnv* env) { return call(env, false); }"
+        },
+        {
+          "line": 73,
+          "text": "bool wl_publish_webview_update_service_after_bind(JNIEnv* env) { return call(env, true); }"
+        }
+      ],
+      "last_path_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/webview-shim/smali/com/android/webview/chromium/WebViewChromiumFactoryProviderCompat.smali",
+      "sha256": "8b2d0d5d261aab759b5cca0b3e696ea299ce3c7f1ddffe3d1cd32c230a7aff02",
+      "rows": [
+        {
+          "line": 1,
+          "text": ".class public Lcom/android/webview/chromium/WebViewChromiumFactoryProviderCompat;"
+        },
+        {
+          "line": 2,
+          "text": ".super Lcom/android/webview/chromium/WebViewChromiumFactoryProviderForT;"
+        },
+        {
+          "line": 3,
+          "text": ".source \"WebViewChromiumFactoryProviderCompat.java\""
+        },
+        {
+          "line": 4,
+          "text": ""
+        },
+        {
+          "line": 5,
+          "text": "# Compatibility boundary for WebView wrappers which probe the optional"
+        },
+        {
+          "line": 6,
+          "text": "# ByteDance three-argument createWebView extension.  The third argument only"
+        },
+        {
+          "line": 7,
+          "text": "# selects a dedicated TTWebView instance; when the wrapper has selected the"
+        },
+        {
+          "line": 8,
+          "text": "# Android system provider, the stock two-argument factory is authoritative."
+        },
+        {
+          "line": 9,
+          "text": ""
+        },
+        {
+          "line": 10,
+          "text": ".method public constructor <init>(Landroid/webkit/WebViewDelegate;)V"
+        },
+        {
+          "line": 11,
+          "text": "    .locals 0"
+        },
+        {
+          "line": 12,
+          "text": ""
+        },
+        {
+          "line": 13,
+          "text": "    invoke-direct {p0, p1}, Lcom/android/webview/chromium/WebViewChromiumFactoryProviderForT;-><init>(Landroid/webkit/WebViewDelegate;)V"
+        },
+        {
+          "line": 14,
+          "text": ""
+        },
+        {
+          "line": 15,
+          "text": "    return-void"
+        },
+        {
+          "line": 16,
+          "text": ".end method"
+        },
+        {
+          "line": 17,
+          "text": ""
+        },
+        {
+          "line": 18,
+          "text": ".method public createWebView(Landroid/webkit/WebView;Landroid/webkit/WebView$PrivateAccess;Z)Landroid/webkit/WebViewProvider;"
+        },
+        {
+          "line": 19,
+          "text": "    .locals 1"
+        },
+        {
+          "line": 20,
+          "text": ""
+        },
+        {
+          "line": 21,
+          "text": "    invoke-super {p0, p1, p2}, Lcom/android/webview/chromium/WebViewChromiumFactoryProviderForT;->createWebView(Landroid/webkit/WebView;Landroid/webkit/WebView$PrivateAccess;)Landroid/webkit/WebViewProvider;"
+        },
+        {
+          "line": 22,
+          "text": ""
+        },
+        {
+          "line": 23,
+          "text": "    move-result-object v0"
+        },
+        {
+          "line": 24,
+          "text": ""
+        },
+        {
+          "line": 25,
+          "text": "    return-object v0"
+        },
+        {
+          "line": 26,
+          "text": ".end method"
+        }
+      ],
+      "last_path_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+    },
+    {
+      "path": "$WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java/android/webkit/WebViewFactory.java",
+      "sha256": "3938396a86bbdc60400a4fea89d4e0a0814115f03ed2e8b1985c4f94bfe20b97",
+      "rows": [
+        {
+          "line": 50,
+          "text": ""
+        },
+        {
+          "line": 51,
+          "text": "    // visible for WebViewZygoteInit to look up the class by reflection and call preloadInZygote."
+        },
+        {
+          "line": 52,
+          "text": "    /** @hide */"
+        },
+        {
+          "line": 53,
+          "text": "    private static final String CHROMIUM_WEBVIEW_FACTORY ="
+        },
+        {
+          "line": 54,
+          "text": "            \"com.android.webview.chromium.WebViewChromiumFactoryProviderForT\";"
+        },
+        {
+          "line": 55,
+          "text": ""
+        },
+        {
+          "line": 56,
+          "text": "    private static final String CHROMIUM_WEBVIEW_FACTORY_METHOD = \"create\";"
+        },
+        {
+          "line": 57,
+          "text": ""
+        },
+        {
+          "line": 315,
+          "text": "        // load the relro file."
+        },
+        {
+          "line": 316,
+          "text": "        if (loadNativeRet == LIBLOAD_SUCCESS) return response.status;"
+        },
+        {
+          "line": 317,
+          "text": "        return loadNativeRet;"
+        },
+        {
+          "line": 318,
+          "text": "    }"
+        },
+        {
+          "line": 319,
+          "text": ""
+        },
+        {
+          "line": 320,
+          "text": "    @UnsupportedAppUsage"
+        },
+        {
+          "line": 321,
+          "text": "    static WebViewFactoryProvider getProvider() {"
+        },
+        {
+          "line": 322,
+          "text": "        synchronized (sProviderLock) {"
+        },
+        {
+          "line": 323,
+          "text": "            // For now the main purpose of this function (and the factory abstraction) is to keep"
+        },
+        {
+          "line": 324,
+          "text": "            // us honest and minimize usage of WebView internals when binding the proxy."
+        },
+        {
+          "line": 325,
+          "text": "            if (sProviderInstance != null) return sProviderInstance;"
+        },
+        {
+          "line": 326,
+          "text": ""
+        },
+        {
+          "line": 327,
+          "text": "            sTimestamps.mWebViewLoadStart = SystemClock.uptimeMillis();"
+        },
+        {
+          "line": 328,
+          "text": "            final int uid = android.os.Process.myUid();"
+        },
+        {
+          "line": 329,
+          "text": "            if (uid == android.os.Process.ROOT_UID || uid == android.os.Process.SYSTEM_UID"
+        },
+        {
+          "line": 330,
+          "text": "                    || uid == android.os.Process.PHONE_UID || uid == android.os.Process.NFC_UID"
+        },
+        {
+          "line": 331,
+          "text": "                    || uid == android.os.Process.BLUETOOTH_UID) {"
+        },
+        {
+          "line": 332,
+          "text": "                throw new UnsupportedOperationException("
+        },
+        {
+          "line": 333,
+          "text": "                        \"For security reasons, WebView is not allowed in privileged processes\");"
+        },
+        {
+          "line": 334,
+          "text": "            }"
+        },
+        {
+          "line": 335,
+          "text": ""
+        },
+        {
+          "line": 336,
+          "text": "            if (!isWebViewSupported()) {"
+        },
+        {
+          "line": 337,
+          "text": "                // Device doesn't support WebView; don't try to load it, just throw."
+        },
+        {
+          "line": 338,
+          "text": "                throw new UnsupportedOperationException();"
+        },
+        {
+          "line": 339,
+          "text": "            }"
+        },
+        {
+          "line": 340,
+          "text": ""
+        },
+        {
+          "line": 341,
+          "text": "            if (sWebViewDisabled) {"
+        },
+        {
+          "line": 342,
+          "text": "                throw new IllegalStateException("
+        },
+        {
+          "line": 343,
+          "text": "                        \"WebView.disableWebView() was called: WebView is disabled\");"
+        },
+        {
+          "line": 344,
+          "text": "            }"
+        },
+        {
+          "line": 345,
+          "text": ""
+        },
+        {
+          "line": 346,
+          "text": "            Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, \"WebViewFactory.getProvider()\");"
+        },
+        {
+          "line": 347,
+          "text": "            try {"
+        },
+        {
+          "line": 348,
+          "text": "                Class<WebViewFactoryProvider> providerClass = getProviderClass();"
+        },
+        {
+          "line": 349,
+          "text": "                Method staticFactory = providerClass.getMethod("
+        },
+        {
+          "line": 350,
+          "text": "                        CHROMIUM_WEBVIEW_FACTORY_METHOD, WebViewDelegate.class);"
+        },
+        {
+          "line": 351,
+          "text": ""
+        },
+        {
+          "line": 352,
+          "text": "                Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, \"WebViewFactoryProvider invocation\");"
+        },
+        {
+          "line": 353,
+          "text": "                try {"
+        },
+        {
+          "line": 354,
+          "text": "                    sProviderInstance = (WebViewFactoryProvider)"
+        },
+        {
+          "line": 355,
+          "text": "                            staticFactory.invoke(null, new WebViewDelegate());"
+        },
+        {
+          "line": 356,
+          "text": "                    if (DEBUG) Log.v(LOGTAG, \"Loaded provider: \" + sProviderInstance);"
+        },
+        {
+          "line": 357,
+          "text": "                    return sProviderInstance;"
+        },
+        {
+          "line": 358,
+          "text": "                } finally {"
+        },
+        {
+          "line": 359,
+          "text": "                    Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);"
+        },
+        {
+          "line": 360,
+          "text": "                }"
+        },
+        {
+          "line": 361,
+          "text": "            } catch (Exception e) {"
+        },
+        {
+          "line": 362,
+          "text": "                Log.e(LOGTAG, \"error instantiating provider\", e);"
+        },
+        {
+          "line": 363,
+          "text": "                throw new AndroidRuntimeException(e);"
+        },
+        {
+          "line": 364,
+          "text": "            } finally {"
+        },
+        {
+          "line": 365,
+          "text": "                Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);"
+        },
+        {
+          "line": 366,
+          "text": "            }"
+        },
+        {
+          "line": 367,
+          "text": "        }"
+        },
+        {
+          "line": 368,
+          "text": "    }"
+        },
+        {
+          "line": 369,
+          "text": ""
+        },
+        {
+          "line": 370,
+          "text": "    /**"
+        },
+        {
+          "line": 371,
+          "text": "     * Returns {@code true} if the signatures match, {@code false} otherwise"
+        },
+        {
+          "line": 372,
+          "text": "     */"
+        },
+        {
+          "line": 373,
+          "text": "    private static boolean signaturesEquals(Signature[] s1, Signature[] s2) {"
+        },
+        {
+          "line": 374,
+          "text": "        if (s1 == null) {"
+        },
+        {
+          "line": 375,
+          "text": "            return s2 == null;"
+        },
+        {
+          "line": 376,
+          "text": "        }"
+        },
+        {
+          "line": 377,
+          "text": "        if (s2 == null) return false;"
+        },
+        {
+          "line": 378,
+          "text": ""
+        },
+        {
+          "line": 379,
+          "text": "        ArraySet<Signature> set1 = new ArraySet<>();"
+        },
+        {
+          "line": 380,
+          "text": "        for(Signature signature : s1) {"
+        },
+        {
+          "line": 381,
+          "text": "            set1.add(signature);"
+        },
+        {
+          "line": 382,
+          "text": "        }"
+        },
+        {
+          "line": 383,
+          "text": "        ArraySet<Signature> set2 = new ArraySet<>();"
+        },
+        {
+          "line": 384,
+          "text": "        for(Signature signature : s2) {"
+        },
+        {
+          "line": 385,
+          "text": "            set2.add(signature);"
+        },
+        {
+          "line": 386,
+          "text": "        }"
+        },
+        {
+          "line": 387,
+          "text": "        return set1.equals(set2);"
+        },
+        {
+          "line": 388,
+          "text": "    }"
+        },
+        {
+          "line": 389,
+          "text": ""
+        },
+        {
+          "line": 390,
+          "text": "    // Throws MissingWebViewPackageException on failure"
+        },
+        {
+          "line": 391,
+          "text": "    private static void verifyPackageInfo(PackageInfo chosen, PackageInfo toUse)"
+        },
+        {
+          "line": 392,
+          "text": "            throws MissingWebViewPackageException {"
+        },
+        {
+          "line": 438,
+          "text": "            }"
+        },
+        {
+          "line": 439,
+          "text": "            // Fetch package info and verify it against the chosen package"
+        },
+        {
+          "line": 440,
+          "text": "            PackageInfo newPackageInfo = null;"
+        },
+        {
+          "line": 441,
+          "text": "            PackageManager pm = initialApplication.getPackageManager();"
+        },
+        {
+          "line": 442,
+          "text": "            Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, \"PackageManager.getPackageInfo()\");"
+        },
+        {
+          "line": 443,
+          "text": "            try {"
+        },
+        {
+          "line": 444,
+          "text": "                newPackageInfo = pm.getPackageInfo("
+        },
+        {
+          "line": 445,
+          "text": "                    response.packageInfo.packageName,"
+        },
+        {
+          "line": 446,
+          "text": "                    PackageManager.GET_SHARED_LIBRARY_FILES"
+        },
+        {
+          "line": 447,
+          "text": "                    | PackageManager.MATCH_DEBUG_TRIAGED_MISSING"
+        },
+        {
+          "line": 448,
+          "text": "                    // Make sure that we fetch the current provider even if its not"
+        },
+        {
+          "line": 449,
+          "text": "                    // installed for the current user"
+        },
+        {
+          "line": 450,
+          "text": "                    | PackageManager.MATCH_UNINSTALLED_PACKAGES"
+        },
+        {
+          "line": 451,
+          "text": "                    // Fetch signatures for verification"
+        },
+        {
+          "line": 452,
+          "text": "                    | PackageManager.GET_SIGNATURES"
+        },
+        {
+          "line": 453,
+          "text": "                    // Get meta-data for meta data flag verification"
+        },
+        {
+          "line": 454,
+          "text": "                    | PackageManager.GET_META_DATA);"
+        },
+        {
+          "line": 455,
+          "text": "            } finally {"
+        },
+        {
+          "line": 456,
+          "text": "                Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);"
+        },
+        {
+          "line": 457,
+          "text": "            }"
+        },
+        {
+          "line": 458,
+          "text": ""
+        },
+        {
+          "line": 459,
+          "text": "            // Validate the newly fetched package info, throws MissingWebViewPackageException on"
+        },
+        {
+          "line": 460,
+          "text": "            // failure"
+        },
+        {
+          "line": 461,
+          "text": "            verifyPackageInfo(response.packageInfo, newPackageInfo);"
+        },
+        {
+          "line": 462,
+          "text": ""
+        },
+        {
+          "line": 463,
+          "text": "            ApplicationInfo ai = newPackageInfo.applicationInfo;"
+        },
+        {
+          "line": 464,
+          "text": ""
+        },
+        {
+          "line": 465,
+          "text": "            Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW,"
+        },
+        {
+          "line": 466,
+          "text": "                    \"initialApplication.createApplicationContext\");"
+        },
+        {
+          "line": 467,
+          "text": "            sTimestamps.mCreateContextStart = SystemClock.uptimeMillis();"
+        },
+        {
+          "line": 468,
+          "text": "            try {"
+        },
+        {
+          "line": 469,
+          "text": "                // Construct an app context to load the Java code into the current app."
+        },
+        {
+          "line": 470,
+          "text": "                Context webViewContext = initialApplication.createApplicationContext("
+        },
+        {
+          "line": 471,
+          "text": "                        ai,"
+        },
+        {
+          "line": 472,
+          "text": "                        Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);"
+        },
+        {
+          "line": 473,
+          "text": "                sPackageInfo = newPackageInfo;"
+        },
+        {
+          "line": 474,
+          "text": "                return webViewContext;"
+        },
+        {
+          "line": 475,
+          "text": "            } finally {"
+        },
+        {
+          "line": 476,
+          "text": "                sTimestamps.mCreateContextEnd = SystemClock.uptimeMillis();"
+        },
+        {
+          "line": 477,
+          "text": "                Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);"
+        },
+        {
+          "line": 478,
+          "text": "            }"
+        },
+        {
+          "line": 479,
+          "text": "        } catch (RemoteException | PackageManager.NameNotFoundException e) {"
+        },
+        {
+          "line": 480,
+          "text": "            throw new MissingWebViewPackageException(\"Failed to load WebView provider: \" + e);"
+        },
+        {
+          "line": 481,
+          "text": "        }"
+        },
+        {
+          "line": 482,
+          "text": "    }"
+        },
+        {
+          "line": 483,
+          "text": ""
+        },
+        {
+          "line": 484,
+          "text": "    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)"
+        },
+        {
+          "line": 485,
+          "text": "    private static Class<WebViewFactoryProvider> getProviderClass() {"
+        },
+        {
+          "line": 486,
+          "text": "        Context webViewContext = null;"
+        },
+        {
+          "line": 487,
+          "text": "        Application initialApplication = AppGlobals.getInitialApplication();"
+        },
+        {
+          "line": 488,
+          "text": ""
+        },
+        {
+          "line": 489,
+          "text": "        try {"
+        },
+        {
+          "line": 490,
+          "text": "            Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW,"
+        },
+        {
+          "line": 491,
+          "text": "                    \"WebViewFactory.getWebViewContextAndSetProvider()\");"
+        },
+        {
+          "line": 492,
+          "text": "            try {"
+        },
+        {
+          "line": 493,
+          "text": "                webViewContext = getWebViewContextAndSetProvider();"
+        },
+        {
+          "line": 494,
+          "text": "            } finally {"
+        },
+        {
+          "line": 495,
+          "text": "                Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);"
+        },
+        {
+          "line": 496,
+          "text": "            }"
+        },
+        {
+          "line": 497,
+          "text": "            Log.i(LOGTAG, \"Loading \" + sPackageInfo.packageName + \" version \" +"
+        },
+        {
+          "line": 498,
+          "text": "                    sPackageInfo.versionName + \" (code \" + sPackageInfo.getLongVersionCode() + \")\");"
+        },
+        {
+          "line": 499,
+          "text": ""
+        },
+        {
+          "line": 500,
+          "text": "            Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, \"WebViewFactory.getChromiumProviderClass()\");"
+        },
+        {
+          "line": 501,
+          "text": "            try {"
+        },
+        {
+          "line": 502,
+          "text": "                sTimestamps.mAddAssetsStart = SystemClock.uptimeMillis();"
+        },
+        {
+          "line": 503,
+          "text": "                for (String newAssetPath : webViewContext.getApplicationInfo().getAllApkPaths()) {"
+        },
+        {
+          "line": 504,
+          "text": "                    initialApplication.getAssets().addAssetPathAsSharedLibrary(newAssetPath);"
+        },
+        {
+          "line": 505,
+          "text": "                }"
+        },
+        {
+          "line": 506,
+          "text": "                sTimestamps.mAddAssetsEnd = sTimestamps.mGetClassLoaderStart ="
+        },
+        {
+          "line": 507,
+          "text": "                        SystemClock.uptimeMillis();"
+        },
+        {
+          "line": 508,
+          "text": "                ClassLoader clazzLoader = webViewContext.getClassLoader();"
+        },
+        {
+          "line": 509,
+          "text": "                Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, \"WebViewFactory.loadNativeLibrary()\");"
+        },
+        {
+          "line": 510,
+          "text": "                sTimestamps.mGetClassLoaderEnd = sTimestamps.mNativeLoadStart ="
+        },
+        {
+          "line": 511,
+          "text": "                        SystemClock.uptimeMillis();"
+        },
+        {
+          "line": 512,
+          "text": "                WebViewLibraryLoader.loadNativeLibrary(clazzLoader,"
+        },
+        {
+          "line": 513,
+          "text": "                        getWebViewLibrary(sPackageInfo.applicationInfo));"
+        },
+        {
+          "line": 514,
+          "text": "                Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);"
+        },
+        {
+          "line": 515,
+          "text": "                Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, \"Class.forName()\");"
+        },
+        {
+          "line": 516,
+          "text": "                sTimestamps.mNativeLoadEnd = sTimestamps.mProviderClassForNameStart ="
+        },
+        {
+          "line": 517,
+          "text": "                        SystemClock.uptimeMillis();"
+        },
+        {
+          "line": 518,
+          "text": "                try {"
+        },
+        {
+          "line": 519,
+          "text": "                    return getWebViewProviderClass(clazzLoader);"
+        },
+        {
+          "line": 520,
+          "text": "                } finally {"
+        },
+        {
+          "line": 521,
+          "text": "                    sTimestamps.mProviderClassForNameEnd = SystemClock.uptimeMillis();"
+        },
+        {
+          "line": 522,
+          "text": "                    Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);"
+        },
+        {
+          "line": 523,
+          "text": "                }"
+        },
+        {
+          "line": 524,
+          "text": "            } catch (ClassNotFoundException e) {"
+        },
+        {
+          "line": 525,
+          "text": "                Log.e(LOGTAG, \"error loading provider\", e);"
+        },
+        {
+          "line": 526,
+          "text": "                throw new AndroidRuntimeException(e);"
+        },
+        {
+          "line": 527,
+          "text": "            } finally {"
+        },
+        {
+          "line": 528,
+          "text": "                Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);"
+        },
+        {
+          "line": 529,
+          "text": "            }"
+        },
+        {
+          "line": 530,
+          "text": "        } catch (MissingWebViewPackageException e) {"
+        }
+      ]
+    },
+    {
+      "path": "$WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java/android/webkit/WebViewDelegate.java",
+      "sha256": "99c290d26c73059253dca2b5ff94cf88e21f8182c69ecd3c1849537c35ecf4a3",
+      "rows": [
+        {
+          "line": 113,
+          "text": "            @Nullable Runnable releasedRunnable) {"
+        },
+        {
+          "line": 114,
+          "text": "        throw new UnsupportedOperationException();"
+        },
+        {
+          "line": 115,
+          "text": "    }"
+        },
+        {
+          "line": 116,
+          "text": ""
+        },
+        {
+          "line": 117,
+          "text": "    /**"
+        },
+        {
+          "line": 118,
+          "text": "     * Call webview draw functor. See API in draw_fn.h."
+        },
+        {
+          "line": 119,
+          "text": "     * @param canvas a {@link RecordingCanvas}."
+        },
+        {
+          "line": 120,
+          "text": "     * @param functor created by AwDrawFn_CreateFunctor in draw_fn.h."
+        },
+        {
+          "line": 121,
+          "text": "     */"
+        },
+        {
+          "line": 122,
+          "text": "    public void drawWebViewFunctor(@NonNull Canvas canvas, int functor) {"
+        },
+        {
+          "line": 123,
+          "text": "        if (!(canvas instanceof RecordingCanvas)) {"
+        },
+        {
+          "line": 124,
+          "text": "            // Canvas#isHardwareAccelerated() is only true for subclasses of RecordingCanvas."
+        },
+        {
+          "line": 125,
+          "text": "            throw new IllegalArgumentException(canvas.getClass().getName()"
+        },
+        {
+          "line": 126,
+          "text": "                    + \" is not a RecordingCanvas canvas\");"
+        },
+        {
+          "line": 127,
+          "text": "        }"
+        },
+        {
+          "line": 128,
+          "text": "        ((RecordingCanvas) canvas).drawWebViewFunctor(functor);"
+        },
+        {
+          "line": 204,
+          "text": "    /**"
+        },
+        {
+          "line": 205,
+          "text": "     * Returns whether WebView should run in multiprocess mode."
+        },
+        {
+          "line": 206,
+          "text": "     */"
+        },
+        {
+          "line": 207,
+          "text": "    public boolean isMultiProcessEnabled() {"
+        },
+        {
+          "line": 208,
+          "text": "        try {"
+        },
+        {
+          "line": 209,
+          "text": "            return WebViewFactory.getUpdateService().isMultiProcessEnabled();"
+        },
+        {
+          "line": 210,
+          "text": "        } catch (RemoteException e) {"
+        },
+        {
+          "line": 211,
+          "text": "            throw e.rethrowFromSystemServer();"
+        },
+        {
+          "line": 212,
+          "text": "        }"
+        },
+        {
+          "line": 213,
+          "text": "    }"
+        },
+        {
+          "line": 214,
+          "text": ""
+        },
+        {
+          "line": 215,
+          "text": "    /**"
+        },
+        {
+          "line": 216,
+          "text": "     * Returns the data directory suffix to use, or null for none."
+        }
+      ]
+    },
+    {
+      "path": "$WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java/android/webkit/WebView.java",
+      "sha256": "63cda6f8f6263fb27258df32f21df076eb1b8ef620034c7a638920967f1899c1",
+      "rows": [
+        {
+          "line": 2595,
+          "text": "        checkThread();"
+        },
+        {
+          "line": 2596,
+          "text": "        if (mProvider == null) {"
+        },
+        {
+          "line": 2597,
+          "text": "            // As this can get called during the base class constructor chain, pass the minimum"
+        },
+        {
+          "line": 2598,
+          "text": "            // number of dependencies here; the rest are deferred to init()."
+        },
+        {
+          "line": 2599,
+          "text": "            mProvider = getFactory().createWebView(this, new PrivateAccess());"
+        },
+        {
+          "line": 2600,
+          "text": "        }"
+        },
+        {
+          "line": 2601,
+          "text": "    }"
+        },
+        {
+          "line": 2602,
+          "text": ""
+        },
+        {
+          "line": 2603,
+          "text": "    @UnsupportedAppUsage"
+        },
+        {
+          "line": 2604,
+          "text": "    private static WebViewFactoryProvider getFactory() {"
+        },
+        {
+          "line": 2605,
+          "text": "        return WebViewFactory.getProvider();"
+        },
+        {
+          "line": 2606,
+          "text": "    }"
+        },
+        {
+          "line": 2607,
+          "text": ""
+        },
+        {
+          "line": 2608,
+          "text": "    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)"
+        },
+        {
+          "line": 2609,
+          "text": "    private final Looper mWebViewThread = Looper.myLooper();"
+        },
+        {
+          "line": 2610,
+          "text": ""
+        },
+        {
+          "line": 2611,
+          "text": "    @UnsupportedAppUsage"
+        },
+        {
+          "line": 2612,
+          "text": "    private void checkThread() {"
+        },
+        {
+          "line": 2613,
+          "text": "        // Ignore mWebViewThread == null because this can be called during in the super class"
+        },
+        {
+          "line": 2614,
+          "text": "        // constructor, before this class's own constructor has even started."
+        },
+        {
+          "line": 2615,
+          "text": "        if (mWebViewThread != null && Looper.myLooper() != mWebViewThread) {"
+        },
+        {
+          "line": 2616,
+          "text": "            Throwable throwable = new Throwable("
+        },
+        {
+          "line": 2617,
+          "text": "                    \"A WebView method was called on thread '\" +"
+        },
+        {
+          "line": 2618,
+          "text": "                    Thread.currentThread().getName() + \"'. \" +"
+        },
+        {
+          "line": 2619,
+          "text": "                    \"All WebView methods must be called on the same thread. \" +"
+        },
+        {
+          "line": 2620,
+          "text": "                    \"(Expected Looper \" + mWebViewThread + \" called on \" + Looper.myLooper() +"
+        },
+        {
+          "line": 2621,
+          "text": "                    \", FYI main Looper is \" + Looper.getMainLooper() + \")\");"
+        },
+        {
+          "line": 2622,
+          "text": "            Log.w(LOGTAG, Log.getStackTraceString(throwable));"
+        },
+        {
+          "line": 2623,
+          "text": "            StrictMode.onWebViewMethodCalledOnWrongThread(throwable);"
+        },
+        {
+          "line": 2624,
+          "text": ""
+        },
+        {
+          "line": 2625,
+          "text": "            if (sEnforceThreadChecking) {"
+        }
+      ]
+    },
+    {
+      "path": "$WORKSPACES/00.Workspace/src/adapter/aosp_patches/libs/hwui/patches/WebViewFunctorManager.cpp.patch",
+      "sha256": "4b6c99074e6b010635f5c5187c85385ed5b9966dba9ad8c368bd7c7fb7f872fb",
+      "rows": [
+        {
+          "line": 1,
+          "text": "diff --git a/libs/hwui/WebViewFunctorManager.cpp b/libs/hwui/WebViewFunctorManager.cpp"
+        },
+        {
+          "line": 2,
+          "text": "index 6fc251dc..a8d83c9b 100644"
+        },
+        {
+          "line": 3,
+          "text": "--- a/libs/hwui/WebViewFunctorManager.cpp"
+        },
+        {
+          "line": 4,
+          "text": "+++ b/libs/hwui/WebViewFunctorManager.cpp"
+        },
+        {
+          "line": 5,
+          "text": "@@ -228,7 +228,7 @@ ASurfaceControl* WebViewFunctor::getSurfaceControl() {"
+        },
+        {
+          "line": 6,
+          "text": "     activeContext->prepareSurfaceControlForWebview();"
+        },
+        {
+          "line": 7,
+          "text": "     funcs.transactionSetZOrderFunc(transaction, mSurfaceControl, -1);"
+        },
+        {
+          "line": 8,
+          "text": "     funcs.transactionSetVisibilityFunc(transaction, mSurfaceControl,"
+        },
+        {
+          "line": 9,
+          "text": "-                                       ASURFACE_TRANSACTION_VISIBILITY_SHOW);"
+        },
+        {
+          "line": 10,
+          "text": "+                                       1);"
+        },
+        {
+          "line": 11,
+          "text": "     funcs.transactionApplyFunc(transaction);"
+        },
+        {
+          "line": 12,
+          "text": "     funcs.transactionDeleteFunc(transaction);"
+        },
+        {
+          "line": 13,
+          "text": "     return mSurfaceControl;"
+        }
+      ],
+      "last_path_commit": "d7531474a77ad5e26e4418508d318eb8be3ae3aa"
+    }
+  ]
+}

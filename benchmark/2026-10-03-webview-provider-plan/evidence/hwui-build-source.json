@@ -1,0 +1,55 @@
+{
+  "path": "$WORKSPACES/vm-copies/westlake-current/historical/workspace/bridge-build-arm64/gap-repair-20260904/build_hwui_probe.py",
+  "sha256": "8bbaf2611efdafdcf5053aef42aac52af0945f9a72ec7f5f8113da23f7ac8c90",
+  "rows": [
+    {
+      "line": 1,
+      "text": "from pathlib import Path"
+    },
+    {
+      "line": 2,
+      "text": "import subprocess"
+    },
+    {
+      "line": 3,
+      "text": "ROOT=Path(__file__).resolve().parent;ARM=ROOT.parent"
+    },
+    {
+      "line": 4,
+      "text": "prefix=(ARM/'build_libhwui_arm64.sh').read_text().split('PHASE1_SRCS=')[0]"
+    },
+    {
+      "line": 5,
+      "text": "prefix=prefix.replace('HWUI_SRC=$A14/libs/hwui','HWUI_SRC=$A15/frameworks/base/libs/hwui')"
+    },
+    {
+      "line": 6,
+      "text": "prefix=prefix.replace('OUT_BUILD=$B64/hwui-build','OUT_BUILD='+str(ROOT/'hwui-build'))"
+    },
+    {
+      "line": 7,
+      "text": "prefix=prefix.replace('MK14=$HISTORICAL_HOME/aosp-14-minikin','MK14=$A15/frameworks/minikin')"
+    },
+    {
+      "line": 8,
+      "text": "command=prefix+'\\nset -e\\n$CXX $CB $INC -fno-rtti -c '+str(ROOT/'hwui_functor.cpp')+' -o \"$OBJ/functor.o\"\\n'"
+    },
+    {
+      "line": 9,
+      "text": "command+='$CXX $CB $INC -I$HWUI_SRC/pipeline/skia -I$SKIA_OH/include/android -fno-rtti -c '+str(ROOT/'GLFunctorDrawable.cpp')+' -o \"$OBJ/gl.o\"\\n'"
+    },
+    {
+      "line": 10,
+      "text": "command+='$CXX $CB $INC -fno-rtti -c '+str(ROOT/'SkAndroidFunctorUtils.cpp')+' -o \"$OBJ/skia_utils.o\"\\n'"
+    },
+    {
+      "line": 11,
+      "text": "command+='$CXX --target=aarch64-linux-ohos --sysroot=$SR -shared -fPIC -Wl,-Bsymbolic -Wl,-z,defs \"$OBJ/functor.o\" \"$OBJ/gl.o\" \"$OBJ/skia_utils.o\" '+str(ROOT/'baseline-libhwui.so')+' -L$BOARD -lskia_canvaskit.z -lGLESv3 -L$AOSPLIB -lutils -lcutils -lbase -llog -o '+str(ROOT/'liboh_hwui_functor.so')+'\\n'"
+    },
+    {
+      "line": 12,
+      "text": "raise SystemExit(subprocess.run(['bash','-c',command]).returncode)"
+    }
+  ],
+  "last_path_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+}

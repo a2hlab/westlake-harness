@@ -1,0 +1,983 @@
+{
+  "path": "$WORKSPACES/vm-copies/westlake-current/framework/webview-shim/webview_bionic_shim.c",
+  "sha256": "6c2dcfa611ba04f443e9a025f7c6eab5108db1192de37f33508a82a081619494",
+  "rows": [
+    {
+      "line": 148,
+      "text": "    return signal_number > 0 && signal_number <= 64;"
+    },
+    {
+      "line": 149,
+      "text": "}"
+    },
+    {
+      "line": 150,
+      "text": ""
+    },
+    {
+      "line": 151,
+      "text": "int wl_emptyset(westlake_webview_bionic_sigset_t *set)"
+    },
+    {
+      "line": 152,
+      "text": "{"
+    },
+    {
+      "line": 153,
+      "text": "    if (set == NULL) {"
+    },
+    {
+      "line": 154,
+      "text": "        errno = EINVAL;"
+    },
+    {
+      "line": 155,
+      "text": "        return -1;"
+    },
+    {
+      "line": 156,
+      "text": "    }"
+    },
+    {
+      "line": 157,
+      "text": "    *set = 0;"
+    },
+    {
+      "line": 158,
+      "text": "    return 0;"
+    },
+    {
+      "line": 159,
+      "text": "}"
+    },
+    {
+      "line": 160,
+      "text": ""
+    },
+    {
+      "line": 161,
+      "text": "int wl_fillset(westlake_webview_bionic_sigset_t *set)"
+    },
+    {
+      "line": 162,
+      "text": "{"
+    },
+    {
+      "line": 163,
+      "text": "    if (set == NULL) {"
+    },
+    {
+      "line": 164,
+      "text": "        errno = EINVAL;"
+    },
+    {
+      "line": 165,
+      "text": "        return -1;"
+    },
+    {
+      "line": 166,
+      "text": "    }"
+    },
+    {
+      "line": 167,
+      "text": "    *set = UINT64_MAX;"
+    },
+    {
+      "line": 168,
+      "text": "    return 0;"
+    },
+    {
+      "line": 169,
+      "text": "}"
+    },
+    {
+      "line": 170,
+      "text": ""
+    },
+    {
+      "line": 171,
+      "text": "int wl_addset(westlake_webview_bionic_sigset_t *set, int signal_number)"
+    },
+    {
+      "line": 172,
+      "text": "{"
+    },
+    {
+      "line": 173,
+      "text": "    if (set == NULL ||"
+    },
+    {
+      "line": 174,
+      "text": "        !westlake_bionic_signal_number_is_valid(signal_number)) {"
+    },
+    {
+      "line": 175,
+      "text": "        errno = EINVAL;"
+    },
+    {
+      "line": 176,
+      "text": "        return -1;"
+    },
+    {
+      "line": 177,
+      "text": "    }"
+    },
+    {
+      "line": 178,
+      "text": "    *set |= UINT64_C(1) << (signal_number - 1);"
+    },
+    {
+      "line": 179,
+      "text": "    return 0;"
+    },
+    {
+      "line": 180,
+      "text": "}"
+    },
+    {
+      "line": 181,
+      "text": ""
+    },
+    {
+      "line": 182,
+      "text": "int wl_ismember(const westlake_webview_bionic_sigset_t *set,"
+    },
+    {
+      "line": 183,
+      "text": "                int signal_number)"
+    },
+    {
+      "line": 184,
+      "text": "{"
+    },
+    {
+      "line": 185,
+      "text": "    if (set == NULL ||"
+    },
+    {
+      "line": 186,
+      "text": "        !westlake_bionic_signal_number_is_valid(signal_number)) {"
+    },
+    {
+      "line": 187,
+      "text": "        errno = EINVAL;"
+    },
+    {
+      "line": 188,
+      "text": "        return -1;"
+    },
+    {
+      "line": 189,
+      "text": "    }"
+    },
+    {
+      "line": 190,
+      "text": "    return ((*set & (UINT64_C(1) << (signal_number - 1))) != 0) ? 1 : 0;"
+    },
+    {
+      "line": 191,
+      "text": "}"
+    },
+    {
+      "line": 192,
+      "text": ""
+    },
+    {
+      "line": 193,
+      "text": "int wl_pthread_mask(int how,"
+    },
+    {
+      "line": 194,
+      "text": "                    const westlake_webview_bionic_sigset_t *bionic_set,"
+    },
+    {
+      "line": 195,
+      "text": "                    westlake_webview_bionic_sigset_t *bionic_old_set)"
+    },
+    {
+      "line": 196,
+      "text": "{"
+    },
+    {
+      "line": 197,
+      "text": "    typedef int (*PthreadSigmaskFn)(int, const sigset_t *, sigset_t *);"
+    },
+    {
+      "line": 198,
+      "text": "    static PthreadSigmaskFn real_pthread_sigmask;"
+    },
+    {
+      "line": 199,
+      "text": "    if (real_pthread_sigmask == NULL) {"
+    },
+    {
+      "line": 200,
+      "text": "        real_pthread_sigmask ="
+    },
+    {
+      "line": 201,
+      "text": "                (PthreadSigmaskFn)dlsym(RTLD_NEXT, \"pthread_sigmask\");"
+    },
+    {
+      "line": 202,
+      "text": "    }"
+    },
+    {
+      "line": 203,
+      "text": "    if (real_pthread_sigmask == NULL) {"
+    },
+    {
+      "line": 204,
+      "text": "        return ENOSYS;"
+    },
+    {
+      "line": 205,
+      "text": "    }"
+    },
+    {
+      "line": 206,
+      "text": ""
+    },
+    {
+      "line": 207,
+      "text": "    sigset_t oh_set;"
+    },
+    {
+      "line": 208,
+      "text": "    sigset_t oh_old_set;"
+    },
+    {
+      "line": 209,
+      "text": "    const sigset_t *oh_set_pointer = NULL;"
+    },
+    {
+      "line": 210,
+      "text": "    sigset_t *oh_old_set_pointer = NULL;"
+    },
+    {
+      "line": 211,
+      "text": "    if (bionic_set != NULL) {"
+    },
+    {
+      "line": 212,
+      "text": "        memset(&oh_set, 0, sizeof(oh_set));"
+    },
+    {
+      "line": 213,
+      "text": "        memcpy(&oh_set, bionic_set, sizeof(*bionic_set));"
+    },
+    {
+      "line": 214,
+      "text": "        oh_set_pointer = &oh_set;"
+    },
+    {
+      "line": 635,
+      "text": " * they replace: getaddrinfo -> wl_getai_oh and freeaddrinfo -> wl_freeai_oh. */"
+    },
+    {
+      "line": 636,
+      "text": "int wl_getai_oh(const char *node, const char *service,"
+    },
+    {
+      "line": 637,
+      "text": "                const struct addrinfo *bionic_hints,"
+    },
+    {
+      "line": 638,
+      "text": "                struct addrinfo **bionic_result)"
+    },
+    {
+      "line": 639,
+      "text": "{"
+    },
+    {
+      "line": 640,
+      "text": "    struct addrinfo oh_hints;"
+    },
+    {
+      "line": 641,
+      "text": "    const struct addrinfo *real_hints = NULL;"
+    },
+    {
+      "line": 642,
+      "text": "    if (bionic_hints != NULL) {"
+    },
+    {
+      "line": 643,
+      "text": "        memset(&oh_hints, 0, sizeof(oh_hints));"
+    },
+    {
+      "line": 644,
+      "text": "        oh_hints.ai_flags = bionic_hints->ai_flags;"
+    },
+    {
+      "line": 645,
+      "text": "        oh_hints.ai_family = bionic_hints->ai_family;"
+    },
+    {
+      "line": 646,
+      "text": "        oh_hints.ai_socktype = bionic_hints->ai_socktype;"
+    },
+    {
+      "line": 647,
+      "text": "        oh_hints.ai_protocol = bionic_hints->ai_protocol;"
+    },
+    {
+      "line": 648,
+      "text": "        real_hints = &oh_hints;"
+    },
+    {
+      "line": 649,
+      "text": "    }"
+    },
+    {
+      "line": 650,
+      "text": ""
+    },
+    {
+      "line": 707,
+      "text": "void wl_freeai_oh(struct addrinfo *result)"
+    },
+    {
+      "line": 708,
+      "text": "{"
+    },
+    {
+      "line": 709,
+      "text": "    westlake_webview_free_addrinfo("
+    },
+    {
+      "line": 710,
+      "text": "            (struct westlake_webview_bionic_addrinfo *)result);"
+    },
+    {
+      "line": 711,
+      "text": "}"
+    },
+    {
+      "line": 712,
+      "text": ""
+    },
+    {
+      "line": 713,
+      "text": "static pthread_once_t westlake_webview_dns_once = PTHREAD_ONCE_INIT;"
+    },
+    {
+      "line": 714,
+      "text": "static struct in_addr westlake_webview_ipv4_dns;"
+    },
+    {
+      "line": 715,
+      "text": "static int westlake_webview_has_ipv4_dns;"
+    },
+    {
+      "line": 757,
+      "text": "/* Equal-length import target for connect -> wl_conn.  sockaddr has the same"
+    },
+    {
+      "line": 758,
+      "text": " * layout at this boundary. Chromium may select an IPv6 DNS server from the"
+    },
+    {
+      "line": 759,
+      "text": " * Android network facade even when the OH board has only an IPv4 default"
+    },
+    {
+      "line": 760,
+      "text": " * route. Retry only that immediate ENETUNREACH case through an IPv4-mapped"
+    },
+    {
+      "line": 761,
+      "text": " * address. Prefer the OH host's configured IPv4 resolver: an equivalent"
+    },
+    {
+      "line": 762,
+      "text": " * public-vendor address may be syntactically reachable but filtered by the"
+    },
+    {
+      "line": 763,
+      "text": " * current network, while /etc/resolv.conf is the resolver that OH libc has"
+    },
+    {
+      "line": 764,
+      "text": " * already selected for that network. Use the vendor equivalent only when the"
+    },
+    {
+      "line": 765,
+      "text": " * host has no IPv4 resolver. All ordinary destinations and successful IPv6"
+    },
+    {
+      "line": 766,
+      "text": " * connections remain untouched. */"
+    },
+    {
+      "line": 767,
+      "text": "int wl_conn(int fd, const struct sockaddr *address, socklen_t address_length)"
+    },
+    {
+      "line": 768,
+      "text": "{"
+    },
+    {
+      "line": 769,
+      "text": "    typedef int (*ConnectFn)(int, const struct sockaddr *, socklen_t);"
+    },
+    {
+      "line": 770,
+      "text": "    static ConnectFn real_connect;"
+    },
+    {
+      "line": 771,
+      "text": "    if (real_connect == NULL) {"
+    },
+    {
+      "line": 772,
+      "text": "        real_connect = (ConnectFn)dlsym(RTLD_NEXT, \"connect\");"
+    },
+    {
+      "line": 773,
+      "text": "    }"
+    },
+    {
+      "line": 898,
+      "text": "void *dlopen(const char *filename, int flags)"
+    },
+    {
+      "line": 899,
+      "text": "{"
+    },
+    {
+      "line": 900,
+      "text": "    typedef void *(*DlopenFn)(const char *, int);"
+    },
+    {
+      "line": 901,
+      "text": "    static DlopenFn real_dlopen;"
+    },
+    {
+      "line": 902,
+      "text": "    if (real_dlopen == NULL) {"
+    },
+    {
+      "line": 903,
+      "text": "        real_dlopen = (DlopenFn)dlsym(RTLD_NEXT, \"dlopen\");"
+    },
+    {
+      "line": 904,
+      "text": "    }"
+    },
+    {
+      "line": 905,
+      "text": "    if (real_dlopen == NULL) {"
+    },
+    {
+      "line": 906,
+      "text": "        errno = ENOSYS;"
+    },
+    {
+      "line": 907,
+      "text": "        return NULL;"
+    },
+    {
+      "line": 908,
+      "text": "    }"
+    },
+    {
+      "line": 909,
+      "text": ""
+    },
+    {
+      "line": 910,
+      "text": "    const char *actual_filename = filename;"
+    },
+    {
+      "line": 911,
+      "text": "    const char *basename = filename != NULL ? strrchr(filename, '/') : NULL;"
+    },
+    {
+      "line": 912,
+      "text": "    basename = basename != NULL ? basename + 1 : filename;"
+    },
+    {
+      "line": 913,
+      "text": "    if (basename != NULL && westlake_library_is_refused(basename)) {"
+    },
+    {
+      "line": 914,
+      "text": "        static int refused_logged;"
+    },
+    {
+      "line": 915,
+      "text": "        if (!__atomic_exchange_n(&refused_logged, 1, __ATOMIC_RELAXED)) {"
+    },
+    {
+      "line": 916,
+      "text": "            fprintf(stderr,"
+    },
+    {
+      "line": 917,
+      "text": "                    \"[WESTLAKE-LOADER] refusing self-trapping library: %s\\n\","
+    },
+    {
+      "line": 918,
+      "text": "                    filename);"
+    },
+    {
+      "line": 919,
+      "text": "        }"
+    },
+    {
+      "line": 920,
+      "text": "        return NULL;"
+    },
+    {
+      "line": 921,
+      "text": "    }"
+    },
+    {
+      "line": 922,
+      "text": "    /*"
+    },
+    {
+      "line": 923,
+      "text": "     * WebView's own libraries come from the WebView library directory, which the search path"
+    },
+    {
+      "line": 924,
+      "text": "     * lists last.  Every name in it also exists in the runtime directory, which comes first, so a"
+    },
+    {
+      "line": 925,
+      "text": "     * bare soname from a WebView caller resolves to the runtime's copy.  For libandroid.so that"
+    },
+    {
+      "line": 926,
+      "text": "     * means the whole NDK SurfaceControl surface goes missing -- the runtime's exports none of"
+    },
+    {
+      "line": 927,
+      "text": "     * its 27 entry points and the WebView one exports all of them -- and the same holds for"
+    },
+    {
+      "line": 928,
+      "text": "     * libjnigraphics.so, which the boundaries probe found in the identical position before"
+    },
+    {
+      "line": 929,
+      "text": "     * anything had tripped over it."
+    },
+    {
+      "line": 930,
+      "text": "     *"
+    },
+    {
+      "line": 931,
+      "text": "     * So resolve any bare soname against that directory for WebView's callers, rather than"
+    },
+    {
+      "line": 932,
+      "text": "     * naming libraries one at a time: the directory holds exactly the libraries WebView is meant"
+    },
+    {
+      "line": 933,
+      "text": "     * to use, and a fix per library is a fix per outage.  Only bare names are redirected; a"
+    },
+    {
+      "line": 934,
+      "text": "     * caller that passes a path has already chosen."
+    },
+    {
+      "line": 935,
+      "text": "     */"
+    },
+    {
+      "line": 936,
+      "text": "    static char webview_library[512];"
+    },
+    {
+      "line": 937,
+      "text": "    if (basename != NULL && basename == filename &&"
+    },
+    {
+      "line": 938,
+      "text": "        caller_is_webview(__builtin_return_address(0), NULL)) {"
+    },
+    {
+      "line": 939,
+      "text": "        const char *dir = getenv(\"ASX_WEBVIEW_LIB_DIR\");"
+    },
+    {
+      "line": 940,
+      "text": "        if (dir != NULL && dir[0] != '\\0') {"
+    },
+    {
+      "line": 941,
+      "text": "            snprintf(webview_library, sizeof(webview_library), \"%s/%s\", dir, basename);"
+    },
+    {
+      "line": 942,
+      "text": "            if (access(webview_library, R_OK) == 0) {"
+    },
+    {
+      "line": 943,
+      "text": "                actual_filename = webview_library;"
+    },
+    {
+      "line": 944,
+      "text": "                fprintf(stderr,"
+    },
+    {
+      "line": 945,
+      "text": "                        \"[WESTLAKE-WEBVIEW-BIONIC] library resolved %s -> %s for the WebView \""
+    },
+    {
+      "line": 946,
+      "text": "                        \"caller\\n\","
+    },
+    {
+      "line": 947,
+      "text": "                        filename, actual_filename);"
+    },
+    {
+      "line": 948,
+      "text": "            }"
+    },
+    {
+      "line": 949,
+      "text": "        }"
+    },
+    {
+      "line": 950,
+      "text": "    }"
+    },
+    {
+      "line": 951,
+      "text": "    if (basename != NULL && strcmp(basename, \"libGLESv2.so\") == 0 &&"
+    },
+    {
+      "line": 952,
+      "text": "        caller_is_webview(__builtin_return_address(0), NULL)) {"
+    },
+    {
+      "line": 953,
+      "text": "        actual_filename = \"/system/lib64/platformsdk/libGLESv3.so\";"
+    },
+    {
+      "line": 954,
+      "text": "        static int logged;"
+    },
+    {
+      "line": 955,
+      "text": "        if (!__atomic_exchange_n(&logged, 1, __ATOMIC_RELAXED)) {"
+    },
+    {
+      "line": 956,
+      "text": "            fprintf(stderr,"
+    },
+    {
+      "line": 957,
+      "text": "                    \"[WESTLAKE-WEBVIEW-BIONIC] GLES library translated \""
+    },
+    {
+      "line": 958,
+      "text": "                    \"%s -> %s for libwebviewchromium.so\\n\","
+    },
+    {
+      "line": 959,
+      "text": "                    filename, actual_filename);"
+    },
+    {
+      "line": 960,
+      "text": "        }"
+    },
+    {
+      "line": 961,
+      "text": "    }"
+    },
+    {
+      "line": 962,
+      "text": "    return real_dlopen(actual_filename, flags);"
+    },
+    {
+      "line": 963,
+      "text": "}"
+    },
+    {
+      "line": 964,
+      "text": ""
+    },
+    {
+      "line": 1430,
+      "text": "                        path, actual_path);"
+    },
+    {
+      "line": 1431,
+      "text": "            }"
+    },
+    {
+      "line": 1432,
+      "text": "        }"
+    },
+    {
+      "line": 1433,
+      "text": "    }"
+    },
+    {
+      "line": 1434,
+      "text": "    return real_fopen(actual_path, mode);"
+    },
+    {
+      "line": 1435,
+      "text": "}"
+    },
+    {
+      "line": 1436,
+      "text": ""
+    },
+    {
+      "line": 1437,
+      "text": "int __register_atfork(void (*prepare)(void), void (*parent)(void),"
+    },
+    {
+      "line": 1438,
+      "text": "                      void (*child)(void), void *dso)"
+    },
+    {
+      "line": 1439,
+      "text": "{"
+    },
+    {
+      "line": 1440,
+      "text": "    (void)dso;"
+    },
+    {
+      "line": 1441,
+      "text": "    fprintf(stderr, \"[WESTLAKE-WEBVIEW-BIONIC] __register_atfork\\n\");"
+    },
+    {
+      "line": 1442,
+      "text": "    return pthread_atfork(prepare, parent, child);"
+    },
+    {
+      "line": 1443,
+      "text": "}"
+    },
+    {
+      "line": 1444,
+      "text": ""
+    },
+    {
+      "line": 1445,
+      "text": "/* Diagnostic companion for the Android-sized setjmp boundary.  The assembly"
+    },
+    {
+      "line": 1446,
+      "text": " * calls this before saving the caller context, so a codec probe can establish"
+    },
+    {
+      "line": 1447,
+      "text": " * whether Chromium actually reaches the redirected import. */"
+    },
+    {
+      "line": 1448,
+      "text": "void wl_sjp_note(void *environment, void *caller)"
+    },
+    {
+      "line": 1449,
+      "text": "{"
+    },
+    {
+      "line": 1450,
+      "text": "    if (access(\"/data/local/tmp/asx/trace_webview_setjmp\", F_OK) != 0) {"
+    },
+    {
+      "line": 1451,
+      "text": "        return;"
+    },
+    {
+      "line": 1452,
+      "text": "    }"
+    },
+    {
+      "line": 1453,
+      "text": "    static unsigned int calls;"
+    },
+    {
+      "line": 1454,
+      "text": "    unsigned int call = __atomic_add_fetch(&calls, 1, __ATOMIC_RELAXED);"
+    },
+    {
+      "line": 1455,
+      "text": "    if (call <= 256) {"
+    },
+    {
+      "line": 1456,
+      "text": "        fprintf(stderr,"
+    },
+    {
+      "line": 1457,
+      "text": "                \"[WESTLAKE-WEBVIEW-SJP] call=%u env=%p caller=%p\\n\","
+    },
+    {
+      "line": 1458,
+      "text": "                call, environment, caller);"
+    },
+    {
+      "line": 1459,
+      "text": "    }"
+    },
+    {
+      "line": 1460,
+      "text": "}"
+    },
+    {
+      "line": 1461,
+      "text": ""
+    },
+    {
+      "line": 1462,
+      "text": "void wl_ljmp_note(void *environment, int value, void *caller)"
+    },
+    {
+      "line": 1463,
+      "text": "{"
+    },
+    {
+      "line": 1464,
+      "text": "    if (access(\"/data/local/tmp/asx/trace_webview_setjmp\", F_OK) != 0) {"
+    },
+    {
+      "line": 1465,
+      "text": "        return;"
+    },
+    {
+      "line": 1466,
+      "text": "    }"
+    },
+    {
+      "line": 1467,
+      "text": "    static unsigned int calls;"
+    },
+    {
+      "line": 1468,
+      "text": "    unsigned int call = __atomic_add_fetch(&calls, 1, __ATOMIC_RELAXED);"
+    },
+    {
+      "line": 1469,
+      "text": "    if (call <= 256) {"
+    },
+    {
+      "line": 1470,
+      "text": "        fprintf(stderr,"
+    },
+    {
+      "line": 1471,
+      "text": "                \"[WESTLAKE-WEBVIEW-LJMP] call=%u env=%p value=%d caller=%p\\n\","
+    },
+    {
+      "line": 1472,
+      "text": "                call, environment, value, caller);"
+    },
+    {
+      "line": 1473,
+      "text": "    }"
+    },
+    {
+      "line": 1657,
+      "text": "        abort();"
+    },
+    {
+      "line": 1658,
+      "text": "    }"
+    },
+    {
+      "line": 1659,
+      "text": "    FD_SET(fd, set);"
+    },
+    {
+      "line": 1660,
+      "text": "}"
+    },
+    {
+      "line": 1661,
+      "text": ""
+    },
+    {
+      "line": 1662,
+      "text": "ssize_t __pread64_chk(int fd, void *buffer, size_t count, int64_t offset,"
+    },
+    {
+      "line": 1663,
+      "text": "                      size_t buffer_size)"
+    },
+    {
+      "line": 1664,
+      "text": "{"
+    },
+    {
+      "line": 1665,
+      "text": "    if (count > buffer_size) {"
+    },
+    {
+      "line": 1666,
+      "text": "        abort();"
+    },
+    {
+      "line": 1667,
+      "text": "    }"
+    },
+    {
+      "line": 1668,
+      "text": "    return pread(fd, buffer, count, (off_t)offset);"
+    },
+    {
+      "line": 1669,
+      "text": "}"
+    },
+    {
+      "line": 1670,
+      "text": ""
+    },
+    {
+      "line": 1671,
+      "text": "ssize_t __pwrite64_chk(int fd, const void *buffer, size_t count, int64_t offset,"
+    },
+    {
+      "line": 1672,
+      "text": "                       size_t buffer_size)"
+    },
+    {
+      "line": 1673,
+      "text": "{"
+    },
+    {
+      "line": 1674,
+      "text": "    if (count > buffer_size) {"
+    },
+    {
+      "line": 1675,
+      "text": "        abort();"
+    },
+    {
+      "line": 1676,
+      "text": "    }"
+    },
+    {
+      "line": 1677,
+      "text": "    return pwrite(fd, buffer, count, (off_t)offset);"
+    },
+    {
+      "line": 1678,
+      "text": "}"
+    },
+    {
+      "line": 1679,
+      "text": ""
+    },
+    {
+      "line": 1680,
+      "text": "long long strtoll_l(const char *text, char **end, int base, locale_t locale)"
+    }
+  ],
+  "last_path_commit": "532633da63b770d3d459c74683db6d7a1f82a022"
+}
