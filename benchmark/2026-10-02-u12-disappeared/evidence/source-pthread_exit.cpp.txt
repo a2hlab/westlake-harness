@@ -1,0 +1,40 @@
+47: /* CAVEAT: our implementation of pthread_cleanup_push/pop doesn't support C++ exceptions
+48:  *         and thread cancelation
+49:  */
+50: 
+51: __BIONIC_WEAK_FOR_NATIVE_BRIDGE
+52: void __pthread_cleanup_push(__pthread_cleanup_t* c, __pthread_cleanup_func_t routine, void* arg) {
+53:   pthread_internal_t* thread = __get_thread();
+54:   c->__cleanup_routine = routine;
+55:   c->__cleanup_arg = arg;
+56:   c->__cleanup_prev = thread->cleanup_stack;
+57:   thread->cleanup_stack = c;
+58: }
+59: 
+60: __BIONIC_WEAK_FOR_NATIVE_BRIDGE
+61: void __pthread_cleanup_pop(__pthread_cleanup_t* c, int execute) {
+62:   pthread_internal_t* thread = __get_thread();
+63:   thread->cleanup_stack = c->__cleanup_prev;
+64:   if (execute) {
+65:     c->__cleanup_routine(c->__cleanup_arg);
+66:   }
+67: }
+68: 
+69: __BIONIC_WEAK_FOR_NATIVE_BRIDGE
+70: void pthread_exit(void* return_value) {
+71:   // Call dtors for thread_local objects first.
+72:   __cxa_thread_finalize();
+73: 
+74:   pthread_internal_t* thread = __get_thread();
+75:   thread->return_value = return_value;
+76: 
+77:   // Call the cleanup handlers.
+78:   while (thread->cleanup_stack) {
+79:     __pthread_cleanup_t* c = thread->cleanup_stack;
+80:     thread->cleanup_stack = c->__cleanup_prev;
+81:     c->__cleanup_routine(c->__cleanup_arg);
+82:   }
+83: 
+84:   // Call the TLS destructors. It is important to do that before removing this
+85:   // thread from the global list. This will ensure that if someone else deletes
+86:   // a TLS key, the corresponding value will be set to NULL in this thread's TLS

@@ -1,0 +1,42 @@
+1680: long long strtoll_l(const char *text, char **end, int base, locale_t locale)
+1681: {
+1682:     (void)locale;
+1683:     return strtoll(text, end, base);
+1684: }
+1685: 
+1686: unsigned long long strtoull_l(const char *text, char **end, int base, locale_t locale)
+1687: {
+1688:     (void)locale;
+1689:     return strtoull(text, end, base);
+1690: }
+1856: /*
+1857:  * pthread_cleanup_push/pop: bionic's headers expand these into calls that
+1858:  * link a caller-owned record onto a per-thread list; musl keeps its own
+1859:  * layout. bionic has no pthread_cancel, so only explicit pop runs handlers.
+1860:  */
+1861: typedef struct WebviewBionicCleanup {
+1862:     struct WebviewBionicCleanup *prev;
+1863:     void (*routine)(void *);
+1864:     void *arg;
+1865: } WebviewBionicCleanup;
+1866: 
+1867: static __thread WebviewBionicCleanup *g_cleanup_head;
+1868: 
+1869: void __pthread_cleanup_push(WebviewBionicCleanup *c, void (*routine)(void *), void *arg)
+1870: {
+1871:     c->routine = routine;
+1872:     c->arg = arg;
+1873:     c->prev = g_cleanup_head;
+1874:     g_cleanup_head = c;
+1875: }
+1876: 
+1877: void __pthread_cleanup_pop(WebviewBionicCleanup *c, int execute)
+1878: {
+1879:     g_cleanup_head = c->prev;
+1880:     if (execute) {
+1881:         c->routine(c->arg);
+1882:     }
+1883: }
+1884: 
+1885: /*
+1886:  * Deprecated property enumeration. bionic keeps both for old NDK code;

@@ -1,0 +1,22 @@
+8: extern void* __loader_android_dlopen_ext(const char*, int,
+9:     const android_dlextinfo*, const void*)
+10: #if defined(__APPLE__)
+11:     __attribute__((weak_import));
+12: #else
+13:     __attribute__((weak));
+14: #endif
+15: 
+16: void* android_dlopen_ext(const char* filename, int flags,
+17:     const android_dlextinfo* extinfo) {
+18:     const void* caller_addr = __builtin_return_address(0);
+19:     if (__loader_android_dlopen_ext != NULL) {
+20:         return __loader_android_dlopen_ext(filename, flags, extinfo, caller_addr);
+21:     }
+22:     if (extinfo != NULL && extinfo->flags != 0) {
+23:         fprintf(stderr, "[U10-DLEXT] backend absent; refusing extension flags=0x%" PRIx64
+24:             " file=%s\n", extinfo->flags, filename == NULL ? "(null)" : filename);
+25:         errno = ENOTSUP;
+26:         return NULL;
+27:     }
+28:     return dlopen(filename, flags);
+29: }

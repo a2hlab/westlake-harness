@@ -1,0 +1,32 @@
+2173:     public String getDisplayCountry(Locale locale) {
+2174:         String countryCode = baseLocale.getRegion();
+2175:         if (countryCode.isEmpty()) {
+2176:             return "";
+2177:         }
+2178: 
+2179:         final String normalizedRegion = normalizeAndValidateRegion(
+2180:                 countryCode, false /* strict */);
+2181:         if (normalizedRegion.isEmpty()) {
+2182:             return countryCode;
+2183:         }
+2184: 
+2185:         String result = LocaleNative.getDisplayCountry(this, locale);
+2186:         if (result == null) { // TODO: do we need to do this, or does ICU do it for us?
+2187:             result = LocaleNative.getDisplayCountry(this, Locale.getDefault());
+2188:         }
+2189:         return result;
+2190:     }
+2529:             ++count;
+2530:         }
+2531:         String countryCode = baseLocale.getRegion();
+2532:         if (!countryCode.isEmpty()) {
+2533:             if (count == 1) {
+2534:                 buffer.append(" (");
+2535:             } else if (count == 2) {
+2536:                 buffer.append(",");
+2537:             }
+2538:             String displayCountry = getDisplayCountry(locale);
+2539:             buffer.append(displayCountry.isEmpty() ? countryCode : displayCountry);
+2540:             ++count;
+2541:         }
+2542:         String variantCode = baseLocale.getVariant();

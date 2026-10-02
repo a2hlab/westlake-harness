@@ -1,0 +1,472 @@
+{
+  "source_commit": "2aa6c49df0",
+  "execution_enabled": false,
+  "key_count": 6,
+  "process_attempts": 7,
+  "observed_status_counts": {
+    "normal_exit_1": 3,
+    "normal_exit_0": 1,
+    "normal_exit_255": 1,
+    "signal_9": 2
+  },
+  "independent_cppcrash_count": 0,
+  "unchanged_fault_inventories": 6,
+  "clusters": [
+    {
+      "id": "compat-relocation-scope",
+      "layer": "native",
+      "keys": [
+        "fd-fennec_fdroid",
+        "firefox"
+      ],
+      "wall": "libmozglue __gnu_strerror_r relocation -> Gecko uncaught handler -> self-kill path",
+      "repair": "Keep the existing GNU ABI implementation; prove the sole resident compat owner enters each app relocation scope. A shared name or version-node edit alone is insufficient; test a consumer relocation and selected provider address.",
+      "source": "benchmark/2026-10-02-toutiao-bionic-scope/README.md:29",
+      "baseline_export_present": true,
+      "source_lines": {
+        "fd-fennec_fdroid": [
+          19016,
+          19018,
+          19024,
+          19088,
+          19154
+        ],
+        "firefox": [
+          31058,
+          31062,
+          31068,
+          31138,
+          31211
+        ]
+      },
+      "causal_grade": "Log-identified handler, pinned DEX self-kill sequence and matching SIGKILL strongly corroborate self-termination; no killer syscall trace was captured."
+    },
+    {
+      "id": "private-zlib-alias",
+      "layer": "native",
+      "keys": [
+        "burgerking"
+      ],
+      "wall": "libmmkv NEEDED libz.so absent -> NitroMmkv ULE -> main-thread kill semantics -> exit1",
+      "repair": "Publish the already-reviewed r109c libz alias and its exact zlib provider in westlake_native; apply the narrow r3 zlib route for the Burger King package. Do not duplicate the owner in root or add an already-present policy name.",
+      "source": "benchmark/2026-10-02-u11-native-batch/README.md:73",
+      "donor_commit": "be16148da9ae7bb89c62e81e144ed0bceb5c4669",
+      "alias_sha256": "50b9ab6af637c8573736a595417f6177d5845d21fc48da5b8e1299a078b1e48d",
+      "provider_sha256": "ab0820c6a33c58f2b5aa6d7b5f967f0eae42319baa2d7a42b779d1583f8a14fc",
+      "source_lines": {
+        "burgerking": [
+          19585,
+          19587,
+          19656,
+          19725,
+          19919
+        ]
+      },
+      "causal_grade": "Observed main-thread fatal preservation followed by normal exit1; exact terminating syscall caller not captured."
+    },
+    {
+      "id": "locale-display-null",
+      "layer": "JAR/libcore + ICU",
+      "keys": [
+        "cv2-com-kaajjo-libresudoku"
+      ],
+      "wall": "Locale.getDisplayName:2539 null String.isEmpty -> app GlobalExceptionHandler -> exit0",
+      "repair": "Repair the LocaleNative/ICU country-display contract and retain a narrow country-code fallback after both native lookups return null; preserve real primary/default translations. Use the actual boot image provenance, not a reference Java file as a reproduced deployed binary.",
+      "source": {
+        "path": "$WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/libcore/ojluni/src/main/java/java/util/Locale.java",
+        "sha256": "a608a5534b4c22fb9f50bfd50706c52fadd5c00bd1271fd8345faa68b2a4b95a",
+        "commit": null,
+        "ranges": [
+          [
+            2173,
+            2190
+          ],
+          [
+            2529,
+            2542
+          ]
+        ],
+        "evidence": "evidence/source-Locale.java.txt",
+        "evidence_sha256": "10e7840da6f53923283874ff48d0a77faba2bc6f307a3124aea7ff71a138b7b7"
+      },
+      "source_lines": {
+        "cv2-com-kaajjo-libresudoku": [
+          38564,
+          38565,
+          38566,
+          38598,
+          38691
+        ]
+      },
+      "causal_grade": "Pinned DEX handler logs throwable, launches crash activity, then System.exit(0); observed stack and exit0 agree. The two native return values and first entry into CrashActivity were not instrumented."
+    },
+    {
+      "id": "android-dlext-scope-and-backend",
+      "layer": "native",
+      "keys": [
+        "ppsspp"
+      ],
+      "wall": "libppsspp_jni android_dlopen_ext relocation -> hasNoNativeBinary -> onCreate sleep3000 -> exit(-1)",
+      "repair": "First expose the existing android_dlopen_ext from the sole compat owner in relocation scope. Separately provide a real namespace-aware backend for actual USE_NAMESPACE/FORCE_LOAD calls; do not ignore nonnull extinfo or count refusal as repair.",
+      "source": {
+        "path": "$REPO/benchmark/2026-10-01-u10-native-shims/overlay/android_dlopen_ext.c",
+        "sha256": "7337a3935c426801002ca56508189ea2e74d7d59a3cc4600b46c9e3b3f2e1649",
+        "commit": null,
+        "ranges": [
+          [
+            8,
+            29
+          ]
+        ],
+        "evidence": "evidence/source-android_dlopen_ext.c.txt",
+        "evidence_sha256": "06ff1c6d9347770b7c7050bbfb3fb4ff4dab3fe7788a829535999f0e8e5c0774"
+      },
+      "baseline_export_present": true,
+      "source_lines": {
+        "ppsspp": [
+          30860,
+          30861,
+          32594,
+          32947
+        ]
+      },
+      "causal_grade": "Pinned CheckABIAndLoadLibrary writes m_hasNoNativeBinary on the logged ULE; onCreate takes its timed exit(-1) branch. APPSPAWN exit255 is consistent; intervening VSync does not demonstrate successful app native loading.",
+      "next_static_risk": "Current exported wrapper has only a weak __loader_android_dlopen_ext backend and refuses nonzero flags when absent. Actual prior-pinned call sites use 0x200 and 0x210; which executes next is unknown."
+    },
+    {
+      "id": "vlc-bionic-residue",
+      "layer": "native",
+      "keys": [
+        "vlc"
+      ],
+      "wall": "strtoll_l then __pthread_cleanup_push relocation -> LibVLC.loadLibraries catch -> exit1",
+      "repair": "Add Android-compatible strtoll_l/strtoull_l and cleanup push/pop with ABI/layout and thread-exit semantics validated against actual consumers; publish through the sole visible compat owner. OH single-underscore helpers are not automatically ABI-equivalent. Upstream TLS explicit-pop implementation is a source candidate, not a verified full thread-exit donor.",
+      "source": {
+        "path": "$WORKSPACES/vm-copies/westlake-current/framework/webview-shim/webview_bionic_shim.c",
+        "sha256": "6c2dcfa611ba04f443e9a025f7c6eab5108db1192de37f33508a82a081619494",
+        "commit": "532633da63b770d3d459c74683db6d7a1f82a022",
+        "ranges": [
+          [
+            1680,
+            1690
+          ],
+          [
+            1856,
+            1886
+          ]
+        ],
+        "evidence": "evidence/source-webview_bionic_shim.c.txt",
+        "evidence_sha256": "a6a390a0b13ed3e650b8f91df57aa25acec3ba043baea9c1c364d2e8f1c0d4a3"
+      },
+      "donor_commit": "826298cc6719a202725e4850d9c9192fe0911a61",
+      "source_lines": {
+        "vlc": [
+          19447,
+          19449,
+          19450,
+          19606,
+          24281,
+          24283,
+          24284,
+          24375
+        ]
+      },
+      "causal_grade": "Both PIDs independently reproduce load-error literal and normal exit1; pinned LibVLC catch calls System.exit(1). Earlier c++ load failure is caught without exiting; libvlc failure causes the later explicit exit.",
+      "next_static_risk": "__pthread_cleanup_pop and additional libvlc/libvlcjni imports must pass the complete relocation closure; loading only the first symbol is insufficient."
+    }
+  ],
+  "predictions": [
+    {
+      "key": "fd-fennec_fdroid",
+      "cluster": "compat-relocation-scope",
+      "affected_key_count": 2,
+      "current_terminal": [
+        {
+          "line": 19154,
+          "timestamp": "10-02 16:55:35.554",
+          "reporter_pid": 15801,
+          "pid": 25084,
+          "kind": "signal",
+          "value": 9,
+          "text": "10-02 16:55:35.554 15801 15801 W C02c11/APPSPAWN: [appspawn_service.c:114]org.mozilla.fennec_fdroid with pid 25084 exit with signal:9"
+        }
+      ],
+      "expected_first_fatal_move": "conditional-on-complete-repair-and-owner-proof",
+      "requirement": "Keep the existing GNU ABI implementation; prove the sole resident compat owner enters each app relocation scope. A shared name or version-node edit alone is insufficient; test a consumer relocation and selected provider address.",
+      "next_exact_fatal": "unknown",
+      "t20": "unknown",
+      "evidence_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5/u101-t8-A5-20261002T083800/5cd/runner/unlit-original/20261002T165132-808ba8be/5cd1e3dd00000000000000000923012c/fd-fennec_fdroid/hilog.txt",
+      "evidence_lines": [
+        19016,
+        19018,
+        19024,
+        19088,
+        19154
+      ]
+    },
+    {
+      "key": "firefox",
+      "cluster": "compat-relocation-scope",
+      "affected_key_count": 2,
+      "current_terminal": [
+        {
+          "line": 31211,
+          "timestamp": "10-02 16:56:22.993",
+          "reporter_pid": 15069,
+          "pid": 25608,
+          "kind": "signal",
+          "value": 9,
+          "text": "10-02 16:56:22.993 15069 15069 W C02c11/APPSPAWN: [appspawn_service.c:114]org.mozilla.firefox with pid 25608 exit with signal:9"
+        }
+      ],
+      "expected_first_fatal_move": "conditional-on-complete-repair-and-owner-proof",
+      "requirement": "Keep the existing GNU ABI implementation; prove the sole resident compat owner enters each app relocation scope. A shared name or version-node edit alone is insufficient; test a consumer relocation and selected provider address.",
+      "next_exact_fatal": "unknown",
+      "t20": "unknown",
+      "evidence_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5/u101-t8-A5-20261002T083800/61b/runner/unlit-original/20261002T165131-1136341e/61b0657200000000000000000324012c/firefox/hilog.txt",
+      "evidence_lines": [
+        31058,
+        31062,
+        31068,
+        31138,
+        31211
+      ]
+    },
+    {
+      "key": "burgerking",
+      "cluster": "private-zlib-alias",
+      "affected_key_count": 1,
+      "current_terminal": [
+        {
+          "line": 19919,
+          "timestamp": "10-02 17:09:56.772",
+          "reporter_pid": 17906,
+          "pid": 570,
+          "kind": "code",
+          "value": 1,
+          "text": "10-02 17:09:56.772 17906 17906 W C02c11/APPSPAWN: [appspawn_service.c:118]com.emn8.mobilem8.nativeapp.bk with pid 570 exit with code:1"
+        }
+      ],
+      "expected_first_fatal_move": "conditional-on-complete-repair-and-owner-proof",
+      "requirement": "Publish the already-reviewed r109c libz alias and its exact zlib provider in westlake_native; apply the narrow r3 zlib route for the Burger King package. Do not duplicate the owner in root or add an already-present policy name.",
+      "next_exact_fatal": "unknown",
+      "t20": "unknown",
+      "evidence_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5/u101-t8-A5-5ea-r2-20261002T085100/5ea/runner/unlit-original/20261002T170234-e182cb96/5ea34a4500000000000000001123012c/burgerking/hilog.txt",
+      "evidence_lines": [
+        19585,
+        19587,
+        19656,
+        19725,
+        19919
+      ]
+    },
+    {
+      "key": "cv2-com-kaajjo-libresudoku",
+      "cluster": "locale-display-null",
+      "affected_key_count": 1,
+      "current_terminal": [
+        {
+          "line": 38691,
+          "timestamp": "10-02 17:16:37.213",
+          "reporter_pid": 17906,
+          "pid": 9435,
+          "kind": "code",
+          "value": 0,
+          "text": "10-02 17:16:37.213 17906 17906 W C02c11/APPSPAWN: [appspawn_service.c:118]com.kaajjo.libresudoku with pid 9435 exit with code:0"
+        }
+      ],
+      "expected_first_fatal_move": "conditional-on-complete-repair-and-owner-proof",
+      "requirement": "Repair the LocaleNative/ICU country-display contract and retain a narrow country-code fallback after both native lookups return null; preserve real primary/default translations. Use the actual boot image provenance, not a reference Java file as a reproduced deployed binary.",
+      "next_exact_fatal": "unknown",
+      "t20": "unknown",
+      "evidence_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5/u101-t8-A5-5ea-r2-20261002T085100/5ea/runner/unlit-cv2/20261002T171417-6e8fe367/5ea34a4500000000000000001123012c/cv2-com-kaajjo-libresudoku/hilog.txt",
+      "evidence_lines": [
+        38564,
+        38565,
+        38566,
+        38598,
+        38691
+      ]
+    },
+    {
+      "key": "ppsspp",
+      "cluster": "android-dlext-scope-and-backend",
+      "affected_key_count": 1,
+      "current_terminal": [
+        {
+          "line": 32947,
+          "timestamp": "10-02 16:57:20.947",
+          "reporter_pid": 15069,
+          "pid": 26744,
+          "kind": "code",
+          "value": 255,
+          "text": "10-02 16:57:20.947 15069 15069 W C02c11/APPSPAWN: [appspawn_service.c:118]org.ppsspp.ppsspp with pid 26744 exit with code:255"
+        }
+      ],
+      "expected_first_fatal_move": "conditional-on-complete-repair-and-owner-proof",
+      "requirement": "First expose the existing android_dlopen_ext from the sole compat owner in relocation scope. Separately provide a real namespace-aware backend for actual USE_NAMESPACE/FORCE_LOAD calls; do not ignore nonnull extinfo or count refusal as repair.",
+      "next_exact_fatal": "unknown",
+      "t20": "unknown",
+      "evidence_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5/u101-t8-A5-20261002T083800/61b/runner/unlit-original/20261002T165131-1136341e/61b0657200000000000000000324012c/ppsspp/hilog.txt",
+      "evidence_lines": [
+        30860,
+        30861,
+        32594,
+        32947
+      ]
+    },
+    {
+      "key": "vlc",
+      "cluster": "vlc-bionic-residue",
+      "affected_key_count": 1,
+      "current_terminal": [
+        {
+          "line": 19606,
+          "timestamp": "10-02 17:12:16.083",
+          "reporter_pid": 17906,
+          "pid": 4317,
+          "kind": "code",
+          "value": 1,
+          "text": "10-02 17:12:16.083 17906 17906 W C02c11/APPSPAWN: [appspawn_service.c:118]org.videolan.vlc with pid 4317 exit with code:1"
+        },
+        {
+          "line": 24375,
+          "timestamp": "10-02 17:12:19.066",
+          "reporter_pid": 17906,
+          "pid": 4353,
+          "kind": "code",
+          "value": 1,
+          "text": "10-02 17:12:19.066 17906 17906 W C02c11/APPSPAWN: [appspawn_service.c:118]org.videolan.vlc with pid 4353 exit with code:1"
+        }
+      ],
+      "expected_first_fatal_move": "conditional-on-complete-repair-and-owner-proof",
+      "requirement": "Add Android-compatible strtoll_l/strtoull_l and cleanup push/pop with ABI/layout and thread-exit semantics validated against actual consumers; publish through the sole visible compat owner. OH single-underscore helpers are not automatically ABI-equivalent. Upstream TLS explicit-pop implementation is a source candidate, not a verified full thread-exit donor.",
+      "next_exact_fatal": "unknown",
+      "t20": "unknown",
+      "evidence_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5/u101-t8-A5-5ea-r2-20261002T085100/5ea/runner/unlit-original/20261002T170234-e182cb96/5ea34a4500000000000000001123012c/vlc/hilog.txt",
+      "evidence_lines": [
+        19447,
+        19449,
+        19450,
+        19606,
+        24281,
+        24283,
+        24284,
+        24375
+      ]
+    }
+  ],
+  "predicted_new_lights": [],
+  "exports_only_4698_first_fatal_moved_keys": [],
+  "status_is_not_unexplained_but_no_killer_syscall_trace": true,
+  "source_references": [
+    {
+      "path": "$WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/libcore/ojluni/src/main/java/java/util/Locale.java",
+      "sha256": "a608a5534b4c22fb9f50bfd50706c52fadd5c00bd1271fd8345faa68b2a4b95a",
+      "commit": null,
+      "ranges": [
+        [
+          2173,
+          2190
+        ],
+        [
+          2529,
+          2542
+        ]
+      ],
+      "evidence": "evidence/source-Locale.java.txt",
+      "evidence_sha256": "10e7840da6f53923283874ff48d0a77faba2bc6f307a3124aea7ff71a138b7b7"
+    },
+    {
+      "path": "$WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/bionic/libc/bionic/stdlib_l.cpp",
+      "sha256": "7399803737fc7c004f4af3a12be5d77a3c52846b3a8519a172fa275cfea857a6",
+      "commit": null,
+      "ranges": [
+        [
+          29,
+          59
+        ]
+      ],
+      "evidence": "evidence/source-stdlib_l.cpp.txt",
+      "evidence_sha256": "6f1f258be20a42852dd98b5abb6ab3851308a7c1281d3d7f1de0f0c980e2261a"
+    },
+    {
+      "path": "$WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/bionic/libc/bionic/pthread_exit.cpp",
+      "sha256": "99db1e4ffba6ce12f1280def244c89791c119f447a71f0261b33396ecb33f5c7",
+      "commit": null,
+      "ranges": [
+        [
+          47,
+          86
+        ]
+      ],
+      "evidence": "evidence/source-pthread_exit.cpp.txt",
+      "evidence_sha256": "cbbd2381778c8b8a96364eada25ecec3eaa295c516f19962665f09c6fd2c9d79"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/webview-shim/webview_bionic_shim.c",
+      "sha256": "6c2dcfa611ba04f443e9a025f7c6eab5108db1192de37f33508a82a081619494",
+      "commit": "532633da63b770d3d459c74683db6d7a1f82a022",
+      "ranges": [
+        [
+          1680,
+          1690
+        ],
+        [
+          1856,
+          1886
+        ]
+      ],
+      "evidence": "evidence/source-webview_bionic_shim.c.txt",
+      "evidence_sha256": "a6a390a0b13ed3e650b8f91df57aa25acec3ba043baea9c1c364d2e8f1c0d4a3"
+    },
+    {
+      "path": "$REPO/benchmark/2026-10-01-u10-native-shims/overlay/android_dlopen_ext.c",
+      "sha256": "7337a3935c426801002ca56508189ea2e74d7d59a3cc4600b46c9e3b3f2e1649",
+      "commit": null,
+      "ranges": [
+        [
+          8,
+          29
+        ]
+      ],
+      "evidence": "evidence/source-android_dlopen_ext.c.txt",
+      "evidence_sha256": "06ff1c6d9347770b7c7050bbfb3fb4ff4dab3fe7788a829535999f0e8e5c0774"
+    }
+  ],
+  "upstream_head": "532633da63b770d3d459c74683db6d7a1f82a022",
+  "aosp_provenance": {
+    "source": "$WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/SOURCE.txt",
+    "source_sha256": "3c3433084c6825cc73245dcfc824a73ec4cc761055a8f2757643cdd91de8615b",
+    "checksum_path": "$WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/SHA256SUMS",
+    "checksum_sha256": "05eb322ab0099ec44a0c4ca209fc0e6fa9c603f5aaa639658dc18ffbf189b5dd",
+    "checked_files": 3,
+    "tag": "android-14.0.0_r1"
+  },
+  "factory_libc": {
+    "path": "$WORKSPACES/westlake-inputs/oh61-link-inputs/system-lib64/ld-musl-aarch64.so.1",
+    "sha256": "fd3c4701acf719738fbd14cf1d419e4dd222c06a6df41f53d973354d648af7e2",
+    "symbols": {
+      "strtoll_l": false,
+      "__pthread_cleanup_push": false,
+      "__pthread_cleanup_pop": false,
+      "_pthread_cleanup_push": true,
+      "_pthread_cleanup_pop": true
+    },
+    "receipt": {
+      "command": [
+        "llvm-readelf",
+        "--dyn-syms",
+        "$WORKSPACES/westlake-inputs/oh61-link-inputs/system-lib64/ld-musl-aarch64.so.1"
+      ],
+      "raw_path": "$REPO/benchmark/2026-10-02-u12-disappeared/.artifacts/oh-libc-dynsym.txt",
+      "raw_sha256": "2d6d363872151e0bd7d9e44f89d5d24146c4576334870664470ca5bb3f205d40",
+      "evidence": "evidence/oh-libc-dynsym.txt"
+    }
+  },
+  "scope_reference": "benchmark/2026-10-02-toutiao-bionic-scope/evidence/oh-libc-check-version.txt",
+  "portable_evidence": {
+    "dex_methods": 12,
+    "native_consumers": 7
+  }
+}
