@@ -21,7 +21,12 @@ def sha(value):
 
 
 def portable(value):
-    return str(value).replace(str(REPO), "$REPO").replace(str(WS), "$WORKSPACES").replace(str(Path.home()), "$HOME")
+    text = str(value)
+    for root, variable in [(REPO, "$REPO"), (WS, "$WORKSPACES"), (Path.home(), "$HOME")]:
+        if text == str(root):
+            return variable
+        text = text.replace(str(root) + "/", variable + "/")
+    return text
 
 
 def expand(value):
