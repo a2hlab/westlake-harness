@@ -5,7 +5,10 @@
     open_site_scan.py --u9 [--owners ...]           # the signed U9 appspawn-x + child
 
 Per site: function, PC, callee (dlopen / dlopen_ns / android_dlopen_ext / dlmopen, `b` tail calls included), the
-namespace argument, the path (resolved C-string literals where adrp+add / csel reach them), the flags. Then:
+namespace argument, the path (resolved C-string literals where adrp+add / csel reach them), the flags.
+Namespace edges list dlns initialization, creation, lookup, inheritance and configuration calls, including tails.
+INHERIT-REPEAT normalizes names and expands one direct caller; INHERIT-AFTER-OPEN requires a syntactic CFG path,
+not numeric PC order. Unknown arguments and indirect calls remain coverage limits. Then:
   DEFAULT-NS   a plain dlopen / android_dlopen_ext / tail call -- opens into the caller's (often default) namespace;
   MULTI-NS     one library reaches sites with different namespace arguments -- each namespace maps its own copy;
   UNRESOLVED   path or namespace comes from a register / param / table -- static resolution stops here, read it.
@@ -40,6 +43,7 @@ OPEN_FUNCS = {
     'dlopen_ns': (0, 1, 2),
     'dlmopen': (0, 1, 2),
 }
+NS_FUNCS = {'dlns_init', 'dlns_create', 'dlns_create2', 'dlns_inherit', 'dlns_get'}
 FLAG_BITS = [(0x1, 'LAZY'), (0x2, 'NOW'), (0x4, 'NOLOAD'), (0x100, 'GLOBAL'), (0x1000, 'NODELETE')]  # OH musl values
 NON_DEF = re.compile(r'^(st|cmp|cmn|tst|cb|tb|b\.|b$|bl$|blr$|br$|ret|nop|prfm|dmb|dsb|isb|hint|bti|paciasp|autiasp)')
 MAX_BACK = 4000  # to the function start: namespace registers are often set hundreds of instructions earlier
@@ -182,6 +186,11 @@ def resolve(insns, idx, reg, elf, depth=0):
                 else:
                     out.append((kind, v))
             return out
+        if mnem == 'sub' and len(ops) == 3 and ops[1] in ('sp', 'x29') and ops[2].startswith('#'):
+            return [('stack', f'{ops[1]}-{int(ops[2][1:].split()[0], 0):#x}')]
+        if mnem.startswith('ldp') and len(ops) >= 3 and re.match(r'\[(sp|x29)\b', ops[2]):
+            suffix = '+8' if reg_no(ops[1]) == reg else ''
+            return [('stack', f'frame slot {ops[2]}{suffix}')]
         if mnem == 'csel' and len(ops) >= 3:
             out = []
             for src in ops[1:3]:
@@ -238,7 +247,158 @@ def scan(path, disassembly=None, elf=None):
                           'tail_call': mnem == 'b', 'namespace': ns,
                           'path': render(resolve(insns, i, path_arg, elf), elf),
                           'flags': decode_flags(resolve(insns, i, flags_arg, elf))})
+    elf.namespace_edges, elf.namespace_findings = namespace_analysis(path, parse_disassembly(text), sites, elf)
     return sites, elf
+
+
+def call_target(mnem, operands):
+    match = re.search(r'<([^>+]+)(?:\+[^>]*)?>', operands)
+    return match.group(1).removesuffix('@plt') if mnem in ('bl', 'b') and match else None
+
+
+def successors(insns):
+    addresses = {row[0]: index for index, row in enumerate(insns)}
+    graph = {}
+    for index, (_, mnem, operands) in enumerate(insns):
+        following = [index + 1] if index + 1 < len(insns) else []
+        conditional = mnem.startswith('b.') or mnem in ('cbz', 'cbnz', 'tbz', 'tbnz')
+        branch_operands = split_ops(operands)
+        target = re.fullmatch(r'0x([0-9a-f]+)', branch_operands[-1]) if branch_operands else None
+        branch = addresses.get(int(target.group(1), 16)) if target else None
+        if mnem in ('ret', 'br'):
+            graph[index] = []
+        elif mnem == 'b':
+            graph[index] = [branch] if branch is not None else []
+        elif conditional:
+            graph[index] = following + ([branch] if branch is not None else [])
+        else:
+            graph[index] = following
+    return graph
+
+
+def reachable(graph, start, finish):
+    pending = list(graph.get(start, []))
+    visited = set()
+    while pending:
+        index = pending.pop()
+        if index == finish:
+            return True
+        if index not in visited:
+            visited.add(index)
+            pending.extend(graph.get(index, []))
+    return False
+
+
+def namespace_analysis(path, functions, sites, elf):
+    edges, bindings, calls, graphs = [], {}, [], {}
+    for function, insns in functions.items():
+        graphs[function] = successors(insns)
+        bindings[function] = []
+        for index, (pc, mnem, operands) in enumerate(insns):
+            callee = call_target(mnem, operands)
+            target = re.search(r'\b0x([0-9a-f]+)\b', operands)
+            if (callee in functions and functions[callee] and callee != function and target and
+                    int(target.group(1), 16) == functions[callee][0][0] and '@plt>' not in operands):
+                calls.append((function, index, pc, callee))
+            if callee not in NS_FUNCS and not (callee or '').startswith('dlns_set_namespace_'):
+                continue
+            arguments = [render(resolve(insns, index, argument, elf), elf) for argument in range(3)]
+            edge = {'binary': Path(path).name, 'function': function, 'pc': f'{pc:#x}', 'callee': callee,
+                    'tail_call': mnem == 'b', 'namespace': arguments[1] if callee == 'dlns_get' else arguments[0]}
+            if callee in ('dlns_get', 'dlns_init'):
+                edge['name'] = arguments[0] if callee == 'dlns_get' else arguments[1]
+                bindings[function].append((index, edge['namespace'], edge['name']))
+            elif callee == 'dlns_inherit':
+                edge.update(parent=arguments[1], shared=arguments[2])
+            elif callee in ('dlns_create', 'dlns_create2'):
+                edge.update(search_paths=arguments[1], flags=arguments[2])
+            else:
+                edge['value'] = arguments[1]
+            edges.append(edge)
+
+    def identity(function, index, expression):
+        if len(expression) != 1 or any(value.startswith(('unknown:', 'ret:', 'addr:')) for value in expression):
+            return ['unresolved:' + function + ':' + ' | '.join(expression)]
+        for binding_index, pointer, name in reversed(bindings[function]):
+            if binding_index <= index and pointer == expression:
+                if len(name) == 1 and not name[0].startswith(('param:', 'stack:', 'unknown:', 'ret:', 'addr:', 'global:', '#')):
+                    return ['name:' + name[0]]
+                if len(name) == 1 and name[0].startswith(('param:', 'stack:')):
+                    return ['name-expr:' + function + ':' + name[0]]
+                break
+        return ['expr:' + function + ':' + expression[0]]
+
+    event_indices = {}
+    inherits = {}
+    for edge in edges:
+        function = edge['function']
+        index = next(index for index, row in enumerate(functions[function]) if row[0] == int(edge['pc'], 16))
+        event_indices[id(edge)] = index
+        edge['namespace_identity'] = identity(function, index, edge['namespace'])
+        if edge['callee'] == 'dlns_inherit':
+            edge['parent_identity'] = identity(function, index, edge['parent'])
+            inherits.setdefault(function, []).append(edge)
+
+    projected = []
+    for function, index, pc, callee in calls:
+        for inherited in inherits.get(callee, []):
+            inherited_index = event_indices[id(inherited)]
+            if inherited_index != 0 and not reachable(graphs[callee], 0, inherited_index):
+                continue
+            arguments = inherited['namespace']
+            parameter = re.fullmatch(r'param:x([0-7])', arguments[0]) if len(arguments) == 1 else None
+            if parameter is None:
+                continue
+            expression = render(resolve(functions[function], index, int(parameter.group(1)), elf), elf)
+            clone = dict(inherited, function=function, pc=f'{pc:#x}', namespace=expression,
+                         projected=True,
+                         namespace_identity=(inherited['namespace_identity'] if inherited['namespace_identity'][0].startswith('name:')
+                                             else identity(function, index, expression)),
+                         via_call={'callee': callee, 'inherit_pc': inherited['pc'], 'depth': 1})
+            event_indices[id(clone)] = index
+            projected.append(clone)
+
+    findings_list = []
+    events = [edge for edge in edges if edge['callee'] == 'dlns_inherit'] + projected
+    for edge in events:
+        function = edge['function']
+        index = event_indices[id(edge)]
+        edge['opens'] = []
+        for site in sites:
+            if site['function'] != function or site['callee'] != 'dlopen_ns':
+                continue
+            open_index = next(position for position, row in enumerate(functions[function]) if row[0] == int(site['pc'], 16))
+            if identity(function, open_index, site['namespace']) != edge['namespace_identity']:
+                continue
+            can_reach = reachable(graphs[function], open_index, index)
+            edge['opens'].append({'pc': site['pc'], 'pc_before_inherit': open_index < index, 'reachable': can_reach})
+            if can_reach and not edge['namespace_identity'][0].startswith('unresolved:'):
+                findings_list.append({'kind': 'INHERIT-AFTER-OPEN', 'site': f"{edge['binary']}:{function}@{edge['pc']}",
+                                      'open_pc': site['pc'], 'namespace': edge['namespace_identity'],
+                                      'via_call': edge.get('via_call'), 'reachability': 'syntactic-may-path'})
+    for later, second in enumerate(events):
+        for first in events[:later]:
+            if first['function'] != second['function']:
+                continue
+            pair = (first['namespace_identity'], first['parent_identity'])
+            if pair != (second['namespace_identity'], second['parent_identity']):
+                continue
+            if any(value.startswith('unresolved:') for identity_values in pair for value in identity_values):
+                continue
+            graph = graphs[first['function']]
+            first_index, second_index = event_indices[id(first)], event_indices[id(second)]
+            if reachable(graph, first_index, second_index):
+                ordered = (first, second)
+            elif reachable(graph, second_index, first_index):
+                ordered = (second, first)
+            else:
+                continue
+            findings_list.append({'kind': 'INHERIT-REPEAT', 'site': f"{second['binary']}:{second['function']}",
+                                  'child': pair[0], 'parent': pair[1],
+                                  'first': {'pc': ordered[0]['pc'], 'shared': ordered[0]['shared'], 'via_call': ordered[0].get('via_call')},
+                                  'second': {'pc': ordered[1]['pc'], 'shared': ordered[1]['shared'], 'via_call': ordered[1].get('via_call')},
+                                  'reachability': 'syntactic-may-path'})
+    return edges + projected, findings_list
 
 
 def findings(results, owners):
@@ -269,6 +429,8 @@ def findings(results, owners):
         elif len({r['namespace'] for r in reaches}) > 1:
             out.append({'kind': 'MULTI-NS', 'confidence': 'possible', 'library': lib, 'owner': lib in owners,
                         'reaches': reaches})
+    for _, _, elf in results:
+        out.extend(getattr(elf, 'namespace_findings', []))
     return out
 
 
@@ -277,7 +439,7 @@ def main():
     ap.add_argument('elf', nargs='*')
     ap.add_argument('--u9', action='store_true', help=f'scan the signed U9 host + child in $WORKSPACES/{U9_GENERATION}')
     ap.add_argument('--owners', nargs='*', default=['liboh_adapter_bridge.so', 'liboh_android_runtime.so'])
-    ap.add_argument('--json', help='write sites + findings here')
+    ap.add_argument('--json', help='write sites + namespace edges + findings here')
     ap.add_argument('--strict', action='store_true', help='exit 1 when an owner library reaches two namespaces')
     args = ap.parse_args()
     paths = list(args.elf) + ([str(lab_paths.workspaces() / U9_GENERATION / b) for b in U9_BINARIES] if args.u9 else [])
@@ -292,6 +454,12 @@ def main():
             tail = ' TAIL' if s['tail_call'] else ''
             print(f"   {s['function']}@{s['pc']} {s['callee']}{tail}  ns={' | '.join(s['namespace'])}  "
                   f"path={' | '.join(s['path'])}  flags={' | '.join(s['flags'])}")
+    print('== namespace edges')
+    for path, _, elf in results:
+        print(f'   binary {path}')
+        for edge in elf.namespace_edges:
+            print(f"   {edge['function']}@{edge['pc']} {edge['callee']}" + (' TAIL' if edge['tail_call'] else '') +
+                  '  ' + json.dumps({key: value for key, value in edge.items() if key not in ('binary', 'function', 'pc', 'callee', 'tail_call')}, ensure_ascii=False))
     found = findings(results, args.owners)
     print('== findings')
     for f in found:
@@ -303,7 +471,7 @@ def main():
             print(f"   {f['kind']} {f['site']}  " + json.dumps({k: v for k, v in f.items() if k not in ('kind', 'site')},
                                                          ensure_ascii=False))
     if args.json:
-        Path(args.json).write_text(json.dumps({'binaries': [{'path': p, 'sites': s} for p, s, _ in results],
+        Path(args.json).write_text(json.dumps({'binaries': [{'path': p, 'sites': s, 'namespace_edges': elf.namespace_edges} for p, s, elf in results],
                                                'findings': found}, ensure_ascii=False, indent=1) + '\n')
     return 1 if args.strict and any(f['kind'] == 'MULTI-NS' and f['owner'] and f['confidence'] == 'confirmed'
                                     for f in found) else 0
