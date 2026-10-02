@@ -1,0 +1,36 @@
+# The 13 dialog-first LIT keys (white-unexplained-4 dialog_before_main: lit 13/117). Per key, the createSession order
+# extracted from its U10.1T8 signed-lit run hilog (regex = white-unexplained-4/evidence.py CS):
+#   createSession: bundle=<pkg> ability=<Ability> name=<component>, androidType=<N> -> ohType=<M>
+# androidType 2 = TYPE_APPLICATION (a Dialog), androidType 1 = Activity base window. In every key a type-2 window is
+# created BEFORE the type-1 window. BOTH carry the SAME component/VRI name (the dialog is popped by the Activity's
+# onCreate), so the dialog is distinguished only by androidType=2, NOT by window name (DIGEST 2026-10-02 line 690).
+# The app's own Dialog subclass is an in-process View and is not named in createSession; OH logs only its own
+# WMSDialog/SCBDialog wrapper. So the hilog-authoritative dialog identity = "a type-2 window under <component>".
+#
+# format: key | dialogs(type2) before the Activity | component (name=) | run
+cv2-com-asdoi-timetable               | 2 | com.ulan.timetable.activities.MainActivity          | window3/.../5ea/.../cv2-com-asdoi-timetable
+cv2-com-ath0-rpn                      | 1 | com.ath0.rpn.Main                                   | window3/.../5cd/.../cv2-com-ath0-rpn
+cv2-com-github-dfa-diaspora-android   | 1 | com.github.dfa.diaspora_android.activity.MainActivity | window3/.../61b/.../cv2-com-github-dfa-diaspora-android
+cv2-com-harr1424-listmaker            | 1 | com.harr1424.listmaker.MainActivity                 | window3/.../61b/.../cv2-com-harr1424-listmaker
+cv2-com-knirirr-beecount              | 2 | com.knirirr.beecount.WelcomeActivity                | window3/.../5cd/.../cv2-com-knirirr-beecount
+cv2-de-koelle-christian-trickytripper | 1 | de.koelle.christian.trickytripper.TrickyTripperActivity | window3/.../5cd/.../cv2-de-koelle-christian-trickytripper
+cv2-org-secuso-privacyfriendlymemory  | 1 | org.secuso.privacyfriendlymemory.ui.MainActivity    | window3/.../61b/.../cv2-org-secuso-privacyfriendlymemory
+cv2-org-secuso-privacyfriendlypin     | 1 | org.secuso.privacyfriendlypinmnemonic.MainActivity  | window3/.../61b/.../cv2-org-secuso-privacyfriendlypin
+cv2-org-secuso-privacyfriendlyruler   | 1 | org.secuso.privacyfriendlyrulerapp.activities.RulerActivity | window3/.../5cd/.../cv2-org-secuso-privacyfriendlyruler
+fd-netguard                           | 1 | eu.faircode.netguard.ActivityMain                   | window/.../61b/.../fd-netguard
+fd-stk                                | 1 | org.supertuxkart.stk.SuperTuxKartActivity           | window2/.../61b/.../fd-stk
+newpipe                               | 1 | org.schabi.newpipe.MainActivity                     | window/.../5cd/.../newpipe
+opencamera                            | 1 | net.sourceforge.opencamera.MainActivity             | window/.../5cd/.../opencamera
+# full run paths + the per-session zOrder (dialog zOrder < Activity zOrder) are in evidence/zorder-proof.txt.
+# beecount and timetable stack TWO type-2 dialogs before the Activity base.
+
+## M5 mechanism (cc-t3; DIGEST 2026-10-02 line 690) and the fix (07fd530a)
+Defect: the bridge binds the Android Dialog (androidType=2 / TYPE_APPLICATION) and the Activity base window
+(androidType=1) both as zLevel-0 APP_SUB_WINDOWs of the same MainSession; SceneBoard onSubSessionZLevelChange orders
+equal-zLevel sub-windows by creation index, so the FIRST-created dialog gets a LOWER zOrder and is pressed UNDER the
+later Activity window (witnessed per key in zorder-proof.txt). In Android the TYPE_APPLICATION dialog should be on top.
+Fix 07fd530a (westlake-harness-t3 benchmark/2026-10-02-u14-bridge-r1r3/patches/win-m5-dialog-zlevel.patch), in
+oh_window_manager_client.cpp createSession: when androidWindowType==2, property->SetSubWindowZLevel(
+DIALOG_SUB_WINDOW_Z_LEVEL = 13000) before CreateAndConnectSpecificSession -- mirroring OH's own client rule
+WindowSessionImpl::GetSubWindowZLevelByFlags. Effect: the type-2 dialog renders ABOVE its Activity. Judge the window
+by androidType, not the VRI name (dialog and Activity share VRI[<Ability>]).

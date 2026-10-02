@@ -1,0 +1,38 @@
+{
+  "task": "U14 M5 regression watchlist: for the 13 dialog-first lit keys, name each dialog (from hilog createSession type+window name), what U10.1T8 t20 shows now, and what t20 should show after M5 (07fd530a), so a U14 signer does not misread 'the app's own dialog is now on top' as a regression",
+  "date": "2026-10-03",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "m5": {
+    "fix_commit": "07fd530a",
+    "fix_patch": "westlake-harness-t3/benchmark/2026-10-02-u14-bridge-r1r3/patches/win-m5-dialog-zlevel.patch",
+    "u14_baseline_candidate": "e34de8ab (cc-t3, R1-R3 restored; M1 876035d1 / M5 07fd530a / M6 94cc67fa as separate patches)",
+    "change": "oh_window_manager_client.cpp createSession: when androidWindowType==2, property->SetSubWindowZLevel(DIALOG_SUB_WINDOW_Z_LEVEL=13000) before CreateAndConnectSpecificSession (mirrors OH WindowSessionImpl::GetSubWindowZLevelByFlags)",
+    "defect": "bridge binds type-2 Dialog + type-1 Activity both as zLevel-0 APP_SUB_WINDOWs of one MainSession; SceneBoard onSubSessionZLevelChange orders equal-zLevel sub-windows by creation index, so the first-created dialog is pressed UNDER the later Activity window (DIGEST 2026-10-02 line 690)"
+  },
+  "source": "white-unexplained-4 dialog_before_main (lit 13/117); all run data read read-only from westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/",
+  "headline": "13/13 keys witnessed with the M5 shape (type-2 Dialog created before type-1 Activity, dialog zOrder < Activity zOrder) in their signed-lit run. M5 moves the dialog on top for all 13; expected post-M5 verdict for every one = lit, own UI. A regression = white/black t20 or a non-app surface, NOT a different own-UI screen.",
+  "dialog_identity_note": "createSession gives window type (androidType=2=Dialog) + name (same component as the Activity). Dialog and Activity share one VRI name; told apart ONLY by androidType. The app's Dialog subclass is an in-process View, NOT in the hilog (OH logs only its WMSDialog/SCBDialog wrapper). Authoritative identity = 'type-2 window under <component>'; the app-level 'what it shows' is inference, not from hilog.",
+  "keys": [
+    {"key": "cv2-com-asdoi-timetable", "component": "com.ulan.timetable.activities.MainActivity", "dialogs_before_activity": 2, "dialog_zorder": 102, "activity_zorder": 104, "current_t20": "lit", "predicted_post_m5": "lit (own dialog on top)"},
+    {"key": "cv2-com-ath0-rpn", "component": "com.ath0.rpn.Main", "dialogs_before_activity": 1, "dialog_zorder": 102, "activity_zorder": 103, "current_t20": "lit", "predicted_post_m5": "lit (own dialog on top)"},
+    {"key": "cv2-com-github-dfa-diaspora-android", "component": "com.github.dfa.diaspora_android.activity.MainActivity", "dialogs_before_activity": 1, "dialog_zorder": 102, "activity_zorder": 103, "current_t20": "lit", "predicted_post_m5": "lit (own dialog on top)"},
+    {"key": "cv2-com-harr1424-listmaker", "component": "com.harr1424.listmaker.MainActivity", "dialogs_before_activity": 1, "dialog_zorder": 102, "activity_zorder": 103, "current_t20": "lit", "predicted_post_m5": "lit (own dialog on top)"},
+    {"key": "cv2-com-knirirr-beecount", "component": "com.knirirr.beecount.WelcomeActivity", "dialogs_before_activity": 2, "dialog_zorder": 102, "activity_zorder": 104, "current_t20": "lit", "predicted_post_m5": "lit (own welcome dialog on top)"},
+    {"key": "cv2-de-koelle-christian-trickytripper", "component": "de.koelle.christian.trickytripper.TrickyTripperActivity", "dialogs_before_activity": 1, "dialog_zorder": 102, "activity_zorder": 103, "current_t20": "lit", "predicted_post_m5": "lit (own dialog on top)"},
+    {"key": "cv2-org-secuso-privacyfriendlymemory", "component": "org.secuso.privacyfriendlymemory.ui.MainActivity", "dialogs_before_activity": 1, "dialog_zorder": 103, "activity_zorder": 104, "current_t20": "lit", "predicted_post_m5": "lit (own first-launch dialog on top)"},
+    {"key": "cv2-org-secuso-privacyfriendlypin", "component": "org.secuso.privacyfriendlypinmnemonic.MainActivity", "dialogs_before_activity": 1, "dialog_zorder": 103, "activity_zorder": 104, "current_t20": "lit", "predicted_post_m5": "lit (own first-launch dialog on top)"},
+    {"key": "cv2-org-secuso-privacyfriendlyruler", "component": "org.secuso.privacyfriendlyrulerapp.activities.RulerActivity", "dialogs_before_activity": 1, "dialog_zorder": 103, "activity_zorder": 104, "current_t20": "lit", "predicted_post_m5": "lit (own first-launch dialog on top)"},
+    {"key": "fd-netguard", "component": "eu.faircode.netguard.ActivityMain", "dialogs_before_activity": 1, "dialog_zorder": 102, "activity_zorder": 103, "current_t20": "lit", "predicted_post_m5": "lit (own first-run dialog on top)"},
+    {"key": "fd-stk", "component": "org.supertuxkart.stk.SuperTuxKartActivity", "dialogs_before_activity": 1, "dialog_zorder": 103, "activity_zorder": 104, "current_t20": "lit", "predicted_post_m5": "lit (own dialog on top); GL-based: if it does not light, cause is its GL path not M5"},
+    {"key": "newpipe", "component": "org.schabi.newpipe.MainActivity", "dialogs_before_activity": 1, "dialog_zorder": 102, "activity_zorder": 103, "current_t20": "lit", "predicted_post_m5": "lit (own first-run dialog on top)"},
+    {"key": "opencamera", "component": "net.sourceforge.opencamera.MainActivity", "dialogs_before_activity": 1, "dialog_zorder": 102, "activity_zorder": 103, "current_t20": "lit", "predicted_post_m5": "lit (own intro dialog on top)"}
+  ],
+  "dialog_under_activity_witnessed": "13/13",
+  "signoff_rule": "For these 13 under U14-with-M5, an own dialog on top of the Activity is the expected correct M5 result -> score lit. Judge by androidType, not VRI name. Do NOT file a regression for 'a dialog I did not see on U10.1T8' (it was always created, only pressed under). A regression = white/black t20 or a non-app surface, not a different own-UI screen.",
+  "this_round_rule": "When a fix re-stacks sub-windows, lit keys can change their t20 picture without regressing; enumerate them up front with the per-key window witness (type + zOrder) so the signer compares against 'expected own-UI change', not against the old screenshot.",
+  "boundaries": ["offline; no board; nothing deployed", "M5 07fd530a + U14 baseline e34de8ab are cc-t3's to deploy, not cc-wiki's", "all source runs read read-only from sibling worktrees; no other worktree modified"],
+  "files": ["README.md", "watchlist.csv", "evidence/zorder-proof.txt", "evidence/createSession.txt", "results.json", "documentation.json", "landing-paths.txt"]
+}
