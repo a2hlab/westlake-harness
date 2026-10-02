@@ -1,0 +1,39 @@
+{
+  "task": "U15 host = U14 host 341c1260 (candidate-stock-host.c + Wall-1 public-libs inherit) + mindustry OpenSLES audio-branch verify fix. A' reproduce 341c -> patch x2 -> open_site unchanged, strings only the IID name; libarc 5-symbol replay 0 missing. Persist + landing.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none (Mac DevEco clang build + static replay)",
+  "base_341c1260": "341c12608091246a09e973214b197eaf7d5b6b3f0bf9cc6ebbf3392648d338da",
+  "audio_branch_check": {
+    "present": true, "applies_to_mindustry": true,
+    "detail": "candidate-stock-host.c:304-322 native_private && io.anuke.mindustry -> dlopen_ns('/system/lib64/libOpenSLES.so', RTLD_GLOBAL) + verify {slCreateEngine,SL_IID_ENGINE,SL_IID_VOLUME,SL_IID_PLAY,SL_IID_BUFFERQUEUE} on the OH handle; :352 dlopen_ns native_abi RTLD_GLOBAL. mindustry u12 miss = branch not active then.",
+    "bug": "verify asserts SL_IID_BUFFERQUEUE (OH libOpenSLES has it but libarc does NOT use it) and never asserts SL_IID_ANDROIDSIMPLEBUFFERQUEUE (what libarc uses, provided by native_abi not OH libOpenSLES)"
+  },
+  "fix": {
+    "patch": "recipe/win-u15-mindustry-audio.patch (2 hunks)",
+    "hunk1": "audio_symbols (OH handle) drops SL_IID_BUFFERQUEUE -> keeps 4 core libarc uses from OH libOpenSLES",
+    "hunk2": "after native_abi dlopen handle, native_private asserts dlsym(handle,'SL_IID_ANDROIDSIMPLEBUFFERQUEUE'), reusing existing '[N4-AUDIO] provider lacks %{public}s' format (no new log literal)",
+    "note": "naive SL_IID_BUFFERQUEUE->SL_IID_ANDROIDSIMPLEBUFFERQUEUE swap on the OH handle would FAIL -- OH /system/lib64/libOpenSLES.so (66 exports) has no SL_IID_ANDROID*; the Android IID must be asserted on native_abi. dlsym is not a loader open-site -> open_site_scan unchanged."
+  },
+  "a_prime_gates": {
+    "determinism": {"base341c": "8be1d6f3582d8c6ed7c9203f8ae50125e213fa72a23a3b5d5370aa7f7019df3f", "u15": "08175d186546fe8f95c2ecef0bc4158162afc4952c48fe9965dc5b2e3ee11320", "note": "each byte-identical x2"},
+    "base341c_vs_real341c": "NOT byte-identical (embedded __FILE__ build-dir paths + .rodata reorder noise, like Wall-1); abi_diff exports 15/15 0 removed/added/drift/breaks -> ABI identical -> A' semantic reproduce",
+    "u15_vs_base341c": {
+      "abi_diff": "exports 15/15, 0 removed/added/drift/breaks (host ABI unchanged)",
+      "open_site_scan": "8 open-sites IDENTICAL (function/callee/path/flags; PCs shift only) -- no new dlopen/dlns",
+      "deployed_strings_diff": "only DROPPED SL_IID_BUFFERQUEUE / ADDED SL_IID_ANDROIDSIMPLEBUFFERQUEUE (+ temp source-path string)"
+    }
+  },
+  "libarc_replay": {
+    "missing": 0,
+    "resolution": {
+      "slCreateEngine": "OH /system/lib64/libOpenSLES.so",
+      "SL_IID_ENGINE": "OH /system/lib64/libOpenSLES.so",
+      "SL_IID_PLAY": "OH /system/lib64/libOpenSLES.so",
+      "SL_IID_VOLUME": "OH /system/lib64/libOpenSLES.so",
+      "SL_IID_ANDROIDSIMPLEBUFFERQUEUE": "libwestlake_native_abi.so (native_abi)"
+    }
+  },
+  "prediction": "mindustry's slCreateEngine/OpenSLES wall clears (5/5 resolve); libarc audio init proceeds; mindustry is bound -> past the native audio wall, lit medium-high. On-board arm64 deploy+rebake is the deploy owner's.",
+  "persisted": "$WORKSPACES/westlake-inputs/generations/u15-host-mindustry-v1/ (appspawn-x 08175d18, win-u15-mindustry-audio.patch, build-commands.txt, logs/, SHA256SUMS)",
+  "boundaries": ["offline; Mac build + static replay; no board; no push", "large host binary + logs persisted in generations/ (not committed), recorded by path+sha", "on-board arm64 pass is the deploy owner's"],
+  "files": ["README.md", "evidence/build-and-replay.txt", "recipe/build_u15_host.py", "recipe/win-u15-mindustry-audio.patch", "inputs/candidate-stock-host.c", "results.json", "documentation.json", "landing-paths.txt"]
+}
