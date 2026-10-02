@@ -7,17 +7,29 @@ import u7_executor as u
 from deploy_generation import load_package,validate_upgrade
 sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def save(p,d):p.write_text(json.dumps(d,indent=2)+'\n')
-def approve(root, composition_path, authorization=None):
+def approve(root, composition_path, authorization=None, native_reviews=None):
  """Arm the approved bundle and its drift guard together; payload/manifest stay fixed."""
  root=Path(root);composition_path=Path(composition_path)
  bundle_path=root/'bundle.json';before=bundle_path.read_bytes();previous=composition_path.read_bytes()
  b=json.loads(before);c=json.loads(previous)
  assert sha(bundle_path)==c['bundle_sha256'],'bundle drift before approval'
  assert sha(root/'native/package.json')==c['native_manifest_sha256'],'native manifest drift'
- gb.validate(root)
+ _,_,expected=gb.validate(root)
+ policy_path=None;policy_before=None
+ if native_reviews:
+  policy_path=root/b['static_checks']['policy']['source'];policy_before=policy_path.read_bytes()
+  policy=json.loads(policy_before)
+  for target,review in native_reviews.items():
+   assert review['approved_by']=='outer(claude)' and review['evidence'],'explicit outer review required'
+   assert expected[target]==review['candidate_sha256'],'review candidate drift'
+   assert all(len(review[k])==64 for k in ('candidate_sha256','deployed_sha256','delta_sha256')),'exact full hashes required'
+   policy.setdefault('native',{})[target]=review
  b['rollout_ready']=True;b['rollout_blocker']=''
  b['window_authorization']=authorization or 'Outer ACK(90) 2026-10-02T01:37:54+08:00; observation only; unconditional U9 rollback'
  try:
+  if policy_path is not None:
+   tmp=policy_path.with_suffix('.json.approve-tmp');save(tmp,policy);os.replace(tmp,policy_path)
+   b['static_checks']['policy']['sha256']=sha(policy_path)
   tmp=bundle_path.with_suffix('.json.approve-tmp');save(tmp,b);os.replace(tmp,bundle_path)
   c['rollout_ready']=True;c['bundle_sha256']=sha(bundle_path)
   c['window_authorization']=b['window_authorization']
@@ -25,6 +37,7 @@ def approve(root, composition_path, authorization=None):
   assert json.loads(bundle_path.read_text())['rollout_ready'] is True
   assert sha(bundle_path)==json.loads(composition_path.read_text())['bundle_sha256']
  except BaseException:
+  if policy_before is not None:policy_path.write_bytes(policy_before)
   bundle_path.write_bytes(before);composition_path.write_bytes(previous);raise
  return c
 def main():

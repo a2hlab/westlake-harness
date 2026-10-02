@@ -15,6 +15,40 @@ import lab_paths
 import promotion_hook as hook
 
 
+def vm_tools_preflight(workspaces):
+    """Exercise the production VM tools and Mac-visible DEX scratch before LOCK."""
+    script = '''
+import json, os, pathlib, shutil, subprocess, sys, tempfile, zipfile
+root = pathlib.Path(sys.argv[1]) / 'westlake-harness'
+tools = root / 'benchmark/2026-10-01-u7-executor/.vm-tools'
+scratch = root / 'benchmark/2026-10-01-u7-executor/.vm-tmp'
+assert scratch.is_dir() and os.access(scratch, os.W_OK), 'shared VM scratch unavailable'
+os.environ['PATH'] = str(tools) + ':' + os.environ['PATH']
+os.environ['TMPDIR'] = str(scratch)
+package = pathlib.Path(sys.argv[2])
+required = ('dexdump', 'llvm-nm', 'llvm-objdump', 'llvm-readelf', 'readelf')
+resolved = {name: shutil.which(name) for name in required}
+assert all(resolved.values()), 'missing VM tool: ' + str(resolved)
+with tempfile.TemporaryDirectory(dir=scratch) as directory:
+    jar = next(package.rglob('oh-adapter-runtime.jar'))
+    with zipfile.ZipFile(jar) as archive:
+        dex = pathlib.Path(directory) / 'probe.dex'
+        dex.write_bytes(archive.read('classes.dex'))
+    subprocess.run(['dexdump', '-f', str(dex)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=15)
+for name in required[1:]:
+    subprocess.run([name, '--version'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=10)
+print(json.dumps({'status': 'PASS', 'tools': resolved, 'shared_dex_read': 'PASS'}))
+'''
+    result = subprocess.run(['orb', '-m', 'a2hlab', 'env',
+        'MAC_HOME=' + os.environ.get('MAC_HOME', str(Path.home())),
+        'python3', '-c', script, str(workspaces), str(hook.CANDIDATE)],
+        timeout=60, check=True, capture_output=True, text=True)
+    report = json.loads(result.stdout)
+    if report.get('status') != 'PASS':
+        raise RuntimeError('VM tool readiness refused before LOCK')
+    return report
+
+
 def prelock(plan):
     problem = board_run.precheck_problem(plan.get('offline_precheck'))
     if problem:
@@ -37,10 +71,11 @@ def prelock(plan):
              'import hashlib,pathlib,sys; p=pathlib.Path(sys.argv[1]); assert p.is_file(); assert hashlib.sha256(p.read_bytes()).hexdigest()==sys.argv[2]',
              str(hook.CANDIDATE / 'bundle.json'), hook.gb.sha(hook.CANDIDATE / 'bundle.json')]
     subprocess.run(check, timeout=25, check=True)
+    tool_report = vm_tools_preflight(w)
     hdc = subprocess.run(['orb', '-m', 'a2hlab', 'bash', str(lab_paths.tools() / 'hdc_mac.sh'), 'list', 'targets'], timeout=25, check=True, capture_output=True, text=True)
     if plan['serial'] not in hdc.stdout.split():
         raise RuntimeError('serial absent from HDC targets; no lock taken')
-    return {'orb': 'PASS', 'workspace_bind_sha': 'PASS', 'hdc_serial': plan['serial']}
+    return {'orb': 'PASS', 'workspace_bind_sha': 'PASS', 'vm_tools': tool_report, 'hdc_serial': plan['serial']}
 
 
 def main():

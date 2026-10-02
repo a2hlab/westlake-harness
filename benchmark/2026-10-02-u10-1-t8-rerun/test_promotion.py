@@ -67,6 +67,29 @@ class PromotionSafety(unittest.TestCase):
                     dispatch.prelock(plan)
             run.assert_not_called()
 
+    def test_missing_vm_tools_stops_before_hdc_and_board_runner(self):
+        spec = importlib.util.spec_from_file_location('dispatch', H / 'promotion_dispatch.py')
+        dispatch = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(dispatch)
+        plan = json.loads((H / 'window/plan-61b.json').read_text())
+        with patch.object(dispatch.hook, 'admission'), patch.object(dispatch.subprocess, 'run') as run, patch.object(dispatch, 'vm_tools_preflight', side_effect=RuntimeError('missing dexdump')):
+            with self.assertRaisesRegex(RuntimeError, 'missing dexdump'):
+                dispatch.prelock(plan)
+            self.assertEqual(run.call_count, 2)
+            self.assertFalse(any('board_run.py' in str(call) or 'hdc_mac.sh' in str(call) for call in run.call_args_list))
+
+    def test_vm_tool_probe_checks_execution_and_shared_dex(self):
+        spec = importlib.util.spec_from_file_location('dispatch', H / 'promotion_dispatch.py')
+        dispatch = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(dispatch)
+        with patch.object(dispatch.subprocess, 'run') as run:
+            run.return_value.stdout = '{"status":"PASS","shared_dex_read":"PASS"}'
+            self.assertEqual(dispatch.vm_tools_preflight(Path('/workspace'))['status'], 'PASS')
+            command = run.call_args.args[0]
+            self.assertIn("['dexdump', '-f', str(dex)]", command[7])
+            self.assertIn('llvm-nm', command[7])
+            self.assertTrue(run.call_args.kwargs['check'])
+
     def test_full_shards_match_signed_u9_keys(self):
         base = json.loads((H.parents[1] / 'benchmark/2026-10-01-u9-sweep/outer-signoff.json').read_text())
         keys = []
