@@ -1,0 +1,18 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-u14-bridge-m5-m6/`** | **U14 bridge M5 / M6 as single patches on e34de8ab: e34+M5 `07fd530a`, e34+M6 `94cc67fa`, e34+M5+M6 `7daa5435` (+ optional e34+M1+M5+M6 `438bc948`), each two fresh builds byte-identical; per-function diff vs e34de8ab only createSession (M5) / ScheduleAbilityTransaction + a JNI inline (M6), vs 84695d62 only the baseline's known set + those; 0 text strings dropped; open sites identical (3). Predictions: M5 → fd-mobile own WebView-outdated dialog; **M5 alone does not move dddmodel2** (its dialog has no Surface without M1); M6 → fd-AppManager white goes (AMS terminate timeout ~13 s), own splash medium-low; 13 dialog-first lit keys stay lit, but 3 (secuso memory/pin/ruler) raise a Surface-less dialog without M1 → ship M5 with M1.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **叠放类修复(M5 这类)的预测要先查被提上来的窗口有没有 Surface(cc-t3,U14 M5/M6)**:没有 M1 时,先建的对话框会话的跨拷贝查找全空(V1/R3 单槽已指向后建的 Activity),M5 提到顶上的是一块空窗——dddmodel2 单上 M5 不动,cc-wiki 的 13 个先建对话框亮键里 secuso memory/pin/ruler 提上来的也是空窗。逐会话用 `benchmark/2026-10-03-u14-bridge-m5-m6/dialog_surfaces.py` 回放查找 + 读 windows-t20.txt;M5 应与 M1 同发。",
+    "- 2026-10-03 **这台 Mac 上裸 `diff` 是 DevEco 的 toolchains/diff(PATH 排在 /usr/bin 前),文件不同也返回 0、遇到不认识的选项也返回 0**:`diff a b && echo same` 永远『相同』。shell 里比对一律用 `/usr/bin/diff` 或 Python(cc-t3 U14 M5/M6 一轮查出,scripts/lab 现无依赖裸 diff 的门禁)。",
+    "- 2026-10-03 **OH 6.1 的 UIAbility 终止在 app 不回 INITIAL 时靠超时完成**:Terminate 超时 10×timeout_unit_time(1000 ms)后 DelayCompleteTerminate 再等 3×1000 ms 才 CompleteTerminate(≈13 s;ui_ability_lifecycle_manager.cpp sha 678c5e00)。路线 A 的 Java 侧 reportOhLifecycle 只回 1/9/10(paused/resumed/stopped),不回 INITIAL,所以 M6 放行 BACKGROUND 后被关能力的场景约 13 s 后才消失(cc-t3)。"
+   ]
+  }
+ ]
+}

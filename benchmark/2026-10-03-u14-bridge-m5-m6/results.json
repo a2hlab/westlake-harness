@@ -1,0 +1,101 @@
+{
+ "task": "#90 U14 bridge M5 / M6 single patches on baseline candidate e34de8ab (offline, Mac DevEco SDK, no a2hlab, no board)",
+ "artifacts": {
+  "e34de8ab+M5": {
+   "sha256": "07fd530aa4c29a1fe2dd22fcb191fc797bdb8350d808a41845baec0976c1eebf",
+   "builds": 2,
+   "identical": true
+  },
+  "e34de8ab+M6": {
+   "sha256": "94cc67fad87598bf36abd6014e2cd438320e6b5df0d28e4d83a5894aa724d3cb",
+   "builds": 2,
+   "identical": true
+  },
+  "e34de8ab+M5+M6": {
+   "sha256": "7daa5435333ab99c2360dfe5ad5b75180ba0b8118d4f69f6750764c01b546452",
+   "builds": 2,
+   "identical": true
+  },
+  "optional e34de8ab+M1+M5+M6": {
+   "sha256": "438bc94831c9f3679138fe6d8aecc2f5302057d35eb814995ea4fc0f0fad236f",
+   "builds": 2,
+   "identical": true
+  }
+ },
+ "persisted": "$WORKSPACES/westlake-inputs/generations/u14-m5m6-{m5,m6,m5m6,m1m5m6}-{a,b} + u14-m5m6-SHA256SUMS",
+ "source": {
+  "adapter_tree": "5a847d96",
+  "patches": {
+   "r1": "6b502b69",
+   "r2": "da01042c",
+   "r3": "fc38fe11",
+   "m1": "b292a37f",
+   "m5": "9caf89e8",
+   "m6": "bb479ec0"
+  }
+ },
+ "function_diff_vs_e34de8ab": {
+  "M5": [
+   "OHWindowManagerClient::createSession"
+  ],
+  "M6": [
+   "AbilitySchedulerAdapter::ScheduleAbilityTransaction",
+   "+ _JNIEnv::CallStaticBooleanMethod (new inline)"
+  ],
+  "M5+M6": [
+   "createSession",
+   "ScheduleAbilityTransaction",
+   "+ CallStaticBooleanMethod"
+  ],
+  "M1+M5+M6": [
+   "createSession",
+   "ScheduleAbilityTransaction",
+   "destroySession",
+   "getRSSurfaceNode",
+   "publishProcessWindowTarget",
+   "oh_wm_get_native_window",
+   "+ CallStaticBooleanMethod"
+  ]
+ },
+ "function_diff_vs_84695d62": "baseline candidate's own set (2 inert a-path functions + 12 a-path-only) plus exactly the patch functions above; nothing missing",
+ "strings": "0 text strings dropped; text added = the patches' own log lines and JNI names/signatures; rest non-text layout bytes",
+ "imports": "NEEDED identical (35); M5 adds WindowSessionProperty::SetSubWindowZLevel(int), defined by the board's libwindow_scene_common.z.so (9551c7fe, direct NEEDED); M6 adds none",
+ "open_sites": "identical to 84695d62 and e34de8ab: 3 sites, same functions/flags/paths/namespace; no new open site",
+ "predictions": {
+  "fd-mobile": {
+   "M5": "own WebView-outdated dialog on top (high)",
+   "M6": 0,
+   "M5+M6": "as M5"
+  },
+  "cv2-org-andresoviedo-dddmodel2": {
+   "M5": "0 (high): raised dialog 686 has no Surface without M1",
+   "M6": 0,
+   "M5+M6": 0,
+   "M1+M5+M6": "+1 own dialog (medium)"
+  },
+  "fd-AppManager": {
+   "M5": 0,
+   "M6": "white goes away (medium), own splash at t20 (medium-low; alternative launcher); terminate completes by AMS timeout ~13 s after BACKGROUND ack, ~5 s before t20",
+   "M5+M6": "as M6"
+  },
+  "termux": {
+   "M6": "scene goes, launcher at t20 (not lit)"
+  },
+  "m5_watchlist_13": {
+   "A_own_dialog_on_top": 7,
+   "C_own_dialog_on_top_with_empty_earlier_dialog_under": 2,
+   "B_raised_dialog_has_no_surface": [
+    "cv2-org-secuso-privacyfriendlymemory",
+    "cv2-org-secuso-privacyfriendlypin",
+    "cv2-org-secuso-privacyfriendlyruler"
+   ],
+   "D_unknown_alive_at_t20": [
+    "cv2-de-koelle-christian-trickytripper"
+   ],
+   "all_expected_lit": true
+  },
+  "m6_under_dropped_34": "covered splash scenes cleaned ~13 s after BACKGROUND ack; top unchanged (watch)"
+ },
+ "recommendation": "ship M5 with M1 (438bc948), not alone",
+ "pitfall": "bare `diff` on this Mac is DevEco toolchains/diff: exit 0 even when files differ; use /usr/bin/diff"
+}
