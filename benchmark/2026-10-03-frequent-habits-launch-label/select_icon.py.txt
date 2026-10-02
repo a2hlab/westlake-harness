@@ -1,0 +1,26 @@
+def select_icon(layout, package, ability=None):
+    prefix = ICON_PREFIX + package + '.'
+    exact = prefix + ability if ability else None
+    matches = []
+    def visit(node, launcher=False, visible=True):
+        a = node.get('attributes') or {}
+        if a.get('bundleName'):
+            launcher = a['bundleName'] == LAUNCHER
+        visible = visible and a.get('visible') not in (False, 'false') and a.get('enabled') not in (False, 'false')
+        ids = [a.get('id', ''), a.get('key', '')]
+        matched = exact in ids if exact else any(str(i).startswith(prefix) for i in ids)
+        if launcher and matched:
+            matches.append((a, visible))
+        for c in node.get('children') or []:
+            visit(c, launcher, visible)
+    visit(layout)
+    if not matches:
+        return None
+    if len(matches) != 1:
+        raise AppFailure('ambiguous exact desktop icon')
+    a, visible = matches[0]
+    if not visible or not all(a.get(k) in (True, 'true') for k in ('visible', 'enabled', 'clickable')):
+        raise AppFailure('desktop icon not actionable')
+    b = box(a.get('bounds'))
+    return {'id': a.get('id') or a.get('key'), 'bounds': a['bounds'],
+            'center': [(b[0]+b[2])//2, (b[1]+b[3])//2]}
