@@ -88,6 +88,30 @@ have.
 - If the outer wants the bionic_compat behaviour, it is a 1-function change and a rebuild ×2; the exports gate is
   unchanged.
 
+## Deployment scope: which native_abi copy, and can the two meet in one process? (added after the outer's 03:5x note)
+
+The board has two copies of `libwestlake_native_abi.so`, both **d2053066** (outer's read on 61b):
+`westlake_native/` and `westlake_flutter/`.
+
+- **This build (86882caf) replaces only `/system/android/lib64/westlake_native/libwestlake_native_abi.so`.**
+  - firefox (`org.mozilla.firefox`) and fd-fennec_fdroid (`org.mozilla.fennec_fdroid`) are in the native-cluster list
+    (`app_native_loader.c:62-66`, 13 packages).
+  - `westlake_stock_host_main.c:330-340` `dlopen_ns`es `westlake_native/libwestlake_native_abi.so` RTLD_GLOBAL for
+    native domains, and `westlake_flutter/libwestlake_native_abi.so` for Flutter domains.
+- **`westlake_flutter/libwestlake_native_abi.so` stays d2053066.** No Flutter package needs these 10 symbols; the
+  Flutter EGL fix is in the Flutter-private libandroid (`2026-10-03-u14-flutter-libandroid`).
+- **The two copies are never in the same app namespace.**
+  - Each app domain loads exactly one ABI path (the host's ternary above).
+  - Selection is exclusive: `ANL_Dlopen` sets `flutter_selected` first and `native_selected` only if not
+    flutter-selected (`app_native_loader.c:449-452`).
+  - The two package lists are disjoint (6 Flutter: fluffychat, immich, kitchenowl, aves.libre, saber, localsend;
+    13 native: anki, unciv, organicmaps, nextcloud, mcdonalds, mindustry, emn8, element, firefox, fennec, vlc, ppsspp,
+    shatteredpixeldungeon; intersection empty).
+  - So a Gecko process only ever sees the `westlake_native/` copy, and a Flutter process only the `westlake_flutter/`
+    copy.
+- **Standard.** This build already followed the outer's (A′) route: hw248, frozen clang feef13a3, faithful
+  554bf6bc first. The two outer items above (A emutls, B `android_dlopen_ext` target) are still open.
+
 ## Prediction (first fatal)
 
 | key | with 86882caf |
