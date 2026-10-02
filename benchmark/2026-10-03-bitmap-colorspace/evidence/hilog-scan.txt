@@ -1,0 +1,26 @@
+Full U12/U13 hilog scan for "can't create bitmap without a color space" (read-only grep sweep of
+westlake-harness-u7-executor/benchmark/**, westlake-inputs/generations/**, westlake-harness/benchmark/**).
+
+RESULT: exactly 2 distinct keys, matching cluster C5. No others. The secondary nativeComputeColorSpace/
+nativeGetColorSpace/ColorSpace-null signature appears in NO app stderr (the GetSupportedColorSpaces lines are
+OS C04201/DMS display-manager noise, not app faults).
+
+| key | U-gen | board | first-fatal? | caller frame | file:line |
+|-----|-------|-------|--------------|--------------|-----------|
+| fd-musicplayer | U12 | 5cd | YES terminal (only initChild failed; earlier MediaStore$Audio$Artists NCDFE was background Thread-5/6 "process kept alive", non-terminal; a CoroutineStart CNFE was handled) | AlbumsFragment.f -> df.j.<init> -> Bitmap.createScaledBitmap (album-art thumbnail scaling on runOnUiThread) | u7-executor/benchmark/2026-10-02-u12-final-assembly/window4/u12-A4-20261003T002941/5cd/runner/unlit-original/20261003T004451-295487d6/5cd1e3dd00000000000000000923012c/fd-musicplayer/hilog.txt:15539 (terminal initChild 15558-15565; frames 15544 df.j.<init>:68 / AlbumsFragment.f:87) |
+| cv2-com-stoutner-privacybrowser-standard | U13 | 5ea | YES terminal (only initChild failed; earlier kotlinx CoroutineStart CNFE during ensureBindApplication was caught, bind continued ~1.5s) | MainWebViewActivity.u -> .B -> .z -> Bitmap.createScaledBitmap (icon/favicon scaling during RecyclerView/ViewPager2 first layout) | u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window1/u13-A1-20261003T030721/5ea/runner/movers-java-cv2/20261003T033831-4ee7bbc3/5ea34a4500000000000000001123012c/cv2-com-stoutner-privacybrowser-standard/hilog.txt:38716 (terminal 38812; frames 38721 MainWebViewActivity.u:31/.B:10/.z:478) |
+
+Each hit appears twice on disk (executor run dir + its generations/ mirror of the same run id) -- duplicates of
+the same 2 runs, not new keys. A board-61b U13 stage also ran: zero colorspace hits.
+
+Deployed framework.jar line numbers in both traces: createScaledBitmap(Bitmap.java:831) -> createBitmap(:979)
+-> createBitmap(:1203) [the colorSpace==null && config!=ALPHA_8 throw].
+
+GENERATION NOTE (privacybrowser): in U12 it died earlier in a WebView cluster
+("UnsupportedOperationException: This method is not supported by the current version of the framework and the
+current WebView APK"); in U13 it cleared that and ADVANCED to the colorspace wall ("the U12 webkit wall moved
+here"). So the colorspace wall is privacybrowser's CURRENT (U13) first-fatal, newly exposed.
+
+Cross-check (agrees): u7-executor/benchmark/2026-10-03-u12-predicted-vs-actual/u12-clusters.json colorspace
+cluster = ["fd-musicplayer@window4@5cd1"] (count 1); westlake-harness/benchmark/2026-10-03-u13-first-fatal-clusters
+per-key.csv C5 = both keys.

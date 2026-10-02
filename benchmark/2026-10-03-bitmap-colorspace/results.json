@@ -1,0 +1,70 @@
+{
+  "task": "Bitmap null ColorSpace wall (U15 candidate #2): (1) B10 JNI coverage of Bitmap ColorSpace natives in runtime 18763dd4 vs AOSP14 android_graphics_Bitmap.cpp; (2) dexdump privacybrowser + fd-musicplayer call sites (source bitmap + why ColorSpace null); (3) full U12/U13 hilog scan key count; (4) minimal fix (layer/artifact) + first-fatal prediction.",
+  "date": "2026-10-03",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_access": "none",
+  "signature": "java.lang.IllegalArgumentException: can't create bitmap without a color space at android.graphics.Bitmap.createBitmap(Bitmap.java:1203) <- :979 <- createScaledBitmap(Bitmap.java:831)",
+  "reference": "master 49e6f805da benchmark/2026-10-03-u13-first-fatal-clusters (cluster C5)",
+
+  "q1_jni_coverage": {
+    "host_lib": "Bitmap JNI is in libhwui.so (be59260f93b3debe1ad64cc8e7b6b0575e5be04794b46f8eb876436d1ebc9b74), NOT liboh_android_runtime.so 18763dd4 (runtime only calls register_android_graphics_Bitmap).",
+    "registered_colorspace_natives": ["nativeComputeColorSpace", "nativeIsSRGB", "nativeIsSRGBLinear", "nativeSetColorSpace"],
+    "vs_aosp14": "matches AOSP14 frameworks/base/libs/hwui/jni/Bitmap.cpp:1261-1265 exactly; full Bitmap method set present.",
+    "stubs": "hwui_register_stubs.cpp stubs ONLY register_android_graphics_BitmapRegionDecoder/YuvToJpegEncoder; register_android_graphics_Bitmap is REAL (live method strings prove it).",
+    "native_behavior": "Bitmap_computeColorSpace (Bitmap.cpp:942-949): colorSpace=info().colorSpace(); if(colorSpace==nullptr) return nullptr. Returns null BY DESIGN when the SkBitmap has no SkColorSpace.",
+    "conclusion": "JNI coverage COMPLETE; nativeComputeColorSpace registered + genuine; the null is a real 'source SkBitmap info().colorSpace()==nullptr', NOT a missing/stubbed native. Corrects cc-t3 'no ColorSpace' guess at the registration level.",
+    "fix_lever": "Bitmap_isSRGB (Bitmap.cpp:925-930) already treats null colorspace as sRGB (return colorSpace==nullptr || colorSpace->isSRGB()); computeColorSpace returning null is the inconsistency to fix."
+  },
+
+  "q2_callers": {
+    "privacybrowser": {
+      "key": "cv2-com-stoutner-privacybrowser-standard",
+      "apk": "com.stoutner.privacybrowser.standard_81.apk",
+      "frame": "MainWebViewActivity.u -> .B -> .z",
+      "call": "NestedScrollWebView.getFavoriteIcon() -> Bitmap.createScaledBitmap(bmp,0x80,0x80,filter) -> ImageView.setImageBitmap",
+      "source_bitmap": "the WebView favicon (WebHistoryItem.getFavicon()/onReceivedIcon), minted by OH WebView (ArkWeb-chromium); non-ALPHA_8; null SkColorSpace"
+    },
+    "fd_musicplayer": {
+      "key": "fd-musicplayer",
+      "apk": "org.fossify.musicplayer_14.apk",
+      "frame": "AlbumsFragment.f -> df.j.<init>",
+      "call": "((BitmapDrawable)p3).getBitmap() -> Bitmap.createScaledBitmap(bmp,dim,dim,false) -> new BitmapDrawable(res,scaled)",
+      "source_bitmap": "a resource/placeholder BitmapDrawable (default album cover passed to the adapter ctor); non-ALPHA_8; null SkColorSpace"
+    },
+    "why_null": "neither source went through Java Bitmap.createBitmap(w,h,config) (which defaults sRGB); one is a native WebView bitmap, one a decoded/placeholder drawable, and route-A producers left SkBitmap.info().colorSpace() unset. Chain: createScaledBitmap -> createBitmap(source,..) reads source.getColorSpace() (Bitmap.java:956) -> getColorSpace() -> nativeComputeColorSpace -> null -> createBitmap(..,null) throws at :1202-1203 (config != ALPHA_8)."
+  },
+
+  "q3_scan": {
+    "distinct_keys": 2,
+    "hits": [
+      {"key": "fd-musicplayer", "u_gen": "U12", "board": "5cd", "first_fatal": "terminal (only initChild failed; earlier MediaStore$Audio$Artists NCDFE was background, non-terminal)", "file_line": "u7-executor/benchmark/2026-10-02-u12-final-assembly/window4/u12-A4-20261003T002941/5cd/runner/unlit-original/20261003T004451-295487d6/5cd.../fd-musicplayer/hilog.txt:15539 (terminal 15558-15565)"},
+      {"key": "cv2-com-stoutner-privacybrowser-standard", "u_gen": "U13", "board": "5ea", "first_fatal": "terminal (only initChild failed; earlier CoroutineStart CNFE handled)", "file_line": "u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window1/u13-A1-20261003T030721/5ea/runner/movers-java-cv2/20261003T033831-4ee7bbc3/5ea.../cv2-com-stoutner-privacybrowser-standard/hilog.txt:38716 (terminal 38812)"}
+    ],
+    "others": "none. The secondary nativeComputeColorSpace/ColorSpace-null signature appears in no app stderr (GetSupportedColorSpaces = OS DMS noise).",
+    "generation_note": "privacybrowser U12 first-fatal was a WebView wall (UnsupportedOperationException ... current WebView APK); U13 cleared it and advanced to colorspace -> current first-fatal, newly exposed. 2-key confinement => non-standard-producer issue, not a blanket decode regression."
+  },
+
+  "q4_fix_prediction": {
+    "primary_layer": "libhwui.so (native)",
+    "primary_artifact": "new aosp_patches/libs/hwui/patches/jni/Bitmap.cpp.patch on Bitmap_computeColorSpace (recipe/bitmap-computecolorspace-srgb.patch)",
+    "primary_change": "if info().colorSpace()==nullptr && colorType()!=kAlpha_8 -> return GraphicsJNI::getColorSpace(env, SkColorSpace::MakeSRGB().get(), colorType()); else keep AOSP behavior. Aligns with Bitmap_isSRGB null==sRGB. Rollback = drop patch.",
+    "coverage": "fixes at the single getColorSpace() read point -> covers every createBitmap/createScaledBitmap/getColorSpace caller (webview favicon, placeholder drawable, future null-colorspace scalers), not just these two.",
+    "alternative_layer": "framework.jar Bitmap.java createBitmap(source,..) at AOSP14:956 -> if (cs==null && config!=ALPHA_8) cs=sRGB. Same effect, one line, patches the JAR instead.",
+    "u14_foldable": "yes; either is a single small artifact. libhwui patch preferred (we already patch hwui jni; no framework.jar rebuild). Outer decides.",
+    "prediction": {
+      "privacybrowser": "favicon scaling succeeds -> moves past this wall; next first-fatal unknown (already cleared U12 webkit wall); lit likelihood medium",
+      "fd_musicplayer": "album-art scaling succeeds -> adapter builds; earlier MediaStore NCDFE is background (process alive) -> main UI likely surfaces; lit likelihood medium-high",
+      "blast_radius": "clears cluster C5 (2 keys) + hardens any future null-colorspace scaler"
+    }
+  },
+
+  "rule": "Before blaming a missing JNI, check the registration table + the native's own logic: nativeComputeColorSpace is registered and matches AOSP 14, returning null correctly for a colorspace-less source. The gap is upstream (producers mint bitmaps without colorspace); cheapest durable fix is a defensive sRGB fallback at the one read point, aligned with the isSRGB null==sRGB convention already in the code.",
+  "boundaries": [
+    "offline; no board; no push; static decompile + binary symbols + read-only hilog scan",
+    "fix is the hwui/framework owner's to build + ship; static staging only (patch not built/deployed here)",
+    "sources read read-only: two apks (westlake-inputs/corpus-v2, westlake-inputs/apks/fdroid100), deployed libhwui.so+runtime (westlake-inputs/generations), AOSP14 ref (westlake-inputs/aosp-14.0.0_r1-src), adapter hwui patches (westlake-harness/bms), run records (westlake-harness, -u7-executor)"
+  ],
+  "files": ["README.md", "evidence/jni-coverage-bitmap-colorspace.txt", "evidence/callers-dexdump.txt", "evidence/aosp14-bitmap-refs.txt", "evidence/hilog-scan.txt", "recipe/bitmap-computecolorspace-srgb.patch", "results.json", "documentation.json", "landing-paths.txt"]
+}

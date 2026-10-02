@@ -1,0 +1,27 @@
+dexdump of the two first-fatal call sites (Android SDK apkanalyzer dex code, JDK21 JBR).
+
+PRIVACYBROWSER  cv2-com-stoutner-privacybrowser-standard  (apk com.stoutner.privacybrowser.standard_81.apk)
+ class com.stoutner.privacybrowser.activities.MainWebViewActivity, method u(NestedScrollWebView,String,ZZZ)V (= frame MainWebViewActivity.u):
+   ...NestedScrollWebView;->getFavoriteIcon()Landroid/graphics/Bitmap;        # the WebView favicon
+   const/16 v7, 0x80                                                          # 128px
+   Landroid/graphics/Bitmap;->createScaledBitmap(Bitmap,II Z)Bitmap;          # THROWS here
+   Landroid/widget/ImageView;->setImageBitmap(Bitmap)
+ favicon origin: WebHistoryItem.getFavicon() / NestedScrollWebView.setFavoriteIcon() (onReceivedIcon).
+ => SOURCE = the WebView-provided favicon bitmap (minted by OH WebView / ArkWeb-chromium), null SkColorSpace.
+ (A default `defaultFavoriteIconBitmap` fallback exists for when the webview favicon is null; here the
+  favicon was non-null but carried no colorspace, so the scaler is reached and throws.)
+
+FD-MUSICPLAYER  (apk org.fossify.musicplayer_14.apk)
+ class df.j (abstract, extends he.i; r8-obfuscated), constructor <init>(ArrayList,ge/j,MyRecyclerView,zc/l)V (= frame df.j.<init>):
+   Resources;->getDimension(0x7f070453)F                                      # placeholder size
+   check-cast p3 -> BitmapDrawable; BitmapDrawable;->getBitmap()Bitmap;       # p3 = a Drawable passed in, cast to BitmapDrawable
+   Landroid/graphics/Bitmap;->createScaledBitmap(Bitmap,II Z)Bitmap;          # THROWS here
+   new BitmapDrawable(Resources, scaledBitmap)
+ => SOURCE = a BitmapDrawable's bitmap (the fossify default album-cover placeholder drawable passed to the
+    adapter ctor), null SkColorSpace. (This app had an earlier BACKGROUND NoClassDefFoundError
+    MediaStore$Audio$Artists on Thread-5/6 that kept the process alive; the ColorSpace throw is the
+    TERMINAL first-fatal on the main/adapter path.)
+
+COMMON SHAPE: both scale a bitmap that was NOT minted by the standard Java Bitmap.createBitmap(w,h,config)
+(which defaults to sRGB). One comes from the WebView; one from a resource/placeholder BitmapDrawable. Both
+reach `source.getColorSpace()==null` -> createScaledBitmap -> createBitmap(...,null) -> throw.

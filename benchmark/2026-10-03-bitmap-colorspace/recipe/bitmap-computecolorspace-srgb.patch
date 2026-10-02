@@ -1,0 +1,37 @@
+# PROPOSED minimal fix (staging only; NOT built/deployed here). Outer decides whether to fold into U14.
+# Layer: libhwui.so (native) -- same patch mechanism as the existing
+#   bms/src/adapter/aosp_patches/libs/hwui/patches/jni/BitmapFactory.cpp.patch
+# File: frameworks/base/libs/hwui/jni/Bitmap.cpp, function Bitmap_computeColorSpace.
+# Rationale: Bitmap_isSRGB already treats a null SkColorSpace as sRGB (Bitmap.cpp:930). Align
+# computeColorSpace so Bitmap.java getColorSpace() returns sRGB (not null) for a non-ALPHA_8 bitmap that
+# was minted without a colorspace (WebView favicon; resource/placeholder BitmapDrawable). That stops
+# createScaledBitmap/createBitmap(:1203) from throwing "can't create bitmap without a color space".
+# kAlpha_8 legitimately has no colorspace and is already guarded by the Java side -> keep returning null.
+
+--- a/libs/hwui/jni/Bitmap.cpp
++++ b/libs/hwui/jni/Bitmap.cpp
+@@ static jobject Bitmap_computeColorSpace(JNIEnv* env, jobject, jlong bitmapHandle) {
+     LocalScopedBitmap bitmapHolder(bitmapHandle);
+     if (!bitmapHolder.valid()) return nullptr;
+ 
+     SkColorSpace* colorSpace = bitmapHolder->info().colorSpace();
+-    if (colorSpace == nullptr) return nullptr;
+-
+-    return GraphicsJNI::getColorSpace(env, colorSpace, bitmapHolder->info().colorType());
++    const SkColorType ct = bitmapHolder->info().colorType();
++    if (colorSpace == nullptr) {
++        // route-A: assume sRGB for a colorspace-less, non-ALPHA_8 bitmap (matches Bitmap_isSRGB, which
++        // already treats null as sRGB). Prevents Bitmap.java createScaledBitmap from throwing
++        // "can't create bitmap without a color space" on WebView favicons / placeholder BitmapDrawables.
++        if (ct == kAlpha_8_SkColorType) return nullptr;
++        sk_sp<SkColorSpace> srgb = SkColorSpace::MakeSRGB();
++        return GraphicsJNI::getColorSpace(env, srgb.get(), ct);
++    }
++
++    return GraphicsJNI::getColorSpace(env, colorSpace, ct);
+ }
+
+# ALTERNATIVE (JAR layer) if a native rebuild is undesirable: framework.jar Bitmap.java createBitmap(source,...)
+# at the `ColorSpace cs = source.getColorSpace();` site (AOSP14 line 956):
+#     if (cs == null && source.getConfig() != Config.ALPHA_8) cs = ColorSpace.get(ColorSpace.Named.SRGB);
+# Same effect, one line, but patches framework.jar instead of libhwui.

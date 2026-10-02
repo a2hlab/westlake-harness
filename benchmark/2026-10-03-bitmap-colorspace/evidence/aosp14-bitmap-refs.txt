@@ -1,0 +1,18 @@
+AOSP 14.0.0_r1 reference (westlake-inputs/aosp-14.0.0_r1-src), the exact throw chain.
+
+frameworks/base/graphics/java/android/graphics/Bitmap.java
+  956:  ColorSpace cs = source.getColorSpace();                 // createBitmap(source,...) overload (createScaledBitmap path)
+  1873: if (mColorSpace == null) {
+  1874:     mColorSpace = nativeComputeColorSpace(mNativePtr);   // getColorSpace() -> native
+  2466: private static native ColorSpace nativeComputeColorSpace(long nativePtr);
+  1202: if (colorSpace == null && config != Config.ALPHA_8) {
+  1203:     throw new IllegalArgumentException("can't create bitmap without a color space");
+  1207:     ... colorSpace == null ? 0 : colorSpace.getNativeInstance());
+ (deployed framework.jar reports :979 / :1203 -- same logic, build-specific line numbers.)
+
+frameworks/base/libs/hwui/jni/Bitmap.cpp
+  925-930: Bitmap_isSRGB: SkColorSpace* colorSpace = ...; return colorSpace == nullptr || colorSpace->isSRGB();
+  942-949: Bitmap_computeColorSpace: SkColorSpace* colorSpace = bitmapHolder->info().colorSpace();
+           if (colorSpace == nullptr) return nullptr;         // <-- the null
+           return GraphicsJNI::getColorSpace(env, colorSpace, bitmapHolder->info().colorType());
+  1261-1265: gBitmapMethods registers nativeComputeColorSpace/nativeSetColorSpace/nativeIsSRGB/nativeIsSRGBLinear.

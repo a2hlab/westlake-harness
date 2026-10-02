@@ -1,0 +1,39 @@
+B10-style JNI coverage: Bitmap ColorSpace natives in runtime 18763dd4 vs AOSP 14 android_graphics_Bitmap.cpp
+
+RUNTIME / HOST LIB
+- liboh_android_runtime.so (U13 18763dd4) only CALLS register_android_graphics_Bitmap (declares the symbol).
+- The Bitmap JNI is actually hosted in libhwui.so (be59260f93b3debe1ad64cc8e7b6b0575e5be04794b46f8eb876436d1ebc9b74,
+  u13 payload). route-A ships a real hwui.
+
+REGISTERED COLOR-SPACE NATIVES (method-name strings present in libhwui.so gBitmapMethods table):
+  nativeComputeColorSpace   (string @ libhwui)
+  nativeIsSRGB              (string @ libhwui)
+  nativeIsSRGBLinear       (string @ libhwui)
+  nativeSetColorSpace      (string @ libhwui)
+  nativeCreate / nativeCopy / nativeReconfigure / ... (full Bitmap method set present)
+Backing C++ fns defined (nm): _ZL24Bitmap_computeColorSpace..., _ZN11GraphicsJNI19getNativeColorSpaceEl,
+  _ZN11GraphicsJNI13getColorSpaceEP7_JNIEnvP12SkColorSpace11SkColorType, SkColorSpace::MakeSRGB, etc.
+
+AOSP 14 reference (westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/libs/hwui/jni/Bitmap.cpp):
+  gBitmapMethods (Bitmap.cpp:1220,1261-1265):
+    {"nativeCreate", "([IIIIIIZJ)Landroid/graphics/Bitmap;", Bitmap_creator}
+    {"nativeComputeColorSpace", "(J)Landroid/graphics/ColorSpace;", Bitmap_computeColorSpace}
+    {"nativeSetColorSpace", "(JJ)V", Bitmap_setColorSpace}
+    {"nativeIsSRGB", "(J)Z", Bitmap_isSRGB}
+    {"nativeIsSRGBLinear", "(J)Z", Bitmap_isSRGBLinear}
+  => the deployed libhwui method set MATCHES AOSP 14 exactly for the color-space natives.
+
+STUBS (hwui_register_stubs.cpp, gap 9b): only register_android_graphics_BitmapRegionDecoder,
+  YuvToJpegEncoder, (and a few others) return JNI_OK WITHOUT registering methods. The MAIN
+  register_android_graphics_Bitmap is NOT stubbed -- the live nativeComputeColorSpace strings prove it.
+
+CONCLUSION (corrects cc-t3's "nativeComputeColorSpace has no ColorSpace" guess at the registration level):
+  JNI coverage is COMPLETE. nativeComputeColorSpace is registered and genuine. It returns null BY DESIGN
+  when the backing SkBitmap has no SkColorSpace:
+    Bitmap.cpp:942-949  Bitmap_computeColorSpace: colorSpace=info().colorSpace(); if(colorSpace==nullptr) return nullptr;
+  So the null is a GENUINE "source SkBitmap has info().colorSpace()==nullptr", NOT a missing/stubbed native.
+
+INTERNAL INCONSISTENCY (the fix lever):
+  Bitmap.cpp:925-930  Bitmap_isSRGB: `return colorSpace == nullptr || colorSpace->isSRGB();`
+  i.e. isSRGB ALREADY treats a null colorspace as sRGB, while computeColorSpace returns null. Making
+  computeColorSpace fall back to sRGB for a non-ALPHA_8 null-colorspace bitmap aligns the two.
