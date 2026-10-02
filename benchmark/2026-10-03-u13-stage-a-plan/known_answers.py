@@ -1,4 +1,4 @@
-"""Known answers against the original two captured records, not a synthetic status."""
+"""Known answers against the original two captured records plus explicitly synthetic v3 success."""
 import hashlib
 import json
 from pathlib import Path
@@ -13,7 +13,12 @@ for name,p in provenance.items():
     assert hashlib.sha256(rec.read_bytes()).hexdigest()==p['source_hashes']['record.json']
     assert hashlib.sha256((rec.parent/'hilog.txt').read_bytes()).hexdigest()==p['original_hilog_sha256']
     r=process_selftest.run_row(rec)
-    assert r['selftest_error_count']==p['expected_error_count'],r
-    assert r['status']==('REJECT' if p['expected_error_count'] else 'unknown'),r
-    print(f'{name}: actual_record={p["source_record"]} error={r["selftest_error_count"]} validateAead_OK={r["validateAead_OK_count"]} status={r["status"]} original_sha_verified=true')
-print('KNOWN_ANSWERS PASS: U12 error detected; U10.1T8 zero errors (unknown is not PASS)')
+    counts={'selftest_error':r['selftest_error_count'],'badtag':r['badtag_count'],'probe_error':r['probe_error_count']}
+    assert counts==p['expected_counts'],r
+    assert r['status']==p['expected_status'],r
+    print(f'{name}: selftest_error={counts["selftest_error"]} badtag={counts["badtag"]} probe_error={counts["probe_error"]} status={r["status"]} original_sha_verified=true')
+success='10-03 02:23:00.000 123 124 I C00f00/AppSpawnXJava: [stderr] [WL-KS-PROBE] validateAead round-trip=OK'
+r=process_selftest.scan_text(success,['123'])['123']
+assert r['status']=='PASS' and not process_selftest.errors(r)
+print('synthetic-v3-success: validateAead round-trip=OK status=PASS (synthetic, not board evidence)')
+print('KNOWN_ANSWERS PASS: U12=selftest_error; U10.1T8=badtag; synthetic v3=PASS')

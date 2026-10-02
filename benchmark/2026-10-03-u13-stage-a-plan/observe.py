@@ -34,7 +34,7 @@ def assess(plan, root, destination, name):
         data = process_selftest.report(root)
     except Exception as exc:
         data = {'runs': [], 'run_count': 0, 'passed': False, 'unknown_runs': 1,
-                'selftest_error_count': 0, 'assessment_error': str(exc)}
+                'selftest_error_count': 0, 'badtag_count': 0, 'probe_error_count': 0, 'error_count': 0, 'assessment_error': str(exc)}
     destination.write_text(json.dumps(data, indent=2)+'\n')
     problems = []
     for run in data['runs']:
@@ -44,12 +44,13 @@ def assess(plan, root, destination, name):
         for pid, row in run['processes'].items():
             if row['status'] == 'unknown' and run['status'] != 'unknown':
                 problems.append({'record': run['record'], 'pid': pid, 'status': 'unknown'})
-            for event in row['selftest_errors']:
+            for event in process_selftest.errors(row):
                 problems.append({'record': run['record'], 'key': run['key'], 'pid': pid, **event})
     if not data['runs']:
         problems.append({'status': 'unknown', 'reason': data.get('assessment_error', 'no records')})
     ack(plan, f'{name} process_selftest report={destination}; '
-              f'error={data["selftest_error_count"]}, unknown={data["unknown_runs"]}; '
+              f'selftest_error={data["selftest_error_count"]}, badtag={data["badtag_count"]}, '
+              f'probe_error={data["probe_error_count"]}, total_error={data["error_count"]}, unknown={data["unknown_runs"]}; '
               f'issues={json.dumps(problems, ensure_ascii=False)}; record-only,继续观察,finish无条件执行')
     print(json.dumps(data, indent=2))
     # Verdict REJECT/unknown is recorded, not propagated to the window runner.

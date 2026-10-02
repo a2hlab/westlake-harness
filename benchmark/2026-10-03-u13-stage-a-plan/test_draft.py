@@ -22,7 +22,8 @@ class DraftTests(unittest.TestCase):
         for name, errors in [('u12-error',1),('u101t8-zero',0)]:
             row=probe.run_row(HERE/'evidence/known-answer'/name/'record.json')
             self.assertEqual(row['selftest_error_count'],errors)
-            self.assertEqual(row['status'],'REJECT' if errors else 'unknown')
+            self.assertEqual(row['status'],'REJECT')
+            self.assertEqual(row['badtag_count'],1 if name=='u101t8-zero' else 0)
 
     def test_shard_observer_records_rejection_and_returns_zero(self):
         with tempfile.TemporaryDirectory() as d, patch.object(observe,'ack') as ack, patch('builtins.print'):
@@ -56,6 +57,33 @@ class DraftTests(unittest.TestCase):
         argv=observe.capture_command(plan,other,Path('/tmp/fresh'),123)
         self.assertNotIn('$WORKSPACES',argv[argv.index('--input-root')+1])
 
+    def test_both_badtag_formats_reject_even_with_success(self):
+        for message in ['selftest AEADBadTagException via default provider BC (ivLen=16) -> REPRODUCES the on-board root',
+                        'validateAead AEADBadTagException -> REPRODUCED the on-board root']:
+            line=BAD[:BAD.index('selftest error')]+message
+            row=probe.scan_text(line+'\n'+GOOD,['123'])['123']
+            self.assertEqual(row['status'],'REJECT');self.assertEqual(len(row['badtag_errors']),1)
+            self.assertEqual(len(row['selftest_errors']),0)
+
+    def test_probe_error_is_separate_failure(self):
+        row=probe.scan_text(BAD.replace('selftest error:','probe error:')+'\n'+GOOD,['123'])['123']
+        self.assertEqual(row['status'],'REJECT');self.assertEqual(len(row['probe_errors']),1)
+        self.assertEqual(len(row['selftest_errors']),0);self.assertEqual(len(row['badtag_errors']),0)
+
+    def test_success_formats_v3(self):
+        for message in ['selftest validateAead(random 256-bit SecretKeySpec)=OK','validateAead round-trip=OK','validateAead=OK']:
+            row=probe.scan_text(BAD[:BAD.index('selftest error')]+message,['123'])['123']
+            self.assertEqual(row['status'],'PASS');self.assertEqual(probe.errors(row),[])
+
+    def test_report_three_failure_counts(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);(root/'record.json').write_text(json.dumps({'key':'k','bms':{'uid':100},'diagnostics':{'complete':True}}))
+            (root/'processes-t20.txt').write_text('123 1 100 appspawn-x')
+            (root/'hilog.txt').write_text('\n'.join([BAD,BAD.replace('selftest error:','probe error:'),BAD[:BAD.index('selftest error')]+'validateAead AEADBadTagException -> REPRODUCED']))
+            data=probe.report(root)
+            self.assertEqual([data[k] for k in ('selftest_error_count','badtag_count','probe_error_count','error_count','error_runs')],[1,1,1,3,1])
+            self.assertFalse(data['passed']);self.assertEqual(data['schema_version'],2)
+
     def test_success_actual_marker_shape(self):
         self.assertEqual(probe.scan_text(GOOD,['123'])['123']['status'],'PASS')
     def test_error_even_when_success_present(self):
@@ -66,9 +94,9 @@ class DraftTests(unittest.TestCase):
     def test_pid_scope_excludes_other_process(self):
         row=probe.scan_text(BAD.replace('123 124','999 998')+'\n'+GOOD,['123'])['123']
         self.assertEqual(row['status'],'PASS');self.assertEqual(row['selftest_errors'],[])
-    def test_old_baseline_expected_badtag_not_selftest_error(self):
+    def test_old_baseline_badtag_is_known_failure(self):
         line=BAD.replace('selftest error: java.lang.IllegalStateException: GCM cipher needs to be initialised','selftest AEADBadTagException via default provider BC (ivLen=16)')
-        row=probe.scan_text(line,['123'])['123'];self.assertEqual(row['selftest_errors'],[]);self.assertEqual(row['status'],'unknown')
+        row=probe.scan_text(line,['123'])['123'];self.assertEqual(row['selftest_errors'],[]);self.assertEqual(row['status'],'REJECT');self.assertEqual(len(row['badtag_errors']),1)
     def test_no_records_cannot_pass(self):
         with tempfile.TemporaryDirectory() as d:self.assertFalse(probe.report(Path(d))['passed'])
     def test_actual_u12_negative_capture_if_available(self):
@@ -111,7 +139,7 @@ class CriterionTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.report=Path(self.temp.name)/'selftest.json'
-        self.rows={'runs':[{'record':'r1','status':'PASS','validateAead_OK_count':1,'processes':{'123':{'selftest_errors':[]}}}], 'run_count':1}
+        self.rows={'schema_version':2,'runs':[{'record':'r1','status':'PASS','validateAead_OK_count':1,'processes':{'123':{'status':'PASS','validateAead_OK':[{'line':'OK'}],'selftest_errors':[],'badtag_errors':[],'probe_errors':[]}}}], 'run_count':1}
         self.reference={'keys':{str(i):{'verdict':'lit'} for i in range(122)},'total_lit':122}
         self.comp={'bundle_sha256':'a'*64,'native_manifest_sha256':'b'*64}
         self.decision={'signed_by':'outer(claude)','bundle_sha256':'a'*64,'native_manifest_sha256':'b'*64,'confirmed_regressions':[],
@@ -120,6 +148,19 @@ class CriterionTests(unittest.TestCase):
         self.report.write_text(json.dumps(self.rows))
         self.decision['process_selftest_gate']={'report_sha256':hashlib.sha256(self.report.read_bytes()).hexdigest(),'measured_records':['r1']}
         return hook.retention_reason(self.decision,self.comp,self.reference,{'passed':True},self.report)
+    def test_all_failure_classes_hard_veto_even_with_forged_pass(self):
+        for category in ('selftest_errors','badtag_errors','probe_errors'):
+            self.rows['runs'][0]['processes']['123'][category]=[{'line_sha256':'c'*64}]
+            self.assertIn('unconditionally rejects',self.evaluate())
+            self.rows['runs'][0]['processes']['123'][category]=[]
+
+    def test_obsolete_report_rejected(self):
+        self.rows.pop('schema_version');self.assertIn('obsolete',self.evaluate())
+
+    def test_one_silent_process_requires_its_own_explanation(self):
+        self.rows['runs'][0]['processes']['456']={'status':'unknown','validateAead_OK':[]}
+        self.assertIn('individual outer explanations',self.evaluate())
+
     def test_122_and_zero_error_pass(self):self.assertIsNone(self.evaluate())
     def test_old_116_certificate_rejected(self):
         self.decision['stage_A_regression_verdict']['measured']=116
@@ -129,10 +170,10 @@ class CriterionTests(unittest.TestCase):
         self.assertIn('individual outer explanations',self.evaluate())
     def test_errors_blocked_even_if_ui_preserved(self):
         self.rows['runs'][0]['status']='REJECT';self.rows['runs'][0]['processes']['123']['selftest_errors']=[{'line_sha256':'c'*64}]
-        self.assertIn('individual outer explanations',self.evaluate())
+        self.assertIn('unconditionally rejects',self.evaluate())
     def test_wrong_bundle_rejected(self):
         self.decision['bundle_sha256']='d'*64;self.assertIn('another bundle',self.evaluate())
     def test_silent_report_not_promotion(self):
-        self.rows={'runs':[],'run_count':0};self.assertIn('coverage absent',self.evaluate())
+        self.rows={'schema_version':2,'runs':[],'run_count':0};self.assertIn('coverage absent',self.evaluate())
 
 if __name__=='__main__':unittest.main()

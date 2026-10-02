@@ -6,10 +6,19 @@ import re
 from pathlib import Path
 
 LINE = re.compile(r'^\S+ \S+\s+(\d+)\s+')
-OK = re.compile(r'validateAead(?:\([^)]*\))?\s*=\s*OK\b')
+OK = re.compile(r'validateAead(?:\([^)]*\)|\s+round-trip)?\s*=\s*OK\b')
+FAILURES = {
+    'selftest_error': ('selftest_errors', re.compile(r'\bselftest error\b')),
+    'badtag': ('badtag_errors', re.compile(r'\b(?:selftest|validateAead)\s+AEADBadTagException\b')),
+    'probe_error': ('probe_errors', re.compile(r'\bprobe error\s*:')),
+}
+
+def errors(row):
+    return [event for field, _ in FAILURES.values() for event in row.get(field, [])]
+
 
 def scan_text(text, pids):
-    rows = {str(pid): {'marker_lines': 0, 'selftest_errors': [], 'validateAead_OK': []} for pid in pids}
+    rows = {str(pid): {'marker_lines': 0, 'selftest_errors': [], 'badtag_errors': [], 'probe_errors': [], 'validateAead_OK': []} for pid in pids}
     for number, line in enumerate(text.splitlines(), 1):
         m = LINE.match(line)
         if not m or m[1] not in rows or '[WL-KS-PROBE]' not in line:
@@ -18,12 +27,14 @@ def scan_text(text, pids):
         row['marker_lines'] += 1
         event = {'line_number': number, 'line': line,
                  'line_sha256': hashlib.sha256(line.encode()).hexdigest()}
-        if re.search(r'\bselftest error\b', line):
-            row['selftest_errors'].append(event)
+        for category, (field, regex) in FAILURES.items():
+            if regex.search(line):
+                row[field].append(dict(event, category=category))
+                break  # one log line contributes to exactly one failure class
         if OK.search(line):
             row['validateAead_OK'].append(event)
     for row in rows.values():
-        row['status'] = ('REJECT' if row['selftest_errors'] else
+        row['status'] = ('REJECT' if errors(row) else
                          'PASS' if row['validateAead_OK'] else 'unknown')
     return rows
 
@@ -41,19 +52,25 @@ def run_row(record):
     rows = scan_text(log.read_text(errors='replace') if log.is_file() else '', pids)
     diagnostic = rec.get('diagnostics') or {}
     complete = diagnostic.get('complete') is True and log.is_file()
-    status = ('REJECT' if any(r['selftest_errors'] for r in rows.values()) else
+    status = ('REJECT' if any(errors(r) for r in rows.values()) else
               'PASS' if rows and complete and all(r['status'] == 'PASS' for r in rows.values()) else 'unknown')
     return {'record': str(record), 'key': rec.get('key', d.name), 'uid': uid,
             'processes': rows, 'complete_hilog': complete, 'status': status,
             'selftest_error_count': sum(len(v['selftest_errors']) for v in rows.values()),
+            'badtag_count': sum(len(v['badtag_errors']) for v in rows.values()),
+            'probe_error_count': sum(len(v['probe_errors']) for v in rows.values()),
+            'error_count': sum(len(errors(v)) for v in rows.values()),
             'validateAead_OK_count': sum(len(v['validateAead_OK']) for v in rows.values()),
             'hilog_sha256': hashlib.sha256(log.read_bytes()).hexdigest() if log.is_file() else None}
 
 def report(root):
     rows = [run_row(p) for p in sorted(root.rglob('record.json'))]
-    return {'runs': rows, 'run_count': len(rows),
-            'error_runs': sum(r['selftest_error_count'] > 0 for r in rows),
+    return {'schema_version': 2, 'runs': rows, 'run_count': len(rows),
+            'error_runs': sum(r['error_count'] > 0 for r in rows),
             'selftest_error_count': sum(r['selftest_error_count'] for r in rows),
+            'badtag_count': sum(r['badtag_count'] for r in rows),
+            'probe_error_count': sum(r['probe_error_count'] for r in rows),
+            'error_count': sum(r['error_count'] for r in rows),
             'validateAead_OK_count': sum(r['validateAead_OK_count'] for r in rows),
             'unknown_runs': sum(r['status'] == 'unknown' for r in rows),
             'passed': bool(rows) and all(r['status'] == 'PASS' for r in rows)}

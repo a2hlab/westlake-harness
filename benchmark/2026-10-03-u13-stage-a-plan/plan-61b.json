@@ -206,13 +206,25 @@
   "draft_hook_warning": "after_lock/before_unlock are guarded design slots, not a production finish implementation; replace only after final package admission and full transaction review",
   "process_selftest_gate": {
     "collect": "process_selftest.py per record, targetUID/PID only; all runs incl smoke and longwait",
-    "error_regex": "\\[WL-KS-PROBE\\].*\\bselftest error\\b",
-    "success_regex": "validateAead(?:\\([^)]*\\))?\\s*=\\s*OK\\b",
+    "error_regex": "\\[WL-KS-PROBE\\].*(?:\\bselftest error\\b|\\b(?:selftest|validateAead)\\s+AEADBadTagException\\b|\\bprobe error\\s*:)",
+    "success_regex": "validateAead(?:\\([^)]*\\)|\\s+round-trip)?\\s*=\\s*OK\\b",
     "default_error_limit": 0,
     "silence": "unknown blocks promotion unless individually outer-explained",
-    "explanations": "exact event/report/package/evidence SHA binding; no blanket exemption",
+    "explanations": "unknown processes only: exact event/report/package/evidence SHA binding; no blanket exemption",
     "promotion_hook": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/promotion_hook_u13.py",
-    "production_wiring": "after_shard_record_only calls observe.py/process_selftest immediately; all errors/unknowns ACKed, never stop Stage A; promotion_hook_u13 remains strict; before_unlock always restores"
+    "production_wiring": "after_shard_record_only calls observe.py/process_selftest immediately; all errors/unknowns ACKed, never stop Stage A; promotion_hook_u13 remains strict; before_unlock always restores",
+    "failure_classes": [
+      "selftest_error",
+      "badtag",
+      "probe_error"
+    ],
+    "schema_version": 2,
+    "failure_policy": "all3 classes unconditionally reject promotion; only unknown can receive exact individual outer explanations",
+    "failure_regexes": {
+      "selftest_error": "\\bselftest error\\b",
+      "badtag": "\\b(?:selftest|validateAead)\\s+AEADBadTagException\\b",
+      "probe_error": "\\bprobe error\\s*:"
+    }
   },
   "longwait_observation": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/longwait-61b.json",
   "after_shard_record_only": [
