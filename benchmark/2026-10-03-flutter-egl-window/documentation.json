@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-flutter-egl-window/`** | **U13 Flutter keys (localsend, kitchenowl, fluffychat, libre) past GetLongField now die in ANativeWindow_getFormat: libflutter's eglCreateWindowSurface binds platform libEGL (shared by name) because the Flutter-private libandroid ee2fb82c lacks the interposer, and gets the AdapterAnw wrapper from the runtime's ANativeWindow_fromSurface; U13 shim's EGL interposer not in the path; hwui/Unity/Java-EGL keys unwrap and never crash; Flutter-only, exposed by U13. Fix: hwui-verified interposer in westlake_flutter/libandroid only.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **Flutter 的 eglCreateWindowSurface 绕过所有解包(cc-t3)**:libflutter NEEDED 顺序 libandroid→libEGL,但 Flutter 域的 libandroid 是私有薄件 ee2fb82c(只导出 5 个符号,无 eglCreateWindowSurface),libEGL.so 又在该域按名共享 → 绑到平台 libEGL,把运行时 ANativeWindow_fromSurface 原样返回的 AdapterAnw('_wnd')交给 mali → ANativeWindow_getFormat+60 SEGV。hwui(libhwui 自带 §4 hijack)、Unity(根 libandroid 9ccf64f8 自带拦截器、排在 libEGL 前)、Java EGL(JNI 先解包)都不经这条路。拦截器只在调用方查找顺序里排第一才生效;后加载的 GLOBAL 提供者压不过先加载的(N6 失败原因)。DfxFaultLogger 行的 pid 列是转储进程,崩的线程看 TargetPid/Tid。"
+   ]
+  }
+ ]
+}

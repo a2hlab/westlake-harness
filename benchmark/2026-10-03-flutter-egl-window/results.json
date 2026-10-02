@@ -1,0 +1,30 @@
+{
+ "task": "#90 Flutter EGL window wall in U13 stage A (localsend, fd-kitchenowl)",
+ "crash": "SIGSEGV SEGV_MAPERR @0xbf3a9be7eed in ANativeWindow_getFormat+60 <- mali new_window_surface <- platform libEGL eglCreateWindowSurface <- libflutter, thread 1.raster",
+ "window_source": "ANativeWindow_fromSurface resolved in liboh_android_runtime (U13 M1 shim) via the Flutter-private libandroid's NEEDED; returns Surface.mNativeObject = AdapterAnw '_wnd' wrapper unchanged",
+ "egl_binding": "libflutter eglCreateWindowSurface -> platform /system/lib64/platformsdk/libEGL.so (shared by name in the Flutter domain); private libandroid ee2fb82c does not define it; runtime/hwui/root-libandroid interposers not in libflutter's lookup",
+ "u13_shim_in_path": false,
+ "population": {
+  "u13_stageA_crash_keys": [
+   "localsend",
+   "fd-kitchenowl",
+   "fd-fluffychat",
+   "fd-libre"
+  ],
+  "u12": 0,
+  "u10_1t8": 0,
+  "u12_first_fatal_of_these": "JNI GetLongField JniAbort (fixed by U13 runtime 18763dd4)",
+  "hwui_hijack_unwrap_keys": 11,
+  "unity_egl_keys": [
+   "zigzag"
+  ]
+ },
+ "verdict": "Flutter-only wall exposed by U13, not a U13 regression",
+ "prior_art": "N6 (GLOBAL native_abi hijack: binding failed on board), N7 (private libEGL facade + host/ANL + libz: control failed on libz, Flutter path never run)",
+ "minimal_fix": "add the hwui-verified eglCreateWindowSurface interposer (N6 flutter_egl.cpp copy) to the Flutter-private libandroid (libandroid_webview_shim.c, ee2fb82c), deploy only to westlake_flutter/; faithful rebuild first on hw248 with frozen clang feef13a3",
+ "unknown": "deployed hash of /system/android/lib64/westlake_flutter/libandroid.so (not in fingerprint/bundle)",
+ "prediction": {
+  "localsend,fd-kitchenowl,fd-fluffychat,fd-libre": "first fatal moves past eglCreateWindowSurface (high); lit low-medium",
+  "others": 0
+ }
+}
