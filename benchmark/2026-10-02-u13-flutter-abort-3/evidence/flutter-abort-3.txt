@@ -1,0 +1,38 @@
+# fd-saber / fd-kitchenowl / fd-libre — all three are GetLongField+1664 fid==null, SAME ROOT, from libflutter
+# (NOT a wall outside GetLongField: #06 IS GetLongField. "not covered by your fix" = not in your predicted-4 list.)
+
+## DFX backtrace (identical shape across all three)
+#00 ld-musl raise / #01 abort
+#02 libart.so art::Runtime::Abort
+#03/#04 libbase LogMessage
+#05 libart.so art::JavaVMExt::JniAbort(+2516) @0x4f0694
+#06 libart.so art::JNI<false>::GetLongField(+1664) @0x56ba9c   <-- +1664 = the fid==null path (hardened in benchmark/2026-10-02-getlongfield-null)
+#07 /data/app/.../<app>/android/lib/arm64-v8a/libflutter.so   <-- caller; AAssetManager_fromJava is TAIL-CALLED (frame elided)
+
+ key           | run serial | fault Tid name   | #07 libflutter build-id
+ fd-saber      | 61b        | com.adilhanney.   | fdf0a0a6f673cdcfc6c0e5f8dc7c8828d63fb3b6
+ fd-libre      | 5cd        | deckers.thibaul   | fdf0a0a6f673cdcfc6c0e5f8dc7c8828d63fb3b6   (IDENTICAL to saber)
+ fd-kitchenowl | 5ea        | com.tombursch.k   | 889a1df37c58955a78bb76391e165822b866bf48   (different build, SAME crash)
+
+## The decisive test — readelf/nm -D on each app's libflutter.so (from westlake-inputs/apks/fdroid100/*.apk)
+All three: `U AAssetManager_fromJava`  (UNDEFINED import; 0 local definitions of any AAssetManager symbol)
+  com.adilhanney.saber_1360102         libflutter 11747864 B, buildid fdf0a0a6..  -> U AAssetManager_fromJava
+  deckers.thibault.aves.libre_17702    libflutter 11747864 B, buildid fdf0a0a6..  -> U AAssetManager_fromJava
+  com.tombursch.kitchenowl_124         libflutter 11581856 B, buildid 889a1df3..  -> U AAssetManager_fromJava
+=> libflutter does NOT statically define AAssetManager_fromJava; it IMPORTS it and resolves (via DT_NEEDED) to the
+   runtime's AAssetManager_fromJava -- the SAME function my getlongfield-null fix (asset_manager.cpp lazy-init) patched.
+   The tail-call elides the AAssetManager_fromJava frame, which is why #07 shows libflutter directly (no libandroid frame).
+
+## Prior analysis corroboration
+DIGEST 538 (2026-10-01): "fid==null (GetLongField) cluster: glmark2, fluffychat, immich, SABER all die of
+  JNI DETECTED ERROR: fid == null in GetLongField -- AAssetManager_fromJava reads AssetManager.mObject cached fieldID
+  null (the Flutter engine reads resources via the SAME NDK interface)." -> saber was ALWAYS in this cluster.
+DIGEST 546: the field is AssetManager.mObject; the flutter/native domain's runtime copy's cache was never filled.
+My getlongfield-null fix = lazy-init in AAssetManager_fromJava: if gAssetManagerOffsets.mObject==null, GetFieldID it,
+  then GetLongField. This self-heals EVERY copy on first use -> covers every libflutter that imports AAssetManager_fromJava.
+
+## Same-root verdict + coverage
+- SAME ROOT, all 3: GetLongField fid==null on AssetManager.mObject via the imported runtime AAssetManager_fromJava.
+- ALREADY COVERED by the deployed U13 runtime 18763dd4 (which carries my aa149019 asset_manager.o lazy-init).
+  No new fix. Predicted first-fatal move = +3, contingent only on the U13 window confirming the asset_manager fix
+  moves the original 4 (same mechanism, same choke point).

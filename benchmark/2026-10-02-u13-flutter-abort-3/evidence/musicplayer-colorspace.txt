@@ -1,0 +1,39 @@
+# fd-musicplayer (org.fossify.musicplayer, 5cd) — "can't create bitmap without a color space", Java layer
+
+## First fatal (window5 5cd), full Java stack
+[CHILD_CK] J_invokeStaticMain_main_threw: java.lang.IllegalArgumentException: can't create bitmap without a color space
+  at android.graphics.Bitmap.createBitmap(Bitmap.java:1203)     <-- throws when colorSpace == null (and config != ALPHA_8)
+  at android.graphics.Bitmap.createBitmap(Bitmap.java:979)      <-- createBitmap(source, x,y,w,h, m, filter): cs = source.getColorSpace()
+  at android.graphics.Bitmap.createScaledBitmap(Bitmap.java:831)
+  at df.j.<init>(... r8 ...:68)
+  at org.fossify.musicplayer.fragments.FoldersFragment.g(...:179)   <-- album-art thumbnail scaling
+  ... Handler -> Looper -> ActivityThread.main
+
+=> The thrown null is the SOURCE bitmap's color space: createScaledBitmap(src) -> createBitmap(src,...) reads
+   source.getColorSpace(), which is null, so Bitmap.java:1203 throws. The source bitmap was decoded WITHOUT a color space.
+
+## Which of our methods returns null -- android_graphics_compat_shim.cpp:79 (ImageDecoder.nGetColorSpace stub)
+android_graphics_compat_shim.cpp:72-80 (registered for android.graphics.ImageDecoder, kImageDecoderMethods:113):
+  // G2.4 (2026-04-30): nGetColorSpace's libhwui impl caches gColorSpace jfieldID via GetStaticFieldID at register
+  // time. When that fails (class layout mismatch on our framework.jar), the cached fid stays null; subsequent
+  // GetStaticObjectField(env, ..., null) trips CheckJNI abort.
+  // Override: return null so caller's getColorSpace() returns null.  No Android UI path I know of strict-requires
+  // non-null ColorSpace; sRGB is assumed when null.
+  jobject ID_nGetColorSpace(JNIEnv*, jclass, jlong) { return nullptr; }
+=> fd-musicplayer REFUTES that stated assumption: Bitmap.createBitmap(source,...) DOES strict-require a non-null
+   color space (throws otherwise). A bitmap decoded via ImageDecoder gets its color space from nGetColorSpace; our
+   stub returns null -> the decoded bitmap has mColorSpace=null -> createScaledBitmap throws.
+
+## Why the null workaround may no longer be needed
+The G2.4 workaround returned null to dodge a ColorSpace-class fid==null CheckJNI abort (ColorSpace class not loaded
+when ImageDecoder's register cached the static fieldID). That ordering was since fixed: AndroidRuntime.cpp:306 now
+registers ColorSpace BEFORE ImageDecoder/Bitmap/HardwareBufferRenderer ("must register BEFORE ImageDecoder/Bitmap...
+ImageDecoder's register_X caches a jfieldID for ColorSpace static field (e.g. SRGB)"). So returning a real sRGB
+ColorSpace from nGetColorSpace should no longer hit the original abort.
+
+## Confirmation gaps (static, before building)
+1. Decode path: confirm the source bitmap is decoded via ImageDecoder (so nGetColorSpace is on its path) vs
+   BitmapFactory (a different native; then the null color space originates in the BitmapFactory/Bitmap decode, part
+   of the shimmed hwui -- DIGEST 610 libhwui has no reproducible source). The stack only shows the scale, not the decode.
+2. Safety: confirm that returning ColorSpace.get(Named.SRGB) from nGetColorSpace no longer trips the ColorSpace-class
+   fid==null abort the G2.4 note worried about (ColorSpace now registers first -- likely safe, verify on the window).

@@ -1,0 +1,56 @@
+{
+  "task": "Three Flutter SIGABRT keys (fd-saber/fd-kitchenowl/fd-libre) + fd-musicplayer ColorSpace: static dead/alive, same-root, fix layer, real move count",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "flutter_three": {
+    "keys": ["fd-saber", "fd-kitchenowl", "fd-libre"],
+    "verdict": "alive",
+    "same_root": true,
+    "abort": "art::JavaVMExt::JniAbort(+2516) <- art::JNI<false>::GetLongField(+1664) [fid==null path] <- libflutter.so",
+    "dispatch_clarification": "'not in GetLongField' = not in my predicted-4 list; the abort IS GetLongField fid==null (#06)",
+    "tail_call_note": "AAssetManager_fromJava tail-calls GetLongField, so its frame is elided; #07 libflutter is the CALLER of AAssetManager_fromJava, not an owner of a static copy",
+    "decisive_test": {
+      "method": "nm -D / readelf on each app libflutter.so from westlake-inputs/apks/fdroid100/",
+      "result": "all three: U AAssetManager_fromJava (undefined import; 0 local AAssetManager definitions)",
+      "builds": {
+        "com.adilhanney.saber": "libflutter 11747864B buildid fdf0a0a6f673cdcfc6c0e5f8dc7c8828d63fb3b6",
+        "deckers.thibault.aves.libre": "libflutter 11747864B buildid fdf0a0a6.. (identical to saber)",
+        "com.tombursch.kitchenowl": "libflutter 11581856B buildid 889a1df37c58955a78bb76391e165822b866bf48 (different build, same import/crash)"
+      },
+      "conclusion": "libflutter imports AAssetManager_fromJava -> resolves to the runtime's -> the same function my getlongfield-null fix lazy-inits"
+    },
+    "corroboration": "DIGEST 538 (saber always in the AssetManager fid==null cluster); DIGEST 546 (field = AssetManager.mObject; Flutter engine reads resources via the same NDK interface)",
+    "coverage": "ALREADY covered by the deployed U13 runtime 18763dd4 (carries my aa149019 asset_manager.o lazy-init, self-heals every copy on first use)",
+    "fix": "none new; rides the same U13 single-variable window that validates the original 4",
+    "predicted_move": 3,
+    "predicted_move_note": "free; contingent on the U13 window confirming the asset_manager fix moves the original 4 (same mechanism). Net GetLongField fix = 7 keys (4 + 3), not 4"
+  },
+  "musicplayer": {
+    "key": "fd-musicplayer",
+    "package": "org.fossify.musicplayer",
+    "serial": "5cd",
+    "verdict": "alive",
+    "wall": "IllegalArgumentException: can't create bitmap without a color space @ Bitmap.createBitmap:1203 <- createBitmap(source,..):979 <- createScaledBitmap:831 <- FoldersFragment.g (album art)",
+    "root": "source bitmap getColorSpace()==null; ID_nGetColorSpace (android_graphics_compat_shim.cpp:79, registered for android.graphics.ImageDecoder.nGetColorSpace) deliberately returns null (G2.4 workaround), so an ImageDecoder-decoded bitmap has mColorSpace=null",
+    "refutes": "the G2.4 stub's stated assumption 'no Android UI path strict-requires non-null ColorSpace' -- Bitmap.createBitmap(source,..) does",
+    "fix": "ID_nGetColorSpace returns ColorSpace.get(Named.SRGB) instead of null (keep null fallback); ColorSpace registers before ImageDecoder (AndroidRuntime.cpp:306) so the original fid==null risk no longer applies",
+    "layer": "runtime (android_graphics_compat_shim.cpp -> one .o in liboh_android_runtime.so)",
+    "owner_assemble": "cc-t3 (U13 runtime 18763dd4 lineage); cc-wiki can write the .o change",
+    "predicted_move": 1,
+    "predicted_move_note": "1 confirmed (fd-musicplayer); fix is general (any ImageDecoder-decoded then scaled/copied bitmap) but only this key asserted",
+    "confirmation_gaps": [
+      "confirm decode path is ImageDecoder (nGetColorSpace on path) vs BitmapFactory (then null originates in shimmed hwui decode -- libhwui unreproducible, DIGEST 610)",
+      "confirm returning sRGB no longer trips the ColorSpace-class fid==null abort the G2.4 null stub guarded against"
+    ]
+  },
+  "totals": {
+    "flutter_three_already_covered": 3,
+    "musicplayer_new_fix": 1,
+    "new_work_this_round": "one .o (nGetColorSpace -> SRGB); the 3 Flutter keys need no new work"
+  },
+  "this_round_rule": "a tail-called NDK function elides its backtrace frame, so the frame above GetLongField is the caller not the owner; nm -D on the app's .so settles import-vs-static in one read (flipped '3 uncovered' into '+3 already covered'); a deliberate null-returning stub carries a refutable assumption -- fd-musicplayer retires ID_nGetColorSpace's",
+  "files": ["README.md", "evidence/flutter-abort-3.txt", "evidence/musicplayer-colorspace.txt", "fix/musicplayer-ngetcolorspace.md", "results.json", "documentation.json"]
+}
