@@ -1,0 +1,19 @@
+# CRITICAL: the proposed inherit (sealed.child -> ANL bridge ns, shared=bridge:runtime) is ALREADY present in N11h-r1
+# and still produced 2 copies. Building it again reproduces N11h-r1. Evidence from this window's helloworld (PID 10303).
+## ANL_CreateDomain (app_native_loader.c:362-364) names the CL bridge ns:  westlake.anl.bridge.<pid>.<id>
+## It is created via runtime_gate.namespace_host_ops.create_configured_namespaces (the N11h host op).
+
+## N11h-r1 host ALREADY inherits sealed.child INTO that exact ns, shared=bridge:runtime, rc=0:
+12494:10-02 18:31:06.173 10303 10326 I C02c11/APPSPAWN: [candidate-stock-host.c:218][N11h-HOST-OWNER] action=inherit target=westlake.anl.bridge.10303.1 owner=westlake.sealed.child shared=liboh_adapter_bridge.so:liboh_android_runtime.so rc=0
+12645:10-02 18:31:06.338 10303 10326 I C02c11/APPSPAWN: [candidate-stock-host.c:218][N11h-HOST-OWNER] action=inherit target=westlake.anl.bridge.10303.2 owner=westlake.sealed.child shared=liboh_adapter_bridge.so:liboh_android_runtime.so rc=0
+
+## ...yet runtime is still 2 load-bases. The inherit did not dedupe runtime. The runtime state is self-contradictory:
+### resident-check said runtime is resident in sealed.child, rc=0 (handle non-null):
+12493:10-02 18:31:06.173 10303 10326 I C02c11/APPSPAWN: [n11h-owner.h:31][N11h-HOST-OWNER] action=resident-check target=westlake.anl.app.10303.1 owner=/system/android/lib64/liboh_android_runtime.so handle=55AD4C9B1882AD8B rc=0
+### but a later load of runtime INTO sealed.child FAILED errno=2 (failed to map header):
+13064:10-02 18:31:06.486 10303 10326 W C03f07/MUSL-LDSO: load liboh_android_runtime.so failed, namespace=westlake.sealed.child, errno=2
+
+## => A plain additional dlns_inherit at ANL is NOT the fix (already done). The real target is WHY the existing
+##    inherit does not share a single runtime: either sealed.child has no usable runtime copy to share (the
+##    errno=2 load), or the ANL bridge ns loads its own runtime (copy B) BEFORE/independently of the inherit
+##    (load-order), so inherit arrives too late. Must be resolved before any build.

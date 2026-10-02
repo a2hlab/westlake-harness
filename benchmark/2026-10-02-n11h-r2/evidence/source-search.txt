@@ -1,0 +1,12 @@
+# Step 1: source of the B8 runtime-CL namespace -- located, but the creating code is NOT in any reachable source
+## deployed jar owning the B8 strings:
+   framework/oh-adapter-runtime.jar -> class com.android.internal.os.AppSpawnXInit (AppSpawnXInit.java)
+   strings: '[B8-NATIVE] native namespace created for runtime CL', 'createClassloaderNamespace returned:'
+## the native createClassloaderNamespace in the CURRENT source is a NO-OP (returns null):
+   vm-copies/westlake-current @532633d framework/android-runtime/src/com_android_internal_os_ClassLoaderFactory.cpp
+   CLF_createClassloaderNamespace() { return nullptr; }  // 'OH manages namespaces differently ... returns null = no error, default ns'
+## but the DEPLOYED createClassloaderNamespace RETURNS A NAME (creates a ns) -- hilog '[B8-NATIVE] createClassloaderNamespace returned: <name>'
+## B8-NATIVE / 'native namespace created for runtime CL' grep across ALL reachable sources: ABSENT
+   - vm-copies/westlake-current: all commits of AppSpawnXInit.java -> 0 hits; appspawn-x/src/*.cpp -> 0 hits
+   - a2hlab ~/a2hlab/ws/westlake -> 0 hits; hw248 /opt/wl-src + lab-state -> 0 (only hilogs/boards)
+   => the deployed oh-adapter-runtime.jar + its createClassloaderNamespace-that-creates-a-ns are from a source iteration not in any repo here (same pattern as the ICU-72 deployed binary).

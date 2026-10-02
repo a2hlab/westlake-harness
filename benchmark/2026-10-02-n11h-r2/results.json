@@ -1,0 +1,59 @@
+{
+  "task": "N11h-r2 minimal fix for the second bridge/runtime copy",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "offline": true,
+  "board_deploy": false,
+  "status": "SHELVED (prediction 0): the 7-key GetLongField JniAbort is NOT a double-copy mechanism",
+  "step1_source": {
+    "b8_owner": "framework/oh-adapter-runtime.jar -> com.android.internal.os.AppSpawnXInit",
+    "native": "framework/android-runtime/src/com_android_internal_os_ClassLoaderFactory.cpp -> liboh_android_runtime.so",
+    "current_source_is_noop": "CLF_createClassloaderNamespace returns nullptr (no per-CL ns); deployed one RETURNS a name (creates ns)",
+    "blocker_A": "B8-NATIVE/createClassloaderNamespace-that-creates-a-ns ABSENT from all reachable sources (vm-copies all commits, a2hlab, hw248, westlake-inputs) -> deployed jar is an unreachable source iteration"
+  },
+  "step2_fix": "fix-spec.md: new-file native helper dlns_get(cl_ns)+dlns_get(sealed.child)+dlns_inherit(shared=bridge:runtime) after CL-ns creation (mirrors StockCreateConfiguredNamespaces@0xccf0)",
+  "step3_gate_answer": {
+    "finding": "bare inherit is NOT a clean single variable",
+    "copyA_bridge_JNI_OnLoad": "already ran once (hilog 12254, early native load, incomplete FindClass null)",
+    "runtime_reghook": "all on copy B (1386 vs 0 on copy A)",
+    "hazard": "routing System.loadLibrary to copy A -> ART re-runs JNI_OnLoad on copy A bridge = second init/re-RegisterNatives",
+    "already_opened_ULE": "not observed (no prior CL loaded owner by path) -> that hazard clear",
+    "blocker_B": "must pick JNI_OnLoad-idempotency approach (idempotent OnLoad / register copyA in ART libraries_ / route native load through ART) before the window"
+  },
+  "step4_prediction_conditional": {
+    "white_double_copy_cluster": "clusters.json[0] no-observed-termination, 20 keys (fd-noice/uhabits/noice/toutiao/shatteredpixeldungeon/termux/yahtzeedicer + cv2 white keys + fd-{AppManager,app,mobile,tutanota})",
+    "assetmanager_getlongfield": "~7 (cv2-org-linaro-glmark2 + localsend/fd-fluffychat/fd-immich/fd-im-vector-app/mindustry/fd-meet); fix MAY clear only if copyA AssetManager.mObject is the filled cache (open, tied to blocker B)",
+    "note": "conditional on a correct two-variable fix; white-lottery members judged by k/n; not asserted as firm"
+  },
+  "step5_build_window": "BLOCKED: no byte-repro product, no 61b window input (precondition A: source missing; precondition B: fix is two-variable)",
+  "asks_outer": [
+    "source the deployed createClassloaderNamespace-that-creates-a-ns (not in any repo here)",
+    "decide the JNI_OnLoad-idempotency approach for copy A bridge"
+  ],
+  "files": [
+    "fix-spec.md",
+    "evidence/source-search.txt",
+    "evidence/jni-onload-state.txt"
+  ],
+  "outer_correction": "source not missing (I read old tree _cc-wiki-b1-src); current source bms/src/adapter/framework",
+  "root_cause": {
+    "copy_B_source": "candidate-stock-host.c:197 bridge ns created with CREATE_INHERIT_DEFAULT (0x1) -> inherits default -> owner libs (bridge/runtime) resolved fresh from /system/android/lib64 BEFORE the sealed.child inherit (line 216)",
+    "proof_inherit_already_present": "marker 12494 action=inherit target=westlake.anl.bridge owner=sealed.child shared=bridge:runtime rc=0 -- the proposed fix was already in N11h-r1, still 2 copies",
+    "app_ns_contrast": "app ns (line 224) uses LOCAL_NS_PREFERED (0x4, no default inherit); bridge ns asymmetry is the bug",
+    "flutter_cluster_extra": "app-ns flutter/native branch dlns_inherit(app, default, \"...liboh_android_runtime.so...\") = copy-B source for the AssetManager/flutter cluster"
+  },
+  "corrected_fix": "candidate-stock-host.c (host, NOT ANL): bridge ns stop inheriting owner libs from default (LOCAL_NS_PREFERED + base-libs-only default inherit); app-ns flutter/native branch drop runtime/bridge from default-inherit; sealed.child the sole owner source. + JNI_OnLoad once-flag set only on complete success.",
+  "implementer": "root cause + exact edit by cc-wiki; host rebuild + window by cx-bms lineage (route-A host, hw248 frozen toolchain)",
+  "verdict": {
+    "double_copy_benign": "on 115/115 lit + 17/17 white keys (outer count cc0aaa484a/8703748fa7)",
+    "getlongfield_keys_checked": [
+      "cv2-org-linaro-glmark2",
+      "localsend",
+      "fd-fluffychat",
+      "fd-immich"
+    ],
+    "finding": "all four: AssetManager.mObject cache FILLED (OH_AssetOffsets logged), GetLongField abort on NULL OBJECT (x0=0), not null fieldID; caller app native_getSceneInfo->AAssetManager_fromJava->GetLongField(null obj)",
+    "conclusion": "NOT double-copy / uninitialized-cache; the null is the Java AssetManager object (app/framework). N11h single-owner predicted benefit = 0 keys.",
+    "decision": "N11h-r2 shelved, no host patch; CREATE_INHERIT_DEFAULT root cause remains the copy-B source but the copy harms nothing (outer: do not touch, blast radius 166 / benefit 0)"
+  }
+}

@@ -1,0 +1,21 @@
+# VERDICT: the 7-key AAssetManager_fromJava->GetLongField->JniAbort is NOT a double-copy mechanism.
+# Checked the 4 keys that actually terminate in GetLongField->JniAbort (glmark2, localsend, fd-fluffychat, fd-immich;
+# the other 3 the outer grouped are main_threw java exceptions, a different wall). All four, from window5 (U10.1T8):
+#
+#   (b) AssetManager.mObject cache IS filled: hilog "OH_AssetOffsets: AssetManager.mObject cached in runtime and
+#       libandroid NDK owner" present (grep count = 1 each). So the field id is NOT uninitialized.
+#   (c) the GetLongField abort is on a NULL OBJECT, not a null/stale fieldID: at the JniAbort frame the first arg
+#       register x0 = 0 (jobject = NULL) for all four; x1 (the jfieldID) is non-null.
+#   (a) call path (glmark2): #07 libglmark2-android.so native_getSceneInfo -> AAssetManager_fromJava ->
+#       #06 art::JNI::GetLongField(env, obj=NULL, fieldID) -> #05 JavaVMExt::JniAbort -> abort. The app passed a
+#       null Java AssetManager object; the fieldID resolution/copy is irrelevant (cache already filled).
+#
+# Per-key x0 at the GetLongField->JniAbort:
+#   glmark2       x0:0000000000000000   (cache cached=1)
+#   localsend     x0:0000000000000000   (cache cached=1)
+#   fd-fluffychat x0:0000000000000000   (cache cached=1)
+#   fd-immich     x0:0000000000000000   (cache cached=1)
+#
+# => Not the double-copy / uninitialized-cache disease. The null is the AssetManager Java OBJECT (app/framework level),
+#    with the mObject fieldID correctly cached. A single bridge/runtime owner would NOT change this (the cache is
+#    already filled; the object would still be null). Predicted keys moved by N11h single-owner = 0.

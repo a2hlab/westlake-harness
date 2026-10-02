@@ -1,0 +1,29 @@
+# ROOT CAUSE of copy B: the N11h host creates the CL bridge namespace inheriting DEFAULT, which supplies the owner
+# libs (bridge/runtime) fresh from the /system/android/lib64 search path BEFORE the sealed.child inherit. The later
+# sealed.child inherit cannot collapse the already-established default edge. Source: candidate-stock-host.c (the N11h-r1
+# host that ran in the refuted window), bms/src/adapter/framework/app-native-loader/include/oh_dlns_abi.h.
+
+## flags (oh_dlns_abi.h):  CREATE_INHERIT_DEFAULT = 0x1   LOCAL_NS_PREFERED = 0x4
+
+## bridge ns (candidate-stock-host.c:196-197) -- INHERITS DEFAULT (copy B source):
+    dlns_create2(bridge_namespace, bridge_search_paths, CREATE_INHERIT_DEFAULT);   // 0x1 -> inherits default
+    ... dlns_inherit(bridge_namespace, &sealed_owner, N11H_OWNER_LIBS);            // sealed edge added AFTER -> too late
+
+## app ns (candidate-stock-host.c:223-224) -- does NOT inherit default:
+    dlns_create2(app_namespace, app_search_paths, LOCAL_NS_PREFERED);              // 0x4 -> local-preferred, no default
+
+## app ns flutter/native branch ALSO pulls runtime from default (copy B source for the AssetManager/flutter cluster):
+    dlns_inherit(app_namespace, &system_owner /*default*/,
+        "libc.so:...:liboh_android_runtime.so:...");   // runtime from default = a second copy
+
+## Why the outer's "add an inherit at ANL" is not it: that inherit already fires (marker 12494, rc=0) via the host op
+## ANL calls; the owner libs still come from the default edge established at dlns_create2(CREATE_INHERIT_DEFAULT).
+
+## THE FIX (single logical change, in candidate-stock-host.c -- the N11h host, NOT ANL):
+##  1. bridge ns: stop inheriting the OWNER libs (liboh_adapter_bridge.so, liboh_android_runtime.so) from default.
+##     Either create with LOCAL_NS_PREFERED (like the app ns) + an explicit default inherit of BASE libs only
+##     (libc/libdl/libm/libc++/liblog/libEGL/... but NOT the two owner libs), then the existing sealed.child inherit
+##     (line 216) is the sole source of bridge/runtime = copy A.
+##  2. app ns flutter/native branch: remove liboh_android_runtime.so (and bridge) from the default-inherit soname list;
+##     keep them only in the sealed.child inherit.
+## Net: default never supplies the two owner libs; sealed.child is their only source; one copy.
