@@ -1,0 +1,75 @@
+# M3 static, U13 runtime liboh_android_runtime.so 18763dd4 ($WORKSPACES/westlake-inputs/generations/u13-stageA-91272eaf-20261003/armed-bundle/native/payload/android/lib64/)
+
+## 1. U13 vs ac59 (control rebuild u13-runtime-m1-v1/build/control/runtime-out = ac59dec0), equiv.py:
+functions: deployed 3985, rebuilt 3988, common 3985, instruction-equal 3845 (+110 after residual resolution), differ 30, only deployed 0, only rebuilt 3
+  DIFF AAssetManager_fromJava  (6 -> 41 insns)
+  DIFF android::(anonymous namespace)::BBQ_nativeUpdate(_JNIEnv*, _jclass*, long, long, long, long, int)  (206 -> 201 insns)
+  DIFF android::(anonymous namespace)::BBQ_nativeGetSurface(_JNIEnv*, _jclass*, long, unsigned char)  (286 -> 282 insns)
+  DIFF android::(anonymous namespace)::sc_to_oh_native_window(long)  (65 -> 58 insns)
+  DIFF fts3EvalTestExpr  (777 -> 777 insns)
+  DIFF fts3InsertDocsize  (124 -> 124 insns)
+  DIFF fts3MatchinfoFunc  (932 -> 932 insns)
+  DIFF fts3TokenizerFunc  (242 -> 242 insns)
+  DIFF fts5Bm25Function  (345 -> 345 insns)
+  DIFF fts5ColumnMethod  (515 -> 515 insns)
+  DIFF fts5IndexOptimizeStruct  (163 -> 163 insns)
+  DIFF fts5SegIterNext_None  (232 -> 232 insns)
+  DIFF glMatrixMode  (46 -> 46 insns)
+  DIFF jsonLookup  (113 -> 113 insns)
+  DIFF jsonParseCached  (323 -> 323 insns)
+  DIFF jsonSetFunc  (189 -> 189 insns)
+  DIFF pagerOpenWal  (179 -> 179 insns)
+  DIFF pcache1FetchStage2  (238 -> 238 insns)
+  DIFF rtreeInsertCell  (1683 -> 1683 insns)
+  DIFF saveCursorKey  (71 -> 71 insns)
+  DIFF sqlite3Fts5IndexQuery  (789 -> 789 insns)
+  DIFF sqlite3HashInsert  (313 -> 313 insns)
+  DIFF sqlite3Select  (5084 -> 5084 insns)
+  DIFF sqlite3VtabImportErrmsg  (77 -> 77 insns)
+  DIFF sqlite3_get_table  (202 -> 202 insns)
+  DIFF sqlite3_get_table_cb  (135 -> 135 insns)
+  DIFF sqlite3_test_control  (1182 -> 1182 insns)
+  DIFF unixLockSharedMemory  (94 -> 94 insns)
+  DIFF unixShmMap  (450 -> 450 insns)
+  DIFF vdbePmaReaderNext  (398 -> 398 insns)
+  ONLY-REBUILT android::(anonymous namespace)::(anonymous namespace)::m1_find_own(android::(anonymous namespace)::dl_phdr_info*, unsigned lo
+  ONLY-REBUILT android::(anonymous namespace)::(anonymous namespace)::m1_collect_others(android::(anonymous namespace)::dl_phdr_info*, unsig
+  ONLY-REBUILT android::(anonymous namespace)::oh_wm_get_native_window(int)
+  EQUAL-AFTER-RESIDUAL android::jni_eglCreateWindowSurface(_JNIEnv*, _jobject*, _jobject*, _jobject*, _jobject*, _jintArray*): insn 133: ldr x8, [=SYM oh_window_from_surface(_JNIEnv*, _jobject*)::unwrap+0x0] (via adrp #114); insn 195: str x0, [=SYM oh_window_from_surface(_JNIEnv*, _jobject*)::from_s
+=> no EGL function differs (jni_eglCreateWindowSurface equal after residual resolution).
+
+## 2. jni_eglCreateWindowSurface: from_surface = dlsym(RTLD_DEFAULT=xzr, .rodata 0x4b053 "ANativeWindow_fromSurface"), stored once under the static guard, no fallback
+  1ddff8:      	nop
+  1ddffc:      	adr	x0, 0x211c30 <guard variable for oh_window_from_surface(_JNIEnv*, _jobject*)::from_surface>
+  1de000:      	bl	0x1fd910 <__cxa_guard_acquire@plt>
+  1de004:      	cbz	w0, 0x1ddde8 <android::jni_eglCreateWindowSurface(_JNIEnv*, _jobject*, _jobject*, _jobject*, _jobject*, _jintA
+  1de008:      	adrp	x1, 0x4b000 <sqlite3LogEstAdd.x+0xc20>
+  1de00c:      	add	x1, x1, #0x53
+  1de010:      	mov	x0, xzr
+  1de014:      	bl	0x1fbd00 <dlsym@plt>
+  1de018:      	str	x0, [x24, #0xc28]
+  1de01c:      	nop
+  1de020:      	adr	x0, 0x211c30 <guard variable for oh_window_from_surface(_JNIEnv*, _jobject*)::from_surface>
+
+## 3. unwrap lambda ($_0): dlsym(RTLD_DEFAULT, "oh_anw_get_oh") then fallback dlopen("liboh_adapter_bridge.so", 6 = RTLD_NOW|RTLD_NOLOAD) + dlsym
+  1debd4:      	stp	x29, x30, [sp, #-0x10]!
+  1debd8:      	mov	x29, sp
+  1debdc:      	adrp	x1, 0x5f000 <aDigits+0xe17>
+  1debe0:      	add	x1, x1, #0xb93
+  1debe4:      	mov	x0, xzr
+  1debe8:      	bl	0x1fbd00 <dlsym@plt>
+  1debec:      	cbz	x0, 0x1debf8 <oh_window_from_surface(_JNIEnv*, _jobject*)::$_0::operator()() const+0x24>
+  1debf0:      	ldp	x29, x30, [sp], #0x10
+  1debf4:      	ret
+  1debf8:      	adrp	x0, 0x4e000 <sqlite3LogEstAdd.x+0x3c20>
+  1debfc:      	add	x0, x0, #0xddb
+  1dec00:      	mov	w1, #0x6                // =6
+  1dec04:      	bl	0x1fbce0 <dlopen@plt>
+  1dec08:      	cbz	x0, 0x1debf0 <oh_window_from_surface(_JNIEnv*, _jobject*)::$_0::operator()() const+0x1c>
+  1dec0c:      	adrp	x1, 0x5f000 <aDigits+0xe17>
+  1dec10:      	add	x1, x1, #0xb93
+  1dec14:      	ldp	x29, x30, [sp], #0x10
+  1dec18:      	b	0x1fbd00 <dlsym@plt>
+
+## 4. the runtime itself defines the converter:
+0000000000197388 T ANativeWindow_fromSurface
