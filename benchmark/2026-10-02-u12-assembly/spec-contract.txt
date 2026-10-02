@@ -1,0 +1,39 @@
+# Task Contract: U12 native draft and disabled three-board observation plans
+
+## Intent
+Compose reviewed ICU and mediandk/policy artifacts on U10.1T8, report exact native findings on Mac and VM, and prepare disabled complete-key observation plans without waiting for other lanes.
+
+## Must
+- No device access, locks, approval-table mutation or rollout arming.
+- Restore target is U10.1T8 190afedd and its per-board 318 identities, never U9.
+
+## Decisions
+- Native inputs are pinned ICU 1e206531, mediandk 8fc0752d and policy 2a6ec73f; declared policy aliases update together.
+- Leave N11h-r2, runtime/stubs/boot and combined predictions pending; no approval-table writes.
+- Plans cover 166 keys with 45/35-minute budgets and unconditional U10.1T8 restoration.
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-02-u12-assembly/**
+- specs/u12-assembly/**
+- tools/spec-checks/tests/u12_assembly.rs
+Forbidden:
+- Device access, board locks, native builds, exception approval or enabling execution.
+Out of scope:
+- Native rebuilds, resolving other lanes' pending artifacts, board validation, promotion or exception registration.
+
+## Completion Criteria
+Scenario: Pinned native members and pending components remain explicit
+  Test:
+    Filter: u12_assembly_native
+  Given Signed U10.1T8 and the reviewed native inputs
+  When Draft identities and reports are checked offline
+  Then Four effective native paths differ and pending layers cannot enable deployment
+
+Scenario: Three plans preserve coverage and restoration discipline
+  Test:
+    Filter: u12_assembly_plans
+  Given Signed 166-key baseline and per-board 318 identities
+  When Disabled observation plans are checked
+  Then Key union is exactly166 without overlap and finish restores U10.1T8 with 45/35-minute limits
+
