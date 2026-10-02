@@ -1,0 +1,32 @@
+# stageB-final 61b toutiao-retest (PID 3969, Java main tid 3989) — DIRTY run (record.status=batch_interrupted)
+# hilog is a ring-buffer dump (span 07:53->17:51); the toutiao slice is ~17:51:2x-37; src: /Users/zhaoyue/orca/workspaces/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/stageB-final/u101-t8-B1-20261002T093222/61b/runner/toutiao-retest/20261002T174738-0c177465/61b0657200000000000000000324012c/toutiao
+
+## same JIT-disabled; progressed FURTHER than window5 — attachBaseContext t0->t+11.6s, then ArticleApplication.onCreate at ~t+15.2s
+10-02 17:51:22.402  3969  3969 W C00f00/AppSpawnX: ART JIT DISABLED via APPSPAWNX_NO_JIT=1
+30721:10-02 17:51:22.692  3969  3989 I C00f00/AppSpawnX: [CM-BIGSTACK] ActivityThread on dedicated pthread stack=8390896 bytes
+30998:10-02 17:51:23.886  3969  3989 I C00f00/AppSpawnXJava: [stderr] [B43-BIND] appInfo enriched: className=com.ss.android.article.news.mute.MuteArti
+32787:10-02 17:51:34.299  3969  3989 I C00f00/AppSpawnXJava: [stderr] com.ss.android.article.news.ArticleApplication.attachBaseContext(SourceFile:1730
+32792:10-02 17:51:34.299  3969  3989 I C00f00/AppSpawnXJava: [stderr] com.ss.android.article.news.mute.MuteArticleApplicationStub.attachBaseContext(So
+32797:10-02 17:51:34.299  3969  3989 I C00f00/AppSpawnXJava: [stderr] android.app.ActivityThread.handleBindApplication(ActivityThread.java:6976)
+33314:10-02 17:51:37.925  3969  3989 I C00f00/AppSpawnXJava: [stderr] android.app.ActivityThread.handleBindApplication(ActivityThread.java:7015)
+
+## the onCreate chain reached (t+15.2s): ArticleApplication.onCreate <- Mira/Tinker/RouteInstrumentation <- callApplicationOnCreate
+33308:10-02 17:51:37.925  3969  3989 I C00f00/AppSpawnXJava: [stderr] com.ss.android.article.news.ArticleApplication.onCreate(SourceFile:524393)
+33309:10-02 17:51:37.925  3969  3989 I C00f00/AppSpawnXJava: [stderr] com.tencent.tinker.loader.MuteApplication.onCreate(SourceFile:393278)
+33310:10-02 17:51:37.925  3969  3989 I C00f00/AppSpawnXJava: [stderr] com.ss.android.article.news.mute.MuteArticleApplicationStub.onCreate(SourceFile:
+33311:10-02 17:51:37.925  3969  3989 I C00f00/AppSpawnXJava: [stderr] android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1316)
+33312:10-02 17:51:37.925  3969  3989 I C00f00/AppSpawnXJava: [stderr] com.ss.android.ugc.route_monitor.impl.RouteInstrumentation.callApplicationOnCrea
+33313:10-02 17:51:37.925  3969  3989 I C00f00/AppSpawnXJava: [stderr] com.bytedance.mira.hook.delegate.MiraInstrumentation.callApplicationOnCreate(Sou
+
+## then a signal-11 (SIGSEGV) cluster swallowed by MUSL-SIGCHAIN 'directly return' (handled; no cppcrash/tombstone emitted); batch interrupted externally
+33200:10-02 17:51:37.316  3969  4202 W C03f07/MUSL-SIGCHAIN: signal_chain_handler call 0 rd sigchain action for signal: 11 sca_sigaction=7f2
+33201:10-02 17:51:37.316  3969  4202 W C03f07/MUSL-SIGCHAIN: signal_chain_handler call 0 rd sigchain action for signal: 11 directly return
+33277:10-02 17:51:37.918  3969  3989 W C03f07/MUSL-SIGCHAIN: signal_chain_handler call 0 rd sigchain action for signal: 11 sca_sigaction=7f2
+33278:10-02 17:51:37.919  3969  3989 W C03f07/MUSL-SIGCHAIN: signal_chain_handler call 0 rd sigchain action for signal: 11 directly return
+   signal-11 'directly return' total in toutiao slice (17:51): 14
+   cppcrash/tombstone/FATAL EXCEPTION in slice: 0  (=> no clean fatal emitted; interrupted, not a confirmed app crash)
+
+## READ: window5 (clean) shows PURE slowness, no crash, stuck in installContentProviders at t+15.5s.
+##       stageB (dirty) shows it CAN reach ArticleApplication.onCreate by ~t+15s on a good run, but even there
+##       attachBaseContext alone ate ~11.6s, and a handled SIGSEGV cluster appears in onCreate (open flag:
+##       benign bytedance native probing vs a real native wall in onCreate — a longer CLEAN window would tell).

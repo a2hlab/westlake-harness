@@ -1,0 +1,97 @@
+{
+  "task": "Toutiao M4 'never created a window session' — slow vs waiting; minimal fix/layer or board experiment",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "verdict": "SLOW, not WAITING",
+  "premise_corrections": {
+    "no_t20_capture": "clean 61b window5 run has ONLY maps-t5, no maps-t20; hilog ends t+15.5s. 'stuck at t20' answered at last captured instant (~t+15s).",
+    "5ea_window1_absent": "the only 5ea toutiao dir (window/boards/u101-t8-A1-r2.../5ea/.../toutiao-gain/) is install-only, no hilog.txt; no launch trace.",
+    "wsadapter_not_app_session": "OH_WSAdapter 'WindowSessionAdapter created' at t+1.7s is the route-A shim OH-side session handle, NOT the app ViewRootImpl/IWindowSession; white-keys no_window_session=True is the latter and is consistent with never reaching an Activity."
+  },
+  "evidence_runs": {
+    "window5_clean": {
+      "path": "westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5/u101-t8-A5-20261002T083800/61b/runner/toutiao-gain/20261002T170518-ad72d00a/61b0657200000000000000000324012c/toutiao",
+      "pid": 10020,
+      "java_main_tid": 10032,
+      "record_status": "foreground_unconfirmed",
+      "record_phase": "blocked",
+      "capture_end_rel_s": 15.5,
+      "maps_snapshots": ["t5"],
+      "jit": "APPSPAWNX_NO_JIT=1 (ART JIT DISABLED)",
+      "java_main_lines": 477,
+      "java_main_span_s": 12.79,
+      "gaps_ge_1s": 1,
+      "largest_gap_s": 3.26,
+      "largest_gap_self_resolved": true,
+      "timesink_top_tags": {"AppSpawnXJava": 315, "OH_Parcel": 92, "DMS": 10, "OH_DER_VSync": 8},
+      "stuck_phase": "ActivityThread.handleBindApplication -> installContentProviders (handleBindApplication:6976)",
+      "callApplicationOnCreate_reached": 0
+    },
+    "stageB_dirty": {
+      "path": "westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/stageB-final/u101-t8-B1-20261002T093222/61b/runner/toutiao-retest/20261002T174738-0c177465/61b0657200000000000000000324012c/toutiao",
+      "pid": 3969,
+      "java_main_tid": 3989,
+      "record_status": "batch_interrupted",
+      "note": "ring-buffer dump (span 07:53->17:51); toutiao slice ~17:51:2x-37",
+      "attachBaseContext_cost_s": 11.6,
+      "articleApplication_onCreate_reached_rel_s": 15.2,
+      "onCreate_chain": "callApplicationOnCreate <- RouteInstrumentation <- MiraInstrumentation <- MuteApplication/Tinker <- ArticleApplication.onCreate",
+      "signal11_directly_return_in_slice": true,
+      "clean_fatal_emitted": false,
+      "open_flag": "handled SIGSEGV in onCreate: benign bytedance native probing vs a real native wall — needs a longer clean window to tell"
+    }
+  },
+  "slow_vs_waiting": {
+    "verdict": "slow",
+    "basis": "477 lines / 12.79s continuous; one 3.26s gap that self-resolved; both sides fast getService->null stubs; 315 AppSpawnXJava + 92 OH_Parcel = CPU-bound compat projection in interpreter; no multi-second park on a single call",
+    "root": "APPSPAWNX_NO_JIT=1 -> ART interpreter runs all of bytedance multi-framework init (Mira plugins + Tinker + RouteMonitor + projected PM/SM)"
+  },
+  "what_we_lack_non_blocking": {
+    "null_service_stubs_distinct": 20,
+    "null_service_stub_lines": 17,
+    "mira_getApplicationInfo_null": 1,
+    "applicationinfo_zeroed_repeats": 32,
+    "note": "each getService->null returns <1ms; none blocks; risk is only retry-churn; all non-fatal"
+  },
+  "time_to_createSession": {
+    "estimate": ">> 60s",
+    "reasoning": "attachBaseContext ~12s; installContentProviders several more; ArticleApplication.onCreate (heaviest) starts ~t+15s and unfinished in both traces; window session is AFTER onCreate + first Activity",
+    "t60_window_can_prove": "progress only, NOT lit; t120+ needed to bound slow-vs-stuck"
+  },
+  "minimal_fix": {
+    "primary_lever": {
+      "change": "re-enable ART JIT (or AOT-compile app dex)",
+      "layer": "liboh_android_runtime.so / appspawn-x env (APPSPAWNX_NO_JIT)",
+      "caveat": "route-A disabled JIT for stability; a runtime change with known risk, gate behind the experiment + single-variable window; owned by runtime/appspawn-x lineage, NOT per-app/JAR"
+    },
+    "cheaper_mitigation": {
+      "change": "cache projected ApplicationInfo/getProviderInfo/getServiceInfo so repeated queries don't re-marshal OH_Parcel",
+      "layer": "compat projection in liboh_adapter_bridge.so ([B8-PM]/[G2.5-PIB] path)",
+      "note": "trims churn, does NOT change the interpreter floor; only worth it if the experiment shows projection is a large fraction of the budget"
+    },
+    "session_fix_asserted": false,
+    "why": "toutiao reaches no window in any captured trace; the honest deliverable is verdict + lever + a falsifiable experiment"
+  },
+  "experiment": {
+    "file": "experiment/t120-extended-capture.md",
+    "default": "DISABLED",
+    "wall_max_min": 30,
+    "change": "capture-window only (t5/t20/t30/t60/t90/t120 + snapshot_display t30/t60/t120); NO runtime/host/deploy change; same U10.1T8",
+    "pass_progresses": "by t120 main thread advances past installContentProviders into onCreate/Activity/window with monotonic phase progress -> pure slow, JIT lever",
+    "fail_stuck": "still in handleBindApplication churn at t120 with no new phase, or a multi-second silent park -> a real wall; capture what it parks on",
+    "crash": "cppcrash/tombstone/unrecovered SIGSEGV before t120 -> stageB SIGSEGV is a real native wall -> native-fault lane"
+  },
+  "this_round_rule": "read the Java main thread by the BIGSTACK tid (detached 8MB-stack pthread), not the PID==TID launcher line; decide slow-vs-waiting by the largest silent gap on that tid; do not infer t20 state when only maps-t5 exists; count captures from facts.txt",
+  "files": [
+    "README.md",
+    "results.json",
+    "documentation.json",
+    "evidence/window5-61b-timeline.txt",
+    "evidence/stageb-61b-oncreate-sigsegv.txt",
+    "evidence/churn-and-jit.txt",
+    "experiment/t120-extended-capture.md"
+  ]
+}

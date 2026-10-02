@@ -1,0 +1,44 @@
+# window5 61b toutiao-gain (PID 10020) — CLEAN capture, ends t+15.5s (ONLY maps-t5, NO maps-t20)
+# src: /Users/zhaoyue/orca/workspaces/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5/u101-t8-A5-20261002T083800/61b/runner/toutiao-gain/20261002T170518-ad72d00a/61b0657200000000000000000324012c/toutiao
+
+## launcher -> BIGSTACK Java main (tid 10032)
+28007:10-02 17:08:40.633 10020 10020 W C00f00/AppSpawnX: ART JIT DISABLED via APPSPAWNX_NO_JIT=1
+30630:10-02 17:08:40.942 10020 10020 I C00f00/AppSpawnX: [CM-BIGSTACK] launcher DetachCurrentThread before join rc=0
+30631:10-02 17:08:40.943 10020 10032 I C00f00/AppSpawnX: [CM-BIGSTACK] ActivityThread on dedicated pthread stack=8390896 bytes
+30632:10-02 17:08:40.943 10020 10032 I C00f00/AppSpawnX: [ROUTE-A] entering AppSpawnXInit.initChild proc=com.ss.android.article.news target=android.ap
+30726:10-02 17:08:41.459 10020 10032 I C00f00/AppSpawnXInit: Launching android.app.ActivityThread.main()
+30731:10-02 17:08:41.460 10020 10032 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_BEFORE_main_invoke
+30742:10-02 17:08:41.463 10020 10031 I C00f00/OH_AppSchedulerAdapter: [BRIDGED] ScheduleLaunchApplication -> bindApplication: bundle=com.ss.android.ar
+
+## main thread 10020 (launcher) LAST lines — detaches at t+0.7s, Java main moves to 10032
+10-02 17:08:40.942 10020 10020 I C00f00/AppSpawnX: [Direction2] adapter_bridge_set_class_loader cached cl=00000000000012AA loadClass=00000000708CD660
+10-02 17:08:40.942 10020 10020 I C00f00/AppSpawnX: [ROUTE-A] child adapter class loader bound
+10-02 17:08:40.942 10020 10020 I C00f00/AppSpawnX: [CM-BIGSTACK] launcher DetachCurrentThread before join rc=0
+
+## tid 10032 (Java main): 477 lines / 12.79s span, ONE gap>=1s (3.26s self-resolving) = continuous churn, not a single stall
+## the 3.26s quiet (17:08:42.17 -> 45.43), both sides = fast getService(...)->null stubs, NOT a binder block:
+10-02 17:08:42.172 10020 10032 I C04201/DMS: display_manager_adapter.cpp GetSupportedColorSpaces: ret 180
+10-02 17:08:42.172 10020 10032 I C00f00/AppSpawnXJava: [stderr] [OH_DisplayMgrAdapter] getDisplayInfo(0) -> 1200x1920@60Hz dpi=360 supportedModes=1 currentMode=1 colorModes=1 flags=0x0 state=2 appArea=1200x1790
+10-02 17:08:42.172 10020 10032 I C00f00/AppSpawnXJava: [stderr] [OHServiceManager] getService("network_management") â null (stub â see doc/shortcuts_inventory.html#chC)
+   --- 3.26s gap ---
+10-02 17:08:45.427 10020 10032 I C02c11/APPSPAWN: [resident-compat.h:40][U10-COMPAT-VISIBLE] owner_verified view=default resident_view=westlake.sealed.child abort=0000007FB9143324 getter=0000007FB9143424 gnu=0000007FB91437C0 inheritance=caller_owned
+10-02 17:08:45.436 10020 10032 I C04201/DMS: display_manager_adapter.cpp GetSupportedColorSpaces: enter
+10-02 17:08:45.436 10020 10032 I C04201/DMS: display_manager_adapter.cpp GetSupportedColorSpaces: ret 180
+
+## bindApplication stack logged at t+11.8s (still handleBindApplication:6976) + content providers publishing:
+32846:10-02 17:08:53.260 10020 10032 I C00f00/AppSpawnXJava: [stderr] android.app.ActivityThread.handleBindApplication(ActivityThread.java:6976)
+32894:10-02 17:08:53.631 10020 10032 W C00f00/ActivityThread: Content provider com.bytedance.mira.pm.PluginPackageManagerProvider already published as
+32905:10-02 17:08:53.672 10020 10032 W C00f00/ActivityThread: Content provider com.tencent.tinker.lib.stub.p0.StubContentProvider already published as
+32906:10-02 17:08:53.672 10020 10032 W C00f00/ActivityThread: Content provider com.tencent.tinker.lib.stub.p1.StubContentProvider already published as
+
+## tid 10032 LAST 6 lines (t+13.5s) — STILL in installContentProviders (projected getProviderInfo/getServiceInfo):
+10-02 17:08:53.690 10020 10032 I C01706/ueaClient-FrameMsgMgr: [Init]:inited success!
+10-02 17:08:53.690 10020 10032 I C01706/ueaClient-FrameUiIntf: [Init]:ret:1, inited:1
+10-02 17:08:53.690 10020 10032 I C00f00/OH_DER_VSync: scheduleVsync RequestFrame rc=0
+10-02 17:08:53.708 10020 10032 I C00f00/AppSpawnXJava: [stderr] [B8-PM] projected getProviderInfo com.ss.android.article.news/com.bytedance.dataplatfo
+10-02 17:08:53.730 10020 10032 I C00f00/AppSpawnXJava: [stderr] [B8-PM] projected getServiceInfo com.ss.android.article.news/com.huawei.agconnect.core
+10-02 17:08:53.731 10020 10032 I C00f00/ServiceRegistrarParser: services:0
+
+## callApplicationOnCreate / handleLaunchActivity / callActivityOnCreate reached in window5? (grep -c):
+   count = 0
+   => 0: never reached Application.onCreate; stuck earlier, in handleBindApplication/installContentProviders

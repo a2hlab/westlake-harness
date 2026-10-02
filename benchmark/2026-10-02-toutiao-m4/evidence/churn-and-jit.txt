@@ -1,0 +1,33 @@
+# Why it is SLOW not WAITING — JIT off + interpreter churn through bytedance multi-framework init
+# primary evidence = window5 (clean); counts from /Users/zhaoyue/orca/workspaces/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window5/u101-t8-A5-20261002T083800/61b/runner/toutiao-gain/20261002T170518-ad72d00a/61b0657200000000000000000324012c/toutiao/hilog.txt
+
+## (1) ROOT: ART JIT disabled -> everything runs in the ART interpreter
+10-02 17:08:40.633 10020 10020 W C00f00/AppSpawnX: ART JIT DISABLED via APPSPAWNX_NO_JIT=1
+
+## (2) tid 10032 time-sink categorization (tag frequency over the 12.79s Java-main span):
+ 315 AppSpawnXJava:
+  92 OH_Parcel:
+  10 DMS:
+   8 OH_DER_VSync:
+   5 OH_AppMgrClient:
+   5 AppSpawnXInit:
+   4 OH_CEClient:
+   4 MUSL-SIGCHAIN:
+   3 OH_WindowMgrClient:
+   3 OH_AppSchedulerAdapter:
+   3 ActivityThread:
+   2 rtg_interface:
+   => 315 AppSpawnXJava (stderr-forwarded Java: [B8-PM]/[G2.5-PIB]/[OHServiceManager]/Mira) + 92 OH_Parcel
+      (every projected PackageManager/ServiceManager call marshals a Parcel) = CPU-bound compat projection, interpreted.
+
+## (3) churn scale (whole process):
+   OH_Parcel marshals            : 257
+   [B8-PM] projected PM calls    : 18
+   [G2.5-PIB] ApplicationInfo    : 32  (same ApplicationInfo re-zeroed across many worker tids = cacheable)
+   Mira PluginPackageManager null: 1  (caught by plugin_exception_monitor, non-fatal)
+
+## (4) getService(...) stubs returning null (fast, non-blocking) — what OUR side lacks, but none blocks:
+   distinct stubbed services (count): account(1), alarm(1), appops(1), batteryproperties(1), batterystats(1), connectivity(2), deviceidle(1), display(1), game(1), input_method(1), iphonesubinfo(1), locale(1), location(1), network_management(1), notification(1), power(1), shortcut(1), thermalservice(1), uimode(1), webviewupdate(1)
+   total getService->null stub lines: 17
+   => each resolves in <1ms; a bytedance SDK that RETRIED on a null service could add churn, but NO single
+      getService stalls (the 3.26s quiet after getService("network_management") self-resolved — see timeline).
