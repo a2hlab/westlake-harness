@@ -1,0 +1,34 @@
+immich (app.alextran.immich) U13 first-fatal #1 = java.lang.VerifyError (bind FAILED) — mechanism + min-fix.
+
+Log (U13 5cd, window1; cluster evidence/walls.txt L19028):
+  Caused by: java.lang.VerifyError: Verifier rejected class A2.b: void A2.b.onMethodCall(q7.m, q7.o) failed to
+  verify: [0xA6] cannot access instance field boolean b7.a.D from object of type Unresolved Reference: d7.c
+  (declaration of 'A2.b' appears in /data/app/.../app.alextran.immich/...)
+
+Decompile (apkanalyzer dex code on app.alextran.immich_3020299.apk):
+  A2.b:  .implements Lq7/n;  (Flutter MethodChannel.MethodCallHandler) + z3/c + Z0/r.
+         onMethodCall reads a boolean field via opcode 0xA6 (iget-boolean) = b7.a.D, on a register typed d7.c.
+  b7.a:  .class public abstract Lb7/a;  .super Ljava/lang/Object;  ->  .field public D:Z   (the boolean field D)
+  d7.c:  .class public final Ld7/c;  .super Lb7/a;   (d7.c IS-A b7.a -> b7.a.D access is legitimate)
+         .implements Landroid/net/nsd/NsdManager$DiscoveryListener;   <-- the distinctive dependency
+         .implements Le8/y;
+
+Route-A BCP scan (baksmali list classes over framework.jar 3e106350, all 5 dex):
+  android/net/nsd/*            = 0   (NsdManager / NsdManager$DiscoveryListener / NsdServiceInfo ABSENT)
+  android/net/Uri             = 1 ; total android/net/* = 571   (so android.net is populated; only nsd is missing)
+
+MECHANISM: d7.c implements android.net.nsd.NsdManager$DiscoveryListener, which does not exist in the route-A
+boot classpath. A class whose declared interface is unresolvable cannot itself be resolved, so the ART verifier
+marks d7.c as "Unresolved Reference". A2.b.onMethodCall reads b7.a.D from a d7.c-typed register; without a resolved
+d7.c the verifier cannot prove d7.c is-a b7.a, so it hard-rejects A2.b -> VerifyError -> ensureBindApplication FAILED.
+(This is the FIRST fatal. The later libcronet ATrace_beginSection reloc is a SECOND, separate wall = U15 #3, shelved.)
+
+MIN-FIX (guess): add the NSD classes as BCP stubs in adapter-mainline-stubs.jar, same pattern as FZ-007 (tagsoup)
+and FZ-008 (SSLSockets):
+  - android.net.nsd.NsdManager$DiscoveryListener  (interface stub — enough to resolve d7.c)
+  - android.net.nsd.NsdManager$RegistrationListener, NsdManager$ResolveListener  (siblings immich likely references)
+  - android.net.nsd.NsdManager (no-op: discoverServices/resolveService do nothing or call onStartDiscoveryFailed)
+  - android.net.nsd.NsdServiceInfo  (data holder)
+Resolving the DiscoveryListener interface makes d7.c resolvable -> A2.b verifies -> bind proceeds past wall #1
+(then immich hits wall #2, the libcronet ATrace -> U15 #3). immich lights only when BOTH are fixed.
+Layer: JAR/BCP (adapter-mainline-stubs.jar). immich is otherwise UNOWNED in the cluster table.

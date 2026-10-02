@@ -1,0 +1,35 @@
+{
+  "task": "U13 dead-keys recheck: measured U13 first-fatal + earliest wall for 11 keys (now that U13 window1/2/2-61b ran) vs the cluster table's U12 baseline; judge U14-moves / U15-waits / unowned; immich VerifyError mechanism + min-fix.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none (window3 wrapping, untouched)",
+  "reference": "cluster table master 49e6f805da benchmark/2026-10-03-u13-first-fatal-clusters; U13 runs window1 u13-A1-20261003T030721 / window2 u13-A2-20261003T042230 / window2-61b",
+  "keys": {
+    "fd-saber": {"board":"61b","bind":"OK","u13_first_fatal":"none - LIT (Flutter Impeller OpenGLES fallback)","earliest_wall":"load libvulkan/libGLESv3 failed (non-fatal)","disposition":"U13 already lit it (stronger than cluster 'moves, next Flutter EGL' -- needs neither); U14 app-ns only clears cosmetic GL-load warnings"},
+    "x": {"bundle":"com.twitter.android","board":"61b","bind":"OK (relaunch)","u13_first_fatal":"none captured (BIND OK)","earliest_wall":"libcrashlytics __register_atfork reloc; later load libGLESv2 failed -> libtwittermedia ULE","disposition":"U13 JAR moved it (ITelephonyRegistry NPE gone, BIND OK); residual GLESv2 -> U14 app-ns (media, likely non-fatal). NOTE key 'x' = Twitter/X not a Compose app"},
+    "toutiao": {"board":"61b","bind":"OK","u13_first_fatal":"SIGSEGV platform-single at ICU load; then NPE PermissionManager.shouldShowRequestPermissionRationale","earliest_wall":"libmetasec_ml __system_property_read reloc (earliest, non-fatal); load libicui18n.so failed 1 line before segfault","disposition":"U14 app-ns 341c + ICU shim moves the ICU segfault; next Lynx/V8 (toutiao-next-wall); residual PermissionManager NPE (framework stub)"},
+    "privacybrowser": {"board":"5ea","bind":"OK","u13_first_fatal":"IAE can't create bitmap without a color space","earliest_wall":"CoroutineStart CNFE (benign)","disposition":"U15 #1 Bitmap framework"},
+    "mcdonalds": {"board":"61b","bind":"FAILED","u13_first_fatal":"bind FAILED -> NPE SplashActivity DataSourceModuleProvider.v() null (downstream)","earliest_wall":"librealmc.so _ctype_ reloc (Realm)","disposition":"U15 compat v3 / native_abi v2 (_ctype_ native domain); NPE downstream of Realm init failure"},
+    "fd-im-vector-app": {"board":"5ea","bind":"FAILED","u13_first_fatal":"bind FAILED -> librealm-jni.so.10.19.0 _ctype_ ULE","earliest_wall":"librealm-jni _ctype_ reloc (Realm)","disposition":"U15 compat v3 / native_abi v2 (_ctype_)"},
+    "vlc": {"board":"5ea","bind":"OK","u13_first_fatal":"vlcjni ULE libvlc.so __pthread_cleanup_push -> app exit","earliest_wall":"libc++_shared.so strtoll_l reloc","disposition":"U15 compat v3 / native_abi v2 (vlc is native_cluster-enrolled; __pthread_cleanup_push/strtoll_l same bionic-export family as _ctype_). CORRECTION: cluster said U14 native_abi 7605812c but it lacks these"},
+    "immich": {"board":"5cd","bind":"FAILED","u13_first_fatal":"VerifyError A2.b (bind FAILED); 2nd wall libcronet ATrace_beginSection","earliest_wall":"VerifyError (b7.a.D / Unresolved d7.c)","disposition":"unowned - NEW min-fix: d7.c implements android.net.nsd.NsdManager$DiscoveryListener, NSD absent from route-A BCP (0 android/net/nsd/* vs 571 other android/net/*) -> d7.c unresolvable -> verify-reject. Fix = NSD BCP stubs (FZ-007/008 pattern). 2nd wall ATrace = U15 #3 shelved"},
+    "glmark2": {"board":"61b","bind":"OK","u13_first_fatal":"SIGABRT JNI GetLongField in libglmark2-android.so getSceneInfo","earliest_wall":"JNI abort (no reloc wall)","disposition":"unowned - CLUSTER PREDICTION FALSIFIED: C3 'U13 runtime GetLongField moves' is wrong for glmark2 (still aborts under U13 runtime, app-native getSceneInfo path; distinct from the Flutter GetLongField U13 fixed)"},
+    "chessclock": {"board":"5cd","bind":"OK","u13_first_fatal":"WindowManager$InvalidDisplayException (display not found, addView)","earliest_wall":"CoroutineStart CNFE (benign)","disposition":"unowned - display/window; also earlier NSME ActivityManagerAdapter.nativeConsumeConnectionFailure(I)Z (JAR stub gap). Not M3 (GLSurfaceView EGL)"},
+    "fd-api": {"bundle":"com.termux.api","board":"5ea","bind":"OK","u13_first_fatal":"IllegalStateException Theme.AppCompat (start TermuxAPIMainActivity)","earliest_wall":"bg LocalSocketImpl.bindLocal ULE (non-fatal)","disposition":"unowned / probe - AppCompat theme (u13-java-walls-2); app-theme/manifest, not a runtime wall"}
+  },
+  "disposition_summary": {
+    "already_lit_by_u13": ["fd-saber (Impeller fallback)", "x/Twitter (telephony JAR stub -> BIND OK)"],
+    "u14_moves": ["toutiao (app-ns+ICU)", "x (app-ns GLESv2, residual/media)"],
+    "u15_waits": {"bitmap": ["privacybrowser"], "compat_v3_native_abi_v2_ctype": ["mcdonalds", "fd-im-vector-app", "vlc"], "nsd_bcp_stubs": ["immich (+ATrace U15#3)"]},
+    "unowned": ["glmark2 (GetLongField JniAbort, prediction falsified)", "chessclock (InvalidDisplay + ActivityManagerAdapter NSME)", "fd-api (AppCompat theme probe)"],
+    "m3_owns": "none (glmark2 is GLSurfaceView but its U13 wall is GetLongField, before any EGL IAE)"
+  },
+  "corrections": [
+    "glmark2: C3 U13-GetLongField-moves FALSIFIED (still SIGABRTs under U13 runtime)",
+    "fd-saber: stronger than predicted -- LIT under U13 (Impeller fallback), no Flutter EGL wall reached",
+    "vlc: owner is U15 compat v3/native_abi v2, not U14 native_abi 7605812c (lacks the bionic-export family)",
+    "mcdonalds: root is the Realm _ctype_ wall, the Java NPE is downstream",
+    "toutiao: progressed to BIND OK under U13; first-fatal now the ICU segfault (+ residual PermissionManager NPE)",
+    "immich: concrete owner found (NSD BCP stubs), replacing bare UNOWNED"
+  ],
+  "boundaries": ["offline; no board (window3 untouched); no push; verdicts are the outer's", "sources read-only: U13 run hilogs (westlake-harness-u7-executor), cluster table, immich apk + framework.jar (westlake-inputs), existing U14/U15 deliverables"],
+  "files": ["README.md", "evidence/u13-first-fatals.txt", "evidence/immich-verifyerror.txt", "results.json", "documentation.json", "landing-paths.txt"]
+}
