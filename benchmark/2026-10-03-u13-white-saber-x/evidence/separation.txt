@@ -1,0 +1,45 @@
+fd-saber + x (61b window2) alive-white — mechanism via cc-t3's white-vs-lit separation (是否亮键里有同条件).
+Ground truth = the t5/t20 screenshots (full-screen white, process alive); the log only shows "did not crash".
+Run dir: window2-61b/u13-A2-20261003T042230/61b/runner/movers-java-original/20261003T044828-c273db5d/.../{fd-saber,x}/
+
+=== STEP 1: candidate markers REFUTED (present in LIT keys -> not the cause) ===
+grep -rl across window1 + window2 + window2-61b (hilog.txt):
+  "Failed to load GLES library using dl open": ~70 keys, INCLUDING lit wikipedia(6/6), fd-uhabits(6/6), fd-noice(6/6),
+      helloworld(11), zigzag(11), newpipe, markor, localsend, fd-catima, ... -> SHARED WITH LIT -> NOT discriminating.
+  "viewRoot null (decor not attached)": ~72 keys, same lit set (wikipedia/helloworld/zigzag/...) -> NOT discriminating.
+So fd-saber's GLES-load-fail and x's viewRoot-null are red herrings: lit keys show them and still draw.
+(Matches DIGEST 679: "app links a GL program" is the only Bonferroni-passing template and it only means
+ "content drew nothing but background" -- not a cause.)
+
+=== STEP 2: DISCRIMINATING signals (white keys have them; lit refs do not) ===
+app-frame / buffer markers (ReleaseBuffer|AcquireBuffer|RequestBuffer|BBQ|first frame|OnDraw name:<app>):
+  fd-saber = 1 ; x = 1   vs   helloworld(lit) = 8 ; zigzag(lit) = 18
+  -> both white keys PUBLISH a window (saber 7 / x 17 window-publish markers) but render ~0 app frames.
+activity-terminate signals (verificationAllToken failed ; finishActivity: OH TerminateAbility ; bind-starts=relaunch):
+  fd-saber = (1 ; 1 ; 1)
+  x        = (1 ; 2 ; 2  <- relaunched)
+  helloworld(lit) = (0 ; 0 ; 1)
+  zigzag(lit)     = (0 ; 0 ; 1)
+  -> both white keys hit `TerminateAbilityWithFlag verificationAllToken failed` + an EARLY `finishActivity: OH
+     TerminateAbility` (saber at 04:49:03.741, right after BIND OK 04:49:02; x twice, then relaunches); the lit refs
+     never finish their activity during the capture. Clean 2x2 (n=2 lit refs; small but the frame-count agrees).
+
+=== STEP 3: per-key reading ===
+fd-saber (Flutter, pid 5833): [B8-IMPELLER] EnableImpeller=false injected -> forced GL/Skia backend; EGL14 + EGLImpl
+  _eglCreateWindowSurface RegHook'd to liboh_android_runtime (hooks in place). finishActivity OH TerminateAbility (:19062)
+  right after BIND OK; verificationAllToken failed; ~0 frames -> the FlutterActivity is torn down before rendering -> white.
+  NOT the U14 Flutter EGL wall: that is a LIVE activity whose eglCreateWindowSurface returns null; here the activity is
+  terminated and the GLES-load-fail is lit-shared. (eglCreateWindowSurface is hooked and never reported failing a surface.)
+x (com.twitter.android, pid 9567): finishActivity OH TerminateAbility rc=0 then rc=22 + AMS
+  "TerminateAbilityWithFlag verificationAllToken failed" (:32750); RELAUNCH (2nd ensureBindApplication start pid 9779);
+  2nd launch reaches RESUMED (:33005) but setAppVisibility viewRoot null (decor not attached) (:33971) and ~0 frames
+  -> the activity terminates/relaunches and never attaches content -> white. (libtwittermedia libGLESv2 ULE + crashlytics
+  __register_atfork are non-fatal/media; not the white cause.)
+
+=== M-taxonomy ===
+Neither is M1 (empty Surface from the single-slot lookup -- here the window is TORN DOWN / no frames, not an empty live
+Surface), M2 (full-screen WebView -- neither renders via WebView), or M5 (sub-window zLevel). Both fit a NEW class:
+"window session published, but the activity self-terminates (TerminateAbility + verificationAllToken failed) and renders
+~0 frames" -- closest in EFFECT to M4 (no persistent window content) but via a published-then-terminated session, not a
+never-created one. The WHY (what finishes the activity) is unresolved: fd-saber likely the forced EnableImpeller=false +
+no loadable GL/Vulkan backend -> Flutter aborts the activity; x the splash/trampoline terminate + relaunch path.

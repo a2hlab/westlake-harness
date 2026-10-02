@@ -1,0 +1,26 @@
+{
+  "task": "Correction follow-up (outer 07:06, on-board re-judged): fd-saber + x (61b window2) are alive-white, not lit. Re-read as alive-white and judge the white mechanism via cc-t3's white-vs-lit separation.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none (window3 untouched)",
+  "ground_truth": "t5/t20 original screenshots = full-screen white, process alive. BIND OK / Impeller fallback / no-crash in the log only mean 'did not crash', not 'on screen' (AGENTS: screenshots are ground truth).",
+  "refuted_markers": {
+    "Failed to load GLES library using dl open": "~70 keys incl. lit wikipedia(6/6)/fd-uhabits/fd-noice/helloworld/zigzag/newpipe/markor/localsend -> shared with lit -> NOT the cause (fd-saber red herring)",
+    "viewRoot null (decor not attached)": "~72 keys, same lit set -> shared with lit -> NOT the cause (x red herring)"
+  },
+  "discriminating_signal": {
+    "app_frames": {"fd-saber": 1, "x": 1, "helloworld_lit": 8, "zigzag_lit": 18},
+    "window_publish": {"fd-saber": 7, "x": 17, "note": "both publish a window session -> NOT M4 'no session'"},
+    "verificationAllToken_failed": {"fd-saber": 1, "x": 1, "helloworld_lit": 0, "zigzag_lit": 0},
+    "finishActivity_TerminateAbility": {"fd-saber": 1, "x": 2, "helloworld_lit": 0, "zigzag_lit": 0},
+    "bind_starts_relaunch": {"fd-saber": 1, "x": 2, "helloworld_lit": 1, "zigzag_lit": 1},
+    "reading": "both white keys publish a window but render ~0 frames and self-terminate the activity (TerminateAbility + verificationAllToken failed) early; lit refs never finish their activity and render 8-18 frames. clean 2x2 (n=2 lit refs, small; frame-count agrees)."
+  },
+  "per_key": {
+    "fd-saber": "Flutter pid5833; [B8-IMPELLER] EnableImpeller=false forced GL backend; EGL14/EGLImpl eglCreateWindowSurface hooks in place; finishActivity OH TerminateAbility right after BIND OK + verificationAllToken failed + ~0 frames -> FlutterActivity torn down before rendering -> white",
+    "x": "com.twitter.android pid9567; finishActivity OH TerminateAbility rc=0 then rc=22 + AMS verificationAllToken failed; relaunch (2nd ensureBindApplication pid9779); 2nd reaches RESUMED but setAppVisibility viewRoot null (decor not attached) + ~0 frames -> terminate/relaunch without attaching content -> white; libtwittermedia libGLESv2 ULE + crashlytics __register_atfork non-fatal/media"
+  },
+  "fd_saber_vs_u14_flutter_egl": "NOT the same wall. U14 Flutter EGL interposer (fff9, cc-t3 822dbf198f) fixes a LIVE activity whose eglCreateWindowSurface returns null; fd-saber's activity is TERMINATED, the eglCreateWindowSurface hook never reported failing a surface, and Failed-to-load-GLES is lit-shared. fd-saber is not cleared by the Flutter EGL interposer.",
+  "m_class": "neither M1 (empty live Surface single-slot), M2 (WebView), nor M5 (sub-window z). NEW class: 'window session published, activity self-terminates (TerminateAbility + verificationAllToken failed) and renders ~0 frames' -- closest in effect to M4 (no persistent content) but via a published-then-terminated session. WHY unresolved (needs a focused dig): fd-saber likely forced EnableImpeller=false + no loadable GL/Vulkan backend -> Flutter aborts activity; x the splash/trampoline terminate+relaunch path. Both UNOWNED (no current U14/U15 part moves them).",
+  "rule": "screenshots are ground truth (BIND OK / backend 'fallback' / no-crash != on-screen). Before naming a white mechanism, run the separation: a marker present in lit keys cannot be the cause; keep only the signal lit keys lack.",
+  "boundaries": ["offline; no board (window3 untouched); no push", "visual verdict = outer's on-board re-judgment; this adds the mechanism", "WHY each activity finishes left open pending a focused experiment", "sources read-only: U13 run hilogs (westlake-harness-u7-executor)"],
+  "files": ["README.md", "evidence/separation.txt", "results.json", "documentation.json", "landing-paths.txt"]
+}
