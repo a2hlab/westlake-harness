@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-02-white-m6-finish-return/`** | **M6 (finishing top Activity leaves a white scene) breaks in the bridge, not the JAR: OH 6.1 CloseUIAbility on a foreground-pending ability only sets pending BACKGROUND ([UALM2093] pending state dropped CLOSE: 9); termination then needs the app's BACKGROUND and INITIAL acknowledgements, which route-A never sends (Java gets only INITIAL->FOREGROUND in U5/U7 and U10.1T8; U5/U7 bridge FGGUARD vetoes BACKGROUND_NEW; U10.1T8 logs no scheduler transaction at all), so the windowless scene 661 stays on top and Splash stays backgrounded. Top-ability dropped close: white 2/16 (fd-AppManager, termux), lit 0/117; 34 lit keys leak a covered scene. Fix = bridge AbilitySchedulerAdapter -> U14 (+1 fd-AppManager); no U13 JAR fix; termux 0 (finishes itself: TermuxAppSharedPreferences.build null).** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-02 **读 AMS 生命周期日志的语义(M6 复盘,cc-t3)**:`AbilityTransitionDone, ability:X, state:5` 是 **app 上报**(我们推迟到首帧的前台完成),`BackgroundLifecycle X` 是 **AMS 下发**切后台,都不是已完成状态;`[UALM2093]pending state dropped CLOSE/MINIMIZE: 9` = 该 ability 的前台还挂着,OH 6.1 CloseUIAbility/Minimize 只记 pending BACKGROUND 后返回,真正终止要等 app 回 BACKGROUND→CompleteBackground→Terminate→app 回 INITIAL→CompleteTerminate(ui_ability_lifecycle_manager.cpp,hw248 oh610_lts_source)。route-A 的 app 从不回 BACKGROUND/INITIAL:Java 层两代都只收到 INITIAL->FOREGROUND,U5/U7 的 bridge FGGUARD 否决 BACKGROUND_NEW,U10.1T8 连 [BRIDGED] ScheduleAbilityTransaction 都没有——所以任何『拉起即 finish』的 Activity 场景都终止不掉;它在顶层就白(fd-AppManager、termux,白 2/16 亮 0/117),在下层就是无害泄漏(34 个亮键,如 antennapod Splash)。修在 bridge AbilitySchedulerAdapter(无源 84695d62)→U14。见 benchmark/2026-10-02-white-m6-finish-return/。"
+   ]
+  }
+ ]
+}
