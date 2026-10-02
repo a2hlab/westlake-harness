@@ -1,0 +1,22 @@
+--- .artifacts/base341c-stock-host.c	2026-10-03 06:43:24
++++ .artifacts/u15-stock-host.c	2026-10-03 06:43:25
+@@ -315,7 +315,7 @@
+                 return NamespaceResultFence(ENOENT);
+             }
+             const char* audio_symbols[] = {
+-                "slCreateEngine", "SL_IID_ENGINE", "SL_IID_VOLUME", "SL_IID_PLAY", "SL_IID_BUFFERQUEUE"
++                "slCreateEngine", "SL_IID_ENGINE", "SL_IID_VOLUME", "SL_IID_PLAY"
+             };
+             for (size_t symbol_index = 0;
+                  symbol_index < sizeof(audio_symbols) / sizeof(audio_symbols[0]); ++symbol_index) {
+@@ -358,6 +358,10 @@
+             : "/system/android/lib64/westlake_native/libwestlake_native_abi.so";
+         void* handle = dlopen_ns(app_namespace, abi, RTLD_NOW | RTLD_GLOBAL);
+         if (handle == NULL) return NamespaceResultFence(ENOENT);
++        if (native_private && dlsym(handle, "SL_IID_ANDROIDSIMPLEBUFFERQUEUE") == NULL) {
++            APPSPAWN_LOGE("[N4-AUDIO] provider lacks %{public}s", "SL_IID_ANDROIDSIMPLEBUFFERQUEUE");
++            return NamespaceResultFence(ENOENT);
++        }
+         fprintf(stderr, "[N2-OWNER] %s ABI global ready; search=%s permitted=%s\n",
+                 app_name, app_search_paths, app_permitted_paths);
+     }

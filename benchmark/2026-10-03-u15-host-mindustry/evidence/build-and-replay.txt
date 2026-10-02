@@ -1,0 +1,39 @@
+U15 host = U14 host 341c1260 + mindustry audio-verify fix. A' standard (Mac DevEco clang; recipe
+r2-host-build-receipt.json; reused-object allowlist; two-build determinism). build via recipe/build_u15_host.py --u15.
+
+=== ① 341c audio branch present + applies to mindustry (candidate-stock-host.c, the 341c base source) ===
+:304  if (native_private && (strstr(app_search_paths,"/io.anuke.mindustry/") || .../org.ppsspp.ppsspp/ ...)) {   <- mindustry matches
+:311     void* audio = dlopen_ns(app_namespace, "/system/lib64/libOpenSLES.so", RTLD_NOW|RTLD_GLOBAL);           <- OH platform core
+:317     audio_symbols[] = {"slCreateEngine","SL_IID_ENGINE","SL_IID_VOLUME","SL_IID_PLAY","SL_IID_BUFFERQUEUE"} <- verified on the OH handle
+:322     dlsym(audio, audio_symbols[i]) == NULL -> "[N4-AUDIO] provider lacks ..." -> ENOENT
+:352  native_abi = dlopen_ns(.../westlake_native/libwestlake_native_abi.so, RTLD_NOW|RTLD_GLOBAL)               <- Android-ext IID provider
+=> the branch is present and fires for io.anuke.mindustry. mindustry's u12 slCreateEngine miss = this branch not active at u12.
+   BUG in the verify: it asserts SL_IID_BUFFERQUEUE (OH libOpenSLES has it, but libarc does NOT use it) and never
+   asserts SL_IID_ANDROIDSIMPLEBUFFERQUEUE (what libarc actually uses, provided by native_abi, NOT OH libOpenSLES).
+
+=== ② the fix (recipe/win-u15-mindustry-audio.patch; verify each symbol against its REAL provider) ===
+  (1) audio_symbols (OH libOpenSLES handle) drops SL_IID_BUFFERQUEUE -> {slCreateEngine,SL_IID_ENGINE,SL_IID_VOLUME,SL_IID_PLAY} (the 4 core libarc uses from OH libOpenSLES).
+  (2) after the native_abi dlopen handle: native_private asserts dlsym(handle,"SL_IID_ANDROIDSIMPLEBUFFERQUEUE"), reusing the existing "[N4-AUDIO] provider lacks %{public}s" format (no new log literal).
+  NOTE: a naive string-swap of SL_IID_BUFFERQUEUE->SL_IID_ANDROIDSIMPLEBUFFERQUEUE on the OH handle would FAIL --
+  OH /system/lib64/libOpenSLES.so provably lacks the Android-ext IID (66 exports, SL_IID_ANDROID* absent). The IID
+  must be asserted on native_abi. dlsym is not a loader open-site, so open_site_scan stays unchanged.
+
+=== A' gates ===
+build: base341c x2 = 8be1d6f3582d8c6ed7c9203f8ae50125e213fa72a23a3b5d5370aa7f7019df3f (deterministic)
+       u15 x2       = 08175d186546fe8f95c2ecef0bc4158162afc4952c48fe9965dc5b2e3ee11320 (deterministic)
+base341c vs real 341c1260 (341c12608091246a...): NOT byte-identical -- the only diffs are the embedded __FILE__ build
+  paths (u14-appns-build/.artifacts/candidate-stock-host.patched.c -> u15-host-mindustry/.artifacts/base341c-stock-host.c
+  + resident-compat.h) + .rodata reorder noise from the path-length delta. abi_diff: exports 15/15, 0 removed/added/
+  drift/breaks -> ABI IDENTICAL. => A' semantic reproduce of 341c1260 (byte-diff is build-dir path only, like Wall-1).
+u15 vs base341c (BOTH this dir, same path -> single-variable):
+  abi_diff:        exports 15/15, 0 removed/added/drift/breaks (host ABI unchanged by the fix)
+  open_site_scan:  8 open-sites, IDENTICAL (function/callee/path/flags; PCs shift from the added code only) -- no new dlopen/dlns
+  deployed_strings_diff: ONLY  DROPPED SL_IID_BUFFERQUEUE / ADDED SL_IID_ANDROIDSIMPLEBUFFERQUEUE  (+ the temp source-path string)
+
+=== ③ libarc 5-symbol replay under the U15 host visible set (native domain, musl global scope) ===
+  slCreateEngine                   <- OH /system/lib64/libOpenSLES.so   (dlopen_ns RTLD_GLOBAL, audio branch)
+  SL_IID_ENGINE                    <- OH /system/lib64/libOpenSLES.so
+  SL_IID_PLAY                      <- OH /system/lib64/libOpenSLES.so
+  SL_IID_VOLUME                    <- OH /system/lib64/libOpenSLES.so
+  SL_IID_ANDROIDSIMPLEBUFFERQUEUE  <- libwestlake_native_abi.so           (dlopen_ns RTLD_GLOBAL, native_abi)
+  => 0 missing. All 5 of libarc's undefined OpenSLES symbols resolve under the U15 host.
