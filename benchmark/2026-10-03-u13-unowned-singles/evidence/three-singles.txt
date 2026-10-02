@@ -1,0 +1,52 @@
+Three unowned single keys — U13 first-fatal + earliest wall + mechanism (hilog line refs). Read-only.
+
+======================= glmark2 (org.linaro.glmark2) — 61b window2 =======================
+BIND OK. FIRST-FATAL (terminal): native SIGABRT.
+  42747 DfxSignalHandler signo(6) thread org.linaro.glma ; 42865 Reason:SIGABRT(SI_TKILL)
+  42873 #05 libart.so art::JavaVMExt::JniAbort(char const*, char const*)
+  42874 #06 libart.so art::JNI<false>::GetLongField(_JNIEnv*, _jobject*, _jfieldID*)
+  42875 #07 libglmark2-android.so Java_org_linaro_glmark2_native_getSceneInfo(_JNIEnv*, _jclass*, _jobject*)+60
+EARLIEST (non-fatal pre-walls): 42375 [EARLY-TF] nativePrimeDefaultTypeface reflect FAILED (resolveDefault may abort);
+  42417 InputManagerGlobal.sService NoSuchFieldException; 42729 libiGraphicsCore.z.so realpath ENOENT. (No MUSL reloc wall.)
+(ART JniAbort reason text not captured in this buffer.)
+MECHANISM: the app's OWN native (libglmark2-android.so) getSceneInfo reads a long field from the passed SceneInfo
+jobject; ART's GetLongField reaches JavaVMExt::JniAbort -> abort. This is NOT a missing class/field in our layer -- the
+class/field are glmark2's. The abort is either (a) an uninitialized/mismatched jfieldID (glmark2's native init path shows
+trouble: nativePrimeDefaultTypeface reflect FAILED) -> GetLongField(obj, bad-id); or (b) route-A ART's JNI validation
+aborting an access a stock release ART would tolerate. Distinct call point from the Flutter GetLongField U13 fixed.
+
+======================= chessclock (com.chessclock.android) — 5cd window1 =======================
+BIND OK. FIRST-FATAL (terminal): android.view.WindowManager$InvalidDisplayException "the specified display can not be
+found" at ViewRootImpl.setView <- WindowManagerGlobal.addView <- handleResumeActivity (43204+).
+ROOT of the terminal (our window-session bridge, 43203):
+  OH_WindowMgrClient [IPC] ENTER WMClient.createSession bundle=com.chessclock.android ...
+  OH_WindowMgrClient createSession: Not connected to SceneSessionManager
+  OH_WSAdapter Failed to create OH session, wsErr=1005 -> addCode=-9
+  [B8-WSP] addToDisplay ... retry=-9   -> AOSP maps addCode=-9 (WM_ADD_INVALID_DISPLAY) to InvalidDisplayException.
+EARLIER (our JAR/RegHook skew, non-terminal, 42947): java.lang.NoSuchMethodError: no static or non-static method
+  "Ladapter/activity/ActivityManagerAdapter;.nativeConsumeConnectionFailure(I)Z" -- thrown from Runtime.nativeLoad during
+  android.media.MediaPlayer.<clinit> (ChessClock.initRingtone -> RingtoneManager.getRingtone -> MediaPlayer). RegHook
+  REGISTERED nativeConsumeConnectionFailure (42490 -> liboh_adapter_bridge.so) but the deployed ActivityManagerAdapter
+  JAR class does not DECLARE the method -> RegisterNatives fails -> NSME.
+MECHANISM: (terminal) OUR layer -- the window-session bridge could not connect to OH SceneSessionManager (createSession
+wsErr=1005), so addToDisplay returns -9 and AOSP surfaces "display can not be found". Not actually a display problem.
+(secondary) OUR layer -- a RegHook/JAR version skew: ActivityManagerAdapter JAR is missing the nativeConsumeConnectionFailure
+declaration the RegHook registers.
+
+======================= fd-api (com.termux.api) — 5ea window1 =======================
+BIND OK. FIRST-FATAL (terminal): java.lang.IllegalStateException "You need to use a Theme.AppCompat theme (or
+descendant) with this activity." at androidx.appcompat.app.AppCompatDelegateImpl.createSubDecor (12864-12866), starting
+com.termux.api.activities.TermuxAPIMainActivity (an AppCompatActivity). EARLIEST (non-fatal bg): LocalSocketImpl.bindLocal ULE.
+THEME trail:
+  12589 [B5-ALIAS] alias=TermuxAPILauncherActivity target=TermuxAPIMainActivity
+  12596 [B8-ALIASTHEME] TermuxAPIMainActivity theme re-resolved 0x1030237 -> 0x7f120252
+  12829 [J10-ACTINFO] getActivityInfo .TermuxAPIMainActivity theme=0x7f120252
+Manifest (apkanalyzer): <application theme=@ref/0x1030237 (android DeviceDefault)>; <activity TermuxAPIMainActivity
+  android:theme=@ref/0x7f120252>; <activity-alias TermuxAPILauncherActivity targetActivity=TermuxAPIMainActivity>.
+MECHANISM: we re-resolved + applied the activity's MANIFEST-declared theme 0x7f120252 (correct id) for the AppCompat
+MainActivity, yet AppCompatDelegate.createSubDecor still finds no AppCompat attribute (it checks the theme for
+R.styleable.AppCompatTheme_windowActionBar). So on route-A the theme 0x7f120252 does NOT expose its AppCompat parent/
+attributes at runtime -- either its parent chain (inheriting Theme.AppCompat.*) is not resolved, or the theme AppCompat
+reads is the application theme 0x1030237 (DeviceDefault, non-AppCompat) rather than the activity theme. OUR layer
+(resource/theme resolution or theme-context application for the aliased AppCompatActivity). termux-api runs on stock
+Android, so 0x7f120252 is a real AppCompat theme in the app's resources -> the gap is our resolution, not the app.

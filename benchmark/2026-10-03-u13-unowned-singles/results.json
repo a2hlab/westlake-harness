@@ -1,0 +1,38 @@
+{
+  "task": "Three unowned single keys (glmark2, chessclock, fd-api): U13 first-fatal + earliest wall, mechanism classification (our layer vs app precondition), minimal fix + prediction + U15 artifact for small fixes.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "glmark2": {
+    "bundle": "org.linaro.glmark2", "board": "61b/W2", "bind": "OK",
+    "first_fatal": "SIGABRT: Java_org_linaro_glmark2_native_getSceneInfo -> JNI GetLongField -> JavaVMExt::JniAbort",
+    "earliest_wall": "non-fatal pre-walls: nativePrimeDefaultTypeface reflect FAILED; InputManagerGlobal.sService NoSuchFieldException; libiGraphicsCore.z.so ENOENT (no MUSL reloc wall)",
+    "layer": "app-native JNI (glmark2's own native reads a long field on its own SceneInfo object); NOT a missing class/field in our layer",
+    "cause_ambiguous": "(a) uninitialized/mismatched jfieldID (app native init path unhappy) OR (b) route-A ART JNI-check strictness aborting a stock-release-tolerable access; ART abort reason text not captured -> not decidable statically",
+    "min_fix": "no clean small fix in our layer. If (b): run app child procs with JNI checks off (runtime config) -- NOT recommended blind. Decider: <=10-min experiment flipping the runtime JNI-check flag + relaunch glmark2.",
+    "u15_artifact": "none clean (runtime JNI-check config at most; gated on the experiment)",
+    "prediction": "not moved by any current U14/U15 part; low value (GL benchmark tool); leave unowned pending the experiment"
+  },
+  "chessclock": {
+    "bundle": "com.chessclock.android", "board": "5cd/W1", "bind": "OK",
+    "first_fatal_terminal": "WindowManager$InvalidDisplayException 'the specified display can not be found' at addView/handleResumeActivity",
+    "terminal_root": "OURS window-session bridge: OH_WindowMgrClient createSession: Not connected to SceneSessionManager -> OH_WSAdapter Failed to create OH session wsErr=1005 -> addCode=-9 -> AOSP maps -9 (WM_ADD_INVALID_DISPLAY) to InvalidDisplayException. Not actually a display problem.",
+    "secondary_earlier": "OURS JAR/RegHook skew: NoSuchMethodError ActivityManagerAdapter.nativeConsumeConnectionFailure(I)Z (RegHook registered it -> liboh_adapter_bridge.so, but the deployed ActivityManagerAdapter JAR class does not declare it) -- thrown from Runtime.nativeLoad during MediaPlayer.<clinit> (ChessClock.initRingtone). non-terminal.",
+    "min_fix_secondary": "CLEAN U15 JAR: add `private static native boolean nativeConsumeConnectionFailure(int)` declaration to adapter.activity.ActivityManagerAdapter in oh-adapter-runtime.jar to match the RegHook table. Clears the NSME.",
+    "min_fix_terminal": "window-session bridge must connect to OH SceneSessionManager at resume (createSession succeeding vs wsErr=1005) -- window-session path (M-family), NOT a chessclock-specific small fix; flag to the session-bridge owner.",
+    "u15_artifact": "secondary = oh-adapter-runtime.jar (ActivityManagerAdapter method decl); terminal = window-session bridge (not single-key)",
+    "prediction": "chessclock lights only when the session bridge connects; the JAR method-decl fix alone does not light it (terminal is the window-session InvalidDisplay)"
+  },
+  "fd_api": {
+    "bundle": "com.termux.api", "board": "5ea/W1", "bind": "OK",
+    "first_fatal": "IllegalStateException 'You need to use a Theme.AppCompat theme (or descendant)' at AppCompatDelegateImpl.createSubDecor, starting TermuxAPIMainActivity (AppCompatActivity)",
+    "earliest_wall": "bg LocalSocketImpl.bindLocal ULE (non-fatal; termux-api <-> termux local socket)",
+    "theme_trail": "launched via alias TermuxAPILauncherActivity -> target TermuxAPIMainActivity; [B8-ALIASTHEME] re-resolved 0x1030237 -> 0x7f120252 (the manifest-declared activity theme, correct id); manifest: application theme 0x1030237 (DeviceDefault), TermuxAPIMainActivity android:theme 0x7f120252",
+    "layer": "OURS theme/resource resolution: we applied the right theme id 0x7f120252 but AppCompatDelegate (checks R.styleable.AppCompatTheme_windowActionBar) finds no AppCompat attribute -> the theme's AppCompat parent/attrs are not resolved at runtime, OR AppCompat reads the application theme 0x1030237 (DeviceDefault) not the activity theme. termux-api runs on stock -> 0x7f120252 is a real AppCompat theme -> the gap is our resolution, not the app.",
+    "min_fix": "U15 activity/theme bridge (oh-adapter-runtime.jar): the [B8-ALIASTHEME] path must APPLY the target activity's theme (0x7f120252) with its parent chain to the activity's context (the theme AppCompatDelegate reads), not only re-resolve+log; and the resource resolver must resolve the theme's AppCompat parent.",
+    "confirm_check": "cheap: dump 0x7f120252 parent from the app resources.arsc (inherits Theme.AppCompat*?) + verify obtainStyledAttributes(AppCompatTheme) sees windowActionBar at runtime -- decides parent-chain-unresolved vs application-theme-read",
+    "u15_artifact": "oh-adapter-runtime.jar (activity/theme bridge, B8-ALIASTHEME theme application)",
+    "prediction": "with the activity's AppCompat theme applied/resolved, createSubDecor passes -> fd-api moves past this wall (next wall unknown; bg LocalSocketImpl ULE non-fatal)"
+  },
+  "rule": "Classify an unowned key by whose contract the fatal violates: glmark2's GetLongField is the app's own native on its own object (ours at most makes ART stricter); chessclock's InvalidDisplay is ours (a window-session connect failure AOSP dresses as 'display not found') + a JAR/RegHook method-decl skew; fd-api's AppCompat-theme error is ours (right theme id, unresolved AppCompat parent). Small JAR-level fixes exist for the two ours-JAR legs; the window-session (chessclock terminal) and the app-native abort (glmark2) are not single-key small fixes.",
+  "boundaries": ["offline; no board; no push; static from U13 hilogs + app manifests (apkanalyzer)", "glmark2 (a)-vs-(b) and fd-api exact theme leg need the noted cheap checks/experiment to finalize", "sources read-only: U13 hilogs (westlake-harness-u7-executor), app apks (westlake-inputs/apks), adapter source (westlake-harness/bms)"],
+  "files": ["README.md", "evidence/three-singles.txt", "results.json", "documentation.json", "landing-paths.txt"]
+}
