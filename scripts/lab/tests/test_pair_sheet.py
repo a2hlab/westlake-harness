@@ -61,16 +61,30 @@ class Prescreen(unittest.TestCase):
 
 class FlakyKn(unittest.TestCase):
     def test_regression_zero_lit_three_obs(self):
-        r = ps.flaky_kn('x', 'different', ['white', 'white'])   # +this(white) -> 0/3
+        r = ps.flaky_kn('x', 'different', ['white', 'white'], u9_verdict='lit')   # +this(not-lit) -> 0/3, regression
         self.assertEqual((r['k'], r['n'], r['regression']), (0, 3, True))
 
     def test_not_regression_when_some_lit(self):
-        r = ps.flaky_kn('x', 'same', ['white', 'white'])        # +this(lit) -> 1/3
+        r = ps.flaky_kn('x', 'same', ['white', 'white'], u9_verdict='lit')        # +this(lit) -> 1/3
         self.assertEqual((r['k'], r['n']), (1, 3))
         self.assertFalse(r['regression'])
 
     def test_two_obs_not_regression(self):
-        r = ps.flaky_kn('x', 'different', ['white'])            # 0/2 -> rule needs >=3
+        r = ps.flaky_kn('x', 'different', ['white'], u9_verdict='lit')            # 0/2 -> rule needs >=3
+        self.assertFalse(r['regression'])
+
+    def test_u9_not_lit_same_is_not_lit(self):
+        # U9 verdict not lit: same screen = still not lit (n+1, k unchanged); regression never fires
+        r = ps.flaky_kn('x', 'same', ['white', 'white'], u9_verdict='alive-white-window')
+        self.assertEqual((r['k'], r['n']), (0, 3))
+        self.assertEqual(r['kn_this'], 'not-lit')
+        self.assertFalse(r['regression'])
+
+    def test_u9_not_lit_different_is_undecided(self):
+        # U9 verdict not lit: different = could be lit now; not counted, kn_this=undecided
+        r = ps.flaky_kn('x', 'different', ['white'], u9_verdict='alive-white-window')
+        self.assertEqual((r['k'], r['n']), (0, 1))
+        self.assertEqual(r['kn_this'], 'undecided')
         self.assertFalse(r['regression'])
 
 

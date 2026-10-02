@@ -112,12 +112,14 @@ def expand(p):
 
 
 # --- flaky-key k/n (lit-rate prior so the outer does not recount every window) ---------------------------------
-def load_flaky():
+def load_flaky(flaky_json=None):
     """Set of keys the flaky registry says flip between runs (compare rates, do not trust one run)."""
+    path = flaky_json or FLAKY_JSON
     try:
-        j = json.loads(FLAKY_JSON.read_text())
-    except Exception:
-        return set()
+        j = json.loads(path.read_text())
+    except Exception as e:
+        print(f'flaky-keys.json unreadable: {path} ({e})', file=sys.stderr)
+        sys.exit(2)
     return {e['key'] for e in j.get('keys', []) if isinstance(e, dict) and e.get('key')}
 
 
@@ -155,15 +157,29 @@ def signoff_history(key, extra_signoffs=()):
     return hist
 
 
-def flaky_kn(key, this_auto, history):
-    """k lit / n observations for a flaky key, counting this window's auto verdict (same->lit) plus signed history.
-    regression per flaky-keys.json rule: >=3 observations and 0 lit."""
+def flaky_kn(key, this_auto, history, u9_verdict=None):
+    """k lit / n observations for a flaky key.
+
+    This window counts as lit ONLY when U9's own verdict for the key is lit AND this window's
+    auto is 'same' (same screen as a lit U9). If U9 is not lit: same/no-window count as not-lit
+    (n+1); 'different' is undecided -- not counted, kn_this='undecided' (always lands in the
+    suspect sheet). regression (>=3 observations, 0 lit) only applies to U9=lit keys."""
     obs = list(history)
-    obs.append('lit' if this_auto == 'same' else 'white')
+    kn_this = None
+    if _verdict_is_lit(u9_verdict):
+        obs.append('lit' if this_auto == 'same' else 'white')
+        kn_this = 'lit' if this_auto == 'same' else 'not-lit'
+    else:
+        if this_auto == 'different':
+            kn_this = 'undecided'
+        else:
+            obs.append('white')
+            kn_this = 'not-lit'
     k = sum(1 for v in obs if _verdict_is_lit(v))
     n = len(obs)
+    regression = _verdict_is_lit(u9_verdict) and n >= 3 and k == 0
     return {'k': k, 'n': n, 'rate': round(k / n, 2) if n else None,
-            'regression': n >= 3 and k == 0, 'observations': obs}
+            'regression': regression, 'observations': obs, 'kn_this': kn_this}
 
 
 def board_of(rel_parts, serial):
@@ -236,11 +252,11 @@ def u9_t20_from_runs(runs, board, key):
     return None
 
 
-def build_rows(run, reference, signoff, threshold):
+def build_rows(run, reference, signoff, threshold, flaky_json=None):
     """Discover pairs, resolve the U9 side, and pre-screen each pair (auto verdict + flaky k/n). Returns rows."""
     pairs = sorted(discover(run), key=lambda r: (r['board'], r['shard'], r['key']))
     ref_cache, (sign_verd, sign_runs) = {}, load_signoff(signoff)
-    flaky = load_flaky()
+    flaky = load_flaky(flaky_json)
     rows = []
     for i, p in enumerate(pairs):
         board = p['board']
@@ -259,14 +275,15 @@ def build_rows(run, reference, signoff, threshold):
                'auto_reason': scr['reason'], 'flaky': p['key'] in flaky, 'flaky_kn': None,
                'window_verdict': ''}
         if p['key'] in flaky:
-            row['flaky_kn'] = flaky_kn(p['key'], scr['auto'], signoff_history(p['key'], [signoff]))
+            row['flaky_kn'] = flaky_kn(p['key'], scr['auto'], signoff_history(p['key'], [signoff]), u9_verdict=verdict)
         rows.append(row)
     return rows
 
 
 def is_suspect(row):
     """A pair the outer still has to eyeball: not a clean 'same', or a flaky key whose lit/white is undecided."""
-    return row['auto'] != 'same' or (row['flaky'] and not (row['flaky_kn'] or {}).get('regression') is True)
+    kn = row.get('flaky_kn') or {}
+    return row['auto'] != 'same' or kn.get('kn_this') == 'undecided' or (row['flaky'] and not kn.get('regression') is True)
 
 
 def stage_imgs(rows, stage, only=None):
@@ -327,6 +344,7 @@ def main(argv=None):
     ap.add_argument('--threshold', type=float, default=SAME_THRESHOLD, help='aHash similarity >= => auto same')
     ap.add_argument('--no-sheet', action='store_true', help='listing + JSON only; skip the contact sheet (no ffmpeg)')
     ap.add_argument('--selftest', action='store_true', help='known-answer test on window3; ignores --run')
+    ap.add_argument('--flaky-json', default=str(FLAKY_JSON), help='flaky-keys.json path (default: REPO/knowledge/gates/flaky-keys.json)')
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
@@ -338,7 +356,7 @@ def main(argv=None):
     out = (a.out or run / 'pair-sheet').expanduser()
     out.mkdir(parents=True, exist_ok=True)
 
-    rows = build_rows(run, a.reference, a.signoff, a.threshold)
+    rows = build_rows(run, a.reference, a.signoff, a.threshold, flaky_json=Path(a.flaky_json))
     suspects = [r for r in rows if is_suspect(r)]
     counts = {'same': 0, 'different': 0, 'no-window': 0, 'no-ref': 0}
     for r in rows:
