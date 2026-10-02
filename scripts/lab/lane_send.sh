@@ -19,7 +19,9 @@ TEXT=${*:?usage: lane_send.sh [--wait-max S] <pane-id> <text>}
 
 status() { herdr pane read "$PANE" 2>/dev/null | grep -E 'state [^|]*\|' | tail -1; }
 is_octos() { herdr pane read "$PANE" 2>/dev/null | grep -q 'Ask Octos'; }
-idle() { status | grep -qE 'state (· Idle|✓ Done)'; }
+# a turn that ended in a model/transport error ("state x Error (runtime_error: …)") leaves the composer ready for
+# input too; 2026-10-02 21:15 the dispatch waited 10 min on an errored oc-t4 pane that never turns Idle by itself.
+idle() { status | grep -qE 'state (· Idle|✓ Done|x Error)'; }
 
 if ! is_octos; then
   herdr pane run "$PANE" "$TEXT" >/dev/null
