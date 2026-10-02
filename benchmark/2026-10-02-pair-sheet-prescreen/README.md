@@ -38,3 +38,27 @@ with a wide margin, with zero new dependencies (ffmpeg only).
 ## Tests
 `scripts/lab/tests/test_pair_sheet.py` — 16 tests (aHash identity/inversion, prescreen same/different/no-window/
 no-ref/flat-lit, flaky k/n + regression, is_suspect, and the window3 known-answer via `--selftest`). `Ran 16 tests OK`.
+
+## k/n fix (oc-t4, outer-verified 2026-10-02 19:15)
+
+Two defects found by the outer when it re-ran the tool on real window 1 / window 5 runs:
+
+- **Silent pass on a missing registry.** `load_flaky()` returned an empty set when `knowledge/gates/flaky-keys.json`
+  could not be read, so every lottery key was treated as an ordinary key. The registry is absent in the lane tree the
+  tool was written in, so k/n had never run on real data. Now: exit 2 naming the path; `--flaky-json` for tests.
+- **"Same as U9" counted as lit.** For lottery keys whose U9 reference is itself a white window (noice, fd-uhabits,
+  fd-noice), `same` means still white and `different` may mean newly lit; the old code counted it the other way round
+  (fd-noice's window-5 gain counted 0, white repeats counted lit; at n=3 it would have reported a false regression).
+  Now: U9 lit -> same = lit (k+1, n+1), different/no-window = not lit (n+1); U9 not lit -> same/no-window = not lit
+  (n+1), different = not counted, `kn_this=undecided`, always a suspect. `regression` only for U9-lit keys.
+
+Known answers (outer re-ran each on the real run directories):
+
+| Run | Before | After |
+|---|---|---|
+| window5 `u101-t8-A5-5ea-r2-20261002T085100` | fd-noice 0/2, fd-uhabits 1/2 | fd-noice 0/1 (undecided), fd-uhabits 0/2 |
+| window5 `u101-t8-A5-20261002T083800` | wikipedia 2/3 + 1/3, noice 1/2 | wikipedia unchanged, noice 0/2 |
+| window1 r2 `u101-t8-A1-r2-20261002T052621` | fd-notes 3/3, antennapod 3/3, wikipedia 1/3 | unchanged |
+| `--flaky-json /nonexistent.json` | rc 0, k/n silently absent | rc 2 |
+
+`test_pair_sheet.py` 18 tests OK, `--selftest` window3 still 77 correct / 0 wrong.
