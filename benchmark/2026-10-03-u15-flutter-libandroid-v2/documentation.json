@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-u15-flutter-libandroid-v2/`** | **U15 Flutter-private libandroid v2 (cc-t3) = fff9be31 + ATrace_beginSection/endSection/isEnabled (AOSP 14 r1 trace.cpp + cutils trace.h semantics: APP tag mask) = 9b824502 x2 on hw248 (baseline rebuild = fff9be31 exact); exports +3, imports +3 runtime atrace_*_body via the existing NEEDED (no dlsym, no new NEEDED/open site), 31/31 old functions equal; immich replay in the Flutter domain: libcronet 2 missing on fff9 (= board) -> 0 on v2. Predict immich past VerifyError + ATrace (high), lit low-medium.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **私有域 libandroid 的 NDK 导出要用真提供者回放(cc-t3,ATrace)**:replay_normal 的『A*_ 名一律当 NDK 已提供』捷径会把 libandroid 自身缺的 ATrace_* 放过(fff9 回放 0 缺,板上却首缺 ATrace);被测对象就是该域 libandroid 时必须关掉捷径,关掉后 fff9 正好复现板上两缺。ATrace_isEnabled 语义是 atrace_get_enabled_tags() & ATRACE_TAG_APP(1<<12),不是任意 tag 非零。转调运行时 atrace_*_body 走已有 NEEDED 直接引用即可,不加 dlsym。"
+   ]
+  }
+ ]
+}
