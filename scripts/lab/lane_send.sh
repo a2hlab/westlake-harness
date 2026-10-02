@@ -17,7 +17,9 @@ WAIT_MAX=900
 PANE=${1:?usage: lane_send.sh [--wait-max S] <pane-id> <text>}; shift
 TEXT=${*:?usage: lane_send.sh [--wait-max S] <pane-id> <text>}
 
-status() { herdr pane read "$PANE" 2>/dev/null | grep -E 'state [^|]*\|' | tail -1; }
+# the octoscode status line starts with " state "; a long one (an error message) wraps, so the "|" separator may sit
+# on the next row -- match the row start, not the separator.
+status() { herdr pane read "$PANE" 2>/dev/null | grep -E '^ ?state ' | tail -1; }
 is_octos() { herdr pane read "$PANE" 2>/dev/null | grep -q 'Ask Octos'; }
 # a turn that ended in a model/transport error ("state x Error (runtime_error: …)") leaves the composer ready for
 # input too; 2026-10-02 21:15 the dispatch waited 10 min on an errored oc-t4 pane that never turns Idle by itself.
