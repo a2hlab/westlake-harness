@@ -1,0 +1,41 @@
+# Control build on hw248 — STOPPED per outer ("逐字节复现 3c8e76a2,复现不了就停报差异").
+# Result: control does NOT byte-match 3c8e76a2, BUT the environment is PROVEN faithful + deterministic; the only
+# delta is a one-time-log diagnostic in dex_cache-inl.h that 3c8e76a2 (an older artifact) predates.
+
+## Build (nohup + tee, /home/alvin/jit-build-cc-wiki-20261002/logs/)
+driver: build-providers.sh (ROOT=.../westlake-harness-bms-deploy, OH_ROOT=$WORK/oh, AOSP_ROOT=$WORK/aosp-restoration,
+        frozen toolchain/sysroot via symlink to hw248 /opt/wl-src/.work/product-tls-generation, cxx-sdk15 wrapper),
+        which runs cross_compile_arm64.sh (Layers 1-4; libart-compiler.so = Layer 4). 0 build errors, all smoke tests green.
+pass-1: libart-compiler.so sha256=08026ab6fae27004  size 3895952   (PID 3790477, ~150s)
+pass-2: libart-compiler.so sha256=08026ab6fae27004  size 3895952   (PID 3796019, fresh build, objects+providers wiped)
+=> SELF-DETERMINISTIC: two independent fresh builds byte-identical (08026ab6 == 08026ab6).
+
+## Faithfulness of inputs (verified)
+- AOSP tree: Mac aosp-restoration art/ rsync'd to hw248; locale-normalized manifest IDENTICAL (9577 files,
+  hash 2a74b309ecae80da8ad2, content diff 0 lines). Byte-faithful.
+- frozen clang: Mac b107ce0366299ba5 == hw248 b107ce0366299ba5 (size 139085920). Byte-identical (symlinked, not re-copied).
+
+## Diff vs B6 3c8e76a2 (the stale reference artifact, in providers-pass1/)
+ref 3c8e76a2 size 3895000; ctl 08026ab6 size 3895952 (+952 bytes).
+- undefined symbols: IDENTICAL (0 diff).
+- defined exports: ctl has 2 MORE (ref 865 -> ctl 867):
+    + _ZN3art6mirror8DexCache15GetResolvedTypeENS_3dex9TypeIndexE      (art::mirror::DexCache::GetResolvedType(dex::TypeIndex))
+    + _ZZN3art6mirror8DexCache15GetResolvedTypeENS_3dex9TypeIndexEE22logged_primclass_guard  (its one-time-log guard)
+- embedded path strings: ctl has 1 MORE: .../art/runtime/mirror/dex_cache-inl.h
+- no build-id in either.
+
+## Root cause
+The CURRENT aosp-restoration dex_cache-inl.h (sha 32b449816ff068b9) contains a DIAGNOSTIC in DexCache::GetResolvedType:
+    line 164: inline Class* DexCache::GetResolvedType(dex::TypeIndex type_idx) {
+    line 172:   static std::atomic<bool> logged_primclass_guard{false};
+    line 173:   if (!logged_primclass_guard.exchange(true)) { ... one-time log ... }
+A faithful build of the current tree emits that method + its guard + the dex_cache-inl.h path (+952 bytes). 3c8e76a2 was
+built BEFORE this diagnostic was added, so it lacks them. The current tree is byte-verified faithful; 3c8e76a2 is simply
+an OLDER artifact than the current tree (artifact-vs-source drift). This is NOT an environment-unfaithfulness.
+
+## Decision point for the outer (patch24 NOT applied yet)
+(a) ACCEPT 08026ab6 as the control: build patched (patch24) on the current verified tree -> the JIT libart-compiler.so
+    is faithful to the CURRENT FZ-005 lineage, self-deterministic (two passes proved it). Recommended.
+(b) BYTE-MATCH 3c8e76a2 specifically: revert the dex_cache-inl.h logged_primclass_guard diagnostic to the pre-3c8e76a2
+    state. This regresses the tree to match a stale artifact; not recommended unless 3c8e76a2 byte-identity is required.
+cc-wiki recommends (a). Awaiting outer's choice before applying patch24.

@@ -1,0 +1,41 @@
+# JIT pre-build COMPLETE on hw248 (outer chose (a): accept 08026ab6 current-tree control). No board; no APPSPAWNX_NO_JIT change.
+# Persisted: hw248:/home/alvin/jit-build-cc-wiki-20261002/ (3 .so + patch24.patch + receipt.json + jit_compiler.cc.orig + logs/ + ref-3c8e76a2).
+
+## Artifacts (all SELF-DETERMINISTIC: two independent fresh builds byte-identical)
+control libart-compiler.so : 08026ab6fae27004c19b6d16c977281b180df5d749fbe6004736cf651c624466  (3895952 B)
+patched libart-compiler.so : 64fead062e8f464297d2cb9e442d1feeb5ed3967a51df6c5c2cf2dede37352c3  (3895936 B)  = control + patch24
+memfd shim libwestlake_jit_anon.so : bceae6fc8a47ec43cb2686e47b93497669c6f57d80d230218d35c25395b1e6a6  (13248 B)
+patch24.patch : a945d39f14b1624c0ce0313e7fda1a2d055d942b998fcbb89601ad3264cb5336
+
+## Build environment (faithful + verified)
+host: hw248 (ecs-9f6c, 32 cores). toolchain: frozen clang 15.0.4 feef13a3 (byte-identical to Mac b107ce03, via symlink to
+/opt/wl-src/.work/product-tls-generation/frozen). tree: Mac aosp-restoration rsync'd; art/ manifest byte-identical
+(2a74b309, 9577 files, content diff 0). driver: build-providers.sh -> cross_compile_arm64.sh Layers 1-4. 0 build errors.
+
+## patch24 (the single compiler change)
+Applied to aosp-restoration/art/compiler/jit/jit_compiler.cc (orig 0ced8530 -> patched 2c9b697c; RESTORED to 0ced8530
+after the build). Adds, at line 80-81: `if (kRuntimeISA == InstructionSet::kArm64) { compiler_options_->implicit_suspend_checks_ = false; }`
+-- the JIT counterpart of dex2oat patch22 (dex2oat.cc:859), so JIT code uses the same explicit-suspend convention R155 needs.
+
+## Acceptance: patched vs control (08026ab6)
+exports (nm -D defined): 0 diff (patch24 adds NO symbol).
+undefined (nm -D -u):     0 diff.
+readable strings (len>=8, has-word): 0 diff (no path/message/symbol string changed).
+only difference: jit_compiler.o .text bytes (the patched arm64 branch), size -16 B. Exactly patch24, nothing else.
+
+## Control vs the stale 3c8e76a2 (resolved: outer chose (a))
+08026ab6 differs from the old B6 artifact 3c8e76a2 by +2 exports (DexCache::GetResolvedType + its logged_primclass_guard
+one-time-log guard) + 1 path (dex_cache-inl.h) + 952 B, because the current tree's dex_cache-inl.h (32b44981) carries a
+diagnostic that 3c8e76a2 predates. route-A ships NO libart-compiler.so on the board (DIGEST), so 3c8e76a2 is not a
+deployed artifact -- just a stale B6 reference. The current tree is byte-verified faithful; 08026ab6 is the correct
+control. (artifact-vs-source drift, not an environment issue.)
+
+## N1/N2 preview (list only, NOT --apply; full gate = package + route inputs, a deploy-prep step)
+libart-compiler.so NEEDED (19): libc, libbionic_compat, liblog, libbase, libcutils, libutils, libnativehelper,
+  libsigchain, libdexfile, libartbase, libartpalette, libvixl, liblz4, libziparchive, libelffile, libnativeloader,
+  libprofile, libart.so, libc++  -- the standard ART lib set it is deployed alongside. 653 undefined (art:: ClassLinker/
+  ArenaStack/..., Palette*, _Unwind_Resume) resolve from the NEEDED libart.so (board route-A libart 59e1bb45) + libartpalette
+  + libc++ -- the expected "compiler is a plugin of libart" relationship. Full resolution vs the deployed 59e1bb45 +
+  any exceptions is the deploy-prep step (owned by whoever schedules the board window), not this offline build.
+libwestlake_jit_anon.so NEEDED: libc.so only. Exported: ONLY _ZN3art12memfd_createEPKcj (version-scripted). Undefined
+  __android_log_print / dlsym / strcmp resolve at runtime from the LD_PRELOAD host (standard for a preload interposer).

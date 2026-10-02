@@ -5,7 +5,51 @@
   "board_entry": 90,
   "offline": true,
   "board_deploy": false,
-  "status": "VALIDATED + STAGED on hw248; build is the monitored next step (NOT executed this turn)",
+  "status": "COMPLETE on hw248 (outer chose (a)): control + patched libart-compiler.so + memfd shim all built, all self-deterministic (x2 byte-identical); patched = control + patch24 only (exports/undef/strings 0 diff); N1/N2 previewed; jit_compiler.cc restored; persisted to /home/alvin/jit-build-cc-wiki-20261002/. No board, no APPSPAWNX_NO_JIT change.",
+  "artifacts_final": {
+    "control_libart_compiler_so": "08026ab6fae27004c19b6d16c977281b180df5d749fbe6004736cf651c624466 (3895952 B, self-deterministic x2)",
+    "patched_libart_compiler_so": "64fead062e8f464297d2cb9e442d1feeb5ed3967a51df6c5c2cf2dede37352c3 (3895936 B, self-deterministic x2, = control + patch24)",
+    "memfd_shim": "bceae6fc8a47ec43cb2686e47b93497669c6f57d80d230218d35c25395b1e6a6 (libwestlake_jit_anon.so, 13248 B, self-deterministic x2)",
+    "patch24_sha256": "a945d39f14b1624c0ce0313e7fda1a2d055d942b998fcbb89601ad3264cb5336",
+    "persisted": "hw248:/home/alvin/jit-build-cc-wiki-20261002/ (3 .so + patch24.patch + receipt.json + jit_compiler.cc.orig + logs/ + ref-3c8e76a2)"
+  },
+  "patched_acceptance_vs_control": {"exports_diff": 0, "undefined_diff": 0, "readable_strings_diff": 0, "only_change": "jit_compiler.o .text (-16 bytes), exactly patch24"},
+  "n1n2_preview": {
+    "libart_compiler_so": "NEEDED 19 (standard ART set incl. libart.so/libc++); 653 undefined art:: symbols resolve from NEEDED libart.so (board 59e1bb45) + libartpalette + libc++ (compiler-is-libart-plugin). Full gate vs deployed 59e1bb45 + exceptions = deploy-prep step",
+    "memfd_shim": "NEEDED libc.so only; exports only _ZN3art12memfd_createEPKcj; __android_log_print/dlsym resolve at runtime from LD_PRELOAD host",
+    "applied": false
+  },
+  "outer_decision": "(a) accept 08026ab6 current-tree control; 3c8e76a2 is a stale B6 reference (route-A ships no libart-compiler.so on board), differs only by a logged_primclass_guard diagnostic the current tree added after 3c8e76a2 (artifact-vs-source drift). Recorded in README.",
+  "control_build_was": "CONTROL BUILT (self-deterministic) diverged from stale 3c8e76a2; outer chose (a)",
+  "control_build": {
+    "host": "hw248",
+    "driver": "build-providers.sh (ROOT=westlake-harness-bms-deploy, OH_ROOT=$WORK/oh, AOSP_ROOT=$WORK/aosp-restoration, frozen toolchain/sysroot via symlink, cxx-sdk15) -> cross_compile_arm64.sh Layers 1-4",
+    "logs": "/home/alvin/jit-build-cc-wiki-20261002/logs/control-r1-*.log, control-r2-*.log (nohup+tee)",
+    "pass1_sha": "08026ab6fae27004 size 3895952 (PID 3790477)",
+    "pass2_sha": "08026ab6fae27004 size 3895952 (PID 3796019, fresh build)",
+    "self_deterministic": true,
+    "build_errors": 0,
+    "inputs_faithful": {
+      "aosp_tree": "Mac aosp-restoration art/ rsync'd; locale-normalized manifest IDENTICAL (9577 files, 2a74b309, content diff 0)",
+      "frozen_clang": "b107ce0366299ba5 == b107ce0366299ba5 (byte-identical, symlinked)"
+    },
+    "vs_3c8e76a2": {
+      "ref_sha": "3c8e76a22dd3358f size 3895000",
+      "ctl_sha": "08026ab6fae27004 size 3895952 (+952 bytes)",
+      "undefined_diff": 0,
+      "exports_extra_in_ctl": ["art::mirror::DexCache::GetResolvedType(dex::TypeIndex)", "its logged_primclass_guard one-time-log guard"],
+      "path_extra_in_ctl": ["art/runtime/mirror/dex_cache-inl.h"],
+      "build_id_diff": "none (neither has a build-id)"
+    },
+    "root_cause": "current aosp-restoration dex_cache-inl.h (sha 32b44981) has a logged_primclass_guard one-time-log DIAGNOSTIC in GetResolvedType (lines 164/172/173); 3c8e76a2 predates it. Current tree is byte-verified faithful; 3c8e76a2 is a STALE artifact (artifact-vs-source drift), NOT an environment issue.",
+    "decision_point": {
+      "a_recommended": "accept 08026ab6 as control (faithful to current FZ-005 tree, self-deterministic); apply patch24 on it",
+      "b": "revert the dex_cache-inl.h diagnostic to byte-match the stale 3c8e76a2 (regresses the tree; not recommended)",
+      "cc_wiki_recommends": "a",
+      "patch24_applied": false
+    }
+  },
+  "staged_status_was": "VALIDATED + STAGED on hw248; build is the monitored next step",
   "host_move": {
     "from": "a2hlab",
     "to": "hw248",

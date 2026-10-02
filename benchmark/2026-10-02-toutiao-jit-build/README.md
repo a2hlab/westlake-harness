@@ -5,6 +5,42 @@ moment the long-wait window shows "pure slow" — go straight to a board round i
 located every input, reconstructed the faithful recipe, moved the host to hw248 per the outer, and **validated patch24
 against the hw248 tree**. The compiler build itself is a monitored single-instance job run next (not executed this turn).
 
+## BUILD COMPLETE (outer chose (a)) — all three artifacts built, self-deterministic
+The outer chose **(a)**: accept `08026ab6` as the control (route-A ships no libart-compiler.so on the board, so the
+stale B6 `3c8e76a2` is just a reference; the current tree is byte-verified faithful and differs only by a
+`logged_primclass_guard` diagnostic added after `3c8e76a2` — artifact-vs-source drift). On that same tree, patch24 was
+applied and the JIT artifacts built on hw248 (`evidence/build-complete.txt`), all **self-deterministic** (two
+independent fresh builds byte-identical each):
+- **control** `libart-compiler.so` = `08026ab6…` (3895952 B)
+- **patched** `libart-compiler.so` = `64fead06…` (3895936 B) = control + patch24. Acceptance vs control: **exports 0 diff,
+  undefined 0 diff, readable-strings 0 diff**; only `jit_compiler.o` .text changed (−16 B) — exactly patch24, nothing else.
+- **memfd shim** `libwestlake_jit_anon.so` = `bceae6fc…` (13248 B): exports only `_ZN3art12memfd_createEPKcj`
+  (version-scripted); `__android_log_print`/`dlsym` resolve at runtime from the LD_PRELOAD host.
+
+**N1/N2 preview** (list only, not `--apply`): the compiler's NEEDED is the standard ART lib set (incl. `libart.so` =
+board 59e1bb45) and its 653 undefined `art::` symbols resolve from that `libart.so` + `libartpalette` + `libc++` (the
+compiler-is-a-libart-plugin relationship); the shim NEEDs only `libc.so`. The full gate (resolve vs the deployed 59e1bb45
++ any exceptions) is a deploy-prep step, not this offline build. `jit_compiler.cc` was restored (back to `0ced8530`).
+Persisted: `hw248:/home/alvin/jit-build-cc-wiki-20261002/` (3 `.so` + `patch24.patch` + `receipt.json` +
+`jit_compiler.cc.orig` + `logs/` + `ref-3c8e76a2`). **No board; `APPSPAWNX_NO_JIT` / production gates untouched.** The
+toutiao JIT path is now de-serialized: the moment the long-wait window shows "pure slow", these artifacts go straight to
+a single-variable board window (owned by the outer / deploy lane).
+
+## UPDATE — control BUILT on hw248 (self-deterministic), diverges from the stale 3c8e76a2 → STOPPED per outer
+Per the outer's GO, the control (unpatched) `libart-compiler.so` was built on hw248 via the faithful recipe and is
+**self-deterministic**: two independent fresh builds are byte-identical (`08026ab6fae27004`, 3895952 B;
+`evidence/control-build-result.txt`). Inputs are byte-verified faithful: the Mac `aosp-restoration` art/ tree rsync'd to
+hw248 has an **identical** locale-normalized manifest (9577 files, `2a74b309`, content diff 0), and the frozen clang is
+byte-identical (`b107ce03`). **But it does NOT byte-match the reference `3c8e76a2`** (3895000 B) — so per
+"复现不了就停报差异" I **stopped before patch24**. The difference is tiny and benign: `08026ab6` has 2 extra exports
+(`art::mirror::DexCache::GetResolvedType(dex::TypeIndex)` + its `logged_primclass_guard` one-time-log guard) + 1 extra
+embedded path (`dex_cache-inl.h`) + 952 bytes; undefined symbols identical, no build-id diff. **Root cause:** the current
+`dex_cache-inl.h` (sha `32b44981`) carries a `logged_primclass_guard` diagnostic (lines 164/172/173) that `3c8e76a2`
+**predates** — `3c8e76a2` is an older artifact than the current (byte-verified faithful) tree, i.e. artifact-vs-source
+drift, not an environment-unfaithfulness. **Decision for the outer (patch24 not applied):** (a) accept `08026ab6` as the
+control (faithful to the current FZ-005 tree, self-deterministic) and apply patch24 on it — **cc-wiki recommends (a)**;
+or (b) revert the `dex_cache-inl.h` diagnostic to byte-match the stale `3c8e76a2` (regresses the tree; not recommended).
+
 ## Honest status first
 - a2hlab restarted ~23:05 (Mac memory pressure); the outer moved cc-wiki's JIT build to **hw248**. Nothing of mine was
   interrupted — I had only *probed* (clang `--version`, tree/script reads), never started a build; **no half artifacts**.
