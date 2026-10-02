@@ -13,7 +13,7 @@
 - `*.png/*.jpeg/*.jar/*.stderr` 默认被 `.gitignore` 忽略;README 引用到的证据截图用 `git add -f`,大二进制和 stderr 日志不入库。
 - **仓库是公开的**(github.com/A2OH/westlake-harness):不提交密码、服务器账号、个人数据。
 - **脚本不写死跟用户绑定的绝对路径**(用户 2026-09-30 定,`/Users/<名>`、`/home/<名>` 都不行):工作区用 `WORKSPACES`(`scripts/lab/lab_paths.sh` / `lab_paths.py` 解析)、家目录用 `$HOME`/`Path.home()`、仓库用脚本自身位置、hw248 路径走环境变量;门禁 `python3 scripts/lab/check_user_paths.py`,例外只进 `knowledge/gates/user-path-exceptions.json`(录制的证据、作者原构建路径等)。
-- 上板的运行时产物(.so / jar / boot image),其源码快照、补丁序列、工具链哈希与构建脚本必须一并入库或存到持久位置(大文件放 hw248 `/home/alvin/`,仓库里记路径与哈希)。只留产物会让修复锁死在一台会消失的构建机上(DIGEST E.7「B6 为什么慢」)。
+- 上板的运行时产物(.so / jar / boot image),其源码快照、补丁序列、工具链哈希、构建脚本与**原始构建/烘焙执行日志**(rc=0 的 stdout+stderr,运行时就 `tee` 到持久位置;事后列清单不算,2026-10-02 T8 有效重烤缺日志、paired receipt 只能重跑补)必须一并入库或存到持久位置(大文件放 hw248 `/home/alvin/`,仓库里记路径与哈希)。只留产物会让修复锁死在一台会消失的构建机上(DIGEST E.7「B6 为什么慢」)。
 
 ## 提交与推送
 - commit-msg hook 拒收 Claude 署名行(`Co-Authored-By: …Claude`、`Generated with Claude Code`)。不要 `--no-verify`。
