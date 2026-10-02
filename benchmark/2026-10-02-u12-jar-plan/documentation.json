@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-02-u12-jar-plan/`** | **U12, the next round's single JAR plan (offline, not deployed): runtime `oh-adapter-runtime.jar` 3bca82c5 = U11i + OwnProviderLocal (U11j) + upstream 1c883ad WlSettingsProvider path B copied verbatim (NameValueCache holders get an in-process IContentProvider; ANDROID_ID answered); stubs `adapter-mainline-stubs.jar` 3a12918a = c6b1eb3bc0 on 2f365a75 (needs FZ-005 rebake + T8 four gates); framework jar unchanged. deployed_class_diff --frozen rc=0 for both jars on both bases (v3 promoted, U9 + approved T8 policy); exactly 2 members changed vs U11i; deterministic. Predicted first-fatal moves: 0/166 (android_id read only by x, which survives it; toutiao's U9 fatal is libflipped wall 1). Upstream path A (synthetic settings ProviderInfo) deferred: app class loader likely cannot see runtime-jar classes.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-02 settings 在 route-A 不是空指针墙:ContentProviderRegistry 对 settings 回 OH DataShare 桥(不回 null),U9 162/166 hilog 都是 `OH_CPBridge: query: not connected` 后 AOSP 打 `Settings: Can't get key <名>`、读到 null——全量只读到 18 个未预置设置名,android_id 只有 x 读(且不致命),没有任何一次 settings 读经桥成功。所以上游 §611e 路径 A(为 acquireProvider 回 null 而设)在这里没有对应的墙;路径 B(往 Settings Global/Secure/System 的 NameValueCache.mProviderHolder.mContentProvider 注 Proxy)才对口,AOSP 14 字段名与上游一致。route-A 自带的 installSettingsContentProviderStub 是空壳(打 `provider injection skipped`)。另:U9 头条首致命 `MainActivity.<init>` Boolean NPE 是 `A9Q.a(\"enableGlobal\")` 未写入——写入点 ArticleApplication.configInitScheduler 没跑,因为 attachBaseContext 先死在 libflipped.so dlopen(墙1,native)。见 benchmark/2026-10-02-u12-jar-plan/(cc-t3)。"
+   ]
+  }
+ ]
+}

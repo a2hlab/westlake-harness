@@ -1,0 +1,58 @@
+## x: reads secure/android_id (null), survives it; first fatal 2 s later is TelephonyManager
+# $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-u9-native/rollout/approved-j10g/boards/61b-r2/runner/remaining-original/20261001T192815-669fe3b4/61b0657200000000000000000324012c/x/hilog.txt
+31894: 10-01 19:40:57.813  2762  2781 E C00f00/OH_CPBridge: query: not connected, authority=settings
+31895: 10-01 19:40:57.814  2762  2781 W C00f00/Settings: Can't get key android_id from content://settings/secure
+...
+32788: 10-01 19:40:59.725  2762  2781 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.NullPointerException: null cannot be cast to non-null type android.telephony.TelephonyManager
+...
+
+## toutiao: attachBaseContext dies on libflipped.so dlopen (wall 1, native); MainActivity then NPEs on enableGlobal
+# $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-u9-native/rollout/approved-j10g/boards/61b-r2/runner/remaining-original/20261001T192815-669fe3b4/61b0657200000000000000000324012c/toutiao/hilog.txt
+30707: 10-01 19:35:31.893 27706 27719 I C00f00/AppSpawnXJava: [stderr] [B8-PROV] bind providers=54 metaData filled=9
+...
+31265: 10-01 19:35:36.387 27706 27719 I C00f00/AppSpawnXJava: [stderr] Caused by: java.lang.RuntimeException: Unable to instantiate application com.ss.android.article.news.mute.MuteArticleApplicationStub package com.ss.android.article.news: java.lang.RuntimeException
+...
+31270: 10-01 19:35:36.387 27706 27719 I C00f00/AppSpawnXJava: [stderr] Caused by: java.lang.RuntimeException: attachBaseCtx invoke DelegateApp.attachBaseCtx err
+31271: 10-01 19:35:36.387 27706 27719 I C00f00/AppSpawnXJava: [stderr] 	at com.tencent.tinker.loader.MuteApplication.attachBaseContext(SourceFile:17170655)
+31272: 10-01 19:35:36.387 27706 27719 I C00f00/AppSpawnXJava: [stderr] 	at com.ss.android.article.news.mute.MuteArticleApplicationStub.attachBaseContext(SourceFile:16973844)
+...
+31283: 10-01 19:35:36.388 27706 27719 I C00f00/AppSpawnXJava: [stderr] Caused by: java.lang.UnsatisfiedLinkError: F02-A12-UNCLASSIFIED: dlopen_ns failed for /data/app/el1/bundle/public/com.ss.android.article.news/android/lib/arm64-v8a/libflipped.so: Error loading sha
+31284: 10-01 19:35:36.388 27706 27719 I C00f00/AppSpawnXJava: [stderr] 	at java.lang.Runtime.loadLibrary0(Runtime.java:1082)
+...
+31287: 10-01 19:35:36.388 27706 27719 I C00f00/AppSpawnXJava: [stderr] 	at com.bytedance.mira.plugin.hook.flipped.compat.FlippedV2Impl.<clinit>(SourceFile:65538)
+31288: 10-01 19:35:36.388 27706 27719 I C00f00/AppSpawnXJava: [stderr] 	at com.bytedance.mira.plugin.hook.flipped.Flipped.generate(SourceFile:196614)
+31289: 10-01 19:35:36.388 27706 27719 I C00f00/AppSpawnXJava: [stderr] 	at com.bytedance.mira.plugin.hook.flipped.Flipped.invokeHiddenApiRestrictions(SourceFile:65536)
+31290: 10-01 19:35:36.388 27706 27719 I C00f00/AppSpawnXJava: [stderr] 	at com.ss.android.article.news.ArticleApplication.attachBaseContext(SourceFile:17301690)
+31291: 10-01 19:35:36.388 27706 27719 I C00f00/AppSpawnXJava: [stderr] 	... 22 more
+...
+31733: 10-01 19:35:39.644 27706 27719 I C00f00/AppSpawnXJava: [stderr] [CHILD_CK] J_invokeStaticMain_main_threw: java.lang.RuntimeException: Unable to instantiate activity ComponentInfo{com.ss.android.article.news/com.ss.android.article.news.activity.MainActivity}: j
+...
+31748: 10-01 19:35:39.645 27706 27719 I C00f00/AppSpawnXJava: [stderr] Caused by: java.lang.NullPointerException: Attempt to invoke virtual method 'boolean java.lang.Boolean.booleanValue()' on a null object reference
+31749: 10-01 19:35:39.645 27706 27719 I C00f00/AppSpawnXJava: [stderr] 	at com.ss.android.article.news.activity.MainActivity.<init>(SourceFile:327715)
+...
+
+## subwaysurfers: AppLovin reads advertising_id/limit_ad_tracking, catches SettingNotFoundException; U12 keeps both unset
+# $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-01-u9-native/rollout/approved-j10g/boards/5ea/runner/original/20261001T182856-dc113ea4/5ea34a4500000000000000001123012c/subwaysurfers/hilog.txt
+43158: 10-01 18:45:47.440 18332 18363 E C00f00/OH_CPBridge: query: not connected, authority=settings
+43159: 10-01 18:45:47.440 18332 18363 W C00f00/Settings: Can't get key advertising_id from content://settings/secure
+43160: 10-01 18:45:47.441 18332 18362 I C00f00/AppSpawnXJava: [stderr] [G2.5-PIB] ApplicationInfo com.kiloo.subwaysurf icon/iconRes/labelRes/theme zeroed
+43161: 10-01 18:45:47.444 18332 18363 E C00f00/OH_CPBridge: query: not connected, authority=settings
+43162: 10-01 18:45:47.444 18332 18363 W C00f00/Settings: Can't get key limit_ad_tracking from content://settings/secure
+43163: 10-01 18:45:47.445 18332 18363 E C00f00/AppLovinSdk: [DataCollector] Unable to determine if Fire OS limited ad tracking is turned on
+43164: 10-01 18:45:47.445 18332 18363 E C00f00/AppLovinSdk: android.provider.Settings$SettingNotFoundException: limit_ad_tracking
+43165: 10-01 18:45:47.445 18332 18363 E C00f00/AppLovinSdk: 	at android.provider.Settings.parseIntSetting(Settings.java:3694)
+43166: 10-01 18:45:47.445 18332 18363 E C00f00/AppLovinSdk: 	at android.provider.Settings.-$$Nest$smparseIntSetting(Unknown Source:0)
+43167: 10-01 18:45:47.445 18332 18363 E C00f00/AppLovinSdk: 	at android.provider.Settings$Secure.getIntForUser(Settings.java:6684)
+...
+
+## toutiao a1112a0c (dexdump 37.0.0): MainActivity.<init> unboxes A9Q.a("enableGlobal"); only ArticleApplication.configInitScheduler puts it
+7824a0] com.ss.android.article.news.activity.MainActivity.<init>:()V
+01b: const-string v0, "enableGlobal" // string@690e
+01d: invoke-static {v0}, LX/A9Q;.a:(Ljava/lang/Object;)Ljava/lang/Object; // method@01f7
+020: move-result-object v0
+021: check-cast v0, Ljava/lang/Boolean; // type@3111
+023: invoke-virtual {v0}, Ljava/lang/Boolean;.booleanValue:()Z // method@faf0
+86eca0] com.ss.android.article.news.ArticleApplication.configInitScheduler:(Landroid/content/Context;)V
+03f: const-string v1, "enableGlobal" // string@98fc
+041: sget-object v0, Ljava/lang/Boolean;.TRUE:Ljava/lang/Boolean; // field@8fbe
+043: invoke-static {v1, v0}, LX/A9Q;.c:(Ljava/lang/Object;Ljava/lang/Object;)V // method@09f4
