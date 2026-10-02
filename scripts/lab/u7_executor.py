@@ -71,10 +71,13 @@ def receipt_check(root, data, manifest):
     if not entry:
         return {'status': 'unknown', 'reason': 'no paired image build receipt'}
     receipt = json.loads(bundle.member(root, entry).read_text())
-    inputs = {j + '.jar': bundle.sha(root / data['native']['directory'] /
+    # Explicit overlays (including both T8 JARs) supersede native underlays.
+    overlays = {r['target']: r for r in data['boot_group']['members']}
+    inputs = {j + '.jar': overlays[bundle.FW+j+'.jar']['sha256']
+              if bundle.FW+j+'.jar' in overlays else bundle.sha(root / data['native']['directory'] /
               'payload/android/framework' / (j + '.jar')) for j in bundle.JARS}
-    inputs['adapter-mainline-stubs.jar'] = next(r['sha256'] for r in data['boot_group']['members']
-                                               if r['target'].endswith('.jar'))
+    if manifest.get('mounts'):
+        inputs = {j+'.jar': bundle.sha(p) for j,p in bundle.bcp_members(root,data,manifest).items()}
     outputs = {Path(r['target']).name: r['sha256'] for r in data['boot_group']['members']
                if r['target'] in bundle.IMAGE_TARGETS}
     for key, expected in [('input_jars', inputs), ('outputs', outputs)]:
@@ -111,19 +114,21 @@ def prepare(root, baseline_native):
     if set(additions) != set(allowed):
         raise ValueError('only declared native additions may be absent')
     # Bind the entire boot group even if one member happens to match the baseline.
-    group = bundle.IMAGE_TARGETS | {r['target'] for r in [data['runtime_jar']]} | {bundle.FW+'adapter-mainline-stubs.jar'}
+    group = {r['target'] for r in data['boot_group']['members'] + [data['runtime_jar']]}
     changes = [r for p, r in sorted(rows.items()) if p in group or baseline.get(p) != r['sha256']]
     return {'bundle_sha256': bundle.sha(root/'bundle.json'), 'root': str(root),
             'baseline_native': str(baseline_native), 'generation': manifest['generation'],
             'baseline': baseline, 'expected': expected, 'additions': additions,
             'changes': changes, 'reference_paths': {k: sorted(v) for k, v in refs.items()},
+            'static_baseline_binding': bundle.sha(baseline_native.parent/'bundle.json') if 'static_checks' in data else None,
             'build_receipt': receipt_check(root, data, manifest), 'rollout_ready': data.get('rollout_ready') is True}
 
 
 def policy_binding(root):
     repo = Path(__file__).resolve().parents[2]
     files = [repo/'scripts/lab'/n for n in ['u7_executor.py','generation_bundle.py',
-             'sweep_bind_deploy.py','deploy_generation.py','deployment_native_gate.py','check_frozen.py']]
+             'sweep_bind_deploy.py','deploy_generation.py','deployment_native_gate.py','check_frozen.py',
+             'generation_static_checks.py','deployed_class_diff.py','open_site_scan.py']]
     files += [PROVENANCE_REGISTRY, repo/'knowledge/frozen/frozen.json',
               lab_paths.harness()/'knowledge/toolchains/art-r155/image_predeploy_gate.py']
     return bundle.digest({str(p): bundle.sha(p) for p in files})
@@ -133,6 +138,20 @@ def preflight(root, baseline_native, oatdump):
     policy_before = policy_binding(root)
     plan = prepare(root, baseline_native)
     d = json.loads((Path(root)/'bundle.json').read_text())
+    static = None
+    if 'image_gate_reference' in d and 'static_checks' not in d:
+        raise RuntimeError('effective image replacement requires deployed JAR/native static checks')
+    if 'static_checks' in d:
+        import generation_static_checks
+        baseline_bundle = Path(baseline_native).resolve().parent
+        if bundle.sha(baseline_bundle/'bundle.json') != d['static_checks']['baseline_bundle_sha256']:
+            raise RuntimeError('static check effective baseline bundle drift')
+        policy = json.loads(bundle.member(Path(root),d['static_checks']['policy']).read_text())
+        static = generation_static_checks.check(root,baseline_bundle,policy)
+        if static['baseline_bundle_sha256'] != d['static_checks']['baseline_bundle_sha256']:
+            raise RuntimeError('static effective baseline changed during checks')
+        if static['status'] != 'PASS':
+            raise RuntimeError('required deployed artifact static check refused: '+json.dumps(static))
     gates = bundle.image_checks(root, oatdump)
     if not all(gates[k] for k in ['G1','G2']):
         raise RuntimeError('required image gate refused: ' + gates['log'])
@@ -143,7 +162,7 @@ def preflight(root, baseline_native, oatdump):
     native.check_frozen_restore(plan['baseline'], plan['additions'])
     if prepare(root, baseline_native) != plan or policy_binding(root) != policy_before:
         raise RuntimeError('bundle or policy changed during preflight')
-    plan.update(image_gates=gates, native_tickets=tickets, policy_binding=policy_before,
+    plan.update(image_gates=gates, static_checks=static, native_tickets=tickets, policy_binding=policy_before,
                 device_io=False, gates_passed=True)
     plan['deployable'] = plan['rollout_ready'] and plan['build_receipt']['status'] in ('verified', 'verified-with-exception')
     plan['plan_binding'] = bundle.digest(plan)
