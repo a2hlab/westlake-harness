@@ -10,8 +10,8 @@ VerifyError mechanism + min-fix.)
 ## Per-key table (U13 measured)
 | key | board/win | bind | U13 first-fatal | earliest wall | disposition |
 |---|---|---|---|---|---|
-| **fd-saber** | 61b/W2 | OK | **none — LIT** (Flutter Impeller OpenGLES fallback) | `load libvulkan/libGLESv3 failed` (non-fatal) | **U13 already lit it** — did not even need the Flutter EGL fix; U14 app-ns would only clear the (cosmetic) GL-load warnings |
-| **x** (`com.twitter.android`) | 61b/W2 | OK (relaunch) | **none captured** (BIND OK) | `libcrashlytics __register_atfork` reloc; later `load libGLESv2 failed` → `libtwittermedia` ULE | **U13 JAR moved it** (the C9 ITelephonyRegistry NPE is gone, BIND OK); residual `libGLESv2` for libtwittermedia → **U14 app-ns** (media, likely non-fatal). Note: key "x" = Twitter/X, not a Compose app |
+| **fd-saber** | 61b/W2 | OK | **ALIVE-WHITE** (t5/t20 screenshots full-screen white, process alive — corrected 07:06; BIND OK + Impeller fallback only mean "did not crash", not "on screen") | window published, activity terminates, ~0 frames | **unowned white** — see `u13-white-saber-x`. **NOT** the U14 Flutter EGL wall; `Failed to load GLES`/`viewRoot null` are lit-shared red herrings |
+| **x** (`com.twitter.android`) | 61b/W2 | OK (relaunch) | **ALIVE-WHITE** (t5/t20 screenshots full-screen white, process alive — corrected 07:06; BIND OK only means "did not crash") | window published, activity TerminateAbility ×2 + relaunch, ~0 frames | **unowned white** — see `u13-white-saber-x`. The C9 ITelephonyRegistry NPE *is* gone (U13 JAR), but the app still does not render. Note: key "x" = Twitter/X, not a Compose app |
 | **toutiao** | 61b/W2 | OK | SIGSEGV (`platform-single`) at the **ICU** load; then NPE `PermissionManager.shouldShowRequestPermissionRationale` | `libmetasec_ml __system_property_read` reloc (earliest, non-fatal); **`load libicui18n.so failed`** 1 line before the segfault | **U14 app-ns 341c + ICU shim** (libicui18n visibility + `_74` shim) moves the ICU segfault; next = Lynx/V8 (`toutiao-next-wall`); residual `PermissionManager` NPE (framework stub) |
 | **privacybrowser** | 5ea/W1 | OK | IAE "can't create bitmap without a color space" | (CoroutineStart CNFE, benign) | **U15 #1 Bitmap framework** (`u15-framework-bitmap`) |
 | **mcdonalds** | 61b/W2 | FAILED | bind FAILED → NPE SplashActivity (`DataSourceModuleProvider.v()` null, **downstream**) | **`librealmc.so _ctype_`** reloc (Realm) | **U15 compat v3 / native_abi v2** (`_ctype_` in native domain). The Java NPE is downstream of the Realm init failure |
@@ -22,15 +22,24 @@ VerifyError mechanism + min-fix.)
 | **chessclock** | 5cd/W1 | OK | `WindowManager$InvalidDisplayException` "the specified display can not be found" (addView) | (CoroutineStart CNFE, benign) | **unowned** — display/window: addView can't find the display; also earlier NSME `ActivityManagerAdapter.nativeConsumeConnectionFailure(I)Z` (a JAR stub gap). Not M3 (that's GLSurfaceView EGL) |
 | **fd-api** (`com.termux.api`) | 5ea/W1 | OK | IllegalStateException "You need to use a Theme.AppCompat theme" (start TermuxAPIMainActivity) | (bg `LocalSocketImpl.bindLocal` ULE, non-fatal) | **unowned / probe** — AppCompat-theme issue (`u13-java-walls-2` theme probe); an app-theme/manifest matter, not a runtime wall |
 
+> **Correction (outer 07:06, on-board re-judged):** fd-saber and x in 61b window2 are **alive-white** (t5/t20
+> screenshots full-screen white, process alive), **not lit**. BIND OK / Impeller fallback / no-crash in the log only
+> mean "did not crash", not "on screen" (AGENTS: screenshots are ground truth). Their white mechanism is in
+> `benchmark/2026-10-03-u13-white-saber-x` — both publish a window session but the activity self-terminates and renders
+> ~0 frames; the `Failed to load GLES`/`viewRoot null` markers are **lit-shared red herrings** (refuted by the
+> separation table). Rows + summary below are corrected accordingly.
+
 ## Disposition summary
-- **Already resolved by U13** (no longer dead): **fd-saber** (lit via Impeller fallback — stronger than the cluster's
-  "moves, next Flutter EGL": it needs neither), **x/Twitter** (BIND OK; the telephony NPE is gone via the U13 JAR stub).
-- **U14 moves**: **toutiao** (app-ns 341c + ICU shim → past the ICU segfault; next Lynx/V8), **x** (app-ns GLESv2 for
-  libtwittermedia, residual/media).
+- **BIND progressed under U13 but still alive-white** (not lit): **fd-saber** and **x/Twitter** — window published,
+  activity TerminateAbility + ~0 frames (`u13-white-saber-x`). The U13 JAR *did* clear x's C9 telephony NPE (BIND OK),
+  but x still does not render.
+- **U14 moves**: **toutiao** (app-ns 341c + ICU shim → past the ICU segfault; next Lynx/V8). (x's residual `libGLESv2`
+  for libtwittermedia → U14 app-ns, but that is not why x is white — see `u13-white-saber-x`.)
 - **U15 waits**: **privacybrowser** → Bitmap #1; **mcdonalds / fd-im-vector-app / vlc** → compat v3 / native_abi v2
   (the `_ctype_` + bionic-export family in the native domain); **immich** → NSD BCP stubs (new, below) + ATrace (U15 #3).
 - **Unowned / needs a new owner**: **glmark2** (GetLongField JniAbort — U13 prediction falsified), **chessclock**
-  (InvalidDisplay + ActivityManagerAdapter NSME), **fd-api** (AppCompat theme probe), **immich** (NSD).
+  (InvalidDisplay + ActivityManagerAdapter NSME), **fd-api** (AppCompat theme probe), **immich** (NSD), **fd-saber /
+  x** (alive-white, activity-terminate/no-render — `u13-white-saber-x`).
 - **M3** (GLSurfaceView EGL IAE, `u15-runtime-m3`) owns **none** of the 11's *current* first-fatal — glmark2 is a
   GLSurfaceView app but its U13 wall is the `GetLongField` JniAbort, which precedes any EGL IAE (M3 would be its *next*
   wall).
@@ -38,9 +47,12 @@ VerifyError mechanism + min-fix.)
 ## Corrections to the cluster predictions (the value of this recheck)
 1. **glmark2 — FALSIFIED.** C3 "U13 runtime GetLongField moves" is wrong for glmark2: it still SIGABRTs in
    `GetLongField` under the U13 runtime (app-native `getSceneInfo`, a different call site than the Flutter GetLongField
-   U13 fixed). fd-saber (the other C3) *did* move — the C3 prediction holds for fd-saber, not glmark2.
-2. **fd-saber — stronger than predicted.** Not just "moves, next Flutter EGL fff9" — it **lit** under U13 (Impeller
-   OpenGLES fallback swallows the `libvulkan`/`libGLESv3` load failures); no Flutter EGL wall is reached.
+   U13 fixed). fd-saber (the other C3) cleared the SIGABRT but is **alive-white**, not lit (next).
+2. **fd-saber — corrected to alive-white** (outer 07:06, on-board). It cleared the C3 SIGABRT but did **not** light: t5/t20
+   screenshots are full-screen white, process alive. The "lit via Impeller fallback" claim was wrong — BIND OK + Impeller
+   fallback only mean "did not crash"; the activity self-terminates and renders ~0 frames. The `libvulkan`/`libGLESv3`
+   load-fail and `Failed to load GLES` markers are **shared with lit keys** (separation refuted). Mechanism in
+   `benchmark/2026-10-03-u13-white-saber-x`; it is **not** the U14 Flutter EGL (`eglCreateWindowSurface`) wall.
 3. **vlc — owner corrected.** Not "U14 native_abi 7605812c"; the real first symbols (`__pthread_cleanup_push`,
    `strtoll_l`) are the bionic-export family that 7605812c lacks → **U15 compat v3 / native_abi v2** with the NEEDED
    closure (DIGEST 741).
