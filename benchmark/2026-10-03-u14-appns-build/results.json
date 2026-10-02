@@ -20,7 +20,18 @@
     "patch_revised": "recipe/win-u14-appns-public-libs.patch now targets candidate-stock-host.c `if (wants_bridge)` bridge inherit (line 330, verified) -- this edge runs for EVERY app, so one edit covers toutiao/fd-stk/subwaysurfers and the enrolled apps. Adds libicui18n:libicuuc:libGLESv2:libGLESv3:libvulkan:libjnigraphics. EXCLUDES libz.so + libandroidio/libjavacore.",
     "inputs_validated_on_mac": ["DevEco clang", "sysroot (westlake-harness-bms-deploy)", "candidate-stock-host.c 507bf160 (patch site line 330 present)", "u10-bundle reused_objects recipe (MASTER=westlake-harness)"],
     "plan": ["run u12-private-zlib logic UNPATCHED x2 -> reproduce 2a87118e (N10b gate; stop on mismatch)", "apply revised patch, build x2 -> U14 candidate", "deployed_strings_diff = only the new soname string + the LOGI/branch; open_site_scan sites/edges unchanged", "persist + record shas"],
-    "build_not_run_this_turn": "patch was re-derived against the real deployed source + reconciled with the libz/private-zlib interaction this turn; the Mac reproduce+patch is the mechanical next step."
+    "reproduce_gate_RAN": {
+      "unpatched_sha": "87ffee1f (x2 self-deterministic)",
+      "vs_2a87118e": "same size 646760; 136010 bytes differ: .debug_* ~126187 (allowed by (a)) + .rodata 8766 + .text 737 (NOT allowed). Same-length path replacement fixed only 37 bytes.",
+      "root_cause": "clang orders .rodata string literals by CONTENT; the __FILE__ path strings differ in content (wiki/bms, u14/u12), so they sort to different positions -> .rodata string pool shifts +460 bytes -> .text address-reference immediates (all 374 diffs = theirs=mine+0x1cc, no opcode change) and jump tables shift. (a)'s section criterion (.text byte-identical) FAILS.",
+      "semantic_faithful": "abi_diff: exports 15/15, 0 added/removed/drift/breaks -> ABI identical. deployed_strings_diff: only the 2 build paths differ. .rodata string set identical (497==497). Code+ABI+string-set identical; only the embedded build-input PATH content differs.",
+      "conclusion": "(a) AS SPECIFIED (diffs confined to path strings, .text identical) is NOT achievable from a different input path -- needs u12's exact path content = (b), ruled out."
+    },
+    "patch_validated_RAN": {
+      "patched_sha": "341c1260 (x2 self-deterministic)",
+      "vs_unpatched": "deployed_strings_diff: ONLY new string = 'libicui18n.so:libicuuc.so:libGLESv2.so:libGLESv3.so:libvulkan.so:libjnigraphics.so'. abi_diff: exports 15/15, 0 change. Raw byte-diff pervasive only because the added snprintf block grows .text by 568 bytes (address shifts). Patch adds exactly the intended public-lib soname, nothing else."
+    },
+    "decision_needed": "(A') accept SEMANTIC faithfulness (ABI identical + string-set identical + only build-path content differs) + the semantic patch validation -> U14 host candidate = 341c1260 (built here, deployed from the canonical path by whoever ships it); OR require byte-identity = (b), ruled out (don't touch cx-bms). Did NOT widen the acceptance bar unilaterally. Wall-2 (libicuuc f74827d9) has the same path-content consideration; not started pending the call."
   },
   "libz_element": {
     "private_zlib_scope": "U11ZlibRoot (zlib-route.h) returns westlake_native for EXACTLY {im.vector.app (Element), com.emn8.mobilem8.nativeapp.bk (burgerking)} -- scoped, not universal, not burgerking-only.",

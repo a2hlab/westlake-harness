@@ -1,0 +1,42 @@
+# N10b host reproduce gate + patch validation (Mac DevEco clang; recipe/reproduce_host.py; inputs read-only, outputs
+# in ./.artifacts; no board, no a2hlab). Outer chose (a). HONEST RESULT: (a) AS SPECIFIED is NOT met from a different
+# input path; the reproduction is SEMANTICALLY faithful (ABI + string-set identical) but NOT byte-confined to paths.
+
+## Why: clang orders .rodata string literals by CONTENT. The __FILE__ path strings differ in content (not just length)
+## -- /…/westlake-harness-wiki/…/u14-appns-build/… vs /…/westlake-harness-bms/…/u12-private-zlib/… -- so they sort to
+## different positions, shifting the whole .rodata string pool by 460 bytes. That shifts .text address-reference
+## immediates and the .rodata jump tables. So the delta is NOT localized to the path strings.
+
+## my-unpatched (87ffee1f) vs 2a87118e -- same size 646760; 136010 differing bytes by section:
+##   .debug_* ~126187  (ALLOWED by (a))   .rodata 8766   .text 737   .comment 271   .rela.dyn 20   .symtab 2   build-id 20
+## - same-length path replacement (my 89-char prefix -> theirs', 4 occurrences) fixed only 37 bytes -> the delta is NOT
+##   the path bytes; it is the content-induced LAYOUT SHIFT.
+## - the .text 737 diffs are 374 clusters, EVERY one theirs = mine + 0x1cc (460) -> address-reference shifts, not opcode
+##   changes (code logic identical).
+## - .rodata string SET is identical after path-normalize (497 vs 497; the only set delta is one jump-TABLE, binary
+##   offsets, not a string).
+## SEMANTIC checks (the right lens; address shifts are noise):
+##   abi_diff old=2a87118e new=mine: exports 15/15, removed 0, added 0, signature drift 0, consumer breaks 0 -> ABI IDENTICAL.
+##   deployed_strings_diff: ONLY the 2 build paths differ (candidate-stock-host.c, resident-compat.h) + 1 jump-table artifact.
+## => code semantics + ABI + string set are identical; the ONLY real difference is the embedded build-input PATH content.
+## => (a)'s section criterion (".text et al byte-identical, only path rodata differs") FAILS, because the path CONTENT
+##    (not length) reorders .rodata. Byte-identity needs u12-private-zlib's exact input path = (b), which is ruled out.
+
+## Patch validation -- my-patched (341c1260, x2 identical) vs my-unpatched (both built from MY path, so path cancels):
+## - deployed_strings_diff: the ONLY new string is
+##     "libicui18n.so:libicuuc.so:libGLESv2.so:libGLESv3.so:libvulkan.so:libjnigraphics.so"
+##   (+ the renamed source path .patched.c, + a jump-table artifact). No other string added/removed.
+## - abi_diff: exports 15/15, 0 added/removed/drift/breaks -> the patch changes NO exported ABI.
+## - raw byte-diff is pervasive ONLY because the added snprintf block grows .text by 568 bytes and shifts addresses;
+##   semantically the patch adds exactly the intended public-lib soname to the bridge inherit, nothing else.
+## See strings-repro.txt / strings-patch.txt (path-normalized tool output).
+
+## DECISION FOR THE OUTER
+## The reproduction is faithful in code/ABI/strings (only the build path differs), but NOT byte-localized to the path
+## (clang's content-ordered .rodata string pool makes any path-content change non-local). Two honest options:
+##  (A') accept SEMANTIC faithfulness (ABI identical + string-set identical + only path content differs) + the semantic
+##       patch validation above as the acceptance basis -> the U14 host candidate = 341c1260 (built here), deployed by
+##       whoever ships it from the canonical path. This is the strongest result achievable without touching cx-bms.
+##  (b)  build from u12-private-zlib's exact input path for byte-identity to 2a87118e -- RULED OUT (don't touch cx-bms).
+## I did NOT widen the acceptance bar on my own; the candidate 341c1260 stands or falls on the outer's call of (A') vs a
+## byte-identity requirement.

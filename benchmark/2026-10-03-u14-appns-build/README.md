@@ -95,6 +95,35 @@ predates and is independent of this patch. (`evidence/libz-and-deployed-inherit.
   `u_hasBinaryProperty` → their `_72` impls); `nm -D` diff = only those 7 aliases.
 Both reproduce-gates must pass byte-identical before patching (N10b); stop + report on any mismatch.
 
+## Wall-1 reproduce gate + patch — RAN; semantically faithful but NOT byte-localized to the path (evidence/host-reproduce-gate.txt)
+I replicated the host build in this dir (`recipe/reproduce_host.py`: read-only recipe
+`MASTER/benchmark/2026-10-01-u10-bundle/r2-host-build-receipt.json` + DevEco clang + sysroot/reused-objects referenced by
+`$WORKSPACES`; sources read-only in `./inputs`, outputs in `./.artifacts`; no board, no a2hlab). **Correction to my
+earlier "path-only" claim:** on the outer's (a) instruction I listed every differing byte — and the delta is **not**
+confined to the path strings.
+- my-unpatched (`87ffee1f`) vs `2a87118e`: same size 646760, **136010 bytes differ** — `.debug_*` ~126187 (allowed by
+  (a)), but also **`.rodata` 8766 + `.text` 737** (not allowed). Same-length path replacement fixed only **37** bytes.
+- **Root cause:** clang orders `.rodata` string literals **by content**; the `__FILE__` path strings differ in *content*
+  (wiki/bms, u14/u12), so they sort to different positions → the whole `.rodata` string pool shifts **+460 bytes** →
+  `.text` address-reference immediates (all 374 diffs are `theirs = mine + 0x1cc`, no opcode change) and jump tables
+  shift. So (a)'s own section criterion (".text et al byte-identical, only path rodata differs") **fails**.
+- **Semantic checks (the right lens — address shifts are noise):** `abi_diff` exports **15/15, 0 added/removed/drift/
+  breaks → ABI identical**; `deployed_strings_diff` → the **only** real differences are the 2 build paths
+  (`candidate-stock-host.c`, `resident-compat.h`); `.rodata` string **set identical** (497≡497). So the code, ABI, and
+  string set are identical — the only real difference is the embedded build-input **path content**.
+
+**Patch validated semantically** (my-patched `341c1260`, ×2 identical, vs my-unpatched — both from my path so it cancels):
+`deployed_strings_diff` → the **only** new string is `libicui18n.so:libicuuc.so:libGLESv2.so:libGLESv3.so:libvulkan.so:libjnigraphics.so`;
+`abi_diff` → exports 15/15, **0 change**. (Raw byte-diff is pervasive only because the added `snprintf` block grows
+`.text` by 568 bytes and shifts addresses.)
+
+**Decision for the outer.** Byte-identity to `2a87118e` needs u12-private-zlib's exact input **path content** (clang's
+content-ordered string pool makes any path-content change non-local) = **(b)**, which is **ruled out** (don't touch
+cx-bms). The achievable result is **(A′): accept semantic faithfulness** (ABI identical + string-set identical + only
+the build path differs) + the semantic patch validation above — U14 host candidate = `341c1260`. I did **not** widen the
+acceptance bar myself; `341c1260` stands or falls on the outer's (A′)-vs-byte-identity call. **Wall-2 (`libicuuc
+f74827d9`, `u13-compat-ctype/build.py`) has the same path-content consideration — not started pending that call.**
+
 ## Files
 - `evidence/wall2-selection.txt` — the maps + OH-lib scan proving option (a) unsafe → option (b).
 - `evidence/wall2b-collision-judgment.txt` — why option (b) does NOT collide with OH `libhmicuuc`'s real `_74` (ns +
