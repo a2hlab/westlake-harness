@@ -107,8 +107,39 @@ def scan(ws, repo, hours, now=None, acks=None):
     return rows
 
 
+def branch_residue(wt, repo):
+    """Files a lane branch changed since its merge-base with master, whose master copy is still the merge-base
+    version (master never touched it) and differs from the branch version: work that only lives on the branch.
+    2026-10-02: the B10 #72 build-script hardening (26 scripts) sat on the bms branch for three days this way,
+    invisible to the listing scan because no landing-paths.txt named the bms/ files."""
+    g = lambda *a, cwd=wt: subprocess.run(['git', '-C', str(cwd), *a], capture_output=True, text=True).stdout.strip()
+    head = g('rev-parse', 'HEAD')
+    master = g('rev-parse', 'master', cwd=repo)
+    base = g('merge-base', head, master)
+    if not head or not base:
+        return []
+    out = []
+    for rel in g('diff', '--name-only', base, head).splitlines():
+        if rel.startswith('.octos/') or not rel:
+            continue
+        on_branch = subprocess.run(['git', '-C', str(wt), 'show', f'{head}:{rel}'], capture_output=True).stdout
+        at_base = subprocess.run(['git', '-C', str(wt), 'show', f'{base}:{rel}'], capture_output=True)
+        mpath = repo / rel
+        if not mpath.is_file():
+            out.append((rel, 'missing-on-master'))
+            continue
+        mbytes = mpath.read_bytes()
+        if mbytes == on_branch:
+            continue
+        if at_base.returncode == 0 and mbytes == at_base.stdout:
+            out.append((rel, 'master-still-at-merge-base'))
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    ap.add_argument('--branches', action='store_true',
+                    help='instead of listings, report branch-only changes per lane worktree (see branch_residue)')
     ap.add_argument('--hours', type=float, default=24)
     ap.add_argument('--workspaces', type=Path)
     ap.add_argument('--repo', type=Path, default=REPO)
@@ -116,6 +147,21 @@ def main(argv=None):
     ap.add_argument('--ack-json', type=Path, default=ACK_JSON)
     a = ap.parse_args(argv)
     ws = a.workspaces or Path(workspaces())
+    if a.branches:
+        total = 0
+        for wt in lane_worktrees(ws, a.repo):
+            res = branch_residue(wt, a.repo)
+            if not res:
+                continue
+            kinds = {}
+            for rel, kind in res:
+                kinds.setdefault(kind, []).append(rel)
+            for kind, rels in sorted(kinds.items()):
+                total += len(rels)
+                tops = sorted({r.split('/')[0] + '/' + (r.split('/')[1] if r.count('/') else '') for r in rels})
+                print(f'{wt.name:<40} {kind:<28} {len(rels):>4}  {", ".join(tops[:6])}')
+        print(f'BRANCH-ONLY {total}')
+        return 0
     rows = scan(ws, a.repo, a.hours, acks=load_acks(a.ack_json))
     n = 0
     for r in rows:
