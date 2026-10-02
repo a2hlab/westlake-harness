@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-bt-le-scancallback/`** | **fd-plus bind fails on android.bluetooth.le.ScanCallback: our BCP has 4/22 public android.bluetooth.le and 5/41 android.bluetooth classes (Bluetooth is mainline, no framework-bluetooth); 87 keys reference missing BT classes but only fd-plus fails in any hilog. Fix: ScanCallback verbatim from AOSP 14 r1 into adapter-mainline-stubs = `87cf65cc` (base 615b8bbe, deterministic, class diff clean, needs FZ-005 re-bake); host ART on board BCP: new stubs PASS, old stubs reproduce the board's NoClassDefFoundError. Prediction: fd-plus first fatal moves, others 0.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **android.bluetooth 在我们 BCP 里几乎整包缺(cc-t3)**:AOSP 13+ 蓝牙是 mainline(framework-bluetooth.jar),我们没带;android.bluetooth.le 公开 22 类只有 ScanFilter/ScanRecord/ScanResult 空桩(4),android.bluetooth 41 类只有 5(BluetoothAdapter/BluetoothManager 都没有)。166 key 里 87 个静态引用,实际 hilog 只有 fd-plus 死在 ScanCallback(OsmAnd DevicesHelper$1 extends ScanCallback,在 initPlugins 里加载)。修法按『实际失败 + 执行路径 dexdump』定尺寸:只往 adapter-mainline-stubs 补 AOSP 14 r1 原样的 ScanCallback(87cf65cc,需 FZ-005 重烤);以后若补 BluetoothAdapter 必须保持 getDefaultAdapter()→null(我们的 BluetoothFrameworkInitializer 不注册服务,getSystemService(BLUETOOTH_SERVICE) 已是 null)。见 benchmark/2026-10-03-bt-le-scancallback/。"
+   ]
+  }
+ ]
+}
