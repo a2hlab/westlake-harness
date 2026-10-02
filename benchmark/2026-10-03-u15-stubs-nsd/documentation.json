@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-u15-stubs-nsd/`** | **U15 stubs (cc-t3) = U14 stubs 87cf65cc + android.net.nsd from AOSP 14 r1 Connectivity bd692130 (NsdServiceInfo verbatim; NsdManager = verbatim constants + the 3 listener interfaces + immich's 5 method signatures, no instance possible) = 94a94905 x2; class gate +8 only; host ART new 5/5, old reproduces the board VerifyError (Unresolved Reference via the listener implementor). getSystemService(NSD) stays null (registerServiceWrappers empty = AOSP absent-binder). Only fd-immich in 332 runs; predicted past the VerifyError (high), next = libcronet ATrace (shelved), not lit. Needs FZ-005 re-bake.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **Java VerifyError 里的『Unresolved Reference: <app 类>』= 下一层缺 BCP 类型(cc-t3,immich NSD)**:immich 的 A2.b 被拒,是因为 d7.c 实现的 android.net.nsd.NsdManager$DiscoveryListener 不在 BCP(framework 3e106350 里 android/net/nsd 0 个;NSD 属 Connectivity 主线模块)。查法:dexdump 被点名 app 类的父类/接口,补恰好缺的平台类型;平台服务在路由 A 无注册(stubs 的 ConnectivityFrameworkInitializerTiramisu.registerServiceWrappers 为空)时保持 getSystemService 返回 null,与 AOSP 无 binder 时一致,只补链接所需。U15 stubs 94a94905。"
+   ]
+  }
+ ]
+}
