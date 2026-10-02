@@ -1,0 +1,215 @@
+#!/usr/bin/env python3
+"""diff.csv: the old Toutiao route's capabilities against today's BMS + route-A path, one functional item per row,
+ranked by how likely filling the gap gets Toutiao on screen. The rows are judgements; every row names the evidence
+it rests on (files in this directory, the two run logs, the scripts' outputs). Run after inventory.py and
+java_classes.py; it re-checks the counts it quotes from their CSVs.
+"""
+import csv
+import sys
+from collections import Counter
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+W5 = 'evidence/window5-toutiao-lines.txt'
+OLD = 'evidence/old-stderr-lines.txt'
+COLS = ['rank', 'id', 'area', 'old_route_provides', 'current_route', 'gap', 'fix_layer', 'generic_fix_and_source',
+        'wall1_effect_prediction', 'toutiao_only_hack_do_not_port', 'evidence']
+
+ROWS = [
+    ('JIT', 'process/ART',
+     'ART JIT on: APPSPAWNX_JIT_BASELINE=1, WESTLAKE_OH_JIT_ANON_FALLBACK=1, WESTLAKE_OH_JIT_FILE_CACHE_DIR='
+     '/data/data/<pkg>/code_cache/art-volatile (app-uid 0700, prepared by prepare_jit50.sh in the parent mount ns); '
+     'libart 78e34445 carries the OH JIT patches in jit_memory_region.cc: memfd RX is refused by XPM, so it falls back '
+     'to an anonymous cache with RWX updates (09-25 run: "[WESTLAKE-OH-JIT] memfd RX denied (13); using ART anonymous '
+     'cache", JIT code cache 3.3 MB used) and, opt-in, the file-backed dual view (#50). App AOT was NOT used on the '
+     '9-27/28 boards (Tier-1); feed in ~20 s (5cd) / 25 s (5ea) on JIT alone.',
+     'JIT off for every app: APPSPAWNX_NO_JIT=1 hard-set in appspawn_x.cfg:61 and main.cpp:123 and REQUIRED by '
+     'test_production_config.py:47 / verify_generation.py:175 (origin: "2026-05-01 G2.14n DIAGNOSTIC: disable JIT"). '
+     'libart 59e1bb45 has no WESTLAKE_OH_JIT_* code. No app AOT either -> Toutiao runs on the interpreter.',
+     'no JIT and no AOT; the OH JIT file-cache patch is absent from the current libart',
+     'native (libart) + config (appspawn-x env, production-config gate) + sandbox prep (code_cache/art-volatile 0700)',
+     'Port the Westlake libart jit_memory_region.cc OH patches: minimum = the anonymous-cache fallback the 09-25 run '
+     'used; better = libart-v27 file-backed dual view (only object differing from v16; vm-copies/westlake-current '
+     'docs/parity/OH-ANDROID-PARITY-2026-09-05.md, probe gap-repair-20260904/jit_dual_probe_tmp27.cpp; patch text is on '
+     'hw248, not local). Then drop APPSPAWNX_NO_JIT (cfg, main.cpp, both gate tests) and, for the file cache, create '
+     'code_cache/art-volatile 0700 per app in sandbox prep. Re-run the G2.14n SIGILL family and the full sweep: JIT '
+     'was turned off as a diagnostic.',
+     'HIGH. Wall 1 is "not finished by t20": the main thread spends 12 s in ArticleApplication.attachBaseContext '
+     '(bind 41.465 -> still there at 53.6). That is app code on the interpreter; the old route ran the same app init '
+     'under JIT and reached the feed in 20-25 s. Expected: attachBaseContext several times shorter, MainActivity '
+     'frame at t20 plausible, feed at t60.',
+     'no (generic: every app starts on the interpreter today)',
+     f'{W5}:28007 JIT DISABLED; {OLD} JIT section (child.stderr:23, :21754); evidence/old-run.sh; DIGEST A.5, line 47; '
+     'bms/src/adapter/framework/appspawn-x/config/appspawn_x.cfg:61; strings old/new libart (README)'),
+    ('BIONIC-ABI', 'native namespace',
+     'process-wide bionic ABI provider: libwebview_bionic_shim.so 85c789f4 in LD_PRELOAD and as '
+     'WESTLAKE_ANDROID_NATIVE_PRELOAD of libart\'s westlake_android_app namespace (22 Toutiao libs listed in '
+     'WESTLAKE_ANDROID_NATIVE_TARGETS); 73 symbols: __errno, __cmsg_nxthdr, __sF/stdio, __FD_*_chk, sigset/sigaction, '
+     'getaddrinfo wrappers. Log: [SOURCE-NATIVE-ABI] errno=... provider=libwebview_bionic_shim.so.',
+     'libwestlake_native_abi.so d2053066 (26 symbols) is loaded NOW|GLOBAL only into the westlake_native / '
+     'westlake_flutter domains, selected by a hard-coded 13-package list (app_native_loader.c native_cluster_path); '
+     'Toutiao is not listed, so its libs load into a plain westlake.anl.app namespace with no GLOBAL ABI provider. '
+     'libbionic_compat (has __system_property_read) is shared by name only.',
+     'libttcrypto __errno x24, libsscronet __cmsg_nxthdr x5, libmetasec __system_property_read x4 fail to relocate; '
+     'old-shim symbols still missing from native_abi+compat: see evidence/abi-symbols.txt',
+     'native (libapp_native_loader domain selection + libwestlake_native_abi exports)',
+     'Select the native domain by need, not by package: any app lib whose dynamic imports name a bionic-only symbol '
+     '(the set in evidence/abi-symbols.txt) goes to the domain that preloads the ABI provider. Add the old shim\'s '
+     'missing exports to native_abi by copying upstream framework/webview-shim/webview_bionic_shim.c '
+     '(vm-copies/westlake-current origin/corpus2-fixes; our n6-native/src/native_abi.c is its cut-down successor).',
+     'MEDIUM. The failures are on background threads during attachBaseContext (Cronet/TTNet init, crypto, metasec) '
+     'and repeat (librarian copies), so they cost time and leave TTNet without Cronet; they do not kill the process. '
+     'Needed for feed content (network), less for the first frame.',
+     'no (generic: the 13-package list is the only reason other apps get the layer)',
+     f'{W5}:32340/32783/32785; {OLD}:260; evidence/abi-symbols.txt; evidence/open-sites-new.txt; '
+     '$WORKSPACES/westlake-harness-bms-deploy/benchmark/2026-09-30-n3-native/flutter/app_native_loader.c:62'),
+    ('PROVIDER-ANSWER', 'provider/service (JAR)',
+     'AdapterIAM-stub (direct launch, real AMS adapter skipped) does not handle getContentProvider -> null: '
+     'Mira\'s early PPMP lookup fails but nothing is cached; after installContentProviders the real PPMP answers.',
+     'ContentProviderRegistry answers any unpublished authority with an OH DataShare bridge; ActivityThread caches it; '
+     'the real PPMP is then refused ("already published as ...pm.PPMP"), Mira PPM dead for the process life.',
+     'early own-authority lookups get a cached, failing bridge instead of "not here yet"',
+     'JAR (runtime)',
+     'U11j OwnProviderLocal (AOSP AMS canRunHere -> ContentProviderHolder(mLocal) ), already inside U12 runtime '
+     '3bca82c5 (benchmark/2026-10-02-own-provider-local, -u12-jar-plan).',
+     'MEDIUM: removes 0.6 s per Mira call on the main thread and keeps PPM alive (plugin_exception_monitor x5 in '
+     'window5). Old route still logged "mira plugin not loaded", so plugins are not on the first-frame path.',
+     'no',
+     f'{W5}:32894 already published; {OLD}:195 AdapterIAM-stub; old adapter-runtime-bcp AppSpawnXInit$2 handles '
+     'bindService/getRunningAppProcesses/publishContentProviders only'),
+    ('BIND-PROVIDERS', 'provider (JAR)',
+     'bind data carries the main-process providers only: "[B43-BIND] providers populated: 43".',
+     '"providers populated: 54": the 11 :push/:smp/:plugin/:stubp providers are instantiated in the main process '
+     '(and Tinker p0/p1 stub authorities collide: "already published").',
+     '11 extra provider instantiations (onCreate) in the main process during bind',
+     'JAR (runtime, B8-PROV projection)',
+     'Filter bind providers by AOSP canRunHere (multiprocess or same process name), as '
+     'generateApplicationProvidersLocked does (second finding of 2026-10-02-own-provider-local; 7 keys, 17 providers).',
+     'LOW-MEDIUM: less main-thread work in installContentProviders; fixes the p0/p1 collisions.',
+     'no',
+     f'{OLD}:280 providers populated: 43; {W5}:30923 providers populated: 54, :32905-32906'),
+    ('NATIVE-NET', 'native network',
+     'LD_PRELOAD libandroid_native_network_compat.so (WESTLAKE_ANDROID_NATIVE_NET_TARGETS=libsscronet.so): '
+     'socket/connect/getaddrinfo interposed for Cronet ([WESTLAKE-NATIVENET-767/807], 4.6k lines).',
+     'absent; Cronet does not even link (__cmsg_nxthdr, row BIONIC-ABI).',
+     'Cronet\'s native network path has no OH adapter',
+     'native',
+     'Copy libandroid_native_network_compat (old tt-rt.tar; source: Westlake tree on hw248) as part of the native ABI '
+     'domain, keyed by imports, not by a library name list.',
+     'LOW for the first frame (network starts after attach); HIGH for feed content.',
+     'partly: the target list (libsscronet) is Toutiao-specific, the mechanism is not',
+     f'{OLD} [WESTLAKE-NATIVENET-*] lines; evidence/old-run.sh WESTLAKE_ANDROID_NATIVE_NET_TARGETS'),
+    ('SETTINGS', 'provider (JAR)',
+     'Settings NameValueCache holders get an in-process IContentProvider Proxy ("IContentProvider Proxy installed in '
+     '3 holders").',
+     'installSettingsContentProviderStub is hollow ("provider injection skipped"); reads go to the OH bridge (null).',
+     'only the primed keys answer', 'JAR (runtime)',
+     'U12 runtime 3bca82c5: upstream 1c883ad WlSettingsProvider path B (benchmark/2026-10-02-u12-jar-plan).',
+     'LOW: Toutiao reads only non-fatal settings in window5.', 'no',
+     f'{OLD}:236; {W5}:30713'),
+    ('NET-STATE', 'service (JAR+native)',
+     'getService("connectivity") -> adapter (real-routed) backed by liboh_connectivity_state.so (OH netconn: netId, '
+     'routes, LinkProperties, caps); permissionmgr/account via liboh_permission_queries / liboh_account_state.',
+     'ONLINE-CM fetcher answers getSystemService (getActiveNetworkInfo -> WIFI); raw getService("connectivity") -> '
+     'null; the three OH helper libraries are absent.',
+     'thinner network state; raw binder lookups null', 'JAR (runtime) + native helpers',
+     'Route raw getService("connectivity") to the ONLINE-CM adapter; copy the OH helper libs if a key needs '
+     'LinkProperties/NetworkCapabilities beyond NetworkInfo.',
+     'LOW for wall 1.', 'no', f'{OLD}:321-322; {W5}:30859, :31181, :32477'),
+    ('BCP-CLASSES', 'Java BCP',
+     '9 BCP jars incl. real conscrypt.jar and adapter-runtime-bcp.jar (CLAMP48 BCP, boot image boot-*.art).',
+     '9 BCP jars without conscrypt.jar (stubs supply the conscrypt pieces T8 needed); oh-adapter-runtime is not BCP.',
+     'Toutiao references 2016 platform types: 23 exist only in the old BCP (6 added by U12 stubs: '
+     'OnNetworkActiveListener, DhcpInfo, SupplicantState, WifiLock, MulticastLock, SuggestionConnectionStatusListener; '
+     '17 remain: bluetooth 9, android.net.nsd 5, NetworkStatsManager, WifiP2pManager, MediaStore$Downloads, '
+     'MediaStore$Video$Thumbnails); 61 in neither (mostly org.apache.http legacy).',
+     'JAR (adapter-mainline-stubs / framework)',
+     'Add the 17 classes to the stubs from AOSP 14 r1 the way c6b1eb3bc0 added android.net (FZ-005 rebake).',
+     'LOW: no NoClassDefFoundError/ClassNotFound for Toutiao in window5.', 'no',
+     'java-classes.csv (java_classes.py)'),
+    ('NAMESPACE-MODEL', 'native namespace',
+     'one default namespace: appspawn-x a7a358c6 has 16 open sites, all plain dlopen (no dlopen_ns, no sealed '
+     'child); LD_LIBRARY_PATH puts the runtime dir first; app libs via libart\'s source loader (search = runtime dir + '
+     '/system/lib64... + app lib dir) and the westlake_android_app namespace for the 22 targets.',
+     'host 65cc3535: 8 open sites; sealed child namespace + per-app westlake.anl.app.<pid>.<n> domain with an explicit '
+     'shared-SONAME list (libc, libdl, libm, libEGL, libGLESv3, libsurface.z.so, liboh_android_runtime, '
+     'libbionic_compat, liblog, libc++, libstdc++, libOpenSLES).',
+     'wall-1 libstdc++ now resolves (libstdc++ mapped at t5); the remaining namespace gap is the ABI provider '
+     '(row BIONIC-ABI)', 'native (host)', 'see BIONIC-ABI', 'covered by BIONIC-ABI', 'no',
+     'evidence/open-sites-old.txt, evidence/open-sites-new.txt; inventory.csv new_loader column'),
+    ('MAX-MAP-COUNT', 'config',
+     'watchdog/provision write vm.max_map_count=1048576 before every launch.',
+     'not set by the BMS runner (kernel default); Toutiao had 2141 mappings at t5.',
+     'mapping ceiling for long sessions (WebView, many libs)', 'config (board sysctl, deploy step)',
+     'Set it once in the unified-state deploy (deploy_generation / boot cfg), for all apps.',
+     'NONE for wall 1.', 'no', 'evidence/old-run.sh (watchdog); inventory.csv tt-wd.tar rows'),
+    ('TLS-CONSCRYPT', 'Java+native TLS',
+     'real conscrypt.jar + libjavacrypto.so (BCP).',
+     'no conscrypt.jar/libjavacrypto; TLS via [B8-TLS]/WestlakeTlsInstall and FZ-008 SSLSockets.',
+     'conscrypt-specific APIs beyond what the stubs carry', 'JAR+native', 'only if a TLS wall shows (wall 4 of '
+     '2026-10-02-toutiao-wall3-prediction is predicted non-fatal)', 'NONE for wall 1.', 'no', 'inventory.csv bcp rows'),
+    ('LAUNCH-MODEL', 'process start',
+     'direct launch: host HAP org.westlake.imehost owns the window (WL_PARENT_ID sub-window), source_app_namespace '
+     'bind-mounts the runtime at /data/local/tmp/asx, run.sh env, host_spawn request.bin starts MainActivity; fixed '
+     'uid 20010053; app data in the runtime dir.',
+     'BMS install + OH AMS ScheduleLaunchAbility ([B47-SLA]) into appspawn-x; own ability window; el2 dataDir.',
+     'none for wall 1: both reach ensureBindApplication within 1 s of the child', 'n/a', 'keep the BMS path',
+     'NONE.', 'yes (host HAP, request.bin, fixed uid, bind mounts are route-specific)',
+     f'{OLD}:195-280 DIRECT-LAUNCH/B43-BIND; {W5}:30749 B43-BIND, B47-SLA'),
+    ('APP-AOT', 'process/ART',
+     'aot/toutiao.{art,odex,vdex} c7ad2a0b (762 MB), only with --with-aot (the speed layer #50).',
+     'none.', 'no app AOT', 'n/a', 'generic equivalent is JIT (row JIT) or install-time dex2oat; do not ship a '
+     'prebuilt app oat', 'covered by JIT', 'yes', 'MANIFEST.sha256 aot/*; device-provisioning README'),
+    ('PATCHED-APP-LIBS', 'app native',
+     '7 app libs replaced: libmetasec_ml and libnpth hollow (imports 227/152 -> 4/4), libbytehook, libshadowhook, '
+     'libgodzilla-memsponge, libgodzilla-sysopt, libmonitorcollector; plus libwestlake_pad/gwp/canary(+shims) and '
+     'preseed_metasec48.sh (app_lib symlink).',
+     'BMS extracts the APK\'s own libs unchanged (131 identical to the old copies).',
+     'the #48 crash-rate workarounds', 'n/a', 'none (app binary patches)', 'NONE for wall 1 (stability after the '
+     'feed: old route still ~15-20 % cold-start crashes).', 'yes', 'inventory.csv app-lib-PATCHED/app-lib-extra'),
+    ('PRELOAD-APP-LIB', 'native',
+     'LD_PRELOAD libttcrypto.so (an app library, process-wide).', 'none.',
+     'makes libttcrypto global for every later lib', 'n/a', 'covered by BIONIC-ABI (the reason it was preloaded is '
+     'its bionic imports)', 'covered by BIONIC-ABI', 'yes', 'evidence/old-run.sh LD_PRELOAD'),
+    ('WEBVIEW-T', 'WebView',
+     'Toutiao\'s private Chromium (webview-t.apk + webview-t-lib, ASX_WEBVIEW_*).', 'route-A WebView.',
+     'article pages only', 'n/a', 'not ported (2026-10-01 decision)', 'NONE for wall 1.', 'yes', 'inventory.csv'),
+    ('ONSCREEN-OPS', 'ops',
+     'onscreen_keeper.sh (keyguard dismiss, screen timeout max), watchdog taps the privacy consent '
+     '(screen-gate privacy -> tap 600,1273) and the login dismiss; READY = feed twice after consent.',
+     'bms_batch t5/t20 screenshots, no taps.', 'what counts as "on screen"', 'ops', 'do not port the taps; read the '
+     'consent dialog as lit (it is the app\'s own UI)', 'NONE (verdict only).', 'yes (screen-gate labels are '
+     'Toutiao-specific)', 'evidence/old-run.sh; tt-wd.tar watchdog.sh'),
+]
+
+
+def main():
+    inv = list(csv.DictReader(open(HERE / 'inventory.csv')))
+    cls = list(csv.DictReader(open(HERE / 'java-classes.csv')))
+    c = Counter(r['category'] for r in inv)
+    assert c['app-lib'] == 131 and c['app-lib-PATCHED'] == 7, c
+    assert len(cls) == 2016 and sum(1 for r in cls if r['present_old'] == '1' and r['present_new'] == '0') == 23
+    with open(HERE / 'diff.csv', 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(COLS)
+        for i, row in enumerate(ROWS, 1):
+            assert len(row) == len(COLS) - 1, row[0]
+            w.writerow([i, *row])
+    import json
+    rt = [r for r in inv if r['category'] == 'runtime-native']
+    res = {'old_bundle_files': len(inv), 'by_category': dict(c),
+           'runtime_native_same_name_present_differ': sum(1 for r in rt if r['same'] == 'no'),
+           'runtime_native_absent_by_name': sum(1 for r in rt if r['new_counterpart'].startswith('absent')),
+           'app_libs_identical_to_apk': c['app-lib'], 'app_libs_patched_old_route': c['app-lib-PATCHED'],
+           'toutiao_platform_types_referenced': len(cls),
+           'types_old_bcp_only': sum(1 for r in cls if r['present_old'] == '1' and r['present_new'] == '0'),
+           'types_in_neither': sum(1 for r in cls if r['present_old'] == '0' and r['present_new'] == '0'),
+           'diff_rows': [{'rank': i, 'id': r[0], 'fix_layer': r[5], 'toutiao_only_hack': r[8]}
+                         for i, r in enumerate(ROWS, 1)]}
+    (HERE / 'results.json').write_text(json.dumps(res, indent=1) + '\n')
+    print(f'diff.csv: {len(ROWS)} rows')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -1,0 +1,17 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-02-toutiao-oldroute-diff/`** | **Old Toutiao route (provision_toutiao.sh, feed in 20-25 s on 9-28, no app AOT) vs BMS + route-A, feature level, 17 ranked rows: #1 the old route ran ART JIT, route-A hard-sets APPSPAWNX_NO_JIT=1 (appspawn_x.cfg:61, main.cpp:123, required by the production-config gate; origin a 2026-05 G2.14n diagnostic) and its libart lacks the OH JIT patches, so Toutiao's 12 s attachBaseContext runs on the interpreter; #2 the bionic ABI provider (old shim process-wide, 73 syms) is today GLOBAL only for 13 hard-coded packages (app_native_loader.c), so libttcrypto/libsscronet/libmetasec fail on __errno/__cmsg_nxthdr/__system_property_read; #3 old AMS stub returned null for getContentProvider (uncached) vs our cached DataShare bridge (U11j fixes, in U12). 479-file inventory, 2016 class refs (23 old-only, 6 in U12 stubs). Toutiao-only hacks listed, not ported.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-02 **route-A 全部 app 跑在解释器上**:BMS 路 `APPSPAWNX_NO_JIT=1` 写死在 appspawn_x.cfg:61 与 main.cpp:123,且 test_production_config.py:47 / verify_generation.py:175 把它当生产门**要求**(出处是 2026-05-01「G2.14n DIAGNOSTIC: disable JIT」的诊断开关);当前 libart 59e1bb45 也没有旧 libart 78e34445 的 OH JIT 补丁(jit_memory_region.cc:memfd RX 被 XPM 拒 → 匿名缓存回退;#50 文件双视图)。旧头条路(Tier-1,无 app AOT)靠 JIT 20–25 s 到 feed,现路头条 attachBaseContext 12 s 未出。比较两条路先比运行时配置(ART 选项、进程级 env、域选择逻辑),只比文件 SHA 会漏掉最大的差。见 benchmark/2026-10-02-toutiao-oldroute-diff/(cc-t3)。",
+    "- 2026-10-02 route-A 的 bionic ABI 层(libwestlake_native_abi.so,dlopen_ns NOW|GLOBAL)只进 westlake_native/westlake_flutter 域,而进域由 app_native_loader.c:62 `native_cluster_path` 的 **13 个写死包名**决定;不在名单的 app(头条)库进普通 westlake.anl.app 域,没有全局 ABI 提供者(libbionic_compat 只按名共享,未 GLOBAL 加载)→ libttcrypto `__errno`、libsscronet `__cmsg_nxthdr`、libmetasec `__system_property_read` 重定位失败。旧路 libwebview_bionic_shim 85c789f4 走 LD_PRELOAD(进程级,73 符号)。通用修法:按库的动态导入选域,不按包名;native_abi 补齐旧 shim 缺的导出(上游 framework/webview-shim/webview_bionic_shim.c)。见 benchmark/2026-10-02-toutiao-oldroute-diff/(cc-t3)。"
+   ]
+  }
+ ]
+}
