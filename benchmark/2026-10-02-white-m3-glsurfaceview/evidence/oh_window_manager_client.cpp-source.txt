@@ -1,0 +1,75 @@
+96: void publishProcessWindowTarget(int32_t sessionId, void* nativeWindow) {
+97:     char sessionText[16] = {};
+98:     char pointerText[2 + sizeof(uintptr_t) * 2 + 1] = {};
+99:     std::snprintf(sessionText, sizeof(sessionText), "%d", sessionId);
+100:     std::snprintf(pointerText, sizeof(pointerText), "%p", nativeWindow);
+101:     (void)setenv(kSharedNativeWindowEnv, pointerText, 1);
+102:     (void)setenv(kSharedSessionEnv, sessionText, 1);
+103: }
+104: 
+105: int32_t readProcessWindowSession() {
+106:     const char* text = std::getenv(kSharedSessionEnv);
+107:     if (text == nullptr || *text == '\0') return 0;
+108:     char* end = nullptr;
+109:     errno = 0;
+110:     long value = std::strtol(text, &end, 10);
+111:     if (errno != 0 || end == text || *end != '\0' || value <= 0 ||
+112:         value > INT32_MAX) return 0;
+113:     return static_cast<int32_t>(value);
+114: }
+115: 
+116: void* readProcessWindowTarget(int32_t sessionId) {
+117:     if (readProcessWindowSession() != sessionId) return nullptr;
+118:     const char* text = std::getenv(kSharedNativeWindowEnv);
+119:     if (text == nullptr || *text == '\0') return nullptr;
+120:     char* end = nullptr;
+121:     errno = 0;
+122:     unsigned long long value = std::strtoull(text, &end, 0);
+123:     if (errno != 0 || end == text || *end != '\0' || value == 0) return nullptr;
+124:     return reinterpret_cast<void*>(static_cast<uintptr_t>(value));
+125: }
+126: }  // namespace
+127: 
+1216: std::map<int64_t, ChildSurfaceEntry> g_childSurfaces;
+1217: }  // namespace
+1218: }  // namespace oh_adapter
+1219: 
+1220: extern "C" __attribute__((visibility("default")))
+1221: void* oh_rs_get_child_surface_window(int32_t sessionId, int64_t childKey,
+1222:                                      int32_t width, int32_t height) {
+1223:     OH_BR_IPC_SCOPE("oh_rs_get_child_surface_window",
+1224:                     "session=%{public}d childKey=0x%{public}llx w=%{public}d h=%{public}d",
+1225:                     sessionId, (unsigned long long)childKey, width, height);
+1226:     // Parent = WMS-registered main window node (already in RS display tree).
+1227:     auto parent = oh_adapter::OHWindowManagerClient::getInstance().getRSSurfaceNode(sessionId);
+1228:     uint64_t generation =
+1229:         oh_adapter::OHWindowManagerClient::getInstance().getSurfaceGeneration(sessionId);
+1230:     if (!parent) {
+1231:         HiLogPrint(LOG_CORE, LOG_ERROR, 0xD000F00u, "OH_WindowMgrClient",
+1232:                    "oh_rs_get_child_surface_window: no parent RSSurfaceNode for session %{public}d",
+1233:                    sessionId);
+1234:         return nullptr;
+1235:     }
+1236:     if (generation == 0 ||
+1237:         !oh_adapter::resolveSurfaceExtent(width, height, &width, &height)) {
+1238:         HiLogPrint(LOG_CORE, LOG_ERROR, 0xD000F00u, "OH_WindowMgrClient",
+1239:                    "oh_rs_get_child_surface_window: no live generation/extent "
+1240:                    "session=%{public}d generation=%{public}llu requested=%{public}dx%{public}d",
+1241:                    sessionId, (unsigned long long)generation, width, height);
+1242:         return nullptr;
+1243:     }
+1244:     uint64_t parentNodeId = parent->GetId();
+1283: 
+1284:     OHOS::Rosen::RSSurfaceNodeConfig cfg;
+1285:     cfg.SurfaceNodeName = "AdapterSurfaceView";
+1286:     // isWindow=false => DEFAULT self-drawing node, GPU-composited into parent
+1287:     // layer (mirrors ArkUI XComponent rosen_render_xcomponent.cpp:85).
+1288:     auto child = OHOS::Rosen::RSSurfaceNode::Create(cfg, /*isWindow=*/false);
+1289:     if (!child) {
+1290:         HiLogPrint(LOG_CORE, LOG_ERROR, 0xD000F00u, "OH_WindowMgrClient",
+1291:                    "oh_rs_get_child_surface_window: RSSurfaceNode::Create failed");
+1292:         return nullptr;
+1293:     }
+1294:     child->SetBounds(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
+1295:     child->SetFrame(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
+1296:     child->SetVisible(true);

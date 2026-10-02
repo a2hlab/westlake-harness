@@ -1,0 +1,26 @@
+257: static jlong jni_eglCreateWindowSurface(JNIEnv *_env, jobject _this, jobject display,
+258:         jobject config, jobject native_window, jintArray attrib_list) {
+259:     if (display == NULL || config == NULL
+260:         || !validAttribList(_env, attrib_list)) {
+261:         jniThrowException(_env, "java/lang/IllegalArgumentException", NULL);
+262:         return JNI_FALSE;
+263:     }
+264:     EGLDisplay dpy = getDisplay(_env, display);
+265:     EGLContext cnf = getConfig(_env, config);
+266:     sp<ANativeWindow> window;
+267:     if (native_window == NULL) {
+268: not_valid_surface:
+269:         jniThrowException(_env, "java/lang/IllegalArgumentException",
+270:                 "Make sure the SurfaceView or associated SurfaceHolder has a valid Surface");
+271:         return 0;
+272:     }
+273: 
+274:     window = android_view_Surface_getNativeWindow(_env, native_window);
+275:     if (window == NULL)
+276:         goto not_valid_surface;
+277: 
+278:     jint* base = beginNativeAttribList(_env, attrib_list);
+279:     EGLSurface sur = eglCreateWindowSurface(dpy, cnf, window.get(), base);
+280:     endNativeAttributeList(_env, attrib_list, base);
+281:     return reinterpret_cast<jlong>(sur);
+282: }

@@ -1,0 +1,62 @@
+272: // nativeGetFromBlastBufferQueue(currSurface, bbq) → long
+273: // 2026-05-08 G2.14ae: real bridge — was returning the raw BBQ struct ptr as
+274: // if it were ANativeWindow*, which hwui then dereferenced as OHNativeWindow
+275: // (different layout) → crash. Now extract b->ohNativeWindow set by
+276: // BBQ_nativeUpdate. If BBQ.update has not yet run, fall back to the
+277: // explicit BBQ session; an unbound BBQ stays unresolved.
+278: jlong S_nativeGetFromBlastBufferQueue(JNIEnv*, jclass, jlong /*nativeObject*/, jlong blastBufferQueue) {
+279:     auto* b = as_bbq(blastBufferQueue);
+280:     if (b && b->ohNativeWindow) {
+281:         ALOGI("S_nativeGetFromBlastBufferQueue(bbq=0x%llx sessionId=%d) -> ohNativeWindow=%p",
+282:               (long long)blastBufferQueue, b->sessionId, b->ohNativeWindow);
+283:         return reinterpret_cast<jlong>(b->ohNativeWindow);
+284:     }
+285:     ALOGW("S_nativeGetFromBlastBufferQueue(bbq=0x%llx): unresolved -> 0",
+286:           (long long)blastBufferQueue);
+287:     return 0;
+288: }
+1242: extern "C" ANativeWindow* ANativeWindow_fromSurface(JNIEnv* env, jobject surface) {
+1243:     NWFS_INFO("[STAGE0] ENTER env=%{public}p surface=%{public}p",
+1244:               (void*)env, (void*)surface);
+1245:     if (!env || !surface) {
+1246:         NWFS_WARN("[STAGE0] null arg -> null");
+1247:         return nullptr;
+1248:     }
+1249:     jclass cls = env->FindClass("android/view/Surface");
+1250:     if (!cls) { env->ExceptionClear();
+1251:         NWFS_WARN("[STAGE0] FindClass failed -> null"); return nullptr; }
+1252:     jfieldID fid = env->GetFieldID(cls, "mNativeObject", "J");
+1253:     env->DeleteLocalRef(cls);
+1254:     if (!fid) { env->ExceptionClear();
+1255:         NWFS_WARN("[STAGE0] GetFieldID failed -> null"); return nullptr; }
+1256:     jlong nativeObj = env->GetLongField(surface, fid);
+1257:     NWFS_INFO("[STAGE0] mNativeObject=0x%{public}llx",
+1258:               (unsigned long long)nativeObj);
+1259:     if (nativeObj == 0) {
+1260:         NWFS_WARN("[STAGE0] mNativeObject==0 -> null");
+1261:         return nullptr;
+1262:     }
+1263:     if (is_sentinel_handle(nativeObj)) {
+1264:         NWFS_WARN("[STAGE0] sentinel handle 0x%{public}llx -> null "
+1265:                   "(no real BBQ-bound surface yet; hwui will retry)",
+1266:                   (unsigned long long)nativeObj);
+1267:         return nullptr;
+1268:     }
+1269:     // Real OHNativeWindow* set by BBQ_nativeGetSurface above. On OH,
+1270:     // OHNativeWindow ≡ ANativeWindow, so hand it back to hwui directly.
+1271:     // [S23 cut5 PRIMARY] last-mile: this is the exact instance Unity dequeues
+1272:     // from — validate its generation geometry before returning so its first
+1273:     // RequestBuffer cannot silently use Buffer[0 0].
+1274:     nwfs_seed_window_geometry(reinterpret_cast<void*>(nativeObj), "STAGE0-handoff");
+1275:     NWFS_INFO("[STAGE0] returning OHNativeWindow=%{public}p directly",
+1276:               reinterpret_cast<void*>(nativeObj));
+1277:     return reinterpret_cast<ANativeWindow*>(nativeObj);
+1278: }
+1279: 
+1280: // G2.14ag: detect AdapterAnw shim (post-G2.14ae). When hwui passes a shim
+1281: // here, route refcount to AdapterAnw's atomic (AOSP common.incRef/decRef
+1282: // equivalent); else forward to OH NativeObjectReference. See
+1283: // doc/graphics_rendering_design.html §7.13 (ref counting).
+1284: extern "C" void ANativeWindow_acquire(ANativeWindow* w) {
+1285:     if (!w) return;
+1286:     if (oh_anw_try_acquire(w)) return;          // shim path

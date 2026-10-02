@@ -1,0 +1,58 @@
+29: 
+30: // OH port: the window a Java Surface carries, resolved the way the runtime's hwui resolves it.
+31: // Looked up at run time so this library has no link-time dependency on the runtime's internals.
+32: struct ANativeWindow;
+33: static void* oh_window_from_surface(JNIEnv* env, jobject surface) {
+34:     typedef ANativeWindow* (*FromSurface)(JNIEnv*, jobject);
+35:     typedef void* (*Unwrap)(ANativeWindow*);
+36:     static FromSurface from_surface =
+37:             reinterpret_cast<FromSurface>(dlsym(RTLD_DEFAULT, "ANativeWindow_fromSurface"));
+38:     // The unwrapper lives in liboh_adapter_bridge.so, which is not in the global scope: a
+39:     // RTLD_DEFAULT lookup misses it, and the adapter's wrapper then reached OH's EGL, which
+40:     // rejected it ("eglCreateWindowSurface error"). Ask that library directly.
+41:     static Unwrap unwrap = [] {
+42:         void* fn = dlsym(RTLD_DEFAULT, "oh_anw_get_oh");
+43:         if (fn == nullptr) {
+44:             void* bridge = dlopen("liboh_adapter_bridge.so", RTLD_NOW | RTLD_NOLOAD);
+45:             if (bridge != nullptr) fn = dlsym(bridge, "oh_anw_get_oh");
+46:         }
+47:         return reinterpret_cast<Unwrap>(fn);
+48:     }();
+49:     if (from_surface == nullptr) {
+50:         fprintf(stderr, "[WL-OPENGL] ANativeWindow_fromSurface not found\n");
+51:         return nullptr;
+52:     }
+53:     ANativeWindow* window = from_surface(env, surface);
+54:     if (window == nullptr) return nullptr;
+55:     void* oh = unwrap != nullptr ? unwrap(window) : nullptr;
+56:     fprintf(stderr, "[WL-OPENGL] window surface: anw=%p oh=%p unwrap=%s\n",
+57:             static_cast<void*>(window), oh, unwrap != nullptr ? "found" : "MISSING");
+58:     return oh != nullptr ? oh : static_cast<void*>(window);
+59: }
+60: 
+315: 
+316: static jlong jni_eglCreateWindowSurface(JNIEnv *_env, jobject _this, jobject display,
+317:         jobject config, jobject native_window, jintArray attrib_list) {
+318:     if (display == NULL || config == NULL
+319:         || !validAttribList(_env, attrib_list)) {
+320:         jniThrowException(_env, "java/lang/IllegalArgumentException", NULL);
+321:         return JNI_FALSE;
+322:     }
+323:     EGLDisplay dpy = getDisplay(_env, display);
+324:     EGLContext cnf = getConfig(_env, config);
+325:     void* window = native_window != NULL ? oh_window_from_surface(_env, native_window) : NULL;
+326:     if (window == NULL) {
+327:         jniThrowException(_env, "java/lang/IllegalArgumentException",
+328:                 "Make sure the SurfaceView or associated SurfaceHolder has a valid Surface");
+329:         return 0;
+330:     }
+331:     jint* base = beginNativeAttribList(_env, attrib_list);
+332:     EGLSurface sur = eglCreateWindowSurface(dpy, cnf, (EGLNativeWindowType) window, base);
+333:     if (sur == EGL_NO_SURFACE) {
+334:         fprintf(stderr, "[WL-OPENGL] eglCreateWindowSurface(window=%p) failed: EGL error 0x%x\n",
+335:                 window, eglGetError());
+336:     }
+337:     endNativeAttributeList(_env, attrib_list, base);
+338:     return reinterpret_cast<jlong>(sur);
+339: }
+340: 
