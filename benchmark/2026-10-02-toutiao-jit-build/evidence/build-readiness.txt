@@ -1,0 +1,39 @@
+# JIT build readiness — a2hlab -> hw248 move, inputs located, patch24 validated against the hw248 tree
+# Status: VALIDATED + STAGED on hw248; the compiler build itself is the monitored next step (NOT executed this turn).
+
+## Why hw248 (not a2hlab)
+Outer notice: a2hlab restarted ~23:05 (Mac swap 3.9/5 GB, memory pressure); builds there were killed. cc-wiki's JIT
+build moves to hw248 (frozen clang is x86_64 Linux; hw248 has it). Nothing of mine was interrupted -- I had only
+PROBED (clang --version, tree/script reads), never started a build; no half artifacts exist.
+
+## hw248 reachability + resources
+ssh hw248 = root@1.95.76.248 (ecs-9f6c). 32 cores, 62 GB RAM, 203 GB free on /.
+
+## Inputs located on hw248 (the directed build host)
+- AOSP14 ART tree ($A): /home/alvin/aosp-14.0.0_r1-art  -> $A/art/compiler/jit/jit_compiler.cc present (ART_COMPILER_OK).
+- Frozen toolchain: /opt/wl-src/.work/product-tls-generation/frozen/toolchain/bin/clang++ (FROZEN_CLANG_OK; = OH clang 15.0.4 feef13a3, x86_64 Linux) + .../frozen/sysroot.
+- cross_compile_arm64.sh (Layer 4 = libart-compiler.so): present in many /opt/build-runs/*/adapter/build/inner/; driver build_l03_a12_arm64_generation.sh; prior libart-compiler.so builds exist (/opt/build-runs/fn02-abi-fix-20260730/aosp_lib64/).
+
+## patch24 VALIDATED against the hw248 tree (go/no-go = GO)
+$A/art/compiler/jit/jit_compiler.cc:
+  :76  compiler_options_->implicit_so_checks_ = runtime->GetImplicitStackOverflowChecks();
+  :77  compiler_options_->implicit_suspend_checks_ = runtime->GetImplicitSuspendChecks();
+  :80  if (kRuntimeISA == InstructionSet::kArm) {
+-> patch24 context `@@ -75,6 +75,11 @@` (the 3 implicit_*_checks_ lines then the kArm block) matches EXACTLY -> applies cleanly.
+-> tree does NOT already contain `implicit_suspend_checks_ = false` in jit_compiler.cc -> patch24 is needed, not already applied.
+-> $A/art/dex2oat/dex2oat.cc:859 HAS `compiler_options_->implicit_suspend_checks_ = false;` -> patch22 IS present
+   = the hw248 tree is the FZ-005 r1+22-patch lineage, and patch24 is its consistent JIT counterpart (same convention).
+
+## Faithful recipe reconstructed (from the B6 provider build on the Mac workspace)
+The B6 compiler 3c8e76a2 (control reference) was built by:
+  - env: westlake-harness-bms-deploy/bms/src/.work/b6-art14-recovery/build-runtime.sh
+    (AOSP_ROOT=.../aosp-restoration, OH clang via build/cxx-sdk15 wrapper, frozen nm/readelf/libcxx from product-tls-generation/frozen)
+  - driver: reproduce-providers.sh -> benchmark/2026-09-28-bms-route-deploy/latest-source-generation/art14-recovery/build-providers.sh
+  - Layer 4 recipe: bms/src/adapter/build/inner/cross_compile_arm64.sh:782-892 (76 compiler .cc + operator_out gen; `bld art-compiler -fno-rtti -fvisibility=protected -I$A/art/compiler -I$A/art/dex2oat -I$BC_SRC`).
+NOTE: 3c8e76a2 is tied to the Mac aosp-restoration tree (a2hlab-mounted). On hw248 the control is re-established from the
+hw248 tree (/home/alvin/aosp-14.0.0_r1-art): build unpatched TWICE (byte-identical) = the hw248 control; then patched
+TWICE. We do NOT chase a byte-match to 3c8e76a2 (different tree/host); faithfulness = same-tree reproduce + 2x identical.
+
+## memfd jit-cache shim
+recipe/jit_anon_shim.c (from the jit-experiment-plan): refuses art::memfd_create("jit-cache") so ART falls back to the
+anonymous RWX cache; zygote names pass through. Built as libwestlake_jit_anon.so (target aarch64-linux-ohos, frozen clang).

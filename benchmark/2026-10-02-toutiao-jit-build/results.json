@@ -1,0 +1,43 @@
+{
+  "task": "Pre-build the JIT compiler (libart-compiler.so + memfd shim) offline so the toutiao JIT path de-serializes from the long-wait window",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "status": "VALIDATED + STAGED on hw248; build is the monitored next step (NOT executed this turn)",
+  "host_move": {
+    "from": "a2hlab",
+    "to": "hw248",
+    "reason": "a2hlab restarted ~23:05 (Mac memory pressure); outer moved cc-wiki JIT build to hw248 (frozen clang is x86_64 Linux, hw248 has it)",
+    "my_work_interrupted": false,
+    "note": "only probed (clang --version, tree/script reads), never started a build; no half artifacts"
+  },
+  "hw248": {"ssh": "root@1.95.76.248 (ecs-9f6c)", "cores": 32, "ram_gb": 62, "free_gb": 203},
+  "inputs_located": {
+    "aosp_tree_A": "/home/alvin/aosp-14.0.0_r1-art ($A/art/compiler/jit/jit_compiler.cc present)",
+    "frozen_clang": "/opt/wl-src/.work/product-tls-generation/frozen/toolchain/bin/clang++ (OH clang 15.0.4 feef13a3, x86_64 Linux) + sysroot",
+    "cross_compile": "/opt/build-runs/*/adapter/build/inner/cross_compile_arm64.sh (Layer 4 = libart-compiler.so); driver build_l03_a12_arm64_generation.sh; prior libart-compiler.so builds exist (fn02-abi-fix)",
+    "patch24": "recipe/24-compiler__jit__jit_compiler.cc.explicit-suspend.patch (staged)",
+    "shim": "recipe/jit_anon_shim.c (staged)"
+  },
+  "validation_go": {
+    "patch24_applies": "jit_compiler.cc:76-77 (implicit_so/suspend_checks_) + :80 kArm block match patch24 @@ -75,6 +75,11 @@ exactly; tree lacks implicit_suspend_checks_=false in jit_compiler.cc so patch needed",
+    "tree_is_fz005": "dex2oat.cc:859 already has implicit_suspend_checks_=false (patch 22) -> hw248 tree is the r1+22-patch FZ-005 lineage; patch24 is its consistent JIT counterpart"
+  },
+  "faithful_recipe": {
+    "reference_control": "B6 compiler 3c8e76a2 (built on Mac aosp-restoration tree; env b6-art14-recovery/build-runtime.sh -> reproduce-providers.sh -> build-providers.sh; Layer 4 cross_compile_arm64.sh:782-892)",
+    "host_control_note": "3c8e76a2 is tied to the Mac aosp-restoration tree; on hw248 re-establish control from /home/alvin/aosp-14.0.0_r1-art: unpatched x2 byte-identical = hw248 control, then patched x2; faithfulness = same-tree reproduce + 2x identical, NOT a byte-match to 3c8e76a2"
+  },
+  "build_plan_hw248": [
+    "fresh /home/alvin/jit-build-cc-wiki-20261002/; copy current cross_compile_arm64.sh + driver; AOSP_ROOT=/home/alvin/aosp-14.0.0_r1-art + frozen clang/sysroot/nm/readelf/libcxx + L03_A12_*; record tool+source SHAs",
+    "control: Layer-4 UNPATCHED x2 byte-identical = hw248 control",
+    "apply patch24 -> Layer-4 PATCHED x2 byte-identical; acceptance vs control: only jit_compiler.o differs, exports/undefined IDENTICAL, deployed_strings_diff 0/0, open_site_scan unchanged",
+    "memfd shim: jit_anon_shim.c -> libwestlake_jit_anon.so (aarch64-linux-ohos, frozen clang, -Bsymbolic) x2 byte-identical",
+    "N1/N2 pre-run LIST ONLY (no --apply); emit findings for outer review",
+    "persist to /home/alvin/jit-build-cc-wiki-20261002/ (sources, patch24 SHA, toolchain hashes, both .so, fresh tee'd logs) + record path/hashes in repo"
+  ],
+  "hard_boundaries": ["no board (artifacts only)", "do NOT touch APPSPAWNX_NO_JIT / production gates (truly-cold certificate is user-level, separate)", "N1/N2 list-only; outer approves any exception before any window"],
+  "why_staged_not_built": "investigation (the slow part) is done and de-serialized (host/patch/tree validated, recipe reconstructed, inputs located); the remaining compiler build is a monitored single-instance job, not a blind end-of-turn background fire, per the outer's just-issued caution (a2hlab died of memory pressure; no half artifacts; one heavy build at a time)",
+  "files": ["README.md", "evidence/build-readiness.txt", "recipe/24-compiler__jit__jit_compiler.cc.explicit-suspend.patch", "recipe/jit_anon_shim.c", "results.json", "documentation.json"]
+}
