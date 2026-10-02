@@ -105,7 +105,9 @@ the root cause is not (only) the uninitialized `UErrorCode`. Because the fault i
 `deployed_strings_diff.py` is deferred to the rebuild (it diffs a candidate against the deployed binary — no candidate
 yet); `open_site_scan` is not applicable (it maps library-open namespaces, not this JNI-return defect).
 
-## 6. Step 3 (the rebuilt candidate) — blocked on the native build closure
+## 6. Step 3 (the rebuilt candidate) — DONE on the a2hlab verify tree (see §8); recipe below
+> Update 2026-10-02: the rebuild was authorized and executed on the a2hlab VM. Results in §8. The paragraph below
+> documents why a *local* build fails and the recipe; the build itself succeeded on the a2hlab verify closure.
 `tools/build_android_native.py --library libicu_jni.so` needs a self-contained **workspace** with
 `toolchains/{ohos-sdk/native, clang-15}` + the `android-source/` header+source closure. Inventory
 (`native/libraries.json`): **16 sources** (incl. `com_android_icu_util_LocaleNative.cpp`,
@@ -144,3 +146,88 @@ never leave a runtime artifact without its source/toolchain closure).
   when `libicu_jni.so` is built without `-ftrivial-auto-var-init=zero`. Any native library we build and ship must
   carry AOSP's zero-init flags (clang 15 needs both). The `deployed_strings_diff` gate should refuse a candidate whose
   source relies on zero-init when the flag is absent from the build record.
+
+## 8. Build result — authorized a2hlab rebuild (2026-10-02)
+User authorized building on the lab infra ("只构建不碰板"). The Android-native verify closure lives on the **a2hlab
+OrbStack VM** (`~/a2hlab/ws`: `toolchains/ohos-sdk/native` OHOS clang **15.0.4 feef13a3 — byte-identical version to
+the deployed binary**, `android-source` 16 GB, `out/`), not hw248 (which carries only the route-A/appspawn frozen
+chain). Built there with `build_android_native.py --workspace ~/a2hlab/ws --target ohos --library libicu_jni.so`
+(deps libicuuc/libicui18n/libnativehelper/libbase/liblog auto-built). Source equivalence: the three libicu inputs are
+blob-SHA-identical between `ws/westlake@22b9453` and deployed source `532633d`, so the build is equivalent to 532633d
+for this library. Determinism env (`SOURCE_DATE_EPOCH=1772755200, TZ=UTC, LC_ALL=C`) pinned inside the driver.
+
+**Two builds per variant, byte-identical:**
+| variant | sha256 | bytes | note |
+|---|---|---|---|
+| no-flag ×2 | `be7697a2…` | 147896 | noflag-a == noflag-b (reproducible) |
+| **flag ×2 (candidate)** | `ef14f232…` | 147896 | flag-a == flag-b (reproducible) |
+
+Persisted: hw248 `/home/alvin/u12-icu-cc-wiki-20261002/` + a2hlab `~/a2hlab/ws/out/u12-icu-cc-wiki-20261002/`;
+`candidate/{build.log,candidate-manifest.json}`.
+
+**flag ↔ no-flag (the clean, ICU-noise-free comparison) — the fix is pure zero-init codegen:**
+- `deployed_strings_diff`: **0 strings added, 0 dropped** (`candidate/strdiff_flag_vs_noflag.txt`).
+- exports **71 == 71** identical; undefined/consumer symbols **171 == 171** identical → **ABI and consumers unchanged**.
+- library-wide zero-init stores **43 → 52 (+9)**; in `ScopedIcuLocale::ScopedIcuLocale` the flag inserts
+  `str wzr, [x29, #0x1c]` — zeroing the `UErrorCode err` slot — immediately before the `forLanguageTag` call; the
+  no-flag build has **no** store to that slot (`candidate/ctor-zeroinit-proof.txt`). This is the §4 reduction demo
+  confirmed in the real OHOS-clang binary.
+
+**flag ↔ deployed `4261c09e` (the comparison the dispatch named):** `deployed_strings_diff` = **6 dropped, 23 added**
+(`candidate/strdiff_flag_vs_deployed.txt`) — but these are **ICU 72 → 75.1 churn** (getISO3Language, metaZones,
+zoneinfo64, timezoneTypes, windowsZones…), not zero-init. Cause: the deployed cluster is **icu_72**; the a2hlab
+`android-source` is a single vendor snapshot at **ICU 75.1** (`be65bb2`, no 72 ref). So this candidate (`ef14f232`,
+icu_75) is **not a drop-in** for the icu_72 deployed cluster, and the clean "only zero-init" diff is the flag↔no-flag
+one above, not flag↔deployed.
+
+**For a byte-faithful icu_72 drop-in candidate** (outer-loop decision — it is an *inputs* choice, not a code one):
+either (a) stage the Aug-6 icu-72 vendor snapshot that built the deployed cluster (currently overwritten by 75.1 on
+a2hlab), or (b) swap `android-source/icu` to hw248's `aosp-14.0.0_r1 external/icu` (72.1) and rebuild — approximate,
+and byte-match only if that vendor snapshot carried no local patches. Pick (a) for an exact single-library swap, or
+accept a whole-ICU-cluster bump to 75 (bigger change, out of the "only this one library" scope).
+
+**Prediction unchanged (§5):** the candidate clears both keys' `ScopedIcuLocale`→null NPE deterministically (the err
+slot is now zeroed before every ICU call); next wall expected to be the generic render-white lottery, judged over a
+repeat.
+
+## 9. ICU-72 rebuild (authorized: aosp-14.0.0_r1 72.1) — GATE 1 pass, GATE 2 STOP
+Per the ICU-72 ruling, rebuilt libicu_jni against hw248 `aosp-14.0.0_r1 external/icu` (72.1) in an **isolated**
+workspace `~/a2hlab/ws-icu72` (per the correction: the shared `android-source/icu` was NOT swapped — ws-icu72
+symlinks the shared toolchains/westlake/android-source and points only `android-source/icu` at the 72.1 tree, with a
+patched `build_android_native.py` copy; the shared tree stayed at 75.1 throughout). Scope = **only libicu_jni**:
+`libraries.json` copy set `deps:[]` + `libraries:[the 5 deployed icu_72 .so]`, so the deps are NOT rebuilt — libicu_jni
+compiles against 72.1 headers and links against the deployed icu_72 libicuuc/libicui18n/libnativehelper/libbase/liblog.
+The 72.1 bridge set matches the deployed (both lack `UResourceBundleNative.cpp`, which the 75-era libraries.json added);
+that one source was dropped from the copy's list. Two byte-identical builds (`candidate-icu72/`, persisted
+hw248:/home/alvin/u12-icu-cc-wiki-20261002/icu72):
+- no-flag ×1: `d30419a3…` 145816 B
+- **flag ×2 (candidate): `76acad17…` 147400 B** (byte-identical) — zero-init confirmed: ctor gains
+  `str wzr,[x29,#0x1c]` before `icu_72::Locale::forLanguageTag`; no-flag has none.
+
+**GATE 1 — imported ICU symbols all `_72` and identical to deployed: PASS.** 56 icu-undefined symbols, every one
+`icu_72`, set identical to the deployed `4261c09e` (diff empty, per-version-bucket counts identical). The icu-72
+approach is sound.
+
+**GATE 2 — overall ABI/consumer == deployed: FAIL → STOP (per "不一致就停并报").** The candidate carries exports and
+imports the deployed lacks — and this is a **current-vs-deployed build-config drift, not an ICU-version or build-setup
+artifact** (the earlier icu75 candidate `ef14f232` has the exact same surface):
+
+| | deployed 4261c09e | both candidates (icu75 & icu72) |
+|---|---|---|
+| `JNI_OnLoad` | plain `JNI_OnLoad` | `JNI_OnLoad_icu_bridge` (renamed by the `JNI_OnLoad=` define) + `JNI_OnLoad_icu` |
+| `register_libcore_icu_ICU` | absent | present (libcore_icu_ICU.cpp compiled in) |
+| `uloc_*_72` imports | none | 9 (`uloc_getDefault_72`, `uloc_getScript_72`, …) |
+
+Root: the deployed `4261c09e` was built from an **older** libicu_jni config (no `libcore_icu_ICU.cpp`; `JNI_OnLoad`
+not renamed). The current `native/libraries.json` (blob `18d6ab09`, identical at 532633d and 22b9453) added
+`libcore_icu_ICU.cpp` and `defines: JNI_OnLoad=JNI_OnLoad_icu_bridge`. So no build from the current source config can be
+ABI-identical to the deployed binary, regardless of ICU version. `deployed_strings_diff` candidate↔deployed = 5
+dropped / 14 added (the libcore_icu_ICU strings + a few 72.1-vendor deltas) — far smaller than the icu75 churn, and
+consistent with this config delta. Evidence: `candidate-icu72/symbol-gate.txt`, `strdiff_icu72flag_vs_deployed.txt`.
+
+**Outer decision needed (an inputs/architecture question, not code):** is the drop-in target (a) the deployed
+`4261c09e` exactly — then it must be rebuilt from the *deployed-era* libicu_jni config (no libcore_icu_ICU, plain
+JNI_OnLoad), which is a config rollback beyond this task; or (b) the **current** generation config — then the icu72
+candidate `76acad17` IS correct (icu_72 imports match deployed, zero-init applied, current export surface) and the
+deployed `4261c09e` is simply an older build. I stopped at the gate rather than ship a candidate whose entry-point
+symbol (`JNI_OnLoad` vs `JNI_OnLoad_icu_bridge`) differs from the deployed binary the dispatch named.

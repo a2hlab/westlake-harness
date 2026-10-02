@@ -1,0 +1,19 @@
+{
+  "built_on": "a2hlab OrbStack VM (Android-native verify closure ~/a2hlab/ws); NOT hw248 (route-A frozen chain only)",
+  "compiler": "OHOS (dev) clang 15.0.4 (llvm-project feef13a36e78b7a2ff3e9e3f180a958f2782be1e) — byte-identical version to deployed",
+  "source": "ws/westlake@22b9453; libicu inputs (native/libraries.json, native/include/ohos_port.h, native/src/icu_art_entry.cpp) blob-SHA identical to deployed source 532633d",
+  "patch": "03678da two flags inserted into build_android_native.py flags list, then reverted after build",
+  "determinism": "SOURCE_DATE_EPOCH=1772755200, TZ=UTC, LC_ALL=C; two independent builds per variant",
+  "artifacts": {
+    "noflag": {"sha256": "be7697a24cf59593a637a22c3b6fc63f1bd810727b88a796b7edae29762238e5", "bytes": 147896, "note": "two builds byte-identical (noflag-a==noflag-b)"},
+    "candidate_zeroinit": {"sha256": "ef14f232df34616919f70b1d67830a8439316ff5c082a09fc5ca0ad7a1873bb1", "bytes": 147896, "note": "two builds byte-identical (flag-a==flag-b); this is the CANDIDATE"}
+  },
+  "persisted": {
+    "hw248": "/home/alvin/u12-icu-cc-wiki-20261002/{libicu_jni.noflag.so,libicu_jni.zeroinit.so,build.log}",
+    "a2hlab": "~/a2hlab/ws/out/u12-icu-cc-wiki-20261002/{noflag-a,noflag-b,flag-a,flag-b}/lib/libicu_jni.so + build.log"
+  },
+  "diff_flag_vs_noflag": {"strings_added": 0, "strings_dropped": 0, "exports": "71==71 identical", "undefined": "171==171 identical", "zeroinit_stores": "43 -> 52 (+9)", "ctor_err_slot": "flag adds 'str wzr,[x29,#0x1c]' before forLanguageTag; no-flag has none"},
+  "diff_flag_vs_deployed_4261c09e": {"strings_added": 23, "strings_dropped": 6, "cause": "ICU 72 (deployed) vs ICU 75.1 (a2hlab android-source) churn — NOT zero-init; e.g. getISO3Language, metaZones, zoneinfo64, windowsZones"},
+  "icu_version_caveat": "deployed cluster = icu_72; a2hlab android-source = ICU 75.1 (single vendor snapshot be65bb2, no 72 ref). Candidate is icu_75 -> NOT a drop-in for the icu_72 deployed cluster. A byte-faithful icu_72 drop-in needs the Aug-6 icu-72 vendor snapshot (overwritten) or hw248 aosp-14.0.0_r1 external/icu (72.1, approximate if the vendor snapshot was patched).",
+  "ABI_consumer": "unchanged between no-flag and flag (exports + undefined identical, 0 string delta) — the fix is pure zero-init codegen"
+}

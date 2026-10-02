@@ -1,0 +1,15 @@
+# ScopedIcuLocale::ScopedIcuLocale ctor — real-binary zero-init proof
+# symbol: _ZN15ScopedIcuLocaleC2EP7_JNIEnvP8_jstring
+# candidate(flag) adds 'str wzr, [x29, #0x1c]' (zero the UErrorCode err slot) BEFORE the forLanguageTag call.
+
+== no-flag: stores to err slot [x29,#0x1c] before forLanguageTag (expect NONE) ==
+(none)
+
+== flag: the err-slot zeroing + the forLanguageTag call ==
+34:   13ab0: b9001fbf     	str	wzr, [x29, #0x1c]
+48:   13ae8: 940015da     	bl	0x19250 <_ZN6icu_756Locale14forLanguageTagENS_11StringPieceER10UErrorCode@plt>
+49:   13aec: b9401fa8     	ldr	w8, [x29, #0x1c]
+50:   13af0: 7100051f     	cmp	w8, #0x1
+
+== library-wide zero-init stores (str/stur/stp wzr) ==
+no-flag: 43  flag: 52

@@ -1,0 +1,15 @@
+# ICU-72 candidate symbol gate vs deployed 4261c09e
+GATE 1 (imported ICU symbols all _72 AND identical to deployed): PASS
+  candidate icu-undefined symbols: 56, all icu_72; set identical to deployed (diff empty).
+GATE 2 (overall ABI/consumer == deployed): FAIL -> STOP per dispatch ("不一致就停并报")
+  candidate has, deployed lacks (current-config surface, NOT icu-version, present in BOTH icu75 and icu72 builds):
+    exports +: register_libcore_icu_ICU, unregister_libcore_icu_ICU, JNI_OnLoad_icu, JNI_OnLoad_icu_bridge,
+               toStringArray<...> (2), ScopedIcuULoc::ScopedIcuULoc, basic_string __assign_external
+    undefined +: uloc_countAvailable_72, uloc_getAvailable_72, uloc_getDefault_72, uloc_getISO3Country_72,
+               uloc_getISO3Language_72, uloc_getISOCountries_72, uloc_getISOLanguages_72, uloc_getName_72,
+               uloc_getScript_72, memmove
+  deployed has, candidate lacks:
+    exports: JNI_OnLoad (plain)     undefined: basic_string C1ERKS5_
+  Root: deployed 4261c09e was built from an OLDER libicu_jni config (no libcore_icu_ICU.cpp; JNI_OnLoad NOT renamed).
+  Current native/libraries.json (18d6ab09, at 532633d and 22b9453) adds libcore_icu_ICU.cpp and defines
+  JNI_OnLoad=JNI_OnLoad_icu_bridge -> both the icu75 (ef14f232) and icu72 (76acad17) candidates carry that surface.

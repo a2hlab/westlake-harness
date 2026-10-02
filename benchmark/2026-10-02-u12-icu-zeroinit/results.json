@@ -5,7 +5,10 @@
   "board_entry": 80,
   "offline": true,
   "board_deploy": false,
-  "keys": ["fd-wifianalyzer", "fd-breezyweather"],
+  "keys": [
+    "fd-wifianalyzer",
+    "fd-breezyweather"
+  ],
   "root_cause": {
     "file": "external/icu/.../ScopedIcuLocale.h",
     "line": 39,
@@ -19,8 +22,18 @@
   },
   "observed_first_fatal": {
     "source": "benchmark/2026-10-01-u10-first-wall/u9-first-wall.json",
-    "fd-wifianalyzer": {"verdict": "dead", "family": "java:NullPointerException", "cause": "Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference", "component": "com.vrem.wifianalyzer"},
-    "fd-breezyweather": {"verdict": "dead", "family": "java:NullPointerException", "cause": "Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference", "component": "org.breezyweather"}
+    "fd-wifianalyzer": {
+      "verdict": "dead",
+      "family": "java:NullPointerException",
+      "cause": "Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference",
+      "component": "com.vrem.wifianalyzer"
+    },
+    "fd-breezyweather": {
+      "verdict": "dead",
+      "family": "java:NullPointerException",
+      "cause": "Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference",
+      "component": "org.breezyweather"
+    }
   },
   "provenance": {
     "deployed_so": "$WORKSPACES/westlake-generation-u9-j10g-238ffc14/native/payload/android/lib64/libicu_jni.so",
@@ -52,25 +65,52 @@
     "caveat": "clang 22 has =zero as GA (no gate); demo shows flag effect on the pattern, not the clang-15 gate requirement"
   },
   "prediction": {
-    "fd-breezyweather": {"before": "NPE getClass()-on-null, Unable to start activity (dead, ~50%)", "after": "err=0 -> valid locale -> non-null getDisplayCountry -> NPE cleared; next wall likely generic render-white lottery"},
-    "fd-wifianalyzer": {"before": "same NPE family, Unable to start activity (dead, ~50%)", "after": "non-null toUpperCase result -> NPE cleared; next wall as above"},
+    "fd-breezyweather": {
+      "before": "NPE getClass()-on-null, Unable to start activity (dead, ~50%)",
+      "after": "err=0 -> valid locale -> non-null getDisplayCountry -> NPE cleared; next wall likely generic render-white lottery"
+    },
+    "fd-wifianalyzer": {
+      "before": "same NPE family, Unable to start activity (dead, ~50%)",
+      "after": "non-null toUpperCase result -> NPE cleared; next wall as above"
+    },
     "falsifier": "same getClass()-on-null NPE after a flagged libicu_jni (reproduced) refutes the root cause",
     "judge_over_repeat": true,
-    "deployed_strings_diff": "deferred to rebuild (needs candidate)",
+    "deployed_strings_diff": "ran: flag_vs_noflag 0/0 (clean), flag_vs_deployed 6/23 (ICU churn)",
     "open_site_scan": "not applicable (maps library-open namespaces, not this JNI-return defect)"
   },
   "step3_rebuild": {
-    "status": "blocked_on_build_closure",
+    "status": "done_on_a2hlab (ICU-75); icu_72 drop-in pending source choice",
     "needs": {
-      "workspace_toolchains": ["toolchains/ohos-sdk/native", "toolchains/clang-15"],
+      "workspace_toolchains": [
+        "toolchains/ohos-sdk/native",
+        "toolchains/clang-15"
+      ],
       "android_source_closure": true,
       "sources_count": 16,
       "include_dirs_count": 22,
-      "link_deps": ["libicuuc.so", "libicui18n.so", "libnativehelper.so", "libbase.so", "liblog.so"]
+      "link_deps": [
+        "libicuuc.so",
+        "libicui18n.so",
+        "libnativehelper.so",
+        "libbase.so",
+        "liblog.so"
+      ]
     },
     "blocker": "no local tree carries android-source/ or the toolchains; frozen toolchain (2.4GB) + AOSP source only on hw248 (/opt/wl-src/.work/product-tls-generation/, /home/alvin/aosp-14.0.0_r1-art). RUNBOOK E.74: copy back + dockbuild locally, do not build on hw248.",
     "recipe": "README.md §6 (patch + two byte-identical flagged builds + no-flag reproduce)",
-    "accepted_substitute": "binary-feature + codegen evidence, per dispatch ('找不到就从二进制特征判断,写明依据')"
+    "accepted_substitute": "binary-feature + codegen evidence, per dispatch ('找不到就从二进制特征判断,写明依据')",
+    "executed": {
+      "machine": "a2hlab OrbStack VM ~/a2hlab/ws (NOT hw248)",
+      "compiler": "OHOS clang 15.0.4 feef13a3 (byte-identical version to deployed)",
+      "noflag_sha256": "be7697a24cf59593a637a22c3b6fc63f1bd810727b88a796b7edae29762238e5",
+      "candidate_sha256": "ef14f232df34616919f70b1d67830a8439316ff5c082a09fc5ca0ad7a1873bb1",
+      "bytes": 147896,
+      "byte_identical": "two builds per variant match",
+      "persisted": [
+        "hw248:/home/alvin/u12-icu-cc-wiki-20261002/",
+        "a2hlab:~/a2hlab/ws/out/u12-icu-cc-wiki-20261002/"
+      ]
+    }
   },
   "evidence_files": [
     "evidence/scopedicu-source.txt",
@@ -81,5 +121,43 @@
     "evidence/noflag.s",
     "evidence/zeroinit.s",
     "evidence/codegen.diff"
-  ]
+  ],
+  "build_result": {
+    "flag_vs_noflag": {
+      "strings_added": 0,
+      "strings_dropped": 0,
+      "exports": "71==71",
+      "undefined": "171==171",
+      "zeroinit_stores": "43->52 (+9)",
+      "ctor": "flag adds 'str wzr,[x29,#0x1c]' before forLanguageTag; no-flag none",
+      "conclusion": "ABI/consumer unchanged; diff is pure zero-init codegen"
+    },
+    "flag_vs_deployed_4261c09e": {
+      "strings_added": 23,
+      "strings_dropped": 6,
+      "cause": "ICU 72->75.1 churn, not zero-init"
+    },
+    "icu_caveat": "candidate is icu_75 (a2hlab android-source snapshot); deployed is icu_72 -> not a drop-in. Byte-faithful icu_72 drop-in needs the overwritten Aug-6 icu-72 vendor snapshot or hw248 aosp-r1 icu-72 (approx)."
+  },
+  "icu72_rebuild": {
+    "authorized": "aosp-14.0.0_r1 external/icu 72.1, isolated ws-icu72 (shared android-source/icu untouched)",
+    "scope": "only libicu_jni; deps not rebuilt (linked against the 5 deployed icu_72 .so)",
+    "noflag_sha256": "d30419a398ca7201c44539c7621c7900967eab4702a0dd6370d926dd90e44a63",
+    "candidate_sha256": "76acad17d1674a9215b2ce421d575a6118d415d7bc6687ed8a65854a55e7680c",
+    "candidate_bytes": 147400,
+    "byte_identical": "flag-a==flag-b",
+    "zero_init": "ctor gains 'str wzr,[x29,#0x1c]' before icu_72::Locale::forLanguageTag; noflag none",
+    "gate1_icu_imports": {
+      "result": "PASS",
+      "detail": "56 icu-undefined symbols, all icu_72, identical set to deployed 4261c09e"
+    },
+    "gate2_abi": {
+      "result": "FAIL -> STOP",
+      "detail": "current-vs-deployed config drift (present in BOTH icu75 and icu72 builds): candidate has register_libcore_icu_ICU + JNI_OnLoad_icu_bridge rename + uloc_*_72 imports; deployed has plain JNI_OnLoad, no libcore_icu_ICU"
+    },
+    "deployed_strings_diff": "5 dropped / 14 added (libcore_icu_ICU strings + minor 72.1-vendor deltas)",
+    "root_cause": "deployed 4261c09e built from an OLDER libicu_jni config; current native/libraries.json (18d6ab09) added libcore_icu_ICU.cpp and JNI_OnLoad=JNI_OnLoad_icu_bridge",
+    "outer_decision": "target = deployed-era config (rollback, out of scope) OR current config (candidate 76acad17 is correct, deployed is stale)",
+    "persisted": "hw248:/home/alvin/u12-icu-cc-wiki-20261002/icu72/"
+  }
 }
