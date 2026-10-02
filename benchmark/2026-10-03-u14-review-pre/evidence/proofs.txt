@@ -1,0 +1,42 @@
+U14 reject-item pre-review — concrete proofs (all read-only; recommendation only, outer signs)
+
+=== N2: libc++.so provider for the westlake_flutter domain ===
+deployed Flutter libandroid ee2fb82c NEEDED:  liboh_android_runtime.so, libsurface.z.so, libc.so   (NO libc++.so -> static libc++)
+candidate fff9be31      NEEDED:               liboh_android_runtime.so, libsurface.z.so, libc++.so, libc.so   (+libc++.so)
+  why: u14-flutter-egl.cpp uses std::mutex g_egl_surface_owner_mutex + std::unordered_map<EGLSurface,...> g_egl_surface_owner
+       -> the linker emits DT_NEEDED libc++.so (dynamic libc++, replacing the former static link).
+provider (westlake_stock_host_main.c, flutter_private branch):
+  :266  dlns_inherit(app_namespace, &system_owner /*default*/,
+          "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:libstdc++.so:libOpenSLES.so")
+  :269  dlns_inherit(app_namespace, &runtime_owner /*westlake.sealed.child*/,
+          "liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so")
+  => libc++.so is a SHARED soname inherited from default AND sealed.child -> the NEEDED resolves to the ONE
+     platform/runtime libc++ instance via the inherit edge. No libc++ in westlake_flutter/ dir, no local dlopen
+     -> NO second copy. Gate inherit_used=false + REJECT is a static-resolver false-positive (it checks physical
+     presence in the domain dir + permitted paths, does not model dlns_inherit edges).
+
+=== Static delta bridge 87ed7281 (candidate 7daa5435 vs deployed 84695d62) ===
+static-allowance-draft.json: the ONLY delta is one dlopen in _ZL22preload_libmali_globalv:
+  added:   path ["unknown:adr x0, #-135984"]  flags 0x102=NOW|GLOBAL  ns caller-default
+  removed: path ["unknown:adr x0, #-135412"]  flags 0x102=NOW|GLOBAL  ns caller-default
+  => same callee/flags/ns/function; only the PC-relative adr immediate to the libmali path string shifted -572
+     bytes (.rodata reorder from the M5/M6 source additions). Identical to the +0x1cc/+0x73 shifts documented in
+     the ICU/Wall-1 work. Zero behavior change -> expected consequence of the reviewed M5/M6 bridge patch.
+
+=== N1 dlopen findings (0, 39-43) — all RTLD_NOLOAD singletons ===
+Every primary is RTLD_NOW|RTLD_NOLOAD = return a handle ONLY if the lib is already mapped in the caller's ns
+(cannot create a fresh ns, cannot load a new copy). Targets are always-resident route-A singletons:
+  liboh_android_runtime.so  (loaded by appspawn-x / OHEnvironment init)
+  liboh_adapter_bridge.so   (loaded by OHEnvironment static-init before hwui RenderThread)
+  libEGL.so                 (loaded by hwui RenderThread via OH GLES init)
+Two RTLD_NOW fallbacks ([0] runtime, [42] libEGL) are idempotent: dlopen of an already-mapped lib returns the
+SAME handle (refcount++), no second copy. [41] is explicitly "never load a second bridge copy; reach the one the
+shared runtime depends on". All failure paths are graceful (LOGE/stderr/no-op), never a crash.
+
+=== N1 m6-jni-cache (1-38) ===
+[1-4] GetStaticMethodID/GetMethodID on the bridge's own cached jclass (bridgeClass_ / adapter_bridge_load_class)
+      -> standard JNI into adapter.activity.*, same as deployed 84695d62; not a ns/library target.
+[5-38] a flat list of ordinary symbols: ALOG*/__android_log_print, Call*Method/Get*Field/DeleteLocalRef/
+      Exception*/NewStringUTF (JNI), c_str/lock (std), va_start/va_end, clock_gettime/getenv/strtoll (libc),
+      and bridge helpers (GetBundleName/GetElement/SetRequestedOrientation/UpdateSessionPropertyByAction/...).
+      NONE is a dlopen or namespace crossing -> expected call set of the reviewed M6 JNI-cache.

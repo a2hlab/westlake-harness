@@ -1,0 +1,19 @@
+{
+  "task": "U14 reject-item adversarial pre-review: audit cc-t3's 45 findings (needs-outer-review.json, all gate-REJECT) + 4 native static deltas; per-item approve/reject recommendation + evidence (outer signs).",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "material": "master 579e0bc072 benchmark/2026-10-03-u14-final-assembly/needs-outer-review.json + static-allowance-draft.json + evidence/static-vs-u13.json",
+  "principle": "dlns_inherit shared-soname edges + RTLD_NOLOAD handles are invisible to the static NEEDED/dlopen scanner -> conservative REJECT; runtime resolution is safe + single-copy.",
+  "n1_dlopen": {"idxs":[0,39,40,41,42,43],"verdict":"APPROVE","basis":"all primaries RTLD_NOLOAD (handle to already-mapped resident singleton: liboh_android_runtime/liboh_adapter_bridge/libEGL); 2 RTLD_NOW fallbacks idempotent (same handle, no 2nd copy); [41] explicitly avoids a 2nd bridge copy; caller-default ns, no fresh ns; graceful failure paths"},
+  "n1_jni": {"idxs":"1-4","verdict":"APPROVE","basis":"GetStaticMethodID/GetMethodID on the bridge's own cached jclass (adapter.activity.* via adapter_bridge_load_class); standard JNI same as deployed 84695d62; scanner 'unknown' = untraceable runtime jclass var"},
+  "n1_unresolved_calls": {"idxs":"5-38","count":34,"verdict":"APPROVE","basis":"ordinary libc/JNI/C++/log symbols + bridge helpers; none is a dlopen/namespace crossing; expected call set of the reviewed M6 JNI-cache"},
+  "n2_libcpp": {"idx":44,"verdict":"APPROVE (gate false-positive)","ee2fb82c_needed":["liboh_android_runtime.so","libsurface.z.so","libc.so"],"fff9_needed":["liboh_android_runtime.so","libsurface.z.so","libc++.so","libc.so"],"why_new":"EGL interposer std::mutex+std::unordered_map -> dynamic libc++ NEEDED","provider":"flutter_private dlns_inherit libc++.so from BOTH default and westlake.sealed.child (westlake_stock_host_main.c:267,270)","double_copy":false,"condition":"U14 host f19b4a49 must retain the libc++ inherit lists (verified; host delta is 0 call-set change)"},
+  "static_deltas": {
+    "bridge_87ed7281":"EXPECTED - same preload_libmali_global dlopen; path-string adr immediate shifted -572 (.rodata reorder from M5/M6); zero behavior change",
+    "host_f19b4a49":"EXPECTED - Wall-1 app-ns public-libs inherit; 0 call-set change; retains flutter libc++ inherit",
+    "flutter_592491ea":"EXPECTED - +7 EGL-interposer dlopens (=findings 39-43); reviewed cc-t3 822dbf198f",
+    "gecko_05ff6c8b":"EXPECTED - native_abi patch (+10 exports, __emutls_unregister_key); native_abi->v2 (+_ctype_) will re-hash, re-review by shape"
+  },
+  "recommendation": "promote all 45 findings + 4 deltas to the static allowance / new-native-admissions table; 0 genuinely-new unreviewed namespace/target. Only standing condition: N2 libc++ inherit in the U14 host (verified present).",
+  "boundaries": ["offline; no board; no push; recommendation only (outer signs + edits registries)","sources read read-only: u14-final-assembly findings+deltas+host source, deployed/candidate Flutter libandroid (westlake-harness-bms, westlake-inputs/generations)"],
+  "files": ["README.md","review-table.json","evidence/proofs.txt","results.json","documentation.json","landing-paths.txt"]
+}
