@@ -1,0 +1,26 @@
+BUILD GATES (Mac; baksmali/smali 2.5.2, deps guava-31.1/jcommander-1.78/dexlib2-2.5.2/util-2.5.2 from westlake-inputs/tools)
+base framework.jar (deployed BCP) = 3e106350d882cd1f2f6d71c3cc4e9f124412d16f50a2dcb160007c34e6dde9af
+android/graphics/Bitmap is in classes.dex (1 of 5 dex).
+
+CHANGE: one method, Bitmap.getColorSpace() (recipe/Bitmap.getColorSpace.smali.patch). After the existing
+`mColorSpace = nativeComputeColorSpace(mNativePtr)` store, inject:
+    if (mColorSpace != null) goto :cond_11                      # native gave a colorspace -> keep it
+    if (getConfig() == Config.ALPHA_8) goto :cond_11           # ALPHA_8 legitimately null -> keep null
+    mColorSpace = ColorSpace.get(ColorSpace$Named.SRGB)        # else default to sRGB
+Registers unchanged (.registers 3; uses v0/v1/p0). All referenced members (getConfig, Config.ALPHA_8,
+ColorSpace$Named.SRGB, ColorSpace.get) already exist in classes.dex.
+
+GATE 1 — 2-pass determinism: smali assemble -j1 run twice -> identical classes.dex
+  sha256 = e14cb9ecfbe4e55523287f975cdec35388bbae9f0022f341356100170c06be7d (both passes)
+GATE 2 — round-trip smali diff (re-disassemble new dex vs base disassembly): 18 files differ =
+  1  android/graphics/Bitmap.smali  (intended getColorSpace change)
+  17 benign: static-final default-value re-encoding only (baksmali emits `= 0x0`/`= false`; smali drops the
+     default on round-trip; semantically identical -- ART inits statics to the type default anyway).
+  0  files with instruction/method-body changes outside Bitmap. (categorizer: all 17 changed lines are `.field`.)
+GATE 3 — deployed_class_diff candidate vs deployed 3e106350 (dexdump -l plain, {class:(superclass,interfaces)}):
+  deployed 29341 classes, candidate 29341; DROPPED 0; ADDED 0; SUPERCLASS/INTERFACE CHANGED 0.
+  Bitmap in both: superclass Ljava/lang/Object;, interfaces (Landroid/os/Parcelable;) -- unchanged.
+  (The stock scripts/lab/deployed_class_diff.py crashes on this dex with UnicodeDecodeError -- it hardcodes
+   text=True on dexdump output that contains non-UTF8 bytes; reproduced its exact logic with latin-1 decode.)
+REPACK: cp base framework.jar -> framework-u15.jar; zip -X -0 (STORED, matching base dex entries) replace classes.dex.
+  framework-u15.jar = 9e55e28623c86cc553bb2449cb18948e383a05fb0283b045d969655813b7d1b7

@@ -1,0 +1,11 @@
+FROZEN GATE (dispatch: "先查 frozen.json 里 framework.jar 是否冻结,冻结的话停报")
+knowledge/frozen/frozen.json — 8 entries FZ-001..FZ-008:
+  FZ-001 libbms/libapk_installer (native)        FZ-002 runtime provider (native)
+  FZ-003 AssetManager nativeOpenAssetFd (src)    FZ-004 JarVerificationProviderFix -> oh-adapter-runtime.jar
+  FZ-005 dex2oat-once re-bake TOOLCHAIN (dex2oat64 + t5_gen_image.sh + boot images)
+  FZ-006 VibratorFetcher -> oh-adapter-runtime.jar
+  FZ-007 tagsoup  -> adapter-mainline-stubs.jar (BCP)   FZ-008 SSLSockets -> adapter-mainline-stubs.jar (BCP)
+RESULT: framework.jar is NOT a frozen artifact; NO entry covers android.graphics.Bitmap / getColorSpace.
+The frozen BCP classes (tagsoup, SSLSockets) live in a DIFFERENT jar (adapter-mainline-stubs.jar), loaded
+earlier in BCP order, so a Bitmap-only edit in framework.jar does not touch them. FZ-005 is the re-bake
+toolchain I must USE (not modify). => gate PASS, proceed.
