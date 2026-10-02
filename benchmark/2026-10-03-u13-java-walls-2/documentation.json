@@ -1,0 +1,17 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-u13-java-walls-2/`** | **U13 Java walls 2 (offline): privacybrowser's UnsupportedOperationException is thrown in the APK's own R8 androidx.webkit (hi0/bi0/fi0, absent from runtime 5ae3dd29 / stubs 2f365a75 / framework 2257b835 / framework.jar / U13 0482c9b1): isFeatureSupported(ALGORITHMIC_DARKENING) passes on the framework side (SDK>=33) but the setter checks only the WebView support-library feature list, empty because J10e's provider proxy has no org.chromium.support_lib_glue. Of 166 keys 19 bundle androidx.webkit, 1 hits this mismatch -> no full boundary; minimal single-feature glue built (runtime jar f8788afc = 0482c9b1 + 6 classes, deterministic). fd-api: style chain to AppCompat is fine (17 lit keys share the empty-bag shape); unique = framework app theme Theme.Material.Light + activity-alias launcher; ThemeProbe jar 6957f3f9 (disabled unless OH param debug.westlake.theme_probe lists the package) + 8-min U13-window plan with fd-calendar control and an outcome->fix-layer table.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **androidx 的 feature 墙要看门的两边(cc-t3,privacybrowser)**:`WebViewFeature.isFeatureSupported(ALGORITHMIC_DARKENING)` 在框架侧放行(SDK_INT>=33),`WebSettingsCompat.setAlgorithmicDarkeningAllowed` 却只认 WebView 侧的 support-library 特性表;我们的 WebView provider(J10e 的 Proxy)不答 getWebViewClassLoader、各 jar 都没有 `org.chromium.support_lib_glue.SupportLibReflectionUtil` → 特性表为空 → 抛 UnsupportedOperationException(栈首帧 hi0/bi0 是 app 自带的 R8 androidx.webkit,不在我们任何 jar 里)。166 键里 19 个带 androidx.webkit,只有 1 个踩到这个错位 → 只补单特性 glue,不补整片边界。规则:先用 first_frame 式检查定首帧归属(我们的 jar 还是 APK dex),再数精确踩到错位的 key。见 benchmark/2026-10-03-u13-java-walls-2/。",
+    "- 2026-10-03 **ActivityInfo 的 theme ≠ Activity 实例拿到的 theme(cc-t3,fd-api)**:`[B8-ALIASTHEME]`/`[G2.5-SLA-PRE]` 只证明 ActivityInfo 被改对了;fd-api 独有的是『应用主题是框架的 Theme.Material.Light(0x01030237,非 AppCompat)+ activity-alias 启动』,其它 alias 亮键的应用主题都是 app 自己的 AppCompat 系——若 alias 启动时 Activity 实际拿到应用主题,只有 fd-api 会死。默认关闭的 ThemeProbe(OH 参数 debug.westlake.theme_probe 列出包名才开,onActivityPreCreated 打 getThemeResId/mActivityInfo.theme/windowActionBar 解析来源/解析栈)跟 U13 窗口跑,fd-calendar 作对照。"
+   ]
+  }
+ ]
+}
