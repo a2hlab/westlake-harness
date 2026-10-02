@@ -1,0 +1,75 @@
+{
+  "_comment": "Executable N11h review candidate: signed U10.1T8 190afedd base, host-only 65cc3535 -> 65ac5089. No boot or JAR changes.",
+  "expect": {
+    "runtime_fp": "5b620859a5f6",
+    "boot_fp": "e3806b65a079"
+  },
+  "groups": [
+    {
+      "manifest": "$WORKSPACES/westlake-harness/knowledge/smoke/controls-apps.json",
+      "input_root": "$WORKSPACES/westlake-b90-controls-inputs",
+      "keys": [
+        "helloworld",
+        "zigzag"
+      ],
+      "mode": "launch-only",
+      "controls": true
+    }
+  ],
+  "fixes": [
+    {
+      "id": "N11H-HOST-OWNER-RESIDENT-CHECK",
+      "key": "helloworld",
+      "_comment": "N11hCheckOwners() runs on EVERY spawn in the host StockCreateConfiguredNamespaces (key-independent): N11hResidentHandle does dlopen_ns(sealed owner, <owner path>, RTLD_NOW|RTLD_LOCAL|RTLD_NOLOAD) for liboh_adapter_bridge.so then liboh_android_runtime.so. Success = owner resident, handle non-null, rc=0 (ENOENT if missing). Two lines per spawn; the helloworld control prints it. Hard smoke per blueprint ('actual resident-check marker').",
+      "markers": [
+        "\\[N11h-HOST-OWNER\\] action=resident-check target=.* owner=.* rc=0"
+      ]
+    },
+    {
+      "id": "N11H-HOST-OWNER-INHERIT",
+      "key": "helloworld",
+      "_comment": "dlns_inherit(app_namespace, sealed owner, owner_shared) runs on EVERY spawn (unconditional app-domain edge; a 2nd inherit on bridge_namespace fires when wants_bridge). owner=westlake.sealed.child is a fixed literal. Success rc=0. Hard smoke per blueprint ('domain-inherit marker').",
+      "markers": [
+        "\\[N11h-HOST-OWNER\\] action=inherit target=.* owner=westlake.sealed.child shared=.* rc=0"
+      ]
+    }
+  ],
+  "probe": {
+    "package": "com.example.helloworld",
+    "single_copy": [
+      "libart.so",
+      "libopenjdkjvm.so",
+      "liboh_adapter_bridge.so",
+      "liboh_android_runtime.so"
+    ],
+    "expect_copies": {
+      "liboh_adapter_bridge.so": 1,
+      "liboh_android_runtime.so": 1
+    },
+    "_probe_comment": "N11h GOAL and the real gate: count by LOAD BASE, not inode/path. U9/U10.1 show liboh_adapter_bridge.so=2 and liboh_android_runtime.so=2 (two load-bases each; N11f/N11g proved the child is clean so the 2nd copy is host-side). N11h target = 1 each. libart.so + libopenjdkjvm.so are already single. Smoke MUST FAIL if either owner is still 2 -- that is exactly the single-owner gate.",
+    "files": {
+      "/system/android/framework/oh-adapter-runtime.jar": "5ae3dd29d45c2270e8a53a9dc4bbeeca8972b9b092f91898a15d605bc1cc0108",
+      "/system/android/lib64/libbionic_compat.so": "015aa3a632eabe057bd8d6ce0e0ff181209da7dcab8de22409a79addc0a56d58",
+      "/system/android/lib64/libnativeloader.so": "0718f01e237d322b5a16a1858265f8cc05cddd5ddca6d1ceb28bcc33023913a9",
+      "/system/bin/appspawn-x": "65ac50894de8d06e32439d2aee91f61eb1c45d6c0822826d529f671ca3c49aed",
+      "/system/lib64/westlake/route-a/74d1d6d48210ec5bf66ae43598655c3486b8873513821f13c2ffe15f0de552ac/libbionic_compat.so": "015aa3a632eabe057bd8d6ce0e0ff181209da7dcab8de22409a79addc0a56d58",
+      "/system/lib64/westlake/route-a/74d1d6d48210ec5bf66ae43598655c3486b8873513821f13c2ffe15f0de552ac/libnativeloader.so": "0718f01e237d322b5a16a1858265f8cc05cddd5ddca6d1ceb28bcc33023913a9",
+      "/system/lib64/westlake/route-a/74e6f75976087d7890088b29c08482f17573a588fa5857cb6ca39264838ce16d/libbionic_compat.so": "aa7e77f943ab4edd791590ca6b739120249b1ad6eb40e1ece7710ba206742a08",
+      "/system/lib64/westlake/route-a/74e6f75976087d7890088b29c08482f17573a588fa5857cb6ca39264838ce16d/libnativeloader.so": "eddeb87ef17754b28f83cd732fe5b606504005af0c77b21923ac62c20e3c34ea",
+      "/system/android/framework/adapter-mainline-stubs.jar": "2f365a75581bb739041390ac35bc0e39e894ac9e80c990bb64cfe7016d781ba5",
+      "/system/android/framework/oh-adapter-framework.jar": "2257b835afda730a684fe6da81ac9658211af426e440da50f7d97762b2482cc1",
+      "/system/lib64/appspawn/libwestlake_android_child.z.so": "dc73a28d2535f0a261776625ea51770edf044f33de17aa05ff5c5e789ba25d3c"
+    }
+  },
+  "advisory_fixes": [
+    {
+      "id": "N11H-HOST-OPEN",
+      "key": "helloworld",
+      "conditional": true,
+      "_comment": "CONDITIONAL \u2014 do NOT hard-fail the control smoke on this. It fires only when the host StockOpenNamespace receives an exact owner-path request (N11hOwnerPath matches liboh_adapter_bridge.so / liboh_android_runtime.so): action=resident (returns the resident handle) or action=reject (handle=NULL). The owners are installed via dlns_inherit in StockCreateConfiguredNamespaces, so a spawn may find them resident WITHOUT re-requesting an owner open through this callback -- whether the helloworld control reaches this branch is UNVERIFIED. cx-t0: on the first smoke run, check if helloworld emits it; if it does not, DEMOTE this to a per-target assertion (assert on a session-miss target that reaches the owner-open path) and remove it from the control gate. Regex covers both resident and reject.",
+      "markers": [
+        "\\[N11h-HOST-OPEN\\] action=(resident|reject) path=.* target=.* rc=.*"
+      ]
+    }
+  ]
+}
