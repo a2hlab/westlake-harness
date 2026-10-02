@@ -1,0 +1,38 @@
+From 03678daba6f6cde61eef51d4bbbf84f2010d005e Mon Sep 17 00:00:00 2001
+From: ymote <151983+ymote@users.noreply.github.com>
+Date: Fri, 25 Sep 2026 18:05:00 -0700
+Subject: [PATCH] Build Android native code with zero-initialized locals, as
+ AOSP does
+
+AOSP compiles all native code with -ftrivial-auto-var-init=zero and its
+sources rely on it. libicu_jni's ScopedIcuLocale leaves its UErrorCode
+uninitialized; ICU returns early on a status that already reads as a
+failure, so without the flag LocaleNative returned null on about half
+of all calls and Locale.getDisplayName threw (WiFiAnalyzer). clang 15
+needs the opt-in switch AOSP also passed before the flag became
+permanent.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ tools/build_android_native.py | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/tools/build_android_native.py b/tools/build_android_native.py
+index 9770fa2..85070d0 100644
+--- a/tools/build_android_native.py
++++ b/tools/build_android_native.py
+@@ -63,6 +63,11 @@ def main():
+     cc, cxx = sdk / 'llvm/bin/clang', sdk / 'llvm/bin/clang++'
+     flags = ['-O2', '-fPIC', '-D_GNU_SOURCE', '-D_POSIX_C_SOURCE=200809L', '-DNDEBUG', '-D_FILE_OFFSET_BITS=64',
+              '-Werror=date-time', '-ffile-prefix-map=' + str(workspace) + '=/src',
++             # AOSP builds all native code with zero-initialized locals, and its sources rely on
++             # it (libicu_jni's ScopedIcuLocale reads an uninitialized UErrorCode). clang 15 wants
++             # the opt-in switch; AOSP passed it too until clang made the flag permanent.
++             '-ftrivial-auto-var-init=zero',
++             '-enable-trivial-auto-var-init-zero-knowing-it-will-be-removed-from-clang',
+              '-ffile-prefix-map=' + str(output) + '=/build/native-support']
+     cpp = ['-std=gnu++20', '-nostdinc++']
+     cflags = ['-std=gnu11']
+-- 
+2.55.0
+

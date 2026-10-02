@@ -1,0 +1,69 @@
+===== ScopedIcuLocale.h (uninitialized UErrorCode @ line 39) =====
+class ScopedIcuLocale {
+ public:
+  ScopedIcuLocale(JNIEnv* env, jstring javaLanguageTag) : mEnv(env) {
+    mLocale.setToBogus();
+
+    if (javaLanguageTag == NULL) {
+      jniThrowNullPointerException(mEnv, "javaLanguageTag == null");
+      return;
+    }
+
+    const ScopedUtfChars languageTag(env, javaLanguageTag);
+    if (languageTag.c_str() == NULL) {
+      return;
+    }
+
+    UErrorCode err;
+    icu::Locale locale = icu::Locale::forLanguageTag(languageTag.c_str(), err);
+    if (U_FAILURE(err)) {
+      return;
+    }
+
+    mLocale = locale;
+  }
+
+  ~ScopedIcuLocale() {
+  }
+
+  bool valid() const {
+    return !mLocale.isBogus();
+  }
+
+  icu::Locale& locale() {
+    return mLocale;
+  }
+
+ private:
+  JNIEnv* const mEnv;
+
+===== com_android_icu_util_LocaleNative.cpp : getDisplayCountryNative (36-48) =====
+static jstring LocaleNative_getDisplayCountryNative(JNIEnv* env, jclass, jstring javaTargetLanguageTag, jstring javaLanguageTag) {
+  ScopedIcuLocale icuLocale(env, javaLanguageTag);
+  if (!icuLocale.valid()) {
+    return NULL;
+  }
+  ScopedIcuLocale icuTargetLocale(env, javaTargetLanguageTag);
+  if (!icuTargetLocale.valid()) {
+    return NULL;
+  }
+
+  icu::UnicodeString str;
+  icuTargetLocale.locale().getDisplayCountry(icuLocale.locale(), str);
+  return jniCreateString(env, str.getBuffer(), str.length());
+
+===== com_android_icu_util_CaseMapperNative.cpp : toUpperCase (42-55) =====
+static jstring CaseMapperNative_toUpperCase(JNIEnv* env, jclass, jstring javaString, jstring javaLanguageTag) {
+  ScopedJavaUnicodeString scopedString(env, javaString);
+  if (!scopedString.valid()) {
+    return NULL;
+  }
+  ScopedIcuLocale icuLocale(env, javaLanguageTag);
+  if (!icuLocale.valid()) {
+    return NULL;
+  }
+  icu::UnicodeString& s(scopedString.unicodeString());
+  icu::UnicodeString original(s);
+  s.toUpper(icuLocale.locale());
+  return s == original ? javaString : jniCreateString(env, s.getBuffer(), s.length());
+}

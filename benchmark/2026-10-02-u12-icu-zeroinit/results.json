@@ -1,0 +1,85 @@
+{
+  "task": "U12 native cluster — ICU zero-init wall",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "board_entry": 80,
+  "offline": true,
+  "board_deploy": false,
+  "keys": ["fd-wifianalyzer", "fd-breezyweather"],
+  "root_cause": {
+    "file": "external/icu/.../ScopedIcuLocale.h",
+    "line": 39,
+    "defect": "UErrorCode err; declared uninitialized; passed to Locale::forLanguageTag which early-returns on a status that already reads as failure (ICU contract) -> mLocale stays bogus -> valid()==false -> JNI returns NULL -> Java NPE",
+    "shared_by_both_keys": true,
+    "native_paths": {
+      "fd-breezyweather": "Locale.getDisplayCountry -> LocaleNative_getDisplayCountryNative -> ScopedIcuLocale -> return NULL (com_android_icu_util_LocaleNative.cpp:36-48)",
+      "fd-wifianalyzer": "String.toUpperCase(Locale) -> CaseMapperNative_toUpperCase -> ScopedIcuLocale -> return NULL (com_android_icu_util_CaseMapperNative.cpp:42-55)"
+    },
+    "failure_rate": "~50% (uninitialized stack garbage is random -> native-layer white lottery)"
+  },
+  "observed_first_fatal": {
+    "source": "benchmark/2026-10-01-u10-first-wall/u9-first-wall.json",
+    "fd-wifianalyzer": {"verdict": "dead", "family": "java:NullPointerException", "cause": "Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference", "component": "com.vrem.wifianalyzer"},
+    "fd-breezyweather": {"verdict": "dead", "family": "java:NullPointerException", "cause": "Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference", "component": "org.breezyweather"}
+  },
+  "provenance": {
+    "deployed_so": "$WORKSPACES/westlake-generation-u9-j10g-238ffc14/native/payload/android/lib64/libicu_jni.so",
+    "deployed_sha256_prefix": "4261c09e",
+    "deployed_compiler": "OHOS (dev) clang version 15.0.4 (llvm-project feef13a36e78b7a2ff3e9e3f180a958f2782be1e)",
+    "deployed_source_head": "532633d",
+    "fix_commit": "03678da",
+    "fix_is_ancestor_of_deployed": false,
+    "zeroinit_flag_occurrences_at_deployed_source": 0,
+    "auto_var_init_traces_in_binary": 0,
+    "conclusion": "deployed libicu_jni built WITHOUT -ftrivial-auto-var-init=zero"
+  },
+  "fix": {
+    "commit": "03678da",
+    "title": "Build Android native code with zero-initialized locals, as AOSP does",
+    "file_changed": "tools/build_android_native.py",
+    "lines_added": 5,
+    "flags": [
+      "-ftrivial-auto-var-init=zero",
+      "-enable-trivial-auto-var-init-zero-knowing-it-will-be-removed-from-clang"
+    ],
+    "second_flag_rationale": "clang 15 gates =zero behind the -enable-... internal switch; both flags required for our pinned clang 15.0.4 feef13a3"
+  },
+  "codegen_demo": {
+    "tool": "Homebrew clang 22.1.8 (arm64), --target=aarch64-linux-gnu -O2",
+    "reduction": "evidence/scopedlocale_reduction.cpp (faithful of ScopedIcuLocale.h:39-43)",
+    "key_difference": "with -ftrivial-auto-var-init=zero a single 'stur wzr, [x29, #-4]' zeros the err slot before the call; without it the slot is passed as stack garbage",
+    "diff": "evidence/codegen.diff",
+    "caveat": "clang 22 has =zero as GA (no gate); demo shows flag effect on the pattern, not the clang-15 gate requirement"
+  },
+  "prediction": {
+    "fd-breezyweather": {"before": "NPE getClass()-on-null, Unable to start activity (dead, ~50%)", "after": "err=0 -> valid locale -> non-null getDisplayCountry -> NPE cleared; next wall likely generic render-white lottery"},
+    "fd-wifianalyzer": {"before": "same NPE family, Unable to start activity (dead, ~50%)", "after": "non-null toUpperCase result -> NPE cleared; next wall as above"},
+    "falsifier": "same getClass()-on-null NPE after a flagged libicu_jni (reproduced) refutes the root cause",
+    "judge_over_repeat": true,
+    "deployed_strings_diff": "deferred to rebuild (needs candidate)",
+    "open_site_scan": "not applicable (maps library-open namespaces, not this JNI-return defect)"
+  },
+  "step3_rebuild": {
+    "status": "blocked_on_build_closure",
+    "needs": {
+      "workspace_toolchains": ["toolchains/ohos-sdk/native", "toolchains/clang-15"],
+      "android_source_closure": true,
+      "sources_count": 16,
+      "include_dirs_count": 22,
+      "link_deps": ["libicuuc.so", "libicui18n.so", "libnativehelper.so", "libbase.so", "liblog.so"]
+    },
+    "blocker": "no local tree carries android-source/ or the toolchains; frozen toolchain (2.4GB) + AOSP source only on hw248 (/opt/wl-src/.work/product-tls-generation/, /home/alvin/aosp-14.0.0_r1-art). RUNBOOK E.74: copy back + dockbuild locally, do not build on hw248.",
+    "recipe": "README.md §6 (patch + two byte-identical flagged builds + no-flag reproduce)",
+    "accepted_substitute": "binary-feature + codegen evidence, per dispatch ('找不到就从二进制特征判断,写明依据')"
+  },
+  "evidence_files": [
+    "evidence/scopedicu-source.txt",
+    "evidence/deployed-binary-features.txt",
+    "evidence/provenance-proof.txt",
+    "evidence/03678da-zeroinit.patch",
+    "evidence/scopedlocale_reduction.cpp",
+    "evidence/noflag.s",
+    "evidence/zeroinit.s",
+    "evidence/codegen.diff"
+  ]
+}
