@@ -1,4 +1,46 @@
-# U14 native_abi for Gecko: d2053066 reproduced on hw248 with its own clang (all diffs path-only), then +10 LIBC exports = 86882caf; libmozglue/libxul replay 0 missing; two items for the outer (a new open site, and `__loader_android_dlopen_ext` has no provider)
+# U14 native_abi for Gecko: d2053066 reproduced on hw248 with its own clang (all diffs path-only), then +10 LIBC exports; FINAL = 7605812c (android_dlopen_ext = deployed libbionic_compat 015aa3a6 behaviour)
+
+## FINAL (outer 04:11): `7605812cc5249534950bb0533baa3199b380daf6e763af12ed216c2c70649515`, for cx-bms / U14
+
+**Release.** `$WORKSPACES/westlake-inputs/generations/u14-native-abi-gecko-v2/`
+- `payload/android/lib64/westlake_native/libwestlake_native_abi.so` = `7605812cc5249534950bb0533baa3199b380daf6e763af12ed216c2c70649515`.
+  Deploy target: `/system/android/lib64/westlake_native/libwestlake_native_abi.so` (replaces d2053066).
+  `westlake_flutter/libwestlake_native_abi.so` stays d2053066.
+- `logs/`: teed hw248 build logs, faithful repro ×2 (554bf6bc) + final ×2. `SHA256SUMS` covers payload + logs.
+
+**Outer decisions on the two open items.**
+- **A (emutls): accepted** as the direct consequence of the verbatim `__pthread_cleanup_*` under the recipe's flags.
+- **B (`android_dlopen_ext`): use the deployed libbionic_compat 015aa3a6 behaviour.**
+  - `src/android_dlopen_ext.c` + `src/android_dlext_abi.h` are copied unchanged (`7337a393`, `58c45663`) from
+    `benchmark/2026-10-01-u10-native-shims/overlay/`, the source of 015aa3a6 (its README:48).
+  - Behaviour: forward to `__loader_android_dlopen_ext` only when that weak backend exists; `extinfo == NULL` or
+    `extinfo->flags == 0` → plain `dlopen(filename, flags)`; otherwise `errno = ENOTSUP`, return NULL and log
+    `[U10-DLEXT] backend absent; refusing extension flags=0x%lx file=%s`.
+  - The AOSP forward block was removed from `src/gecko_abi.c` (`09aef138`); map unchanged (`14bb2fbb`).
+
+**Build.** hw248, frozen clang feef13a3, `build_hw248.sh` with `gecko_abi.c android_dlopen_ext.c`. ×2 byte-identical,
+0 compiler warnings (`evidence/hw248-gecko2-{a,b}.log`).
+
+**Gates.**
+| gate | result |
+|---|---|
+| exports vs faithful 554bf6bc | **exactly +10, 0 removed**, all `@@LIBC`; `android_dlopen_ext` is now GLOBAL, as in 015aa3a6. LIBC elf_hash 0x50d63 = libmozglue's vna_hash. |
+| vs 86882caf | 43/44 functions instruction-equal; only `android_dlopen_ext` changed (7 → 33 insns); import added: `dlopen` |
+| `android_dlopen_ext` vs deployed libbionic_compat 015aa3a6 | **instruction-equal** (`evidence/equiv-libbionic_compat-015aa3a6-vs-7605812c.txt`; the 6 differing functions there are unrelated same-name functions) |
+| strings | the implementations' own only; vs 86882caf adds `[U10-DLEXT] backend absent; refusing extension flags=0x%lx file=%s` and `(null)` |
+| open_site_scan | 0 → **2** in `android_dlopen_ext`: (1) the forward to `__loader_android_dlopen_ext`, taken only when the backend exists, which on route A it does not; (2) the **plain `dlopen` fallback** (tail call). The scanner labels its path `ret:__loader_android_dlopen_ext`, a data-flow artefact; the source passes `filename` (x0). |
+| musl-order replay (`evidence/replay-with-7605812c.txt`) | firefox + fennec: every Gecko library 0 unresolved except `libplugin-container.__libc_init`; no version mismatch |
+
+**Prediction (first fatal).** firefox, fd-fennec_fdroid: the libmozglue relocation wall goes (high). If libxul calls
+`android_dlopen_ext` with extension flags, it now gets `NULL`/`ENOTSUP` with a `[U10-DLEXT]` line instead of a jump to
+address 0. With flags 0 it gets a plain `dlopen`. Lit: low. Other keys: 0.
+
+**Incident (recorded as asked).** While building the Flutter libandroid, a script slip created `/benchmark/...` at
+hw248's root (2 files, 3 directories). It was removed immediately; see `2026-10-03-u14-flutter-libandroid`.
+
+---
+*The sections below record the route to 86882caf (superseded by 7605812c only in `android_dlopen_ext`).*
+
 
 #90, native, offline. Nothing went to a board. Route B (outer, 03:23): hw248 with the same frozen clang-15; a2hlab was
 left to the executor.
@@ -68,7 +110,7 @@ The OHOS target compiles `__thread` as emulated TLS, so compiler-rt's emutls is 
 `__emutls_unregister_key` is no longer a 1-instruction stub. That behaviour comes from compiler-rt and the recipe's
 flags, not new code of ours.
 
-## Two items for the outer
+## Two items for the outer (resolved 04:11: A accepted, B → 015aa3a6 behaviour, see FINAL)
 
 **A. Accept the emutls change?** It is a direct consequence of copying `__pthread_cleanup_*` verbatim under the
 original flags. The alternative, compiling `gecko_abi.c` with native ELF TLS, would add a flag the recipe does not

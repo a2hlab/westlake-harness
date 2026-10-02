@@ -1,5 +1,25 @@
 # U14 Flutter-private libandroid: ee2fb82c faithfully reproduced on hw248, then the hwui EGL interposer = fff9be31 (old functions 15/15 equal, +4 LIBEGL exports); deploy to westlake_flutter/ only
 
+<<<<<<< HEAD
+## Release for cx-bms / U14 (outer 04:11: accepted)
+
+**Release.** `$WORKSPACES/westlake-inputs/generations/u14-flutter-libandroid-v1/`
+- `payload/android/lib64/westlake_flutter/libandroid.so` = `fff9be3190f1b1c99c3fd4559d258cbac131fb657d10b1fa7060f61c4002d5e5`
+  (built as `libwestlake_flutter_android.so`, SONAME `libandroid.so`).
+- **Deploy target:** `/system/android/lib64/westlake_flutter/libandroid.so`, replacing
+  `ee2fb82c6351b1b8461ce214e8ef39c9b33731523f154f92137991afa0e26c45` (outer's read on 61b).
+  `/system/android/lib64/westlake_native/libandroid.so` (same ee2fb82c) is **not** replaced.
+- `logs/`: teed hw248 build logs. Faithful repro ×2 = `e4c271977d88c4b4ab189199b91bd19e5c7342f976e34c7adf945c7ee81ee8ab`;
+  final ×2 = fff9be31. `SHA256SUMS` covers payload + logs.
+
+**Incident (recorded).** During this build a script slip, a failed `cd` that left a variable empty, created
+`/benchmark/2026-10-03-u14-flutter-libandroid/src/{flutter_egl.cpp,android_egl.map}` at hw248's root. The two files
+and three empty directories were removed immediately after checking they were only mine; nothing else was touched.
+
+
+||||||| bf00e19466
+=======
+>>>>>>> master
 #90, native, offline. Nothing went to a board; a2hlab was not used. The wall is `2026-10-03-flutter-egl-window`.
 - libflutter's `eglCreateWindowSurface` binds platform libEGL, because the Flutter-private `libandroid.so` it searches
   first lacks the interposer.

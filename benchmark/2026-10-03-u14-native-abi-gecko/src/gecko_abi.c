@@ -9,8 +9,11 @@
  *   __assert2
  *       vm-copies/westlake-current framework/appspawn-x/bionic_compat/src/bionic_assert_compat.c @e2b0bf6 line 133
  *   android_dlopen_ext
- *       AOSP android-14.0.0_r1 bionic/libdl/libdl.cpp (57a9079a) lines 66-71 and 134-138: forwards to the linker's
- *       __loader_android_dlopen_ext (weak). android_dlextinfo is only passed through, so it is declared opaque here.
+ *       NOT in this file (outer decision 04:11): src/android_dlopen_ext.c + android_dlext_abi.h, copied unchanged from
+ *       benchmark/2026-10-01-u10-native-shims/overlay (7337a393), the source of the deployed libbionic_compat
+ *       015aa3a6's android_dlopen_ext: forward to __loader_android_dlopen_ext only when that backend exists; empty
+ *       extinfo or flags == 0 -> plain dlopen; otherwise ENOTSUP + "[U10-DLEXT] backend absent; refusing extension".
+ *       (86882caf had the bare AOSP libdl.cpp forward, which on route A resolves the weak backend to 0.)
  */
 #include <errno.h>
 #include <fcntl.h>
@@ -138,19 +141,4 @@ void __assert2(const char* file, int line, const char* function,
             failed_expression ? failed_expression : "?");
     fflush(stderr);
     abort();
-}
-
-/* ---- AOSP android-14.0.0_r1 bionic/libdl/libdl.cpp @57a9079a:66-71, 134-138 ---- */
-typedef struct android_dlextinfo android_dlextinfo;
-
-__attribute__((__weak__, visibility("default")))
-void* __loader_android_dlopen_ext(const char* filename,
-                                  int flag,
-                                  const android_dlextinfo* extinfo,
-                                  const void* caller_addr);
-
-__attribute__((__weak__))
-void* android_dlopen_ext(const char* filename, int flag, const android_dlextinfo* extinfo) {
-  const void* caller_addr = __builtin_return_address(0);
-  return __loader_android_dlopen_ext(filename, flag, extinfo, caller_addr);
 }
