@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-gecko-fatal-before-bind/`** | **firefox and fd-fennec_fdroid (U12 fatal_before_bind) die on one native wall: libmozglue.so relocation `__gnu_strerror_r@LIBC` (F02-A12) in the native domain, where only GLOBAL libwestlake_native_abi d2053066 (26 exports) + musl are visible; musl-order replay reproduces the board's first symbol and lists 10 gaps (adding only `__gnu_strerror_r` moves it to `strtoll_l` / `__pthread_cleanup_push`); U13 moves 0; fix = 10 LIBC exports in native_abi, copied from the old webview_bionic_shim / bionic_assert_compat. libandroidio/libjavacore ENOENT in app domain: not fatal (near_fatal 0, all 4 keys alive t20).** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **重定位失败先静态回放链接器,再修日志报的那个符号(cc-t3,Gecko)**:musl dlopen 在第一个缺失强符号处 longjmp 中止,hilog 只露一个符号;firefox/fennec 的 libmozglue 报 `__gnu_strerror_r`,按 native 域提供者模型(musl + RTLD_GLOBAL 的 libwestlake_native_abi + 自身 NEEDED 闭包;libc.so/libm.so/libdl.so 是 musl 保留名,不走 android libc 桩;libbionic_compat 对 native_private 不继承、只按名共享)回放出完整 10 个缺口,只补一个会移到 strtoll_l / __pthread_cleanup_push。工具 benchmark/2026-10-03-gecko-fatal-before-bind/reloc_order.py(先复现板上首个符号再信它的后续)。"
+   ]
+  }
+ ]
+}

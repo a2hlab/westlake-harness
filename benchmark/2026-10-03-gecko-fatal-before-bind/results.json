@@ -1,0 +1,46 @@
+{
+ "task": "#90 Gecko fatal_before_bind (firefox, fd-fennec_fdroid) in U12 stage A + libandroidio/libjavacore ENOENT question",
+ "same_wall": true,
+ "first_fatal": "libmozglue.so relocation: __gnu_strerror_r@LIBC not found (F02-A12-UNSUPPORTED-SYMBOL) in GeckoThread GeckoLoader.loadMozGlue; process ended by mozac crash handler ~35 ms after B8-UEH kept it alive",
+ "runs": {
+  "firefox": "U12 window4 61b",
+  "fd-fennec_fdroid": "U12 window3 5cd"
+ },
+ "layer": "native: route-A bionic ABI provider libwestlake_native_abi.so d2053066 (RTLD_GLOBAL in the native domain) lacks it; libbionic_compat 015aa3a6 exports it but is not inherited for native_private",
+ "model_check": "musl-order replay reproduces __gnu_strerror_r as first unresolved for both builds",
+ "full_gap": [
+  "__gnu_strerror_r",
+  "strtoll_l",
+  "strtoull_l",
+  "__pthread_cleanup_push",
+  "__pthread_cleanup_pop",
+  "__assert2",
+  "__open_2",
+  "__cmsg_nxthdr",
+  "__strncpy_chk2",
+  "android_dlopen_ext"
+ ],
+ "only_strerror_fix_moves_to": {
+  "fennec": "strtoll_l",
+  "firefox": "__pthread_cleanup_push"
+ },
+ "u13_moves": 0,
+ "fix": "add the 10 exports (LIBC) to libwestlake_native_abi.so; 8 copied from webview_bionic_shim.c (532633d), __assert2 from bionic_assert_compat.c:133, android_dlopen_ext source not yet found locally; with fix 0 unresolved except plugin-container __libc_init (child exec)",
+ "prediction": {
+  "firefox": "first fatal moves (high); lit low",
+  "fd-fennec_fdroid": "first fatal moves (high); lit low",
+  "others": 0
+ },
+ "androidio_javacore_enoent": {
+  "keys": [
+   "antennapod",
+   "fd-client",
+   "fd-tusky",
+   "fd-tutanota"
+  ],
+  "near_fatal_keys": 0,
+  "fatal": false,
+  "all_alive_t5_t20": true,
+  "who": "bare-name opens via route-A libnativeloader 2a6ec73f native_loader_registry.cpp:373 ANL_Dlopen into westlake.anl.app on the bind thread; not app native code (antennapod has none), not a literal System.loadLibrary in any APK/runtime/BCP dex; exact Java call site not in hilog"
+ }
+}
