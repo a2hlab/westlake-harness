@@ -41,6 +41,28 @@ class InstallationIdentity(unittest.TestCase):
         self.assertEqual(len(x['disk_identities']), 6)
         self.assertEqual(len(x['unobserved_libraries']), 3)
 
+    def test_expected_identity_requires_every_alias(self):
+        expected = {path: 'a'*64 for path in c.PATHS}
+        with self.assertRaises(ValueError):
+            c.compare_expected(dict(list(expected.items())[:-1]), {})
+        with self.assertRaises(ValueError):
+            c.compare_expected({path: 'a'*8 for path in c.PATHS}, {})
+
+    def test_exact_alias_drift_is_reported_not_hidden_by_same_native(self):
+        expected = {path: 'a'*64 for path in c.PATHS}
+        actual = dict(expected);actual['/system/lib64/platformsdk/libinstalls.z.so'] = 'b'*64
+        result = c.compare_expected(expected, {'disk_identities': actual, 'mismatches': [], 'unobserved_libraries': []})
+        self.assertFalse(result['passed']);self.assertEqual(len(result['diff']), 1)
+        self.assertEqual(result['diff'][0]['path'], '/system/lib64/platformsdk/libinstalls.z.so')
+
+    def test_loader_unknown_does_not_become_verified_disk_assertion(self):
+        expected = {path: 'a'*64 for path in c.PATHS}
+        result = c.compare_expected(expected, {'disk_identities': expected, 'mismatches': [], 'unobserved_libraries': ['libinstalls.z.so']})
+        self.assertTrue(result['disk_assertion_passed']);self.assertEqual(result['loaded_verdict'], 'unknown')
+        self.assertTrue(result['passed'])  # the disk assertion, explicitly not loader verification
+        stale = dict(disk_identities=expected, mismatches=[{'reason': 'stale inode'}], unobserved_libraries=[])
+        self.assertFalse(c.compare_expected(expected, stale)['passed'])
+
     def test_runtime_fingerprints_include_all_aliases_once_and_detect_service_drift(self):
         import importlib.util
         import sweep_bind_deploy as sweep
