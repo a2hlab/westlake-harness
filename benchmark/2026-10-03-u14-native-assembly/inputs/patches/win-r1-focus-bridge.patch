@@ -1,0 +1,194 @@
+diff --git a/oh_window_manager_client.cpp b/oh_window_manager_client.cpp
+index d3c3fcf..a0beb73 100755
+--- a/oh_window_manager_client.cpp
++++ b/oh_window_manager_client.cpp
+@@ -446,6 +446,9 @@ OHWindowSession OHWindowManagerClient::createSession(
+         property->SetParentPersistentId(parentPersistentId);
+         property->SetWindowType(
+             OHOS::Rosen::WindowType::WINDOW_TYPE_APP_SUB_WINDOW);
++        // [U14 R1] the parent MainSession owns platform focus; project its
++        // active edge into this content stage.
++        stage->SetInheritsParentFocus(true);
+         LOGI("createSession: bound Android top-level content to OH MainSession "
+              "parentId=%{public}d", parentPersistentId);
+     }
+diff --git a/session_stage_adapter.cpp b/session_stage_adapter.cpp
+index 119f063..38b07f9 100755
+--- a/session_stage_adapter.cpp
++++ b/session_stage_adapter.cpp
+@@ -78,6 +78,48 @@ SessionStageAdapter::SessionStageAdapter(JavaVM* jvm, jobject androidWindow)
+     bridgeObj_ = env->NewGlobalRef(localBridgeObj);
+     env->DeleteLocalRef(localBridgeObj);
+ 
++    // [U14 R1] SessionStageBridge does not project OH focus into ViewRootImpl.
++    // Reuse the shipped WindowCallbackBridge, whose public focus callback
++    // follows the Android window-focus path.  Same JNIEnv as above: plain
++    // GetEnv, attach only when the thread is detached (deployed 84695d62).
++    jclass localFocusBridgeClass = env->FindClass(
++        "adapter/window/WindowCallbackBridge");
++    if (!localFocusBridgeClass) {
++        ALOGE("FindClass(adapter/window/WindowCallbackBridge) failed");
++        if (env->ExceptionCheck()) {
++            env->ExceptionClear();
++        }
++        detachIfNeeded(needsDetach);
++        return;
++    }
++    focusBridgeClass_ = reinterpret_cast<jclass>(
++        env->NewGlobalRef(localFocusBridgeClass));
++    env->DeleteLocalRef(localFocusBridgeClass);
++
++    jmethodID focusCtor = env->GetMethodID(focusBridgeClass_, "<init>",
++        "(Ljava/lang/Object;)V");
++    if (!focusCtor) {
++        ALOGE("Failed to find WindowCallbackBridge constructor");
++        if (env->ExceptionCheck()) {
++            env->ExceptionClear();
++        }
++        detachIfNeeded(needsDetach);
++        return;
++    }
++
++    jobject localFocusBridgeObj = env->NewObject(
++        focusBridgeClass_, focusCtor, androidWindow_);
++    if (!localFocusBridgeObj) {
++        ALOGE("Failed to create WindowCallbackBridge instance");
++        if (env->ExceptionCheck()) {
++            env->ExceptionClear();
++        }
++        detachIfNeeded(needsDetach);
++        return;
++    }
++    focusBridgeObj_ = env->NewGlobalRef(localFocusBridgeObj);
++    env->DeleteLocalRef(localFocusBridgeObj);
++
+     detachIfNeeded(needsDetach);
+     ALOGI("SessionStageAdapter initialized successfully");
+ }
+@@ -93,10 +135,24 @@ SessionStageAdapter::~SessionStageAdapter()
+         if (androidWindow_) { env->DeleteGlobalRef(androidWindow_); androidWindow_ = nullptr; }
+         if (bridgeObj_)     { env->DeleteGlobalRef(bridgeObj_);     bridgeObj_     = nullptr; }
+         if (bridgeClass_)   { env->DeleteGlobalRef(bridgeClass_);   bridgeClass_   = nullptr; }
++        if (focusBridgeObj_) {
++            env->DeleteGlobalRef(focusBridgeObj_);
++            focusBridgeObj_ = nullptr;
++        }
++        if (focusBridgeClass_) {
++            env->DeleteGlobalRef(focusBridgeClass_);
++            focusBridgeClass_ = nullptr;
++        }
+         detachIfNeeded(needsDetach);
+     }
+ }
+ 
++void SessionStageAdapter::SetInheritsParentFocus(bool inheritsParentFocus)
++{
++    std::lock_guard<std::mutex> lock(jniMutex_);
++    inheritsParentFocus_ = inheritsParentFocus;
++}
++
+ // ================================================================
+ // Category 1: Session Lifecycle
+ // ================================================================
+@@ -107,6 +163,12 @@ WSError SessionStageAdapter::SetActive(bool active)
+ 
+     std::lock_guard<std::mutex> lock(jniMutex_);
+     callBridgeVoidMethod("onSetActive", "(Z)V", static_cast<jboolean>(active));
++    if (inheritsParentFocus_) {
++        OH_BR_IPC_SCOPE("SessionStage.InheritedParentFocus",
++                        "focused=%{public}d", static_cast<int>(active));
++        callFocusBridgeVoidMethod("onUpdateFocusStatus", "(Z)V",
++            static_cast<jboolean>(active));
++    }
+ 
+     return WSError::WS_OK;
+ }
+@@ -266,7 +328,8 @@ WSError SessionStageAdapter::UpdateFocus(
+                     "isFocused=%{public}d", static_cast<int>(isFocused));
+ 
+     std::lock_guard<std::mutex> lock(jniMutex_);
+-    callBridgeVoidMethod("onUpdateFocus", "(Z)V", static_cast<jboolean>(isFocused));
++    callFocusBridgeVoidMethod("onUpdateFocusStatus", "(Z)V",
++        static_cast<jboolean>(isFocused));
+ 
+     return WSError::WS_OK;
+ }
+@@ -750,6 +813,43 @@ void SessionStageAdapter::callBridgeVoidMethod(
+     detachIfNeeded(needsDetach);
+ }
+ 
++void SessionStageAdapter::callFocusBridgeVoidMethod(
++    const char* methodName, const char* signature, ...)
++{
++    if (!focusBridgeObj_ || !focusBridgeClass_) {
++        ALOGW("callFocusBridgeVoidMethod(%s): focus bridge not initialized", methodName);
++        return;
++    }
++
++    bool needsDetach = false;
++    JNIEnv* env = getJNIEnv(needsDetach);
++    if (!env) {
++        ALOGE("callFocusBridgeVoidMethod(%s): failed to get JNIEnv", methodName);
++        return;
++    }
++
++    jmethodID method = env->GetMethodID(focusBridgeClass_, methodName, signature);
++    if (!method) {
++        ALOGE("callFocusBridgeVoidMethod: method %s%s not found", methodName, signature);
++        if (env->ExceptionCheck()) env->ExceptionClear();
++        detachIfNeeded(needsDetach);
++        return;
++    }
++
++    va_list args;
++    va_start(args, signature);
++    env->CallVoidMethodV(focusBridgeObj_, method, args);
++    va_end(args);
++
++    if (env->ExceptionCheck()) {
++        ALOGE("callFocusBridgeVoidMethod(%s): Java exception occurred", methodName);
++        env->ExceptionDescribe();
++        env->ExceptionClear();
++    }
++
++    detachIfNeeded(needsDetach);
++}
++
+ // ================================================================
+ // V7-only newly added pure virtuals — no-op OH_ONLY (no Android counterpart)
+ // ================================================================
+diff --git a/session_stage_adapter.h b/session_stage_adapter.h
+index f8ad2f3..f59b0fd 100755
+--- a/session_stage_adapter.h
++++ b/session_stage_adapter.h
+@@ -47,6 +47,11 @@ public:
+     SessionStageAdapter(JavaVM* jvm, jobject androidWindow);
+     ~SessionStageAdapter() override;
+ 
++    // [U14 R1] Android top-level content is hosted by an OH APP_SUB_WINDOW whose
++    // MainSession parent owns platform focus.  Mark only that content stage so
++    // the parent's active edge is projected through ViewRootImpl.
++    void SetInheritsParentFocus(bool inheritsParentFocus);
++
+     // ================================================================
+     // Category 1: Session Lifecycle
+     // ================================================================
+@@ -297,10 +302,18 @@ private:
+     // Call a void method on the Java SessionStageBridge object.
+     void callBridgeVoidMethod(const char* methodName, const char* signature, ...);
+ 
++    // [U14 R1] Project OH focus through the shipped Android WindowCallbackBridge
++    // (onUpdateFocusStatus -> ViewRootImpl window focus).  SessionStageBridge's
++    // onUpdateFocus only logs.
++    void callFocusBridgeVoidMethod(const char* methodName, const char* signature, ...);
++
+     JavaVM* jvm_ = nullptr;
+     jobject androidWindow_ = nullptr;     // Global ref to Android IWindow
+     jclass bridgeClass_ = nullptr;        // Global ref to SessionStageBridge class
+     jobject bridgeObj_ = nullptr;         // Global ref to SessionStageBridge instance
++    jclass focusBridgeClass_ = nullptr;   // [U14 R1] Global ref to WindowCallbackBridge class
++    jobject focusBridgeObj_ = nullptr;    // [U14 R1] Global ref to WindowCallbackBridge instance
++    bool inheritsParentFocus_ = false;    // [U14 R1] True only for top-level Android content
+     std::mutex jniMutex_;                 // Protects JNI calls from concurrent IPC threads
+ };
+ 

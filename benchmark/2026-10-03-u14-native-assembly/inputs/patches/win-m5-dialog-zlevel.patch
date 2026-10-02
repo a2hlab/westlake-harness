@@ -1,0 +1,25 @@
+diff --git a/oh_window_manager_client.cpp b/oh_window_manager_client.cpp
+index 1bcad59..995ca66 100755
+--- a/oh_window_manager_client.cpp
++++ b/oh_window_manager_client.cpp
+@@ -491,6 +491,20 @@ OHWindowSession OHWindowManagerClient::createSession(
+         property->SetParentPersistentId(parentPersistentId);
+         property->SetWindowType(
+             OHOS::Rosen::WindowType::WINDOW_TYPE_APP_SUB_WINDOW);
++        // [U14 M5] Android stacks a TYPE_APPLICATION window (Dialog) above its
++        // Activity's TYPE_BASE_APPLICATION window.  Both are APP_SUB_WINDOWs of
++        // the same MainSession here, and SceneBoard orders equal-zLevel sub
++        // windows by creation, so a dialog created before its Activity window
++        // ends up underneath (benchmark/2026-10-02-white-unexplained-4).  Give
++        // it the sub-window zLevel OH's own client gives a dialog
++        // (WindowSessionImpl::GetSubWindowZLevelByFlags -> DIALOG_SUB_WINDOW_Z_LEVEL,
++        // set on the property before CreateAndConnectSpecificSession, as
++        // WindowSceneSessionImpl::Create does).
++        if (androidWindowType == 2) {
++            property->SetSubWindowZLevel(OHOS::Rosen::DIALOG_SUB_WINDOW_Z_LEVEL);
++            LOGI("createSession: Android TYPE_APPLICATION window -> sub-window zLevel %{public}d",
++                 OHOS::Rosen::DIALOG_SUB_WINDOW_Z_LEVEL);
++        }
+         // [U14 R1] the parent MainSession owns platform focus; project its
+         // active edge into this content stage.
+         stage->SetInheritsParentFocus(true);
