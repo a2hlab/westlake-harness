@@ -52,6 +52,14 @@
     "libz/Element already fixed by U13 private zlib (scoped to {im.vector.app, burgerking}); libz excluded from the public-lib set (outer 02:53)",
     "option (b) proven collision-safe vs OH libhmicuuc _74 (ns + RTLD_LOCAL isolation)"
   ],
-  "boundaries": ["offline; no board access (02:35 lock window)", "appspawn-x host build is the runtime/appspawn owners' to deploy; candidate staging only", "sources read read-only"],
+  "wall2_approach4_DONE": {
+    "decision": "outer 03:50 chose approach 4: add ONE DT_NEEDED libicu74compat.so to libicuuc f74827d9 (patchelf), + a tiny shim mapping the 7 _74 names to libicuuc's _72. No full-ICU rebuild (its recipe is in the generation pipeline, not u13-compat-ctype which builds a 53KB ctype shim).",
+    "static_check_a": "OHOS musl do_dlsym -> find_sym2(use_deps=1) iterates dso->deps (flattened transitive closure). hw248 external/musl/ldso/dynlink.c. So dlsym(<ICU handle>, 'ubrk_open_74') searches the handle's dep tree -> the shim (NEEDED by libicuuc) is reachable. HOLDS.",
+    "static_check_b": "tttext brk_open dlsyms the 7 names (ubrk_open/close/first/next/setText, u_charType, u_hasBinaryProperty) via a cached handle; all are libicuuc common-layer symbols -> libicuuc handle (direct, one hop). libicui18n handle would resolve transitively (libicui18n NEEDED libicuuc NEEDED shim).",
+    "shim": "libicu74compat.so = 4886bc5c... (13336 B, self-deterministic x2; recipe/icu74_shim.S 7 tail-branch trampolines + icu74_shim.map; NEEDED libicuuc.so+libc.so; exports exactly the 7 _74; imports the 7 _72).",
+    "elf_edit": "libicuuc-u14.so = 9b36b989... = f74827d9 + 'patchelf --add-needed libicu74compat.so'. nm -D exports IDENTICAL (0 diff); section headers identical; .dynamic 27->28; .dynstr gains libicu74compat.so. SIZE +286777 B (2260360->2547137): inherent -- .dynstr is 157KB with 1-byte slack so patchelf relocates it into a new PT_LOAD; zero-growth in-place edit impossible; the only leaner path is a full relink (needs the blocked full-ICU recipe).",
+    "artifacts_reproducible": "both trivially reproducible (shim from .S + clang line; patched lib from f74827d9 + one patchelf command); source+recipe+sha committed, binaries not."
+  },
+  "boundaries": ["offline; no board access (02:35/U13 window)", "appspawn-x host build is the runtime/appspawn owners' to deploy; candidate staging only", "sources read read-only; the 2.5MB patched libicuuc + 13KB shim are reproducible from recipe (not committed as binaries)"],
   "files": ["README.md", "evidence/wall2-selection.txt", "evidence/wall2b-collision-judgment.txt", "evidence/build-staging.txt", "evidence/libz-and-deployed-inherit.txt", "recipe/win-u14-appns-public-libs.patch", "recipe/wall2-b-icu74-alias.md", "results.json", "documentation.json", "landing-paths.txt"]
 }
