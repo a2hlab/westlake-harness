@@ -1,0 +1,38 @@
+"""Final disabled 166-key Stage A plans, signed effective baseline restoration."""
+import hashlib,json,sys
+from pathlib import Path
+H=Path(__file__).resolve().parent;R=H.parents[1];W=R.parent
+sys.path.insert(0,str(R/'scripts/lab'));import board_run
+P='$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u12-final-assembly'
+def save(p,d):p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(d,indent=2)+'\n')
+def main():
+ c=json.loads((H/'composition.json').read_text());recovery=json.loads((H/'recovery-u101t8.json').read_text())
+ selected=json.loads((R/'benchmark/2026-10-02-libinstalls-prediction/selected166.json').read_text());signed=json.loads((R/'benchmark/2026-10-02-u10-1-t8-sweep/outer-signoff.json').read_text())
+ assert len(selected)==166 and {r['key'] for r in selected}==set(signed['keys'])
+ coverage=[];summaries=[]
+ for short in ['5ea','5cd','61b']:
+  rows=[r for r in selected if r['serial'].startswith(short)];serial=rows[0]['serial'];root=P+'/$U12_RUN_ID/'+short;shards=[]
+  for tier,lit in [('lit',True),('unlit',False)]:
+   for corpus in ['original','cv2']:
+    keys=sorted(r['key'] for r in rows if (signed['keys'][r['key']]['verdict']=='lit')==lit and r['key'].startswith('cv2-')==(corpus=='cv2'))
+    if not keys:continue
+    name=tier+'-'+corpus;file=H/'keys'/short/(name+'.txt');file.parent.mkdir(parents=True,exist_ok=True);file.write_text('\n'.join(keys)+'\n')
+    shards.append({'name':name,'manifest':'$WORKSPACES/westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/apps.json' if corpus=='original' else '$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json','input_root':'~/a2hlab/app-inputs' if corpus=='original' else '$WORKSPACES/westlake-inputs/corpus-v2/app-inputs','keys_file':P+'/keys/'+short+'/'+name+'.txt'})
+    coverage += [{'key':k,'serial':serial,'board':short,'baseline_verdict':signed['keys'][k]['verdict'],'shard':name} for k in keys]
+  rec=recovery['boards'][serial];candidate=c['candidate_boards'][serial]
+  smoke=json.loads((R/'benchmark/2026-10-02-u10-1-t8-rerun/window'/('smoke-'+short+'.json')).read_text())
+  restored=json.loads(json.dumps(smoke));save(H/('restored-'+short+'.json'),restored)
+  smoke['_comment']='U12 candidate: exact effective file+load-base gate. Bridge/runtime baseline2 retained; no U13 owner fix claim. API gains require separate target evidence/outer t20 review.'
+  smoke['expect']={'runtime_fp':candidate['fingerprints']['runtime']['sha256_12'],'boot_fp':candidate['fingerprints']['boot']['sha256_12']}
+  for target in list(smoke['probe']['files']):smoke['probe']['files'][target]=candidate['expected'][target]
+  for target in c['board_changes']:smoke['probe']['files'][target]=candidate['expected'][target]
+  save(H/('smoke-'+short+'.json'),smoke)
+  precheck={'hypothesis':'Exact U12r2 runtime/stubs+paired images, ICU zero-init, typed mediandk/policy and reviewed private zlib move predicted first fatals without confirmed regression among116 U10.1T8 lit keys. N11h-r2/compat relocation excluded.','evidence':[P+'/composition.json',P+'/exception-classification.json','$WORKSPACES/westlake-harness/benchmark/2026-10-02-u10-1-t8-sweep/outer-signoff.json','$WORKSPACES/westlake-harness/benchmark/2026-10-02-u12-private-zlib/README.md'],'result':'pending-outer-final-admissions','expect':{'confirm':'Final exact artifact activation PASS; measured U10.1T8-lit keys retain own t20 UI under same-board k/n; predicted first fatal changes have raw log evidence. Stage A finishes signed U10.1T8318+fingerprints+recovery smoke.','refute':'Gate/identity/probe fails, new library owner mismatch, or outer confirms non-flaky previously bright app regression; stop then finish. For registered lottery keys a single blank is inconclusive; use k/n and zero/3 only.'}}
+  assert board_run.precheck_problem(precheck)
+  pair=['python3','$WORKSPACES/westlake-harness/scripts/lab/pair_sheet.py','--reference','$WORKSPACES/westlake-harness/benchmark/2026-10-02-u10-1-t8-sweep/u10-1-t8-reference','--signoff','$WORKSPACES/westlake-harness/benchmark/2026-10-02-u10-1-t8-sweep/outer-signoff.json']
+  plan={'serial':serial,'lane':'cx-t0','entry':'90','board':'$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md','phase':'A','execution_enabled':False,'rollout_ready':False,'why':'U12 Stage A observation; unconditional signed U10.1T8 restore','bundle_sha256':c['bundle_sha256'],'package_manifest_sha256':c['native_manifest_sha256'],'out':root+'/runner','window_limit_minutes':45,'stop_new_tests_by_minute':35,'offline_precheck':precheck,'after_lock':['python3',P+'/window_hook.py','--apply','--serial',serial,'--root',root,'--plan',P+'/plan-'+short+'.json'],'before_unlock':['python3',P+'/window_hook.py','--finish','--serial',serial,'--root',root,'--restored-spec',P+'/restored-'+short+'.json'],'smoke_spec':P+'/smoke-'+short+'.json','shards':shards,'restore':{'state':'U10.1T8','bundle_sha256':c['base_bundle_sha256'],'expected':P+'/recovery-u101t8.json','fingerprints':rec['fingerprints'],'identity_assertions':318,'unconditional':True,'failure_retains_lock':True,'journal':root+'/transaction/journal.json','steps':['transaction.rollback with receipt-owned OrganicMaps cold_stop fallback','318 exact SHA assertions and diff/absent empty','parent/child views single ART and route openjdk','recovery HW/ZZ smoke t20','final318 and dual fingerprints; only then unlock']},'regression_gate':{'baseline':'U10.1T8','outer_signoff':'benchmark/2026-10-02-u10-1-t8-sweep/outer-signoff.json','lit_required':116,'confirmed_regressions_allowed':0,'flaky_registry':'knowledge/gates/flaky-keys.json','minimum_trials_per_side':3,'single_white':'inconclusive; no attribution from one sample','zero_of_three':'outer reads t20 for k/n confirmation; do not infer lit from alive','zigzag_single_crash':'preserve evidence, finish baseline, fresh authorized same-byte window retry'},'pair_sheet_review':{'command_prefix':pair,'reference_commit':'621614ce2a','scope':'same-key t20 side-by-side; outer signs','no_self_lit_count':True},'prediction_table':{'path':'$WORKSPACES/westlake-harness/benchmark/2026-10-02-u12-prediction-table/u12-predictions.csv','sha256':hashlib.sha256((R/'benchmark/2026-10-02-u12-prediction-table/u12-predictions.csv').read_bytes()).hexdigest(),'deferred_columns':['n11h_family','compat-relocation'],'interpretation':'U13 owner mechanisms not included; retain as future context, not U12 gains'},'continuation':{'same_bundle_sha':True,'only_unmeasured_keys':True,'rebake':False,'unknown_at_cutoff':True,'fresh_output':True,'outer_previous_window_signoff':True},'pre_lock_dispatch':['python3',P+'/dispatch.py',P+'/plan-'+short+'.json','--detach'],'pre_lock_requirements':['execution and rollout outer approval','real Mac/VM production full gates green','VM tools DEX+LLVM exercise','orb alive','HDC serial online','shared workspace bind hash','same-board SHA baseline; no inode proxy'],'installer':'unchanged per board; libinstalls unification deferred'}
+  save(H/('plan-'+short+'.json'),plan);summaries.append({'board':short,'keys':len(rows),'lit':sum(signed['keys'][r['key']]['verdict']=='lit' for r in rows),'expected':candidate['fingerprints'],'restore':rec['fingerprints'],'execution_enabled':False})
+ assert len(coverage)==len({r['key'] for r in coverage})==166 and sum(r['baseline_verdict']=='lit' for r in coverage)==116
+ save(H/'key-coverage.json',coverage);save(H/'plan-summary.json',{'keys':166,'lit_required':116,'boards':summaries,'execution_enabled':False,'restore':'U10.1T8','restore_assertions':318})
+ print(json.dumps(json.loads((H/'plan-summary.json').read_text()),indent=2))
+if __name__=='__main__':main()
