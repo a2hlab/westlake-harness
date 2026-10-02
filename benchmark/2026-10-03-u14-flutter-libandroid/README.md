@@ -1,6 +1,5 @@
 # U14 Flutter-private libandroid: ee2fb82c faithfully reproduced on hw248, then the hwui EGL interposer = fff9be31 (old functions 15/15 equal, +4 LIBEGL exports); deploy to westlake_flutter/ only
 
-<<<<<<< HEAD
 ## Release for cx-bms / U14 (outer 04:11: accepted)
 
 **Release.** `$WORKSPACES/westlake-inputs/generations/u14-flutter-libandroid-v1/`
@@ -17,9 +16,6 @@
 and three empty directories were removed immediately after checking they were only mine; nothing else was touched.
 
 
-||||||| bf00e19466
-=======
->>>>>>> master
 #90, native, offline. Nothing went to a board; a2hlab was not used. The wall is `2026-10-03-flutter-egl-window`.
 - libflutter's `eglCreateWindowSurface` binds platform libEGL, because the Flutter-private `libandroid.so` it searches
   first lacks the interposer.
