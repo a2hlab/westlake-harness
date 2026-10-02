@@ -1,0 +1,15 @@
+# Load order (toutiao U10.1T8 long-wait hilog, before the ICU crash) + the Java BLE ScanCallback reference.
+
+## Startup load order (hilog grep of lib loads before 01:38:34 ICU SIGSEGV)
+Only libsscronet.so (x5, cronet network) and libmetasec_ml.so (x4, security) appear prominently at startup; lynx/v8/cvt/
+krypton/skity do NOT load before the crash. So the Lynx/V8, libcvt, libkryptonaudioeffect, libprofiler deps are
+ON-DEMAND (feed rendering / specific features), not on the bind/startup critical path. The ICU crash (libtttext_lite)
+was during handleBindApplication text init -- early, before the main feed renders.
+
+## Java BLE ScanCallback reference (toutiao classes.dex)
+Referenced: android/bluetooth/le/ScanCallback, ScanFilter, ScanRecord, ScanResult, ScanSettings, ScanSettings$Builder,
+BluetoothLeScanner, BluetoothAdapter$LeScanCallback, android/telephony/TelephonyScanManager$NetworkScanCallback.
+=> toutiao uses the BLE scan API. If the OH-side Android framework (bridge) lacks these classes/methods AND they are
+touched on the launch path, a NoClassDefFoundError/NoSuchMethodError would fire. BLE scanning is normally lazy and
+runtime-permission-gated (not in Application.onCreate), so it is a LOWER-likelihood launch-path wall than the native
+feed path -- but it is the leading Java-side candidate once the app is interactive.

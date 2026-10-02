@@ -1,0 +1,21 @@
+# toutiao next-wall static replay: 138 native libs, U14 app-ns visible = apk libs + AOSP public + my wall-1 added
+# + libc/c++ + the bridge/runtime (liboh_android_runtime, libbionic_compat, pthread bridge). toutiao = normal bridge path (not enrolled).
+
+## MISSING DT_NEEDED (not bundled, not inherited):
+   libprofiler.so             <- libnpth_fd_tracker.so, libnpth_ref_monitor.so
+   libcutils.so               <- libcvt.so
+   libbase.so                 <- libcvt.so
+   libart.so                  <- libcvt.so
+   libdexfile.so              <- libcvt.so
+   libaudioeffect.so          <- libkryptonaudioeffect.so
+   libnapi_v8.so              <- liblynx_v8_bridge.so
+   libv8_libfull.cr.so        <- liblynx_v8_bridge.so
+
+## Bionic-ism undefined symbols -> provider status in U13:
+   _ctype_ / __ctype_get_mb_cur_max : COVERED (libbionic_compat.so exports _ctype_ (D); libwestlake_bionic_pthread_bridge.so exports _ctype_@@LIBC == libsscronet's _ctype_@LIBC). Not a wall.
+   AAssetManager_fromJava / AAsset_* : COVERED (liboh_android_runtime.so exports AAssetManager_fromJava, AAsset_read). libkrypton/liblynx_helium/libxbnlog ok.
+   __android_log_print (77), __system_property_get (36), getauxval (15), __cxa_finalize (133): provided by liblog/libc on OH (standard). Not walls.
+
+## NEEDED that are GENUINELY missing (not in any apk split): libnapi_v8.so, libv8_libfull.cr.so (liblynx_v8_bridge);
+## libprofiler.so (libnpth_fd_tracker/ref_monitor); libaudioeffect.so (libkryptonaudioeffect); libart.so/libdexfile.so/
+## libbase.so/libcutils.so (libcvt.so -- the Android ART libs, which route-A does NOT ship as separate .so).

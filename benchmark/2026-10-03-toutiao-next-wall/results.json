@@ -1,0 +1,33 @@
+{
+  "task": "Predict toutiao's next first-fatal after the U14 ICU walls (Wall-1 public-lib inherit + Wall-2 _74 shim): static DT_NEEDED + bionic-symbol replay of all 138 toutiao arm64 libs against the U14 app-ns visible set, + the Java BLE ScanCallback reference.",
+  "date": "2026-10-03",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_access": "none (U13 window; no a2hlab)",
+  "method": "U14 app-ns visible (toutiao = normal bridge path, not native_cluster-enrolled) = apk libs + AOSP public + Wall-1 added (libicui18n/uc/GLESv2/v3/vulkan/jnigraphics) + libc/c++/liblog/libz + bridge/runtime (liboh_android_runtime, libbionic_compat, pthread bridge, libandroidfw, libminikin). Gap = DT_NEEDED/symbol not in that set.",
+  "not_walls_cleared": {
+    "_ctype_": "COVERED: libbionic_compat.so exports _ctype_ (D); libwestlake_bionic_pthread_bridge.so exports _ctype_@@LIBC == libsscronet's _ctype_@LIBC. (Same symbol that killed mcdonalds realm in U12; U13 provides it.)",
+    "AAssetManager_fromJava/AAsset_*": "COVERED: liboh_android_runtime.so exports them (libkrypton/liblynx_helium/libxbnlog ok).",
+    "GLES/vulkan/jnigraphics/icui18n/uc": "covered by Wall-1 inherit",
+    "__android_log_print/__system_property_get/getauxval/__cxa_finalize": "standard, provided by liblog/libc"
+  },
+  "genuine_gaps": {
+    "libnapi_v8.so + libv8_libfull.cr.so": "pulled by liblynx_v8_bridge.so (Lynx UI V8 engine); NOT in any apk split; on-demand (feed render)",
+    "libart.so/libdexfile.so/libbase.so/libcutils.so": "pulled by libcvt.so; Android ART-INTERNAL libs -- route-A ships ART as liboh_android_runtime, not these separate .so; on-demand",
+    "libprofiler.so": "pulled by libnpth_fd_tracker/ref_monitor; optional/diagnostic",
+    "libaudioeffect.so": "pulled by libkryptonaudioeffect.so; on-demand (audio)"
+  },
+  "load_order": "hilog pre-ICU-crash: only libsscronet (network) + libmetasec_ml (security) load; Lynx/V8, libcvt, libkryptonaudioeffect, libprofiler do NOT load pre-crash -> on-demand, not startup. ICU crash was early (text init during handleBindApplication).",
+  "java_ble_scancallback": "toutiao classes.dex references android/bluetooth/le/{ScanCallback,ScanFilter,ScanRecord,ScanResult,ScanSettings,BluetoothLeScanner}, BluetoothAdapter$LeScanCallback. If OH framework lacks these and the launch path touches them -> NoClassDefFoundError/NoSuchMethodError. BLE is lazy+permission-gated -> lower-likelihood launch-path wall; leading Java-side candidate once interactive.",
+  "prediction": {
+    "most_likely": "toutiao LIGHTS the main Activity shell at t20 (ICU was the startup fatal during bind; clearing it lets bind finish + the Activity get content; startup libs libsscronet/libmetasec have no remaining gaps). The dominant NEXT risk is the Lynx/V8 feed path: liblynx_v8_bridge -> missing libnapi_v8.so + libv8_libfull.cr.so when the Lynx feed renders -> most likely a LIT SHELL with a broken/empty feed (async), or a dlopen_ns/UnsatisfiedLinkError next-fatal if a Lynx card is on the synchronous launch path.",
+    "single_next_first_fatal_candidate": "liblynx_v8_bridge.so on the missing V8 engine libs (libnapi_v8/libv8_libfull.cr.so)",
+    "secondary_on_demand": ["libcvt -> libart/libdexfile/libbase/libcutils (ART-internal; no separate route-A .so)", "libkryptonaudioeffect -> libaudioeffect", "libnpth_* -> libprofiler"],
+    "java_side": "BLE ScanCallback (lower likelihood, lazy/permission-gated)",
+    "onboard_confirm": "t20 = lit toutiao shell? hilog shows liblynx_v8_bridge/libnapi_v8/libv8_libfull.cr.so ENOENT after the ICU wall is gone?"
+  },
+  "rule": "Find the next wall by replaying the whole native closure + symbol imports against the ACTUAL app-ns visible set, then order by load time (startup vs on-demand); a lib missing a dep is the next first-fatal only if it loads on the critical path. Separate cleared gaps (_ctype_, AAssetManager, GLES/ICU) from genuine ones (V8, ART-internal), keep BLE as a parallel lower-priority Java candidate.",
+  "boundaries": ["offline; no board/a2hlab (U13 window); static replay only", "sources read read-only: toutiao apk (vm-copies/apks-77, westlake-inputs/apks), U13 deployed libs (westlake-harness-bms), long-wait hilog (westlake-harness-u7-executor)"],
+  "files": ["README.md", "evidence/needed-and-symbol-replay.txt", "evidence/loadorder-and-scancallback.txt", "results.json", "documentation.json", "landing-paths.txt"]
+}
