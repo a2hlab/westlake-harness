@@ -1,5 +1,12 @@
 # Toutiao ICU wall: the app namespace ships an incomplete AOSP public-library set (+ a symbol-versioning wall behind it)
 
+> **CORRECTION (see `benchmark/2026-10-03-u14-appns-public-libs/`):** "Wall 2" below is described as unversioned-`dlsym`
+> vs `_72`-only exports. That is wrong. `brk_open` actually `scandir`s `/system/usr/icu`, detects the ICU version
+> (`icudt<N>`) and `%s%s`-builds a **suffixed** name; 61b's `/system/usr/icu` is `icudt74l` (ICU 74), so tttext wants
+> `ubrk_open_74` while our Android ICU exports `_72` — a **version mismatch**, not "unversioned". The Wall-1 fix point
+> is also corrected there (the stock host's `dlns_inherit`, not `app_native_loader.c`). The conclusions (U13 = 0; both
+> walls needed for toutiao) stand.
+
 Static analysis, offline, board #90, no board action. Toutiao's long-wait trial (cx-t0, 61b, U10.1T8) shows a white
 t20 then back-to-desktop; the hilog ends in a SIGSEGV. This digs the crash, the namespace that caused it, and the second
 wall behind it, and predicts U13. **Correction carried from the outer (01:51):** both U10.1T8 and U13 ship
