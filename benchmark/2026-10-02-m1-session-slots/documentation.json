@@ -3,13 +3,13 @@
   {
    "path": "README.md",
    "lines": [
-    "| **`benchmark/2026-10-02-m1-session-slots/`** | **M1 fix for U13 (not built): bridge window lookup gets per-session slots (WESTLAKE_NATIVE_WINDOW_PTR_V2_<id>, V1 kept and read as fallback, slot cleared in destroySession; one cpp, +36/-7, host test PASS). Static proof on 144 real runs: 367 cross-copy lookups, outcome = 'requested session is the last published' with 0 violations; 98 single-session runs only look up their one session (fix is a no-op); max 3 sessions per process; the fix turns 43 empty lookups into rescued ones (white: noice, fd-uhabits, dddmodel2; lit watch list: 10 keys). Build blocked: 84695d62 has no reproducible chain and its strict rebuild 7cf8ebcc killed every app; options R1 rebuild / R2 binary patch / R3 same effect in the runtime compat shim (N10b chain is per-object reproducible), R3 recommended, awaiting outer. Predictions: noice, fd-uhabits white->lit; wikipedia, fd-noice lottery->stable.** |"
+    "| **`benchmark/2026-10-02-m1-session-slots/baseline-repro/`** | **Bridge 84695d62 cannot be rebuilt byte-identically from any source we have (static, before a build): its window client (process-published cross-namespace RSSurfaceNode path) is in none of 8 local versions nor on a2hlab / hw248; oh_canvas_renderer.cpp was not compiled in (0/18 literals, 0 OHCanvasRenderer::draw* symbols) but the hardened script compiles it; display_manager_adapter_jni.cpp came from the oh61 copy the script now excludes. The bridge's window cohort is the oh61-v7 snapshot (absent from bms/src, so the hardened script exits 1). No M1 build started; options: reconstruct / new baseline / runtime-side.** |"
    ]
   },
   {
    "path": ".octos/KNOWLEDGE-DIGEST.md",
    "lines": [
-    "- 2026-10-02 **M1 修法与构建阻塞**(cc-t3):bridge 跨拷贝取窗改按 sessionId 分槽(WESTLAKE_NATIVE_WINDOW_PTR_V2_<id>,V1 照写照读作回退,destroySession 清槽),144 次真实运行 367 次取窗静态回放 0 违例,单会话 98 次运行修后等价;但 bridge 84695d62 没有可复现构建链,唯一一次严格重建 7cf8ebcc 上板全 app 死,**不能从源码重建冒充单变量**。同效果可落在 runtime 的 compat shim(自己那份 bridge 返回 null 时用 dl_iterate_phdr 找另一份、同文件同符号偏移、问建 session 的那份),N10b build-runtime.py 能逐 .o 复现 runtime,只变 android_graphics_compat_shim.o。规则:为单函数修复重建 native 库之前先确认部署件有可复现构建链,没有就把修复放到有链的那一侧。见 benchmark/2026-10-02-m1-session-slots/。"
+    "- 2026-10-02 **bridge 84695d62 用加固脚本也复现不了(静态,未开建)**(cc-t3):① 它的窗口客户端带『process-published cross-namespace RSSurfaceNode』路径,本地 8 个版本(最近 89183eb549d9=real-work oh61-v7)、a2hlab、hw248 /home/alvin 都没有;② oh_canvas_renderer.cpp 当年没编进去(0/18 字面量、0 个 OHCanvasRenderer::draw* 符号),加固脚本会编它——外环『当年带着被跳过的源』成立;③ display_manager_adapter_jni.cpp 用的是 oh61 那份(3/4 vs 3/16),加固脚本现在排除它。bridge 真用的窗口源是 oh61-v7 快照,不是 bms/src 那份(bms/src 里没有 sources/oh61-v7-b2133b5b,加固脚本第一步就 exit 1)。判部署件源码版本:拿源码字面量(相邻拼接)与 strings 双向比、逐 TU 算命中率,建前就能定。见 benchmark/2026-10-02-m1-session-slots/baseline-repro/。"
    ]
   }
  ]

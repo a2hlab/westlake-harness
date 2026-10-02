@@ -138,3 +138,19 @@ named.
 - `bridge-m1.patch` (the cpp diff against master).
 - `test/slots_test.cpp`, `test/run_slots_test.sh`, `test_m1.py`.
 - `predictions.csv`.
+
+## Update: baseline reproduction of 84695d62 (after master's hardened build scripts 9c14005a01 / 0c8639ba1b)
+
+`baseline-repro/` answers the outer's "reproduce 84695d62 byte-identically first". The answer is static, before any
+build: it **cannot be reproduced** from any source on the Mac, a2hlab or hw248.
+
+1. **The window client version in the binary is in no source tree.** Its process-published cross-namespace
+   RSSurfaceNode path is absent from all 8 local versions; the closest, `89183eb549d9` (real-work oh61-v7), differs
+   by 2/3 strings.
+2. **`oh_canvas_renderer.cpp` was not compiled in.** 0/18 literals and 0 `OHCanvasRenderer::draw*` symbols are in the
+   binary; the hardened script compiles it.
+3. **`display_manager_adapter_jni.cpp` came from the oh61 copy** (3/4 literals vs 3/16), which the script now excludes.
+
+The bridge's real window cohort is the oh61-v7 snapshot, not `bms/src`. If the bridge route is kept, M1 must be ported
+there. No M1 build was started; options (a) reconstruct, (b) new baseline, (c) runtime-side are in
+`baseline-repro/README.md`.
