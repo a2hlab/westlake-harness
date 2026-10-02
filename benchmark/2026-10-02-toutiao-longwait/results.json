@@ -1,0 +1,52 @@
+{
+  "task": "toutiao long-wait window (default-disabled) + JIT feasibility assessment of cc-t3's plan",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "gates_each_other": "Part 1 (long-wait window) is the go/no-go gate for Part 2 (JIT build): pure-slow -> build; native-wall -> defer",
+  "part1_window": {
+    "status": "DEFAULT DISABLED; run after U12 stage-A + outer approval; <=30min, single board, prefer 61b",
+    "base": "unified state at run time (U12 if promoted else U10.1T8)",
+    "only_variable": "screenshot time points (no runtime/cfg/LD_PRELOAD/JIT change)",
+    "executor_audit": {
+      "tool": "benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py (invoked by scripts/lab/board_run.py:257)",
+      "shots_t20_t45_t90": {"exists": true, "flag": "--shots 20,45,90", "cite": "bms_batch.py:1088 shot_offsets 1..32 increasing <=300; :728 tag naming"},
+      "full_untruncated_hilog": {"exists": true, "flag": "--hilog 95", "cite": "bms_batch.py:1130 dump after SECONDS of launch-reset buffer; no separate --hilog-until", "note": "set --wait 95 to keep alive to t90"},
+      "maps_t45_t90": {"exists": false, "cite": "bms_batch.py:771 'if len(rec[screenshots])==1' captures maps once after FIRST shot only -> M4 --shots 5,20 gave maps-t5 only", "minimal_change": "executor lane: in timed_collection capture maps on every 'shot' event (or a tag subset), not only the first; additive, one site; do NOT self-patch", "fallback": "run with maps-t20 only; verdict is screenshot-based so still answered"}
+    },
+    "invocation": "python3 benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py --execute --serial <61b> --lane cc-wiki --manifest <base-manifest> --input-root <base> --keys toutiao --reinstall --wait 95 --hilog 95 --shots 20,45,90 --out <run>",
+    "pass_fail": {
+      "pass_pure_slow": "t90.jpeg shows toutiao own UI OR hilog reaches activityResumed/handleLaunchActivity by t90 -> JIT/AOT is the lever",
+      "fail_native_wall": "process dies before t90 OR signal11 followed by cppcrash/tombstone -> a wall behind the slowness; name faulting pc/lib/Java frame; route to native-fault lane",
+      "still_in_init": "at t90 still in handleBindApplication/installContentProviders churn, no callApplicationOnCreate, no crash -> slower than window; estimate createSession >> 90s holds"
+    },
+    "readback": "record.json captured == facts.txt (count from facts); runtime fingerprint == unified state; screenshots are ground truth"
+  },
+  "part2_jit_feasibility": {
+    "verdict": "GREEN to build (low effort, low risk), payoff narrow (toutiao only); gate the build on Part 1",
+    "source_no_gap": {
+      "oh_jit_fix": "a2hlab ~/a2hlab/ws/aosp-art-15 @047ccf02924f, file sha e4b634051a68; raw source/oh-jit-art15.diff",
+      "aosp14_port": "source/23-...oh-jit.patch (83 lines, record)",
+      "patch24_confirmed": "source/24-...explicit-suspend.patch (17 lines): 5-line insert in compiler/jit/jit_compiler.cc setting implicit_suspend_checks_=false for kArm64 = JIT mirror of dex2oat patch 22",
+      "shim": "source/jit_anon_shim.c (56 lines), refuses only name 'jit-cache'",
+      "build_recipe_in_repo": "bms/src/adapter/build/inner/cross_compile_arm64.sh:782-892 'Layer 4: libart-compiler.so', compiles jit/jit_compiler.cc (:792); -D__OHOS__ at :189",
+      "fz005_patches_in_repo": "knowledge/toolchains/art-r155/patches/01..22 present; patch 22 = 22-dex2oat__implicit-suspend-checks-off.patch"
+    },
+    "buildable_proven_once": "B6 compiler 3c8e76a2 (westlake-harness-bms-deploy .work/b6-art14-recovery) is a libart-compiler.so already built from the 14 tree, art:: imports resolve on-board; lacks only patch 24. Delta = patch24 + Layer-4 rebuild + 2x byte-identical. Frozen clang is x86_64 Linux (build on a2hlab/hw248).",
+    "gates": {
+      "native_predeploy_N1_N2": "two new .so; add knowledge/gates/native-predeploy-exceptions.json entries",
+      "single_ART": "untouched (keys on libart.so/libopenjdkjvm.so only)",
+      "check_frozen": "untouched (libart 59e1bb45 / FZ-002 / FZ-005 / boot image all unchanged)",
+      "production_no_jit_gates": "appspawn-x/tests/test_production_config.py:47 + generation/verify_generation.py:175 assert APPSPAWNX_NO_JIT==1; need knowledge/gates/production-config-exceptions.json for any JIT-on generation (not board overlay)",
+      "truly_cold_certificate": "ZigZag/Unity cert Q5 is USER-level policy; turning JIT on breaks its premise -> surface to user"
+    },
+    "risk": "low: suspend-mismatch covered by patch24; XPM anon-RX refusal = non-crash 'JIT not engaged' (fallback O_TMPFILE dual view); G2.14n eliminated JIT not implicated; stop rule = SIGILL/SIGSEGV pc in jit-code-cache",
+    "payoff_narrow": "cc-t3 + DIGEST 657: 18/20 white keys draw first frame <=4.05s (content/render-bound, N11h double-copy), not interpreter-slow; JIT helps essentially toutiao only",
+    "jit_over_aot_for_toutiao": "toutiao slow code = Mira/Tinker dynamic dex loaded at runtime; install-time dex2oat AOTs only base APK dex, misses the plugin/hotfix dex; in-process JIT compiles whatever runs"
+  },
+  "u13_runtime_note": "U13 runtime final = cc-t3 18763dd4 (= my aa149019 asset_manager.o verbatim + cc-t3 M1 compat_shim.o, other 67 .o unchanged, byte-identical x2, control reproduces ac59dec0); no further runtime from cc-wiki needed",
+  "this_round_rule": "change what a window captures via the executor's existing flags first; a missing capability (per-shot maps) is a one-site change handed to the executor lane, not self-patched; a feasibility assessment verifies the other lane's claims against on-disk artifacts and ties go/no-go to the deciding experiment",
+  "files": ["README.md", "window-spec.md", "jit-feasibility.md", "evidence/executor-capabilities.txt", "results.json", "documentation.json"]
+}

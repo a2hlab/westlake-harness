@@ -1,0 +1,49 @@
+# Executor capability audit for the long-wait window — what bms_batch/board_run already do, and the ONE gap
+# tool: benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py (invoked by scripts/lab/board_run.py:257)
+# read-only audit; NO executor change made here.
+
+## --shots : screenshot time points — EXISTING, covers t20/t45/t90
+- bms_batch.py:1131  ap.add_argument('--shots', type=shot_offsets, metavar='5,20', ...)
+- bms_batch.py:1088-1094  shot_offsets(): comma-separated seconds, "1..32 increasing unique offsets in (0, 300]"
+  => --shots 20,45,90 is VALID (3 increasing offsets, <=300).
+- bms_batch.py:728  tag per shot = 't'+str(float(offset)).removesuffix('.0')  => files t20.jpeg / t45.jpeg / t90.jpeg
+- --shots implies a strict per-shot focus check (bms_batch.py:1131, :785 strict = focus_check or shots is not None);
+  a focus miss still captures the picture, marked accepted=False (bms_batch.py:759-766), so the outer can still read it.
+
+## --hilog SECONDS : full, untruncated hilog through the window — EXISTING (SECONDS *is* the "until")
+- bms_batch.py:1130  ap.add_argument('--hilog', nargs='?', const=True, type=float, metavar='SECONDS',
+                       help='reset before launch, dump after SECONDS (default: --wait) and pull new faultlogs')
+- bms_batch.py:730  schedule.append((hilog_seconds, 'hilog', 'hilog'))  -> single dump at t+SECONDS of the WHOLE
+  buffer reset at launch (not a rolling tail). There is NO separate --hilog-until flag; --hilog SECONDS is it.
+  => --hilog 95 dumps the entire child slice after the t90 shot = full, untruncated (matches M4: the window5 hilog
+     was the complete child slice, start->end, no truncation).
+
+## --wait : keep the run alive to t90 — EXISTING
+- bms_batch.py:1127  ap.add_argument('--wait', type=float, default=15)
+- bms_batch.py:731  schedule.append((max(wait_seconds, max(selected)), 'observe', 'after'))
+  => default 15 is why M4 ended ~t+15.5s. For a t90 window set --wait 95 (>= last shot + hilog).
+
+## maps at t45 AND t90 : NOT EXISTING — this is the one gap
+- bms_batch.py:771-778 (inside timed_collection):
+      if len(rec['screenshots']) == 1:
+          # keep every app's own maps once, right after its first screenshot
+          for pid in observation.get('observed_pids') or []:
+              rc, maps = board.shell(f'cat /proc/{int(pid)}/maps', required=False)
+              if rc == 0 and maps:
+                  (out/f'maps-{tag}-{int(pid)}.txt').write_text(maps)
+  => maps are captured EXACTLY ONCE, after the FIRST screenshot only (len==1). With --shots 5,20 that is maps-t5
+     (exactly what M4 had: maps-t5 only, no maps-t20). With --shots 20,45,90 it would be maps-t20 only.
+  => So "t45/t90 maps" cannot be produced by any existing flag combination.
+
+### The ONE minimal executor change needed (for whoever owns bms_batch — NOT made here)
+  In timed_collection (bms_batch.py ~771), capture maps on each 'shot' event instead of only the first. Smallest diff:
+     - replace the guard `if len(rec['screenshots']) == 1:` so the maps block runs for every shot
+       (or for shots whose tag is in a small set), still writing maps-<tag>-<pid>.txt per shot.
+  It is additive (more maps-*.txt files), touches one site, and does not change screenshot/focus/hilog logic.
+  Optional larger alternative: a new `--maps-at 45,90` flag. The one-line guard change is the minimal.
+  Until it lands, the window can still run with maps-t20 only (first-shot maps), losing just the t45/t90 maps.
+
+## board_run.py vs bms_batch for a single-key window
+- board_run.py:257 hardcodes `--reinstall --hilog --shots 5,20` for FULL sweeps. A single-key long window should
+  invoke bms_batch.py directly (as the JIT plan's experiment does: "bms_batch t5/t20, plus one t60 for toutiao"),
+  so board_run's hardcoded 5,20 is not in the way and needs no change.
