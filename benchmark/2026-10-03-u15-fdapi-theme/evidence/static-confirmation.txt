@@ -1,0 +1,33 @@
+fd-api AppCompat-theme wall — static confirmation of WHICH context AppCompat reads and WHERE the theme is set.
+
+WALL (U13 5ea, fd-api=com.termux.api): IllegalStateException "You need to use a Theme.AppCompat theme (or
+descendant) with this activity." at androidx.appcompat.app.AppCompatDelegateImpl.createSubDecor, starting
+com.termux.api.activities.TermuxAPIMainActivity (an AppCompatActivity), launched via the alias TermuxAPILauncherActivity.
+
+WHICH context AppCompat reads:
+  AppCompatDelegateImpl.createSubDecor does mContext.obtainStyledAttributes(R.styleable.AppCompatTheme) and throws if
+  AppCompatTheme_windowActionBar is absent. mContext == the Activity (a ContextThemeWrapper). The Activity's base theme =
+  r.activityInfo.getThemeResource() (ActivityInfo.theme, or applicationInfo.theme when 0), set by ActivityThread at
+  activity attach. => AppCompat reads the ACTIVITY's ContextThemeWrapper theme, i.e. the launch ActivityInfo.theme -- NOT
+  a separate application context.
+
+WHERE the theme comes from (our layer):
+  - manifest (apkanalyzer): <application theme=@ref/0x1030237 (android:Theme.DeviceDefault)>;
+    <activity TermuxAPIMainActivity android:theme=@ref/0x7f120252 (the app's AppCompat theme)>;
+    <activity-alias TermuxAPILauncherActivity targetActivity=TermuxAPIMainActivity> (no android:theme on the alias).
+  - AOSP semantics: an <activity-alias> with no android:theme INHERITS the target activity's theme (PackageParser copies
+    the target's theme into the alias ActivityInfo). So on stock the aliased AppCompatActivity attaches with 0x7f120252.
+  - route-A: AppSchedulerBridge.java:793  `if (ai.theme == 0 && appInfo != null) ai.theme = appInfo.theme;`
+    The alias declares no theme -> ai.theme == 0 -> falls back to the APPLICATION theme 0x1030237 (DeviceDefault), NOT
+    the target activity's 0x7f120252. LaunchActivityAliasProjection.java sets launch.targetActivity but line 50 says
+    "theme ... remain untouched". So the launch ActivityInfo (which becomes r.activityInfo, drives the activity theme)
+    carries DeviceDefault -> AppCompat reads a non-AppCompat theme -> throws.
+  - The deployed JAR's [B8-ALIASTHEME] logs "re-resolved 0x1030237 -> 0x7f120252" and [J10-ACTINFO] getActivityInfo
+    shows 0x7f120252, but AppCompat still fails -> the resolved target theme is NOT landing on the ClientRecord
+    ActivityInfo (launch.theme) that the Activity attaches with; it is applied to a different copy / SLA / log only.
+
+HYPOTHESIS A (leading): the alias launch ActivityInfo.theme that drives the Activity's ContextThemeWrapper is the
+  app/DeviceDefault theme (0x1030237), not the target's 0x7f120252. Fix = set launch.theme = target activity's theme
+  (AOSP alias-inherits-target). Confirmed by the manifest (alias has no theme) + AppSchedulerBridge:793 fallback.
+HYPOTHESIS B (alt): launch.theme IS 0x7f120252 but the theme's AppCompat parent chain is unresolved at runtime (arsc).
+  Less likely (0x7f120252 is a normal app resource; the app runs). The test (below) decides A vs B.

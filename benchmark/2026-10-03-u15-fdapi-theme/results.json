@@ -1,0 +1,35 @@
+{
+  "task": "fd-api AppCompat-theme fix as a U15 runtime-JAR patch (independent class + needle, cc-t3 style) + tests; cc-t3 merges. Statically confirm which context AppCompat reads and where [B8-ALIASTHEME] lands; host-ART test if feasible; predict first-fatal.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "wall": "IllegalStateException 'You need to use a Theme.AppCompat theme (or descendant)' at AppCompatDelegateImpl.createSubDecor, starting com.termux.api.activities.TermuxAPIMainActivity (AppCompatActivity) via alias TermuxAPILauncherActivity",
+  "static_confirmation": {
+    "which_context": "AppCompat reads mContext = the Activity (ContextThemeWrapper); its base theme = r.activityInfo.getThemeResource() (launch ActivityInfo.theme, or applicationInfo.theme when 0). NOT a separate application context.",
+    "current_flow": "alias declares no android:theme; AppSchedulerBridge:793 `if (ai.theme==0 && appInfo!=null) ai.theme=appInfo.theme` -> alias falls back to application theme 0x1030237 (DeviceDefault, non-AppCompat); LaunchActivityAliasProjection sets targetActivity but leaves theme untouched (line 50). So the aliased AppCompatActivity attaches with DeviceDefault -> AppCompat throws.",
+    "aliasTheme_lands": "deployed [B8-ALIASTHEME] logs re-resolve 0x1030237->0x7f120252 and getActivityInfo shows 0x7f120252, yet AppCompat fails -> the resolved target theme is NOT on the ClientRecord launch.theme (SLA/log copy only).",
+    "hypothesis_A_leading": "the Activity's theme is the DeviceDefault application theme; fix = set launch.theme = target activity's android:theme (AOSP alias-inherits-target)",
+    "hypothesis_B_alt": "launch.theme IS 0x7f120252 but its AppCompat parent is unresolved (arsc) -- less likely; T2 decides",
+    "manifest_oracle": "application theme 0x1030237; TermuxAPIMainActivity android:theme 0x7f120252; TermuxAPILauncherActivity alias no theme"
+  },
+  "patch": {
+    "style": "cc-t3 JAR: independent class + one needle",
+    "class": "recipe/AliasTargetThemeFix.java (adapter.activity.AliasTargetThemeFix.apply(ActivityInfo): if alias, read target activity android:theme from the binary manifest, set launch.theme=targetTheme; no-op for non-aliases; never fatal)",
+    "reader": "recipe/BinaryAndroidManifestOrientation.readActivityTheme.java (add readActivityTheme(apk,pkg,activityName) + refAttribute, mirroring readAliasTarget/parseAliasTarget; returns the <activity name=X> android:theme TYPE_REFERENCE value)",
+    "needle": "recipe/needle-LaunchActivityAliasProjection.diff (one line in LaunchActivityAliasProjection.apply after launch.targetActivity=target; : AliasTargetThemeFix.apply(launch))",
+    "net_effect": "the alias launch ActivityInfo (becomes r.activityInfo) carries the target AppCompat theme 0x7f120252 -> Activity ContextThemeWrapper is AppCompat -> createSubDecor passes",
+    "ordering_note": "must run AFTER the generic ai.theme resolution (AppSchedulerBridge:793/:1279) so it is not re-clobbered to the application theme; if the deployed JAR already re-resolves the target theme, redirect it to write launch.theme (ClientRecord ActivityInfo), not SLA/log"
+  },
+  "cc_t3_patch_location": [
+    "add class adapter.activity.AliasTargetThemeFix",
+    "add BinaryAndroidManifestOrientation.readActivityTheme + refAttribute",
+    "needle in adapter.activity.LaunchActivityAliasProjection.apply(ActivityInfo,int) after launch.targetActivity=target",
+    "artifact: the single U15 runtime JAR (oh-adapter-runtime.jar family)"
+  ],
+  "tests": {
+    "T1_unit_decisive": "readActivityTheme(termux-api.apk, com.termux.api, ...TermuxAPIMainActivity)==0x7f120252 (oracle confirmed); AliasTargetThemeFix.apply sets an alias launch.theme 0x1030237->0x7f120252; non-alias no-op. pure Java (host ART or JVM).",
+    "T2_appcompat_boundary": "createSubDecor obtainStyledAttributes(AppCompatTheme) needs the app resources via native AssetManager (libandroidfw/libandroid_runtime) -> host x86 ART lacks them (same boundary as Bitmap/mindustry host tests). If a host AssetManager exists: addAssetPath(apk)->Theme.applyStyle(0x7f120252)->obtainStyledAttributes(AppCompatTheme)->assert hasValue(windowActionBar). decides A vs B.",
+    "T3_onboard": "deploy U15 JAR, launch fd-api on 5ea; no AppCompat-theme IllegalStateException; moves past the wall (deploy owner)"
+  },
+  "prediction": "createSubDecor passes -> fd-api first-fatal moves past the AppCompat-theme wall; next wall unknown; bg LocalSocketImpl.bindLocal ULE non-fatal (termux-api<->termux); lit likelihood medium.",
+  "boundaries": ["offline; no board; no push; patch is for cc-t3 to merge+build (source+tests, not a built JAR)", "T2 full AppCompat check native-bound on host ART; T1 + on-board T3 cover it", "sources read-only: U13 hilog (westlake-harness-u7-executor), termux-api apk (westlake-inputs/apks/fdroid100), adapter activity-JAR source (westlake-harness/bms)"],
+  "files": ["README.md", "evidence/static-confirmation.txt", "recipe/AliasTargetThemeFix.java", "recipe/BinaryAndroidManifestOrientation.readActivityTheme.java", "recipe/needle-LaunchActivityAliasProjection.diff", "test/test-plan.md", "results.json", "documentation.json", "landing-paths.txt"]
+}

@@ -1,0 +1,13 @@
+# One-line needle: apply the target activity's theme to the alias launch ActivityInfo, right after targetActivity is set.
+# File: adapter/activity/LaunchActivityAliasProjection.java (static void apply(ActivityInfo launch, int callerUid))
+         // ActivityThread uses targetActivity for class loading while component/name,
+         // ApplicationInfo, theme, flags and OH token correlation remain untouched.
+         launch.targetActivity = target;
++        // U15 fd-api: AOSP alias inherits the target activity's theme; set it so an aliased AppCompatActivity
++        // attaches with its AppCompat theme (not the DeviceDefault application fallback). See AliasTargetThemeFix.
++        AliasTargetThemeFix.apply(launch);
+
+# NOTE for cc-t3: ensure this runs AFTER the generic ai.theme resolution (AppSchedulerBridge:793 appInfo.theme fallback /
+# :1279 appTheme) so the alias-target theme is not re-clobbered to the application theme. If the deployed JAR's existing
+# [B8-ALIASTHEME] re-resolution already computes the target theme, redirect it to write launch.theme (the ClientRecord
+# ActivityInfo that drives the Activity's ContextThemeWrapper) instead of only SLA/logging -- that is the actual fix.
