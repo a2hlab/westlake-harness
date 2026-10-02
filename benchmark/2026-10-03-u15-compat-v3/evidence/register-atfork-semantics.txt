@@ -1,0 +1,82 @@
+# AOSP android-14.0.0_r1 bionic/libc/bionic/pthread_atfork.cpp (hw248 $HW248_HOME/aosp-14.0.0_r1-art/bionic, sha256 prefix 2407390843f660eb), lines 36-50 and 150-195
+36:   atfork_t* next;
+37:   atfork_t* prev;
+38: 
+39:   void (*prepare)(void);
+40:   void (*child)(void);
+41:   void (*parent)(void);
+42: 
+43:   void* dso_handle;
+44: };
+45: 
+46: class atfork_list_t {
+47:  public:
+48:   constexpr atfork_list_t() : first_(nullptr), last_(nullptr) {}
+49: 
+50:   template<typename F>
+...
+150: 
+151:   pthread_mutex_unlock(&g_atfork_list_mutex);
+152: }
+153: 
+154: // __register_atfork is the name used by glibc
+155: extern "C" int __register_atfork(void (*prepare)(void), void (*parent)(void),
+156:                                  void(*child)(void), void* dso) {
+157:   atfork_t* entry = reinterpret_cast<atfork_t*>(malloc(sizeof(atfork_t)));
+158:   if (entry == nullptr) {
+159:     return ENOMEM;
+160:   }
+161: 
+162:   entry->prepare = prepare;
+163:   entry->parent = parent;
+164:   entry->child = child;
+165:   entry->dso_handle = dso;
+166: 
+167:   pthread_mutex_lock(&g_atfork_list_mutex);
+168: 
+169:   g_atfork_list.push_back(entry);
+170: 
+171:   pthread_mutex_unlock(&g_atfork_list_mutex);
+172: 
+173:   return 0;
+174: }
+175: 
+176: extern "C" __LIBC_HIDDEN__ void __unregister_atfork(void* dso) {
+177:   pthread_mutex_lock(&g_atfork_list_mutex);
+178:   g_atfork_list.remove_if([&](const atfork_t* entry) {
+179:     return entry->dso_handle == dso;
+180:   });
+181:   pthread_mutex_unlock(&g_atfork_list_mutex);
+182: }
+
+# route-A native_abi __register_atfork (westlake-harness-bms-deploy benchmark/2026-09-30-n4-native/src/native_abi.c:12-18, in d2053066/7605812c/f8619ad5)
+/* Copied functions: Westlake 532633da webview_bionic_shim.c. */
+int __register_atfork(void (*prepare)(void), void (*parent)(void),
+                      void (*child)(void), void *dso)
+{
+    (void)dso;
+    fprintf(stderr, "[WESTLAKE-WEBVIEW-BIONIC] __register_atfork\n");
+    return pthread_atfork(prepare, parent, child);
+}
+
+# AOSP 14 r1 bionic/libc/bionic/atexit.cpp: __cxa_finalize(dso) ends by unregistering that DSO's fork handlers
+262:     atexit_lock();
+263: 
+264:     if (g_array.total_appends() != total_appends) goto restart;
+265:   }
+266: 
+267:   // Avoid recompaction on recursive calls because it's unnecessary and would require earlier,
+268:   // concurrent __cxa_finalize calls to restart. Skip recompaction on program exit too
+269:   // (dso == nullptr), because the memory will be reclaimed soon anyway.
+270:   --call_depth;
+271:   if (call_depth == 0 && dso != nullptr) {
+272:     g_array.recompact();
+273:   }
+274: 
+275:   atexit_unlock();
+276: 
+277:   if (dso != nullptr) {
+278:     __unregister_atfork(dso);
+279:   } else {
+280:     // If called via exit(), flush output of all open files.
+281:     __libc_stdio_cleanup();

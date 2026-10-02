@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-u15-compat-v3/`** | **U15 #1 remainder, normal-domain bionic gap (cc-t3): compat v3 NOT built - libbionic_compat is not in fd-meet's lookup scope (OH musl: global DSOs + dlopen root's dep tree + self; the replay without compat reproduces the board's libc++_shared android_set_abort_message, with compat it does not), so it would move 0. fd-meet's full gap = 14 LIBC symbols, all in native_abi v2 f8619ad5; across 326 U12/U13 runs only fd-meet is first-fatal on the batch. Route: add org.jitsi.meet to the native cluster (libapp_native_loader eebd62f2) -> replay 0 missing.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **普通域 app 库看不到 libbionic_compat(cc-t3,fd-meet 校准)**:OH musl 每个库的重定位查找集 = 进程内所有 is_global DSO + 本次 dlopen 根的依赖树(命名空间可达)+ 自身;compat 只是 liboh_android_runtime 的 NEEDED,不是全局,不在 app 库依赖树里。证据:U12 部署的 compat 015aa3a6 导出 android_set_abort_message,fd-meet 的 libc++_shared(SoLoader 单独作根打开)照样首缺它——不含 compat 的回放复现板上首缺,含 compat 的不复现。版本不是障碍:提供方无 .gnu.version_d 时 check_verinfo 接受任何 @LIBC 导入。规则:往某提供者加导出之前,先用『含/不含该提供者』两种作用域回放消费者,留下能复现板上首缺行的那个模型。native 域靠 RTLD_GLOBAL 的 native_abi 才看得见 bionic 补丁。"
+   ]
+  }
+ ]
+}
