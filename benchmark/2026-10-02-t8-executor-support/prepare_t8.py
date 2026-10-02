@@ -19,8 +19,9 @@ import generation_static_checks as static
 def save(p,data):p.write_text(json.dumps(data,indent=2)+'\n')
 
 
-def assemble(out,base,donor,t8,receipt=None):
+def assemble(out,base,donor,t8,receipt=None,image_dir=None):
     out,base,donor,t8=map(lambda p:Path(p).resolve(),(out,base,donor,t8))
+    images=Path(image_dir).resolve() if image_dir else t8/'image'
     if out.exists():raise ValueError('fresh output directory required')
     bd,bm,_=b.validate(base);dd,dm,_=b.validate(donor)
     old=static.effective(base);donor_rows=static.effective(donor)
@@ -42,7 +43,7 @@ def assemble(out,base,donor,t8,receipt=None):
     # Disarm immediately, before any donor bytes are replaced or a later audit can fail.
     save(out/'bundle.json',data)
     for row in data['boot_group']['members']:
-        source=t8/('jars9' if row['target'].endswith('.jar') else 'image')/Path(row['target']).name
+        source=(t8/'jars9' if row['target'].endswith('.jar') else images)/Path(row['target']).name
         dst=out/row['source'];dst.chmod(dst.stat().st_mode|0o200);shutil.copyfile(source,dst);row['sha256']=b.sha(dst)
     # Both BCP swaps are declared in the same stopped-parent boot transaction.
     for j in ('adapter-mainline-stubs','oh-adapter-framework'):
@@ -68,18 +69,18 @@ def assemble(out,base,donor,t8,receipt=None):
         refs.append(dict(source=str(dst.relative_to(out)),target=target,sha256=b.sha(dst)))
     data['image_gate_reference']=dict(kind='signed-effective-U9',baseline_bundle_sha256=b.sha(base/'bundle.json'),members=refs)
     inputs={j+'.jar':b.sha(t8/'jars9'/(j+'.jar')) for j in b.JARS}
-    outputs={Path(p).name:b.sha(t8/'image'/Path(p).name) for p in b.IMAGE_TARGETS}
+    outputs={Path(p).name:b.sha(images/Path(p).name) for p in b.IMAGE_TARGETS}
     provenance=json.loads(Path(receipt).read_text()) if receipt else dict(status='unknown',reason='paired donor build receipt pending')
     if receipt and (provenance.get('input_jars')!=inputs or provenance.get('outputs')!=outputs):raise ValueError('donor paired receipt mismatch')
     provenance.update(input_jars=inputs,outputs=outputs)
     dst=out/'receipts/t8-build-receipt.json';save(dst,provenance)
     data['paired_build_receipt']=dict(source=str(dst.relative_to(out)),sha256=b.sha(dst))
-    # U11i class additions were already signed; no drop/reshape whitelist for runtime.
+    # U11i split approval is exact and bound to the deployed/candidate JAR bytes.
     import deployed_class_diff as classes
     old_runtime=b.member(base,old[b.FW+'oh-adapter-runtime.jar'])
     new_runtime=b.member(out,data['runtime_jar'])
     additions=sorted(classes.classes(new_runtime).keys()-classes.classes(old_runtime).keys())
-    policy=dict(jars={b.FW+'oh-adapter-runtime.jar':dict(allow_add=additions,reason='exact signed U11i 5ae3dd29 class additions'),
+    policy=dict(jars={b.FW+'oh-adapter-runtime.jar':dict(allow_add=additions,allow_drop=['Ladapter/activity/J10eWebView$DelegateForward;','Ladapter/activity/J10eWebView$WlCookieManager;'],candidate_sha256=b.sha(new_runtime),deployed_sha256=b.sha(old_runtime),approved_by='outer(claude)',evidence=['app-lighting ACK(90) 2026-10-02T11:34:15+0800','8214ec53b4'],reason='Exact J10e split: DelegateForward to J10eViewDelegate; WlCookieManager to J10eCookieManager; 14/14 methods retained, instruction-identical'),
                       b.FW+'adapter-mainline-stubs.jar':dict(allow_add=['Lcom/android/i18n/phonenumbers/','Lcom/android/org/conscrypt/SSLParametersImpl;'],allow_reshape=['Lcom/android/i18n/phonenumbers/'],reason='T8 real AOSP libphonenumber replaces its stub; SSLParametersImpl presence'),
                       b.FW+'oh-adapter-framework.jar':{}},native={})
     dst=out/'receipts/composition-static-policy.json';save(dst,policy)
@@ -105,8 +106,8 @@ def assemble(out,base,donor,t8,receipt=None):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for key in ('out','base','donor','t8'):p.add_argument('--'+key,type=Path,required=True)
-    p.add_argument('--receipt',type=Path);args=p.parse_args()
-    print(json.dumps(assemble(args.out,args.base,args.donor,args.t8,args.receipt),indent=2))
+    p.add_argument('--receipt',type=Path);p.add_argument('--image-dir',type=Path);args=p.parse_args()
+    print(json.dumps(assemble(args.out,args.base,args.donor,args.t8,args.receipt,args.image_dir),indent=2))
 
 
 if __name__=='__main__':main()

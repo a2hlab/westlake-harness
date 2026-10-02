@@ -46,6 +46,21 @@ class StaticChecks(unittest.TestCase):
             self.assertIn('--frozen',commands[0]);self.assertIn('--deployed',commands[0])
             self.assertEqual(commands[0][commands[0].index('--deployed')+1],str((base/'member.jar').resolve()))
 
+    def test_drop_approval_requires_exact_pair_and_descriptors(self):
+        with tempfile.TemporaryDirectory() as td:
+            base,new,target,a,b=self.roots(td,'.jar',b'jar')
+            grant=dict(allow_drop=['Ladapter/activity/J10eWebView$WlCookieManager;'],
+                       candidate_sha256=b[target]['sha256'],deployed_sha256=a[target]['sha256'],
+                       approved_by='outer(claude)',evidence=['board ACK + 8214ec53b4'])
+            variants=[(grant,'PASS'),(dict(grant,candidate_sha256='0'*64),'REJECT'),
+                      (dict(grant,deployed_sha256='0'*64),'REJECT'),
+                      (dict(grant,allow_drop=['Ladapter/activity/J10eWebView$']),'REJECT'),
+                      (dict(grant,evidence=[]),'REJECT')]
+            for allowance,status in variants:
+                with self.subTest(allowance=allowance),patch.object(s,'effective',side_effect=[a,b]),patch.object(s,'command',return_value=dict(exit_code=0,stdout='',stderr='')) as cmd,patch('deployed_class_diff.classes',return_value={'Lx;':('LObject;',())}):
+                    self.assertEqual(s.check(new,base,{'jars':{target:allowance}})['status'],status)
+                    if status=='REJECT':cmd.assert_not_called()
+
     def test_empty_dex_never_passes(self):
         with tempfile.TemporaryDirectory() as td:
             base,new,_,a,b=self.roots(td,'.jar',b'jar')

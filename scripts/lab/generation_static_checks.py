@@ -76,6 +76,16 @@ def check(root, baseline, policy=None):
             item.update(status='REJECT',reason='new native/JAR member has no deployed baseline for this promotion')
         elif candidate.suffix=='.jar':
             allowance=policy.get('jars',{}).get(target,{})
+            # A reviewed class removal is valid only for this exact new/old pair.
+            drops=allowance.get('allow_drop',[])
+            if drops and not (allowance.get('candidate_sha256')==row['sha256'] and
+                              allowance.get('deployed_sha256')==previous['sha256'] and
+                              allowance.get('approved_by')=='outer(claude)' and
+                              allowance.get('evidence') and
+                              all(x.startswith('L') and x.endswith(';') for x in drops)):
+                item.update(kind='DEX-JAR',status='REJECT',reason='class-drop review requires exact descriptors, paired SHA and outer evidence')
+                rows.append(item)
+                continue
             argv=[sys.executable,str(Path(__file__).with_name('deployed_class_diff.py')),str(candidate),'--deployed',str(deployed),'--frozen']
             for key,flag in [('allow_add','--allow-add'),('allow_drop','--allow-drop'),('allow_reshape','--allow-reshape')]:
                 if allowance.get(key):argv += [flag]+allowance[key]
