@@ -104,11 +104,15 @@ class DraftTests(unittest.TestCase):
         files=list(root.glob('*/*/*/record.json'))
         if not files:self.skipTest('raw U12 capture unavailable; synthetic known answer still enforced')
         row=probe.run_row(files[0]);self.assertEqual(row['status'],'REJECT');self.assertGreater(row['selftest_error_count'],0)
-    def test_disabled_sha_slots(self):
+    def test_disabled_plans_match_outer_authorization(self):
+        authority=json.loads((HERE/'outer-window-authorization.json').read_text())
+        self.assertEqual(authority['signer'],'outer(claude)')
         for name in ['5ea','5cd','61b']:
             p=json.loads((HERE/f'plan-{name}.json').read_text())
             self.assertFalse(p['execution_enabled']);self.assertFalse(p['rollout_ready'])
-            self.assertIsNone(p['bundle_sha256']);self.assertIsNone(p['package_manifest_sha256'])
+            self.assertEqual(p['bundle_sha256'],authority['bundle_sha256'])
+            self.assertEqual(p['package_manifest_sha256'],authority['native_manifest_sha256'])
+            self.assertEqual(p['native_inputs_sha256'],authority['native_inputs_sha256'])
             self.assertEqual(p['restore']['state'],'U10.1T8');self.assertTrue(p['restore']['unconditional'])
             self.assertEqual(p['regression_gate']['lit_required'],122)
     def test_longwait_six_balanced_observations(self):
