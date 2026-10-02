@@ -42,3 +42,17 @@ Everything else — all 16 `J10eCookieManager` override bodies, the `ProviderEnr
 in the normalised class token), `J10eWebView.install`/`zero`, and the untouched `J10fWebSettings*` /
 `J10gWebExtras*` — is byte-identical. The split is behaviour-preserving; `oh-adapter-runtime-u10base.jar`
 (`11974b7b…`) is a clean U10 base.
+
+## Class-list diff (dexdump, outer-loop requested)
+
+`dexdump` class descriptors of both `classes.dex`, sorted unique:
+
+- **old (J10g 238ffc14): 185 classes · new (U10 base 11974b7b): 185 classes · 183 identical**
+- **Added in U10 base (2):** `adapter/activity/J10eCookieManager`, `adapter/activity/J10eViewDelegate`
+- **Removed from 238ffc14 (2):** `adapter/activity/J10eWebView$DelegateForward`, `adapter/activity/J10eWebView$WlCookieManager`
+
+The two removed inner classes are exactly the two added top-level classes (the ViewDelegate and
+CookieManager fixes, relocated out of `J10eWebView`). **No other class is added, removed, or renamed** —
+the remaining 183 classes (incl. all `J10eWebView$*` provider-seed inner classes, `J10fWebSettings*`,
+`J10gWebExtras*`, and the entire untouched baseline) are set-identical. Confirms the split is a pure
+two-class relocation, nothing else moved.
