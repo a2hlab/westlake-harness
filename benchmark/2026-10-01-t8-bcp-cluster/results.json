@@ -1,0 +1,62 @@
+{
+  "task": "T8 BCP boot-image re-bake (EFFECTIVE base)",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "base": "deployed U9 j10g-238ffc14, EFFECTIVE BCP (framework/ overlay for adapter-mainline-stubs f3bcc9d7 + native/payload x8)",
+  "deployed": false,
+  "deploy_note": "held for outer ring (deploy window theirs; U9-vs-U10.1 base decision)",
+  "supersedes": {
+    "reason": "ACK(90) 2026-10-02 10:50:30: first bake patched adapter-mainline-stubs on the native/payload UNDERLAY (beb369a1), not the framework/ EFFECTIVE copy (f3bcc9d7) the board runs; would have dropped frozen FZ-007 (tagsoup), FZ-008 (android.net.ssl.SSLSockets) and NetworkInfo$State. Caught by deployed_class_diff.py (master 458ff94e). Superseded build: stubs 255aad61, image art 54d37790 / oat 6c0569c8.",
+    "old_stubs": "255aad61b92d1ccf254c17f79103887a909fab046e6490c3678b1cb3cfc7bdaf",
+    "old_boot_art": "54d37790be3a71bc65f7cd1297174d04bf811addb36f2a08e6cf02f6c7e6995f",
+    "old_boot_oat": "6c0569c830171cb1e048a644ea3a776f071357c93829a57ef2964f8d2346f989"
+  },
+  "items": {
+    "1_SSLParametersImpl": {"jar": "adapter-mainline-stubs", "change": "add presence-only stub (private throwing ctor)", "evidence_app": "toutiao okhttp"},
+    "2_getInstallSourceInfo": {"jar": "oh-adapter-framework", "change": "all-null InstallSourceInfo via PUBLIC 4-arg ctor (String,SigningInfo,String,String)V", "evidence_app": "cv2-yahtzeedicer"},
+    "3a_PhoneNumberUtil": {"jar": "adapter-mainline-stubs", "change": "replace shell phonenumbers with full real AOSP libphonenumber (68 classes + 541 metadata resources); reused intermediate libphonenumber.dex dff827b5", "evidence_app": "cv2-clipboardeditor"}
+  },
+  "frozen_apis_preserved": {
+    "FZ-007_tagsoup_Parser": "super=DefaultHandler (full tagsoup, not Object stub)",
+    "FZ-008_SSLSockets": "android.net.ssl.SSLSockets present",
+    "NetworkInfo_State": "android.net.NetworkInfo$State present (25 refs)"
+  },
+  "jars": {
+    "adapter-mainline-stubs.jar": {"base_effective": "f3bcc9d7c76cb73487837d7ad92fccba3d595d313ada7403bed99c4f11c2a8c2", "patched": "2f365a75581bb739041390ac35bc0e39e894ac9e80c990bb64cfe7016d781ba5", "dex": "039"},
+    "oh-adapter-framework.jar": {"base": "f38ec31259dbfdd20c3c7b95b61364ed85f2c67c440366546ffbc130e6773a50", "patched": "2257b835afda730a684fe6da81ac9658211af426e440da50f7d97762b2482cc1", "dex": "039"}
+  },
+  "image": {"files": 27, "canonical": "out-eff-rerun (paired with logs/bake_eff-rerun.log; cx-t0 fetches this)", "boot_art": "ab88cf388d950c75c56cba573a7fc10c37f30db9edeb6f6d60bbcf5cd0a6b889", "boot_oat": "4ba08485100228609a0d2acb8ea9db51ef7376c95517896362c0b7bf33a2a0cb", "boot_vdex": "23c1f5b05f1b103f5d74e4570f3faf29869c7027f930dd81ba2c7355ebc210b8", "note": "first effective bake (out-eff) had boot.art d5b43805; outer chose the re-run (out-eff-rerun, boot.art ab88cf38) as canonical so it is byte-paired with the saved execution log. boot.oat+vdex+25 segments byte-identical between the two; only boot.art's 3-byte identity-hash field at offset 254906-254908 differs. All four gates (rb/t4b/G1/G2) hold for the canonical set: they read boot.oat/vdex (identical) and the boot.art header (identical), not the 254906 heap field."},
+  "bake_execution_log": {
+    "candidate": {"log": "hw248:/home/alvin/t8-cc-wiki/logs/bake_eff-rerun.log (+ repo build/bake_eff-rerun.log, receipt/bake-logs/)", "sha256": "853ad83340feee86e76536def41c0148464f28e78d524a6513d22da924ebec03", "rc": 0},
+    "reference": {"log": "hw248:/home/alvin/t8-cc-wiki/logs/bake_ref_eff-rerun.log", "sha256": "29b53a02a38c228bcce612eac1b09c4dd77cf3939483368481879356f3c0f7ca", "rc": 0},
+    "determinism": "same-path re-bake, compiled code fully deterministic: boot.oat + 25 per-jar segments + boot.vdex 0 differing bytes; only boot.art 1-3 bytes at offset 254906-254908 vary (ART image-heap identity-hash field, benign). cmp evidence: receipt/bake-logs/determinism-cmp.txt",
+    "force_determinism_test": {
+      "verdict": "REJECTED - does not fix boot.art and changes boot.oat",
+      "detail": "added --force-determinism to the same dex2oat64, baked twice at the original path: boot.art STILL non-deterministic (fd1 != fd2, 2 bytes at offset 254906-254907), AND boot.oat changed by 1,861,040 bytes (~17% of the 10.9MB oat) vs the canonical non-flag bake. Also did NOT force single-threaded (threads:32). So the flag alters compiled output without achieving determinism -> NOT adopted as a default. Logs: build/bake_eff_fd-{1,2}.log",
+      "fd_shas": {"fd1_boot_art": "077b01ba", "fd2_boot_art": "fc17f006", "fd1_boot_oat": "1c7eb308 (differs 1.86M from canonical 4ba08485)"}
+    }
+  },
+  "deployed_class_diff_gate": {
+    "script": "scripts/lab/deployed_class_diff.py (master 458ff94e)",
+    "adapter-mainline-stubs_vs_f3bcc9d7": {"result": "exit 0", "detail": "0 dropped, 0 reshaped, 0 added (after allow lists), 0 frozen broken; 206 -> 265 classes", "flags": "--frozen --allow-add Lcom/android/i18n/phonenumbers/ Lcom/android/org/conscrypt/ --allow-reshape Lcom/android/i18n/phonenumbers/"},
+    "oh-adapter-framework_vs_f38ec312": {"result": "exit 0", "detail": "0 dropped, 0 reshaped, 0 added, 0 frozen broken; 58 -> 58 classes (method body only)", "flags": "--frozen"}
+  },
+  "gates": {
+    "rb": {"result": "PASS", "detail": "oat 230, concurrent-copying=false, image 108"},
+    "t4b": {"result": "PASS", "detail": "image-only deploy, libart untouched; satisfied via rb + unchanged T4 layout"},
+    "G1": {"result": "PASS", "detail": "7 unchanged segments checksum-identical to stock-effective reference; adapter-mainline-stubs + oh-adapter-framework in swap_jars"},
+    "G2": {"result": "PASS", "detail": "java.lang.String#hashCode cand=36 insns ref=36 insns identical (explicit suspend-check)"}
+  },
+  "reference": "stock-effective bake (ref-jars9: f3bcc9d7 stubs unpatched + native/payload x8); oatdump BCP = ref-jars9 (not native/payload underlay, which would checksum-mismatch the effective reference image)",
+  "bake": {
+    "host": "hw248",
+    "dex2oat64": "/home/alvin/aosp-14.0.0_r1-art/out/host/linux-x86/bin/dex2oat64 (ae865ddd; proven RB-off, baked deployed U9)",
+    "vm_dex2oat_note": "a2hlab out-aot42/tools/dex2oat SIGSEGVs on full boot-image compile (stock jars too) -> not usable"
+  },
+  "landing": {
+    "persist_dir": "$WORKSPACES/westlake-inputs/generations/t8-rebake-effective/ (jars9/, ref-jars9/, image/ 27 files, receipt/)",
+    "shared_from_t8-rebake": "src-snapshot/libphonenumber/, intermediate/libphonenumber.dex (dff827b5, same source)",
+    "hw248": "/home/alvin/t8-cc-wiki/{incoming-eff,out-eff,ref-incoming-eff,ref-out-eff,bake_eff.sh,bake_ref_eff.sh}",
+    "repo": "benchmark/2026-10-01-t8-bcp-cluster/build/{T8-REBAKE-RECEIPT-EFFECTIVE.md,build_t8_effective.sh,class_diff-*-effective.txt,gate-rb-effective.txt,gate-g1g2-effective.txt}"
+  }
+}
