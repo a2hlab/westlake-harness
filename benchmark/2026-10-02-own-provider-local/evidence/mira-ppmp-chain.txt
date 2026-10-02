@@ -1,0 +1,184 @@
+# toutiao a1112a0c, dexdump -d (Android build-tools 37.0.0). Mira's route to its own PPMP provider.
+## 1. PluginPackageManager.getInstance (classes15.dex): up to 4 tries, 3 x 200 ms sleep, under the class lock
+0000: sget-boolean v0, Lcom/bytedance/mira/pm/PluginPackageManager;.sIsConnected:Z // field@5d16
+0002: if-nez v0, 0007 // +0005
+0004: const/4 v0, #int 0 // #0
+0005: sput-object v0, Lcom/bytedance/mira/pm/PluginPackageManager;.sInstance:LX/3LC; // field@5d15
+0007: sget-object v0, Lcom/bytedance/mira/pm/PluginPackageManager;.sInstance:LX/3LC; // field@5d15
+0009: if-nez v0, 0053 // +004a
+000b: const-class v4, Lcom/bytedance/mira/pm/PluginPackageManager; // type@27df
+000d: monitor-enter v4
+000e: const/4 v3, #int 0 // #0
+000f: sget-object v0, Lcom/bytedance/mira/pm/PluginPackageManager;.sInstance:LX/3LC; // field@5d15
+0011: if-nez v0, 004e // +003d
+0013: if-lez v3, 003e // +002b
+0015: const/4 v0, #int 3 // #3
+0016: if-le v3, v0, 0019 // +0003
+0018: goto 0047 // +002f
+0019: const-wide/16 v0, #int 200 // #c8
+001b: invoke-static {v0, v1}, Lcom/bytedance/apm/agent/instrumentation/ThreadMonitor;.sleepMonitor:(J)V // method@715c
+001e: goto 0027 // +0009
+001f: move-exception v2
+0020: const-string v1, "mira/ppm" // string@ae75
+0022: const-string v0, "PluginPackageManager connect host InterruptedException." // string@55f6
+0024: invoke-static {v1, v0, v2}, Lcom/bytedance/mira/log/MiraLogger;.b:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V // method@948b
+0027: const-string v2, "mira/ppm" // string@ae75
+0029: invoke-static {}, Lcom/ss/android/article/news/launch/codeopt/StringBuilderOpt;.getLogger:()Ljava/lang/StringBuilder; // method@d91c
+002c: move-result-object v1
+002d: const-string v0, "PluginPackageManager retry connect host process: " // string@5613
+002f: invoke-static {v1, v0}, Lcom/ss/android/article/news/launch/codeopt/StringBuilderOpt;.appendLogger:(Ljava/lang/StringBuilder;Ljava/lang/String;)
+0032: move-result-object v0
+0033: invoke-static {v0, v3}, Lcom/ss/android/article/news/launch/codeopt/StringBuilderOpt;.appendLogger:(Ljava/lang/StringBuilder;I)Ljava/lang/String
+0036: move-result-object v0
+0037: invoke-static {v0}, Lcom/ss/android/article/news/launch/codeopt/StringBuilderOpt;.releaseLogger:(Ljava/lang/StringBuilder;)Ljava/lang/String; //
+003a: move-result-object v0
+003b: invoke-static {v2, v0}, Lcom/bytedance/mira/log/MiraLogger;.c:(Ljava/lang/String;Ljava/lang/String;)V // method@948c
+003e: invoke-static {}, Lcom/bytedance/mira/pm/PluginPackageManager;.generatePluginPackageManager:()LX/3LC; // method@95ba
+0041: move-result-object v0
+0042: sput-object v0, Lcom/bytedance/mira/pm/PluginPackageManager;.sInstance:LX/3LC; // field@5d15
+0044: add-int/lit8 v3, v3, #int 1 // #01
+0046: goto 000f // -0037
+0047: const-string v1, "mira/ppm" // string@ae75
+0049: const-string v0, "PluginPackageManager connect host process failed." // string@55f7
+004b: invoke-static {v1, v0}, Lcom/bytedance/mira/log/MiraLogger;.f:(Ljava/lang/String;Ljava/lang/String;)V // method@948f
+004e: monitor-exit v4
+004f: goto 0053 // +0004
+0050: move-exception v0
+0051: monitor-exit v4
+0052: throw v0
+0053: sget-object v0, Lcom/bytedance/mira/pm/PluginPackageManager;.sInstance:LX/3LC; // field@5d15
+0055: return-object v0
+
+## 2. PluginPackageManager.generatePluginPackageManager (classes15.dex): content://%s.pm.PPMP/call -> BinderProvider.b
+0000: const-string v3, "mira/ppm" // string@ae75
+0004: invoke-static {v0}, Landroid/text/TextUtils;.isEmpty:(Ljava/lang/CharSequence;)Z // method@5b2b
+000e: invoke-static {}, Lcom/bytedance/mira/Mira;.getAppContext:()Landroid/content/Context; // method@9349
+0012: invoke-virtual {v0}, Landroid/content/Context;.getPackageName:()Ljava/lang/String; // method@571d
+0018: const-string v0, "content://%s.pm.PPMP/call" // string@7a3b
+001a: invoke-static {v0, v1}, Ljava/lang/String;.format:(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String; // method@fa71
+001e: sput-object v0, Lcom/bytedance/mira/pm/PluginPackageManager;.CONTENT_URI:Ljava/lang/String; // field@5d13
+0020: invoke-static {}, Lcom/bytedance/mira/Mira;.getAppContext:()Landroid/content/Context; // method@9349
+0026: invoke-static {v0}, Landroid/net/Uri;.parse:(Ljava/lang/String;)Landroid/net/Uri; // method@59e5
+002a: invoke-static {v1, v0}, Lcom/bytedance/mira/core/BinderProvider;.b:(Landroid/content/Context;Landroid/net/Uri;)Landroid/os/IBinder; // method@93
+0030: invoke-interface {v2}, Landroid/os/IBinder;.isBinderAlive:()Z // method@5a48
+0038: invoke-direct {v0}, LX/3LH;.<init>:()V // method@47b1
+003b: invoke-interface {v2, v0, v5}, Landroid/os/IBinder;.linkToDeath:(Landroid/os/IBinder$DeathRecipient;I)V // method@5a49
+003e: sput-boolean v4, Lcom/bytedance/mira/pm/PluginPackageManager;.sIsConnected:Z // field@5d16
+0040: const-string v0, "PluginPackageManager generatePluginPackageManager success." // string@55fc
+0042: invoke-static {v3, v0}, Lcom/bytedance/mira/log/MiraLogger;.c:(Ljava/lang/String;Ljava/lang/String;)V // method@948c
+0047: const-string v0, "com.bytedance.mira.pm.IPluginPackageManager" // string@71cb
+0049: invoke-interface {v2, v0}, Landroid/os/IBinder;.queryLocalInterface:(Ljava/lang/String;)Landroid/os/IInterface; // method@5a4a
+0058: invoke-direct {v1, v2}, LX/3LP;.<init>:(Landroid/os/IBinder;)V // method@47df
+005b: return-object v1
+005d: const-string v0, "PluginPackageManager generatePluginPackageManager failed." // string@55fb
+005f: invoke-static {v3, v0, v1}, Lcom/bytedance/mira/log/MiraLogger;.b:(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V // method@948b
+0063: return-object v0
+
+## 3. BinderProvider.b (classes16.dex): ContentResolver.call(uri, "query_binder") unless ToolUtils.H(app) (sub-process)
+0000: invoke-virtual {v4}, Landroid/content/Context;.getContentResolver:()Landroid/content/ContentResolver; // method@3d69
+0003: move-result-object v3
+0004: invoke-static {}, LX/46s;.a:()Landroid/app/Application; // method@1da8
+0007: move-result-object v4
+0008: invoke-static {}, Lcom/ss/android/article/news/launch/codeopt/StringBuilderOpt;.get:()Ljava/lang/StringBuilder; // method@b890
+000b: move-result-object v1
+000c: const-string v0, "ContentResolver$call: " // string@1719
+000e: invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;.append:(Ljava/lang/String;)Ljava/lang/StringBuilder; // method@e969
+0011: invoke-virtual {v1, v5}, Ljava/lang/StringBuilder;.append:(Ljava/lang/Object;)Ljava/lang/StringBuilder; // method@e968
+0014: invoke-static {v1}, Lcom/ss/android/article/news/launch/codeopt/StringBuilderOpt;.release:(Ljava/lang/StringBuilder;)Ljava/lang/String; // metho
+0017: move-result-object v0
+0018: if-eqz v0, 0082 // +006a
+001a: invoke-virtual {v5}, Landroid/net/Uri;.getAuthority:()Ljava/lang/String; // method@3f56
+001d: move-result-object v1
+001e: const-string v0, "ProcessIsolationLancet" // string@62d5
+0020: invoke-static {v0, v1}, Landroid/util/Log;.d:(Ljava/lang/String;Ljava/lang/String;)I // method@417c
+0023: const/4 v2, #int 0 // #0
+0024: if-eqz v4, 007b // +0057
+0026: invoke-static {v4}, Lcom/ss/android/message/util/ToolUtils;.H:(Landroid/content/Context;)Z // method@c210
+0029: move-result v0
+002a: if-eqz v0, 007b // +0051
+002c: invoke-virtual {v5}, Landroid/net/Uri;.getAuthority:()Ljava/lang/String; // method@3f56
+002f: move-result-object v1
+0030: invoke-static {v1}, Landroid/text/TextUtils;.isEmpty:(Ljava/lang/CharSequence;)Z // method@415a
+0033: move-result v0
+0034: if-nez v0, 007b // +0047
+0036: const-string v0, ".pm.PPMP" // string@0c79
+0038: invoke-virtual {v1, v0}, Ljava/lang/String;.endsWith:(Ljava/lang/String;)Z // method@e91d
+003b: move-result v0
+003c: if-nez v0, 004e // +0012
+003e: const-string v0, ".am.PAMP" // string@0c4a
+0040: invoke-virtual {v1, v0}, Ljava/lang/String;.endsWith:(Ljava/lang/String;)Z // method@e91d
+0043: move-result v0
+0044: if-nez v0, 004e // +000a
+0046: const-string v0, ".frankie" // string@0c5c
+0048: invoke-virtual {v1, v0}, Ljava/lang/String;.endsWith:(Ljava/lang/String;)Z // method@e91d
+004b: move-result v0
+004c: if-eqz v0, 007b // +002f
+004e: move-object v1, v2
+004f: if-eqz v1, 0098 // +0049
+0051: invoke-static {}, Lcom/bytedance/mira/Mira;.getAppContext:()Landroid/content/Context; // method@909e
+0054: move-result-object v0
+0055: if-eqz v0, 0071 // +001c
+0057: invoke-static {}, Lcom/bytedance/mira/Mira;.getAppContext:()Landroid/content/Context; // method@909e
+005a: move-result-object v0
+005b: invoke-virtual {v0}, Landroid/content/Context;.getClassLoader:()Ljava/lang/ClassLoader; // method@3d68
+005e: move-result-object v0
+005f: invoke-virtual {v1, v0}, Landroid/os/Bundle;.setClassLoader:(Ljava/lang/ClassLoader;)V // method@404e
+0062: const-string v0, "binder" // string@8115
+0064: invoke-virtual {v1, v0}, Landroid/os/Bundle;.getParcelable:(Ljava/lang/String;)Landroid/os/Parcelable; // method@4020
+0067: move-result-object v0
+0068: check-cast v0, Lcom/bytedance/mira/core/BinderParcel; // type@21fc
+006a: if-eqz v0, 0098 // +002e
+006c: invoke-virtual {v0}, Lcom/bytedance/mira/core/BinderParcel;.getBinder:()Landroid/os/IBinder; // method@90a3
+006f: move-result-object v0
+0070: return-object v0
+0071: const-class v0, Lcom/bytedance/mira/core/BinderProvider; // type@21fd
+0073: invoke-virtual {v0}, Ljava/lang/Class;.getClassLoader:()Ljava/lang/ClassLoader; // method@e7ff
+0076: move-result-object v0
+0077: invoke-virtual {v1, v0}, Landroid/os/Bundle;.setClassLoader:(Ljava/lang/ClassLoader;)V // method@404e
+007a: goto 0062 // -0018
+007b: const-string v0, "query_binder" // string@e475
+007d: invoke-virtual {v3, v5, v0, v2, v2}, Landroid/content/ContentResolver;.call:(Landroid/net/Uri;Ljava/lang/String;Ljava/lang/String;Landroid/os/Bu
+0080: move-result-object v1
+0081: goto 004f // -0032
+0082: invoke-static {}, Lcom/ss/android/article/news/launch/codeopt/StringBuilderOpt;.get:()Ljava/lang/StringBuilder; // method@b890
+0085: move-result-object v1
+0086: const-string v0, "null context is null:" // string@d8d0
+0088: invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;.append:(Ljava/lang/String;)Ljava/lang/StringBuilder; // method@e969
+008b: if-nez v4, 0096 // +000b
+008d: const/4 v0, #int 1 // #1
+008e: invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;.append:(Z)Ljava/lang/StringBuilder; // method@e96b
+0091: invoke-static {v1}, Lcom/ss/android/article/news/launch/codeopt/StringBuilderOpt;.release:(Ljava/lang/StringBuilder;)Ljava/lang/String; // metho
+0094: move-result-object v1
+0095: goto 001e // -0077
+0096: const/4 v0, #int 0 // #0
+0097: goto 008e // -0009
+0098: return-object v2
+
+## 4. ToolUtils.H: true only when the process name ends with ToolUtils.e or ":widgetProvider" (sub-processes)
+0000: sget-object v3, Lcom/ss/android/message/util/ToolUtils;.z:Lcom/bytedance/hotfix/base/ChangeQuickRedirect; // field@8c8d
+0002: const/4 v2, #int 1 // #1
+0003: if-eqz v3, 0014 // +0011
+0005: const/4 v1, #int 0 // #0
+0006: const v0, #float 8.86082e-40 // #0009a609
+0009: invoke-static {v4, v1, v3, v2, v0}, LX/DRm;.N0:(Ljava/lang/Object;Ljava/lang/Object;Lcom/bytedance/hotfix/base/ChangeQuickRedirect;ZI)LX/31U; //
+000c: move-result-object v1
+000d: iget-boolean v0, v1, LX/31U;.a:Z // field@0045
+000f: if-eqz v0, 0014 // +0005
+0011: iget-boolean v0, v1, LX/31U;.e:Z // field@0047
+0013: return v0
+0014: invoke-static {v4}, Lcom/ss/android/message/util/ToolUtils;.k:(Landroid/content/Context;)Ljava/lang/String; // method@eff4
+0017: move-result-object v1
+0018: if-eqz v1, 002f // +0017
+001a: sget-object v0, Lcom/ss/android/message/util/ToolUtils;.e:Ljava/lang/String; // field@8c77
+001c: invoke-virtual {v1, v0}, Ljava/lang/String;.endsWith:(Ljava/lang/String;)Z // method@f9f7
+001f: move-result v0
+0020: if-nez v0, 002a // +000a
+0022: const-string v0, ":widgetProvider" // string@11ca
+0024: invoke-virtual {v1, v0}, Ljava/lang/String;.endsWith:(Ljava/lang/String;)Z // method@f9f7
+0027: move-result v0
+0028: if-eqz v0, 002f // +0007
+002a: sget-object v0, Ljava/lang/Boolean;.FALSE:Ljava/lang/Boolean; // field@8fbd
+002c: sput-object v0, Lcom/ss/android/message/util/ToolUtils;.g:Ljava/lang/Boolean; // field@8c79
+002e: return v2
+002f: const/4 v0, #int 0 // #0
+0030: return v0

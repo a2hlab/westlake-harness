@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-02-own-provider-local/`** | **Toutiao wall ① root cause + JAR candidate U11j (not deployed): Mira asks its own PPMP provider via ContentResolver.call in attachBaseContext; our ContentProviderRegistry answers any unpublished authority with an OH DataShare bridge, ActivityThread caches it, and the real provider installed later cannot replace it (\"already published as ...pm.PPMP\"). U11j = U11i + OwnProviderLocal (AOSP AMS canRunHere -> local holder, mLocal) 96fd4eee, deterministic, class-diff --frozen rc=0, 1 needle; only toutiao shows the lookup in 290 hilogs; second finding: bind data carries other-process providers (7 keys).** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-02 route-A 的 getContentProvider 从不回 AOSP 的「本地实例化」holder:ContentProviderRegistry 对未发布的 authority 一律回 OH DataShare 桥(provider 非空),ActivityThread 把它按 authority 缓存进 mProviderMap;之后 stock installContentProviders 装上真 provider 也替换不了(只打 \"already published as\"),本进程永久查不到。头条 Mira 在 attachBaseContext 里 ContentResolver.call(content://<pkg>.pm.PPMP) 就此每次失败(3×200ms 重试+类锁,0.6s/次)。修法照 AOSP AMS canRunHere:本 app、能在本进程跑的 provider 回 ContentProviderHolder(info){mLocal=true,provider=null}(U11j OwnProviderLocal)。另:B8-PROV 把子进程 provider 也塞进 bind data(AOSP 只给本进程的),7 个 key。见 benchmark/2026-10-02-own-provider-local/(cc-t3)。"
+   ]
+  }
+ ]
+}
