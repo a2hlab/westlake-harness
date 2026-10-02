@@ -144,3 +144,34 @@ Offline; **no board access** (respecting the 02:35 lock window — OH libs came 
 build is the runtime/appspawn owners' to deploy; this stages a candidate. Sources read read-only from
 `westlake-harness-bms`, `westlake-inputs`, `vm-copies/apks-77`, `westlake-harness-u7-executor`; hw248 inputs probed
 read-only.
+
+## Board judge (U14 on-board acceptance — outer 04:01)
+When U14 (with the Wall-1 public-lib inherit + the Wall-2 shim) goes on-board, verify these three (screenshot/hilog/maps,
+not process-alive):
+1. **One copy each, same ns.** The app process `maps` show `libicuuc.so` (= `9b36b989…`, i.e. f74827d9 + the one
+   DT_NEEDED) and `libicu74compat.so` each mapped EXACTLY ONCE, in the SAME namespace (the app/bridge ICU ns — not a
+   second copy in another ns). Two copies of either = a namespace/double-load regression.
+2. **The extra PT_LOAD loads.** patchelf relocated `.dynstr` into a new page-aligned `PT_LOAD`; OH musl must map that
+   extra segment normally. Judge by: every ICU-using lit key in U14 stage-A (starting with `helloworld`) is still lit
+   with NO `dlopen`/`MUSL-LDSO ... failed` for `libicuuc.so`/`libicu74compat.so` in its hilog. A load failure or a
+   regressed lit key = the extra segment is not accepted.
+3. **Toutiao ICU wall cleared.** In toutiao's hilog: NO `load libicui18n.so failed, namespace=westlake.anl.app…`, and NO
+   `ICUWrapper::ICUWrapper()` SIGSEGV (pc=0). `brk_open`'s `dlsym(<ICU handle>, "ubrk_open_74")` resolves (via the shim),
+   so the cached fn-ptr is non-null and the ctor's `blr` does not fault. (Lit vs its next wall is judged separately — see
+   `benchmark/2026-10-03-toutiao-next-wall/`.)
+
+## Persisted artifacts (outer 04:10 — binaries live outside the repo)
+Rebuilt from the recipes above and SHA-confirmed (stop-on-mismatch gate passed); persisted to `$WORKSPACES/westlake-inputs/generations/`
+(binaries are not committed to this public repo — here are the full SHAs + paths + how to rebuild):
+
+**`$WORKSPACES/westlake-inputs/generations/u14-icu-wall2-v1/`** (SHA256SUMS, build-commands.txt, logs/):
+- `libicu74compat.so` = `4886bc5c2b4ef0486ecda6fa3248ace4af6a1c57ed7029b17cfd4868ad2c92af` (13336 B; from `recipe/icu74_shim.S`+`icu74_shim.map` + DevEco clang; self-deterministic ×2)
+- `libicuuc-u14.so` = `9b36b989dd10f29434cc60b6b7d1895878442d07f1d6b0674db9b1379420d93f` (2547137 B; = `f74827d9…` + `patchelf --add-needed libicu74compat.so`)
+- base libicuuc `f74827d992d25ffe481873f1b7f4416d97820c443f16bd715102455dbafbcf6f` (`westlake-harness-bms/benchmark/2026-10-03-u13-final-assembly/.artifacts/bundle-v3/native/payload/android/lib64/libicuuc.so`)
+- patchelf: `/opt/homebrew/bin/patchelf` (patchelf 0.19.1, Homebrew)
+
+**`$WORKSPACES/westlake-inputs/generations/u14-appns-host-v1/`** (SHA256SUMS, build-commands.txt, logs/):
+- `appspawn-x` = `341c12608091246a09e973214b197eaf7d5b6b3f0bf9cc6ebbf3392648d338da` (647 KB; `recipe/reproduce_host.py --patched`; two builds byte-identical; (A′)-accepted)
+
+Rebuild: shim via the `recipe/icu74_shim.S` clang line; patched lib via `cp f74827d9 … && patchelf --add-needed libicu74compat.so`;
+host via `python3 recipe/reproduce_host.py --patched`. All three SHAs re-confirmed on this persist run.
