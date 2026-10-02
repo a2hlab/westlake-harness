@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-x-trampoline-handover/`** | **x trampoline hand-off (cc-t3): our finish() of the MAIN/HOME trampoline reaches AMS while XLiteActivity is only an SCB pending session, so OH AppMgr PrepareTerminate sees the last ability and marks the app terminating; the close itself is dropped (pending), LoadAbility skips terminating records -> XLiteActivity cold-starts in a 2nd process while the 1st stays stranded. Same shape in 36 keys, mostly lit (cost 1.7-2.7 s); x pays ~11 s (9 s bind) and lands just before t20. category-HOME is on 142/168 U13 runs (not the cause). Fix = defer the OH TerminateAbility until the started ability reaches the process (runtime-JAR proxy preferred); x lit medium.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **跳板 finish 先于下一个 Ability 落到 AppMgr → 第二进程冷启(cc-t3,x)**:我们的 startActivity 在 OH 是异步的(SCB 待激活),紧跟的 finish→TerminateAbility 先到 AMS;PrepareCloseUIAbility→AppMgr PrepareTerminate 见『最后一个 ability』把整条 app 记录 SetTerminating,而 CloseUIAbility 因 pending 被丢弃——旧进程不复用也不被杀,LoadAbility 跳过 terminating 记录冷启第二进程。36 个键同形、多数亮(多付 1.7–2.7 s);x bind 9 s,第二次冷启落在 t20 前 0.6 s 才 bind 完 = 时序白。category-HOME 在 U13 142/168 次运行都有,不是成因。修法:finish 时若本进程有未落地的同包启动就延迟 TerminateAbility(落地或约 3 s 超时再发)。"
+   ]
+  }
+ ]
+}

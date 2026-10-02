@@ -1,0 +1,121 @@
+# OH 6.1 LTS source (hw248 /opt/build-trees/oh610_lts_source), read-only
+## appmgr/src/app_running_manager.cpp PrepareTerminate
+912:         TAG_LOGE(AAFwkTag::APPMGR, "null token");
+913:         return;
+914:     }
+915: 
+916:     auto appRecord = GetAppRunningRecordByAbilityToken(token);
+917:     if (!appRecord) {
+918:         TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
+919:         return;
+920:     }
+921: 
+922:     auto abilityRecord = appRecord->GetAbilityRunningRecordByToken(token);
+923:     if (abilityRecord) {
+924:         abilityRecord->SetTerminating();
+925:     }
+926: 
+927:     // set app record terminating when close last page ability
+928:     auto isLastAbility =
+929:         clearMissionFlag ? appRecord->IsLastPageAbilityRecord(token) : appRecord->IsLastAbilityRecord(token);
+930:     if (isLastAbility && (!appRecord->IsKeepAliveApp())) {
+931:         auto cacheProcMgr = DelayedSingleton<CacheProcessManager>::GetInstance();
+932:         if (cacheProcMgr != nullptr && cacheProcMgr->IsAppShouldCache(appRecord)) {
+933:             cacheProcMgr->PenddingCacheProcess(appRecord);
+934:             TAG_LOGI(AAFwkTag::APPMGR, "App %{public}s not supports terminate record",
+935:                 appRecord->GetBundleName().c_str());
+936:             return;
+937:         }
+938:         TAG_LOGI(AAFwkTag::APPMGR, "ability is the last:%{public}s", appRecord->GetName().c_str());
+939:         appRecord->SetTerminating();
+940:         std::string killReason = clearMissionFlag ? "Kill Reason:ClearSession" : "";
+941:         appRecord->SetKillReason(killReason);
+942:     }
+## CheckAppRunningRecordIsExist (reuse filter)
+121: std::shared_ptr<AppRunningRecord> AppRunningManager::CheckAppRunningRecordIsExist(const std::string &appName,
+122:     const std::string &processName, const int uid, const BundleInfo &bundleInfo,
+123:     const std::string &specifiedProcessFlag, bool *isProCache, const std::string &instanceKey,
+124:     const std::string &customProcessFlag, const bool notReuseCachedPorcess)
+125: {
+126:     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+127:     TAG_LOGD(AAFwkTag::APPMGR,
+128:         "appName: %{public}s, processName: %{public}s, uid: %{public}d, specifiedProcessFlag: %{public}s, \
+129:          customProcessFlag: %{public}s",
+130:         appName.c_str(), processName.c_str(), uid, specifiedProcessFlag.c_str(), customProcessFlag.c_str());
+131:     std::regex rule("[a-zA-Z.]+[-_#]{1}");
+132:     std::string signCode;
+133:     auto jointUserId = bundleInfo.jointUserId;
+134:     TAG_LOGD(AAFwkTag::APPMGR, "jointUserId : %{public}s", jointUserId.c_str());
+135:     ClipStringContent(rule, bundleInfo.appId, signCode);
+136:     auto findSameProcess = [signCode, specifiedProcessFlag, processName, jointUserId, customProcessFlag]
+137:         (const auto &pair) {
+138:             return (pair.second != nullptr) &&
+139:             (specifiedProcessFlag.empty() || pair.second->GetSpecifiedProcessFlag() == specifiedProcessFlag) &&
+140:             (pair.second->GetCustomProcessFlag() == customProcessFlag) &&
+141:             (pair.second->GetSignCode() == signCode) &&
+142:             AppRunningManager::CheckAppProcessNameIsSame(pair.second, processName) &&
+143:             (pair.second->GetJointUserId() == jointUserId) && !(pair.second->IsTerminating()) &&
+144:             !(pair.second->IsKilling()) && !(pair.second->GetRestartAppFlag()) &&
+145:             !(pair.second->IsKillPrecedeStart());
+146:     };
+147:     auto appRunningMap = GetAppRunningRecordMap();
+148:     if (!jointUserId.empty()) {
+149:         auto iter = std::find_if(appRunningMap.begin(), appRunningMap.end(), findSameProcess);
+150:         return ((iter == appRunningMap.end()) ? nullptr : iter->second);
+151:     }
+152:     for (const auto &item : appRunningMap) {
+153:         const auto &appRecord = item.second;
+154:         if (appRecord && CheckAppProcessNameIsSame(appRecord, processName) &&
+155:             appRecord->GetInstanceKey() == instanceKey &&
+156:             (specifiedProcessFlag.empty() || appRecord->GetSpecifiedProcessFlag() == specifiedProcessFlag) &&
+157:             (appRecord->GetCustomProcessFlag() == customProcessFlag) &&
+158:             !(appRecord->IsTerminating()) && !(appRecord->IsKilling()) && !(appRecord->GetRestartAppFlag()) &&
+159:             !(appRecord->IsUserRequestCleaning()) &&
+160:             !(appRecord->IsCaching() && appRecord->GetProcessCacheBlocked()) &&
+161:             !(appRecord->IsKillPrecedeStart())) {
+## abilitymgr ui_ability_lifecycle_manager.cpp CloseUIAbility -> PrepareTerminate
+2068: int UIAbilityLifecycleManager::CloseUIAbility(const UIAbilityRecordPtr &abilityRecord,
+2069:     int resultCode, const Want *resultWant, bool isClearSession, bool isIndependentRecovery)
+2070: {
+2071:     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+2072:     std::lock_guard<ffrt::mutex> guard(sessionLock_);
+2073:     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_UI_ABILITY_MANAGER_NULL_ABILITY_RECORD);
+2074:     TAG_LOGI(AAFwkTag::ABILITYMGR, "CloseUIAbility call: %{public}s/%{public}s",
+2075:         abilityRecord->GetElementName().GetBundleName().c_str(),
+2076:         abilityRecord->GetElementName().GetAbilityName().c_str());
+2077:     if (abilityRecord->IsTerminating() && !abilityRecord->IsForeground()) {
+2078:         TAG_LOGI(AAFwkTag::ABILITYMGR, "ability on terminating");
+2079:         return ERR_OK;
+2080:     }
+2081:     PrepareCloseUIAbility(abilityRecord, resultCode, resultWant, isClearSession);
+2082:     if (abilityRecord->GetAbilityState() == AbilityState::INITIAL) {
+2083:         if (abilityRecord->GetScheduler() == nullptr) {
+2084:             auto handler = DelayedSingleton<AbilityManagerService>::GetInstance()->GetEventHandler();
+2085:             CHECK_POINTER_AND_RETURN_LOG(handler, ERR_INVALID_VALUE, "Fail to get AbilityEventHandler.");
+2086:             abilityRecord->RemoveLoadTimeoutTask();
+2087:         }
+2088:         terminateAbilityList_.remove(abilityRecord);
+2089:         return abilityRecord->TerminateAbility();
+2090:     }
+2091:     if (abilityRecord->GetPendingState() != AbilityState::INITIAL) {
+2092:         TAG_LOGI(AAFwkTag::ABILITYMGR, "pending state dropped CLOSE: %{public}d, independentRecovery: %{public}d",
+2093:             static_cast<int32_t>(abilityRecord->GetPendingState()), isIndependentRecovery);
+2094:         abilityRecord->SetPendingState(AbilityState::BACKGROUND);
+2095:         if (!isIndependentRecovery) {
+2096:             return ERR_OK;
+2097:         }
+2098:         abilityRecord->RemoveForegroundTimeoutTask();
+2099:     }
+2100:     return CloseUIAbilityInner(abilityRecord);
+2101: }
+2102: 
+2103: void UIAbilityLifecycleManager::PrepareCloseUIAbility(UIAbilityRecordPtr abilityRecord,
+2104:     int resultCode, const Want *resultWant, bool isClearSession)
+2105: {
+2106:     if (!abilityRecord) {
+2107:         TAG_LOGE(AAFwkTag::ABILITYMGR, "ability record null");
+2108:         return;
+2109:     }
+2110:     DelayedSingleton<AppScheduler>::GetInstance()->PrepareTerminate(abilityRecord->GetToken(), isClearSession);
+2111:     abilityRecord->SetTerminatingState();
+2112:     abilityRecord->SetClearMissionFlag(isClearSession);

@@ -1,0 +1,34 @@
+{
+ "schema": "x-trampoline-handover/v1",
+ "run": "U13 window2 61b x (record clicked 04:52:16.49, t20 +22.87 s)",
+ "mechanism": "finish() of the MAIN/HOME trampoline reaches AMS while the started XLiteActivity is only an SCB pending session; AMS PrepareCloseUIAbility -> AppMgr PrepareTerminate sees the last ability -> app record SetTerminating; CloseUIAbility itself dropped (pending state); LoadAbility(XLiteActivity) skips terminating records -> new process 9779 cold start; 9567 stranded",
+ "oh_source": {
+  "PrepareTerminate": "appmgr app_running_manager.cpp 912-942",
+  "reuse_filter": "CheckAppRunningRecordIsExist IsTerminating (143/158)",
+  "pending_drop": "ui_ability_lifecycle_manager.cpp 2091-2096"
+ },
+ "population": {
+  "keys_with_shape": 36,
+  "mostly_lit": true
+ },
+ "cost": {
+  "lit_splash_close_to_second_bind_ok_s": "1.7-2.7",
+  "x_close_to_second_bind_ok_s": "~11 (bind 9.1 s), lands ~0.6 s before t20"
+ },
+ "category_home": {
+  "u13_runs_main_home": 142,
+  "u13_runs_total": 168,
+  "discriminating": false
+ },
+ "fix": {
+  "where": "Java finish path: ActivityClientControllerAdapter.finishActivity (oh-adapter-framework 2257b835); preferred as a runtime-JAR proxy (B8-AMB pattern) to avoid a BCP bake",
+  "what": "defer OH TerminateAbility while a same-bundle start has not reached this process (release on its ScheduleLaunchAbility or ~3 s timeout); drop the duplicate terminate"
+ },
+ "prediction": {
+  "x": "in-process launch ~11 s earlier; lit medium",
+  "other_trampoline_keys": "first-fatal 0, save 1.7-2.7 s and the stranded process; watch timeout path",
+  "fd-saber": 0
+ },
+ "cheaper_check": "long-wait capture of x (t45/t60) to see whether XLiteActivity draws in the second process",
+ "board_actions": 0
+}
