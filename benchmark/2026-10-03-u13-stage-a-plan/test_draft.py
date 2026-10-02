@@ -11,11 +11,51 @@ HERE=Path(__file__).resolve().parent
 sys.path.insert(0,str(HERE))
 import process_selftest as probe
 import promotion_hook_u13 as hook
+import observe
+from unittest.mock import patch
 
 GOOD='10-03 02:00:00.001 123 124 I C00f00/AppSpawnXJava: [stderr] [WL-KS-PROBE] validateAead(random 256-bit SecretKeySpec)=OK'
 BAD='10-03 02:00:00.002 123 124 I C00f00/AppSpawnXJava: [stderr] [WL-KS-PROBE] selftest error: java.lang.IllegalStateException: GCM cipher needs to be initialised'
 
 class DraftTests(unittest.TestCase):
+    def test_actual_archived_both_poles(self):
+        for name, errors in [('u12-error',1),('u101t8-zero',0)]:
+            row=probe.run_row(HERE/'evidence/known-answer'/name/'record.json')
+            self.assertEqual(row['selftest_error_count'],errors)
+            self.assertEqual(row['status'],'REJECT' if errors else 'unknown')
+
+    def test_shard_observer_records_rejection_and_returns_zero(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(observe,'ack') as ack, patch('builtins.print'):
+            plan={'entry':'90','lane':'cx-t0','serial':'test'}
+            root=HERE/'evidence/known-answer/u12-error'
+            out=Path(d)/'assessment.json'
+            data=observe.assess(plan,root,out,'test')
+            self.assertEqual(data['selftest_error_count'],1)
+            self.assertTrue(out.exists());self.assertIn('selftest error',ack.call_args.args[1])
+            self.assertIn('record-only',ack.call_args.args[1])
+
+    def test_longwait_disabled_and_cutoff_no_device(self):
+        plan=json.loads((HERE/'plan-61b.json').read_text())
+        with tempfile.TemporaryDirectory() as d, patch.object(observe.subprocess,'run') as run:
+            with self.assertRaisesRegex(ValueError,'disabled'):observe.longwait(plan,Path(d),0)
+            run.assert_not_called()
+        plan['execution_enabled']=True;plan['bundle_sha256']='a'*64
+        with tempfile.TemporaryDirectory() as d, patch.object(observe,'ack'), patch.object(observe.subprocess,'run') as run:
+            self.assertEqual(observe.longwait(plan,Path(d),0),0);run.assert_not_called()
+            rows=json.loads((Path(d)/'longwait-result.json').read_text())
+            self.assertEqual(len(rows),2);self.assertTrue(all(r['status']=='unknown' for r in rows))
+
+    def test_longwait_commands_keep_validated_capture_flags(self):
+        plan=json.loads((HERE/'plan-61b.json').read_text())
+        spec=json.loads((HERE/'longwait-61b.json').read_text())
+        argv=observe.capture_command(plan,spec['observations'][0],Path('/tmp/fresh'),123)
+        for flag,value in [('--wait','95'),('--hilog','95'),('--shots','20,45,90')]:
+            self.assertEqual(argv[argv.index(flag)+1],value)
+        self.assertNotIn('lock',argv);self.assertNotIn('unlock',argv)
+        other=dict(spec['observations'][0],input_root='$WORKSPACES/westlake-inputs/corpus-v2/app-inputs')
+        argv=observe.capture_command(plan,other,Path('/tmp/fresh'),123)
+        self.assertNotIn('$WORKSPACES',argv[argv.index('--input-root')+1])
+
     def test_success_actual_marker_shape(self):
         self.assertEqual(probe.scan_text(GOOD,['123'])['123']['status'],'PASS')
     def test_error_even_when_success_present(self):

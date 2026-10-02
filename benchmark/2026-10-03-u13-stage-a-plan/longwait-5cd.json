@@ -8,20 +8,13 @@
   "base": "same final U13 candidate within observation window",
   "bundle_sha256": null,
   "package_manifest_sha256": null,
-  "window_limit_minutes": 30,
-  "stop_new_tests_by_minute": 20,
+  "window_limit_minutes": 45,
+  "stop_new_tests_by_minute": 35,
   "keys": [
     "fd-plus",
     "fd-libretube"
   ],
-  "runner": "existing master bms_batch directly via detached reviewed wrapper; board_run ignores arbitrary shot flags, do not pass them as if supported",
-  "after_lock": [
-    "python3",
-    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/draft_guard.py",
-    "longwait",
-    "--plan",
-    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/longwait-5cd.json"
-  ],
+  "runner": "observe.py longwait called by parent board_run after_shards; no own lock/deploy/finish; parent finally restores",
   "restore": {
     "state": "U10.1T8",
     "bundle_sha256": "190afedd3ddb250752e67b83d19669b6a952eb04cd69db5edf0b06eafe119736",
@@ -57,7 +50,7 @@
     "silence": "unknown blocks promotion unless individually outer-explained",
     "explanations": "exact event/report/package/evidence SHA binding; no blanket exemption",
     "promotion_hook": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/promotion_hook_u13.py",
-    "production_wiring": "PENDING:board_run has no post-shard hook; bind reviewed wrapper before enabling; before_unlock must restore even selftest rejection"
+    "production_wiring": "after_shard_record_only calls observe.py/process_selftest immediately; all errors/unknowns ACKed, never stop Stage A; promotion_hook_u13 remains strict; before_unlock always restores"
   },
   "regression_evidence": false,
   "maps": "t20 only accepted; do not edit collector",

@@ -55,6 +55,54 @@ class BoardRun(unittest.TestCase):
         if cleanup_rc: self.assertNotIn('unlock', events)
         else: self.assertLess(events.index('rollback'), events.index('unlock'))
 
+    def test_record_only_error_continues_and_additional_precedes_restore(self):
+        self.observation_transaction(observer_rc=1)
+
+    def test_record_only_exception_continues_and_restores(self):
+        self.observation_transaction(observer_rc=1, observer_error=True)
+
+    def test_additional_failure_still_restores(self):
+        self.observation_transaction(observer_rc=0, additional_rc=2)
+
+    def observation_transaction(self, observer_rc, observer_error=False, additional_rc=0):
+        calls=[]
+        with tempfile.TemporaryDirectory() as d:
+            plan=json.loads(EXAMPLE.read_text());keys=Path(d)/'keys';keys.write_text('key')
+            plan.update(out=str(Path(d)/'out'),
+                        shards=[dict(name=n,keys_file=str(keys),manifest='m',input_root=d) for n in ('one','two')],
+                        after_shard_record_only=['observe','{shard_out}','{shard_name}'],
+                        after_shards=['additional','{out}','{cutoff}'],stop_new_tests_by_minute=35,
+                        before_unlock=['restore'])
+            p=Path(d)/'plan.json';p.write_text(json.dumps(plan))
+            def run(argv,**kw):
+                calls.append(argv)
+                if 'held' in argv:return subprocess.CompletedProcess(argv,0,stdout=plan['lane']+' 123')
+                if argv[0]=='observe':
+                    if observer_error:raise OSError('assessment unavailable')
+                    return subprocess.CompletedProcess(argv,observer_rc)
+                return subprocess.CompletedProcess(argv,additional_rc if argv[0]=='additional' else 0)
+            with patch.object(board_run.subprocess,'run',side_effect=run):
+                self.assertEqual(board_run.main([str(p)]),1 if additional_rc else 0)
+            report=json.loads((Path(d)/'out/board-run-result.json').read_text())
+            self.assertEqual(len(report['shards']),2);self.assertEqual(report['before_unlock'],0)
+            self.assertTrue(all(s['assessment']['record_only'] for s in report['shards']))
+        batches=[a for a in calls if str(board_run.BATCH) in a]
+        self.assertEqual(len(batches),2)
+        self.assertTrue(all(a[a.index('--shots')+1]=='5,20' for a in batches))
+        events=[a[0] for a in calls]
+        self.assertLess(events.index('additional'),events.index('restore'))
+        self.assertEqual(events.count('observe'),2)
+        self.assertLess(next(i for i,a in enumerate(calls) if a[0]=='observe'),
+                        next(i for i,a in enumerate(calls) if str(board_run.BATCH) in a and a!=batches[0]))
+
+    def test_disabled_plan_never_locks(self):
+        with tempfile.TemporaryDirectory() as d:
+            plan=json.loads(EXAMPLE.read_text());plan['execution_enabled']=False
+            p=Path(d)/'p.json';p.write_text(json.dumps(plan))
+            with patch.object(board_run.subprocess,'run') as run:
+                with self.assertRaisesRegex(SystemExit,'execution_enabled'):board_run.main([str(p)])
+                run.assert_not_called()
+
     def test_seal_makes_run_dir_undeletable(self):
         import os, shutil
         d = tempfile.mkdtemp()

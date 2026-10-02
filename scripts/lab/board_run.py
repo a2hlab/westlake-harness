@@ -32,6 +32,10 @@ Optional after_lock is an argv list run right after LOCK, before the smoke gate:
 (e.g. sweep_bind_deploy.py --no-run --no-rollback ...). Non-zero = no smoke, no shards; before_unlock still runs.
 Optional before_unlock is an argv list executed while the lock is still held, including on smoke failure.
 It must finish the authorized rollback and verification. Failure retains the lock for recovery.
+Optional after_shard_record_only argv assesses every finished/failed shard before sealing, with {shard_out},
+{shard_name}, {out}, {cutoff} tokens; its nonzero verdict/exception is recorded and ACKed but never aborts Stage A.
+Optional after_shards argv captures auxiliary observations after the normal shards, before finally restores;
+its infrastructure failure returns nonzero. Ordinary batch shots remain 5,20.
 """
 import argparse
 import json
@@ -180,6 +184,24 @@ def shard_all_wrapped(sout, keylist):
     return set(keylist).issubset(seen)
 
 
+def observation_hook(argv, context, log):
+    """Post-shard assessment only: errors are evidence, never a Stage A abort.
+
+    Tokens are substituted in argv elements, not interpreted by a shell. The
+    report lives outside the sealed capture tree. before_unlock stays in finally.
+    """
+    try:
+        command = [os.path.expandvars(x) for x in argv]
+        for key, value in context.items():
+            command = [x.replace('{'+key+'}', str(value)) for x in command]
+        with open(log, 'w') as fh:
+            rc = subprocess.run(command, cwd=REPO, stdout=fh, stderr=subprocess.STDOUT).returncode
+        return {'rc': rc, 'log': str(log), 'record_only': True}
+    except Exception as exc:
+        Path(log).write_text(str(exc)+'\n')
+        return {'rc': None, 'error': str(exc), 'log': str(log), 'record_only': True}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('plan', type=Path)
@@ -192,10 +214,14 @@ def main(argv=None):
             sys.exit(f'plan missing {k}')
     plan['board'] = expand(plan['board'])
     cleanup, deploy = plan.get('before_unlock'), plan.get('after_lock')
-    for name, argv_ in (('before_unlock', cleanup), ('after_lock', deploy)):
+    for name, argv_ in (('before_unlock', cleanup), ('after_lock', deploy),
+                        ('after_shard_record_only', plan.get('after_shard_record_only')),
+                        ('after_shards', plan.get('after_shards'))):
         if argv_ is not None and (not isinstance(argv_, list) or not argv_ or
                                   any(not isinstance(x, str) or not x for x in argv_)):
             sys.exit(f'{name} must be a nonempty argv list')
+    if 'execution_enabled' in plan and plan['execution_enabled'] is not True and not args.dispatch:
+        sys.exit('REFUSE: execution_enabled is false; no lock taken')
     if args.dispatch:
         print(dispatch_text(plan, args.plan)); return 0
     problem = (precheck_problem(plan.get('offline_precheck')) or
@@ -265,6 +291,15 @@ def main(argv=None):
                                      'total': total})
             board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} board_run 分片 {shard["name"]} '
                                f'({facts[0] if facts else sout}):「{total}」')
+            observer = plan.get('after_shard_record_only')
+            if observer:
+                assessment = observation_hook(observer, {
+                    'shard_out': sout, 'shard_name': shard['name'], 'out': out,
+                    'cutoff': cutoff if cutoff is not None else ''}, out / f'{shard["name"]}.selftest.log')
+                result['shards'][-1]['assessment'] = assessment
+                if assessment.get('rc') != 0:
+                    board_append(plan, f'ACK({plan["entry"]} observed): {plan["lane"]} '
+                                       f'selftest hook unknown: {assessment}; 观察窗继续,晋级拒绝待外环逐条解释')
             seal(sout)
             # A nonzero shard result stops this board's remaining shards, EXCEPT rc==1 when every record is
             # wrapped up (see shard_all_wrapped): bms_batch exits 1 even on a fully-finished shard because the focus
@@ -279,6 +314,15 @@ def main(argv=None):
                 board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} '
                                    f'分片 {shard["name"]} 中止 rc={code}; 停剩余分片并执行 before_unlock')
                 return code
+        additional = plan.get('after_shards')
+        if additional:
+            context = {'out': out, 'cutoff': cutoff if cutoff is not None else ''}
+            assessment = observation_hook(additional, context, out / 'additional.log')
+            assessment['record_only'] = False
+            result['additional'] = assessment
+            # This command captures extra keys; infrastructure failure still restores.
+            if assessment.get('rc') != 0:
+                return 1
         return 0
     finally:
         cleanup_error = None
