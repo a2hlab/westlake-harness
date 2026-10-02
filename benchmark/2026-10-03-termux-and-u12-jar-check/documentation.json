@@ -1,0 +1,17 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-termux-and-u12-jar-check/`** | **termux white is not build()==null (M6 reading corrected: onCreate reached bindService): route A queues the in-process bind ([B8-AMB] postInProcessBind) from onCreate before the separate RESUMED transaction, so TermuxActivity.onServiceConnected sees mIsVisible=false and finishes; 1 white + 2 lit (fd-droidify, newpipe) bind that early in U10.1T8. Fix InProcessBindOrder (hold the bind until the binding Activity's onActivityPostStarted) built as U14 runtime jar b5a731a7 = U13 6790d500 + 3 classes; termux's next wall is the hard-coded /data/data/com.termux/files (0 lit). U12 JAR check on U12 windows 1-4 (runtime 0482c9b1): fd-client moved and lit (Nextcloud onboarding, [B8-PROV-AUTH] x5), x moved to NPE ITelephonyRegistry.listenWithEventList (telephony.registry null), notepad/clipboardeditor/packlist/moodcairns not run (untested).** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **route A 把启动拆成两条主 looper 消息,onCreate 里排队的东西会抢在 onStart 前(cc-t3,termux)**:Android 的启动事务同时带 LaunchActivityItem+ResumeActivityItem,onCreate/onStart/onResume 一条消息跑完,onCreate 里 bindService 的回调必在 onResume 后;我们的 RESUMED 事务要等 OH FOREGROUND 才排队,而 `[B8-AMB]` 进程内绑定在 onCreate 里就 post 了 → onServiceConnected 先跑。termux 在里面查 onStart 才置的 mIsVisible,为 false 就 finish → 白(M6 那份『build() 返回 null 早退』是错的:日志里 onCreate 已走到 bindService)。U10.1T8 里这样早绑的 1 白 2 亮。规则:dexdump 看到『调用后 if-nez→return』只是假设,要用日志确认后面的代码没跑;我们从 onCreate 里 post 的任何东西都要对照 Android 的单事务时序。",
+    "- 2026-10-03 **U12 JAR 预测实测(cc-t3)**:U12 窗 1–4(runtime 0482c9b1)里 6 个预测键只跑了 2 个——fd-client 首个致命点移走且**亮**(Nextcloud 引导页,[B8-PROV-AUTH] 改写 5 条),x 移走到下一堵墙 NPE ITelephonyRegistry.listenWithEventList(getService(\"telephony.registry\") 返回 null,补法同 WlTelephonyStub);notepad/clipboardeditor/packlist/moodcairns 四个 cv2 键窗口里没跑 → 未验证(不是未移动)。规则:预测核对把『没跑』单列,不算进移走/未移走。"
+   ]
+  }
+ ]
+}
