@@ -1,4 +1,6 @@
-# U14 app-ns public libs — build staging: Wall-2 fix selection (option b) + Wall-1 candidate reproduce plan
+# U14 app-ns public libs — build staging
+> **STATUS (outer accepted (A′) 03:37):** Wall-1 host candidate `341c1260` ACCEPTED as faithful (outer independently verified .text: 16614 instructions aligned, 0 opcode diffs, immediates differ only by the +0x73 string-pool-shift constant + cross-page carries; ABI 15/15; RUNBOOK updated). **Wall-2 is BLOCKED**: the deployed `libicuuc.so f74827d9` is the full ICU (2.3 MB, 3800 exports) from the generation pipeline, NOT u13-compat-ctype (which builds a 53 KB ctype shim). Need the full-ICU recipe, or switch to a tiny app-ns `_74` forwarding shim (b′). See `evidence/wall2-build-status.txt`.
+: Wall-2 fix selection (option b) + Wall-1 candidate reproduce plan
 
 Static analysis + build staging, offline, board #90, **no board access** (OH libs read from a local snapshot, not a
 locked board). Follows `2026-10-03-u14-appns-public-libs`. Two deliverables: ① the safety criterion that picks the

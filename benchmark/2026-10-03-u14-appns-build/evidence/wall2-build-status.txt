@@ -1,0 +1,32 @@
+# Wall-2 (_74 aliases on libicuuc f74827d9): STARTED, then BLOCKED on the correct base recipe. Report, do not force.
+
+## Finding: u13-compat-ctype does NOT build the deployed libicuuc; it builds a 53 KB ctype shim.
+  deployed libicuuc.so  f74827d9  = 2,260,360 B, 3800 exports, 76 undef   (the full ICU tttext dlopen()s)
+  u13-compat-ctype cand b8a87f6f  =    53,104 B,   55 exports, 34 undef   (NEEDED libbegetutil/libc++/libc)
+  u12-vlc b2 baseline   b2be657c  =    51,832 B,   54 exports              (also a small lib)
+In u13-compat-ctype, f74827d9 appears only in composition.json / realmc-consumer.json / persistent-inventory.json as a
+REFERENCE (the deployed lib it relates to), NOT as its build output. The deployed full libicuuc comes from the
+GENERATION pipeline (realmc-consumer.json cites $WORKSPACES/westlake-inputs/generations/u12-final-j0482c9b1-s615b8bbe-
+icu-media-zlib-v2/bundle/native/payload/android/lib64/), i.e. a full external/icu build -- not a benchmark build.py.
+
+## What DID reproduce (in this dir, outputs to ./.artifacts, inputs read-only):
+- the u12-vlc b2 baseline b2be657c: relink of PRIOR's frozen .o -> BYTE-IDENTICAL (b2 gate PASS). (But b2 is the 53 KB
+  shim lineage, not libicuuc.)
+- the u13-compat-ctype candidate b8a87f6f did NOT reproduce until the ctype_compat.o cwd is set to the bms repo
+  (build.py runs the compile with cwd=REPO; my first run leaked a different comp_dir -> ctype_compat.o 504500c1 vs mine).
+  The version-map reproduced exactly (2071d805). -- moot, since this is the shim, not libicuuc.
+
+## _74 alias mechanism note
+`-Wl,--defsym,ubrk_open_74=ubrk_open_72` FAILS ("symbol not found") because ICU's _72 symbols are hidden/local in the
+objects and defsym cannot reference them. The working mechanisms are (i) an assembly alias object (`.globl X_74; .set
+X_74, X_72`) added to the full-ICU relink, exported via the version-map; or (ii) a tiny app-ns forwarding shim (b') that
+defines the 7 _74 names calling the real libicuuc _72 -- which does NOT need the full-ICU recipe.
+
+## BLOCKER / decision for the outer
+To do option (b) (aliases IN libicuuc via relink) I need the full-ICU build recipe that produces f74827d9 (the
+generation pipeline's external/icu .o + link), not u13-compat-ctype. Two ways forward:
+ (1) point me at the full libicuuc f74827d9 build recipe/objects (source order local->a2hlab->hw248; a2hlab is off during
+     the U13 window), then relink + 7 alias-object symbols + version-map, (A') standard; or
+ (2) switch Wall-2 to the shim form (b'): a small libicu74compat.so in the app ns exporting the 7 _74 names forwarding to
+     libicuuc's _72 -- tiny, no full-ICU rebuild, and (per 2026-10-03 collision judgment) app-ns-scoped so it cannot
+     reach OH's default-ns libhmicuuc. I recommend (2) for minimality unless (b)-in-libicuuc is required.
