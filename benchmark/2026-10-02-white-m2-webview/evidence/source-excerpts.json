@@ -1,0 +1,2609 @@
+[
+  {
+    "file": "$WORKSPACES/westlake-harness/benchmark/2026-10-01-j8-t7e-reproducible/src/WebViewProviderFix.java",
+    "sha256": "9bce98a2f9033296413785cded32731bd325f1266865684e0794f0c97f6edb77",
+    "qualification": "reference source; deployed DEX/native bytes remain authoritative",
+    "lines": [
+      {
+        "line": 25,
+        "text": " *   - frameworks/base/core/java/android/webkit/WebViewFactory.java#getProvider() first returns the"
+      },
+      {
+        "line": 26,
+        "text": " *     cached singleton: {@code if (sProviderInstance != null) return sProviderInstance;} (top of"
+      },
+      {
+        "line": 27,
+        "text": " *     getProvider, before the native provider load that is the throw site at WebViewFactory.java:338)."
+      },
+      {
+        "line": 28,
+        "text": " *   - {@code private static WebViewFactoryProvider sProviderInstance;} is the cache field."
+      },
+      {
+        "line": 29,
+        "text": " *   - frameworks/base/core/java/android/webkit/WebViewFactoryProvider.java is the provider interface"
+      },
+      {
+        "line": 30,
+        "text": " *     ({@code getStatics()}, {@code createWebView(WebView, PrivateAccess)}, {@code getGeolocationPermissions()}, ...)."
+      },
+      {
+        "line": 31,
+        "text": " *"
+      },
+      {
+        "line": 32,
+        "text": " * Fix: seed {@code WebViewFactory.sProviderInstance} with a type-zero {@code WebViewFactoryProvider}"
+      },
+      {
+        "line": 33,
+        "text": " * stub so {@code getProvider()} short-circuits on the cache and never reaches the throwing native load."
+      },
+      {
+        "line": 34,
+        "text": " * This clears only the first_fatal (the getProvider throw); a route-A build has no real Chromium"
+      },
+      {
+        "line": 35,
+        "text": " * renderer, so later WebView drawing is still a no-op — out of scope for this first_fatal round."
+      },
+      {
+        "line": 36,
+        "text": " * Self-contained reflection helpers."
+      },
+      {
+        "line": 37,
+        "text": " */"
+      },
+      {
+        "line": 38,
+        "text": "public final class WebViewProviderFix {"
+      },
+      {
+        "line": 39,
+        "text": ""
+      },
+      {
+        "line": 40,
+        "text": "    private WebViewProviderFix() {}"
+      },
+      {
+        "line": 41,
+        "text": ""
+      },
+      {
+        "line": 42,
+        "text": "    public static void install() {"
+      },
+      {
+        "line": 43,
+        "text": "        try {"
+      },
+      {
+        "line": 44,
+        "text": "            Class<?> factory = Class.forName(\"android.webkit.WebViewFactory\");"
+      },
+      {
+        "line": 45,
+        "text": "            Field cache = factory.getDeclaredField(\"sProviderInstance\");"
+      },
+      {
+        "line": 46,
+        "text": "            cache.setAccessible(true);"
+      },
+      {
+        "line": 47,
+        "text": "            if (cache.get(null) != null) {"
+      },
+      {
+        "line": 48,
+        "text": "                System.err.println(\"[B8-WEBVIEW] sProviderInstance already set; leaving as-is\");"
+      },
+      {
+        "line": 49,
+        "text": "                return;"
+      },
+      {
+        "line": 50,
+        "text": "            }"
+      },
+      {
+        "line": 51,
+        "text": "            Class<?> providerIface = Class.forName(\"android.webkit.WebViewFactoryProvider\");"
+      },
+      {
+        "line": 52,
+        "text": "            Object provider = Proxy.newProxyInstance(providerIface.getClassLoader(),"
+      },
+      {
+        "line": 53,
+        "text": "                    new Class<?>[] {providerIface}, new ZeroHandler(\"WlWebViewFactoryProviderStub\"));"
+      },
+      {
+        "line": 54,
+        "text": "            cache.set(null, provider);"
+      },
+      {
+        "line": 55,
+        "text": "            System.err.println(\"[B8-WEBVIEW] WebViewFactory.sProviderInstance seeded (type-zero stub) \""
+      },
+      {
+        "line": 56,
+        "text": "                    + \"— getProvider() short-circuits instead of throwing UnsupportedOperationException\");"
+      },
+      {
+        "line": 57,
+        "text": "        } catch (Throwable t) {"
+      },
+      {
+        "line": 58,
+        "text": "            System.err.println(\"[B8-WEBVIEW] provider seed failed: \" + t);"
+      },
+      {
+        "line": 59,
+        "text": "        }"
+      },
+      {
+        "line": 60,
+        "text": "    }"
+      },
+      {
+        "line": 61,
+        "text": ""
+      },
+      {
+        "line": 62,
+        "text": "    /** Type-correct-zero handler: primitives->0/false, arrays->empty, interfaces->nested stub, else null. */"
+      },
+      {
+        "line": 63,
+        "text": "    private static final class ZeroHandler implements InvocationHandler {"
+      },
+      {
+        "line": 64,
+        "text": "        private final String label;"
+      },
+      {
+        "line": 65,
+        "text": "        ZeroHandler(String label) { this.label = label; }"
+      },
+      {
+        "line": 66,
+        "text": "        @Override"
+      },
+      {
+        "line": 67,
+        "text": "        public Object invoke(Object proxy, Method method, Object[] args) {"
+      },
+      {
+        "line": 68,
+        "text": "            String n = method.getName();"
+      },
+      {
+        "line": 69,
+        "text": "            if (\"toString\".equals(n)) return label;"
+      },
+      {
+        "line": 70,
+        "text": "            if (\"hashCode\".equals(n)) return Integer.valueOf(System.identityHashCode(proxy));"
+      },
+      {
+        "line": 71,
+        "text": "            if (\"equals\".equals(n)) return Boolean.valueOf(args != null && args.length == 1 && args[0] == proxy);"
+      },
+      {
+        "line": 72,
+        "text": "            Class<?> t = method.getReturnType();"
+      },
+      {
+        "line": 73,
+        "text": "            if (t == boolean.class) return Boolean.FALSE;"
+      },
+      {
+        "line": 74,
+        "text": "            if (t == int.class) return Integer.valueOf(0);"
+      },
+      {
+        "line": 75,
+        "text": "            if (t == long.class) return Long.valueOf(0L);"
+      },
+      {
+        "line": 76,
+        "text": "            if (t == void.class) return null;"
+      },
+      {
+        "line": 77,
+        "text": "            if (t.isArray()) return Array.newInstance(t.getComponentType(), 0);"
+      },
+      {
+        "line": 78,
+        "text": "            if (t.isInterface()) {"
+      },
+      {
+        "line": 79,
+        "text": "                try {"
+      },
+      {
+        "line": 80,
+        "text": "                    return Proxy.newProxyInstance(t.getClassLoader(), new Class<?>[] {t}, new ZeroHandler(label));"
+      },
+      {
+        "line": 81,
+        "text": "                } catch (Throwable ignore) {"
+      },
+      {
+        "line": 82,
+        "text": "                    return null;"
+      },
+      {
+        "line": 83,
+        "text": "                }"
+      },
+      {
+        "line": 84,
+        "text": "            }"
+      },
+      {
+        "line": 85,
+        "text": "            return null;"
+      },
+      {
+        "line": 86,
+        "text": "        }"
+      },
+      {
+        "line": 87,
+        "text": "    }"
+      },
+      {
+        "line": 88,
+        "text": "}"
+      }
+    ]
+  },
+  {
+    "file": "$WORKSPACES/westlake-harness/benchmark/2026-10-01-j10-freeze-draft/sources/J10eWebView.java",
+    "sha256": "02e2d16ad41f16333d0d27ef84836dce63d5db0730b4cd7ca34a68f03d7a9135",
+    "qualification": "reference source; deployed DEX/native bytes remain authoritative",
+    "lines": [
+      {
+        "line": 74,
+        "text": "        try {"
+      },
+      {
+        "line": 75,
+        "text": "            Class<?> factory = Class.forName(\"android.webkit.WebViewFactory\");"
+      },
+      {
+        "line": 76,
+        "text": "            java.lang.reflect.Field cache = factory.getDeclaredField(\"sProviderInstance\");"
+      },
+      {
+        "line": 77,
+        "text": "            cache.setAccessible(true);"
+      },
+      {
+        "line": 78,
+        "text": "            Object cur = cache.get(null);"
+      },
+      {
+        "line": 79,
+        "text": "            if (cur != null && Proxy.isProxyClass(cur.getClass())"
+      },
+      {
+        "line": 80,
+        "text": "                    && Proxy.getInvocationHandler(cur) instanceof ProviderEnrich) {"
+      },
+      {
+        "line": 81,
+        "text": "                return; // already enriched"
+      },
+      {
+        "line": 82,
+        "text": "            }"
+      },
+      {
+        "line": 83,
+        "text": "            Class<?> providerIface = Class.forName(\"android.webkit.WebViewFactoryProvider\");"
+      },
+      {
+        "line": 84,
+        "text": "            Object provider = Proxy.newProxyInstance(providerIface.getClassLoader(),"
+      },
+      {
+        "line": 85,
+        "text": "                    new Class<?>[] {providerIface}, new ProviderEnrich());"
+      },
+      {
+        "line": 86,
+        "text": "            cache.set(null, provider);"
+      },
+      {
+        "line": 87,
+        "text": "            System.err.println(\"[J10e-WEBVIEW] enriched WebViewFactoryProvider seeded \""
+      },
+      {
+        "line": 88,
+        "text": "                    + \"(forwarding ViewDelegate + concrete CookieManager + J10g extras)\");"
+      },
+      {
+        "line": 89,
+        "text": "        } catch (Throwable t) {"
+      },
+      {
+        "line": 90,
+        "text": "            System.err.println(\"[J10e-WEBVIEW] install failed: \" + t);"
+      },
+      {
+        "line": 91,
+        "text": "        }"
+      },
+      {
+        "line": 92,
+        "text": "        // J10g: seed WebViewFactory.sPackageInfo (getCurrentWebViewPackage non-null). Idempotent."
+      },
+      {
+        "line": 93,
+        "text": "        try { J10gWebExtras.install(); } catch (Throwable t) { System.err.println(\"[J10g-WEBVIEW] install failed: \" + t); }"
+      },
+      {
+        "line": 94,
+        "text": "    }"
+      },
+      {
+        "line": 95,
+        "text": ""
+      },
+      {
+        "line": 96,
+        "text": "    /** Top-level WebViewFactoryProvider handler. */"
+      },
+      {
+        "line": 97,
+        "text": "    private static final class ProviderEnrich implements InvocationHandler {"
+      },
+      {
+        "line": 98,
+        "text": "        @Override public Object invoke(Object proxy, Method method, Object[] args) {"
+      },
+      {
+        "line": 99,
+        "text": "            String n = method.getName();"
+      },
+      {
+        "line": 100,
+        "text": "            if (\"toString\".equals(n)) return \"WlEnrichedWebViewFactoryProvider\";"
+      },
+      {
+        "line": 101,
+        "text": "            if (\"hashCode\".equals(n)) return Integer.valueOf(System.identityHashCode(proxy));"
+      },
+      {
+        "line": 102,
+        "text": "            if (\"equals\".equals(n)) return Boolean.valueOf(args != null && args.length == 1 && args[0] == proxy);"
+      },
+      {
+        "line": 103,
+        "text": "            if (\"createWebView\".equals(n)) {"
+      },
+      {
+        "line": 104,
+        "text": "                Object privateAccess = (args != null && args.length >= 2) ? args[1] : null;"
+      },
+      {
+        "line": 105,
+        "text": "                Class<?> wvp = method.getReturnType(); // android.webkit.WebViewProvider"
+      },
+      {
+        "line": 106,
+        "text": "                return Proxy.newProxyInstance(wvp.getClassLoader(), new Class<?>[] {wvp},"
+      },
+      {
+        "line": 107,
+        "text": "                        new ProviderInstance(privateAccess));"
+      },
+      {
+        "line": 108,
+        "text": "            }"
+      },
+      {
+        "line": 109,
+        "text": "            if (\"getCookieManager\".equals(n)) {"
+      },
+      {
+        "line": 110,
+        "text": "                if (sCookie == null) sCookie = new WlCookieManager();"
+      },
+      {
+        "line": 111,
+        "text": "                if (!sLoggedCookie) { sLoggedCookie = true;"
+      },
+      {
+        "line": 112,
+        "text": "                    System.err.println(\"[J10e-WEBVIEW] CookieManager stub installed\"); }"
+      },
+      {
+        "line": 113,
+        "text": "                return sCookie;"
+      },
+      {
+        "line": 114,
+        "text": "            }"
+      },
+      {
+        "line": 115,
+        "text": "            // J10g: every other WebViewFactoryProvider getter that returns an android.webkit abstract"
+      },
+      {
+        "line": 116,
+        "text": "            // class gets a concrete empty instance (ServiceWorkerController/TracingController/"
+      },
+      {
+        "line": 117,
+        "text": "            // TokenBindingService/WebStorage/GeolocationPermissions). getStatics() stays a zero proxy"
+      },
+      {
+        "line": 118,
+        "text": "            // (it is an interface, handled by zero())."
+      },
+      {
+        "line": 119,
+        "text": "            try {"
+      },
+      {
+        "line": 120,
+        "text": "                switch (n) {"
+      },
+      {
+        "line": 121,
+        "text": "                    case \"getServiceWorkerController\": J10gWebExtras.logOnce(); return J10gWebExtras.getServiceWorkerController();"
+      },
+      {
+        "line": 122,
+        "text": "                    case \"getTracingController\":       J10gWebExtras.logOnce(); return J10gWebExtras.getTracingController();"
+      },
+      {
+        "line": 123,
+        "text": "                    case \"getTokenBindingService\":     J10gWebExtras.logOnce(); return J10gWebExtras.getTokenBindingService();"
+      },
+      {
+        "line": 124,
+        "text": "                    case \"getWebStorage\":              J10gWebExtras.logOnce(); return J10gWebExtras.getWebStorage();"
+      },
+      {
+        "line": 125,
+        "text": "                    case \"getGeolocationPermissions\":  J10gWebExtras.logOnce(); return J10gWebExtras.getGeolocationPermissions();"
+      },
+      {
+        "line": 126,
+        "text": "                    default: break;"
+      },
+      {
+        "line": 127,
+        "text": "                }"
+      },
+      {
+        "line": 128,
+        "text": "            } catch (Throwable t) {"
+      },
+      {
+        "line": 129,
+        "text": "                System.err.println(\"[J10g-WEBVIEW] \" + n + \" failed: \" + t);"
+      },
+      {
+        "line": 130,
+        "text": "            }"
+      },
+      {
+        "line": 131,
+        "text": "            return zero(method.getReturnType());"
+      },
+      {
+        "line": 132,
+        "text": "        }"
+      },
+      {
+        "line": 133,
+        "text": "    }"
+      },
+      {
+        "line": 134,
+        "text": ""
+      },
+      {
+        "line": 135,
+        "text": "    /** WebViewProvider instance handler: forwards getViewDelegate to a forwarding ViewDelegate. */"
+      },
+      {
+        "line": 136,
+        "text": "    private static final class ProviderInstance implements InvocationHandler {"
+      },
+      {
+        "line": 137,
+        "text": "        private final Object privateAccess;"
+      },
+      {
+        "line": 138,
+        "text": "        ProviderInstance(Object pa) { this.privateAccess = pa; }"
+      },
+      {
+        "line": 139,
+        "text": "        @Override public Object invoke(Object proxy, Method method, Object[] args) {"
+      },
+      {
+        "line": 140,
+        "text": "            String n = method.getName();"
+      },
+      {
+        "line": 141,
+        "text": "            if (\"toString\".equals(n)) return \"WlWebViewProvider\";"
+      },
+      {
+        "line": 142,
+        "text": "            if (\"hashCode\".equals(n)) return Integer.valueOf(System.identityHashCode(proxy));"
+      },
+      {
+        "line": 143,
+        "text": "            if (\"equals\".equals(n)) return Boolean.valueOf(args != null && args.length == 1 && args[0] == proxy);"
+      },
+      {
+        "line": 144,
+        "text": "            if (\"getViewDelegate\".equals(n)) {"
+      },
+      {
+        "line": 145,
+        "text": "                Class<?> vd = method.getReturnType(); // android.webkit.WebViewProvider$ViewDelegate"
+      },
+      {
+        "line": 146,
+        "text": "                return Proxy.newProxyInstance(vd.getClassLoader(), new Class<?>[] {vd},"
+      },
+      {
+        "line": 147,
+        "text": "                        new DelegateForward(privateAccess));"
+      },
+      {
+        "line": 148,
+        "text": "            }"
+      },
+      {
+        "line": 149,
+        "text": "            if (\"getSettings\".equals(n)) {"
+      },
+      {
+        "line": 150,
+        "text": "                // J10f: WebViewProvider.getSettings() returns the abstract class WebSettings; route-A"
+      },
+      {
+        "line": 151,
+        "text": "                // WebView apps call getSettings().setJavaScriptEnabled(..) at launch, so a null here is"
+      },
+      {
+        "line": 152,
+        "text": "                // fatal. Hand back a concrete WlWebSettings."
+      },
+      {
+        "line": 153,
+        "text": "                try { return J10fWebSettings.get(); }"
+      },
+      {
+        "line": 154,
+        "text": "                catch (Throwable t) { System.err.println(\"[J10f-WEBVIEW] getSettings failed: \" + t); }"
+      },
+      {
+        "line": 155,
+        "text": "            }"
+      },
+      {
+        "line": 156,
+        "text": "            return zero(method.getReturnType()); // getScrollDelegate() and the rest"
+      },
+      {
+        "line": 157,
+        "text": "        }"
+      },
+      {
+        "line": 158,
+        "text": "    }"
+      },
+      {
+        "line": 159,
+        "text": ""
+      },
+      {
+        "line": 160,
+        "text": "    /** ViewDelegate handler: forward m(args) -> PrivateAccess.super_m(args) when present. */"
+      },
+      {
+        "line": 161,
+        "text": "    private static final class DelegateForward implements InvocationHandler {"
+      },
+      {
+        "line": 162,
+        "text": "        private final Object privateAccess;"
+      },
+      {
+        "line": 163,
+        "text": "        DelegateForward(Object pa) { this.privateAccess = pa; }"
+      },
+      {
+        "line": 164,
+        "text": "        @Override public Object invoke(Object proxy, Method method, Object[] args) {"
+      },
+      {
+        "line": 165,
+        "text": "            String n = method.getName();"
+      },
+      {
+        "line": 166,
+        "text": "            if (\"toString\".equals(n)) return \"WlViewDelegate\";"
+      },
+      {
+        "line": 167,
+        "text": "            if (\"hashCode\".equals(n)) return Integer.valueOf(System.identityHashCode(proxy));"
+      },
+      {
+        "line": 168,
+        "text": "            if (\"equals\".equals(n)) return Boolean.valueOf(args != null && args.length == 1 && args[0] == proxy);"
+      },
+      {
+        "line": 169,
+        "text": "            if (privateAccess != null) {"
+      },
+      {
+        "line": 170,
+        "text": "                try {"
+      },
+      {
+        "line": 171,
+        "text": "                    Method sup = privateAccess.getClass().getMethod(\"super_\" + n, method.getParameterTypes());"
+      },
+      {
+        "line": 172,
+        "text": "                    Object r = sup.invoke(privateAccess, args);"
+      },
+      {
+        "line": 173,
+        "text": "                    if (\"setLayoutParams\".equals(n) && !sLoggedDelegate) {"
+      },
+      {
+        "line": 174,
+        "text": "                        sLoggedDelegate = true;"
+      },
+      {
+        "line": 175,
+        "text": "                        System.err.println(\"[J10e-WEBVIEW] delegate forwards setLayoutParams\");"
+      },
+      {
+        "line": 176,
+        "text": "                    }"
+      },
+      {
+        "line": 177,
+        "text": "                    return r;"
+      },
+      {
+        "line": 178,
+        "text": "                } catch (NoSuchMethodException noSuper) {"
+      },
+      {
+        "line": 179,
+        "text": "                    // no super_<n> counterpart -> fall through to zero"
+      },
+      {
+        "line": 180,
+        "text": "                } catch (Throwable t) {"
+      },
+      {
+        "line": 181,
+        "text": "                    // defensive: never let the delegate throw into the parent layout path"
+      },
+      {
+        "line": 182,
+        "text": "                }"
+      },
+      {
+        "line": 183,
+        "text": "            }"
+      },
+      {
+        "line": 184,
+        "text": "            return zero(method.getReturnType());"
+      },
+      {
+        "line": 185,
+        "text": "        }"
+      },
+      {
+        "line": 186,
+        "text": "    }"
+      },
+      {
+        "line": 187,
+        "text": ""
+      },
+      {
+        "line": 188,
+        "text": "    /** Type-correct-zero: primitives->0/false, void->null, array->empty, interface->nested zero, else null. */"
+      },
+      {
+        "line": 189,
+        "text": "    static Object zero(Class<?> t) {"
+      },
+      {
+        "line": 190,
+        "text": "        if (t == boolean.class) return Boolean.FALSE;"
+      },
+      {
+        "line": 191,
+        "text": "        if (t == int.class) return Integer.valueOf(0);"
+      },
+      {
+        "line": 192,
+        "text": "        if (t == long.class) return Long.valueOf(0L);"
+      },
+      {
+        "line": 193,
+        "text": "        if (t == void.class) return null;"
+      },
+      {
+        "line": 194,
+        "text": "        if (t.isArray()) return Array.newInstance(t.getComponentType(), 0);"
+      },
+      {
+        "line": 195,
+        "text": "        if (t.isInterface()) {"
+      },
+      {
+        "line": 196,
+        "text": "            try { return Proxy.newProxyInstance(t.getClassLoader(), new Class<?>[] {t}, new ZeroH()); }"
+      },
+      {
+        "line": 197,
+        "text": "            catch (Throwable ignore) { return null; }"
+      },
+      {
+        "line": 198,
+        "text": "        }"
+      }
+    ]
+  },
+  {
+    "file": "$WORKSPACES/westlake-harness-bms-deploy/benchmark/2026-09-30-n3b-webview/src/webview_publication.cpp",
+    "sha256": "ba5a3fe23d4a72f0406427e38b51259cc7c8fd0d04a7c78237d9f6d3fccac210",
+    "qualification": "reference source; deployed DEX/native bytes remain authoritative",
+    "lines": [
+      {
+        "line": 90,
+        "text": "static bool wl_prime_webview_update_service_impl("
+      },
+      {
+        "line": 91,
+        "text": "        JNIEnv* env, bool publishFeatureAfterBind) {"
+      },
+      {
+        "line": 92,
+        "text": "    jclass updateClass = env->FindClass("
+      },
+      {
+        "line": 93,
+        "text": "        \"adapter/core/WebViewUpdateServiceAdapter\");"
+      },
+      {
+        "line": 94,
+        "text": "    if (env->ExceptionCheck() || updateClass == nullptr) {"
+      },
+      {
+        "line": 95,
+        "text": "        wl_log_and_clear_webview_exception(env, \"WebViewUpdateServiceAdapter lookup\");"
+      },
+      {
+        "line": 96,
+        "text": "        return false;"
+      },
+      {
+        "line": 97,
+        "text": "    }"
+      },
+      {
+        "line": 98,
+        "text": ""
+      },
+      {
+        "line": 99,
+        "text": "    jmethodID isAvailable = env->GetStaticMethodID("
+      },
+      {
+        "line": 100,
+        "text": "        updateClass, \"isAvailable\", \"()Z\");"
+      },
+      {
+        "line": 101,
+        "text": "    jboolean available = isAvailable != nullptr"
+      },
+      {
+        "line": 102,
+        "text": "        ? env->CallStaticBooleanMethod(updateClass, isAvailable) : JNI_FALSE;"
+      },
+      {
+        "line": 103,
+        "text": "    if (env->ExceptionCheck()) {"
+      },
+      {
+        "line": 104,
+        "text": "        wl_log_and_clear_webview_exception(env, \"WebViewUpdateServiceAdapter.isAvailable\");"
+      },
+      {
+        "line": 105,
+        "text": "        env->DeleteLocalRef(updateClass);"
+      },
+      {
+        "line": 106,
+        "text": "        return false;"
+      },
+      {
+        "line": 107,
+        "text": "    }"
+      },
+      {
+        "line": 108,
+        "text": "    if (available != JNI_TRUE) {"
+      },
+      {
+        "line": 109,
+        "text": "        fprintf(stderr,"
+      },
+      {
+        "line": 110,
+        "text": "                \"[WESTLAKE-WEBVIEW-PROVIDER] configured provider unavailable\\n\");"
+      },
+      {
+        "line": 111,
+        "text": "        fflush(stderr);"
+      },
+      {
+        "line": 112,
+        "text": "        env->DeleteLocalRef(updateClass);"
+      },
+      {
+        "line": 113,
+        "text": "        return false;"
+      },
+      {
+        "line": 114,
+        "text": "    }"
+      },
+      {
+        "line": 115,
+        "text": ""
+      },
+      {
+        "line": 116,
+        "text": "    jmethodID getInstance = env->GetStaticMethodID("
+      },
+      {
+        "line": 117,
+        "text": "        updateClass, \"getInstance\","
+      },
+      {
+        "line": 118,
+        "text": "        \"()Ladapter/core/WebViewUpdateServiceAdapter;\");"
+      },
+      {
+        "line": 119,
+        "text": "    jobject updateService = getInstance != nullptr"
+      },
+      {
+        "line": 120,
+        "text": "        ? env->CallStaticObjectMethod(updateClass, getInstance) : nullptr;"
+      },
+      {
+        "line": 121,
+        "text": "    if (env->ExceptionCheck() || updateService == nullptr) {"
+      },
+      {
+        "line": 122,
+        "text": "        wl_log_and_clear_webview_exception(env, \"WebViewUpdateServiceAdapter.getInstance\");"
+      },
+      {
+        "line": 123,
+        "text": "        env->DeleteLocalRef(updateClass);"
+      },
+      {
+        "line": 124,
+        "text": "        return false;"
+      },
+      {
+        "line": 125,
+        "text": "    }"
+      },
+      {
+        "line": 126,
+        "text": ""
+      },
+      {
+        "line": 127,
+        "text": "    jclass serviceManagerClass = env->FindClass(\"android/os/ServiceManager\");"
+      },
+      {
+        "line": 128,
+        "text": "    jclass webViewFactoryClass = env->FindClass(\"android/webkit/WebViewFactory\");"
+      },
+      {
+        "line": 129,
+        "text": "    jfieldID cacheField = serviceManagerClass != nullptr"
+      },
+      {
+        "line": 130,
+        "text": "        ? env->GetStaticFieldID(serviceManagerClass, \"sCache\", \"Ljava/util/Map;\")"
+      },
+      {
+        "line": 131,
+        "text": "        : nullptr;"
+      },
+      {
+        "line": 132,
+        "text": "    jfieldID serviceNameField = webViewFactoryClass != nullptr"
+      },
+      {
+        "line": 133,
+        "text": "        ? env->GetStaticFieldID(webViewFactoryClass,"
+      },
+      {
+        "line": 134,
+        "text": "                                \"WEBVIEW_UPDATE_SERVICE_NAME\","
+      },
+      {
+        "line": 135,
+        "text": "                                \"Ljava/lang/String;\")"
+      },
+      {
+        "line": 136,
+        "text": "        : nullptr;"
+      },
+      {
+        "line": 137,
+        "text": "    jmethodID publicGetService = serviceManagerClass != nullptr"
+      },
+      {
+        "line": 138,
+        "text": "        ? env->GetStaticMethodID(serviceManagerClass, \"getService\","
+      },
+      {
+        "line": 139,
+        "text": "                                 \"(Ljava/lang/String;)Landroid/os/IBinder;\")"
+      },
+      {
+        "line": 140,
+        "text": "        : nullptr;"
+      },
+      {
+        "line": 141,
+        "text": "    jobject cache = cacheField != nullptr"
+      },
+      {
+        "line": 142,
+        "text": "        ? env->GetStaticObjectField(serviceManagerClass, cacheField) : nullptr;"
+      },
+      {
+        "line": 143,
+        "text": "    // Resolve put/get on the concrete cache class (normally ArrayMap).  This"
+      },
+      {
+        "line": 144,
+        "text": "    // avoids invoke-interface dispatch here: older ART bridge builds have been"
+      },
+      {
+        "line": 145,
+        "text": "    // observed to return normally from Map.put without changing this object."
+      },
+      {
+        "line": 146,
+        "text": "    // Always read the entry back before reporting that the cache was seeded."
+      },
+      {
+        "line": 147,
+        "text": "    jclass cacheClass = cache != nullptr ? env->GetObjectClass(cache) : nullptr;"
+      },
+      {
+        "line": 148,
+        "text": "    jmethodID put = cacheClass != nullptr"
+      },
+      {
+        "line": 149,
+        "text": "        ? env->GetMethodID(cacheClass, \"put\","
+      },
+      {
+        "line": 150,
+        "text": "                           \"(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;\")"
+      },
+      {
+        "line": 151,
+        "text": "        : nullptr;"
+      },
+      {
+        "line": 152,
+        "text": "    jmethodID get = cacheClass != nullptr"
+      },
+      {
+        "line": 153,
+        "text": "        ? env->GetMethodID(cacheClass, \"get\","
+      },
+      {
+        "line": 154,
+        "text": "                           \"(Ljava/lang/Object;)Ljava/lang/Object;\")"
+      },
+      {
+        "line": 155,
+        "text": "        : nullptr;"
+      },
+      {
+        "line": 156,
+        "text": "    // Use the exact String object consumed by WebViewFactory. This port has"
+      },
+      {
+        "line": 157,
+        "text": "    // had ART String/ArrayMap dispatch defects where put/get with the same"
+      },
+      {
+        "line": 158,
+        "text": "    // freshly allocated key succeeds but a later equal String misses. A"
+      },
+      {
+        "line": 159,
+        "text": "    // same-object cache check therefore did not prove the framework lookup."
+      },
+      {
+        "line": 160,
+        "text": "    jstring serviceName = serviceNameField != nullptr"
+      },
+      {
+        "line": 161,
+        "text": "        ? static_cast<jstring>(env->GetStaticObjectField(webViewFactoryClass,"
+      },
+      {
+        "line": 162,
+        "text": "                                                         serviceNameField))"
+      },
+      {
+        "line": 163,
+        "text": "        : nullptr;"
+      },
+      {
+        "line": 164,
+        "text": "    if (env->ExceptionCheck() || cache == nullptr || put == nullptr || get == nullptr ||"
+      },
+      {
+        "line": 165,
+        "text": "            serviceName == nullptr || publicGetService == nullptr) {"
+      },
+      {
+        "line": 166,
+        "text": "        wl_log_and_clear_webview_exception(env, \"ServiceManager.sCache lookup\");"
+      },
+      {
+        "line": 167,
+        "text": "        if (serviceName != nullptr) env->DeleteLocalRef(serviceName);"
+      },
+      {
+        "line": 168,
+        "text": "        if (cacheClass != nullptr) env->DeleteLocalRef(cacheClass);"
+      },
+      {
+        "line": 169,
+        "text": "        if (cache != nullptr) env->DeleteLocalRef(cache);"
+      },
+      {
+        "line": 170,
+        "text": "        if (webViewFactoryClass != nullptr) env->DeleteLocalRef(webViewFactoryClass);"
+      },
+      {
+        "line": 171,
+        "text": "        if (serviceManagerClass != nullptr) env->DeleteLocalRef(serviceManagerClass);"
+      },
+      {
+        "line": 172,
+        "text": "        env->DeleteLocalRef(updateService);"
+      },
+      {
+        "line": 173,
+        "text": "        env->DeleteLocalRef(updateClass);"
+      },
+      {
+        "line": 174,
+        "text": "        return false;"
+      },
+      {
+        "line": 175,
+        "text": "    }"
+      },
+      {
+        "line": 176,
+        "text": ""
+      },
+      {
+        "line": 177,
+        "text": "    jobject previous = env->CallObjectMethod("
+      },
+      {
+        "line": 178,
+        "text": "        cache, put, serviceName, updateService);"
+      },
+      {
+        "line": 179,
+        "text": "    const char* previousState = previous == nullptr ? \"null\""
+      },
+      {
+        "line": 180,
+        "text": "        : (env->IsSameObject(previous, updateService) ? \"same\" : \"other\");"
+      },
+      {
+        "line": 181,
+        "text": "    jobject readback = nullptr;"
+      },
+      {
+        "line": 182,
+        "text": "    jobject publicReadback = nullptr;"
+      },
+      {
+        "line": 183,
+        "text": "    bool cacheSuccess = !env->ExceptionCheck();"
+      },
+      {
+        "line": 184,
+        "text": "    if (cacheSuccess) {"
+      },
+      {
+        "line": 185,
+        "text": "        readback = env->CallObjectMethod(cache, get, serviceName);"
+      },
+      {
+        "line": 186,
+        "text": "        cacheSuccess = !env->ExceptionCheck() && readback != nullptr &&"
+      },
+      {
+        "line": 187,
+        "text": "                       env->IsSameObject(readback, updateService);"
+      },
+      {
+        "line": 188,
+        "text": "    }"
+      },
+      {
+        "line": 189,
+        "text": "    if (cacheSuccess) {"
+      },
+      {
+        "line": 190,
+        "text": "        publicReadback = env->CallStaticObjectMethod("
+      },
+      {
+        "line": 191,
+        "text": "            serviceManagerClass, publicGetService, serviceName);"
+      },
+      {
+        "line": 192,
+        "text": "        cacheSuccess = !env->ExceptionCheck() && publicReadback != nullptr &&"
+      },
+      {
+        "line": 193,
+        "text": "                       env->IsSameObject(publicReadback, updateService);"
+      },
+      {
+        "line": 194,
+        "text": "    }"
+      },
+      {
+        "line": 195,
+        "text": "    if (!cacheSuccess && env->ExceptionCheck()) {"
+      },
+      {
+        "line": 196,
+        "text": "        wl_log_and_clear_webview_exception(env, \"ServiceManager.sCache.put\");"
+      },
+      {
+        "line": 197,
+        "text": "    }"
+      },
+      {
+        "line": 198,
+        "text": "    if (cacheSuccess) {"
+      },
+      {
+        "line": 199,
+        "text": "        fprintf(stderr,"
+      },
+      {
+        "line": 200,
+        "text": "                \"[WESTLAKE-WEBVIEW-PROVIDER] primed ServiceManager webviewupdate cache public-readback=OK\\n\");"
+      },
+      {
+        "line": 201,
+        "text": "        fflush(stderr);"
+      },
+      {
+        "line": 202,
+        "text": "    } else {"
+      },
+      {
+        "line": 203,
+        "text": "        fprintf(stderr,"
+      },
+      {
+        "line": 204,
+        "text": "                \"[WESTLAKE-WEBVIEW-PROVIDER] failed ServiceManager webviewupdate cache readback\\n\");"
+      },
+      {
+        "line": 205,
+        "text": "        fflush(stderr);"
+      },
+      {
+        "line": 206,
+        "text": "    }"
+      },
+      {
+        "line": 207,
+        "text": ""
+      },
+      {
+        "line": 208,
+        "text": "    // Toutiao asks CookieManager for an instance while LoadedApk is still"
+      },
+      {
+        "line": 209,
+        "text": "    // constructing its Application.  At that point AppGlobals has not yet"
+      },
+      {
+        "line": 210,
+        "text": "    // published ActivityThread.mInitialApplication, so WebViewFactory's normal"
+      },
+      {
+        "line": 211,
+        "text": "    // feature query observes a null PackageManager and permanently caches"
+      },
+      {
+        "line": 212,
+        "text": "    // Boolean.FALSE in sWebViewSupported.  Do not force TRUE at this early"
+      },
+      {
+        "line": 213,
+        "text": "    // checkpoint: doing so would let provider creation continue without an"
+      },
+      {
+        "line": 214,
+        "text": "    // Application context. Only the explicit post-bind caller requests feature"
+      },
+      {
+        "line": 215,
+        "text": "    // publication, and only after the configured provider's isAvailable()"
+      },
+      {
+        "line": 216,
+        "text": "    // check above succeeded."
+      },
+      {
+        "line": 217,
+        "text": "    bool featureSuccess = true;"
+      },
+      {
+        "line": 218,
+        "text": "    const char* featureState = \"held-unsupported\";"
+      },
+      {
+        "line": 219,
+        "text": "    jclass activityThreadClass = nullptr;"
+      },
+      {
+        "line": 220,
+        "text": "    jobject application = nullptr;"
+      },
+      {
+        "line": 221,
+        "text": "    if (!publishFeatureAfterBind) {"
+      },
+      {
+        "line": 222,
+        "text": "        // OH child construction is not yet a valid WebView context. Pin the"
+      },
+      {
+        "line": 223,
+        "text": "        // same cached false that WebViewFactory would compute at this stage,"
+      },
+      {
+        "line": 224,
+        "text": "        // but make its lifetime explicit: the post-bind callback below"
+      },
+      {
+        "line": 225,
+        "text": "        // replaces it with TRUE. This prevents a later CookieManager retry"
+      },
+      {
+        "line": 226,
+        "text": "        // during Application.onCreate from starting Chromium on the bind path."
+      },
+      {
+        "line": 227,
+        "text": "        featureSuccess = wl_set_webview_supported_cache("
+      },
+      {
+        "line": 228,
+        "text": "            env, webViewFactoryClass, false);"
+      },
+      {
+        "line": 229,
+        "text": "        if (!featureSuccess) featureState = \"hold-failed\";"
+      },
+      {
+        "line": 230,
+        "text": "    } else {"
+      },
+      {
+        "line": 231,
+        "text": "        featureState = \"application-pending\";"
+      },
+      {
+        "line": 232,
+        "text": "        activityThreadClass = env->FindClass(\"android/app/ActivityThread\");"
+      },
+      {
+        "line": 233,
+        "text": "        jmethodID currentApplication = activityThreadClass != nullptr"
+      },
+      {
+        "line": 234,
+        "text": "            ? env->GetStaticMethodID(activityThreadClass, \"currentApplication\","
+      },
+      {
+        "line": 235,
+        "text": "                                     \"()Landroid/app/Application;\")"
+      },
+      {
+        "line": 236,
+        "text": "            : nullptr;"
+      },
+      {
+        "line": 237,
+        "text": "        application = currentApplication != nullptr"
+      },
+      {
+        "line": 238,
+        "text": "            ? env->CallStaticObjectMethod(activityThreadClass, currentApplication)"
+      },
+      {
+        "line": 239,
+        "text": "            : nullptr;"
+      },
+      {
+        "line": 240,
+        "text": "        if (env->ExceptionCheck() || activityThreadClass == nullptr ||"
+      },
+      {
+        "line": 241,
+        "text": "                currentApplication == nullptr) {"
+      },
+      {
+        "line": 242,
+        "text": "            wl_log_and_clear_webview_exception("
+      },
+      {
+        "line": 243,
+        "text": "                env, \"ActivityThread.currentApplication\");"
+      },
+      {
+        "line": 244,
+        "text": "            featureSuccess = false;"
+      },
+      {
+        "line": 245,
+        "text": "            featureState = \"application-check-failed\";"
+      },
+      {
+        "line": 294,
+        "text": "bool wl_prime_webview_update_service(JNIEnv* env) {"
+      },
+      {
+        "line": 295,
+        "text": "    return wl_prime_webview_update_service_impl(env, false);"
+      },
+      {
+        "line": 296,
+        "text": "}"
+      },
+      {
+        "line": 297,
+        "text": ""
+      },
+      {
+        "line": 298,
+        "text": "bool wl_publish_webview_update_service_after_bind(JNIEnv* env) {"
+      },
+      {
+        "line": 299,
+        "text": "    return wl_prime_webview_update_service_impl(env, true);"
+      },
+      {
+        "line": 300,
+        "text": "}"
+      },
+      {
+        "line": 301,
+        "text": ""
+      },
+      {
+        "line": 302,
+        "text": "// Explicit Java cooperation point. Do not run during native registration,"
+      },
+      {
+        "line": 303,
+        "text": "// on log output, or on a background watcher. The owning Java helper calls"
+      },
+      {
+        "line": 304,
+        "text": "// prime before bind and publish only after Application.onCreate returned."
+      },
+      {
+        "line": 305,
+        "text": "// Serialize whole transactions, including the donor's cache readbacks."
+      },
+      {
+        "line": 306,
+        "text": "namespace { std::recursive_mutex publication_mutex; }"
+      },
+      {
+        "line": 307,
+        "text": "extern \"C\" JNIEXPORT jboolean JNICALL"
+      },
+      {
+        "line": 308,
+        "text": "Java_adapter_core_WestlakeWebViewInstall_nativePrime(JNIEnv* env, jclass) {"
+      },
+      {
+        "line": 309,
+        "text": "    if (env->ExceptionCheck()) return JNI_FALSE;"
+      },
+      {
+        "line": 310,
+        "text": "    std::lock_guard<std::recursive_mutex> lock(publication_mutex);"
+      },
+      {
+        "line": 311,
+        "text": "    return wl_prime_webview_update_service(env) ? JNI_TRUE : JNI_FALSE;"
+      },
+      {
+        "line": 312,
+        "text": "}"
+      },
+      {
+        "line": 313,
+        "text": "extern \"C\" JNIEXPORT jboolean JNICALL"
+      },
+      {
+        "line": 314,
+        "text": "Java_adapter_core_WestlakeWebViewInstall_nativePublishAfterBind(JNIEnv* env, jclass) {"
+      },
+      {
+        "line": 315,
+        "text": "    if (env->ExceptionCheck()) return JNI_FALSE;"
+      },
+      {
+        "line": 316,
+        "text": "    std::lock_guard<std::recursive_mutex> lock(publication_mutex);"
+      },
+      {
+        "line": 317,
+        "text": "    return wl_publish_webview_update_service_after_bind(env) ? JNI_TRUE : JNI_FALSE;"
+      },
+      {
+        "line": 318,
+        "text": "}"
+      }
+    ]
+  },
+  {
+    "file": "$WORKSPACES/vm-copies/westlake-current/framework/activity/jni/activity_task_manager_adapter.cpp",
+    "sha256": "934c475063a49e7eff10228d9e9d1d23c8930509e4d70e652df2b21608e021fb",
+    "qualification": "reference source; deployed DEX/native bytes remain authoritative",
+    "lines": [
+      {
+        "line": 419,
+        "text": "// Continue WebViewFactory's upstream provider-loading sequence from the"
+      },
+      {
+        "line": 420,
+        "text": "// selected OH update-service object.  This is used only when the factory's"
+      },
+      {
+        "line": 421,
+        "text": "// getUpdateServiceUnchecked() loses the local Stub object in bytecode"
+      },
+      {
+        "line": 422,
+        "text": "// Stub.asInterface dispatch.  Provider selection, PackageInfo construction,"
+      },
+      {
+        "line": 423,
+        "text": "// APK code/resources, and Chromium initialization still come from the generic"
+      },
+      {
+        "line": 424,
+        "text": "// WebView service/package boundary; no app URL or content is substituted."
+      },
+      {
+        "line": 425,
+        "text": "static jclass wl_get_webview_provider_class_direct("
+      },
+      {
+        "line": 426,
+        "text": "        JNIEnv* env, jobject application, jclass factoryClass) {"
+      },
+      {
+        "line": 427,
+        "text": "    auto fail = [env](const char* where) -> jclass {"
+      },
+      {
+        "line": 428,
+        "text": "        if (env->ExceptionCheck()) {"
+      },
+      {
+        "line": 429,
+        "text": "            wl_log_and_clear_webview_exception(env, where);"
+      },
+      {
+        "line": 430,
+        "text": "        } else {"
+      },
+      {
+        "line": 431,
+        "text": "            fprintf(stderr, \"[WESTLAKE-WEBVIEW-PROVIDER] %s returned null\\n\", where);"
+      },
+      {
+        "line": 432,
+        "text": "            fflush(stderr);"
+      },
+      {
+        "line": 433,
+        "text": "        }"
+      },
+      {
+        "line": 434,
+        "text": "        return nullptr;"
+      },
+      {
+        "line": 435,
+        "text": "    };"
+      },
+      {
+        "line": 436,
+        "text": ""
+      },
+      {
+        "line": 437,
+        "text": "    jclass updateClass = env->FindClass(\"adapter/core/WebViewUpdateServiceAdapter\");"
+      },
+      {
+        "line": 438,
+        "text": "    jmethodID getInstance = updateClass != nullptr"
+      },
+      {
+        "line": 439,
+        "text": "        ? env->GetStaticMethodID(updateClass, \"getInstance\","
+      },
+      {
+        "line": 440,
+        "text": "                                 \"()Ladapter/core/WebViewUpdateServiceAdapter;\")"
+      },
+      {
+        "line": 441,
+        "text": "        : nullptr;"
+      },
+      {
+        "line": 442,
+        "text": "    jobject updateService = getInstance != nullptr"
+      },
+      {
+        "line": 443,
+        "text": "        ? env->CallStaticObjectMethod(updateClass, getInstance) : nullptr;"
+      },
+      {
+        "line": 444,
+        "text": "    if (env->ExceptionCheck() || updateService == nullptr) {"
+      },
+      {
+        "line": 445,
+        "text": "        return fail(\"direct WebViewUpdateServiceAdapter.getInstance\");"
+      },
+      {
+        "line": 446,
+        "text": "    }"
+      },
+      {
+        "line": 447,
+        "text": ""
+      },
+      {
+        "line": 448,
+        "text": "    jmethodID waitForProvider = env->GetMethodID("
+      },
+      {
+        "line": 449,
+        "text": "        updateClass, \"waitForAndGetProvider\","
+      },
+      {
+        "line": 450,
+        "text": "        \"()Landroid/webkit/WebViewProviderResponse;\");"
+      },
+      {
+        "line": 451,
+        "text": "    jobject response = waitForProvider != nullptr"
+      },
+      {
+        "line": 452,
+        "text": "        ? env->CallObjectMethod(updateService, waitForProvider) : nullptr;"
+      },
+      {
+        "line": 453,
+        "text": "    if (env->ExceptionCheck() || response == nullptr) {"
+      },
+      {
+        "line": 454,
+        "text": "        return fail(\"direct waitForAndGetProvider\");"
+      },
+      {
+        "line": 455,
+        "text": "    }"
+      },
+      {
+        "line": 456,
+        "text": ""
+      },
+      {
+        "line": 457,
+        "text": "    jclass responseClass = env->FindClass(\"android/webkit/WebViewProviderResponse\");"
+      },
+      {
+        "line": 458,
+        "text": "    jfieldID statusField = responseClass != nullptr"
+      },
+      {
+        "line": 459,
+        "text": "        ? env->GetFieldID(responseClass, \"status\", \"I\") : nullptr;"
+      },
+      {
+        "line": 460,
+        "text": "    jfieldID packageInfoField = responseClass != nullptr"
+      },
+      {
+        "line": 461,
+        "text": "        ? env->GetFieldID(responseClass, \"packageInfo\","
+      },
+      {
+        "line": 462,
+        "text": "                          \"Landroid/content/pm/PackageInfo;\") : nullptr;"
+      },
+      {
+        "line": 463,
+        "text": "    jint status = statusField != nullptr ? env->GetIntField(response, statusField) : -1;"
+      },
+      {
+        "line": 464,
+        "text": "    jobject packageInfo = packageInfoField != nullptr"
+      },
+      {
+        "line": 465,
+        "text": "        ? env->GetObjectField(response, packageInfoField) : nullptr;"
+      },
+      {
+        "line": 466,
+        "text": "    if (env->ExceptionCheck() || status != 0 || packageInfo == nullptr) {"
+      },
+      {
+        "line": 467,
+        "text": "        return fail(\"direct WebViewProviderResponse\");"
+      },
+      {
+        "line": 468,
+        "text": "    }"
+      },
+      {
+        "line": 469,
+        "text": ""
+      },
+      {
+        "line": 470,
+        "text": "    jclass packageInfoClass = env->FindClass(\"android/content/pm/PackageInfo\");"
+      },
+      {
+        "line": 471,
+        "text": "    jfieldID applicationInfoField = packageInfoClass != nullptr"
+      },
+      {
+        "line": 472,
+        "text": "        ? env->GetFieldID(packageInfoClass, \"applicationInfo\","
+      },
+      {
+        "line": 473,
+        "text": "                          \"Landroid/content/pm/ApplicationInfo;\") : nullptr;"
+      },
+      {
+        "line": 474,
+        "text": "    jobject applicationInfo = applicationInfoField != nullptr"
+      },
+      {
+        "line": 475,
+        "text": "        ? env->GetObjectField(packageInfo, applicationInfoField) : nullptr;"
+      },
+      {
+        "line": 476,
+        "text": "    if (env->ExceptionCheck() || applicationInfo == nullptr) {"
+      },
+      {
+        "line": 477,
+        "text": "        return fail(\"direct provider ApplicationInfo\");"
+      },
+      {
+        "line": 478,
+        "text": "    }"
+      },
+      {
+        "line": 479,
+        "text": ""
+      },
+      {
+        "line": 480,
+        "text": "    jclass applicationClass = env->GetObjectClass(application);"
+      },
+      {
+        "line": 481,
+        "text": "    jmethodID createApplicationContext = applicationClass != nullptr"
+      },
+      {
+        "line": 482,
+        "text": "        ? env->GetMethodID(applicationClass, \"createApplicationContext\","
+      },
+      {
+        "line": 483,
+        "text": "                           \"(Landroid/content/pm/ApplicationInfo;I)Landroid/content/Context;\")"
+      },
+      {
+        "line": 484,
+        "text": "        : nullptr;"
+      },
+      {
+        "line": 485,
+        "text": "    jobject webViewContext = createApplicationContext != nullptr"
+      },
+      {
+        "line": 486,
+        "text": "        ? env->CallObjectMethod(application, createApplicationContext,"
+      },
+      {
+        "line": 487,
+        "text": "                                applicationInfo, 3 /* INCLUDE_CODE | IGNORE_SECURITY */)"
+      },
+      {
+        "line": 488,
+        "text": "        : nullptr;"
+      },
+      {
+        "line": 489,
+        "text": "    if (env->ExceptionCheck() || webViewContext == nullptr) {"
+      },
+      {
+        "line": 490,
+        "text": "        return fail(\"direct createApplicationContext\");"
+      },
+      {
+        "line": 491,
+        "text": "    }"
+      },
+      {
+        "line": 492,
+        "text": ""
+      },
+      {
+        "line": 493,
+        "text": "    jfieldID loadedPackageInfo = env->GetStaticFieldID("
+      },
+      {
+        "line": 494,
+        "text": "        factoryClass, \"sPackageInfo\", \"Landroid/content/pm/PackageInfo;\");"
+      },
+      {
+        "line": 495,
+        "text": "    if (env->ExceptionCheck() || loadedPackageInfo == nullptr) {"
+      },
+      {
+        "line": 496,
+        "text": "        return fail(\"WebViewFactory.sPackageInfo lookup\");"
+      },
+      {
+        "line": 497,
+        "text": "    }"
+      },
+      {
+        "line": 498,
+        "text": "    env->SetStaticObjectField(factoryClass, loadedPackageInfo, packageInfo);"
+      },
+      {
+        "line": 499,
+        "text": "    if (env->ExceptionCheck()) {"
+      },
+      {
+        "line": 500,
+        "text": "        return fail(\"WebViewFactory.sPackageInfo publish\");"
+      },
+      {
+        "line": 501,
+        "text": "    }"
+      },
+      {
+        "line": 502,
+        "text": ""
+      },
+      {
+        "line": 503,
+        "text": "    // Match WebViewFactory.getProviderClass(): make the provider's resource"
+      },
+      {
+        "line": 504,
+        "text": "    // table visible to the initial app before initializing its Java class."
+      },
+      {
+        "line": 505,
+        "text": "    jclass contextClass = env->FindClass(\"android/content/Context\");"
+      },
+      {
+        "line": 506,
+        "text": "    jmethodID getAssets = contextClass != nullptr"
+      },
+      {
+        "line": 507,
+        "text": "        ? env->GetMethodID(contextClass, \"getAssets\","
+      },
+      {
+        "line": 508,
+        "text": "                           \"()Landroid/content/res/AssetManager;\") : nullptr;"
+      },
+      {
+        "line": 509,
+        "text": "    jobject assets = getAssets != nullptr"
+      },
+      {
+        "line": 510,
+        "text": "        ? env->CallObjectMethod(application, getAssets) : nullptr;"
+      },
+      {
+        "line": 511,
+        "text": "    jclass applicationInfoClass = env->FindClass(\"android/content/pm/ApplicationInfo\");"
+      },
+      {
+        "line": 512,
+        "text": "    jfieldID sourceDirField = applicationInfoClass != nullptr"
+      },
+      {
+        "line": 513,
+        "text": "        ? env->GetFieldID(applicationInfoClass, \"sourceDir\", \"Ljava/lang/String;\") : nullptr;"
+      },
+      {
+        "line": 514,
+        "text": "    jstring sourceDir = sourceDirField != nullptr"
+      },
+      {
+        "line": 515,
+        "text": "        ? static_cast<jstring>(env->GetObjectField(applicationInfo, sourceDirField)) : nullptr;"
+      },
+      {
+        "line": 516,
+        "text": "    jclass assetManagerClass = env->FindClass(\"android/content/res/AssetManager\");"
+      },
+      {
+        "line": 517,
+        "text": "    jmethodID addSharedAsset = assetManagerClass != nullptr"
+      },
+      {
+        "line": 518,
+        "text": "        ? env->GetMethodID(assetManagerClass, \"addAssetPathAsSharedLibrary\","
+      },
+      {
+        "line": 519,
+        "text": "                           \"(Ljava/lang/String;)I\") : nullptr;"
+      },
+      {
+        "line": 520,
+        "text": "    jint assetCookie = (assets != nullptr && sourceDir != nullptr && addSharedAsset != nullptr)"
+      },
+      {
+        "line": 521,
+        "text": "        ? env->CallIntMethod(assets, addSharedAsset, sourceDir) : 0;"
+      },
+      {
+        "line": 522,
+        "text": "    if (env->ExceptionCheck() || assetCookie == 0) {"
+      },
+      {
+        "line": 523,
+        "text": "        return fail(\"provider addAssetPathAsSharedLibrary\");"
+      },
+      {
+        "line": 524,
+        "text": "    }"
+      },
+      {
+        "line": 525,
+        "text": ""
+      },
+      {
+        "line": 526,
+        "text": "    jmethodID getClassLoader = contextClass != nullptr"
+      },
+      {
+        "line": 527,
+        "text": "        ? env->GetMethodID(contextClass, \"getClassLoader\","
+      },
+      {
+        "line": 528,
+        "text": "                           \"()Ljava/lang/ClassLoader;\") : nullptr;"
+      },
+      {
+        "line": 529,
+        "text": "    jobject classLoader = getClassLoader != nullptr"
+      },
+      {
+        "line": 530,
+        "text": "        ? env->CallObjectMethod(webViewContext, getClassLoader) : nullptr;"
+      },
+      {
+        "line": 531,
+        "text": "    if (env->ExceptionCheck() || classLoader == nullptr) {"
+      },
+      {
+        "line": 532,
+        "text": "        return fail(\"provider Context.getClassLoader\");"
+      },
+      {
+        "line": 533,
+        "text": "    }"
+      },
+      {
+        "line": 534,
+        "text": ""
+      },
+      {
+        "line": 535,
+        "text": "    // Upstream ignores the integer load result and lets provider startup load"
+      },
+      {
+        "line": 536,
+        "text": "    // without a shared RELRO when zygote reservation is unavailable.  Preserve"
+      },
+      {
+        "line": 537,
+        "text": "    // that behavior, but surface exceptions and continue to class loading."
+      },
+      {
+        "line": 538,
+        "text": "    jmethodID getLibrary = env->GetStaticMethodID("
+      },
+      {
+        "line": 539,
+        "text": "        factoryClass, \"getWebViewLibrary\","
+      },
+      {
+        "line": 540,
+        "text": "        \"(Landroid/content/pm/ApplicationInfo;)Ljava/lang/String;\");"
+      },
+      {
+        "line": 541,
+        "text": "    jstring library = getLibrary != nullptr"
+      },
+      {
+        "line": 542,
+        "text": "        ? static_cast<jstring>(env->CallStaticObjectMethod("
+      },
+      {
+        "line": 543,
+        "text": "              factoryClass, getLibrary, applicationInfo)) : nullptr;"
+      },
+      {
+        "line": 544,
+        "text": "    jclass loaderClass = env->FindClass(\"android/webkit/WebViewLibraryLoader\");"
+      },
+      {
+        "line": 545,
+        "text": "    jmethodID loadNative = loaderClass != nullptr"
+      },
+      {
+        "line": 546,
+        "text": "        ? env->GetStaticMethodID(loaderClass, \"loadNativeLibrary\","
+      },
+      {
+        "line": 547,
+        "text": "                                 \"(Ljava/lang/ClassLoader;Ljava/lang/String;)I\")"
+      },
+      {
+        "line": 548,
+        "text": "        : nullptr;"
+      },
+      {
+        "line": 549,
+        "text": "    jint loadResult = -1;"
+      },
+      {
+        "line": 550,
+        "text": "    if (!env->ExceptionCheck() && loadNative != nullptr && library != nullptr) {"
+      },
+      {
+        "line": 551,
+        "text": "        loadResult = env->CallStaticIntMethod(loaderClass, loadNative, classLoader, library);"
+      },
+      {
+        "line": 552,
+        "text": "    }"
+      },
+      {
+        "line": 553,
+        "text": "    if (env->ExceptionCheck()) {"
+      },
+      {
+        "line": 554,
+        "text": "        wl_log_and_clear_webview_exception(env, \"WebViewLibraryLoader.loadNativeLibrary\");"
+      },
+      {
+        "line": 555,
+        "text": "    }"
+      },
+      {
+        "line": 556,
+        "text": ""
+      },
+      {
+        "line": 557,
+        "text": "    jmethodID getProviderClass = env->GetStaticMethodID("
+      },
+      {
+        "line": 558,
+        "text": "        factoryClass, \"getWebViewProviderClass\","
+      },
+      {
+        "line": 559,
+        "text": "        \"(Ljava/lang/ClassLoader;)Ljava/lang/Class;\");"
+      },
+      {
+        "line": 560,
+        "text": "    jclass providerClass = getProviderClass != nullptr"
+      },
+      {
+        "line": 561,
+        "text": "        ? static_cast<jclass>(env->CallStaticObjectMethod("
+      },
+      {
+        "line": 562,
+        "text": "              factoryClass, getProviderClass, classLoader)) : nullptr;"
+      },
+      {
+        "line": 563,
+        "text": "    if (env->ExceptionCheck() || providerClass == nullptr) {"
+      },
+      {
+        "line": 564,
+        "text": "        return fail(\"WebViewFactory.getWebViewProviderClass direct\");"
+      },
+      {
+        "line": 565,
+        "text": "    }"
+      },
+      {
+        "line": 566,
+        "text": ""
+      },
+      {
+        "line": 567,
+        "text": "    fprintf(stderr,"
+      },
+      {
+        "line": 568,
+        "text": "            \"[WESTLAKE-WEBVIEW-PROVIDER] direct provider class ready asset=%d native=%d\\n\","
+      },
+      {
+        "line": 569,
+        "text": "            assetCookie, loadResult);"
+      },
+      {
+        "line": 570,
+        "text": "    fflush(stderr);"
+      },
+      {
+        "line": 740,
+        "text": "        wl_log_and_clear_webview_exception(env, \"TTWebProviderWrapper.i lookup\");"
+      },
+      {
+        "line": 741,
+        "text": "        return;"
+      },
+      {
+        "line": 742,
+        "text": "    }"
+      },
+      {
+        "line": 743,
+        "text": "    jclass factoryClass = env->FindClass(\"android/webkit/WebViewFactory\");"
+      },
+      {
+        "line": 744,
+        "text": "    jfieldID providerInstanceField = factoryClass != nullptr"
+      },
+      {
+        "line": 745,
+        "text": "        ? env->GetStaticFieldID(factoryClass, \"sProviderInstance\","
+      },
+      {
+        "line": 746,
+        "text": "                                \"Landroid/webkit/WebViewFactoryProvider;\") : nullptr;"
+      },
+      {
+        "line": 747,
+        "text": "    jobject wrapper = providerInstanceField != nullptr"
+      },
+      {
+        "line": 748,
+        "text": "        ? env->GetStaticObjectField(factoryClass, providerInstanceField) : nullptr;"
+      },
+      {
+        "line": 749,
+        "text": "    if (env->ExceptionCheck() || wrapper == nullptr ||"
+      },
+      {
+        "line": 750,
+        "text": "            !env->IsInstanceOf(wrapper, wrapperClass)) {"
+      },
+      {
+        "line": 751,
+        "text": "        wl_log_and_clear_webview_exception(env, \"WebViewFactory wrapper lookup\");"
+      },
+      {
+        "line": 752,
+        "text": "        fprintf(stderr, \"[WESTLAKE-WEBVIEW-PROVIDER] no installed Toutiao wrapper\\n\");"
+      },
+      {
+        "line": 753,
+        "text": "        fflush(stderr);"
+      },
+      {
+        "line": 754,
+        "text": "        return;"
+      },
+      {
+        "line": 755,
+        "text": "    }"
+      },
+      {
+        "line": 756,
+        "text": ""
+      },
+      {
+        "line": 757,
+        "text": "    // TTWebProviderWrapper.getSystemProvider() synchronizes on this same object."
+      },
+      {
+        "line": 758,
+        "text": "    // Taking its monitor prevents another startup thread from racing a second"
+      },
+      {
+        "line": 759,
+        "text": "    // provider creation while we perform and publish the direct JNI call."
+      },
+      {
+        "line": 760,
+        "text": "    if (env->MonitorEnter(wrapper) != JNI_OK) {"
+      },
+      {
+        "line": 761,
+        "text": "        fprintf(stderr, \"[WESTLAKE-WEBVIEW-PROVIDER] wrapper MonitorEnter failed\\n\");"
+      },
+      {
+        "line": 762,
+        "text": "        fflush(stderr);"
+      },
+      {
+        "line": 763,
+        "text": "        return;"
+      },
+      {
+        "line": 764,
+        "text": "    }"
+      },
+      {
+        "line": 765,
+        "text": ""
+      },
+      {
+        "line": 766,
+        "text": "    jobject existing = env->GetStaticObjectField(wrapperClass, systemProviderField);"
+      },
+      {
+        "line": 767,
+        "text": "    if (existing != nullptr) {"
+      },
+      {
+        "line": 768,
+        "text": "        // A non-null system-provider cache is not sufficient.  Toutiao's O+"
+      },
+      {
+        "line": 769,
+        "text": "        // SysProviderCreator assumes a static create(WebViewDelegate) factory,"
+      },
+      {
+        "line": 770,
+        "text": "        // while this T provider uses the constructor form.  DedicatedWebView"
+      },
+      {
+        "line": 771,
+        "text": "        // also requires a declared three-argument createWebView overload.  Reuse"
+      },
+      {
+        "line": 772,
+        "text": "        // the cache only when it is already the compatibility subclass shipped"
+      },
+      {
+        "line": 773,
+        "text": "        // in the WebView APK; otherwise construct that subclass below and"
+      },
+      {
+        "line": 774,
+        "text": "        // replace the incompatible cached instance."
+      },
+      {
+        "line": 775,
+        "text": "        jclass existingClass = env->GetObjectClass(existing);"
+      },
+      {
+        "line": 776,
+        "text": "        jmethodID dedicatedCreate = existingClass != nullptr"
+      },
+      {
+        "line": 777,
+        "text": "            ? env->GetMethodID("
+      },
+      {
+        "line": 778,
+        "text": "                  existingClass, \"createWebView\","
+      },
+      {
+        "line": 779,
+        "text": "                  \"(Landroid/webkit/WebView;Landroid/webkit/WebView$PrivateAccess;Z)\""
+      },
+      {
+        "line": 780,
+        "text": "                  \"Landroid/webkit/WebViewProvider;\")"
+      },
+      {
+        "line": 781,
+        "text": "            : nullptr;"
+      },
+      {
+        "line": 782,
+        "text": "        if (env->ExceptionCheck()) {"
+      },
+      {
+        "line": 783,
+        "text": "            // The unadapted ForT provider does not expose this optional"
+      },
+      {
+        "line": 784,
+        "text": "            // ByteDance contract.  Clear only that method-lookup failure so"
+      },
+      {
+        "line": 785,
+        "text": "            // the constructor compatibility path below remains available."
+      },
+      {
+        "line": 786,
+        "text": "            env->ExceptionClear();"
+      },
+      {
+        "line": 787,
+        "text": "            dedicatedCreate = nullptr;"
+      },
+      {
+        "line": 788,
+        "text": "        }"
+      },
+      {
+        "line": 789,
+        "text": "        const bool compatible = dedicatedCreate != nullptr;"
+      },
+      {
+        "line": 790,
+        "text": "        const std::string existingClassName = wl_object_class_name(env, existing);"
+      },
+      {
+        "line": 791,
+        "text": "        if (compatible) {"
+      },
+      {
+        "line": 792,
+        "text": "            wl_publish_toutiao_system_provider_state("
+      },
+      {
+        "line": 793,
+        "text": "                env, wrapperClass, wrapper, classLoader, loadClass, existing);"
+      },
+      {
+        "line": 794,
+        "text": "            env->MonitorExit(wrapper);"
+      },
+      {
+        "line": 795,
+        "text": "            fprintf(stderr,"
+      },
+      {
+        "line": 796,
+        "text": "                    \"[WESTLAKE-WEBVIEW-PROVIDER] repaired compatible initialized provider state class=%s\\n\","
+      },
+      {
+        "line": 797,
+        "text": "                    existingClassName.c_str());"
+      },
+      {
+        "line": 798,
+        "text": "            fflush(stderr);"
+      },
+      {
+        "line": 799,
+        "text": "            env->DeleteLocalRef(existingClass);"
+      },
+      {
+        "line": 800,
+        "text": "            env->DeleteLocalRef(existing);"
+      },
+      {
+        "line": 801,
+        "text": "            return;"
+      },
+      {
+        "line": 802,
+        "text": "        }"
+      },
+      {
+        "line": 803,
+        "text": "        fprintf(stderr,"
+      },
+      {
+        "line": 804,
+        "text": "                \"[WESTLAKE-WEBVIEW-PROVIDER] replacing incompatible initialized provider class=%s\\n\","
+      },
+      {
+        "line": 805,
+        "text": "                existingClassName.c_str());"
+      },
+      {
+        "line": 806,
+        "text": "        fflush(stderr);"
+      },
+      {
+        "line": 807,
+        "text": "        if (existingClass != nullptr) env->DeleteLocalRef(existingClass);"
+      },
+      {
+        "line": 808,
+        "text": "        env->DeleteLocalRef(existing);"
+      },
+      {
+        "line": 809,
+        "text": "    }"
+      },
+      {
+        "line": 810,
+        "text": ""
+      },
+      {
+        "line": 811,
+        "text": "    wl_prime_webview_update_service_impl(env, true);"
+      },
+      {
+        "line": 812,
+        "text": ""
+      },
+      {
+        "line": 813,
+        "text": "    jobject provider = nullptr;"
+      },
+      {
+        "line": 814,
+        "text": "    jmethodID getProviderClass = env->GetStaticMethodID("
+      },
+      {
+        "line": 815,
+        "text": "        factoryClass, \"getProviderClass\", \"()Ljava/lang/Class;\");"
+      },
+      {
+        "line": 816,
+        "text": "    jclass providerClass = getProviderClass != nullptr"
+      },
+      {
+        "line": 817,
+        "text": "        ? static_cast<jclass>(env->CallStaticObjectMethod(factoryClass, getProviderClass))"
+      },
+      {
+        "line": 818,
+        "text": "        : nullptr;"
+      },
+      {
+        "line": 819,
+        "text": "    if (env->ExceptionCheck() || providerClass == nullptr) {"
+      },
+      {
+        "line": 820,
+        "text": "        wl_log_and_clear_webview_exception(env, \"WebViewFactory.getProviderClass\");"
+      }
+    ]
+  },
+  {
+    "file": "$WORKSPACES/westlake-inputs/aosp-14.0.0_r1-src/frameworks/base/core/java/android/webkit/WebViewFactory.java",
+    "sha256": "3938396a86bbdc60400a4fea89d4e0a0814115f03ed2e8b1985c4f94bfe20b97",
+    "qualification": "reference source; deployed DEX/native bytes remain authoritative",
+    "lines": [
+      {
+        "line": 321,
+        "text": "    static WebViewFactoryProvider getProvider() {"
+      },
+      {
+        "line": 322,
+        "text": "        synchronized (sProviderLock) {"
+      },
+      {
+        "line": 323,
+        "text": "            // For now the main purpose of this function (and the factory abstraction) is to keep"
+      },
+      {
+        "line": 324,
+        "text": "            // us honest and minimize usage of WebView internals when binding the proxy."
+      },
+      {
+        "line": 325,
+        "text": "            if (sProviderInstance != null) return sProviderInstance;"
+      },
+      {
+        "line": 326,
+        "text": ""
+      },
+      {
+        "line": 327,
+        "text": "            sTimestamps.mWebViewLoadStart = SystemClock.uptimeMillis();"
+      },
+      {
+        "line": 328,
+        "text": "            final int uid = android.os.Process.myUid();"
+      },
+      {
+        "line": 329,
+        "text": "            if (uid == android.os.Process.ROOT_UID || uid == android.os.Process.SYSTEM_UID"
+      },
+      {
+        "line": 330,
+        "text": "                    || uid == android.os.Process.PHONE_UID || uid == android.os.Process.NFC_UID"
+      },
+      {
+        "line": 331,
+        "text": "                    || uid == android.os.Process.BLUETOOTH_UID) {"
+      },
+      {
+        "line": 332,
+        "text": "                throw new UnsupportedOperationException("
+      },
+      {
+        "line": 333,
+        "text": "                        \"For security reasons, WebView is not allowed in privileged processes\");"
+      },
+      {
+        "line": 334,
+        "text": "            }"
+      },
+      {
+        "line": 335,
+        "text": ""
+      },
+      {
+        "line": 336,
+        "text": "            if (!isWebViewSupported()) {"
+      },
+      {
+        "line": 337,
+        "text": "                // Device doesn't support WebView; don't try to load it, just throw."
+      },
+      {
+        "line": 338,
+        "text": "                throw new UnsupportedOperationException();"
+      },
+      {
+        "line": 339,
+        "text": "            }"
+      },
+      {
+        "line": 340,
+        "text": ""
+      },
+      {
+        "line": 341,
+        "text": "            if (sWebViewDisabled) {"
+      },
+      {
+        "line": 342,
+        "text": "                throw new IllegalStateException("
+      },
+      {
+        "line": 343,
+        "text": "                        \"WebView.disableWebView() was called: WebView is disabled\");"
+      },
+      {
+        "line": 344,
+        "text": "            }"
+      },
+      {
+        "line": 345,
+        "text": ""
+      },
+      {
+        "line": 346,
+        "text": "            Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, \"WebViewFactory.getProvider()\");"
+      },
+      {
+        "line": 347,
+        "text": "            try {"
+      },
+      {
+        "line": 348,
+        "text": "                Class<WebViewFactoryProvider> providerClass = getProviderClass();"
+      },
+      {
+        "line": 349,
+        "text": "                Method staticFactory = providerClass.getMethod("
+      },
+      {
+        "line": 350,
+        "text": "                        CHROMIUM_WEBVIEW_FACTORY_METHOD, WebViewDelegate.class);"
+      },
+      {
+        "line": 351,
+        "text": ""
+      },
+      {
+        "line": 352,
+        "text": "                Trace.traceBegin(Trace.TRACE_TAG_WEBVIEW, \"WebViewFactoryProvider invocation\");"
+      },
+      {
+        "line": 353,
+        "text": "                try {"
+      },
+      {
+        "line": 354,
+        "text": "                    sProviderInstance = (WebViewFactoryProvider)"
+      },
+      {
+        "line": 355,
+        "text": "                            staticFactory.invoke(null, new WebViewDelegate());"
+      },
+      {
+        "line": 356,
+        "text": "                    if (DEBUG) Log.v(LOGTAG, \"Loaded provider: \" + sProviderInstance);"
+      },
+      {
+        "line": 357,
+        "text": "                    return sProviderInstance;"
+      },
+      {
+        "line": 358,
+        "text": "                } finally {"
+      },
+      {
+        "line": 359,
+        "text": "                    Trace.traceEnd(Trace.TRACE_TAG_WEBVIEW);"
+      },
+      {
+        "line": 360,
+        "text": "                }"
+      }
+    ]
+  }
+]
