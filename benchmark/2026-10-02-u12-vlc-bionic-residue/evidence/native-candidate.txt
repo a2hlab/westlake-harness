@@ -1,0 +1,2447 @@
+{
+  "schema_version": 1,
+  "device_access": false,
+  "status": "REJECT",
+  "exit_code": 1,
+  "gates": {
+    "N1": {
+      "details": {
+        "scanner": {
+          "schema_version": 1,
+          "prospective": false,
+          "device_access": false,
+          "scope": "bounded static initialization risks; no finding does not prove runtime success",
+          "manifest_sha256": "cb99b8f0e5ba8bdcac59fca33ecb7cf30c80c4f1f612eb1fde7fb103ca145453",
+          "profiles": [
+            {
+              "profile": "host",
+              "identity": {
+                "package": "offline-u12-vlc",
+                "manifest_sha256": "35c68ddc0a1469ccd5d17fe1dbeb2af62bd224287907a1e70278ab0a82f37135",
+                "artifact": "payload/runtime/appspawn-x",
+                "artifact_sha256": "65cc3535ebf22bdf664b3c8ddf932ccd7f42d936be1c861e1221a80b12a00284"
+              },
+              "findings": [],
+              "unknown": [
+                {
+                  "function": "main",
+                  "namespace": "default",
+                  "library": null,
+                  "target_expression": "plugin_path",
+                  "evidence": {
+                    "source": "n4-host.c",
+                    "line": 639,
+                    "text": "plugin_handle = dlopen(plugin_path, RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                }
+              ],
+              "checked": []
+            },
+            {
+              "profile": "runtime",
+              "identity": {
+                "package": "offline-u12-vlc",
+                "manifest_sha256": "35c68ddc0a1469ccd5d17fe1dbeb2af62bd224287907a1e70278ab0a82f37135",
+                "artifact": "payload/android/lib64/liboh_android_runtime.so",
+                "artifact_sha256": "ac59dec077195bc7678c712505b0d802c56e07edea8d049be4a188d20485b7bf"
+              },
+              "findings": [],
+              "checked": [
+                {
+                  "cache": {
+                    "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                    "operation": "GetFieldID",
+                    "sequence": 94,
+                    "evidence": {
+                      "source": "egl.cpp",
+                      "line": 113,
+                      "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                    },
+                    "trace": [
+                      {
+                        "function": "startReg",
+                        "source": "n4-order-runtime.cpp",
+                        "line": 684,
+                        "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                      },
+                      {
+                        "function": "register_com_google_android_gles_jni_EGLImpl",
+                        "source": "egl.cpp",
+                        "line": 549,
+                        "text": "android::nativeClassInit(_env, nullptr);"
+                      },
+                      {
+                        "function": "nativeClassInit",
+                        "source": "egl.cpp",
+                        "line": 133,
+                        "text": "bool ready = cacheEglFields(env);"
+                      },
+                      {
+                        "function": "cacheEglFields",
+                        "source": "egl.cpp",
+                        "line": 113,
+                        "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                      }
+                    ]
+                  },
+                  "dependency": {
+                    "class_name": "com/google/android/gles_jni/EGLImpl",
+                    "method": "_nativeClassInit",
+                    "descriptor": "()V",
+                    "chain": [
+                      {
+                        "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                        "edge": "super",
+                        "target": "javax/microedition/khronos/egl/EGLContext"
+                      },
+                      {
+                        "class_name": "javax/microedition/khronos/egl/EGLContext",
+                        "method": "<clinit>",
+                        "descriptor": "()V",
+                        "offset": 0,
+                        "opcode": "new-instance",
+                        "output": "v0, Lcom/google/android/gles_jni/EGLImpl;"
+                      },
+                      {
+                        "class_name": "com/google/android/gles_jni/EGLImpl",
+                        "method": "<clinit>",
+                        "descriptor": "()V",
+                        "offset": 0,
+                        "opcode": "invoke-static",
+                        "output": "Lcom/google/android/gles_jni/EGLImpl;->_nativeClassInit()V"
+                      }
+                    ]
+                  },
+                  "registration": {
+                    "sequence": 81,
+                    "evidence": {
+                      "source": "egl.cpp",
+                      "line": 546,
+                      "text": "err = android::AndroidRuntime::registerNativeMethods(_env,"
+                    },
+                    "trace": [
+                      {
+                        "function": "startReg",
+                        "source": "n4-order-runtime.cpp",
+                        "line": 684,
+                        "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                      },
+                      {
+                        "function": "register_com_google_android_gles_jni_EGLImpl",
+                        "source": "egl.cpp",
+                        "line": 546,
+                        "text": "err = android::AndroidRuntime::registerNativeMethods(_env,"
+                      }
+                    ]
+                  },
+                  "status": "registration-call-precedes-cache"
+                },
+                {
+                  "cache": {
+                    "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                    "operation": "GetFieldID",
+                    "sequence": 94,
+                    "evidence": {
+                      "source": "egl.cpp",
+                      "line": 113,
+                      "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                    },
+                    "trace": [
+                      {
+                        "function": "startReg",
+                        "source": "n4-order-runtime.cpp",
+                        "line": 684,
+                        "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                      },
+                      {
+                        "function": "register_com_google_android_gles_jni_EGLImpl",
+                        "source": "egl.cpp",
+                        "line": 549,
+                        "text": "android::nativeClassInit(_env, nullptr);"
+                      },
+                      {
+                        "function": "nativeClassInit",
+                        "source": "egl.cpp",
+                        "line": 133,
+                        "text": "bool ready = cacheEglFields(env);"
+                      },
+                      {
+                        "function": "cacheEglFields",
+                        "source": "egl.cpp",
+                        "line": 113,
+                        "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                      }
+                    ]
+                  },
+                  "dependency": {
+                    "class_name": "com/google/android/gles_jni/GLImpl",
+                    "method": "_nativeClassInit",
+                    "descriptor": "()V",
+                    "chain": [
+                      {
+                        "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                        "edge": "super",
+                        "target": "javax/microedition/khronos/egl/EGLContext"
+                      },
+                      {
+                        "class_name": "javax/microedition/khronos/egl/EGLContext",
+                        "method": "<clinit>",
+                        "descriptor": "()V",
+                        "offset": 4,
+                        "opcode": "invoke-direct",
+                        "output": "v0, Lcom/google/android/gles_jni/EGLImpl;-><init>()V"
+                      },
+                      {
+                        "class_name": "com/google/android/gles_jni/EGLImpl",
+                        "method": "<init>",
+                        "descriptor": "()V",
+                        "offset": 14,
+                        "opcode": "invoke-direct",
+                        "output": "v0, v1, v2, Lcom/google/android/gles_jni/EGLContextImpl;-><init>(J)V"
+                      },
+                      {
+                        "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                        "method": "<init>",
+                        "descriptor": "(J)V",
+                        "offset": 10,
+                        "opcode": "new-instance",
+                        "output": "v0, Lcom/google/android/gles_jni/GLImpl;"
+                      },
+                      {
+                        "class_name": "com/google/android/gles_jni/GLImpl",
+                        "method": "<clinit>",
+                        "descriptor": "()V",
+                        "offset": 0,
+                        "opcode": "invoke-static",
+                        "output": "Lcom/google/android/gles_jni/GLImpl;->_nativeClassInit()V"
+                      }
+                    ]
+                  },
+                  "registration": {
+                    "sequence": 74,
+                    "evidence": {
+                      "source": "gl-register.cpp",
+                      "line": 9294,
+                      "text": "err = android::AndroidRuntime::registerNativeMethods(_env, classPathName, methods, NELEM(methods));"
+                    },
+                    "trace": [
+                      {
+                        "function": "startReg",
+                        "source": "n4-order-runtime.cpp",
+                        "line": 681,
+                        "text": "if (n2_register_GLImpl(env) != 0 || env->ExceptionCheck()) {"
+                      },
+                      {
+                        "function": "n2_register_GLImpl",
+                        "source": "gl-wrapper.cpp",
+                        "line": 6,
+                        "text": "int rc=register_com_google_android_gles_jni_GLImpl(env);"
+                      },
+                      {
+                        "function": "register_com_google_android_gles_jni_GLImpl",
+                        "source": "gl-register.cpp",
+                        "line": 9294,
+                        "text": "err = android::AndroidRuntime::registerNativeMethods(_env, classPathName, methods, NELEM(methods));"
+                      }
+                    ]
+                  },
+                  "status": "registration-call-precedes-cache"
+                }
+              ],
+              "unknown": [
+                {
+                  "class_name": "android/content/res/AssetManager",
+                  "operation": "GetFieldID",
+                  "sequence": 58,
+                  "evidence": {
+                    "source": "asset-offsets-init.cpp",
+                    "line": 17,
+                    "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 670,
+                      "text": "if (initialize_n10b_asset_offsets(env) < 0) return -1;"
+                    },
+                    {
+                      "function": "initialize_n10b_asset_offsets",
+                      "source": "asset-offsets-init.cpp",
+                      "line": 17,
+                      "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "android/content/res/AssetManager"
+                  ]
+                },
+                {
+                  "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+                  "operation": "GetMethodID",
+                  "sequence": 89,
+                  "evidence": {
+                    "source": "egl.cpp",
+                    "line": 103,
+                    "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 684,
+                      "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                    },
+                    {
+                      "function": "register_com_google_android_gles_jni_EGLImpl",
+                      "source": "egl.cpp",
+                      "line": 549,
+                      "text": "android::nativeClassInit(_env, nullptr);"
+                    },
+                    {
+                      "function": "nativeClassInit",
+                      "source": "egl.cpp",
+                      "line": 133,
+                      "text": "bool ready = cacheEglFields(env);"
+                    },
+                    {
+                      "function": "cacheEglFields",
+                      "source": "egl.cpp",
+                      "line": 103,
+                      "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "javax/microedition/khronos/egl/EGLConfig"
+                  ]
+                },
+                {
+                  "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+                  "operation": "GetFieldID",
+                  "sequence": 90,
+                  "evidence": {
+                    "source": "egl.cpp",
+                    "line": 105,
+                    "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 684,
+                      "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                    },
+                    {
+                      "function": "register_com_google_android_gles_jni_EGLImpl",
+                      "source": "egl.cpp",
+                      "line": 549,
+                      "text": "android::nativeClassInit(_env, nullptr);"
+                    },
+                    {
+                      "function": "nativeClassInit",
+                      "source": "egl.cpp",
+                      "line": 133,
+                      "text": "bool ready = cacheEglFields(env);"
+                    },
+                    {
+                      "function": "cacheEglFields",
+                      "source": "egl.cpp",
+                      "line": 105,
+                      "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "javax/microedition/khronos/egl/EGLConfig"
+                  ]
+                },
+                {
+                  "class_name": "com/google/android/gles_jni/EGLDisplayImpl",
+                  "operation": "GetFieldID",
+                  "sequence": 92,
+                  "evidence": {
+                    "source": "egl.cpp",
+                    "line": 109,
+                    "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 684,
+                      "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                    },
+                    {
+                      "function": "register_com_google_android_gles_jni_EGLImpl",
+                      "source": "egl.cpp",
+                      "line": 549,
+                      "text": "android::nativeClassInit(_env, nullptr);"
+                    },
+                    {
+                      "function": "nativeClassInit",
+                      "source": "egl.cpp",
+                      "line": 133,
+                      "text": "bool ready = cacheEglFields(env);"
+                    },
+                    {
+                      "function": "cacheEglFields",
+                      "source": "egl.cpp",
+                      "line": 109,
+                      "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "javax/microedition/khronos/egl/EGLDisplay"
+                  ]
+                },
+                {
+                  "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                  "operation": "GetFieldID",
+                  "sequence": 94,
+                  "evidence": {
+                    "source": "egl.cpp",
+                    "line": 113,
+                    "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 684,
+                      "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                    },
+                    {
+                      "function": "register_com_google_android_gles_jni_EGLImpl",
+                      "source": "egl.cpp",
+                      "line": 549,
+                      "text": "android::nativeClassInit(_env, nullptr);"
+                    },
+                    {
+                      "function": "nativeClassInit",
+                      "source": "egl.cpp",
+                      "line": 133,
+                      "text": "bool ready = cacheEglFields(env);"
+                    },
+                    {
+                      "function": "cacheEglFields",
+                      "source": "egl.cpp",
+                      "line": 113,
+                      "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "java/lang/Object",
+                    "javax/microedition/khronos/egl/EGLDisplay",
+                    "javax/microedition/khronos/egl/EGLSurface"
+                  ]
+                },
+                {
+                  "class_name": "com/google/android/gles_jni/EGLSurfaceImpl",
+                  "operation": "GetFieldID",
+                  "sequence": 96,
+                  "evidence": {
+                    "source": "egl.cpp",
+                    "line": 117,
+                    "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 684,
+                      "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                    },
+                    {
+                      "function": "register_com_google_android_gles_jni_EGLImpl",
+                      "source": "egl.cpp",
+                      "line": 549,
+                      "text": "android::nativeClassInit(_env, nullptr);"
+                    },
+                    {
+                      "function": "nativeClassInit",
+                      "source": "egl.cpp",
+                      "line": 133,
+                      "text": "bool ready = cacheEglFields(env);"
+                    },
+                    {
+                      "function": "cacheEglFields",
+                      "source": "egl.cpp",
+                      "line": 117,
+                      "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "javax/microedition/khronos/egl/EGLSurface"
+                  ]
+                }
+              ],
+              "unresolved_calls": [
+                "DeleteLocalRef",
+                "ExceptionCheck",
+                "ExceptionClear",
+                "ExceptionDescribe",
+                "GetJavaVM",
+                "HiLogPrint",
+                "NELEM",
+                "NewGlobalRef",
+                "PopLocalFrame",
+                "PushLocalFrame",
+                "dlerror",
+                "dlopen",
+                "dlsym",
+                "fn",
+                "fprintf",
+                "int",
+                "jint",
+                "jniThrowException",
+                "memcpy",
+                "onload",
+                "proc",
+                "register_android_graphics_compat_shim",
+                "register_n2_Camera"
+              ],
+              "coverage": "bounded-source-order-not-runtime-success"
+            },
+            {
+              "profile": "child-owner",
+              "identity": {
+                "artifact": "payload/runtime/libwestlake_android_child.z.so",
+                "package": "offline-u12-vlc",
+                "manifest_sha256": "35c68ddc0a1469ccd5d17fe1dbeb2af62bd224287907a1e70278ab0a82f37135",
+                "artifact_sha256": "dc73a28d2535f0a261776625ea51770edf044f33de17aa05ff5c5e789ba25d3c"
+              },
+              "findings": [
+                {
+                  "function": "RealOpenLocalNow",
+                  "namespace": "&closure_namespace",
+                  "library": "libart.so",
+                  "target_expression": "\"libart.so\"",
+                  "evidence": {
+                    "source": "n10b-child.c",
+                    "line": 286,
+                    "text": "void *art = dlopen_ns(&closure_namespace, \"libart.so\","
+                  },
+                  "family": "noload-before-namespace-mapping",
+                  "verdict": "static-risk",
+                  "namespace_creation": {
+                    "source": "n10b-child.c",
+                    "line": 265,
+                    "text": "if (dlns_create2(&closure_namespace, search_path,"
+                  },
+                  "reason": "NOLOAD cannot establish a first local mapping; no dominating guarded same-namespace load found"
+                }
+              ],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "emboss-registration",
+              "identity": {
+                "package": "offline-u12-vlc",
+                "manifest_sha256": "35c68ddc0a1469ccd5d17fe1dbeb2af62bd224287907a1e70278ab0a82f37135",
+                "artifact": "payload/android/lib64/liboh_android_runtime.so",
+                "artifact_sha256": "ac59dec077195bc7678c712505b0d802c56e07edea8d049be4a188d20485b7bf"
+              },
+              "findings": [],
+              "checked": [],
+              "unknown": [],
+              "unresolved_calls": [
+                "DeleteLocalRef"
+              ],
+              "coverage": "bounded-source-order-not-runtime-success"
+            },
+            {
+              "profile": "android_graphics_Typeface",
+              "identity": {
+                "package": "offline-u12-vlc",
+                "manifest_sha256": "35c68ddc0a1469ccd5d17fe1dbeb2af62bd224287907a1e70278ab0a82f37135",
+                "artifact": "payload/android/lib64/liboh_android_runtime.so",
+                "artifact_sha256": "ac59dec077195bc7678c712505b0d802c56e07edea8d049be4a188d20485b7bf"
+              },
+              "findings": [],
+              "checked": [],
+              "unknown": [],
+              "unresolved_calls": [
+                "DeleteLocalRef",
+                "ExceptionCheck",
+                "ExceptionClear",
+                "ExceptionDescribe",
+                "GetJavaVM",
+                "HiLogPrint",
+                "dlerror",
+                "dlopen",
+                "dlsym",
+                "int",
+                "real_reg",
+                "set_vm",
+                "void"
+              ],
+              "coverage": "bounded-source-order-not-runtime-success"
+            },
+            {
+              "profile": "asset-offsets-init",
+              "identity": {
+                "package": "offline-u12-vlc",
+                "manifest_sha256": "35c68ddc0a1469ccd5d17fe1dbeb2af62bd224287907a1e70278ab0a82f37135",
+                "artifact": "payload/android/lib64/liboh_android_runtime.so",
+                "artifact_sha256": "ac59dec077195bc7678c712505b0d802c56e07edea8d049be4a188d20485b7bf"
+              },
+              "findings": [],
+              "checked": [],
+              "unknown": [
+                {
+                  "class_name": "android/content/res/AssetManager",
+                  "operation": "GetFieldID",
+                  "sequence": 2,
+                  "evidence": {
+                    "source": "asset-offsets-init.cpp",
+                    "line": 17,
+                    "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "initialize_n10b_asset_offsets",
+                      "source": "asset-offsets-init.cpp",
+                      "line": 17,
+                      "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "android/content/res/AssetManager"
+                  ]
+                }
+              ],
+              "unresolved_calls": [
+                "DeleteLocalRef",
+                "ExceptionCheck",
+                "HiLogPrint",
+                "dlopen",
+                "dlsym"
+              ],
+              "coverage": "bounded-source-order-not-runtime-success"
+            },
+            {
+              "profile": "u10-1-resident-compat",
+              "identity": {
+                "artifact": "payload/runtime/appspawn-x",
+                "package": "offline-u12-vlc",
+                "manifest_sha256": "35c68ddc0a1469ccd5d17fe1dbeb2af62bd224287907a1e70278ab0a82f37135",
+                "artifact_sha256": "65cc3535ebf22bdf664b3c8ddf932ccd7f42d936be1c861e1221a80b12a00284"
+              },
+              "findings": [],
+              "unknown": [
+                {
+                  "function": "U10ShareResidentCompat",
+                  "namespace": "&resident_namespace",
+                  "library": "libbionic_compat.so",
+                  "target_expression": "\"libbionic_compat.so\"",
+                  "evidence": {
+                    "source": "u10-1-resident-compat.h",
+                    "line": 13,
+                    "text": "void* resident = dlopen_ns(&resident_namespace, \"libbionic_compat.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                },
+                {
+                  "function": "U10ShareResidentCompat",
+                  "namespace": "&direct_namespace",
+                  "library": "libbionic_compat.so",
+                  "target_expression": "\"libbionic_compat.so\"",
+                  "evidence": {
+                    "source": "u10-1-resident-compat.h",
+                    "line": 29,
+                    "text": "direct = dlopen_ns(&direct_namespace, \"libbionic_compat.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                }
+              ],
+              "checked": []
+            },
+            {
+              "profile": "u10-1-native-loader-policy",
+              "identity": {
+                "artifact": "payload/route/libnativeloader.so",
+                "package": "offline-u12-vlc",
+                "manifest_sha256": "35c68ddc0a1469ccd5d17fe1dbeb2af62bd224287907a1e70278ab0a82f37135",
+                "artifact_sha256": "0718f01e237d322b5a16a1858265f8cc05cddd5ddca6d1ceb28bcc33023913a9"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u12-vlc-residue",
+              "identity": {
+                "artifact": "payload/android/lib64/libbionic_compat.so",
+                "package": "offline-u12-vlc",
+                "manifest_sha256": "35c68ddc0a1469ccd5d17fe1dbeb2af62bd224287907a1e70278ab0a82f37135",
+                "artifact_sha256": "b2be657ca2c171dd786068e77be90d82ec3a50407df37b1ccbafef94a8db88a6"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            }
+          ]
+        },
+        "dex_artifact": {
+          "path": "payload/android/framework/framework.jar",
+          "sha256": "3e106350d882cd1f2f6d71c3cc4e9f124412d16f50a2dcb160007c34e6dde9af"
+        },
+        "scope": "bounded build-attested source/DEX order; not source-to-binary equivalence"
+      },
+      "findings": [
+        {
+          "profile": "host",
+          "kind": "unknown",
+          "detail": {
+            "function": "main",
+            "namespace": "default",
+            "library": null,
+            "target_expression": "plugin_path",
+            "evidence": {
+              "source": "n4-host.c",
+              "line": 639,
+              "text": "plugin_handle = dlopen(plugin_path, RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "147b92cf6ea627c7e18fddf620ca654a58bf91db3070dbd4093c6c8361946286",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "android/content/res/AssetManager",
+            "operation": "GetFieldID",
+            "sequence": 58,
+            "evidence": {
+              "source": "asset-offsets-init.cpp",
+              "line": 17,
+              "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 670,
+                "text": "if (initialize_n10b_asset_offsets(env) < 0) return -1;"
+              },
+              {
+                "function": "initialize_n10b_asset_offsets",
+                "source": "asset-offsets-init.cpp",
+                "line": 17,
+                "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "android/content/res/AssetManager"
+            ]
+          },
+          "issue_id": "72002ee699f85f2da06afd3ddc6a6e24ac9c2ab82037369619dfa465fd9ca03c",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+            "operation": "GetMethodID",
+            "sequence": 89,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 103,
+              "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 684,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 549,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 133,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 103,
+                "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "javax/microedition/khronos/egl/EGLConfig"
+            ]
+          },
+          "issue_id": "436369c23b8d969345d45dafb1187f34fa5c30db7bd58ca524b396f9ae06605e",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+            "operation": "GetFieldID",
+            "sequence": 90,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 105,
+              "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 684,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 549,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 133,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 105,
+                "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "javax/microedition/khronos/egl/EGLConfig"
+            ]
+          },
+          "issue_id": "ec44ce99b1bd2eca44085f464b2b87ac95a66dba3112e80156583425cd2400e7",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "com/google/android/gles_jni/EGLDisplayImpl",
+            "operation": "GetFieldID",
+            "sequence": 92,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 109,
+              "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 684,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 549,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 133,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 109,
+                "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "javax/microedition/khronos/egl/EGLDisplay"
+            ]
+          },
+          "issue_id": "f5a1d5e855243dc068b1fd6ff57b420f47f843f3437cab2fff1a44cd6994f158",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "com/google/android/gles_jni/EGLContextImpl",
+            "operation": "GetFieldID",
+            "sequence": 94,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 113,
+              "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 684,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 549,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 133,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 113,
+                "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "java/lang/Object",
+              "javax/microedition/khronos/egl/EGLDisplay",
+              "javax/microedition/khronos/egl/EGLSurface"
+            ]
+          },
+          "issue_id": "01ebd20d7423c3fdcffec90064b6a3cce7a21427a6b7116121059eabebde3a5b",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "com/google/android/gles_jni/EGLSurfaceImpl",
+            "operation": "GetFieldID",
+            "sequence": 96,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 117,
+              "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 684,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 549,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 133,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 117,
+                "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "javax/microedition/khronos/egl/EGLSurface"
+            ]
+          },
+          "issue_id": "b915dea123457be01f75e70b8d7d0ca948c31ec4c44eed77a76f423e960b31bc",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "DeleteLocalRef",
+          "issue_id": "29641920393235ce6bb296b93aac80ccd9781996ff91632cced21489715e832e",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionCheck",
+          "issue_id": "eb3fe02bb5aa034a67771ad1a0acb7f7fe67a004312173bcdbf3eecd76f3ea52",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionClear",
+          "issue_id": "dedfece0a64f8ed69787ffed194191e01fccf97890ccac089ada395a5f11bff2",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionDescribe",
+          "issue_id": "2b1118a931384c11f88e4896b2f840170395f06921980042cd93f48cc6e338bc",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "GetJavaVM",
+          "issue_id": "46a1dc697447eaa9907169c7689d89baffab314dcd123d72e7a3fcf7cf21a4aa",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "HiLogPrint",
+          "issue_id": "22af8644d00cd6ab3c59bcdc7a755eafbf21c6d6c4a47c6f694d8b7027942df8",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "NELEM",
+          "issue_id": "90e53491f74729ddf7927eec3b1f619b2307622ed832a218f43c9747c26a7048",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "NewGlobalRef",
+          "issue_id": "df4058ed620cc2d4643a9c5970c680d35780ffa509800c846e7fd8d9ff27cd13",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "PopLocalFrame",
+          "issue_id": "07ee3083b55c9d100966a3de96ed86f886bae6d1102595c87175fa5705307810",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "PushLocalFrame",
+          "issue_id": "500258e09647a552db15e99c91c41297f69a403cecafbe7d250dae4c44a46892",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "dlerror",
+          "issue_id": "b5c4981eedd1ceb2ba1c53adc838619c07ba26c0adb0f2ee638b3d53719f5d5e",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "dlopen",
+          "issue_id": "1771cdf404f22461ca1c940bd4a348e974c08698807daaf2c9bebc93450df931",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "dlsym",
+          "issue_id": "e90e9dd33f8c3096f1cf05cfcb5147346e2f0d5b6f2da7689936af76030364d0",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "fn",
+          "issue_id": "f69ec28fb29f3449d97fd57d6429933fc5311936d3da4962d93faeb95853ec9d",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "fprintf",
+          "issue_id": "073b49b2dc77139dc6deaf145dcb088f8efbb7acd76b9f31920d2725a9745c8f",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "int",
+          "issue_id": "73e4dbf66fcdd3298190252f09a1f9a6d45f08166caa3e76cfc4063c82475f67",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "jint",
+          "issue_id": "19a0ecb7f423be3f6cff5f82d6a91a3c0012805575eea665848fe285d3bbda94",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "jniThrowException",
+          "issue_id": "ca462872df49bd862a431ac885e57c80799530efd4fc1235142ace11d9de5571",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "memcpy",
+          "issue_id": "bb2ad65ac915830a3529611dbb3aecddb4c6e7fe9156df042fd8fdba84ecfd3b",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "onload",
+          "issue_id": "34b2c3b1d19ccf9f0b0415970ae345213251ad41a6dc2f0688272111660f2de0",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "proc",
+          "issue_id": "13e31e65b085b161d7610d71d09a6688fc3329675dc9c6c0aacd6100d7f182f5",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "register_android_graphics_compat_shim",
+          "issue_id": "cd65fedc146d718001dc574d115a8694bcc00f5c0ea5c629d96e445bd24c610f",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "register_n2_Camera",
+          "issue_id": "1a3311e583f37e8b9e2b8883898cca895c6603bbf27ff04181efb171ff4d45ac",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "child-owner",
+          "kind": "findings",
+          "detail": {
+            "function": "RealOpenLocalNow",
+            "namespace": "&closure_namespace",
+            "library": "libart.so",
+            "target_expression": "\"libart.so\"",
+            "evidence": {
+              "source": "n10b-child.c",
+              "line": 286,
+              "text": "void *art = dlopen_ns(&closure_namespace, \"libart.so\","
+            },
+            "family": "noload-before-namespace-mapping",
+            "verdict": "static-risk",
+            "namespace_creation": {
+              "source": "n10b-child.c",
+              "line": 265,
+              "text": "if (dlns_create2(&closure_namespace, search_path,"
+            },
+            "reason": "NOLOAD cannot establish a first local mapping; no dominating guarded same-namespace load found"
+          },
+          "issue_id": "f2ce8ed3ad8256fa9abd086c838469b388b18d40a4f92e9e78e17cf9c9d7c56e",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "emboss-registration",
+          "kind": "unresolved_calls",
+          "detail": "DeleteLocalRef",
+          "issue_id": "1cbc25024c546634fa0d55c81242f086177c80756f302720385a6a7b1c933a69",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "DeleteLocalRef",
+          "issue_id": "57c04201158d71fa7fcbd5a85d6426a00df0bbc6f7517902e9166f3c9cf1e419",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionCheck",
+          "issue_id": "f95121a89077ab617693b0d22840b5aa9ac07eb9b579e6dbfb26c0b7a2cb9af4",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionClear",
+          "issue_id": "33e2b2836250f682f7c09c35f21b20283a7a2aef749f2017321903f9721d869e",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionDescribe",
+          "issue_id": "710ecb6243f1fefcfac6fda00e744403c6334e8a681272034f8c60e6f9d131ca",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "GetJavaVM",
+          "issue_id": "953bef97dcb4f674cbb37ead4c1ec315c47537893c5521b348102e17420fcc21",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "HiLogPrint",
+          "issue_id": "0ed7d26167ede418dddcd9223c9094074857b4ac317c1fd178a68c5324dd4355",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "dlerror",
+          "issue_id": "6cf8eeab8e5a26a6c0ddf525048a0d29263df4a152a6802dd3b035c01d341a59",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "dlopen",
+          "issue_id": "f43d89c073d6408cd2eb299f22e2785978a39fd8ef855bac3ce142e439854334",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "dlsym",
+          "issue_id": "4336224bfa2d6845dc833fb35ec177353a8807191a6995b069290c50243b99bc",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "int",
+          "issue_id": "adab61a493b5d2a9a27c3a1324b5a7c80706885616462103385a259491bd040a",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "real_reg",
+          "issue_id": "74798a38f71f2081843f24425a055756e6d4f937e30adf605b040776b4472ff5",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "set_vm",
+          "issue_id": "396e963cbbec7d7f99d263e910ad123c0f54382167486e997f1b9bcd1da58603",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "void",
+          "issue_id": "0b531ad90c60283e22c8203aea3e524d74f1da99abe1295fae2564d0fd6c122d",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "android/content/res/AssetManager",
+            "operation": "GetFieldID",
+            "sequence": 2,
+            "evidence": {
+              "source": "asset-offsets-init.cpp",
+              "line": 17,
+              "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "initialize_n10b_asset_offsets",
+                "source": "asset-offsets-init.cpp",
+                "line": 17,
+                "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "android/content/res/AssetManager"
+            ]
+          },
+          "issue_id": "436e767eace97fa8347d01ae2491ebaac8817cb3d905e2dd8151e36154883dae",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unresolved_calls",
+          "detail": "DeleteLocalRef",
+          "issue_id": "4cf191fde46b4f6e6f913cf6b3ca28eb7176a8bbf514bfe982e40441d8618b0b",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionCheck",
+          "issue_id": "c52839b8a9f7c8d9afefdbdb02cf170f1383dc21e61ed39f06d67807ce20949a",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unresolved_calls",
+          "detail": "HiLogPrint",
+          "issue_id": "3b8283ddeaaba5def83387c4ddae8b511b4f79ae583af93240e7ee117f07c439",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unresolved_calls",
+          "detail": "dlopen",
+          "issue_id": "953110501a090124207d66692f4d9a1524c6b883ac6b6b6c9878ddae28dcc616",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unresolved_calls",
+          "detail": "dlsym",
+          "issue_id": "688d595f203944edf76432eb6503920ed8c276251525b826e4fb7a7a22a0191c",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u10-1-resident-compat",
+          "kind": "unknown",
+          "detail": {
+            "function": "U10ShareResidentCompat",
+            "namespace": "&resident_namespace",
+            "library": "libbionic_compat.so",
+            "target_expression": "\"libbionic_compat.so\"",
+            "evidence": {
+              "source": "u10-1-resident-compat.h",
+              "line": 13,
+              "text": "void* resident = dlopen_ns(&resident_namespace, \"libbionic_compat.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "c42ba384c4a213879e4b697e4dba3df08b3f7a635ae1d6615dd04979c681ce36",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u10-1-resident-compat",
+          "kind": "unknown",
+          "detail": {
+            "function": "U10ShareResidentCompat",
+            "namespace": "&direct_namespace",
+            "library": "libbionic_compat.so",
+            "target_expression": "\"libbionic_compat.so\"",
+            "evidence": {
+              "source": "u10-1-resident-compat.h",
+              "line": 29,
+              "text": "direct = dlopen_ns(&direct_namespace, \"libbionic_compat.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "7b6fd70100e0522c260401d48db4873195f8fd8469d1c98b7e41b20097ce3b67",
+          "disposition": "REJECT"
+        }
+      ],
+      "rejected": 53,
+      "excepted": 0,
+      "stale": [],
+      "warnings": []
+    },
+    "N2": {
+      "details": {
+        "edges": [
+          {
+            "domain": "westlake_flutter",
+            "library": "/system/android/lib64/westlake_flutter/libGLESv2.so",
+            "needed": "libGLESv3.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_flutter",
+            "library": "/system/android/lib64/westlake_flutter/libGLESv2.so",
+            "needed": "libc.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_flutter",
+            "library": "/system/android/lib64/westlake_flutter/libandroid.so",
+            "needed": "liboh_android_runtime.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_flutter",
+            "library": "/system/android/lib64/westlake_flutter/libandroid.so",
+            "needed": "libsurface.z.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_flutter",
+            "library": "/system/android/lib64/westlake_flutter/libandroid.so",
+            "needed": "libc.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_flutter",
+            "library": "/system/android/lib64/westlake_flutter/libjnigraphics.so",
+            "needed": "libc.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_flutter",
+            "library": "/system/android/lib64/westlake_flutter/libwestlake_native_abi.so",
+            "needed": "libc.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libGLESv2.so",
+            "needed": "libGLESv3.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libGLESv2.so",
+            "needed": "libc.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libandroid.so",
+            "needed": "liboh_android_runtime.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libandroid.so",
+            "needed": "libsurface.z.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libandroid.so",
+            "needed": "libc.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libjnigraphics.so",
+            "needed": "libc.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libstdc++.so",
+            "needed": "libc.so",
+            "resolved": null
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libwestlake_native_abi.so",
+            "needed": "libc.so",
+            "resolved": null
+          }
+        ],
+        "libraries": [
+          {
+            "domain": "westlake_flutter",
+            "library": "/system/android/lib64/westlake_flutter/libGLESv2.so",
+            "sha256": "4b6539415c0acc13f5f76863982e86c042343d2d6534b797a390d7596e99593f",
+            "needed": [
+              "libGLESv3.so",
+              "libc.so"
+            ],
+            "soname": "libGLESv2.so",
+            "rpath": [],
+            "runpath": []
+          },
+          {
+            "domain": "westlake_flutter",
+            "library": "/system/android/lib64/westlake_flutter/libandroid.so",
+            "sha256": "ee2fb82c6351b1b8461ce214e8ef39c9b33731523f154f92137991afa0e26c45",
+            "needed": [
+              "liboh_android_runtime.so",
+              "libsurface.z.so",
+              "libc.so"
+            ],
+            "soname": "libandroid.so",
+            "rpath": [],
+            "runpath": []
+          },
+          {
+            "domain": "westlake_flutter",
+            "library": "/system/android/lib64/westlake_flutter/libjnigraphics.so",
+            "sha256": "551d943fc69dea629119026f56471a8d11ed82fb8482cdf8f8cb3f99fc092ffa",
+            "needed": [
+              "libc.so"
+            ],
+            "soname": "libjnigraphics.so",
+            "rpath": [],
+            "runpath": []
+          },
+          {
+            "domain": "westlake_flutter",
+            "library": "/system/android/lib64/westlake_flutter/libwestlake_native_abi.so",
+            "sha256": "d20530661a30b8af7bbfb30a6b7138d0b6a6bb5d82e6cb8d733a41ae23886c65",
+            "needed": [
+              "libc.so"
+            ],
+            "soname": "libwestlake_native_abi.so",
+            "rpath": [],
+            "runpath": []
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libGLESv2.so",
+            "sha256": "4b6539415c0acc13f5f76863982e86c042343d2d6534b797a390d7596e99593f",
+            "needed": [
+              "libGLESv3.so",
+              "libc.so"
+            ],
+            "soname": "libGLESv2.so",
+            "rpath": [],
+            "runpath": []
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libandroid.so",
+            "sha256": "ee2fb82c6351b1b8461ce214e8ef39c9b33731523f154f92137991afa0e26c45",
+            "needed": [
+              "liboh_android_runtime.so",
+              "libsurface.z.so",
+              "libc.so"
+            ],
+            "soname": "libandroid.so",
+            "rpath": [],
+            "runpath": []
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libjnigraphics.so",
+            "sha256": "551d943fc69dea629119026f56471a8d11ed82fb8482cdf8f8cb3f99fc092ffa",
+            "needed": [
+              "libc.so"
+            ],
+            "soname": "libjnigraphics.so",
+            "rpath": [],
+            "runpath": []
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libstdc++.so",
+            "sha256": "7e06cd8b75fe99dbd5bc23b80afea214e6ca0b6579df757fbdadd7a148a3f493",
+            "needed": [
+              "libc.so"
+            ],
+            "soname": "libstdc++.so",
+            "rpath": [],
+            "runpath": []
+          },
+          {
+            "domain": "westlake_native",
+            "library": "/system/android/lib64/westlake_native/libwestlake_native_abi.so",
+            "sha256": "d20530661a30b8af7bbfb30a6b7138d0b6a6bb5d82e6cb8d733a41ae23886c65",
+            "needed": [
+              "libc.so"
+            ],
+            "soname": "libwestlake_native_abi.so",
+            "rpath": [],
+            "runpath": []
+          }
+        ],
+        "domain_count": 2,
+        "inherit_used": false,
+        "readelf_evidence": [
+          {
+            "sha256": "4b6539415c0acc13f5f76863982e86c042343d2d6534b797a390d7596e99593f",
+            "package_path": "payload/android/lib64/westlake_flutter/libGLESv2.so",
+            "stdout": "Dynamic section at offset 0x828 contains 26 entries:\n  Tag                Type           Name/Value\n  0x0000000000000001 (NEEDED)       Shared library: [libGLESv3.so]\n  0x0000000000000001 (NEEDED)       Shared library: [libc.so]\n  0x000000000000000e (SONAME)       Library soname: [libGLESv2.so]\n  0x000000000000001e (FLAGS)        BIND_NOW \n  0x000000006ffffffb (FLAGS_1)      NOW \n  0x0000000000000007 (RELA)         0x470\n  0x0000000000000008 (RELASZ)       192 (bytes)\n  0x0000000000000009 (RELAENT)      24 (bytes)\n  0x000000006ffffff9 (RELACOUNT)    4\n  0x0000000000000017 (JMPREL)       0x530\n  0x0000000000000002 (PLTRELSZ)     96 (bytes)\n  0x0000000000000003 (PLTGOT)       0x29e8\n  0x0000000000000014 (PLTREL)       RELA\n  0x0000000000000006 (SYMTAB)       0x2e8\n  0x000000000000000b (SYMENT)       24 (bytes)\n  0x0000000000000005 (STRTAB)       0x3f4\n  0x000000000000000a (STRSZ)        118 (bytes)\n  0x000000006ffffef5 (GNU_HASH)     0x390\n  0x0000000000000004 (HASH)         0x3b4\n  0x0000000000000019 (INIT_ARRAY)   0x2810\n  0x000000000000001b (INIT_ARRAYSZ) 8 (bytes)\n  0x000000000000001a (FINI_ARRAY)   0x2818\n  0x000000000000001c (FINI_ARRAYSZ) 16 (bytes)\n  0x000000000000000c (INIT)         0x162c\n  0x000000000000000d (FINI)         0x1640\n  0x0000000000000000 (NULL)         0x0\n",
+            "metadata": {
+              "needed": [
+                "libGLESv3.so",
+                "libc.so"
+              ],
+              "soname": "libGLESv2.so",
+              "rpath": [],
+              "runpath": []
+            }
+          },
+          {
+            "sha256": "ee2fb82c6351b1b8461ce214e8ef39c9b33731523f154f92137991afa0e26c45",
+            "package_path": "payload/android/lib64/westlake_flutter/libandroid.so",
+            "stdout": "Dynamic section at offset 0x23e8 contains 30 entries:\n  Tag                Type           Name/Value\n  0x0000000000000001 (NEEDED)       Shared library: [liboh_android_runtime.so]\n  0x0000000000000001 (NEEDED)       Shared library: [libsurface.z.so]\n  0x0000000000000001 (NEEDED)       Shared library: [libc.so]\n  0x000000000000000e (SONAME)       Library soname: [libandroid.so]\n  0x000000000000001e (FLAGS)        BIND_NOW \n  0x000000006ffffffb (FLAGS_1)      NOW \n  0x0000000000000007 (RELA)         0xbd0\n  0x0000000000000008 (RELASZ)       216 (bytes)\n  0x0000000000000009 (RELAENT)      24 (bytes)\n  0x000000006ffffff9 (RELACOUNT)    4\n  0x0000000000000017 (JMPREL)       0xca8\n  0x0000000000000002 (PLTRELSZ)     840 (bytes)\n  0x0000000000000003 (PLTGOT)       0x45f0\n  0x0000000000000014 (PLTREL)       RELA\n  0x0000000000000006 (SYMTAB)       0x2e8\n  0x000000000000000b (SYMENT)       24 (bytes)\n  0x0000000000000005 (STRTAB)       0x908\n  0x000000000000000a (STRSZ)        708 (bytes)\n  0x000000006ffffef5 (GNU_HASH)     0x780\n  0x0000000000000004 (HASH)         0x7b0\n  0x0000000000000019 (INIT_ARRAY)   0x43d0\n  0x000000000000001b (INIT_ARRAYSZ) 8 (bytes)\n  0x000000000000001a (FINI_ARRAY)   0x43d8\n  0x000000000000001c (FINI_ARRAYSZ) 16 (bytes)\n  0x000000000000000c (INIT)         0x2244\n  0x000000000000000d (FINI)         0x2258\n  0x000000006ffffff0 (VERSYM)       0x6d8\n  0x000000006ffffffc (VERDEF)       0x72c\n  0x000000006ffffffd (VERDEFNUM)    3\n  0x0000000000000000 (NULL)         0x0\n",
+            "metadata": {
+              "needed": [
+                "liboh_android_runtime.so",
+                "libsurface.z.so",
+                "libc.so"
+              ],
+              "soname": "libandroid.so",
+              "rpath": [],
+              "runpath": []
+            }
+          },
+          {
+            "sha256": "551d943fc69dea629119026f56471a8d11ed82fb8482cdf8f8cb3f99fc092ffa",
+            "package_path": "payload/android/lib64/westlake_flutter/libjnigraphics.so",
+            "stdout": "Dynamic section at offset 0x1778 contains 25 entries:\n  Tag                Type           Name/Value\n  0x0000000000000001 (NEEDED)       Shared library: [libc.so]\n  0x000000000000000e (SONAME)       Library soname: [libjnigraphics.so]\n  0x000000000000001e (FLAGS)        BIND_NOW \n  0x000000006ffffffb (FLAGS_1)      NOW \n  0x0000000000000007 (RELA)         0x5f0\n  0x0000000000000008 (RELASZ)       216 (bytes)\n  0x0000000000000009 (RELAENT)      24 (bytes)\n  0x000000006ffffff9 (RELACOUNT)    4\n  0x0000000000000017 (JMPREL)       0x6c8\n  0x0000000000000002 (PLTRELSZ)     240 (bytes)\n  0x0000000000000003 (PLTGOT)       0x3930\n  0x0000000000000014 (PLTREL)       RELA\n  0x0000000000000006 (SYMTAB)       0x2e8\n  0x000000000000000b (SYMENT)       24 (bytes)\n  0x0000000000000005 (STRTAB)       0x4f8\n  0x000000000000000a (STRSZ)        246 (bytes)\n  0x000000006ffffef5 (GNU_HASH)     0x450\n  0x0000000000000004 (HASH)         0x478\n  0x0000000000000019 (INIT_ARRAY)   0x3760\n  0x000000000000001b (INIT_ARRAYSZ) 8 (bytes)\n  0x000000000000001a (FINI_ARRAY)   0x3768\n  0x000000000000001c (FINI_ARRAYSZ) 16 (bytes)\n  0x000000000000000c (INIT)         0x19e4\n  0x000000000000000d (FINI)         0x19f8\n  0x0000000000000000 (NULL)         0x0\n",
+            "metadata": {
+              "needed": [
+                "libc.so"
+              ],
+              "soname": "libjnigraphics.so",
+              "rpath": [],
+              "runpath": []
+            }
+          },
+          {
+            "sha256": "d20530661a30b8af7bbfb30a6b7138d0b6a6bb5d82e6cb8d733a41ae23886c65",
+            "package_path": "payload/android/lib64/westlake_flutter/libwestlake_native_abi.so",
+            "stdout": "Dynamic section at offset 0x2500 contains 28 entries:\n  Tag                Type           Name/Value\n  0x0000000000000001 (NEEDED)       Shared library: [libc.so]\n  0x000000000000000e (SONAME)       Library soname: [libwestlake_native_abi.so]\n  0x000000000000001e (FLAGS)        BIND_NOW \n  0x000000006ffffffb (FLAGS_1)      NOW GLOBAL \n  0x0000000000000007 (RELA)         0xc70\n  0x0000000000000008 (RELASZ)       672 (bytes)\n  0x0000000000000009 (RELAENT)      24 (bytes)\n  0x000000006ffffff9 (RELACOUNT)    19\n  0x0000000000000017 (JMPREL)       0xf10\n  0x0000000000000002 (PLTRELSZ)     408 (bytes)\n  0x0000000000000003 (PLTGOT)       0x4708\n  0x0000000000000014 (PLTREL)       RELA\n  0x0000000000000006 (SYMTAB)       0x2e8\n  0x000000000000000b (SYMENT)       24 (bytes)\n  0x0000000000000005 (STRTAB)       0xa10\n  0x000000000000000a (STRSZ)        608 (bytes)\n  0x000000006ffffef5 (GNU_HASH)     0x7d0\n  0x0000000000000004 (HASH)         0x8a0\n  0x0000000000000019 (INIT_ARRAY)   0x4480\n  0x000000000000001b (INIT_ARRAYSZ) 16 (bytes)\n  0x000000000000001a (FINI_ARRAY)   0x4490\n  0x000000000000001c (FINI_ARRAYSZ) 16 (bytes)\n  0x000000000000000c (INIT)         0x22f4\n  0x000000000000000d (FINI)         0x2308\n  0x000000006ffffff0 (VERSYM)       0x720\n  0x000000006ffffffc (VERDEF)       0x77c\n  0x000000006ffffffd (VERDEFNUM)    3\n  0x0000000000000000 (NULL)         0x0\n",
+            "metadata": {
+              "needed": [
+                "libc.so"
+              ],
+              "soname": "libwestlake_native_abi.so",
+              "rpath": [],
+              "runpath": []
+            }
+          },
+          {
+            "sha256": "7e06cd8b75fe99dbd5bc23b80afea214e6ca0b6579df757fbdadd7a148a3f493",
+            "package_path": "payload/android/lib64/westlake_native/libstdc++.so",
+            "stdout": "Dynamic section at offset 0x818 contains 25 entries:\n  Tag                Type           Name/Value\n  0x0000000000000001 (NEEDED)       Shared library: [libc.so]\n  0x000000000000000e (SONAME)       Library soname: [libstdc++.so]\n  0x000000000000001e (FLAGS)        BIND_NOW \n  0x000000006ffffffb (FLAGS_1)      NOW \n  0x0000000000000007 (RELA)         0x458\n  0x0000000000000008 (RELASZ)       192 (bytes)\n  0x0000000000000009 (RELAENT)      24 (bytes)\n  0x000000006ffffff9 (RELACOUNT)    4\n  0x0000000000000017 (JMPREL)       0x518\n  0x0000000000000002 (PLTRELSZ)     96 (bytes)\n  0x0000000000000003 (PLTGOT)       0x29c8\n  0x0000000000000014 (PLTREL)       RELA\n  0x0000000000000006 (SYMTAB)       0x290\n  0x000000000000000b (SYMENT)       24 (bytes)\n  0x0000000000000005 (STRTAB)       0x3c0\n  0x000000000000000a (STRSZ)        146 (bytes)\n  0x000000006ffffef5 (GNU_HASH)     0x350\n  0x0000000000000004 (HASH)         0x378\n  0x0000000000000019 (INIT_ARRAY)   0x2800\n  0x000000000000001b (INIT_ARRAYSZ) 8 (bytes)\n  0x000000000000001a (FINI_ARRAY)   0x2808\n  0x000000000000001c (FINI_ARRAYSZ) 16 (bytes)\n  0x000000000000000c (INIT)         0x1770\n  0x000000000000000d (FINI)         0x1784\n  0x0000000000000000 (NULL)         0x0\n",
+            "metadata": {
+              "needed": [
+                "libc.so"
+              ],
+              "soname": "libstdc++.so",
+              "rpath": [],
+              "runpath": []
+            }
+          }
+        ],
+        "owner_artifact": {
+          "path": "payload/route/libapp_native_loader.so",
+          "sha256": "eebd62f2e9107e7915745280d4de85d44e4106a589508d25fa5f867007b2473c"
+        },
+        "scope": "sealed effective domain paths and package/system-snapshot files; no inherit or symbol-version proof"
+      },
+      "findings": [
+        {
+          "domain": "westlake_flutter",
+          "kind": "unknown-effective-path",
+          "expression": "domain->app_paths",
+          "issue_id": "bd5968afe6cb441277887d19cfe69916dc7f50230dadfd182c643e183f83d949",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_flutter",
+          "kind": "unknown-effective-path",
+          "expression": "domain->app_permitted_paths",
+          "issue_id": "a451c2e6ffffbb44106b3a63c34e3fad5909a85da2de892a0808e0092d578fdc",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_flutter",
+          "kind": "unknown-effective-path",
+          "expression": "domain->selected_load_dir",
+          "issue_id": "55cad97ed90a3713d396946443750f10c849c73c8efffcb6169d5a87171a9a44",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_flutter",
+          "library": "/system/android/lib64/westlake_flutter/libGLESv2.so",
+          "needed": "libGLESv3.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_flutter/libGLESv3.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/lib64/platformsdk/libGLESv3.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "e82d3b2a3c15c0e827540828a202d71168135c41495e40fa3b09106c7e0ff2a6",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_flutter",
+          "library": "/system/android/lib64/westlake_flutter/libGLESv2.so",
+          "needed": "libc.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_flutter/libc.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/android/lib64/libc.so",
+            "/system/lib64/libc.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "6cc9330b44e42a3c89fe1442cf45b20c8678bc283fddb8fc4cee2c29a7aac06f",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_flutter",
+          "library": "/system/android/lib64/westlake_flutter/libandroid.so",
+          "needed": "liboh_android_runtime.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_flutter/liboh_android_runtime.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/android/lib64/liboh_android_runtime.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "90749d7f0116195219655857b8b523c77b38c10d156ae5199e0c0bde3eeb5b5e",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_flutter",
+          "library": "/system/android/lib64/westlake_flutter/libandroid.so",
+          "needed": "libsurface.z.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_flutter/libsurface.z.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/lib64/chipset-sdk-sp/libsurface.z.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "1b6eee994fc20cec462a0b2b0ba836dee9d63f3106906eb8658ad46427cb2506",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_flutter",
+          "library": "/system/android/lib64/westlake_flutter/libandroid.so",
+          "needed": "libc.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_flutter/libc.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/android/lib64/libc.so",
+            "/system/lib64/libc.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "1cc61cf30eeb55af8e4c99a0310e35b53d016c9c5dbd613170370d51b6fc14e2",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_flutter",
+          "library": "/system/android/lib64/westlake_flutter/libjnigraphics.so",
+          "needed": "libc.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_flutter/libc.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/android/lib64/libc.so",
+            "/system/lib64/libc.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "9e55ac2171ca4c8d6a7e9948a51dd1495aa412b3812825b7a3ce43d38f11984f",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_flutter",
+          "library": "/system/android/lib64/westlake_flutter/libwestlake_native_abi.so",
+          "needed": "libc.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_flutter/libc.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/android/lib64/libc.so",
+            "/system/lib64/libc.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "6ff7d57a357bfbfe34f2aa06c7692c9db5b8ae313f16306d75a1b6018e0f21bc",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_native",
+          "kind": "unknown-effective-path",
+          "expression": "domain->app_paths",
+          "issue_id": "773168b5ef370555c95163c402e61929c6dccf5071fd5587c694921eab088153",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_native",
+          "kind": "unknown-effective-path",
+          "expression": "domain->app_permitted_paths",
+          "issue_id": "6185f0a2cbf0aa6aa1784535d593f73303d5c2d04181495c364f66f3c3430a6b",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_native",
+          "kind": "unknown-effective-path",
+          "expression": "domain->selected_load_dir",
+          "issue_id": "79f9140864dfa9c43fca8863ac6e063ff0be2acf31f1dc387d8116fc0733241d",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_native",
+          "library": "/system/android/lib64/westlake_native/libGLESv2.so",
+          "needed": "libGLESv3.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_native/libGLESv3.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/lib64/platformsdk/libGLESv3.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "d261a26a757152e0e745ca9ee830bec78993944385ad13f66c1e7441576e7dbe",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_native",
+          "library": "/system/android/lib64/westlake_native/libGLESv2.so",
+          "needed": "libc.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_native/libc.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/android/lib64/libc.so",
+            "/system/lib64/libc.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "7046acf1d1274f065b5e04adb28c1a3f9461ed872368f5f23cf0943b094ae9a8",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_native",
+          "library": "/system/android/lib64/westlake_native/libandroid.so",
+          "needed": "liboh_android_runtime.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_native/liboh_android_runtime.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/android/lib64/liboh_android_runtime.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "e6c12f86a8efb6984bd317160f0cb5d83081b9404593039532d7736e9eb64a4e",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_native",
+          "library": "/system/android/lib64/westlake_native/libandroid.so",
+          "needed": "libsurface.z.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_native/libsurface.z.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/lib64/chipset-sdk-sp/libsurface.z.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "b8d9c653d6741c87c8661f958ece3b17f2f3d7e09e095e3e6749bad9890026b1",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_native",
+          "library": "/system/android/lib64/westlake_native/libandroid.so",
+          "needed": "libc.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_native/libc.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/android/lib64/libc.so",
+            "/system/lib64/libc.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "9c2ff42a2fdc5b5ceabdeeeecb9d829b0e0a1b11705b0ba73e51dce732168417",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_native",
+          "library": "/system/android/lib64/westlake_native/libjnigraphics.so",
+          "needed": "libc.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_native/libc.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/android/lib64/libc.so",
+            "/system/lib64/libc.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "4141d1d3a58fa2d28fe30ecb675cd4aee529d5317a36a4f70f558abefee48751",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_native",
+          "library": "/system/android/lib64/westlake_native/libstdc++.so",
+          "needed": "libc.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_native/libc.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/android/lib64/libc.so",
+            "/system/lib64/libc.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "18782aa9136ce8ec447da4894dd114370d1187a8efe71e244ad962b57484eb89",
+          "disposition": "REJECT"
+        },
+        {
+          "domain": "westlake_native",
+          "library": "/system/android/lib64/westlake_native/libwestlake_native_abi.so",
+          "needed": "libc.so",
+          "resolved": null,
+          "kind": "missing-dt-needed",
+          "searched": [
+            "/system/android/lib64/westlake_native/libc.so"
+          ],
+          "outside_domain_candidates": [
+            "/system/android/lib64/libc.so",
+            "/system/lib64/libc.so"
+          ],
+          "inherit_used": false,
+          "issue_id": "9e89d1c88c3643cf8e1ac091215e5fb9d02158b009fe5f3a32bf6a0d45c7aac5",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/data/app/el1/bundle/public/com.a2hlab.bridge.zigzag/android/lib/arm64-v8a",
+          "issue_id": "8b358acb18f335a4c788f322ceeaebb089762de5e71a2b22f5f6ea48517937cd",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/android/lib64",
+          "issue_id": "fdd4114c996817c3d598f2548858db0ecdedafe65c49f6b678745382e24f9b96",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64",
+          "issue_id": "7e4010611a4fee8cdae956b0737c568887645e97096b3b6d17b3bfbe4d07d91a",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/appdetailability",
+          "issue_id": "c648a5998dc9229a3ec6c002e27a7361b7aa65a73603a4837a26cce78feae048",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/appspawn",
+          "issue_id": "bad8b6997678109e332dcbd25cd6baa380640b1cc6fb5a5dd1db8998af73c797",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/appspawn/appspawn",
+          "issue_id": "5458c6ed995b0fb624bb59aa8878d3c772934580ae740924cbe7d3a011425eca",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/appspawn/common",
+          "issue_id": "7524dbfdc5f0f6c07363df284a842cec7f741a0ece376d9bd4e9e6b3083ea6f7",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/appspawn/nativespawn",
+          "issue_id": "0328badb17736f4dcb8c35f8328f43c9b143d883308c1d0b98ed067cfb814569",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/appspawn/nwebspawn",
+          "issue_id": "461c3d5ec52ea317fa925449d95f8030477c5deaaa49fa03f2e762feba8fd1ee",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/chipset-pub-sdk",
+          "issue_id": "e7acda88ceba839ee08a52e2d78b98e4f0fd3b9a76dbbf29f5fc5f3acc36b11f",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/chipset-sdk",
+          "issue_id": "9fd9ed07715a41c3709994d99e809ebc9c406279724590916e306a4652964d25",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/chipset-sdk-sp",
+          "issue_id": "0605f334c860bd2a66ddbd226624e17f06189bb9f8ba5d06fd961a3114e4966d",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/edm_plugin",
+          "issue_id": "35263fa1e24df90a07b72cd991580485ebdbab77cef29c50f58e8792e927246a",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/extensionability",
+          "issue_id": "5a7afcbb4a8663fabfcee289e1f219f6e55611062069b01a464afb38c64eef0d",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/graphics3d",
+          "issue_id": "275c382200b9476792602ece69f82a938ecd3e5cd38f1023ff8e03d922618f57",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/init",
+          "issue_id": "d280159de54bcb62c7fa8c97d4962061a6ab212e92cfc33c2d230cee0f2d1555",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/init/autorun",
+          "issue_id": "e8b18f415677509dfcf48d0067ecf33a51b72cc33ed84e93583f31520a35cf8a",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/init/reboot",
+          "issue_id": "c8675129067eb09c5b50800b5928e93aeb7a238a5679627bacf839f6b63e05c1",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/media",
+          "issue_id": "4b290533ebef4ea52d61c3db03993c5ad3d7b9ad076e3568dfeca08a5739bbe3",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/media/histreamer_plugins",
+          "issue_id": "473f1c079f838959a417100732df838bea0075a7ed5118be76390bad6f1ea497",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/media/media_plugins",
+          "issue_id": "933b0df16d7f9bc1d874097ce966b8233c9ef01175b5e90a1798b101b5555e8d",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module",
+          "issue_id": "17a49783109b6b186b0559c12be48fad5bc564d6212fb9441d520308d6d29eef",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/ability",
+          "issue_id": "8fdacf5f60fc441abf93ba073d66e354723ae59756f550da59d6633e68173802",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/accessibility",
+          "issue_id": "9a92c085eaf04a8c30bb142e136256ea265de9e37e8e746db2fcf9250f832e78",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/account",
+          "issue_id": "bf1a5a06bcf707830a3775d09cd1168da7e44b405b3881956532ceba3357ea7b",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/advertising",
+          "issue_id": "c14b7b308dd4d1d0f3b6028992c70184e3dd826b7d34328566463cd9c8007be2",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/ai",
+          "issue_id": "fb9933f529276bc954d4979f787e23fb275fb676d9c8abcc887847c2980034ed",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/animation",
+          "issue_id": "ea0bf5b14ad7bcf4c62a7979df72b56e74babc23bccadfb14eb61d3a87446927",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/app",
+          "issue_id": "c63faac2e4a4f8a9a0a4d36b288f8e6018371eb0ec575493a77a9543a4c66108",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/app/ability",
+          "issue_id": "4c0e7c2be6f203f13b70bdc47d4a855e81ced202d3bb92723cd644d091a785ff",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/app/appstartup",
+          "issue_id": "e0b608b2eccc5b573d1addd557b2c675266c2c73087585150067e63c54bac858",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/app/form",
+          "issue_id": "3178b085d70764af14c4d4e63d897a2a68ebbdb0b1cfc3b48003bc7bf8e8022e",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/application",
+          "issue_id": "8aaf012febb7a754b071d7aa343d0be15258d770e7182e012aaeabd387b3fd23",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/arkts",
+          "issue_id": "0badecd4f4b3799534c9e8f001bba068a0b5be81544a21ecba09fd17c9b93dce",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/arkts/math",
+          "issue_id": "1aef3b947236f03283204c07fab2f86898e67a1ede86d8f5ab089a6c4a70ed74",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/arkui",
+          "issue_id": "440d4350b9641de8357e80ec75afc549ddd8642c4b18b70e37b7efcbe766f488",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/arkui/advanced",
+          "issue_id": "8e7773e6a9c91114372c486685558371b0aa02d5c57dc81bd01feb9a2e324876",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/arkui/intelligence",
+          "issue_id": "54d69e8ee07eefa254e81f1cb98daefcc5833e8728ecbcc6dbf109c54228fde3",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/atomicservice",
+          "issue_id": "684c23d67178f64d1bdf2a5b8ab3df6fda74b9c001fe6b7d7316ae28a71062f9",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/bluetooth",
+          "issue_id": "b063b10cd3d9ca375eae0a2f1897114842d496f27c96375ddb85a537d7452bdd",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/bundle",
+          "issue_id": "c0583b629caaaea8b411195324300ba8e1f683754b912aa741f449afeda36366",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/continuation",
+          "issue_id": "c689af6671f31e749282d81d20a7e9f26f2a2a23d9632dd350361926754c9ac1",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/customization",
+          "issue_id": "8fcb5c2280746e33a66ae948bf6a2acf9f952322e900182368c74ecd9e308b8e",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/data",
+          "issue_id": "7d0c713f9f561f118877b689b0cbed6ac60a59231fe13d6be5a171837619534b",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/devicestatus",
+          "issue_id": "98f8b1fc5066f4f5312d8b5d9071d73ad408c9bad935cec19a322b672c49ad58",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/distributedhardware",
+          "issue_id": "9397fc6f3e66fe1f8ced1b59c99aca329bd3f21fa26e5f7bd95447732cd08b8f",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/distributedsched",
+          "issue_id": "662f79abfb74f82b0cb77a0c6ff51cee563635d81f2c551c060a3699b3021749",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/driver",
+          "issue_id": "950785a246feb4385ecd132723022ca62e6407bc1a085b9fddc393fa68d3703c",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/enterprise",
+          "issue_id": "14539c16f6b44c21b4f41640772803c97e4d0a47fbe193e2d75da87369a0483b",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/events",
+          "issue_id": "17274603d60fe34c485889d00278e536b4247df6acf4b6af20e967a11c469c6f",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/file",
+          "issue_id": "c9870ac298feb96ac77fa2031256d3570647c4a8dad765e9efe56964125ec9ae",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/filemanagement",
+          "issue_id": "b4c169dd0291a3b3195668a5066f2e1654bd5d9c23440304aa3faec5a53c75f2",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/fusionconnectivity",
+          "issue_id": "ce8c9d955b488b3bb98a57eda6f75cde180bcaa2e0ac8426f6cef8baa53bd77f",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/graphics",
+          "issue_id": "1097539613909b07cca342d3944fbc93fce4e70c806fb14c24d66c0e1c3d964a",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/hiviewdfx",
+          "issue_id": "c0e83d0807c04ebe3c754229ef5eb04a330cab583ce790ea18962d92c9e5284d",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/identifier",
+          "issue_id": "634eb9d5275ba7b852c1465adb6cc943982afc4458e6f29183f107896e23ede8",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/inputmethod",
+          "issue_id": "8e2cbc173e7a908ad55b1850e299b6518d87a7a25df4c932ea7c9e7197129dbb",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/multimedia",
+          "issue_id": "12ee727a17273b8aef7610051da18fe37936f444a7c1b102594e454959824723",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/multimodalawareness",
+          "issue_id": "b688e014f7ca11c75fbd8a891267d04160dda4cd14252714cf26096f19a44658",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/multimodalinput",
+          "issue_id": "819df9adf6c195835c3cc0348523f83fb66c318fd0ea1599437f4887b0d12ada",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/net",
+          "issue_id": "a606c7c8ae672da2e824e48f26fedf71887b5ea72f2a8177c76d0280f4b96381",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/request",
+          "issue_id": "5750b8729235ee4a3e1a68884bee5eda29c75f439ea55afeb8aa393ca80861fa",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/resourceschedule",
+          "issue_id": "bb60c528d70df211ae444cd2b9f29240d5fa48c972f26a82208560af284ebf27",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/security",
+          "issue_id": "bca3890862fe6e8b778beb925fa971fa1fd361faa8f7da5cac1b64778b2f9dc0",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/selectioninput",
+          "issue_id": "63b8db568f58bd117a0bf55258965ddcfa921aeac10e45e92cc47d8d26b7960b",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/telephony",
+          "issue_id": "4fa9f96c8b0def1401de7d2555984f9057f6bb0a618b73af9a76335b39aebf3a",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/test",
+          "issue_id": "cc7acb289529c7a5b37324b2f195488d4caf18ffe2e22dee7a3d67241ef8d9d7",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/usbmanager",
+          "issue_id": "81166a9ed99b227ce2ff8abbd0c1d32412ac903f7e6e43e35d6aadac4634315d",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/useriam",
+          "issue_id": "be5b7b300f79c924877a3ab2cbba2c4d9d821a04440bc5bc43adbbb2f999db95",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/util",
+          "issue_id": "6c6df82ee234429420287e8861b9e51cd8bd3f361af55bebc15e438b7d9c3395",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/web",
+          "issue_id": "1aa4d332aaad505cc84a73c20942b5dee3dec7afa894e822ee0b79714aacc020",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/module/window",
+          "issue_id": "821f2730a8b1ee01302d69eca8375db9de8554d3e627a9610c0057c7eb98deab",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/ndk",
+          "issue_id": "86820fb16be77334b403351c5c1d54cdf64bc8ad3aca2bb9824114e9ac46b0b4",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/platformsdk",
+          "issue_id": "bef559089c1b7afb80a9c17feb25e20842bb67f99a3b4cae255f03a840e891df",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/seccomp",
+          "issue_id": "f1cc21276b173db92bbb7ae30e35bd934c393956b4659b72c8a32f9a2562bc0b",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/westlake/route-a/74d1d6d48210ec5bf66ae43598655c3486b8873513821f13c2ffe15f0de552ac",
+          "issue_id": "6afe248d7cf5c84301d3624b0146aa546ece7763c7fb269a4ffe24564394242d",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/system/lib64/westlake/route-a/74e6f75976087d7890088b29c08482f17573a588fa5857cb6ca39264838ce16d",
+          "issue_id": "438b55409bc69a47a8b739ba2e2472773f8cd42d289252f9ff1d9888f3adbb08",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/vendor/lib64",
+          "issue_id": "ea31c5190324955b812429f14e7cfb3ee7b79616b259b77df3290a2f0cced3cc",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/vendor/lib64/chipsetsdk",
+          "issue_id": "94f0e07c7e5bb97c73b62ef73089bc03871f3f2ec52baa9c6abbab4dd2026059",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/vendor/lib64/hw",
+          "issue_id": "b644017d24879e8b830f9e1267c3841db9925c8f597954e2f41507a4da136cc1",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/vendor/lib64/passthrough",
+          "issue_id": "b24dafb3263aec2a3498b5eb8b67c200fd287788fc9d1f8a29bf85ec125deaa1",
+          "disposition": "REJECT"
+        },
+        {
+          "kind": "uncovered-library-directory",
+          "directory": "/vendor/lib64/passthrough/indirect",
+          "issue_id": "e7cd9ff419393b3d7a236f6fd8bb0119976bc3bb577de900d8c8920d7d5ddac7",
+          "disposition": "REJECT"
+        }
+      ],
+      "rejected": 103,
+      "excepted": 0,
+      "stale": [],
+      "warnings": []
+    }
+  },
+  "errors": [],
+  "package_manifest_sha256": "35c68ddc0a1469ccd5d17fe1dbeb2af62bd224287907a1e70278ab0a82f37135",
+  "inputs_sha256": "caf0a2e0d9a23a109ddfc9f27993f836ef91b9931436eb3bae4aac9b573515a0",
+  "exceptions_sha256": "8bb327f2a9718d22b6b7552b397d621cfe3ec689528af782126b137eb18d1483"
+}

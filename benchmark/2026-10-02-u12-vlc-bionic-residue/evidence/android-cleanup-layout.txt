@@ -1,0 +1,25 @@
+363: typedef void (*__pthread_cleanup_func_t)(void*);
+364: 
+365: typedef struct __pthread_cleanup_t {
+366:   struct __pthread_cleanup_t*   __cleanup_prev;
+367:   __pthread_cleanup_func_t      __cleanup_routine;
+368:   void*                         __cleanup_arg;
+369: } __pthread_cleanup_t;
+370: 
+371: void __pthread_cleanup_push(__pthread_cleanup_t* c, __pthread_cleanup_func_t, void*);
+372: void __pthread_cleanup_pop(__pthread_cleanup_t*, int);
+373: 
+374: /* Believe or not, the definitions of pthread_cleanup_push and
+375:  * pthread_cleanup_pop below are correct. Posix states that these
+376:  * can be implemented as macros that might introduce opening and
+377:  * closing braces, and that using setjmp/longjmp/return/break/continue
+378:  * between them results in undefined behavior.
+379:  */
+380: #define  pthread_cleanup_push(routine, arg)                      \
+381:     do {                                                         \
+382:         __pthread_cleanup_t  __cleanup;                          \
+383:         __pthread_cleanup_push( &__cleanup, (routine), (arg) );  \
+384: 
+385: #define  pthread_cleanup_pop(execute)                  \
+386:         __pthread_cleanup_pop( &__cleanup, (execute)); \
+387:     } while (0);                                       \

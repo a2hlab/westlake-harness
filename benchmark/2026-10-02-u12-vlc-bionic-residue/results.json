@@ -1,0 +1,40 @@
+{
+  "key": "vlc",
+  "candidate_sha256": "b2be657ca2c171dd786068e77be90d82ec3a50407df37b1ccbafef94a8db88a6",
+  "standalone_u12_first_fatal_move": 0,
+  "conditional_after_scope_fix": [
+    "vlc"
+  ],
+  "conditional_first_fatal_move_count": 1,
+  "execution_enabled": false,
+  "runtime_files_changed": 1,
+  "package_aliases": [
+    "payload/android/lib64/libbionic_compat.so",
+    "payload/route/libbionic_compat.so"
+  ],
+  "rollback_sha256": "015aa3a632eabe057bd8d6ce0e0ff181209da7dcab8de22409a79addc0a56d58",
+  "rollback": "restore both aliases to exact015aa; host/policy/app APK unchanged",
+  "implementation": "real AOSP14 conversions plus Android-to-OH cleanup records on OH's own stack; actual OH exit loop executes callbacks",
+  "semantics_limit": "one heap shadow record per Android push; allocation failure aborts, unlike allocation-free bionic; cancellation/C++ unwinding are not newly guaranteed",
+  "no_namespace_scope_patch": true,
+  "new_exports": [
+    "__pthread_cleanup_pop",
+    "__pthread_cleanup_push",
+    "strtoll_l",
+    "strtoull_l"
+  ],
+  "two_builds_identical": true,
+  "current_wall": "VLC libc++_shared strtoll_l missing, plus libvlc cleanup_push on retry -> app exit1",
+  "next_exact_fatal": "unknown",
+  "t20": "unknown",
+  "scope_dependency": "same resident compat scope prerequisite as Gecko; exports-only standalone draft has no proven binding and is not counted as first-fatal movement",
+  "additional_static_targets_not_counted": [
+    "fd-fennec_fdroid",
+    "firefox",
+    "ppsspp"
+  ],
+  "expect": {
+    "confirm": "same app PID resolves strtoll_l/strtoull_l/cleanup to sole resident compat; old missing-symbol roots disappear before terminal",
+    "refute": "same missing-symbol root remains despite four exports, or cleanup ordering/thread-exit regression occurs; restore015aa"
+  }
+}
