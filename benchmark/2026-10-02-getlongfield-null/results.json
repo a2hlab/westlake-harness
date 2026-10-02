@@ -1,0 +1,44 @@
+{
+  "task": "GetLongField JniAbort: fid==null (hardened), double-copy uninitialized-cache",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "offline": true,
+  "board_deploy": false,
+  "correction": "earlier 'obj==null / not double-copy / shelve' used the abort-time x0 register dump (invalid). Re-determined statically.",
+  "hardened": {
+    "binary": "deployed route-a libart.so build-id 8c2796fcedddaf77a3fa013801ebfc19643c1004",
+    "symbol": "art::JNI<false>::GetLongField @0x56b41c",
+    "obj_null_path": "bl JavaVMExt::JniAbort @0x56ba7c = +1632, msg 'obj == null'",
+    "fid_null_path": "bl JavaVMExt::JniAbort @0x56ba9c = +1664, msg 'fid == null'",
+    "observed": "all 4 keys backtrace frame#06 = GetLongField+1664 (fid-null); +1632 count 0",
+    "verdict": "fid == null (the AssetManager.mObject jfieldID is null)"
+  },
+  "mechanism": {
+    "cache": "gAssetManagerOffsets per-.so-copy BSS global in liboh_android_runtime.so AND libandroid.so",
+    "init": "OH_AssetOffsets logs 'AssetManager.mObject cached in runtime and libandroid NDK owner' ONCE/process -> fills one copy",
+    "fault": "flutter/native app domain reads a separately-loaded runtime/libandroid copy whose gAssetManagerOffsets.mObject was never filled -> fid==null",
+    "is_double_copy": true,
+    "reverses": "the n11h-r2 shelve (prediction 0) is WITHDRAWN"
+  },
+  "predicted_move": [
+    "cv2-org-linaro-glmark2",
+    "localsend",
+    "fd-fluffychat",
+    "fd-immich"
+  ],
+  "not_moved_different_wall": [
+    "fd-im-vector-app",
+    "mindustry",
+    "fd-meet"
+  ],
+  "fix_layer": "native (liboh_android_runtime.so AssetManager cache), NOT JAR",
+  "fix_options": {
+    "1_per_copy_cache_init": "fill gAssetManagerOffsets.mObject in every runtime/libandroid copy (drop once-guard) -- smallest variable, only the cache init, no loader change",
+    "2_single_owner_scoped": "flutter/native branch shares the initialized owner instead of inheriting from default -- bigger (namespace + JNI_OnLoad guard)"
+  },
+  "confirmation_gap": "unlit keys lack maps; confirm the exact copy via one maps-capturing flutter run OR static read of the OH_AssetOffsets once-guard",
+  "evidence": [
+    "evidence/getlongfield-fid-null-disasm.txt",
+    "evidence/cache-owner-and-keys.txt"
+  ]
+}

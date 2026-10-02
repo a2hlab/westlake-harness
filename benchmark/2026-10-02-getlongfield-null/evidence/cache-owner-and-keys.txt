@@ -1,0 +1,12 @@
+# Cache owner + per-key split
+
+## OH_AssetOffsets cache code lives in liboh_android_runtime.so
+   string "AssetManager.mObject cached in runtime and libandroid NDK owner" -> android/lib64/liboh_android_runtime.so
+   gAssetManagerOffsets is a per-.so-copy BSS global in BOTH liboh_android_runtime.so (B _ZN7android20gAssetManagerOffsetsE
+   @0x211500) and libandroid.so (B @0x8b9e0). The OH_AssetOffsets init logs ONCE per process -> it fills the copy that
+   runs it (+ that copy's libandroid NDK owner). A runtime/libandroid copy loaded in a different domain is NOT filled.
+
+## per-key terminal (window5 U10.1T8): only the 4 fid==null keys abort in GetLongField
+   fid==null (GetLongField+1664), move candidates:  cv2-org-linaro-glmark2, localsend, fd-fluffychat, fd-immich
+   main_threw (java exception, DIFFERENT wall, NOT moved by this fix):  fd-im-vector-app, mindustry, fd-meet
+     (each: GetLongField+1664 count=0, J_invokeStaticMain_main_threw count=1)
