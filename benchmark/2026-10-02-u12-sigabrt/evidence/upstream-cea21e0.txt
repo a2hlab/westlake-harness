@@ -1,0 +1,108 @@
+commit cea21e0092de47840f35398ee7739e2cf3c73718
+Author:     ymote <151983+ymote@users.noreply.github.com>
+AuthorDate: Tue Sep 22 13:41:45 2026 -0700
+Commit:     ymote <151983+ymote@users.noreply.github.com>
+CommitDate: Tue Sep 22 13:41:45 2026 -0700
+
+    Let a Flutter engine load: three symbols, one JNI method
+    
+    libflutter.so imports ANativeWindow_lock, ANativeWindow_unlockAndPost and
+    __openat_2. None is defined by musl or the staged runtime, so dlopen failed
+    before Flutter could choose its GL path and LocalSend never drew a frame.
+    
+    __openat_2 is bionic's FORTIFY wrapper for openat and is implemented as such.
+    The ANativeWindow pair belongs to the CPU-rendering path; Westlake's window
+    adapter has the OH plumbing for it but not the pair, so these report the path
+    as unavailable rather than pretending to render. A caller that only links
+    them loads; a caller that uses them gets a clear failure, not a wrong picture.
+    
+    With those in place libflutter.so loads and the next gap is visible:
+    SurfaceControl.nativeSetDesiredHdrHeadroom has no implementation registered,
+    and an unregistered native aborts the process. The method is added to the
+    SurfaceControl JNI table as an accepted no-op, which is what a display
+    without HDR does -- but liboh_android_runtime.so is built by the native
+    object chain, so this change is not in the deployed runtime yet and LocalSend
+    still stops there.
+    
+    Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+
+diff --git a/framework/android-runtime/src/android_view_SurfaceControl.cpp b/framework/android-runtime/src/android_view_SurfaceControl.cpp
+index 7db0b1e..f296ead 100755
+--- a/framework/android-runtime/src/android_view_SurfaceControl.cpp
++++ b/framework/android-runtime/src/android_view_SurfaceControl.cpp
+@@ -479,6 +479,12 @@ void SC_nativeUnsetBuffer(JNIEnv*, jclass, jlong, jlong) { }
+ void SC_nativeSetBufferTransform(JNIEnv*, jclass, jlong, jlong, jint) { }
+ void SC_nativeSetDataSpace(JNIEnv*, jclass, jlong, jlong, jint) { }
+ void SC_nativeSetExtendedRangeBrightness(JNIEnv*, jclass, jlong, jlong, jfloat, jfloat) { }
++
++// Android 15 HDR headroom request. OH's render service has no equivalent knob and the caller
++// treats it as advisory, so accepting it and doing nothing matches what a display without HDR
++// does. Flutter asks for it while creating its surface, and an unregistered native aborts the
++// process before the first frame.
++void SC_nativeSetDesiredHdrHeadroom(JNIEnv*, jclass, jlong, jlong, jfloat) { }
+ void SC_nativeSetCachingHint(JNIEnv*, jclass, jlong, jlong, jint) { }
+ void SC_nativeSetDamageRegion(JNIEnv*, jclass, jlong, jlong, jobject) { }
+ void SC_nativeSetDimmingEnabled(JNIEnv*, jclass, jlong, jlong, jboolean) { }
+@@ -875,6 +881,8 @@ const JNINativeMethod kSurfaceControlMethods[] = {
+       reinterpret_cast<void*>(SC_nativeSetDataSpace) },
+     { "nativeSetExtendedRangeBrightness", "(JJFF)V",
+       reinterpret_cast<void*>(SC_nativeSetExtendedRangeBrightness) },
++    { "nativeSetDesiredHdrHeadroom", "(JJF)V",
++      reinterpret_cast<void*>(SC_nativeSetDesiredHdrHeadroom) },
+     { "nativeSetCachingHint", "(JJI)V",
+       reinterpret_cast<void*>(SC_nativeSetCachingHint) },
+     { "nativeSetDamageRegion", "(JJLandroid/graphics/Region;)V",
+diff --git a/framework/webview-shim/webview_bionic_shim.c b/framework/webview-shim/webview_bionic_shim.c
+index 127c424..99d19c3 100644
+--- a/framework/webview-shim/webview_bionic_shim.c
++++ b/framework/webview-shim/webview_bionic_shim.c
+@@ -1202,6 +1202,49 @@ long fpathconf(int fd, int name)
+     return real_fpathconf(fd, (int)native_name);
+ }
+ 
++/*
++ * Symbols an Android-built library imports that neither musl nor the staged runtime defines, and
++ * whose absence stops the library loading at all. libflutter.so is the case that found these: it
++ * imports the software-rendering pair and a FORTIFY open, so dlopen fails before Flutter ever
++ * chooses its GL path.
++ *
++ * __openat_2 is bionic's _FORTIFY_SOURCE wrapper and has openat's semantics exactly.
++ *
++ * ANativeWindow_lock/unlockAndPost belong to the CPU-rendering path: lock hands the caller a
++ * mapped buffer to draw into. Westlake's ANativeWindow adapter has the OH plumbing for that
++ * (request buffer, buffer handle, virAddr) but does not implement the pair, so these report the
++ * path as unavailable rather than pretending to render. A caller that only links them gets a
++ * loadable library; a caller that uses them gets a clear failure instead of a wrong picture.
++ */
++long __openat_2(int dirfd, const char* path, int flags)
++{
++    typedef int (*OpenatFn)(int, const char*, int, ...);
++    static OpenatFn real_openat;
++    if (real_openat == NULL) real_openat = (OpenatFn)dlsym(RTLD_NEXT, "openat");
++    if (real_openat == NULL) { errno = ENOSYS; return -1; }
++    return real_openat(dirfd, path, flags);
++}
++
++int ANativeWindow_lock(void* window, void* outBuffer, void* inOutDirtyBounds)
++{
++    (void)window; (void)outBuffer; (void)inOutDirtyBounds;
++    static int logged;
++    if (!__atomic_exchange_n(&logged, 1, __ATOMIC_RELAXED)) {
++        fprintf(stderr, "[WESTLAKE-ANW] ANativeWindow_lock: CPU rendering path not implemented; "
++                "callers with a GPU path are unaffected\n");
++        fflush(stderr);
++    }
++    errno = ENODEV;
++    return -ENODEV;
++}
++
++int ANativeWindow_unlockAndPost(void* window)
++{
++    (void)window;
++    errno = ENODEV;
++    return -ENODEV;
++}
++
+ long sysconf(int name)
+ {
+     typedef long (*SysconfFn)(int);

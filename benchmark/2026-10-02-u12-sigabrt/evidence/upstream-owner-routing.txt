@@ -1,0 +1,43 @@
+415: static void *bridge_symbol(const char *name)
+416: {
+417:     static void *bridge;
+418:     static void *asset_bridge;
+419:     if (bridge == NULL) {
+420:         bridge = dlopen("liboh_adapter_bridge.so", RTLD_NOW | RTLD_GLOBAL);
+421:         if (bridge == NULL) {
+422:             fprintf(stderr, "[WESTLAKE-WEBVIEW-NDK] bridge load failed: %s\n", dlerror());
+423:             return NULL;
+424:         }
+425:     }
+426: 
+427:     void *symbol = dlsym(bridge, name);
+428:     /*
+429:      * Older validated bridge builds predate the Android NDK AssetManager C
+430:      * boundary.  Loading a newly relinked four-megabyte framework bridge just
+431:      * for that narrow API also perturbs unrelated ART/GC state on this port.
+432:      * Resolve only wl_AAsset* through a small companion which reuses the
+433:      * already-loaded bridge's Java AssetManager and AssetManager2 objects.
+434:      * Keep this lazy: the companion has framework C++ relocations and must not
+435:      * be pulled into appspawn before the runtime bridge is fully initialized.
+436:      */
+437:     if (symbol == NULL && strncmp(name, "wl_AAsset", 9) == 0) {
+438:         if (asset_bridge == NULL) {
+439:             asset_bridge = dlopen("libwestlake_asset_bridge.so",
+440:                                   RTLD_NOW | RTLD_GLOBAL);
+441:             if (asset_bridge == NULL) {
+442:                 fprintf(stderr,
+443:                         "[WESTLAKE-WEBVIEW-NDK] asset bridge load failed: %s\n",
+444:                         dlerror());
+445:                 return NULL;
+446:             }
+447:         }
+448:         symbol = dlsym(asset_bridge, name);
+449:     }
+450:     if (symbol == NULL) {
+470: AAssetManager *AAssetManager_fromJava(JNIEnv *env, jobject asset_manager)
+471: {
+472:     typedef void *(*Fn)(JNIEnv *, jobject);
+473:     static Fn fn;
+474:     if (fn == NULL) fn = (Fn)bridge_symbol("wl_AAssetManager_fromJava");
+475:     return fn != NULL ? (AAssetManager *)fn(env, asset_manager) : NULL;
+476: }

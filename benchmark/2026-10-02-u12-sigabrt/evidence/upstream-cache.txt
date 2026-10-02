@@ -1,0 +1,29 @@
+139: 
+140: ::AAssetManager* NdkAssetManagerForJavaObject(JNIEnv* env, jobject jassetmanager) {
+141:   jlong assetmanager_handle = env->GetLongField(jassetmanager, gAssetManagerOffsets.mObject);
+142:   ::AAssetManager* am = reinterpret_cast<::AAssetManager*>(assetmanager_handle);
+143:   if (am == nullptr) {
+144:     jniThrowException(env, "java/lang/IllegalStateException", "AssetManager has been finalized!");
+145:     return nullptr;
+146:   }
+147:   return am;
+148: }
+1634: int register_android_content_AssetManager(JNIEnv* env) {
+1635:   jclass apk_assets_class = FindClassOrDie(env, "android/content/res/ApkAssets");
+1636:   gApkAssetsFields.native_ptr = GetFieldIDOrDie(env, apk_assets_class, "mNativePtr", "J");
+1637: 
+1638:   jclass typedValue = FindClassOrDie(env, "android/util/TypedValue");
+1639:   gTypedValueOffsets.mType = GetFieldIDOrDie(env, typedValue, "type", "I");
+1640:   gTypedValueOffsets.mData = GetFieldIDOrDie(env, typedValue, "data", "I");
+1641:   gTypedValueOffsets.mString =
+1642:       GetFieldIDOrDie(env, typedValue, "string", "Ljava/lang/CharSequence;");
+1643:   gTypedValueOffsets.mAssetCookie = GetFieldIDOrDie(env, typedValue, "assetCookie", "I");
+1644:   gTypedValueOffsets.mResourceId = GetFieldIDOrDie(env, typedValue, "resourceId", "I");
+1645:   gTypedValueOffsets.mChangingConfigurations =
+1646:       GetFieldIDOrDie(env, typedValue, "changingConfigurations", "I");
+1647:   gTypedValueOffsets.mDensity = GetFieldIDOrDie(env, typedValue, "density", "I");
+1648: 
+1649:   jclass assetManager = FindClassOrDie(env, "android/content/res/AssetManager");
+1650:   gAssetManagerOffsets.mObject = GetFieldIDOrDie(env, assetManager, "mObject", "J");
+1651: 
+1652:   jclass stringClass = FindClassOrDie(env, "java/lang/String");

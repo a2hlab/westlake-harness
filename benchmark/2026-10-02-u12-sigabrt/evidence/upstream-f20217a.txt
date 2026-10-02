@@ -1,0 +1,67 @@
+commit f20217a4f67f20078978ddbb9310c72413448de5
+Author:     ymote <151983+ymote@users.noreply.github.com>
+AuthorDate: Tue Sep 22 18:55:35 2026 -0700
+Commit:     ymote <151983+ymote@users.noreply.github.com>
+CommitDate: Tue Sep 22 18:55:35 2026 -0700
+
+    Fall back to OH's .z.so spelling when a bare soname does not open
+    
+    OH names several NDK libraries with a .z.so suffix that Android spells plainly, so an app asking
+    for libnativewindow.so gets "No such file or directory" while /vendor/lib64/libnativewindow.z.so
+    sits there exporting exactly what was asked for -- ANativeWindow_acquire and the AHardwareBuffer
+    family, confirmed by resolving them on the board.
+    
+    Tried only after the plain name fails, so a board that does ship the Android spelling keeps
+    winning, and applied to any caller because the naming is the platform's rather than WebView's.
+    
+    Worth recording that this did not move the app that exposed it. LocalSend still crashes in
+    libflutter.so, and no redirect was logged, so its engine does not reach libnativewindow.so by bare
+    name -- the resolver did, which is how the naming gap was found. The gap is real and the fix is
+    right; it was not that app's blocker.
+    
+    Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+
+diff --git a/framework/webview-shim/webview_bionic_shim.c b/framework/webview-shim/webview_bionic_shim.c
+index 22ffa00..c5921fd 100644
+--- a/framework/webview-shim/webview_bionic_shim.c
++++ b/framework/webview-shim/webview_bionic_shim.c
+@@ -933,6 +933,39 @@ void *dlopen(const char *filename, int flags)
+      * to use, and a fix per library is a fix per outage.  Only bare names are redirected; a
+      * caller that passes a path has already chosen.
+      */
++    /*
++     * OH names several NDK libraries with a .z.so suffix that Android spells plainly, and an app
++     * asking for the Android name gets "No such file or directory" even though the library is
++     * there. LocalSend's Flutter engine looks up ANativeWindow_acquire and the AHardwareBuffer
++     * family in libnativewindow.so; /vendor/lib64/libnativewindow.z.so exports all of them.
++     *
++     * Tried only after the plain name fails to open, so a board that does ship the Android
++     * spelling keeps winning, and applied to any caller because the naming is the platform's, not
++     * WebView's.
++     */
++    static char suffixed[512];
++    if (basename != NULL && basename == filename) {
++        size_t length = strlen(filename);
++        if (length > 3 && strcmp(filename + length - 3, ".so") == 0 &&
++            (length < 5 || strcmp(filename + length - 5, ".z.so") != 0)) {
++            void *plain = real_dlopen(filename, flags);
++            if (plain != NULL) {
++                return plain;
++            }
++            snprintf(suffixed, sizeof(suffixed), "%.*s.z.so", (int) (length - 3), filename);
++            void *handle = real_dlopen(suffixed, flags);
++            if (handle != NULL) {
++                static int logged;
++                if (!__atomic_exchange_n(&logged, 1, __ATOMIC_RELAXED)) {
++                    fprintf(stderr,
++                            "[WESTLAKE-WEBVIEW-BIONIC] OH library naming: %s -> %s\n",
++                            filename, suffixed);
++                }
++                return handle;
++            }
++        }
++    }
++
+     static char webview_library[512];
+     if (basename != NULL && basename == filename &&
+         caller_is_webview(__builtin_return_address(0), NULL)) {
