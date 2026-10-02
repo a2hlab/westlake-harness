@@ -130,6 +130,7 @@ def policy_binding(root):
              'sweep_bind_deploy.py','deploy_generation.py','deployment_native_gate.py','check_frozen.py',
              'generation_static_checks.py','deployed_class_diff.py','open_site_scan.py']]
     files += [PROVENANCE_REGISTRY, repo/'knowledge/frozen/frozen.json',
+              repo/'knowledge/gates/new-native-admissions.json',
               lab_paths.harness()/'knowledge/toolchains/art-r155/image_predeploy_gate.py']
     return bundle.digest({str(p): bundle.sha(p) for p in files})
 

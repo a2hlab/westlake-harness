@@ -7,13 +7,65 @@ changes remain explicit review items; scans do not constitute an approval.
 """
 import argparse
 from collections import Counter
+from datetime import datetime
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
 
 import generation_bundle as bundle
+
+REPO = Path(__file__).resolve().parents[2]
+NEW_NATIVE_ADMISSIONS = REPO / 'knowledge/gates/new-native-admissions.json'
+
+
+def read_new_native_admissions(path):
+    """Outer-owned exact identities; invalid rows/evidence invalidate the whole table."""
+    def unique_keys(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('duplicate admission JSON key: ' + key)
+            result[key] = value
+        return result
+
+    def invalid_constant(value):
+        raise ValueError('non-JSON admission constant: ' + value)
+
+    raw = Path(path).read_bytes()
+    data = json.loads(raw, object_pairs_hook=unique_keys, parse_constant=invalid_constant)
+    if not isinstance(data, dict) or data.get('schema') != 'westlake-new-native-admissions/v1' or not isinstance(data.get('admissions'), list):
+        raise ValueError('invalid new-native admission table schema')
+    seen = set()
+    for row in data['admissions']:
+        if not isinstance(row, dict):
+            raise ValueError('invalid new-native admission row')
+        target = row.get('target', '')
+        if not isinstance(target, str) or not re.fullmatch(r'/system/[A-Za-z0-9_./+-]+', target) or '..' in Path(target).parts:
+            raise ValueError('invalid new-native admission target')
+        for key in ('sha256', 'package_manifest_sha256'):
+            if not isinstance(row.get(key), str) or not re.fullmatch('[0-9a-f]{64}', row[key]):
+                raise ValueError('invalid new-native admission ' + key)
+        if not isinstance(row.get('reason'), str) or not row['reason'].strip() or not isinstance(row.get('added'), str):
+            raise ValueError('new-native admission needs reason and added timestamp')
+        datetime.fromisoformat(row['added'].replace('Z', '+00:00'))
+        evidence = row.get('evidence')
+        if not isinstance(evidence, list) or not evidence:
+            raise ValueError('new-native admission needs evidence files')
+        for name in evidence:
+            if not isinstance(name, str) or not name or Path(name).is_absolute() or '..' in Path(name).parts:
+                raise ValueError('unsafe new-native evidence path')
+            proof = (REPO / name).resolve()
+            if not proof.is_relative_to(REPO.resolve()) or not proof.is_file():
+                raise ValueError('new-native evidence file missing: ' + name)
+        identity = (target, row['sha256'], row['package_manifest_sha256'])
+        if identity in seen:
+            raise ValueError('duplicate new-native admission identity')
+        seen.add(identity)
+    import hashlib
+    return data['admissions'], hashlib.sha256(raw).hexdigest()
 
 
 def effective(root):
@@ -62,7 +114,7 @@ def check(root, baseline, policy=None):
     root,baseline=Path(root).resolve(),Path(baseline).resolve()
     policy=policy or {}
     old,new=effective(baseline),effective(root)
-    rows=[];cache={}
+    rows=[];cache={};admission_rows=None;admission_sha=None;admission_error=None
     for target,row in sorted(new.items()):
         previous=old.get(target)
         if previous and previous['sha256']==row['sha256']:continue
@@ -74,6 +126,24 @@ def check(root, baseline, policy=None):
         item=dict(target=target,candidate_sha256=row['sha256'],deployed_sha256=previous['sha256'] if previous else None)
         if deployed is None:
             item.update(status='REJECT',reason='new native/JAR member has no deployed baseline for this promotion')
+            # This table only admits exact new ELFs. JARs and all other criteria stay unchanged.
+            if candidate.suffix != '.jar':
+                if admission_rows is None and admission_error is None:
+                    try:
+                        admission_rows, admission_sha = read_new_native_admissions(NEW_NATIVE_ADMISSIONS)
+                    except (OSError, ValueError, TypeError, OverflowError, RuntimeError) as error:
+                        admission_error = str(error)
+                if admission_error is not None:
+                    item['admission_error'] = admission_error
+                else:
+                    declaration = json.loads((root/'bundle.json').read_text())['native']['manifest']
+                    manifest_sha = bundle.sha(bundle.member(root, declaration))
+                    match = next((r for r in admission_rows if
+                                  (r['target'], r['sha256'], r['package_manifest_sha256']) ==
+                                  (target, row['sha256'], manifest_sha)), None)
+                    if match is not None:
+                        item.update(kind='ELF',status='PASS',reason='exact outer-registered new-native admission',
+                                    admission=match,admission_registry_sha256=admission_sha)
         elif candidate.suffix=='.jar':
             allowance=policy.get('jars',{}).get(target,{})
             # A reviewed class removal is valid only for this exact new/old pair.
@@ -119,7 +189,8 @@ def check(root, baseline, policy=None):
     return dict(schema='westlake-generation-static-checks/v1',bundle_sha256=bundle.sha(root/'bundle.json'),
                 baseline_bundle_sha256=bundle.sha(baseline/'bundle.json'),policy_sha256=bundle.digest(policy),
                 status='PASS' if all(r['status']=='PASS' for r in rows) else 'REJECT',members=rows,
-                changed_jars=sum(r.get('kind')=='DEX-JAR' for r in rows),changed_native_paths=sum(r.get('kind')=='ELF' for r in rows))
+                changed_jars=sum(r.get('kind')=='DEX-JAR' for r in rows),changed_native_paths=sum(r.get('kind')=='ELF' for r in rows),
+                new_native_admissions_sha256=admission_sha)
 
 
 def main():

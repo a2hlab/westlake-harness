@@ -1,0 +1,76 @@
+test_evidence_and_schema_fail_closed (__main__.Tests) ... FAIL
+test_exact_and_variants (__main__.Tests) ... ERROR
+test_existing_open_delta_not_bypassed (__main__.Tests) ... FAIL
+test_invalid_unrelated_row_invalidates_table (__main__.Tests) ... FAIL
+test_jars_are_never_admitted (__main__.Tests) ... FAIL
+test_missing_malformed_and_empty_fail_closed (__main__.Tests) ... FAIL
+test_policy_binding_changes_with_table (__main__.Tests) ... ok
+test_production_registry_empty (__main__.Tests) ... ok
+
+======================================================================
+ERROR: test_exact_and_variants (__main__.Tests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-new-native-admissions/test_admissions.py", line 29, in test_exact_and_variants
+    self.write_table();result=self.check();self.assertEqual(result['status'],'PASS');self.assertEqual(result['members'][0]['admission'],self.row)
+IndexError: list index out of range
+
+======================================================================
+FAIL: test_evidence_and_schema_fail_closed (__main__.Tests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-new-native-admissions/test_admissions.py", line 41, in test_evidence_and_schema_fail_closed
+    row=copy.deepcopy(self.row);row[field]=value;self.write_table([row]);result=self.check();self.assertEqual(result['status'],'REJECT',(field,value));self.assertIn('admission_error',result['members'][0])
+AssertionError: 'PASS' != 'REJECT'
+- PASS
++ REJECT
+ : ('evidence', ['benchmark/missing.json'])
+
+======================================================================
+FAIL: test_existing_open_delta_not_bypassed (__main__.Tests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-new-native-admissions/test_admissions.py", line 55, in test_existing_open_delta_not_bypassed
+    result=self.check(previous={'source':'old.so','sha256':'0'*64},scan=counted);self.assertEqual(result['status'],'REJECT');self.assertEqual(result['members'][0]['status'],'REVIEW_REQUIRED')
+AssertionError: 'PASS' != 'REJECT'
+- PASS
++ REJECT
+
+
+======================================================================
+FAIL: test_invalid_unrelated_row_invalidates_table (__main__.Tests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-new-native-admissions/test_admissions.py", line 45, in test_invalid_unrelated_row_invalidates_table
+    bad=copy.deepcopy(self.row);bad['target']='/system/android/lib64/libother.so';bad['evidence']=['benchmark/missing.json'];self.write_table([self.row,bad]);self.assertEqual(self.check()['status'],'REJECT')
+AssertionError: 'PASS' != 'REJECT'
+- PASS
++ REJECT
+
+
+======================================================================
+FAIL: test_jars_are_never_admitted (__main__.Tests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-new-native-admissions/test_admissions.py", line 48, in test_jars_are_never_admitted
+    self.assertEqual(self.check(target=self.row['target'],jar=True)['status'],'REJECT')
+AssertionError: 'PASS' != 'REJECT'
+- PASS
++ REJECT
+
+
+======================================================================
+FAIL: test_missing_malformed_and_empty_fail_closed (__main__.Tests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-new-native-admissions/test_admissions.py", line 34, in test_missing_malformed_and_empty_fail_closed
+    self.assertEqual(self.check()['status'],'REJECT')
+AssertionError: 'PASS' != 'REJECT'
+- PASS
++ REJECT
+
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.016s
+
+FAILED (failures=5, errors=1)

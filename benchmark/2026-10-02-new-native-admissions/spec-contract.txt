@@ -1,0 +1,50 @@
+# Task Contract: Fail-closed new-native exception table
+
+## Intent
+Permit an otherwise rejected new ELF only when its target, full artifact SHA and native package manifest SHA exactly match an outer-registered row with existing repository evidence.
+
+## Must
+- No board access, locks or deployment; no mediandk row in the production registry.
+- Existing deployed-JAR/native comparisons remain unchanged; the new table is not a general gate bypass.
+
+## Decisions
+- Add an empty production table, never the draft mediandk row.
+- Missing, malformed or invalid table/evidence remains REJECT.
+- Bind the registry to executor policy identity so admission changes invalidate preflight.
+- JAR additions and existing comparison criteria retain their previous behavior.
+
+## Boundaries
+Allowed changes:
+- scripts/lab/generation_static_checks.py
+- scripts/lab/u7_executor.py
+- knowledge/gates/new-native-admissions.json
+- benchmark/2026-10-02-new-native-admissions/**
+- specs/new-native-admissions/**
+- tools/spec-checks/tests/new_native_admissions.rs
+Forbidden:
+- Register a mediandk approval, relax other criteria, use board transport or deploy.
+Out of scope:
+- Final U12 manifest approval, exception registration, window execution or runtime changes.
+
+## Completion Criteria
+Scenario: Exact triple admits only the reviewed native member
+  Test:
+    Filter: new_native_admissions_exact
+  Given A fixture row for reviewed mediandk with existing evidence
+  When Exact identity and sha/manifest/target variants are tested
+  Then Only exact target artifact and manifest pass; variants reject
+
+Scenario: Invalid registry and evidence fail closed
+  Test:
+    Filter: new_native_admissions_closed
+  Given Missing malformed or evidence-invalid tables
+  When A new native member reaches the static gate
+  Then All invalid states reject and the production table remains empty
+
+Scenario: Other criteria and registry identity are preserved
+  Test:
+    Filter: new_native_admissions_preserved
+  Given Existing native and JAR comparisons and executor preflight
+  When The exception reader and policy binding are checked
+  Then JAR additions remain rejected and registry changes alter policy identity
+
