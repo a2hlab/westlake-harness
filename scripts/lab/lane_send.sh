@@ -38,9 +38,21 @@ if ! is_octos; then
   # Compare the LAST 12 non-space characters (dispatches share their opening words) with all whitespace
   # removed from the screen: the TUI wraps and indents long input. herdr keeps only about a screen of history, so
   # this runs 3 s after sending, while the typed text is still above the composer.
+  # 2026-10-02 10:51 / 11:01: a just-restarted Claude lane took the dispatch, collapsed it to "[Pasted text #1 +N
+  # lines]" and started working; the tail probe found nothing and resent (exit 2, "no pickup") although the session
+  # transcript held exactly one copy. A Claude/codex agent that left idle for "working" has picked it up: ask herdr
+  # before resending.
   on_screen() { herdr pane read "$PANE" 2>/dev/null | python3 -c '
-import sys; probe = "".join(sys.argv[1].split())[-12:]; screen = "".join(sys.stdin.read().split())
-sys.exit(0 if probe in screen else 1)' "$TEXT"; }
+import sys; probe = "".join(sys.argv[1].split())[-12:]; screen = sys.stdin.read()
+sys.exit(0 if probe in "".join(screen.split()) or "[Pasted text" in screen else 1)' "$TEXT"; }
+  working() { herdr agent list 2>/dev/null | python3 -c '
+import json, sys
+agents = json.load(sys.stdin)["result"]["agents"]
+sys.exit(0 if any(a.get("pane_id") == sys.argv[1] and a.get("agent_status") == "working" for a in agents) else 1)' "$PANE"; }
+  if ! on_screen && working; then
+    echo "lane_send: $PANE picked up the dispatch (agent working; text collapsed or scrolled)"
+    exit 0
+  fi
   if ! on_screen; then
     herdr pane run "$PANE" "$TEXT" >/dev/null
     sleep 3
