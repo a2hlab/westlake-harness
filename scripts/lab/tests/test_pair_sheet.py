@@ -99,6 +99,58 @@ class IsSuspect(unittest.TestCase):
         self.assertTrue(ps.is_suspect({'auto': 'same', 'flaky': True, 'flaky_kn': {'regression': False}}))
 
 
+class ReferenceListing(unittest.TestCase):
+    """A reference dir is u9-ref-<board>.txt or exactly one <label>-ref-<board>.txt (the U10.1T8 reference set)."""
+    LINE = 'row 1 col 1  k1  verdict=lit  corpus=cv2  MISSING\n'
+
+    def _dir(self, *names):
+        import tempfile
+        d = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__('shutil').rmtree, d)
+        for n in names:
+            (d / n).write_text('# header\n' + self.LINE)
+        return d
+
+    def test_legacy_u9_name(self):
+        d = self._dir('u9-ref-5ea.txt')
+        self.assertEqual(ps.load_ref_board(str(d), '5ea'), {'k1': ('lit', None)})
+
+    def test_labelled_name(self):
+        d = self._dir('u10-1-t8-ref-5cd.txt')
+        self.assertEqual(ps.load_ref_board(str(d), '5cd'), {'k1': ('lit', None)})
+        self.assertEqual(ps.load_ref_board(str(d), '5ea'), {})
+
+    def test_two_listings_for_one_board_refused(self):
+        d = self._dir('a-ref-61b.txt', 'b-ref-61b.txt')
+        with self.assertRaises(SystemExit):
+            ps.load_ref_board(str(d), '61b')
+
+
+class U1018ReferenceKnownAnswer(unittest.TestCase):
+    """Window 3 vs the U10.1T8 reference: 76 same + trickytripper (signed lit from its w5 retest) different, 0 no-ref;
+    window 5 yahtzeedicer (U10.1T8 lit) is same. Skipped when the real window runs are absent."""
+    REF = ps.REPO / 'benchmark/2026-10-02-u10-1-t8-sweep/u10-1-t8-reference'
+    SIGNOFF = ps.REPO / 'benchmark/2026-10-02-u10-1-t8-sweep/outer-signoff.json'
+    RERUN = ps.WORKSPACES / 'westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun'
+
+    def _rows(self, window):
+        run = self.RERUN / window
+        if not run.is_dir() or not self.REF.is_dir():
+            self.skipTest(f'{run} or {self.REF} not present')
+        return ps.build_rows(run.resolve(), str(self.REF), str(self.SIGNOFF), ps.SAME_THRESHOLD)
+
+    def test_window3(self):
+        rows = self._rows('window3')
+        self.assertEqual(len(rows), 77)
+        self.assertEqual([r['key'] for r in rows if r['auto'] != 'same'], ['cv2-de-koelle-christian-trickytripper'])
+        self.assertEqual(sum(r['auto'] == 'no-ref' for r in rows), 0)
+
+    def test_window5_yahtzeedicer_same(self):
+        rows = {r['key']: r for r in self._rows('window5') if r['shard'] == 'unlit-cv2'}
+        r = rows['cv2-org-secuso-privacyfriendlyyahtzeedicer']
+        self.assertEqual((r['auto'], r['u9_verdict']), ('same', 'lit'))
+
+
 class Window3KnownAnswer(unittest.TestCase):
     def test_selftest_reproduces_signoff(self):
         run = ps.WORKSPACES / 'westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window3'

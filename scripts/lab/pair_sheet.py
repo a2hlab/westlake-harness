@@ -23,7 +23,9 @@ and `flaky_kn`, but per-key `window_verdict` is left BLANK on purpose: this tool
 screenshot; the outer fills the verdict, now only needing to look at the suspects sheet.
 
 U9 side: a u9-ref-<board>.txt (benchmark/2026-10-02-u10-1-t8-rerun/u9-reference) gives the U9 verdict and t20 path;
-otherwise the outer-signoff.json verdict + its `runs` locate the U9 t20. Every non-smoke key with a record is paired.
+any other reference dir in that line format works the same, its listing named <label>-ref-<board>.txt (e.g.
+benchmark/2026-10-02-u10-1-t8-sweep/u10-1-t8-reference with --signoff of that sweep: pair against U10.1T8; the
+`u9_*` field names and U9 tile labels then mean "reference"); otherwise the outer-signoff.json verdict + its `runs` locate the U9 t20. Every non-smoke key with a record is paired.
 """
 import argparse
 import json
@@ -216,10 +218,22 @@ def discover(run):
     return out
 
 
+def ref_board_file(ref, board):
+    """The reference listing for `board` in a reference dir: u9-ref-<board>.txt, or exactly one other
+    <label>-ref-<board>.txt in the same line format (u10-1-t8-ref-<board>.txt). Several candidates -> refuse."""
+    legacy = ref / f'u9-ref-{board}.txt'
+    if legacy.exists():
+        return legacy
+    found = sorted(ref.glob(f'*-ref-{board}.txt'))
+    if len(found) > 1:
+        sys.exit(f'reference dir {ref}: {len(found)} listings for board {board} ({", ".join(f.name for f in found)})')
+    return found[0] if found else legacy
+
+
 def load_ref_board(reference, board):
-    """key -> (u9_verdict, u9_t20_path or None) from a u9-ref-<board>.txt, if available."""
+    """key -> (reference verdict, reference t20 path or None) from the board's reference listing, if available."""
     ref = Path(reference)
-    path = ref / f'u9-ref-{board}.txt' if ref.is_dir() else ref
+    path = ref_board_file(ref, board) if ref.is_dir() else ref
     table = {}
     if not path.exists():
         return table
