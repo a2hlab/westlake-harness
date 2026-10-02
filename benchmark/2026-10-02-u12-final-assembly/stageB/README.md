@@ -1,0 +1,7 @@
+# Disabled U12 promotion template
+
+U12 promotion is paused by the outer because R3 GcmDefaultNonce never initializes its BC delegate on Android libcore (cc-t3 253c5a73b5;174runs,154GCM probe failures versus0/133baseline). The earlier certificate's schema known-answer PASS is historical, not current deployment authorization. Composition.execution_enabled and rollout_ready are false, no Stage B plans were launched, and the admission path fails closed. Do not re-enable for U12.
+
+The adapter copies the earlier U10.1T8 promotion procedure, replacing baseline parameters with independently signed U10.1T8/116. The outer explicitly removed the older Toutiao wall1/2-specific condition. It retains exact bundle/manifest binding, frozen/offline checks, candidate identity and both fingerprints, activation smoke, fresh same-board/window outer signature, HW/ZZ screenshot signoff, no confirmed regressions, and unconditional U10.1T8 restoration on refusal. U12 candidate verification covers321assertions (318baseline plus three newly declared members). The reviewed U12 transaction/verifier performs the underlying operations.
+
+The old hook initially rejected the unarmed-SHA certificate; stage-a-admission-refusal.json preserves it. After the outer re-signed the armed SHA, stage-a-known-answers.txt records PASS and a wrong-bundle REJECT. Eleven protection tests passed before the pause; rerun tests include the explicit paused admission check. These helpers are a base for U13 review, not a ready-to-execute deployment.
