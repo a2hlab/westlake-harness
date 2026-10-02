@@ -1,0 +1,80 @@
+--- upstream/art-15/runtime/jit/jit_memory_region.cc	2026-09-24 11:34:10.352466921 +0800
++++ aosp-art-15/runtime/jit/jit_memory_region.cc	2026-09-24 11:28:56.777949370 +0800
+@@ -16,7 +16,10 @@
+ 
+ #include "jit_memory_region.h"
+ 
++#include <cerrno>
++#include <cstdlib>
+ #include <fcntl.h>
++#include <sys/stat.h>
+ #include <unistd.h>
+ 
+ #include <android-base/unique_fd.h>
+@@ -101,6 +104,63 @@
+     }
+   }
+ 
++#if defined(__OHOS__)
++  // OH app domains can create and write memfd files while denying executable
++  // mappings of their tmpfs label. Probe that capability before constructing
++  // dual views. Opt in per launch, and honor ART's existing RWX policy: only
++  // ordinary private caches may use its anonymous RX/RWX update path. Zygote
++  // sharing and callers that prohibit RWX retain the normal failure behavior.
++  const char* anonymous_fallback = getenv("WESTLAKE_OH_JIT_ANON_FALLBACK");
++  if (!is_zygote && rwx_memory_allowed && exec_capacity > 0 && mem_fd.get() >= 0 &&
++      anonymous_fallback != nullptr && strcmp(anonymous_fallback, "1") == 0) {
++    void* probe = mmap(nullptr, gPageSize, kProtRX, MAP_SHARED, mem_fd.get(), data_capacity);
++    if (probe == MAP_FAILED) {
++      const int mapping_error = errno;
++      if (mapping_error == EACCES || mapping_error == EPERM) {
++        // OH labels memfd and app-private files differently. An unlinked file
++        // in an explicitly supplied app-owned cache directory can retain ART's
++        // ordinary dual RW/RX views without repeated RX/RWX mprotect calls.
++        // O_TMPFILE leaves no pathname to replace or clean up. Keep this opt-in,
++        // private-cache-only, and subject to the kernel's normal mmap policy.
++        unique_fd file_fd;
++        const char* cache_dir = getenv("WESTLAKE_OH_JIT_FILE_CACHE_DIR");
++        if (cache_dir != nullptr && cache_dir[0] == '/' && geteuid() != 0) {
++          unique_fd dir_fd(open(cache_dir, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
++          struct stat directory_stat {};
++          if (dir_fd.get() >= 0 && fstat(dir_fd.get(), &directory_stat) == 0 &&
++              directory_stat.st_uid == geteuid() && (directory_stat.st_mode & 0077) == 0) {
++            file_fd.reset(openat(dir_fd.get(), ".", O_TMPFILE | O_RDWR | O_CLOEXEC, 0600));
++            if (file_fd.get() >= 0 && ftruncate(file_fd.get(), capacity) == 0) {
++              void* file_probe = mmap(nullptr, gPageSize, kProtRX, MAP_SHARED,
++                                     file_fd.get(), data_capacity);
++              if (file_probe == MAP_FAILED) {
++                file_fd.reset();
++              } else if (munmap(file_probe, gPageSize) != 0) {
++                *error_msg = "Failed to unmap private JIT executable-memory capability probe";
++                return false;
++              }
++            } else {
++              file_fd.reset();
++            }
++          }
++        }
++        if (file_fd.get() >= 0) {
++          mem_fd = std::move(file_fd);
++          LOG(WARNING) << "[WESTLAKE-OH-JIT] memfd RX denied (" << mapping_error
++                       << "); using app-private unlinked file with dual RW/RX views";
++        } else {
++          LOG(WARNING) << "[WESTLAKE-OH-JIT] memfd RX denied (" << mapping_error
++                       << "); using ART anonymous cache with RWX updates permitted by caller";
++          mem_fd.reset();
++        }
++      }
++    } else if (munmap(probe, gPageSize) != 0) {
++      *error_msg = "Failed to unmap JIT executable-memory capability probe";
++      return false;
++    }
++  }
++#endif
++
+   // Map name specific for android_os_Debug.cpp accounting.
+   std::string data_cache_name = is_zygote ? "zygote-data-code-cache" : "data-code-cache";
+   std::string exec_cache_name = is_zygote ? "zygote-jit-code-cache" : "jit-code-cache";
+
+047ccf02924f0b71142e9b5fa3f2f303ec03d145 Sat Sep 5 23:52:15 2026 -0700 Resolve boot resources through physical classpath locations
+047ccf0 Resolve boot resources through physical classpath locations

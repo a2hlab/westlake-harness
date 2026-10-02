@@ -1,0 +1,17 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-02-jit-experiment-plan/`** | **JIT on route-A, offline plan: of the candidate base's 20 no-observed-termination white keys, 18 drew their first frame by t+4.05 s (white = content, not start speed), only toutiao is still in Application init at t+15.5 s, 1 never launched. OH JIT fix source found on a2hlab (aosp-art-15 @047ccf0 jit_memory_region.cc, the line-152 log the old route printed); board libart 59e1bb45 cannot take it (source lost) and route-A ships no JIT compiler at all, so the experiment = libart-compiler.so from the FZ-005 tree + explicit-suspend patch 24 + a memfd(jit-cache) shim reaching ART's own anonymous fallback + NO_JIT removed, one board, rollback by cfg restore. G2.14n had eliminated JIT as its SIGILL cause; the production gate's NO_JIT is a truly-cold measurement contract.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-02 **候选基座 20 个「无可观测终止」白窗键不是慢**:18 个在 child 起后 ≤4.05 s 已出首帧(`activityResumed (first-frame)`),之后主线程 5–7 s 静默(noice/fd-noice 在跑动画 vsync),白是内容/渲染;只有头条截至 t+15.5 s 仍在 Application 初始化;bms_batch 抓的 hilog 在 t20 前 4.4–6.8 s 截断,判 t20 状态要用 min(t20, hilog 末尾)。见 benchmark/2026-10-02-jit-experiment-plan/stages.csv(cc-t3)。",
+    "- 2026-10-02 route-A 开 JIT 的三个前提(静态查实):①**没有 JIT 编译器**——libart 59e1bb45 要 dlopen libart-compiler.so,板上/包里都没有(旧 libart 78e34445 21.6 MB 把编译器静态链入);②JitCompiler 在解析 -Xcompiler-option 之后从运行时抄 implicit_suspend_checks_(r1 jit_compiler.cc:77,r1 runtime 对 arm64 置 true),R155 不装 x21 挂起触发页(补丁 22 的原因),编译器须带显式挂起补丁;③OH 拒 memfd RX,修法源码在 a2hlab `~/a2hlab/ws/aosp-art-15` @047ccf0 jit_memory_region.cc(第 152 行即旧路 child 打的 [WESTLAKE-OH-JIT]),59e1bb45 源码已丢不能套,AOSP14 在 memfd_create 失败时本就走匿名 RWX 回退,可用只拒 `jit-cache` 的符号插入 shim 等效。NO_JIT 出处:G2.14n(2026-05 32 位 SIGILL)实测「关 JIT 崩溃不变」已排除 JIT;生产门的 NO_JIT 是 ZigZag「truly-cold」计量契约(Q5 未证)。见 benchmark/2026-10-02-jit-experiment-plan/(cc-t3)。"
+   ]
+  }
+ ]
+}
