@@ -44,3 +44,31 @@ ALSO in the bridge inherit, the platform libz (from default) could load as a SEC
 dlns_inherit, line 217). The DEPLOYED host 2a87118e is built from candidate-stock-host.c with the multi-owner logic
 above; the revised patch targets the `if (wants_bridge)` bridge inherit there (line 330). Same net effect (augment the
 bridge inherit), correct source + line.
+
+## (3) Where mcdonalds's libz came from (outer 02:53) -- SETTLED: the bridge inherit (libnativeloader)
+mcdonalds (com.mcdonalds.app) is native_private (enrolled cluster) but NOT in U11ZlibRoot {im.vector.app, burgerking},
+so it gets NO westlake_native prefix. It does NOT bundle libz (its config.arm64_v8a.apk has librealmc.so, no libz.so).
+The host's only hardcoded soname literal (system_owner) has no libz. Yet its librealmc.so loaded libz and died later at
+`_ctype_: symbol not found` (relocation stage -> all DT_NEEDED, incl. libz, had resolved). `_ctype_` is a bionic libc
+symbol (confirmed *UND* _ctype_ + __ctype_get_mb_cur_max in realm) missing in OH musl -- a SEPARATE bionic/musl compat
+wall, not libz.
+=> libz resolved via the BRIDGE inherit: the deployed libnativeloader.so (which assembles bridge_shared_sonames)
+   contains "libz.so". The `if (wants_bridge)` bridge inherit runs for EVERY app (including native_private), so mcdonalds
+   inherited libz from the bridge (bridge -> default platform libz). So **libz is already universal via the bridge**.
+=> The private zlib (westlake_native/libz.so, crc32) is a FULLER libz for {im.vector.app, burgerking} whose realm/mmkv
+   needs crc32; it is prepended to the search path (LOCAL_NS_PREFERED) so it WINS over the bridge's platform libz for
+   those two apps. (In U10.1T8 -- the 02:53 report -- neither existed yet, hence Element's libz ENOENT.)
+
+### Does excluding libz from the patch create a second libz? NO.
+libz.so is ALREADY in bridge_shared_sonames (libnativeloader). My patch EXCLUDES libz from the ADDED set, so it does not
+touch libz at all -> no new edge, no new copy. Adding libz would merely duplicate the soname in the inherit string (the
+linker still shares the one DEFAULT copy; no second instance) -- but it is pointless and risks confusion, so it stays
+excluded. The only libz duplication that exists is the intentional private-zlib-vs-bridge coexistence for {im.vector.app,
+burgerking} (private wins), which predates and is independent of this patch. => the patch's libz exclusion is CORRECT.
+
+## Wall-2 (b) build target pinned (for the _74 alias re-link)
+U13 deployed libicuuc.so = f74827d992d25ffe481873f1b7f4416d97820c443f16bd715102455dbafbcf6f. Its faithful build recipe
+is local: benchmark/2026-10-03-u13-compat-ctype/ (build.py + build-receipt.json + collect_sources.py + prepare.py +
+finalize.py; asserts f74827d9). Plan: reproduce f74827d9 x2 (gate; stop if no match) -> re-link with an alias object
+exporting the 7 symbols tttext dlsyms at _74 (ubrk_open/close/first/next/setText, u_charType, u_hasBinaryProperty ->
+their _72 impls) -> x2 byte-identical; nm -D diff = only the 7 added _74 aliases. Mac DevEco clang.

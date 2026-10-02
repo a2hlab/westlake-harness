@@ -73,7 +73,27 @@ copy, so the linker dedupes; only libz has a separate provider, hence the exclus
 | **fd-stk** | no | libGLESv2.so (via libSDL2) | Wall 1 |
 | **subwaysurfers** | no | libGLESv3.so (via libvkquality) | Wall 1 |
 | **Element / fd-im-vector-app** | yes (native_private) | libz.so (via librealm-jni) **in U10.1T8** | **already fixed in U13** (private zlib `{im.vector.app, burgerking}`); NOT via the public-lib patch |
+| mcdonalds | yes (native_private) | `_ctype_` (bionic/musl libc), **after** libz | a different wall (bionic `_ctype_`); its libz already resolves |
 | fd-fluffychat/fd-immich/fd-kitchenowl/fd-saber/localsend | — | GetLongField/AAssetManager (U13 `18763dd4`) | U13 asset fix first; Wall 1 is their 2nd wall |
+
+## ③ Where mcdonalds's libz came from — the bridge (outer 02:53), so libz exclusion is safe
+mcdonalds (native_private, **not** in `U11ZlibRoot`) doesn't bundle libz, yet its `librealmc.so` loaded libz and died at
+`_ctype_` (a bionic libc symbol missing in OH musl — a separate compat wall). The deployed `libnativeloader.so` (which
+assembles `bridge_shared_sonames`) contains `libz.so`, and the `if (wants_bridge)` bridge inherit runs for **every** app
+— so **libz is already universal via the bridge**. The private zlib (`westlake_native/libz.so`, crc32) is a *fuller* libz
+for `{im.vector.app, burgerking}` whose realm/mmkv needs crc32, prepended to win (`LOCAL_NS_PREFERED`).
+**So excluding libz from the patch creates no second copy** — libz is already provided by the bridge for everyone; the
+patch doesn't touch it. The only libz duplication is the intentional private-zlib coexistence for those two apps, which
+predates and is independent of this patch. (`evidence/libz-and-deployed-inherit.txt` §3.)
+
+## Build targets — both pinned, Mac DevEco clang (next step)
+- **Wall 1 (host):** `benchmark/2026-10-02-u12-private-zlib/build.py` reproduces `2a87118e`; apply the revised patch to
+  `candidate-stock-host.c` (bridge inherit, line 330).
+- **Wall 2 (libicuuc):** U13 deployed `libicuuc.so` = `f74827d9`; faithful recipe local at
+  `benchmark/2026-10-03-u13-compat-ctype/` (`build.py` + `build-receipt.json`). Reproduce `f74827d9` ×2, then re-link with
+  an alias object exporting the 7 `_74` names tttext dlsyms (`ubrk_open/close/first/next/setText`, `u_charType`,
+  `u_hasBinaryProperty` → their `_72` impls); `nm -D` diff = only those 7 aliases.
+Both reproduce-gates must pass byte-identical before patching (N10b); stop + report on any mismatch.
 
 ## Files
 - `evidence/wall2-selection.txt` — the maps + OH-lib scan proving option (a) unsafe → option (b).
