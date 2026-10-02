@@ -1,0 +1,41 @@
+commit 5ae6b7547407ca343565fc3ccf650be704f74e19
+Author:     ymote <151983+ymote@users.noreply.github.com>
+AuthorDate: Mon Sep 28 17:13:53 2026 -0700
+Commit:     ymote <151983+ymote@users.noreply.github.com>
+CommitDate: Mon Sep 28 17:13:53 2026 -0700
+
+    Bind android.media natives the runtime never registers
+    
+    MediaPlayer: none of its 49 natives was registered, so its static
+    initializer threw and the first class to touch MediaPlayer died with it
+    (ntfy during bind; Astro Loop and Doors of Doom before a first frame).
+    Ported onto OH's AVPlayer: data sources (served from this process through
+    a read callback, since OH's media service could not use the app's
+    descriptor; descriptor and URL as fallbacks), asynchronous and blocking
+    prepare, play/pause/stop/seek/reset/release, looping, volume, playback
+    rate, and state callbacks posted as MediaPlayer events. Android's state
+    rules are kept rather than OH's. invoke() answers the track queries every
+    prepared player gets; failing them posted MEDIA_ERROR (1, -1010) and
+    Doors of Doom left its game. Video output, MediaDataSource, DRM, volume
+    shapers and track selection are not ported and answer as AOSP does when
+    its player service fails.
+    
+    AudioTrack: buffer-size natives (MuseKit, via getBufferSizeInFrames) and
+    native_set_loop, answered ERROR_INVALID_OPERATION: the shim has no static
+    buffer to loop, so a looped sound plays once.
+    
+    AudioSystem: getParameters/setParameters and ExoPlayer's output
+    capability queries (offload, direct playback, direct profiles, HW A/V
+    sync, haptics, microphones, Bluetooth offload formats), answered as an
+    output without the capability.
+    
+    Registered from libwl_missing_natives' JNI_OnLoad, before any field or
+    method lookup: GetFieldID initializes MediaPlayer, whose initializer
+    calls native_init.
+    
+    Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+
+ framework/javacore-shim/media_natives.c   | 1088 +++++++++++++++++++++++++++++
+ framework/javacore-shim/missing_natives.c |    6 +
+ tools/build_missing_natives.sh            |    4 +-
+ 3 files changed, 1096 insertions(+), 2 deletions(-)

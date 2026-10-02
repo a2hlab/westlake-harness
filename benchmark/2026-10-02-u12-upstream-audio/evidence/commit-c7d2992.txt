@@ -1,0 +1,34 @@
+commit c7d29921d5a39057ba3c2c2c4dccbd1b391bedc3
+Author:     ymote <151983+ymote@users.noreply.github.com>
+AuthorDate: Mon Sep 28 18:11:08 2026 -0700
+Commit:     ymote <151983+ymote@users.noreply.github.com>
+CommitDate: Mon Sep 28 18:11:08 2026 -0700
+
+    OpenSL ES: continuous buffer-queue fill; dlopen(libOpenSLES) to the adapter
+    
+    The Android simple buffer queue filled each of OH's pull buffers only
+    with what the app had queued when OH asked, then padded with silence.
+    OH pulls several times more than a game double-buffers (Godot and Oboe
+    use about 1024 frames), so audio played half the time or less: broken,
+    off-pitch sound on Ball2Box. Measured with a 1 kHz test tone through the
+    adapter and the board's playback capture: 48% (48 kHz) and 73% (44.1
+    kHz) of 10 ms windows silent, peak 995-998 Hz. Filling now continues
+    after each consumed buffer is reported, since the app refills from that
+    callback, and silence is written only when the app stops supplying.
+    After: 1000 Hz and no silent windows at either rate, like OHAudio's own
+    renderer; Ball2Box's dropouts went from 42% of windows to none.
+    
+    Oboe (Rhythm Engine) does not link libOpenSLES: it dlopens it and looks
+    up slCreateEngine and the SL_IID_* by handle, reaching OH's library past
+    the adapter; OH refused its engine interface and the app died. An app's
+    dlopen of libOpenSLES.so now returns the shim's own handle. The shim
+    gains a real dependency on OH's libOpenSLES, so a lookup by that handle
+    finds the adapter's slCreateEngine and Android's IDs first and every
+    other OpenSL symbol in OH's library behind them. The adapter's own
+    dlopen, from inside the shim, still gets OH's library.
+    
+    Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+
+ framework/webview-shim/opensles_android_adapter.c | 52 ++++++++++++++---------
+ framework/webview-shim/webview_bionic_shim.c      | 26 ++++++++++++
+ 2 files changed, 58 insertions(+), 20 deletions(-)

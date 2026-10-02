@@ -1,0 +1,37 @@
+commit 0b5c9af4cec9bab0828a1a95e6027d4a4b54cdbe
+Author:     ymote <151983+ymote@users.noreply.github.com>
+AuthorDate: Wed Sep 23 20:10:40 2026 -0700
+Commit:     ymote <151983+ymote@users.noreply.github.com>
+CommitDate: Wed Sep 23 20:10:40 2026 -0700
+
+    Translate Android's OpenSL ES ABI onto OH's
+    
+    OH's OpenSL ES headers define sl_uint32_t as unsigned long, so on arm64
+    SLuint32, SLboolean, SLresult and SLmillisecond are 8 bytes; Android's are
+    4. OH reads an Android app's SLDataFormat_PCM with fused fields ("channel
+    count not supported"), a buffer-queue locator's count as 0, and required[]
+    arrays at the wrong width. OH also refuses SL_IID_BUFFERQUEUE and Android's
+    simple buffer queue, offering only SL_IID_OH_BUFFERQUEUE, a pull model.
+    Mindustry's audio engine was refused a player, ignored the refusal and
+    called through the null interface.
+    
+    opensles_android_adapter.c interposes slCreateEngine from the preloaded
+    shim, so the app only ever sees wrappers with Android's types: objects,
+    engine, play and volume interfaces, and Android's buffer queue implemented
+    over OH's pull callback (app buffers held until consumed, the app's
+    callback fired per consumed buffer, silence on underrun). Data sources and
+    sinks are rebuilt in OH's layout. Unwrapped interfaces are handed back raw
+    and logged by ID. SL_IID_ANDROIDSIMPLEBUFFERQUEUE moves here from the shim;
+    the shim is now linked from both files.
+    
+    On the board Mindustry now logs "pcm: 2 ch, 44100000 mHz, 16/16 bit" and
+    CreateAudioPlayer -> 0, and gets past audio to a hwui abort
+    ("drawRenderNode called on a context with no surface"): its GLSurfaceView
+    shares the activity's window. Aegis, AnkiDroid, AntennaPod, Markor,
+    NewPipe, OONI Probe, Termux and Wikipedia still render.
+    
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+ framework/webview-shim/opensles_android_adapter.c | 777 ++++++++++++++++++++++
+ framework/webview-shim/webview_bionic_shim.c      |  22 +-
+ 2 files changed, 778 insertions(+), 21 deletions(-)

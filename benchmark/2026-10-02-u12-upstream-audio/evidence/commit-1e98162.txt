@@ -1,0 +1,28 @@
+commit 1e981623b2a1387fdf57cce777b677fe24554791
+Author:     ymote <151983+ymote@users.noreply.github.com>
+AuthorDate: Mon Sep 28 17:45:14 2026 -0700
+Commit:     ymote <151983+ymote@users.noreply.github.com>
+CommitDate: Mon Sep 28 17:45:14 2026 -0700
+
+    OpenSL ES adapter: Android configuration interface, canonical IDs
+    
+    SL_IID_ANDROIDCONFIGURATION is Android-only and OH's libOpenSLES has no
+    such symbol, so libraries that import it failed to relocate: Godot's
+    (Ball2Box, Jigsaw, V3, Duck Run) and Oboe's (Rhythm Engine). It is now
+    exported with AOSP's value, kept out of the interface lists OH sees, and
+    answered by a per-object interface that takes and reports the keys AOSP's
+    player and recorder accept (stream type, recording preset, performance
+    mode), with AOSP's error codes for unknown keys and short buffers. OH has
+    no equivalent, so the values are recorded, not applied; the Java-proxy
+    calls are unsupported.
+    
+    OH compares interface IDs by address. A library loaded in the isolated
+    Android namespace binds its SL_IID_* references to that namespace's copy
+    of libOpenSLES, so OH refused Godot's own SL_IID_ENGINE and Godot ran
+    without audio. Every ID handed to OH is now swapped for OH's own by its
+    contents. Ball2Box's audio was checked by recording the board's output.
+    
+    Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+
+ framework/webview-shim/opensles_android_adapter.c | 166 ++++++++++++++++++++--
+ 1 file changed, 157 insertions(+), 9 deletions(-)

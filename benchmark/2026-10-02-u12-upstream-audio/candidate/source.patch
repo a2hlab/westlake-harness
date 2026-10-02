@@ -1,0 +1,110 @@
+--- upstream/c7d2992
++++ route-A/candidate
+@@ -55,6 +55,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
++#include "iid_width.h"
+ 
+ /* ------------------------------------------------------------ Android ABI types ------------ */
+ 
+@@ -188,40 +189,55 @@
+     void *lib;
+ } oh;
+ 
++int U12BindOpenSLESResidentOwner(void* handle)
++{
++    if (handle == NULL) return 0;
++    if (oh.lib != NULL) return oh.lib == handle;
++    void* function = dlsym(handle, "slCreateEngine");
++    Dl_info identity;
++    if (function == NULL || !dladdr(function, &identity) || identity.dli_fname == NULL ||
++        strcmp(identity.dli_fname, "/system/lib64/libOpenSLES.so") != 0) return 0;
++    const SLInterfaceID* engine = dlsym(handle, "SL_IID_ENGINE");
++    const SLInterfaceID* play = dlsym(handle, "SL_IID_PLAY");
++    const SLInterfaceID* volume = dlsym(handle, "SL_IID_VOLUME");
++    const SLInterfaceID* queue = dlsym(handle, "SL_IID_OH_BUFFERQUEUE");
++    const SLInterfaceID* standard = dlsym(handle, "SL_IID_BUFFERQUEUE");
++    if (!engine || !play || !volume || !queue || !*engine || !*play || !*volume || !*queue) return 0;
++    oh.create_engine = (__typeof__(oh.create_engine))function;
++    oh.engine = *engine;
++    oh.play = *play;
++    oh.volume = *volume;
++    oh.oh_bq = *queue;
++    oh.std_bq = standard ? *standard : NULL;
++    oh.lib = handle;
++    return 1;
++}
++
+ static int oh_resolve(void)
+ {
+-    static int done, ok;
+-    if (done) return ok;
+-    done = 1;
+-    void *lib = dlopen("libOpenSLES.so", RTLD_NOW);
+-    if (lib == NULL) { sles_log("libOpenSLES.so not loadable"); return 0; }
+-    oh.create_engine = (__typeof__(oh.create_engine)) dlsym(lib, "slCreateEngine");
+-    const SLInterfaceID *e = dlsym(lib, "SL_IID_ENGINE"), *p = dlsym(lib, "SL_IID_PLAY"),
+-                        *v = dlsym(lib, "SL_IID_VOLUME"), *q = dlsym(lib, "SL_IID_OH_BUFFERQUEUE"),
+-                        *s = dlsym(lib, "SL_IID_BUFFERQUEUE");
+-    ok = oh.create_engine && e && q;
+-    if (!ok) { sles_log("OH OpenSL ES symbols missing"); return 0; }
+-    oh.lib = lib;
+-    oh.engine = *e; oh.oh_bq = *q;
+-    oh.play = p ? *p : NULL; oh.volume = v ? *v : NULL; oh.std_bq = s ? *s : NULL;
+-    return ok;
++    return oh.lib != NULL && oh.create_engine != NULL;
+ }
+ 
+ /* Android's simple-buffer-queue ID. OH's libOpenSLES has no such symbol; PPSSPP and Mindustry
+  * import it. Only its address matters -- apps pass it back, they do not inspect it. */
+-static const struct SLInterfaceID_ westlake_sl_iid_android_sbq = {
++static const struct U12AndroidId westlake_sl_iid_android_sbq = {
+     0x198e4940, 0xc5d7, 0x11df, 0xa2a6, {0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b}};
+-const SLInterfaceID SL_IID_ANDROIDSIMPLEBUFFERQUEUE = &westlake_sl_iid_android_sbq;
+-
+-static int iid_is(SLInterfaceID a, SLInterfaceID b)
+-{
+-    return a != NULL && b != NULL && (a == b || memcmp(a, b, sizeof(*a)) == 0);
++const SLInterfaceID SL_IID_ANDROIDSIMPLEBUFFERQUEUE = (SLInterfaceID) &westlake_sl_iid_android_sbq;
++
++extern const SLInterfaceID SL_IID_ANDROIDCONFIGURATION;
++static int iid_is(SLInterfaceID android, SLInterfaceID target)
++{
++    if (!android || !target) return 0;
++    if (android == target) return 1;
++    if (target == SL_IID_ANDROIDSIMPLEBUFFERQUEUE || target == SL_IID_ANDROIDCONFIGURATION)
++        return U12EqualAndroidIds(android, target);
++    return U12EqualAndroidOwnerId(android, target);
+ }
+ 
+ /* Android's configuration interface ID, from AOSP frameworks/wilhelm src/OpenSLES_IID.cpp. */
+-static const struct SLInterfaceID_ westlake_sl_iid_android_config = {
++static const struct U12AndroidId westlake_sl_iid_android_config = {
+     0x89f6a7e0, 0xbeac, 0x11df, 0x8b5c, {0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b}};
+-const SLInterfaceID SL_IID_ANDROIDCONFIGURATION = &westlake_sl_iid_android_config;
++const SLInterfaceID SL_IID_ANDROIDCONFIGURATION = (SLInterfaceID) &westlake_sl_iid_android_config;
+ 
+ static const char *const oh_iid_names[] = {
+     "SL_IID_3DCOMMIT", "SL_IID_3DDOPPLER", "SL_IID_3DGROUPING", "SL_IID_3DLOCATION",
+@@ -255,9 +271,8 @@
+     if (id == NULL || oh.lib == NULL) return id;
+     pthread_once(&oh_iids_once, oh_iids_fill);
+     for (int i = 0; i < OH_IID_COUNT; i++) {
+-        if (oh_iids[i] != NULL && (oh_iids[i] == id || memcmp(oh_iids[i], id, sizeof(*id)) == 0)) {
+-            return oh_iids[i];
+-        }
++        if (oh_iids[i] == id) return id;
++        if (U12EqualAndroidOwnerId(id, oh_iids[i])) return oh_iids[i];
+     }
+     return id;
+ }
+@@ -733,7 +748,7 @@
+     /* Not wrapped: hand OH's interface back, and say so -- its methods take OH-width types. */
+     SLresult r = (*w->real)->GetInterface(w->real, canon_iid(iid), out);
+     if (iid != NULL) {
+-        SLES_LOGF("interface %08x-... handed back unwrapped (%u)", (unsigned) iid->time_low, (unsigned) r);
++        SLES_LOGF("interface %08x-... handed back unwrapped (%u)", (unsigned) ((const struct U12AndroidId*)iid)->time_low, (unsigned) r);
+     }
+     return (a_result) r;
+ }
