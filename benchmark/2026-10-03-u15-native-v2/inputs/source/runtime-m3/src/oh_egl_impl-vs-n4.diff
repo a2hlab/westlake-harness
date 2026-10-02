@@ -1,0 +1,37 @@
+--- $WORKSPACES/westlake-harness-bms-deploy/benchmark/2026-09-30-n4-native/src/oh_egl_impl.cpp	2026-09-30 23:51:47
++++ benchmark/2026-10-03-u15-runtime-m3/src/oh_egl_impl.cpp	2026-10-03 06:34:34
+@@ -28,13 +28,17 @@
+ #include <mutex>
+ 
+ // OH port: the window a Java Surface carries, resolved the way the runtime's hwui resolves it.
+-// Looked up at run time so this library has no link-time dependency on the runtime's internals.
++// U15 M3: this object is linked into liboh_android_runtime.so, which itself defines
++// ANativeWindow_fromSurface. A RTLD_DEFAULT lookup misses it when the runtime is not in the global
++// scope (GLSurfaceView apps: the GL thread never reached the converter and got the invalid-Surface
++// IAE), and the miss was cached for the life of the process. Reference the same image's converter.
+ struct ANativeWindow;
++extern "C" ANativeWindow* ANativeWindow_fromSurface(JNIEnv* env, jobject surface);
++extern "C" int HiLogPrint(int type, int level, unsigned int domain, const char* tag, const char* fmt, ...);
+ static void* oh_window_from_surface(JNIEnv* env, jobject surface) {
+     typedef ANativeWindow* (*FromSurface)(JNIEnv*, jobject);
+     typedef void* (*Unwrap)(ANativeWindow*);
+-    static FromSurface from_surface =
+-            reinterpret_cast<FromSurface>(dlsym(RTLD_DEFAULT, "ANativeWindow_fromSurface"));
++    static FromSurface from_surface = ANativeWindow_fromSurface;
+     // The unwrapper lives in liboh_adapter_bridge.so, which is not in the global scope: a
+     // RTLD_DEFAULT lookup misses it, and the adapter's wrapper then reached OH's EGL, which
+     // rejected it ("eglCreateWindowSurface error"). Ask that library directly.
+@@ -51,8 +55,12 @@
+         return nullptr;
+     }
+     ANativeWindow* window = from_surface(env, surface);
++    void* oh = (window != nullptr && unwrap != nullptr) ? unwrap(window) : nullptr;
++    // One line per EGL window-surface conversion; the hilog header carries the calling (GL) thread's tid.
++    HiLogPrint(3 /* LOG_CORE */, 4 /* LOG_INFO */, 0xD000F00u, "WL-OPENGL",
++            "EGLImpl window surface: converter=%{public}p surface=%{public}p anw=%{public}p oh=%{public}p",
++            reinterpret_cast<void*>(from_surface), static_cast<void*>(surface), static_cast<void*>(window), oh);
+     if (window == nullptr) return nullptr;
+-    void* oh = unwrap != nullptr ? unwrap(window) : nullptr;
+     fprintf(stderr, "[WL-OPENGL] window surface: anw=%p oh=%p unwrap=%s\n",
+             static_cast<void*>(window), oh, unwrap != nullptr ? "found" : "MISSING");
+     return oh != nullptr ? oh : static_cast<void*>(window);
