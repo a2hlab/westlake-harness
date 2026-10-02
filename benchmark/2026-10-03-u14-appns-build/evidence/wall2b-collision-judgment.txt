@@ -1,0 +1,36 @@
+# Does adding ubrk_open_74/u_charType_74 aliases to Android libicuuc.so collide with OH libhmicuuc.z.so's real _74?
+# JUDGMENT: NO collision -> option (b) is usable. (If this isolation were not provable, use b'.)
+
+## The scopes
+- Android libicuuc.so is loaded RTLD_LOCAL:
+    * by the runtime: westlake_icu_overrides.cpp:378/385 dlopen(..., RTLD_NOW | RTLD_LOCAL) -- runtime libs load in
+      namespace=westlake.sealed.child (hilog: libartbased/libhwui loads show that ns).
+    * by tttext: app_native_loader ANL_Dlopen forces "mode | RTLD_LOCAL" and REJECTS RTLD_GLOBAL for app domains, in
+      namespace=westlake.anl.app. (tttext's dlopen("libicuuc.so") resolves in the app ns, inherited from the bridge.)
+  => Android libicuuc symbols are NEVER added to any global symbol scope, and its instances live only in CHILD
+     namespaces (westlake.sealed.child / westlake.anl.app).
+- OH libhmicuuc.z.so / resmgr / intl / i18n are platform libs in the DEFAULT namespace. OH libhmicui18n.z.so has
+  DT_NEEDED libhmicuuc.z.so and its undefined u_charType_74 / u_hasBinaryProperty_74 (and libintl_util's _74 ref)
+  resolve against that direct dependency inside the default ns.
+
+## Why OH cannot bind to the Android aliases
+1. RTLD_LOCAL: Android libicuuc is not in the process-global scope, so OH's lazy/eager binding never searches it.
+2. Namespace direction: inheritance is child -> parent (app inherits bridge; bridge dlns_create2 CREATE_INHERIT_DEFAULT
+   inherits default). Nothing pushes child-ns symbols UP to default. OH lives in default (the root) and never inherits
+   from westlake.sealed.child / westlake.anl.app, so it cannot see Android libicuuc at all.
+3. Direct dependency: OH's _74 undefs are satisfied by libhmicuuc (their own NEEDED, in default) before any wider scope.
+4. dlsym scope: tttext's dlsym(libicuuc_handle, "ubrk_open_74") searches only that handle's own dependency graph
+   (the app-ns Android libicuuc), never OH's libhmicuuc; and OH never obtains a handle to the Android libicuuc.
+
+## Conclusion
+The _74 alias is reachable ONLY by a dlopen handle to Android libicuuc, which only tttext (app ns) holds. OH's _74 stays
+bound to libhmicuuc (default). The ICU version-suffix isolation is preserved BECAUSE the two ICU stacks are in different,
+non-cross-exporting namespaces -- the alias does not re-enter OH's scope. => OPTION (b) IS SAFE TO BUILD.
+
+## b' (fallback, only if the above isolation is ever broken -- e.g. Android libicuuc gets promoted to default/global)
+Ship a tiny app-ns-only shim named libicuuc.so in the app ns search path (shadows the platform soname for the app ns
+only). It exports ONLY ubrk_open_74/close/first/next/setText, u_charType_74, u_hasBinaryProperty_74, each forwarding to
+the real Android ICU _72 (which the shim links/dlopens once -- no second full ICU). tttext's dlopen("libicuuc.so") in the
+app ns resolves to the shim (app-ns soname shadowing), and dlsym finds the _74 names in it. OH (default) still resolves
+libicuuc/libhmicuuc normally; the shim is invisible outside the app ns. b' isolates by construction but needs the app-ns
+soname-shadowing + the forward-to-_72 wiring; b is simpler and already safe, so b is recommended.

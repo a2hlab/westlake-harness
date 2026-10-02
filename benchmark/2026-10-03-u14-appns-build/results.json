@@ -1,35 +1,46 @@
 {
-  "task": "U14 app-ns public libs build staging: (1) safety criterion selecting the Wall-2 ICU fix; (2) locate+validate the Wall-1 appspawn-x host reproduce+patch build for the U14 native candidate.",
+  "task": "U14 app-ns build staging: (1) Wall-2 ICU fix selection + b-collision safety; (2) Wall-1 appspawn-x host reproduce+patch (Mac) with the deployed-source + libz/private-zlib reconciliation.",
   "date": "2026-10-03",
   "lane": "cc-wiki",
   "board_entry": 90,
   "offline": true,
-  "board_deploy": false,
-  "board_access": "none (02:35 lock window respected; OH libs read from local snapshot westlake-inputs/oh61-link-inputs)",
+  "board_access": "none (02:35 lock window; OH libs from local snapshot westlake-inputs/oh61-link-inputs)",
   "wall2_selection": {
-    "method": "Android app process maps both ICU stacks (U12 maps-t5): ours /system/android/lib64 (ICU 72), OH /system/lib64/platformsdk/libhmicuuc.z.so etc. Scanned OH libs from local snapshot.",
-    "finding": "OH libhmicuuc.z.so reads /system/usr/icu and requires ICU 74 (icudt74l, u_setDataDirectory_74, udata_setCommonData_74). It shares /system/usr/icu with tttext.",
-    "option_a": "UNSAFE/REJECTED: per-app remap of /system/usr/icu to ICU-72 would feed icudt72l to OH libhmicuuc (needs icudt74l) -> breaks OH ICU in the app process.",
-    "chosen": "option (b): add _74 alias exports to our Android libicuuc.so (aliases of the _72 impls). Only _74-dlsym callers (tttext) affected; OH libhmicuuc keeps its own _74. Alias set (from apk strings): ubrk_open/close/first/next/setText, u_charType, u_hasBinaryProperty (all stable break-iterator/property C API, all in libicuuc).",
-    "build_b": "re-link libicuuc with an alias object (.set <sym>_74,<sym>_72), keep the _72 cohort; one lib, no second copy. recipe/wall2-b-icu74-alias.md.",
-    "caveats": ["enumerate the real dlsym set from relocations", "handle the icudt74l_dat data symbol (tttext builds icudt+suffix)", "72-code-answering-74 safe only for the stable C ABI"],
-    "alternative_c1": "align our Android ICU to 74 (OH already is): rebuild libicuuc/libicui18n at 74 + icudt74l + flip westlake_icu_overrides.cpp kExpectedSuffix 72->74. Larger but removes the version-skew."
+    "finding": "OH libhmicuuc.z.so (mapped in the app process, U12 maps-t5) reads /system/usr/icu and needs ICU 74 (icudt74l, u_setDataDirectory_74). It shares /system/usr/icu with tttext.",
+    "option_a_rejected": "per-app remap of /system/usr/icu to ICU-72 would feed icudt72l to OH libhmicuuc (needs 74) -> breaks OH ICU in-process.",
+    "chosen": "option (b): add _74 alias exports to Android libicuuc.so (aliases of _72). Set = ubrk_open/close/first/next/setText, u_charType, u_hasBinaryProperty.",
+    "b_collision_safe": "Adding _74 aliases does NOT collide with OH libhmicuuc's real _74: Android libicuuc is RTLD_LOCAL (runtime westlake_icu_overrides; tttext via ANL_Dlopen which forbids RTLD_GLOBAL) and lives in child namespaces (westlake.sealed.child / westlake.anl.app); OH resolves its _74 in DEFAULT via its direct NEEDED libhmicuuc; default does not inherit from child namespaces, and RTLD_LOCAL keeps Android libicuuc out of global scope. tttext's dlsym searches only its own libicuuc handle graph. So the alias is reachable only by tttext, never OH.",
+    "b_prime_fallback": "if that isolation were ever broken, ship an app-ns-only shim named libicuuc.so (shadows the soname for the app ns), exporting only the _74 names forwarding to the Android _72."
   },
   "wall1_build": {
-    "fix_artifact_correction": "the dlns_inherit patch compiles into the appspawn-x HOST EXECUTABLE (westlake_stock_host_main.c -> build_stock_host -> appspawn-x-stock, pass1/pass2 byte-repro built in), NOT libapp_native_loader.so nor the child .so.",
-    "base_to_reproduce": "U13 deployed host appspawn-x = 2a87118e7e8e62fb73ef71a436517cda406c308668753a478cf52331e996072e (u13-final-assembly/.artifacts/bundle-v3/native/payload/runtime/appspawn-x). Not r3 65cc3535, not n11h 65ac5089.",
-    "toolchain": "hw248:/opt/wl-src/.work/product-tls-generation + frozen clang-15 present. Direct recipe is Linux-only (checks /etc/os-release) -> build on hw248 (a2hlab reserved for the U13 executor during the lock window).",
-    "patch": "recipe/win-u14-appns-public-libs.patch (context-verified, dlns_inherit site line 217): add libicui18n.so:libicuuc.so:libGLESv2.so:libGLESv3.so:libvulkan.so:libjnigraphics.so to the app<->bridge inherit; exclude libandroidio/libjavacore.",
-    "plan": ["reproduce 2a87118e UNPATCHED x2 (N10b faithfulness gate; if no match STOP + report delta)", "apply patch, build PATCHED x2", "acceptance vs base: open_site_scan unchanged, deployed_strings_diff only the new soname string + the one LOGI/branch, exports/undefined identical", "persist + record shas on hw248"],
-    "staged_not_built": "a faithful reproduce of 2a87118e needs the EXACT U13 host source snapshot + frozen.sha256 env; u13-final-assembly records no host repro receipt; N10b discipline rejects a near-miss source. Confirm the U13 host source snapshot -> then the monitored hw248 build is a small mechanical run. Mirrors the staged-then-built JIT build.",
-    "build_not_run_this_turn": true
+    "fix_artifact": "the appspawn-x HOST executable (StockCreateConfiguredNamespaces), NOT libapp_native_loader.so nor the child .so.",
+    "base_pinned": "U13 host appspawn-x = 2a87118e7e8e62fb73ef71a436517cda406c308668753a478cf52331e996072e",
+    "build_host_corrected": "MAC with DevEco clang (clang-15, --target=aarch64-linux-ohos, sysroot .../b68-generation/.work/product-tls-generation/frozen/sysroot), NOT hw248. Recipe + source in benchmark/2026-10-02-u12-private-zlib/build.py + build-receipt.json (candidate1=candidate2=2a87118e).",
+    "deployed_source": "candidate-stock-host.c (u11-native-batch/.artifacts/r1/host, source_sha 507bf160) -- has per-cluster multi-owner inherit logic (system_owner/runtime_owner for flutter_private|native_private, bridge for ALL apps, compat_owner). NOT the clean worktree westlake_stock_host_main.c.",
+    "patch_revised": "recipe/win-u14-appns-public-libs.patch now targets candidate-stock-host.c `if (wants_bridge)` bridge inherit (line 330, verified) -- this edge runs for EVERY app, so one edit covers toutiao/fd-stk/subwaysurfers and the enrolled apps. Adds libicui18n:libicuuc:libGLESv2:libGLESv3:libvulkan:libjnigraphics. EXCLUDES libz.so + libandroidio/libjavacore.",
+    "inputs_validated_on_mac": ["DevEco clang", "sysroot (westlake-harness-bms-deploy)", "candidate-stock-host.c 507bf160 (patch site line 330 present)", "u10-bundle reused_objects recipe (MASTER=westlake-harness)"],
+    "plan": ["run u12-private-zlib logic UNPATCHED x2 -> reproduce 2a87118e (N10b gate; stop on mismatch)", "apply revised patch, build x2 -> U14 candidate", "deployed_strings_diff = only the new soname string + the LOGI/branch; open_site_scan sites/edges unchanged", "persist + record shas"],
+    "build_not_run_this_turn": "patch was re-derived against the real deployed source + reconciled with the libz/private-zlib interaction this turn; the Mac reproduce+patch is the mechanical next step."
+  },
+  "libz_element": {
+    "private_zlib_scope": "U11ZlibRoot (zlib-route.h) returns westlake_native for EXACTLY {im.vector.app (Element), com.emn8.mobilem8.nativeapp.bk (burgerking)} -- scoped, not universal, not burgerking-only.",
+    "element_already_fixed_in_u13": "im.vector.app is enrolled -> U13 (host 2a87118e) prepends westlake_native (libz.so 50b9ab6a, crc32) to Element's app search path, resolving librealm-jni's NEEDED libz. The 02:53 report is U10.1T8, which predates the private zlib.",
+    "double_libz_avoided": "the public-lib patch EXCLUDES libz.so: enrolled apps get libz from the private-zlib prefix (LOCAL_NS_PREFERED, one copy); adding libz to the inherit too would let the platform libz load as a second copy. GL/ICU libs are safe (both inherit edges point at the one DEFAULT copy -> deduped); only libz has a separate provider.",
+    "native_cluster": "native_cluster_path() enrolls 13 packages (anki, unciv, organicmaps, nextcloud, mcdonalds, mindustry, burgerking, im.vector.app, firefox, fennec, vlc, ppsspp, shatteredpixeldungeon); toutiao/fd-stk/subwaysurfers are NOT enrolled -> normal bridge path."
   },
   "prediction_by_first_fatal": {
-    "toutiao": "Wall 1 + Wall 2 (both); lit only with both",
-    "fd-stk": "Wall 1 only (libGLESv2 via libSDL2)",
-    "subwaysurfers": "Wall 1 only (libGLESv3 via libvkquality)",
-    "flutter_cohort": "U13 18763dd4 (GetLongField) first; Wall 1 is their second wall"
+    "toutiao": "Wall 1 (libicui18n) + Wall 2 (ICU 74<->72); both",
+    "fd-stk": "Wall 1 (libGLESv2 via libSDL2)",
+    "subwaysurfers": "Wall 1 (libGLESv3 via libvkquality)",
+    "element_im_vector_app": "already fixed in U13 (private zlib {im.vector.app, burgerking}); NOT via the public-lib patch",
+    "flutter_cohort": "GetLongField/AAssetManager (U13 18763dd4) first; Wall 1 is their second wall"
   },
-  "boundaries": ["offline; no board access (02:35 lock window); OH libs from local snapshot", "appspawn-x host build is the runtime/appspawn owners' to deploy; candidate staging only", "sources read read-only; hw248 probed read-only"],
-  "files": ["README.md", "evidence/wall2-selection.txt", "evidence/build-staging.txt", "recipe/win-u14-appns-public-libs.patch", "recipe/wall2-b-icu74-alias.md", "results.json", "documentation.json", "landing-paths.txt"]
+  "corrections_this_turn": [
+    "Wall-1 build host: Mac (DevEco clang) not hw248; source+recipe in u12-private-zlib (outer 02:47)",
+    "Wall-1 patch target: candidate-stock-host.c deployed source (multi-owner inherit), not the clean worktree copy",
+    "libz/Element already fixed by U13 private zlib (scoped to {im.vector.app, burgerking}); libz excluded from the public-lib set (outer 02:53)",
+    "option (b) proven collision-safe vs OH libhmicuuc _74 (ns + RTLD_LOCAL isolation)"
+  ],
+  "boundaries": ["offline; no board access (02:35 lock window)", "appspawn-x host build is the runtime/appspawn owners' to deploy; candidate staging only", "sources read read-only"],
+  "files": ["README.md", "evidence/wall2-selection.txt", "evidence/wall2b-collision-judgment.txt", "evidence/build-staging.txt", "evidence/libz-and-deployed-inherit.txt", "recipe/win-u14-appns-public-libs.patch", "recipe/wall2-b-icu74-alias.md", "results.json", "documentation.json", "landing-paths.txt"]
 }

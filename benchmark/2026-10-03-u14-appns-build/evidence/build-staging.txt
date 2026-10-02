@@ -37,3 +37,21 @@ The byte-faithful reproduce of 2a87118e needs the EXACT U13 host SOURCE SNAPSHOT
 host was built under). The current worktree source has the patch site but may differ from the U13-deployed snapshot;
 u13-final-assembly records no host repro receipt. Confirm the U13 host source snapshot (or its recorded repro receipt)
 so step 1 reproduces 2a87118e, not a near-miss. This is the only blocker to running the monitored build.
+
+## UPDATE (outer 02:47/02:53): build on MAC (DevEco clang), not hw248; source + recipe located; patch revised
+- The U13 host 2a87118e was built ON THE MAC with DevEco SDK clang (NOT the hw248 Linux direct recipe):
+  build-receipt (benchmark/2026-10-02-u12-private-zlib/build-receipt.json): candidate1 = candidate2 = 2a87118e via
+  /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang (clang-15),
+  --target=aarch64-linux-ohos, --sysroot=.../b68-generation/.work/product-tls-generation/frozen/sysroot.
+- Inputs validated present on this Mac: DevEco clang; sysroot (westlake-harness-bms-deploy/...); the stock-host sources
+  (u11-native-batch/.artifacts/r1/host/candidate-stock-host.c, source_sha 507bf160 asserted); the link recipe
+  (MASTER=westlake-harness/benchmark/2026-10-01-u10-bundle/r2-host-build-receipt.json reused_objects). build.py drives
+  compile(candidate-stock-host.c)+link(reused_objects) -> appspawn-x, pass1==pass2.
+- The deployed host source is candidate-stock-host.c (multi-owner inherit logic), NOT the clean worktree copy. The
+  revised recipe/win-u14-appns-public-libs.patch targets its `if (wants_bridge)` bridge inherit (line 330), libz excluded
+  (evidence/libz-and-deployed-inherit.txt).
+- Launch-ready Mac build: (1) run the u12-private-zlib build logic UNPATCHED x2 -> reproduce 2a87118e (N10b gate; stop if
+  no match); (2) apply the revised patch to candidate-stock-host.c, build x2 -> U14 candidate; (3) deployed_strings_diff
+  vs 2a87118e = only the added "libicui18n.so:...:libjnigraphics.so" string + the LOGI/branch; open_site_scan sites/edges
+  unchanged; (4) persist + record shas. Not run this turn (patch was re-derived against the real source + the libz
+  interaction this turn); it is the mechanical next step, on the Mac.

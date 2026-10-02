@@ -1,0 +1,46 @@
+# The deployed host 2a87118e's StockCreateConfiguredNamespaces is NOT the clean worktree copy -- it has per-cluster
+# multi-owner inherits. The Wall-1 patch is revised against the real source (candidate-stock-host.c, u11 r1).
+
+## Real app-ns inherit structure (candidate-stock-host.c)
+- native_cluster_path() = 13 enrolled packages: com.ichi2.anki, com.unciv.app, app.organicmaps, com.nextcloud.client,
+  com.mcdonalds.app, io.anuke.mindustry, com.emn8.mobilem8.nativeapp.bk (burgerking), im.vector.app (Element),
+  org.mozilla.firefox, org.mozilla.fennec_fdroid, org.videolan.vlc, org.ppsspp.ppsspp, com.shatteredpixel...dungeon.
+- flutter_private / native_private (enrolled apps with the westlake_flutter:/westlake_native: search prefix):
+    dlns_inherit(app, default/system_owner,
+      "libc:libdl:libm:libEGL:libGLESv3:libsurface.z:liboh_android_runtime:libbionic_compat:liblog:libc++:libstdc++:libOpenSLES")
+    + inherit runtime_owner (westlake.sealed.child) + publish the resident runtime + the ABI lib.
+    (This system_owner list has libEGL/libGLESv3/libOpenSLES but LACKS libGLESv2, libvulkan, libjnigraphics, libicui18n.)
+- ALL apps: `if (wants_bridge)` -> dlns_inherit(app, bridge, bridge_shared_sonames). THIS RUNS FOR EVERY APP (the
+  private block is not an else), so augmenting THIS one inherit exposes the public libs to all app namespaces in one place.
+
+## Which app takes which path
+- toutiao (com.ss.android.article.news): NOT enrolled -> normal path; sees only bridge_shared_sonames. libicui18n missing.
+- fd-stk (org.supertuxkart.stk): NOT enrolled -> normal path. libGLESv2 missing.
+- subwaysurfers (com.kiloo.subwaysurf): NOT enrolled -> normal path. libGLESv3 missing.
+- Element (im.vector.app): ENROLLED (native_private) -> system_owner + the private-zlib search prefix (see below).
+=> the bridge inherit (augmented) covers toutiao/fd-stk/subwaysurfers AND the enrolled apps in one edit.
+
+## (1) U12 private-zlib scope -- the outer's question
+U11ZlibRoot(search, permitted) (zlib-route.h) returns "/system/android/lib64/westlake_native" for EXACTLY TWO packages:
+  { "im.vector.app", "com.emn8.mobilem8.nativeapp.bk" }   (Element and burgerking)
+and NULL otherwise. So the private zlib is SCOPED to {Element, burgerking} -- not universal, not burgerking-only.
+**Element (im.vector.app) is already enrolled.** For Element U11ZlibRoot prepends westlake_native to the app search/
+permitted paths, where westlake_native/libz.so (50b9ab6a) provides crc32 for librealm-jni's NEEDED libz.so.
+=> The 02:53 report is U10.1T8 (which PREDATES the U11/U12 private zlib). **U13 (host 2a87118e) already fixes Element's
+   libz** via the private-zlib search prefix. No public-lib change is needed for Element's libz.
+
+## (2) Avoid two libz in one process -- the outer's constraint
+Do NOT add libz.so to the public-lib inherit. The only libz-needing apps today (Element, burgerking) get libz from the
+private-zlib search prefix (westlake_native, LOCAL_NS_PREFERED -> preferred, single copy in the app ns). If libz.so were
+ALSO in the bridge inherit, the platform libz (from default) could load as a SECOND copy -> two libz in one process.
+=> the patch's public set EXCLUDES libz.so: "libicui18n.so:libicuuc.so:libGLESv2.so:libGLESv3.so:libvulkan.so:libjnigraphics.so".
+   (The GL/ICU libs are safe to add even though some private apps also inherit libGLESv3 via system_owner: both edges
+   point at the same DEFAULT-ns copy, so the linker dedupes -> one instance. Only libz has a separate provider, hence
+   the exclusion.) If a FUTURE non-enrolled app needs libz, either enroll it in U11ZlibRoot OR add libz to the inherit
+   AND drop its private-zlib -- never both.
+
+## Correction to the prior round
+2026-10-03-u14-appns-public-libs wrote the patch against the clean worktree westlake_stock_host_main.c (single
+dlns_inherit, line 217). The DEPLOYED host 2a87118e is built from candidate-stock-host.c with the multi-owner logic
+above; the revised patch targets the `if (wants_bridge)` bridge inherit there (line 330). Same net effect (augment the
+bridge inherit), correct source + line.

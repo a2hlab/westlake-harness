@@ -42,28 +42,51 @@ align our Android ICU to 74 since OH already is) are in the recipe.
   base: `open_site_scan` unchanged, `deployed_strings_diff` differs ONLY by the added soname string (+ the one
   LOGI/branch), exports/undefined identical; (4) persist + record shas.
 
-**Why staged, not built this turn:** a faithful reproduce of `2a87118e` needs the **exact U13 host source snapshot** +
-its `frozen.sha256` env; `u13-final-assembly` records no host repro receipt, and the N10b discipline explicitly rejects
-a reproduction built from a near-miss source (n11h: "a reproduction using a different source basename is not an accepted
-baseline"). The one input to confirm is that U13 host source snapshot. With it, the monitored hw248 build is a mechanical
-single-instance run (small: a few `.c` + link, pass1/pass2). This mirrors the staged-then-built pattern used for the JIT
-compiler (`2026-10-02-toutiao-jit-build`).
+**Build host + source corrected (outer 02:47/02:53):** the U13 host `2a87118e` was built **on the Mac** with DevEco
+clang (not the hw248 Linux recipe), and its source + reproduce receipt are in `benchmark/2026-10-02-u12-private-zlib/`
+(`build.py` + `build-receipt.json`: candidate1 = candidate2 = `2a87118e`; source `candidate-stock-host.c` =
+`u11-native-batch/.artifacts/r1/host`, sha `507bf160`; link recipe = `MASTER/benchmark/2026-10-01-u10-bundle`). All
+inputs validated present on this Mac. **The deployed source has the multi-owner inherit logic** (not the clean worktree
+copy), so the patch is revised against `candidate-stock-host.c` (bridge inherit, line 330); see
+`evidence/libz-and-deployed-inherit.txt`.
+
+**Why staged, not built this turn:** the patch had to be re-derived against the real deployed source + reconciled with
+the libz/private-zlib interaction this turn. With that settled, the Mac build is mechanical: run the `u12-private-zlib`
+logic UNPATCHED ×2 → reproduce `2a87118e` (N10b gate; stop on mismatch) → apply the revised patch to
+`candidate-stock-host.c` ×2 → `deployed_strings_diff` = only the added soname string; `open_site_scan` sites/edges
+unchanged. Mirrors the staged-then-built JIT pattern.
+
+## libz / Element (outer 02:53) — already handled by U13's private zlib; keep it out of the public-lib set
+Element (`im.vector.app`) fails on `librealm-jni.so` → `libz.so` ENOENT **in U10.1T8**. `libz.so` is AOSP-public, but
+the U12 **private zlib** (`U11ZlibRoot`, `zlib-route.h`) already prepends `westlake_native` (with `libz.so` `50b9ab6a`)
+to the app search path for **exactly `{im.vector.app, burgerking}`** — Element is enrolled. So **U13 (host `2a87118e`)
+already fixes Element's libz**; the U10.1T8 report predates the private zlib. The public-lib patch therefore **excludes
+`libz.so`**: the enrolled apps get it from the private-zlib prefix (`LOCAL_NS_PREFERED`, one copy), and adding it to the
+inherit too would let the platform libz load as a **second copy** (the outer's double-libz constraint). GL/ICU libs are
+safe to add even where a private app also inherits `libGLESv3` via `system_owner` — both edges point at the one DEFAULT
+copy, so the linker dedupes; only libz has a separate provider, hence the exclusion.
 
 ## Prediction table (by first-fatal)
-| key | needs | after the fixes |
-|---|---|---|
-| **toutiao** | Wall 1 (libicui18n visible) **and** Wall 2 (ICU 74↔72 via option b) | lit only with both |
-| **fd-stk** | Wall 1 only (libGLESv2 via libSDL2) | lit with Wall 1 |
-| **subwaysurfers** | Wall 1 only (libGLESv3 via libvkquality) | lit with Wall 1 |
-| fd-fluffychat/fd-immich/fd-kitchenowl/fd-saber/localsend | U13 `18763dd4` (GetLongField) first; Wall 1 is their 2nd wall | — |
+| key | enrolled? | first-fatal | needs |
+|---|---|---|---|
+| **toutiao** | no (normal path) | libicui18n.so ENOENT | **Wall 1** (public-lib inherit) **and Wall 2** (ICU 74↔72, option b) — both |
+| **fd-stk** | no | libGLESv2.so (via libSDL2) | Wall 1 |
+| **subwaysurfers** | no | libGLESv3.so (via libvkquality) | Wall 1 |
+| **Element / fd-im-vector-app** | yes (native_private) | libz.so (via librealm-jni) **in U10.1T8** | **already fixed in U13** (private zlib `{im.vector.app, burgerking}`); NOT via the public-lib patch |
+| fd-fluffychat/fd-immich/fd-kitchenowl/fd-saber/localsend | — | GetLongField/AAssetManager (U13 `18763dd4`) | U13 asset fix first; Wall 1 is their 2nd wall |
 
 ## Files
 - `evidence/wall2-selection.txt` — the maps + OH-lib scan proving option (a) unsafe → option (b).
-- `evidence/build-staging.txt` — the fix artifact (appspawn-x host), the pinned base `2a87118e`, toolchain on hw248, the
-  launch-ready reproduce+patch plan, and the one input to confirm.
-- `recipe/win-u14-appns-public-libs.patch` — the Wall-1 patch (context-verified).
+- `evidence/wall2b-collision-judgment.txt` — why option (b) does NOT collide with OH `libhmicuuc`'s real `_74` (ns +
+  RTLD_LOCAL isolation), and the b′ fallback.
+- `evidence/build-staging.txt` — the fix artifact (appspawn-x host), the pinned base `2a87118e`, the Mac build
+  toolchain/recipe/inputs, and the launch-ready reproduce+patch plan.
+- `evidence/libz-and-deployed-inherit.txt` — the real deployed multi-owner inherit structure, the private-zlib scope
+  `{im.vector.app, burgerking}`, the Element/libz answer, and the double-libz exclusion.
+- `recipe/win-u14-appns-public-libs.patch` — the Wall-1 patch, **revised against the deployed source**
+  (`candidate-stock-host.c`, bridge inherit line 330), libz excluded.
 - `recipe/wall2-b-icu74-alias.md` — the Wall-2 option-(b) `_74` alias build approach + caveats + the (c1) alternative.
-- `results.json`, `landing-paths.txt`.
+- `results.json`, `documentation.json`, `landing-paths.txt`.
 
 ## Boundaries
 Offline; **no board access** (respecting the 02:35 lock window — OH libs came from a local snapshot). The appspawn-x host
