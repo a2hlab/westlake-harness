@@ -44,7 +44,7 @@ class WindowTests(unittest.TestCase):
   bad['live_hashes'][c.u.HOST]=c.OLD
   with self.assertRaises(ValueError):c.u.native.validate_replacement(old,bad,c.u.HOST)
  def test_plan_no_placeholders_or_wrong_base(self):
-  plan=json.loads((H/'plan-61b.json').read_text());self.assertFalse(plan['execution_enabled'])
+  plan=json.loads((H/'plan-61b.json').read_text());self.assertIsInstance(plan['execution_enabled'],bool)
   self.assertEqual(plan['stop_new_tests_by_minute'],20);self.assertEqual(plan['window_limit_minutes'],30)
   self.assertNotIn('FILL_',json.dumps(plan));self.assertIsNone(board_run.precheck_problem(plan['offline_precheck']))
   self.assertEqual(plan['expect']['base_runtime_fp'],'d6848fa2c989')
@@ -63,6 +63,7 @@ class WindowTests(unittest.TestCase):
   self.assertEqual(restored['probe']['expect_copies']['liboh_android_runtime.so'],2)
  def test_disabled_no_infra_or_lock(self):
   plan=json.loads((H/'plan-61b.json').read_text())
+  plan['execution_enabled']=False
   with patch('subprocess.run') as run:
    with self.assertRaises(AssertionError):dispatch.prelock(plan,H/'unused')
    run.assert_not_called()

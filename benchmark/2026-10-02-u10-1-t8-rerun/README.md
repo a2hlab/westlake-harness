@@ -114,5 +114,34 @@ The earlier15 static tool tests and accepted artifact/image gates remain unchang
 An initial root-test invocation with system Python lacked dependencies; the
 prescribed env-mac.sh interpreter rerun passed all82.
 
-No payload change, bundle re-arm, board command, lock, apply or promotion occurred.
+At the plan-revision checkpoint, no payload change, bundle re-arm, board command, lock, apply or promotion had occurred. The later window attempt is recorded below.
 R2: plan safety and offline coverage verified; A/B board behavior unverified.
+
+## Stage A window1 attempt — rejected before candidate writes
+
+The exact renewed host delta14e37320 was applied through prepare's atomic policy,
+bundle and composition transaction. The armed bundle is now190afedd3ddb (payload
+bytes unchanged). Mac production dry-run passes all gates and is deployable.
+The three detached runners acquired their locks at12:49:47, verified U9, then
+VM preflight refused missing dexdump. All apply receipts have device_io=false;
+no candidate transaction was created. Automatic finish passed recovery smoke
+and final318 on all boards; locks were released. Candidate measured keys=0;
+all166 assigned keys remain unmeasured. This is no candidate behavior verdict.
+
+The VM tools directory initially had only ssh/scp. Versioned Mac SDK/NDK wrappers
+now provide dexdump/llvm-nm/llvm-objdump/llvm-readelf, using the same approved Mac
+tool bytes and shared .vm-tmp (created before Python may fall back to /tmp).
+Wrapper tests cover selection, quoting, invoked tool name and missing-tool refusal.
+A real VM rerun then found a separate landing omission: master has zero candidate
+exception rows while the lane has156 approved rows. N1/N2 findings match Mac's
+approved issue-id sets exactly (53/103; zero new findings). The already-delivered
+registry-delta.json must be appended to master by outer; the gate remains closed.
+No exception was fabricated, no rejection suppressed and no new runner started.
+
+window1-environment-report holds raw recovery facts, control t20 contact sheets,
+final fingerprints/diff/absent and measured/unmeasured lists. Recovery pictures
+are explicitly U9, never presented as candidate screenshots. Full failed logs,
+apply receipts and recovery directories remain at window/boards/u101-t8-A1-20261002T124934/;
+raw VM gate logs are also persisted in the inputs generation audit directory.
+After the additive registry landing, rerun real VM production gates before a
+fresh same-package window1 retry. No rebuild and no additional keys are needed.
