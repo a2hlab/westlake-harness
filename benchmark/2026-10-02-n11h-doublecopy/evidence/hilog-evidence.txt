@@ -1,0 +1,27 @@
+# N11h 61b helloworld (PID 10303) -- double-copy forensic evidence
+## maps-t5: two r-xp load-bases each (the refutation: N11h GOAL was 1 each)
+### liboh_adapter_bridge.so
+7eec078000-7eec153000 r-xp 000b7000 103:30 467241                        /system/android/lib64/liboh_adapter_bridge.so
+7efa9f8000-7efaad3000 r-xp 000b7000 103:30 467241                        /system/android/lib64/liboh_adapter_bridge.so
+### liboh_android_runtime.so
+7ed6a2d000-7ed6bbe000 r-xp 0006c000 103:30 463980                        /system/android/lib64/liboh_android_runtime.so
+7eebded000-7eebf7e000 r-xp 0006c000 103:30 463980                        /system/android/lib64/liboh_android_runtime.so
+
+## host markers fired rc=0 (host ran) but copies still 2 -> refuted
+10-02 18:31:06.173 10303 10326 I C02c11/APPSPAWN: [n11h-owner.h:31][N11h-HOST-OWNER] action=resident-check target=westlake.anl.app.10303.1 owner=/system/android/lib64/liboh_adapter_bridge.so handle=E9EB404F10957196 rc=0
+10-02 18:31:06.173 10303 10326 I C02c11/APPSPAWN: [n11h-owner.h:31][N11h-HOST-OWNER] action=resident-check target=westlake.anl.app.10303.1 owner=/system/android/lib64/liboh_android_runtime.so handle=55AD4C9B1882AD8B rc=0
+10-02 18:31:06.173 10303 10326 I C02c11/APPSPAWN: [candidate-stock-host.c:218][N11h-HOST-OWNER] action=inherit target=westlake.anl.bridge.10303.1 owner=westlake.sealed.child shared=liboh_adapter_bridge.so:liboh_android_runtime.so rc=0
+10-02 18:31:06.173 10303 10326 I C02c11/APPSPAWN: [candidate-stock-host.c:257][N11h-HOST-OWNER] action=inherit target=westlake.anl.app.10303.1 owner=westlake.sealed.child shared=liboh_adapter_bridge.so:liboh_android_runtime.so rc=0
+
+## the SECOND namespace: B8 runtime-CL native namespace (Java ClassLoader / libnativeloader)
+10-02 18:31:06.174 10303 10326 I C00f00/AppSpawnXJava: [stderr] [B8-NATIVE] native namespace created for runtime CL (search=/system/android/lib64:/system/lib64/platformsdk:/system/lib64/chipset-sdk:/system/lib64/chipset-sdk-sp)
+10-02 18:31:06.175 10303 10326 I C00f00/AppSpawnXJava: [stderr] [B8-NATIVE] loaded /system/android/lib64/libwestlake_jni_gapfill.so
+10-02 18:31:06.176 10303 10326 I C00f00/AppSpawnXJava: [stderr] [B8-NATIVE] loaded /system/android/lib64/liboh_tls_boundary.so
+10-02 18:31:06.176 10303 10326 I C00f00/AppSpawnXJava: [stderr] [B8-NATIVE] WESTLAKE_HTML_COMPAT env set
+10-02 18:31:06.178 10303 10326 I C00f00/AppSpawnXJava: [stderr] [B8-NATIVE] System.load(/system/android/lib64/libwestlake_html_compat.so) failed: java.lang.UnsatisfiedLinkError: path is outside app domain: /system/android/lib64/libwestlake_html_compat.so
+
+## sealed.child could not directly load runtime (inherit-only ns): errno=2
+10-02 18:31:06.486 10303 10326 W C03f07/MUSL-LDSO: load liboh_android_runtime.so failed, namespace=westlake.sealed.child, errno=2
+
+## copy B (bridge 7efa / runtime 7eebded) services the Java/runtime side
+10-02 18:31:06.138 10303 10326 I C00f00/AppSpawnXJava: [stderr] [OH_IIMAdapter] instantiated, nativeBridge=0x7efaae1e60

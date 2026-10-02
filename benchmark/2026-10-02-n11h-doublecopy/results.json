@@ -1,0 +1,46 @@
+{
+  "task": "N11h refuted: who opens the second bridge/runtime copy",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "offline": true,
+  "board_deploy": false,
+  "window": "n11h-61b-20261002T182700 (18:27-18:57, refuted, reverted to U10.1T8)",
+  "refutation": {
+    "host_markers": "[N11h-HOST-OWNER] inherit rc=0 fired (OWNER=8 per spawn-pair)",
+    "but": "helloworld child bridge=2 runtime=2 load-bases -> single-owner NOT achieved"
+  },
+  "two_copies": {
+    "liboh_adapter_bridge.so": {
+      "copyA": "7eec078000",
+      "copyB": "7efa9f8000",
+      "inode": 467241
+    },
+    "liboh_android_runtime.so": {
+      "copyA": "7ed6a2d000",
+      "copyB": "7eebded000",
+      "inode": 463980
+    },
+    "copyB_in_use_by": "Java/runtime side (OH_RegHook resolves into runtime B 7eebded; OH_IIMAdapter nativeBridge in bridge B 7efa)"
+  },
+  "openers": {
+    "copyA_sealed_owner": "libwestlake_android_child.z.so:RealOpenLocalNow@0x41c8 dlopen_ns ns=global:closure_namespace (westlake.sealed.child); host inherits into configured bridge/app ns (StockCreateConfiguredNamespaces@0xccf0, markers rc=0)",
+    "copyB_cl_namespace": "B8 runtime-CL native namespace (createClassloaderNamespace / libnativeloader, Java-side, search=/system/android/lib64) -- NOT linked to sealed owner; bridge nativeRegisterInputChannel_impl@0xd554c dlopen liboh_android_runtime.so DEFAULT-NS pulls runtime into it",
+    "open_site_scan": "runtime MULTI-NS confirmed: appspawn-x configured ns @0xcd70 + child closure_namespace @0x41c8; CL namespace is a third surface the host owner never reaches"
+  },
+  "control_window5_u10_1": {
+    "selftest": "24 keys, all N11h-marker-free, all bridge double (==2)",
+    "B8_namespace": "created (==1, same as N11h)",
+    "delta": "N11h only added +8 host markers, zero effect on copy count -> second-copy origin identical pre/post N11h"
+  },
+  "minimal_fix": "at the B8 runtime-CL namespace creation (createClassloaderNamespace / libnativeloader adapter), add dlns_inherit from westlake.sealed.child sharing liboh_adapter_bridge.so:liboh_android_runtime.so (same as StockCreateConfiguredNamespaces@0xccf0). No host-marker change needed. Static-prove with open_site_scan (owner must not reach a 2nd ns), then a board window.",
+  "tool": {
+    "file": "scripts/lab/n11h_readout.py",
+    "selftest": "window5 known-answer PASS"
+  },
+  "evidence": [
+    "evidence/hilog-evidence.txt",
+    "evidence/n11h-window-readout.json",
+    "evidence/u9-open-sites.json",
+    "evidence/nativeloader-open-sites.json"
+  ]
+}
