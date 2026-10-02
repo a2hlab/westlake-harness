@@ -1,0 +1,94 @@
+{
+ "task": "#90 U14 native_abi Gecko exports (route B: hw248, frozen clang-15 feef13a3)",
+ "faithful_repro": {
+  "host": "hw248",
+  "clang": "OHOS clang 15.0.4 llvm-project feef13a3 (= d2053066 DW_AT_producer)",
+  "sha256": "554bf6bc563ff7805f2e69a179f7e12f44946694fc9afb7a9c19922ec613c923",
+  "builds": 2,
+  "identical": true,
+  "vs_d2053066": {
+   "allocated_sections": "identical",
+   "comment": "identical",
+   "ptload_masked_buildid": "4/4 identical",
+   "remaining_diff_bytes_after_root_placeholder": 1758,
+   "remaining_in": {
+    ".debug_line": 20,
+    ".debug_line_str": 573,
+    ".debug_str": 1065,
+    ".debug_str_offsets": 86,
+    ".symtab": 14
+   },
+   "path_only_proof": {
+    "debug_str_multiset_equal": true,
+    "debug_line_str_multiset_equal": true,
+    "dwarfdump_resolved_diff_lines": 0
+   },
+   "verdict": "faithful (path-only diffs)"
+  }
+ },
+ "gecko_build": {
+  "sha256": "86882caf60b821d526cc41034db923484cf4f42298b21e28ef0ebce1c43373d3",
+  "builds": 2,
+  "identical": true,
+  "exports_added": [
+   "__assert2",
+   "__cmsg_nxthdr",
+   "__gnu_strerror_r",
+   "__open_2",
+   "__pthread_cleanup_pop",
+   "__pthread_cleanup_push",
+   "__strncpy_chk2",
+   "android_dlopen_ext (WEAK)",
+   "strtoll_l",
+   "strtoull_l"
+  ],
+  "exports_removed": [],
+  "version": "LIBC (elf_hash 0x50d63 = libmozglue vna_hash)",
+  "imports_added": 16,
+  "imports_note": "musl + compiler-rt emutls (pthread_key_*, malloc...) + __loader_android_dlopen_ext WEAK (no route-A provider)",
+  "strings_added_text": 5,
+  "functions": "30/31 old equal; __emutls_unregister_key changed (emutls now used); 13 new",
+  "open_sites": "0 -> 1 (android_dlopen_ext -> __loader_android_dlopen_ext)",
+  "replay": "0 unresolved in all Gecko libs except plugin-container __libc_init; no version mismatch"
+ },
+ "outer_items": [
+  "A: accept emutls change (from verbatim __pthread_cleanup_* static __thread under OHOS emulated TLS)",
+  "B: android_dlopen_ext AOSP forward targets __loader_android_dlopen_ext which no route-A provider defines -> call to 0; bionic_compat 015aa3a6 variant falls back to dlopen when extinfo flags are 0"
+ ],
+ "prediction": {
+  "firefox": "libmozglue relocation wall goes (high); next unknown; if libxul calls android_dlopen_ext early -> SIGSEGV at 0",
+  "fd-fennec_fdroid": "same",
+  "other": 0
+ },
+ "history": "Mac attempt 1e2726d9 (DevEco clang 99548401): behaviour-identical, .comment differs (kept as history)",
+ "deployment_scope": {
+  "replace": "/system/android/lib64/westlake_native/libwestlake_native_abi.so (d2053066 -> 86882caf)",
+  "keep": "/system/android/lib64/westlake_flutter/libwestlake_native_abi.so (d2053066)",
+  "same_process": false,
+  "why": "host loads exactly one ABI path per app domain (westlake_stock_host_main.c:330-340); ANL selection flutter-first, exclusive (app_native_loader.c:449-452); package lists disjoint (13 native incl. firefox/fennec, 6 flutter)"
+ },
+ "final": {
+  "sha256": "7605812cc5249534950bb0533baa3199b380daf6e763af12ed216c2c70649515",
+  "builds": 2,
+  "identical": true,
+  "release": "$WORKSPACES/westlake-inputs/generations/u14-native-abi-gecko-v2/payload/android/lib64/westlake_native/libwestlake_native_abi.so",
+  "deploy_target": "/system/android/lib64/westlake_native/libwestlake_native_abi.so",
+  "supersedes": "86882caf",
+  "outer_decisions": {
+   "A_emutls": "accepted",
+   "B_android_dlopen_ext": "deployed libbionic_compat 015aa3a6 behaviour (source 7337a393 from 2026-10-01-u10-native-shims)"
+  },
+  "gates": {
+   "exports": "+10 @@LIBC exact vs 554bf6bc",
+   "vs_86882caf": "only android_dlopen_ext changed (7->33 insns)",
+   "android_dlopen_ext_vs_015aa3a6": "instruction-equal",
+   "strings_added_vs_86882caf": [
+    "[U10-DLEXT] backend absent; refusing extension flags=0x%lx file=%s",
+    "(null)"
+   ],
+   "open_sites": "0 -> 2 (backend forward + plain dlopen fallback)",
+   "replay": "0 unresolved except plugin-container __libc_init"
+  }
+ },
+ "status": "FINAL 7605812c for U14 (cx-bms)"
+}

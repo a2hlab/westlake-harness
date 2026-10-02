@@ -1,0 +1,56 @@
+{
+ "task": "#90 U14 JAR v1 = U13 JAR v3 bbc3f530 + termux fix (InProcessBindOrder, fac7afbacd) - offline",
+ "jar": {
+  "name": "oh-adapter-runtime-u14-v1.jar",
+  "sha256": "0349eb834e66bc1bf142fd31f08aa0c8a0536534e3ec6b01b5dcc1d930b0a0d4",
+  "base": "bbc3f530",
+  "deterministic": true,
+  "smali_changed": [
+   "adapter/activity/ActivityManagerBindProxy.smali (+3 lines, needle)"
+  ],
+  "classes_added": [
+   "adapter.activity.InProcessBindOrder",
+   "$1",
+   "$2"
+  ],
+  "class_diff_vs_5ae3dd29": {
+   "dropped": 0,
+   "reshaped": 0,
+   "added_after_allow": 0,
+   "allow": "19 v3 classes + 3 new"
+  },
+  "class_diff_vs_bbc3f530": {
+   "dropped": 0,
+   "reshaped": 0,
+   "added": 3
+  },
+  "persisted": "$WORKSPACES/westlake-inputs/generations/u14-jar-v1/ (jar, SHA256SUMS, logs/build-*.log)"
+ },
+ "host_art": {
+  "env": "hw248 android-14.0.0_r1 dalvikvm64 -Xint imageless; boards' 9 BCP jars in board order + test-only host-shim-v1 (Log, SystemClock)",
+  "v1": {
+   "case1_termux_order": "PASS state=3 mIsVisible=true",
+   "case2_resumed": "PASS",
+   "case3_unattributable": "PASS",
+   "case4_destroyed": "PASS dropped",
+   "failures": 0,
+   "rc": 0
+  },
+  "v3_negative_control": {
+   "case1_termux_order": "FAIL state=1 mIsVisible=false (U10.1T8 order)",
+   "case2": "PASS",
+   "case3": "PASS",
+   "case4": "FAIL delivered",
+   "failures": 2,
+   "rc": 1
+  },
+  "not_reproducible_on_host": "a full TermuxActivity launch (TransactionExecutor, system_server, libandroid_runtime natives); the ordering of the two main-looper messages is reproduced with the real postInProcessBind/InProcessBindOrder/Activity callback dispatch"
+ },
+ "board_judge": "termux: [B8-AMB-ORDER] holding ... (state=1) -> started; delivering ...; [B8-AMB] connected TermuxService AFTER 'ClientTransaction scheduled on main Looper (direct token): RESUMED'; no finishActivity TerminateAbility",
+ "prediction": {
+  "termux": "first fatal moves (high) from self-finish to TermuxInstaller bootstrap check: /data/data/com.termux/files not found -> own error dialog (medium), not functional",
+  "fd-droidify,newpipe": "lit, connection now after onResume (watch)",
+  "others": 0
+ },
+ "erratum": "erratum-u14-bridge-m5-m6.md: under U14 (U13 runtime shim M1) dddmodel2 moves with M5 and all 13 dialog-first keys show their own dialog"
+}

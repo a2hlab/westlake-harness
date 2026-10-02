@@ -1,0 +1,40 @@
+# Wall-2 (A'=approach 4): add one DT_NEEDED to libicuuc f74827d9 -> a tiny shim libicu74compat.so that maps the 7 _74
+# names tttext dlsyms to libicuuc's _72. No full-ICU rebuild; libicuuc code/exports unchanged. Mac DevEco clang; local.
+
+## Static check (a): OHOS musl dlsym(handle) searches the handle's DEPENDENCY TREE -> the shim is reachable.
+# hw248:$LAB_HOME/aosp-14.0.0_r1-art/external/musl/ldso/dynlink.c (OHOS musl; has dlns_/namespace):
+#   do_dlsym(p,s,ra): for a real handle p (not head/DEFAULT/NEXT) -> use_deps=1; find_sym2(p,s,0,use_deps)
+#   find_sym2(dso,s,need_def,use_deps): deps = use_deps ? dso->deps : 0;
+#                                       for (; dso; dso=use_deps ? *deps++ : dso->syms_next) { ...lookup... }
+# dso->deps is musl's FLATTENED TRANSITIVE dependency array. So dlsym(<ICU handle>, "ubrk_open_74") searches the handle's
+# lib AND every transitive dep. Adding DT_NEEDED libicu74compat.so to libicuuc puts the shim in that tree. => (a) HOLDS.
+
+## Static check (b): which handle tttext dlsyms the 7 names on.
+# libtttext_lite.so brk_open (0x1aa80) dlopen()s libkryptoni18n.so->libicui18n.so->libicuuc.so and caches handles in a
+# global table; the dlsym helper (0x1aba0) loads a cached handle from [0x44000..] and bl dlsym (0x1abc4). The 7 names
+# (ubrk_open/close/first/next/setText, u_charType, u_hasBinaryProperty) are all libicuuc COMMON-layer symbols, so the
+# handle is the libicuuc handle -> the shim is a DIRECT dep (one hop). Even if a name were dlsym'd on the libicui18n
+# handle, libicui18n NEEDED libicuuc (verified) and musl's deps is the transitive closure, so libicui18n -> libicuuc ->
+# shim still resolves. => reachable either way.
+
+## The shim libicu74compat.so (recipe/icu74_shim.S + icu74_shim.map), self-deterministic x2 = 4886bc5c...
+# 7 tail-branch trampolines ('b <sym>_72') -- signature-agnostic (args x0-x7/v0-v7 + return pass through). Built:
+#   clang --target=aarch64-linux-ohos --sysroot=<DevEco sysroot> -shared -fPIC -O2 -Wl,-soname,libicu74compat.so \
+#     -Wl,--version-script=icu74_shim.map -Wl,-z,now -Wl,-z,relro -Wl,--build-id=sha1 \
+#     -o libicu74compat.so icu74_shim.S <libicuuc.so f74827d9>
+# nm -D defined: exactly the 7 _74 names. NEEDED: libicuuc.so, libc.so. nm -D undef: the 7 _72 (resolved from libicuuc).
+
+## The ELF edit: libicuuc f74827d9 -> + DT_NEEDED libicu74compat.so (patchelf 0.19.1 --add-needed), copy only.
+#   before: f74827d992d25ffe (f74827d9)   NEEDED = libc++.so, libc.so   (.dynamic 27 entries)
+#   after : 9b36b989dd10...            NEEDED = libicu74compat.so, libc++.so, libc.so   (.dynamic 28 entries)
+#   nm -D exports: IDENTICAL (0 diff). section headers (names/sizes): IDENTICAL. .dynstr now contains libicu74compat.so.
+#   SIZE: 2,260,360 -> 2,547,137 (+286,777). This growth is inherent, NOT extra code: .dynstr is 157 KB with only 1 byte
+#   of trailing slack, so the 18-byte shim name cannot be added in place; patchelf relocates .dynstr into a new
+#   page-aligned PT_LOAD (its standard mechanism). A zero-growth in-place edit is impossible here (1-byte .dynstr slack).
+#   The ONLY leaner path (no shim, no +280 KB) is to relink libicuuc with the 7 aliases directly -- which needs the full
+#   ICU generation recipe (blocked). For approach 4 the +280 KB is the cost of the one DT_NEEDED on a lib with a full
+#   .dynstr; functional behavior (exports/code) is unchanged.
+
+## Artifacts (reproducible; not committed as binaries -- source+recipe+sha recorded):
+#   libicu74compat.so  = 4886bc5c... (from icu74_shim.S + the clang line above; x2 identical)
+#   libicuuc-u14.so    = 9b36b989... (= f74827d9 + 'patchelf --add-needed libicu74compat.so'; exports/sections unchanged)

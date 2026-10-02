@@ -1,0 +1,58 @@
+{
+ "task": "#90 android.bluetooth.le.ScanCallback (fd-plus) - BCP gap, minimal fix, predictions",
+ "inventory": {
+  "android.bluetooth.le": {
+   "aosp14_public": 22,
+   "in_bcp": 4,
+   "missing": 18
+  },
+  "android.bluetooth": {
+   "aosp14_public": 41,
+   "in_bcp": 5,
+   "missing": 36
+  },
+  "cause": "Bluetooth is a mainline module (framework-bluetooth.jar); our BCP has none, stubs hold only ScanFilter/ScanRecord/ScanResult + 5 android.bluetooth classes"
+ },
+ "static_upper_bound": {
+  "keys": 166,
+  "reference_missing_bt": 87,
+  "reference_scancallback": [
+   "fd-plus",
+   "toutiao",
+   "fd-fitness"
+  ],
+  "subclass_missing": 9
+ },
+ "hilog_actual_failures": {
+  "keys": [
+   "fd-plus"
+  ],
+  "generations": [
+   "U10.1T8",
+   "U12"
+  ]
+ },
+ "fd_plus_chain": "ExternalSensorsPlugin.<init>@0x77 -> ExternalSensorsDeviceHelper -> DevicesHelper.<init> new DevicesHelper$1 (extends ScanCallback); default startup does not reach initBLE (plugins isEnableByDefault=false)",
+ "fix": {
+  "where": "adapter-mainline-stubs (BCP) - needs FZ-005 re-bake",
+  "class": "android.bluetooth.le.ScanCallback + $ScanFailed, verbatim AOSP 14.0.0_r1 packages/modules/Bluetooth cbb30d72 (eae1a43c)",
+  "jar": "adapter-mainline-stubs-u14-bt.jar",
+  "sha256": "87cf65ccff4eda56183f98de2eb8e7740db6b7725e429c6799a570ae0b39e73a",
+  "base": "615b8bbe",
+  "deterministic": true,
+  "class_diff_vs_615b8bbe": "0 dropped, 0 reshaped, +2 allowed, 0 frozen broken",
+  "class_diff_vs_2f365a75": "same (+Predicate allowed)",
+  "persisted": "$WORKSPACES/westlake-inputs/generations/u14-stubs-bt-v1/"
+ },
+ "host_art": {
+  "new_stubs": "4/4 PASS",
+  "old_stubs_negative_control": "FAIL NoClassDefFoundError: Failed resolution of: Landroid/bluetooth/le/ScanCallback; (board's exact line)"
+ },
+ "not_added": "BluetoothAdapter/Manager/LeScanner/ScanSettings/GattCallback/ServiceListener/LeScanCallback: predicted 0 moves; AOSP semantics if added: getDefaultAdapter null when no service; getBluetoothLeScanner null when !getLeAccess; getSystemService(BLUETOOTH_SERVICE) already null",
+ "predictions": {
+  "fd-plus": "first fatal moves (high)",
+  "toutiao": 0,
+  "fd-fitness": 0,
+  "other": 0
+ }
+}

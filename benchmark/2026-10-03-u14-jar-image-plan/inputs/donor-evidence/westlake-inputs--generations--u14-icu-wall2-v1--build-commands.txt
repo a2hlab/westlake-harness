@@ -1,0 +1,17 @@
+# U14 ICU wall-2 artifacts build commands (Mac, DevEco OH clang). Re-run from westlake-harness-wiki.
+# Toolchain: /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang (clang-15) + its sysroot.
+# patchelf: /opt/homebrew/bin/patchelf  (patchelf 0.19.1)  [Homebrew /opt/homebrew/bin/patchelf]
+# base libicuuc (U13 deployed) = f74827d992d25ffe481873f1b7f4416d97820c443f16bd715102455dbafbcf6f
+#   source: $WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u13-final-assembly/.artifacts/bundle-v3/native/payload/android/lib64/libicuuc.so
+
+# 1) shim libicu74compat.so (= 4886bc5c2b4ef0486ecda6fa3248ace4af6a1c57ed7029b17cfd4868ad2c92af):
+clang --target=aarch64-linux-ohos --sysroot=<DevEco sysroot> -shared -fPIC -O2 \
+  -Wl,-soname,libicu74compat.so -Wl,--version-script=recipe/icu74_shim.map \
+  -Wl,-z,now -Wl,-z,relro -Wl,--build-id=sha1 \
+  -o libicu74compat.so recipe/icu74_shim.S <libicuuc.so f74827d9>
+#   (sources: benchmark/2026-10-03-u14-appns-build/recipe/icu74_shim.S + icu74_shim.map)
+
+# 2) patched libicuuc-u14.so (= 9b36b989dd10f29434cc60b6b7d1895878442d07f1d6b0674db9b1379420d93f):
+cp <libicuuc.so f74827d9> libicuuc-u14.so
+patchelf --add-needed libicu74compat.so libicuuc-u14.so
+#   adds one DT_NEEDED (.dynamic 27->28) + the .dynstr string; exports/sections unchanged; file +286777 B (.dynstr relocation).

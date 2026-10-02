@@ -1,0 +1,41 @@
+# U14 Wall-1 patch (REVISED against the DEPLOYED host source, not the clean worktree copy).
+# Target: the stock-host source that builds appspawn-x 2a87118e, i.e. candidate-stock-host.c
+#   (benchmark/2026-10-02-u11-native-batch/.artifacts/r1/host/candidate-stock-host.c, source_sha 507bf160; the file
+#    deployed as /system/android/lib64/.../appspawn-x via u12-private-zlib/build.py on Mac DevEco clang).
+# The deployed StockCreateConfiguredNamespaces has per-cluster multi-owner inherits (system_owner/runtime_owner for
+# flutter_private|native_private, bridge for all, compat_owner). The `if (wants_bridge)` bridge inherit runs for EVERY
+# app (normal AND private clusters), so augmenting that one dlns_inherit exposes the AOSP public libs to all app ns.
+# dlns_inherit shares the bridge's single DEFAULT-ns copy -> no second copy. libz.so is DELIBERATELY EXCLUDED: the
+# enrolled apps {im.vector.app, burgerking} get libz from the U11 private-zlib search prefix (westlake_native, LOCAL_NS_
+# PREFERED); adding libz here too would let the platform libz load as a SECOND copy. libandroidio/libjavacore excluded
+# (ART-internal, not public).
+--- a/candidate-stock-host.c
++++ b/candidate-stock-host.c
+@@
+     if (wants_bridge) {
+-        result = dlns_inherit(app_namespace, bridge_namespace,
+-                              bridge_shared_sonames);
++        /* [U14 app-ns public libs] Expose the AOSP public native libraries
++         * (public.libraries.android.txt) an app may dlopen by soname but the
++         * restricted app ns otherwise lacks: toutiao libicui18n.so, fd-stk
++         * libGLESv2.so (via libSDL2), subwaysurfers libGLESv3.so (via
++         * libvkquality), the Flutter cohort's libGLESv2/libvulkan. The bridge
++         * inherits DEFAULT and permits /system/android/lib64, so these resolve
++         * to the single platform/bridge copy; dlns_inherit shares it -> no
++         * second copy. libz.so is EXCLUDED on purpose (the U11 private-zlib
++         * search prefix already provides it to im.vector.app/burgerking; a
++         * second platform libz must not appear). libandroidio/libjavacore are
++         * excluded (ART-internal, not public). This block runs for every app
++         * (normal and flutter_private|native_private), so one edit covers all. */
++        static const char kAospPublicLibs[] =
++            "libicui18n.so:libicuuc.so:libGLESv2.so:libGLESv3.so:libvulkan.so:libjnigraphics.so";
++        char app_public[2 * PATH_MAX];
++        int app_public_len = snprintf(app_public, sizeof(app_public), "%s:%s",
++                                      bridge_shared_sonames, kAospPublicLibs);
++        if (app_public_len < 0 || (size_t)app_public_len >= sizeof(app_public)) {
++            return NamespaceResultFence(ENAMETOOLONG);
++        }
++        result = dlns_inherit(app_namespace, bridge_namespace, app_public);
+         if (result != 0) {
+             return NamespaceResultFence(result);
+         }
