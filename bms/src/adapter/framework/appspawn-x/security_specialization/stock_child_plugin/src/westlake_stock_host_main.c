@@ -23,6 +23,7 @@
 #include "securec.h"
 #include "westlake_elf_identity.h"
 #include "westlake_stock_host_services.h"
+#include "resident-compat.h"
 
 #define WLASC_STOCK_PRELOAD "libappspawn_helper.z.so"
 #define WLASC_PLUGIN_NAME "westlake_android_child"
@@ -30,15 +31,13 @@
     "/system/lib64/appspawn/libwestlake_android_child.z.so"
 #define WLASC_SOCKET_NAME "AppSpawnX"
 #define WLASC_SERVICE_NAME "appspawn-x"
+#define WLASC_BIONIC_COMPAT_PATH \
+    "/system/android/lib64/libbionic_compat.so"
+
+typedef int (*WlascInheritAndroidRuntimeV1)(void *target_namespace);
 
 #ifndef WLASC_PLUGIN_GENERATION_SHA_HEX
 #error "WLASC_PLUGIN_GENERATION_SHA_HEX must bind the plugin input closure"
-#endif
-#ifndef WLASC_PLUGIN_BUILD_ID_HEX
-#error "WLASC_PLUGIN_BUILD_ID_HEX must bind the plugin ELF Build-ID"
-#endif
-#ifndef WLASC_PLUGIN_ELF_SHA256_HEX
-#error "WLASC_PLUGIN_ELF_SHA256_HEX must bind the exact plugin file"
 #endif
 #ifndef WLAR_GENERATION_SHA_HEX
 #error "WLAR_GENERATION_SHA_HEX must bind the runtime provider generation"
@@ -103,6 +102,39 @@ static int NamespaceInputsPresent(const char *search_paths,
     return search_paths != NULL && search_paths[0] != '\0' &&
         permitted_paths != NULL && permitted_paths[0] != '\0';
 }
+
+static bool flutter_package_path(const char* text) {
+    static const char* const packages[] = {
+        "chat.fluffy.fluffychat", "app.alextran.immich", "com.tombursch.kitchenowl",
+        "deckers.thibault.aves.libre", "com.adilhanney.saber", "org.localsend.localsend_app"
+    };
+    for (size_t i = 0; i < sizeof(packages)/sizeof(packages[0]); ++i) {
+        const char* p = text;
+        while ((p = strstr(p, packages[i])) != NULL) {
+            size_t n = strlen(packages[i]);
+            if ((p == text || p[-1] == '/') && (p[n] == '/' || p[n] == ':' || p[n] == '\0')) return true;
+            p += n;
+        }
+    }
+    return false;
+}
+
+static bool native_cluster_path(const char* text) {
+    const char* packages[] = {"com.ichi2.anki", "com.unciv.app", "app.organicmaps",
+        "com.nextcloud.client", "com.mcdonalds.app", "io.anuke.mindustry",
+        "com.emn8.mobilem8.nativeapp.bk", "im.vector.app",
+        "org.mozilla.firefox", "org.mozilla.fennec_fdroid", "org.videolan.vlc", "org.ppsspp.ppsspp", "com.shatteredpixel.shatteredpixeldungeon"};
+    for (size_t i=0; i<sizeof(packages)/sizeof(packages[0]); ++i) {
+        const char* q=text;
+        while ((q=strstr(q, packages[i])) != NULL) {
+            size_t n=strlen(packages[i]);
+            if ((q==text || q[-1]=='/') && (q[n]=='/' || q[n]==':' || q[n]=='\0')) return true;
+            q+=n;
+        }
+    }
+    return false;
+}
+
 
 static WLASC_NOINLINE int StockCreateConfiguredNamespaces(
     void *bridge_namespace_opaque, const char *bridge_name,
@@ -213,12 +245,101 @@ static WLASC_NOINLINE int StockCreateConfiguredNamespaces(
     if (result != 0) {
         return NamespaceResultFence(result);
     }
+    /* Westlake OpenInAndroidNamespace: use a direct edge to the existing
+     * owner. OH musl inheritance is one hop. Only the exact Flutter/native package lists with private search prefixes
+     * request this branch; baseline control domains do not.
+     * No system search roots and no extra DFX/runtime instances in the app. */
+    const bool flutter_private = wants_bridge &&
+        strncmp(app_search_paths, "/system/android/lib64/westlake_flutter:",
+                strlen("/system/android/lib64/westlake_flutter:")) == 0 &&
+        (flutter_package_path(app_search_paths) || flutter_package_path(app_permitted_paths));
+    const bool native_private = wants_bridge &&
+        strncmp(app_search_paths, "/system/android/lib64/westlake_native:",
+                strlen("/system/android/lib64/westlake_native:")) == 0 &&
+        (native_cluster_path(app_search_paths) || native_cluster_path(app_permitted_paths));
+    if (flutter_private || native_private) {
+        Dl_namespace system_owner, runtime_owner;
+        result = dlns_get("default", &system_owner);
+        if (result != 0) return NamespaceResultFence(result);
+        result = dlns_get("westlake.sealed.child", &runtime_owner);
+        if (result != 0) return NamespaceResultFence(result);
+        result = dlns_inherit(app_namespace, &system_owner,
+            "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:libstdc++.so:libOpenSLES.so");
+        if (result != 0) return NamespaceResultFence(result);
+        result = dlns_inherit(app_namespace, &runtime_owner,
+            "liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so");
+        if (result != 0) return NamespaceResultFence(result);
+        const bool needs_runtime = flutter_private ||
+            strstr(app_search_paths, "/com.emn8.mobilem8.nativeapp.bk/") ||
+            strstr(app_search_paths, "/com.mcdonalds.app/") ||
+            strstr(app_search_paths, "/app.organicmaps/") ||
+            strstr(app_search_paths, "/im.vector.app/") ||
+            strstr(app_search_paths, "/org.ppsspp.ppsspp/");
+        if (needs_runtime) {
+        /* real-work WLSCPL_InheritAndroidRuntimeV1 publishes the resident object
+         * by exact absolute path after inheritance. Ordinary lookup follows lazy
+         * owner edges. Device acceptance requires one runtime instance. */
+        void* resident = dlopen_ns(app_namespace,
+            "/system/android/lib64/liboh_android_runtime.so",
+            RTLD_NOW | RTLD_GLOBAL);
+        if (resident == NULL) {
+            APPSPAWN_LOGE("[N3-OWNER] resident runtime unavailable: %{public}s", dlerror());
+            return NamespaceResultFence(ENOENT);
+        }
+        APPSPAWN_LOGI("[N3-OWNER] resident runtime published for %{public}s", app_name);
+        }
+        if (native_private && (strstr(app_search_paths, "/io.anuke.mindustry/") ||
+                               strstr(app_permitted_paths, "/io.anuke.mindustry/") ||
+                               strstr(app_search_paths, "/org.ppsspp.ppsspp/") ||
+                               strstr(app_permitted_paths, "/org.ppsspp.ppsspp/"))) {
+            /* Open the OH audio implementation from its platform owner, not a
+             * second copy inside the app. Android extension IIDs come from the
+             * private Westlake ABI library loaded below. */
+            void* audio = dlopen_ns(app_namespace, "/system/lib64/libOpenSLES.so",
+                                    RTLD_NOW | RTLD_GLOBAL);
+            if (audio == NULL) {
+                APPSPAWN_LOGE("[N4-AUDIO] app-owner open failed: %{public}s", dlerror());
+                return NamespaceResultFence(ENOENT);
+            }
+            const char* audio_symbols[] = {
+                "slCreateEngine", "SL_IID_ENGINE", "SL_IID_VOLUME", "SL_IID_PLAY", "SL_IID_BUFFERQUEUE"
+            };
+            for (size_t symbol_index = 0;
+                 symbol_index < sizeof(audio_symbols) / sizeof(audio_symbols[0]); ++symbol_index) {
+                if (dlsym(audio, audio_symbols[symbol_index]) == NULL) {
+                    APPSPAWN_LOGE("[N4-AUDIO] provider lacks %{public}s", audio_symbols[symbol_index]);
+                    return NamespaceResultFence(ENOENT);
+                }
+            }
+        }
+    }
     if (wants_bridge) {
         result = dlns_inherit(app_namespace, bridge_namespace,
                               bridge_shared_sonames);
         if (result != 0) {
             return NamespaceResultFence(result);
         }
+        Dl_namespace compat_owner;
+        if (U10ShareResidentCompat(&compat_owner) == 0 &&
+            !flutter_private && !native_private) {
+            int compat_result = dlns_inherit(app_namespace, &compat_owner,
+                                             "libbionic_compat.so");
+            if (compat_result != 0) {
+                APPSPAWN_LOGE("[U10-COMPAT-VISIBLE] unavailable inherit result=%{public}d; namespace continues", compat_result);
+            }
+        }
+    }
+    if (flutter_private || native_private) {
+        /* OH 6.1 musl ignores DF_1_GLOBAL: its add_syms/removal is controlled
+         * by dlopen mode. Promote only the declared ABI DSO in selected app
+         * domains, not arbitrary app libraries or system providers. */
+        const char* abi = flutter_private
+            ? "/system/android/lib64/westlake_flutter/libwestlake_native_abi.so"
+            : "/system/android/lib64/westlake_native/libwestlake_native_abi.so";
+        void* handle = dlopen_ns(app_namespace, abi, RTLD_NOW | RTLD_GLOBAL);
+        if (handle == NULL) return NamespaceResultFence(ENOENT);
+        fprintf(stderr, "[N2-OWNER] %s ABI global ready; search=%s permitted=%s\n",
+                app_name, app_search_paths, app_permitted_paths);
     }
     return NamespaceResultFence(0);
 }
@@ -294,14 +415,10 @@ static uint64_t CurrentThreadToken(void)
     return token;
 }
 
-static int VerifyPluginFileSha256(char resolved_path[PATH_MAX])
+/* File identities are checked by deploy_generation, not the process loader. */
+static int ResolvePluginPath(char resolved_path[PATH_MAX])
 {
-    static const char plugin_elf_sha_hex[] =
-        WLASC_PLUGIN_ELF_SHA256_HEX;
-    static const char plugin_build_id_hex[] = WLASC_PLUGIN_BUILD_ID_HEX;
-    return WLEI_VerifyFileHex(
-        WLASC_PLUGIN_PATH, EM_AARCH64, plugin_elf_sha_hex,
-        plugin_build_id_hex, resolved_path, PATH_MAX);
+    return realpath(WLASC_PLUGIN_PATH, resolved_path) == NULL ? -1 : 0;
 }
 
 static int LookupExactPluginSymbol(void *plugin_handle,
@@ -309,19 +426,10 @@ static int LookupExactPluginSymbol(void *plugin_handle,
                                    const char *symbol_name,
                                    void **out_symbol)
 {
-    static const char plugin_elf_sha_hex[] =
-        WLASC_PLUGIN_ELF_SHA256_HEX;
-    static const char plugin_build_id_hex[] = WLASC_PLUGIN_BUILD_ID_HEX;
     if (plugin_handle == NULL || plugin_path == NULL ||
-        symbol_name == NULL || out_symbol == NULL) {
-        return -1;
-    }
-    if (strcmp(plugin_path, WLASC_PLUGIN_PATH) != 0) {
-        return -1;
-    }
-    return WLEI_VerifyLoadedSymbolHex(
-        plugin_handle, symbol_name, WLASC_PLUGIN_PATH, EM_AARCH64,
-        plugin_elf_sha_hex, plugin_build_id_hex, out_symbol);
+        symbol_name == NULL || out_symbol == NULL) return -1;
+    *out_symbol = dlsym(plugin_handle, symbol_name);
+    return *out_symbol == NULL ? -1 : 0;
 }
 
 static int InstallPluginHostServices(void *plugin_handle,
@@ -331,9 +439,6 @@ static int InstallPluginHostServices(void *plugin_handle,
     typedef int (*InstallServices)(const WlascStockHostServicesV1 *);
     static const char plugin_generation_hex[] =
         WLASC_PLUGIN_GENERATION_SHA_HEX;
-    static const char plugin_build_id_hex[] = WLASC_PLUGIN_BUILD_ID_HEX;
-    static const char plugin_elf_sha_hex[] =
-        WLASC_PLUGIN_ELF_SHA256_HEX;
     static const char runtime_generation_hex[] = WLAR_GENERATION_SHA_HEX;
     WlascStockHostServicesV1 services;
     WlncParentIdentityV1 parent_identity;
@@ -392,14 +497,7 @@ static int InstallPluginHostServices(void *plugin_handle,
                 sizeof(services.plugin_generation_sha256),
                 plugin_generation_hex,
                 sizeof(plugin_generation_hex)) != 0 ||
-        FillHex(services.plugin_elf_sha256,
-                sizeof(services.plugin_elf_sha256),
-                plugin_elf_sha_hex,
-                sizeof(plugin_elf_sha_hex)) != 0 ||
-        FillHex(services.plugin_build_id,
-                sizeof(services.plugin_build_id),
-                plugin_build_id_hex,
-                sizeof(plugin_build_id_hex)) != 0) {
+        0 /* plugin file identity fields remain zero; ABI slots retained */) {
         return -1;
     }
     services.add_server_stage_hook = AddServerStageHook;
@@ -532,9 +630,9 @@ int main(int argc, char *const argv[])
      * AppSpawnLoadAutoRunModules(MODULE_DEFAULT) cannot scan the ACE child
      * processor directory. MODULE_COMMON is still loaded unchanged.
      */
-    if (VerifyPluginFileSha256(plugin_path) != 0 ||
+    if (ResolvePluginPath(plugin_path) != 0 ||
         AppSpawnModuleMgrInstall(WLASC_PLUGIN_NAME) != 0 ||
-        VerifyPluginFileSha256(plugin_path_after_load) != 0 ||
+        ResolvePluginPath(plugin_path_after_load) != 0 ||
         strcmp(plugin_path, plugin_path_after_load) != 0) {
         return 1;
     }

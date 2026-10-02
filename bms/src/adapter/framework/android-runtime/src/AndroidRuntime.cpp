@@ -18,10 +18,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <dlfcn.h>
-#include <errno.h>   // [port-a1a2d4 2026-07-30]
-#include <poll.h>
-#include <pthread.h>
-#include <string>   // §441 payload uses std::string (sibling TUs already STL)
 #include <hilog/log.h>
 #include <nativehelper/JNIHelp.h>  // jniRegisterNativeMethods (L2)
 
@@ -33,14 +29,7 @@ extern "C++" int register_android_opengl_jni_GLES20(JNIEnv* env);
 extern "C++" int register_android_opengl_jni_GLES30(JNIEnv* env);
 extern "C++" int register_android_opengl_jni_GLES31(JNIEnv* env);
 
-// Task 79 A3: board-ICU C-ABI bridge. ICU is bound before any other startReg
-// work; NativeConverter (13/16) and regex (15/15) are registered at the tail
-// so JNI last-writer-wins ordering is explicit and auditable.
-// [port-a3-junction 2026-07-30] verbatim junctions from sol-2 commit 2a6a669bc
-// (src/adapter copy) onto the AlexBridge canonical tree (port-a1a2d4 payload carrier).
-extern int westlake_icu_early_init();
-extern int westlake_register_charset_natives(JNIEnv* env);
-extern int westlake_register_regex_natives(JNIEnv* env);
+extern int register_com_google_android_gles_jni_EGLImpl(JNIEnv* env);
 
 namespace android {
 
@@ -63,6 +52,9 @@ JavaVM* AndroidRuntime::getJavaVM() { return g_vm; }
 // methods whose libhwui impl aborts (fid==null) or whose AOSP libandroid_runtime
 // impl is missing (we don't cross-compile that .so).  Spec: doc/graphics_jni_inventory.html §4.1.
 extern int register_android_graphics_compat_shim(JNIEnv* env);
+extern "C" int n2_register_GLImpl(JNIEnv* env);
+
+extern int register_n2_Camera(JNIEnv* env);
 
 // G2.14k (2026-05-01) + 2026-05-02 audit: NAR applyFreeFunction guard.
 // User flagged for removal as "defensive hack" but empirical removal breaks
@@ -109,6 +101,11 @@ extern int register_android_view_KeyCharacterMap(JNIEnv* env);
 // to avoid pulling libinput.so / libui.so / ui::Transform / HmacKeyManager /
 // IInputConstants AIDL chain into liboh_android_runtime.
 extern int register_android_view_MotionEvent(JNIEnv* env);
+// Westlake 532633d: register before the first view attaches.
+extern int register_android_view_VelocityTracker(JNIEnv* env);
+extern int register_android_media_AudioSystemCapabilities(JNIEnv* env);
+extern int register_android_media_AudioProductStrategy(JNIEnv* env);
+extern int register_westlake_CommonEvent(JNIEnv* env);
 
 // 2026-05-26: register_android_view_KeyEvent — 3 natives (nativeNextId /
 // nativeKeyCodeToString / nativeKeyCodeFromString).  android.view.KeyEvent
@@ -148,15 +145,6 @@ extern int register_android_opengl_jni_EGL14(JNIEnv* env);
 // 已验证的 ANativeWindow_fromSurface 路径。详见文件头注释的完整证据链和
 // 明确的能力边界（不写像素、不真解码）。
 extern int register_android_media_MediaPlayer(JNIEnv* env);
-
-// BoatAttack FMOD's Java AudioTrack backend reaches AudioFormat.<clinit>,
-// which initializes these three AudioSystem framework capability constants.
-extern __attribute__((visibility("hidden")))
-int register_android_media_AudioSystemCapabilities(JNIEnv* env);
-extern __attribute__((visibility("hidden")))
-int register_android_media_AudioProductStrategy(JNIEnv* env);
-extern __attribute__((visibility("hidden")))
-int register_android_media_AudioTrack(JNIEnv* env);
 
 // [STAGE2-GL 2026-06-28] Whole android.opengl.GLES2/3 family, ported from AOSP
 // android_opengl_GLES{20,30,31}.cpp.  Registered fault-tolerantly below (see
@@ -221,6 +209,10 @@ static const RegJNIRec kRegJNI[] = {
     // android_view_MotionEvent_aosp.cpp (replaces AOSP direct-reference
     // MotionEvent.cpp; class layout under adapter control, no ABI drift).
     { "register_android_view_MotionEvent",    register_android_view_MotionEvent },
+    { "register_android_view_VelocityTracker", register_android_view_VelocityTracker },
+    { "register_android_media_AudioSystemCapabilities", register_android_media_AudioSystemCapabilities },
+    { "register_android_media_AudioProductStrategy", register_android_media_AudioProductStrategy },
+    { "register_westlake_CommonEvent", register_westlake_CommonEvent },
     // 2026-05-26: KeyEvent natives (nativeNextId) — register before
     // InputEventReceiver, same rationale as MotionEvent above: the worker
     // thread's dispatchKeyFromWorker constructs KeyEvent via JNI NewObject,
@@ -261,12 +253,6 @@ static const RegJNIRec kRegJNI[] = {
     // [STAGE2-UNITY 2026-06-28] EGL14 Java JNI (eglprobe render-bridge proof).
     { "register_android_opengl_jni_EGL14",
       register_android_opengl_jni_EGL14 },
-    { "register_android_media_AudioSystemCapabilities",
-      register_android_media_AudioSystemCapabilities },
-    { "register_android_media_AudioProductStrategy",
-      register_android_media_AudioProductStrategy },
-    { "register_android_media_AudioTrack",
-      register_android_media_AudioTrack },
     // 2026-07-10 (L12 视频探针): see extern decl above for full rationale.
     { "register_android_media_MediaPlayer",
       register_android_media_MediaPlayer },
@@ -355,596 +341,12 @@ static void install_register_natives_hook(JNIEnv* env) {
 }
 }  // namespace
 
-// ===== [port-a1a2d4 2026-07-30] Tier A1/A2 TLS §441+JSSE + D4 §404 (westlake-piercing port, verbatim blocks) =====
-static void WestlakeRegisterJsseShim(JNIEnv* env) {
-    jclass provCls = env->FindClass("adapter/compat/WestlakeJsseProvider");
-    if (provCls == nullptr) {
-        env->ExceptionClear();
-        fprintf(stderr, "[WESTLAKE-JSSE] adapter.compat.WestlakeJsseProvider NOT FOUND\n");
-        fflush(stderr);
-        return;
-    }
-    jmethodID ctor = env->GetMethodID(provCls, "<init>", "()V");
-    jobject prov = (ctor != nullptr) ? env->NewObject(provCls, ctor) : nullptr;
-    if (prov == nullptr) {
-        env->ExceptionDescribe();
-        env->ExceptionClear();
-        fprintf(stderr, "[WESTLAKE-JSSE] could not construct provider\n");
-        fflush(stderr);
-        return;
-    }
-    jclass secCls = env->FindClass("java/security/Security");
-    jmethodID add = (secCls != nullptr)
-            ? env->GetStaticMethodID(secCls, "addProvider", "(Ljava/security/Provider;)I")
-            : nullptr;
-    if (add == nullptr) {
-        env->ExceptionClear();
-        fprintf(stderr, "[WESTLAKE-JSSE] Security.addProvider not found\n");
-        fflush(stderr);
-        return;
-    }
-    jint rc = env->CallStaticIntMethod(secCls, add, prov);
-    if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); }
-    fprintf(stderr, "[WESTLAKE-JSSE] Security.addProvider(WestlakeJSSE) rc=%d\n", (int) rc);
-    fflush(stderr);
-}
-
-// WESTLAKE §404 — repair java.lang.invoke classes that arrive INITIALISED but EMPTY.
-//
-// §202 established that some classes reach this child already marked initialised even though
-// their <clinit> never ran in any process, so their `static final` reference fields stay null
-// forever and ART never reports an initialisation failure.  libart carries a hardcoded repair
-// for java.io.BufferedInputStream (class_linker.cc `[WESTLAKE-REPAIR]`); this is the same repair,
-// done from the bridge so it can cover a list of classes without rebuilding libart.
-//
-// The class that matters here is java.lang.invoke.MethodType: `internTable` is null, and
-// MethodType.makeImpl()'s very first statement is `internTable.get(...)`, so EVERY
-// invokedynamic / Kotlin-lambda path throws
-//   NullPointerException: Attempt to invoke InvokeType(2) method
-//   'java.lang.Object java.lang.invoke.MethodType$ConcurrentWeakInternSet.get(java.lang.Object)'
-//   on a null object reference
-// (§403 counted ~3100 of these in one run).  noice's click listeners are all Kotlin lambdas, so
-// this is what makes every delivered touch abort the child.
-//
-// Detection is allow-listed on purpose: a null static reference field is perfectly legal in
-// general, so it cannot be used as a global test (same reasoning as the libart repair).
-//
-// Repair = invoke <clinit> directly.  ART's GetStaticMethodID resolves "<clinit>" like any other
-// direct static method, which is exactly what libart's repair does natively.
-static bool wl_class_has_null_static_ref(JNIEnv* env, jclass cls, const char* desc) {
-    // Enumerate static fields reflectively: JNI has no field iteration.
-    jclass clsCls = env->FindClass("java/lang/Class");
-    jclass fieldCls = env->FindClass("java/lang/reflect/Field");
-    jclass modCls = env->FindClass("java/lang/reflect/Modifier");
-    if (!clsCls || !fieldCls || !modCls) { if (env->ExceptionCheck()) env->ExceptionClear(); return false; }
-    jmethodID getDF = env->GetMethodID(clsCls, "getDeclaredFields", "()[Ljava/lang/reflect/Field;");
-    jmethodID getMod = env->GetMethodID(fieldCls, "getModifiers", "()I");
-    jmethodID getType = env->GetMethodID(fieldCls, "getType", "()Ljava/lang/Class;");
-    jmethodID getName = env->GetMethodID(fieldCls, "getName", "()Ljava/lang/String;");
-    jmethodID setAcc = env->GetMethodID(fieldCls, "setAccessible", "(Z)V");
-    jmethodID fGet = env->GetMethodID(fieldCls, "get", "(Ljava/lang/Object;)Ljava/lang/Object;");
-    jmethodID isPrim = env->GetMethodID(clsCls, "isPrimitive", "()Z");
-    jmethodID isStatic = env->GetStaticMethodID(modCls, "isStatic", "(I)Z");
-    if (!getDF || !getMod || !getType || !getName || !setAcc || !fGet || !isPrim || !isStatic) {
-        if (env->ExceptionCheck()) env->ExceptionClear();
-        return false;
-    }
-    jobjectArray fields = static_cast<jobjectArray>(env->CallObjectMethod(cls, getDF));
-    if (env->ExceptionCheck()) { env->ExceptionClear(); return false; }
-    if (fields == nullptr) return false;
-    bool needs = false;
-    const jsize n = env->GetArrayLength(fields);
-    for (jsize i = 0; i < n && !needs; ++i) {
-        jobject f = env->GetObjectArrayElement(fields, i);
-        if (f == nullptr) continue;
-        const jint mods = env->CallIntMethod(f, getMod);
-        if (!env->CallStaticBooleanMethod(modCls, isStatic, mods)) { env->DeleteLocalRef(f); continue; }
-        jobject ftype = env->CallObjectMethod(f, getType);
-        const bool prim = ftype ? (env->CallBooleanMethod(ftype, isPrim) == JNI_TRUE) : true;
-        if (ftype) env->DeleteLocalRef(ftype);
-        if (prim) { env->DeleteLocalRef(f); continue; }
-        env->CallVoidMethod(f, setAcc, JNI_TRUE);
-        if (env->ExceptionCheck()) env->ExceptionClear();
-        jobject val = env->CallObjectMethod(f, fGet, nullptr);
-        if (env->ExceptionCheck()) { env->ExceptionClear(); env->DeleteLocalRef(f); continue; }
-        if (val == nullptr) {
-            jstring jn = static_cast<jstring>(env->CallObjectMethod(f, getName));
-            const char* nm = jn ? env->GetStringUTFChars(jn, nullptr) : nullptr;
-            fprintf(stderr, "[WESTLAKE-404] %s: static ref field '%s' is NULL\n",
-                    desc, nm ? nm : "?");
-            if (jn && nm) env->ReleaseStringUTFChars(jn, nm);
-            if (jn) env->DeleteLocalRef(jn);
-            needs = true;
-        } else {
-            env->DeleteLocalRef(val);
-        }
-        env->DeleteLocalRef(f);
-    }
-    env->DeleteLocalRef(fields);
-    if (env->ExceptionCheck()) env->ExceptionClear();
-    return needs;
-}
-
-void wl_repair_invoke_classes(JNIEnv* env) {  // [port-h5-second-pass 2026-07-30] external linkage for setArgV0Native hitchhike (cc6 7945f723 首选裁定)
-    // [port-h5-second-pass 2026-07-30] H5: guard de-one-shot-ified — re-entry rescans;
-    // already-repaired classes probe non-null and fast-skip (payload idempotent by design).
-    static int wl_pass_no = 0;
-    wl_pass_no++;
-    fprintf(stderr, "[WESTLAKE-404] invoke-class repair pass %d begin\n", wl_pass_no);
-    // MethodType first: everything else in java.lang.invoke depends on it.
-    static const char* kClasses[] = {
-        "java/lang/invoke/MethodType",
-        "java/lang/invoke/MethodTypeForm",
-        "java/lang/invoke/MethodHandleStatics",
-        "java/lang/invoke/MethodHandleNatives",
-        "java/lang/invoke/MethodHandles",
-        "java/lang/invoke/MethodHandleImpl",
-        "java/lang/invoke/LambdaMetafactory",
-        "java/lang/invoke/InnerClassLambdaMetafactory",
-        "java/lang/invoke/Invokers",
-        "java/lang/invoke/CallSite",
-    };
-    for (const char* desc : kClasses) {
-        if (env->PushLocalFrame(64) < 0) { continue; }
-        jclass cls = env->FindClass(desc);
-        if (cls == nullptr || env->ExceptionCheck()) {
-            env->ExceptionClear();
-            fprintf(stderr, "[WESTLAKE-404] %s: not found\n", desc);
-            env->PopLocalFrame(nullptr);
-            continue;
-        }
-        if (wl_class_has_null_static_ref(env, cls, desc)) {
-            jmethodID clinit = env->GetStaticMethodID(cls, "<clinit>", "()V");
-            if (env->ExceptionCheck()) { env->ExceptionClear(); clinit = nullptr; }
-            if (clinit != nullptr) {
-                env->CallStaticVoidMethod(cls, clinit);
-                if (env->ExceptionCheck()) {
-                    fprintf(stderr, "[WESTLAKE-404] %s: <clinit> THREW:\n", desc);
-                    env->ExceptionDescribe();
-                    env->ExceptionClear();
-                }
-                const bool still = wl_class_has_null_static_ref(env, cls, desc);
-                fprintf(stderr, "[WESTLAKE-404] %s: direct <clinit> done, stillNull=%d\n",
-                        desc, still ? 1 : 0);
-            } else {
-                fprintf(stderr, "[WESTLAKE-404] %s: no <clinit> method to invoke\n", desc);
-            }
-        } else {
-            fprintf(stderr, "[WESTLAKE-404] %s: statics OK\n", desc);
-        }
-        env->PopLocalFrame(nullptr);
-    }
-    // Last resort for the one field that actually blocks input: build the intern set by hand.
-    // MethodType.makeImpl() only needs `internTable` to be non-null to stop NPE-ing.
-    if (env->PushLocalFrame(16) >= 0) {
-        jclass mt = env->FindClass("java/lang/invoke/MethodType");
-        if (env->ExceptionCheck()) env->ExceptionClear();
-        jfieldID it = mt ? env->GetStaticFieldID(mt, "internTable",
-            "Ljava/lang/invoke/MethodType$ConcurrentWeakInternSet;") : nullptr;
-        if (env->ExceptionCheck()) { env->ExceptionClear(); it = nullptr; }
-        jobject cur = it ? env->GetStaticObjectField(mt, it) : nullptr;
-        fprintf(stderr, "[WESTLAKE-404] MethodType.internTable fid=%d null=%d\n",
-                it ? 1 : 0, cur == nullptr ? 1 : 0);
-        if (it != nullptr && cur == nullptr) {
-            jclass setCls = env->FindClass("java/lang/invoke/MethodType$ConcurrentWeakInternSet");
-            if (env->ExceptionCheck()) env->ExceptionClear();
-            jmethodID ctor = setCls ? env->GetMethodID(setCls, "<init>", "()V") : nullptr;
-            if (env->ExceptionCheck()) { env->ExceptionClear(); ctor = nullptr; }
-            jobject inst = ctor ? env->NewObject(setCls, ctor) : nullptr;
-            if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); inst = nullptr; }
-            if (inst != nullptr) {
-                env->SetStaticObjectField(mt, it, inst);
-                if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); }
-                jobject chk = env->GetStaticObjectField(mt, it);
-                fprintf(stderr, "[WESTLAKE-404] internTable INSTALLED by hand, nowNull=%d\n",
-                        chk == nullptr ? 1 : 0);
-            } else {
-                fprintf(stderr, "[WESTLAKE-404] could not construct ConcurrentWeakInternSet\n");
-            }
-        }
-        env->PopLocalFrame(nullptr);
-    }
-    if (env->ExceptionCheck()) env->ExceptionClear();
-    fflush(stderr);
-}
-
-// ===================== WESTLAKE §441: REAL TLS (was a passthrough stub) =====================
-// adapter.compat.WestlakeSSLSocketFactory used to hand OkHttp back the *plain* socket, so the app
-// spoke cleartext HTTP to port 443; the server hung up and OkHttp reported
-// "EOFException: \n not found: limit=0". This implements the TLS client at the ABI boundary
-// (the westlake way) on top of OHOS's own OpenSSL 3.x, which ships on the device:
-//   /system/lib64/platformsdk/libssl_openssl.z.so  +  libcrypto_openssl.z.so
-// Certificates are really verified against /etc/ssl/certs/cacert.pem, and the hostname is checked
-// by OpenSSL itself via SSL_set1_host (OkHttp's OkHostnameVerifier then checks it a second time
-// using the leaf certificate we hand back through getPeerCertificates()).
-namespace {
-
-struct WlSslApi {
-    void* libssl = nullptr;
-    void* libcrypto = nullptr;
-    const void* (*TLS_client_method)();
-    void* (*SSL_CTX_new)(const void*);
-    int   (*SSL_CTX_load_verify_locations)(void*, const char*, const char*);
-    void  (*SSL_CTX_set_verify)(void*, int, void*);
-    void* (*SSL_new)(void*);
-    int   (*SSL_set_fd)(void*, int);
-    long  (*SSL_ctrl)(void*, int, long, void*);
-    int   (*SSL_set1_host)(void*, const char*);
-    int   (*SSL_connect)(void*);
-    int   (*SSL_read)(void*, void*, int);
-    int   (*SSL_write)(void*, const void*, int);
-    int   (*SSL_get_error)(const void*, int);
-    long  (*SSL_get_verify_result)(const void*);
-    void* (*SSL_get1_peer_certificate)(const void*);
-    const char* (*SSL_get_version)(const void*);
-    const void* (*SSL_get_current_cipher)(const void*);
-    const char* (*SSL_CIPHER_get_name)(const void*);
-    int   (*SSL_shutdown)(void*);
-    void  (*SSL_free)(void*);
-    int   (*i2d_X509)(void*, unsigned char**);
-    void  (*X509_free)(void*);
-    void* ctx = nullptr;
-    bool  ready = false;
-    bool  tried = false;
-};
-static WlSslApi g_tls;
-static pthread_mutex_t g_tls_lock = PTHREAD_MUTEX_INITIALIZER;
-
-static const char* kCaFile = "/etc/ssl/certs/cacert.pem";
-
-static void* wl_tls_dlopen(const char* const* names) {
-    for (int i = 0; names[i] != nullptr; i++) {
-        void* h = dlopen(names[i], RTLD_NOW | RTLD_GLOBAL);
-        if (h != nullptr) {
-            fprintf(stderr, "[WESTLAKE-441] dlopen %s OK\n", names[i]);
-            return h;
-        }
-    }
-    return nullptr;
-}
-
-#define WL_TLS_SYM(handle, field)                                                   \
-    do {                                                                            \
-        g_tls.field = reinterpret_cast<decltype(g_tls.field)>(dlsym(handle, #field)); \
-        if (g_tls.field == nullptr) {                                               \
-            fprintf(stderr, "[WESTLAKE-441] MISSING symbol %s\n", #field);          \
-            missing++;                                                              \
-        }                                                                           \
-    } while (0)
-
-static bool wl_tls_init() {
-    pthread_mutex_lock(&g_tls_lock);
-    if (g_tls.tried) { pthread_mutex_unlock(&g_tls_lock); return g_tls.ready; }
-    g_tls.tried = true;
-
-    static const char* kSslNames[] = {
-        "libssl_openssl.z.so",
-        "/system/lib64/platformsdk/libssl_openssl.z.so",
-        "/system/lib64/chipset-sdk/libssl_openssl.z.so", nullptr };
-    static const char* kCryptoNames[] = {
-        "libcrypto_openssl.z.so",
-        "/system/lib64/platformsdk/libcrypto_openssl.z.so",
-        "/system/lib64/chipset-sdk-sp/libcrypto_openssl.z.so", nullptr };
-    g_tls.libssl    = wl_tls_dlopen(kSslNames);
-    g_tls.libcrypto = wl_tls_dlopen(kCryptoNames);
-    if (g_tls.libssl == nullptr || g_tls.libcrypto == nullptr) {
-        fprintf(stderr, "[WESTLAKE-441] dlopen FAILED ssl=%p crypto=%p err=%s\n",
-                g_tls.libssl, g_tls.libcrypto, dlerror());
-        fflush(stderr); pthread_mutex_unlock(&g_tls_lock); return false;
-    }
-
-    int missing = 0;
-    void* s = g_tls.libssl;
-    WL_TLS_SYM(s, TLS_client_method);      WL_TLS_SYM(s, SSL_CTX_new);
-    WL_TLS_SYM(s, SSL_CTX_load_verify_locations); WL_TLS_SYM(s, SSL_CTX_set_verify);
-    WL_TLS_SYM(s, SSL_new);                WL_TLS_SYM(s, SSL_set_fd);
-    WL_TLS_SYM(s, SSL_ctrl);               WL_TLS_SYM(s, SSL_set1_host);
-    WL_TLS_SYM(s, SSL_connect);            WL_TLS_SYM(s, SSL_read);
-    WL_TLS_SYM(s, SSL_write);              WL_TLS_SYM(s, SSL_get_error);
-    WL_TLS_SYM(s, SSL_get_verify_result);  WL_TLS_SYM(s, SSL_get1_peer_certificate);
-    WL_TLS_SYM(s, SSL_get_version);        WL_TLS_SYM(s, SSL_get_current_cipher);
-    WL_TLS_SYM(s, SSL_CIPHER_get_name);    WL_TLS_SYM(s, SSL_shutdown);
-    WL_TLS_SYM(s, SSL_free);
-    void* c = g_tls.libcrypto;
-    WL_TLS_SYM(c, i2d_X509);               WL_TLS_SYM(c, X509_free);
-    if (missing > 0) {
-        fprintf(stderr, "[WESTLAKE-441] %d symbol(s) missing — TLS unavailable\n", missing);
-        fflush(stderr); pthread_mutex_unlock(&g_tls_lock); return false;
-    }
-
-    g_tls.ctx = g_tls.SSL_CTX_new(g_tls.TLS_client_method());
-    if (g_tls.ctx == nullptr) {
-        fprintf(stderr, "[WESTLAKE-441] SSL_CTX_new FAILED\n");
-        fflush(stderr); pthread_mutex_unlock(&g_tls_lock); return false;
-    }
-    const int loaded = g_tls.SSL_CTX_load_verify_locations(g_tls.ctx, kCaFile, nullptr);
-    // SSL_VERIFY_PEER = 1. Keep verification ON: a silently-insecure client is worse than none.
-    g_tls.SSL_CTX_set_verify(g_tls.ctx, 1, nullptr);
-    fprintf(stderr, "[WESTLAKE-441] SSL_CTX ready ca=%s loaded=%d verify=PEER\n", kCaFile, loaded);
-    fflush(stderr);
-    g_tls.ready = (loaded == 1);
-    if (!g_tls.ready) {
-        fprintf(stderr, "[WESTLAKE-441] CA bundle did NOT load — refusing to run unverified\n");
-        fflush(stderr);
-    }
-    pthread_mutex_unlock(&g_tls_lock);
-    return g_tls.ready;
-}
-
-static void wl_tls_throw_io(JNIEnv* env, const char* what, int err) {
-    char buf[192];
-    snprintf(buf, sizeof(buf), "WestlakeTLS: %s failed (ssl_err=%d)", what, err);
-    jclass ioe = env->FindClass("javax/net/ssl/SSLException");
-    if (ioe == nullptr) { env->ExceptionClear(); ioe = env->FindClass("java/io/IOException"); }
-    if (ioe != nullptr) env->ThrowNew(ioe, buf);
-}
-
-// Drive a would-block SSL op. Returns true to retry, false if it really failed/timed out.
-static bool wl_tls_wait(int fd, int sslErr, int timeoutMs) {
-    if (sslErr != 2 /*WANT_READ*/ && sslErr != 3 /*WANT_WRITE*/) return false;
-    struct pollfd p;
-    p.fd = fd;
-    p.events = (sslErr == 2) ? POLLIN : POLLOUT;
-    p.revents = 0;
-    const int r = poll(&p, 1, timeoutMs);
-    return r > 0;
-}
-
-// §447: dump the first few HTTP bytes each way so we can see the actual request/response.
-static int g_tls_dump_count = 0;
-static void wl_tls_dump(const char* op, const jbyte* data, int n) {
-    if (g_tls_dump_count >= 6 || n <= 0) return;
-    g_tls_dump_count++;
-    const int cap = (n < 420) ? n : 420;
-    std::string out;
-    out.reserve((size_t)cap + 8);
-    for (int i = 0; i < cap; i++) {
-        const unsigned char c = (unsigned char)data[i];
-        if (c == '\r') { out += "\\r"; }
-        else if (c == '\n') { out += "\\n"; }
-        else if (c >= 32 && c < 127) { out += (char)c; }
-        else { out += '.'; }
-    }
-    fprintf(stderr, "[WESTLAKE-447] %s %d bytes: %s%s\n", op, n, out.c_str(),
-            (n > cap) ? " ...(truncated)" : "");
-    fflush(stderr);
-}
-
-// §446: bounded I/O tracing so a premature EOF can be told apart from a real one.
-static int g_tls_io_logged = 0;
-static void wl_tls_log_io(const char* op, const char* what, int n, int sslErr, int fd) {
-    const bool interesting = (strcmp(what, "ok") != 0);
-    if (!interesting && g_tls_io_logged >= 12) return;
-    if (g_tls_io_logged >= 200) return;
-    g_tls_io_logged++;
-    fprintf(stderr, "[WESTLAKE-446] tls %s %s fd=%d n=%d ssl_err=%d errno=%s\n",
-            op, what, fd, n, sslErr, (errno != 0) ? strerror(errno) : "-");
-    fflush(stderr);
-}
-
-static jlong WL_TLS_handshake(JNIEnv* env, jclass, jint fd, jstring jhost, jint timeoutMs) {
-    if (!wl_tls_init()) { wl_tls_throw_io(env, "init", 0); return 0; }
-    const char* host = (jhost != nullptr) ? env->GetStringUTFChars(jhost, nullptr) : nullptr;
-
-    void* ssl = g_tls.SSL_new(g_tls.ctx);
-    if (ssl == nullptr) {
-        if (host) env->ReleaseStringUTFChars(jhost, host);
-        wl_tls_throw_io(env, "SSL_new", 0); return 0;
-    }
-    g_tls.SSL_set_fd(ssl, (int)fd);
-    if (host != nullptr) {
-        // SNI: SSL_CTRL_SET_TLSEXT_HOSTNAME=55, TLSEXT_NAMETYPE_host_name=0
-        g_tls.SSL_ctrl(ssl, 55, 0, const_cast<char*>(host));
-        g_tls.SSL_set1_host(ssl, host);   // OpenSSL-side hostname verification
-    }
-
-    const int deadline = (timeoutMs > 0) ? timeoutMs : 30000;
-    int rc;
-    for (;;) {
-        rc = g_tls.SSL_connect(ssl);
-        if (rc == 1) break;
-        const int e = g_tls.SSL_get_error(ssl, rc);
-        if (!wl_tls_wait((int)fd, e, deadline)) {
-            fprintf(stderr, "[WESTLAKE-441] handshake FAILED host=%s rc=%d ssl_err=%d errno=%s\n",
-                    host ? host : "?", rc, e, strerror(errno));
-            fflush(stderr);
-            g_tls.SSL_free(ssl);
-            if (host) env->ReleaseStringUTFChars(jhost, host);
-            wl_tls_throw_io(env, "handshake", e);
-            return 0;
-        }
-    }
-    const long vr = g_tls.SSL_get_verify_result(ssl);
-    if (vr != 0 /*X509_V_OK*/) {
-        fprintf(stderr, "[WESTLAKE-441] CERT VERIFY FAILED host=%s result=%ld\n",
-                host ? host : "?", vr);
-        fflush(stderr);
-        g_tls.SSL_free(ssl);
-        if (host) env->ReleaseStringUTFChars(jhost, host);
-        wl_tls_throw_io(env, "certificate verification", (int)vr);
-        return 0;
-    }
-    const char* ver = g_tls.SSL_get_version(ssl);
-    const void* cip = g_tls.SSL_get_current_cipher(ssl);
-    fprintf(stderr, "[WESTLAKE-441] HANDSHAKE OK host=%s proto=%s cipher=%s verify=OK\n",
-            host ? host : "?", ver ? ver : "?",
-            cip ? g_tls.SSL_CIPHER_get_name(cip) : "?");
-    fflush(stderr);
-    if (host) env->ReleaseStringUTFChars(jhost, host);
-    return (jlong)(uintptr_t)ssl;
-}
-
-static jint WL_TLS_read(JNIEnv* env, jclass, jlong handle, jint fd, jbyteArray buf,
-                        jint off, jint len, jint timeoutMs) {
-    void* ssl = (void*)(uintptr_t)handle;
-    if (ssl == nullptr || buf == nullptr) return -1;
-    if (len <= 0) return 0;
-    jbyte* tmp = (jbyte*)malloc((size_t)len);
-    if (tmp == nullptr) return -1;
-    const int deadline = (timeoutMs > 0) ? timeoutMs : 60000;
-    int n;
-    for (;;) {
-        errno = 0;
-        n = g_tls.SSL_read(ssl, tmp, len);
-        if (n > 0) break;
-        const int e = g_tls.SSL_get_error(ssl, n);
-        if (e == 6 /*SSL_ERROR_ZERO_RETURN*/) {          // peer closed cleanly
-            wl_tls_log_io("read", "peer closed (ZERO_RETURN)", n, e, fd);
-            free(tmp); return -1;
-        }
-        if (e == 2 /*WANT_READ*/ || e == 3 /*WANT_WRITE*/) {
-            if (!wl_tls_wait((int)fd, e, deadline)) {
-                wl_tls_log_io("read", "poll timeout/error", n, e, fd);
-                free(tmp); return -1;
-            }
-            continue;
-        }
-        // §446: SSL_ERROR_SYSCALL with a retryable errno is NOT end-of-stream. Treating it as EOF
-        // is what produced OkHttp's "EOFException: \n not found: limit=0" on a healthy connection.
-        if (e == 5 /*SSL_ERROR_SYSCALL*/ && n < 0 &&
-            (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
-            if (!wl_tls_wait((int)fd, 2 /*poll readable*/, deadline)) {
-                wl_tls_log_io("read", "poll after EAGAIN failed", n, e, fd);
-                free(tmp); return -1;
-            }
-            continue;
-        }
-        wl_tls_log_io("read", "fatal", n, e, fd);
-        free(tmp); return -1;
-    }
-    env->SetByteArrayRegion(buf, off, n, tmp);
-    wl_tls_dump("<-- recv", tmp, n);
-    free(tmp);
-    wl_tls_log_io("read", "ok", n, 0, fd);
-    return n;
-}
-
-static jint WL_TLS_write(JNIEnv* env, jclass, jlong handle, jint fd, jbyteArray buf,
-                         jint off, jint len, jint timeoutMs) {
-    void* ssl = (void*)(uintptr_t)handle;
-    if (ssl == nullptr || buf == nullptr) return -1;
-    if (len <= 0) return 0;
-    jbyte* tmp = (jbyte*)malloc((size_t)len);
-    if (tmp == nullptr) return -1;
-    env->GetByteArrayRegion(buf, off, len, tmp);
-    wl_tls_dump("--> send", tmp, len);
-    const int deadline = (timeoutMs > 0) ? timeoutMs : 60000;
-    int done = 0;
-    while (done < len) {
-        errno = 0;
-        const int n = g_tls.SSL_write(ssl, tmp + done, len - done);
-        if (n > 0) { done += n; continue; }
-        const int e = g_tls.SSL_get_error(ssl, n);
-        if (e == 2 /*WANT_READ*/ || e == 3 /*WANT_WRITE*/) {
-            if (!wl_tls_wait((int)fd, e, deadline)) {
-                wl_tls_log_io("write", "poll timeout/error", n, e, fd);
-                free(tmp); return -1;
-            }
-            continue;
-        }
-        if (e == 5 /*SSL_ERROR_SYSCALL*/ && n < 0 &&
-            (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
-            if (!wl_tls_wait((int)fd, 3 /*poll writable*/, deadline)) {
-                wl_tls_log_io("write", "poll after EAGAIN failed", n, e, fd);
-                free(tmp); return -1;
-            }
-            continue;
-        }
-        wl_tls_log_io("write", "fatal", n, e, fd);
-        free(tmp); return -1;
-    }
-    free(tmp);
-    wl_tls_log_io("write", "ok", done, 0, fd);
-    return done;
-}
-
-static jbyteArray WL_TLS_peerCert(JNIEnv* env, jclass, jlong handle) {
-    void* ssl = (void*)(uintptr_t)handle;
-    if (ssl == nullptr) return nullptr;
-    void* x = g_tls.SSL_get1_peer_certificate(ssl);
-    if (x == nullptr) return nullptr;
-    unsigned char* der = nullptr;
-    const int n = g_tls.i2d_X509(x, &der);
-    jbyteArray out = nullptr;
-    if (n > 0 && der != nullptr) {
-        out = env->NewByteArray(n);
-        if (out != nullptr) env->SetByteArrayRegion(out, 0, n, (const jbyte*)der);
-    }
-    g_tls.X509_free(x);
-    return out;
-}
-
-static jstring WL_TLS_info(JNIEnv* env, jclass, jlong handle, jint which) {
-    void* ssl = (void*)(uintptr_t)handle;
-    if (ssl == nullptr) return nullptr;
-    if (which == 0) {
-        const char* v = g_tls.SSL_get_version(ssl);
-        return v ? env->NewStringUTF(v) : nullptr;
-    }
-    const void* c = g_tls.SSL_get_current_cipher(ssl);
-    const char* n = c ? g_tls.SSL_CIPHER_get_name(c) : nullptr;
-    return n ? env->NewStringUTF(n) : nullptr;
-}
-
-static void WL_TLS_close(JNIEnv*, jclass, jlong handle) {
-    void* ssl = (void*)(uintptr_t)handle;
-    if (ssl == nullptr) return;
-    g_tls.SSL_shutdown(ssl);
-    g_tls.SSL_free(ssl);
-}
-
-}  // namespace
-
-static void wl_register_tls_natives(JNIEnv* env) {
-    jclass cls = env->FindClass("adapter/compat/WestlakeSSLSocket");
-    if (cls == nullptr || env->ExceptionCheck()) {
-        env->ExceptionClear();
-        fprintf(stderr, "[WESTLAKE-441] adapter/compat/WestlakeSSLSocket NOT FOUND — TLS off\n");
-        fflush(stderr);
-        return;
-    }
-    static const JNINativeMethod m[] = {
-        {"nativeHandshake", "(ILjava/lang/String;I)J", reinterpret_cast<void*>(WL_TLS_handshake)},
-        {"nativeRead",  "(JI[BIII)I", reinterpret_cast<void*>(WL_TLS_read)},
-        {"nativeWrite", "(JI[BIII)I", reinterpret_cast<void*>(WL_TLS_write)},
-        {"nativePeerCert", "(J)[B",   reinterpret_cast<void*>(WL_TLS_peerCert)},
-        {"nativeInfo", "(JI)Ljava/lang/String;", reinterpret_cast<void*>(WL_TLS_info)},
-        {"nativeClose", "(J)V",       reinterpret_cast<void*>(WL_TLS_close)},
-    };
-    const jint rc = env->RegisterNatives(cls, m, 6);
-    if (env->ExceptionCheck()) env->ExceptionClear();
-    fprintf(stderr, "[WESTLAKE-441] RegisterNatives(WestlakeSSLSocket) rc=%d\n", (int)rc);
-    fflush(stderr);
-    env->DeleteLocalRef(cls);
-}
-// ===== [port-a1a2d4 2026-07-30] end payload =====
+extern "C" int register_n10b_Emboss(JNIEnv*);
+extern "C" int initialize_n10b_asset_offsets(JNIEnv*);
 
 int AndroidRuntime::startReg(JNIEnv* env) {
-    if (::westlake_icu_early_init() != 0) {
-        fprintf(stderr,
-                "[liboh_android_runtime] A3 ICU early init failed; "
-                "aborting startReg\n");
-        return -1;
-    }
-    // Pre-register immediately after ICU admission, before any later startReg
-    // module can initialize these Java classes and cache the previous native
-    // finalizer. The tail registration remains mandatory: it repeats the same
-    // fail-hard cohort after all other native writers so A3 still wins.
-    if (::westlake_register_charset_natives(env) != 0 ||
-        ::westlake_register_regex_natives(env) != 0) {
-        fprintf(stderr,
-                "[liboh_android_runtime] A3 ICU early registration failed; "
-                "aborting startReg\n");
-        return -1;
-    }
-    fprintf(stderr,
-            "[liboh_android_runtime] A3 ICU PRE-REGISTERED "
-            "NativeConverter=13/16 regex=15/15\n");
-
     fprintf(stderr, "[liboh_android_runtime] startReg entering (%zu modules)\n",
             kRegJNICount);
-
-    WestlakeRegisterJsseShim(env);  // [port-a1a2d4 2026-07-30] §441 JSSE provider before any module registers
 
     // Cache JavaVM so AOSP-ported sources (ApkAssets.cpp et al.) can call
     // AndroidRuntime::getJavaVM() from callback-local central JNI admission.
@@ -1264,29 +666,33 @@ int AndroidRuntime::startReg(JNIEnv* env) {
         // for (Surface / BLASTBufferQueue / DisplayEventReceiver).
         // MUST run AFTER libhwui's register loop above so our overrides win.
         register_android_graphics_compat_shim(env);
+        // N10b: override only Emboss after the original HWUI/compat tables.
+        if (initialize_n10b_asset_offsets(env) < 0) return -1;
+        if (register_n10b_Emboss(env) != 0 || env->ExceptionCheck()) {
+            fprintf(stderr, "[N10b-Emboss] registration failed\n");
+            env->PopLocalFrame(nullptr);
+            return -1;
+        }
+        HiLogPrint(LOG_CORE, LOG_INFO, 0xD000F00u, "N10bEmboss",
+            "[N10b-EMBOSS] real OH m133 Emboss nativeConstructor registered");
+
+        // GetFieldID below initializes EGLContextImpl -> EGLContext -> GLImpl.
+        // Bind GLImpl natives first, before that Java initialization can run.
+        if (n2_register_GLImpl(env) != 0 || env->ExceptionCheck()) {
+            env->ExceptionDescribe(); env->ExceptionClear();
+        }
+        if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {
+            if (env->ExceptionCheck()) env->ExceptionDescribe();
+            fprintf(stderr, "[N4-EGLImpl] registration/field cache failed\n");
+            env->PopLocalFrame(nullptr);
+            return -1;
+        } else fprintf(stderr, "[N3-EGLImpl] full Westlake table registered\n");
+        if (register_n2_Camera(env) != 0 || env->ExceptionCheck()) {
+            env->ExceptionDescribe(); env->ExceptionClear();
+        }
 
         env->PopLocalFrame(nullptr);
     }
-
-    wl_register_tls_natives(env);   // [port-a1a2d4 2026-07-30] §441 real TLS over OpenSSL 3.x
-    wl_repair_invoke_classes(env);  // [port-a1a2d4 2026-07-30] §404 invoke-class statics repair
-
-    // Task 79 A3: these registrations must also remain at the startReg tail.
-    // ART has already installed its ICU stubs during JNI_CreateJavaVM, and
-    // JNI RegisterNatives is last-writer-wins. Charset is deliberately 13/16
-    // (provider/enumeration methods remain ART-owned); regex is a coupled
-    // Pattern+Matcher 15/15 cohort. Any partial registration aborts appspawn
-    // before mixed native-handle layouts can execute.
-    if (::westlake_register_charset_natives(env) != 0 ||
-        ::westlake_register_regex_natives(env) != 0) {
-        fprintf(stderr,
-                "[liboh_android_runtime] A3 ICU late registration failed; "
-                "aborting startReg\n");
-        return -1;
-    }
-    fprintf(stderr,
-            "[liboh_android_runtime] A3 ICU ACTIVE "
-            "NativeConverter=13/16 regex=15/15\n");
 
     fprintf(stderr, "[liboh_android_runtime] startReg exiting (ok)\n");
     return 0;
