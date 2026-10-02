@@ -116,24 +116,31 @@ def branch_residue(wt, repo):
     head = g('rev-parse', 'HEAD')
     master = g('rev-parse', 'master', cwd=repo)
     base = g('merge-base', head, master)
-    if not head or not base:
+    if not head or not base or head == base:
         return []
-    out = []
-    for rel in g('diff', '--name-only', base, head).splitlines():
-        if rel.startswith('.octos/') or not rel:
-            continue
-        on_branch = subprocess.run(['git', '-C', str(wt), 'show', f'{head}:{rel}'], capture_output=True).stdout
-        at_base = subprocess.run(['git', '-C', str(wt), 'show', f'{base}:{rel}'], capture_output=True)
-        mpath = repo / rel
-        if not mpath.is_file():
-            out.append((rel, 'missing-on-master'))
-            continue
-        mbytes = mpath.read_bytes()
-        if mbytes == on_branch:
-            continue
-        if at_base.returncode == 0 and mbytes == at_base.stdout:
-            out.append((rel, 'master-still-at-merge-base'))
-    return out
+    changed = [r for r in g('diff', '--name-only', '--no-renames', base, head).splitlines()
+               if r and not r.startswith('.octos/')]
+    if not changed:
+        return []
+
+    def blobs(rev):
+        # one ls-tree per revision instead of one git show per file (the per-file version took > 15 min)
+        out = {}
+        for line in g('ls-tree', '-r', rev).splitlines():
+            meta, _, path = line.partition('\t')
+            out[path] = meta.split()[2]
+        return out
+    at_head, at_base, at_master = blobs(head), blobs(base), blobs(master)
+    res = []
+    for rel in changed:
+        h = at_head.get(rel)
+        if h is None or at_master.get(rel) == h:
+            continue  # deleted on the branch, or master already has the branch version
+        if rel not in at_master:
+            res.append((rel, 'missing-on-master'))
+        elif at_master[rel] == at_base.get(rel):
+            res.append((rel, 'master-still-at-merge-base'))
+    return res
 
 
 def main(argv=None):
