@@ -256,6 +256,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-02-n11h-host-owner/`** | **Accepted-r3 N11h host owner publication: two early sealed edges, exact resident-handle callbacks, byte-reproduced builds, preserved permissions and unapproved N1/N2 review evidence.** |
 | **`benchmark/2026-10-02-toutiao-wall3-prediction/`** | **Toutiao on U10.1+T8+U11i, written before the window: wall 0 = install fails on 5ea/5cd (libinstalls 2c9a5294 rejects libcvt.so at installd_operator:3222; 61b 51e1b525 accepts it; pre-existing per-board split, not the candidate); then t20 timing (Mira 0.6 s serialized retries), 122 android.net stub members missing (`stub_member_gap.py`, T8 = U9), bionic-only symbols in libttcrypto/libsscronet/libmetasec_ml.** |
 | **`benchmark/2026-10-02-n11h-admission/`** | **N11h admission-only review: actual-callback compat timing counterexample, PID-scoped nonfatal readout, 19 exact string checkboxes, 103 N2/53 old N1 rebinding proposals and one unapproved owner query.** |
+| **`benchmark/2026-10-02-android-net-stub-members/`** | **android.net members missing from adapter-mainline-stubs, member-only patch for the next JAR round (not deployed): AOSP 14 r1 donors merged into the deployed jar's smali (133 members + 8 new classes); `deployed_class_diff --frozen` rc=0 on both 2f365a75 and f3bcc9d7, every deployed member unchanged; 166-key missing android.net members 181→48, referencing keys 112→13, toutiao 0; predicted: no first fatal moves (only toutiao's background CronetInit error observed).** |
 
 ---
 

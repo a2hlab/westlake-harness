@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-02-android-net-stub-members/`** | **android.net members missing from adapter-mainline-stubs, member-only patch for the next JAR round (not deployed): AOSP 14 r1 donors merged into the deployed jar's smali (133 members + 8 new classes); `deployed_class_diff --frozen` rc=0 on both 2f365a75 and f3bcc9d7, every deployed member unchanged; 166-key missing android.net members 181→48, referencing keys 112→13, toutiao 0; predicted: no first fatal moves (only toutiao's background CronetInit error observed).** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-02 桩 BCP 要按成员核,不只按类:adapter-mainline-stubs 的 NetworkInfo 只有 7 个方法、DetailedState 没有常量;ART 按**引用的类**解析方法,基类缺的成员即使运行时子类(OnlineConnectivityManager/OnlineNetworkInfo)覆写了也是 NoSuchMethodError——补基类成员才让这些覆写可达。按 166 key 排序,影响面最大的是 TrafficStats.clearThreadStatsTag(83 app)/untagSocket 等(70 app,androidx.core.net、Firebase installations、ads、media3 的后台联网路径,失败常被吞进 Task,hilog 不留痕)。smali 2.5.2 产物 type_list/annotation 排序随运行变化(code/class_data 不变),jar SHA 每次不同,可复现身份用合并后 smali 树哈希。见 benchmark/2026-10-02-android-net-stub-members/(cc-t3)。"
+   ]
+  }
+ ]
+}
