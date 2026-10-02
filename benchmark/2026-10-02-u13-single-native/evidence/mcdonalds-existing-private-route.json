@@ -1,0 +1,330 @@
+[
+  {
+    "path": "$REPO/benchmark/2026-10-02-bms-source-reconcile/sources/bms/src/adapter/framework/app-native-loader/src/app_native_loader.c",
+    "sha256": "aa1cd7c09164f1e6eefb928e8bc856ecb4df3ce22f81842d6595911c5c1f1d06",
+    "lines": [
+      {
+        "number": 60,
+        "text": "/* Exact package components from the N03/N04/N05 native-cluster records."
+      },
+      {
+        "number": 61,
+        "text": " * Non-members retain the baseline namespace and loading path. */"
+      },
+      {
+        "number": 62,
+        "text": "static bool native_cluster_path(const char* text) {"
+      },
+      {
+        "number": 63,
+        "text": "    const char* packages[] = {\"com.ichi2.anki\", \"com.unciv.app\", \"app.organicmaps\","
+      },
+      {
+        "number": 64,
+        "text": "        \"com.nextcloud.client\", \"com.mcdonalds.app\", \"io.anuke.mindustry\","
+      },
+      {
+        "number": 65,
+        "text": "        \"com.emn8.mobilem8.nativeapp.bk\", \"im.vector.app\","
+      },
+      {
+        "number": 66,
+        "text": "        \"org.mozilla.firefox\", \"org.mozilla.fennec_fdroid\", \"org.videolan.vlc\", \"org.ppsspp.ppsspp\", \"com.shatteredpixel.shatteredpixeldungeon\"};"
+      },
+      {
+        "number": 67,
+        "text": "    for (size_t i=0; i<sizeof(packages)/sizeof(packages[0]); ++i) {"
+      },
+      {
+        "number": 68,
+        "text": "        const char* q=text;"
+      },
+      {
+        "number": 69,
+        "text": "        while ((q=strstr(q, packages[i])) != NULL) {"
+      },
+      {
+        "number": 440,
+        "text": "    }"
+      },
+      {
+        "number": 441,
+        "text": "    if (verify_runtime_ready(&domain->runtime_gate, \"dlopen\") != 0) {"
+      },
+      {
+        "number": 442,
+        "text": "        return NULL;"
+      },
+      {
+        "number": 443,
+        "text": "    }"
+      },
+      {
+        "number": 444,
+        "text": "    pthread_mutex_lock(&domain->flutter_mutex);"
+      },
+      {
+        "number": 445,
+        "text": "    const char* base = strrchr(path, '/');"
+      },
+      {
+        "number": 446,
+        "text": "    base = base == NULL ? path : base + 1;"
+      },
+      {
+        "number": 447,
+        "text": "    if (strcmp(base, \"libflutter.so\") == 0 &&"
+      },
+      {
+        "number": 448,
+        "text": "        (flutter_package_path(path) || flutter_package_path(domain->app_paths) ||"
+      },
+      {
+        "number": 449,
+        "text": "         flutter_package_path(domain->app_permitted_paths))) domain->flutter_selected = true;"
+      },
+      {
+        "number": 450,
+        "text": "    if (!domain->flutter_selected &&"
+      },
+      {
+        "number": 451,
+        "text": "        (native_cluster_path(path) || native_cluster_path(domain->app_paths) ||"
+      },
+      {
+        "number": 452,
+        "text": "         native_cluster_path(domain->app_permitted_paths))) domain->native_selected = true;"
+      },
+      {
+        "number": 453,
+        "text": "    bool selected = domain->flutter_selected || domain->native_selected;"
+      },
+      {
+        "number": 454,
+        "text": "    if (selected && domain->flutter_state == 0 && path[0] == '/') {"
+      },
+      {
+        "number": 455,
+        "text": "        const char* slash = strrchr(path, '/');"
+      },
+      {
+        "number": 456,
+        "text": "        size_t length = slash == NULL ? 0 : (size_t)(slash - path);"
+      },
+      {
+        "number": 457,
+        "text": "        if (length >= sizeof(domain->selected_load_dir)) {"
+      },
+      {
+        "number": 458,
+        "text": "            pthread_mutex_unlock(&domain->flutter_mutex);"
+      },
+      {
+        "number": 459,
+        "text": "            failf(\"selected native load directory exceeds limits\");"
+      },
+      {
+        "number": 460,
+        "text": "            return NULL;"
+      },
+      {
+        "number": 461,
+        "text": "        }"
+      },
+      {
+        "number": 462,
+        "text": "        memcpy(domain->selected_load_dir, path, length);"
+      },
+      {
+        "number": 463,
+        "text": "        domain->selected_load_dir[length] = '\\0';"
+      },
+      {
+        "number": 464,
+        "text": "    }"
+      },
+      {
+        "number": 465,
+        "text": "    int prepared = selected ? flutter_prepare(domain) : 0;"
+      },
+      {
+        "number": 466,
+        "text": "    pthread_mutex_unlock(&domain->flutter_mutex);"
+      },
+      {
+        "number": 467,
+        "text": "    if (prepared != 0) return NULL;"
+      },
+      {
+        "number": 468,
+        "text": "    dlerror();"
+      },
+      {
+        "number": 469,
+        "text": "    void* handle = selected"
+      },
+      {
+        "number": 470,
+        "text": "        ? domain->runtime_gate.namespace_host_ops.open_namespace("
+      },
+      {
+        "number": 471,
+        "text": "            &domain->flutter, path, mode | RTLD_LOCAL)"
+      },
+      {
+        "number": 472,
+        "text": "        : domain->runtime_gate.namespace_host_ops.open_namespace("
+      },
+      {
+        "number": 473,
+        "text": "            &domain->app, path, mode | RTLD_LOCAL);"
+      },
+      {
+        "number": 474,
+        "text": "    if (handle == NULL) {"
+      },
+      {
+        "number": 475,
+        "text": "        const char* error = dlerror();"
+      },
+      {
+        "number": 476,
+        "text": "        failf(\"%s: dlopen_ns failed for %s: %s\", classify_load_error(error),"
+      },
+      {
+        "number": 477,
+        "text": "              path,"
+      },
+      {
+        "number": 478,
+        "text": "              error == NULL ? \"linker produced no diagnostic\" : error);"
+      },
+      {
+        "number": 479,
+        "text": "    } else {"
+      },
+      {
+        "number": 480,
+        "text": "        g_error[0] = '\\0';"
+      }
+    ]
+  },
+  {
+    "path": "$REPO/benchmark/2026-10-02-bms-source-reconcile/sources/bms/src/adapter/framework/app-native-loader/src/flutter_domain.inc",
+    "sha256": "0117797953a738f248d13f9f8be04e76d6052f1e0f70cf0f0e5c88f16472c15b",
+    "lines": [
+      {
+        "number": 18,
+        "text": "static int flutter_prepare(AnlDomain* domain) {"
+      },
+      {
+        "number": 19,
+        "text": "    if (domain->flutter_state != 0) return domain->flutter_state == 1 ? 0 : -1;"
+      },
+      {
+        "number": 20,
+        "text": "    domain->flutter_state = -1;"
+      },
+      {
+        "number": 21,
+        "text": "    if (!domain->has_bridge) return failf(\"Flutter pthread bridge configuration missing\");"
+      },
+      {
+        "number": 22,
+        "text": "    const char* private_root = domain->flutter_selected"
+      },
+      {
+        "number": 23,
+        "text": "        ? \"/system/android/lib64/westlake_flutter\" : \"/system/android/lib64/westlake_native\";"
+      },
+      {
+        "number": 24,
+        "text": "    char app_name[NS_NAME_MAX + 1], bridge_name[NS_NAME_MAX + 1];"
+      },
+      {
+        "number": 25,
+        "text": "    char search[3 * PATH_MAX], permitted[4 * PATH_MAX];"
+      },
+      {
+        "number": 26,
+        "text": "    unsigned long id = atomic_fetch_add_explicit(&g_domain_id, 1, memory_order_relaxed);"
+      },
+      {
+        "number": 27,
+        "text": "    /* Exact owned-name grammar required by the existing stock-host callbacks. */"
+      },
+      {
+        "number": 28,
+        "text": "    snprintf(app_name, sizeof(app_name), \"westlake.anl.app.%ld.%lu\", (long)getpid(), id);"
+      },
+      {
+        "number": 29,
+        "text": "    snprintf(bridge_name, sizeof(bridge_name), \"westlake.anl.bridge.%ld.%lu\", (long)getpid(), id);"
+      },
+      {
+        "number": 30,
+        "text": "    if (snprintf(search, sizeof(search), \"%s:%s%s%s\", private_root, domain->app_paths, domain->selected_load_dir[0] ? \":\" : \"\", domain->selected_load_dir) >= (int)sizeof(search) ||"
+      },
+      {
+        "number": 31,
+        "text": "        snprintf(permitted, sizeof(permitted), \"%s:%s:%s%s%s\", private_root,"
+      },
+      {
+        "number": 32,
+        "text": "                 domain->app_paths, domain->app_permitted_paths, domain->selected_load_dir[0] ? \":\" : \"\", domain->selected_load_dir) >= (int)sizeof(permitted))"
+      },
+      {
+        "number": 33,
+        "text": "        return failf(\"Flutter namespace paths exceed limits\");"
+      },
+      {
+        "number": 34,
+        "text": ""
+      },
+      {
+        "number": 35,
+        "text": "    /* Host owns all namespace operations in default. Its existing bridge has"
+      },
+      {
+        "number": 36,
+        "text": "     * CREATE_INHERIT_DEFAULT; the app gets only this explicit shared-name list."
+      },
+      {
+        "number": 37,
+        "text": "     * Do not call dlns_* directly from the sealed ANL DSO. */"
+      },
+      {
+        "number": 38,
+        "text": "    const char* shared ="
+      },
+      {
+        "number": 39,
+        "text": "        \"libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:\""
+      },
+      {
+        "number": 40,
+        "text": "        \"liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:\""
+      },
+      {
+        "number": 41,
+        "text": "        \"libwestlake_bionic_pthread_bridge.so\";"
+      },
+      {
+        "number": 42,
+        "text": "    int rc = domain->runtime_gate.namespace_host_ops.create_configured_namespaces("
+      },
+      {
+        "number": 43,
+        "text": "        &domain->flutter_bridge, bridge_name,"
+      },
+      {
+        "number": 44,
+        "text": "        domain->flutter_bridge_search, domain->flutter_bridge_permitted, shared,"
+      },
+      {
+        "number": 45,
+        "text": "        \"libwestlake_bionic_pthread_bridge.so\", &domain->runtime_gate.pthread_bridge_ops,"
+      }
+    ]
+  }
+]
