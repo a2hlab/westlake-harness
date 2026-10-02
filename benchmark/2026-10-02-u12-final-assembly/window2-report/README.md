@@ -1,0 +1,7 @@
+# U12 Stage A window 2
+
+Window 1 stopped on a missing corpus manifest and retained two recovery locks. Window 2 used the identical armed bundle bd08c3f7 / native manifest2a3fac81, after complete three-board U10.1T8 restoration and fresh actual Mac/VM production dry-runs. Both returned rc0, N1/N2 zero REJECT, static/image/frozen gates passed. The restored manifest was byte-identical to commit17ebaf97a5 on both surfaces. Already attempted lit-original keys were excluded.
+
+All three activation smokes passed and post-apply321 assertions had no differences or absent paths. Each CV2 shard stopped at the declared35-minute NEW-KEY CUTOFF. Their rc1 did not imply a product failure: the requested key lists were only partially run. The runner stopped remaining shards and unconditionally finished. Each board restored signed U10.1T8 with318 assertions, recovery smoke and final PASS, before_unlock rc0, then unlocked. No reboot or manual recovery was required in window2.
+
+Facts are verbatim tool output in each board directory. UI verdict is the outer's:54/54 same UI, cumulative85/116 baseline-lit tested, zero confirmed regression. The lane does not calculate a lit count. Remaining28/26/27 keys are unknown; the next authorized window prioritizes31 remaining baseline-lit keys, repeats fd-fitness3 times on5ea, then the50 previously unlit keys. Every next window retains the same bytes and unconditional restoration.
