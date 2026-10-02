@@ -23,3 +23,11 @@ carried from the signed window text.
 ## Use
 Regression reference for later runs: a key that is `lit` here but not lit later (outside its `lottery` k/n) is a
 regression signal; the two white / one lottery keys are judged by their own flakiness, not as hard controls.
+
+## Full U9 set (166 keys)
+Padded to the complete U9 sweep set (166): the 119 tested keys above + the remaining **47 U9-non-lit keys**, each
+carrying its **U9 verdict** (`carried_from_u9: true`, source `window5-gains(no_change)` — the window5 gains signoff
+recorded these as showing the same white/black/launcher screen as U9). No new judgment. Final counts: **116 lit**,
+1 lottery (fd-noice), 2 white (toutiao, x), 31 dead, 12 alive-white-window, 2 alive-black-window, 1 alive-black-content,
+1 app_failed = 166. lit unchanged at 116; the 47 carried keys are all U9-non-lit. This lets later runs diff gains
+against the whole U9 surface, not just the tested subset.
