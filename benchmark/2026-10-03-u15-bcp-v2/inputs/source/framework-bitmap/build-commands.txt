@@ -1,0 +1,17 @@
+U15 JAR #1 — framework.jar Bitmap.getColorSpace() sRGB fallback. Built on Mac; re-baked on hw248 host dex2oat.
+base framework.jar (deployed, BCP): 3e106350d882cd1f2f6d71c3cc4e9f124412d16f50a2dcb160007c34e6dde9af
+toolchain: baksmali-2.5.2.jar + smali-2.5.2.jar (org.jf; antlr bundled) + dexlib2-2.5.2 + guava-31.1-jre + jcommander-1.78 + util-2.5.2  (westlake-inputs/tools)
+BAK_CP=baksmali-2.5.2.jar:dexlib2-2.5.2.jar:guava-31.1-jre.jar:jcommander-1.78.jar:util-2.5.2.jar
+SMALI_CP=smali-2.5.2.jar:dexlib2-2.5.2.jar:guava-31.1-jre.jar:jcommander-1.78.jar:util-2.5.2.jar
+steps:
+ 1. unzip framework.jar; android/graphics/Bitmap is in classes.dex (of 5 dex).
+ 2. java -cp $BAK_CP org.jf.baksmali.Main disassemble classes.dex -o smali
+ 3. edit smali/android/graphics/Bitmap.smali getColorSpace() : after nativeComputeComputeColorSpace iput, add
+    `if-nez v0,:cond_11 ; getConfig; if ALPHA_8 -> :cond_11 ; else mColorSpace = ColorSpace.get(SRGB)` (see Bitmap.getColorSpace.smali.patch)
+ 4. java -cp $SMALI_CP org.jf.smali.Main assemble -j 1 smali -o classes.dex   (built TWICE, byte-identical: e14cb9ec...)
+ 5. repack: cp base framework.jar -> framework-u15.jar ; zip -X -0 framework-u15.jar classes.dex  (classes.dex STORED, matching base)
+gates:
+ - 2-pass dex sha: e14cb9ecfbe4e55523287f975cdec35388bbae9f0022f341356100170c06be7d (identical both passes)
+ - round-trip smali diff vs base: 18 files differ = 1 Bitmap.smali (intended) + 17 benign static-final default-value re-encoding (`= 0x0`/`= false` dropped); 0 instruction/method-body changes elsewhere
+ - deployed_class_diff vs 3e106350: 29341 classes both, 0 dropped / 0 added / 0 superclass-or-interface change (Bitmap: Object / [Parcelable] unchanged)
+ - hw248 re-bake (dex2oat64, compiler-filter=speed, board cmdline): rc=0 7s; ART class verifier ran+accepted; boot.oat differs baseline vs u15

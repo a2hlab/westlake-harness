@@ -1,0 +1,25 @@
+HW248 host re-bake (FZ-005 toolchain: dex2oat64 + board cmdline; framework.jar is BCP -> needs re-bake)
+BCP order: core-oj core-libart core-icu4j okhttp bouncycastle apache-xml adapter-mainline-stubs framework oh-adapter-framework
+cmd: dex2oat64 --instruction-set=arm64 --base=0x70000000 --compiler-filter=speed --runtime-arg -Xverify:none
+     --image=boot.art --oat-file=boot.oat --dex-file=<each>.jar --dex-location=/system/android/framework/<each>.jar
+
+BASELINE (orig framework.jar):  dex2oat rc=0, 7s; boot.oat 66727177... boot.art 4961485544...
+MODIFIED (framework-u15.jar):   dex2oat rc=0, ~6.8s; boot.oat 832d6484... boot.art 4148cc75...
+The modified boot.oat differs from baseline (the Bitmap class is recompiled). dex2oat ran ART's class
+verifier (log phases 04_before_verification / 05_after_verification / ClassVerifier_Init) and reported NO
+verification failure for any class, including android.graphics.Bitmap. => ART's verifier ACCEPTS the new
+getColorSpace bytecode; the modified framework.jar bakes into a valid 9-segment boot image.
+(-Xverify:none is a runtime-arg for the image's RUNTIME; compile-time verification still runs under
+compiler-filter=speed, as the log phases show.)
+
+LIVE BEHAVIORAL TEST (createScaledBitmap on a null-colorspace source): NOT runnable on host ART.
+  Host ART (hw248 linux-x86 dalvikvm64) has NO libhwui.so / libandroid_runtime.so (they are arm64 board
+  libs; host x86 ART cannot load them). getColorSpace()'s branch is driven by the NATIVE
+  nativeComputeColorSpace() (libhwui), and building a source Bitmap needs nativeCreate() (libhwui) -- both
+  absent on host. So a live "new createScaledBitmap does not throw / old reproduces the on-board line" run
+  is native-bound-infeasible here (same boundary cc-t3's u14-jar-v1 host-ART test documented).
+  Behavioral correctness is instead established by: (a) the verified bytecode (recipe patch + dex2oat
+  verifier acceptance), (b) AOSP 14 semantics -- getColorSpace()=nativeComputeColorSpace; createScaledBitmap
+  -> createBitmap(source) reads source.getColorSpace(); null + config!=ALPHA_8 throws at Bitmap.java:1203 --
+  the fix makes getColorSpace return sRGB so the throw cannot fire, (c) alignment with Bitmap_isSRGB which
+  already treats a null SkColorSpace as sRGB (benchmark/2026-10-03-bitmap-colorspace).
