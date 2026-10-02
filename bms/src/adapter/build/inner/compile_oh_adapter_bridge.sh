@@ -403,7 +403,7 @@ if [ -f "$NINJA_FILE" ]; then
     COMMON="$COMMON $harvested_defs"
     echo "Harvested $ndefs -D defines from OH ninja plan"
 else
-    echo "WARN: OH ninja file not found at $NINJA_FILE; using hand-maintained flags only"
+    echo "ERROR: OH ninja file not found at $NINJA_FILE"; exit 1
 fi
 
 # ============================================================
@@ -429,7 +429,7 @@ fi
 SOURCES=""
 for srcdir in core activity window surface broadcast contentprovider; do
     for src in "$ADAPTER_ROOT/framework/$srcdir/jni"/*.cpp; do
-        [ -f "$src" ] || continue
+        [ -f "$src" ] || { echo "ERROR: required bridge source missing: $src" >&2; exit 1; }
         case "$(basename "$src")" in
             *-untested-on-*.cpp) continue ;;  # reference-only variants, not build inputs
         esac
@@ -445,7 +445,7 @@ for src in \
     "$ADAPTER_ROOT/framework/package-manager/jni/apk_manifest_jni.cpp" \
     "$ADAPTER_ROOT/framework/package-manager/jni/apk_manifest_parser.cpp" \
     "$ADAPTER_ROOT/framework/package-manager/jni/axml_parser.cpp" ; do
-    [ -f "$src" ] || continue
+    [ -f "$src" ] || { echo "ERROR: required bridge source missing: $src" >&2; exit 1; }
     SOURCES="$SOURCES $src"
 done
 
@@ -532,7 +532,7 @@ if [ -f "$MINIZIP_DIR/unzip.o" ] && [ -f "$MINIZIP_DIR/ioapi.o" ] && [ -f "$LIBZ
     LIBS="$LIBS $MINIZIP_DIR/unzip.o $MINIZIP_DIR/ioapi.o $LIBZ_A"
     echo "Added minizip+zlib for APK manifest parsing"
 else
-    echo "WARN: minizip/zlib objects missing — apk_manifest_jni will fail to link"
+    echo "ERROR: required manifest link input missing: $MINIZIP_DIR/unzip.o $MINIZIP_DIR/ioapi.o $LIBZ_A" >&2; exit 1
 fi
 # A.11: bridge link — added 2026-04-22
 # static dlopen sim detected 51 residual UND after relaxed link. Added 10 lib:
