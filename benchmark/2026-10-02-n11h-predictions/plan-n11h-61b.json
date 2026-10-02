@@ -1,0 +1,92 @@
+{
+  "_comment": "DRAFT N11h 61b single-owner observation window plan (cc-wiki, offline). Mirrors the stage-A/promotion plan format. execution_enabled=false: outer reviews + separately authorizes before any build/apply. All package-identity values are FILL_ for cx-t0 to fill from the final N11h generation.",
+  "serial": "61b0657200000000000000000324012c",
+  "lane": "cx-t0",
+  "entry": "80",
+  "why": "N11h host single-owner: collapse liboh_adapter_bridge.so + liboh_android_runtime.so from 2 load-bases (U9/U10.1) to 1 by inheriting the resident sealed.child owners into the bridge/app domains before first load; observe whether the render white lottery (verdict A, benchmark/2026-10-02-u10-1-t8-rerun/wikipedia-white-verdict) resolves on the session-miss targets.",
+  "board": "$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md",
+  "execution_enabled": false,
+  "approval": "DRAFT ONLY: N11h not authorized. Requires (1) outer review of the N11h host attribution/mechanism (blueprint) and (2) Stage B U10.1-T8 promotion SIGNED first (see precondition).",
+  "precondition": {
+    "base": "promoted U10.1-T8 unified state, generation u10.1-t8-rerun-j5ae3dd29-s2f365a75-v3, host r3 65cc3535ebf22bdf664b3c8ddf932ccd7f42d936be1c861e1221a80b12a00284",
+    "candidate_built_on": "r3 65cc3535 (candidate 65ac5089 baseline_sha256 = 65cc3535; it REBASES on the U10.1 host, not U9 1d3b0881)",
+    "HARD_PRECONDITION": "If Stage B promotion is NOT signed, i.e. the 61b unified state is still U9 (resident host = 1d3b0881, not r3 65cc3535), this plan is INVALID: candidate 65ac5089 expects the r3 base and must NOT be stacked on U9. promotion_dispatch/u7_executor baseline-native identity check MUST refuse before LOCK. Re-point base + rebuild only after promotion, or draft a separate U9-based N11h (host 1d3b0881) if promotion is abandoned.",
+    "candidate_not_yet_rollout_ready": "candidate 65ac5089 results.json: rollout_ready=false, native_predeploy=REJECT (1 new N1 finding: N11hResidentHandle dlopen_ns(owner,path,RTLD_NOW|RTLD_LOCAL|RTLD_NOLOAD) 'fresh namespace/literal target not established' -- it is a NOLOAD resident QUERY, not a fresh default open, so it is exemptable; plus the 53 N1 + 103 N2 r3 baseline exceptions must be carried). cx-t0 MUST resolve to rollout_ready (reviewed exception for the resident-check NOLOAD site + carried baseline exceptions) before --apply; u7_executor --apply refuses a non-deployable bundle."
+  },
+  "candidate_host_sha256": "65ac50894de8d06e32439d2aee91f61eb1c45d6c0822826d529f671ca3c49aed",
+  "baseline_host_sha256": "65cc3535ebf22bdf664b3c8ddf932ccd7f42d936be1c861e1221a80b12a00284",
+  "expect": {
+    "base_runtime_fp": "FILL_U101_T8_61B_RUNTIME_FP",
+    "candidate_runtime_fp": "FILL_N11H_RUNTIME_FP",
+    "boot_fp": "FILL_U101_T8_BOOT_FP",
+    "_fp_comment": "base_runtime_fp = the signed promoted U10.1-T8 61b runtime fingerprint. N11h changes the host (appspawn-x) -> candidate_runtime_fp is NEW; cx-t0 computes it from the final N11h generation. boot_fp UNCHANGED (N11h host-only, no boot image) = the U10.1-T8 boot fp."
+  },
+  "smoke_spec": "$WORKSPACES/westlake-harness/knowledge/smoke/n11h.json",
+  "window_limit_minutes": 30,
+  "stop_new_tests_by_minute": 20,
+  "out": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-n11h-window/$N11H_RUN_ID/61b/runner",
+  "offline_precheck": {
+    "hypothesis": "A single bridge/runtime load-base gives the render thread a deterministic OHNativeWindow per session, removing the last-session-rescue lottery that blanks the first frame (verdict A). The 4 session-miss targets light; the other no-fatal whites may light; the 3 another-wall keys stay white (not N11h gain); wikipedia + canaries stay lit (deterministically).",
+    "evidence": [
+      "$WORKSPACES/westlake-harness/benchmark/2026-10-02-n11h-predictions/n11h-predictions.csv",
+      "$WORKSPACES/westlake-harness/benchmark/2026-10-02-n11h-predictions/window-keys.txt",
+      "$WORKSPACES/westlake-harness/benchmark/2026-10-02-u10-1-t8-rerun/wikipedia-white-verdict/README.md",
+      "$WORKSPACES/westlake-harness/benchmark/2026-10-02-u10-1-t8-rerun/u9-reference/",
+      "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-n11h-host-owner-blueprint/README.md",
+      "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-02-n11h-host-owner/results.json"
+    ],
+    "result": "not-falsified",
+    "expect": {
+      "confirm": "Admission passes (r3 base identity + rollout_ready candidate); exact U10.1-T8 318/fingerprints before change; after apply, candidate host sha in parent+child; hard smoke: [N11h-HOST-OWNER] action=resident-check + action=inherit (owner=westlake.sealed.child) rc=0 on helloworld; liboh_adapter_bridge.so AND liboh_android_runtime.so each 1 load-base (libart/libopenjdkjvm 1); HW/ZZ t20 own UI. Then the 4 session-miss targets lit by outer t20.",
+      "refute": "Baseline identity != r3 65cc3535 (promotion not in effect) OR candidate not deployable -> refuse before LOCK. After apply: any owner miss / 2nd bridge-or-runtime load-base / missing resident-check+inherit markers -> stop before observations. A session-miss target still white, or any canary/wikipedia/HW/ZZ regression -> refutes the gain -> exact rollback to the promoted U10.1-T8 base."
+    }
+  },
+  "after_lock": [
+    "python3",
+    "$WORKSPACES/westlake-harness/scripts/lab/u7_executor.py",
+    "--apply",
+    "--package", "FILL_N11H_GENERATION_PKG (U10.1-T8 base generation with appspawn-x replaced by candidate 65ac5089; cx-t0 assembles + makes rollout_ready)",
+    "--baseline-native", "FILL_U101_T8_BASELINE_NATIVE (the promoted U10.1-T8 bundle/native dir, host r3 65cc3535)",
+    "--serial", "61b0657200000000000000000324012c",
+    "--lane", "cx-t0",
+    "--journal", "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-n11h-window/$N11H_RUN_ID/61b/journal.json",
+    "--out", "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-n11h-window/$N11H_RUN_ID/61b/apply-report.json"
+  ],
+  "before_unlock": [
+    "python3",
+    "$WORKSPACES/westlake-harness/scripts/lab/u7_executor.py",
+    "--rollback",
+    "--journal", "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-n11h-window/$N11H_RUN_ID/61b/journal.json",
+    "--serial", "61b0657200000000000000000324012c",
+    "--lane", "cx-t0",
+    "--out", "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-n11h-window/$N11H_RUN_ID/61b/rollback-report.json"
+  ],
+  "_executor_note": "u7_executor --apply preflights the package (gates + deployable), then Transaction.apply() writes --journal; --rollback reads that same --journal and restores the baseline host. --journal and --out must be different paths. Rollback restores the promoted U10.1-T8 host (65cc3535); board_run then reruns recovery smoke (helloworld hard-alive, zigzag advisory) + the U10.1-T8 identity/fingerprint assertion before unlock. OrganicMaps residual child: u7_executor stop_for_rollback / receipt-owned cold_stop, never a manual parent kill.",
+  "shards": [
+    {
+      "name": "n11h-original",
+      "manifest": "$WORKSPACES/westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/apps.json",
+      "input_root": "~/a2hlab/app-inputs",
+      "keys_file": "FILL_ derive from window-keys.txt [orig]-tagged keys in tier order (session-miss fd-noice/fd-uhabits/noice first; then wikipedia+fd-k9 canaries that are orig; then orig no-fatal fd-AppManager/fd-app/termux; T4 orig excluded x/fd-shatteredpixeldungeon optional negative controls last)"
+    },
+    {
+      "name": "n11h-cv2",
+      "manifest": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
+      "input_root": "$WORKSPACES/westlake-inputs/corpus-v2/app-inputs",
+      "keys_file": "FILL_ derive from window-keys.txt [cv2]-tagged keys in tier order (session-miss cv2-org-andresoviedo-dddmodel2 first; then cv2 no-fatal vaults-randomlydie/bytehamster-flowitgame/degeder-yam/paultirk-yatoo; T4 cv2 excluded jiten-webview optional last)"
+    }
+  ],
+  "_shards_note": "Key order + per-key prediction + corpus tag are in benchmark/2026-10-02-n11h-predictions/window-keys.txt and n11h-predictions.csv. Canaries fd-com-amaze-filemanager/fd-libretube are orig. cx-t0 splits window-keys.txt into the two keys_files by [orig]/[cv2] tag, tier order preserved; excluded (another-wall) keys optional, do not count as N11h gain.",
+  "hard_smoke": [
+    "host markers [N11h-HOST-OWNER] action=resident-check AND action=inherit (owner=westlake.sealed.child) rc=0 on the helloworld control",
+    "liboh_adapter_bridge.so AND liboh_android_runtime.so each exactly 1 load-base (libart.so + libopenjdkjvm.so each 1) -- by load-base, not inode",
+    "HW and ZZ t20 own-UI screenshots + process facts"
+  ],
+  "policy": {
+    "maps_count": "load-base, not inode (see readout-procedure.md)",
+    "decision_source": "outer t20 screenshot review vs benchmark/2026-10-02-u10-1-t8-rerun/u9-reference + n11h-predictions.csv (predict_vs_actual); never facts-only; this lane supplies no lit count",
+    "organicmaps": "u7_executor stop_for_rollback -> receipt-owned residual Android child cold_stop + retry; no manual parent kill",
+    "before_unlock": "unconditional finish to the promoted U10.1-T8 base: restore host 65cc3535, verify 318 + dual fingerprints + recovery HW/ZZ smoke, final recheck; failed rollback/smoke RETAINS the lock and reports the exact failing step",
+    "blast_radius": "the host serves every BMS spawn; one namespace mistake can break every app. No foundation/installer/board restart -- only appspawn-x restart via the transaction primitives."
+  }
+}
