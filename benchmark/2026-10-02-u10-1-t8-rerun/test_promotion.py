@@ -193,10 +193,11 @@ class PromotionSafety(unittest.TestCase):
                 rollback.assert_not_called(); verify.assert_called_once()
             self.assertTrue(json.loads((root / 'retention.json').read_text())['retained'])
 
-    def test_stage_b_final_plans_are_disabled_and_toutiao_only_on_61b(self):
+    def test_stage_b_final_plans_are_authorized_and_toutiao_only_on_61b(self):
         for short in ['5ea','5cd','61b']:
             plan = json.loads((H / 'stageB-final' / ('plan-' + short + '.json')).read_text())
-            self.assertFalse(plan['execution_enabled'])
+            self.assertTrue(plan['execution_enabled'])
+            self.assertIn('Outer ACK(90)',plan['approval'])
             self.assertEqual(plan['window_limit_minutes'],30)
             self.assertEqual(len(plan['shards']),1 if short=='61b' else 0)
             self.assertEqual(plan['bundle_sha256'],json.loads((H/'composition.json').read_text())['bundle_sha256'])
