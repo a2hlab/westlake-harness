@@ -1,0 +1,18 @@
+Stage B final plans — disabled pending outer approval
+=====================================================
+
+The old draft incorrectly required Toutiao own UI and tested it on all boards. The outer changed the criterion at 17:13 on 2026-10-02: Stage A has measured 115/115 U9-lit keys, with zero confirmed regressions under k/n. Toutiao on 61b crossed walls 1/2 (SSLParametersImpl and libstdc); its white t20 is not a promotion refusal. The final plans implement that exact criterion. 5ea and 5cd have no Toutiao shard. No installation service is changed.
+
+All plans bind the same armed bundle `190afedd3ddb250752e67b83d19669b6a952eb04cd69db5edf0b06eafe119736`, manifest `4db327033870b597248a7188ab7f007e1979dafbb330edc58a4f052b6a086e00`. They remain `execution_enabled=false`; no Stage B board command has run. Each window is <=30 minutes, with no new test after minute20: pre-lock production admission + orb/HDC/bind/VM tools -> LOCK -> verify signed U9 -> apply exact same bytes -> candidate318/dual fingerprints -> fresh HW/ZZ activation smoke -> on 61b only, Toutiao reinstall/hilog/t20 -> fresh outer decision -> retention318/dual fingerprints -> UNLOCK. The post-apply identity check is before smoke, and retention repeats it. No rebuild/re-arming occurs.
+
+Expected RUNTIME: 5ea/5cd `f3b604c94df4`, 61b `d6848fa2c989`; BOOT `e3806b65a079`. U9 restoration: `565fc6fdc116` / `a2919b793eb6`, BOOT `4db882a81732`. Maps count load-base: ART/JVM each1, bridge/runtime each2 as the approved baseline.
+
+The outer writes `outer-stage-a.json` (not supplied or forged here). The enforced fields are `signed_by=outer(claude)`, exact full `bundle_sha256`/`native_manifest_sha256`, `phase=A`, `promotion_authorized=true`, `confirmed_regressions=[]`, `toutiao_walls_1_2_absent=true`, and `stage_A_regression_verdict={u9_lit_total:115, measured:115, same_or_lit_within_k_of_n:115, confirmed_regressions:0}`. Unknown unlit gains do not block promotion. Same-SHA binding, all115 measured and the signed k/n gate remain mandatory.
+
+A fresh `<run-id>/<board>/outer-promotion.json` must bind `signed_by=outer(claude)`, `phase=B`, actual full serial and absolute `window_root`, exact bundle/manifest SHA, `controls_t20_lit=[helloworld,zigzag]`, and `confirmed_regressions=[]`. Only 61b additionally needs `toutiao_walls_1_2_absent=true` from its fresh hilog. 5ea/5cd do not require a Toutiao field or test. The outer reviews the actual first fatal point; absence of wall1/2 is not claimed to mean Toutiao lit.
+
+Missing/invalid review, failed smoke, identity drift or confirmed regression invokes signed-U9 rollback +318 + recovery smoke + final. Failed finish retains the lock. OrganicMaps uses the existing exact receipt-owned child cold_stop guard; parent is not killed. A single ZigZag crash is inconclusive: preserve all evidence, finish U9, then use a fresh separately authorized same-SHA B window. Existing smoke retries stale SceneBoard once; SIGSEGV does not become a silent automatic retry or retention.
+
+Offline validation: `python3 -m unittest discover -s benchmark/2026-10-02-u10-1-t8-rerun -p test_promotion.py` — 17 tests pass, including absent approval, wrong SHA, incomplete115, k/n confirmed failure, 61b fresh wall failure, non61b no Toutiao requirement, final plans disabled, failed rollback preserving failure and unconditional Stage A finish.
+
+Installation-chain identity already has 6 service assertions in318, two libinstalls paths included in runtime123. Three-board service equality remains intentionally false (`2c9a5294` vs `51e1b525`). After promotion, audit each actual installd/BMS consumer and complete the service inventory without silently changing service libraries; this is the next task, not part of these board windows.

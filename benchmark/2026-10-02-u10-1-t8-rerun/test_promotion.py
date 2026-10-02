@@ -17,7 +17,7 @@ class PromotionSafety(unittest.TestCase):
         self.c = {'bundle_sha256': 'bundle', 'native_manifest_sha256': 'manifest'}
         self.base = {'keys': {str(i): {'verdict': 'lit' if i < 115 else 'dead'} for i in range(165)} | {'toutiao': {'verdict': 'dead'}}}
         self.good = {'signed_by': 'outer(claude)', **self.c, 'keys': copy.deepcopy(self.base['keys']), 'controls_t20_lit': ['helloworld', 'zigzag'], 'confirmed_regressions': []}
-        self.good['keys']['toutiao']['verdict'] = 'lit'
+        self.good.update(stage_A_regression_verdict={'u9_lit_total':115,'measured':115,'same_or_lit_within_k_of_n':115,'confirmed_regressions':0}, toutiao_walls_1_2_absent=True)
 
     def reason(self, decision, smoke=None):
         return hook.retention_reason(decision, self.c, self.base, {'passed': True} if smoke is None else smoke)
@@ -32,20 +32,22 @@ class PromotionSafety(unittest.TestCase):
         self.assertIsNotNone(self.reason(d))
         self.assertIsNotNone(self.reason(self.good, {'passed': False}))
 
-    def test_partial_unknown_and_inconclusive_never_promote(self):
-        d = copy.deepcopy(self.good)
-        del d['keys']['0']
-        self.assertIsNotNone(self.reason(d))
-        for value in ['unknown', 'inconclusive']:
+    def test_stage_a_incomplete_or_confirmed_regression_refuses(self):
+        for field, value in [('measured',114), ('same_or_lit_within_k_of_n',114), ('confirmed_regressions',1)]:
             d = copy.deepcopy(self.good)
-            d['keys']['165' if '165' in d['keys'] else '164']['verdict'] = value
+            d['stage_A_regression_verdict'][field] = value
             self.assertIsNotNone(self.reason(d))
 
-    def test_u9_lit_and_toutiao_regressions_refuse(self):
-        for key in ['0', 'toutiao']:
-            d = copy.deepcopy(self.good)
-            d['keys'][key]['verdict'] = 'alive-white-window'
-            self.assertIsNotNone(self.reason(d))
+    def test_toutiao_white_and_unlit_unknown_do_not_block_signed_kn_pass(self):
+        d = copy.deepcopy(self.good)
+        d['keys']['toutiao']['verdict'] = 'alive-white-window'
+        d['keys']['164']['verdict'] = 'unknown'
+        self.assertIsNone(self.reason(d))
+        d['toutiao_walls_1_2_absent'] = False
+        self.assertIsNotNone(self.reason(d))
+        d = copy.deepcopy(self.good)
+        d['confirmed_regressions'] = ['0']
+        self.assertIsNotNone(self.reason(d))
 
     def test_unarmed_candidate_blocks_before_vm(self):
         # Admission tests use fixtures, not the mutable real rollout state.
@@ -159,20 +161,20 @@ class PromotionSafety(unittest.TestCase):
             self.assertIn('--decision', plan['before_unlock'])
 
     def test_stage_b_fresh_review_failure_rolls_back(self):
-        for field, value in [('toutiao_t20', 'white'), ('window_root', 'other'), ('controls_t20_lit', []), ('bundle_sha256', 'other')]:
+        for field, value in [('toutiao_walls_1_2_absent', False), ('window_root', 'other'), ('controls_t20_lit', []), ('bundle_sha256', 'other')]:
             with tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 (root / 'runner/smoke').mkdir(parents=True)
                 (root / 'runner/smoke/smoke-result.json').write_text('{"passed":true}')
                 composition = json.loads((H / 'composition.json').read_text())
-                decision = {'phase': 'B', 'serial': 'serial', 'window_root': str(root),
+                decision = {'phase': 'B', 'serial': '61b0657200000000000000000324012c', 'window_root': str(root),
                     'signed_by': 'outer(claude)', 'bundle_sha256': composition['bundle_sha256'],
                     'native_manifest_sha256': composition['native_manifest_sha256'],
-                    'toutiao_t20': 'lit', 'controls_t20_lit': ['helloworld', 'zigzag'], 'confirmed_regressions': []}
+                    'toutiao_walls_1_2_absent': True, 'controls_t20_lit': ['helloworld', 'zigzag'], 'confirmed_regressions': []}
                 decision[field] = value
                 path = root / 'decision.json'; path.write_text(json.dumps(decision))
                 with patch.object(hook, 'stage_a_admission'), patch.object(hook.previous, 'finish') as rollback, patch.object(hook, 'verify_candidate') as verify:
-                    hook.finish('serial', root, root / 'restored.json', path, root / 'A.json')
+                    hook.finish('61b0657200000000000000000324012c', root, root / 'restored.json', path, root / 'A.json')
                     rollback.assert_called_once(); verify.assert_not_called()
 
     def test_stage_b_fresh_review_and_identity_can_retain(self):
@@ -181,15 +183,35 @@ class PromotionSafety(unittest.TestCase):
             (root / 'runner/smoke').mkdir(parents=True)
             (root / 'runner/smoke/smoke-result.json').write_text('{"passed":true}')
             composition = json.loads((H / 'composition.json').read_text())
-            decision = {'phase': 'B', 'serial': 'serial', 'window_root': str(root),
+            decision = {'phase': 'B', 'serial': '61b0657200000000000000000324012c', 'window_root': str(root),
                 'signed_by': 'outer(claude)', 'bundle_sha256': composition['bundle_sha256'],
-                'native_manifest_sha256': composition['native_manifest_sha256'], 'toutiao_t20': 'lit',
+                'native_manifest_sha256': composition['native_manifest_sha256'], 'toutiao_walls_1_2_absent': True,
                 'controls_t20_lit': ['helloworld', 'zigzag'], 'confirmed_regressions': []}
             path = root / 'decision.json'; path.write_text(json.dumps(decision))
             with patch.object(hook, 'stage_a_admission'), patch.object(hook, 'admission'), patch.object(hook.previous, 'finish') as rollback, patch.object(hook, 'verify_candidate') as verify:
-                hook.finish('serial', root, root / 'restored.json', path, root / 'A.json')
+                hook.finish('61b0657200000000000000000324012c', root, root / 'restored.json', path, root / 'A.json')
                 rollback.assert_not_called(); verify.assert_called_once()
             self.assertTrue(json.loads((root / 'retention.json').read_text())['retained'])
+
+    def test_stage_b_final_plans_are_disabled_and_toutiao_only_on_61b(self):
+        for short in ['5ea','5cd','61b']:
+            plan = json.loads((H / 'stageB-final' / ('plan-' + short + '.json')).read_text())
+            self.assertFalse(plan['execution_enabled'])
+            self.assertEqual(plan['window_limit_minutes'],30)
+            self.assertEqual(len(plan['shards']),1 if short=='61b' else 0)
+            self.assertEqual(plan['bundle_sha256'],json.loads((H/'composition.json').read_text())['bundle_sha256'])
+
+    def test_stage_b_non61b_can_retain_without_toutiao_review(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            (root/'runner/smoke').mkdir(parents=True)
+            (root/'runner/smoke/smoke-result.json').write_text('{"passed":true}')
+            c=json.loads((H/'composition.json').read_text())
+            decision={'phase':'B','serial':'5ea34a4500000000000000001123012c','window_root':str(root),'signed_by':'outer(claude)','bundle_sha256':c['bundle_sha256'],'native_manifest_sha256':c['native_manifest_sha256'],'controls_t20_lit':['helloworld','zigzag'],'confirmed_regressions':[]}
+            path=root/'decision.json';path.write_text(json.dumps(decision))
+            with patch.object(hook,'stage_a_admission'),patch.object(hook,'admission'),patch.object(hook.previous,'finish') as rollback,patch.object(hook,'verify_candidate') as verify:
+                hook.finish(decision['serial'],root,root/'restored.json',path,root/'A.json')
+                rollback.assert_not_called();verify.assert_called_once()
 
     def test_failed_observation_finish_never_writes_success_receipt(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -48,18 +48,14 @@ def retention_reason(decision, composition, signed_base, smoke):
         return 'signoff belongs to another bundle'
     if decision.get('native_manifest_sha256') != composition['native_manifest_sha256']:
         return 'signoff manifest mismatch'
-    keys = decision.get('keys', {})
-    if set(keys) != set(signed_base['keys']) or len(keys) != 166:
-        return 'full 166-key signoff incomplete; unknown cannot promote'
-    if any(row.get('verdict') in (None, 'unknown', 'inconclusive') for row in keys.values()):
-        return 'unknown or inconclusive key remains'
-    for key, base in signed_base['keys'].items():
-        if base['verdict'] == 'lit' and keys[key].get('verdict') != 'lit':
-            return 'signed U9-lit regression: ' + key
-    if keys.get('toutiao', {}).get('verdict') != 'lit':
-        return 'Toutiao t20 not signed bright'
-    if decision.get('controls_t20_lit') != ['helloworld', 'zigzag']:
-        return 'HW/ZZ screenshot signoff absent'
+    verdict = decision.get('stage_A_regression_verdict', {})
+    expected_lit = sum(row['verdict'] == 'lit' for row in signed_base['keys'].values())
+    if expected_lit != 115 or verdict.get('u9_lit_total') != expected_lit or verdict.get('measured') != expected_lit:
+        return 'all 115 signed U9-lit keys must be measured'
+    if verdict.get('same_or_lit_within_k_of_n') != expected_lit or verdict.get('confirmed_regressions') != 0:
+        return 'Stage A k/n regression gate not passed'
+    if decision.get('toutiao_walls_1_2_absent') is not True:
+        return '61b Toutiao wall1/2 absence not signed'
     if decision.get('confirmed_regressions') != []:
         return 'outer confirmed a regression'
     return None
@@ -138,7 +134,8 @@ def finish(serial, root, restored_spec, decision_path, stage_a_path=None):
             assert decision.get('window_root') == str(root), 'fresh window-bound decision required'
             assert decision.get('bundle_sha256') == composition['bundle_sha256'], 'fresh decision bundle mismatch'
             assert decision.get('native_manifest_sha256') == composition['native_manifest_sha256'], 'fresh decision manifest mismatch'
-            assert decision.get('toutiao_t20') == 'lit', 'fresh Toutiao t20 not signed bright'
+            if serial == '61b0657200000000000000000324012c':
+                assert decision.get('toutiao_walls_1_2_absent') is True, 'fresh 61b Toutiao wall1/2 absence not signed'
             assert decision.get('controls_t20_lit') == ['helloworld', 'zigzag'], 'fresh HW/ZZ t20 not signed bright'
             assert decision.get('confirmed_regressions') == [], 'fresh confirmed regression'
             reason = None
