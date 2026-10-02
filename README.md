@@ -255,6 +255,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-02-n11h-predictions/`** | **Pre-window prediction table for the N11h 61b host single-owner observation: 14 U9 white keys split double-copy (11 candidate gain, incl 4 session-miss) vs another-wall (3 excluded: TelephonyManager NPE / WebView / libGDX-GL), plus 4 lit regression controls.** |
 | **`benchmark/2026-10-02-n11h-host-owner/`** | **Accepted-r3 N11h host owner publication: two early sealed edges, exact resident-handle callbacks, byte-reproduced builds, preserved permissions and unapproved N1/N2 review evidence.** |
 | **`benchmark/2026-10-02-toutiao-wall3-prediction/`** | **Toutiao on U10.1+T8+U11i, written before the window: wall 0 = install fails on 5ea/5cd (libinstalls 2c9a5294 rejects libcvt.so at installd_operator:3222; 61b 51e1b525 accepts it; pre-existing per-board split, not the candidate); then t20 timing (Mira 0.6 s serialized retries), 122 android.net stub members missing (`stub_member_gap.py`, T8 = U9), bionic-only symbols in libttcrypto/libsscronet/libmetasec_ml.** |
+| **`benchmark/2026-10-02-n11h-admission/`** | **N11h admission-only review: actual-callback compat timing counterexample, PID-scoped nonfatal readout, 19 exact string checkboxes, 103 N2/53 old N1 rebinding proposals and one unapproved owner query.** |
 
 ---
 

@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "state": "PENDING_OUTER_REVIEW",
+  "gate": "N1",
+  "package_manifest_sha256": "37c48e2b07e5e757bc872f174f883d44cc0f369a19b035afe9035b2a115286bf",
+  "inputs_sha256": "a825ba2387793c9904a18a8b6ee95d4f695f968511d1fb31921d63255b333fc3",
+  "issue_id": "8b28c4cccd67bf635710e51b554e20927edc74df6e66b8adfa4f83e0ab83d4da",
+  "finding": {
+    "profile": "n11h-resident-owners",
+    "kind": "unknown",
+    "detail": {
+      "function": "N11hResidentHandle",
+      "namespace": "owner",
+      "library": null,
+      "target_expression": "path",
+      "evidence": {
+        "source": "n11h-owner.h",
+        "line": 29,
+        "text": "void *handle = dlopen_ns(owner, path, RTLD_NOW | RTLD_LOCAL | RTLD_NOLOAD);"
+      },
+      "reason": "fresh namespace or literal target not established"
+    }
+  },
+  "outer_checked": false,
+  "source": [
+    {
+      "path": "benchmark/2026-10-02-n11h-host-owner/n11h-owner.h",
+      "line": 29,
+      "text": "void *handle = dlopen_ns(owner, path, RTLD_NOW | RTLD_LOCAL | RTLD_NOLOAD);",
+      "sha256": "17975d2f82f15b0ea6883c777cbcef4bf6101ae149e9af6e519269310c2e4476"
+    },
+    {
+      "path": "benchmark/2026-10-02-n11h-host-owner/n11h-owner.h",
+      "line": 37,
+      "text": "void *bridge = N11hResidentHandle(owner, N11H_BRIDGE_PATH, target);",
+      "sha256": "17975d2f82f15b0ea6883c777cbcef4bf6101ae149e9af6e519269310c2e4476"
+    },
+    {
+      "path": "benchmark/2026-10-02-n11h-host-owner/n11h-owner.h",
+      "line": 39,
+      "text": "void *runtime = N11hResidentHandle(owner, N11H_RUNTIME_PATH, target);",
+      "sha256": "17975d2f82f15b0ea6883c777cbcef4bf6101ae149e9af6e519269310c2e4476"
+    },
+    {
+      "path": "benchmark/2026-10-02-n11h-host-owner/src/candidate-stock-host.c",
+      "line": 187,
+      "text": "result = dlns_get(N11H_OWNER_NS, &sealed_owner);",
+      "sha256": "e5f82b9971f64cb32f9f32cbba900fb68d690c11c45764c543d89d460213f1af"
+    },
+    {
+      "path": "benchmark/2026-10-02-n11h-host-owner/src/candidate-stock-host.c",
+      "line": 375,
+      "text": "const char *owner_path = N11hOwnerPath(path);",
+      "sha256": "e5f82b9971f64cb32f9f32cbba900fb68d690c11c45764c543d89d460213f1af"
+    },
+    {
+      "path": "benchmark/2026-10-02-n11h-host-owner/src/candidate-stock-host.c",
+      "line": 379,
+      "text": "handle = result == 0 ? N11hResidentHandle(&owner, owner_path, app_namespace->name) : NULL;",
+      "sha256": "e5f82b9971f64cb32f9f32cbba900fb68d690c11c45764c543d89d460213f1af"
+    }
+  ],
+  "lineage": {
+    "parent_report": "benchmark/2026-10-02-n11h-host-owner/evidence/native-r3.txt",
+    "accepted_commit": "3b05c71c1c",
+    "parent_queries": [
+      "0403e6a18304897023d22d1833b224e2baf4abacb518281ce06734b640c848e1",
+      "f9f6f4770dbe4fe5e965abcd7b1b78799795078a454e596dc21be2a4a2a35751"
+    ],
+    "basis": "Existing r3 NOLOAD-only resident-compat probes are precedent, not a semantic match or approval of this new parameter-target site."
+  },
+  "no_new_copy": {
+    "owner": "westlake.sealed.child",
+    "flags": "RTLD_NOW | RTLD_LOCAL | RTLD_NOLOAD (6)",
+    "targets": [
+      "/system/android/lib64/liboh_adapter_bridge.so",
+      "/system/android/lib64/liboh_android_runtime.so"
+    ],
+    "static_sites": [
+      "StockOpenNamespace@0xda24",
+      "N11hCheckOwners@0xdb38",
+      "N11hCheckOwners@0xdba0"
+    ],
+    "argument": "The helper probes canonical owners only via the existing sealed handle. NOLOAD cannot load a new object; a missing owner returns NULL/ENOENT. StockOpen rejects protected aliases and has no app/default fallback for these owners.",
+    "limitation": "Other baseline private runtime fresh-open paths remain. This is not a process-wide single-copy or board relocation proof."
+  },
+  "evidence": [
+    "benchmark/2026-10-02-n11h-host-owner/evidence/native-candidate.txt",
+    "benchmark/2026-10-02-n11h-host-owner/evidence/open-candidate.json",
+    "benchmark/2026-10-02-n11h-host-owner/evidence/open-r3.json",
+    "benchmark/2026-10-02-n11h-host-owner/n11h-owner.h",
+    "benchmark/2026-10-02-n11h-host-owner/src/candidate-stock-host.c"
+  ],
+  "removal_condition": "Re-review any source, canonical target, namespace, flags, package/input binding or call-site drift; require board owner load-base and control evidence independently before a window."
+}

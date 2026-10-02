@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "kind": "offline-log-readout-not-activation-smoke-spec",
+  "host_sha256": "65ac50894de8d06e32439d2aee91f61eb1c45d6c0822826d529f671ca3c49aed",
+  "package_manifest_sha256": "37c48e2b07e5e757bc872f174f883d44cc0f369a19b035afe9035b2a115286bf",
+  "required_scope": "Known app PID and a single spawn observation; optional TID narrows scope. Do not combine attempts.",
+  "marker": "[U10-COMPAT-VISIBLE]",
+  "verified_pattern": "owner_verified view=(?:default|westlake\\.sealed\\.child) resident_view=westlake\\.sealed\\.child abort=0x[0-9a-fA-F]+ getter=0x[0-9a-fA-F]+ gnu=0x[0-9a-fA-F]+ inheritance=caller_owned",
+  "unavailable_patterns": [
+    "unavailable missing resident namespace; no loading fallback; namespace continues",
+    "unavailable unmapped resident compat; no loading fallback; namespace continues",
+    "unavailable result=[1-9][0-9]*; no loading fallback; namespace continues"
+  ],
+  "inherit_unavailable_pattern": "unavailable inherit result=[1-9][0-9]*; namespace continues",
+  "interpretation": {
+    "QUERY_VERIFIED": "Only the NOLOAD query and symbol-address check succeeded. This is not app relocation, inherited visibility, single-copy or UI proof.",
+    "QUERY_UNAVAILABLE": "Optional pre-bootstrap query failed. Record unavailable; do not fail the entire smoke from this alone and do not count compat as successful.",
+    "INHERIT_UNAVAILABLE": "The optional edge failed even if owner_verified preceded it. Not compat success; callback continues.",
+    "MIXED_OR_MALFORMED": "Scope or marker ambiguity: retain unknown, never promote to success.",
+    "UNOBSERVED": "Missing logs are unknown, neither success nor failure.",
+    "SKIPPED_DECLARED_BRANCH": "Private or no-bridge branch was explicitly supplied and has no marker. Declaration is not dynamic branch proof; do not count success."
+  },
+  "smoke_integration": {
+    "diagnostic_exit_zero_is_not_pass": true,
+    "unavailable_alone_fails_smoke": false,
+    "unavailable_counts_compat_success": false,
+    "never_pass_to_activation_smoke_as_spec": true,
+    "keep_independent_gates": ["final package fingerprints", "control launch", "required owner resident checks", "required inherit rc=0", "owner load-base count", "screenshots"],
+    "coordinator_action": "Do not inherit the U10.1 mandatory owner_verified marker unchanged into a final N11h smoke. Read this diagnostic separately after identity/control/owner gates; no regex OR between verified and unavailable as a success marker. The current master n11h.json is a separate FILL_ window template, not executed here."
+  }
+}
