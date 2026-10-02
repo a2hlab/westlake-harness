@@ -1,0 +1,140 @@
+--- master/bms/src/adapter/framework/app-native-loader/tests/host/app_native_loader_host_test.c
++++ westlake-harness-bms-deploy/bms/src/adapter/framework/app-native-loader/tests/host/app_native_loader_host_test.c
+@@ -399,6 +399,7 @@
+ }
+ 
+ static void test_create_domain_runtime_gate(const Fixture* fixture) {
++    setenv("ANL_GATE_STRICT", "1", 1);
+     AnlDomainConfig config = base_config(fixture);
+     AnlDomain* domain = NULL;
+     MockDlnsReset();
+@@ -412,6 +413,7 @@
+     CHECK(MockDlnsGet()->create_calls == 0,
+           "denied create-domain reached namespace creation");
+     g_gate_mode = GATE_ALLOW;
++    unsetenv("ANL_GATE_STRICT");
+ }
+ 
+ static void test_path_list_empty_segments(const Fixture* fixture) {
+@@ -525,6 +527,29 @@
+           "unexpected inherited libs: %s", MockDlnsGet()->last_inherited_libs);
+     CHECK(strcmp(MockDlnsGet()->last_allowed_libs, "libbridge.so") == 0,
+           "unexpected bridge allowlist: %s", MockDlnsGet()->last_allowed_libs);
++    ANL_ReleaseDomainHandle(domain);
++}
++
++static void test_log_dependency_inheritance(const Fixture* fixture) {
++    AnlDomainConfig config = base_config(fixture);
++    config.bridge_search_paths = fixture->bridge;
++    config.bridge_permitted_paths = fixture->bridge;
++    config.bridge_shared_sonames = "liblog.so";
++    AnlDomain* domain = NULL;
++    MockDlnsReset();
++    CHECK(ANL_CreateDomain(&config, &domain) == 0, "log namespace rejected");
++    CHECK(strstr(MockDlnsGet()->last_inherited_libs, ":libc++.so:") != NULL,
++          "log's C++ dependency not shared");
++    CHECK(strstr(MockDlnsGet()->last_inherited_libs, ":libwm.z.so:") != NULL,
++          "bridge window-manager dependency not shared");
++    CHECK(strlen(MockDlnsGet()->last_inherited_libs) < 4096,
++          "direct OH boundary unexpectedly expanded to full transitive graph");
++    CHECK(strstr(MockDlnsGet()->last_inherited_libs, ":libzuri.z.so") != NULL,
++          "tail of complete OH dependency list was truncated");
++    int before = MockDlnsGet()->dlopen_calls;
++    CHECK(ANL_Dlopen(domain, fixture->outside_so, RTLD_NOW) == NULL,
++          "runtime dependency sharing broadened direct app file access");
++    CHECK(MockDlnsGet()->dlopen_calls == before, "foreign path reached loader");
+     ANL_ReleaseDomainHandle(domain);
+ }
+ 
+@@ -626,6 +651,7 @@
+ }
+ 
+ static void test_dlclose_runtime_gate(const Fixture* fixture) {
++    setenv("ANL_GATE_STRICT", "1", 1);
+     AnlDomainConfig config = base_config(fixture);
+     AnlDomain* domain = NULL;
+     MockDlnsReset();
+@@ -668,9 +694,11 @@
+     CHECK(MockDlnsGet()->last_dlclose_handle == handle,
+           "admitted close changed the handle");
+     ANL_ReleaseDomainHandle(domain);
++    unsetenv("ANL_GATE_STRICT");
+ }
+ 
+ static void test_runtime_gate_fail_closed(const Fixture* fixture) {
++    setenv("ANL_GATE_STRICT", "1", 1);
+     AnlDomainConfig config = base_config(fixture);
+     AnlDomain* domain = NULL;
+     MockDlnsReset();
+@@ -708,6 +736,7 @@
+ 
+     g_gate_mode = GATE_ALLOW;
+     ANL_ReleaseDomainHandle(domain);
++    unsetenv("ANL_GATE_STRICT");
+ }
+ 
+ static void test_load_error_classification(const Fixture* fixture) {
+@@ -766,6 +795,49 @@
+     ANL_ReleaseDomainHandle(domain);
+ }
+ 
++
++/* The Flutter ReLinker fallback is inside libraryPermittedPath, not search. */
++static void test_app_permitted_boundary(const Fixture* fixture) {
++    AnlDomainConfig config = base_config(fixture);
++    config.app_permitted_paths = fixture->outside;
++    AnlDomain* domain = NULL;
++    MockDlnsReset();
++    CHECK(ANL_CreateDomain(&config, &domain) == 0, "permitted fixture create failed");
++    CHECK(ANL_Dlopen(domain, fixture->outside_so, RTLD_NOW) != NULL,
++          "permitted absolute Flutter path rejected: %s", ANL_Dlerror());
++    CHECK(ANL_Dlopen(domain, fixture->app_so, RTLD_NOW) != NULL,
++          "search root lost when permitted root differs");
++    char escape[PATH_MAX];
++    join_path(escape, sizeof(escape), fixture->outside, "escape.so");
++    char foreign[PATH_MAX];
++    join_path(foreign, sizeof(foreign), fixture->bridge, "foreign.so");
++    make_file(foreign);
++    CHECK(symlink(foreign, escape) == 0, "create test symlink");
++    int calls_before = MockDlnsGet()->dlopen_calls;
++    CHECK(ANL_Dlopen(domain, escape, RTLD_NOW) == NULL,
++          "permitted symlink escaped into foreign directory");
++    CHECK(ANL_Dlopen(domain, foreign, RTLD_NOW) == NULL,
++          "foreign absolute path accepted");
++    CHECK(MockDlnsGet()->dlopen_calls == calls_before,
++          "foreign path reached loader backend");
++    unlink(escape); unlink(foreign);
++    ANL_ReleaseDomainHandle(domain);
++}
++
++static void test_runtime_gate_default_allows_guest(const Fixture* fixture) {
++    AnlDomain* domain = NULL;
++    AnlDomainConfig config = base_config(fixture);
++    unsetenv("ANL_GATE_STRICT");
++    MockDlnsReset();
++    g_gate_mode = GATE_ALLOW;
++    CHECK(ANL_CreateDomain(&config, &domain) == 0, "default create-domain failed");
++    g_gate_mode = GATE_DENY;
++    void* handle = ANL_Dlopen(domain, "libguest.so", RTLD_NOW);
++    CHECK(handle != NULL, "default mode denied a not-READY guest dlopen");
++    g_gate_mode = GATE_ALLOW;
++    ANL_ReleaseDomainHandle(domain);
++}
++
+ int main(void) {
+     Fixture fixture = fixture_create();
+     install_runtime_gate(&fixture);
+@@ -775,10 +847,13 @@
+     test_forbidden_paths(&fixture);
+     test_archive_search_paths(&fixture);
+     test_bridge_all_or_none(&fixture);
++    test_log_dependency_inheritance(&fixture);
+     test_bridge_bootstrap(&fixture);
+     test_rtld_global_rejected(&fixture);
+     test_app_domain_boundary(&fixture);
++    test_app_permitted_boundary(&fixture);
+     test_runtime_gate_fail_closed(&fixture);
++    test_runtime_gate_default_allows_guest(&fixture);
+     test_dlclose_runtime_gate(&fixture);
+     test_load_error_classification(&fixture);
+     fixture_destroy(&fixture);

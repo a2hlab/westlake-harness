@@ -1,0 +1,39 @@
+--- master/bms/src/adapter/build/inner/compile_oh_android_runtime_arm64_stage2unity.sh
++++ westlake-harness-bms-deploy/bms/src/adapter/build/inner/compile_oh_android_runtime_arm64_stage2unity.sh
+@@ -364,6 +364,15 @@
+ # register_android_content_AssetManager / register_android_content_res_ApkAssets
+ # function is referenced from kRegJNI[] in our AndroidRuntime.cpp.
+ SRCS_AOSP=(
++    # Real SQLite JNI and local CursorWindow engine (OH has no libbinder).
++    "$SRC/src/cutils_ashmem_shim.cpp"
++    "$SRC/src/androidfw/CursorWindow.cpp"
++    "$SRC/src/android_database_CursorWindow.cpp"
++    "$SRC/src/android_database_SQLiteCommon.cpp"
++    "$SRC/src/android_database_SQLiteConnection.cpp"
++    "$SRC/src/android_database_SQLiteDebug.cpp"
++    "$SRC/src/android_database_SQLiteGlobal.cpp"
++    "$SRC/src/sqlite3_android_shim.cpp"
+     # G2.14u r2 (2026-05-07): android_util_Binder_helpers_aosp.cpp removed.
+     # Parcel.cpp now self-contained — no binder header dep, no helper file
+     # abstraction; binder-touching native methods inline-stubbed inside Parcel.cpp.
+@@ -490,7 +499,20 @@
+ fi
+ INC_AOSP="$INC_AOSP -I$LABELS_GEN"
+ 
++INC_AOSP="$INC_AOSP -I$SRC/src/sqlite"
+ objs=()
++CC="${L03_A12_CC:-$OH/prebuilts/clang/ohos/linux-x86_64/llvm/bin/clang}"
++if ! "$CC" --target=aarch64-linux-ohos --sysroot="$SR" \
++    -I"$SR/include/aarch64-linux-ohos" -fPIC -O2 \
++    -DSQLITE_ENABLE_COLUMN_METADATA -DSQLITE_ENABLE_FTS3 \
++    -DSQLITE_ENABLE_FTS3_PARENTHESIS -DSQLITE_ENABLE_FTS4 -DSQLITE_ENABLE_FTS5 \
++    -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_JSON1 -DSQLITE_ENABLE_DBSTAT_VTAB \
++    -DSQLITE_THREADSAFE=2 -DSQLITE_TEMP_STORE=3 \
++    -c "$SRC/src/sqlite/sqlite3.c" -o "$BUILD/sqlite3.o"; then
++    echo "FAIL: SQLite amalgamation compile" >&2
++    exit 1
++fi
++objs+=("$BUILD/sqlite3.o")
+ for s in "${SRCS[@]}"; do
+     bn=$(basename "$s" .cpp)
+     obj="$BUILD/${bn}.o"

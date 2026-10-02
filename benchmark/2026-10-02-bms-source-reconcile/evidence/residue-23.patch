@@ -1,0 +1,65 @@
+--- master/bms/src/adapter/aosp_patches/libs/hwui/hwui_oh_abi_patch.cpp
++++ westlake-harness-b4/bms/src/adapter/aosp_patches/libs/hwui/hwui_oh_abi_patch.cpp
+@@ -665,6 +665,11 @@
+                                                        const EGLint*);
+ typedef EGLBoolean (*real_eglDestroySurface_fn_t)(EGLDisplay, EGLSurface);
+ 
++// 2026-09-30 (#r17h): the TU carries local EGL typedefs only; eglGetError and
++// EGL_NONE are needed by the colorspace-retry below. libhwui links libEGL.
++extern "C" EGLint eglGetError(void);
++constexpr EGLint kEglAttribNone = 0x3038;  // EGL_NONE
++
+ namespace {
+     oh_anw_get_oh_fn_t                  g_oh_anw_get_oh_fn = nullptr;
+     oh_anw_notify_presented_fn_t         g_oh_anw_notify_presented_fn = nullptr;
+@@ -757,8 +762,50 @@
+         return EGL_NO_SURFACE;
+     }
+ 
++    // 2026-09-30 (#r17h colorspace retry): hwui passes EGL_GL_COLORSPACE_KHR
++    // (wide-color) when hasColorSpaceSupport_ is set; the OH composer chain can
++    // reject that attribute (RSUniRenderComposerAdapter SetBufferColorSpace
++    // fail -> EGL_NO_SURFACE -> hwui ASSERT drawRenderNode aborts the process).
++    // Westlake's own surface adapter never sends the attribute (it passes
++    // nullptr at oh_egl_surface_adapter.cpp:237), so the failure mode does not
++    // exist there. Retry once with the colorspace attributes stripped; only
++    // return EGL_NO_SURFACE when the stripped attempt also fails. Both
++    // attempts' attribs and eglGetError are logged.
+     EGLSurface surface = g_real_eglCreateWindowSurface_fn(
+         dpy, config, actualWindow, attrib_list);
++    EGLint firstError = eglGetError();
++    if (surface == EGL_NO_SURFACE && attrib_list != nullptr) {
++        // strip EGL_GL_COLORSPACE_KHR (+value) and any wide-color/HDR attrs
++        std::vector<EGLint> stripped;
++        for (const EGLint* a = attrib_list; *a != kEglAttribNone; a += 2) {
++            // Attribute KEY values verified against the toolchain's
++            // sysroot EGL/eglext.h (2026-09-30): EGL_GL_COLORSPACE_KHR=0x309D;
++            // BT2020 PQ=0x3340 HLG=0x3540 (0x3230/31 are VALUES not keys);
++            // SMPTE2086 metadata keys span 0x3341..0x334A (display primaries
++            // 8 + white point 2 + max/min luminance); CTA861_3 light levels
++            // 0x3360/0x3361 ride along in the same metadata family.
++            if (*a == 0x309D /*EGL_GL_COLORSPACE_KHR*/ ||
++                (*a >= 0x3340 && *a <= 0x334A) /*BT2020 PQ/HLG + SMPTE2086 x10*/ ||
++                *a == 0x3360 || *a == 0x3361 /*CTA861_3 light levels*/ ||
++                *a == 0x333F /*EGL_GL_COLORSPACE_BT2020_LINEAR_EXT*/) {
++                continue;  // drop attribute AND its value
++            }
++            stripped.push_back(*a);
++            stripped.push_back(*(a + 1));
++        }
++        stripped.push_back(kEglAttribNone);
++        HiLogPrint(3, 5, 0xD000F00, "OH_EglHijack",
++                   "eglCreateWindowSurface: first attempt EGL_NO_SURFACE "
++                   "err=0x%x (colorspace attribs present); retrying stripped",
++                   firstError);
++        surface = g_real_eglCreateWindowSurface_fn(
++            dpy, config, actualWindow, stripped.data());
++        EGLint secondError = eglGetError();
++        HiLogPrint(3, 5, 0xD000F00, "OH_EglHijack",
++                   "eglCreateWindowSurface: retry(no colorspace) -> "
++                   "EGLSurface=%p err=0x%x",
++                   (void*)surface, secondError);
++    }
+     if (surface != EGL_NO_SURFACE && actualWindow != window &&
+         g_oh_anw_notify_presented_fn) {
+         std::lock_guard<std::mutex> lock(g_egl_surface_owner_mutex);
