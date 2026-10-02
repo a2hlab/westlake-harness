@@ -159,5 +159,20 @@
     "root_cause": "deployed 4261c09e built from an OLDER libicu_jni config; current native/libraries.json (18d6ab09) added libcore_icu_ICU.cpp and JNI_OnLoad=JNI_OnLoad_icu_bridge",
     "outer_decision": "target = deployed-era config (rollback, out of scope) OR current config (candidate 76acad17 is correct, deployed is stale)",
     "persisted": "hw248:/home/alvin/u12-icu-cc-wiki-20261002/icu72/"
+  },
+  "icu72_deployed_era": {
+    "ruling": "(a) single-variable: deployed 4261c09e config + only -ftrivial-auto-var-init=zero",
+    "config": "13 sources (minus icu_art_entry.cpp, libcore_icu_ICU.cpp, UResourceBundleNative.cpp); no JNI_OnLoad define; link 5 deployed icu_72 .so",
+    "noflag_sha256": "4f55ebf281aafff38022de6f267f1357a059dc7a44cf4d99113a15e85da280fc",
+    "candidate_sha256": "1e206531ad5994b7d3fe332a050d53163a8ab5cf954b9314d748d7ff2ae8ae8f",
+    "candidate_bytes": 135568,
+    "byte_identical": "flag-a==flag-b",
+    "tool_note": "all ABI diffs via /usr/bin/diff (PATH diff is DevEco OH, rc0 silent on differing files)",
+    "gate_exports": "IDENTICAL to deployed (63=63): 9 registers, plain JNI_OnLoad, no libcore_icu_ICU",
+    "gate_undefined": "160=160, contract-equivalent (only __android_log_*@LIBC annotation + one libc++ inlining delta memmove/basic_string)",
+    "gate_icu_imports": "all icu_72",
+    "byte_match": "FAIL -> STOP (per dispatch): deployed built from real AOSP tree /data/aosp (embedded /data/aosp/external/icu paths + vendor JNI_OnLoad/JNI_OnUnload log strings + different libc++), NOT build_android_native.py",
+    "conclusion": "config/ABI reproduced; byte-exact impossible without deployed original AOSP build inputs. Candidate 1e206531 = deployed ABI + single zero-init variable.",
+    "persisted": "hw248:/home/alvin/u12-icu-cc-wiki-20261002/icu72/"
   }
 }

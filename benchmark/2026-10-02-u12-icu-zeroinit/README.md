@@ -231,3 +231,35 @@ JNI_OnLoad), which is a config rollback beyond this task; or (b) the **current**
 candidate `76acad17` IS correct (icu_72 imports match deployed, zero-init applied, current export surface) and the
 deployed `4261c09e` is simply an older build. I stopped at the gate rather than ship a candidate whose entry-point
 symbol (`JNI_OnLoad` vs `JNI_OnLoad_icu_bridge`) differs from the deployed binary the dispatch named.
+
+## 10. ICU-72 ruling (a) single-variable: deployed-era config — ABI reproduced, byte-match NOT achievable (STOP)
+Ruling (a): target = the deployed `4261c09e` config + only `-ftrivial-auto-var-init=zero`. The deployed-era libicu_jni
+config is NOT in git history (libicu_jni first appears at `fe965fb` already carrying libcore_icu_ICU + the JNI_OnLoad
+rename). Reconstructed it from the deployed's ABI fingerprint: current 16 sources **minus** `icu_art_entry.cpp`
+(defines `JNI_OnLoad_icu`→`register_libcore_icu_ICU`), `libcore_icu_ICU.cpp`, `UResourceBundleNative.cpp`, and
+**dropping** the `JNI_OnLoad=JNI_OnLoad_icu_bridge` define = **13 sources**, link against the 5 deployed icu_72 .so.
+
+**Config IS correct — exports reproduce the deployed surface exactly** (`/usr/bin/diff`, authoritative — the DevEco OH
+`diff` on PATH rc0's silently on differing files, RUNBOOK; all ABI diffs here re-run with `/usr/bin/diff`):
+- no-flag `4f55ebf2` (134080 B) vs deployed `4261c09e` (132752 B): **exports IDENTICAL (63=63)** — 9 registers, plain
+  `JNI_OnLoad`, no `register_libcore_icu_ICU`. undefined 160=160, differing only by `__android_log_*@LIBC` (version
+  annotation) and one libc++ inlining delta (`memmove` vs a `basic_string` copy-ctor) — contract-equivalent.
+- flag candidate `1e206531` (135568 B, byte-identical ×2): exports identical to no-flag, plain `JNI_OnLoad`, icu
+  imports all `icu_72`, zero-init present (ctor `str wzr,[x29,#0x1c]` before `icu_72::forLanguageTag`).
+
+**Byte-match vs `4261c09e`: NOT achievable → STOP (per "必须逐字节相同…做不到就报差在哪、停").** The residual is pure
+build-provenance, not config (`deployed_strings_diff`):
+1. embedded source paths — deployed `/data/aosp/external/icu/...` vs ours `/src/android-source/icu/...`: the deployed was
+   built from a **real AOSP tree at `/data/aosp`** with `-ffile-prefix-map=…=/data/aosp`, not westlake's `android-source/`
+   layout + `=/src`.
+2. vendor log strings in deployed, absent in aosp-r1 72.1: `libicu_jni JNI_OnLoad`, `libicu_jni JNI_OnUnload` (the
+   deployed's bridge had load/unload logging the stock 72.1 source does not).
+3. libc++ inlining delta (`memmove` vs `basic_string` ctor) — a slightly different libc++ than the ohos-sdk one.
+
+**Conclusion:** the deployed `libicu_jni.so` was **not built by `build_android_native.py`** — it came from a different
+build system (a real AOSP checkout at `/data/aosp`, vendor-patched bridge, different libc++). So a *byte-identical*
+reproduction is impossible without the deployed's original AOSP build inputs, which are not in any repo here. What IS
+achievable and in hand: an **ABI-identical** deployed-era candidate `1e206531` (deployed export surface + plain
+JNI_OnLoad + icu_72 imports) carrying exactly one added variable, `-ftrivial-auto-var-init=zero`. Stopping at the
+byte-match gate; outer to decide whether ABI-identical + the single zero-init variable suffices, or whether to source
+the deployed's original AOSP build inputs for a byte-exact build. Evidence: `candidate-icu72dep/symbol-gate-usrbindiff.txt`.

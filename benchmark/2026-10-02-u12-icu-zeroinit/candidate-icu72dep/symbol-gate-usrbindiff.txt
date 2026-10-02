@@ -1,0 +1,33 @@
+# Deployed-era config candidate (single-variable): symbol gate vs deployed 4261c09e
+# tool: /usr/bin/diff (NOT the DevEco OH diff on PATH, which rc0's silently on differing files)
+# config: 13 sources (current 16 minus icu_art_entry.cpp, libcore_icu_ICU.cpp, UResourceBundleNative.cpp),
+#         defines WITHOUT JNI_OnLoad=JNI_OnLoad_icu_bridge; deps=[] linked against the 5 deployed icu_72 .so
+# no-flag 4f55ebf2 (134080B), flag x2 1e206531 (135568B, byte-identical); deployed 4261c09e (132752B)
+
+== exports (defined), no-flag vs deployed, /usr/bin/diff ==
+IDENTICAL (63=63): deployed export surface reproduced (9 registers, plain JNI_OnLoad, no libcore_icu_ICU)
+
+== undefined, no-flag vs deployed, /usr/bin/diff ==
+1,3c1,3
+< __android_log_assert@LIBC
+< __android_log_print@LIBC
+< __android_log_write@LIBC
+---
+> __android_log_assert
+> __android_log_print
+> __android_log_write
+88a89
+> _ZNSt3__h12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1ERKS5_
+114d114
+< memmove
+  -> only deltas: __android_log_*@LIBC vs plain (version annotation), + memmove vs basic_string-ctor (libc++ inlining). Contract-equivalent.
+
+== flag candidate 1e206531: same exports/undefined as no-flag? (zero-init must not change ABI) ==
+  exports identical to no-flag
+  JNI_OnLoad: JNI_OnLoad ; icu imports: icu_72 
+
+== BYTE match vs deployed: NO (4f55ebf2 != 4261c09e). Cause (deployed_strings_diff): ==
+  (1) embedded source paths: deployed /data/aosp/external/icu/... vs ours /src/android-source/icu/... (deployed built from a real AOSP tree at /data/aosp, prefix-map=/data/aosp)
+  (2) vendor log strings present in deployed, absent in aosp-r1 72.1: 'libicu_jni JNI_OnLoad', 'libicu_jni JNI_OnUnload'
+  (3) libc++ inlining delta (memmove vs basic_string ctor)
+  => deployed was NOT built by build_android_native.py; byte-exact repro needs its original AOSP build inputs. STOP per gate.
