@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-u13-jar-v2/`** | **U13 JAR v2 = 6790d500 + adapter.activity.TelephonyRegistryStub (one class): seeds a \"telephony.registry\" present-but-off binder through the existing TelephonyFetcher.seedSafeBinder (same as phone/isub), needle after TelephonyServiceNames.install(); x's U12 next wall (NPE ITelephonyRegistry.listenWithEventList after getService(\"telephony.registry\")=null). Jar 506abe23, deterministic, deployed_class_diff vs 5ae3dd29 0 dropped / 0 reshaped (+20 known), vs 6790d500 +1. Only x asks for the service in 304 runs (U10.1T8 133 + U12 w1-4 171); predicted x first fatal moves again, lit low; notepad/clipboardeditor/packlist/moodcairns to run once each in the U13 window.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **缺的系统服务桩照 TelephonyFetcher.seedSafeBinder 补,一类一针(cc-t3,U13 JAR v2)**:route A 上 ServiceManager.getService 拿不到的 AIDL 服务(这次是 telephony.registry,x 的下一堵),用现成的私有 seedSafeBinder(反射调用)种一个 present-but-off binder:queryLocalInterface 返回接口 Proxy、ZeroHandler 全返回零值、放进 ServiceManager 缓存;在 bind 时(B7BindFixes,电话 fetcher 之后)种,赶在 app 构造 TelephonyRegistryManager(静态 sRegistry 构造时就定)之前。先扫全部运行看谁问这个服务(304 跑里只有 x),再定影响面。"
+   ]
+  }
+ ]
+}
