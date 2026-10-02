@@ -1,0 +1,45 @@
+$ runtime u12r2 vs unified 5ae3dd29
+deployed  $WORKSPACES/westlake-inputs/generations/u10.1-t8-rerun-j5ae3dd29-s2f365a75-v3/bundle/framework/oh-adapter-runtime.jar  (5ae3dd29d45c, 197 classes)
+candidate $WORKSPACES/westlake-harness-t3/benchmark/2026-10-02-u12-java-walls/build/oh-adapter-runtime-u12r2.jar  (0482c9b13fbc, 207 classes)
+0 dropped, 0 reshaped, 0 added (after allow lists), 0 frozen class(es) broken
+rc=0
+
+$ stubs u12r2 vs unified 2f365a75
+deployed  $WORKSPACES/westlake-inputs/generations/u10.1-t8-rerun-j5ae3dd29-s2f365a75-v3/bundle/framework/adapter-mainline-stubs.jar  (2f365a75581b, 265 classes)
+candidate $WORKSPACES/westlake-harness-t3/benchmark/2026-10-02-u12-java-walls/build/adapter-mainline-stubs-u12r2.jar  (00b304678a0d, 274 classes)
+0 dropped, 0 reshaped, 0 added (after allow lists), 0 frozen class(es) broken
+rc=0
+
+$ verify_identity runtime 5ae3dd29 -> u12r2
+197 deployed classes, 1452 deployed members, 3 changed; 0 member(s) added to deployed classes, 10 class(es) added
+  CHANGED Ladapter/activity/AppSchedulerBridge;->ensureBindApplication(Landroid/app/ActivityThread;Ljava/lang/String;[Ljava/lang/String;)V
+  CHANGED Ladapter/activity/B7BindFixes;->apply(Landroid/content/pm/ApplicationInfo;)V
+  CHANGED Lcom/android/internal/os/AppSpawnXInit;->preInitSettingsCache()V
+rc=1
+
+expected changed ['Ladapter/activity/AppSchedulerBridge;->ensureBindApplication(Landroid/app/ActivityThread;Ljava/lang/String;[Ljava/lang/String;)V', 'Ladapter/activity/B7BindFixes;->apply(Landroid/content/pm/ApplicationInfo;)V', 'Lcom/android/internal/os/AppSpawnXInit;->preInitSettingsCache()V']: YES
+
+$ verify_identity stubs 2f365a75 -> u12r2
+265 deployed classes, 1896 deployed members, 0 changed; 140 member(s) added to deployed classes, 9 class(es) added
+rc=0
+
+expected changed []: YES
+
+$ verify_identity stubs 3a12918a (U12 r1) -> u12r2
+273 deployed classes, 2109 deployed members, 0 changed; 2 member(s) added to deployed classes, 1 class(es) added
+rc=0
+
+expected changed []: YES
+
+$ check_frozen.py
+
+frozen: 8 entries, 0 checked, 0 violation(s)
+rc=0
+
+== summary
+PASS  class-diff runtime vs 5ae3dd29
+PASS  class-diff stubs vs 2f365a75
+PASS  identity runtime 5ae3dd29 -> u12r2
+PASS  identity stubs 2f365a75 -> u12r2
+PASS  identity stubs 3a12918a (U12 r1) -> u12r2
+PASS  check_frozen
