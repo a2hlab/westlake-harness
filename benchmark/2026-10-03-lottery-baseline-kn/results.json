@@ -1,0 +1,39 @@
+{
+  "task": "Lottery-key baseline k/n for judging U13 M1 effect: lit/white per key per generation, Wilson 95% CI, M1-shape of each white, and U13 sample-size at alpha=0.05",
+  "date": "2026-10-03",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "lottery_set": ["wikipedia", "noice", "fd-noice", "fd-uhabits"],
+  "listmaker_excluded": "cv2-com-harr1424-listmaker is a stable-lit cv2 key (U9 61b lit + U10.1T8 61b lit = 2/2), NOT white/multi-window/RenderThread (LIT group in white-vs-lit, no empty_surface/RenderThread marker); M1 cannot raise an already-1.0 rate",
+  "not_available": {
+    "U12": "offline bundle assembly (bf6c0fb6, execution_enabled=false, board_writes=0) -> NO board t20 runs for any key; U13 is the first post-U10.1T8 board data",
+    "U9": "single signed sweep run per key (not a zero-variable repeat series; no u9-flaky-repeat benchmark)",
+    "U8_hilogs": "PURGED (files_gone, only t20.jpeg) -> k/n usable but white M1-shape NOT classifiable"
+  },
+  "baseline_kn": {
+    "wikipedia": {"U7": "0/1", "U8": "3/6", "U9": "1/1", "U10.1T8": "1/3", "pooled": "5/11", "p0": 0.45, "ci95": [0.21, 0.72]},
+    "noice": {"U7": "1/2", "U9": "0/1", "U10.1T8": "0/1", "pooled": "1/4", "p0": 0.25, "ci95": [0.05, 0.70]},
+    "fd-noice": {"U5": "2/3", "U7": "1/1", "U8": "3/6", "U9": "0/1", "U10.1T8": "1/1", "pooled": "7/12", "p0": 0.58, "ci95": [0.32, 0.81]},
+    "fd-uhabits": {"U5": "1/3", "U7": "1/1", "U8": "2/5 (r2 void excluded)", "U9": "0/1", "U10.1T8": "0/1", "pooled": "4/11", "p0": 0.36, "ci95": [0.15, 0.65]}
+  },
+  "rate_caveat": "lottery rate not stable across generations: U5/U7 skew lit, recent U9+U10.1T8 skew white (wikipedia 2/4, fd-noice 1/2, noice 0/2, fd-uhabits 0/2); per-generation n=1-6 so every CI is >=0.5 wide; pooled p0 used because M1 is the same single-slot defect in all generations",
+  "m1_shape": {
+    "classifier": "white-vs-lit/multiwin.py misroute (>=2 VRIs AND top ability VRI empty Surface, never rescued)",
+    "all_four_keys_white_is_M1": "11/11 paired runs correct (white 7/7 misroute True, lit 4/4 False) + U10.1T8 population (misroute 0/117 lit)",
+    "classifiable_whites": "wikipedia U10.1T8 w1/w5r2, noice U7/U10.1T8, fd-noice U5, fd-uhabits U5x2/U10.1T8 = all M1",
+    "u8_whites": "M1-shape UNKNOWN (hilogs gone)",
+    "u9_whites": "same keys/mechanism = presumptive M1; run dirs not relocated this round",
+    "static_root": "deployed bridge 84695d62 single process-wide window slot (oh_window_manager_client.cpp:96-128); first-created top Activity loses the race -> white; M1 fix = per-sessionId slots (m1-session-slots)"
+  },
+  "u13_sample_size_alpha_0_05": {
+    "model": "M1 predicted to make each key lit ~every run (p1~1.0); n consecutive lit rejects H0:rate=p0 (one-sided exact binomial) when p0^n <= alpha",
+    "per_key_alpha_0_05": {"noice": 3, "fd-uhabits": 3, "wikipedia": 4, "fd-noice": 6},
+    "per_key_bonferroni_0_0125_4key_joint": {"noice": 4, "fd-uhabits": 5, "wikipedia": 6, "fd-noice": 9},
+    "two_proportion_partial_effect_n_per_side_p1_0_99_power_0_8": {"noice": 5, "fd-uhabits": 6, "wikipedia": 8, "fd-noice": 12},
+    "recommendation": "6 runs/key clears per-key alpha=0.05 for all four (fd-noice binding); 9 runs/key clears Bonferroni-joint alpha=0.0125. Confirm each lit with multiwin misroute=False (predictions.csv acceptance); a non-M1 white (misroute False) is a different wall, not counted against M1."
+  },
+  "this_round_rule": "a lottery verdict is a Bernoulli rate (k/n + Wilson CI), never from one run; baseline too thin per-generation to judge M1 from 1-2 U13 runs so the sample-size table is the deliverable; pool across generations only because M1 is the same defect in all; confirm each U13 lit with the M1 detector; exclude already-stable-lit keys (listmaker)",
+  "files": ["README.md", "baselines.csv", "kn_stats.py", "evidence/kn-output.txt", "evidence/verdicts-table.txt", "evidence/m1-shape.txt", "results.json", "documentation.json"]
+}

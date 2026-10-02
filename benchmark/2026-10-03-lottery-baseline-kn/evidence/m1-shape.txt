@@ -1,0 +1,35 @@
+# M1-shape of each white run (M1 = multiwin.py misroute: >=2 VRIs AND the TOP ability's VRI got an empty Surface,
+# never rescued). Detector: benchmark/2026-10-02-white-vs-lit/multiwin.py. Markers in hilog: OnRequestSceneSession
+# [pkg,module,ability] (top = last requested); BBQ.create name=VRI[...]; BBQ.update sessionId=N -> OHNativeWindow (ok)
+# vs BBQ.getSurface: ohNativeWindow null (sessionId=N) (empty).
+
+## Authoritative classification (white-vs-lit, outer-verified source+deployed): these 4 keys' white IS M1
+- 11/11 PAIRED runs classified correctly (white 7/7 misroute True, lit 4/4 misroute False):
+  wikipedia U10.1T8 w1 white = M1(True); w5 r2 white = M1(True); w5 r1 lit = False.
+  fd-noice  U5 white (run 3)  = M1(True); U5 lit runs 1,2 = False.
+  fd-uhabits U5 white (runs 1,2) = M1(True); U5 lit run 3 = False.
+  noice     U7 white = M1(True); U7 lit = False.
+- Population (U10.1T8 stage-A): M1 white = noice, fd-uhabits (2/16 white; 0/117 lit). misroute is 0/117 among lit.
+- So the lottery mechanism of ALL FOUR keys is M1 (white-vs-lit headline; DIGEST 89/678/679).
+
+## Per-white-run M1-shape in this baseline
+hilog present (classifiable):
+  wikipedia U10.1T8 w1 white     -> M1 (misroute True, white-vs-lit)
+  wikipedia U10.1T8 w5 r2 white  -> M1 (misroute True, white-vs-lit)
+  noice     U7 white             -> M1 (misroute True, white-vs-lit pair)
+  noice     U10.1T8 white        -> M1 (population misroute True, white-vs-lit)
+  fd-noice  U5 white             -> M1 (misroute True, white-vs-lit pair)
+  fd-uhabits U5 white x2         -> M1 (misroute True, white-vs-lit pair)
+  fd-uhabits U10.1T8 white       -> M1 (population misroute True, white-vs-lit)
+  noice U9 / fd-noice U9 / fd-uhabits U9 white (hilog present) -> same keys/mechanism = presumptive M1; run dirs not
+    relocated this round, so not individually re-run through multiwin.py (white-vs-lit already established these keys'
+    white == M1; U9 is the same single-slot bridge defect, present in every generation).
+hilog GONE (NOT classifiable):
+  all U8 white runs (wikipedia r2/r4/r5; fd-noice r2/r2b/r5; fd-uhabits r1/r2b/r4) -> M1-shape UNKNOWN (files_gone);
+    k/n still usable, but these whites cannot be confirmed M1 by hilog.
+
+## Static root (why M1 is the lottery): deployed bridge 84695d62 cross-copy window lookup is a single process-wide slot
+(WESTLAKE_WINDOW_SESSION_ID_V1 / WESTLAKE_NATIVE_WINDOW_PTR_V1, oh_window_manager_client.cpp:96-128), overwritten by
+every createSession; the compat shim in the other bridge copy resolves only the LAST-published session. Two Activities
+alive -> the first-created (often the top AppIntro/Intro/InitialOnboarding) gets the empty Surface = white. The coin flip
+is which Activity's session is created last. M1 fix (benchmark/2026-10-02-m1-session-slots) = per-sessionId slots.

@@ -1,0 +1,54 @@
+# Lottery-key outer-SIGNED t20 verdicts across generations (screenshot = ground truth; record.json carries no verdict,
+# only foreground_unconfirmed, so every verdict is from the cited sign-off). Lottery set = wikipedia, noice, fd-noice,
+# fd-uhabits (listmaker EXCLUDED: stable-lit cv2 key, not M1 -- see note). All runs real + signed.
+
+# key        | gen      | board | run         | verdict | hilog | source(signed)
+wikipedia     | U7       | 61b | u7-sweep             | white | yes  | 2026-10-01-u7-sweep (outer 06:39:59)
+wikipedia     | U8       | 61b | r1                   | lit   | gone | u8-flaky-repeat/results.json (outer)
+wikipedia     | U8       | 61b | r2                   | white | gone | u8-flaky-repeat (outer)
+wikipedia     | U8       | 61b | r2b                  | lit   | gone | u8-flaky-repeat (outer)
+wikipedia     | U8       | 61b | r3                   | lit   | gone | u8-flaky-repeat (outer)
+wikipedia     | U8       | 61b | r4                   | white | gone | u8-flaky-repeat (outer)
+wikipedia     | U8       | 61b | r5                   | white | gone | u8-flaky-repeat (outer)
+wikipedia     | U9       | 5cd | 5cd-original         | lit   | yes  | 2026-10-01-u9-sweep/outer-signoff.json
+wikipedia     | U10.1T8  | 5cd | w1                   | white | yes  | u10-1-t8-rerun/window5-signoff/outer-signoff-retests.json
+wikipedia     | U10.1T8  | 5cd | w5 r1                | lit   | yes  | ... retests.json (the per-key.csv lit pick)
+wikipedia     | U10.1T8  | 5cd | w5 r2                | white | yes  | ... retests.json
+noice         | U7       | 61b | u7-sweep             | lit   | yes  | 2026-10-01-u7-sweep (outer 06:39:59)
+noice         | U7       | 61b | u7-executor samples  | white | yes  | knowledge/gates/flaky-keys.json (outer 07:34:21)
+noice         | U9       | 61b | 61b-remaining        | white | yes  | u9-sweep/outer-signoff.json (alive-white-window)
+noice         | U10.1T8  | 61b | w5 unlit-original    | white | yes  | double-copy-universality/per-key.csv (population)
+fd-noice      | U5       | 5ea | u5-flaky-1           | lit   | yes  | u5-flaky-probe (outer ACK90 02:01:31)
+fd-noice      | U5       | 5ea | u5-flaky-2           | lit   | yes  | u5-flaky-probe (outer)
+fd-noice      | U5       | 5ea | u5-flaky-3           | white | yes  | u5-flaky-probe (outer)
+fd-noice      | U7       | 5cd | u7-sweep             | lit   | yes  | 2026-10-01-u7-sweep (outer 06:25:18)
+fd-noice      | U8       | 61b | r1                   | lit   | gone | u8-flaky-repeat (outer)
+fd-noice      | U8       | 61b | r2                   | white | gone | u8-flaky-repeat (outer)
+fd-noice      | U8       | 61b | r2b                  | white | gone | u8-flaky-repeat (outer)
+fd-noice      | U8       | 61b | r3                   | lit   | gone | u8-flaky-repeat (outer)
+fd-noice      | U8       | 61b | r4                   | lit   | gone | u8-flaky-repeat (outer)
+fd-noice      | U8       | 61b | r5                   | white | gone | u8-flaky-repeat (outer)
+fd-noice      | U9       | 5ea | 5ea-original         | white | yes  | u9-sweep/outer-signoff.json (alive-white-window)
+fd-noice      | U10.1T8  | 5ea | w5 unlit-original    | lit   | yes  | u10-1-t8-rerun/window5-signoff/outer-signoff-gains.json (lottery, lit once)
+fd-uhabits    | U5       | 5ea | u5-flaky-1           | white | yes  | u5-flaky-probe (outer ACK90 02:01:31)
+fd-uhabits    | U5       | 5ea | u5-flaky-2           | white | yes  | u5-flaky-probe (outer)
+fd-uhabits    | U5       | 5ea | u5-flaky-3           | lit   | yes  | u5-flaky-probe (outer)
+fd-uhabits    | U7       | 61b | u7-sweep             | lit   | yes  | 2026-10-01-u7-sweep (outer 06:39:59)
+fd-uhabits    | U8       | 61b | r1                   | white | gone | u8-flaky-repeat (outer)
+fd-uhabits    | U8       | 61b | r2                   | void  | gone | u8-flaky-repeat (killed by tool timeout; EXCLUDED from rate)
+fd-uhabits    | U8       | 61b | r2b                  | white | gone | u8-flaky-repeat (outer)
+fd-uhabits    | U8       | 61b | r3                   | lit   | gone | u8-flaky-repeat (outer)
+fd-uhabits    | U8       | 61b | r4                   | white | gone | u8-flaky-repeat (outer)
+fd-uhabits    | U8       | 61b | r5                   | lit   | gone | u8-flaky-repeat (outer)
+fd-uhabits    | U9       | 5ea | 5ea-original         | white | yes  | u9-sweep/outer-signoff.json (alive-white-window)
+fd-uhabits    | U10.1T8  | 5ea | w5 unlit-original    | white | yes  | double-copy-universality/per-key.csv (population)
+
+## listmaker (cv2-com-harr1424-listmaker): EXCLUDED from the lottery set
+U9 61b: lit; U10.1T8 61b w3: lit. NOT a white/multi-window/RenderThread key: in white-vs-lit it is in the LIT group
+(bridge_copies=2, runtime_copies=2, no AssetManager abort, no empty_surface, no RenderThread/SIGSEGV marker); not in
+white-keys.csv / pair-diff / the M1 cluster. Stable-lit cv2 key (2/2 lit), so M1 cannot raise what is already lit.
+
+## Not available
+- U12: offline bundle assembly (bf6c0fb6, execution_enabled=false, board_writes=0) -> NO board t20 runs for any key.
+- U9: single signed sweep run per key (NOT a zero-variable repeat series); no u9-flaky-repeat benchmark exists.
+- U8 repeats: hilogs PURGED (files_gone; only t20.jpeg + a hilog-excerpt remain) -> k/n usable, M1-shape NOT classifiable.
