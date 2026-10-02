@@ -1,0 +1,43 @@
+{
+  "task": "#90 U13 JAR v3 = 506abe23 + fixed GcmDefaultNonce (CipherSpi driven directly)",
+  "jar": {
+    "name": "oh-adapter-runtime-u13-v3.jar",
+    "sha256": "bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b",
+    "base": "506abe23",
+    "deterministic": true,
+    "other_smali_identical": true,
+    "class_diff_vs_5ae3dd29": {
+      "dropped": 0,
+      "reshaped": 0
+    },
+    "class_diff_vs_506abe23": {
+      "dropped": [
+        "Ladapter/core/GcmDefaultNonce$2;"
+      ],
+      "reshaped": 0,
+      "added": 0
+    }
+  },
+  "android_semantics_test": {
+    "env": "hw248 android-14.0.0_r1 host ART dalvikvm64 -Xint imageless; board BCP jars in board order + test-only android.util.Log shim; route-A JCA setup via AppSpawnXInit.overrideJcaProvidersForOH()",
+    "v3": {
+      "case1_noparam_roundtrip": "PASS ivLen=12",
+      "case2_explicit_iv_aad": "PASS",
+      "case3_tink_12_byte_nonce": "PASS",
+      "wl_ks_probe": "validateAead=OK",
+      "exit": 0
+    },
+    "v2_negative_control": {
+      "case1": "FAIL GCM cipher needs to be initialised",
+      "case2": "FAIL",
+      "case3": "FAIL",
+      "wl_ks_probe": "selftest error ... GCM cipher needs to be initialised (same line as boards)",
+      "exit": 1
+    }
+  },
+  "prediction": {
+    "wl_ks_probe_every_process": "OK",
+    "moodcairns_first_fatal_moves": "high",
+    "others_t20": 0
+  }
+}

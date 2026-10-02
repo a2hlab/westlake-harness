@@ -1,0 +1,43 @@
+{
+  "schema": "outer-gate-approval/v1",
+  "signer": "outer(claude)",
+  "signed_at": "2026-10-03T01:47:58+08:00",
+  "review_package": "benchmark/2026-10-03-u13-gate-review/ (landed 7c2a73de94, listing fc85bd063fee)",
+  "reviewed_bindings": {
+    "package_manifest_sha256": "c60d03460f14ec5bdff2031d56792adcc2985f948a8a0cf5189d1fa9cee7575e",
+    "inputs_sha256": "f76c1af95ccea66e1637fee521ccda2e8ce41567ef4dc75f289361209b1eca51",
+    "bundle_sha256": "adf3705043472de8797a677d76c16b5976cb9c0be11364daa3bbd1b882b1698b"
+  },
+  "decisions": [
+    {
+      "object": "N1 issue b8e9f93b57e743d0402e9e31461b0b094d52d1aeb2559a7dc3289462e7a8dcb3 (resolve_oh_wm_funcs dlopen liboh_adapter_bridge.so NOW|NOLOAD)",
+      "decision": "approve",
+      "scope": "pre-existing resident-only lookup newly exposed by the u13-m1-compat-shim.cpp N1 profile; no fresh mapping on the NOLOAD branch; no claim that the owner is resident, visible or correct",
+      "outer_independent_check": "llvm-objdump of runtime 18763dd4 (bundle-v2-n1-error payload): 0x198108 mov w1,#0x6; 0x19810c bl dlopen@plt; x0 = 0x4e000+0xddb -> C string 'liboh_adapter_bridge.so'"
+    },
+    {
+      "object": "N1 issue c839a571ad9e81b7d2acfd0ee2da442527b02290e7a15c8a24cd53e1ec7416ed (eglCreateWindowSurface dlopen libEGL.so NOW|NOLOAD)",
+      "decision": "approve",
+      "scope": "same as above; a miss returns EGL_NO_SURFACE without retry (s_resolved already true) -- recorded limit, not a white-screen safety claim",
+      "outer_independent_check": "runtime 18763dd4: 0x197a00 mov w1,#0x6; 0x197a08 bl dlopen@plt; x0 = 0x60000+0xfe3 -> 'libEGL.so'"
+    },
+    {
+      "object": "static allowance, both aliases (/system/android/lib64/libbionic_compat.so and route-a/74d1d6d4.../libbionic_compat.so), candidate b8a87f6f vs deployed 015aa3a6, delta 2cd13b3defeda8318d91d23d1ab8e63f77b0bb79e45bc5961f27fa67e864bd3d",
+      "decision": "approve",
+      "scope": "diagnostic PC of the unchanged android_dlopen_ext backend call moves 0x3758 -> 0x3b98 by layout only",
+      "outer_independent_check": "33 instructions from 0x373c (015aa3a6) vs 0x3b7c (b8a87f6f): mnemonics, registers, immediates and in-function branch offsets equal; the 4 differing operands are relocatable and resolve to the same identities (GLOB_DAT __loader_android_dlopen_ext, GLOB_DAT stderr, the same '[U10-DLEXT] backend absent; refusing extension flags=0x%lx file=%s' string)"
+    },
+    {
+      "object": "strings-review ADDED row in libbionic_compat.so b8a87f6f: the printable projection of the _C_ctype_ table",
+      "decision": "approve",
+      "scope": "read-only data table, not a path or policy string; not covered by the original VLC strings PASS",
+      "outer_independent_check": "ELF b8a87f6f: nm -D '00000000000063e0 D _ctype_', reloc 0x63e0 R_AARCH64_RELATIVE -> 0x1c28, the 257 bytes at 0x1c28 equal the _C_ctype_ initialiser of AOSP android-14.0.0_r1 bionic ctype_.c (e4df46f2, sha 8fc63bd8, macros expanded through openbsd-compat.h/ctype.h) 257/257"
+    },
+    {
+      "object": "157 unchanged U12 N1/N2 rows",
+      "decision": "rebind authorised once the final U13 package identity is fixed (rebind.py, no content change)"
+    }
+  ],
+  "transfer_condition": "The U13 bundle still changes once: oh-adapter-runtime.jar 0482c9b1 (U12 JAR, carries the R3 GcmDefaultNonce defect) -> bbc3f530 (U13 JAR v3, b7a28da660). That changes the manifest, so these approvals are NOT transferred automatically. cx-bms re-runs the fresh static/native report on the final bundle. The N1 issue_id hashes in the manifest and inputs SHA (native_gate_common), so both IDs necessarily change (cx-bms, 01:53). Amended 2026-10-03T01:56+08:00: transfer when, with the binding metadata (manifest/inputs SHA) stripped, the two N1 findings are field-for-field equal (profile, function, namespace, library, target_expression, evidence source/line/text, kind, reason), the compat pair/delta 2cd13b3d is the same for both aliases, and the strings review has exactly the one ctype ADDED row and nothing new. Then cx-bms recomputes the IDs for the final SHA, writes approved_by=outer(claude), approved_at=2026-10-03T01:47:58+08:00 into the final-manifest rows citing this file, and records the old->new ID mapping (b8e9f93b->?, c839a571->?) there and in its delivery. Any field difference or any additional finding needs a new outer review.",
+  "not_approved_here": "production gates on the final bundle (fresh Mac + VM), window authorisation (executor)"
+}
