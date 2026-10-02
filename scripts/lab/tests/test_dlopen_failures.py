@@ -44,5 +44,21 @@ class Scan(unittest.TestCase):
             self.assertEqual(rows[0]['lib'], 'libicui18n.so')
 
 
+class NearFatal(unittest.TestCase):
+    def test_near_fatal_filters_by_time_and_pid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            k = root / 'run' / 'ser' / 'key-x'
+            k.mkdir(parents=True)
+            (k / 'hilog.txt').write_text(
+                '01-01 01:00:00.000 100 101 W C03f07/MUSL-LDSO: load libA.so failed, namespace=westlake.anl.app.100.1, errno=2\n'
+                '01-01 01:00:09.000 100 102 W C03f07/MUSL-LDSO: load libB.so failed, namespace=westlake.anl.app.100.1, errno=2\n'
+                '01-01 01:00:10.000 200 200 I C02d11/DfxFaultLogger: Pid:100\n')
+            rows = df.scan([root], near_fatal_seconds=5)
+            by_lib = {r['lib']: r for r in rows}
+            self.assertEqual(by_lib['libB.so']['near_fatal_keys'], 1)
+            self.assertEqual(by_lib['libA.so']['near_fatal_keys'], 0)
+
+
 if __name__ == '__main__':
     unittest.main()
