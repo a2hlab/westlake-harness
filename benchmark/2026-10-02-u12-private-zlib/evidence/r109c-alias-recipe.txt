@@ -1,0 +1,17 @@
+581: build_android_zlib_soname_alias()
+582: {
+583:     local pass=$1
+584:     local dir=$OUT/$pass/zlib
+585:     record "$CC" \
+586:         "--target=$TARGET" \
+587:         "--sysroot=$SYSROOT" \
+588:         -B"$TOOLCHAIN/bin" -B"$TARGET_LIB" \
+589:         -fuse-ld=lld -nostdlib -shared \
+590:         -Wl,-z,defs -Wl,-z,now -Wl,-z,relro \
+591:         -Wl,--no-undefined -Wl,--fatal-warnings \
+592:         -Wl,--build-id=sha1 -Wl,--hash-style=both \
+593:         -Wl,-soname,libz.so \
+594:         -L"$dir" \
+595:         -Wl,--no-as-needed -l:libshared_libz.z.so \
+596:         -o "$dir/libz.so"
+597: }
