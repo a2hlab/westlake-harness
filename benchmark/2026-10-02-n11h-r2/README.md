@@ -1,3 +1,5 @@
+> CORRECTION (2026-10-02, see benchmark/2026-10-02-getlongfield-null): the SHELVE below is WITHDRAWN. The GetLongField JniAbort is `fid == null` (hardened via libart disasm), NOT obj==null (my x0=0 was the abort-time register dump, invalid). `fid == null` IS the double-copy uninitialized-cache disease; N11h-r2 prediction is NOT 0 (4 AssetManager keys move). See the getlongfield-null benchmark for the corrected mechanism + fix.
+
 # N11h-r2 — FINAL VERDICT: SHELVED (prediction 0; double copy causes no observed first fatal)
 
 > After the outer refuted the white-window prediction (double copy is on 115/115 lit keys too, so it is benign for
