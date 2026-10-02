@@ -3,13 +3,13 @@
   {
    "path": "README.md",
    "lines": [
-    "| **`benchmark/2026-10-02-m1-session-slots/baseline-repro/`** | **Bridge 84695d62 cannot be rebuilt byte-identically from any source we have (static, before a build): its window client (process-published cross-namespace RSSurfaceNode path) is in none of 8 local versions nor on a2hlab / hw248; oh_canvas_renderer.cpp was not compiled in (0/18 literals, 0 OHCanvasRenderer::draw* symbols) but the hardened script compiles it; display_manager_adapter_jni.cpp came from the oh61 copy the script now excludes. The bridge's window cohort is the oh61-v7 snapshot (absent from bms/src, so the hardened script exits 1). No M1 build started; options: reconstruct / new baseline / runtime-side.** |"
+    "| **`benchmark/2026-10-02-m1-session-slots/runtime/`** | **M1 via route (c): runtime compat shim asks the other loaded bridge copy when its resolved copy returns null (dl_iterate_phdr, same-file check, call after the scan, [M1-COPY] marker). Static: the empty Surface is the runtime's decision (BBQ_nativeUpdate/getSurface via oh_wm_get_native_window), board libc fd3c4701 dl_iterate_phdr lists all DSOs regardless of namespace, single-session apps never reach the fallback. N10b smoke-markers recipe on a2hlab: baseline 216b68fb and control ac59dec0 (both touched objects recompiled from source) reproduce; U13 runtime candidate 18763dd4 = aa149019 + M1, twice identical; only compat_shim.o + asset_manager.o differ, exports identical, undefined +dl_iterate_phdr, strings +marker, open sites 198=198.** |"
    ]
   },
   {
    "path": ".octos/KNOWLEDGE-DIGEST.md",
    "lines": [
-    "- 2026-10-02 **bridge 84695d62 用加固脚本也复现不了(静态,未开建)**(cc-t3):① 它的窗口客户端带『process-published cross-namespace RSSurfaceNode』路径,本地 8 个版本(最近 89183eb549d9=real-work oh61-v7)、a2hlab、hw248 /home/alvin 都没有;② oh_canvas_renderer.cpp 当年没编进去(0/18 字面量、0 个 OHCanvasRenderer::draw* 符号),加固脚本会编它——外环『当年带着被跳过的源』成立;③ display_manager_adapter_jni.cpp 用的是 oh61 那份(3/4 vs 3/16),加固脚本现在排除它。bridge 真用的窗口源是 oh61-v7 快照,不是 bms/src 那份(bms/src 里没有 sources/oh61-v7-b2133b5b,加固脚本第一步就 exit 1)。判部署件源码版本:拿源码字面量(相邻拼接)与 strings 双向比、逐 TU 算命中率,建前就能定。见 benchmark/2026-10-02-m1-session-slots/baseline-repro/。"
+    "- 2026-10-02 **U13 runtime 候选 18763dd4 = aa149019(asset_manager.o)+ M1(android_graphics_compat_shim.o)**(cc-t3,N10b smoke-markers 配方,a2hlab):M1 改在 runtime 侧——compat shim 自己那份 bridge 返回 null 时,dl_iterate_phdr 找同文件的另一份(可执行段内、入口 32 字节相同)、扫完再调、命中打 [M1-COPY];板上 libc fd3c4701 的 dl_iterate_phdr 走全局 head 链表、不看 namespace。control 变体把两个改动 .o 都从原源码重编仍得 ac59dec0,证明源=部署。deployed_strings_diff 的『3 删 3 加』是布局副作用(.rodata 跳转表相对偏移恰好可打印、readelf 偏移标签被新串推后 len+1),判定要核等长孪生与位移量,不能直接当文本改动。OrbStack 挂载缓存下 Mac 侧改名的文件,VM 里的 tee 仍会写进旧 inode——日志改名要等 VM 侧进程结束或在 VM 里改。见 benchmark/2026-10-02-m1-session-slots/runtime/。"
    ]
   }
  ]

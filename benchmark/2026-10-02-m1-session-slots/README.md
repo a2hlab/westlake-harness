@@ -154,3 +154,22 @@ build: it **cannot be reproduced** from any source on the Mac, a2hlab or hw248.
 The bridge's real window cohort is the oh61-v7 snapshot, not `bms/src`. If the bridge route is kept, M1 must be ported
 there. No M1 build was started; options (a) reconstruct, (b) new baseline, (c) runtime-side are in
 `baseline-repro/README.md`.
+
+## Update: route (c) built: U13 runtime candidate `18763dd4` (outer decision 2026-10-02)
+
+`runtime/README.md` covers the build, using the N10b smoke-markers recipe on a2hlab.
+
+**Static premises:**
+- The empty Surface is decided in the runtime's `oh_wm_get_native_window` / BBQ path (compat shim N2 `b94f69e4`).
+- The board libc's `dl_iterate_phdr` lists every DSO regardless of namespace.
+- Single-session apps never reach the new fallback (98 runs, every lookup non-null).
+
+**Build:**
+- baseline `216b68fb` (= U8) and control `ac59dec0` (= deployed, with both touched objects recompiled from their
+  original sources) reproduce;
+- m1 `18a77eaa`;
+- **u13 `18763dd4`** = aa149019 + M1, built twice identical.
+
+**Acceptance:** only `android_graphics_compat_shim.o` and `asset_manager.o` differ; exports identical; undefined
++ `dl_iterate_phdr`; strings + the `[M1-COPY]` marker (3 layout twins explained by the script); open sites 198 = 198.
+Predictions are unchanged: the lookups that change are the same set as the bridge-slot design.
