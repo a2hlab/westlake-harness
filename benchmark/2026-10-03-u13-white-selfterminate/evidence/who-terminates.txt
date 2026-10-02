@@ -1,0 +1,52 @@
+Who terminated the activity for fd-saber + x (61b window2 alive-white). hilog line refs below.
+Both launched with want.action=action.system.home, Java intent action=MAIN categories={HOME}, OH token 0x7f3387f140.
+
+=== x (com.twitter.android) — APP TRAMPOLINE self-finish; we don't bring up the next activity ===
+30815  [B47-SLA] ENTRY bundle=com.twitter.android ability=com.twitter.android.StartActivity ohTokenAddr=0x7f3387f140
+30904  [B47-SLA] intent.component={com.twitter.android/.StartActivity} action=MAIN categories={HOME}
+32722  (recheck) J_invoke "Unable to resume MainActivity" ... (NPE PermissionManager) -- but the decisive sequence:
+32749  AMS: CloseUIAbility call: com.twitter.android/com.twitter.android.StartActivity     <- the TRAMPOLINE is closed
+32750  AMS: [ABMS4755]TerminateAbilityWithFlag verificationAllToken failed
+32743/32751  OH_ACCAdapter: finishActivity: OH TerminateAbility(token=0x7f3387f140) rc=0 then rc=22
+32748/60  AMS: PendingSessionActivation / RequestSceneSession abilityName:com.twitter.x.lite.XLiteActivity  <- the REAL next activity is requested (new SceneSession 952)
+33005  OH_LifecycleAdapter: state=INITIAL->FOREGROUND -> RESUMED activityToken=Binder@ee900e2
+33971  setAppVisibility: viewRoot null (decor not attached)
+34580  [G2.14as-VIS] dump after RESUMED+300ms: token=Binder@ee900e2 mFinished=true mWindowAdded=false decorClass=null
+then   2nd ensureBindApplication (pid 9779) -- the process RELAUNCHES; XLiteActivity never attaches a window with content.
+READING: com.twitter.android.StartActivity is a MAIN/HOME trampoline that startActivity(XLiteActivity)+finish() (normal
+Android app behavior). Our OH_ACCAdapter routes the finish() -> OH TerminateAbility; AMS verificationAllToken failed
+(callerRecordList empty) on the finishing trampoline token (symptom). The real next activity XLiteActivity gets a new
+SceneSession but the app PROCESS RELAUNCHES and the real activity never attaches a decor/window -> white.
+=> APP self-finish (trampoline, normal); the gap is OURS: we do not carry the trampoline hand-off to the real activity
+   (it relaunches instead of bringing XLiteActivity up with content). Confirms the dispatch hypothesis for x.
+
+=== fd-saber (com.adilhanney.saber) — SINGLE activity, terminated pre-window (adapter/AMS token path, NOT a trampoline) ===
+18775  OH_AppSchedulerAdapter [B47-SLA] ScheduleLaunchAbility ability=com.adilhanney.saber.MainActivity want.action=action.system.home token=0x7f3387f140
+18844  [B47-SLA] intent {com.adilhanney.saber/.MainActivity} action=MAIN categories={HOME}
+18857  [B47-SLA] AFTER scheduleTransaction OK
+19062  AMS: CloseUIAbility com.adilhanney.saber/.MainActivity ; callerRecordList is empty ; OH_ACCAdapter finishActivity OH TerminateAbility(0x7f3387f140) rc=0
+19062+ AMS: StartAbilityInner verificationAllToken failed ; StartAbilityByFreeInstall error:2097205
+19424  performCreate com.adilhanney.saber.MainActivity          <- onCreate runs AFTER the TerminateAbility above
+19491  RESUMED activityToken=Binder@7f79af4 (a DIFFERENT token than the 0x7f3387f140 that was terminated)
+19523  [G2.14as-VIS] mFinished=true mWindowAdded=false decorClass=null
+READING: fd-saber has ONE activity (MainActivity); there is NO next-activity/trampoline (no PendingSessionActivation for
+a second activity). So the finish cannot be "startActivity(next)+finish". The OH ability token 0x7f3387f140 is
+TerminateAbility'd around launch with `callerRecordList is empty` + `verificationAllToken failed`; the Java MainActivity
+then performCreate/RESUMED on a different token but is already mFinished=true, mWindowAdded=false -> no decor -> white.
+=> NOT a proven Flutter self-finish. No Flutter-abandon marker; the OpenGLWrapper/EglWrapperLayer load failures are
+   concurrent but the termination is the adapter/AMS token-verification path (callerRecordList empty / verificationAllToken
+   failed), which marks the activity finished before it can add its window.
+
+=== COMMON signature (discriminating vs lit: helloworld/zigzag have verificationAllToken-failed=0) ===
+- launch intent category = HOME (not LAUNCHER) for both;
+- AMS `callerRecordList is empty` + `verificationAllToken failed` on the OH ability token;
+- the Java activity reaches RESUMED but `mFinished=true, mWindowAdded=false, decorClass=null`.
+This points at an adapter/AMS mission/caller-record (token-verification) gap, common to both; x additionally needs the
+trampoline hand-off to the real activity.
+
+=== [B8-IMPELLER] EnableImpeller=false (fd-saber) — source ===
+Not in bms/src and not in the runtime 18763dd4 .so strings; it is emitted by a B8 bind-fix (the compiled bind-fix layer,
+oh-adapter-runtime.jar family -- same B8* layer as [B8-WEBVIEW]/[B8-AMB]/[B8-UEH]). It forces Flutter off Impeller
+(Vulkan, unsupported on route-A: `load libvulkan.so failed`) onto the GL backend; but GL also fails to load
+(`OpenGLWrapper: Failed to load GLES library` / `EglWrapperLayer Init Failed`), so Flutter has no working renderer. This
+leaves no frames to draw, but it is NOT shown to be what finishes the activity (the finish is the token path above).

@@ -1,0 +1,30 @@
+{
+  "task": "Who terminated the activity for fd-saber + x (alive-white): app self-finish vs adapter/AMS. + [B8-IMPELLER] source + Flutter abandon path. If static-indeterminate, a <=10-min on-board experiment.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none (window4 running, untouched)",
+  "x": {
+    "bundle": "com.twitter.android",
+    "verdict": "APP TRAMPOLINE self-finish; the gap is ours (lost hand-off to the real activity)",
+    "evidence": "com.twitter.android.StartActivity is a MAIN/category-HOME trampoline -> startActivity(com.twitter.x.lite.XLiteActivity)+finish(). AMS CloseUIAbility StartActivity + OH_ACCAdapter finishActivity OH TerminateAbility rc0->rc22 verificationAllToken failed (symptom); simultaneously PendingSessionActivation/RequestSceneSession XLiteActivity (new SceneSession 952); finished trampoline reaches RESUMED mFinished=true mWindowAdded=false decorClass=null; process relaunches (pid 9779); XLiteActivity never attaches a window with content.",
+    "disposition": "app finish is normal trampoline; fix target = carry the trampoline hand-off to the real activity (it relaunches instead of bringing XLiteActivity up). verificationAllToken failed = symptom of our token/mission handling on the finishing token."
+  },
+  "fd_saber": {
+    "bundle": "com.adilhanney.saber",
+    "verdict": "SINGLE activity terminated pre-window by the adapter/AMS token path; NOT a proven Flutter self-finish",
+    "evidence": "one MainActivity, no trampoline/next-activity. ScheduleLaunchAbility MainActivity token=0x7f3387f140 -> AMS CloseUIAbility + callerRecordList is empty + OH_ACCAdapter finishActivity OH TerminateAbility rc0 + StartAbilityInner verificationAllToken failed, ALL before performCreate. Then performCreate + RESUMED on a different token (Binder@7f79af4) but mFinished=true mWindowAdded=false decorClass=null. No Flutter-abandon marker; OpenGLWrapper/EglWrapperLayer load failures are concurrent, not the finisher.",
+    "disposition": "adapter/AMS token-verification path (callerRecordList empty -> verificationAllToken failed) marks the activity finished before it adds its window. Fix target = mission/caller-record so the token verifies."
+  },
+  "b8_impeller": "EnableImpeller=false ([B8-IMPELLER]) not in bms/src and not in runtime 18763dd4 .so strings -> emitted by a B8 bind-fix (compiled bind-fix layer, oh-adapter-runtime.jar family, same B8* layer as B8-WEBVIEW/B8-AMB). Forces Flutter off Impeller/Vulkan (load libvulkan.so failed, unsupported on route-A) onto GL; GL also fails to load (OpenGLWrapper Failed to load GLES) -> no renderer, no frames. Not shown to be the finisher.",
+  "common_signature": "both: launch intent category HOME (not LAUNCHER); AMS callerRecordList empty + verificationAllToken failed on the OH ability token; Java activity reaches RESUMED but mFinished=true/mWindowAdded=false/decorClass=null. Discriminating: lit helloworld/zigzag have verificationAllToken-failed=0. => adapter/AMS mission/caller-record (token-verification) gap, common to both; x additionally needs the trampoline hand-off.",
+  "min_experiment": {
+    "goal": "attribute each finish (app Activity.finish vs adapter/AMS terminate) + confirm x's lost hand-off",
+    "instrument": "1 line behind a debug prop in OH_ACCAdapter.finishActivity: new Throwable('WHO-FINISH').printStackTrace() / Thread.dumpStack(); rebuild runtime/JAR for the experiment image",
+    "run": "relaunch x + fd-saber on 61b, 90s hilog each, riding a U14/U15 window (no dedicated lock)",
+    "criteria": "app-code finish() in the WHO-FINISH stack -> app self-finish (x; then check XLiteActivity performCreate + mWindowAdded=true in the non-relaunched process -> else hand-off is the gap); adapter/AMS terminate path with no app frame -> adapter/AMS finish (fd-saber; fix = mission/caller-record)",
+    "fallback": "no instrumented image: co-run known-lit helloworld in the same window and confirm verificationAllToken-failed=0 + mWindowAdded=true while x/fd-saber have the failure -- reproduces the discriminator read-only",
+    "rollback": "log-only behind a prop; drop the prop / revert the one line",
+    "budget": "<=10 min; do not open a dedicated window"
+  },
+  "rule": "'who finishes' is answered by WHEN the terminate fires vs performCreate and whether a NEXT activity is requested: x terminates its trampoline while requesting the real activity (app finish + lost hand-off); fd-saber terminates its only activity before performCreate with callerRecordList empty (adapter/AMS token path). A concurrent failure (GL/Vulkan not loadable) is not automatically the finisher.",
+  "boundaries": ["offline; no board (window4 untouched); no push", "static attribution from hilogs; fd-saber app-vs-adapter final proof needs the instrumented run", "sources read-only: U13 hilogs (westlake-harness-u7-executor), runtime 18763dd4 (westlake-inputs/generations), adapter source (westlake-harness/bms)"],
+  "files": ["README.md", "evidence/who-terminates.txt", "results.json", "documentation.json", "landing-paths.txt"]
+}
