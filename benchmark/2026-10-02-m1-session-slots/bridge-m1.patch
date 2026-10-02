@@ -1,0 +1,78 @@
+diff --git a/bms/src/adapter/framework/window/jni/oh_window_manager_client.cpp b/bms/src/adapter/framework/window/jni/oh_window_manager_client.cpp
+index 080c24ad8d..6ee006f4a3 100755
+--- a/bms/src/adapter/framework/window/jni/oh_window_manager_client.cpp
++++ b/bms/src/adapter/framework/window/jni/oh_window_manager_client.cpp
+@@ -93,15 +93,46 @@ void setLastAttachedSessionLocal(int32_t sessionId) {
+     g_lastAttachedSession.store(sessionId, std::memory_order_release);
+ }
+ 
++// 2026-10-02 M1 (benchmark/2026-10-02-m1-session-slots): the V1 pair above is one
++// slot, so with two live windows (launcher Activity + the Activity it starts) only
++// the last-created session resolves from the other bridge copy and the first one's
++// BBQ gets an empty Surface. Each session is also published under its own name,
++// <prefix><sessionId>, and read back by the requested sessionId. V1 is still
++// written and still read as the fallback, so a copy that only knows V1 behaves as
++// before.
++constexpr const char* kSessionNativeWindowEnvPrefix = "WESTLAKE_NATIVE_WINDOW_PTR_V2_";
++
++void sessionWindowEnvName(int32_t sessionId, char* out, size_t size) {
++    std::snprintf(out, size, "%s%d", kSessionNativeWindowEnvPrefix, sessionId);
++}
++
+ void publishProcessWindowTarget(int32_t sessionId, void* nativeWindow) {
+     char sessionText[16] = {};
+     char pointerText[2 + sizeof(uintptr_t) * 2 + 1] = {};
++    char slotName[48] = {};
+     std::snprintf(sessionText, sizeof(sessionText), "%d", sessionId);
+     std::snprintf(pointerText, sizeof(pointerText), "%p", nativeWindow);
++    sessionWindowEnvName(sessionId, slotName, sizeof(slotName));
++    (void)setenv(slotName, pointerText, 1);
+     (void)setenv(kSharedNativeWindowEnv, pointerText, 1);
+     (void)setenv(kSharedSessionEnv, sessionText, 1);
+ }
+ 
++void unpublishProcessWindowTarget(int32_t sessionId) {
++    char slotName[48] = {};
++    sessionWindowEnvName(sessionId, slotName, sizeof(slotName));
++    (void)unsetenv(slotName);
++}
++
++void* parseWindowPointer(const char* text) {
++    if (text == nullptr || *text == '\0') return nullptr;
++    char* end = nullptr;
++    errno = 0;
++    unsigned long long value = std::strtoull(text, &end, 0);
++    if (errno != 0 || end == text || *end != '\0' || value == 0) return nullptr;
++    return reinterpret_cast<void*>(static_cast<uintptr_t>(value));
++}
++
+ int32_t readProcessWindowSession() {
+     const char* text = std::getenv(kSharedSessionEnv);
+     if (text == nullptr || *text == '\0') return 0;
+@@ -114,14 +145,11 @@ int32_t readProcessWindowSession() {
+ }
+ 
+ void* readProcessWindowTarget(int32_t sessionId) {
++    char slotName[48] = {};
++    sessionWindowEnvName(sessionId, slotName, sizeof(slotName));
++    if (void* perSession = parseWindowPointer(std::getenv(slotName))) return perSession;
+     if (readProcessWindowSession() != sessionId) return nullptr;
+-    const char* text = std::getenv(kSharedNativeWindowEnv);
+-    if (text == nullptr || *text == '\0') return nullptr;
+-    char* end = nullptr;
+-    errno = 0;
+-    unsigned long long value = std::strtoull(text, &end, 0);
+-    if (errno != 0 || end == text || *end != '\0' || value == 0) return nullptr;
+-    return reinterpret_cast<void*>(static_cast<uintptr_t>(value));
++    return parseWindowPointer(std::getenv(kSharedNativeWindowEnv));
+ }
+ }  // namespace
+ 
+@@ -806,6 +834,7 @@ void OHWindowManagerClient::destroySession(int32_t sessionId) {
+                     surfaceGeneration);
+             }
+             sessions_.erase(it);
++            unpublishProcessWindowTarget(sessionId);
+         }
+     }
+     if (surfaceGeneration != 0) {

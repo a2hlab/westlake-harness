@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-02-m1-session-slots/`** | **M1 fix for U13 (not built): bridge window lookup gets per-session slots (WESTLAKE_NATIVE_WINDOW_PTR_V2_<id>, V1 kept and read as fallback, slot cleared in destroySession; one cpp, +36/-7, host test PASS). Static proof on 144 real runs: 367 cross-copy lookups, outcome = 'requested session is the last published' with 0 violations; 98 single-session runs only look up their one session (fix is a no-op); max 3 sessions per process; the fix turns 43 empty lookups into rescued ones (white: noice, fd-uhabits, dddmodel2; lit watch list: 10 keys). Build blocked: 84695d62 has no reproducible chain and its strict rebuild 7cf8ebcc killed every app; options R1 rebuild / R2 binary patch / R3 same effect in the runtime compat shim (N10b chain is per-object reproducible), R3 recommended, awaiting outer. Predictions: noice, fd-uhabits white->lit; wikipedia, fd-noice lottery->stable.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-02 **M1 修法与构建阻塞**(cc-t3):bridge 跨拷贝取窗改按 sessionId 分槽(WESTLAKE_NATIVE_WINDOW_PTR_V2_<id>,V1 照写照读作回退,destroySession 清槽),144 次真实运行 367 次取窗静态回放 0 违例,单会话 98 次运行修后等价;但 bridge 84695d62 没有可复现构建链,唯一一次严格重建 7cf8ebcc 上板全 app 死,**不能从源码重建冒充单变量**。同效果可落在 runtime 的 compat shim(自己那份 bridge 返回 null 时用 dl_iterate_phdr 找另一份、同文件同符号偏移、问建 session 的那份),N10b build-runtime.py 能逐 .o 复现 runtime,只变 android_graphics_compat_shim.o。规则:为单函数修复重建 native 库之前先确认部署件有可复现构建链,没有就把修复放到有链的那一侧。见 benchmark/2026-10-02-m1-session-slots/。"
+   ]
+  }
+ ]
+}
