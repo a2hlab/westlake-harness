@@ -253,6 +253,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-02-u10-1-t8-effective/`** | Corrected effective T8 + U10.1/U11i composition, exact SHA-bound J10e split approval, final gates and unarmed three-board promotion proposals. |
 | **`benchmark/2026-10-02-u10-1-t8-rerun/`** | Logged T8 rerun27 + U10.1/U11i final production gates PASS, exact outer-approved open deltas, SHA-bound class split and unarmed three-board promotion plans. |
 | **`benchmark/2026-10-02-n11h-predictions/`** | **Pre-window prediction table for the N11h 61b host single-owner observation: 14 U9 white keys split double-copy (11 candidate gain, incl 4 session-miss) vs another-wall (3 excluded: TelephonyManager NPE / WebView / libGDX-GL), plus 4 lit regression controls.** |
+| **`benchmark/2026-10-02-n11h-host-owner/`** | **Accepted-r3 N11h host owner publication: two early sealed edges, exact resident-handle callbacks, byte-reproduced builds, preserved permissions and unapproved N1/N2 review evidence.** |
 
 ---
 

@@ -1,0 +1,189 @@
+--- a/westlake_stock_host_main.c
++++ b/westlake_stock_host_main.c
+@@ -24,6 +24,7 @@
+ #include "westlake_elf_identity.h"
+ #include "westlake_stock_host_services.h"
+ #include "resident-compat.h"
++#include "n11h-owner.h"
+ 
+ #define WLASC_STOCK_PRELOAD "libappspawn_helper.z.so"
+ #define WLASC_PLUGIN_NAME "westlake_android_child"
+@@ -180,6 +181,17 @@
+               pthread_bridge_ops == NULL))) {
+             return NamespaceResultFence(EINVAL);
+         }
++    }
++
++    Dl_namespace sealed_owner;
++    result = dlns_get(N11H_OWNER_NS, &sealed_owner);
++    if (result != 0) {
++        APPSPAWN_LOGE("[N11h-HOST-OWNER] action=reject target=%{public}s owner=sealed rc=%{public}d", app_name, result);
++        return NamespaceResultFence(result);
++    }
++    result = N11hCheckOwners(&sealed_owner, app_name);
++    if (result != 0) return NamespaceResultFence(result);
++    if (wants_bridge) {
+         dlns_init(bridge_namespace, bridge_name);
+         result = dlns_create2(bridge_namespace, bridge_search_paths,
+                               CREATE_INHERIT_DEFAULT);
+@@ -201,6 +213,66 @@
+             return NamespaceResultFence(result);
+         }
+ 
++        result = dlns_inherit(bridge_namespace, &sealed_owner, N11H_OWNER_LIBS);
++        APPSPAWN_LOGI("[N11h-HOST-OWNER] action=inherit target=%{public}s owner=westlake.sealed.child shared=%{public}s rc=%{public}d",
++                      bridge_name, N11H_OWNER_LIBS, result);
++        if (result != 0) return NamespaceResultFence(result);
++    }
++
++    dlns_init(app_namespace, app_name);
++    result = dlns_create2(app_namespace, app_search_paths,
++                          LOCAL_NS_PREFERED);
++    if (result != 0) {
++        return NamespaceResultFence(result);
++    }
++    result = dlns_set_namespace_separated(app_namespace->name, true);
++    if (result != 0) {
++        return NamespaceResultFence(result);
++    }
++    result = dlns_set_namespace_permitted_paths(
++        app_namespace->name, app_permitted_paths);
++    if (result != 0) {
++        return NamespaceResultFence(result);
++    }
++    /* Westlake OpenInAndroidNamespace: use a direct edge to the existing
++     * owner. OH musl inheritance is one hop. Only the exact Flutter/native package lists with private search prefixes
++     * request this branch; baseline control domains do not.
++     * No system search roots and no extra DFX/runtime instances in the app. */
++    const bool flutter_private = wants_bridge &&
++        strncmp(app_search_paths, "/system/android/lib64/westlake_flutter:",
++                strlen("/system/android/lib64/westlake_flutter:")) == 0 &&
++        (flutter_package_path(app_search_paths) || flutter_package_path(app_permitted_paths));
++    const bool native_private = wants_bridge &&
++        strncmp(app_search_paths, "/system/android/lib64/westlake_native:",
++                strlen("/system/android/lib64/westlake_native:")) == 0 &&
++        (native_cluster_path(app_search_paths) || native_cluster_path(app_permitted_paths));
++    Dl_namespace compat_owner;
++    const bool compat_ready = wants_bridge && !flutter_private && !native_private &&
++        U10ShareResidentCompat(&compat_owner) == 0;
++    const bool compat_sealed = compat_ready && strcmp(compat_owner.name, N11H_OWNER_NS) == 0;
++    const char *owner_shared = (flutter_private || native_private) ? N11H_PRIVATE_LIBS :
++        (compat_sealed ? N11H_COMPAT_LIBS : N11H_OWNER_LIBS);
++    result = dlns_inherit(app_namespace, &sealed_owner, owner_shared);
++    APPSPAWN_LOGI("[N11h-HOST-OWNER] action=inherit target=%{public}s owner=westlake.sealed.child shared=%{public}s rc=%{public}d",
++                  app_name, owner_shared, result);
++    if (result != 0) return NamespaceResultFence(result);
++    if (flutter_private || native_private) {
++        Dl_namespace system_owner;
++        result = dlns_get("default", &system_owner);
++        if (result != 0) return NamespaceResultFence(result);
++        result = dlns_inherit(app_namespace, &system_owner,
++            "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:libstdc++.so:libOpenSLES.so");
++        if (result != 0) return NamespaceResultFence(result);
++    }
++    if (wants_bridge) {
++        result = dlns_inherit(app_namespace, bridge_namespace, bridge_shared_sonames);
++        if (result != 0) return NamespaceResultFence(result);
++        if (compat_ready && !compat_sealed) {
++            int compat_result = dlns_inherit(app_namespace, &compat_owner, "libbionic_compat.so");
++            if (compat_result != 0) {
++                APPSPAWN_LOGE("[U10-COMPAT-VISIBLE] unavailable inherit result=%{public}d; namespace continues", compat_result);
++            }
++        }
+         if (bridge_bootstrap_soname != NULL) {
+             typedef int (*InstallBridgeOps)(const WlpbHostOpsV1 *ops);
+             InstallBridgeOps install = NULL;
+@@ -230,45 +302,7 @@
+         }
+     }
+ 
+-    dlns_init(app_namespace, app_name);
+-    result = dlns_create2(app_namespace, app_search_paths,
+-                          LOCAL_NS_PREFERED);
+-    if (result != 0) {
+-        return NamespaceResultFence(result);
+-    }
+-    result = dlns_set_namespace_separated(app_namespace->name, true);
+-    if (result != 0) {
+-        return NamespaceResultFence(result);
+-    }
+-    result = dlns_set_namespace_permitted_paths(
+-        app_namespace->name, app_permitted_paths);
+-    if (result != 0) {
+-        return NamespaceResultFence(result);
+-    }
+-    /* Westlake OpenInAndroidNamespace: use a direct edge to the existing
+-     * owner. OH musl inheritance is one hop. Only the exact Flutter/native package lists with private search prefixes
+-     * request this branch; baseline control domains do not.
+-     * No system search roots and no extra DFX/runtime instances in the app. */
+-    const bool flutter_private = wants_bridge &&
+-        strncmp(app_search_paths, "/system/android/lib64/westlake_flutter:",
+-                strlen("/system/android/lib64/westlake_flutter:")) == 0 &&
+-        (flutter_package_path(app_search_paths) || flutter_package_path(app_permitted_paths));
+-    const bool native_private = wants_bridge &&
+-        strncmp(app_search_paths, "/system/android/lib64/westlake_native:",
+-                strlen("/system/android/lib64/westlake_native:")) == 0 &&
+-        (native_cluster_path(app_search_paths) || native_cluster_path(app_permitted_paths));
+     if (flutter_private || native_private) {
+-        Dl_namespace system_owner, runtime_owner;
+-        result = dlns_get("default", &system_owner);
+-        if (result != 0) return NamespaceResultFence(result);
+-        result = dlns_get("westlake.sealed.child", &runtime_owner);
+-        if (result != 0) return NamespaceResultFence(result);
+-        result = dlns_inherit(app_namespace, &system_owner,
+-            "libc.so:libdl.so:libm.so:libEGL.so:libGLESv3.so:libsurface.z.so:liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so:libstdc++.so:libOpenSLES.so");
+-        if (result != 0) return NamespaceResultFence(result);
+-        result = dlns_inherit(app_namespace, &runtime_owner,
+-            "liboh_android_runtime.so:libbionic_compat.so:liblog.so:libc++.so");
+-        if (result != 0) return NamespaceResultFence(result);
+         const bool needs_runtime = flutter_private ||
+             strstr(app_search_paths, "/com.emn8.mobilem8.nativeapp.bk/") ||
+             strstr(app_search_paths, "/com.mcdonalds.app/") ||
+@@ -313,22 +347,6 @@
+             }
+         }
+     }
+-    if (wants_bridge) {
+-        result = dlns_inherit(app_namespace, bridge_namespace,
+-                              bridge_shared_sonames);
+-        if (result != 0) {
+-            return NamespaceResultFence(result);
+-        }
+-        Dl_namespace compat_owner;
+-        if (U10ShareResidentCompat(&compat_owner) == 0 &&
+-            !flutter_private && !native_private) {
+-            int compat_result = dlns_inherit(app_namespace, &compat_owner,
+-                                             "libbionic_compat.so");
+-            if (compat_result != 0) {
+-                APPSPAWN_LOGE("[U10-COMPAT-VISIBLE] unavailable inherit result=%{public}d; namespace continues", compat_result);
+-            }
+-        }
+-    }
+     if (flutter_private || native_private) {
+         /* OH 6.1 musl ignores DF_1_GLOBAL: its add_syms/removal is controlled
+          * by dlopen mode. Promote only the declared ABI DSO in selected app
+@@ -349,10 +367,23 @@
+ {
+     Dl_namespace *app_namespace = (Dl_namespace *)app_namespace_opaque;
+     void *handle;
+-
+     if (app_namespace == NULL || path == NULL || path[0] == '\0' ||
+         !NamespaceNameOwnedByCurrentProcess(app_namespace->name, "app") ||
+         (mode & RTLD_GLOBAL) != 0) {
++        return NamespaceHandleFence(NULL);
++    }
++    const char *owner_path = N11hOwnerPath(path);
++    if (owner_path != NULL) {
++        Dl_namespace owner;
++        int result = dlns_get(N11H_OWNER_NS, &owner);
++        handle = result == 0 ? N11hResidentHandle(&owner, owner_path, app_namespace->name) : NULL;
++        APPSPAWN_LOGI("[N11h-HOST-OPEN] action=%{public}s path=%{public}s target=%{public}s handle=%{public}p rc=%{public}d",
++                      handle == NULL ? "reject" : "resident", path, app_namespace->name, handle,
++                      result != 0 ? result : (handle == NULL ? ENOENT : 0));
++        return NamespaceHandleFence(handle);
++    }
++    if (N11hProtectedName(path)) {
++        APPSPAWN_LOGE("[N11h-HOST-OPEN] action=reject path=%{public}s target=%{public}s handle=NULL rc=%{public}d", path, app_namespace->name, EINVAL);
+         return NamespaceHandleFence(NULL);
+     }
+     handle = dlopen_ns(app_namespace, path, mode | RTLD_LOCAL);
