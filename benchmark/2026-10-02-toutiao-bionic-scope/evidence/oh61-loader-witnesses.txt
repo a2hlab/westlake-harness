@@ -1,0 +1,291 @@
+775: UT_STATIC int check_verinfo(Verdef *def, int16_t *versym, uint32_t index, struct verinfo *verinfo, char *strings)
+776: {
+777: 	/* if the versym and verinfo is null , then not need version. */
+778: 	if (!versym || !def) {
+779: 		if (strlen(verinfo->v) == 0) {
+780: 			return 1;
+781: 		} else {
+782: 			LD_LOGD("check_verinfo versym or def is null and verinfo->v exist, s:%{public}s v:%{public}s.",
+783: 				verinfo->s, verinfo->v);
+784: 			return 0;
+785: 		}
+786: 	}
+787: 
+788: 	int16_t vsym = versym[index];
+789: 
+790: 	/* find the verneed symbol. */
+791: 	if (verinfo->use_vna_hash) {
+792: 		if (vsym != VER_NDX_LOCAL && versym != (int16_t *)VER_NDX_GLOBAL) {
+793: 			return check_vna_hash(def, vsym, verinfo->vna_hash);
+794: 		}
+795: 	}
+796: 
+797: 	/* if the version length is zero and vsym not less than zero, then library hava default version symbol. */
+798: 	if (strlen(verinfo->v) == 0) {
+799: 		if (vsym >= 0) {
+800: 			return 1;
+801: 		} else {
+802: 			LD_LOGD("check_verinfo not default version. vsym:%{public}d s:%{public}s", vsym, verinfo->s);
+803: 			return 0;
+804: 		}
+805: 	}
+806: 
+807: 	/* find the version of symbol. */
+808: 	vsym &= 0x7fff;
+809: 	for (;;) {
+810: 		if (!(def->vd_flags & VER_FLG_BASE) && (def->vd_ndx & 0x7fff) == vsym) {
+811: 			break;
+812: 		}
+813: 		if (def->vd_next == 0) {
+814: 			return 0;
+913: static bool check_sym_accessible(struct dso *dso, ns_t *ns)
+914: {
+915: 	if (!dso || !dso->namespace || !ns) {
+916: 		LD_LOGD("check_sym_accessible invalid parameter!");
+917: 		return false;
+918: 	}
+919: 	if (dso->namespace == ns) {
+920: 		return true;
+921: 	}
+922: 	for (int i = 0; i < dso->parents_count; i++) {
+923: 		if (dso->parents[i]->namespace == ns) {
+924: 			return true;
+925: 		}
+926: 	}
+927: 	LD_LOGD(
+928: 		"check_sym_accessible dso name [%{public}s] ns_name [%{public}s] not accessible!", dso->name, ns->ns_name);
+929: 	return false;
+930: }
+931: 
+932: static inline bool is_dso_accessible(struct dso *dso, ns_t *ns)
+933: {
+934: 	if (dso->namespace == ns) {
+935: 		return true;
+936: 	}
+937: 	for (int i = 0; i < dso->parents_count; i++) {
+938: 		if (dso->parents[i]->namespace == ns) {
+939: 			return true;
+940: 		}
+941: 	}
+942: 	LD_LOGD(
+1037: /* The list of so that can be accessed during relocation include:
+1038:  * - The is_global flag of the so is true which means accessible by default.
+1039:  *   Global so includes exe, ld preload so and ldso.
+1040:  * - We only check whether ns is accessible for the so if is_reloc_head_so_dep is true.
+1041:  *
+1042:  *   How to set is_reloc_head_so_dep:
+1043:  *   When dlopen A, we set is_reloc_head_so_dep to true for
+1044:  *   all direct and indirect dependent sos of A, including A itself. */
+1045: static void add_can_search_so_list_in_dso(struct dso *dso_relocating, struct dso *start_check_dso) {
+1046: 	struct dso *p = start_check_dso;
+1047: 	for (; p; p = p->syms_next) {
+1048: 		if (p->is_global) {
+1049: 			add_reloc_can_search_dso(dso_relocating, p);
+1050: 			continue;
+1051: 		}
+1052: 
+1053: 		if (p->is_reloc_head_so_dep) {
+1054: 			if (dso_relocating->namespace && check_sym_accessible(p, dso_relocating->namespace)) {
+1055: 				add_reloc_can_search_dso(dso_relocating, p);
+1056: 			}
+1057: 		}
+1058: 	}
+1059: 
+1060: 	return;
+1061: }
+1062: 
+1063: #define OK_TYPES (1<<STT_NOTYPE | 1<<STT_OBJECT | 1<<STT_FUNC | 1<<STT_COMMON | 1<<STT_TLS)
+1240: static bool get_vna_hash(struct dso *dso, int sym_index, uint32_t *vna_hash)
+1241: {
+1242: 	if (!dso->versym || !dso->verneed) {
+1243: 		return false;
+1244: 	}
+1245: 
+1246: 	uint16_t vsym = dso->versym[sym_index];
+1247: 	if (vsym == VER_NDX_LOCAL || vsym == VER_NDX_GLOBAL) {
+1248: 		return false;
+1249: 	}
+1250: 
+1251: 	bool result = false;
+1252: 	Verneed *verneed = dso->verneed;
+1253: 	Vernaux *vernaux;
+1254: 	vsym &= 0x7fff;
+1255: 
+1256: 	for (;;) {
+1257: 		vernaux = (Vernaux *)((char *)verneed + verneed->vn_aux);
+1258: 
+1259: 		for (size_t cnt = 0; cnt < verneed->vn_cnt; cnt++) {
+1260: 			if ((vernaux->vna_other & 0x7fff) == vsym) {
+1261: 				result = true;
+1262: 				*vna_hash = vernaux->vna_hash;
+1263: 				break;
+1264: 			}
+1265: 
+1266: 			vernaux = (Vernaux *)((char *)vernaux + vernaux->vna_next);
+1267: 		}
+1268: 
+1269: 		if (result) {
+1270: 			break;
+1271: 		}
+1272: 
+1273: 		if (verneed->vn_next == 0) {
+1274: 			break;
+1275: 		}
+1276: 
+1277: 		verneed = (Verneed *)((char *)verneed + verneed->vn_next);
+1278: 	}
+1279: 	return result;
+1280: }
+1281: 
+1282: static void get_verinfo(struct dso *dso, int sym_index, struct verinfo *vinfo)
+1283: {
+1284: 	char *strings = dso->strings;
+1377: 		name = strings + sym->st_name;
+1378: 		ctx = type==REL_COPY ? head->syms_next : head;
+1379: 		struct verinfo vinfo = { .s = name, .v = ""};
+1380:  
+1381: 		vinfo.use_vna_hash = get_vna_hash(dso, sym_index, &vinfo.vna_hash);
+1382: 		if (!vinfo.use_vna_hash && dso->versym && (dso->versym[sym_index] & 0x7fff) >= 0) {
+1383: 			get_verinfo(dso, sym_index, &vinfo);
+1384: 		}
+1385: 		// temporary solution for libc.so relocation cache problem
+1386: 		if (dso->cache_sym_index == sym_index && dso != libc_dso) {
+1387: 			def = (struct symdef){ .dso = dso->cache_dso, .sym = dso->cache_sym };
+1388: 		} else {
+1389: 			def = (sym->st_info>>4) == STB_LOCAL
+1390: 				? (struct symdef){ .dso = dso, .sym = sym }
+1391: 				: dso != &ldso ? find_sym_by_saved_so_list(type, ctx, &vinfo, type==REL_PLT, dso)
+1392: 				: find_sym2(ctx, &vinfo, type==REL_PLT, 0, dso->namespace);
+1393: 			dso->cache_sym_index = sym_index;
+2252: static void decode_dyn(struct dso *p)
+2253: {
+2254: 	size_t dyn[DYN_CNT];
+2255: 	size_t flags1 = 0;
+2256: 	decode_vec(p->dynv, dyn, DYN_CNT);
+2257: 	search_vec(p->dynv, &flags1, DT_FLAGS_1);
+2258: 	if (flags1 & DF_1_GLOBAL) {
+2259: 		LD_LOGI("Add DF_1_GLOBAL for %{public}s", p->name);
+2260: 		p->is_global = true;
+2261: 	}
+2262: 	if (flags1 & DF_1_NODELETE) {
+2408: static struct dso *find_library_by_name(const char *name, const ns_t *ns, bool check_inherited)
+2409: {
+2410: 	LD_LOGD("find_library_by_name name:%{public}s, ns_name:%{public}s, check_inherited:%{public}d",
+2411: 		name,
+2412: 		ns ? ns->ns_name : "NULL",
+2413: 		!!check_inherited);
+2414: 	struct dso *p = search_dso_by_name(name, ns);
+2415: 	if (p) return p;
+2416: 	if (check_inherited && ns->ns_inherits) {
+2417: 		for (size_t i = 0; i < ns->ns_inherits->num; i++) {
+2418: 			ns_inherit * inherit = ns->ns_inherits->inherits[i];
+2419: 			p = search_dso_by_name(name, inherit->inherited_ns);
+2420: 			if (p && is_sharable(inherit, name)) {
+2421: 			    if (app_has_same_name_so(name, ns) != -1) {
+2422: 			        return NULL;
+2423: 			    }
+2424: 			    return p;
+2425: 			}
+2426: 		}
+2427: 	}
+2428: 	return NULL;
+2429: }
+2430: /* Find loaded so by file stat */
+2431: UT_STATIC struct dso *find_library_by_fstat(const struct stat *st, const ns_t *ns, bool check_inherited, uint64_t file_offset) {
+2432: 	LD_LOGD("find_library_by_fstat ns_name:%{public}s, check_inherited :%{public}d",
+2433: 		ns ? ns->ns_name : "NULL",
+2434: 		!!check_inherited);
+2435: 	struct dso *p = search_dso_by_fstat(st, ns, file_offset);
+2436: 	if (p) return p;
+2437: 	if (check_inherited && ns->ns_inherits) {
+2438: 		for (size_t i = 0; i < ns->ns_inherits->num; i++) {
+2439: 			ns_inherit *inherit = ns->ns_inherits->inherits[i];
+2440: 			p = search_dso_by_fstat(st, inherit->inherited_ns, file_offset);
+2441: 			if (p && is_sharable(inherit, p->shortname)) return p;
+2442: 		}
+2443: 	}
+2444: 	return NULL;
+2445: }
+2446: 
+2447: #ifndef LOAD_ORDER_RANDOMIZATION
+2448: /* add namespace function */
+2668: {
+2669: 	size_t i, cnt=0;
+2670: 
+2671: 	if (p->deps) return;
+2672: 	/* For head, all preloads are direct pseudo-dependencies.
+2673: 	 * Count and include them now to avoid realloc later. */
+2674: 	if (p==head) for (struct dso *q=p->next; q; q=q->next)
+2675: 		cnt++;
+2676: 	for (i=0; p->dynv[i]; i+=2) {
+2677: 		if ((p->dynv[i] == DT_NEEDED) || (p->dynv[i] == DT_WEAK_LIBRARY)) {
+2678: 			cnt++;
+2679: 		}
+2680: 	}
+2681: 	/* Use builtin buffer for apps with no external deps, to
+2682: 	 * preserve property of no runtime failure paths. */
+2683: 	p->deps = (p==head && cnt<2) ? builtin_deps :
+2684: 		calloc(cnt+1, sizeof *p->deps);
+2685: 	if (!p->deps) {
+2686: 		error("Error loading dependencies for %s", p->name);
+2687: 		if (runtime) longjmp(*rtld_fail, 1);
+2688: 	}
+2689: 	cnt=0;
+2690: 	if (p==head) for (struct dso *q=p->next; q; q=q->next)
+2691: 		p->deps[cnt++] = q;
+2692: 	for (i=0; p->dynv[i]; i+=2) {
+2693: 		if ((p->dynv[i] != DT_NEEDED) && (p->dynv[i] != DT_WEAK_LIBRARY)) {
+2694: 			continue;
+2695: 		}
+2696: 		struct dso *dep = load_library(p->strings + p->dynv[i + 1], p, namespace, true, reserved_params);
+2697: 		LD_LOGD("loading shared library %{public}s: (needed by %{public}s)", p->strings + p->dynv[i+1], p->name);
+2698: 		if (!dep) {
+2699: 			if (p->dynv[i] != DT_WEAK_LIBRARY) {
+2700: 				error("Error loading shared library %s: %m (needed by %s)",
+2701: 					p->strings + p->dynv[i+1], p->name);
+2702: 				if (runtime) {
+2703: 					longjmp(*rtld_fail, 1);
+2704: 				}
+2705: 			}
+2706: 			continue;
+2707: 		}
+2708: 		p->deps[cnt++] = dep;
+2709: 	}
+2710: 	p->deps[cnt] = 0;
+2711: 	p->ndeps_direct = cnt;
+2712: 	for (i = 0; i < p->ndeps_direct; i++) {
+2713: 		add_dso_parent(p->deps[i], p);
+2714: 	}
+2715: }
+4662: 	if (!p->relocated || (mode & RTLD_GLOBAL)) {
+4663: 		/* Make new symbols global, at least temporarily, so we can do
+4664: 		 * relocations. If not RTLD_GLOBAL, this is reverted below. */
+4665: 		add_syms(p);
+4666: 		/* Set is_reloc_head_so_dep to true for all direct and indirect dependent sos of p, including p self. */
+4667: 		p->is_reloc_head_so_dep = true;
+4668: 		for (i = 0; p->deps[i]; i++) {
+4669: 			p->deps[i]->is_reloc_head_so_dep = true;
+4670: 			add_syms(p->deps[i]);
+4671: 		}
+4672: 	}
+4673: 	struct dso *reloc_head_so = p;
+4674: 	trace_marker_begin(HITRACE_TAG_MUSL, "linking: entry so", p->name);
+4675: 	clock_gettime(CLOCK_MONOTONIC, &time_start);
+4676: 	if (!p->relocated) {
+4677: 		reloc_all(p, extinfo);
+4678: 	}
+4679: 	clock_gettime(CLOCK_MONOTONIC, &time_end);
+4680: 	dlopen_cost.reloc_time = (time_end.tv_sec - time_start.tv_sec) * CLOCK_SECOND_TO_MILLI
+4681: 		+ (time_end.tv_nsec - time_start.tv_nsec) / CLOCK_NANO_TO_MILLI;
+4682: 	trace_marker_end(HITRACE_TAG_MUSL);
+4683: 	reloc_head_so->is_reloc_head_so_dep = false;
+4684: 	for (size_t i = 0; reloc_head_so->deps[i]; i++) {
+4685: 		reloc_head_so->deps[i]->is_reloc_head_so_dep = false;
+4686: 	}
+4687: 
+4688: 	/* If RTLD_GLOBAL was not specified, undo any new additions
+4689: 	 * to the global symbol table. This is a nop if the library was
+4690: 	 * previously loaded and already global. */
+4691: 	if (!(mode & RTLD_GLOBAL))
+4692: 		revert_syms(orig_syms_tail);
+4693: 
