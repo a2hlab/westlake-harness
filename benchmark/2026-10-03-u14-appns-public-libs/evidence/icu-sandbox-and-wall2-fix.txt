@@ -1,0 +1,49 @@
+# (1) Where the Android app's /system/usr/icu comes from, and who reads it.
+
+## Provenance
+- /system/usr/icu is part of the OHOS base app sandbox (OH mounts /system/usr read-only into every spawned app). Our
+  appspawn-x config does not remove it. Proven visible inside the toutiao app sandbox by the crash itself: brk_open's
+  scandir("/system/usr/icu") SUCCEEDED and selected version 74 (the fault is the later dlsym/call, not scandir).
+- Our Android-app ICU is provided separately: appspawn_x.cfg sets ICU_DATA="/system/android/etc/icu" (icudt72l.dat),
+  and the payload ships /system/android/lib64/libicuuc.so + libicui18n.so (ICU 72). So the app has BOTH an ICU-72 data
+  dir (/system/android/etc/icu, ours) and an ICU-74 data dir (/system/usr/icu, OH's). tttext hard-codes /system/usr/icu
+  -> picks 74 -> mismatches our _72 libs.
+- Board facts (outer, read-only 61b): /system/usr/icu = icudt74l.dat; /system/usr/ohos_icu = icudt72l.dat;
+  /system/android/etc/icu = icudt72l.dat.
+
+## Who else reads /system/usr/icu
+- OUR deployed Android payload libs: NONE (open-site scan of bundle-v3/native/payload/**/*.so for "/system/usr/icu"
+  returned nothing). So a per-APP sandbox remap of /system/usr/icu does not disturb our Android payload.
+- OH platform libs (/system/lib64 on the board, not in our payload, not scannable locally): OH's own ICU consumers use
+  /system/usr/icu (ICU 74). A GLOBAL change to /system/usr/icu would break OH components -> any remap must be
+  PER-APP (inside the Android app sandbox only), never global.
+
+# (2) Wall-2 minimal fix options + assessment (version mismatch: tttext wants _74, our Android ICU is _72)
+
+## a) Per-app sandbox: make /system/usr/icu (as seen by the Android app) point at an icudt72l.dat dir
+   WHERE: the appspawn-x Android-app sandbox mount config (bind-mount /system/android/etc/icu, or /system/usr/ohos_icu,
+          over /system/usr/icu for the android app domain only).
+   EFFECT: tttext scandir finds icudt72l -> builds _72 -> matches our libs. No new lib copy (data-dir remap only).
+   RISK: must be PER-APP (OH platform in other processes still needs /system/usr/icu=74). Does not help any app that
+         hard-codes an expectation of ICU 74 behaviour (none seen). Lowest-risk, smallest blast radius. RECOMMENDED.
+   DOUBLE-COPY: none (it is a bind-mount of a data directory, not a library load).
+
+## b) Add _74 alias exports to our Android libicuuc.so / libicui18n.so
+   WHERE: rebuild the deployed ICU libs with an alias cohort (ubrk_open_74 -> ubrk_open_72 impl, etc.) or
+          U_DISABLE_RENAMING + a _74 alias map.
+   EFFECT: dlsym("ubrk_open_74") resolves to the _72 implementation.
+   RISK: ICU-72 code answering as ICU-74 -- safe only where the C ABI tttext uses (ubrk_*, u_charType, ...) is
+         unchanged 72->74 (it is stable for these, but this is a blanket promise across whatever tttext dlsyms).
+         Also must keep the _72 cohort (our own runtime binds _72) -> the lib exports BOTH -> larger symbol table but
+         ONE library (no second copy). More invasive than (a); touches a shared artifact used by the whole runtime.
+   DOUBLE-COPY: none (same single lib, extra alias symbols).
+
+## c) Other
+   c1) Ship ICU-74 Android libs matching OH (rebuild libicuuc/libicui18n at 74 + icudt74l under /system/android/etc/icu):
+       aligns everything to 74, but is a full ICU version bump of the Android side (re-binds our runtime's _72 cohort to
+       _74 -> ripples through westlake_icu_overrides.cpp kExpectedSuffix "_72" and the whole bind cohort). Biggest blast
+       radius. Not minimal.
+   c2) Point tttext at /system/android/etc/icu: not possible without modifying the apk (path is hard-coded) -- rejected
+       (we do not patch apps).
+   RECOMMENDATION: (a) per-app sandbox data-dir remap is the minimal, lowest-risk Wall-2 fix; (b) is the fallback if a
+   per-app /system/usr/icu remap is not expressible in the sandbox config.

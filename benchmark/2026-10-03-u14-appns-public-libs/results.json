@@ -1,0 +1,44 @@
+{
+  "task": "U14 app-ns public libraries + toutiao ICU wall-2. Locate where /system/usr/icu comes from and who reads it; minimal fix for the ICU 74-vs-72 mismatch; patch the app-ns to expose AOSP public libs; predict by first-fatal.",
+  "date": "2026-10-03",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "board_writes": 0,
+  "corrections_to_prior": {
+    "wall2_mechanism": "NOT 'unversioned dlsym'. brk_open scandir()s /system/usr/icu, atoi()s the icudt<N> version (>=44), %s%s-builds a SUFFIXED symbol. 61b /system/usr/icu = icudt74l (ICU 74) -> tttext wants ubrk_open_74; our Android ICU exports only _72 -> dlsym null -> crash. A VERSION MISMATCH. (evidence/brk_open-versiondetect.txt)",
+    "wall1_fix_location": "NOT app_native_loader.c/libapp_native_loader.so (forwards only; host op ABI v1 has no app_shared_sonames). The app ns visible libs are set in the stock host westlake_stock_host_main.c StockCreateConfiguredNamespaces: dlns_inherit(app, bridge, bridge_shared_sonames). (evidence/appns-inherit-mechanism.txt)"
+  },
+  "appns_mechanism": "app ns = dlns_create2(LOCAL_NS_PREFERED) + separated + permitted(app_permitted_paths) + dlns_inherit(app, bridge, bridge_shared_sonames). bridge = dlns_create2(CREATE_INHERIT_DEFAULT) + separated + permitted(/system/android/lib64) + allowed_libs(bridge_shared_sonames). The app sees from the bridge exactly bridge_shared_sonames; the bridge resolves them from DEFAULT (platform) + /system/android/lib64. So missing public sonames = ENOENT; adding them to the inherit SHARES the single platform/bridge copy (no double copy).",
+  "icu_sandbox": {
+    "system_usr_icu": "OHOS base app sandbox mount (OH mounts /system/usr into every app); our config does not remove it. Visible in the toutiao sandbox (proven: scandir succeeded, picked 74).",
+    "our_android_icu": "appspawn_x.cfg ICU_DATA=/system/android/etc/icu (icudt72l); payload ships ICU-72 libicuuc/libicui18n",
+    "board_facts_outer_readonly_61b": {"/system/usr/icu": "icudt74l.dat (ICU 74)", "/system/usr/ohos_icu": "icudt72l.dat", "/system/android/etc/icu": "icudt72l.dat"},
+    "who_reads_system_usr_icu": "our Android payload libs: NONE (open-site scan). OH platform libs (/system/lib64, not scannable locally) use it (ICU 74) -> any remap MUST be per-app, never global."
+  },
+  "wall2_fix": {
+    "a_recommended": "per-app sandbox bind-mount an icudt72l dir over /system/usr/icu for the Android app domain only -> tttext finds 72 -> _72 matches. Blast radius minimal, per-app, data-dir only. Double-copy: none.",
+    "b_fallback": "add _74 alias exports to Android libicuuc/libicui18n (alias -> _72 impls). One lib, no second copy; safe for the stable C ABI tttext uses; touches a shared artifact.",
+    "c": "bump Android ICU to 74 (biggest blast radius, re-binds runtime _72 cohort) or repoint tttext (needs apk edit -- rejected). Not minimal.",
+    "recommendation": "a (per-app /system/usr/icu remap); b as fallback"
+  },
+  "wall1_fix": {
+    "patch": "recipe/win-u14-appns-public-libs.patch",
+    "target_file": "bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c (StockCreateConfiguredNamespaces, dlns_inherit site line 217)",
+    "change": "augment the app<->bridge dlns_inherit list with libicui18n.so:libicuuc.so:libGLESv2.so:libGLESv3.so:libvulkan.so:libjnigraphics.so (AOSP public.libraries.android.txt). Bridge allowed_libs unchanged.",
+    "excluded": "libandroidio.so, libjavacore.so (not public; ART-internal; exposing risks double-loading ART internals)",
+    "double_copy": "none -- dlns_inherit shares the bridge's copy, bridge inherits the single DEFAULT-ns platform copy. The wrong fix (app_search_paths += /system/android/lib64) WOULD double-copy ICU.",
+    "byte_repro_target_correction": "dispatch said reproduce libapp_native_loader.so (N10b); that lib holds no soname list. Correct target = the stock-host artifact (stock_child_plugin/appspawn-x host providing StockCreateConfiguredNamespaces). Also pin the per-app populator of config.bridge_shared_sonames (native_loader_registry.cpp; in-source default {\"libc.so\",\"liblog.so\"})."
+  },
+  "prediction_by_first_fatal": {
+    "toutiao": "needs Wall 1 (libicui18n visibility) AND Wall 2 (ICU 74<->72); neither alone lights it",
+    "fd-stk": "Wall 1 (libGLESv2 via libSDL2)",
+    "subwaysurfers": "Wall 1 (libGLESv3 via libvkquality)",
+    "flutter_cohort": "fd-fluffychat/fd-immich/fd-kitchenowl/fd-saber/localsend: first-fatal is GetLongField/AAssetManager (U13 18763dd4); Wall 1 is their SECOND wall (no Vulkan/GLES) after that fix",
+    "x": "GLESv2 present but UnsatisfiedLinkError may be caught; white root unconfirmed"
+  },
+  "honest_status": "The patch applies against current westlake_stock_host_main.c (context verified, line 217). The byte-faithful reproduce + U14 native candidate BUILD was NOT run this turn: the dispatch's repro target (libapp_native_loader.so) is the wrong artifact; the correct stock-host target + its N10b recipe must be confirmed before building. That build is the next concrete step. No board writes.",
+  "boundaries": ["offline; no board writes; board ICU facts are the outer's read-only reads", "patch is for the runtime/appspawn owners; static triage + candidate patch only", "sources read read-only: westlake-harness-bms, vm-copies/apks-77, westlake-harness-u7-executor"],
+  "files": ["README.md", "evidence/brk_open-versiondetect.txt", "evidence/appns-inherit-mechanism.txt", "evidence/icu-sandbox-and-wall2-fix.txt", "recipe/win-u14-appns-public-libs.patch", "results.json", "landing-paths.txt"]
+}

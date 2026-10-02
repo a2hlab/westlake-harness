@@ -1,0 +1,41 @@
+# Wall 1 fix location (CORRECTS the dispatch's "patch app_native_loader.c"): the app ns's visible libs are set by
+# dlns_inherit(app, bridge, bridge_shared_sonames) in the STOCK HOST, not in app_native_loader.c.
+
+## The call chain
+app_native_loader.c (ANL_Configure) -> g_runtime_gate.namespace_host_ops.create_configured_namespaces(...)
+  -- app_native_loader.c only FORWARDS app_search_paths/app_permitted_paths + the bridge config; the host op signature
+     (app_native_loader.h AnlCreateConfiguredNamespacesV1, ABI v1) has NO app_shared_sonames parameter.
+The host op is registered at westlake_stock_host_main.c:424 (services.create_configured_namespaces = StockCreate...).
+
+## StockCreateConfiguredNamespaces (westlake_stock_host_main.c ~140-225) -- the actual ns build
+  bridge: dlns_create2(bridge, bridge_search_paths, CREATE_INHERIT_DEFAULT)   # bridge inherits the platform/default ns
+          dlns_set_namespace_separated(bridge, true)
+          dlns_set_namespace_permitted_paths(bridge, bridge_permitted_paths)  # e.g. /system/android/lib64
+          dlns_set_namespace_allowed_libs(bridge, bridge_shared_sonames)
+  app:    dlns_create2(app, app_search_paths, LOCAL_NS_PREFERED)              # the apk's own lib dir
+          dlns_set_namespace_separated(app, true)
+          dlns_set_namespace_permitted_paths(app, app_permitted_paths)
+          dlns_inherit(app, bridge, bridge_shared_sonames)   <-- THE APP SEES FROM THE BRIDGE EXACTLY THESE SONAMES
+
+## Consequence
+The app namespace can name a bridge lib by soname ONLY if that soname is in bridge_shared_sonames. The bridge itself
+inherits DEFAULT (CREATE_INHERIT_DEFAULT) and has /system/android/lib64 permitted, so it can resolve both our Android
+libs (/system/android/lib64) and platform libs (/system/lib64) -- but it re-exports to the app only the
+bridge_shared_sonames set. So:
+ - libicuuc.so is reachable from the app => it is already in bridge_shared_sonames (or pulled as a NEEDED of a listed
+   lib); libicui18n.so is NOT in the list => ENOENT. Same for libGLESv2/v3/libvulkan/libjnigraphics.
+ - FIX = add the missing AOSP public sonames to bridge_shared_sonames. Because dlns_inherit SHARES the bridge's
+   already-resolved copy (the bridge inherits the single DEFAULT-ns copy), this adds NO second copy.
+
+## bridge_shared_sonames value is assembled upstream (NOT in libapp_native_loader.so)
+native_loader_registry.cpp joins config.bridge_shared_sonames (a vector<string>) into the C string passed down. So the
+byte-reproduce + patch target for the soname list is the component that OWNS that list (native-loader-oh / the stock
+host plugin / its per-app config populator), NOT libapp_native_loader.so -- which only forwards app paths and contains
+no soname list. (Pinning the exact per-app populator of config.bridge_shared_sonames is the prerequisite for the U14
+native candidate build; the default seen in source is config.bridge_shared_sonames = {"libc.so","liblog.so"}.)
+
+## Do NOT add libandroidio.so / libjavacore.so
+Not in AOSP public.libraries.android.txt; ART/runtime-internal. Exposing them to the app ns risks double-loading ART
+internals. Keep the added set to the AOSP public libs only:
+  libicui18n.so libicuuc.so libGLESv2.so libGLESv3.so libvulkan.so libjnigraphics.so
+(libicuuc already works; include it for completeness/robustness since it is only transitively reachable today.)

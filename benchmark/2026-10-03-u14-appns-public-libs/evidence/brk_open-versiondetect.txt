@@ -1,0 +1,51 @@
+# CORRECTION to 2026-10-03-toutiao-icu-wall step 3: tttext does NOT dlsym unversioned names. brk_open DETECTS the
+# ICU version from /system/usr/icu and builds a SUFFIXED symbol name. Wall 2 = version MISMATCH (OH 74 vs our 72).
+# libtttext_lite.so _ZN8ttoffice6tttext8brk_openE... @ 0x1aa80. Imports: scandir, alphasort, atoi, __strlen_chk, __vsnprintf_chk.
+# Strings: "/system/usr/icu", "icudt", "l.dat", "%s%s" (base-name + detected-suffix -> dlsym name).
+
+## version-detect loop (scandir /system/usr/icu -> atoi(d_name+strlen("icudt")) -> max version):
+
+Disassembly of section .text:
+
+000000000001aa80 <_ZN8ttoffice6tttext8brk_openE18UBreakIteratorTypePKcPKDsiP10UErrorCode>:
+   1ac10: d0000123     	adrp	x3, 0x40000
+   1ac14: f0ffff80     	adrp	x0, 0xd000
+   1ac18: 90000002     	adrp	x2, 0x1a000 <_ZN8ttoffice6tttext14TTTextJNIProxy16GetCurrentJNIEnvEv+0x48>
+   1ac1c: f90007e8     	str	x8, [sp, #0x8]
+   1ac20: f90003ff     	str	xzr, [sp]
+   1ac24: f945ec63     	ldr	x3, [x3, #0xbd8]
+   1ac28: 91302c00     	add	x0, x0, #0xc0b
+   1ac2c: 9138c042     	add	x2, x2, #0xe30
+   1ac30: 910003e1     	mov	x1, sp
+   1ac34: 94008daf     	bl	0x3e2f0 <scandir@plt>
+   1ac38: f94003e8     	ldr	x8, [sp]
+   1ac3c: b40007a8     	cbz	x8, 0x1ad30 <_ZN8ttoffice6tttext8brk_openE18UBreakIteratorTypePKcPKDsiP10UErrorCode+0x2b0>
+   1ac40: 34000740     	cbz	w0, 0x1ad28 <_ZN8ttoffice6tttext8brk_openE18UBreakIteratorTypePKcPKDsiP10UErrorCode+0x2a8>
+   1ac44: 93407c09     	sxtw	x9, w0
+   1ac48: f0ffff94     	adrp	x20, 0xd000
+   1ac4c: 12800013     	mov	w19, #-0x1              // =-1
+   1ac50: d1000536     	sub	x22, x9, #0x1
+   1ac54: 91398a94     	add	x20, x20, #0xe62
+   1ac58: d37df2d7     	lsl	x23, x22, #3
+   1ac5c: f8776918     	ldr	x24, [x8, x23]
+   1ac60: 528000c1     	mov	w1, #0x6                // =6
+   1ac64: aa1403e0     	mov	x0, x20
+   1ac68: 94008da6     	bl	0x3e300 <__strlen_chk@plt>
+   1ac6c: 8b000308     	add	x8, x24, x0
+   1ac70: 91004d00     	add	x0, x8, #0x13
+   1ac74: 94008da7     	bl	0x3e310 <atoi@plt>
+   1ac78: f94003e8     	ldr	x8, [sp]
+   1ac7c: 6b13001f     	cmp	w0, w19
+   1ac80: 7a40c804     	ccmp	w0, #0x0, #0x4, gt
+   1ac84: 1a931013     	csel	w19, w0, w19, ne
+   1ac88: f8776908     	ldr	x8, [x8, x23]
+   1ac8c: aa0803e0     	mov	x0, x8
+   1ac90: 94008ccc     	bl	0x3dfc0 <free@plt>
+   1ac94: b4000096     	cbz	x22, 0x1aca4 <_ZN8ttoffice6tttext8brk_openE18UBreakIteratorTypePKcPKDsiP10UErrorCode+0x224>
+
+## board fact (outer, read-only 61b): /system/usr/icu = icudt74l.dat (ICU 74);
+## /system/usr/ohos_icu and /system/android/etc/icu = icudt72l.dat (ICU 72).
+## => tttext scandir /system/usr/icu -> 74 -> builds e.g. 'ubrk_open' + '_74' = 'ubrk_open_74';
+## our deployed Android libicuuc.so exports only *_72 -> dlsym returns null -> the ICUWrapper blr-0 crash.
+## Proof the app sandbox DOES see /system/usr/icu: the scandir succeeded and selected 74 (the crash is at the
+## later dlsym/call, not at scandir).
