@@ -1,0 +1,40 @@
+{
+  "task": "Build U13 runtime v2 = 18763dd4 + ImageDecoder.nGetColorSpace->sRGB, gated on two gaps",
+  "date": "2026-10-02",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_deploy": false,
+  "outcome": "STOPPED at Gap 1 — v2 NOT built; no runtime artifact produced",
+  "gap1_decode_path": {
+    "question": "is the crashing source bitmap decoded via ImageDecoder (nGetColorSpace on path) or BitmapFactory",
+    "answer": "BitmapFactory (resource bitmap), NOT ImageDecoder",
+    "evidence": {
+      "decompile": "df.j.<init>: createScaledBitmap( ((BitmapDrawable) getDrawable(2131231018)).getBitmap(), ...) -- 2131231018=drawable/ic_headset_padded, 2131231017=drawable/ic_headset (placeholder icons)",
+      "cast": "getDrawable(resId) cast to BitmapDrawable with no ClassCastException -> raster resource -> Resources -> BitmapFactory.decodeResourceStream",
+      "album_cover_path_is_different": "ContentResolver.loadThumbnail (<- Lg5/d;->a) and ImageDecoder.decodeBitmap (<- Ll9/f;->c) exist but are a separate non-crashing path"
+    },
+    "real_null_source": {
+      "mechanism": "createBitmap(source,..):956 cs=source.getColorSpace(); getColorSpace():1871 mColorSpace==null -> nativeComputeColorSpace(:2466); returns null -> createBitmap:1203 throws",
+      "native_lib": "Bitmap::nativeComputeColorSpace -> libhwui pageOff=0xb10 (confirmed in fd-musicplayer OH_RegHook)",
+      "aosp_source": "westlake-inputs/aosp-14.0.0_r1-src/.../graphics/Bitmap.java:956/1871/1874/1203/2466"
+    },
+    "ngetcolorspace_status": "ImageDecoder.nGetColorSpace registered twice (libhwui 0xd4 then runtime compat_shim stub 0xb60 which wins and returns null) -- on the ImageDecoder path only, NOT this resource/BitmapFactory crash"
+  },
+  "gap2_register_order": "NOT REACHED (Gap 1 stops the build); would only matter for the alternative below",
+  "decision": "nGetColorSpace->sRGB targets a method not on fd-musicplayer's path -> would not move the first fatal -> STOP per dispatch '若是 BitmapFactory -> 该修法无效、停'. U13 runtime stays 18763dd4.",
+  "real_layer": "Bitmap.nativeComputeColorSpace in libhwui (be59260f); libhwui has no reproducible frozen source (DIGEST 610, cx-bms deferred) -> root-layer fix blocked, same as fd-plus nativeLockCanvas",
+  "on_path_alternative_proposal_not_built": {
+    "idea": "override Bitmap.nativeComputeColorSpace in compat_shim (as nGetColorSpace already is) to return ColorSpace.get(Named.SRGB) when libhwui would return null",
+    "on_path": true,
+    "why_not_this_round": [
+      "needs to call through to the real libhwui nativeComputeColorSpace (dlsym) and default to sRGB only on null, so genuine non-sRGB spaces are preserved",
+      "unconditional sRGB changes reported color space for every bitmap -- broader behavior change needing review",
+      "Gap 2 (ColorSpace registers before Bitmap, verified in deployed binary) must then be confirmed since it constructs a ColorSpace"
+    ],
+    "recommendation": "outer decides: pursue nativeComputeColorSpace override (new scope) or defer fd-musicplayer with fd-plus until libhwui has reproducible source"
+  },
+  "flutter_three_unchanged": "the three Flutter keys ride the unchanged 18763dd4; nothing new needed for them",
+  "this_round_rule": "close the fix-invalidating gap before building; a one-read decompile of the actual crash frame (df.j.<init>) distinguished placeholder resource icon from album cover and flipped BUILD into STOP; the authorized method (nGetColorSpace) was not the one producing the null (nativeComputeColorSpace, libhwui, resource/BitmapFactory path)",
+  "files": ["README.md", "evidence/decode-path.txt", "results.json", "documentation.json"]
+}

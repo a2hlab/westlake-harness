@@ -1,0 +1,46 @@
+# fd-musicplayer decode-path investigation (Gap 1) -> the null color space is NOT on the ImageDecoder path
+# Conclusion: the nGetColorSpace -> sRGB fix does NOT fix fd-musicplayer. STOP (do not build v2).
+
+## The crash site is a RESOURCE bitmap, not an album cover (androguard decompile of df.j.<init>)
+Ldf/j;-><init>(ArrayList, ge.j, MyRecyclerView, zc.l):
+    v5_2 = v3_2.getDrawable(2131231018);                              // R.drawable.ic_headset_padded (a drawable resource)
+    createScaledBitmap( ((BitmapDrawable) v5_2).getBitmap(), dim, dim, 0 );   // <-- THE CRASH (Bitmap.java:831/979/1203)
+    ...
+    v6_7 = v3_4.getDrawable(2131231017);                             // R.drawable.ic_headset
+    createScaledBitmap( ((BitmapDrawable) v6_7).getBitmap(), dim, dim, 0 );
+Resource ids (androguard): 2131231018=drawable/ic_headset_padded, 2131231017=drawable/ic_headset.
+The result of getDrawable(resId) is cast to BitmapDrawable (no ClassCastException in the stack), so each resolves to a
+BitmapDrawable -> a RASTER resource. Raster resource drawables decode via Resources -> Drawable.createFromResourceStream
+-> BitmapFactory.decodeResourceStream (BitmapFactory), NOT ImageDecoder. The album-cover ImageDecoder path
+(ContentResolver.loadThumbnail <- Lg5/d;->a; ImageDecoder.decodeBitmap <- Ll9/f;->c) is a DIFFERENT, non-crashing path.
+
+## Where the null color space actually comes from -- Bitmap.nativeComputeColorSpace (libhwui), proven from AOSP 14 source
+westlake-inputs/aosp-14.0.0_r1-src/.../graphics/Bitmap.java:
+  :956   ColorSpace cs = source.getColorSpace();                 // createBitmap(source,...) reads the source's cs
+  :1871  public final ColorSpace getColorSpace() { ... :1873 if (mColorSpace == null) {
+  :1874     mColorSpace = nativeComputeColorSpace(mNativePtr); } return mColorSpace; }
+  :2466  private static native ColorSpace nativeComputeColorSpace(long nativePtr);
+  :1203  if (colorSpace == null && config != Config.ALPHA_8) throw new IllegalArgumentException(
+            "can't create bitmap without a color space");
+So a BitmapFactory-decoded bitmap starts with mColorSpace=null (lazy) and getColorSpace() calls nativeComputeColorSpace.
+For the ic_headset resource bitmap that returns null -> cs=null -> Bitmap.java:1203 throws.
+
+## Native registration libs (fd-musicplayer hilog OH_RegHook) -- which impl actually runs
+  Bitmap::nativeComputeColorSpace(J)     -> lib=/system/android/lib64/libhwui.so  pageOff=0xb10   <-- THIS returns null
+  Bitmap::nativeCreate(...)              -> lib=/system/android/lib64/libhwui.so
+  BitmapFactory::nativeDecodeStream(...) -> lib=/system/android/lib64/libhwui.so                   (real decode)
+  BitmapFactory::nativeDecodeByteArray   -> lib=/system/android/lib64/libhwui.so
+  ImageDecoder::nCreate / nDecodeBitmap  -> lib=/system/android/lib64/libhwui.so                   (real)
+  ImageDecoder::nGetColorSpace(J)        -> registered TWICE: libhwui (0xd4) THEN liboh_android_runtime (0xb60);
+                                            the runtime compat_shim stub (ID_nGetColorSpace -> null) wins, but it is
+                                            on the ImageDecoder path ONLY -- not on this resource/BitmapFactory crash.
+
+## Verdict
+fd-musicplayer's null color space = Bitmap.nativeComputeColorSpace in libhwui (be59260f) returning null for a
+resource bitmap. ImageDecoder.nGetColorSpace (the method the authorized v2 fix changes) is on a different, non-crashing
+path. Therefore the nGetColorSpace -> sRGB change would NOT move fd-musicplayer's first fatal. Per the dispatch
+("若是 BitmapFactory -> 该修法无效、停"), STOP: do not build U13 runtime v2 with that change.
+
+## libhwui is the real layer, and it is blocked
+nativeComputeColorSpace is in libhwui; libhwui be59260f has no reproducible frozen source (DIGEST 610; cx-bms deferred
+libhwui). So the root-layer fix is blocked, same as fd-plus's nativeLockCanvas.
