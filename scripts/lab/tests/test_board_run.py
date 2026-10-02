@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """board_run: the dispatch text carries every fixed rule; a plan missing a field or reusing an output dir is refused."""
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -93,6 +94,16 @@ class BoardRun(unittest.TestCase):
         # rc=1 with no record written at all -> cannot confirm wrap-up -> stop.
         self.shard_rc1({}, expected_batches=1, expected_return=1)
 
+    def test_window4_real_shard_is_wrapped(self):
+        workspaces = Path(os.environ.get('WORKSPACES', Path.home() / 'orca/workspaces'))
+        window = workspaces / 'westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window4'
+        sout = window / 'u101-t8-A4-20261002T080900/61b/runner/lit-cv2'
+        if not sout.is_dir():
+            self.skipTest('window4 real evidence directory is unavailable')
+        keys = (window / '61b-lit-cv2.txt').read_text().split()
+        self.assertEqual(keys, ['cv2-eu-dfdx-jslab'])
+        self.assertTrue(board_run.shard_all_wrapped(sout, keys))
+
     def test_successful_shard_continues_next_shard(self):
         self.shard_exit(0, expected_batches=2)
 
@@ -140,7 +151,7 @@ class BoardRun(unittest.TestCase):
             self.assertLess(restore, unlock)
 
     def shard_rc1(self, records, expected_batches, expected_return):
-        """First shard exits 1 after writing `records` ({key: status}) into <sout>/<serial>/<key>/record.json;
+        """First shard exits 1 after writing `records` into <sout>/<run_id>/<serial>/<key>/record.json;
         board_run continues iff every requested key wrapped up, else stops. Always a clean rollback+unlock."""
         calls = []
         with tempfile.TemporaryDirectory() as d:
@@ -159,7 +170,7 @@ class BoardRun(unittest.TestCase):
                     if count == 1:  # first shard: write records then exit 1 (the all-captured-only gate)
                         sout = Path(argv[argv.index('--out') + 1])
                         for key, status in records.items():
-                            rec = sout / plan['serial'] / key / 'record.json'
+                            rec = sout / 'test-run' / plan['serial'] / key / 'record.json'
                             rec.parent.mkdir(parents=True, exist_ok=True)
                             rec.write_text(json.dumps({'status': status}))
                         return subprocess.CompletedProcess(argv, 1)

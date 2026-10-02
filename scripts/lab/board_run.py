@@ -164,7 +164,8 @@ def shard_all_wrapped(sout, keylist):
 
     A missing record, a 'started'/'batch_interrupted' status, or an unreadable/unknown status means the shard did
     not finish on its own -> the board must still stop (return False)."""
-    records = sorted(Path(sout).glob('*/*/record.json'))
+    # bms_batch writes <sout>/<run_id>/<serial>/<key>/record.json.
+    records = sorted(Path(sout).glob('*/*/*/record.json'))
     if not records:
         return False
     seen = set()
