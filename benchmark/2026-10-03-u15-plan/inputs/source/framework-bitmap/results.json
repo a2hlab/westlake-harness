@@ -1,0 +1,61 @@
+{
+  "task": "U15 JAR #1: fix the Bitmap null-ColorSpace wall in framework.jar Bitmap.getColorSpace() (NOT libhwui, per DIGEST 613). baksmali one method -> 2-pass byte-identical -> deployed_class_diff vs 3e106350 -> hw248 host re-bake + behavioral test. Persist + landing.",
+  "date": "2026-10-03",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_access": "none (Mac build + hw248 host dex2oat/ART; no board, no a2hlab)",
+
+  "frozen_gate": {
+    "result": "PASS - framework.jar NOT frozen",
+    "detail": "frozen.json FZ-001..008 cover native libs, oh-adapter-runtime.jar (FZ-004/006), adapter-mainline-stubs.jar BCP classes (FZ-007 tagsoup, FZ-008 SSLSockets), and the FZ-005 re-bake toolchain. No entry covers framework.jar or android.graphics.Bitmap/getColorSpace. Frozen BCP classes are in a different jar (adapter-mainline-stubs.jar), untouched by a Bitmap-only edit."
+  },
+
+  "fix": {
+    "layer": "framework.jar (BCP)",
+    "method": "android.graphics.Bitmap.getColorSpace()",
+    "change": "after mColorSpace = nativeComputeColorSpace(mNativePtr): if (mColorSpace==null && getConfig()!=Config.ALPHA_8) mColorSpace = ColorSpace.get(ColorSpace.Named.SRGB);",
+    "rationale": "aligns with Bitmap_isSRGB (Bitmap.cpp:930: null colorspace treated as sRGB) and real-device semantics (bitmaps always carry a colorspace). ALPHA_8 null preserved; explicit-null createBitmap guard (:1203) left intact.",
+    "registers": ".registers 3 unchanged (v0/v1/p0); all referenced members pre-exist in classes.dex",
+    "patch": "recipe/Bitmap.getColorSpace.smali.patch"
+  },
+
+  "gates": {
+    "base_framework_jar": "3e106350d882cd1f2f6d71c3cc4e9f124412d16f50a2dcb160007c34e6dde9af",
+    "bitmap_dex": "classes.dex (1 of 5)",
+    "two_pass_determinism": "classes.dex sha256 e14cb9ecfbe4e55523287f975cdec35388bbae9f0022f341356100170c06be7d (identical both passes)",
+    "roundtrip_smali_diff": "18 files differ = 1 Bitmap.smali (intended) + 17 benign static-final default-value re-encoding (= 0x0/= false dropped, semantically identical); 0 instruction/method-body changes outside Bitmap",
+    "deployed_class_diff_vs_3e106350": "29341 classes both; 0 dropped, 0 added, 0 superclass/interface change; Bitmap=(Object,[Parcelable]) unchanged. (stock tool crashes UnicodeDecodeError on this dex; reproduced its {class:(superclass,interfaces)} logic with latin-1 decode)",
+    "candidate_framework_jar": "9e55e28623c86cc553bb2449cb18948e383a05fb0283b045d969655813b7d1b7 (zip -X -0 STORED swap of classes.dex only)"
+  },
+
+  "hw248_rebake": {
+    "toolchain": "FZ-005 dex2oat64 (host linux-x86), board cmdline, compiler-filter=speed, BCP order core-oj..oh-adapter-framework",
+    "baseline_rc": 0,
+    "modified_rc": 0,
+    "elapsed_s": 7,
+    "verifier": "dex2oat ran ART class verifier (before/after_verification, ClassVerifier_Init); NO verification failure for any class incl. android.graphics.Bitmap -> new getColorSpace bytecode accepted",
+    "boot_oat_baseline": "66727177ee034cfc3064b3269bf3a5501e76714102aa2c1e8802efc242cdc426",
+    "boot_oat_u15": "832d64846718b01ec9eb5626d271ac14c438c0845d16de2d0c992bcd6dc8a59d",
+    "boot_art_u15": "4148cc751690efbbaca5bbfc58aee5df778d3db62446d45997fdf19d54bb4e6a",
+    "note": "u15 boot.oat differs from baseline (Bitmap recompiled). -Xverify:none is a runtime-arg; compile-time verification still ran (log phases)."
+  },
+
+  "behavioral_test": {
+    "status": "native-bound-infeasible on host ART",
+    "reason": "hw248 host is linux-x86 with NO libhwui.so/libandroid_runtime.so (arm64 board libs). getColorSpace's branch needs native nativeComputeColorSpace (libhwui); a source bitmap needs nativeCreate (libhwui). Same boundary u14-jar-v1 documented.",
+    "evidence_instead": ["verified bytecode (patch + dex2oat verifier acceptance)", "AOSP14 semantics: getColorSpace->nativeComputeColorSpace; createScaledBitmap->createBitmap(source) reads source.getColorSpace(); null+config!=ALPHA_8 throws at Bitmap.java:1203; fix returns sRGB so throw cannot fire", "alignment with Bitmap_isSRGB null==sRGB"],
+    "true_passfail": "requires on-board arm64 deploy of the re-baked image (deploy owner's step)"
+  },
+
+  "prediction": {
+    "privacybrowser": "favicon createScaledBitmap no longer throws; first-fatal moves past scaler; lit medium (already cleared U12 WebView wall)",
+    "fd_musicplayer": "album-cover createScaledBitmap no longer throws; adapter builds; background MediaStore$Audio$Artists NCDFE doesn't block main UI; lit medium-high",
+    "cluster": "clears C5 (2 keys); hardens any future null-colorspace scaler"
+  },
+
+  "not_folded_into_u14": "U14 is emitting pairing receipts; a framework.jar change needs its own re-bake + review. Outer decides U15 deploy.",
+  "persisted": "$WORKSPACES/westlake-inputs/generations/u15-framework-bitmap-v1/ (framework-u15.jar, classes.dex, Bitmap.getColorSpace.smali.patch, build-commands.txt, logs/, SHA256SUMS)",
+  "boundaries": ["offline build (Mac) + host re-bake (hw248); no board; no push", "on-board arm64 behavioral pass is the deploy owner's", "large binaries persisted in generations/, not committed to the public repo (recorded by path+sha)"],
+  "files": ["README.md", "evidence/frozen-gate.txt", "evidence/build-gates.txt", "evidence/hw248-rebake-and-native-boundary.txt", "recipe/Bitmap.getColorSpace.smali.patch", "results.json", "documentation.json", "landing-paths.txt"]
+}

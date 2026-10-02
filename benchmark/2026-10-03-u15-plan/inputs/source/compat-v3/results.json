@@ -1,0 +1,53 @@
+{
+ "schema": "u15-compat-v3/v1",
+ "built": false,
+ "reason": "compat is not in fd-meet's lookup scope (normal domain): model without compat reproduces the board's first-missing per library (libc++_shared android_set_abort_message), model with compat does not -> compat v3 predicts 0 first-fatal moves",
+ "fd_meet_apk": "72a89e53 org.jitsi.meet_26000002.apk",
+ "gap_set": [
+  "__register_atfork",
+  "android_set_abort_message",
+  "__assert2",
+  "__errno",
+  "strtoll_l",
+  "strtoull_l",
+  "__system_property_get",
+  "__sF",
+  "__cmsg_nxthdr",
+  "__FD_SET_chk",
+  "__FD_ISSET_chk",
+  "__FD_CLR_chk",
+  "__open_2",
+  "__gnu_strerror_r"
+ ],
+ "coverage": {
+  "native_abi_v2_f8619ad5": "14/14",
+  "compat_b8a87f6f": "5/14"
+ },
+ "replay": {
+  "normal_no_global": "reproduces board",
+  "normal_plus_compat": "does not reproduce board (libc++_shared first = __assert2)",
+  "native_domain_plus_v2": "0 LIBC missing in all 13 libs (libjsctooling JSC API aside)"
+ },
+ "scan": {
+  "runs": 326,
+  "first_fatal_keys": [
+   "fd-meet"
+  ],
+  "non_fatal_hits": {
+   "x": "__register_atfork libcrashlytics",
+   "fd-plus": "android_set_abort_message libc++_shared",
+   "ooniprobe": "__errno libjnidispatch (lit)",
+   "toutiao": "__cmsg_nxthdr, __errno"
+  }
+ },
+ "recommended_fix": {
+  "change": "add org.jitsi.meet to native_cluster_path() in libapp_native_loader (eebd62f2); uses U14 native_abi v2 GLOBAL, no new export",
+  "prediction": {
+   "fd-meet": "moves past __register_atfork (high)",
+   "others": 0
+  },
+  "build": "not done; needs outer go (faithful eebd62f2 repro + one string x2)"
+ },
+ "register_atfork": "AOSP stores dso_handle and __cxa_finalize(dso)->__unregister_atfork(dso) removes them on dlclose; route-A native_abi forwards to musl pthread_atfork and drops dso (no unregister) - safe while SoLoader never unloads",
+ "board_actions": 0
+}
