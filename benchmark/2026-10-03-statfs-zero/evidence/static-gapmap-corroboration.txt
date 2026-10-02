@@ -1,0 +1,19 @@
+This wall was statically PRE-PREDICTED. Verbatim from
+benchmark/2026-09-24-batch4-blind/maps/libretube/gap-map.json (grep -A/-B context):
+
+    "aosp_contract": "Landroid/os/storage/StorageManager; needs binder(s) ['mount'] (SystemServiceRegistry.java:709)",
+    "app_calls": [ "getCacheQuotaBytes", "getUuidForPath" ],
+    "app_evidence": "none of its natives is registered; the app calls getCacheQuotaBytes, getUuidForPath",
+    "category": "framework-natives",
+    "confidence": "static",
+    "effort": "S",
+    "id": "jni:android.os.storage.StorageManager",
+    "item": "android.os.storage.StorageManager: 1 of 1 natives unregistered",
+    "oh_touchpoint": "the JNI half of the framework class (libandroid_runtime in AOSP)"
+
+Reading: the blind static gap-map already recorded that LibreTube calls StorageManager.getCacheQuotaBytes +
+getUuidForPath and that StorageManager's binder ('mount', SystemServiceRegistry.java:709) half was missing.
+The U10.1T8 long-wait run turned that static prediction into an OBSERVED first-exception.
+
+DIGEST standing note (2026-10-03, outer 02:53) said "疑 StatFs 给 0". This deliverable corrects it:
+the 0 is StorageManager.getCacheQuotaBytes (StatFs/statvfs is genuine and works).

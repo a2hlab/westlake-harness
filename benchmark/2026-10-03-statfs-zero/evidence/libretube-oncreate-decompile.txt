@@ -1,0 +1,36 @@
+LibreTube com.github.libretube_72.apk — com.github.libretube.LibreTubeApp.onCreate()V
+Decompiled with Android SDK apkanalyzer (JDK21 JBR, SKIP_JDK_VERSION_CHECK):
+  apkanalyzer dex code --class com.github.libretube.LibreTubeApp <apk>
+The disk-cache-size chain (smali lines map to r8-map LibreTubeApp.onCreate ~line 383-420):
+
+    const-class v0, Landroid/os/storage/StorageManager;
+    invoke-virtual {p0, v0}, Landroid/content/Context;->getSystemService(Ljava/lang/Class;)Ljava/lang/Object;
+    check-cast v0, Landroid/os/storage/StorageManager;
+    invoke-static {p0}, Lcom/github/libretube/helpers/ImageHelper;->getCoilFile(...)Ljava/io/File;   # = getCacheDir()/coil
+    move-result-object v3
+    invoke-virtual {v0, v3}, Landroid/os/storage/StorageManager;->getUuidForPath(Ljava/io/File;)Ljava/util/UUID;
+    move-result-object v3
+    invoke-virtual {v0, v3}, Landroid/os/storage/StorageManager;->getCacheQuotaBytes(Ljava/util/UUID;)J   # <-- returns 0
+    move-result-wide v7
+    new-instance v0, Lcoil3/disk/DiskCache$Builder;
+    invoke-direct {v0}, Lcoil3/disk/DiskCache$Builder;-><init>()V
+    invoke-static {v0, v3}, Landroidx/work/TracerKt;->directory(Lcoil3/disk/DiskCache$Builder;Ljava/io/File;)V
+    invoke-virtual {v0, v7, v8}, Lcoil3/disk/DiskCache$Builder;->maxSizeBytes(J)V   # require(size>0) -> IllegalArgumentException "size must be > 0"
+
+getCoilFile() decompile (com.github.libretube.helpers.ImageHelper.getCoilFile):
+    invoke-virtual {p0}, Landroid/content/Context;->getCacheDir()Ljava/io/File;   # INTERNAL cacheDir, NOT filesDir
+    const-string v1, "coil"                                                       # subdir "coil"
+
+ALL storage/space APIs referenced by LibreTubeApp + ImageHelper (grep of the two smali dumps):
+    1  Landroid/os/storage/StorageManager;->getCacheQuotaBytes
+    1  Landroid/os/storage/StorageManager;->getUuidForPath
+  (NO StatFs, NO getUsableSpace, NO getFreeSpace, NO getAllocatableBytes anywhere.)
+
+CONCLUSION (corrects the dispatch premise + DIGEST "疑 StatFs 给 0"):
+  The 0 is the return value of android.os.storage.StorageManager.getCacheQuotaBytes(UUID),
+  NOT android.os.StatFs and NOT File.getUsableSpace/getFreeSpace.
+  Path argument = the app's INTERNAL getCacheDir()/coil (getUuidForPath -> UUID_DEFAULT for internal storage).
+  Observed line (U10.1T8 long-wait 5cd, run 20261003T024629, hilog L25241-25244):
+    Caused by: java.lang.IllegalArgumentException: size must be > 0.
+      at coil3.disk.DiskCache$Builder.maxSizeBytes(...:16)
+      at com.github.libretube.LibreTubeApp.onCreate(...:420)

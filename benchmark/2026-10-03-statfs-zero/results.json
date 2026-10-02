@@ -1,0 +1,77 @@
+{
+  "task": "StatFs-gives-0 potential wall: (1) which API returned 0 and on which path for fd-libretube's coil3 'size must be > 0' bind failure; (2) full U12/U13 hilog scan for the same symptom; (3) root cause (JAR vs libjavacore vs OH sandbox statvfs) + minimal fix + prediction.",
+  "date": "2026-10-03",
+  "lane": "cc-wiki",
+  "board_entry": 90,
+  "offline": true,
+  "board_access": "none",
+  "evidence_source": "U10.1T8 long-wait (master 5d45806cf5, benchmark/2026-10-03-u101t8-unbound-longwait): fd-libretube ensureBindApplication FAILED, coil3 DiskCache.Builder.maxSizeBytes 'size must be > 0'.",
+
+  "q1_which_api_and_path": {
+    "answer": "android.os.storage.StorageManager.getCacheQuotaBytes(getUuidForPath(getCacheDir()/coil)) returned 0; NOT android.os.StatFs and NOT File.getUsableSpace/getFreeSpace.",
+    "path": "the app's INTERNAL getCacheDir()/coil (ImageHelper.getCoilFile = getCacheDir() + subdir 'coil'); NOT filesDir. getUuidForPath -> StorageManager.UUID_DEFAULT for internal storage.",
+    "method": "apkanalyzer dex code --class com.github.libretube.LibreTubeApp / .helpers.ImageHelper on com.github.libretube_72.apk (fdroid100), JDK21 JBR.",
+    "chain": "getSystemService(StorageManager.class) -> getUuidForPath(cacheDir/coil) -> getCacheQuotaBytes(uuid)=0 -> DiskCache.Builder().directory(cacheDir/coil).maxSizeBytes(0) -> coil require(size>0) throws IllegalArgumentException 'size must be > 0'.",
+    "value_passed_verbatim": "the getCacheQuotaBytes long (v7/v8) is passed straight into maxSizeBytes with no arithmetic in between.",
+    "api_census": "grep of LibreTubeApp + ImageHelper smali = exactly {getCacheQuotaBytes, getUuidForPath}; NO StatFs, getUsableSpace, getFreeSpace, getAllocatableBytes.",
+    "corrects": "dispatch premise (StatFs vs getUsableSpace) AND DIGEST 2026-10-03 note '疑 StatFs 给 0'. The harness ledger recorded the free-space source as 'not identified' from the r8 stack; this decompile resolves it."
+  },
+
+  "q2_cross_key_scan": {
+    "in_scope_hits": 1,
+    "hits": [
+      {
+        "key": "fd-libretube",
+        "u_gen": "U12",
+        "board": "61b",
+        "first_fatal": true,
+        "signature": "IllegalArgumentException 'size must be > 0' -> coil3.disk.DiskCache$Builder.maxSizeBytes -> LibreTubeApp.onCreate (okio $$ExternalSyntheticBUOutline throw frame)",
+        "file_line": "westlake-harness-u7-executor/benchmark/2026-10-02-u12-final-assembly/window1/u12-A1-20261002T205732/61b/runner/lit-original/20261002T212458-d84636f5/61b0657200000000000000000324012c/fd-libretube/hilog.txt:19174,19177,19179 (bind banner :19160)",
+        "archived_copy": "westlake-inputs/generations/u12-stageA-evidence-bd08c3f7/window1/61b/runner/lit-original/20261002T212458-d84636f5/.../fd-libretube/hilog.txt:19174,19177"
+      }
+    ],
+    "negatives": {
+      "U13": "CLEAN NEGATIVE but fd-libretube was NOT RUN in U13 at all (248 hilogs / ~40 keys, none match). => not tested, NOT fixed.",
+      "other_u12_keys": "none match the scoped 'size must be > 0' grep across all *u12*/u12* dirs in all three roots.",
+      "libresudoku": "NOT a match: coil.util.-Lifecycles.NavHost frames are r8 deobfuscation-collision artifacts (coil mapped onto compose-destinations NavHost) in its own CrashActivity; no size>0/DiskCache/free-space API.",
+      "enospc": "none in U12/U13; statvfs/StatFs matches are OH_RegHook symbol-registration lines + a libc dynsym dump (not errors)."
+    },
+    "out_of_scope": "same fd-libretube signature recurs in pre-U12 gens (U4/U6/U9/U10/U10.1/r16/r17) + ledger/prediction artifacts; same wall carried forward."
+  },
+
+  "q3_root_cause_fix_prediction": {
+    "ruled_out_libjavacore": "deployed libjavacore.so carries the GENUINE AOSP Linux_statvfs JNI (_ZL13Linux_statvfs...) and imports U statvfs/U fstatvfs from musl, building android.system.StructStatVfs. StatFs/Os.statvfs/File.getUsableSpace WORK on route-A; never on this code path.",
+    "ruled_out_sandbox_statvfs": "getCacheQuotaBytes is a binder quota query, not a statvfs syscall; the sandbox mount is never consulted on this path.",
+    "root_cause": "JAR / system-service shim: bms/src/adapter/framework/activity/java/StorageManagerProjectionProxy.java installs a child-local MountBinder for ServiceManager 'mount' (IStorageManager) that implements ONLY INTERFACE_TRANSACTION + TRANSACTION_GET_VOLUME_LIST(0x1e). getCacheQuotaBytes falls through to super.onTransact (unknown code) -> empty reply -> Proxy.readException() reads 0 (NO throw) + readLong() returns 0 -> getCacheQuotaBytes returns 0 cleanly. Matches hilog (a 0, no RemoteException).",
+    "why_getUuidForPath_ok": "getUuidForPath only needs getVolumeList(0x1e, implemented) and returns UUID_DEFAULT for an internal path.",
+    "why_app_still_lit": "the bridge swallows Application.onCreate exceptions (logs [B43-BIND] ensureBindApplication FAILED, then launches the Activity). UI lit; functional cost = coil disk image cache disabled.",
+    "pre_predicted": "benchmark/2026-09-24-batch4-blind/maps/libretube/gap-map.json already flagged 'StorageManager: 1 of 1 natives unregistered ... needs binder 'mount' (SystemServiceRegistry.java:709) ... app calls getCacheQuotaBytes, getUuidForPath'.",
+    "minimal_fix": "extend StorageManagerProjectionProxy.MountBinder.onTransact to answer TRANSACTION_getCacheQuotaBytes (and siblings getAllocatableBytes, getCacheBytes), resolving the transaction codes via reflection on IStorageManager.Stub (same reflection-friendly style as the hard-coded 0x1e). On those codes: enforceInterface, read uuid(+uid), reply.writeNoException(); reply.writeLong(quota) where quota = Math.max(new StatFs(dataDir).getAvailableBytes()/8, 64MB) using the GENUINE StatFs. Single file, child-local, no native, no new service. Rollback = delete the added case.",
+    "fix_properties": "every returned quota is > 0 so the app's require() never trips; value derived from real free space (honest), not a magic constant; projection grows by exactly the transactions apps call (gate pattern preserved).",
+    "prediction": {
+      "with_fix": "LibreTube onCreate completes; coil disk cache enabled; the swallowed ensureBindApplication FAILED disappears; UI unchanged (already lit).",
+      "blast_radius": "narrow: specific to the getCacheQuotaBytes/getAllocatableBytes -> size idiom. coil-default (maxSizePercent, sizes off StatFs free space which WORKS) apps are UNAFFECTED. In scope the symptom is a single key (fd-libretube).",
+      "onboard_confirm": "after fix: fd-libretube hilog shows no 'size must be > 0' / no ensureBindApplication FAILED; coil DiskLruCache dir populated under cacheDir/coil."
+    }
+  },
+
+  "rule": "Read the decompiled call site before naming the failing API: 'cache size 0 / size must be > 0' is not necessarily StatFs. Here it is StorageManager.getCacheQuotaBytes (an incomplete 'mount' binder projection), while the libc statvfs path is genuinely present. Fix the smallest missing layer (one more mount transaction), derive the value from the real free space that already works, keep > 0 guaranteed.",
+
+  "boundaries": [
+    "offline; no board; no push; static decompile + read-only hilog scan only",
+    "fix is the framework/adapter owner's to implement + ship; static staging only",
+    "sources read read-only: LibreTube apk (westlake-inputs/apks/fdroid100), deployed libjavacore.so (westlake-harness-bms), adapter JAR source (westlake-harness/bms), long-wait + run records (westlake-harness, -u7-executor), generations (westlake-inputs)"
+  ],
+  "files": [
+    "README.md",
+    "evidence/libretube-oncreate-decompile.txt",
+    "evidence/libretubeapp.onCreate.smali",
+    "evidence/libjavacore-statvfs-genuine.txt",
+    "evidence/storagemanager-mount-shim.txt",
+    "evidence/static-gapmap-corroboration.txt",
+    "evidence/cross-key-scan.txt",
+    "results.json",
+    "documentation.json",
+    "landing-paths.txt"
+  ]
+}

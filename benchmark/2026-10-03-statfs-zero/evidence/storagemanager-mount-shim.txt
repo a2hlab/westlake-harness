@@ -1,0 +1,24 @@
+Root cause: the StorageManager "mount" system-service projection does NOT answer getCacheQuotaBytes.
+
+File: bms/src/adapter/framework/activity/java/StorageManagerProjectionProxy.java
+- Installs a local Binder into ServiceManager.sCache for service "mount" (IStorageManager).
+- MountBinder.onTransact implements ONLY:
+    * IBinder.INTERFACE_TRANSACTION  -> writes descriptor
+    * TRANSACTION_GET_VOLUME_LIST = 0x1e -> getVolumeList (one OH-primary StorageVolume)
+    * any other code -> `return super.onTransact(code, data, reply, flags);`
+
+Why getCacheQuotaBytes yields a clean 0 (no RemoteException), matching the hilog:
+  StorageManager.getCacheQuotaBytes(uuid)
+    -> mStorageManager (IStorageManager.Stub.Proxy over the local MountBinder; no attachInterface)
+    -> Proxy.getCacheQuotaBytes writes token+uuid+uid, mRemote.transact(TRANSACTION_getCacheQuotaBytes,...)
+    -> MountBinder.onTransact: code != 0x1e -> super.onTransact(...) returns false for unknown code
+    -> reply Parcel left EMPTY
+    -> Proxy: _reply.readException() on empty parcel reads int 0 => NO exception thrown
+              _reply.readLong()      on empty parcel returns 0  => getCacheQuotaBytes RETURNS 0
+  So coil3 receives maxSizeBytes(0) and require(size > 0) throws IllegalArgumentException.
+
+getUuidForPath works (no throw) because it only needs getVolumeList (0x1e, implemented) and
+returns StorageManager.UUID_DEFAULT for an internal-storage path.
+
+Not libjavacore (statvfs JNI genuine). Not the OH sandbox statvfs mount (never consulted on this path).
+The gap is the incomplete "mount"/IStorageManager projection = a JAR / system-service-shim layer.

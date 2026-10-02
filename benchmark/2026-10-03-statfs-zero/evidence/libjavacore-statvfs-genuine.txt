@@ -1,0 +1,24 @@
+Deployed libjavacore.so (U13 bundle): $WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u13-compat-ctype/.artifacts/bundle-v2/native/payload/android/lib64/libjavacore.so
+sha256: 43d8103f41a65d1f68ad74213cb0e458f549b76bb8d322b8579b8c1a116518ec
+
+statvfs JNI is the GENUINE AOSP implementation (ruled OUT as the cause):
+                 U fstatvfs
+                 U statvfs
+_Z35register_android_system_OsConstantsP7_JNIEnv
+_ZGVZL17makeStructStatVfsP7_JNIEnvRK7statvfsE4ctor
+_ZL13Linux_statvfsP7_JNIEnvP8_jobjectP8_jstring
+_ZL14Linux_fstatvfsP7_JNIEnvP8_jobjectS2_
+_ZL17makeStructStatVfsP7_JNIEnvRK7statvfs
+_ZN12_GLOBAL__N_120g_StructStatVfsClassE
+_ZN12JniConstants21GetStructStatVfsClassEP7_JNIEnv
+_ZZL17makeStructStatVfsP7_JNIEnvRK7statvfsE4ctor
+(Ljava/io/FileDescriptor;)Landroid/system/StructStatVfs;
+(Ljava/lang/String;)Landroid/system/StructStatVfs;
+00000000000199ac T _ZN12JniConstants21GetStructStatVfsClassEP7_JNIEnv
+000000000001d00c T _Z35register_android_system_OsConstantsP7_JNIEnv
+android_system_OsConstants.cpp
+android/system/StructStatVfs
+
+Reading: _ZL13Linux_statvfs... = libcore.io.Linux.statvfs(String) native; it imports (U) statvfs/fstatvfs
+from musl libc and builds android.system.StructStatVfs. So StatFs/Os.statvfs/File.getUsableSpace
+DO work on route-A (they call the real syscall). This wall is one layer ABOVE the libc/statvfs path.

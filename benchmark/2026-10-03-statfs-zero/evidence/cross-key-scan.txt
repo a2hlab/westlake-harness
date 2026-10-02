@@ -1,0 +1,38 @@
+Cross-key scan of U12/U13 run hilogs for the "free-space/disk-size = 0" symptom
+(read-only grep sweep: "size must be > 0", DiskCache$Builder, maxSizeBytes, maxSizePercent,
+coil3.disk, okio $$ExternalSyntheticBUOutline throw helper, StatFs, getUsableSpace, getFreeSpace,
+getAvailableBytes, statvfs/statfs, ENOSPC / No space left). Roots swept:
+  westlake-harness-u7-executor/benchmark/**, westlake-inputs/generations/**, westlake-harness/benchmark/**.
+
+RESULT: exactly ONE key hits the symptom in scope — fd-libretube, and only in U12.
+
+| key          | U-gen | board | first-fatal? | signature | file:line |
+|--------------|-------|-------|--------------|-----------|-----------|
+| fd-libretube | U12   | 61b   | YES (bind / "Unable to create application", earliest Caused-by) | IllegalArgumentException "size must be > 0" -> coil3.disk.DiskCache$Builder.maxSizeBytes -> LibreTubeApp.onCreate (okio $$ExternalSyntheticBUOutline throw frame) | u7-executor/benchmark/2026-10-02-u12-final-assembly/window1/u12-A1-20261002T205732/61b/runner/lit-original/20261002T212458-d84636f5/61b0657200000000000000000324012c/fd-libretube/hilog.txt:19174,19177,19179 (bind-fail banner :19160) |
+| fd-libretube | U12   | 61b   | YES (same run, archived copy) | identical | westlake-inputs/generations/u12-stageA-evidence-bd08c3f7/window1/61b/runner/lit-original/20261002T212458-d84636f5/61b0657200000000000000000324012c/fd-libretube/hilog.txt:19174,19177 |
+
+NEGATIVES (explicit):
+- U13 = clean negative, but NOTE THE REASON: fd-libretube was NOT RUN in U13 at all. U13 has 248 hilog files
+  across ~40 keys (newpipe, markor, vlc, anki, wikipedia, fd-immich, fd-fluffychat, fd-libre, fd-catima,
+  localsend, ...) under benchmark/2026-10-03-u13-stage-a-plan/ + generations/u13-stageA-window1-20261003/;
+  a full sweep for the coil/size>0/okio-outline patterns returned nothing (only OS-level
+  HardwareRenderer::setupShadersDiskCache RegHook noise). => "not reproduced" = "not tested", NOT "fixed".
+- No OTHER U12 key shows the symptom (scoped grep across every *u12*/u12* dir in all three roots).
+- libresudoku (U12, 2026-10-02-u12-disappeared) is NOT a match: its coil.util.-Lifecycles.NavHost /
+  DestinationsNavHost frames are r8 deobfuscation-collision artifacts (coil names mapped onto
+  compose-destinations NavHost) inside the app's own CrashActivity recomposition; no "size must be > 0",
+  no DiskCache, no free-space API.
+- No ENOSPC / "No space left" anywhere in U12/U13. statvfs/fstatvfs/StatFs matches are OH_RegHook
+  symbol-registration lines + a libc dynsym dump (normal logging, not errors).
+
+OUT OF SCOPE (flagged only): the same fd-libretube "size must be > 0" signature recurs across pre-U12
+generations (U4, U6, U9, U10, U10.1, r16, r17) and in ledger/prediction artifacts
+(blockers-ledger.json:260, 2026-09-25-android-traces/README.md:99, 2026-10-03-u101t8-unbound-longwait/results.json).
+Same wall carried forward; outside the U12/U13 ask.
+
+NOTE (this deliverable's value-add): the scan + the harness ledger record the throwing API only as
+coil3.disk.DiskCache$Builder.maxSizeBytes and the free-space source as "not identified" (the r8-mapped stack
+cannot pin it). The decompile in evidence/libretube-oncreate-decompile.txt RESOLVES that gap: the 0 is
+StorageManager.getCacheQuotaBytes(getUuidForPath(getCacheDir()/coil)), passed verbatim into maxSizeBytes
+(NOT coil's default maxSizePercent, NOT StatFs). Decompiled apk = com.github.libretube_72.apk (fdroid100),
+whose onCreate signature matches both the U12 61b run and the U10.1T8 run.
