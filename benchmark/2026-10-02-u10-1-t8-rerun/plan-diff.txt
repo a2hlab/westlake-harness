@@ -1,0 +1,308 @@
+Stage A: observation always restores U9; Stage B: separate <=30min promotion draft.
+Coverage: 166 unique keys; Toutiao only 5ea; lit 37/38/40.
+Package bytes, bundle/manifest SHA unchanged, unarmed.
+
+--- prior/plan-5ea.json
++++ stage-A/plan-5ea.json
+@@ -2,7 +2,7 @@
+   "serial": "5ea34a4500000000000000001123012c",
+   "lane": "cx-t0",
+   "entry": "90",
+-  "why": "Logged T8 rerun + U10.1/U11i promotion proposal; <=45min/35min cutoff; review before locks",
++  "why": "Stage A observation: same SHA, U9-lit first, <=45min/35min cutoff, unconditional U9 finish; pending outer review",
+   "board": "$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md",
+   "out": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/5ea/runner",
+   "smoke_spec": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/smoke-5ea.json",
+@@ -35,20 +35,22 @@
+     "--serial",
+     "5ea34a4500000000000000001123012c",
+     "--root",
+-    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/5ea"
++    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/5ea",
++    "--plan",
++    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/plan-5ea.json",
++    "--phase",
++    "A"
+   ],
+   "before_unlock": [
+     "python3",
+     "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/promotion_hook.py",
+-    "--finish",
++    "--finish-observation",
+     "--serial",
+     "5ea34a4500000000000000001123012c",
+     "--root",
+     "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/5ea",
+     "--restored-spec",
+-    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/restored-5ea.json",
+-    "--decision",
+-    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/outer-promotion.json"
++    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/restored-5ea.json"
+   ],
+   "shards": [
+     {
+@@ -58,26 +60,38 @@
+       "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/toutiao.txt"
+     },
+     {
+-      "name": "original",
++      "name": "lit-original",
+       "manifest": "$WORKSPACES/westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/apps.json",
+       "input_root": "~/a2hlab/app-inputs",
+-      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5ea-original.txt"
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5ea-lit-original.txt"
+     },
+     {
+-      "name": "cv2",
++      "name": "lit-cv2",
+       "manifest": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
+       "input_root": "$WORKSPACES/westlake-inputs/corpus-v2/app-inputs",
+-      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5ea-cv2.txt"
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5ea-lit-cv2.txt"
++    },
++    {
++      "name": "unlit-original",
++      "manifest": "$WORKSPACES/westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/apps.json",
++      "input_root": "~/a2hlab/app-inputs",
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5ea-unlit-original.txt"
++    },
++    {
++      "name": "unlit-cv2",
++      "manifest": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
++      "input_root": "$WORKSPACES/westlake-inputs/corpus-v2/app-inputs",
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5ea-unlit-cv2.txt"
+     }
+   ],
+-  "approval": "All offline gates green, REVIEW ONLY: promotion/window authorization pending",
++  "approval": "REVIEW ONLY: outer point-head required before arming or LOCK",
+   "execution_enabled": false,
+   "promotion_policy": {
+     "base": "U9 signed 115/166, same-board installation-chain identities",
+     "required_full_keys": 166,
+-    "retain_if": "activation PASS + 318/dual fingerprints + outer-signed HW/ZZ/Toutiao t20 bright + all166 keys signed + no U9-lit regression",
+-    "rollback_if": "smoke FAIL, canary/FZ/control confirmed regression, identity failure, or full outer signoff absent by window end",
+-    "incomplete": "unknown; cannot turn partial facts into promotion; new continuation window requires outer review",
++    "retain_if": "Never in Stage A",
++    "rollback_if": "Unconditional finish -> U9 + 318 + recovery smoke + final",
++    "incomplete": "Continue only unmeasured keys in a fresh approved window with the same SHA-bound bundle; no rebuild",
+     "decision_source": "outer screenshot review, never facts-only",
+     "maps_count": "load-base; not inode",
+     "organicmaps": "master u7_executor.stop_for_rollback -> exact receipt-owned residual Android child cold_stop and retry; no manual parent kill",
+@@ -86,6 +100,15 @@
+   "package_manifest_sha256": "4db327033870b597248a7188ab7f007e1979dafbb330edc58a4f052b6a086e00",
+   "bundle_sha256": "1b089fb42756d252c3a6ccd7535e746251caa2864b873f692648f659a1194bd5",
+   "pending_review": [
+-    "Three-board promotion window and complete-signoff/continuation timing"
+-  ]
++    "Stage A revised plan diff; Stage B requires separate approval after complete Stage A signoff"
++  ],
++  "phase": "A",
++  "continuation": {
++    "tool": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/continue_observation.py",
++    "same_bundle_required": true,
++    "new_output_required": true,
++    "measured_terminal_record_required": true,
++    "prior_finish_required": true,
++    "lit_order_preserved": true
++  }
+ }
+--- prior/plan-5cd.json
++++ stage-A/plan-5cd.json
+@@ -2,7 +2,7 @@
+   "serial": "5cd1e3dd00000000000000000923012c",
+   "lane": "cx-t0",
+   "entry": "90",
+-  "why": "Logged T8 rerun + U10.1/U11i promotion proposal; <=45min/35min cutoff; review before locks",
++  "why": "Stage A observation: same SHA, U9-lit first, <=45min/35min cutoff, unconditional U9 finish; pending outer review",
+   "board": "$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md",
+   "out": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/5cd/runner",
+   "smoke_spec": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/smoke-5cd.json",
+@@ -35,43 +35,57 @@
+     "--serial",
+     "5cd1e3dd00000000000000000923012c",
+     "--root",
+-    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/5cd"
++    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/5cd",
++    "--plan",
++    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/plan-5cd.json",
++    "--phase",
++    "A"
+   ],
+   "before_unlock": [
+     "python3",
+     "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/promotion_hook.py",
+-    "--finish",
++    "--finish-observation",
+     "--serial",
+     "5cd1e3dd00000000000000000923012c",
+     "--root",
+     "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/5cd",
+     "--restored-spec",
+-    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/restored-5cd.json",
+-    "--decision",
+-    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/outer-promotion.json"
++    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/restored-5cd.json"
+   ],
+   "shards": [
+     {
+-      "name": "original",
++      "name": "lit-original",
+       "manifest": "$WORKSPACES/westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/apps.json",
+       "input_root": "~/a2hlab/app-inputs",
+-      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5cd-original.txt"
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5cd-lit-original.txt"
+     },
+     {
+-      "name": "cv2",
++      "name": "lit-cv2",
+       "manifest": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
+       "input_root": "$WORKSPACES/westlake-inputs/corpus-v2/app-inputs",
+-      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5cd-cv2.txt"
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5cd-lit-cv2.txt"
++    },
++    {
++      "name": "unlit-original",
++      "manifest": "$WORKSPACES/westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/apps.json",
++      "input_root": "~/a2hlab/app-inputs",
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5cd-unlit-original.txt"
++    },
++    {
++      "name": "unlit-cv2",
++      "manifest": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
++      "input_root": "$WORKSPACES/westlake-inputs/corpus-v2/app-inputs",
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-5cd-unlit-cv2.txt"
+     }
+   ],
+-  "approval": "All offline gates green, REVIEW ONLY: promotion/window authorization pending",
++  "approval": "REVIEW ONLY: outer point-head required before arming or LOCK",
+   "execution_enabled": false,
+   "promotion_policy": {
+     "base": "U9 signed 115/166, same-board installation-chain identities",
+     "required_full_keys": 166,
+-    "retain_if": "activation PASS + 318/dual fingerprints + outer-signed HW/ZZ/Toutiao t20 bright + all166 keys signed + no U9-lit regression",
+-    "rollback_if": "smoke FAIL, canary/FZ/control confirmed regression, identity failure, or full outer signoff absent by window end",
+-    "incomplete": "unknown; cannot turn partial facts into promotion; new continuation window requires outer review",
++    "retain_if": "Never in Stage A",
++    "rollback_if": "Unconditional finish -> U9 + 318 + recovery smoke + final",
++    "incomplete": "Continue only unmeasured keys in a fresh approved window with the same SHA-bound bundle; no rebuild",
+     "decision_source": "outer screenshot review, never facts-only",
+     "maps_count": "load-base; not inode",
+     "organicmaps": "master u7_executor.stop_for_rollback -> exact receipt-owned residual Android child cold_stop and retry; no manual parent kill",
+@@ -80,6 +94,15 @@
+   "package_manifest_sha256": "4db327033870b597248a7188ab7f007e1979dafbb330edc58a4f052b6a086e00",
+   "bundle_sha256": "1b089fb42756d252c3a6ccd7535e746251caa2864b873f692648f659a1194bd5",
+   "pending_review": [
+-    "Three-board promotion window and complete-signoff/continuation timing"
+-  ]
++    "Stage A revised plan diff; Stage B requires separate approval after complete Stage A signoff"
++  ],
++  "phase": "A",
++  "continuation": {
++    "tool": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/continue_observation.py",
++    "same_bundle_required": true,
++    "new_output_required": true,
++    "measured_terminal_record_required": true,
++    "prior_finish_required": true,
++    "lit_order_preserved": true
++  }
+ }
+--- prior/plan-61b.json
++++ stage-A/plan-61b.json
+@@ -2,7 +2,7 @@
+   "serial": "61b0657200000000000000000324012c",
+   "lane": "cx-t0",
+   "entry": "90",
+-  "why": "Logged T8 rerun + U10.1/U11i promotion proposal; <=45min/35min cutoff; review before locks",
++  "why": "Stage A observation: same SHA, U9-lit first, <=45min/35min cutoff, unconditional U9 finish; pending outer review",
+   "board": "$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md",
+   "out": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/61b/runner",
+   "smoke_spec": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/smoke-61b.json",
+@@ -35,43 +35,57 @@
+     "--serial",
+     "61b0657200000000000000000324012c",
+     "--root",
+-    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/61b"
++    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/61b",
++    "--plan",
++    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/plan-61b.json",
++    "--phase",
++    "A"
+   ],
+   "before_unlock": [
+     "python3",
+     "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/promotion_hook.py",
+-    "--finish",
++    "--finish-observation",
+     "--serial",
+     "61b0657200000000000000000324012c",
+     "--root",
+     "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/61b",
+     "--restored-spec",
+-    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/restored-61b.json",
+-    "--decision",
+-    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/boards/$U101_T8_RERUN_RUN_ID/outer-promotion.json"
++    "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/restored-61b.json"
+   ],
+   "shards": [
+     {
+-      "name": "original",
++      "name": "lit-original",
+       "manifest": "$WORKSPACES/westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/apps.json",
+       "input_root": "~/a2hlab/app-inputs",
+-      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-61b-original.txt"
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-61b-lit-original.txt"
+     },
+     {
+-      "name": "cv2",
++      "name": "lit-cv2",
+       "manifest": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
+       "input_root": "$WORKSPACES/westlake-inputs/corpus-v2/app-inputs",
+-      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-61b-cv2.txt"
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-61b-lit-cv2.txt"
++    },
++    {
++      "name": "unlit-original",
++      "manifest": "$WORKSPACES/westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/apps.json",
++      "input_root": "~/a2hlab/app-inputs",
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-61b-unlit-original.txt"
++    },
++    {
++      "name": "unlit-cv2",
++      "manifest": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-01-corpus-v2-inputs/apps-v2.json",
++      "input_root": "$WORKSPACES/westlake-inputs/corpus-v2/app-inputs",
++      "keys_file": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/window/keys-61b-unlit-cv2.txt"
+     }
+   ],
+-  "approval": "All offline gates green, REVIEW ONLY: promotion/window authorization pending",
++  "approval": "REVIEW ONLY: outer point-head required before arming or LOCK",
+   "execution_enabled": false,
+   "promotion_policy": {
+     "base": "U9 signed 115/166, same-board installation-chain identities",
+     "required_full_keys": 166,
+-    "retain_if": "activation PASS + 318/dual fingerprints + outer-signed HW/ZZ/Toutiao t20 bright + all166 keys signed + no U9-lit regression",
+-    "rollback_if": "smoke FAIL, canary/FZ/control confirmed regression, identity failure, or full outer signoff absent by window end",
+-    "incomplete": "unknown; cannot turn partial facts into promotion; new continuation window requires outer review",
++    "retain_if": "Never in Stage A",
++    "rollback_if": "Unconditional finish -> U9 + 318 + recovery smoke + final",
++    "incomplete": "Continue only unmeasured keys in a fresh approved window with the same SHA-bound bundle; no rebuild",
+     "decision_source": "outer screenshot review, never facts-only",
+     "maps_count": "load-base; not inode",
+     "organicmaps": "master u7_executor.stop_for_rollback -> exact receipt-owned residual Android child cold_stop and retry; no manual parent kill",
+@@ -80,6 +94,15 @@
+   "package_manifest_sha256": "4db327033870b597248a7188ab7f007e1979dafbb330edc58a4f052b6a086e00",
+   "bundle_sha256": "1b089fb42756d252c3a6ccd7535e746251caa2864b873f692648f659a1194bd5",
+   "pending_review": [
+-    "Three-board promotion window and complete-signoff/continuation timing"
+-  ]
++    "Stage A revised plan diff; Stage B requires separate approval after complete Stage A signoff"
++  ],
++  "phase": "A",
++  "continuation": {
++    "tool": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-02-u10-1-t8-rerun/continue_observation.py",
++    "same_bundle_required": true,
++    "new_output_required": true,
++    "measured_terminal_record_required": true,
++    "prior_finish_required": true,
++    "lit_order_preserved": true
++  }
+ }

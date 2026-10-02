@@ -251,6 +251,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-02-t8-executor-support/`** | Production T8 two-JAR/image transaction, effective-U9 references, frozen DEX/open-site preflight, 58 rollback fault boundaries and a real wrong-base rejection. |
 | **`benchmark/2026-10-02-namespace-edge-scan/`** | **Namespace API edges, named-parent one-hop inheritance overwrite detection, CFG after-open negatives and pinned U9/r2/r3/spill replay.** |
 | **`benchmark/2026-10-02-u10-1-t8-effective/`** | Corrected effective T8 + U10.1/U11i composition, exact SHA-bound J10e split approval, final gates and unarmed three-board promotion proposals. |
+| **`benchmark/2026-10-02-u10-1-t8-rerun/`** | Logged T8 rerun27 + U10.1/U11i final production gates PASS, exact outer-approved open deltas, SHA-bound class split and unarmed three-board promotion plans. |
 
 ---
 
