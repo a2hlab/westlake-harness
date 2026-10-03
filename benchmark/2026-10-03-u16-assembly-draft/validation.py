@@ -15,6 +15,9 @@ DEX2OAT = "ae865ddd6a7e4b25a18b7c07402920c69e5599b329778eff647a08803948322b"
 DRIVER = "14b1f709cbeae35c2e606ee923d26a9f59e92dd827da84bdf5126de79a675d46"
 HOME_ID = "4e5277d9907dc562d2135c48e53fa1ed5764ab628dae1e8e397499e708a1c102"
 REMOTE_ROOT = "$HW248_HOME/u16-stubs-8593-runtime-f6f5-v1"
+RUNTIME = "1d42dbfb473f87e8a31e7403c7f67c3544b8a5cea109e73e71250596ecb31942"
+FLUTTER = "eb90a6409c9caaba058d2463cad9c193d344527051455d8aca8421e6b7011b4f"
+OLD_RUNTIME = "94c31177709dbea0b1615a63c0d41a358f7db6843cbbd11f77979576a1a86a47"
 ADDED = ["Landroid/net/ConnectivityManager$OnNetworkActiveListener;", "Landroid/net/DhcpInfo$1;",
          "Landroid/net/DhcpInfo;", "Landroid/net/wifi/SupplicantState$1;", "Landroid/net/wifi/SupplicantState;",
          "Landroid/net/wifi/WifiManager$MulticastLock;", "Landroid/net/wifi/WifiManager$SuggestionConnectionStatusListener;",
@@ -46,8 +49,13 @@ def check_plan(plan, images, slots):
         raise ValueError("Native preparation disabled")
     if [row["id"] for row in slots["slots"]] != ["t4-m1-split-runtime", "flutter-impeller-extension-proc"]:
         raise ValueError("Both pending native slots must stay explicit")
-    if any(row["state"] != "pending" or row["sha256"] is not None or row["applied"] is not False for row in slots["slots"]):
-        raise ValueError("Pending native arrival cannot imply composition")
+    if any(row["applied"] is not False for row in slots["slots"]):
+        raise ValueError("Native arrival cannot imply final deployment")
+    runtime, flutter = slots["slots"]
+    if (runtime["state"], runtime["sha256"]) not in [("pending", None), ("arrived-staged", RUNTIME)]:
+        raise ValueError("Runtime slot identity drift")
+    if (flutter["state"], flutter["sha256"]) not in [("pending", None), ("arrived-staged", FLUTTER)]:
+        raise ValueError("Only corrected U15-based Flutter arrival allowed")
     if slots["excluded"] != ["t2-icon-raster"] or slots["dependency_blocked"] != ["t5-webview-A0"]:
         raise ValueError("Batch scope changed")
     if plan["machine"]["hostname"] != "ecs-9f6c" or plan["machine"]["home_identity_sha256"] != HOME_ID:

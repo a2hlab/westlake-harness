@@ -1,0 +1,2289 @@
+{
+  "schema_version": 1,
+  "device_access": false,
+  "status": "REJECT",
+  "exit_code": 1,
+  "gates": {
+    "N1": {
+      "details": {
+        "scanner": {
+          "schema_version": 1,
+          "prospective": false,
+          "device_access": false,
+          "scope": "bounded static initialization risks; no finding does not prove runtime success",
+          "manifest_sha256": "1654d66c86228181a5e1add43c58d1a8d9986b7c4f7835392a4c3e83da61d5c6",
+          "profiles": [
+            {
+              "profile": "host",
+              "identity": {
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact": "payload/runtime/appspawn-x",
+                "artifact_sha256": "9e3ad72e1ff5de52435ce2ca91eacf5346f18aaadcdb96824b6713f3f849de09"
+              },
+              "findings": [],
+              "unknown": [
+                {
+                  "function": "main",
+                  "namespace": "default",
+                  "library": null,
+                  "target_expression": "plugin_path",
+                  "evidence": {
+                    "source": "n4-host.c",
+                    "line": 665,
+                    "text": "plugin_handle = dlopen(plugin_path, RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                }
+              ],
+              "checked": []
+            },
+            {
+              "profile": "runtime",
+              "identity": {
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact": "payload/android/lib64/liboh_android_runtime.so",
+                "artifact_sha256": "94c31177709dbea0b1615a63c0d41a358f7db6843cbbd11f77979576a1a86a47"
+              },
+              "findings": [],
+              "checked": [
+                {
+                  "cache": {
+                    "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                    "operation": "GetFieldID",
+                    "sequence": 94,
+                    "evidence": {
+                      "source": "egl.cpp",
+                      "line": 121,
+                      "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                    },
+                    "trace": [
+                      {
+                        "function": "startReg",
+                        "source": "n4-order-runtime.cpp",
+                        "line": 684,
+                        "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                      },
+                      {
+                        "function": "register_com_google_android_gles_jni_EGLImpl",
+                        "source": "egl.cpp",
+                        "line": 557,
+                        "text": "android::nativeClassInit(_env, nullptr);"
+                      },
+                      {
+                        "function": "nativeClassInit",
+                        "source": "egl.cpp",
+                        "line": 141,
+                        "text": "bool ready = cacheEglFields(env);"
+                      },
+                      {
+                        "function": "cacheEglFields",
+                        "source": "egl.cpp",
+                        "line": 121,
+                        "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                      }
+                    ]
+                  },
+                  "dependency": {
+                    "class_name": "com/google/android/gles_jni/EGLImpl",
+                    "method": "_nativeClassInit",
+                    "descriptor": "()V",
+                    "chain": [
+                      {
+                        "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                        "edge": "super",
+                        "target": "javax/microedition/khronos/egl/EGLContext"
+                      },
+                      {
+                        "class_name": "javax/microedition/khronos/egl/EGLContext",
+                        "method": "<clinit>",
+                        "descriptor": "()V",
+                        "offset": 0,
+                        "opcode": "new-instance",
+                        "output": "v0, Lcom/google/android/gles_jni/EGLImpl;"
+                      },
+                      {
+                        "class_name": "com/google/android/gles_jni/EGLImpl",
+                        "method": "<clinit>",
+                        "descriptor": "()V",
+                        "offset": 0,
+                        "opcode": "invoke-static",
+                        "output": "Lcom/google/android/gles_jni/EGLImpl;->_nativeClassInit()V"
+                      }
+                    ]
+                  },
+                  "registration": {
+                    "sequence": 81,
+                    "evidence": {
+                      "source": "egl.cpp",
+                      "line": 554,
+                      "text": "err = android::AndroidRuntime::registerNativeMethods(_env,"
+                    },
+                    "trace": [
+                      {
+                        "function": "startReg",
+                        "source": "n4-order-runtime.cpp",
+                        "line": 684,
+                        "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                      },
+                      {
+                        "function": "register_com_google_android_gles_jni_EGLImpl",
+                        "source": "egl.cpp",
+                        "line": 554,
+                        "text": "err = android::AndroidRuntime::registerNativeMethods(_env,"
+                      }
+                    ]
+                  },
+                  "status": "registration-call-precedes-cache"
+                },
+                {
+                  "cache": {
+                    "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                    "operation": "GetFieldID",
+                    "sequence": 94,
+                    "evidence": {
+                      "source": "egl.cpp",
+                      "line": 121,
+                      "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                    },
+                    "trace": [
+                      {
+                        "function": "startReg",
+                        "source": "n4-order-runtime.cpp",
+                        "line": 684,
+                        "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                      },
+                      {
+                        "function": "register_com_google_android_gles_jni_EGLImpl",
+                        "source": "egl.cpp",
+                        "line": 557,
+                        "text": "android::nativeClassInit(_env, nullptr);"
+                      },
+                      {
+                        "function": "nativeClassInit",
+                        "source": "egl.cpp",
+                        "line": 141,
+                        "text": "bool ready = cacheEglFields(env);"
+                      },
+                      {
+                        "function": "cacheEglFields",
+                        "source": "egl.cpp",
+                        "line": 121,
+                        "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                      }
+                    ]
+                  },
+                  "dependency": {
+                    "class_name": "com/google/android/gles_jni/GLImpl",
+                    "method": "_nativeClassInit",
+                    "descriptor": "()V",
+                    "chain": [
+                      {
+                        "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                        "edge": "super",
+                        "target": "javax/microedition/khronos/egl/EGLContext"
+                      },
+                      {
+                        "class_name": "javax/microedition/khronos/egl/EGLContext",
+                        "method": "<clinit>",
+                        "descriptor": "()V",
+                        "offset": 4,
+                        "opcode": "invoke-direct",
+                        "output": "v0, Lcom/google/android/gles_jni/EGLImpl;-><init>()V"
+                      },
+                      {
+                        "class_name": "com/google/android/gles_jni/EGLImpl",
+                        "method": "<init>",
+                        "descriptor": "()V",
+                        "offset": 14,
+                        "opcode": "invoke-direct",
+                        "output": "v0, v1, v2, Lcom/google/android/gles_jni/EGLContextImpl;-><init>(J)V"
+                      },
+                      {
+                        "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                        "method": "<init>",
+                        "descriptor": "(J)V",
+                        "offset": 10,
+                        "opcode": "new-instance",
+                        "output": "v0, Lcom/google/android/gles_jni/GLImpl;"
+                      },
+                      {
+                        "class_name": "com/google/android/gles_jni/GLImpl",
+                        "method": "<clinit>",
+                        "descriptor": "()V",
+                        "offset": 0,
+                        "opcode": "invoke-static",
+                        "output": "Lcom/google/android/gles_jni/GLImpl;->_nativeClassInit()V"
+                      }
+                    ]
+                  },
+                  "registration": {
+                    "sequence": 74,
+                    "evidence": {
+                      "source": "gl-register.cpp",
+                      "line": 9294,
+                      "text": "err = android::AndroidRuntime::registerNativeMethods(_env, classPathName, methods, NELEM(methods));"
+                    },
+                    "trace": [
+                      {
+                        "function": "startReg",
+                        "source": "n4-order-runtime.cpp",
+                        "line": 681,
+                        "text": "if (n2_register_GLImpl(env) != 0 || env->ExceptionCheck()) {"
+                      },
+                      {
+                        "function": "n2_register_GLImpl",
+                        "source": "gl-wrapper.cpp",
+                        "line": 6,
+                        "text": "int rc=register_com_google_android_gles_jni_GLImpl(env);"
+                      },
+                      {
+                        "function": "register_com_google_android_gles_jni_GLImpl",
+                        "source": "gl-register.cpp",
+                        "line": 9294,
+                        "text": "err = android::AndroidRuntime::registerNativeMethods(_env, classPathName, methods, NELEM(methods));"
+                      }
+                    ]
+                  },
+                  "status": "registration-call-precedes-cache"
+                }
+              ],
+              "unknown": [
+                {
+                  "class_name": "android/content/res/AssetManager",
+                  "operation": "GetFieldID",
+                  "sequence": 58,
+                  "evidence": {
+                    "source": "asset-offsets-init.cpp",
+                    "line": 17,
+                    "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 670,
+                      "text": "if (initialize_n10b_asset_offsets(env) < 0) return -1;"
+                    },
+                    {
+                      "function": "initialize_n10b_asset_offsets",
+                      "source": "asset-offsets-init.cpp",
+                      "line": 17,
+                      "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "android/content/res/AssetManager"
+                  ]
+                },
+                {
+                  "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+                  "operation": "GetMethodID",
+                  "sequence": 89,
+                  "evidence": {
+                    "source": "egl.cpp",
+                    "line": 111,
+                    "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 684,
+                      "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                    },
+                    {
+                      "function": "register_com_google_android_gles_jni_EGLImpl",
+                      "source": "egl.cpp",
+                      "line": 557,
+                      "text": "android::nativeClassInit(_env, nullptr);"
+                    },
+                    {
+                      "function": "nativeClassInit",
+                      "source": "egl.cpp",
+                      "line": 141,
+                      "text": "bool ready = cacheEglFields(env);"
+                    },
+                    {
+                      "function": "cacheEglFields",
+                      "source": "egl.cpp",
+                      "line": 111,
+                      "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "javax/microedition/khronos/egl/EGLConfig"
+                  ]
+                },
+                {
+                  "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+                  "operation": "GetFieldID",
+                  "sequence": 90,
+                  "evidence": {
+                    "source": "egl.cpp",
+                    "line": 113,
+                    "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 684,
+                      "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                    },
+                    {
+                      "function": "register_com_google_android_gles_jni_EGLImpl",
+                      "source": "egl.cpp",
+                      "line": 557,
+                      "text": "android::nativeClassInit(_env, nullptr);"
+                    },
+                    {
+                      "function": "nativeClassInit",
+                      "source": "egl.cpp",
+                      "line": 141,
+                      "text": "bool ready = cacheEglFields(env);"
+                    },
+                    {
+                      "function": "cacheEglFields",
+                      "source": "egl.cpp",
+                      "line": 113,
+                      "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "javax/microedition/khronos/egl/EGLConfig"
+                  ]
+                },
+                {
+                  "class_name": "com/google/android/gles_jni/EGLDisplayImpl",
+                  "operation": "GetFieldID",
+                  "sequence": 92,
+                  "evidence": {
+                    "source": "egl.cpp",
+                    "line": 117,
+                    "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 684,
+                      "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                    },
+                    {
+                      "function": "register_com_google_android_gles_jni_EGLImpl",
+                      "source": "egl.cpp",
+                      "line": 557,
+                      "text": "android::nativeClassInit(_env, nullptr);"
+                    },
+                    {
+                      "function": "nativeClassInit",
+                      "source": "egl.cpp",
+                      "line": 141,
+                      "text": "bool ready = cacheEglFields(env);"
+                    },
+                    {
+                      "function": "cacheEglFields",
+                      "source": "egl.cpp",
+                      "line": 117,
+                      "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "javax/microedition/khronos/egl/EGLDisplay"
+                  ]
+                },
+                {
+                  "class_name": "com/google/android/gles_jni/EGLContextImpl",
+                  "operation": "GetFieldID",
+                  "sequence": 94,
+                  "evidence": {
+                    "source": "egl.cpp",
+                    "line": 121,
+                    "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 684,
+                      "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                    },
+                    {
+                      "function": "register_com_google_android_gles_jni_EGLImpl",
+                      "source": "egl.cpp",
+                      "line": 557,
+                      "text": "android::nativeClassInit(_env, nullptr);"
+                    },
+                    {
+                      "function": "nativeClassInit",
+                      "source": "egl.cpp",
+                      "line": 141,
+                      "text": "bool ready = cacheEglFields(env);"
+                    },
+                    {
+                      "function": "cacheEglFields",
+                      "source": "egl.cpp",
+                      "line": 121,
+                      "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "java/lang/Object",
+                    "javax/microedition/khronos/egl/EGLDisplay",
+                    "javax/microedition/khronos/egl/EGLSurface"
+                  ]
+                },
+                {
+                  "class_name": "com/google/android/gles_jni/EGLSurfaceImpl",
+                  "operation": "GetFieldID",
+                  "sequence": 96,
+                  "evidence": {
+                    "source": "egl.cpp",
+                    "line": 125,
+                    "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "startReg",
+                      "source": "n4-order-runtime.cpp",
+                      "line": 684,
+                      "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+                    },
+                    {
+                      "function": "register_com_google_android_gles_jni_EGLImpl",
+                      "source": "egl.cpp",
+                      "line": 557,
+                      "text": "android::nativeClassInit(_env, nullptr);"
+                    },
+                    {
+                      "function": "nativeClassInit",
+                      "source": "egl.cpp",
+                      "line": 141,
+                      "text": "bool ready = cacheEglFields(env);"
+                    },
+                    {
+                      "function": "cacheEglFields",
+                      "source": "egl.cpp",
+                      "line": 125,
+                      "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "javax/microedition/khronos/egl/EGLSurface"
+                  ]
+                }
+              ],
+              "unresolved_calls": [
+                "DeleteLocalRef",
+                "ExceptionCheck",
+                "ExceptionClear",
+                "ExceptionDescribe",
+                "GetJavaVM",
+                "HiLogPrint",
+                "NELEM",
+                "NewGlobalRef",
+                "PopLocalFrame",
+                "PushLocalFrame",
+                "dlerror",
+                "dlopen",
+                "dlsym",
+                "fn",
+                "fprintf",
+                "int",
+                "jint",
+                "jniThrowException",
+                "memcpy",
+                "onload",
+                "proc",
+                "register_android_graphics_compat_shim",
+                "register_n2_Camera"
+              ],
+              "coverage": "bounded-source-order-not-runtime-success"
+            },
+            {
+              "profile": "child-owner",
+              "identity": {
+                "artifact": "payload/runtime/libwestlake_android_child.z.so",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "dc73a28d2535f0a261776625ea51770edf044f33de17aa05ff5c5e789ba25d3c"
+              },
+              "findings": [
+                {
+                  "function": "RealOpenLocalNow",
+                  "namespace": "&closure_namespace",
+                  "library": "libart.so",
+                  "target_expression": "\"libart.so\"",
+                  "evidence": {
+                    "source": "n10b-child.c",
+                    "line": 286,
+                    "text": "void *art = dlopen_ns(&closure_namespace, \"libart.so\","
+                  },
+                  "family": "noload-before-namespace-mapping",
+                  "verdict": "static-risk",
+                  "namespace_creation": {
+                    "source": "n10b-child.c",
+                    "line": 265,
+                    "text": "if (dlns_create2(&closure_namespace, search_path,"
+                  },
+                  "reason": "NOLOAD cannot establish a first local mapping; no dominating guarded same-namespace load found"
+                }
+              ],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "emboss-registration",
+              "identity": {
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact": "payload/android/lib64/liboh_android_runtime.so",
+                "artifact_sha256": "94c31177709dbea0b1615a63c0d41a358f7db6843cbbd11f77979576a1a86a47"
+              },
+              "findings": [],
+              "checked": [],
+              "unknown": [],
+              "unresolved_calls": [
+                "DeleteLocalRef"
+              ],
+              "coverage": "bounded-source-order-not-runtime-success"
+            },
+            {
+              "profile": "android_graphics_Typeface",
+              "identity": {
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact": "payload/android/lib64/liboh_android_runtime.so",
+                "artifact_sha256": "94c31177709dbea0b1615a63c0d41a358f7db6843cbbd11f77979576a1a86a47"
+              },
+              "findings": [],
+              "checked": [],
+              "unknown": [],
+              "unresolved_calls": [
+                "DeleteLocalRef",
+                "ExceptionCheck",
+                "ExceptionClear",
+                "ExceptionDescribe",
+                "GetJavaVM",
+                "HiLogPrint",
+                "dlerror",
+                "dlopen",
+                "dlsym",
+                "int",
+                "real_reg",
+                "set_vm",
+                "void"
+              ],
+              "coverage": "bounded-source-order-not-runtime-success"
+            },
+            {
+              "profile": "asset-offsets-init",
+              "identity": {
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact": "payload/android/lib64/liboh_android_runtime.so",
+                "artifact_sha256": "94c31177709dbea0b1615a63c0d41a358f7db6843cbbd11f77979576a1a86a47"
+              },
+              "findings": [],
+              "checked": [],
+              "unknown": [
+                {
+                  "class_name": "android/content/res/AssetManager",
+                  "operation": "GetFieldID",
+                  "sequence": 2,
+                  "evidence": {
+                    "source": "asset-offsets-init.cpp",
+                    "line": 17,
+                    "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+                  },
+                  "trace": [
+                    {
+                      "function": "initialize_n10b_asset_offsets",
+                      "source": "asset-offsets-init.cpp",
+                      "line": 17,
+                      "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+                    }
+                  ],
+                  "reason": "incomplete DEX initialization closure",
+                  "missing": [
+                    "android/content/res/AssetManager"
+                  ]
+                }
+              ],
+              "unresolved_calls": [
+                "DeleteLocalRef",
+                "ExceptionCheck",
+                "HiLogPrint",
+                "dlopen",
+                "dlsym"
+              ],
+              "coverage": "bounded-source-order-not-runtime-success"
+            },
+            {
+              "profile": "u10-1-resident-compat",
+              "identity": {
+                "artifact": "payload/runtime/appspawn-x",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "9e3ad72e1ff5de52435ce2ca91eacf5346f18aaadcdb96824b6713f3f849de09"
+              },
+              "findings": [],
+              "unknown": [
+                {
+                  "function": "U10ShareResidentCompat",
+                  "namespace": "&resident_namespace",
+                  "library": "libbionic_compat.so",
+                  "target_expression": "\"libbionic_compat.so\"",
+                  "evidence": {
+                    "source": "u10-1-resident-compat.h",
+                    "line": 13,
+                    "text": "void* resident = dlopen_ns(&resident_namespace, \"libbionic_compat.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                },
+                {
+                  "function": "U10ShareResidentCompat",
+                  "namespace": "&direct_namespace",
+                  "library": "libbionic_compat.so",
+                  "target_expression": "\"libbionic_compat.so\"",
+                  "evidence": {
+                    "source": "u10-1-resident-compat.h",
+                    "line": 29,
+                    "text": "direct = dlopen_ns(&direct_namespace, \"libbionic_compat.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                }
+              ],
+              "checked": []
+            },
+            {
+              "profile": "u10-1-native-loader-policy",
+              "identity": {
+                "artifact": "payload/route/libnativeloader.so",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "b8be63d2f617ba202373e4a60b34cc4eadba84bcfe31e42b64cfe4f01bfa62f7"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u12-mediandk-candidate.c",
+              "identity": {
+                "artifact": "payload/android/lib64/libmediandk.so",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "8fc0752dd561a62992268981164c5e75c87ceb802f93d6d0b958c23b54ddaa58",
+                "package": "u15-native-only-offline-staging"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u12-mediandk-objects.c.inc",
+              "identity": {
+                "artifact": "payload/android/lib64/libmediandk.so",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "8fc0752dd561a62992268981164c5e75c87ceb802f93d6d0b958c23b54ddaa58",
+                "package": "u15-native-only-offline-staging"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u12-private-zlib-route",
+              "identity": {
+                "artifact": "payload/runtime/appspawn-x",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "9e3ad72e1ff5de52435ce2ca91eacf5346f18aaadcdb96824b6713f3f849de09"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u13-system-loader.cpp",
+              "identity": {
+                "artifact": "payload/route/libnativeloader.so",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "b8be63d2f617ba202373e4a60b34cc4eadba84bcfe31e42b64cfe4f01bfa62f7"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u13-m1-compat-shim.cpp",
+              "identity": {
+                "artifact": "payload/android/lib64/liboh_android_runtime.so",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "94c31177709dbea0b1615a63c0d41a358f7db6843cbbd11f77979576a1a86a47"
+              },
+              "findings": [],
+              "unknown": [
+                {
+                  "function": "resolve_oh_wm_funcs",
+                  "namespace": "default",
+                  "library": "liboh_adapter_bridge.so",
+                  "target_expression": "\"liboh_adapter_bridge.so\"",
+                  "evidence": {
+                    "source": "u13-m1-compat-shim.cpp",
+                    "line": 415,
+                    "text": "s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                },
+                {
+                  "function": "eglCreateWindowSurface",
+                  "namespace": "default",
+                  "library": "libEGL.so",
+                  "target_expression": "\"libEGL.so\"",
+                  "evidence": {
+                    "source": "u13-m1-compat-shim.cpp",
+                    "line": 1408,
+                    "text": "void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                }
+              ],
+              "checked": []
+            },
+            {
+              "profile": "u13-asset-manager.cpp",
+              "identity": {
+                "artifact": "payload/android/lib64/liboh_android_runtime.so",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "94c31177709dbea0b1615a63c0d41a358f7db6843cbbd11f77979576a1a86a47"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u13-vlc-bionic-residue.c",
+              "identity": {
+                "artifact": "payload/android/lib64/libbionic_compat.so",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "b8a87f6fe2902b1d1c9e8440714d32dbdfd05d75dc1a2993fd2624af91d15abc"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u14-bridge-core",
+              "identity": {
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact": "payload/android/lib64/liboh_adapter_bridge.so",
+                "artifact_sha256": "7daa5435333ab99c2360dfe5ad5b75180ba0b8118d4f69f6750764c01b546452"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u14-bridge-input",
+              "identity": {
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact": "payload/android/lib64/liboh_adapter_bridge.so",
+                "artifact_sha256": "7daa5435333ab99c2360dfe5ad5b75180ba0b8118d4f69f6750764c01b546452"
+              },
+              "findings": [],
+              "unknown": [
+                {
+                  "function": "nativeRegisterInputChannel_impl",
+                  "namespace": "default",
+                  "library": "liboh_android_runtime.so",
+                  "target_expression": "\"liboh_android_runtime.so\"",
+                  "evidence": {
+                    "source": "u14-bridge-input.cpp",
+                    "line": 72,
+                    "text": "void* h = dlopen(\"liboh_android_runtime.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                }
+              ],
+              "checked": []
+            },
+            {
+              "profile": "u14-bridge-window",
+              "identity": {
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact": "payload/android/lib64/liboh_adapter_bridge.so",
+                "artifact_sha256": "7daa5435333ab99c2360dfe5ad5b75180ba0b8118d4f69f6750764c01b546452"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u14-bridge-ability",
+              "identity": {
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact": "payload/android/lib64/liboh_adapter_bridge.so",
+                "artifact_sha256": "7daa5435333ab99c2360dfe5ad5b75180ba0b8118d4f69f6750764c01b546452"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u14-bridge-m6-jni-cache",
+              "identity": {
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact": "payload/android/lib64/liboh_adapter_bridge.so",
+                "artifact_sha256": "7daa5435333ab99c2360dfe5ad5b75180ba0b8118d4f69f6750764c01b546452"
+              },
+              "findings": [],
+              "checked": [],
+              "unknown": [
+                {
+                  "class_name": null,
+                  "operation": "GetStaticMethodID",
+                  "sequence": 7,
+                  "evidence": {
+                    "source": "u14-bridge-ability.cpp",
+                    "line": 471,
+                    "text": "jmethodID resolveMethod = orientationEnv->GetStaticMethodID("
+                  },
+                  "trace": [
+                    {
+                      "function": "ScheduleAbilityTransaction",
+                      "source": "u14-bridge-ability.cpp",
+                      "line": 471,
+                      "text": "jmethodID resolveMethod = orientationEnv->GetStaticMethodID("
+                    }
+                  ],
+                  "reason": "JNI class variable not resolved"
+                },
+                {
+                  "class_name": null,
+                  "operation": "GetStaticMethodID",
+                  "sequence": 34,
+                  "evidence": {
+                    "source": "u14-bridge-ability.cpp",
+                    "line": 163,
+                    "text": "jmethodID findByOhToken = env->GetStaticMethodID("
+                  },
+                  "trace": [
+                    {
+                      "function": "ScheduleAbilityTransaction",
+                      "source": "u14-bridge-ability.cpp",
+                      "line": 526,
+                      "text": "FgGuardTokenIsFinishing(jvm_, tokenAddr_);  // [U14 M6]"
+                    },
+                    {
+                      "function": "FgGuardTokenIsFinishing",
+                      "source": "u14-bridge-ability.cpp",
+                      "line": 163,
+                      "text": "jmethodID findByOhToken = env->GetStaticMethodID("
+                    }
+                  ],
+                  "reason": "JNI class variable not resolved"
+                },
+                {
+                  "class_name": null,
+                  "operation": "GetStaticMethodID",
+                  "sequence": 35,
+                  "evidence": {
+                    "source": "u14-bridge-ability.cpp",
+                    "line": 165,
+                    "text": "jmethodID isDestroying = env->GetStaticMethodID("
+                  },
+                  "trace": [
+                    {
+                      "function": "ScheduleAbilityTransaction",
+                      "source": "u14-bridge-ability.cpp",
+                      "line": 526,
+                      "text": "FgGuardTokenIsFinishing(jvm_, tokenAddr_);  // [U14 M6]"
+                    },
+                    {
+                      "function": "FgGuardTokenIsFinishing",
+                      "source": "u14-bridge-ability.cpp",
+                      "line": 165,
+                      "text": "jmethodID isDestroying = env->GetStaticMethodID("
+                    }
+                  ],
+                  "reason": "JNI class variable not resolved"
+                },
+                {
+                  "class_name": null,
+                  "operation": "GetMethodID",
+                  "sequence": 69,
+                  "evidence": {
+                    "source": "u14-bridge-ability.cpp",
+                    "line": 335,
+                    "text": "jmethodID mid = env->GetMethodID(bridgeClass_, methodName, sig);"
+                  },
+                  "trace": [
+                    {
+                      "function": "ScheduleAbilityTransaction",
+                      "source": "u14-bridge-ability.cpp",
+                      "line": 548,
+                      "text": "callJavaVoidMethod(\"onScheduleAbilityTransaction\","
+                    },
+                    {
+                      "function": "callJavaVoidMethod",
+                      "source": "u14-bridge-ability.cpp",
+                      "line": 335,
+                      "text": "jmethodID mid = env->GetMethodID(bridgeClass_, methodName, sig);"
+                    }
+                  ],
+                  "reason": "JNI class variable not resolved"
+                }
+              ],
+              "unresolved_calls": [
+                "ALOGE",
+                "ALOGI",
+                "ALOGW",
+                "CallStaticBooleanMethod",
+                "CallStaticIntMethod",
+                "CallStaticObjectMethod",
+                "CallVoidMethodV",
+                "DeleteLocalRef",
+                "ExceptionCheck",
+                "ExceptionClear",
+                "ExceptionDescribe",
+                "GetAbilityName",
+                "GetBundleName",
+                "GetElement",
+                "NewStringUTF",
+                "OH_BR_IPC_WARN",
+                "SetPersistentId",
+                "SetRequestedOrientation",
+                "ToString",
+                "UpdateSessionPropertyByAction",
+                "WindowSessionProperty",
+                "__android_log_print",
+                "adapter_bridge_load_class",
+                "attach",
+                "c_str",
+                "clock_gettime",
+                "env",
+                "getenv",
+                "lk",
+                "lock",
+                "orientationAttach",
+                "strtoll",
+                "va_end",
+                "va_start"
+              ],
+              "coverage": "bounded-source-order-not-runtime-success"
+            },
+            {
+              "profile": "u14-flutter-egl.cpp",
+              "identity": {
+                "artifact": "payload/android/lib64/westlake_flutter/libandroid.so",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "9b8245022f9c98dac41a85acfa553e96e6385073fd7b15298199a1cce223647b"
+              },
+              "findings": [],
+              "unknown": [
+                {
+                  "function": "n6_log",
+                  "namespace": "default",
+                  "library": "liboh_android_runtime.so",
+                  "target_expression": "\"liboh_android_runtime.so\"",
+                  "evidence": {
+                    "source": "u14-flutter-egl.cpp",
+                    "line": 23,
+                    "text": "void* runtime = dlopen(\"liboh_android_runtime.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                },
+                {
+                  "function": "resolve_egl_hijack_funcs",
+                  "namespace": "default",
+                  "library": "liboh_adapter_bridge.so",
+                  "target_expression": "\"liboh_adapter_bridge.so\"",
+                  "evidence": {
+                    "source": "u14-flutter-egl.cpp",
+                    "line": 63,
+                    "text": "void* h = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                },
+                {
+                  "function": "resolve_egl_hijack_funcs",
+                  "namespace": "default",
+                  "library": "liboh_android_runtime.so",
+                  "target_expression": "\"liboh_android_runtime.so\"",
+                  "evidence": {
+                    "source": "u14-flutter-egl.cpp",
+                    "line": 67,
+                    "text": "h = dlopen(\"liboh_android_runtime.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                },
+                {
+                  "function": "resolve_egl_hijack_funcs",
+                  "namespace": "default",
+                  "library": "libEGL.so",
+                  "target_expression": "\"libEGL.so\"",
+                  "evidence": {
+                    "source": "u14-flutter-egl.cpp",
+                    "line": 86,
+                    "text": "void* h = dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                },
+                {
+                  "function": "resolve_swap_hijack_funcs",
+                  "namespace": "default",
+                  "library": "libEGL.so",
+                  "target_expression": "\"libEGL.so\"",
+                  "evidence": {
+                    "source": "u14-flutter-egl.cpp",
+                    "line": 179,
+                    "text": "void* h = dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+                  },
+                  "reason": "fresh namespace or literal target not established"
+                }
+              ],
+              "checked": []
+            },
+            {
+              "profile": "u14-gecko-abi.c",
+              "identity": {
+                "artifact": "payload/android/lib64/westlake_native/libwestlake_native_abi.so",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "f8619ad5571c92cb3e9da3b8265ee41c17fa67db0a6aabeb9bfb89903e2a2239"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u14-gecko-dlext.c",
+              "identity": {
+                "artifact": "payload/android/lib64/westlake_native/libwestlake_native_abi.so",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "f8619ad5571c92cb3e9da3b8265ee41c17fa67db0a6aabeb9bfb89903e2a2239"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            },
+            {
+              "profile": "u15-app-native-loader",
+              "identity": {
+                "artifact": "payload/route/libapp_native_loader.so",
+                "package": "u15-native-only-offline-staging",
+                "manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+                "artifact_sha256": "b96a8991ef5a2a6e800029aed968b2442f50786466ac2a1a19979959b56d8bbc"
+              },
+              "findings": [],
+              "unknown": [],
+              "checked": []
+            }
+          ]
+        },
+        "dex_artifact": {
+          "path": "payload/android/framework/framework.jar",
+          "sha256": "9e55e28623c86cc553bb2449cb18948e383a05fb0283b045d969655813b7d1b7"
+        },
+        "scope": "bounded build-attested source/DEX order; not source-to-binary equivalence"
+      },
+      "findings": [
+        {
+          "profile": "host",
+          "kind": "unknown",
+          "detail": {
+            "function": "main",
+            "namespace": "default",
+            "library": null,
+            "target_expression": "plugin_path",
+            "evidence": {
+              "source": "n4-host.c",
+              "line": 665,
+              "text": "plugin_handle = dlopen(plugin_path, RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "d4b0f9dfaf26d2590d47be8b358aaf6bb213816afab362d3d84fdca71a1b43e3",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "android/content/res/AssetManager",
+            "operation": "GetFieldID",
+            "sequence": 58,
+            "evidence": {
+              "source": "asset-offsets-init.cpp",
+              "line": 17,
+              "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 670,
+                "text": "if (initialize_n10b_asset_offsets(env) < 0) return -1;"
+              },
+              {
+                "function": "initialize_n10b_asset_offsets",
+                "source": "asset-offsets-init.cpp",
+                "line": 17,
+                "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "android/content/res/AssetManager"
+            ]
+          },
+          "issue_id": "76564620859ef32ca8164df2ff62cee76215c1a0eeffa0142cc58616c2d926a8",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+            "operation": "GetMethodID",
+            "sequence": 89,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 111,
+              "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 684,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 557,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 141,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 111,
+                "text": "jmethodID configCtor = env->GetMethodID(configClass, \"<init>\", \"(J)V\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "javax/microedition/khronos/egl/EGLConfig"
+            ]
+          },
+          "issue_id": "36b907e0f15acf49fd2312ec95ee192ce22810aafa6cd35aa60a37bb13a1fd3f",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "com/google/android/gles_jni/EGLConfigImpl",
+            "operation": "GetFieldID",
+            "sequence": 90,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 113,
+              "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 684,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 557,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 141,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 113,
+                "text": "jfieldID configField = env->GetFieldID(configClass, \"mEGLConfig\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "javax/microedition/khronos/egl/EGLConfig"
+            ]
+          },
+          "issue_id": "220c7833b8d2fd76e35cd90b591aaa30c1cef6a8f23c74c6608bf90a1fc71628",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "com/google/android/gles_jni/EGLDisplayImpl",
+            "operation": "GetFieldID",
+            "sequence": 92,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 117,
+              "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 684,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 557,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 141,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 117,
+                "text": "jfieldID displayField = env->GetFieldID(displayClass, \"mEGLDisplay\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "javax/microedition/khronos/egl/EGLDisplay"
+            ]
+          },
+          "issue_id": "368d2818f26b9d1ab4c09415fb0562a97ef2b3a155aa6037f3afce97f32b6258",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "com/google/android/gles_jni/EGLContextImpl",
+            "operation": "GetFieldID",
+            "sequence": 94,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 121,
+              "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 684,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 557,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 141,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 121,
+                "text": "jfieldID contextField = env->GetFieldID(contextClass, \"mEGLContext\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "java/lang/Object",
+              "javax/microedition/khronos/egl/EGLDisplay",
+              "javax/microedition/khronos/egl/EGLSurface"
+            ]
+          },
+          "issue_id": "919a67047b5aae5f0b2aaf82aa9c44fc7fea9811bee61c496f30d0bdbc658d88",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "com/google/android/gles_jni/EGLSurfaceImpl",
+            "operation": "GetFieldID",
+            "sequence": 96,
+            "evidence": {
+              "source": "egl.cpp",
+              "line": 125,
+              "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "startReg",
+                "source": "n4-order-runtime.cpp",
+                "line": 684,
+                "text": "if (::register_com_google_android_gles_jni_EGLImpl(env) != 0 || env->ExceptionCheck()) {"
+              },
+              {
+                "function": "register_com_google_android_gles_jni_EGLImpl",
+                "source": "egl.cpp",
+                "line": 557,
+                "text": "android::nativeClassInit(_env, nullptr);"
+              },
+              {
+                "function": "nativeClassInit",
+                "source": "egl.cpp",
+                "line": 141,
+                "text": "bool ready = cacheEglFields(env);"
+              },
+              {
+                "function": "cacheEglFields",
+                "source": "egl.cpp",
+                "line": 125,
+                "text": "jfieldID surfaceField = env->GetFieldID(surfaceClass, \"mEGLSurface\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "javax/microedition/khronos/egl/EGLSurface"
+            ]
+          },
+          "issue_id": "95212639ed26d437c985e0edd2e118944f1ecd3ea19be46ef9015c460cbc217a",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "DeleteLocalRef",
+          "issue_id": "daf5b11eeb0842603a6b6a76fc055209691562c1af763c4e30180ebccd6862f5",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionCheck",
+          "issue_id": "fc5ba2eeca6d2de2e8b8b95d29eb471c9a4371eb2c2c7c18086b1608df392787",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionClear",
+          "issue_id": "d6f553047b3c5223fd4ece0c37d62795d6079b4afa89145b10b5188befa3ca0a",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionDescribe",
+          "issue_id": "5440b512cee6f61224c73f621cd13015254e4a22ef057f09e6d1c4cee59c2f5a",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "GetJavaVM",
+          "issue_id": "c3fd94c6f8bd3c8d502e37b871e30e34443b038769d2d28aa25b75a3e175ef9a",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "HiLogPrint",
+          "issue_id": "49c469c6a1efa142e64d3989d1b18d0edf42e6fd4dfe42c9b98a1965a638c8c7",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "NELEM",
+          "issue_id": "baa180d124812954180f207ad030533485626e29461d7a5b95f4fe2e5446356a",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "NewGlobalRef",
+          "issue_id": "17895d7f11fa2120df56295362a2ac4415ace759013e18b8137c3e1f46cc93a6",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "PopLocalFrame",
+          "issue_id": "23168df372ca0d3535fd01ef129868391364d8e248eec5b04518e6fde4e77ad7",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "PushLocalFrame",
+          "issue_id": "877840893bdc41acc638434b8991078aae99cffde46a875c39e7de33f9c64084",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "dlerror",
+          "issue_id": "be532bafbbc13ead44399be85eea4f58ca150b6417a7b45e92d18cd90fb324c4",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "dlopen",
+          "issue_id": "aacf84c59ae0f53b3a9781040b57a6aa9c0e4fa90adde4842ef21dbfecb8b6df",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "dlsym",
+          "issue_id": "e264a61173ba31c9045fde0c4e6663f8d3671d76d3268ca668bac14ecd9d4dfb",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "fn",
+          "issue_id": "e4cbe974ceaae6a64363c3e08622870a9d5099ef1067ea41e68f701b69598957",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "fprintf",
+          "issue_id": "5086c643ad479db0b2443260e9b198bb250f0ad29d013bf24975c5d2d708d0af",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "int",
+          "issue_id": "ee788e0441d8c06485900603395827e3b2630e0f626672a9e0b86e5605fc3ab9",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "jint",
+          "issue_id": "0d45004a0cab03353826163a94e2327189584a7e6408080e8ea37b4dc0645d40",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "jniThrowException",
+          "issue_id": "a3a4338d1f66152c704b531ed4e26c78042356d8d699893b8590b6a36f684d1b",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "memcpy",
+          "issue_id": "aea7de9aae42c35906861e011e6cf96b7f5146ef1ab8bab7b8a569237fca03e1",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "onload",
+          "issue_id": "89d2483c21958acc0e7a38659952d00bb79a70dd359997ff8a8167505d9c4525",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "proc",
+          "issue_id": "6143277c4ebbcc544f0cab3f6d107dc3773d021df6be4be840052ad76873c729",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "register_android_graphics_compat_shim",
+          "issue_id": "8123e67bd956dde8fa979ef0032b0210662dcf6dea8d1d388ab526715aa53d85",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "runtime",
+          "kind": "unresolved_calls",
+          "detail": "register_n2_Camera",
+          "issue_id": "02e3e4610e6f4b54fa1b4b5463e38df128425ec57437221697b0314a36feddb6",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "child-owner",
+          "kind": "findings",
+          "detail": {
+            "function": "RealOpenLocalNow",
+            "namespace": "&closure_namespace",
+            "library": "libart.so",
+            "target_expression": "\"libart.so\"",
+            "evidence": {
+              "source": "n10b-child.c",
+              "line": 286,
+              "text": "void *art = dlopen_ns(&closure_namespace, \"libart.so\","
+            },
+            "family": "noload-before-namespace-mapping",
+            "verdict": "static-risk",
+            "namespace_creation": {
+              "source": "n10b-child.c",
+              "line": 265,
+              "text": "if (dlns_create2(&closure_namespace, search_path,"
+            },
+            "reason": "NOLOAD cannot establish a first local mapping; no dominating guarded same-namespace load found"
+          },
+          "issue_id": "9f45d2f42d043c3021637d061a45781600ac365a1d8e4399d0210519119d27fd",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "emboss-registration",
+          "kind": "unresolved_calls",
+          "detail": "DeleteLocalRef",
+          "issue_id": "37a55103968502deadf5a3e6e5dab039f8c834f59267cbf12da85fcf27d79af2",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "DeleteLocalRef",
+          "issue_id": "557bad43fe4c93588605dc79b1eee46ff2a654dad6b55efd1d11189ae95499f3",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionCheck",
+          "issue_id": "d788bccf638a04af104d61cf45cd2df2145443627e9fc77a086f7e9cb9138683",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionClear",
+          "issue_id": "752b1b86bae1d1ca2a688e3b36fdf070b12ab037a52efdc10203cbda93ea072e",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionDescribe",
+          "issue_id": "28867c32f052d4b2b308175084d35a3404dab3628664a9bc3c97db844683ce06",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "GetJavaVM",
+          "issue_id": "0b518b02242ef35ebdbba295aadc3cbae36627dba1a4ef2891c3cb7c98f71cd1",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "HiLogPrint",
+          "issue_id": "b0c991c122b11249c5fa71b14cc04fad613792907d5db84f1633fe593a3ec4bc",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "dlerror",
+          "issue_id": "d3b9698d4a4158f86da643e1f4408104ff8ab4ab9bbaa7605172c3416d89b06b",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "dlopen",
+          "issue_id": "0ed211d672a63b87120a28c41d2ec529dbb58de63ae5d3647bf73ba4337ef094",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "dlsym",
+          "issue_id": "3ac4253949abb136057f2b8d9995b82b6890564f7617ea6b271cfdef84e0945b",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "int",
+          "issue_id": "292d8a7ebdb0a6a6e5a2cc457477191ccfa91fb110af094b9f397e89c00981b0",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "real_reg",
+          "issue_id": "6cda94195c668b484ee422e737b56dfbf1090d84b81510858d45ddc37945a2b0",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "set_vm",
+          "issue_id": "69c7adfdaeeb6211fe265f811db6da86d3ca936822fc3a848c830738ef3affe9",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "android_graphics_Typeface",
+          "kind": "unresolved_calls",
+          "detail": "void",
+          "issue_id": "ee162c3261e31e320a2e951d67818a4c7a452dfa31fd7c2a1997d348cdb0f079",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unknown",
+          "detail": {
+            "class_name": "android/content/res/AssetManager",
+            "operation": "GetFieldID",
+            "sequence": 2,
+            "evidence": {
+              "source": "asset-offsets-init.cpp",
+              "line": 17,
+              "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+            },
+            "trace": [
+              {
+                "function": "initialize_n10b_asset_offsets",
+                "source": "asset-offsets-init.cpp",
+                "line": 17,
+                "text": "jfieldID field = env->GetFieldID(clazz, \"mObject\", \"J\");"
+              }
+            ],
+            "reason": "incomplete DEX initialization closure",
+            "missing": [
+              "android/content/res/AssetManager"
+            ]
+          },
+          "issue_id": "a2f75802a048c83ee2b0ca6ceb2e2761eaf0c24b49fdd185709b928cd5b83898",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unresolved_calls",
+          "detail": "DeleteLocalRef",
+          "issue_id": "e306e0ad66ef5f90a069bb529a8e48b478303a61de1114662c8778c221cacfd2",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionCheck",
+          "issue_id": "4c76c4bfc46e352260514cd86dc6b3e760dea2f0bece639c3a6863e8dfb0bf23",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unresolved_calls",
+          "detail": "HiLogPrint",
+          "issue_id": "8c0ec2f53999f4b57202bfeb7e1118141a5a2e2ea93bc8d3f1c741aa2fecab5c",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unresolved_calls",
+          "detail": "dlopen",
+          "issue_id": "9c31ea6ab2eb3917edaec5b12c71fdc860eb365f0599f1686de27b6581f4b0b4",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "asset-offsets-init",
+          "kind": "unresolved_calls",
+          "detail": "dlsym",
+          "issue_id": "043c57ddf0e1fa5ef97f76707513acafb0fd048418d0d10467f5c8d138ccf94e",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u10-1-resident-compat",
+          "kind": "unknown",
+          "detail": {
+            "function": "U10ShareResidentCompat",
+            "namespace": "&resident_namespace",
+            "library": "libbionic_compat.so",
+            "target_expression": "\"libbionic_compat.so\"",
+            "evidence": {
+              "source": "u10-1-resident-compat.h",
+              "line": 13,
+              "text": "void* resident = dlopen_ns(&resident_namespace, \"libbionic_compat.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "9e8c9f92b177d666011d6534917be2a6576e3fe903a6df3f5060a6a1556d2107",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u10-1-resident-compat",
+          "kind": "unknown",
+          "detail": {
+            "function": "U10ShareResidentCompat",
+            "namespace": "&direct_namespace",
+            "library": "libbionic_compat.so",
+            "target_expression": "\"libbionic_compat.so\"",
+            "evidence": {
+              "source": "u10-1-resident-compat.h",
+              "line": 29,
+              "text": "direct = dlopen_ns(&direct_namespace, \"libbionic_compat.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "df99392ec14548e80928658c8e3bc1bc8d518d37c6414b7e1d5f1a1dcce77ded",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u13-m1-compat-shim.cpp",
+          "kind": "unknown",
+          "detail": {
+            "function": "resolve_oh_wm_funcs",
+            "namespace": "default",
+            "library": "liboh_adapter_bridge.so",
+            "target_expression": "\"liboh_adapter_bridge.so\"",
+            "evidence": {
+              "source": "u13-m1-compat-shim.cpp",
+              "line": 415,
+              "text": "s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "685a890b4fc5041057ba849602b8f60dacedff5f031866cb2b9bdad9220e0d64",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u13-m1-compat-shim.cpp",
+          "kind": "unknown",
+          "detail": {
+            "function": "eglCreateWindowSurface",
+            "namespace": "default",
+            "library": "libEGL.so",
+            "target_expression": "\"libEGL.so\"",
+            "evidence": {
+              "source": "u13-m1-compat-shim.cpp",
+              "line": 1408,
+              "text": "void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "e57dfcb63c9782488fec58a4656964f0dd6e05cbfe584598d362139340c11e58",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-input",
+          "kind": "unknown",
+          "detail": {
+            "function": "nativeRegisterInputChannel_impl",
+            "namespace": "default",
+            "library": "liboh_android_runtime.so",
+            "target_expression": "\"liboh_android_runtime.so\"",
+            "evidence": {
+              "source": "u14-bridge-input.cpp",
+              "line": 72,
+              "text": "void* h = dlopen(\"liboh_android_runtime.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "140f17c130927b351e6f0875c54778d3811f9d6c5a2281cb12151df39a180ac7",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unknown",
+          "detail": {
+            "class_name": null,
+            "operation": "GetStaticMethodID",
+            "sequence": 7,
+            "evidence": {
+              "source": "u14-bridge-ability.cpp",
+              "line": 471,
+              "text": "jmethodID resolveMethod = orientationEnv->GetStaticMethodID("
+            },
+            "trace": [
+              {
+                "function": "ScheduleAbilityTransaction",
+                "source": "u14-bridge-ability.cpp",
+                "line": 471,
+                "text": "jmethodID resolveMethod = orientationEnv->GetStaticMethodID("
+              }
+            ],
+            "reason": "JNI class variable not resolved"
+          },
+          "issue_id": "df91a07ad126b3fc0237899fbd44059db11dc10da9d630db5e54a23b1f97fa75",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unknown",
+          "detail": {
+            "class_name": null,
+            "operation": "GetStaticMethodID",
+            "sequence": 34,
+            "evidence": {
+              "source": "u14-bridge-ability.cpp",
+              "line": 163,
+              "text": "jmethodID findByOhToken = env->GetStaticMethodID("
+            },
+            "trace": [
+              {
+                "function": "ScheduleAbilityTransaction",
+                "source": "u14-bridge-ability.cpp",
+                "line": 526,
+                "text": "FgGuardTokenIsFinishing(jvm_, tokenAddr_);  // [U14 M6]"
+              },
+              {
+                "function": "FgGuardTokenIsFinishing",
+                "source": "u14-bridge-ability.cpp",
+                "line": 163,
+                "text": "jmethodID findByOhToken = env->GetStaticMethodID("
+              }
+            ],
+            "reason": "JNI class variable not resolved"
+          },
+          "issue_id": "eb690bde492e5f37671b80e7e6bbad84b5cad1bfaf04226986ccb743c64ca7e6",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unknown",
+          "detail": {
+            "class_name": null,
+            "operation": "GetStaticMethodID",
+            "sequence": 35,
+            "evidence": {
+              "source": "u14-bridge-ability.cpp",
+              "line": 165,
+              "text": "jmethodID isDestroying = env->GetStaticMethodID("
+            },
+            "trace": [
+              {
+                "function": "ScheduleAbilityTransaction",
+                "source": "u14-bridge-ability.cpp",
+                "line": 526,
+                "text": "FgGuardTokenIsFinishing(jvm_, tokenAddr_);  // [U14 M6]"
+              },
+              {
+                "function": "FgGuardTokenIsFinishing",
+                "source": "u14-bridge-ability.cpp",
+                "line": 165,
+                "text": "jmethodID isDestroying = env->GetStaticMethodID("
+              }
+            ],
+            "reason": "JNI class variable not resolved"
+          },
+          "issue_id": "347b8973dfcd1ce595c9f32d212df663956ffff090acabb3a791091522665a9a",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unknown",
+          "detail": {
+            "class_name": null,
+            "operation": "GetMethodID",
+            "sequence": 69,
+            "evidence": {
+              "source": "u14-bridge-ability.cpp",
+              "line": 335,
+              "text": "jmethodID mid = env->GetMethodID(bridgeClass_, methodName, sig);"
+            },
+            "trace": [
+              {
+                "function": "ScheduleAbilityTransaction",
+                "source": "u14-bridge-ability.cpp",
+                "line": 548,
+                "text": "callJavaVoidMethod(\"onScheduleAbilityTransaction\","
+              },
+              {
+                "function": "callJavaVoidMethod",
+                "source": "u14-bridge-ability.cpp",
+                "line": 335,
+                "text": "jmethodID mid = env->GetMethodID(bridgeClass_, methodName, sig);"
+              }
+            ],
+            "reason": "JNI class variable not resolved"
+          },
+          "issue_id": "36cfeb87b71e7ce29ed8729355fda6219de9cf61a04741bc38bce37d9f5707a5",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "ALOGE",
+          "issue_id": "a0ec094ab189bfc4e90d5ba25ad0853d48b2de64812fb898b114884e92d34d12",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "ALOGI",
+          "issue_id": "3a05f4c71df54c5eb4379f576939faf10575deb49406fb28d13e584362b64dc2",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "ALOGW",
+          "issue_id": "951b35203171a2e4923824c8c62ff579f7dcff16acffad71ead8a5e6d7ff1cf7",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "CallStaticBooleanMethod",
+          "issue_id": "edc149526ca7257b5053fc82a949462ae2c2d4f43570b03060e7869dfb562ab2",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "CallStaticIntMethod",
+          "issue_id": "3199e7633c9ab42e37e1add3179ccdd0bf840031143844128d7924c172ec3241",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "CallStaticObjectMethod",
+          "issue_id": "136a0050fdb7d504e7a68b70fcbe9e702d292a9e794d68dc44751638a0a9ff57",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "CallVoidMethodV",
+          "issue_id": "b214a38f6445a7761f8cfcb0f672cd3e03098a6c3680915e01ce099861dfb0d1",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "DeleteLocalRef",
+          "issue_id": "155d9c70ce441fd0f439a595a82b6be1dd9e0c5f74e1af7c2d55934721b38a7e",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionCheck",
+          "issue_id": "db87082cea057b280c5ed9e3003fed7052732acff4c75c9457d31b41a0b2fc0b",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionClear",
+          "issue_id": "3f1a1e244303a7abf970c1e23e6ab71aeb3bb81b10a92429bcb34db6fa33c089",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "ExceptionDescribe",
+          "issue_id": "8c64596f76c4d076ce7807d017f5b4d7d2fba2259422dedb2ad7aadf57c84228",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "GetAbilityName",
+          "issue_id": "2783862cdd0cbfbb0d620effc5030c645f4efe6a046276fe82807263a13f0330",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "GetBundleName",
+          "issue_id": "edd23f5afb57d76b677e55a852bd21d923ca71543b855b3ed5904ea31965a71b",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "GetElement",
+          "issue_id": "3a2d0be17ce779fdab8666ab6b0c48e60770725041fd8bb3a4be1dde61864f11",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "NewStringUTF",
+          "issue_id": "c634ec57cb94bacb904c8c7cf7aaa3681f6f5e8f00ff9a91b9d18bf4d47504ac",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "OH_BR_IPC_WARN",
+          "issue_id": "eec4d0097566c694c94ce17ead90a1f8879cd5edf4f37fff79ce4dcd105c6637",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "SetPersistentId",
+          "issue_id": "96e1c1e9e9486e357b03cd12aba72fd6693b193ce41d70c584a701586b05ca69",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "SetRequestedOrientation",
+          "issue_id": "cca51281a5a5090c605446890af405cd90b2b61cf4c811ee1c1e9d7ef05daa43",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "ToString",
+          "issue_id": "f446d7fb32006387ba71cdc753ece8496b1865e82ed885cae301040b660d347c",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "UpdateSessionPropertyByAction",
+          "issue_id": "1843ef7870ff17ae346dd35a29fba3111db6864d67bf21579a08076190930eb4",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "WindowSessionProperty",
+          "issue_id": "67506fda867dbaf73543fb90b1cd25fe2d281f3fbc3cc1e19761c6e4c834361e",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "__android_log_print",
+          "issue_id": "d459c943a704fc0aa47c1ae254396b03d29cf99e8be74a34397e75bfe09403d1",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "adapter_bridge_load_class",
+          "issue_id": "874aa3f9ff785928fecba2bec342b475a6961fd99355426f68c9e102c82d8e2b",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "attach",
+          "issue_id": "ef713f529d0584bc610ad3ecf477399ce69df767c53d1ffe17956f4d5ec1089d",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "c_str",
+          "issue_id": "06946b5ca4f16c0cdf2db11f24ebb4562868223d692c1e361674b2509d7313c5",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "clock_gettime",
+          "issue_id": "95707e694595b7a5eedf93518d2fbae4076bf7d843ac1d877c03cabcfa063655",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "env",
+          "issue_id": "384842aabb0ef9a65904978c372616bef1b334426e39b1e8443759ed53e9b3a8",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "getenv",
+          "issue_id": "426640cb86c1980ef4e9a53b4c3ce6bb83930150211592e0bdbf0134925c5263",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "lk",
+          "issue_id": "48277d6b31eb749d4ac55611d22ffb83800637675612aeedf3ae1c4388957739",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "lock",
+          "issue_id": "3f50dce269e19f119473558f1711db92adba33989b540d6e1a303e1778b8a370",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "orientationAttach",
+          "issue_id": "ddd93698a8e224ed3ba62b72c0102606814bc60d13d2ccdcb4a87fce3e1e4bac",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "strtoll",
+          "issue_id": "6f174f455196a0e118c96792b5a001eefe3a08662fdb7cf5992cbbff7f01c1f9",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "va_end",
+          "issue_id": "27c0cb6080fae21a2710e203c0a5ac11f138a0a25469109200abc90b8281ee99",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-bridge-m6-jni-cache",
+          "kind": "unresolved_calls",
+          "detail": "va_start",
+          "issue_id": "ebaa93025d3fb4e16ab29d2fb893fb45162103bc81545effcd86bb5bd90a020a",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-flutter-egl.cpp",
+          "kind": "unknown",
+          "detail": {
+            "function": "n6_log",
+            "namespace": "default",
+            "library": "liboh_android_runtime.so",
+            "target_expression": "\"liboh_android_runtime.so\"",
+            "evidence": {
+              "source": "u14-flutter-egl.cpp",
+              "line": 23,
+              "text": "void* runtime = dlopen(\"liboh_android_runtime.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "3be663e6e14a2d5aefa320aa36a000711ec985ff1cf650b2cffa5965b72ede9a",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-flutter-egl.cpp",
+          "kind": "unknown",
+          "detail": {
+            "function": "resolve_egl_hijack_funcs",
+            "namespace": "default",
+            "library": "liboh_adapter_bridge.so",
+            "target_expression": "\"liboh_adapter_bridge.so\"",
+            "evidence": {
+              "source": "u14-flutter-egl.cpp",
+              "line": 63,
+              "text": "void* h = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "790be69658bf9b9650ccbc2e7cf5485e01b39b536f0d5af2568398b8834d6ed5",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-flutter-egl.cpp",
+          "kind": "unknown",
+          "detail": {
+            "function": "resolve_egl_hijack_funcs",
+            "namespace": "default",
+            "library": "liboh_android_runtime.so",
+            "target_expression": "\"liboh_android_runtime.so\"",
+            "evidence": {
+              "source": "u14-flutter-egl.cpp",
+              "line": 67,
+              "text": "h = dlopen(\"liboh_android_runtime.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "23ca4db4e10478756a62410528f3af9e64501d841007d7a0b71131d7934cf2f4",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-flutter-egl.cpp",
+          "kind": "unknown",
+          "detail": {
+            "function": "resolve_egl_hijack_funcs",
+            "namespace": "default",
+            "library": "libEGL.so",
+            "target_expression": "\"libEGL.so\"",
+            "evidence": {
+              "source": "u14-flutter-egl.cpp",
+              "line": 86,
+              "text": "void* h = dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "c884c3e606a6801da293d0085b62569de16c92020289ac8ed8097995c6725300",
+          "disposition": "REJECT"
+        },
+        {
+          "profile": "u14-flutter-egl.cpp",
+          "kind": "unknown",
+          "detail": {
+            "function": "resolve_swap_hijack_funcs",
+            "namespace": "default",
+            "library": "libEGL.so",
+            "target_expression": "\"libEGL.so\"",
+            "evidence": {
+              "source": "u14-flutter-egl.cpp",
+              "line": 179,
+              "text": "void* h = dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "74606925008fe01a5bb4b5bd3940493c8ebfa374976306e873d33f0ddfa5960b",
+          "disposition": "REJECT"
+        }
+      ],
+      "rejected": 99,
+      "excepted": 0,
+      "stale": [],
+      "warnings": []
+    }
+  },
+  "errors": [],
+  "package_manifest_sha256": "4d3b6568a341e147754ccde384ed40ab58554eff0167cb248bb09c0b99fcf1b0",
+  "inputs_sha256": "4e25b830cad69914c5104628b5aff1e57d33b2f59c036a0f60ac3488efe3a4f2",
+  "exceptions_sha256": "a3b44942e594512a8dfb9664f7c0b4ed33cb3d0c174271631c2ecdfac331d5ae"
+}

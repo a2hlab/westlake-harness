@@ -21,3 +21,13 @@ fn u16_draft_inputs() {
 fn u16_draft_bake() {
     check("--bake");
 }
+
+#[test]
+fn u16_draft_native() {
+    check("--native");
+}
+
+#[test]
+fn u16_draft_native_pair() {
+    check("--native-pair");
+}

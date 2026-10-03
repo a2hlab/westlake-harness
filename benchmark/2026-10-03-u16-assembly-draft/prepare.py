@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shutil
 import sys
+import zipfile
 
 from validation import ADDED, BASES, DEX2OAT, DRIVER, HOME_ID, IMAGE_NAMES, JARS, OLD_RUNTIME_JAR, REMOTE_ROOT, RUNTIME_JAR, STUBS, check_plan
 
@@ -130,6 +131,8 @@ def main():
             dict(id="t4-m1-split-runtime", state="pending", sha256=None, applied=False, owner="oc-t4", target="/system/android/lib64/liboh_android_runtime.so"),
             dict(id="flutter-impeller-extension-proc", state="pending", sha256=None, applied=False, owner="cc-t3", target="pending diagnosed owner")],
         excluded=["t2-icon-raster"], dependency_blocked=["t5-webview-A0"])
+    if (HERE / "native-slot-binding.json").exists():
+        slots = json.loads((HERE / "native-slots.json").read_text())
     check_plan(plan, images, slots)
     save("plan.json", plan)
     save("native-slots.json", slots)
@@ -168,11 +171,20 @@ def main():
         if (HERE / name).read_text() != expected:
             raise ValueError("Recipe differs beyond U16 labels/root: " + name)
     save("source-snapshots.json", sources)
-    donor_receipt = json.loads((stubs_root / "adapter-mainline-stubs-u16t1.jar.receipt.json").read_text())
+    current_receipt = MASTER / "benchmark/2026-10-03-u16-t1-wifimanager/receipt-u16t1.json"
+    donor_receipt = json.loads(current_receipt.read_text())
+    with zipfile.ZipFile(stubs_root / "adapter-mainline-stubs-u16t1.jar") as archive:
+        dex_sha = hashlib.sha256(archive.read("classes.dex")).hexdigest()
+    if donor_receipt["out_jar_sha256"] != STUBS or donor_receipt["out_classes_dex_sha256"] != dex_sha:
+        raise ValueError("Corrected receipt does not match current artifact and DEX")
+    snapshot(current_receipt, "t1/receipt-u16t1.json")
+    save("source-snapshots.json", sources)
     save("donor-receipt-status.json", dict(artifact_sha256=STUBS, receipt_output_sha256=donor_receipt.get("out_jar_sha256"),
         receipt_matches_current_artifact=donor_receipt.get("out_jar_sha256") == STUBS,
-        state="current deterministic artifact verified; historical merge receipt is not current artifact build proof",
-        correction_owner="oc-t4/outer", replacement_receipt=None, blocks_final_provenance_claim=True))
+        classes_dex_sha256=dex_sha, receipt_classes_dex_sha256=donor_receipt["out_classes_dex_sha256"],
+        state="corrected landed receipt independently matches current artifact and classes.dex",
+        correction_owner="oc-t4/outer", replacement_receipt=current_receipt, replacement_receipt_sha256=sha(current_receipt),
+        blocks_final_provenance_claim=False))
     save("input-inventory.json", dict(root=PRIVATE, files=[dict(path=str(path.relative_to(PRIVATE)), sha256=sha(path), bytes=path.stat().st_size)
         for path in sorted(PRIVATE.rglob("*")) if path.is_file()], binary_landing=False, bcp_count=9, runtime_jar_in_bcp=False))
     save("allow-add.pending.json", dict(execution_enabled=False, rollout_ready=False, approved=False,
@@ -184,7 +196,7 @@ def main():
     save("preservation.json", dict(content_bases={variant: dict(before=BASES[variant], after=sha(data[variant][0] / "bundle.json")) for variant in BASES},
         donor_after={"stubs": sha(stubs_root / "adapter-mainline-stubs-u16t1.jar"), "runtime_jar": sha(runtime_root / "oh-adapter-runtime-u16-t3.jar")},
         board_access=False, vm_access=False, bake_executed=False, native_rebuilt=False, gate_registry_updated=False))
-    print("U16 DRAFT INPUTS: U15 bases pinned; BCP9 with1 stubs swap; runtime JAR outside BCP;27 images NOT_RUN;2 native slots pending")
+    print("U16 DRAFT INPUTS: U15 bases pinned; BCP9 with1 stubs swap; runtime JAR outside BCP;27 images NOT_RUN; corrected t1 receipt matched")
 
 
 if __name__ == "__main__":

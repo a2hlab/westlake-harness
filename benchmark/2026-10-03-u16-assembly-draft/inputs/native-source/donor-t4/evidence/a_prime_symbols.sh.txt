@@ -1,0 +1,38 @@
+#!/bin/bash
+# A-prime proof: U16 t4 candidate vs U15 base (94c31177). Runs on macOS with llvm tools.
+set -uo pipefail
+HERE=$(cd "$(dirname "$0")/.." && pwd)
+CAND=$HERE/payload/liboh_android_runtime.so
+BASE=$WORKSPACES/westlake-inputs/generations/u15-runtime-m3-v1/payload/android/lib64/liboh_android_runtime.so
+OD=/opt/homebrew/bin/llvm-objdump
+NM=/opt/homebrew/bin/llvm-nm
+
+echo "=== A-prime proof: t4 candidate ($(shasum -a 256 "$CAND" | cut -c1-16)) vs U15 base (94c31177) ==="
+
+echo; echo "(1) exported dynsym diff (expect empty = exports unchanged):"
+$NM -D --defined-only "$BASE" | awk '{print $2, $3}' | sort > /tmp/t4-base-def.txt
+$NM -D --defined-only "$CAND" | awk '{print $2, $3}' | sort > /tmp/t4-cand-def.txt
+diff /tmp/t4-base-def.txt /tmp/t4-cand-def.txt && echo "  -> exports identical"
+
+echo; echo "(2) undefined dynsym diff (expect exactly m1_native_window_from_other_copies added):"
+$NM -D --undefined-only "$BASE" | awk '{print $2}' | sort > /tmp/t4-base-undef.txt
+$NM -D --undefined-only "$CAND" | awk '{print $2}' | sort > /tmp/t4-cand-undef.txt
+diff /tmp/t4-base-undef.txt /tmp/t4-cand-undef.txt || true
+
+echo; echo "(3) NEEDED sonames (expect identical):"
+$OD -p "$BASE" | grep NEEDED | awk '{print $NF}' | sort > /tmp/t4-base-need.txt
+$OD -p "$CAND" | grep NEEDED | awk '{print $NF}' | sort > /tmp/t4-cand-need.txt
+diff /tmp/t4-base-need.txt /tmp/t4-cand-need.txt && echo "  -> NEEDED identical"
+
+echo; echo "(4) m1 symbols in candidate:"
+echo -n "  exported m1 (dynsym): "; $NM -D --defined-only "$CAND" | grep -ic 'm1_\|from_other_copies' || true
+echo -n "  exported m1_native_window_from_other_copies present: "
+$NM -D --defined-only "$CAND" | grep -c 'm1_native_window_from_other_copies' || true
+echo "  symtab m1_* (local t too):"
+$NM "$CAND" | grep -i 'm1_' | sed 's/^/    /' | head -8
+echo "  symtab m1_* in BASE:"
+$NM "$BASE" | grep -i 'm1_' | sed 's/^/    /' | head -8 || echo "    (none - was inlined/file-local in 612236be)"
+
+echo; echo "(5) [M1-COPY] strings (expect >=1 in candidate; in base it lives in the shim):"
+/opt/homebrew/bin/llvm-strings "$CAND" 2>/dev/null | grep -c 'M1-COPY' || true
+/opt/homebrew/bin/llvm-strings "$BASE" 2>/dev/null | grep -c 'M1-COPY' || true

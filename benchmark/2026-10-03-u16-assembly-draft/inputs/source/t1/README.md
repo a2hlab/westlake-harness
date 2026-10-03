@@ -55,4 +55,7 @@ each named in class-diff.txt.
 - `members.tsv` — the 8 members (the merge gate refuses anything else)
 - `build.log` — pipeline tee
 - `class-diff.txt` — deployed_class_diff --frozen output
-- `adapter-mainline-stubs-u16t1.jar` + `.receipt.json` — the artifact (not in landing-paths)
+- `adapter-mainline-stubs-u16t1.jar` — the artifact (not in landing-paths)
+- `receipt-u16t1.json` — the canonical receipt for the deterministic artifact (out_jar_sha256
+  85938130…, recipe + two-pass SHAs; the jar-adjacent `.receipt.json` from the first merge
+  carried the superseded c53b7bd6 and is gitignored as `*.jar.*` — this copy is the landed one)
