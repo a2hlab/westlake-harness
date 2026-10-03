@@ -108,3 +108,44 @@ Nothing is built or deployed until this is approved. On approval: build the prob
   no-consumer check.
 - `evidence/open-site-scan-runtime-bridge.txt`: full `open_site_scan.py` output for runtime 18763dd4 + bridge 84695d62.
 - `results.json`.
+
+## Update (windows 4–6): the entry works; the blocker is the dependency closure, now fully mapped
+
+- **Window 4** (false F1): two `run_a0.sh` presence checks were wrong (`hdc shell` does not propagate the remote exit
+  code; `grep -c` matched the path inside the `ls: … No such file` text). Fixed to echoed-string checks (`exists()`).
+  Board verified clean, no file created/removed.
+- **Window 5**: the bind-mount entry **works** — the runtime's `System.load` found the mounted probe and `dlopen_ns`
+  ran it in the runtime CL namespace. It failed only on the probe's own NEEDED `libsync_fence.z.so` (`ndk`, outside the
+  ns search). Trimmed the probe (`-DWL_A0_RUNTIME`: callback-only, no producer surface / SyncFence / GetParameter;
+  `-Wl,--as-needed`) → NEEDED = 8 libs all in the runtime CL search.
+- **Window 6**: the probe's own NEEDEDs resolved; the failure moved into `libarkweb_core_loader.z.so`'s dependency tree
+  (`libweb_configs.z.so` not loadable).
+
+**Full closure** (`evidence/arkweb-core-closure.{txt,csv}`, BFS with `llvm-readelf` over pulled copies, 5cd U13): the
+`libarkweb_core_loader.z.so` NEEDED closure is **152 libs, 138 visible in the runtime CL namespace, 0 not-found, 14
+invisible**. The 14 all exist; their directories are just outside the runtime CL search:
+- **12 in bare `/system/lib64`**: libweb_configs, libarkweb_glue_base, libarkweb_core_loader_glue, libapp_util,
+  libfileuri_native, libhisysevent_report, libimage_accessor, libqos, librelational_common_base, libskia_canvaskit,
+  libdlp_permission_sdk, libdlpparse;
+- **2 in `/system/lib64/ndk`**: libffrt.so, libsync_fence.z.so.
+
+The real OH `default` linker namespace (`ld-musl-namespace-aarch64.ini [acquiescence]`) has bare `/system/lib64` in
+`namespace.default.lib.paths` and `namespace.default.inherits = ndk`, so all 14 resolve there. The runtime CL namespace
+`B7BindFixes.createClassloaderNamespace` builds is a narrower explicit 4-dir namespace that omits both.
+
+## Chosen minimal fix (window 7), no frozen file changed
+
+Load `libarkweb_core_loader.z.so` in a namespace that inherits `default`, exactly as OH's own
+`arkweb_utils.cpp ArkWebBridgeHelperLoadLibFile` does for the engine:
+1. The probe **stops NEEDing `libarkweb_core_loader.z.so`** (removed from `-l`), so probe-load in the runtime CL ns no
+   longer drags the 152-lib tree into that namespace. The probe's own NEEDED stays the 8 runtime-CL-visible libs.
+2. In `JNI_OnLoad` (probe process only), via `dlsym(RTLD_DEFAULT)`-resolved musl ops: `dlns_init("wl_a0arkweb")` →
+   `dlns_create(ns, "/system/lib64/platformsdk")` → `dlns_get("default", &def)` → `dlns_inherit(ns, &def,
+   "allow_all_shared_libs")` → `dlopen_ns(ns, "libarkweb_core_loader.z.so", RTLD_NOW|RTLD_GLOBAL)`. The 14 (and the rest)
+   resolve through the inherited `default`.
+3. Resolve `NWebHelper::Instance / SetBundlePath / Init / InitAndRun / CreateNWeb` (and `NWebAdapterHelper`) by `dlsym`
+   on that handle (Itanium ABI: a non-virtual member `R C::f(a)` is `R f(C*, a)`); `NWebCreateInfo` stays implemented in
+   the probe from the header. This is the same loading model route a's real WebViewProvider will use.
+
+Still no runtime/bridge/BCP/JAR edit. The window procedure (bind-mount + fingerprint + rollback) is unchanged. On the
+next build the probe is `libwestlake_html_compat.so` ×2 identical with the dlsym loader; then request window 7.

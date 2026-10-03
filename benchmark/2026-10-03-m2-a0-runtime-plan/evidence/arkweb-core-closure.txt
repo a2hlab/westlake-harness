@@ -1,0 +1,27 @@
+# libarkweb_core_loader.z.so NEEDED closure on 5cd (U13 821de739cf81), BFS via llvm-readelf on pulled copies.
+# runtime CL namespace search (B7BindFixes.createClassloaderNamespace): /system/android/lib64 : /system/lib64/platformsdk : /system/lib64/chipset-sdk : /system/lib64/chipset-sdk-sp
+# closure=152 visible=138 notfound=0 INVISIBLE=14 (all exist, but their dir is not in the runtime CL search)
+
+## the 14 invisible (dir not in runtime CL search):
+  libapp_util.z.so                         /system/lib64
+  libarkweb_core_loader_glue.z.so          /system/lib64
+  libarkweb_glue_base.z.so                 /system/lib64
+  libdlp_permission_sdk.z.so               /system/lib64
+  libdlpparse.z.so                         /system/lib64
+  libffrt.so                               /system/lib64/ndk
+  libfileuri_native.z.so                   /system/lib64
+  libhisysevent_report.z.so                /system/lib64
+  libimage_accessor.z.so                   /system/lib64
+  libqos.z.so                              /system/lib64
+  librelational_common_base.z.so           /system/lib64
+  libskia_canvaskit.z.so                   /system/lib64
+  libsync_fence.z.so                       /system/lib64/ndk
+  libweb_configs.z.so                      /system/lib64
+
+## the missing dirs are exactly two:
+  12 /system/lib64
+   2 /system/lib64/ndk
+
+## why they resolve in the real OH default ns (ld-musl-namespace-aarch64.ini [acquiescence]):
+   namespace.default.lib.paths includes /system/lib64 (bare); namespace.default.inherits = ndk (-> /system/lib64/ndk).
+   The runtime CL ns is a NARROWER explicit 4-dir namespace that omits bare /system/lib64 and ndk.
