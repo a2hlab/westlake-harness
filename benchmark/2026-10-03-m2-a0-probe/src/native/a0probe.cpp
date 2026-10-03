@@ -292,12 +292,31 @@ OHOS::sptr<OHOS::Surface> GetChildSurface()
         Log("[A0] S5 child: RSSurfaceNode::Create returned null (FAIL)");
         return nullptr;
     }
-    g_child_node->SetBounds(0.0f, 0.0f, static_cast<float>(W), static_cast<float>(H));
+    // Window 17: offset the child off the status bar. The entry publishes the Activity SurfaceView's rect in the window
+    // (getLocationInWindow) as WL_A0_CONTENT_XY="x,y,w,h" on surfaceCreated; its (x,y) is the content-area top-left below
+    // the status bar. Poll for it (surfaceCreated fires after layout); fall back to 0,0 (top-left, may cover the bar).
+    float bx = 0.0f, by = 0.0f;
+    const char* xy = nullptr;
+    for (int i = 0; i < 40; i++) {
+        xy = getenv("WL_A0_CONTENT_XY");
+        if (xy != nullptr && xy[0]) break;
+        usleep(250 * 1000);
+    }
+    int cx = 0, cy = 0, cw = 0, ch = 0;
+    if (xy != nullptr && xy[0] && sscanf(xy, "%d,%d,%d,%d", &cx, &cy, &cw, &ch) == 4) {
+        bx = static_cast<float>(cx);
+        by = static_cast<float>(cy);
+        Log("[A0] S5 child bounds offset from WL_A0_CONTENT_XY='%s' -> (%g,%g) size %ux%u (content area)", xy, bx, by, W, H);
+    } else {
+        Log("[A0] S5 child WL_A0_CONTENT_XY absent/parse-fail ('%s') -> offset 0,0 (may cover status bar)",
+            xy ? xy : "(absent)");
+    }
+    g_child_node->SetBounds(bx, by, static_cast<float>(W), static_cast<float>(H));
     g_parent_node->AddChild(g_child_node, -1);   // -1 = top of the parent's children
     OHOS::Rosen::RSTransaction::FlushImplicitTransaction();
     OHOS::sptr<OHOS::Surface> s = g_child_node->GetSurface();
-    Log("[A0] S5 child node=%p parent=%p GetSurface=%p (bounds 0,0,%ux%u)", g_child_node.get(), g_parent_node.get(),
-        s.GetRefPtr(), W, H);
+    Log("[A0] S5 child node=%p parent=%p GetSurface=%p (bounds %g,%g,%ux%u)", g_child_node.get(), g_parent_node.get(),
+        s.GetRefPtr(), bx, by, W, H);
     return s;   // null is a clean FAIL (CreateNWeb will fail), not a crash
 }
 #endif

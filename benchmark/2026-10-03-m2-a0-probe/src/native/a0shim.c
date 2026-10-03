@@ -14,8 +14,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern int setenv(const char* name, const char* value, int overwrite);   // sysroot stdlib.h gates it behind a feature macro; declare explicitly (mode 64)
-
 typedef int (*StartFn)(const char*);
 // The NDK sysroot libc.so stub does not export the musl namespace API; the board libc (ld-musl) does. Resolve at run time.
 typedef int (*DlnsGetFn)(const char*, Dl_namespace*);
@@ -81,21 +79,6 @@ JNIEXPORT jstring JNICALL Java_org_westlake_a0probe_MainActivity_nativeStart(JNI
     return (*env)->NewStringUTF(env, msg);
 }
 
-// mode 64 (route-a FORMAL / cc-wiki Plan A): the Activity SurfaceView holder Surface. We run in the app's own namespace
-// (System.loadLibrary'd), where ANativeWindow_fromSurface resolves to the runtime's hook that returns the bridge
-// AdapterAnw. Publish that pointer (same process) to env WL_A0_SV_ANW; the worker (nweb_ns) reads it, oh_anw_get_oh ->
-// OHNativeWindow -> OH_NativeWindow_GetSurfaceId -> SurfaceUtils::GetSurface -> NWeb. Resolved by dlsym to avoid a link dep.
-JNIEXPORT void JNICALL Java_org_westlake_a0probe_MainActivity_nativeSurfaceReady(JNIEnv* env, jclass clazz,
-                                                                                jobject surface)
-{
-    (void)clazz;
-    typedef void* (*FromSurfaceFn)(JNIEnv*, jobject);
-    FromSurfaceFn fromSurface = (FromSurfaceFn)dlsym(RTLD_DEFAULT, "ANativeWindow_fromSurface");
-    void* anw = (fromSurface != NULL && surface != NULL) ? fromSurface(env, surface) : NULL;
-    char buf[64];
-    snprintf(buf, sizeof(buf), "%p", anw);
-    if (anw != NULL) setenv("WL_A0_SV_ANW", buf, 1);
-    fprintf(stderr, "[A0-SHIM] nativeSurfaceReady fromSurface=%p ANativeWindow=%p env=%s\n", (void*)fromSurface, anw,
-            anw ? buf : "(not set)");
-    fflush(stderr);
-}
+// Window 17: MainActivity.nativeSurfaceReady is now registered by the RUNTIME entry (libwestlake_html_compat.so), not
+// here. The app-ns a0shim could not open ANativeWindow_fromSurface's bridge hook (window 16: env never set), so the
+// surface conversion moved to the entry, which lives in the runtime-adjacent namespace. a0shim keeps only nativeStart.

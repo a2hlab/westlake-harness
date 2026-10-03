@@ -11,11 +11,14 @@
 // dlns_inherit(allow_all_shared_libs) + dlopen_ns). The C-ABI boundary (one dlsym of a0_probe_start) avoids any C++
 // name-mangling / shared_ptr ABI across the boundary. JNI_VERSION_1_6 = 0x00010006.
 #include <dlfcn.h>
+#include <jni.h>
+#include <pthread.h>
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
 #include <unistd.h>
 
+extern "C" int setenv(const char* name, const char* value, int overwrite);  // sysroot stdlib.h gates it; declare explicitly
 extern "C" int HiLogPrint(int type, int level, unsigned int domain, const char* tag, const char* fmt, ...);
 
 namespace {
@@ -75,6 +78,83 @@ bool is_probe_process()
     char comm[64]; read_comm(comm, sizeof(comm));
     return strncmp(comm, "org.westlake.a0", 15) == 0;
 }
+
+// ---- window 17: register MainActivity.nativeSurfaceReady from the runtime load point (this lib), not the app ns ----
+JavaVM* g_jvm = nullptr;
+typedef void* (*FromSurfaceFn)(JNIEnv*, jobject);
+
+// Registered onto org.westlake.a0probe.MainActivity.nativeSurfaceReady; runs in THIS lib (the entry), loaded by the
+// runtime into the runtime-adjacent namespace where ANativeWindow_fromSurface resolves to the bridge's hook -- the app-ns
+// a0shim could not (window 16, open=0 / env never set). surface -> AdapterAnw ptr -> env WL_A0_SV_ANW (mode 64). The
+// (x,y,w,h) is the SurfaceView's content-area rect in the window (getLocationInWindow + size) -> env WL_A0_CONTENT_XY,
+// which the worker uses for the mode-32 child-node bounds so the page sits in the content area, off the status bar.
+void A0_nativeSurfaceReady(JNIEnv* env, jclass clazz, jobject surface, jint x, jint y, jint w, jint h)
+{
+    (void)clazz;
+    char xy[64];
+    snprintf(xy, sizeof(xy), "%d,%d,%d,%d", (int)x, (int)y, (int)w, (int)h);
+    setenv("WL_A0_CONTENT_XY", xy, 1);
+    FromSurfaceFn fromSurface = (FromSurfaceFn)dlsym(RTLD_DEFAULT, "ANativeWindow_fromSurface");
+    void* anw = (fromSurface != nullptr && surface != nullptr) ? fromSurface(env, surface) : nullptr;
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%p", anw);
+    if (anw != nullptr) setenv("WL_A0_SV_ANW", buf, 1);
+    Log("[A0] entry nativeSurfaceReady fromSurface=%p ANW=%p content=%s WL_A0_SV_ANW=%s",
+        (void*)fromSurface, anw, xy, anw ? buf : "(not set)");
+}
+
+// Reach the APP PathClassLoader (NOT the system CL that a FindClass on a native-attached thread would use, JNI spec):
+// android.app.ActivityThread.currentApplication() -> getClassLoader() -> loadClass("org.westlake.a0probe.MainActivity").
+// currentApplication() is null until the stock handleBindApplication/makeApplication has run (repo U11d), so the caller
+// retries. ActivityThread/Context/ClassLoader are framework classes the system CL CAN see, so FindClass on them is fine.
+bool TryRegister(JNIEnv* env)
+{
+    jclass atCls = env->FindClass("android/app/ActivityThread");
+    if (atCls == nullptr) { env->ExceptionClear(); return false; }
+    jmethodID mCur = env->GetStaticMethodID(atCls, "currentApplication", "()Landroid/app/Application;");
+    if (mCur == nullptr) { env->ExceptionClear(); return false; }
+    jobject app = env->CallStaticObjectMethod(atCls, mCur);
+    if (env->ExceptionCheck()) { env->ExceptionClear(); }
+    if (app == nullptr) return false;                           // app not bound yet -> retry
+    jclass ctxCls = env->FindClass("android/content/Context");
+    jmethodID mGetCl = ctxCls ? env->GetMethodID(ctxCls, "getClassLoader", "()Ljava/lang/ClassLoader;") : nullptr;
+    if (mGetCl == nullptr) { env->ExceptionClear(); return false; }
+    jobject cl = env->CallObjectMethod(app, mGetCl);
+    if (env->ExceptionCheck()) { env->ExceptionClear(); }
+    if (cl == nullptr) { Log("[A0] entry reg: app getClassLoader null"); return false; }
+    jclass clCls = env->FindClass("java/lang/ClassLoader");
+    jmethodID mLoad = clCls ? env->GetMethodID(clCls, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;") : nullptr;
+    if (mLoad == nullptr) { env->ExceptionClear(); return false; }
+    jstring name = env->NewStringUTF("org.westlake.a0probe.MainActivity");
+    jclass mainCls = (jclass)env->CallObjectMethod(cl, mLoad, name);
+    if (env->ExceptionCheck()) { env->ExceptionClear(); Log("[A0] entry reg: loadClass(MainActivity) threw"); return false; }
+    if (mainCls == nullptr) { Log("[A0] entry reg: MainActivity null"); return false; }
+    JNINativeMethod m;
+    m.name = const_cast<char*>("nativeSurfaceReady");
+    m.signature = const_cast<char*>("(Ljava/lang/Object;IIII)V");
+    m.fnPtr = reinterpret_cast<void*>(&A0_nativeSurfaceReady);
+    int rc = env->RegisterNatives(mainCls, &m, 1);
+    if (env->ExceptionCheck()) { env->ExceptionClear(); }
+    Log("[A0] entry reg: RegisterNatives(MainActivity.nativeSurfaceReady)=%d (app PathClassLoader path)", rc);
+    return rc == 0;
+}
+
+void* reg_thread(void*)
+{
+    JNIEnv* env = nullptr;
+    if (g_jvm == nullptr || g_jvm->AttachCurrentThread(&env, nullptr) != JNI_OK || env == nullptr) {
+        Log("[A0] entry reg: AttachCurrentThread failed");
+        return nullptr;
+    }
+    bool ok = false;
+    for (int i = 0; i < 120 && !ok; i++) {   // ~30s: currentApplication() becomes non-null after handleBindApplication
+        ok = TryRegister(env);
+        if (!ok) usleep(250 * 1000);
+    }
+    if (!ok) Log("[A0] entry reg: gave up (MainActivity.nativeSurfaceReady NOT registered within 30s)");
+    g_jvm->DetachCurrentThread();
+    return nullptr;
+}
 }  // namespace
 
 __attribute__((constructor)) static void a0_entry_ctor()
@@ -84,15 +164,25 @@ __attribute__((constructor)) static void a0_entry_ctor()
     Log("[A0] entry ctor pid=%d comm=%s cmdline=%s", getpid(), comm, cmd);
 }
 
-extern "C" __attribute__((visibility("default"))) int JNI_OnLoad(void* vm, void* reserved)
+extern "C" __attribute__((visibility("default"))) jint JNI_OnLoad(JavaVM* vm, void* reserved)
 {
-    (void)vm;
     (void)reserved;
     if (!is_probe_process()) {
         return 0x00010006;                             // guard: not the probe process -> do nothing
     }
     char comm[64]; read_comm(comm, sizeof(comm));
     Log("[A0] entry JNI_OnLoad pid=%d comm=%s (runtime load point)", getpid(), comm);
+
+    // Window 17: register MainActivity.nativeSurfaceReady from here (the runtime load point, same load path as the formal
+    // backend shim), so the surface conversion runs in this namespace. Independent of the worker load below; start now.
+    g_jvm = vm;
+    pthread_t th;
+    if (pthread_create(&th, nullptr, reg_thread, nullptr) == 0) {
+        pthread_detach(th);
+        Log("[A0] entry: nativeSurfaceReady registration thread started");
+    } else {
+        Log("[A0] entry: pthread_create(reg) failed");
+    }
 
     DlnsGetFn dlnsGet = (DlnsGetFn)dlsym(RTLD_DEFAULT, "dlns_get");
     DlnsInitFn dlnsInit = (DlnsInitFn)dlsym(RTLD_DEFAULT, "dlns_init");

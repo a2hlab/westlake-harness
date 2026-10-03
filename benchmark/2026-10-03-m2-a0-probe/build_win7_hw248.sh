@@ -28,12 +28,20 @@ subprocess.run([CXX, *common, '-shared', '-nostdlib++', '-fuse-ld=lld', '-Wl,--n
                 '-l:libeventhandler.z.so', '-l:libsurface.z.so', '-l:libsync_fence.z.so', '-l:libbegetutil.z.so',
                 '-l:librender_service_client.z.so', '-l:libutils.z.so', '-l:libhilog.so', '-l:libc++.so'], check=True)
 
-# entry: minimal (libhilog + libc); musl dlns ops resolved at run time
-subprocess.run([CXX, *common, '-std=c++17', '-fno-rtti', '-nostdinc++', '-isystem',
-                str(LLVM / 'include/libcxx-ohos/include/c++/v1'), '-fvisibility=hidden',
-                '-c', str(B / 'src/native/a0_entry.cpp'), '-o', str(O / 'entry.o')], check=True)
-subprocess.run([CXX, *common, '-shared', '-nostdlib++', '-fuse-ld=lld', '-Wl,--no-undefined', '-Wl,--build-id=sha1',
-                '-Wl,-soname,libwestlake_html_compat.so', '-o', str(O / 'libwestlake_html_compat.so'), str(O / 'entry.o'),
-                '-L' + str(B / 'lib'), '-l:libhilog.so'], check=True)
-for so in ('libwl_a0_nweb.so', 'libwestlake_html_compat.so'):
+# entry: minimal (libhilog + libc); musl dlns ops resolved at run time. -I src/native/include for jni.h (window 17:
+# JNI_OnLoad RegisterNatives MainActivity.nativeSurfaceReady). JNI calls go through the JavaVM/JNIEnv function tables
+# (no link symbol), so --no-undefined stays satisfied; pthread/setenv/dlsym are in musl libc. Both variants are built
+# here from one source (default nweb_ns + legacy nweb_ns_legacy via -DWL_A0_LEGACY_NS) so the soname is identical and
+# only the filename differs -- run_a0.sh ENTRY=default|legacy picks the file.
+ENTRY_VARIANTS = [('libwestlake_html_compat.so', []), ('libwestlake_html_compat.legacy.so', ['-DWL_A0_LEGACY_NS'])]
+for out_name, extra in ENTRY_VARIANTS:
+    obj = O / (out_name.replace('.so', '') + '.o')
+    subprocess.run([CXX, *common, *extra, '-std=c++17', '-fno-rtti', '-nostdinc++', '-isystem',
+                    str(LLVM / 'include/libcxx-ohos/include/c++/v1'), '-fvisibility=hidden',
+                    '-I' + str(B / 'src/native/include'),
+                    '-c', str(B / 'src/native/a0_entry.cpp'), '-o', str(obj)], check=True)
+    subprocess.run([CXX, *common, *extra, '-shared', '-nostdlib++', '-fuse-ld=lld', '-Wl,--no-undefined',
+                    '-Wl,--build-id=sha1', '-Wl,-soname,libwestlake_html_compat.so', '-o', str(O / out_name), str(obj),
+                    '-L' + str(B / 'lib'), '-l:libhilog.so'], check=True)
+for so in ('libwl_a0_nweb.so', 'libwestlake_html_compat.so', 'libwestlake_html_compat.legacy.so'):
     print(subprocess.run(['sha256sum', str(O / so)], capture_output=True, text=True).stdout.strip())

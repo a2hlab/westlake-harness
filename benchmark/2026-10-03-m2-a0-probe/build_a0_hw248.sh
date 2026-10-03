@@ -8,7 +8,7 @@ set -euo pipefail
 B=${A0_BUILD:?}; OH=${OH610:?}; SYSROOT=${OH_SYSROOT:?}; TAG=${1:?tag}
 LLVM=$OH/prebuilts/clang/ohos/linux-x86_64/llvm; O=$B/out/$TAG; mkdir -p $O
 CXX=$LLVM/bin/clang++; CC=$LLVM/bin/clang
-COMMON="--target=aarch64-linux-ohos --sysroot=$SYSROOT -fPIC -O2 -g -fstack-protector-strong -D__MUSL__ -Wno-c++11-narrowing -ffile-prefix-map=$B=. -ffile-prefix-map=$OH=OH -ffile-prefix-map=$SYSROOT=SYSROOT"
+COMMON="--target=aarch64-linux-ohos --sysroot=$SYSROOT -fPIC -O2 -g -fstack-protector-strong -D__MUSL__ -DOHOS_PLATFORM -Wno-c++11-narrowing -ffile-prefix-map=$B=. -ffile-prefix-map=$OH=OH -ffile-prefix-map=$SYSROOT=SYSROOT"
 INC="$(sed 's/^/-I/' $B/out/include-dirs.txt | tr '\n' ' ') -I$B/src/genstub"
 $CXX --version | head -1
 sha256sum $CXX $B/lib/*.so > $O/inputs-sha256.txt
@@ -17,7 +17,8 @@ $CXX $COMMON -std=c++17 -fno-rtti -nostdinc++ -isystem $LLVM/include/libcxx-ohos
 $CXX $COMMON -shared -nostdlib++ -fuse-ld=lld -Wl,--no-undefined -Wl,--build-id=sha1 -Wl,-soname,liba0probe.so \
   -o $O/liba0probe.so $O/a0probe.o -L$B/lib \
   -l:libarkweb_core_loader.z.so -l:libapp_context.z.so -l:libappexecfwk_base.z.so -l:libeventhandler.z.so \
-  -l:libsurface.z.so -l:libsync_fence.z.so -l:libbegetutil.z.so -l:libutils.z.so -l:libhilog.so -l:libc++.so
+  -l:libsurface.z.so -l:libsync_fence.z.so -l:libbegetutil.z.so -l:librender_service_client.z.so \
+  -l:libutils.z.so -l:libhilog.so -l:libc++.so
 $CC $COMMON -std=c11 -I$B/src/native/include -c $B/src/native/a0shim.c -o $O/a0shim.o
 $CC $COMMON -shared -fuse-ld=lld -Wl,--no-undefined -Wl,--build-id=sha1 -Wl,-soname,liba0shim.so -o $O/liba0shim.so $O/a0shim.o
 sha256sum $O/liba0probe.so $O/liba0shim.so | tee $O/SHA256SUMS

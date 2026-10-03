@@ -20,7 +20,7 @@ WS=${WORKSPACES:-$HOME/orca/workspaces}
 BOARD=$WS/westlake-harness/.octos/boards/app-lighting.md
 NOTE=$WS/westlake-inputs/tools/board_note.sh
 APK=$HERE/build/a0probe.apk
-APK_SHA=7054457cb0c7af9dedc7645c4dc2e56ea17e35aefb3dd671f5245f57a2e64626   # v3 (SurfaceView + nativeSurfaceReady; shim b8ecccfc)
+APK_SHA=4630b8586620dcdacf5cf00c6c50727a615b632e18cee62381f87299408c95b3   # v4 (w17: nativeSurfaceReady registered by entry + content-xy; shim 5a2e7aaa, probe 44016cff)
 PKG=org.westlake.a0probe
 LANE=${A0_LANE:-cc-t3}
 RT_TARGET=/system/android/lib64/libwestlake_html_compat.so    # runtime B7BindFixes System.load point, absent on boards
@@ -31,9 +31,9 @@ else RT_PROBE=$HERE/build/native/libwestlake_html_compat.so; fi   # entry: JNI_O
 RT_WORKER=$HERE/build/native/libwl_a0_nweb.so                 # worker: full NWeb body (a0_probe_start), loaded by the entry
 RT_WORKER_DST=/data/local/tmp/libwl_a0_nweb.so                # entry dlopen_ns searches /data/local/tmp (a0_entry.cpp WORKER_DIR)
 RT_REF=/system/android/lib64/libwestlake_jni_gapfill.so       # an existing deployed lib, for the SELinux context
-if [ "$ENTRY" = legacy ]; then RT_PROBE_SHA=61e57956eb7bdd13f10ccbb5c15b392f2c545410f28117f368bd4eee759c262f
-else RT_PROBE_SHA=afeceeadf1917375b6057327f4f7fd2b07498e132f7c592bde97531b014d2adb; fi
-RT_WORKER_SHA=76e8fc9b168268b00e2cc6abab03fb293ef010be0dd39f052739cf26facbd292
+if [ "$ENTRY" = legacy ]; then RT_PROBE_SHA=d72192202420c537367bff22439aeda38b3047feeb7ba73c68fb387d51b953e1
+else RT_PROBE_SHA=86da801c9733ea634848e40fb41d3d02ea00d396227c4c0dc6bf2ff4376bc4c5; fi
+RT_WORKER_SHA=f72d6e49713e1bb571e11201d1af17729d9183802c1cfe8fd035472960354606
 RECIPE=$HERE/../2026-09-28-bms-route-deploy/batch/prepare_sandbox.sh   # bms_batch's accepted sandbox recipe, verbatim
 # what prepare_sandbox creates for $PKG (removed again in rollback), plus the adapter's uninstall leftovers (window 1)
 PKG_DIRS="/data/app/el1/100/base/$PKG /data/app/el1/100/database/$PKG /data/app/el2/100/base/$PKG /data/app/el2/100/database/$PKG /data/app/el2/100/sharefiles/$PKG /data/app/el3/100/base/$PKG /data/app/el3/100/database/$PKG /data/app/el4/100/base/$PKG /data/app/el4/100/database/$PKG /data/app/el2/100/log/$PKG /data/app/el1/bundle/public/$PKG"
