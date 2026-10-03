@@ -21,7 +21,7 @@ sys.path.insert(0, str(HERE.parent / '2026-10-02-u12-jar-plan'))
 import build_u12 as r1  # noqa: E402
 
 BT = Path.home() / 'Library/Android/sdk/build-tools/34.0.0'
-NATIVE = {'liba0probe.so': '44016cff948967b7997d2d78000dba66519f40be7f315bb43b5172b3e9ed624f',
+NATIVE = {'liba0probe.so': '610b0d57197cb307ab1099d8675c462ceacd129ae2c843e14ac7a19b9078ffa7',
           'liba0shim.so': '5a2e7aaab1131a318817f5a554562b73c1e414a36ed0689d7657322a90a43c89'}
 KEY = Path.home() / '.android/debug.keystore'
 # apksigner/keytool must run on JDK 17: the default java here is 1.8.0_151, which cannot read the PKCS12 debug keystore

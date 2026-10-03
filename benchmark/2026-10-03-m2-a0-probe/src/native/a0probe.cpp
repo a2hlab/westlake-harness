@@ -13,7 +13,8 @@
 //   S7 LoadWithDataAndBaseUrl(Chinese text + a script that paints the page #12ab34)
 //   S8 frames: OutputFrameCallback and/or the producer surface's consumer; centre pixel sampled; RESULT after 20 s
 // Mode bits from param debug.westlake.a0probe.mode (default 0): 64 = route-a FORMAL (cc-wiki Plan A): the Activity's
-// SurfaceView holder Surface, handed in by a0shim via env WL_A0_SV_ANW; 32 = route-a faithful, NWeb's OWN child RSSurfaceNode
+// SurfaceView holder Surface, handed in by the entry via env WL_A0_SV_OHWIN (Surface.mNativeObject = OHNativeWindow*,
+// window 18); 32 = route-a faithful, NWeb's OWN child RSSurfaceNode
 // under the Activity window node (ACE WebPattern; no hwui contention); 16 = the bridge window surface directly (shares
 // the Activity content node); 1 = single render process, 2 = InitAndRun(false)
 // (mock path via the bundle path), 4 = skip the ApplicationContext attach, 8 = no producer surface.
@@ -241,38 +242,31 @@ OHOS::sptr<OHOS::Surface> GetBridgeSurface()
 // SurfaceFromJava. Env absent/timeout -> clear log, null (FAIL, no crash).
 OHOS::sptr<OHOS::Surface> GetSurfaceViewSurface()
 {
-    const char* anwTxt = nullptr;
-    for (int i = 0; i < 40; i++) {   // wait for surfaceCreated -> a0shim setenv (must be before CreateNWeb)
-        anwTxt = getenv("WL_A0_SV_ANW");
-        if (anwTxt != nullptr && anwTxt[0]) break;
+    // Window 18: the entry publishes android.view.Surface.mNativeObject, which in this runtime IS the OHNativeWindow*
+    // directly (cc-wiki fd-plus坐实: S_nativeGetFromBlastBufferQueue returns b->ohNativeWindow, ANativeWindow_fromSurface
+    // casts mNativeObject straight to it). Use it straight for OH_NativeWindow_GetSurfaceId -> SurfaceUtils::GetSurface.
+    // No oh_anw_get_oh unwrap -- there is no AdapterAnw wrapper; mNativeObject is the bare OHNativeWindow*. (Window 17
+    // failed because ANativeWindow_fromSurface is unresolvable via dlsym(RTLD_DEFAULT) in this ns: fromSurface=0.)
+    const char* ohTxt = nullptr;
+    for (int i = 0; i < 40; i++) {   // wait for surfaceCreated -> entry setenv (must be before CreateNWeb)
+        ohTxt = getenv("WL_A0_SV_OHWIN");
+        if (ohTxt != nullptr && ohTxt[0]) break;
         usleep(250 * 1000);
     }
-    if (anwTxt == nullptr || !anwTxt[0]) {
-        Log("[A0] S5 mode64: WL_A0_SV_ANW absent (SurfaceView not ready within timeout) -> FAIL");
+    if (ohTxt == nullptr || !ohTxt[0]) {
+        Log("[A0] S5 mode64: WL_A0_SV_OHWIN absent (Surface.mNativeObject not published within timeout) -> FAIL");
         return nullptr;
     }
-    void* anw = nullptr;
-    if (sscanf(anwTxt, "%p", &anw) != 1 || anw == nullptr) {
-        Log("[A0] S5 mode64: ANW parse failed '%s' -> FAIL", anwTxt);
-        return nullptr;
-    }
-    typedef void* (*AnwGetOhFn)(void*);
-    AnwGetOhFn anwGetOh = (AnwGetOhFn)dlsym(RTLD_DEFAULT, "oh_anw_get_oh");
-    if (anwGetOh == nullptr) {
-        void* rt = dlopen("liboh_android_runtime.so", RTLD_NOW | RTLD_NOLOAD);
-        if (rt != nullptr) anwGetOh = (AnwGetOhFn)dlsym(rt, "oh_anw_get_oh");
-    }
-    void* ohwin = anwGetOh ? anwGetOh(anw) : nullptr;
-    Log("[A0] S5 mode64: AdapterAnw=%p oh_anw_get_oh=%p ohWindow=%p", anw, (void*)anwGetOh, ohwin);
-    if (ohwin == nullptr) {
-        Log("[A0] S5 mode64: oh_anw_get_oh unavailable/null -> FAIL");
+    void* ohwin = nullptr;
+    if (sscanf(ohTxt, "%p", &ohwin) != 1 || ohwin == nullptr) {
+        Log("[A0] S5 mode64: OHNativeWindow parse failed '%s' -> FAIL", ohTxt);
         return nullptr;
     }
     uint64_t id = 0;
     int rc = OH_NativeWindow_GetSurfaceId(reinterpret_cast<OHNativeWindow*>(ohwin), &id);
     OHOS::sptr<OHOS::Surface> s = (rc == 0) ? OHOS::SurfaceUtils::GetInstance()->GetSurface(id) : nullptr;
-    Log("[A0] S5 mode64: GetSurfaceId rc=%d id=%llu GetSurface=%p", rc, static_cast<unsigned long long>(id),
-        s.GetRefPtr());
+    Log("[A0] S5 mode64: OHNativeWindow=%p GetSurfaceId rc=%d id=%llu GetSurface=%p", ohwin, rc,
+        static_cast<unsigned long long>(id), s.GetRefPtr());
     return s;
 }
 

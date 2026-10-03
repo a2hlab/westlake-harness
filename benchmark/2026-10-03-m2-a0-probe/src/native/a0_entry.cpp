@@ -79,28 +79,37 @@ bool is_probe_process()
     return strncmp(comm, "org.westlake.a0", 15) == 0;
 }
 
-// ---- window 17: register MainActivity.nativeSurfaceReady from the runtime load point (this lib), not the app ns ----
+// ---- window 17/18: register MainActivity.nativeSurfaceReady from the runtime load point (this lib), not the app ns ----
 JavaVM* g_jvm = nullptr;
-typedef void* (*FromSurfaceFn)(JNIEnv*, jobject);
 
 // Registered onto org.westlake.a0probe.MainActivity.nativeSurfaceReady; runs in THIS lib (the entry), loaded by the
-// runtime into the runtime-adjacent namespace where ANativeWindow_fromSurface resolves to the bridge's hook -- the app-ns
-// a0shim could not (window 16, open=0 / env never set). surface -> AdapterAnw ptr -> env WL_A0_SV_ANW (mode 64). The
-// (x,y,w,h) is the SurfaceView's content-area rect in the window (getLocationInWindow + size) -> env WL_A0_CONTENT_XY,
-// which the worker uses for the mode-32 child-node bounds so the page sits in the content area, off the status bar.
+// runtime into the runtime-adjacent namespace (window 16: the app-ns a0shim could not do this). The (x,y,w,h) is the
+// SurfaceView's content-area rect in the window (getLocationInWindow + size) -> env WL_A0_CONTENT_XY, which the worker
+// uses for the mode-32 child-node bounds so the page sits in the content area, off the status bar.
+//
+// Window 18: ANativeWindow_fromSurface is NOT resolvable via dlsym(RTLD_DEFAULT) in this ns (window 17: fromSurface=0),
+// so instead read android.view.Surface.mNativeObject via JNI. In this runtime that long field IS the OHNativeWindow*
+// directly (cc-wiki fd-plus坐实, landed benchmark/2026-10-03-u17-fd-plus-surface: S_nativeGetFromBlastBufferQueue returns
+// b->ohNativeWindow and ANativeWindow_fromSurface casts mNativeObject straight to it). Publish it as WL_A0_SV_OHWIN; the
+// worker uses it directly for OH_NativeWindow_GetSurfaceId -> SurfaceUtils::GetSurface. mNativeObject==0 -> log + FAIL.
 void A0_nativeSurfaceReady(JNIEnv* env, jclass clazz, jobject surface, jint x, jint y, jint w, jint h)
 {
     (void)clazz;
     char xy[64];
     snprintf(xy, sizeof(xy), "%d,%d,%d,%d", (int)x, (int)y, (int)w, (int)h);
     setenv("WL_A0_CONTENT_XY", xy, 1);
-    FromSurfaceFn fromSurface = (FromSurfaceFn)dlsym(RTLD_DEFAULT, "ANativeWindow_fromSurface");
-    void* anw = (fromSurface != nullptr && surface != nullptr) ? fromSurface(env, surface) : nullptr;
+    long nobj = 0;
+    if (surface != nullptr) {
+        jclass scls = env->GetObjectClass(surface);
+        jfieldID fid = scls ? env->GetFieldID(scls, "mNativeObject", "J") : nullptr;
+        if (env->ExceptionCheck()) { env->ExceptionClear(); fid = nullptr; }
+        if (fid != nullptr) nobj = static_cast<long>(env->GetLongField(surface, fid));
+    }
     char buf[64];
-    snprintf(buf, sizeof(buf), "%p", anw);
-    if (anw != nullptr) setenv("WL_A0_SV_ANW", buf, 1);
-    Log("[A0] entry nativeSurfaceReady fromSurface=%p ANW=%p content=%s WL_A0_SV_ANW=%s",
-        (void*)fromSurface, anw, xy, anw ? buf : "(not set)");
+    snprintf(buf, sizeof(buf), "%p", reinterpret_cast<void*>(nobj));
+    if (nobj != 0) setenv("WL_A0_SV_OHWIN", buf, 1);
+    Log("[A0] entry nativeSurfaceReady Surface.mNativeObject=%p content=%s WL_A0_SV_OHWIN=%s",
+        reinterpret_cast<void*>(nobj), xy, nobj != 0 ? buf : "(not set; mNativeObject=0 -> FAIL)");
 }
 
 // Reach the APP PathClassLoader (NOT the system CL that a FindClass on a native-attached thread would use, JNI spec):
