@@ -1,0 +1,24 @@
+--- a/AppSchedulerBridge.java	2026-09-29 10:15:10
++++ b/AppSchedulerBridge.java	2026-10-03 11:41:39
+@@ -1487,7 +1487,20 @@
+             );
+             transaction.addCallback(launchItem);
+ 
+-            // G2.14m (2026-05-01): NO setLifecycleStateRequest at launch time.
++            // U16 t3 (benchmark/2026-10-03-u16-t3-lifecycle-sync): advance the launch transaction to
++            // ON_START so onCreate -> onStart run synchronously in ONE main-thread transaction (AOSP
++            // handleLaunchActivity order). onStart drives FragmentController.dispatchActivityCreated ->
++            // Fragment.onCreateView, which assigns the fragment's views (e.g. fd-breezyweather's lateinit
++            // weatherView) BEFORE control returns to the Looper -- so a Runnable the app posted during
++            // onCreate can no longer run before those views exist. onResume stays in phase 2 (the FOREGROUND
++            // callback), so the AMS FOREGROUNDING handshake that G2.14m fixed (resume-at-launch raced AMS
++            // INACTIVE -> rc=22) is unchanged. onStart inflates the content view but does NOT addView the decor
++            // (that is onResume), so no OH surface/window is required yet. StartActivityItem.getTargetState()
++            // == ON_START; the phase-2 ResumeActivityItem then cycles ON_START -> ON_RESUME (onResume only).
++            transaction.setLifecycleStateRequest(
++                    android.app.servertransaction.StartActivityItem.obtain(/* activityOptions */ null));
++
++            // G2.14m (2026-05-01): NO ResumeActivityItem at launch time (onResume stays phase 2).
+             // OH protocol is two-phase:
+             //   1. ScheduleLaunchAbility (this path)        = Activity.onCreate (stops at ON_CREATE)
+             //   2. ScheduleAbilityTransaction(FOREGROUND_NEW) = Activity.onResume (separate trigger)

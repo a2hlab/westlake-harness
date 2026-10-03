@@ -1,0 +1,50 @@
+REGRESSION-RISK SCAN — U13 stage-A lit keys vs the onStart-at-launch fix
+=======================================================================
+Fix: advance the launch transaction to ON_START (onCreate -> onStart synchronous, running
+FragmentController.dispatchActivityCreated -> Fragment.onCreateView), onResume unchanged (phase-2).
+Universe: the 122 U13-reference lit keys; 121 have a performCreate+resume window in a U13 stage-A hilog.
+
+WHAT CHANGES, FOR WHOM
+  onStart (content-view inflation + fragment onCreateView) moves from phase-2 (bundled with onResume, fired by
+  the OH FOREGROUND callback) to the launch transaction. onResume and the OH FOREGROUNDING/AMS handshake are
+  UNCHANGED (StartActivityItem targets ON_START; the phase-2 ResumeActivityItem then cycles ON_START->ON_RESUME).
+  So for every launched key, onStart/onCreateView runs EARLIER (at launch) -- before any Runnable the app posted
+  during onCreate. That is the intended effect (fd-breezyweather's lateinit weatherView gets assigned first).
+
+CAN WE LOG-DETECT "an onCreate-posted main-thread callback runs before RESUMED" (the breezyweather mode)? NO.
+  A posted callback emits no marker unless it logs or crashes. A heuristic "main-thread app lines in the
+  performCreate->RESUMED gap" flags 63/121 lit keys -- but it OVER-COUNTS (it also catches inline onCreate work,
+  which runs before onStart regardless and is unaffected) AND it MISSES the one confirmed case: fd-breezyweather
+  shows 0 app-main lines in the gap by this metric (its posted callback crashed via [stderr]/AppSpawnXInit, which
+  the metric excludes). So the 63 is NOT a trustworthy risk count and is not used as such.
+
+DEFENSIBLE RISK SET -- by whether onStart could do something the earlier timing makes unsafe (stack type):
+  surface-dependent lit keys (flutter / unity-il2cpp / react-native / webview-hybrid): 0
+  native-engine lit keys (SurfaceView/GL): 4  -> fd-minetest, fd-mpv, fd-organicmaps, fd-stk   [ON-BOARD WATCH]
+  jvm / cv2-jvm / other lit keys: 118  -> onStart = CPU-only content inflation, no surface  [BENIGN/BENEFICIAL]
+
+  -> RISK SET = 4 (the native-engine keys), to re-verify on board. Mechanism says even these are benign: a
+     SurfaceView's surface is created by the SurfaceHolder callback at window-add (onResume), NOT at onStart, so
+     onStart-at-launch does not change when the surface becomes available -- the engine's surface-gated init
+     still waits for surfaceCreated at onResume (unchanged). They are flagged only because they are the sole
+     non-trivial-rendering lit keys.
+
+WHY LIT REGRESSIONS ARE NOT EXPECTED (the safety argument)
+  The fix RESTORES AOSP ordering: stock ActivityThread.handleLaunchActivity runs onCreate -> onStart
+  synchronously in one transaction; route-A's two-phase deferral (onStart bundled into phase-2) is the
+  DEVIATION. Every one of these apps works on stock Android (they are F-Droid/corpus apps that light there), so
+  by construction they tolerate onCreate->onStart being synchronous. onResume + the AMS FOREGROUNDING handshake
+  (the G2.14m rc=22 fix) are untouched. The only behaviour that could change is for a key that RELIES on the
+  route-A-specific async gap (onStart after onCreate-posted work) -- that reliance is a latent bug, not stock
+  behaviour, and none is observed among the lit set.
+
+ONE MECHANISM RISK TO VERIFY ON BOARD (not a key, a protocol point)
+  LifecycleAdapter maps "Android onCreate+onStart <-> OH onCreate+onWindowStageCreate". Running onStart inside
+  the launch transaction happens BEFORE OH's separate onWindowStageCreate callback. onStart only inflates (it
+  does not addView the decor or touch the OH window stage), so this is expected to be safe; but the OH
+  window-stage ordering is the thing a board run must confirm (does any key's onStart assume the OH window stage
+  exists?). This is the t3 prototype's single open question.
+
+PREDICTED MOVES
+  fd-breezyweather: 1 (dead -> past the lateinit weatherView, to its next wall; lit not guaranteed).
+  lit regressions: 0 expected (0 surface-dependent; 4 native-engine benign-but-watch; 118 jvm benign; AOSP-restore).

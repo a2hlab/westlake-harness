@@ -1,0 +1,27 @@
+{
+  "task": "U16 t3 prototype (offline, no deploy): in the runtime JAR make onStart/onResume (+ executePendingTransactions) advance synchronously within the launch transaction (AOSP handleLaunchActivity order) to fix fd-breezyweather's async-lifecycle lateinit crash. Patch + design note. Regression risk: scan all U13 stage-A lit keys' hilogs for 'onCreate-posted main-thread callback runs before RESUMED' (risk set); per-key judge; predicted moves (breezyweather 1).",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "fix": {
+    "file": "bms/src/adapter/framework/activity/java/AppSchedulerBridge.java (scheduleLaunch path)",
+    "change": "after transaction.addCallback(launchItem): transaction.setLifecycleStateRequest(StartActivityItem.obtain(null))",
+    "effect": "launch transaction cycles onCreate -> onStart synchronously (StartActivityItem.getTargetState()==ON_START); onStart runs FragmentController dispatchActivityCreated -> Fragment.onCreateView, assigning lateinit views before the Looper processes any onCreate-posted runnable (AOSP handleLaunchActivity order).",
+    "onResume_unchanged": "onResume stays phase-2 (OH FOREGROUND callback -> ResumeActivityItem cycles ON_START->ON_RESUME); the G2.14m AMS FOREGROUNDING handshake (resume-at-launch raced AMS INACTIVE -> rc=22) is untouched",
+    "why_onStart_not_onResume": "ON_RESUME at launch reintroduces the rc=22 AMS race AND addViews the decor before the OH surface is ready (empty-surface white); ON_START only inflates (surface-free) = exactly what onCreateView needs, minimum deviation",
+    "patch": "patch/AppSchedulerBridge.onstart-sync.patch"
+  },
+  "aosp_reference": "ActivityThread.handleLaunchActivity: launch ClientTransaction (LaunchActivityItem + lifecycle request) -> TransactionExecutor executeCallbacks(onCreate) + executeLifecycleState(cycleToPath to final state); cold launch reaches ON_RESUME so onCreate->onStart->onResume run in one main-thread transaction; Fragment.onCreateView runs during onStart.",
+  "regression_risk": {
+    "posted_callback_set_log_separable": false,
+    "heuristic_gap_activity_upper_bound": "63/121 lit keys have main-thread app activity in the performCreate->RESUMED gap, but this OVER-COUNTS (catches inline onCreate work, unaffected) and MISSES fd-breezyweather (its posted callback surfaced only via the crash); NOT used as the risk count",
+    "by_stack": {"surface_dependent_flutter_unity_rn": 0, "native_engine_SurfaceView_GL": 4, "jvm_cv2jvm_other": 118},
+    "risk_set": ["fd-minetest", "fd-mpv", "fd-organicmaps", "fd-stk"],
+    "risk_set_size": 4,
+    "risk_set_note": "the 4 native-engine lit keys = the only on-board watch items; even they expected benign (SurfaceView surface is created at window-add=onResume, not onStart -> availability unchanged). 118 jvm = benign (onStart = surface-free inflation). 0 surface-dependent.",
+    "safety_argument": "the fix RESTORES stock AOSP onCreate->onStart synchrony (route-A's two-phase deferral is the deviation); every app here lights on stock Android so tolerates it; onResume + AMS handshake untouched. Only reliance on the route-A-specific async gap (a latent bug) could change -> none observed.",
+    "one_protocol_point_to_confirm_on_board": "OH maps onStart <-> onWindowStageCreate; onStart now precedes OH's onWindowStageCreate callback (expected safe: onStart doesn't touch the OH window stage; verify on board)"
+  },
+  "predicted_moves": {"fd-breezyweather": 1, "lit_regressions_expected": 0},
+  "this_rounds_rule": "Fix the ordering where AOSP does: advance to ON_START inside the launch transaction (restore onCreate->onStart synchrony), not resume-at-launch (which reintroduces the AMS rc=22 race + empty-surface risk). Bound regression risk by mechanism+stack, not a log heuristic that can't separate posted from inline work; here the behaviourally-relevant risk set is the 4 native-engine lit keys and the AOSP-restore argument predicts 0 lit regressions.",
+  "boundaries": "Offline; no deploy; no push; patch not built/run here (t3 prototype; on-board build + the 3-step verification plan are the owner's). 'posted-before-RESUMED' set not log-separable (stated). Sources read read-only (runtime JAR AppSchedulerBridge/LifecycleAdapter, AOSP android-14 ActivityThread+servertransaction, U13 stage-A hilogs + u13-reference lit list, corpus100 stacks).",
+  "landing_paths": "benchmark/2026-10-03-u16-t3-lifecycle-sync/landing-paths.txt"
+}
