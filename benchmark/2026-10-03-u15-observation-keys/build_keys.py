@@ -64,6 +64,15 @@ def main():
             'source': 'u15-flutter-libandroid-v2 ATrace (9b824502, carries fff9be31 EGL)',
             'expect': 'first fatal stays past eglCreateWindowSurface; ATrace no longer missing',
             'component': ''}
+    # fd-meet (outer 11:36): ANL dual-alias b96a8991 + org.jitsi.meet + host 9e3ad72e;
+    # observation markers [N2-OWNER] ABI global ready / [N3-OWNER] resident runtime published;
+    # expected move unknown (anl-review.md: historical 1 conditional move, no lit prediction)
+    movers[ref['fd-meet']['board']]['fd-meet'] = {
+        'source': 'u15 ANL dual alias b96a8991 (org.jitsi.meet) + resident host 9e3ad72e; '
+                  'markers [N2-OWNER] ABI global ready / [N3-OWNER] resident runtime published',
+        'expect': 'unknown (anl-review.md: paired route+global ABI expected to clear public and '
+                  'fallback relocations; next RN/Hermes/WebRTC wall unknown, no lit prediction)',
+        'component': 'org.jitsi.meet'}
 
     # ---- theme-watch: watch-lit + control-noop (x1 each, regression eyes) ----
     # dedupe rule (outer 09:50): a theme-watch key overlapping lottery stays in lottery (flagged
