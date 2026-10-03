@@ -2,6 +2,7 @@ import json
 
 from native_pair import PAIR
 from prepare import HERE, MASTER, WS, save, sha
+from build_approval_packet import validate_packet
 
 
 def main():
@@ -32,6 +33,17 @@ def main():
         if sha(root / "bundle.json") != row["sha256"]:
             raise ValueError("Content baseline changed")
     composition = json.loads((HERE / "composition.json").read_text())
+    packet = json.loads((HERE / "outer-approval-packet.json").read_text())
+    validate_packet(HERE, packet)
+    review_runs = json.loads((HERE / "outer-packet-runs.json").read_text())
+    if review_runs["packet_sha256"] != sha(HERE / "outer-approval-packet.json"):
+        raise ValueError("Review packet changed after disassembly capture")
+    for row in review_runs["records"]:
+        raw = WS / row["raw"].removeprefix("$WORKSPACES/")
+        if row["exit_code"] != 0 or sha(raw) != row["raw_sha256"] or sha(HERE / row["evidence"]) != row["evidence_sha256"]:
+            raise ValueError("Review disassembly changed")
+    if review_runs["active_registry_before"] != current_registry or review_runs["active_registry_after"] != current_registry:
+        raise ValueError("Review active-table snapshot changed")
     if any(composition[name] is not False for name in ["execution_enabled", "rollout_ready"]):
         raise ValueError("No final execution permission")
     if composition["transaction_base"] != {"common": None, "61b": None}:
@@ -39,7 +51,8 @@ def main():
     if any(composition[name] is not None for name in ["final_bundle_sha256", "final_manifest_sha256", "final_inputs_sha256"]):
         raise ValueError("Incomplete bundle cannot have final identities")
     save("final-consistency.json", dict(exit_code=0, native_payloads_checked=len(manifest["files"]),
-        native_commands_checked=len(gates["records"]), active_registry_sha256=current_registry,
+        native_commands_checked=len(gates["records"]), review_commands_checked=len(review_runs["records"]),
+        outer_packet_sha256=sha(HERE / "outer-approval-packet.json"), unsigned_review_rows=17, active_registry_sha256=current_registry,
         content_bases_unchanged=True, native_batch_artifacts_arrived=True, native_production_approved=False,
         final_bundle_sha256=None, execution_enabled=False, rollout_ready=False, board_access=False, vm_access=False,
         registry_updated=False, image_bake_executed=False, native_build_executed=False))

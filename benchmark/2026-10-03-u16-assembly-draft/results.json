@@ -5885,6 +5885,1787 @@
     "rollout_ready": false,
     "board_access": false
   },
+  "outer_approval_packet": {
+    "schema": "outer-gate-approval/v1",
+    "signer": null,
+    "signed_at": null,
+    "requested_signer": "outer(claude)",
+    "status": "pending-outer-review",
+    "review_package": "benchmark/2026-10-03-u16-assembly-draft/",
+    "format_reference": "benchmark/2026-10-03-u15-review/outer-approval-packet.json",
+    "native_manifest_sha256": "2cc15660294c057763cb49c26635cbd1e54fdbd0bb855c95f5deb80e5c7ee103",
+    "native_inputs_sha256": "637b4727a304060e9dad76b50fcb1390052ddf9f5a98504dd20c486753df073c",
+    "selected_artifacts": {
+      "payload/android/lib64/liboh_android_runtime.so": {
+        "old": "94c31177709dbea0b1615a63c0d41a358f7db6843cbbd11f77979576a1a86a47",
+        "new": "1d42dbfb473f87e8a31e7403c7f67c3544b8a5cea109e73e71250596ecb31942"
+      },
+      "payload/android/lib64/westlake_flutter/libandroid.so": {
+        "old": "9b8245022f9c98dac41a85acfa553e96e6385073fd7b15298199a1cce223647b",
+        "new": "eb90a6409c9caaba058d2463cad9c193d344527051455d8aca8421e6b7011b4f"
+      }
+    },
+    "final_bundle_sha256": null,
+    "execution_enabled": false,
+    "rollout_ready": false,
+    "gate_registry_applied": false,
+    "active_registry_sha256": "a3b44942e594512a8dfb9664f7c0b4ed33cb3d0c174271631c2ecdfac331d5ae",
+    "decisions": [
+      {
+        "id": "flutter-noload-38",
+        "category": "flutter-open",
+        "object": "liboh_android_runtime.so at source:38",
+        "decision": "pending",
+        "approved_by": null,
+        "issue_id": "33b4fb151e41a8e0530a037ec6ee3bc99faf2316d64f723d2c723d8200a242ad",
+        "finding": {
+          "profile": "u16-flutter-impeller",
+          "kind": "unknown",
+          "detail": {
+            "function": "gl_log",
+            "namespace": "default",
+            "library": "liboh_android_runtime.so",
+            "target_expression": "\"liboh_android_runtime.so\"",
+            "evidence": {
+              "source": "u16-flutter-impeller.cpp",
+              "line": 38,
+              "text": "void* rt = dlopen(\"liboh_android_runtime.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "33b4fb151e41a8e0530a037ec6ee3bc99faf2316d64f723d2c723d8200a242ad",
+          "disposition": "REJECT"
+        },
+        "open_site": {
+          "binary": "libandroid.so",
+          "function": "_ZL6gl_logPKc",
+          "pc": "0x4cf0",
+          "callee": "dlopen",
+          "tail_call": false,
+          "namespace": [
+            "caller-default"
+          ],
+          "path": [
+            "liboh_android_runtime.so"
+          ],
+          "flags": [
+            "0x6=NOW|NOLOAD"
+          ]
+        },
+        "source_function": "gl_log",
+        "compiled_function": "_ZL6gl_logPKc",
+        "origin": "A2 glDepthRange interposer (b1c9); A3 only adds four EGL-name returns pointing to existing flutter_egl hooks",
+        "may_create_new_copy": false,
+        "no_copy_basis": "Immediate w1=6 NOW|NOLOAD; resident lookup only. This does not prove handle visibility or a successful renderer. Existing older NOW-only sites are outside these four rows.",
+        "disassembly": [
+          {
+            "path": "evidence/approval-flutter-log.txt",
+            "line": 42,
+            "excerpt": [
+              "    4ce0:      \tbr\tx6",
+              "    4ce4:      \tadrp\tx0, 0x1000 <vsnprintf+0x1000>",
+              "    4ce8:      \tadd\tx0, x0, #0x9cc",
+              "    4cec:      \tmov\tw1, #0x6                // =6",
+              "    4cf0:      \tbl\t0x50f0 <dlopen@plt>",
+              "    4cf4:      \tcbz\tx0, 0x4c84 <_ZL6gl_logPKc+0x20>",
+              "    4cf8:      \tadrp\tx1, 0x1000 <vsnprintf+0x1000>"
+            ]
+          }
+        ],
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 38,
+            "text": "void* rt = dlopen(\"liboh_android_runtime.so\", RTLD_NOW | RTLD_NOLOAD);"
+          },
+          {
+            "path": "evidence/approval-flutter-log.txt",
+            "sha256": "b5ae2c99ddbe4e5d3032f049e8d15fd8747213c7277f7af5ef51acbc4b3df993"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-u16-open.json",
+            "sha256": "e3bfcd5bee8a1931339c90c9738fbdb6100a3762fdc766c48b01aa83b8df83f8"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "A2 residual GLES logging: reuse loaded runtime only to resolve HiLogPrint, matching flutter_egl n6_log ownership; miss disables logging."
+        },
+        "scope": "Only this N1 issue and the exact four-added/no-removed/no-namespace-delta static allowance; no API/rendering success or owner visibility approval"
+      },
+      {
+        "id": "flutter-noload-57",
+        "category": "flutter-open",
+        "object": "libGLESv2.so at source:57",
+        "decision": "pending",
+        "approved_by": null,
+        "issue_id": "cf90933deb05670f318ddab31f6c63333ea38b8f28c5774229716cede79536d6",
+        "finding": {
+          "profile": "u16-flutter-impeller",
+          "kind": "unknown",
+          "detail": {
+            "function": "ensure_driver",
+            "namespace": "default",
+            "library": "libGLESv2.so",
+            "target_expression": "\"libGLESv2.so\"",
+            "evidence": {
+              "source": "u16-flutter-impeller.cpp",
+              "line": 57,
+              "text": "if (!g_gles2) g_gles2 = dlopen(\"libGLESv2.so\", RTLD_NOLOAD | RTLD_NOW);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "cf90933deb05670f318ddab31f6c63333ea38b8f28c5774229716cede79536d6",
+          "disposition": "REJECT"
+        },
+        "open_site": {
+          "binary": "libandroid.so",
+          "function": "eglGetProcAddress",
+          "pc": "0x4984",
+          "callee": "dlopen",
+          "tail_call": false,
+          "namespace": [
+            "caller-default"
+          ],
+          "path": [
+            "libGLESv2.so"
+          ],
+          "flags": [
+            "0x6=NOW|NOLOAD"
+          ]
+        },
+        "source_function": "ensure_driver",
+        "compiled_function": "eglGetProcAddress",
+        "origin": "A2 glDepthRange interposer (b1c9); A3 only adds four EGL-name returns pointing to existing flutter_egl hooks",
+        "may_create_new_copy": false,
+        "no_copy_basis": "Immediate w1=6 NOW|NOLOAD; resident lookup only. This does not prove handle visibility or a successful renderer. Existing older NOW-only sites are outside these four rows.",
+        "disassembly": [
+          {
+            "path": "evidence/approval-flutter-egl.txt",
+            "line": 46,
+            "excerpt": [
+              "    4974:      \tcbnz\tx8, 0x498c <eglGetProcAddress+0xa4>",
+              "    4978:      \tadrp\tx0, 0x1000 <vsnprintf+0x1000>",
+              "    497c:      \tadd\tx0, x0, #0x94b",
+              "    4980:      \tmov\tw1, #0x6                // =6",
+              "    4984:      \tbl\t0x50f0 <dlopen@plt>",
+              "    4988:      \tstr\tx0, [x21, #0xc68]",
+              "    498c:      \tadrp\tx20, 0x7000 <vsnprintf+0x7000>"
+            ]
+          }
+        ],
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 57,
+            "text": "if (!g_gles2) g_gles2 = dlopen(\"libGLESv2.so\", RTLD_NOLOAD | RTLD_NOW);"
+          },
+          {
+            "path": "evidence/approval-flutter-egl.txt",
+            "sha256": "d53b9c83b4f6f268a141d30b942fbdfe6c1008b1e191dd4ef9dee6c3e5cf071e"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-u16-open.json",
+            "sha256": "e3bfcd5bee8a1931339c90c9738fbdb6100a3762fdc766c48b01aa83b8df83f8"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "A2 glDepthRange/glClearDepth double-to-float shims and extension lookup: reuse loaded GLES2 driver; missing handle is not a loader fallback."
+        },
+        "scope": "Only this N1 issue and the exact four-added/no-removed/no-namespace-delta static allowance; no API/rendering success or owner visibility approval"
+      },
+      {
+        "id": "flutter-noload-58",
+        "category": "flutter-open",
+        "object": "libGLESv3.so at source:58",
+        "decision": "pending",
+        "approved_by": null,
+        "issue_id": "72bc151443a9f6ebea055fe1972be0ffd8878c638c28417778eca84472cdef4e",
+        "finding": {
+          "profile": "u16-flutter-impeller",
+          "kind": "unknown",
+          "detail": {
+            "function": "ensure_driver",
+            "namespace": "default",
+            "library": "libGLESv3.so",
+            "target_expression": "\"libGLESv3.so\"",
+            "evidence": {
+              "source": "u16-flutter-impeller.cpp",
+              "line": 58,
+              "text": "if (!g_gles3) g_gles3 = dlopen(\"libGLESv3.so\", RTLD_NOLOAD | RTLD_NOW);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "72bc151443a9f6ebea055fe1972be0ffd8878c638c28417778eca84472cdef4e",
+          "disposition": "REJECT"
+        },
+        "open_site": {
+          "binary": "libandroid.so",
+          "function": "eglGetProcAddress",
+          "pc": "0x49a4",
+          "callee": "dlopen",
+          "tail_call": false,
+          "namespace": [
+            "caller-default"
+          ],
+          "path": [
+            "libGLESv3.so"
+          ],
+          "flags": [
+            "0x6=NOW|NOLOAD"
+          ]
+        },
+        "source_function": "ensure_driver",
+        "compiled_function": "eglGetProcAddress",
+        "origin": "A2 glDepthRange interposer (b1c9); A3 only adds four EGL-name returns pointing to existing flutter_egl hooks",
+        "may_create_new_copy": false,
+        "no_copy_basis": "Immediate w1=6 NOW|NOLOAD; resident lookup only. This does not prove handle visibility or a successful renderer. Existing older NOW-only sites are outside these four rows.",
+        "disassembly": [
+          {
+            "path": "evidence/approval-flutter-egl.txt",
+            "line": 54,
+            "excerpt": [
+              "    4994:      \tcbnz\tx0, 0x49ac <eglGetProcAddress+0xc4>",
+              "    4998:      \tadrp\tx0, 0x1000 <vsnprintf+0x1000>",
+              "    499c:      \tadd\tx0, x0, #0xbce",
+              "    49a0:      \tmov\tw1, #0x6                // =6",
+              "    49a4:      \tbl\t0x50f0 <dlopen@plt>",
+              "    49a8:      \tstr\tx0, [x20, #0xc70]",
+              "    49ac:      \tadrp\tx22, 0x7000 <vsnprintf+0x7000>"
+            ]
+          }
+        ],
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 58,
+            "text": "if (!g_gles3) g_gles3 = dlopen(\"libGLESv3.so\", RTLD_NOLOAD | RTLD_NOW);"
+          },
+          {
+            "path": "evidence/approval-flutter-egl.txt",
+            "sha256": "d53b9c83b4f6f268a141d30b942fbdfe6c1008b1e191dd4ef9dee6c3e5cf071e"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-u16-open.json",
+            "sha256": "e3bfcd5bee8a1931339c90c9738fbdb6100a3762fdc766c48b01aa83b8df83f8"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "A2 GLES3 fallback for the same float shims and extension lookup; no fresh library load on miss."
+        },
+        "scope": "Only this N1 issue and the exact four-added/no-removed/no-namespace-delta static allowance; no API/rendering success or owner visibility approval"
+      },
+      {
+        "id": "flutter-noload-96",
+        "category": "flutter-open",
+        "object": "libEGL.so at source:96",
+        "decision": "pending",
+        "approved_by": null,
+        "issue_id": "a87f8c345b869152e30c3a4bdf380fb3b5c46f3621cfd831c6173c8c8cf9ff44",
+        "finding": {
+          "profile": "u16-flutter-impeller",
+          "kind": "unknown",
+          "detail": {
+            "function": "eglGetProcAddress",
+            "namespace": "default",
+            "library": "libEGL.so",
+            "target_expression": "\"libEGL.so\"",
+            "evidence": {
+              "source": "u16-flutter-impeller.cpp",
+              "line": 96,
+              "text": "void* egl = dlopen(\"libEGL.so\", RTLD_NOLOAD | RTLD_NOW);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "a87f8c345b869152e30c3a4bdf380fb3b5c46f3621cfd831c6173c8c8cf9ff44",
+          "disposition": "REJECT"
+        },
+        "open_site": {
+          "binary": "libandroid.so",
+          "function": "eglGetProcAddress",
+          "pc": "0x4ad8",
+          "callee": "dlopen",
+          "tail_call": false,
+          "namespace": [
+            "caller-default"
+          ],
+          "path": [
+            "libEGL.so"
+          ],
+          "flags": [
+            "0x6=NOW|NOLOAD"
+          ]
+        },
+        "source_function": "eglGetProcAddress",
+        "compiled_function": "eglGetProcAddress",
+        "origin": "A2 glDepthRange interposer (b1c9); A3 only adds four EGL-name returns pointing to existing flutter_egl hooks",
+        "may_create_new_copy": false,
+        "no_copy_basis": "Immediate w1=6 NOW|NOLOAD; resident lookup only. This does not prove handle visibility or a successful renderer. Existing older NOW-only sites are outside these four rows.",
+        "disassembly": [
+          {
+            "path": "evidence/approval-flutter-egl.txt",
+            "line": 131,
+            "excerpt": [
+              "    4ac8:      \tb\t0x4b50 <eglGetProcAddress+0x268>",
+              "    4acc:      \tadrp\tx0, 0x1000 <vsnprintf+0x1000>",
+              "    4ad0:      \tadd\tx0, x0, #0xb0a",
+              "    4ad4:      \tmov\tw1, #0x6                // =6",
+              "    4ad8:      \tbl\t0x50f0 <dlopen@plt>",
+              "    4adc:      \tcbz\tx0, 0x4b20 <eglGetProcAddress+0x238>",
+              "    4ae0:      \tadrp\tx1, 0x1000 <vsnprintf+0x1000>"
+            ]
+          }
+        ],
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 96,
+            "text": "void* egl = dlopen(\"libEGL.so\", RTLD_NOLOAD | RTLD_NOW);"
+          },
+          {
+            "path": "evidence/approval-flutter-egl.txt",
+            "sha256": "d53b9c83b4f6f268a141d30b942fbdfe6c1008b1e191dd4ef9dee6c3e5cf071e"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-u16-open.json",
+            "sha256": "e3bfcd5bee8a1931339c90c9738fbdb6100a3762fdc766c48b01aa83b8df83f8"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "A2 real platform eglGetProcAddress delegation retained after A3's four same-DSO flutter_egl EGL-name hooks; miss proceeds to existing residual resolver, not a fresh open."
+        },
+        "scope": "Only this N1 issue and the exact four-added/no-removed/no-namespace-delta static allowance; no API/rendering success or owner visibility approval"
+      },
+      {
+        "id": "runtime-line-1",
+        "category": "runtime-line-shift",
+        "object": "resolve_oh_wm_funcs",
+        "decision": "pending",
+        "approved_by": null,
+        "finding": {
+          "profile": "u13-m1-compat-shim.cpp",
+          "kind": "unknown",
+          "detail": {
+            "function": "resolve_oh_wm_funcs",
+            "namespace": "default",
+            "library": "liboh_adapter_bridge.so",
+            "target_expression": "\"liboh_adapter_bridge.so\"",
+            "evidence": {
+              "source": "u13-m1-compat-shim.cpp",
+              "line": 421,
+              "text": "s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "d1e7031b51a86d81c1e597f987a9bf2306f40e37734ff39ab2c339fb6818bb4e",
+          "disposition": "REJECT"
+        },
+        "issue_id": "d1e7031b51a86d81c1e597f987a9bf2306f40e37734ff39ab2c339fb6818bb4e",
+        "old_source_line": 415,
+        "new_source_line": 421,
+        "before": {
+          "detail": {
+            "evidence": {
+              "line": 415,
+              "source": "u13-m1-compat-shim.cpp",
+              "text": "s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "function": "resolve_oh_wm_funcs",
+            "library": "liboh_adapter_bridge.so",
+            "namespace": "default",
+            "reason": "fresh namespace or literal target not established",
+            "target_expression": "\"liboh_adapter_bridge.so\""
+          },
+          "disposition": "REJECT",
+          "kind": "unknown",
+          "profile": "u13-m1-compat-shim.cpp"
+        },
+        "after": {
+          "detail": {
+            "evidence": {
+              "line": 421,
+              "source": "u13-m1-compat-shim.cpp",
+              "text": "s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "function": "resolve_oh_wm_funcs",
+            "library": "liboh_adapter_bridge.so",
+            "namespace": "default",
+            "reason": "fresh namespace or literal target not established",
+            "target_expression": "\"liboh_adapter_bridge.so\""
+          },
+          "disposition": "REJECT",
+          "kind": "unknown",
+          "profile": "u13-m1-compat-shim.cpp"
+        },
+        "old_open_site": {
+          "binary": "liboh_android_runtime.so",
+          "function": "_ZN7android12_GLOBAL__N_119resolve_oh_wm_funcsEv",
+          "pc": "0x19812c",
+          "callee": "dlopen",
+          "tail_call": false,
+          "namespace": [
+            "caller-default"
+          ],
+          "path": [
+            "liboh_adapter_bridge.so"
+          ],
+          "flags": [
+            "0x6=NOW|NOLOAD"
+          ]
+        },
+        "new_open_site": {
+          "binary": "liboh_android_runtime.so",
+          "function": "_ZN7android12_GLOBAL__N_119resolve_oh_wm_funcsEv",
+          "pc": "0x198140",
+          "callee": "dlopen",
+          "tail_call": false,
+          "namespace": [
+            "caller-default"
+          ],
+          "path": [
+            "liboh_adapter_bridge.so"
+          ],
+          "flags": [
+            "0x6=NOW|NOLOAD"
+          ]
+        },
+        "disassembly": {
+          "u15": [
+            {
+              "path": "evidence/approval-runtime-u15-resolve-window.txt",
+              "line": 58,
+              "excerpt": [
+                "  19811c:      \tret",
+                "  198120:      \tadrp\tx0, 0x4e000 <sqlite3LogEstAdd.x+0x3c10>",
+                "  198124:      \tadd\tx0, x0, #0xdd1",
+                "  198128:      \tmov\tw1, #0x6                // =6",
+                "  19812c:      \tbl\t0x1fbcc0 <dlopen@plt>",
+                "  198130:      \tstr\tx0, [x21, #0x818]",
+                "  198134:      \tcbz\tx0, 0x198188 <_ZN7android12_GLOBAL__N_119resolve_oh_wm_funcsEv+0x128>"
+              ]
+            }
+          ],
+          "u16": [
+            {
+              "path": "evidence/approval-runtime-u16-resolve-window.txt",
+              "line": 58,
+              "excerpt": [
+                "  198130:      \tret",
+                "  198134:      \tadrp\tx0, 0x4e000 <sqlite3LogEstAdd.x+0x3b90>",
+                "  198138:      \tadd\tx0, x0, #0xe51",
+                "  19813c:      \tmov\tw1, #0x6                // =6",
+                "  198140:      \tbl\t0x1fbe00 <dlopen@plt>",
+                "  198144:      \tstr\tx0, [x21, #0x970]",
+                "  198148:      \tcbz\tx0, 0x19819c <_ZN7android12_GLOBAL__N_119resolve_oh_wm_funcsEv+0x128>"
+              ]
+            }
+          ]
+        },
+        "basis": [
+          {
+            "path": "inputs/native-source/u15-m1-compat-shim.cpp",
+            "sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+            "line": 415,
+            "text": "s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+          },
+          {
+            "path": "inputs/native-source/u13-m1-compat-shim.cpp",
+            "sha256": "38ca156d5ff7d10bdfbaff9033d6de863ca060bca357d6de0a9987ecfde444f9",
+            "line": 421,
+            "text": "s_bridgeHandle = dlopen(\"liboh_adapter_bridge.so\", RTLD_NOW | RTLD_NOLOAD);"
+          },
+          {
+            "path": "evidence/approval-runtime-u15-resolve-window.txt",
+            "sha256": "1e34c05a7a85dc1a34a84bb4856764ebc53bdba8625446dc59845ddf88e57da3"
+          },
+          {
+            "path": "evidence/approval-runtime-u16-resolve-window.txt",
+            "sha256": "f0caf986ea61046999e8408fc838971a5bef352e511ed0b432b39106e5755579"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "Same source statement and finding fields except source line; the split moved/deleted surrounding helper code. Both ELF calls still pass NOW|NOLOAD to the same library, with no new opening path."
+        },
+        "scope": "Exact line-only approval transfer to the selected partial manifest/inputs; no identity-only auto approval of other semantic changes"
+      },
+      {
+        "id": "runtime-line-2",
+        "category": "runtime-line-shift",
+        "object": "eglCreateWindowSurface",
+        "decision": "pending",
+        "approved_by": null,
+        "finding": {
+          "profile": "u13-m1-compat-shim.cpp",
+          "kind": "unknown",
+          "detail": {
+            "function": "eglCreateWindowSurface",
+            "namespace": "default",
+            "library": "libEGL.so",
+            "target_expression": "\"libEGL.so\"",
+            "evidence": {
+              "source": "u13-m1-compat-shim.cpp",
+              "line": 1334,
+              "text": "void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "reason": "fresh namespace or literal target not established"
+          },
+          "issue_id": "40b94ceb84914cbc9b49595bbcc3fb31435e8f45454de1f16dbaf66b6090c30f",
+          "disposition": "REJECT"
+        },
+        "issue_id": "40b94ceb84914cbc9b49595bbcc3fb31435e8f45454de1f16dbaf66b6090c30f",
+        "old_source_line": 1408,
+        "new_source_line": 1334,
+        "before": {
+          "detail": {
+            "evidence": {
+              "line": 1408,
+              "source": "u13-m1-compat-shim.cpp",
+              "text": "void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "function": "eglCreateWindowSurface",
+            "library": "libEGL.so",
+            "namespace": "default",
+            "reason": "fresh namespace or literal target not established",
+            "target_expression": "\"libEGL.so\""
+          },
+          "disposition": "REJECT",
+          "kind": "unknown",
+          "profile": "u13-m1-compat-shim.cpp"
+        },
+        "after": {
+          "detail": {
+            "evidence": {
+              "line": 1334,
+              "source": "u13-m1-compat-shim.cpp",
+              "text": "void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+            },
+            "function": "eglCreateWindowSurface",
+            "library": "libEGL.so",
+            "namespace": "default",
+            "reason": "fresh namespace or literal target not established",
+            "target_expression": "\"libEGL.so\""
+          },
+          "disposition": "REJECT",
+          "kind": "unknown",
+          "profile": "u13-m1-compat-shim.cpp"
+        },
+        "old_open_site": {
+          "binary": "liboh_android_runtime.so",
+          "function": "eglCreateWindowSurface",
+          "pc": "0x197a28",
+          "callee": "dlopen",
+          "tail_call": false,
+          "namespace": [
+            "caller-default"
+          ],
+          "path": [
+            "libEGL.so"
+          ],
+          "flags": [
+            "0x6=NOW|NOLOAD"
+          ]
+        },
+        "new_open_site": {
+          "binary": "liboh_android_runtime.so",
+          "function": "eglCreateWindowSurface",
+          "pc": "0x197ad0",
+          "callee": "dlopen",
+          "tail_call": false,
+          "namespace": [
+            "caller-default"
+          ],
+          "path": [
+            "libEGL.so"
+          ],
+          "flags": [
+            "0x6=NOW|NOLOAD"
+          ]
+        },
+        "disassembly": {
+          "u15": [
+            {
+              "path": "evidence/approval-runtime-u15-create-surface.txt",
+              "line": 27,
+              "excerpt": [
+                "  197a18:      \tadrp\tx0, 0x61000 <aDigits+0x2df5>",
+                "  197a1c:      \tadd\tx0, x0, #0xf",
+                "  197a20:      \tmov\tw1, #0x6                // =6",
+                "  197a24:      \tstrb\tw9, [x8, #0x7f8]",
+                "  197a28:      \tbl\t0x1fbcc0 <dlopen@plt>",
+                "  197a2c:      \tmov\tx23, x0",
+                "  197a30:      \tcbz\tx0, 0x197a50 <eglCreateWindowSurface+0x78>"
+              ]
+            }
+          ],
+          "u16": [
+            {
+              "path": "evidence/approval-runtime-u16-create-surface.txt",
+              "line": 27,
+              "excerpt": [
+                "  197ac0:      \tadrp\tx0, 0x61000 <aDigits+0x2d75>",
+                "  197ac4:      \tadd\tx0, x0, #0x8f",
+                "  197ac8:      \tmov\tw1, #0x6                // =6",
+                "  197acc:      \tstrb\tw9, [x8, #0x950]",
+                "  197ad0:      \tbl\t0x1fbe00 <dlopen@plt>",
+                "  197ad4:      \tmov\tx23, x0",
+                "  197ad8:      \tcbz\tx0, 0x197af8 <eglCreateWindowSurface+0x78>"
+              ]
+            }
+          ]
+        },
+        "basis": [
+          {
+            "path": "inputs/native-source/u15-m1-compat-shim.cpp",
+            "sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+            "line": 1408,
+            "text": "void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+          },
+          {
+            "path": "inputs/native-source/u13-m1-compat-shim.cpp",
+            "sha256": "38ca156d5ff7d10bdfbaff9033d6de863ca060bca357d6de0a9987ecfde444f9",
+            "line": 1334,
+            "text": "void* h = android::dlopen(\"libEGL.so\", RTLD_NOW | RTLD_NOLOAD);"
+          },
+          {
+            "path": "evidence/approval-runtime-u15-create-surface.txt",
+            "sha256": "b8f26817c4d17d6611535a0f1d8399b40f1845aeac343c9a84d7acbbb73fe0f8"
+          },
+          {
+            "path": "evidence/approval-runtime-u16-create-surface.txt",
+            "sha256": "a255663bd4fadb806795dbaa672df40ee77601aae868e92709c3054712254e5f"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "Same source statement and finding fields except source line; the split moved/deleted surrounding helper code. Both ELF calls still pass NOW|NOLOAD to the same library, with no new opening path."
+        },
+        "scope": "Exact line-only approval transfer to the selected partial manifest/inputs; no identity-only auto approval of other semantic changes"
+      },
+      {
+        "id": "runtime-call-bbq",
+        "category": "runtime-call-set",
+        "object": "android::(anonymous namespace)::BBQ_nativeUpdate(_JNIEnv*, _jclass*, long, long, long, long, int)",
+        "decision": "pending",
+        "approved_by": null,
+        "raw_call_set_diff": {
+          "function": "_ZN7android12_GLOBAL__N_116BBQ_nativeUpdateEP7_JNIEnvP7_jclasslllli",
+          "demangled": "android::(anonymous namespace)::BBQ_nativeUpdate(_JNIEnv*, _jclass*, long, long, long, long, int)",
+          "added_callees": [
+            "_ZN7android34m1_native_window_from_other_copiesEPFPviEi"
+          ],
+          "removed_callees": [
+            "_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi"
+          ]
+        },
+        "disassembly": {
+          "old": "evidence/approval-runtime-u15-bbq.txt",
+          "new": "evidence/approval-runtime-u16-bbq.txt",
+          "old_removed_calls": {
+            "_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi": [
+              {
+                "path": "evidence/approval-runtime-u15-bbq.txt",
+                "line": 74,
+                "excerpt": [
+                  "  198aa0:      \tmov\tx5, x26",
+                  "  198aa4:      \tmov\tw6, w23",
+                  "  198aa8:      \tbl\t0x1fc3e0 <HiLogPrint@plt>",
+                  "  198aac:      \tmov\tw0, w23",
+                  "  198ab0:      \tbl\t0x197f48 <_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi>",
+                  "  198ab4:      \tcbnz\tx0, 0x198b80 <_ZN7android12_GLOBAL__N_116BBQ_nativeUpdateEP7_JNIEnvP7_jclasslllli+0x1dc>",
+                  "  198ab8:      \tmov\tw5, w23"
+                ]
+              }
+            ]
+          },
+          "new_added_calls": {
+            "_ZN7android34m1_native_window_from_other_copiesEPFPviEi": [
+              {
+                "path": "evidence/approval-runtime-u16-bbq.txt",
+                "line": 118,
+                "excerpt": [
+                  "  198958:      \tadd\tsp, sp, #0x80",
+                  "  19895c:      \tb\t0x1fc520 <HiLogPrint@plt>",
+                  "  198960:      \tmov\tx0, xzr",
+                  "  198964:      \tmov\tw1, w23",
+                  "  198968:      \tbl\t0x1fcb00 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi@plt>",
+                  "  19896c:      \tcbnz\tx0, 0x1989b4 <_ZN7android12_GLOBAL__N_116BBQ_nativeUpdateEP7_JNIEnvP7_jclasslllli+0x208>",
+                  "  198970:      \tmov\tw5, w23"
+                ]
+              }
+            ]
+          },
+          "new_split_calls": [
+            {
+              "path": "evidence/approval-runtime-u16-bbq.txt",
+              "line": 118,
+              "excerpt": [
+                "  198958:      \tadd\tsp, sp, #0x80",
+                "  19895c:      \tb\t0x1fc520 <HiLogPrint@plt>",
+                "  198960:      \tmov\tx0, xzr",
+                "  198964:      \tmov\tw1, w23",
+                "  198968:      \tbl\t0x1fcb00 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi@plt>",
+                "  19896c:      \tcbnz\tx0, 0x1989b4 <_ZN7android12_GLOBAL__N_116BBQ_nativeUpdateEP7_JNIEnvP7_jclasslllli+0x208>",
+                "  198970:      \tmov\tw5, w23"
+              ]
+            }
+          ],
+          "split_entry": "evidence/approval-runtime-u16-split-entry.txt",
+          "moved_iterate_calls": [
+            {
+              "path": "evidence/approval-runtime-u16-split-entry.txt",
+              "line": 23,
+              "excerpt": [
+                "  198d3c:      \tstr\txzr, [sp, #0x38]",
+                "  198d40:      \tstur\tq0, [sp, #0x28]",
+                "  198d44:      \tstur\tq0, [sp, #0x18]",
+                "  198d48:      \tstur\tq0, [sp, #0x8]",
+                "  198d4c:      \tbl\t0x1fcb20 <dl_iterate_phdr@plt>",
+                "  198d50:      \tldr\tx8, [sp, #0x8]",
+                "  198d54:      \tcbz\tx8, 0x198da4 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi+0x98>"
+              ]
+            },
+            {
+              "path": "evidence/approval-runtime-u16-split-entry.txt",
+              "line": 30,
+              "excerpt": [
+                "  198d58:      \tadrp\tx0, 0x198000 <_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl+0xf8>",
+                "  198d5c:      \tadd\tx0, x0, #0xee0",
+                "  198d60:      \tmov\tx1, sp",
+                "  198d64:      \tmov\tx20, sp",
+                "  198d68:      \tbl\t0x1fcb20 <dl_iterate_phdr@plt>",
+                "  198d6c:      \tldr\tx8, [sp, #0x38]",
+                "  198d70:      \tcbz\tx8, 0x198da4 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi+0x98>"
+              ]
+            }
+          ],
+          "moved_log_call": [
+            {
+              "path": "evidence/approval-runtime-u16-split-entry.txt",
+              "line": 66,
+              "excerpt": [
+                "  198de8:      \tmov\tw0, #0x3                // =3",
+                "  198dec:      \tmov\tw1, #0x4                // =4",
+                "  198df0:      \tmovk\tw2, #0xd00, lsl #16",
+                "  198df4:      \tmov\tw5, w19",
+                "  198df8:      \tbl\t0x1fc520 <HiLogPrint@plt>",
+                "  198dfc:      \tb\t0x198da8 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi+0x9c>"
+              ]
+            }
+          ]
+        },
+        "basis": [
+          {
+            "path": "inputs/native-source/u15-m1-compat-shim.cpp",
+            "sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+            "line": 587,
+            "text": "nw = oh_wm_get_native_window(sessionId);"
+          },
+          {
+            "path": "inputs/native-source/u15-m1-compat-shim.cpp",
+            "sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+            "line": 597,
+            "text": "nw = oh_wm_get_native_window(sessionId);"
+          },
+          {
+            "path": "inputs/native-source/u13-m1-compat-shim.cpp",
+            "sha256": "38ca156d5ff7d10bdfbaff9033d6de863ca060bca357d6de0a9987ecfde444f9",
+            "line": 513,
+            "text": "nw = oh_wm_get_native_window(sessionId);"
+          },
+          {
+            "path": "inputs/native-source/u13-m1-compat-shim.cpp",
+            "sha256": "38ca156d5ff7d10bdfbaff9033d6de863ca060bca357d6de0a9987ecfde444f9",
+            "line": 523,
+            "text": "nw = oh_wm_get_native_window(sessionId);"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 84,
+            "text": "void* m1_native_window_from_other_copies(oh_wm_get_native_window_fn_t resolvedFn, int32_t sessionId) {"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 88,
+            "text": "dl_iterate_phdr(m1_find_own, &scan);"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 90,
+            "text": "dl_iterate_phdr(m1_collect_others, &scan);"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 94,
+            "text": "ALOGI(\"[M1-COPY] sessionId=%d resolved by bridge copy base=%p (resolved copy base=%p returned null)\","
+          },
+          {
+            "path": "evidence/approval-runtime-u15-bbq.txt",
+            "sha256": "d101ce39d7f81f295f1b5766db5cd26037561afd660da7345dae6e78fc3bb5e6"
+          },
+          {
+            "path": "evidence/approval-runtime-u16-bbq.txt",
+            "sha256": "86276d327da64148752520efb6423db808a1869e386fc24e96b3bbace8e18d87"
+          },
+          {
+            "path": "evidence/approval-runtime-u16-split-entry.txt",
+            "sha256": "6891d5c81a8045008f6f1792f356cc07dfd47e9b0f573d9a200af8ca55908957"
+          },
+          {
+            "path": "inputs/native-source/donor-t4/evidence/a-prime-insns.txt",
+            "sha256": "c6a72e1cd57893e3ddde348556726aa169b2f5368c222c68ec74f855bebad46a"
+          },
+          {
+            "path": "evidence/u16-a3-runtime-abi.json",
+            "sha256": "3c19da36e2cee43a18bf0aa4255b052c640a4d20c2d9e2d67149d733c3d3009b"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "BBQ wrapper calls become direct calls to the split entry after the primary window query is inlined. SurfaceView child lookup and main-window fallback selection remain in the shim."
+        },
+        "scope": "Accept the actual nonzero three-call-set split delta; do not label it callsets0 or guarantee full function instruction equivalence. Require future three-app M1 replay before FZ-009 registration."
+      },
+      {
+        "id": "runtime-call-sc",
+        "category": "runtime-call-set",
+        "object": "android::(anonymous namespace)::sc_to_oh_native_window(long)",
+        "decision": "pending",
+        "approved_by": null,
+        "raw_call_set_diff": {
+          "function": "_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl",
+          "demangled": "android::(anonymous namespace)::sc_to_oh_native_window(long)",
+          "added_callees": [
+            "_ZN7android12_GLOBAL__N_119resolve_oh_wm_funcsEv",
+            "_ZN7android34m1_native_window_from_other_copiesEPFPviEi"
+          ],
+          "removed_callees": [
+            "_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi"
+          ]
+        },
+        "disassembly": {
+          "old": "evidence/approval-runtime-u15-sc.txt",
+          "new": "evidence/approval-runtime-u16-sc.txt",
+          "old_removed_calls": {
+            "_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi": [
+              {
+                "path": "evidence/approval-runtime-u15-sc.txt",
+                "line": 18,
+                "excerpt": [
+                  "  197e7c:      \tmov\tx0, x19",
+                  "  197e80:      \tbl\t0x1fc9b0 <oh_sc_get_session@plt>",
+                  "  197e84:      \tcbz\tw0, 0x197ecc <_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl+0x6c>",
+                  "  197e88:      \tmov\tw20, w0",
+                  "  197e8c:      \tbl\t0x197f48 <_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi>",
+                  "  197e90:      \tmov\tx21, x0",
+                  "  197e94:      \tcbz\tx0, 0x197efc <_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl+0x9c>"
+                ]
+              }
+            ]
+          },
+          "new_added_calls": {
+            "_ZN7android12_GLOBAL__N_119resolve_oh_wm_funcsEv": [
+              {
+                "path": "evidence/approval-runtime-u16-sc.txt",
+                "line": 18,
+                "excerpt": [
+                  "  197f24:      \tmov\tx0, x19",
+                  "  197f28:      \tbl\t0x1fcaf0 <oh_sc_get_session@plt>",
+                  "  197f2c:      \tcbz\tw0, 0x197f5c <_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl+0x54>",
+                  "  197f30:      \tmov\tw20, w0",
+                  "  197f34:      \tbl\t0x198074 <_ZN7android12_GLOBAL__N_119resolve_oh_wm_funcsEv>",
+                  "  197f38:      \tadrp\tx22, 0x211000 <sqlite3SavedPrng+0x58>",
+                  "  197f3c:      \tldr\tx8, [x22, #0x958]"
+                ]
+              }
+            ],
+            "_ZN7android34m1_native_window_from_other_copiesEPFPviEi": [
+              {
+                "path": "evidence/approval-runtime-u16-sc.txt",
+                "line": 42,
+                "excerpt": [
+                  "  197f84:      \tmov\tx21, xzr",
+                  "  197f88:      \tb\t0x198008 <_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl+0x100>",
+                  "  197f8c:      \tmov\tx0, xzr",
+                  "  197f90:      \tmov\tw1, w20",
+                  "  197f94:      \tbl\t0x1fcb00 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi@plt>",
+                  "  197f98:      \tmov\tx21, x0",
+                  "  197f9c:      \tcbz\tx0, 0x197fd4 <_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl+0xcc>"
+                ]
+              }
+            ]
+          },
+          "new_split_calls": [
+            {
+              "path": "evidence/approval-runtime-u16-sc.txt",
+              "line": 42,
+              "excerpt": [
+                "  197f84:      \tmov\tx21, xzr",
+                "  197f88:      \tb\t0x198008 <_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl+0x100>",
+                "  197f8c:      \tmov\tx0, xzr",
+                "  197f90:      \tmov\tw1, w20",
+                "  197f94:      \tbl\t0x1fcb00 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi@plt>",
+                "  197f98:      \tmov\tx21, x0",
+                "  197f9c:      \tcbz\tx0, 0x197fd4 <_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl+0xcc>"
+              ]
+            }
+          ],
+          "split_entry": "evidence/approval-runtime-u16-split-entry.txt",
+          "moved_iterate_calls": [
+            {
+              "path": "evidence/approval-runtime-u16-split-entry.txt",
+              "line": 23,
+              "excerpt": [
+                "  198d3c:      \tstr\txzr, [sp, #0x38]",
+                "  198d40:      \tstur\tq0, [sp, #0x28]",
+                "  198d44:      \tstur\tq0, [sp, #0x18]",
+                "  198d48:      \tstur\tq0, [sp, #0x8]",
+                "  198d4c:      \tbl\t0x1fcb20 <dl_iterate_phdr@plt>",
+                "  198d50:      \tldr\tx8, [sp, #0x8]",
+                "  198d54:      \tcbz\tx8, 0x198da4 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi+0x98>"
+              ]
+            },
+            {
+              "path": "evidence/approval-runtime-u16-split-entry.txt",
+              "line": 30,
+              "excerpt": [
+                "  198d58:      \tadrp\tx0, 0x198000 <_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl+0xf8>",
+                "  198d5c:      \tadd\tx0, x0, #0xee0",
+                "  198d60:      \tmov\tx1, sp",
+                "  198d64:      \tmov\tx20, sp",
+                "  198d68:      \tbl\t0x1fcb20 <dl_iterate_phdr@plt>",
+                "  198d6c:      \tldr\tx8, [sp, #0x38]",
+                "  198d70:      \tcbz\tx8, 0x198da4 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi+0x98>"
+              ]
+            }
+          ],
+          "moved_log_call": [
+            {
+              "path": "evidence/approval-runtime-u16-split-entry.txt",
+              "line": 66,
+              "excerpt": [
+                "  198de8:      \tmov\tw0, #0x3                // =3",
+                "  198dec:      \tmov\tw1, #0x4                // =4",
+                "  198df0:      \tmovk\tw2, #0xd00, lsl #16",
+                "  198df4:      \tmov\tw5, w19",
+                "  198df8:      \tbl\t0x1fc520 <HiLogPrint@plt>",
+                "  198dfc:      \tb\t0x198da8 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi+0x9c>"
+              ]
+            }
+          ]
+        },
+        "basis": [
+          {
+            "path": "inputs/native-source/u15-m1-compat-shim.cpp",
+            "sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+            "line": 177,
+            "text": "void* nw = oh_wm_get_native_window(sessionId);"
+          },
+          {
+            "path": "inputs/native-source/u13-m1-compat-shim.cpp",
+            "sha256": "38ca156d5ff7d10bdfbaff9033d6de863ca060bca357d6de0a9987ecfde444f9",
+            "line": 183,
+            "text": "void* nw = oh_wm_get_native_window(sessionId);"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 84,
+            "text": "void* m1_native_window_from_other_copies(oh_wm_get_native_window_fn_t resolvedFn, int32_t sessionId) {"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 88,
+            "text": "dl_iterate_phdr(m1_find_own, &scan);"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 90,
+            "text": "dl_iterate_phdr(m1_collect_others, &scan);"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 94,
+            "text": "ALOGI(\"[M1-COPY] sessionId=%d resolved by bridge copy base=%p (resolved copy base=%p returned null)\","
+          },
+          {
+            "path": "evidence/approval-runtime-u15-sc.txt",
+            "sha256": "7a398d9d6d4163797abed0334d45022728d7d01033733a7398aea53a1bdfbabf"
+          },
+          {
+            "path": "evidence/approval-runtime-u16-sc.txt",
+            "sha256": "9d86f0fcb51f787fdd63af855a01142347e993172026e154f4ffe378b838d08b"
+          },
+          {
+            "path": "evidence/approval-runtime-u16-split-entry.txt",
+            "sha256": "6891d5c81a8045008f6f1792f356cc07dfd47e9b0f573d9a200af8ca55908957"
+          },
+          {
+            "path": "inputs/native-source/donor-t4/evidence/a-prime-insns.txt",
+            "sha256": "c6a72e1cd57893e3ddde348556726aa169b2f5368c222c68ec74f855bebad46a"
+          },
+          {
+            "path": "evidence/u16-a3-runtime-abi.json",
+            "sha256": "3c19da36e2cee43a18bf0aa4255b052c640a4d20c2d9e2d67149d733c3d3009b"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "The small oh_wm wrapper is now inlined: explicit resolve_oh_wm_funcs and conditional primary query precede the split entry. The extra resolver is the old wrapper's resolver, not a new loading policy."
+        },
+        "scope": "Accept the actual nonzero three-call-set split delta; do not label it callsets0 or guarantee full function instruction equivalence. Require future three-app M1 replay before FZ-009 registration."
+      },
+      {
+        "id": "runtime-call-get-window",
+        "category": "runtime-call-set",
+        "object": "android::(anonymous namespace)::oh_wm_get_native_window(int)",
+        "decision": "pending",
+        "approved_by": null,
+        "raw_call_set_diff": {
+          "function": "_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi",
+          "demangled": "android::(anonymous namespace)::oh_wm_get_native_window(int)",
+          "added_callees": [
+            "_ZN7android34m1_native_window_from_other_copiesEPFPviEi"
+          ],
+          "removed_callees": [
+            "HiLogPrint",
+            "dl_iterate_phdr"
+          ]
+        },
+        "disassembly": {
+          "old": "evidence/approval-runtime-u15-get-window.txt",
+          "new": "evidence/approval-runtime-u16-get-window.txt",
+          "old_removed_calls": {
+            "HiLogPrint": [
+              {
+                "path": "evidence/approval-runtime-u15-get-window.txt",
+                "line": 75,
+                "excerpt": [
+                  "  198048:      \tmov\tw0, #0x3                // =3",
+                  "  19804c:      \tmov\tw1, #0x4                // =4",
+                  "  198050:      \tmovk\tw2, #0xd00, lsl #16",
+                  "  198054:      \tmov\tw5, w19",
+                  "  198058:      \tbl\t0x1fc3e0 <HiLogPrint@plt>",
+                  "  19805c:      \tb\t0x198008 <_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi+0xc0>"
+                ]
+              }
+            ],
+            "dl_iterate_phdr": [
+              {
+                "path": "evidence/approval-runtime-u15-get-window.txt",
+                "line": 32,
+                "excerpt": [
+                  "  197f9c:      \tstr\tx8, [sp]",
+                  "  197fa0:      \tstur\tq0, [sp, #0x28]",
+                  "  197fa4:      \tstur\tq0, [sp, #0x18]",
+                  "  197fa8:      \tstur\tq0, [sp, #0x8]",
+                  "  197fac:      \tbl\t0x1fc9c0 <dl_iterate_phdr@plt>",
+                  "  197fb0:      \tldr\tx8, [sp, #0x8]",
+                  "  197fb4:      \tcbz\tx8, 0x198004 <_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi+0xbc>"
+                ]
+              },
+              {
+                "path": "evidence/approval-runtime-u15-get-window.txt",
+                "line": 39,
+                "excerpt": [
+                  "  197fb8:      \tadrp\tx0, 0x198000 <_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi+0xb8>",
+                  "  197fbc:      \tadd\tx0, x0, #0x2ac",
+                  "  197fc0:      \tmov\tx1, sp",
+                  "  197fc4:      \tmov\tx20, sp",
+                  "  197fc8:      \tbl\t0x1fc9c0 <dl_iterate_phdr@plt>",
+                  "  197fcc:      \tldr\tx8, [sp, #0x38]",
+                  "  197fd0:      \tcbz\tx8, 0x198004 <_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi+0xbc>"
+                ]
+              }
+            ]
+          },
+          "new_added_calls": {
+            "_ZN7android34m1_native_window_from_other_copiesEPFPviEi": [
+              {
+                "path": "evidence/approval-runtime-u16-get-window.txt",
+                "line": 27,
+                "excerpt": [
+                  "  198060:      \tldr\tx0, [x20, #0x958]",
+                  "  198064:      \tmov\tw1, w19",
+                  "  198068:      \tldp\tx20, x19, [sp, #0x10]",
+                  "  19806c:      \tldp\tx29, x30, [sp], #0x20",
+                  "  198070:      \tb\t0x1fcb00 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi@plt>"
+                ]
+              }
+            ]
+          },
+          "new_split_calls": [
+            {
+              "path": "evidence/approval-runtime-u16-get-window.txt",
+              "line": 27,
+              "excerpt": [
+                "  198060:      \tldr\tx0, [x20, #0x958]",
+                "  198064:      \tmov\tw1, w19",
+                "  198068:      \tldp\tx20, x19, [sp, #0x10]",
+                "  19806c:      \tldp\tx29, x30, [sp], #0x20",
+                "  198070:      \tb\t0x1fcb00 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi@plt>"
+              ]
+            }
+          ],
+          "split_entry": "evidence/approval-runtime-u16-split-entry.txt",
+          "moved_iterate_calls": [
+            {
+              "path": "evidence/approval-runtime-u16-split-entry.txt",
+              "line": 23,
+              "excerpt": [
+                "  198d3c:      \tstr\txzr, [sp, #0x38]",
+                "  198d40:      \tstur\tq0, [sp, #0x28]",
+                "  198d44:      \tstur\tq0, [sp, #0x18]",
+                "  198d48:      \tstur\tq0, [sp, #0x8]",
+                "  198d4c:      \tbl\t0x1fcb20 <dl_iterate_phdr@plt>",
+                "  198d50:      \tldr\tx8, [sp, #0x8]",
+                "  198d54:      \tcbz\tx8, 0x198da4 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi+0x98>"
+              ]
+            },
+            {
+              "path": "evidence/approval-runtime-u16-split-entry.txt",
+              "line": 30,
+              "excerpt": [
+                "  198d58:      \tadrp\tx0, 0x198000 <_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl+0xf8>",
+                "  198d5c:      \tadd\tx0, x0, #0xee0",
+                "  198d60:      \tmov\tx1, sp",
+                "  198d64:      \tmov\tx20, sp",
+                "  198d68:      \tbl\t0x1fcb20 <dl_iterate_phdr@plt>",
+                "  198d6c:      \tldr\tx8, [sp, #0x38]",
+                "  198d70:      \tcbz\tx8, 0x198da4 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi+0x98>"
+              ]
+            }
+          ],
+          "moved_log_call": [
+            {
+              "path": "evidence/approval-runtime-u16-split-entry.txt",
+              "line": 66,
+              "excerpt": [
+                "  198de8:      \tmov\tw0, #0x3                // =3",
+                "  198dec:      \tmov\tw1, #0x4                // =4",
+                "  198df0:      \tmovk\tw2, #0xd00, lsl #16",
+                "  198df4:      \tmov\tw5, w19",
+                "  198df8:      \tbl\t0x1fc520 <HiLogPrint@plt>",
+                "  198dfc:      \tb\t0x198da8 <_ZN7android34m1_native_window_from_other_copiesEPFPviEi+0x9c>"
+              ]
+            }
+          ]
+        },
+        "basis": [
+          {
+            "path": "inputs/native-source/u15-m1-compat-shim.cpp",
+            "sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+            "line": 525,
+            "text": "static void* oh_wm_get_native_window(int32_t sessionId) {"
+          },
+          {
+            "path": "inputs/native-source/u15-m1-compat-shim.cpp",
+            "sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+            "line": 528,
+            "text": "return nw != nullptr ? nw : m1_native_window_from_other_copies(sessionId);"
+          },
+          {
+            "path": "inputs/native-source/u13-m1-compat-shim.cpp",
+            "sha256": "38ca156d5ff7d10bdfbaff9033d6de863ca060bca357d6de0a9987ecfde444f9",
+            "line": 451,
+            "text": "static void* oh_wm_get_native_window(int32_t sessionId) {"
+          },
+          {
+            "path": "inputs/native-source/u13-m1-compat-shim.cpp",
+            "sha256": "38ca156d5ff7d10bdfbaff9033d6de863ca060bca357d6de0a9987ecfde444f9",
+            "line": 454,
+            "text": "return nw != nullptr ? nw : m1_native_window_from_other_copies(g_oh_wm_get_native_window_fn, sessionId);"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 84,
+            "text": "void* m1_native_window_from_other_copies(oh_wm_get_native_window_fn_t resolvedFn, int32_t sessionId) {"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 88,
+            "text": "dl_iterate_phdr(m1_find_own, &scan);"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 90,
+            "text": "dl_iterate_phdr(m1_collect_others, &scan);"
+          },
+          {
+            "path": "inputs/native-source/u16-m1-copy.cpp",
+            "sha256": "bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8",
+            "line": 94,
+            "text": "ALOGI(\"[M1-COPY] sessionId=%d resolved by bridge copy base=%p (resolved copy base=%p returned null)\","
+          },
+          {
+            "path": "evidence/approval-runtime-u15-get-window.txt",
+            "sha256": "954b844c72645423f84abe0942eff1159d9bc3ae0654c74008012ee08d21b879"
+          },
+          {
+            "path": "evidence/approval-runtime-u16-get-window.txt",
+            "sha256": "567142f3bd4ab2bb05f9ccdcbaffcd5b6c2a3e3469a6ff53b5f49529a72de6ce"
+          },
+          {
+            "path": "evidence/approval-runtime-u16-split-entry.txt",
+            "sha256": "6891d5c81a8045008f6f1792f356cc07dfd47e9b0f573d9a200af8ca55908957"
+          },
+          {
+            "path": "inputs/native-source/donor-t4/evidence/a-prime-insns.txt",
+            "sha256": "c6a72e1cd57893e3ddde348556726aa169b2f5368c222c68ec74f855bebad46a"
+          },
+          {
+            "path": "evidence/u16-a3-runtime-abi.json",
+            "sha256": "3c19da36e2cee43a18bf0aa4255b052c640a4d20c2d9e2d67149d733c3d3009b"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "HiLogPrint and dl_iterate_phdr disappear only from this wrapper's direct call set: they move to the split entry. Resolved bridge fn and sessionId are passed explicitly; scan occurs only after the primary query returns null."
+        },
+        "scope": "Accept the actual nonzero three-call-set split delta; do not label it callsets0 or guarantee full function instruction equivalence. Require future three-app M1 replay before FZ-009 registration."
+      },
+      {
+        "id": "string-FLUTTER-GLSTUB",
+        "category": "strings",
+        "object": "FLUTTER-GLSTUB",
+        "raw": "ADDED   'FLUTTER-GLSTUB'",
+        "decision": "pending",
+        "approved_by": null,
+        "operation": "ADDED",
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 42,
+            "text": "if (fn) fn(3, 4, 0xD000F00u, \"FLUTTER-GLSTUB\", \"%{public}s\", name);"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-strings.txt",
+            "sha256": "28d78d351e8a34a13d4aecd7a414fcf4575638e43ce58dac6504f79a7dd6a40c",
+            "line": 3,
+            "text": "ADDED   'FLUTTER-GLSTUB'"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "Log tag for once-per-name residual diagnostics; allowing the tag is not approval of successful residual GL rendering."
+        },
+        "scope": "Only this exact readonly string allowance for U15 9b82 -> selected eb90; runtime strings remain zero-drop/zero-add"
+      },
+      {
+        "id": "string-eglGetProcAddress",
+        "category": "strings",
+        "object": "eglGetProcAddress",
+        "raw": "ADDED   'eglGetProcAddress'",
+        "decision": "pending",
+        "approved_by": null,
+        "operation": "ADDED",
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 97,
+            "text": "if (egl) real = reinterpret_cast<void* (*)(const char*)>(dlsym(egl, \"eglGetProcAddress\"));"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-strings.txt",
+            "sha256": "28d78d351e8a34a13d4aecd7a414fcf4575638e43ce58dac6504f79a7dd6a40c",
+            "line": 4,
+            "text": "ADDED   'eglGetProcAddress'"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "Exact platform provider lookup; four existing flutter_egl hooks are returned before delegation."
+        },
+        "scope": "Only this exact readonly string allowance for U15 9b82 -> selected eb90; runtime strings remain zero-drop/zero-add"
+      },
+      {
+        "id": "string-glClearDepth",
+        "category": "strings",
+        "object": "glClearDepth",
+        "raw": "ADDED   'glClearDepth'",
+        "decision": "pending",
+        "approved_by": null,
+        "operation": "ADDED",
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 107,
+            "text": "if (strcmp(name, \"glClearDepth\") == 0) return reinterpret_cast<void*>(&wl_glClearDepth);"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-strings.txt",
+            "sha256": "28d78d351e8a34a13d4aecd7a414fcf4575638e43ce58dac6504f79a7dd6a40c",
+            "line": 5,
+            "text": "ADDED   'glClearDepth'"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "Match desktop-double procedure name to the GLES float conversion shim."
+        },
+        "scope": "Only this exact readonly string allowance for U15 9b82 -> selected eb90; runtime strings remain zero-drop/zero-add"
+      },
+      {
+        "id": "string-glClearDepthf",
+        "category": "strings",
+        "object": "glClearDepthf",
+        "raw": "ADDED   'glClearDepthf'",
+        "decision": "pending",
+        "approved_by": null,
+        "operation": "ADDED",
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 65,
+            "text": "void* s = g_gles2 ? dlsym(g_gles2, \"glClearDepthf\") : NULL;"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-strings.txt",
+            "sha256": "28d78d351e8a34a13d4aecd7a414fcf4575638e43ce58dac6504f79a7dd6a40c",
+            "line": 6,
+            "text": "ADDED   'glClearDepthf'"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "Resolve the actual GLES float backend consumed by the conversion shim."
+        },
+        "scope": "Only this exact readonly string allowance for U15 9b82 -> selected eb90; runtime strings remain zero-drop/zero-add"
+      },
+      {
+        "id": "string-glDepthRange",
+        "category": "strings",
+        "object": "glDepthRange",
+        "raw": "ADDED   'glDepthRange'",
+        "decision": "pending",
+        "approved_by": null,
+        "operation": "ADDED",
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 106,
+            "text": "if (strcmp(name, \"glDepthRange\") == 0) return reinterpret_cast<void*>(&wl_glDepthRange);"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-strings.txt",
+            "sha256": "28d78d351e8a34a13d4aecd7a414fcf4575638e43ce58dac6504f79a7dd6a40c",
+            "line": 7,
+            "text": "ADDED   'glDepthRange'"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "Match desktop-double procedure name to the GLES float conversion shim."
+        },
+        "scope": "Only this exact readonly string allowance for U15 9b82 -> selected eb90; runtime strings remain zero-drop/zero-add"
+      },
+      {
+        "id": "string-glDepthRangef",
+        "category": "strings",
+        "object": "glDepthRangef",
+        "raw": "ADDED   'glDepthRangef'",
+        "decision": "pending",
+        "approved_by": null,
+        "operation": "ADDED",
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 60,
+            "text": "void* s = g_gles2 ? dlsym(g_gles2, \"glDepthRangef\") : NULL;"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-strings.txt",
+            "sha256": "28d78d351e8a34a13d4aecd7a414fcf4575638e43ce58dac6504f79a7dd6a40c",
+            "line": 8,
+            "text": "ADDED   'glDepthRangef'"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "Resolve the actual GLES float backend consumed by the conversion shim."
+        },
+        "scope": "Only this exact readonly string allowance for U15 9b82 -> selected eb90; runtime strings remain zero-drop/zero-add"
+      },
+      {
+        "id": "string-libGLESv2.so",
+        "category": "strings",
+        "object": "libGLESv2.so",
+        "raw": "ADDED   'libGLESv2.so'",
+        "decision": "pending",
+        "approved_by": null,
+        "operation": "ADDED",
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 57,
+            "text": "if (!g_gles2) g_gles2 = dlopen(\"libGLESv2.so\", RTLD_NOLOAD | RTLD_NOW);"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-strings.txt",
+            "sha256": "28d78d351e8a34a13d4aecd7a414fcf4575638e43ce58dac6504f79a7dd6a40c",
+            "line": 9,
+            "text": "ADDED   'libGLESv2.so'"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "Resident GLES2 owner lookup, no new DT_NEEDED or fresh open."
+        },
+        "scope": "Only this exact readonly string allowance for U15 9b82 -> selected eb90; runtime strings remain zero-drop/zero-add"
+      },
+      {
+        "id": "string-libGLESv3.so",
+        "category": "strings",
+        "object": "libGLESv3.so",
+        "raw": "ADDED   'libGLESv3.so'",
+        "decision": "pending",
+        "approved_by": null,
+        "operation": "ADDED",
+        "basis": [
+          {
+            "path": "inputs/flutter-source-a3/src/flutter_egl_getprocaddress.cpp",
+            "sha256": "fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b",
+            "line": 58,
+            "text": "if (!g_gles3) g_gles3 = dlopen(\"libGLESv3.so\", RTLD_NOLOAD | RTLD_NOW);"
+          },
+          {
+            "path": "evidence/u16-a3-flutter-strings.txt",
+            "sha256": "28d78d351e8a34a13d4aecd7a414fcf4575638e43ce58dac6504f79a7dd6a40c",
+            "line": 10,
+            "text": "ADDED   'libGLESv3.so'"
+          }
+        ],
+        "recommendation": {
+          "decision": "approve",
+          "label": "批",
+          "reason": "Resident GLES3 alternate owner lookup, no new DT_NEEDED or fresh open."
+        },
+        "scope": "Only this exact readonly string allowance for U15 9b82 -> selected eb90; runtime strings remain zero-drop/zero-add"
+      }
+    ],
+    "counts": {
+      "flutter-open": 4,
+      "runtime-line-shift": 2,
+      "runtime-call-set": 3,
+      "strings": 8,
+      "manual_rows": 17
+    },
+    "strings_summary": {
+      "dropped": 0,
+      "added": 8,
+      "raw_exit_code": 1
+    },
+    "static_allowance_draft": {
+      "baseline_sha256": "9b8245022f9c98dac41a85acfa553e96e6385073fd7b15298199a1cce223647b",
+      "candidate_sha256": "eb90a6409c9caaba058d2463cad9c193d344527051455d8aca8421e6b7011b4f",
+      "delta": {
+        "added": [
+          {
+            "callee": "dlopen",
+            "flags": [
+              "0x6=NOW|NOLOAD"
+            ],
+            "function": "_ZL6gl_logPKc",
+            "namespace": [
+              "caller-default"
+            ],
+            "path": [
+              "liboh_android_runtime.so"
+            ],
+            "tail_call": false
+          },
+          {
+            "callee": "dlopen",
+            "flags": [
+              "0x6=NOW|NOLOAD"
+            ],
+            "function": "eglGetProcAddress",
+            "namespace": [
+              "caller-default"
+            ],
+            "path": [
+              "libEGL.so"
+            ],
+            "tail_call": false
+          },
+          {
+            "callee": "dlopen",
+            "flags": [
+              "0x6=NOW|NOLOAD"
+            ],
+            "function": "eglGetProcAddress",
+            "namespace": [
+              "caller-default"
+            ],
+            "path": [
+              "libGLESv2.so"
+            ],
+            "tail_call": false
+          },
+          {
+            "callee": "dlopen",
+            "flags": [
+              "0x6=NOW|NOLOAD"
+            ],
+            "function": "eglGetProcAddress",
+            "namespace": [
+              "caller-default"
+            ],
+            "path": [
+              "libGLESv3.so"
+            ],
+            "tail_call": false
+          }
+        ],
+        "removed": [],
+        "namespace_api_changes": {},
+        "namespace_literal_changes": {
+          "added": [],
+          "removed": []
+        }
+      },
+      "delta_sha256": "190c06078c04cc6e5ada7f5d2b195c07e2a60b708f897223de5b5dfa8e659b93",
+      "approved_by": null
+    },
+    "binding_transfer": "Partial native draft only. After full27 bake, recompute final manifest/inputs and issue IDs. Transfer only when all semantic/source-line/text/open-delta fields and artifact bytes remain exact; unexpected changes stop for outer review.",
+    "apply_when": "Outer only, once all three boards are UNLOCK; registry is part of every native dispatch binding.",
+    "bake_status": "NOT_RUN; no authorization here. Wait for window2 5ea/5cd rollback+UNLOCK and vmgr RSS<3GiB, announce on board first, reserve VM for 61b recovery when it reconnects.",
+    "not_approved_here": "Live owner visibility, GL no-op correctness, rendering/lighting, FZ-009 registration, gate application, image baking, window or promotion authority"
+  },
+  "outer_packet_runs": {
+    "records": [
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=_ZN7android12_GLOBAL__N_116BBQ_nativeUpdateEP7_JNIEnvP7_jclasslllli",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u15-on-u14-base/.artifacts/common-20261003T101943/native/payload/android/lib64/liboh_android_runtime.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-runtime-u15-bbq.txt",
+        "raw_sha256": "1e3b1080a0edfe2b9ecca218ee40e04fe00559b3e2b38cb82594a8236e4b67c6",
+        "evidence": "evidence/approval-runtime-u15-bbq.txt",
+        "evidence_sha256": "d101ce39d7f81f295f1b5766db5cd26037561afd660da7345dae6e78fc3bb5e6"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=_ZN7android12_GLOBAL__N_116BBQ_nativeUpdateEP7_JNIEnvP7_jclasslllli",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/native-pair-a3/native/payload/android/lib64/liboh_android_runtime.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-runtime-u16-bbq.txt",
+        "raw_sha256": "ff437d890c280c61908e2820e8be93dd0a51008ad8201df89414a80d72a11a53",
+        "evidence": "evidence/approval-runtime-u16-bbq.txt",
+        "evidence_sha256": "86276d327da64148752520efb6423db808a1869e386fc24e96b3bbace8e18d87"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u15-on-u14-base/.artifacts/common-20261003T101943/native/payload/android/lib64/liboh_android_runtime.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-runtime-u15-sc.txt",
+        "raw_sha256": "0ed52f07f51277d938eb773c2d2add3aaa3f72dc2a5164f782aa54efa3c13d98",
+        "evidence": "evidence/approval-runtime-u15-sc.txt",
+        "evidence_sha256": "7a398d9d6d4163797abed0334d45022728d7d01033733a7398aea53a1bdfbabf"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=_ZN7android12_GLOBAL__N_122sc_to_oh_native_windowEl",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/native-pair-a3/native/payload/android/lib64/liboh_android_runtime.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-runtime-u16-sc.txt",
+        "raw_sha256": "1d19dc1e27dc972f327ae3dacbac8a2b774bbfed9b40c7949378280dba0bcee8",
+        "evidence": "evidence/approval-runtime-u16-sc.txt",
+        "evidence_sha256": "9d86f0fcb51f787fdd63af855a01142347e993172026e154f4ffe378b838d08b"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u15-on-u14-base/.artifacts/common-20261003T101943/native/payload/android/lib64/liboh_android_runtime.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-runtime-u15-get-window.txt",
+        "raw_sha256": "0a589b66beab3862422cfaa22bbea7d3c43c13f49b4fe5daf4d131aa49466bc2",
+        "evidence": "evidence/approval-runtime-u15-get-window.txt",
+        "evidence_sha256": "954b844c72645423f84abe0942eff1159d9bc3ae0654c74008012ee08d21b879"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=_ZN7android12_GLOBAL__N_123oh_wm_get_native_windowEi",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/native-pair-a3/native/payload/android/lib64/liboh_android_runtime.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-runtime-u16-get-window.txt",
+        "raw_sha256": "d034cb4b2a60ac15e4c6eda1f8503e585199e3fdcd1053636272e9fa8615904e",
+        "evidence": "evidence/approval-runtime-u16-get-window.txt",
+        "evidence_sha256": "567142f3bd4ab2bb05f9ccdcbaffcd5b6c2a3e3469a6ff53b5f49529a72de6ce"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=_ZN7android12_GLOBAL__N_119resolve_oh_wm_funcsEv",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u15-on-u14-base/.artifacts/common-20261003T101943/native/payload/android/lib64/liboh_android_runtime.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-runtime-u15-resolve-window.txt",
+        "raw_sha256": "630c174d5ca108a045a9a78b8a641de601f085575cca8be68a0d94bfcc281c1e",
+        "evidence": "evidence/approval-runtime-u15-resolve-window.txt",
+        "evidence_sha256": "1e34c05a7a85dc1a34a84bb4856764ebc53bdba8625446dc59845ddf88e57da3"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=_ZN7android12_GLOBAL__N_119resolve_oh_wm_funcsEv",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/native-pair-a3/native/payload/android/lib64/liboh_android_runtime.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-runtime-u16-resolve-window.txt",
+        "raw_sha256": "a6a23a9f2fc1651209fbb40616ed746f196340c009e01b6bd0e2efc4028ddf35",
+        "evidence": "evidence/approval-runtime-u16-resolve-window.txt",
+        "evidence_sha256": "f0caf986ea61046999e8408fc838971a5bef352e511ed0b432b39106e5755579"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=eglCreateWindowSurface",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u15-on-u14-base/.artifacts/common-20261003T101943/native/payload/android/lib64/liboh_android_runtime.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-runtime-u15-create-surface.txt",
+        "raw_sha256": "83d2c598cdd7ba2d599f297cee594dbbad4c0aab9f957f4be100df6ff272f0ae",
+        "evidence": "evidence/approval-runtime-u15-create-surface.txt",
+        "evidence_sha256": "b8f26817c4d17d6611535a0f1d8399b40f1845aeac343c9a84d7acbbb73fe0f8"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=eglCreateWindowSurface",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/native-pair-a3/native/payload/android/lib64/liboh_android_runtime.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-runtime-u16-create-surface.txt",
+        "raw_sha256": "d8ac341d988c7f25942cd8755f1615a05f0b5a2929efa730bc81ba001f82acf6",
+        "evidence": "evidence/approval-runtime-u16-create-surface.txt",
+        "evidence_sha256": "a255663bd4fadb806795dbaa672df40ee77601aae868e92709c3054712254e5f"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=_ZN7android34m1_native_window_from_other_copiesEPFPviEi",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/native-pair-a3/native/payload/android/lib64/liboh_android_runtime.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-runtime-u16-split-entry.txt",
+        "raw_sha256": "29a1fed3d0d8c7791679f16652dd4fd5c14f7dff2a8947234f5dda7c57b81c46",
+        "evidence": "evidence/approval-runtime-u16-split-entry.txt",
+        "evidence_sha256": "6891d5c81a8045008f6f1792f356cc07dfd47e9b0f573d9a200af8ca55908957"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=eglGetProcAddress",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/native-pair-a3/native/payload/android/lib64/westlake_flutter/libandroid.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-flutter-egl.txt",
+        "raw_sha256": "3c62fcff00ea9de6543264a00cb12a5be4e42b7f842dab19e0150f9e09610dce",
+        "evidence": "evidence/approval-flutter-egl.txt",
+        "evidence_sha256": "d53b9c83b4f6f268a141d30b942fbdfe6c1008b1e191dd4ef9dee6c3e5cf071e"
+      },
+      {
+        "command": [
+          "llvm-objdump",
+          "-d",
+          "--no-show-raw-insn",
+          "--disassemble-symbols=_ZL6gl_logPKc",
+          "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/native-pair-a3/native/payload/android/lib64/westlake_flutter/libandroid.so"
+        ],
+        "exit_code": 0,
+        "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/approval-flutter-log.txt",
+        "raw_sha256": "c59718d9f8fb8266854e415badd7ecba66eb5cdf68fe897fbe05d5e0c00f209d",
+        "evidence": "evidence/approval-flutter-log.txt",
+        "evidence_sha256": "b5ae2c99ddbe4e5d3032f049e8d15fd8747213c7277f7af5ef51acbc4b3df993"
+      }
+    ],
+    "packet_sha256": "da1f47285a639f4594b89464594f326f4a8e9c7c9e89319ff27390ba73fd9667",
+    "active_registry_before": "a3b44942e594512a8dfb9664f7c0b4ed33cb3d0c174271631c2ecdfac331d5ae",
+    "active_registry_after": "a3b44942e594512a8dfb9664f7c0b4ed33cb3d0c174271631c2ecdfac331d5ae",
+    "execution_enabled": false,
+    "board_access": false,
+    "vm_access": false,
+    "native_rebuilt": false,
+    "image_bake_executed": false
+  },
   "pending_native": [],
   "excluded": [
     "t2-icon-raster"
@@ -5957,10 +7738,10 @@
         "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/test_draft.py"
       ],
       "exit_code": 0,
-      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-a3-tests-mac.txt",
-      "raw_sha256": "650a231071b406be9ea99c3f61163abbf21864305e9ceef47779cf15c077c964",
-      "evidence": "evidence/u16-a3-tests-mac.txt",
-      "evidence_sha256": "650a231071b406be9ea99c3f61163abbf21864305e9ceef47779cf15c077c964"
+      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-approval-tests-mac.txt",
+      "raw_sha256": "9dd5f4a89a70785c48addd4de9671b13448312df4f0efac68743e01f8ca184c8",
+      "evidence": "evidence/u16-approval-tests-mac.txt",
+      "evidence_sha256": "9dd5f4a89a70785c48addd4de9671b13448312df4f0efac68743e01f8ca184c8"
     },
     {
       "command": [
@@ -5972,10 +7753,10 @@
         "u16_assembly_draft"
       ],
       "exit_code": 0,
-      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-a3-tests-rust.txt",
-      "raw_sha256": "e7de8b1467f95367f81a87e6ae1448d1b0813042f43a6a50d4b85136dd8f42ff",
-      "evidence": "evidence/u16-a3-tests-rust.txt",
-      "evidence_sha256": "e7de8b1467f95367f81a87e6ae1448d1b0813042f43a6a50d4b85136dd8f42ff"
+      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-approval-tests-rust.txt",
+      "raw_sha256": "61eb9ed678186df571844f99c7ad35baa799a1bc7a71fcd98797e2dbac399ba6",
+      "evidence": "evidence/u16-approval-tests-rust.txt",
+      "evidence_sha256": "aa7a8dcddaa1f3e8fb25fa40e34d5d5edc840ad6281c16d1da741424cc298f73"
     },
     {
       "command": [
@@ -5985,14 +7766,15 @@
         "specs/u16-assembly-draft/t2-bake.spec.md",
         "specs/u16-assembly-draft/t3-native.spec.md",
         "specs/u16-assembly-draft/t4-native-pair.spec.md",
+        "specs/u16-assembly-draft/t5-outer-packet.spec.md",
         "--min-score",
         "0.7"
       ],
       "exit_code": 0,
-      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-a3-lint.txt",
-      "raw_sha256": "6a5cfaa55fa5fea0a72a5311004a8f47ac9df2faba93c3ccf5c1b752199df04d",
-      "evidence": "evidence/u16-a3-lint.txt",
-      "evidence_sha256": "6a5cfaa55fa5fea0a72a5311004a8f47ac9df2faba93c3ccf5c1b752199df04d"
+      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-approval-lint.txt",
+      "raw_sha256": "c15a6cbef6f6d7d9b6f4b3bd520c14653e2aa95052dea5d6e8663edbf3dcbbd9",
+      "evidence": "evidence/u16-approval-lint.txt",
+      "evidence_sha256": "c15a6cbef6f6d7d9b6f4b3bd520c14653e2aa95052dea5d6e8663edbf3dcbbd9"
     },
     {
       "command": [
@@ -6010,13 +7792,13 @@
         "--format",
         "json",
         "--run-log-dir",
-        "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/spec-logs/pair"
+        "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/spec-logs/approval"
       ],
       "exit_code": 0,
-      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-a3-lifecycle-t1-inputs.spec.txt",
-      "raw_sha256": "ce6b939bba47251a4e910f2d9131fc4638309d911edf2b5778c297e1cc4f4f62",
-      "evidence": "evidence/u16-a3-lifecycle-t1-inputs.spec.txt",
-      "evidence_sha256": "ce6b939bba47251a4e910f2d9131fc4638309d911edf2b5778c297e1cc4f4f62"
+      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-approval-lifecycle-t1-inputs.spec.txt",
+      "raw_sha256": "6e5ca56e13e1255dd3adb79f36ec2d1b4bcb7ba1e0e08a4865169b88aada727a",
+      "evidence": "evidence/u16-approval-lifecycle-t1-inputs.spec.txt",
+      "evidence_sha256": "6e5ca56e13e1255dd3adb79f36ec2d1b4bcb7ba1e0e08a4865169b88aada727a"
     },
     {
       "command": [
@@ -6034,13 +7816,13 @@
         "--format",
         "json",
         "--run-log-dir",
-        "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/spec-logs/pair"
+        "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/spec-logs/approval"
       ],
       "exit_code": 0,
-      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-a3-lifecycle-t2-bake.spec.txt",
-      "raw_sha256": "5d4b827ee9bc89ae474f1952af664437ee35cd889c9daf625b1c1684c731c1d0",
-      "evidence": "evidence/u16-a3-lifecycle-t2-bake.spec.txt",
-      "evidence_sha256": "5d4b827ee9bc89ae474f1952af664437ee35cd889c9daf625b1c1684c731c1d0"
+      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-approval-lifecycle-t2-bake.spec.txt",
+      "raw_sha256": "84cd1265320051cb1fcd136b52c546ec343ca3e44f138dbeb722e7691eb5f223",
+      "evidence": "evidence/u16-approval-lifecycle-t2-bake.spec.txt",
+      "evidence_sha256": "84cd1265320051cb1fcd136b52c546ec343ca3e44f138dbeb722e7691eb5f223"
     },
     {
       "command": [
@@ -6058,13 +7840,13 @@
         "--format",
         "json",
         "--run-log-dir",
-        "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/spec-logs/pair"
+        "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/spec-logs/approval"
       ],
       "exit_code": 0,
-      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-a3-lifecycle-t3-native.spec.txt",
-      "raw_sha256": "9f858b825149e8454174bb864dae1a2e1e9f1f646d19d8961d01f1bc2d3293f6",
-      "evidence": "evidence/u16-a3-lifecycle-t3-native.spec.txt",
-      "evidence_sha256": "9f858b825149e8454174bb864dae1a2e1e9f1f646d19d8961d01f1bc2d3293f6"
+      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-approval-lifecycle-t3-native.spec.txt",
+      "raw_sha256": "514c9c5b722c7d34340f969de399f1d0e60bc9a600e57dcdb4fc173b4c2c3913",
+      "evidence": "evidence/u16-approval-lifecycle-t3-native.spec.txt",
+      "evidence_sha256": "514c9c5b722c7d34340f969de399f1d0e60bc9a600e57dcdb4fc173b4c2c3913"
     },
     {
       "command": [
@@ -6082,24 +7864,48 @@
         "--format",
         "json",
         "--run-log-dir",
-        "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/spec-logs/pair"
+        "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/spec-logs/approval"
       ],
       "exit_code": 0,
-      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-a3-lifecycle-t4-native-pair.spec.txt",
-      "raw_sha256": "ab86b518e97eea7d13ae68310cfc4f358eba2b0d1fc123b25844ba5c0d222060",
-      "evidence": "evidence/u16-a3-lifecycle-t4-native-pair.spec.txt",
-      "evidence_sha256": "ab86b518e97eea7d13ae68310cfc4f358eba2b0d1fc123b25844ba5c0d222060"
+      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-approval-lifecycle-t4-native-pair.spec.txt",
+      "raw_sha256": "7034c4ff5e03742f466ff5630f515765ee768da0c8b2f73fe1df0b8999739460",
+      "evidence": "evidence/u16-approval-lifecycle-t4-native-pair.spec.txt",
+      "evidence_sha256": "7034c4ff5e03742f466ff5630f515765ee768da0c8b2f73fe1df0b8999739460"
+    },
+    {
+      "command": [
+        "agent-spec",
+        "lifecycle",
+        "specs/u16-assembly-draft/t5-outer-packet.spec.md",
+        "--code",
+        "tools/spec-checks",
+        "--change",
+        "benchmark/2026-10-03-u16-assembly-draft",
+        "--change",
+        "specs/u16-assembly-draft",
+        "--change",
+        "tools/spec-checks/tests/u16_assembly_draft.rs",
+        "--format",
+        "json",
+        "--run-log-dir",
+        "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/spec-logs/approval"
+      ],
+      "exit_code": 0,
+      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-approval-lifecycle-t5-outer-packet.spec.txt",
+      "raw_sha256": "d49990d80c7209f4260ba96c12ea35b5031bf7f492ab0b7c4ffd074bfe51bd41",
+      "evidence": "evidence/u16-approval-lifecycle-t5-outer-packet.spec.txt",
+      "evidence_sha256": "d49990d80c7209f4260ba96c12ea35b5031bf7f492ab0b7c4ffd074bfe51bd41"
     },
     {
       "command": [
         "/opt/homebrew/opt/python@3.14/bin/python3.14",
-        "/var/folders/4b/52jp6mr96b75p8tr62l0bz2r0000gn/T/u16-pair-cold-wn4gvys9/repo/benchmark/2026-10-03-u16-assembly-draft/test_draft.py"
+        "/var/folders/4b/52jp6mr96b75p8tr62l0bz2r0000gn/T/u16-pair-cold-vnfgcf4t/repo/benchmark/2026-10-03-u16-assembly-draft/test_draft.py"
       ],
       "exit_code": 0,
-      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-a3-tests-cold.txt",
-      "raw_sha256": "52c07234cb8b2956025ee14c920711a7e4a66a7594c31d40a2390df2dd0e3cce",
-      "evidence": "evidence/u16-a3-tests-cold.txt",
-      "evidence_sha256": "52c07234cb8b2956025ee14c920711a7e4a66a7594c31d40a2390df2dd0e3cce"
+      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-approval-tests-cold.txt",
+      "raw_sha256": "5e7e34a95740443b072a4cd2f3994c5b43a628b4772301c89f28980e61cee7ae",
+      "evidence": "evidence/u16-approval-tests-cold.txt",
+      "evidence_sha256": "5e7e34a95740443b072a4cd2f3994c5b43a628b4772301c89f28980e61cee7ae"
     },
     {
       "command": [
@@ -6107,9 +7913,9 @@
         "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/verify_final.py"
       ],
       "exit_code": 0,
-      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-a3-final-consistency.txt",
+      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-approval-final-consistency.txt",
       "raw_sha256": "ff1063a843d291f523a199184c9525b1ea8ed5756aa963d958e08c09f380e539",
-      "evidence": "evidence/u16-a3-final-consistency.txt",
+      "evidence": "evidence/u16-approval-final-consistency.txt",
       "evidence_sha256": "ff1063a843d291f523a199184c9525b1ea8ed5756aa963d958e08c09f380e539"
     },
     {
@@ -6123,10 +7929,10 @@
         "--preflight"
       ],
       "exit_code": 0,
-      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-a3-land-preflight.txt",
-      "raw_sha256": "7548aa483528e33fec7608efb54642be998b2a1d6c945e6a638389bbf6da9316",
-      "evidence": "evidence/u16-a3-land-preflight.txt",
-      "evidence_sha256": "7548aa483528e33fec7608efb54642be998b2a1d6c945e6a638389bbf6da9316"
+      "raw": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-03-u16-assembly-draft/.artifacts/raw/u16-approval-land-preflight.txt",
+      "raw_sha256": "aceb89392ba0ba7715815b4230f17876a1a06458312f90491bebb67b8daeae96",
+      "evidence": "evidence/u16-approval-land-preflight.txt",
+      "evidence_sha256": "aceb89392ba0ba7715815b4230f17876a1a06458312f90491bebb67b8daeae96"
     }
   ],
   "observed_first_fatal_moves": 0,

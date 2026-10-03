@@ -31,3 +31,8 @@ fn u16_draft_native() {
 fn u16_draft_native_pair() {
     check("--native-pair");
 }
+
+#[test]
+fn u16_draft_outer_packet() {
+    check("--outer-packet");
+}

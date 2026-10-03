@@ -314,6 +314,60 @@ gates above do not substitute for those future full-bundle production gates.
 
 ## Offline verification
 
+### Native outer-review packet (unsigned)
+
+`outer-approval-packet.json` follows the U15 `outer-gate-approval/v1` shape but
+contains **17 recommendations, not approvals**: four Flutter open sites, two
+runtime source-line shifts, three runtime call-set differences and eight strings.
+Every row recommends approval with a narrow scope and exact source/disassembly
+evidence; `decision=pending`, `approved_by=null`, `signer=null`, `signed_at=null`.
+The active table is unchanged. The partial manifest/input bindings remain
+`2cc15660` / `637b4727`; a final bundle still does not exist.
+
+| Flutter source line | ELF open PC | Target | Compiled function |
+| --- | --- | --- | --- |
+| 38 | `0x4cf0` | `liboh_android_runtime.so` | `gl_log` |
+| 57 | `0x4984` | `libGLESv2.so` | `eglGetProcAddress` (inlined `ensure_driver`) |
+| 58 | `0x49a4` | `libGLESv3.so` | `eglGetProcAddress` (inlined `ensure_driver`) |
+| 96 | `0x4ad8` | `libEGL.so` | `eglGetProcAddress` |
+
+All four pass `NOW|NOLOAD` (6): misses cannot create a new copy at these sites.
+This does **not** prove namespace visibility, successful handles or rendering.
+They originate in A2's desktop-double/GLES-float interposer and provider lookup;
+A3 only returns four existing same-DSO `flutter_egl` window/surface hooks first.
+Older NOW-only opens and residual GL no-op correctness are not approved here.
+
+The runtime bridge lookup moves source415→421, PC`0x19812c`→`0x198140`;
+the EGL lookup moves source1408→1334, PC`0x197a28`→`0x197ad0`. Both retain
+the exact library, `NOW|NOLOAD` and failure return. The three nonzero call-set
+diffs in `BBQ_nativeUpdate`, `sc_to_oh_native_window` and `oh_wm_get_native_window`
+are retained verbatim: wrapper inlining exposes the split helper and resolver,
+while `dl_iterate_phdr` and `HiLogPrint` move to the split entry. The resolved
+bridge function and session ID are explicit arguments. This is **not** a claim
+that all three functions are instruction-identical or have zero call-set delta.
+
+Actual strings output is **zero DROPPED, eight ADDED, exit1** (not eight deletions):
+`FLUTTER-GLSTUB`, `eglGetProcAddress`, `glClearDepth`, `glClearDepthf`,
+`glDepthRange`, `glDepthRangef`, `libGLESv2.so`, `libGLESv3.so`.
+Runtime strings remain zero/zero. Each addition has its original source line and
+allow reason; allowing diagnostic strings does not validate logged GL no-ops.
+
+`outer-packet-runs.json` records 13 fresh Mac read-only disassembly commands,
+all exit0. Cold tests reject changed evidence, unsafe flags/targets, package
+bindings, excerpts and invented authority. Reproduce this review only with:
+
+```sh
+python3 benchmark/2026-10-03-u16-assembly-draft/build_approval_packet.py
+python3 benchmark/2026-10-03-u16-assembly-draft/test_draft.py --outer-packet
+```
+
+Only the outer may apply exact rows once **all three boards are UNLOCK**. After
+the 27-image bake, recompute final identities/issue IDs and transfer only exact
+semantic/source/open-delta fields with identical artifact bytes; new differences
+require another review. This packet authorizes neither baking nor activation.
+Baking must wait for window2 5ea/5cd rollback+UNLOCK and `vmgr RSS<3GiB`, with
+advance board notice and VM capacity reserved for 61b recovery. No VM was used.
+
 ```sh
 python3 benchmark/2026-10-03-u16-assembly-draft/prepare.py
 python3 benchmark/2026-10-03-u16-assembly-draft/collect_static.py

@@ -214,6 +214,53 @@ class PairTests(unittest.TestCase):
         self.assertEqual(composition["transaction_base"], {"common": None, "61b": None})
 
 
+class OuterPacketTests(unittest.TestCase):
+    def test_complete_unsigned_evidence_bound_packet(self):
+        from build_approval_packet import validate_packet
+        packet = load("outer-approval-packet.json")
+        self.assertTrue(validate_packet(HERE, packet))
+        self.assertEqual(packet["counts"], {"flutter-open": 4, "runtime-line-shift": 2,
+            "runtime-call-set": 3, "strings": 8, "manual_rows": 17})
+        self.assertTrue(all(row["recommendation"]["label"] == "批" for row in packet["decisions"]))
+        runs = load("outer-packet-runs.json")
+        self.assertEqual(len(runs["records"]), 13)
+        self.assertTrue(all(row["exit_code"] == 0 for row in runs["records"]))
+        self.assertEqual(runs["active_registry_before"], runs["active_registry_after"])
+        self.assertEqual(runs["packet_sha256"], hashlib.sha256((HERE / "outer-approval-packet.json").read_bytes()).hexdigest())
+
+    def test_evidence_flags_binding_and_excerpt_tampering_rejected(self):
+        from build_approval_packet import validate_packet
+        for change in ["evidence", "flags", "target", "binding", "artifact", "excerpt"]:
+            packet = load("outer-approval-packet.json")
+            row = packet["decisions"][0]
+            if change == "evidence":
+                row["basis"][0]["sha256"] = "f" * 64
+            elif change == "flags":
+                row["open_site"]["flags"] = ["0x2=NOW"]
+            elif change == "target":
+                row["open_site"]["path"] = ["libwrong.so"]
+            elif change == "binding":
+                packet["native_inputs_sha256"] = "f" * 64
+            elif change == "artifact":
+                next(iter(packet["selected_artifacts"].values()))["new"] = "f" * 64
+            else:
+                row["disassembly"][0]["excerpt"][0] = "invented instruction"
+            with self.subTest(change=change), self.assertRaises(AssertionError):
+                validate_packet(HERE, packet)
+
+    def test_invented_authority_or_execution_rejected(self):
+        from build_approval_packet import validate_packet
+        for field in ["signer", "signed_at", "execution_enabled", "rollout_ready", "gate_registry_applied",
+            "final_bundle_sha256", "decision", "approved_by"]:
+            packet = load("outer-approval-packet.json")
+            if field in ["decision", "approved_by"]:
+                packet["decisions"][0][field] = "invented approval"
+            else:
+                packet[field] = True
+            with self.subTest(field=field), self.assertRaises(AssertionError):
+                validate_packet(HERE, packet)
+
+
 class BakeTests(unittest.TestCase):
     def test_disabled_before_probe(self):
         result = subprocess.run(["bash", str(HERE / "planned-bake.sh")], capture_output=True, text=True,
@@ -279,7 +326,7 @@ class BakeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "all"
-    cases = [InputTests] if mode == "--inputs" else [BakeTests] if mode == "--bake" else [NativeTests] if mode == "--native" else [PairTests] if mode == "--native-pair" else [InputTests, BakeTests, NativeTests, PairTests]
+    cases = [InputTests] if mode == "--inputs" else [BakeTests] if mode == "--bake" else [NativeTests] if mode == "--native" else [PairTests] if mode == "--native-pair" else [OuterPacketTests] if mode == "--outer-packet" else [InputTests, BakeTests, NativeTests, PairTests, OuterPacketTests]
     suite = unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromTestCase(case) for case in cases)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     print(json.dumps(dict(tests=result.testsRun, failures=len(result.failures), errors=len(result.errors),
