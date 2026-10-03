@@ -1,0 +1,17 @@
+# runtime/bridge fixed-path load sites that resolve through the runtime CL namespace (open_site_scan.py, deployed U13: runtime 18763dd4, bridge 84695d62)
+# three come from B7BindFixes.loadWestlakeNativeLibs via System.load (runtime JAR class -> runtime CL native ns, search = /system/android/lib64:/system/lib64/platformsdk:/system/lib64/chipset-sdk:/system/lib64/chipset-sdk-sp):
+  /system/android/lib64/libwestlake_jni_gapfill.so   (loads OK on board)
+  /system/android/lib64/liboh_tls_boundary.so        (loads OK on board)
+  /system/android/lib64/libwestlake_html_compat.so   (ABSENT on all boards -> [B8-NATIVE] System.load failed; realpath() fails so path_is_in_app_domain returns the 'outside app domain' text)
+
+# window-3 hilog (org.westlake.a0probe pid 6539), verbatim:
+  [B8-NATIVE] native namespace created for runtime CL (search=/system/android/lib64:/system/lib64/platformsdk:/system/lib64/chipset-sdk:/system/lib64/chipset-sdk-sp)
+  [B8-NATIVE] loaded /system/android/lib64/libwestlake_jni_gapfill.so
+  [B8-NATIVE] loaded /system/android/lib64/liboh_tls_boundary.so
+  [B8-NATIVE] WESTLAKE_HTML_COMPAT env set
+  [B8-NATIVE] System.load(/system/android/lib64/libwestlake_html_compat.so) failed: java.lang.UnsatisfiedLinkError: path is outside app domain: /system/android/lib64/libwestlake_html_compat.so
+
+# consumers of libwestlake_html_compat.so in the runtime JAR: NONE beyond the load site.
+#   - referenced only in adapter/activity/B7BindFixes.smali (the System.load) and adapter/compat/HtmlCompatFallback.smali (a self-contained pure-Java fromHtmlCompat; no JNI into the .so)
+#   - no deployed .so strings 'html_compat'; no symbol resolved from the returned handle
+#   - loadLib() wraps System.load in catchall and only prints; a failed (or alternate) load changes nothing else

@@ -1,0 +1,31 @@
+{
+ "lane": "cc-t3",
+ "issue": 90,
+ "date": "2026-10-03",
+ "kind": "A0 runtime-side entry plan (no build, no board)",
+ "f1_recap": "app-code dlopen cannot reach platformsdk ns (ANL sealed per-app ns); route a loads NWeb from the runtime, so A0 must too",
+ "entry": {
+  "path": "/system/android/lib64/libwestlake_html_compat.so",
+  "loader": "B7BindFixes.loadWestlakeNativeLibs System.load (runtime CL ns, search includes /system/lib64/platformsdk)",
+  "board_state": "absent on all boards -> currently [B8-NATIVE] System.load failed",
+  "consumers": "none beyond the load site; HtmlCompatFallback is pure-Java, no JNI into the .so"
+ },
+ "namespace_evidence": "gapfill + tls_boundary at same dir load OK; runtime CL ns search = /system/android/lib64:/system/lib64/platformsdk:/system/lib64/chipset-sdk:/system/lib64/chipset-sdk-sp",
+ "change": {
+  "probe": "rebuild a0probe.cpp as libwestlake_html_compat.so with a JNI_OnLoad process-name gate (org.westlake.a0probe only; else return immediately)",
+  "apk": "named throwaway bundle, native libs removed, only to make a process by that name bind",
+  "frozen_edits": "none"
+ },
+ "window": {
+  "after_lock_fingerprint": "821de739cf81 (before the mount)",
+  "overlay": "bind-mount probe onto the absent html_compat path",
+  "rollback": "unmount + remove created file (name absent again) + uninstall bundle + param reset + kill bundle-uid procs; before-unlock fingerprint must be 821de739cf81 same file count"
+ },
+ "needs_outer_approval": [
+  "window-only bind-mount of the html_compat path the runtime already loads",
+  "guard JNI_OnLoad in every process that binds during the window",
+  "fingerprint handling (html_compat name absent in unified state)"
+ ],
+ "on_approval": "build libwestlake_html_compat.so x2 identical, extend board/run_a0.sh with bind-mount+rollback, request a window",
+ "board_runs": 0
+}
