@@ -15,18 +15,18 @@
 # =============================================================================
 set -uo pipefail
 # Paths are parameterized (land.py user-path gate: no hardcoded per-machine paths).
-# WORKSPACES defaults to the repo-root derived from this script's location.
+# WORKSPACES defaults to the repo-root derived from this scripts location.
 # The build-host (hw248) trees are env vars; the values used for the landed candidate are
 # recorded in deploy/generation.json:
 #   WORKSPACES=<...>/orca/workspaces
-#   CCT3_T4_TREE=/home/<build-user>/cc-t3-u15rt-m3     (cc-t3's t4 tree: link-argv.txt + 112 objects + m1_copy.o + m3-a)
-#   U17_FDPLUS_OUT=/home/<build-user>/cc-wiki-u17-fdplus (our isolated output; cc-t3's t4-a/t4-b untouched)
+#   CCT3_T4_TREE=/home/<build-user>/cc-t3-u15rt-m3     (the cc-t3 t4 tree: link-argv.txt + 112 objects + m1_copy.o + m3-a)
+#   U17_FDPLUS_OUT=/home/<build-user>/cc-wiki-u17-fdplus (our isolated output; cc-t3 t4-a/t4-b untouched)
 W="${WORKSPACES:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
 BMS=$W/westlake-harness-bms-deploy
 WIKI=$W/westlake-harness-wiki
 SPLIT=$WIKI/benchmark/2026-10-03-m1-split
 DELIV=$WIKI/benchmark/2026-10-03-u17-fd-plus-surface
-R="${CCT3_T4_TREE:?set CCT3_T4_TREE to cc-t3's t4 tree on the build host}"   # read inputs; NOT t4-a/b
+R="${CCT3_T4_TREE:?set CCT3_T4_TREE to the cc-t3 t4 tree on the build host}"   # read inputs; NOT t4-a/b
 OUT="${U17_FDPLUS_OUT:?set U17_FDPLUS_OUT to an isolated output dir on the build host}"
 LOG=$DELIV/evidence
 mkdir -p "$OUT" "$LOG"
@@ -60,6 +60,7 @@ cxxc(){ echo "+ $(basename "$1") -> $(basename "$2")"; "$CXX" $COMMON -include "
 N2=$BMS/benchmark/2026-09-30-n2-native/src/android_graphics_compat_shim.cpp
 PATCHF=$SPLIT/patch/android_graphics_compat_shim.split.patch
 A2INC=$DELIV/src/a2-lockcanvas.inc.cpp
+A2GLOBALS=$DELIV/src/a2-globals.inc.cpp
 APPLY=$DELIV/recipe/apply_a2.py
 SC=$SPLIT/build; rm -rf "$SC"; mkdir -p "$SC/cmp"       # SAME stage path as the recipe
 BASE_SHA=003a4edbcbbb8cc9a2f6d4da9c788bd1e1e040953042bd4c1cbd20664a0f115f
@@ -80,7 +81,7 @@ echo "BASELINE LOCKED (byte-identical to deployed shim_split.o)."
 
 echo "===== STEP B: apply A2 patch + recompile with the IDENTICAL command ====="
 cp "$SC/cmp/android_graphics_compat_shim.cpp" "$SC/shim_a2.cpp"
-python3 "$APPLY" "$SC/shim_a2.cpp" "$A2INC" "$SC/shim_a2_patched.cpp" || { echo "apply_a2 FAILED"; exit 5; }
+python3 "$APPLY" "$SC/shim_a2.cpp" "$A2GLOBALS" "$A2INC" "$SC/shim_a2_patched.cpp" || { echo "apply_a2 FAILED"; exit 5; }
 cxxc "$SC/shim_a2_patched.cpp" "$SC/shim_split_a2.o"
 echo "shim_split_a2.o sha: $(sha256sum "$SC/shim_split_a2.o" | cut -c1-16)"
 

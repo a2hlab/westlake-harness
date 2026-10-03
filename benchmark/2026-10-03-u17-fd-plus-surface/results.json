@@ -2,7 +2,8 @@
   "task": "U17 ① fd-plus 'Surface was not locked' -> native candidate on the U16 runtime 1d42dbfb: reproduce the base byte-identical, change ONLY S_nativeLockCanvas/S_nativeUnlockCanvasAndPost, gates (x2 identical, only-2-fns, abi_diff --calls empty, exports delta0, NEEDED same, open_site_scan no new open), generation release.",
   "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
   "built": true, "deployed": false, "pushed": false,
-  "status": "DONE -- A2 candidate built on hw248, all static/ABI gates PASS. Not deployed (board verify is cc-t3's).",
+  "status": "DONE (REV3) -- A2 candidate rebuilt with the ANW1 unwrap + directPathLive-gate bypass; all static/ABI gates PASS. Not deployed (board verify is cc-t3's). REV3 35c36d00 supersedes REV2 cee0098c / REV1 4d968008.",
+  "rev3_correction": "cc-t3 A0 window18 (98ab67b9e8): Surface.mNativeObject is an AdapterAnw('ANW1') wrapper, not raw. REV2 unwrapped via oh_anw_get_oh, but cc-t3 window19 found that entry is directPathLive-GATED and returns 0 on the software-lockCanvas path -> REV2 would no-op (RequestBuffer rejects the raw wrapper -> lockCanvas returns 0 -> 'Surface was not locked'). REV3 hybrid (swlock_oh): try oh_anw_get_oh (fast/ungated path); else magic@0xc8=='ANW1' -> read ->oh@0xc0 directly (bypass the gate); else raw. cc-t3 window19 proved ->oh@0xc0 is a valid producer for software lock even when directPathLive is false. Offsets source+disasm double-checked (oh_anw_get_oh: ldr [x0,#200]=magic 0xc8, ldr [x0,#192]=oh 0xc0; cc-t3 board +0xc0). oh_anw_get_oh already imported + raw read adds no symbol -> zero new NEEDED/UND. TODO next-U: export ungated oh_anw_unwrap to drop the offset.",
   "decision": {
     "chosen": "A2 (pure-Java via JNI upcalls to the real registered Java Bitmap/Canvas + inner libsurface dequeue/queue)",
     "by_evidence": "A1 (native graphics::Canvas.setBuffer) has NO exported graphics::Canvas setBuffer/setBitmap symbol in the runtime and graphics::Canvas lives in libhwui, which is NOT NEEDED -> A1 adds NEEDED libhwui -> fails gate 3. OHCanvasRenderer adds NEEDED libnative_drawing -> fails gate 3. A2 uses only libsurface (already NEEDED) + JNI upcalls -> zero new NEEDED, zero new object.",
@@ -14,20 +15,21 @@
     "patch_target": "S_nativeLockCanvas (hard 'return 0' stub) + S_nativeUnlockCanvasAndPost (empty stub) -- the two Surface JNI natives"
   },
   "candidate": {
-    "sha256": "4d968008a90973a5a028a1143b7b10217abe716363a3b30643bfc124a874dee3",
-    "size_bytes": 3199024, "two_pass_byte_identical": true,
-    "host_paths": ["/home/alvin/cc-wiki-u17-fdplus/t-a/out/liboh_android_runtime.so", "/home/alvin/cc-wiki-u17-fdplus/liboh_android_runtime.A2.so"],
+    "sha256": "35c36d00763d16826ba566c1441d8de7d11c9ad71c9e5d2915e018272eec6ccb",
+    "two_pass_byte_identical": true,
+    "sha256_superseded": ["cee0098c... (REV2)", "4d968008... (REV1)"],
+    "host_paths": ["/home/alvin/cc-wiki-u17-fdplus-rev3/t-a/out/liboh_android_runtime.so", "/home/alvin/cc-wiki-u17-fdplus-rev3/liboh_android_runtime.A2-rev3.so"],
     "note": "big binary kept on hw248 (repo public, *.so gitignored); reproduce via recipe/build_a2_hw248.sh"
   },
   "gates": {
-    "two_pass_byte_identical": "PASS",
+    "two_pass_byte_identical": "PASS (35c36d00 x2)",
     "baseline_a_prime_lock": "PASS (shim_split.o repro == 003a4edb)",
-    "only_two_functions_change": "PASS (abi_diff: 2 functions differ; + byte-identical baseline + exports delta0). equiv.py not runnable on Linux host (macOS/objdump format bug) -- see evidence/gate-equiv.txt",
-    "abi_diff_calls_removed_empty": "PASS (both CALLS+ only; removed 0; 0 consumer breaks)",
+    "only_two_functions_change": "PASS (abi_diff: 2 target functions CALLS+ (+ internal swlock_* helpers); + byte-identical baseline. Only other entry = benign Cortex-A53-843419 linker veneer on unixFileControl (code-layout shift, not a source change). equiv.py not runnable on Linux host.)",
+    "abi_diff_calls_removed_empty": "PASS (CALLS+ only; removed 0; 0 consumer breaks)",
     "exports_delta0": "PASS (788 == 788)",
     "NEEDED_identical": "PASS (23 == 23; no libnative_window/libhwui/libnative_drawing)",
-    "und_delta": "+3 from already-NEEDED libsurface: NativeWindowRequestBuffer, NativeWindowFlushBuffer, GetBufferHandleFromNative",
-    "open_site_scan_no_new_open": "PASS (197 == 197 PC-normalized; dlopen/dlsym imports identical)"
+    "und_delta": "+3 from already-NEEDED libsurface: NativeWindowRequestBuffer, NativeWindowFlushBuffer, GetBufferHandleFromNative. oh_anw_get_oh (unwrap) already imported -> no new UND.",
+    "open_site_scan_no_new_open": "PASS (197 == 197)"
   },
   "predicted_move": {
     "actual": "fd-plus (the only U14 first-fatal = IllegalStateException Surface was not locked @ Surface.unlockSwCanvasAndPost <- SurfaceView$1.unlockCanvasAndPost)",

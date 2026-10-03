@@ -1,0 +1,77 @@
+REV2 correctness fix: Surface.mNativeObject is an AdapterAnw('ANW1') wrapper, not a raw OH window
+=================================================================================================
+Found by cc-t3 A0 window18 (board 98ab67b9e8) + confirmed in runtime source; cc-t3 window19 lit a
+SurfaceView on-screen through the same unwrap. REV1 (which passed mNativeObject straight to
+libsurface) would hit OH's magic check (rc=40001000) and no-op; REV2 unwraps first.
+
+BOARD PROOF (cc-t3 A0, 5cd):
+  entry nativeSurfaceReady Surface.mNativeObject=0x7f11716c90
+  OH_NativeWindow_GetSurfaceId(0x7f11716c90) rc=40001000 id=0   (40001000 = invalid param)
+  OH_AnwShim: oh_anw_wrap[probe]: oh=0x7F1172DA10 -> aosp_anw=0x7F11716C90 (magic=ANW1) uniqueId=0x341000008de
+  oh_rs_get_child_surface_window ... uniqueId=0x341000008de anw=0x7F11716C90
+  S_nativeGetFromBlastBufferQueue(sessionId=1492) -> ohNativeWindow=0x7F11716C90
+  => mNativeObject (0x7f11716c90) is the ANW1 wrapper; the real OH window is 0x7f1172da10.
+
+SOURCE (adapter/framework/window/jni/oh_anativewindow_shim.{h,cpp}):
+  constexpr uint32_t kAdapterAnwMagic = 0x414E5731u; /* 'ANW1' */
+  struct AdapterAnw {
+      struct ANativeWindow aosp;   // AOSP ABI face -- first member (sizeof == 0xc0 on arm64)
+      OHNativeWindow*      oh;      // <-- real OH window, at offset +0xc0 (cc-t3 window19 probe)
+      uint32_t             magic;   // == kAdapterAnwMagic
+      ...
+  };
+  extern "C" OHNativeWindow* oh_anw_get_oh(struct ANativeWindow* aosp) {
+      auto* a = as_adapter(aosp);                 // checks a->magic == 'ANW1'
+      return a && directPathLive(a) ? a->oh : nullptr;   // returns the real OH window
+  }
+  The shim's OWN intercepted ANativeWindow_* dequeue/queue already do this unwrap
+  (oh_anativewindow_shim.cpp:394/432: OH_NativeWindow_NativeWindowRequestBuffer(a->oh,...)),
+  which is why hwui (NDK ANativeWindow_* path) works but raw libsurface/OH_NativeWindow_* calls
+  on the bare wrapper fail OH's magic check.
+
+WHICH PATHS WRAP (adapter/framework/window/jni/oh_window_manager_client.cpp):
+  oh_anw_wrap() is called at :1380 (SurfaceView child, [STAGE2-SURFACEVIEW] oh_rs_get_child_surface_window)
+  AND :1589 (the SurfaceControl / main window path). b->ohNativeWindow (what
+  S_nativeGetFromBlastBufferQueue returns as mNativeObject) is that wrapped ANW1 pointer.
+  => BOTH SurfaceView and SurfaceControl-backed SOFTWARE Surfaces store an ANW1 wrapper.
+     SurfaceTexture / unbound surfaces store a 0xCAFE5C0X sentinel (lockCanvas returns 0).
+     Legacy pre-G2.14ae direct surfaces store a raw OHNativeWindow* (fallback path).
+
+REV3 CORRECTION -- oh_anw_get_oh is directPathLive-GATED (can't rely on it alone):
+  cc-t3 A0 window19 found on-board that oh_anw_get_oh(<the SurfaceView's ANW1 wrapper>) returns
+  0, because the board's build gates it: oh_anativewindow_shim.cpp
+    extern "C" OHNativeWindow* oh_anw_get_oh(ANativeWindow* aosp) {
+        auto* a = as_adapter(aosp);                         // magic=='ANW1' check
+        return a && directPathLive(a) ? a->oh : nullptr;    // <-- directPathLive GATE
+    }
+    bool directPathLive(AdapterAnw* a) {                     // TRUE only for UNBOUND or LIVE
+        ... return snapshot.state == State::UNBOUND || snapshot.state == State::LIVE; }
+  On the software-lockCanvas path directPathLive is FALSE, so oh_anw_get_oh returns 0. REV2 (which
+  relied on it with a raw fallback) would then fall through to the raw ANW1 wrapper -> RequestBuffer
+  rejects the 'ANW1' magic -> lockCanvas returns 0 -> "Surface was not locked" persists = NO-OP.
+  (Note: the deployed b67 liboh_adapter_bridge.so disassembles to an UNGATED oh_anw_get_oh --
+  cbz; ldr w8,[x0,#200]; cmp 'ANW1'; ldr x0,[x0,#192]; ret -- an older build; the board runs the
+  GATED build. The hybrid below is correct for BOTH.)
+
+REV3 FIX (src/a2-lockcanvas.inc.cpp swlock_oh -- hybrid):
+  1. oh = oh_anw_get_oh(nativeObject)   -> use it if non-zero (fast path; ungated builds / live path)
+  2. else if *(uint32_t*)(nativeObject + 0xc8) == 'ANW1'  -> return *(OHNativeWindow**)(nativeObject + 0xc0)
+                                        (read the wrapper's ->oh directly, BYPASSING the directPathLive gate)
+  3. else return (raw)nativeObject      (legacy direct window)
+  sentinel (0xCAFE5C0X) is checked before swlock_oh, so lockCanvas returns 0 for unbound surfaces.
+  cc-t3 window19 proved ->oh @ +0xc0 is a valid producer for software lock even when directPathLive
+  is false (it lit a SurfaceView through exactly that field).
+
+OFFSETS -- source + disasm DOUBLE-CHECK (per outer):
+  disasm oh_anw_get_oh (liboh_adapter_bridge.so):  ldr w8,[x0,#200]=magic(0xc8); cmp 0x414E5731;
+                                                   ldr x0,[x0,#192]=oh(0xc0).
+  struct AdapterAnw { ANativeWindow aosp (sizeof 0xc0); OHNativeWindow* oh @0xc0; uint32_t magic @0xc8 }.
+  cc-t3 A0 window19 on-board: +0xc0 is the real OH window (GetSurfaceId/SurfaceUtils OK).
+  The magic@0xc8=='ANW1' check gates the raw +0xc0 read -> only a genuine wrapper is dereferenced.
+  TODO(next-U runtime): export an UNGATED oh_anw_unwrap(ANativeWindow*) so this raw offset can be
+  dropped; until then the offset+magic fallback is required (README).
+
+GATE IMPACT (REV3): NEEDED 23==23; exports Δ0 (788); UND +3 (libsurface trio only; oh_anw_get_oh
+  already imported; the raw offset read adds no symbol); abi_diff 2 target functions CALLS+
+  (REMOVED empty, consumer breaks 0) + benign Cortex-A53-843419 veneer on unixFileControl (layout
+  shift); open_site 197==197. Candidate 35c36d00763d1682 (REV2 cee0098c / REV1 4d968008 superseded).

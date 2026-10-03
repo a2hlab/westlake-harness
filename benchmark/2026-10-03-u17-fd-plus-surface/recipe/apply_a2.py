@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """Splice the A2 software-lockCanvas implementation into android_graphics_compat_shim.cpp.
 
-Anchored on the exact two-stub block (not line numbers), so it applies cleanly on the
-post-split.patch source regardless of minor line drift. Asserts the anchor is present
-EXACTLY once; refuses otherwise (so a changed base is caught, not silently mis-patched).
+Two anchored edits (both asserted to match EXACTLY once; refuses otherwise so a changed base
+is caught, not silently mis-patched):
+  1. GLOBALS: insert a2-globals.inc.cpp right AFTER the ALOGE #define (global scope, BEFORE
+     `namespace android {`). Needed because the shim's own oh_anw_get_oh / OHNativeWindow are
+     at GLOBAL scope; declaring them inside android::(anon) makes the extern-"C" types differ.
+  2. IMPL: replace the two hard stubs (in android::(anon), matching the RegisterNatives table)
+     with a2-lockcanvas.inc.cpp (helpers + the two function definitions, ::-qualified globals).
 
-Usage: apply_a2.py <shim_in.cpp> <a2-lockcanvas.inc.cpp> <shim_out.cpp>
+Usage: apply_a2.py <shim_in.cpp> <a2-globals.inc.cpp> <a2-lockcanvas.inc.cpp> <shim_out.cpp>
 """
 import sys
 
-ANCHOR = (
+ALOGE = '#define ALOGE(...) HiLogPrint(3, 6, 0xD000F00u, "OH_GfxShim", __VA_ARGS__)\n'
+
+STUB = (
     "jlong S_nativeLockCanvas(JNIEnv*, jclass, jlong /*nativeObject*/, jobject /*canvas*/, jobject /*dirtyRect*/) {\n"
     "    // Without a real surface buffer to lock, lockCanvas can't return a real\n"
     "    // canvas.  HelloWorld doesn't use Surface.lockCanvas (hwui owns drawing).\n"
@@ -18,21 +24,28 @@ ANCHOR = (
     "void S_nativeUnlockCanvasAndPost(JNIEnv*, jclass, jlong /*nativeObject*/, jobject /*canvas*/) { }\n"
 )
 
-def main():
-    shim_in, inc_file, shim_out = sys.argv[1], sys.argv[2], sys.argv[3]
-    src = open(shim_in, encoding="utf-8").read()
-    inc = open(inc_file, encoding="utf-8").read()
-    n = src.count(ANCHOR)
+def splice_once(src, anchor, payload, *, after, what):
+    n = src.count(anchor)
     if n != 1:
-        sys.stderr.write("[apply_a2] FATAL: anchor found %d times (expected 1)\n" % n)
+        sys.stderr.write("[apply_a2] FATAL: %s anchor found %d times (expected 1)\n" % (what, n))
         sys.exit(2)
-    out = src.replace(ANCHOR, inc)
-    # sanity: both function definitions must now carry the A2 marker
-    if "[SWLOCK] lockCanvas" not in out or "NativeWindowRequestBuffer" not in out:
-        sys.stderr.write("[apply_a2] FATAL: post-splice markers missing\n")
-        sys.exit(3)
-    open(shim_out, "w", encoding="utf-8").write(out)
-    sys.stderr.write("[apply_a2] OK: spliced A2 lockCanvas/unlock (%d -> %d bytes)\n" % (len(src), len(out)))
+    if after:
+        return src.replace(anchor, anchor + payload)
+    return src.replace(anchor, payload)
+
+def main():
+    shim_in, globals_inc, lock_inc, shim_out = sys.argv[1:5]
+    src = open(shim_in, encoding="utf-8").read()
+    gl = open(globals_inc, encoding="utf-8").read()
+    im = open(lock_inc, encoding="utf-8").read()
+    src = splice_once(src, ALOGE, gl, after=True,  what="ALOGE(globals)")
+    src = splice_once(src, STUB,  im, after=False, what="stub(impl)")
+    for marker in ("[SWLOCK] lockCanvas", "NativeWindowRequestBuffer", "oh_anw_get_oh"):
+        if marker not in src:
+            sys.stderr.write("[apply_a2] FATAL: post-splice marker missing: %s\n" % marker)
+            sys.exit(3)
+    open(shim_out, "w", encoding="utf-8").write(src)
+    sys.stderr.write("[apply_a2] OK: globals + A2 impl spliced\n")
 
 if __name__ == "__main__":
     main()

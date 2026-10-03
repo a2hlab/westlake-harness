@@ -1,19 +1,20 @@
 {
-  "generation": "u17-fdplus-swlockcanvas-a2",
+  "generation": "u17-fdplus-swlockcanvas-a2-rev3",
   "built": "2026-10-03",
   "lane": "cc-wiki #90",
-  "status": "candidate-not-deployed",
+  "status": "candidate-not-deployed (REV3: ANW1 unwrap + directPathLive-gate bypass; hold-clear pending outer)",
+  "revision": "REV3 35c36d00 supersedes REV2 cee0098c / REV1 4d968008. REV1 assumed mNativeObject is a raw OH window (cc-t3 window18: it is an AdapterAnw 'ANW1' wrapper). REV2 unwrapped via oh_anw_get_oh, but cc-t3 window19 found that entry is directPathLive-GATED and returns 0 on the software-lockCanvas path -> REV2 would no-op. REV3 hybrid: oh_anw_get_oh first, else magic@0xc8=='ANW1' -> read ->oh@0xc0 directly (bypassing the gate). cc-t3 window19 lit a SurfaceView through ->oh even with directPathLive false.",
   "artifact": {
     "name": "liboh_android_runtime.so",
-    "sha256": "4d968008a90973a5a028a1143b7b10217abe716363a3b30643bfc124a874dee3",
-    "size_bytes": 3199024,
+    "sha256": "35c36d00763d16826ba566c1441d8de7d11c9ad71c9e5d2915e018272eec6ccb",
     "host": "hw248",
     "paths": [
-      "/home/alvin/cc-wiki-u17-fdplus/t-a/out/liboh_android_runtime.so",
-      "/home/alvin/cc-wiki-u17-fdplus/t-b/out/liboh_android_runtime.so",
-      "/home/alvin/cc-wiki-u17-fdplus/liboh_android_runtime.A2.so"
+      "/home/alvin/cc-wiki-u17-fdplus-rev3/t-a/out/liboh_android_runtime.so",
+      "/home/alvin/cc-wiki-u17-fdplus-rev3/t-b/out/liboh_android_runtime.so",
+      "/home/alvin/cc-wiki-u17-fdplus-rev3/liboh_android_runtime.A2-rev3.so"
     ],
     "two_pass_byte_identical": true,
+    "sha256_superseded": ["cee0098c795163a1f6a237d3f91e7d1322fefff57255340ccd7ead9ac6864449 (REV2)", "4d968008a90973a5a028a1143b7b10217abe716363a3b30643bfc124a874dee3 (REV1)"],
     "note": "big binary kept on hw248 (repo is public, *.so gitignored); reproduce from the recipe below"
   },
   "base": {
@@ -29,10 +30,11 @@
   },
   "change": {
     "decision": "A2 (pure-Java via JNI upcalls + inner libsurface) — chosen by evidence over A1 (native graphics::Canvas) and OHCanvasRenderer; both of the latter add a new NEEDED (libhwui / libnative_drawing) and fail gate 3",
+    "rev3_unwrap": "Surface.mNativeObject is an AdapterAnw('ANW1' 0x414E5731) wrapper, not a raw OH window (cc-t3 A0 window18 98ab67b9e8). REV2 unwrapped via oh_anw_get_oh, but cc-t3 window19 found that entry is directPathLive-GATED and returns 0 on the software-lockCanvas path -> REV2 no-op. REV3 hybrid (swlock_oh): oh_anw_get_oh first (fast/ungated path); else magic@0xc8=='ANW1' -> read ->oh@0xc0 directly (bypass the gate); else raw. Offsets source+disasm double-checked (ldr [x0,#200]=magic 0xc8, ldr [x0,#192]=oh 0xc0 in oh_anw_get_oh; cc-t3 window19 board +0xc0). oh_anw_get_oh already imported + raw read adds no symbol -> zero new NEEDED/UND. Both SurfaceView + SurfaceControl software Surfaces wrap (WMClient oh_anw_wrap:1380/1589); SurfaceTexture -> sentinel; legacy -> raw. TODO next-U: export ungated oh_anw_unwrap. See evidence/anw1-unwrap.txt.",
     "functions": ["S_nativeLockCanvas", "S_nativeUnlockCanvasAndPost"],
     "file": "android_graphics_compat_shim.cpp (the only recompiled TU; the shim object in the 112-object relink)",
-    "source_snapshot": "src/a2-lockcanvas.inc.cpp",
-    "applier": "recipe/apply_a2.py (anchored splice, asserts exactly-one match)"
+    "source_snapshot": "src/a2-globals.inc.cpp (global decls) + src/a2-lockcanvas.inc.cpp (impl)",
+    "applier": "recipe/apply_a2.py (two anchored splices, each asserts exactly-one match)"
   },
   "recipe": {
     "build": "recipe/build_a2_hw248.sh  (RUNS ON hw248; reproduces baseline byte-identical -> applies A2 -> relink x2)",
@@ -48,14 +50,14 @@
     ]
   },
   "gates": {
-    "two_pass_byte_identical": "PASS (4d968008a90973a5 x2)",
+    "two_pass_byte_identical": "PASS (35c36d00763d1682 x2)",
     "baseline_a_prime_lock": "PASS (shim_split.o repro == 003a4edb)",
-    "only_two_functions_change": "PASS via abi_diff --calls (2 functions differ) + byte-identical baseline + exports delta 0 (equiv.py not runnable on Linux host — macOS/objdump format bug; see gate-equiv.txt)",
-    "abi_diff_calls_removed_empty": "PASS (both functions CALLS+ only; removed 0; 0 consumer breaks)",
+    "only_two_functions_change": "PASS via abi_diff --calls: the 2 target functions CALLS+ (+ internal swlock_* helpers) + byte-identical baseline. The only other abi_diff entry is a benign Cortex-A53-843419 linker veneer shifted into unixFileControl by the +code-size (layout artifact, not a source change). equiv.py not runnable on Linux host (macOS/objdump format bug).",
+    "abi_diff_calls_removed_empty": "PASS (CALLS+ only; removed 0; 0 consumer breaks)",
     "exports_delta_zero": "PASS (788 == 788)",
     "needed_identical": "PASS (23 == 23; no libnative_window / libhwui / libnative_drawing)",
-    "und_delta": "+3 imports from already-NEEDED libsurface.z.so: NativeWindowRequestBuffer, NativeWindowFlushBuffer, GetBufferHandleFromNative",
-    "open_site_scan_no_new_open": "PASS (197 == 197 open sites, PC-normalized identical; dlopen/dlsym import set identical)"
+    "und_delta": "+3 imports from already-NEEDED libsurface.z.so: NativeWindowRequestBuffer, NativeWindowFlushBuffer, GetBufferHandleFromNative. oh_anw_get_oh (the unwrap) already imported by the deployed runtime -> adds no UND.",
+    "open_site_scan_no_new_open": "PASS (197 == 197 open sites)"
   },
   "predicted_move": {
     "first_fatal_key": "fd-plus",
