@@ -1,0 +1,47 @@
+{
+  "task": "Diagnose the 3 unowned/undiagnosed keys of cc-t3's U16 wall-cluster table (clusters Q/R/S): fd-breezyweather, fd-saber, cv2-com-frequent-habits. Per key: first-fatal verbatim + line, cluster, minimal fix, predicted first-fatal moves.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "source_table": "westlake-harness/benchmark/2026-10-03-u16-wall-clusters (per-key.csv clusters Q/R/S)",
+  "keys": {
+    "fd-breezyweather": {
+      "cluster_was": "Q (dead, terminal unknown)",
+      "board": "5cd",
+      "first_fatal": "hilog.txt:13181 '[CHILD_CK] J_invokeStaticMain_main_threw: a96: lateinit property weatherView has not been initialized'; cause :13232; thrown from org.breezyweather.ui.main.fragments.HomeFragment.v() via Handler callback b14.run:611 on the main thread; :13228 AppSpawnXInit InvocationTargetException -> AMS onAbilityDied",
+      "coroutinestart_cnfe": "non-fatal, our primeCoroutineStart prewarm (:12961) - confirmed not the fatal",
+      "why_no_assignment": "weatherView is a HomeFragment lateinit set in onCreateView (runs at onStart/onResume via executePendingTransactions). route-A OH_LifecycleAdapter dispatches FOREGROUND->RESUMED as a POSTED Looper message after onCreate returns; an app runnable posted during onCreate (b14) ran first -> read weatherView before onCreateView assigned it. Stock runs onCreate->onStart->onResume synchronously in handleLaunchActivity so onCreateView precedes b14.",
+      "cluster": "async-lifecycle-ordering (new; not CoroutineStart): onCreate-posted callback runs before fragment onCreateView because onStart/onResume are dispatched as a posted message, not synchronously",
+      "layer": "ours (OH_LifecycleAdapter / AppSchedulerBridge lifecycle dispatch)",
+      "minimal_fix": "drive onStart/onResume (-> executePendingTransactions -> Fragment.onCreateView) synchronously within the create/launch dispatch (as AOSP handleLaunchActivity), or run pending fragment transactions before returning from create, so fragment views exist before any onCreate-posted callback",
+      "predicted_moves": 1,
+      "predicted_note": "breezyweather past the lateinit to its next wall (lit not guaranteed); shared lever may help other Fragment apps (not counted)"
+    },
+    "fd-saber": {
+      "cluster_was": "R (alive-white, mechanism unclassified)",
+      "board": "61b",
+      "first_fatal": "none (alive, no crash)",
+      "terminal_mechanism": "hilog.txt:19058 CloseUIAbility saber/MainActivity + :19059 callerRecordList is empty + :19062 OH_ACCAdapter finishActivity TerminateAbility rc=0 + :19068 StartAbilityInner verificationAllToken failed; :19523+ mFinished=true mWindowAdded=false decorClass=null (T=0.5-8s) -> reaches RESUMED already finished, never adds window -> alive-white; home-launched (category.HOME)",
+      "ruled_out": ["M1 single-slot Surface (0 Surface/M1-COPY/BBQ markers)", "Flutter raster SIGSEGV / any FATAL (none)", "M3 GLSurfaceView IAE (none)", "dialog-under-window G (never added a window)", "M5"],
+      "family": "verificationAllToken-terminate family = same mechanism as x (cluster M) minus x's trampoline; fd-saber is the single-activity sub-case (NOT a new family). Per u13-white-selfterminate + category-home-token: category-HOME universal, discriminator is verificationAllToken failed.",
+      "layer": "ours: AMS/adapter caller-record (OH AMS source not local)",
+      "minimal_fix": "AMS/adapter caller-record: give a home-launched ability a proper mission/caller record so verificationAllToken passes on the terminate/re-start path (so it is not finished before adding its window); the u13-white-selfterminate Fix(b) lever",
+      "predicted_moves": 0,
+      "predicted_note": "0 by any fd-saber-only fix (classification only); the shared AMS caller-record lever would move fd-saber AND x together (x already owned as cluster M / U15 jar-v1)"
+    },
+    "cv2-com-frequent-habits": {
+      "cluster_was": "S (app_failed/app_failed; aa start lights it)",
+      "board": "5ea",
+      "first_fatal": "none - never launched; runner finds no desktop tile (record.json: 'exact desktop icon absent across searched pages')",
+      "bundle_projection_ok": "bundle.txt: isLauncherAbility:true (:198), skill entity entity.system.home (:239), visible:true (:274), mainAbility/mainElementName com.example.MainActivity (:325), label 'Frequent Habits', iconId/iconPath set",
+      "tile_absent_proof": "grep 'Frequent Habits|frequent.habits|com.example.MainActivity' over ALL icons*.json launcher pages = 0 (other apps' tiles present -> dump valid)",
+      "root_cause": "Android launcher icon is XML-only: aapt2 badging application-icon-*: 'res/BW.xml'; aapt2 xmltree = <adaptive-icon> (background/foreground/monochrome); unzip -l = no raster PNG in the APK. Installer icon projection does not composite/rasterize the adaptive-icon layers (B3 DECLARED_XML_ONLY placeholder lets it install) -> no renderable icon.png -> SceneBoard places no tile. Ability is installed+launchable -> aa start works.",
+      "cluster": "launcher-side icon projection (adaptive/vector Android icon not rasterized at install; related to B3)",
+      "layer": "ours: installer icon projection (apk_bundle_parser / android->OH icon path)",
+      "minimal_fix": "when the launcher icon is <adaptive-icon>/<vector> XML, composite its background+foreground layers (vector-aware) into a raster icon.png and populate iconId/iconPath, instead of the XML-only placeholder",
+      "predicted_moves": 1,
+      "predicted_note": "frequent-habits gets a tile -> clickable/testable; aa start already runs it -> likely lit. Other XML-icon corpus apps gain a tile too (>=1)"
+    }
+  },
+  "this_rounds_rule": "Diagnose an unowned key by which layer the stop is in and verify the tempting label: breezyweather is ours (async lifecycle runs an onCreate-posted callback before the fragment view exists), NOT the CoroutineStart CNFE; fd-saber is not a new family but the single-activity sub-case of x's verificationAllToken-terminate; frequent-habits is not a launch failure but a missing tile from an un-rasterized adaptive icon (runs via aa start). Two of three have a minimal fix that each moves 1; fd-saber's lever is shared (0 standalone).",
+  "boundaries": "Offline; static (hilogs + bundle.txt + icons*.json + aapt2 on APK); no board; no push; no fix applied. fd-saber's AMS source not local; icon fix is the installer owner's. Predicted moves are first-fatal-move predictions. Sources read read-only (westlake-harness-u7-executor run artifacts, westlake-inputs/corpus-v2 apk, westlake-harness u16-wall-clusters).",
+  "landing_paths": "benchmark/2026-10-03-u16-unowned-diag/landing-paths.txt"
+}

@@ -1,0 +1,48 @@
+cv2-com-frequent-habits (U16 cluster S: app_failed, desktop icon absent; `aa start` lights it) — launcher icon gap
+================================================================================================================
+Run: $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window3/
+     u13-A3-20261003T055459/5ea/.../3-unlit-cv2-01/.../5ea.../cv2-com-frequent-habits/   (board 5ea; 2 runs, both app_failed)
+Package com.frequent.habits; launcher activity com.example.MainActivity; label "Frequent Habits".
+record.json error: "exact desktop icon absent across searched pages".
+
+FIRST FATAL: none — the app is never launched. The runner cannot find a desktop tile to click. (`aa start` works.)
+
+THE BUNDLE PROJECTION IS CORRECT (bundle.txt) — this is NOT a skill/ability/entity gap:
+  line 198  "isLauncherAbility": true
+  line 220  "name": "com.example.MainActivity"
+  line 239-241  "entities": [ "entity.system.home" ]      (the OH launcher entity -> MapCategory CATEGORY_LAUNCHER)
+  line 274  "visible": true
+  line 325-326  "mainAbility" / "mainElementName": "com.example.MainActivity"   (module "entry")
+  icon "/data/app/el1/bundle/public/com.frequent.habits/android/icon.png", iconId 16777221,
+  label "Frequent Habits", labelId 16777219 ; hideDesktopIcon=false.
+
+BUT THE DESKTOP TILE IS GENUINELY ABSENT (launcher accessibility tree):
+  grep 'Frequent Habits|frequent.habits|com.example.MainActivity' over ALL icons*.json pages = 0 matches.
+  (Sanity: the same dumps DO contain other apps' tiles: "Circuit Trainer", "Password Generator",
+   "Shader Editor", "Simple Counter", "WebRTCCheck" -> the launcher dump is valid; frequent-habits is missing.)
+
+ROOT CAUSE — the Android launcher icon is XML-only (adaptive icon), not rasterized at install:
+  aapt2 dump badging com.frequent.habits_17.apk:
+    application-icon-{160..640,65534}: 'res/BW.xml'
+    application: label='Frequent Habits' icon='res/BW.xml'
+    launchable-activity: name='com.example.MainActivity' label='Frequent Habits' icon=''
+  aapt2 dump xmltree res/BW.xml:  E: adaptive-icon { background @0x7f05000e, foreground @0x7f05000f, monochrome @0x7f05000f }
+  unzip -l: the only icon asset is res/BW.xml (548 bytes) — NO raster PNG in the APK.
+  -> The installer records icon path .../android/icon.png (iconId 16777221) but the SOURCE is an <adaptive-icon>
+     XML; the android->OH icon projection does not composite/rasterize the adaptive-icon layers, so there is no
+     usable raster icon.png (the B3 DECLARED_XML_ONLY placeholder path lets the bundle INSTALL but leaves no
+     renderable icon). SceneBoard has no icon to render for the entry ability -> it places NO desktop tile
+     (hence the label text is absent from the launcher tree) -> the runner reports app_failed. The ability itself
+     is installed and launchable, which is why `aa start com.frequent.habits/com.example.MainActivity` lights it.
+
+CLUSTER: launcher-side icon projection (adaptive/vector Android icon not rasterized to an OH icon at install) —
+related to DIGEST B3 (installer fail-closed/placeholder on pure vector icons).
+
+MINIMAL FIX (installer icon projection — apk_bundle_parser / the android->OH icon extraction): when the Android
+launcher icon is an <adaptive-icon> (or <vector>) XML, composite its background+foreground layer drawables
+(vector-aware) into a raster icon.png (and populate the entry ability's iconId/iconPath so SceneBoard can render
+it), instead of leaving the XML-only placeholder. Then SceneBoard places the tile.
+
+PREDICTED KEYS MOVED: 1 — frequent-habits gets a desktop tile -> becomes clickable/testable; `aa start` already
+runs the app, so it is likely lit once reachable from the desktop (simple habits-tracker UI). Other corpus apps
+whose launcher icon is XML-only would also gain a tile from the same fix (not counted here; >=1).

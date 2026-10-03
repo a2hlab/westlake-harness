@@ -1,0 +1,51 @@
+fd-breezyweather (U16 cluster Q: dead, terminal unknown) — first-fatal + why weatherView was never assigned
+==========================================================================================================
+Run: $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window3/
+     u13-A3-20261003T055459/5cd/.../3-unlit-original-01/.../5cd.../fd-breezyweather/hilog.txt   (board 5cd)
+Package org.breezyweather; MainActivity org.breezyweather.ui.main.MainActivity (theme 0x7f140137).
+
+FIRST FATAL (verbatim, line numbers in hilog.txt):
+  13181  [CHILD_CK] J_invokeStaticMain_main_threw: a96: lateinit property weatherView has not been initialized
+  13182  a96: lateinit property weatherView has not been initialized
+  13184     at org.breezyweather.ui.main.fragments.HomeFragment.v(r8-map ...:13)
+  13185     at v62.k(...:370)  ->  l62.z(...:1106)  ->  l62.Q(...:82)  ->  l62.y(...:76)
+             ->  b14.run(...:611)  ->  android.os.Handler.handleCallback  ->  Looper.loopOnce/loop
+             ->  android.app.ActivityThread.main(:8194)
+  13228  E AppSpawnXInit: java.lang.reflect.InvocationTargetException
+  13232  E AppSpawnXInit: Caused by: a96: lateinit property weatherView has not been initialized
+  -> 13316  AMS onAbilityDied ; 13357  OnSessionException bundleName=org.breezyweather ... startFail=0  -> process dies.
+This is a Kotlin UninitializedPropertyAccessException, uncaught on the MAIN thread, during MainActivity startup.
+
+THE CoroutineStart CNFE IS NOT THE FATAL (cc-t3 was right):
+  12961  [COROUTINE-FIX] primeCoroutineStart FAILED (non-fatal): ClassNotFoundException kotlinx.coroutines.CoroutineStart
+         at adapter.activity.AppSchedulerBridge.primeCoroutineStart(:350) <- ensureBindApplication(:314)
+  -> our own pre-warm of kotlinx.coroutines.CoroutineStart; non-fatal; app continues to performCreate.
+
+WHY IT NEVER REACHED THE weatherView ASSIGNMENT (the mechanism, from the timeline):
+  34.809  AndroidEventLog performCreate org.breezyweather.ui.main.MainActivity     (onCreate RAN)
+  34.811  AMS [UALM577] Ability ... start to foreground ; [ABR370] ForegroundLifecycle MainActivity
+  34.812  [stderr] J_invokeStaticMain_main_threw ... weatherView ... (the crash, via b14.run Handler callback)
+  34.812  OH_LifecycleAdapter: state=INITIAL->FOREGROUND -> RESUMED activityToken=...@ced31ae
+  34.812  OH_LifecycleAdapter: dispatchByActivityToken POSTED to main Looper: RESUMED
+  - weatherView is a lateinit in HomeFragment, assigned in the fragment's onCreateView/onViewCreated.
+  - onCreateView runs when the host advances to onStart/onResume (FragmentManager executePendingTransactions).
+  - route-A's OH_LifecycleAdapter dispatches FOREGROUND->RESUMED (i.e. onStart/onResume) as a SEPARATE POSTED
+    Looper message AFTER onCreate returns. The app posted a runnable (b14) DURING onCreate; that runnable was
+    already queued ahead of the posted RESUMED, so it ran FIRST -> HomeFragment.v() read weatherView before
+    onCreateView had assigned it -> UninitializedPropertyAccessException.
+  - On stock Android handleLaunchActivity runs onCreate->onStart->onResume SYNCHRONOUSLY in ONE transaction, so
+    the fragment's onCreateView executes (weatherView assigned) before the Looper processes b14 -> no crash.
+    (No onCreateView / addView / handleResumeActivity / setContentView marker appears before the crash here.)
+
+CLUSTER: not CoroutineStart. New own cluster "async-lifecycle-ordering": an app onCreate-posted main-thread
+callback runs before the fragment onCreateView that initializes a lateinit view, because the adapter advances
+onStart/onResume via a posted Looper message instead of synchronously inside the launch transaction.
+
+MINIMAL FIX (ours — OH_LifecycleAdapter / AppSchedulerBridge): drive onStart/onResume (and thus
+executePendingTransactions -> Fragment.onCreateView) SYNCHRONOUSLY within the create/launch dispatch, as AOSP's
+handleLaunchActivity does; at minimum run the pending fragment transactions before returning from the create
+dispatch so fragment views exist before any onCreate-posted callback runs.
+
+PREDICTED KEYS MOVED: 1 (fd-breezyweather past the lateinit, to its next wall; lit not guaranteed). The lever
+is shared, so other Fragment apps that post onCreate work touching fragment views may also benefit — not
+counted here. (No standalone app-specific small fix; the fix is in our lifecycle dispatch.)

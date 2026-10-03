@@ -1,0 +1,43 @@
+fd-saber (U16 cluster R: alive-white, mechanism unclassified) — classify against the known white families
+==========================================================================================================
+Run: $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window2-61b/
+     u13-A2-20261003T042230/61b/.../movers-java-original/.../61b.../fd-saber/hilog.txt   (board 61b)
+Package com.adilhanney.saber; single activity com.adilhanney.saber.MainActivity (Flutter app, theme 0x7f10012f).
+Outcome: alive, white (outer read the t5/t20 as full-screen white, process alive) — no fatal, no crash.
+
+RULE OUT / RULE IN the known white families:
+  M1 single-slot Surface family  : 0 markers  (grep empty Surface | M1-COPY | BBQ.getSurface | ohNativeWindow null = 0)  -> NOT M1
+  Flutter raster SIGSEGV (clstr A): no SIGSEGV/SIGABRT/FATAL in the run                                                   -> NOT A
+  M3 GLSurfaceView EGL IAE (F)    : no GLSurfaceView IAE                                                                    -> NOT F
+  dropped dialog under window (G) : never added ANY window/dialog (mWindowAdded=false throughout)                          -> NOT G
+  M5/M6 bridge                    : no dialog/close path                                                                   -> NOT M5
+  x trampoline (cluster M)        : fd-saber is SINGLE-activity, no PendingSessionActivation for a 2nd activity            -> same TERMINATE, not the trampoline sub-case
+
+THE SIGNATURE IT MATCHES (verbatim, line numbers in hilog.txt):
+  18844  [B47-SLA] intent.component=...saber/MainActivity action=MAIN categories={android.intent.category.HOME}
+         activityInfo.theme=0x7f10012f launchMode=0 flags=0x240 (HW_ACCEL=true)        (home-launched, our projection)
+  19058  AMS [UALM2076] CloseUIAbility call: com.adilhanney.saber/com.adilhanney.saber.MainActivity
+  19059  AMS [ABR1401] callerRecordList is empty
+  19062  OH_ACCAdapter finishActivity: OH TerminateAbility(token=0x7f3387f140, code=0) rc=0
+  19068  AMS [ABMS1359] StartAbilityInner verificationAllToken failed
+  19523+ OH_LifecycleAdapter dump after RESUMED+300ms: mVisibleFromClient=true mVisibleFromServer=false
+         mFinished=true mWindowAdded=false decorClass=null  (repeated at T=500ms..8000ms -> stays finished, no window)
+
+FAMILY: the **verificationAllToken-terminate family** — the home-launched ability is CloseUIAbility'd with
+`callerRecordList empty` -> `verificationAllToken failed`, so the Java activity reaches RESUMED already
+`mFinished=true, mWindowAdded=false, decorClass=null` and never adds its window -> alive-white. This is the SAME
+mechanism as **x** (cluster M), minus x's trampoline: x terminates a MAIN/HOME trampoline while requesting a 2nd
+activity (lost hand-off); fd-saber is a single activity terminated BEFORE it adds its window. (Established in
+benchmark/2026-10-03-u13-white-selfterminate + 2026-10-03-category-home-token: category-HOME is universal/not the
+cause; the discriminator vs lit is `verificationAllToken failed`, which lit refs have 0 of.)
+  So: fd-saber is NOT a new family — it is the SINGLE-ACTIVITY sub-case of the x/verificationAllToken-terminate
+  family. (The concurrent Flutter [B8-IMPELLER]=false + GL-load issues are non-fatal, not the finisher.)
+
+MINIMAL FIX (ours, but NOT a small per-key fix): the AMS/adapter caller-record path — give a home-launched
+ability a proper mission/caller record so `verificationAllToken` passes on the terminate/re-start path and the
+activity is not finished before it adds its window. OH AMS source is not local (needs hw248/a2hlab); this is the
+shared lever flagged as "Fix (b)" in u13-white-selfterminate.
+
+PREDICTED KEYS MOVED: 0 by any fd-saber-only fix (classification only; there is no small per-key fix). The
+shared AMS caller-record lever, if landed, would move fd-saber AND x together (x is already owned as cluster M /
+U15 jar-v1); so fd-saber contributes 0 additional owned move until that AMS lever is built.
