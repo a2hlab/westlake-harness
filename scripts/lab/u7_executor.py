@@ -131,7 +131,8 @@ def policy_binding(root):
              'generation_static_checks.py','deployed_class_diff.py','open_site_scan.py']]
     files += [PROVENANCE_REGISTRY, repo/'knowledge/frozen/frozen.json',
               repo/'knowledge/gates/new-native-admissions.json',
-              lab_paths.harness()/'knowledge/toolchains/art-r155/image_predeploy_gate.py']
+              lab_paths.harness()/'knowledge/toolchains/art-r155/image_predeploy_gate.py',
+              lab_paths.harness()/bundle.BCP_SWAP_EXCEPTIONS]
     return bundle.digest({str(p): bundle.sha(p) for p in files})
 
 

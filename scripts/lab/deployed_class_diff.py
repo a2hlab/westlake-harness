@@ -75,8 +75,10 @@ def classes(jar):
         for entry in sorted(n for n in z.namelist() if re.fullmatch(r'classes\d*\.dex', n)):
             dex = Path(tmp) / entry
             dex.write_bytes(z.read(entry))
-            out.update(parse_dexdump(subprocess.run([dexdump(), '-l', 'plain', str(dex)],
-                                                    capture_output=True, text=True).stdout))
+            # dexdump prints MUTF-8 strings raw (framework.jar 3e106350 has non-UTF-8 bytes, 2026-10-03 U15);
+            # backslashreplace keeps distinct bytes distinct, so a diff never merges two descriptors.
+            out.update(parse_dexdump(subprocess.run([dexdump(), '-l', 'plain', str(dex)], capture_output=True,
+                                                    encoding='utf-8', errors='backslashreplace').stdout))
     return out
 
 

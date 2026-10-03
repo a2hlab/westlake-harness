@@ -7,8 +7,11 @@ from the native-payload underlay) against the deployed framework/ stubs f3bcc9d7
 """
 import subprocess
 import sys
+import tempfile
 import unittest
+import zipfile
 from pathlib import Path
+from unittest import mock
 
 LAB = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LAB))
@@ -18,6 +21,8 @@ import deployed_class_diff as dcd  # noqa: E402
 WS = lab_paths.workspaces()
 EFFECTIVE = WS / dcd.DEFAULT_GENERATION / 'framework/adapter-mainline-stubs.jar'
 T8 = WS / 'westlake-inputs/generations/t8-rebake/jars9/adapter-mainline-stubs.jar'
+FW_REF = WS / 'westlake-inputs/generations/u10.1-t8-j5ae3dd29-s255aad61-v1/effective-u9-bcp/framework.jar'
+FW_U15 = WS / 'westlake-inputs/generations/u15-framework-bitmap-v1/framework-u15.jar'
 
 DEXDUMP = """Class #0            -
   Class descriptor  : 'Lorg/ccil/cowan/tagsoup/Parser;'
@@ -55,6 +60,42 @@ class Parse(unittest.TestCase):
                          ('Lorg/xml/sax/helpers/DefaultHandler;',
                           ('Lorg/ccil/cowan/tagsoup/ScanHandler;', 'Lorg/xml/sax/XMLReader;')))
         self.assertEqual(got['Landroid/net/ssl/SSLSockets;'], ('Ljava/lang/Object;', ()))
+
+
+class NonUtf8(unittest.TestCase):
+    """dexdump prints MUTF-8 raw: a supplementary character is a CESU surrogate pair (0xED ...), not valid UTF-8.
+    framework.jar 3e106350 has such bytes; text=True crashed the tool on it (U15, 2026-10-03)."""
+
+    def classes_of(self, *descriptors):
+        holder = tempfile.TemporaryDirectory()
+        self.addCleanup(holder.cleanup)
+        tmp = Path(holder.name)
+        fake = tmp / 'dexdump'  # stands in for dexdump: the "dex" entry already holds dexdump-style text
+        fake.write_text('#!/bin/sh\ncat "$3"\n')
+        fake.chmod(0o755)
+        jar = tmp / f'{len(list(tmp.iterdir()))}.jar'
+        body = b''.join(b"Class #0 -\n  Class descriptor  : '" + d + b"'\n  Superclass        : 'Ljava/lang/Object;'\n"
+                        for d in descriptors)
+        with zipfile.ZipFile(jar, 'w') as z:
+            z.writestr('classes.dex', body)
+        with mock.patch.object(dcd, 'dexdump', return_value=str(fake)):
+            return dcd.classes(jar)
+
+    def test_invalid_utf8_does_not_crash_and_stays_distinct(self):
+        got = self.classes_of(b'La/Emoji\xed\xa0\xbd\xed\xb8\x80;', b'La/Emoji\xed\xa0\xbd\xed\xb8\x81;', b'La/Plain;')
+        self.assertEqual(len(got), 3)  # two descriptors that differ only in non-UTF-8 bytes are not merged
+        self.assertIn('La/Plain;', got)
+        self.assertIn('La/Emoji\\xed\\xa0\\xbd\\xed\\xb8\\x80;', got)
+
+
+@unittest.skipUnless(FW_REF.exists() and FW_U15.exists(), 'framework 3e106350 / U15 9e55e286 not on this machine')
+class U15FrameworkBitmap(unittest.TestCase):
+    def test_one_method_change_keeps_every_class_shape(self):
+        r = run(FW_U15, '--deployed', FW_REF, '--frozen')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('(3e106350d882, 29341 classes)', r.stdout)
+        self.assertIn('(9e55e28623c8, 29341 classes)', r.stdout)
+        self.assertIn('0 dropped, 0 reshaped, 0 added (after allow lists), 0 frozen class(es) broken', r.stdout)
 
 
 @unittest.skipUnless(EFFECTIVE.exists() and T8.exists(), 'deployed U9 stubs / T8 candidate not on this machine')

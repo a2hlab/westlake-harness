@@ -1,0 +1,26 @@
+{
+  "schema": "westlake-bcp-swap-exceptions/v1",
+  "rule": "generation_bundle.image_checks lets a bundle change a BCP JAR against the effective image reference only for adapter-mainline-stubs and oh-adapter-framework. Any other changed segment must match one approved row here exactly: segment, reference JAR sha256, candidate JAR sha256. A match only lifts that refusal (G1 then exempts the segment as it does for the default two); G2, the frozen check, deployed_class_diff and the paired build receipt still run. Widen by adding a row, tighten by deleting one; the gate code does not change.",
+  "exceptions": [
+    {
+      "id": "U15-FRAMEWORK-BITMAP-001",
+      "status": "approved",
+      "approval": {
+        "authority": "outer claude",
+        "board": "app-lighting",
+        "entry": 90,
+        "timestamp": "2026-10-03T08:40:48+0800"
+      },
+      "segment": "framework",
+      "reference_sha256": "3e106350d882cd1f2f6d71c3cc4e9f124412d16f50a2dcb160007c34e6dde9af",
+      "candidate_sha256": "9e55e28623c86cc553bb2449cb18948e383a05fb0283b045d969655813b7d1b7",
+      "reason": "U15 intentionally rebuilds framework.jar for the Bitmap null-ColorSpace wall: one method, android.graphics.Bitmap.getColorSpace(), returns sRGB when nativeComputeColorSpace gives null and the config is not ALPHA_8. classes.dex is the only changed zip member; framework.jar is not frozen.",
+      "evidence": [
+        "benchmark/2026-10-03-u15-framework-bitmap/ (cc-wiki, landed 15aeda11f4): recipe/Bitmap.getColorSpace.smali.patch, two-pass byte-identical classes.dex e14cb9ec, round-trip smali diff = Bitmap.smali + 17 static-final default-value re-encodings, dex2oat verifier accepts",
+        "outer rerun 2026-10-03 08:4x with the fixed scripts/lab/deployed_class_diff.py (stock version crashes: UnicodeDecodeError byte 0xed): 9e55e286 vs 3e106350 = 29341 / 29341 classes, 0 dropped, 0 reshaped, 0 added, --frozen 0 broken, rc=0",
+        "benchmark/2026-10-03-u15-bcp-v2/ (cx-bms, landed 499f6f8ab4): framework 9e55e286 is the only BCP change besides the default-allowed stubs; all 27 boot images re-baked together from the nine inputs"
+      ],
+      "found_by": "cx-bms U15 fresh gates 2026-10-03 08:2x: image_checks raised 'undeclared BCP segment swap: framework' because the allowed set was hard-coded"
+    }
+  ]
+}

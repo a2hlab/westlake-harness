@@ -82,6 +82,18 @@ def plan(root):
  groups={'boot_image_and_stubs':{r['target']:r['sha256'] for r in d['boot_group']['members']},'runtime_jar':{d['runtime_jar']['target']:d['runtime_jar']['sha256']},'native':native['live_hashes']}
  return dict(schema='westlake-generation-plan/v1',bundle_sha256=sha(Path(root)/'bundle.json'),device_writes=False,deployable=False,groups={k:dict(identity=digest(v),members=v) for k,v in groups.items()},expected_hashes=expected,expected_fingerprint=digest(expected),probe_fingerprints=fingerprints,required_gates=['G1','G2','N1','N2','frozen','deployed_classes_frozen','native_open_sites','paired_build_receipt','board_baseline_identity','post_activation_child_identity'],steps=['verify all member hashes and all required gates before lock','read and verify live U5/current baseline and original mount/JAR receipts','stage every component and a complete rollback copy before stopping parent','stop receipt-owned Android apps and verify children gone; stop appspawn-x once with begetctl; keep stopped throughout transaction','activate native mounts without restarting parent','activate every declared boot-group image and JAR as one stopped-parent transaction','activate runtime JAR; verify entire target hash map before start','start appspawn-x once; verify child view, single ART, bridge, full hashes and images','run approved controls; on failure execute complete rollback'],rollback=['stop parent with begetctl','restore original native mounts','restore every original boot-group image and JAR','restore original runtime JAR and exact overlay stack','verify full baseline hashes and absent-file ledger before restart','start parent; verify parent/child identity and both baseline fingerprints; unlock only after success'],blocked_reasons=['offline planner only; execution requires u7_executor production preflight','U7 composition and rollout require independent outer acceptance'])
 
+BCP_SWAP_DEFAULT=('adapter-mainline-stubs','oh-adapter-framework')
+BCP_SWAP_EXCEPTIONS='knowledge/gates/bcp-swap-exceptions.json'
+def bcp_swap_exceptions(path=None):
+ """{(segment, reference sha256, candidate sha256): id} for approved rows. Any other segment swap stays refused."""
+ path=Path(path) if path else lab_paths.harness()/BCP_SWAP_EXCEPTIONS
+ if not path.is_file():return {}
+ return {(r['segment'],r['reference_sha256'],r['candidate_sha256']):r['id'] for r in json.loads(path.read_text())['exceptions'] if r.get('status')=='approved'}
+def bcp_swap_verdict(pairs,excepted):
+ """pairs {segment: (segment, reference sha256, candidate sha256)} -> ({segment: exception id}, [undeclared segments])."""
+ matched={j:excepted[p] for j,p in pairs.items() if p in excepted}
+ return matched,[j for j in pairs if j not in BCP_SWAP_DEFAULT and j not in matched]
+
 def image_checks(root,oatdump=None):
  """Run the existing trusted G1/G2 implementations, never bundle-supplied code."""
  root=Path(root).resolve();d,_,_=validate(root);master=lab_paths.harness();module=master/'knowledge/toolchains/art-r155/image_predeploy_gate.py'
@@ -100,11 +112,12 @@ def image_checks(root,oatdump=None):
   _,manifest,_=validate(root)
   for j,p in bcp_members(root,d,manifest).items():shutil.copyfile(p,bcp/(j+'.jar'))
   swaps=[j for j in JARS if sha(ref/(j+'.jar'))!=sha(bcp/(j+'.jar'))]
-  if any(j not in ('adapter-mainline-stubs','oh-adapter-framework') for j in swaps):raise ValueError('undeclared BCP segment swap: '+','.join(swaps))
+  matched,undeclared=bcp_swap_verdict({j:(j,sha(ref/(j+'.jar')),sha(bcp/(j+'.jar'))) for j in swaps},bcp_swap_exceptions())
+  if undeclared:raise ValueError('undeclared BCP segment swap: '+','.join(undeclared))
   with contextlib.redirect_stdout(log):
    g1=g.gate_g1(image.parent,ref,swaps)
    g2=g.gate_g2(image.parent,ref,oatdump,str(ref),str(bcp),None,'java.lang.String#hashCode',True)
- return dict(G1=bool(g1),G2=g2 is True,checker_sha256=sha(module),swapped_segments=swaps,reference_kind='effective-baseline' if 'image_gate_reference' in d else 'legacy-native-payload',log=log.getvalue(),limitation='G1 exempts exactly the changed BCP segments; a paired build receipt binds all nine effective inputs to all 27 outputs.')
+ return dict(G1=bool(g1),G2=g2 is True,checker_sha256=sha(module),swapped_segments=swaps,bcp_swap_exceptions=matched,reference_kind='effective-baseline' if 'image_gate_reference' in d else 'legacy-native-payload',log=log.getvalue(),limitation='G1 exempts exactly the changed BCP segments; a paired build receipt binds all nine effective inputs to all 27 outputs.')
 
 def main():
  p=argparse.ArgumentParser(description=__doc__);p.add_argument('--package',type=Path,required=True);p.add_argument('--dry-run',action='store_true',required=True);p.add_argument('--run-image-gates',action='store_true');p.add_argument('--oatdump');p.add_argument('--run-native-gates',action='store_true');p.add_argument('--readelf',default='readelf');p.add_argument('--out',type=Path,required=True);a=p.parse_args()
