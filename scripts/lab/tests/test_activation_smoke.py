@@ -122,5 +122,54 @@ class Smoke(unittest.TestCase):
                                                                 'launch line': 1})
 
 
+class ApprovedBaselineAndCrypto(unittest.TestCase):
+    def test_signed_upper_bound_allows_one_or_two_but_not_three(self):
+        spec={'probe':{'single_copy':['liboh_adapter_bridge.so'], 'copy_limits':{'liboh_adapter_bridge.so':{'min':1,'max':2}}}}
+        for count,expected in [(0,False),(1,True),(2,True),(3,False)]:
+            ok,_=s.evaluate(spec,{}, {}, {'copies':{'liboh_adapter_bridge.so':[str(i) for i in range(count)]},'view':{}})
+            self.assertEqual(ok,expected)
+
+    def test_new_optional_member_at_most_one(self):
+        spec={'probe':{'single_copy':['libicu74compat.so'],'copy_limits':{'libicu74compat.so':{'min':0,'max':1}}}}
+        for count,expected in [(0,True),(1,True),(2,False)]:
+            ok,_=s.evaluate(spec,{}, {}, {'copies':{'libicu74compat.so':[str(i) for i in range(count)]},'view':{}})
+            self.assertEqual(ok,expected)
+
+    def test_missing_copy_table_member_rejects(self):
+        spec={'probe':{'single_copy':['libart.so'],'copy_limits':{'libart.so':{'min':1,'max':1}}}}
+        self.assertFalse(s.evaluate(spec,{}, {}, {'copies':{},'view':{}})[0])
+
+    def test_crypto_report_missing_or_rejected_never_passes(self):
+        spec={'control_selftest':True}
+        for crypto in [None,{'schema_version':2,'passed':False},{'schema_version':1,'passed':True}]:
+            self.assertFalse(s.evaluate(spec,{}, {}, {'control_crypto':crypto})[0])
+        self.assertTrue(s.evaluate(spec,{}, {}, {'control_crypto':{'schema_version':2,'passed':True}})[0])
+
+    def crypto_records(self,text):
+        import json,tempfile
+        root=tempfile.TemporaryDirectory();p=Path(root.name)
+        for key in ['helloworld','zigzag']:
+            d=p/'run'/'serial'/key;d.mkdir(parents=True)
+            (d/'record.json').write_text(json.dumps({'key':key,'bms':{'uid':123},'diagnostics':{'complete':True}}))
+            (d/'processes-t20.txt').write_text('456 1 123 appspawn-x\n')
+            (d/'hilog.txt').write_text(text)
+        return root,p
+
+    def test_real_scanner_success(self):
+        root,p=self.crypto_records('10-03 10:00:00.000 456 x [WL-KS-PROBE] validateAead round-trip=OK\n')
+        with root:
+            self.assertTrue(s.control_crypto({'control_selftest':True,'groups':[{'controls':True,'keys':['helloworld','zigzag']}]},p)['passed'])
+
+    def test_real_scanner_ok_then_badtag_rejects(self):
+        root,p=self.crypto_records('10-03 10:00:00.000 456 x [WL-KS-PROBE] validateAead=OK\n10-03 10:00:00.001 456 x [WL-KS-PROBE] selftest AEADBadTagException via default provider\n')
+        with root:
+            self.assertFalse(s.control_crypto({'control_selftest':True,'groups':[{'controls':True,'keys':['helloworld','zigzag']}]},p)['passed'])
+
+    def test_real_scanner_silence_rejects(self):
+        root,p=self.crypto_records('10-03 10:00:00.000 456 x other text\n')
+        with root:
+            self.assertFalse(s.control_crypto({'control_selftest':True,'groups':[{'controls':True,'keys':['helloworld','zigzag']}]},p)['passed'])
+
+
 if __name__ == '__main__':
     unittest.main()

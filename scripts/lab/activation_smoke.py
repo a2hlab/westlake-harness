@@ -32,6 +32,9 @@ SPEC (JSON):
              "files": {"/system/android/framework/oh-adapter-runtime.jar": "<sha256>"},
              "expect_copies": {"liboh_adapter_bridge.so": 2}}}   # optional: a known, accepted count other than 1
                                                                  # (states before N11 load bridge/runtime twice)
+Optional probe.copy_limits provides explicit {min,max} load-base bounds for an outer-approved signed baseline;
+without it, exact expect_copies/single_copy behavior is unchanged. Optional control_selftest=true requires schema2
+PASS for every process of every control run; missing, unknown, selftest_error, badtag and probe_error all reject.
 Paths in the spec may use $WORKSPACES / ~ ; they are expanded.
 """
 import argparse
@@ -98,6 +101,23 @@ def copies(maps_text, libs):
     return {lib: sorted(loads.get(lib, ())) for lib in libs}
 
 
+def control_crypto(spec, out):
+    """Optional schema2 control gate. Errors and absent process evidence fail closed."""
+    if not spec.get('control_selftest'):
+        return None
+    checker = REPO / 'benchmark/2026-10-03-u13-stage-a-plan/process_selftest.py'
+    module_spec = importlib.util.spec_from_file_location('activation_crypto_schema2', checker)
+    module = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(module)
+    report = module.report(out)
+    keys = {key for group in spec.get('groups', []) if group.get('controls') for key in group['keys']}
+    rows = {key: [row for row in report['runs'] if row['key'] == key] for key in keys}
+    return {'schema_version': 2, 'controls': rows,
+            'passed': bool(keys) and all(rows.values()) and
+                      all(row['status'] == 'PASS' and row['error_count'] == 0
+                          for values in rows.values() for row in values)}
+
+
 def evaluate(spec, runs, hilogs, probe):
     """Pure decision over collected evidence; returns (passed, checks)."""
     checks = []
@@ -122,14 +142,32 @@ def evaluate(spec, runs, hilogs, probe):
         if probe.get('error'):
             checks.append({'check': 'probe', 'ok': False, 'error': probe['error']})
         else:
+            limits_table = p.get('copy_limits') or {}
+            if limits_table:
+                checks.append({'check': 'copy-limits-coverage',
+                               'ok': isinstance(limits_table, dict) and
+                                     set(limits_table) <= set(p.get('single_copy', [])) and
+                                     set(limits_table) <= set(probe.get('copies', {}))})
             want = dict(p.get('expect_copies') or {})
             for lib, paths in probe['copies'].items():
-                n = want.get(lib, 1)
-                checks.append({'check': 'single-copy' if n == 1 else 'expected-copies', 'lib': lib, 'paths': paths,
-                               'want': n, 'ok': len(paths) == n})
+                limits = p.get('copy_limits', {}).get(lib)
+                if limits is not None:
+                    low, high = limits.get('min'), limits.get('max')
+                    valid = type(low) is int and type(high) is int and 0 <= low <= high
+                    checks.append({'check': 'copy-limits', 'lib': lib, 'paths': paths,
+                                   'min': low, 'max': high,
+                                   'ok': valid and low <= len(paths) <= high})
+                else:
+                    n = want.get(lib, 1)
+                    checks.append({'check': 'single-copy' if n == 1 else 'expected-copies', 'lib': lib, 'paths': paths,
+                                   'want': n, 'ok': len(paths) == n})
             for path, want in p.get('files', {}).items():
                 got = probe['view'].get(path)
                 checks.append({'check': 'child-view', 'path': path, 'want': want, 'got': got, 'ok': got == want})
+    if spec.get('control_selftest'):
+        crypto = probe.get('control_crypto') or {}
+        checks.append({'check': 'control-selftest-schema2', 'report': crypto,
+                       'ok': crypto.get('schema_version') == 2 and crypto.get('passed') is True})
     return all(c['ok'] for c in checks) and bool(checks), checks
 
 
@@ -239,6 +277,9 @@ def main(argv=None):
     try:
         runs, hilogs = run_groups(spec, args, out)
         probe = probe_child(spec, args, out) if spec.get('probe') else {}
+        if spec.get('control_selftest'):
+            probe['control_crypto'] = control_crypto(spec, out)
+            (out / 'control-selftest.json').write_text(json.dumps(probe['control_crypto'], indent=2) + '\n')
     except Exception as exc:  # transport / batch errors are a FAIL with the reason recorded, never a PASS
         result = {'passed': False, 'error': f'{type(exc).__name__}: {exc}'}
         (out / 'smoke-result.json').write_text(json.dumps(result, indent=1))
