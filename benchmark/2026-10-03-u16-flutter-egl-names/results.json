@@ -1,0 +1,32 @@
+{
+  "task": "Build the u16-libre-anw fix (flutter_egl_getprocaddress.egl-names.patch) into the U16 Flutter libandroid -> A''' , on cc-t3's A\" b1c9f76e base with its recipe/hw248 mirror/frozen clang feef13a3 verbatim. Gates: (1) vs b1c9f76e only eglGetProcAddress(+direct helpers) changed, exports delta 0, NEEDED same; (2) vs U15 9b824502 the 34 original functions instruction-equal, abi_diff --calls REMOVED empty; (3) x2 byte-identical; build logs persisted. Deliver + board ACK A''' SHA; outer notifies cx-bms to swap.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "built_on": "hw248 (ecs-9f6c), isolated FLUTTER_BUILD_OUT/dest under /home/alvin/cc-wiki-eglnames/ (cc-t3 u16-src + n1-native/flutter work area untouched)",
+  "artifacts": {
+    "Aprime3_sha256": "eb90a6409c9caaba058d2463cad9c193d344527051455d8aca8421e6b7011b4f",
+    "base_Aprime2_b1c9f76e": "b1c9f76e5b248c2c707b7a61f52503d379dd7564547bf461589ed23cdf903fe9",
+    "orig_U15_9b824502": "9b8245022f9c98dac41a85acfa553e96e6385073fd7b15298199a1cce223647b"
+  },
+  "change": "A''' = A\" with flutter_egl_getprocaddress.cpp eglGetProcAddress extended to return our own eglCreateWindowSurface/eglDestroySurface/eglSwapBuffers/eglSwapBuffersWithDamageKHR (from flutter_egl.cpp, same .so) BEFORE delegating to platform. No map change (those 4 + eglGetProcAddress already exported by android_v3.map). Only eglGetProcAddress's body changes (123->158 insns); no new export, no new NEEDED.",
+  "command_locked": "Reproduced b1c9f76e byte-for-byte first by building the UNPATCHED u16-src with the exact command (extras order flutter_egl.cpp, ndk_trace.cpp, flutter_egl_getprocaddress.cpp; ANDROID_MAP=android_v3.map; 58-char mirror; clang feef13a3; runtime 9e14bf20). Only the patched .cpp changes A'''.",
+  "gates": {
+    "x2_byte_identical": "PASS — both hw248 builds = eb90a640 (evidence/x2-identical.txt, u16-eglnames-{a,b}.log)",
+    "vs_b1c9f76e_equiv": "PASS — 40/40 common, differ 1 = eglGetProcAddress (123->158), 0 only-deployed, 0 only-rebuilt, 39 others instruction-equal (evidence/equiv-b1c9f76e-vs-Aprime3.txt)",
+    "vs_b1c9f76e_exports_needed": "PASS — exports IDENTICAL (13), NEEDED IDENTICAL (evidence/exports-needed-Aprime3.txt)",
+    "vs_9b824502_equiv": "PASS — common 34, differ 0 (33 + 1 after-residual), 6 only-rebuilt = new file (eglGetProcAddress, gl_log, wl_glDepthRange, wl_glClearDepth, wl_gl_noop, first_time) (evidence/equiv-9b824502-vs-Aprime3.txt)",
+    "vs_9b824502_abi_calls": "PASS — exports old 12 -> new 13, removed 0 / added 1 (eglGetProcAddress), signature drift 0, consumer breaks 0, call-set diffs 0, exit 0 = REMOVED empty (evidence/abi-calls-9b824502-vs-Aprime3.txt)"
+  },
+  "release": {
+    "path": "$WORKSPACES/westlake-inputs/generations/u16-flutter-egl-names-libandroid-v1/",
+    "payload": "payload/android/lib64/westlake_flutter/libandroid.so = eb90a640... + logs/ + SHA256SUMS",
+    "deploy_target": "/system/android/lib64/westlake_flutter/libandroid.so only; A''' supersedes A\" there (A''' ⊃ b1c9f76e ⊃ 9b824502 ⊃ fff9); westlake_native/libandroid.so (ee2fb82c) unchanged",
+    "hw248_persistent": "/home/alvin/cc-wiki-eglnames/aprime3-{a,b}/libwestlake_flutter_android.so"
+  },
+  "build_inputs": {
+    "src_snapshot": {"flutter_egl_getprocaddress.cpp(PATCHED)": "fbc96152", "flutter_egl.cpp": "59d69fa6", "ndk_trace.cpp": "837b2b16", "android_v3.map": "c573163c", "build_flutter_android_hw248.sh": "c2ca5918"},
+    "toolchain": "frozen clang-15 feef13a36e78b7a2ff3e9e3f180a958f2782be1e; runtime-input liboh_android_runtime.so 9e14bf20; mirror root /home/alvin/cc-t3-nabi-2026103/westlake-harness-bms-deploy (58 chars)"
+  },
+  "predicted_effect": "libre (deckers.thibault.aves.libre) 1.raster eglGetProcAddress('eglCreateWindowSurface') -> our unwrapping hook -> mali gets OH NativeWindow (localsend's working path) -> past eglCreateWindowSurface; then the same interposer stubs the Impeller proc gap. See benchmark/2026-10-03-u16-libre-anw/. On-board verify is cx-bms/cx-t0's; screenshot is ground truth.",
+  "boundaries": "Offline, built on hw248 in an isolated dest; no board/deploy/push; cx-bms swaps the Flutter libandroid in the U16 合包 on the outer's go. artifacts/*.so gitignored (the .so lives in the release generation + hw248, recorded by sha256).",
+  "landing_paths": "benchmark/2026-10-03-u16-flutter-egl-names/landing-paths.txt"
+}
