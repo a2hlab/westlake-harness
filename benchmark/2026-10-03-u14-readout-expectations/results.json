@@ -1,0 +1,55 @@
+{
+  "task": "Speed the outer's U14 Stage-A verdict (offline): for each of the 24 U14 movers write what t20 should look like + where the hilog first-fatal should move when the fix lands, and ship readout.py that given a U14 window run dir auto-extracts each mover's first-fatal / dialog z-order (reusing scripts/lab/bind_status.py + dlopen_failures.py --near-fatal + first_fatal.py) and compares to the expectations -> match/moved-past/unchanged/moved-elsewhere. Window shards not out yet -> self-test on a U13 window dir (known answer).",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "movers": {
+    "total": 24,
+    "by_axis": {"zorder": 14, "first_fatal": 10},
+    "by_cluster": {"G": 14, "A": 4, "C": 2, "D": 2, "I": 1, "J": 1},
+    "zorder_keys_14": ["cv2-com-asdoi-timetable","cv2-com-ath0-rpn","cv2-com-github-dfa-diaspora-android","cv2-com-harr1424-listmaker","cv2-com-knirirr-beecount","cv2-de-koelle-christian-trickytripper","cv2-org-secuso-privacyfriendlymemory","cv2-org-secuso-privacyfriendlypin","cv2-org-secuso-privacyfriendlyruler","fd-netguard","fd-stk","newpipe","opencamera","cv2-org-andresoviedo-dddmodel2"],
+    "first_fatal_keys_10": {
+      "A_flutter": ["localsend","fd-kitchenowl","fd-fluffychat","fd-libre"],
+      "C_ctype_realm": ["mcdonalds","fd-im-vector-app"],
+      "D_bionic_symbol": ["vlc","fd-fennec_fdroid"],
+      "I_icu": ["toutiao"],
+      "J_scancallback": ["fd-plus"]
+    }
+  },
+  "expectations_axes": {
+    "zorder": "pre-fix dialog_z < activity_z (dialog pressed under the main window, DIGEST 690); post-M5 dialog_z > activity_z, terminal stays null; t20 = app's own dialog on top of own UI (watchlist.csv predicted_post_m5_t20). dddmodel2: white on U13 w/o M5, M1 in the U14 runtime gives the lifted dialog a Surface (DIGEST 721).",
+    "first_fatal": "A past eglCreateWindowSurface -> EGLSurface non-zero then libflutter.so+0x4b655c Impeller (DIGEST 762/268; libre may hit libmpv); C past _ctype_ Realm relocation (u14-native-abi-v2); D past __pthread_cleanup_push/__gnu_strerror_r (u14-native-abi-gecko); I both ICU walls removed; J bind passes initPlugins (handleBindApplication returned OK)."
+  },
+  "readout_py": {
+    "cli": "recipe/readout.py <window-run-dir> [--json out] [--key K ...] [--repo PATH]",
+    "reuses": ["scripts/lab/first_fatal.py", "scripts/lab/bind_status.py (import scan)", "scripts/lab/dlopen_failures.py --near-fatal (import scan)"],
+    "verdicts": {
+      "first_fatal": "unchanged | match | moved-past | alive-no-fatal | moved-elsewhere | no-run",
+      "zorder": "match | unchanged | regression-fatal | no-data | no-run"
+    },
+    "run_dir_keying": "rglob record.json, key = record['key'] (runner dirs are nested; leaf dir == bare key); first run per key; runs count reported"
+  },
+  "self_test": {
+    "source": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan (window1-4, all boards)",
+    "result": "all 24 movers -> unchanged (U13 predates every U14 fix)",
+    "zorder_evidence": "dialog_z < activity_z for all 14 (dddmodel2 102<103 = DIGEST 690)",
+    "first_fatal_evidence": "pre=True post=False for all 10; terminals observed: Flutter signal (bound), C/J main_threw (bind_failed), D vlc process-disappeared (bound) / fennec process-disappeared (fatal_before_bind, nearfatal libhwui), I toutiao signal"
+  },
+  "live_u14_readout": {
+    "window": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u14-stage-a-plan/window1/u14-A1-r3-20261003T120358 (iteration-scoped; snapshot while running)",
+    "verdict_counts": {"match": 18, "moved-past": 3, "unchanged": 1, "no-run": 1, "alive-no-fatal": 1},
+    "reads_as_predicted": "23/24",
+    "m5_zorder": "all 14 that ran -> match (dialog_z > activity_z; dddmodel2 103>102, inverse of U13 102<103)",
+    "flutter": "localsend/fd-kitchenowl/fd-fluffychat -> match (ANativeWindow_getFormat gone, EGLSurface non-zero, now at Impeller); fd-libre -> unchanged (STILL ANativeWindow_getFormat + a separate fdsan_close_with_tag crash; the one Flutter key the EGL fix did not move)",
+    "native": "mcdonalds/fd-im-vector-app (C) moved-past (_ctype_ gone); fd-fennec_fdroid (D) moved-past (__gnu_strerror_r gone); vlc (D) alive-no-fatal (past __pthread_cleanup_push, bound); fd-plus (J) match (bind OK)",
+    "pending": "toutiao no-run at snapshot (shard not landed)",
+    "per_iteration_rule": "run readout per iteration subdir (u14-A1-r3-...), NOT the plan root -- the plan has r2/r3 iterations and 'first run per key' can mix pre/post-fix"
+  },
+  "negative_control": {
+    "dir": "evidence/synthetic-postfix/",
+    "result": "localsend/ath0-rpn/fd-plus -> match ; mcdonalds -> moved-past",
+    "bug_caught": "earlier C marker '_ctype_|librealm-jni' false-matched a 'librealm-jni loaded OK' success line (and mcdonalds uses librealmc.so); tightened to 's=_ctype_ | _ctype_: symbol not found'"
+  },
+  "live_bug_caught": "Flutter postfix marker 'libflutter\\.so\\+0x4b655c' (DIGEST shorthand) marked a working fix as moved-elsewhere on the live U14 window: the real DfxFaultLogger frame is '#01 pc 00000000004b655c .../libflutter.so(buildid)' (no +0x) and the Impeller pc offset is build-specific (localsend 0x4b655c, kitchenowl 0x4c367c). Fixed to 'EGLSurface=0*[1-9A-Fa-f]' = DIGEST-762's own non-zero-EGLSurface smoke marker (no 0x prefix). Same DIGEST-762 trap, new place: never hard-code a hex format or build-specific offset into a marker.",
+  "this_rounds_rule": "Readout the first-fatal from first_fatal.py's terminal selection, NOT a grep -- the wall tokens (ICU/eglCreateWindowSurface/Impeller/UnsatisfiedLinkError) appear ~12x per run as benign lines (DIGEST-762). Wall markers must be anchored to the failure/crash line (s=_ctype_, ANativeWindow_getFormat+, load libicui18n.so failed), not the library/class name; validate markers with a post-fix negative control, not just a pre-fix run. And M5 movers are a z-order axis (terminal null), not a first-fatal axis.",
+  "boundaries": "Offline; no board/deploy/push. Expectations sourced from outer-reviewed u16-wall-clusters/clusters.csv (A/C/D/I/J) + u14-m5-watchlist/watchlist.csv (G) + DIGEST 450/690/714/721/733/762/268. Board screenshot remains ground truth for t20 (AGENTS 判定); readout.py is a triage accelerator over window hilogs, not a replacement for the outer sign-off.",
+  "landing_paths": "benchmark/2026-10-03-u14-readout-expectations/landing-paths.txt"
+}

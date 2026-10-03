@@ -1,0 +1,51 @@
+EXTRACTOR INTERFACES (confirmed by reading scripts/lab, 2026-10-03, cc-wiki)
+===========================================================================
+readout.py reuses three scripts/lab tools. Their confirmed shapes:
+
+scripts/lab/first_fatal.py <run-dir> [--registry R] [--cutoff C]
+  - Finds the target termination FIRST, then its exception chain / fault-thread stack
+    ("proper terminal selection", not a grep). Prints one JSON object.
+  - top-level keys: status, target_pids, terminal, root, later_terminals, noise_context,
+    context, limitations, key, package, source, noise_policy, registry_sha256
+  - terminal: null when the app SURVIVED (no first-fatal) -- this is the normal case for a lit
+    M5 dialog key (rpn: terminal=null). Otherwise {kind, event:{line,timestamp,pid,tid,tag,message}}.
+    kind in {signal, main_threw, fatal-exception, system-exit, uncaught-handler, process-disappeared}.
+  - root: {event:{message:...}} (the Caused-by / UnsatisfiedLinkError / NPE root), or a
+    {status, method, frames} object when the crash report is missing/ambiguous.
+  - needs record.json (key, package) + hilog.txt in the run dir; faultlogs/ optional (empty in
+    the U13 runner output -> the DfxFaultLogger stack is inline in hilog.txt, which it also parses).
+  - pins hilog.sha256 to record.json diagnostics.sha256 when present (raises if the log changed).
+
+scripts/lab/bind_status.py <dir>... [--all] [--json]   (import: bind_status.scan(dirs))
+  - rglob hilog.txt; key = hilog.parent.name (the leaf dir = bare key in runner output).
+  - row: {key, runs, bound_runs, bind_failed_runs, fatal_runs, key_status, caused}
+  - key_status: bound | bind_failed | fatal_before_bind | unbound_at_capture
+    bound        = '[B43-BIND] handleBindApplication returned OK'
+    bind_failed  = '[B43-BIND] ensureBindApplication FAILED' (caused = first 'Caused by:' after it)
+    fatal_before_bind = a FATAL ('DfxFaultLogger: Pid:' | 'JniAbort' | 'exit with signal') but never bound
+
+scripts/lab/dlopen_failures.py <dir>... [--json] [--near-fatal SECONDS]  (import: dlopen_failures.scan(dirs, near_fatal_seconds))
+  - aggregates per LIBRARY (not per key). row: {lib, ns, errno, key_count, keys, near_fatal_keys}
+  - near_fatal_keys (int, only with --near-fatal): the dlopen failure for that lib occurred within
+    SECONDS before, and on the same pid as, the first fatal line -> a real near-fatal signal (vs the
+    dozens of benign ENOENT probes every run emits).
+
+WHY NOT A NAIVE GREP (DIGEST-762 lesson, re-confirmed here)
+----------------------------------------------------------
+A global grep of each U13 mover hilog shows the "wall" tokens appear in EVERY run as benign lines:
+  localsend: ICU x12, icu x11, eglCreateWindowSurface x6, Impeller x2, UnsatisfiedLinkError x1
+  toutiao  : ICU x12, icu x11, eglCreateWindowSurface x3, libicu x2
+So "contains eglCreateWindowSurface" or "contains ICU" is NOT the wall. readout.py therefore:
+  1) takes the first-fatal from first_fatal.py (terminal + root), and
+  2) tests only FAILURE/CRASH-ANCHORED markers from expectations.csv:
+       Flutter prefix  ANativeWindow_getFormat\+          (a stack-frame symbol+offset)
+       Flutter postfix libflutter\.so\+0x4b6              (the Impeller pc, only post-EGL-fix)
+       toutiao prefix  load libicui18n\.so failed         (the failure line, not the token 'ICU')
+       C  prefix       s=_ctype_ | _ctype_: symbol not found      (relocation failure, not 'librealm*')
+       D  prefix       s=__pthread_cleanup_push|__gnu_strerror_r : symbol not found
+       J  prefix       android[./]bluetooth[./]le[./]ScanCallback (the CNF/NoClassDef line)
+       J  postfix      handleBindApplication returned OK
+A negative control (evidence/synthetic-postfix/) proves the classifier flips off 'unchanged' to
+match / moved-past when these markers move -- and caught a real bug: an earlier C marker
+'_ctype_|librealm-jni' false-matched a synthetic 'librealm-jni loaded OK' success line, so the
+marker was tightened to the _ctype_ relocation-failure signature.
