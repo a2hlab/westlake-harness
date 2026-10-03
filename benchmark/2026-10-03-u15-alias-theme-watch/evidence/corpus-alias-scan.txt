@@ -1,0 +1,39 @@
+CORPUS MANIFEST SCAN — the universe of launcher-aliases the fix is GENERIC over
+================================================================================
+Tool: aapt2 dump xmltree --file AndroidManifest.xml <apk>  (nested-indent parse: an <activity-alias> whose
+subtree contains action.MAIN + category.LAUNCHER, and whether that alias declares its own android:theme).
+Dirs: $WORKSPACES/westlake-inputs/apks/{fdroid,fdroid100} + .../corpus-v2/apks   (159 apks).
+Why: cc-t3's U15 JAR v1 fix is a GENERIC rule (alias inherits target theme), not per-app. Its blast radius =
+every installed app whose launcher is a themeless alias. The run-logs (alias-theme-map.txt) are the subset
+the stage-A windows actually launched; this scan is the full static universe for completeness.
+
+RESULT: 16 apks have a LAUNCHER activity-alias; 14 are THEMELESS (fix changes behavior); 2 carry own theme.
+
+Themeless launcher-alias apks (fix = AOSP alias-inherits-target applies):
+  org.wikipedia              (YIR25Icon, DefaultIcon -> main.MainActivity)            [campaign key: wikipedia]
+  com.termux.api             (TermuxAPILauncherActivity -> TermuxAPIMainActivity)     [campaign key: fd-api]
+  im.vector.app              (features.Alias -> features.MainActivity)                [campaign key: fd-im-vector-app]
+  org.fossify.notes          (SplashActivity.<19 colors> -> SplashActivity)          [campaign key: fd-notes]
+  org.fossify.calendar       (SplashActivity.<19 colors> -> SplashActivity)          [campaign key: fd-calendar]
+  org.fossify.filemanager    (SplashActivity.<19 colors> -> SplashActivity)          [campaign key: fd-filemanager]
+  org.fossify.gallery        (SplashActivity.<19 colors> -> SplashActivity)          [campaign key: fd-gallery]
+  org.fossify.musicplayer    (SplashActivity.<19 colors> -> SplashActivity)          [campaign key: fd-musicplayer]
+  org.isoron.uhabits         (MainActivity -> list.ListHabitsActivity)               [campaign key: fd-uhabits]
+  org.tasks                  (TaskListActivity.<20 colors> -> MainActivity)          [campaign key: fd-tasks]
+  app.organicmaps            (DownloadResourcesActivity -> SplashActivity)           [campaign key: fd-organicmaps]
+  org.mozilla.fennec_fdroid  (App + 23 icon aliases -> fenix.HomeActivity)           [campaign key: fd-fennec_fdroid]
+  com.ruesga...photophase    (PhotoPhasePreferences -> preferences.PhotoPhasePreferences) [campaign key: cv2-...photophase]
+  io.github.muntashirakon.AppManager (fm.FilesActivity -> fm.FmActivity)             [NOT exercised as alias launch in stage-A windows]
+
+Launcher-alias apks that carry their OWN theme (AOSP keeps the alias theme; fix is a structural no-op):
+  com.github.libretube       (9 icon aliases, android:theme=0x7f140256 SplashScreenTheme -> MainActivity)  [campaign key: fd-libretube]
+  com.ichi2.anki             (leakcanary.LeakLauncherActivity, theme=0x7f130559 -> leakcanary.LeakActivity)
+                              NOTE: this is LeakCanary's debug leak-display icon, a SECONDARY launcher, not Anki's
+                              primary launcher -> incidental; not a theme concern for Anki's main UI.
+
+Cross-check: every campaign alias key seen in the run-logs (alias-theme-map.txt) appears here; AppManager is the
+only themeless launcher-alias in the corpus that did NOT launch-as-alias in the sampled stage-A windows (so it
+is in the fix's static blast radius but has no stage-A shot to watch this round).
+
+Fossify family note: the per-color aliases (SplashActivity.Green, .Blue, ...) all target the same SplashActivity;
+the launcher shows whichever color icon the user picked (default .Green in the runs). All inherit SplashTheme.

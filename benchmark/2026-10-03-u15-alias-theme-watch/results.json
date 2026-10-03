@@ -1,0 +1,57 @@
+{
+  "task": "U15 stage-A alias-theme regression watchlist: cc-t3's U15 JAR v1 makes themeless launcher-aliases inherit the target activity's theme (AOSP). List the OTHER alias-launch keys besides fd-api, per-key judge how t20 changes (splash theme vs main-UI theme), and state which t20 shot should be what. Focus wikipedia + Fossify.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none (window4 may be running; not touched)",
+  "fix_under_watch": {
+    "owner": "cc-t3 (single U15 runtime JAR)",
+    "rule": "AOSP: an <activity-alias> with no android:theme inherits the TARGET activity's theme. route-A today falls a themeless alias back to the APPLICATION theme (AppSchedulerBridge:793); the deployed U13 JAR logs the target theme via [B8-ALIASTHEME] but does not apply it. U15 JAR v1 applies it (launch.theme = target theme).",
+    "driver_already_done": "fd-api (benchmark/2026-10-03-u15-fdapi-theme, patch 05ade34d78)"
+  },
+  "method": {
+    "which_launches_are_aliases": "[B5-ALIAS] ... ordinary=false  (ordinary=true = non-alias; log fires for every launch)",
+    "what_theme_changes": "[B8-ALIASTHEME] '<target> theme re-resolved X -> Y' (X!=Y = changes) or 'theme unchanged (Y)' (no-op)",
+    "theme_names": "aapt2 dump resources <apk>  (id -> style/<name>)",
+    "baseline_t20": "t20.jpeg READ directly for 5 pivotal keys (wikipedia, fd-notes, fd-calendar, fd-musicplayer, fd-api); run-group bucket for the rest",
+    "corpus_universe": "aapt2 dump xmltree AndroidManifest.xml across 159 apks (themeless launcher-alias detection)",
+    "swept": "all window dirs of westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan (231 run hilogs)"
+  },
+  "counts": {
+    "total_alias_launch_keys": 14,
+    "theme_changes": 10,
+    "theme_changes_others_besides_fd_api": 9,
+    "theme_unchanged_noop": 4,
+    "cc_t3_dispatch_said_others": 8,
+    "reconciliation": "measured 9 others change theme; cc-t3 said 8. Likely +1 = fd-fennec_fdroid (fatal-before-bind libmozglue.so, theme never applied at runtime). Excluding it -> exactly 8 that reach the window and change: wikipedia, fd-notes, fd-calendar, fd-filemanager, fd-gallery, fd-musicplayer, fd-organicmaps, fd-im-vector-app."
+  },
+  "key_mechanism": "Every target theme Y that differs from X is a SPLASH theme (AppTheme.Splash / SplashTheme / MwmTheme.Splash / SplashScreenThemeBase / Theme.Vector.Launcher). The target component carries the Android-12 SplashScreen theme and swaps to the real UI theme after first frame. So the fix governs the PRE-CONTENT (splash) window; a lit key's t20 steady-state (after splash dismiss) is unchanged.",
+  "watchlist": {
+    "driver": {
+      "fd-api": {"theme": "Theme.DeviceDefault -> AppCompat 0x7f120252", "u13_t20": "home/crashed (AppCompat IllegalStateException)", "expected_t20": "Termux:API activity renders (crash cleared)", "flag": "POSITIVE - fix target", "lit_likelihood": "medium"}
+    },
+    "watch_lit_splash_only": {
+      "note": "already LIT at t20; fix only re-skins the pre-content frame. t20 must stay the SAME lit UI. RED FLAG if t20 now shows a stuck splash (splash-dismiss broke on route-A).",
+      "wikipedia":     {"theme": "AppTheme -> AppTheme.Splash", "u13_t20": "LIT onboarding (globe + 全世界的知识)", "expected_t20": "UNCHANGED lit onboarding", "flag": "WATCH not-stuck-splash", "baseline_shot_read": true},
+      "fd-notes":      {"theme": "AppTheme -> SplashTheme", "u13_t20": "LIT notes editor", "expected_t20": "UNCHANGED lit editor", "flag": "WATCH not-stuck-splash", "baseline_shot_read": true},
+      "fd-calendar":   {"theme": "AppTheme -> SplashTheme", "u13_t20": "LIT month view 十月", "expected_t20": "UNCHANGED lit month view", "flag": "WATCH not-stuck-splash", "baseline_shot_read": true},
+      "fd-filemanager":{"theme": "AppTheme -> SplashTheme", "u13_t20": "LIT (0-protection)", "expected_t20": "UNCHANGED lit file list", "flag": "WATCH not-stuck-splash", "baseline_shot_read": false},
+      "fd-gallery":    {"theme": "AppTheme -> SplashTheme", "u13_t20": "LIT (0-protection)", "expected_t20": "UNCHANGED lit gallery grid", "flag": "WATCH not-stuck-splash", "baseline_shot_read": false},
+      "fd-organicmaps":{"theme": "MwmTheme -> MwmTheme.Splash", "u13_t20": "LIT (0-protection; map rendered)", "expected_t20": "UNCHANGED lit map/first-run", "flag": "WATCH not-stuck-splash", "baseline_shot_read": false}
+    },
+    "neutral_blocked_upstream": {
+      "note": "the blocking wall is upstream of the theme; the fix does not light these. t20 unchanged.",
+      "fd-musicplayer":  {"theme": "AppTheme -> SplashTheme", "u13_t20": "home/crashed (Bitmap colorspace IAE)", "wall": "U15 #1 framework-bitmap", "expected_t20": "UNCHANGED home/crashed; splash may re-skin brief pre-crash frame only"},
+      "fd-im-vector-app":{"theme": "Theme.Vector.Light -> Theme.Vector.Launcher", "u13_t20": "dead (bind-fail Realm _ctype_)", "wall": "U15 compat v3 / native_abi v2", "expected_t20": "UNCHANGED dead-at-bind; theme never exercised"},
+      "fd-fennec_fdroid":{"theme": "NormalTheme -> SplashScreenThemeBase", "u13_t20": "dead (fatal-before-bind libmozglue.so)", "wall": "U14 native_abi", "expected_t20": "UNCHANGED dead-before-bind"}
+    },
+    "control_noop": {
+      "note": "theme already == target (fix is a literal no-op). t20 must be byte-identical; ANY change here = a bug in the fix.",
+      "fd-uhabits":  {"theme": "AppBaseTheme (unchanged)", "u13_t20": "LIT (lottery)"},
+      "fd-tasks":    {"theme": "Tasks (unchanged)", "u13_t20": "LIT (lit-regression)"},
+      "fd-libretube":{"theme": "SplashScreenTheme (unchanged; alias carries own theme)", "u13_t20": "additional run"},
+      "cv2-com-ruesga-android-wallpapers-photophase": {"theme": "0x7f1100b2 (unchanged)", "u13_t20": "LIT (0-protection)"}
+    }
+  },
+  "corpus_universe": {"apks_scanned": 159, "launcher_alias_apks": 16, "themeless_launcher_alias": 14, "alias_has_own_theme": 2, "not_exercised_in_stage_a": ["io.github.muntashirakon.AppManager"]},
+  "this_rounds_rule": "An alias-theme fix is a SPLASH-theme fix: every target theme it applies is the launcher component's splash theme, which the app dismisses after first frame. So for a LIT key judge t20 as UNCHANGED (watch only for a stuck-splash regression), not as a new screen; the only t20 that should actually improve is the one whose wall WAS the theme (fd-api). Keys blocked by an upstream wall (Bitmap / Realm / mozglue) do not move, and theme-unchanged keys are the control that must stay byte-identical.",
+  "boundaries": "Offline; no board; no push; static + screenshot-read only (no on-board U15 run). t20 predictions are to be confirmed by the stage-A U15 run (screenshots = ground truth). Sources read read-only: U13 stage-A hilogs + t20 jpegs (westlake-harness-u7-executor), app apks (westlake-inputs/apks), first-fatal clusters (westlake-harness/benchmark), adapter source (westlake-harness/bms).",
+  "landing_paths": "benchmark/2026-10-03-u15-alias-theme-watch/landing-paths.txt"
+}

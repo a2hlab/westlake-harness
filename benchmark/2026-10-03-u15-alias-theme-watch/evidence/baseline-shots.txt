@@ -1,0 +1,45 @@
+BASELINE t20 — the CURRENT (U13, deployed JAR bbc3f530, pre-fix) screen for each alias key
+===========================================================================================
+Ground truth = the t20.jpeg the stage-A runner captured (AGENTS.md: screenshot is ground truth, not logs/
+buckets). Images READ directly for the 5 pivotal keys below. Run-group bucket (the pre-classification the
+runner assigned) given for all; it agrees with the shots that were read.
+
+Run-group buckets observed (dir component .../runner/<bucket>/...):
+  0-protection-*   = priority-0 regression-PROTECTION set (must stay lit)
+  lit-regression-* = known-lit regression key
+  lottery-<key>-N  = lit-rate key, run x6 (lights intermittently)
+  N-unlit-*        = priority-N unlit key (blocked)
+  movers-java-*    = expected to move with the Java/JAR fix (currently not lit)
+  additional/      = ad-hoc extra run
+
+key               bucket                    t20 read?  t20 CONTENT (ground truth)
+----------------- ------------------------- ---------- --------------------------------------------------------
+wikipedia         lottery-wikipedia-6       YES        LIT: real onboarding "全世界的知识" + Wikipedia globe (dark
+                                                        AppTheme, past splash). [lottery -> intermittent; this run lit]
+fd-notes          lit-regression-original   YES        LIT: Fossify Notes editor, toolbar + "请在此插入文字" (AppTheme)
+fd-calendar       0-protection-original-01  YES        LIT: Fossify Calendar month view (十月 grid + FAB) (AppTheme)
+fd-musicplayer    3-unlit-original-01       YES        NOT LIT: launcher HOME screen (app crashed, process gone by t20)
+fd-api  (driver)  movers-java-original      YES        NOT LIT: launcher HOME screen (AppCompat crash, process gone by t20)
+fd-filemanager    0-protection-original-01  no         LIT (bucket=protection; same Fossify SplashActivity pattern as calendar/notes)
+fd-gallery        0-protection-original-01  no         LIT (bucket=protection; same Fossify pattern)
+fd-organicmaps    0-protection-original-01  no         LIT (bucket=protection; t5.jpeg 38k != t20.jpeg 63k -> screen changed = rendered map)
+fd-uhabits        lottery-fd-uhabits-*(x6)  no         LIT (lottery lit-rate key)   [theme unchanged = no-op]
+fd-tasks          lit-regression-original   no         LIT (lit-regression key)      [theme unchanged = no-op]
+fd-libretube      additional/               no         (ad-hoc run)                  [theme unchanged = no-op]
+cv2-...photophase 0-protection-cv2-01       no         LIT (bucket=protection)       [theme unchanged = no-op]
+fd-fennec_fdroid  3-unlit-original-01       no         NOT LIT (fatal-before-bind libmozglue.so ULE; dead before window)
+fd-im-vector-app  additional/               no         NOT LIT (bind-fail Realm librealm-jni _ctype_ ULE; dead before window)
+
+t20.jpeg paths READ (verbatim; $WORKSPACES = the orca/workspaces root on the build Mac):
+  wikipedia     $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window1/u13-A1-20261003T030721/5cd/runner/lottery-wikipedia-6/20261003T034524-dcdac70d/5cd1e3dd00000000000000000923012c/wikipedia/t20.jpeg
+  fd-notes      $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window1/u13-A1-20261003T030721/5cd/runner/lit-regression-original/20261003T034622-a48a3274/5cd1e3dd00000000000000000923012c/fd-notes/t20.jpeg
+  fd-calendar   $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window4/u13-A4-20261003T070548/5ea/runner/0-protection-original-01/20261003T073350-1e742b84/5ea34a4500000000000000001123012c/fd-calendar/t20.jpeg
+  fd-musicplayer $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window3/u13-A3-20261003T055459/5cd/runner/3-unlit-original-01/20261003T063928-ddf1167f/5cd1e3dd00000000000000000923012c/fd-musicplayer/t20.jpeg
+  fd-api        $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window1/u13-A1-20261003T030721/5ea/runner/movers-java-original/20261003T033506-813964ee/5ea34a4500000000000000001123012c/fd-api/t20.jpeg
+  fd-organicmaps $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window4-61b-r2/u13-A4r2-20261003T073339/61b/runner/0-protection-original-01/20261003T075644-74c47332/61b0657200000000000000000324012c/fd-organicmaps/t20.jpeg
+
+first-fatal / wall layer per not-lit key (from benchmark/2026-10-03-u13-first-fatal-clusters per-key.csv + recheck):
+  fd-api           IllegalStateException "You need to use a Theme.AppCompat theme" @ AppCompatDelegateImpl.createSubDecor  (OURS: theme -> THE FIX TARGET)
+  fd-musicplayer   IllegalArgumentException "can't create bitmap without a color space"                                   (OURS: Bitmap -> U15 #1 framework-bitmap, NOT theme)
+  fd-fennec_fdroid libmozglue.so UnsatisfiedLinkError "Directory separator should not appear in library name"             (native, fatal-before-bind -> U14 native_abi, NOT theme)
+  fd-im-vector-app librealm-jni.so.10.19.0 _ctype_ dlopen_ns UnsatisfiedLinkError                                         (native _ctype_ -> U15 compat v3 / native_abi v2, NOT theme)

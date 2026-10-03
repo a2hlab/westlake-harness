@@ -1,0 +1,89 @@
+ALIAS-THEME MAP — every alias launch in the U13 stage-A corpus, what cc-t3's U15 JAR v1 does to it
+===================================================================================================
+Source A (which launches are aliases): [B5-ALIAS] ... ordinary=false  (ordinary=true = not an alias; the
+  log fires for EVERY launch, so ordinary=false is the discriminator).
+Source B (what theme the deployed JAR resolves): [B8-ALIASTHEME] "<targetActivity> theme re-resolved X -> Y"
+  (X != Y = the fix will change the resolved theme) or "theme unchanged (Y)" (X == Y = fix is a no-op).
+Theme names: aapt2 dump resources <apk>  (id -> style/<name>).
+Swept ALL window dirs of:
+  $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan   (231 run hilogs)
+
+NOTE ON HOW THE FIX WORKS (from benchmark/2026-10-03-u15-fdapi-theme):
+  AOSP: an <activity-alias> with no android:theme inherits the TARGET activity's theme.
+  route-A today: AppSchedulerBridge:793 `if (ai.theme==0 && appInfo!=null) ai.theme=appInfo.theme` falls a
+  themeless alias back to the APPLICATION theme (X). The deployed U13 JAR already LOGS the target theme Y via
+  [B8-ALIASTHEME] but does NOT apply it to the ClientRecord launch.theme. cc-t3's U15 JAR v1 makes it APPLY Y
+  (AOSP alias-inherits-target). So "X -> Y" = the alias launch's activity theme moves from the app-theme
+  fallback (X) to the target activity's own declared theme (Y).
+
+KEY FINDING: every target theme Y that differs from X is a SPLASH theme
+  (AppTheme.Splash / SplashTheme / MwmTheme.Splash / SplashScreenThemeBase / Theme.Vector.Launcher).
+  Reason: these apps declare the Android-12 SplashScreen pattern on the launched component (the launcher
+  component carries a splash theme; the app calls installSplashScreen()/setTheme() after first frame to swap
+  to the real UI theme). So applying Y governs the PRE-CONTENT (splash) window only; the steady-state t20 UI
+  is the app's real theme, reached after the splash is dismissed.
+
+------------------------------------------------------------------------------------------------------------
+A) THEME CHANGES (re-resolved X -> Y, X != Y) — the fix actually swaps the launch theme
+------------------------------------------------------------------------------------------------------------
+key               alias (launcher)                         -> target activity                     X (was, fallback)             Y (now, target)
+----------------- ---------------------------------------- -------------------------------------- ----------------------------- -----------------------------
+fd-api (DRIVER)   com.termux.api...TermuxAPILauncherActiv. -> ...TermuxAPIMainActivity            0x1030237 Theme.DeviceDefault  0x7f120252 (AppCompat)
+wikipedia         org.wikipedia.DefaultIcon                -> org.wikipedia.main.MainActivity      0x7f130026 AppTheme            0x7f13002a AppTheme.Splash
+fd-notes          org.fossify.notes...SplashActivity.Green -> ...notes...SplashActivity            0x7f12000d AppTheme            0x7f1202ab SplashTheme
+fd-calendar       org.fossify.calendar...SplashAct.Green   -> ...calendar...SplashActivity         0x7f12000d AppTheme            0x7f1202b1 SplashTheme
+fd-filemanager    org.fossify.filemanager...SplashAct.Grn  -> ...filemanager...SplashActivity      0x7f12000d AppTheme            0x7f1202ab SplashTheme
+fd-gallery        org.fossify.gallery...SplashAct.Green    -> ...gallery...SplashActivity          0x7f12000d AppTheme            0x7f1202af SplashTheme
+fd-musicplayer    org.fossify.musicplayer...SplashAct.Grn  -> ...musicplayer...SplashActivity      0x7f13000d AppTheme            0x7f1302ad SplashTheme
+fd-organicmaps    app.organicmaps.DownloadResourcesActiv.  -> app.organicmaps.SplashActivity       0x7f150175 MwmTheme            0x7f150188 MwmTheme.Splash
+fd-fennec_fdroid  org.mozilla.fennec_fdroid.App            -> org.mozilla.fenix.HomeActivity       0x7f1501b4 NormalTheme         0x7f150290 SplashScreenThemeBase
+fd-im-vector-app  im.vector.application.features.Alias     -> im.vector.app.features.MainActivity  0x7f140322 Theme.Vector.Light  0x7f140321 Theme.Vector.Launcher
+
+  -> 10 keys change (fd-api + 9 OTHERS).
+
+------------------------------------------------------------------------------------------------------------
+B) THEME UNCHANGED (X == Y) — the fix is a NO-OP for t20 (control group)
+------------------------------------------------------------------------------------------------------------
+key               alias (launcher)                         -> target activity                     theme (unchanged)
+----------------- ---------------------------------------- -------------------------------------- -----------------------------
+fd-uhabits        org.isoron.uhabits.MainActivity          -> ...habits.list.ListHabitsActivity    0x7f12000f AppBaseTheme
+fd-tasks          com.todoroo.astrid...TaskListActivity    -> com.todoroo.astrid...MainActivity    0x7f1401d0 Tasks
+fd-libretube      com.github.libretube.Default             -> com.github.libretube.ui...MainActiv. 0x7f140256 SplashScreenTheme
+cv2-...photophase ...photophase.PhotoPhasePreferences      -> ...preferences.PhotoPhasePreferences 0x7f1100b2 (<name n/a>)
+
+  -> 4 keys unchanged. For these, route-A ALREADY resolved the target theme (no app-theme fallback gap),
+     so the U15 fix must leave t20 byte-identical. Any t20 change here = a bug in the fix.
+
+------------------------------------------------------------------------------------------------------------
+RECONCILIATION WITH cc-t3's "另 8 个" (8 others besides fd-api)
+------------------------------------------------------------------------------------------------------------
+Run-log evidence (ordinary=false, all windows) finds 9 OTHER alias keys whose theme actually changes
+(section A minus fd-api). cc-t3's dispatch says 8. The most likely +1 is fd-fennec_fdroid (Firefox):
+its first-fatal is fatal-BEFORE-bind (libmozglue.so UnsatisfiedLinkError), so the alias theme is never
+applied at runtime — a count that only includes keys that reach the window would omit it, giving 8:
+  { wikipedia, fd-notes, fd-calendar, fd-filemanager, fd-gallery, fd-musicplayer, fd-organicmaps,
+    fd-im-vector-app }.
+We report the measured 9 and flag fd-fennec_fdroid explicitly so cc-t3 can map to its own bookkeeping;
+the per-key verdict is identical either way (fennec is dead-before-window, theme not observable).
+
+VERBATIM SOURCE LINES (one per key; from the all-windows sweep)
+---------------------------------------------------------------
+[B5-ALIAS] ordinary=false (alias -> target), then [B8-ALIASTHEME] (X -> Y or unchanged):
+
+fd-api            alias=...TermuxAPILauncherActivity target=...TermuxAPIMainActivity ordinary=false
+                  [B8-ALIASTHEME] ...TermuxAPIMainActivity theme re-resolved 0x1030237 -> 0x7f120252
+wikipedia         alias=org.wikipedia.DefaultIcon target=org.wikipedia.main.MainActivity ordinary=false
+                  [B8-ALIASTHEME] org.wikipedia.main.MainActivity theme re-resolved 0x7f130026 -> 0x7f13002a
+fd-notes          alias=...notes...SplashActivity.Green target=...notes...SplashActivity ordinary=false
+                  [B8-ALIASTHEME] ...notes...SplashActivity theme re-resolved 0x7f12000d -> 0x7f1202ab
+fd-calendar       [B8-ALIASTHEME] ...calendar...SplashActivity theme re-resolved 0x7f12000d -> 0x7f1202b1
+fd-filemanager    [B8-ALIASTHEME] ...filemanager...SplashActivity theme re-resolved 0x7f12000d -> 0x7f1202ab
+fd-gallery        [B8-ALIASTHEME] ...gallery...SplashActivity theme re-resolved 0x7f12000d -> 0x7f1202af
+fd-musicplayer    [B8-ALIASTHEME] ...musicplayer...SplashActivity theme re-resolved 0x7f13000d -> 0x7f1302ad
+fd-organicmaps    [B8-ALIASTHEME] app.organicmaps.SplashActivity theme re-resolved 0x7f150175 -> 0x7f150188
+fd-fennec_fdroid  [B8-ALIASTHEME] org.mozilla.fenix.HomeActivity theme re-resolved 0x7f1501b4 -> 0x7f150290
+fd-im-vector-app  [B8-ALIASTHEME] im.vector.app.features.MainActivity theme re-resolved 0x7f140322 -> 0x7f140321
+fd-uhabits        [B8-ALIASTHEME] ...ListHabitsActivity theme unchanged (0x7f12000f); activityTheme returned 0x7f12000f
+fd-tasks          [B8-ALIASTHEME] com.todoroo.astrid...MainActivity theme unchanged (0x7f1401d0); ... 0x7f1401d0
+fd-libretube      [B8-ALIASTHEME] com.github.libretube.ui...MainActivity theme unchanged (0x7f140256); ... 0x7f140256
+cv2-...photophase [B8-ALIASTHEME] ...PhotoPhasePreferences theme unchanged (0x7f1100b2); ... 0x7f1100b2
