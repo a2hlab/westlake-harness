@@ -12,7 +12,8 @@
 //   S6 handler + JavaScript enabled, OnContinue, Resize
 //   S7 LoadWithDataAndBaseUrl(Chinese text + a script that paints the page #12ab34)
 //   S8 frames: OutputFrameCallback and/or the producer surface's consumer; centre pixel sampled; RESULT after 20 s
-// Mode bits from param debug.westlake.a0probe.mode (default 0): 32 = route-a faithful, NWeb's OWN child RSSurfaceNode
+// Mode bits from param debug.westlake.a0probe.mode (default 0): 64 = route-a FORMAL (cc-wiki Plan A): the Activity's
+// SurfaceView holder Surface, handed in by a0shim via env WL_A0_SV_ANW; 32 = route-a faithful, NWeb's OWN child RSSurfaceNode
 // under the Activity window node (ACE WebPattern; no hwui contention); 16 = the bridge window surface directly (shares
 // the Activity content node); 1 = single render process, 2 = InitAndRun(false)
 // (mock path via the bundle path), 4 = skip the ApplicationContext attach, 8 = no producer surface.
@@ -234,6 +235,47 @@ OHOS::sptr<OHOS::Surface> GetBridgeSurface()
     return nullptr;
 }
 
+// mode 64 (cc-wiki Plan A, the FORMAL route-a path): the probe Activity's SurfaceView holder Surface, handed to native
+// by a0shim (ANativeWindow_fromSurface -> AdapterAnw ptr via env WL_A0_SV_ANW). Here: unwrap with oh_anw_get_oh ->
+// OHNativeWindow -> OH_NativeWindow_GetSurfaceId -> SurfaceUtils::GetSurface. Same chain as cc-wiki nweb_backend.cpp
+// SurfaceFromJava. Env absent/timeout -> clear log, null (FAIL, no crash).
+OHOS::sptr<OHOS::Surface> GetSurfaceViewSurface()
+{
+    const char* anwTxt = nullptr;
+    for (int i = 0; i < 40; i++) {   // wait for surfaceCreated -> a0shim setenv (must be before CreateNWeb)
+        anwTxt = getenv("WL_A0_SV_ANW");
+        if (anwTxt != nullptr && anwTxt[0]) break;
+        usleep(250 * 1000);
+    }
+    if (anwTxt == nullptr || !anwTxt[0]) {
+        Log("[A0] S5 mode64: WL_A0_SV_ANW absent (SurfaceView not ready within timeout) -> FAIL");
+        return nullptr;
+    }
+    void* anw = nullptr;
+    if (sscanf(anwTxt, "%p", &anw) != 1 || anw == nullptr) {
+        Log("[A0] S5 mode64: ANW parse failed '%s' -> FAIL", anwTxt);
+        return nullptr;
+    }
+    typedef void* (*AnwGetOhFn)(void*);
+    AnwGetOhFn anwGetOh = (AnwGetOhFn)dlsym(RTLD_DEFAULT, "oh_anw_get_oh");
+    if (anwGetOh == nullptr) {
+        void* rt = dlopen("liboh_android_runtime.so", RTLD_NOW | RTLD_NOLOAD);
+        if (rt != nullptr) anwGetOh = (AnwGetOhFn)dlsym(rt, "oh_anw_get_oh");
+    }
+    void* ohwin = anwGetOh ? anwGetOh(anw) : nullptr;
+    Log("[A0] S5 mode64: AdapterAnw=%p oh_anw_get_oh=%p ohWindow=%p", anw, (void*)anwGetOh, ohwin);
+    if (ohwin == nullptr) {
+        Log("[A0] S5 mode64: oh_anw_get_oh unavailable/null -> FAIL");
+        return nullptr;
+    }
+    uint64_t id = 0;
+    int rc = OH_NativeWindow_GetSurfaceId(reinterpret_cast<OHNativeWindow*>(ohwin), &id);
+    OHOS::sptr<OHOS::Surface> s = (rc == 0) ? OHOS::SurfaceUtils::GetInstance()->GetSurface(id) : nullptr;
+    Log("[A0] S5 mode64: GetSurfaceId rc=%d id=%llu GetSurface=%p", rc, static_cast<unsigned long long>(id),
+        s.GetRefPtr());
+    return s;
+}
+
 // mode 32 (route-a faithful, no hwui contention): create NWeb's OWN child RSSurfaceNode under the Activity window node
 // (OH ACE WebPattern), size it, flush the RS transaction, and give NWeb the child's surface. Null -> FAIL, no crash.
 OHOS::sptr<OHOS::Surface> GetChildSurface()
@@ -265,6 +307,11 @@ public:
     CreateInfo(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> args, int mode) : args_(args)
     {
 #ifndef WL_A0_RUNTIME
+        if (mode & 64) {   // route-a FORMAL (cc-wiki Plan A): the Activity SurfaceView holder Surface via a0shim/env
+            surface_ = GetSurfaceViewSurface();
+            Log("[A0] S5 surfaceview surface=%p", surface_.GetRefPtr());
+            return;
+        }
         if (mode & 32) {   // route-a faithful: NWeb's OWN child RSSurfaceNode under the window node (no hwui contention)
             surface_ = GetChildSurface();
             Log("[A0] S5 child surface=%p", surface_.GetRefPtr());
