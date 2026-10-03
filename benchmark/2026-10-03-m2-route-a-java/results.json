@@ -1,0 +1,37 @@
+{
+  "task": "M2 route-a Java side (cc-t3 owns native/NWeb loading + A0): a WebViewProvider skeleton implementing the render-core 12 + Wikipedia open-an-article callbacks, behind one native backend interface (JNI sigs matching cc-t3 A0 NWebHelper/CreateNWeb), with a mock backend so the Java side unit-tests offline. Compile against framework.jar; identify how our WebViewFactory selects the provider. Offline, no deploy.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "implemented": {
+    "render_core": ["init/construct", "loadUrl", "loadUrl(url,headers)", "loadDataWithBaseURL", "loadData", "postUrl", "evaluateJavascript(script,ValueCallback)", "addJavascriptInterface", "removeJavascriptInterface", "setJavaScriptEnabled", "setDomStorageEnabled", "setWebViewClient", "setWebChromeClient", "reload/stopLoading/canGoBack/goBack/onPause/onResume/draw/destroy"],
+    "wikipedia_callbacks": ["shouldInterceptRequest (-> WebViewClient, serves pagelib assets)", "onPageFinished", "onPageStarted", "shouldOverrideUrlLoading", "onProgressChanged", "onReceivedTitle", "onEvaluateResult -> ValueCallback"],
+    "classes": ["OhNWebController (tested core)", "NWebBackend + NWebCallbackSink (android-free contracts)", "NativeNWebBackend (JNI decls)", "MockNWebBackend", "OhNWebProvider/OhNWebFactoryProvider/OhNWebSettings (WebViewProvider skeleton)", "OhNWebProviderFix (reflection-seed wiring)"]
+  },
+  "native_interface_vs_cc_t3_a0": {
+    "nativeInitEngine": "NWebHelper::Instance/Init/SetBundlePath/SetRenderProcessMode/LoadWebEngine/InitAndRun",
+    "nativeCreateNWeb": "NWebHelper::CreateNWeb(NWebCreateInfo{w,h,surface,OutputFrameCallback})",
+    "nativeRegisterHandler": "NWeb::RegisterNWebHandler (handler upcalls NWebCallbackSink)",
+    "nativeLoadUrl / nativeLoadWithDataAndBaseUrl": "NWeb::Load / LoadWithDataAndBaseUrl",
+    "nativeExecuteJavaScript": "NWeb::ExecuteJavaScript(script, callbackId)",
+    "nativeOnDraw": "blit the OutputFrameCallback CPU RGBA frame; nativeDestroy/settings/nav the rest",
+    "note": "native upcalls the registered NWebCallbackSink directly; Java never touches NWeb types (mock stands in 1:1)"
+  },
+  "unit_test": {"file": "test/NWebRouteATest.java", "result": "19/19 PASS", "log": "evidence/test-run.log",
+    "covers": "backend contract + mock callback synthesis + controller->backend forwarding + evaluateJavascript->ValueCallback round-trip + null-client no-ops",
+    "not_jvm_run": "sink->WebViewClient/WebChromeClient translation is compile-checked only (android.jar bodies are runtime stubs); that leg is on-board"},
+  "compile": {
+    "toolchain": "DevEco JBR javac 21 (-source/-target 17)",
+    "green_set": "core + OhNWebProviderFix compile against public android.jar (android-34): 9 classes, 0 errors (evidence/compile-core.log)",
+    "provider_skeleton": "OhNWebProvider/FactoryProvider/Settings do NOT compile against the public android.jar: 41 errors = @hide WebView.PrivateAccess (createWebView), TokenBindingService, TranslationSpec.DataFormat + WebSettings stub-skew (evidence/compile-provider.log)",
+    "framework_jar_reality": "deployed framework.jar is DEX (javac cannot target it) and CONTAINS WebViewProvider/WebViewFactoryProvider/WebView$PrivateAccess/TokenBindingService (dexdump, all present/PUBLIC INTERFACE ABSTRACT). So the concrete provider is a framework-classpath artifact that LINKS at runtime; the public SDK stub strips the @hide contract -> cannot javac the provider against it."
+  },
+  "wiring_point": {
+    "selector": "android.webkit.WebViewFactory.getProvider() returns the cached sProviderInstance first (if non-null, no throw)",
+    "current_seeders": ["adapter.activity.WebViewProviderFix.install() (J8 type-zero stub)", "adapter.activity.J10eWebView.install() (J10e/J10g enriched no-op)"],
+    "route_a": "OhNWebProviderFix.install() reflects WebViewFactory.sProviderInstance and sets it to OhNWebFactoryProvider (loaded by name); CALL IT AFTER J10eWebView.install() in the bind-fix sequence, gated on NWeb engine readiness (cc-t3 A0). Reflection-seed = the same pattern J8/J10e use, and why (the @hide contract can't be compiled against the public SDK).",
+    "detail": "wiring/wiring.md"
+  },
+  "this_rounds_rule": "Factor the route-a Java surface into an android-free backend contract (mock-able, unit-tested offline) + a thin WebViewProvider adapter that only the framework classpath compiles; seed the provider the way the framework already does (reflection into WebViewFactory.sProviderInstance, after J10e), not by compiling against the public SDK which strips the @hide contract.",
+  "boundaries": "Offline; no deploy; no push. cc-t3 owns the .so (native methods, NWeb loading, A0) + the on-board run. The sink->WebViewClient translation is compile-checked + on-board (not JVM-run under the android.jar stub). Sources read read-only (AOSP android-14 webkit interfaces, deployed framework.jar, existing seeders, cc-t3 A0 roadmap).",
+  "cc": "cc-t3 (M2 native/NWeb/A0 owner)",
+  "landing_paths": "benchmark/2026-10-03-m2-route-a-java/landing-paths.txt"
+}
