@@ -1,0 +1,14 @@
+② ns-order reorder risk: libbionic_compat exports vs OH musl libc (aarch64) overlap
+=====================================================================================
+libbionic_compat (deployed b80 payload d977bd15): 46 exported FUNC/OBJECT (minus _init/_fini).
+  All bionic-specific: android_* (fdsan/log/logger/mallopt/dlwarning/abort_message/reset_stack_guards),
+  __system_property_* (8), add_sysprop_change_callback, create_android_logger, __android_log_security,
+  __memcmp16, __sync_synchronize, __sync_val_compare_and_swap_1, adler32, adler32_combine.
+OH musl libc (aarch64, out/wukong100/.../aarch64-linux-ohos/libc.so): 1873 exported symbols.
+
+comm -12 (symbols in BOTH): <EMPTY>  -> ZERO overlap.
+
+Conclusion: reordering libbionic_compat AHEAD of libc.so in the sealed-child dlns_inherit `shared` list changes the
+binding of NO currently-shared symbol (the two export sets are disjoint). Even adler32/__sync_* are not in musl libc
+(adler32 is zlib, resolved from a separate lib; __sync_* is compiler-rt). The ONLY symbol that would flip after the fix is
+the newly-added sysconf (+getpagesize) — which is exactly the intent. So "reorder" is collateral-free TODAY.
