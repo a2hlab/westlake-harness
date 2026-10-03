@@ -1,0 +1,45 @@
+{
+  "task": "M1 freeze dossier (materials only; does NOT touch knowledge/frozen/). M1 = the [M1-COPY] cross-copy window/Surface lookup in android_graphics_compat_shim.o inside the deployed U13 runtime 18763dd4. Assemble frozen-entry.draft.json (api, source blob + patch, .o + runtime .so SHA, verified apps with screenshot/facts/hilog evidence), README (evidence-first), and the file-split plan. Register after U13 promotion (outer).",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "m1": {
+    "mechanism": "two loaded liboh_adapter_bridge.so copies, each a single last-published-window slot; the compat-shim's resolved copy misses for a multi-window app's top Activity -> empty Surface -> white (the Compose alive-white). [M1-COPY] asks the other copy via dl_iterate_phdr (same-file code at same offset) -> rescued OHNativeWindow -> lit.",
+    "mechanism_source": "benchmark/2026-10-02-m1-session-slots (R3); closure benchmark/2026-10-03-wikipedia-m1-closure"
+  },
+  "identities": {
+    "source_file": "benchmark/2026-10-02-m1-session-slots/runtime/src/android_graphics_compat_shim.cpp",
+    "source_blob": "8ad95199a688a0874f0ef62382a554acdd3b72e8",
+    "source_content_sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+    "source_branch": "master", "source_commit": "64d7e6594b (westlake-harness)",
+    "needle_patch_blob": "7521ab2b231504d640208a4c5b02173c69ba8813",
+    "bridge_alt_patch_blob": "f6545404de0c1223fe7c777a030d8634d843b94a (R1, NOT deployed)",
+    "object": "android_graphics_compat_shim.o = 612236befb06df456eb69b34294df316c310ca3ee3516bf984180a75bfd074ec (baseline/control = 40aa2f5fe5975da4b9accf19c43bb69754fd576b78495e867d77e959983233f1)",
+    "runtime_so_deployed_u13": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae",
+    "runtime_so_path": "/system/android/lib64/liboh_android_runtime.so",
+    "runtime_variants": {"baseline_no_m1": "216b68fb...", "control_u13_minus_m1": "ac59dec0...", "m1_only": "18a77eaa...", "u13_repeat": "18763dd4...fbae"},
+    "build": {"script": "benchmark/2026-10-02-m1-session-slots/runtime/build_runtime_u13.py", "clang_sha256": "b107ce0366299ba5ace7095c19dfed65004415c09c57597fdf5c2b7c79ff3913", "recipe_n4_sha256": "b318681e0973a9c19a02547a0739d087345b7f6e9396cc04ec2a0cdd4f872700"}
+  },
+  "single_variable_proof": "receipt: control (ac59dec0 = all U13 fixes minus M1) shim.o = baseline 40aa2f5f; m1 and u13 shim.o = 612236be -> the shim.o delta IS M1. A' (commit 64d7e6594b): exports identical, undefined +dl_iterate_phdr only, strings +[M1-COPY] only, open-sites 198==198; u13==u13-repeat byte-identical.",
+  "freeze_bar": {
+    "rule": "AGENTS 做事方式 3 / FROZEN.md: >=2 different apps past the wall, >=1 lit at t20, others by log",
+    "verdict": "MET and EXCEEDED: 3 apps pass; 2 lit at t20 by read screenshot (fd-uhabits welcome, wikipedia onboarding); noice(61b) signed lit; every app carries the [M1-COPY] rescue log",
+    "verified_apps": [
+      {"app": "fd-uhabits", "board": "5ea", "k_of_n": "6/6", "t20": "LIT Loop welcome page (read)", "m1_copy": "hilog:26912 sessionId=1243 resolved", "facts": "alive t5=yes t20=yes"},
+      {"app": "wikipedia", "board": "5cd", "k_of_n": "6/6", "t20": "LIT onboarding globe (read)", "m1_copy": "hilog:20769 sessionId=954 resolved", "facts": "alive t5=yes t20=yes"},
+      {"app": "noice", "board": "61b", "k_of_n": "1/1", "t20": "signed LIT welcome page", "m1_copy": "hilog:33018 sessionId=964 resolved", "facts": "alive t5=yes t20=yes"},
+      {"app": "fd-noice", "board": "5ea", "k_of_n": "6/6", "t20": "corroborating (lottery-tagged)", "m1_copy": "hilog:15830 sessionId=1255 resolved"}
+    ],
+    "caveat": "Compose runs foreground_unconfirmed (no view-tree/input dump) = capture limitation not regression; lit own-UI supported (signed t20 + controls phase), input dispatch not programmatically proven; one tap/scroll probe at freeze would certify interactivity.",
+    "signoff": "benchmark/2026-10-03-u13-stage-a-decision/outer-stage-a-common.json (+ -61b.json)"
+  },
+  "granularity_and_split": {
+    "rule": "FROZEN.md: a fix inside a multi-purpose artifact freezes the SOURCE blob, not the whole artifact; if inside a SHARED file, move it into its own file first, re-verify, then freeze",
+    "m1_situation": "inside the multi-purpose liboh_android_runtime.so, in the SHARED android_graphics_compat_shim.cpp (also SQLite/AAssetManager/BBQ/EGL); M1 is an isolated namespace block (needle 7521ab2b)",
+    "preferred": "split into android_graphics_m1_copy.cpp, rebuild, re-verify (new .o carries M1; shim.o returns to 40aa2f5f; runtime abi-18763dd4; 3 apps stay lit), freeze that new file's source blob (like FZ-003/004/006/007/008)",
+    "fallback": "if deferred, register shared-file source blob 8ad95199 + needle 7521ab2b + object 612236be + runtime 18763dd4 as context; weaker (pins shared file content); split at first U15 rebuild",
+    "detail": "evidence/split-plan.md"
+  },
+  "registration": "the OUTER's, AFTER U13 promotes to the unified state (FROZEN.md: register first, deploy second; outer assigns FZ-00N, next free = FZ-009). This dossier does not modify knowledge/frozen/.",
+  "this_rounds_rule": "Freeze a runtime fix at the source granularity that keeps other fixes landable: for a fix buried in a shared file inside a multi-purpose .so, the materials must carry the isolated needle (to lift it into its own file), the single-variable .o proof that the object delta IS the fix, and the A' faithfulness of the built .so -- so the outer can split-then-freeze a source blob, not freeze a whole artifact.",
+  "boundaries": "Offline; no board; no push; does NOT modify knowledge/frozen/. Split-to-own-file is a build step for the runtime owner (cc-t3). Sources read read-only (westlake-harness m1-session-slots source/patch/receipt + frozen schema; u13-stage-a-decision signoff; westlake-harness-u7-executor stage-A runs + t20 jpegs).",
+  "landing_paths": "benchmark/2026-10-03-m1-freeze-dossier/landing-paths.txt"
+}

@@ -1,0 +1,56 @@
+M1 FREEZE — pinned identities (materials only; the outer registers after U13 promotion)
+=======================================================================================
+M1 = the [M1-COPY] cross-copy window/Surface lookup in the runtime compat-shim
+(android_graphics_compat_shim.cpp), carried in the deployed U13 runtime 18763dd4.
+$WORKSPACES = the orca/workspaces root on the build Mac.
+
+SOURCE (the thing to freeze — fix lives inside the multi-purpose liboh_android_runtime.so, so per the
+granularity rule freeze the implementing SOURCE blob, not the whole .so):
+  repo            westlake-harness (branch master)
+  commit          64d7e6594b  "M1 route (c) (cc-t3): U13 runtime candidate 18763dd4 = aa149019 + M1
+                   compat_shim.o; baseline 216b68fb and control ac59dec0 reproduce from source; only
+                   compat_shim.o + asset_manager.o differ; exports identical, undefined +dl_iterate_phdr,
+                   strings +[M1-COPY], open sites 198=198 (landed from westlake-harness-t3@00a09399c4)"
+  source file     benchmark/2026-10-02-m1-session-slots/runtime/src/android_graphics_compat_shim.cpp
+    git blob      8ad95199a688a0874f0ef62382a554acdd3b72e8
+    content sha   e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658   (= receipt inputs.m1_shim)
+    NOTE          SHARED file (also holds SQLite weak stub, AAssetManager, BBQ Surface, EGL). Per the
+                  granularity rule this must be SPLIT into its own file before freeze -> see split-plan.md.
+  M1 needle       benchmark/2026-10-02-m1-session-slots/runtime/patch/android_graphics_compat_shim.cpp.patch
+    git blob      7521ab2b231504d640208a4c5b02173c69ba8813
+    (isolates exactly the [M1-COPY] addition at @@ -442 +442,90 @@ — the basis for the split)
+  alt route       benchmark/2026-10-02-m1-session-slots/bridge-m1.patch  (R1, oh_window_manager_client.cpp)
+    git blob      f6545404de0c1223fe7c777a030d8634d843b94a
+    NOTE          NOT deployed (R1 blocked: no 84695d62 bridge build chain). Kept for a future bridge chain.
+
+CHANGED OBJECT (single-variable proof that the .o delta IS M1):
+  android_graphics_compat_shim.o
+    M1 / U13      612236befb06df456eb69b34294df316c310ca3ee3516bf984180a75bfd074ec
+    baseline      40aa2f5fe5975da4b9accf19c43bb69754fd576b78495e867d77e959983233f1
+  PROOF: runtime-build-receipt-u13.json variants — control (ac59dec0, = all U13 fixes MINUS M1) has
+  shim.o = 40aa2f5f = baseline; m1 and u13 have shim.o = 612236be. So between control and the deployed
+  U13 the ONLY changed shim object is M1. (asset_manager.o also differs = the separate AAssetManager fix,
+  not M1.)
+
+RUNTIME .so (multi-purpose; NOT frozen whole — listed as provenance + the dispatch asked for the .so SHA):
+  deployed U13    18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae   (carries [M1-COPY] + AAssetManager + all U13 fixes)
+    on-board path /system/android/lib64/liboh_android_runtime.so
+  m1 variant      18a77eaab50124f6edb3f7ff04970f9618e6e0a1f43ac05eb92079a28e33e477   (baseline + M1 only)
+  baseline        216b68fbb3a40b5ac7a90b726f6d8184fa7cdba848ccde56c809abd400a660df   (no M1)
+  control         ac59dec077195bc7678c712505b0d802c56e07edea8d049be4a188d20485b7bf   (U13 fixes minus M1; shim.o == baseline)
+  u13-repeat      18763dd4...fbae   (byte-identical reproduction of the deployed U13 -> deterministic build)
+
+BUILD (persist the recipe, not just the product — AGENTS "只留产物会让修复锁死在构建机"):
+  build script    benchmark/2026-10-02-m1-session-slots/runtime/build_runtime_u13.py
+  receipt         benchmark/2026-10-02-m1-session-slots/runtime/runtime-build-receipt-u13.json
+  toolchain clang b107ce0366299ba5ace7095c19dfed65004415c09c57597fdf5c2b7c79ff3913
+  recipe_n4       b318681e0973a9c19a02547a0739d087345b7f6e9396cc04ec2a0cdd4f872700
+  A' faithfulness (from commit 64d7e6594b): exports identical vs baseline, undefined symbols add only
+    dl_iterate_phdr, strings add only [M1-COPY], dlopen/dlns open-sites 198 == 198 (no new load edges).
+
+DECIsion signoff (the verification runs): benchmark/2026-10-03-u13-stage-a-decision/
+  outer-stage-a-common.json / outer-stage-a-61b.json (signed 2026-10-03):
+    "fd-uhabits": "6/6 own welcome page (reference: alive-white-window; M1 runtime shim)"
+    "noice (61b)": "1/1 own welcome page (reference: alive-white-window; M1)"
+    "wikipedia":  "6/6 (window1)"   (+ window2 6/6)
+    "fd-noice":   "6/6 (reference: lottery)"   (corroborating; Compose white->lit same cohort)

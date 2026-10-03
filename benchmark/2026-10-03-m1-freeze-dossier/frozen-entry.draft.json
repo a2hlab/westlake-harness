@@ -1,0 +1,107 @@
+{
+  "_dossier_note": "DRAFT — materials only. Do NOT register from here. Registration is the outer loop's, AFTER U13 promotes to the unified state (FROZEN.md: register first, deploy second). The outer assigns the FZ-00N id (next free = FZ-009). Per the granularity rule the M1 code should be SPLIT into its own source file before freeze (see evidence/split-plan.md); the `sources` below give both the preferred split target and the fallback shared-file blob.",
+  "id": "FZ-009 (proposed; outer assigns at registration)",
+  "api": "M1 cross-copy window/Surface rescue for multi-window route-A apps: when the runtime compat-shim's resolved copy of liboh_adapter_bridge.so's OHWindowManagerClient returns null for a sessionId (the process has two loaded bridge instances, each with its own sessions_ answering only through a single last-published-window slot, so a multi-window app's first-created/top Activity misses and gets an empty Surface = the 'alive-but-white'), the shim asks every OTHER loaded bridge copy (located via dl_iterate_phdr: same file = byte-identical code at the same executable offset) and returns the first non-null OHNativeWindow -> the top Activity gets its real Surface -> lit. Only the null-miss path changes; a non-null answer is returned as before.",
+  "frozen_at": "PENDING (U13 promotion to unified state)",
+  "granularity": "source-file blob (fix is inside the multi-purpose liboh_android_runtime.so). PREFERRED: split [M1-COPY] into its own file and freeze that blob (evidence/split-plan.md). FALLBACK: pin shared-file source blob + M1 needle blob + object SHA.",
+  "sources": [
+    {
+      "repo": "westlake-harness",
+      "branch": "master",
+      "commit": "64d7e6594b",
+      "repo_path": "benchmark/2026-10-02-m1-session-slots/runtime/src/android_graphics_compat_shim.cpp",
+      "blob": "8ad95199a688a0874f0ef62382a554acdd3b72e8",
+      "content_sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+      "role": "R3 [M1-COPY] source snapshot (SHARED file -> SPLIT before freeze)"
+    },
+    {
+      "repo": "westlake-harness",
+      "branch": "master",
+      "commit": "64d7e6594b",
+      "repo_path": "benchmark/2026-10-02-m1-session-slots/runtime/patch/android_graphics_compat_shim.cpp.patch",
+      "blob": "7521ab2b231504d640208a4c5b02173c69ba8813",
+      "role": "the M1-only needle (@@ -442 +442,90 @@) — isolates exactly the change; basis for the file split"
+    },
+    {
+      "repo": "westlake-harness",
+      "branch": "master",
+      "commit": "64d7e6594b",
+      "repo_path": "benchmark/2026-10-02-m1-session-slots/bridge-m1.patch",
+      "blob": "f6545404de0c1223fe7c777a030d8634d843b94a",
+      "role": "alternative bridge route (R1, oh_window_manager_client.cpp) — NOT deployed (no 84695d62 build chain); kept for a future bridge chain"
+    }
+  ],
+  "object": {
+    "name": "android_graphics_compat_shim.o",
+    "sha256": "612236befb06df456eb69b34294df316c310ca3ee3516bf984180a75bfd074ec",
+    "baseline_sha256": "40aa2f5fe5975da4b9accf19c43bb69754fd576b78495e867d77e959983233f1",
+    "single_variable_proof": "runtime-build-receipt-u13.json: control variant (ac59dec0, all U13 fixes MINUS M1) has shim.o = baseline 40aa2f5f; m1 and u13 variants have 612236be -> the shim.o delta IS M1 (asset_manager.o differs separately = the AAssetManager fix, not M1)"
+  },
+  "artifacts": [
+    {
+      "path": "/system/android/lib64/liboh_android_runtime.so",
+      "sha256": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae",
+      "role": "deployed U13 runtime (multi-purpose; NOT frozen whole) — carries [M1-COPY] + AAssetManager + all U13 fixes",
+      "variants": {
+        "baseline_no_m1": "216b68fbb3a40b5ac7a90b726f6d8184fa7cdba848ccde56c809abd400a660df",
+        "control_u13_minus_m1": "ac59dec077195bc7678c712505b0d802c56e07edea8d049be4a188d20485b7bf",
+        "m1_only": "18a77eaab50124f6edb3f7ff04970f9618e6e0a1f43ac05eb92079a28e33e477",
+        "u13_repeat_reproduced": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae"
+      }
+    }
+  ],
+  "build": {
+    "script": "westlake-harness benchmark/2026-10-02-m1-session-slots/runtime/build_runtime_u13.py",
+    "receipt": "westlake-harness benchmark/2026-10-02-m1-session-slots/runtime/runtime-build-receipt-u13.json",
+    "toolchain_clang_sha256": "b107ce0366299ba5ace7095c19dfed65004415c09c57597fdf5c2b7c79ff3913",
+    "recipe_n4_sha256": "b318681e0973a9c19a02547a0739d087345b7f6e9396cc04ec2a0cdd4f872700",
+    "a_prime_faithfulness": "commit 64d7e6594b: exports identical vs baseline; undefined symbols add only dl_iterate_phdr; strings add only [M1-COPY]; dlopen/dlns open-sites 198==198 (no new load edges); u13 == u13-repeat byte-identical (deterministic)"
+  },
+  "source_record": "westlake-harness branch master commit 64d7e6594b, benchmark/2026-10-02-m1-session-slots/{runtime/src/android_graphics_compat_shim.cpp, runtime/patch/android_graphics_compat_shim.cpp.patch, bridge-m1.patch, runtime/build_runtime_u13.py, runtime/runtime-build-receipt-u13.json}; mechanism benchmark/2026-10-02-m1-session-slots; closure benchmark/2026-10-03-wikipedia-m1-closure; verification benchmark/2026-10-03-u13-stage-a-decision",
+  "verified_apps": [
+    {
+      "app": "fd-uhabits",
+      "board": "5ea",
+      "change": "alive-white (empty Surface) -> own 'welcome' page (Loop Habit Tracker 欢迎)",
+      "k_of_n": "6/6",
+      "t20": "westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window1/u13-A1-20261003T030721/5ea/runner/lottery-fd-uhabits-4/20261003T034306-b445b078/5ea34a4500000000000000001123012c/fd-uhabits/t20.jpeg",
+      "m1_copy_hilog": "lottery-fd-uhabits-4 hilog.txt:26912 [M1-COPY] sessionId=1243 resolved by bridge copy base=0000007F29A00000 (resolved copy base=0000007F205C0000 returned null)",
+      "facts": "fd-uhabits  shots 2/2  alive t5=yes t20=yes  child_hilog=4127  foreground_unconfirmed",
+      "screenshot_read": true
+    },
+    {
+      "app": "wikipedia",
+      "board": "5cd",
+      "change": "alive-white (empty Surface) -> own onboarding (全世界的知识 + globe); baseline lottery 2/3 before M1",
+      "k_of_n": "6/6 (window1; window2 6/6)",
+      "t20": "westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window1/u13-A1-20261003T030721/5cd/runner/lottery-wikipedia-6/20261003T034524-dcdac70d/5cd1e3dd00000000000000000923012c/wikipedia/t20.jpeg",
+      "m1_copy_hilog": "lottery-wikipedia-6 hilog.txt:20769 [M1-COPY] sessionId=954 resolved by bridge copy base=0000007F03000000 (resolved copy base=0000007EF7240000 returned null)",
+      "facts": "wikipedia  shots 2/2  alive t5=yes t20=yes  child_hilog=6530  foreground_unconfirmed",
+      "screenshot_read": true
+    },
+    {
+      "app": "noice",
+      "board": "61b",
+      "change": "alive-white -> own 'welcome' page",
+      "k_of_n": "1/1",
+      "t20": "westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/window2-61b/u13-A2-20261003T042230/61b/runner/lottery-noice-1/20261003T050749-77d030cb/61b0657200000000000000000324012c/noice/t20.jpeg",
+      "m1_copy_hilog": "lottery-noice-1 hilog.txt:33018 [M1-COPY] sessionId=964 resolved by bridge copy base=0000007F2DD00000 (resolved copy base=0000007F21600000 returned null)",
+      "facts": "noice  shots 2/2  alive t5=yes t20=yes  child_hilog=5959  foreground_unconfirmed",
+      "screenshot_read": false
+    },
+    {
+      "app": "fd-noice",
+      "board": "5ea",
+      "change": "corroborating (same Compose cohort); [M1-COPY] fired",
+      "k_of_n": "6/6 (tagged 'reference: lottery')",
+      "m1_copy_hilog": "lottery-fd-noice-1 hilog.txt:15830 [M1-COPY] sessionId=1255 resolved by bridge copy ...",
+      "screenshot_read": false
+    }
+  ],
+  "freeze_bar": "AGENTS 做事方式 3 / FROZEN.md: >=2 different apps past the wall, >=1 lit at t20, others by log. MET and EXCEEDED: 3 apps pass; 2 lit at t20 by read screenshot (fd-uhabits welcome + wikipedia onboarding), noice (61b) signed lit; every app carries the [M1-COPY] rescue log (the API-level proof).",
+  "mechanism": "two loaded liboh_adapter_bridge.so instances, single last-published-window slot each; the compat-shim's resolved copy misses for a multi-window app's top Activity -> empty Surface -> white. [M1-COPY] asks the other copy (dl_iterate_phdr, same-file code at same offset) -> rescued Surface. (Mechanism: benchmark/2026-10-02-m1-session-slots; closure: benchmark/2026-10-03-wikipedia-m1-closure.)",
+  "caveat": "Compose runs recorded status=foreground_unconfirmed (no view-tree/input dump) — a capture limitation, not a regression. 'lit own-UI' is supported (signed t20 + controls phase); full input-dispatch not programmatically proven. If freeze must certify interactivity, run one tap/scroll probe at freeze time.",
+  "version": 1,
+  "status": "draft-pending-promotion",
+  "history": []
+}

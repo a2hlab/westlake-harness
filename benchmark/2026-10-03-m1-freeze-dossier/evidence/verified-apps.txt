@@ -1,0 +1,47 @@
+M1 VERIFIED APPS — ≥2 different apps past the wall, ≥1 lit at t20 (freeze bar MET/EXCEEDED)
+===========================================================================================
+Wall: "alive but white" — a multi-window app's first-created (top) Activity gets an empty Surface because
+the runtime compat-shim's resolved bridge copy answers from a single last-published-session slot. M1
+([M1-COPY]) rescues it by asking the OTHER loaded bridge copy. Per app: the runtime log confirms the
+rescue fired ([M1-COPY] ... resolved by bridge copy ... (resolved copy ... returned null)), the first
+fatal is gone (no empty-Surface white), and t20 shows own UI.
+$WORKSPACES = the orca/workspaces root on the build Mac. Runs under
+$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u13-stage-a-plan/.
+
+(1) fd-uhabits — LIT at t20 (screenshot READ)  [bar: the lit app]
+  board    5ea34a45
+  run      window1/u13-A1-20261003T030721/5ea/runner/lottery-fd-uhabits-4/20261003T034306-b445b078/.../fd-uhabits
+  t20      .../fd-uhabits/t20.jpeg   = Loop Habit Tracker "欢迎" welcome page (Loop icon + "Loop 习惯记录能帮你养成和保持好习惯。" + nav)
+  k/n      6/6 own welcome page (signed stage-a-decision; reference alive-white-window; "M1 runtime shim")
+  [M1-COPY] hilog.txt:26912  "[M1-COPY] sessionId=1243 resolved by bridge copy base=0000007F29A00000 (resolved copy base=0000007F205C0000 returned null)"
+  facts    "fd-uhabits  shots 2/2  alive t5=yes t20=yes  child_hilog=4127  foreground_unconfirmed"
+
+(2) wikipedia — LIT at t20 (screenshot READ)  [bar: the 2nd lit app -> ≥2 lit, exceeds]
+  board    5cd1e3dd
+  run      window1/u13-A1-20261003T030721/5cd/runner/lottery-wikipedia-6/20261003T034524-dcdac70d/.../wikipedia
+  t20      .../wikipedia/t20.jpeg   = Wikipedia onboarding "全世界的知识" + globe (Compose UI drawn into the rescued Surface)
+  k/n      6/6 (window1; window2 6/6) ; baseline lottery 2/3 before M1
+  [M1-COPY] hilog.txt:20769  "[M1-COPY] sessionId=954 resolved by bridge copy base=0000007F03000000 (resolved copy base=0000007EF7240000 returned null)"
+  facts    "wikipedia  shots 2/2  alive t5=yes t20=yes  child_hilog=6530  foreground_unconfirmed"
+
+(3) noice — LIT at t20 (signed), board 61b  [third app; confirms cross-board]
+  board    61b06572
+  run      window2-61b/u13-A2-20261003T042230/61b/runner/lottery-noice-1/20261003T050749-77d030cb/.../noice
+  t20      .../noice/t20.jpeg
+  k/n      1/1 own welcome page (signed stage-a-decision; reference alive-white-window; "M1")
+  [M1-COPY] hilog.txt:33018  "[M1-COPY] sessionId=964 resolved by bridge copy base=0000007F2DD00000 (resolved copy base=0000007F21600000 returned null)"
+  facts    "noice  shots 2/2  alive t5=yes t20=yes  child_hilog=5959  foreground_unconfirmed"
+
+corroborating (same Compose cohort, M1 rescue fired):
+  fd-noice — 6/6, board 5ea, lottery-fd-noice-1 hilog.txt:15830 "[M1-COPY] sessionId=1255 resolved by bridge copy ...". Tagged "reference: lottery" in the decision.
+
+BAR CHECK (freeze rule, AGENTS 做事方式 3 / FROZEN.md): ">=2 different apps pass the wall, >=1 lit at t20,
+others by log (API failure gone, first fatal moved)". Here THREE apps pass; TWO are lit at t20 by read
+screenshot (fd-uhabits welcome + wikipedia onboarding) and a third (noice, 61b) is signed lit — so the
+bar is EXCEEDED. Every app also carries the [M1-COPY] rescue log (the API-level proof, not just the app).
+
+Interactive caveat (honest, from wikipedia-m1-closure): the stage-A capture recorded
+status=foreground_unconfirmed and did not dump the view tree/input for these Compose runs — a capture
+limitation, NOT a regression. "lit own-UI" is firmly supported (signed t20 + controls phase); full input
+dispatch is not programmatically proven here. If freeze must certify interactivity, run one tap/scroll
+probe at freeze time; the lit+foreground signing is already the accepted bar.
