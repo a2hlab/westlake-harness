@@ -1,0 +1,114 @@
+{
+ "lane": "cc-t3",
+ "issue": 90,
+ "date": "2026-10-03",
+ "kind": "runtime-jar",
+ "base": {
+  "jar": "oh-adapter-runtime-u14-v1.jar",
+  "sha256": "0349eb834e66bc1bf142fd31f08aa0c8a0536534e3ec6b01b5dcc1d930b0a0d4"
+ },
+ "release": {
+  "path": "$WORKSPACES/westlake-inputs/generations/u15-jar-v1/oh-adapter-runtime-u15-v1.jar",
+  "sha256": "20e748e57c6ee8bd0b97dcfff074c3a1c001dd727cbcee6a754f60a598642770",
+  "deterministic_two_builds": true,
+  "bcp": false
+ },
+ "added_classes": [
+  "adapter/activity/TrampolineFinishOrder",
+  "$FinishHold",
+  "$FinishHold$1",
+  "$Held",
+  "$StartObserver"
+ ],
+ "needles": [
+  {
+   "file": "B7BindFixes",
+   "insert": "TrampolineFinishOrder.install() after OwnProviderLocal.install()"
+  },
+  {
+   "file": "AppSchedulerBridge.nativeOnScheduleLaunchAbility",
+   "insert": "v39 = TrampolineFinishOrder.controller(ActivityClientControllerAdapter.getInstance())"
+  },
+  {
+   "file": "AppSchedulerBridge.nativeOnScheduleLaunchAbility",
+   "insert": "TrampolineFinishOrder.onLaunchAbility(bundleName, abilityName) at entry"
+  },
+  {
+   "file": "AppSchedulerBridge.nativeOnScheduleLaunchAbility",
+   "insert": "AliasTargetTheme.apply(ai) after source line 1748 sEnrichedTheme overwrite, before J10dTheme.restore"
+  }
+ ],
+ "gates": {
+  "class_diff_vs_0349eb83": "0 dropped, 0 reshaped, 0 added after allow 5, 0 frozen broken",
+  "class_diff_vs_bbc3f530": "0 dropped, 0 reshaped, 0 added after allow 8, 0 frozen broken",
+  "check_frozen": "8 entries, 0 violations",
+  "smali_changed": [
+   "adapter/activity/AppSchedulerBridge.smali",
+   "adapter/activity/B7BindFixes.smali"
+  ]
+ },
+ "host_art": {
+  "test_jar_sha256": "bad7d3a64cbd46adb09713f7918028e25505811c220c7691c288b0af38881a0d",
+  "u15bcp": {
+   "u15-v1": {
+    "failures": 0,
+    "rc": 0
+   },
+   "u14-v1": {
+    "failures": 2,
+    "rc": 1,
+    "failed": [
+     "1 trampoline",
+     "6 duplicate"
+    ]
+   }
+  },
+  "u14board": {
+   "u15-v1": {
+    "failures": 0,
+    "rc": 0
+   },
+   "u14-v1": {
+    "failures": 2,
+    "rc": 1,
+    "failed": [
+     "1 trampoline",
+     "6 duplicate"
+    ]
+   }
+  }
+ },
+ "fd_api": {
+  "finding": "AliasTargetTheme already writes 0x7f120252 (line 1644); line 1748 sEnrichedTheme overwrites with app theme 0x1030237; J10dTheme.restore skips aliases",
+  "cc_wiki_patch": "not used: its needle (LaunchActivityAliasProjection, before line 1748) would be overwritten the same way; its new reader duplicates ManifestJsonFallback.activityTheme",
+  "host_test": "not runnable (AssetManager native); order checked statically; T3 on board"
+ },
+ "chessclock_declaration": {
+  "included": false,
+  "reason": "ActivityManagerAdapter is a BCP class (oh-adapter-framework 2257b835); runtime JAR cannot add members; 1 key, first fatal stays InvalidDisplayException -> predicted move 0",
+  "note": "bridge JNI_OnLoad runs twice in that pid (main, then MediaPlayer.<clinit> loadLibrary)"
+ },
+ "prediction": {
+  "x": "lit medium",
+  "trampoline_keys_35": "first fatal 0, -1.7..2.7 s, no stranded process",
+  "fd-api": "moves past AppCompat theme (high)",
+  "alias_theme_changes": [
+   "wikipedia",
+   "fd-notes",
+   "fd-gallery",
+   "fd-filemanager",
+   "fd-calendar",
+   "fd-musicplayer",
+   "fd-im-vector-app",
+   "fd-fennec_fdroid"
+  ]
+ },
+ "board_criteria": [
+  "no [ARM938] ability is the last for x",
+  "no second pid / AttachApplication",
+  "[TFO] held -> released by launch",
+  "x t20 own UI",
+  "fd-api no Theme.AppCompat ISE",
+  "wikipedia + Fossify splash keys still lit"
+ ]
+}
