@@ -93,3 +93,13 @@ precondition is confirmed (non-BCP). Board run is a future window (declare + 2-m
 - **Pending cc-wiki**: fill `JAR_SRC`/`SHIM_SRC`/`WORKER_SRC` filenames + `A1_JAR_SHA`/`A1_SHIM_SHA`/`A1_WORKER_SHA`
   (env or edit). A placeholder guard refuses to run until the three SHAs are set. Then: declare + 2-min + lock (board after
   18:15, cx-t0 U14 window 5 holds 5ea/5cd until ~18:14), `A1_EXPECT_FP=821de739cf81`, run data: window then Wikipedia.
+
+## A1 overlay wired (cc-t3, 2026-10-03)
+- Base jar (restore target) = U13 deployed `oh-adapter-runtime.jar` `bbc3f530…62f9b` (A0 w19 fingerprint L95); run_a1.sh
+  now gates `ORIG_JAR_SHA == JAR_BASE_SHA` before overlaying.
+- shim `libwl_nweb_backend_shim.so` = `88c73f59…a770`; worker `libwl_nweb_backend.so` = `6f6c9335…a879`
+  (cc-wiki `5a37a50be9`, hw248 `cc-wiki-m2-nweb-rev` (under hw248 $HOME); pulled to build/overlay/). SHIM_SRC/WORKER_SRC +
+  A1_SHIM_SHA/A1_WORKER_SHA filled in run_a1.sh.
+- **Still pending: `A1_JAR_SHA`** (cc-wiki's candidate jar with org.westlake.webview.* + OhNWebProviderFix). The placeholder
+  guard refuses to run until it's set. When it lands: fill A1_JAR_SHA, declare + 2-min, lock a free board
+  (A1_EXPECT_FP=821de739cf81), run data: window then Wikipedia.

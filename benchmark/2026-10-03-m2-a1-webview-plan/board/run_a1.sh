@@ -29,14 +29,15 @@ RT_REF=/system/android/lib64/libwestlake_jni_gapfill.so            # an existing
 JAR_SRC=$HERE/build/overlay/oh-adapter-runtime.jar
 JAR_TARGET=/system/android/framework/oh-adapter-runtime.jar
 JAR_PUSH=/data/local/tmp/oh-adapter-runtime.jar                    # writable bind-mount source (labelled like deployed)
-JAR_SHA=${A1_JAR_SHA:-TBD_CCWIKI}                                  # SHA of the candidate oh-adapter-runtime.jar
-SHIM_SRC=$HERE/build/overlay/libwl_a1_webview.so                   # cc-wiki shim filename (adjust to the delivered name)
-SHIM_TARGET=/system/android/lib64/libwl_a1_webview.so
-SHIM_PUSH=/data/local/tmp/libwl_a1_webview.so
-SHIM_SHA=${A1_SHIM_SHA:-TBD_CCWIKI}
-WORKER_SRC=$HERE/build/overlay/libwl_a1_worker.so                  # cc-wiki worker filename (adjust to the delivered name)
-WORKER_DST=/data/local/tmp/libwl_a1_worker.so
-WORKER_SHA=${A1_WORKER_SHA:-TBD_CCWIKI}
+JAR_SHA=${A1_JAR_SHA:-TBD_CCWIKI}                                  # cc-wiki CANDIDATE jar (org.westlake.webview.* + OhNWebProviderFix); STILL PENDING
+JAR_BASE_SHA=bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b   # U13 deployed base jar the overlay sits on (A0 w19 fp L95); restore target
+SHIM_SRC=$HERE/build/overlay/libwl_nweb_backend_shim.so           # cc-wiki shim (5a37a50be9; hw248 cc-wiki-m2-nweb-rev (hw248 $HOME))
+SHIM_TARGET=/system/android/lib64/libwl_nweb_backend_shim.so
+SHIM_PUSH=/data/local/tmp/libwl_nweb_backend_shim.so
+SHIM_SHA=${A1_SHIM_SHA:-88c73f592f488c44572251d8a4974194e31685457bfb5e63ff778796499ca770}
+WORKER_SRC=$HERE/build/overlay/libwl_nweb_backend.so              # cc-wiki worker (6f6c9335)
+WORKER_DST=/data/local/tmp/libwl_nweb_backend.so
+WORKER_SHA=${A1_WORKER_SHA:-6f6c93352de4a2d97bd52da52c706bd133d4884a7538a0b85de8162c6ce1a879}
 
 RECIPE=$HERE/../2026-09-28-bms-route-deploy/batch/prepare_sandbox.sh
 PKG_DIRS="/data/app/el1/100/base/$PKG /data/app/el1/100/database/$PKG /data/app/el2/100/base/$PKG /data/app/el2/100/database/$PKG /data/app/el2/100/sharefiles/$PKG /data/app/el3/100/base/$PKG /data/app/el3/100/database/$PKG /data/app/el4/100/base/$PKG /data/app/el4/100/database/$PKG /data/app/el2/100/log/$PKG /data/app/el1/bundle/public/$PKG"
@@ -72,6 +73,7 @@ mount_overlays() {
   exists "$JAR_TARGET" || { echo "[a1] $JAR_TARGET absent (expected a deployed non-BCP jar) -> stop"; return 1; }
   ORIG_JAR_SHA=$(H "sha256sum $JAR_TARGET 2>/dev/null | cut -d' ' -f1" | tr -d '\r')
   echo "[a1] original $JAR_TARGET sha=$ORIG_JAR_SHA (recorded for restore)"
+  [ "$ORIG_JAR_SHA" = "$JAR_BASE_SHA" ] || { echo "[a1] on-board jar $ORIG_JAR_SHA != expected U13 base $JAR_BASE_SHA -> stop (wrong base / not U13)"; return 1; }
   T=120 hdc -t "$SERIAL" file send "$JAR_SRC" "$JAR_PUSH" >/dev/null || { echo "[a1] jar send failed"; return 1; }
   H "chcon $(ctx_of "$JAR_TARGET") $JAR_PUSH" 2>/dev/null || H "chcon $ctx $JAR_PUSH"
   local r; r=$(H "mount -o bind $JAR_PUSH $JAR_TARGET && echo OK || echo FAIL" | tr -d '\r')
