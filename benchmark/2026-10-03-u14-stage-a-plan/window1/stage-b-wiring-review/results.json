@@ -1,0 +1,78 @@
+{
+  "reviewed_master_commit": "f5630c922921e5840f804e717a20730073142ff4",
+  "scope": "U14 Stage B wiring; no authorization, enablement or device writes",
+  "tests": {
+    "mac": {
+      "tests": 16,
+      "exit_code": 0
+    },
+    "vm": {
+      "tests": 16,
+      "exit_code": 0
+    }
+  },
+  "sources": {
+    "common/transaction_backend.py": "2941e357f936164062a03471a08df05f823b323bf37a274b309f6c5bf0ab1130",
+    "61b/transaction_backend.py": "2941e357f936164062a03471a08df05f823b323bf37a274b309f6c5bf0ab1130",
+    "promotion_hook_u14_runtime.py": "a8d33d116eea56fea24806a37088e74186649db6b80688230efc27069e036ca2",
+    "promotion_dispatch_u14.py": "d2b4ee9249f8915a2437a4eed82e2370cfd601770993c90fc69791650cdc7a62",
+    "review_wait_u14.py": "e4b4f935cc421927aff78dbaf8ca55faadeb9f93a8493f8748d34c1a55053e69",
+    "retention_criteria.py": "36789821f9ac71d01aaab1f73a48642c0a090191c8439c916d90040bba2755fa",
+    "test_promotion_u14.py": "304c8d671d7828391d533a23de2d9919379e354fab2eea1577b4542a879f3b14"
+  },
+  "restoration_measurements": [
+    {
+      "board": "5ea",
+      "before_unlock_log_birthtime": 1791002473.1017368,
+      "finish_json_mtime": 1791002952.1289914,
+      "seconds": 479.027,
+      "evidence_root": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u14-stage-a-plan/window1/u14-A1-r3-20261003T120358/5ea"
+    },
+    {
+      "board": "5cd",
+      "before_unlock_log_birthtime": 1791002473.2923334,
+      "finish_json_mtime": 1791002923.5582364,
+      "seconds": 450.266,
+      "evidence_root": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u14-stage-a-plan/window1/u14-A1-r3-20261003T120358/5cd"
+    },
+    {
+      "board": "61b",
+      "before_unlock_log_birthtime": 1791002473.0888565,
+      "finish_json_mtime": 1791002920.8001437,
+      "seconds": 447.711,
+      "evidence_root": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u14-stage-a-plan/window1/u14-A1-r3-20261003T120358/61b"
+    }
+  ],
+  "findings": [
+    {
+      "id": "B-TIME-001",
+      "severity": "P1",
+      "location": "review_wait_u14.py:48-49,55-60",
+      "problem": "Waiting until lock+24min reserves 6min, less than all three observed full U13 recoveries (447.7..479.0s). The identical rollback/321 identity/recovery smoke/final sequence can exceed the strict 30min window after signature timeout.",
+      "requested_change": "Before enabling, shorten signature wait deadline and use a measured conservative reserve >=10min; keep all recovery gates."
+    },
+    {
+      "id": "B-PREFLIGHT-002",
+      "severity": "P2",
+      "location": "promotion_hook_u14_runtime.py:92-100",
+      "problem": "Admission reads summarized Mac/VM gate receipts and u7_executor.policy_binding but omits executor native_tickets/assert_unchanged. Native exceptions/checker bytes are bound by deployment_native_gate.binding, not u7_executor.policy_binding. The Stage A backend checks these tickets; Stage B hook bypasses that backend admission.",
+      "impact": "Production executor still recomputes native gates before deployment, so this is a pre-lock freshness gap rather than a demonstrated bypass. Stale offline proof can pass dispatcher and only be detected/recomputed after LOCK.",
+      "requested_change": "Read each full executor receipt, require deployable/gates_passed and assert_unchanged on candidate+baseline native tickets before LOCK, as Stage A does."
+    }
+  ],
+  "prerequisites": [
+    "copy approved r3 smoke specs (optional 0x, M6 record-only) and rebind composition SHAs; captured old specs are explicitly documented as not executable final specs",
+    "fresh bound Mac+VM production receipts",
+    "signed complete 126-key Stage A decision, schema2 process report and exact unknown explanations",
+    "separate Stage B authorization and fresh same-board/window HW/ZZ screenshot signature"
+  ],
+  "checked": [
+    "correct armed per-board U13 restoration bundles and321/319 maps",
+    "candidate322/320 identity/fingerprint exact gates",
+    "variant runner configure redirects VM callbacks correctly",
+    "Stage A126 reference coverage, schema2 and any-pid failure hard veto",
+    "same-board/window smoke/identity/signature SHA retention; missing/stale/malformed signature restores",
+    "both compositions and all three plans remain disabled"
+  ],
+  "verdict": "Two operational wiring changes required before enablement; reviewed disabled packet is coherent, not Stage B authorization"
+}
