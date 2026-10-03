@@ -1,0 +1,35 @@
+{
+  "task": "M2 route-a integration draft for a FUTURE U version (not U14/U15/U16): wiring (JAR + provider switch + fallback), native deploy (paths/loader/ns), static gates (deployed_class_diff/check_frozen/new-native-admissions candidate), first-board test plan (A0-style 10 methods + Wikipedia, hardcoded criteria), predicted-light keys.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "inputs": ["benchmark/2026-10-03-m2-route-a-java (provider)", "benchmark/2026-10-03-m2-route-a-native (worker 8475da6f / shim ba3e0561)", "benchmark/2026-10-03-m2-route-a-surface (Option A SurfaceView)", "benchmark/2026-10-03-m2-webview-surface (coverage)"],
+  "wiring": {
+    "jar": "all org.westlake.webview.* ship in oh-adapter-runtime.jar (with adapter.activity.* seeders), NOT adapter-mainline-stubs.jar; framework-classpath subset (OhNWebProvider/OhNWebFactoryProvider/OhNWebSettings/OhNWebSurfaceHost) + public-API subset (OhNWebController/NWebBackend/NativeNWebBackend/NWebCallbackSink/OhNWebProviderFix/NWebSurfaceLifecycle)",
+    "provider_switch": "add org.westlake.webview.OhNWebProviderFix.install() AFTER J10eWebView.install() in the bind-fix sequence; it reflects WebViewFactory.sProviderInstance = OhNWebFactoryProvider (reflection, runs last so it overrides the J10e no-op)",
+    "fallback": "OhNWebProviderFix.install() returns false when the engine is not ready -> J10e no-op stays (getProvider does not throw); NativeNWebBackend.create() returns 0 on engine-init fail; NWebSurfaceLifecycle creates NWeb only in surfaceCreated. Every non-WebView app + engine-less board unchanged."
+  },
+  "native_deploy": {
+    "paths": ["/system/android/lib64/libwl_nweb_backend_shim.so", "/system/android/lib64/libwl_nweb_backend.so"],
+    "loader": "shim added to B7BindFixes.loadLib (A0-documented fixed-path hook that already System.loads libwestlake_jni_gapfill/liboh_tls_boundary/libwestlake_html_compat); JNI_OnLoad fires there (app ns, has JavaVM)",
+    "namespace": "shim dlns get-or-creates nweb_ns_legacy (PERMITIED_TARGET2) + dlopen_ns worker; nweb_ns left to NWebHelper (DIGEST 761). open_site_scan: worker opens NOLOAD only, NEEDED via inherit-default -> no lib twice",
+    "gate": "recommend gating the shim load on 'app hosts a WebView' / deferring worker dlopen_ns to first create()"
+  },
+  "static_gates": {
+    "deployed_class_diff": "candidate oh-adapter-runtime.jar vs the board's deployed jar (--deployed, not --name): only ADD org.westlake.webview.*, 0 drop, 0 superclass/interface reshape",
+    "check_frozen": "touches no knowledge/frozen/frozen.json entry (M2 is additive: new classes + 2 new .so + 1 seeder call + 1 loadLib entry)",
+    "new_native_admissions": "gates/new-native-admissions-candidate.json = 2 candidate rows (shim+worker, final target+sha256, manifest sha TBD at M2 gen); suggestions only -- this draft does NOT edit knowledge/gates/"
+  },
+  "first_board_test": {
+    "stage1": "A0-style WebView APK drives the 10 runtime-unverified NativeNWebBackend methods (nativeLoadUrl/LoadData/PostUrl/ExecuteJavaScript/Reload/StopLoading/CanGoBack/GoBack/OnPause/SetDomStorageEnabled) each bracketed by [M2-SLOTTEST] enter/return; PASS = all 10 enter+return, no signo(11)",
+    "stage2": "load en.wikipedia.org/wiki/OpenHarmony; PASS (hardcoded) = t20 snapshot_display shows the article BODY (heading + >=1 paragraph) in the WebView region, not blank/error; screenshot is ground truth",
+    "stage3": "only after 1+2 pass: run the 8 PRIMARY-WebView predicted-lit keys, judge t20 vs predicted-light.csv"
+  },
+  "predicted_light": {
+    "predicted_lit_8_primary": ["cv2-ca-vaults-randomlydie","cv2-com-degeder-yam","cv2-com-paultirk-yatoo","cv2-com-stoutner-privacybrowser-standard","cv2-dev-obfusk-jiten-webview","cv2-timur-webrtc-check","fd-mobile","fd-tutanota"],
+    "not_by_M2_alone_15_secondary": ["burgerking","fd-AppManager","fd-fluffychat","fd-im-vector-app","fd-immich","fd-kitchenowl","fd-libre","fd-meet","fd-plus","fd-saber","localsend","mcdonalds","subwaysurfers","termux","toutiao"],
+    "predicted_move": "+8 lit (the 8 PRIMARY-WebView keys; 6 cv2 = cc-t3 m2-webview-roadmap set, highest confidence); secondary keys gain a working WebView sub-surface but stay gated by their primary wall",
+    "coverage_source": "83 renders_webview keys (28 lit via native screen, 23 not-lit, 32 unmeasured co-*) from benchmark/2026-10-03-m2-webview-surface"
+  },
+  "this_rounds_rule": "An integration draft states the contract + gates + test plan without deploying: pin the JAR (oh-adapter-runtime) and the provider seam (OhNWebProviderFix after J10e, engine-gated), the native load point (B7BindFixes.loadLib) and ns (nweb_ns_legacy, DIGEST 761), the static gates (deployed_class_diff only-add / check_frozen clean / new-native-admissions as CANDIDATE not applied), and a first-board plan whose pass criteria are hardcoded to the t20 screenshot. Predicted-light must split PRIMARY vs SECONDARY WebView -- only PRIMARY-WebView keys are M2-lit; secondary stay gated by their own wall.",
+  "boundaries": "Offline design draft for a future U version (not U14/U15/U16); no board/deploy/push; does not edit knowledge/gates/ or knowledge/frozen/ (admission rows are candidates). The readiness boolean, the exact loadLib edit, and the jar rebuild are the owner's at M2 ship time.",
+  "landing_paths": "benchmark/2026-10-03-m2-route-a-integration/landing-paths.txt"
+}

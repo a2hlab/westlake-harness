@@ -1,0 +1,31 @@
+{
+  "schema": "westlake-new-native-admissions/v1 (CANDIDATE -- NOT applied; suggestions for knowledge/gates/new-native-admissions.json when M2 ships)",
+  "note": "Two new .so for M2 route-a. target paths + sha256 are final (built hw248 frozen clang feef13a3, x2 byte-identical); package_manifest_sha256 is the M2 generation's manifest (TBD when the gen is assembled). The outer reviews + admits at M2 ship time; this draft does not edit knowledge/gates/.",
+  "admissions": [
+    {
+      "target": "/system/android/lib64/libwl_nweb_backend.so",
+      "sha256": "8475da6fb6dd0016ffb361e2ebac075a849e4ad2845c65ce9559a155779577af",
+      "package_manifest_sha256": "TBD-at-M2-generation-assembly",
+      "reason": "M2 route-a NWeb backend worker: JNI impl of NativeNWebBackend's 20 methods driving OpenHarmony NWeb (engine code copied from the board-proven A0 probe). Loads into nweb_ns_legacy (not nweb_ns, DIGEST 761); NEEDED all system libs via inherit-default (no dup); no Java_* exports (RegisterNatives via C-ABI nweb_backend_register).",
+      "evidence": [
+        "benchmark/2026-10-03-m2-route-a-native/evidence/static-calls-direct.txt",
+        "benchmark/2026-10-03-m2-route-a-native/evidence/static-calls-virtual.txt",
+        "benchmark/2026-10-03-m2-route-a-native/evidence/slot-verification-table.txt",
+        "benchmark/2026-10-03-m2-route-a-native/evidence/open-sites.txt",
+        "benchmark/2026-10-03-m2-route-a-native/evidence/jni-signature-check.txt"
+      ],
+      "status": "candidate"
+    },
+    {
+      "target": "/system/android/lib64/libwl_nweb_backend_shim.so",
+      "sha256": "ba3e05612a390d7ef37bd32528b946c43c8e84e70b07cc775373086e4f11557b",
+      "package_manifest_sha256": "TBD-at-M2-generation-assembly",
+      "reason": "M2 route-a shim: System.load'd by B7BindFixes.loadLib in the app ns; JNI_OnLoad dlns get-or-creates nweb_ns_legacy (PERMITIED_TARGET2) + dlopen_ns the worker there + nweb_backend_register(JavaVM*). Never touches nweb_ns (left to NWebHelper, DIGEST 761). NEEDED = libhilog, libc only.",
+      "evidence": [
+        "benchmark/2026-10-03-m2-route-a-native/evidence/open-sites.txt",
+        "benchmark/2026-10-03-m2-route-a-native/evidence/build-la.log"
+      ],
+      "status": "candidate"
+    }
+  ]
+}
