@@ -241,7 +241,10 @@ def load_ref_board(reference, board):
         m = U9_REF_LINE.match(line)
         if m:
             key, verdict, _corpus, p = m.groups()
-            table[key] = (verdict, None if p.strip() == 'MISSING' else expand(p.strip()))
+            # A listing may annotate a row after its path (u14-ref: '<t20> *gain'); the path is the first token.
+            # 2026-10-03 U14 window 1: the annotation was read as part of the path -> every gain key 'no-ref'.
+            p = p.strip().split()[0] if p.strip() else p
+            table[key] = (verdict, None if p == 'MISSING' else expand(p))
     return table
 
 

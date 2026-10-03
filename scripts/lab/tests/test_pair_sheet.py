@@ -161,3 +161,17 @@ class Window3KnownAnswer(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class RefListing(unittest.TestCase):
+    """A reference listing may annotate a row after its t20 path (u14-ref: '<t20> *gain', 2026-10-03)."""
+
+    def test_annotation_after_path_is_not_part_of_the_path(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / 'x-ref-5ea.txt'
+            f.write_text('row 1 col 1  fd-noice  verdict=lit  corpus=original  /a/b/fd-noice/t20.jpeg *gain\n'
+                         'row 1 col 2  fd-gone  verdict=dead  corpus=original  MISSING\n')
+            table = ps.load_ref_board(f, '5ea')
+            self.assertEqual(table['fd-noice'], ('lit', '/a/b/fd-noice/t20.jpeg'))
+            self.assertEqual(table['fd-gone'], ('dead', None))
