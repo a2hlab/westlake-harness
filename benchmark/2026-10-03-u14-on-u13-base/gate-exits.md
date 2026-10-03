@@ -1,0 +1,66 @@
+# Exact fresh Mac command exits
+
+This is a disabled diagnostic. Independent component checks are not a complete executor PASS.
+
+| Evidence | Exit |
+|---|---:|
+| `rebind-common.txt` | 0 |
+| `executor-common.txt` | 2 |
+| `static-common.txt` | 0 |
+| `native-common-candidate.txt` | 0 |
+| `native-common-baseline.txt` | 0 |
+| `image-common.txt` | 1 |
+| `rb-common.txt` | 0 |
+| `t4b-common.txt` | 0 |
+| `frozen-common.txt` | 0 |
+| `rebind-61b.txt` | 0 |
+| `executor-61b.txt` | 2 |
+| `static-61b.txt` | 0 |
+| `native-61b-candidate.txt` | 0 |
+| `native-61b-baseline.txt` | 0 |
+| `image-61b.txt` | 1 |
+| `rb-61b.txt` | 0 |
+| `t4b-61b.txt` | 0 |
+| `frozen-61b.txt` | 0 |
+| `open-icuuc-baseline.txt` | 0 |
+| `needed-icuuc-baseline.txt` | 0 |
+| `open-icuuc-candidate.txt` | 0 |
+| `needed-icuuc-candidate.txt` | 0 |
+| `strings-icuuc.txt` | 0 |
+| `abi-icuuc.txt` | 0 |
+| `open-oh_adapter_bridge-baseline.txt` | 0 |
+| `needed-oh_adapter_bridge-baseline.txt` | 0 |
+| `open-oh_adapter_bridge-candidate.txt` | 0 |
+| `needed-oh_adapter_bridge-candidate.txt` | 0 |
+| `strings-oh_adapter_bridge.txt` | 1 |
+| `abi-oh_adapter_bridge.txt` | 0 |
+| `open-flutter-baseline.txt` | 0 |
+| `needed-flutter-baseline.txt` | 0 |
+| `open-flutter-candidate.txt` | 0 |
+| `needed-flutter-candidate.txt` | 0 |
+| `strings-flutter.txt` | 1 |
+| `abi-flutter.txt` | 0 |
+| `open-westlake_native_abi-baseline.txt` | 0 |
+| `needed-westlake_native_abi-baseline.txt` | 0 |
+| `open-westlake_native_abi-candidate.txt` | 0 |
+| `needed-westlake_native_abi-candidate.txt` | 0 |
+| `strings-westlake_native_abi.txt` | 1 |
+| `abi-westlake_native_abi.txt` | 0 |
+| `open-icu74compat-candidate.txt` | 0 |
+| `needed-icu74compat-candidate.txt` | 0 |
+| `open-host-baseline.txt` | 0 |
+| `needed-host-baseline.txt` | 0 |
+| `open-host-candidate.txt` | 0 |
+| `needed-host-candidate.txt` | 0 |
+| `strings-host.txt` | 1 |
+| `abi-host.txt` | 0 |
+| `test-python.txt` | 0 |
+| `test-rust.txt` | 0 |
+| `parse-t1-binding.txt` | 0 |
+| `parse-t2-replay.txt` | 0 |
+| `lint.txt` | 0 |
+| `lifecycle-t1-binding.txt` | 0 |
+| `explain-t1-binding.txt` | 0 |
+| `lifecycle-t2-replay.txt` | 0 |
+| `explain-t2-replay.txt` | 0 |
+| `test-cold.txt` | 0 |
