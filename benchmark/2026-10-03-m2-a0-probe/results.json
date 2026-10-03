@@ -1,0 +1,73 @@
+{
+ "lane": "cc-t3",
+ "issue": 90,
+ "date": "2026-10-03",
+ "kind": "A0 probe preparation (not run on a board)",
+ "release": {
+  "dir": "$WORKSPACES/westlake-inputs/generations/m2-a0-probe-v1",
+  "a0probe.apk": "d4d9556ff71f6bb8524fd12a1bcac6bb9a526980969026ff7620748c49343551",
+  "liba0probe.so": "355ac614dd1df6c728b8eef758c71e53a009376d30fb9afbd143ee2b2a3a1191",
+  "liba0shim.so": "42e581b0175b774e2be431a3eb38da86c1b46ccb0c1edc277f64c62719cd48d3",
+  "deterministic_two_builds": true
+ },
+ "injection": "test APK org.westlake.a0probe: System.loadLibrary(a0shim) -> dlns_get(default)+dlopen_ns(liba0probe.so) -> a0_probe_start; no frozen piece, helloworld untouched",
+ "steps": [
+  "S0 env",
+  "S1 loader",
+  "S2 ApplicationContext attach",
+  "S3 SetBundlePath+Init(load engine)+optional single render mode",
+  "S4 InitAndRun",
+  "S5 CreateNWeb(own NWebCreateInfo, output-frame callback, own producer surface)",
+  "S6 handler/JS/resize/continue",
+  "S7 LoadWithDataAndBaseUrl (Chinese + JS #12ab34)",
+  "S8 frame sampling, RESULT after 20 s"
+ ],
+ "modes": {
+  "1": "single render process",
+  "2": "InitAndRun(false) via bundle path",
+  "4": "skip ApplicationContext",
+  "8": "no producer surface"
+ },
+ "build": {
+  "compiler": "OH prebuilt clang 15.0.4 feef13a3, libcxx-ohos __h",
+  "flags": [
+   "-fno-rtti",
+   "-fvisibility=hidden",
+   "-Wno-c++11-narrowing",
+   "--no-undefined"
+  ],
+  "headers": "hw248 OH tree OpenHarmony-6.1.0.31; only on-path local change = enum value BundleType::APP_ANDROID",
+  "idl_standins": [
+   "ibundle_mgr_ext.h",
+   "iverify_manager.h"
+  ],
+  "undefined_symbols": 80,
+  "unresolved": "3 weak crt refs only"
+ },
+ "board_window": {
+  "script": "board/run_a0.sh",
+  "typical_minutes": 8,
+  "hard_stop_minutes": 25,
+  "default_modes": "0 1",
+  "reverts": [
+   "param debug.westlake.a0probe.mode -> 0",
+   "force-stop + SIGTERM bundle-uid processes",
+   "bm uninstall",
+   "rm pushed files"
+  ],
+  "lock": "board_note lock/unlock; rollback failure keeps the lock"
+ },
+ "pass": "RESULT PASS = a frame whose centre pixel is #12ab34 and the process alive",
+ "fail_classes": [
+  "F0 install/start",
+  "F1 shim namespace",
+  "F2 ApplicationContext",
+  "F3 engine load",
+  "F4 init",
+  "F5 create",
+  "F6 no frames (renderer)",
+  "F7 wrong colour",
+  "crash"
+ ],
+ "board_runs": 0
+}
