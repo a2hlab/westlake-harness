@@ -1,0 +1,40 @@
+{
+  "task": "chessclock session wall 'createSession: Not connected to SceneSessionManager' -> wsErr 1005 -> addCode -9 -> InvalidDisplayException: separation table across U12/U13 (lit/white/dead), timing/thread/reconnect, bridge-timing vs chessclock-specific, min fix + prediction.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "separation": {
+    "swept": "1190 hilog.txt under westlake-harness-u7-executor/benchmark (U12+U13) + 659 under westlake-inputs/generations",
+    "distinct_keys_with_marker": 1,
+    "split": {"lit": 0, "white_other": 0, "dead": 1, "unknown": 0},
+    "only_key": "cv2-com-chessclock-android (U13, 5cd, window1) + byte-identical generations mirror (not double-counted)",
+    "other_hits": "C++/strings SOURCE that emits the string (oh_window_manager_client.cpp, liboh_adapter_bridge.strings, u14-bridge-window.cpp), not run logs",
+    "marker_in_lit": false,
+    "caveat": "n=1 -> single data point, not a proven population discriminator; confirms the marker never co-occurs with a lit outcome in this corpus"
+  },
+  "chessclock_timing": {
+    "connect_said_connected": "YES -- 'Connected to SceneSessionManager through official SessionManager route' on worker tid 7852 @08.884 (and main tid 7829 @08.377)",
+    "proc_start": "nativeOnScheduleLaunchApplication @08.913",
+    "failed_createSession": "tid 7852 (worker; main=pid 7829) @09.203, ~0.29s after proc-start",
+    "disconnect_between": "none",
+    "reconnect_after": "none (single createSession never recovers)",
+    "terminal": "InvalidDisplayException + wsErr=1005 -> addCode=-9 -> process died (AMS 'Ability on scheduler died', WMSRecover pid=7829)"
+  },
+  "lit_contrast": "helloworld (lit): 0 markers, createSession success (sessionId=1058) ON A WORKER tid 5486 (main=pid 5461). So worker-thread createSession is NOT the defect; lit keys do it on workers and succeed.",
+  "mechanism": {
+    "singleton": "OHWindowManagerClient::getInstance() = process singleton (shared connected_/ssmProxy_)",
+    "guard": "createSession: if (!connected_ || ssmProxy_ == nullptr) -> 'Not connected'; fails immediately, NO wait/retry/reconnect",
+    "signature": "connected-then-stale within ~0.29s: connect logs 'Connected' (SessionManager route), but the SceneSessionManager proxy ssmProxy_ that createSession requires is populated by the async WMSConnectionStatus callback; chessclock builds its window unusually early (createSession at resume, 0.29s, right after an onCreate that stalls on ringtone/settings/MediaPlayer) -> raced ahead of the proxy population -> ssmProxy_ null -> 'Not connected' -> no retry -> fail",
+    "verdict": "bridge timing/retry gap (createSession fails immediately on a not-yet-populated/stale SSM proxy) surfaced by chessclock's unusually early window creation. NOT the worker thread (lit succeeds on workers). Unique (1/1849) because chessclock is the only app whose createSession lost this race.",
+    "source_skew": "deployed WMClient newer than bms/src ('official SessionManager route' x4 vs source 'legacy via SA' x0); guard/mechanism read from hilog, not the stale source",
+    "honest_limit": "async-population-race vs chessclock-specific state-reset not fully separable from logs (no disconnect logged, n=1); the fix is robust to both (re-acquires the proxy regardless of why it is null)"
+  },
+  "min_fix": {
+    "where": "deployed oh_window_manager_client.cpp createSession guard (cc-t3 / window-bridge owner)",
+    "change": "on !connected_ || ssmProxy_==null, re-acquire + retry once (connect()/re-GetSystemAbility(SCENE_SESSION_MANAGER_ID) with a short bounded wait for the WMSConnectionStatus population) BEFORE failing; or populate ssmProxy_ synchronously at connect() instead of via the async callback",
+    "not": "no worker-thread change (lit already succeeds on workers); addCode=-9 -> InvalidDisplayException is the correct AOSP mapping, fix is upstream (get a valid SSM proxy)",
+    "rollback": "revert the retry block"
+  },
+  "prediction": "with the retry/re-acquire, chessclock createSession obtains the proxy -> window attaches -> no InvalidDisplayException -> moves past the session wall (its earlier nativeConsumeConnectionFailure NSME during MediaPlayer init was non-terminal). lit likelihood medium. clears 1 key + hardens any future early-createSession race; not a population-wide wall.",
+  "rule": "separate the marker before naming the wall: 'Not connected to SceneSessionManager' is chessclock-only (1/1849); the 'worker thread' reading is refuted by a lit key that createSessions on a worker and succeeds. The defect is connected-then-stale with no retry -- a singleton whose async SSM proxy wasn't populated when an unusually-early createSession ran. Fix the guard that fails hard (re-acquire+retry), not the thread or the AOSP display mapping.",
+  "boundaries": ["offline; no board; no push", "deployed WMClient newer than bms/src (skew); guard read from hilog; fix is the deployed-WMClient owner's (cc-t3/window bridge)", "async-race vs state-reset not fully separable (n=1); retry/re-acquire robust to both", "sources read-only: U13 hilogs (westlake-harness-u7-executor, westlake-inputs/generations), WMClient source (westlake-harness/bms)"],
+  "files": ["README.md", "evidence/separation-table.txt", "evidence/chessclock-timeline.txt", "results.json", "documentation.json", "landing-paths.txt"]
+}

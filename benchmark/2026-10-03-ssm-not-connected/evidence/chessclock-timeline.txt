@@ -1,0 +1,35 @@
+chessclock 'Not connected to SceneSessionManager' — timeline + WMClient internals (U13 5cd window1).
+
+TIMELINE (pid 7829; the window thread is tid 7852):
+  03:40:08.373  7829  7829 (main) OH_WindowMgrClient: WMClient.connect -> "Connecting to OH SceneSessionManager through
+                                   official SessionManager route" -> "Connected to SceneSessionManager ..." (OK, main)
+  03:40:08.884  7829  7852 (worker) OH_WindowMgrClient: WMClient.connect -> "Connected to SceneSessionManager through
+                                   official SessionManager route" (OK, tid 7852)
+  03:40:08.913  7829  7851 nativeOnScheduleLaunchApplication ENTRY bundle=com.chessclock.android pid=7829  <- process launch
+  03:40:09.140  7829  7852 OH_DataShareClient: Failed to connect DataShareHelper (settingsdata) / Disconnected  <- DataShare, NOT WMClient
+  03:40:09.203  7829  7852 OH_WindowMgrClient: WMClient.createSession bundle=com.chessclock.android ability=ChessClock
+  03:40:09.203  7829  7852 OH_WindowMgrClient: createSession: Not connected to SceneSessionManager   <- FAIL (same tid 7852)
+  03:40:09.203  7829  7852 [B8-WSP] addToDisplay ... retry=-9  (wsErr 1005 -> addCode -9)
+  03:40:09.204  7829  7852 InvalidDisplayException "the specified display can not be found"  <- terminal
+  (no WMClient "Disconnect" between 08.884 and 09.203; NO later createSession success / reconnect; terminal.)
+Delay: createSession fired ~0.29s after process launch (08.913 -> 09.203), on worker tid 7852 (not main 7829).
+
+WMClient internals (bms/src oh_window_manager_client.cpp -- NOTE SOURCE SKEW: deployed logs "official SessionManager
+route" x4, source logs "IWindowManager (legacy) via SA" x0, so the deployed WMClient is NEWER than this source):
+  - getInstance() returns `static OHWindowManagerClient instance;` = a PROCESS SINGLETON (connected_/ssmProxy_ shared).
+  - createSession() guard (line 385): `if (!connected_ || ssmProxy_ == nullptr) { LOGE("createSession: Not connected to
+    SceneSessionManager"); ... }`  -- fails immediately, NO wait/retry, NO re-connect.
+  - connect() sets ssmProxy_ = samgr->GetSystemAbility(SCENE_SESSION_MANAGER_ID); connected_ = true.
+
+READING: the singleton's connect logged "Connected" on tid 7852 at 08.884, but createSession on the SAME tid/singleton at
+09.203 sees connected_==false or ssmProxy_==null, with no disconnect in between. The deployed "official SessionManager
+route" connect reports "Connected" when the SessionManager route is established, but the SceneSessionManager proxy
+(ssmProxy_, which createSession guards on) is populated asynchronously via the WMSConnectionStatus callback
+(mock_session_manager_service NotifyWMSConnectionStatus "wms is already connected, notify client"). chessclock builds its
+window very EARLY (createSession 0.29s after launch, on worker tid 7852) -> it raced AHEAD of the ssmProxy_ population ->
+createSession sees it null -> "Not connected". Because createSession neither waits/retries nor triggers a (re)connect, the
+single early createSession fails outright -> wsErr 1005 -> addCode -9 -> InvalidDisplayException -> dead.
+
+=> BOTH aspects: (bridge) createSession has a timing/retry gap -- it fails immediately instead of waiting for / forcing the
+async SSM proxy; (chessclock-specific) it creates its window unusually early, on a worker thread, before the proxy lands.
+The fixable gap is the bridge's.

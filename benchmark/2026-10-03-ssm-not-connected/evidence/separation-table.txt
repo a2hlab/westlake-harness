@@ -1,0 +1,29 @@
+Separation table for 'createSession: Not connected to SceneSessionManager' across ALL U12/U13 run hilogs (read-only).
+
+SWEEP: 1190 hilog.txt under westlake-harness-u7-executor/benchmark (U12 224 + U13 229 run paths) + 659 under
+westlake-inputs/generations (+ *.log/*.gz + the partial 'Not connected to Scene').
+
+RESULT: the marker occurs in EXACTLY ONE distinct app key's run hilog: cv2-com-chessclock-android (U13, 5cd, window1)
++ one byte-identical generations/ mirror (same run, not double-counted). Every other grep hit was C++/strings SOURCE
+that EMITS the string (oh_window_manager_client.cpp, liboh_adapter_bridge.strings, u14-bridge-window.cpp), not a run log.
+
+COUNT (distinct keys): 1  ->  lit 0 / white 0(other) / dead 1 / unknown 0.
+
+| key | gen | board | group | #marker | connect said Connected first? | failed-createSession tid | delay after proc-start | reconnect? | terminal |
+|-----|-----|-------|-------|---------|-------------------------------|--------------------------|------------------------|-----------|----------|
+| cv2-com-chessclock-android | U13 | 5cd/W1 | dead (harness visual_verdict=pending_review; outer white/dead) | 1 | YES -- "Connected to SceneSessionManager" on the SAME worker tid 7852 @08.884 (and main tid 7829 @08.377) | 7852 = WORKER (main tid = pid = 7829) | 0.29s (08.913 -> 09.203) | NO -- the single createSession never recovers | InvalidDisplayException + wsErr=1005 -> addCode=-9 -> process died (AMS 'Ability on scheduler died', WMSRecover pid=7829) |
+
+LIT CONTRAST (decisive refinement): helloworld (lit) has 0 markers and createSession SUCCESS (sessionId=1058) --
+*on a WORKER tid 5486* (main=pid 5461). So a worker-thread createSession is NOT the defect; lit keys do it on workers
+and succeed. chessclock's signature is NOT "worker thread" and NOT "never connected" -- it is CONNECTED-THEN-STALE:
+connect logs success at 08.884, then by createSession at 09.203 (0.29s) the SSM link ssmProxy_ is already gone/unset,
+with NO retry, ending in display-not-found + process death.
+
+BOTTOM LINE:
+(i) marker in lit keys? NO (0 lit). It is perfectly non-lit in this corpus, but n=1 -> a single data point, not a proven
+    population discriminator; it does confirm the marker never co-occurs with a lit outcome here.
+(ii) lit-with-marker reconnect vs dead? vacuous (no lit carries the marker). chessclock (dead): no reconnect; the last &
+    only createSession stays "Not connected" at terminal. helloworld (lit) reaches createSession success on the first
+    attempt and never logs the marker.
+(iii) worker/early? worker tid 7852, ~0.29s after proc-start, AND right after a "Connected" log on that same tid.
+    => connected-then-stale within ~0.3s on a worker thread; worker-thread createSession itself is fine (helloworld).
