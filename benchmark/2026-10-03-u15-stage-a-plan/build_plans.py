@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import re
+from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -157,6 +158,13 @@ def main():
                           'verdict': row['outer_eyeball'], 'k_of_n': row['k_of_n']}
             reference['keys'][key] = {**reference['keys'][key], 'verdict': 'lit', 'provisional_gain': gains[key]}
     reference['total_lit'] = sum(row['verdict'] == 'lit' for row in reference['keys'].values())
+    reference['baseline'] = 'PROVISIONAL U14-reference126 + three signed Stage A gains; pending-U14-promotion'
+    reference['u14_stage_a_gains'] = list(gains)
+    reference['tallies'] = {}
+    for board in SERIALS:
+        rows = [row for row in reference['keys'].values() if row['board'] == board]
+        reference['tallies'][board] = {'keys': len(rows), 'lit': sum(row['verdict'] == 'lit' for row in rows),
+                                     'verdicts': dict(Counter(row['verdict'] for row in rows))}
     write(HERE / 'provisional-reference.json', reference)
     write(HERE / 'signed-gains.json', gains)
     groups = groups_from(table)

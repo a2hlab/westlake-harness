@@ -21,6 +21,7 @@ class DisabledPlans(unittest.TestCase):
     def test_provisional_reference_and_gain_coverage(self):
         self.assertEqual(len(build.validate(self.groups(), self.reference)), 129)
         self.assertEqual(self.reference['status'], 'pending-U14-promotion')
+        self.assertEqual(sum(row['lit'] for row in self.reference['tallies'].values()), 129)
         self.assertEqual(len(build.read(build.HERE / 'signed-gains.json')), 3)
         rows = [row for row in self.plans['5cd']['shards'] if row['key'] == 'termux']
         self.assertEqual([(row['category'], row['trial']) for row in rows], [('white-watch', 1)])
