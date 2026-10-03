@@ -33,6 +33,10 @@ SIGNOFF_GLOB = (MAIN.parent / 'westlake-harness-u7-executor/benchmark/'
 MIN_PER_RUN = 1.75
 RUNS_PER_WINDOW = 25
 
+FLUTTER_SRC = ('u16 flutter interposer libandroid eb90a640 = A\'\'\' (on U15 9b824502: cc-t3 A" b1c9f76e '
+               '52b4471e16 + cc-wiki eglGetProcAddress EGL-name fix a53534971f) — see '
+               'benchmark/2026-10-03-u16-flutter-egl-names/ (A" in 2026-10-03-u16-flutter-impeller-build)')
+
 M = {  # U16 movers: fix observation points (source + expectation)
     'fd-wifianalyzer': ('u16 t1 — WifiManager 8 methods no-wifi semantics (stubs 85938130)',
                         'first fatal moves past WifiManager NoSuchMethodError (cluster N)'),
@@ -40,18 +44,16 @@ M = {  # U16 movers: fix observation points (source + expectation)
                          '(runtime JAR f6f5face, benchmark/2026-10-03-u16-t3-build/)',
                          'first fatal moves past weatherView lateinit (async-lifecycle-ordering); '
                          'lit medium'),
-    'localsend': ('u16 flutter interposer libandroid b1c9f76e (NEW in U16 on U15 9b824502, cc-t3 52b4471e16) — see '
-                  'benchmark/2026-10-03-u16-flutter-impeller-build/; pc=0 glDepthRange next)',
+    'localsend': (FLUTTER_SRC,
                   'first fatal moves past eglCreateWindowSurface AND past pc=0 glDepthRange'),
-    'fd-kitchenowl': ('u16 flutter interposer libandroid b1c9f76e (NEW in U16 on U15 9b824502, cc-t3 52b4471e16) — see '
-                      'benchmark/2026-10-03-u16-flutter-impeller-build/; pc=0 glDepthRange next)',
+    'fd-kitchenowl': (FLUTTER_SRC,
                       'first fatal moves past eglCreateWindowSurface AND past pc=0 glDepthRange'),
-    'fd-fluffychat': ('u16 flutter interposer libandroid b1c9f76e (NEW in U16 on U15 9b824502, cc-t3 52b4471e16) — see '
-                      'benchmark/2026-10-03-u16-flutter-impeller-build/; pc=0 glDepthRange next)',
+    'fd-fluffychat': (FLUTTER_SRC,
                       'first fatal moves past eglCreateWindowSurface AND past pc=0 glDepthRange'),
-    'fd-libre': ('u16 flutter interposer libandroid b1c9f76e (NEW in U16 on U15 9b824502, cc-t3 52b4471e16) — see '
-                 'benchmark/2026-10-03-u16-flutter-impeller-build/; pc=0 glDepthRange next)',
-                 'first fatal moves past eglCreateWindowSurface AND past pc=0 glDepthRange'),
+    'fd-libre': (FLUTTER_SRC,
+                 'first fatal moves past eglCreateWindowSurface AND past pc=0 glDepthRange; raster-thread '
+                 'eglGetProcAddress(eglCreateWindowSurface) now gets our ANW-unwrap hook (no Mali '
+                 'ANativeWindow_getFormat SEGV on the AdapterAnw)'),
     # t4 M1-split replay evidence keys (the 3 apps the freeze dossier re-verifies)
     'fd-uhabits': ('u16 t4 — M1 split replay evidence (runtime native 1d42dbfb, '
                    'benchmark/2026-10-03-u16-t4-m1-runtime/; FZ-009 pre-registration)',
