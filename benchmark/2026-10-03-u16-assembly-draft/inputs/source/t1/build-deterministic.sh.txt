@@ -1,0 +1,32 @@
+#!/bin/bash
+# Deterministic rebuild of adapter-mainline-stubs-u16t1.jar (outer 11:57 recipe):
+#   1) android-net-stub-members/build_patch.sh -> merged smali tree (content-identical per build)
+#   2) smali assemble --jobs 1 -a 29  -> classes.dex (byte-identical across passes; -j1 kills the
+#      run-dependent type_list/annotation layout). jcommander 1.64 on the CP: 1.78's
+#      PositiveInteger annotation breaks on JDK 21.
+#   3) repack onto a copy of the BASE jar via python zipfile: every entry STORED as in base,
+#      classes.dex replaced, ALL timestamps pinned to 1980-01-01 (zip -X alone still stamps mtime).
+# GATE: two passes -> identical jar bytes (see README).
+set -euo pipefail
+WS=${WORKSPACES:-$HOME/orca/workspaces}
+BASE=$WS/westlake-inputs/generations/u15-bt-bake-9e55-94a9-v1/jars9/adapter-mainline-stubs.jar
+T=$WS/westlake-inputs/tools
+JC=$WS/westlake-harness-bms-deploy/bms/src/.work/b6-task45/inputs/jcommander-1.64.jar
+CP="$T/baksmali-2.5.2.jar:$T/dexlib2-2.5.2.jar:$T/util-2.5.2.jar:$T/guava-31.1-jre.jar:$JC:$T/failureaccess-1.0.1.jar:$T/smali-2.5.2.jar"
+JDK=$(ls -d "$HOME"/.local/share/mise/installs/java/temurin-21*/bin | head -1); export PATH="$JDK:$PATH"
+HERE=$(cd "$(dirname "$0")" && pwd)
+W=$(mktemp -d /tmp/u16t1-det.XXXXXX)
+trap 'rm -rf "$W"' EXIT
+bash "$WS/westlake-harness/benchmark/2026-10-02-android-net-stub-members/build_patch.sh" "$BASE" "$W/ta.jar" "$W" >/dev/null
+java -cp "$CP" org.jf.smali.Main a --jobs 1 -a 29 "$W/base/smali" -o "$W/classes.dex"
+python3 - "$BASE" "$W/classes.dex" "$1" << 'PY'
+import sys, zipfile
+base, dex, out = sys.argv[1:4]
+zin = zipfile.ZipFile(base)
+with zipfile.ZipFile(out, 'w') as zout:
+    for i in zin.infolist():
+        zi = zipfile.ZipInfo(i.filename, date_time=(1980, 1, 1, 0, 0, 0))
+        zi.compress_type = zipfile.ZIP_STORED if i.filename == 'classes.dex' else i.compress_type
+        zout.writestr(zi, open(dex, 'rb').read() if i.filename == 'classes.dex' else zin.read(i.filename))
+PY
+echo "built $1"
