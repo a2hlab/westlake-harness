@@ -23,6 +23,14 @@ APK=$HERE/build/a0probe.apk
 APK_SHA=8519af78ef7c8abf8d3cc1ff4ba3bc5c4eb12fd7f3a62c37a7d29c454f1425a3   # v2 (shim b15da15f); v1 d4d9556f ran windows 1-2
 PKG=org.westlake.a0probe
 LANE=${A0_LANE:-cc-t3}
+RT_TARGET=/system/android/lib64/libwestlake_html_compat.so    # runtime B7BindFixes System.load point, absent on boards
+RT_SRC=/data/local/tmp/libwestlake_html_compat.so             # bind-mount source (writable), labelled like the deployed libs
+RT_PROBE=$HERE/build/native/libwestlake_html_compat.so        # entry: JNI_OnLoad gate + default-inheriting ns loader
+RT_WORKER=$HERE/build/native/libwl_a0_nweb.so                 # worker: full NWeb body (a0_probe_start), loaded by the entry
+RT_WORKER_DST=/data/local/tmp/libwl_a0_nweb.so                # entry dlopen_ns searches /data/local/tmp (a0_entry.cpp WORKER_DIR)
+RT_REF=/system/android/lib64/libwestlake_jni_gapfill.so       # an existing deployed lib, for the SELinux context
+RT_PROBE_SHA=a352a36fd36532fdceaa7ecf71f36d79e15e19480af363616f54b8fa6d9ad693
+RT_WORKER_SHA=1ea800e9e67f146238be74b2dffaa24dfc992afca506919dd423c7ee238c85aa
 RECIPE=$HERE/../2026-09-28-bms-route-deploy/batch/prepare_sandbox.sh   # bms_batch's accepted sandbox recipe, verbatim
 # what prepare_sandbox creates for $PKG (removed again in rollback), plus the adapter's uninstall leftovers (window 1)
 PKG_DIRS="/data/app/el1/100/base/$PKG /data/app/el1/100/database/$PKG /data/app/el2/100/base/$PKG /data/app/el2/100/database/$PKG /data/app/el2/100/sharefiles/$PKG /data/app/el3/100/base/$PKG /data/app/el3/100/database/$PKG /data/app/el4/100/base/$PKG /data/app/el4/100/database/$PKG /data/app/el2/100/log/$PKG /data/app/el1/bundle/public/$PKG"
@@ -40,7 +48,39 @@ START=$(date +%s)
 FP=$HERE/board/fingerprint.py
 python3 "$FP" "$SERIAL" "$OUT" runtime-fingerprint-after-lock.txt | tee "$OUT/fingerprint-after-lock.txt"
 
+exists() { [ "$(H "[ -e $1 ] && echo PRESENT || echo ABSENT" | tr -d '\r' | tr -d '\n')" = PRESENT ]; }
+
+mount_probe() {   # runtime-entry mode only; after install, before launch
+  [ "${A0_RUNTIME_MOUNT:-0}" = 1 ] || return 0
+  [ "$(shasum -a 256 "$RT_PROBE" | cut -d' ' -f1)" = "$RT_PROBE_SHA" ] || { echo "[a0] entry SHA mismatch"; return 1; }
+  [ "$(shasum -a 256 "$RT_WORKER" | cut -d' ' -f1)" = "$RT_WORKER_SHA" ] || { echo "[a0] worker SHA mismatch"; return 1; }
+  if exists "$RT_TARGET"; then echo "[a0] $RT_TARGET already present (deployed?): stop, will not shadow it"; return 1; fi
+  local ctx; ctx=$(H "ls -Z $RT_REF" | grep -oE 'u:object_r:[A-Za-z0-9_]+:s0' | head -1)
+  [ -n "$ctx" ] || { echo "[a0] could not read ref SELinux context from $RT_REF"; return 1; }
+  T=120 hdc -t "$SERIAL" file send "$RT_PROBE" "$RT_SRC" >/dev/null || { echo "[a0] file send failed"; return 1; }
+  H "chcon $ctx $RT_SRC"
+  T=120 hdc -t "$SERIAL" file send "$RT_WORKER" "$RT_WORKER_DST" >/dev/null || { echo "[a0] worker send failed"; return 1; }
+  H "chcon $ctx $RT_WORKER_DST"
+  local won; won=$(H "sha256sum $RT_WORKER_DST 2>/dev/null | cut -c1-16" | tr -d '\r'); echo "[a0] worker at $RT_WORKER_DST on-board=$won expect=$(echo $RT_WORKER_SHA | cut -c1-16)"
+  local r; r=$(H "touch $RT_TARGET && echo TOUCH_OK || echo TOUCH_FAIL" | tr -d '\r')
+  [ "$r" = TOUCH_OK ] && exists "$RT_TARGET" || { echo "[a0] cannot create $RT_TARGET (r=$r, ro fs?)"; return 1; }
+  r=$(H "mount -o bind $RT_SRC $RT_TARGET && echo MOUNT_OK || echo MOUNT_FAIL" | tr -d '\r')
+  [ "$r" = MOUNT_OK ] || { echo "[a0] bind-mount failed (r=$r)"; return 1; }
+  MOUNTED=1
+  local on tgt; on=$(H "sha256sum $RT_TARGET 2>/dev/null | cut -c1-16" | tr -d '\r'); tgt=$(shasum -a 256 "$RT_PROBE" | cut -c1-16)
+  echo "[a0] mounted probe at $RT_TARGET ctx=$ctx on-board=$on expect=$tgt"; H "ls -Z $RT_TARGET"
+  [ "$on" = "$tgt" ] || { echo "[a0] mounted content mismatch"; return 1; }
+}
+unmount_probe() {
+  [ "${A0_RUNTIME_MOUNT:-0}" = 1 ] || return 0
+  [ "${MOUNTED:-0}" = 1 ] && H "umount $RT_TARGET 2>/dev/null; true"
+  H "rm -f $RT_TARGET $RT_SRC $RT_WORKER_DST 2>/dev/null; true"
+  local st; if exists "$RT_TARGET"; then st=PRESENT; else st=ABSENT; fi
+  echo "[a0] unmount: $RT_TARGET after=$st (expect ABSENT)"
+  [ "$st" = ABSENT ]
+}
 rollback() {
+  unmount_probe || RT_ROLLBACK_FAIL=1
   echo "[a0] rollback $(date -Iseconds)"
   H "param set debug.westlake.a0probe.mode 0" ; H "aa force-stop $PKG"
   uid=$(H "bm dump -n $PKG" 2>/dev/null | grep -m1 -E '"uid"' | grep -oE '[0-9]+' | head -1)
@@ -54,7 +94,7 @@ rollback() {
   procs=0; [ -n "${uid:-}" ] && procs=$(H "ps -A -o PID,USER" | grep -cE " $uid *$" || true)
   dirs=$(H "ls -d $PKG_DIRS /mnt/sandbox/100/$PKG 2>/dev/null" | grep -c "$PKG" || true)
   echo "[a0] after rollback: bundle_entries=$left uid=${uid:-none} live_processes=$procs leftover_dirs=$dirs param=$(H 'param get debug.westlake.a0probe.mode')"
-  [ "$left" = 0 ] && [ "$procs" = 0 ] && [ "$dirs" = 0 ]
+  [ "$left" = 0 ] && [ "$procs" = 0 ] && [ "$dirs" = 0 ] && [ "${RT_ROLLBACK_FAIL:-0}" = 0 ]
 }
 finish() {
   rc=$?; trap - EXIT INT TERM HUP
@@ -98,6 +138,8 @@ T=60 hdc -t "$SERIAL" file send "$OUT/sandbox-command.sh" /data/local/tmp/a0-san
 T=120 H "sh /data/local/tmp/a0-sandbox.sh; echo rc=\$?" | tee "$OUT/sandbox-preparation.txt"
 grep -q "^rc=0" "$OUT/sandbox-preparation.txt" || { echo "[a0] sandbox preparation failed"; exit 6; }
 H "ls -ldZ /data/app/el1/100/database/$PKG /data/app/el2/100/base/$PKG" | tee -a "$OUT/sandbox-preparation.txt"
+
+if ! mount_probe; then echo "[a0] mount_probe failed: stop before launch"; exit 8; fi
 
 for mode in $MODES; do
   M=$OUT/mode-$mode; mkdir -p "$M"

@@ -28,15 +28,23 @@
 #include "context_impl.h"
 #include "event_handler.h"
 #include "event_runner.h"
-#include "iconsumer_surface.h"
+#ifndef WL_A0_RUNTIME
+#include "iconsumer_surface.h"   // outside the runtime CL ns search (ndk / chipset-pub-sdk); runtime variant omits it
+#endif
 #include "nweb.h"
 #include "nweb_handler.h"
 #include "nweb_helper.h"
 #include "nweb_init_params.h"
 #include "nweb_preference.h"
-#include "parameters.h"
-#include "surface.h"
-#include "sync_fence.h"
+#ifndef WL_A0_RUNTIME
+#include "parameters.h"   // outside the runtime CL ns search (ndk / chipset-pub-sdk); runtime variant omits it
+#endif
+#ifndef WL_A0_RUNTIME
+#include "surface.h"   // outside the runtime CL ns search (ndk / chipset-pub-sdk); runtime variant omits it
+#endif
+#ifndef WL_A0_RUNTIME
+#include "sync_fence.h"   // outside the runtime CL ns search (ndk / chipset-pub-sdk); runtime variant omits it
+#endif
 
 extern "C" int HiLogPrint(int type, int level, unsigned int domain, const char* tag, const char* fmt, ...);
 
@@ -54,6 +62,8 @@ void Log(const char* fmt, ...)
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
     HiLogPrint(3, 4, 0xD000F00u, "WL-A0", "%{public}s", buf);
+    fprintf(stderr, "[A0] %s\n", buf);
+    fflush(stderr);
 }
 
 std::atomic<int> g_cbFrames{0}, g_cbJs{0}, g_surfFrames{0}, g_surfJs{0}, g_consoleJs{0}, g_loadEnd{0}, g_renderExit{-1};
@@ -81,6 +91,7 @@ public:
     }
 };
 
+#ifndef WL_A0_RUNTIME
 class ConsumerListener : public OHOS::IBufferConsumerListener {
 public:
     explicit ConsumerListener(OHOS::sptr<OHOS::IConsumerSurface> c) : consumer_(c) {}
@@ -116,11 +127,13 @@ public:
 private:
     OHOS::sptr<OHOS::IConsumerSurface> consumer_;
 };
+#endif
 
 class CreateInfo : public OHOS::NWeb::NWebCreateInfo {
 public:
     CreateInfo(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> args, bool withSurface) : args_(args)
     {
+#ifndef WL_A0_RUNTIME
         if (!withSurface) {
             return;
         }
@@ -135,20 +148,31 @@ public:
         auto producer = consumer_->GetProducer();
         surface_ = OHOS::Surface::CreateSurfaceAsProducer(producer);
         Log("[A0] S5 producer surface %p (consumer %p)", surface_.GetRefPtr(), consumer_.GetRefPtr());
+#else
+        (void)withSurface;   // callback-only: no producer surface, so no libsurface/libsync_fence NEEDED
+#endif
     }
     uint32_t GetWidth() override { return W; }
     uint32_t GetHeight() override { return H; }
     std::shared_ptr<OHOS::NWeb::NWebOutputFrameCallback> GetOutputFrameCallback() override { return cb_; }
     std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> GetEngineInitArgs() override { return args_; }
-    void* GetProducerSurface() override { return surface_ == nullptr ? nullptr : reinterpret_cast<void*>(&surface_); }
+    void* GetProducerSurface() override {
+#ifndef WL_A0_RUNTIME
+        return surface_ == nullptr ? nullptr : reinterpret_cast<void*>(&surface_);
+#else
+        return nullptr;
+#endif
+    }
     void* GetEnhanceSurfaceInfo() override { return nullptr; }
     bool GetIsIncognitoMode() override { return false; }
 
 private:
     std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> args_;
     std::shared_ptr<OHOS::NWeb::NWebOutputFrameCallback> cb_ = std::make_shared<FrameCb>();
+#ifndef WL_A0_RUNTIME
     OHOS::sptr<OHOS::IConsumerSurface> consumer_;
     OHOS::sptr<OHOS::Surface> surface_;
+#endif
 };
 
 class Handler : public OHOS::NWeb::NWebHandler {
@@ -288,7 +312,11 @@ void Run(std::string bundle, int mode)
 extern "C" __attribute__((visibility("default"))) int a0_probe_start(const char* bundle)
 {
     std::string b = bundle ? bundle : "";
+#ifdef WL_A0_RUNTIME
+    int mode = 1 | 8;   // single render process, callback-only (no producer surface)
+#else
     int mode = std::stoi(OHOS::system::GetParameter("debug.westlake.a0probe.mode", "0"));
+#endif
     g_runner = OHOS::AppExecFwk::EventRunner::Create("WlA0Probe");
     g_handler = std::make_shared<OHOS::AppExecFwk::EventHandler>(g_runner);
     bool posted = g_handler->PostTask([b, mode]() { Run(b, mode); }, "a0-run");
