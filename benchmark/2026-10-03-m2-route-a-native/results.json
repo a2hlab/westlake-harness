@@ -1,0 +1,35 @@
+{
+ "task": "M2 route-a native backend: the JNI implementation of org.westlake.webview.NativeNWebBackend's 20 native methods driving OpenHarmony NWeb, behind cc-t3's A0 engine code. Engine load/NWebHelper/CreateNWeb/NWebCreateInfo copied from the board-proven A0 probe; adds the per-WebView surface chain, the NWebHandler->Java-sink upcalls, and the RegisterNatives surface.",
+ "date": "2026-10-03",
+ "lane": "cc-wiki",
+ "board_entry": 90,
+ "offline": true,
+ "board_access": "none",
+ "built_on": "hw248 (ecs-9f6c), isolated out/ reusing cc-t3 A0 build area (include-dirs + board libs) read-only; cc-t3 A0 area untouched",
+ "artifacts": {
+  "worker_libwl_nweb_backend_so": "8475da6fb6dd0016ffb361e2ebac075a849e4ad2845c65ce9559a155779577af",
+  "shim_libwl_nweb_backend_shim_so": "ba3e05612a390d7ef37bd32528b946c43c8e84e70b07cc775373086e4f11557b",
+  "x2_byte_identical": true
+ },
+ "architecture": "two .so, one C-ABI symbol across the ns boundary (A0 pattern): shim (System.load'd in app ns) JNI_OnLoad dlns get-or-creates nweb_ns_legacy (PERMITIED_TARGET2, inherit default; nweb_ns left to NWebHelper per DIGEST 761), dlopen_ns the worker there, calls worker nweb_backend_register(JavaVM*); worker (in nweb_ns, sees libarkweb_core_loader closure) RegisterNatives the 20 methods + caches NWebCallbackSink upcall ids. No Java_* exports.",
+ "requirements": {
+  "1_engine_copied_from_A0": "nativeInitEngine = A0 S3/S4 (SetBundlePath/Init/SetRenderProcessMode/InitAndRun, call_once); nativeCreateNWeb = A0 S5 (NWebCreateInfo subclass + CreateNWeb + Resize/OnContinue); NWebEngineInitArgsImpl + handler pattern = A0 shapes",
+  "2_surface_chain": "SurfaceFromJava: ANativeWindow_fromSurface(env,surface) -> oh_anw_get_oh (NOLOAD dlsym) -> OHNativeWindow -> OH_NativeWindow_GetSurfaceId -> SurfaceUtils::GetInstance()->GetSurface(id) -> sptr<Surface> producer (= A0 mode-16 native-window fallback chain from the WebView's own Surface)",
+  "3_static_call_verify": "direct (non-virtual): all 13 OH calls resolve to a board export (NWebHelper->libarkweb_core_loader, Surface/SurfaceUtils/OH_NativeWindow_GetSurfaceId->libsurface, RefBase->libutils, HiLogPrint->libhilog); --no-undefined guarantees resolution. virtual: all NWeb/NWebPreference calls are vtable dispatch (none is an undefined import), slot indices extracted per method (frozen-header-derived). board NWeb vtable symbol is stripped/local in release libarkweb_core_loader so the .relr.dyn slot->symbol gold-standard cannot be read from the board binary; slot correctness rests on the frozen-header ABI + A0 having exercised a superset of NWeb virtuals on board; window13 = empirical slot confirmation. Slot verification table (evidence/slot-verification-table.txt): per JNI method the NWeb virtual + observed vtable offset + verified-on-board; a0probe exercised SetNWebHandler/GetPreference/Resize/OnContinue/LoadWithDataAndBaseUrl/PutJavaScriptEnabled on board (7 methods verified-on-board), 10 runtime-unverified (first board call must invoke+log each), 3 N/A; NWeb headers carry no #if (outer-confirmed) so slot order is unconditional.",
+  "4_namespace": "worker NEEDED = libarkweb_core_loader.z.so libsurface.z.so libutils.z.so libhilog.so libc++.so libc.so (no dup); shim NEEDED = libhilog.so libc.so. open_site_scan: worker's only dlopens are NOLOAD (oh_anw_get_oh probes, reuse existing); shim dlopen_ns nweb_ns_legacy via dlsym'd dlns_* (A0 pattern, indirect). worker lives in nweb_ns_legacy (nweb_ns left to NWebHelper, DIGEST 761); NEEDED resolve from inherited default (one copy each)",
+  "5_hw248_frozen_clang_x2": "OH clang-15 feef13a3, libcxx-ohos ABI ns __h, -fno-rtti, -Wl,--no-undefined; x2 byte-identical (worker 8475da6f, shim ba3e0561); logs tee'd",
+  "6_jni_sig_match": "javap(NativeNWebBackend) vs RegisterNatives kMethods: all 20 names+descriptors MATCH; worker exports only C-ABI nweb_backend_register (no Java_*)"
+ },
+ "followups_onboard_window13": [
+  "shouldInterceptRequest -> NWebUrlResourceResponse construction (setter names on board)",
+  "evaluateJavascript result via NWebMessageValueCallback (NWebMessage stringify)",
+  "addJavascriptInterface -> RegisterArkJSfunction (not needed for Wikipedia article view)",
+  "shim eager-vs-lazy worker load gate",
+  "if window13 changes the surface conclusion (mode 0 vs 16), SurfaceFromJava adjusts"
+ ],
+ "release": "$WORKSPACES/westlake-inputs/generations/m2-route-a-native-backend-v1/ (payload both .so + src + SHA256SUMS); persistent hw248 /home/alvin/cc-wiki-nweb-backend/out/a/. artifacts/*.so gitignored.",
+ "this_rounds_rule": "A route-a native backend that crosses into nweb_ns reuses the A0 two-.so pattern (shim System.load'd + C-ABI register of the ns-loaded worker) so the JVM finds the natives without a second engine copy. Verify the JNI surface against the Java side (javap vs RegisterNatives table), not just that it compiles. For OH C++ calls, direct non-virtual calls are checkable against the board dynsym; virtual-slot correctness is the frozen-header ABI (board vtables are stripped), with the on-board run as the empirical slot gate.",
+ "boundaries": "Offline, hw248 isolated build; no board/deploy/push. cc-t3 owns A0/engine-load + window13; backend goes on board only after window13.",
+ "landing_paths": "benchmark/2026-10-03-m2-route-a-native/landing-paths.txt",
+ "errata_fix": "outer R2: the first cut copied A0's nweb_ns creation; DIGEST 761 requires formal route-a to leave nweb_ns to NWebHelper and use nweb_ns_legacy (PERMITIED_TARGET2). Shim now get-or-creates nweb_ns_legacy (worker-dir-only lib_path, inherit default), never touches nweb_ns; the arkweb engine loads in OH's own nweb_ns at NWebHelper::Init. Rebuilt x2 byte-identical (shim ba3e0561)."
+}
