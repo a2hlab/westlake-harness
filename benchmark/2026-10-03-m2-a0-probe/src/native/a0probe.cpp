@@ -12,8 +12,9 @@
 //   S6 handler + JavaScript enabled, OnContinue, Resize
 //   S7 LoadWithDataAndBaseUrl(Chinese text + a script that paints the page #12ab34)
 //   S8 frames: OutputFrameCallback and/or the producer surface's consumer; centre pixel sampled; RESULT after 20 s
-// Mode bits from param debug.westlake.a0probe.mode (default 0): 16 = route-a faithful (bridge-published Activity window
-// surface instead of a local consumer surface; RS-holder primary, native-window fallback); 1 = single render process, 2 = InitAndRun(false)
+// Mode bits from param debug.westlake.a0probe.mode (default 0): 32 = route-a faithful, NWeb's OWN child RSSurfaceNode
+// under the Activity window node (ACE WebPattern; no hwui contention); 16 = the bridge window surface directly (shares
+// the Activity content node); 1 = single render process, 2 = InitAndRun(false)
 // (mock path via the bundle path), 4 = skip the ApplicationContext attach, 8 = no producer surface.
 #include <atomic>
 #include <cinttypes>
@@ -44,12 +45,40 @@
 #include "surface.h"   // outside the runtime CL ns search (ndk / chipset-pub-sdk); runtime variant omits it
 #include "surface_utils.h"      // mode 16 fallback: SurfaceUtils::GetSurface(uniqueId) (in libsurface)
 #include "external_window.h"    // mode 16 fallback: OH_NativeWindow_GetSurfaceId (in libsurface)
-// mode 16 primary: a minimal decl of the non-virtual export RSSurfaceNode::GetSurface() — avoids the deep
-// render_service_client header tree (rs_surface_node.h -> platform/drawing/rs_surface.h -> ...). GetSurface is only ever
-// called on a pointer owned by the bridge's std::shared_ptr; members are never accessed through this type, so the empty
-// layout is irrelevant — the call binds to _ZNK4OHOS5Rosen13RSSurfaceNode10GetSurfaceEv (librender_service_client) with
-// this = the real object. (genstub pattern, like src/genstub/*.h for the IDL headers.)
-namespace OHOS { namespace Rosen { class RSSurfaceNode { public: OHOS::sptr<OHOS::Surface> GetSurface() const; }; } }
+// The real render_service_client headers (ui/rs_surface_node.h -> ui/rs_node.h -> ... -> 2d_graphics -> Skia) pull the
+// whole RS+Skia tree and do not compile against this sysroot. Genstub only the symbols we call — all are DIRECT exported
+// NON-virtual/non-inline symbols in librender_service_client.z.so (verified by dyn-syms), so the calls bind directly and
+// no vtable slot is involved. RSSurfaceNodeConfig layout is replicated exactly from rs_surface_node.h:60 +
+// rs_common_def.h (SurfaceId=uint64_t, SurfaceWindowType : uint8_t), so RSSurfaceNode::Create reads the right bytes.
+// RSNode is RSSurfaceNode's single primary base (offset 0), so the this-pointer and shared_ptr<RSSurfaceNode>->
+// shared_ptr<RSNode> upcast are offset-0 and bind to the real object.
+namespace OHOS { namespace Rosen {
+class RSUIContext;
+enum class SurfaceWindowType : uint8_t { DEFAULT_WINDOW = 0 };
+struct RSSurfaceNodeConfig {
+    std::string SurfaceNodeName = "SurfaceNode";
+    void* additionalData = nullptr;
+    bool isTextureExportNode = false;
+    uint64_t surfaceId = 0;
+    bool isSync = true;
+    SurfaceWindowType surfaceWindowType = SurfaceWindowType::DEFAULT_WINDOW;
+    std::shared_ptr<RSUIContext> rsUIContext = nullptr;
+    bool isSkipCheckInMultiInstance = true;
+};
+class RSNode {   // single primary base of RSSurfaceNode (offset 0); members never accessed through this type
+public:
+    void AddChild(std::shared_ptr<RSNode> child, int index);   // _ZN4OHOS5Rosen6RSNode8AddChildENSt3__h10shared_ptrIS1_EEi
+    void SetBounds(float x, float y, float w, float h);        // _ZN4OHOS5Rosen6RSNode9SetBoundsEffff
+};
+class RSSurfaceNode : public RSNode {
+public:
+    using SharedPtr = std::shared_ptr<RSSurfaceNode>;
+    static SharedPtr Create(const RSSurfaceNodeConfig& config, bool isWindow = true,
+                            std::shared_ptr<RSUIContext> rsUIContext = nullptr);  // _ZN4OHOS5Rosen13RSSurfaceNode6CreateERKNS0_19RSSurfaceNodeConfigEbNSt3__h10shared_ptrINS0_11RSUIContextEEE
+    OHOS::sptr<OHOS::Surface> GetSurface() const;             // _ZNK4OHOS5Rosen13RSSurfaceNode10GetSurfaceEv
+};
+class RSTransaction { public: static void FlushImplicitTransaction(); };  // _ZN4OHOS5Rosen13RSTransaction24FlushImplicitTransactionEv
+}}
 #endif
 #ifndef WL_A0_RUNTIME
 #include "sync_fence.h"   // outside the runtime CL ns search (ndk / chipset-pub-sdk); runtime variant omits it
@@ -145,7 +174,12 @@ private:
 //   hands NWeb. Fallback = the native window (WESTLAKE_NATIVE_WINDOW_PTR_V1, an OHNativeWindow*) ->
 //   OH_NativeWindow_GetSurfaceId -> SurfaceUtils::GetSurface(id) (both in libsurface). Missing/parse-fail -> clear log,
 //   then return null (CreateNWeb fails = RESULT FAIL, no crash).
-OHOS::sptr<OHOS::Surface> GetBridgeSurface()
+std::shared_ptr<OHOS::Rosen::RSSurfaceNode> g_parent_node;   // the bridge-published Activity window node (kept alive)
+std::shared_ptr<OHOS::Rosen::RSSurfaceNode> g_child_node;    // mode 32: NWeb's own child node (kept alive)
+
+// Read the bridge-published Activity window RSSurfaceNode (WESTLAKE_RS_SURFACE_NODE_HOLDER_PTR_V1 = a
+// std::shared_ptr<RSSurfaceNode>*), polling until the Activity window session exists. Returns null if absent.
+std::shared_ptr<OHOS::Rosen::RSSurfaceNode> GetBridgeParentNode()
 {
     const char* holder = nullptr;
     const char* nw = nullptr;
@@ -161,18 +195,28 @@ OHOS::sptr<OHOS::Surface> GetBridgeSurface()
         if (sscanf(holder, "%p", &p) == 1 && p != nullptr) {
             auto* sp = reinterpret_cast<std::shared_ptr<OHOS::Rosen::RSSurfaceNode>*>(p);
             std::shared_ptr<OHOS::Rosen::RSSurfaceNode> node = *sp;
-            if (node) {
-                OHOS::sptr<OHOS::Surface> s = node->GetSurface();
-                Log("[A0] S5 bridge RSSurfaceNode=%p GetSurface=%p", node.get(), s.GetRefPtr());
-                if (s != nullptr) return s;
-                Log("[A0] S5 bridge RSSurfaceNode.GetSurface()=null -> native-window fallback");
-            } else {
-                Log("[A0] S5 bridge RS holder empty -> native-window fallback");
-            }
+            Log("[A0] S5 bridge parent RSSurfaceNode=%p", node ? node.get() : nullptr);
+            if (node) return node;
+            Log("[A0] S5 bridge RS holder empty");
         } else {
-            Log("[A0] S5 bridge RS holder parse failed -> native-window fallback");
+            Log("[A0] S5 bridge RS holder parse failed");
         }
     }
+    return nullptr;
+}
+
+// mode 16: hand NWeb the bridge's window surface directly (shares the Activity content node). RS-holder primary,
+// native-window fallback (OH_NativeWindow_GetSurfaceId -> SurfaceUtils::GetSurface). Null -> FAIL, no crash.
+OHOS::sptr<OHOS::Surface> GetBridgeSurface()
+{
+    std::shared_ptr<OHOS::Rosen::RSSurfaceNode> node = GetBridgeParentNode();
+    if (node) {
+        OHOS::sptr<OHOS::Surface> s = node->GetSurface();
+        Log("[A0] S5 bridge RSSurfaceNode.GetSurface=%p", s.GetRefPtr());
+        if (s != nullptr) return s;
+        Log("[A0] S5 bridge GetSurface null -> native-window fallback");
+    }
+    const char* nw = getenv("WESTLAKE_NATIVE_WINDOW_PTR_V1");
     if (nw != nullptr && nw[0]) {
         void* p = nullptr;
         if (sscanf(nw, "%p", &p) == 1 && p != nullptr) {
@@ -189,6 +233,31 @@ OHOS::sptr<OHOS::Surface> GetBridgeSurface()
     Log("[A0] S5 bridge surface UNAVAILABLE (FAIL, not crash)");
     return nullptr;
 }
+
+// mode 32 (route-a faithful, no hwui contention): create NWeb's OWN child RSSurfaceNode under the Activity window node
+// (OH ACE WebPattern), size it, flush the RS transaction, and give NWeb the child's surface. Null -> FAIL, no crash.
+OHOS::sptr<OHOS::Surface> GetChildSurface()
+{
+    g_parent_node = GetBridgeParentNode();
+    if (!g_parent_node) {
+        Log("[A0] S5 child: no bridge parent node (FAIL, not crash)");
+        return nullptr;
+    }
+    OHOS::Rosen::RSSurfaceNodeConfig cfg;
+    cfg.SurfaceNodeName = "WlA0WebChild";
+    g_child_node = OHOS::Rosen::RSSurfaceNode::Create(cfg, false);   // isWindow=false: a content surface node, not a window
+    if (!g_child_node) {
+        Log("[A0] S5 child: RSSurfaceNode::Create returned null (FAIL)");
+        return nullptr;
+    }
+    g_child_node->SetBounds(0.0f, 0.0f, static_cast<float>(W), static_cast<float>(H));
+    g_parent_node->AddChild(g_child_node, -1);   // -1 = top of the parent's children
+    OHOS::Rosen::RSTransaction::FlushImplicitTransaction();
+    OHOS::sptr<OHOS::Surface> s = g_child_node->GetSurface();
+    Log("[A0] S5 child node=%p parent=%p GetSurface=%p (bounds 0,0,%ux%u)", g_child_node.get(), g_parent_node.get(),
+        s.GetRefPtr(), W, H);
+    return s;   // null is a clean FAIL (CreateNWeb will fail), not a crash
+}
 #endif
 
 class CreateInfo : public OHOS::NWeb::NWebCreateInfo {
@@ -196,7 +265,12 @@ public:
     CreateInfo(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> args, int mode) : args_(args)
     {
 #ifndef WL_A0_RUNTIME
-        if (mode & 16) {   // route-a faithful: the bridge-published Activity window surface (no local consumer)
+        if (mode & 32) {   // route-a faithful: NWeb's OWN child RSSurfaceNode under the window node (no hwui contention)
+            surface_ = GetChildSurface();
+            Log("[A0] S5 child surface=%p", surface_.GetRefPtr());
+            return;
+        }
+        if (mode & 16) {   // bridge window surface directly (shares the Activity content node -> hwui contention)
             surface_ = GetBridgeSurface();   // the native-window fallback logs the surface uniqueId non-virtually
             Log("[A0] S5 bridge surface=%p", surface_.GetRefPtr());
             return;

@@ -25,12 +25,15 @@ PKG=org.westlake.a0probe
 LANE=${A0_LANE:-cc-t3}
 RT_TARGET=/system/android/lib64/libwestlake_html_compat.so    # runtime B7BindFixes System.load point, absent on boards
 RT_SRC=/data/local/tmp/libwestlake_html_compat.so             # bind-mount source (writable), labelled like the deployed libs
-RT_PROBE=$HERE/build/native/libwestlake_html_compat.so        # entry: JNI_OnLoad gate + default-inheriting ns loader
+ENTRY=${ENTRY:-default}                                        # default = nweb_ns co-own (windows 10-14); legacy = nweb_ns_legacy (OH builds nweb_ns itself)
+if [ "$ENTRY" = legacy ]; then RT_PROBE=$HERE/build/native/libwestlake_html_compat.legacy.so
+else RT_PROBE=$HERE/build/native/libwestlake_html_compat.so; fi   # entry: JNI_OnLoad gate + ns loader
 RT_WORKER=$HERE/build/native/libwl_a0_nweb.so                 # worker: full NWeb body (a0_probe_start), loaded by the entry
 RT_WORKER_DST=/data/local/tmp/libwl_a0_nweb.so                # entry dlopen_ns searches /data/local/tmp (a0_entry.cpp WORKER_DIR)
 RT_REF=/system/android/lib64/libwestlake_jni_gapfill.so       # an existing deployed lib, for the SELinux context
-RT_PROBE_SHA=a352a36fd36532fdceaa7ecf71f36d79e15e19480af363616f54b8fa6d9ad693
-RT_WORKER_SHA=ddcbdd461057ac50bbb3e16d8c2644d368104b90977b129bfba037382ab3127b
+if [ "$ENTRY" = legacy ]; then RT_PROBE_SHA=61e57956eb7bdd13f10ccbb5c15b392f2c545410f28117f368bd4eee759c262f
+else RT_PROBE_SHA=afeceeadf1917375b6057327f4f7fd2b07498e132f7c592bde97531b014d2adb; fi
+RT_WORKER_SHA=9db43b16e233860f630b6abefe664d854b27b1b61e3dc14ea6af01c4955a6530
 RECIPE=$HERE/../2026-09-28-bms-route-deploy/batch/prepare_sandbox.sh   # bms_batch's accepted sandbox recipe, verbatim
 # what prepare_sandbox creates for $PKG (removed again in rollback), plus the adapter's uninstall leftovers (window 1)
 PKG_DIRS="/data/app/el1/100/base/$PKG /data/app/el1/100/database/$PKG /data/app/el2/100/base/$PKG /data/app/el2/100/database/$PKG /data/app/el2/100/sharefiles/$PKG /data/app/el3/100/base/$PKG /data/app/el3/100/database/$PKG /data/app/el4/100/base/$PKG /data/app/el4/100/database/$PKG /data/app/el2/100/log/$PKG /data/app/el1/bundle/public/$PKG"
@@ -159,6 +162,6 @@ for mode in $MODES; do
   [ -n "$pid" ] && grep -E "^ *[0-9]+ +($pid|[0-9]+) " "$M/ps.txt" | grep -iE "$PKG|render|arkweb|nweb" > "$M/processes.txt"
   echo "process rows:"; cat "$M/processes.txt" 2>/dev/null
   gzip -9 "$M/hilog-all.txt"
-  grep -q "\[A0\] RESULT PASS" "$M/hilog-a0.txt" && { echo "[a0] PASS in mode $mode: stop"; break; }
-done
+  if grep -q "\[A0\] RESULT PASS" "$M/hilog-a0.txt"; then echo "[a0] mode $mode: PASS"; else echo "[a0] mode $mode: FAIL/none (see hilog-a0.txt)"; fi
+done   # run every mode in MODES (independent verdict each); the window budget check above still bounds total time
 echo "[a0] done $(date -Iseconds)"
