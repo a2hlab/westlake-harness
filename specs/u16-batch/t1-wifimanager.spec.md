@@ -45,6 +45,13 @@ fd-wifianalyzer 死因是 `android.net.wifi.WifiManager` 在 adapter-mainline-st
   那么 不再是 WifiManager NoSuchMethodError
   并且 若 app 进入自有 UI 则 t20 判定交外环(审核: human)
 
+场景: 第 9 个未补方法被调用 → 仍是 NSME 且被记录
+  测试: u16_t1_ninth_method_nsme
+  假设 app 在运行期调用 WifiManager 上第 9 个未列入清单的方法
+  当 first_fatal.py 取首个致命点
+  那么 致命点为该方法的 NoSuchMethodError(不静默、不崩在别处)
+  并且 该方法名进 U16 键表复盘记录,作为下一批补齐候选
+
 ## 排除范围
 
 - 不含真 Wi-Fi 服务适配(那是后续 OH Wi-Fi 服务桥的独立任务)。

@@ -45,6 +45,20 @@ M2 簇(u16 簇 B)的 4 个全屏 WebView app(vaults-randomlydie、yatoo、jiten-
   当 pair_sheet 汇总
   那么 已修键 auto=same(或外环确认)无一翻暗
 
+场景: A0 未出帧 → 任务取消
+  测试: u16_t5_cancel_without_frame
+  假设 A0 探针全部 mode 的出帧签认为否(无 CreateNweb 输出帧)
+  当 U16 批排程评估本任务
+  那么 本任务标记 cancelled(依赖失败),不上板、不占窗口并报依赖错误
+  并且 取消原因引用 A0 签认件,重定向决策交外环
+
+场景: depends 决策的验证(A0 签认前置)
+  测试: u16_t5_depends_gate
+  假设 依赖检查读取 A0 外环签认件
+  当 A0 未签或签认为未出帧
+  那么 depends 门不通过,t5 的实现与上板步骤全部被阻塞
+  并且 门结果与引用的签认件路径一并输出
+
 ## 排除范围
 
 - 不含 A2(多 app 通用化)与 Chromium 完整兼容;那是后续批次。

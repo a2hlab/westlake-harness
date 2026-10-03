@@ -45,6 +45,13 @@ fd-breezyweather 死于 `lateinit property weatherView has not been initialized`
   那么 fd-breezyweather 不再是 weatherView lateinit UninitializedPropertyAccessException
   并且 126 个亮键 auto=same 或外环逐张确认(审核: human)且无一翻暗
 
+场景: 任一 126 亮键回退 → 回滚本修并记反例
+  测试: u16_t3_regression_rollback
+  假设 同步推进合入后某亮键 t20 翻暗(pair_sheet auto=different 或外环判暗)
+  当 U16 窗口收尾
+  那么 判定失败:本修不进部署件(回滚),反例键与 t20 证据进 U16 复盘记录
+  并且 不以『其他 125 键正常』为由放行(出现翻暗即整体失败)
+
 ## 排除范围
 
 - 不重写整个 lifecycle 状态机;只改 launch 事务内这一段时序。

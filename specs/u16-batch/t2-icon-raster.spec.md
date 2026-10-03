@@ -45,6 +45,13 @@ cv2-com-frequent-habits 至今 `app_failed`:安装器给它装的桌面图标是
   那么 有 app 进程且有 t20 截图(图标定位成功)
   并且 t20 内容判定交外环(审核: human)
 
+场景: 非图标 XML 或栅格化失败 → 原样保留并记失败
+  测试: u16_t2_raster_failure_fallback
+  假设 输入 APK 的图标 XML 解析失败或图层缺失(构造的坏样本)
+  当 安装器图标处理跑完
+  那么 iconPath 保持原 XML 占位不变(原行为保留)
+  并且 输出含 raster-failed 行与失败原因,不中断安装
+
 ## 排除范围
 
 - 不重做整个 B3 图标管线;只修 adaptive/vector→raster 这一步。
