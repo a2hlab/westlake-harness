@@ -23,3 +23,21 @@
 #
 # Each shifted exactly +8 (one slot = the missing CanPromote), now matching the board. NEEDED identical, a0_probe_start
 # still exported, built x2 byte-identical (1ea800e9). Entry unchanged (a352a36f; uses no RefBase).
+
+# ---- mode 16 (route-a faithful bridge surface) added, worker rebuilt ddcbdd46 (x2 byte-identical) ----
+# a0probe.cpp mode 16: CreateInfo surface_ = GetBridgeSurface() instead of a local consumer surface.
+# GetBridgeSurface(): poll same-process env (window target is published when the Activity window session exists), then
+#   PRIMARY  WESTLAKE_RS_SURFACE_NODE_HOLDER_PTR_V1 (a std::shared_ptr<RSSurfaceNode>*) -> RSSurfaceNode::GetSurface()
+#   FALLBACK WESTLAKE_NATIVE_WINDOW_PTR_V1 (OHNativeWindow*) -> OH_NativeWindow_GetSurfaceId -> SurfaceUtils::GetSurface(id)
+#   missing/parse-fail -> clear log, return null (CreateNWeb fails = RESULT FAIL, no crash).
+# Each OH call static-verified as an exported NON-virtual import (UND in the worker, direct bl, no vtable slot risk):
+#   _ZNK4OHOS5Rosen13RSSurfaceNode10GetSurfaceEv   (librender_service_client; non-virtual per rs_surface_node.h:251)
+#   OH_NativeWindow_GetSurfaceId                    (libsurface, C API)
+#   _ZN4OHOS12SurfaceUtils11GetInstanceEv           (libsurface)
+#   _ZN4OHOS12SurfaceUtils10GetSurfaceEm            (libsurface)
+# RSSurfaceNode pulled in via a minimal genstub decl (not rs_surface_node.h, which needs the deep render_service tree);
+# only GetSurface() is ever called, on the bridge-owned pointer, so the stub's empty layout is irrelevant.
+# Surface::GetUniqueId() is VIRTUAL (surface.h:156 pure virtual) -> NOT called (dropped the informational log to avoid an
+# unverified vtable slot); the surface uniqueId is logged non-virtually in the native-window fallback via GetSurfaceId.
+# NEEDED += librender_service_client.z.so (resolves in nweb_ns via inherited default). Build: -DOHOS_PLATFORM +
+# -l:librender_service_client.z.so. mode-0 surface slots unchanged (0x50/0xd0/0x118). run_a0.sh RT_WORKER_SHA=ddcbdd46.
