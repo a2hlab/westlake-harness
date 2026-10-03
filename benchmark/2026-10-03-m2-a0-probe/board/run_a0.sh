@@ -30,7 +30,7 @@ RT_WORKER=$HERE/build/native/libwl_a0_nweb.so                 # worker: full NWe
 RT_WORKER_DST=/data/local/tmp/libwl_a0_nweb.so                # entry dlopen_ns searches /data/local/tmp (a0_entry.cpp WORKER_DIR)
 RT_REF=/system/android/lib64/libwestlake_jni_gapfill.so       # an existing deployed lib, for the SELinux context
 RT_PROBE_SHA=a352a36fd36532fdceaa7ecf71f36d79e15e19480af363616f54b8fa6d9ad693
-RT_WORKER_SHA=1ea800e9e67f146238be74b2dffaa24dfc992afca506919dd423c7ee238c85aa
+RT_WORKER_SHA=ddcbdd461057ac50bbb3e16d8c2644d368104b90977b129bfba037382ab3127b
 RECIPE=$HERE/../2026-09-28-bms-route-deploy/batch/prepare_sandbox.sh   # bms_batch's accepted sandbox recipe, verbatim
 # what prepare_sandbox creates for $PKG (removed again in rollback), plus the adapter's uninstall leftovers (window 1)
 PKG_DIRS="/data/app/el1/100/base/$PKG /data/app/el1/100/database/$PKG /data/app/el2/100/base/$PKG /data/app/el2/100/database/$PKG /data/app/el2/100/sharefiles/$PKG /data/app/el3/100/base/$PKG /data/app/el3/100/database/$PKG /data/app/el4/100/base/$PKG /data/app/el4/100/database/$PKG /data/app/el2/100/log/$PKG /data/app/el1/bundle/public/$PKG"

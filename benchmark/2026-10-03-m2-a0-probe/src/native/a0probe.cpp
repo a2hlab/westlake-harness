@@ -12,7 +12,8 @@
 //   S6 handler + JavaScript enabled, OnContinue, Resize
 //   S7 LoadWithDataAndBaseUrl(Chinese text + a script that paints the page #12ab34)
 //   S8 frames: OutputFrameCallback and/or the producer surface's consumer; centre pixel sampled; RESULT after 20 s
-// Mode bits from param debug.westlake.a0probe.mode (default 0): 1 = single render process, 2 = InitAndRun(false)
+// Mode bits from param debug.westlake.a0probe.mode (default 0): 16 = route-a faithful (bridge-published Activity window
+// surface instead of a local consumer surface; RS-holder primary, native-window fallback); 1 = single render process, 2 = InitAndRun(false)
 // (mock path via the bundle path), 4 = skip the ApplicationContext attach, 8 = no producer surface.
 #include <atomic>
 #include <cinttypes>
@@ -41,6 +42,14 @@
 #endif
 #ifndef WL_A0_RUNTIME
 #include "surface.h"   // outside the runtime CL ns search (ndk / chipset-pub-sdk); runtime variant omits it
+#include "surface_utils.h"      // mode 16 fallback: SurfaceUtils::GetSurface(uniqueId) (in libsurface)
+#include "external_window.h"    // mode 16 fallback: OH_NativeWindow_GetSurfaceId (in libsurface)
+// mode 16 primary: a minimal decl of the non-virtual export RSSurfaceNode::GetSurface() — avoids the deep
+// render_service_client header tree (rs_surface_node.h -> platform/drawing/rs_surface.h -> ...). GetSurface is only ever
+// called on a pointer owned by the bridge's std::shared_ptr; members are never accessed through this type, so the empty
+// layout is irrelevant — the call binds to _ZNK4OHOS5Rosen13RSSurfaceNode10GetSurfaceEv (librender_service_client) with
+// this = the real object. (genstub pattern, like src/genstub/*.h for the IDL headers.)
+namespace OHOS { namespace Rosen { class RSSurfaceNode { public: OHOS::sptr<OHOS::Surface> GetSurface() const; }; } }
 #endif
 #ifndef WL_A0_RUNTIME
 #include "sync_fence.h"   // outside the runtime CL ns search (ndk / chipset-pub-sdk); runtime variant omits it
@@ -129,12 +138,70 @@ private:
 };
 #endif
 
+#ifndef WL_A0_RUNTIME
+// mode 16 (route-a faithful): the Activity window's surface, published by the bridge into same-process env pointers.
+// Primary = the RSSurfaceNode holder (WESTLAKE_RS_SURFACE_NODE_HOLDER_PTR_V1, a std::shared_ptr<RSSurfaceNode>*) ->
+//   RSSurfaceNode::GetSurface() (non-virtual export of librender_service_client) -- the same object OH ACE WebPattern
+//   hands NWeb. Fallback = the native window (WESTLAKE_NATIVE_WINDOW_PTR_V1, an OHNativeWindow*) ->
+//   OH_NativeWindow_GetSurfaceId -> SurfaceUtils::GetSurface(id) (both in libsurface). Missing/parse-fail -> clear log,
+//   then return null (CreateNWeb fails = RESULT FAIL, no crash).
+OHOS::sptr<OHOS::Surface> GetBridgeSurface()
+{
+    const char* holder = nullptr;
+    const char* nw = nullptr;
+    for (int i = 0; i < 40; i++) {   // the window target is published only once the Activity window session exists (~<10s)
+        holder = getenv("WESTLAKE_RS_SURFACE_NODE_HOLDER_PTR_V1");
+        nw = getenv("WESTLAKE_NATIVE_WINDOW_PTR_V1");
+        if ((holder != nullptr && holder[0]) || (nw != nullptr && nw[0])) break;
+        usleep(250 * 1000);
+    }
+    Log("[A0] S5 bridge env: RS_holder=%s native_window=%s", holder ? holder : "(absent)", nw ? nw : "(absent)");
+    if (holder != nullptr && holder[0]) {
+        void* p = nullptr;
+        if (sscanf(holder, "%p", &p) == 1 && p != nullptr) {
+            auto* sp = reinterpret_cast<std::shared_ptr<OHOS::Rosen::RSSurfaceNode>*>(p);
+            std::shared_ptr<OHOS::Rosen::RSSurfaceNode> node = *sp;
+            if (node) {
+                OHOS::sptr<OHOS::Surface> s = node->GetSurface();
+                Log("[A0] S5 bridge RSSurfaceNode=%p GetSurface=%p", node.get(), s.GetRefPtr());
+                if (s != nullptr) return s;
+                Log("[A0] S5 bridge RSSurfaceNode.GetSurface()=null -> native-window fallback");
+            } else {
+                Log("[A0] S5 bridge RS holder empty -> native-window fallback");
+            }
+        } else {
+            Log("[A0] S5 bridge RS holder parse failed -> native-window fallback");
+        }
+    }
+    if (nw != nullptr && nw[0]) {
+        void* p = nullptr;
+        if (sscanf(nw, "%p", &p) == 1 && p != nullptr) {
+            uint64_t id = 0;
+            int rc = OH_NativeWindow_GetSurfaceId(reinterpret_cast<OHNativeWindow*>(p), &id);
+            OHOS::sptr<OHOS::Surface> s = (rc == 0) ? OHOS::SurfaceUtils::GetInstance()->GetSurface(id) : nullptr;
+            Log("[A0] S5 bridge nativeWindow=%p GetSurfaceId rc=%d id=%llu GetSurface=%p", p, rc,
+                static_cast<unsigned long long>(id), s.GetRefPtr());
+            if (s != nullptr) return s;
+        } else {
+            Log("[A0] S5 bridge native window parse failed");
+        }
+    }
+    Log("[A0] S5 bridge surface UNAVAILABLE (FAIL, not crash)");
+    return nullptr;
+}
+#endif
+
 class CreateInfo : public OHOS::NWeb::NWebCreateInfo {
 public:
-    CreateInfo(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> args, bool withSurface) : args_(args)
+    CreateInfo(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> args, int mode) : args_(args)
     {
 #ifndef WL_A0_RUNTIME
-        if (!withSurface) {
+        if (mode & 16) {   // route-a faithful: the bridge-published Activity window surface (no local consumer)
+            surface_ = GetBridgeSurface();   // the native-window fallback logs the surface uniqueId non-virtually
+            Log("[A0] S5 bridge surface=%p", surface_.GetRefPtr());
+            return;
+        }
+        if ((mode & 8) != 0) {   // callback-only (no producer surface)
             return;
         }
         consumer_ = OHOS::IConsumerSurface::Create("WlA0Probe");
@@ -149,7 +216,7 @@ public:
         surface_ = OHOS::Surface::CreateSurfaceAsProducer(producer);
         Log("[A0] S5 producer surface %p (consumer %p)", surface_.GetRefPtr(), consumer_.GetRefPtr());
 #else
-        (void)withSurface;   // callback-only: no producer surface, so no libsurface/libsync_fence NEEDED
+        (void)mode;   // callback-only: no producer surface, so no libsurface/libsync_fence NEEDED
 #endif
     }
     uint32_t GetWidth() override { return W; }
@@ -284,7 +351,7 @@ void Run(std::string bundle, int mode)
     g_stage = "S5";
     auto args = std::make_shared<NWeb::NWebEngineInitArgsImpl>();
     args->SetIsMultiRendererProcess(false);
-    g_info = std::make_shared<CreateInfo>(args, (mode & 8) == 0);
+    g_info = std::make_shared<CreateInfo>(args, mode);
     g_nweb = NWeb::NWebHelper::Instance().CreateNWeb(g_info);
     Log("[A0] S5 CreateNWeb -> %p", g_nweb.get());
     if (g_nweb == nullptr) {

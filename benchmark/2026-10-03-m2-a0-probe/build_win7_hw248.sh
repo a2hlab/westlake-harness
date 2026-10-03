@@ -26,7 +26,7 @@ subprocess.run([CXX, *common, '-shared', '-nostdlib++', '-fuse-ld=lld', '-Wl,--n
                 '-Wl,-soname,libwl_a0_nweb.so', '-o', str(O / 'libwl_a0_nweb.so'), str(O / 'worker.o'), '-L' + str(B / 'lib'),
                 '-l:libarkweb_core_loader.z.so', '-l:libapp_context.z.so', '-l:libappexecfwk_base.z.so',
                 '-l:libeventhandler.z.so', '-l:libsurface.z.so', '-l:libsync_fence.z.so', '-l:libbegetutil.z.so',
-                '-l:libutils.z.so', '-l:libhilog.so', '-l:libc++.so'], check=True)
+                '-l:librender_service_client.z.so', '-l:libutils.z.so', '-l:libhilog.so', '-l:libc++.so'], check=True)
 
 # entry: minimal (libhilog + libc); musl dlns ops resolved at run time
 subprocess.run([CXX, *common, '-std=c++17', '-fno-rtti', '-nostdinc++', '-isystem',
