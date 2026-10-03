@@ -1,0 +1,70 @@
+U17 ③④ verified disassembly (cc-t3, on the crashing binaries).
+Generated with llvm-objdump/llvm-readelf from the local app-inputs copies; build-ids == the on-board faultlog libs.
+
+=== build-ids ===
+librealm-jni.so: bitstring)
+ea0a5d9080555279643882fd771d0f9af6bbfd6f (expect ea0a5d9080555279643882fd771d0f9af6bbfd6f)
+libmozglue.so:   bitstring)
+6a348a8e315c3fc31d1de3509ef9f1cb7a905dea (expect 6a348a8e315c3fc31d1de3509ef9f1cb7a905dea)
+
+=== ④ fennec libmozglue #00 MOZ_CRASH @0x77d30-0x77d48 ===
+   77d30: 9112c94a     	add	x10, x10, #0x4b2
+   77d34: f9400529     	ldr	x9, [x9, #0x8]
+   77d38: aa1f03e8     	mov	x8, xzr
+   77d3c: f900012a     	str	x10, [x9]
+   77d40: 52800669     	mov	w9, #0x33               // =51
+   77d44: f9000109     	str	x9, [x8]
+=== ④ fennec GeckoLoader_putenv @0x90584-0x905b8 ===
+   90584: a9be57fe     	stp	x30, x21, [sp, #-0x20]!
+   90588: a9014ff4     	stp	x20, x19, [sp, #0x10]
+   9058c: f9400008     	ldr	x8, [x0]
+   90590: aa0203f4     	mov	x20, x2
+   90594: aa0203e1     	mov	x1, x2
+   90598: aa1f03e2     	mov	x2, xzr
+   9059c: aa0003f3     	mov	x19, x0
+   905a0: f942a508     	ldr	x8, [x8, #0x548]
+   905a4: d63f0100     	blr	x8
+   905a8: b4000180     	cbz	x0, 0x905d8 <Java_org_mozilla_gecko_mozglue_GeckoLoader_putenv+0x54>
+   905ac: aa0003f5     	mov	x21, x0
+   905b0: 9402a994     	bl	0x13ac00 <strdup@plt>
+   905b4: 9402aa8f     	bl	0x13aff0 <putenv@plt>
+=== ④ fennec MOZ_CRASH reason string @.rodata 0x454b2 ===
+ 454b0 32004d4f 5a5f5245 4c454153 455f4153  2.MOZ_RELEASE_AS
+ 454c0 53455254 2831554c 4c203c3c 20675061  SERT(1ULL << gPa
+ 454d0 67655369 7a653250 6f77203d 3d206750  geSize2Pow == gP
+ 454e0 61676553 697a6529 20285061 67652073  ageSize) (Page s
+=== ④ fennec sysconf(#0x27=39) sites ===
+   7fd30: 528004e0     	mov	w0, #0x27               // =39
+   806f8: 528004e0     	mov	w0, #0x27               // =39
+   84358: 528004e0     	mov	w0, #0x27               // =39
+   8a778: 528004e0     	mov	w0, #0x27               // =39
+
+=== ③ realm librealm-jni #00 fault @0x7738c0-0x7738e4 ===
+  7738c0: a90357f6     	stp	x22, x21, [sp, #0x30]
+  7738c4: a9044ff4     	stp	x20, x19, [sp, #0x40]
+  7738c8: f9400c08     	ldr	x8, [x0, #0x18]
+  7738cc: f9400419     	ldr	x25, [x0, #0x8]
+  7738d0: f940181b     	ldr	x27, [x0, #0x30]
+  7738d4: 12800009     	mov	w9, #-0x1               // =-1
+  7738d8: cb080028     	sub	x8, x1, x8
+  7738dc: 9ad92517     	lsr	x23, x8, x25
+  7738e0: b8777b68     	ldr	w8, [x27, x23, lsl #2]
+=== ③ realm #01 mutex lock success @0x65d228-0x65d25c ===
+  65d228: f9443d13     	ldr	x19, [x8, #0x878]
+  65d22c: aa0203f4     	mov	x20, x2
+  65d230: aa0103f6     	mov	x22, x1
+  65d234: aa1303e0     	mov	x0, x19
+  65d238: 9404e6f6     	bl	0x796e10 <pthread_mutex_lock@plt>
+  65d23c: 35000160     	cbnz	w0, 0x65d268 <_ZNSt6__ndk117bad_function_callD0Ev+0x135424>
+  65d240: 8b160301     	add	x1, x24, x22
+  65d244: 710006ff     	cmp	w23, #0x1
+  65d248: 1a9f17e4     	cset	w4, eq
+  65d24c: aa1503e0     	mov	x0, x21
+  65d250: aa1403e2     	mov	x2, x20
+  65d254: aa1f03e3     	mov	x3, xzr
+  65d258: 94045997     	bl	0x7738b4 <__bid128qd_div+0xd66b8>
+=== ③ realm sysconf(0x27/0x28) sites ===
+  38c5a0: 52800500     	mov	w0, #0x28               // =40
+  777e58: 528004e0     	mov	w0, #0x27               // =39
+=== ③ realm robust/pshared mutexattr imports (expect none) ===
+(none)

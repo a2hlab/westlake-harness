@@ -1,0 +1,52 @@
+SHARED ROOT CAUSE (③ + ④): bionic-vs-musl sysconf() _SC_* constant numbering mismatch
+========================================================================================
+
+Android NDK apps are compiled against BIONIC headers, where the _SC_* sysconf selectors
+have DIFFERENT integer values than our runtime's MUSL libc. The apps call sysconf(<bionic
+number>); musl interprets that same integer as a DIFFERENT _SC_ selector and returns a
+wrong value. Page-size queries are the fatal case.
+
+BIONIC (what the apps were compiled with; bionic/libc/include/bits/sysconf.h):
+  _SC_PAGESIZE          = 0x0027 = 39
+  _SC_PAGE_SIZE         = 0x0028 = 40
+  _SC_NPROCESSORS_CONF  = 0x0060 = 96
+  _SC_NPROCESSORS_ONLN  = 0x0061 = 97
+
+MUSL (our runtime; OH musl usr/include/aarch64-linux-ohos/unistd.h), VERIFIED on hw248:
+  #define _SC_PAGE_SIZE        30
+  #define _SC_PAGESIZE         30     /* !! */      <- OH musl itself flags this line
+  #define _SC_BC_SCALE_MAX     38
+  #define _SC_BC_STRING_MAX    39
+  #define _SC_COLL_WEIGHTS_MAX 40  (musl numbering; see note)
+  #define _SC_NPROCESSORS_CONF 83
+  #define _SC_NPROCESSORS_ONLN 84
+
+=> A call the app means as "page size" (bionic 39) is received by musl as _SC_BC_STRING_MAX.
+
+What musl RETURNS for 39 (OH musl src/conf/sysconf.c, VERIFIED on hw248):
+  [_SC_PAGE_SIZE=30]     = JT_PAGE_SIZE  -> resolved to the REAL page size (4096)
+  [_SC_BC_STRING_MAX=39] = _POSIX2_BC_STRING_MAX = 1000   (a POSIX2 bc limit constant)
+  => musl sysconf(39) returns 1000.  1000 is NOT a power of two.
+
+Observed app calls (disassembly, this round):
+  libmozglue.so  (fennec, build-id 6a348a8e...): sysconf(0x27=39) in mozjemalloc init,
+      result stored as gPageSize.  (also sysconf(0x27) in several RELRO/mmap helpers.)
+  librealm-jni.so (im-vector, build-id ea0a5d90...): sysconf(0x27=39) @0x777e5c,
+      sysconf(0x28=40) @0x38c5a4, sysconf(0x61=97) @0x4bbf80.
+  Only bionic numbering makes these meaningful (page size / CPU count); confirms the
+  apps use bionic _SC_* values.
+
+FIX (one libc-compat shim, high leverage):
+  The runtime already NEEDs libbionic_compat.so. Add a sysconf() wrapper there that
+  translates the bionic _SC_* numbers to musl's before delegating to musl sysconf:
+      39 (bionic _SC_PAGESIZE)       -> 30 (musl _SC_PAGESIZE)
+      40 (bionic _SC_PAGE_SIZE)      -> 30
+      96 (bionic _SC_NPROCESSORS_CONF)-> 83
+      97 (bionic _SC_NPROCESSORS_ONLN)-> 84
+      ... (map the whole diverging range; the two numbering tables are fixed and known)
+  This is the SAME class of fix as the existing bionic<->musl compat (libbionic_compat).
+  Scope it to app-native callers (the runtime's own code uses musl numbering already).
+
+Note on musl _SC_COLL_WEIGHTS_MAX numbering: musl orders _SC_BC_SCALE_MAX=38,
+_SC_BC_STRING_MAX=39, _SC_COLL_WEIGHTS_MAX=40. Either way, bionic 40 (_SC_PAGE_SIZE)
+lands on a non-page-size musl selector, same failure mode as 39.

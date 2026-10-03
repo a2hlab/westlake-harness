@@ -1,0 +1,16 @@
+{
+  "changes": [
+    {
+      "path": "README.md",
+      "lines": [
+        "| **`benchmark/2026-10-03-u17-native-crash-static/`** | **U17 ③④ native-crash static (cc-t3): fennec libmozglue + im-vector librealm-jni both SIGSEGV@0 from ONE root — bionic↔musl `sysconf` `_SC_*` numbering mismatch. ④ fennec DEFINITIVE: mozjemalloc reads page size via `sysconf(0x27)`; musl 0x27=_SC_BC_STRING_MAX=1000 (not pow2) → MOZ_RELEASE_ASSERT → deliberate MOZ_CRASH `*(NULL)` (putenv/strdup is just lazy init, not a bad ptr). ③ realm STRONG: SlabAlloc sizes mmap from `sysconf(0x27/0x28)` → `m_translations`(obj+0x30) NULL → nativeGetSharedRealm derefs NULL (lock succeeded, no robust-mutex imports). Disasm verified on the crashing build-ids (6a348a8e / ea0a5d90). Fix = `sysconf` remap in libbionic_compat; moves fennec+firefox once native_abi 7605812c is on board, +im-vector+mcdonalds after the Realm `_ctype_` domain wall — ship PAIRED, standalone immediate=0.** |"
+      ]
+    },
+    {
+      "path": ".octos/KNOWLEDGE-DIGEST.md",
+      "lines": [
+        "- 2026-10-03 **bionic↔musl sysconf 编号错位是 native 崩溃的共因(cc-t3, U17 ③④)**:NDK app 按 bionic `_SC_*` 调 `sysconf`,OH musl 把同一整数当别的选择器。致命的是页大小:bionic `_SC_PAGESIZE`=39(0x27),musl 39=`_SC_BC_STRING_MAX`→返回 1000(非 2 的幂)。fennec libmozglue mozjemalloc 据此 `MOZ_RELEASE_ASSERT(1<<gPageSize2Pow==gPageSize)` 失败→主动 MOZ_CRASH 写 `*(NULL)`(putenv/strdup 只是首个惰性 init 的 malloc,不是坏指针);im-vector Realm SlabAlloc 据此定 mmap 段大小→`m_translations`(obj+0x30)为 NULL→`nativeGetSharedRealm` 解 NULL(锁成功、无 robust-mutex 导入,非 mutex ABI)。修法=libbionic_compat 加 `sysconf` 包装把 bionic 号翻成 musl(39/40→30、96/97→83/84),只对 app-native 调用者。按首致命簇表这是**次级墙**:fennec/firefox 要先过 native_abi 7605812c、im-vector/mcdonalds 要先过 Realm `_ctype_`(未认领)——单发即刻移走 0,须与 native-link 修法配对出。反汇编一律核板上崩溃的 build-id(判断对象纪律)。"
+      ]
+    }
+  ]
+}

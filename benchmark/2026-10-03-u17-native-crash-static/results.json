@@ -1,0 +1,44 @@
+{
+  "topic": "U17 native-crash static analysis (cc-t3, reassigned from cc-wiki)",
+  "deployed": false,
+  "shared_root_cause": "bionic<->musl sysconf _SC_* numbering mismatch: NDK apps call sysconf(bionic#); OH musl reads the same int as a different selector. Page-size queries are fatal.",
+  "items": {
+    "fennec": {
+      "key": "fd-fennec_fdroid",
+      "lib": "libmozglue.so",
+      "build_id": "6a348a8e315c3fc31d1de3509ef9f1cb7a905dea",
+      "build_id_verified": true,
+      "fault": "SIGSEGV(SEGV_MAPERR)@0 — deliberate MOZ_CRASH (str x9,[xzr]) @0x77d44",
+      "root_cause": "mozjemalloc init reads gPageSize via sysconf(0x27); musl 0x27=_SC_BC_STRING_MAX=1000 (not power of two) -> MOZ_RELEASE_ASSERT(1<<gPageSize2Pow==gPageSize) fails -> MOZ_CRASH. putenv/strdup is only the first lazy-init malloc.",
+      "certainty": "definitive",
+      "corrected": "the earlier putenv+44->strdup+48 'bad pointer' theory is wrong: strdup arg is a null-checked GetStringUTFChars result",
+      "fix": "sysconf remap in libbionic_compat (39/40->30, 96/97->83/84, full range)",
+      "probe_needed": false
+    },
+    "im_vector_realm": {
+      "key": "fd-im-vector-app",
+      "lib": "librealm-jni.so",
+      "build_id": "ea0a5d9080555279643882fd771d0f9af6bbfd6f",
+      "build_id_verified": true,
+      "fault": "SIGSEGV(SEGV_MAPERR)@0 — ldr w8,[x27,x23,lsl#2] @0x7738e0 with x27=m_translations(obj+0x30)=NULL, in nativeGetSharedRealm",
+      "root_cause": "Realm SlabAlloc sizes/attaches .realm mmap sections from sysconf(0x27)/sysconf(0x28) page size; under musl those are wrong -> translation table never populated (NULL) -> first ref->address translation derefs NULL.",
+      "certainty": "strong; last step (garbage-page-size -> NULL table) inferred (static disasm can't show the attach decision)",
+      "not_a_mutex_abi_crash": "the guarding pthread_mutex_lock SUCCEEDED (cbnz not taken @0x65d23c); no setrobust/setpshared imports",
+      "fix": "same sysconf remap in libbionic_compat",
+      "probe_needed": "only if fix-and-rerun inconclusive (minimal read-only interposer; see evidence/probe-design.txt)"
+    }
+  },
+  "fix": {
+    "where": "libbionic_compat.so (already NEEDED)",
+    "what": "sysconf() wrapper translating bionic _SC_* -> musl before delegating to musl sysconf",
+    "kind": "libc compat shim (not a stub, not don't-fix)",
+    "scope": "app-native callers; runtime code already uses musl numbering"
+  },
+  "first_fatal_move_estimate": {
+    "note": "sysconf is the NEXT wall, not the current first-fatal, for all four; each is blocked by an earlier native-link wall. Source: benchmark/2026-10-03-u13-first-fatal-clusters.",
+    "moves_now_if_native_abi_on_board": ["fd-fennec_fdroid", "firefox"],
+    "moves_after_realm_ctype_domain_fixed": ["fd-im-vector-app", "mcdonalds"],
+    "standalone_immediate_moves": 0,
+    "ship_paired_with": ["native_abi 7605812c (mozglue family __gnu_strerror_r)", "a _ctype_ provider for the Realm native domain (C2b, currently unowned)"]
+  }
+}

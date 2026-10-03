@@ -1,0 +1,25 @@
+Optional on-board probe (ONLY if fix-and-rerun is inconclusive for ③)
+====================================================================
+Neither item strictly needs a probe before acting: ④ is statically definitive, and the
+cheapest confirmation for both is to apply the libbionic_compat sysconf remap and re-run.
+If ③ (Realm) does not clear after the sysconf fix, this minimal probe pins the step
+between "garbage page size" and "NULL m_translations".
+
+Goal: observe, inside the appspawn-x child during nativeGetSharedRealm, what sysconf()
+returns and whether the mmap/attach of the .realm file succeeds.
+
+Minimal design (no app rebuild; interpose in the runtime/compat layer we already ship):
+ 1. In libbionic_compat (or a tiny LD_PRELOAD-style interposer loaded by B7BindFixes.loadLib),
+    wrap and log, with the calling tid + the selector/args:
+      sysconf(name)            -> name, return value   (watch 39/40/97)
+      mmap(addr,len,prot,...)  -> len, return (MAP_FAILED?)
+      ftruncate(fd,len) / posix_fallocate / fstat(fd)->st_size
+      open/__open_2(path)      -> the .realm path + fd
+ 2. Drive im-vector to the nativeGetSharedRealm point; capture one child's log.
+ 3. PASS/for-the-fix criterion: after the sysconf remap, sysconf(39) logs 4096 (not 1000),
+    mmap for the .realm succeeds, and im-vector's first-fatal moves past nativeGetSharedRealm
+    (screenshot is ground truth for any lighting claim).
+Scope: read-only logging; no board state change beyond running the app. Use an idle board.
+
+Note: the fennec case needs no probe — sysconf(39)=1000 is verified in the musl source and
+the MOZ_CRASH reason string names the exact assert. Fix-and-rerun confirms.
