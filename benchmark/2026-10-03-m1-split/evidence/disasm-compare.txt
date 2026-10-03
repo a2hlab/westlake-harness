@@ -1,0 +1,58 @@
+M1 SPLIT — A' proof (built on a2hlab with the U13 runtime's own frozen recipe)
+==============================================================================
+Build: $WORKSPACES/westlake-harness-wiki/benchmark/2026-10-03-m1-split/recipe/split_a_prime.run.sh
+  (driver env of the u13 "m1" variant + head -505 of its resolved recipe.sh for the exact var setup;
+   frozen OHOS clang L03_A12_CXX, --target=aarch64-linux-ohos -O2 -std=gnu++17 -fno-rtti, the recipe's
+   exact $COMMON/$INC/$DEFS + -include libcxx_compat.h). Full tee: evidence/build.log.
+
+(0) BUILD-ENV FIDELITY — the trust anchor (byte-identical reproduction of the deployed objects)
+    shim_baseline.o  (compiled from the N2 source b94f69e4)  = 40aa2f5fe5975da4...  == deployed baseline 40aa2f5f  OK
+    shim_m1ref.o     (compiled from the m1-session-slots src) = 612236befb06df45...  == deployed M1      612236be  OK
+    cmp_base.o       (baseline, from the isolation path)      = 40aa2f5fe5975da4...  == 40aa2f5f                   OK
+  -> the recipe + toolchain here reproduce the exact deployed objects bit-for-bit, so everything below is
+     measured against the real artifacts, not a lookalike build.
+
+(1) m1_copy.o — the M1 scan logic is INSTRUCTION-IDENTICAL to 612236be
+    Normalized disassembly (leading address + branch-target labels + relocated immediates masked) of the two
+    address-taken callbacks that ARE the cross-copy scan (and inline m1_is_bridge + m1_exec_range_contains):
+      m1_find_own       : 56 insns  -> diff vs 612236be = 0 lines  (IDENTICAL; raw encodings match, e.g. a9bd7bfd/f9000bf5/...)
+      m1_collect_others : 75 insns  -> diff vs 612236be = 0 lines  (IDENTICAL)
+    Proof files: ref-612236be-m1_find_own.norm vs cand-split-m1_find_own.norm (and ..._collect_others).
+    Only non-instruction differences are the mangled symbol NAMES: in 612236be these live in a doubly-nested
+    anonymous namespace (the M1 block added a second `namespace {` inside the shim), and <link.h> was included
+    inside `namespace android` so the struct is android::(anon)::dl_phdr_info; in the split they are
+    android::(anon)::m1_* over ::dl_phdr_info. Same struct layout, same code -> identical instructions.
+
+(2) m1_copy.o carries exactly the M1 payload that left the shim
+    T  android::m1_native_window_from_other_copies(void* (*)(int), int)   (external -> callable from the shim)
+    t  android::(anon)::m1_find_own / m1_collect_others
+    [M1-COPY] sessionId=%d resolved by bridge copy base=%p (resolved copy base=%p returned null)   (the string)
+    R_AARCH64_CALL26 dl_iterate_phdr  x2                                   (== 612236be's two dl_iterate_phdr calls)
+
+(3) shim_split.o — the baseline PLUS exactly one fallback call, nothing else
+    Full-object normalized disasm vs cmp_base.o (same source path, same env, differ only by the patch):
+      base 1835 insns -> split 1863 insns; the ENTIRE delta is one contiguous region = the (inlined)
+      oh_wm_get_native_window site, where the baseline's "nw = g_fn(sessionId); on null -> error log" gains
+      "nw != nullptr ? nw : m1_native_window_from_other_copies(g_oh_wm_get_native_window_fn, sessionId)"
+      (the cbnz/ldr/bl fallback + the ternary branch glue). No other function changed.
+    And confirming nothing M1 stayed behind:
+      m1 helper symbols in shim_split.o      : 0
+      [M1-COPY] strings in shim_split.o      : 0
+      dl_iterate_phdr relocations            : 0
+      the one new undefined symbol           : U android::m1_native_window_from_other_copies(void*(*)(int),int)
+        == m1_copy.o's exported T symbol (_ZN7android34m1_native_window_from_other_copiesEPFPviEi)
+        -> the link resolves; the split is complete.
+
+(4) The one documented, expected difference (not instruction-identical, by construction)
+    In 612236be the entry `m1_native_window_from_other_copies` was INLINED into oh_wm_get_native_window (it had
+    no standalone symbol). In the split it is a standalone EXTERNAL function in m1_copy.o, and it reads the
+    resolved bridge fn from its `resolvedFn` PARAMETER instead of the file-static g_oh_wm_get_native_window_fn
+    (so the shim keeps g_ static and changes by only the one call). This is the sole, intended consequence of
+    moving the code across a translation-unit boundary; the two scan callbacks that do the real work (1) are
+    byte-identical. Semantics are unchanged: same scan, same rescue, same [M1-COPY] log.
+
+CONCLUSION: the split is faithful. Rebuilt in the U13 runtime's own recipe, the deployed baseline/M1 objects
+reproduce bit-for-bit; the M1 scan logic in the new file is instruction-identical to 612236be; the shim object
+is the baseline plus exactly one call to the external entry (no [M1-COPY]/dl_iterate_phdr left in it); and the
+undefined/defined symbols match so the runtime links. Ready to freeze the android_graphics_m1_copy.cpp blob
+after the 3-app re-verify in a future U16 runtime (not this U13; no deploy; frozen table untouched).

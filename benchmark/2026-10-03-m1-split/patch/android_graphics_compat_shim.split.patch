@@ -1,0 +1,25 @@
+--- a/android_graphics_compat_shim.cpp	2026-09-30 05:59:10
++++ b/android_graphics_compat_shim.cpp	2026-10-03 10:14:36
+@@ -48,6 +48,12 @@
+ #define ALOGW(...) HiLogPrint(3, 5, 0xD000F00u, "OH_GfxShim", __VA_ARGS__)
+ #define ALOGE(...) HiLogPrint(3, 6, 0xD000F00u, "OH_GfxShim", __VA_ARGS__)
+ 
++// M1 split (benchmark/2026-10-03-m1-split): the cross-copy fallback lives in
++// android_graphics_m1_copy.cpp with EXTERNAL linkage in namespace android. Declare it at
++// file scope (raw fn-ptr type == oh_wm_get_native_window_fn_t) so the shim below is the
++// baseline plus exactly one call; no [M1-COPY] string or dl_iterate_phdr lands in this object.
++namespace android { void* m1_native_window_from_other_copies(void* (*resolvedFn)(int32_t), int32_t sessionId); }
++
+ // [STAGE2-UNITY 2026-06-28] Weak no-op fallbacks for the SQLite JNI register
+ // group that 2026-06-28 added to AndroidRuntime.cpp's gRegJNI table. The
+ // unity/render runtime build (compile_runtime_local.sh) does NOT compile
+@@ -444,7 +450,8 @@
+ }
+ static void* oh_wm_get_native_window(int32_t sessionId) {
+     resolve_oh_wm_funcs();
+-    return g_oh_wm_get_native_window_fn ? g_oh_wm_get_native_window_fn(sessionId) : nullptr;
++    void* nw = g_oh_wm_get_native_window_fn ? g_oh_wm_get_native_window_fn(sessionId) : nullptr;
++    return nw != nullptr ? nw : m1_native_window_from_other_copies(g_oh_wm_get_native_window_fn, sessionId);
+ }
+ // 2026-06-28 [STAGE2-SURFACEVIEW]: resolve a dedicated, RS-composited child
+ // surface for a SurfaceView (so its EGL producer has a live consumer instead of

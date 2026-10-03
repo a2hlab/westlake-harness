@@ -1,0 +1,47 @@
+{
+  "task": "Split M1 ([M1-COPY] cross-copy Surface rescue) out of the shared android_graphics_compat_shim.cpp into its own file android_graphics_m1_copy.cpp (shim keeps one call line); build on a2hlab with the U13 runtime's frozen recipe; produce the A' proof. Not deployed; frozen table untouched. Freeze the file blob later in U16 after 3-app re-verify.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "build": {
+    "where": "a2hlab (OrbStack VM; frozen OHOS clang, linux-x86_64 host)",
+    "recipe": "u13 'm1' variant driver env + head-505 of its resolved recipe.sh (exact $CXX/$COMMON/$INC/$DEFS + -include libcxx_compat.h; --target=aarch64-linux-ohos -O2 -std=gnu++17 -fno-rtti)",
+    "run_script": "recipe/split_a_prime.run.sh",
+    "log": "evidence/build.log (verbatim tee)"
+  },
+  "split": {
+    "new_file": "src/android_graphics_m1_copy.cpp (external linkage android::m1_native_window_from_other_copies + m1_* helpers; references no shim global, takes resolved fn as a parameter)",
+    "shim_patch": "patch/android_graphics_compat_shim.split.patch (against N2 baseline b94f69e4: one file-scope forward decl + one changed line in oh_wm_get_native_window; g_oh_wm_get_native_window_fn stays file-static)"
+  },
+  "a_prime": {
+    "env_fidelity": {
+      "shim_baseline.o": "40aa2f5fe5975da4... == deployed baseline 40aa2f5f (byte-identical)",
+      "shim_m1ref.o": "612236befb06df45... == deployed M1 612236be (byte-identical)",
+      "cmp_base.o": "40aa2f5f... (baseline from the isolation path)"
+    },
+    "m1_scan_instruction_identical": {
+      "m1_find_own": "56 insns, diff vs 612236be = 0 lines (identical; raw encodings match)",
+      "m1_collect_others": "75 insns, diff vs 612236be = 0 lines (identical)",
+      "note": "these address-taken callbacks contain the inlined m1_is_bridge + m1_exec_range_contains = the whole cross-copy scan"
+    },
+    "m1_copy_payload": {
+      "exported": "T android::m1_native_window_from_other_copies(void*(*)(int),int)",
+      "locals": "m1_find_own, m1_collect_others",
+      "string": "[M1-COPY] sessionId=%d resolved by bridge copy base=%p (resolved copy base=%p returned null)",
+      "dl_iterate_phdr_relocs": 2
+    },
+    "shim_split_is_baseline_plus_one_call": {
+      "disasm_delta_vs_baseline_same_path": "one contiguous region only = the inlined oh_wm_get_native_window site gaining the fallback call (cbnz/ldr/bl + ternary glue); base 1835 -> split 1863 insns; no other function changed",
+      "m1_helper_symbols": 0, "M1_COPY_strings": 0, "dl_iterate_phdr_relocs": 0,
+      "one_new_undefined_symbol": "U android::m1_native_window_from_other_copies == m1_copy.o exported T (_ZN7android34m1_native_window_from_other_copiesEPFPviEi) -> link resolves"
+    },
+    "documented_difference": "the entry m1_native_window_from_other_copies was INLINED into oh_wm_get_native_window in 612236be (no standalone symbol); in the split it is a standalone external function reading its resolvedFn PARAMETER instead of the file-static global. Sole intended TU-boundary consequence; semantics unchanged."
+  },
+  "objects": {
+    "shim_split.o": "built (baseline + one call; properties above)",
+    "m1_copy.o": "built (carries the M1 payload)",
+    "left_in_build_dir": "build/ (.o/.d/.norm; git-ignored, not landed)"
+  },
+  "this_rounds_rule": "To split a fix out of a shared file for freezing, prove faithfulness with the artifact's OWN frozen recipe (deployed objects reproduce bit-for-bit = the anchor), show the moved logic is instruction-identical (address-taken callbacks here are exact), confine the host file to +1 call (same-path baseline-vs-patched disasm diff), and confirm the undefined<->defined symbol pair matches so the link resolves; name the only allowed non-identity (TU-boundary glue: inlining undone, a global read becomes a parameter).",
+  "next": "freeze is the outer's: into a U16 runtime, re-verify the 3 apps (fd-uhabits/wikipedia/noice), then freeze the android_graphics_m1_copy.cpp source blob (NOT U13; see benchmark/2026-10-03-m1-freeze-dossier).",
+  "boundaries": "Offline build on a2hlab (OrbStack transiently wedged ~09:50-10:10, self-healed, not force-restarted). NOT deployed; frozen table untouched. Build products not landed. Sources read read-only (N2 baseline shim, m1-session-slots src, u13 recipe + deployed objects).",
+  "landing_paths": "benchmark/2026-10-03-m1-split/landing-paths.txt"
+}
