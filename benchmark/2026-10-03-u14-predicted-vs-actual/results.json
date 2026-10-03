@@ -1,0 +1,33 @@
+{
+  "task": "U14 predicted vs actual (REVISED after outer errata 88648a6eb9): for the 13 non-lit keys clusters.csv assigns to U14 (7 clusters; 11 predict a first-fatal move, G's 2 are z-order/dialog), compare predictions to the U14 stage-A window-1 signed runs using the u16-wall-clusters signature stack, then re-cluster the new first-fatals into a U17 candidate table. Lit is read from the sign-off summary.gains/outer_eyeball (screenshot), NOT the lit_runs pre-screen field.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "errata_applied": "outer 88648a6eb9: window-1 outer-signoff.json keys[].lit_runs is a pair_sheet pre-screen field (0 for vlc/termux/dddmodel2 though they showed their own UI); summary.gains + keys[].outer_eyeball are the authoritative lit call. The first version read lit_runs and wrongly called vlc/dddmodel2/termux not-lit; this version reads summary.gains/reference/outer_eyeball.",
+  "scope": "U14 stage-A window1 (u14-A1-r3-20261003T120358, 5ea/5cd/61b); window2 u14-A2-20261003T131427 (cx-t0) pending -> fd-AppManager + any 2nd-board runs on re-run",
+  "headline": "Of 11 predicted first-fatal moves, 10 confirmed (8 moved to a new fatal + 2 moved to a LIT screen: vlc, termux); the one miss = fd-libre (still ANativeWindow_getFormat; fix = U16 A''' u16-flutter-egl-names, not U14 -> expected+owned). Plus G's dddmodel2 lit its own Menu dialog = the M5 target. 3 keys newly lit on U14: vlc, dddmodel2, termux (termux lit but functionally bootstrap-blocked).",
+  "verdict_counts": {"moved": 8, "lit": 3, "unchanged": 1, "pending-window2": 1},
+  "newly_lit_on_u14": {
+    "vlc": "own welcome page (欢迎使用 VLC!) -- past __pthread_cleanup_push (U14 Gecko/native ABI fix)",
+    "cv2-org-andresoviedo-dddmodel2": "own Menu dialog visible = M5 target (dialog above activity)",
+    "termux": "own terminal UI + bootstrap-install error dialog (lit, but functional wall below)"
+  },
+  "per_cluster": {
+    "A_flutter": "localsend/fd-kitchenowl/fd-fluffychat moved to Impeller (signal pc0->libflutter.so); fd-libre unchanged (raster eglGetProcAddress bypass; U16 A''' fix)",
+    "C_realm": "mcdonalds moved (process-disappeared, cause not captured); fd-im-vector-app moved past _ctype_ -> crashes inside librealm-jni.so",
+    "D_bionic": "fd-fennec_fdroid moved past __gnu_strerror_r -> libmozglue.so; vlc LIT (own welcome page)",
+    "G_zorder": "dddmodel2 LIT (own Menu dialog = M5 target); fd-AppManager pending window2",
+    "H_termux": "LIT (own terminal UI) + functional bootstrap wall (hardcoded /data/data/com.termux/files)",
+    "I_toutiao": "moved (process-disappeared by t20; past ICU, cause not captured)",
+    "J_fd-plus": "moved past ScanCallback bind -> java IllegalStateException 'Surface was not locked'"
+  },
+  "u17_candidates": {
+    "actionable_new_walls": ["fd-im-vector-app: signal librealm-jni.so (Realm-internal)", "fd-fennec_fdroid: signal libmozglue.so (Gecko glue)", "fd-plus: java IllegalStateException Surface was not locked (Surface.unlockSwCanvasAndPost)"],
+    "functional": {
+      "termux": "lit but bootstrap fails: hardcoded TERMUX_FILES_DIR=/data/data/com.termux/files bypasses getFilesDir(); our fixDataDirs overrides dataDir/filesDir to /data/app/el2/<uid>/base/<pkg> (writable), but the sandbox /data/data/<pkg> bind fails on OH (host src absent, APPSPAWN errno:2) so the hardcoded path is empty. Fix: map sandbox /data/data/<pkg> (+ /data/user/0/<pkg> symlink) to the real /data/app/el2/<uid>/base/<pkg>. Corpus DEX scan: only Termux family (com.termux + com.termux.api) hardcodes this path; moves termux (+ com.termux.api if run)."
+    },
+    "unlocalized": ["mcdonalds + toutiao: process-disappeared, fatal cause not captured -> needs a fuller dump/rerun"],
+    "owned_U16": ["localsend + fd-kitchenowl + fd-fluffychat: signal pc0->libflutter.so = Flutter Impeller GLES-proc gap (u16-flutter-impeller-build / u16-flutter-egl-names A''')"]
+  },
+  "this_rounds_rule": "Judge lit ONLY from the sign-off screenshot verdict (summary.gains / outer_eyeball), never the pair_sheet pre-screen lit_runs field (it can be 0 for a key that shows its own UI). A key can be LIT yet still have a functional wall behind the lit screen (termux: own terminal UI + bootstrap error) -- a functional U17 candidate distinct from a render wall. For signal terminals, moved/unchanged needs the thread-correct crashing frame (cluster_key collapses all SIGSEGVs to one signo line); strip per-app build-ids so the same wall clusters across apps.",
+  "boundaries": "Offline; no board/deploy/push. Lit = outer window-1 signoff summary.gains/outer_eyeball (screenshot); alive counts = facts.txt. Window2 pending; re-run compare.py after its signoff. No fix built here (termux bootstrap fix = a sandbox-config change for outer/cx-bms).",
+  "landing_paths": "benchmark/2026-10-03-u14-predicted-vs-actual/landing-paths.txt"
+}

@@ -1,0 +1,14 @@
+# Corpus DEX string scan for hardcoded /data/data/<pkg> paths (the termux bootstrap-wall class).
+# tool: unzip -p <apk> 'classes*.dex' | strings -a | grep -oE '/data/data/[A-Za-z0-9_.]+(/...)?'
+# scanned: westlake-inputs/apks/{fdroid100,fdroid}/*.apk + corpus-v2/apks/*.apk
+
+## apks with a hardcoded /data/data/<pkg>[/files] literal:
+com.termux_1002.apk|/data/data/com.termux
+com.termux_1002.apk|/data/data/com.termux/files
+com.termux.api_1002.apk|/data/data/com.termux
+com.termux.api_1002.apk|/data/data/com.termux/files
+
+## conclusion: ONLY the Termux family hardcodes /data/data/<pkg>/files (TERMUX_FILES_DIR constant,
+## bypassing getFilesDir()). Every other corpus app resolves its data dir via getFilesDir()/getDataDir(),
+## which our fixDataDirs already overrides to /data/app/el2/100/base/<pkg> (writable). So the termux
+## bootstrap fix (make /data/data/<pkg> resolve to the real dataDir) moves: termux (+ com.termux.api if run).
