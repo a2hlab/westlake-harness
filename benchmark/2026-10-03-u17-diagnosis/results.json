@@ -1,0 +1,43 @@
+{
+  "task": "U17 diagnosis batch: for the 4 actionable u17-candidates (fd-plus Surface-not-locked, termux bootstrap, fd-im-vector librealm-jni, fennec libmozglue), root cause + fix + layer (JAR/native/sandbox) + predicted first-fatal-move keys. Priority by ACTUAL first-fatal-blocked count (latest U14 window1); static DEX hits = upper bound only; predicted-0 items not started.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "items": {
+    "1_fd-plus_surface": {
+      "layer": "native (android_graphics_compat_shim + oh_canvas_renderer)",
+      "actual_blocked": 1, "static_upper_bound": "39 apks ref lockCanvas/unlock (LOOSE: many lockHardwareCanvas HW path / library strings)",
+      "first_fatal": "IllegalStateException: Surface was not locked @ Surface.unlockSwCanvasAndPost:507 <- SurfaceView$1.unlockCanvasAndPost:1730",
+      "root": "S_nativeLockCanvas (compat_shim:219) is a hard 'return 0' stub -> AOSP Surface.lockCanvas leaves mLockedObject=0 -> unlockSwCanvasAndPost throws; the real OHCanvasRenderer::lockCanvas (oh_canvas_renderer.cpp, dequeueBuffer->OH_Drawing_Canvas) exists but is UNWIRED",
+      "fix": "wire S_nativeLockCanvas/S_nativeUnlockCanvasAndPost to OHCanvasRenderer (return the canvas native ptr as mLockedObject; unlock=flush+queueBuffer)",
+      "predicted_move": "+1 (fd-plus); broader SurfaceView software-canvas benefit, run-confirmed only fd-plus", "start": "YES (tractable, native, no boot)"
+    },
+    "3_fd-im-vector_realm": {
+      "layer": "native (libc/pthread compat) or app",
+      "actual_blocked": 1, "static_upper_bound": "2 (Realm apps im-vector + mcdonalds-unlocalized)",
+      "first_fatal": "signal 11 in app's librealm-jni.so via Java_io_realm_internal_OsSharedRealm_nativeGetSharedRealm (opening the shared realm DB), past the _ctype_ reloc wall",
+      "class": "ABI/syscall: Realm Core DB-open (mmap / robust pthread mutex / fcntl file lock musl-vs-bionic) -- NOT symbol-not-found, NOT a bare syscall frame",
+      "fix": "symbolize librealm-jni, name the Realm-Core fn at the crash frame, probe robust-mutex/mmap/fcntl gap (low confidence; probe not a fix)",
+      "predicted_move": "1 (im-vector); <=2 with mcdonalds", "start": "PROBE-FIRST (deep)"
+    },
+    "4_fennec_gecko_putenv": {
+      "layer": "native (libc/env compat)",
+      "actual_blocked": 1, "static_upper_bound": "1 (fennec; vlc of cluster D already lit on U14)",
+      "first_fatal": "signal 11 in libmozglue.so Java_org_mozilla_gecko_mozglue_GeckoLoader_putenv+44 -> strdup+48, past __gnu_strerror_r symbol wall",
+      "class": "ABI/libc: Gecko native putenv/environ/strdup vs musl (Gecko's native putenv bypasses our libcore.io.Linux env hooks)",
+      "fix": "trace the strdup env-string arg + musl putenv/environ ownership vs bionic; small libc-env compat (low confidence)",
+      "predicted_move": "+1 (fennec)", "start": "PROBE-FIRST (deep/Gecko-specific)"
+    },
+    "2_termux_bootstrap": {
+      "layer": "sandbox config (appspawn_x_sandbox.json)",
+      "actual_blocked": 0, "static_upper_bound": "1 (termux); DEX: only Termux family hardcodes /data/data/<pkg>/files",
+      "status": "termux is ALREADY LIT on U14 (own terminal UI, summary.gains); the bootstrap error is a functional wall behind the lit screen -> first-fatal-move 0",
+      "root": "hardcoded TERMUX_FILES_DIR=/data/data/<pkg>/files bypasses getFilesDir() (fixDataDirs override); sandbox binds /data/data/<pkg> from the absent host path (APPSPAWN errno:2) -> empty",
+      "fix": "sandbox config: bind real /data/app/el2/<uid>/base/<pkg> onto sandbox /data/data/<pkg> (+/data/user/0 symlink), or runtime symlink in fixDataDirs",
+      "side_effects": "global per-app template; apps using getFilesDir unaffected (same target); apps reading /data/data/<pkg> directly see the real (was-empty) dir = improvement; reverify the 28 lit apps don't regress",
+      "predicted_move": "0 (already lit; restores bootstrap functionality only)", "start": "NO -- predicted lighting move 0 (AGENTS 不开工)"
+    }
+  },
+  "recommendation": "START ① Surface lockCanvas (native, +1 fd-plus, tractable); PROBE-FIRST ③ Realm + ④ Gecko (deep ABI, +1 each, low confidence); DO NOT START ② termux (already lit, 0 lighting).",
+  "this_rounds_rule": "Priority by the actual first-fatal (latest unified-state fault-thread stack), not the static DEX upper bound (39 lockCanvas refs vs 1 real block). A 'candidate' that is already lit (termux) has a first-fatal move of 0 -> do not start it for lighting even though a clean fix exists. Classify a native crash by the fault-thread top frames: a stub-returning-0 (Surface), a crash inside an app lib's own DB-open (Realm, ABI/syscall), or a libc-env call (Gecko putenv) are three different layers.",
+  "boundaries": "Offline; no board/deploy/push; no fix built. First-fatal from U14 window1 r3 fault-thread stacks; corpus DEX hits = upper bound only. Each item has a dispatchable one-liner for the outer to schedule.",
+  "landing_paths": "benchmark/2026-10-03-u17-diagnosis/landing-paths.txt"
+}
