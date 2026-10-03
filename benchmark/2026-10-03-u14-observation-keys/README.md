@@ -6,9 +6,9 @@ Built by `build_keys.py` (read-only inputs on master). Priority per board: **mov
 
 | Board | runs | movers | white-watch (×1) | lottery (×6) | lit-regression | ~min | windows (≤25 runs / 45 min) |
 |---|---|---|---|---|---|---|---|
-| 5ea | 55 | 3 | 0 | 2 keys (12 runs) | 40 | 96.2 | 3 |
-| 5cd | 63 | 9 | 5 | 2 keys (12 runs) | 37 | 110.2 | 3 |
-| 61b | 64 | 7 | 2 | 2 keys (12 runs) | 43 | 112.0 | 3 |
+| 5ea | 54 | 3 | 0 | 2 keys (12 runs) | 39 | 94.5 | 3 |
+| 5cd | 57 | 9 | 5 | 2 keys (12 runs) | 31 | 99.8 | 3 |
+| 61b | 58 | 7 | 2 | 2 keys (12 runs) | 37 | 101.5 | 3 |
 
 Window split: window 1 per board = movers + lottery (the U14 signal, run first); windows 2..N = lit-regression. Stop scheduling new runs by minute 35 of each window.
 

@@ -97,10 +97,13 @@ def main():
         lit_reg[b].sort()
 
     # lottery keys leave lit-regression: their x6 doubles as the regression run (U13 README
-    # footnote pattern -- wikipedia's x6 also served as its regression run)
+    # footnote pattern -- wikipedia's x6 also served as its regression run).
+    # movers keys also leave lit-regression (outer 09:50 disjoint rule): a lit mover's x1
+    # movers run doubles as its regression run.
     lottery_all = {k for ks in lottery.values() for k in ks}
-    lit_reg_dedup = {b: [k for k in ks if k not in lottery_all] for b, ks in lit_reg.items()}
-    lit_reg = lit_reg_dedup
+    movers_all = {k for d in movers.values() for k in d}
+    taken = lottery_all | movers_all
+    lit_reg = {b: [k for k in ks if k not in taken] for b, ks in lit_reg.items()}
 
     out = HERE
     (out / 'keys').mkdir(parents=True, exist_ok=True)
@@ -167,16 +170,21 @@ def main():
     (out / 'u14-stage-a-keys.json').write_text(json.dumps(doc, indent=1, ensure_ascii=False) + '\n')
 
     # ---- known answer checks ----
+    # (generic, outer 09:50) every key in exactly one shard per board (pairwise disjoint)
+    for b in ('5ea', '5cd', '61b'):
+        seen = {}
+        for sn in ('movers', 'white-watch', 'lottery', 'lit-regression'):
+            for k in (out / f'keys/{b}/{sn}.txt').read_text().split():
+                assert k not in seen, f'{k} in both {seen.get(k)} and {sn} on {b}'
+                seen[k] = sn
     union = []
     for b in ('5ea', '5cd', '61b'):
         p = out / f'keys/{b}/lit-regression.txt'
         union += p.read_text().split()
     lit_lottery = sorted(k for k in lottery_all if ref[k]['verdict'] == 'lit')
-    combined = sorted(union + lit_lottery)
+    lit_movers = sorted(k for k in movers_all if ref[k]['verdict'] == 'lit')
     ref_lit = sorted(k for k, e in ref.items() if e['verdict'] == 'lit')
-    assert len(union) == len(set(union)), 'duplicate keys in lit-regression shards'
-    assert not (set(union) & set(lit_lottery)), 'lit-regression overlaps lottery keys'
-    assert combined == ref_lit, f'lit-regression ∪ lit lottery != 126 lit keys ({len(combined)} vs {len(ref_lit)})'
+    assert sorted(union + lit_lottery + lit_movers) == ref_lit, 'union != 126 lit keys'
     for b in ('5ea', '5cd', '61b'):
         for k in (out / f'keys/{b}/lit-regression.txt').read_text().split():
             assert ref[k]['board'] == b, f'{k} on {b} but reference board is {ref[k]["board"]}'
@@ -184,7 +192,8 @@ def main():
         print(f"{b}: runs={bd['runs_total']} (movers={bd['breakdown']['movers']} "
               f"lottery={bd['breakdown']['lottery_keys']}x6 lit-reg={bd['breakdown']['lit_regression']}) "
               f"~{bd['est_minutes_at_1.75min_per_run']}min windows={bd['windows_needed']}")
-    print(f'lit-regression({len(union)}) ∪ lit lottery({len(lit_lottery)}) == reference lit {len(ref_lit)} OK; disjoint; boards match')
+    print(f'shards pairwise disjoint OK; lit-regression({len(union)}) ∪ lit lottery({len(lit_lottery)}) '
+          f'∪ lit movers({len(lit_movers)}) == reference lit {len(ref_lit)} OK; boards match')
     # known answer: every lottery key must be evidenced (registry or signed 0<k<n)
     for b in ('5ea', '5cd', '61b'):
         for k in lottery.get(b, []):
