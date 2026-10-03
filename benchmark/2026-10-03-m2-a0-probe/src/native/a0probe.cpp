@@ -257,9 +257,32 @@ OHOS::sptr<OHOS::Surface> GetSurfaceViewSurface()
         Log("[A0] S5 mode64: WL_A0_SV_OHWIN absent (Surface.mNativeObject not published within timeout) -> FAIL");
         return nullptr;
     }
-    void* ohwin = nullptr;
-    if (sscanf(ohTxt, "%p", &ohwin) != 1 || ohwin == nullptr) {
-        Log("[A0] S5 mode64: OHNativeWindow parse failed '%s' -> FAIL", ohTxt);
+    void* adapterAnw = nullptr;
+    if (sscanf(ohTxt, "%p", &adapterAnw) != 1 || adapterAnw == nullptr) {
+        Log("[A0] S5 mode64: AdapterAnw parse failed '%s' -> FAIL", ohTxt);
+        return nullptr;
+    }
+    // Window 19: Surface.mNativeObject is the AdapterAnw (ANW1) wrapper, NOT a bare OHNativeWindow (window 18:
+    // GetSurfaceId on it = rc 40001000). Unwrap to the real oh by the verified AdapterAnw layout (source
+    // oh_anativewindow_shim.cpp + disasm of liboh_adapter_bridge.so oh_anw_get_oh): magic 'ANW1'=0x414E5731 at +0xc8,
+    // OHNativeWindow* oh at +0xc0 (= sizeof(ANativeWindow)=192). Direct read (not the exported oh_anw_get_oh) bypasses
+    // its directPathLive gate (byte @0x149) which may reject a SurfaceView AdapterAnw. Magic mismatch -> clean FAIL.
+    auto* base = reinterpret_cast<unsigned char*>(adapterAnw);
+    uint32_t magic = *reinterpret_cast<const uint32_t*>(base + 0xc8);
+    if (magic != 0x414E5731u) {
+        Log("[A0] S5 mode64: AdapterAnw=%p magic=0x%08x != 'ANW1' at +0xc8 (not an AdapterAnw wrapper) -> FAIL",
+            adapterAnw, magic);
+        return nullptr;
+    }
+    void* ohwin = *reinterpret_cast<void* const*>(base + 0xc0);
+    // cross-check against the exported oh_anw_get_oh (may return null if its directPathLive gate is not satisfied)
+    typedef void* (*AnwGetOhFn)(void*);
+    AnwGetOhFn anwGetOh = (AnwGetOhFn)dlsym(RTLD_DEFAULT, "oh_anw_get_oh");
+    void* ohExported = anwGetOh ? anwGetOh(adapterAnw) : nullptr;
+    Log("[A0] S5 mode64: AdapterAnw=%p magic=ANW1 -> oh(+0xc0)=%p ; oh_anw_get_oh=%p (gate may null it)",
+        adapterAnw, ohwin, ohExported);
+    if (ohwin == nullptr) {
+        Log("[A0] S5 mode64: unwrapped oh is null -> FAIL");
         return nullptr;
     }
     uint64_t id = 0;

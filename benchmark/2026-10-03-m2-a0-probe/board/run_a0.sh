@@ -20,7 +20,7 @@ WS=${WORKSPACES:-$HOME/orca/workspaces}
 BOARD=$WS/westlake-harness/.octos/boards/app-lighting.md
 NOTE=$WS/westlake-inputs/tools/board_note.sh
 APK=$HERE/build/a0probe.apk
-APK_SHA=850e0768cf2e74a7972641927ae904f2778954e722194b9a712e3833ed937b09   # v5 (w18: mode-64 reads Surface.mNativeObject=OHNativeWindow*; shim 5a2e7aaa, probe 610b0d57)
+APK_SHA=5562c2ca9fc9391f1a46962fa359a88d86b8b5523fcf0f652cdb789471e7645c   # v6 (w19: mode-64 unwraps AdapterAnw ANW1 -> oh @+0xc0; shim 5a2e7aaa, probe 69cd33a9)
 PKG=org.westlake.a0probe
 LANE=${A0_LANE:-cc-t3}
 RT_TARGET=/system/android/lib64/libwestlake_html_compat.so    # runtime B7BindFixes System.load point, absent on boards
@@ -33,7 +33,7 @@ RT_WORKER_DST=/data/local/tmp/libwl_a0_nweb.so                # entry dlopen_ns 
 RT_REF=/system/android/lib64/libwestlake_jni_gapfill.so       # an existing deployed lib, for the SELinux context
 if [ "$ENTRY" = legacy ]; then RT_PROBE_SHA=4ee07bb3b35227df5292e81094dc2d6f167c1e6a3aee282aa8adbb6c11716fc4
 else RT_PROBE_SHA=2480e86955091dcb0bb683fef63315237f15f3c3391a24844a232582b17f7fa6; fi
-RT_WORKER_SHA=2cdfc47aa016d59cbc40826c8cbb0b333dc80932dcc4158d266d4526bc0f60f9
+RT_WORKER_SHA=e8b4709646ecbe7bf03171f91158b4659d602ffe927c3b01ca0c80e22bb69e07
 RECIPE=$HERE/../2026-09-28-bms-route-deploy/batch/prepare_sandbox.sh   # bms_batch's accepted sandbox recipe, verbatim
 # what prepare_sandbox creates for $PKG (removed again in rollback), plus the adapter's uninstall leftovers (window 1)
 PKG_DIRS="/data/app/el1/100/base/$PKG /data/app/el1/100/database/$PKG /data/app/el2/100/base/$PKG /data/app/el2/100/database/$PKG /data/app/el2/100/sharefiles/$PKG /data/app/el3/100/base/$PKG /data/app/el3/100/database/$PKG /data/app/el4/100/base/$PKG /data/app/el4/100/database/$PKG /data/app/el2/100/log/$PKG /data/app/el1/bundle/public/$PKG"
