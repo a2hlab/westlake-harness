@@ -40,17 +40,17 @@ M = {  # U16 movers: fix observation points (source + expectation)
                          '(runtime JAR f6f5face, benchmark/2026-10-03-u16-t3-build/)',
                          'first fatal moves past weatherView lateinit (async-lifecycle-ordering); '
                          'lit medium'),
-    'localsend': ('u16 flutter interposer (NEW in U16, cc-t3 building; SHA pending — see '
-                  'benchmark/2026-10-03-u16-flutter-impeller-proc/; pc=0 glDepthRange next)',
+    'localsend': ('u16 flutter interposer libandroid b1c9f76e (NEW in U16 on U15 9b824502, cc-t3 52b4471e16) — see '
+                  'benchmark/2026-10-03-u16-flutter-impeller-build/; pc=0 glDepthRange next)',
                   'first fatal moves past eglCreateWindowSurface AND past pc=0 glDepthRange'),
-    'fd-kitchenowl': ('u16 flutter interposer (NEW in U16, cc-t3 building; SHA pending — see '
-                      'benchmark/2026-10-03-u16-flutter-impeller-proc/; pc=0 glDepthRange next)',
+    'fd-kitchenowl': ('u16 flutter interposer libandroid b1c9f76e (NEW in U16 on U15 9b824502, cc-t3 52b4471e16) — see '
+                      'benchmark/2026-10-03-u16-flutter-impeller-build/; pc=0 glDepthRange next)',
                       'first fatal moves past eglCreateWindowSurface AND past pc=0 glDepthRange'),
-    'fd-fluffychat': ('u16 flutter interposer (NEW in U16, cc-t3 building; SHA pending — see '
-                      'benchmark/2026-10-03-u16-flutter-impeller-proc/; pc=0 glDepthRange next)',
+    'fd-fluffychat': ('u16 flutter interposer libandroid b1c9f76e (NEW in U16 on U15 9b824502, cc-t3 52b4471e16) — see '
+                      'benchmark/2026-10-03-u16-flutter-impeller-build/; pc=0 glDepthRange next)',
                       'first fatal moves past eglCreateWindowSurface AND past pc=0 glDepthRange'),
-    'fd-libre': ('u16 flutter interposer (NEW in U16, cc-t3 building; SHA pending — see '
-                 'benchmark/2026-10-03-u16-flutter-impeller-proc/; pc=0 glDepthRange next)',
+    'fd-libre': ('u16 flutter interposer libandroid b1c9f76e (NEW in U16 on U15 9b824502, cc-t3 52b4471e16) — see '
+                 'benchmark/2026-10-03-u16-flutter-impeller-build/; pc=0 glDepthRange next)',
                  'first fatal moves past eglCreateWindowSurface AND past pc=0 glDepthRange'),
     # t4 M1-split replay evidence keys (the 3 apps the freeze dossier re-verifies)
     'fd-uhabits': ('u16 t4 — M1 split replay evidence (runtime native 1d42dbfb, '
