@@ -97,27 +97,44 @@ typedef void* (*oh_anw_get_oh_fn)(void*);
 OHOS::sptr<OHOS::Surface> SurfaceFromJava(JNIEnv* env, jobject surface)
 {
     if (surface == nullptr) { Log("[NWEB] surface: null Surface -> no producer surface"); return nullptr; }
-    auto anwFrom = reinterpret_cast<ANativeWindow_fromSurface_fn>(dlsym(RTLD_DEFAULT, "ANativeWindow_fromSurface"));
-    auto anwRel  = reinterpret_cast<ANativeWindow_release_fn>(dlsym(RTLD_DEFAULT, "ANativeWindow_release"));
-    if (anwFrom == nullptr) { Log("[NWEB] surface: ANativeWindow_fromSurface unresolved"); return nullptr; }
-    void* anw = anwFrom(env, surface);                       // the runtime's AdapterAnw shim
-    if (anw == nullptr) { Log("[NWEB] surface: ANativeWindow_fromSurface -> null"); return nullptr; }
+    // Read Surface.mNativeObject directly via JNI. A0 window17 proved ANativeWindow_fromSurface is NOT
+    // dlsym-able in the entry/runtime ns (fromSurface=0), so we do not use it. mNativeObject is the
+    // runtime's AdapterAnw('ANW1') wrapper (cc-t3 window18; same finding as fd-plus REV3).
+    jclass cls = env->FindClass("android/view/Surface");
+    if (cls == nullptr) { env->ExceptionClear(); Log("[NWEB] surface: FindClass(Surface) failed"); return nullptr; }
+    jfieldID fid = env->GetFieldID(cls, "mNativeObject", "J");
+    env->DeleteLocalRef(cls);
+    if (fid == nullptr) { env->ExceptionClear(); Log("[NWEB] surface: GetFieldID(mNativeObject) failed"); return nullptr; }
+    jlong nativeObject = env->GetLongField(surface, fid);
+    if (nativeObject == 0) { Log("[NWEB] surface: mNativeObject==0 -> no producer"); return nullptr; }
 
+    // Hybrid unwrap (identical to fd-plus REV3). oh_anw_get_oh is directPathLive-GATED and returns 0 on
+    // the software/offscreen path (cc-t3 A0 window19), so we cannot rely on it alone. Try it first (fast
+    // path / ungated builds / live path); if 0, read the wrapper's ->oh @ +0xc0 directly after a
+    // magic @ +0xc8 == 'ANW1' check. Offsets source+disasm double-confirmed (oh_anw_get_oh disasm:
+    // ldr w8,[x0,#200]=magic(0xc8) cmp 0x414E5731; ldr x0,[x0,#192]=oh(0xc0); cc-t3 window19 board +0xc0).
+    // TODO(next-U runtime): export an ungated oh_anw_unwrap so the raw +0xc0 offset can be dropped.
     void* ohnw = nullptr;
     oh_anw_get_oh_fn getOh = nullptr;
     void* h = dlopen("liboh_adapter_bridge.so", RTLD_NOW | RTLD_NOLOAD);
     if (h == nullptr) { (void)dlerror(); h = dlopen("liboh_android_runtime.so", RTLD_NOW | RTLD_NOLOAD); }
     if (h != nullptr) getOh = reinterpret_cast<oh_anw_get_oh_fn>(dlsym(h, "oh_anw_get_oh"));
-    if (getOh != nullptr) ohnw = getOh(anw);
-    Log("[NWEB] surface: anw=%p oh_anw_get_oh=%p -> ohnw=%p", anw, (void*)getOh, ohnw);
-    if (ohnw == nullptr) ohnw = anw;                          // not a shim (already an OHNativeWindow) -> use as-is
+    if (getOh != nullptr) ohnw = getOh(reinterpret_cast<void*>(nativeObject));   // directPathLive-gated
+    if (ohnw == nullptr) {
+        unsigned char* p = reinterpret_cast<unsigned char*>(nativeObject);
+        if (*reinterpret_cast<uint32_t*>(p + 0xc8) == 0x414E5731u /*'ANW1'*/)
+            ohnw = *reinterpret_cast<void**>(p + 0xc0);          // wrapper ->oh (directPathLive gate bypassed)
+        else
+            ohnw = reinterpret_cast<void*>(nativeObject);        // not a wrapper: legacy raw OH window
+    }
+    Log("[NWEB] surface: mNativeObject=0x%llx oh_anw_get_oh=%p -> ohnw=%p",
+        (unsigned long long)nativeObject, (void*)getOh, ohnw);
 
     uint64_t id = 0;
     int rc = OH_NativeWindow_GetSurfaceId(reinterpret_cast<OHNativeWindow*>(ohnw), &id);
     OHOS::sptr<OHOS::Surface> s = (rc == 0) ? OHOS::SurfaceUtils::GetInstance()->GetSurface(id) : nullptr;
     Log("[NWEB] surface: GetSurfaceId rc=%d id=%llu GetSurface=%p", rc,
         static_cast<unsigned long long>(id), s.GetRefPtr());
-    if (anwRel) anwRel(anw);
     return s;
 }
 

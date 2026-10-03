@@ -6,9 +6,18 @@
  "offline": true,
  "board_access": "none",
  "built_on": "hw248 (ecs-9f6c), isolated out/ reusing cc-t3 A0 build area (include-dirs + board libs) read-only; cc-t3 A0 area untouched",
+ "surfacefix_rev": {
+  "what": "SurfaceFromJava rewritten (2026-10-03): (1) drop ANativeWindow_fromSurface (A0 window17: NOT dlsym-able in the entry/runtime ns -> fromSurface=0) -> read Surface.mNativeObject directly via JNI; (2) the mNativeObject is the runtime's AdapterAnw('ANW1') wrapper -> unwrap with the SAME hybrid as fd-plus REV3: oh_anw_get_oh first (directPathLive-gated; returns 0 on the software/offscreen path per cc-t3 window19), else magic@0xc8=='ANW1' -> read ->oh@0xc0 directly, else raw; (3) then OH_NativeWindow_GetSurfaceId -> SurfaceUtils::GetSurface(id) unchanged.",
+  "verified": "readelf: ANativeWindow_fromSurface NO LONGER imported (dropped); OH_NativeWindow_GetSurfaceId + SurfaceUtils::GetInstance/GetSurface linked; oh_anw_get_oh stays a runtime dlsym (no hard dep). Built x2 byte-identical (OH=/opt oh610 feef13a3 clang; SYSROOT=b6-latest musl usr; A0=cc-t3-a0probe-20261003 board libs).",
+  "nweb_resize": "nativeCreateNWeb(width,height,surface) + nativeOnDraw(handle,width,height)->NWeb::Resize already accept the SurfaceView's actual w/h; the Java glue (A1 jar, surfaceChanged->nativeOnDraw) drives it.",
+  "note": "worker SHA changed (surface chain rewrite); shim SHA changed only due to the SYSROOT used (nweb_backend_shim.c unchanged)."
+ },
  "artifacts": {
-  "worker_libwl_nweb_backend_so": "8475da6fb6dd0016ffb361e2ebac075a849e4ad2845c65ce9559a155779577af",
-  "shim_libwl_nweb_backend_shim_so": "ba3e05612a390d7ef37bd32528b946c43c8e84e70b07cc775373086e4f11557b",
+  "worker_libwl_nweb_backend_so": "6f6c93352de4a2d97bd52da52c706bd133d4884a7538a0b85de8162c6ce1a879",
+  "shim_libwl_nweb_backend_shim_so": "88c73f592f488c44572251d8a4974194e31685457bfb5e63ff778796499ca770",
+  "worker_sha_superseded": "8475da6fb6dd0016ffb361e2ebac075a849e4ad2845c65ce9559a155779577af (pre-surfacefix)",
+  "shim_sha_superseded": "ba3e05612a390d7ef37bd32528b946c43c8e84e70b07cc775373086e4f11557b",
+  "host_dir": "hw248:/home/alvin/cc-wiki-m2-nweb-rev/ (a/ b/ byte-identical; copies at the dir root)",
   "x2_byte_identical": true
  },
  "architecture": "two .so, one C-ABI symbol across the ns boundary (A0 pattern): shim (System.load'd in app ns) JNI_OnLoad dlns get-or-creates nweb_ns_legacy (PERMITIED_TARGET2, inherit default; nweb_ns left to NWebHelper per DIGEST 761), dlopen_ns the worker there, calls worker nweb_backend_register(JavaVM*); worker (in nweb_ns, sees libarkweb_core_loader closure) RegisterNatives the 20 methods + caches NWebCallbackSink upcall ids. No Java_* exports.",

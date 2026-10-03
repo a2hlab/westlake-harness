@@ -1,5 +1,23 @@
 # M2 route-a native backend — the NWeb JNI layer behind NativeNWebBackend
 
+## SurfaceFromJava REV (2026-10-03) — drop ANativeWindow_fromSurface + hybrid ANW1 unwrap
+Rebuilt worker `libwl_nweb_backend.so` = **`6f6c93352de4a2d9…`**, shim `libwl_nweb_backend_shim.so` =
+**`88c73f592f488c44…`** (×2 byte-identical; hw248 `/home/alvin/cc-wiki-m2-nweb-rev/`). Two fixes, aligned with
+fd-plus REV3 + cc-t3 A0 window17/18/19:
+1. **Drop `ANativeWindow_fromSurface`** — A0 window17 proved it is NOT dlsym-able in the entry/runtime ns
+   (`fromSurface=0`). `SurfaceFromJava` now reads **`Surface.mNativeObject` directly via JNI** (readelf confirms
+   `ANativeWindow_fromSurface` is no longer imported).
+2. **Hybrid ANW1 unwrap** — `mNativeObject` is the runtime's `AdapterAnw('ANW1')` wrapper; `oh_anw_get_oh` is
+   directPathLive-gated (returns 0 on the software/offscreen path, cc-t3 window19). So: try `oh_anw_get_oh`
+   first, else `magic @ +0xc8 == 'ANW1'` → read `->oh @ +0xc0` directly, else raw. Then
+   `OH_NativeWindow_GetSurfaceId` → `SurfaceUtils::GetSurface(id)` (linked; unchanged).
+
+NWeb sizing: `nativeCreateNWeb(w,h,surface)` + `nativeOnDraw(h,w,h)→NWeb::Resize` already take the SurfaceView's
+actual w/h; the A1 jar's `surfaceChanged→nativeOnDraw` drives resize. For cc-t3's `run_a1.sh`: the two `.so` names
++ SHAs above. See `results.json` `surfacefix_rev` + `evidence/rebuild-surfacefix-*`.
+
+---
+
 #90, native, offline. The formal native backend for route-a WebView: the JNI implementation of
 `org.westlake.webview.NativeNWebBackend`'s 20 native methods (`benchmark/2026-10-03-m2-route-a-java`), driving
 OpenHarmony NWeb. Engine bring-up / CreateNWeb / NWebCreateInfo are **copied from cc-t3's A0 probe** (board-proven,
