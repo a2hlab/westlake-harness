@@ -1,0 +1,64 @@
+{
+ "schema": "outer-gate-approval/v1",
+ "signer": "outer(claude)",
+ "signed_at": "2026-10-03T14:21:42+08:00",
+ "review_package": "benchmark/2026-10-03-u16-assembly-draft/outer-approval-packet.json (cx-bms, sha256 da1f47285a639f4594b89464594f326f4a8e9c7c9e89319ff27390ba73fd9667, landed cd449dd6a1, listing aecd43c0fd26)",
+ "binds": {
+  "native_manifest_sha256": "2cc15660294c057763cb49c26635cbd1e54fdbd0bb855c95f5deb80e5c7ee103",
+  "native_inputs_sha256": "637b4727a304060e9dad76b50fcb1390052ddf9f5a98504dd20c486753df073c",
+  "active_registry_sha256": "a3b44942e594512a8dfb9664f7c0b4ed33cb3d0c174271631c2ecdfac331d5ae"
+ },
+ "decisions": [
+  {
+   "object": "flutter-noload-38/57/58/96: Flutter libandroid eb90a640 vs U15 9b824502, four added dlopen sites (gl_log -> liboh_android_runtime.so, ensure_driver -> libGLESv2.so, -> libGLESv3.so, eglGetProcAddress -> libEGL.so)",
+   "ids": [
+    "flutter-noload-38",
+    "flutter-noload-57",
+    "flutter-noload-58",
+    "flutter-noload-96"
+   ],
+   "decision": "approve exactly these four N1 rows and the four-added / zero-removed / zero-namespace-delta static allowance",
+   "basis": "outer disassembled eb90a640: all four call sites load w1=#0x6 (RTLD_NOW|RTLD_NOLOAD) before bl dlopen@plt at 0x4cf0 / 0x4984 / 0x49a4 / 0x4ad8; NOLOAD only returns an already-loaded image, so no new copy can be created; targets are libraries the process has already loaded",
+   "scope": "only these opens; not GL no-op correctness, rendering or lighting; the pre-existing NOW-only libEGL open in flutter_egl.cpp is not re-approved here"
+  },
+  {
+   "object": "runtime-line-1/2: runtime 94c31177 -> 1d42dbfb, two dlopen findings whose PC/source line moved (resolve_oh_wm_funcs 0x19812c->0x198140; eglCreateWindowSurface 0x197a28->0x197ad0)",
+   "ids": [
+    "runtime-line-1",
+    "runtime-line-2"
+   ],
+   "decision": "approve as line-only transfers",
+   "basis": "packet evidence: target, flags and source statement identical; only the PC and line moved because the M1 split removed surrounding helpers",
+   "scope": "exact line-only transfer to the selected partial manifest/inputs; any other field change must come back to the outer"
+  },
+  {
+   "object": "runtime-call-bbq / -sc / -get-window: three call-set diffs from the t4 M1 split",
+   "ids": [
+    "runtime-call-bbq",
+    "runtime-call-sc",
+    "runtime-call-get-window"
+   ],
+   "decision": "approve the actual non-zero three-function call-set delta",
+   "basis": "outer disassembled 1d42dbfb: android::m1_native_window_from_other_copies(void*(*)(int), int) is the only function calling dl_iterate_phdr + HiLogPrint, and its callers are exactly sc_to_oh_native_window, oh_wm_get_native_window and BBQ_nativeUpdate -- the calls moved into the split entry, none disappeared",
+   "scope": "not callsets-0 and not instruction equivalence; watch for FZ-009: the split entry is called through the PLT (exported, preemptible), so with two runtime copies mapped both copies bind to whichever copy the loader finds first -- the FZ-009 re-verify must show that is intended (the function takes the resolved fn pointer explicitly)"
+  },
+  {
+   "object": "8 ADDED readonly strings in Flutter eb90a640 vs U15 9b824502 (FLUTTER-GLSTUB, eglGetProcAddress, glClearDepth, glClearDepthf, glDepthRange, glDepthRangef, libGLESv2.so, libGLESv3.so); 0 dropped; runtime strings 0/0",
+   "ids": [
+    "string-FLUTTER-GLSTUB",
+    "string-eglGetProcAddress",
+    "string-glClearDepth",
+    "string-glClearDepthf",
+    "string-glDepthRange",
+    "string-glDepthRangef",
+    "string-libGLESv2.so",
+    "string-libGLESv3.so"
+   ],
+   "decision": "approve exactly these 8 string allowances",
+   "basis": "each string is the log tag, the proc name matched by the A2/A3 shims, or the NOLOAD target of the four approved opens",
+   "scope": "Flutter eb90a640 only"
+  }
+ ],
+ "apply_when": "outer applies to knowledge/gates only when no board is LOCKed (61b is locked and offline with a pending rollback whose executor checks policy binding)",
+ "not_approved_here": "Live owner visibility, GL no-op correctness, rendering/lighting, FZ-009 registration, gate application, image baking, window or promotion authority"
+}
