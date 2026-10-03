@@ -1,0 +1,16 @@
+{
+  "changes": [
+    {
+      "path": "README.md",
+      "lines": [
+        "| **`benchmark/2026-10-03-u17-sysconf-compat/`** | **U17 sysconf-compat corpus scan + fix siting (cc-t3): source-verified bionic↔musl `_SC_*` remap (bionic `_SC_PAGESIZE`=0x27=39 → musl reads 39=`_SC_BC_STRING_MAX`=1000; 40→`_SC_COLL_WEIGHTS_MAX`; 96/97→NPROC; headers cited w/ line #s). scan.py over 115 apps: **73 keys import sysconf**, **63 call page-size 0x27/0x28** (upper bound of page-size-SENSITIVE, NOT a crash count — most tolerate a wrong value; only pow2-assert allocators (mozjemalloc) + Realm crash), 48 giant libs upper-bound-only (incl. anki librsdroid Realm 22MB). ② current libbionic_compat exports NO sysconf/getpagesize → app-native sysconf binds to musl; open_site_scan: libbionic_compat IS inherited into the sealed-child scope but AFTER libc.so in the dlns_inherit `shared` list → the wrapper must be reordered ahead of libc to win (getpagesize in musl is correct, so only direct sysconf(39/40) callers crash). ③ first-fatal: sysconf is a second-order wall — moves fennec+firefox after native_abi 7605812c, +im-vector+mcdonalds after Realm `_ctype_`; standalone immediate=0, ship PAIRED.** |"
+      ]
+    },
+    {
+      "path": ".octos/KNOWLEDGE-DIGEST.md",
+      "lines": [
+        "- 2026-10-03 **sysconf 修法要放对位置 + 别把页大小调用数当崩溃数(cc-t3, U17 sysconf-compat)**:全语料 scan.py:73 key 导入 sysconf、63 key 调页大小 0x27/0x28——但 63 是**页大小敏感**上界,不是崩溃数:多数 native 库只拿页大小做 mmap 对齐、容忍错值(内核仍按真 4KiB 映射),只有 (a) 断言页大小是 2 的幂的分配器(mozjemalloc/scudo)和 (b) 直接用它定 mmap/表大小的(Realm)才崩。按崩溃子集排,别按 63。② 现 libbionic_compat 不导出 sysconf/getpagesize→app-native sysconf 绑 musl(错号);open_site_scan 看 sealed-child 的 dlns_inherit `shared` 列表:libbionic_compat 在里面但排在 **libc.so 之后**→光加 sysconf 不会赢,必须把 libbionic_compat 排到 libc 前(或 RTLD_GLOBAL 先载)。musl 的 getpagesize 返回真页大小,所以只有直接 sysconf(39/40) 的才崩。③ sysconf 是次级墙,单发即刻移 0,须配 native_abi 7605812c / Realm _ctype_。翻译表照 bionic bits/sysconf.h 与 OH musl unistd.h 原文+行号,不凭记忆。"
+      ]
+    }
+  ]
+}
