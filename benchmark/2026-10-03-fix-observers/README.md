@@ -19,12 +19,15 @@
 ## Final counts (verbatim from the runs)
 
 - **U14 v5 keys vs U14 increments + smoke proposals: 56 artifacts, 0 without an observer** ✅
+  (unchanged this round)
   (the 11:10 outer mapping is reproduced: M5/M6 markers observe liboh_adapter_bridge.so,
   [B8-AMB-ORDER] observes oh-adapter-runtime.jar, Flutter ANW observes libandroid, SHA-prefixes
   cover the native-ABI trio and the ICU shim, and the stubs JAR covers the 16 BCP images).
-- **U15 keys vs U15 increments (no U15 smoke proposals yet): 56 artifacts, 2 without an
-  observer** — `libapp_native_loader.so` ×2 (system + route-a sealed copy), kept pending
-  cx-bms's answer on which fix it carries (outer 11:04).
+- **U15 keys vs U15 increments (no U15 smoke proposals yet): 56 artifacts, 0 without an
+  observer** ✅ (outer 11:36: fd-meet added as a U15 mover — its source names ANL dual alias
+  b96a8991, whose SHA prefix covers the two previously-GAP `libapp_native_loader.so` rows;
+  the cx-bms question about which fix the loader carries is thereby answered by the alias
+  change itself).
 
 ## Repro
 
