@@ -1,55 +1,70 @@
-# Window 13 plan: give NWeb the Activity's real surface from the bridge (route-a faithful) — not the probe's own IConsumerSurface
+# Window 13 plan: window-11 crash ROOT-CAUSED and FIXED (missing `-DOHOS_PLATFORM` → RefBase off-by-one); run two modes — mode 0 (fixed local surface, proves the engine paints) + bridge-window mode (route-a faithful)
 
-Static decision after window 12 (`CreateNWeb -> 0`, "get native window from surface failed"). The outer's three options,
-resolved:
+Supersedes the earlier draft. The window-11 SIGSEGV is now statically root-caused (outer RE) and fixed (rebuilt worker,
+slot-verified). Evidence: `window13-slot-verification.txt`, `window11-s5.md`, `window12-createnweb.md`.
 
-## ① OH `nweb_impl.cc:1600-1640` — not readable, reasoned from the contract
-`nweb_impl.cc` is in the **closed ArkWeb/chromium engine** (com.ohos.arkwebcore prebuilt), not in the OH610 LTS tree, so
-the exact lines can't be read. But the log is unambiguous: `nweb_impl.cc:1621 Init web engine failed, get native window
-from surface failed` after `CreateNWeb NWebId:1, size 720*720, enhance surface 0`. So the engine takes
-`NWebCreateInfo::GetProducerSurface()` (a `void*` → `sptr<OHOS::Surface>` producer), does `CreateNativeWindowFromSurface`
-on it, and **requires a non-null, valid producer surface**. A null surface (callback-only) fails here; the
-`OutputFrameCallback` does not substitute for the window. This matches how OH's own ACE `WebPattern` fills CreateInfo:
-from an **`RSSurfaceNode`** via `GetSurface()`.
+## Root cause (confirmed) and fix
 
-## ② Window-11 crash is NOT a usage error
-The probe's sequence is the documented one and matches every OH example
-(`graphic_2d/.../pixel_map_from_surface_test.cpp`, `rs_screen_property.cpp`, …):
-`IConsumerSurface::Create(name)` → `GetProducer()` → `Surface::CreateSurfaceAsProducer(producer)`. So the SIGSEGV in
-`ProducerSurface`'s ctor (`RefBase::IncStrongRef` on a bad pointer) is an ABI/linkage/context problem of building a
-**local** surface in the appspawn-x child, not a wrong call order. Chasing it is a rabbit hole — and a locally-created
-consumer surface is not the route-a path anyway (route a renders into the real view window).
+OH610 c_utils `refbase.h` declares `virtual bool CanPromote()` under `#ifdef OHOS_PLATFORM`. The probe build
+(`build_win7_hw248.sh`) passed `-D__MUSL__` but **not** `-DOHOS_PLATFORM`, so the probe's `RefBase` vtable is one slot
+short of the board's. Every RefBase-derived virtual call (Surface / IConsumerSurface / IBufferProducer) was off by one
+8-byte slot vs the board `libsurface.z.so` (build-id `4f752c38`, built WITH OHOS_PLATFORM). The window-11 crash was
+`consumer_->GetProducer()` calling slot `0x48` (= `IsConsumer` on the board) instead of `0x50`.
 
-## ③ CHOSEN — route-a faithful: the Activity window surface from the bridge
-The bridge already publishes the Activity's window to env-shared pointers (same process) and the M1 session-slots patch
-extended it (`2026-10-02-u14-bridge-r1r3`):
-- `WESTLAKE_NATIVE_WINDOW_PTR_V1` (single-slot) / `WESTLAKE_NATIVE_WINDOW_PTR_V2_<id>` (per-session) — the OHNativeWindow;
-- `WESTLAKE_RS_SURFACE_NODE_HOLDER_PTR_V2_<id>` — the `RSSurfaceNode` holder;
-- reader entry points `getOhNativeWindow(sessionId)` / `oh_wm_get_native_window` / `getRSSurfaceNode`.
+**Fix:** add `-DOHOS_PLATFORM` to the build. Rebuilt worker **`1ea800e9`** (×2 byte-identical, NEEDED unchanged,
+`a0_probe_start` still exported). The three CreateInfo-ctor consumer-surface calls now match the board:
 
-**Window 13:** the probe, after the Activity window session exists (seen in windows 11/12: `OH_WindowMgrClient
-createSession … 1200x1920`), reads the bridge's published `RSSurfaceNode` (V2 holder, V1 native-window as fallback),
-calls `RSSurfaceNode::GetSurface()` → `sptr<OHOS::Surface>` producer, and returns that from
-`NWebCreateInfo::GetProducerSurface()` — exactly what OH's ACE WebPattern passes NWeb. No local `IConsumerSurface`, so
-window-11's crash is gone; a real native window, so window-12's `nweb_impl.cc:1621` is satisfied.
+| call | old (faad4897) | new (1ea800e9) | board-correct |
+|---|---|---|---|
+| `SetDefaultWidthAndHeight` | 0xc8 | **0xd0** | 0xd0 |
+| `RegisterConsumerListener` | 0x110 | **0x118** | 0x118 |
+| `GetProducer` (crash) | 0x48 | **0x50** | 0x50 |
 
-Implementation notes for the probe change (then request window 13, scheduling rules as usual):
-- Resolve the pointer from the env var (the bridge `setenv`s pointer text), cast to `RSSurfaceNode*` (V2 holder) or the
-  OHNativeWindow (V1); prefer the RS node to match ACE.
-- **Timing:** `a0_probe_start` posts `Run` immediately, but the window target is published only when the Activity window
-  session is created (~shortly after launch). Gate CreateNWeb on the env var being present (poll/delay on the probe's
-  EventRunner, e.g. retry for a few seconds) so the surface exists before `CreateNWeb`.
-- Keep `SetRenderProcessMode(SINGLE)` and the `OutputFrameCallback` (frames still arrive via the callback for the
-  pixel/js-colour check) **in addition to** the real surface.
+Each shifted exactly +8 (the restored `CanPromote` slot). Entry unchanged (`a352a36f`; uses no RefBase).
+`run_a0.sh` re-pinned `RT_WORKER_SHA=1ea800e9…`. (The DIGEST rule "OH inner_api native must build with `-DOHOS_PLATFORM`
+or RefBase-derived virtuals are off by one slot" is landed by the outer, `ac08ce7cf6`.)
 
-## Native backend (route a) — surface source fixed by this decision
-`nativeCreateNWeb(int w, int h, Object surface)`: the Java `Surface` is the WebView view's surface. Native side:
-`ANativeWindow_fromSurface(env, surface)` → (runtime shim returns the bridge `AdapterAnw`) → unwrap with the bridge's
-`oh_anw_get_oh` → the view's OH `NativeWindow`/producer surface → `NWebCreateInfo::GetProducerSurface()`. So the backend
-takes the surface from Java (the real view), never building a local one — same requirement, satisfied the route-a way.
-The probe's window-13 bridge-window path is the headless stand-in for exactly this.
+## Window 13: two modes in one window
 
-## Status of the engine barrier
-Fully cleared and stable across windows 11 & 12: entry a352a36f loads via the runtime, `nweb_ns` both-dirs resolves
-`libarkweb_engine.so`, `Init→1`, `InitAndRun→1`, `InitWebEngine: succeed to init web engine`. The only remaining wall is
-the surface, which window 13 supplies the faithful way.
+Both on a free board cx-t0 hasn't claimed; `A0_EXPECT_FP` per board; ≤25 min; same rollback/trap; scheduling protocol
+(`A0 拟用 <板>` + 2-min). Pass both modes so run_a0.sh runs them in sequence in one lock.
+
+### Mode 0 — fixed local consumer surface (proves "the engine can paint") — READY NOW
+`MODES` includes **`0`** (withSurface=true). With the fixed worker the local `IConsumerSurface::Create` →
+`SetDefaultWidthAndHeight` → `RegisterConsumerListener` → `GetProducer` → `Surface::CreateSurfaceAsProducer` no longer
+crashes; CreateNWeb gets a real producer surface; the `ConsumerListener::OnBufferAvailable` `AcquireBuffer`s each frame
+and samples the centre pixel.
+- **PASS:** `[A0] S5 CreateNWeb -> <ptr≠0>`, then `S8 surface frame … js_colour=1` (centre pixel = `#12ab34`) → `RESULT
+  PASS`. This is the M2 engine-render proof (headless, the probe's own surface).
+- **Fallback:** if CreateNWeb still returns 0 or no frame, capture the chromium log line and the new slot usage; the
+  bridge mode below is the independent cross-check.
+
+### Bridge-window mode — route-a faithful (needs a small probe addition before this window)
+A new mode bit (proposed `16`): instead of a local surface, read the bridge's published Activity window and hand its
+surface to NWeb — exactly how OH ACE WebPattern fills CreateInfo.
+- Source: `getenv("WESTLAKE_RS_SURFACE_NODE_HOLDER_PTR_V2_<sessionId>")` → cast to `RSSurfaceNode*` → `GetSurface()` →
+  `sptr<OHOS::Surface>` producer; fallback `WESTLAKE_NATIVE_WINDOW_PTR_V1` (OHNativeWindow) when the V2 holder is absent.
+  (Publisher: bridge `oh_window_manager_client.cpp`, M1 session-slots, `2026-10-02-u14-bridge-r1r3`.)
+- **Timing:** gate CreateNWeb on the env var being present — the window target is published only when the Activity
+  window session is created (seen in windows 11/12: `OH_WindowMgrClient createSession … 1200x1920`). Poll on the probe's
+  EventRunner for a few seconds.
+- **Activity stays blank** (the probe renders NWeb into the surface but doesn't composit it to the Activity view).
+  Record: `[A0] S5 CreateNWeb -> <ptr>`, the NWeb connection result, and the surface `uniqueId`.
+- **PASS:** CreateNWeb ≠ 0 with the bridge surface → the route-a surface source is proven. Frames via OutputFrameCallback.
+- **Must NOT steal the main-window producer from hwui:** use a surface that is not hwui's compositor producer for the
+  Activity's root. For the probe, reading the RS node and calling CreateNWeb on its surface is a read of the published
+  pointer; do not re-publish or re-parent. (See the formal-backend note.)
+
+## Formal backend: which OH surface the WebView's Java Surface maps to
+`nativeCreateNWeb(w, h, Object surface)`: the Java `Surface` is the **WebView view's own** surface (a child
+SurfaceView/TextureView-backed surface), NOT the Activity root window. Native: `ANativeWindow_fromSurface(env, surface)`
+→ the runtime shim returns the bridge `AdapterAnw` → unwrap with `oh_anw_get_oh` → the view's OH producer surface →
+`NWebCreateInfo::GetProducerSurface()`. So route a renders into an **independent child surface node** for the WebView
+view — it does not contend with hwui for the Activity's main-window producer. The probe's bridge-window mode is the
+headless stand-in (it borrows the published Activity window only because a headless probe has no view of its own).
+
+## Status
+Engine barrier cleared and stable (windows 11/12: `Init→1`, `InitAndRun→1`, `InitWebEngine: succeed`). Surface crash
+fixed (1ea800e9, slot-verified). Window 13 proves rendering via the fixed local surface and cross-checks the route-a
+bridge surface. Boards currently held by cx-t0 U14 window 2 (locked 13:29:28); window 13 waits for a free board per the
+scheduling protocol, avoiding cx-t0's declared boards.

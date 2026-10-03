@@ -1,0 +1,25 @@
+# Window-11 root cause (outer RE, confirmed) + the -DOHOS_PLATFORM rebuild fix, slot-verified.
+#
+# Root cause: OH610 c_utils refbase.h has `virtual bool CanPromote()` under `#ifdef OHOS_PLATFORM`. The probe build
+# (build_win7_hw248.sh COMMON) had -D__MUSL__ but NOT -DOHOS_PLATFORM, so its RefBase vtable is one slot short; every
+# RefBase-derived virtual call (Surface/IConsumerSurface/IBufferProducer) is off by one 8-byte slot vs the board's
+# libsurface.z.so (build-id 4f752c38 = local ~/orca/workspaces/oh61-bms-kit-b79/.../libsurface.z.so, sha 8f1879f8),
+# which was built WITH OHOS_PLATFORM.
+#
+# The three IConsumerSurface virtual calls in CreateInfo's ctor, old worker (faad4897, no -DOHOS_PLATFORM) vs
+# rebuilt (1ea800e9, with -DOHOS_PLATFORM); board-correct slot per the outer's RE:
+#
+#   method                       old slot   new slot   board-correct
+#   SetDefaultWidthAndHeight(W,H) 0xc8       0xd0       0xd0   (0xc8 = SetQueueSize on board)
+#   RegisterConsumerListener(l)   0x110      0x118      0x118  (0x110 = GetUniqueId on board)
+#   GetProducer()                 0x48       0x50       0x50   (0x48 = IsConsumer on board; this is the window-11 crash)
+#
+# objdump (rebuilt 1ea800e9):
+#   90c4: ldr x8,[x8,#0xd0]    (SetDefaultWidthAndHeight)
+#   9144: ldr x8,[x8,#0x118]   (RegisterConsumerListener)
+#   9158: ldr x9,[x8,#0x50]    (GetProducer)   <- window-11 crashed here at the old 0x48
+# objdump (old faad4897):
+#   9074: ldr x8,[x8,#0xc8]    9108: ldr x9,[x8,#0x48]    90f4: ldr x8,[x8,#0x110]
+#
+# Each shifted exactly +8 (one slot = the missing CanPromote), now matching the board. NEEDED identical, a0_probe_start
+# still exported, built x2 byte-identical (1ea800e9). Entry unchanged (a352a36f; uses no RefBase).
