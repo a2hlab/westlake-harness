@@ -1,0 +1,50 @@
+{
+ "schema": "outer-smoke-review/v1",
+ "signer": "outer(claude)",
+ "signed_at": "2026-10-03T10:52:32+08:00",
+ "reviews": "cx-t0 ACK(90 review-needed) 2026-10-03 ~10:30: window1/{common/smoke-5ea,smoke-5cd,61b/smoke-61b}-proposal.json; arming-correspondence.json",
+ "armed": {
+  "decision": "accept",
+  "common": "12d30eb0 -> 56974aa0",
+  "61b": "b0f74132 -> afb44370",
+  "basis": "bundle.json differs only in rollout_ready false->true and rollout_blocker text->''; 3555 other files per variant SHA-identical; manifest 3460435a / inputs 11001e6e unchanged (cx-t0 arming-proof.json)"
+ },
+ "multiplicity": {
+  "decision": "strict = not above the signed U13 baseline, measured in the U13 stage-B smoke child maps that the outer signed (maps-t5 of helloworld on all three boards, 2026-10-03 09:31-09:32)",
+  "expected_load_bases": {
+   "libart.so (route-a)": 1,
+   "liboh_adapter_bridge.so": 2,
+   "liboh_android_runtime.so": 2,
+   "libjavacore.so": 2
+  },
+  "new_in_U14": "icu74compat (4886) and any other newly added library: at most 1 load base if loaded in a control at all",
+  "why": "the two bridge/runtime copies are the signed U13 baseline (the condition M1 [M1-COPY] compensates for; N11 owner fix not in U14). A strict 1 would reject U14 for the baseline itself; any copy above baseline is a new regression and rejects."
+ },
+ "no_log_fixes": {
+  "decision": "no live-call marker is required or may be faked; smoke checks identity, stage A checks effect",
+  "smoke": "exact deployed SHA at each probe.files path (ICU alias shim 4886 + libicuuc 9b36 aliases, Gecko/native ABI f861, stubs 87cf with ScanCallback); multiplicity as above if loaded in a control",
+  "stage_A_effect_evidence": {
+   "ICU _74 alias shim": "toutiao (61b, already a mover): first fatal no longer the ICU _74 symbol/icudt74 scandir wall",
+   "Gecko/native ABI": "fd-fennec_fdroid (5cd): first fatal no longer __gnu_strerror_r; vlc (5ea): no longer __pthread_cleanup_push",
+   "bionic _ctype_ (Realm)": "mcdonalds (61b), fd-im-vector-app (5ea): first fatal no longer the _ctype_ / F02-A12 dlopen_ns Realm wall",
+   "stubs ScanCallback": "fd-plus (5ea): first fatal no longer NoClassDefFoundError android/bluetooth/le/ScanCallback"
+  },
+  "gap_found": "these five keys (fennec, vlc, mcdonalds, im-vector, fd-plus) are missing from the U14 movers (keys v4 c5ec9c4b), so stage A could not observe three of U14's fixes; oc-t4 adds them as movers (keys v5), cx-t0 regenerates the plan shards; reference/lit-regression unchanged"
+ },
+ "live_markers_with_logs": {
+  "decision": "accept as proposed",
+  "M5": "createSession: Android TYPE_APPLICATION window -> sub-window zLevel 13000",
+  "M6": "FGGUARD WARN pass-through BACKGROUND_NEW for finishing token=",
+  "Flutter": "detected ANW shim + non-zero EGLSurface",
+  "runtime JAR 0349": "[B8-AMB-ORDER] holding in-process bind until / delivering in-process bind after this transaction",
+  "note": "marker presence proves the code ran, not that the key is lit; t20 sheets remain ground truth"
+ },
+ "selftest": {
+  "decision": "accept strict: HW/ZZ schema 2 PASS required; selftest_error/badtag/probe_error/unknown any -> reject; OK lines never mask an error"
+ },
+ "first_lock_allowed_when": [
+  "keys v5 with the 5 movers is landed and the plan regenerated from it (posted SHA)",
+  "smoke specs carry the multiplicity table above",
+  "fresh preflight right before LOCK"
+ ]
+}
