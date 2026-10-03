@@ -1,0 +1,38 @@
+--- /private/tmp/claude-501/-Users-zhaoyue-orca-workspaces-westlake-harness-t3/95864860-7d4f-4643-8cc6-d71a5af75300/scratchpad/run_a0.landed.sh	2026-10-03 09:04:41
++++ board/run_a0.sh	2026-10-03 09:04:49
+@@ -5,6 +5,8 @@
+ #                                                  2 = InitAndRun(false) via the bundle path, 4 = no ApplicationContext
+ #                                                  attach, 8 = no producer surface; bits combine)
+ #
++# runtime-fingerprint (bms_batch.runtime_fingerprint via board/fingerprint.py) right after LOCK and again before UNLOCK;
++# they must be equal, else the lock is kept (outer 09:03 condition).
+ # Board changes, all reverted before UNLOCK (trap): /data/local/tmp/a0probe.apk (pushed, removed), the test bundle
+ # org.westlake.a0probe (installed with bm, uninstalled), param debug.westlake.a0probe.mode (set per mode, reset to 0;
+ # debug.* is not persistent), the probe's own processes (stopped). Nothing under /system, no runtime/JAR/bridge/BCP
+@@ -31,6 +33,8 @@
+ 
+ "$NOTE" lock "$BOARD" "$SERIAL" "$LANE" "M2 A0 ArkWeb probe: install test APK $PKG, run modes [$MODES], uninstall; <=30 min" || exit 75
+ START=$(date +%s)
++FP=$HERE/board/fingerprint.py
++python3 "$FP" "$SERIAL" "$OUT" runtime-fingerprint-after-lock.txt | tee "$OUT/fingerprint-after-lock.txt"
+ 
+ rollback() {
+   echo "[a0] rollback $(date -Iseconds)"
+@@ -47,8 +51,15 @@
+ }
+ finish() {
+   rc=$?; trap - EXIT INT TERM HUP
+-  if rollback; then "$NOTE" unlock "$BOARD" "$SERIAL" "$LANE"; echo "[a0] UNLOCKED after $(( $(date +%s) - START )) s"
+-  else echo "[a0] ROLLBACK INCOMPLETE: lock kept"; "$NOTE" progress "$BOARD" 90 "$LANE" "A0 probe rollback incomplete on $SERIAL; lock kept, see $OUT/session.log"; fi
++  ok=1; rollback || ok=0
++  python3 "$FP" "$SERIAL" "$OUT" runtime-fingerprint-before-unlock.txt | tee "$OUT/fingerprint-before-unlock.txt"
++  if cmp -s "$OUT/runtime-fingerprint-after-lock.txt" "$OUT/runtime-fingerprint-before-unlock.txt"; then
++    echo "[a0] runtime fingerprint unchanged across the window"
++  else
++    echo "[a0] runtime fingerprint CHANGED"; /usr/bin/diff "$OUT/runtime-fingerprint-after-lock.txt" "$OUT/runtime-fingerprint-before-unlock.txt"; ok=0
++  fi
++  if [ $ok = 1 ]; then "$NOTE" unlock "$BOARD" "$SERIAL" "$LANE"; echo "[a0] UNLOCKED after $(( $(date +%s) - START )) s"
++  else echo "[a0] ROLLBACK/FINGERPRINT CHECK FAILED: lock kept"; "$NOTE" progress "$BOARD" 90 "$LANE" "A0 probe rollback or fingerprint check failed on $SERIAL; lock kept, see $OUT/session.log"; fi
+   exit $rc
+ }
+ trap finish EXIT INT TERM HUP

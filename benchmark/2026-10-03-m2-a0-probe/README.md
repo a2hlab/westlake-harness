@@ -124,6 +124,47 @@ try fallbacks without a rebuild:
 runtime deploy; this window installs one test APK and deploys nothing. The LOCK / rollback-before-UNLOCK discipline is
 the same.
 
+## Window 1 (5cd, 2026-10-03 09:05:18–09:10, outer 09:03): F0, the probe never ran (`window-5cd-20261003T090517/`)
+
+**Fingerprint.** `RUNTIME fingerprint=f3b604c94df4 files=123` after LOCK, and identical before UNLOCK (the script's
+check and a manual recheck after the extra cleanup; `runtime-fingerprint-*.txt` are byte-equal).
+
+**Preflight.** All 10 board libraries the probe links against hash-equal the link inputs. Engine `2b209e33`, nwebspawn
+up.
+
+**What happened, both modes** (`launch-failure-excerpt.txt`):
+- `bm install` succeeded, and `aa start` reached appspawn-x.
+- The child failed sandbox setup: `check dir /data/app/el1/100/database/org.westlake.a0probe failed` →
+  `DoAppSandboxMountOnce section app-base failed` → `SetSandboxProperty failed` → `Execute hook [31] result 218103816`
+  → `NotifyStartProcessFailed`.
+- No `[A0]`, `[A0-SHIM]` or `[A0-JAVA]` line exists, so no ArkWeb step ran. The run says nothing about ArkWeb yet.
+
+**Root cause** (outer 09:13 found the same statically). The APK installer adapter creates no app data directories.
+Every corpus run gets them from `bms_batch.prepare_sandbox`, the accepted recipe `prepare_sandbox.sh`
+(`restore-pr03-helloworld-5min.sh:291-294`), which runs after `bm install`. A bare `bm install -p` skips it. This is the
+RUNBOOK's "hook31 沙箱初始化失败" shape.
+
+**Rollback.**
+- param back to 0, no process with uid 20011156, `bm uninstall` OK, pushed files removed.
+- The script's final check then **wrongly** failed and kept the lock, because of a bug: `grep -c` prints `0` and exits
+  1, so `|| echo 0` appended a second `0`.
+- A manual read-only recheck found a real residue: the adapter's uninstall left
+  `/data/app/el1/bundle/public/org.westlake.a0probe` (only our `entry.hap`, icon, and the two `.so` with our hashes)
+  and an empty `/mnt/sandbox/100/org.westlake.a0probe`.
+- Both were removed (`manual-rollback.log`), the fingerprint was recomputed (unchanged), and then UNLOCK.
+- Screenshots `mode-*/t28.jpeg` and the full hilogs are in the generation dir (`$WORKSPACES/westlake-inputs/generations/m2-a0-probe-v1/window-5cd-20261003T090517/`).
+
+**Script changes for window 2** (`evidence/run_a0-window2-amendment.diff`; the fingerprint hooks are in
+`evidence/run_a0-fingerprint-amendment.diff`):
+1. After install, the `prepare_sandbox` recipe runs **verbatim**, with the test bundle's real uid from `bm dump`. The
+   command is assembled exactly like `bms_batch.prepare_sandbox` (checked byte-identical to its `sandbox-command.sh`
+   for the same package and uid). It is pushed as a file and run with `sh`, its rc must be 0, and `ls -ldZ` of two
+   created dirs is recorded.
+2. Rollback also removes everything the recipe creates for the bundle (el1..el4 base/database, el2 sharefiles, el2 log),
+   plus `/data/app/el1/bundle/public/<pkg>` and `/mnt/sandbox/100/<pkg>`, and checks none of them exist
+   (`leftover_dirs=0`).
+3. Final check: the bundle, process and dir counts all use `|| true`, with no double output.
+
 ## Criteria
 
 **Pass:** `[A0] RESULT PASS`, i.e. at least one frame (callback or surface) whose centre pixel is the JS colour
@@ -152,6 +193,7 @@ the same.
 - `src/java/…/MainActivity.java`, `src/java/AndroidManifest.xml`.
 - `src/include-seed.txt`, `src/genstub/{ibundle_mgr_ext.h, iverify_manager.h}` (the exact stand-ins the release was
   built with, byte-equal to the hw248 build dir).
-- `resolve_includes_hw248.sh`, `build_a0_hw248.sh`, `build_apk.py`, `board/run_a0.sh`.
+- `resolve_includes_hw248.sh`, `build_a0_hw248.sh`, `build_apk.py`, `board/run_a0.sh`, `board/fingerprint.py`
+  (runtime-fingerprint through `bms_batch.runtime_fingerprint`).
 - `evidence/`: `elf-check.txt`, `oh-tree-identity.txt`. `logs/`: hw248 resolve / build logs (sanitised), input hashes +
   include list, APK build log. `results.json`.
