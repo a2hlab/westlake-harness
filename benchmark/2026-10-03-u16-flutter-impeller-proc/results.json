@@ -1,0 +1,71 @@
+{
+  "task": "U16 head candidate: Flutter Impeller GLES ProcTable pc=0 — name the slot-#468 proc, driver check, fix design",
+  "date": "2026-10-03",
+  "lane": "cc-t3",
+  "offline": true,
+  "deployed_to_board": false,
+  "input_crash": {
+    "source": "U14 window-1 r2, localsend, 1.raster thread",
+    "signal": "SIGSEGV pc=0",
+    "frame01": "libflutter.so(build-id 0d216f3f)+0x4b655c",
+    "note": "after U14 eglCreateWindowSurface fix: EGLSurface non-zero, crash ~0.4s later"
+  },
+  "binary_identity": {
+    "outer_hash": "0d216f3f",
+    "outer_hash_kind": "GNU build-id (NOT sha256)",
+    "analyzed_copy_sha256": "0c56c4a4468224beb",
+    "analyzed_copy_build_id": "0d216f3f630e1105257f8a3f74e22c9b43c22a51",
+    "same_build": true,
+    "copy_path": "westlake-harness-bms/benchmark/2026-10-01-u11-native/.artifacts/window-r1-scan/consumers/localsend/libflutter.so"
+  },
+  "crash_slot": {
+    "slot": 468,
+    "offset_hex": "0xea0",
+    "offset_bytes": 3744,
+    "table_base_vaddr": "0xaee000 (.bss GLES/Impeller ProcTable)",
+    "crash_site": "0x4b6528 adrp x9,0xaee000; 0x4b6550 ldr x8,[x9,#0xea0]; 0x4b655c blr x8",
+    "filler_phase2": "0x7fea64 ldr x1,[x19,#0xe88] (name); 0x7fea6c bl resolver(wraps eglGetProcAddress); 0x7fea70 cbz x0 -> on NULL skip stores at 0xe98/0xea0",
+    "filler_phase1_name": "0x7fd3d4 adrp x1,0x1bc000; add x1,x1,#0xc64 -> 0x1bcc64",
+    "entry_stride_bytes": 40,
+    "proc_name": "glDepthRange",
+    "proc_name_confidence": "high (static, exact build-id, name string read from rodata)",
+    "neighbors": {"0xe60": "glClearDepth", "0xeb0": "glFenceSync"}
+  },
+  "driver_oracle": {
+    "source": "benchmark/2026-09-28-flutter-gles-procs/results.json (board 5cd OH 6.1.0.31, Mali-G57 GL_VERSION v1.r32p0)",
+    "same_oh_image_as_u13_unified": true,
+    "glDepthRange":  {"oh_egl": "NULL", "oh_gl2": "NULL", "oh_gl3": "NULL", "android_egl": "NULL"},
+    "glDepthRangef": {"oh_egl": "0x7f3bae4f1c", "oh_gl2": "0x7f3c157274", "oh_gl3": "0x7f3c0e0b00"},
+    "glClearDepth":  {"oh_egl": "NULL", "oh_gl2": "NULL", "oh_gl3": "NULL", "android_egl": "NULL"},
+    "glClearDepthf": {"oh_egl": "0x7f3bae4284", "oh_gl2": "0x7f3c156944", "oh_gl3": "0x7f3c0dfba0"},
+    "verdict": "glDepthRange/glClearDepth are desktop-GL double entries absent from GLES in EVERY form (eglGetProcAddress AND dlsym). Only the 'f' variants exist. Fix = semantic shim to the 'f' variant, NOT a dlsym-forward.",
+    "fresh_pull_status": "not re-pulled this round (boards held by cx-t0 U14); prior oracle on the identical OH 6.1.0.31 driver is authoritative. A one-read sha256+readelf confirm is advisable when a board frees."
+  },
+  "fix": {
+    "kind": "eglGetProcAddress interposer",
+    "home": "westlake_flutter/libandroid.so (ee2fb82c) level-1 — same object as the U14 eglCreateWindowSurface fix; the only lib that wins before platform libEGL in libflutter's lookup order",
+    "new_file": true,
+    "frozen_source_edited": false,
+    "depends_on": "U14 flutter-egl-window libandroid change (same file); if U14 freezes it, goes through the add-new-functionality frozen path",
+    "cases": {
+      "B_double_to_float_shim": ["glDepthRange->glDepthRangef", "glClearDepth->glClearDepthf"],
+      "A_dlsym_forward": "the 41 extension procs that are eglGetProcAddress-NULL but dlsym-exported",
+      "C_logged_noop_stub": "residual gl* gap -> never leave a null slot"
+    },
+    "abi_caveat": "crash-prevention is ABI-independent (slot non-null); correct depth-range needs the shim arg widths to match Impeller's call. Shim uses desktop (GLclampd,GLclampd); confirm from dispatcher [sp,#0x20] in JNI_OnLoad, flip to GLfloat if needed.",
+    "deploy_scope": "only westlake_flutter/libandroid.so; westlake_native/ copy (13 native-cluster pkgs) unchanged",
+    "pre_build_unknown": "sha256 of deployed /system/android/lib64/westlake_flutter/libandroid.so (underlay, not in runtime fingerprint) — one read-only read"
+  },
+  "builds": {
+    "localsend":    {"build_id": "0d216f3f", "impeller": true, "refs_glDepthRange": true, "refs_glClearDepth": true, "eglGetProcAddress_UND": true, "crash_slot_0xea0": true},
+    "fd-kitchenowl":{"build_id": "889a1df3", "impeller": true, "refs_glDepthRange": true, "refs_glClearDepth": true, "eglGetProcAddress_UND": true, "crash_slot_0xea0": false},
+    "fd-fluffychat":{"build_id": "495e7110", "impeller": true, "refs_glDepthRange": true, "refs_glClearDepth": true, "eglGetProcAddress_UND": true, "crash_slot_0xea0": false},
+    "fd-libre":     {"build_id": "fdf0a0a6", "impeller": true, "refs_glDepthRange": true, "refs_glClearDepth": true, "eglGetProcAddress_UND": true, "crash_slot_0xea0": false},
+    "fd-saber":     {"build_id": "fdf0a0a6", "impeller": true, "note": "same build as libre; not in U13/U14 mover cohort"},
+    "fd-immich":    {"build_id": "edfb9140", "impeller": true, "note": "dies earlier at libcronet ATrace_beginSection -> 0 here"}
+  },
+  "same_slot_across_4": false,
+  "same_gap_class_across_4": true,
+  "predicted_movers": 4,
+  "predicted_movers_basis": "fix generality (one eglGetProcAddress interposer resolves the whole gap class), not a shared slot"
+}

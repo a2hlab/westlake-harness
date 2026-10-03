@@ -1,0 +1,17 @@
+# Prior board driver oracle (5cd, OH 6.1.0.31, Mali-G57 GL_VERSION v1.r32p0), results.json driver_table.
+# Columns: oh_egl = eglGetProcAddress(name) on OH; oh_gl2/oh_gl3 = dlsym in libGLESv2/libGLESv3; android_egl = Android eglGetProcAddress.
+# '0' = NULL. Same OH image as the U13 unified state (U13 did not touch the GLES driver).
+
+glDepthRange     {"oh_egl": "0", "oh_gl2": "0", "oh_gl3": "0", "android_egl": "0x0"}
+glDepthRangef    {"oh_egl": "0x7f3bae4f1c", "oh_gl2": "0x7f3c157274", "oh_gl3": "0x7f3c0e0b00", "android_egl": "0x7c056154b0"}
+glClearDepth     {"oh_egl": "0", "oh_gl2": "0", "oh_gl3": "0", "android_egl": "0x0"}
+glClearDepthf    {"oh_egl": "0x7f3bae4284", "oh_gl2": "0x7f3c156944", "oh_gl3": "0x7f3c0dfba0", "android_egl": "0x7c05615250"}
+glFenceSync      {"oh_egl": "0x7f3bad8478", "oh_gl2": "0", "oh_gl3": "0x7f3c0e9d80", "android_egl": "0x7c05616a10"}
+
+oh_egl_null_count = 59 of 289 names
+glDepthRange in oh_null list: True
+glClearDepth in oh_null list: True
+
+# VERDICT: glDepthRange/glClearDepth are NULL on eglGetProcAddress AND dlsym (oh_gl2=oh_gl3=0):
+# they are desktop-GL double-precision entries absent from GLES. Only the 'f' variants exist (and are exported).
+# => fix is a semantic shim to the 'f' variant, NOT a dlsym-forward (the driver has no glDepthRange to forward to).

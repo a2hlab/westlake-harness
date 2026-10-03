@@ -1,0 +1,57 @@
+# localsend libflutter.so  build-id 0d216f3f630e1105257f8a3f74e22c9b43c22a51  (sha256 0c56c4a4...)
+# This is the crashed build (outer's '0d216f3f' = the GNU build-id, not the sha256).
+
+## Crash site (thread 1.raster, pc=0): libflutter.so+0x4b655c
+  4b6520: 529d2808     	mov	w8, #0xe940             // =59712
+  4b6524: f90027ff     	str	xzr, [sp, #0x48]
+  4b6528: 900031c9     	adrp	x9, 0xaee000
+  4b652c: 72a77348     	movk	w8, #0x3b9a, lsl #16
+  4b6530: b90053ff     	str	wzr, [sp, #0x50]
+  4b6534: 910103e1     	add	x1, sp, #0x40
+  4b6538: b90043e8     	str	w8, [sp, #0x40]
+  4b653c: 9107c3e3     	add	x3, sp, #0x1f0
+  4b6540: aa1f03e2     	mov	x2, xzr
+  4b6544: f9002ff6     	str	x22, [sp, #0x58]
+  4b6548: f9401f88     	ldr	x8, [x28, #0x38]
+  4b654c: f9400d17     	ldr	x23, [x8, #0x18]
+  4b6550: f9475128     	ldr	x8, [x9, #0xea0]
+  4b6554: f900fbff     	str	xzr, [sp, #0x1f0]
+  4b6558: aa1703e0     	mov	x0, x23
+  4b655c: d63f0100     	blr	x8
+  4b6560: f940fbf8     	ldr	x24, [sp, #0x1f0]
+
+## -> x9 = adrp 0xaee000 (.bss GLES ProcTable base); ldr x8,[x9,#0xea0]; blr x8.
+## 0xea0 = 3744 = slot #468. When the slot is 0 -> blr 0 -> pc=0.
+
+## Phase-2 resolve block that fills slot 0xea0 (gated by cbz on the eglGetProcAddress result):
+  7fea50: f9400281     	ldr	x1, [x20]
+  7fea54: 97fff7c9     	bl	0x7fc978 <JNI_OnLoad+0x341f70>
+  7fea58: b4002a60     	cbz	x0, 0x7fefa4 <JNI_OnLoad+0x34459c>
+  7fea5c: f94013e8     	ldr	x8, [sp, #0x20]
+  7fea60: f9073a60     	str	x0, [x19, #0xe70]
+  7fea64: f9474661     	ldr	x1, [x19, #0xe88]
+  7fea68: f9073e68     	str	x8, [x19, #0xe78]
+  7fea6c: 94090b7e     	bl	0xa41864 <InternalFlutterGpu_Texture_AsImage+0x18ebd4>
+  7fea70: b4002a80     	cbz	x0, 0x7fefc0 <JNI_OnLoad+0x3445b8>
+  7fea74: f94013e8     	ldr	x8, [sp, #0x20]
+  7fea78: f9074e60     	str	x0, [x19, #0xe98]
+  7fea7c: f9075268     	str	x8, [x19, #0xea0]
+
+## -> 0x7fea64 ldr x1,[x19,#0xe88] (entry 0xe88 .name); 0x7fea6c bl resolver(wraps eglGetProcAddress);
+##    0x7fea70 cbz x0 -> on NULL skip both stores, leaving [x19,#0xe98]=func and [x19,#0xea0]=0 (CRASH SLOT).
+
+## Phase-1 construction of entry 0xe88 (sets its .name):
+  7fd3d4: f0ffcde1     	adrp	x1, 0x1bc000 <_binary_icudtl_dat_size+0x252a0>
+  7fd3d8: 91319021     	add	x1, x1, #0xc64
+  7fd3dc: 913a2260     	add	x0, x19, #0xe88
+  7fd3e0: 393a027f     	strb	wzr, [x19, #0xe80]
+  7fd3e4: f9073e7f     	str	xzr, [x19, #0xe78]
+  7fd3e8: f9073a7f     	str	xzr, [x19, #0xe70]
+  7fd3ec: 97f330c4     	bl	0x4c96fc <JNI_OnLoad+0xecf4>
+
+## entry bases are 0x28(40)-byte stride: 0xe60, 0xe88, 0xeb0 ; 0xea0 is entry-0xe88 + 0x18.
+## name string vaddrs -> C strings:
+0x1b5bc8: 'glClearDepth'
+0x1bcc64: 'glDepthRange'
+0x1c263e: 'glFenceSync'
+## => slot #468 (offset 0xea0) proc name = glDepthRange
