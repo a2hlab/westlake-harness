@@ -1,0 +1,33 @@
+# A0 window 11 (5ea, 2026-10-03 13:01, U13 821de739cf81/124, clean rollback+UNLOCK after 92s). entry a352a36f, worker faad4897.
+# Runtime entry fired (B7BindFixes System.load of the bind-mounted libwestlake_html_compat.so); the APK's own [A0-SHIM] failed separately (ns wl_a0probe EPERM) and is irrelevant.
+
+## Success chain (WL-A0): engine LOADS and INITS — past window-10's S3 wall
+10-03 13:01:09.598 25000 25012 I C00f00/WL-A0: [A0] entry ctor pid=25000 comm=org.westlake.a0 cmdline=/system/bin/appspawn-x
+10-03 13:01:09.598 25000 25012 I C00f00/WL-A0: [A0] entry JNI_OnLoad pid=25000 comm=org.westlake.a0 (runtime load point)
+10-03 13:01:09.598 25000 25012 I C00f00/WL-A0: [A0] entry ns nweb_ns (lib_paths=/data/local/tmp:/data/storage/el1/bundle/arkwebcore/libs/arm64): dlns_get(nweb_ns)=126 create=0 dlns_get(default)=0 inherit=0
+10-03 13:01:09.600 25000 25012 I C00f00/WL-A0: [A0] entry: worker a0_probe_start rc=0 (handle=0x6ed71f3a84f45c85)
+10-03 13:01:09.600 25000 25013 I C00f00/WL-A0: [A0] S0 pid=25000 uid=20010967 bundle=org.westlake.a0probe mode=0 mainEventRunner=0x7f25c04290 existingAppContext=0
+10-03 13:01:09.601 25000 25013 I C00f00/WL-A0: [A0] S1 NWebHelper::Instance at 0x7f22d10514 in /system/lib64/platformsdk/libarkweb_core_loader.z.so
+10-03 13:01:09.601 25000 25013 I C00f00/WL-A0: [A0] S2 attached ApplicationContext 0x7f25b142b0 baseDir=/data/storage/el2/base bundleName=org.westlake.a0probe
+10-03 13:01:09.889 25000 25013 I C04500/webview: ArkWebBridgeHelperLoadLibFile: succeed to load lib file /data/storage/el1/bundle/arkwebcore/libs/arm64/libarkweb_engine.so
+10-03 13:01:09.890 25000 25013 I C04500/webview: GetWebEngine: call func NotifyProcessDependedOnWeb and return code is 0
+10-03 13:01:09.894 25000 25013 E C04500/webview: GetWebEngine: api level of arkweb core is 0
+10-03 13:01:09.894 25000 25013 I C04500/webview: GetWebEngine: web engine libraryloaded
+10-03 13:01:09.897 25000 25013 I C00f00/WL-A0: [A0] S3 bundlePath=/data/storage/el1/bundle/arkwebcore Init(1) -> 1 (engine library loaded, not yet initialised)
+10-03 13:01:10.017 25000 25013 I C04500/webview: ArkWebBridgeHelperLoadLibFile: succeed to load lib file /data/storage/el1/bundle/arkwebcore/libs/arm64/libarkweb_engine.so
+10-03 13:01:10.022 25000 25013 I C00f00/WL-A0: [A0] S3 renderProcessMode=0 (requested single=0)
+10-03 13:01:10.368 25000 25013 I C00f00/WL-A0: [A0] S4 InitAndRun(1) -> 1
+
+## Crash backtrace (DfxFaultLogger) — NOT NWebCreateInfo/CreateNWeb; it is the producer-surface creation
+10-03 13:01:09.600 25000 25012 I C00f00/WL-A0: [A0] entry: worker a0_probe_start rc=0 (handle=0x6ed71f3a84f45c85)
+10-03 13:01:12.891 25069 25069 I C02d11/DfxFaultLogger: Reason:Signal:SIGSEGV(SEGV_MAPERR)@0x000000fe41b909b4
+10-03 13:01:12.891 25069 25069 I C02d11/DfxFaultLogger: LastFatalMessage:Current Event Caller info: [src/native/a0probe.cpp(a0_probe_start:322)]. EventName is 'a0-run'
+10-03 13:01:12.891 25069 25069 I C02d11/DfxFaultLogger: Tid:25013, Name:CrBrowserMain
+10-03 13:01:12.891 25069 25069 I C02d11/DfxFaultLogger: #00 pc 000000000001e634 /system/lib64/chipset-sdk-sp/libutils.z.so(OHOS::RefBase::IncStrongRef(void const*)+0)(5198d788230e0a44f0ce9bbc691f6b6b)
+10-03 13:01:12.891 25069 25069 I C02d11/DfxFaultLogger: #01 pc 000000000006da78 /system/lib64/chipset-sdk-sp/libsurface.z.so(OHOS::ProducerSurface::ProducerSurface(OHOS::sptr<OHOS::IBufferProducer>&)+632)(4f752c382f25b0b04bd34e927aff6f39)
+10-03 13:01:12.891 25069 25069 I C02d11/DfxFaultLogger: #02 pc 000000000006d6a4 /system/lib64/chipset-sdk-sp/libsurface.z.so(OHOS::Surface::CreateSurfaceAsProducer(OHOS::sptr<OHOS::IBufferProducer>&)+68)(4f752c382f25b0b04bd34e927aff6f39)
+10-03 13:01:12.891 25069 25069 I C02d11/DfxFaultLogger: #03 pc 000000000000911c /data/local/tmp/libwl_a0_nweb.so(std::__h::__function::__func<a0_probe_start::$_0, std::__h::allocator<a0_probe_start::$_0>, void ()>::operator()()+1716)(91335b433213705c6b0d79247df19e319907a5d3)
+10-03 13:01:12.891 25069 25069 I C02d11/DfxFaultLogger: #04 pc 000000000001d6fc /system/lib64/chipset-sdk-sp/libeventhandler.z.so(OHOS::AppExecFwk::EventHandler::DistributeEvent(std::__h::unique_ptr<OHOS::AppExecFwk::InnerEvent, void (*)(OHOS::AppExecFwk::InnerEvent*)> const&)+1156)(732661410ac174f514371f6390361964)
+10-03 13:01:12.891 25069 25069 I C02d11/DfxFaultLogger: #05 pc 00000000000338d0 /system/lib64/chipset-sdk-sp/libeventhandler.z.so(OHOS::AppExecFwk::(anonymous namespace)::EventRunnerImpl::ExecuteEventHandler(std::__h::unique_ptr<OHOS::AppExecFwk::InnerEvent, void (*)(OHOS::AppExecFwk::InnerEvent*)>&)+1336)(732661410ac174f514371f6390361964)
+10-03 13:01:12.891 25069 25069 I C02d11/DfxFaultLogger: #06 pc 0000000000032da0 /system/lib64/chipset-sdk-sp/libeventhandler.z.so(OHOS::AppExecFwk::(anonymous namespace)::EventRunnerImpl::Run()+860)(732661410ac174f514371f6390361964)
+10-03 13:01:12.891 25069 25069 I C02d11/DfxFaultLogger: #07 pc 00000000000345dc /system/lib64/chipset-sdk-sp/libeventhandler.z.so(OHOS::AppExecFwk::(anonymous namespace)::EventRunnerImpl::ThreadMain(std::__h::weak_ptr<OHOS::AppExecFwk::(anonymous namespace)::EventRunnerImpl> const&) (.cfi)+444)(732661410ac174f514371f6390361964)
