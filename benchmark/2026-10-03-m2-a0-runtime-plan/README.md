@@ -149,3 +149,32 @@ Load `libarkweb_core_loader.z.so` in a namespace that inherits `default`, exactl
 
 Still no runtime/bridge/BCP/JAR edit. The window procedure (bind-mount + fingerprint + rollback) is unchanged. On the
 next build the probe is `libwestlake_html_compat.so` ×2 identical with the dlsym loader; then request window 7.
+
+## Update (windows 7–9): entry loads and runs, but `dlopen_ns` is denied by the caller-namespace permission model
+
+Two-file split built (entry `libwestlake_html_compat.so` + worker `libwl_a0_nweb.so`, both ×2 identical). The entry's
+only NEEDED are `libhilog.so` + `libc.so` (runtime-CL-visible); its `JNI_OnLoad` creates a `default`-inheriting
+namespace and `dlopen_ns`'s the worker, which carries the 152-lib closure.
+
+- **Windows 7–8** fired nothing: the process-name guard read `/proc/self/cmdline`, but OH's `setArgV0` sets **comm**
+  (PR_SET_NAME), not the argv — `cmdline` stays `/system/bin/appspawn-x`. Switched the guard to `/proc/self/comm`
+  (`org.westlake.a0`, 15-char cap).
+- **Window 9** (`evidence/window9-permission-wall.txt`): the entry now runs fully —
+  - `[A0] entry JNI_OnLoad … comm=org.westlake.a0` (so `System.load` does call `JNI_OnLoad`);
+  - `entry ns wl_a0arkweb … create=1 dlns_get(default)=0 inherit=1` (namespace built);
+  - **but `caller ns: westlake.anl.app.11358.1 have no permission, target is wl_a0arkweb` → `dlopen_ns FAILED`.**
+
+**The wall is the permission model, not the search path.** The entry, loaded through `B7BindFixes` `System.load`, runs
+in the **ANL app namespace** (`westlake.anl.app.<pid>`), which has no permission to open into a newly-created namespace —
+the same permission class as the window-3 app-side failure, now hit from the runtime load point too. OH's own
+`ArkWebBridgeHelper` does the identical `dlns_create`/`inherit`/`dlopen_ns` successfully because it runs from a
+system-privileged namespace (libace / the ability path), not from a lib injected at this load point.
+
+**Implication for route a.** The NWeb loader cannot be reached by injecting a lib at the `B7BindFixes` load point and
+doing `dlns` from there; that point's namespace lacks namespace-management permission. Route a's loader must run from an
+OH-privileged namespace — i.e. inside the runtime/bridge native code that already owns one (the bridge creates the
+runtime CL namespace via `ClassLoaderFactory.createClassloaderNamespace`, so it holds the privilege), not from a
+`System.load`-injected `.so`. **This needs an outer decision on where route a's loader lives before any further window.**
+Candidates: (a) a loader entry inside `liboh_adapter_bridge`/`liboh_android_runtime` (privileged ns) that route a's
+WebViewProvider calls; (b) confirm whether the runtime CL namespace (vs the ANL app ns the entry landed in) has the
+permission, and reach the probe from there. No further A0 window until the outer picks.
