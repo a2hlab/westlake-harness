@@ -56,6 +56,26 @@ def main():
         'expect': 'dialog-zorder / window-creation path named by M5; watch first-fatal + t20',
         'component': ''}
 
+    # U14 no-log fix observation points (outer 10:52 review; v4 missed them). All five are
+    # dead on the reference; boards per reference. Sources cite u16 clusters C/D + stubs.
+    U14_NOLOG = {
+        'vlc': ('u16 cluster D — u14-native-abi-gecko (7605812c); Gecko ABI f8619ad5 moves '
+                '__pthread_cleanup_push/__gnu_strerror_r',
+                'first fatal moves past the missing bionic LIBC symbol (Gecko __gnu_strerror_r)'),
+        'fd-fennec_fdroid': ('u16 cluster D — u14-native-abi-gecko (7605812c); Gecko ABI f8619ad5 '
+                             'moves __pthread_cleanup_push/__gnu_strerror_r',
+                             'first fatal moves past the missing bionic LIBC symbol (Gecko __gnu_strerror_r)'),
+        'mcdonalds': ('u16 cluster C — u14-native-abi-v2 (f8619ad5); bionic _ctype_ (Realm) moves',
+                      'first fatal moves past bionic _ctype_ not found (Realm, native domain bind)'),
+        'fd-im-vector-app': ('u16 cluster C — u14-native-abi-v2 (f8619ad5); bionic _ctype_ (Realm) '
+                             'moves',
+                             'first fatal moves past bionic _ctype_ not found (Realm, native domain bind)'),
+        'fd-plus': ('2026-10-03-bt-le-scancallback stubs 87cf65cc (u16 cluster J)',
+                    'bind NoClassDefFoundError (ScanCallback) moves'),
+    }
+    for k, (src, expect) in U14_NOLOG.items():
+        movers[ref[k]['board']][k] = {'source': src, 'expect': expect, 'component': ''}
+
     # lottery = flaky keys ONLY: recorded in knowledge/gates/flaky-keys.json, or a signed
     # k_of_n with 0 < k < n in a stage-A window signoff. (Neither holds today -> empty.)
     flaky_registry = {e['key'] for e in json.loads(
