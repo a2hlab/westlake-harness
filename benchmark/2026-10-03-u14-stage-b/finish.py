@@ -6,6 +6,7 @@ from prepare import HERE, REPO, sha, write
 
 LAYOUT = "| **`benchmark/2026-10-03-u14-stage-b/`** | **Disabled U14 promotion port: exact 322/320 candidate and 321/319 armed-U13 rollback, future Stage A selftest output bindings, fresh-window retention and synthetic rejection/rollback known answers.** |"
 DIGEST = "- U14 promotion prep (2026-10-03,cx-bms): Stage B cannot reuse U13 T8 recovery/318 names. Candidate322/320 restores retained U13 321/319, with future U14 Stage A report+explanations+summary SHA and exact runner-selection binding; malformed fresh signature/smoke must reach rollback. Copy-limit overrides keep ART/JVM1 and reviewed bridge/runtime/javacore1..2, ICU0..1. See benchmark/2026-10-03-u14-stage-b/."
+WIRING_DIGEST = "- U14 Stage B wiring (2026-10-03,cx-bms): lock+24/6min reserve cannot cover447–479s recovery; use pre-lock runner birthtime conservative cutoff<=lock+20, reserve>=10min, missing start/expired signature must finalize without decision. Summary/policy PASS misses native registry/checker drift: both full executor receipts require candidate+baseline tickets and four production assert_unchanged calls before transport. Old VM16 PASS is historical, fresh P1/P2 VM pending. See benchmark/2026-10-03-u14-stage-b/."
 
 
 def main():
@@ -29,9 +30,11 @@ def main():
     write(HERE / "results.json", dict(variants={variant: {key: json.loads((HERE / variant / "composition.json").read_text())[key] for key in
         ["bundle_sha256", "base_bundle_sha256", "native_manifest_sha256", "native_inputs_sha256", "execution_enabled"]} for variant in ["common", "61b"]},
         candidate_identity_assertions=322, candidate_unique_paths=320, restored_identity_assertions=321, restored_unique_paths=319,
-        ports=deltas, commands=records, vm=vm, production_pass=False, stage_a_signed=False,
+        ports=deltas, commands=records, vm=vm, wiring_revision="outer13:14 P1/P2", signature_cutoff_minutes=20,
+        rollback_reserve_minutes=10, native_ticket_assertions=4, expected_python_tests=23, expected_rust_tests=3,
+        production_pass=False, stage_a_signed=False,
         execution_enabled=False, board_access=False, lock_taken=False, gates_written=False, request_cx_t0_review=True))
-    write(HERE / "documentation.json", {"README.md": [LAYOUT], ".octos/KNOWLEDGE-DIGEST.md": [DIGEST]})
+    write(HERE / "documentation.json", {"README.md": [LAYOUT], ".octos/KNOWLEDGE-DIGEST.md": [DIGEST, WIRING_DIGEST]})
     paths = [str(path.relative_to(REPO)) for path in HERE.rglob("*") if path.is_file() and ".artifacts" not in path.parts and "__pycache__" not in path.parts
         and not path.name.startswith(".") and path.name not in ["landing-paths.txt", "listing-receipt.json"]]
     paths += [str(path.relative_to(REPO)) for path in (REPO / "specs/u14-stage-b").glob("*.spec.md")]

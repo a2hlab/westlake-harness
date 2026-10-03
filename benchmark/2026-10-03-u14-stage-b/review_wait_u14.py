@@ -2,6 +2,7 @@
 import argparse
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -10,6 +11,21 @@ import time
 H = Path(__file__).resolve().parent
 import promotion_hook_u14_runtime as hook
 
+SIGNATURE_CUTOFF_MINUTES = 20
+ROLLBACK_RESERVE_MINUTES = 10
+
+
+def decision_deadline(started, current):
+    if not all(math.isfinite(value) for value in [started, current]) or started > current:
+        raise ValueError("invalid pre-lock start timestamp")
+    return min(current + SIGNATURE_CUTOFF_MINUTES * 60, started + SIGNATURE_CUTOFF_MINUTES * 60)
+
+
+def window_started(root):
+    started = getattr((root / "runner").stat(), "st_birthtime", None)
+    if started is None:
+        raise ValueError("pre-lock runner birthtime absent; skip signature wait and restore")
+    return started
 
 
 def wait_for_decision(path, deadline, now=time.time, sleep=time.sleep):
@@ -36,34 +52,37 @@ def main():
     smoke_path = root / 'runner/smoke/smoke-result.json'
     identity_path = root / 'post-apply/candidate-identity.json'
     decision = root / 'outer-promotion.json'
+    approved_decision = None
+    deadline = None
     try:
         ready = (smoke_path.is_file() and json.loads(smoke_path.read_text()).get('passed') is True
                  and identity_path.is_file() and not json.loads(identity_path.read_text()).get('diff')
                  and not json.loads(identity_path.read_text()).get('absent'))
         if ready:
-            # board_run creates runner immediately before acquiring the lock. Birthtime
-            # is stable on the Mac; do not use its mtime (which changes during the sweep).
-            stat = (root / 'runner').stat()
-            started = getattr(stat, 'st_birthtime', (root / 'window-input.json').stat().st_mtime)
-            # >=6min reserved for exact U13 rollback, 321/319 and recovery HW/ZZ.
-            deadline = min(time.time() + 20 * 60, started + 24 * 60)
+            started = window_started(root)
+            deadline = decision_deadline(started, time.time())
             shots = sorted(str(p) for p in (root / 'runner/smoke').glob('group-*/*/*/*/t20.jpeg'))
             hilogs = sorted(str(p) for p in (root / 'runner/toutiao-retest').glob('*/*/toutiao/hilog.txt'))
             receipt = {'serial': args.serial, 'window_root': str(root), 'decision_path': str(decision),
                        'smoke': str(smoke_path), 't20': shots, 'candidate_identity': str(identity_path),
                        'identities': json.loads(identity_path.read_text()), 'toutiao_hilog': [], 'bundle_sha256': json.loads((H/'composition.json').read_text())['bundle_sha256'], 'native_manifest_sha256': json.loads((H/'composition.json').read_text())['native_manifest_sha256'], 'smoke_sha256': hook.gb.sha(smoke_path), 'identity_sha256': hook.gb.sha(identity_path),
                        'wait_until_epoch': deadline, 'max_wait_seconds': 1200,
-                       'rollback_reserve_minutes': 6}
+                       'rollback_reserve_minutes': ROLLBACK_RESERVE_MINUTES,
+                       'signature_cutoff_minutes': SIGNATURE_CUTOFF_MINUTES,
+                       'started_epoch': started, 'start_basis': 'pre-lock runner birthtime; conservative lock lower bound'}
             (root / 'approval-ready.json').write_text(json.dumps(receipt, indent=2) + '\n')
             text = (f"PROGRESS(90): cx-t0 阶段B {args.serial} 待外环鲜签；approval-ready={root / 'approval-ready.json'}；"
                     f"smoke={smoke_path}；t20={shots}；322/320双指纹={identity_path}；头条hilog={hilogs}；"
-                    f"请写 {decision}，最多等20min且锁起24min截止留6min恢复，无签finish U13。\n")
+                    f"请写 {decision}，锁起20min前截止、至少留10min恢复；逾期鲜签不采纳，无签finish U13。\n")
             subprocess.run(['bash', str(hook.M / 'scripts/lab/board_append.sh'),
                             str(hook.M / '.octos/boards/app-lighting.md')], input=text, text=True, check=True)
             print(text, flush=True)
-            wait_for_decision(decision, deadline)
+            if wait_for_decision(decision, deadline):
+                approved_decision = decision
     finally:
-        hook.finish(args.serial, root, Path(os.path.expandvars(plan['before_unlock_restored_spec'])), decision,
+        if deadline is None or time.time() >= deadline:
+            approved_decision = None
+        hook.finish(args.serial, root, Path(os.path.expandvars(plan['before_unlock_restored_spec'])), approved_decision,
                     Path(os.path.expandvars(plan['stage_a_decision'])))
 
 

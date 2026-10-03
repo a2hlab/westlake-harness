@@ -12,7 +12,7 @@ Port U13 dispatcher, retention hook and bounded review waiter to U14 with explic
 
 - Wrong bundle, any badtag and missing fresh outer signature reject; correct synthetic input passes.
 - No decision or stale same-window proof always restores U13 rather than retaining U14.
-- Bound deadline reserves six minutes for full U13 restoration; all device callbacks are mocked in tests.
+- Outer13:14 revision: signature cutoff is at lock-start20 minutes, reserving at least10 minutes for full U13 restoration; all device callbacks are mocked in tests.
 
 ## 验收标准
 

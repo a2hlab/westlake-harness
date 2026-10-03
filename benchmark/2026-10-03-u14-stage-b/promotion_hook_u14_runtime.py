@@ -15,6 +15,7 @@ sys.path.insert(0, str(M / "scripts/lab"))
 import generation_bundle as gb
 import u7_executor as u
 import lab_paths
+import deployment_native_gate as native_gate
 import retention_criteria as criteria
 
 CANDIDATE = None
@@ -68,6 +69,22 @@ def signed_composition(value, decision=None):
     return dict(bundle_sha256=bound, native_manifest_sha256=value["native_manifest_sha256"])
 
 
+def native_tickets_admission(surface, value):
+    report = json.loads((H / "gates" / surface / "executor").read_text())
+    assert report.get("deployable") is True and report.get("gates_passed") is True, "full executor native receipt not deployable"
+    assert report.get("bundle_sha256") == value["bundle_sha256"], "full executor bundle drift"
+    assert path(report.get("root")).resolve() == CANDIDATE.resolve(), "full executor candidate path drift"
+    baseline = path(value["base_bundle"]) / "native"
+    assert path(report.get("baseline_native")).resolve() == baseline.resolve(), "full executor baseline path drift"
+    tickets = report.get("native_tickets")
+    assert isinstance(tickets, list) and len(tickets) == 2, "full candidate and baseline native tickets required"
+    for ticket, expected in zip(tickets, [CANDIDATE / "native", baseline]):
+        assert isinstance(ticket, dict) and path(ticket.get("package")).resolve() == expected.resolve(), "native ticket owner path drift"
+        assert isinstance(ticket.get("binding"), str) and ticket["binding"], "native ticket binding absent"
+        normalized = dict(ticket, package=str(expected.resolve()))
+        native_gate.assert_unchanged(normalized)
+
+
 def admission():
     require_enabled()
     value = composition()
@@ -97,6 +114,7 @@ def admission():
         assert proof["production_dry_run_exit_code"] == 0 and proof["gates_passed"] and proof["deployable"], "offline gates not all green"
         assert proof["static"] == "PASS" and proof["G1"] and proof["G2"] and proof["frozen_composed_violations"] == 0, "static/image/frozen regression"
         assert all(proof["native_findings"][gate]["rejected"] == 0 for gate in ["N1", "N2"]), "native admission rejected"
+        native_tickets_admission(surface, value)
 
 
 def validate_plan(plan):
@@ -187,7 +205,7 @@ def finish(serial, root, restored_spec, decision_path, stage_a_path=None):
     identity_path = root / "post-apply/candidate-identity.json"
     reason = "Stage A prerequisite absent"
     try:
-        decision = json.loads(decision_path.read_text()) if decision_path.is_file() else None
+        decision = json.loads(decision_path.read_text()) if decision_path and decision_path.is_file() else None
         stage_a_admission(stage_a_path)
         smoke = json.loads(smoke_path.read_text())
         assert smoke.get("passed") is True, "fresh activation smoke did not pass"

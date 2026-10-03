@@ -118,7 +118,8 @@ def main():
                 candidate_identity={key: identity[key] for key in ["identity_assertions", "unique_paths", "fingerprints"]},
                 restore=dict(state="U13", package=value["base_bundle"], bundle_sha256=value["base_bundle_sha256"], identity_assertions=321, unique_paths=319,
                     fingerprints=restore["fingerprints"], unconditional=False, failure_preserves_lock=True, condition="Every refusal restores; only fresh same-board/window outer signature permits complete U14 retention"),
-                promotion_policy=dict(signature_wait_max_minutes=20, rollback_reserve_minutes=6, expiry="restore U13; identity failure preserves lock"))
+                promotion_policy=dict(signature_wait_max_minutes=20, signature_cutoff_from_lock_minutes=20,
+                    rollback_reserve_minutes=10, expiry="restore U13; expired signature rejected; identity failure preserves lock"))
             write(HERE / variant / ("plan-" + board + ".json"), plan)
         write(HERE / variant / "composition.json", value)
         write(HERE / variant / "future-stage-a-decision-template.json", dict(schema="outer-stage-a/v1", release="U14", phase="A", signed_by=None, signed_at=None,

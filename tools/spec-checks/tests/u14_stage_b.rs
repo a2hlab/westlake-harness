@@ -21,3 +21,8 @@ fn u14_promotion_binding() {
 fn u14_promotion_known_answers() {
     check("--known-answers");
 }
+
+#[test]
+fn u14_promotion_wiring() {
+    check("--wiring");
+}

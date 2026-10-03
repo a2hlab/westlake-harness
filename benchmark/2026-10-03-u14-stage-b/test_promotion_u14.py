@@ -100,6 +100,8 @@ class BindingTests(unittest.TestCase):
                 self.assertFalse(plan["execution_enabled"] or plan["rollout_ready"])
                 self.assertEqual(plan["phase"], "B")
                 self.assertEqual(plan["restore"]["state"], "U13")
+                self.assertEqual(plan["promotion_policy"]["signature_cutoff_from_lock_minutes"], 20)
+                self.assertGreaterEqual(plan["promotion_policy"]["rollback_reserve_minutes"], 10)
                 self.assertNotIn("after_shards", plan)
 
     def test_source_receipts(self):
@@ -160,6 +162,148 @@ class BindingTests(unittest.TestCase):
                 save(root / "identity.json", identity)
                 with self.assertRaisesRegex(AssertionError, "320"):
                     hook.verify_candidate(serial, root)
+
+
+def native_fixture(directory):
+    value, _, _, _ = fixture(directory)
+    trust = directory / "trusted-fixture-repo"
+    for name in ["native_predeploy.py", "native_gate_common.py", "native_initialization_gate.py", "native_needed_gate.py"]:
+        target = trust / "scripts/lab" / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("fixture checker bytes: " + name)
+    for name in ["scan_native_initialization.py", "rules_native_initialization.py"]:
+        target = trust / "benchmark/2026-09-29-static-wall-prediction" / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("fixture rule bytes: " + name)
+    save(trust / "knowledge/gates/native-predeploy-exceptions.json", {"exceptions": []})
+    packages = [Path(value["package"]) / "native", Path(value["base_bundle"]) / "native"]
+    for package in packages:
+        package.mkdir()
+        (package / "fixture-payload.bin").write_bytes(b"fixture inventory; not an executable ELF")
+        save(package / "package.json", {"files": {"fixture-payload.bin": hook.gb.sha(package / "fixture-payload.bin")}})
+        save(package / "native-checks/native-gates.json", {"fixture": True})
+    value.update(execution_enabled=True, native_manifest_sha256=hook.gb.sha(packages[0] / "package.json"),
+        native_inputs_sha256=hook.gb.sha(packages[0] / "native-checks/native-gates.json"), stage_b_authorization=str(directory / "authorization.json"))
+    save(Path(value["stage_b_authorization"]), dict(signed_by="outer(claude)", promotion_authorized=True,
+        bundle_sha256=value["bundle_sha256"], native_manifest_sha256=value["native_manifest_sha256"]))
+    for serial in value["smoke_specs"]:
+        for name in [value["smoke_specs"][serial], value["recovery_smoke_specs"][serial]]:
+            shutil.copyfile(HERE / "common" / name, hook.H / name)
+    tickets = [dict(package=str(package.resolve()), binding=hook.native_gate.binding(package, trust)) for package in packages]
+    for surface in ["mac", "vm"]:
+        save(hook.H / ("gate-" + surface + "-pass.json"), dict(bundle_sha256=value["bundle_sha256"],
+            native_manifest_sha256=value["native_manifest_sha256"], policy_binding="synthetic-policy",
+            production_dry_run_exit_code=0, gates_passed=True, deployable=True, static="PASS", G1=True, G2=True,
+            frozen_composed_violations=0, native_findings={gate: {"rejected": 0} for gate in ["N1", "N2"]}))
+        save(hook.H / "gates" / surface / "executor", dict(deployable=True, gates_passed=True,
+            bundle_sha256=value["bundle_sha256"], root=value["package"], baseline_native=str(packages[1]), native_tickets=tickets))
+    save(hook.H / "composition.json", value)
+    return value, trust, packages
+
+
+class WiringTests(unittest.TestCase):
+    def test_cutoff_leaves_ten_minutes_and_never_restarts_wait(self):
+        started = 1000
+        deadline = started + 20 * 60
+        for current in [started, started + 15 * 60, deadline, deadline + 1]:
+            self.assertEqual(review.decision_deadline(started, current), deadline)
+        self.assertEqual(started + 30 * 60 - deadline, 10 * 60)
+        for current in [started - 1, float("nan"), float("inf")]:
+            with self.assertRaises(ValueError):
+                review.decision_deadline(started, current)
+
+    def test_existing_signature_at_exact_cutoff_is_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            decision = Path(temp) / "outer.json"
+            save(decision, {"signed_by": "fixture-only"})
+            with patch.object(review.time, "sleep") as sleep:
+                self.assertTrue(review.wait_for_decision(decision, 1200, now=lambda: 1199, sleep=sleep))
+                self.assertFalse(review.wait_for_decision(decision, 1200, now=lambda: 1200, sleep=sleep))
+                self.assertFalse(review.wait_for_decision(decision, 1200, now=lambda: 1201, sleep=sleep))
+                sleep.assert_not_called()
+
+    def test_expiry_does_not_pass_late_signature_to_finish(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            save(root / "plan.json", dict(stage_a_decision=str(root / "stage-a.json"), before_unlock_restored_spec=str(root / "restore.json")))
+            save(root / "runner/smoke/smoke-result.json", {"passed": True})
+            save(root / "post-apply/candidate-identity.json", {"diff": {}, "absent": []})
+            save(root / "composition.json", {"bundle_sha256": "fixture-only", "native_manifest_sha256": "fixture-only"})
+            save(root / "outer-promotion.json", {"signed_by": "fixture-only"})
+            for instant, available in [(1200, False), (1199, True), (1200, True)]:
+                with patch.object(sys, "argv", ["review", "--serial", "fixture", "--root", str(root), "--plan", str(root / "plan.json")]), \
+                        patch.object(hook, "require_enabled"), patch.object(review, "H", root), \
+                        patch.object(review, "window_started", return_value=0), patch.object(review.time, "time", return_value=instant), \
+                        patch.object(review, "wait_for_decision", return_value=available), patch.object(review.subprocess, "run"), \
+                        patch.object(hook, "finish") as finish, redirect_stdout(io.StringIO()):
+                    review.main()
+                    expected = root / "outer-promotion.json" if instant < 1200 and available else None
+                    self.assertEqual(finish.call_args.args[3], expected)
+                    receipt = load(root / "approval-ready.json")
+                    self.assertEqual(receipt["wait_until_epoch"], 1200)
+                    self.assertEqual(receipt["rollback_reserve_minutes"], 10)
+
+    def test_missing_prelock_birthtime_refuses_wait(self):
+        from types import SimpleNamespace
+        with patch.object(Path, "stat", return_value=SimpleNamespace(st_mtime=9999)):
+            with self.assertRaisesRegex(ValueError, "birthtime absent"):
+                review.window_started(Path("fixture-only"))
+
+    def test_all_four_native_tickets_use_real_binding_assertion(self):
+        with tempfile.TemporaryDirectory() as temp:
+            _, trust, _ = native_fixture(Path(temp))
+            with patch.object(hook.native_gate, "repository", return_value=trust), \
+                    patch.object(hook.u, "policy_binding", return_value="synthetic-policy"), \
+                    patch.object(hook.native_gate, "assert_unchanged", wraps=hook.native_gate.assert_unchanged) as assertion:
+                hook.admission()
+                self.assertEqual(assertion.call_count, 4)
+
+    def test_native_drift_refuses_before_transport(self):
+        for change in ["registry", "checker", "candidate-input", "baseline-input", "candidate-payload", "vm-ticket"]:
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as temp:
+                value, trust, packages = native_fixture(Path(temp))
+                if change == "vm-ticket":
+                    receipt_path = hook.H / "gates/vm/executor"
+                    receipt = load(receipt_path)
+                    receipt["native_tickets"][1]["binding"] = "0" * 64
+                    save(receipt_path, receipt)
+                else:
+                    changed = {"registry": trust / "knowledge/gates/native-predeploy-exceptions.json",
+                        "checker": trust / "scripts/lab/native_needed_gate.py",
+                        "candidate-input": packages[0] / "native-checks/extra-source.txt",
+                        "baseline-input": packages[1] / "native-checks/extra-source.txt",
+                        "candidate-payload": packages[0] / "fixture-payload.bin"}[change]
+                    changed.write_text("drifted fixture bytes")
+                plan = dict(execution_enabled=True, phase="B", bundle_sha256=value["bundle_sha256"], package_manifest_sha256=value["native_manifest_sha256"], stage_a_decision="fixture-only")
+                with patch.object(dispatch, "H", hook.H), patch.object(dispatch.board_run, "precheck_problem", return_value=None), \
+                        patch.object(hook, "validate_plan"), patch.object(hook, "stage_a_admission"), \
+                        patch.object(hook.native_gate, "repository", return_value=trust), \
+                        patch.object(hook.u, "policy_binding", return_value="synthetic-policy"), \
+                        patch.object(dispatch.subprocess, "run") as transport:
+                    with self.assertRaises(RuntimeError):
+                        dispatch.prelock(plan)
+                    transport.assert_not_called()
+
+    def test_missing_wrong_owner_or_not_deployable_full_receipt_refuses(self):
+        for change in ["missing", "truncated", "wrong-owner", "not-deployable", "wrong-bundle"]:
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as temp:
+                value, trust, _ = native_fixture(Path(temp))
+                receipt_path = hook.H / "gates/mac/executor"
+                report = load(receipt_path)
+                if change == "missing":
+                    del report["native_tickets"]
+                elif change == "truncated":
+                    report["native_tickets"] = report["native_tickets"][:1]
+                elif change == "wrong-owner":
+                    report["native_tickets"][0]["package"] = report["native_tickets"][1]["package"]
+                elif change == "not-deployable":
+                    report["deployable"] = False
+                else:
+                    report["bundle_sha256"] = "0" * 64
+                save(receipt_path, report)
+                with patch.object(hook.native_gate, "repository", return_value=trust):
+                    with self.assertRaises(AssertionError):
+                        hook.native_tickets_admission("mac", value)
 
 
 class KnownAnswers(unittest.TestCase):
@@ -258,7 +402,7 @@ class KnownAnswers(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    case = BindingTests if "--binding" in sys.argv else KnownAnswers if "--known-answers" in sys.argv else None
+    case = BindingTests if "--binding" in sys.argv else KnownAnswers if "--known-answers" in sys.argv else WiringTests if "--wiring" in sys.argv else None
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(case) if case else unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     print(json.dumps(dict(platform=sys.platform, machine=platform.machine(), tests=result.testsRun, failures=len(result.failures), errors=len(result.errors),
