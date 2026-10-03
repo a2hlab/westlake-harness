@@ -1,0 +1,35 @@
+{
+  "task": "U16 t2 (offline prototype, per specs/u16-batch/t2-icon-raster.spec.md): frequent-habits XML-only adaptive launcher icon -> desktop projection. Locate the layer that produces the tile icon + its current res/*.xml handling; define the minimal fix (rasterize adaptive-icon vector layers / mipmap PNG fallback); determine if the layer is frozen (frozen.json) + the add-feature-preserve-old argument; predicted +1 testable key; scan the corpus for other XML-only icons.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "layer": {
+    "which": "the installer (libapk_installer.so, FZ-001) -- NOT BMS projection nor the hap/bms_batch toolchain",
+    "code": "apk_installer.cpp::ReadIconByManifest() -> adaptive_icon.cpp::ComposeAdaptiveIcon(); fallback ClassifyIconlessApk -> DECLARED_XML_ONLY -> template placeholder",
+    "current_xml_handling": "ComposeAdaptiveIcon composes <adaptive-icon> with PNG layers or a solid-colour background (lodepng); VECTOR-drawable layers unsupported -- ResolveLayer (adaptive_icon.cpp:116-132) logs 'nested XML (vector) unsupported' and returns false -> fallback -> placeholder",
+    "frequent_habits": "adaptive-icon (res/BW.xml) layers both vector (res/0w.xml black bg, res/Qr.xml purple ring/check); no raster launcher icon in any bucket -> placeholder -> no tile -> app_failed (aa start works)"
+  },
+  "minimal_fix": {
+    "what": "extend the ResolveLayer vector branch to rasterize the <vector> drawable instead of returning false: parse viewport + <path> (pathData/fill/stroke/caps/alpha) -> emit SVG -> rasterize via the existing Mac rsvg-convert chain -> hand raster layer to the existing ComposeAdaptiveIcon compositor + icon_normalize",
+    "no_new_native_dep": "done offline/at install-prep (APK-side); the on-device libapk_installer.so consumes raster layers it already supports -> no new native dependency on-device (spec requirement)",
+    "mipmap_fallback_note": "a raster-bucket/mipmap fallback already works for apps that HAVE a raster config; frequent-habits has none, so rasterizing the vector layers is required",
+    "unchanged": "raster android:icon, adaptive-icon with a PNG layer or colour bg, and any icon resource with a raster bucket (arsc resolver prefers raster) are byte-identical"
+  },
+  "prototype": {
+    "script": "recipe/raster_adaptive_icon.py (VectorDrawable->SVG->rsvg-convert->composite)",
+    "frequent_habits_result": "evidence/frequent-habits-icon/icon.png 108x108, non-transparent, the app's real purple-ring/white-check icon (viewed) -> spec acceptance scenario 1 met offline",
+    "fallback_scenario3": "non-XML icon -> raster-skip (unchanged); non-adaptive XML / no-paths vector / rsvg failure -> 'raster-failed: <reason>' + rasterized:false (keep XML placeholder, install not broken) -- demonstrated"
+  },
+  "frozen": {
+    "is_frozen": true,
+    "entry": "FZ-001 (libbms.z.so 6aadb8b4 + libapk_installer.so 7048c7c5; status frozen)",
+    "argument": "add-feature-preserve-old (reason=extension): the only altered path is the ResolveLayer vector branch that today returns false (dead-end to placeholder); raster/PNG-layer/colour-bg/raster-bucket paths are byte-identical, so FZ-001's 4 evidence apps (Tusky/K-9/Thunderbird/FileManager) are untouched. Outer registers a new version (extension) after a single-board reverify of the 4 FZ-001 apps + frequent-habits, zero regression; installer foundation restart (USB risk) = outer window."
+  },
+  "beneficiaries": {
+    "confirmed_plus1_testable": "cv2-com-frequent-habits (the only app_failed cluster, U16 cluster S; vector-only-no-raster icon)",
+    "corpus_xml_icon_count": "60 apks have an XML/vector top-density launcher icon (59 adaptive-vector-only + 1 plain-vector); + 73 adaptive-raster + 26 raster = 159",
+    "currently_placeholdered": "most of the 60 already tile via a raster bucket or a raster launcher-alias icon (wikipedia/fd-notes/fd-calendar/anki/... are lit); the no-raster-anywhere subset is the real beneficiary set, confirmed-by-run = frequent-habits (+1)",
+    "minesweeper": "cv2-org-secuso-privacyfriendlyminesweeper was 'desktop icon absent' but outer-marked 'not an app run' and has a raster icon -> transient launcher miss, not an icon-raster beneficiary"
+  },
+  "this_rounds_rule": "The tile icon is the installer's ComposeAdaptiveIcon, which already handles PNG/colour adaptive layers; the only gap is vector layers (ResolveLayer return false). Fix that one branch via the existing offline rsvg chain (no new on-device native dep); nothing else changes -> the FZ-001 'extension, old byte-identical' argument holds. Count beneficiaries by run outcome (app_failed), not by a top-density-icon scan: 60 apks are vector-icon but only the no-raster-anywhere subset (confirmed: frequent-habits) lacks a tile.",
+  "boundaries": "Offline prototype; no deploy; no push; the frozen libapk_installer.so is NOT edited here (fix = design + offline prototype; on-device change + registration are the outer's FZ-001 extension path). On-board tile location + t20 content = outer (spec scenario 2, human). Sources read read-only (installer jni source, APKs, frozen.json, U16 cluster + stage-A decision).",
+  "landing_paths": "benchmark/2026-10-03-u16-t2-icon-raster/landing-paths.txt"
+}

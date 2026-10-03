@@ -1,0 +1,38 @@
+CORPUS SCAN — XML/vector launcher icons across the 159 corpus APKs
+==================================================================
+Tool: recipe/icon_corpus_scan.py (aapt2 badging application-icon + xmltree of the icon XML + resources dump of
+the adaptive-icon foreground/background layer files). recipe/icon_refine.py adds the per-resource raster-config
+check. $WORKSPACES = the orca/workspaces root.
+
+TOP-DENSITY LAUNCHER ICON KIND (159 apks):
+  adaptive-raster      : 73   (adaptive-icon with >=1 PNG/webp layer -> ComposeAdaptiveIcon already composes it)
+  adaptive-vector-only : 59   (adaptive-icon whose fg+bg are BOTH vector drawables -> current installer FAILS)
+  plain-vector         :  1   (android:icon is a bare <vector>)
+  raster               : 26   (android:icon is a PNG/webp -> unchanged path)
+
+=> 60 apks have an XML/vector TOP-DENSITY launcher icon (59 adaptive-vector-only + 1 plain-vector). This is the
+   literal "how many keys are XML-only icon" answer.
+
+BUT most of those 60 STILL GET A DESKTOP TILE TODAY, because the installer's arsc resolver "prefers rasters":
+  - many have a RASTER config of the same icon resource at a lower density bucket (anydpi-v26 = vector, hdpi = png),
+  - and the Fossify/Tasks family tile from the launcher ALIAS's own raster icon, not the application icon.
+  Proof: wikipedia, fd-notes, fd-calendar, fd-tusky, anki, fd-auxio, etar, fd-catima, org.tasks, droidify are all
+  adaptive-vector-only by this scan yet are LIT (on the desktop) in U13 stage-A.
+
+CURRENTLY-PLACEHOLDERED (no raster anywhere for the launcher icon -> DECLARED_XML_ONLY -> no usable tile ->
+app_failed): the reliable signal is the run outcome.
+  U16 wall-cluster table: the ONLY app_failed cluster is S = cv2-com-frequent-habits (app_failed/app_failed).
+  stage-a-decision also names cv2-org-secuso-privacyfriendlyminesweeper "desktop icon absent" but marks it
+  "(not an app run)"; its icon has a raster config and its secuso siblings are lit -> a transient launcher miss,
+  NOT an icon-raster gap. So it is not counted.
+
+CONFIRMED BENEFICIARY (currently no tile -> gets a correct tile after the fix): cv2-com-frequent-habits  => +1 testable key.
+
+WHAT THE FIX DOES FOR THE OTHER 59: it composes the icon DIRECTLY from the vector layers, so a correct adaptive
+icon is produced from the app's own art instead of depending on a raster bucket / alias raster (and covers any
+future vector-only app that would otherwise placeholder). Behaviour for the 73 adaptive-raster + 26 raster apks
+is UNCHANGED (the vector branch is not taken).
+
+frequent-habits prototype output (evidence/frequent-habits-icon/): icon.png 108x108, non-transparent (4.9 KB) --
+a purple ring + white check (the app's real icon), rendered from res/0w.xml (black bg) + res/Qr.xml (fg) via the
+VectorDrawable->SVG->rsvg-convert chain. (icon.svg is the intermediate.)
