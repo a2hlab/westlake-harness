@@ -78,3 +78,18 @@ The A0 probe hardcoded 720×720. The formal WebView must size NWeb to the Surfac
 ## Status
 Plan only — awaiting cc-wiki's artifacts + SHAs before building the window script and APK. The jar-overlay static
 precondition is confirmed (non-BCP). Board run is a future window (declare + 2-min + lock, A0_EXPECT_FP=821de739cf81).
+
+## Built offline (cc-t3, ahead of cc-wiki artifacts)
+- **A1 test APK** `build/a1webview.apk` sha256 `a45631ab4f4407cf093bcd16527004247878a158c67315e58c6c9f60481b8552`
+  (deterministic ×2). Pure Java: a real `android.webkit.WebView` filling the content area; default loads the #12ab34
+  data: page, `--ps wl_url <url>` / `debug.westlake.a1.url` loads a URL (Wikipedia window). No app native lib. Sources:
+  `src/java/org/westlake/a1webview/MainActivity.java`, `src/java/AndroidManifest.xml` (INTERNET, hardwareAccelerated);
+  build `build_a1_apk.py` (same pinned javac/d8/aapt2/apksigner as the A0 APK).
+- **Window script** `board/run_a1.sh <serial> <out> [url]` (`bash -n` clean): reuses the A0 lock / fingerprint-gate /
+  sandbox / kill_app / rollback / finish machinery. Overlays: the jar is bind-mounted OVER the existing deployed
+  `oh-adapter-runtime.jar` with its ORIGINAL SHA recorded and restored on umount (**never rm the real jar**); the shim
+  `.so` is create+mount+rm (absent on a clean board); the worker `.so` is pushed to /data/local/tmp. Rollback umounts all,
+  restores the original jar (verified by SHA), uninstalls, and requires the runtime fingerprint unchanged.
+- **Pending cc-wiki**: fill `JAR_SRC`/`SHIM_SRC`/`WORKER_SRC` filenames + `A1_JAR_SHA`/`A1_SHIM_SHA`/`A1_WORKER_SHA`
+  (env or edit). A placeholder guard refuses to run until the three SHAs are set. Then: declare + 2-min + lock (board after
+  18:15, cx-t0 U14 window 5 holds 5ea/5cd until ~18:14), `A1_EXPECT_FP=821de739cf81`, run data: window then Wikipedia.
