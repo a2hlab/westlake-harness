@@ -1,0 +1,19 @@
+--- inputs/donor/u14-stage-a-backend-61b.txt
++++ 61b/transaction_backend.py
+@@ -1,7 +1,7 @@
+ """Disabled-reviewed Stage A: one journal transaction, always restore U13."""
+ import argparse,json,os,subprocess,sys,uuid
+ from pathlib import Path
+-H=Path(__file__).resolve().parent;R=H.parents[3];W=R.parent
++H=Path(__file__).resolve().parent;R=H.parents[2];W=Path(os.environ.get('WORKSPACES',R.parent))
+ M=W/'westlake-harness'
+ sys.path.insert(0,str(M/'scripts/lab'))
+ import generation_bundle as gb,u7_executor as u,lab_paths,deployment_native_gate as native_gate
+@@ -68,6 +68,7 @@
+  verify(serial,root/('final-'+uuid.uuid4().hex))
+  (root/'finish.json').write_text(json.dumps({'passed':True,'retained':False,'restored':'U13','identity_assertions':321,'recovery_smoke':'PASS','final':'PASS'},indent=2)+'\n')
+ def main():
++ assert composition().get("execution_enabled") is True,"U14 Stage B backend disabled"
+  p=argparse.ArgumentParser();p.add_argument('--serial',choices=sorted(lab_paths.boards('oh')),required=True);p.add_argument('--root',type=Path,required=True);p.add_argument('--plan',type=Path);p.add_argument('--restored-spec',type=Path)
+  g=p.add_mutually_exclusive_group(required=True)
+  for name in ['apply','finish','verify-base','verify-candidate']:g.add_argument('--'+name,action='store_true')
