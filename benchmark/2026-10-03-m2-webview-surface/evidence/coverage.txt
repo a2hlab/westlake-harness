@@ -1,0 +1,42 @@
+M2 route-a coverage — implement top-N android.webkit methods -> keys covered
+============================================================================
+Universe: 83 WebView-RENDERING keys (utilities MimeTypeMap.*/WebView.findAddress excluded).
+'fully covered' = every android.webkit render-method the key calls is implemented (works end-to-end).
+
+A) FULL-SURFACE coverage (strict — feature-complete):
+   top- 10 methods ->   1/83 fully covered  (lit 1,  not-lit 0,  unmeasured 0)
+   top- 15 methods ->   1/83 fully covered  (lit 1,  not-lit 0,  unmeasured 0)
+   top- 20 methods ->   2/83 fully covered  (lit 2,  not-lit 0,  unmeasured 0)
+   top- 24 methods ->   4/83 fully covered  (lit 4,  not-lit 0,  unmeasured 0)
+   top- 50 methods ->   4/83 fully covered  (lit 4,  not-lit 0,  unmeasured 0)
+   top- 60 methods ->   5/83 fully covered  (lit 4,  not-lit 1,  unmeasured 0)
+   top- 80 methods ->  10/83 fully covered  (lit 5,  not-lit 5,  unmeasured 0)
+   top-100 methods ->  11/83 fully covered  (lit 6,  not-lit 5,  unmeasured 0)
+   top-617 methods ->  83/83 fully covered  (lit 28, not-lit 23, unmeasured 32)
+   Finding: WebView apps have a long per-app tail (find-in-page, cookies, file chooser, HTTP-auth,
+   zoom, print, geolocation, download...). Feature-complete coverage of all 83 needs ~617 methods,
+   so "full coverage" is the WRONG headline for M2 -- target the render-core (B) first.
+
+B) RENDER-CORE (the actionable M2 tier) — 12 methods to reach FIRST PAINT of a page:
+      webkit.WebView.<init>                       (74/83 keys)
+      webkit.WebView.getSettings                  (74/83)
+      webkit.WebSettings.setJavaScriptEnabled     (70/83)
+      webkit.WebSettings.setDomStorageEnabled     (62/83)
+      webkit.WebView.setWebViewClient             (76/83)
+      webkit.WebViewClient.<init>                 (77/83)   <- app subclass; NWeb must drive its callbacks
+      webkit.WebView.setWebChromeClient           (59/83)
+      webkit.WebChromeClient.<init>               (60/83)   <- app subclass; NWeb must drive its callbacks
+      webkit.WebView.loadUrl                      (72/83)
+      webkit.WebView.loadDataWithBaseURL          (52/83)
+      webkit.WebView.evaluateJavascript           (53/83)
+      webkit.WebView.addJavascriptInterface       (52/83)
+   74/83 render keys construct a WebView AND call a load method (loadUrl/loadData*). Implementing the
+   12-method core + each app's declared WebViewClient/WebChromeClient callbacks (shouldInterceptRequest,
+   onPageFinished, onPageStarted, shouldOverrideUrlLoading, onProgressChanged, ...) gives first paint
+   for essentially all 83; the strict table (A) then measures who needs NOTHING beyond the top-N.
+
+C) The next tier after the core (ranks 13-24, each in ~47-57 keys): canGoBack/goBack (history),
+   onPageFinished (page callback), CookieManager.getInstance (session), WebView.destroy (teardown),
+   WebResourceResponse.<init> + WebResourceRequest.getUrl (shouldInterceptRequest plumbing),
+   setAllowFileAccess/setUserAgentString/setBuiltInZoomControls (settings), loadData, setBackgroundColor.
+   Implementing core(12) + this tier(12) = the top-24 = the shared surface of all 83 WebView keys.

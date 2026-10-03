@@ -1,0 +1,47 @@
+{
+  "task": "M2 WebView surface scan (offline, static). Scan Wikipedia + all corpus APKs for android.webkit.* call/override surface; order Wikipedia by the open-an-article path; count WebView keys and U13 lit/not-lit; give route-a (WebViewProvider->NWeb) an 'implement N methods -> cover X keys' table. Deliver surface.csv + README. cc cc-t3.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "method": "pure-Python DEX method_ids parser (recipe/scan_webview_surface.py): a method_id with class Landroid/webkit/* = a call into the WebView framework; curated callback names appearing as method_ids = app overrides. Handles .apk and .xapk inner base apk.",
+  "correctness_guard": "android.webkit.MimeTypeMap.* and static WebView.findAddress/findAll are utilities that never instantiate a WebView (76 keys call only these). 'renders_webview' requires a real embed signal (WebView.<init>/loadUrl/setWebViewClient/getSettings/loadDataWithBaseURL/evaluateJavascript/addJavascriptInterface or extends WebViewClient/WebChromeClient).",
+  "counts": {
+    "apks_scanned": 200,
+    "render_webview_keys": 83,
+    "util_only_webkit_keys": 76,
+    "by_u13_status": {"lit": 28, "not_lit": 23, "unmeasured": 32},
+    "measured_universe": 166, "lit_total": 122
+  },
+  "wikipedia": {
+    "package": "org.wikipedia", "stack": "android-jvm",
+    "webkit_methods": 59, "render_methods": 57, "callbacks_overridden": 10,
+    "callbacks": ["shouldInterceptRequest","shouldOverrideUrlLoading","onPageStarted","onPageFinished","onLoadResource","onReceivedHttpError","onProgressChanged","onConsoleMessage","onJsConfirm","onCreateWindow"],
+    "article_first_paint_needs": "construct + getSettings + WebSettings setters + setWebViewClient/setWebChromeClient + loadUrl/loadDataWithBaseURL + shouldInterceptRequest (serves bundled pagelib/CSS/JS offline)",
+    "note": "wikipedia is LIT at t20 on its native onboarding (via M1), but the ARTICLE page renders in a WebView -> M2 is what makes article reading work"
+  },
+  "top10_render_methods": [
+    {"m": "WebViewClient.<init>", "keys": 77, "lit": 22, "not_lit": 23},
+    {"m": "WebView.setWebViewClient", "keys": 76, "lit": 21, "not_lit": 23},
+    {"m": "WebView.<init>", "keys": 74, "lit": 21, "not_lit": 21},
+    {"m": "WebView.getSettings", "keys": 74, "lit": 19, "not_lit": 23},
+    {"m": "WebView.loadUrl", "keys": 72, "lit": 17, "not_lit": 23},
+    {"m": "WebSettings.setJavaScriptEnabled", "keys": 70, "lit": 17, "not_lit": 21},
+    {"m": "WebResourceRequest.getUrl", "keys": 65, "lit": 12, "not_lit": 21},
+    {"m": "WebSettings.setDomStorageEnabled", "keys": 62, "lit": 9, "not_lit": 21},
+    {"m": "WebChromeClient.<init>", "keys": 60, "lit": 9, "not_lit": 19},
+    {"m": "WebView.setWebChromeClient", "keys": 59, "lit": 8, "not_lit": 19}
+  ],
+  "coverage": {
+    "render_core_12_methods": ["WebView.<init>","WebView.getSettings","WebSettings.setJavaScriptEnabled","WebSettings.setDomStorageEnabled","WebView.setWebViewClient","WebViewClient.<init>","WebView.setWebChromeClient","WebChromeClient.<init>","WebView.loadUrl","WebView.loadDataWithBaseURL","WebView.evaluateJavascript","WebView.addJavascriptInterface"],
+    "render_core_first_paint": "74/83 keys construct a WebView AND call a load method; core + each app's declared WebViewClient/WebChromeClient callbacks = first paint for ~all 83",
+    "full_surface_strict": {"top10": 1, "top20": 2, "top24": 4, "top60": 5, "top80": 10, "top100": 11, "all_617": 83},
+    "finding": "WebView apps have a long per-app tail (find-in-page, file chooser, HTTP-auth, zoom, print, download, geolocation); feature-complete coverage of all 83 needs ~617 methods -> target the render-core first, not full coverage"
+  },
+  "m2_targets": {
+    "not_lit_primary_webview_direct_wins": ["cv2-ca-vaults-randomlydie","cv2-com-degeder-yam","cv2-com-paultirk-yatoo","cv2-timur-webrtc-check","cv2-dev-obfusk-jiten-webview","cv2-com-stoutner-privacybrowser-standard","fd-tutanota","fd-mobile"],
+    "not_lit_secondary_webview_blocked_upstream": ["fd-im-vector-app","fd-saber","fd-immich","fd-fluffychat","fd-kitchenowl","fd-libre","fd-meet","localsend","mcdonalds","burgerking","subwaysurfers","toutiao","fd-AppManager","fd-plus","termux"],
+    "note_lit": "28 lit WebView keys render their native main screen (WebView secondary); EXCEPT wikipedia, lit on native shell but article page = WebView -> M2 lights article reading"
+  },
+  "this_rounds_rule": "Scope a framework-backing effort by the method-reference surface and separate real embedders from utility callers (76 keys touch android.webkit only via MimeTypeMap/findAddress). The actionable M2 target is the render-core (12 methods) + per-app callbacks for first paint, not full API coverage (long per-app tail). 'lit' != 'needs no WebView': wikipedia is lit on its shell but its content screen is a WebView.",
+  "boundaries": "Offline; static call/override references (not a runtime trace; reflection-invoked webkit would be missed, none seen); 'renders_webview' is a static predicate; lit/not-lit = u13-reference signing; PRIMARY/SECONDARY split uses app stack + cc-t3's confirmed web-wrapper set; secondary keys' own walls named from first-fatal clusters not re-measured. No board, no push.",
+  "cc": "cc-t3 (M2 route-a owner)",
+  "landing_paths": "benchmark/2026-10-03-m2-webview-surface/landing-paths.txt"
+}
