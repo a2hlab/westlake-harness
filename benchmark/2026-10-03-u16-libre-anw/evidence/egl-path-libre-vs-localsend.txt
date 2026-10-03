@@ -1,0 +1,24 @@
+# EGL window-surface path: libre (CRASH) vs localsend (SUCCESS), U14 window1 r3
+# Both libflutter builds import eglCreateWindowSurface AND eglGetProcAddress via PLT (see libflutter-imports.txt).
+# The U14 interposer (fff9be31) is in libandroid at NEEDED position 4 (before platform libEGL at 5), so a PLT call
+# to eglCreateWindowSurface binds to the interposer. A call through an eglGetProcAddress-resolved pointer does NOT.
+
+## localsend (SUCCESS): surface created on tid 30548 via the PLT interposer -> unwrapped -> EGLSurface non-zero
+10-03 12:29:16.222 30519 30552 I C02d11/DfxSignalHandler: DFX_SignalHandler :: signo(11), pid(30519), processName(/system/bin/appspawn-x), threadName(1.raster).
+10-03 12:29:16.290 30519 30548 I C00f00/OH_EglHijack: eglCreateWindowSurface: detected ANW shim 0000007EFC88CB50, unwrapped to OH NativeWindow=0000007EFD294470
+10-03 12:29:16.290 30519 30548 I C00f00/OH_EglHijack: eglCreateWindowSurface: dpy=0000007EFB3097D8 config=0000007EFC91AC50 window=0000007EFD294470 (orig=0000007EFC88CB50) -> EGLSurface=0000007EFBD36550
+10-03 12:29:16.332 30596 30596 I C02d11/DfxProcessDump: Processdump SigVal(0), TargetPid(30519:30519), TargetTid(30552), threadname(1.raster).
+10-03 12:29:16.664 30596 30596 I C02d11/DfxFaultLogger: Tid:30552, Name:1.raster
+   (localsend 1.raster thread 30552 did NOT create the window surface; it later crashes deeper at Impeller libflutter+0x4b655c)
+
+## libre (CRASH): interposer fires on tid 6031 (UI) at 25.566, but 1.raster tid 6038 crashed at 25.546 FIRST
+10-03 12:32:25.546  tid=6038 DfxSignalHandler: DFX_SignalHandler :: signo(11), si_code(1), pid(5994), tid(6038).
+10-03 12:32:25.546  tid=6038 DfxSignalHandler: DFX_SignalHandler :: signo(11), pid(5994), processName(/system/bin/appspawn-x), threadName(1.raster).
+10-03 12:32:25.566  tid=6031 OH_EglHijack: resolve_egl_hijack_funcs: oh_anw_get_oh_fn=0000007F07B58D9C real_egl_fn=0000007F108D999C
+10-03 12:32:25.566  tid=6031 OH_EglHijack: eglCreateWindowSurface: detected ANW shim 0000007F17DF2150, unwrapped to OH NativeWindow=0000007F18790A10
+10-03 12:32:25.957  tid=6038 DfxSignalHandler: DFX_SignalHandler :: signo(11), si_code(0), pid(5994), tid(6038).
+
+KEY: the FATAL eglCreateWindowSurface (tid 6038 = 1.raster) has NO libandroid frame in its stack
+     (crash-backtraces.txt Event B: #07 libflutter -> #06 platform libEGL directly). The interposer only
+     caught the UI-thread PLT call (tid 6031). The raster/GPU backend resolved eglCreateWindowSurface via
+     eglGetProcAddress -> got the PLATFORM libEGL function -> handed mali the raw AdapterAnw -> ANativeWindow_getFormat SEGV.

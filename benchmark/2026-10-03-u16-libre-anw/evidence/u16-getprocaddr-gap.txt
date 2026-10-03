@@ -1,0 +1,39 @@
+# Why the already-built U16 eglGetProcAddress interposer (A" b1c9f76e, benchmark/2026-10-03-u16-flutter-impeller-build)
+# does NOT fix libre. Its flutter_egl_getprocaddress.cpp resolves core EGL names through the PLATFORM function:
+
+extern "C" __attribute__((visibility("default")))
+void* eglGetProcAddress(const char* name) {
+    // (1) real platform eglGetProcAddress first (NOLOAD; libEGL.so is a different soname than this libandroid.so,
+    //     so this is the platform entry, never recursive).
+    static void* (*real)(const char*);
+    if (!real) {
+        void* egl = dlopen("libEGL.so", RTLD_NOLOAD | RTLD_NOW);
+        if (egl) real = reinterpret_cast<void* (*)(const char*)>(dlsym(egl, "eglGetProcAddress"));
+    }
+    void* p = real ? real(name) : NULL;
+    if (p) return p;
+    if (!name) return NULL;
+
+    ensure_driver();
+
+    // (B) desktop double entries -> 'f' variant shim (crash slot: glDepthRange).
+    if (strcmp(name, "glDepthRange") == 0) return reinterpret_cast<void*>(&wl_glDepthRange);
+    if (strcmp(name, "glClearDepth") == 0) return reinterpret_cast<void*>(&wl_glClearDepth);
+
+    // (A) the 41 extension procs: real driver export via dlsym.
+    void* s = g_gles2 ? dlsym(g_gles2, name) : NULL;
+    if (!s && g_gles3) s = dlsym(g_gles3, name);
+    if (s) return s;
+
+    // (C) residual gl* gap: logged no-op (once per name), never leave a null slot.
+    if (name[0] == 'g' && name[1] == 'l') {
+        if (first_time(name)) gl_log(name);
+        return reinterpret_cast<void*>(&wl_gl_noop);
+    }
+    return NULL;  // non-gl*: leave as the driver decided.
+}
+
+=> For name='eglCreateWindowSurface': real() is the platform eglGetProcAddress; it returns the platform
+   libEGL eglCreateWindowSurface (non-NULL) -> line 'if (p) return p' returns the PLATFORM function, NOT our
+   unwrapping hook. (If platform returned NULL for a core name, the 'gl' branch is skipped and it returns NULL.)
+   Either way the raster thread never gets our ANW-unwrapping eglCreateWindowSurface -> libre still crashes.

@@ -1,0 +1,34 @@
+--- a/src/flutter_egl_getprocaddress.cpp	2026-10-03 13:01:18
++++ b/src/flutter_egl_getprocaddress.cpp	2026-10-03 13:01:18
+@@ -14,6 +14,15 @@
+ #include <string.h>
+ #include <stddef.h>
+ 
++// U16 libre fix (benchmark/2026-10-03-u16-libre-anw): the 4 EGL window/surface funcs interposed in
++// flutter_egl.cpp (same libandroid.so). Returning their addresses from eglGetProcAddress routes the
++// Flutter raster/GPU backend -- which resolves these via eglGetProcAddress, bypassing the PLT interposer --
++// through the ANW-unwrapping hooks too (fd-libre 1.raster path).
++extern "C" void*    eglCreateWindowSurface(void*, void*, void*, const int*);
++extern "C" unsigned eglDestroySurface(void*, void*);
++extern "C" unsigned eglSwapBuffers(void*, void*);
++extern "C" unsigned eglSwapBuffersWithDamageKHR(void*, void*, const int*, int);
++
+ typedef float  GLfloat;
+ typedef double GLclampd;
+ 
+@@ -71,6 +80,15 @@
+ 
+ extern "C" __attribute__((visibility("default")))
+ void* eglGetProcAddress(const char* name) {
++    // (0) U16 libre fix: return OUR unwrapping hooks for the window/surface EGL funcs BEFORE delegating to
++    //     the platform resolver, so a proc-address-resolved call (Flutter raster thread) gets the ANW unwrap
++    //     just like the PLT path does. flutter_egl.cpp owns these 4 symbols in this same libandroid.so.
++    if (name) {
++        if (!strcmp(name, "eglCreateWindowSurface"))      return reinterpret_cast<void*>(&eglCreateWindowSurface);
++        if (!strcmp(name, "eglDestroySurface"))           return reinterpret_cast<void*>(&eglDestroySurface);
++        if (!strcmp(name, "eglSwapBuffers"))              return reinterpret_cast<void*>(&eglSwapBuffers);
++        if (!strcmp(name, "eglSwapBuffersWithDamageKHR")) return reinterpret_cast<void*>(&eglSwapBuffersWithDamageKHR);
++    }
+     // (1) real platform eglGetProcAddress first (NOLOAD; libEGL.so is a different soname than this libandroid.so,
+     //     so this is the platform entry, never recursive).
+     static void* (*real)(const char*);

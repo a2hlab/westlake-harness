@@ -1,0 +1,47 @@
+# fd-libre = deckers.thibault.aves.libre (Aves gallery, Flutter). U14 window1 r3 run:
+# $WORKSPACES/westlake-harness-u7-executor/.../u14-A1-r3-20261003T120358/5cd/.../fd-libre
+
+## Fault headers (one app process pid 5994; 6055/6072 are processdump helpers)
+10-03 12:32:25.043  signo(42), si_code(-1), pid(5994), tid(6027).
+10-03 12:32:25.043  signo(42), pid(5994), processName(/system/bin/appspawn-x), threadName(deckers.thibaul).
+10-03 12:32:25.546  signo(11), si_code(1), pid(5994), tid(6038).
+10-03 12:32:25.546  signo(11), pid(5994), processName(/system/bin/appspawn-x), threadName(1.raster).
+10-03 12:32:25.957  signo(11), si_code(0), pid(5994), tid(6038).
+
+## Event A (NON-FATAL, signo 42 = DEBUG SIGNAL(FDSAN)) — tid 6027 (io.flutter/platform)
+10-03 12:32:25.042  W C03f07/MUSL-LDSO: Xpm check failed for libmediandk.so, errno for mmap is: 22
+10-03 12:32:25.042  W C03f07/MUSL-LDSO: Error loading header libmediandk.so: failed to map header
+10-03 12:32:25.043  E C03f07/MUSL-FDSAN: attempted to close file descriptor 61, expected to be unowned, actually owned by FILE* 0x0000007f9bc1e6e8
+10-03 12:32:25.297  I C02d11/DfxFaultLogger: Reason:Signal:DEBUG SIGNAL(FDSAN)
+10-03 12:32:25.297  I C02d11/DfxFaultLogger: LastFatalMessage:attempted to close file descriptor 61, expected to be unowned, actually owned by FILE* 0x0000007f9bc1e6e8
+10-03 12:32:25.306  I C02d11/Faultlogger_Base: AddFaultLog: Start saving Faultlog of Process:5994, Name:/system/bin/appspawn-x, Reason:Signal:DEBUG SIGNAL(FDSAN)\n.
+10-03 12:32:25.310  E C03f07/MUSL-FDSAN: attempted to close file descriptor 61, expected to be unowned, actually owned by FILE* 0x0000007f9bc1e6e8
+10-03 12:32:25.385  I C02d11/Faultlogger_Base: Reason:Signal:DEBUG SIGNAL(FDSAN)\n
+  backtrace (the raw close of fd 61 during a failed dlopen of libmediandk):
+  #00 pc 00000000000bfbc4 /system/lib/ld-musl-aarch64.so.1(fdsan_error+768)(a9d018197b852b7e2f585142e5dbffb2)
+  #01 pc 00000000000bfee8 /system/lib/ld-musl-aarch64.so.1(fdsan_close_with_tag+688)(a9d018197b852b7e2f585142e5dbffb2)
+  #02 pc 00000000000c005c /system/lib/ld-musl-aarch64.so.1(close+16)(a9d018197b852b7e2f585142e5dbffb2)
+  #03 pc 00000000000871a8 /system/lib/ld-musl-aarch64.so.1(load_library_header+1192)(a9d018197b852b7e2f585142e5dbffb2)
+  #04 pc 000000000009040c /system/lib/ld-musl-aarch64.so.1(preload_direct_deps+792)(a9d018197b852b7e2f585142e5dbffb2)
+  #05 pc 0000000000083b9c /system/lib/ld-musl-aarch64.so.1(preload_deps+152)(a9d018197b852b7e2f585142e5dbffb2)
+  #06 pc 0000000000086554 /system/lib/ld-musl-aarch64.so.1(dlopen_impl+2396)(a9d018197b852b7e2f585142e5dbffb2)
+  #07 pc 000000000000d678 /system/bin/appspawn-x(StockOpenNamespace+208)(2a0b397cae502be19087c99516dcdf2686f2bf59)
+
+## Event B (FATAL, signo 11 SIGSEGV) — tid 6038 (1.raster)
+#00 pc 0000000000005c68 /vendor/lib64/libnativewindow.z.so(ANativeWindow_getFormat+60)(4939e2fabf7005bb34b9ea142c722961)
+#01 pc 000000000061f408 /vendor/lib64/chipsetsdk/libGLES_mali.z.so(new_window_surface(egl_winsys_display*, void*, void*, void*, egl_winsys_config const*, egl_winsys_surface**, unsigned int, int)+116)(02dfbf5e592e45bd24b48c16ab80777b)
+#02 pc 0000000000346bcc /vendor/lib64/chipsetsdk/libGLES_mali.z.so(eglp_window_surface_specific_initialization+652)(02dfbf5e592e45bd24b48c16ab80777b)
+#03 pc 0000000000342608 /vendor/lib64/chipsetsdk/libGLES_mali.z.so(eglp_create_surface+1188)(02dfbf5e592e45bd24b48c16ab80777b)
+#04 pc 0000000000346934 /vendor/lib64/chipsetsdk/libGLES_mali.z.so(eglCreateWindowSurface+12)(02dfbf5e592e45bd24b48c16ab80777b)
+#05 pc 000000000002628c /system/lib64/platformsdk/libEGL.so(OHOS::EglWrapperDisplay::CreateEglSurface(void*, NativeWindow*, int const*)+492)(60996c6a01d1c7648f4508d17395137c)
+#06 pc 0000000000019a40 /system/lib64/platformsdk/libEGL.so(eglCreateWindowSurface+164)(60996c6a01d1c7648f4508d17395137c)
+#07 pc 00000000004f6778 /data/app/el1/bundle/public/deckers.thibault.aves.libre/android/lib/arm64-v8a/libflutter.so(fdf0a0a6f673cdcfc6c0e5f8dc7c8828d63fb3b6)
+#08 pc 00000000004f6b84 /data/app/el1/bundle/public/deckers.thibault.aves.libre/android/lib/arm64-v8a/libflutter.so(fdf0a0a6f673cdcfc6c0e5f8dc7c8828d63fb3b6)
+#09 pc 00000000004ed190 /data/app/el1/bundle/public/deckers.thibault.aves.libre/android/lib/arm64-v8a/libflutter.so(fdf0a0a6f673cdcfc6c0e5f8dc7c8828d63fb3b6)
+#10 pc 000000000050d25c /data/app/el1/bundle/public/deckers.thibault.aves.libre/android/lib/arm64-v8a/libflutter.so(fdf0a0a6f673cdcfc6c0e5f8dc7c8828d63fb3b6)
+#11 pc 0000000000511168 /data/app/el1/bundle/public/deckers.thibault.aves.libre/android/lib/arm64-v8a/libflutter.so(fdf0a0a6f673cdcfc6c0e5f8dc7c8828d63fb3b6)
+#12 pc 000000000019db54 /system/android/lib64/liboh_android_runtime.so(ALooper_pollOnce+456)(28672ee74c9a759dd3af5616d9800658ce43d858)
+#13 pc 000000000051126c /data/app/el1/bundle/public/deckers.thibault.aves.libre/android/lib/arm64-v8a/libflutter.so(fdf0a0a6f673cdcfc6c0e5f8dc7c8828d63fb3b6)
+#14 pc 000000000050f1a8 /data/app/el1/bundle/public/deckers.thibault.aves.libre/android/lib/arm64-v8a/libflutter.so(fdf0a0a6f673cdcfc6c0e5f8dc7c8828d63fb3b6)
+#15 pc 000000000050efb8 /data/app/el1/bundle/public/deckers.thibault.aves.libre/android/lib/arm64-v8a/libflutter.so(fdf0a0a6f673cdcfc6c0e5f8dc7c8828d63fb3b6)
+#16 pc 00000000001309e8 /system/lib/ld-musl-aarch64.so.1(start+236)(a9d018197b852b7e2f585142e5dbffb2)

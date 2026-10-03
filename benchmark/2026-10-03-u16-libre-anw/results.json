@@ -1,0 +1,33 @@
+{
+  "task": "Offline/static diagnosis of fd-libre, the one cluster-A Flutter key the U14 EGL fix did not move (readout 'unchanged': still ANativeWindow_getFormat + a separate fdsan crash). Three questions: (1) libre's Flutter ANativeWindow path / why no shim unwrap + is ANativeWindow_getFormat in our libandroid and what it returns for a shim handle; (2) the fdsan owner tag + closer (+ libmpv->libmediandk Xpm mmap EINVAL clue); (3) minimal fix, predicted move, U16-native foldability.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "app": {"key": "fd-libre", "package": "deckers.thibault.aves.libre", "name": "Aves (Flutter photo gallery)",
+          "libflutter_build": "fdf0a0a6", "run": "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u14-stage-a-plan/window1/u14-A1-r3-20261003T120358/5cd/.../fd-libre"},
+  "q1_anativewindow_path": {
+    "finding": "The U14 interposer (fff9be31, libandroid NEEDED pos 4 before libEGL at 5) fires only on the PLT path; libre's fatal eglCreateWindowSurface is on tid 6038=1.raster and bypasses it.",
+    "ui_thread_tid6031": "interposer fired: 'detected ANW shim 0x..2150 -> OH NativeWindow 0x..A10' (PLT call, unwrapped)",
+    "raster_thread_tid6038": "FATAL SIGSEGV; stack #07 libflutter -> #06 platform libEGL eglCreateWindowSurface -> mali new_window_surface -> #00 ANativeWindow_getFormat+60 (vendor libnativewindow.z.so); NO libandroid frame => resolved via eglGetProcAddress, got platform function, raw AdapterAnw handed to mali",
+    "imports": "libre AND localsend libflutter both import eglCreateWindowSurface + eglGetProcAddress via PLT (identical EGL set); difference is which thread/path creates the fatal surface (engine-version/renderer), not the symbols",
+    "anativewindow_getformat_in_libandroid": "NO — fff9 exports only 4 EGL funcs (eglCreateWindowSurface/eglDestroySurface/eglSwapBuffers/eglSwapBuffersWithDamageKHR); mali binds ANativeWindow_getFormat to vendor libnativewindow.z.so internally, unreachable by app-namespace interposition, so adding it to libandroid would not help"
+  },
+  "q2_fdsan": {
+    "signal": "signo 42 = DEBUG SIGNAL(FDSAN), NON-FATAL (app survives)",
+    "message": "MUSL-FDSAN: attempted to close file descriptor 61, expected to be unowned, actually owned by FILE* 0x0000007f9bc1e6e8",
+    "owner_tag": "a stdio FILE* (0x..e6e8)", "closer": "musl ld-so load_library_header -> close(fd 61) during a failed dlopen",
+    "trigger": "Aves bundles Flutter plugin media_kit (media_kit_libs_android_video, libmpv family); it dlopens libmediandk.so -> OH XPM rejects the header mmap: 'Xpm check failed for libmediandk.so, errno for mmap is: 22' (EINVAL) -> 'failed to map header'. The loader opens the .so (fd 61), mmap fails, close(61) hits an fd a FILE* still owns.",
+    "is_blocker": "NO — non-fatal; same lazy libmediandk dlopen the already-lit fd-mpv tolerates (DIGEST L459); only disables video, not the gallery grid; the clusters.csv A libre clue = exactly this"
+  },
+  "q3_fix": {
+    "patch": "patch/flutter_egl_getprocaddress.egl-names.patch — extend the already-built U16 eglGetProcAddress interposer (A\" b1c9f76e, benchmark/2026-10-03-u16-flutter-impeller-build) to return our own eglCreateWindowSurface/eglDestroySurface/eglSwapBuffers/eglSwapBuffersWithDamageKHR (from flutter_egl.cpp, same libandroid.so) for those names BEFORE delegating to platform eglGetProcAddress",
+    "why_A_doesnt_fix_it": "A\"'s eglGetProcAddress calls platform first and returns its result for non-gl* names, so eglGetProcAddress('eglCreateWindowSurface') returns the platform function, never the unwrapping hook; the raster bypass survives",
+    "additive": "no new export (the 4 symbols already exist in the .so); only eglGetProcAddress's body changes; no new NEEDED; no boot rebuild",
+    "predicted_move": {
+      "high": "raster eglGetProcAddress('eglCreateWindowSurface') -> unwrapping hook -> mali gets OH NativeWindow (localsend's working path) -> past eglCreateWindowSurface, EGLSurface non-zero; readout unchanged->match, rejoins cluster A",
+      "medium": "then the same U16 interposer stubs the Impeller GLES proc gap (glDepthRange) -> past pc=0; whether libre LIGHTS depends on the gallery grid (pure Flutter); media_kit/libmediandk XPM stays but is non-fatal (video only). Net: +0 to +1 lit, anomaly resolved"
+    },
+    "fold_into_u16_native": "YES — 4-line extension of flutter_egl_getprocaddress.cpp already in the U16 Flutter libandroid; rebuild A''' (gates: only-rebuilt eglGetProcAddress, exports delta 0, equiv elsewhere); include before freeze or via the add-feature-preserve-old path the U16 build README anticipates. cx-bms is merging the U16 native bundle."
+  },
+  "this_rounds_rule": "A PLT symbol interposer in libandroid only overrides the PLT call site; Flutter's raster/GPU backend resolves EGL entries via eglGetProcAddress and calls through a cached pointer, bypassing the PLT override. To cover every path, the eglGetProcAddress interposer must also return the local hooks by name. 'unchanged' in the readout can mean 'the fix fired on one thread but the fatal call is on another path' — read the fault thread name (1.raster) and whether the crash stack contains the interposing library's frame, not just the wall symbol.",
+  "boundaries": "Offline/static; no board/deploy/push/rebuild. Build + A''' byte-identity + on-board move are cx-bms/cx-t0's; screenshot is ground truth for lighting. Read-only sources: U14 r3 hilog, Aves+localsend libflutter.so (westlake-inputs/apks), U14/U16 flutter-libandroid benchmarks.",
+  "landing_paths": "benchmark/2026-10-03-u16-libre-anw/landing-paths.txt"
+}
