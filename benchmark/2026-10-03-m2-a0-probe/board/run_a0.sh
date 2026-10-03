@@ -82,14 +82,32 @@ unmount_probe() {
   echo "[a0] unmount: $RT_TARGET after=$st (expect ABSENT)"
   [ "$st" = ABSENT ]
 }
+# Kill this app's child processes by pid so the next launch re-binds (re-runs the entry/worker), not just foregrounds the
+# reused process. ONLY uid != 0 processes owned by this bundle's install uid (the appspawn-x child and its render procs);
+# NEVER the appspawn-x main process (uid root) -- RUNBOOK 12. aa force-stop reports 10106401 on the appspawn-x child, so
+# we kill by pid and poll until the uid has no processes left.
+APP_UID=""
+kill_app() {
+  [ -z "$APP_UID" ] && APP_UID=$(H "bm dump -n $PKG" 2>/dev/null | grep -m1 -E '"uid"' | grep -oE '[0-9]+' | head -1)
+  H "aa force-stop $PKG" >/dev/null 2>&1 || true   # best effort; fails (10106401) on the appspawn-x child
+  [ -z "$APP_UID" ] && { echo "[a0] kill_app: no uid for $PKG"; return 0; }
+  [ "$APP_UID" = 0 ] && { echo "[a0] kill_app: refusing uid 0"; return 0; }   # never touch root/appspawn-x main
+  local i pids
+  for i in $(seq 1 12); do
+    pids=$(H "ps -A -o PID,USER" | grep -E " $APP_UID *$" | sed 's/^ *//; s/ .*//' | tr -d '\r')
+    [ -z "$pids" ] && { echo "[a0] kill_app: uid=$APP_UID clean (no processes)"; return 0; }
+    for p in $pids; do H "kill -9 $p" >/dev/null 2>&1 || true; done
+    sleep 1
+  done
+  echo "[a0] kill_app: WARN uid=$APP_UID still alive: $(H "ps -A -o PID,USER" | grep -E " $APP_UID *$" | tr -d '\r')"
+}
+
 rollback() {
   unmount_probe || RT_ROLLBACK_FAIL=1
   echo "[a0] rollback $(date -Iseconds)"
-  H "param set debug.westlake.a0probe.mode 0" ; H "aa force-stop $PKG"
-  uid=$(H "bm dump -n $PKG" 2>/dev/null | grep -m1 -E '"uid"' | grep -oE '[0-9]+' | head -1)
-  if [ -n "${uid:-}" ]; then
-    for pid in $(H "ps -A -o PID,USER" | grep -E " $uid *$" | sed 's/^ *//; s/ .*//'); do H "kill -15 $pid"; done
-  fi
+  H "param set debug.westlake.a0probe.mode 0"
+  kill_app                                    # by-pid -9 + poll (same as between modes); never touches appspawn-x main
+  uid=$APP_UID
   T=180 H "bm uninstall -n $PKG"; H "rm -f /data/local/tmp/a0probe.apk /data/local/tmp/a0-*.jpeg /data/local/tmp/a0-sandbox.sh"
   H "rm -rf $PKG_DIRS; rmdir /mnt/sandbox/100/$PKG 2>/dev/null; true"
   sleep 2
@@ -148,7 +166,7 @@ for mode in $MODES; do
   M=$OUT/mode-$mode; mkdir -p "$M"
   echo "== mode $mode ($(( $(date +%s) - START )) s into the window)"
   [ $(( $(date +%s) - START )) -gt 1500 ] && { echo "[a0] window budget reached, stop"; break; }
-  H "aa force-stop $PKG" >/dev/null; sleep 1
+  kill_app                                    # kill the prior mode's app child (by pid) so this launch re-binds fresh
   H "param set debug.westlake.a0probe.mode $mode"
   t0=$(H "date +%m-%d\ %H:%M:%S" | tr -d '\r')
   H "aa start -b $PKG -a $PKG.MainActivity" | tee "$M/aa-start.txt"
