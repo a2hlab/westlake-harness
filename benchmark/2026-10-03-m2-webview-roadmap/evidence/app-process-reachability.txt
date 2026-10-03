@@ -1,0 +1,23 @@
+# Can an Android app process (appspawn-x child) reach ArkWeb? Read-only on 5cd (OpenHarmony-6.1.0.31), 2026-10-03 ~08:20.
+
+## 1. The engine is mounted inside our app sandbox
+appspawn-x main pid 14900 (PPID 1, root); child 20955 (PPID 14900, uid 20010774, Name: com.example.hel[loworld]):
+  /proc/20955/root/data/storage/el1/bundle/ -> android  arkwebcore  entry.hap  misc
+  /proc/20955/mountinfo: 909 867 259:48 /app/el1/bundle/public/com.ohos.arkwebcore /data/storage/el1/bundle/arkwebcore rw,relatime - f2fs ...
+  /proc/20955/root/data/storage/el1/bundle/arkwebcore/libs/arm64/: libadapter_ndk_stub.so libarkweb_crashpad_handler.so
+      libarkweb_engine.so (185153576) libarkweb_render.so libffmpeg.so
+Every installed bundle, ours included, has /data/app/el1/bundle/public/<bundle>/arkwebcore (the sandbox mount point).
+
+## 2. Linker namespaces (musl): /system/etc/ld-musl-namespace-aarch64.ini
+[section.dir.map] systemscence = /system/bin   (appspawn-x is /system/bin/appspawn-x)
+[systemscence] added.nslist = ndk ; namespace.ndk.lib.paths = /system/lib64/ndk
+  namespace.default.lib.paths includes /system/lib64 and /system/lib64/platformsdk
+  namespace.default.inherits = ndk ; namespace.default.inherit.ndk.shared.libs = allow_all_shared_libs
+=> from the default namespace (where liboh_adapter_bridge.so lives) /system/lib64/platformsdk/libarkweb_core_loader.z.so
+   (NWebHelper / NWebAdapterHelper) and /system/lib64/ndk/libohweb.so are loadable by name. The engine itself is opened by
+   the loader from the bundle path (/data/storage/el1/bundle/arkwebcore/libs/arm64) through ArkWebNWebWebviewBridgeHelper.
+
+## 3. How OH apps hold it (sceneboard pid 8025 maps, for comparison)
+/system/lib64/libarkweb_core_loader_glue.z.so /system/lib64/libarkweb_glue_base.z.so /system/lib64/libwebview_common.z.so
+/system/lib64/ndk/libohweb.so /system/lib64/platformsdk/libarkweb_core_loader.z.so /system/lib64/platformsdk/libarkweb_utils.z.so
+(the engine is loaded only when a Web component is created; renderer processes are spawned by nwebspawn, pid 2218)

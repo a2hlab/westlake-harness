@@ -1,0 +1,225 @@
+# OH 6.1.0.31 source excerpts (hw248 $OH610=/opt/build-trees/oh610_lts_source, read-only)
+
+== base/web/webview/ohos_interface/include/ohos_nweb/nweb.h:127-146
+  class OHOS_NWEB_EXPORT NWebCreateInfo {
+  public:
+      virtual ~NWebCreateInfo() = default;
+  
+      /* size info */
+      virtual uint32_t GetWidth() = 0;
+      virtual uint32_t GetHeight() = 0;
+  
+      /* output frame cb */
+      virtual std::shared_ptr<NWebOutputFrameCallback> GetOutputFrameCallback() = 0;
+  
+      /* init args */
+      virtual std::shared_ptr<NWebEngineInitArgs> GetEngineInitArgs() = 0;
+  
+      /* rs producer surface, for acquiring elgsurface from ohos */
+      virtual void* GetProducerSurface() = 0;
+      virtual void* GetEnhanceSurfaceInfo() = 0;
+  
+      virtual bool GetIsIncognitoMode() = 0;
+  };
+
+== base/web/webview/ohos_nweb/src/nweb_helper.cpp:649-667
+  bool NWebHelper::GetWebEngine(bool fromArk)
+  {
+      if (nwebEngine_) {
+          return true;
+      }
+  
+      if (bundlePath_.empty()) {
+          auto ctx = AbilityRuntime::ApplicationContext::GetApplicationContext();
+          if (!ctx) {
+              WVLOG_E("failed to get application context");
+              return false;
+          }
+  
+          SetBundlePath(ctx->GetBundleCodeDir());
+          if (bundlePath_.empty()) {
+              WVLOG_E("bundle path is empty");
+              return false;
+          }
+      }
+
+== base/web/webview/ohos_nweb/src/nweb_helper.cpp:706-722
+  std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> NWebHelper::GetInitArgs()
+  {
+      auto initArgs = std::make_shared<NWebEngineInitArgsImpl>();
+  
+      auto ctx = AbilityRuntime::ApplicationContext::GetApplicationContext();
+      if (!ctx) {
+          WVLOG_E("failed to get application context");
+          return nullptr;
+      }
+  
+      if (ctx->GetBaseDir().empty()) {
+          WVLOG_E("base dir of application context is empty");
+          return nullptr;
+      }
+  
+      NWebAdapterHelper::Instance().ParseConfig(initArgs);
+  
+
+== base/web/webview/ohos_nweb/src/nweb_helper.cpp:835-844
+  std::shared_ptr<NWeb> NWebHelper::CreateNWeb(std::shared_ptr<NWebCreateInfo> create_info)
+  {
+      if (nwebEngine_ == nullptr) {
+          WVLOG_E("web engine is nullptr");
+          return nullptr;
+      }
+  
+      initWebEngine_ = true;
+      return nwebEngine_->CreateNWeb(create_info);
+  }
+
+== base/web/webview/ohos_nweb/src/nweb_helper.cpp:1253-1291
+  std::shared_ptr<NWeb> NWebAdapterHelper::CreateNWeb(sptr<Surface> surface,
+      std::shared_ptr<NWebEngineInitArgsImpl> initArgs, uint32_t width, uint32_t height, bool incognitoMode)
+  {
+      int64_t startTime = GetCurrentRealTimeNs();
+      if (surface == nullptr) {
+          WVLOG_E("fail to create nweb, input surface is nullptr");
+          return nullptr;
+      }
+      if (width > NWEB_SURFACE_MAX_WIDTH || height > NWEB_SURFACE_MAX_HEIGHT) {
+          WVLOG_E("input size %{public}u*%{public}u is invalid.", width, height);
+          return nullptr;
+      }
+      initArgs->AddArg(NWebConfigHelper::Instance().GetWebPlayGroundInitArg());
+      if (!NWebHelper::Instance().IsAutoPreconnectEnabled()) {
+          initArgs->AddArg(std::string("--disable-auto-preconnect"));
+      }
+      std::string socketIdleTimeout = std::to_string(NWebHelper::Instance().GetSocketIdleTimeout());
+      initArgs->AddArg(std::string("--socket-idle-timeout=").append(socketIdleTimeout));
+      auto createInfo = NWebSurfaceAdapter::Instance().GetCreateInfo(surface, initArgs, width, height, incognitoMode);
+      NWebConfigHelper::Instance().ParseConfig(initArgs);
+  
+      // obtain bundle path
+      std::shared_ptr<AbilityRuntime::ApplicationContext> ctx =
+          AbilityRuntime::ApplicationContext::GetApplicationContext();
+      if (ctx) {
+          std::string bundleName = ctx->GetBundleName();
+          NWebConfigHelper::Instance().SetBundleName(bundleName);
+          initArgs->AddArg(std::string("--bundle-name=").append(bundleName));
+      }
+  
+      auto nweb = NWebHelper::Instance().CreateNWeb(createInfo);
+      if (nweb == nullptr) {
+          WVLOG_E("fail to create nweb instance");
+          return nullptr;
+      }
+      int64_t endTime = GetCurrentRealTimeNs();
+      EventReport::ReportCreateWebInstanceTime(nweb->GetWebId(), endTime - startTime);
+      return nweb;
+  }
+
+== base/web/webview/test/unittest/common/nweb_create_window.cpp:85-104
+      return initArgs;
+  }
+  
+  std::shared_ptr<NWeb> GetNwebForTest()
+  {
+      if (!g_surface) {
+          Rosen::RSSurfaceNodeConfig config;
+          config.SurfaceNodeName = "webTestSurfaceName";
+          auto surfaceNode = Rosen::RSSurfaceNode::Create(config, false);
+          if (surfaceNode == nullptr) {
+              return nullptr;
+          }
+          g_surface = surfaceNode->GetSurface();
+          if (g_surface== nullptr) {
+              return nullptr;
+          }
+      }
+      return NWebAdapterHelper::Instance().CreateNWeb(g_surface, GetInitArgs());
+  }
+  } // namespace OHOS::NWeb
+
+== base/web/webview/ohos_nweb/src/nweb_surface_adapter.cpp:34-70
+      NWebOutputFrameCallbackImpl(wptr<Surface> surface, NWebSurfaceAdapter *adapter) : surface_(surface),
+                                                                                        adapter_(adapter) {}
+      ~NWebOutputFrameCallbackImpl() = default;
+  
+      bool Handle(const char* buffer, uint32_t width, uint32_t height) override
+      {
+          return adapter_->OutputFrameCallback(buffer, width, height, surface_);
+      }
+  
+  private:
+      wptr<Surface> surface_ = nullptr;
+      NWebSurfaceAdapter *adapter_ = nullptr;
+  };
+  
+  NWebSurfaceAdapter &NWebSurfaceAdapter::Instance()
+  {
+      static NWebSurfaceAdapter surfaceAdapter;
+      return surfaceAdapter;
+  }
+  
+  std::shared_ptr<NWebCreateInfoImpl> NWebSurfaceAdapter::GetCreateInfo(sptr<Surface> surface,
+      std::shared_ptr<NWebEngineInitArgs> initArgs, uint32_t width, uint32_t height, bool incognitoMode)
+  {
+      std::shared_ptr<NWebCreateInfoImpl> createInfo = std::make_shared<NWebCreateInfoImpl>();
+      createInfo->SetEngineInitArgs(initArgs);
+      createInfo->SetProducerSurface(reinterpret_cast<void *>(&surface));
+  
+      if (surface == nullptr) {
+          return createInfo;
+      }
+  
+      createInfo->SetIsIncognitoMode(incognitoMode);
+      createInfo->SetWidth((width == 0) ? (uint32_t)surface->GetDefaultWidth() : width);
+      createInfo->SetHeight((height == 0) ? (uint32_t)surface->GetDefaultHeight() : height);
+  
+      wptr<Surface> surfaceWeak(surface);
+      createInfo->SetOutputFrameCallback(std::make_shared<NWebOutputFrameCallbackImpl>(surfaceWeak, this));
+
+== foundation/arkui/ace_engine/frameworks/core/components/web/resource/web_delegate.cpp:3073-3080
+              initArgs->SetEmulateTouchFromMouseEvent(delegate->emulateTouchFromMouseEvent_);
+  
+              delegate->nweb_ =
+                  OHOS::NWeb::NWebAdapterHelper::Instance().CreateNWeb(
+                      delegate->window_.GetRefPtr(), initArgs,
+                      delegate->incognitoMode_);
+              if (delegate->nweb_ == nullptr) {
+                  delegate->window_ = nullptr;
+
+== foundation/arkui/ace_engine/frameworks/core/components/web/resource/web_delegate.cpp:3586-3598
+                  delegate->JavaScriptOnHeadReadyByOrder();
+              } else {
+  #ifdef ENABLE_ROSEN_BACKEND
+                  wptr<Surface> surfaceWeak(delegate->surface_);
+                  sptr<Surface> surface = surfaceWeak.promote();
+                  CHECK_NULL_VOID(surface);
+                  delegate->nweb_ = OHOS::NWeb::NWebAdapterHelper::Instance().CreateNWeb(
+                      surface,
+                      initArgs,
+                      delegate->drawSize_.Width(),
+                      delegate->drawSize_.Height(),
+                      delegate->incognitoMode_);
+  
+
+== Android WebView API -> NWeb interface (ohos_interface/include/ohos_nweb)
+  nweb.h:431:    virtual void Resize(uint32_t width, uint32_t height, bool isKeyboard = false) = 0;
+  nweb.h:434:    virtual void OnPause() = 0;
+  nweb.h:435:    virtual void OnContinue() = 0;
+  nweb.h:443:    virtual void OnTouchPress(int32_t id, double x, double y, bool fromOverlay = false) = 0;
+  nweb.h:462:    virtual int Load(const std::string& url) = 0;
+  nweb.h:544:    virtual void ExecuteJavaScript(const std::string& code) = 0;
+  nweb.h:553:    virtual void ExecuteJavaScript(
+  nweb.h:572:    virtual std::shared_ptr<NWebPreference> GetPreference() = 0;
+  nweb.h:635:    virtual void SetNWebHandler(std::shared_ptr<NWebHandler> handler) = 0;
+  nweb.h:696:    virtual int LoadWithDataAndBaseUrl(const std::string& baseUrl, const std::string& data, const std::string& mimeType,
+  nweb.h:717:    virtual void RegisterArkJSfunction(
+  nweb.h:783:    virtual std::vector<std::string> CreateWebMessagePorts() = 0;
+  nweb.h:792:    virtual void PostWebMessage(
+  nweb.h:1412:    virtual void RegisterArkJSfunction(const std::string& object_name, const std::vector<std::string>& method_list,
+  nweb_handler.h:436:    virtual void OnPageLoadEnd(int httpStatusCode, const std::string& url) {}
+  nweb_handler.h:518:    virtual bool OnHandleInterceptRequest(
+  nweb_handler.h:573:    virtual bool OnConsoleLog(std::shared_ptr<NWebConsoleLog> console_log)
+  nweb_handler.h:665:    virtual void OnPermissionRequest(std::shared_ptr<NWebAccessRequest> request) {}
+  nweb_handler.h:681:    virtual void OnRenderExited(RenderExitReason reason) {}
+  nweb_preference.h:109:    virtual void PutDomStorageEnabled(bool flag) = 0;
+  nweb_preference.h:141:    virtual void PutJavaScriptEnabled(bool flag) = 0;

@@ -1,0 +1,16 @@
+{
+ "changes": [
+  {
+   "path": "README.md",
+   "lines": [
+    "| **`benchmark/2026-10-03-m2-webview-roadmap/`** | **M2 full-screen WebView roadmap (cc-t3): route A's WebView is the J8/J10 typed zero proxy (alive, white). OH ArkWeb is on every board (com.ohos.arkwebcore libarkweb_engine 2b209e33, 185 MB) and statically reachable from our app process: engine bind-mounted into the appspawn-x child sandbox, platformsdk loader in the bridge's musl namespace, NWebAdapterHelper::CreateNWeb(Surface)/NWebHelper::CreateNWeb(NWebCreateInfo with CPU output-frame callback) exported; every API the 5 keys need maps to NWeb. Recommended route a (WebViewProvider -> NWeb, frames -> Bitmap) after a 30-min in-process A0 probe (ApplicationContext + renderer spawn are the runtime unknowns); route b (Chromium 109) is the fallback; c (offline SPA) unrealistic. Predicted white -> content 2 after A1, 4-5 after A2; first-fatal 0.** |"
+   ]
+  },
+  {
+   "path": ".octos/KNOWLEDGE-DIGEST.md",
+   "lines": [
+    "- 2026-10-03 **ArkWeb 在板上、我们的 app 进程能够到(cc-t3,M2)**:OH 6.1.0.31 的 com.ohos.arkwebcore(libarkweb_engine.so 185 MB)被 bind-mount 进每个 bundle 沙箱,包括 appspawn-x 子进程的 /data/storage/el1/bundle/arkwebcore;appspawn-x 走 systemscence 段,默认 ns 含 /system/lib64/platformsdk(libarkweb_core_loader.z.so:NWebHelper/NWebAdapterHelper::CreateNWeb 导出),继承 ndk allow_all。NWebCreateInfo 的 OutputFrameCallback 给 RGBA CPU 帧,可直接进 Android Bitmap。运行时未知只剩两项:ApplicationContext 要自挂(GetWebEngine/GetInitArgs 需非空)、渲染进程经 AppMgr→nwebspawn 能否为 appspawn-x 记录拉起。估移植引擎前先查平台自带引擎能否从我们进程够到(沙箱挂载 + musl ns 配置 + 导出)。"
+   ]
+  }
+ ]
+}

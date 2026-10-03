@@ -1,0 +1,87 @@
+{
+ "lane": "cc-t3",
+ "issue": 90,
+ "date": "2026-10-03",
+ "kind": "roadmap (no artifact)",
+ "board_reads": {
+  "board": "5cd1e3dd00000000000000000923012c",
+  "os": "OpenHarmony-6.1.0.31",
+  "writes": 0,
+  "lock": "LOCK/UNLOCK cc-t3, ~5 min"
+ },
+ "current_state": "every WebView is the J8/J10 typed zero proxy (B8-WEBVIEW type-zero stub, J10e enriched provider, J10g package 9999); no rendering, no crash -> first-fatal 0",
+ "arkweb": {
+  "engine": {
+   "path": "/data/app/el1/bundle/public/com.ohos.arkwebcore/libs/arm64/libarkweb_engine.so",
+   "sha256": "2b209e33f4018729d69843346e5be818107240cd163651883fe77693ccbbc117",
+   "bytes": 185153576
+  },
+  "loader": {
+   "path": "/system/lib64/platformsdk/libarkweb_core_loader.z.so",
+   "sha256": "ab45f98524d1f9c7cf9189542101c63272d8b6d37d8571e36e4e04e05f5ef664",
+   "exports": [
+    "NWebHelper::SetBundlePath",
+    "NWebHelper::InitAndRun",
+    "NWebHelper::CreateNWeb(shared_ptr<NWebCreateInfo>)",
+    "NWebAdapterHelper::CreateNWeb(sptr<Surface>,...)",
+    "NWebSurfaceAdapter::GetCreateInfo/OutputFrameCallback"
+   ]
+  },
+  "ndk": {
+   "path": "/system/lib64/ndk/libohweb.so",
+   "sha256": "1376aa3c41abbd52d150c5dadc60f5f868fbe0a7ab5c719da739055dde644683",
+   "note": "OH_ArkWeb* NDK cannot create a web, only extends an existing one"
+  },
+  "reachable_from_app_process": {
+   "sandbox_mount": true,
+   "namespace": "systemscence default ns has platformsdk + inherits ndk allow_all",
+   "nwebspawn_running": true
+  },
+  "runtime_unknowns": [
+   "ApplicationContext must be attached (GetWebEngine/GetInitArgs)",
+   "renderer spawn via AppMgr->nwebspawn for appspawn-x records (fallback SetRenderProcessMode single)",
+   "static init of ace_napi/ability_runtime in an ART process"
+  ]
+ },
+ "routes": {
+  "a": {
+   "desc": "WebViewProvider (runtime JAR) -> JNI -> bridge NWeb; a1 CPU frames to Bitmap",
+   "rounds": {
+    "A0_probe": "8-12",
+    "A1_core": "25-40",
+    "A2_fit": "10-20",
+    "A3_optional": "15-25"
+   }
+  },
+  "b": {
+   "desc": "Chromium 109 provider (2026-10-03-webview-provider-plan)",
+   "rounds": {
+    "prereq": "11-15",
+    "stage1": "32-51",
+    "stage2": "30-49"
+   }
+  },
+  "c": {
+   "desc": "offline local-SPA renderer without ArkWeb",
+   "verdict": "not realistic (needs full browser); only as ArkWeb headless = a1"
+  }
+ },
+ "prediction": {
+  "first_fatal_moves": 0,
+  "white_to_content": {
+   "a_A0_A1": 2,
+   "a_A2": "4-5",
+   "b_stage1": 4,
+   "b_stage2": "+1",
+   "c": "<=1"
+  },
+  "keys": [
+   "cv2-ca-vaults-randomlydie",
+   "cv2-com-degeder-yam",
+   "cv2-com-paultirk-yatoo",
+   "cv2-timur-webrtc-check",
+   "fd-tutanota"
+  ]
+ },
+ "recommendation": "A0 in-process probe first (free board, 30 min, standalone .so, no JAR/bridge change); pass -> A1; fail class decides fix or fallback to b"
+}
