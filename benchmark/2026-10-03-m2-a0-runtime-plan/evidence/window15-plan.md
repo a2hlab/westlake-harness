@@ -45,3 +45,24 @@ engine (no EEXIST). This is window-10's "cleaner fallback" and what cc-wiki's fo
 ## Scheduling
 cx-t0 window 3 locked 5ea (14:40) and will lock 5cd next; this window runs after window 3 or in a gap it yields, per the
 `A0 拟用 <板>` + 2-min protocol, ≤30 min, rollback+UNLOCK.
+
+## UPDATE: mode 32 + legacy-ns BUILT & verified; mode 64 (cc-wiki Plan A) designed
+- mode 32 (native child RSSurfaceNode) DONE: real RS headers pull Skia (unbuildable), so genstub the 5 calls — all are
+  DIRECT exported non-virtual symbols (RSSurfaceNode::Create/GetSurface, RSNode::AddChild/SetBounds(ffff),
+  RSTransaction::FlushImplicitTransaction); RSSurfaceNodeConfig layout replicated exactly (SurfaceId=uint64,
+  SurfaceWindowType:uint8). worker 9db43b16 (x2), RS syms UND direct imports, mode-0 slots intact, NEEDED +=
+  librender_service_client.
+- legacy-ns entry DONE: a0_entry.cpp -DWL_A0_LEGACY_NS -> worker in nweb_ns_legacy, never touches nweb_ns (OH builds it).
+  legacy entry 61e57956, default entry afeceead (both x2). run_a0.sh ENTRY=default|legacy + MODES (break-on-PASS removed).
+- mode 64 (cc-wiki Plan A = SurfaceView holder Surface, backend d1d38ffad1 nweb_backend.cpp SurfaceFromJava) — TO BUILD:
+  * MainActivity.java: add a SurfaceView, holder.setZOrderMediaOverlay(true); on surfaceCreated ->
+    nativeSurfaceReady(holder.getSurface()) (a native method of the APK's liba0shim, which MainActivity System.loadLibrary's).
+  * a0shim.c: nativeSurfaceReady(env, surface) -> ANativeWindow* anw = ANativeWindow_fromSurface(env, surface)
+    (runtime shim returns the bridge AdapterAnw) -> setenv("WL_A0_SV_ANW", "%p", anw). (JNINativeMethod in a0shim JNI_OnLoad.)
+  * a0probe.cpp mode 64 (GetSurfaceViewSurface): poll getenv WL_A0_SV_ANW -> oh_anw_get_oh(anw) (dlsym from the bridge,
+    unwrap AdapterAnw) -> OHNativeWindow -> OH_NativeWindow_GetSurfaceId -> SurfaceUtils::GetSurface -> NWebCreateInfo.
+    Cross-ns hand-off is a same-process pointer via env (like the bridge's WESTLAKE_NATIVE_WINDOW_PTR). Chain == cc-wiki
+    nweb_backend.cpp SurfaceFromJava; compare directly.
+  * Rebuild APK (new MainActivity + a0shim) and worker (mode 64), re-pin APK_SHA + RT_WORKER_SHA.
+- Window 15: ENTRY=legacy, MODES="0 64 32"; independent verdicts; 64/32 judged by t28 screenshot showing #12ab34 on
+  screen; if 64 lights, 32 is only a fallback record. After cx-t0 window 3 (5ea 15:25:50 / 5cd 15:26:54), 拟用+2min.
