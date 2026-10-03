@@ -1,0 +1,50 @@
+{
+ "lane": "cc-t3",
+ "issue": 90,
+ "date": "2026-10-03",
+ "kind": "route-a loader placement (static, for outer approval)",
+ "board_runs": 0,
+ "rule": {
+  "source": "$OH610/third_party/musl/ldso/linux/dynlink.c",
+  "is_permitted": "line 4208",
+  "in_permitted_list": "4190",
+  "permitted_callers": [
+   "default",
+   "ndk",
+   "system",
+   "chipsetsdk",
+   "chipsetsdk_sp",
+   "vendor",
+   "passthrough",
+   "passthrough_indirect"
+  ],
+  "permitted_targets": [
+   "nweb_ns",
+   "nweb_ns_legacy"
+  ],
+  "call_sites": {
+   "dlopen_ns": 4864,
+   "dlns_create2": 4907,
+   "dlns_create": 4953
+  }
+ },
+ "namespaces_in_child": {
+  "default": "permitted-caller",
+  "ndk": "permitted-caller",
+  "westlake.anl.app.<pid>": "not permitted (entry runs here)",
+  "westlake.sealed.child": "not permitted",
+  "runtime_CL_classloader_ns": "not permitted"
+ },
+ "open_sites": "runtime 18763dd4 + bridge 84695d62: all fixed-path load sites are ns=caller-default plain dlopen; no existing dlns_create/dlopen_ns site to reuse",
+ "chosen_fix": {
+  "id": "A",
+  "desc": "name the probe/loader namespace nweb_ns (target-name branch permits any caller); dlns_get-or-create with CREATE_INHERIT_DEFAULT resolves the 14; dlopen_ns worker; no frozen file changed; entry stays at the B7BindFixes System.load point",
+  "changes": "entry two string constants only"
+ },
+ "fallback": {
+  "id": "B",
+  "desc": "add a loader entry in a DSO already in the default ns (bridge/runtime) for route a's WebViewProvider; frozen-file change; only if A fails"
+ },
+ "window10_caveat": "if OH already created nweb_ns with a different lib_path, dlns_create returns EEXIST; the window-10 dlns_get/create return codes decide the branch",
+ "needs_outer_approval": true
+}

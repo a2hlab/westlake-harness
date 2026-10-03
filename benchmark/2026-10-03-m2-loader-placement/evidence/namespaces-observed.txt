@@ -1,0 +1,15 @@
+# Namespaces present in an appspawn-x child (window9 pid 11358 MUSL-LDSO, 5cd U13), judged against dlopen_permitted_list.
+#   permitted callers = {default, ndk, system, chipsetsdk, chipsetsdk_sp, vendor, passthrough, passthrough_indirect}
+#   permitted targets = {nweb_ns, nweb_ns_legacy} (any caller may open/create these)
+default                       PERMITTED-caller      (OH system libs resolve here; the real ns that has /system/lib64 + inherits ndk)
+ndk                           PERMITTED-caller      (/system/lib64/ndk)
+westlake.anl.app.<pid>        NOT permitted         <- the entry (System.load'd html_compat) runs here; window-9 denial
+westlake.sealed.child         NOT permitted
+runtime-CL classloader ns     NOT permitted         (B7BindFixes.createClassloaderNamespace; search=4 dirs, name is the CL id)
+#
+# Consequence: no westlake-* namespace is a permitted CALLER. The only mechanisms that pass is_permitted are:
+#   (A) target the namespace name "nweb_ns" (or nweb_ns_legacy) -> permitted from ANY caller incl. westlake.anl.app;
+#   (B) run the dlns/dlopen_ns call from a DSO whose own namespace is default/ndk/system/chipsetsdk/... .
+# open_site_scan (open-site-scan-runtime-bridge.txt): every runtime/bridge fixed-path load site is "ns=caller-default"
+# (a plain dlopen in the caller's own default resolution), i.e. they do not themselves create namespaces; so (B) would
+# need a NEW privileged open site in a DSO already in a permitted ns. (A) needs neither and changes no frozen file.
