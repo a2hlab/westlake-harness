@@ -1,0 +1,27 @@
+{
+  "task": "Decide where the Java side gets the surface for NativeNWebBackend.create() in route-a WebView. Background: cc-t3 window14 found the bridge's Activity-window surface (bare window node) is not RS-composited (NWeb painting there doesn't reach screen); WebView isn't a SurfaceView. Static-investigate the bridge/runtime SurfaceView->RSSurfaceNode path + oh_anw_get_oh resolution; choose A (SurfaceView in the WebView) or B (native child node, mode 32) with reasons; A -> Java draft + unit test, B -> sync JNI interface.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "decision": "A — the provider hosts an android.view.SurfaceView inside the WebView (a ViewGroup/AbsoluteLayout) and feeds NWeb that holder's Surface. B (native mode-32 child RSSurfaceNode + Java geometry sync) is the documented fallback.",
+  "findings": {
+    "bare_window_node_not_composited": "oh_window_manager_client.cpp:1455-1498 getOhNativeWindow PRESENT-FIX: RS does not composite a bare APP_WINDOW_NODE's own GetSurface() consumer (hwui decor reached the queue but was never acquired; display stayed on launcher) = window14's finding",
+    "self_drawing_child_is_composited": "a self-drawing child RSSurfaceNode (isWindow=false) AddChild'd under the window node IS GPU-composited (mirrors ArkUI XComponent + the SurfaceView path)",
+    "surfaceview_path_active": "android_graphics_compat_shim.cpp:449 [STAGE2-SURFACEVIEW] -> oh_rs_get_child_surface_window (oh_window_manager_client.cpp:1221): RSSurfaceNode::Create('AdapterSurfaceView', isWindow=false) + SetHardwareEnabled(XCOM) + parent->AddChild + child->GetSurface(); AOSP SurfaceView reaches it via BLASTBufferQueue.nativeUpdate (BBQ_nativeUpdate (JJJJI)V) / SurfaceControl",
+    "oh_anw_get_oh_resolution": "holder.getSurface() -> ANativeWindow_fromSurface -> AdapterAnw(ANW1) -> oh_anw_get_oh -> the AdapterSurfaceView child node's producer (self-drawing, composited), NOT the bare window node",
+    "flutter_corroboration": "U14 localsend (FlutterSurfaceView) hilog: AdapterSurfaceView x25, AdapterActivityContent x26, SurfaceView x6; U14 Flutter EGL fix got EGLSurface=non-zero on that path -> a SurfaceView holder's Surface is a working composited producer",
+    "webview_is_viewgroup": "android.webkit.WebView extends AbsoluteLayout (a ViewGroup) -> can host a child SurfaceView"
+  },
+  "why_A_not_B": "A reuses the already-shipping composited-child path (AdapterSurfaceView = same mechanism as AdapterActivityContent that lights every View app) and the View framework syncs position/size/visibility/z-order for free; Java-only, no native dep; the native backend's SurfaceFromJava already consumes holder.getSurface() unchanged. B duplicates that node and puts geometry/visibility/z-order sync on us by hand (what SurfaceView does automatically). A primary, B fallback.",
+  "risks_mitigations": {
+    "egl_timing": "M3-cluster GLSurfaceView IAE came from touching the surface before surfaceCreated; NWebSurfaceLifecycle creates NWeb only in surfaceCreated (unit-tested)",
+    "zorder": "SurfaceView punches a hole behind the window by default; route-a WebView paints nothing so the SurfaceView IS the content; setZOrderMediaOverlay(true)"
+  },
+  "deliverables": {
+    "lifecycle_core": "src/org/westlake/webview/NWebSurfaceLifecycle.java (android-free, unit-tested: defer-create-until-surface, deferred url/settings, resize, destroy/recreate)",
+    "android_glue": "src/org/westlake/webview/OhNWebSurfaceHost.java (framework-classpath: SurfaceView in the WebView ViewGroup + SurfaceHolder.Callback -> lifecycle; wiring = OhNWebProvider.attach(webView))",
+    "unit_test": "test/NWebSurfaceLifecycleTest.java — offline, recording NWebBackend mock, 12/12 PASS (evidence/test-run.log)",
+    "B_fallback_jni": "nativeCreateChildSurface / nativeSetChildGeometry / nativeSetChildVisible / nativeSetChildZOrder / nativeDestroyChildSurface (handed to cc-t3's mode 32 if A loses on board)"
+  },
+  "this_rounds_rule": "In route-a, a surface reaches the screen only if it is a self-drawing child RSSurfaceNode AddChild'd under the window node (bare window node is not composited -- window14). A SurfaceView already gets exactly that via the runtime's [STAGE2-SURFACEVIEW] path, and WebView is a ViewGroup, so hosting a SurfaceView and using its holder's Surface reuses the proven path + free View-framework geometry/visibility/z-order sync -- prefer it over a hand-synced native child node.",
+  "boundaries": "Offline static + offline unit test; no board/deploy/push. Runtime SurfaceView plumbing is read-only cc-t3/framework territory. On-board confirmation rides cc-t3's validation window; SurfaceFromJava + this host adjust together if the surface conclusion changes.",
+  "landing_paths": "benchmark/2026-10-03-m2-route-a-surface/landing-paths.txt"
+}

@@ -1,0 +1,37 @@
+M2 route-a surface source — static findings (bms/src/adapter, read-only), 2026-10-03 cc-wiki
+============================================================================================
+
+RULE (our own runtime, oh_window_manager_client.cpp:1455-1498 getOhNativeWindow PRESENT-FIX comment):
+  "RS does NOT composite a bare APP_WINDOW_NODE's own GetSurface() consumer buffer in unirender -- main windows are
+   expected to draw via RSCanvasRenderNode children. hwui's single-buffer Activity decor reached the producer queue
+   (DoFlushBufferLocked dirtyList=1) but was never acquired/composited ... display stayed on launcher. A SELF-DRAWING
+   child node (isWindow=false) AddChild'd under the WMS-registered window node IS GPU-composited into the parent window
+   layer (mirrors ArkUI XComponent rosen_render_xcomponent.cpp:85 and the SurfaceView path
+   oh_rs_get_child_surface_window)."
+=> This IS cc-t3 window14's finding: the bridge's Activity-window surface (bare window node / AdapterActivityContent-as-
+   window) is not composited; NWeb painting there does not reach the screen.
+
+THE SURFACEVIEW PATH (already active, proven):
+  oh_window_manager_client.cpp:1221 oh_rs_get_child_surface_window(sessionId, childKey, w, h):
+    cfg.SurfaceNodeName = "AdapterSurfaceView"; RSSurfaceNode::Create(cfg, isWindow=false)   (self-drawing)
+    child->SetBounds/SetFrame(0,0,w,h); SetVisible(true); SetIsNotifyUIBufferAvailable(true);
+    child->SetHardwareEnabled(true, SelfDrawingNodeType::XCOM);      // HWC layer, like ArkUI XComponent / libtuanjie
+    parent->AddChild(child, -1); FlushImplicitTransaction();         // -> RS composites it into the window layer
+    producer = child->GetSurface(); producer->SetQueueSize(3);        // the surface handed back (wrapped AdapterAnw)
+  Driven by: android_graphics_compat_shim.cpp:449 [STAGE2-SURFACEVIEW] "resolve a dedicated, RS-composited child
+    surface for a SurfaceView (so its EGL producer has a live consumer instead of colliding with the main window's
+    APP_WINDOW_NODE producer)"; AOSP android.view.SurfaceView -> BLASTBufferQueue.nativeUpdate (BBQ_nativeUpdate,
+    (JJJJI)V for THIS framework.jar) / SurfaceControl -> the shim -> oh_rs_get_child_surface_window.
+
+oh_anw_get_oh RESOLUTION (oh_anativewindow_shim.cpp): the Java Surface's ANativeWindow is an AdapterAnw (magic 'ANW1');
+  ANativeWindow_fromSurface returns it; oh_anw_get_oh unwraps it to the bare OHNativeWindow of whatever producer the
+  surface was built from. For a SurfaceView holder's Surface, that producer is the AdapterSurfaceView child node's
+  GetSurface() (the self-drawing, RS-composited node) -- NOT the bare window node.
+
+FLUTTER CORROBORATION (U14 localsend, FlutterSurfaceView, hilog):
+  AdapterSurfaceView x25, AdapterActivityContent x26, SurfaceView x6, createSession androidType=1 (main window).
+  FlutterSurfaceView (an android.view.SurfaceView subclass) routes through the SurfaceView path to an AdapterSurfaceView
+  child node, and U14's Flutter EGL fix got EGLSurface=<non-zero> on it (benchmark/2026-10-03-u14-predicted-vs-actual:
+  localsend moved past eglCreateWindowSurface) -- i.e. a SurfaceView holder's Surface is a working, composited producer.
+
+android.webkit.WebView is a ViewGroup (extends AbsoluteLayout), so it can host a child SurfaceView directly.
