@@ -175,3 +175,17 @@ class RefListing(unittest.TestCase):
             table = ps.load_ref_board(f, '5ea')
             self.assertEqual(table['fd-noice'], ('lit', '/a/b/fd-noice/t20.jpeg'))
             self.assertEqual(table['fd-gone'], ('dead', None))
+
+    def test_rehomed_key_resolves_from_its_reference_board(self):
+        """U14 window 3: 61b's keys ran on 5ea/5cd; their reference rows are only in the 61b listing."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / 'u14-ref-5ea.txt').write_text('row 1 col 1  fd-a  verdict=lit  corpus=original  /r/5ea/fd-a.jpeg\n')
+            (Path(tmp) / 'u14-ref-61b.txt').write_text('row 1 col 1  bmicalc  verdict=lit  corpus=cv2  /r/61b/bmi.jpeg\n')
+            (Path(tmp) / 'u14-ref-5cd.txt').write_text('row 1 col 1  twice  verdict=lit  corpus=cv2  /r/5cd/t.jpeg\n')
+            (Path(tmp) / 'u14-ref-x9.txt').write_text('row 1 col 1  twice  verdict=lit  corpus=cv2  /r/x9/t.jpeg\n')
+            cache = {}
+            self.assertEqual(ps.cross_board_ref(tmp, '5ea', 'bmicalc', cache), ('61b', ('lit', '/r/61b/bmi.jpeg')))
+            self.assertIsNone(ps.cross_board_ref(tmp, '5ea', 'absent', cache))
+            self.assertIsNone(ps.cross_board_ref(tmp, '5ea', 'twice', cache))  # two other boards: ambiguous
+            self.assertIsNone(ps.cross_board_ref(Path(tmp) / 'u14-ref-5ea.txt', '5ea', 'bmicalc', cache))  # a file, not a dir

@@ -248,6 +248,23 @@ def load_ref_board(reference, board):
     return table
 
 
+def cross_board_ref(reference, board, key, cache):
+    """(other_board, (verdict, t20)) when exactly one other board's listing in the reference dir has `key`."""
+    ref = Path(reference)
+    if not ref.is_dir():
+        return None
+    hits = []
+    for f in sorted(ref.glob('*-ref-*.txt')):
+        other = f.stem.rsplit('-ref-', 1)[1]
+        if other == board:
+            continue
+        if other not in cache:
+            cache[other] = load_ref_board(reference, other)
+        if key in cache[other]:
+            hits.append((other, cache[other][key]))
+    return hits[0] if len(hits) == 1 else None
+
+
 def load_signoff(signoff):
     path = Path(signoff)
     if not path.exists():
@@ -280,12 +297,19 @@ def build_rows(run, reference, signoff, threshold, flaky_json=None):
         if board not in ref_cache:
             ref_cache[board] = load_ref_board(reference, board)
         verdict, u9_t20 = ref_cache[board].get(p['key'], (None, None))
+        ref_board = board if verdict is not None else None
+        if verdict is None:
+            # A key re-homed to another board (2026-10-03 U14 window 3: 61b off USB, its keys ran on 5ea/5cd) is
+            # listed only under its reference board; take it from there when exactly one other board lists it.
+            other = cross_board_ref(reference, board, p['key'], ref_cache)
+            if other:
+                ref_board, (verdict, u9_t20) = other
         if verdict is None:
             verdict = sign_verd.get(p['key'])
         if u9_t20 is None:
             u9_t20 = u9_t20_from_runs(sign_runs, board, p['key'])
         scr = prescreen(p['window_t20'], u9_t20, threshold=threshold)
-        row = {'idx': i, 'board': board, 'shard': p['shard'], 'key': p['key'],
+        row = {'idx': i, 'board': board, 'shard': p['shard'], 'key': p['key'], 'ref_board': ref_board,
                'u9_verdict': verdict, 'u9_t20': u9_t20, 'window_t20': p['window_t20'],
                'window_status': p['status'], 'window_phase': p['phase'],
                'auto': scr['auto'], 'similarity': scr['similarity'], 'window_std': scr['window_std'],
