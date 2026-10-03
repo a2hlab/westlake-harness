@@ -20,7 +20,7 @@ WS=${WORKSPACES:-$HOME/orca/workspaces}
 BOARD=$WS/westlake-harness/.octos/boards/app-lighting.md
 NOTE=$WS/westlake-inputs/tools/board_note.sh
 APK=$HERE/build/a0probe.apk
-APK_SHA=d4d9556ff71f6bb8524fd12a1bcac6bb9a526980969026ff7620748c49343551
+APK_SHA=8519af78ef7c8abf8d3cc1ff4ba3bc5c4eb12fd7f3a62c37a7d29c454f1425a3   # v2 (shim b15da15f); v1 d4d9556f ran windows 1-2
 PKG=org.westlake.a0probe
 LANE=${A0_LANE:-cc-t3}
 RECIPE=$HERE/../2026-09-28-bms-route-deploy/batch/prepare_sandbox.sh   # bms_batch's accepted sandbox recipe, verbatim
@@ -60,6 +60,9 @@ finish() {
   rc=$?; trap - EXIT INT TERM HUP
   ok=1; rollback || ok=0
   python3 "$FP" "$SERIAL" "$OUT" runtime-fingerprint-before-unlock.txt | tee "$OUT/fingerprint-before-unlock.txt"
+  if [ -n "${A0_EXPECT_FP:-}" ] && ! grep -q "RUNTIME fingerprint=$A0_EXPECT_FP " "$OUT/fingerprint-before-unlock.txt"; then
+    echo "[a0] before-unlock fingerprint is not $A0_EXPECT_FP"; ok=0
+  fi
   if cmp -s "$OUT/runtime-fingerprint-after-lock.txt" "$OUT/runtime-fingerprint-before-unlock.txt"; then
     echo "[a0] runtime fingerprint unchanged across the window"
   else
@@ -70,6 +73,10 @@ finish() {
   exit $rc
 }
 trap finish EXIT INT TERM HUP
+if [ -n "${A0_EXPECT_FP:-}" ]; then   # outer: the unified state the window must start from (e.g. U13 821de739cf81)
+  grep -q "RUNTIME fingerprint=$A0_EXPECT_FP " "$OUT/fingerprint-after-lock.txt" || { echo "[a0] after-lock fingerprint is not $A0_EXPECT_FP: stop before install"; exit 7; }
+  echo "[a0] after-lock fingerprint = expected $A0_EXPECT_FP"
+fi
 
 echo "== read-only preflight"
 H "param get const.ohos.fullname; uptime; cat /proc/sys/kernel/random/boot_id"

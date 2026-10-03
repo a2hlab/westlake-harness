@@ -165,6 +165,46 @@ RUNBOOK's "hook31 沙箱初始化失败" shape.
    (`leftover_dirs=0`).
 3. Final check: the bundle, process and dir counts all use `|| true`, with no double output.
 
+## Window 2 (5cd, 2026-10-03 09:39:56–09:42:48, outer 09:40, U13 unified state): F1, the shim could not open the probe (`window2-5cd-20261003T093956/`)
+
+**Fingerprint.** Verbatim, after LOCK = before UNLOCK = `RUNTIME fingerprint=821de739cf81 files=124`, the expected U13
+unified state (`A0_EXPECT_FP` gate, `evidence/run_a0-expected-fingerprint.diff`). The two `runtime-fingerprint-*.txt`
+are byte-equal.
+
+**prepare_sandbox.** rc=0. `/data/app/el1/100/database/org.westlake.a0probe` was created `drwxrwx--- 20011156
+u:object_r:appdat:s0`, so the window-1 F0 is fixed.
+
+**Result: F1** (`shim-lines.txt`).
+- The process spawned, `MainActivity` ran, `liba0shim.so` loaded, and `dlns_get("default")=0`.
+- **`dlopen_ns(default, <absolute path>/liba0probe.so)` failed for all three candidate directories.** The shim itself
+  was loaded from `/data/app/el1/bundle/public/org.westlake.a0probe/android/lib/arm64-v8a/`, so the path is visible to
+  the process: the default namespace refuses an absolute path outside its own search / permitted paths.
+- The logged reason (`Symbol not found: JNI_OnLoad`) is a **stale** `dlerror` from ART's earlier lookup in the shim.
+  v1 never read `dlerror` per attempt.
+- Mode 1 re-foregrounded the same process (`aa start` on a live process does not re-run `onCreate`), so it added
+  nothing.
+
+**Rollback (script, no manual step this time).** `bundle_entries=0 live_processes=0 leftover_dirs=0 param=0`,
+fingerprint unchanged, then `UNLOCKED after 172 s`.
+
+**Shim v2** (`src/native/a0shim.c`; the probe is untouched and rebuilt byte-identical `355ac614`):
+1. **Attempt 1** copies OH's own ArkWeb engine loader (`arkweb_utils.cpp` `ArkWebBridgeHelperLoadLibFile`):
+   `dlns_init` + `dlns_create` a private namespace `wl_a0probe` on the app lib dir, `dlns_inherit` from `default` with
+   `allow_all_shared_libs`, then `dlopen_ns(ns, "liba0probe.so")`. The probe's NEEDED platformsdk libraries resolve
+   through the inherited `default`.
+2. **Attempt 2** is the window-2 path, kept as a fallback.
+3. `dlerror` is now recorded per attempt, with the `dlns_create` / `dlns_inherit` return codes.
+
+**Builds.**
+- `liba0shim.so` v2 = `b15da15f5c8d1b3ae7cb1dc566b80707e782262c01438a9893ade94755796bbe`, two hw248 builds
+  byte-identical.
+- **`a0probe.apk` v2 = `8519af78ef7c8abf8d3cc1ff4ba3bc5c4eb12fd7f3a62c37a7d29c454f1425a3`**, two builds byte-identical,
+  pinned in `run_a0.sh`.
+- Generation: `$WORKSPACES/westlake-inputs/generations/m2-a0-probe-v2/`.
+
+**Next: window 3, same script.** If attempt 1 also fails, its own `dlerror` names the missing piece. The F1 fallback
+(probe code inside the bridge's namespace) stays as written above.
+
 ## Criteria
 
 **Pass:** `[A0] RESULT PASS`, i.e. at least one frame (callback or surface) whose centre pixel is the JS colour

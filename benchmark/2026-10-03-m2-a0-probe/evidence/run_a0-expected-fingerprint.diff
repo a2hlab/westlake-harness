@@ -1,0 +1,23 @@
+--- /private/tmp/claude-501/-Users-zhaoyue-orca-workspaces-westlake-harness-t3/95864860-7d4f-4643-8cc6-d71a5af75300/scratchpad/run_a0.pre-expect.sh	2026-10-03 09:39:48
++++ board/run_a0.sh	2026-10-03 09:39:48
+@@ -60,6 +60,9 @@
+   rc=$?; trap - EXIT INT TERM HUP
+   ok=1; rollback || ok=0
+   python3 "$FP" "$SERIAL" "$OUT" runtime-fingerprint-before-unlock.txt | tee "$OUT/fingerprint-before-unlock.txt"
++  if [ -n "${A0_EXPECT_FP:-}" ] && ! grep -q "RUNTIME fingerprint=$A0_EXPECT_FP " "$OUT/fingerprint-before-unlock.txt"; then
++    echo "[a0] before-unlock fingerprint is not $A0_EXPECT_FP"; ok=0
++  fi
+   if cmp -s "$OUT/runtime-fingerprint-after-lock.txt" "$OUT/runtime-fingerprint-before-unlock.txt"; then
+     echo "[a0] runtime fingerprint unchanged across the window"
+   else
+@@ -70,6 +73,10 @@
+   exit $rc
+ }
+ trap finish EXIT INT TERM HUP
++if [ -n "${A0_EXPECT_FP:-}" ]; then   # outer: the unified state the window must start from (e.g. U13 821de739cf81)
++  grep -q "RUNTIME fingerprint=$A0_EXPECT_FP " "$OUT/fingerprint-after-lock.txt" || { echo "[a0] after-lock fingerprint is not $A0_EXPECT_FP: stop before install"; exit 7; }
++  echo "[a0] after-lock fingerprint = expected $A0_EXPECT_FP"
++fi
+ 
+ echo "== read-only preflight"
+ H "param get const.ohos.fullname; uptime; cat /proc/sys/kernel/random/boot_id"
