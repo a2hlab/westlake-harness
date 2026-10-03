@@ -1,0 +1,72 @@
+{
+  "generation": "u17-fdplus-swlockcanvas-a2",
+  "built": "2026-10-03",
+  "lane": "cc-wiki #90",
+  "status": "candidate-not-deployed",
+  "artifact": {
+    "name": "liboh_android_runtime.so",
+    "sha256": "4d968008a90973a5a028a1143b7b10217abe716363a3b30643bfc124a874dee3",
+    "size_bytes": 3199024,
+    "host": "hw248",
+    "paths": [
+      "/home/alvin/cc-wiki-u17-fdplus/t-a/out/liboh_android_runtime.so",
+      "/home/alvin/cc-wiki-u17-fdplus/t-b/out/liboh_android_runtime.so",
+      "/home/alvin/cc-wiki-u17-fdplus/liboh_android_runtime.A2.so"
+    ],
+    "two_pass_byte_identical": true,
+    "note": "big binary kept on hw248 (repo is public, *.so gitignored); reproduce from the recipe below"
+  },
+  "base": {
+    "name": "liboh_android_runtime.so",
+    "sha256_16": "1d42dbfb473f87e8",
+    "source": "cc-t3 benchmark/2026-10-03-u16-t4-m1-runtime (t4-b/out), U16 runtime",
+    "shim_object": {
+      "name": "shim_split.o",
+      "sha256": "003a4edbcbbb8cc9a2f6d4da9c788bd1e1e040953042bd4c1cbd20664a0f115f",
+      "reproduced_byte_identical": true,
+      "built_from": "n2-native/src/android_graphics_compat_shim.cpp + m1-split split.patch, cxxc (frozen OH clang-15, gnu++17 -fno-rtti -O2)"
+    }
+  },
+  "change": {
+    "decision": "A2 (pure-Java via JNI upcalls + inner libsurface) — chosen by evidence over A1 (native graphics::Canvas) and OHCanvasRenderer; both of the latter add a new NEEDED (libhwui / libnative_drawing) and fail gate 3",
+    "functions": ["S_nativeLockCanvas", "S_nativeUnlockCanvasAndPost"],
+    "file": "android_graphics_compat_shim.cpp (the only recompiled TU; the shim object in the 112-object relink)",
+    "source_snapshot": "src/a2-lockcanvas.inc.cpp",
+    "applier": "recipe/apply_a2.py (anchored splice, asserts exactly-one match)"
+  },
+  "recipe": {
+    "build": "recipe/build_a2_hw248.sh  (RUNS ON hw248; reproduces baseline byte-identical -> applies A2 -> relink x2)",
+    "toolchain": {
+      "clang": "cxx-sdk15 wrapper -> product-tls-generation/frozen/toolchain/bin/clang++ (x86-64 Linux; frozen OH clang-15)",
+      "nm_readelf_objdump": "product-tls-generation/frozen/toolchain/bin/llvm-{nm,readelf,objdump}"
+    },
+    "build_inputs_required_on_hw248": [
+      "OH musl sysroot: bms/src/.work/b6-latest/oh/out/wukong100/obj/third_party/musl (56M) — NOT resident on hw248 before this round; rsync'd from Mac",
+      "ADAPTER_ROOT: bms/src/.work/b87-native/adapter (201M) — NOT resident on hw248 before this round; rsync'd from Mac",
+      "n2-native shim source + m1-split patch (small) — rsync'd from Mac",
+      "cc-t3 t4 tree /home/alvin/cc-t3-u15rt-m3 (link-argv.txt + 112 objects + m1_copy.o + m3-a/EGLImpl.o) — already resident"
+    ]
+  },
+  "gates": {
+    "two_pass_byte_identical": "PASS (4d968008a90973a5 x2)",
+    "baseline_a_prime_lock": "PASS (shim_split.o repro == 003a4edb)",
+    "only_two_functions_change": "PASS via abi_diff --calls (2 functions differ) + byte-identical baseline + exports delta 0 (equiv.py not runnable on Linux host — macOS/objdump format bug; see gate-equiv.txt)",
+    "abi_diff_calls_removed_empty": "PASS (both functions CALLS+ only; removed 0; 0 consumer breaks)",
+    "exports_delta_zero": "PASS (788 == 788)",
+    "needed_identical": "PASS (23 == 23; no libnative_window / libhwui / libnative_drawing)",
+    "und_delta": "+3 imports from already-NEEDED libsurface.z.so: NativeWindowRequestBuffer, NativeWindowFlushBuffer, GetBufferHandleFromNative",
+    "open_site_scan_no_new_open": "PASS (197 == 197 open sites, PC-normalized identical; dlopen/dlsym import set identical)"
+  },
+  "predicted_move": {
+    "first_fatal_key": "fd-plus",
+    "from": "IllegalStateException: Surface was not locked @ Surface.unlockSwCanvasAndPost (Surface.java:507) <- SurfaceView$1.unlockCanvasAndPost",
+    "upper_bound_static": 25,
+    "upper_bound_note": "25 corpus apks reference software SurfaceHolder.lockCanvas (loose; string presence != a gating software SurfaceView draw). 14 lockHardwareCanvas-only apks use the HW RenderNode path and are unaffected. Run-confirmed beneficiary: fd-plus only (AGENTS: priority by actual, not upper bound)."
+  },
+  "board_verify_risks": [
+    "no fence wait on RequestBuffer release fence (closed) -> possible tearing, never a crash",
+    "channel order: Java ARGB_8888 (skia kN32 == RGBA_8888 LE) assumed to match OH GRAPHIC_PIXEL_FMT_RGBA_8888; if the board buffer is BGRA, colours swap (one-line fix)",
+    "dirtyRect ignored: whole-buffer lock/flush (rectNumber=0)"
+  ],
+  "boundaries": "offline build on hw248 compile host; no board, no deploy, no push. cc-t3 t4-a/t4-b untouched (fresh out dir /home/alvin/cc-wiki-u17-fdplus). Runtime-correctness (does the SurfaceView actually draw on screen) is a board question for cc-t3; these gates are static/ABI only."
+}

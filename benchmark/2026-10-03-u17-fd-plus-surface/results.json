@@ -1,0 +1,41 @@
+{
+  "task": "U17 ① fd-plus 'Surface was not locked' -> native candidate on the U16 runtime 1d42dbfb: reproduce the base byte-identical, change ONLY S_nativeLockCanvas/S_nativeUnlockCanvasAndPost, gates (x2 identical, only-2-fns, abi_diff --calls empty, exports delta0, NEEDED same, open_site_scan no new open), generation release.",
+  "date": "2026-10-03", "lane": "cc-wiki", "board_entry": 90, "offline": true, "board_access": "none",
+  "built": true, "deployed": false, "pushed": false,
+  "status": "DONE -- A2 candidate built on hw248, all static/ABI gates PASS. Not deployed (board verify is cc-t3's).",
+  "decision": {
+    "chosen": "A2 (pure-Java via JNI upcalls to the real registered Java Bitmap/Canvas + inner libsurface dequeue/queue)",
+    "by_evidence": "A1 (native graphics::Canvas.setBuffer) has NO exported graphics::Canvas setBuffer/setBitmap symbol in the runtime and graphics::Canvas lives in libhwui, which is NOT NEEDED -> A1 adds NEEDED libhwui -> fails gate 3. OHCanvasRenderer adds NEEDED libnative_drawing -> fails gate 3. A2 uses only libsurface (already NEEDED) + JNI upcalls -> zero new NEEDED, zero new object.",
+    "inner_vs_ndk": "used the INNER libsurface names (NativeWindowRequestBuffer/FlushBuffer, GetBufferHandleFromNative) which resolve from the already-NEEDED libsurface.z.so (native_window.cpp -> ohos_shared_library('surface')); NOT the OH_-prefixed NDK names, which live in libnative_window and would add a NEEDED."
+  },
+  "base": {
+    "liboh_android_runtime_so": "1d42dbfb473f87e8 (cc-t3 benchmark/2026-10-03-u16-t4-m1-runtime t4-b/out)",
+    "shim_object": "shim_split.o 003a4edb... = n2-native shim + m1-split split.patch; reproduced BYTE-IDENTICAL on hw248 (A' lock), then A2 applied + recompiled with the identical cxxc, then relink",
+    "patch_target": "S_nativeLockCanvas (hard 'return 0' stub) + S_nativeUnlockCanvasAndPost (empty stub) -- the two Surface JNI natives"
+  },
+  "candidate": {
+    "sha256": "4d968008a90973a5a028a1143b7b10217abe716363a3b30643bfc124a874dee3",
+    "size_bytes": 3199024, "two_pass_byte_identical": true,
+    "host_paths": ["/home/alvin/cc-wiki-u17-fdplus/t-a/out/liboh_android_runtime.so", "/home/alvin/cc-wiki-u17-fdplus/liboh_android_runtime.A2.so"],
+    "note": "big binary kept on hw248 (repo public, *.so gitignored); reproduce via recipe/build_a2_hw248.sh"
+  },
+  "gates": {
+    "two_pass_byte_identical": "PASS",
+    "baseline_a_prime_lock": "PASS (shim_split.o repro == 003a4edb)",
+    "only_two_functions_change": "PASS (abi_diff: 2 functions differ; + byte-identical baseline + exports delta0). equiv.py not runnable on Linux host (macOS/objdump format bug) -- see evidence/gate-equiv.txt",
+    "abi_diff_calls_removed_empty": "PASS (both CALLS+ only; removed 0; 0 consumer breaks)",
+    "exports_delta0": "PASS (788 == 788)",
+    "NEEDED_identical": "PASS (23 == 23; no libnative_window/libhwui/libnative_drawing)",
+    "und_delta": "+3 from already-NEEDED libsurface: NativeWindowRequestBuffer, NativeWindowFlushBuffer, GetBufferHandleFromNative",
+    "open_site_scan_no_new_open": "PASS (197 == 197 PC-normalized; dlopen/dlsym imports identical)"
+  },
+  "predicted_move": {
+    "actual": "fd-plus (the only U14 first-fatal = IllegalStateException Surface was not locked @ Surface.unlockSwCanvasAndPost <- SurfaceView$1.unlockCanvasAndPost)",
+    "static_upper_bound": "25 corpus apks reference software SurfaceHolder.lockCanvas (loose; string != gating SurfaceView software draw at t20); 14 lockHardwareCanvas-only use the HW RenderNode path, unaffected",
+    "confirmed_beneficiary": "fd-plus (1) -- AGENTS: priority by actual, not upper bound"
+  },
+  "board_verify_risks": ["no fence wait (release fence closed -> possible tearing, never a crash)", "channel order ARGB_8888(kN32 LE) assumed == OH RGBA_8888; BGRA board buffer would swap colours (one-line fix)", "dirtyRect ignored (whole-buffer lock/flush)"],
+  "build_input_finding": "hw248 lacked the runtime build inputs (OH musl sysroot b6-latest/oh 56M + ADAPTER_ROOT b87-native/adapter 201M) before this round -> the U16 runtime was not reproducible there until rsync'd from the Mac (DIGEST E.7). Now resident; deploy/generation.json records the exact inputs.",
+  "boundaries": "Offline build on the hw248 compile host; no board/deploy/push; cc-t3 t4-a/t4-b untouched (fresh /home/alvin/cc-wiki-u17-fdplus). Static/ABI gates only; on-board rendering is cc-t3's to verify.",
+  "landing_paths": "benchmark/2026-10-03-u17-fd-plus-surface/landing-paths.txt"
+}

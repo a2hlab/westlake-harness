@@ -1,0 +1,30 @@
+U17 fd-plus Surface fix — base, link-set, and NEEDED facts (hw248 cc-t3-u15rt-m3 mirror, read-only), 2026-10-03
+==============================================================================================================
+
+BASE (the U16 runtime to patch, per dispatch):
+  liboh_android_runtime.so = 1d42dbfb473f87e8...  (cc-t3 benchmark/2026-10-03-u16-t4-m1-runtime, t4-b/out; built x2
+  byte-identical by cc-t3). It is a RELINK of 112 argv objects (link-argv.txt) with the shim object ->
+  shim_split.o (003a4edb) + m1_copy.o appended + EGLImpl.o -> m3-a; build_t4_hw248.sh is the locked relink command.
+
+THE FIX TARGET (the two stub functions, in android_graphics_compat_shim.o = the shim_split.o argv item):
+  S_nativeLockCanvas (android_graphics_compat_shim.cpp:219)  -> hard `return 0;` stub
+  S_nativeUnlockCanvasAndPost                                -> empty stub
+  => AOSP Surface.lockCanvas leaves mLockedObject=0 -> unlockSwCanvasAndPost throws "Surface was not locked" (fd-plus).
+
+STATIC CHECK the dispatch asked for -- is OHCanvasRenderer in the same .so?  NO.
+  * oh_canvas_renderer.o is NOT in link-argv.txt (the 112 objects); its header comment says its only consumer was the
+    DEPRECATED android_view_surface_stubs.cpp.
+  * OHCanvasRenderer (oh_canvas_renderer.h) uses the OH_Drawing_* NDK API (libnative_drawing.so) + OHGraphicBufferProducer.
+  * The runtime's 23 NEEDED do NOT include libnative_drawing (nor any *drawing* lib):
+      libEGL libGLESv2 libGLESv3 libskia_canvaskit.z.so libandroidfw libbase libutils libcutils libziparchive
+      libicuuc liblog libbionic_compat libhitrace_ndk.z libbegetutil.z libsurface.z.so libhilog liboh_adapter_bridge
+      libnativehelper libwestlake_thread_guard_registry libnativeloader libshared_libz.z libc++ libc
+  => Wiring S_nativeLockCanvas to OHCanvasRenderer would ADD oh_canvas_renderer.o (+ its OHGraphicBufferProducer TU)
+     AND a NEW NEEDED libnative_drawing.so. That VIOLATES gate (3): "NEEDED same, only these 2 functions change".
+
+GATE-COMPLIANT ALTERNATIVE (libs ALREADY NEEDED):
+  The runtime already NEEDs libskia_canvaskit.z.so (skia) and libsurface.z.so. AOSP's own nativeLockCanvas
+  (frameworks/base/core/jni/android_view_Surface.cpp) implements lockCanvas with skia: dequeue a buffer from the
+  ANativeWindow, wrap its pixels in an SkBitmap, set the Java Canvas's native SkCanvas over it, return a non-zero
+  locked handle; unlock = unlock+post the buffer. Doing the same in the shim uses ONLY already-NEEDED libs
+  (libskia_canvaskit + libsurface) -> no new NEEDED, no new object -> gate (3) holds.

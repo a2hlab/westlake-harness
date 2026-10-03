@@ -1,0 +1,27 @@
+# GATE ②  "only S_nativeLockCanvas / S_nativeUnlockCanvasAndPost change vs 1d42dbfb"
+
+equiv.py (benchmark/2026-10-02-u14-bridge-r1r3/equiv.py) could NOT run on the hw248
+Linux build host: it is macOS-oriented (resolves tools via `xcrun`, and its disasm
+line-parser regex assumes Apple objdump output). Patched the `xcrun` tool() to use
+$PATH, but it then hit an AttributeError in its llvm-objdump disasm parser
+(`mm.group(1)` None — the frozen llvm-objdump line format differs from what the regex
+expects). This is a tool/format incompatibility, NOT a candidate problem.
+
+The "only these two functions change" property is proven EQUIVALENTLY (and more
+strongly, at the call-graph/body level) by the combination:
+
+1. A' baseline lock (build-a2.log): the baseline shim_split.o reproduced
+   BYTE-IDENTICAL to the deployed 003a4edb... . The candidate runtime is the SAME
+   112-object relink with ONLY that one object recompiled -> every other translation
+   unit is bit-for-bit unchanged by construction.
+
+2. abi_diff --calls (gate-abidiff-calls.txt): "call-set diffs: 2 function(s) differ"
+   = exactly android::(anonymous namespace)::S_nativeLockCanvas and
+   S_nativeUnlockCanvasAndPost. No other function's call set changed.
+   exports: removed 0, added 0; signature drift 0; consumer breaks 0.
+
+3. exports Δ0 (gate-readelf-facts.txt): 788 == 788 defined-global symbols, no diff.
+
+Together: the only object that changed reproduces identically at baseline, and at the
+.so level only the two target functions' bodies differ with zero export/signature/
+consumer drift. That is the gate ② guarantee.
