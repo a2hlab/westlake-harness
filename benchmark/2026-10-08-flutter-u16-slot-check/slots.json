@@ -1,0 +1,56 @@
+{
+  "eb90_artifact": {
+    "sha256": "eb90a6409c9caaba058d2463cad9c193d344527051455d8aca8421e6b7011b4f",
+    "target": "/system/android/lib64/westlake_flutter/libandroid.so",
+    "base_b1c9": "b1c9f76e5b248c2c707b7a61f52503d379dd7564547bf461589ed23cdf903fe9",
+    "owner": "cc-t3",
+    "covers_gl_procs": ["glDepthRange", "glDepthRangef", "glClearDepth", "glClearDepthf"],
+    "coverage_note": "eb90 resolves ONLY the depth family (exports eglGetProcAddress + the only gl* name strings are these 4). b1c9->eb90 adds the double->float semantic stubs: glDepthRange->glDepthRangef, glClearDepth->glClearDepthf (NOT no-ops)."
+  },
+  "root_cause_class": "OH GLES driver exports the ES float depth variants (glDepthRangef/glClearDepthf) but NOT the desktop double variants (glDepthRange/glClearDepth). Impeller's ProcTable resolves BOTH via eglGetProcAddress; the double variants come back null; calling a null slot -> SIGSEGV in libflutter raster. eb90 provides the 4 depth procs.",
+  "keys": {
+    "localsend": {
+      "libflutter_build_id": "0d216f3f630e1105257f8a3f74e22c9b43c22a51",
+      "engine_size_kb": 11052,
+      "crash_pc": "+0x4b655c",
+      "proctable_slot_offset": "0xea0",
+      "slot_index": 468,
+      "slot_name": "glDepthRange",
+      "name_source": "outer-known (DIGEST) + call-site ldr [x9,#0xea0];blr x8",
+      "eb90_covers": true,
+      "predicted_move": "MOVE (eb90 resolves glDepthRange->glDepthRangef)"
+    },
+    "fd-fluffychat": {
+      "libflutter_build_id": "495e71106a82e63b2cc8fee291b7759b06561706",
+      "engine_size_kb": 11310,
+      "engine_ident": "Android r28c",
+      "crash_pc": "+0x4c367c",
+      "proctable_slot_offset": "0x8d0",
+      "slot_index": 282,
+      "slot_name": "UNCONFIRMED (static disasm in-budget could not name slot #282; ProcTable is a static global @0xb2d000, init store not a simple pattern)",
+      "depth_strings_present_in_engine": true,
+      "eb90_covers": "likely (same crash cluster + depth-double root cause) but NOT statically proven",
+      "predicted_move": "MOVE if #282 is a depth-double proc (glDepthRange/glClearDepth); else BLOCKED -> name the missing proc"
+    },
+    "fd-kitchenowl": {
+      "libflutter_build_id": "889a1df37c58955a78bb76391e165822b866bf48",
+      "engine_size_kb": 11310,
+      "engine_ident": "Android r28c",
+      "crash_pc": "+0x4c367c",
+      "proctable_slot_offset": "0x8d0",
+      "slot_index": 282,
+      "slot_name": "UNCONFIRMED (same engine as fd-fluffychat: identical size + crash offset)",
+      "eb90_covers": "likely, same as fd-fluffychat",
+      "predicted_move": "same as fd-fluffychat (shares the engine build class)"
+    }
+  },
+  "predicted_flutter_move_after_u16": {
+    "confirmed": 1,
+    "confirmed_keys": ["localsend"],
+    "likely_additional": 2,
+    "likely_keys": ["fd-fluffychat", "fd-kitchenowl"],
+    "range": "1 (confirmed) to 3 (if slot #282 is a depth-double proc)",
+    "gap_to_close": "statically name ProcTable slot #282 (offset 0x8d0) in the r28c engine (build 495e7110/889a1df3): disasm the 0xb2d000 ProcTable init store to +0x8d0, OR an on-board probe logging the null slot's eglGetProcAddress name. If it is glDepthRange or glClearDepth -> eb90 already covers it (+2). If it is a different null GL proc -> add that proc to the interposer.",
+    "next_wall_candidate": "unknown until the post-depth run; the next null GL proc the engine calls after the depth slot is resolved"
+  }
+}
