@@ -26,3 +26,18 @@ depth slot, so it is neither confirmed nor excluded as a depth-family proc.
 LD-level trace of the ProcTable init. Pure-static alternatives that would work but need more time: (a) trace the init
 descriptor mechanism (how the loop maps names→0xb2d000 offsets), or (b) recover the GLProc member order from the engine's
 own symbol/relocation metadata.
+
+## Zero-cost hilog route (2026-10-08) — also negative; naming SHELVED
+Checked whether the DEPLOYED U14 `westlake_flutter/libandroid.so = fff9be31` (which wraps EGL) logs its
+`eglGetProcAddress` resolutions. It does NOT: it only logs the EGL **hijack funcs** — `resolve_egl_hijack_funcs`,
+`eglCreateWindowSurface`, `eglSwapBuffers(WithDamageKHR)` — under tag `OH_EglHijack` (confirmed by its strings AND by the
+actual U14 hilogs). There is no per-GL-proc `eglGetProcAddress(name)->NULL` log.
+
+In fluffychat's and kitchenowl's U14 window-1 candidate hilogs, `OH_EglHijack` shows
+`eglCreateWindowSurface … -> EGLSurface=0x…` (surface creation **succeeds**); the SIGSEGV is downstream in libflutter
+raster on the null ProcTable slot, and **no proc name is logged for it**. So the hilog cannot name slot #282 either.
+
+**Decision (per outer): STOP.** All zero/low-cost static + log routes are exhausted. Flutter prediction stands at
+**confirmed 1 (localsend), upper bound 3** — fluffychat/kitchenowl (#282) neither confirmed nor excluded as depth.
+**Resolve by U16 Stage-A actual measurement**: deploy eb90 and re-run — if fluffychat/kitchenowl move, #282 was a
+depth-double eb90 covers; if they still crash, the fresh first-fatal names their next (non-depth) proc directly.
