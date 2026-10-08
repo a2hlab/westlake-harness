@@ -11,10 +11,14 @@ U14 window1, 61b, `movers-mcdonalds-1`. Reclassified in disappeared.md from "pro
   — i.e. during the JNI_OnLoad / static-init of an APK native lib that was loading.
 - The SIGILL handler that ran is `sa_sigaction=0x7f095d6a6c` = **libart.so** (route-a 74d1d6d4) — ART's crash handler, NOT
   an app feature-probe. The dozen per-tid "FREEZE_signo_4" MUSL-SIGCHAIN lines are the **crash-time thread freeze**.
-- **No faulting PC is available**: `faultlogs/` is empty because the route-A child's diagnostic fd was denied —
-  `12:31:31.523 [ROUTE-A] child diagnostic fd unavailable: errno=13 Permission denied`. So the cppcrash (with the PC) was
-  never written. **This blinds us to the exact instruction — a finding in itself (route-A children can't dump native
-  crashes).**
+- **No faulting PC / no cppcrash — CORRECTED attribution (2026-10-09).** Earlier I blamed the empty `faultlogs/` on the
+  `[ROUTE-A] child diagnostic fd unavailable: errno=13 Permission denied` line. **That is wrong.** The outer verified that
+  EACCES line appears in **386/386 U14 hilogs — including lit keys like helloworld — and firefox/localsend wrote a cppcrash
+  *despite* carrying that exact line.** So the diagnostic-fd EACCES is a universal, benign log artifact and is **NOT** why
+  mcdonalds has no cppcrash. The real reason is the **sigchain termination path for SIGILL** (see "Why no cppcrash" below):
+  the OH musl `signal_chain_handler` ends this SIGILL with `SIG_DFL` + **`rethrow`**, and that rethrow-to-default kills the
+  process **without passing through OH's `DfxSignalHandler`** — so no cppcrash (hence no PC) is produced. SIGSEGV
+  (firefox/localsend) instead reaches DFX and dumps. The missing PC is a consequence of the sigchain defect, not the fd.
 
 ## ② Static scan of the APK's signature native libs (build-id, APK originals) — the probe instructions
 | lib | MRS of privileged/ID regs (EL0-illegal) | crypto | LSE | RNG | sigaction imports |
@@ -41,19 +45,32 @@ No 61b `/proc/cpuinfo` Features string is in the existing evidence (faultlogs re
 **However the akamai hypothesis does NOT depend on cpuinfo**: `MRS` of `TRCSSCSR6`/`S3_6_*`/`S3_7_*` from EL0 is illegal on
 *every* AArch64 regardless of feature set. cpuinfo is only needed to judge the secondary (RNDR/crypto) candidate.
 
-## Criterion / predicted move / minimal on-board (read-only) queries
-- **Criterion to confirm**: capture the faulting PC. Currently impossible because the route-A child diagnostic fd is
-  EACCES. So the MINIMAL on-board step (read-only, do NOT run here): (a) make the route-A child diagnostic fd writable
-  (permission grant on the dump path) so the next SIGILL writes a cppcrash; then the PC confirms it is libakamaibmp at an
-  `MRS` of a trace/impl-def register. (b) `cat /proc/cpuinfo | grep -i Features` on 61b (for the secondary candidate).
-  (c) optionally `grep -rn "rethrow sig(4)" ` the sigchain source to confirm it ignores an app SIGILL handler's PC fixup.
-- **Fix direction** (if confirmed): the route-A/bionic signal-chaining (MUSL-SIGCHAIN / our sigchain compat) must let an
-  app-registered SIGILL handler's PC modification take effect and NOT rethrow to SIG_DFL when the app handler "handled" it
-  — i.e. honor the probe's recovery, as bionic does. Owner: signal-chaining compat (not ANW, not the Flutter/sysconf items).
-- **Predicted move**: **+1 past the SIGILL** if the sigchain honors the probe's recovery — BUT libakamaibmp is anti-tamper,
-  so after recovering it may still refuse to run (environment-not-trusted) and the key would stop at an akamai verdict
-  wall, not light. So **net lit move = 0–1 (uncertain)**; mark **搁置** pending the PC capture. Class impact: any app with a
-  SIGILL-guarded native probe (anti-tamper/DRM/feature-detection) could be hit by the same sigchain defect.
+## Why no cppcrash (deployed-artifact proof, not the fd) — see sigchain.md for the full chain analysis
+The OH musl `signal_chain_handler` (in the deployed `ld-musl-aarch64.so.1`, the MUSL-SIGCHAIN logger) runs, for each signal:
+**a loop over "special" sigchain actions → a single "usr sigaction" slot → `SIG_DFL` → `rethrow`** (proven by its own
+format strings: `call %d rd sigchain action … sca_sigaction=%llx noreturn=%d`, then `call usr sigaction … sa_sigaction=%llx`,
+then `SIG_DFL handler for signal: %d`, then `rethrow sig(%d) success`). For mcdonalds SIGILL(4): no special action claimed
+it; the single usr slot held `7f095d6a6c` = **libart's handler, NOT akamai's**; libart did not recover → `SIG_DFL` →
+**`rethrow`**. The rethrow re-raises against `SIG_DFL`, whose kernel default for SIGILL is *terminate*, and that default
+termination path **does not route through OH's `DfxSignalHandler`** → no cppcrash. (SIGSEGV for firefox/localsend reaches
+DFX and dumps — the difference is this SIGILL ended in rethrow→SIG_DFL.) The EACCES diagnostic fd is universal and irrelevant.
+
+## Criterion / predicted move / minimal (read-only) — sigchain-centred
+- **Criterion to confirm**: that akamai's SIGILL handler never occupies the OH musl usr slot (libart's does). Read-only,
+  **no board needed** for the ordering — it is static in the deployed `ld-musl` strings/disasm (done, see sigchain.md).
+  To confirm the *akamai-specific* PC: on a free board (read-only, do NOT run here) temporarily register a pre-usr trace in
+  the sigchain or let DFX run for SIGILL (install DFX as a special action for signal 4) and read the faulting PC — expect
+  libakamaibmp at an `MRS` of a trace/impl-def register. Secondary: `cat /proc/cpuinfo | grep -i Features` on 61b (only
+  matters for the RNDR/crypto secondary candidate; the trace-reg MRS is EL0-illegal regardless).
+- **Fix direction** (if confirmed): the route-A sigchain must (i) let an app-registered SIGILL handler actually reach the
+  **usr** slot (today ART shadows it), and (ii) honor that handler's PC fixup and **not** force `SIG_DFL`+`rethrow` when the
+  app handler "handled" the signal — i.e. match bionic/AOSP-libsigchain recovery semantics. Owner: signal-chaining compat
+  (not ANW, not Flutter/sysconf). This is **runtime** behaviour → write the minimal critical experiment, do not change on a
+  hunch (see sigchain.md ③).
+- **Predicted move**: **0–1, uncertain → 搁置.** Even if the sigchain honors the probe's recovery, libakamaibmp is
+  anti-tamper and may still refuse to run (environment-not-trusted) and stop at a verdict wall rather than light. The
+  **class impact is the real payoff**: every app with a SIGILL/SIGSEGV-guarded native probe (anti-tamper/DRM/feature-detect)
+  is exposed to the same defect — enumerated in `sigchain.md` ② (probe_scan.json).
 
 ## Summary
 mcdonalds's SIGILL is most likely **libakamaibmp's anti-tamper system-register probe** (EL0-illegal `MRS` of trace/impl-def
