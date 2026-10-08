@@ -241,7 +241,19 @@ def replay_baseline(io, previous, journal):
             state['operations'].append(op);tx.record()
             io.bind(op['remote'],op['target']);io.assert_owned(op)
             op['phase']='bound';tx.record()
-        tx.hashes_match(plan['baseline'])
+        # A reboot drops candidate binds, but their empty mount-point files
+        # survive in the recorded baseline payload. Clean only declared
+        # additions, after the baseline directory layers expose that payload.
+        state['placeholder_cleanup']=[]
+        for target in plan.get('additions',[]):
+            io.guard(state['boot_id'])
+            if not io.stopped():raise RuntimeError('parent restarted during baseline replay')
+            if io.mounts().get(target):raise RuntimeError('baseline addition still mounted: '+target)
+            cleanup=dict(target=target,phase='pending')
+            state['placeholder_cleanup'].append(cleanup);tx.record()
+            io.remove_placeholder(target)
+            cleanup['phase']='removed_or_absent';tx.record()
+        tx.hashes_match(plan['baseline'],plan.get('additions',[]))
         io.check_restore(plan)
         io.start(plan['baseline'][HOST])
         state['verification']=io.verify(plan['baseline'],plan['generation'])

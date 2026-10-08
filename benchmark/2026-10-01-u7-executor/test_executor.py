@@ -78,6 +78,74 @@ class BaselineReplayTests(unittest.TestCase):
                     self.assertEqual(result['status'],'baseline_restored')
                     self.assertEqual(io.log.count('start'),1)
 
+class BaselineReplayPlaceholderTests(unittest.TestCase):
+    TARGET='/system/android/lib64/libicu74compat.so'
+
+    def setup_replay(self, value=u.EMPTY, mounted=False):
+        io=Fake(fixture());io.stack={};io.before={};io.values={u.HOST:'old'}
+        if value is not None:io.values[self.TARGET]=value
+        if mounted:io.stack[self.TARGET]=[{'root':'/foreign'}]
+        source='/data/local/tmp/base/host';io.remote={source:'new'}
+        snapshot=io.snapshot
+        io.snapshot=lambda paths,absent=(): ({source:'new'},[]) if paths==[source] else snapshot(paths,absent)
+        state={'serial':io.serial,'boot_id':'oldboot',
+               'plan':{'baseline':{u.HOST:'new'},'additions':[self.TARGET],
+                       'generation':'g','reference_paths':{'runtime':[u.HOST]}},
+               'before_mounts':{u.HOST:[{'root':'/local/tmp/base/host','device':'1:2'}]}}
+        return io,state
+
+    def test_new_boot_empty_addition_removed_before_start(self):
+        io,state=self.setup_replay()
+        start=io.start
+        def checked_start(digest):
+            self.assertNotIn(self.TARGET,io.values)
+            self.assertFalse(io.running)
+            start(digest)
+        io.start=checked_start
+        with tempfile.TemporaryDirectory() as td:
+            result=u.replay_baseline(io,state,Path(td)/'j')
+            self.assertEqual(result['status'],'baseline_restored')
+            self.assertNotIn(self.TARGET,io.values)
+            self.assertEqual(result['placeholder_cleanup'],
+                             [{'target':self.TARGET,'phase':'removed_or_absent'}])
+            self.assertEqual(io.log.count('start'),1)
+
+    def test_already_absent_addition_is_idempotent(self):
+        io,state=self.setup_replay(value=None)
+        with tempfile.TemporaryDirectory() as td:
+            self.assertEqual(u.replay_baseline(io,state,Path(td)/'j')['status'],'baseline_restored')
+        self.assertNotIn(self.TARGET,io.values)
+
+    def test_nonempty_addition_rejected_parent_stays_stopped(self):
+        io,state=self.setup_replay(value='changed')
+        with tempfile.TemporaryDirectory() as td:
+            journal=Path(td)/'j'
+            with self.assertRaisesRegex(RuntimeError,'modified placeholder'):
+                u.replay_baseline(io,state,journal)
+            self.assertEqual(json.loads(journal.read_text())['status'],'recovery_required')
+        self.assertEqual(io.values[self.TARGET],'changed')
+        self.assertNotIn('start',io.log);self.assertFalse(io.running)
+
+    def test_mounted_addition_rejected_without_deletion(self):
+        io,state=self.setup_replay(mounted=True)
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(io,'remove_placeholder',wraps=io.remove_placeholder) as remove:
+                with self.assertRaisesRegex(RuntimeError,'addition still mounted'):
+                    u.replay_baseline(io,state,Path(td)/'j')
+                remove.assert_not_called()
+        self.assertEqual(io.values[self.TARGET],u.EMPTY)
+        self.assertNotIn('start',io.log);self.assertFalse(io.running)
+
+    def test_undeclared_file_is_never_removed(self):
+        io,state=self.setup_replay();state['plan']['additions']=[]
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(io,'remove_placeholder',wraps=io.remove_placeholder) as remove:
+                with self.assertRaisesRegex(RuntimeError,'child identity'):
+                    u.replay_baseline(io,state,Path(td)/'j')
+                remove.assert_not_called()
+        self.assertEqual(io.values[self.TARGET],u.EMPTY)
+
+
 class Crash(BaseException): pass
 
 class Fake:
