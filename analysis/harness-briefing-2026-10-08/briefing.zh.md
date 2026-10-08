@@ -53,7 +53,7 @@
 ### 1.3 按「首个致命点」排优先级,预测为 0 就不开工
 - **原则**:修墙之前,先把最近一轮各 key 在 hilog 里的**首个致命点**聚成簇表,按「挡住的 key 数」排序。静态命中数只算上界。
 - **反例**:`__errno` 静态有 50 个 key 导入,日志里真正因它失败的只有 2 个。同一天还有三件预测为 0 的工作(android.net 桩、bionic 导出、settings 接通),本可以不开工。
-- **预测要按生效部署件重算**:sysconf 编号错位在 U13 底座上是次级墙(单修移走 0 个 key);U14 清掉前面的墙后,它成了 4 个 key 的首个致命点(见 §5.3)。沿用旧簇表就会误判。
+- **预测要按生效部署件重算**:sysconf 编号错位在 U13 底座上是次级墙(单修移走 0 个 key);U14 清掉前面的墙后,10-03 的计划按部署件推算为 +4;10-08 用 U14 实测 hilog 复核,确定 +2、上限 +3(见 §5.3)。沿用旧簇表、或只推算不实测,都会误判。
 
 ### 1.4 按簇批量出版,统一态 + 阶段式晋级
 - **原则**:每轮只出一个 JAR 版本和一个 native 版本,合进所有该层的修复。
@@ -319,13 +319,14 @@ U14 新增的 3 个是 VLC(Gecko/native ABI 修后从死到欢迎页)、3D 模�
 - **窗19(正式路径)**:SurfaceView → `surfaceCreated` → 读 `Surface.mNativeObject`(运行时自己的 ANW 包装)→ 取出真 OH 窗口 → `OH_NativeWindow_GetSurfaceId` → `CreateNWeb`,页面铺满 SurfaceView。
 - **关键**:加载器走的是 OH `dynlink.c` 为 ArkWeb 设计的 namespace 白名单正门,不是绕过。`nweb_ns` 整个留给 OH 自己的 NWebHelper,因为谁先建 `nweb_ns`,谁的 lib_path 就赢。
 
-### 5.3 sysconf 编号错位:预测 +4,但要用户批
+### 5.3 sysconf 编号错位:预测从 0 到 +4 再到 +2~3,但要用户批
 - **现象**:NDK app 按 bionic 的 `_SC_*` 编号调 `sysconf`,OH musl 把同一个整数当成别的选择器。
   - bionic `_SC_PAGESIZE`=39,在 musl 里 39 是 `_SC_BC_STRING_MAX`,返回 1000;
   - mozjemalloc 断言页大小是 2 的幂,主动崩溃;Realm 用这个值定 mmap 大小,解 NULL 崩溃。
 - **预测随底座变**:
   - 在 U13 底座上,这 4 个 key 先死在别的墙上:fennec/firefox 死在 native_abi,im-vector/mcdonalds 死在 Realm `_ctype_`。当时 sysconf 是次级墙,单修预测移走 0 个 key。
-  - U14 部署的 native_abi `f8619ad5` 已经清掉这两堵墙。按**生效部署件**(composition.json)重算后,sysconf 成了 fennec、firefox、im-vector、mcdonalds 的首个致命点,预测 **+4**。
+  - U14 部署的 native_abi `f8619ad5` 已经清掉这两堵墙。10-03 的 U17 计划按**生效部署件**(composition.json)推算:sysconf 成了这 4 个 key 的首个致命点,预测 +4。
+  - 10-08 cc-t3 用 U14 实测 hilog 复核:fennec(mozjemalloc)、im-vector(Realm SlabAlloc)确实崩在 sysconf;mcdonalds 实测是早期初始化里的 SIGILL(app 自带 handler 跑完后重抛),日志里没有 Realm 栈,剔除;firefox 没有 U14 观测,等窗7。预测改为 **确定 +2、上限 +3**。
   - 外环一度照旧簇表批了「再加 `_ctype_`」,开建前发现它早已在现役件里,记了 R2。
 - **为什么还没修**:修法要求 libbionic_compat 在 namespace 继承顺序里排到 libc 前面。这个顺序属于冻结的 appspawn-x 行为,所以**交用户决定**。冻结机制在这里的作用,正是「别为一个修复悄悄动已验证的行为」。
 - **已做的风险面分析**:libbionic_compat 的 46 个导出与 musl libc 的 1,873 个导出 0 重叠。

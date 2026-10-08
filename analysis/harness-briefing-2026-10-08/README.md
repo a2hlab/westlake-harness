@@ -13,7 +13,7 @@ The most important errors:
 | U9 lit 114/166 | 115/166 final |
 | U3 lit 27/66 | 25/66 for that sweep; 27 was cumulative |
 | 384 benchmark dirs | 379 tracked at the snapshot |
-| sysconf moves 0 keys | true on the U13 base only; superseded by DIGEST 791, it is +4 on U14 and gated on the user |
+| sysconf moves 0 keys | true on the U13 base only; DIGEST 791 projected +4 on U14; the 10-08 U14-hilog recheck gives +2 certain, +3 at most (mcdonalds is an early SIGILL) — gated on the user |
 | "115 lit keys also have two copies" | bridge ×2 in 115; runtime ×2 in 85, ×1 in 30 |
 | "86 Rust tests" | 86 modules, 310 `#[test]` |
 | "the same mistake never happens twice" | contradicted by FLAW-008 recurring 8 times |
@@ -27,7 +27,7 @@ Every finding was corrected. Every number now states its unit, snapshot and cuto
    - snapshot `aa948b8c9a` for repository counts;
    - board line counts at 2026-10-08 21:15 (21,907 lines).
 2. A superseded conclusion is shown with its history, not just its latest value. Example: the sysconf prediction
-   was 0 on the U13 base and +4 on U14. A stale cluster table is how the outer loop once approved an
+   was 0 on the U13 base, projected +4 on U14, and +2..3 once rechecked against U14 hilogs. A stale cluster table is how the outer loop once approved an
    already-deployed fix.
 3. A "verbatim" demo must be runnable as shipped. `demo.sh` pins the retained run directories and needs only
    `WORKSPACES`.

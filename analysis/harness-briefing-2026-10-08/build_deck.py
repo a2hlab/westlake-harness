@@ -212,7 +212,7 @@ text(s, 7.5, 1.7, 5.4, 5.2, [
 s = slide('2–3 · 先静态;按「首个致命点」排,预测为 0 就不开工', '静态命中数只是上界 —— 先把最近一轮各 key 的首个致命点聚成簇表', P1)
 for i, (big, small, body) in enumerate([
         ('50 → 2', '__errno', '静态有 50 个 key 导入;日志里真正因它失败的只有 2 个'),
-        ('0 → +4', 'sysconf(63 个调页大小)', '63 个调页大小的 key 只是上界;U13 底座上它是次级墙(移走 0),U14 清掉前墙后成 4 个 key 的首个致命点'),
+        ('0→4→2~3', 'sysconf(63 个调页大小)', 'U13 底座次级墙(0);U14 按部署件推算 +4;再用 U14 实测 hilog 复核:确定 +2、上限 +3'),
         ('115 / 115', '「白屏 = 双拷贝」', '有 maps 的 115 个亮 key bridge 全是两份;runtime 两份 85、一份 30;白屏 17 个分布相当 → 副本数不是判别量'),
         ('2 轮', 'N11f + N11g', '双拷贝归因的板上试错(构建+窗口+回滚 ×2);反汇编部署件当天就能下结论')]):
     x = 0.45 + i * 3.13
@@ -223,7 +223,7 @@ for i, (big, small, body) in enumerate([
 text(s, 0.45, 4.95, 12.4, 2.0, [
     ('静态优先铁律:凡「哪个 namespace / 哪台机 / 部署件里到底有什么」,一律先全量静态扫描(open-site · 符号 · strings · ns 边界)再上板。', {'bullet': True}),
     ('例外:运行时实际 ns 选择与时序、信号顺序、偶发崩溃静态看不出 → 直接做最小关键实验,事先写清通过/失败判据与退路。', {'bullet': True}),
-    ('预测要按生效部署件重算:sysconf 在 U13 底座上是次级墙(0),U14 清掉前墙后成 4 个 key 的首个致命点(+4)。', {'bullet': True}),
+    ('预测要按生效部署件重算、再用实测复核:sysconf 在 U13 底座是 0,U14 推算 +4,实测复核后 +2~3(mcdonalds 实为 SIGILL)。', {'bullet': True}),
     ('派单与交件都写「预计移走首个致命点的 key」;预测为 0 的件(android.net 桩、bionic 导出、settings 接通)搁置。', {'bullet': True}),
 ], 13.5, spacing=8)
 
@@ -462,13 +462,14 @@ text(s, 7.3, 1.6, 5.6, 5.3, [
     ('关键约束:nweb_ns 整个留给 OH 自己的 NWebHelper —— 谁先建 nweb_ns,谁的 lib_path 就赢。', {'bold': True, 'color': BLUE}),
 ], 12.5, spacing=6)
 
-s = slide('故事 3 · sysconf 编号错位:预测 +4,但要用户批', 'NDK app 按 bionic 的 _SC_* 调 sysconf,OH musl 把同一个整数当别的选择器', P5)
+s = slide('故事 3 · sysconf 编号错位:预测 0 → +4 → +2~3,但要用户批', 'NDK app 按 bionic 的 _SC_* 调 sysconf,OH musl 把同一个整数当别的选择器', P5)
 table(s, 0.45, 1.6, 6.3, [('', 'bionic', 'OH musl'), ('39', '_SC_PAGESIZE', '_SC_BC_STRING_MAX → 1000'), ('后果 1', 'mozjemalloc 断言页大小 2 的幂', '主动崩溃(fennec)'), ('后果 2', 'Realm 用它定 mmap 大小', 'NULL 解引用(im-vector)')],
       [1.0, 2.6, 2.7], size=12.5, row_h=0.7)
 text(s, 7.1, 1.6, 5.8, 5.3, [
     ('预测随底座变', {'bold': True, 'size': 16}),
     ('U13 底座:fennec/firefox 先死在 native_abi,im-vector/mcdonalds 先死在 Realm _ctype_ → sysconf 是次级墙,单修移走 0。', {'bullet': True}),
-    ('U14 生效的 native_abi f8619ad5 已清掉两堵墙 → 按部署件重算:sysconf 是这 4 个 key 的首个致命点,预测 +4。', {'bullet': True}),
+    ('U14 生效的 native_abi f8619ad5 已清掉两堵墙 → 10-03 按部署件推算 +4。', {'bullet': True}),
+    ('10-08 用 U14 实测 hilog 复核:fennec / im-vector 确在 sysconf 崩;mcdonalds 实为早期 SIGILL,剔除;firefox 待窗7 → 确定 +2、上限 +3。', {'bullet': True}),
     ('外环曾照旧簇表批「再加 _ctype_」,开建前发现已在现役件里 → R2。', {'bullet': True}),
     ('为什么还没修:要让 libbionic_compat 在 ns 继承顺序里排到 libc 前 —— 那是冻结的 appspawn-x 行为。', {'bullet': True}),
     ('→ 交用户决定。', {'bold': True, 'color': RED}),
