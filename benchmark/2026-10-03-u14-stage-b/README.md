@@ -29,13 +29,15 @@ Run the real reusable aggregator, not this packet's fixtures:
 ```sh
 python3 "$WORKSPACES/westlake-harness/scripts/lab/stage_a_selftest.py" \
   --root "$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u14-stage-a-plan" \
-  --pattern 'window*/u14-A*/*/runner/**/record.json' \
+  --selector u14-candidate-union-v1 \
   --out '<outer-owned-persistent-output>' > '<outer-owned-persistent-summary.json>'
 ```
 
 Outer signs `outer-stage-a-{common,61b}.json` under the future U14 Stage A decision directory. Templates in each variant are unsigned contracts, never executable evidence. Required fields: release U14/phase A/signed_by/signed_at; exact native manifest+inputs and armed U13 baseline; exact 126-key reference hash and regression verdict; promotion_authorized=true; process_selftest_gate report, explanations and stdout-summary **paths+SHA**, full measured_records, exact root/pattern and stage_a_selftest tool SHA/exit0. The approved unarmed or exact corresponding armed bundle can be signed only after byte-identical arming metadata is proved. No unrelated bundle can pass.
 
 The gate retains U13's schema2 per-process failure veto and exact individual outer explanations for unknown coverage. It additionally binds the actual aggregator summary and explanations even when no unknown exists, rejects any-pid failure, and requires the complete U14 candidate runner domain rather than U13/control-only selection. Failure classes cannot be explained away. Do not hardcode future report names: the signed decision supplies their precise paths.
+
+The 2026-10-08 selector correction replaces the old direct-runner glob (308 records) with the physical windows1–6 union (348, including40 nested window6 candidates). The CLI rejects incomplete or contaminated U14 globs and unknown record paths. Stage B independently enumerates the same domain, compares the ordered report and declared record paths, and verifies the selection receipt plus all six exclusion counts (217 total, including14 U13 controls). A pre-click board interruption without hilog is separately explained as unknown, never PASS. Both compositions, future templates and the source snapshot are rebound; package identities, execution-disabled state, P1 deadlines, P2 native tickets and the126-key visual gate remain unchanged. Evidence and fresh known answers are in `benchmark/2026-10-08-u14-stage-b-selector-fix/`. Window7 is not silently included: its scope requires an explicitly reviewed selector extension and fresh complete receipt before final promotion.
 
 ## Outer / cx-t0 handoff
 

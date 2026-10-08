@@ -76,7 +76,7 @@ def main():
             decision_tag=variant, smoke_review_sha256=sha(review), reference_sha256=sha(reference),
             copy_limits=COPY_LIMITS, smoke_specs={}, recovery_smoke_specs={}, smoke_sha256={}, recovery_smoke_sha256={},
             stage_a_decision=decision_prefix + "/outer-stage-a-" + variant + ".json",
-            stage_a_selection=dict(root="$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u14-stage-a-plan", pattern="window*/u14-A*/*/runner/**/record.json"),
+            stage_a_selection=dict(root="$WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u14-stage-a-plan", pattern="u14-candidate-union-v1", selector="u14-candidate-union-v1"),
             stage_a_status="future outer signed decision; no synthetic signoff used in production")
         recovery_path = snapshot(stage_a / "window1" / variant / "recovery-u13.json", variant + "/recovery-u13.json")
         recovered = json.loads(recovery_path.read_text())["boards"]
@@ -127,7 +127,7 @@ def main():
             effective_baseline_bundle_sha256=value["base_bundle_sha256"], reference_sha256=sha(reference), confirmed_regressions=[],
             stage_A_regression_verdict=dict(u14_reference_lit_total=126, measured=None, same_or_lit_within_k_of_n=None, confirmed_regressions=None),
             process_selftest_gate=dict(report=None, report_sha256=None, explanations=None, explanations_sha256=None, summary=None, summary_sha256=None,
-                root=None, pattern=None, measured_records=[], tool=dict(path="$WORKSPACES/westlake-harness/scripts/lab/stage_a_selftest.py", sha256=sha(MASTER / "scripts/lab/stage_a_selftest.py"), exit_code=None))))
+                root=value['stage_a_selection']['root'], pattern=value['stage_a_selection']['pattern'], selector=value['stage_a_selection']['selector'], measured_records=[], tool=dict(path="$WORKSPACES/westlake-harness/scripts/lab/stage_a_selftest.py", sha256=sha(MASTER / "scripts/lab/stage_a_selftest.py"), exit_code=None))))
     for variant in ["common", "61b"]:
         snapshot(live_a / variant / "window_hook.py", "inputs/donor/u14-stage-a-backend-" + variant + ".txt")
     snapshot(live_a / "common/dispatch.py", "inputs/donor/u14-stage-a-dispatch.txt")

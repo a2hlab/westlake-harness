@@ -18,6 +18,13 @@ import lab_paths
 import deployment_native_gate as native_gate
 import retention_criteria as criteria
 
+SELFTEST_SOURCE = R / 'scripts/lab/stage_a_selftest.py'
+if not SELFTEST_SOURCE.is_file():
+    SELFTEST_SOURCE = M / 'scripts/lab/stage_a_selftest.py'
+_selftest_spec = importlib.util.spec_from_file_location('u14_stage_b_selftest', SELFTEST_SOURCE)
+selftest = importlib.util.module_from_spec(_selftest_spec)
+_selftest_spec.loader.exec_module(selftest)
+
 CANDIDATE = None
 previous = None
 
@@ -142,7 +149,7 @@ def retention_reason(decision, value, reference, smoke):
     if gb.sha(explanations) != gate.get("explanations_sha256") or gb.sha(summary) != gate.get("summary_sha256"):
         return "stage_a_selftest explanations/summary binding drift"
     tool = gate.get("tool") or {}
-    if tool.get("path") != "$WORKSPACES/westlake-harness/scripts/lab/stage_a_selftest.py" or tool.get("exit_code") != 0 or tool.get("sha256") != gb.sha(M / "scripts/lab/stage_a_selftest.py"):
+    if tool.get("path") != "$WORKSPACES/westlake-harness/scripts/lab/stage_a_selftest.py" or tool.get("exit_code") != 0 or tool.get("sha256") != gb.sha(SELFTEST_SOURCE):
         return "fresh stage_a_selftest tool/exit binding absent"
     measured = json.loads(summary.read_text())
     data = json.loads(report.read_text())
@@ -150,14 +157,31 @@ def retention_reason(decision, value, reference, smoke):
         return "any-pid selftest failure unconditionally rejects promotion"
     if measured.get("records") != len(data.get("runs", [])) or measured.get("report_sha256") != gb.sha(report):
         return "stage_a_selftest summary coverage drift"
-    if measured.get("root") != gate.get("root") or measured.get("pattern") != gate.get("pattern"):
+    if path(measured.get("root")) != path(gate.get("root")) or measured.get("pattern") != gate.get("pattern"):
         return "stage_a_selftest root/pattern drift"
     if path(measured.get("root")) != path(value["stage_a_selection"]["root"]) or measured.get("pattern") != value["stage_a_selection"]["pattern"]:
         return "selftest selection is not the complete U14 candidate runner domain"
+    if value['stage_a_selection'].get('selector') != selftest.U14_SELECTION or measured.get('pattern') != selftest.U14_SELECTION or measured.get('selector') != selftest.U14_SELECTION or gate.get('selector') != selftest.U14_SELECTION:
+        return 'selftest selection is not the complete U14 candidate runner domain (legacy glob refused)'
+    try:
+        domain_root = path(measured['root'])
+        selected, omitted = selftest.u14_domain(domain_root)
+        expected = [str(source) for source in selected]
+        _, selection_sha = selftest.u14_selection_receipt(domain_root)
+    except (SystemExit, OSError, ValueError) as error:
+        return 'U14 candidate domain rejected: ' + str(error)
+    declared = gate.get('measured_records')
+    if not isinstance(declared, list) or not all(isinstance(item, str) and item for item in declared):
+        return 'selftest measured-record paths absent'
+    if [row.get('record') for row in data.get('runs', [])] != expected or [str(path(item)) for item in declared] != expected:
+        return 'selftest selection is not the complete U14 candidate runner domain (missing or control record)'
+    if measured.get('selection_sha256') != selection_sha or measured.get('excluded') != {kind: len(rows) for kind, rows in omitted.items()}:
+        return 'U14 candidate selection receipt/exclusion drift'
     review = json.loads(explanations.read_text())
     if review.get("report_sha256") != gb.sha(report):
         return "selftest explanations report mismatch"
-    return criteria.retention_reason(decision, signed_composition(value, decision), reference, smoke, report, explanations)
+    normalized = dict(decision, process_selftest_gate=dict(gate, measured_records=expected))
+    return criteria.retention_reason(normalized, signed_composition(value, decision), reference, smoke, report, explanations)
 
 
 def stage_a_admission(decision_path):

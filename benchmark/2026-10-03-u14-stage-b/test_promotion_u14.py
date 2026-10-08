@@ -17,7 +17,7 @@ import review_wait_u14 as review
 from prepare import COPY_LIMITS, EXPECTED
 
 HERE = Path(__file__).resolve().parent
-spec = importlib.util.spec_from_file_location("u14_stage_a_tool", hook.M / "scripts/lab/stage_a_selftest.py")
+spec = importlib.util.spec_from_file_location("u14_stage_a_tool", hook.SELFTEST_SOURCE)
 tool = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tool)
 
@@ -44,8 +44,8 @@ def fixture(directory, variant="common"):
     hook.H = folder
     hook.CANDIDATE = directory / "package"
     root = directory / "stage-a"
-    pattern = "window*/u14-A*/*/runner/**/record.json"
-    value["stage_a_selection"] = dict(root=str(root), pattern=pattern)
+    pattern = tool.U14_SELECTION
+    value["stage_a_selection"] = dict(root=str(root), pattern=pattern, selector=pattern)
     save(folder / "composition.json", value)
     for index, key in enumerate(["helloworld", "zigzag"], 10):
         run = root / "window1/u14-A-fixture/5ea/runner/controls" / key
@@ -55,7 +55,7 @@ def fixture(directory, variant="common"):
     output = directory / "tool-output"
     stdout = io.StringIO()
     with redirect_stdout(stdout):
-        code = tool.main(["--root", str(root), "--pattern", pattern, "--out", str(output)])
+        code = tool.main(["--root", str(root), "--selector", pattern, "--out", str(output)])
     if code != 0:
         raise ValueError("synthetic stage_a_selftest refused")
     report = output / "stage-a-selftest.json"
@@ -69,9 +69,9 @@ def fixture(directory, variant="common"):
         effective_baseline_bundle_sha256=value["base_bundle_sha256"], reference_sha256=value["reference_sha256"], confirmed_regressions=[],
         stage_A_regression_verdict=dict(u14_reference_lit_total=total, measured=total, same_or_lit_within_k_of_n=total, confirmed_regressions=0),
         process_selftest_gate=dict(report=str(report), report_sha256=hook.gb.sha(report), explanations=str(explanations), explanations_sha256=hook.gb.sha(explanations),
-            summary=str(summary), summary_sha256=hook.gb.sha(summary), root=str(root), pattern=pattern,
+            summary=str(summary), summary_sha256=hook.gb.sha(summary), root=str(root), pattern=pattern, selector=pattern,
             measured_records=[row["record"] for row in load(report)["runs"]],
-            tool=dict(path="$WORKSPACES/westlake-harness/scripts/lab/stage_a_selftest.py", sha256=hook.gb.sha(hook.M / "scripts/lab/stage_a_selftest.py"), exit_code=0)))
+            tool=dict(path="$WORKSPACES/westlake-harness/scripts/lab/stage_a_selftest.py", sha256=hook.gb.sha(hook.SELFTEST_SOURCE), exit_code=0)))
     decision_path = directory / "stage-a-decision.json"
     save(decision_path, decision)
     return value, reference, decision, decision_path

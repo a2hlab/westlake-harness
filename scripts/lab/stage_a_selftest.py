@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Stage-A selftest aggregate, parameterized for any U-series (from U13's build_decision.py).
 
-    stage_a_selftest.py --root <executor run-tree root> --pattern <record glob> \
+    stage_a_selftest.py --root <executor run-tree root> --selector u14-candidate-union-v1 \
                         [--reference <sources.json>] [--out <dir>] [--known-answer <sha[:n]>]
 
 Preserves every U13 behaviour, with the U13 tree reachable only through parameters:
   --root       e.g. $WORKSPACES/westlake-harness-u7-executor/benchmark/2026-10-03-u14-stage-a-plan
-  --pattern    record-selection glob relative to root, e.g. 'window*/u14-A*/*/runner/**/record.json'
-               (U13 default: 'window*/u13-A*/*/runner/**/record.json')
+  --selector   physical U14 windows 1–6 direct + nested candidate runners, never U13 controls
+  --pattern    legacy glob (U13: 'window*/u13-A*/*/runner/**/record.json'); an incomplete or
+               contaminated U14 glob rejects instead of silently accepting 308 records
   --reference  reference sources.json (only needed for the retention-hook step; without it the
                script stops after the aggregate + explanations, which is the reusable half)
 
@@ -31,6 +32,8 @@ from pathlib import Path
 
 MASTER = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(MASTER / 'scripts/lab'))
+if not (MASTER / 'scripts/lab/lab_paths.py').is_file():
+    sys.path.append(str(MASTER.parent / 'westlake-harness/scripts/lab'))
 # process_selftest.py lives in the U13 stage-A plan dir; it is on master, and the lane worktree
 # may predate it — import from the shared master checkout when the local copy is absent
 _plan_local = MASTER / 'benchmark/2026-10-03-u13-stage-a-plan'
@@ -42,6 +45,54 @@ import process_selftest as ps  # noqa: E402
 ROW = re.compile(r'^(\S+ \S+)\s+(\d+)\s+(\d+)\s+(\S)\s+(\S+)\s?(.*)$')
 BOUND = '[B43-BIND] handleBindApplication returned OK'
 BIND_FAILED = '[B43-BIND] ensureBindApplication FAILED'
+U14_SELECTION = 'u14-candidate-union-v1'
+U14_EXCLUSIONS = ('known-answer', 'recovery-smoke', 'evidence-copy', 'symlink', 'executor-state', 'U13-control')
+
+
+def u14_record_class(root, source):
+    relative = source.relative_to(root)
+    if source.is_symlink() or any((root / parent).is_symlink() for parent in relative.parents if str(parent) != '.'):
+        return 'symlink'
+    name = relative.as_posix()
+    if name.startswith('evidence/'):
+        return 'known-answer'
+    if re.match(r'window[1-6](?:-[^/]*)?/(?:landing|evidence|contact-index[^/]*)/', name):
+        return 'evidence-copy'
+    match = re.match(r'window[1-6](?:-[^/]*)?/u14-A[^/]*/(?:5ea|5cd|61b)/(.+)$', name)
+    if match:
+        tail = match[1]
+        if '/recovery-smoke-' in '/' + tail:
+            return 'recovery-smoke'
+        if re.match(r'(?:runner/|candidate(?:-r\d+)?/runner/)', tail):
+            return 'candidate'
+        if re.match(r'control(?:-r\d+)?/runner/', tail):
+            return 'U13-control'
+        if re.match(r'(?:(?:(?:candidate|control)(?:-r\d+)?/)?transaction/)?(?:apply-device/|baseline/|post-apply/|final-[^/]+/|restored-[^/]+/|rollback-[^/]+/)', tail):
+            return 'executor-state'
+    raise SystemExit('unclassified U14 record: ' + name)
+
+
+def u14_domain(root):
+    records, omitted = [], {kind: [] for kind in U14_EXCLUSIONS}
+    for source in sorted(root.rglob('record.json')):
+        kind = u14_record_class(root, source)
+        if kind == 'candidate':
+            records.append(source)
+        else:
+            omitted[kind].append(source.relative_to(root).as_posix())
+    if not records:
+        raise SystemExit('no physical U14 candidate runner records')
+    return records, omitted
+
+
+def is_u14_selection(root, pattern):
+    return pattern == U14_SELECTION or 'u14' in pattern.lower() or 'u14-stage-a' in root.name.lower()
+
+
+def u14_selection_receipt(root):
+    selected, omitted = u14_domain(root)
+    body = dict(selector=U14_SELECTION, records=[source.relative_to(root).as_posix() for source in selected], excluded=omitted)
+    return body, hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
 
 
 def sha(path):
@@ -59,11 +110,22 @@ class Selected:
 
 
 def candidate_records(root, pattern):
+    if is_u14_selection(root, pattern):
+        expected, _ = u14_domain(root)
+        selected = expected if pattern == U14_SELECTION else sorted(root.glob(pattern))
+        missing, extra = set(expected) - set(selected), set(selected) - set(expected)
+        if missing or extra:
+            raise SystemExit('incomplete or contaminated U14 selection: selected=%d expected=%d missing=%d extra=%d' %
+                             (len(selected), len(expected), len(missing), len(extra)))
+        return expected
     return sorted(root.glob(pattern))
 
 
 def excluded(root, pattern):
     """Every record.json under root that is not a candidate runner record, by why it is out."""
+    if is_u14_selection(root, pattern):
+        candidate_records(root, pattern)
+        return u14_domain(root)[1]
     keep = set(candidate_records(root, pattern))
     out = {}
     for p in sorted(root.rglob('record.json')):
@@ -106,6 +168,10 @@ def classify(run, pid):
     d = rec_path.parent
     rec = json.loads(rec_path.read_text())
     log = d / 'hilog.txt'
+    if (rec.get('status') == 'batch_interrupted' and rec.get('clicked') is False and
+            rec.get('error') == 'HDC lost remote status marker' and not rec.get('screenshots') and not log.exists()):
+        return ('Interrupted before desktop click; HDC lost remote status marker, no hilog or screenshots. '
+                'No probe observation: unknown, not crypto success (pre-launch-board-loss).', rec_path)
     if run['key'] == 'probe' and not log.exists() and 'package' in rec and 'bms' not in rec:
         return ('activation-smoke launcher icon-locator step (selected %s); not an app run: no key, no BMS uid and '
                 'no hilog by design, so no [WL-KS-PROBE] line can exist' % rec['selected_icon']['id'], rec_path)
@@ -196,11 +262,14 @@ def build(root, pattern):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--root', required=True, help='executor run-tree root (absolute or $WORKSPACES-relative)')
-    ap.add_argument('--pattern', required=True, help="record glob relative to root, e.g. 'window*/u14-A*/*/runner/**/record.json'")
+    selection = ap.add_mutually_exclusive_group(required=True)
+    selection.add_argument('--pattern', help='legacy record glob; incomplete U14 selections reject')
+    selection.add_argument('--selector', choices=[U14_SELECTION], help='complete physical U14 windows 1–6 candidate union')
     ap.add_argument('--reference', type=Path, help='reference sources.json; when given, also runs the retention hook path (requires the U13 plan importables)')
     ap.add_argument('--out', type=Path, help='output dir for <tag>-selftest.json (default: print summary only)')
     ap.add_argument('--known-answer', help='expected report-sha prefix (e.g. 0488fa09) for the tree being scanned')
     a = ap.parse_args(argv)
+    a.pattern = a.selector or a.pattern
 
     root = Path(str(a.root).replace('$WORKSPACES', str(lab_paths.workspaces())))
     if not root.is_dir():
@@ -220,12 +289,21 @@ def main(argv=None):
         (a.out / ('%s-explanations.json' % tag)).write_text(
             json.dumps({'schema': 'outer-selftest-explanations/v1', 'report_sha256': report_sha,
                         'explanations': rows}, indent=1, ensure_ascii=False) + '\n')
-    print(json.dumps(dict(root=str(root), pattern=a.pattern, records=len(report['runs']),
+    summary = dict(root=str(root), pattern=a.pattern, records=len(report['runs']),
                           PASS=sum(r['status'] == 'PASS' for r in report['runs']),
                           unknown=report['unknown_runs'],
                           REJECT=sum(r['status'] == 'REJECT' for r in report['runs']),
                           failure_lines_any_pid=len(any_pid), explanations=len(rows),
-                          report_sha256=report_sha, excluded=excl), indent=1))
+                          report_sha256=report_sha, excluded=excl)
+    if is_u14_selection(root, a.pattern):
+        selection_body, selection_sha = u14_selection_receipt(root)
+        summary.update(selector=U14_SELECTION, selection_sha256=selection_sha,
+                       pre_launch_board_loss=[row['record'] for row in rows if 'pre-launch-board-loss' in row['reason']])
+        if a.out:
+            (a.out / ('%s-selection.json' % tag)).write_text(json.dumps(selection_body, indent=2) + '\n')
+    if a.out:
+        (a.out / ('%s-summary.json' % tag)).write_text(json.dumps(summary, indent=1) + '\n')
+    print(json.dumps(summary, indent=1))
     return 0
 
 
