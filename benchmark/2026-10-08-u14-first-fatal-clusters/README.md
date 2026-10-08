@@ -42,3 +42,38 @@ fd-wifianalyzer, firefox, mindustry, ppsspp, subwaysurfers, termux, x.
   count it as moving).
 - Judge the effective artifact by `composition.json`, not the candidate SHA in an old cluster table (e.g. native_abi is
   the deployed `f8619ad5` with `_ctype_`, not `7605812c`).
+
+## Addendum (2026-10-08): window-7 priors for the 29 no-U14-obs keys + prior↔U14 flips + fd-libre re-diagnosis
+
+### Priors (priors-29.json, priors_collect.py) — PRIORS ONLY, version-tagged, NOT U14 conclusions
+For the 29 non-lit keys with no U14 run, first-fatal from each key's **most recent real observation** (28 = U10.1-T8
+rerun, 1 = none), clustered (version tag per key in priors-29.json):
+| prior cluster | count | keys (sample) |
+|---|---|---|
+| no-observed-termination | 12 | cv2 webview/white-window keys (randomlydie, flowitgame, yam, yatoo, jiten-webview, …) |
+| signal-SIGSEGV libart.so | 4 | cv2-org-linaro-glmark2, fd-immich, fd-saber, subwaysurfers |
+| process-disappeared | 3 | burgerking, firefox, ppsspp |
+| java NullPointerException | 2 | fd-breezyweather, fd-wifianalyzer |
+| java UnsatisfiedLinkError | 2 | cv2-com-chessclock-android, mindustry (F02-A12 unsupported symbol) |
+| singletons | 6 | fd-api (Theme.AppCompat), fd-meet (facebook soloader), fd-musicplayer (bitmap), x (Application grab), cv2-stoutner (UnsupportedOperation) |
+| no-run-found | 1 | cv2-com-frequent-habits |
+These are **U10.1-T8-era** first-fatals; U14 changed native_abi (f8619ad5/_ctype_), runtime, etc., so they are weak U14
+predictors — see the flips below. Each key's exact version + run path is in priors-29.json.
+
+### Prior ↔ U14-actual flips (the 11 observed keys) — 5 of 11 FLIPPED
+| key | ver | prior first-fatal | U14 actual | why |
+|---|---|---|---|---|
+| fd-im-vector-app | U10.1-T8 | `UnsatisfiedLinkError` (`_ctype_` bind wall) | Realm SIGSEGV (sysconf) | **U14 native_abi f8619ad5 cleared `_ctype_`** → moved to the next wall |
+| fd-fennec_fdroid | U10.1-T8 | process-disappeared | libmozglue SIGSEGV (sysconf) | U14 lets it load far enough to hit the mozjemalloc crash with a real backtrace |
+| mcdonalds | U10.1-T8 | NullPointerException | process-disappeared | terminal shape changed |
+| toutiao | U10.1-T8 | no-termination | process-disappeared | |
+| vlc | U10.1-T8 | process-disappeared | no-termination | |
+**Lesson**: priors flip ~45% of the time across a native-layer change — do not treat a prior as a U14 first-fatal. The
+im-vector flip is positive evidence that `_ctype_` (f8619ad5) works.
+
+### Cluster 6 (fd-libre) re-diagnosed — see libre-nativewindow.md
+The `libnativewindow.z.so` label was a **memory-map false match**. fd-libre's real first-fatal is a **DEBUG SIGNAL(FDSAN)**
+abort during `dlopen` (`close(fd 61)` by musl `load_library_header`; fd fdsan-owned by a stale `FILE*`) — a **stdio/fdsan
+fd-ownership race**, NOT the ANativeWindow adapter (no ANW1/oh_anw_get_oh in the stack; outer hypothesis refuted). Fix =
+clear the fdsan tag on FILE* close (libbionic_compat / OH musl stdio). Predicted +1 (fd-libre), but it's an fd-reuse race
+(intermittent). Not in the U17 batch.
