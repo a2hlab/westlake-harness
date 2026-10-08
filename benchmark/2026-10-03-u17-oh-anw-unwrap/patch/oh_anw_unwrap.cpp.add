@@ -1,0 +1,12 @@
+// Add to adapter/framework/window/jni/oh_anativewindow_shim.cpp, immediately AFTER oh_anw_get_oh (currently ~line 813-816).
+// This is the ONLY change to the .cpp. oh_anw_get_oh is NOT modified. extern "C" default visibility -> exported (bridge
+// uses no version script for these; oh_anw_get_oh/oh_anw_wrap already export this way) -> export count +1.
+
+// Gate-free unwrap (U17): magic-check only, NO directPathLive gate (unlike oh_anw_get_oh, which returns nullptr unless the
+// AdapterAnw's direct-path state is UNBOUND/LIVE -- window-19 showed a SurfaceView AdapterAnw fails that gate). For callers
+// that only need the OH handle regardless of the direct-path lifecycle (route-a / fd-plus SurfaceFromJava:
+// Surface.mNativeObject -> AdapterAnw -> oh -> OH_NativeWindow_GetSurfaceId). magic != ANW1 -> nullptr.
+extern "C" OHNativeWindow* oh_anw_unwrap(struct ANativeWindow* aosp) {
+    auto* a = as_adapter(aosp);
+    return a ? a->oh : nullptr;
+}
