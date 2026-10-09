@@ -1,0 +1,55 @@
+{
+  "task": "#91 demo-baseline t2 toutiao route choice (cc-t3, static, zero board)",
+  "scenario": "demo_baseline_toutiao_route",
+  "routes": {
+    "A_original": {
+      "mechanism": "BMS-installed Android app com.ss.android.article.news under unified route-a runtime",
+      "walls": {
+        "wall0_install": "libcvt.so accepted only by 61b libinstalls 51e1b525; 5ea/5cd 2c9a5294 rejects -> demo board pinned to 61b",
+        "wall1_icu_namespace": "westlake.anl.app has no AOSP public-lib table -> libicui18n.so ENOENT (DIGEST 717)",
+        "wall2_icu_dataversion": "libtttext_lite scandir(/system/usr/icu) picks icudt74 -> wants ubrk_open_74; Android ICU exports _72 -> ICUWrapper()+100 SIGSEGV (DIGEST 711)"
+      },
+      "fix_cost": {"wall1": {"files": 1, "system": true, "frozen_listed": false, "class_bonus": ["libGLESv2 fd-stk","libGLESv3 subwaysurfers","libjnigraphics"]},
+                   "wall2": {"files": "2+", "system": true, "oh_shared_icu": true, "frozen_listed": false, "single_file_fix": false}}
+    },
+    "B_ttbundle": {
+      "mechanism": "host-embed: org.westlake.imehost HAP + source_app_namespace/host_spawn staging + prebuilt AOT, reusing /data/local/tmp/asx unified runtime",
+      "bundle_path": "$HOME/a2hlab-provision/ttbundle",
+      "manifest_state": "6/7 present; tt-rt.tar MISSING (shasum -c FAILED)",
+      "onboard_footprint": {
+        "hap_bundle": "org.westlake.imehost",
+        "android_pkg": "com.ss.android.article.news",
+        "data_local_tmp": ["/data/local/tmp/a2hlab-app-c91d26bf/","/data/local/tmp/asx/run.sh","/data/local/tmp/operator45*"],
+        "processes": ["source_app_namespace(uid 20010053)","host_spawn","toutiao child","watchdog.sh","onscreen_keeper.sh","screen-gate"],
+        "ability": "EntryAbility action.system.home (launcher) + imehost0 host window",
+        "aot": ["toutiao.art","toutiao.odex","toutiao.vdex"]
+      },
+      "touches_system": false,
+      "touches_frozen": false,
+      "reversible": "uninstall imehost HAP + rm /data/local/tmp dirs; no unified fingerprint change",
+      "proven_interactive": "5cd (Sept demo, DIGEST 113/337)"
+    }
+  },
+  "conflicts": [
+    {"id": 1, "item": "org.westlake.imehost HAP", "conflict": false, "note": "no imehost in U14 composition; additive"},
+    {"id": 2, "item": "/data/local/tmp/a2hlab-app-c91", "conflict": false, "note": "additive; rm -rf a2hlab-app-* would break it (DIGEST 337)"},
+    {"id": 3, "item": "/data/local/tmp/asx", "conflict": true, "note": "SHARED with live route-a libart (DIGEST 83); verify B drops run.sh, not overwrites asx/libart or asx/lib"},
+    {"id": 4, "item": "com.ss.android.article.news", "conflict": "design", "note": "same Android pkg; host-embed REPLACES BMS install, do not run both"},
+    {"id": 5, "item": "aot/toutiao.*", "conflict": false, "note": "app-level AOT != frozen dex2oat-once boot image"},
+    {"id": 6, "item": "tt-rt.tar", "conflict": "unknown", "note": "MISSING; if older-gen libart, would regress 100 unified apps"},
+    {"id": 7, "item": "/data/local/tmp/operator45 selfheal", "conflict": true, "note": "SHARED selfheal path; verify single-supervisor locks don't fight"},
+    {"id": 8, "item": "imehost0 window + home launcher", "conflict": false, "note": "additive; ZOrder vs SCBScreenLock handled by onscreen_keeper"}
+  ],
+  "decision": {
+    "primary": "Route B (host-embed overlay)",
+    "reason": "fewest files changed (0 source/system vs >=2 system), reversible, 0 frozen, proven interactive; reuses not replaces the unified runtime",
+    "gates_before_accept": [
+      "refetch+verify tt-rt.tar (SHA 014c566e) and prove it does not overwrite /data/local/tmp/asx libart/lib (conflict 3/6)",
+      "relaunch >=10 lit unified keys with B overlaid -> all lit by t20 or roll back (coexistence; conflict 7)",
+      "confirm B clears BOTH ICU walls (ns sees libicui18n AND ubrk_open_NN resolves); if wall2 still fires, fall back"
+    ],
+    "fallback": "Route A wall-1 first (single-lib app_native_loader ns-table, class-positive), escalate wall-2 OH-shared ICU to outer"
+  },
+  "board_touches": 0,
+  "frozen_touches": 0
+}

@@ -1,0 +1,45 @@
+# Route B on-board footprint, extracted from its own scripts (tt-wd.tar / tt-stage.tar)
+## tt-stage.tar (staging binaries written to /data/local/tmp/a2hlab-app-c91...):
+-rwxr-xr-x  0 root   root    16280 Sep 26 00:03 source_app_namespace
+-rwxr-xr-x  0 root   root    16272 Sep 26 00:03 host_spawn
+-rw-r--r--  0 root   root      672 Sep 26 00:03 request.bin
+
+## tt-wd.tar (working-dir scripts):
+-rwxr-xr-x  0 zhaoyue wheel    8884 Sep 27 10:04 watchdog.sh
+-rwxr-xr-x  0 zhaoyue wheel     948 Sep 27 15:11 start-parent.sh
+-rwxr-xr-x  0 zhaoyue wheel     207 Sep 26 22:18 spawn.sh
+-rwxr-xr-x  0 zhaoyue wheel   16000 Sep 26 22:18 screen-gate
+-rwxr-xr-x  0 zhaoyue wheel    2613 Sep 27 17:54 onscreen_keeper.sh
+
+## start-parent.sh (paths + process it spawns):
+#!/system/bin/sh
+RT=/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d
+# Pin WL_PARENT_ID to the CURRENT host window id before each launch: the imehost0
+# window id drifts whenever the host restarts, so a stale value drops the app
+# sub-window off the physical screen. Wait briefly for the host window, then sed it in.
+WID=""; n=0
+while [ "$n" -lt 20 ]; do
+  WID=$(hidumper -s WindowManagerService -a '-a' 2>/dev/null | grep imehost0 | while read a b c w r; do echo "$w"; break; done)
+  case "$WID" in [0-9]*) break;; esac
+  sleep 0.25; n=$((n+1))
+done
+case "$WID" in [0-9]*) sed -i "s/export WL_PARENT_ID=[0-9]*/export WL_PARENT_ID=$WID/" "$RT/run.sh";; esac
+nohup /data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d/source_app_namespace "$RT" 20010053 /system/bin/sh /data/local/tmp/asx/run.sh >/data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d/parent.log 2>&1 </dev/null & echo $!
+
+## spawn.sh:
+#!/system/bin/sh
+/data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d/host_spawn /dev/unix/socket/A2HSourcec91d26bfb4db4fd5a002 /data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d/request.bin
+
+## watchdog.sh head (selfheal paths + PKG):
+#!/system/bin/sh
+D=/data/local/tmp/operator45
+F=$D/selfheal48
+C=/data/local/tmp/operator45-crashes
+RUNTIME=/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d
+STAGE=/data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d
+SOCKET=/dev/unix/socket/A2HSourcec91d26bfb4db4fd5a002
+PKG=com.ss.android.article.news
+child=; parent=
+mkdir -p "$F" "$C"
+[ ! -e "$F/stop" ] || exit 0
+uptime_s(){ read up rest < /proc/uptime; echo "${up%%.*}"; }
