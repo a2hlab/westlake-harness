@@ -52,3 +52,47 @@ hazard for a demo board.
 with the U13 appspawn-x service that lights the 128 apps — no socket/service/lock fight. Keep process management
 exe-path-based (step 2b) and optionally rename B's spawner. The empirical 10-key coexistence is re-run via `board_run` in
 the dedicated window (see PROGRESS).
+
+---
+
+# On-board verification (5ea, U13) — CORRECTION + the complete picture
+
+Ran it on live U13. The socket/service analysis above holds, but the on-board behaviour adds the decisive piece: the
+process-NAME collision is **not** a mere tooling nuisance — it **destabilises** the U13 service.
+
+## What the exe paths finally showed (the two DO have distinct identities)
+- **U13 appspawn-x = `/system/bin/appspawn-x`** (the begetctl service; restored with `begetctl start_service appspawn-x`).
+- **B appspawn-x = `/data/local/tmp/asx/appspawn-x`** (B's RT, in `source_app_namespace`'s private mount namespace — host
+  `/data/local/tmp/asx` does not even exist / `mount|grep asx` empty; unique socket `A2HSourcec91…`).
+- They briefly ran **together** (e.g. `14558` B + `16043` U13 both alive) → distinct binaries/paths/sockets, so there is
+  **no fundamental socket/service/lock contention**.
+
+## But coexistence is UNSTABLE because of the name collision
+Repeatedly, when B was overlaid, U13's `/system/bin/appspawn-x` service got **displaced** (6251/30436 → gone; 14196 → gone;
+16043 → gone), each time while B's `/data/local/tmp/asx/appspawn-x` churned (its watchdog aggressively restarts
+toutiao + spawner). `begetctl start_service appspawn-x` brings U13's back, and it is **stable again once B is rolled back**
+(verified: post-rollback `17666 /system/bin/appspawn-x` steady). So:
+- **Root cause**: both processes present comm = `appspawn-x`. begetctl/init service management keys on that name, so B's
+  churning `appspawn-x` process is **conflated with the U13 `appspawn-x` service**, and B's cycling knocks U13's out.
+- This is why the earlier observation looked like "B replaced U13's appspawn-x": it did, via the name collision at the
+  service-manager level, not via a socket/binary fight.
+
+## Required isolation (now mandatory, not optional) for the demo board
+1. **Rename B's spawner to a distinct process name** so begetctl/init only ever manages the real U13 `appspawn-x`:
+   in `run.sh`, `exec` a renamed binary (e.g. `cp appspawn-x asx-spawner; exec /data/local/tmp/asx/asx-spawner
+   --socket-name A2HSourcec91…`). Verify on-board that `/proc/<pid>/comm` is `asx-spawner` (the binary makes `prctl` calls +
+   carries an `AppSpawnX` string — if it force-sets comm, patch that too). Then `pidof appspawn-x` = only U13's service, and
+   B's churn can no longer confuse it.
+2. **Dampen B's watchdog restart churn** (it restarts toutiao+spawner aggressively) so even a residual name overlap doesn't
+   repeatedly poke the service manager.
+3. Keep **exe-path management** everywhere (rollback step 2b already does) — never `pidof/pkill appspawn-x`.
+
+## 10-key coexistence launch — NOT run this window
+Because the coexistence was unstable (U13 appspawn-x kept getting displaced by B's churn), launching the 10 keys via
+`bms_batch` would not have been a fair test (they need the U13 appspawn-x service up and steady). The right order is:
+**apply the rename isolation first, re-verify U13 `appspawn-x` stays up with B present, then run the `board_run`/`bms_batch`
+10-key sweep.** Post-rollback 5ea is clean U13 (appspawn-x `17666` stable, imehost removed, board up).
+
+**Net**: Toutiao's spawner and U13's appspawn-x are resource-independent and CAN coexist, but the shared process name makes
+it unstable today; the fix is a one-line rename of B's spawner (+ watchdog dampening). The demo board (toutiao + 128 apps)
+is achievable **after** that isolation — not before.

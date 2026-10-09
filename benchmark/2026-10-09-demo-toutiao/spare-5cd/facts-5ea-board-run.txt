@@ -1,0 +1,10 @@
+# 5ea board_run coexistence window facts (cc-t3 #91) -- HONEST
+begetctl_start_appspawn_x=OK -> U13 appspawn-x /system/bin/appspawn-x running (14196, then 16043)
+B_appspawn_x=/data/local/tmp/asx/appspawn-x (private ns, unique socket A2HSourcec91); distinct binary a7a358c6 vs U13 b7205719
+coexistence_momentary=YES (14558 B + 16043 U13 both alive once) -> no socket/service/lock contention
+coexistence_stable=NO -> B's watchdog churn repeatedly displaced U13's /system/bin/appspawn-x (name-collision confuses begetctl/init)
+root_cause=shared process name "appspawn-x" (comm) -> service manager conflates B's churning process with U13 service
+isolation_required=rename B spawner to distinct comm (asx-spawner) + dampen watchdog churn + exe-path management (step 2b)
+10key_launch=NOT RUN (unstable coexistence; would be unfair test). Do after the rename isolation.
+post_rollback=clean U13: appspawn-x 17666 /system/bin/appspawn-x STABLE alone; imehost 0; board up (uptime 7814s); UNLOCKED
+toutiao_onscreen_this_window=not re-captured (churn/BOOTSTRAP); demo path already proven last round (cold1/2/3)
