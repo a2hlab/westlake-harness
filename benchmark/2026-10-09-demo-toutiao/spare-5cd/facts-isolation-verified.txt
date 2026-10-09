@@ -1,0 +1,7 @@
+# 5ea isolation + coexistence VERIFIED (cc-t3 #91) -- B's toutiao coexists with U13's 128-app runtime
+isolation_patch=B spawner renamed appspawn-x -> asx-spawner (run.sh exec rename; watchdog.sh pidof appspawn-x -> asx-spawner). ISOLATION_OK on deploy.
+root_cause_fixed=watchdog clean_all `kill -9 $(pidof "$PKG" appspawn-x)` was killing U13's /system/bin/appspawn-x by NAME + `pidof appspawn-x`>1 false count-violation churn. After rename, B only touches comm 'asx-spawner'.
+U13_appspawn_x_stability=17666 CONSTANT across the FULL 5-minute check (11 samples t=0..300s), while B's asx-spawner churned 18177->20221->22017. (stability-5ea.txt)
+10key_sweep=bms_batch --launch-only, with B overlaid + U13 appspawn-x 17666 serving: TOTAL keys=10 screenshots_captured=20/20 alive_t5=9 alive_t20=9 (antennapod variance child_hilog=0; other 9 alive t5+t20). RUNTIME fingerprint=821de739cf81 UNCHANGED, FROZEN violations=0. (board-run-10key-facts.txt)
+rollback=ROLLBACK OK; step 2b reaped asx-spawner orphan (exe-path); U13 appspawn-x STILL 17666 (/system/bin/appspawn-x) after rollback -- never disrupted end to end; imehost 0; UNLOCKED.
+verdict=Toutiao (B's self-contained spawner, renamed asx-spawner, own socket A2HSourcec91, own namespace) COEXISTS with the U13 appspawn-x service that lights the 128 apps. Demo board (toutiao + 128 apps) is achievable with this one-line rename isolation. No /system change, no frozen touch, same bundleName, reversible.

@@ -80,6 +80,15 @@ dev "tar xpf $PROV/tt-stage.tar -C $STAGE && chmod +x $STAGE/source_app_namespac
 send "$BUNDLE/tt-wd.tar" "$PROV/tt-wd.tar"
 dev "tar xpf $PROV/tt-wd.tar -C $F && chmod +x $F/watchdog.sh $F/start-parent.sh $F/spawn.sh $F/screen-gate $F/onscreen_keeper.sh 2>/dev/null; echo WD_OK" 30 >/dev/null
 
+# 5b. ISOLATION (cc-t3 #91): rename B's spawner to 'asx-spawner' so it never collides with U13's /system/bin/appspawn-x.
+#     Root cause fixed: watchdog clean_all did `kill -9 $(pidof "$PKG" appspawn-x)` — killing U13's service BY NAME — and
+#     counted `pidof appspawn-x`>1 as a violation (churn). After the rename, run.sh execs a copy named asx-spawner (comm=
+#     asx-spawner; the spawner does not self-prctl its comm — PR_SET_NAME is only in ChildMain for the app child), and the
+#     watchdog manages only 'asx-spawner'. So B never kills/counts the U13 appspawn-x service again.
+isol=$(dev "sed -i 's#exec /data/local/tmp/asx/appspawn-x#cp -f /data/local/tmp/asx/appspawn-x /data/local/tmp/asx/asx-spawner; exec /data/local/tmp/asx/asx-spawner#' $RT/run.sh; sed -i 's/appspawn-x/asx-spawner/g' $F/watchdog.sh; (grep -q 'exec /data/local/tmp/asx/asx-spawner' $RT/run.sh && grep -q 'pidof .*asx-spawner' $F/watchdog.sh && echo ISOLATION_OK || echo ISOLATION_FAIL)" 20)
+echo "$isol" | grep -q ISOLATION_OK || fail "isolation patch: $isol"
+say "isolation applied: B spawner -> asx-spawner (watchdog no longer touches U13 appspawn-x)"
+
 # 6. ownership + SELinux + the mount-point dirs source_app_namespace needs.
 #    source_app_namespace binds $RT/private-tmp->/data/local/tmp then $RT->/data/local/tmp/asx,
 #    so $RT/private-tmp/asx must exist as a mount point (+ private-tmp/app-data/i18n owned by the uid).

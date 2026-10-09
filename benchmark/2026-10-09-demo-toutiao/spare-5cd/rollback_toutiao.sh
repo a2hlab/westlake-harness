@@ -22,7 +22,9 @@ dev "rm -rf $STAGE $PROV $D; echo cleaned_tmp" 20
 #     deleted, so we match name=appspawn-x AND exe shows "(deleted)" -> that is ONLY an orphan whose binary is gone.
 #     RUNBOOK #12-safe: OH's init service is named "appspawn" (not matched); a LIVE route-a appspawn-x service has a
 #     real (non-deleted) exe and is NOT matched. Exe-path match, never a blind pkill.
-dev "for p in \$(pidof appspawn-x 2>/dev/null); do e=\$(readlink /proc/\$p/exe 2>/dev/null); case \"\$e\" in *appspawn-x*'(deleted)'*|*asx/appspawn-x*'(deleted)'*) echo \"reap orphan spawner pid=\$p exe=\$e\"; kill -9 \$p 2>/dev/null;; *) [ -n \"\$e\" ] && echo \"keep pid=\$p exe=\$e (live, not a deleted-RT orphan)\";; esac; done; echo spawner_reaped" 20
+#     After the #91 isolation, B's spawner is named 'asx-spawner' (exe …/asx/asx-spawner); legacy overlays named it
+#     'appspawn-x'. Reap either by exe-path with "(deleted)" — NEVER U13's /system/bin/appspawn-x (live, non-deleted exe).
+dev "for p in \$(pidof asx-spawner appspawn-x 2>/dev/null); do e=\$(readlink /proc/\$p/exe 2>/dev/null); case \"\$e\" in *asx/asx-spawner*|*asx-spawner*'(deleted)'*|*asx/appspawn-x*'(deleted)'*|*appspawn-x*'(deleted)'*) echo \"reap orphan spawner pid=\$p exe=\$e\"; kill -9 \$p 2>/dev/null;; *) [ -n \"\$e\" ] && echo \"keep pid=\$p exe=\$e (live service, not a B orphan)\";; esac; done; echo spawner_reaped" 20
 # 3. verify restored: imehost gone, no imehost0 window
 gone=$(dev "bm dump -a 2>/dev/null | grep -c imehost" 20)
 win=$(dev "hidumper -s WindowManagerService -a '-a' 2>/dev/null | grep -c imehost0" 15)
