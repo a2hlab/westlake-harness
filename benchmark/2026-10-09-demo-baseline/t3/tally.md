@@ -2,19 +2,19 @@
 
 ## Evidence first
 
-Pinned outer signoff: **108/128 canonical packages**; **20 pending**. This is not stability, reboot or interaction acceptance.
+Pinned outer signoff: **128/128 canonical packages**; **0 pending**. This is not stability, reboot or interaction acceptance.
 
 Historical content tier: **87/94 signed lit/lit_splash**. Empty-state and error-screen tiers are kept separate even when signed lit.
 
 - manifest: `$WORKSPACES/westlake-harness-bms/benchmark/2026-10-09-demo-baseline/demo-manifest.json`, SHA256 `7a2627326cb536bc8b0ee35587827999f448f827a91e22bdc663809767d82933`.
-- outer_signoff: `$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/t3-outer-signoff.json`, SHA256 `3e15875ea22b7612a68f2baf7f2d8971762ac4ba715a1db7cd83ada9564365ce`.
+- outer_signoff: `$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/t3-outer-signoff.json`, SHA256 `0e9b825a0ccbfcbe6af0bc1ccd7f93d55d323e1869b8ecdc957a7591048aa387`.
 
 ## Tier totals
 
 | Manifest tier | Total | Signed lit/lit_splash | Verdict counts |
 |---|---:|---:|---|
 | shown | 94 | 87 | half_empty=3, lit=86, lit_splash=1, not_lit=4 |
-| minimal | 32 | 10 | half_empty=1, half_loading=1, lit=10, pending=20 |
+| minimal | 32 | 26 | half_empty=2, half_loading=3, lit=26, not_lit=1 |
 | errors | 2 | 1 | lit_splash=1, not_lit=1 |
 
 ## Content-tier signed-lit keys
@@ -123,38 +123,38 @@ Historical content tier: **87/94 signed lit/lit_splash**. Empty-state and error-
 
 | Key | Package | Verdict | Batch |
 |---|---|---|---|
-| `cv2-app-varlorg-unote` | `app.varlorg.unote` | pending | unsigned |
-| `cv2-ca-ramzan-delist` | `ca.ramzan.delist` | pending | unsigned |
-| `cv2-com-alxgnon-postwriter` | `com.alxgnon.postwriter` | pending | unsigned |
+| `cv2-app-varlorg-unote` | `app.varlorg.unote` | lit | capture-05 |
+| `cv2-ca-ramzan-delist` | `ca.ramzan.delist` | lit | capture-05 |
+| `cv2-com-alxgnon-postwriter` | `com.alxgnon.postwriter` | lit | capture-05 |
 | `cv2-com-angrydoughnuts-android-alarmclock` | `com.angrydoughnuts.android.alarmclock` | lit | capture-04 |
 | `cv2-com-cg-lrceditor` | `com.cg.lrceditor` | lit | capture-04 |
-| `cv2-com-deva-knot` | `com.deva.knot` | pending | unsigned |
+| `cv2-com-deva-knot` | `com.deva.knot` | lit | capture-05 |
 | `cv2-com-emmanuelmess-itsdicey` | `com.emmanuelmess.itsdicey` | lit | capture-04 |
-| `cv2-com-git-itdolan31-crystalpad` | `com.git.itdolan31.crystalpad` | pending | unsigned |
-| `cv2-com-maxistar-textpad` | `com.maxistar.textpad` | pending | unsigned |
+| `cv2-com-git-itdolan31-crystalpad` | `com.git.itdolan31.crystalpad` | lit | capture-05 |
+| `cv2-com-maxistar-textpad` | `com.maxistar.textpad` | lit | capture-05 |
 | `cv2-com-nathaniel-motus-umlclasseditor` | `com.nathaniel.motus.umlclasseditor` | lit | capture-04 |
-| `cv2-com-nbossard-packlist` | `com.nbossard.packlist` | pending | unsigned |
-| `cv2-com-nima-taskmanager` | `com.nima.taskmanager` | pending | unsigned |
-| `cv2-com-nononsenseapps-notepad` | `com.nononsenseapps.notepad` | pending | unsigned |
-| `cv2-com-notecryptpro` | `com.notecryptpro` | pending | unsigned |
-| `cv2-com-omgodse-notally` | `com.omgodse.notally` | pending | unsigned |
-| `cv2-com-page-bizzle` | `com.page.bizzle` | pending | unsigned |
+| `cv2-com-nbossard-packlist` | `com.nbossard.packlist` | lit | capture-05 |
+| `cv2-com-nima-taskmanager` | `com.nima.taskmanager` | lit | capture-05 |
+| `cv2-com-nononsenseapps-notepad` | `com.nononsenseapps.notepad` | lit | capture-05 |
+| `cv2-com-notecryptpro` | `com.notecryptpro` | lit | capture-05 |
+| `cv2-com-omgodse-notally` | `com.omgodse.notally` | lit | capture-05 |
+| `cv2-com-page-bizzle` | `com.page.bizzle` | lit | capture-05 |
 | `cv2-com-pep1lo-bakerspercentagecalculator` | `com.pep1lo.bakerspercentagecalculator` | lit | capture-04 |
-| `cv2-com-rafapps-simplenotes` | `com.rafapps.simplenotes` | pending | unsigned |
-| `cv2-com-wbpxre150-shoppinglist` | `com.wbpxre150.shoppinglist` | pending | unsigned |
+| `cv2-com-rafapps-simplenotes` | `com.rafapps.simplenotes` | lit | capture-05-icon-retry |
+| `cv2-com-wbpxre150-shoppinglist` | `com.wbpxre150.shoppinglist` | lit | capture-05 |
 | `cv2-com-willbsp-habits` | `com.willbsp.habits` | lit | capture-04 |
-| `cv2-com-woefe-shoppinglist` | `com.woefe.shoppinglist` | pending | unsigned |
+| `cv2-com-woefe-shoppinglist` | `com.woefe.shoppinglist` | lit | capture-05 |
 | `cv2-de-markusfisch-android-libra` | `de.markusfisch.android.libra` | lit | capture-04 |
 | `cv2-eu-dfdx-jslab` | `eu.dfdx.jslab` | half_empty | capture-04 |
 | `cv2-org-quicksc0p3r-simplecounter` | `org.quicksc0p3r.simplecounter` | lit | capture-04 |
-| `fd-android` | `net.thunderbird.android` | pending | unsigned |
+| `fd-android` | `net.thunderbird.android` | half_loading | capture-05 |
 | `fd-binaryeye` | `de.markusfisch.android.binaryeye` | lit | capture-04 |
-| `fd-droidify` | `com.looker.droidify` | pending | unsigned |
+| `fd-droidify` | `com.looker.droidify` | half_empty | capture-05 |
 | `fd-gallery` | `org.fossify.gallery` | lit | capture-04 |
-| `fd-k9` | `com.fsck.k9` | pending | unsigned |
+| `fd-k9` | `com.fsck.k9` | half_loading | capture-05 |
 | `fd-minetest` | `net.minetest.minetest` | half_loading | capture-04 |
-| `fd-notes` | `org.fossify.notes` | pending | unsigned |
-| `newpipe` | `org.schabi.newpipe` | pending | unsigned |
+| `fd-notes` | `org.fossify.notes` | lit | capture-05 |
+| `newpipe` | `org.schabi.newpipe` | not_lit | capture-05 |
 
 ## Required games
 
@@ -188,26 +188,6 @@ Missing verdict stays pending even if a capture-05 facts row or screenshot alrea
 
 | Key | Package | Verdict | Batch |
 |---|---|---|---|
-| `cv2-app-varlorg-unote` | `app.varlorg.unote` | pending | unsigned |
-| `cv2-ca-ramzan-delist` | `ca.ramzan.delist` | pending | unsigned |
-| `cv2-com-alxgnon-postwriter` | `com.alxgnon.postwriter` | pending | unsigned |
-| `cv2-com-deva-knot` | `com.deva.knot` | pending | unsigned |
-| `cv2-com-git-itdolan31-crystalpad` | `com.git.itdolan31.crystalpad` | pending | unsigned |
-| `cv2-com-maxistar-textpad` | `com.maxistar.textpad` | pending | unsigned |
-| `cv2-com-nbossard-packlist` | `com.nbossard.packlist` | pending | unsigned |
-| `cv2-com-nima-taskmanager` | `com.nima.taskmanager` | pending | unsigned |
-| `cv2-com-nononsenseapps-notepad` | `com.nononsenseapps.notepad` | pending | unsigned |
-| `cv2-com-notecryptpro` | `com.notecryptpro` | pending | unsigned |
-| `cv2-com-omgodse-notally` | `com.omgodse.notally` | pending | unsigned |
-| `cv2-com-page-bizzle` | `com.page.bizzle` | pending | unsigned |
-| `cv2-com-rafapps-simplenotes` | `com.rafapps.simplenotes` | pending | unsigned |
-| `cv2-com-wbpxre150-shoppinglist` | `com.wbpxre150.shoppinglist` | pending | unsigned |
-| `cv2-com-woefe-shoppinglist` | `com.woefe.shoppinglist` | pending | unsigned |
-| `fd-android` | `net.thunderbird.android` | pending | unsigned |
-| `fd-droidify` | `com.looker.droidify` | pending | unsigned |
-| `fd-k9` | `com.fsck.k9` | pending | unsigned |
-| `fd-notes` | `org.fossify.notes` | pending | unsigned |
-| `newpipe` | `org.schabi.newpipe` | pending | unsigned |
 
 ## Reproduce
 
