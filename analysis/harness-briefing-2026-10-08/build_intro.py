@@ -174,18 +174,42 @@ text(s, 0.75, 5.95, 11.9, 0.9, ['每次上板出了问题,都追问一句:哪个
                                  '另外两部分:收编原有的实验室脚本;为验收契约写的测试(让 agent 的交付能被机器检查)。'], 14, spacing=4)
 
 # 6 static analysis -------------------------------------------------------------------------------------------------
-s = slide('静态分析工具', P2, '凡是离线能回答的问题,不占用板子')
-table(s, 0.5, 1.7, 12.33, [
-    ('工具', '回答什么问题'),
-    ('open_site_scan', '宿主和子进程里每个库从哪里加载、进了哪个 namespace、会不会被加载两份'),
-    ('static_pipeline / aggregate_gaps', '全部 APK 缺哪些系统服务、JNI、库;哪个缺口挡住的应用最多'),
-    ('first_fatal / cluster_first_cause', '每个应用的首个致命错误是什么;按挡住的应用数排序,决定先修哪堵墙'),
-    ('predict_vs_actual', '全量前写下每个应用的预测,全量后对账;没预测到的墙补进扫描器'),
-    ('abi_diff / deployed_class_diff / deployed_strings_diff', '新产物和板上正在跑的那份比:导出函数、调用签名、类、字符串有没有被删或改'),
-    ('null_producer', '空指针来自框架接口的返回值,还是应用自己的代码'),
-    ('REA + Hopper(新接入)', '反编译 native 库,辅助判断崩溃点;结论要回到原始指令再核对一遍'),
-], [4.4, 7.93], size=13, row_h=0.6)
-text(s, 0.5, 6.7, 12.3, 0.5, '静态计数只是上界:比如某个符号 50 个应用引用,实际因它失败的只有 2 个。排序最终以实测的首个致命错误为准。', 13, False, GREY)
+s = slide('静态分析工具:做什么,底层用什么', P2, '凡是离线能回答的问题,不占用板子')
+table(s, 0.5, 1.5, 12.33, [
+    ('工具', '回答什么问题', '底层调用'),
+    ('open_site_scan', '每个库从哪里加载、进了哪个 namespace、会不会加载两份', 'llvm-objdump、llvm-nm'),
+    ('westlake-apk-gap(static_pipeline 调用)', '每个 APK 缺哪些系统服务、JNI、库', 'androguard、pyelftools、llvm-objdump'),
+    ('aggregate_gaps', '哪个缺口挡住的应用最多', '读上一步的缺口图'),
+    ('first_fatal / cluster_first_cause', '每个应用的首个致命错误,按挡住的应用数排序', '自写解析:hilog、cppcrash'),
+    ('predict_vs_actual', '全量前写预测,全量后对账', '读签认件和簇表'),
+    ('abi_diff', '新旧 .so 的导出函数、调用签名、调用图', 'llvm-objdump、llvm-nm、c++filt'),
+    ('deployed_class_diff', '新 JAR 和板上那份比:类有没有被删或改', 'dexdump'),
+    ('deployed_strings_diff', '新旧 .so 的字符串增删', 'strings、llvm-readelf'),
+    ('null_producer', '空指针来自框架返回值,还是应用自己', 'baksmali'),
+    ('资源与主题扫描(专项)', '主题、图标、布局等资源', 'aapt2 dump resources'),
+    ('方法级反编译(专项)', '读某个方法的具体代码', 'apkanalyzer'),
+    ('G2 编译入口对照(门禁)', '新镜像的编译代码和已知能用的比', 'oatdump(构建机上)'),
+    ('REA + Hopper(新接入)', '反编译 native 库,辅助判断崩溃点', 'Hopper'),
+], [3.55, 5.08, 3.7], size=12, row_h=0.385)
+
+# 6b how the static tools were built --------------------------------------------------------------------------------
+s = slide('这些工具是怎么来的', P2, '自己写的是「问什么、怎么判」;解析文件格式交给业界标准工具')
+lanes4 = [('输入', ['APK / DEX', '板上部署的 .so 与 JAR', 'boot image', 'hilog、cppcrash'], PALE['grey'], GREY),
+          ('标准工具', ['Android SDK:dexdump、aapt2、apkanalyzer', 'LLVM:llvm-objdump、llvm-readelf、llvm-nm', 'smali / baksmali', 'androguard、pyelftools', 'AOSP oatdump、REA + Hopper'], PALE['green'], GREEN),
+          ('我们的脚本', ['只回答一个问题', '固定输入、输出带哈希', '带已知答案测试', '外环审过才入库'], PALE['blue'], BLUE),
+          ('输出', ['缺口排行、致命错误簇表', '上板前预测表', '门禁结论(过 / 拒)', '证据目录'], PALE['purple'], PURPLE)]
+for i, (t, items, fill, col) in enumerate(lanes4):
+    x = 0.45 + i * 3.18
+    box(s, x, 1.75, 2.85, 3.6, fill)
+    text(s, x + 0.2, 1.9, 2.5, 0.5, t, 18, True, col)
+    text(s, x + 0.2, 2.45, 2.5, 2.9, [(it, {'bullet': True}) for it in items], 13, spacing=5)
+    if i < 3:
+        arrow(s, x + 2.85, 3.55, x + 3.18, 3.55, GREY)
+box(s, 0.45, 5.6, 12.4, 1.35, LIGHT)
+text(s, 0.7, 5.72, 12.0, 1.2, [
+    ('怎么产生:遇到一个要反复回答的问题(比如「新 JAR 有没有删掉类」),车道写一个脚本,外环复核结果后入库;每次上板出了问题,再追问哪个静态检查本可以提前拦住,补一个。', {}),
+    ('静态计数只是上界:比如某个符号 50 个应用引用,实际因它失败的只有 2 个;排序最终以实测的首个致命错误为准。', {'color': GREY, 'size': 13}),
+], 14, spacing=6)
 
 # 7 environment checks ----------------------------------------------------------------------------------------------
 s = slide('环境检查工具:种类多,目的是一个', P2, '确认「现在跑的就是我们以为的那一版」,环境一变,结论就不能沿用')
