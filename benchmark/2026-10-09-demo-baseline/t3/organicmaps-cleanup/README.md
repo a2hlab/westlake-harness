@@ -1,0 +1,3 @@
+# OrganicMaps child drain
+
+The normal cleanup returned false while AppMS kept new children alive. Under a dedicated board lock, BMS UID20011137 was checked, the sole root parent was identified, and every candidate child required that UID and direct parent11752. The same per-PID kernel checks as master cold_stop were batched into one shell before signaling children. One batch removed40 children; immediate and one-second-stable process checks were empty. Root parent, U13 payload and boot were untouched. Final319-path read-only identity passed; then the lock was released. This is RUNBOOK195 operational recovery, not a runtime experiment.
