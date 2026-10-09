@@ -1,0 +1,20 @@
+--- host-base.c
++++ host-public.c
+@@ -327,8 +327,15 @@
+         }
+     }
+     if (wants_bridge) {
+-        result = dlns_inherit(app_namespace, bridge_namespace,
+-                              bridge_shared_sonames);
++        static const char kAospPublicLibs[] =
++            "libicui18n.so:libGLESv2.so:libGLESv3.so:libjnigraphics.so";
++        char app_public[2 * PATH_MAX];
++        int app_public_len = snprintf(app_public, sizeof(app_public), "%s:%s",
++                                      bridge_shared_sonames, kAospPublicLibs);
++        if (app_public_len < 0 || (size_t)app_public_len >= sizeof(app_public)) {
++            return NamespaceResultFence(ENAMETOOLONG);
++        }
++        result = dlns_inherit(app_namespace, bridge_namespace, app_public);
+         if (result != 0) {
+             return NamespaceResultFence(result);
+         }

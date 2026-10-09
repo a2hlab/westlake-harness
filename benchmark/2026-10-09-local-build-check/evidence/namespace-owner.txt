@@ -1,0 +1,50 @@
+原样 loader 只有回调调用，实际命名空间配置函数在宿主。
+宿主源码采用本仓库 u15-jitsi/inputs/candidate-stock-host.c，未叠加 jitsi 或 audio 修改。
+$WORKSPACES/westlake-harness-bms-deploy/benchmark/2026-09-30-n3-native/flutter/app_native_loader.c:315
+            sizeof(gate->namespace_host_ops) ||
+        gate->namespace_host_ops.runtime_generation == 0U ||
+        gate->namespace_host_ops.create_configured_namespaces == NULL ||
+        gate->namespace_host_ops.open_namespace == NULL ||
+        gate->namespace_host_ops.reserved_zero[0] != 0U ||
+        gate->namespace_host_ops.reserved_zero[1] != 0U ||
+        gate->namespace_host_ops.reserved_zero[2] != 0U ||
+$WORKSPACES/westlake-harness-bms-deploy/benchmark/2026-09-30-n3-native/flutter/app_native_loader.c:408
+    const char* shared = wants_bridge ? config->bridge_shared_sonames : NULL;
+    void* bootstrap_handle = NULL;
+    int rc = domain->runtime_gate.namespace_host_ops.create_configured_namespaces(
+        wants_bridge ? &domain->bridge : NULL,
+        wants_bridge ? bridge_name : NULL,
+        wants_bridge ? config->bridge_search_paths : NULL,
+        wants_bridge ? config->bridge_permitted_paths : NULL,
+$WORKSPACES/westlake-inputs/generations/local-build-check-20261009T131530Z/host-base.c:140
+
+
+static WLASC_NOINLINE int StockCreateConfiguredNamespaces(
+    void *bridge_namespace_opaque, const char *bridge_name,
+    const char *bridge_search_paths, const char *bridge_permitted_paths,
+    const char *bridge_shared_sonames, const char *bridge_bootstrap_soname,
+    const WlpbHostOpsV1 *pthread_bridge_ops,
+$WORKSPACES/westlake-inputs/generations/local-build-check-20261009T131530Z/host-base.c:330
+    }
+    if (wants_bridge) {
+        result = dlns_inherit(app_namespace, bridge_namespace,
+                              bridge_shared_sonames);
+        if (result != 0) {
+            return NamespaceResultFence(result);
+        }
+$WORKSPACES/westlake-inputs/generations/local-build-check-20261009T131530Z/host-base.c:536
+    services.get_pthread_bridge_ops =
+        westlake_native_compat_get_pthread_bridge_ops;
+    services.create_configured_namespaces =
+        StockCreateConfiguredNamespaces;
+    services.open_namespace = StockOpenNamespace;
+    install_result = install_services(&services);
+    if (install_result != 0) {
+$WORKSPACES/westlake-inputs/generations/local-build-check-20261009T131530Z/host-base.c:537
+        westlake_native_compat_get_pthread_bridge_ops;
+    services.create_configured_namespaces =
+        StockCreateConfiguredNamespaces;
+    services.open_namespace = StockOpenNamespace;
+    install_result = install_services(&services);
+    if (install_result != 0) {
+        return -1;
