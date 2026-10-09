@@ -1,0 +1,44 @@
+{
+  "task": "t2b BoatAttack: offline 9-shared-path difference table (both SHAs, introducing commit, our equivalent fix) + route judgment for running com.Unity3d.BoatAttackDay on our unified state (U13) + BoatAttack's 3 app-private files. Static stage, zero board.",
+  "date": "2026-10-09", "lane": "cc-wiki", "board_entry": 90, "campaign": 91, "offline": true, "board_access": "none",
+  "built": false, "deployed": false, "pushed": false, "ran_on_board": false,
+  "status": "DONE (static) -- difference table complete + sourced; route (1) recommended, gated on one 49-byte CLASSNAME_FIX. On-board run is a later human-reviewed spare-board window.",
+  "sources": {
+    "boatattack": "~/orca/00.Workspace-games-ad1ab0a7 (branch games/boatattack-repro, HEAD 43ec24af9, READ-ONLY); bundle strict-boat-assembled-20260924T074522Z-25403",
+    "our_unified_state": "U13 deployed plan.expected (westlake-inputs/generations/u13-stageB-20261003 board-evidence; binaries in u13-stageA-*/armed-bundle; jar anchor bbc3f530)",
+    "apk": "com.Unity3d.BoatAttackDay/com.unity3d.player.UnityPlayerActivity SHA 8dc636657cccdad1310332928b8cc8eca7da03f4b528de6fb0c63118173e0444"
+  },
+  "nine_shared_paths": [
+    {"path": "/system/bin/appspawn-x", "ours": "2a87118e7e8e62fb73ef71a436517cda406c308668753a478cf52331e996072e", "boat": "76e6df931905177c8abde4054ee5516cb6d8394c67dce8f79dfadf0847b96747", "same": false, "equivalent": "generation drift, no Unity patch; our U13 appspawn hosts 94+ apps"},
+    {"path": "/system/android/lib64/liboh_adapter_bridge.so", "ours": "84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a", "boat": "8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e", "same": false, "equivalent": "ours = 846 bridge (superset); exports 2358 vs 2360, ABI-equivalent"},
+    {"path": "/system/android/lib64/liboh_android_runtime.so", "ours": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae", "boat": "adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130", "same": false, "equivalent": "boat folds runtime+libandroid into one blob (base 9ccf64f8 + RUNTIME_CLASSNAME_FIX); same fix family as libandroid"},
+    {"path": "/system/android/lib64/libandroid.so", "ours": "9ccf64f8d1f6e1748665057273eaa4c2770098934d39afa160f2c6b4c18b06db", "boat": "adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130", "same": false, "equivalent": "boat = OUR base 9ccf64f8 + 49-byte CLASSNAME_FIX (0 symbol/string delta); our U13 ships unfixed base -> route (2) port"},
+    {"path": "/system/android/lib64/libnativeloader.so", "ours": "b8be63d2f617ba202373e4a60b34cc4eadba84bcfe31e42b64cfe4f01bfa62f7", "boat": "fde6f31c6f8911bd5be165d69bc248f47699be435240dc855fa7528c0ba73ccd", "same": false, "equivalent": "generation drift, no Unity patch"},
+    {"path": "/system/android/lib64/libwestlake_bionic_pthread_bridge.so", "ours": "db31d6d81c543860449e4e13f94dda6d39acde94ce00e34e7087a4d796e88fc6", "boat": "db31d6d81c543860449e4e13f94dda6d39acde94ce00e34e7087a4d796e88fc6", "same": true, "equivalent": "BYTE-IDENTICAL; the one shared path the 3 app-private files add-needed (load-bearing for route 1)"},
+    {"path": "/system/android/framework/oh-adapter-runtime.jar", "ours": "bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b", "boat": "56e4d4733bb6dc4f260981f51184234522df7a67c0eca01bd1b9ef87369221af", "same": false, "equivalent": "different route-a jar generation; no Unity-specific content"},
+    {"path": "/system/lib64/appspawn/libwestlake_android_child.z.so", "ours": "dc73a28d2535f0a261776625ea51770edf044f33de17aa05ff5c5e789ba25d3c", "boat": "47f238aede6336ce3770861a6a742e71abc28f35516481299797c05c63149b57", "same": false, "equivalent": "generation drift"},
+    {"path": "/system/lib64/westlake/route-a/<gen>/libwestlake_android_runtime_provider.so", "ours": "0509fe235a7883b5cd9b57477221cb868465de944c6f70ed0cf2835b0fe4a97c", "ours_gen_dir": "74d1d6d48210ec5bf66ae43598655c3486b8873513821f13c2ffe15f0de552ac", "boat": "f821d20eaefc798b638192124e3a98683103f3d509c0b66ca1c6946037cccdb0", "boat_gen_dir": "74e6f75976087d7890088b29c08482f17573a588fa5857cb6ca39264838ce16d", "same": false, "equivalent": "different route-a generation id"}
+  ],
+  "introducing_commit_note": "No per-file git commit exists on the boat side: .bridge-payload/ is gitignored, binaries are board-pull/assembled artifacts tracked only by SHA in manifest.env. Nearest git anchors: ae8ef1fcc (switch shared candidate), 43ec24af9 (pin jar). Provenance: ASSEMBLED_FROM strict-runtime-20260924T074453Z-21368; ADAPTER/RUNTIME ORIGIN = board pull boat-hw248-20260924 (hw248 run boatattack-runtime-source-20260813).",
+  "app_private_three": {
+    "C7_libunity_so": {"sha": "1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac", "fix": "add-needed pthread_bridge; resolver->eglGetProcAddress; disable phone listener; disable unsupported Swappy predicate"},
+    "C4_libil2cpp_so": {"sha": "f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746", "fix": "rename-dynamic-symbols (signal map); add-needed signal_box + pthread_bridge"},
+    "signal_box": {"sha": "7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da", "fix": "bionic/musl signal-ABI shim; bound app-private"}
+  },
+  "capability_diffs": {
+    "unity_ndk_gap": "adapter-gap-seed.txt 97 syms are UND (needed), not exported (both adapters 1/97); provided by libandroid",
+    "libandroid_gap_coverage": "our 9ccf64f8 = 28/97, boat adc125f4 = 28/97, identical set",
+    "libandroid_symbol_delta": "0 (only-in-boat 0, only-in-our 0)",
+    "libandroid_byte_delta": "cmp -l = 49 bytes; strings delta 0 -> non-ABI CLASSNAME_FIX instruction patch",
+    "adapter_exports": "our 2358 vs boat 2360 (846 bridge superset)",
+    "pthread_bridge": "byte-identical"
+  },
+  "route_judgment": {
+    "route_1": "RECOMMENDED first: unified state (9 shared, ours) + the 3 app-private files (C7/C4/signal-box), no shared-path change. Supported: all Unity fixes app-private; pthread_bridge byte-identical; libandroid ABI identical; adapter ABI superset. Watch: the CLASSNAME_FIX our U13 lacks (class-resolution risk) + touch/vsync/landscape (OH native contract) on t28.",
+    "route_2": "if (1) fails with a class-resolution symptom: port the 49-byte libandroid/runtime CLASSNAME_FIX (boat adc125f4 rel. base 9ccf64f8) as NEW files overlaid on the unified state; no ABI/symbol/string/frozen change.",
+    "route_3": "only if (1)+(2) fail: report to outer; do NOT swap the whole generation (board constraint + spec)."
+  },
+  "boundaries": "Static only; no board/deploy/push/APK-resign/whole-generation-swap. On-board run (demo_baseline_boatattack_run, human-reviewed) is a later spare-board window; screenshot is ground truth; roll back if any of 10 lit keys un-lights.",
+  "branch_note": "feat/wikipedia-line has diverged from master; `git merge master` hit 20+ cross-lane conflicts, so the demo-baseline specs were read via `git show master:` (aa6c584bf2) without a full merge, to avoid corrupting committed work. Flagged for the outer loop to do a proper rebase/merge.",
+  "landing_paths": "benchmark/2026-10-09-demo-boatattack/landing-paths.txt"
+}

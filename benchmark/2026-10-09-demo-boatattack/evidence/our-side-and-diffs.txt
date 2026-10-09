@@ -1,0 +1,37 @@
+Our unified state = U13 (deployed plan.expected in westlake-inputs/generations/u13-stageB-20261003 board-evidence,
+all 3 boards status=active_verified, active route-a generation 74d1d6d4…; binaries on disk in
+u13-stageA-91272eaf-20261003/armed-bundle and u13-stageA-61b-8861a11a-20261003/armed-bundle). Anchor: jar = bbc3f530.
+
+=== 9 shared paths — our U13 SHA vs BoatAttack bundle SHA ===
+#  path                                                         our-U13 (deployed)   boat bundle          same?
+1  /system/bin/appspawn-x                                       2a87118e7e8e62fb…    76e6df9319051778…    NO
+2  /system/android/lib64/liboh_adapter_bridge.so                84695d62f515cfec…    8ab85446f8b386c4…    NO
+3  /system/android/lib64/liboh_android_runtime.so               18763dd4b3a48aef…    adc125f4dfb800c2…    NO
+4  /system/android/lib64/libandroid.so                          9ccf64f8d1f6e174…    adc125f4dfb800c2…    NO (49-byte patch)
+5  /system/android/lib64/libnativeloader.so                     b8be63d2f617ba20…    fde6f31c6f8911bd…    NO
+6  /system/android/lib64/libwestlake_bionic_pthread_bridge.so   db31d6d81c543860…    db31d6d81c543860…    YES (byte-identical)
+7  /system/android/framework/oh-adapter-runtime.jar             bbc3f530190fe98e…    56e4d4733bb6dc4f…    NO
+8  /system/lib64/appspawn/libwestlake_android_child.z.so        dc73a28d2535f0a2…    47f238aede6336ce…    NO
+9  route-a/<gen>/libwestlake_android_runtime_provider.so        0509fe235a7883b5…    f821d20eaefc7986…    NO (our dir 74d1d6d4…, boat dir 74e6f759…)
+
+"Introducing commit" (boat side): NONE per file. `.bridge-payload/` is gitignored (0 tracked files); every boat
+binary is a board-pull / assembled artifact tracked only by SHA in manifest.env. Nearest git anchors (tracked
+scripts, not binaries): ae8ef1fcc "汇合候选切换为 strict-boat-assembled-20260924T074522Z" (candidate switch) and
+43ec24af9 (HEAD) "autostart runtime jar pin -> 56e4d473". Provenance (manifest.env + PROVENANCE.txt): ASSEMBLED_FROM
+line-B strict-runtime-20260924T074453Z-21368; ADAPTER_ORIGIN/RUNTIME_ORIGIN = board pull boat-hw248-20260924 (hw248
+build run boatattack-runtime-source-20260813T141442Z). Rows 3 & 4 are ONE blob on the boat side (adc125f4); our side
+keeps runtime (18763dd4) and libandroid (9ccf64f8) as two distinct files.
+
+=== capability diffs (llvm-readelf --dyn-syms; cmp; strings) — the "equivalent fix" evidence ===
+- adapter-gap-seed.txt (97 syms) are UND (needed), NOT exported: our adapter exports 1/97, boat adapter 1/97
+  (equal) -> these NDK symbols are provided by libandroid, not the adapter.
+- libandroid Unity-NDK coverage: our 9ccf64f8 covers 28/97, boat adc125f4 covers 28/97 — IDENTICAL set
+  (ALooper/ASensor/ANativeWindow families present on both; remainder resolved elsewhere/weak).
+- libandroid export-symbol delta our↔boat: only-in-boat=0, only-in-our=0 (identical exported ABI).
+- libandroid strings delta: 0. libandroid byte delta: cmp -l = 49 bytes (clusters near .text 174939/182867/260001-261135)
+  -> boat = OUR base 9ccf64f8 + a 49-byte CLASSNAME_FIX (manifest LIBANDROID_CLASSNAME_FIX=1, LIBANDROID_BASE_SHA=9ccf64f8).
+  Non-ABI, non-string: a surgical instruction patch. RUNTIME_CLASSNAME_FIX=1 is the same family on the runtime blob.
+- adapter export counts: our 84695d62 = 2358, boat 8ab85446 = 2360 (near-identical; our adapter is the 846 bridge,
+  benchmark/2026-10-01-bridge-846-buildchain — current source is a SUPERSET of the pulled 846 baseline).
+- pthread_bridge: byte-identical both sides -> the one shared path the 3 app-private files `add-needed`; load-bearing
+  dependency for route (1) is satisfied exactly.

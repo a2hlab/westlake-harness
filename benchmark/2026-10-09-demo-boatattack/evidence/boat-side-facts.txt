@@ -1,0 +1,42 @@
+BoatAttack side — facts gathered from ~/orca/00.Workspace-games-ad1ab0a7 (branch games/boatattack-repro, HEAD 43ec24af9, READ-ONLY)
+shared candidate: strict-boat-assembled-20260924T074522Z-25403  (manifest.env)
+APK: com.Unity3d.BoatAttackDay / com.unity3d.player.UnityPlayerActivity  SHA 8dc636657cccdad1310332928b8cc8eca7da03f4b528de6fb0c63118173e0444
+
+=== the 9 SHARED device paths (authoritative: src/tools/devices/boat-attack-apk-lightup.sh device_hash gate, lines 346-354) ===
+1 /system/bin/appspawn-x                                                             76e6df931905177c8abde4054ee5516cb6d8394c67dce8f79dfadf0847b96747
+2 /system/android/lib64/liboh_adapter_bridge.so                                      8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e   (build-id 827eb26b…; ADAPTER_ORIGIN = boat-hw248-20260924 pull)
+3 /system/android/lib64/liboh_android_runtime.so                                     adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130   (RUNTIME_ORIGIN = boat-hw248-20260924 pull; RUNTIME_CLASSNAME_FIX=1, base 9ccf64f8…)
+4 /system/android/lib64/libandroid.so                                                adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130   (same blob as liboh_android_runtime; LIBANDROID_CLASSNAME_FIX=1, base 9ccf64f8…)
+5 /system/android/lib64/libnativeloader.so                                           fde6f31c6f8911bd5be165d69bc248f47699be435240dc855fa7528c0ba73ccd   (build-id c2ca0907…) [also bind-mounted at the route-a provider dir -> the 10th mount]
+6 /system/android/lib64/libwestlake_bionic_pthread_bridge.so                         db31d6d81c543860449e4e13f94dda6d39acde94ce00e34e7087a4d796e88fc6   (build-id cc4e52ba…)  <-- the ONE expected to match our unified state
+7 /system/android/framework/oh-adapter-runtime.jar                                   56e4d4733bb6dc4f260981f51184234522df7a67c0eca01bd1b9ef87369221af
+8 /system/lib64/appspawn/libwestlake_android_child.z.so                              47f238aede6336ce3770861a6a742e71abc28f35516481299797c05c63149b57
+9 /system/lib64/westlake/route-a/74e6f75976087d7890088b29c08482f17573a588fa5857cb6ca39264838ce16d/libwestlake_android_runtime_provider.so   f821d20eaefc798b638192124e3a98683103f3d509c0b66ca1c6946037cccdb0
+
+=== the 3 APP-PRIVATE files (bind into /data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64/ -- do NOT touch the 9 shared paths) ===
+C7  libunity.so            device-pinned SHA 1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac  (8/13 identity, byte-patched)
+      patches (boat-attack-apk-lightup.sh 229-236): add-needed pthread_bridge; 0x761ed8 Unity core resolver -> eglGetProcAddress;
+      0x690ac0 disable optional phone listener (-> ret); 0x67a554 disable unsupported Swappy predicate
+C4  libil2cpp.so           device-pinned SHA f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746  (same-source rebuild dfaa9ef + Unity 2020.3.23f1)
+      patches (238-240): rename-dynamic-symbols (tuanjie_signal_symbols.map); add-needed signal_box; add-needed pthread_bridge
+signal-box libwestlake_bionic_signal_box.so  SHA 7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da  (copied from the shared candidate files/; bound app-private)
+
+KEY: every BoatAttack-SPECIFIC adaptation (disable Swappy, phone-listener, il2cpp pthread edge, bionic/musl signal ABI
+shim, eglGetProcAddress resolver) is in these 3 APP-PRIVATE files. The 9 shared paths carry NO Unity-specific patch --
+they are a generic route-a runtime generation (assembled 2026-09-24 from a boat hw248 board pull + a strict-runtime
+candidate). The private three add-needed libwestlake_bionic_pthread_bridge.so -> that shared path matching our unified
+state (same SHA db31d6d8) is the load-bearing dependency for route (1).
+
+=== Unity native contract the SHARED runtime must satisfy (reverse-analysis/, 258 symbols) ===
+adapter-gap-seed.txt (97)  = AOSP NDK symbols liboh_adapter_bridge.so must bridge for Unity:
+   ASensor* x15, ALooper* x6, ANativeWindow* x6, libc++/__cxa*/_Znwm/operator new-delete, __android_log_*, __FD_*_chk
+oh-native-contract.txt (161) = OH native symbols the runtime wires downstream:
+   OH_NativeXComponent* x14 (incl. GetTouchEvent, GetMouseEvent, GetKeyEvent, RegisterCallback, RegisterFocusEventCallback)  <- real touch projection
+   OH_NativeVSync* x3 (Create/Destroy/RequestFrame)  <- frame pacing (load-bearing because C7 DISABLES Swappy app-side)
+   OH_NativeDisplayManager* x5 (Width/Height/Rotation/DensityDpi/RefreshRate)  <- 1920x1200 landscape geometry
+   OH_ArkUI_* x7 (PointerEvent/AxisEvent display X/Y)
+
+ROUTE-(1) GATING CRITERION (static, board-confirmable): our unified-state liboh_adapter_bridge.so must EXPORT the 97
+adapter-gap symbols (esp. ASensor/ALooper/ANativeWindow), and our liboh_android_runtime.so route-a path must WIRE the
+OH native contract (XComponent touch -> Android MotionEvent, OH_NativeVSync frame drive, DisplayManager 1920x1200).
+If a family is missing on our side -> route (2): port just that as a NEW file into the unified state (no frozen change).
