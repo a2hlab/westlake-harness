@@ -56,6 +56,25 @@ def install_one(board,app,root,out,remote):
  finally:r['finished_at']=time.time();b.save(out/'record.json',r)
  return r
 
+
+def install_ability_overrides(pins):
+ original=b.desktop_launch
+ def launch(board,app,remote,out,record,pages=10):
+  pin=pins.get(record['key'])
+  if not pin:return original(board,app,remote,out,record,pages)
+  if any(app.get(k)!=pin[k] for k in ['package','apk_sha256']) or app.get('launch_activity')!=pin['ability'] or not record['bms']['queryable'] or record['bms']['desktop_activity']!=pin['ability']:raise b.AppFailure('pinned ability identity mismatch')
+  raw=(out/'bundle.txt').read_text();bundle=json.loads(raw[raw.index('{'):])
+  abilities=[a for m in bundle['hapModuleInfos'] for a in m.get('abilityInfos',[]) if a.get('name')==pin['ability']]
+  if len(abilities)!=1 or abilities[0].get('enabled') is not True or abilities[0].get('visible') is not True:raise b.AppFailure('one enabled visible pinned ability required')
+  record.update(launch_method='ability-fallback',clicked=False,aa_start_attempted=True,fallback_reason='outer-authorized: exact desktop icon absent in capture-01')
+  rc,text=board.shell('aa start -b '+shlex.quote(pin['package'])+' -a '+shlex.quote(pin['ability']),required=False)
+  (out/'aa-start.txt').write_text(text);wall=time.time();mono=time.monotonic()
+  record.update(aa_start_rc=rc,aa_start_output=text,aa_start_returned_at=wall,clicked_at=wall,click_monotonic=mono,capture_clock_origin='aa-start-success-return');b.save(out/'record.json',record)
+  if rc!=0 or 'start ability successfully' not in text.lower():raise b.AppFailure('ability start unsuccessful: '+text)
+  board.shell('power-shell timeout -o 86400000',required=False)
+ b.desktop_launch=launch
+ return original
+
 def main(argv=None):
  argv=list(sys.argv[1:] if argv is None else argv)
  mode=os.environ.get('DEMO_T3_MODE','launch')
@@ -72,6 +91,8 @@ def main(argv=None):
     b.save(folder/'record.json',r);b.save(root/'summary.json',{'records':[r]});b.write_facts(root);return 1
   tiers=os.environ.get('DEMO_SHOT_TIERS')
   if tiers:seconds=tier_seconds(entries,tiers,os.environ.get('DEMO_SHOT_TIERS_SHA'))
+  pins=json.loads(os.environ.get('DEMO_ABILITY_PINS','{}'))
+  if pins:install_ability_overrides(pins)
   rc=b.main(launch_args(argv,seconds))
   if '--out' in argv:
    root=Path(argv[argv.index('--out')+1]);manifest=Path(argv[argv.index('--manifest')+1]);entries={a['key']:a for a in json.loads(manifest.read_text())['apps']}

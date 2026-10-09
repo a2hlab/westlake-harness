@@ -35,6 +35,26 @@ class Arguments(unittest.TestCase):
    root=Path(td);manifest=root/'apps.json';manifest.write_text(json.dumps({'apps':[{'key':'demo','package':'org.demo','apk_sha256':'d'*64,'phase':'blocked'}]}));index=root/'index.json';index.write_text(json.dumps({'demo':{'apk_sha256':'d'*64,'success':False}}))
    with patch.dict(os.environ,{'DEMO_T3_MODE':'launch','DEMO_INSTALL_INDEX':str(index)}),patch.object(a.b,'main') as launch:
     rc=a.main(['--manifest',str(manifest),'--keys','demo','--out',str(root/'out')]);self.assertEqual(rc,1);launch.assert_not_called();records=list((root/'out').glob('*/*/*/record.json'));self.assertEqual(len(records),1);self.assertIn('stale',json.loads(records[0].read_text())['error'])
+class AbilityFallback(unittest.TestCase):
+ def exercise(self,sha='d'*64):
+  import json
+  pin={'package':'org.demo','apk_sha256':'d'*64,'ability':'org.demo.Main'}
+  class Board:
+   def __init__(self):self.calls=[]
+   def shell(self,c,**kw):self.calls.append(c);return 0,'start ability successfully'
+  board=Board();app=dict(pin,launch_activity=pin['ability']);app['apk_sha256']=sha
+  rec={'key':'demo','bms':{'queryable':True,'desktop_activity':pin['ability']}}
+  with tempfile.TemporaryDirectory() as td:
+   out=Path(td);(out/'bundle.txt').write_text(json.dumps({'hapModuleInfos':[{'abilityInfos':[{'name':pin['ability'],'enabled':True,'visible':True}]}]}))
+   original=a.install_ability_overrides({'demo':pin})
+   try:a.b.desktop_launch(board,app,'remote',out,rec)
+   finally:a.b.desktop_launch=original
+  return board,rec
+ def test_exact_pinned_ability_and_clock(self):
+  board,r=self.exercise();self.assertEqual(board.calls[0],'aa start -b org.demo -a org.demo.Main');self.assertEqual(r['launch_method'],'ability-fallback');self.assertFalse(r['clicked']);self.assertEqual(r['capture_clock_origin'],'aa-start-success-return')
+ def test_changed_apk_rejected(self):
+  with self.assertRaises(a.b.AppFailure):self.exercise('0'*64)
+
 class SupervisorGuards(unittest.TestCase):
  def check(self,serial):
   import json,subprocess,sys

@@ -14,6 +14,7 @@ if plan.get('demo_shot_tiers'):
  tiers=m.expand(plan['demo_shot_tiers']);digest=plan['demo_shot_tiers_sha256']
  if hashlib.sha256(Path(tiers).read_bytes()).hexdigest()!=digest:raise SystemExit('REFUSE: shot tier SHA drift; no lock taken')
  os.environ['DEMO_SHOT_TIERS']=tiers;os.environ['DEMO_SHOT_TIERS_SHA']=digest
+os.environ['DEMO_ABILITY_PINS']=json.dumps(plan.get('demo_ability_pins',{}))
 m.BATCH=HERE/'batch_adapter.py'
 # master --detach would respawn master and lose the adapter; detach this entrypoint.
 if '--detach' in sys.argv:

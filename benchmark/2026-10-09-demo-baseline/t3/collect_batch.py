@@ -18,7 +18,7 @@ def main():
  for name in ['runtime-fingerprint.txt','boot-image-fingerprint.txt']:
   paths=[p.parent.parent/name for p in records]
   if paths and all(p.is_file() for p in paths) and len({p.read_bytes() for p in paths})==1:(view/name).write_bytes(paths[0].read_bytes())
- facts=subprocess.check_output(['python3',str(WS/'westlake-harness/scripts/lab/run_facts.py'),str(view)],text=True)
+ facts=subprocess.check_output(['python3',str(HERE.parents[2]/'scripts/lab/run_facts.py'),str(view)],text=True)
  (HERE/(tag+'-facts.txt')).write_text(facts)
  rows={str(p.relative_to(HERE)):hashlib.sha256(p.read_bytes()).hexdigest() for p in records}
  summary={'records':rows,'runner':str(runner),'result':result,'final_identity':final,'UI_verdict':'outer-review-only'}
