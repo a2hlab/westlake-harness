@@ -1,5 +1,5 @@
 spec: project
-name: "D600 demo baseline: 100+ first screens, interactive Toutiao, games, then sealed"
+name: "D600 demo baseline: content first screens (94 from the manifest), interactive Toutiao, games, then sealed"
 ---
 
 ## 约束
