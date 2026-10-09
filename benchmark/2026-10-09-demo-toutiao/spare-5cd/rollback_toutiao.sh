@@ -17,6 +17,12 @@ dev "mkdir -p $F; touch $F/stop $D/stop $D/fresh48/stop $D/keeper.stop 2>/dev/nu
 # 2. uninstall the host HAP (removes the RT sandbox) + rm B's /data/local/tmp dirs (leave /data/local/tmp/asx: unified runtime bind-point)
 dev "bm uninstall -n org.westlake.imehost 2>&1 | tail -1" 40
 dev "rm -rf $STAGE $PROV $D; echo cleaned_tmp" 20
+# 2b. reap Route B's orphan RT spawner (cc-t3 #91): B's RT ships its own appspawn-x under /data/local/tmp/asx;
+#     source_app_namespace can leave it reparented to init (PPID 1). After the RT is removed above, its binary is
+#     deleted, so we match name=appspawn-x AND exe shows "(deleted)" -> that is ONLY an orphan whose binary is gone.
+#     RUNBOOK #12-safe: OH's init service is named "appspawn" (not matched); a LIVE route-a appspawn-x service has a
+#     real (non-deleted) exe and is NOT matched. Exe-path match, never a blind pkill.
+dev "for p in \$(pidof appspawn-x 2>/dev/null); do e=\$(readlink /proc/\$p/exe 2>/dev/null); case \"\$e\" in *appspawn-x*'(deleted)'*|*asx/appspawn-x*'(deleted)'*) echo \"reap orphan spawner pid=\$p exe=\$e\"; kill -9 \$p 2>/dev/null;; *) [ -n \"\$e\" ] && echo \"keep pid=\$p exe=\$e (live, not a deleted-RT orphan)\";; esac; done; echo spawner_reaped" 20
 # 3. verify restored: imehost gone, no imehost0 window
 gone=$(dev "bm dump -a 2>/dev/null | grep -c imehost" 20)
 win=$(dev "hidumper -s WindowManagerService -a '-a' 2>/dev/null | grep -c imehost0" 15)

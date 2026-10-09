@@ -1,0 +1,18 @@
+# 5ea orphan Route-B appspawn-x reap (cc-t3 #91, under cx-t0's 5ea lock) — ps before/after
+## Problem: Route B's self-contained RT ships its own appspawn-x (/data/local/tmp/asx/appspawn-x).
+## source_app_namespace left it reparented to init (PPID 1); my earlier rollback didn't reap it -> blocked cx-t0's U13 restore.
+
+## ps BEFORE (grep appspawn):
+  374     1 root         appspawn         <- OH init service (name "appspawn", NOT touched)
+24657     1 root         appspawn-x       <- Route B orphan (name "appspawn-x", PPID 1, exe=/appspawn-x (deleted))
+# /proc/24657: ppid=1, exe=/appspawn-x (deleted), children: none (source_app_namespace/host_spawn/child already gone)
+
+## Action: exe-path match only — killed pid=24657 (exe contains appspawn-x + "(deleted)"); skipped anything else.
+
+## ps AFTER:
+  374     1 root         appspawn         <- init service STILL ALIVE
+# appspawn-x remaining = (none); init appspawn(374) alive=yes; uptime kept climbing (4693s) -> no init crash.
+
+## Rule added to rollback_toutiao.sh (step 2b): reap name=appspawn-x whose exe shows "(deleted)" (an orphan whose RT
+## binary was removed). RUNBOOK #12-safe: init "appspawn" is never matched; a LIVE route-a appspawn-x service has a
+## real (non-deleted) exe and is never matched.
