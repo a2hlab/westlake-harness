@@ -48,3 +48,42 @@ The hub link is unreliable for the 755 MB provision; a direct board removes the 
 - `rollback_toutiao.sh` — RUNBOOK #12-safe rollback (verified OK on 5cd).
 - `facts.txt` — per-step numbers from the run.
 - `before.log` / `provision-run.log` / `rollback-run.log` — raw run logs.
+
+---
+
+# Re-run on 5ea (skip-push), per outer dispatch — Route B runtime PROVEN, on-screen blocked by host-launch permission
+
+Outer moved the run to 5ea (its `/data/local/tmp/tt-prov/tt-rt.tar` is on-board, SHA `014c566e…` = pinned). I added
+**skip-push** to the SAFE provisioner: if the on-board `tt-rt.tar` SHA matches the pin, extract from it and never push
+755 MB over the link. LOCK 21:15 → UNLOCK 21:29. Numbers: `facts-5ea.txt`.
+
+## What was proven (the key static unknown — resolved POSITIVE)
+**Route B cold-starts Toutiao and the child runs stably — both `libtttext_lite` ICU walls are cleared.** Evidence: the
+Toutiao child (`com.ss.android.article.news`) stayed alive across watchdog selfheal cycles (pids 3982→6374→8174), and its
+stderr shows live `[TOUCH21-POLL]`, `[WESTLAKE-NATIVENET-807] epoll_wait`, `[WESTLAKE-WEBVIEW-BIONIC]` loops — i.e. the app
+is running its event/network/webview loops with **no SIGSEGV at `libtttext_lite ICUWrapper::ICUWrapper()`**. The static
+README's wall-2 (`icudt74` vs `_72`) UNVERIFIED risk is now **passed** under Route B's self-contained RT. skip-push worked
+(no 755 MB push; the earlier hub stress is removed).
+
+## What was NOT captured (honest)
+- **Feed on physical screen: 0 confirmed.** The imehost host window (`imehost0`) never fronted: `aa start -b
+  org.westlake.imehost -a EntryAbility` → **ErrCode 10107101 "Permission check failed when launching the ability"** — even
+  after dismissing the keyguard. This is the **same call the watchdog itself uses** (`watchdog.sh:95`), so the watchdog
+  can't front the host either on a bare post-reboot board. `persist_demo.sh` (the privileged broker launcher) **refuses
+  5ea as a protected board**. So the running feed has no host window to attach to → not on screen. **The blocker is the
+  host-window launch permission on a bare board, NOT a Toutiao failure** (the child runs fine).
+- **10-key coexistence: not attempted** — appspawn-x was down post-reboot (no unified runtime mounted to launch route-a
+  apps).
+- **User manually rebooted 5ea mid-run** (boot_id 7be01c1f; board note 22:40) — not caused by Route B/the provisioner;
+  the run was re-timed and continued after.
+
+## Rollback (step 4) — OK again
+`rollback_toutiao.sh` on 5ea: `uninstall bundle successfully`, B dirs removed, `imehost0_windows=0`, board stable
+(uptime 691 s, same boot). Reversible confirmed on both spare boards.
+
+## Net + next step
+**Route B's runtime viability is proven** (Toutiao runs, ICU cleared) — the decisive positive for the static route choice.
+The remaining gap is purely the **host-window launch**: on a demo board the privileged broker (`open_broker.sh` HOST_SPAWN
+/ `persist_demo.sh up`) or a foreground/`START_ABILITIES_FROM_BACKGROUND`-granted launch brings `imehost0` up; `aa start`
+from a bare shell is permission-blocked (10107101). Next: run on a board where the demo broker is permitted (not 5ea/61b),
+or grant imehost the background-launch permission, then the 3× on-screen cold starts + 10-key coexistence can be captured.

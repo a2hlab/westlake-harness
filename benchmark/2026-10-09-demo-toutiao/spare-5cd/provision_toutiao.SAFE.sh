@@ -50,8 +50,19 @@ r=$(dev "bm install -p /data/local/tmp/tt-host.hap" 40)
 echo "$r" | grep -q "successfully" || say "WARN host install: $(echo "$r" | tail -1)"
 
 # 3. deploy RT (extract tt-rt.tar into RT; preserve owners), + AOT if requested
-dev "rm -rf $PROV; mkdir -p $PROV $RT" 20 >/dev/null
-send "$BUNDLE/tt-rt.tar" "$PROV/tt-rt.tar" 300
+#    SKIP-PUSH (cc-t3 #91): the 755 MB tt-rt.tar push is what reboots a hub-connected board. If the on-board
+#    copy at $PROV/tt-rt.tar already matches the pinned SHA, extract from it and never push over the link.
+RT_PIN="014c566e3813109e680c1361d6054adb181a7e3e9fb80d13d682faa161da847f"
+dev "mkdir -p $PROV $RT" 20 >/dev/null   # do NOT rm -rf $PROV — we may reuse its tt-rt.tar
+onboard_sha=$(dev "sha256sum $PROV/tt-rt.tar 2>/dev/null | cut -d' ' -f1" 120)
+if [ "$onboard_sha" = "$RT_PIN" ]; then
+  say "tt-rt.tar already on board with pinned SHA ($RT_PIN) — skip 755 MB push"
+else
+  say "on-board tt-rt.tar SHA='${onboard_sha:-none}' != pin — pushing 755 MB (may stress a hub link)"
+  send "$BUNDLE/tt-rt.tar" "$PROV/tt-rt.tar" 300
+  v=$(dev "sha256sum $PROV/tt-rt.tar 2>/dev/null | cut -d' ' -f1" 120)
+  [ "$v" = "$RT_PIN" ] || fail "tt-rt.tar push SHA mismatch (got '${v:-none}', want $RT_PIN)"
+fi
 r=$(dev "tar xpf $PROV/tt-rt.tar -C $RT && echo RT_OK" 120)
 echo "$r" | grep -q RT_OK || fail "RT extract: $(echo "$r" | tail -2)"
 if [ "$WITH_AOT" = 1 ]; then
