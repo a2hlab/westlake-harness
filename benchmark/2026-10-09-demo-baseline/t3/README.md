@@ -42,9 +42,9 @@ shared WORKSPACES input directory so Mac supervision cannot expand `$HOME` to
 the wrong machine. See `original-inputs-mirror.json`; all mirrored APK hashes
 were resolved again on Mac. Corpus-v2 inputs keep their canonical shared root.
 
-All current capture plans use t20. Once the mechanical stability groups arrive,
-only subsequently dispatched stable captures may switch to t10. Edge cases,
-games and empty first screens remain t20. Actual capture times are recorded;
+All current capture plans use t20. Per outer ACK(91) 22:50, timing uses historical first-frame speed,
+not stability groups. Until the approved shot-tiers.json arrives, all captures
+remain t20. Only subsequent dispatches may consume that exact timing table. Actual capture times are recorded;
 missing capture remains unknown. No machine count is presented as a new lit
 count. The outer loop signs screenshots/contact sheets.
 
@@ -77,3 +77,18 @@ evidence, not scripted path constants; the final preflight uses land.py's
 documented `--allow-home-paths` option and preserves the records unchanged.
 There are zero script user-path hits and zero oversized files. The outer land
 command for this evidence must use the same recorded-evidence flag.
+
+Approved first-frame table: `shot-tiers-approved.json`, SHA256
+`0cbe939161fcf3ca1d4c53933016feb36f75ca8226205110da9ee3129d6c07b2`.
+It maps 121 packages to t10 and seven to t20; remaining after window1:110 t10
+and six t20. Each later plan binds this SHA; the adapter also checks package
+and APK SHA before launch. Seven known answers pass on both Mac and VM.
+The t10 file remains named t10; t20 liveness is unknown when it was not sampled.
+
+Continuous capture plans are `plans-v2/capture-01` through `capture-05`
+(24/24/24/24/20 remaining packages), replacing the disabled v1 capture plans.
+They preserve manifest order and reuse singleton shards with their existing
+pinned input roots. Every window has 45/35-minute limits, a fresh U13 identity
+check, U13 activation smoke and before-unlock verification. Install phases keep
+`plans-v1/install-01` through `install-05`. The final pinned install index is
+created only from window1 and install-only recorded receipts.
