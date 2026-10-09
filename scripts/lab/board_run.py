@@ -287,8 +287,11 @@ def main(argv=None):
                 code = subprocess.run(cmd, cwd=REPO, stdout=fh, stderr=subprocess.STDOUT).returncode
             facts = sorted(sout.glob('*/*/facts.txt'))
             total = facts[0].read_text().strip().splitlines()[-1] if facts else f'no facts.txt (rc={code})'
+            wrapped_rc1 = code == 1 and shard_all_wrapped(sout, keylist)
             result['shards'].append({'name': shard['name'], 'rc': code, 'facts': str(facts[0]) if facts else None,
-                                     'total': total})
+                                     'total': total,
+                                     'phase': 'completed_pending_review' if wrapped_rc1 else
+                                              'completed' if code == 0 else 'interrupted'})
             board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} board_run 分片 {shard["name"]} '
                                f'({facts[0] if facts else sout}):「{total}」')
             observer = plan.get('after_shard_record_only')
@@ -305,7 +308,7 @@ def main(argv=None):
             # wrapped up (see shard_all_wrapped): bms_batch exits 1 even on a fully-finished shard because the focus
             # gate never confirms. rc>=2 or a negative (signal-killed) rc always stops. finally still restores.
             if code != 0:
-                if code == 1 and shard_all_wrapped(sout, keylist):
+                if wrapped_rc1:
                     result['shards'][-1]['continued_rc1'] = True
                     board_append(plan, f'PROGRESS({plan["entry"]}): {plan["lane"]} '
                                        f'分片 {shard["name"]} rc=1(全部收尾,继续)')

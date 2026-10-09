@@ -997,12 +997,7 @@ def write_facts(out):
     except Exception as exc:  # the facts are a report; a missing helper must not hide the run's own result
         (Path(out)/'facts.txt').write_text(f'facts unavailable: {exc}\n')
         return None
-    cap, slots = sum(f['captured'] for f in rows), sum(f['slots'] for f in rows)
-    a5, a20 = sum(1 for f in rows if f['alive_t5']), sum(1 for f in rows if f['alive_t20'])
-    lines = [f"{f['key']:<20} shots {f['captured']}/{f['slots']}  alive t5={run_facts.mark(f['alive_t5'])} "
-             f"t20={run_facts.mark(f['alive_t20'])}  child_hilog={run_facts.mark(f['child_hilog_lines'])}  {f['status']}"
-             for f in rows]
-    total = f'TOTAL keys={len(rows)} screenshots_captured={cap}/{slots} alive_t5={a5} alive_t20={a20}'
+    lines, total = run_facts.format_rows(rows)
     fp = Path(out)/'runtime-fingerprint.txt'
     if fp.is_file():
         body = fp.read_text().strip()

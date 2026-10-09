@@ -5,7 +5,8 @@
 
 <run-dir> is a bms_batch run directory (<run>/<serial>/<key>/record.json, or <run>/<key>/record.json).
 For every key it prints: screenshots captured / slots (record.json `screenshots[].captured`), whether a
-process with the app's BMS uid is in processes-t5.txt / processes-t20.txt (UID column), how many hilog
+process with the app's BMS uid is in processes-t5.txt and the final scheduled capture's process file
+(e.g. processes-t10.txt or processes-t20.txt, UID column), how many hilog
 lines the child process wrote (by the uid's PIDs), and the record status. The last line is the totals.
 The first lines give the run's identity, in the same format bms_batch.py writes at the top of facts.txt:
 RUNTIME / FROZEN / BOOTIMAGE fingerprints and the TOOL line. 2026-10-01 a lane regenerated facts.txt with this
@@ -16,6 +17,7 @@ not taken from the plan. Unknown (file missing) is printed as `?`, never as a gu
 """
 import hashlib
 import json
+import math
 import pathlib
 import re
 import sys
@@ -100,7 +102,11 @@ def facts(d):
     shots = r.get("screenshots") or []
     alive = {}
     pids = set()
-    for t in ("t5", "t20"):
+    timed = [s.get("scheduled_seconds") for s in shots
+             if isinstance(s.get("scheduled_seconds"), (int, float))
+             and math.isfinite(s["scheduled_seconds"]) and s["scheduled_seconds"] >= 0]
+    last_tag = ('t' + str(float(max(timed))).removesuffix('.0')) if timed else None
+    for t in dict.fromkeys(["t5", "t20"] + ([last_tag] if last_tag else [])):
         p = pids_for_uid(d / f"processes-{t}.txt", uid) if uid is not None else None
         alive[t] = None if p is None else bool(p)
         pids.update(p or [])
@@ -109,12 +115,36 @@ def facts(d):
         "captured": sum(1 for s in shots if s.get("captured")), "slots": len(shots),
         "not_captured_reasons": sorted({s.get("reason") for s in shots if not s.get("captured") and s.get("reason")}),
         "alive_t5": alive["t5"], "alive_t20": alive["t20"],
+        "last_shot_tag": last_tag,
+        "alive_last": alive.get(last_tag),
+        **({"alive_" + last_tag: alive[last_tag]} if last_tag else {}),
         "child_hilog_lines": hilog_lines(d / "hilog.txt", sorted(pids)),
     }
 
 
 def mark(v):
     return "?" if v is None else ("yes" if v is True else "no" if v is False else str(v))
+
+
+def format_rows(rows):
+    """Same factual text for the CLI and bms_batch; liveness follows the recorded shot schedule."""
+    lines = []
+    for f in rows:
+        tag = f['last_shot_tag'] or 'last'
+        why = ';'.join(f['not_captured_reasons'])
+        lines.append(f"{f['key']:<20} shots {f['captured']}/{f['slots']}  alive t5={mark(f['alive_t5'])} "
+                     f"{tag}={mark(f['alive_last'])}  child_hilog={mark(f['child_hilog_lines'])}  {f['status']}"
+                     + (f"  [{why}]" if why else ''))
+    cap, slots = sum(f['captured'] for f in rows), sum(f['slots'] for f in rows)
+    tags = sorted({f['last_shot_tag'] for f in rows if f['last_shot_tag']}, key=lambda t: float(t[1:]))
+    counts = [f"alive_{tag}={sum(f['last_shot_tag'] == tag and f['alive_last'] is True for f in rows)}"
+              for tag in tags if tag != 't5']
+    if not tags: counts = ['alive_last=0']
+    unknown = sum(f['alive_last'] is None for f in rows)
+    total = f"TOTAL keys={len(rows)} screenshots_captured={cap}/{slots} alive_t5={sum(f['alive_t5'] is True for f in rows)}"
+    total += (' ' + ' '.join(counts)) if counts else ''
+    if unknown: total += f' alive_unknown={unknown}'
+    return lines, total
 
 
 def main(argv):
@@ -127,16 +157,9 @@ def main(argv):
         return 0
     for line in identity(argv[1]):
         print(line)
-    for f in rows:
-        why = ";".join(f["not_captured_reasons"])
-        print(f"{f['key']:<20} shots {f['captured']}/{f['slots']}  alive t5={mark(f['alive_t5'])} "
-              f"t20={mark(f['alive_t20'])}  child_hilog={mark(f['child_hilog_lines'])}  {f['status']}"
-              + (f"  [{why}]" if why else ""))
-    cap, slots = sum(f["captured"] for f in rows), sum(f["slots"] for f in rows)
-    a5 = sum(1 for f in rows if f["alive_t5"]); a20 = sum(1 for f in rows if f["alive_t20"])
-    unk = sum(1 for f in rows if f["alive_t20"] is None)
-    print(f"TOTAL keys={len(rows)} screenshots_captured={cap}/{slots} alive_t5={a5} alive_t20={a20}"
-          + (f" alive_unknown={unk}" if unk else ""))
+    lines, total = format_rows(rows)
+    for line in lines: print(line)
+    print(total)
     return 0
 
 

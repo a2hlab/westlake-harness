@@ -229,6 +229,8 @@ class BoardRun(unittest.TestCase):
             report = json.loads((Path(d) / 'out/board-run-result.json').read_text())
             self.assertEqual(len(report['shards']), expected_batches)
             self.assertEqual(report['before_unlock'], 0)
+            self.assertEqual(report['shards'][0]['rc'], 1)
+            self.assertEqual(report['shards'][0]['phase'], 'completed_pending_review' if expected_batches == 2 else 'interrupted')
         self.assertEqual(sum(str(board_run.BATCH) in a for a in calls), expected_batches)
         restore = calls.index(['rollback-verify'])
         unlock = next(i for i, a in enumerate(calls) if 'unlock' in a)
