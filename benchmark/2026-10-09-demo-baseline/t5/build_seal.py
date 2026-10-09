@@ -81,8 +81,10 @@ def overlay_check(document):
         require(isinstance(members, list) and bool(members), "active overlay files required")
         roles = [member.get("role") for member in members]
         if row["id"] == "boatattack":
-            require(roles.count("runtime-jar") == 1 and roles.count("private-native") == 3 and len(members) == 4,
-                    "BoatAttack requires one new jar and three private native members")
+            require(roles.count("adapter-bridge") == 1 and roles.count("runtime-jar") == 1 and roles.count("private-native") == 3 and len(members) == 5,
+                    "BoatAttack requires one approved adapter, one new jar and three private native members")
+            require(next(m for m in members if m["role"] == "adapter-bridge")["target"] ==
+                    "/system/android/lib64/liboh_adapter_bridge.so", "BoatAttack adapter exact target required")
         else:
             require(row.get("route") == "B" and all(role == "ttbundle" for role in roles),
                     "Toutiao requires explicit Route B ttbundle members")

@@ -47,8 +47,10 @@ def add_overlays(snapshot, overlays):
                    apk_sha256="f" * 64, version_code=1, version_name="1.0",
                    source={"path": "$WORKSPACES/source.json", "sha256": "e" * 64},
                    rollback={"path": "$WORKSPACES/rollback.json", "sha256": "f" * 64})
-        roles = ["runtime-jar", "private-native", "private-native", "private-native"] if name == "boatattack" else ["ttbundle"]
+        roles = ["adapter-bridge", "runtime-jar", "private-native", "private-native", "private-native"] if name == "boatattack" else ["ttbundle"]
         row["files"] = [{"role": role, "target": f"/data/demo/{name}/{index}.bin", "sha256": "e" * 64} for index, role in enumerate(roles)]
+        if name == "boatattack":
+            row["files"][0]["target"] = "/system/android/lib64/liboh_adapter_bridge.so"
         if name == "toutiao-route-b":
             row.update(launch_kind="embedded-in-hap", host_package="org.westlake.imehost", payload_path=f"/data/demo/{name}/toutiao.apk")
             row["files"][0].update(target=row["payload_path"], sha256="f" * 64)
@@ -90,6 +92,14 @@ class SealTests(unittest.TestCase):
                                          "--serial", SERIAL, "--observed", str(folder / "obs.json")], capture_output=True, text=True)
                 self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
                 self.assertIn("OFFLINE_MATCH" if not changed else "DRIFT /data/demo/", result.stdout)
+
+    def test_boat_requires_exact_adapter_and_all_five_members(self):
+        for wrong in ("target", "missing"):
+            snapshot, overlays, manifest = fixture();add_overlays(snapshot, overlays)
+            boat = next(x for x in overlays["items"] if x["id"] == "boatattack")
+            if wrong == "target": boat["files"][0]["target"] = "/system/android/lib64/other.so"
+            else: boat["files"].pop(0)
+            with self.assertRaisesRegex(ValueError, "BoatAttack"):build(snapshot, overlays, manifest)
 
     def test_pending_overlay_refuses_seal(self):
         self.reject(lambda s, o, m: o["items"][0].update(state="pending"), "unresolved")
