@@ -1,0 +1,61 @@
+# Task Contract: Seal the demo board
+
+## Intent
+把演示板封存成以后固定拿来展示的机器:记下完整指纹,写一份照着就能演示的手册和一键恢复脚本,并在仓库规则里把它登记为演示板。
+
+## Must
+- 只用一块 D600 做演示板,由 t1 按证据选定并在黑板登记序列号;另两块板保持统一态实验板,本计划不改它们。
+- 演示板的最终状态必须是一个有记录的版本:runtime-fingerprint 逐件可查,`check_frozen.py` 0 违规;在统一态之上加的东西(头条等)一律单文件叠加、带回滚脚本,不整代重建。
+- 截图是地面真相。计数一律贴运行目录 `facts.txt` 或 `run_facts.py` 的原样输出;数不出来写 unknown。
+- 「点亮」只按启动后约 20 秒截图里是应用自己的界面判;首屏空列表、加载中、带错误框分列,不算进 100+。
+- 板子纪律照 AGENTS.md:写操作前先只读检查;每块板同一时刻一个上板任务;单项实验 ≤30 分钟,批量 ≤45 分钟,用完即释放锁。
+- 静态优先:路径、命名空间、部署件内容这类问题先离线扫描再上板。
+- 交件只走 `land.py`;不推送;不提交密码、服务器账号。
+- 封存(t5)之后,演示板零改动,心跳只做只读巡检;解封只有用户能批。
+
+## Decisions
+- 指纹包含 runtime-fingerprint、叠加清单、已装包列表(包名+版本+APK SHA)、系统版本,存进 benchmark 目录。
+- 演示手册写:开机后怎么确认就绪、演示顺序、头条怎么操作、某个应用失败时跳过哪个;一键只读自检脚本对比当前指纹与封存指纹。
+- 恢复脚本从封存的部署件把板恢复到封存态,先在空闲板上演练一次。
+- AGENTS.md 板子纪律加一行:该序列号为演示板,零改动,只读巡检,解封只有用户能批。
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-09-demo-baseline/**
+- scripts/lab/demo_selfcheck.sh
+- scripts/lab/demo_restore.sh
+- AGENTS.md
+- specs/demo-baseline/**
+- tools/spec-checks/tests/demo_baseline.rs
+Out of scope:
+- 修墙、加新应用;封存后对演示板的任何写操作。
+
+## Completion Criteria
+Scenario: Self check matches the sealed fingerprint
+  Test:
+    Filter: demo_baseline_seal
+  Given The board is sealed and the fingerprint is stored
+  When demo_selfcheck.sh runs read-only
+  Then It reports every component equal to the sealed fingerprint and exits zero and any difference exits nonzero naming the component
+
+Scenario: Restore is rehearsed on a spare board
+  Test:
+    Filter: demo_baseline_seal
+  Given A spare board starts from the unified state
+  When demo_restore.sh runs
+  Then The spare board self check matches the sealed fingerprint except its serial and the run log is kept
+
+Scenario: Self check detects drift
+  Test:
+    Filter: demo_baseline_seal
+  Given One deployed file differs from the sealed fingerprint
+  When demo_selfcheck.sh runs
+  Then It exits nonzero and prints the path with expected and actual SHA
+
+Scenario: Demo runbook lists order fallback and Toutiao steps
+  Test:
+    Filter: demo_baseline_seal
+  Given The runbook is written
+  When It is checked against the final demo list
+  Then Every demo app appears in order each has a skip fallback and the Toutiao and BoatAttack steps are present
+
