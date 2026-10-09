@@ -45,7 +45,7 @@ say "provisioning start"
 dev "mkdir -p $F; touch $F/stop $D/stop $D/fresh48/stop $D/keeper.stop 2>/dev/null; for p in \$(cat $D/keeper.pid 2>/dev/null); do kill \$p 2>/dev/null; done; sleep 2; for p in \$(pidof com.ss.android.article.news source_app_namespace host_spawn); do kill -9 \$p 2>/dev/null; done; rm -rf $F/lock; rm -f $D/keeper.pid; sleep 1; echo cleaned" 30 >/dev/null
 
 # 2. install host (idempotent — replaces whatever host is there)
-send "$BUNDLE/source-host.hap" "/data/local/tmp/tt-host.hap"
+send "${HOST_HAP:-$BUNDLE/source-host.hap}" "/data/local/tmp/tt-host.hap"   # HOST_HAP override (cc-t3 #91: re-signed HAP)
 r=$(dev "bm install -p /data/local/tmp/tt-host.hap" 40)
 echo "$r" | grep -q "successfully" || say "WARN host install: $(echo "$r" | tail -1)"
 

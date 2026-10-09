@@ -1,0 +1,18 @@
+{
+  "purpose": "#91 t2: grant imehost START_ABILITIES_FROM_BACKGROUND by re-signing (reuse FZ-001 provision/ACL, no frozen binary change)",
+  "bundleName": "org.westlake.imehost",
+  "rollbackable": "same bundleName -> bm install -r upgrades in place; uninstall restores",
+  "original_hap": {"name": "source-host.hap", "sha256": "df3856387ba6971202b33e4475fde4e0fb1bf7fb33da0f4250429fe6535b014a", "source": "~/a2hlab-provision/ttbundle"},
+  "resigned_hap": {"name": "source-host-sab-5ea.hap", "sha256": "2884a8bfceabba50d2e4725fa36776139ffa9983494094d38d851f92867c7632", "size": 53519},
+  "changes": [
+    "module.json module.requestPermissions += ohos.permission.START_ABILITIES_FROM_BACKGROUND (now INTERNET, GET_NETWORK_INFO, START_ABILITIES_FROM_BACKGROUND)",
+    "signing profile acls.allowed-acls = [ohos.permission.START_ABILITIES_FROM_BACKGROUND] (profile-template-sab.json)"
+  ],
+  "signing_inputs": {
+    "tool": "resign-local.sh (copy of bms/src/tools/wl-tools/resign.sh + module.json bundleName fallback since source-host.hap has no pack.info)",
+    "sdk": "public OpenHarmony SDK (OpenHarmony.p12 / OpenHarmonyProfileRelease.pem / app-cert-chain.pem, password 123456 = public default)",
+    "board_udid_5ea": "AF83F9BC107A2C7337FBCDC602A0F2C44A27E1582813B605FC8C6B81E907B6A4",
+    "verify": "hap-sign-tool verify-app -> codesign success"
+  },
+  "frozen_touched": "none (libbms/libapk_installer unchanged; only the imehost HAP re-packaged)"
+}

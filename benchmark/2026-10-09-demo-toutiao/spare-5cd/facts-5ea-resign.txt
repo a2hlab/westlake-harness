@@ -1,0 +1,11 @@
+# 5ea re-sign grant test facts (cc-t3 #91, 2026-10-09T14:03:13Z)
+resigned_hap=source-host-sab-5ea.hap sha256 2884a8bf... (module.json +START_ABILITIES_FROM_BACKGROUND; profile acls.allowed-acls=[that perm]; public SDK; same bundleName)
+install_resigned=OK (bm install via HOST_HAP override; new token 536976088; perm now PRESENT in token)
+grant_status=0 grantFlag=4 (SYSTEM_FIXED) -> declared by ACL but NOT granted
+atm_perm_g_retry=Failure (SYSTEM_FIXED, atm cannot override)
+aa_start_imehost=still 10107101
+root_cause=FZ-001 grant has TWO halves: (a) ACL in signing profile [reused via re-sign, works: perm in token] + (b) preAuthorizationInfo at install [sets grantStatus=1]. (b) lives in /system/etc/app/install_list_permissions.json (read-only rootfs: touch -> Read-only file system; imehost not listed) OR in the frozen BMS installer (Android-bundles only). Plain bm install of an OHOS HAP does neither (b).
+onscreen_captured=0 (host window still blocked)
+toutiao_child_ran=yes (ICU cleared, unchanged)
+rollback=OK; board stable
+remaining_options=(a) bind-mount/remount a modified install_list_permissions.json with imehost bundleName+app_signature (needs /system write or bind + the re-signed cert hash) -- reuses FZ-001 preauth, but /system change + board risk; (b) foreground-launcher demo chain (no grant); (c) diagnose why Sept shell 'aa start imehost' worked but now 10107101 (environmental/AMS regression -- the permission may not be the true lever)

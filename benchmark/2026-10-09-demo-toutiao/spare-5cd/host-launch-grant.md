@@ -72,3 +72,42 @@ Re-sign `source-host.hap` so the installer grants it at `bm install`, reusing FZ
 - **Verdict for the outer**: the minimal grant is **re-sign imehost with the START_ABILITIES_FROM_BACKGROUND ACL (reuse
   FZ-001's provision)** — a one-time HAP re-package, then the on-screen 3× + 10-key run can proceed on any board. The runtime
   `atm` shortcut is ruled out by the APL boundary.
+
+---
+
+# Re-sign executed (outer-approved (a)) — ACL half works, but the grant needs the preauth half on read-only /system
+
+Built `resign/source-host-sab-5ea.hap` (SHA `2884a8bf…`, same bundleName, public OH SDK, 5ea UDID) via `resign/resign-local.sh`
+(= `bms/src/tools/wl-tools/resign.sh` + a module.json `app.bundleName` fallback, since `source-host.hap` has no `pack.info`):
+- `module.json` requestPermissions += `START_ABILITIES_FROM_BACKGROUND`; signing profile `acls.allowed-acls` = that permission
+  (`resign/profile-template-sab.json`); `verify-app` → codesign success. Manifest: `resign/manifest.json`.
+
+On-board (5ea, HOST_HAP override installs the re-signed HAP):
+- Install OK, new token `536976088`; the permission is **now present in imehost's token** (the ACL/profile half worked).
+- **BUT `grantStatus:0`, `grantFlag:4` (SYSTEM_FIXED)** — declared/allowed, **not granted**. `atm perm -g` retry → **Failure**
+  (SYSTEM_FIXED, atm can't override). `aa start imehost` → **still 10107101**. On-screen still 0.
+
+**Root cause (sharper than before): FZ-001's grant has TWO halves and re-sign only supplies one.**
+1. **ACL in the signing profile** — reused via re-sign; it puts the permission in the token. ✓
+2. **preAuthorizationInfo at install** — what actually sets `grantStatus=1`. It lives in
+   `/system/etc/app/install_list_permissions.json` (bundleName + app_signature + permissions), which on these boards is on
+   the **read-only** rootfs (`touch` → "Read-only file system"; imehost is not listed), **or** inside the frozen BMS
+   installer (Android-bundles only). A plain `bm install` of an OHOS HAP supplies neither. ✗
+
+So the re-sign is **necessary but not sufficient**; the board blocks the second half without a /system write.
+
+## Remaining options (for the outer to choose)
+- **(a) Reuse FZ-001's preauth entry**: add imehost (bundleName + the re-signed cert's `app_signature` + the permission) to
+  `install_list_permissions.json` and have it in place at install — needs the entry on `/system/etc/app/` which is
+  read-only, so it requires a **/system remount or a bind-mount** of a modified file (board-drop risk per RUNBOOK; a /system
+  change). This is the faithful FZ-001 preauth reuse.
+- **(b) Foreground-launcher chain** (no grant at all): the 9-27 path — `org.westlake.launcher13` foreground →
+  `open_broker.sh` → `aa start imehost` with a foreground caller. Needs the launcher ability + broker manifest set up
+  (normally by the 5ea-protected `persist_demo.sh`). No /system change.
+- **(c) Diagnose the regression**: the Sept demo ran the **same** `aa start imehost` from a root shell successfully; today it
+  is 10107101. The permission may not be the true lever — an environmental/AMS state change between then and the unified-era
+  boot could be the real cause. Worth a focused static/log diff before more grant work.
+
+Verdict: re-sign (ACL) is landed and correct for FZ-001's profile half, but on-screen needs either the /system preauth
+(remount/bind — board risk) or the foreground-launcher path. On-screen 3× + 10-key remain uncaptured; Route B runtime
+viability (Toutiao runs, ICU cleared) is unchanged.
