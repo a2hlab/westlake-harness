@@ -16,6 +16,8 @@ depends: [t2-toutiao, t2b-boatattack, t3-install-sweep]
 - 签认用 contact_sheet.sh 拼图一次看几十张,外环逐格签认;拼图文件与签认结果一起入库。
 - 每个游戏点一下开始或下一步,前后截图确认界面有变化;头条在第 3 轮再跑一次 toutiao_accept.sh。
 - 发现回退不修,记首个致命点并移出最终清单。
+- 多板预筛(用户 2026-10-09 采纳):5ea/5cd 做完头条、BoatAttack 实验后,接着做边缘组预筛——32 个空首屏用界面树找到真实控件、点一下确认出内容,产出点击表(包、控件 id/文本、坐标、点后截图);游戏与偶发白屏应用跑 k/n。空闲板上每次都失败的直接剔除。空闲板运行时指纹与 61b 不同(821de739 对 452447a4),预筛结果只作剔除与点击依据,不算 61b 验收。
+- 61b 至少跑两轮:t3 一轮全量 + 重启后一轮全量;边缘组在 61b 上只在这两轮出现,多轮 k/n 由空闲板预筛承担。
 
 ## 边界
 
@@ -31,6 +33,12 @@ depends: [t2-toutiao, t2b-boatattack, t3-install-sweep]
   假设 Round one from t3 a normal round two and a post-reboot round three are recorded
   当 The final list is computed from facts.txt of each round
   那么 Every stable-group package is lit in rounds one and three every edge-group package is lit in all three rounds and the others appear with k of n
+
+场景: Spare-board prescreen produces a replayable tap map
+  测试: demo_baseline_stability
+  假设 A spare board ran the empty-first-screen apps with view-tree lookup
+  当 The tap map is validated
+  那么 Every entry names the control by id or text with coordinates and a before and after screenshot pair and entries without a found control are marked no_control
 
 场景: Group assignment is computed from signed history not chosen by hand
   测试: demo_baseline_stability
