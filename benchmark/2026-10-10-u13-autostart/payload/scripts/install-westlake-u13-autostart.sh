@@ -66,7 +66,15 @@ if [ -f "$ROOT/receipt.env" ]; then
 fi
 [ -d /data/app/el1/bundle/public ] || fail DATA_PKG_ROOT_NOT_READY
 [ -f "$TABLE_SRC" ] || fail "MISSING_TABLE $TABLE_SRC"
-pid=$(pidof appspawn-x 2>/dev/null); [ -n "$pid" ] || fail APPSPAWN_NOT_RUNNING
+# A bare boot (DISABLED then target boot) has, by design, NO appspawn-x parent yet. ALLOW_NO_PARENT=1 lets the
+# installer run in that bare-boot "install for next boot only" case; default still fails. The appspawn-x SHA gate
+# below is UNCHANGED. Source: westlake-harness-tools-inventory/benchmark/2026-10-10-5ea-u13-restore/v2/allow-no-parent.patch
+# (proven on 5ea v2 restore); cx-t0 hit APPSPAWN_NOT_RUNNING on 5cd bare boot 2026-10-10 19:30:58.
+pid=$(pidof appspawn-x 2>/dev/null)
+if [ -z "$pid" ]; then
+  [ "${ALLOW_NO_PARENT:-0}" = 1 ] || fail APPSPAWN_NOT_RUNNING
+  log "ALLOW_NO_PARENT=1: install for next boot only; parent gate skipped"
+fi
 [ "$(sha /system/bin/appspawn-x)" = "$APPSPAWN_SHA" ] || fail APPSPAWN_SHA_MISMATCH
 log "preconditions ok (appspawn-x pid=$pid sha-ok, U13 live)"
 
@@ -119,9 +127,25 @@ while IFS="$(printf '\t')" read -r seq kind group target sha_want; do
     cp -a "$target/." "$dst/" 2>/dev/null || fail "ARCHIVE_DIR seq=$seq $target"
     aline="$dst"; shaout=""
   else
-    cp -a "$target" "$dst" 2>/dev/null || fail "ARCHIVE_FILE seq=$seq $target"
-    got=$(sha "$dst"); [ -n "$sha_want" ] && [ "$got" != "$sha_want" ] && fail "ARCHIVE_SHA seq=$seq want=$sha_want got=$got"
-    aline="$dst"; shaout="$sha_want"
+    # [cc-t3 #91 2026-10-10 FILE version of the bare-boot archive-destroy incident — cx-t0 19:33:32 readonly proof:
+    #  benchmark/2026-10-10-5cd-demo-regression/boat-full128/bare-file-layer-readonly/results.json: after a bare boot
+    #  all 53 kind=file physical targets != signed SHA while sources/seqN == signed. The old 'cp -a target dst THEN
+    #  check ARCHIVE_SHA' overwrote the GOOD archive with the stale physical file and only then failed -> destroyed
+    #  it (file version of the 5ea incident). So NEVER write $dst before deciding, symmetric with the dir branch:]
+    if [ -n "$sha_want" ] && [ -f "$dst" ] && [ "$(sha "$dst")" = "$sha_want" ]; then
+      # (1) archive already == signed -> reuse it, copy nothing. TSV keeps the real signed sha so recover.sh's
+      #     SHA gate still verifies the reused archive (a literal "reused" there would break recover's file check).
+      log "REUSE_ARCHIVE_FILE seq=$seq $target: existing archive seq$seq already == signed; NOT overwriting (reused)"
+      aline="$dst"; shaout="$sha_want"
+    elif [ -n "$sha_want" ] && [ "$(sha "$target")" = "$sha_want" ]; then
+      # (2) physical target is the signed byte -> safe to archive it, then re-verify.
+      cp -a "$target" "$dst" 2>/dev/null || fail "ARCHIVE_FILE seq=$seq $target"
+      got=$(sha "$dst"); [ "$got" = "$sha_want" ] || fail "ARCHIVE_SHA seq=$seq want=$sha_want got=$got"
+      aline="$dst"; shaout="$sha_want"
+    else
+      # (3) neither archive nor physical is the signed byte -> refuse, $dst untouched.
+      fail "ARCHIVE_SOURCE_UNSIGNED seq=$seq target=$target want=$sha_want got=$(sha "$target") (dst untouched)"
+    fi
   fi
   printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$seq" "$kind" "$group" "$target" "$aline" "$shaout" >> "$TSV.tmp"
 done < "$ROOT/.layers.plan"

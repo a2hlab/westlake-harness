@@ -367,5 +367,115 @@ class NoHardcodedUserPath(unittest.TestCase):
             self.assertIsNone(m, f"{s} has a hardcoded user path: {m.group(0) if m else ''}")
 
 
+
+class InstallerAllowNoParent(unittest.TestCase):
+    """ALLOW_NO_PARENT: bare-boot install (no appspawn-x parent) is gated; default fails; SHA gate unchanged.
+    Runs the REAL extracted precondition block under sh with stubbed pidof/sha/log/fail (cc-t3 #91)."""
+    EXPECT_SHA = APPSPAWN_SHA
+
+    def _block(self):
+        import re as _re
+        inst = read(os.path.join(SCR, "install-westlake-u13-autostart.sh"))
+        m = _re.search(r"(pid=\$\(pidof appspawn-x.*?APPSPAWN_SHA_MISMATCH)", inst, _re.S)
+        assert m, "precondition block not found"
+        return m.group(1)
+
+    def _run(self, fake_pid, fake_sha, allow):
+        import subprocess, tempfile, os as _os
+        harness = (
+            "set -u\n"
+            + ("ALLOW_NO_PARENT=%s\n" % allow if allow is not None else "")
+            + 'APPSPAWN_SHA=%s\n' % self.EXPECT_SHA
+            + 'fail(){ echo "FAIL $*"; exit 7; }\n'
+            + 'log(){ echo "LOG $*"; }\n'
+            + 'pidof(){ printf "%s" "%s"; }\n' % ("%s", fake_pid)
+            + 'sha(){ printf "%s" "%s"; }\n' % ("%s", fake_sha)
+            + self._block() + "\n" + 'echo PRECOND_OK\n')
+        return subprocess.run(["sh", "-c", harness], capture_output=True, text=True)
+
+    def test_parent_present_passes(self):
+        r = self._run("4321", self.EXPECT_SHA, allow=None)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("PRECOND_OK", r.stdout)
+
+    def test_no_parent_default_fails(self):
+        r = self._run("", self.EXPECT_SHA, allow=None)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("FAIL APPSPAWN_NOT_RUNNING", r.stdout)
+
+    def test_no_parent_allow1_passes_and_logs(self):
+        r = self._run("", self.EXPECT_SHA, allow="1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("ALLOW_NO_PARENT=1: install for next boot only", r.stdout)
+        self.assertIn("PRECOND_OK", r.stdout)
+
+    def test_no_parent_allow1_still_checks_sha(self):
+        r = self._run("", "deadbeef", allow="1")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("FAIL APPSPAWN_SHA_MISMATCH", r.stdout)
+
+
+
+
+class InstallerFileArchiveReuse(unittest.TestCase):
+    """File-branch archive step must be reuse-safe (never write $dst before deciding) — cx-t0 19:33:32 proof."""
+    def _block(self):
+        import re as _re
+        inst = read(os.path.join(SCR, "install-westlake-u13-autostart.sh"))
+        m = _re.search(r'(if \[ -n "\$sha_want" \] && \[ -f "\$dst" \].*?ARCHIVE_SOURCE_UNSIGNED[^\n]*\n    fi)', inst, _re.S)
+        assert m, "file-branch block not found"
+        return m.group(1)
+
+    def _run(self, target_sha, dst_present, dst_sha, want="SIGNEDSHA"):
+        import subprocess, tempfile
+        d = tempfile.mkdtemp()
+        target = os.path.join(d, "target"); dst = os.path.join(d, "dst")
+        open(target, "w").write("FACTORY-OR-SIGNED-BYTES")
+        if dst_present:
+            open(dst, "w").write("ARCHIVE-BYTES")
+        harness = (
+            "set -u\n"
+            'seq=7; sha_want="%s"; target="%s"; dst="%s"\n' % (want, target, dst)
+            + 'fail(){ echo "FAIL $*"; exit 9; }\n'
+            + 'log(){ echo "LOG $*"; }\n'
+            + 'sha(){ case "$1" in "$target") printf "%s";; "$dst") if [ -f "$dst" ]; then printf "%s"; else printf ""; fi;; esac; }\n' % (target_sha, dst_sha)
+            + self._block() + '\necho "SHAOUT=$shaout ALINE=$aline"\n')
+        r = subprocess.run(["sh", "-c", harness], capture_output=True, text=True)
+        dst_bytes = open(dst).read() if os.path.exists(dst) else None
+        return r, dst_bytes
+
+    def test_reuse_when_archive_signed_target_factory(self):
+        # dst == signed, target = factory -> REUSE, dst untouched, no copy
+        r, dst_bytes = self._run(target_sha="FACTORY", dst_present=True, dst_sha="SIGNEDSHA")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("REUSE_ARCHIVE_FILE", r.stdout)
+        self.assertEqual(dst_bytes, "ARCHIVE-BYTES", "archive must NOT be overwritten")
+        self.assertIn("SHAOUT=SIGNEDSHA", r.stdout)   # TSV keeps real signed sha (recover-valid)
+
+    def test_archive_when_target_signed_dst_missing(self):
+        r, dst_bytes = self._run(target_sha="SIGNEDSHA", dst_present=False, dst_sha="SIGNEDSHA")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(dst_bytes, "FACTORY-OR-SIGNED-BYTES", "signed target archived")
+        self.assertIn("SHAOUT=SIGNEDSHA", r.stdout)
+
+    def test_fail_when_neither_signed_dst_untouched(self):
+        r, dst_bytes = self._run(target_sha="WRONG", dst_present=True, dst_sha="ALSOWRONG")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("ARCHIVE_SOURCE_UNSIGNED", r.stdout)
+        self.assertEqual(dst_bytes, "ARCHIVE-BYTES", "dst must be untouched on refuse")
+
+    def test_all_file_layers_reused_none_overwritten(self):
+        # bare-boot: every file layer has archive==signed, target=factory -> all REUSE, zero overwrite
+        reused = 0
+        for _ in range(53):
+            r, dst_bytes = self._run(target_sha="FACTORY", dst_present=True, dst_sha="SIGNEDSHA")
+            self.assertEqual(r.returncode, 0)
+            self.assertIn("REUSE_ARCHIVE_FILE", r.stdout)
+            self.assertEqual(dst_bytes, "ARCHIVE-BYTES")
+            reused += 1
+        self.assertEqual(reused, 53)
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
