@@ -10,7 +10,8 @@
 # proves a turn started (2026-10-01 04:24 a lane opened a turn and only summarised its previous task): name the
 # expected output file in the dispatch and check that it appears.
 # Codex and Claude panes queue input while busy, so they are sent to directly.
-# Exit 0 = sent and picked up (or sent to a queueing pane); 1 = never became idle; 2 = sent twice, no pickup.
+# Exit 0 = sent and picked up (or sent to a queueing pane); 1 = never became idle; 2 = sent twice, no pickup;
+# 3 = the pane has a pending question (answer it instead, see below).
 set -euo pipefail
 WAIT_MAX=900
 [ "${1:-}" = --wait-max ] && { WAIT_MAX=$2; shift 2; }
@@ -24,6 +25,13 @@ is_octos() { herdr pane read "$PANE" 2>/dev/null | grep -q 'Ask Octos'; }
 # a turn that ended in a model/transport error ("state x Error (runtime_error: …)") leaves the composer ready for
 # input too; 2026-10-02 21:15 the dispatch waited 10 min on an errored oc-t4 pane that never turns Idle by itself.
 idle() { status | grep -qE 'state (· Idle|✓ Done|x Error)'; }
+
+# a codex lane waiting on its own question tool ("? 1 question / shift+← to answer") does not take a dispatch as the
+# answer: the text only queues behind the question while the lane stays stuck (RUNBOOK). Refuse instead of sending.
+if herdr pane read "$PANE" 2>/dev/null | grep -qE '\?[[:space:]]+[0-9]+[[:space:]]+questions?\b'; then
+  echo "lane_send: $PANE has a pending question; open it (herdr pane send-keys $PANE shift+left, or the key shown), read it, answer with herdr pane send-text + send-keys enter -- not sent" >&2
+  exit 3
+fi
 
 if ! is_octos; then
   herdr pane run "$PANE" "$TEXT" >/dev/null

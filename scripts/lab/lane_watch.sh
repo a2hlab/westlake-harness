@@ -24,11 +24,19 @@ ERRORED = re.compile(r"^\s*state\s+x\s+Error", re.M)
 INTERRUPTED = re.compile(r"API Error: Connection|Connection lost mid-response|Error running remote .{0,40}Connection"
                          r"|Turn error runtime_error|failed to send streaming")
 
+# a codex lane asking the outer loop through its question tool: the screen shows "? 1 question / shift+← to answer"
+# (or "⌥+↑ to answer") and herdr sets the title to "Action Required" -> blocked, often WHILE the lane keeps working
+# (2026-10-10 18:3x cx-bms waited ~10 min: the outer read "blocked + Working" as a stale UI marker and moved on).
+# Text sent with lane_send does not answer it; RUNBOOK: open it with the key shown, send-text, enter.
+QUESTION = re.compile(r"\?\s+\d+\s+questions?\b")
 
-def classify(status, tail):
-    """herdr status + screen tail -> one of working/idle/blocked/done/gone/session-error/interrupted."""
+
+def classify(status, tail, title=""):
+    """herdr status + screen tail (+ terminal title) -> working/idle/blocked/question/done/gone/session-error/interrupted."""
     if status == "gone":
         return "gone"
+    if QUESTION.search(tail) or (status == "blocked" and "Action Required" in title):
+        return "question"
     if ERRORED.search(tail):
         return "session-error"
     if status in ("idle", "done") and BUSY.search(tail):
@@ -55,13 +63,20 @@ def main(args):
     while True:
         try:
             out = subprocess.run(["herdr", "agent", "list"], capture_output=True, text=True, timeout=30).stdout
-            agents = {a["pane_id"]: a.get("status") or a.get("agent_status") for a in json.loads(out)["result"]["agents"]}
+            listed = json.loads(out)["result"]["agents"]
+            agents = {a["pane_id"]: a.get("status") or a.get("agent_status") for a in listed}
+            titles = {a["pane_id"]: a.get("terminal_title_stripped") or "" for a in listed}
         except Exception:
             time.sleep(interval)
             continue
         for pane in args:
             st = agents.get(pane, "gone")
-            st = classify(st, tail_of(pane)) if st != "gone" else st
+            st = classify(st, tail_of(pane), titles.get(pane, "")) if st != "gone" else st
+            if st == "question":  # needs an answer now, whatever herdr says about working; no second poll
+                print(f"LANE-QUESTION {pane} {time.strftime('%H:%M:%S')} -- open it with the key on screen "
+                      f"(herdr pane send-keys {pane} shift+left | alt+up), read, then pane send-text + send-keys enter", flush=True)
+                print(tail_of(pane))
+                sys.exit(0)
             if st in ("idle", "blocked", "done", "gone", "session-error", "interrupted"):
                 if pane in seen:
                     print(f"LANE-STOPPED {pane} {st} {time.strftime('%H:%M:%S')}", flush=True)

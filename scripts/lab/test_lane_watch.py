@@ -29,6 +29,16 @@ class Classify(unittest.TestCase):
         tail = "API Error: Connection dropped\n• Working (12s • esc to interrupt)"
         self.assertEqual(lw.classify("idle", tail), "working")
 
+    def test_codex_question_while_working_is_question(self):
+        tail = "• Working (5m 23s • esc to interrupt)\n\n• Queued follow-up inputs\n  ? 1 question\n    shift+← to answer"
+        self.assertEqual(lw.classify("blocked", tail), "question")
+
+    def test_action_required_title_is_question(self):
+        self.assertEqual(lw.classify("blocked", "› Ask Codex", "[ . ] Action Required | task | wt"), "question")
+
+    def test_plain_blocked_stays_blocked(self):
+        self.assertEqual(lw.classify("blocked", "Allow command? (y/n)", "codex | wt"), "blocked")
+
     def test_gone(self):
         self.assertEqual(lw.classify("gone", ""), "gone")
 
