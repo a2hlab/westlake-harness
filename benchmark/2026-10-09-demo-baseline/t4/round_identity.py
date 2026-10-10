@@ -14,7 +14,7 @@ def main():
     ap.add_argument('--out', type=Path, required=True)
     a = ap.parse_args()
     configuration = json.loads((a.round / 'round.json').read_text())
-    rc = subprocess.run([sys.executable, str(HERE.parent / 't3/verify_identity.py'), '--out', str(a.out)]).returncode
+    rc = subprocess.run([sys.executable, str(HERE.parent / 't3/verify_identity.py'), '--out', str(a.out), '--serial', configuration['serial']]).returncode
     if rc:
         return rc
     result = json.loads((a.out / 'identity.json').read_text())

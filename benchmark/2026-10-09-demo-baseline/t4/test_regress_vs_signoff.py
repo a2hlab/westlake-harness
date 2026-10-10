@@ -71,9 +71,13 @@ class RealT3KnownAnswers(unittest.TestCase):
             with patch.object(r.subprocess, 'run') as call:
                 sheet_out = root / 'sheet'
                 sheet_out.mkdir()
-                self.assertEqual(r.changed_sheet(result, sheet_out, r.REPO / 'scripts/lab/contact_sheet.sh'), 2)
-                self.assertEqual(len(call.call_args.args[0][7:]), 2)
-            print('KNOWN_ANSWER t3 two changed: same=126 changed=2 missing=0; changed sheet tiles=2')
+                suspects = sum(x['semantic']['class'] == 'suspect' for x in result['keys'])
+                self.assertEqual(r.changed_sheet(result, sheet_out, r.REPO / 'scripts/lab/contact_sheet.sh'), suspects)
+                if suspects:
+                    self.assertEqual(len(call.call_args.args[0][7:]), suspects)
+                else:
+                    call.assert_not_called()
+            print('KNOWN_ANSWER t3 two changed: same=126 changed=2 missing=0; byte changes remain evidence; sheet uses semantic suspects')
 
     def test_driver_canonical_symlink_view_includes_all_128(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -148,6 +152,31 @@ class DriverPreparationTests(unittest.TestCase):
             self.assertFalse(cfg['special_slots']['toutiao']['enabled'])
             print('KNOWN_ANSWER driver: 128 unique keys / 8 disabled windows / no device calls')
 
+    def test_selected_serial_propagates_to_all_plans_and_round(self):
+        for serial in sorted(d.ALLOWED_SERIALS):
+            with self.subTest(serial=serial), tempfile.TemporaryDirectory() as tmp:
+                cfg = d.prepare(d.BASE / 'demo-manifest.json', d.HERE / 'shot-tiers.json',
+                                d.BASE / 't3/install-index-final.json', Path(tmp) / 'round',
+                                '131b8ff9-2ead-4ee0-afe4-8700433d8bec',
+                                d.MASTER / 'benchmark/2026-10-03-u13-stage-b/61b/smoke-61b.json', serial=serial)
+                self.assertEqual(cfg['serial'], serial)
+                self.assertTrue(all(r.read(d.expand(p))['serial'] == serial for p in cfg['windows']))
+                self.assertFalse(any(v['enabled'] for v in cfg['special_slots'].values()))
+
+    def test_unlisted_serial_refused_before_file_or_device_access(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(d.subprocess, 'run', side_effect=AssertionError('device call forbidden')):
+            with self.assertRaisesRegex(ValueError, 'whitelist'):
+                d.prepare(Path('missing'), Path('missing'), Path('missing'), Path(tmp) / 'round',
+                          '131b8ff9-2ead-4ee0-afe4-8700433d8bec', Path('missing'), serial='0' * 32)
+
+    def test_identity_reader_selected_target_and_default_unchanged(self):
+        identity = d.module('demo_selected_identity', d.BASE / 't3/verify_identity.py')
+        self.assertEqual(identity.Reader(Path('.')).serial, d.SERIAL)
+        self.assertEqual(identity.Reader(Path('.'), '5cd1e3dd00000000000000000923012c').serial,
+                         '5cd1e3dd00000000000000000923012c')
+        with self.assertRaisesRegex(ValueError, 'whitelist'):
+            identity.Reader(Path('.'), '0' * 32)
+
     def test_unbound_specials_refuse_before_device_access(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / 'round'
@@ -192,6 +221,41 @@ class DriverPreparationTests(unittest.TestCase):
             self.assertEqual(sum(any(str(x).endswith('demo_board_run.py') for x in args) for args in calls), 1)
             self.assertFalse(r.read(d.expand(cfg['windows'][1]))['execution_enabled'])
 
+
+
+class SemanticTriageKnownAnswers(unittest.TestCase):
+    def test_outer_read_preview_nine_only_two_desktops(self):
+        folder = r.REPO / 'benchmark/2026-10-10-5cd-demo-regression/preview-01'
+        mapping = folder / 'compare/changed-sheet-mapping.json'
+        if not mapping.is_file():
+            self.skipTest('persistent preview evidence unavailable')
+        rows = r.read(mapping)
+        if not all(r.expand(x['source']).is_file() for x in rows):
+            self.skipTest('persistent preview captures unavailable')
+        found = {x['key'] for x in rows if r.screen_class(r.expand(x['source']))['class'] == 'suspect'}
+        self.assertEqual(found, {'cv2-com-kaajjo-libresudoku', 'cv2-org-secuso-privacyfriendlyminesweeper'})
+        report = {'keys': [dict(x, image=x['source'], baseline_image=x['baseline_image'],
+                              semantic=r.screen_class(r.expand(x['source']))) for x in rows]}
+        with tempfile.TemporaryDirectory() as tmp, patch.object(r.subprocess, 'run') as call:
+            self.assertEqual(r.changed_sheet(report, Path(tmp), r.REPO / 'scripts/lab/contact_sheet.sh'), 2)
+            self.assertEqual(len(call.call_args.args[0][7:]), 2)
+        print('KNOWN_ANSWER preview-01: same_class=7 suspect=2; suspect sheet tiles=2')
+
+    def test_black_white_and_nonblank_body(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, pixels, expected in (
+                ('black', bytes([0,0,0])*160*256, 'suspect'),
+                ('white', bytes([255,255,255])*160*256, 'suspect'),
+                ('app', bytes([0,180,200])*160*256, 'same_class')):
+                p = Path(tmp) / (name + '.ppm')
+                p.write_bytes(b'P6\n160 256\n255\n' + pixels)
+                self.assertEqual(r.screen_class(p)['class'], expected)
+        print('KNOWN_ANSWER blank black/white=suspect; cyan app body=same_class')
+
+    def test_decode_failure_is_suspect(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / 'invalid.jpeg'; p.write_bytes(b'invalid')
+            self.assertEqual(r.screen_class(p)['class'], 'suspect')
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

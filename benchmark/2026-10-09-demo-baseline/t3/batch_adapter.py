@@ -7,6 +7,13 @@ from pathlib import Path
 HERE=Path(__file__).resolve().parent
 WS=Path(os.environ.get('WORKSPACES',str(HERE.parents[3])))
 MASTER=WS/'westlake-harness'
+ALLOWED_SERIALS = frozenset({'61b0657200000000000000000324012c', '5cd1e3dd00000000000000000923012c', '5ea34a4500000000000000001123012c'})
+
+def validate_serial(serial):
+    if serial not in ALLOWED_SERIALS:
+        raise ValueError('serial outside demo whitelist: ' + str(serial))
+    return serial
+
 sp=importlib.util.spec_from_file_location('master_batch',MASTER/'benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py');b=importlib.util.module_from_spec(sp);sp.loader.exec_module(b)
 
 def tier_seconds(entries, path, expected_sha):
@@ -66,7 +73,7 @@ def install_ability_overrides(pins):
   raw=(out/'bundle.txt').read_text();bundle=json.loads(raw[raw.index('{'):])
   abilities=[a for m in bundle['hapModuleInfos'] for a in m.get('abilityInfos',[]) if a.get('name')==pin['ability']]
   if len(abilities)!=1 or abilities[0].get('enabled') is not True or abilities[0].get('visible') is not True:raise b.AppFailure('one enabled visible pinned ability required')
-  record.update(launch_method='ability-fallback',clicked=False,aa_start_attempted=True,fallback_reason='outer-authorized: exact desktop icon absent in capture-01')
+  record.update(launch_method='ability-fallback',clicked=False,aa_start_attempted=True,fallback_reason=pin.get('reason','outer-authorized: exact desktop icon absent in capture-01'))
   rc,text=board.shell('aa start -b '+shlex.quote(pin['package'])+' -a '+shlex.quote(pin['ability']),required=False)
   (out/'aa-start.txt').write_text(text);wall=time.time();mono=time.monotonic()
   record.update(aa_start_rc=rc,aa_start_output=text,aa_start_returned_at=wall,clicked_at=wall,click_monotonic=mono,capture_clock_origin='aa-start-success-return');b.save(out/'record.json',record)
@@ -77,6 +84,11 @@ def install_ability_overrides(pins):
 
 def main(argv=None):
  argv=list(sys.argv[1:] if argv is None else argv)
+ serial=validate_serial(argv[argv.index('--serial')+1])
+ # A bounded window must not repeat device preflight for shards after cutoff.
+ if '--stop-new-keys-at' in argv and time.time() >= float(argv[argv.index('--stop-new-keys-at')+1]):
+  print('NEW-KEY CUTOFF: no device access; all requested keys remain unknown',flush=True)
+  return 0
  mode=os.environ.get('DEMO_T3_MODE','launch')
  if mode=='launch':
   # The current plans remain t20. Only an outer-approved later plan may set 10.
@@ -86,7 +98,7 @@ def main(argv=None):
   for entry in entries:
    proof=index.get(entry['key'])
    if not proof or proof.get('apk_sha256')!=entry['apk_sha256'] or not proof.get('success'):
-    root=Path(argv[argv.index('--out')+1])/time.strftime('%Y%m%dT%H%M%S')/'61b0657200000000000000000324012c';folder=root/entry['key'];folder.mkdir(parents=True)
+    root=Path(argv[argv.index('--out')+1])/time.strftime('%Y%m%dT%H%M%S')/serial;folder=root/entry['key'];folder.mkdir(parents=True)
     r=dict(entry,status='app_failed',error='Install-once failed or unverified; do not launch stale installed bytes',install=proof,screenshots=[],finished_at=time.time(),review='pending_review')
     b.save(folder/'record.json',r);b.save(root/'summary.json',{'records':[r]});b.write_facts(root);return 1
   tiers=os.environ.get('DEMO_SHOT_TIERS')
@@ -102,7 +114,7 @@ def main(argv=None):
     r['demo_capture_seconds']=seconds;b.save(p,r)
   return rc
  ap=argparse.ArgumentParser();ap.add_argument('--manifest',type=Path,required=True);ap.add_argument('--input-root',type=Path,required=True);ap.add_argument('--keys',required=True);ap.add_argument('--out',type=Path,required=True);ap.add_argument('--serial',required=True);ap.add_argument('--lane',required=True);ap.add_argument('--stop-new-keys-at',type=float);a,extra=ap.parse_known_args(argv)
- if a.serial!='61b0657200000000000000000324012c':raise SystemExit('61b only')
+ validate_serial(a.serial)
  run_id=time.strftime('%Y%m%dT%H%M%S')+'-'+uuid.uuid4().hex[:8];root=a.out/run_id/a.serial;root.mkdir(parents=True);commands=root/'commands';commands.mkdir()
  board=b.Board(a.serial,'hdc',str(WS/'westlake-inputs/tools/board_note.sh'),a.lane,commands);board.ready();settings=b.preflight(board,root);b.runtime_fingerprint(board,root);b.boot_image_fingerprint(board,root);entries=b.load_apps(a.manifest,'all',a.keys);records=[]
  try:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline evidence comparison, not an automatic UI verdict. Only changed keys get a sheet."""
+"""Offline byte comparison plus conservative screenshot triage, never a UI verdict."""
 import argparse
 import hashlib
 import importlib.util
@@ -120,6 +120,36 @@ def records(root):
     return result
 
 
+def screen_class(image):
+    """Triage only: calibrated launcher body or nearly pure black/white.
+
+    The launcher reference is outer-confirmed, not an app-key allowlist. Cropping
+    ignores status/navigation bars; resizing tolerates compression, clock and icon
+    variation. Other wallpapers are not covered: same_class is NOT proof of lit.
+    Decode/reference failures are suspect, so missing tooling cannot hide evidence.
+    """
+    try:
+        reference = read(HERE / 'launcher-body-reference.json')
+        rgb = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(image), '-vf',
+            'crop=iw:ih*0.87:0:ih*0.06,scale=32:48', '-frames:v', '1',
+            '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1'],
+            capture_output=True, check=True, timeout=15).stdout
+        if len(rgb) != 32 * 48 * 3 or len(reference['rgb']) != len(rgb):
+            raise ValueError('invalid RGB body/reference')
+        pixels = [rgb[i:i+3] for i in range(0, len(rgb), 3)]
+        black = sum(max(v) <= 8 for v in pixels) / len(pixels)
+        white = sum(min(v) >= 247 for v in pixels) / len(pixels)
+        distance = sum(abs(a-b) for a,b in zip(rgb, reference['rgb'])) / len(rgb)
+        reason = 'pure_black' if black >= .98 else 'pure_white' if white >= .98 else \
+                 'launcher_body_match' if distance <= 22 else None
+        return {'class': 'suspect' if reason else 'same_class', 'reason': reason,
+                'launcher_body_mean_absolute_error': round(distance, 4),
+                'black_fraction': round(black, 4), 'white_fraction': round(white, 4),
+                'launcher_threshold': 22, 'blank_threshold': .98}
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+        return {'class': 'suspect', 'reason': 'image_classifier_unavailable: ' + str(exc)}
+
+
 def compare(observed, baseline):
     rows = []
     for key, ref in sorted(baseline.items()):
@@ -142,14 +172,19 @@ def compare(observed, baseline):
                 item.update(category='missing', reason=['no final image; baseline has one'])
             else:
                 item.update(category='changed' if difference else 'same', reason=difference)
+        if item.get('image'):
+            item['semantic'] = screen_class(expand(item['image'])) if not item.get('signature', {}).get('capture_problem') else {'class': 'suspect', 'reason': item['reason']}
+        else:
+            item['semantic'] = {'class': 'missing', 'reason': 'no trustworthy final image'}
         rows.append(item)
-    return {'schema': 'demo-regression-evidence/v1', 'classification_is_ui_verdict': False,
+    return {'schema': 'demo-regression-evidence/v2', 'classification_is_ui_verdict': False,
             'summary': {c: sum(r['category'] == c for r in rows) for c in ('same', 'changed', 'missing')},
+            'semantic_summary': {c: sum(r['semantic']['class'] == c for r in rows) for c in ('same_class', 'suspect', 'missing')},
             'extra_keys': sorted(set(observed) - set(baseline)), 'keys': rows}
 
 
 def changed_sheet(report, out, script):
-    changed = [r for r in report['keys'] if r['category'] == 'changed']
+    changed = [r for r in report['keys'] if r['semantic']['class'] == 'suspect']
     images = out / 'changed-images'
     images.mkdir()
     inputs = []
@@ -188,9 +223,11 @@ def main(argv=None):
     (a.out / 'reference-index.json').write_text(json.dumps(ref, indent=2) + '\n')
     for category in ('same', 'changed', 'missing'):
         (a.out / (category + '.keys')).write_text(''.join(r['key'] + '\n' for r in report['keys'] if r['category'] == category))
+    for category in ('same_class', 'suspect'):
+        (a.out / (category + '.keys')).write_text(''.join(r['key'] + '\n' for r in report['keys'] if r['semantic']['class'] == category))
     if a.sheet:
         changed_sheet(report, a.out, REPO / 'scripts/lab/contact_sheet.sh')
-    print(json.dumps(report['summary']))
+    print(json.dumps({'byte_comparison': report['summary'], 'semantic_triage': report['semantic_summary']}))
     return 0
 
 

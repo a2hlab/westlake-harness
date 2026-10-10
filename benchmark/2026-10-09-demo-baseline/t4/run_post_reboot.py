@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile/drive all 128 installed demo apps in bounded, exclusive 61b windows.
+"""Compile/drive all 128 installed demo apps in bounded, exclusive selected-board windows.
 Default is offline preparation. --execute needs explicit outer authorization;
 --detach detaches the entire multi-window driver, not just its first window.
 No reboot, installation, runtime deployment or repair is performed here.
@@ -21,6 +21,13 @@ REPO = BASE.parents[1]
 WS = Path(os.environ.get('WORKSPACES', REPO.parent))
 MASTER = WS / 'westlake-harness'
 SERIAL = '61b0657200000000000000000324012c'
+ALLOWED_SERIALS = frozenset({'61b0657200000000000000000324012c', '5cd1e3dd00000000000000000923012c', '5ea34a4500000000000000001123012c'})
+
+def validate_serial(serial):
+    if serial not in ALLOWED_SERIALS:
+        raise ValueError('serial outside demo whitelist: ' + str(serial))
+    return serial
+
 
 
 def module(name, path):
@@ -54,7 +61,8 @@ def pin(p):
     return {'path': portable(p), 'sha256': regress.sha(p)}
 
 
-def prepare(manifest, tiers, install_index, out, boot_before, smoke, count=18):
+def prepare(manifest, tiers, install_index, out, boot_before, smoke, count=18, serial=SERIAL):
+    validate_serial(serial)
     if out.exists():
         raise ValueError('fresh round directory required')
     if not __import__('re').fullmatch(r'[0-9a-f-]{36}', boot_before):
@@ -77,7 +85,7 @@ def prepare(manifest, tiers, install_index, out, boot_before, smoke, count=18):
     save(out / 'batch-apps.json', {'apps': [a for a, _ in entries]})
     save(out / 'install-index.json', json.loads(json.dumps(index).replace(str(WS), '$WORKSPACES')))
     save(out / 'shot-tiers.json', shots)
-    configuration = {'schema': 'demo-post-reboot-executor/v1', 'serial': SERIAL,
+    configuration = {'schema': 'demo-post-reboot-executor/v1', 'serial': serial,
                      'execution_enabled': False, 'boot_before_reboot': boot_before,
                      'base': 'signed U13', 'apps': 128, 'windows': [],
                      'bindings': {name: pin(p) for name, p in {'manifest': manifest, 'tiers': tiers,
@@ -105,7 +113,7 @@ def prepare(manifest, tiers, install_index, out, boot_before, smoke, count=18):
         d.mkdir()
         for app, _ in group:
             (d / (app['key'] + '.keys')).write_text(app['key'] + '\n')
-        plan.update(why='Demo t4 post-reboot installed-only full regression; window ' + folder,
+        plan.update(serial=serial, why='Demo t4 post-reboot installed-only full regression; window ' + folder,
                     demo_mode='launch', demo_shot_tiers=portable(out / 'shot-tiers.json'),
                     demo_shot_tiers_sha256=regress.sha(out / 'shot-tiers.json'),
                     demo_install_index=portable(out / 'install-index.json'),
@@ -144,7 +152,7 @@ def collect(out):
     view = out / 'final'
     if view.exists():
         raise ValueError('fresh aggregate view required')
-    base = view / SERIAL
+    base = view / validate_serial(read(out / 'round.json')['serial'])
     base.mkdir(parents=True)
     for key, p in found.items():
         (base / key).symlink_to(p.parent.resolve(), target_is_directory=True)
@@ -179,6 +187,8 @@ def validate_special_slots(config):
     slots = config['special_slots']
     tou = slots['toutiao']
     if tou.get('enabled'):
+        if config['serial'] != SERIAL:
+            raise ValueError('Toutiao foreground slot is currently authorized for 61b only')
         if tou.get('host_package') != 'org.westlake.imehost' or not tou.get('identity_files'):
             raise ValueError('Toutiao requires reviewed exact host and nonempty installed artifact pins')
         import re
@@ -191,7 +201,7 @@ def validate_special_slots(config):
             raise ValueError('BoatAttack slot has no approved bound plan')
         path = expand(boat['plan'])
         plan = read(path)
-        if regress.sha(path) != boat['plan_sha256'] or plan.get('serial') != SERIAL or plan.get('execution_enabled') is not True:
+        if regress.sha(path) != boat['plan_sha256'] or plan.get('serial') != validate_serial(config['serial']) or plan.get('execution_enabled') is not True:
             raise ValueError('BoatAttack plan binding/61b authorization mismatch')
         if not plan.get('before_unlock') or not 0 < plan.get('window_limit_minutes', 0) <= 30:
             raise ValueError('BoatAttack requires final hook and bounded dedicated window')
@@ -199,6 +209,7 @@ def validate_special_slots(config):
 
 def execute(out, authorization):
     config = read(out / 'round.json')
+    serial = validate_serial(config['serial'])
     if not authorization.strip():
         raise ValueError('explicit outer authorization reference required')
     validate_special_slots(config)
@@ -221,7 +232,7 @@ def execute(out, authorization):
         save(plan_path, plan)
         note = WS / 'westlake-inputs/tools/board_note.sh'
         subprocess.run([str(note), 'progress', str(MASTER / '.octos/boards/app-lighting.md'), '91', 'cx-t0',
-                        '宣布61b t4 ' + plan_path.parent.name + ' <=45min/35min cutoff；同一重启后U13，128清单顺序launch-only；授权=' + authorization], check=True)
+                        '宣布' + serial[:8] + ' t4 ' + plan_path.parent.name + ' <=45min/35min cutoff；同一重启后U13，128清单顺序launch-only；授权=' + authorization], check=True)
         rc = subprocess.run([sys.executable, str(BASE / 't3/demo_board_run.py'), str(plan_path)]).returncode
         result_path = plan_path.parent / 'runner/board-run-result.json'
         result = read(result_path) if result_path.is_file() else {}
@@ -242,7 +253,7 @@ def execute(out, authorization):
         special = out / 'toutiao-window'
         special.mkdir()
         plan = read(expand(config['windows'][0]))
-        plan.update(why='Demo t4 reviewed Route B foreground desktop capture only',
+        plan.update(serial=serial, why='Demo t4 reviewed Route B foreground desktop capture only',
                     out=portable(special / 'runner'), shards=[],
                     after_lock=[sys.executable, portable(HERE / 'round_identity.py'), '--round', portable(out),
                                 '--out', portable(special / 'before-identity')],
@@ -272,6 +283,7 @@ def main():
     ap.add_argument('--install-index', type=Path, default=BASE / 't3/install-index-final.json')
     ap.add_argument('--smoke', type=Path, default=MASTER / 'benchmark/2026-10-03-u13-stage-b/61b/smoke-61b.json')
     ap.add_argument('--boot-before', help='recorded boot ID before the user-approved reboot')
+    ap.add_argument('--serial', choices=sorted(ALLOWED_SERIALS), default=SERIAL)
     ap.add_argument('--execute', action='store_true')
     ap.add_argument('--detach', action='store_true')
     ap.add_argument('--authorization', default='')
@@ -281,15 +293,17 @@ def main():
             ap.error('--detach requires --execute')
         if not a.boot_before:
             ap.error('--boot-before required for offline preparation')
-        prepare(a.manifest, a.tiers, a.install_index, a.out.resolve(), a.boot_before, a.smoke)
+        prepare(a.manifest, a.tiers, a.install_index, a.out.resolve(), a.boot_before, a.smoke, serial=a.serial)
         return 0
+    if read(a.out / 'round.json')['serial'] != a.serial:
+        ap.error('--serial must match prepared round')
     if not a.authorization:
         ap.error('--execute requires --authorization; no lock taken')
     if a.detach:
         log = a.out / 'round.log'
         with log.open('x') as f:
             child = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--out', str(a.out.resolve()),
-                                      '--execute', '--authorization', a.authorization], stdout=f, stderr=subprocess.STDOUT,
+                                      '--execute', '--serial', a.serial, '--authorization', a.authorization], stdout=f, stderr=subprocess.STDOUT,
                                      stdin=subprocess.DEVNULL, start_new_session=True)
         print(json.dumps({'detached_pid': child.pid, 'log': str(log)}))
     else:

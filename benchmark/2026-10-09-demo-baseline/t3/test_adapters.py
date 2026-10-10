@@ -4,6 +4,10 @@ from pathlib import Path
 from unittest.mock import patch
 p=Path(__file__).with_name('batch_adapter.py');s=importlib.util.spec_from_file_location('adapter',p);a=importlib.util.module_from_spec(s);s.loader.exec_module(a)
 class Arguments(unittest.TestCase):
+ def test_expired_cutoff_returns_without_loading_or_device_access(self):
+  with patch.object(a.time,'time',return_value=100),patch.object(a.b,'main') as run,patch.object(a.b,'load_apps') as load:
+   self.assertEqual(a.main(['--serial','5cd1e3dd00000000000000000923012c','--stop-new-keys-at','99']),0)
+   run.assert_not_called();load.assert_not_called()
  def test_no_reinstall_or_uninstall_on_launch(self):
   args=a.launch_args(['--execute','--reinstall','--shots','5,20','--hilog'],20)
   self.assertNotIn('--reinstall',args);self.assertIn('--launch-only',args);self.assertEqual(args[args.index('--shots')+1],'5,20')
@@ -34,11 +38,12 @@ class Arguments(unittest.TestCase):
   with tempfile.TemporaryDirectory() as td:
    root=Path(td);manifest=root/'apps.json';manifest.write_text(json.dumps({'apps':[{'key':'demo','package':'org.demo','apk_sha256':'d'*64,'phase':'blocked'}]}));index=root/'index.json';index.write_text(json.dumps({'demo':{'apk_sha256':'d'*64,'success':False}}))
    with patch.dict(os.environ,{'DEMO_T3_MODE':'launch','DEMO_INSTALL_INDEX':str(index)}),patch.object(a.b,'main') as launch:
-    rc=a.main(['--manifest',str(manifest),'--keys','demo','--out',str(root/'out')]);self.assertEqual(rc,1);launch.assert_not_called();records=list((root/'out').glob('*/*/*/record.json'));self.assertEqual(len(records),1);self.assertIn('stale',json.loads(records[0].read_text())['error'])
+    rc=a.main(['--serial','61b0657200000000000000000324012c','--manifest',str(manifest),'--keys','demo','--out',str(root/'out')]);self.assertEqual(rc,1);launch.assert_not_called();records=list((root/'out').glob('*/*/*/record.json'));self.assertEqual(len(records),1);self.assertIn('stale',json.loads(records[0].read_text())['error'])
 class AbilityFallback(unittest.TestCase):
- def exercise(self,sha='d'*64):
+ def exercise(self,sha='d'*64,reason=None):
   import json
   pin={'package':'org.demo','apk_sha256':'d'*64,'ability':'org.demo.Main'}
+  if reason is not None:pin['reason']=reason
   class Board:
    def __init__(self):self.calls=[]
    def shell(self,c,**kw):self.calls.append(c);return 0,'start ability successfully'
@@ -54,6 +59,10 @@ class AbilityFallback(unittest.TestCase):
   board,r=self.exercise();self.assertEqual(board.calls[0],'aa start -b org.demo -a org.demo.Main');self.assertEqual(r['launch_method'],'ability-fallback');self.assertFalse(r['clicked']);self.assertEqual(r['capture_clock_origin'],'aa-start-success-return')
  def test_changed_apk_rejected(self):
   with self.assertRaises(a.b.AppFailure):self.exercise('0'*64)
+ def test_continuation_reason_does_not_claim_capture01_approval(self):
+  board,r=self.exercise(reason='t3 continuation: exact desktop icon absent in capture-05')
+  self.assertEqual(r['fallback_reason'],'t3 continuation: exact desktop icon absent in capture-05')
+  self.assertEqual(board.calls[0],'aa start -b org.demo -a org.demo.Main')
 
 class SupervisorGuards(unittest.TestCase):
  def check(self,serial):
@@ -65,5 +74,5 @@ class SupervisorGuards(unittest.TestCase):
  def test_full_serial_disabled_refuses_before_detach(self):
   r=self.check('61b0657200000000000000000324012c');self.assertIn('disabled; no lock taken',r.stderr)
  def test_short_serial_refuses_before_detach(self):
-  r=self.check('61b0657200000000000000324012c');self.assertIn('61b only',r.stderr)
+  r=self.check('61b0657200000000000000324012c');self.assertIn('whitelist',r.stderr)
 if __name__=='__main__':unittest.main()

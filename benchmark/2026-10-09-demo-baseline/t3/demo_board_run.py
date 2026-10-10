@@ -6,7 +6,13 @@ HERE=Path(__file__).resolve().parent
 WS=Path(os.environ.get('WORKSPACES',str(HERE.parents[3])))
 p=WS/'westlake-harness/scripts/lab/board_run.py';s=importlib.util.spec_from_file_location('master_runner',p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 plan=json.loads(Path(sys.argv[1]).read_text())
-if plan['serial']!='61b0657200000000000000000324012c':raise SystemExit('61b only')
+ALLOWED_SERIALS = frozenset({'61b0657200000000000000000324012c', '5cd1e3dd00000000000000000923012c', '5ea34a4500000000000000001123012c'})
+
+def validate_serial(serial):
+    if serial not in ALLOWED_SERIALS:
+        raise ValueError('serial outside demo whitelist: ' + str(serial))
+    return serial
+validate_serial(plan['serial'])
 os.environ['DEMO_T3_MODE']=plan.get('demo_mode','launch');os.environ['DEMO_T3_SECONDS']=str(plan.get('demo_capture_seconds',20))
 
 if plan.get('demo_install_index'):os.environ['DEMO_INSTALL_INDEX']=m.expand(plan['demo_install_index'])
