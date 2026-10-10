@@ -1,0 +1,388 @@
+
+## $WORKSPACES/westlake-harness-bms-deploy/bms/src/adapter/framework/android-runtime/src/android_view_VelocityTracker.cpp
+52: jboolean VT_nativeIsAxisSupported(JNIEnv*, jclass, jint /*axis*/) { return JNI_FALSE; }
+53: 
+54: const JNINativeMethod kVelocityTrackerMethods[] = {
+55:     { "nativeInitialize",             "(I)J",  reinterpret_cast<void*>(VT_nativeInitialize) },
+56:     { "nativeDispose",                "(J)V",  reinterpret_cast<void*>(VT_nativeDispose) },
+57:     { "nativeClear",                  "(J)V",  reinterpret_cast<void*>(VT_nativeClear) },
+58:     { "nativeAddMovement",            "(JLandroid/view/MotionEvent;)V",
+59:       reinterpret_cast<void*>(VT_nativeAddMovement) },
+60:     { "nativeComputeCurrentVelocity", "(JIF)V",
+61:       reinterpret_cast<void*>(VT_nativeComputeCurrentVelocity) },
+62:     { "nativeGetVelocity",            "(JII)F", reinterpret_cast<void*>(VT_nativeGetVelocity) },
+63:     { "nativeIsAxisSupported",        "(I)Z",  reinterpret_cast<void*>(VT_nativeIsAxisSupported) },
+64: };
+65: 
+66: }  // namespace
+67: 
+68: int register_android_view_VelocityTracker(JNIEnv* env) {
+69:     jclass clazz = env->FindClass("android/view/VelocityTracker");
+70:     if (!clazz) {
+71:         return -1;
+72:     }
+73:     jint rc = env->RegisterNatives(clazz, kVelocityTrackerMethods,
+74:                                    sizeof(kVelocityTrackerMethods)
+75:                                        / sizeof(kVelocityTrackerMethods[0]));
+76:     env->DeleteLocalRef(clazz);
+77:     return rc == JNI_OK ? 0 : -1;
+78: }
+79: 
+80: }  // namespace android
+
+## $WORKSPACES/westlake-harness-bms-deploy/benchmark/2026-09-30-n2-native/src/android_media_AudioSystemCapabilities.cpp
+34: jint JNICALL newAudioSessionId(JNIEnv*, jclass) { return 0; }
+35: 
+36: const JNINativeMethod kMethods[] = {
+37:     { "newAudioSessionId", "()I", reinterpret_cast<void*>(newAudioSessionId) },
+38:     { "native_getMaxChannelCount", "()I", reinterpret_cast<void*>(getMaxChannelCount) },
+39:     { "native_getMaxSampleRate",   "()I", reinterpret_cast<void*>(getMaxSampleRate) },
+40:     { "native_getMinSampleRate",   "()I", reinterpret_cast<void*>(getMinSampleRate) },
+41: };
+42: 
+43: }  // namespace
+44: 
+45: __attribute__((visibility("hidden")))
+46: int register_android_media_AudioSystemCapabilities(JNIEnv* env) {
+47:     jclass clazz = env->FindClass("android/media/AudioSystem");
+48:     if (!clazz) {
+49:         if (env->ExceptionCheck()) env->ExceptionClear();
+50:         return -1;
+51:     }
+52:     const jint rc = env->RegisterNatives(
+53:         clazz, kMethods, sizeof(kMethods) / sizeof(kMethods[0]));
+54:     env->DeleteLocalRef(clazz);
+55:     return rc == JNI_OK ? 0 : -1;
+56: }
+57: 
+58: __attribute__((visibility("hidden")))
+59: int register_android_media_AudioProductStrategy(JNIEnv* env) {
+60:     jclass clazz = env->FindClass(
+61:         "android/media/audiopolicy/AudioProductStrategy");
+62:     if (!clazz) {
+63:         if (env->ExceptionCheck()) env->ExceptionClear();
+64:         return -1;
+65:     }
+66:     const JNINativeMethod methods[] = {
+67:         { "native_list_audio_product_strategies", "(Ljava/util/ArrayList;)I",
+68:           reinterpret_cast<void*>(listAudioProductStrategies) },
+69:     };
+70:     const jint rc = env->RegisterNatives(clazz, methods, 1);
+71:     env->DeleteLocalRef(clazz);
+72:     return rc == JNI_OK ? 0 : -1;
+73: }
+74: 
+75: }  // namespace android
+76: 
+77: #if defined(WESTLAKE_AUDIO_BACKEND_EXPORT)
+78: namespace android {
+79: __attribute__((visibility("hidden")))
+80: int register_android_media_AudioTrack(JNIEnv* env);
+81: }
+82: 
+83: extern "C" __attribute__((visibility("default")))
+84: int westlake_register_audio_compat(JNIEnv* env) {
+85:     if (!env ||
+
+## $WORKSPACES/westlake-harness-bms-deploy/bms/src/adapter/framework/native-compat/westlake-commonevent/common_event_registration.cpp
+72: }
+73: 
+74: const JNINativeMethod kMethods[] = {
+75:     // broadcast
+76:     {"nativeSubscribeCommonEvent",
+77:         "(I[Ljava/lang/String;ILjava/lang/String;)I",
+78:         (void*)nativeSubscribeCommonEvent_impl},
+79:     {"nativeUnsubscribeCommonEvent", "(I)I",
+80:         (void*)nativeUnsubscribeCommonEvent_impl},
+81:     {"nativePublishCommonEvent",
+82:         "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
+83:         "ILjava/lang/String;ZZ[Ljava/lang/String;)I",
+84:         (void*)nativePublishCommonEvent_impl},
+85:     {"nativeFinishCommonEvent",
+86:         "(IILjava/lang/String;Z)I",
+87:         (void*)nativeFinishCommonEvent_impl},
+88:     {"nativeGetStickyCommonEvent",
+89:         "(Ljava/lang/String;)Ljava/lang/String;",
+93: namespace android {
+94: int register_westlake_CommonEvent(JNIEnv* env) {
+95:     jclass clazz = env->FindClass("adapter/activity/ActivityManagerAdapter");
+96:     if (clazz == nullptr) return JNI_ERR;
+97:     const jint rc = env->RegisterNatives(clazz, kMethods, sizeof(kMethods)/sizeof(kMethods[0]));
+98:     env->DeleteLocalRef(clazz);
+99:     fprintf(stderr, "[WL-COMMONEVENT] RegisterNatives 5 methods rc=%d\n", rc);
+100:     return rc;
+101: }
+102: }
+
+## $WORKSPACES/westlake-harness-bms-deploy/benchmark/2026-09-30-n2-native/src/camera_info.cpp
+73: }
+74: int register_n2_Camera(JNIEnv* env) {
+75:     jclass c=env->FindClass("android/hardware/Camera");if(!c)return -1;
+76:     JNINativeMethod methods[]={
+77:         {"getNumberOfCameras","()I",reinterpret_cast<void*>(number)},
+78:         {"_getCameraInfo","(IZLandroid/hardware/Camera$CameraInfo;)V",reinterpret_cast<void*>(info)}
+79:     };
+80:     int rc=env->RegisterNatives(c,methods,2);env->DeleteLocalRef(c);
+81:     fprintf(stderr,"[N2-Camera] metadata registration=%d\n",rc);return rc;
+82: }
+83: }
+
+## $WORKSPACES/westlake-harness-tools-inventory/benchmark/2026-10-01-n10b-child/smoke-markers/src/emboss/emboss-registration.cpp
+71: 
+72: extern "C" int register_n10b_Emboss(JNIEnv* env) {
+73:     static const JNINativeMethod methods[] = {
+74:         {"nativeConstructor", "([FFFF)J", reinterpret_cast<void*>(createEmboss)},
+75:     };
+76:     jclass cls = env->FindClass("android/graphics/EmbossMaskFilter");
+77:     if (!cls) return -1;
+78:     int result = env->RegisterNatives(cls, methods, 1);
+79:     env->DeleteLocalRef(cls);
+80:     return result;
+81: }
+
+## $WORKSPACES/westlake-harness/bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp
+14: //          equivalent path for Surface/BLASTBufferQueue)
+15: //
+16: // Strategy: explicit RegisterNatives for each problem method.  In ART, when
+17: // liboh_android_runtime's register_X runs after libhwui's RegisterNatives,
+18: // last-wins applies — our stub replaces libhwui's broken impl.  All overrides
+19: // here are SAFE no-op or null returns; they don't render anything but they
+20: // stop the abort/crash so HelloWorld setContentView/onResume can progress
+21: // to the next-layer issue (which we then diagnose via the §3.7/§3.8 stderr
+22: // + FATAL bridges).
+23: //
+24: // Each method below documents:
+25: //   - Which class/method on Java side
+26: //   - Why the "real" hwui/libgui impl can't run on OH
+27: //   - What a real adapter implementation would do (P1 future work)
+28: // ============================================================================
+29: 
+30: #include "AndroidRuntime.h"
+31: 
+32: #include <jni.h>
+110: jstring ID_nGetMimeType(JNIEnv* env, jclass, jlong) { return env->NewStringUTF("image/unknown"); }
+111: 
+112: const JNINativeMethod kImageDecoderMethods[] = {
+113:     { "nGetColorSpace", "(J)Landroid/graphics/ColorSpace;",
+114:       reinterpret_cast<void*>(ID_nGetColorSpace) },
+115:     { "nGetPadding", "(JLandroid/graphics/Rect;)V",
+116:       reinterpret_cast<void*>(ID_nGetPadding) },
+117:     { "nClose", "(J)V",
+118:       reinterpret_cast<void*>(ID_nClose) },
+119:     { "nGetMimeType", "(J)Ljava/lang/String;",
+120:       reinterpret_cast<void*>(ID_nGetMimeType) },
+121:     { "nGetSampledSize", "(JI)Landroid/util/Size;",
+122:       reinterpret_cast<void*>(ID_nGetSampledSize) },
+123:     // nCreate / nDecodeBitmap variants left unbound — if the AOSP overload
+124:     // signature differs subtly, RegisterNatives fails this method only
+125:     // (we register one-by-one) and the rest still bind.
+126: };
+127: 
+128: // =====================================================================
+129: // android.view.Surface (subset — most-frequently called by ViewRootImpl)
+130: // =====================================================================
+131: // AOSP register_android_view_Surface lives in libandroid_runtime.so which
+132: // we don't cross-compile.  Without RegisterNatives, first call → JNI auto
+133: // resolution by symbol name; if our adapter doesn't export Java_android_view_Surface_*
+134: // → UnsatisfiedLinkError.  Provide a minimum-viable stub set.
+135: 
+136: // 2026-05-08 G2.14ae: forward decls + types for the SC→sessionId→OHNativeWindow
+137: // chain reused by Surface stubs (below) and BLASTBufferQueue (next section).
+138: // We are already inside `namespace android { namespace { ... } }`, so these
+139: // land in the same anonymous namespace as the definitions in the BBQ block.
+140: extern "C" int32_t oh_sc_get_session(jlong scNativeObject);
+141: static void*   oh_wm_get_native_window(int32_t sessionId);
+142: 
+143: // OhBlastBufferQueue moved up here (was in BBQ section ~line 299) so Surface
+144: // stubs below can use as_bbq() / b->ohNativeWindow when bridging
+145: // nativeGetFromBlastBufferQueue. Definition, alloc_bbq, as_bbq are now here;
+146: // the BBQ section keeps using them, just defined earlier in the same TU.
+147: struct OhBlastBufferQueue {
+227: jint S_nativeGetHeight(JNIEnv*, jclass, jlong /*nativeObject*/) { return 1280; }
+228: // 2026-05-01 G2.14n: AOSP Surface.java declares these as `int` returns; we were
+229: // registering with `(...)V` signatures and void-returning impls.  RegisterNatives
+230: // in ART silently accepts mismatched signatures; Java callers then read garbage
+231: // register r0 as the int return value → unpredictable behavior downstream.
+232: jint S_nativeAttachAndQueueBufferWithColorSpace(JNIEnv*, jclass, jlong, jobject, jint) { return 0; }
+233: jint S_nativeForceScopedDisconnect(JNIEnv*, jclass, jlong) { return 0; }
+234: jint S_nativeSetFrameRate(JNIEnv*, jclass, jlong, jfloat, jint, jint) { return 0; }
+235: 
+236: // G2.14v r2 (2026-05-07) — Surface 9 missing fn 补全（同 SurfaceControl A/B/C 范式）。
+237: // AOSP 14 共 22 native，原表 13 项，缺 9（含触发 G2.14v r1 部署后下一层 ULE 的
+238: // nativeGetFromSurfaceControl）。
+239: //
+240: // 本类全 stub，因 OH 没有 Android Surface 等价物（OH 的 ProducerSurface 由
+241: // RSSurfaceNode 持有、走 OHNativeWindow 路径，不通过 Surface JNI 桥）。
+242: // 真渲染走 BLASTBufferQueue 路径（compat_shim §BBQ）；这里只确保 Java 端
+243: // Surface.copyFrom / Surface.release 等不再 ULE。
+244: 
+276: jint S_nativeSetSharedBufferModeEnabled(JNIEnv*, jclass, jlong /*nativeObject*/, jboolean /*enabled*/) { return 0; }
+277: 
+278: const JNINativeMethod kSurfaceMethods[] = {
+279:     { "nativeCreateFromSurfaceTexture", "(Landroid/graphics/SurfaceTexture;)J",
+280:       reinterpret_cast<void*>(S_nativeCreateFromSurfaceTexture) },
+281:     { "nativeCreateFromSurfaceControl", "(J)J",
+282:       reinterpret_cast<void*>(S_nativeCreateFromSurfaceControl) },
+283:     { "nativeGetFromSurfaceControl", "(JJ)J",
+284:       reinterpret_cast<void*>(S_nativeGetFromSurfaceControl) },
+285:     { "nativeGetFromBlastBufferQueue", "(JJ)J",
+286:       reinterpret_cast<void*>(S_nativeGetFromBlastBufferQueue) },
+287:     { "nativeRelease", "(J)V", reinterpret_cast<void*>(S_nativeRelease) },
+288:     { "nativeDestroy", "(J)V", reinterpret_cast<void*>(S_nativeDestroy) },
+289:     { "nativeIsValid", "(J)Z", reinterpret_cast<void*>(S_nativeIsValid) },
+290:     { "nativeIsConsumerRunningBehind", "(J)Z",
+291:       reinterpret_cast<void*>(S_nativeIsConsumerRunningBehind) },
+292:     { "nativeReadFromParcel", "(JLandroid/os/Parcel;)J",
+293:       reinterpret_cast<void*>(S_nativeReadFromParcel) },
+466: // BLASTBufferQueue.java: nativeUpdate(long ptr, long sc, long width,
+467: // long height, int format) = (JJJJI)V. Prior shim used (JJJIIIJ)V (7-arg,
+468: // different framework gen) → RegisterNatives silently failed → SurfaceView
+469: // (eglprobe / UnityPlayerActivity) hit UnsatisfiedLinkError on first traversal.
+470: void BBQ_nativeUpdate(JNIEnv*, jclass, jlong bbqPtr, jlong scPtr,
+471:                       jlong width, jlong height, jint format) {
+472:     fprintf(stderr, "[BBQ-CP] nativeUpdate ENTER bbq=0x%llx sc=0x%llx %lldx%lld fmt=%d\n",
+473:             (long long)bbqPtr, (long long)scPtr, (long long)width, (long long)height, format); fflush(stderr);
+474:     auto* b = as_bbq(bbqPtr);
+475:     if (!b) {
+476:         ALOGW("BBQ.update: invalid bbqPtr=%lld", (long long)bbqPtr);
+477:         return;
+478:     }
+479:     b->width = static_cast<int32_t>(width);
+480:     b->height = static_cast<int32_t>(height);
+481:     b->format = format;
+482:     int32_t sessionId = oh_sc_get_session(scPtr);
+483:     if (b->sessionId != sessionId) b->ohNativeWindow = nullptr;
+695: }
+696: 
+697: const JNINativeMethod kBlastBufferQueueMethods[] = {
+698:     { "nativeCreate", "(Ljava/lang/String;Z)J",
+699:       reinterpret_cast<void*>(BBQ_nativeCreate) },
+700:     { "nativeDestroy", "(J)V",
+701:       reinterpret_cast<void*>(BBQ_nativeDestroy) },
+702:     { "nativeGetSurface", "(JZ)Landroid/view/Surface;",
+703:       reinterpret_cast<void*>(BBQ_nativeGetSurface) },
+704:     { "nativeSyncNextTransaction", "(JLjava/util/function/Consumer;Z)Z",
+705:       reinterpret_cast<void*>(BBQ_nativeSyncNextTransaction) },
+706:     { "nativeStopContinuousSyncTransaction", "(J)V",
+707:       reinterpret_cast<void*>(BBQ_nativeStopContinuousSyncTransaction) },
+708:     { "nativeClearSyncTransaction", "(J)V",
+709:       reinterpret_cast<void*>(BBQ_nativeClearSyncTransaction) },
+710:     { "nativeUpdate", "(JJJJI)V",
+711:       reinterpret_cast<void*>(BBQ_nativeUpdate) },
+712:     { "nativeMergeWithNextTransaction", "(JJJ)V",
+723:       reinterpret_cast<void*>(BBQ_nativeIsSameSurfaceControl) },
+724:     { "nativeSetTransactionHangCallback",
+725:       "(JLandroid/graphics/BLASTBufferQueue$TransactionHangCallback;)V",
+726:       reinterpret_cast<void*>(BBQ_nativeSetTransactionHangCallback) },
+727: };
+728: 
+729: // =====================================================================
+730: // android.view.DisplayEventReceiver
+731: // =====================================================================
+732: // AOSP register_android_view_DisplayEventReceiver lives in libandroid_runtime.
+733: // hwui Choreographer subclasses this to receive vsync.  Without a real
+734: // impl, Choreographer.scheduleVsync NPE on first call.  Stub: return a
+735: // non-null sentinel; manual frame scheduling won't be vsync-aligned but
+736: // HelloWorld static layout doesn't strictly need vsync.
+737: 
+738: jlong DER_nativeInit(JNIEnv*, jclass, jobject /*receiverWeak*/, jobject /*messageQueue*/,
+739:                     jint /*vsyncSource*/, jint /*eventRegistration*/, jlong /*layerHandle*/) {
+740:     static int sDerSentinel = 0xCAFE0DE5;
+752: }
+753: 
+754: const JNINativeMethod kDisplayEventReceiverMethods[] = {
+755:     { "nativeInit",
+756:       "(Ljava/lang/ref/WeakReference;Landroid/os/MessageQueue;IIJ)J",
+757:       reinterpret_cast<void*>(DER_nativeInit) },
+758:     { "nativeDispose", "(J)V",
+759:       reinterpret_cast<void*>(DER_nativeDispose) },
+760:     { "nativeScheduleVsync", "(J)V",
+761:       reinterpret_cast<void*>(DER_nativeScheduleVsync) },
+762:     { "nativeGetLatestVsyncEventData",
+763:       "(J)Landroid/view/DisplayEventReceiver$VsyncEventData;",
+764:       reinterpret_cast<void*>(DER_nativeGetLatestVsyncEventData) },
+765: };
+766: 
+767: // =====================================================================
+768: // Helper: register one method-array, method-by-method, tolerate failures
+769: // =====================================================================
+770: int registerOne(JNIEnv* env, const char* className,
+771:                 const JNINativeMethod* methods, size_t count) {
+772:     jclass clazz = env->FindClass(className);
+773:     if (!clazz) {
+774:         ALOGW("FindClass(%s) failed — class not in BCP yet?", className);
+775:         if (env->ExceptionCheck()) env->ExceptionClear();
+776:         return -1;
+777:     }
+778:     int ok = 0, fail = 0;
+779:     for (size_t i = 0; i < count; ++i) {
+780:         jint rc = env->RegisterNatives(clazz, &methods[i], 1);
+781:         if (rc == JNI_OK) {
+782:             ++ok;
+783:         } else {
+784:             ++fail;
+785:             ALOGW("compat_shim: register %s.%s%s failed",
+786:                   className, methods[i].name, methods[i].signature);
+787:             if (env->ExceptionCheck()) env->ExceptionClear();
+788:         }
+789:     }
+790:     env->DeleteLocalRef(clazz);
+791:     ALOGI("compat_shim: %s registered %d/%zu", className, ok, count);
+792:     return 0;  // never propagate failure to caller — shim is best-effort
+793: }
+794: 
+795: // =====================================================================
+843: //   The boundary-correct, timing-correct, NON-BCP fix is here: make nCreateProxy
+844: //   a no-op so the RenderThread is never born.  We do NOT touch ViewRootImpl /
+845: //   ThreadedRenderer Java (AonB black-box law) — only last-wins RegisterNatives
+846: //   at the JNI boundary in our own liboh_android_runtime.so.
+847: //
+848: // DEMO-SAFETY (this .so is SHARED — also serves demos via $SA/lib64):
+849: //   GATED on OHUB_VARIANT naming a known Unity/CW-shell variant (originally
+850: //   just "cardwords"; 2026-07-10 widened to an enumerated allowlist OR'd with
+851: //   OHUB_UNITY_LIBDIR presence — see the widened gate implementation below,
+852: //   in register_android_graphics_compat_shim()) set in the Unity/CW launch
+853: //   env (launch_asx_unityshell.sh / launch_game1r*.sh / launch_game2r*.sh /
+854: //   betweenworlds variants).  Demo processes set neither -> they keep the
+855: //   REAL libhwui HardwareRenderer + RenderThread (they DO render UI via
+856: //   hwui).  A prior unconditional HardwareRenderer stub (G2.14ao) was
+857: //   correctly reverted for the noice/demo line for exactly this reason; the
+858: //   env gate is what makes the Unity-only neuter coexist with demo rendering
+859: //   in shared source.
+860: //
+926: 
+927: #define HRN_SF "Landroid/view/Surface;"
+928: const JNINativeMethod kHardwareRendererNeuterMethods[] = {
+929:     // RenderThread birth — the load-bearing entries: no proxy, and no other
+930:     // reachable entry point, => no RenderThread.
+931:     {"nCreateRootRenderNode", "()J",            (void*)HRN_make},
+932:     {"nCreateProxy",          "(ZJ)J",          (void*)HRN_proxy},
+933:     {"nDeleteProxy",          "(J)V",           (void*)HRN_v1},
+934:     // 2026-07-10: RenderThread::getInstance() entry points that bypass
+935:     // nCreateProxy entirely (see block comment above).
+936:     {"preload",               "()V",            (void*)HRN_v0},
+937:     {"nOverrideProperty",     "(Ljava/lang/String;Ljava/lang/String;)V",
+938:                                                  (void*)HRN_v2str},
+939:     // proxy-handle-taking lifecycle/draw natives — no-op so the fake handle is
+940:     // never dereferenced by libhwui once ViewRootImpl tries to draw the decor.
+941:     {"nGetRenderThreadTid",   "(J)I",           (void*)HRN_zero_j},
+942:     {"nLoadSystemProperties", "(J)Z",           (void*)HRN_false_j},
+943:     {"nSetName",              "(JLjava/lang/String;)V", (void*)HRN_v1},
+988:                 kSurfaceMethods,
+989:                 sizeof(kSurfaceMethods) / sizeof(kSurfaceMethods[0]));
+990:     registerOne(env, "android/graphics/BLASTBufferQueue",
+991:                 kBlastBufferQueueMethods,
+992:                 sizeof(kBlastBufferQueueMethods) / sizeof(kBlastBufferQueueMethods[0]));
+993:     // [UNITY-CW] neuter hwui HardwareRenderer (no RenderThread) for the Unity/CW
+994:     // engine process ONLY — gated below on an OHUB_VARIANT allowlist OR
+995:     // OHUB_UNITY_LIBDIR presence (see 2026-07-10 note immediately below) so
+996:     // demo processes (served by $SA/lib64) keep the real libhwui RenderThread.
+997:     // See the
+998:     // kHardwareRendererNeuterMethods block above for the full causal chain
+999:     // (prevents the hwui RenderThread RS-client deadlock vs createSession's RS IPC).
+1000:     // 2026-07-10 (route3-rssurface-stack-confirmed memory, "RenderThread正交墙
+1001:     // 修复方案钉死"): the original gate below only matched OHUB_VARIANT=="cardwords".
+1002:     // route3's own launch scripts (launch_game1r.sh / launch_game1r_g34.sh /
+1003:     // launch_game2r.sh / launch_cw_g34.sh / betweenworlds variants) all pass
+1004:     // OHUB_VARIANT=game1|game2|betweenworlds — never "cardwords" — so this
+1005:     // fully-implemented neuter was 100% dead code for every route3 process.

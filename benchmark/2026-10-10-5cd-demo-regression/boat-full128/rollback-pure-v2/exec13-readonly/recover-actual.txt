@@ -1,0 +1,203 @@
+[20:30:02] replayed 56/56 baseline layers
+[20:30:02] relabel verified (ls -Z): appspawn-x=appspawn_exec child=system_lib_file (PR03 :158-161 order)
+[20:30:04] whole-tree label verify: 0 data_local_tmp/data_file under /system/android + route-a + tgr
+[20:30:05] finalize_runtime: relabel + boot.art/libc_musl/fonts + mali + anco params (proven reboot-PASS recipe)
+[20:30:05] appspawn-x ready as ondemand exec entry (sha+label ok; daemon NOT started; first app tap triggers it via init)
+[20:30:05] READY (runtime prepared, applications stopped, appspawn-x ondemand) — boat overlay job follows on ready param
+#!/system/bin/sh
+# U13 boot recovery worker (demo autostart). Replays the pinned 56 U13 baseline mounts, then PRESERVES init's ondemand
+# appspawn-x listener. Runs READY-prepared / apps-STOPPED. Ports the proven boat donor shape (pr03-runtime-recover-
+# device.sh:78-200) onto signed U13 bytes, with the autostart-plan.md deltas:
+#   * NO `setenforce 0` — sealed enforcement is preserved. If a step cannot run sealed, FAIL (stop for outer review);
+#     never make the board permissive.
+#   * No PR03 relabel / runtime-param change / mali chmod / boot.art link.
+#   * appspawn-x is ONDEMAND: init listen()s /dev/unix/socket/AppSpawnX and spawns the daemon on the FIRST app launch
+#     (so init is the parent -> no PR_SET_KEEPCAPS wall). The worker verifies that listener and NEVER starts a daemon
+#     (this board's begetctl has no start_service; a direct exec would wrongly parent it). NO app/launcher/watchdog.
+# Idempotent + fail-closed. A DISABLED marker short-circuits it. Receipts are per-boot; the pinned table is immutable.
+set -u
+ROOT=/data/westlake-demo/u13            # durable payload root (table + archived sources + receipts), reboot-persistent
+TABLE="$ROOT/u13-recover-table.json"
+ARCH="$ROOT/sources"                    # archived exact baseline source bytes (SHA-verified), populated at install
+RECEIPT="$ROOT/receipt.env"
+LOG="$ROOT/recover-$(date +%Y%m%dT%H%M%S 2>/dev/null).log"
+JOURNAL="$ROOT/boot-journal-$(cat /proc/sys/kernel/random/boot_id 2>/dev/null).log"   # persistent: aligns dmesg w/ steps
+APPSPAWN_SHA=2a87118e7e8e62fb73ef71a436517cda406c308668753a478cf52331e996072e   # U13 /system/bin/appspawn-x (host)
+READY_PARAM=sys.westlake.demo.u13.ready
+mkdir -p "$ROOT" 2>/dev/null
+log(){ echo "[$(date +%H:%M:%S 2>/dev/null)] $*" >> "$LOG" 2>/dev/null; echo "u13-recover: $*"; }
+# journal(): per-step timestamp + a dmesg snapshot of the appspawn/init lines, to a PERSISTENT /data file. The INVALID
+# latch (init_common_service.c:685) left no trace last boot because the dmesg ring was flushed; this pins the moment so
+# the acceptance can align a "ServiceStart pathArgs invalid ... appspawn-x" line with the exact recover step.
+journal(){ { echo "=== [$(date +%Y-%m-%dT%H:%M:%S 2>/dev/null)] $* ==="; dmesg 2>/dev/null | grep -iE 'appspawn|ServiceStart|invalid|AppSpawnX' | tail -8; } >> "$JOURNAL" 2>/dev/null; }
+fail(){ log "FAIL $*"; { echo "state=FAILED"; echo "failed_step=$*"; echo "boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)"; } > "$RECEIPT" 2>/dev/null; param set "$READY_PARAM" false 2>/dev/null; exit 1; }
+sha(){ sha256sum "$1" 2>/dev/null | cut -d' ' -f1; }
+# init's ondemand AppSpawnX listener flags from /proc/net/unix (pure shell read; board has no awk/tr)
+appspawn_listener_flags(){ while read -r addr refs proto flags type st inode path; do
+    [ "$path" = /dev/unix/socket/AppSpawnX ] && { echo "$flags"; return 0; }; done < /proc/net/unix; return 1; }
+# canonical SELinux context for a replayed target. A bind carries the SOURCE inode's label, and the /data archive is
+# u:object_r:data_file:s0 -> init cannot exec/load those under u:r:appspawn:s0. So we relabel the SOURCE before binding.
+ctx_for(){ case "$1" in
+    /system/bin/appspawn-x) echo u:object_r:appspawn_exec:s0 ;;
+    /data/app/*) echo u:object_r:data_app_el1_file:s0 ;;
+    *.jar) echo u:object_r:system_file:s0 ;;
+    *.json) echo u:object_r:system_etc_file:s0 ;;
+    *.so|*/lib64/*|*/route-a/*) echo u:object_r:system_lib_file:s0 ;;
+    *) echo u:object_r:system_file:s0 ;; esac; }
+label_of(){ ls -Zd "$1" 2>/dev/null | grep -oE 'u:object_r:[A-Za-z0-9_]+:s0' | head -1; }
+
+# finalize_runtime: the proven reboot-PASS post-mount setup (00.Workspace var/state/pr03-reboot-test, result/
+# HelloWorld-after-reboot.jpeg) that lets the ONDEMAND appspawn-x actually load + serve so apps light. My first cut
+# omitted these per the plan's "don't copy donor param/mali/boot.art" caution -> apps stayed white (RESULT-61b.md:
+# AMS connected to AppSpawnX but the daemon never materialised). The plan's "narrowly justified changes if execution
+# would otherwise fail" clause now applies. Relabels bound files to canonical contexts, makes the boot.art/libc_musl
+# symlinks, copies fonts.xml, opens mali, sets anco/prefork params. All idempotent + best-effort. Gate: $ROOT/NO_FINALIZE
+# skips it (for A/B in the acceptance window). Reboot clears every bind; a / rw-remount is used only for the two writes
+# outside the bound trees (/system/etc/fonts.xml, /system/lib/libc_musl.so) and is re-sealed ro.
+finalize_runtime(){
+  [ -e "$ROOT/NO_FINALIZE" ] && { log "NO_FINALIZE -> skip finalize_runtime (A/B)"; return 0; }
+  # NOTE: per-layer canonical relabel is now done SOURCE-FIRST in the replay loop (appspawn_exec/system_lib_file/...),
+  # verified for the appspawn-x exec entry. finalize only adds the NON-layer runtime bits the proven recipe needs.
+  chmod 0755 /system/bin/appspawn-x /system/lib64/appspawn/libwestlake_android_child.z.so 2>/dev/null
+  # boot.art symlink + boot image relabel (inside the bound /system/android/framework -> no / rw needed)
+  [ -f /system/android/framework/arm64/boot.art ] && [ ! -e /system/android/framework/boot.art ] && ln -sf arm64/boot.art /system/android/framework/boot.art 2>/dev/null
+  for f in /system/android/framework/arm64/boot*.art /system/android/framework/arm64/boot*.oat /system/android/framework/arm64/boot*.vdex; do
+    [ -e "$f" ] && chcon u:object_r:system_lib_file:s0 "$f" 2>/dev/null
+  done
+  [ -f /system/android/etc/fonts.xml ] && chcon u:object_r:system_fonts_file:s0 /system/android/etc/fonts.xml 2>/dev/null
+  # anco/prefork params (persist; usually already set) + mali (dev node)
+  param set persist.sys.abilityms.support_anco_app true 2>/dev/null || true
+  param set persist.sys.abilityms.timeout_unit_time_ratio 20 2>/dev/null || true
+  param set persist.sys.prefork.enable false 2>/dev/null || true
+  param set ro.product.cpu.abilist arm64-v8a >/dev/null 2>&1 || true
+  param set ro.product.cpu.abilist64 arm64-v8a >/dev/null 2>&1 || true
+  [ -e /dev/mali0 ] && { chmod 0666 /dev/mali0 2>/dev/null; chcon u:object_r:dev_mali:s0 /dev/mali0 2>/dev/null; }
+  # writes OUTSIDE the bound trees need / rw (libc_musl -> /system/lib, fonts.xml -> /system/etc); remount + reseal.
+  if [ ! -e /system/lib/libc_musl.so ] || [ ! -f /system/etc/fonts.xml ]; then
+    resealed=0; opt=$(grep ' / ' /proc/mounts 2>/dev/null | head -n1 | cut -d' ' -f4)
+    case ",$opt," in *,rw,*) ;; *) mount -o rw,remount / 2>/dev/null && resealed=1 ;; esac
+    [ ! -e /system/lib/libc_musl.so ] && { ln -sf /lib/ld-musl-aarch64.so.1 /system/lib/libc_musl.so 2>/dev/null; chcon -h u:object_r:system_lib_file:s0 /system/lib/libc_musl.so 2>/dev/null; }
+    [ -f /system/android/etc/fonts.xml ] && [ ! -f /system/etc/fonts.xml ] && { cp /system/android/etc/fonts.xml /system/etc/fonts.xml 2>/dev/null; chcon u:object_r:system_fonts_file:s0 /system/etc/fonts.xml 2>/dev/null; }
+    [ "$resealed" = 1 ] && { sync; mount -o ro,remount / 2>/dev/null; }
+  fi
+  log "finalize_runtime: relabel + boot.art/libc_musl/fonts + mali + anco params (proven reboot-PASS recipe)"
+}
+
+[ -e "$ROOT/DISABLED" ] && { log "DISABLED present -> no recovery this boot"; exit 0; }
+
+# idempotence: already prepared this boot? -> exit WITHOUT re-replaying (re-replay would double-bind the 56 targets).
+BOOT=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)
+if [ -f "$RECEIPT" ] && grep -q "^state=READY$" "$RECEIPT" 2>/dev/null && grep -q "^boot_id=$BOOT$" "$RECEIPT" 2>/dev/null; then
+  log "already READY this boot (idempotent) -> exit, no re-replay"; exit 0
+fi
+param set "$READY_PARAM" false 2>/dev/null || true
+# preconditions. v2: this runs at the post-fs-data bootstage (BEFORE bootevent.boot.completed), so we do NOT gate on
+# boot.completed — the whole point is to be in place before the boot-stage foundation/AMS triggers the ondemand
+# appspawn-x. /data (el1 bundle) may settle a moment after the post-fs-data trigger: wait briefly.
+i=0; while [ ! -d /data/app/el1/bundle/public ] && [ $i -lt 50 ]; do sleep 0.2; i=$((i+1)); done
+[ -d /data/app/el1/bundle/public ] || fail DATA_PKG_ROOT_NOT_READY
+[ -f "$TABLE" ] || fail MISSING_TABLE
+[ -d "$ARCH" ] || fail MISSING_SOURCE_ARCHIVE
+# appspawn-x must NOT be running yet (we replay before the first spawn). At post-fs-data it should be down (ondemand).
+[ -z "$(pidof appspawn-x 2>/dev/null)" ] || fail APPSPAWN_STARTED_BEFORE_RECOVERY
+# init's ondemand AppSpawnX listener: at post-fs-data it is normally already up (registered at cfg-load). Timing is
+# earlier than before, so only WARN if not yet present — the real appspawn-x is bound (no umount) before AMS connects.
+[ -S /dev/unix/socket/AppSpawnX ] || log "WARN AppSpawnX listener not yet present at post-fs-data (ok: 0B mount point exists; our bind puts real bytes before AMS)"
+[ "$(appspawn_listener_flags)" = 00010000 ] || log "WARN AppSpawnX listener flags not 00010000 yet"
+journal "post-fs-data recover START (pre-replay) appspawnx_bin=$(sha /system/bin/appspawn-x 2>/dev/null | cut -c1-16)"
+
+# replay the 56 pinned baseline layers in sequence BEFORE starting appspawn-x. Source = archived durable bytes (not the
+# original /data/local/tmp/... host paths). Each row: write-ahead receipt, bind, verify top source + sha. Fail closed on
+# an unexpected existing owner; NO broad unmount sweep. (jq-free: the installer also emits a line-oriented u13-recover-table.tsv.)
+TSV="$ROOT/u13-recover-table.tsv"   # seq \t kind \t group \t target \t archived_source \t sha256   (emitted at install)
+[ -f "$TSV" ] || fail MISSING_TABLE_TSV
+n=0
+while IFS="$(printf '\t')" read -r seq kind group target src sha_want; do
+  [ -z "$seq" ] && continue
+  n=$((n+1))
+  [ -e "$src" ] || fail "SRC_MISSING seq=$seq $src"
+  if [ "$kind" = file ] && [ -n "$sha_want" ] && [ "$sha_want" != null ]; then
+    [ "$(sha "$src")" = "$sha_want" ] || fail "SRC_SHA seq=$seq $target"
+  fi
+  [ -e "$target" ] || fail "TARGET_MOUNTPOINT_MISSING seq=$seq $target"
+  echo "WAL seq=$seq target=$target" >> "$RECEIPT.wal" 2>/dev/null
+  # relabel the SOURCE to its canonical context BEFORE binding (so the bind target is not left as data_file). Errors are
+  # LOGGED, not swallowed. For dir layers, relabel the tree + refine lib64/boot-image (they must be system_lib_file).
+  # The board's toybox `chcon -R` does NOT recurse (verified on 5cd: dir root relabeled, children stayed data_file),
+  # so use `find ... -exec chcon` (PR03's proven method) for dir trees. Non-silent. lib64/boot refined to system_lib_file.
+  ctx=$(ctx_for "$target")
+  if [ "$kind" = directory ]; then
+    find "$src" -exec chcon "$ctx" {} \; 2>>"$LOG" || log "WARN find-chcon $ctx $src (rc=$?)"
+    case "$target" in */system/android|/system/android)
+      [ -d "$src/lib64" ] && { find "$src/lib64" -exec chcon u:object_r:system_lib_file:s0 {} \; 2>>"$LOG" || log "WARN find-chcon lib64"; }
+      for b in "$src"/framework/arm64/boot*.art "$src"/framework/arm64/boot*.oat "$src"/framework/arm64/boot*.vdex; do
+        [ -e "$b" ] && chcon u:object_r:system_lib_file:s0 "$b" 2>>"$LOG"
+      done ;;
+    esac
+  else
+    chcon "$ctx" "$src" 2>>"$LOG" || log "WARN chcon $ctx $src (rc=$?)"
+  fi
+  mount -o bind "$src" "$target" 2>>"$LOG" || fail "BIND seq=$seq $target"
+  if [ "$kind" = file ] && [ -n "$sha_want" ] && [ "$sha_want" != null ]; then
+    [ "$(sha "$target")" = "$sha_want" ] || fail "VERIFY seq=$seq $target"
+  fi
+  # the appspawn-x exec entry MUST end up appspawn_exec, else init refuses to spawn it under u:r:appspawn:s0 -> fail closed
+  if [ "$target" = /system/bin/appspawn-x ]; then
+    lab=$(label_of "$target")
+    [ "$lab" = u:object_r:appspawn_exec:s0 ] || fail "APPSPAWN_LABEL seq=$seq got=${lab:-none} want=appspawn_exec (relabel failed: check recover secon/caps allow relabelto appspawn_exec)"
+  fi
+done < "$TSV"
+[ "$n" = 56 ] || fail "LAYER_COUNT got=$n want=56"
+log "replayed $n/56 baseline layers"
+
+# PR03 pr03-runtime-recover.sh:158-161 order, on the TARGETS, read-back verified, FAIL-CLOSED (not silent). Under
+# enforcing SELinux init execv's the appspawn entry point in the appspawn domain, which requires it be labeled
+# appspawn_exec (stock /system/bin/appspawn is appspawn_exec); a data_file entry -> execv EACCES (errno 13) -> service
+# won't start. child/tgr/liblzma need system_lib_file. The source-relabel above is belt; this is the authoritative
+# target relabel + ls -Z read-back the outer requires.
+chmod 0755 /system/bin/appspawn-x /system/lib64/appspawn/libwestlake_android_child.z.so 2>>"$LOG" || log "WARN chmod exec entries (rc=$?)"
+chmod 0644 /system/etc/sandbox/appdata-sandbox.json /system/lib64/libwestlake_thread_guard_registry.so /system/android/lib64/liblzma.so 2>>"$LOG" || true
+chcon u:object_r:appspawn_exec:s0 /system/bin/appspawn-x 2>>"$LOG" || fail "CHCON_APPSPAWN_EXEC rc=$? (su domain relabelto appspawn_exec denied? check secon/caps)"
+chcon u:object_r:system_lib_file:s0 /system/lib64/appspawn/libwestlake_android_child.z.so /system/lib64/libwestlake_thread_guard_registry.so /system/android/lib64/liblzma.so 2>>"$LOG" || log "WARN chcon lib entries (rc=$?)"
+# read-back verify (ls -Z) — fail closed on the exec entry + child so a non-sticking relabel surfaces loudly, not as white
+rb=$(label_of /system/bin/appspawn-x); [ "$rb" = u:object_r:appspawn_exec:s0 ] || fail "APPSPAWN_LABEL_READBACK got=${rb:-none} want=appspawn_exec"
+rb=$(label_of /system/lib64/appspawn/libwestlake_android_child.z.so); [ "$rb" = u:object_r:system_lib_file:s0 ] || fail "CHILD_LABEL_READBACK got=${rb:-none} want=system_lib_file"
+log "relabel verified (ls -Z): appspawn-x=appspawn_exec child=system_lib_file (PR03 :158-161 order)"
+# WHOLE-TREE read-back COUNT: appspawn-x execs fine but exits 127 if any lib it maps is still data_local_tmp/data_file
+# (bound from /data — the appspawn domain cannot map those). Count them under /system/android + the route-a dirs + tgr;
+# must be 0 or FAIL (surfaces a missed/failed relabel loudly instead of as exit 127). ls -RZ is one pass (no awk).
+mis=$(ls -RZ /system/android 2>/dev/null | grep -cE 'data_local_tmp|data_file')
+while IFS="$(printf '\t')" read -r s k g t rest; do
+  case "$k:$t" in directory:*/route-a/*) [ -d "$t" ] && mis=$((mis + $(ls -RZ "$t" 2>/dev/null | grep -cE 'data_local_tmp|data_file'))) ;; esac
+done < "$TSV"
+case "$(label_of /system/lib64/libwestlake_thread_guard_registry.so)" in *data_local_tmp*|*data_file*) mis=$((mis+1)) ;; esac
+[ "$mis" = 0 ] || fail "MISLABEL_COUNT=$mis under /system/android+route+tgr still data_local_tmp/data_file (appspawn can't map -> execv exits 127)"
+log "whole-tree label verify: 0 data_local_tmp/data_file under /system/android + route-a + tgr"
+journal "after relabel+readback appspawnx_label=$(label_of /system/bin/appspawn-x) tree_mislabel=$mis exec_ok=yes"
+
+# proven reboot-PASS post-mount setup so the ondemand appspawn-x can load + serve (else apps are white — RESULT-61b.md)
+finalize_runtime
+journal "after finalize_runtime"
+
+# appspawn-x is ONDEMAND: init owns + listen()s /dev/unix/socket/AppSpawnX and spawns the daemon on the first app
+# launch (AMS connect), so init is the parent and the PR_SET_KEEPCAPS wall is avoided. The worker must PRESERVE that
+# listener and NEVER start a daemon: begetctl has no start_service on this board (it returns 0 without starting), and a
+# direct exec would make this su-domain script the parent. Proven by donor pr03-runtime-recover-device.sh:78-200.
+# The first real APK tap is the only authorized trigger.
+[ -z "$(pidof appspawn-x 2>/dev/null)" ] || fail APPSPAWN_RACED_RECOVERY
+# Listener checks are WARN at post-fs-data (it may be registered a touch later); the real-bytes bind (no umount, stat continuous) is
+# what guarantees stat succeeds at the first ServiceStart so the daemon isn't latched INVALID.
+[ -S /dev/unix/socket/AppSpawnX ] || log "WARN AppSpawnX listener not present yet"
+[ "$(appspawn_listener_flags)" = 00010000 ] || log "WARN AppSpawnX listener flags not 00010000 yet"
+[ "$(stat -c '%a:%u:%g:%C' /dev/unix/socket/AppSpawnX 2>/dev/null)" = "660:0:6005:u:object_r:appspawn_socket:s0" ] || log "WARN AppSpawnX socket identity not canonical yet"
+# the binary init will exec on demand MUST be the pinned U13 host (the no-umount bind provides the real bytes; stat stays continuous)
+[ "$(sha /system/bin/appspawn-x)" = "$APPSPAWN_SHA" ] || fail APPSPAWN_IDENTITY
+[ "$(label_of /system/bin/appspawn-x)" = u:object_r:appspawn_exec:s0 ] || fail APPSPAWN_LABEL_FINAL
+log "appspawn-x ready as ondemand exec entry (sha+label ok; daemon NOT started; first app tap triggers it via init)"
+
+{ echo "state=READY"; echo "boot_id=$BOOT"; echo "layers=56"; echo "appspawn_parent=ONDEMAND_NOT_STARTED";
+  echo "activity_start=DEFERRED_TO_USER"; echo "ts=$(date -Iseconds 2>/dev/null)"; } > "$RECEIPT"
+param set "$READY_PARAM" true 2>/dev/null || fail READY_PARAM_SET
+journal "READY set (runtime prepared, appspawnx ondemand, sha+label verified)"
+log "READY (runtime prepared, applications stopped, appspawn-x ondemand) — boat overlay job follows on ready param"
+exit 0

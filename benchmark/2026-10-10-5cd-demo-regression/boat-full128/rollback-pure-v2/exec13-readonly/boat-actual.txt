@@ -1,0 +1,142 @@
+#!/system/bin/sh
+# BoatAttack overlay for the U13 demo autostart. Runs AFTER westlake-u13-recover sets sys.westlake.demo.u13.ready
+# (so the 56 baseline layers + appspawn-x are already in place). Binds the validated single-file shared overlay
+# (C8 landscape adapter + C9-only touch jar) over the restored U13 base, and the 3 app-private libs into the
+# installed BoatAttack app dir. It NEVER launches the app (demo tap-to-start). Sealed enforcement preserved (no
+# setenforce). Idempotent; DISABLED marker short-circuits. Validated combo: benchmark/.../spare-5cd/RESULT-route2d.md.
+set -u
+ROOT=/data/westlake-demo/u13; ARCH="$ROOT/sources-boat"; LOG="$ROOT/boat-overlay.log"
+BUNDLE=com.Unity3d.BoatAttackDay; LIBD="/data/app/el1/bundle/public/$BUNDLE/android/lib/arm64-v8a"
+ADAPTER_T=/system/android/lib64/liboh_adapter_bridge.so; ADAPTER_SHA=8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e; ADAPTER_BASE=84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a
+JAR_T=/system/android/framework/oh-adapter-runtime.jar; JAR_SHA=6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852; JAR_BASE=bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b
+RUNTIME_T=/system/android/lib64/liboh_android_runtime.so; RUNTIME_SHA=adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130; RUNTIME_BASE=18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae
+log(){ echo "boat-overlay: $*"; echo "[$(date +%H:%M:%S 2>/dev/null)] $*" >> "$LOG" 2>/dev/null; }
+fail(){ log "FAIL $*"; exit 1; }
+sha(){ sha256sum "$1" 2>/dev/null|cut -d' ' -f1; }
+bind_over(){ # src target want base ctxref
+  local src=$1 tgt=$2 want=$3 base=$4
+  [ -e "$tgt" ] || fail "TARGET_MISSING $tgt"
+  cur=$(sha "$tgt"); [ "$cur" = "$want" ] && { log "already $tgt=$want"; return 0; }
+  [ "$cur" = "$base" ] || log "WARN $tgt base=$cur (expect $base) — still overlaying $want"
+  [ "$(sha "$src")" = "$want" ] || fail "SRC_SHA $src"
+  chcon "$(ls -Z "$tgt" 2>/dev/null|grep -oE 'u:object_r:[A-Za-z0-9_]+:s0'|head -1)" "$src" 2>/dev/null
+  mount -o bind "$src" "$tgt" 2>/dev/null || fail "BIND $tgt"
+  [ "$(sha "$tgt")" = "$want" ] || fail "VERIFY $tgt"; log "overlaid $tgt -> $want"; }
+
+[ -e "$ROOT/DISABLED" ] && { log "DISABLED -> skip boat overlay"; exit 0; }
+[ -d "$ARCH" ] || fail MISSING_BOAT_SOURCES
+# shared: C8 adapter + C9 jar (single-file bind over the restored base)
+bind_over "$ARCH/liboh_adapter_bridge.so" "$ADAPTER_T" "$ADAPTER_SHA" "$ADAPTER_BASE"
+bind_over "$ARCH/oh-adapter-runtime.jar"  "$JAR_T"     "$JAR_SHA"     "$JAR_BASE"
+# render lever (single-variable proven on 5ea, benchmark/2026-10-10-boat-single-variable): U13 18763dd4 renders
+# BoatAttack low-res+purple+LAP-stuck; adc125f4 -> full-res+correct-colour+LAP advances. label inherits the target's
+# system_lib_file (matches scripts/lab/selinux_label_recipe.sh for /system/android/lib64/*).
+bind_over "$ARCH/liboh_android_runtime.so" "$RUNTIME_T" "$RUNTIME_SHA" "$RUNTIME_BASE"
+# app-private: only if BoatAttack is installed (demo install sweep installs it). signal-box target may not exist -> create.
+if [ -d "$LIBD" ]; then
+  [ -e "$LIBD/libwestlake_bionic_signal_box.so" ] || { touch "$LIBD/libwestlake_bionic_signal_box.so"; chown 0:0 "$LIBD/libwestlake_bionic_signal_box.so"; chmod 0644 "$LIBD/libwestlake_bionic_signal_box.so"; chcon u:object_r:data_app_el1_file:s0 "$LIBD/libwestlake_bionic_signal_box.so" 2>/dev/null; }
+  for pr in "libwestlake_bionic_signal_box.so:7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da" \
+            "libunity.so:1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac" \
+            "libil2cpp.so:f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746"; do
+    f=${pr%:*}; want=${pr##*:}; [ "$(sha "$ARCH/$f")" = "$want" ] || fail "BOAT_PRIVATE_SRC_SHA $f"
+    chcon u:object_r:data_app_el1_file:s0 "$ARCH/$f" 2>/dev/null
+    mount -o bind "$ARCH/$f" "$LIBD/$f" 2>/dev/null || fail "BOAT_PRIVATE_BIND $f"
+    [ "$(sha "$LIBD/$f")" = "$want" ] || fail "BOAT_PRIVATE_VERIFY $f"; log "boat private $f -> $want"
+  done
+else
+  log "BoatAttack not installed ($LIBD absent) — shared overlay applied; private binds skipped (install APK first)"
+fi
+log "boat overlay done — NO app launched (tap-to-start). sys param: $(param get sys.westlake.demo.u13.ready 2>/dev/null)"
+exit 0
+[00:51:11] overlaid /system/android/lib64/liboh_adapter_bridge.so -> 8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e
+[00:51:11] overlaid /system/android/framework/oh-adapter-runtime.jar -> 6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852
+[00:51:11] boat private libwestlake_bionic_signal_box.so -> 7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da
+[00:51:11] boat private libunity.so -> 1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac
+[00:51:12] boat private libil2cpp.so -> f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746
+[00:51:12] boat overlay done — NO app launched (tap-to-start). sys param: true 
+[01:04:45] overlaid /system/android/lib64/liboh_adapter_bridge.so -> 8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e
+[01:04:46] overlaid /system/android/framework/oh-adapter-runtime.jar -> 6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852
+[01:04:46] boat private libwestlake_bionic_signal_box.so -> 7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da
+[01:04:46] boat private libunity.so -> 1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac
+[01:04:46] boat private libil2cpp.so -> f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746
+[01:04:46] boat overlay done — NO app launched (tap-to-start). sys param: true 
+[19:57:28] overlaid /system/android/lib64/liboh_adapter_bridge.so -> 8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e
+[19:57:28] overlaid /system/android/framework/oh-adapter-runtime.jar -> 6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852
+[19:57:28] overlaid /system/android/lib64/liboh_android_runtime.so -> adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130
+[19:57:28] boat private libwestlake_bionic_signal_box.so -> 7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da
+[19:57:28] boat private libunity.so -> 1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac
+[19:57:29] boat private libil2cpp.so -> f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746
+[19:57:29] boat overlay done — NO app launched (tap-to-start). sys param: true 
+[20:30:05] FAIL MISSING_BOAT_SOURCES
+=== [2026-10-10T20:29:43] post-fs-data recover START (pre-replay) appspawnx_bin=e3b0c44298fc1c14 ===
+[   11.032146] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info distributeddata(pid 887 uid 3012)
+[   11.032409] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:foundation
+[   11.035362] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info foundation(pid 888 uid 5523)
+[   11.065585] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:hdcd
+[   11.098284] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info hdcd(pid 908 uid 0)
+[   11.120847] [pid=1][Init][INFO][init_common_service.c:711]ServiceStart already started:sensors
+[   11.251625] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:hdcd
+[   11.254536] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info hdcd(pid 948 uid 0)
+=== [2026-10-10T20:30:04] after relabel+readback appspawnx_label=u:object_r:appspawn_exec:s0 tree_mislabel=0 exec_ok=yes ===
+[   20.607507] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info intell_voice_host(pid 2933 uid 3100)
+[   21.576155] [Awinic] [6-005b]aw87xxx_dev_hw_pwr_ctrl: product not have reset-pin,hardware pwd control invalid
+[   21.577687] [Awinic] [6-005a]aw87xxx_dev_hw_pwr_ctrl: product not have reset-pin,hardware pwd control invalid
+[   21.906491] APPSPAWN: [appspawn_kickdog.c:83]Nweb enable -1
+[   23.358840] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:watchdog_service
+[   23.360260] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info watchdog_service(pid 3189 uid 1100)
+[   24.601886] APPSPAWN: [appspawn_kickdog.c:83]App enable -1
+[   31.913504] APPSPAWN: [appspawn_kickdog.c:83]Nweb enable -1
+=== [2026-10-10T20:30:05] after finalize_runtime ===
+[   21.577687] [Awinic] [6-005a]aw87xxx_dev_hw_pwr_ctrl: product not have reset-pin,hardware pwd control invalid
+[   21.906491] APPSPAWN: [appspawn_kickdog.c:83]Nweb enable -1
+[   23.358840] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:watchdog_service
+[   23.360260] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info watchdog_service(pid 3189 uid 1100)
+[   24.601886] APPSPAWN: [appspawn_kickdog.c:83]App enable -1
+[   31.913504] APPSPAWN: [appspawn_kickdog.c:83]Nweb enable -1
+[   33.398028] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:watchdog_service
+[   33.406145] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info watchdog_service(pid 3702 uid 1100)
+=== [2026-10-10T20:30:05] READY set (runtime prepared, appspawnx ondemand, sha+label verified) ===
+[   23.358840] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:watchdog_service
+[   23.360260] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info watchdog_service(pid 3189 uid 1100)
+[   24.601886] APPSPAWN: [appspawn_kickdog.c:83]App enable -1
+[   31.913504] APPSPAWN: [appspawn_kickdog.c:83]Nweb enable -1
+[   33.398028] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:watchdog_service
+[   33.406145] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info watchdog_service(pid 3702 uid 1100)
+[   33.983771] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:westlake-u13-boat-overlay
+[   33.984814] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info westlake-u13-boat-overlay(pid 3732 uid 0)
+=== [2026-10-10T19:57:05] post-fs-data recover START (pre-replay) appspawnx_bin=e3b0c44298fc1c14 ===
+[   11.793014] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info usb_service(pid 944 uid 1018)
+[   11.797802] [pid=1][Init][INFO][init_common_service.c:711]ServiceStart already started:resource_schedule_service
+[   11.797814] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:inputmethod_service
+[   11.798998] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info inputmethod_service(pid 955 uid 3820)
+[   11.800174] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:netsysnative
+[   11.801401] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info netsysnative(pid 956 uid 1098)
+[   11.831812] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:write_updater
+[   11.844839] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info write_updater(pid 975 uid 6666)
+=== [2026-10-10T19:57:26] after relabel+readback appspawnx_label=u:object_r:appspawn_exec:s0 tree_mislabel=0 exec_ok=yes ===
+[   20.464360] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info intell_voice_host(pid 2856 uid 3100)
+[   22.204264] [Awinic] [6-005b]aw87xxx_dev_hw_pwr_ctrl: product not have reset-pin,hardware pwd control invalid
+[   22.205727] [Awinic] [6-005a]aw87xxx_dev_hw_pwr_ctrl: product not have reset-pin,hardware pwd control invalid
+[   22.670000] APPSPAWN: [appspawn_kickdog.c:83]Nweb enable -1
+[   23.397945] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:watchdog_service
+[   23.399221] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info watchdog_service(pid 3136 uid 1100)
+[   24.861257] APPSPAWN: [appspawn_kickdog.c:83]App enable -1
+[   32.679891] APPSPAWN: [appspawn_kickdog.c:83]Nweb enable -1
+=== [2026-10-10T19:57:27] after finalize_runtime ===
+[   22.205727] [Awinic] [6-005a]aw87xxx_dev_hw_pwr_ctrl: product not have reset-pin,hardware pwd control invalid
+[   22.670000] APPSPAWN: [appspawn_kickdog.c:83]Nweb enable -1
+[   23.397945] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:watchdog_service
+[   23.399221] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info watchdog_service(pid 3136 uid 1100)
+[   24.861257] APPSPAWN: [appspawn_kickdog.c:83]App enable -1
+[   32.679891] APPSPAWN: [appspawn_kickdog.c:83]Nweb enable -1
+[   33.438231] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:watchdog_service
+[   33.440822] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info watchdog_service(pid 3706 uid 1100)
+=== [2026-10-10T19:57:28] READY set (runtime prepared, appspawnx ondemand, sha+label verified) ===
+[   23.397945] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:watchdog_service
+[   23.399221] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info watchdog_service(pid 3136 uid 1100)
+[   24.861257] APPSPAWN: [appspawn_kickdog.c:83]App enable -1
+[   32.679891] APPSPAWN: [appspawn_kickdog.c:83]Nweb enable -1
+[   33.438231] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:watchdog_service
+[   33.440822] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info watchdog_service(pid 3706 uid 1100)
+[   34.284653] [pid=1][Init][INFO][init_common_service.c:716]ServiceStart starting:westlake-u13-boat-overlay
+[   34.287175] [pid=1][Init][INFO][init_common_service.c:742]ServiceStart started info westlake-u13-boat-overlay(pid 3747 uid 0)
