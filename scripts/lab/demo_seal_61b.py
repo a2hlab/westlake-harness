@@ -186,6 +186,10 @@ class Workflow:
         self.mode = mode
         self.reference_kind = reference
         self.reference = regression_reference(plan, reference)
+        # SELinux acceptance is plan-driven: the plan MUST declare selinux_mode (validate() enforces it).
+        # 'enforcing' -> getenforce must read 'Enforcing'; 'permissive' -> 'Permissive'. Default enforcing.
+        self.selinux_mode = plan.get('selinux_mode', 'enforcing')
+        self.expected_enforce = {'enforcing': 'Enforcing', 'permissive': 'Permissive'}.get(self.selinux_mode, 'Enforcing')
 
     def command(self, name, argv, criterion, allowed=(0,), env=None):
         self.events.append(name)
@@ -331,9 +335,10 @@ class Workflow:
             require(lock.get('no_conflict') is True, 'lock conflict')
         self.initial_boot = self.boot('initial-boot')
         self.boot_id = self.initial_boot
-        _, enforce = self.shell('pre-enforcing', 'getenforce', 'Enforcing exactly')
+        _, enforce = self.shell('pre-enforcing', 'getenforce', 'getenforce == plan selinux_mode (' + self.expected_enforce + ')')
         if not self.preview:
-            require(enforce.strip() == 'Enforcing', 'not Enforcing')
+            require(enforce.strip() == self.expected_enforce,
+                    'getenforce ' + enforce.strip() + ' != plan selinux_mode ' + self.expected_enforce)
         expected = {} if self.preview else read(self.input('baseline_319'))['expected']
         groups = [list(expected)[offset:offset + 24] for offset in range(0, len(expected), 24)] or [['<319-signed-paths>']]
         actual = {}
@@ -388,8 +393,9 @@ class Workflow:
         self.command('autonomous-reboot', [self.plan['hdc'], '-t', SERIAL, 'target', 'boot'],
                      'no Mac replay, deployment, label fix, provisioning or background launch after reboot')
         self.boot_id = self.wait_boot('wait-autonomous-boot', before)
-        _, enforce = self.shell('post-enforcing', 'getenforce', 'Enforcing exactly')
-        require(self.preview or enforce.strip() == 'Enforcing', 'post reboot not Enforcing')
+        _, enforce = self.shell('post-enforcing', 'getenforce', 'getenforce == plan selinux_mode (' + self.expected_enforce + ')')
+        require(self.preview or enforce.strip() == self.expected_enforce,
+                'post reboot getenforce ' + enforce.strip() + ' != plan selinux_mode ' + self.expected_enforce)
         _, dmesg = self.shell('post-dmesg', 'dmesg', 'zero invalid:appspawn-x entries')
         require(self.preview or not re.search(r'invalid\s*:\s*appspawn-x', dmesg), 'init INVALID appspawn-x')
         checks = ('parent_init', 'socket_0660', 'hw_t20_lit', 'zz_t20_lit', 'toutiao_desktop_click_refresh_article')
@@ -463,6 +469,7 @@ class Workflow:
                     baseline_serial=BASELINE_SERIAL if self.reference_kind == '5cd' else SERIAL,
                     comparison_sha256=sha(self.out / 'regression/comparison.json'),
                     outer_review_sha256=sha(self.out / 'regression_review.json'))
+            sealed['selinux_mode'] = self.selinux_mode
             (self.out / 'seal.json').write_text(json.dumps(sealed, indent=2) + '\n')
 
 
@@ -471,6 +478,8 @@ def validate(plan, authorization, plan_sha, mode='v1', reference='5cd'):
             plan.get('execution_enabled') is True, 'disabled/unapproved plan')
     require(not plan.get('pending'), 'pending bindings remain; no board writes authorized')
     require(plan.get('mode') == mode and mode in ('v1', 'v2'), 'mode differs from authorized plan')
+    require(plan.get('selinux_mode') in ('enforcing', 'permissive'),
+            'plan must explicitly declare selinux_mode (enforcing|permissive)')
     approval = read(authorization)
     require(approval.get('approved_by') == 'outer(claude)' and bool(approval.get('approved_at')) and
             approval.get('serial') == SERIAL and approval.get('plan_sha256') == plan_sha and

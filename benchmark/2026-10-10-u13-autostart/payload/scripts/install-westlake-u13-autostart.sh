@@ -30,6 +30,14 @@ need(){ command -v "$1" >/dev/null 2>&1 || fail "MISSING_TOOL $1"; }
 need sha256sum   # board has no python3/awk/tr — stay POSIX-sh + sed/cut/grep only
 SUPERSEDE=${SUPERSEDE:-0}
 WITH_BOAT=${WITH_BOAT:-1}   # 1 = stage + place the BoatAttack overlay; 0 = U13-only (e.g. 61b: U13 + Toutiao placeholder)
+# RECOVER_VARIANT selects the recover script+cfg to place. Default v2 = sealed-Enforcing recover (unchanged).
+# v3 = recover + a default-OFF permissive opt-in switch (needs user approval; see benchmark/2026-10-10-permissive-switch).
+RECOVER_VARIANT=${RECOVER_VARIANT:-v2}
+case "$RECOVER_VARIANT" in
+  v2) RECOVER_SCRIPT=westlake-u13-recover.sh;    RECOVER_CFG=00_westlake_u13_recover.cfg ;;
+  v3) RECOVER_SCRIPT=westlake-u13-recover-v3.sh; RECOVER_CFG=00_westlake_u13_recover-v3.cfg ;;
+  *)  fail "RECOVER_VARIANT must be v2 or v3 (got $RECOVER_VARIANT)" ;;
+esac
 
 # root /-remount helpers (proven: donor install-boat-attack-autostart.sh root_mount_options). Reseal ro on ANY exit.
 root_opt(){ grep ' / ' /proc/mounts 2>/dev/null | head -n1 | cut -d' ' -f4; }
@@ -144,7 +152,7 @@ root_rw
 # Back up then remove any OTHER init cfg that defines a recovery/appspawn-x owner; only our cfg remains.
 for old in "$INIT_CFG_DIR"/*.cfg; do
   [ -e "$old" ] || continue
-  bn=$(basename "$old"); [ "$bn" = 00_westlake_u13_recover.cfg ] && continue
+  bn=$(basename "$old"); [ "$bn" = "$RECOVER_CFG" ] && continue
   grep -qiE 'pr03-runtime-recover|boatattack-autostart|westlake-u13|start_service appspawn-x|start appspawn-x' "$old" 2>/dev/null || continue
   [ "$SUPERSEDE" = 1 ] || fail "CONFLICT_OWNER $old (a foreign boot worker; set SUPERSEDE=1 to back up + remove — board step, do NOT force)"
   cp -a "$old" "$BACKUP/$bn.superseded" 2>/dev/null; echo "$old" >> "$BACKUP/superseded.list"
@@ -164,16 +172,16 @@ place(){ # srcfile destdir  -> explicit proven label (system_etc_file) + 0550 + 
   chown 0:0 "$d/$b" 2>/dev/null; chmod 0550 "$d/$b" 2>/dev/null
   chcon u:object_r:system_etc_file:s0 "$d/$b" 2>/dev/null || log "WARN chcon $d/$b (verify context)"
 }
-place "$DEPLOY/scripts/westlake-u13-recover.sh"      "$SCRIPT_DIR"
+place "$DEPLOY/scripts/$RECOVER_SCRIPT"              "$SCRIPT_DIR"
 [ "$WITH_BOAT" = 1 ] && place "$DEPLOY/scripts/westlake-u13-boat-overlay.sh" "$SCRIPT_DIR"
-place "$DEPLOY/init/00_westlake_u13_recover.cfg"     "$INIT_CFG_DIR"
+place "$DEPLOY/init/$RECOVER_CFG"                    "$INIT_CFG_DIR"
 
 # --- 5. lock down durable root, re-verify ----------------------------------
 chmod -R go-w "$ROOT" 2>/dev/null; chmod 0444 "$ROOT/u13-recover-table.json" "$TSV" 2>/dev/null
 rm -f "$ROOT/DISABLED" 2>/dev/null   # install implies enabled
 rm -f "$ROOT/.layers.plan" 2>/dev/null
 # re-verify placements exist + readable
-PLACED="$SCRIPT_DIR/westlake-u13-recover.sh $INIT_CFG_DIR/00_westlake_u13_recover.cfg"
+PLACED="$SCRIPT_DIR/$RECOVER_SCRIPT $INIT_CFG_DIR/$RECOVER_CFG"
 [ "$WITH_BOAT" = 1 ] && PLACED="$PLACED $SCRIPT_DIR/westlake-u13-boat-overlay.sh"
 for f in $PLACED; do
   [ -r "$f" ] || fail "POST_VERIFY_MISSING $f"
@@ -181,6 +189,6 @@ done
 [ -s "$BACKUP/superseded.list" ] && log "superseded owners: $(sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/ /g' "$BACKUP/superseded.list")"
 root_ro   # re-seal / (trap is the safety net)
 log "ok. scripts@$SCRIPT_DIR  cfg@$INIT_CFG_DIR  durable@$ROOT (archive=$ARCH boat=$BARCH)"
-log "cfg context: $(ls -Z "$INIT_CFG_DIR/00_westlake_u13_recover.cfg" 2>/dev/null | cut -d' ' -f1) (want u:object_r:system_etc_file:s0)"
+log "cfg context: $(ls -Z "$INIT_CFG_DIR/$RECOVER_CFG" 2>/dev/null | cut -d' ' -f1) (want u:object_r:system_etc_file:s0)  variant=$RECOVER_VARIANT"
 log "NEXT (board step): reboot without Mac -> read-only verify 319 fingerprint + appspawn-x + tap HelloWorld/ZigZag/BoatAttack."
 echo "INSTALL_OK"
