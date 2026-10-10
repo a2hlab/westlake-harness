@@ -1,0 +1,46 @@
+--- donor/watchdog.sh
++++ payload/scripts/watchdog.sh
+@@ -7,6 +7,7 @@
+ SOCKET=/dev/unix/socket/A2HSourcec91d26bfb4db4fd5a002
+ PKG=com.ss.android.article.news
+ child=; parent=
++. /data/westlake-demo/toutiao/scripts/route-b-owner.sh
+ mkdir -p "$F" "$C"
+ [ ! -e "$F/stop" ] || exit 0
+ uptime_s(){ read up rest < /proc/uptime; echo "${up%%.*}"; }
+@@ -32,18 +33,18 @@
+ clean_all(){
+  cleaned=0; orphans=0
+  seen=" "
+- for p in $child $parent $(pidof "$PKG" appspawn-x); do
++ for p in $(rb_owned_pids); do
+   case "$seen" in *" $p "*) continue;; esac
+   seen="$seen$p "
+   b=$(birth "$p"); [ -n "$b" ] || continue
+   row=$(cat "/proc/$p/stat"); rest=${row##*) }; set -- $rest; pp=$2
+   [ "$(birth "$p")" = "$b" ] || continue
+-  kill -9 "$p" 2>/dev/null && cleaned=$((cleaned+1))
++  rb_signal "$p" "$b" 9 2>/dev/null && cleaned=$((cleaned+1))
+   [ "$pp" != 1 ] || orphans=$((orphans+1))
+  done
+  n=0
+- while [ -n "$(pidof "$PKG" appspawn-x)" ] && [ "$n" -lt 20 ]; do sleep .1; n=$((n+1)); done
+- [ -z "$(pidof "$PKG" appspawn-x)" ] || return 1
++ while [ -n "$(rb_owned_pids)" ] && [ "$n" -lt 20 ]; do sleep .1; n=$((n+1)); done
++ [ -z "$(rb_owned_pids)" ] || return 1
+  [ -z "$(birth "$child")" ] && [ -z "$(birth "$parent")" ] || return 1
+  avail=$(sed -n 's/^MemAvailable: *\([0-9]*\).*/\1/p' /proc/meminfo)
+  event "CLEANED count=$cleaned ppid1=$orphans app=0 parent=0 available_kib=$avail"
+@@ -122,7 +123,11 @@
+   done
+   if [ "$fatal" = 1 ]; then reason=recorded_SIG11; break; fi
+   if [ $((now-last_metrics)) -ge 10 ]; then
+-   apps=$(pidof "$PKG" | wc -w); parents=$(pidof appspawn-x | wc -w)
++   apps=0; parents=0
++   for p in $(rb_owned_pids); do
++    comm=$(cat "/proc/$p/comm" 2>/dev/null)
++    [ "$comm" != "$PKG" ] && parents=$((parents+1)) || apps=$((apps+1))
++   done
+    avail=$(sed -n 's/^MemAvailable: *\([0-9]*\).*/\1/p' /proc/meminfo)
+    rss=$(sed -n 's/^VmRSS:[[:space:]]*\([0-9]*\).*/\1/p' /proc/$child/status)
+    echo "$now seq=$seq child=$child apps=$apps parents=$parents rss_kib=$rss available_kib=$avail" >> "$F/metrics.log"
