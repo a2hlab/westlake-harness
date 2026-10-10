@@ -1,0 +1,28 @@
+--- a/scripts/lab/deploy_generation.py
++++ b/scripts/lab/deploy_generation.py
+@@ -252,6 +252,9 @@
+             time.sleep(.2)
+         raise RuntimeError('appspawn-x did not stop')
+     def start(self, digest):
++        if not getattr(self.a, 'no_label_recipe', False):
++            from selinux_label_audit import apply_recipe
++            apply_recipe(self.shell, self.m, self.out / ('label-recipe-' + str(time.time_ns())))
+         self.shell('begetctl start_service appspawn-x')
+         for _ in range(20):
+             rows = [r for r in self.ps() if r['name'] == 'appspawn-x' and r['uid'] == 0]
+@@ -544,6 +547,7 @@
+     files.add_argument('--replace', metavar='ABSOLUTE_TARGET', help='one-file replacement from a separately updated package; with --rollback undo the last replacement')
+     files.add_argument('--add', metavar='ABSOLUTE_TARGET', help='add one declared native library; with --rollback remove the last owned addition')
+     p.add_argument('--lane', default=os.environ.get('WESTLAKE_LANE', 'cx-t0'))
++    p.add_argument('--no-label-recipe', action='store_true', help='explicitly skip the default pre-start SELinux relabel/readback gate')
+     import lab_paths
+     p.add_argument('--tools', default=str(lab_paths.tools()))
+     p.add_argument('--state-root', type=Path, default=lab_paths.workspaces() / 'westlake-generation-state')
+@@ -585,6 +589,7 @@
+         if a.upgrade: command.append('--upgrade')
+         if a.replace: command.extend(['--replace', a.replace])
+         if a.add: command.extend(['--add', a.add])
++        if a.no_label_recipe: command.append('--no-label-recipe')
+         raise SystemExit(subprocess.call(['orb', '-m', 'a2hlab', 'bash', '-lc', shlex.join(command)]))
+     sys.path.insert(0, str(a.package / 'tools'))
+     import bms_batch as b

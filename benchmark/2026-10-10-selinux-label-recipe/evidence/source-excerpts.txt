@@ -1,0 +1,78 @@
+PR03 SHA 7eaf26fbbaf69227fcde865bd259fb3a4f8ffae9cd5aab00b4a6c2302ac5b4ab
+153: find /system/android -type d -exec chmod 0755 {} \;
+154: find /system/android -exec chcon u:object_r:system_file:s0 {} \;
+155: find /system/android/lib64 -exec chcon u:object_r:system_lib_file:s0 {} \;
+156: find "$ROUTE_TARGET" -type d -exec chmod 0755 {} \;
+157: find "$ROUTE_TARGET" -exec chcon u:object_r:system_lib_file:s0 {} \;
+158: chmod 0755 /system/bin/appspawn-x /system/lib64/appspawn/libwestlake_android_child.z.so
+159: chmod 0644 /system/etc/sandbox/appdata-sandbox.json /system/lib64/libwestlake_thread_guard_registry.so /system/android/lib64/liblzma.so
+160: chcon u:object_r:appspawn_exec:s0 /system/bin/appspawn-x
+161: chcon u:object_r:system_lib_file:s0 /system/lib64/appspawn/libwestlake_android_child.z.so /system/lib64/libwestlake_thread_guard_registry.so /system/android/lib64/liblzma.so
+162: chcon u:object_r:system_etc_file:s0 /system/etc/sandbox/appdata-sandbox.json
+163: 
+164: if [ -f /system/android/framework/arm64/boot.art ] && [ ! -e /system/android/framework/boot.art ]; then
+165:     ln -sf arm64/boot.art /system/android/framework/boot.art
+166: fi
+167: for f in /system/android/framework/arm64/boot*.art /system/android/framework/arm64/boot*.oat /system/android/framework/arm64/boot*.vdex; do
+168:     chcon u:object_r:system_lib_file:s0 "$f"
+169: done
+170: chcon u:object_r:system_fonts_file:s0 /system/android/etc/fonts.xml 2>/dev/null || true
+171: 
+172: param set persist.sys.abilityms.support_anco_app true
+173: param set persist.sys.abilityms.timeout_unit_time_ratio 20
+174: param set persist.sys.prefork.enable false
+U13-RECOVER-V2 commit1483c626b8 SHA b9063f5c67386f2f3f897be9804ba22f6f33c43b8cfd98d6947b11a588aa990d
+34: ctx_for(){ case "$1" in
+35:     /system/bin/appspawn-x) echo u:object_r:appspawn_exec:s0 ;;
+36:     /data/app/*) echo u:object_r:data_app_el1_file:s0 ;;
+37:     *.jar) echo u:object_r:system_file:s0 ;;
+38:     *.json) echo u:object_r:system_etc_file:s0 ;;
+39:     *.so|*/lib64/*|*/route-a/*) echo u:object_r:system_lib_file:s0 ;;
+40:     *) echo u:object_r:system_file:s0 ;; esac; }
+119:   # LOGGED, not swallowed. For dir layers, relabel the tree + refine lib64/boot-image (they must be system_lib_file).
+120:   ctx=$(ctx_for "$target")
+121:   if [ "$kind" = directory ]; then
+122:     chcon -R "$ctx" "$src" 2>>"$LOG" || log "WARN chcon -R $ctx $src (rc=$?)"
+123:     case "$target" in */system/android|/system/android)
+124:       [ -d "$src/lib64" ] && { chcon -R u:object_r:system_lib_file:s0 "$src/lib64" 2>>"$LOG" || log "WARN chcon lib64"; }
+125:       for b in "$src"/framework/arm64/boot*.art "$src"/framework/arm64/boot*.oat "$src"/framework/arm64/boot*.vdex; do
+126:         [ -e "$b" ] && chcon u:object_r:system_lib_file:s0 "$b" 2>>"$LOG"
+127:       done ;;
+128:     esac
+129:   else
+130:     chcon "$ctx" "$src" 2>>"$LOG" || log "WARN chcon $ctx $src (rc=$?)"
+131:   fi
+132:   mount -o bind "$src" "$target" 2>>"$LOG" || fail "BIND seq=$seq $target"
+133:   if [ "$kind" = file ] && [ -n "$sha_want" ] && [ "$sha_want" != null ]; then
+134:     [ "$(sha "$target")" = "$sha_want" ] || fail "VERIFY seq=$seq $target"
+135:   fi
+136:   # the appspawn-x exec entry MUST end up appspawn_exec, else init refuses to spawn it under u:r:appspawn:s0 -> fail closed
+137:   if [ "$target" = /system/bin/appspawn-x ]; then
+138:     lab=$(label_of "$target")
+139:     [ "$lab" = u:object_r:appspawn_exec:s0 ] || fail "APPSPAWN_LABEL seq=$seq got=${lab:-none} want=appspawn_exec (relabel failed: check recover secon/caps allow relabelto appspawn_exec)"
+140:   fi
+141: done < "$TSV"
+142: [ "$n" = 56 ] || fail "LAYER_COUNT got=$n want=56"
+143: log "replayed $n/56 baseline layers"
+144: 
+145: # PR03 pr03-runtime-recover.sh:158-161 order, on the TARGETS, read-back verified, FAIL-CLOSED (not silent). Under
+146: # enforcing SELinux init execv's the appspawn entry point in the appspawn domain, which requires it be labeled
+147: # appspawn_exec (stock /system/bin/appspawn is appspawn_exec); a data_file entry -> execv EACCES (errno 13) -> service
+148: # won't start. child/tgr/liblzma need system_lib_file. The source-relabel above is belt; this is the authoritative
+149: # target relabel + ls -Z read-back the outer requires.
+150: chmod 0755 /system/bin/appspawn-x /system/lib64/appspawn/libwestlake_android_child.z.so 2>>"$LOG" || log "WARN chmod exec entries (rc=$?)"
+151: chmod 0644 /system/etc/sandbox/appdata-sandbox.json /system/lib64/libwestlake_thread_guard_registry.so /system/android/lib64/liblzma.so 2>>"$LOG" || true
+152: chcon u:object_r:appspawn_exec:s0 /system/bin/appspawn-x 2>>"$LOG" || fail "CHCON_APPSPAWN_EXEC rc=$? (su domain relabelto appspawn_exec denied? check secon/caps)"
+153: chcon u:object_r:system_lib_file:s0 /system/lib64/appspawn/libwestlake_android_child.z.so /system/lib64/libwestlake_thread_guard_registry.so /system/android/lib64/liblzma.so 2>>"$LOG" || log "WARN chcon lib entries (rc=$?)"
+154: # read-back verify (ls -Z) — fail closed on the exec entry + child so a non-sticking relabel surfaces loudly, not as white
+155: rb=$(label_of /system/bin/appspawn-x); [ "$rb" = u:object_r:appspawn_exec:s0 ] || fail "APPSPAWN_LABEL_READBACK got=${rb:-none} want=appspawn_exec"
+156: rb=$(label_of /system/lib64/appspawn/libwestlake_android_child.z.so); [ "$rb" = u:object_r:system_lib_file:s0 ] || fail "CHILD_LABEL_READBACK got=${rb:-none} want=system_lib_file"
+157: log "relabel verified (ls -Z): appspawn-x=appspawn_exec child=system_lib_file (PR03 :158-161 order)"
+158: # WHOLE-TREE read-back COUNT: appspawn-x execs fine but exits 127 if any lib it maps is still data_local_tmp/data_file
+159: # (bound from /data — the appspawn domain cannot map those). Count them under /system/android + the route-a dirs + tgr;
+160: # must be 0 or FAIL (surfaces a missed/failed relabel loudly instead of as exit 127). ls -RZ is one pass (no awk).
+161: mis=$(ls -RZ /system/android 2>/dev/null | grep -cE 'data_local_tmp|data_file')
+162: while IFS="$(printf '\t')" read -r s k g t rest; do
+163:   case "$k:$t" in directory:*/route-a/*) [ -d "$t" ] && mis=$((mis + $(ls -RZ "$t" 2>/dev/null | grep -cE 'data_local_tmp|data_file'))) ;; esac
+164: done < "$TSV"
+165: case "$(label_of /system/lib64/libwestlake_thread_guard_registry.so)" in *data_local_tmp*|*data_file*) mis=$((mis+1)) ;; esac
