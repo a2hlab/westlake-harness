@@ -1,0 +1,78 @@
+{
+  "schema": "boat-source-port-semantics/v1",
+  "baseline_runtime_sha256": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae",
+  "geometry_source": "source/android_graphics_compat_shim.cpp",
+  "geometry_source_sha256": "e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658",
+  "rows": [
+    {
+      "function": "nwfs_seed_window_geometry",
+      "changed_bytes": 4,
+      "boat_patch_pc": "0x407a0",
+      "u13_matching_pc": "0x19732c",
+      "old": "bl NativeWindowHandleOpt(unwrap_or_raw(nw), 0, 1200, 1920)",
+      "boat": "nop: do not mutate geometry at generic seed/handoff",
+      "u13_already_present": false,
+      "source_lines": [1225, 1227, 1234, 1235],
+      "port": "Retain exported two-argument function as a non-mutating preserve/log hook; move explicit geometry application into a static dimensioned helper.",
+      "diagnostic_deviation": "adc still logs low 32 bits of the window pointer as rc; portable source must not report it as an OH return code."
+    },
+    {
+      "function": "ANativeWindow_fromSurface",
+      "changed_bytes": 4,
+      "boat_patch_pc": "0x40a04",
+      "u13_matching_pc": "0x197590",
+      "old": "compiler-inlined seed's fixed 1200x1920 NativeWindowHandleOpt call",
+      "boat": "nop: return existing native object without resetting geometry",
+      "u13_already_present": false,
+      "source_lines": [1241, 1273, 1276],
+      "port": "Change the shared seed helper, not conversion/ownership logic. Keep STAGE0-handoff call, null/sentinel guards and returned pointer.",
+      "diagnostic_deviation": "Same stale rc as seed; no geometry mutation is the invariant, not its misleading log."
+    },
+    {
+      "function": "BBQ_nativeUpdate",
+      "changed_bytes": 16,
+      "boat_patch_pcs": ["0x41e8c", "0x41e94", "0x41e98", "0x41e9c"],
+      "u13_matching_pcs": ["0x198bd0", "0x198bd8", "0x198bdc", "0x198be0"],
+      "old": "geometry args and log dimensions are constants 1200x1920",
+      "boat": "geometry args and log dimensions are w20/w19, copied from nativeUpdate width/height x4/x5",
+      "call_unchanged": "0x41ea0 bl NativeWindowHandleOpt@plt",
+      "u13_matching_call": "0x198be4 bl NativeWindowHandleOpt@plt",
+      "u13_already_present": false,
+      "source_lines": [551, 560, 561, 603, 604],
+      "port": "Apply b->width/b->height (the existing int32 casts of jlong width/height) to the same resolved window through the new static helper. Preserve U13's M1 session/window selection.",
+      "must_not_add": ["hardcoded panel fallback", "new positive-dimensions guard presented as byte-equivalent", "copy old 9cc session resolver over U13 M1"]
+    },
+    {
+      "function": "ANativeWindow_setBuffersGeometry",
+      "changed_bytes": 23,
+      "boat_patch_pc_range": ["0x40c04", "0x40c1c"],
+      "u13_matching_pc_range": ["0x197790", "0x1977a8"],
+      "old": "always apply width,height to unwrapped window; save actual rc",
+      "boat": "keep unwrap selection; cbz w21 skips only geometry when width==0; format mapping still runs; call moved 0x40c18->0x40c1c to same PLT target",
+      "u13_already_present": false,
+      "source_lines": [1327, 1329, 1330, 1331, 1332, 1337, 1343],
+      "port": "Initialize rc=0, apply geometry only if width!=0; preserve format mapping and public return 0 (null window remains -1).",
+      "diagnostic_deviation": "adc removes rc-save and logs low 32 bits of original ANativeWindow* even when the call runs. Source keeps genuine rc when called and an explicit skipped value otherwise.",
+      "boundary": "width==0 skips regardless of height; height==0 alone does not skip; negative width still calls."
+    },
+    {
+      "function": "AppSchedulerBridge lookup",
+      "changed_bytes": 2,
+      "file_offsets": ["0x2ab5a", "0x2ca52"],
+      "old": "adapter/activity/AppSchedulerBridgX and adapter.activity.AppSchedulerBridgX",
+      "boat": "X -> e in both class literals",
+      "u13_already_present": true,
+      "source_file": "$WORKSPACES/westlake-harness-bms-deploy/bms/src/.work/b87-native/adapter/framework/android-runtime/src/android_view_InputEventReceiver.cpp",
+      "source_lines": [255, 267],
+      "port": "No source change: U13 has both correct Bridge literals and zero BridgX literals."
+    }
+  ],
+  "no_edit": ["AndroidRuntime.cpp", "webview_publication.cpp", "SQLite/CursorWindow registration TUs", "M1 session selection", "JNI registration tables", "library-owner routing"],
+  "single_owner": {
+    "source_level_feasible": true,
+    "shape": "one rebuilt genuine U13 runtime retaining its existing registrations plus the geometry source patch; never alias adc125f4 to the runtime path",
+    "live_owner_verified": false,
+    "qualification": "U13 already maps same-SONAME libandroid/runtime copies while apps can light; SONAME alone neither proves new risk nor proves single ownership. Overlay v2 must prove actual owner routing/maps separately."
+  },
+  "verified_rendering_unlock_count": 0
+}

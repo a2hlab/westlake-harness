@@ -1,0 +1,24 @@
+$WORKSPACES/westlake-harness-bms-deploy/bms/src/.work/b87-native/adapter/framework/android-runtime/src/android_view_InputEventReceiver.cpp
+sha256=88ed40dd455fb0aa64e12dad5a71d3c5d099aa444c71d32e24eff8b65c2e7809
+  249         // to a global ref.  Fall back to plain FindClass (BCP-visible classes)
+  250         // and finally to the BCP InputEventBridge so a pre-relocation jar still
+  251         // works.
+  252         g_refs.inputEventBridgeCls = nullptr;
+  253         if (&adapter_bridge_load_class != nullptr) {
+  254             jclass local = adapter_bridge_load_class(
+  255                 env, "adapter.activity.AppSchedulerBridge");
+  256             if (env->ExceptionCheck()) env->ExceptionClear();
+  257             if (local) {
+  258                 g_refs.inputEventBridgeCls =
+  259                     static_cast<jclass>(env->NewGlobalRef(local));
+  260                 env->DeleteLocalRef(local);
+  261                 HLOG_INFO("ensureJavaRefs: AppSchedulerBridge loaded via adapter "
+  262                           "PathClassLoader");
+  263             }
+  264         }
+  265         if (!g_refs.inputEventBridgeCls) {
+  266             env->ExceptionClear();
+  267             g_refs.inputEventBridgeCls = findGlobal("adapter/activity/AppSchedulerBridge");
+  268         }
+  269         if (!g_refs.inputEventBridgeCls) {
+  270             env->ExceptionClear();

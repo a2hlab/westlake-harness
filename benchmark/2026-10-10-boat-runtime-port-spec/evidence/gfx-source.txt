@@ -1,0 +1,181 @@
+$WORKSPACES/westlake-harness-t3/benchmark/2026-10-02-m1-session-slots/runtime/src/android_graphics_compat_shim.cpp
+sha256=e28f4bc3a7c863defd74bb173146ea89308a6bf952ea1d11c80b00dd87ecd658
+  538         ? g_oh_rs_get_child_surface_window_fn(sessionId, childKey, w, h) : nullptr;
+  539 }
+  540 
+  541 // [S23 cut5] fwd decl (definition ~line 1090); poke geometry on the exact nw
+  542 // instance stamped into b->ohNativeWindow at resolve/stamp time (belt) — the
+  543 // STAGE0 handoff (suspenders) covers the cached/pre-resolved case.
+  544 extern "C" void nwfs_seed_window_geometry(void* nw, const char* where);
+  545 
+  546 // [STAGE2-UNITY 2026-06-28] Signature aligned to THIS framework.jar's
+  547 // BLASTBufferQueue.java: nativeUpdate(long ptr, long sc, long width,
+  548 // long height, int format) = (JJJJI)V. Prior shim used (JJJIIIJ)V (7-arg,
+  549 // different framework gen) → RegisterNatives silently failed → SurfaceView
+  550 // (eglprobe / UnityPlayerActivity) hit UnsatisfiedLinkError on first traversal.
+  551 void BBQ_nativeUpdate(JNIEnv*, jclass, jlong bbqPtr, jlong scPtr,
+  552                       jlong width, jlong height, jint format) {
+  553     fprintf(stderr, "[BBQ-CP] nativeUpdate ENTER bbq=0x%llx sc=0x%llx %lldx%lld fmt=%d\n",
+  554             (long long)bbqPtr, (long long)scPtr, (long long)width, (long long)height, format); fflush(stderr);
+  555     auto* b = as_bbq(bbqPtr);
+  556     if (!b) {
+  557         ALOGW("BBQ.update: invalid bbqPtr=%lld", (long long)bbqPtr);
+  558         return;
+  559     }
+  560     b->width = static_cast<int32_t>(width);
+  561     b->height = static_cast<int32_t>(height);
+  562     b->format = format;
+  563     int32_t sessionId = oh_sc_get_session(scPtr);
+  564     if (b->sessionId != sessionId) b->ohNativeWindow = nullptr;
+  565     b->sessionId = sessionId;
+  566     if (sessionId == 0) {
+  567         ALOGW("BBQ.update: no sessionId resolvable (no explicit SC owner); "
+  568               "render will use empty Surface");
+  569         return;
+  570     }
+  571     // 2026-06-28 [STAGE2-SURFACEVIEW]: route SurfaceView BBQs to a dedicated
+  572     // RS-composited child surface node; keep the main window (ViewRootImpl) BBQ
+  573     // on the APP_WINDOW_NODE producer.  AOSP names the SurfaceView's BBQ
+  574     // "SurfaceView[<title>]" (SurfaceView.java:1055/1160) vs the main window's
+  575     // "ViewRootImpl[<title>]" (ViewRootImpl.java mTag) — name disambiguates.
+  576     // Without a dedicated child node the SurfaceView's EGL collides with the
+  577     // main producer -> eglCreateWindowSurface EGL_BAD_ALLOC (§12-13).
+  578     bool isSurfaceView = (std::strstr(b->name, "SurfaceView") != nullptr);
+  579     void* nw = nullptr;
+  580     if (isSurfaceView) {
+  581         nw = oh_rs_get_child_surface_window(sessionId, bbqPtr,
+  582                                             static_cast<int32_t>(width),
+  583                                             static_cast<int32_t>(height));
+  584         if (!nw) {
+  585             ALOGW("BBQ.update: child surface window null for SurfaceView '%s' "
+  586                   "session=%d; falling back to main producer", b->name, sessionId);
+  587             nw = oh_wm_get_native_window(sessionId);
+  588         } else {
+  589             ALOGI("BBQ.update: SurfaceView '%s' -> dedicated child surface anw=%p",
+  590                   b->name, nw);
+  591             fprintf(stderr, "[BBQ-CP] nativeUpdate SurfaceView '%s' -> child anw=%p\n",
+  592                     b->name, nw); fflush(stderr);
+  593         }
+  594     } else {
+  595         // Resolve sessionId → OHNativeWindow*.  Cached per-session in
+  596         // OHWindowManagerClient so repeated update() calls get the same pointer.
+  597         nw = oh_wm_get_native_window(sessionId);
+  598     }
+  599     if (!nw) {
+  600         ALOGW("BBQ.update: getOhNativeWindow(sessionId=%d) returned null", sessionId);
+  601         return;
+  602     }
+  603     b->ohNativeWindow = nw;
+  604     nwfs_seed_window_geometry(nw, "BBQ.update-stamp");  // [S23 cut5 belt]
+  605     ALOGI("BBQ.update: sessionId=%d → OHNativeWindow=%p (%dx%d fmt=%d)",
+  606           sessionId, nw, (int)width, (int)height, format);
+  607     fprintf(stderr, "[BBQ-CP] nativeUpdate RESOLVED sessionId=%d OHNativeWindow=%p (%lldx%lld)\n",
+  608             sessionId, nw, (long long)width, (long long)height); fflush(stderr);
+  609 }
+  631     // so mNativeObject is a real OHNativeWindow* by the time we fromSurface.
+  632     if (!b->ohNativeWindow) {
+  633         int32_t sessionId = b->sessionId;
+  634         if (sessionId != 0) {
+  635             b->sessionId = sessionId;
+  636             void* nw = nullptr;
+  637             bool isSurfaceView = (std::strstr(b->name, "SurfaceView") != nullptr);
+  638             if (isSurfaceView) {
+  639                 nw = oh_rs_get_child_surface_window(sessionId, bbqPtr,
+  640                                                     b->width, b->height);
+  641             } else {
+  642                 nw = oh_wm_get_native_window(sessionId);
+  643             }
+  644             if (nw) {
+  645                 b->ohNativeWindow = nw;
+  646                 nwfs_seed_window_geometry(nw, "BBQ.getSurface-lazy");  // [S23 cut5 belt]
+  647                 ALOGI("BBQ.getSurface: lazy-resolved sessionId=%d -> OHNativeWindow=%p "
+  648                       "(BBQ.update had not run before Unity GfxDevice init)",
+  649                       sessionId, nw);
+  650                 fprintf(stderr, "[BBQ-CP] getSurface LAZY-RESOLVED sessionId=%d nw=%p\n",
+  651                         sessionId, nw); fflush(stderr);
+ 1212 }
+ 1213 
+ 1214 // [S23 cut5 2026-07-09] Seed the geometry of the EXACT OHNativeWindow instance
+ 1215 // Unity dequeues from, on the last-mile handoff. cut4 proved SET_BUFFER_GEOMETRY
+ 1216 // (rc=0) reaches window->config, but the bridge poked a sibling nw
+ 1217 // (oh_rs_get_child_surface_window's 0x..B50) while Unity uses the instance stamped
+ 1218 // into Surface.mNativeObject / returned by ANativeWindow_fromSurface (0x..A20).
+ 1219 // native_window.cpp:229 NativeWindowRequestBuffer reads THIS instance's config;
+ 1220 // if it is 0x0 the server allocs Buffer[0 0] -> NO_BUFFER 50002000 storm, no pixels.
+ 1221 // Poke here (creation/stamp + handoff) so the dequeued instance carries 1200x1920
+ 1222 // BEFORE Unity's first RequestBuffer. 5bb5 panel = 1200x1920 (hard fallback; never
+ 1223 // 0/1). Log the instance address so "same instance as Unity RequestBuffer nw_B" is
+ 1224 // nailed in the log.
+ 1225 extern "C" void nwfs_seed_window_geometry(void* nw, const char* where) {
+ 1226     if (!nw) return;
+ 1227     int32_t w = 1200, h = 1920;  // TODO: prefer live display bounds; 5bb5 panel is 1200x1920
+ 1228     // [S23 cut5.1] nw handed to Unity is the AdapterAnw shim (AOSP ABI), NOT a raw
+ 1229     // OHNativeWindow. SET_BUFFER_GEOMETRY on the shim -> rc=0x40001000 (invalid arg).
+ 1230     // Unwrap to the shim's embedded real OHNativeWindow first (same pattern as
+ 1231     // ANativeWindow_getWidth line ~1140). This is the SAME underlying producer
+ 1232     // Unity's RequestBuffer (shim wrapper -> OH_NativeWindow_NativeWindowRequestBuffer)
+ 1233     // dequeues from, so config now reaches the storming path.
+ 1234     OHNativeWindow* oh = anw_unwrap(reinterpret_cast<ANativeWindow*>(nw));
+ 1235     int32_t rc = NativeWindowHandleOpt(oh, OH_OP_SET_BUFFER_GEOMETRY, w, h);
+ 1236     HiLogPrint(3, 4, 0xD000F00u, "OH_NWSeed",
+ 1237                "[%{public}s] SET_BUFFER_GEOMETRY shim=%{public}p oh=%{public}p %{public}dx%{public}d rc=%{public}d",
+ 1238                where, nw, (void*)oh, w, h, rc);
+ 1239 }
+ 1240 
+ 1241 extern "C" ANativeWindow* ANativeWindow_fromSurface(JNIEnv* env, jobject surface) {
+ 1242     NWFS_INFO("[STAGE0] ENTER env=%{public}p surface=%{public}p",
+ 1243               (void*)env, (void*)surface);
+ 1244     if (!env || !surface) {
+ 1245         NWFS_WARN("[STAGE0] null arg -> null");
+ 1246         return nullptr;
+ 1247     }
+ 1248     jclass cls = env->FindClass("android/view/Surface");
+ 1249     if (!cls) { env->ExceptionClear();
+ 1250         NWFS_WARN("[STAGE0] FindClass failed -> null"); return nullptr; }
+ 1251     jfieldID fid = env->GetFieldID(cls, "mNativeObject", "J");
+ 1252     env->DeleteLocalRef(cls);
+ 1253     if (!fid) { env->ExceptionClear();
+ 1254         NWFS_WARN("[STAGE0] GetFieldID failed -> null"); return nullptr; }
+ 1255     jlong nativeObj = env->GetLongField(surface, fid);
+ 1256     NWFS_INFO("[STAGE0] mNativeObject=0x%{public}llx",
+ 1257               (unsigned long long)nativeObj);
+ 1258     if (nativeObj == 0) {
+ 1259         NWFS_WARN("[STAGE0] mNativeObject==0 -> null");
+ 1260         return nullptr;
+ 1261     }
+ 1262     if (is_sentinel_handle(nativeObj)) {
+ 1263         NWFS_WARN("[STAGE0] sentinel handle 0x%{public}llx -> null "
+ 1264                   "(no real BBQ-bound surface yet; hwui will retry)",
+ 1265                   (unsigned long long)nativeObj);
+ 1266         return nullptr;
+ 1267     }
+ 1268     // Real OHNativeWindow* set by BBQ_nativeGetSurface above. On OH,
+ 1269     // OHNativeWindow ≡ ANativeWindow, so hand it back to hwui directly.
+ 1270     // [S23 cut5 PRIMARY] last-mile: this is the exact instance Unity dequeues
+ 1271     // from — seed its geometry before returning so its first RequestBuffer
+ 1272     // carries 1200x1920 (not Buffer[0 0]). Instance-identity nailed via the log.
+ 1273     nwfs_seed_window_geometry(reinterpret_cast<void*>(nativeObj), "STAGE0-handoff");
+ 1274     NWFS_INFO("[STAGE0] returning OHNativeWindow=%{public}p directly",
+ 1275               reinterpret_cast<void*>(nativeObj));
+ 1276     return reinterpret_cast<ANativeWindow*>(nativeObj);
+ 1277 }
+ 1325 #define OH_OP_SET_BUFFER_GEOMETRY 0
+ 1326 #define OH_OP_SET_FORMAT          3
+ 1327 extern "C" int32_t ANativeWindow_setBuffersGeometry(ANativeWindow* w,
+ 1328         int32_t width, int32_t height, int32_t format) {
+ 1329     if (!w) return -1;
+ 1330     OHNativeWindow* oh = anw_unwrap(w);
+ 1331     int32_t rc = NativeWindowHandleOpt(oh, OH_OP_SET_BUFFER_GEOMETRY, width, height);
+ 1332     if (format > 0) {
+ 1333         // [WALL2-FMT 2026-06-29] Translate AOSP visual-id pixel format → OH
+ 1334         // GraphicPixelFormat (e.g. RGBA_8888 1 → 12). androidToOHPixelFormat
+ 1335         // clamps unknown/1/0 to OH RGBA_8888=12, never passing CLUT (1) to OH.
+ 1336         int32_t ohFormat = oh_adapter::androidToOHPixelFormat(format);
+ 1337         NativeWindowHandleOpt(oh, OH_OP_SET_FORMAT, ohFormat);
+ 1338         NWFS_INFO("ANativeWindow_setBuffersGeometry fmt-map AOSP=%{public}d -> OH=%{public}d",
+ 1339                   format, ohFormat);
+ 1340     }
+ 1341     NWFS_INFO("ANativeWindow_setBuffersGeometry w=%{public}d h=%{public}d fmt=%{public}d rc=%{public}d",
+ 1342               width, height, format, rc);
+ 1343     return 0;
+ 1344 }

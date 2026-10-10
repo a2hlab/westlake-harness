@@ -1,0 +1,25 @@
+$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-n10b-child/smoke-markers/src/AndroidRuntime.cpp
+sha256=141791a7936e0373dcca462241b6b73d7caa60f4e8335cf950431aa35c5139ea
+  128 extern int register_android_database_SQLiteDebug(JNIEnv* env);
+  129 extern int register_android_database_CursorWindow(JNIEnv* env);
+  130 
+  131 // [STAGE2-UNITY 2026-06-28] android.opengl.EGL14 JNI (android_opengl_EGL14_adapter.cpp,
+  132 // AOSP port minus SurfaceTexture/libgui path; window via ANativeWindow_fromSurface).
+  133 // Needed for pure-Java EGL apps (eglprobe render-bridge proof). Unity uses native
+  134 // libEGL directly so doesn't need this; harmless to register.
+  135 extern int register_android_opengl_jni_EGL14(JNIEnv* env);
+  136 
+  137 // 2026-07-10 (L12 视频探针): register_android_media_MediaPlayer — 49 个 native
+  138 // 方法的桩实现（android_media_MediaPlayer.cpp）。Java 类 android.media.
+  139 // MediaPlayer 本身已在 framework.jar 里（AOSP 真源随 framework.jar 整体编译
+  140 // 带入，不属于 mainline-stubs 范畴），此前 kRegJNI[] 从未注册它的任何 native
+  141 // 方法 —— 任何触碰 MediaPlayer 的调用都会在 native_init 这一步就
+  142 // UnsatisfiedLinkError（类的 static 初始化块会立即调 native_init）。这是
+  143 // L12"视频/媒体插件"楼层第一个具体实现：不做真实解码（没有 mediaserver/
+  144 // libstagefright），只保证类可加载、生命周期方法不崩溃、Surface 能交接到
+  145 // 已验证的 ANativeWindow_fromSurface 路径。详见文件头注释的完整证据链和
+  146 // 明确的能力边界（不写像素、不真解码）。
+  147 extern int register_android_media_MediaPlayer(JNIEnv* env);
+  148 
+  149 // [STAGE2-GL 2026-06-28] Whole android.opengl.GLES2/3 family, ported from AOSP
+  150 // android_opengl_GLES{20,30,31}.cpp.  Registered fault-tolerantly below (see
