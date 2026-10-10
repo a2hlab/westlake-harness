@@ -1,0 +1,40 @@
+{
+  "comment": [
+    "61b variant of the U13 device-native boot recovery (demo autostart). THIS ROUND = U13 base runtime only:",
+    "one condition-started once-service, westlake-u13-recover, that replays the pinned 56 U13 baseline mounts then",
+    "PRESERVES init's ondemand appspawn-x listener (it never starts/execs the daemon). NO app-specific overlay this",
+    "round (NO BoatAttack). 61b already carries the route-a host libs PHYSICALLY in /system (libinstalls 51e1b525 etc.,",
+    "/proc/mounts bind=0), so bms marks apps anco and the pre-installed demo apps (HelloWorld / ZigZag / Toutiao) light",
+    "via appspawn-x on tap — no runtime mount of host libs is needed (this is the 5cd-vs-61b difference).",
+    "",
+    "TOUTIAO-OVERLAY PLACEHOLDER (留位, reserved slot, NOT wired this round): when a Toutiao-specific overlay is ready,",
+    "add a second job `condition sys.westlake.demo.u13.ready=true -> start westlake-u13-toutiao-overlay` and its once-",
+    "service (same shape as the recover service: uid root, gid root/system, caps DAC_OVERRIDE/CHOWN/FOWNER/SYS_ADMIN,",
+    "once=1, sandbox=0, secon u:r:su:s0, NO setenforce) pointing at /system/etc/westlake-u13-toutiao-overlay.sh, exactly",
+    "as the BoatAttack overlay hooks on 5cd. Not shipped here to keep this round U13-only.",
+    "",
+    "DELTA vs donor (per autostart-plan.md): NO setenforce 0 (sealed enforcement kept); caps minimal (no SYS_PTRACE/",
+    "SETPCAP); no PR03 relabel/param/mali/boot.art. Admission (secon/caps under sealed SELinux) is the on-board step."
+  ],
+  "jobs": [
+    {
+      "name": "post-fs-data",
+      "cmds": [ "start westlake-u13-recover" ]
+    }
+  ],
+  "services": [
+    {
+      "name": "westlake-u13-recover",
+      "path": [ "/system/bin/sh", "/system/etc/westlake-u13-recover.sh" ],
+      "uid": "root",
+      "gid": [ "root", "system" ],
+      "caps": [ "DAC_OVERRIDE", "CHOWN", "FOWNER", "SYS_ADMIN" ],
+      "start-mode": "condition",
+      "once": 1,
+      "sandbox": 0,
+      "secon": "u:r:su:s0"
+    }
+  ]
+}
+
+__BOAT_RC_a6f06c6565754536b7b58a3b4c1f6143__0
