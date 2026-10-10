@@ -163,6 +163,43 @@ class SealCriterionPlanDriven(unittest.TestCase):
             ds.validate(dict(base, selinux_mode="loose"), authorization="/nonexistent", plan_sha="x", mode="v1")
         self.assertIn("selinux_mode", str(cm2.exception))
 
+class OrchestrationTwoMode(unittest.TestCase):
+    """demo_seal_61b.py orchestration differs ONLY by plan.selinux_mode; enforcing path is unchanged."""
+    DS = os.path.join(REPO, "scripts/lab/demo_seal_61b.py")
+    TMPL = os.path.join(REPO, "benchmark/2026-10-10-demo-seal-61b/plan-template.json")
+
+    def _dryrun(self, selinux_mode, reference):
+        import json as _json
+        plan = _json.loads(read(self.TMPL))
+        plan["selinux_mode"] = selinux_mode
+        plan.setdefault("reference", {})["kind"] = reference
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+            _json.dump(plan, fh)
+            p = fh.name
+        try:
+            out = subprocess.run(["python3", self.DS, "--dry-run", "--mode", "v1",
+                                  "--reference", reference, "--plan", p],
+                                 capture_output=True, text=True)
+            self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+            return out.stdout
+        finally:
+            os.unlink(p)
+
+    def test_permissive_adds_v3_file_and_receipt_checks(self):
+        t = self._dryrun("permissive", "61b-t3")
+        self.assertIn("RECOVER_VARIANT=v3", t, "permissive must install the v3 recover variant")
+        self.assertIn("selinux-mode-file", t, "permissive must write the selinux-mode opt-in before enable")
+        self.assertIn("post-receipt-selinux", t, "permissive must verify the receipt selinux fields")
+        self.assertIn("getenforce == plan selinux_mode (Permissive)", t)
+        self.assertIn("selinux_requested=permissive", t)
+
+    def test_enforcing_unchanged_no_permissive_steps(self):
+        t = self._dryrun("enforcing", "5cd")
+        self.assertNotIn("RECOVER_VARIANT=v3", t, "enforcing installer must NOT force v3 (defaults v2)")
+        self.assertNotIn("selinux-mode-file", t, "enforcing must not write the selinux-mode file")
+        self.assertNotIn("post-receipt-selinux", t, "enforcing must not add the receipt selinux check")
+        self.assertIn("getenforce == plan selinux_mode (Enforcing)", t)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

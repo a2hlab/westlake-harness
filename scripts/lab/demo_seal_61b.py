@@ -368,7 +368,11 @@ class Workflow:
         self.assert_no_binds()
         self.assert_bare_base()
         installer = self.plan['installer']
-        command = 'DEPLOY=' + shlex.quote(installer['deploy']) + ' WITH_BOAT=' + ('1' if self.mode == 'v2' else '0') + ' ALLOW_REMOUNT=1 /system/bin/sh ' + shlex.quote(installer['board_path'])
+        # permissive plan -> install the v3 recover variant (adds the default-OFF selinux-mode switch) via the SAME
+        # safe sequence (DISABLED -> bare boot -> assert_bare_base -> installer REUSE); no extra installer re-run.
+        # enforcing plan -> no env, installer defaults to RECOVER_VARIANT=v2 (unchanged behaviour).
+        recover_env = 'RECOVER_VARIANT=v3 ' if self.selinux_mode == 'permissive' else ''
+        command = 'DEPLOY=' + shlex.quote(installer['deploy']) + ' WITH_BOAT=' + ('1' if self.mode == 'v2' else '0') + ' ALLOW_REMOUNT=1 ' + recover_env + '/system/bin/sh ' + shlex.quote(installer['board_path'])
         _, installed = self.shell('installer', command, 'guard-ready installer; ARCHIVE only on bare no-bind boot; INSTALL_OK')
         require(self.preview or 'INSTALL_OK' in installed.splitlines(), 'missing installer success receipt')
         slot = self.provider('toutiao_slot', 'after base installer: uid-dynamic reconcile/readback; immutable six-name exclusions; ENABLE=rm DISABLED + place cfg; no app launch')
@@ -376,6 +380,12 @@ class Workflow:
             require(slot.get('enabled') is True and slot.get('boot_id') == self.bare_boot and
                     slot.get('uid_mode') == 'installed-host-dynamic' and slot.get('reconcile_checked') is True and
                     slot.get('immutable_preserved') is True, 'Toutiao dynamic slot not verified/enabled on bare boot')
+        if self.selinux_mode == 'permissive':
+            # opt-in BEFORE enable so the first recover-v3 run (next boot) consumes it after bind+labels.
+            _, mode_rb = self.shell('selinux-mode-file',
+                    'echo permissive > ' + ROOT + '/selinux-mode && cat ' + ROOT + '/selinux-mode',
+                    'opt-in ' + ROOT + '/selinux-mode=permissive written + read back')
+            require(self.preview or mode_rb.strip() == 'permissive', 'selinux-mode file readback != permissive')
         self.shell('enable', 'rm -f ' + ROOT + '/DISABLED && test ! -e ' + ROOT + '/DISABLED', 'U13 recovery ENABLE')
         self.snapshot('pre')
         self.command('sepolicy-gate', ['python3', self.tool('sepolicy'), '--policy', self.input('policy'),
@@ -396,6 +406,14 @@ class Workflow:
         _, enforce = self.shell('post-enforcing', 'getenforce', 'getenforce == plan selinux_mode (' + self.expected_enforce + ')')
         require(self.preview or enforce.strip() == self.expected_enforce,
                 'post reboot getenforce ' + enforce.strip() + ' != plan selinux_mode ' + self.expected_enforce)
+        if self.selinux_mode == 'permissive':
+            # recover-v3 records the opt-in + read-back in the receipt; verify both (v2 receipts omit these fields).
+            _, receipt_env = self.shell('post-receipt-selinux', 'cat ' + ROOT + '/receipt.env',
+                    'receipt records selinux_requested=permissive + selinux_mode=Permissive')
+            if not self.preview:
+                lines = receipt_env.splitlines()
+                require('selinux_requested=permissive' in lines and 'selinux_mode=Permissive' in lines,
+                        'receipt selinux fields not permissive/Permissive: ' + receipt_env)
         _, dmesg = self.shell('post-dmesg', 'dmesg', 'zero invalid:appspawn-x entries')
         require(self.preview or not re.search(r'invalid\s*:\s*appspawn-x', dmesg), 'init INVALID appspawn-x')
         checks = ('parent_init', 'socket_0660', 'hw_t20_lit', 'zz_t20_lit', 'toutiao_desktop_click_refresh_article')

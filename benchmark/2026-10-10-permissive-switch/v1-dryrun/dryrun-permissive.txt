@@ -1,0 +1,88 @@
+DRY-RUN: commands/criteria only; zero transport, locks and output writes; pending bindings do not imply readiness
+lock_check: '<outer-bind:lock_check>'
+  REQUIRE: fresh held state: no conflicting owner; outer-approved window, no implicit lock stealing
+initial-boot: hdc -t 61b0657200000000000000000324012c shell 'cat /proc/sys/kernel/random/boot_id'
+  REQUIRE: nonempty canonical boot UUID
+pre-enforcing: hdc -t 61b0657200000000000000000324012c shell getenforce
+  REQUIRE: getenforce == plan selinux_mode (Permissive)
+pre-319: hdc -t 61b0657200000000000000000324012c shell 'sha256sum <319-signed-paths>'
+  REQUIRE: 319 signed paths, diff={}, absent=0
+pre-disable-boot: hdc -t 61b0657200000000000000000324012c shell 'cat /proc/sys/kernel/random/boot_id'
+  REQUIRE: nonempty canonical boot UUID
+disable: hdc -t 61b0657200000000000000000324012c shell 'test -d /data/westlake-demo/u13 && touch /data/westlake-demo/u13/DISABLED && test -f /data/westlake-demo/u13/DISABLED'
+  REQUIRE: DISABLED exists before bare reboot
+bare-reboot: hdc -t 61b0657200000000000000000324012c target boot
+  REQUIRE: target boot, never shell reboot
+wait-bare-boot: hdc -t 61b0657200000000000000000324012c shell 'cat /proc/sys/kernel/random/boot_id; param get bootevent.boot.completed'
+  REQUIRE: bounded reconnect, boot_id differs from <pre-disable-boot>; boot.completed=true
+bare-disabled: hdc -t 61b0657200000000000000000324012c shell 'test -f /data/westlake-demo/u13/DISABLED'
+  REQUIRE: boot worker remains disabled
+no-live-recover-bind-self: hdc -t 61b0657200000000000000000324012c shell 'cat /proc/self/mountinfo'
+  REQUIRE: no mount at/below any of 56 recover targets, in shell AND init view
+no-live-recover-bind-1: hdc -t 61b0657200000000000000000324012c shell 'cat /proc/1/mountinfo'
+  REQUIRE: no mount at/below any of 56 recover targets, in shell AND init view
+installer-sha: hdc -t 61b0657200000000000000000324012c shell 'sha256sum /data/local/tmp/demo-seal/scripts/install-westlake-u13-autostart.sh'
+  REQUIRE: exact reviewed guard-ready installer SHA
+no-live-recover-bind-self: hdc -t 61b0657200000000000000000324012c shell 'cat /proc/self/mountinfo'
+  REQUIRE: no mount at/below any of 56 recover targets, in shell AND init view
+no-live-recover-bind-1: hdc -t 61b0657200000000000000000324012c shell 'cat /proc/1/mountinfo'
+  REQUIRE: no mount at/below any of 56 recover targets, in shell AND init view
+bare-seq1-inventory: hdc -t 61b0657200000000000000000324012c shell 'test -d /data/westlake-demo/u13/sources/seq1 && test ! -L /data/westlake-demo/u13/sources/seq1 && find /data/westlake-demo/u13/sources/seq1 -type f'
+  REQUIRE: seq1 membership/count exactly derived from pinned signed319 /system/android subset (246 on current61b)
+bare-seq1-sha: hdc -t 61b0657200000000000000000324012c shell 'sha256sum <signed-seq1-paths>'
+  REQUIRE: every seq1 relative member equals signed /system/android SHA, not merely file count
+bare-physical-inventory: hdc -t 61b0657200000000000000000324012c shell 'test -d /system/android && test ! -L /system/android && find /system/android -type f'
+  REQUIRE: physical /system/android has exactly0 files; signed seq1 is nonempty so installer must REUSE
+installer: hdc -t 61b0657200000000000000000324012c shell 'DEPLOY=/data/local/tmp/demo-seal WITH_BOAT=0 ALLOW_REMOUNT=1 RECOVER_VARIANT=v3 /system/bin/sh /data/local/tmp/demo-seal/scripts/install-westlake-u13-autostart.sh'
+  REQUIRE: guard-ready installer; ARCHIVE only on bare no-bind boot; INSTALL_OK
+toutiao_slot: python3 '$REPO/scripts/lab/demo_toutiao_slot.py' --execute
+  REQUIRE: after base installer: uid-dynamic reconcile/readback; immutable six-name exclusions; ENABLE=rm DISABLED + place cfg; no app launch
+selinux-mode-file: hdc -t 61b0657200000000000000000324012c shell 'echo permissive > /data/westlake-demo/u13/selinux-mode && cat /data/westlake-demo/u13/selinux-mode'
+  REQUIRE: opt-in /data/westlake-demo/u13/selinux-mode=permissive written + read back
+enable: hdc -t 61b0657200000000000000000324012c shell 'rm -f /data/westlake-demo/u13/DISABLED && test ! -e /data/westlake-demo/u13/DISABLED'
+  REQUIRE: U13 recovery ENABLE
+snapshot-pre: python3 '$WORKSPACES/westlake-harness/scripts/lab/board_state_snapshot.py' 61b0657200000000000000000324012c --hdc hdc --plan '$REPO/benchmark/2026-10-10-demo-seal-61b/snapshot-plan.json' --out '<fresh-output-directory>/pre' --label seal-v1-pre
+  REQUIRE: collection complete, declared targets complete, stable current boot; read-only
+sepolicy-gate: python3 '$WORKSPACES/westlake-harness/scripts/lab/sepolicy_gate.py' --policy '$WORKSPACES/westlake-inputs/sepolicy/oh-6.1.0.31/policy' --recipe '$WORKSPACES/westlake-harness/knowledge/gates/selinux-label-recipe.json' --evidence '<fresh-output-directory>/sepolicy.json'
+  REQUIRE: fresh policy/recipe proofs; exit 0, no setenforce
+reboot_inputs: '<outer-bind:reboot_inputs>'
+  REQUIRE: prepare eight pinned simulator inputs using this pre snapshot and physical underlay evidence
+reboot-sim-advisory: python3 '$WORKSPACES/westlake-harness/scripts/lab/reboot_sim.py' --inputs '<fresh-output-directory>/reboot-inputs.json' --out '<fresh-output-directory>/prediction'
+  REQUIRE: advisory table; rc1 FAIL/UNKNOWN is recorded, not a safety PASS; rc2 stops
+pre-autonomous-boot: hdc -t 61b0657200000000000000000324012c shell 'cat /proc/sys/kernel/random/boot_id'
+  REQUIRE: nonempty canonical boot UUID
+autonomous-reboot: hdc -t 61b0657200000000000000000324012c target boot
+  REQUIRE: no Mac replay, deployment, label fix, provisioning or background launch after reboot
+wait-autonomous-boot: hdc -t 61b0657200000000000000000324012c shell 'cat /proc/sys/kernel/random/boot_id; param get bootevent.boot.completed'
+  REQUIRE: bounded reconnect, boot_id differs from <pre-autonomous-boot>; boot.completed=true
+post-enforcing: hdc -t 61b0657200000000000000000324012c shell getenforce
+  REQUIRE: getenforce == plan selinux_mode (Permissive)
+post-receipt-selinux: hdc -t 61b0657200000000000000000324012c shell 'cat /data/westlake-demo/u13/receipt.env'
+  REQUIRE: receipt records selinux_requested=permissive + selinux_mode=Permissive
+post-dmesg: hdc -t 61b0657200000000000000000324012c shell dmesg
+  REQUIRE: zero invalid:appspawn-x entries
+acceptance: '<outer-bind:acceptance>'
+  REQUIRE: fresh outer-signed UI/observation receipt; checks=parent_init,socket_0660,hw_t20_lit,zz_t20_lit,toutiao_desktop_click_refresh_article; not process-alive or command PASS
+post-parent: hdc -t 61b0657200000000000000000324012c shell 'ps -A -o PID,PPID,UID,NAME'
+  REQUIRE: exactly one root appspawn-x, PPID=1 after foreground taps
+post-socket: hdc -t 61b0657200000000000000000324012c shell 'stat -c '"'"'%a:%u:%g:%C'"'"' /dev/unix/socket/AppSpawnX'
+  REQUIRE: 660:0:6005:u:object_r:appspawn_socket:s0
+post-apps-dmesg: hdc -t 61b0657200000000000000000324012c shell dmesg
+  REQUIRE: zero invalid:appspawn-x after foreground acceptance
+snapshot-post: python3 '$WORKSPACES/westlake-harness/scripts/lab/board_state_snapshot.py' 61b0657200000000000000000324012c --hdc hdc --plan '$REPO/benchmark/2026-10-10-demo-seal-61b/snapshot-plan.json' --out '<fresh-output-directory>/post' --label seal-v1-post
+  REQUIRE: collection complete, declared targets complete, stable current boot; read-only
+snapshot-diff: python3 '$WORKSPACES/westlake-harness/scripts/lab/board_state_diff.py' '<fresh-output-directory>/pre/snapshot.json' '<fresh-output-directory>/post/snapshot.json' --json '<fresh-output-directory>/state-diff.json'
+  REQUIRE: raw readonly before/after difference; review, not automatic UI success
+prepare-128: python3 '$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/t4/run_post_reboot.py' --serial 61b0657200000000000000000324012c --out '<fresh-output-directory>/round128' --boot-before '<pre-autonomous-boot>' --manifest '$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/demo-manifest.json' --tiers '$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/t4/shot-tiers.json' --install-index '$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/t3/install-index-final.json' --smoke '$WORKSPACES/westlake-harness/benchmark/2026-10-03-u13-stage-b/61b/smoke-61b.json'
+  REQUIRE: 128 installed-only keys prepared; no reinstall/replay
+run-128: python3 '$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/t4/run_post_reboot.py' --serial 61b0657200000000000000000324012c --out '<fresh-output-directory>/round128' --execute --authorization '<outer-window-authorization>'
+  REQUIRE: 128 records and screenshots on same reboot; runner owns per-window lock protocol
+regress-vs-61b-t3: python3 '$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/t4/regress_vs_signoff.py' '<fresh-output-directory>/round128/final' --signoff '<outer-bind:signoff_5cd>' --baseline-t3 '<signed-5cd-reference-t3-directory>' --out '<fresh-output-directory>/regression'
+  REQUIRE: signed 61b-t3 reference; triage is not an outer UI verdict
+ANNOTATE: changed key also changed in pinned 5cd Enforcing prerun => env_enforcing_suspect; retain changed, outer image review required
+regression_review: '<outer-bind:regression_review>'
+  REQUIRE: fresh outer-signed UI/observation receipt; checks=all_128_observed,no_regression_vs_reference,identity_unchanged; not process-alive or command PASS
+seal_snapshot: '<outer-bind:seal_snapshot>'
+  REQUIRE: fresh live-readonly seal snapshot: complete package/APK inventory, runtime/boot/overlay hashes
+build-seal: python3 '$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/t5/build_seal.py' --snapshot '<fresh-output-directory>/seal-snapshot.json' --overlays '<outer-bind:overlays>' --manifest '$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/demo-manifest.json' --out '<fresh-output-directory>/seal.json'
+  REQUIRE: v1 Route B active, Boat absent; compiler success is not new live acceptance
