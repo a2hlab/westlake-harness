@@ -1,54 +1,66 @@
-# HelloWorld black under v2 (5cd) — read-only diagnosis (2026-10-10)
+# HelloWorld "black" under v2 (5cd) — RESOLVED: capture-state artifact, HW lights under v2 (2026-10-10)
 
-Outer rejected my "per-app quirk" dismissal: HelloWorld is the smoke **control** (lights on every Mac-deploy restore),
-so v2-black = a real v2-vs-deploy gap. This is the read-only investigation (zero board write). ZigZag lit; HW black.
+**Conclusion (overturns the earlier "black, unexplained" and the "5cd-specific black" hypotheses):**
+5cd HelloWorld **renders the full UI under v2+Enforcing** when captured foreground + screen-unlocked. The earlier
+"t20 black" shots were `snapshot_display` taken while the screen was **locked** (`SCBScreenLock`, focus window 15) or
+the activity had been **backgrounded** (`activityStopped state=10`) — i.e. a **capture-state artifact**, not a render
+failure, not a v2-vs-deploy gap, and not a per-app quirk. This agrees with the outer's 5ea evidence (5ea v2 HW lit):
+**both boards light HW under v2.** There is no divergence to hunt.
 
-## Symptom, pinned (evidence `evidence/5cd-v2/hw-hilog-v2-cold.txt`, process 3874)
+## Decisive evidence (`evidence/5cd-v2/as-helloworld-foreground.jpeg`, 84 KB)
 
-HelloWorld reaches the screen pipeline but **never produces a frame**:
-- lifecycle `INITIAL→FOREGROUND→RESUMED` (OK), window shown (`WMClient.showWindow session=31 rc=0`,
-  `updateSessionRect [0,0,1200,1920]`), surface created (`SurfaceBridge.createSurface OH_Surface_31 1200x1920`),
-  **EGL window surface created** (`eglCreateWindowSurface … -> EGLSurface`, `OpenGLWrapper CreateEglSurface`).
-- VSync loop runs: `OH_DER_VSync scheduleVsync → RequestFrame → onOhVsync` repeatedly.
-- **But ZERO frame production**: no `eglSwapBuffers` / `queueBuffer` / `FlushBuffer` / `drawFrame` / RenderThread draw in
-  3874's entire log. So the hwui RenderThread requests VSync but **never swaps a buffer** → the surface stays empty →
-  black. ZigZag (Unity, its own GL) *does* swap → lit.
+Same board, same v2 autostart state (uptime 7742 s → no redeploy since the v2 reboot; `state=READY`,
+boot_id `900dd8cf-a384-4693-bb02-77b26c234636`, libinstalls `/system/lib64 = 51e1b525` route-a), same HW bundle. The
+only change from the "black" captures: **one `uinput` swipe-up to dismiss the lock, then verify `Focus window: 28` is
+`com.example.helloworld` before the shot.** Result — the complete HelloWorld UI:
 
-So the black is **not** a crash, SELinux label, spawn, app-load, or window-attach failure — HW is up, has an EGL surface,
-and is asking for frames; it just never draws one.
+- title **"Hello World!"**, **CHANGE COLOR** button
+- **Lifecycle log: CREATED → RESUMED → PAUSED → STOPPED → RESUMED**
+- **START SECONDACTIVITY / BIND HELLOSERVICE / UNBIND HELLOSERVICE / L12 VIDEO PROBE** buttons
 
-## What is RULED OUT (so the fix is not here)
+Full color, full content, fully composited (RenderService skia: `SurfaceNodeDrawable DrawCommSurfaceWatermark
+Name:com.example.helloworld/...MainActivity` — RS compositing HW's surface node).
 
-| Hypothesis | Evidence it's NOT the cause |
-|---|---|
-| spawn / domain / caps | HW(3874) & lit-ZZ(4035) both `u:r:normal_hap:s0`, CapEff 0, children of appspawn-x 3858 (PPID 1) |
-| SELinux labels (errno-13/127) | 0 `data_file`/`data_local_tmp` in HW maps; android tree mislabel=0; appspawn-x=`appspawn_exec` |
-| env / boot image | HW & ZZ env KEYS identical (ANDROID_ROOT, ANDROID_BOOT_IMAGE, LD_*, ICU_DATA, …) |
-| app crash | no SIGSEGV/FATAL/abort/cppcrash for 3874; it reaches RESUMED |
-| RS colorspace/metadata | `Bufferqueue SetMetadata -5` + `skia SetBufferColorSpace fail` are board-wide RenderService(854) noise — ZigZag lit *despite* them, so not the HW discriminator |
+The rendered lifecycle log is **self-proving**: `…PAUSED → STOPPED → RESUMED` is exactly the earlier
+background→foreground cycle (the `state=10` at 11:29:19 I had flagged as a possible failure), followed by this clean
+foreground relaunch that **RESUMED and redrew**. One `CREATED` → same instance → HW draws whenever it is foreground.
 
-## Noted anomaly (likely not causal)
+## Why the earlier captures were black (and 5ea's weren't)
 
-HW(3874) mount ns has `/system/android` **double-bound** (86 entries, `dup=43`), while ROOT(pid1)=43/dup0,
-appspawn-x parent(3858)=43/dup0, ZZ(4035)=43/dup0. So the double is **appspawn-x's first-spawned-child ns behavior**
-(not my recover — root is clean single), and both layers are **identical bytes**, so file resolution is unaffected. Flagged
-for completeness; not the black cause.
+| | 5cd (my captures) | 5ea (cx-t0 smoke harness, outer-seen) |
+|---|---|---|
+| Who/how captured | manual tap + `snapshot_display`, **no unlock** | autonomous smoke harness |
+| Screen state at shot | locked (`SCBScreenLock` focus) / HW backgrounded | foreground |
+| Result | **black** (lock screen) | **lit** |
+| Render capability | **lit when foregrounded+unlocked (this doc)** | lit |
 
-## The real discriminator + what's still needed
+The "5ea lit vs 5cd black" difference the outer saw is a **capture-harness difference, not a board/runtime difference.**
+A Unity game (ZigZag) survived my earlier captures because it holds a wake-lock and runs fullscreen-immersive (stays
+foreground, keeps screen awake); an ordinary ArkUI app (HelloWorld) lets the screen re-lock, so a delayed snapshot
+caught the lock screen.
 
-The open question: **why does HW's hwui RenderThread never swap a frame under v2, when it does under Mac-deploy?** This
-needs the exact段比对 the outer asked for — the **deploy-lit HelloWorld hilog + render-init** (from cx-t0's `5a172dd057`
-Mac-deploy) vs this v2 capture. **That deploy-lit HW record is not in the repo** (it was a cx-t0 board run); the only HW
-hilog present (`benchmark/2026-09-28-bms-route-deploy/spawn-ab/`) is an early, different config. So I cannot complete the
-段比对 or name the single differing input without it.
+## What this confirms about earlier flagged anomalies (all non-causal)
 
-**Request**: cx-t0's `5a172dd057` deploy-lit HelloWorld hilog (its RenderThread/`eglSwapBuffers` sequence + the libs its
-RenderThread loads) and/or a deploy-state mount-ns + graphics-lib record — or authorize a 5cd deploy run to capture the
-baseline (not read-only; would overwrite v2). Then the diff is: what does deploy give HW's hwui RenderThread (a graphics/
-hwui lib, a prop, a surface-transform path — note v2 logs `OH_SurfaceControl [A-stub] SetTransformHint … TODO`) that lets
-it swap, which v2 lacks.
+- **`/system/android` double-bind on the first-spawned child**: HW renders fully → the double-bind (identical bytes,
+  file resolution unaffected) is **confirmed non-causal**, as flagged.
+- **GLES-load-fail (`libGLESv3.so … ndk no inherits, errno=2`, ×66) + `Bufferqueue SetMetadata -5`**: present under
+  BOTH v2 and the deploy baseline, and HW lights anyway → board-wide noise, **non-causal**, as flagged.
+- **spawn/domain/caps, SELinux labels, env/boot-image, app-crash**: all previously ruled out; still ruled out (HW is
+  up, foreground, drawing).
+
+## The "修法" (it's the capture method, not the board)
+
+No board or payload change is warranted. The fix is the **capture discipline**, now a DIGEST pitfall:
+
+> After `power-shell wakeup`, `snapshot_display` can capture the **lock screen / a backgrounded activity**, not the
+> app. Before trusting a "black" screenshot: (1) dismiss the lock (`uinput` swipe-up or keyevent), (2) verify
+> `hidumper -s WindowManagerService` **`Focus window` == the target app's persistentId**, then capture. A "black" shot
+> with focus on `SCBScreenLock`/desktop is a **capture artifact**, not a render failure — do not report it as lit=0.
+
+This also tightens the `facts.txt` / screenshot-ground-truth rule: a screenshot is ground truth **only once focus is
+verified on the target window**; otherwise it is ground truth about the *lock screen*.
 
 ## Board state
 
-5cd read-only throughout (launched HW/ZZ, read hilog + /proc; no `/system` write). v2 state intact (libinstalls
-`51e1b525`, autostart enabled, ZigZag lit). Fix TBD pending the deploy baseline → then report a window.
+5cd read-only throughout this diag (launched/foregrounded HW, swipe-unlock, `snapshot_display`, read hilog + /proc; no
+`/system` write). v2 state intact (libinstalls `51e1b525`, autostart enabled, READY). 5cd UNLOCKED on completion.

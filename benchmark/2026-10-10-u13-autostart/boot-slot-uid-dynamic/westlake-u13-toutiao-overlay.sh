@@ -1,0 +1,88 @@
+#!/system/bin/sh
+# westlake-u13-toutiao-overlay.sh — uid-DYNAMIC Route B boot slot (#91 cc-wiki, 2026-10-10).
+# Aligned with the proven 61b full-reprovision flow (RESULT-61b-toutiao.md UPDATE3): the host uid is
+# read at boot and every Route B uid reference (text *.sh + binary request.bin + RT ownership) is
+# reconciled to it, so the slot works regardless of which uid OpenHarmony assigned imehost.
+#
+# Supersedes the master cfab66ae8c worker's hardcoded `uid==20010053` gates. Unchanged guarantees:
+# NO HAP install/extract, NO global mount, NO `aa start`, NO service start/stop, NO U13 mutation, NO
+# setenforce, NO name-based kill. The user desktop tap supplies imehost0; we only wait for it.
+set -u
+HERE=$(dirname "$0")
+ROOT=/data/westlake-demo/toutiao
+F=/data/local/tmp/operator45/selfheal48
+D=/data/local/tmp/operator45
+STAGE=/data/local/tmp/a2hlab-app-c91d26bfb4db4fd5a002287011c4916d
+BASE=/data/app/el2/100/base/org.westlake.imehost
+RT=$BASE/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d
+# pinned donor constants (uid baked into the bundle + request.bin LE uid+gid offsets)
+OLD_UID=20010053
+REQ_OFFSETS="312 316"
+# files reconcile_uid.sh rewrites — excluded from the content-identity gate (verified by reconcile instead)
+RECONCILED="$RT/run.sh $RT/preseed_metasec48.sh $RT/prepare_jit50.sh $F/start-parent.sh $F/watchdog.sh $ROOT/scripts/watchdog.sh $STAGE/request.bin"
+log(){ echo "[TT-BOOT-SLOT] $*"; }
+fail(){ log "FAIL $*"; exit 1; }
+sha(){ sha256sum "$1" 2>/dev/null | cut -d' ' -f1; }
+is_reconciled(){ for r in $RECONCILED; do [ "$1" = "$r" ] && return 0; done; return 1; }
+
+[ -e "$ROOT/DISABLED" ] && { log DISABLED; exit 0; }
+[ ! -e /data/westlake-demo/u13/DISABLED ] || fail U13_DISABLED
+[ "$(param get sys.westlake.demo.u13.ready 2>/dev/null)" = true ] || fail U13_NOT_READY
+BOOT=$(cat /proc/sys/kernel/random/boot_id)
+grep -qx 'state=READY' /data/westlake-demo/u13/receipt.env || fail U13_RECEIPT
+grep -qx "boot_id=$BOOT" /data/westlake-demo/u13/receipt.env || fail U13_BOOT_MISMATCH
+[ -f "$ROOT/immutable.tsv" ] || fail UNPREPARED_SLOT
+
+# Host present + uid read dynamically (ANY numeric uid accepted; reconciled below). No hardcoded uid.
+bm dump -n org.westlake.imehost > "$ROOT/host-bundle.txt" 2>&1 || fail HOST_ABSENT
+U=$(stat -c %u "$BASE" 2>/dev/null); case "$U" in ''|*[!0-9]*) fail HOST_UID_UNREADABLE;; esac
+log "host uid=$U (donor bundle pinned $OLD_UID)"
+
+# Identity gate for the files reconcile does NOT touch (archives, appspawn-x, screen-gate, worker, owner guard).
+while read -r digest file; do
+  [ -n "$digest" ] || continue
+  is_reconciled "$file" && continue
+  [ "$(sha "$file")" = "$digest" ] || fail "IDENTITY $file"
+done < "$ROOT/immutable.tsv"
+
+# Reconcile every Route B uid reference (text + binary request.bin + ownership) to the real host uid.
+# Idempotent; see reconcile_uid.sh. Fail-closed.
+TT_BASE="$BASE" TT_RT="$RT" TT_F="$F" TT_STAGE="$STAGE" TT_ROOT="$ROOT" \
+  TT_OLD_UID="$OLD_UID" TT_REQ_OFFSETS="$REQ_OFFSETS" \
+  /system/bin/sh "$ROOT/scripts/reconcile_uid.sh" >> "$ROOT/reconcile-boot.log" 2>&1 || fail UID_RECONCILE
+[ -d "$RT/private-tmp/asx" ] || fail PRIVATE_ASX_MOUNTPOINT
+[ "$(stat -c '%u:%g' "$RT/private-tmp" 2>/dev/null)" = "$U:$U" ] || fail PRIVATE_TMP_OWNER
+
+# once-per-boot semantics; never promote a failed/WAITING attempt.
+[ -e "$ROOT/receipt.env" ] && grep -qx "boot_id=$BOOT" "$ROOT/receipt.env" && fail SAME_BOOT_ALREADY_ATTEMPTED
+[ -S /dev/unix/socket/A2HSourcec91d26bfb4db4fd5a002 ] && fail EXISTING_ROUTE_B_SOCKET
+
+# Keeper starts at BOOT (before the tap) so the desktop stays unlocked and the icon is tappable —
+# otherwise SCBScreenLock covers the desktop and the user/automation cannot reach the 今日头条 icon.
+rm -f "$F/stop" "$D/stop" "$D/fresh48/stop" "$D/keeper.stop" "$D/keeper.pid"
+. "$ROOT/scripts/route-b-owner.sh"
+KDIR="$D" INTERVAL=5 nohup /system/bin/sh "$ROOT/scripts/onscreen_keeper.sh" > "$ROOT/keeper-boot.log" 2>&1 </dev/null &
+keeper=$!; kb=$(rb_birth "$keeper") || fail KEEPER_EXITED
+printf 'state=WAITING_FOR_DESKTOP_TAP\nboot_id=%s\nhost_uid=%s\nkeeper=%s\nkeeper_birth=%s\n' "$BOOT" "$U" "$keeper" "$kb" > "$ROOT/receipt.env"
+log "WAITING_FOR_DESKTOP_TAP keeper=$keeper (no background launch; U13 stays ondemand; tap 今日头条 to front imehost0)"
+
+# Wait for the real foreground desktop tap to create imehost0 (aa start is permission-blocked, 10107101).
+while :; do
+  [ ! -e "$ROOT/DISABLED" ] && [ ! -e /data/westlake-demo/u13/DISABLED ] || exit 0
+  [ "$(cat /proc/sys/kernel/random/boot_id)" = "$BOOT" ] || fail BOOT_CHANGED
+  row=$(hidumper -s WindowManagerService -a '-a' 2>/dev/null | grep '^imehost0[[:space:]]' | head -1)
+  if [ -n "$row" ]; then
+    set -- $row
+    case "${4:-}" in ''|*[!0-9]*) :;; *)
+      case "${8:--1}" in ''|-*|*[!0-9]*) :;; *) break;; esac;; esac
+  fi
+  sleep 1
+done
+
+# imehost0 is up: start the donor watchdog (spawns the Route B child into the host via the private
+# namespace + the uid-reconciled request.bin). NO eager spawner, NO aa start, appspawn-x untouched.
+nohup /system/bin/sh "$ROOT/scripts/watchdog.sh" > "$ROOT/watchdog-boot.log" 2>&1 </dev/null &
+guardian=$!; gb=$(rb_birth "$guardian") || fail GUARDIAN_EXITED
+printf 'state=ARMED\nboot_id=%s\nhost_uid=%s\nguardian=%s\nguardian_birth=%s\nkeeper=%s\nkeeper_birth=%s\n' \
+  "$BOOT" "$U" "$guardian" "$gb" "$keeper" "$kb" > "$ROOT/receipt.env"
+log "ARMED host_uid=$U guardian=$guardian keeper=$keeper; screenshots, not this state, decide lighting"

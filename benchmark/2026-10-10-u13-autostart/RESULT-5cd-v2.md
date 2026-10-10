@@ -19,7 +19,7 @@ All three walls the earlier rounds exposed are cleared, verified after a reboot 
 | appspawn-x on first app tap | **spawned, PPID=1 (init)** ✓ (pids 3858/3874/4035; "NativeLoader initialized") |
 | seccomp **"get filter name failed"** (61b's wall) | **NOT observed on 5cd** ✓ |
 | **ZigZag t20** | **LIT** — full Unity render (`as-zigzag.jpeg`: ZIGZAG / TAP TO PLAY / BEST SCORE:0) |
-| HelloWorld t20 | **black** (`as-helloworld*.jpeg`) — window visible (WMS), appspawn-x spawned, no seccomp/SIGSEGV → per-app content-draw quirk, **not** the runtime; recorded as-is (不现场修) |
+| HelloWorld | **LIT** — full UI (`as-helloworld-foreground.jpeg`: "Hello World!" + CHANGE COLOR + lifecycle log CREATED/RESUMED/PAUSED/STOPPED/RESUMED + 4 buttons) once captured **foreground + unlocked** (`Focus window=28`=HW). Earlier `as-helloworld*.jpeg` "black" = `snapshot_display`-while-locked/backgrounded **capture artifact**, NOT a render gap (see `HW-BLACK-DIAGNOSIS.md`; matches 5ea-lit) |
 | label scope (outer: don't touch factory `/system/lib64`) | compliant — only ours: `appspawn/child`, `libwestlake_thread_guard_registry`, `westlake/route-a`, `/system/android` tree; `/system/lib64/seccomp` untouched |
 
 ## The v2 fix that made it work (3 layered walls, each caught by a fail-closed check)
@@ -34,8 +34,11 @@ All three walls the earlier rounds exposed are cleared, verified after a reboot 
 
 ## Notes / open
 
-- **HelloWorld black**: not blocking the "power-cycle demo" hard requirement (ZigZag demonstrates it); a per-app render
-  gap (process + window up, no content). Left for separate review per "不再新点亮 / 别现场修".
+- **HelloWorld "black" — RESOLVED, was a capture artifact**: HW lights fully under v2 when captured foreground+unlocked
+  (`as-helloworld-foreground.jpeg`). The earlier black shots were `snapshot_display` taken with the screen locked
+  (`SCBScreenLock` focus) / HW backgrounded. So **both** smoke apps (ZigZag + HelloWorld) light under autostart v2; this
+  agrees with the outer's 5ea-lit evidence (no 5cd-specific black). Fix is capture discipline, not the board — see
+  `HW-BLACK-DIAGNOSIS.md` and the DIGEST pitfall.
 - **Power-cycle**: validated via soft `reboot` (init runs post-fs-data identically on a power-cycle). A literal pull-the-
   power test is a physical/user action; the autonomous-boot mechanism it depends on is proven.
 - recover.sh label part still ours; switch to cx-bms's single recipe (`knowledge/gates/selinux-label-recipe.json`) when it
