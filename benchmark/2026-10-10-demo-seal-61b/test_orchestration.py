@@ -1,0 +1,325 @@
+import contextlib
+import copy
+import importlib.util
+import io
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+
+HERE = Path(__file__).resolve().parent
+REPO = HERE.parents[1]
+SPEC = importlib.util.spec_from_file_location('seal61b', REPO / 'scripts/lab/demo_seal_61b.py')
+seal = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(seal)
+BOOTS = ['11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222',
+         '33333333-3333-3333-3333-333333333333']
+
+
+def save(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value))
+
+
+class FixtureTransport:
+    def __init__(self, out, plan):
+        self.out, self.plan, self.calls = out, plan, []
+        self.fail = None
+        self.live_view = None
+        self.same_boot = False
+        self.unsigned = False
+        self.socket = '660:0:6005:u:object_r:appspawn_socket:s0'
+        self.parent = '44 1 0 appspawn-x'
+        self.invalid = False
+        self.advisory_exit = 0
+        self.baseline_drift = False
+        self.second_same_boot = False
+        self.installer_drift = False
+        self.boot_counter = 0
+
+    def run(self, name, argv, env=None):
+        self.calls.append((name, argv, env))
+        if name == self.fail:
+            return 7, 'fixture failure'
+        if name in ('initial-boot', 'pre-disable-boot'):
+            return 0, BOOTS[0]
+        if name == 'pre-autonomous-boot':
+            return 0, BOOTS[1]
+        if name == 'final-boot':
+            return 0, BOOTS[2]
+        if name.startswith('wait-'):
+            boot = BOOTS[0] if self.same_boot else BOOTS[1 if name == 'wait-bare-boot' else 2]
+            if name == 'wait-autonomous-boot' and self.second_same_boot:
+                boot = BOOTS[1]
+            return 0, boot + '\ntrue\n'
+        if name in ('pre-enforcing', 'post-enforcing'):
+            return 0, 'Enforcing\n'
+        if name == 'pre-319':
+            expected = seal.read(self.plan['inputs']['baseline_319']['path'])['expected']
+            return 0, '\n'.join(('e' * 64 if self.baseline_drift else expected[target]) + '  ' + target for target in argv[-1].split()[1:])
+        if name.startswith('no-live-recover-bind-'):
+            mounts = '1 0 0:1 / / rw - ext4 /dev/root rw\n'
+            if name == 'no-live-recover-bind-' + str(self.live_view):
+                mounts += '2 1 0:2 /westlake-demo/u13/sources/seq1 /system/android rw - ext4 /dev/data rw\n'
+            return 0, mounts
+        if name == 'installer-sha':
+            return 0, ('e' * 64 if self.installer_drift else self.plan['installer']['sha256']) + '  ' + self.plan['installer']['board_path']
+        if name == 'installer':
+            return 0, 'INSTALL_OK\n'
+        if name in seal.PROVIDERS:
+            receipt = dict(serial=seal.SERIAL, plan_sha256='a' * 64,
+                           boot_id=env['DEMO_SEAL_BOOT_ID'], no_conflict=True, enabled=True,
+                           approved_by='outer(claude)' if not self.unsigned else 'fixture-unapproved',
+                           approved_at='fixture-only', no_mac_repair=True,
+                           checks={key: True for key in ('parent_init', 'socket_0660', 'hw_t20_lit',
+                                'zz_t20_lit', 'boat_five_touch_lap', 'toutiao_desktop_click_refresh_article',
+                                'all_128_observed', 'no_regression_vs_5cd', 'identity_unchanged')},
+                           evidence=[dict(path=str(self.out / 'fixture-evidence'), sha256=seal.sha(self.out / 'fixture-evidence'))])
+            save(self.out / (name + '.json'), receipt)
+            if name == 'regression_review':
+                receipt['comparison_sha256'] = seal.sha(self.out / 'regression/comparison.json')
+                receipt['baseline_serial'] = seal.BASELINE_SERIAL
+                save(self.out / (name + '.json'), receipt)
+            if name == 'seal_snapshot':
+                save(self.out / 'seal-snapshot.json', dict(serial=seal.SERIAL, boot_before=BOOTS[2], boot_after=BOOTS[2]))
+            return 0, ''
+        if name.startswith('snapshot-') and name != 'snapshot-diff':
+            phase = name.removeprefix('snapshot-')
+            save(self.out / phase / 'snapshot.json', dict(serial=seal.SERIAL, complete=True,
+                 boot_stable=True, boot_id=BOOTS[1 if phase == 'pre' else 2]))
+        if name == 'reboot-sim-advisory':
+            save(self.out / 'prediction/prediction.json', dict(status='UNKNOWN' if self.advisory_exit else 'PASS'))
+            return self.advisory_exit, ''
+        if name == 'post-parent':
+            return 0, 'PID PPID UID NAME\n' + self.parent + '\n'
+        if name == 'post-socket':
+            return 0, self.socket
+        if name in ('post-dmesg', 'post-apps-dmesg'):
+            return 0, 'invalid:appspawn-x' if self.invalid else 'fixture clean log'
+        if name == 'regress-vs-5cd':
+            save(self.out / 'regression/comparison.json', dict(keys=[dict(key='key-' + str(number)) for number in range(128)],
+                                                            extra_keys=[], summary=dict(missing=0)))
+        return 0, ''
+
+
+class OrchestrationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.out = Path(self.temp.name)
+        self.plan = copy.deepcopy(seal.read(HERE / 'plan-template.json'))
+        self.plan['boot_timeout_seconds'] = 1
+        save(self.out / 'baseline.json', dict(expected={'/system/fixture-' + str(number): 'b' * 64 for number in range(319)}))
+        save(self.out / 'table.json', dict(recover_layers=[dict(target='/system/android')]))
+        save(self.out / 'manifest.json', dict(apps=[dict(key='key-' + str(number), install=True) for number in range(128)]))
+        for key, filename in [('baseline_319', 'baseline.json'), ('recover_table', 'table.json'), ('manifest', 'manifest.json')]:
+            self.plan['inputs'][key] = dict(path=str(self.out / filename), sha256=seal.sha(self.out / filename))
+        self.plan['installer']['sha256'] = 'c' * 64
+        self.plan['providers'] = {name: dict(argv=['fixture-provider', name]) for name in seal.PROVIDERS}
+        (self.out / 'fixture-evidence').write_text('MOCK evidence; not UI acceptance')
+        self.transport = FixtureTransport(self.out, self.plan)
+        self.workflow = seal.Workflow(self.plan, self.out, self.transport, plan_sha='a' * 64, sleep=lambda seconds: None)
+
+    def run_workflow(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.workflow.run()
+
+    def bound_fixture(self):
+        plan = copy.deepcopy(self.plan)
+        stub = self.out / 'fixture-provider.py'
+        stub.write_text('raise SystemExit("fixture-only: never dispatch")\n')
+        program = dict(path=str(stub), sha256=seal.sha(stub))
+        plan.update(execution_enabled=True, pending=[], driver_sha256=seal.sha(SPEC.origin),
+                    baseline_5cd_t3=str(self.out))
+        plan['tools'] = {name: copy.deepcopy(program) for name in seal.TOOLS}
+        for name in seal.INPUTS:
+            if name not in ('baseline_319', 'recover_table', 'manifest'):
+                source = self.out / (name + '-fixture.json')
+                save(source, {})
+                plan['inputs'][name] = dict(path=str(source), sha256=seal.sha(source))
+
+        def input_json(name, value):
+            source = Path(plan['inputs'][name]['path'])
+            save(source, value)
+            plan['inputs'][name]['sha256'] = seal.sha(source)
+
+        input_json('recover_table', dict(recover_layers=[dict(target='/system/android')] +
+                     [dict(target='/system/target-' + str(number)) for number in range(55)]))
+        input_json('overlays', dict(seal_stage='v2', items=[dict(id=name, state='active')
+                    for name in ('boatattack', 'toutiao-route-b')]))
+        input_json('signoff_5cd', dict(board=seal.BASELINE_SERIAL,
+                     verdicts={'key-' + str(number): dict(verdict='lit', batch='fixture') for number in range(128)}))
+        input_json('regression_admission', dict(approved_by='outer(claude)', overlay_aware=True,
+                    post_reboot_sha256=program['sha256'], overlays_sha256=plan['inputs']['overlays']['sha256']))
+        plan['installer']['source'] = copy.deepcopy(program)
+        plan['installer']['sha256'] = program['sha256']
+        guard = self.out / 'guard.json'
+        save(guard, dict(approved_by='outer(claude)', live_bind_fail_closed=True, bare_boot_supported=True,
+                         installer_sha256=program['sha256']))
+        plan['installer']['guard_approval'] = dict(path=str(guard), sha256=seal.sha(guard))
+        plan['providers'] = {name: dict(argv=['python3', str(stub)], pins=[copy.deepcopy(program)])
+                             for name in seal.PROVIDERS}
+        authorization = self.out / 'authorization.json'
+        save(authorization, dict(approved_by='outer(claude)', approved_at='fixture-only', serial=seal.SERIAL,
+                                plan_sha256='a' * 64, execution_authorized=True))
+        return plan, authorization
+
+    def test_complete_fixture_binding_validates_without_dispatch(self):
+        plan, authorization = self.bound_fixture()
+        with patch.object(seal.subprocess, 'run', side_effect=AssertionError('transport forbidden')):
+            seal.validate(plan, authorization, 'a' * 64)
+
+    def test_guard_not_bare_ready_refuses_before_dispatch(self):
+        plan, authorization = self.bound_fixture()
+        guard = Path(plan['installer']['guard_approval']['path'])
+        value = seal.read(guard)
+        value['bare_boot_supported'] = False
+        save(guard, value)
+        plan['installer']['guard_approval']['sha256'] = seal.sha(guard)
+        with self.assertRaisesRegex(ValueError, 'bare-boot installer approval pending'):
+            seal.validate(plan, authorization, 'a' * 64)
+
+    def test_u13_only_regression_admission_refuses(self):
+        plan, authorization = self.bound_fixture()
+        source = Path(plan['inputs']['regression_admission']['path'])
+        value = seal.read(source)
+        value['overlay_aware'] = False
+        save(source, value)
+        plan['inputs']['regression_admission']['sha256'] = seal.sha(source)
+        with self.assertRaisesRegex(ValueError, 'effective identity runner admission pending'):
+            seal.validate(plan, authorization, 'a' * 64)
+
+    def test_61b_reference_cannot_masquerade_as_5cd(self):
+        plan, authorization = self.bound_fixture()
+        source = Path(plan['inputs']['signoff_5cd']['path'])
+        value = seal.read(source)
+        value['board'] = seal.SERIAL
+        save(source, value)
+        plan['inputs']['signoff_5cd']['sha256'] = seal.sha(source)
+        with self.assertRaisesRegex(ValueError, 'signed 5cd baseline required'):
+            seal.validate(plan, authorization, 'a' * 64)
+
+    def test_exact_order_and_two_target_boots(self):
+        self.run_workflow()
+        ordered = ['lock_check', 'pre-319', 'disable', 'bare-reboot', 'wait-bare-boot',
+                   'no-live-recover-bind-self', 'installer', 'toutiao_slot', 'enable', 'snapshot-pre',
+                   'sepolicy-gate', 'reboot-sim-advisory', 'autonomous-reboot', 'wait-autonomous-boot',
+                   'acceptance', 'post-parent', 'snapshot-post', 'snapshot-diff', 'prepare-128',
+                   'run-128', 'regress-vs-5cd', 'regression_review', 'seal_snapshot', 'build-seal']
+        events = self.workflow.events
+        self.assertEqual([events.index(name) for name in ordered], sorted(events.index(name) for name in ordered))
+        reboots = [argv for name, argv, env in self.transport.calls if name in ('bare-reboot', 'autonomous-reboot')]
+        self.assertEqual(reboots, [[self.plan['hdc'], '-t', seal.SERIAL, 'target', 'boot']] * 2)
+        installer = next(argv for name, argv, env in self.transport.calls if name == 'installer')[-1]
+        self.assertIn('WITH_BOAT=1', installer)
+        self.assertIn(seal.SERIAL, next(argv for name, argv, env in self.transport.calls if name == 'run-128'))
+        self.assertEqual(self.workflow.boot_id, BOOTS[2])
+
+    def test_live_bind_in_either_view_refuses_installer(self):
+        for view in ('self', '1'):
+            with self.subTest(view=view):
+                self.transport.live_view = view
+                self.workflow.events = []
+                with self.assertRaisesRegex(ValueError, 'LIVE_BIND_REFUSE'):
+                    self.run_workflow()
+                self.assertNotIn('installer', self.workflow.events)
+                self.assertNotIn('toutiao_slot', self.workflow.events)
+
+    def test_failed_step_never_runs_later_step(self):
+        self.transport.fail = 'installer'
+        with self.assertRaisesRegex(ValueError, 'exit=7'):
+            self.run_workflow()
+        self.assertNotIn('enable', self.workflow.events)
+
+    def test_319_drift_stops_before_disable(self):
+        self.transport.baseline_drift = True
+        with self.assertRaisesRegex(ValueError, '319 baseline mismatch'):
+            self.run_workflow()
+        self.assertNotIn('disable', self.workflow.events)
+
+    def test_staged_installer_drift_stops(self):
+        self.transport.installer_drift = True
+        with self.assertRaisesRegex(ValueError, 'staged installer drift'):
+            self.run_workflow()
+        self.assertNotIn('installer', self.workflow.events)
+
+    def test_unchanged_boot_refuses(self):
+        self.transport.same_boot = True
+        with patch.object(seal.time, 'monotonic', side_effect=[0, 0, 2]):
+            with self.assertRaisesRegex(ValueError, 'no changed, ready boot'):
+                self.run_workflow()
+        self.assertNotIn('installer', self.workflow.events)
+
+    def test_second_boot_must_change_too(self):
+        self.transport.second_same_boot = True
+        with patch.object(seal.time, 'monotonic', side_effect=[0, 0, 0, 0, 2]):
+            with self.assertRaisesRegex(ValueError, 'no changed, ready boot'):
+                self.run_workflow()
+        self.assertNotIn('acceptance', self.workflow.events)
+
+    def test_unsigned_ui_receipt_is_not_success(self):
+        self.transport.unsigned = True
+        with self.assertRaisesRegex(ValueError, 'stale/unsigned/repaired'):
+            self.run_workflow()
+        self.assertNotIn('build-seal', self.workflow.events)
+
+    def test_socket_0666_refuses(self):
+        self.transport.socket = '666:0:6005:u:object_r:appspawn_socket:s0'
+        with self.assertRaisesRegex(ValueError, 'socket identity'):
+            self.run_workflow()
+        self.assertNotIn('snapshot-post', self.workflow.events)
+
+    def test_non_init_parent_refuses(self):
+        self.transport.parent = '44 22 0 appspawn-x'
+        with self.assertRaisesRegex(ValueError, 'parent/UID'):
+            self.run_workflow()
+
+    def test_invalid_init_refuses(self):
+        self.transport.invalid = True
+        with self.assertRaisesRegex(ValueError, 'INVALID'):
+            self.run_workflow()
+
+    def test_advisory_unknown_retained_not_claimed_pass(self):
+        self.transport.advisory_exit = 1
+        self.run_workflow()
+        self.assertEqual(seal.read(self.out / 'prediction/prediction.json')['status'], 'UNKNOWN')
+
+    def test_missing_simulator_inputs_stop(self):
+        self.transport.advisory_exit = 2
+        with self.assertRaisesRegex(ValueError, 'exit=2'):
+            self.run_workflow()
+        self.assertNotIn('autonomous-reboot', self.workflow.events)
+
+    def test_default_preview_zero_transport_and_output_writes(self):
+        out = self.out / 'not-created'
+        with patch.object(seal.subprocess, 'run', side_effect=AssertionError('transport forbidden')):
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(seal.main(['--out', str(out)]), 0)
+        self.assertFalse(out.exists())
+        self.assertIn('WITH_BOAT=1', output.getvalue())
+        self.assertIn('319 signed paths', output.getvalue())
+
+    def test_disabled_template_execute_refuses_before_transport(self):
+        with patch.object(seal.subprocess, 'run', side_effect=AssertionError('transport forbidden')):
+            with contextlib.redirect_stderr(io.StringIO()) as output:
+                self.assertEqual(seal.main(['--execute', '--out', str(self.out / 'never'),
+                                            '--authorization', str(self.out / 'unbound.json')]), 1)
+        self.assertFalse((self.out / 'never').exists())
+        self.assertIn('RECOVERY (not executed)', output.getvalue())
+
+    def test_mountinfo_malformed_not_negative(self):
+        for text in ('', 'malformed'):
+            with self.assertRaises(ValueError):
+                seal.live_binds(text, ['/system/android'])
+
+    def test_component_boundary_and_escaped_mount(self):
+        clean = '1 0 0:1 / / rw - ext4 /dev/root rw\n2 1 0:2 / /system/android-other rw - ext4 /dev/data rw\n'
+        self.assertEqual(seal.live_binds(clean, ['/system/android']), [])
+        bad = clean + '3 1 0:3 /src /system/android/lib64/has\\040space rw - ext4 /dev/data rw\n'
+        self.assertEqual(len(seal.live_binds(bad, ['/system/android'])), 1)
+
+
+if __name__ == '__main__':
+    unittest.main()
