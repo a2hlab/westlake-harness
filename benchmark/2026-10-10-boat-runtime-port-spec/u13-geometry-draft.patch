@@ -1,6 +1,14 @@
 --- a/android_graphics_compat_shim.cpp
 +++ b/android_graphics_compat_shim.cpp
-@@ -538,10 +538,8 @@
+@@ -56,6 +56,7 @@
+ // "symbol not found" SIGSEGV (regressed the render runtime). Declared weak so
+ // the REAL impls (noice build, which compiles the SQLite .cpp) override; for
+ // Unity/eglprobe (no Android SQLite) the no-op is harmless.
++static void nwfs_apply_window_geometry(void* nw, const char* where, int32_t w, int32_t h);
+ namespace android {
+ __attribute__((weak)) int register_android_database_SQLiteConnection(JNIEnv*) { return 0; }
+ __attribute__((weak)) int register_android_database_SQLiteGlobal(JNIEnv*)     { return 0; }
+@@ -538,9 +539,6 @@
          ? g_oh_rs_get_child_surface_window_fn(sessionId, childKey, w, h) : nullptr;
  }
  
@@ -8,10 +16,8 @@
 -// instance stamped into b->ohNativeWindow at resolve/stamp time (belt) — the
 -// STAGE0 handoff (suspenders) covers the cached/pre-resolved case.
  extern "C" void nwfs_seed_window_geometry(void* nw, const char* where);
-+static void nwfs_apply_window_geometry(void* nw, const char* where, int32_t w, int32_t h);
  
  // [STAGE2-UNITY 2026-06-28] Signature aligned to THIS framework.jar's
- // BLASTBufferQueue.java: nativeUpdate(long ptr, long sc, long width,
 @@ -601,7 +599,7 @@
          return;
      }

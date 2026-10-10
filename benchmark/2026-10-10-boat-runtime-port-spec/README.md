@@ -196,8 +196,77 @@ python3 benchmark/2026-10-10-boat-runtime-port-spec/collect.py
 python3 -m unittest discover -s benchmark/2026-10-10-boat-runtime-port-spec -p 'test_*.py' -v
 ```
 
-The tests check 13-instruction/47-byte coverage, U13 literal status, exact source
-drift refusal, preserved M1/JNI/format logic, non-mutating handoffs, width-zero
-guard and **git apply --check** on a temporary source fixture. They do not
-compile it or substitute for rendering evidence. Two collector runs are
-byte-identical; raw output is in `evidence/verification.txt`.
+The initial eight tests checked source text and **git apply --check** only. That
+was insufficient: cc-t3's real link failed despite 8/8 PASS. The current suite
+adds a **mandatory fresh container compile/link**, with no skip or historical
+receipt substitution, plus declaration-scope and ELF-regression negatives.
+Compilation still does not substitute for rendering evidence. The collector is
+static only; build status and exact receipts are separate in the addendum below.
+
+## 5. Link-fix and build/link gate addendum (2026-10-10)
+
+**The original draft was wrong:** its C++ `static` helper declaration lived in
+`android::(anonymous namespace)`, but the definition lived at global scope. They
+are two symbols. Unlike the former `extern "C"` helper, the new function cannot
+rely on C linkage to bridge scopes. The linker therefore reported undefined
+`android::(anonymous namespace)::nwfs_apply_window_geometry`.
+
+The imported cc-t3 fix is
+`benchmark/2026-10-10-boat-runtime-port-build/cc-linkfix-over-draft.patch`:
+move the forward declaration before the **first global `namespace android {`**.
+The transform and regenerated `u13-geometry-draft.patch` now carry that one-line
+relocation; no extra behavior or copied explanatory code comments are added.
+`test_helper_declaration_and_definition_are_global` checks both scopes, and the
+patch still applies to the exact e28f4bc3 TU. The 47-byte geometry interpretation,
+source baseline SHA, JNI preservation and four behavior changes are unchanged.
+
+`test_container_compiles_and_links_runtime` calls `build_link_gate.py`, which:
+
+1. Verifies container image12ffb932, cold preparation tool5631a7f5 and frozen
+   clangb107ce03. Uses the reviewed cold-reproduction recipe, rebuilding all
+   runtime and auxiliary objects in a **fresh attempt directory**.
+2. Redirects just the geometry compile source to this draft's patched copy.
+   Original cc-t3, bms-deploy and historical recipe sources are not overwritten.
+3. Actually links the full AArch64 shared runtime with `-z defs`,
+   `--no-allow-shlib-undefined` and `--no-undefined`; stdout+stderr are tee'd at
+   runtime to persistent `.artifacts/fresh-link-*/build.log`.
+4. Reads the resulting ELF independently: no removed deployed export, no **new
+   undefined** symbol or unresolved geometry helper; SQLiteConnection,
+   SQLiteGlobal, SQLiteDebug and CursorWindow registrars remain **GLOBAL DEFAULT
+   FUNC**, defined and larger than the 8-byte weak return-zero placeholders.
+
+“No undefined” means **no unresolved link references / no new UND versus the
+187 baseline**, not “an ELF has no UND entries.” Normal dynamically linked
+imports from libc and other NEEDED owners remain legitimate. The linker proves
+their link-time resolution; this gate does not prove runtime namespace visibility.
+Negative tests reject a newly undefined helper, weak registrar, hidden registrar
+and a trivial 8-byte body.
+
+The default unittest **does not skip** when Docker is unavailable. cx-bms's
+sandbox Docker socket attempt failed with permission denied and is retained in
+`.artifacts/fresh-link-lsnsz1j2/` plus `.artifacts/linkfix-tests-local.txt`;
+that attempt is not a compile PASS. The outer replay uses the same default suite:
+
+```sh
+export WORKSPACES="$HOME/orca/workspaces"
+python3 -m unittest discover -s "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-10-boat-runtime-port-spec" -p 'test_port.py' -v > "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-10-boat-runtime-port-spec/.artifacts/outer-linkfix-tests.txt" 2>&1
+```
+
+Fresh replay status, source/patch/toolchain/log/artifact pins and exact exit are
+recorded in `evidence/linkfix-verification.json` and its original test-output
+companion. No board access or deployment is part of this gate. cc-t3's existing
+94718e0d candidate is an independent corroboration, **not** the artifact used to
+pretend this newly added build test ran.
+
+**Fresh outer replay completed:** `Ran 12 tests in 105.477s / OK`, **rc0**
+(explicitly confirmed by outer). The newly compiled runtime is independently
+**94718e0d0b617a0f9a860e0b50b879b0d7d4639f32e8230b1f90f8e26e2c1354**,
+the same bytes as cc-t3's candidate; 787→787 exports, no added/removed exports,
+no new UND, four strong registrars (body sizes772/340/800/716 bytes).
+The **655 normal dynamic imports remain**; this is not an all-zero-UND claim.
+Raw live-tee build log SHA is
+`954c1dc7c72160b6d7f82ea99f8515af02544a09eb25e0c3677dadc800b90d5d`;
+full output, input snapshot, scripts and output ELF remain in persistent
+`.artifacts/fresh-link-zpsaydde/`. Original sandbox failures are retained, not
+rewritten. The 11 non-container checks include the negative known answers;
+they are not substituted for the twelfth, actually executed build/link test.

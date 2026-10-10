@@ -1,14 +1,19 @@
 import importlib.util
 import json
+import copy
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location("boat_port", HERE / "collect.py")
 PORT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PORT)
+BUILD_SPEC = importlib.util.spec_from_file_location("boat_build", HERE / "build_link_gate.py")
+BUILD = importlib.util.module_from_spec(BUILD_SPEC)
+BUILD_SPEC.loader.exec_module(BUILD)
 
 
 class PortTests(unittest.TestCase):
@@ -83,6 +88,37 @@ class PortTests(unittest.TestCase):
             (root / "android_graphics_compat_shim.cpp").write_text(self.source)
             result = subprocess.run(["git", "apply", "--check", str(HERE / "u13-geometry-draft.patch")], cwd=root, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_helper_declaration_and_definition_are_global(self):
+        declaration = 'static void nwfs_apply_window_geometry(void* nw, const char* where, int32_t w, int32_t h);'
+        definition = 'static void nwfs_apply_window_geometry(void* nw, const char* where, int32_t w, int32_t h) {'
+        self.assertEqual(self.changed.count(declaration), 1)
+        self.assertLess(self.changed.index(declaration), self.changed.index('namespace android {'))
+        self.assertGreater(self.changed.index(definition), self.changed.index('}  // namespace android'))
+
+    def test_container_compiles_and_links_runtime(self):
+        receipt = BUILD.run()
+        self.assertEqual(receipt['status'], 'pass')
+        self.assertEqual(receipt['elf_checks']['removed'], [])
+        self.assertEqual(receipt['elf_checks']['new_undefined'], [])
+        self.assertEqual(len(receipt['elf_checks']['registrars']), 4)
+
+    def test_undefined_helper_is_rejected(self):
+        baseline = {name: dict(bind=1, type=2, index=1, visibility=0, size=128) for name in BUILD.REGISTRARS}
+        candidate = copy.deepcopy(baseline)
+        candidate['android::anonymous::nwfs_apply_window_geometry'] = dict(bind=1, type=2, index=0, visibility=0, size=0)
+        with mock.patch.object(BUILD, 'symbols', side_effect=[baseline, candidate]):
+            with self.assertRaisesRegex(ValueError, 'unresolved/helper'):
+                BUILD.verify('candidate', 'baseline')
+
+    def test_weak_or_trivial_registrar_is_rejected(self):
+        baseline = {name: dict(bind=1, type=2, index=1, visibility=0, size=128) for name in BUILD.REGISTRARS}
+        for field, value in [('bind', 2), ('size', 8), ('visibility', 2)]:
+            candidate = copy.deepcopy(baseline)
+            candidate[BUILD.REGISTRARS[0]][field] = value
+            with mock.patch.object(BUILD, 'symbols', side_effect=[baseline, candidate]):
+                with self.assertRaisesRegex(ValueError, 'not GLOBAL DEFAULT real function'):
+                    BUILD.verify('candidate', 'baseline')
 
 
 if __name__ == "__main__":

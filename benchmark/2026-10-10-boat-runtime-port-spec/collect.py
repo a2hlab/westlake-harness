@@ -96,9 +96,9 @@ def transform(source):
         '// instance stamped into b->ohNativeWindow at resolve/stamp time (belt) — the\n'
         '// STAGE0 handoff (suspenders) covers the cached/pre-resolved case.\n', '')
     result = replace_once(result,
-        'extern "C" void nwfs_seed_window_geometry(void* nw, const char* where);',
-        'extern "C" void nwfs_seed_window_geometry(void* nw, const char* where);\n'
-        'static void nwfs_apply_window_geometry(void* nw, const char* where, int32_t w, int32_t h);')
+        'namespace android {\n__attribute__((weak)) int register_android_database_SQLiteConnection',
+        'static void nwfs_apply_window_geometry(void* nw, const char* where, int32_t w, int32_t h);\n'
+        'namespace android {\n__attribute__((weak)) int register_android_database_SQLiteConnection')
     result = replace_once(result,
         '    nwfs_seed_window_geometry(nw, "BBQ.update-stamp");  // [S23 cut5 belt]',
         '    nwfs_apply_window_geometry(nw, "BBQ.update-stamp", b->width, b->height);')
