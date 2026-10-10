@@ -183,7 +183,17 @@ journal "after finalize_runtime"
 # what guarantees stat succeeds at the first ServiceStart so the daemon isn't latched INVALID.
 [ -S /dev/unix/socket/AppSpawnX ] || log "WARN AppSpawnX listener not present yet"
 [ "$(appspawn_listener_flags)" = 00010000 ] || log "WARN AppSpawnX listener flags not 00010000 yet"
-[ "$(stat -c '%a:%u:%g:%C' /dev/unix/socket/AppSpawnX 2>/dev/null)" = "660:0:6005:u:object_r:appspawn_socket:s0" ] || log "WARN AppSpawnX socket identity not canonical yet"
+# AppSpawnX socket perms (0660): the Mac Deployment.start path sets the ondemand listener to 0660 root:gid6005; the v2
+# autostart path did NOT, so the socket was left world-RW (5ea observed 666 after the first app). Actively enforce the
+# canonical identity on the init-owned listener here — before the first app connects — instead of only warning. Each
+# step non-silent (2>>$LOG); still best-effort (the socket may be re-created a touch later, so a residual mismatch WARNs
+# and is verified next reboot, per the outer directive).
+if [ -S /dev/unix/socket/AppSpawnX ]; then
+  chown 0:6005 /dev/unix/socket/AppSpawnX 2>>"$LOG" || log "WARN chown AppSpawnX socket (rc=$?)"
+  chmod 0660   /dev/unix/socket/AppSpawnX 2>>"$LOG" || log "WARN chmod 0660 AppSpawnX socket (rc=$?)"
+  chcon u:object_r:appspawn_socket:s0 /dev/unix/socket/AppSpawnX 2>>"$LOG" || log "WARN chcon AppSpawnX socket (rc=$?)"
+fi
+[ "$(stat -c '%a:%u:%g:%C' /dev/unix/socket/AppSpawnX 2>/dev/null)" = "660:0:6005:u:object_r:appspawn_socket:s0" ] || log "WARN AppSpawnX socket identity not canonical after enforce (verify next reboot)"
 # the binary init will exec on demand MUST be the pinned U13 host (the no-umount bind provides the real bytes; stat stays continuous)
 [ "$(sha /system/bin/appspawn-x)" = "$APPSPAWN_SHA" ] || fail APPSPAWN_IDENTITY
 [ "$(label_of /system/bin/appspawn-x)" = u:object_r:appspawn_exec:s0 ] || fail APPSPAWN_LABEL_FINAL
