@@ -477,5 +477,89 @@ class InstallerFileArchiveReuse(unittest.TestCase):
 
 
 
+
+class InstallerPlaceOnly(unittest.TestCase):
+    """INSTALL_MODE=place-only: recovered-live board; never archives; inverted guard; places v3 cfg/script."""
+    def setUp(self):
+        self.inst = read(os.path.join(SCR, "install-westlake-u13-autostart.sh"))
+
+    # ---- static contract ----
+    def test_install_mode_default_full_and_validated(self):
+        self.assertIn("INSTALL_MODE=${INSTALL_MODE:-full}", self.inst)
+        self.assertRegex(self.inst, r"INSTALL_MODE must be full or place-only")
+
+    def test_archive_is_full_only(self):
+        # section-2 archive copy sits between the `else` and the `fi   # end INSTALL_MODE=full archive`
+        import re as _re
+        m = _re.search(r"if \[ \"\$INSTALL_MODE\" = place-only \]; then(.*?)\nelse(.*?)\nfi   # end INSTALL_MODE=full archive", self.inst, _re.S)
+        self.assertTrue(m, "mode branch structure not found")
+        place_only, full = m.group(1), m.group(2)
+        self.assertNotIn('cp -a "$target" "$dst"', place_only, "place-only must not archive")
+        self.assertNotIn('cp -a "$target/." "$dst/"', place_only, "place-only must not archive dirs")
+        self.assertIn('cp -a "$target" "$dst"', full, "full mode keeps the archive")
+        # place-only verifies seqN==signed without fixing
+        self.assertIn("PLACE_ONLY_ARCHIVE_SHA", place_only)
+        for need in ("PLACE_ONLY_NOT_RECOVERED", "PLACE_ONLY_NOT_READY", "PLACE_ONLY_LAYERS", "APPSPAWN_SHA_MISMATCH"):
+            self.assertIn(need, place_only, need)
+
+    def test_place_runs_for_both_modes(self):
+        # section 4 placement (RECOVER_SCRIPT/RECOVER_CFG) is AFTER the archive fi -> runs in place-only too
+        after = self.inst.split("fi   # end INSTALL_MODE=full archive", 1)[1]
+        self.assertIn('place "$DEPLOY/scripts/$RECOVER_SCRIPT"', after)
+        self.assertIn('place "$DEPLOY/init/$RECOVER_CFG"', after)
+
+    # ---- behavioural: the place-only precondition block, stubbed ----
+    def _block(self):
+        import re as _re
+        m = _re.search(r"(grep -qE ' /system/android\[/ \]' /proc/mounts.*?NOT archiving — sources/\+/system/android untouched\")", self.inst, _re.S)
+        assert m, "place-only precond block not found"
+        return m.group(1)
+
+    def _run(self, mounts, state, layers, live_sha, seq_sha, rboot="B1", cur_boot="B1", want_sha="SIGNED"):
+        import subprocess, tempfile
+        root = tempfile.mkdtemp()
+        with open(os.path.join(root, "receipt.env"), "w") as fh:
+            fh.write("state=%s\nboot_id=%s\nlayers=%s\nappspawn_parent=ONDEMAND_NOT_STARTED\n" % (state, rboot, layers))
+        src = os.path.join(root, "sources", "seq2"); os.makedirs(os.path.dirname(src), exist_ok=True)
+        with open(src, "w") as fh:
+            fh.write("seqbytes")
+        tsv = os.path.join(root, "u13-recover-table.tsv")
+        with open(tsv, "w") as fh:
+            fh.write("2\tfile\tshared\t/system/bin/appspawn-x\t%s\t%s\n" % (src, want_sha))
+        harness = (
+            "set -u\n"
+            + 'ROOT=%s\nTSV=%s\nBARCH=$ROOT/sources-boat\nBACKUP=$ROOT/backup\nAPPSPAWN_SHA=SIGNED\n' % (root, tsv)
+            + 'fail(){ echo "FAIL $*"; exit 5; }\nlog(){ echo "LOG $*"; }\n'
+            + 'grep(){ case "$*" in *"/proc/mounts"*) [ "%s" = yes ] && { echo m; return 0; } || return 1;; esac; command grep "$@"; }\n' % mounts
+            + 'cat(){ case "$1" in */boot_id) printf "%s";; *) command cat "$@";; esac; }\n' % cur_boot
+            + 'sha(){ case "$1" in /system/bin/appspawn-x) printf "%s";; *) printf "%s";; esac; }\n' % (live_sha, seq_sha)
+            + self._block() + "\necho PLACE_ONLY_OK\n")
+        return subprocess.run(["sh", "-c", harness], capture_output=True, text=True)
+
+    def test_live_board_ondemand_no_process_passes(self):
+        # appspawn-x ONDEMAND (no process; receipt appspawn_parent=ONDEMAND_NOT_STARTED) must still PASS
+        r = self._run(mounts="yes", state="READY", layers="56", live_sha="SIGNED", seq_sha="SIGNED")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("PLACE_ONLY_OK", r.stdout)
+
+    def test_bare_board_fails(self):
+        r = self._run(mounts="no", state="READY", layers="56", live_sha="SIGNED", seq_sha="SIGNED")
+        self.assertNotEqual(r.returncode, 0); self.assertIn("PLACE_ONLY_NOT_RECOVERED", r.stdout)
+
+    def test_not_ready_fails(self):
+        r = self._run(mounts="yes", state="FAILED", layers="56", live_sha="SIGNED", seq_sha="SIGNED")
+        self.assertNotEqual(r.returncode, 0); self.assertIn("PLACE_ONLY_NOT_READY", r.stdout)
+
+    def test_stale_receipt_fails(self):
+        r = self._run(mounts="yes", state="READY", layers="56", live_sha="SIGNED", seq_sha="SIGNED",
+                      rboot="OLDBOOT", cur_boot="NEWBOOT")
+        self.assertNotEqual(r.returncode, 0); self.assertIn("PLACE_ONLY_STALE_RECEIPT", r.stdout)
+
+    def test_seq_sha_mismatch_fails(self):
+        r = self._run(mounts="yes", state="READY", layers="56", live_sha="SIGNED", seq_sha="WRONG")
+        self.assertNotEqual(r.returncode, 0); self.assertIn("PLACE_ONLY_ARCHIVE_SHA", r.stdout)
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

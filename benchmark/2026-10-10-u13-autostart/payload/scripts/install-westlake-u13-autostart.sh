@@ -38,6 +38,13 @@ case "$RECOVER_VARIANT" in
   v3) RECOVER_SCRIPT=westlake-u13-recover-v3.sh; RECOVER_CFG=00_westlake_u13_recover-v3.cfg ;;
   *)  fail "RECOVER_VARIANT must be v2 or v3 (got $RECOVER_VARIANT)" ;;
 esac
+# INSTALL_MODE: full (default, unchanged) archives the live base then places scripts/cfg; place-only is for an
+# ALREADY-RECOVERED LIVE board — it NEVER archives and NEVER touches $ROOT/sources or /system/android, it only
+# verifies the recovered state + archive SHAs and then stages Boat + places the recover script/cfg. This avoids
+# the bare-boot path entirely: at bare boot /system/bin/appspawn-x is a bind layer, so its physical byte != signed
+# and the SHA gate cannot pass (cx-t0 5cd 2026-10-10 19:40:02 APPSPAWN_SHA_MISMATCH with ALLOW_NO_PARENT=1).
+INSTALL_MODE=${INSTALL_MODE:-full}
+case "$INSTALL_MODE" in full|place-only) ;; *) fail "INSTALL_MODE must be full or place-only (got $INSTALL_MODE)" ;; esac
 
 # root /-remount helpers (proven: donor install-boat-attack-autostart.sh root_mount_options). Reseal ro on ANY exit.
 root_opt(){ grep ' / ' /proc/mounts 2>/dev/null | head -n1 | cut -d' ' -f4; }
@@ -50,6 +57,29 @@ RESEAL=0; trap 'root_ro' EXIT INT TERM
 
 # --- 1. preconditions -------------------------------------------------------
 case "$(param get bootevent.boot.completed 2>/dev/null)" in true*) ;; *) fail BOOT_NOT_COMPLETED ;; esac
+if [ "$INSTALL_MODE" = place-only ]; then
+  # [cc-t3 #91] place-only INVERTED guard: ONLY for an already-recovered LIVE board. Never bare-boot, never archive.
+  # Require live U13 binds + READY/56 receipt + appspawn-x live@signed, verify every archived FILE layer == signed
+  # (no fix), then fall through to Boat stage + script/cfg placement. sources/ and /system/android are untouched.
+  grep -qE ' /system/android[/ ]' /proc/mounts 2>/dev/null || fail "PLACE_ONLY_NOT_RECOVERED: /system/android bind not live (place-only requires a recovered board)"
+  [ -f "$ROOT/receipt.env" ] || fail PLACE_ONLY_NO_RECEIPT
+  _rstate=$(sed -n 's/^state=//p' "$ROOT/receipt.env"); _rlayers=$(sed -n 's/^layers=//p' "$ROOT/receipt.env")
+  _rboot=$(sed -n 's/^boot_id=//p' "$ROOT/receipt.env"); _cur_boot=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)
+  [ "$_rstate" = READY ] || fail "PLACE_ONLY_NOT_READY state=$_rstate"
+  [ "$_rlayers" = 56 ] || fail "PLACE_ONLY_LAYERS got=$_rlayers want=56"
+  # Receipt must be from THIS boot, not a stale one from a previous boot (cx-t0 misread an old receipt once).
+  [ -n "$_cur_boot" ] && [ "$_rboot" = "$_cur_boot" ] || fail "PLACE_ONLY_STALE_RECEIPT receipt boot_id=$_rboot != current=$_cur_boot"
+  # appspawn-x is ONDEMAND: a freshly-recovered board has NO process until an app is tapped (receipt records
+  # appspawn_parent=ONDEMAND_NOT_STARTED). The live bind is proven by the file SHA alone — do NOT require a pid.
+  [ "$(sha /system/bin/appspawn-x)" = "$APPSPAWN_SHA" ] || fail APPSPAWN_SHA_MISMATCH
+  [ -f "$TSV" ] || fail PLACE_ONLY_NO_TSV
+  while IFS="$(printf '\t')" read -r seq kind group target src sha_want; do
+    [ -z "$seq" ] && continue
+    [ "$kind" = file ] && [ -n "$sha_want" ] && [ "$sha_want" != null ] && { [ "$(sha "$src")" = "$sha_want" ] || fail "PLACE_ONLY_ARCHIVE_SHA seq=$seq src=$src want=$sha_want got=$(sha "$src")"; }
+  done < "$TSV"
+  mkdir -p "$BARCH" "$BACKUP" || fail MKDIR_ROOT
+  log "place-only preconditions ok (recovered READY/56, appspawn-x live sha-ok, archive seqN==signed); NOT archiving — sources/+/system/android untouched"
+else
 # [cc-t3 #91 fail-closed guard, 2026-10-10 incident] NEVER run on an ALREADY-RECOVERED board. Step 2 archives the
 # 56 layers incl. the /system/android directory; when recover's binds are live, that archive deleted the UNBOUND
 # physical base (/system/android lost ~200 files on a recovered 5ea). Recover must be OFF (DISABLED) and the board
@@ -152,6 +182,7 @@ done < "$ROOT/.layers.plan"
 [ "$n" = 56 ] || fail "PLAN_COUNT got=$n want=56"
 mv "$TSV.tmp" "$TSV" || fail MV_TSV
 log "archived + verified $n/56 baseline layers -> $ARCH; emitted $TSV"
+fi   # end INSTALL_MODE=full archive; place-only skipped section 2 (no archive, sources untouched)
 
 # --- 3. stage the BoatAttack overlay artifacts (SHA-gated; skipped when WITH_BOAT=0) ---
 stage_boat(){ # srcfile want
