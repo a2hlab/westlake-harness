@@ -1,0 +1,33 @@
+{
+  "task": "cc-t3 #91 BoatAttack PR03 render-port — symptom-first correction of e34b234aac",
+  "board_touched": false,
+  "supersedes": "e34b234aac (libandroid=primary render port, app-private) — WRONG",
+  "corrected_claims": {
+    "libandroid_is_render_lever": false,
+    "libandroid_vs_pr03": "49-byte CLASSNAME_FIX, 0 export delta, 28/97 NDK identical (inert)",
+    "ANativeWindow_owner": "libhwui (be59260f) — BYTE-IDENTICAL U13 vs PR03",
+    "app_private_render_port": "impossible — render owners are shared /system libs loaded before app child"
+  },
+  "symptom_attribution": {
+    "stretch": {
+      "not": "window/surface geometry (both runs 1920x1200 AdapterSurfaceView)",
+      "is": "Unity internal render resolution upscaled (scalingMode=1)",
+      "owner_candidates": ["liboh_android_runtime.so (EGL surface/metrics)", "oh-adapter-runtime.jar (DisplayMetrics)", "liboh_adapter_bridge.so (buffer geometry)"]
+    },
+    "purple": {
+      "not": "SetBufferColorSpace/SetMetadata path (fails 310/78 in GOOD PASS run too)",
+      "is": "EGLConfig color format / buffer pixel-format channel order",
+      "owner_candidates": ["liboh_android_runtime.so (eglChooseConfig)", "liboh_adapter_bridge.so (oh_anw format mapping)"]
+    }
+  },
+  "sha_matrix_render_owners": {
+    "liboh_android_runtime.so": {"u13_61b": "18763dd4", "pr03_base": "9689ce76", "differs": true},
+    "liboh_adapter_bridge.so": {"u13_61b": "84695d62", "pr03_base": "7db99e1b", "differs": true},
+    "oh-adapter-runtime.jar": {"u13_61b": "bbc3f530", "pr03_base": "06141543", "differs": true, "frozen_adjacent": true},
+    "libhwui.so": {"u13_61b": "be59260f", "pr03_base": "be59260f", "differs": false},
+    "libandroid.so": {"u13_61b": "9ccf64f8", "pr03_base": "6e9c0c2c", "differs": true, "inert": "0 export delta"}
+  },
+  "capture_gap": "61b route2d run captured only screenshots + 162k-line mixed apply hilog; NO per-process surface-node/buffer-configs/EGL dump -> single first-differing log line NOT extractable; owner-level attribution only",
+  "plan": "single-variable shared-file board bisect: runtime(18763dd4->9689ce76) -> adapter(84695d62->7db99e1b) -> jar(bbc3f530->06141543); each with surface/buffer/EGL capture + screenshot; full 128-app sweep must not regress; jar is frozen-adjacent -> user sign-off",
+  "frozen_touched": false
+}

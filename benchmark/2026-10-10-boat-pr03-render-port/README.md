@@ -1,5 +1,14 @@
 # Port PR03 render files into U13 for BoatAttack — static plan, app-private-first (cc-t3 #91)
 
+> ⚠️ **SUPERSEDED (2026-10-10, outer pushback on e34b234aac).** The conclusion below — "**libandroid is the
+> render/color/resolution PRIMARY port**, put it app-private" — is **WRONG on both counts**. See
+> **`CORRECTION-render-owner.md`** for the symptom-first re-analysis. One-line why: (1) `libandroid` differs from PR03 by
+> only a 49-byte class-name patch (0 export delta) and the `ANativeWindow_*` window cluster actually comes from
+> **`libhwui`, which is byte-identical** on both bases — libandroid cannot be the lever; (2) the files that *do* differ
+> (`liboh_android_runtime`, `liboh_adapter_bridge`, `oh-adapter-runtime.jar`) all load from the **shared `/system` path**,
+> so an **app-private port of the render pipeline is architecturally impossible**. Read CORRECTION-render-owner.md instead
+> of the plan below.
+
 Zero-board static analysis. Goal: make BoatAttack render like the 00.Workspace PR03 PASS (full 1920x1200, correct color,
 double-digit KPH + steering) on our U13 demo board, **without disturbing the 128 apps** — prefer the BoatAttack app-private
 namespace (same place as the 3 private files). Evidence: `00.Workspace .../reproduce-boat-attack-apk/20260924T080718Z-quick`
