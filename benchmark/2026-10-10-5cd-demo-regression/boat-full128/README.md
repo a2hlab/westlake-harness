@@ -29,3 +29,15 @@ Current status is `results.json`: new boot `426dfbbb`, bare, DISABLED, Enforcing
 ## Additional read-only archive hazard before continuing
 
 The bare host target SHA is EMPTY (`e3b0c442...`), so the unchanged installer SHA gate would refuse even with ALLOW_NO_PARENT. A readonly scan of all **53 file layers** also found all physical targets differ from their pinned SHA, while all 53 `sources/seqN` archive members match. The three directory layers are excluded from that count. The master installer protects directory REUSE, but its file branch copies the physical target **over the archive before checking SHA**; relaxing only the parent gate would not make that sequence safe. No copy/archive was run. The exact per-layer comparison and raw remote-exit-bound reads are in `bare-file-layer-readonly/`. Outer and cc-t3 were notified; no unpublished installer patch is used.
+
+## Master 5808dfd699 continuation precondition result
+
+The outer-approved installer SHA `e0e3f1ffb6805fcea08288ae416153cab2b6d7671a26e256543b3fed2e2dba52` was verified locally. Its exact step-1 prefix, stopping before the first mutation, was executed on bare 5cd with WITH_BOAT=1 and ALLOW_NO_PARENT=1. The original gate logged the opt-in, then returned remote status1: `install-u13: FAIL APPSPAWN_SHA_MISMATCH`. This independently confirms the previously recorded EMPTY physical host target. No SHA gate was relaxed, and no installer archive/placement/ENABLE or second reboot occurred. Current state remains bare boot426dfbbb, DISABLED, Enforcing, lock retained. Evidence: `installer-e0e3f1ff-guard/result.json` plus exact source prefix and raw status-bound stdout/stderr.
+
+## 2026-10-10 19:48 v2 recovery after the rejected installer
+
+The first receipt read was too early: boot-completed became true before recover replaced the previous boot's READY receipt. That read is preserved in `restore-v2-enabled/result.json`; it is not a recovery failure. Only a receipt bound to the current boot may pass, with READY and all 56 layers. `wait_ready` now polls for at most 120 seconds, refuses a current-boot FAILED receipt immediately, and never accepts a wrong layer count. Four known answers pass on Mac and a2hlab.
+
+Using the unchanged enable script (SHA `6e4517b460664dbaf257e474da42c94588a414650735ca2deafde051c6643bfb`) and exactly one target boot restored boot `567ee543-00b3-4eb8-839f-6dce8b8552e7`. Readback: READY/56, Enforcing, 319 identities with empty diff, runtime `452447a4a0ba`, boot-image `ee927db88a67`, init-owned appspawn-x PID 4445. No archive, installer, Boat, config edit, or additional reboot occurred. The original BMS HelloWorld capture produced one t20 screenshot and alive_t20=yes; its `foreground_unconfirmed` rc1 is retained, not rewritten. The screenshot is supplied for outer review; no lit count is asserted. The cx-t0 lock remains held awaiting the landed place-only installer.
+
+Small handoff: `landing-paths-v2-recovery.txt`. Large launch logs and records remain at the paths and hashes in `restore-v2-evidence-index.json`. `restore-v2-enabled-complete/run-facts-raw.txt` is the unmodified output of run_facts on the serial run directory.
