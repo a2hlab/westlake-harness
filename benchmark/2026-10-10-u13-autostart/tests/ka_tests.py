@@ -145,6 +145,31 @@ class BoardToolDiscipline(unittest.TestCase):
             self.assertIn("command -v python3", code)  # guarded; board path uses the pushed plan
 
 
+class InstallerRecoveredBoardGuard(unittest.TestCase):
+    """cc-t3 #91 incident (2026-10-10): re-running the installer on an ALREADY-RECOVERED board (recover binds live)
+    made the step-2 archive delete the unbound /system/android base. The installer MUST fail-closed on a recovered
+    board and require DISABLE + bare reboot first. Required for 61b final sealing."""
+
+    def setUp(self):
+        self.inst = read(os.path.join(SCR, "install-westlake-u13-autostart.sh"))
+
+    def test_guard_refuses_live_recover_binds(self):
+        self.assertIn("RECOVERED_BOARD", self.inst)
+        self.assertIn("/proc/mounts", self.inst)
+        self.assertIn("/system/android", self.inst)
+
+    def test_guard_refuses_ready_this_boot(self):
+        self.assertIn("receipt.env", self.inst)
+        self.assertIn("boot_id", self.inst)
+        self.assertIn("READY", self.inst)
+
+    def test_guard_runs_before_archive(self):
+        g = self.inst.find("RECOVERED_BOARD")
+        a = self.inst.find("ARCHIVE_DIR")
+        self.assertGreater(g, 0, "guard present")
+        self.assertGreater(a, g, "RECOVERED_BOARD guard must precede the ARCHIVE_DIR step that caused the damage")
+
+
 class InitCfg(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

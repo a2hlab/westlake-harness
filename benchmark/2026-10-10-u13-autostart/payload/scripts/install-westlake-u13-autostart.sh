@@ -42,6 +42,20 @@ RESEAL=0; trap 'root_ro' EXIT INT TERM
 
 # --- 1. preconditions -------------------------------------------------------
 case "$(param get bootevent.boot.completed 2>/dev/null)" in true*) ;; *) fail BOOT_NOT_COMPLETED ;; esac
+# [cc-t3 #91 fail-closed guard, 2026-10-10 incident] NEVER run on an ALREADY-RECOVERED board. Step 2 archives the
+# 56 layers incl. the /system/android directory; when recover's binds are live, that archive deleted the UNBOUND
+# physical base (/system/android lost ~200 files on a recovered 5ea). Recover must be OFF (DISABLED) and the board
+# bare-rebooted (no binds) before installing. Refuse fail-closed otherwise, naming the required remedy.
+if grep -qE ' /system/android[/ ]' /proc/mounts 2>/dev/null; then
+  fail "RECOVERED_BOARD recover binds are live (/proc/mounts has /system/android). DISABLE autostart (touch $ROOT/DISABLED or westlake-u13-autostart-disable.sh) + bare reboot, THEN install (else the archive deletes the unbound base)."
+fi
+_cur_boot=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)
+if [ -f "$ROOT/receipt.env" ]; then
+  _rstate=$(sed -n 's/^state=//p' "$ROOT/receipt.env"); _rboot=$(sed -n 's/^boot_id=//p' "$ROOT/receipt.env")
+  if [ "$_rstate" = READY ] && [ -n "$_cur_boot" ] && [ "$_rboot" = "$_cur_boot" ]; then
+    fail "RECOVERED_BOARD receipt.env state=READY for THIS boot ($_cur_boot). DISABLE autostart + bare reboot before install."
+  fi
+fi
 [ -d /data/app/el1/bundle/public ] || fail DATA_PKG_ROOT_NOT_READY
 [ -f "$TABLE_SRC" ] || fail "MISSING_TABLE $TABLE_SRC"
 pid=$(pidof appspawn-x 2>/dev/null); [ -n "$pid" ] || fail APPSPAWN_NOT_RUNNING
