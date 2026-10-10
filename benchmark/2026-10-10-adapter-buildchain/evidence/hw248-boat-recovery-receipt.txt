@@ -1,0 +1,112 @@
+BUILD_INNER_INVOKED=1
+ADAPTER_ROOT=/opt/build-runs/fn02-abi-fix-20260730T1935Z/adapter
+ADAPTER_OUT_DIR=/opt/build-runs/boatattack-runtime-source-20260813T141442Z/recover-old-bridge/out
+BRIDGE_OBJ_DIR=/opt/build-runs/boatattack-runtime-source-20260813T141442Z/recover-old-bridge/objs
+OH_ROOT=/opt/build-trees/oh610_lts_source
+AOSP_ROOT=/opt/build-trees/aosp14
+AOSP_LIB_DIR=/opt/build-runs/fn02-abi-fix-20260730T1935Z/aosp_lib64
+OH_PLATFORM_LINK_LIB_DIR=/opt/build-runs/fn02-abi-fix-20260730T1935Z/adapter/out/adapter
+L03_A12_CXX=/opt/build-runs/fn02-abi-fix-20260730T1935Z/clangxx-fn02-degraded
+L03_A12_STRICT_BUILD=1
+build.env 617
+build.log 6236
+1db0e442e22f8e9ce55afdd7c55246e930636c78808ddc4340aca5f81cd5ad72  /opt/build-runs/boatattack-runtime-source-20260813T141442Z/restore-aosp-liboh_adapter_bridge.so
+8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e  /opt/build-runs/boatattack-runtime-source-20260813T141442Z/private-aosp-lib64/liboh_adapter_bridge.so
+/opt/build-runs/boatattack-runtime-source-20260813T141442Z/recover-old-bridge/build.log
+OLD COMPILER
+   （`cross_compile_arm64.sh` + `cross_compile_extras_arm64.sh` +
+   `cross_compile_minikin_stack_arm64.sh`，共 1000+ 行）活在一个完全不同的
+   兄弟项目 `/opt/1F.Application/02.Noice/adapter/build/inner_arm64_5583/`
+   （Noice app 的 adapter 变体，本 session 之前从未接触过，属于不同子系统），
+   从未被 vendor 进本仓库。本轮的编译验证是把这份预编译产物当作"外部依赖"
+   （与 `$OH_ROOT` 同一范畴）只读消费，验证了**用现成的 aosp_lib64 能编出
+   symbol-parity 的 liboh_android_runtime.so**，但**没有验证 aosp_lib64 本身
+   能不能从本仓库+纯源码重新产出**——这是当前最大的、尚未闭合的自包含性
+   缺口。
+2. **`liboh_adapter_bridge.so` 的 arm64 版本同理缺失构建脚本**——本仓库
+   `build/inner/compile_oh_adapter_bridge.sh` 是 armv7 目标（2026-07-09 那次
+   审计验证的是这一份），链接 `liboh_android_runtime.so` 需要的是 aarch64
+   版本，其构建脚本同样只存在于 GZ05
+   （`/data/adapter/build/inner/compile_oh_adapter_bridge_arm64.sh`），未
+   vendor。本轮同样只读消费 GZ05 已编译好的 `.so`（放入 `out/adapter/`，
+   `.gitignore` 覆盖，不入库）完成链接验证，未补上这个 arm64 版本的构建脚本。
+3. 上述两点意味着：本仓库现在**能证明**"用一份现成的 arm64 依赖产物集合，
+   可以从纯本地源码把 `liboh_android_runtime.so` 编出来、且符号级对得上生产
+   部署版"，但**还不能证明**"从一棵干净的 OH+AOSP 源码树、不依赖任何预编译
+   `.so`，完全在本仓库范围内把整条 arm64 链路编出来"。后者需要把
+   `inner_arm64_5583/` 那一整套脚本（连同它们各自可能存在的、尚未审计过的
+   硬编码路径）搬进本仓库并重新走一遍这次同款的路径审计——工作量与本轮
+   任务（聚焦 `liboh_android_runtime.so` 一个目标）不对等，留给下一个专门
+   处理"arm64 native 库全链路自举"的 agent。
+
+### 系统性扫描结果（`build/inner/*.sh` 全量，排除 `build/_deprecated/`、`.bak`
+文件、GZ05/ECS 远程编排脚本这三类已有既定排除原则覆盖的范围）
+
+除上面两条已知缺口外，`grep -rEl "/opt/10\.Project|/opt/1F\.Application|
+/opt/21\.Game/21\.Game|/data/adapter|/data/aosp|/home/HanBingChen|17-TestLab"`
+对 `build/inner/*.sh` + `build/*.sh` 的命中，逐条核实后**全部是注释/文档性
+引用**（记录某个来源的历史出处，如 `oh_headers_631_overlay/README.md`
+说明 header 是从哪面镜像拷贝来的），**没有发现第二处**"活跃代码路径指向本仓库
+以外"的问题；也没有发现除 `egl_inc` 之外，还有别的脚本存在"引用一个从未被
+本仓库任何脚本生成过的 `out/` 子目录"这种隐性外部前提。
+
+### 小结（补充上表）
+
+| 目标 | 类型 | 范围判定 | 本轮结果 |
+|---|---|---|---|
+| `liboh_android_runtime.so`（arm64 / STAGE2-UNITY 完整 43 文件配方） | native .so | adapter 自己产物 | **43/43 编译 + 链接成功，符号级 258/258 完全对齐部署版（+1 个方向正确的已知差异），RenderThread 修复字符串确认在产物内** |
+| `third_party/aosp_raw/`（4 个 raw AOSP + 4 个 Khronos 头） | 直接编译进产物的零 diff 上游源码 | 按既定"编入自己产物=需 vendor"原则纳入 | 已 vendor，md5 逐字节核对 GZ05 当天实际使用版本一致 |
+| `out/aosp_lib64`（arm64 AOSP native 库预编译产物） | 外部预构建输入 | 构建脚本本身**不在本仓库范围内**（活在兄弟项目） | 未处理，已知缺口，清单已列 |
+| `liboh_adapter_bridge.so`（arm64 版） | 外部预构建输入（相对本次目标而言） | 构建脚本本身**不在本仓库范围内**（活在 GZ05） | 未处理，已知缺口，清单已列 |
+
+## 2026-07-10 追加：arm64 构建脚本 vendor + 隔离沙箱实测——脚本缺口已闭合，
+但过程中发现一个更深层、此前从未记录过的第三缺口（OH_ROOT 从未为任何 arm64
+product 跑过 ninja 构建），"0外链"最终判定仍为**未达成**
+
+### 做了什么
+
+把上面表格里"未处理"的两个构建脚本缺口对应的脚本本体，从
+`/opt/1F.Application/02.Noice/adapter/build/inner_arm64_5583/`（Noice app 的
+adapter 变体，本仓库此前从未真正 vendor 过这个目录的任何文件，只读引用过）
+逐字节复制进本仓库 `build/inner/`，然后做了必要的路径改写（不是简单复制粘贴）：
+
+- `cross_compile_arm64.sh`（631 行）、`cross_compile_extras_arm64.sh`（87 行）、
+  `cross_compile_minikin_stack_arm64.sh`（494 行）、`compile_libhwui_arm64.sh`
+  （1452 行）、`compile_oh_adapter_bridge_arm64.sh`（544 行）。
+- 改动 1：产物目录 `out/aosp_lib` → `out/aosp_lib64`（避免和本仓库已有的
+  armv7 流水线同名冲突；匹配本仓库已有的
+  `compile_oh_android_runtime_arm64_stage2unity.sh` 的 `AOSP_LIB_DIR` 默认
+  期望路径）。
+- 改动 2：`OH_ROOT`/`AOSP_ROOT` 默认值 `/home/HanBingChen/{oh,aosp}` →
+  `$HOME/{oh,aosp}`；`ADAPTER_ROOT` 默认值 `$HOME/adapter` → 脚本自身位置
+  自推导（`$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)`），跟本仓库
+  2026-07-09 对 armv7 twin 脚本做过的同款修复一致。
+- 每个文件头部新增 `[VENDORED 2026-07-10]` 注释块，写明来源路径、为什么这
+  属于同一个 "HanBingChen" WestLake adapter 工程谱系的构建工具链代码（不是
+  Noice app 自己的私有业务逻辑）、本次具体改了什么。
+- 逐字节 md5（vendor 前，Noice 原始文件）：`cross_compile_arm64.sh`
+  `c7b17963c7ddf3ee7a6ea4cae322326c`、`cross_compile_extras_arm64.sh`
+  `e4ee1675f859c68ffbf44ea9db802d7a`、`cross_compile_minikin_stack_arm64.sh`
+  `84a5c7be6ab5f03d4ff1412e5bd4a148`、`compile_libhwui_arm64.sh`
+  `617c2d4e300998ce3a19d1c99a93ed9a`、`compile_oh_adapter_bridge_arm64.sh`
+  `e9edc8faae46f3a6bc37ffcc292dad1a`（vendor 后 md5 已变化，因为做了上述两类
+  必要改写，diff 只在这些改写点，逻辑/编译参数/link 顺序未变）。
+
+### 隔离沙箱实测（本轮新增，按用户要求把"能否单独把本目录拷到一台全新机器
+上、不借助任何 `/opt/1F.Application` 或 GZ05 访问权限、从零编译"这个思考题
+转成真实验证动作，不是口头回答）
+
+在本机 OrbStack VM `westlake-build` 里用 `sudo unshare --mount --uts --net
+--propagation private` 建立了一个真实的、内核级隔离的 mount+network
+namespace（不是简单换目录/改环境变量的"心理隔离"）：
+
+1. 把本仓库当前状态（含新 vendor 的 5 个 arm64 脚本）先 rsync 到 VM 自己的
+   本地磁盘 `~/isolated_adapter_src`（`/dev/vdb1`，VM 原生 btrfs 卷，不经过
+   mac virtiofs）。
+2. 在新 namespace 里，把 OH_ROOT（`/mnt/mac/opt/10.Project/16-WestLake/
+   16.12-HanBing/oh`）、AOSP_ROOT（`~/aosp-local`，已是 VM 本地磁盘）、上面
+   rsync 好的 adapter 副本分别 bind-mount 到 `/isolated/{oh,aosp,adapter}`，
+   然后把 `/mnt/mac`（承载 mac 宿主机整个文件系统的 virtiofs 挂载点，也是
+   `/opt/1F.Application` 唯一可达路径）连同 `/Users`、`/Applications`、
+   `/Library`、`/Volumes`、`/private` 全部 `umount -l`（lazy unmount，不影响
+   已经 bind 出去的 `/isolated/*` 引用，这是标准的"先接到别处、再切断原路径"
