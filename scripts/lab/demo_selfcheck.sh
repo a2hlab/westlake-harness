@@ -135,6 +135,7 @@ def compare(seal,serial,files,obs,offline):
     return {'schema':'demo-selfcheck/v1','mode':'offline-comparison' if offline else 'live-readonly',
             'status':('OFFLINE_MATCH' if offline else 'PASS') if passed else 'FAIL',
             'passed':passed,'remote_write_operations':0,'lock_operations':0,'checks':checks,
+            'boot_before':obs.get('boot_before'),'boot_after':obs.get('boot_after'),
             'commands':obs.get('commands',[])}
 
 def main():
