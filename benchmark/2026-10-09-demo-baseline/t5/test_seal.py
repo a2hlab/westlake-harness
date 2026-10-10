@@ -33,27 +33,32 @@ def fixture():
                 "system_params": {"const.ohos.fullname": "OpenHarmony-6.1.0.31"}, "packages": [package],
                 "apk_hashes": {apk: "d" * 64}, "package_inventory_complete": True, "file_inventory_complete": True,
                 "inventories": [{"patterns": ["/system/android/lib64/*.so"], "paths": [runtime]}]}
-    overlays = {"schema": "demo-overlays/v1", "items": [{"id": name, "state": "absent", "reason": "fixture excluded", "files": []}
+    overlays = {"schema": "demo-overlays/v1", "seal_stage": "v1", "items": [{"id": name, "state": "absent", "reason": "fixture excluded", "files": []}
                                                          for name in ("toutiao-route-b", "boatattack")]}
     manifest = {"apps": [{"key": "demo", "package": "org.demo", "install": True, "version_code": 3,
                           "version": "1.0", "apk_sha256": "d" * 64}]}
+    add_overlays(snapshot, overlays, include_boat=False)
     return snapshot, overlays, manifest
 
 
-def add_overlays(snapshot, overlays):
+def add_overlays(snapshot, overlays, include_boat=True):
+    if include_boat:
+        overlays["seal_stage"] = "v2"
     for row in overlays["items"]:
         name = row["id"]
+        if row["state"] == "active" or (name == "boatattack" and not include_boat):
+            continue
         row.update(state="active", package="org." + name.replace("-", "."), route="B",
                    apk_sha256="f" * 64, version_code=1, version_name="1.0",
                    source={"path": "$WORKSPACES/source.json", "sha256": "e" * 64},
                    rollback={"path": "$WORKSPACES/rollback.json", "sha256": "f" * 64})
-        roles = ["adapter-bridge", "runtime-jar", "private-native", "private-native", "private-native"] if name == "boatattack" else ["ttbundle"]
+        roles = ["admitted-member"] if name == "boatattack" else ["ttbundle"]
         row["files"] = [{"role": role, "target": f"/data/demo/{name}/{index}.bin", "sha256": "e" * 64} for index, role in enumerate(roles)]
-        if name == "boatattack":
-            row["files"][0]["target"] = "/system/android/lib64/liboh_adapter_bridge.so"
         if name == "toutiao-route-b":
             row.update(launch_kind="embedded-in-hap", host_package="org.westlake.imehost", payload_path=f"/data/demo/{name}/toutiao.apk")
             row["files"][0].update(target=row["payload_path"], sha256="f" * 64)
+        else:
+            row["admission"] = {"path": "$WORKSPACES/boat-v2-approval.json", "sha256": "a" * 64}
         snapshot["files"]["overlays"].update({member["target"]: member["sha256"] for member in row["files"]})
         apk = f"/data/demo/{name}/base.apk"
         registered = row.get("host_package", row["package"])
@@ -93,16 +98,11 @@ class SealTests(unittest.TestCase):
                 self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
                 self.assertIn("OFFLINE_MATCH" if not changed else "DRIFT /data/demo/", result.stdout)
 
-    def test_boat_requires_exact_adapter_and_all_five_members(self):
-        for wrong in ("target", "missing"):
-            snapshot, overlays, manifest = fixture();add_overlays(snapshot, overlays)
-            boat = next(x for x in overlays["items"] if x["id"] == "boatattack")
-            if wrong == "target": boat["files"][0]["target"] = "/system/android/lib64/other.so"
-            else: boat["files"].pop(0)
-            with self.assertRaisesRegex(ValueError, "BoatAttack"):build(snapshot, overlays, manifest)
-
     def test_pending_overlay_refuses_seal(self):
         self.reject(lambda s, o, m: o["items"][0].update(state="pending"), "unresolved")
+
+    def test_v1_cannot_silently_omit_route_b(self):
+        self.reject(lambda s, o, m: o["items"][0].update(state="absent"), "active Toutiao")
 
     def test_boot_changed_refuses(self):
         self.reject(lambda s, o, m: s.update(boot_after="other"), "crosses boot")
@@ -161,7 +161,7 @@ class SealTests(unittest.TestCase):
         snapshot, overlays, manifest = fixture()
         add_overlays(snapshot, overlays)
         overlays["items"][1]["files"].pop()
-        with self.assertRaisesRegex(ValueError, "three private"):
+        with self.assertRaisesRegex(ValueError, "active overlay files"):
             build(snapshot, overlays, manifest)
         snapshot, overlays, manifest = fixture()
         add_overlays(snapshot, overlays)
@@ -176,6 +176,33 @@ class SealTests(unittest.TestCase):
         snapshot["files"]["runtime"][path] = "0" * 64
         with self.assertRaisesRegex(ValueError, "conflicting effective"):
             build(snapshot, overlays, manifest)
+
+    def test_v1_excludes_boat_and_v2_requires_admitted_overlay(self):
+        snapshot, overlays, manifest = fixture()
+        self.assertEqual(build(snapshot, overlays, manifest)["seal_stage"], "v1")
+        add_overlays(snapshot, overlays)
+        overlays["seal_stage"] = "v1"
+        with self.assertRaisesRegex(ValueError, "absent in v1"):
+            build(snapshot, overlays, manifest)
+        overlays["seal_stage"] = "v2"
+        self.assertEqual(build(snapshot, overlays, manifest)["seal_stage"], "v2")
+        del overlays["items"][1]["admission"]
+        with self.assertRaisesRegex(ValueError, "pinned admission"):
+            build(snapshot, overlays, manifest)
+        snapshot, overlays, manifest = fixture()
+        overlays["seal_stage"] = "v2"
+        with self.assertRaisesRegex(ValueError, "admitted overlay in v2"):
+            build(snapshot, overlays, manifest)
+
+    def test_no_legacy_implicit_stage_or_fixed_boat_shape(self):
+        snapshot, overlays, manifest = fixture()
+        del overlays["seal_stage"]
+        with self.assertRaisesRegex(ValueError, "seal_stage"):
+            build(snapshot, overlays, manifest)
+        snapshot, overlays, manifest = fixture()
+        add_overlays(snapshot, overlays)
+        self.assertEqual(len(overlays["items"][1]["files"]), 1)
+        build(snapshot, overlays, manifest)
 
     def test_embedded_route_does_not_require_android_bms_registration(self):
         snapshot, overlays, manifest = fixture()

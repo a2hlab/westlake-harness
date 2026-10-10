@@ -59,13 +59,20 @@ def fingerprint(lines, expected):
 
 def overlay_check(document):
     require(document.get("schema") == "demo-overlays/v1", "overlay schema required")
+    stage = document.get("seal_stage")
+    require(stage in {"v1", "v2"}, "explicit v1/v2 seal_stage required")
     rows = document.get("items")
     require(isinstance(rows, list) and {row.get("id") for row in rows} == {"toutiao-route-b", "boatattack"}
             and len(rows) == 2, "exactly two named overlay slots required")
     active = {}
     packages = []
     for row in rows:
+        if row["id"] == "boatattack":
+            require(row.get("state") == ("absent" if stage == "v1" else "active"),
+                    "BoatAttack must be absent in v1 and an admitted overlay in v2")
         require(row.get("state") in {"active", "absent"}, "unresolved overlay slot: " + row["id"])
+        if row["id"] == "toutiao-route-b":
+            require(row["state"] == "active", "v1/v2 require an active Toutiao Route B overlay")
         if row["state"] == "absent":
             require(not row.get("files") and bool(row.get("reason")), "absent overlay needs reason and no files")
             continue
@@ -81,10 +88,11 @@ def overlay_check(document):
         require(isinstance(members, list) and bool(members), "active overlay files required")
         roles = [member.get("role") for member in members]
         if row["id"] == "boatattack":
-            require(roles.count("adapter-bridge") == 1 and roles.count("runtime-jar") == 1 and roles.count("private-native") == 3 and len(members) == 5,
-                    "BoatAttack requires one approved adapter, one new jar and three private native members")
-            require(next(m for m in members if m["role"] == "adapter-bridge")["target"] ==
-                    "/system/android/lib64/liboh_adapter_bridge.so", "BoatAttack adapter exact target required")
+            admission = row.get("admission", {})
+            require(bool(admission.get("path")) and SHA.fullmatch(str(admission.get("sha256", ""))) is not None,
+                    "v2 BoatAttack requires a pinned admission defining the accepted overlay")
+            require(all(isinstance(role, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", role) for role in roles),
+                    "v2 BoatAttack member roles must be explicit")
         else:
             require(row.get("route") == "B" and all(role == "ttbundle" for role in roles),
                     "Toutiao requires explicit Route B ttbundle members")
@@ -175,7 +183,7 @@ def build(snapshot, overlays, manifest):
         for pattern in patterns:
             board_path(pattern, True)
         require(all(board_path(path) in all_files for path in paths), "inventory path not sealed")
-    return {"schema": "demo-seal/v1", "serial": SERIAL, "files": files,
+    return {"schema": "demo-seal/v1", "seal_stage": overlays["seal_stage"], "serial": SERIAL, "files": files,
             "system_params": dict(sorted(system.items())), "packages": sorted(packages, key=lambda row: row["package"]),
             "inventories": inventories, "fingerprints": fingerprints, "overlay_deployments": overlays["items"],
             "provenance": {"captured_at": snapshot["captured_at"], "capture_boot_id": boot,

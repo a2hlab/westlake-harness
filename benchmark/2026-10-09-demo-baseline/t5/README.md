@@ -9,10 +9,11 @@ only a complete, same-boot, explicitly read-only **effective** snapshot and writ
 the existing `demo_selfcheck.sh` schema directly. It does not collect from a
 board, apply overlays, change AGENTS, restore, authorize reboot or claim t5 done.
 
-The actual selfcheck CLI is exercised offline with a generated seal containing
+The actual selfcheck CLI is exercised offline with a generated v2 fixture containing
 both overlays, then rejects a changed Route B member. A successful fixture prints
 `OFFLINE_MATCH`, never live `PASS`. No real seal is published in this delivery:
-the 61b final snapshot and both special-app decisions are still pending.
+the final 61b snapshot and Route B binding are still pending; Boat is deferred
+to a separately admitted v2 overlay, not a v1 blocker.
 
 ## Snapshot contract
 
@@ -51,7 +52,12 @@ does not replace fresh return-code/transport evidence from cx-t0.
 
 ## Overlay slots
 
-`overlay-inputs.json` contains exactly two slots, initially **pending**:
+`overlay-inputs.json` contains exactly two named slots and an explicit
+`seal_stage`: **v1** seals the 128-app baseline, Toutiao and autonomous startup;
+BoatAttack must be `absent`. **v2** adds an admitted BoatAttack overlay. The schema
+remains `demo-overlays/v1` / `demo-seal/v1`; these are wire-format versions, not
+the v1/v2 campaign stage. The shipped v1 template has Route B `pending`, not a
+fabricated sealed identity.
 
 1. `toutiao-route-b`: route B, embedded Android package/APK identity, exact
    `ttbundle` member targets and SHA, including the embedded APK itself. Its
@@ -63,17 +69,22 @@ does not replace fresh return-code/transport evidence from cx-t0.
    `/data/local/tmp/asx` alias from another namespace. No replacement of the
    common runtime generation is inferred. Route B launch/acceptance still needs
    a reviewed SAFE recipe: original scripts can kill main appspawn-x.
-2. `boatattack`: the earlier tentative shape was one new runtime JAR + exactly three private native members,
-   installed package and exact effective target SHA. The shared JAR replacement
-   must also be reflected in the effective runtime fingerprint group.
-   This is not a final PR03-port admission. If the accepted port changes that
-   shape (for example four private members without a JAR swap), outer must review
-   the compiler's shape constraint before final sealing; never replace a frozen
-   JAR merely to fit an old template.
+2. `boatattack`: absent with an explicit reason in v1. In v2 it must be active,
+   with pinned source, rollback and `admission: {path, sha256}` referring to the
+   accepted overlay inventory. Member roles, targets and full SHA are explicit;
+   effective observed bytes and installed APK/version still must match exactly.
+   There is **no fixed five-file route-II-d shape** and no forced adapter/JAR
+   replacement. Shared replacements, if actually admitted, must also update the
+   effective runtime fingerprint group. The caller/outer must bind the admission
+   after t2b acceptance, frozen registration and the post-reboot 128-app regression;
+   this compiler checks the pin's shape, not the approval document's signature or
+   those live verdicts. It does not independently authorize deployment or v2.
 
 Active slots require APK/version identity and pinned source and rollback descriptors. `absent` requires
 an explicit reason and no member files. `pending` hard-refuses sealing; omission
-cannot quietly turn an unfinished overlay into a sealed success. No paths, SHA,
+cannot quietly turn an unfinished overlay into a sealed success. Boat cannot be
+active in v1 or absent/pending in v2. Route B must be active in either seal stage;
+an explicit absent reason cannot omit this required v1/v2 component. No paths, SHA,
 APK identity or source provenance are guessed from the preliminary experiments.
 
 ```sh
