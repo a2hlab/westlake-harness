@@ -36,16 +36,28 @@
     "superseded: appdat create-denial"
   ],
   "min_board_experiments": [
-    "/proc/<pid>/root: /data/app/el2/100/base/<pkg> absent vs /data/storage/el2/base present+writable (decisive)",
-    "setenforce 0 single-var: predict NO fix (mount-ns not SELinux)",
-    "confirm adapter ApplicationInfo.dataDir origin"
+    "confirm setenforce 0 clears CANTOPEN (3rd window) on studytracker/listmaker, capture dmesg both modes",
+    "stat owner uid of el2 base/databases/<db> vs runtime uid (decisive for #1)",
+    "sesearch capability dac_override + dontaudit + allowxperm appdat",
+    "as-uid sqlite open in enforcing vs permissive"
   ],
   "suggested_fix": "adapter must resolve app dataDir+keystore to sandbox path /data/storage/el2/base (not raw /data/app/el2/...); stopgap=add sandbox mount-path exposing raw path; NOTE pre-existing adapter bug exposed by v2 enforcement -> full-128 re-baseline under real enforcement warranted",
-  "refined_root_cause": {
-    "mechanism": "adapter hands app RAW host el2 dataDir/keystore (/data/app/el2/100/base/<pkg>); enforced OH sandbox exposes CE data ONLY at sandbox-path /data/storage/el2/base; raw path absent in child namespace -> CANTOPEN 'doesn't exist'",
-    "trigger": "today's v2 autostart fixed appdata-sandbox.json label (->system_etc_file) -> appspawn-x PreLoadAppSandboxCfg now loads+enforces sandbox (was mis-labeled/unreadable -> sandbox silently off -> child saw host /data -> raw path worked)",
-    "mount_map_proof": "appdata-sandbox.json L102-103 src /data/app/el2/<uid>/base/<pkg> -> sandbox-path /data/storage/el2/base; NO sandbox-path=/data/app/el2/*; B43-BIND/WL-KEYSTORE log raw /data/app/el2 paths",
-    "ccwiki_61b_1709": "61b reproduces (studytracker/listmaker CANTOPEN) though DBs exist (10-01/10-03), owner=BMS uid, appdat, NO normal_hap avc; libresudoku -shm written 10-10 00:22 (pre-v2-reboot, could write then)",
-    "not_cause": "NOT SELinux/appdat (no avc; setenforce predicted not to help); NOT create-vs-open label; it's mount-namespace path-nonexistence"
-  }
+  "FALSIFIED_mechanism": {
+    "claim": "raw host dataDir absent in enforced child namespace",
+    "refuted_by": "cc-wiki expA-todolist-live-proc.txt: /proc/11633/root/data = whole userdata (mountinfo 979 '/ /data'); /data/app/el2/100/base/<pkg>/databases VISIBLE, owner=running uid 20010828, normal_hap",
+    "note": "adapter DOES override dataDir to raw path (studytracker hilog L36637) but that path is present+reachable -> not the fault"
+  },
+  "constraints": {
+    "selinux_mode_sensitive": "setenforce 0 window had no CANTOPEN (artifact, re-verifying 3rd window)",
+    "avc_free": "no avc/ioctlcmd/capability line in studytracker hilog; no file-class dontaudit; appdat all-perms allow",
+    "trigger": "v2 json-label fix enabled sandbox enforcement; 61b repro DBs exist owner=BMS uid appdat no avc"
+  },
+  "ranked_candidates_avcfree_modesensitive": [
+    "1 dac_override capability dontaudit'd (STRONGEST): el2 DB/dir owner=BMS uid != per-app runtime uid (studytracker 20011117); cross-uid open needs dac_override; capability denials routinely dontaudit'd -> no avc; setenforce 0 grants. Caveat: cc-wiki todolist dir owner=running uid -> ownership inconsistent, confirm per crashing app",
+    "2 F2FS ioctl xperm allowxperm dontaudit'd: SQLite ioctl/fcntl on F2FS; ioctlcmd outside allowxperm denied+dontaudit'd; libcore ioctl/fsync/fallocate hooks present (L33896-33949)",
+    "3 XPM/code-sign (CODE_SIGN not avc): XpmIoctl cmd 40087803 EFAULT 'ignore' at spawn L33141; weak (spawn code pages, DB not executable)",
+    "4 SecCompEnhanceAdapter missing lib: libsecurity_component_client_enhance.z.so errno2 L33145-48; enforce-independent (missing both modes), lower",
+    "5 getenforce branch in runtime/appspawn-x: no getenforce in app hilog; system-side only"
+  ],
+  "fix_direction": "if dac_override/ownership: chown el2 DB/dir to per-app RUNTIME uid (fix install/sandbox-command.sh chown target), recovery chown -R runtime-uid; if allowxperm: whitelist the ioctlcmd; full-128 re-baseline under real enforcement regardless"
 }
