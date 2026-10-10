@@ -12,6 +12,7 @@ import io
 import json
 import os
 import re
+import struct
 import gc
 import subprocess
 import tempfile
@@ -65,6 +66,10 @@ CONST_OPS = {
     "const-class",
 }
 
+
+# Libraries an app carries whose behaviour depends on what the platform lets an app do, by a class
+# each keeps unrenamed: libsu starts a shell (OH refuses an app's domain one; see gapmap.shell_rows).
+LIBRARY_MARKERS = {"libsu": "Lcom/topjohnwu/superuser/Shell;"}
 
 def quiet_androguard() -> None:
     """Remove Androguard's per-item debug logging from CLI output."""
@@ -334,6 +339,383 @@ def _android_relocation_tags(readelf_text: str) -> list[str]:
     return sorted(name for tag, name in ANDROID_RELOCATION_TAGS.items() if tag in found)
 
 
+_VERSIONED_IMPORT = re.compile(r"\sUND\s+([A-Za-z_][\w.$]*)@([A-Za-z_]\w*)")
+
+
+def import_versions(readelf_text: str) -> dict[str, Any]:
+    """Imports that ask for a symbol version (Bionic's libc: __system_property_read_callback@LIBC_O),
+    from readelf's dynamic symbol table."""
+    found = {match[1]: match[2] for match in _VERSIONED_IMPORT.finditer(readelf_text)}
+    return {"import_versions": found} if found else {}
+
+
+_SIGNAL_NAMES = ("sigaction", "sigaction64", "sigprocmask", "sigprocmask64", "pthread_sigmask", "pthread_sigmask64")
+
+
+def signal_lookups(raw: bytes, imported: set[str]) -> dict[str, Any]:
+    """Signal calls a library names as a string without importing them: it looks them up with dlsym,
+    usually in libc's own handle, past any interposer (ByteDance's bytesig in shadowhook and
+    bytehook takes sigaction64 or sigaction that way to put its handler first)."""
+    names = sorted(name for name in _SIGNAL_NAMES
+                   if name not in imported and b"\x00" + name.encode() + b"\x00" in raw)
+    return {"signal_lookups": names} if names else {}
+
+
+_EGL_NAMES = ("eglCreateWindowSurface", "eglTerminate")
+
+
+def egl_lookups(raw: bytes, imported: set[str]) -> dict[str, Any]:
+    """EGL entry points a library names as a string without importing them: it dlopens libEGL.so
+    and looks them up by handle, past the preloaded shim's own (SDL does this for all of EGL)."""
+    names = sorted(name for name in _EGL_NAMES
+                   if name not in imported and b"\x00" + name.encode() + b"\x00" in raw)
+    return {"egl_lookups": names} if names else {}
+
+
+_GLES3_NAMES = tuple(json.loads((Path(__file__).parent / "data" / "gles3-core-entry-points.json").read_text())["names"])
+# Longest first, so a name is never cut short by a shorter one it starts with (glGetString, glGetStringi).
+_GLES3_PATTERN = re.compile(rb"(" + b"|".join(re.escape(name.encode()) for name in
+                                              sorted(_GLES3_NAMES, key=len, reverse=True)) + rb")(?![A-Z0-9_])")
+
+
+def gles3_lookups(raw: bytes, imported: set[str]) -> dict[str, Any]:
+    """GLES 3 core entry points a library names as a string without importing them: a GL loader
+    that dlopens libGLESv2.so and looks each one up by handle, as Android's libGLESv2.so carries
+    them. Go packs its strings without terminators, so a name followed by more letters still
+    counts, but not one an upper-case letter, digit or underscore continues: glDrawBuffers inside
+    glDrawBuffersEXT is not a lookup of it. Each "gl" starts a candidate, as the next packed
+    string may begin right after a name."""
+    if b"gl" not in raw:
+        return {}
+    found = {match.decode() for match in _GLES3_PATTERN.findall(raw.replace(b"gl", b"\x00gl"))}
+    names = sorted(found - imported)
+    return {"gles3_lookups": names} if names else {}
+
+
+def vm_lookups(raw: bytes, imported: set[str], exported: set[str]) -> dict[str, Any]:
+    """How a library finds the process's JavaVM without being handed one: JNI_GetCreatedJavaVMs,
+    imported (the NDK's libnativehelper, API 31) or named for a dlsym (Element X's Rust library:
+    dlsym(dlopen(NULL), ...))."""
+    name = "JNI_GetCreatedJavaVMs"
+    if name in exported:
+        return {}
+    if name in imported:
+        return {"vm_lookup": "import"}
+    return {"vm_lookup": "by-name"} if b"\x00" + name.encode() + b"\x00" in raw else {}
+
+
+_ART_INTERNAL = re.compile(rb"_ZN3art[A-Za-z0-9_]{4,}")
+
+
+def art_internal_names(raw: bytes) -> dict[str, Any]:
+    """ART's own C++ symbols a library names: performance and crash libraries (ByteDance's jato,
+    sysoptimizer, godzilla; npth) look them up in libart.so and patch the runtime through them, at
+    offsets they choose by the device's SDK level. Empty for an ordinary library."""
+    names = sorted({m.decode() for m in _ART_INTERNAL.findall(raw)})
+    return {"art_internal_symbols": len(names), "art_internal_sample": names[:6]} if names else {}
+
+
+_PACKED_RELOCATION_TAGS = {0x6000000F, 0x60000010, 0x60000011, 0x60000012}  # DT_ANDROID_REL{,SZ}, RELA{,SZ}
+
+
+def null_array_entries(raw: bytes) -> dict[str, int] | None:
+    """Null or -1 entries in the init and fini arrays that no relocation fills: bionic skips them
+    (soinfo::call_array), OH's musl calls them and jumps to address 0 (TikTok's libttffmpeg.so).
+    None when the library's relocations are in Android's packed format, which is not decoded here."""
+    if raw[:4] != b"\x7fELF" or raw[4] != 2 or raw[5] != 1:
+        return None
+    u64 = lambda at: int.from_bytes(raw[at:at + 8], "little")
+    phoff, count = u64(0x20), int.from_bytes(raw[0x38:0x3A], "little")
+    loads, dynamic = [], None
+    for index in range(count):
+        header = phoff + index * 56
+        kind = int.from_bytes(raw[header:header + 4], "little")
+        if kind == 1:
+            loads.append((u64(header + 16), u64(header + 8), u64(header + 32)))
+        elif kind == 2:
+            dynamic = (u64(header + 8), u64(header + 32))
+    if dynamic is None:
+        return {}
+
+    def offset_of(vaddr: int) -> int | None:
+        return next((offset + vaddr - start for start, offset, size in loads if start <= vaddr < start + size), None)
+
+    tags: dict[int, int] = {}
+    for position in range(dynamic[0], min(dynamic[0] + dynamic[1], len(raw) - 15), 16):
+        tag = u64(position)
+        if tag == 0:
+            break
+        tags.setdefault(tag, u64(position + 8))
+    if _PACKED_RELOCATION_TAGS & set(tags):
+        return None
+    targets: set[int] = set()
+    if 7 in tags and 8 in tags and offset_of(tags[7]) is not None:
+        start, entry = offset_of(tags[7]), tags.get(9, 24) or 24
+        targets = {u64(at) for at in range(start, min(start + tags[8], len(raw) - 7), entry)}
+    out = {}
+    for name, array, size in (("init", 25, 27), ("fini", 26, 28)):
+        if array not in tags or size not in tags or offset_of(tags[array]) is None:
+            continue
+        start = offset_of(tags[array])
+        nulls = sum(1 for i in range(tags[size] // 8)
+                    if u64(start + 8 * i) in (0, 0xFFFFFFFFFFFFFFFF) and tags[array] + 8 * i not in targets)
+        if nulls:
+            out[name] = nulls
+    return out
+
+
+def packed_init_entries(raw: bytes) -> dict[str, int]:
+    """Init array entries of a library whose relocations come only in Android's packed format
+    (DT_ANDROID_REL or DT_ANDROID_RELA, no RELR): every slot such a table fills reads as zero in the
+    file. The runtime's init array sanitizer, which drops null entries before ART opens a library,
+    read all of libwaze.so's 2189 that way and dropped them. Empty when the library has none."""
+    if raw[:4] != b"\x7fELF" or raw[4] != 2 or raw[5] != 1:
+        return {}
+    u64 = lambda at: int.from_bytes(raw[at:at + 8], "little")
+    phoff, count = u64(0x20), int.from_bytes(raw[0x38:0x3A], "little")
+    tags: dict[int, int] = {}
+    for index in range(count):
+        header = phoff + index * 56
+        if int.from_bytes(raw[header:header + 4], "little") != 2:
+            continue
+        start, size = u64(header + 8), u64(header + 32)
+        for position in range(start, min(start + size, len(raw) - 15), 16):
+            tag = u64(position)
+            if tag == 0:
+                break
+            tags.setdefault(tag, u64(position + 8))
+    relr = {35, 36, 0x6FFFE000, 0x6FFFE001}
+    if not _PACKED_RELOCATION_TAGS & set(tags) or relr & set(tags) or tags.get(27, 0) < 8:
+        return {}
+    return {"packed_init_entries": tags[27] // 8}
+
+
+#: Bionic's PTHREAD_RECURSIVE_MUTEX_INITIALIZER and PTHREAD_ERRORCHECK_MUTEX_INITIALIZER: the type in
+#: bits 14-15 of the first of the mutex's ten words. musl keeps its type in the low bits and reads
+#: both as a normal mutex, so a recursive lock deadlocks on its own thread.
+_BIONIC_MUTEX_TYPES = {0x4000: "recursive", 0x8000: "errorcheck"}
+_MUTEX_LOCKS = ("pthread_mutex_lock", "pthread_mutex_trylock", "pthread_mutex_timedlock")
+
+
+def _sext(value: int, bits: int) -> int:
+    return value - (1 << bits) if value & (1 << (bits - 1)) else value
+
+
+def x0_address_before(words: list[int], index: int, base: int, got: dict[int, int] | None = None) -> int | None:
+    """The address the call at ``words[index]`` passes in x0, when the instructions just before it
+    build it: adrp then add, through movs, or a GOT load (adrp then ldr). None for anything else: a
+    call, branch or other write in between, or a value from memory the GOT does not explain."""
+    # Walking back from the call: ``want`` is the register x0's value comes from, ``offset`` what
+    # adds put on top of it. A GOT load (ldr) moves the offset so far onto the loaded pointer.
+    want, offset, slot, after_load = 0, 0, None, 0
+    for j in range(index - 1, max(index - 24, -1), -1):
+        insn = words[j]
+        if (insn & 0x7C000000) == 0x14000000 or (insn & 0xFFFFFC1F) in (0xD63F0000, 0xD65F0000, 0xD61F0000):
+            return None                                   # b, bl, blr, ret, br: x0 is not built here
+        if (insn & 0x1F) != want:
+            continue
+        if (insn & 0xFF800000) == 0x91000000:             # add xd, xn, #imm{, lsl 12}
+            offset += ((insn >> 10) & 0xFFF) << (12 * ((insn >> 22) & 1))
+            want = (insn >> 5) & 0x1F
+        elif (insn & 0xFFE0FFE0) == 0xAA0003E0:           # mov xd, xm
+            want = (insn >> 16) & 0x1F
+        elif (insn & 0xFFC00000) == 0xF9400000 and slot is None and got is not None:
+            slot, after_load, offset = ((insn >> 10) & 0xFFF) * 8, offset, 0   # ldr xd, [xn, #imm]
+            want = (insn >> 5) & 0x1F
+        elif (insn & 0x9F000000) == 0x90000000:           # adrp xd, page
+            page = ((base + 4 * j) & ~0xFFF) + (_sext((((insn >> 5) & 0x7FFFF) << 2) | ((insn >> 29) & 3), 21) << 12)
+            if slot is None:
+                return page + offset
+            target = (got or {}).get(page + offset + slot)
+            return None if target is None else target + after_load
+        else:
+            return None
+    return None
+
+
+def _plt_stubs(elf: Any, names: Iterable[str]) -> tuple[set[int], dict[int, int]]:
+    """The addresses of the PLT entries that call any of ``names``, and the GOT slots whose
+    relocations hold a known address (RELATIVE, or GLOB_DAT of a symbol the library defines)."""
+    from elftools.elf.relocation import RelocationSection
+
+    names = set(names)
+    jump_slots, got = {}, {}
+    for relocations in elf.iter_sections():
+        if not isinstance(relocations, RelocationSection) or not relocations.is_RELA():
+            continue
+        symbols = elf.get_section(relocations["sh_link"])
+        for relocation in relocations.iter_relocations():
+            kind, index = relocation["r_info_type"], relocation["r_info_sym"]
+            if kind == 1026 and index:                    # R_AARCH64_JUMP_SLOT
+                jump_slots[relocation["r_offset"]] = symbols.get_symbol(index).name
+            elif kind == 1027:                            # R_AARCH64_RELATIVE
+                got[relocation["r_offset"]] = relocation["r_addend"]
+            elif kind == 1025 and index:                  # R_AARCH64_GLOB_DAT
+                symbol = symbols.get_symbol(index)
+                if symbol["st_shndx"] != "SHN_UNDEF":
+                    got[relocation["r_offset"]] = symbol["st_value"] + relocation["r_addend"]
+    stubs = set()
+    plt = elf.get_section_by_name(".plt")
+    if plt is not None:
+        code, base = plt.data(), plt["sh_addr"]
+        words = [int.from_bytes(code[i:i + 4], "little") for i in range(0, len(code) - 3, 4)]
+        for i in range(len(words) - 1):
+            adrp, load = words[i], words[i + 1]
+            if (adrp & 0x9F00001F) != 0x90000010 or (load & 0xFFC003FF) != 0xF9400211:
+                continue                                  # adrp x16, page; ldr x17, [x16, #slot]
+            page = ((base + 4 * i) & ~0xFFF) + (_sext((((adrp >> 5) & 0x7FFFF) << 2) | ((adrp >> 29) & 3), 21) << 12)
+            if jump_slots.get(page + ((load >> 10) & 0xFFF) * 8) in names:
+                stubs.add(base + 4 * i)
+                if i and words[i - 1] == 0xD503245F:      # bti c opens the entry
+                    stubs.add(base + 4 * (i - 1))
+    return stubs, got
+
+
+def _writes(insn: int, register: int) -> bool:
+    """Whether an instruction may write ``register`` (its destination field, bits 0-4). Stores name
+    the register they read there and are not writes; anything else with that field is taken as one.
+    Field 31 is sp only for add and sub (immediate); everywhere else it is xzr."""
+    if (insn & 0x1F) != register:
+        return False
+    if register == 31:
+        return (insn & 0x7F800000) in (0x11000000, 0x51000000)
+    return not ((insn & 0x0A000000) == 0x08000000 and not insn & (1 << 22))   # a store: str, stp, stur
+
+
+def register_base_before(words: list[int], index: int, register: int) -> tuple[int, int, int] | None:
+    """How the instructions just before the call at ``words[index]`` build ``register``: as another
+    register plus a constant (add xd, xn, #imm; mov xd, xm). (base register, offset, the index of the
+    instruction) or None for anything else, or a call or branch in between."""
+    for j in range(index - 1, max(index - 24, -1), -1):
+        insn = words[j]
+        if (insn & 0x7C000000) == 0x14000000 or (insn & 0xFFFFFC1F) in (0xD63F0000, 0xD65F0000, 0xD61F0000):
+            return None
+        if not _writes(insn, register):
+            continue
+        if (insn & 0xFF800000) == 0x91000000:             # add xd, xn, #imm{, lsl 12}
+            return (insn >> 5) & 0x1F, ((insn >> 10) & 0xFFF) << (12 * ((insn >> 22) & 1)), j
+        if (insn & 0xFFE0FFE0) == 0xAA0003E0:             # mov xd, xm
+            return (insn >> 16) & 0x1F, 0, j
+        return None
+    return None
+
+
+def thread_handles_in_argument(data: bytes) -> dict[str, int]:
+    """Calls to pthread_create that store the new thread's handle inside the object they hand the
+    thread: pthread_create(&obj->thread, attr, start, obj), x0 built as x3 plus a constant. Bionic
+    stores the handle before the thread runs; musl stores it after clone returns, so a thread that
+    reads its own handle there first can read 0 (ByteDance's vcbasekit names its threads with it).
+    Such a call is a risk, not a proof: the thread may never read the field."""
+    try:
+        from elftools.elf.elffile import ELFFile
+
+        elf = ELFFile(io.BytesIO(data))
+        if elf["e_machine"] != "EM_AARCH64":
+            return {}
+        stubs, _ = _plt_stubs(elf, ("pthread_create",))
+        text = elf.get_section_by_name(".text")
+        if not stubs or text is None:
+            return {}
+        code, base = text.data(), text["sh_addr"]
+        words = [w for (w,) in struct.iter_unpack("<I", code[:len(code) - len(code) % 4])]
+        calls = 0
+        for index, insn in enumerate(words):
+            if (insn & 0xFC000000) != 0x94000000 or base + 4 * index + _sext(insn & 0x3FFFFFF, 26) * 4 not in stubs:
+                continue
+            handle, argument = register_base_before(words, index, 0), register_base_before(words, index, 3)
+            if handle is None or argument is None or argument[1] != 0 or handle[0] != argument[0]:
+                continue
+            # The shared base must hold one value for both: not rewritten after the first of them.
+            if not any(_writes(words[j], handle[0]) for j in range(min(handle[2], argument[2]) + 1, index)):
+                calls += 1
+        return {"thread_handle_in_argument": calls} if calls else {}
+    except Exception:
+        return {}
+
+
+#: Bionic's TLS slots above the arm64 thread pointer (bionic/libc/platform/bionic/tls_defines.h), by
+#: byte offset. Slot 5, the stack guard, is read by nearly all Android-built code and is not counted.
+_BIONIC_TLS_SLOTS = {0: "self", 8: "thread id", 16: "app", 24: "opengl", 32: "opengl api", 48: "sanitizer",
+                     56: "art thread self"}
+
+
+def bionic_tls_slots(data: bytes) -> dict[str, Any]:
+    """Bionic TLS slots the library's code reads directly: mrs xT, tpidr_el0, then a load from xT at
+    one of the slots' fixed offsets. OH musl keeps its own slots below the thread pointer and its TLS
+    blocks above it, so these words hold something else: ByteDance's security libraries inline
+    Bionic's vfork, which clears pthread_internal_t's cached pid through the thread id slot (CapCut
+    stored to -1 + 20), and profilers read ART's Thread* from slot 7."""
+    try:
+        from elftools.elf.elffile import ELFFile
+
+        elf = ELFFile(io.BytesIO(data))
+        if elf["e_machine"] != "EM_AARCH64":
+            return {}
+        text = elf.get_section_by_name(".text")
+        if text is None:
+            return {}
+        code = text.data()
+        words = [w for (w,) in struct.iter_unpack("<I", code[:len(code) - len(code) % 4])]
+        found: Counter = Counter()
+        for index, insn in enumerate(words):
+            if (insn & 0xFFFFFFE0) != 0xD53BD040:                 # mrs xT, tpidr_el0
+                continue
+            register = insn & 0x1F
+            for later in words[index + 1:index + 5]:
+                if (later & 0xFFC00000) == 0xF9400000 and ((later >> 5) & 0x1F) == register:   # ldr xM, [xT, #imm]
+                    offset = ((later >> 10) & 0xFFF) * 8
+                    if offset in _BIONIC_TLS_SLOTS:
+                        found[_BIONIC_TLS_SLOTS[offset]] += 1
+                    break
+                if _writes(later, register):
+                    break
+        return {"bionic_tls_slots": dict(sorted(found.items()))} if found else {}
+    except Exception:
+        return {}
+
+
+def bionic_static_mutexes(data: bytes) -> dict[str, Any]:
+    """Mutexes initialized with Bionic's recursive or error-checking static initializer that the
+    library's code locks: one whose address is built right before a call to pthread_mutex_lock (or
+    trylock, timedlock). A ten-word object in .data that only looks like one, and is never passed to
+    a lock, is not counted; one locked through a pointer kept elsewhere is missed."""
+    try:
+        from elftools.elf.elffile import ELFFile
+
+        elf = ELFFile(io.BytesIO(data))
+        if elf["e_machine"] != "EM_AARCH64":
+            return {}
+        section = elf.get_section_by_name(".data")
+        if section is None or section["sh_type"] == "SHT_NOBITS":
+            return {}
+        contents, start = section.data(), section["sh_addr"]
+        candidates = {}
+        for at in range((-start) % 4, len(contents) - 39, 4):
+            first = int.from_bytes(contents[at:at + 4], "little")
+            if first in _BIONIC_MUTEX_TYPES and not any(contents[at + 4:at + 40]):
+                candidates[start + at] = _BIONIC_MUTEX_TYPES[first]
+        if not candidates:
+            return {}
+        stubs, got = _plt_stubs(elf, _MUTEX_LOCKS)
+        text = elf.get_section_by_name(".text")
+        if not stubs or text is None:
+            return {}
+        code, base = text.data(), text["sh_addr"]
+        words = [w for (w,) in struct.iter_unpack("<I", code[:len(code) - len(code) % 4])]
+        locked = {}
+        for index, insn in enumerate(words):
+            if (insn & 0xFC000000) == 0x94000000 and base + 4 * index + _sext(insn & 0x3FFFFFF, 26) * 4 in stubs:
+                address = x0_address_before(words, index, base, got)
+                if address in candidates:
+                    locked[address] = candidates[address]
+        if not locked:
+            return {}
+        counts = Counter(locked.values())
+        return {"bionic_static_mutexes": dict(sorted(counts.items()))}
+    except Exception:
+        return {}
+
+
 def read_elf(
     path: Path | None = None,
     data: bytes | None = None,
@@ -382,6 +764,17 @@ def read_elf(
             "build_id": build_id,
             "needed": needed,
             "android_relocation_tags": _android_relocation_tags(text),
+            "null_array_entries": null_array_entries(raw),
+            **packed_init_entries(raw),
+            **art_internal_names(raw),
+            **signal_lookups(raw, set(undefined) | set(undefined_weak)),
+            **egl_lookups(raw, set(undefined) | set(undefined_weak)),
+            **gles3_lookups(raw, set(undefined) | set(undefined_weak)),
+            **vm_lookups(raw, set(undefined) | set(undefined_weak), set(exports or ())),
+            **bionic_static_mutexes(raw),
+            **thread_handles_in_argument(raw),
+            **bionic_tls_slots(raw),
+            **import_versions(text),
             "exported_symbols": sorted(exports),
             "undefined_symbols": sorted(undefined),
             "undefined_weak_symbols": sorted(undefined_weak),
@@ -582,9 +975,75 @@ class DexInventory:
     load_libraries: list[dict[str, Any]] = field(default_factory=list)
     service_requests: list[dict[str, Any]] = field(default_factory=list)
     jca_requests: list[dict[str, Any]] = field(default_factory=list)
+    feature_queries: list[dict[str, Any]] = field(default_factory=list)
     nonnull_casts: list[dict[str, Any]] = field(default_factory=list)
     native_methods: list[dict[str, Any]] = field(default_factory=list)
     superclasses: dict[str, str] = field(default_factory=dict)
+    own_intent_names: set[str] = field(default_factory=set)
+    # Android's SQLite collations the app's SQL names (COLLATE UNICODE / LOCALIZED / PHONEBOOK).
+    sql_collations: set[str] = field(default_factory=set)
+    # Classes defining one of AFTER_START_CALLBACKS, with which ones.
+    after_start_callbacks: dict[str, set[str]] = field(default_factory=dict)
+
+
+_SQL_COLLATION = re.compile(r"\bCOLLATE\s+(UNICODE|LOCALIZED|PHONEBOOK)\b", re.I)
+
+
+def sql_collations(strings: Iterable[str]) -> set[str]:
+    """The collations Android registers on every SQLite connection that the app's SQL names:
+    Fossify Notes reads its notes "ORDER BY title COLLATE UNICODE"."""
+    return {m.group(1).upper() for text in strings if "OLLATE" in text.upper()
+            for m in _SQL_COLLATION.finditer(text)}
+
+
+def named_filter_targets(strings: Iterable[str], targets: dict[str, list[str]]) -> set[str]:
+    """Which of the app's own filter schemes and actions (activity_filter_targets) its code names:
+    a scheme as a string of its own (Uri.Builder().scheme(...)) or opening a URI, an action whole.
+    Such a string is how the app reaches its own activities by implicit intent."""
+    schemes, actions = set(targets.get("schemes") or ()), set(targets.get("actions") or ())
+    if not schemes and not actions:
+        return set()
+    found = set()
+    for text in strings:
+        if text in schemes or text in actions:
+            found.add(text)
+        elif ":" in text and text.split(":", 1)[0] in schemes:
+            found.add(text.split(":", 1)[0])
+    return found
+
+
+# Callbacks Android makes after onStart on an activity's way to its first resume, from the pending
+# actions its launch marked: onRestoreInstanceState (with a saved state) and onPostCreate. A provider
+# that resumes in a transaction of its own finds those actions cleared and makes neither.
+AFTER_START_CALLBACKS = frozenset({"onPostCreate", "onRestoreInstanceState"})
+# Library activities whose overrides of them are left out: AppCompat's onPostCreate installs a decor
+# that setContentView has already installed.
+_LIBRARY_ACTIVITY_PREFIXES = ("Landroidx/", "Landroid/support/", "Lcom/google/android/material/")
+
+
+def _renamed(descriptor: str) -> bool:
+    """A class R8 renamed: every segment of its name one or two characters (AppCompatActivity is
+    Lk/h; in linphone). A manifest activity keeps its name; an app's renamed base class is
+    indistinguishable from a library's and is left out."""
+    return all(len(part) <= 2 for part in descriptor[1:-1].split("/"))
+
+
+def after_start_overrides(activities: list[str], superclasses: dict[str, str],
+                          callbacks: dict[str, set[str]]) -> list[dict[str, Any]]:
+    """The app's activities whose own classes override an AFTER_START_CALLBACKS callback: the most
+    derived such class in each activity's chain, the activity itself or a base class that kept its
+    name. Linphone's MainActivity marks its first screen ready in onPostCreate and cancels every
+    draw until then."""
+    found = []
+    for name in activities:
+        current, depth = "L" + name.replace(".", "/") + ";", 0
+        while current and depth < 32:
+            if current in callbacks and not current.startswith(_LIBRARY_ACTIVITY_PREFIXES) \
+                    and (depth == 0 or not _renamed(current)):
+                found.append({"activity": name, "class": current, "callbacks": sorted(callbacks[current])})
+                break
+            current, depth = superclasses.get(current), depth + 1
+    return found
 
 
 def _activity_chains(activities: list[str], superclasses: dict[str, str]) -> dict[str, list[str]]:
@@ -598,17 +1057,27 @@ def _activity_chains(activities: list[str], superclasses: dict[str, str]) -> dic
     return chains
 
 
-def inventory_dex(path: Path) -> DexInventory:
+def inventory_dex(path: Path, filter_targets: dict[str, list[str]] | None = None) -> DexInventory:
     quiet_androguard()
     result = DexInventory()
     for dex_name, blob in dex_blobs(path):
         dex = DEX(blob)
         dex_sha256 = sha256_bytes(blob)
         result.dex_entries.append({"name": dex_name, "sha256": dex_sha256, "bytes": len(blob)})
+        try:
+            strings = [str(text) for text in dex.get_strings()]
+        except Exception:
+            strings = []
+        if filter_targets:
+            result.own_intent_names |= named_filter_targets(strings, filter_targets)
+        result.sql_collations |= sql_collations(strings)
         for c in dex.get_classes():
             result.defined_classes.add(str(c.get_name()))
             # Kept for the activity hierarchy: which engine base class a launch activity extends.
             result.superclasses[str(c.get_name())] = str(c.get_superclassname() or "")
+            for m in c.get_methods():
+                if str(m.get_name()) in AFTER_START_CALLBACKS and str(m.get_descriptor()).startswith("(Landroid/os/Bundle;"):
+                    result.after_start_callbacks.setdefault(str(c.get_name()), set()).add(str(m.get_name()))
         for type_idx in range(dex.get_header_item().type_ids_size):
             type_name = component_type(str(dex.get_cm_type(type_idx)))
             if is_platform_type(type_name):
@@ -630,12 +1099,31 @@ def inventory_dex(path: Path) -> DexInventory:
     return result
 
 
+def _class_outlines(dex: DEX) -> dict[tuple[str, str, str], str]:
+    """Static methods whose whole body returns one class constant. R8 outlines a const-class of a
+    platform class newer than the app's minSdk into such a method, so the caller's own code never
+    names the class: Fossify Messages asks getSystemService(k7.i()) for its RoleManager."""
+    found: dict[tuple[str, str, str], str] = {}
+    for class_def in dex.get_classes():
+        for method in class_def.get_methods():
+            if compact_descriptor(method.get_descriptor()) != "()Ljava/lang/Class;" or method.get_code() is None:
+                continue
+            try:
+                body = list(method.get_instructions())
+                if [i.get_name() for i in body] == ["const-class", "return-object"]:
+                    found[method_tuple(method)] = str(dex.get_cm_type(int(body[0].get_ref_kind())))
+            except Exception:
+                continue
+    return found
+
+
 def _inventory_defined_methods(
     dex: DEX,
     dex_name: str,
     dex_sha256: str,
     out: DexInventory,
 ) -> None:
+    outlines = _class_outlines(dex)
     for class_def in dex.get_classes():
         for method in class_def.get_methods():
             flags = set(str(method.get_access_flags_string()).split())
@@ -662,12 +1150,20 @@ def _inventory_defined_methods(
                 "method": str(method.get_name()),
                 "descriptor": compact_descriptor(method.get_descriptor()),
             }
-            _inventory_instructions(dex, method, caller, out)
+            _inventory_instructions(dex, method, caller, out, outlines)
 
 
-def _inventory_instructions(dex: DEX, method: Any, caller: dict[str, Any], out: DexInventory) -> None:
+def _inventory_instructions(dex: DEX, method: Any, caller: dict[str, Any], out: DexInventory,
+                            outlines: dict[tuple[str, str, str], str] | None = None) -> None:
     string_regs: dict[int, str] = {}
     class_regs: dict[int, str] = {}
+    # The class an outline (see _class_outlines) just returned, for the move-result right after it.
+    outlined: str | None = None
+    # A service request whose result is about to be null-checked: R8 compiles Kotlin's non-null
+    # checks to Object.getClass() on the value (or keeps Intrinsics.checkNotNull*), so a null
+    # manager throws a few instructions after the call. clauncher's HomeFragment does that to
+    # getSystemService("device_policy").
+    pending: dict[str, Any] | None = None
     for offset, instruction in method.get_instructions_idx():
         name = instruction.get_name()
         try:
@@ -675,6 +1171,28 @@ def _inventory_instructions(dex: DEX, method: Any, caller: dict[str, Any], out: 
         except Exception:
             operands = []
         registers = [int(op[1]) for op in operands if int(op[0]) == 0]
+        if pending is not None:
+            if pending["register"] is None:
+                # The result is taken right after the call, or discarded.
+                if name == "move-result-object" and registers:
+                    pending["register"] = registers[0]
+                else:
+                    pending = None
+            elif registers and registers[0] == pending["register"] \
+                    and name.startswith("invoke-") and _is_null_check(dex, instruction):
+                pending["request"]["null_checked"] = True
+                pending = None
+            if pending is not None:
+                pending["left"] -= 1
+                if pending["left"] <= 0:
+                    pending = None
+        if outlined is not None:
+            if name == "move-result-object" and registers:
+                class_regs[registers[0]] = outlined
+                string_regs.pop(registers[0], None)
+                outlined = None
+                continue
+            outlined = None
 
         if name in {"const-string", "const-string/jumbo"} and registers:
             string_regs[registers[0]] = str(instruction.get_string())
@@ -718,14 +1236,20 @@ def _inventory_instructions(dex: DEX, method: Any, caller: dict[str, Any], out: 
                 owner, target, proto = dex.get_cm_method(ref_kind)
                 descriptor = compact_descriptor(proto)
                 key = (str(owner), str(target), descriptor)
+                if outlines and name.startswith("invoke-static") and key in outlines:
+                    outlined = outlines[key]
                 out.callable_owners.add(str(owner))
                 if is_platform_type(str(owner)):
                     out.method_refs[key] += 1
                     if len(out.method_sites[key]) < 8:
                         out.method_sites[key].append({**caller, "offset": offset, "opcode": name})
                 _detect_string_call(key, registers, string_regs, caller, offset, out)
+                requested = len(out.service_requests)
                 _detect_service_call(key, registers, string_regs, class_regs, caller, offset, out)
+                if len(out.service_requests) > requested:
+                    pending = {"request": out.service_requests[-1], "register": None, "left": 6}
                 _detect_jca_call(key, registers, string_regs, caller, offset, out)
+                _detect_feature_query(key, registers, string_regs, caller, offset, out)
             except (IndexError, TypeError, ValueError):
                 pass
         elif (
@@ -838,6 +1362,41 @@ def _detect_service_call(
         return
     request["dynamic"] = request.get("service") is None and request.get("manager_class") is None
     out.service_requests.append({**caller, "offset": offset, "call_owner": owner, **request})
+
+
+_NULL_CHECKS = {
+    ("Ljava/lang/Object;", "getClass"),
+    ("Ljava/util/Objects;", "requireNonNull"),
+    ("Lkotlin/jvm/internal/Intrinsics;", "checkNotNull"),
+    ("Lkotlin/jvm/internal/Intrinsics;", "checkNotNullExpressionValue"),
+    ("Lkotlin/jvm/internal/Intrinsics;", "checkNotNullParameter"),
+}
+
+
+def _is_null_check(dex: DEX, instruction: Any) -> bool:
+    """An invoke that throws when its first argument is null and is there only to check it."""
+    try:
+        owner, target, _ = dex.get_cm_method(int(instruction.get_ref_kind()))
+    except Exception:
+        return False
+    return (str(owner), str(target)) in _NULL_CHECKS
+
+
+def _detect_feature_query(
+    key: tuple[str, str, str],
+    registers: list[int],
+    string_regs: dict[int, str],
+    caller: dict[str, Any],
+    offset: int,
+    out: DexInventory,
+) -> None:
+    """PackageManager.hasSystemFeature(name[, version]). The FEATURE_* names are compile-time
+    constants, so the name is in a register at the call (None where it is computed)."""
+    owner, name, descriptor = key
+    if name != "hasSystemFeature" or len(registers) < 2 or not descriptor.startswith("(Ljava/lang/String;"):
+        return
+    out.feature_queries.append({**caller, "offset": offset, "call_owner": owner,
+                                "feature": string_regs.get(registers[1])})
 
 
 KOTLIN_NONNULL_CAST = "null cannot be cast to non-null type "
@@ -966,6 +1525,111 @@ def _launch_targets(apk: Any) -> list[str]:
         pass
     return sorted({targets.get(name, name) for name in (apk.get_main_activities() or [])})
 
+#: Schemes an app's filters share with everyone: the web, files, content and the platform's own
+#: handlers. Any other scheme an activity's filter declares names the app's own deep links.
+_SHARED_SCHEMES = {"http", "https", "file", "content", "geo", "tel", "mailto", "sms", "smsto", "mms", "mmsto",
+                   "market", "intent", "android-app", "data", "ftp", "rtsp", "about", "javascript", "package",
+                   "ws", "wss", "magnet", "otpauth", "webcal", "voicemail", "sip"}
+
+
+def activity_filter_targets(apk: Any) -> dict[str, list[str]]:
+    """The schemes and actions the app's own activity filters declare that no platform handler
+    shares: its deep-link schemes (Shazam's shazam_activity) and its own actions. A string resource
+    in the manifest is resolved, as Android's parser resolves it."""
+    ns = "{http://schemas.android.com/apk/res/android}"
+    resources = None
+
+    def value(text: str | None) -> str | None:
+        nonlocal resources
+        if not text or not text.startswith("@"):
+            return text
+        try:
+            resources = resources or apk.get_android_resources()
+            configs = resources.get_resolved_res_configs(int(text[1:], 16))
+            return str(configs[0][1]) if configs else None
+        except Exception:
+            return None
+
+    schemes, actions = set(), set()
+    try:
+        manifest = apk.get_android_manifest_xml()
+        for activity in manifest.iter():
+            if activity.tag not in ("activity", "activity-alias"):
+                continue
+            for element in activity.iter():
+                if element.tag == "data":
+                    scheme = value(element.get(ns + "scheme"))
+                    if scheme and scheme.lower() not in _SHARED_SCHEMES:
+                        schemes.add(scheme)
+                elif element.tag == "action":
+                    action = value(element.get(ns + "name"))
+                    if action and not action.startswith(("android.", "com.android.", "com.google.android.")):
+                        actions.add(action)
+    except Exception:
+        pass
+    return {"schemes": sorted(schemes), "actions": sorted(actions)}
+
+
+_SHOW_WALLPAPER = 0x01010292  # android:attr/windowShowWallpaper
+# The framework's themes that show the wallpaper (public-final.xml's Theme.*Wallpaper*): an app theme
+# that inherits one shows it unless it says otherwise.
+_FRAMEWORK_WALLPAPER_THEMES = frozenset({0x0103005e, 0x0103005f, 0x01030060, 0x01030061, 0x01030062, 0x0103007d,
+                                         0x0103007e, 0x0103013c, 0x0103013d, 0x01030235, 0x01030236})
+
+
+def _shows_wallpaper(resources: Any, theme: int, seen: set[int]) -> bool:
+    """Whether a theme sets windowShowWallpaper, or, where it does not say, the parent it inherits from."""
+    if not theme or theme in seen or len(seen) > 32:
+        return False
+    seen.add(theme)
+    if theme >> 24 == 0x01:
+        return theme in _FRAMEWORK_WALLPAPER_THEMES
+    try:
+        configs = resources.get_res_configs(theme)
+    except Exception:
+        return False
+    said, parents = [], []
+    for _config, entry in configs:
+        if not entry.is_complex():
+            continue
+        for attr, value in entry.item.items:
+            if attr == _SHOW_WALLPAPER:
+                if value.data_type == 0x12:  # TYPE_INT_BOOLEAN
+                    said.append(value.data != 0)
+                elif value.data_type == 0x01:  # a reference to a bool resource
+                    try:
+                        resolved = resources.get_resolved_res_configs(value.data)
+                        said.append(bool(resolved) and str(resolved[0][1]).lower() == "true")
+                    except Exception:
+                        pass
+        parents.append(entry.item.id_parent)
+    if said:
+        return any(said)
+    return any(_shows_wallpaper(resources, parent, seen) for parent in parents)
+
+
+def wallpaper_activities(apk: Any) -> list[str]:
+    """Activities whose theme (theirs, else the application's) shows the wallpaper behind their window:
+    launchers and wallpaper settings. Android draws the wallpaper under such a window."""
+    ns = "{http://schemas.android.com/apk/res/android}"
+    resource_id = lambda text: int(text[1:], 16) if text and re.fullmatch(r"@[0-9A-Fa-f]{8}", text) else 0
+    try:
+        resources = apk.get_android_resources()
+        manifest = apk.get_android_manifest_xml()
+        application = manifest.find("application")
+        default = resource_id(application.get(ns + "theme")) if application is not None else 0
+        package = apk.get_package() or ""
+        found = set()
+        for activity in manifest.iter("activity"):
+            name = activity.get(ns + "name") or ""
+            name = package + name if name.startswith(".") else name
+            if name and _shows_wallpaper(resources, resource_id(activity.get(ns + "theme")) or default, set()):
+                found.add(name)
+        return sorted(found)
+    except Exception:
+        return []
+
+
 def apk_metadata(path: Path) -> dict[str, Any]:
     quiet_androguard()
     base = {
@@ -1023,7 +1687,10 @@ def apk_metadata(path: Path) -> dict[str, Any]:
             # A launcher entry may be an <activity-alias>: no class has its name, and what
             # starts is its targetActivity (Organic Maps, Element, Gallery, Fennec).
             "main_activities": _launch_targets(apk),
+            "activity_filter_targets": activity_filter_targets(apk),
+            "wallpaper_activities": wallpaper_activities(apk),
             "activities": len(apk.get_activities() or []),
+            "activity_names": sorted(apk.get_activities() or []),
             "services": len(apk.get_services() or []),
             "receivers": len(apk.get_receivers() or []),
             "providers": len(apk.get_providers() or []),
@@ -1050,6 +1717,39 @@ def apk_elf_inventory(path: Path) -> list[dict[str, Any]]:
                 with zipfile.ZipFile(io.BytesIO(outer.read(apk_name))) as inner:
                     _append_elf_records(inner, f"{apk_name}!", records)
     return records
+
+
+def unpacked_elf_inventory(directory: Path, packaged: Iterable[dict[str, Any]] = ()) -> list[dict[str, Any]]:
+    """The libraries an app wrote under its data directory at run time, harvested from a run.
+
+    A superpack unpacked by SoLoader (WhatsApp's files/decompressed/libs.spo/, Instagram's
+    lib-compressed/), Chaquopy's extracted modules or a downloaded plugin is code the APK does not
+    package as lib/<abi>/*.so, so no scan of the APK sees its imports. ``directory`` holds the files as
+    <pkg>/<path> with a harvest.json listing each one's device path (inputs run4.sh). A file with the
+    hash of a packaged library is that library extracted again and is left out; a file that is not
+    an ELF file (an archive or a partial write under a .so name) is skipped.
+    """
+    manifest = json.loads((directory / "harvest.json").read_text())
+    seen = {record.get("sha256") for record in packaged}
+    records: list[dict[str, Any]] = []
+    for entry in manifest.get("libraries", []):
+        if not entry.get("elf") or entry.get("sha256") in seen:
+            continue
+        seen.add(entry.get("sha256"))
+        path = directory / entry["file"]
+        try:
+            record = read_elf(path=path, label=entry["device_path"])
+        except (OSError, subprocess.SubprocessError) as exc:
+            record = {"name": entry["device_path"], "error": str(exc)}
+        record["origin"] = "unpacked"
+        record["harvest_file"] = str(path)
+        records.append(record)
+    return records
+
+
+def is_unpacked(record: dict[str, Any]) -> bool:
+    """A library the app wrote at run time: the launcher cannot name it, only what the APK packages."""
+    return record.get("origin") == "unpacked"
 
 
 def _append_elf_records(
@@ -1092,7 +1792,13 @@ def _append_elf_records(
 
 
 def _read_archive_member(path: Path, record: dict[str, Any]) -> bytes | None:
-    """Read one packaged ELF back out of the APK, including from a nested split archive."""
+    """Read one packaged ELF back out of the APK, including from a nested split archive, or a
+    harvested one from its file."""
+    if record.get("harvest_file"):
+        try:
+            return Path(record["harvest_file"]).read_bytes()
+        except OSError:
+            return None
     entry = record.get("archive_entry")
     if not entry:
         return None
@@ -1201,11 +1907,14 @@ def scan_apk(
     target_abi: str | None = None,
     native_reach: bool = False,
     platform_members: dict[str, Any] | None = None,
+    unpacked_libs: Path | None = None,
 ) -> dict[str, Any]:
-    inventory = inventory_dex(path)
-    resolver = RuntimeResolver(runtime)
     identity = apk_metadata(path)
+    inventory = inventory_dex(path, identity.get("activity_filter_targets"))
+    resolver = RuntimeResolver(runtime)
     elf_records = apk_elf_inventory(path) if include_elf else []
+    if include_elf and unpacked_libs is not None:
+        elf_records += unpacked_elf_inventory(unpacked_libs, elf_records)
     target_abi = target_abi or runtime.get("target_abi") or _single_elf_abi(runtime.get("bridge_libraries", []))
     available_abis = sorted({record["abi"] for record in elf_records if record.get("abi")})
     if target_abi:
@@ -1510,6 +2219,7 @@ def scan_apk(
         "inventory": {
             "dex_entries": inventory.dex_entries,
             "defined_classes": len(defined),
+            "library_markers": sorted(name for name, marker in LIBRARY_MARKERS.items() if marker in defined),
             # Each launch activity's superclass chain, up to the first class the APK does not
             # define: which engine base class (libGDX, SDL, Flutter, NativeActivity...) it runs on.
             "launch_activity_chains": _activity_chains(identity.get("main_activities") or [], inventory.superclasses),
@@ -1520,7 +2230,12 @@ def scan_apk(
             "load_library_calls": inventory.load_libraries,
             "service_requests": inventory.service_requests,
             "jca_requests": inventory.jca_requests,
+            "feature_queries": inventory.feature_queries,
             "nonnull_casts": inventory.nonnull_casts,
+            "own_intent_names": sorted(inventory.own_intent_names),
+            "sql_collations": sorted(inventory.sql_collations),
+            "after_start_overrides": after_start_overrides(identity.get("activity_names") or [],
+                                                           inventory.superclasses, inventory.after_start_callbacks),
             "native_upcalls": native_upcalls if platform_members is not None else None,
             "platform_method_names": _method_names_by_owner(inventory.method_refs),
             "declared_native_methods": native_findings,
@@ -1534,8 +2249,9 @@ def scan_apk(
                 "abi_mismatch_elf_count": sum(
                     not record.get("abi_matches_machine", True) for record in elf_records
                 ),
-                "packaged_elf_count": len(elf_records),
-                "selected_packaged_elf_count": len(selected_elfs),
+                "packaged_elf_count": sum(not is_unpacked(record) for record in elf_records),
+                "unpacked_elf_count": sum(is_unpacked(record) for record in elf_records),
+                "selected_packaged_elf_count": sum(not is_unpacked(record) for record in selected_elfs),
                 "selected_runtime_elf_count": len(selected_runtime_elfs),
                 "recovered_registration_entry_count": sum(
                     len(elf.get("jni_registration_entries", [])) for elf in selected_elfs

@@ -1,5 +1,5 @@
 {
-  "description": "The white-box probes run on every build by probes/run_suite.py. Markers are fixed strings looked for in the probe child's log; all 'pass' markers must appear, any 'fail' marker ends the probe. A 'tap' action writes the coordinates a probe logs into the tap channel.",
+  "description": "The white-box probes run on every build by probes/run_suite.py. Markers are fixed strings looked for in the probe child's log; all 'pass' markers must appear, any 'fail' marker ends the probe, and so does any 'fail_hilog' marker in the probe process's hilog once it passes. A 'tap' action writes the coordinates a probe logs into the tap channel.",
   "probes": [
     {
       "name": "service-metadata",
@@ -52,19 +52,15 @@
       "lock_key": "dialog-before-window-probe",
       "apk": "dialog-before-window/out/dialog-before-window-probe.apk",
       "pass": [
-        "placement=CENTRED",
-        "width=FITS",
-        "alertWidth=FITS",
-        "dialog button clicked"
+        "[WL-CONTRACT] done"
       ],
-      "fail": [
-        "placement=NOT_CENTRED",
-        "width=OVERFLOWS",
-        "alertWidth=OVERFLOWS"
-      ],
+      "fail": [],
       "tap": {
         "after": "button center=",
         "pattern": "button center=(\\d+),(\\d+)"
+      },
+      "contracts": {
+        "prefix": "[WL-CONTRACT] "
       }
     },
     {
@@ -92,6 +88,56 @@
         "phase=searchpath verdict=FAIL",
         "phase=windowcontext verdict=FAIL"
       ]
+    },
+    {
+      "name": "gl-contracts",
+      "lock_key": "gl-contracts-probe",
+      "apk": "gl-contracts/out/gl-contracts-probe.apk",
+      "pass": [
+        "[WL-GL-PROBE] verdict=ALL_PASS"
+      ],
+      "fail": [
+        "verdict=FAIL"
+      ],
+      "fail_hilog": [
+        "NativeWindowRequestBuffer>: RequestBuffer ret:"
+      ]
+    },
+    {
+      "name": "media-contracts",
+      "lock_key": "media-contracts-probe",
+      "apk": "media-contracts/out/media-contracts-probe.apk",
+      "pass": [
+        "[WL-CONTRACT] done"
+      ],
+      "fail": [],
+      "contracts": {
+        "prefix": "[WL-CONTRACT] "
+      }
+    },
+    {
+      "name": "framework-contracts",
+      "lock_key": "framework-contracts-probe",
+      "apk": "framework-contracts/out/framework-contracts-probe.apk",
+      "pass": [
+        "[WL-CONTRACT] done"
+      ],
+      "fail": [],
+      "contracts": {
+        "prefix": "[WL-CONTRACT] "
+      }
+    },
+    {
+      "name": "icu-data",
+      "lock_key": "icu-data-probe",
+      "apk": "icu-data/out/icu-data-probe.apk",
+      "pass": [
+        "[WL-CONTRACT] done"
+      ],
+      "fail": [],
+      "contracts": {
+        "prefix": "[WL-CONTRACT] "
+      }
     }
   ]
 }
