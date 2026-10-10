@@ -15,6 +15,7 @@ inherits: project
 - 先复现再改:未逐字节复现 `84695d62` 或 `8ab85446` 之前,不出带补丁的新件;复现不了就列出差异(TU、符号、编译选项、链接顺序、build-id)并停报。
 - 工具链用已证的冻结 clang(cx-build 证 `libapp_native_loader` eebd62f2 逐字节复现);容器与工具链 SHA 入回执。
 - 大文件(源码快照 tar、中间对象)放 hw248 `/home/alvin/`,仓库记路径与 SHA;构建执行日志原样 tee 到持久位置。
+- 并入「产物可重编门」(用户 2026-10-10 定):同一套机制推广到每个上板件(先 adapter 84695d62/8ab85446 与 runtime 18763dd4——runtime 的源码在本机 `westlake-harness-bms-deploy/benchmark/2026-09-30-n3b-webview/src/` 补齐 webview_publication.cpp 后由 cc-t3 复现),出一张表 `knowledge/gates/rebuildable-artifacts.json`:每件=SHA、源码快照、工具链、构建命令、最近一次复现结果;编不回来的标「锁死件」并写出处与缺口。门可定期重跑。
 
 ## 边界
 
@@ -51,6 +52,12 @@ inherits: project
   假设 The pinned inputs and the frozen toolchain in the local container
   当 The arm64 adapter is built twice from a clean tree
   那么 Both builds equal 84695d62 or 8ab85446 byte for byte and the raw build logs are kept
+
+场景: Rebuildability table marks locked artifacts
+  测试: demo_baseline_adapter_buildchain
+  假设 The deployed parts listed in the U13 runtime fingerprint
+  当 The rebuild gate runs over them
+  那么 Each part is marked reproduced or locked and every locked part names its provenance and the missing input
 
 场景: Irreproducible build stops with a difference report
   测试: demo_baseline_adapter_buildchain
