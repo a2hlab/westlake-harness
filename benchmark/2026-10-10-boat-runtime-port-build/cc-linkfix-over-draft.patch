@@ -1,0 +1,23 @@
+diff --git aa/android_graphics_compat_shim.cpp bb/android_graphics_compat_shim.cpp
+index 33eb1f09be..e579cbbb08 100644
+--- aa/android_graphics_compat_shim.cpp
++++ bb/android_graphics_compat_shim.cpp
+@@ -56,6 +56,10 @@ extern "C" int HiLogPrint(int type, int level, unsigned int domain,
+ // "symbol not found" SIGSEGV (regressed the render runtime). Declared weak so
+ // the REAL impls (noice build, which compiles the SQLite .cpp) override; for
+ // Unity/eglprobe (no Android SQLite) the no-op is harmless.
++// [cc-t3 link-fix 2026-10-10] global-scope fwd decl: the draft put this static helper decl inside
++// android::(anonymous namespace) while its definition is at global scope -> undefined symbol at link.
++// A global-scope decl makes decl+def one internal-linkage symbol; the in-namespace call resolves to it.
++static void nwfs_apply_window_geometry(void* nw, const char* where, int32_t w, int32_t h);
+ namespace android {
+ __attribute__((weak)) int register_android_database_SQLiteConnection(JNIEnv*) { return 0; }
+ __attribute__((weak)) int register_android_database_SQLiteGlobal(JNIEnv*)     { return 0; }
+@@ -539,7 +543,6 @@ static void* oh_rs_get_child_surface_window(int32_t sessionId, int64_t childKey,
+ }
+ 
+ extern "C" void nwfs_seed_window_geometry(void* nw, const char* where);
+-static void nwfs_apply_window_geometry(void* nw, const char* where, int32_t w, int32_t h);
+ 
+ // [STAGE2-UNITY 2026-06-28] Signature aligned to THIS framework.jar's
+ // BLASTBufferQueue.java: nativeUpdate(long ptr, long sc, long width,

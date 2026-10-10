@@ -1,0 +1,50 @@
+{
+  "task": "boat-runtime-port-build: cold-repro 18763dd4 + apply cx-bms geometry port + ABI gate",
+  "lane": "cc-t3", "campaign": 91, "date": "2026-10-10", "board": "none (offline, container build)",
+  "cold_reproduction": {
+    "recipe": "rebuildable-artifacts.json runtime-u13-18763dd4 (build_command.status=verified)",
+    "prepare": "benchmark/2026-10-10-adapter-buildchain/prepare_runtime_cold.py --out <fresh>",
+    "build": "dockbuild.sh run -- bash <fresh>/run.sh (a2hlab-build:24.04, frozen clang-15 b107ce03)",
+    "built_sha256": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae",
+    "byte_identical_to_18763dd4": true,
+    "note": "The stale FZ-009 webview-TU byte-repro-FAIL note is superseded: t2c-runtime-reproduction-20261010 is a complete snapshot (includes webview_publication.cpp) and reproduces the deployed bytes."
+  },
+  "patchable_baseline": {
+    "tu": "benchmark/2026-10-02-m1-session-slots/runtime/src/android_graphics_compat_shim.cpp",
+    "baseline_sha256_short": "e28f4bc3", "git_tracked": true,
+    "note": "The worktree TU at HEAD IS the patchable baseline (empty patch series). recipe.sh L318 compiles this exact path. Candidate builds copy the patched TU over it and git-checkout restores afterwards (worktree left clean)."
+  },
+  "cx_bms_draft_patch": {
+    "spec": "benchmark/2026-10-10-boat-runtime-port-spec/ (771128f482)",
+    "patch": "u13-geometry-draft.patch (single TU, +17/-21, M1 session-slots geometry TU)",
+    "applies_to_source": true,
+    "spec_test_port_py": "8/8 PASS (source-level only)",
+    "BUILD_RESULT": "LINK FAILURE",
+    "error": "ld.lld: undefined symbol: android::(anonymous namespace)::nwfs_apply_window_geometry(void*, char const*, int, int), referenced by BBQ_nativeUpdate",
+    "root_cause": "The original nwfs_seed_window_geometry was extern \"C\" (C linkage, namespace-agnostic: decl@544 in android::anon and def@1225 at global scope matched). The draft makes the new helper nwfs_apply_window_geometry `static` (C++ internal linkage) but forward-declares it INSIDE android::(anonymous namespace) (with the caller) while DEFINING it at global scope -> two distinct symbols -> undefined at link.",
+    "why_spec_tests_missed_it": "test_port.py validates the source TEXT transform and `git apply --check` only; it never compiles/links. Source passes, build fails (the same class of gap as the T8 lesson: tested against the wrong reference).",
+    "minimal_fix": "cc-linkfix-over-draft.patch: relocate the one `static void nwfs_apply_window_geometry(...)` forward declaration from inside android::(anon) to global scope (before `namespace android {`). decl+def then share one internal-linkage symbol; the in-namespace call resolves to it via enclosing-namespace lookup. No source re-architecture, no b87/Boat swap."
+  },
+  "candidate_linkfixed": {
+    "built_sha256": "94718e0d0b617a0f9a860e0b50b879b0d7d4639f32e8230b1f90f8e26e2c1354",
+    "note": "= 18763dd4 cold-repro source + cx-bms geometry patch + cc-t3 link-fix. Delivered to validate the port approach; cx-bms should fold the scope fix into the spec patch.",
+    "abi_vs_18763dd4": {"exports_old": 787, "exports_new": 787, "removed": 0, "added": 0, "signature_drift": 0, "consumer_breaks": 0, "verdict": "exports are the 787 superset (helper is internal, not exported); nothing removed"},
+    "sqlite_cursorwindow_registrars_GLOBAL": {
+      "register_android_database_SQLiteDebug": "T",
+      "register_android_database_CursorWindow": "T",
+      "register_android_database_SQLiteGlobal": "T",
+      "register_android_database_SQLiteConnection": "T",
+      "contrast_adc125f4": "all W (weak stubs) — candidate keeps the real GLOBAL bodies"
+    },
+    "geometry_disasm_vs_instruction_deltas": {
+      "nwfs_seed_window_geometry": "NativeWindowHandleOpt 1->0, #1200 2->0, #1920 2->0 (non-mutating; delta A)",
+      "ANativeWindow_fromSurface": "NativeWindowHandleOpt 1->0, #1200 2->0, #1920 2->0 (inlined setter removed; delta B)",
+      "ANativeWindow_setBuffersGeometry": "cbz 1->2 (width==0 guard added; setter kept; delta D)",
+      "BBQ_nativeUpdate": "#1200 2->0, #1920 2->0, NativeWindowHandleOpt 1->1 (constants -> requested-dimension registers; delta C)",
+      "verdict": "all four geometry functions semantically consistent with instruction-deltas.json"
+    }
+  },
+  "acceptance": "cold-repro byte-identical PASS; draft patch LINK-FAIL (reported + minimal fix); link-fixed candidate meets ALL ABI criteria (787 superset, 4 registrars GLOBAL, 4 geometry deltas match). No board.",
+  "cross_ref": "cx-bms benchmark/2026-10-10-boat-runtime-port-spec/ (771128f482) — fold cc-linkfix-over-draft.patch into u13-geometry-draft.patch and add a build/link gate to test_port.py.",
+  "pending": ["cx-bms spec patch update (link-fix) + build/link gate in its tests", "single-variable render re-proof on board with this candidate runtime (18763dd4+geometry) vs 18763dd4", "then FZ-009 runtime = this ported artifact"]
+}
