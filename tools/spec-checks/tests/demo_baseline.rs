@@ -75,3 +75,16 @@ fn demo_baseline_sepolicy_gate() {
         .expect("run offline sepolicy gate known answers (sesearch in a2hlab)");
     assert!(status.success());
 }
+
+#[test]
+fn demo_baseline_reboot_sim() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let status = Command::new("python3")
+        .arg(root.join("scripts/lab/test_reboot_sim.py"))
+        .arg("-v")
+        .current_dir(root)
+        .status()
+        .expect("run advisory reboot prediction known answers without board access");
+    assert!(status.success());
+    println!("OFFLINE_ONLY: 61b wall-class fixtures; real physical underlay and policy-query inputs pending");
+}
