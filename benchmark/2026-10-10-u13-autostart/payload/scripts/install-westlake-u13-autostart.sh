@@ -89,6 +89,24 @@ while IFS="$(printf '\t')" read -r seq kind group target sha_want; do
   [ -e "$target" ] || fail "LIVE_TARGET_MISSING seq=$seq $target"
   dst="$ARCH/seq$seq"
   if [ "$kind" = directory ]; then
+    # [cc-t3 #91 2026-10-10 SECOND fail-closed guard — bare-boot empty-base incident on 5ea]
+    # A bare boot drops recover's bind, so a physical dir target (e.g. /system/android <- sources/seq1)
+    # can be EMPTY/degraded while a GOOD archive from a prior install still exists. The step below used to
+    # rm -rf the archive then copy the empty dir -> it destroyed the only good base. The first guard only
+    # catches a LIVE bind / READY receipt, not a bare-boot empty physical target. So: NEVER overwrite an
+    # existing archive with a physical target that has FEWER files — reuse the preserved archive instead
+    # (recover binds from it); refuse outright if neither physical nor archive has a usable base.
+    cur_files=$(find "$target" -type f 2>/dev/null | sed -n '$='); cur_files=$((cur_files + 0))
+    arch_files=0; [ -d "$dst" ] && { arch_files=$(find "$dst" -type f 2>/dev/null | sed -n '$='); arch_files=$((arch_files + 0)); }
+    # Never archive an EMPTY or SHRUNKEN physical dir over a good archive: that is the bare-boot bind-gone
+    # state that destroyed the base. If a LARGER archive exists, reuse it; if the physical is empty and
+    # there is no larger archive, refuse (no good base to archive or reuse).
+    if [ "$cur_files" -lt "$arch_files" ]; then
+      log "REUSE_ARCHIVE seq=$seq $target: physical=$cur_files files < existing archive=$arch_files (bare-boot bind-gone); keeping existing archive seq$seq, NOT overwriting"
+      printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$seq" "$kind" "$group" "$target" "$dst" "reused" >> "$TSV.tmp"
+      continue
+    fi
+    [ "$cur_files" -gt 0 ] || fail "LIVE_TARGET_EMPTY seq=$seq $target has $cur_files files (archive=$arch_files); a bare-boot bind-gone base cannot be archived and there is no larger archive to reuse — restore the base first"
     /bin/rm -rf "$dst"; mkdir -p "$dst" || fail "MKARCH seq=$seq"
     cp -a "$target/." "$dst/" 2>/dev/null || fail "ARCHIVE_DIR seq=$seq $target"
     aline="$dst"; shaout=""
