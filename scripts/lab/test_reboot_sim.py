@@ -17,6 +17,7 @@ RUNTIME = '/system/android/lib64/liboh_android_runtime.so'
 CHILD = '/system/lib64/appspawn/libwestlake_android_child.z.so'
 GUARD = '/system/lib64/libwestlake_thread_guard_registry.so'
 FILTER = '/system/lib64/seccomp/libapp_filter.z.so'
+SANDBOX = '/system/etc/sandbox/appdata-sandbox.json'
 SYSTEM = 'u:object_r:system_file:s0'
 LIB = 'u:object_r:system_lib_file:s0'
 DATA = 'u:object_r:data_local_tmp:s0'
@@ -32,12 +33,13 @@ def fixture():
     ]}
     physical = {}
     paths = ['/system', '/system/bin', '/system/android', '/system/android/lib64',
-             '/system/lib64', '/system/lib64/appspawn', '/system/lib64/seccomp']
+             '/system/lib64', '/system/lib64/appspawn', '/system/lib64/seccomp',
+             '/system/etc', '/system/etc/sandbox']
     for path in paths:
         physical[path] = dict(kind='directory', label=SYSTEM, evidence='known-answer: independent inode fixture')
     physical['/system/lib64/seccomp']['label'] = LIB
     for path, label in [(HOST, 'u:object_r:appspawn_exec:s0'), (RUNTIME, LIB),
-                        (CHILD, LIB), (GUARD, LIB), (FILTER, LIB)]:
+                        (CHILD, LIB), (GUARD, LIB), (FILTER, LIB), (SANDBOX, 'u:object_r:system_etc_file:s0')]:
         physical[path] = dict(kind='file', label=label, sha256=BYTE_SHA, evidence='known-answer: file inventory')
     sources = {'/data/archive/android': dict(kind='directory', label=DATA, evidence='known-answer: archived Android tree'),
                '/data/archive/android/lib64': dict(kind='directory', label=DATA, evidence='known-answer: archived lib64')}
@@ -58,6 +60,9 @@ def fixture():
     closure['objects'][HOST]['needed'] = [dict(soname='liboh_android_runtime.so', resolved_path=RUNTIME,
                                              namespace='appspawn', evidence='known-answer: pinned resolution')]
     queries = []
+    for permission in ['read', 'open', 'getattr']:
+        queries.append(dict(domain='appspawn', label='system_etc_file', permission=permission,
+                            **{'class': 'file'}, allowed=True, evidence='MOCK_QUERY: not a real policy proof'))
     for label, permissions, object_class in [
         ('system_file', ['search', 'getattr'], 'dir'),
         ('system_lib_file', ['search', 'getattr'], 'dir'),
@@ -65,7 +70,7 @@ def fixture():
         ('system_lib_file', ['read', 'open', 'map', 'getattr'], 'file'),
         ('system_file', ['getattr', 'read', 'open'], 'file'),
         ('system_file', ['entrypoint', 'execute'], 'file'),
-        ('data_local_tmp', ['read', 'open', 'map'], 'file')
+        ('data_local_tmp', ['read', 'open', 'map', 'getattr'], 'file')
     ]:
         for permission in permissions:
             allowed = not (label == 'data_local_tmp' or (label == 'system_file' and permission in ['entrypoint', 'execute']))
@@ -98,6 +103,47 @@ class RebootSimulationTests(unittest.TestCase):
         self.assertIn('does not survive', report['init_invalid'])
         self.assertTrue(all(row['status'] == 'PASS' for row in self.rows(report, 'init-entrypoint')))
         self.assertEqual(self.rows(report, 'seccomp-cfg')[0]['status'], 'PASS')
+        self.assertEqual(self.rows(report, 'server-preload')[0]['status'], 'PASS')
+
+    def test_sandbox_preload_is_not_omitted_when_native_and_filter_checks_pass(self):
+        self.data['inventory']['physical_files'][SANDBOX]['label'] = DATA
+        report = self.predict()
+        self.assertEqual(report['status'], 'FAIL')
+        row = self.rows(report, 'server-preload')[0]
+        self.assertEqual(row['path'], SANDBOX)
+        self.assertEqual(row['phase'], 'server-start')
+        self.assertIn('denied=read,open,getattr', row['reason'])
+        self.assertEqual(self.rows(report, 'seccomp-cfg')[0]['status'], 'PASS')
+
+    def test_preload_missing_inode_or_query_prevents_safe(self):
+        for mode in ['inode', 'query']:
+            self.data = fixture()
+            if mode == 'inode':
+                del self.data['inventory']['physical_files'][SANDBOX]
+            else:
+                self.data['queries']['queries'] = [row for row in self.data['queries']['queries'] if row['label'] != 'system_etc_file']
+            self.assertFalse(self.predict()['safe_to_reboot'])
+
+    def test_preload_before_services_can_be_repaired_but_late_repair_cannot(self):
+        self.data['plan']['mounts'].append(dict(kind='file', target=SANDBOX, source='/data/archive/sandbox.json'))
+        self.data['inventory']['physical_files'][SANDBOX]['label'] = DATA
+        self.data['inventory']['source_files']['/data/archive/sandbox.json'] = dict(
+            self.data['inventory']['physical_files'][SANDBOX])
+        self.assertEqual(self.rows(self.predict(), 'server-preload')[0]['status'], 'PASS')
+        self.data['autostart']['recover_phase'] = 'after-services'
+        self.assertEqual(self.rows(self.predict(), 'server-preload')[0]['status'], 'FAIL')
+
+    def test_additional_preloads_are_validated_and_required_sandbox_cannot_be_removed(self):
+        self.assertEqual(sim.preload_files(dict(preloaded_files=[]))[0]['path'], SANDBOX)
+        extra = dict(path='/system/etc/sandbox/isolated-sandbox.json', domain='appspawn',
+                     phase='server-start', evidence='synthetic extra config')
+        self.data['autostart']['preloaded_files'] = [extra]
+        self.assertEqual(len(self.rows(self.predict(), 'server-preload')), 2)
+        with self.assertRaises(ValueError):
+            sim.preload_files(dict(preloaded_files=[extra, extra]))
+        for field, value in [('domain', ''), ('phase', 'after-services'), ('path', '../bad'), ('evidence', '')]:
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                sim.preload_files(dict(preloaded_files=[dict(extra, **{field: value})]))
 
     def test_61b_three_observed_walls_have_independent_evidence(self):
         self.data['autostart']['enabled'] = False

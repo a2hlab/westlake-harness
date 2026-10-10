@@ -67,6 +67,11 @@ produce byte-identical JSON/TSV in two independent output directories.
   `services` with `path`, `secon`, evidence, and `seccomp` with filter name,
   child domain and evidence. This is a pinned normalization of actual cfg and
   recovery scripts, not inferred init timing. Late/unknown timing cannot PASS.
+  Optional `preloaded_files` rows carry `path`, `domain`, `phase: server-start`
+  and `evidence`. The mandatory `/system/etc/sandbox/appdata-sandbox.json` read
+  in appspawn cannot be omitted by supplying an empty list. These files must
+  permit read/open/getattr and directory traversal **before daemon preload**;
+  fixing labels after that stage cannot repair the cached configuration.
 - `closure`: explicit `roots` with path/domain and `objects` keyed by canonical
   ELF target. Each object binds its SHA and `needed` list to predicted bytes;
   each edge states soname, namespace, resolved_path and resolution evidence.
@@ -81,27 +86,30 @@ produce byte-identical JSON/TSV in two independent output directories.
 ## Policy query adapter
 
 `collect_queries(run_query, policy, recipe_path, inventory, autostart, closure,
-query_tool)` accepts oc-t4's existing
-`sepolicy_gate.run_query(policy, domain, label, permission, class)` callable.
+query_tool)` accepts an explicit callable with signature
+`run_query(policy, domain, label, permission, class)`.
 It records returned allow rows or an explicit no-allow response and hashes the
 policy, unique recipe and provider source. Domain/type combinations come from
 the inputs and the recipe; it does not require a second `recipe.entries` label
 table. The exporter is tested with a mock callable; actual remote `sesearch`
 export is for the accessible outer lane, not executed here.
+The landed `sepolicy_gate.py` currently performs queries inside its CLI and
+does not expose a public `run_query` function. The earlier direct-import
+example was incorrect; supply a real adapter, preserving tool failures versus
+successful empty results. Missing positive-proof rows are not denial evidence.
 
 Example outer-side export after all inputs have been normalized and pinned:
 
 ```python
 import json
 from pathlib import Path
-import sepolicy_gate
 from reboot_sim import collect_queries
 
 answers = collect_queries(
-    sepolicy_gate.run_query, policy_path, recipe_path,
+    run_query, policy_path, recipe_path,
     json.loads(inventory_path.read_text()),
     json.loads(autostart_path.read_text()),
-    json.loads(closure_path.read_text()), Path(sepolicy_gate.__file__))
+    json.loads(closure_path.read_text()), query_tool_path)
 queries_path.write_text(json.dumps(answers, indent=2) + "\n")
 ```
 
@@ -111,6 +119,12 @@ responsible for policy semantics/conditional allow evaluation; unavailable
 tools must raise, not return an empty list that would masquerade as a deny.
 
 ## Three checks and limits
+
+The server-start preload check is now mandatory in addition to the original
+three classes: sandbox configuration read/open/getattr and its directory
+traversal must succeed before the daemon caches it. Optional extra configs
+share that rule and require explicit source/phase metadata. See
+`server-preload/` for the new tests and the separately pending real-input proof.
 
 1. Every supplied init service uses its cfg `secon` domain; entrypoint/execute
    and directory traversal are queried for the predicted inode context.

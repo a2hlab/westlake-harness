@@ -1,0 +1,160 @@
+{
+  "transport_used": false,
+  "snapshots": [
+    {
+      "path": "$HOME/a2hlab-provision/t2e-inputs/61b-snapshot-postfix/snapshot.json",
+      "sha256": "f5cf9fc076e3c696997b7441915e17b9f3045988087879f21ba1b9dd0eb135fa",
+      "raw_items_verified": 244,
+      "integrity_problems": [],
+      "boot_stable": true,
+      "complete_deployment_coverage": false,
+      "sandbox_label": "u:object_r:system_etc_file:s0",
+      "observed_bad_label_count": 5
+    },
+    {
+      "path": "$HOME/a2hlab-provision/t2e-inputs/5cd-healthy-snapshot/snapshot.json",
+      "sha256": "551a4c421fa25f333d761e2d0eaa9a5a6ad99f64a6ac19a790eb5f7f90ecbc67",
+      "raw_items_verified": 253,
+      "integrity_problems": [],
+      "boot_stable": true,
+      "complete_deployment_coverage": false,
+      "sandbox_label": "u:object_r:system_etc_file:s0",
+      "observed_bad_label_count": 0
+    }
+  ],
+  "manual_source_refs": [
+    {
+      "path": "$HOME/a2hlab-provision/t2e-inputs/61b-vs-5cd-manual/61b.txt",
+      "sha256": "2eb80d83f1ca36ed4a4b3b1e51cd8f854e83ab96e0d0463d486af4957a19adda"
+    },
+    {
+      "path": "$HOME/a2hlab-provision/t2e-inputs/61b-vs-5cd-manual/5cd.txt",
+      "sha256": "9841263005a720d4d5f90f7932e61983535ef82b88580f769461dc7b1cb4b00c"
+    },
+    {
+      "path": "$HOME/a2hlab-provision/t2e-inputs/61b-vs-5cd-manual/61b-mislabeled.txt",
+      "sha256": "94696c8f81a99ee4c589a2ad28b3dca77365d72ce815fcfc32c7c565d3b106ce"
+    }
+  ],
+  "preload_reference_sources": [
+    {
+      "path": "bms/src/adapter/frozen/references/oh-appspawn-security-v7/base/startup/appspawn/modules/sandbox/modern/sandbox_manager.c",
+      "sha256": "f3a922d1d5821099d9d840a6e99d0b57fce29b23e8ad427c0dedac342bdd4994",
+      "start_line": 493,
+      "lines": [
+        "}",
+        "",
+        "static int PreLoadSandboxCfgByType(AppSpawnMgr *content, ExtDataType type)",
+        "{",
+        "    if (type >= EXT_DATA_COUNT || type < EXT_DATA_APP_SANDBOX) {",
+        "        return APPSPAWN_ARG_INVALID;",
+        "    }",
+        "",
+        "    AppSpawnSandboxCfg *sandbox = GetAppSpawnSandbox(content, type);",
+        "    APPSPAWN_CHECK(sandbox == NULL, return 0, \"type %{public}d sandbox has been load\", type);",
+        "",
+        "    sandbox = CreateAppSpawnSandbox(type);",
+        "    APPSPAWN_CHECK_ONLY_EXPER(sandbox != NULL, return APPSPAWN_SYSTEM_ERROR);",
+        "    OH_ListAddTail(&content->extData, &sandbox->extData.node);",
+        "",
+        "    // load sandbox config by type",
+        "    LoadAppSandboxConfig(sandbox, type);",
+        "    sandbox->maxPermissionIndex = PermissionRenumber(&sandbox->permissionQueue);",
+        ""
+      ],
+      "role": "frozen reference behavior, not a new claim of byte-identical deployed source"
+    },
+    {
+      "path": "bms/src/adapter/frozen/references/oh-appspawn-security-v7/base/startup/appspawn/modules/sandbox/modern/sandbox_manager.c",
+      "sha256": "f3a922d1d5821099d9d840a6e99d0b57fce29b23e8ad427c0dedac342bdd4994",
+      "start_line": 541,
+      "lines": [
+        "APPSPAWN_STATIC int PreLoadAppSandboxCfg(AppSpawnMgr *content)",
+        "{",
+        "    if (IsNWebSpawnMode(content)) {",
+        "        return 0;",
+        "    }",
+        "",
+        "    int ret = PreLoadSandboxCfgByType(content, EXT_DATA_APP_SANDBOX);",
+        "    APPSPAWN_CHECK(ret == 0, return ret, \"app sandbox cfg preload failed\");",
+        "    return 0;"
+      ],
+      "role": "frozen reference behavior, not a new claim of byte-identical deployed source"
+    },
+    {
+      "path": "bms/src/adapter/frozen/references/oh-appspawn-security-v7/base/startup/appspawn/modules/sandbox/modern/sandbox_manager.c",
+      "sha256": "f3a922d1d5821099d9d840a6e99d0b57fce29b23e8ad427c0dedac342bdd4994",
+      "start_line": 818,
+      "lines": [
+        "    (void)AddServerStageHook(STAGE_SERVER_PRELOAD, HOOK_PRIO_SANDBOX, PreLoadAppSandboxCfg);",
+        "    (void)AddServerStageHook(STAGE_SERVER_PRELOAD, HOOK_PRIO_SANDBOX, PreLoadIsoLatedSandboxCfg);",
+        "    (void)AddServerStageHook(STAGE_SERVER_PRELOAD, HOOK_PRIO_SANDBOX, PreLoadNWebSandboxCfg);",
+        "    (void)AddServerStageHook(STAGE_SERVER_PRELOAD, HOOK_PRIO_SANDBOX, PreLoadDebugSandboxCfg);"
+      ],
+      "role": "frozen reference behavior, not a new claim of byte-identical deployed source"
+    },
+    {
+      "path": "bms/src/adapter/frozen/references/oh-appspawn-security-v7/base/startup/appspawn/modules/sandbox/normal/appspawn_sandbox_manager.cpp",
+      "sha256": "9c5a71d9065c3fec31ec3c45ee9449e6ca4d81f75adff87e107677f82f6e0101",
+      "start_line": 93,
+      "lines": [
+        "    APPSPAWN_LOGV(\"Load sandbox module ...\");",
+        "    (void)AddServerStageHook(STAGE_SERVER_PRELOAD, HOOK_PRIO_SANDBOX,",
+        "                             OHOS::AppSpawn::SandboxCommon::LoadAppSandboxConfigCJson);",
+        "    (void)AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_COMMON, SpawnMountDirToShared);",
+        "    (void)AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_SANDBOX, SetAppSandboxProperty);"
+      ],
+      "role": "frozen reference behavior, not a new claim of byte-identical deployed source"
+    },
+    {
+      "path": "bms/src/adapter/frozen/references/oh-appspawn-security-v7/base/startup/appspawn/modules/module_engine/include/appspawn_hook.h",
+      "sha256": "6319650f8d7f024ff040e615f952f0ae97619ea42ed346838e706416628e1b60",
+      "start_line": 139,
+      "lines": [
+        "__attribute__((always_inline)) inline int AddPreloadHook(int prio, ServerStageHook hook)",
+        "{",
+        "    return AddServerStageHook(STAGE_SERVER_PRELOAD, prio, hook);",
+        "}"
+      ],
+      "role": "frozen reference behavior, not a new claim of byte-identical deployed source"
+    },
+    {
+      "path": "bms/src/adapter/frozen/references/oh-appspawn-security-v7/base/startup/appspawn/standard/appspawn_service.c",
+      "sha256": "92cd5e5e14435f976e8854f305b0e5abaef899b7e87f38db2338e54b69634bcf",
+      "start_line": 1495,
+      "lines": [
+        "    StartAppspawnTrace(\"AppSpawnLoadAutoRunModules\");",
+        "    AppSpawnLoadAutoRunModules(arg->moduleType);  // load corresponding plugin according to startup mode",
+        "    FinishAppspawnTrace();",
+        "    int ret = ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);   // Preload, prase the sandbox",
+        "    APPSPAWN_CHECK(ret == 0, AppSpawnDestroyContent(content);",
+        "        return NULL, \"Failed to prepare load %{public}s result: %{public}d\", arg->serviceName, ret);",
+        "#ifndef APPSPAWN_TEST"
+      ],
+      "role": "frozen reference behavior, not a new claim of byte-identical deployed source"
+    }
+  ],
+  "confirmed_limits": [
+    "No pre-label-fix tool snapshot exists; the negative original is manual text.",
+    "23 bad-library rows contain only basenames; no original canonical path evidence has been provided.",
+    "Healthy snapshot does not recursively enumerate those route-a libraries.",
+    "The 32 policy proofs are positive-only and cannot prove a DATA-type denial by absence.",
+    "No independent hidden physical underlay, persistent source inventory or full namespace-bound DT_NEEDED closure provided."
+  ],
+  "exact_queries_requested": {
+    "domain": "appspawn",
+    "labels": [
+      "data_local_tmp",
+      "data_file"
+    ],
+    "class": "file",
+    "permissions": [
+      "read",
+      "open",
+      "getattr",
+      "map"
+    ]
+  },
+  "known_answer_status": "partial: original label facts verified; full real prediction inputs pending",
+  "safe_to_reboot": false
+}

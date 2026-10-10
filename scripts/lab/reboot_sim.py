@@ -23,6 +23,34 @@ def board_path(path):
     return path
 
 
+def preload_files(autostart):
+    required = dict(path='/system/etc/sandbox/appdata-sandbox.json', domain='appspawn',
+                    phase='server-start', evidence='PreLoadAppSandboxCfg: STAGE_SERVER_PRELOAD; '
+                    'bms/src/adapter/frozen/references/oh-appspawn-security-v7/base/startup/appspawn/'
+                    'modules/sandbox/modern/sandbox_manager.c:541,818')
+    records = [required]
+    provided = autostart.get('preloaded_files', [])
+    if not isinstance(provided, list):
+        raise ValueError('preloaded_files must be a list')
+    seen = set()
+    for row in provided:
+        path = board_path(row['path'])
+        domain = row.get('domain')
+        if not isinstance(domain, str) or not re.fullmatch(r'[A-Za-z0-9_]+', domain):
+            raise ValueError('preload domain missing/invalid')
+        if row.get('phase') != 'server-start' or not row.get('evidence'):
+            raise ValueError('preload phase/provenance must identify server-start')
+        key = (path, domain)
+        if key in seen:
+            raise ValueError('duplicate preload path/domain')
+        seen.add(key)
+        if key == (required['path'], required['domain']):
+            records[0] = dict(row)
+        else:
+            records.append(dict(row))
+    return records
+
+
 def read_inputs(path):
     manifest = json.loads(path.read_text())
     names = {'plan', 'snapshot', 'inventory', 'autostart', 'closure', 'recipe', 'queries', 'policy'}
@@ -76,7 +104,7 @@ def read_inputs(path):
 
 
 class RecordedQueries:
-    """Consume exact queries exported by sepolicy_gate.run_query, including denies."""
+    """Consume pinned exact policy queries, including explicitly recorded denies."""
     def __init__(self, evidence):
         if not evidence.get('query_provider') or not re.fullmatch(r'[a-f0-9]{64}', evidence.get('query_tool_sha256', '')):
             raise ValueError('query provider identity missing')
@@ -101,6 +129,7 @@ def collect_queries(run_query, policy, recipe_path, inventory, autostart, closur
                 labels.add(match.group(1))
     domains = {row['domain'] for row in closure['roots']}
     domains.update(row['secon'].split(':')[2] for row in autostart['services'])
+    domains.update(row['domain'] for row in preload_files(autostart))
     domains.add(autostart['seccomp']['domain'])
     rows = []
     for domain in sorted(domains):
@@ -115,7 +144,7 @@ def collect_queries(run_query, policy, recipe_path, inventory, autostart, closur
                                      allowed=bool(raw), raw_allow_rows=raw,
                                      evidence='\n'.join(raw) or 'sesearch: exact query returned no allow rows'))
     return dict(policy_sha256=digest(policy), recipe_sha256=digest(recipe_path),
-                query_provider='sepolicy_gate.run_query', query_tool_sha256=digest(query_tool), queries=rows)
+                query_provider='exact-policy-query-callable', query_tool_sha256=digest(query_tool), queries=rows)
 
 
 def simulate(plan, snapshot, inventory, autostart, closure, recipe, query):
@@ -217,6 +246,13 @@ def simulate(plan, snapshot, inventory, autostart, closure, recipe, query):
     roots = closure.get('roots')
     if not roots:
         raise ValueError('native closure roots missing')
+    for preload in preload_files(autostart):
+        path = preload['path']
+        traversal(path, preload['domain'])
+        permission(path, preload['domain'], ['read', 'open', 'getattr'], 'file', 'server-preload')
+        rows[-1]['evidence'].append(preload['evidence'])
+        rows[-1]['phase'] = 'server-start'
+        rows[-1]['cache_rule'] = 'once per daemon at STAGE_SERVER_PRELOAD; later inode repair does not reload the cache'
     for service in services:
         path = board_path(service['path'])
         secon = re.fullmatch(r'u:r:([A-Za-z0-9_]+):s0', service['secon'])
