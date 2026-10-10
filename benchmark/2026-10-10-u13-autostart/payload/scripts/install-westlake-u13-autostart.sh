@@ -100,6 +100,7 @@ if [ "$WITH_BOAT" = 1 ]; then
   stage_boat libunity.so             1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac
   stage_boat libil2cpp.so            f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746
   stage_boat libwestlake_bionic_signal_box.so 7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da
+  stage_boat liboh_android_runtime.so adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130
 else
   log "WITH_BOAT=0 -> U13-only (no BoatAttack overlay staged)"
 fi

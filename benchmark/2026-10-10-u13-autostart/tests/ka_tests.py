@@ -27,6 +27,8 @@ ADAPTER_SHA  = "8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e
 ADAPTER_BASE = "84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a"
 JAR_SHA      = "6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852"
 JAR_BASE     = "bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b"
+RUNTIME_SHA  = "adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130"
+RUNTIME_BASE = "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae"
 PRIVATE_SHA  = {
     "libunity.so": "1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac",
     "libil2cpp.so": "f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746",
@@ -88,6 +90,19 @@ class Table(unittest.TestCase):
         self.assertEqual(by["adapter"]["base_sha256"], ADAPTER_BASE)
         self.assertEqual(by["jar"]["sha256"], JAR_SHA)
         self.assertEqual(by["jar"]["base_sha256"], JAR_BASE)
+        # render lever (single-variable proven on 5ea, benchmark/2026-10-10-boat-single-variable)
+        self.assertEqual(by["runtime"]["sha256"], RUNTIME_SHA)
+        self.assertEqual(by["runtime"]["base_sha256"], RUNTIME_BASE)
+        self.assertEqual(by["runtime"]["target"], "/system/android/lib64/liboh_android_runtime.so")
+
+    def test_boat_overlay_runtime_wired(self):
+        # WITH_BOAT must stage the render-lever runtime and the overlay must bind it over the U13 base.
+        installer = read(os.path.join(SCR, "install-westlake-u13-autostart.sh"))
+        self.assertIn("stage_boat liboh_android_runtime.so " + RUNTIME_SHA, installer)
+        overlay = read(os.path.join(SCR, "westlake-u13-boat-overlay.sh"))
+        self.assertIn(RUNTIME_SHA, overlay)
+        self.assertIn(RUNTIME_BASE, overlay)
+        self.assertIn('bind_over "$ARCH/liboh_android_runtime.so" "$RUNTIME_T"', overlay)
 
     def test_boat_overlay_private(self):
         got = {os.path.basename(r["target"]): r["sha256"] for r in self.t["boat_overlay_private"]}
