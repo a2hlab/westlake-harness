@@ -29,7 +29,7 @@
         "replaces_sha256": "bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b",
         "replaces_note": "U13 base jar (NOT a registered frozen item)",
         "role": "route-2d baseline (C9 touch jar)",
-        "V2_CHECK_cc-t3_2026-10-10": "manifest SHA 6333bcab NOT present in local trees (provenance gap). Indicative twin 56e4d473 (boat-assembled) drops 186 classes incl WestlakeTlsInstall / conscrypt OpenSSLProvider / chromium support-lib -> likely TLS/webview regressor. GATE: run deployed_class_diff on the REAL 6333bcab (--frozen; must drop 0 deployed classes) before inclusion."
+        "V2_CHECK_cc-t3_2026-10-10": "REAL artifact 6333bcab located at westlake-harness-wiki/.../spare-5cd/overlay/oh-adapter-runtime.c9only.jar (local). deployed_class_diff vs U13 base bbc3f530 --frozen: 216->218, 0 dropped, 0 reshaped, +2 added (adapter/activity/InputEventDeviceProjection), 0 frozen broken -> KEEP, NO regression. Earlier indicative red flag (twin 56e4d473, 186 dropped incl TLS) WITHDRAWN \u2014 different jar."
       }
     ],
     "app_private_artifacts": [
@@ -97,14 +97,14 @@
       "source": "benchmark/2026-10-10-boat-overlay-v2/ (manifest-v2-draft.json + README + evidence); cx-bms benchmark/2026-10-10-boat-runtime-jni-gap/ 1a1eb6e6bd",
       "corrected_file_table": {
         "liboh_adapter_bridge.so 8ab85446": "KEEP \u2014 superset of base 84695d62 (+2 exports, 0 removed), no regression",
-        "oh-adapter-runtime.jar 6333bcab": "GATE \u2014 real artifact not locally present; indicative twin drops 186 classes incl TLS; needs deployed_class_diff on the real jar",
+        "oh-adapter-runtime.jar 6333bcab": "KEEP \u2014 real artifact found local (westlake-harness-wiki); deployed_class_diff vs bbc3f530 --frozen: 0 dropped, +2 added (InputEventDeviceProjection), 0 frozen broken. Superset, no regression. Indicative twin 56e4d473 red flag withdrawn.",
         "liboh_android_runtime.so adc125f4": "REMOVE from overlay \u2014 it is the libandroid CLASSNAME_FIX aliased to the runtime path; strips 520 exports incl CursorWindow/SQLite (weak stubs). Keep U13 base 18763dd4.",
         "runtime render fix": "PORT the Boat 47-byte render delta into 18763dd4 (cx-bms patch spec, cross-ref) -> single artifact, 787 exports + real registrars + render fix",
         "libunity.so / libil2cpp.so / libwestlake_bionic_signal_box.so": "KEEP \u2014 BoatAttack-private, no /system path, no cross-app regression"
       },
-      "SONAME_dedup_risk_UNVERIFIED": "All three liboh_android_runtime-family files share SONAME liboh_android_runtime.so (9ccf64f8/18763dd4/adc125f4). A libandroid path-swap does NOT give a single deterministic owner. Decide statically via open_site_scan.py (dlopen/dlopen_ns namespace+path per site) + deployed /proc/<pid>/maps (both paths bound but one in maps => dedup). See manifest-v2-draft.json.",
       "supersedes": "the artifacts[] runtime entry's 'render lever' role and the single_variable_compare conclusion (that experiment put adc at the RUNTIME path, which is the defect; the render-correct mapping with 18763dd4 base is now UNVERIFIED and must be re-proven with the ported-delta runtime).",
-      "registration_still_blocked_on": "ported-delta runtime artifact + single-variable render re-proof + real 6333bcab jar class check + the mandatory non-regressing full-128 + build-chain provenance gaps"
+      "registration_still_blocked_on": "ported-delta runtime artifact + single-variable render re-proof + real 6333bcab jar class check + the mandatory non-regressing full-128 + build-chain provenance gaps",
+      "SONAME_dedup_steady_state": "All three liboh_android_runtime-family files share SONAME liboh_android_runtime.so (9ccf64f8/18763dd4/adc125f4). Dedup is the EXISTING benign steady state (U13 base ships libandroid 9ccf64f8 + runtime 18763dd4 side by side, 128 light, full runtime 18763dd4 is the first-loaded winner). Boat's defect: adc-as-runtime makes the stripped copy the first-loaded SONAME owner. Not a new risk. Confirm the winner via open_site_scan.py + deployed /proc/<pid>/maps; the owner must stay the full runtime object. See benchmark/2026-10-10-boat-overlay-v2/manifest-v2-draft.json."
     }
   }
 }

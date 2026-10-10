@@ -1,0 +1,30 @@
+# SHA search for the manifest boat jar oh-adapter-runtime.jar
+# TARGET SHA256 = 6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852
+# Order per AGENTS.md source-lookup: local (~/orca/workspaces all trees + vm-copies, 00.Workspace-games-*,
+# westlake-inputs) -> orb -m a2hlab -> hw248 /home/alvin/. Stopped at step 1 (found locally).
+
+## Step 1a — grep the SHA literal across local trees (finds REFERENCES, not the file)
+# roots: $WORKSPACES/*, $HOME/orca/00.Workspace-games-ad1ab0a7
+# Result: the SHA appears ONLY in manifests/receipts/drafts, e.g.:
+#   westlake-harness/benchmark/2026-10-09-demo-boatattack/demo-61b/inputs.json
+#   westlake-harness/benchmark/2026-10-10-5cd-demo-regression/boat-full128/artifact-receipt.json
+#   westlake-harness/benchmark/2026-10-10-boat-single-variable/frozen-draft.json
+#   (+ boat_layer_stage.sh, FZ-009 draft, this benchmark) — all RECORDS of the SHA, not the jar bytes.
+
+## Step 1b — hash ALL *.jar under local roots (name-agnostic), match TARGET
+# roots scanned: westlake-inputs, westlake-harness-bms-deploy, westlake-harness, westlake-harness-t3, vm-copies,
+#   $HOME/orca/00.Workspace-games-ad1ab0a7  -> NO match among these (boat-assembled dir ships 56e4d473, a DIFFERENT jar).
+# NOTE: this first sweep did NOT include the westlake-harness-wiki tree.
+
+## Step 1c — origin recorded in the receipts (artifact-receipt.json / demo-61b inputs.json)
+#   oh-adapter-runtime.jar source = $WORKSPACES/westlake-harness-wiki/benchmark/2026-10-09-demo-boatattack/
+#       spare-5cd/overlay/oh-adapter-runtime.c9only.jar  sha256=6333bcab...  role=runtime-jar
+#       target=/system/android/framework/oh-adapter-runtime.jar
+
+## Step 1d — verify that path + hash all *.jar under westlake-harness-wiki
+# FOUND (local, step 1 — no orb/hw248 needed):
+#   westlake-harness-wiki/benchmark/2026-10-09-demo-boatattack/spare-5cd/overlay/oh-adapter-runtime.c9only.jar
+#   sha256 = 6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852  (348 KiB; the "C9-only" touch jar)
+# Sibling in the same dir: oh-adapter-runtime.jar (352 KiB, DIFFERENT sha) — NOT the manifest jar.
+
+## Conclusion: the manifest jar is LOCALLY PRESENT (westlake-harness-wiki). orb -m a2hlab and hw248 NOT contacted.

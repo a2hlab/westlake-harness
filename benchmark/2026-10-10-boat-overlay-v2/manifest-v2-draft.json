@@ -6,22 +6,28 @@
     "file": "liboh_android_runtime.so = adc125f4 -> /system/android/lib64/liboh_android_runtime.so",
     "root_cause": "adc125f4 is the BoatAttack libandroid CLASSNAME_FIX (= U13 libandroid 9ccf64f8 + 49 bytes, 268/268 exports). The Boat packaging RENAMED that libandroid.so blob to liboh_android_runtime.so (the boat-assembled dir holds it as libandroid.so, with NO separate runtime file) and the v1 manifest binds it at the runtime path.",
     "measured_regression": "abi_diff(old=U13 runtime 18763dd4, new=adc125f4): 787 -> 268 exports, 520 REMOVED, 1 added, 0 drift. The removed set includes the entire android::CursorWindow surface (18763dd4: 24 strong CursorWindow exports; adc125f4: 0). cx-bms 1a1eb6e6bd: adc125f4's four SQLite/CursorWindow registrars are WEAK empty stubs -> nativeOpen DB path non-functional for ALL 128 apps.",
-    "evidence": ["evidence/runtime-misuse-abi.json", "evidence/soname-and-cursorwindow.txt", "benchmark/2026-10-09-local-build-check/README.md#4", "benchmark/2026-10-10-boat-runtime-jni-gap/ (cx-bms 1a1eb6e6bd)"]
+    "evidence": [
+      "evidence/runtime-misuse-abi.json",
+      "evidence/soname-and-cursorwindow.txt",
+      "benchmark/2026-10-09-local-build-check/README.md#4",
+      "benchmark/2026-10-10-boat-runtime-jni-gap/ (cx-bms 1a1eb6e6bd)"
+    ]
   },
-  "SONAME_dedup_risk_UNVERIFIED": {
+  "SONAME_dedup_steady_state": {
     "finding": "All three liboh_android_runtime-family files declare the SAME SONAME = liboh_android_runtime.so: U13 libandroid 9ccf64f8, U13 runtime 18763dd4, boat adc125f4 (evidence/soname-and-cursorwindow.txt, llvm-readelf -d).",
-    "why_it_breaks_the_naive_v2": "The dynamic linker keys its loaded-soinfo cache on SONAME, not on-disk path. If /system/android/lib64/libandroid.so (adc) and .../liboh_android_runtime.so (18763dd4) are both visible in the SAME linker namespace, a dlopen of EITHER path returns whichever soinfo loaded first -> the adc overlay may never be used, or an app gets a non-deterministic owner. So 'swap only the libandroid path to adc' does NOT give a single deterministic owner.",
-    "compounded_by": "Even if adc were selected, android::CursorWindow lives ONLY in the runtime (9ccf64f8 libandroid has 0 CursorWindow exports too) -> a libandroid-path overlay can never restore the DB surface. The render delta must live in the runtime object.",
-    "static_decision_method": [
-      "1. readelf -d SONAME (DONE): precondition met - all three = liboh_android_runtime.so.",
-      "2. scripts/lab/open_site_scan.py on the DEPLOYED appspawn-x + child: enumerate every dlopen/dlopen_ns site (namespace, path, flags) referencing liboh_android_runtime.so or libandroid.so. If both paths resolve into the SAME namespace -> SONAME dedup to one owner; if different namespaces -> two coexisting copies (then non-Boat apps in the app ns get whichever is bound there).",
-      "3. deployed /proc/<pid>/maps of a LIVE app (one Boat app + one non-Boat app, read-only): grep both on-disk paths. Both bound on disk but only ONE present in maps => SONAME dedup confirmed; which path appears => load order. Decisive on-board READ (no board writes).",
-      "4. Verdict rule: if the two paths resolve in one namespace, a path-swap cannot place adc as libandroid without displacing the runtime's own SONAME entry -> path-swap unsafe -> use the ported-delta runtime (below)."
+    "NOT_a_new_risk": "The dedup is the existing benign steady state, not something the overlay introduces. U13 base already ships libandroid.so (9ccf64f8) AND liboh_android_runtime.so (18763dd4) side by side with this SONAME and all 128 apps light -> the FULL runtime 18763dd4 (787 exports incl CursorWindow) is the first-loaded winner today.",
+    "boat_defect": "By binding the stripped blob adc125f4 (268 exports, 0 CursorWindow) at the runtime path, Boat makes the DEFICIENT copy the first-loaded SONAME owner; the dedup then serves adc's stripped surface to everything. The mechanism is unchanged; only the winner flipped.",
+    "path_swap_corollary": "Moving adc to the libandroid.so path does not help: CursorWindow is runtime-only (U13 libandroid also has 0) and the SONAME winner is decided by load order, not by which path you wrote. The owner must stay the full runtime object.",
+    "confirm_owner_method": [
+      "1. readelf -d SONAME (DONE): all three share the SONAME, so dedup applies.",
+      "2. scripts/lab/open_site_scan.py on deployed appspawn-x + child: which path is dlopen/dlopen_ns'd first per namespace = the SONAME winner.",
+      "3. deployed /proc/<pid>/maps of a live app (Boat + non-Boat, read-only): both paths bound on disk but one in maps = the winner; healthy U13 base = 18763dd4; the check confirms whether Boat flipped it to adc.",
+      "4. Verdict rule: the owner must be the full runtime object; any overlay that makes a stripped copy the first-loaded SONAME winner is unsafe regardless of path."
     ]
   },
   "recommended_v2": {
     "summary": "Do NOT ship adc125f4 at any /system path. Port the Boat render delta INTO the U13 runtime 18763dd4 (single artifact, 787 exports + real CursorWindow/SQLite registrars + render fix, one SONAME, no dedup ambiguity). Keep the verified adapter. Gate the jar on the real-artifact class check.",
-    "runtime_fix_cross_ref": "cx-bms to produce the patch spec that ports the Boat 47-byte render delta (cf. §4 49-byte libandroid diff; cx-bms 1a1eb6e6bd measures a 47-byte increment to port) into 18763dd4. This manifest and that spec cross-reference each other. Until that artifact exists + is single-variable re-proven for render, the runtime stays U13 base 18763dd4 (render-correct path UNVERIFIED with 18763dd4)."
+    "runtime_fix_cross_ref": "cx-bms to produce the patch spec that ports the Boat 47-byte render delta (cf. \u00a74 49-byte libandroid diff; cx-bms 1a1eb6e6bd measures a 47-byte increment to port) into 18763dd4. This manifest and that spec cross-reference each other. Until that artifact exists + is single-variable re-proven for render, the runtime stays U13 base 18763dd4 (render-correct path UNVERIFIED with 18763dd4)."
   },
   "files": [
     {
@@ -30,21 +36,21 @@
       "boat_sha256": "8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e",
       "base_sha256": "84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a",
       "kind": "shared",
-      "verdict": "KEEP — NO regression",
+      "verdict": "KEEP \u2014 NO regression",
       "check": "abi_diff(old=84695d62, new=8ab85446, consumer=appspawn-x): 2357 -> 2359 exports, 0 removed, 2 added, 0 drift, 0 consumer breaks. Pure superset.",
       "evidence": "evidence/adapter-abi.json"
     },
     {
       "name": "oh-adapter-runtime.jar",
       "target": "/system/android/framework/oh-adapter-runtime.jar",
-      "boat_sha256_manifest": "6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852",
       "base_sha256": "bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b",
       "kind": "shared",
-      "verdict": "GATE — real-artifact class check REQUIRED before inclusion (provenance gap + indicative red flag)",
-      "provenance_gap": "The manifest SHA 6333bcab is NOT present anywhere in the local trees (westlake-inputs, 00.Workspace boat payloads, bms-deploy, vm-copies). The boat-ASSEMBLED dir ships a DIFFERENT jar (56e4d473). So the real 6333bcab must come from cx-bms's formal diff set / hw248.",
-      "indicative_red_flag": "deployed_class_diff(boat-assembled 56e4d473 vs base bbc3f530): 186 DROPPED (incl Ladapter/security/WestlakeTlsInstall, Lcom/android/org/conscrypt/OpenSSLProvider, WestlakeAndroidOpenSsl, chromium support-lib glue), 0 reshaped, 4 added. If 6333bcab resembles 56e4d473 it drops the TLS/SSL/webview surface (FZ-007/FZ-008 territory) -> regresses non-Boat apps' OkHttp/TLS path.",
-      "required_check": "deployed_class_diff.py <real 6333bcab> --deployed <board's bbc3f530> --frozen ; must drop 0 deployed classes (esp. the frozen TLS classes).",
-      "evidence": "evidence/jar-classdiff-indicative.txt"
+      "verdict": "KEEP \u2014 no regression (superset: +2 classes, 0 dropped, 0 frozen broken)",
+      "evidence": "jar-6333bcab-gate.md, evidence/jar-6333bcab-classdiff.txt, evidence/jar-6333bcab-search.log",
+      "boat_sha256": "6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852",
+      "located": "westlake-harness-wiki/benchmark/2026-10-09-demo-boatattack/spare-5cd/overlay/oh-adapter-runtime.c9only.jar (local, source-lookup step 1; NOT a locked artifact)",
+      "check": "deployed_class_diff(real 6333bcab vs U13 base bbc3f530, --frozen): 216->218 classes, 0 dropped, 0 reshaped, +2 added (adapter/activity/InputEventDeviceProjection), 0 frozen classes broken.",
+      "indicative_twin_withdrawn": "The earlier red flag used boat-assembled 56e4d473 (186 dropped incl TLS) \u2014 a DIFFERENT, stripped jar the manifest does not use. Withdrawn."
     },
     {
       "name": "liboh_android_runtime.so",
@@ -52,19 +58,37 @@
       "v1_boat_sha256": "adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130",
       "base_sha256": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae",
       "kind": "shared",
-      "verdict": "REPLACE PLAN — keep U13 base 18763dd4; render fix via ported delta (cx-bms spec), NOT via adc125f4 and NOT via a libandroid path-swap",
+      "verdict": "REPLACE PLAN \u2014 keep U13 base 18763dd4; render fix via ported delta (cx-bms spec), NOT via adc125f4 and NOT via a libandroid path-swap",
       "reason": "adc125f4 at this path removes 520 exports incl CursorWindow/SQLite (see v1_defect). CursorWindow is runtime-only so a libandroid overlay cannot help. All three share SONAME liboh_android_runtime.so (see SONAME_dedup_risk).",
       "evidence": "evidence/runtime-misuse-abi.json, evidence/libandroid-abi.json, evidence/soname-and-cursorwindow.txt"
     },
-    {"name": "libunity.so", "target": "/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libunity.so", "boat_sha256": "1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac", "kind": "app-private", "verdict": "KEEP — BoatAttack-private, no /system path, cannot regress other apps"},
-    {"name": "libil2cpp.so", "target": "/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libil2cpp.so", "boat_sha256": "f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746", "kind": "app-private", "verdict": "KEEP — BoatAttack-private"},
-    {"name": "libwestlake_bionic_signal_box.so", "target": "/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libwestlake_bionic_signal_box.so", "boat_sha256": "7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da", "kind": "app-private", "verdict": "KEEP — BoatAttack-private"}
+    {
+      "name": "libunity.so",
+      "target": "/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libunity.so",
+      "boat_sha256": "1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac",
+      "kind": "app-private",
+      "verdict": "KEEP \u2014 BoatAttack-private, no /system path, cannot regress other apps"
+    },
+    {
+      "name": "libil2cpp.so",
+      "target": "/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libil2cpp.so",
+      "boat_sha256": "f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746",
+      "kind": "app-private",
+      "verdict": "KEEP \u2014 BoatAttack-private"
+    },
+    {
+      "name": "libwestlake_bionic_signal_box.so",
+      "target": "/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libwestlake_bionic_signal_box.so",
+      "boat_sha256": "7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da",
+      "kind": "app-private",
+      "verdict": "KEEP \u2014 BoatAttack-private"
+    }
   ],
   "regressing_files_for_non_boat_apps": [
-    "liboh_android_runtime.so=adc125f4 (520 exports removed incl CursorWindow/SQLite; weak DB registrars) — CONFIRMED regressor",
-    "oh-adapter-runtime.jar (manifest 6333bcab) — UNVERIFIED; indicative twin 56e4d473 drops 186 classes incl TLS/SSL -> likely regressor, needs real-artifact check"
+    "liboh_android_runtime.so=adc125f4 (520 exports removed incl CursorWindow/SQLite; weak DB registrars) \u2014 CONFIRMED regressor"
   ],
   "non_regressing_shared_files": [
-    "liboh_adapter_bridge.so=8ab85446 (superset of base, +2 exports, 0 removed)"
+    "liboh_adapter_bridge.so=8ab85446 (superset of base, +2 exports, 0 removed)",
+    "oh-adapter-runtime.jar=6333bcab (superset of base, +2 classes, 0 dropped, 0 frozen broken)"
   ]
 }

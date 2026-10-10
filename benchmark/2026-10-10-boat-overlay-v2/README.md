@@ -32,52 +32,60 @@ RegisterNatives, class set — and confirm the loader will actually select it.**
 | file | boat → base | check | verdict |
 |---|---|---|---|
 | `liboh_adapter_bridge.so` | `8ab85446` → `84695d62` | abi_diff: 2357→**2359**, 0 removed, **+2**, 0 drift, 0 consumer-break | **KEEP — no regression** (superset) |
-| `oh-adapter-runtime.jar` | `6333bcab` → `bbc3f530` | **manifest SHA not locally present**; indicative twin `56e4d473` drops **186 classes** (incl `WestlakeTlsInstall`, conscrypt `OpenSSLProvider`, chromium support-lib) | **GATE — real-artifact class check required** (likely TLS/webview regressor) |
+| `oh-adapter-runtime.jar` | `6333bcab` → `bbc3f530` | real jar (found local): deployed_class_diff 216→**218**, 0 dropped, **+2**, **0 frozen broken** | **KEEP — no regression** (superset) |
 | `liboh_android_runtime.so` | `adc125f4` → `18763dd4` | abi_diff: 787→268, **520 removed**; CursorWindow 24→**0**; weak SQLite stubs (cx-bms) | **REPLACE PLAN — keep 18763dd4; render via ported delta** |
 | `libunity.so` / `libil2cpp.so` / `libwestlake_bionic_signal_box.so` | app-private | BoatAttack's own `/data/app` lib dir, no `/system` path | **KEEP — cannot regress other apps** |
 
-Regressors for non-Boat apps: the runtime blob (confirmed) and — pending the real artifact — the jar.
-Non-regressing shared file: the adapter.
+Regressor for non-Boat apps: the runtime blob only (confirmed). Non-regressing shared files: adapter **and** jar
+(both supersets of base). The jar gate is in `jar-6333bcab-gate.md`; the earlier indicative red flag (twin
+`56e4d473`, 186 dropped incl TLS) is **withdrawn** — that was a different, stripped jar the manifest does not use.
 
-## The SONAME-dedup risk (cx-bms `1a1eb6e6bd`, verified here)
+## The SONAME dedup is the steady state — Boat made the deficient copy win (cx-bms `1a1eb6e6bd`, verified here; corrected per outer 2026-10-10)
 
 `llvm-readelf -d` shows **all three** `liboh_android_runtime`-family files declare the **same SONAME
 `liboh_android_runtime.so`**: U13 libandroid `9ccf64f8`, U13 runtime `18763dd4`, boat `adc125f4`
-(`evidence/soname-and-cursorwindow.txt`).
+(`evidence/soname-and-cursorwindow.txt`). The dynamic linker keys its loaded-library cache on **SONAME, not path**,
+so two on-disk paths with that SONAME dedup to **one** loaded owner per linker namespace.
 
-The dynamic linker keys its loaded-library cache on **SONAME, not path**. So the naive v2 ("keep the runtime path at
-18763dd4, swap only the `libandroid.so` path to adc") does **not** yield a single deterministic owner: if both
-`/system/android/lib64/libandroid.so` and `.../liboh_android_runtime.so` are visible in the **same linker
-namespace**, a `dlopen` of either path returns whichever soinfo loaded first. Compounding it, `CursorWindow` is
-**runtime-only** (U13 libandroid also has 0), so a libandroid-path overlay can never restore the DB surface anyway.
+**This is not a new risk — it is the existing, benign steady state.** U13 base already ships `libandroid.so`
+(`9ccf64f8`) **and** `liboh_android_runtime.so` (`18763dd4`) side by side with the same SONAME, and all 128 apps
+light. So the dedup has always been in effect and the **full runtime (`18763dd4`, 787 exports incl `CursorWindow`)
+is the first-loaded winner** today. Boat's defect is narrow and specific: by binding the stripped blob `adc125f4`
+(268 exports, no `CursorWindow`) at the runtime path, it makes the **deficient copy the first-loaded owner** — the
+SONAME dedup then serves adc's stripped surface to everything. The mechanism didn't change; the winner did.
 
-### How to decide it statically (before any board write)
+Corollary for a path-swap: moving adc to the `libandroid.so` path does **not** help, because `CursorWindow` is
+**runtime-only** (U13 libandroid also has 0) and the SONAME winner is still decided by load order, not by which path
+you wrote. The only clean fix is to keep the full runtime object as the owner.
 
-1. **`readelf -d` SONAME** — DONE; precondition met (all three share the SONAME).
+### How to confirm the owner statically (which copy wins load order)
+
+1. **`readelf -d` SONAME** — DONE; all three share the SONAME, so dedup applies.
 2. **`scripts/lab/open_site_scan.py`** on the deployed `appspawn-x` + child: enumerate every `dlopen`/`dlopen_ns`
-   site (namespace, path, flags) touching `liboh_android_runtime.so` or `libandroid.so`. Same namespace → dedup to
-   one owner by SONAME; different namespaces → two coexisting copies (then non-Boat apps in the app ns get whichever
-   is bound there).
-3. **Deployed `/proc/<pid>/maps`** of a live app (one Boat, one non-Boat; read-only): grep both on-disk paths. Both
-   bound on disk but only **one** in maps ⇒ SONAME dedup confirmed; which path appears ⇒ load order.
-4. **Verdict rule**: if the two paths resolve in one namespace, a path-swap cannot place adc as libandroid without
-   displacing the runtime's own SONAME entry → path-swap unsafe.
+   site (namespace, path, flags) touching `liboh_android_runtime.so` or `libandroid.so`, to see which path is opened
+   first in each namespace (that is the SONAME winner).
+3. **Deployed `/proc/<pid>/maps`** of a live app (one Boat, one non-Boat; read-only): both paths bound on disk but
+   only **one** in maps ⇒ the dedup winner; which path appears ⇒ load order. On a healthy U13 base this is the full
+   runtime `18763dd4`; the check is how you confirm Boat flipped the winner to adc.
+4. **Verdict rule**: the owner must be the full runtime object. Any overlay that makes a stripped copy the
+   first-loaded SONAME winner (what v1 does) is unsafe regardless of which path it is written to.
 
 ## Recommended v2
 
 Do **not** ship `adc125f4` at any `/system` path. **Port the Boat render delta into the U13 runtime `18763dd4`** —
 one artifact with 787 exports + real CursorWindow/SQLite registrars + the render fix, one SONAME, no dedup
-ambiguity. Keep the verified adapter `8ab85446`. **Gate the jar** on a `deployed_class_diff` of the *real*
-`6333bcab` (must drop 0 deployed classes, especially the frozen TLS ones). cx-bms is producing the runtime-delta
-patch spec; this manifest and that spec cross-reference. Until that artifact exists and is single-variable
-re-proven for render, the runtime stays U13 base `18763dd4` (render-correct mapping with 18763dd4 is **UNVERIFIED**).
+ambiguity. Keep the verified adapter `8ab85446` **and** the verified jar `6333bcab` (both supersets of base, 0
+dropped, 0 frozen broken — see `jar-6333bcab-gate.md`). cx-bms is producing the runtime-delta patch spec; this
+manifest and that spec cross-reference. Until that artifact exists and is single-variable re-proven for render, the
+runtime stays U13 base `18763dd4` (render-correct mapping with 18763dd4 is **UNVERIFIED**).
 
 ## Files
 
-- `manifest-v2-draft.json` — the per-file verdict table + SONAME risk + decision method (machine-readable).
+- `manifest-v2-draft.json` — the per-file verdict table + SONAME steady-state analysis + owner-confirm method (machine-readable).
+- `jar-6333bcab-gate.md` + `evidence/jar-6333bcab-search.log` — the real-jar gate: SHA search log + class-diff (or locked-artifact finding).
 - `evidence/{adapter-abi,runtime-misuse-abi,libandroid-abi}.json` — the three `abi_diff` runs.
 - `evidence/soname-and-cursorwindow.txt` — SONAME of the three + CursorWindow strong-export counts.
-- `evidence/jar-classdiff-indicative.txt` — indicative jar class diff (boat-assembled twin; **not** the manifest SHA).
+- `evidence/jar-6333bcab-classdiff.txt` — real jar gate (6333bcab vs base, --frozen). `evidence/jar-6333bcab-search.log` — SHA search trail. `evidence/jar-classdiff-indicative.txt` — the withdrawn indicative twin (56e4d473).
 - `results.json` — the numbers.
 
 ## Reproduce
@@ -93,6 +101,5 @@ python3 scripts/lab/abi_diff.py --old $BASE/libandroid.so --new $BOAT/libandroid
 ```
 
 **Verified (static):** the alias (boat dir holds the blob as `libandroid.so`), the 520-export runtime strip,
-CursorWindow runtime-only, the shared SONAME, adapter non-regression. **Unverified:** SONAME dedup on a live board;
-the real `6333bcab` jar class set; whether the ported-delta runtime reproduces the render fix. **Not done:** any
-board step.
+CursorWindow runtime-only, the shared SONAME, adapter non-regression, jar 6333bcab non-regression (real artifact, found local). **Unverified:** the SONAME winner on a live board (expected 18763dd4); whether the ported-delta runtime reproduces
+the render fix. **Not done:** any board step.

@@ -1,19 +1,80 @@
 {
   "task": "boat-overlay-v2-manifest-draft + per-file regression check",
-  "lane": "cc-t3", "campaign": 91, "date": "2026-10-10", "board": "none (static)",
+  "lane": "cc-t3",
+  "campaign": 91,
+  "date": "2026-10-10",
+  "board": "none (static)",
   "base_reference": "westlake-inputs/generations/u13-stageA-91272eaf-20261003/armed-bundle",
   "abi_consumer": "payload/runtime/appspawn-x 2a87118e",
   "shared_file_checks": {
-    "adapter_liboh_adapter_bridge.so": {"base": "84695d62", "boat": "8ab85446", "exports_old": 2357, "exports_new": 2359, "removed": 0, "added": 2, "drift": 0, "consumer_breaks": 0, "verdict": "KEEP no-regression (superset)"},
-    "runtime_liboh_android_runtime.so": {"base": "18763dd4", "boat_v1": "adc125f4", "exports_old": 787, "exports_new": 268, "removed": 520, "added": 1, "drift": 0, "cursorwindow_exports_base": 24, "cursorwindow_exports_boat": 0, "sqlite_registrars": "WEAK empty stubs (cx-bms 1a1eb6e6bd)", "verdict": "REGRESSOR -> keep 18763dd4; render via ported delta"},
-    "libandroid.so_correct_path": {"base": "9ccf64f8", "boat": "adc125f4", "exports_old": 268, "exports_new": 268, "removed": 0, "added": 0, "drift": 0, "cursorwindow_exports": 0, "verdict": "ABI-equal but NO CursorWindow + SONAME-collision -> not a valid runtime substitute"},
-    "jar_oh-adapter-runtime.jar": {"base": "bbc3f530", "boat_manifest": "6333bcab", "boat_manifest_locally_present": false, "indicative_twin": "56e4d473", "indicative_dropped": 186, "indicative_added": 4, "indicative_reshaped": 0, "indicative_notable_drops": ["WestlakeTlsInstall", "conscrypt/OpenSSLProvider", "WestlakeAndroidOpenSsl", "chromium support-lib glue"], "verdict": "GATE: real-artifact class check required (likely TLS/webview regressor)"}
+    "adapter_liboh_adapter_bridge.so": {
+      "base": "84695d62",
+      "boat": "8ab85446",
+      "exports_old": 2357,
+      "exports_new": 2359,
+      "removed": 0,
+      "added": 2,
+      "drift": 0,
+      "consumer_breaks": 0,
+      "verdict": "KEEP no-regression (superset)"
+    },
+    "runtime_liboh_android_runtime.so": {
+      "base": "18763dd4",
+      "boat_v1": "adc125f4",
+      "exports_old": 787,
+      "exports_new": 268,
+      "removed": 520,
+      "added": 1,
+      "drift": 0,
+      "cursorwindow_exports_base": 24,
+      "cursorwindow_exports_boat": 0,
+      "sqlite_registrars": "WEAK empty stubs (cx-bms 1a1eb6e6bd)",
+      "verdict": "REGRESSOR -> keep 18763dd4; render via ported delta"
+    },
+    "libandroid.so_correct_path": {
+      "base": "9ccf64f8",
+      "boat": "adc125f4",
+      "exports_old": 268,
+      "exports_new": 268,
+      "removed": 0,
+      "added": 0,
+      "drift": 0,
+      "cursorwindow_exports": 0,
+      "verdict": "ABI-equal but NO CursorWindow + SONAME-collision -> not a valid runtime substitute"
+    },
+    "jar_oh-adapter-runtime.jar": {
+      "base": "bbc3f530",
+      "boat_manifest": "6333bcab",
+      "boat_manifest_locally_present": true,
+      "located": "westlake-harness-wiki/.../spare-5cd/overlay/oh-adapter-runtime.c9only.jar (source-lookup step 1)",
+      "classes_old": 216,
+      "classes_new": 218,
+      "dropped": 0,
+      "reshaped": 0,
+      "added": 2,
+      "added_classes": [
+        "Ladapter/activity/InputEventDeviceProjection;",
+        "Ladapter/activity/InputEventDeviceProjection$1;"
+      ],
+      "frozen_classes_broken": 0,
+      "verdict": "KEEP no-regression (superset)",
+      "indicative_twin_withdrawn": "56e4d473 (186 dropped incl TLS) is a different stripped jar, not the manifest's"
+    }
   },
-  "app_private_files": ["libunity.so 1bea0fae", "libil2cpp.so f6b806b5", "libwestlake_bionic_signal_box.so 7a931c79"],
-  "soname_all_three": "liboh_android_runtime.so (9ccf64f8, 18763dd4, adc125f4 — verified llvm-readelf -d)",
+  "app_private_files": [
+    "libunity.so 1bea0fae",
+    "libil2cpp.so f6b806b5",
+    "libwestlake_bionic_signal_box.so 7a931c79"
+  ],
+  "soname_all_three": "liboh_android_runtime.so (9ccf64f8, 18763dd4, adc125f4 \u2014 verified llvm-readelf -d)",
   "soname_dedup_risk": "UNVERIFIED on board; path-swap does not give single owner; static decision method = open_site_scan.py + deployed /proc/<pid>/maps (see manifest-v2-draft.json)",
-  "regressing_for_non_boat_apps": ["runtime adc125f4 (confirmed, 520 removed)", "jar 6333bcab (unverified; indicative twin drops 186 incl TLS)"],
-  "non_regressing_shared": ["adapter 8ab85446 (+2 exports, 0 removed)"],
-  "recommended_v2": "port Boat render delta into U13 runtime 18763dd4 (cx-bms spec, cross-ref); keep adapter 8ab85446; gate jar on real 6333bcab; no standalone adc/libandroid overlay",
+  "regressing_for_non_boat_apps": [
+    "runtime adc125f4 (confirmed, 520 removed)"
+  ],
+  "non_regressing_shared": [
+    "adapter 8ab85446 (+2 exports, 0 removed)",
+    "jar 6333bcab (+2 classes, 0 dropped, 0 frozen broken)"
+  ],
+  "recommended_v2": "port Boat render delta into U13 runtime 18763dd4 (cx-bms spec, cross-ref); keep adapter 8ab85446 + jar 6333bcab (both verified superset); no standalone adc/libandroid overlay",
   "cross_ref": "cx-bms benchmark/2026-10-10-boat-runtime-jni-gap/ (1a1eb6e6bd): weak SQLite stubs + 47-byte runtime-delta port spec"
 }
