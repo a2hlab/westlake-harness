@@ -12,3 +12,12 @@ name: "D600 demo baseline: content first screens (94 from the manifest), interac
 - 静态优先:路径、命名空间、部署件内容这类问题先离线扫描再上板。
 - 交件只走 `land.py`;不推送;不提交密码、服务器账号。
 - 封存(t5)之后,演示板零改动,心跳只做只读巡检;解封只有用户能批。
+
+## 用户 2026-10-10 定(收尾范围、验收与冻结底线)
+
+- 范围:不再新点亮。现有 128 个照旧:演示手册里亮的 112 个演示,半亮/不亮的 16 个留附录不修。全力只做三件:128 个可演示、BoatAttack 可玩、头条可交互。
+- BoatAttack 可玩 = t2b 判据:横屏 1920×1200 满屏、HUD 清晰不拉伸、颜色正常不偏紫、加速后 KPH 到两位数且圈数推进、转向有效,与原版 PASS 画面并排对照。
+- 头条可交互 = 前台桌面点击能启动、能刷首页、能点开文章。
+- 硬要求:拔电重启后不接 Mac 也能演示(开机自启),三者都算。
+- 冻结底线:为 Boat 与渲染修复重编的共享件(liboh_adapter_bridge、liboh_android_runtime、oh-adapter-runtime.jar)可以替换冻结项,条件 = 重启后全量 128 回归(t4/regress_vs_signoff.py)不退步,并在 knowledge/frozen/frozen.json 登记新版本(原因、对照、重验证据、全量路径)后再部署。演示板解封已批,封存前可写。
+- 封存两步:v1 = 128 + 头条 + 自启;Boat 达标后重封 v2;每次封存只重启一次,重启前先拍快照并过 sepolicy 门。
