@@ -5,11 +5,27 @@ import os
 from pathlib import Path
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import uuid
 
 from prepare import HERE, NEW, OLD, REPO, SERIAL, TARGETS, save, sha
+
+
+def check_serial(serial):
+    if serial != SERIAL:
+        raise ValueError('only approved5cd is supported; no serial prefix or other board')
+
+
+def approval_path(value, approval_file):
+    if not isinstance(value, str) or not value:
+        raise ValueError('nonempty approval path required')
+    expanded = os.path.expandvars(value)
+    if '$' in expanded:
+        raise ValueError('unresolved environment variable in approval path')
+    path = Path(expanded)
+    return path if path.is_absolute() else approval_file.parent / path
 
 
 def check_approval(approval, action, boot, lane, now=None):
@@ -158,16 +174,26 @@ def transaction(transport, action, candidate, metadata, state, out):
     save(out / 'state.json', state)
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['apply', 'rollback', 'reboot'], nargs='?', default='apply')
+    parser.add_argument('action', choices=['apply', 'rollback', 'reboot'], nargs='?')
+    parser.add_argument('--serial', default=SERIAL)
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--approval', type=Path)
     parser.add_argument('--state', type=Path)
-    parser.add_argument('--lane', default='cx-bms')
+    parser.add_argument('--lane')
     parser.add_argument('--out', type=Path)
     parser.add_argument('--hdc', type=Path)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    check_serial(args.serial)
+    approval = json.loads(args.approval.read_text()) if args.approval else None
+    if approval is not None and approval.get('serial') != args.serial:
+        raise ValueError('CLI serial differs from approval')
+    if args.action is None:
+        actions = approval.get('actions', []) if approval is not None else ['apply']
+        if len(actions) != 1 or actions[0] not in ['apply', 'rollback', 'reboot']:
+            raise ValueError('one-command invocation requires exactly one approved action')
+        args.action = actions[0]
     workspaces = Path(os.environ.get('WORKSPACES', REPO.parent))
     candidate = workspaces / 'oh61-bms-kit-b79/out/wukong100/bundlemanager/bundle_framework/libinstalls.z.so'
     if sha(candidate) != NEW:
@@ -177,11 +203,30 @@ def main():
         print(json.dumps(dict(dry_run=True, device_access=False, action=args.action, serial=SERIAL, targets=TARGETS,
                               candidate_sha256=NEW, execution_enabled=plan['execution_enabled'], pending=plan['pending']), indent=2))
         return
-    if not args.approval or not args.out or not args.hdc:
-        parser.error('--execute requires --approval --out --hdc; this does not acquire a lock')
-    approval = json.loads(args.approval.read_text())
+    if not args.approval:
+        parser.error('--execute requires --approval; this does not acquire a lock')
+    args.lane = args.lane or approval.get('lane')
     check_approval(approval, args.action, approval.get('boot_id'), args.lane)
+    if not args.lane:
+        raise ValueError('approval lane required')
+    if args.state is None and approval.get('state'):
+        args.state = approval_path(approval['state'], args.approval)
+    if args.action != 'apply' and args.state is None:
+        raise ValueError('original transaction state path required in approval or --state')
+    if args.hdc is None:
+        configured = approval.get('hdc') or os.environ.get('HDC') or shutil.which('hdc')
+        if not configured and sys.platform == 'darwin':
+            configured = '/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc'
+        if not configured:
+            raise ValueError('set HDC or approval hdc to a reachable executable/wrapper')
+        args.hdc = approval_path(configured, args.approval)
+    if not args.hdc.is_file() or not os.access(args.hdc, os.X_OK):
+        raise ValueError('HDC executable/wrapper missing or not executable')
+    if args.out is None:
+        args.out = approval_path(approval['out'], args.approval) if approval.get('out') else (
+            HERE / '.artifacts' / ('invocation-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + uuid.uuid4().hex))
     args.out.mkdir(parents=True, exist_ok=False)
+    print('evidence=' + str(args.out), flush=True)
     note = workspaces / 'westlake-harness/scripts/lab/board_note.sh'
     transport = Transport(args.hdc, note, args.lane, args.out)
     transport.boot, transport.approval, transport.action = approval['boot_id'], approval, args.action
@@ -219,6 +264,7 @@ def main():
         transport.mutate('sync; reboot')
         return
     transaction(transport, args.action, candidate, metadata, state, args.out)
+    print(json.dumps(dict(status=state['status'], serial=SERIAL, state=str(args.out / 'state.json'))))
 
 
 if __name__ == '__main__':

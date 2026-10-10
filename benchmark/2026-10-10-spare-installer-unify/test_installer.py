@@ -1,6 +1,8 @@
 import copy
+from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 import json
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -81,6 +83,54 @@ class Guards(unittest.TestCase):
         with patch.object(sys, 'argv', ['install.py', '--execute']), patch.object(install, 'sha', return_value=NEW), \
                 patch.object(install, 'Transport', side_effect=AssertionError('device access')), self.assertRaises(SystemExit):
             install.main()
+
+    def test_one_command_other_lane_uses_approval_defaults(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            wrapper = root / 'mock-hdc'
+            wrapper.write_text('#!/bin/sh\nexit 99\n')
+            wrapper.chmod(0o755)
+            approval = approved()
+            approval.update(lane='cx-t0', hdc='mock-hdc', out='evidence')
+            approval_file = root / 'approval.json'
+            approval_file.write_text(json.dumps(approval))
+            with patch.object(install, 'Transport') as factory, patch.object(install, 'transaction') as transaction, redirect_stdout(io.StringIO()):
+                factory.return_value.shell.return_value = probe()
+                transaction.side_effect = lambda transport, action, candidate, metadata, state, out: state.update(status='mock_only')
+                install.main(['--serial', SERIAL, '--approval', str(approval_file), '--execute'])
+                self.assertEqual(factory.call_args.args[0], wrapper)
+                self.assertEqual(factory.call_args.args[2], 'cx-t0')
+                self.assertEqual(factory.call_args.args[3], root / 'evidence')
+                self.assertEqual(transaction.call_args.args[1], 'apply')
+
+    def test_serial_refuses_before_any_transport(self):
+        for serial in ['5cd1e3dd', '61b0657200000000000000000324012c', '5ea34a4500000000000000001123012c']:
+            with patch.object(install, 'Transport', side_effect=AssertionError('device access')), self.assertRaises(ValueError):
+                install.main(['--serial', serial, '--execute'])
+
+    def test_one_command_dry_run_does_not_open_transport(self):
+        with tempfile.TemporaryDirectory() as directory:
+            approval_file = Path(directory) / 'approval.json'
+            approval_file.write_text(json.dumps(approved()))
+            with patch.object(install, 'Transport', side_effect=AssertionError('device access')), redirect_stdout(io.StringIO()) as output:
+                install.main(['--serial', SERIAL, '--approval', str(approval_file)])
+            self.assertFalse(json.loads(output.getvalue())['device_access'])
+
+    def test_ambiguous_actions_or_foreign_lane_refuse(self):
+        with tempfile.TemporaryDirectory() as directory:
+            approval_file = Path(directory) / 'approval.json'
+            approval = approved()
+            for change, arguments in [({'actions': ['apply', 'reboot']}, []), ({'lane': 'cx-t0'}, ['--lane', 'cx-bms'])]:
+                approval_file.write_text(json.dumps(dict(approval, **change)))
+                with patch.object(install, 'Transport', side_effect=AssertionError('device access')), self.assertRaises(ValueError):
+                    install.main(['--serial', SERIAL, '--approval', str(approval_file), '--execute', *arguments])
+
+    def test_approval_path_expansion_and_unknown_variable(self):
+        with patch.dict(os.environ, WORKSPACES='/mock/workspaces'):
+            self.assertEqual(install.approval_path('$WORKSPACES/evidence', Path('/mock/approval.json')), Path('/mock/workspaces/evidence'))
+        for value in [None, '', '$UNSET_SPARE_INSTALLER_PATH/file']:
+            with self.assertRaises(ValueError):
+                install.approval_path(value, Path('/mock/approval.json'))
 
     def test_wrong_lock_prevents_write(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -279,6 +329,45 @@ class Acceptance(unittest.TestCase):
 
     def test_correct_offline_fixture(self):
         self.assertEqual(acceptance.verify(self.observation, self.signoff, self.root)['paths'], 319)
+
+    def acceptance_approval(self):
+        observation = self.root / 'observation.json'
+        signoff = self.root / 'signoff.json'
+        observation.write_text(json.dumps(self.observation))
+        signoff.write_text(json.dumps(self.signoff))
+        document = dict(approved_by='outer(claude)', serial=SERIAL, boot_id=AFTER,
+                        actions=['acceptance'], window_evidence='mock only; no real acceptance',
+                        files={name: sha(HERE / name) for name in ['acceptance.py', 'install.py', 'reference.json']},
+                        observation=dict(path=observation.name, sha256=sha(observation)),
+                        signoff=dict(path=signoff.name, sha256=sha(signoff)))
+        approval_file = self.root / 'acceptance-approval.json'
+        approval_file.write_text(json.dumps(document))
+        return approval_file, document
+
+    def test_one_command_acceptance_bound_evidence(self):
+        approval_file, document = self.acceptance_approval()
+        with redirect_stdout(io.StringIO()) as output:
+            acceptance.main(['--serial', SERIAL, '--approval', str(approval_file)])
+        self.assertEqual(json.loads(output.getvalue())['status'], 'autonomous_reboot_verified_outer_lit')
+
+    def test_one_command_acceptance_evidence_and_binding_drift(self):
+        approval_file, document = self.acceptance_approval()
+        for field, value in [('files', {}), ('boot_id', BOOT), ('serial', '61b0657200000000000000000324012c')]:
+            approval_file.write_text(json.dumps(dict(document, **{field: value})))
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                acceptance.main(['--serial', SERIAL, '--approval', str(approval_file)])
+        approval_file.write_text(json.dumps(document))
+        (self.root / 'observation.json').write_text('{}')
+        with self.assertRaises(ValueError):
+            acceptance.main(['--serial', SERIAL, '--approval', str(approval_file)])
+
+    def test_one_command_acceptance_cannot_override_or_relax_autonomy(self):
+        self.observation['host_recovery_actions'] = ['fresh native ticket']
+        approval_file, document = self.acceptance_approval()
+        with self.assertRaisesRegex(ValueError, 'not autonomous'):
+            acceptance.main(['--serial', SERIAL, '--approval', str(approval_file)])
+        with self.assertRaises(ValueError):
+            acceptance.main(['--serial', SERIAL, '--approval', str(approval_file), '--signoff', 'different.json'])
 
     def test_no_daemon_even_with_exact_fingerprint_refuses(self):
         self.observation['appspawn_x'] = {}

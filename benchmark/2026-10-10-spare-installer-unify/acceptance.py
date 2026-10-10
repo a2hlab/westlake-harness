@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 from prepare import HERE, NEW, SERIAL, TARGETS, fingerprint, sha
+from install import approval_path, check_serial
 
 
 def verify(observation, signoff, root):
@@ -47,11 +48,36 @@ def verify(observation, signoff, root):
     return dict(status='autonomous_reboot_verified_outer_lit', runtime='452447a4a0ba', boot='ee927db88a67', paths=319)
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--observation', type=Path, required=True)
-    parser.add_argument('--signoff', type=Path, required=True)
-    args = parser.parse_args()
+    parser.add_argument('--serial', default=SERIAL)
+    parser.add_argument('--approval', type=Path)
+    parser.add_argument('--observation', type=Path)
+    parser.add_argument('--signoff', type=Path)
+    args = parser.parse_args(argv)
+    check_serial(args.serial)
+    if args.approval:
+        if args.observation or args.signoff:
+            raise ValueError('approval evidence cannot be overridden by CLI paths')
+        approval = json.loads(args.approval.read_text())
+        if approval.get('approved_by') != 'outer(claude)' or approval.get('serial') != args.serial:
+            raise ValueError('outer approval for exact5cd required')
+        if approval.get('actions') != ['acceptance'] or not approval.get('window_evidence'):
+            raise ValueError('explicit acceptance action/evidence required')
+        for name in ['acceptance.py', 'install.py', 'reference.json']:
+            if approval.get('files', {}).get(name) != sha(HERE / name):
+                raise ValueError('approved acceptance input drift: ' + name)
+        for name in ['observation', 'signoff']:
+            row = approval[name]
+            path = approval_path(row['path'], args.approval)
+            if sha(path) != row.get('sha256'):
+                raise ValueError('approved evidence drift: ' + name)
+            setattr(args, name, path)
+        observation = json.loads(args.observation.read_text())
+        if observation.get('boot_after') != approval.get('boot_id'):
+            raise ValueError('acceptance approval boot differs')
+    elif not args.observation or not args.signoff:
+        parser.error('provide --approval or both --observation and --signoff')
     print(json.dumps(verify(json.loads(args.observation.read_text()), json.loads(args.signoff.read_text()), args.signoff.parent)))
 
 

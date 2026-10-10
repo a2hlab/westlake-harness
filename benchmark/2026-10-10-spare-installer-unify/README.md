@@ -84,6 +84,66 @@ not weakened or substituted with common821de739.
 
 ## 3. Prepared commands — NOT permission to execute
 
+### Cross-lane one-command entry (offline handoff)
+
+The 5cd window was withdrawn after this lane's transport failed. These commands
+do not reinstate that window. An accessible lane must obtain its own fresh outer
+approval and hold the matching real lock before `--execute`. The entry never
+announces, locks, unlocks, disables startup, labels runtime sources, starts a
+daemon or silently continues into a reboot. Each approved action is separate.
+
+From any landed worktree, set `HERE` to this directory. The two required inputs
+are the **full serial** and the **approval JSON**; installation still requires
+the deliberate `--execute` switch:
+
+```sh
+python3 "$HERE/install.py" --serial 5cd1e3dd00000000000000000923012c --approval "$APPROVAL" --execute
+python3 "$HERE/acceptance.py" --serial 5cd1e3dd00000000000000000923012c --approval "$ACCEPTANCE_APPROVAL"
+```
+
+Omit `--execute` for installation dry-run: no transport is constructed. Only 5cd
+is supported by this reviewed reference; 61b, 5ea and serial prefixes reject.
+A serial argument is not authorization for another board.
+
+Installation approval supplies exactly one `actions` entry (`apply`, `rollback`
+or `reboot`), `lane` (for example the assigned `cx-t0`, not hardcoded `cx-bms`),
+fresh `boot_id`, `expires_at`, `window_evidence`, and exact `files` hashes for
+`install.py`, `remote-transaction.sh`, `plan.json`, `reference.json`.
+**Changing this entrypoint changes install.py's hash: regenerate and
+reapprove the input binding; an old d95e3b0649 hash approval must reject.**
+Optional approval fields:
+
+- `hdc`: executable or forwarding wrapper. Defaults to environment `HDC`, then
+  PATH `hdc`, then the standard DevEco path on Mac. No server restart/fallback
+  execution is attempted on transport failure.
+- `out`: new persistent evidence directory. Defaults to a unique
+  `HERE/.artifacts/invocation-<UTC>-<uuid>` directory; printed before transport.
+  Existing directories reject, preserving past attempts.
+- `state`: original apply `state.json` path, required for rollback/reboot,
+  together with its existing `state_sha256` binding and original two backups.
+
+Paths in JSON are relative to the approval file, or absolute; environment
+variables such as `$WORKSPACES` expand and unresolved variables reject. Existing
+explicit `--hdc`, `--out`, `--state`, `--lane` and positional action invocations
+remain supported; a lane override still must match the approval and held lock.
+The caller must also set `WORKSPACES` for the pinned kit and canonical lock tool.
+
+Acceptance uses `acceptance-approval-template.json`: `approved_by=outer(claude)`,
+exact serial, actual after-reboot `boot_id`, `actions=["acceptance"]`, approval
+evidence, hashes of `acceptance.py`, `install.py`, `reference.json`, and
+`observation` / `signoff` objects each containing `path` and `sha256`. It reads
+only these bound local artifacts and the two signed images, makes no device
+connection, and refuses CLI evidence-path overrides. Its criteria are unchanged:
+**fresh-ticket-assisted restoration cannot pass autonomous acceptance**. Report
+that separately using its actual deployment and `run_facts` evidence; do not
+erase `host_recovery_actions`. The legacy observation/signoff CLI remains an
+offline validator, not an approval or board-write entry.
+
+For the outer's conditional deployment step, wait for cx-t0's actual 61b result.
+Only upon its success may the assigned deployment provider label appspawn-x
+source `appspawn_exec` and child/liblzma `system_lib_file`, verify each operation,
+then start. The installer entry does not perform or guess that separate fix.
+
 Set `WORKSPACES` to the workspace root; `HERE` below is this report directory.
 All commands run on Mac with no VM requirement. Local-only dry-run:
 
@@ -233,3 +293,7 @@ cargo test --manifest-path "$WORKSPACES/westlake-harness-bms/tools/spec-checks/C
 
 See `results.json` for fresh exit codes, input hashes, landing/preflight and the
 explicit unverified real-board acceptance. No old PASS is substituted for a new run.
+
+The cross-lane handoff's fresh tests and changed entrypoint hashes are recorded
+separately in `handoff-results.json` and `handoff-evidence/`; the original
+`results.json` remains the historical source/static receipt, not a new window PASS.
