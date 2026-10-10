@@ -42,6 +42,10 @@ class FixtureTransport:
         self.slot_boot = None
         self.slot_enabled = True
         self.seal_stage = None
+        self.archive_missing = False
+        self.archive_sha_drift = False
+        self.archive_extra = False
+        self.physical_files = []
 
     def run(self, name, argv, env=None):
         self.calls.append((name, argv, env))
@@ -63,6 +67,20 @@ class FixtureTransport:
         if name == 'pre-319':
             expected = seal.read(self.plan['inputs']['baseline_319']['path'])['expected']
             return 0, '\n'.join(('e' * 64 if self.baseline_drift else expected[target]) + '  ' + target for target in argv[-1].split()[1:])
+        if name == 'bare-seq1-inventory':
+            expected = seal.archived_base(seal.read(self.plan['inputs']['baseline_319']['path'])['expected'])
+            paths = list(expected)
+            if self.archive_missing:
+                paths.pop()
+            if self.archive_extra:
+                paths.append(seal.ROOT + '/sources/seq1/unexpected.so')
+            return 0, '\n'.join(paths) + '\n'
+        if name == 'bare-seq1-sha':
+            expected = seal.archived_base(seal.read(self.plan['inputs']['baseline_319']['path'])['expected'])
+            return 0, '\n'.join(('e' * 64 if self.archive_sha_drift else expected[target]) + '  ' + target
+                                for target in argv[-1].split()[1:])
+        if name == 'bare-physical-inventory':
+            return 0, '\n'.join(self.physical_files)
         if name.startswith('no-live-recover-bind-'):
             mounts = '1 0 0:1 / / rw - ext4 /dev/root rw\n'
             if name == 'no-live-recover-bind-' + str(self.live_view):
@@ -73,7 +91,7 @@ class FixtureTransport:
         if name == 'installer':
             return 0, 'INSTALL_OK\n'
         if name in seal.PROVIDERS:
-            receipt = dict(serial=seal.SERIAL, plan_sha256='a' * 64,
+            receipt = dict(serial=seal.SERIAL, plan_sha256=env['DEMO_SEAL_PLAN_SHA'],
                            boot_id=env['DEMO_SEAL_BOOT_ID'], no_conflict=True, enabled=True,
                            uid_mode='installed-host-dynamic', reconcile_checked=True, immutable_preserved=True,
                            approved_by='outer(claude)' if not self.unsigned else 'fixture-unapproved',
@@ -125,7 +143,9 @@ class OrchestrationTests(unittest.TestCase):
         self.plan = copy.deepcopy(seal.read(HERE / 'plan-template.json'))
         self.plan['mode'] = 'v2'
         self.plan['boot_timeout_seconds'] = 1
-        save(self.out / 'baseline.json', dict(expected={'/system/fixture-' + str(number): 'b' * 64 for number in range(319)}))
+        expected = {'/system/android/lib64/fixture-' + str(number) + '.so': 'b' * 64 for number in range(246)}
+        expected.update({'/system/fixture-' + str(number): 'c' * 64 for number in range(73)})
+        save(self.out / 'baseline.json', dict(expected=expected))
         save(self.out / 'table.json', dict(recover_layers=[dict(target='/system/android')]))
         save(self.out / 'manifest.json', dict(apps=[dict(key='key-' + str(number), install=True) for number in range(128)]))
         for key, filename in [('baseline_319', 'baseline.json'), ('recover_table', 'table.json'), ('manifest', 'manifest.json')]:
@@ -276,7 +296,8 @@ class OrchestrationTests(unittest.TestCase):
     def test_exact_order_and_two_target_boots(self):
         self.run_workflow()
         ordered = ['lock_check', 'pre-319', 'disable', 'bare-reboot', 'wait-bare-boot',
-                   'no-live-recover-bind-self', 'installer', 'toutiao_slot', 'enable', 'snapshot-pre',
+                   'no-live-recover-bind-self', 'bare-seq1-inventory', 'bare-seq1-sha',
+                   'bare-physical-inventory', 'installer', 'toutiao_slot', 'enable', 'snapshot-pre',
                    'sepolicy-gate', 'reboot-sim-advisory', 'autonomous-reboot', 'wait-autonomous-boot',
                    'acceptance', 'post-parent', 'snapshot-post', 'snapshot-diff', 'prepare-128',
                    'run-128', 'regress-vs-5cd', 'regression_review', 'seal_snapshot', 'build-seal']
@@ -288,6 +309,78 @@ class OrchestrationTests(unittest.TestCase):
         self.assertIn('WITH_BOAT=1', installer)
         self.assertIn(seal.SERIAL, next(argv for name, argv, env in self.transport.calls if name == 'run-128'))
         self.assertEqual(self.workflow.boot_id, BOOTS[2])
+
+    def test_seq1_missing_or_extra_member_stops_before_installer(self):
+        for problem in ('missing', 'extra'):
+            with self.subTest(problem=problem):
+                self.transport.archive_missing = problem == 'missing'
+                self.transport.archive_extra = problem == 'extra'
+                self.workflow.events = []
+                with self.assertRaisesRegex(ValueError, 'BARE_BASE_REFUSE seq1 membership'):
+                    self.run_workflow()
+                self.assertNotIn('installer', self.workflow.events)
+                self.assertNotIn('toutiao_slot', self.workflow.events)
+
+    def test_seq1_same_count_wrong_sha_stops_before_installer(self):
+        self.transport.archive_sha_drift = True
+        with self.assertRaisesRegex(ValueError, 'BARE_BASE_REFUSE seq1 SHA mismatch'):
+            self.run_workflow()
+        self.assertNotIn('installer', self.workflow.events)
+        self.assertNotIn('toutiao_slot', self.workflow.events)
+
+    def test_nonempty_physical_stops_before_installer(self):
+        self.transport.physical_files = ['/system/android/lib64/leftover.so']
+        with self.assertRaisesRegex(ValueError, 'BARE_BASE_REFUSE physical /system/android not empty'):
+            self.run_workflow()
+        self.assertNotIn('installer', self.workflow.events)
+        self.assertNotIn('toutiao_slot', self.workflow.events)
+
+    def test_bare_inventory_command_failure_is_not_zero_files(self):
+        for step in ('bare-seq1-inventory', 'bare-seq1-sha', 'bare-physical-inventory'):
+            with self.subTest(step=step):
+                self.transport.fail = step
+                self.workflow.events = []
+                with self.assertRaisesRegex(ValueError, 'exit=7'):
+                    self.run_workflow()
+                self.assertNotIn('installer', self.workflow.events)
+
+    def test_archive_count_is_signed_subset_not_a_hardcoded_246(self):
+        expected = seal.read(self.out / 'baseline.json')['expected']
+        digest = expected.pop('/system/android/lib64/fixture-245.so')
+        expected['/system/fixture-extra'] = digest
+        save(self.out / 'baseline.json', dict(expected=expected))
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.workflow.run()
+        self.assertIn('seq1_files=245 sha_diff={} physical_files=0 decision=REUSE', output.getvalue())
+
+    def test_empty_signed_subset_refuses_before_dispatch(self):
+        with self.assertRaisesRegex(ValueError, 'signed /system/android baseline missing'):
+            seal.archived_base({'/system/android-other/fixture.so': 'a' * 64})
+
+    def test_main_stops_and_prints_recovery_on_bare_guard_failure(self):
+        for problem in ('sha', 'physical'):
+            with self.subTest(problem=problem):
+                self.transport.archive_sha_drift = problem == 'sha'
+                self.transport.physical_files = ['/system/android/fixture'] if problem == 'physical' else []
+                plan, authorization = self.bound_fixture('v1')
+                plan_path = self.out / ('plan-' + problem + '.json')
+                save(plan_path, plan)
+                new_out = self.out / ('execution-' + problem)
+
+                def fixture_transport(out, timeout):
+                    self.transport.out = Path(out)
+                    self.transport.plan = plan
+                    (Path(out) / 'fixture-evidence').write_text('MOCK evidence; no board access')
+                    return self.transport
+
+                with patch.object(seal, 'validate'), patch.object(seal, 'Transport', side_effect=fixture_transport):
+                    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as error:
+                        code = seal.main(['--plan', str(plan_path), '--execute', '--authorization', str(authorization),
+                                          '--out', str(new_out)])
+                self.assertEqual(code, 1)
+                self.assertIn('SEAL-STOP: BARE_BASE_REFUSE', error.getvalue())
+                self.assertIn('RECOVERY (not executed): fresh cx-t0 U13 61b native-ticket replay', error.getvalue())
+                self.assertNotIn('installer', seal.read(new_out / 'steps.json'))
 
     def test_live_bind_in_either_view_refuses_installer(self):
         for view in ('self', '1'):

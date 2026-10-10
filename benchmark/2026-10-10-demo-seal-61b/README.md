@@ -4,7 +4,7 @@
 
 The original workflow hardcoded WITH_BOAT=1, required two active overlays and Boat LAP, and required a v2 regression admission even for v1. Preview skipped binding validation, so a plausible preview did not prove v1 could execute.
 
-This revision adds **--mode v1|v2, default v1**, with mode bound to the approved plan. **39 orchestration/UID-slot fixture tests pass** (`evidence/tests-v1-v2.txt`); the unchanged seal compiler's **18 tests pass**, including actual v1/v2 compiler and selfcheck cases (`evidence/compiler-tests-v1-v2.txt`). Syntax, Python compilation and both previews exit0 (`evidence/checks-v1-v2.txt`). No board, VM, SSH, lock or deployment was accessed. The template remains disabled with pending bindings; no live seal/UI success is claimed.
+This revision adds **--mode v1|v2, default v1**, with mode bound to the approved plan. After the bare-base guard addition, **46 orchestration/UID-slot fixture tests pass** (`evidence/tests-bare-base.txt`); the earlier 39-test mode revision remains in `evidence/tests-v1-v2.txt`. The unchanged seal compiler's earlier **18 tests pass**, including actual v1/v2 compiler and selfcheck cases (`evidence/compiler-tests-v1-v2.txt`); no new compiler change is claimed. Current syntax, compilation and both previews exit0 (`evidence/checks-bare-base.txt`). No board, VM, SSH, lock or deployment was accessed. The template remains disabled with pending bindings; no live seal/UI success is claimed.
 
 | Requirement | v1 (default) | v2 (explicit) |
 |---|---|---|
@@ -39,7 +39,7 @@ For v2, change plan.mode, bind Boat admission/LAP and the v2 identity admission,
 
 1. Fresh lock-conflict receipt, boot UUID, Enforcing and exact signed61b **319-path** inventory.
 2. DISABLED, target boot, different ready boot UUID, persistent DISABLED.
-3. Shell and init mountinfo: no mount at/below the **56 recover targets**, independent of source spelling. Empty/malformed output refuses. Repeat immediately before the guarded installer; pin source SHA and approved bare-boot support. ARCHIVE only on this bare no-bind boot.
+3. Shell and init mountinfo: no mount at/below the **56 recover targets**, independent of source spelling. Empty/malformed output refuses. After the repeated mount checks and installer SHA check, read seq1 inventory and every signed member SHA; require physical `/system/android` to contain **zero files**, so the installer's second guard must REUSE the complete archive. Missing/extra members, wrong SHA, read errors or nonempty physical state stop before installer. See `bare-base-assertion.md`; do not bind the older destructive installer.
 4. Mode-specific installer, INSTALL_OK; concrete uid-dynamic Toutiao slot below, enabled receipt tied to bare boot; then U13 ENABLE.
 5. Complete pre snapshot, fresh policy gate and physical simulator inputs. Simulator rc1 is advisory FAIL/UNKNOWN, not safety PASS; rc2/missing prediction stops.
 6. Second target boot, changed ready UUID. No Mac replay, label repair, deployment, repave or provisioning during autonomous acceptance.
@@ -87,4 +87,4 @@ Each pinned provider receives DEMO_SEAL_OUT/SERIAL/BOOT_ID/PLAN_SHA/STEP/PLAN, e
 
 Outer still binds the guarded **bare-boot-capable** installer, reconciler preservation repair, prepared slot, healthy5cd reference/comparator layout, physical simulator inputs, live UI/128 receipts, final inventory and authorization. Existing template references are not approval. **Only v2** additionally requires Boat and overlay-aware128 identity admission. No identity gate, registry, frozen artifact or board is modified.
 
-Historical tests.txt/dry-run.txt/checks remain; current evidence is explicitly named tests-v1-v2.txt, compiler-tests-v1-v2.txt, checks-v1-v2.txt, dry-run-v1.txt and dry-run-v2.txt. Changes remain in this worktree for outer land; Git index metadata is not writable.
+Historical mode/UID evidence is retained. The latest assertion revision uses tests-bare-base.txt, checks-bare-base.txt and dry-run-bare-base-v1/v2.txt, and has a separate `landing-paths-bare-base.txt`; the original landing list is unchanged. Changes remain in this worktree for outer land; Git index metadata is not writable.

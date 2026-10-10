@@ -74,6 +74,14 @@ def live_binds(text, targets):
     return found
 
 
+def archived_base(expected):
+    prefix = '/system/android/'
+    members = {ROOT + '/sources/seq1/' + target[len(prefix):]: digest
+               for target, digest in expected.items() if target.startswith(prefix)}
+    require(bool(members), 'signed /system/android baseline missing')
+    return members
+
+
 class Transport:
     def __init__(self, out, timeout):
         self.out, self.timeout, self.counter = Path(out), timeout, 0
@@ -179,6 +187,39 @@ class Workflow:
                 found = live_binds(text, targets)
                 require(not found, 'LIVE_BIND_REFUSE installer: ' + json.dumps(found))
 
+    def assert_bare_base(self):
+        archive = ROOT + '/sources/seq1'
+        expected = {} if self.preview else archived_base(read(self.input('baseline_319'))['expected'])
+        _, inventory = self.shell('bare-seq1-inventory', 'test -d ' + archive + ' && test ! -L ' + archive +
+                                  ' && find ' + archive + ' -type f',
+                                  'seq1 membership/count exactly derived from pinned signed319 /system/android subset (246 on current61b)')
+        if not self.preview:
+            paths = inventory.splitlines()
+            require(len(paths) == len(set(paths)) and set(paths) == set(expected),
+                    'BARE_BASE_REFUSE seq1 membership: ' + json.dumps(dict(
+                        expected_count=len(expected), actual_count=len(paths),
+                        missing=sorted(set(expected) - set(paths)), extra=sorted(set(paths) - set(expected)))))
+        actual = {}
+        groups = [list(expected)[offset:offset + 24] for offset in range(0, len(expected), 24)] or [['<signed-seq1-paths>']]
+        for group in groups:
+            _, text = self.shell('bare-seq1-sha', 'sha256sum ' + ' '.join(group),
+                                 'every seq1 relative member equals signed /system/android SHA, not merely file count')
+            if not self.preview:
+                for line in text.splitlines():
+                    match = re.fullmatch(r'([0-9a-f]{64})\s+(/\S+)', line)
+                    require(match is not None and match[2] not in actual, 'BARE_BASE_REFUSE malformed/duplicate seq1 SHA output')
+                    actual[match[2]] = match[1]
+        if not self.preview:
+            differences = {path: dict(expected=expected.get(path), actual=actual.get(path))
+                           for path in sorted(set(expected) | set(actual)) if expected.get(path) != actual.get(path)}
+            require(actual == expected, 'BARE_BASE_REFUSE seq1 SHA mismatch: ' + json.dumps(differences))
+        _, physical = self.shell('bare-physical-inventory',
+                                 'test -d /system/android && test ! -L /system/android && find /system/android -type f',
+                                 'physical /system/android has exactly0 files; signed seq1 is nonempty so installer must REUSE')
+        require(self.preview or not physical.splitlines(), 'BARE_BASE_REFUSE physical /system/android not empty: ' + physical)
+        if not self.preview:
+            print('BARE_BASE: seq1_files=' + str(len(expected)) + ' sha_diff={} physical_files=0 decision=REUSE', flush=True)
+
     def snapshot(self, phase):
         self.command('snapshot-' + phase, ['python3', self.tool('snapshot'), SERIAL,
                      '--hdc', self.plan['hdc'], '--plan', self.input('snapshot_plan'),
@@ -244,6 +285,7 @@ class Workflow:
             require(installer_sha.split() == [self.plan['installer']['sha256'], self.plan['installer']['board_path']],
                     'staged installer drift')
         self.assert_no_binds()
+        self.assert_bare_base()
         installer = self.plan['installer']
         command = 'DEPLOY=' + shlex.quote(installer['deploy']) + ' WITH_BOAT=' + ('1' if self.mode == 'v2' else '0') + ' ALLOW_REMOUNT=1 /system/bin/sh ' + shlex.quote(installer['board_path'])
         _, installed = self.shell('installer', command, 'guard-ready installer; ARCHIVE only on bare no-bind boot; INSTALL_OK')
@@ -348,6 +390,7 @@ def validate(plan, authorization, plan_sha, mode='v1'):
     require(len(expected) == 319 and all(SHA.fullmatch(value) for value in expected.values()), 'signed 319 inventory required')
     for value in expected:
         board_path(value)
+    archived_base(expected)
     table = read(pinned(plan['inputs']['recover_table']))
     targets = [board_path(row['target']) for row in table['recover_layers']]
     require(len(targets) == 56 and len(set(targets)) == 56 and '/system/android' in targets,
