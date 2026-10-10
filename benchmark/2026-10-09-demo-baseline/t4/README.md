@@ -57,3 +57,11 @@ no lock, no promotion and no gate-table modification occurs.
 This delivery prioritizes grouping for cx-t0. The stability summarizer is being
 adapted to the newly accelerated/spare-prescreen policy; the superseded four-round
 prototype is not part of this landing.
+
+## Post-reboot full regression delivery
+
+[reboot-regression-README.md](reboot-regression-README.md) documents the offline
+128-key preparation/driver, exact t3 signoff comparison, changed-only contact
+sheet, and real-record known answers. These tools do not start a board task by
+default; Toutiao foreground capture and the BoatAttack placeholder are explicit
+separate slots.
