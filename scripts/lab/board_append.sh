@@ -11,6 +11,9 @@
 set -euo pipefail
 BOARD=${1:?usage: board_append.sh <absolute board.md> [text...]}; shift
 APPEND=${OLP_BOARD_APPEND:-$HOME/workspace/octoscode/scripts/olp-board-append.sh}
+# OLP_BOARD_APPEND pointing back at this script forked itself forever (2026-10-10 19:09: a lane's execute script
+# exported it so board_note.sh would use the checked appender; 4 min of recursive bash, nothing written). Use octoscode's.
+[ "$(cd "$(dirname "$APPEND")" 2>/dev/null && pwd)/$(basename "$APPEND")" = "$(cd "$(dirname "$0")" && pwd)/$(basename "$0")" ] && APPEND=$HOME/workspace/octoscode/scripts/olp-board-append.sh
 case $BOARD in /*) ;; *) echo "REFUSE: board path must be absolute: $BOARD" >&2; exit 2;; esac
 [ -f "$BOARD" ] || { echo "REFUSE: no board at $BOARD" >&2; exit 2; }
 if [ $# -gt 0 ]; then BODY="$*"; else BODY=$(cat); fi
