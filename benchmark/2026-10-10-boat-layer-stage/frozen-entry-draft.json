@@ -1,0 +1,59 @@
+{
+  "_DRAFT": "NOT registered. Draft of a knowledge/frozen/frozen.json ENTRY for the outer to register AFTER the evidence slots below are filled. The replaced adapter/jar/runtime base SHAs are NOT currently in frozen.json (grep: 0 hits) -> this is a NEW entry (FZ-009) that overlays the U13 base shared files, not a version-bump of an existing frozen item. Registration gate (AGENTS.md rule 3 + user 2026-10-10 floor): single-variable compare + every earlier-evidence app back to level + a NON-regressing post-reboot full-128 sweep, outer-registered before any deploy; these are SHARED files used by all 128 apps, so the full-128 regression is MANDATORY.",
+  "proposed_entry": {
+    "id": "FZ-009 (proposed)",
+    "api": "Boat render shared-file replacement: full-resolution + correct-colour + playable OpenGL/Unity render for route-A Android games, by overlaying three U13 shared files (adapter liboh_adapter_bridge.so, jar oh-adapter-runtime.jar, runtime liboh_android_runtime.so) over the U13 base via the installer-free Boat layer (scripts/lab/boat_layer_stage.sh -> $ROOT/sources-boat -> boat-overlay init job).",
+    "frozen_at": "PENDING (outer registers after evidence slots filled)",
+    "reason": "defect",
+    "reason_detail": "U13 base shared runtime liboh_android_runtime.so 18763dd4 renders BoatAttack low-res-stretched + purple + LAP stuck 0/3; runtime adc125f4 (single-variable proven) -> full 1920x1200 + correct colour + LAP advances. Adapter/jar are the validated route-2d combo the runtime lever was proven on top of.",
+    "artifacts": [
+      {"path": "/system/android/lib64/liboh_android_runtime.so", "sha256": "adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130", "replaces_sha256": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae", "replaces_note": "U13 base runtime (NOT a registered frozen item)", "role": "render lever (single-variable proven)"},
+      {"path": "/system/android/lib64/liboh_adapter_bridge.so", "sha256": "8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e", "replaces_sha256": "84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a", "replaces_note": "U13 base adapter (NOT a registered frozen item)", "role": "route-2d baseline (C8 landscape adapter)"},
+      {"path": "/system/android/framework/oh-adapter-runtime.jar", "sha256": "6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852", "replaces_sha256": "bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b", "replaces_note": "U13 base jar (NOT a registered frozen item)", "role": "route-2d baseline (C9 touch jar)"}
+    ],
+    "app_private_artifacts": [
+      {"name": "libil2cpp.so", "sha256": "f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746", "note": "BoatAttack-private; bound into the app lib dir, not a /system shared file"},
+      {"name": "libunity.so", "sha256": "1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac", "note": "BoatAttack-private"},
+      {"name": "libwestlake_bionic_signal_box.so", "sha256": "7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da", "note": "BoatAttack-private"}
+    ],
+    "implementation": {
+      "staging_tool": "scripts/lab/boat_layer_stage.sh (landed master db88dd3204) — installer-free; stages the 6 files into /data/westlake-demo/u13/sources-boat, single-recipe labels, confirms (never edits) the boat job in 00_westlake_u13_recover.cfg; KA scripts/lab/test_boat_layer_stage.py 17/17",
+      "overlay_job": "benchmark/2026-10-10-u13-autostart/payload/scripts/westlake-u13-boat-overlay.sh (param sys.westlake.demo.u13.ready -> bind over base); labels per scripts/lab/selinux_label_recipe.sh",
+      "mechanism": "bind-mount over /system/android shared files after recover; render fix is runtime-side (adc125f4). seq1/base archive untouched; no installer; no /system remount."
+    },
+    "build_chain_provenance": {
+      "runtime_adc125f4": {
+        "source": "candidate prebuilt from boatattack-oh61-repro-20260924/candidates/boat-hw248-20260924/liboh_android_runtime.so; render source located in benchmark/2026-10-10-boat-pr03-render-port/SOURCE-PATCH-LIST.md",
+        "toolchain": "frozen OHOS clang-15.0.4 cross-compile (--target=aarch64-linux-ohos, frozen sysroot) in a2hlab-build:24.04 container; driver/recipe at westlake-inputs/generations/u13-runtime-m1-v1/build/u13/{driver.sh,recipe.sh}",
+        "GAP_byte_repro": "OPEN. benchmark/2026-10-10-boat-pr03-render-port/rebuild/ byte-repro GATE = FAIL for the U13 base runtime 18763dd4: the frozen toolchain is deterministic (two rebuilds -> identical 3a316fea) but does NOT reproduce the deployed bytes (deployed has a webview_publication.cpp TU, +9408 bytes, present in neither live source nor rebuild). DIGEST E.7 (artifact-only locks the fix to a vanishing build machine). adc125f4 inherits the same toolchain -> treat as artifact-locked until a byte-reproducible source+toolchain snapshot is archived (record source snapshot SHA + toolchain hash + build log per AGENTS.md on-board-artifact rule).",
+        "action_required_before_freeze": "archive adc125f4 source snapshot + toolchain hash + raw build log to hw248 (persistent) and record paths+SHAs here; OR accept artifact-lock explicitly with the archived .so SHA + origin receipt."
+      },
+      "adapter_8ab85446": {
+        "source": "boat-repro prebuilt (same lineage as base adapter 84695d62 = zigzag-persisted/strict-20260809 prebuilt)",
+        "GAP_not_buildable": "OPEN. arm64 liboh_adapter_bridge.so is a documented KNOWN GAP in the native repo (compile_oh_adapter_bridge.sh emits armv7 only; arm64 .so must be prebuilt). Not locally reproducible -> artifact-locked. Record the prebuilt origin + SHA + any build receipt.",
+        "action_required_before_freeze": "record adapter 8ab85446 prebuilt origin path + SHA + receipt on hw248; note the arm64 build gap explicitly."
+      },
+      "jar_6333bcab": {
+        "source": "TO CONFIRM: the C9 touch oh-adapter-runtime.jar from the same Boat route-2d generation; record its build receipt / source snapshot + dex2oat toolchain (cf. FZ-005) path+SHA.",
+        "action_required_before_freeze": "fill jar provenance (generation, build receipt, SHA)."
+      }
+    },
+    "single_variable_compare": "5ea, Enforcing, v2 base: route-2d (adapter 8ab85446 + jar 6333bcab + 3 private) held constant; ONLY liboh_android_runtime.so varied 18763dd4 -> adc125f4; render low-res+purple+LAP-stuck -> full-res+correct-colour+LAP 0/3->1/3. compare_runs variables:1 on the runtime. Source: benchmark/2026-10-10-boat-single-variable/README.md.",
+    "verified_apps": [
+      {"app": "BoatAttack (com.Unity3d.BoatAttackDay)", "board": "5ea", "change": "low-res-stretched+purple+LAP 0/3 -> full 1920x1200 + correct colour + LAP 0/3->1/3 (five-touch replay), outer-signed render + LAP", "t2b_criteria": "specs t2b 2cbc57ab98 PASS (five scripted touches: boat moves, steering changes heading, lap counter advances)"}
+    ],
+    "registration_gate_user_floor_2026-10-10": "A frozen-item version is registered only after a NON-regressing POST-REBOOT full-128 regression (these are SHARED files used by all 128 apps: every app lit before must stay lit / its first-fatal must not regress). Per user 2026-10-10 + AGENTS.md rule 3.",
+    "EVIDENCE_SLOTS_TO_FILL_before_registration": {
+      "full_128_with_boat_facts": "<FILL: benchmark/2026-10-10-boat-layer-stage/5cd-boat-128/facts.txt> (5cd, boat layer applied, full-128 run_facts verbatim: screenshots_captured, alive counts)",
+      "regress_vs_signoff_output": "<FILL: benchmark/2026-10-10-boat-layer-stage/5cd-boat-128/regress-vs-signoff.json> (regress_vs_signoff.py --signoff <5cd baseline> --out ... ; must show NO regression vs the 5cd clean-U13 signoff baseline)",
+      "boat_t2b_five_touch_verdict": "<FILL: benchmark/2026-10-10-boat-layer-stage/5cd-boat-128/boat-t2b/{touch-1..5}.png + verdict.json> (five scripted touches: boat moves, steering changes heading, lap advances; 2cbc57ab98)",
+      "post_reboot_proof": "<FILL: board_state before/after + boot_id change + Enforcing + init-parent appspawn-x + socket 0660, from the 5cd run>"
+    },
+    "status": "DRAFT-pending-evidence (full-128-with-boat non-regression on 5cd + build-chain provenance gaps closed) -> outer registration",
+    "pending": [
+      "5cd full-128 WITH boat vs 5cd clean-U13 signoff: non-regression (regress_vs_signoff) — fills the evidence slots",
+      "build-chain provenance gaps: archive adc125f4 + adapter 8ab85446 + jar 6333bcab source/toolchain/receipts (or accept artifact-lock explicitly with SHAs)",
+      "outer registration into knowledge/frozen/frozen.json after the above"
+    ]
+  }
+}
