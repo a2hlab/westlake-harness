@@ -1,0 +1,20 @@
+# demo_restore.sh dry-run 对 61b — 2026-10-10 13:43:57
+
+命令(bash 调用,.sh 无执行位须 bash):
+  bash scripts/lab/demo_restore.sh --seal benchmark/2026-10-09-demo-baseline/t5/fixtures/selfcheck-seal.json --deployment benchmark/2026-10-09-demo-baseline/t5/restore-deployment-template.json --serial 61b0657200000000000000000324012c --out /tmp/restore-dryrun-61b --dry-run
+
+== 1) 原样跑(模板原状 execution_enabled=false)
+rc=2
+REJECT deployment is pending or disabled
+
+== 2) 报告性探针:仅翻转 execution_enabled 并清空 pending(临时副本,不改仓库文件),推进到下一道门以枚举全部未绑定输入
+rc=2
+REJECT deployment must cover exactly every sealed file and APK
+
+== 未绑定输入清单(按 restore.py 校验顺序,逐道门)
+- seal.json(真实):未产出——t5 封存尚未执行;fixtures/selfcheck-seal.json 只是 61b 序列号的测试夹具
+- deployment.files:0 条,而真实 seal 将要求覆盖全部 sealed 文件+APK/HAP(exactly every sealed file and APK)——每一件都需要 target+mode+source{path,sha256},当前全缺
+- providers:空列表——按 README 接口须 1×u13 基础适配器 + active toutiao-route-b + active boatattack(各含 interpreter/pinned program/rollback/互斥 targets),全部未绑定
+- pending 三项(template 自列):①最终 live seal.json 与每件封存文件/APK 的持久源路径+SHA;②U13 fresh-ticket 重放(5a172dd057)或已评审 autostart 安装器——二选一未定,均未成为 provider;③fresh ticket、持锁/boot 守卫与 U13 父子单例约束
+
+结论:restore 管线的拒绝逻辑按序生效(schema→enabled→files 覆盖),dry-run 无法走完属预期——阻塞链顶端=真实 seal.json(封存后才有)与 provider 选型(外环未定)。无代码改动。
