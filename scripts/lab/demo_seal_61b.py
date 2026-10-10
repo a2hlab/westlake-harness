@@ -15,6 +15,8 @@ import time
 REPO = Path(__file__).resolve().parents[2]
 SERIAL = '61b0657200000000000000000324012c'
 BASELINE_SERIAL = '5cd1e3dd00000000000000000923012c'
+T3_SIGNOFF_SHA = '0e9b825a0ccbfcbe6af0bc1ccd7f93d55d323e1869b8ecdc957a7591048aa387'
+T3_SIGNOFF_SUFFIX = 'benchmark/2026-10-09-demo-baseline/t3-outer-signoff.json'
 ROOT = '/data/westlake-demo/u13'
 BOOT = 'cat /proc/sys/kernel/random/boot_id'
 UUID = re.compile(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\Z')
@@ -58,6 +60,72 @@ def board_path(value):
     require(isinstance(value, str) and BOARD_PATH.fullmatch(value) and
             '..' not in value.split('/'), 'unsafe board path')
     return value
+
+
+def regression_reference(plan, kind):
+    require(kind in ('5cd', '61b-t3'), 'unknown regression reference')
+    reference = plan.get('reference', {})
+    require(reference.get('kind') == kind, 'reference differs from authorized plan')
+    return reference
+
+
+def validate_reference(plan, kind, keys):
+    reference = regression_reference(plan, kind)
+    signoff_path = pinned(reference['signoff'])
+    signoff = read(signoff_path)
+    serial = BASELINE_SERIAL if kind == '5cd' else SERIAL
+    require(signoff.get('board') == serial and set(signoff.get('verdicts', {})) == set(keys),
+            '128-key signed ' + kind + ' baseline required')
+    require(Path(expand(reference['baseline_t3'])).is_dir(), 'reference record directory missing')
+    if kind == '5cd':
+        require(reference['signoff'] == plan['inputs']['signoff_5cd'] and
+                expand(reference['baseline_t3']) == expand(plan['baseline_5cd_t3']), 'ambiguous 5cd reference')
+    else:
+        require(signoff_path.as_posix().endswith('/' + T3_SIGNOFF_SUFFIX) and
+                reference['signoff']['sha256'] == T3_SIGNOFF_SHA, '61b-t3 must use exact canonical t3 signoff SHA/path')
+        index = read(pinned(reference['record_index']))
+        require(index.get('signoff_sha256') == T3_SIGNOFF_SHA and set(index.get('records', {})) == set(keys),
+                't3 record index binding mismatch')
+        for key, item in index['records'].items():
+            record = read(pinned(item['record']))
+            require(record.get('key') == key and record.get('serial') == SERIAL and
+                    item.get('batch') == signoff['verdicts'][key]['batch'], 't3 record identity mismatch: ' + key)
+            pinned(item['image'])
+        notes = read(pinned(reference['enforcing_prerun']))
+        require(notes.get('serial') == BASELINE_SERIAL and notes.get('signoff_sha256') == T3_SIGNOFF_SHA and
+                len(notes.get('keys', {})) == 89 and set(notes['keys']) <= set(keys), '89-key Enforcing notes mismatch')
+        require(pinned(notes['enforce']).read_text().strip() == '1', '5cd capture was not Enforcing')
+        report = read(pinned(notes['comparison']))
+        observed = {row['key']: row for row in report['keys'] if row['category'] != 'missing'}
+        require(report.get('signoff_sha256') == T3_SIGNOFF_SHA and set(observed) == set(notes['keys']),
+                '5cd notes/comparison membership mismatch')
+        for key, item in notes['keys'].items():
+            record = read(pinned(item['record']))
+            require(record.get('key') == key and record.get('serial') == BASELINE_SERIAL and
+                    bool(record.get('finished_at')) and item['category'] == observed[key]['category'] and
+                    item['signature'] == observed[key]['signature'] and
+                    item['reason'] == observed[key]['reason'] and item['semantic'] == observed[key]['semantic'] and
+                    record.get('apk_sha256') == item['signature']['apk_sha256'], '5cd note identity mismatch: ' + key)
+    return reference
+
+
+def annotate_enforcing(comparison, notes):
+    count = 0
+    for row in comparison['keys']:
+        prior = notes['keys'].get(row['key'])
+        suspect = bool(row.get('category') == 'changed' and prior and prior['category'] == 'changed' and
+                       prior['signature'].get('package') and SHA.fullmatch(str(prior['signature'].get('apk_sha256', ''))) and
+                       all(row.get('signature', {}).get(field) == prior['signature'].get(field)
+                           for field in ('package', 'apk_sha256')))
+        row['env_enforcing_suspect'] = suspect
+        if suspect:
+            row['enforcing_annotation'] = dict(record=prior['record'], prior_reason=prior['reason'],
+                    prior_semantic=prior['semantic'], reason_overlap=sorted(set(row.get('reason', [])) & set(prior['reason'])),
+                    verdict='outer-image-review-required; no automatic exemption')
+            count += 1
+    comparison['enforcing_annotation'] = dict(suspect_keys=count, automatic_exemptions=0,
+                scope='5cd capture enforce=1; changed is evidence triage, not an adverse UI verdict')
+    return comparison
 
 
 def live_binds(text, targets):
@@ -106,7 +174,7 @@ class Transport:
 
 
 class Workflow:
-    def __init__(self, plan, out, transport=None, preview=False, plan_sha='', sleep=time.sleep, plan_path=None, mode='v1'):
+    def __init__(self, plan, out, transport=None, preview=False, plan_sha='', sleep=time.sleep, plan_path=None, mode='v1', reference='5cd'):
         self.plan, self.out, self.transport = plan, Path(out), transport
         self.preview, self.plan_sha, self.sleep = preview, plan_sha, sleep
         self.boot_id = '<boot-id-after-autonomous-reboot>'
@@ -116,6 +184,8 @@ class Workflow:
         self.plan_path = plan_path
         require(mode in ('v1', 'v2'), 'invalid seal mode')
         self.mode = mode
+        self.reference_kind = reference
+        self.reference = regression_reference(plan, reference)
 
     def command(self, name, argv, criterion, allowed=(0,), env=None):
         self.events.append(name)
@@ -145,6 +215,8 @@ class Workflow:
         env = dict(DEMO_SEAL_OUT=str(self.out), DEMO_SEAL_SERIAL=SERIAL,
                    DEMO_SEAL_BOOT_ID=self.boot_id, DEMO_SEAL_PLAN_SHA=self.plan_sha,
                    DEMO_SEAL_STEP=name, DEMO_SEAL_PLAN=str(self.plan_path or ''))
+        env.update(DEMO_SEAL_REFERENCE=self.reference_kind,
+                   DEMO_SEAL_REFERENCE_SIGNOFF_SHA=str(self.reference['signoff']['sha256']))
         self.command(name, argv, criterion, env=env)
         if self.preview:
             return {}
@@ -247,7 +319,11 @@ class Workflow:
         if name == 'regression_review':
             require(report.get('comparison_sha256') == sha(self.out / 'regression/comparison.json'),
                     'outer review not bound to this comparison')
-            require(report.get('baseline_serial') == BASELINE_SERIAL, 'outer review must use 5cd baseline')
+            require(report.get('baseline_serial') == (BASELINE_SERIAL if self.reference_kind == '5cd' else SERIAL),
+                    'outer review baseline serial/reference mismatch')
+            if self.reference_kind == '61b-t3':
+                require(report.get('reference_kind') == self.reference_kind and
+                        report.get('signoff_sha256') == T3_SIGNOFF_SHA, 'outer review t3 signoff binding mismatch')
 
     def run(self):
         lock = self.provider('lock_check', 'fresh held state: no conflicting owner; outer-approved window, no implicit lock stealing')
@@ -341,9 +417,12 @@ class Workflow:
         self.command('run-128', ['python3', self.tool('post_reboot'), '--serial', SERIAL,
                     '--out', str(round_dir), '--execute', '--authorization', self.plan['window_authorization']],
                     '128 records and screenshots on same reboot; runner owns per-window lock protocol')
-        self.command('regress-vs-5cd', ['python3', self.tool('regress'), str(round_dir / 'final'),
-                    '--signoff', self.input('signoff_5cd'), '--baseline-t3', expand(self.plan['baseline_5cd_t3']),
-                    '--out', str(self.out / 'regression')], 'signed 5cd reference; triage is not an outer UI verdict')
+        signoff_path = self.reference['signoff']['path']
+        baseline_t3 = self.reference['baseline_t3']
+        self.command('regress-vs-' + self.reference_kind, ['python3', self.tool('regress'), str(round_dir / 'final'),
+                    '--signoff', signoff_path if self.preview else expand(signoff_path),
+                    '--baseline-t3', baseline_t3 if self.preview else expand(baseline_t3),
+                    '--out', str(self.out / 'regression')], 'signed ' + self.reference_kind + ' reference; triage is not an outer UI verdict')
         if not self.preview:
             comparison = read(self.out / 'regression/comparison.json')
             keys = {row['key'] for row in comparison['keys']}
@@ -351,7 +430,22 @@ class Workflow:
             require(len(expected_keys) == 128 and len(comparison['keys']) == 128 and keys == expected_keys and
                     not comparison.get('extra_keys') and comparison['summary']['missing'] == 0,
                     '128 regression membership/capture mismatch')
-        self.reviewed('regression_review', ('all_128_observed', 'no_regression_vs_5cd', 'identity_unchanged'))
+            require(comparison.get('signoff_sha256') == self.reference['signoff']['sha256'], 'comparison signoff SHA mismatch')
+            (self.out / 'regression/comparison.raw.json').write_bytes((self.out / 'regression/comparison.json').read_bytes())
+            comparison['reference'] = self.reference
+            if self.reference_kind == '61b-t3':
+                validate_reference(self.plan, self.reference_kind, expected_keys)
+                index = read(pinned(self.reference['record_index']))['records']
+                for row in comparison['keys']:
+                    require(Path(expand(row['baseline_record'])).resolve() ==
+                            Path(expand(index[row['key']]['record']['path'])).resolve(),
+                            'comparison did not use pinned t3 record: ' + row['key'])
+                annotate_enforcing(comparison, read(pinned(self.reference['enforcing_prerun'])))
+            (self.out / 'regression/comparison.json').write_text(json.dumps(comparison, indent=2) + '\n')
+        elif self.reference_kind == '61b-t3':
+            print('ANNOTATE: changed key also changed in pinned 5cd Enforcing prerun => env_enforcing_suspect; retain changed, outer image review required', flush=True)
+        self.reviewed('regression_review', ('all_128_observed',
+                      'no_regression_vs_5cd' if self.reference_kind == '5cd' else 'no_regression_vs_reference', 'identity_unchanged'))
         require(self.preview or self.boot('final-boot') == self.boot_id, 'boot drift during acceptance/regression')
         receipt = self.provider('seal_snapshot', 'fresh live-readonly seal snapshot: complete package/APK inventory, runtime/boot/overlay hashes')
         if not self.preview:
@@ -363,10 +457,16 @@ class Workflow:
                     '--overlays', self.input('overlays'), '--manifest', self.input('manifest'),
                     '--out', str(self.out / 'seal.json')], self.mode + (' admitted Boat + Route B layers' if self.mode == 'v2' else ' Route B active, Boat absent') + '; compiler success is not new live acceptance')
         if not self.preview:
-            require(read(self.out / 'seal.json').get('seal_stage') == self.mode, 'compiled seal mode mismatch')
+            sealed = read(self.out / 'seal.json')
+            require(sealed.get('seal_stage') == self.mode, 'compiled seal mode mismatch')
+            sealed['regression_reference'] = dict(self.reference,
+                    baseline_serial=BASELINE_SERIAL if self.reference_kind == '5cd' else SERIAL,
+                    comparison_sha256=sha(self.out / 'regression/comparison.json'),
+                    outer_review_sha256=sha(self.out / 'regression_review.json'))
+            (self.out / 'seal.json').write_text(json.dumps(sealed, indent=2) + '\n')
 
 
-def validate(plan, authorization, plan_sha, mode='v1'):
+def validate(plan, authorization, plan_sha, mode='v1', reference='5cd'):
     require(plan.get('schema') == 'demo-seal-61b-orchestration/v1' and plan.get('serial') == SERIAL and
             plan.get('execution_enabled') is True, 'disabled/unapproved plan')
     require(not plan.get('pending'), 'pending bindings remain; no board writes authorized')
@@ -383,9 +483,10 @@ def validate(plan, authorization, plan_sha, mode='v1'):
     require(1 <= plan['boot_timeout_seconds'] <= 600 and 1 <= plan['command_timeout_seconds'] <= 10800,
             'timeouts out of bounds')
     references = list(plan['tools'].values()) + [reference for name, reference in plan['inputs'].items()
-                                                if name != 'regression_admission' or mode == 'v2']
-    for reference in references:
-        pinned(reference)
+                                                if (name != 'regression_admission' or mode == 'v2') and
+                                                (name != 'signoff_5cd' or reference == '5cd')]
+    for bound_input in references:
+        pinned(bound_input)
     expected = read(pinned(plan['inputs']['baseline_319']))['expected']
     require(len(expected) == 319 and all(SHA.fullmatch(value) for value in expected.values()), 'signed 319 inventory required')
     for value in expected:
@@ -405,9 +506,8 @@ def validate(plan, authorization, plan_sha, mode='v1'):
             (mode == 'v2' or (not boat.get('files') and bool(boat.get('reason')))), 'Boat layer disagrees with v1/v2 mode')
     manifest = read(pinned(plan['inputs']['manifest']))
     keys = [row['key'] for row in manifest['apps'] if row.get('install') is not False]
-    signoff = read(pinned(plan['inputs']['signoff_5cd']))
-    require(len(keys) == 128 and len(set(keys)) == 128 and signoff.get('board') == BASELINE_SERIAL and
-            set(signoff.get('verdicts', {})) == set(keys), '128-key signed 5cd baseline required')
+    require(len(keys) == 128 and len(set(keys)) == 128, '128 unique manifest keys required')
+    validate_reference(plan, reference, keys)
     installer = plan['installer']
     board_path(installer['board_path'])
     board_path(installer['deploy'])
@@ -416,7 +516,6 @@ def validate(plan, authorization, plan_sha, mode='v1'):
     require(guard.get('approved_by') == 'outer(claude)' and guard.get('live_bind_fail_closed') is True and
             guard.get('bare_boot_supported') is True and guard.get('installer_sha256') == installer['sha256'],
             'guard-ready bare-boot installer approval pending')
-    require(Path(expand(plan['baseline_5cd_t3'])).is_dir(), '5cd reference directory missing')
     if mode == 'v2':
         regression = read(pinned(plan['inputs']['regression_admission']))
         require(regression.get('approved_by') == 'outer(claude)' and regression.get('overlay_aware') is True and
@@ -436,6 +535,7 @@ def main(argv=None):
     parser.add_argument('--plan', type=Path, default=DEFAULT)
     parser.add_argument('--serial', choices=('61b', SERIAL), default='61b')
     parser.add_argument('--mode', choices=('v1', 'v2'), default='v1')
+    parser.add_argument('--reference', choices=('5cd', '61b-t3'), default='5cd')
     parser.add_argument('--out', type=Path, default=Path('<fresh-output-directory>'))
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--execute', action='store_true')
@@ -449,13 +549,13 @@ def main(argv=None):
         plan_sha = sha(args.plan)
         if not args.execute:
             print('DRY-RUN: commands/criteria only; zero transport, locks and output writes; pending bindings do not imply readiness')
-            Workflow(plan, args.out, preview=True, plan_sha=plan_sha, mode=args.mode).run()
+            Workflow(plan, args.out, preview=True, plan_sha=plan_sha, mode=args.mode, reference=args.reference).run()
             return 0
         require(args.authorization is not None and str(args.out) != '<fresh-output-directory>', 'authorization and fresh --out required')
-        validate(plan, args.authorization, plan_sha, args.mode)
+        validate(plan, args.authorization, plan_sha, args.mode, args.reference)
         args.out.mkdir(parents=True, exist_ok=False)
         workflow = Workflow(plan, args.out, Transport(args.out, plan['command_timeout_seconds']),
-                            plan_sha=plan_sha, plan_path=args.plan.absolute(), mode=args.mode)
+                            plan_sha=plan_sha, plan_path=args.plan.absolute(), mode=args.mode, reference=args.reference)
         try:
             workflow.run()
         finally:

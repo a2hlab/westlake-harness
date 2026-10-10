@@ -98,7 +98,7 @@ class FixtureTransport:
                            approved_at='fixture-only', no_mac_repair=True,
                            checks={key: True for key in ('parent_init', 'socket_0660', 'hw_t20_lit',
                                 'zz_t20_lit', 'boat_five_touch_lap', 'toutiao_desktop_click_refresh_article',
-                                'all_128_observed', 'no_regression_vs_5cd', 'identity_unchanged')},
+                                'all_128_observed', 'no_regression_vs_5cd', 'no_regression_vs_reference', 'identity_unchanged')},
                            evidence=[dict(path=str(self.out / 'fixture-evidence'), sha256=seal.sha(self.out / 'fixture-evidence'))])
             save(self.out / (name + '.json'), receipt)
             if name == 'acceptance' and self.omit_boat:
@@ -109,7 +109,9 @@ class FixtureTransport:
                 save(self.out / (name + '.json'), receipt)
             if name == 'regression_review':
                 receipt['comparison_sha256'] = seal.sha(self.out / 'regression/comparison.json')
-                receipt['baseline_serial'] = seal.BASELINE_SERIAL
+                receipt['baseline_serial'] = seal.BASELINE_SERIAL if env['DEMO_SEAL_REFERENCE'] == '5cd' else seal.SERIAL
+                receipt['reference_kind'] = env['DEMO_SEAL_REFERENCE']
+                receipt['signoff_sha256'] = env['DEMO_SEAL_REFERENCE_SIGNOFF_SHA']
                 save(self.out / (name + '.json'), receipt)
             if name == 'seal_snapshot':
                 save(self.out / 'seal-snapshot.json', dict(serial=seal.SERIAL, boot_before=BOOTS[2], boot_after=BOOTS[2]))
@@ -127,9 +129,16 @@ class FixtureTransport:
             return 0, self.socket
         if name in ('post-dmesg', 'post-apps-dmesg'):
             return 0, 'invalid:appspawn-x' if self.invalid else 'fixture clean log'
-        if name == 'regress-vs-5cd':
-            save(self.out / 'regression/comparison.json', dict(keys=[dict(key='key-' + str(number)) for number in range(128)],
-                                                            extra_keys=[], summary=dict(missing=0)))
+        if name.startswith('regress-vs-'):
+            rows = [dict(key='key-' + str(number), category='changed',
+                    signature=dict(package='fixture.app', apk_sha256='b' * 64), reason=['image_sha256']) for number in range(128)]
+            if self.plan['reference']['kind'] == '61b-t3':
+                index = seal.read(self.plan['reference']['record_index']['path'])['records']
+                for row in rows:
+                    row['baseline_record'] = index[row['key']]['record']['path']
+            save(self.out / 'regression/comparison.json', dict(keys=rows,
+                    signoff_sha256=self.plan['reference']['signoff']['sha256'],
+                    extra_keys=[], summary=dict(missing=0, changed=128, same=0)))
         if name == 'build-seal':
             save(self.out / 'seal.json', dict(seal_stage=self.seal_stage or self.plan['mode']))
         return 0, ''
@@ -151,6 +160,7 @@ class OrchestrationTests(unittest.TestCase):
         for key, filename in [('baseline_319', 'baseline.json'), ('recover_table', 'table.json'), ('manifest', 'manifest.json')]:
             self.plan['inputs'][key] = dict(path=str(self.out / filename), sha256=seal.sha(self.out / filename))
         self.plan['installer']['sha256'] = 'c' * 64
+        self.plan['reference'] = dict(kind='5cd', signoff=dict(path='<fixture>', sha256='d' * 64), baseline_t3=str(self.out))
         self.plan['providers'] = {name: dict(argv=['fixture-provider', name]) for name in seal.PROVIDERS}
         (self.out / 'fixture-evidence').write_text('MOCK evidence; not UI acceptance')
         self.transport = FixtureTransport(self.out, self.plan)
@@ -188,6 +198,7 @@ class OrchestrationTests(unittest.TestCase):
                          reason='Boat not part of v1')]))
         input_json('signoff_5cd', dict(board=seal.BASELINE_SERIAL,
                      verdicts={'key-' + str(number): dict(verdict='lit', batch='fixture') for number in range(128)}))
+        plan['reference'] = dict(kind='5cd', signoff=plan['inputs']['signoff_5cd'], baseline_t3=str(self.out))
         input_json('regression_admission', dict(approved_by='outer(claude)', overlay_aware=True,
                     post_reboot_sha256=program['sha256'], overlays_sha256=plan['inputs']['overlays']['sha256']))
         plan['installer']['source'] = copy.deepcopy(program)

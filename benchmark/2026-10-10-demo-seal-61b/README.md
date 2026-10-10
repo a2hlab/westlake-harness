@@ -12,12 +12,23 @@ This revision adds **--mode v1|v2, default v1**, with mode bound to the approved
 | Active overlays | Toutiao Route B only | Toutiao Route B + admitted Boat |
 | Boat compiler slot | Explicit absent, reason, no files | Active, reviewed admission and roles |
 | Signed UI checks | Parent init, socket0660, HW/ZZ t20, Toutiao desktop click/refresh/article | Same + boat_five_touch_lap |
-| Regression | Original U13 identity runner; all128 + healthy5cd signoff | Additionally pinned outer-reviewed overlay-aware identity admission |
+| Regression | Original U13 identity runner; all128 + explicitly pinned 5cd(default) or original61b-t3 reference | Additionally pinned outer-reviewed overlay-aware identity admission |
 | Output | seal_stage=v1, independently checked | seal_stage=v2, independently checked |
 
 The compiler retains **two named slots** in v1: Boat is declared absent, never active. Omitting Toutiao is forbidden. The v2-only regression_admission reference is neither opened nor pinned in v1; its null template value does not block a fully bound v1 plan. Execution rejects a CLI mode differing from plan.mode, before any dispatch/output writes.
 
 ## Commands
+
+### Offline regression-reference fallback
+
+The 5cd USB/HDC loss must not turn a missing comparison board into an unspecified baseline. `--reference 5cd` remains the default; `--reference 61b-t3` explicitly selects the original signed 61b t3 128-key baseline. See [reference-fallback.md](reference-fallback.md) for exact hashes, review receipt fields and the disabled v1 plan. **57 fixture tests pass** in `evidence/tests-reference.txt`; both modes and both references are covered. The original 5cd regression command/classification remains unchanged; no reference is inferred from a receipt.
+
+```sh
+WORKSPACES=$(cd .. && pwd) python3 benchmark/2026-10-10-demo-seal-61b/build_reference_plan.py
+WORKSPACES=$(cd .. && pwd) bash scripts/lab/demo_seal_61b.sh --plan benchmark/2026-10-10-demo-seal-61b/plan-reference-61b-t3.json --reference 61b-t3 --mode v1 --dry-run
+```
+
+The plan is not authorization: remaining installer/provider/live identity bindings still need outer approval. No board access, VM, SSH, locks or deployment occurred in this revision.
 
 ```sh
 bash scripts/lab/demo_seal_61b.sh
