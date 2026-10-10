@@ -36,7 +36,6 @@ def fixture():
         {'target': HOST, 'kind': 'file'},
         {'target': CHILD, 'kind': 'file'},
         {'target': GUARD, 'kind': 'file'},
-        {'target': '/system/lib64/seccomp', 'kind': 'directory'},
         {'target': ROUTE, 'kind': 'directory'},
         {'target': '/system/etc/sandbox/appdata-sandbox.json', 'kind': 'file'},
         {'target': '/data/app/el1/bundle/public/com.a2hlab.bridge.zigzag/android/lib/arm64-v8a/libmain.so', 'kind': 'file'}
@@ -55,8 +54,6 @@ def fixture():
         '/system/android/etc': SYSTEM,
         '/system/android/etc/fonts.xml': 'u:object_r:system_fonts_file:s0',
         HOST: EXEC, CHILD: LIB, GUARD: LIB,
-        '/system/lib64/seccomp': SYSTEM,
-        '/system/lib64/seccomp/libapp_filter.z.so': SYSTEM,
         ROUTE: LIB, ROUTE + '/libart.so': LIB,
         '/system/etc/sandbox/appdata-sandbox.json': 'u:object_r:system_etc_file:s0',
         '/data/app/el1/bundle/public/com.a2hlab.bridge.zigzag/android/lib/arm64-v8a/libmain.so': 'u:object_r:data_app_el1_file:s0'
@@ -306,15 +303,19 @@ class LabelAuditTests(unittest.TestCase):
         self.assertEqual(Path(audit.__file__).with_name('selinux_label_recipe.sh').read_text(),
                          audit.generate_shell(audit.load_recipe()))
 
-    def test_seccomp_exception_precedes_generic_library_rule(self):
+    def test_removed_seccomp_exception_uses_generic_library_rule(self):
         target = '/system/lib64/seccomp/libapp_filter.z.so'
-        self.assertEqual(audit.expected_label(target, audit.load_recipe()), (SYSTEM, 'seccomp-stock'))
-        self.labels[target] = LIB
+        self.assertEqual(audit.expected_label(target, audit.load_recipe()), (LIB, 'native-library'))
+        self.assertNotIn('seccomp-stock', [row['id'] for row in audit.load_recipe()['rules']])
+
+    def test_stock_seccomp_directory_default_is_still_an_explicit_mismatch(self):
+        root = '/system/lib64/seccomp'
+        self.plan['mounts'].append(dict(target=root, kind='directory'))
+        self.labels[root] = LIB
+        self.labels[root + '/libapp_filter.z.so'] = LIB
         report = audit.audit(self.shell, self.plan)
-        self.assertEqual(report['mismatches'][0]['path'], target)
-        result, commands = run_shell_fixture(self.shell_command('apply'), self.labels)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(self.labels[target], SYSTEM)
+        self.assertEqual(report['mismatches'], [dict(path=root, expected=SYSTEM, actual=LIB,
+                                                   rule='system-default', passed=False)])
 
 
 class DeploymentLabelTests(unittest.TestCase):

@@ -2,13 +2,12 @@
 set -u
 set -f
 LC_ALL=C; export LC_ALL
-LABEL_RECIPE_SHA256=9d23b52fb4cad50a1fea0a039873c5e4e510bd10fc18b2b07fce3c77a4a250c2
+LABEL_RECIPE_SHA256=562dfe0f6c2ee3e719afa17027fb86ed9d86971ebb3d70fbbcd7102b2bef28e3
 label_context() {
 case "$1" in
 /system/bin/appspawn-x) printf "%s\n" u:object_r:appspawn_exec:s0 ;;
 /system/android/etc/fonts.xml) printf "%s\n" u:object_r:system_fonts_file:s0 ;;
 /data/app|/data/app/*) printf "%s\n" u:object_r:data_app_el1_file:s0 ;;
-/system/lib64/seccomp|/system/lib64/seccomp/*) printf "%s\n" u:object_r:system_file:s0 ;;
 /system/android/lib64|/system/android/lib64/*) printf "%s\n" u:object_r:system_lib_file:s0 ;;
 /system/lib64/westlake/route-a|/system/lib64/westlake/route-a/*) printf "%s\n" u:object_r:system_lib_file:s0 ;;
 /system/android/framework/arm64/boot*.art) printf "%s\n" u:object_r:system_lib_file:s0 ;;
