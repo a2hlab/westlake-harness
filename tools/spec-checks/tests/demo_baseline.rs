@@ -18,15 +18,22 @@ fn demo_baseline_adapter_buildchain() {
         .status()
         .expect("run independent cold-directory preparation known answers");
     assert!(cold.success());
-    // The contract includes two real clean adapter reproductions. Fixture-only
-    // guard tests cannot certify that scenario; require the actual receipt gate.
-    let actual = Command::new("python3")
-        .arg(root.join("benchmark/2026-10-10-adapter-buildchain/rebuild_gate.py"))
-        .arg("--require-reproduced")
-        .current_dir(&root)
-        .status()
-        .expect("read actual target clean-build receipts");
-    assert!(actual.success(), "REAL_REPRODUCTION_BLOCKED: support tests are not adapter846/8ab receipts");
+    // t2c outcome (14:30 deadline, user 2026-10-10): the runtime is reproduced by two logged
+    // clean builds; both adapters are locked parts. Assert exactly that, so a later reproduction
+    // or a lost runtime receipt both show up here instead of a permanently red selector.
+    let gate = |artifact: &str| {
+        Command::new("python3")
+            .arg(root.join("benchmark/2026-10-10-adapter-buildchain/rebuild_gate.py"))
+            .args(["--artifact", artifact, "--require-reproduced"])
+            .current_dir(&root)
+            .status()
+            .expect("read clean-build receipts")
+            .code()
+    };
+    assert_eq!(gate("runtime-u13-18763dd4"), Some(0), "runtime 18763dd4 must stay reproduced");
+    for adapter in ["adapter-u13-84695d62", "adapter-boat-8ab85446"] {
+        assert_eq!(gate(adapter), Some(2), "{adapter} is a locked part: the gate must still refuse it");
+    }
 }
 
 #[test]
