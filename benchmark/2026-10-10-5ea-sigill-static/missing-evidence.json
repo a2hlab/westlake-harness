@@ -1,0 +1,26 @@
+{
+  "schema": "5ea-loader-eacces-readonly-evidence/v1",
+  "execution_enabled": false,
+  "board_access_performed": false,
+  "historical_failed_boot": "31259bd5-a7ff-416f-bf5a-248dbef17688",
+  "rules": [
+    "Do not borrow a current label/mount state to establish the historical child state.",
+    "Do not start an app, change labels/mounts, remount, load a library or install anything.",
+    "For all three boards use the same unmodified plan and record its SHA and boot_id before/after.",
+    "If the failed child is absent, report unavailable; fresh child observation requires another approved window."
+  ],
+  "same_plan": {
+    "path": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-10-5ea-revive/capture-plan.json",
+    "file_sha256": "9d8fa17dfdf89f0b00bfa6b9c284802a9e392cb97e4e31d71ca0fa4f84c1ac16",
+    "purpose": "Future same-scope comparison, not retroactive repair of mismatched historical plans",
+    "command_template": "python3 scripts/lab/board_state_snapshot.py <approved-serial> --plan <same-plan> --out <separate-readonly-output>"
+  },
+  "minimal_fields": [
+    {"paths": ["/system/android/lib64/liboh_adapter_bridge.so", "/system/android/lib64/liboh_android_runtime.so", "/system/bin/appspawn-x"], "collect": "sha256sum + ls -lnZ, including ancestors and actual bind source path; same boot and time on each board"},
+    {"paths": ["/proc/1/mountinfo", "/proc/<host>/mountinfo", "/proc/<child>/mountinfo"], "collect": "covering mount root/target/options including noexec,nosuid, source identity and namespace links; unavailable child remains unknown"},
+    {"paths": ["/proc/<host>/attr/current", "/proc/<child>/attr/current", "/proc/<child>/status"], "collect": "execution domain + UID/GID and path permissions; root shell success is not app-domain access proof"},
+    {"paths": ["/proc/<child>/root/system/android/lib64/liboh_adapter_bridge.so"], "collect": "read-only SHA + ls -lnZ through the child's path view if it still exists"},
+    {"paths": ["/data/log/faultlog", "dmesg", "retained app hilog"], "collect": "same child PID/boot/time access denials and exact path; absence of AVC is not proof of permission; obtain real crash PC only if an actual fatal signal exists"}
+  ],
+  "unresolved": ["5ea exact child access-denial operation and cause", "5cd provider-entry -2003 exact failing operation/path", "whether either failure shares an underlying permission mechanism"]
+}
