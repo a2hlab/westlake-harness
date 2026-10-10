@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reviewed, fail-closed 61b v2 seal workflow; preview is the default."""
+"""Reviewed, fail-closed 61b v1/v2 seal workflow; default v1 preview."""
 import argparse
 import hashlib
 import json
@@ -98,13 +98,16 @@ class Transport:
 
 
 class Workflow:
-    def __init__(self, plan, out, transport=None, preview=False, plan_sha='', sleep=time.sleep):
+    def __init__(self, plan, out, transport=None, preview=False, plan_sha='', sleep=time.sleep, plan_path=None, mode='v1'):
         self.plan, self.out, self.transport = plan, Path(out), transport
         self.preview, self.plan_sha, self.sleep = preview, plan_sha, sleep
         self.boot_id = '<boot-id-after-autonomous-reboot>'
         self.initial_boot = '<boot-id-before-bare-reboot>'
         self.bare_boot = '<bare-boot-id>'
         self.events = []
+        self.plan_path = plan_path
+        require(mode in ('v1', 'v2'), 'invalid seal mode')
+        self.mode = mode
 
     def command(self, name, argv, criterion, allowed=(0,), env=None):
         self.events.append(name)
@@ -133,7 +136,7 @@ class Workflow:
                 for value in (spec.get('argv') or ['<outer-bind:' + name + '>'])]
         env = dict(DEMO_SEAL_OUT=str(self.out), DEMO_SEAL_SERIAL=SERIAL,
                    DEMO_SEAL_BOOT_ID=self.boot_id, DEMO_SEAL_PLAN_SHA=self.plan_sha,
-                   DEMO_SEAL_STEP=name)
+                   DEMO_SEAL_STEP=name, DEMO_SEAL_PLAN=str(self.plan_path or ''))
         self.command(name, argv, criterion, env=env)
         if self.preview:
             return {}
@@ -179,7 +182,7 @@ class Workflow:
     def snapshot(self, phase):
         self.command('snapshot-' + phase, ['python3', self.tool('snapshot'), SERIAL,
                      '--hdc', self.plan['hdc'], '--plan', self.input('snapshot_plan'),
-                     '--out', str(self.out / phase), '--label', 'seal-v2-' + phase],
+                     '--out', str(self.out / phase), '--label', 'seal-' + self.mode + '-' + phase],
                      'collection complete, declared targets complete, stable current boot; read-only')
         if not self.preview:
             doc = read(self.out / phase / 'snapshot.json')
@@ -188,7 +191,8 @@ class Workflow:
                     'incomplete snapshot')
 
     def reviewed(self, name, checks):
-        report = self.provider(name, 'fresh outer-signed UI/observation receipt; not process-alive or command PASS')
+        report = self.provider(name, 'fresh outer-signed UI/observation receipt; checks=' + ','.join(checks) +
+                               '; not process-alive or command PASS')
         if self.preview:
             return
         require(report.get('boot_id') == self.boot_id and report.get('approved_by') == 'outer(claude)' and
@@ -241,12 +245,14 @@ class Workflow:
                     'staged installer drift')
         self.assert_no_binds()
         installer = self.plan['installer']
-        command = 'DEPLOY=' + shlex.quote(installer['deploy']) + ' WITH_BOAT=1 ALLOW_REMOUNT=1 /system/bin/sh ' + shlex.quote(installer['board_path'])
+        command = 'DEPLOY=' + shlex.quote(installer['deploy']) + ' WITH_BOAT=' + ('1' if self.mode == 'v2' else '0') + ' ALLOW_REMOUNT=1 /system/bin/sh ' + shlex.quote(installer['board_path'])
         _, installed = self.shell('installer', command, 'guard-ready installer; ARCHIVE only on bare no-bind boot; INSTALL_OK')
         require(self.preview or 'INSTALL_OK' in installed.splitlines(), 'missing installer success receipt')
-        slot = self.provider('toutiao_slot', 'after base installer: exact additive Toutiao boot slot ENABLE; no app launch')
+        slot = self.provider('toutiao_slot', 'after base installer: uid-dynamic reconcile/readback; immutable six-name exclusions; ENABLE=rm DISABLED + place cfg; no app launch')
         if not self.preview:
-            require(slot.get('enabled') is True and slot.get('boot_id') == self.bare_boot, 'Toutiao slot not enabled on bare boot')
+            require(slot.get('enabled') is True and slot.get('boot_id') == self.bare_boot and
+                    slot.get('uid_mode') == 'installed-host-dynamic' and slot.get('reconcile_checked') is True and
+                    slot.get('immutable_preserved') is True, 'Toutiao dynamic slot not verified/enabled on bare boot')
         self.shell('enable', 'rm -f ' + ROOT + '/DISABLED && test ! -e ' + ROOT + '/DISABLED', 'U13 recovery ENABLE')
         self.snapshot('pre')
         self.command('sepolicy-gate', ['python3', self.tool('sepolicy'), '--policy', self.input('policy'),
@@ -268,8 +274,10 @@ class Workflow:
         require(self.preview or enforce.strip() == 'Enforcing', 'post reboot not Enforcing')
         _, dmesg = self.shell('post-dmesg', 'dmesg', 'zero invalid:appspawn-x entries')
         require(self.preview or not re.search(r'invalid\s*:\s*appspawn-x', dmesg), 'init INVALID appspawn-x')
-        self.reviewed('acceptance', ('parent_init', 'socket_0660', 'hw_t20_lit', 'zz_t20_lit',
-                                   'boat_five_touch_lap', 'toutiao_desktop_click_refresh_article'))
+        checks = ('parent_init', 'socket_0660', 'hw_t20_lit', 'zz_t20_lit', 'toutiao_desktop_click_refresh_article')
+        if self.mode == 'v2':
+            checks += ('boat_five_touch_lap',)
+        self.reviewed('acceptance', checks)
         _, processes = self.shell('post-parent', 'ps -A -o PID,PPID,UID,NAME', 'exactly one root appspawn-x, PPID=1 after foreground taps')
         if not self.preview:
             parents = [line.split() for line in processes.splitlines() if line.split() and line.split()[-1] == 'appspawn-x']
@@ -311,13 +319,16 @@ class Workflow:
                     captured.get('boot_after') == self.boot_id, 'seal snapshot identity drift')
         self.command('build-seal', ['python3', self.tool('seal'), '--snapshot', str(self.out / 'seal-snapshot.json'),
                     '--overlays', self.input('overlays'), '--manifest', self.input('manifest'),
-                    '--out', str(self.out / 'seal.json')], 'v2 admitted Boat + Route B layers; compiler success is not new live acceptance')
+                    '--out', str(self.out / 'seal.json')], self.mode + (' admitted Boat + Route B layers' if self.mode == 'v2' else ' Route B active, Boat absent') + '; compiler success is not new live acceptance')
+        if not self.preview:
+            require(read(self.out / 'seal.json').get('seal_stage') == self.mode, 'compiled seal mode mismatch')
 
 
-def validate(plan, authorization, plan_sha):
+def validate(plan, authorization, plan_sha, mode='v1'):
     require(plan.get('schema') == 'demo-seal-61b-orchestration/v1' and plan.get('serial') == SERIAL and
             plan.get('execution_enabled') is True, 'disabled/unapproved plan')
     require(not plan.get('pending'), 'pending bindings remain; no board writes authorized')
+    require(plan.get('mode') == mode and mode in ('v1', 'v2'), 'mode differs from authorized plan')
     approval = read(authorization)
     require(approval.get('approved_by') == 'outer(claude)' and bool(approval.get('approved_at')) and
             approval.get('serial') == SERIAL and approval.get('plan_sha256') == plan_sha and
@@ -326,9 +337,12 @@ def validate(plan, authorization, plan_sha):
     require(plan.get('driver_sha256') == sha(Path(__file__)), 'orchestrator SHA not bound')
     require(set(plan.get('tools', {})) == TOOLS and set(plan.get('inputs', {})) == INPUTS and
             set(plan.get('providers', {})) == set(PROVIDERS), 'missing/extra tool/input/provider bindings')
+    pinned(plan['toutiao_slot']['placement'])
     require(1 <= plan['boot_timeout_seconds'] <= 600 and 1 <= plan['command_timeout_seconds'] <= 10800,
             'timeouts out of bounds')
-    for reference in list(plan['tools'].values()) + list(plan['inputs'].values()):
+    references = list(plan['tools'].values()) + [reference for name, reference in plan['inputs'].items()
+                                                if name != 'regression_admission' or mode == 'v2']
+    for reference in references:
         pinned(reference)
     expected = read(pinned(plan['inputs']['baseline_319']))['expected']
     require(len(expected) == 319 and all(SHA.fullmatch(value) for value in expected.values()), 'signed 319 inventory required')
@@ -339,9 +353,13 @@ def validate(plan, authorization, plan_sha):
     require(len(targets) == 56 and len(set(targets)) == 56 and '/system/android' in targets,
             '56 unique recovery targets required')
     overlays = read(pinned(plan['inputs']['overlays']))
-    require(overlays.get('seal_stage') == 'v2' and len(overlays.get('items', [])) == 2 and
+    require(overlays.get('seal_stage') == mode and len(overlays.get('items', [])) == 2 and
             {row.get('id') for row in overlays['items']} == {'boatattack', 'toutiao-route-b'} and
-            all(row.get('state') == 'active' for row in overlays['items']), 'active v2 overlays required')
+            next(row for row in overlays['items'] if row['id'] == 'toutiao-route-b').get('state') == 'active',
+            'active Route B and explicit seal mode required')
+    boat = next(row for row in overlays['items'] if row['id'] == 'boatattack')
+    require(boat.get('state') == ('active' if mode == 'v2' else 'absent') and
+            (mode == 'v2' or (not boat.get('files') and bool(boat.get('reason')))), 'Boat layer disagrees with v1/v2 mode')
     manifest = read(pinned(plan['inputs']['manifest']))
     keys = [row['key'] for row in manifest['apps'] if row.get('install') is not False]
     signoff = read(pinned(plan['inputs']['signoff_5cd']))
@@ -356,11 +374,12 @@ def validate(plan, authorization, plan_sha):
             guard.get('bare_boot_supported') is True and guard.get('installer_sha256') == installer['sha256'],
             'guard-ready bare-boot installer approval pending')
     require(Path(expand(plan['baseline_5cd_t3'])).is_dir(), '5cd reference directory missing')
-    regression = read(pinned(plan['inputs']['regression_admission']))
-    require(regression.get('approved_by') == 'outer(claude)' and regression.get('overlay_aware') is True and
-            regression.get('post_reboot_sha256') == plan['tools']['post_reboot']['sha256'] and
-            regression.get('overlays_sha256') == plan['inputs']['overlays']['sha256'],
-            'v2 effective identity runner admission pending; original U13 hook rejects Boat overlay')
+    if mode == 'v2':
+        regression = read(pinned(plan['inputs']['regression_admission']))
+        require(regression.get('approved_by') == 'outer(claude)' and regression.get('overlay_aware') is True and
+                regression.get('post_reboot_sha256') == plan['tools']['post_reboot']['sha256'] and
+                regression.get('overlays_sha256') == plan['inputs']['overlays']['sha256'],
+                'v2 effective identity runner admission pending; original U13 hook rejects Boat overlay')
     for name in PROVIDERS:
         provider = plan['providers'][name]
         require(isinstance(provider.get('argv'), list) and bool(provider['argv']) and
@@ -373,6 +392,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--plan', type=Path, default=DEFAULT)
     parser.add_argument('--serial', choices=('61b', SERIAL), default='61b')
+    parser.add_argument('--mode', choices=('v1', 'v2'), default='v1')
     parser.add_argument('--out', type=Path, default=Path('<fresh-output-directory>'))
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--execute', action='store_true')
@@ -386,12 +406,13 @@ def main(argv=None):
         plan_sha = sha(args.plan)
         if not args.execute:
             print('DRY-RUN: commands/criteria only; zero transport, locks and output writes; pending bindings do not imply readiness')
-            Workflow(plan, args.out, preview=True, plan_sha=plan_sha).run()
+            Workflow(plan, args.out, preview=True, plan_sha=plan_sha, mode=args.mode).run()
             return 0
         require(args.authorization is not None and str(args.out) != '<fresh-output-directory>', 'authorization and fresh --out required')
-        validate(plan, args.authorization, plan_sha)
+        validate(plan, args.authorization, plan_sha, args.mode)
         args.out.mkdir(parents=True, exist_ok=False)
-        workflow = Workflow(plan, args.out, Transport(args.out, plan['command_timeout_seconds']), plan_sha=plan_sha)
+        workflow = Workflow(plan, args.out, Transport(args.out, plan['command_timeout_seconds']),
+                            plan_sha=plan_sha, plan_path=args.plan.absolute(), mode=args.mode)
         try:
             workflow.run()
         finally:

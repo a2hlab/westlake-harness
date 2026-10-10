@@ -1,70 +1,90 @@
-# 61b v2 seal orchestration (offline delivery)
+# 61b v1/v2 seal orchestration — offline revision
 
-## Evidence and correction
+## Evidence first
 
-The previous installer archived targets while recovery binds were live. Its directory removal could destroy uncovered physical `/system/android` files even when a bound entry reported `Resource busy`. A successful reboot command, running process or completed simulator is also not a sealed demonstration verdict.
+The original workflow hardcoded WITH_BOAT=1, required two active overlays and Boat LAP, and required a v2 regression admission even for v1. Preview skipped binding validation, so a plausible preview did not prove v1 could execute.
 
-This delivery adds `scripts/lab/demo_seal_61b.sh` and its Python workflow. **21 offline known-answer tests pass** (`evidence/tests.txt`), including transport order and pre-dispatch binding refusals; shell syntax and the default preview pass. No HDC, board, VM, SSH, lock or deployment was accessed during development. The checked-in plan is disabled and has explicit unresolved bindings. No real `seal.json` or live success is claimed.
+This revision adds **--mode v1|v2, default v1**, with mode bound to the approved plan. **39 orchestration/UID-slot fixture tests pass** (`evidence/tests-v1-v2.txt`); the unchanged seal compiler's **18 tests pass**, including actual v1/v2 compiler and selfcheck cases (`evidence/compiler-tests-v1-v2.txt`). Syntax, Python compilation and both previews exit0 (`evidence/checks-v1-v2.txt`). No board, VM, SSH, lock or deployment was accessed. The template remains disabled with pending bindings; no live seal/UI success is claimed.
 
-The independent installer guard reads both `/proc/self/mountinfo` and `/proc/1/mountinfo`, twice before installer dispatch. A mount at or below any of the 56 recovery targets refuses installation, regardless of its displayed source name. Empty/malformed mountinfo is not a clean result. Component boundaries and kernel octal escapes are handled. The staged installer SHA must equal the reviewed source SHA; a separate pinned outer approval must confirm its own live-bind guard and bare-boot admission. This latter guard is necessary to close the check/install race.
+| Requirement | v1 (default) | v2 (explicit) |
+|---|---|---|
+| Installer | WITH_BOAT=0 | WITH_BOAT=1 |
+| Active overlays | Toutiao Route B only | Toutiao Route B + admitted Boat |
+| Boat compiler slot | Explicit absent, reason, no files | Active, reviewed admission and roles |
+| Signed UI checks | Parent init, socket0660, HW/ZZ t20, Toutiao desktop click/refresh/article | Same + boat_five_touch_lap |
+| Regression | Original U13 identity runner; all128 + healthy5cd signoff | Additionally pinned outer-reviewed overlay-aware identity admission |
+| Output | seal_stage=v1, independently checked | seal_stage=v2, independently checked |
+
+The compiler retains **two named slots** in v1: Boat is declared absent, never active. Omitting Toutiao is forbidden. The v2-only regression_admission reference is neither opened nor pinned in v1; its null template value does not block a fully bound v1 plan. Execution rejects a CLI mode differing from plan.mode, before any dispatch/output writes.
 
 ## Commands
 
-Preview, including pending provider names and every step's criterion:
-
 ```sh
 bash scripts/lab/demo_seal_61b.sh
-bash scripts/lab/demo_seal_61b.sh --plan "$REVIEWED_PLAN" --dry-run --out "$FUTURE_OUTPUT"
+bash scripts/lab/demo_seal_61b.sh --mode v2 --dry-run
 python3 -m unittest discover -s benchmark/2026-10-10-demo-seal-61b -p 'test_*.py' -v
 ```
 
-The preview creates no output directory, invokes no subprocess and takes no lock. It expands neither tool nor input references for dispatch. Running it is not permission to execute the plan.
-
-Future outer execution, **only after the pending bindings below have been reviewed and supplied**:
+Preview prints commands and per-step criteria only: no transport, lock or output-root creation. Future outer execution requires a fully reviewed plan, exact SHA authorization, fresh output root and approved window/lock handoff:
 
 ```sh
 export WORKSPACES="$HOME/orca/workspaces"
-bash scripts/lab/demo_seal_61b.sh --serial 61b --execute \
-  --plan "$REVIEWED_PLAN" --authorization "$OUTER_AUTHORIZATION_JSON" --out "$FRESH_OUTPUT"
+bash scripts/lab/demo_seal_61b.sh --mode v1 --serial 61b --execute \
+  --plan "$REVIEWED_V1_PLAN" --authorization "$OUTER_AUTHORIZATION_JSON" --out "$FRESH_OUTPUT"
 ```
 
-The authorization contains `serial`, exact `plan_sha256`, `approved_by: "outer(claude)"`, nonempty `approved_at`, and `execution_authorized: true`. The reviewed plan must have `execution_enabled: true`, `pending: []`, the current `driver_sha256`, a runner window authorization reference and bounded timeouts. File pins are verified before any transport or output creation. Default output is deliberately an unusable placeholder; an actual execution requires a fresh directory. No automatic retries of writes, automatic recovery, permissive SELinux or bypass flag is offered.
+For v2, change plan.mode, bind Boat admission/LAP and the v2 identity admission, reauthorize the changed plan SHA, and pass --mode v2. The v1 authorization cannot authorize v2.
 
-## Fixed order and criteria
+## Fixed workflow
 
-1. Fresh lock-conflict check, canonical initial boot UUID, exact Enforcing, all **319** signed 61b path SHAs; same boot throughout this read-only preflight.
-2. Write and read back U13 `DISABLED`; `hdc -t <61b> target boot`; bounded readiness wait and a changed UUID. Confirm DISABLED survived.
-3. Check shell and init mount views, check staged installer SHA, repeat the mount checks immediately before installation. Run the approved installer with `WITH_BOAT=1`, `ALLOW_REMOUNT=1`, exact `DEPLOY`; require exit0 and `INSTALL_OK`.
-4. Install/enable the additive Toutiao boot slot **after** the base installer (the base supersede step otherwise removes it). Its receipt must identify the bare boot. Clear U13 DISABLED and read back absence.
-5. Complete read-only pre snapshot using `snapshot-plan.json`: all 56 recovery targets plus sandbox JSONs and both durable overlay roots. Run the fresh policy/recipe gate. Prepare the simulator's eight pinned inputs and retain its prediction table.
-6. Record the bare boot again, issue `target boot`, wait for another changed ready UUID. No Mac deployment, label repair, ticket replay, bundle repave or provisioning is permitted during autonomous acceptance.
-7. Check Enforcing and dmesg. Require fresh outer-signed evidence for HW/ZZ t20, Boat five-touch LAP and Toutiao **foreground desktop click + refresh + article**. Never replace the latter with background `aa start`. After foreground taps, independently read back exactly one root AppSpawnX parent with PPID1, socket `660:0:6005:u:object_r:appspawn_socket:s0`, and no `invalid:appspawn-x`.
-8. Complete the post snapshot on the same boot and produce the raw snapshot diff. Prepare and execute `run_post_reboot.py --serial <61b>` for all128, without reinstalling. Run `regress_vs_signoff.py` against the explicitly bound **5cd** signed reference; exact128 key membership, no missing captures and a fresh outer no-regression decision are required.
-9. Verify the boot has not changed. Collect a complete live-readonly seal snapshot for that same61b boot and call `build_seal.py` with admitted **v2** Boat + Route B overlay inputs.
+1. Fresh lock-conflict receipt, boot UUID, Enforcing and exact signed61b **319-path** inventory.
+2. DISABLED, target boot, different ready boot UUID, persistent DISABLED.
+3. Shell and init mountinfo: no mount at/below the **56 recover targets**, independent of source spelling. Empty/malformed output refuses. Repeat immediately before the guarded installer; pin source SHA and approved bare-boot support. ARCHIVE only on this bare no-bind boot.
+4. Mode-specific installer, INSTALL_OK; concrete uid-dynamic Toutiao slot below, enabled receipt tied to bare boot; then U13 ENABLE.
+5. Complete pre snapshot, fresh policy gate and physical simulator inputs. Simulator rc1 is advisory FAIL/UNKNOWN, not safety PASS; rc2/missing prediction stops.
+6. Second target boot, changed ready UUID. No Mac replay, label repair, deployment, repave or provisioning during autonomous acceptance.
+7. Enforcing/no INVALID; fresh outer-signed mode-specific screenshots. Independently verify one root AppSpawnX with PPID1, socket 660:0:6005:u:object_r:appspawn_socket:s0, and no invalid after taps. Toutiao uses **foreground desktop click**, never background aa start.
+8. Complete post snapshot/diff; all128 without reinstall; exact membership/no missing captures, signed healthy5cd reference and fresh outer no-regression receipt in **both modes**.
+9. Same boot complete live-readonly package/version/APK/hash inventory; unchanged build_seal.py consumes mode-specific overlays; compiled seal_stage must match.
 
-Any failed command/predicate stops later steps, preserves raw stdout/stderr, exit codes and their hashes, and prints recovery references. Only boot readiness has a bounded read-only retry. Simulator rc1 is a deliberately **advisory** FAIL/UNKNOWN table, recorded verbatim and never labelled safety PASS; rc2/missing prediction stops before the second reboot. This exception does not relax other gates or the outer window authorization.
+Hard failures stop later steps and retain raw stdout/stderr, return codes and hashes. Only read-only boot readiness retries. Recovery references are printed, never automatically dispatched: separately authorized fresh61b ticket replay or signed-bundle repave. The5cd ticket is provenance only, not reusable61b authorization.
 
-## Provider interface and remaining bindings
+## UID-dynamic Toutiao integration
 
-The six provider entries are explicit, pinned command arrays, not invented CLIs or silently successful placeholders. Their scripts and referenced inputs go in `pins`; argv must contain at least one pinned program path. Each receives `DEMO_SEAL_OUT`, `DEMO_SEAL_SERIAL`, `DEMO_SEAL_BOOT_ID`, `DEMO_SEAL_PLAN_SHA`, `DEMO_SEAL_STEP`. It must write `$DEMO_SEAL_OUT/<step>.json`, identify the same serial/plan SHA and exit0. Raw command results are retained independently. The output root is fresh, preventing reuse of pre-existing receipts.
+The pinned concrete provider is **scripts/lab/demo_toutiao_slot.py --execute**, called from the exact plan/SHA/serial/current-boot context. It stages cc-wiki d837acf904 worker/owner/reconcile_uid.sh verbatim. prepare_payload.py removes the fixed UID20010053 precondition.
 
-| Provider | Required output / owner responsibility |
+The six reconciled filename types are **run.sh, preseed_metasec48.sh, prepare_jit50.sh, start-parent.sh, watchdog.sh, request.bin**, including placement aliases. They are excluded from immutable.tsv; reconciliation/readback covers text UID, binary UID/GID offsets312/316 and runtime ownership. Archives, appspawn-x, screen-gate, worker, owner and reconciler stay SHA-pinned.
+
+Order: Toutiao DISABLED → verified local payload (system files staged into data first) → reconcile → installed-host UID and all immutable members read back → same boot → rootfs transaction places worker/inactive cfg, then active cfg with permissions/labels → rm DISABLED → restore original read-only rootfs if remounted. Receipt includes **enabled:true, boot_id==bare_boot, uid_mode:installed-host-dynamic, reconcile_checked:true, immutable_preserved:true**. No application is launched; failed checks refuse ENABLE.
+
+Local preparation does not enable the slot; pin the resulting placement.json in the plan:
+
+```sh
+python3 benchmark/2026-10-10-toutiao-boot-slot/prepare_payload.py \
+  --inputs "$REVIEWED_TTBUNDLE_ARCHIVES" --out "$FRESH_PREPARED_PAYLOAD" \
+  --payload-dir "$WORKSPACES/westlake-harness/benchmark/2026-10-10-toutiao-boot-slot/payload" \
+  --uid-dynamic-dir "$WORKSPACES/westlake-harness/benchmark/2026-10-10-u13-autostart/boot-slot-uid-dynamic"
+```
+
+### Independent blocker: original helper mutates immutable controls
+
+The **real d837 reconciler**, run offline with mocked installed UID20011206, returned0 and correctly patched both request fields, but broad find *.sh changed **reconcile_uid.sh, route-b-owner.sh and westlake-u13-toutiao-overlay.sh** under durable scripts. Raw output/source/after SHA evidence: `evidence/uid-immutable-original-negative.json`. Comments/OLD_UID literals were rewritten; next boot's immutable gate would refuse.
+
+This revision does **not** exclude those controls or modify cc-wiki's approved source. Post-reconcile immutable readback refuses ENABLE. The source owner must restrict rewrites to reviewed business files, preserve controls, verify the real helper and bind new source hashes. Positive transport fixtures prove wiring/order, not that the original helper passes this gate. This independent blocker was reported at15:45:18, separately from the fixed v1 mode blocker.
+
+## Binding handoff
+
+Each pinned provider receives DEMO_SEAL_OUT/SERIAL/BOOT_ID/PLAN_SHA/STEP/PLAN, exits0 and writes <step>.json with exact serial/plan SHA. Output root must be fresh.
+
+| Provider | Required output |
 |---|---|
-| `lock_check` | `no_conflict: true`; outer/cx-t0 supplies the real held-state command and window/runner lock handoff. This tool neither takes nor steals a lock. |
-| `toutiao_slot` | `enabled: true`, `boot_id` equal to bare boot; approved additive placement and activation, no application launch. |
-| `reboot_inputs` | Receipt plus `reboot-inputs.json` for the landed simulator. It must use this pre snapshot, exact physical underlay/inventory, init ordering, closure and policy queries, not historical mounted-state guesses. |
-| `acceptance` | Current autonomous `boot_id`, `approved_by`, `approved_at`, `no_mac_repair: true`, six `checks` from the workflow and nonempty pinned screenshot/raw `evidence`. Human taps and screenshot interpretation belong to outer; rc0 alone is insufficient. |
-| `regression_review` | Same signed receipt envelope, checks `all_128_observed`, `no_regression_vs_5cd`, `identity_unchanged`; exact fresh `comparison_sha256`, `baseline_serial` equal to5cd, and pinned evidence. Comparator image triage is not an outer verdict. |
-| `seal_snapshot` | Current `boot_id` receipt plus `seal-snapshot.json` in `demo-seal-snapshot/v1` format. Complete package/version/APK SHA inventory and effective runtime/boot/overlay file groups are required by the landed compiler. A board-state snapshot alone is not this package inventory. |
+| lock_check | Fresh no_conflict:true, reviewed window/lock handoff |
+| toutiao_slot | Verified dynamic reconciliation, immutable preserved, enabled, exact bare boot |
+| reboot_inputs | This pre snapshot's physical underlay/closure/query/init-order inputs |
+| acceptance | Current boot, outer signature/time, no_mac_repair:true, mode-specific checks, pinned human evidence |
+| regression_review | Same envelope, exact comparison SHA, baseline5cd, all128/no regression/identity unchanged |
+| seal_snapshot | Same boot complete live-readonly files/packages/APK hashes; board snapshot alone is insufficient |
 
-Three especially important execution blockers remain **explicit, not worked around**:
+Outer still binds the guarded **bare-boot-capable** installer, reconciler preservation repair, prepared slot, healthy5cd reference/comparator layout, physical simulator inputs, live UI/128 receipts, final inventory and authorization. Existing template references are not approval. **Only v2** additionally requires Boat and overlay-aware128 identity admission. No identity gate, registry, frozen artifact or board is modified.
 
-- cc-t3 reported the live-bind/READY guard in lane commit `c9bea54a80` at14:42. It is not automatically a reviewed bare-boot installer binding. The published donor's running recovered AppSpawnX prerequisite conflicts with bare-boot admission. Bind the final source/hash and `guard_approval` (`live_bind_fail_closed`, `bare_boot_supported`, `installer_sha256`, outer approver); do not substitute an old installer or add a Mac replay between the bare-boot check and ARCHIVE.
-- The landed `run_post_reboot.py` calls `round_identity.py`, which asserts original U13's319 hashes. Boat's shared replacements change that effective inventory. Execution requires an outer-signed `regression_admission` (`overlay_aware: true`, exact `post_reboot_sha256`, `overlays_sha256`) for a reviewed v2-aware runner/hook. This delivery **does not modify or weaken that identity gate**.
-- Today's healthy5cd128 comparison/signoff, Toutiao additive installer, final v2 overlay admission, physical simulator inputs, actual acceptance receipts and final seal inventory must be supplied. The initial signed319 baseline and pre-existing tools are pinned in the template only as read-only source references; they are not a claim that pending candidates are ready.
-
-## Failure disposition
-
-Leave the board and lock disposition intact; print the failed step and the recovery references. Recovery is separately authorized: cx-t0 obtains a **fresh61b native ticket**, or outer approves physical bundle repave on a disabled bare boot. The documented5cd ticket directory is recipe provenance only, never a reusable61b ticket. The61b armed bundle's `native/payload/android` is the full repave source, not merely its currently bound subset. No recovery command is dispatched automatically, and no seal is emitted after an unreviewed/failed step.
-
-`plan-template.json` and `snapshot-plan.json` are offline templates, not an approval or board transaction. The transport fixtures prove workflow order and failure handling only, not reboot durability, SELinux permission, Boat playability or the128 UI regression.
+Historical tests.txt/dry-run.txt/checks remain; current evidence is explicitly named tests-v1-v2.txt, compiler-tests-v1-v2.txt, checks-v1-v2.txt, dry-run-v1.txt and dry-run-v2.txt. Changes remain in this worktree for outer land; Git index metadata is not writable.

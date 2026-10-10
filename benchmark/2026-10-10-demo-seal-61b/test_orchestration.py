@@ -38,6 +38,10 @@ class FixtureTransport:
         self.second_same_boot = False
         self.installer_drift = False
         self.boot_counter = 0
+        self.omit_boat = False
+        self.slot_boot = None
+        self.slot_enabled = True
+        self.seal_stage = None
 
     def run(self, name, argv, env=None):
         self.calls.append((name, argv, env))
@@ -71,6 +75,7 @@ class FixtureTransport:
         if name in seal.PROVIDERS:
             receipt = dict(serial=seal.SERIAL, plan_sha256='a' * 64,
                            boot_id=env['DEMO_SEAL_BOOT_ID'], no_conflict=True, enabled=True,
+                           uid_mode='installed-host-dynamic', reconcile_checked=True, immutable_preserved=True,
                            approved_by='outer(claude)' if not self.unsigned else 'fixture-unapproved',
                            approved_at='fixture-only', no_mac_repair=True,
                            checks={key: True for key in ('parent_init', 'socket_0660', 'hw_t20_lit',
@@ -78,6 +83,12 @@ class FixtureTransport:
                                 'all_128_observed', 'no_regression_vs_5cd', 'identity_unchanged')},
                            evidence=[dict(path=str(self.out / 'fixture-evidence'), sha256=seal.sha(self.out / 'fixture-evidence'))])
             save(self.out / (name + '.json'), receipt)
+            if name == 'acceptance' and self.omit_boat:
+                receipt['checks'].pop('boat_five_touch_lap')
+                save(self.out / (name + '.json'), receipt)
+            if name == 'toutiao_slot':
+                receipt.update(boot_id=self.slot_boot or env['DEMO_SEAL_BOOT_ID'], enabled=self.slot_enabled)
+                save(self.out / (name + '.json'), receipt)
             if name == 'regression_review':
                 receipt['comparison_sha256'] = seal.sha(self.out / 'regression/comparison.json')
                 receipt['baseline_serial'] = seal.BASELINE_SERIAL
@@ -101,6 +112,8 @@ class FixtureTransport:
         if name == 'regress-vs-5cd':
             save(self.out / 'regression/comparison.json', dict(keys=[dict(key='key-' + str(number)) for number in range(128)],
                                                             extra_keys=[], summary=dict(missing=0)))
+        if name == 'build-seal':
+            save(self.out / 'seal.json', dict(seal_stage=self.seal_stage or self.plan['mode']))
         return 0, ''
 
 
@@ -110,6 +123,7 @@ class OrchestrationTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.out = Path(self.temp.name)
         self.plan = copy.deepcopy(seal.read(HERE / 'plan-template.json'))
+        self.plan['mode'] = 'v2'
         self.plan['boot_timeout_seconds'] = 1
         save(self.out / 'baseline.json', dict(expected={'/system/fixture-' + str(number): 'b' * 64 for number in range(319)}))
         save(self.out / 'table.json', dict(recover_layers=[dict(target='/system/android')]))
@@ -120,20 +134,22 @@ class OrchestrationTests(unittest.TestCase):
         self.plan['providers'] = {name: dict(argv=['fixture-provider', name]) for name in seal.PROVIDERS}
         (self.out / 'fixture-evidence').write_text('MOCK evidence; not UI acceptance')
         self.transport = FixtureTransport(self.out, self.plan)
-        self.workflow = seal.Workflow(self.plan, self.out, self.transport, plan_sha='a' * 64, sleep=lambda seconds: None)
+        self.workflow = seal.Workflow(self.plan, self.out, self.transport, plan_sha='a' * 64,
+                                      sleep=lambda seconds: None, mode='v2')
 
     def run_workflow(self):
         with contextlib.redirect_stdout(io.StringIO()):
             self.workflow.run()
 
-    def bound_fixture(self):
+    def bound_fixture(self, mode='v2'):
         plan = copy.deepcopy(self.plan)
         stub = self.out / 'fixture-provider.py'
         stub.write_text('raise SystemExit("fixture-only: never dispatch")\n')
         program = dict(path=str(stub), sha256=seal.sha(stub))
-        plan.update(execution_enabled=True, pending=[], driver_sha256=seal.sha(SPEC.origin),
+        plan.update(mode=mode, execution_enabled=True, pending=[], driver_sha256=seal.sha(SPEC.origin),
                     baseline_5cd_t3=str(self.out))
         plan['tools'] = {name: copy.deepcopy(program) for name in seal.TOOLS}
+        plan['toutiao_slot'] = dict(placement=copy.deepcopy(program))
         for name in seal.INPUTS:
             if name not in ('baseline_319', 'recover_table', 'manifest'):
                 source = self.out / (name + '-fixture.json')
@@ -147,8 +163,9 @@ class OrchestrationTests(unittest.TestCase):
 
         input_json('recover_table', dict(recover_layers=[dict(target='/system/android')] +
                      [dict(target='/system/target-' + str(number)) for number in range(55)]))
-        input_json('overlays', dict(seal_stage='v2', items=[dict(id=name, state='active')
-                    for name in ('boatattack', 'toutiao-route-b')]))
+        input_json('overlays', dict(seal_stage=mode, items=[dict(id='toutiao-route-b', state='active'),
+                    dict(id='boatattack', state='active' if mode == 'v2' else 'absent', files=[],
+                         reason='Boat not part of v1')]))
         input_json('signoff_5cd', dict(board=seal.BASELINE_SERIAL,
                      verdicts={'key-' + str(number): dict(verdict='lit', batch='fixture') for number in range(128)}))
         input_json('regression_admission', dict(approved_by='outer(claude)', overlay_aware=True,
@@ -169,7 +186,7 @@ class OrchestrationTests(unittest.TestCase):
     def test_complete_fixture_binding_validates_without_dispatch(self):
         plan, authorization = self.bound_fixture()
         with patch.object(seal.subprocess, 'run', side_effect=AssertionError('transport forbidden')):
-            seal.validate(plan, authorization, 'a' * 64)
+            seal.validate(plan, authorization, 'a' * 64, mode='v2')
 
     def test_guard_not_bare_ready_refuses_before_dispatch(self):
         plan, authorization = self.bound_fixture()
@@ -179,7 +196,7 @@ class OrchestrationTests(unittest.TestCase):
         save(guard, value)
         plan['installer']['guard_approval']['sha256'] = seal.sha(guard)
         with self.assertRaisesRegex(ValueError, 'bare-boot installer approval pending'):
-            seal.validate(plan, authorization, 'a' * 64)
+            seal.validate(plan, authorization, 'a' * 64, mode='v2')
 
     def test_u13_only_regression_admission_refuses(self):
         plan, authorization = self.bound_fixture()
@@ -189,7 +206,7 @@ class OrchestrationTests(unittest.TestCase):
         save(source, value)
         plan['inputs']['regression_admission']['sha256'] = seal.sha(source)
         with self.assertRaisesRegex(ValueError, 'effective identity runner admission pending'):
-            seal.validate(plan, authorization, 'a' * 64)
+            seal.validate(plan, authorization, 'a' * 64, mode='v2')
 
     def test_61b_reference_cannot_masquerade_as_5cd(self):
         plan, authorization = self.bound_fixture()
@@ -199,7 +216,62 @@ class OrchestrationTests(unittest.TestCase):
         save(source, value)
         plan['inputs']['signoff_5cd']['sha256'] = seal.sha(source)
         with self.assertRaisesRegex(ValueError, 'signed 5cd baseline required'):
+            seal.validate(plan, authorization, 'a' * 64, mode='v2')
+
+    def test_v1_binding_needs_only_toutiao_active_no_v2_admission(self):
+        plan, authorization = self.bound_fixture('v1')
+        plan['inputs']['regression_admission'] = dict(path='<v2-only-unbound>', sha256=None)
+        with patch.object(seal.subprocess, 'run', side_effect=AssertionError('transport forbidden')):
             seal.validate(plan, authorization, 'a' * 64)
+
+    def test_mode_cannot_differ_from_authorized_plan(self):
+        plan, authorization = self.bound_fixture('v1')
+        with self.assertRaisesRegex(ValueError, 'mode differs'):
+            seal.validate(plan, authorization, 'a' * 64, mode='v2')
+
+    def test_boat_state_must_match_both_modes(self):
+        for mode in ('v1', 'v2'):
+            with self.subTest(mode=mode):
+                plan, authorization = self.bound_fixture(mode)
+                source = Path(plan['inputs']['overlays']['path'])
+                value = seal.read(source)
+                value['items'][1]['state'] = 'active' if mode == 'v1' else 'absent'
+                save(source, value)
+                plan['inputs']['overlays']['sha256'] = seal.sha(source)
+                with self.assertRaisesRegex(ValueError, 'Boat layer disagrees'):
+                    seal.validate(plan, authorization, 'a' * 64, mode=mode)
+
+    def test_v1_workflow_excludes_boat_and_emits_v1(self):
+        self.plan['mode'] = 'v1'
+        self.workflow.mode = 'v1'
+        self.transport.omit_boat = True
+        self.run_workflow()
+        installer = next(argv[-1] for name, argv, env in self.transport.calls if name == 'installer')
+        self.assertIn('WITH_BOAT=0', installer)
+        self.assertEqual(seal.read(self.out / 'seal.json')['seal_stage'], 'v1')
+        self.assertNotIn('boat_five_touch_lap', seal.read(self.out / 'acceptance.json')['checks'])
+
+    def test_v2_workflow_requires_boat_and_emits_v2(self):
+        self.run_workflow()
+        self.assertEqual(seal.read(self.out / 'seal.json')['seal_stage'], 'v2')
+        self.transport.omit_boat = True
+        with self.assertRaisesRegex(ValueError, 'acceptance: missing/failed criterion'):
+            self.run_workflow()
+
+    def test_build_seal_wrong_mode_refuses(self):
+        self.transport.seal_stage = 'v1'
+        with self.assertRaisesRegex(ValueError, 'compiled seal mode mismatch'):
+            self.run_workflow()
+
+    def test_toutiao_disabled_or_wrong_bare_boot_never_enables_u13(self):
+        for wrong in ('disabled', 'boot'):
+            with self.subTest(wrong=wrong):
+                self.transport.slot_enabled = wrong != 'disabled'
+                self.transport.slot_boot = BOOTS[0] if wrong == 'boot' else None
+                self.workflow.events = []
+                with self.assertRaisesRegex(ValueError, 'not verified/enabled on bare boot'):
+                    self.run_workflow()
+                self.assertNotIn('enable', self.workflow.events)
 
     def test_exact_order_and_two_target_boots(self):
         self.run_workflow()
@@ -298,8 +370,18 @@ class OrchestrationTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(seal.main(['--out', str(out)]), 0)
         self.assertFalse(out.exists())
-        self.assertIn('WITH_BOAT=1', output.getvalue())
+        self.assertIn('WITH_BOAT=0', output.getvalue())
+        self.assertNotIn('boat_five_touch_lap', output.getvalue())
         self.assertIn('319 signed paths', output.getvalue())
+
+    def test_explicit_v2_preview_has_boat_zero_transport(self):
+        out = self.out / 'not-created-v2'
+        with patch.object(seal.subprocess, 'run', side_effect=AssertionError('transport forbidden')):
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(seal.main(['--mode', 'v2', '--out', str(out)]), 0)
+        self.assertFalse(out.exists())
+        self.assertIn('WITH_BOAT=1', output.getvalue())
+        self.assertIn('boat_five_touch_lap', output.getvalue())
 
     def test_disabled_template_execute_refuses_before_transport(self):
         with patch.object(seal.subprocess, 'run', side_effect=AssertionError('transport forbidden')):

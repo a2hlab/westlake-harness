@@ -1,6 +1,7 @@
 {
   "schema": "demo-seal-61b-orchestration/v1",
   "serial": "61b0657200000000000000000324012c",
+  "mode": "v1",
   "execution_enabled": false,
   "driver_sha256": null,
   "hdc": "hdc",
@@ -79,7 +80,7 @@
       "sha256": null
     },
     "regression_admission": {
-      "path": "<outer-bind:regression_admission>",
+      "path": "<v2-only:outer-bind-regression_admission>",
       "sha256": null
     },
     "snapshot_plan": {
@@ -89,8 +90,8 @@
   },
   "baseline_5cd_t3": "<signed-5cd-reference-t3-directory>",
   "installer": {
-    "board_path": "/data/local/tmp/demo-seal-v2/scripts/install-westlake-u13-autostart.sh",
-    "deploy": "/data/local/tmp/demo-seal-v2",
+    "board_path": "/data/local/tmp/demo-seal/scripts/install-westlake-u13-autostart.sh",
+    "deploy": "/data/local/tmp/demo-seal",
     "sha256": null,
     "source": {
       "path": "<cc-t3-guard-ready-installer>",
@@ -109,9 +110,34 @@
       "receipt": "lock_check.json"
     },
     "toutiao_slot": {
-      "argv": null,
-      "pins": [],
-      "owner": "outer/cx-t0",
+      "argv": [
+        "python3",
+        "$REPO/scripts/lab/demo_toutiao_slot.py",
+        "--execute"
+      ],
+      "pins": [
+        {
+          "path": "$REPO/scripts/lab/demo_toutiao_slot.py",
+          "sha256": "647742719507d8f8aaff16fefdcbf654acde811f027318ef5f39ef3659350ac7"
+        },
+        {
+          "path": "$REPO/benchmark/2026-10-10-toutiao-boot-slot/prepare_payload.py",
+          "sha256": "eb5785b3d086c45bea46d16d87a38b69b95102740e4121443b8e819d9f68baba"
+        },
+        {
+          "path": "$WORKSPACES/westlake-harness/benchmark/2026-10-10-u13-autostart/boot-slot-uid-dynamic/reconcile_uid.sh",
+          "sha256": "a828af2a366c1c83fbf7785248825dfcdc610c676fefc649ecd603e4108fd9d4"
+        },
+        {
+          "path": "$WORKSPACES/westlake-harness/benchmark/2026-10-10-u13-autostart/boot-slot-uid-dynamic/route-b-owner.sh",
+          "sha256": "80a263d930a67c48fa92f5caa7b6266ee13ff75079ff5ba880e9576da72dbdc4"
+        },
+        {
+          "path": "$WORKSPACES/westlake-harness/benchmark/2026-10-10-u13-autostart/boot-slot-uid-dynamic/westlake-u13-toutiao-overlay.sh",
+          "sha256": "5ecee266fa74283d685d54ba43ae8bda5b080031d7c91d9ca5e04cd7e3969278"
+        }
+      ],
+      "owner": "cx-bms integration; cc-wiki uid-dynamic source; outer final payload/window binding",
       "receipt": "toutiao_slot.json"
     },
     "reboot_inputs": {
@@ -145,11 +171,23 @@
   },
   "pending": [
     "cc-t3 guarded installer must support bare-boot admission, not demand a live recovered AppSpawnX",
-    "reviewed additive Toutiao slot installer/ENABLE provider",
-    "v2 overlay-aware 128 regression identity hook, original hook is U13-only",
+    "reviewed prepared uid-dynamic Toutiao payload + control-script preservation fix",
     "fresh healthy 5cd signed 128 reference and exact comparator layout",
     "current pre-reboot physical underlay/closure/query inputs",
     "fresh outer UI acceptance + 128 verdicts; live-readonly final seal inventory",
     "outer lock/window handoff; driver/tool/dependency SHAs reviewed together"
-  ]
+  ],
+  "v2_additional_requirements": [
+    "mode=v2 and admitted active Boat overlay; v1 binds Boat absent with reason and no files",
+    "pinned regression_admission for v2 overlay-aware 128 identity hook; v1 does not require it",
+    "fresh outer Boat five-touch LAP acceptance"
+  ],
+  "toutiao_slot": {
+    "placement": {
+      "path": "<reviewed-prepared-uid-dynamic-payload>/placement.json",
+      "sha256": null
+    },
+    "source_commit": "d837acf904",
+    "reconcile_control_scripts_must_remain_immutable": true
+  }
 }
