@@ -1,0 +1,39 @@
+{
+  "task": "cc-t3 #91 rebuild plan — byte-repro gate for U13 adapter+runtime from source",
+  "board_touched": false,
+  "frozen_touched": false,
+  "build_mechanism": {
+    "toolchain": "frozen OHOS clang-15 (Linux x86_64), --target=aarch64-linux-ohos, frozen sysroot",
+    "runner": "a2hlab-build:24.04 OrbStack container (dockbuild.sh); bare macOS fails at aidl (Linux binary)",
+    "driver": "westlake-inputs/generations/u13-runtime-m1-v1/build/u13/{driver.sh,recipe.sh}",
+    "builds_runtime": true,
+    "builds_adapter_arm64": false,
+    "adapter_arm64_note": "KNOWN GAP in native repo; U13 adapter 84695d62 is an external boat-repro Aug-09 prebuilt"
+  },
+  "byte_repro_gate": {
+    "result": "FAIL_STOP",
+    "deterministic": true,
+    "scratch_rebuild_sha": "3a316fea",
+    "canonical_rebuild_sha": "3a316fea",
+    "deployed_u13_runtime_sha": "18763dd4",
+    "drift_pinned": "deployed 18763dd4 has webview_publication.cpp TU (_GLOBAL__sub_I_webview_publication.cpp); current .work source does not compile it; rebuild 9408 bytes smaller",
+    "webview_publication_in_current_work_source": false,
+    "webview_publication_in_frozen_source_view": false,
+    "conclusion": "current on-disk .work source drifted from the 18763dd4 build state; DIGEST E.7"
+  },
+  "provenance": {
+    "c2891f11": "westlake-harness generation-metadata commit 2026-09-29, NOT the native C++ source",
+    "native_runtime_source": ".work/b87-native/adapter snapshot (no .git) + task68 recorded snapshots",
+    "deployed_adapter_84695d62": "boat-repro zigzag-persisted Aug-09 prebuilt (external)"
+  },
+  "runtime_source_delta_b87native_to_boatgood": {
+    "android_graphics_compat_shim.cpp": {"delta": "+166", "class": "RENDER", "port": true},
+    "android_view_InputEventReceiver.cpp": {"delta": "+35", "class": "input", "port": "conditional"},
+    "AndroidRuntime.cpp": {"delta": "+638", "class": "GENERAL", "port": false, "risk": "128-app"},
+    "android_os_Process.cpp": {"delta": "+10", "class": "GENERAL", "port": false, "risk": "128-app"},
+    "android_view_DisplayEventReceiver.cpp": {"delta": "+37", "class": "GENERAL", "port": false, "risk": "128-app"},
+    "android_view_VelocityTracker.cpp": {"delta": "-80 (deleted in boat-good)", "class": "GENERAL", "port": false, "risk": "128-app"}
+  },
+  "adapter_port": "re-pin 84695d62 -> 8ab85446 (boat-repro Aug-11, has SET_BUFFERS_GEOMETRY/UNITY-LANDSCAPE markers); arm64 adapter not locally buildable",
+  "blocker": "restore 18763dd4 byte-repro (locate webview_publication.cpp-era source snapshot, likely task68/hw248) before emitting any marked rebuild"
+}
