@@ -1,0 +1,32 @@
+{
+  "_DRAFT": "NOT registered in knowledge/frozen/frozen.json. Draft for outer review per the user's bottom line: a frozen-item version bump needs single-variable compare + every earlier-evidence app back to level + a NON-regressing full 128 sweep, registered by the outer before deploy. This entry REPLACES 3 SHARED files used by all 128 apps, so the pending full-128 regression (cx-t0, 5cd baseline -> 5ea) is mandatory before registration.",
+  "proposed_entry": {
+    "id": "FZ-BOAT-RENDER-v1 (proposed)",
+    "api": "Android OpenGL/Unity render path (full-resolution + correct colour + playable) for route-a Android games, via the BoatAttack render layer over U13",
+    "frozen_at": "PENDING (outer registers)",
+    "reason": "defect: U13 shared runtime liboh_android_runtime.so 18763dd4 renders BoatAttack low-res-stretched + purple + LAP stuck 0/3; the candidate runtime adc125f4 fixes it (full 1920x1200, correct colour, LAP advances)",
+    "artifacts": [
+      {"path": "/system/android/lib64/liboh_android_runtime.so", "sha256": "adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130", "replaces_sha256": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae", "role": "render lever (single-variable proven)"},
+      {"path": "/system/android/lib64/liboh_adapter_bridge.so", "sha256": "8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e", "replaces_sha256": "84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a", "role": "route2d baseline (C8 landscape adapter; not individually single-var tested, part of validated combo)"},
+      {"path": "/system/android/framework/oh-adapter-runtime.jar", "sha256": "6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852", "replaces_sha256": "bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b", "role": "route2d baseline (C9 touch jar)"}
+    ],
+    "app_private_artifacts": [
+      {"name": "libil2cpp.so", "sha256": "f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746"},
+      {"name": "libunity.so", "sha256": "1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac"},
+      {"name": "libwestlake_bionic_signal_box.so", "sha256": "7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da"}
+    ],
+    "single_variable_compare": "5ea, Enforcing, v2 base: route2d (adapter 8ab85446 + jar 6333bcab + 3 private) held constant; ONLY /system/android/lib64/liboh_android_runtime.so varied 18763dd4 -> adc125f4; render went low-res+purple+LAP-stuck -> full-res+correct-colour+LAP 0/3->1/3. compare_runs variables:1 on the runtime.",
+    "source_record": "benchmark/2026-10-10-boat-single-variable/README.md; render source location benchmark/2026-10-10-boat-pr03-render-port/SOURCE-PATCH-LIST.md; candidate runtime adc125f4 from boatattack-oh61-repro-20260924/candidates/boat-hw248-20260924/liboh_android_runtime.so",
+    "verified_apps": [
+      {"app": "BoatAttack (com.Unity3d.BoatAttackDay)", "board": "5ea", "change": "low-res-stretched+purple+LAP 0/3 -> full 1920x1200 + correct colour + LAP 0/3->1/3 (five-touch replay), outer-signed render + LAP", "t20": "~/a2hlab-provision/5ea-boat-lap/touch-3-accelerate.png (LAP 1/3)", "t2b_criteria": "2cbc57ab98 PASS"}
+    ],
+    "mechanism": "bind-mount over /system/android shared files + v2 selinux_label_recipe labels; render fix is runtime-side (adc125f4)",
+    "status": "DRAFT-pending-full-128-regression",
+    "pending": [
+      "NON-regressing full 128 sweep on 5ea with the Boat layer vs 5cd clean-U13 baseline (cx-t0) — these are SHARED files, every lit app must stay lit / first-fatal not regress",
+      "a 2nd app past the render wall is NOT required by the render criterion, but the frozen RULE's non-regression gate IS (128 apps keep lighting with the swapped shared adapter/jar/runtime)",
+      "② autostart (v2 WITH_BOAT=1 + runtime in stage_boat + boat-overlay runtime bind) so it survives power-cycle",
+      "outer registration into knowledge/frozen/frozen.json (reason=defect, with the single-variable compare + full-sweep evidence)"
+    ]
+  }
+}
