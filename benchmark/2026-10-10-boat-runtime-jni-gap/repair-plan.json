@@ -1,0 +1,42 @@
+{
+  "execution_enabled": false,
+  "candidate_created": false,
+  "root_cause": "Boat stage assigns a libandroid-derived, SQLite-noop blob to the shared runtime path",
+  "immediate_runtime_target": {
+    "path": "/system/android/lib64/liboh_android_runtime.so",
+    "required_sha256": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae",
+    "remove_overlay_sha256": "adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130"
+  },
+  "libandroid_only_experiment": {
+    "path": "/system/android/lib64/libandroid.so",
+    "proposal_sha256": "adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130",
+    "status": "requires outer approval and owner-resolution evidence",
+    "risk": "SONAME remains liboh_android_runtime.so; filename isolation is not unique runtime ownership"
+  },
+  "production_choice": "use exact-reproducible18763dd4 closure; port required rendering delta into real owner or thin dependent NDK shim",
+  "sqlite_only_alternative": {
+    "required_translation_units": [
+      "android_database_SQLiteConnection.cpp",
+      "android_database_SQLiteGlobal.cpp",
+      "android_database_SQLiteDebug.cpp",
+      "android_database_CursorWindow.cpp",
+      "android_database_SQLiteCommon.cpp",
+      "androidfw/CursorWindow.cpp",
+      "cutils_ashmem_shim.cpp",
+      "sqlite3_android_shim.cpp",
+      "sqlite/sqlite3.c"
+    ],
+    "restored_scoped_method_rows": 50,
+    "other_scoped_method_gaps_remaining": 299,
+    "not_sufficient_for_shared_runtime_approval": true
+  },
+  "predicted_first_wall": "missing SQLite JNI resolves to a real SQLite open attempt; success/CANTOPEN/downstream wall depends on environment",
+  "gates": [
+    "four GLOBAL nonempty SQLite/CursorWindow registrars",
+    "SQLiteConnection27/CursorWindow21/SQLiteDebug1/SQLiteGlobal1 table parity",
+    "no unintended U13 export or native-table loss",
+    "unique runtime and AssetManager owner",
+    "fresh native/static admission",
+    "Boat playable plus reboot full128 non-regression"
+  ]
+}

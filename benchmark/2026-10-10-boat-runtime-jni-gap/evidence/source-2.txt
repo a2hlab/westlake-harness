@@ -1,0 +1,84 @@
+$WORKSPACES/westlake-harness-t3/benchmark/2026-10-01-n10b-child/smoke-markers/src/AndroidRuntime.cpp sha256=141791a7936e0373dcca462241b6b73d7caa60f4e8335cf950431aa35c5139ea
+237:     // 2026-06-28: SQLite JNI group — Room/androidx.sqlite calls
+238:     // android.database.sqlite.SQLiteConnection.nativeOpen which was
+239:     // UnsatisfiedLinkError'ing (no register_X covered it).  These three port
+240:     // the AOSP frameworks/base/core/jni/android_database_* register functions;
+241:     // sqlite3 itself is the AOSP amalgamation (external/sqlite/dist/sqlite3.c)
+242:     // compiled into this .so, with a no-ICU sqlite3_android shim.  CursorWindow
+243:     // JNI is included too; its two Parcel-marshalling natives are stubbed (OH
+244:     // has no Binder) — Room accesses cursors in-process only.
+245:     { "register_android_database_SQLiteConnection",
+246:       register_android_database_SQLiteConnection },
+247:     { "register_android_database_SQLiteGlobal",
+248:       register_android_database_SQLiteGlobal },
+249:     { "register_android_database_SQLiteDebug",
+250:       register_android_database_SQLiteDebug },
+251:     { "register_android_database_CursorWindow",
+252:       register_android_database_CursorWindow },
+253:     // [STAGE2-UNITY 2026-06-28] EGL14 Java JNI (eglprobe render-bridge proof).
+254:     { "register_android_opengl_jni_EGL14",
+255:       register_android_opengl_jni_EGL14 },
+347: int AndroidRuntime::startReg(JNIEnv* env) {
+348:     fprintf(stderr, "[liboh_android_runtime] startReg entering (%zu modules)\n",
+349:             kRegJNICount);
+350: 
+351:     // Cache JavaVM so AOSP-ported sources (ApkAssets.cpp et al.) can call
+352:     // AndroidRuntime::getJavaVM() from callback-local central JNI admission.
+353:     JavaVM* vm = nullptr;
+354:     if (env->GetJavaVM(&vm) == JNI_OK) {
+355:         setJavaVM(vm);
+356:         fprintf(stderr, "[liboh_android_runtime] cached JavaVM=%p\n", (void*)vm);
+357:     }
+358: 
+359:     // 2026-05-02 G2.14n+: install RegisterNatives audit hook unconditionally
+360:     // for this debug iteration. Hook flags fnPtrs whose page offset is f98/f99
+361:     // OR whose containing lib is libskia_canvaskit (per SIGILL signature).
+362:     // Tag: OH_RegHook (normal) / OH_RegHook_BAD (suspicious).
+363:     install_register_natives_hook(env);
+364: 
+365:     // 2026-05-02 G2.14r: bootstrap libjavacore.so by invoking its JNI_OnLoad
+366:     // ONCE before our own kRegJNI loop runs.  Adapter never calls
+367:     // System.loadLibrary("javacore") on the Java side, so absent this hook
+368:     // libjavacore's 12 register_libcore_* / register_sun_misc_Unsafe /
+369:     // register_java_lang_invoke_* / register_android_system_OsConstants
+370:     // never run, leaving the corresponding native methods unbound.  ART can
+371:     // intrinsify some (sun.misc.Unsafe atomics) but not e.g.
+372:     // NativeAllocationRegistry.applyFreeFunction — first GC cycle calls it
+373:     // and SEGV pc=0 follows (G2.14r root cause).  Calling JNI_OnLoad here
+374:     // restores the canonical AOSP init flow once for the parent process;
+375:     // child forks inherit the registrations.
+376:     {
+377:         void* libjc = dlopen("libjavacore.so", RTLD_NOW);
+378:         if (libjc != nullptr) {
+379:             using OnLoadFn = jint (*)(JavaVM*, void*);
+380:             OnLoadFn onload = reinterpret_cast<OnLoadFn>(
+381:                 dlsym(libjc, "JNI_OnLoad"));
+382:             if (onload != nullptr && vm != nullptr) {
+383:                 jint rc = onload(vm, nullptr);
+384:                 fprintf(stderr,
+385:                     "[liboh_android_runtime] libjavacore JNI_OnLoad rc=0x%x %s\n",
+386:                     rc, (rc == JNI_VERSION_1_6) ? "(OK)" : "(unexpected)");
+387:                 if (env->ExceptionCheck()) {
+388:                     fprintf(stderr,
+389:                         "[liboh_android_runtime] libjavacore JNI_OnLoad raised exception:\n");
+390:                     env->ExceptionDescribe();
+391:                     env->ExceptionClear();
+392:                 }
+393:             } else {
+394:                 fprintf(stderr,
+395:                     "[liboh_android_runtime] libjavacore JNI_OnLoad symbol missing or vm=null\n");
+396:             }
+397:         } else {
+398:             fprintf(stderr,
+399:                 "[liboh_android_runtime] libjavacore.so dlopen FAILED: %s\n",
+411:     for (size_t i = 0; i < kRegJNICount; ++i) {
+412:         int rc = kRegJNI[i].proc(env);
+413:         if (rc < 0) {
+414:             fprintf(stderr, "[liboh_android_runtime] %s failed (rc=%d)\n",
+415:                     kRegJNI[i].name, rc);
+416:             env->PopLocalFrame(nullptr);
+417:             return -1;
+418:         }
+419:         fprintf(stderr, "[liboh_android_runtime]   ok %s\n", kRegJNI[i].name);
+420:     }
+421: 

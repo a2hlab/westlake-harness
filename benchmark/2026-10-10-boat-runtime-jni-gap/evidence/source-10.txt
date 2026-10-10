@@ -1,0 +1,13 @@
+$WORKSPACES/westlake-harness/benchmark/2026-10-10-u13-autostart/payload/scripts/westlake-u13-boat-overlay.sh sha256=9abbc98663f5cb860317e75fa2f91af47c1d1824e3bca368018db08b0cfa082c
+10: ADAPTER_T=/system/android/lib64/liboh_adapter_bridge.so; ADAPTER_SHA=8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e; ADAPTER_BASE=84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a
+11: JAR_T=/system/android/framework/oh-adapter-runtime.jar; JAR_SHA=6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852; JAR_BASE=bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b
+12: RUNTIME_T=/system/android/lib64/liboh_android_runtime.so; RUNTIME_SHA=adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130; RUNTIME_BASE=18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae
+13: log(){ echo "boat-overlay: $*"; echo "[$(date +%H:%M:%S 2>/dev/null)] $*" >> "$LOG" 2>/dev/null; }
+14: fail(){ log "FAIL $*"; exit 1; }
+29: bind_over "$ARCH/liboh_adapter_bridge.so" "$ADAPTER_T" "$ADAPTER_SHA" "$ADAPTER_BASE"
+30: bind_over "$ARCH/oh-adapter-runtime.jar"  "$JAR_T"     "$JAR_SHA"     "$JAR_BASE"
+31: # render lever (single-variable proven on 5ea, benchmark/2026-10-10-boat-single-variable): U13 18763dd4 renders
+32: # BoatAttack low-res+purple+LAP-stuck; adc125f4 -> full-res+correct-colour+LAP advances. label inherits the target's
+33: # system_lib_file (matches scripts/lab/selinux_label_recipe.sh for /system/android/lib64/*).
+34: bind_over "$ARCH/liboh_android_runtime.so" "$RUNTIME_T" "$RUNTIME_SHA" "$RUNTIME_BASE"
+35: # app-private: only if BoatAttack is installed (demo install sweep installs it). signal-box target may not exist -> create.

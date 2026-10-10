@@ -1,0 +1,16 @@
+$WORKSPACES/../00.Workspace-games-ad1ab0a7/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp sha256=093323c8d774ece104e724f0b63798b71a6c50d1b31fcd5daff0a6b20b48d9dd
+56: 
+57: // [STAGE2-UNITY 2026-06-28] Weak no-op fallbacks for the SQLite JNI register
+58: // group that 2026-06-28 added to AndroidRuntime.cpp's gRegJNI table. The
+59: // unity/render runtime build (compile_runtime_local.sh) does NOT compile
+60: // android_database_SQLite*.cpp (no libsqlite), so without these the table's
+61: // references are UNDEFINED imports → child [JNI-REG-CHILD] dlopen relocation
+62: // "symbol not found" SIGSEGV (regressed the render runtime). Declared weak so
+63: // the REAL impls (noice build, which compiles the SQLite .cpp) override; for
+64: // Unity/eglprobe (no Android SQLite) the no-op is harmless.
+65: namespace android {
+66: __attribute__((weak)) int register_android_database_SQLiteConnection(JNIEnv*) { return 0; }
+67: __attribute__((weak)) int register_android_database_SQLiteGlobal(JNIEnv*)     { return 0; }
+68: __attribute__((weak)) int register_android_database_SQLiteDebug(JNIEnv*)      { return 0; }
+69: __attribute__((weak)) int register_android_database_CursorWindow(JNIEnv*)     { return 0; }
+70: }  // namespace android
