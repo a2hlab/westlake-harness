@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[test]
@@ -57,4 +57,21 @@ fn demo_baseline_seal() {
         .expect("run actual selfcheck CLI drift fixtures");
     assert!(status.success());
     println!("OFFLINE_ONLY: live spare-board rehearsal and final seal remain pending");
+}
+
+#[test]
+fn demo_baseline_sepolicy_gate() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let base = root.clone();
+    let script = base.join("scripts/lab/test_sepolicy_gate.py");
+    if !script.is_file() {
+        panic!("sepolicy gate tests not found at {}", script.display());
+    }
+    let status = Command::new("python3")
+        .arg(script)
+        .arg("-v")
+        .current_dir(&base)
+        .status()
+        .expect("run offline sepolicy gate known answers (sesearch in a2hlab)");
+    assert!(status.success());
 }
