@@ -88,14 +88,33 @@ def compare(reference, subject):
     report['coverage_complete'] = first.get('complete') is True and second.get('complete') is True
     report['comparison_scope'] = 'captured-deployment-and-core-fields' if report['coverage_complete'] else 'observed-fields-only'
     report['coverage_warnings'] = dict(reference=coverage_warnings(first), subject=coverage_warnings(second))
+    # Plan-set comparability: labels/sha/bind_targets are PATH-SET fields captured against a plan. If the two
+    # snapshots were taken under different (or missing) plans, a path present in one and absent in the other is a
+    # SCOPE artifact, not drift. Reporting it as "missing" caused a real misjudgement (5ea: 27 route-a false
+    # "missing"). So when plan_sha256 differs or either side is empty, those three fields are NOT-COMPARABLE.
+    plan_ref, plan_sub = first.get('plan_sha256'), second.get('plan_sha256')
+    plan_comparable = bool(plan_ref) and bool(plan_sub) and plan_ref == plan_sub
+    report['plan_sha256'] = dict(reference=plan_ref, subject=plan_sub)
+    report['plan_comparable'] = plan_comparable
+    not_comparable = dict(status='NOT-COMPARABLE',
+                          reason='plan_sha256 differs or missing; path-set absence is scope, not drift',
+                          plan_sha256=dict(reference=plan_ref, subject=plan_sub))
     scalars = ['selinux_enforce', 'boot_id', 'uptime', 'config_policy_layer_roots', 'plan_target_count']
     report['diffs']['scalars'] = dictionary_diff({key: first.get(key) for key in scalars}, {key: second.get(key) for key in scalars})
-    for field in ['labels', 'params', 'sha', 'pids', 'init_configs']:
+    # params/pids/init_configs are not plan-scoped path sets -> always diffed.
+    for field in ['params', 'pids', 'init_configs']:
         report['diffs'][field] = dictionary_diff(first.get(field, {}), second.get(field, {}))
+    # labels + sha: plan-scoped path sets -> NOT-COMPARABLE unless plans match.
+    for field in ['labels', 'sha']:
+        report['diffs'][field] = dictionary_diff(first.get(field, {}), second.get(field, {})) if plan_comparable else dict(not_comparable)
     report['diffs']['mounts'] = dict(reference=first.get('mounts', []), subject=second.get('mounts', [])) if first.get('mounts') != second.get('mounts') else {}
-    first_targets, second_targets = set(first.get('bind_targets', [])), set(second.get('bind_targets', []))
-    report['diffs']['bind_targets'] = dict(only_reference=sorted(first_targets - second_targets), only_subject=sorted(second_targets - first_targets))
+    if plan_comparable:
+        first_targets, second_targets = set(first.get('bind_targets', [])), set(second.get('bind_targets', []))
+        report['diffs']['bind_targets'] = dict(only_reference=sorted(first_targets - second_targets), only_subject=sorted(second_targets - first_targets))
+    else:
+        report['diffs']['bind_targets'] = dict(not_comparable)
     report['diffs']['raw'] = dictionary_diff(first_raw, second_raw)
+    report['comparable'] = report['comparable'] and plan_comparable
     report['seccomp_relevant_observations'], report['system_data_label_counts'] = seccomp_observations(first, second, report['diffs'])
     return report
 
@@ -109,11 +128,17 @@ def main(argv=None):
     try:
         report = compare(args.reference, args.subject)
         args.json.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
-        print('COMPARABLE' if report['comparable'] else 'INCOMPARABLE: missing/drifted/incomplete evidence')
+        if not report['plan_comparable']:
+            print('NOT-COMPARABLE: plan_sha256 differs or missing (reference=' + str(report['plan_sha256']['reference'])
+                  + ' subject=' + str(report['plan_sha256']['subject']) + '); labels/sha/bind_targets are scope, not drift')
+        else:
+            print('COMPARABLE' if report['comparable'] else 'INCOMPARABLE: missing/drifted/incomplete evidence')
         print('comparison_scope=' + report['comparison_scope'] + ' coverage_complete=' + str(report['coverage_complete']))
         for section, changes in report['diffs'].items():
             print(section + ': ' + json.dumps(changes, sort_keys=True))
         print('seccomp observations are hints, not causal verdicts')
+        if not report['plan_comparable']:
+            return 3
         return 0 if report['comparable'] else 1
     except (ValueError, KeyError, TypeError, OSError) as error:
         print('DIFF-REFUSE: ' + str(error), file=sys.stderr)

@@ -258,15 +258,38 @@ class BoardStateTests(unittest.TestCase):
         self.assertEqual((self.root / 'captures/61b-pre/snapshot.json').read_bytes(), original)
         self.assertTrue((self.root / 'captures/5cd-pre/raw').is_dir())
 
-    def test_missing_plan_still_permits_integrity_checked_observed_comparison(self):
+    def test_missing_plan_marks_pathsets_not_comparable_keeps_observed(self):
+        # No plan on either side -> labels/sha/bind_targets are PATH-SET scope and must be NOT-COMPARABLE
+        # (this is the 5ea false "27 route-a missing" class); observed non-path-set fields still diff.
         for name in ['one', 'two']:
             snapshot.capture(FakeTransport(), SERIAL, self.root / name, None)
         report = diff.compare(self.root / 'one', self.root / 'two')
-        self.assertTrue(report['comparable'])
-        self.assertFalse(report['coverage_complete'])
+        self.assertFalse(report['plan_comparable'])
+        self.assertFalse(report['comparable'])
+        for section in ('labels', 'sha', 'bind_targets'):
+            self.assertEqual(report['diffs'][section].get('status'), 'NOT-COMPARABLE', section)
+        self.assertNotIn('status', report['diffs']['scalars'])   # observed fields still diffed
         self.assertEqual(report['comparison_scope'], 'observed-fields-only')
         (self.root / 'two/raw/param_ls.txt').write_bytes(b'drift')
         self.assertFalse(diff.compare(self.root / 'one', self.root / 'two')['comparable'])
+
+    def test_differing_plan_sha_is_not_comparable_exit3(self):
+        # Matching-plan captures are comparable; a differing plan_sha256 must flip path sets to NOT-COMPARABLE.
+        plan = self.root / 'plan.json'
+        plan.write_text(json.dumps(fixture()))
+        for name in ['one', 'two']:
+            with patch.object(snapshot, 'HdcTransport', return_value=FakeTransport()), redirect_stdout(io.StringIO()):
+                snapshot.main([SERIAL, '--plan', str(plan), '--hdc', 'mock-hdc', '--out', str(self.root / name)])
+        # tamper the subject's recorded plan_sha256 so the two no longer share a plan scope
+        sub = self.root / 'two/snapshot.json'
+        data = json.loads(sub.read_text()); data['plan_sha256'] = 'deadbeef'; sub.write_text(json.dumps(data))
+        with redirect_stdout(io.StringIO()):
+            rc = diff.main([str(self.root / 'one'), str(self.root / 'two'), '--json', str(self.root / 'd.json')])
+        self.assertEqual(rc, 3)
+        report = json.loads((self.root / 'd.json').read_text())
+        self.assertFalse(report['plan_comparable'])
+        for section in ('labels', 'sha', 'bind_targets'):
+            self.assertEqual(report['diffs'][section].get('status'), 'NOT-COMPARABLE', section)
 
     def test_legacy_plan_only_incomplete_is_graded_but_not_other_errors(self):
         for name in ['one', 'two']:
