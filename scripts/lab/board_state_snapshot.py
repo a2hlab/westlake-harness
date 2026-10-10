@@ -54,7 +54,11 @@ def capture(transport, serial, out, plan=None, tag=''):
     snapshot = dict(schema_version=1, serial=serial, label=tag,
                     captured_at=datetime.now().astimezone().isoformat(timespec='seconds'),
                     readonly=True, complete=False, boot_stable=False, items={}, labels={}, sha={},
-                    params={}, pids={}, errors=[], bind_targets=[], mounts=[], init_configs={})
+                    params={}, pids={}, errors=[], bind_targets=[], mounts=[], init_configs={},
+                    collection_complete=False, coverage_warnings=[],
+                    coverage=dict(deployment_plan_supplied=plan is not None,
+                                  deployment_targets_complete=plan is not None,
+                                  label_scope='core targets, supplied plan, observed mount targets and discovered sandbox JSONs'))
     if not COLLECTION.is_file():
         raise ValueError('collection inventory missing: ' + str(COLLECTION))
     snapshot['collection_sha256'] = sha(COLLECTION.read_bytes())
@@ -102,7 +106,7 @@ def capture(transport, serial, out, plan=None, tag=''):
         for row in declared:
             targets[row['target']] = row['kind']
     else:
-        snapshot['errors'].append(dict(item='deployment-plan', reason='56-layer target plan not supplied; coverage incomplete'))
+        snapshot['coverage_warnings'].append(dict(item='deployment-plan', reason='target plan not supplied; deployment coverage incomplete'))
     for index, (target, kind) in enumerate(sorted(targets.items())):
         name = 'labels_' + f'{index:03d}'
         text = item(name, read_command(dict(target=target, kind=kind)))
@@ -177,6 +181,17 @@ def capture(transport, serial, out, plan=None, tag=''):
                 snapshot['sha'][canonical(match.group(2))] = match.group(1)
             elif line.strip():
                 snapshot['errors'].append(dict(item=name, reason='malformed SHA row', text=line))
+    sandbox_paths = sorted(path for path in snapshot['sha']
+                           if path.startswith('/system/etc/sandbox/') and path.endswith('.json'))
+    for index, target in enumerate(sandbox_paths):
+        name = 'sandbox_label_' + f'{index:03d}'
+        try:
+            parsed = parse_labels(item(name, 'ls -Zd ' + shlex.quote(target)), dict(target=target, kind='file'))
+            if target in snapshot['labels'] and snapshot['labels'][target] != parsed[target]:
+                raise ValueError('sandbox label changed during overlapping reads: ' + target)
+            snapshot['labels'].update(parsed)
+        except ValueError as error:
+            snapshot['errors'].append(dict(item=name, reason=str(error)))
     for name in ['appspawn', 'appspawn-x', 'foundation']:
         command = ('found=$(pidof ' + name + '); code=$?; if [ "$code" = 1 ] && [ -z "$found" ]; '
                    'then printf "NO_PROCESS\\n"; elif [ "$code" != 0 ]; then exit "$code"; else printf "%s\\n" "$found"; fi')
@@ -202,7 +217,10 @@ def capture(transport, serial, out, plan=None, tag=''):
     snapshot['boot_stable'] = bool(re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}', snapshot['boot_id']) and after == snapshot['boot_id'])
     if not snapshot['boot_stable']:
         snapshot['errors'].append(dict(item='boot_id_after', reason='missing/changed boot'))
-    snapshot['complete'] = not snapshot['errors']
+    snapshot['collection_complete'] = not snapshot['errors']
+    snapshot['complete'] = snapshot['collection_complete'] and snapshot['coverage']['deployment_targets_complete']
+    snapshot['capture_status'] = ('INCOMPLETE_READS' if not snapshot['collection_complete'] else
+                                  ('COMPLETE' if snapshot['complete'] else 'PARTIAL_COVERAGE'))
     (out / 'snapshot.json').write_text(json.dumps(snapshot, indent=2, sort_keys=True) + '\n')
     return snapshot
 
@@ -223,7 +241,8 @@ def main(argv=None):
             plan_targets(plan, load_recipe())
         snapshot = capture(HdcTransport(args.hdc, args.serial), args.serial, args.out, plan, args.label)
         print(str(args.out / 'snapshot.json'))
-        print('COMPLETE' if snapshot['complete'] else 'INCOMPLETE: inspect errors and raw exit codes')
+        print(snapshot['capture_status'] + ': collection_complete=' + str(snapshot['collection_complete']) +
+              ' deployment_targets_complete=' + str(snapshot['coverage']['deployment_targets_complete']))
         return 0 if snapshot['complete'] else 1
     except (ValueError, OSError, KeyError) as error:
         print('SNAPSHOT-REFUSE: ' + str(error), file=sys.stderr)

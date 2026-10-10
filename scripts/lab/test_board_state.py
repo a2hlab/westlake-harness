@@ -20,6 +20,7 @@ BOOT = '11111111-1111-1111-1111-111111111111'
 SYSTEM = 'u:object_r:system_file:s0'
 LIB = 'u:object_r:system_lib_file:s0'
 CFG = '{"services":[{"name":"appspawn-x","path":["/system/bin/appspawn-x"],"secon":"u:r:appspawn:s0"}]}\n'
+REPLAY = Path(__file__).resolve().parents[2] / 'benchmark/2026-10-10-board-state-tools/first-board-fix/evidence/61b-5cd-selected-fields.json'
 
 
 def fixture():
@@ -48,6 +49,7 @@ class FakeTransport:
                        '/system/bin/appspawn-x': 'u:object_r:appspawn_exec:s0',
                        '/system/lib64/appspawn/libwestlake_android_child.z.so': LIB,
                        '/system/lib64/libwestlake_thread_guard_registry.so': LIB}
+        self.labels['/system/etc/sandbox/appdata-sandbox.json'] = 'u:object_r:system_etc_file:s0'
         for index in range(52):
             self.labels['/system/etc/mock-layer-' + str(index) + '.json'] = 'u:object_r:system_etc_file:s0'
         for index in range(85):
@@ -143,13 +145,20 @@ class BoardStateTests(unittest.TestCase):
         self.assertEqual((self.root / 'one' / record['raw']).read_bytes(), b'partial original stdout\n')
         self.assertEqual((self.root / 'one' / record['stderr_raw']).read_bytes(), b'original read failure\n')
 
-    def test_boot_change_or_missing_plan_is_incomplete(self):
+    def test_boot_change_and_missing_plan_have_distinct_grades(self):
         self.transport.reboot = True
-        self.assertFalse(self.capture()['boot_stable'])
+        changed = self.capture()
+        self.assertFalse(changed['boot_stable'])
+        self.assertFalse(changed['collection_complete'])
+        self.assertEqual(changed['capture_status'], 'INCOMPLETE_READS')
         self.transport = FakeTransport()
         report = snapshot.capture(self.transport, SERIAL, self.root / 'two', None)
         self.assertFalse(report['complete'])
-        self.assertTrue(any(row['item'] == 'deployment-plan' for row in report['errors']))
+        self.assertTrue(report['collection_complete'])
+        self.assertEqual(report['capture_status'], 'PARTIAL_COVERAGE')
+        self.assertFalse(report['coverage']['deployment_targets_complete'])
+        self.assertFalse(report['errors'])
+        self.assertTrue(any(row['item'] == 'deployment-plan' for row in report['coverage_warnings']))
 
     def test_cfg_read_race_and_malformed_label_cannot_be_complete(self):
         original = self.transport.run
@@ -238,6 +247,78 @@ class BoardStateTests(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             self.assertEqual(diff.main([str(self.root / 'one'), str(self.root / 'two'), '--json', str(self.root / 'diff.json')]), 0)
         self.assertTrue(json.loads((self.root / 'diff.json').read_text())['readonly'])
+
+    def test_each_board_uses_a_distinct_output_directory_without_overwrite(self):
+        self.capture('captures/61b-pre')
+        original = (self.root / 'captures/61b-pre/snapshot.json').read_bytes()
+        self.transport = FakeTransport()
+        snapshot.capture(self.transport, '5cd1e3dd00000000000000000923012c', self.root / 'captures/5cd-pre', fixture())
+        with self.assertRaises(FileExistsError):
+            self.capture('captures/61b-pre')
+        self.assertEqual((self.root / 'captures/61b-pre/snapshot.json').read_bytes(), original)
+        self.assertTrue((self.root / 'captures/5cd-pre/raw').is_dir())
+
+    def test_missing_plan_still_permits_integrity_checked_observed_comparison(self):
+        for name in ['one', 'two']:
+            snapshot.capture(FakeTransport(), SERIAL, self.root / name, None)
+        report = diff.compare(self.root / 'one', self.root / 'two')
+        self.assertTrue(report['comparable'])
+        self.assertFalse(report['coverage_complete'])
+        self.assertEqual(report['comparison_scope'], 'observed-fields-only')
+        (self.root / 'two/raw/param_ls.txt').write_bytes(b'drift')
+        self.assertFalse(diff.compare(self.root / 'one', self.root / 'two')['comparable'])
+
+    def test_legacy_plan_only_incomplete_is_graded_but_not_other_errors(self):
+        for name in ['one', 'two']:
+            self.transport = FakeTransport()
+            self.capture(name)
+            target = self.root / name / 'snapshot.json'
+            report = json.loads(target.read_text())
+            for key in ['collection_complete', 'capture_status', 'coverage', 'coverage_warnings']:
+                report.pop(key)
+            report['complete'] = False
+            report['errors'] = [dict(item='deployment-plan', reason='56-layer target plan not supplied; coverage incomplete')]
+            target.write_text(json.dumps(report))
+        report = diff.compare(self.root / 'one', self.root / 'two')
+        self.assertTrue(report['comparable'])
+        self.assertFalse(report['coverage_complete'])
+        target = self.root / 'two/snapshot.json'
+        broken = json.loads(target.read_text())
+        broken['errors'].append(dict(item='init_cfgs', reason='read failure'))
+        target.write_text(json.dumps(broken))
+        self.assertFalse(diff.compare(self.root / 'one', self.root / 'two')['comparable'])
+
+    def test_discovered_sandbox_json_label_is_captured_without_a_plan(self):
+        self.transport.labels['/system/etc/sandbox/appdata-sandbox.json'] = 'u:object_r:data_local_tmp:s0'
+        report = snapshot.capture(self.transport, SERIAL, self.root / 'one', None)
+        self.assertEqual(report['labels']['/system/etc/sandbox/appdata-sandbox.json'], 'u:object_r:data_local_tmp:s0')
+        self.assertIn('sandbox_label_000', report['items'])
+
+    def test_prefixed_cust_parameters_and_system_data_labels_are_hints(self):
+        first = dict(labels={'/system/lib64/a.so': 'u:object_r:data_file:s0'}, params={'const.cust.new_option': '1'})
+        second = dict(labels={'/system/lib64/a.so': LIB}, params={'const.cust.new_option': '2'})
+        changes = {key: diff.dictionary_diff(first.get(key, {}), second.get(key, {})) for key in ['scalars', 'labels', 'params', 'sha', 'raw']}
+        changes['raw']['param_const_cust_new_option'] = dict(reference='failed query', subject='different failure')
+        hints, counts = diff.seccomp_observations(first, second, changes)
+        self.assertTrue(any(row['key'] == 'const.cust.new_option' for row in hints))
+        self.assertTrue(any(row['key'] == 'param_const_cust_new_option' for row in hints))
+        self.assertEqual(counts['reference']['data_file'], 1)
+        self.assertEqual(counts['subject']['data_file'], 0)
+        self.assertTrue(all(row['causal_proof'] is False for row in hints))
+
+    def test_real_61b_5cd_selected_fields_replay_flags_the_missed_sandbox(self):
+        replay = json.loads(REPLAY.read_text())
+        first, second = replay['reference'], replay['subject']
+        changes = {key: diff.dictionary_diff(first.get(key, {}), second.get(key, {})) for key in ['scalars', 'labels', 'params', 'sha', 'raw']}
+        hints, counts = diff.seccomp_observations(first, second, changes)
+        sandbox = next(row for row in hints if row['key'] == '/system/etc/sandbox/appdata-sandbox.json' and row['section'] == 'labels')
+        self.assertEqual(sandbox['delta']['reference'], 'u:object_r:data_local_tmp:s0')
+        self.assertEqual(sandbox['delta']['subject'], 'u:object_r:system_etc_file:s0')
+        self.assertEqual(counts['reference']['data_local_tmp'], 24)
+        self.assertEqual(counts['subject']['data_local_tmp'], 0)
+        self.assertEqual(changes['sha'], {})
+        self.assertEqual(changes['params'], {})
+        self.assertTrue(all(row['causal_proof'] is False for row in hints))
 
 
 if __name__ == '__main__':

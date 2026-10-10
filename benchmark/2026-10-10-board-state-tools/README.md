@@ -30,17 +30,28 @@ executable/forwarding wrapper; there is no implicit OrbStack dispatch. This
 lane cannot connect to the server; actual collection belongs to an accessible
 lane. Existing output directories are not reused or overwritten.
 
+`--out` names **one capture**, not a multi-board container. Each board and round
+must use its own directory, for example
+`--out "$CAPTURE_ROOT/$SERIAL/$(date +%Y%m%dT%H%M%S)-$$-pre"`. For a second board,
+change `$SERIAL` and choose another fresh directory. Reusing any existing `raw/`
+refuses before reads/writes; the earlier evidence is never overwritten.
+
 Output: `snapshot.json` plus `raw/<item>.txt` and
 `raw/<item>.stderr.txt`. Each `items` row holds command, return code and both
 SHA256 values. `readonly=true` describes the command set, not app lighting.
-Return 0 means complete required collection with a stable boot; 1 means the
-snapshot exists but is incomplete; 2 is an input/transport setup refusal.
+Return 0 means full requested collection/coverage with a stable boot; 1 means
+the snapshot exists with partial coverage or failed reads; 2 is a setup refusal.
+`capture_status` distinguishes `COMPLETE`, `PARTIAL_COVERAGE`, and
+`INCOMPLETE_READS`. `collection_complete` reports read/boot integrity independently
+from `coverage.deployment_targets_complete`; `complete` remains their conjunction.
 
 The input plan is the full native package's `mounts`/`files`, a `recover_layers`
 object, or explicit targets/kinds accepted by the shared audit parser. No
 changed-files-only transaction journal is accepted as complete coverage.
-Without a plan the requested general reads are still archived, but the result
-is explicitly incomplete. The target count is not forced to 56 for other
+Without a plan the general reads are still archived. A successful capture is
+`PARTIAL_COVERAGE`, with a `coverage_warnings` entry, not a read failure. Its
+observed fields remain comparable after raw SHA checks, but `complete=false`
+cannot satisfy a full-deployment or reboot-simulator input gate. The target count is not forced to 56 for other
 generations; the current deployment's 56-layer plan must be passed explicitly.
 
 ## Collected data
@@ -57,7 +68,8 @@ The inventory in `knowledge/gates/board-state-collection.json` cites RUNBOOK
   reads must match the preceding SHA inventory, otherwise the read race is
   surfaced instead of silently using mixed state.
 - Default or explicitly enumerated config-policy layer probes, seccomp library
-  hashes and appspawn sandbox JSON hashes.
+  hashes and appspawn sandbox JSON hashes; discovered `/system/etc/sandbox/*.json`
+  files have an additional SHA-bound raw label read, even without a plan.
 - Every appspawn/appspawn-x/foundation PID's exe, domain, mountinfo and
   **environment key names only**; environment values are never output.
 
@@ -83,7 +95,14 @@ init configurations, all process records, mount rows/target sets and exact raw
 records. Return 0 means the inputs are comparable, **not that they match**;
 return 1 preserves an incomparable report; return 2 is a load/format refusal.
 `seccomp_relevant_observations` only indexes relevant changes and always sets
-`causal_proof=false`. Differences in enforce mode are not authorization to
+`causal_proof=false`. It includes sandbox JSON labels, all `const.cust.*` changes,
+and `system_data_label_counts` for `data_local_tmp`/`data_file`. Counts are only
+over captured canonical `/system` paths, not a whole-tree census; paths and
+captured scope are retained. `coverage_complete=false`/`observed-fields-only`
+make missing-plan comparisons explicit. Only the exact prior missing-plan
+warning is downgraded in legacy captures; any other read error, boot drift,
+missing raw file or raw SHA mismatch still makes them incomparable.
+Differences in enforce mode are not authorization to
 change SELinux settings. Labels equal to the factory are not evidence of an
 allow rule in the sandboxed child's domain.
 
@@ -111,3 +130,7 @@ cargo test --manifest-path tools/spec-checks/Cargo.toml \
 `results.json` and `evidence/` contain the fresh mock-only test/lifecycle/user
 path outcomes and the operator handoff. No live recovery or 128-app regression
 is claimed.
+
+The first-board correction and its sourced, limited 61b/5cd regression replay
+are recorded separately in `first-board-fix/`; the original receipts above
+remain historical rather than being overwritten with the new test counts.
