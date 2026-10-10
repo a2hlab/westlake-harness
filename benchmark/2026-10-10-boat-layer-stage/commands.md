@@ -27,10 +27,24 @@
 - **PASS**: gate returns 0; staged sources-boat labels match the single recipe (`.so`→system_lib_file, jar→system_file, private→data_app_el1_file).
 - **FAIL → STOP + ROLLBACK**: `boat_layer_stage.sh --serial $SN --reverse --execute` → do NOT reboot into a mislabeled layer; report.
 
-### 4. Reboot simulation (offline pre-check of the boot path)
-`python3 scripts/lab/reboot_sim.py --inputs <OUT>/pre-snapshot --out <OUT>/reboot-sim.json`
-- **PASS**: sim reports the recover+boat job sequence will bind cleanly (no missing source, no double-bind).
-- **FAIL → STOP + ROLLBACK** (`--reverse --execute`); report the sim finding.
+### 4. Reboot simulation (advisory offline pre-check) — REFERENCE STEP, skippable if inputs incomplete
+`reboot_sim.py --inputs` takes a SHA-pinned **eight-input manifest JSON** (schema_version 1, inputs =
+`plan, snapshot, inventory, autostart, closure, recipe, queries, policy` + `raw_inputs` for every snapshot
+item) — NOT a snapshot directory. Build the manifest first from the pre snapshot + plan (+ the aux inputs if
+available), then run the sim:
+```
+python3 scripts/lab/reboot_sim_inputs.py --snapshot <OUT>/pre-snapshot --plan <deploy-plan.json> \
+    [--inventory P --autostart P --closure P --recipe knowledge/gates/selinux-label-recipe.json \
+     --queries P --policy P] --out <OUT>/reboot-inputs.json
+python3 scripts/lab/reboot_sim.py --inputs <OUT>/reboot-inputs.json --out <OUT>/prediction
+```
+- **If the exporter prints `MISSING aux inputs`** (inventory/autostart/closure/queries/policy not available in
+  this window): this is a **reference step only** — SKIP the sim and RECORD "reboot_sim skipped: missing <names>"
+  in the window notes. It is advisory; a missing input is not a safety failure and must not block the run.
+- **PASS** (when all eight inputs are present): advisory prediction written; exit 0/1 is recorded, rc1 is
+  FAIL/UNKNOWN (not a safety PASS), rc2 stops.
+- **FAIL/anomaly with full inputs → STOP + ROLLBACK** (`boat_layer_stage.sh --reverse --execute`); report the finding.
+- The real reboot-safety gate remains the post-reboot read-only checks (step 6), not this advisory sim.
 
 ### 5. Apply (real reboot — NOT `shell reboot`)
 `"$HDC" -t $SN target boot` ; then wait for the device; read back `boot_id`.
