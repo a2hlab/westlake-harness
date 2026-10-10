@@ -1,0 +1,51 @@
+{
+  "lane": "cc-t3",
+  "task": "root-cause the 5cd suspect-cluster el2 SQLiteCantOpen (offline, no board)",
+  "counts": {
+    "observed_keys": 89,
+    "observed_with_cantopen": 37,
+    "suspect_keys": 26,
+    "suspect_with_cantopen": 25,
+    "suspect_without_cantopen": [
+      "opencamera"
+    ]
+  },
+  "signature": {
+    "exception": "SQLiteCantOpenDatabaseException (code 14 SQLITE_CANTOPEN) 'Unable to deduct failure reason'",
+    "path": "/data/app/el2/100/base/<pkg>/databases/<db>",
+    "flags": "0x30000000 (CREATE_IF_NECESSARY)",
+    "call_stack": "Room.getWritableDatabase -> FrameworkSQLiteOpenHelper -> SQLiteDatabase.openDatabase -> SQLiteConnection.open",
+    "fatal": "AppSpawnXJava W-ROOM-SURVIVE main-thread fatal -> exit 1",
+    "app_uid_example": "com.edward.studytracker = 20011117 (per-app)"
+  },
+  "first_divergence": {
+    "61b_t3": "studytracker/listmaker/libresudoku(x2) CANTOPEN=0 (DBs built 2026-10-09, app-created; open-path only)",
+    "5cd_this_run": "fresh install+prep; DB absent; CREATE branch fails",
+    "fork": "create-path (5cd) vs open-path (61b)"
+  },
+  "ruled_out": [
+    "APPSPAWN optional-bind errno 2/13 (standard, non-causal)",
+    "no failed el2-base bind",
+    "ROUTE-A diag fd errno13 (benign)",
+    "normal_hap->appdat SEARCH allowed (but create NOT verified)"
+  ],
+  "prep_lever": "sandbox-command.sh pre-creates el2 base/databases, chown -R APP_UID, chmod 0700 base/0770 database, chcon -R appdat (OH-6.1 toolbox chcon -R first-child caveat + per-item find -exec workaround)",
+  "hypotheses_ranked": [
+    "H1 adapter raw-host-dataDir vs sandbox-path under newly-enabled enforcement (CONFIRMED mechanism)",
+    "H2 trigger=appdata-sandbox.json label fix enabling enforcement",
+    "superseded: appdat create-denial"
+  ],
+  "min_board_experiments": [
+    "/proc/<pid>/root: /data/app/el2/100/base/<pkg> absent vs /data/storage/el2/base present+writable (decisive)",
+    "setenforce 0 single-var: predict NO fix (mount-ns not SELinux)",
+    "confirm adapter ApplicationInfo.dataDir origin"
+  ],
+  "suggested_fix": "adapter must resolve app dataDir+keystore to sandbox path /data/storage/el2/base (not raw /data/app/el2/...); stopgap=add sandbox mount-path exposing raw path; NOTE pre-existing adapter bug exposed by v2 enforcement -> full-128 re-baseline under real enforcement warranted",
+  "refined_root_cause": {
+    "mechanism": "adapter hands app RAW host el2 dataDir/keystore (/data/app/el2/100/base/<pkg>); enforced OH sandbox exposes CE data ONLY at sandbox-path /data/storage/el2/base; raw path absent in child namespace -> CANTOPEN 'doesn't exist'",
+    "trigger": "today's v2 autostart fixed appdata-sandbox.json label (->system_etc_file) -> appspawn-x PreLoadAppSandboxCfg now loads+enforces sandbox (was mis-labeled/unreadable -> sandbox silently off -> child saw host /data -> raw path worked)",
+    "mount_map_proof": "appdata-sandbox.json L102-103 src /data/app/el2/<uid>/base/<pkg> -> sandbox-path /data/storage/el2/base; NO sandbox-path=/data/app/el2/*; B43-BIND/WL-KEYSTORE log raw /data/app/el2 paths",
+    "ccwiki_61b_1709": "61b reproduces (studytracker/listmaker CANTOPEN) though DBs exist (10-01/10-03), owner=BMS uid, appdat, NO normal_hap avc; libresudoku -shm written 10-10 00:22 (pre-v2-reboot, could write then)",
+    "not_cause": "NOT SELinux/appdat (no avc; setenforce predicted not to help); NOT create-vs-open label; it's mount-namespace path-nonexistence"
+  }
+}
