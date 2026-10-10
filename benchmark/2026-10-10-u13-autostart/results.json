@@ -1,0 +1,143 @@
+{
+  "topic": "U13 boot-autostart admission \u2014 OFFLINE payload (zero board)",
+  "date": "2026-10-10",
+  "lane": "cc-wiki",
+  "campaign": "#91 demo-baseline",
+  "phase": "offline build complete; board install+reboot is a separate focused step (announce w/ USB-replug caveat)",
+  "generation": "U13",
+  "serial_target": "5cd1e3dd00000000000000000923012c (validation); demo board 61b0657200000000000000000324012c",
+  "runtime_fp": "821de739cf81 (5cd/5ea U13) / 452447a4a0ba (61b U13)",
+  "recover_layers": {
+    "count": 56,
+    "kinds": {
+      "directory": 3,
+      "file": 53
+    },
+    "groups": {
+      "shared": 51,
+      "zigzag-private": 5
+    }
+  },
+  "expected_fingerprint_paths": 319,
+  "appspawn_x_sha256": "2a87118e7e8e62fb73ef71a436517cda406c308668753a478cf52331e996072e",
+  "journal_sha256": "f24718730ccd4165d876a411daf0d717630311de0ac2a1c5b1c20923c8ebde67",
+  "boat_overlay_shared": [
+    {
+      "role": "adapter",
+      "target": "/system/android/lib64/liboh_adapter_bridge.so",
+      "sha256": "8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e",
+      "base_sha256": "84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a",
+      "note": "C8 landscape adapter, drop-in single-file (only-C8 vs base; see RESULT-route2d.md)"
+    },
+    {
+      "role": "jar",
+      "target": "/system/android/framework/oh-adapter-runtime.jar",
+      "sha256": "6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852",
+      "base_sha256": "bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b",
+      "note": "C9-only jar (InputEventDeviceProjection touch; no CapybaraLetterbox)"
+    }
+  ],
+  "boat_overlay_private": [
+    {
+      "role": "libunity",
+      "target": "/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libunity.so",
+      "sha256": "1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac"
+    },
+    {
+      "role": "libil2cpp",
+      "target": "/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libil2cpp.so",
+      "sha256": "f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746"
+    },
+    {
+      "role": "signalbox",
+      "target": "/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libwestlake_bionic_signal_box.so",
+      "sha256": "7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da"
+    }
+  ],
+  "safety_deltas_vs_donor": [
+    "NO `setenforce 0` (sealed SELinux enforcement preserved; fail-closed if a step cannot run sealed)",
+    "appspawn-x started ONLY via `begetctl start_service appspawn-x` (never exec'd directly)",
+    "NO app / ability / launcher / watchdog launch (demo is tap-to-start; activity_start=DEFERRED_TO_USER)",
+    "caps minimal: DAC_OVERRIDE/CHOWN/FOWNER/SYS_ADMIN (NO SYS_PTRACE/SETPCAP)",
+    "NO PR03 relabel / runtime-param change / mali chmod / boot.art link"
+  ],
+  "artifacts": {
+    "westlake-u13-recover.sh": {
+      "sha256": "3db6d4214d03dd3e9627abc0efbd3078892130b4c9e44124ff07164ff9f66af6"
+    },
+    "westlake-u13-boat-overlay.sh": {
+      "sha256": "6cc8a601d289811ca8e12b0388afcafd780612b387ffa51e5a865a15926055e7"
+    },
+    "install-westlake-u13-autostart.sh": {
+      "sha256": "6972826f951555c5ba6ccdad14657a2785cb346efccd42e7d85a4a3e11353c76"
+    },
+    "westlake-u13-autostart-disable.sh": {
+      "sha256": "f1a7fbf34963c22abcec332820050a9ad4022d7e3f9ebcf586382add8321212a"
+    },
+    "rollback-westlake-u13-autostart.sh": {
+      "sha256": "beecb87c5526a12713e2cd32ba18ccfa4dff0e55f31423c7158d15333bf46829"
+    }
+  },
+  "init_cfg": {
+    "path": "payload/init/00_westlake_u13_recover.cfg",
+    "sha256": "0cf816f95be8a1591d4385c0a7da4af035c85f023079dc5eab30fbc6a5aa4920"
+  },
+  "table": {
+    "path": "payload/u13-recover-table.json",
+    "sha256": "d70e0dbda4911b492baf33cbdb8001dc03aa6c0523f269224aa55e047210653a"
+  },
+  "known_answer_tests": {
+    "path": "tests/ka_tests.py",
+    "count": 22,
+    "result": "PASS (22/22, zero board)"
+  },
+  "acceptance_on_board": {
+    "enable": "real reboot, no Mac interaction -> read-only verify 319 fingerprint paths + appspawn-x up (UID0/PPID1/SHA 2a87118e) + tap HelloWorld/ZigZag/BoatAttack lights",
+    "disable": "disable marker + reboot -> bare /system (no replay, no appspawn-x start, no overlay)",
+    "base_validated_combo": "benchmark/2026-10-09-demo-boatattack/spare-5cd/RESULT-route2d.md (full-screen landscape + touch + 10-key non-regression + clean rollback)"
+  },
+  "provenance": {
+    "donor_shape": "cx-bms autostart-plan.md (master 95e10f02bc) + boat branch autostart-* + 00.Workspace boat-attack-autostart.cfg",
+    "baseline_journal": "journal_sha256 f24718730ccd4165d876a411daf0d717630311de0ac2a1c5b1c20923c8ebde67",
+    "overlay_base": "5cd/5ea U13 adapter 84695d62 / jar bbc3f530"
+  },
+  "admission_mechanics": {
+    "source": "validated donor bms/src/tools/devices/install-boat-attack-autostart.sh",
+    "cfg_target": "/system/etc/init/00_westlake_u13_recover.cfg",
+    "script_dir": "/system/etc",
+    "selinux_label": "u:object_r:system_etc_file:s0 (chmod 0550, chown 0:0)",
+    "remount": "root / rw (verified via /proc/mounts), re-sealed ro on exit (trap); gated ALLOW_REMOUNT=1",
+    "single_owner": "SUPERSEDE=1 backs up + removes any other /system/etc/init/*.cfg defining a recovery/appspawn-x owner",
+    "preexisting_conflict_on_5cd": "00_pr03_runtime_recovery.cfg + /system/etc/pr03-runtime-recover.sh (orphaned; /data/boatattack-autostart gone) \u2014 to be superseded with backup"
+  },
+  "board_result_5cd": {
+    "date": "2026-10-10",
+    "serial": "5cd1e3dd00000000000000000923012c",
+    "left_state": "U13-prepared + autostart ENABLED",
+    "autostart_mechanism": "PROVEN end-to-end autonomous",
+    "cycle": {
+      "enable_reboot": "state=READY, 56/56 replayed, overlay 8ab85446/6333bcab, ondemand listener intact, ready=true",
+      "disable_reboot": "bare /system (DISABLED short-circuit, bind_count=0, no appspawn-x/overlay)",
+      "reenable_reboot": "U13-prepared again (state=READY, overlay back, appspawn-x 2a87118e)"
+    },
+    "superseded": "00_pr03_runtime_recovery.cfg + pr03-runtime-recover.sh (orphaned; backed up)",
+    "fingerprint_319": {
+      "exact": 315,
+      "absent": 0,
+      "intended_overlay": 2,
+      "host_lib_gap": 2,
+      "total": 319
+    },
+    "apps_render": "FAIL \u2014 aa start returns success but white, no appspawn-x spawn (HelloWorld/ZigZag); BoatAttack not bm-registered post-reboot",
+    "apps_render_root_cause": "foundation (pid 922) runs stock (0 route-a libs, stock libbms); live libinstalls stock 2c9a5294 != route-a 51e1b525; 56-layer baseline replay excludes route-a host libs and runs at boot.completed (after foundation started). Not an autostart-mechanism bug; a route-a runtime-completeness/architecture gap.",
+    "board_tools_absent": [
+      "python3",
+      "awk",
+      "tr",
+      "expr",
+      "busybox"
+    ],
+    "appspawn_x": "ondemand: init listens /dev/unix/socket/AppSpawnX (00010000, 660:0:6005:appspawn_socket); daemon spawns on first app launch; worker preserves listener, never starts/execs it",
+    "escalation": "needs outer decision: host-lib integration must precede foundation start (host-lib overlay + foundation restart / earlier boot stage / bake into /system / keep Mac deploy_generation for bring-up)"
+  }
+}

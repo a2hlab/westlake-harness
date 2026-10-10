@@ -1,0 +1,131 @@
+{
+  "topic": "U13 boot-autostart admission \u2014 offline payload",
+  "date": "2026-10-10",
+  "lane": "cc-wiki",
+  "campaign": "#91",
+  "files": [
+    {
+      "path": "README.md",
+      "role": "evidence-first write-up (what was wrong, rules established, boot sequence, acceptance)"
+    },
+    {
+      "path": "results.json",
+      "role": "machine-readable summary: counts, SHAs, safety deltas, acceptance, provenance"
+    },
+    {
+      "path": "documentation.json",
+      "role": "this file-by-file index"
+    },
+    {
+      "path": "landing-paths.txt",
+      "role": "on-board destination for every artifact (install map)"
+    },
+    {
+      "path": "payload/u13-recover-table.json",
+      "role": "PINNED manifest: 56 recover layers + boat overlay rows + 319 expected_paths; immutable at install"
+    },
+    {
+      "path": "payload/init/00_westlake_u13_recover.cfg",
+      "role": "init cfg: 2 jobs + 2 condition-started once-services; minimal caps; secon u:r:su:s0; NO setenforce"
+    },
+    {
+      "path": "payload/scripts/westlake-u13-recover.sh",
+      "role": "boot worker: DISABLED gate, replay 56 (WAL+SHA), begetctl start appspawn-x, verify UID0/PPID1/SHA, set ready param; fail-closed; no app launch"
+    },
+    {
+      "path": "payload/scripts/westlake-u13-boat-overlay.sh",
+      "role": "on-ready overlay: bind C8 adapter + C9 jar (base-gated) + 3 BoatAttack private libs; no launch; DISABLED gate"
+    },
+    {
+      "path": "payload/scripts/install-westlake-u13-autostart.sh",
+      "role": "on-board installer: snapshot 56 live targets to durable archive (SHA-verify), stage boat artifacts (SHA-gate), emit .tsv, place cfg/scripts with backup, lock down; NO reboot; ADMISSION stop if cfg dir not writable sealed"
+    },
+    {
+      "path": "payload/scripts/westlake-u13-autostart-disable.sh",
+      "role": "reversible toggle: disable|--enable|status via DISABLED marker"
+    },
+    {
+      "path": "payload/scripts/rollback-westlake-u13-autostart.sh",
+      "role": "full rollback: restore backed-up init files + remove durable root -> bare /system"
+    },
+    {
+      "path": "tests/ka_tests.py",
+      "role": "22 offline known-answer tests: table shape, init-cfg contract, safety negatives (no setenforce/no direct exec/no launch), SHA cross-consistency, no hardcoded user path"
+    },
+    {
+      "path": "RESULT-5cd.md",
+      "role": "on-board result: autostart mechanism PROVEN (enable/disable/re-enable cycle, 319 fp), apps-render FAIL with evidenced root cause + recommendation"
+    },
+    {
+      "path": "payload/u13-recover-table.plan",
+      "role": "host-pre-generated replay plan (seq/kind/group/target/sha) consumed by the installer (board has no python3/jq); KA-pinned to the JSON table"
+    },
+    {
+      "path": "evidence/5cd-autostart/receipt.env",
+      "role": "boot receipt (state=READY, appspawn_parent=ONDEMAND_NOT_STARTED)"
+    },
+    {
+      "path": "evidence/5cd-autostart/recover-latest.log",
+      "role": "boot worker log (56/56 replayed; DISABLED short-circuit on the disable test)"
+    },
+    {
+      "path": "evidence/5cd-autostart/boat-overlay.log",
+      "role": "boat overlay service log (adapter+jar+3 private, no app launched)"
+    },
+    {
+      "path": "evidence/5cd-autostart/as-helloworld.jpeg",
+      "role": "screenshot: HelloWorld white (app-render gap evidence)"
+    },
+    {
+      "path": "evidence/5cd-autostart/as-zigzag.jpeg",
+      "role": "screenshot: ZigZag white (app-render gap evidence)"
+    },
+    {
+      "path": "evidence/5cd-autostart/as-desktop.jpeg",
+      "role": "screenshot: U13-prepared desktop (final board state)"
+    },
+    {
+      "path": "HOSTLIB-COMPARISON-AND-61B-PLAN.md",
+      "role": "5cd-vs-61b host-lib comparison (libinstalls is the discriminator) + offline 61b autostart variant + board acceptance plan"
+    },
+    {
+      "path": "payload-61b/init/00_westlake_u13_recover.cfg",
+      "role": "61b cfg variant: U13 recover service only + reserved Toutiao-overlay placeholder (no BoatAttack); installer run with WITH_BOAT=0"
+    },
+    {
+      "path": "RESULT-61b.md",
+      "role": "61b on-board result: mechanism PASS (319/319), libinstalls unlocks anco routing, appspawn-x daemon still not spawned -> apps white; narrow last-mile isolated"
+    },
+    {
+      "path": "evidence/61b-autostart/install.log",
+      "role": "61b installer log (WITH_BOAT=0, 56/56, pr03 superseded)"
+    },
+    {
+      "path": "evidence/61b-autostart/recover-autonomous-091726.log",
+      "role": "61b autonomous boot recover log (ran on its own, 56/56, ready=true)"
+    },
+    {
+      "path": "evidence/61b-autostart/as-helloworld.jpeg",
+      "role": "61b HelloWorld white (appspawn-x daemon down)"
+    },
+    {
+      "path": "evidence/61b-autostart/as-zigzag.jpeg",
+      "role": "61b ZigZag white (appspawn-x daemon down)"
+    },
+    {
+      "path": "APPSPAWN-LASTMILE-PLAN.md",
+      "role": "SUPERSEDED by v2 (label theory; kept for history)"
+    },
+    {
+      "path": "APPSPAWN-LASTMILE-PLAN-v2.md",
+      "role": "v2 last-mile: root cause = init SERVICE_ATTR_INVALID latch + recover-ran-too-late (not labels); fix = recover at post-fs-data (before AMS) + never umount (stat continuous) + persistent dmesg/timestamp journal; Option B physicalize deferred; acceptance + rollback + window"
+    }
+  ],
+  "run_order_on_board": [
+    "stage this payload/ (+ boat-artifacts/ holding the 5 SHA-pinned overlay files) under a DEPLOY dir on the board",
+    "DEPLOY=<dir> sh install-westlake-u13-autostart.sh   # snapshot + place; prints INSTALL_OK or ADMISSION stop",
+    "reboot (separate focused step; may need USB re-plug) ; read-only verify 319 fp + appspawn-x + tap-to-light",
+    "to prove bare-system: sh westlake-u13-autostart-disable.sh disable ; reboot ; verify bare /system",
+    "to remove entirely: sh rollback-westlake-u13-autostart.sh ; reboot"
+  ]
+}

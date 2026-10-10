@@ -1,0 +1,331 @@
+#!/usr/bin/env python3
+"""Known-answer tests for the U13 boot-autostart OFFLINE payload (zero board).
+
+Pins the payload's contract so any drift fails here, before a board step:
+  * safety NEGATIVE invariants: no `setenforce`, no direct appspawn-x exec, no app-launch verb;
+  * table shape (56 layers = 3 dir + 53 file, 51 shared + 5 zigzag-private, contiguous seq);
+  * init cfg shape (2 jobs + 2 services, minimal caps, once/sandbox/secon, NO setenforce);
+  * SHA cross-consistency: every SHA hard-coded in a script equals the JSON table's value;
+  * no hardcoded /Users/<name> path in any payload script.
+
+Run:  python3 -m unittest -v benchmark/2026-10-10-u13-autostart/tests/ka_tests.py
+   or just:  python3 benchmark/2026-10-10-u13-autostart/tests/ka_tests.py
+"""
+import json, os, re, unittest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+PAY  = os.path.normpath(os.path.join(HERE, "..", "payload"))
+SCR  = os.path.join(PAY, "scripts")
+TABLE = os.path.join(PAY, "u13-recover-table.json")
+PLAN  = os.path.join(PAY, "u13-recover-table.plan")
+CFG   = os.path.join(PAY, "init", "00_westlake_u13_recover.cfg")
+CFG61B = os.path.normpath(os.path.join(PAY, "..", "payload-61b", "init", "00_westlake_u13_recover.cfg"))
+
+# pinned known answers
+APPSPAWN_SHA = "2a87118e7e8e62fb73ef71a436517cda406c308668753a478cf52331e996072e"
+ADAPTER_SHA  = "8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e"
+ADAPTER_BASE = "84695d62f515cfec6bb317c959ec55b1d5085bf82303f792a764cf549a22267a"
+JAR_SHA      = "6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852"
+JAR_BASE     = "bbc3f530190fe98e2979dc4059379f8a0259d1f6ab243830347ca875cdb62f9b"
+PRIVATE_SHA  = {
+    "libunity.so": "1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac",
+    "libil2cpp.so": "f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746",
+    "libwestlake_bionic_signal_box.so": "7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da",
+}
+SCRIPTS = ["westlake-u13-recover.sh", "westlake-u13-boat-overlay.sh",
+           "install-westlake-u13-autostart.sh", "westlake-u13-autostart-disable.sh",
+           "rollback-westlake-u13-autostart.sh"]
+
+
+def read(p):
+    with open(p, encoding="utf-8") as f:
+        return f.read()
+
+
+def strip_sh_comments(txt):
+    """Drop full-line shell comments (leading-# lines) so negative-invariant checks test COMMANDS, not docs.
+    The payload only ever names `setenforce` inside `# ...` delta notes; a real command line is never a comment."""
+    return "\n".join(l for l in txt.splitlines() if not l.lstrip().startswith("#"))
+
+
+class Table(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.t = json.loads(read(TABLE))
+        cls.rl = cls.t["recover_layers"]
+
+    def test_count_56(self):
+        self.assertEqual(len(self.rl), 56)
+        self.assertEqual(self.t["recover_layers_count"], 56)
+
+    def test_kind_split(self):
+        kinds = [r["kind"] for r in self.rl]
+        self.assertEqual(kinds.count("directory"), 3)
+        self.assertEqual(kinds.count("file"), 53)
+
+    def test_group_split(self):
+        groups = [r["group"] for r in self.rl]
+        self.assertEqual(groups.count("shared"), 51)
+        self.assertEqual(groups.count("zigzag-private"), 5)
+
+    def test_sequences_contiguous(self):
+        self.assertEqual([r["sequence"] for r in self.rl], list(range(1, 57)))
+
+    def test_file_layers_have_sha(self):
+        for r in self.rl:
+            if r["kind"] == "file":
+                self.assertTrue(re.fullmatch(r"[0-9a-f]{64}", r["sha256"] or ""),
+                                f"seq {r['sequence']} file lacks sha256")
+
+    def test_appspawn_layer_sha(self):
+        a = [r for r in self.rl if r["target"] == "/system/bin/appspawn-x"]
+        self.assertEqual(len(a), 1)
+        self.assertEqual(a[0]["sha256"], APPSPAWN_SHA)
+
+    def test_boat_overlay_shared(self):
+        by = {r["role"]: r for r in self.t["boat_overlay_shared"]}
+        self.assertEqual(by["adapter"]["sha256"], ADAPTER_SHA)
+        self.assertEqual(by["adapter"]["base_sha256"], ADAPTER_BASE)
+        self.assertEqual(by["jar"]["sha256"], JAR_SHA)
+        self.assertEqual(by["jar"]["base_sha256"], JAR_BASE)
+
+    def test_boat_overlay_private(self):
+        got = {os.path.basename(r["target"]): r["sha256"] for r in self.t["boat_overlay_private"]}
+        self.assertEqual(got, PRIVATE_SHA)
+
+    def test_expected_paths_319(self):
+        self.assertEqual(self.t["expected_paths"] and len(self.t["expected_paths"]), 319)
+
+
+class PlanMatchesTable(unittest.TestCase):
+    """The pushed board-side replay plan must equal the JSON table (board has no python3 to derive it)."""
+
+    def test_plan_matches_table(self):
+        t = json.loads(read(TABLE))
+        want = ["%d\t%s\t%s\t%s\t%s" % (r["sequence"], r["kind"], r["group"], r["target"], r["sha256"] or "")
+                for r in t["recover_layers"]]
+        got = read(PLAN).splitlines()
+        self.assertEqual(got, want, "u13-recover-table.plan diverged from the JSON table")
+
+    def test_plan_56_lines(self):
+        self.assertEqual(len(read(PLAN).splitlines()), 56)
+
+
+class BoardToolDiscipline(unittest.TestCase):
+    """Scripts run on the OH board, which lacks awk/tr/expr/busybox/python3. Enforce board-runnable tooling."""
+
+    def test_no_awk_tr_expr_busybox(self):
+        banned = re.compile(r"(?<![\w./-])(awk|tr|expr|busybox)(?![\w./-])")
+        for s in SCRIPTS:
+            code = strip_sh_comments(read(os.path.join(SCR, s)))
+            m = banned.search(code)
+            self.assertIsNone(m, f"{s} uses board-unavailable tool: {m.group(0) if m else ''}")
+
+    def test_python3_only_as_guarded_installer_fallback(self):
+        for s in SCRIPTS:
+            code = strip_sh_comments(read(os.path.join(SCR, s)))
+            if "python3" not in code:
+                continue
+            self.assertEqual(s, "install-westlake-u13-autostart.sh", f"{s} must not use python3")
+            self.assertIn("command -v python3", code)  # guarded; board path uses the pushed plan
+
+
+class InitCfg(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.raw = read(CFG)
+        cls.c = json.loads(cls.raw)
+
+    def test_valid_json(self):
+        self.assertIn("jobs", self.c); self.assertIn("services", self.c)
+
+    def test_two_jobs_two_services(self):
+        self.assertEqual(len(self.c["jobs"]), 2)
+        self.assertEqual(len(self.c["services"]), 2)
+
+    def test_job_triggers(self):
+        # v2: recover runs at the post-fs-data bootstage (before foundation/AMS); overlay still on the ready param.
+        names = {j.get("name") for j in self.c["jobs"]}
+        conds = {j.get("condition") for j in self.c["jobs"]}
+        self.assertIn("post-fs-data", names)
+        self.assertIn("sys.westlake.demo.u13.ready=true", conds)
+        self.assertNotIn("bootevent.boot.completed=true", conds)  # must NOT gate recover on boot.completed anymore
+
+    def test_services_contract(self):
+        names = {s["name"] for s in self.c["services"]}
+        self.assertEqual(names, {"westlake-u13-recover", "westlake-u13-boat-overlay"})
+        allowed_caps = {"DAC_OVERRIDE", "CHOWN", "FOWNER", "SYS_ADMIN"}
+        for s in self.c["services"]:
+            self.assertEqual(s["uid"], "root")
+            self.assertEqual(s["once"], 1)
+            self.assertEqual(s["sandbox"], 0)
+            self.assertTrue(s["secon"].startswith("u:r:"))
+            self.assertTrue(set(s["caps"]).issubset(allowed_caps), f"{s['name']} caps too broad: {s['caps']}")
+            # explicitly forbid the dangerous caps
+            self.assertNotIn("SYS_PTRACE", s["caps"])
+            self.assertNotIn("SETPCAP", s["caps"])
+
+    def test_no_setenforce_in_directives(self):
+        # only the directives matter; the `comment` array legitimately documents "NO setenforce 0".
+        directives = {k: v for k, v in self.c.items() if k != "comment"}
+        self.assertNotIn("setenforce", json.dumps(directives).lower())
+
+
+class Cfg61b(unittest.TestCase):
+    """61b variant: U13 recover only (no BoatAttack overlay), with a documented Toutiao placeholder."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.raw = read(CFG61B)
+        cls.c = json.loads(cls.raw)
+
+    def test_recover_only_one_service(self):
+        self.assertEqual(len(self.c["jobs"]), 1)
+        self.assertEqual(len(self.c["services"]), 1)
+        self.assertEqual(self.c["services"][0]["name"], "westlake-u13-recover")
+
+    def test_no_boat_overlay_service(self):
+        self.assertNotIn("boat-overlay", json.dumps({k: v for k, v in self.c.items() if k != "comment"}))
+
+    def test_no_setenforce_directives(self):
+        self.assertNotIn("setenforce", json.dumps({k: v for k, v in self.c.items() if k != "comment"}).lower())
+
+    def test_toutiao_placeholder_documented(self):
+        self.assertIn("TOUTIAO-OVERLAY PLACEHOLDER", self.raw)
+
+    def test_recover_service_caps_minimal(self):
+        s = self.c["services"][0]
+        self.assertTrue(set(s["caps"]).issubset({"DAC_OVERRIDE", "CHOWN", "FOWNER", "SYS_ADMIN"}))
+        self.assertEqual(s["once"], 1); self.assertEqual(s["sandbox"], 0)
+
+
+class SafetyNegatives(unittest.TestCase):
+    """The invariants that must be ABSENT across all payload scripts."""
+
+    def test_no_setenforce_command_anywhere(self):
+        for s in SCRIPTS:
+            code = strip_sh_comments(read(os.path.join(SCR, s))).lower()
+            self.assertNotIn("setenforce", code,
+                             f"{s} must not RUN setenforce (sealed enforcement preserved)")
+
+    def test_appspawn_ondemand_preserved_not_started(self):
+        # appspawn-x is ondemand: the worker preserves init's AppSpawnX listener and never starts a daemon
+        # (no begetctl start_service on this board; a direct exec would hit the KEEP_CAPS wall).
+        txt = read(os.path.join(SCR, "westlake-u13-recover.sh"))
+        code = strip_sh_comments(txt)
+        self.assertIn("/dev/unix/socket/AppSpawnX", code)       # verifies init's ondemand listener
+        self.assertIn("appspawn_listener_flags", code)
+        self.assertNotIn("begetctl", code)                      # no begetctl COMMAND (ondemand needs no start)
+        self.assertFalse(re.search(r"(^|[;&|]\s*|exec\s+)(/system/bin/)?appspawn-x(\s|$)", code, re.M),
+                         "recover.sh must not exec appspawn-x directly")
+
+    def test_no_app_launch(self):
+        # the demo is tap-to-start: no script may launch an app / ability / launcher.
+        launch = re.compile(r"\b(am start|aa start|am startservice|monkey -p|start .*launcher)\b")
+        for s in SCRIPTS:
+            self.assertIsNone(launch.search(read(os.path.join(SCR, s))), f"{s} must not launch an app")
+
+    def test_recover_has_disabled_gate_and_count(self):
+        txt = read(os.path.join(SCR, "westlake-u13-recover.sh"))
+        self.assertIn("DISABLED", txt)
+        self.assertIn('"$n" = 56', txt)
+        self.assertIn(APPSPAWN_SHA, txt)
+
+    def test_boat_overlay_has_disabled_gate(self):
+        txt = read(os.path.join(SCR, "westlake-u13-boat-overlay.sh"))
+        self.assertIn("DISABLED", txt)
+
+
+class FinalizeRuntime(unittest.TestCase):
+    """recover.sh must run the proven reboot-PASS post-mount setup so the ondemand appspawn-x can load + serve."""
+
+    def setUp(self):
+        self.txt = read(os.path.join(SCR, "westlake-u13-recover.sh"))
+        self.code = strip_sh_comments(self.txt)
+
+    def test_finalize_defined_and_called(self):
+        self.assertIn("finalize_runtime()", self.code)
+        # called after the replay, before the receipt is written
+        self.assertRegex(self.code, r"replayed .*baseline layers[\s\S]*finalize_runtime[\s\S]*state=READY")
+
+    def test_finalize_steps_present(self):
+        for step in ["appspawn_exec", "boot.art", "libc_musl.so", "/dev/mali0",
+                     "support_anco_app", "u:object_r:system_lib_file:s0"]:
+            self.assertIn(step, self.code, f"finalize missing step: {step}")
+
+    def test_finalize_ab_gate(self):
+        self.assertIn("NO_FINALIZE", self.code)   # A/B marker for the acceptance window
+
+    def test_finalize_reseals_root(self):
+        # the two writes outside the bound trees remount / rw then re-seal ro
+        self.assertIn("mount -o rw,remount /", self.code)
+        self.assertIn("mount -o ro,remount /", self.code)
+
+    def test_finalize_no_setenforce(self):
+        self.assertNotIn("setenforce", self.code.lower())
+
+
+class RecoverV2Timing(unittest.TestCase):
+    """v2: recover runs at post-fs-data (no boot.completed gate), journals dmesg+timestamps, never umounts."""
+
+    def setUp(self):
+        self.txt = read(os.path.join(SCR, "westlake-u13-recover.sh"))
+        self.code = strip_sh_comments(self.txt)
+
+    def test_no_boot_completed_gate(self):
+        # must not fail-closed waiting for boot.completed (it runs BEFORE it now)
+        self.assertNotIn("HOST_BOOT_TIMEOUT", self.code)
+        self.assertNotRegex(self.code, r"param get bootevent\.boot\.completed[^\n]*fail")
+
+    def test_journal_present(self):
+        self.assertIn("journal()", self.code)
+        self.assertIn("dmesg", self.code)          # persistent dmesg capture for invalid-line alignment
+        self.assertIn("JOURNAL=", self.code)
+
+    def test_no_umount(self):
+        # stat must stay continuous during bind -> the worker must not umount the appspawn-x mount point
+        self.assertNotRegex(self.code, r"(^|\s)umount\b")
+
+    def test_61b_cfg_post_fs_data(self):
+        c = json.loads(read(CFG61B))
+        self.assertIn("post-fs-data", {j.get("name") for j in c["jobs"]})
+        self.assertNotIn("bootevent.boot.completed=true", {j.get("condition") for j in c["jobs"]})
+
+    def test_appspawn_exec_relabel_nonsilent_verified(self):
+        # errno-13 fix: appspawn-x entry MUST be appspawn_exec, relabel NOT silent, read-back verified + fail-closed
+        self.assertIn("chcon u:object_r:appspawn_exec:s0 /system/bin/appspawn-x", self.code)
+        self.assertNotRegex(self.code, r"chcon u:object_r:appspawn_exec:s0 /system/bin/appspawn-x[^\n]*2>/dev/null")
+        self.assertIn("APPSPAWN_LABEL_READBACK", self.code)   # ls -Z read-back of the exec entry
+        self.assertIn("CHILD_LABEL_READBACK", self.code)      # + child.z.so -> system_lib_file
+
+    def test_whole_tree_mislabel_verify(self):
+        # exit-127 fix: no file under /system/android+route+tgr may remain data_local_tmp/data_file (appspawn can't map)
+        self.assertIn("MISLABEL_COUNT", self.code)
+        self.assertIn("data_local_tmp", self.code)
+        self.assertRegex(self.code, r"ls -RZ /system/android")
+
+
+class ShaCrossConsistency(unittest.TestCase):
+    """Every SHA hard-coded in a script equals the JSON table value."""
+
+    def test_overlay_shas_match_table(self):
+        txt = read(os.path.join(SCR, "westlake-u13-boat-overlay.sh"))
+        for sh in (ADAPTER_SHA, ADAPTER_BASE, JAR_SHA, JAR_BASE, *PRIVATE_SHA.values()):
+            self.assertIn(sh, txt, f"boat-overlay.sh missing pinned sha {sh[:12]}")
+
+    def test_installer_shas_match_table(self):
+        txt = read(os.path.join(SCR, "install-westlake-u13-autostart.sh"))
+        for sh in (APPSPAWN_SHA, ADAPTER_SHA, JAR_SHA, *PRIVATE_SHA.values()):
+            self.assertIn(sh, txt, f"installer missing pinned sha {sh[:12]}")
+
+
+class NoHardcodedUserPath(unittest.TestCase):
+    def test_no_users_path(self):
+        pat = re.compile(r"/Users/[A-Za-z0-9_.-]+/")
+        for s in SCRIPTS:
+            m = pat.search(read(os.path.join(SCR, s)))
+            self.assertIsNone(m, f"{s} has a hardcoded user path: {m.group(0) if m else ''}")
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
