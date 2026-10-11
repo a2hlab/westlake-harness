@@ -16,7 +16,7 @@ def validate_serial(serial):
 class Reader:
  def __init__(self,out,serial=SERIAL): self.out=out;self.n=0;self.serial=validate_serial(serial)
  def shell(self,command,required=False):
-  if not (command.startswith('sha256sum ') or command in ('cat /proc/sys/kernel/random/boot_id','df -k /data','ps -A -o PID,PPID,UID,NAME','param get const.ohos.fullname')):raise ValueError('read not whitelisted')
+  if not (command.startswith('sha256sum ') or re.fullmatch(r'readlink /proc/\d+/exe',command) or command in ('cat /proc/sys/kernel/random/boot_id','df -k /data','ps -A -o PID,PPID,UID,NAME','param get const.ohos.fullname')):raise ValueError('read not whitelisted')
   marker='__DEMO_RC_'+uuid.uuid4().hex+'__';cmd=command+'; x=$?; printf "\\n'+marker+'%s\\n" "$x"'
   r=subprocess.run(['bash',str(WS/'westlake-inputs/tools/hdc_mac.sh'),'-t',self.serial,'shell',cmd],capture_output=True,text=True,timeout=90)
   self.n+=1;(self.out/f'read-{self.n:03}.txt').write_text(r.stdout+r.stderr)
@@ -38,7 +38,10 @@ def main():
   rc,text=b.shell('sha256sum '+' '.join(paths[i:i+24]));actual.update({p:h for h,p in re.findall(r'^([0-9a-f]{64})\s+(/\S+)$',text,re.M)})
  diff={p:{'expected':h,'actual':actual.get(p)} for p,h in expected.items() if actual.get(p)!=h}
  runtime=mod.runtime_fingerprint(b,a.out);boot=mod.boot_image_fingerprint(b,a.out)
- ps=b.shell('ps -A -o PID,PPID,UID,NAME')[1];parents=[r['pid'] for r in mod.processes(ps) if r['name']=='appspawn-x' and r['uid']==0 and r['ppid']==1];parent=' '.join(map(str,parents));storage=b.shell('df -k /data')[1];version=b.shell('param get const.ohos.fullname')[1];after=b.shell('cat /proc/sys/kernel/random/boot_id')[1]
+ ps=b.shell('ps -A -o PID,PPID,UID,NAME')[1];candidates=[r['pid'] for r in mod.processes(ps) if r['name']=='appspawn-x' and r['uid']==0 and r['ppid']==1]
+ # #91 2026-10-11: Route B's spawner is a byte-copy at /data/local/tmp/asx/appspawn-x that also shows NAME=appspawn-x,
+ # PPID=1, uid 0; count only the U13 daemon whose exe is /system/bin/appspawn-x (same rule as demo_seal_61b post-parent).
+ parents=[pid for pid in candidates if b.shell(f'readlink /proc/{pid}/exe')[1].split(' (deleted)')[0].strip()=='/system/bin/appspawn-x'];parent=' '.join(map(str,parents));storage=b.shell('df -k /data')[1];version=b.shell('param get const.ohos.fullname')[1];after=b.shell('cat /proc/sys/kernel/random/boot_id')[1]
  good=not diff and before==after and bool(before) and runtime=='452447a4a0ba' and boot=='ee927db88a67' and len(parent.split())==1 and parent.isdigit() and version in ('OpenHarmony-6.1.0.31','OpenHarmony 6.1.0.31')
  result={'state':'U13','serial':a.serial,'unique_identity_paths':len(expected),'diff':diff,'runtime':runtime,'boot':boot,'boot_before':before,'boot_after':after,'parent_pid':parent,'storage':storage,'system_version':version,'remote_writes':0,'passed':good}
  (a.out/'identity.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result));return 0 if good else 1
