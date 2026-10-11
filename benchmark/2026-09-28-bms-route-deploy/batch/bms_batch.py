@@ -633,9 +633,13 @@ def cold_stop(board, package, uid, out, tag='before'):
             raise AppFailure('target still alive; cannot safely identify cold-stop child')
         for row in helpers + roots:
             pid, ppid = row['pid'], row['ppid']
-            # Re-check kernel identity in the same command immediately before kill.
+            # Re-check kernel identity in the same command immediately before kill. required=False: a pid that exited
+            # between the ps snapshot and this command leaves no /proc/<pid>/status, the sed is empty, the `test` fails
+            # and the whole command returns rc=1 -- but a vanished pid is already dead, our goal, not an error. Raising
+            # here aborted the round mid-rollback (cc-t3 window8 2026-10-11). Survivors are re-checked by the loop below.
             board.shell(f'test "$(sed -n \'s/^Uid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {uid} && '
-                        f'test "$(sed -n \'s/^PPid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {ppid} && kill -9 {pid}')
+                        f'test "$(sed -n \'s/^PPid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {ppid} && kill -9 {pid}',
+                        required=False)
     if uid is None:
         return False
     # Heavy apps (maps/media like fd-organicmaps: 14 procs) keep forking helpers that outlive the first kill sweep, and
@@ -653,7 +657,10 @@ def cold_stop(board, package, uid, out, tag='before'):
             return False
         for row in survivors:
             pid = row['pid']
-            board.shell(f'test "$(sed -n \'s/^Uid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {uid} && kill -9 {pid}')
+            # required=False for the same reason as the first sweep: a survivor that exits between the ps snapshot and
+            # this command makes the `test` fail (rc=1); that is success (it is gone), not a cause to abort the round.
+            board.shell(f'test "$(sed -n \'s/^Uid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {uid} && kill -9 {pid}',
+                        required=False)
         time.sleep(.3)
 
 

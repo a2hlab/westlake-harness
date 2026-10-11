@@ -90,6 +90,54 @@ class ColdStopTests(unittest.TestCase):
         self.assertTrue(self.run_stop(board))
         self.assertEqual(board.killed, [500, 600])  # app root, then the late fork re-killed on the next pass
 
+    def test_target_vanishes_before_first_kill_is_success(self):
+        # #91 cc-t3 window8: a target pid exits between the ps snapshot and the guarded kill. /proc/<pid>/status is
+        # gone so `test "$(sed ...)" = uid` fails (rc=1); with required=True board.shell raised AppFailure and aborted
+        # the round mid-rollback. A vanished pid is already dead -> cold_stop must treat it as success, not an error.
+        class VanishBoard(FakeBoard):
+            # Mirrors the real board.shell contract: a non-zero rc raises only when required (bms_batch.py:467).
+            def __init__(self, *a, **kw):
+                super().__init__(*a, **kw)
+                self.ps_calls = 0
+            def shell(self, command, required=True, **kw):
+                if command.startswith('ps '):
+                    self.ps_calls += 1
+                    if self.ps_calls >= 2:
+                        self.rows = [r for r in self.rows if r[0] != 500]  # 500 exited right after classification
+                    return super().shell(command, required=required, **kw)
+                if 'kill -9 500' in command:
+                    if required:
+                        raise bms_batch.AppFailure('remote command failed (1): ' + command)
+                    return 1, ''   # status file gone -> `test` fails -> rc=1; nothing killed
+                return super().shell(command, required=required, **kw)
+        board = VanishBoard(rows())
+        self.assertTrue(self.run_stop(board))   # no AppFailure; cleanup verified
+        self.assertEqual(board.killed, [])       # we never killed it; it had already exited
+
+    def test_survivor_vanishes_during_settle_is_success(self):
+        # the settle-loop kill must tolerate a vanished pid too: a late fork seen in a settle ps exits before its
+        # guarded kill runs. required=True would raise AppFailure on the failed `test` and abort the round.
+        class SettleVanishBoard(FakeBoard):
+            def __init__(self, *a, **kw):
+                super().__init__(*a, **kw)
+                self.ps_calls = 0
+            def shell(self, command, required=True, **kw):
+                if command.startswith('ps '):
+                    self.ps_calls += 1
+                    if self.ps_calls == 2 and (600, 1, UID, 'sh') not in self.rows:
+                        self.rows.append((600, 1, UID, 'sh'))             # late fork visible in the first settle ps
+                    if self.ps_calls >= 3:
+                        self.rows = [r for r in self.rows if r[0] != 600]  # it exited before the next ps
+                    return super().shell(command, required=required, **kw)
+                if 'kill -9 600' in command:
+                    if required:
+                        raise bms_batch.AppFailure('remote command failed (1): ' + command)
+                    return 1, ''
+                return super().shell(command, required=required, **kw)
+        board = SettleVanishBoard(rows())
+        self.assertTrue(self.run_stop(board))
+        self.assertEqual(board.killed, [500])    # app root killed normally; 600 vanished on its own
+
 
 if __name__ == '__main__':
     unittest.main()
