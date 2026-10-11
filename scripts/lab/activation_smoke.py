@@ -247,6 +247,11 @@ def probe_child(spec, args, out):
     time.sleep(5)
     rows = b.processes(board.shell('ps -A -o PID,PPID,UID,NAME')[1])
     parents = [r['pid'] for r in rows if r['uid'] == 0 and r['ppid'] == 1 and r['name'] == 'appspawn-x']
+    # A Route B byte-copy spawner at /data/local/tmp/asx/appspawn-x also runs uid0/ppid1/NAME=appspawn-x
+    # (#91 2026-10-11, same exe rule as cold_stop / verify_identity / demo_seal post-parent); count only the real
+    # U13 ondemand daemon whose exe is /system/bin/appspawn-x so a running Route B feed doesn't poison parents.
+    parents = [pid for pid in parents
+               if board.shell(f'readlink /proc/{pid}/exe')[1].split(' (deleted)')[0].strip() == '/system/bin/appspawn-x']
     kids = [r for r in rows if r['uid'] == data['uid'] and len(parents) == 1 and r['ppid'] == parents[0]]
     if len(kids) != 1:
         return {'error': f'probe child count {len(kids)} (parents {len(parents)})'}
