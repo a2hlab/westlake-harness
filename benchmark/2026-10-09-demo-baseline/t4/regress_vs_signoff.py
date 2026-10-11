@@ -214,7 +214,15 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.out.exists():
         raise ValueError('fresh output required')
-    ref = references(read(a.signoff), a.baseline_t3)
+    signoff = read(a.signoff)
+    # t5 subset (user 2026-10-11, Plan-2): if the round declares a key subset (batch-apps.json next to the run),
+    # compare only those keys vs the signoff. The other signoff keys are cross-validated on the 5cd v1 Permissive
+    # full-128 prerun, not re-run on 61b, so they are NOT counted "missing". signoff_sha256 stays the full-128 SHA.
+    batch = a.run.parent / 'batch-apps.json'
+    if batch.is_file():
+        run_keys = {app['key'] for app in read(batch)['apps']}
+        signoff = dict(signoff, verdicts={k: v for k, v in signoff['verdicts'].items() if k in run_keys})
+    ref = references(signoff, a.baseline_t3)
     report = compare(records(a.run), ref)
     report['signoff_sha256'] = sha(a.signoff)
     report['run'] = portable(a.run.resolve())

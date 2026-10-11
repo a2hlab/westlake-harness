@@ -69,11 +69,13 @@ def prepare(manifest, tiers, install_index, out, boot_before, smoke, count=18, s
         raise ValueError('actual pre-reboot boot ID required; this driver never reboots')
     doc, shots, index = read(manifest), read(tiers), read(install_index)
     entries, _, windows = prep.plans(doc, portable(out), portable(smoke), count=count)
-    if len(entries) != 128:
-        raise ValueError('exactly 128 selected packages required')
+    # t5 subset (user 2026-10-11, Plan-2): run exactly the manifest's installable keys (<=128), not a hardcoded 128.
+    selected = [a for a in doc['apps'] if a.get('install') is not False]
+    if len(entries) != len(selected):
+        raise ValueError('selected packages must match the manifest (install!=false)')
     bykey = {r['key']: r for r in shots['apps']}
-    if set(bykey) != {a['key'] for a, _ in entries}:
-        raise ValueError('tier key set must match all 128 apps')
+    if not {a['key'] for a, _ in entries} <= set(bykey):
+        raise ValueError('tier key set must cover the run keys')
     for app, _ in entries:
         row = bykey[app['key']]
         if any(row[k] != app[k] for k in ('package', 'apk_sha256')) or row['screenshot_seconds'] not in (10, 20):
@@ -87,7 +89,7 @@ def prepare(manifest, tiers, install_index, out, boot_before, smoke, count=18, s
     save(out / 'shot-tiers.json', shots)
     configuration = {'schema': 'demo-post-reboot-executor/v1', 'serial': serial,
                      'execution_enabled': False, 'boot_before_reboot': boot_before,
-                     'base': 'signed U13', 'apps': 128, 'windows': [],
+                     'base': 'signed U13', 'apps': len(entries), 'windows': [],
                      'bindings': {name: pin(p) for name, p in {'manifest': manifest, 'tiers': tiers,
                            'install_index': install_index, 'smoke': smoke,
                            'prepare_t3': BASE / 'prepare_t3.py', 'driver': Path(__file__),
@@ -272,7 +274,8 @@ def execute(out, authorization):
         if regress.sha(p) != boat['plan_sha256']:
             raise ValueError('BoatAttack approved plan drift')
         subprocess.run([sys.executable, str(MASTER / 'scripts/lab/board_run.py'), str(p)], check=True)
-    (out / 'round-complete.json').write_text(json.dumps({'recorded_keys': 128, 'UI_verdict': 'pending_outer_review'}) + '\n')
+    recorded_keys = len(read(out / 'batch-apps.json')['apps'])  # t5 subset: the actual run keys (<=128), not hardcoded
+    (out / 'round-complete.json').write_text(json.dumps({'recorded_keys': recorded_keys, 'UI_verdict': 'pending_outer_review'}) + '\n')
 
 
 def main():
