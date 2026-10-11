@@ -72,6 +72,24 @@ class ColdStopTests(unittest.TestCase):
         self.assertTrue(self.run_stop(board))
         self.assertEqual(board.killed, [500])
 
+    def test_late_fork_survivor_is_rekilled(self):
+        # #91: a heavy app (fd-organicmaps) forks a helper DURING teardown; after the app root is killed the helper
+        # reparents to init (ppid=1) and so was not in the initial sweep. The old 2 s poll-only path saw it still
+        # alive and returned False ("cleanup could not be verified"). The settle loop must re-kill app-UID survivors.
+        class LateForkBoard(FakeBoard):
+            def __init__(self, *a, **kw):
+                super().__init__(*a, **kw)
+                self.ps_calls = 0
+            def shell(self, command, required=True, **kw):
+                if command.startswith('ps '):
+                    self.ps_calls += 1
+                    if self.ps_calls == 2 and (600, 1, UID, 'sh') not in self.rows:
+                        self.rows.append((600, 1, UID, 'sh'))  # late fork, reparented to init after root death
+                return super().shell(command, required=required, **kw)
+        board = LateForkBoard(rows())
+        self.assertTrue(self.run_stop(board))
+        self.assertEqual(board.killed, [500, 600])  # app root, then the late fork re-killed on the next pass
+
 
 if __name__ == '__main__':
     unittest.main()

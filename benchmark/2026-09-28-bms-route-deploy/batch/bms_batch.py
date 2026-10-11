@@ -636,12 +636,25 @@ def cold_stop(board, package, uid, out, tag='before'):
             # Re-check kernel identity in the same command immediately before kill.
             board.shell(f'test "$(sed -n \'s/^Uid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {uid} && '
                         f'test "$(sed -n \'s/^PPid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {ppid} && kill -9 {pid}')
-    for _ in range(10):
+    if uid is None:
+        return False
+    # Heavy apps (maps/media like fd-organicmaps: 14 procs) keep forking helpers that outlive the first kill sweep, and
+    # 14 kill -9 do not all reap within 2 s. Re-kill app-UID survivors each pass instead of only polling: an OHOS app UID
+    # is unique to one app, so any process still carrying it is the target's (kernel-verify Uid before kill, same as the
+    # initial sweep). #91 2026-10-11: fd-organicmaps tripped the old 2 s poll-only path with a late fork and returned
+    # False -> "target cleanup could not be verified", stopping the round after all records were already captured.
+    deadline = time.time() + 15
+    while True:
         _, ps = board.shell('ps -A -o PID,PPID,UID,NAME')
-        if uid is not None and not any(r['uid'] == uid for r in processes(ps)):
+        survivors = [r for r in processes(ps) if r['uid'] == uid]
+        if not survivors:
             return True
-        time.sleep(.2)
-    return False
+        if time.time() >= deadline:
+            return False
+        for row in survivors:
+            pid = row['pid']
+            board.shell(f'test "$(sed -n \'s/^Uid:[[:space:]]*\\([0-9]*\\).*/\\1/p\' /proc/{pid}/status)" = {uid} && kill -9 {pid}')
+        time.sleep(.3)
 
 
 def prepare_sandbox(board, package, uid, out):
