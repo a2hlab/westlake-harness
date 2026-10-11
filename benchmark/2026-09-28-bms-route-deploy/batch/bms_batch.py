@@ -616,11 +616,17 @@ def cold_stop(board, package, uid, out, tag='before'):
     (out / ('processes-'+tag+'.txt')).write_text(ps)
     rows = processes(ps)
     parents = [r['pid'] for r in rows if r['uid'] == 0 and r['ppid'] == 1 and r['name'] == 'appspawn-x']
+    # A Route B byte-copy spawner at /data/local/tmp/asx/appspawn-x also runs uid0/ppid1/NAME=appspawn-x
+    # (#91 2026-10-11, same as verify_identity / demo_seal post-parent); count only the real U13 ondemand daemon
+    # whose exe is /system/bin/appspawn-x, else a running Route B feed poisons `parents` (len 2) and no root classifies.
+    parents = [pid for pid in parents
+               if board.shell('readlink /proc/%s/exe' % pid)[1].split(' (deleted)')[0].strip() == '/system/bin/appspawn-x']
     target = [r for r in rows if uid is not None and r['uid'] == uid]
     if target:
-        # Roots are appspawn-x children; an app may fork its own helpers (VLC runs `sh`), which carry the
-        # app UID and have a root as parent. Anything else with the app UID is not ours to kill.
-        roots = [r for r in target if len(parents) == 1 and r['ppid'] == parents[0] and r['name'] == 'appspawn-x']
+        # Roots are the daemon's app-UID children; an app may fork its own helpers (VLC runs `sh`), which carry the
+        # app UID and have a root as parent. Anything else with the app UID is not ours to kill. A root's comm may be
+        # the bundle name after SetProcessName (not "appspawn-x"), so classify by parent==daemon, not by comm.
+        roots = [r for r in target if len(parents) == 1 and r['ppid'] == parents[0]]
         root_pids = {r['pid'] for r in roots}
         helpers = [r for r in target if r['pid'] not in root_pids and r['ppid'] in root_pids]
         if not roots or len(roots) + len(helpers) != len(target):

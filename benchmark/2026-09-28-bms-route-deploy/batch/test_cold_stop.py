@@ -9,16 +9,25 @@ PARENT = 100
 
 
 class FakeBoard:
-    """ps shows the app until kill -9 has been issued for every app PID."""
+    """ps shows the app until kill -9 has been issued for every app PID.
 
-    def __init__(self, rows):
+    `readlink /proc/<pid>/exe` is modelled too: appspawn-x processes default to the real U13 daemon binary
+    (/system/bin/appspawn-x) unless overridden via `exes` (e.g. a Route B byte-copy at /data/local/tmp/asx)."""
+
+    def __init__(self, rows, exes=None):
         self.rows = rows
         self.killed = []
+        self.exes = dict(exes or {})
+        for p, pp, u, n in rows:
+            if n == 'appspawn-x':
+                self.exes.setdefault(p, '/system/bin/appspawn-x')
 
     def shell(self, command, required=True, **kw):
         if command.startswith('ps '):
             alive = [r for r in self.rows if r[0] not in self.killed]
             return 0, 'PID PPID UID NAME\n' + '\n'.join(f'{p} {pp} {u} {n}' for p, pp, u, n in alive)
+        if command.startswith('readlink /proc/'):
+            return 0, self.exes.get(int(command.split('/')[2]), '') + '\n'
         if 'kill -9' in command:
             self.killed.append(int(command.rsplit(' ', 1)[1]))
         return 0, ''
@@ -48,6 +57,20 @@ class ColdStopTests(unittest.TestCase):
         with self.assertRaises(bms_batch.AppFailure):
             self.run_stop(board)
         self.assertEqual(board.killed, [])
+
+    def test_route_b_spawner_in_parents_excluded_by_exe(self):
+        # #91: a Route B byte-copy spawner runs uid0/ppid1/NAME=appspawn-x too; counted naively it makes
+        # len(parents)==2 and no root classifies. It must be excluded by exe so the app still cold-stops.
+        board = FakeBoard(rows((888, 1, 0, 'appspawn-x')),
+                          exes={888: '/data/local/tmp/asx/appspawn-x'})
+        self.assertTrue(self.run_stop(board))
+        self.assertEqual(board.killed, [500])          # only the app root; the daemon/Route B spawner untouched
+
+    def test_renamed_app_root_is_stopped(self):
+        # a root whose comm was renamed to the bundle name (SetProcessName) is still the daemon's app-UID child.
+        board = FakeBoard([(PARENT, 1, 0, 'appspawn-x'), (500, PARENT, UID, 'com.example.hel')])
+        self.assertTrue(self.run_stop(board))
+        self.assertEqual(board.killed, [500])
 
 
 if __name__ == '__main__':
