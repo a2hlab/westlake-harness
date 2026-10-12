@@ -1,0 +1,36 @@
+{
+  "comment": [
+    "Additive #91 Toutiao slot matching cc-wiki payload-61b placeholder; install AFTER U13 installer; original wl_toutiao.cfg.disabled stays disabled. No BoatAttack. The retained selfheal mechanism uses KILL with a PID/birth/exe/UID/private-root signal guard. PRIVILEGE MODEL (Bug6 fix, 2026-10-11): mirror the proven /system/etc/init/appspawn_x.cfg exactly -- uid root + setuid:true + NO caps list. A restricted init caps list installs those caps as AMBIENT (CapAmb!=0) and locks securebits (SECURE_KEEP_CAPS_LOCKED), which cascades to the asx-spawner->article.news child and makes its wl_finalize_app_privileges PR_SET_KEEPCAPS(0) fail EPERM (child aborts, no feed). appspawn-x runs full-root (CapBnd=full, CapAmb=0, no lock) so its spawned children finalize fine (HW/ZZ lit); this overlay must match it. DUMP native token (apl/permission/permission_acls) is retained for hidumper imehost0 detection + WL_PARENT_ID (Bug3)."
+  ],
+  "jobs": [
+    {
+      "name": "param:westlake-u13-toutiao-overlay-start",
+      "condition": "sys.westlake.demo.u13.ready=true",
+      "cmds": [
+        "start westlake-u13-toutiao-overlay"
+      ]
+    }
+  ],
+  "services": [
+    {
+      "name": "westlake-u13-toutiao-overlay",
+      "path": [
+        "/system/bin/sh",
+        "/system/etc/westlake-u13-toutiao-overlay.sh"
+      ],
+      "uid": "root",
+      "gid": [
+        "root",
+        "system"
+      ],
+      "setuid": true,
+      "start-mode": "condition",
+      "once": 1,
+      "sandbox": 0,
+      "secon": "u:r:su:s0",
+      "apl": "normal",
+      "permission": ["ohos.permission.DUMP"],
+      "permission_acls": ["ohos.permission.DUMP"]
+    }
+  ]
+}
