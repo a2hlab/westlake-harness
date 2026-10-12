@@ -859,3 +859,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-12 #91 exact executable guards must be compared against deployed launch scripts and captured /proc/<pid>/exe before reboot: Route B already execs /data/local/tmp/asx/appspawn-x (SHA a7a358c6), but parent/child predicates accepted only asx-spawner. Candidate0cc5 adds exact aliases, preserving SHA/UID/birth/ns/inode. Newboot parent passes; child_identity refusal precedes later signal11 death, so these remain separate unresolved events. Evidence: benchmark/2026-10-12-v1-seal-execution/results.json.
 
 - 2026-10-12 #91：Route B runtime archive2016 的221项只是后缀子集，真实恢复另需239项（appspawn/boot/fonts/i18n等）；恢复按逐文件SHA+mode/UID/label核闭包，run.sh/preseed/prepare三项UID/WID派生必须明示；rollback成功回执不得早于目录清理结果（独立负例已证rc2仍写成功的旧实现缺陷，benchmark/2026-10-12-toutiao-recovery-review/RESTORE-257E-B5904.md）。
+
+- 2026-10-12 #91：诊断也必须计入启动期限：逐进程拒绝记录使发现路径大量fork；成功JSON的六次od在OH实耗1.93/2.14/2.40秒，ready文本后仍timeout124。r3成功路径零编码、失败合并单od（实耗1.11–1.43秒仍不可忽略），保持2秒与最终完整身份守卫；当前仅离线/只读计时证据，不能报真实接管。证据 benchmark/2026-10-12-child-readiness/r3-lowfork-audit/。
