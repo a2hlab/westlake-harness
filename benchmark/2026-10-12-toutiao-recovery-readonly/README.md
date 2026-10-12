@@ -163,3 +163,7 @@ build or signature occurred. The original seal driver has separately exited with
 ## Evening baseline and package inventory
 
 identity-1938 records 319/319 baseline file SHAs equal, with unchanged boot. package-inventory-1945 records 128 demo bundles plus imehost: 129 top-level BMS identities and installed APK/HAP hashes, 0 demo version or APK SHA differences from the complete manifest, and unchanged boot after hashing. This is read-only current-state identity evidence; no fresh-boot UI or seal acceptance is implied.
+
+## Current screen at 20:03
+
+The outer read the actual snapshot_display image at current-screen-2003/actual/screen.jpeg: the Westlake IME host shell and native keyboard control are visible, not the Toutiao feed. The temporary capture file was received and removed; no touch, app launch, stop, configuration change or reboot was performed. The initial attempt used a mistyped 35-character serial and HDC rejected it locally; those failure receipts remain separate from the successful capture in actual/. This observation does not reuse the historical feed image as current evidence.
