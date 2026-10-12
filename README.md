@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-10-12-recovery-classifier-probe/`** | **Frozen JPEG/PNG classifier on ARM: two valid formats pass, corrupt/missing inputs reject; synthetic images, not UI acceptance.** |
 | **`benchmark/2026-10-01-u8-prospective/`** | **U8 N10/J8 donor-qualified batch list: 22 U7 clusters, 32 unlit keys, conditional wall movement and source/commit evidence; old narrow draft superseded, not frozen.** |
 | **`benchmark/2026-10-01-n10-native/`** | **Offline U7-preserving N10 batch: exact child recipe reproduction, single-owner preload, N8 private domains, Jitsi owner/version node, donor exclusions and rollback capture isolation; 185 fresh exception proposals, no board writes.** |
 | **`benchmark/2026-10-01-j8-t7e-reproducible/`** | **Reproducible package for the two accepted U8 candidates.** J8 runtime JAR `6895b9e4` (baseline J7b `381110a6` + WebViewProviderFix + SSLContextSpi.engineCreateSSLEngine→null + B7BindFixes install-injection) and T7e (adapter-mainline-stubs `f3bcc9d7` on the **deployed** T7d baseline `d8b2406e` + full-AOSP-r1 ColorMatrix → 27 boot images, G1 8/9 vdex vs T7d, G2 only the stubs segment). Carries the three source artifacts, the build scripts (`build_runtime_jar.py`/`build_stubs.py`/`gen_t7e_images.sh`), `artifact_identity.out` (366acc27 NOT DEPLOYED / d8b2406e DEPLOYED), and every input/output sha (`inputs.json`/`outputs.json`). Large binaries not committed. |

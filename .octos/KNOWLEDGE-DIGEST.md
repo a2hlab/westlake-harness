@@ -851,3 +851,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-12 API知识图谱入口 benchmark/2026-10-12-api-progress/：冻结8条只证明登记版本，不等于当前部署；U系列与source-build r84–r89的实现/实测必须分路由代际。NDK API33两历史profile的4449符号是导出存在性，runtime ac59的reported325占位方法在原清单仅160条分组声明，均不可写成当前功能覆盖率。Android源码/API level/targetSdk/Android对照/OH实测分列，缺绑定记unknown；新修复需绑定源码产物SHA、APK身份与准确版本和证据级别。
 
 - 2026-10-12 #91 recovery controller I/O: shell printf owner/sequence/instance/state/events failures were ignored and still produced launches/READY/rc0. Candidate 9763171a requires write + exact readback before launch, fails rc5 with no READY and retains lock/live app on later I/O failure; outer15 tests and independent14 fault replays passed offline (not device admission). Source: benchmark/2026-10-12-toutiao-recovery-candidate/.
+
+- 2026-10-12 #91：恢复分类器 afd072 的 PNG/JPEG 双格式及坏图/缺文件已在 5ea ARM 实跑通过（benchmark/2026-10-12-recovery-classifier-probe）；仅格式/ABI 证据，不等价头条真截图、自起或封板验收。
