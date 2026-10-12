@@ -21,6 +21,7 @@ OUTPUT = HERE / '.artifacts/t5-70b6-independent-attempt4'
 PACKAGE = OUTPUT / 'workspaces/westlake-harness-t0' / PREFIX
 RECORDER = HERE / 'record_t5_hdc.py'
 CONTROL_ROOT = '/data/westlake-demo/toutiao/recovery-attempts/r1-9763171a-preview'
+ALLOW_STALE_MANIFEST = False
 CASES = ['positive_cli', 'preview', 'wrong_auth_pin', 'changed_plan', 'wrong_serial',
          'expired_auth', 'wrong_auth_boot', 'wrong_device_boot', 'missing_before_label',
          'null_after_label', 'partial_backup', 'preimage_drift', 'mkdir_first_failure',
@@ -46,11 +47,17 @@ def export():
             assert not member.issym() and not member.islnk()
         content.extractall(destination)
     manifest = json.loads((PACKAGE / 'checkpoint-manifest.json').read_text())
+    mismatches = []
     for row in manifest['files']:
-        assert sha(destination / row['path']) == row['sha256'], row['path']
+        actual = sha(destination / row['path'])
+        if actual != row['sha256']:
+            mismatches.append({'path': row['path'], 'declared_sha256': row['sha256'], 'git_sha256': actual})
+    assert not mismatches or ALLOW_STALE_MANIFEST, mismatches
     RECORDER.chmod(0o755)
     return {'commit': COMMIT, 'manifest_sha256': sha(PACKAGE / 'checkpoint-manifest.json'),
-            'executor_sha256': sha(PACKAGE / 'executor.py'), 'members': len(manifest['files'])}
+            'executor_sha256': sha(PACKAGE / 'executor.py'), 'members': len(manifest['files']),
+            'git_archive_sha256': hashlib.sha256(archive).hexdigest(),
+            'manifest_mismatches': mismatches, 'deployment_admission': False}
 
 
 def fixture(name):
@@ -112,15 +119,17 @@ def update_ticket(plan_path, auth_path, plan, mutation=None):
 
 
 def main(argv=None):
-    global COMMIT, OUTPUT, PACKAGE
+    global COMMIT, OUTPUT, PACKAGE, ALLOW_STALE_MANIFEST
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--commit', default=COMMIT)
     parser.add_argument('--attempt', default='t5-review-' + time.strftime('%Y%m%dT%H%M%S'))
     parser.add_argument('--case', action='append', choices=CASES)
+    parser.add_argument('--review-stale-manifest', action='store_true')
     arguments = parser.parse_args(argv)
     assert re.fullmatch('[0-9a-f]{40}', arguments.commit), 'immutable full commit required'
     assert re.fullmatch('[A-Za-z0-9._-]+', arguments.attempt), 'local attempt name only'
     COMMIT = arguments.commit
+    ALLOW_STALE_MANIFEST = arguments.review_stale_manifest
     OUTPUT = HERE / '.artifacts' / arguments.attempt
     PACKAGE = OUTPUT / 'workspaces/westlake-harness-t0' / PREFIX
     receipt = export()

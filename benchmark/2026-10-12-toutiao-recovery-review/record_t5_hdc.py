@@ -77,6 +77,27 @@ elif arguments[2] == 'shell':
         else:
             target = shlex.split(script)[-1]
             model['directories'] = sorted(set(model['directories']) | {str(Path(target)), *map(str, Path(target).parents)})
+    elif script.startswith('test ! -e ') and ' && test ! -L ' in script:
+        target = shlex.split(script)[3]
+        remote = int(target in model['directories'] or target in model['objects'])
+    elif script.startswith('set -eu; mkdir '):
+        model['mkdir_count'] = model.get('mkdir_count', 0) + 1
+        values = shlex.split(script)
+        target = values[3].rstrip(';')
+        if model.get('fault') == 'mkdir_first_failure' and model['mkdir_count'] == 1:
+            remote = 1
+        elif str(Path(target).parent) not in model['directories']:
+            remote = 1
+        else:
+            model['directories'].append(target)
+            model.setdefault('directory_metadata', {})[target] = {'uid_gid': values[5], 'mode': values[8], 'label': values[11]}
+    elif script.startswith('set -eu; test -d ') and 'stat -c ' in script:
+        target = shlex.split(script)[4].rstrip(';')
+        metadata = model.get('directory_metadata', {}).get(target)
+        if metadata:
+            output = metadata['mode'] + ':' + metadata['uid_gid'] + '\ndrwx------ 1 0 0 ' + metadata['label'] + ' ' + target
+        else:
+            remote = 1
     elif script.startswith('set -eu; chown '):
         values = shlex.split(script)
         target = values[4].rstrip(';')
