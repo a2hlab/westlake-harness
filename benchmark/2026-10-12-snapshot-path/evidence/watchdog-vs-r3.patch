@@ -1,0 +1,138 @@
+--- benchmark/2026-10-12-child-readiness/r3-lowfork-audit/candidate/watchdog.sh	2026-10-12 22:24:39
++++ benchmark/2026-10-12-snapshot-path/candidate/watchdog.sh	2026-10-12 23:02:23
+@@ -94,7 +94,92 @@
+  [ "${2:-none}" = "$parent" ] || { rb_deny ppid "${2:-none}" "$parent"; return 1; }
+  last_birth=$(rb_birth "$p") || { rb_deny birth_after '<read-error-or-exited>' "$expected"; return 1; }
+  [ "$last_birth" = "$expected" ] || { rb_deny birth_after "$last_birth" "$expected"; return 1; }
++}
++capture_init() {
++ # Literal OH-permitted prefix; never reuse another run's directory or old image.
++ capture_base=$(CDPATH= cd -P /data/local/tmp && pwd -P) || io_fail capture_base_unreadable
++ [ "$capture_base" = /data/local/tmp ] || io_fail capture_base_alias
++ case "$BOOT" in ''|*[!0-9a-f-]*) io_fail capture_boot_invalid;; esac
++ CAP="/data/local/tmp/westlake-toutiao-capture-$BOOT-$$-$self_birth"
++ capture_owner="$$ $self_birth $BOOT"
++ capture_file=
++ [ ! -e "$CAP" ] && [ ! -L "$CAP" ] || io_fail capture_directory_exists
++ capture_umask=$(umask); umask 077
++ mkdir "$CAP" || io_fail capture_directory_create_failed
++ capture_dir_identity=$(stat -c '%d:%i' "$CAP") || io_fail capture_directory_identity_failed
++ [ -n "$capture_dir_identity" ] || io_fail capture_directory_identity_empty
++ umask "$capture_umask"
++ write_exact "$CAP/owner" "$capture_owner"
++ capture_guard
++}
++capture_guard() {
++ [ -d "$CAP" ] && [ ! -L "$CAP" ] || io_fail capture_directory_changed
++ [ -n "${capture_dir_identity:-}" ] || io_fail capture_directory_identity_missing
++ capture_dir_now=$(stat -c '%d:%i' "$CAP") || io_fail capture_directory_identity_read_failed
++ [ "$capture_dir_now" = "$capture_dir_identity" ] || io_fail capture_directory_identity_changed
++ capture_real=$(CDPATH= cd -P "$CAP" && pwd -P) || io_fail capture_directory_unreadable
++ [ "$capture_real" = "$CAP" ] || io_fail capture_directory_alias
++ capture_meta=$(stat -c '%u:%g:%a' "$CAP") || io_fail capture_directory_metadata_failed
++ [ "$capture_meta" = 0:0:700 ] || io_fail capture_directory_metadata_changed
++ verify_exact "$CAP/owner" "$capture_owner"
++ for capture_entry in "$CAP"/* "$CAP"/.[!.]* "$CAP"/..?*; do
++  [ -e "$capture_entry" ] || [ -L "$capture_entry" ] || continue
++  case "$capture_entry" in "$CAP/owner"|"$capture_file") :;; *) io_fail capture_directory_unknown_entry;; esac
++ done
++}
++capture_context() {
++ capture_guard
++ verify_exact "$F/lock/owner" "$$ $self_birth $BOOT"
++ [ "$(cat "$PROC/sys/kernel/random/boot_id")" = "$BOOT" ] || io_fail capture_boot_changed
++ [ ! -e "$F/stop" ] && [ ! -L "$F/stop" ] || { capture_rc=126; capture_reason=stop_during_capture; return 1; }
++ child_owned "$child" "$child_birth" || { capture_rc=126; capture_reason=child_identity_during_capture; return 1; }
++}
++capture_remove_file() {
++ # Only this poll's fresh path inside our verified exclusive directory.
++ capture_guard
++ if [ -e "$capture_file" ] || [ -L "$capture_file" ]; then
++  [ -f "$capture_file" ] && [ ! -L "$capture_file" ] || io_fail capture_output_not_regular
++  [ "$(stat -c '%u' "$capture_file")" = 0 ] || io_fail capture_output_foreign_owner
++  rm -f "$capture_file" || io_fail capture_output_cleanup_failed
++  [ ! -e "$capture_file" ] && [ ! -L "$capture_file" ] || io_fail capture_output_cleanup_readback_failed
++ fi
++}
++capture_frame() {
++ capture_rc=0; capture_reason=none
++ capture_context || return 1
++ capture_file="$CAP/current-$seq-$polls.jpeg"
++ [ ! -e "$capture_file" ] && [ ! -L "$capture_file" ] || io_fail capture_output_exists
++ control_file "$F/current.jpeg"
++ rm -f "$F/current.jpeg" || io_fail stale_capture_remove_failed
++ [ ! -e "$F/current.jpeg" ] && [ ! -L "$F/current.jpeg" ] || io_fail stale_capture_remove_readback_failed
++ control_file "$F/snapshot.log"; control_file "$F/classifier.log"
++ timeout 4 snapshot_display -f "$capture_file" > "$F/snapshot.log" 2>&1 || capture_rc=$?
++ capture_guard
++ if [ "$capture_rc" != 0 ] || [ ! -f "$capture_file" ] || [ -L "$capture_file" ] || [ ! -s "$capture_file" ]; then
++  [ "$capture_rc" != 0 ] || capture_rc=125
++  capture_reason=snapshot_failed_missing_empty_or_link
++  capture_remove_file
++  return 1
++ fi
++ [ "$(stat -c '%u' "$capture_file")" = 0 ] || io_fail capture_output_foreign_owner
++ capture_identity=$(stat -c '%d:%i' "$capture_file") || io_fail capture_output_identity_failed
++ capture_context || { capture_remove_file; return 1; }
++ control_file "$F/current.jpeg"
++ cp "$capture_file" "$F/current.jpeg" || io_fail capture_archive_copy_failed
++ control_file "$F/current.jpeg"
++ [ -f "$F/current.jpeg" ] && [ -s "$F/current.jpeg" ] || io_fail capture_archive_empty
++ cmp -s "$capture_file" "$F/current.jpeg" || io_fail capture_archive_readback_failed
++ [ "$(stat -c '%d:%i' "$capture_file")" = "$capture_identity" ] || io_fail capture_output_identity_changed
++ capture_remove_file
++ capture_context || return 1
+ }
++capture_release() {
++ [ -n "${CAP:-}" ] || return 0
++ capture_guard
++ rm -f "$CAP/owner" || io_fail capture_owner_cleanup_failed
++ rmdir "$CAP" || io_fail capture_directory_cleanup_failed_unknown_preserved
++ CAP=
++}
+ release_lock() {
+  [ "$keep_lock" = 0 ] || return 0
+  # Remove only this run's exact lock. Foreign/changed owner is retained.
+@@ -104,6 +189,7 @@
+  lock_size=$(wc -c < "$F/lock/owner") || return 0
+  expected_size=$(printf '%s %s %s\n' "$$" "$self_birth" "$BOOT" | wc -c)
+  [ "$lock_size" -eq "$expected_size" ] || return 0
++ capture_release
+  rm -f "$F/lock/owner" || io_fail lock_release_failed
+  rmdir "$F/lock" || io_fail lock_directory_release_failed
+ }
+@@ -146,6 +232,7 @@
+  write_exact "$F/sequence" "$seq"
+  instance
+  state SUPERVISOR_STARTING control_persistence_checked_before_launch
++ capture_init
+  parent=${TT_PARENT_PID:-none}; parent_birth=${TT_PARENT_BIRTH:-none}
+  if [ "$parent" != none ]; then
+   parent_owned "$parent" "$parent_birth" || { state OWNER_REFUSED existing_parent_identity; return 2; }
+@@ -211,14 +298,11 @@
+    polls=$((polls+1))
+    if [ "$ready" = 0 ]; then
+     label=unknown; capture_rc=0; classifier_rc=0
+-    # Same JPEG invocation as working manual evidence; never reuse an old frame.
+-    control_file "$F/current.jpeg"
+-    rm -f "$F/current.jpeg" || io_fail stale_capture_remove_failed
+-    control_file "$F/snapshot.log"; control_file "$F/classifier.log"
+-    timeout 4 snapshot_display -f "$F/current.jpeg" > "$F/snapshot.log" 2>&1 || capture_rc=$?
+-    if [ "$capture_rc" = 0 ] && [ -s "$F/current.jpeg" ]; then
++    # Capture only in a new private OH-permitted directory, then archive.
++    if capture_frame; then
+      label=$(timeout 2 "$F/screen-gate" "$F/current.jpeg" 2>"$F/classifier.log") || classifier_rc=$?
+      [ "$classifier_rc" = 0 ] || label=unknown
++     capture_context || label=unknown
+     else label=snapshot_error; fi
+     case "$label" in
+      privacy) feed_count=0; state WAITING_FOR_USER_CONSENT privacy_no_touch;;
+@@ -231,7 +315,7 @@
+        state READY feed_confirmed_without_auto_consent
+        ready=1
+       else state BOOTSTRAP first_feed_observation; fi;;
+-     snapshot_error) feed_count=0; state UI_UNVERIFIED "snapshot_error_rc=$capture_rc alive_no_cleanup";;
++     snapshot_error) feed_count=0; state UI_UNVERIFIED "snapshot_error_rc=$capture_rc reason=$capture_reason alive_no_cleanup";;
+      *) feed_count=0; state UI_UNVERIFIED "label=$label classifier_rc=$classifier_rc alive_no_cleanup";;
+     esac
+    fi

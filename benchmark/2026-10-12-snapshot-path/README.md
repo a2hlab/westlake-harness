@@ -1,0 +1,19 @@
+# OH-permitted snapshot path candidate
+
+## Evidence and correction
+
+r3 boot 52533 completed readiness and the final child guard, reaching BOOTSTRAP for 6590, 8883, and 11056. Its snapshot.log explicitly rejects the `/data/westlake-demo/.../current.jpeg` parent and requires `/data/local/tmp`. The third child later produced a real feed by outer visual review. Snapshot capture itself was independently proven in a new exclusive 0700 nested directory under `/data/local/tmp`. Historical 61b ZigZag command-00471 also reports JPEG write success in a nested private batch directory. Source paths and hashes are in sources.json; no historical screenshot is claimed as a new observation here.
+
+This candidate changes only capture functions/calls and release bindings. A literal permitted prefix produces a boot+guardian PID+birth directory, created once without reuse or mkdir -p under umask077. The successful mkdir immediately pins capture_dir_identity with stat %d:%i. Every guard rereads that dev:ino; replacing the same pathname and copying the correct owner/image still fails. Existing paths, aliases, symlinks, wrong metadata, foreign owner, or unknown entries fail closed and remain untouched. Each poll has a fresh seq+poll filename; stale F/current.jpeg is cleared only through the existing regular-file guard. A failed command can never supply a valid old frame. Only rc0, a new nonempty nonsymlink regular root-owned image, stable inode, cp+cmp readback, exact owner/boot and child guard checks allow the unchanged classifier to read the archived image. Own-file cleanup must succeed before classification. Unknown files prevent success; no recursive cleanup is used. Release removes only our verified owner and uses empty rmdir.
+
+All I/O failures identify the step, invalidate prior READY if possible, and preserve app/parent/data/old stop. Ordinary capture failure is UI_UNVERIFIED with feed count reset. Identity drift cannot publish READY. The original two-feed rule, classifier thresholds, child exit recovery, three attempts/backoff, successful readiness zero encoding, and two-second readiness deadline remain unchanged. Helper, worker, and launch-common are byte-identical to r3. There is no new deployment member: entry/members/startup are rebound around the changed watchdog. compose.py preserves actual per-board startup and expects the current PRESENT worker preimage.
+
+## Verification and limits
+
+`python3 benchmark/2026-10-12-snapshot-path/test_capture.py` passes six grouped methods with separate negative subcases. Rust recovery_snapshot_path_{success,reject,io} passes 3/3. Raw stdout/stderr/exit are in evidence/. The fixture executes actual capture functions and the state/classifier/feed block, relocates the permitted prefix to an isolated local directory, virtualizes board root metadata, and represents the child identity dependency explicitly. It does not re-prove the unchanged identity functions or classifier's visual accuracy. No board, VM, remote, signal, production lock, spawn, data rotation, consent, or signing operation was performed.
+
+## Deployment blocker
+
+Outer's r3-classifier-real/results.json reports the unchanged deployed classifier returns unknown for three visually confirmed feed images. Thus capture-path completion does NOT authorize a reboot, READY acceptance, or sealing. T4 owns the independent classifier calibration; final composition and hardware observation must combine both reviewed revisions. Random SIGSEGV is outside this contract. This candidate remains disabled.
+
+The project-root lifecycle attempt is retained verbatim (rc1, three skipped because no Cargo manifest was discovered at the repository root). The explicit tools/spec-checks Cargo manifest runs the three required selectors successfully; no unrelated source/configuration was changed to alter that tool hookup. This limitation does not prevent source freezing and does not substitute for hardware/UI acceptance.
