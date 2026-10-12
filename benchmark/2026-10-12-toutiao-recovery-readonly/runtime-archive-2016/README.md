@@ -1,0 +1,5 @@
+# Toutiao archive versus actual deployed runtime
+
+The old tarball is not assumed to be the deployed object. Read-only SHA scans compare 221 archive entries with the actual imehost runtime in stable boot ac87bbbe. 218 entries match exactly. The three scripts differ only in installed UID 20010053 -> 20011206 and, for run.sh, generated WL_PARENT_ID 1443 -> 33. Actual differing scripts were received and matched against their observed board hashes. Immutable archive members are persisted by SHA in $WORKSPACES/westlake-inputs/seal-artifacts-20261012/sha256.
+
+The selection excludes app-data, data, webview, cache and other user-state trees; this is not a private-data backup or a complete restore recipe. Generated run.sh window identity must not be copied blindly across boots. No board file, process, configuration, permission or service was changed. No UI or autonomous-boot acceptance is implied. index.json retains explicit remote status in each raw read receipt and full source/deployed hashes.
