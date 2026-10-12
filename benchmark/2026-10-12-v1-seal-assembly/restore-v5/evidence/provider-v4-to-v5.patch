@@ -1,0 +1,61 @@
+--- restore-v4/toutiao_provider.py
++++ restore-v5/toutiao_provider.py
+@@ -449,12 +449,13 @@
+ 
+ 
+ def guardian_update(b, base, control_root):
+-    """Pinned r2b helper delta over measured control24; no61b preimage invented."""
++    """Pinned r2b/r3 guardian delta; target observations stay in the 5cd binding."""
+     ref = b.get('guardian_update')
+-    if ref is None: return None
++    if ref is None: return {}
+     manifest_path = pin(ref, base); root = manifest_path.parent
+     manifest = read(manifest_path)
+-    need(manifest.get('schema') == 'quiet-reset-checkpoint/v1', 'guardian update schema')
++    schema = manifest.get('schema')
++    need(schema in {'quiet-reset-checkpoint/v1','lowfork-audit-checkpoint/v1'}, 'guardian update schema')
+     listed = set()
+     for row in manifest['files']:
+         name = row['path']
+@@ -464,9 +465,11 @@
+              and source.stat().st_size==row['bytes'], 'guardian update bytes drift: '+name)
+     need({'candidate/route-b-owner.sh','candidate/watchdog.sh','candidate/readiness-probe.sh','candidate/launch-common.sh'} <= listed,
+          'guardian update core missing')
+-    for name in ('watchdog.sh','readiness-probe.sh','launch-common.sh'):
+-        need(digest(root/'candidate'/name)==digest(control_root/name), 'guardian update exceeded helper delta: '+name)
+-    return root/'candidate/route-b-owner.sh'
++    updated = {'route-b-owner.sh'}
++    if schema == 'lowfork-audit-checkpoint/v1': updated.add('readiness-probe.sh')
++    for name in {'watchdog.sh','readiness-probe.sh','launch-common.sh'} - updated:
++        need(digest(root/'candidate'/name)==digest(control_root/name), 'guardian update exceeded declared delta: '+name)
++    return {name: root/'candidate'/name for name in updated}
+ 
+ 
+ def compile_package(binding_path, out):
+@@ -485,7 +488,7 @@
+     need(not out.exists(), 'new package output required')
+     need(not out.is_relative_to(RELEASE.resolve()), 'cannot write original release')
+     oldplan, control_root, control_names = control_bundle(b, base)
+-    updated_helper = guardian_update(b, base, control_root)
++    updated_guardian = guardian_update(b, base, control_root)
+     # All input metadata/local bytes checked before creating package.
+     rows = []
+     seen = set()
+@@ -573,7 +576,7 @@
+     out.mkdir(); (out / 'payload').mkdir(); (out / 'runtime').mkdir()
+     changes = []
+     for name in sorted(control_names):
+-        p = updated_helper if name=='route-b-owner.sh' and updated_helper is not None else control_root/name
++        p = updated_guardian.get(name, control_root/name)
+         raw = p.read_bytes()
+         data = derive_text(raw, b) if p.suffix in {'.sh', '.cfg', '.env'} else raw
+         (out / 'payload' / p.name).write_bytes(data)
+@@ -755,7 +758,7 @@
+     a = p.parse_args(argv)
+     if a.self_test:
+         suite=unittest.TestSuite([unittest.defaultTestLoader.loadTestsFromTestCase(ProviderTests),
+-            unittest.defaultTestLoader.discover(str(HERE), pattern='test_restore_v4.py')])
++            unittest.defaultTestLoader.discover(str(HERE), pattern='test_restore_v5.py')])
+         return 0 if unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful() else 1
+     try:
+         if a.compile:
