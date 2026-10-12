@@ -10,7 +10,7 @@ See `results.json` for pinned evidence. Raw process, parent and child logs stay 
 
 The independent API atlas is complete in `../2026-10-12-api-progress/API-PROGRESS.zh.md`. Restore adapters continue in isolated t0/t4 trees; 5cd only received its previously missing original host HAP, with actual UID 20011300. No restore success is claimed.
 
-## Subsequent static closure (21:43 CST)
+## Subsequent static closure (21:41 CST)
 
 The original 221-file archive was an immutable suffix subset, not a complete restoration inventory. A live, stable-boot read matched 239 additional runtime files to retained local sources; their CAS copies were independently hash checked. The sets are disjoint. Fresh SHA checks match 218 of the original 221 files; exact diffs of the other three contain only host UID and `WL_PARENT_ID` changes. Per-file modes, ownership and labels are retained. See the four `restore-*` index files named in `results.json`. No restoration was performed.
 
