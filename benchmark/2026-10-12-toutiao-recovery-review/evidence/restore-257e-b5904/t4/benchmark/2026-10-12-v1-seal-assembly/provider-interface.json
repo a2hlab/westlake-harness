@@ -1,0 +1,64 @@
+{
+  "schema": "v1-provider-interface/1",
+  "standard_argv": [
+    "--seal",
+    "--serial",
+    "--deployment",
+    "--out"
+  ],
+  "execution_gate": "deployment.execution_enabled === true",
+  "output": "fresh directory; receipt.json plus transport/child logs",
+  "u13": {
+    "layer": "u13",
+    "interpreter": "python3",
+    "program": {
+      "path": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-12-v1-seal-assembly/u13_provider.py",
+      "sha256": "d32cce1de43e209fffd677fefee94f3ff7945ccb5d5e0a001ba660a65b991218"
+    },
+    "common": {
+      "path": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-12-v1-seal-assembly/provider_common.py",
+      "sha256": "df39c939529c9b571091c6df1c11b10c19003298d3f1f42bc98ce0e8ca915341"
+    },
+    "executor": "{path,sha256}: reviewed bms_batch.py",
+    "rollback": "{path,sha256}: explicit outer-reviewed recovery procedure (required, never guessed)",
+    "serial": "current target full serial",
+    "boot_id": "current target boot UUID",
+    "targets": "all base files plus owned standard APK paths, disjoint from Route B",
+    "transport": {
+      "hdc_cmd": "existing authorized transport command",
+      "lock_cmd": "existing board_note.sh command",
+      "lane": "actual external lock holder"
+    },
+    "apk_install": {
+      "program": {
+        "path": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-12-v1-seal-assembly/apk_provider.py",
+        "sha256": "17849ee1003a01a2911bd89921b3cc4a9328c011fa2a84d1b614f5d421be1051"
+      },
+      "common": {
+        "path": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-12-v1-seal-assembly/provider_common.py",
+        "sha256": "df39c939529c9b571091c6df1c11b10c19003298d3f1f42bc98ce0e8ca915341"
+      },
+      "entry": {
+        "path": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-12-v1-seal-assembly/missing_apk_entry.py",
+        "sha256": "e1f1cf4d4eae1db52ad48a9eb5455d8a00b4255c2d1bda33a3f04e7bcc47b589"
+      },
+      "executor": "{path,sha256}: bms_batch.py independently pinned",
+      "manifest": "{path,sha256}: manifest entries matching sealed APKs",
+      "input_root": "local APK corpus root",
+      "keys": "list or comma-separated; exactly all owned sealed APKs"
+    }
+  },
+  "route_b": {
+    "layer": "toutiao-route-b",
+    "interpreter": "python3",
+    "program": "{path,sha256}: t0 toutiao_provider.py",
+    "prepared": "{path,manifest_sha256}: t0 prepared package for target board",
+    "targets": "all prepared plan.members targets",
+    "action": "apply | rollback",
+    "authorization": "{path,sha256,derived_manifest_sha256,holder}: independent target authorization binding",
+    "lock_tool": "{path,sha256}: board_note.sh",
+    "rollback": "{path,sha256}: actual reviewed rollback program required by t5 validate",
+    "transaction_dir": "required for rollback"
+  },
+  "additional_sources": "U13 profile may carry [{target,source:{path,sha256}}] for every new Route B sealed member; base archive plus APK inventory plus these sources must cover the seal exactly."
+}
