@@ -855,3 +855,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-12 #91：恢复分类器 afd072 的 PNG/JPEG 双格式及坏图/缺文件已在 5ea ARM 实跑通过（benchmark/2026-10-12-recovery-classifier-probe）；仅格式/ABI 证据，不等价头条真截图、自起或封板验收。
 
 - 2026-10-12 #91：真实 BMS Android 包顶层 versionCode 是已安装值，嵌套 applicationInfo.versionCode=0 为占位；selfcheck 递归并集会误报歧义。只认同名顶层对象，原件与实际 read_live 替身回归见 benchmark/2026-10-12-seal-snapshot-adapter。
+
+- 2026-10-12 #91 exact executable guards must be compared against deployed launch scripts and captured /proc/<pid>/exe before reboot: Route B already execs /data/local/tmp/asx/appspawn-x (SHA a7a358c6), but parent/child predicates accepted only asx-spawner. Candidate0cc5 adds exact aliases, preserving SHA/UID/birth/ns/inode. Newboot parent passes; child_identity refusal precedes later signal11 death, so these remain separate unresolved events. Evidence: benchmark/2026-10-12-v1-seal-execution/results.json.
