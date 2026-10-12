@@ -1,0 +1,134 @@
+687: .method public static getUpdateService()Landroid/webkit/IWebViewUpdateService;
+688:     .registers 1
+689: 
+690:     invoke-static {}, Landroid/webkit/WebViewFactory;->isWebViewSupported()Z
+691: 
+692:     move-result v0
+693: 
+694:     if-eqz v0, :cond_b
+695: 
+696:     invoke-static {}, Landroid/webkit/WebViewFactory;->getUpdateServiceUnchecked()Landroid/webkit/IWebViewUpdateService;
+697: 
+698:     move-result-object v0
+699: 
+700:     return-object v0
+701: 
+702:     :cond_b
+703:     const/4 v0, 0x0
+704: 
+705:     return-object v0
+706: .end method
+707: 
+708: .method static getUpdateServiceUnchecked()Landroid/webkit/IWebViewUpdateService;
+709:     .registers 1
+710: 
+711:     sget-object v0, Landroid/webkit/WebViewFactory;->WEBVIEW_UPDATE_SERVICE_NAME:Ljava/lang/String;
+712: 
+713:     invoke-static {v0}, Landroid/os/ServiceManager;->getService(Ljava/lang/String;)Landroid/os/IBinder;
+714: 
+715:     move-result-object v0
+716: 
+717:     invoke-static {v0}, Landroid/webkit/IWebViewUpdateService$Stub;->asInterface(Landroid/os/IBinder;)Landroid/webkit/IWebViewUpdateService;
+718: 
+719:     move-result-object v0
+720: 
+721:     return-object v0
+722: .end method
+723: 
+724: .method private static getWebViewContextAndSetProvider()Landroid/content/Context;
+725:     .registers 10
+726:     .annotation system Ldalvik/annotation/Throws;
+727:         value = {
+728:             Landroid/webkit/WebViewFactory$MissingWebViewPackageException;
+729:         }
+730:     .end annotation
+731: 
+732:     const-string v0, "Failed to load WebView provider: "
+733: 
+734:     invoke-static {}, Landroid/app/AppGlobals;->getInitialApplication()Landroid/app/Application;
+735: 
+736:     move-result-object v1
+737: 
+738:     :try_start_6
+739:     const-string v2, "WebViewUpdateService.waitForAndGetProvider()"
+740: 
+741:     const-wide/16 v3, 0x10
+742: 
+743:     invoke-static {v3, v4, v2}, Landroid/os/Trace;->traceBegin(JLjava/lang/String;)V
+744:     :try_end_d
+745:     .catch Landroid/os/RemoteException; {:try_start_6 .. :try_end_d} :catch_f5
+746:     .catch Landroid/content/pm/PackageManager$NameNotFoundException; {:try_start_6 .. :try_end_d} :catch_f5
+747: 
+748:     :try_start_d
+749:     invoke-static {}, Landroid/webkit/Flags;->updateServiceIpcWrapper()Z
+750: 
+751:     move-result v2
+752: 
+753:     if-eqz v2, :cond_20
+754: 
+755:     const-class v2, Landroid/webkit/WebViewUpdateManager;
+756: 
+757:     invoke-virtual {v1, v2}, Landroid/app/Application;->getSystemService(Ljava/lang/Class;)Ljava/lang/Object;
+758: 
+759:     move-result-object v2
+760: 
+761:     check-cast v2, Landroid/webkit/WebViewUpdateManager;
+762: 
+763:     invoke-virtual {v2}, Landroid/webkit/WebViewUpdateManager;->waitForAndGetProvider()Landroid/webkit/WebViewProviderResponse;
+764: 
+765:     move-result-object v2
+766: 
+767:     goto :goto_28
+768: 
+769:     :cond_20
+770:     invoke-static {}, Landroid/webkit/WebViewFactory;->getUpdateService()Landroid/webkit/IWebViewUpdateService;
+771: 
+772:     move-result-object v2
+773: 
+774:     invoke-interface {v2}, Landroid/webkit/IWebViewUpdateService;->waitForAndGetProvider()Landroid/webkit/WebViewProviderResponse;
+775: 
+776:     move-result-object v2
+777:     :try_end_28
+778:     .catchall {:try_start_d .. :try_end_28} :catchall_f0
+779: 
+780:     :goto_28
+781:     :try_start_28
+1182: .method private static isWebViewSupported()Z
+1183:     .registers 2
+1184: 
+1185:     sget-object v0, Landroid/webkit/WebViewFactory;->sWebViewSupported:Ljava/lang/Boolean;
+1186: 
+1187:     if-nez v0, :cond_18
+1188: 
+1189:     invoke-static {}, Landroid/app/AppGlobals;->getInitialApplication()Landroid/app/Application;
+1190: 
+1191:     move-result-object v0
+1192: 
+1193:     invoke-virtual {v0}, Landroid/app/Application;->getPackageManager()Landroid/content/pm/PackageManager;
+1194: 
+1195:     move-result-object v0
+1196: 
+1197:     const-string v1, "android.software.webview"
+1198: 
+1199:     invoke-virtual {v0, v1}, Landroid/content/pm/PackageManager;->hasSystemFeature(Ljava/lang/String;)Z
+1200: 
+1201:     move-result v0
+1202: 
+1203:     invoke-static {v0}, Ljava/lang/Boolean;->valueOf(Z)Ljava/lang/Boolean;
+1204: 
+1205:     move-result-object v0
+1206: 
+1207:     sput-object v0, Landroid/webkit/WebViewFactory;->sWebViewSupported:Ljava/lang/Boolean;
+1208: 
+1209:     :cond_18
+1210:     sget-object v0, Landroid/webkit/WebViewFactory;->sWebViewSupported:Ljava/lang/Boolean;
+1211: 
+1212:     invoke-virtual {v0}, Ljava/lang/Boolean;->booleanValue()Z
+1213: 
+1214:     move-result v0
+1215: 
+1216:     return v0
+1217: .end method
+1218: 
+1219: .method public static loadWebViewNativeLibraryFromPackage(Ljava/lang/String;Ljava/lang/ClassLoader;)I
+1220:     .registers 8
