@@ -1,0 +1,37 @@
+--- frozen/src/screen_gate_feed.c
++++ t11/src/screen_gate_feed.c
+@@ -15,6 +15,27 @@
+ static int light(int x,int y){unsigned char*p=rgb+3*(y*1200+x);return p[0]>210&&p[1]>210&&p[2]>210;}
+ static int red(int x,int y){unsigned char*p=rgb+3*(y*1200+x);return p[0]>230&&p[1]>25&&p[1]<130&&p[2]>20&&p[2]<130;}
+ static int blue(int x,int y){unsigned char*p=rgb+3*(y*1200+x);return p[0]>85&&p[0]<160&&p[1]>140&&p[1]<210&&p[2]>225&&p[2]-p[0]>65;}
++/* t11: bounded chrome regions measured on r3 feed captures. Pixel colour
++ * predicates remain unchanged. Every region must match; article content is
++ * still required. A red point or arbitrary picture alone cannot qualify. */
++static int fraction(int (*test)(int,int),int x0,int x1,int y0,int y1,int step,unsigned percent){
++ unsigned matches=0,total=0;
++ for(int y=y0;y<y1;y+=step)for(int x=x0;x<x1;x+=step){matches+=test(x,y)!=0;total++;}
++ return matches*100>=total*percent;
++}
++static int observed_feed_regions(void){
++ if(!fraction(red,5,55,20,60,2,80) || !fraction(red,1160,1190,110,150,2,75)
++    || !fraction(white,350,950,70,80,3,60)
++    || !fraction(red,45,85,245,251,1,25)
++    || !fraction(red,95,170,1830,1875,2,25)
++    || !fraction(white,950,1040,1830,1880,3,85))return 0;
++ unsigned dark=0;
++ for(int y=275;y<660;y+=3)for(int x=35;x<750;x+=3){
++  unsigned char*p=rgb+3*(y*1200+x);
++  if(p[0]<100&&p[1]<100&&p[2]<100)dark++;
++ }
++ return dark>180;
++}
+ int main(int argc,char**argv){
+  if(argc!=2)return 2;
+  int width,height,channels;
+@@ -45,5 +66,6 @@
+    }
+    if(dark>180)label="feed";
+  }
++ if(!strcmp(label,"unknown") && observed_feed_regions())label="feed";
+  puts(label);stbi_image_free(rgb);return 0;
+ }
