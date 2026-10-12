@@ -159,3 +159,7 @@ startup behavior, JIT readiness or screenshot/classifier compatibility.
 No app start/stop, touch, screenshot, permission change, data change, reboot, runtime
 build or signature occurred. The original seal driver has separately exited with
 `acceptance exit=124`; old UI observations are not a new seal authorization.
+
+## Evening baseline and package inventory
+
+identity-1938 records 319/319 baseline file SHAs equal, with unchanged boot. package-inventory-1945 records 128 demo bundles plus imehost: 129 top-level BMS identities and installed APK/HAP hashes, 0 demo version or APK SHA differences from the complete manifest, and unchanged boot after hashing. This is read-only current-state identity evidence; no fresh-boot UI or seal acceptance is implied.
