@@ -1,0 +1,1 @@
+LOCAL ISOLATED REPLAY ONLY. Original root probe hex was adapted by inserting the R5 SHA delimiter. No new HDC execution. The subprocess response is recorded/isolated; argv is what actual ReadOnlyCollector would execute. Decoded bytes match the original on-board SHA. No new live selfcheck PASS implied.
