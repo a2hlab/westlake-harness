@@ -21,6 +21,7 @@ depends: [t4-stability]
 ### 允许修改
 - benchmark/2026-10-12-exact-realization/**
 - scripts/lab/demo_selfcheck.sh
+- scripts/lab/demo_restore.sh
 - tools/spec-checks/tests/exact_realization.rs
 
 ### 禁止
