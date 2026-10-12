@@ -1,0 +1,1203 @@
+{
+ "shard": "registry",
+ "generated": "2026-10-12",
+ "rows": [
+  {
+   "family": "安装与授权",
+   "capability": "BMS 安装的 Android 包后台拉起 ability(START_ABILITIES_FROM_BACKGROUND)",
+   "members": [
+    "libbms.z.so: canStartAbilityFromBackground 授权路径",
+    "libapk_installer.so: 安装时授 APL_NORMAL+ACL+preAuthorizationInfo, 优先应用自身 launcher 入口"
+   ],
+   "implementation_status": "implemented",
+   "method": "安装器在安装时刻授后台启动权限并登记 launcher 入口;libbms 查询路径返回可启动。只覆盖 BMS 安装路线",
+   "source_location": "branch feat/bms-route-deploy commit b5a67c62, benchmark/2026-09-30-installer-background-launcher/{base_bundle_installer.patch,build-bms.sh,build-installer.sh,HANDOFF.md}",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "feat/bms-route-deploy b5a67c62 代",
+   "deployment_status": "historical",
+   "frozen_ids": [
+    "FZ-001"
+   ],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "fd-tusky",
+     "level": "reported",
+     "result": "61b: white -> own login page with only the installer changed (+ reboot)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-001"
+     ]
+    },
+    {
+     "apk": "fd-k9",
+     "level": "reported",
+     "result": "61b: white -> own database upgrade page",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-001"
+     ]
+    },
+    {
+     "apk": "fd-android (Thunderbird)",
+     "level": "reported",
+     "result": "61b: white -> own database upgrade page",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-001"
+     ]
+    },
+    {
+     "apk": "fd-filemanager",
+     "level": "reported",
+     "result": "61b: white -> own list with three tabs",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-001"
+     ]
+    },
+    {
+     "apk": "fd-k9 / fd-tusky / fd-android / fd-filemanager",
+     "level": "reported",
+     "result": "5cd: same four, reproduced on a second board",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-001"
+     ]
+    }
+   ],
+   "gaps": [
+    "APK 级验证为历史 reported,本轮未重看图",
+    "oh_tested 置 unknown:冻结登记为历史签认,未在本轮逐板核 OH 小版本;版本证据在 verified_apps 的 board 字段(61b/5cd/5ea)",
+    "deployment=historical:冻结登记不等于当前部署;当前部署代需 image-provenance/runtime 指纹另证"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/frozen/frozen.json",
+     "sha256": "41971d779e43c08e18c2e82c98efc9832a43959e89aaf05636d53295fbfcdb46",
+     "supports": "冻结条目 FZ-001 的 mechanism/source_record/verified_apps"
+    }
+   ],
+   "id": "REG-001"
+  },
+  {
+   "family": "运行时基础设施",
+   "capability": "Android 子进程 ActivityThread 运行在显式 8MiB pthread(大栈 provider)",
+   "members": [
+    "libwestlake_android_runtime_provider.so: [CM-BIGSTACK] ActivityThread 专用 pthread, stack=8390896B"
+   ],
+   "implementation_status": "implemented",
+   "method": "runtime provider 为每个 Android 子进程在独立 8MiB pthread 上跑 ActivityThread(深递归/大帧防溢出);双路径部署(/system/android/lib64 与 /system/lib64/westlake/route-a/)",
+   "source_location": "westlake-harness-bms-deploy benchmark/2026-09-30-child-stack-default/{child_main_after_stock.cpp,build-provider.sh,source-link-inputs.json}; audit benchmark/2026-09-30-native-freeze-audit (cx-t0 2b3960ee)",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "U13 代 (provider 双路径)",
+   "deployment_status": "historical",
+   "frozen_ids": [
+    "FZ-002"
+   ],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "fd-tusky",
+     "level": "reported",
+     "result": "5cd: Tusky own UI at t20 with ActivityThread on the dedicated 8 MiB pthread ([CM-BIGSTACK] stack=8390896 in its hilog)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-002"
+     ]
+    },
+    {
+     "apk": "antennapod",
+     "level": "reported",
+     "result": "5cd: AntennaPod own UI at t20 with ActivityThread on the dedicated 8 MiB pthread ([CM-BIGSTACK] stack=8390896 in its hilog)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-002"
+     ]
+    },
+    {
+     "apk": "markor",
+     "level": "reported",
+     "result": "5cd: Markor own UI at t20 with ActivityThread on the dedicated 8 MiB pthread ([CM-BIGSTACK] stack=8390896 in its hilog)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-002"
+     ]
+    },
+    {
+     "apk": "fd-k9",
+     "level": "reported",
+     "result": "5cd: K-9 own UI at t20 with ActivityThread on the dedicated 8 MiB pthread ([CM-BIGSTACK] stack=8390896 in its hilog)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-002"
+     ]
+    },
+    {
+     "apk": "fd-auxio",
+     "level": "reported",
+     "result": "5cd: Auxio own UI at t20 with ActivityThread on the dedicated 8 MiB pthread ([CM-BIGSTACK] stack=8390896 in its hilog)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-002"
+     ]
+    },
+    {
+     "apk": "helloworld / zigzag",
+     "level": "reported",
+     "result": "61b: controls, same log line and own UI (cx-t0 native freeze audit)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-002"
+     ]
+    }
+   ],
+   "gaps": [
+    "APK 级验证为历史 reported,本轮未重看图",
+    "oh_tested 置 unknown:冻结登记为历史签认,未在本轮逐板核 OH 小版本;版本证据在 verified_apps 的 board 字段(61b/5cd/5ea)",
+    "deployment=historical:冻结登记不等于当前部署;当前部署代需 image-provenance/runtime 指纹另证"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/frozen/frozen.json",
+     "sha256": "41971d779e43c08e18c2e82c98efc9832a43959e89aaf05636d53295fbfcdb46",
+     "supports": "冻结条目 FZ-002 的 mechanism/source_record/verified_apps"
+    }
+   ],
+   "id": "REG-002"
+  },
+  {
+   "family": "资源",
+   "capability": "AssetManager.nativeOpenAssetFd 返回真实 ParcelFileDescriptor(未压缩 asset)",
+   "members": [
+    "runtime native: nativeOpenAssetFd 实现(替换 Implement-me 抛错)"
+   ],
+   "implementation_status": "implemented",
+   "method": "对未压缩 asset 返回真实 ParcelFileDescriptor;仅此对象变更,与 532633da ReturnParcelFileDescriptor 同源",
+   "source_location": "westlake-harness-bms-deploy 8560fd68 benchmark/2026-09-30-asset-fd-runtime (copied from Westlake 532633da ReturnParcelFileDescriptor; only this object changed in liboh_android_runtime.so 9e14bf20 -> 53f00423)",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [
+    "FZ-003"
+   ],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "newpipe",
+     "level": "reported",
+     "result": "61b: t20 desktop -> own 直播 page (compare_runs variables: 1, runtime only)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-003"
+     ]
+    },
+    {
+     "apk": "fd-uhabits",
+     "level": "reported",
+     "result": "61b: UnsupportedOperationException 'Implement me' from nativeOpenAssetFd gone; first fatal moved to hwui 'drawRenderNode called on a context with no surface'",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-003"
+     ]
+    }
+   ],
+   "gaps": [
+    "APK 级验证为历史 reported,本轮未重看图",
+    "oh_tested 置 unknown:冻结登记为历史签认,未在本轮逐板核 OH 小版本;版本证据在 verified_apps 的 board 字段(61b/5cd/5ea)",
+    "deployment=historical:冻结登记不等于当前部署;当前部署代需 image-provenance/runtime 指纹另证"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/frozen/frozen.json",
+     "sha256": "41971d779e43c08e18c2e82c98efc9832a43959e89aaf05636d53295fbfcdb46",
+     "supports": "冻结条目 FZ-003 的 mechanism/source_record/verified_apps"
+    }
+   ],
+   "id": "REG-003"
+  },
+  {
+   "family": "安全/加密",
+   "capability": "sun.security.jca.Providers.jarVerificationProviders[0] conscrypt→BouncyCastle 重写",
+   "members": [
+    "oh-adapter-runtime.jar: sun.security.jca.Providers JAR 层重写"
+   ],
+   "implementation_status": "implemented",
+   "method": "JAR 层把 jarVerificationProviders[0] 从 conscrypt 重写为 BouncyCastle,getSunProvider 路径恢复;随 J1-final/J2/J3 代际携带",
+   "source_location": "feat/bms-walls commit cdb82fe5 (split out of B7BindFixes; carried unchanged through J1-final faf0782b, J2 0715c964, J3 75c2068c). build-result-{j1final,j2,j3}.json show the split as an added class; changed_existing stayed the 2 injection targets.; audited post-split on J3; full logs/SHAs and earlier failure excerpts in benchmark/2026-09-30-freeze-audit-u4/audit.json. Source root is westlake-harness-walls; default master path currently absent.",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "J1-final faf0782b / J2 0715c964 / J3 75c2068c (jar 链)",
+   "deployment_status": "historical",
+   "frozen_ids": [
+    "FZ-004"
+   ],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "fd-droidify",
+     "level": "reported",
+     "result": "J3 61b: Earlier PID-attributed Sun-provider failure; J3 helper rewrite present, old failure absent, own t20 UI",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-004"
+     ]
+    },
+    {
+     "apk": "fd-com-amaze-filemanager",
+     "level": "reported",
+     "result": "J3 5ea: Earlier PID-attributed Sun-provider failure; J3 helper rewrite present, old failure absent, own t20 UI",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-004"
+     ]
+    },
+    {
+     "apk": "antennapod",
+     "level": "reported",
+     "result": "J3 5ea: Earlier PID-attributed Sun-provider failure; J3 helper rewrite present, old failure absent, own t20 UI",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-004"
+     ]
+    }
+   ],
+   "gaps": [
+    "APK 级验证为历史 reported,本轮未重看图",
+    "oh_tested 置 unknown:冻结登记为历史签认,未在本轮逐板核 OH 小版本;版本证据在 verified_apps 的 board 字段(61b/5cd/5ea)",
+    "deployment=historical:冻结登记不等于当前部署;当前部署代需 image-provenance/runtime 指纹另证"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/frozen/frozen.json",
+     "sha256": "41971d779e43c08e18c2e82c98efc9832a43959e89aaf05636d53295fbfcdb46",
+     "supports": "冻结条目 FZ-004 的 mechanism/source_record/verified_apps"
+    }
+   ],
+   "id": "REG-004"
+  },
+  {
+   "family": "ART 工具链",
+   "capability": "dex2oat-once 工具链: host dex2oat64(r1 树+22 补丁)离线重生成 27 件 boot image",
+   "members": [
+    "dex2oat64(host, r1+22-patch, suspend-check 显式/implicit_suspend_checks_=false)",
+    "t5_gen_image.sh",
+    "boot.oat(T5c/T6c/T7c 产物)"
+   ],
+   "implementation_status": "implemented",
+   "method": "自有工具链离线重生成 27 件 boot image;板上 R155 libart 接受 image-only(T6c)与 image+jar 包(T7c)无 CheckSystemClass abort;常驻 libart 不变",
+   "source_location": "branch master; recipe knowledge/toolchains/art-r155/{patches (22), series, BUILD.md, recipe/}; build env BUILD.md §T3c (ART_USE_READ_BARRIER=false, ART_DEFAULT_GC_TYPE=CMS, ART_USE_GENERATIONAL_CC=false, ART_HEAP_POISONING=false, ART_TEST_DEBUG_GC=false, ALLOW_MISSING_DEPENDENCIES=true; m -j32 dex2oat); reproducible per scripts/lab/reproduce_dex2oat_toolchain.sh (dex2oat64 byte-for-byte ae865ddd, image vdex 9/9 == T5c, only boot.art/boot.oat differ by embedded cmdline path string). Board R155 device libart 59e1bb45 is a GATE REFERENCE only (not deployed by this toolchain).",
+   "android_source": "AOSP android-14.0.0_r1",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "master(art-r155 T3c/T5c/T6c/T7c)",
+   "deployment_status": "historical",
+   "frozen_ids": [
+    "FZ-005"
+   ],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "helloworld",
+     "level": "reported",
+     "result": "61b: own-UI (Hello World! + CHANGE COLOR + lifecycle log + service buttons) under T5c image-only (T6c PASS)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-005"
+     ]
+    },
+    {
+     "apk": "zigzag",
+     "level": "reported",
+     "result": "61b: Unity 3D isometric path + ball + Trial Version under T5c (T6c PASS)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-005"
+     ]
+    },
+    {
+     "apk": "aegis",
+     "level": "reported",
+     "result": "61b: welcome / 2FA onboarding own-UI under T7c package (image+stubs jar)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-005"
+     ]
+    },
+    {
+     "apk": "ooniprobe",
+     "level": "reported",
+     "result": "61b: What is OONI Probe onboarding own-UI under T7c package",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-005"
+     ]
+    }
+   ],
+   "gaps": [
+    "APK 级验证为历史 reported,本轮未重看图",
+    "oh_tested 置 unknown:冻结登记为历史签认,未在本轮逐板核 OH 小版本;版本证据在 verified_apps 的 board 字段(61b/5cd/5ea)",
+    "deployment=historical:冻结登记不等于当前部署;当前部署代需 image-provenance/runtime 指纹另证"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/frozen/frozen.json",
+     "sha256": "41971d779e43c08e18c2e82c98efc9832a43959e89aaf05636d53295fbfcdb46",
+     "supports": "冻结条目 FZ-005 的 mechanism/source_record/verified_apps"
+    }
+   ],
+   "id": "REG-005"
+  },
+  {
+   "family": "系统服务",
+   "capability": "android.os.VibratorManager.getVibratorIds() → int[0](route-A stub)",
+   "members": [
+    "adapter.activity.VibratorFetcher.install(): SYSTEM_SERVICE_FETCHERS[vibrator_manager] 替换",
+    "allocateInstance(SystemVibratorManager)(跳过会 NPE 的构造器)",
+    "IVibratorManagerService.getVibratorIds() stub 返回 int[0]"
+   ],
+   "implementation_status": "implemented",
+   "method": "adapter 替换 vibrator_manager fetcher,无服务端实现按空设备集返回;mLock 保护(J7)。语义=无振动器设备而非真实振动 API",
+   "source_location": "J7 a6a2537f9 (mLock added) on top of the J04 vibrator_manager split; U6 unified state ACK(95) 2026-10-01 04:36. | carried in oh-adapter-runtime.jar J7b 381110a6 (the jar also carries other fixes, so the freeze is on the source blob, like FZ-004).",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "J7 a6a2537f9 / J7b jar 381110a6 / U6 统一态",
+   "deployment_status": "historical",
+   "frozen_ids": [
+    "FZ-006"
+   ],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "fd-feeder",
+     "level": "reported",
+     "result": "5cd: U5 t20=no -> U6 own-UI at t20 (alive gained U5->U6); the vibrator_manager fetcher clears the getVibratorIds path Feeder hits during startup",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-006"
+     ]
+    },
+    {
+     "apk": "fd-reader",
+     "level": "reported",
+     "result": "5ea: vibrator getVibratorIds NPE cleared; first-fatal moved past the vibrator wall to the tagsoup/XMLReader boot-jar wall",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-006"
+     ]
+    }
+   ],
+   "gaps": [
+    "APK 级验证为历史 reported,本轮未重看图",
+    "oh_tested 置 unknown:冻结登记为历史签认,未在本轮逐板核 OH 小版本;版本证据在 verified_apps 的 board 字段(61b/5cd/5ea)",
+    "deployment=historical:冻结登记不等于当前部署;当前部署代需 image-provenance/runtime 指纹另证"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/frozen/frozen.json",
+     "sha256": "41971d779e43c08e18c2e82c98efc9832a43959e89aaf05636d53295fbfcdb46",
+     "supports": "冻结条目 FZ-006 的 mechanism/source_record/verified_apps"
+    }
+   ],
+   "id": "REG-006"
+  },
+  {
+   "family": "XML/解析",
+   "capability": "完整 AOSP android-14.0.0_r1 external/tagsoup 进 BCP adapter-mainline-stubs jar",
+   "members": [
+    "org.ccil.cowan.tagsoup.Parser(extends DefaultHandler implements ScanHandler/XMLReader)",
+    "15 个源文件整族"
+   ],
+   "implementation_status": "implemented",
+   "method": "BCP 顺序(stubs 在 framework 前)使 stubs-jar 内完整 tagsoup 成为生效类,解除 IncompatibleClassChangeError;源=AOSP r1 外部 tagsoup",
+   "source_location": "AOSP android-14.0.0_r1 external/tagsoup src/**/*.java (15 files; Parser.java sha aa68cc4d04869aee...; byte-identical on hw248 aosp-14.0.0_r1-art and a2hlab android-source/external-tagsoup). Compiled into adapter-mainline-stubs.jar via dockbuild (a2hlab-b5-java:24.04, 4 compile-only jars) -> T7d jar d8b2406e. The other 6 android stub additions are unchanged from the T7c base. | carried in adapter-mainline-stubs.jar T7d d8b2406e (hw248 $HW248_ROOT/cc-wiki-t7d-stubs.jar); frozen on the source blobs because the stubs jar carries other stubs (outer 2026-10-01, same rule as FZ-006).",
+   "android_source": "AOSP android-14.0.0_r1",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [
+    "FZ-007"
+   ],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "fd-libretube",
+     "level": "reported",
+     "result": "5cd: System.exit(1) (IncompatibleClassChangeError: tagsoup Parser does not implement XMLReader, MainActivity.onCreate) -> full native UI (LibreTube home, search + empty-state + Retry/Change-instance + bottom nav)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-007"
+     ]
+    },
+    {
+     "apk": "wikipedia",
+     "level": "reported",
+     "result": "5cd: tagsoup IncompatibleClassChangeError (Compose feed ErrorState/WikiErrorView) gone -> process no longer System.exit(1) (now alive t20; residual blank is a separate Compose-render wall)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-007"
+     ]
+    }
+   ],
+   "gaps": [
+    "APK 级验证为历史 reported,本轮未重看图",
+    "oh_tested 置 unknown:冻结登记为历史签认,未在本轮逐板核 OH 小版本;版本证据在 verified_apps 的 board 字段(61b/5cd/5ea)",
+    "deployment=historical:冻结登记不等于当前部署;当前部署代需 image-provenance/runtime 指纹另证"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/frozen/frozen.json",
+     "sha256": "41971d779e43c08e18c2e82c98efc9832a43959e89aaf05636d53295fbfcdb46",
+     "supports": "冻结条目 FZ-007 的 mechanism/source_record/verified_apps"
+    }
+   ],
+   "id": "REG-007"
+  },
+  {
+   "family": "网络/TLS",
+   "capability": "android.net.ssl.SSLSockets stub 进 BCP adapter-mainline-stubs jar",
+   "members": [
+    "android.net.ssl.SSLSockets: isSupportedSocket(SSLSocket)->false",
+    "setUseSessionTickets/setHostname 等静态方法 no-op"
+   ],
+   "implementation_status": "implemented",
+   "method": "新建类(BCP 无他处定义→G3 安全不遮蔽);类可解析使 OkHttp AndroidPlatform.buildIfSupported 走 fallback 而非 Dispatcher 崩溃",
+   "source_location": "benchmark/2026-10-01-image-predeploy-gate/t7d-stub-spec/sources/android/net/ssl/SSLSockets.java (new class, not in any other BCP jar -> G3-safe). Compiled into adapter-mainline-stubs.jar via dockbuild -> T7d jar d8b2406e. | carried in adapter-mainline-stubs.jar T7d d8b2406e (hw248 $HW248_ROOT/cc-wiki-t7d-stubs.jar); frozen on the source blobs because the stubs jar carries other stubs (outer 2026-10-01, same rule as FZ-006).",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [
+    "FZ-008"
+   ],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "noice",
+     "level": "reported",
+     "result": "5cd: blank (caught SSLSockets NoClassDefFoundError) -> noice AppIntro welcome own-UI (欢迎 + logo + Skip)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-008"
+     ]
+    },
+    {
+     "apk": "wikipedia",
+     "level": "reported",
+     "result": "5cd: 18x SSLSockets NoClassDefFoundError on OkHttp Dispatcher (TLS dead) gone -> OkHttp TLS resolves",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-008"
+     ]
+    },
+    {
+     "apk": "fd-noice",
+     "level": "reported",
+     "result": "5cd: SSLSockets CNF gone (3 runs)",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-008"
+     ]
+    }
+   ],
+   "gaps": [
+    "APK 级验证为历史 reported,本轮未重看图",
+    "oh_tested 置 unknown:冻结登记为历史签认,未在本轮逐板核 OH 小版本;版本证据在 verified_apps 的 board 字段(61b/5cd/5ea)",
+    "deployment=historical:冻结登记不等于当前部署;当前部署代需 image-provenance/runtime 指纹另证"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/frozen/frozen.json",
+     "sha256": "41971d779e43c08e18c2e82c98efc9832a43959e89aaf05636d53295fbfcdb46",
+     "supports": "冻结条目 FZ-008 的 mechanism/source_record/verified_apps"
+    }
+   ],
+   "id": "REG-008"
+  },
+  {
+   "family": "ART 工具链",
+   "capability": "板上 libart 代际判定(oat230/image108, R155 无布局差)",
+   "members": [
+    "libart.so ComputeAndSetHashCode 反汇编指纹",
+    "oat.h kOatVersion=230",
+    "image.cc kImageVersion=108"
+   ],
+   "implementation_status": "implemented",
+   "method": "板上 libart(59e1bb45)与官方 aosp-14.0.0_r16 产物逐指令同形(count@8/tbnz bit0/hash@12/data@16)+源码级 230/108 常量;R155 风险排除",
+   "source_location": "master knowledge/toolchains/dex2oat-a14.md(官方 r16 复现节)",
+   "android_source": "AOSP android-14.0.0_r16(对照) 与 android-14.0.0_r1(源)",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "(无 APK——纯静态反汇编)",
+     "level": "static",
+     "result": "指纹+常量双验",
+     "evidence_paths": [
+      "knowledge/toolchains/dex2oat-a14.md"
+     ]
+    }
+   ],
+   "gaps": [
+    "板上 libart 精确源 commit 未知(d600 树未取得)"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/toolchains/dex2oat-a14.md",
+     "sha256": "afd946b461a9ad9933e14daff1998cce66b6aa15258fe815d979c95673c82bcd",
+     "supports": "R155 对照+版本判定的全过程"
+    },
+    {
+     "path": "knowledge/toolchains/boot-image-inputs.sha256",
+     "sha256": "801a003cde5ffe293bf965e51c3428186782ff1b83cf0a7d765d30cf377ec202",
+     "supports": "板上 27 件 image 权威 SHA"
+    }
+   ],
+   "id": "REG-101"
+  },
+  {
+   "family": "ART 工具链",
+   "capability": "官方 r16 dex2oat 9-jar 复现(7s 工具链 vs c-route 570s 挂起)",
+   "members": [
+    "官方树 host dex2oat64(sha16 1a2f5a22)",
+    "9 jar 输入(payload v3a-r8b)"
+   ],
+   "implementation_status": "implemented",
+   "method": "官方 aosp-14.0.0_r16 树构建,板上 boot.oat 内 cmdline 逐字复刻;7.086s 出 27 文件(vdex 9/9 逐位同,art/oat 因 cmdline 路径串+53KB 残差)",
+   "source_location": "master knowledge/toolchains/dex2oat-a14.md;aosp-14.0.0_r16-pinned-manifest.xml",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "(无 APK——host 工具)",
+     "level": "unit",
+     "result": "27 文件生成+L1/L2 判定",
+     "evidence_paths": [
+      "knowledge/toolchains/dex2oat-a14.md"
+     ]
+    }
+   ],
+   "gaps": [
+    "art/oat 18 件未逐字节复现(checksum+53KB 残差,归因 d600 构建侧差异)",
+    "d600 树源未取得"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/toolchains/dex2oat-a14.md",
+     "sha256": "afd946b461a9ad9933e14daff1998cce66b6aa15258fe815d979c95673c82bcd",
+     "supports": "复现命令/L1 9/27/L2 头字段判定"
+    }
+   ],
+   "id": "REG-102"
+  },
+  {
+   "family": "ART 工具链",
+   "capability": "arm64 asm 常量对齐(asm_defines 上游生成器重生成)",
+   "members": [
+    "stubs108/asm_defines.h(188 defines)",
+    "quick/jni_entrypoints_arm64.o",
+    "thread_arm64.o"
+   ],
+   "implementation_status": "implemented",
+   "method": "A15 手写 asm_defines.h(THREAD_CARD_TABLE_OFFSET 0x90)毒化 asm 对象;用 108 树自带 cpp-define-generator 重生成真值(0x98/0xa0/0xe0/0x24)并强制重汇三件,修掉 thread_arm64 Check failed",
+   "source_location": "t4 树 c-route 工作(hw248);记录于 master knowledge/toolchains/dex2oat-a14.md",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "(无 APK——交叉编译产物)",
+     "level": "static",
+     "result": "Thread 布局常量与 108 源一致",
+     "evidence_paths": [
+      "knowledge/toolchains/dex2oat-a14.md"
+     ]
+    }
+   ],
+   "gaps": [
+    "产物未持久到 master 树(hw248 $HW248_ROOT)"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/toolchains/dex2oat-a14.md",
+     "sha256": "afd946b461a9ad9933e14daff1998cce66b6aa15258fe815d979c95673c82bcd",
+     "supports": "r12 重生成记录"
+    }
+   ],
+   "id": "REG-103"
+  },
+  {
+   "family": "ART 工具链",
+   "capability": "CheckSystemClass 豁免(A15 patch 语义移植)",
+   "members": [
+    "runtime/class_linker.cc: CheckSystemClass FATAL→WARNING"
+   ],
+   "implementation_status": "implemented",
+   "method": "A15 host 线从来是放行(非通过)String mismatch;把该豁免打到 108 原生基上,r16 host 链 InitWithoutImage 通过;板上 libart 无豁免(纯 r16 镜像必 abort,已由 5cd L2 失败实证)",
+   "source_location": "t4 树 bms commit 1c9c640a(r16 waiver 版)",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "(5cd L2 板测——历史)",
+     "level": "reported",
+     "result": "纯 r16 镜像 5 app 全死 SIGABRT #05 CheckSystemClass;卸载恢复",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-005"
+     ]
+    }
+   ],
+   "gaps": [
+    "豁免仅存在于 host 工具链,板上 libart 未打(设计如此)"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/toolchains/dex2oat-a14.md",
+     "sha256": "afd946b461a9ad9933e14daff1998cce66b6aa15258fe815d979c95673c82bcd",
+     "supports": "cppcrash-9465 取证"
+    }
+   ],
+   "id": "REG-104"
+  },
+  {
+   "family": "SELinux/标签",
+   "capability": "部署标签配方(12 规则, inode 标签非策略)",
+   "members": [
+    "appspawn-x→appspawn_exec",
+    "/system/android/lib64+route-a+boot*.{art,oat,vdex}+*.so→system_lib_file",
+    "*.jar→system_file",
+    "*.json→system_etc_file",
+    "fonts.xml→system_fonts_file",
+    "/system/lib64/seccomp→原厂(窄例外已删)"
+   ],
+   "implementation_status": "implemented",
+   "method": "cx-bms 单一配方;seccomp-stock 规则因证伪删除(61b/5ea 原厂即 system_lib_file);每条经 sepolicy 门 sesearch 证明",
+   "source_location": "master knowledge/gates/selinux-label-recipe.json",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "(无 APK——策略证明)",
+     "level": "unit",
+     "result": "35 proofs 0 failures(app-private 范围外 skip)",
+     "evidence_paths": [
+      "knowledge/gates/sepolicy-evidence.json"
+     ]
+    }
+   ],
+   "gaps": [
+    "app-private(/data/app)域归属未证(安装域关注,范围外)"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/gates/selinux-label-recipe.json",
+     "sha256": "7835707990d4fa2019fdf2665fd89a9a86e86a6d673bb105dd793fd2189a0f83",
+     "supports": "12 规则全集"
+    },
+    {
+     "path": "knowledge/gates/sepolicy-evidence.json",
+     "sha256": "55f488a4e48d0121405c65dace42e5671ab406653d483a904848b42458c72b01",
+     "supports": "35 条 allow 证明"
+    }
+   ],
+   "id": "REG-105"
+  },
+  {
+   "family": "SELinux/标签",
+   "capability": "离线 sepolicy 门(sesearch 证明+fail-closed)",
+   "members": [
+    "scripts/lab/sepolicy_gate.py",
+    "QUERIES 映射(rule id→class+perms)",
+    "policy SHA 7d23015f 钉死"
+   ],
+   "implementation_status": "implemented",
+   "method": "读 cx-bms 配方原位(rules[]+match/context),a2hlab VM setools 4.4.4 sesearch;漂移/缺失/工具不可达均 fail-closed;拒复用过期 evidence",
+   "source_location": "$WORKSPACES/westlake-harness-t4/scripts/lab/sepolicy_gate.py(commit 7bdecae0f4 链)",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "(无 APK——门禁)",
+     "level": "unit",
+     "result": "5/5 测试+cargo selector",
+     "evidence_paths": [
+      "$WORKSPACES/westlake-harness-t4/scripts/lab/test_sepolicy_gate.py"
+     ]
+    }
+   ],
+   "gaps": [
+    "live 板上策略 vs 拉取件一致性依赖 SHA 钉(未每板重拉)"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/gates/sepolicy-evidence.json",
+     "sha256": "55f488a4e48d0121405c65dace42e5671ab406653d483a904848b42458c72b01",
+     "supports": "门输出快照"
+    }
+   ],
+   "id": "REG-106"
+  },
+  {
+   "family": "冷启动/自启",
+   "capability": "U13 recover-v3 冷启动恢复链(post-fs-data→ready 参数→boat overlay)",
+   "members": [
+    "init cfg: post-fs-data start westlake-u13-recover",
+    "param:westlake-u13-boat-overlay-start condition sys.westlake.demo.u13.ready=true",
+    "westlake-u13-recover-v3.sh: 56 mounts 重放+labels+READY"
+   ],
+   "implementation_status": "implemented",
+   "method": "post-fs-data 期(先于 foundation/AMS)重放 56 基线 mount 不 umount(stat 连续防 init INVALID 闩锁);设 ready 参数触发 boat overlay;幂等(同 boot 已 READY 即退出);v3 增默认 OFF 的 permissive opt-in",
+   "source_location": "master benchmark/2026-10-10-u13-autostart/payload/{init/00_westlake_u13_recover-v3.cfg,scripts/westlake-u13-recover-v3.sh}",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "(5cd/61b 电源循环验收——历史)",
+     "level": "reported",
+     "result": "拔电重启无 Mac t20 亮;dmesg 0 invalid;父=init",
+     "evidence_paths": [
+      "knowledge/frozen/frozen.json#FZ-005 相邻记录"
+     ]
+    }
+   ],
+   "gaps": [
+    "v2/v3 双 cfg 并存,staged 目录需按 RECOVER_VARIANT 选择",
+    "permissive 14s 窗依赖 receipt-ready barrier"
+   ],
+   "evidence": [
+    {
+     "path": "benchmark/2026-10-10-u13-autostart/payload/init/00_westlake_u13_recover-v3.cfg",
+     "sha256": "7a954d8918b767f1ec54311a359172d9f83d1b1e5fc3881d29a82a792a2a91f1",
+     "supports": "触发链与 bootstage 语义"
+    }
+   ],
+   "id": "REG-107"
+  },
+  {
+   "family": "冷启动/自启",
+   "capability": "封存 driver receipt-ready barrier(竞态修复)",
+   "members": [
+    "demo_seal_61b.py wait_receipt_ready(name) — polls ROOT/receipt.env until state=READY and boot_id==current boot (L477-479, after wait_boot, before post-enforcing)",
+    "demo_seal_61b.py wait_boot(name, previous) — bounded poll: /proc/sys/kernel/random/boot_id differs + bootevent.boot.completed=true (L240-258)",
+    "affected checks moved behind the barrier: post-enforcing getenforce / post-receipt-selinux / post-dmesg invalid count / ready-socket stat 0660 (L483-498)"
+   ],
+   "implementation_status": "implemented",
+   "method": "oc-t4 只读审计定位:wait_boot 以 boot.completed 为准而 recover 收尾晚 14s;setenforce/dmesg/socket 检查曾撞窗口;cc-wiki 落 barrier 轮询 receipt.env state=READY+boot_id 匹配",
+   "source_location": "$WORKSPACES/westlake-harness-wiki/scripts/lab/demo_seal_61b.py L477-479(注释引 oc-t4 审表)",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "(无 APK——driver 逻辑)",
+     "level": "static",
+     "result": "四检查移至 barrier 后",
+     "evidence_paths": [
+      "$WORKSPACES/westlake-harness-wiki/scripts/lab/demo_seal_61b.py"
+     ]
+    }
+   ],
+   "gaps": [
+    "新版 driver 尚未在真实封存跑过一次(barrier 未实测)"
+   ],
+   "evidence": [
+    {
+     "path": "$WORKSPACES/westlake-harness-wiki/scripts/lab/demo_seal_61b.py",
+     "sha256": "a7add5519e9f3cf932c620a7e8e71246cb350caa3c7681f42f41c04017e9b446",
+     "supports": "receipt-ready barrier implementation + the four checks now behind it (race fix credited to oc-t4 audit)"
+    }
+   ],
+   "id": "REG-108"
+  },
+  {
+   "family": "BoatAttack 私有件",
+   "capability": "BoatAttack 三私有件(C7/C4/signal-box)与 9 共享路径部署判定",
+   "members": [
+    "C7 libunity.so(关 Swappy+电话监听+resolver→eglGetProcAddress)",
+    "C4 libil2cpp.so(改名+pthread-edge)",
+    "signal-box(westlake_bionic_signal_box: bionic/musl 信号垫片)"
+   ],
+   "implementation_status": "implemented",
+   "method": "12 件输入(3 私有+9 共享候选)全部对钉值逐字节核验(0 缺 0 漂移);9 共享路径里 pthread_bridge 两代字节同(db31d6d8),libandroid 差 49B=CLASSNAME_FIX 非 ABI;路线①=统一态+私有件不碰共享路径",
+   "source_location": "00.Workspace-games-ad1ab0a7(games/boatattack-repro 43ec24af9)src/tools/devices/boat-attack-apk-lightup.sh L22-55",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "boatattack",
+     "level": "static",
+     "result": "12/12 输入件 SHA 对钉值",
+     "evidence_paths": [
+      "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-09-demo-boatattack/inputs-inventory.md"
+     ]
+    }
+   ],
+   "gaps": [
+    "可玩判据(1920×1200/HUD/KPH)待上板",
+    "49B CLASSNAME_FIX 移植决策未落"
+   ],
+   "evidence": [
+    {
+     "path": "benchmark/2026-10-09-demo-boatattack/README.md",
+     "sha256": "6467f9fcc09155e9a581308d436cb16ea9ed0d6d696b7329c72f394f760f22df",
+     "supports": "9 共享路径对照+路线判定"
+    }
+   ],
+   "id": "REG-109"
+  },
+  {
+   "family": "NDK/原生",
+   "capability": "NDK libandroid 缺口(ANativeWindow 簇等 16 符号)",
+   "members": [
+    "MISSING in OH 6.1 sysroot (16): AConfiguration_new/_delete/_fromAssetManager/_getDensity/_getCountry (5); ASensorManager_getInstance/_getSensorList/_getDefaultSensor/_forget / ASensorEventQueue_getEvents/_disable/_enable/_setEventRate / ASensor_getName/_getVendor/_getHandle (11)",
+    "BRIDGED (android_graphics_compat_shim.cpp, 00.Workspace 72a2f0a52): ANativeWindow_fromSurface / _acquire / _release / _getWidth / _getHeight -> OH_NativeWindow_*"
+   ],
+   "implementation_status": "partial",
+   "method": "OH 6.1 sysroot 符号核算:16 缺失;ANativeWindow 簇经 android_graphics_compat_shim.cpp 桥到 OH_NativeWindow_*(00.Workspace 72a2f0a52);传感器/配置簇未实现",
+   "source_location": "$WORKSPACES/00.Workspace/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [
+    {
+     "apk": "SDL2 类 app(libSDL2.so 命中)",
+     "level": "static",
+     "result": "符号导出存在",
+     "evidence_paths": [
+      "$WORKSPACES/westlake-harness-t4/benchmark/2026-09-28-ndk-libandroid/INVENTORY.md"
+     ]
+    }
+   ],
+   "gaps": [
+    "16 缺失符号中仅 ANativeWindow 簇有桥;ASensor/AConfiguration 无实现",
+    "桥接层未入主仓"
+   ],
+   "evidence": [
+    {
+     "path": "$WORKSPACES/00.Workspace/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp",
+     "sha256": "7e4b38a0dbf3191245ef85df52e49e627895e2982f6acc72193bf066667e8cac",
+     "supports": "ANativeWindow cluster bridged onto OH_NativeWindow_* exports (shim source)"
+    }
+   ],
+   "id": "REG-110"
+  },
+  {
+   "family": "可重编产物",
+   "capability": "可重编产物清单(adapter846/Boat8ab/U13 runtime187 等)",
+   "members": [
+    "rebuildable-artifacts.json scope 全集"
+   ],
+   "implementation_status": "partial",
+   "method": "按两次干净构建+receipt 审计判定可重编/锁定;adapter846/Boat8ab/U13 runtime187 初批;无行证据或无双干净构建=locked",
+   "source_location": "master knowledge/gates/rebuildable-artifacts.json",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [],
+   "gaps": [
+    "清单为诊断性,不修改部署/准入/冻结",
+    "U13 其余成员待审计 receipt"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/gates/rebuildable-artifacts.json",
+     "sha256": "2da82ec24fadf28c5fa87156a7a2acea2fa65954024d3c8c0fcf0bbd395f5275",
+     "supports": "清单 scope 与 policy"
+    }
+   ],
+   "id": "REG-111"
+  },
+  {
+   "family": "镜像治理",
+   "capability": "新 native 准入与 BCP 替换例外",
+   "members": [
+    "libmediandk.so 准入(8fc07525)",
+    "U15-FRAMEWORK-BITMAP-001(framework jar 位图替换,approved)"
+   ],
+   "implementation_status": "implemented",
+   "method": "新 native 库走 new-native-admissions(SHA 钉);BCP jar 只许 adapter-mainline-stubs 例外+显式登记(U15 framework 位图经外环批)",
+   "source_location": "master knowledge/gates/{new-native-admissions.json,bcp-swap-exceptions.json}",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [],
+   "gaps": [
+    "例外清单封闭集合,新例外需走同流程"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/gates/new-native-admissions.json",
+     "sha256": "585202ed6798073ab6557aa8499e2e4d5c74f7d2b45581d54308f31439ff5fba",
+     "supports": "libmediandk 准入"
+    },
+    {
+     "path": "knowledge/gates/bcp-swap-exceptions.json",
+     "sha256": "45266e367eab748385486b174bafa52b7dd4a4fa3044dd55122a86b5f0a65f6e",
+     "supports": "U15 例外"
+    }
+   ],
+   "id": "REG-112"
+  },
+  {
+   "family": "验证可靠性",
+   "capability": "验证辅助清单(flaky/benign/未落地 ack)",
+   "members": [
+    "flaky-keys",
+    "benign-log-signatures(112KB 签名库)",
+    "unlanded-ack(SHA 锚定)"
+   ],
+   "implementation_status": "implemented",
+   "method": "flaky key 单列防误判回归;fatal 判定先滤 benign 签名;未落地 lane 以 listing SHA 锚定 ack,改动即失效",
+   "source_location": "master knowledge/gates/{flaky-keys.json,benign-log-signatures.json,unlanded-ack.json}",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [],
+   "gaps": [
+    "benign 库只覆盖已见签名,新噪声需增量"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/gates/flaky-keys.json",
+     "sha256": "1333549039c413f9f23b5557afd983ca9e9d748ee69bd31f29d367ba37c80aa9",
+     "supports": "flaky 机制"
+    },
+    {
+     "path": "knowledge/gates/benign-log-signatures.json",
+     "sha256": "550c368a6e3b13259381380a6abff51a009298997e15d8d1a0f4eef4b6221a91",
+     "supports": "签名库"
+    },
+    {
+     "path": "knowledge/gates/unlanded-ack.json",
+     "sha256": "52ad369b277b0b79c23f8fe1faa9d096e2344246f57edba8e5d110498bd5a3fa",
+     "supports": "ack 机制"
+    }
+   ],
+   "id": "REG-113"
+  },
+  {
+   "family": "部署代际",
+   "capability": "镜像来源例外与统一态归属判定",
+   "members": [
+    "image-provenance-exceptions.json(27KB)"
+   ],
+   "implementation_status": "implemented",
+   "method": "按 boot-image-inputs SHA 与 runtime 指纹判定当前部署代归属;例外显式登记防误归",
+   "source_location": "master knowledge/gates/image-provenance-exceptions.json",
+   "android_source": "unknown",
+   "android_api_level": "unknown",
+   "apk_target_sdk": "unknown",
+   "android_tested": "unknown",
+   "oh_tested": "unknown",
+   "abi": "arm64",
+   "route_generation": "unknown",
+   "deployment_status": "historical",
+   "frozen_ids": [],
+   "related_ids": [],
+   "validations": [],
+   "gaps": [
+    "三板代际混杂历史(U13/U15/boat 候选),例外表需随封存收敛"
+   ],
+   "evidence": [
+    {
+     "path": "knowledge/gates/image-provenance-exceptions.json",
+     "sha256": "0b27c3faee1bd7583e96e48e3509156c29d0afec80daa581a6075b02597d0ce3",
+     "supports": "例外机制"
+    }
+   ],
+   "id": "REG-114"
+  }
+ ],
+ "sources": [
+  {
+   "path": "knowledge/frozen/frozen.json",
+   "sha256": "41971d779e43c08e18c2e82c98efc9832a43959e89aaf05636d53295fbfcdb46",
+   "supports": "全部 8 条冻结登记的权威底表(api/mechanism/source_record/verified_apps)"
+  },
+  {
+   "path": "knowledge/gates/selinux-label-recipe.json",
+   "sha256": "7835707990d4fa2019fdf2665fd89a9a86e86a6d673bb105dd793fd2189a0f83",
+   "supports": "部署标签配方 12 规则(cx-bms, seccomp-stock 已删)"
+  },
+  {
+   "path": "knowledge/gates/sepolicy-evidence.json",
+   "sha256": "55f488a4e48d0121405c65dace42e5671ab406653d483a904848b42458c72b01",
+   "supports": "35 条 sesearch 证明: appspawn 域对各标签的实际权限"
+  },
+  {
+   "path": "knowledge/gates/rebuildable-artifacts.json",
+   "sha256": "2da82ec24fadf28c5fa87156a7a2acea2fa65954024d3c8c0fcf0bbd395f5275",
+   "supports": "可重编产物清单(adapter846/Boat8ab/U13 runtime187 状态)"
+  },
+  {
+   "path": "knowledge/gates/new-native-admissions.json",
+   "sha256": "585202ed6798073ab6557aa8499e2e4d5c74f7d2b45581d54308f31439ff5fba",
+   "supports": "新 native 准入清单(libmediandk 等)"
+  },
+  {
+   "path": "knowledge/gates/bcp-swap-exceptions.json",
+   "sha256": "45266e367eab748385486b174bafa52b7dd4a4fa3044dd55122a86b5f0a65f6e",
+   "supports": "BCP jar 替换例外(U15-FRAMEWORK-BITMAP-001 framework jar 位图)"
+  },
+  {
+   "path": "knowledge/gates/benign-log-signatures.json",
+   "sha256": "550c368a6e3b13259381380a6abff51a009298997e15d8d1a0f4eef4b6221a91",
+   "supports": "良性日志签名库(判 fatal 时的降噪依据)"
+  },
+  {
+   "path": "knowledge/gates/flaky-keys.json",
+   "sha256": "1333549039c413f9f23b5557afd983ca9e9d748ee69bd31f29d367ba37c80aa9",
+   "supports": "flaky key 清单(验证可靠性分级)"
+  },
+  {
+   "path": "knowledge/gates/image-provenance-exceptions.json",
+   "sha256": "0b27c3faee1bd7583e96e48e3509156c29d0afec80daa581a6075b02597d0ce3",
+   "supports": "镜像来源例外(当前部署代归属判定)"
+  },
+  {
+   "path": "knowledge/gates/unlanded-ack.json",
+   "sha256": "52ad369b277b0b79c23f8fe1faa9d096e2344246f57edba8e5d110498bd5a3fa",
+   "supports": "未落地 lane 清单的 ack 机制"
+  },
+  {
+   "path": "knowledge/toolchains/boot-image-inputs.sha256",
+   "sha256": "801a003cde5ffe293bf965e51c3428186782ff1b83cf0a7d765d30cf377ec202",
+   "supports": "板上 27 件 boot image + 9 jar 的权威 SHA"
+  },
+  {
+   "path": "knowledge/toolchains/dex2oat-a14.md",
+   "sha256": "afd946b461a9ad9933e14daff1998cce66b6aa15258fe815d979c95673c82bcd",
+   "supports": "dex2oat 复现全程记录(R155 对照/L1/L2/版本判定)"
+  },
+  {
+   "path": "knowledge/toolchains/art-r155/BUILD.md",
+   "sha256": "c2b9a506bd2e73ceaa966eedebe73329e876a795fb21b8bf4408302a5799f521",
+   "supports": "art-r155 构建记录(22 补丁序列/产物 SHA)"
+  },
+  {
+   "path": "benchmark/2026-10-09-demo-boatattack/README.md",
+   "sha256": "6467f9fcc09155e9a581308d436cb16ea9ed0d6d696b7329c72f394f760f22df",
+   "supports": "BoatAttack 9 共享路径对照(pthread 同字节/49B CLASSNAME_FIX/路线判定)"
+  },
+  {
+   "path": "benchmark/2026-10-10-u13-autostart/payload/init/00_westlake_u13_recover-v3.cfg",
+   "sha256": "7a954d8918b767f1ec54311a359172d9f83d1b1e5fc3881d29a82a792a2a91f1",
+   "supports": "冷启动 recover 触发链(post-fs-data + ready 参数)"
+  }
+ ],
+ "coverage_notes": [
+  "冻结 8 条全部成行(REG-001..008),验证一律 reported(历史签认,本轮不重看图)",
+  "横切 14 行(REG-101..114):ART 工具链判定/复现/asm/豁免、SELinux 配方+门、冷启动触发链+barrier、BoatAttack 私有件、NDK 缺口、可重编/准入/例外/可靠性/代际",
+  "Android 源码版本仅在有直接证据处填(FZ-005/007=r1,REG-101 对照=r16);实测 Android 对照版本全部 unknown(无板测)",
+  "OH 实测=6.1.0.31(61b/5cd/5ea,历史代际不一,按 reported)"
+ ],
+ "unclassified": [
+  "knowledge/gates/native-predeploy-exceptions.json(4MB 逐符号例外量大,本次未逐条成行)",
+  "knowledge/gates/spec-check-exceptions.json(测试基建例外,非 API 面)",
+  "knowledge/toolchains/PORTING-DEX2OAT-NEXT.md(后续计划非现状)"
+ ]
+}
