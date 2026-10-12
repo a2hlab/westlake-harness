@@ -1,0 +1,25 @@
+--- ../restore.py
++++ restore.py
+@@ -91,7 +91,21 @@
+     cmd=[sys.executable,str(Path(package)/'executor.py'),'--plan',str(Path(package)/'plan.json'),'--execute',
+          '--authorization',str(authorization),'--authorization-sha256',authorization_ref['sha256'],
+          '--out',str(out),'--action',action]
+-    run=runner(cmd,capture_output=True,text=True,timeout=900)
++    try:
++        run=runner(cmd,capture_output=True,text=True,timeout=2700)
++    except subprocess.TimeoutExpired as exc:
++        # Timeout is not an executor result and proves neither cleanup nor rollback.
++        def partial(value):
++            return value.decode('utf-8',errors='replace') if isinstance(value,bytes) else (value or '')
++        stdout,stderr=partial(exc.stdout),partial(exc.stderr)
++        sys.stdout.write(stdout);sys.stderr.write(stderr)
++        return {'schema':'exact-restoration-receipt/v1','status':'UNKNOWN',
++            'realization_sha256':proof['proof_sha256'],'source_identity':proof['source_identity'],
++            'source_seal':proof['source_seal'],'action':action,'plan_sha256':receipt['plan_sha256'],
++            'command':cmd,'executor_rc':None,'adapter_rc':124,'timeout_seconds':2700,
++            'process_state':'UNKNOWN','rollback_state':'UNKNOWN',
++            'partial_stdout':stdout,'partial_stderr':stderr,
++            'seal_signed':False,'ui_accepted':False},124
+     sys.stdout.write(run.stdout);sys.stderr.write(run.stderr)
+     return {'schema':'exact-restoration-receipt/v1','realization_sha256':proof['proof_sha256'],
+         'source_identity':proof['source_identity'],'source_seal':proof['source_seal'],
