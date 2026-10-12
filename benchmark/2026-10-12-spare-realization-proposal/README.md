@@ -18,3 +18,12 @@ The proposed acceptance is an **explicitly declared equivalent spare realization
 Pending decision: allow this narrowly bounded equivalent spare rehearsal to satisfy the cross-board restoration requirement. If declined, retain the strict original requirement and report the cross-board rehearsal incomplete; do not manufacture success by excluding generated controls or calling a synthetic 5cd seal a serial-only copy. Main 61b runtime/guardian repair and regression preparation continue independently.
 
 Evidence: ../2026-10-12-v1-seal-execution/5cd-host-install/, restore-5cd-preimages/, restore-spawner-source/; independent review PROGRESS(91) 2026-10-12T21:25:20+08:00. No board writes, gate changes, signing or acceptance changes are performed by this document.
+
+
+## Additional confirmed scope: window ID across boots
+
+Independent review at 21:43 confirmed the same issue on 61b itself: `real-start-parent.sh` rewrites `run.sh`'s `WL_PARENT_ID` before each parent launch. The retained archive value is 1443; current live 61b value is 33. The current exact selfcheck would reject a different valid host window ID after a later boot. This is an acceptance-design conflict, not evidence of runtime corruption.
+
+The concrete proposed addition is one explicitly enumerated runtime field: `export WL_PARENT_ID=<observed host window ID>` in `run.sh`. For this file, record the immutable source/template SHA, the single approved substitution site, current boot ID and independently observed host window identity, then require the **entire rendered file** to equal that deterministic realization. Unrecognized differences still fail. The selfcheck remains read-only. No wildcard path exclusions or arbitrary hash exceptions are permitted. Record host UID, board serial, attempt path and binary request offsets with the same exact transformation mechanism described above. This permits precisely defined same-board reboot and spare-board realization checks while preserving all other bytes.
+
+This added same-board dynamic-field acceptance is pending user approval too. The existing strict task contract and gates are unchanged until that decision.
