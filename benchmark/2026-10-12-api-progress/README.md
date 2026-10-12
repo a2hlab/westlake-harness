@@ -61,3 +61,5 @@ No dependencies, external scripts or network calls are required by the searchabl
 Source/field edits belong in the shard JSON; outer semantic corrections and byte-identical canonical-path aliases are explicit in `curation.json`. Regenerate the views instead of editing them by hand.
 The contracts are in `specs/api-progress/`. No push or runtime/frozen-registry modification is
 part of this delivery.
+
+Follow-up: [frozen API platform bindings](../2026-10-12-api-version-bindings/README.md) checks all eight frozen entries. Seven have contextual or planned version evidence and one remains unknown; none has a directly established tested-version binding. A task contract naming a version is not a runtime identity capture.
