@@ -1,0 +1,58 @@
+# Task Contract: Concrete recovery placement and autonomous executor
+
+## Intent
+把已交的真实启动链变成可由外环执行的新封板候选，闭合截图格式、控制件部署、启动槽和回滚。复用既有 driver/provider，避免继续只交 pending 清单而无执行路径。
+
+## Must
+- 全部工作在各自 worktree 离线完成，不联系板子、VM、远端，不写现有 seal run、签名、计划、冻结表或部署目录，不推送。
+- 当前 61b boot ac87bbbe 的原始证据只读；guardian 已退出、stop 早于 SIGSEGV，snapshot 失败与 unknown 已证，具体权限根因与 stop actor 未证。
+- 保留用户现存 app-data/data/webview；不得自动点击隐私同意；不得杀 U13 主 appspawn-x、按名称 kill 或清理非 Route B 进程。
+- 修复只作为独立候选交件；现有 driver、plan、placement 不改。上板、重启、清 stop、重签需要外环另行审查具体方案，不由此任务触发。
+- 每项结论附本地来源路径与 SHA256，历史来源保留历史范围；unknown 不强填，不将 AOSP 源码版本、SDK level 或构建号混称实测兼容。
+- 每路交英文 README、results.json、landing-paths.txt；代码与证据在同包，原始测试输出持久保存。只提交自己的明确路径，禁止 git add -A，不切别人的工作树分支。
+
+## Decisions
+- cx-t0 负责恢复候选和行为测试；cx-bms 独立审查部署对象与准备最小执行/回滚配方；oc-t4 补冻结 API 版本绑定，三路写入路径互斥。
+- 以功能断言验候选脚本；离线测试通过不代表板上上屏或可签封板。内存崩溃根因修复不在本轮范围。
+- 写独立包，引用 e5763d36 集成和 9763171a 控制件，不改两份历史字节；确有缺陷需要改候选时，新文件、新 SHA、独立回归，旧证据不借用。
+- 先本地查实际 snapshot_display 与 screen-gate 的源码/导入/格式实现，选最小兼容修正；不能仅把 AUTH 格式字段置 yes。ARM 执行由外环提供现场窗口，内环本阶段只离线实现和测试。
+- 默认 preview 零设备调用。执行器只有完整 serial/boot/expiry/plan/member/preimage 绑定及显式执行才可调用白名单设备；未知元数据或失败即停止，不自动回滚到危险旧 watchdog。
+- 复用 PLACE-ONLY 自启路径，不运行会删除 live bind 底座的 installer，不重跑清 stop/轮换数据的旧 overlay。每版一次重启，重启前快照与 sepolicy 门，重启后独立新证据。
+- 部署窗口的 boot/expiry 授权与封板后不可变自启配置分离；正常拔电重开不依赖 Mac 生成票据，运行时使用每次真实 boot/UID/WID/进程身份，不沿用今天的 PID 或窗口 ID。
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-12-recovery-executor/**
+- tools/spec-checks/tests/recovery_executor.rs
+Out of scope:
+- 内环真实板/VM/远端访问，实际授权签名、重启、上板和推送；实际操作由外环另行审查执行。
+
+## Completion Criteria
+Scenario: 完整绑定输出精确部署和恢复操作
+  Test:
+    Filter: recovery_executor_plan
+  Given 集成文件和逐目标 preimage 已钉 SHA 与元数据
+  When 用隔离设备录制器执行新部署候选
+  Then 先备份再写控制件并逐件读回，保留旧 stop 与用户数据，默认 preview 零设备调用
+
+Scenario: 错误身份或缺备份拒绝执行
+  Test:
+    Filter: recovery_executor_reject
+  Given serial boot expiry SHA 或一个 preimage 不满足计划
+  When 显式执行或请求回滚
+  Then 非零退出并且零未授权设备写，不签 UI 或 seal，不控制主 appspawn-x
+
+Scenario: 格式和启动链失败不可伪报成功
+  Test:
+    Filter: recovery_executor_format
+  Given 使用实际截图格式实现证据和真实入口脚本
+  When 测试兼容格式与损坏图片以及启动准备失败
+  Then 兼容图片被真实解码路径识别，坏图与准备失败非零且不报告 READY，必要权限与启动触发器逐件列入新 placement
+
+Scenario: 已批准自启配置跨开机仍独立有效
+  Test:
+    Filter: recovery_executor_autoboot
+  Given 已批准不可变自启配置且部署窗口票据已经过期
+  When 隔离执行两次不同 boot 和不同窗口 ID 的实际启动脚本
+  Then 两次均从当次身份建立守卫且不读取 Mac 新票据，错误成员 SHA 或当前控制 stop 则拒绝启动，不清历史 stop
+
