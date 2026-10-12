@@ -285,28 +285,15 @@ def assemble_deployment(seal_path, deployment_path, out_dir):
         path = pin['path']
         if path.startswith('$WORKSPACES/') or Path(path).is_absolute():
             return pin
-        return {'path': str((out / path).resolve()), 'sha256': pin['sha256']}
+        # Rebase the reference; copying ../../ paths could overwrite unrelated
+        # files and copying a provider alone loses its sibling dependencies.
+        import os
+        return dict(pin, path=os.path.relpath((src_dir / path).resolve(), out.resolve()))
 
     staged = copy.deepcopy(deployment)
     staged['files'] = [dict(m, source=relocate(m['source'])) for m in staged['files']]
     staged['providers'] = [dict(pr, program=relocate(pr['program']), rollback=relocate(pr['rollback']))
                            for pr in staged['providers']]
-    # copy the referenced relative files so the relocated pins stay true
-    import shutil
-    for m in deployment['files']:
-        if not m['source']['path'].startswith('$WORKSPACES/') and not Path(m['source']['path']).is_absolute():
-            src = (src_dir / m['source']['path']).resolve()
-            dst = out / m['source']['path']
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
-    for pr in deployment['providers']:
-        for field in ('program', 'rollback'):
-            pin = pr[field]
-            if not pin['path'].startswith('$WORKSPACES/') and not Path(pin['path']).is_absolute():
-                src = (src_dir / pin['path']).resolve()
-                dst = out / pin['path']
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, dst)
     # final validation against the OUTPUT directory with real bytes
     staged_view = copy.deepcopy(staged)
     staged_view['execution_enabled'] = True

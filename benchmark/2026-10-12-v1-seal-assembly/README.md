@@ -91,3 +91,7 @@ matrix: sign-steps-false, sign-steps-empty-str, archive-bad-sha,
 provider-missing-u13, rollback-arbitrary-pair, rollback-wrong-sha,
 lying-synthetic-false; fixture compiles through the real t5 compiler with both
 providers and asserts the receipt binds the seal digest).
+
+### Outer correction: preserve relative source identity
+
+After landing c06f7a1177, the outer review replaced relative-file copying with reference rebasing against the new output directory. Copying a ../ pin could escape the output or collide with its original; copying only a provider also detached its relative imports. Sources and providers now remain in their persistent original location, referenced relatively from the output, and the unchanged real validator rechecks every resolved SHA. No source file is copied or overwritten, and generated references do not add a user-home absolute path.
