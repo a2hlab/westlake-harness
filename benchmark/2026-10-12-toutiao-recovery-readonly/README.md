@@ -105,3 +105,26 @@ never rotates existing user data and respects Route B ownership.
 seal/overlay, kill the main spawner, mutate configuration, reboot, erase data,
 or automatically press consent. Keep current driver/run and original failure
 evidence. Do not expand this task into SIGSEGV repair or sign acceptance.
+
+## 14:06 read-only integration follow-up
+
+The board remains on boot `ac87bbbe-5f9b-496f-8002-43279e072042` before and after
+nine read-only captures. The captured process table has U13 parent 4792 and Route B
+parent 9529, but no `com.ss.android.article.news` child. The supervisor lock directory
+is absent; stop remains at its 09:58 timestamp and state remains `CLEANUP_BLOCKED`.
+This is process/control evidence, not a screenshot or successful UI observation.
+
+The actual deployed owner helper is now captured: SHA
+`eaba972bbfb5de827341df3bd40e85b99d5ba9cd355f0c1aeddaa34186147abd`.
+Comparing with candidate helper `80a263d9` shows only one comment-wording difference;
+executable lines match. This resolves the missing live-helper-bytes gap without
+claiming current process identity guards have passed. Actual `start-parent.sh` and
+`spawn.sh` are also captured for integration review. The former updates the host
+window ID in runtime `run.sh` and starts the namespace parent; the latter calls
+`host_spawn`. Candidate tests replacing these entrypoints cannot prove their actual
+startup behavior, JIT readiness or screenshot/classifier compatibility.
+
+[The raw capture index](followup-1406/index.json) pins each stdout file and command.
+No app start/stop, touch, screenshot, permission change, data change, reboot, runtime
+build or signature occurred. The original seal driver has separately exited with
+`acceptance exit=124`; old UI observations are not a new seal authorization.
