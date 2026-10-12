@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "/system/bin/sh -c 'set -eu\nRB_AUDIT_PHASE=readiness; RB_AUDIT_PID=6243; RB_AUDIT_BIRTH=6558;\nrb_json_bytes(){\n bytes=$(printf '\"'\"'%s'\"'\"' \"$1\" | od -An -v -tx1) || return 5\n for h in $bytes; do printf '\"'\"'\\\\u00%s'\"'\"' \"$h\" || return 5; done\n}\nrb_guard_json(){\n # One encoder process for all six NUL-delimited shell strings. Shell values\n # cannot contain NUL; all emitted value bytes retain the preceding JSON schema.\n audit_bytes=$(printf '\"'\"'%s\\000'\"'\"' \"${RB_AUDIT_PHASE:-strict}\" \"${RB_AUDIT_PID:-${p:-unknown}}\" \"${RB_AUDIT_BIRTH:-unknown}\" \"$1\" \"$2\" \"$3\" | od -An -v -tx1) || return 5\n printf '\"'\"'{\"phase\":\"'\"'\"' >&2 || return 5\n audit_field=0\n for audit_byte in $audit_bytes; do\n  if [ \"$audit_byte\" = 00 ]; then\n   audit_field=$((audit_field+1))\n   case \"$audit_field\" in\n    1) printf '\"'\"'\",\"pid\":\"'\"'\"' >&2 || return 5;;\n    2) printf '\"'\"'\",\"birth\":\"'\"'\"' >&2 || return 5;;\n    3) printf '\"'\"'\",\"field\":\"'\"'\"' >&2 || return 5;;\n    4) printf '\"'\"'\",\"actual\":\"'\"'\"' >&2 || return 5;;\n    5) printf '\"'\"'\",\"expected\":\"'\"'\"' >&2 || return 5;;\n    6) printf '\"'\"'\"}\\n'\"'\"' >&2 || return 5;;\n    *) return 5;;\n   esac\n  else\n   printf '\"'\"'\\\\u00%s'\"'\"' \"$audit_byte\" >&2 || return 5\n  fi\n done\n [ \"$audit_field\" = 6 ]\n}\nrb_deny(){\n # Discovery-only subshell sets this flag. Reject identically without encoding.\n [ \"${RB_AUDIT_QUIET:-0}\" = 1 ] && return 1\n rb_guard_json \"$1\" \"$2\" \"$3\" || return 5; return 1\n}\n\nfor n in 1 2 3; do printf \"BEFORE%s=\" \"$n\"; cat /proc/uptime; rb_guard_json readiness ready requires_final_original_child_owned 2>/dev/null; printf \"AFTER%s=\" \"$n\"; cat /proc/uptime; done\nrb_guard_json uid 0:0:0:0 20011206:20011206:20011206:20011206\n'; re_rc=$?; printf \"\\nRE_REMOTE_RC=%s\\n\" \"$re_rc\""
+  ],
+  "exit": 0,
+  "stdout_sha256": "4c0b58b8b6ef91c0e2750b4e1ff5948719f814df083d9bc0394ed56938916d1b",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

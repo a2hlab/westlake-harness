@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+    "-t",
+    "61b0657200000000000000000324012c",
+    "shell",
+    "/system/bin/sh -c 'RB_AUDIT_PHASE=readiness; RB_AUDIT_PID=6243; RB_AUDIT_BIRTH=6558;\nrb_json_bytes(){\n bytes=$(printf '\"'\"'%s'\"'\"' \"$1\" | od -An -v -tx1) || return 5\n for h in $bytes; do printf '\"'\"'\\\\u00%s'\"'\"' \"$h\" || return 5; done\n}\nrb_guard_json(){\n printf '\"'\"'{\"phase\":\"%s\",\"pid\":\"%s\",\"birth\":\"%s\",\"field\":\"%s\",\"actual\":\"%s\",\"expected\":\"%s\"}\\n'\"'\"' \\\n  \"$(rb_json_bytes \"${RB_AUDIT_PHASE:-strict}\")\" \"$(rb_json_bytes \"${RB_AUDIT_PID:-${p:-unknown}}\")\" \"$(rb_json_bytes \"${RB_AUDIT_BIRTH:-unknown}\")\" \\\n  \"$(rb_json_bytes \"$1\")\" \"$(rb_json_bytes \"$2\")\" \"$(rb_json_bytes \"$3\")\" >&2\n}\nrb_deny(){\n # Discovery-only subshell sets this flag. Reject identically without encoding.\n [ \"${RB_AUDIT_QUIET:-0}\" = 1 ] && return 1\n rb_guard_json \"$1\" \"$2\" \"$3\" || return 5; return 1\n}\n\nfor n in 1 2 3; do printf \"BEFORE%s=\" \"$n\"; cat /proc/uptime; rb_guard_json readiness ready requires_final_original_child_owned 2>/dev/null; printf \"AFTER%s=\" \"$n\"; cat /proc/uptime; done\n'; re_rc=$?; printf \"\\nRE_REMOTE_RC=%s\\n\" \"$re_rc\""
+  ],
+  "exit": 0,
+  "stdout_sha256": "30cda0edbf1ff508a9cfbfc8a905567199eabc68c9b957315231e84764a8ef93",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

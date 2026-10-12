@@ -1,0 +1,1 @@
+The attempted live full-worker context check is INVALID: lock/owner was already absent. The probe lacked set -e and subsequently read /proc/stat with an empty PID. Its transport exit zero proves no readiness predicate. No replacement lock or guardian was created; no full-worker timing or acceptance is claimed. Raw evidence is retained.
