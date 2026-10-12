@@ -1,0 +1,143 @@
+--- restore-v3/toutiao_provider.py
++++ restore-v4/toutiao_provider.py
+@@ -403,6 +403,72 @@
+     return changed
+ 
+ 
++def control_bundle(b, base):
++    """Read exactly the measured24-control readiness release, never its authority.
++
++    Inputs are independently pinned: actual plan, composition, base23 plan and
++    donor worker observation. The target's own before images still come from b.
++    """
++    refs = b['control_source']
++    plan_path = pin(refs['plan'], base)
++    composition_path = pin(refs['composition'], base)
++    root = composition_path.parent
++    need(plan_path.parent == root, 'control plan outside package')
++    composition = read(composition_path)
++    base_plan_path = pin(refs['base_plan'], base)
++    worker_path = pin(refs['worker_preimage'], base)
++    need(composition.get('schema') == 'child-readiness-composition/v1'
++         and composition['base_plan_sha256'] == digest(base_plan_path)
++         and composition['preimage_sha256'] == digest(worker_path), 'control source lineage drift')
++    listed = set()
++    for row in composition['files']:
++        name = row['path']
++        need(not Path(name).is_absolute() and '..' not in Path(name).parts and name not in listed, 'control inventory path')
++        listed.add(name)
++        src = root/name
++        need(src.is_file() and not src.is_symlink() and digest(src) == row['sha256']
++             and src.stat().st_size == row['bytes'], 'control inventory drift: '+name)
++    plan = read(plan_path); baseline = read(base_plan_path)
++    worker_target = OLD_ROOT+'/readiness-probe.sh'
++    expected = {r['target'] for r in read(RELEASE/'plan.disabled.json')['members']} | {worker_target}
++    need(len(plan['members']) == 24 and {r['target'] for r in plan['members']} == expected, 'control24 target set drift')
++    need(len(baseline['members']) == 23 and {r['target'] for r in baseline['members']} == expected-{worker_target}, 'control base23 target set drift')
++    worker = read(worker_path)
++    need(worker['target'] == worker_target and worker['exists'] is False and worker.get('proof'), 'donor worker lineage missing')
++    names = set()
++    for row in plan['members']:
++        source = row['source']
++        need(source.startswith('$PACKAGE/payload/') and len(Path(source).parts) == 3, 'control member source path')
++        relative = source.removeprefix('$PACKAGE/')
++        need(relative in listed and digest(root/relative) == row['sha256'], 'control plan/payload SHA drift')
++        metadata(row['after']); names.add(Path(source).name)
++    need('readiness-probe.sh' in names and digest(root/'executor.py') == EXECUTOR_SHA, 'readiness worker/executor missing')
++    # Scope lineage comes from base but no supplied executable authority is copied.
++    need(plan['serial'] == OLD_SERIAL and plan['scope'] == baseline['scope'], 'control donor scope/serial')
++    return plan, root/'payload', names
++
++
++def guardian_update(b, base, control_root):
++    """Pinned r2b helper delta over measured control24; no61b preimage invented."""
++    ref = b.get('guardian_update')
++    if ref is None: return None
++    manifest_path = pin(ref, base); root = manifest_path.parent
++    manifest = read(manifest_path)
++    need(manifest.get('schema') == 'quiet-reset-checkpoint/v1', 'guardian update schema')
++    listed = set()
++    for row in manifest['files']:
++        name = row['path']
++        need(not Path(name).is_absolute() and '..' not in Path(name).parts and name not in listed, 'guardian inventory path')
++        listed.add(name); source = root/name
++        need(source.is_file() and not source.is_symlink() and digest(source)==row['sha256']
++             and source.stat().st_size==row['bytes'], 'guardian update bytes drift: '+name)
++    need({'candidate/route-b-owner.sh','candidate/watchdog.sh','candidate/readiness-probe.sh','candidate/launch-common.sh'} <= listed,
++         'guardian update core missing')
++    for name in ('watchdog.sh','readiness-probe.sh','launch-common.sh'):
++        need(digest(root/'candidate'/name)==digest(control_root/name), 'guardian update exceeded helper delta: '+name)
++    return root/'candidate/route-b-owner.sh'
++
++
+ def compile_package(binding_path, out):
+     b = read(binding_path)
+     base = Path(binding_path).resolve().parent
+@@ -418,11 +484,8 @@
+     out = Path(out).resolve()
+     need(not out.exists(), 'new package output required')
+     need(not out.is_relative_to(RELEASE.resolve()), 'cannot write original release')
+-    alias_manifest=pin(b['exe_alias_manifest'],base)
+-    verify_inventory(alias_manifest,alias_manifest.parents[2])
+-    alias_root=alias_manifest.parent/'candidate'
+-    for name in ('launch-common.sh','watchdog.sh','route-b-owner.sh'):
+-        need((alias_root/name).is_file(),'accepted alias member missing')
++    oldplan, control_root, control_names = control_bundle(b, base)
++    updated_helper = guardian_update(b, base, control_root)
+     # All input metadata/local bytes checked before creating package.
+     rows = []
+     seen = set()
+@@ -487,7 +550,6 @@
+     need(isinstance(preserved, list) and len(preserved) == 1 and preserved[0]['target'] == OLD_STOP,
+          'historical stop binding required')
+     before_image(preserved[0]['before'], base)
+-    oldplan = read(RELEASE / 'plan.disabled.json')
+     for m in oldplan['members']:
+         target = m['target'].replace(OLD_ROOT, b['attempt_root'])
+         metadata(b['after'].get(target)); before_image(b['before'].get(target), base)
+@@ -510,9 +572,9 @@
+         need(str(Path(target).parent) in (newnames|existing),'undeclared parent directory: '+str(Path(target).parent))
+     out.mkdir(); (out / 'payload').mkdir(); (out / 'runtime').mkdir()
+     changes = []
+-    for p in sorted((RELEASE / 'payload').iterdir()):
+-        if not p.is_file(): continue
+-        raw = (alias_root/p.name).read_bytes() if p.name in {'launch-common.sh','watchdog.sh','route-b-owner.sh','entry.sh'} else p.read_bytes()
++    for name in sorted(control_names):
++        p = updated_helper if name=='route-b-owner.sh' and updated_helper is not None else control_root/name
++        raw = p.read_bytes()
+         data = derive_text(raw, b) if p.suffix in {'.sh', '.cfg', '.env'} else raw
+         (out / 'payload' / p.name).write_bytes(data)
+         if data != raw:
+@@ -562,12 +624,12 @@
+     # The independently accepted alias entry pins the actual derived watchdog/helper.
+     entry=out/'payload/entry.sh';entry_text=entry.read_text()
+     for name in ('watchdog.sh','route-b-owner.sh'):
+-        oldpin=digest(alias_root/name);need(entry_text.count(oldpin)==1,'entry pin drift: '+name)
++        oldpin=digest(control_root/name);need(entry_text.count(oldpin)==1,'entry pin drift: '+name)
+         entry_text=entry_text.replace(oldpin,digest(out/'payload'/name))
+     entry.write_text(entry_text)
+     # Build the per-boot file manifest from actual NEW bytes, never stale originals.
+     manifest_rows = []
+-    for line in (alias_root/'members.tsv').read_text().splitlines():
++    for line in (control_root/'members.tsv').read_text().splitlines():
+         _, name, mode = line.split(); p = out / 'payload' / {'start-parent.sh':'start-parent-prepared.sh', 'spawn.sh':'spawn-prepared.sh', 'screen-gate':'screen-gate-feed'}.get(name, name)
+         manifest_rows.append(digest(p) + ' ' + name + ' ' + mode)
+     (out / 'payload/members.tsv').write_text('\n'.join(manifest_rows) + '\n')
+@@ -599,7 +661,7 @@
+     write(out / 'binding.json', b)
+     # Include every changed/new final byte; the earlier per-file diffs are context,
+     # final manifest below is the authoritative binding after startup closure.
+-    write(out / 'derivation.json', {'source_executor_sha256': EXECUTOR_SHA, 'changes': changes,
++    write(out / 'derivation.json', {'source_executor_sha256': EXECUTOR_SHA, 'control_source': b['control_source'], 'guardian_update': b.get('guardian_update'), 'changes': changes,
+           'required_directories': b['required_directories'], 'plan_sha256': digest(out / 'plan.json'), 'device_calls': 0})
+     files = [{'path': str(p.relative_to(out)), 'sha256': digest(p), 'bytes': p.stat().st_size}
+              for p in sorted(out.rglob('*')) if p.is_file()]
+@@ -693,7 +755,7 @@
+     a = p.parse_args(argv)
+     if a.self_test:
+         suite=unittest.TestSuite([unittest.defaultTestLoader.loadTestsFromTestCase(ProviderTests),
+-            unittest.defaultTestLoader.discover(str(HERE), pattern='test_restore_v3.py')])
++            unittest.defaultTestLoader.discover(str(HERE), pattern='test_restore_v4.py')])
+         return 0 if unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful() else 1
+     try:
+         if a.compile:
