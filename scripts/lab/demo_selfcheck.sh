@@ -8,7 +8,10 @@ SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 for exact_arg in "$@"; do
     case "$exact_arg" in
         --realization|--realization=*)
-            exec python3 "$SELF_DIR/../../benchmark/2026-10-12-exact-realization/selfcheck.py" "$@"
+            exec python3 "$SELF_DIR/../../benchmark/2026-10-12-toutiao-recovery-review/r5-binary-collector/selfcheck_entry.py" --checker realization "$@"
+            ;;
+        --activation-binding|--activation-binding=*)
+            exec python3 "$SELF_DIR/../../benchmark/2026-10-12-toutiao-recovery-review/r5-binary-collector/selfcheck_entry.py" --checker activation "$@"
             ;;
     esac
 done
