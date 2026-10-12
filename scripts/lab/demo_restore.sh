@@ -5,7 +5,7 @@ SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 for recipe_arg in "$@"; do
     case "$recipe_arg" in
         --directory-recipe|--directory-recipe=*)
-            exec python3 "$SELF_DIR/../../benchmark/2026-10-12-exact-realization/r4-directory-supplement/restore_recipe.py" "$@"
+            exec python3 "$SELF_DIR/../../benchmark/2026-10-12-exact-realization/r4b-directory-logdir/restore_recipe.py" "$@"
             ;;
     esac
 done

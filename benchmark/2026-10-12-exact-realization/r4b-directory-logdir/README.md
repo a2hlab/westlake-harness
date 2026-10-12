@@ -1,0 +1,9 @@
+# r4b: create the local transport log directory
+
+The real r4 CLI failed before its first read-only probe could persist raw output: the reused frozen Transport does not create its output directory. r4b copies the r4 executor and adds only `logs.mkdir(parents=True, exist_ok=False)` immediately before Device construction. The recipe is byte-identical; its sibling manifest/authorization pins select the new executor. All source metadata and the single target remain unchanged. Parent r4 files and original transaction evidence are retained.
+
+Use the same explicitly authorized single-directory CLI with this directory's manifest and executor, fresh output and new authorization pins. The one-key `scripts/lab/demo_restore.sh --directory-recipe ...` route now selects r4b. The current recipe remains complete-existing-success: it never reruns the completed487 transaction. Do not reuse the failed r4 output or old authorization. No reboot or manual app launch is part of this fix.
+
+The actual CLI was exercised locally through the real frozen Transport with a fake HDC and a fake local lock helper. The fake HDC permits only the first read-only probe and returns deliberate remote rc42; the CLI returns1 as required. Raw stdout/stderr/JSON were written, transport_rc0 and remote_rc42 recorded, with no intent or target mutation. This is not board validation. Reproduce with `python3 -B test_cli_readonly.py FRESH_LOCAL_EVIDENCE_DIR`. The old16 tests were not rerun.
+
+Dependency: the already-landed r4 package (550de69d14 / freeze6b854054966e935823b9a26636923753dfef9ee34168b776707ad039e7067a4e), frozen r2/r3 and original main history/runtime inputs. r4b references the parent r4's unchanged small input files by relative path. Authorization examples remain unsigned. A later boot requires separately reviewed fresh evidence/manifest/authorization, as before. Final autonomous recovery and seal remain pending.

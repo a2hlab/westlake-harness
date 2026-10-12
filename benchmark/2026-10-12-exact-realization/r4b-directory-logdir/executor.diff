@@ -1,0 +1,10 @@
+--- r4/directory_transaction.py
++++ r4b/directory_transaction.py
+@@ -271,6 +271,7 @@
+         held = subprocess.run(['bash', auth['_lock_path'], 'held', SERIAL], capture_output=True, text=True, timeout=15)
+         need(held.returncode == 0 and not held.stderr and held.stdout.strip() == auth['holder'], 'external lock holder mismatch')
+         logs = Path(args.out).parent / (Path(args.out).name + '.transport-' + uuid.uuid4().hex)
++        logs.mkdir(parents=True, exist_ok=False)
+         dev = Device(executor, driver, args.hdc, logs)
+         result = transaction(manifest, dev, args.out, args.action, auth)
+         print(json.dumps(result, indent=2)); return result['executor_rc']
