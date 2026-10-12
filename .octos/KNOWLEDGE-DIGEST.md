@@ -870,3 +870,6 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 
 - 2026-10-13 #91：恢复目录闭包不能仅取部署文件的祖先；restore-v6 漏空的 `webview-t-data`，5cd 811 文件 SHA 全等仍被 watchdog `MISSING_PRESERVED_DATA` 在 lock/state 前拒（exit2）。按源实测 metadata 创建空目录、绝不搬用户内容；证据 `benchmark/2026-10-12-v1-seal-execution/5cd-prestate-predicates/`、`61b-directory-source-readonly/`、`5cd-r4-preboot-files/`。
 - 2026-10-13 #91：此 HDC shell 的直接 `cat /proc/<pid>/cmdline` 会丢 NUL；`set -o pipefail; cat ... | od -An -v -tx1` 可保留完整二进制，须严格解码并与板上 `sha256sum` 一致，不能放宽宿主身份校验或自行补 NUL。真实探针 `benchmark/2026-10-12-v1-seal-execution/61b-binary-read-probe/`。
+
+- 2026-10-13 #91 v1封板：61b受保护，final-signoff SHA5ee1f907/原seal7f5b6f99；61b与5cd实际R5自检均940PASS（811件+129 APK身份，不是940次app执行），Plan2当前20+历史5cd128，10游戏不入可玩。5cd隐私待本人选择不阻塞t5指纹恢复；随机SIG11未根治。最终说明/持久归档见 `benchmark/2026-10-12-v1-seal-execution/seal-final-20261013/`。
+- 2026-10-13 #91 r4b：mock执行器PASS不代表真实CLI可用；复用Transport前须建宿主logs目录，否则首次只读probe后落原始回执即FileNotFoundError。CLI经真实Transport+fake HDC首读拒绝用例确认stdout/stderr/JSON落盘且零intent后才交付；证据 `benchmark/2026-10-12-exact-realization/r4b-directory-logdir/`。

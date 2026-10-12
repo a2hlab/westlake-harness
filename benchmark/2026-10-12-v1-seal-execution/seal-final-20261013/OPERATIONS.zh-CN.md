@@ -12,7 +12,7 @@
 export WORKSPACES="$(cd .. && pwd)"
 FINAL="$PWD/benchmark/2026-10-12-v1-seal-execution/seal-final-20261013"
 SERIAL=61b0657200000000000000000324012c
-BOOT_ID="$($HDC -t "$SERIAL" shell cat /proc/sys/kernel/random/boot_id | tr -d '\r\n')"
+BOOT_ID="$("$HDC" -t "$SERIAL" shell cat /proc/sys/kernel/random/boot_id | tr -d '\r\n')"
 bash scripts/lab/demo_selfcheck.sh \
   --realization "$FINAL/realization-61b/realization.json" \
   --serial "$SERIAL" --boot-id "$BOOT_ID" --hdc "$HDC" \
