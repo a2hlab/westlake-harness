@@ -110,7 +110,7 @@ def validate_rows(rows, *, frozen=False):
 
 def csv_write(path, fields, rows):
     with path.open('w', encoding='utf-8-sig', newline='') as stream:
-        writer = csv.DictWriter(stream, fieldnames=fields)
+        writer = csv.DictWriter(stream, fieldnames=fields, lineterminator='\n')
         writer.writeheader()
         for row in rows:
             writer.writerow({key: (json.dumps(row.get(key), ensure_ascii=False) if isinstance(row.get(key), (list, dict))
