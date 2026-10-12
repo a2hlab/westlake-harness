@@ -1,0 +1,73 @@
+{
+ "schema": "v1-seal-assembly-results/5",
+ "rework": "strict live schema + provider/archive assembly per outer review; compile = pinned t5 build_seal.build + assembly receipt bound to seal",
+ "strict_validation": {
+  "interaction_signoff": "accepted_by non-empty str; steps non-empty list of non-empty str strings ([False] and [\"\"] rejected)",
+  "archive_sha256_map": "non-empty; every value must be 64-hex sha256 (\"not-a-sha\" rejected)",
+  "provider_admissions": "BOTH u13-base and toutiao-route-b required (order 1/2); each needs non-empty admitted_by + rollback{path,sha256} where path EXISTS on disk and digest matches ({\"x\":\"y\"} and wrong SHA rejected)",
+  "manifest_binding": "non-synthetic live.manifest must equal the pinned demo-manifest-20.json (SHA pinned); synthetic t5 fixtures keep their own manifest in the isolated branch",
+  "synthetic_honesty": "synthetic:true material cannot claim synthetic:false"
+ },
+ "assembly_receipt": "v1-seal-assembly-receipt/1 written next to the seal: seal_path+seal_sha256, synthetic flag, manifest pin, signoff, archive map, both providers with admitted_by+rollback pins",
+ "mutation_negatives": [
+  "sign-steps-false",
+  "sign-steps-empty-str",
+  "archive-bad-sha",
+  "provider-missing-u13",
+  "rollback-arbitrary-pair",
+  "rollback-wrong-sha",
+  "lying-synthetic-false"
+ ],
+ "rust": "cargo test v1_seal_assembly: 4 passed; 0 failed (inventory, reject, fixture, deployment[relative-source relocation + revalidate + 6-mutation matrix])",
+ "deployment_assembly": {
+  "mode": "assemble-deployment --seal SEAL.json --deployment CANDIDATE.json --out DIR",
+  "validated_by": "main-tree t5 restore.validate(seal, deployment, base) — exact sealed files+APK coverage, source digests vs sealed SHAs, layer order u13 -> toutiao-route-b, program+rollback real pins, disjoint provider targets",
+  "layer_ids": [
+   "u13",
+   "toutiao-route-b"
+  ],
+  "staging": "deployment persisted verbatim with execution_enabled=false (validated via a view with the flag on); enabling is outer-only; arriving enabled is refused",
+  "receipt": "v1-restore-assembly-receipt/1 {seal_path, seal_sha256, deployment_path, deployment_sha256, validated_by, execution_enabled:false}",
+  "pending_refusal": "empty files/providers refuse with the pending list before validate",
+  "deployment_negatives": [
+   "pending-files-empty",
+   "pending-providers-empty",
+   "wrong-layer-id",
+   "only-toutiao-no-u13",
+   "source-sha-mismatch",
+   "missing-target-coverage",
+   "rollback-bad-pin",
+   "arrives-enabled",
+   "flag-missing",
+   "flag-null",
+   "pending-nonempty",
+   "output-exists",
+   "synthetic-launder",
+   "staged-revalidate-fail"
+  ]
+ },
+ "interaction_signoff": {
+  "schema": "legacy acceptance-style objects: each of launch/feed/refresh/article present with passed===true and readable evidence {path, sha256} digest-verified",
+  "refused": "arbitrary string steps, missing refresh, passed:false, unreadable/drifting evidence",
+  "signoff_negatives": [
+   "signoff-missing-refresh",
+   "signoff-not-passed",
+   "signoff-arbitrary-strings"
+  ]
+ },
+ "live_data_pending_from_outer": [
+  "real 61b seal (demo-seal/v1)",
+  "real candidate deployment (files sources + u13/toutiao providers + rollback program paths/SHAs)",
+  "real interaction signoff (launch/feed/refresh/article evidence)",
+  "archive SHA map"
+ ],
+ "mechanical_fixes_final": {
+  "base_resolution": "first validate uses deployment.parent (validated_view flag-on, validate-only, never persisted)",
+  "relocation_revalidation": "relative sources copied into the output dir, refs absolutized, then a SECOND real t5 restore.validate(staged_view, out) over the actual staged bytes",
+  "strict_flags": "execution_enabled must be exactly False (missing/None/other values refuse); non-empty pending refuses",
+  "output_collision": "existing restore-deployment.json / receipt / seal / compile-receipt refuse (never overwrite history)",
+  "synthetic_propagation": "synthetic seal + deployment/live not explicitly synthetic:true refuses (marker laundering); staged deployment and both receipts carry synthetic provenance",
+  "fail_closed": "OSError from missing relative sources is a clean rc=2 refusal, not a traceback"
+ },
+ "notes_t7": "final live snapshot collected by outer via main-tree 8a4a07085 t7 BMS/snapshot adapter; no collector duplicated here"
+}
