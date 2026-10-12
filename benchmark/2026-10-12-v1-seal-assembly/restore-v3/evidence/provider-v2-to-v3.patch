@@ -1,0 +1,104 @@
+--- restore-v2/toutiao_provider.py
++++ restore-v3/toutiao_provider.py
+@@ -307,22 +307,74 @@
+     old="dev.shell('mkdir-control','set -eu; mkdir -p '+q(str(Path(target).parent)))"
+     need(changed.count(old)==1,'parent directory anchor drift')
+     changed=changed.replace(old,"dev.shell('parent-directory-read','set -eu; test -d '+q(str(Path(target).parent))+'; test ! -L '+q(str(Path(target).parent)))",1)
++    # A file transaction journal alone cannot establish ownership of directories.
++    # Journal each directory intent, and publish ownership only AFTER readback.
++    old="    for directory in plan.get('directories',[]):\n        meta=directory['after'];target=directory['target'];check_identity(dev,plan)"
++    new="    for directory_number,directory in enumerate(plan.get('directories',[])):\n        meta=directory['after'];target=directory['target'];check_identity(dev,plan)\n        save(out/('directory-intent-%03d.json'%directory_number), {'plan_sha256':plan['_sha'],'target':target,'after':meta})"
++    need(changed.count(old)==1,'directory journal anchor drift')
++    changed=changed.replace(old,new,1)
++    anchor="        require(got.splitlines()[0]==meta['mode']+':'+str(meta['uid'])+':'+str(meta['gid']) and meta['label'] in got.splitlines()[1].split(),'directory metadata readback')"
++    need(changed.count(anchor)==1,'directory ownership anchor drift')
++    changed=changed.replace(anchor,anchor+"\n        save(out/('directory-created-%03d.json'%directory_number), {'plan_sha256':plan['_sha'],'target':target,'after':meta})",1)
++    old="        got=dev.shell('directory-readback','set -eu; test -d '+q(target)+'; test ! -L '+q(target)+\"; stat -c '%a:%u:%g' \"+q(target)+'; ls -ldnZ '+q(target))"
++    new=old[:-1]+"+\"; stat -c '%d:%i' \"+q(target))"
++    need(changed.count(old)==1,'directory identity readback anchor drift')
++    changed=changed.replace(old,new,1)
++    old="        save(out/('directory-created-%03d.json'%directory_number), {'plan_sha256':plan['_sha'],'target':target,'after':meta})"
++    new="        require(len(got.splitlines())==3 and re.fullmatch(r'[0-9]+:[0-9]+',got.splitlines()[2]),'directory identity missing')\n        save(out/('directory-created-%03d.json'%directory_number), {'plan_sha256':plan['_sha'],'target':target,'after':meta,'identity':got.splitlines()[2]})"
++    need(changed.count(old)==1,'directory identity journal anchor drift')
++    changed=changed.replace(old,new,1)
++    # An absent original CFG has no metadata and no unsafe donor to quarantine.
++    # Restore its actual absence with a guarded remount trap, not guessed fields.
++    anchor="        if row['target']==CFG:\n            # Always quarantine"
++    need(changed.count(anchor)==1,'absent CFG rollback anchor drift')
++    changed=changed.replace(anchor,"""        if row['target']==CFG and not before['exists']:
++            if observed['exists']:
++                remove_added_cfg(dev,observed['sha256'])
++                require(not dev.probe(CFG)['exists'],'new CFG removal readback')
++            continue
++        if row['target']==CFG:
++            # Always quarantine""",1)
++    helper=r'''def remove_added_cfg(dev,expected_sha):
++    script=("set -eu; reseal=0; trap 'rc=$?; if [ \"$reseal\" = 1 ]; then mount -o ro,remount / || rc=1; fi; exit \"$rc\"' EXIT; "
++            "opts=$(grep ' / ' /proc/mounts | head -n1 | cut -d' ' -f4); "
++            "case ,$opts, in *,rw,*) ;; *,ro,*) mount -o rw,remount /; reseal=1;; *) exit 2;; esac; "
++            'test ! -L '+q(CFG)+'; test -f '+q(CFG)+'; '
++            'test "$(sha256sum '+q(CFG)+' | cut -d\' \' -f1)" = '+q(expected_sha)+'; '
++            'rm '+q(CFG))
++    dev.shell('cfg-remove-added-remount',script)
++
++'''
++    changed=changed.replace('def rollback(plan,dev,out):',helper+'def rollback(plan,dev,out):',1)
+     # Receipt publication is AFTER guarded cleanup; failed attempts are immutable
+     # separate receipts. Re-running rollback rechecks every backup/member first.
+     anchor="    # Evidence/stop directories are intentionally retained, never rmtree."
+     start=changed.index(anchor); end=changed.index('\ndef main(',start)
+     cleanup = r"""
+-def cleanup_storage(plan,dev,out):
++def cleanup_storage(plan,dev,out,all_directories=False):
+     failures=[]
+-    pending=list(reversed(plan.get('storage_directories',[])))
++    candidates=plan.get('directories' if all_directories else 'storage_directories',[])
++    pending=list(reversed(candidates))
+     for position,d in enumerate(pending):
+         path=d['target']; m=d['after']
+         try:
+             check_identity(dev,plan)
++            number=next(i for i,row in enumerate(plan['directories']) if row['target']==path)
++            ownership=out/('directory-created-%03d.json'%number)
++            if not ownership.exists():
++                # Unknown creation or failed metadata/readback is not ownership.
++                # Even an empty same-metadata directory must be retained.
++                dev.shell('unknown-directory-must-be-absent',
++                          'set -eu; test ! -e '+q(path)+'; test ! -L '+q(path))
++                continue
++            owned=read(ownership)
++            require({k:owned.get(k) for k in ('plan_sha256','target','after')}=={'plan_sha256':plan['_sha'],'target':path,'after':m}
++                    and re.fullmatch(r'[0-9]+:[0-9]+',owned.get('identity','')), 'directory ownership journal drift')
+             dev.shell('remove-empty-owned-storage-directory',
+                 'set -eu; test ! -L '+q(path)+'; if [ -e '+q(path)+' ]; then test -d '+q(path)+
+                 "; test \"$(stat -c '%a:%u:%g' "+q(path)+")\" = "+q(m['mode']+':'+str(m['uid'])+':'+str(m['gid']))+
+-                '; ls -ldnZ '+q(path)+' | grep -F '+q(m['label'])+' >/dev/null; rmdir '+q(path)+'; fi')
++                '; ls -ldnZ '+q(path)+' | grep -F '+q(m['label'])+' >/dev/null; '+
++                "test \"$(stat -c '%d:%i' "+q(path)+")\" = "+q(owned['identity'])+'; rmdir '+q(path)+'; fi')
+         except (OSError,ValueError,KeyError,TypeError) as error:
+             failures.append({'target':path,'error':str(error)})
+             # Identity/transport ambiguity is not permission to keep mutating.
+@@ -341,11 +393,12 @@
+     changed=changed[:start]+"""    # Candidate evidence/stop directories remain intentionally quarantined.
+     cleanup_storage(plan,dev,out)
+     receipt=out/'rollback.json'
+-    if not receipt.exists():save(receipt,{'state':'ROLLED_BACK_CONTROLS_BOOT_TRIGGER_QUARANTINED','storage_cleanup_complete':True,'retained_evidence_directories':plan.get('retained_directories',[]),'unsafe_donor_restarted':False,'app_signals':0})
++    if not receipt.exists():save(receipt,{'state':('ROLLED_BACK_CONTROLS_CFG_ABSENCE_RESTORED' if any(r['target']==CFG and not r['before']['exists'] for r in plan['members']) else 'ROLLED_BACK_CONTROLS_BOOT_TRIGGER_QUARANTINED'),'storage_cleanup_complete':True,'retained_evidence_directories':plan.get('retained_directories',[]),'unsafe_donor_restarted':False,'app_signals':0})
+ """+cleanup+changed[end:]
+     anchor="    if all(equal(current[r['target']],r['before']) for r in tx['backups']):\n"
+     need(changed.count(anchor)==1,'no-change cleanup anchor drift')
+-    changed=changed.replace(anchor,anchor+'        cleanup_storage(plan,dev,out)\n',1)
++    changed=changed.replace(anchor,anchor+"        cleanup_storage(plan,dev,out,all_directories=not any(out.glob('intent-*.json')))\n",1)
++    changed=changed.replace("'state':'NO_MEMBER_CHANGES_NO_DONOR_RESTART','app_signals':0", "'state':'NO_MEMBER_CHANGES_NO_DONOR_RESTART','directory_cleanup_complete':True,'app_signals':0",1)
+     compile(changed,'derived-executor.py','exec')
+     return changed
+ 
+@@ -640,7 +693,7 @@
+     a = p.parse_args(argv)
+     if a.self_test:
+         suite=unittest.TestSuite([unittest.defaultTestLoader.loadTestsFromTestCase(ProviderTests),
+-            unittest.defaultTestLoader.discover(str(HERE), pattern='test_restore_v2.py')])
++            unittest.defaultTestLoader.discover(str(HERE), pattern='test_restore_v3.py')])
+         return 0 if unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful() else 1
+     try:
+         if a.compile:
