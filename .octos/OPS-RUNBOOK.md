@@ -234,3 +234,5 @@ Native-only U7/U8 experiment bundle preparation: derive baseline reference SHAs 
 - **外环 Herdr 调度位置（用户 2026-10-12 明示）**：外环在 Herdr 之外，内环才在 Herdr 中；用户已授权外环从当前会话用 lane_send.sh/herdr 读、派、监控现有车道，无需 HERDR_ENV=1、不伪造该变量。Mac 不支持 Linux outer-duty，不声称持有该锁；按用户指定的 #91 单主审与黑板交接协调。
 
 - 2026-10-12 Codex 新 TUI 在工作时若 composer 明示 `tab to queue message`，lane_send 返回 sent 不代表消息已排队；先读屏，若有 `no matches / esc close` 搜索层，Esc 只关该层，再读屏后 Tab 排队，最后必须看见 `Queued follow-up inputs`。不要连按 Esc 中断正在工作的车道。#91 w9:p3 已实测。
+
+- #91 deferred-U13 cold boot (2026-10-12): after autonomous receipt READY/56, normally tap an installed ordinary app icon before t4 pre-lock identity; its strict system-parent check deliberately excludes Route B. Do not use aa/manual daemon startup or relax the check. If an earlier dispatch already created pre-lock-identity and failed before lock, retain it and prepare a fresh round with the original pre-reboot boot ID (not the current boot). The supported prepare(count=20) makes one 20-key window; outer must monitor the 45-minute limit because board_run only stops new keys at35 minutes. Evidence: benchmark/2026-10-12-v1-seal-execution/capture-feed-round20-r1/.
