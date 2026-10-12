@@ -4,6 +4,14 @@
 # --observed fixture.json performs an explicitly OFFLINE comparison (never live PASS).
 set -euo pipefail
 SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+# Exact realizations use independent boot/parameter evidence and read-only SHA checks.
+for exact_arg in "$@"; do
+    case "$exact_arg" in
+        --realization|--realization=*)
+            exec python3 "$SELF_DIR/../../benchmark/2026-10-12-exact-realization/selfcheck.py" "$@"
+            ;;
+    esac
+done
 exec python3 - "$SELF_DIR" "$@" <<'PY'
 import argparse
 import json
