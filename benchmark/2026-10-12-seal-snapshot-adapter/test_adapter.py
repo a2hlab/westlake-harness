@@ -15,6 +15,7 @@ import unittest
 import uuid
 
 import adapter
+import collect
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
@@ -100,6 +101,32 @@ class Completeness(unittest.TestCase):
                 file.write_text(text);receipt['sha256']=hashlib.sha256(file.read_bytes()).hexdigest()
                 (folder/'capture.json').write_text(json.dumps(capture))
                 with self.subTest(fault=fault), self.assertRaises(ValueError):adapter.convert(folder)
+
+    def test_readonly_collector_uses_real_receipt_protocol(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp); recorded=folder/'recorded'; recorded.mkdir()
+            capture, _, _=self.prepare(recorded)
+            commands={r['command']:(recorded/r['stdout']).read_bytes() for r in capture['receipts'].values()}
+            all_hashes={}
+            for r in capture['receipts'].values():
+                if r['command'].startswith('sha256sum '):
+                    for line in (recorded/r['stdout']).read_text().splitlines():
+                        if re.fullmatch(r'[0-9a-f]{64}\s+/\S+',line):
+                            sha,path=line.split(); all_hashes[path]=sha
+            calls=[]
+            def run(argv, **kwargs):
+                self.assertEqual(argv[1:4],['-t',capture['serial'],'shell'])
+                command=argv[-1].split('; seal_read_rc=',1)[0]; calls.append(command)
+                if command.startswith('sha256sum '):
+                    data=('\n'.join(all_hashes[p]+'  '+p for p in command.split()[1:])+'\nSEAL_READ_RC=0\n').encode()
+                else:data=commands[command]
+                return SimpleNamespace(returncode=0,stdout=data,stderr=b'')
+            out=folder/'observed'
+            result=collect.collect(capture['serial'],capture['groups'],capture['package_names'],out,runner=run)
+            self.assertEqual(result['files'],adapter.convert(recorded)['files'])
+            self.assertFalse(result['collection_provenance']['ui_accepted'])
+            self.assertTrue(all(c.startswith(('cat ','sha256sum ','bm dump -n ','param get ')) for c in calls))
+            with self.assertRaises(ValueError): collect.collect('wrong',capture['groups'],capture['package_names'],folder/'invalid',runner=run)
 
 
 if __name__ == '__main__':

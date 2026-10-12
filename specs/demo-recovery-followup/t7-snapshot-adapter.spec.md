@@ -9,7 +9,7 @@ inherits: project
 
 ## 已定决策
 
-- 仅本地转换已采原件；目标列表来自已签 baseline、完整 demo manifest 和新 overlay 参数。
+- 内环仅本地转换已采原件；外环 collect.py 以白名单 serial 和显式目标列表执行只读采集，测试仅替身传输。目标列表来自已签 baseline、完整 demo manifest 和新 overlay 参数。
 - 包版本读 bm dump 的同名顶层对象，Android APK 路径取其 applicationInfo.codePath；HAP 取唯一 entry 模块的 hapPath。不得递归收集所有 versionCode。
 - 哈希、参数、boot、包版本都来自带远端 rc=0 的原件；缺项、重复路径、跨 boot 和错误状态均拒绝，快照不得声称 UI 已验收。
 
