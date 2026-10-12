@@ -230,3 +230,5 @@ Native-only U7/U8 experiment bundle preparation: derive baseline reference SHAs 
 - **参照物必须是「真的那一份」**(今晚三次踩坑:errno13 当 SIGILL=信号行看错 PID;规格只验文本不验链接=没真编;封存从手动才有的 Enforcing 起跑=冷启动不可复现)。交件/开窗前问三句:① 判断对象是不是**板上真跑/真编出来**的那一份(不是草案文本、不是旧参照、不是别的产物)?② 结论依赖的态是不是**冷启动/正规流程能复现**的(不是手动一刀造出来的)?③ 失败归因锁到**对象自己的 PID / 自己的符号 / 自己的回执**了吗(信号行、噪声、别进程的日志不算)?
 - **「板子处于什么态」= 静态三件套强制第一步,先只读取事实再推**:凡涉及 SELinux 模式/挂载旗标/标签/命名空间/哪台机有什么,先 `cat /proc/cmdline`(含 androidboot.selinux)、`getenforce`、`ls -Z`、`/proc/<pid>/mountinfo`、receipt 原样——别用「v2=Enforcing」这类记忆模型推(今晚被一条 cmdline=permissive 证伪)。
 - **重签往返:攒批再签**。plan 每改一处小东西就重钉重签,一晚签了六七轮。改动按『一个根因一批』攒齐(例:两处 bug + placement + driver 门 本可一次重钉),一次重钉给一个新 plan_sha、外环一次签。例外:新发现(如 pre-enforcing 门)出现在上一批已签之后,只能另签——但同一轮内的已知改动不要拆签。
+
+- **外环 Herdr 调度位置（用户 2026-10-12 明示）**：外环在 Herdr 之外，内环才在 Herdr 中；用户已授权外环从当前会话用 lane_send.sh/herdr 读、派、监控现有车道，无需 HERDR_ENV=1、不伪造该变量。Mac 不支持 Linux outer-duty，不声称持有该锁；按用户指定的 #91 单主审与黑板交接协调。
