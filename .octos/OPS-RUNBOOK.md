@@ -232,3 +232,5 @@ Native-only U7/U8 experiment bundle preparation: derive baseline reference SHAs 
 - **重签往返:攒批再签**。plan 每改一处小东西就重钉重签,一晚签了六七轮。改动按『一个根因一批』攒齐(例:两处 bug + placement + driver 门 本可一次重钉),一次重钉给一个新 plan_sha、外环一次签。例外:新发现(如 pre-enforcing 门)出现在上一批已签之后,只能另签——但同一轮内的已知改动不要拆签。
 
 - **外环 Herdr 调度位置（用户 2026-10-12 明示）**：外环在 Herdr 之外，内环才在 Herdr 中；用户已授权外环从当前会话用 lane_send.sh/herdr 读、派、监控现有车道，无需 HERDR_ENV=1、不伪造该变量。Mac 不支持 Linux outer-duty，不声称持有该锁；按用户指定的 #91 单主审与黑板交接协调。
+
+- 2026-10-12 Codex 新 TUI 在工作时若 composer 明示 `tab to queue message`，lane_send 返回 sent 不代表消息已排队；先读屏，若有 `no matches / esc close` 搜索层，Esc 只关该层，再读屏后 Tab 排队，最后必须看见 `Queued follow-up inputs`。不要连按 Esc 中断正在工作的车道。#91 w9:p3 已实测。
