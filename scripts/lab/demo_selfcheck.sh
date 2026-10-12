@@ -105,9 +105,12 @@ def read_live(seal,serial,files):
         name=p['package'];text=read('bm dump -n '+name)
         try:
             data,_=json.JSONDecoder().raw_decode(text[text.index('{'):])
-            codes={str(n['versionCode']) for n in walk(data) if (n.get('name')==name or n.get('bundleName')==name) and 'versionCode' in n}
-            if len(codes)!=1:raise ValueError('missing/ambiguous matching bundle versionCode')
-            observation['packages'][name]={'version_code':codes.pop()}
+            # BMS applicationInfo carries versionCode=0 for projected Android
+            # packages. The installed bundle identity is the matching top level.
+            code=data.get('versionCode')
+            if data.get('name')!=name or type(code) is not int or code<0:
+                raise ValueError('missing/mismatched top-level installed bundle versionCode')
+            observation['packages'][name]={'version_code':str(code)}
         except (ValueError,KeyError) as e:errors.append('bm identity '+name+': '+str(e))
     for i in seal.get('inventories',[]):
         text=read('sha256sum '+' '.join(i['patterns']))

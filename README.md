@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **`benchmark/2026-10-12-seal-snapshot-adapter/`** | **Receipt-backed final seal snapshot conversion and real BMS top-level package identity; offline compiler and refusal checks.** |
 | **`benchmark/2026-10-12-recovery-classifier-probe/`** | **Frozen JPEG/PNG classifier on ARM: two valid formats pass, corrupt/missing inputs reject; synthetic images, not UI acceptance.** |
 | **`benchmark/2026-10-01-u8-prospective/`** | **U8 N10/J8 donor-qualified batch list: 22 U7 clusters, 32 unlit keys, conditional wall movement and source/commit evidence; old narrow draft superseded, not frozen.** |
 | **`benchmark/2026-10-01-n10-native/`** | **Offline U7-preserving N10 batch: exact child recipe reproduction, single-owner preload, N8 private domains, Jitsi owner/version node, donor exclusions and rollback capture isolation; 185 fresh exception proposals, no board writes.** |

@@ -853,3 +853,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-12 #91 recovery controller I/O: shell printf owner/sequence/instance/state/events failures were ignored and still produced launches/READY/rc0. Candidate 9763171a requires write + exact readback before launch, fails rc5 with no READY and retains lock/live app on later I/O failure; outer15 tests and independent14 fault replays passed offline (not device admission). Source: benchmark/2026-10-12-toutiao-recovery-candidate/.
 
 - 2026-10-12 #91：恢复分类器 afd072 的 PNG/JPEG 双格式及坏图/缺文件已在 5ea ARM 实跑通过（benchmark/2026-10-12-recovery-classifier-probe）；仅格式/ABI 证据，不等价头条真截图、自起或封板验收。
+
+- 2026-10-12 #91：真实 BMS Android 包顶层 versionCode 是已安装值，嵌套 applicationInfo.versionCode=0 为占位；selfcheck 递归并集会误报歧义。只认同名顶层对象，原件与实际 read_live 替身回归见 benchmark/2026-10-12-seal-snapshot-adapter。
