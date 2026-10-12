@@ -1,5 +1,36 @@
 # Toutiao SIGSEGV followed by no recovery: five-minute read-only findings
 
+## Evening outer follow-up: deployment objects, not archive assumptions
+
+The later outer collections `followup-1906/`, `followup-1910/` and
+`followup-1913/` contain 52 read-only command receipts. Each ordinary receipt
+retains an explicit remote exit marker; HDC's host exit alone is not success.
+The first NUL-containing environment read was filtered on the host and produced
+no retained fields; it is not evidence of an empty parent environment. The
+subsequent `strings` observation explicitly proves `WL_PARENT_ID=33` and
+`ASX_RUNTIME_OWNER_UID=20011206` for parent9529.
+
+`preimages-1915/preimages.json` records 24 proposed/control targets: 11 existing
+files were received byte-for-byte and checked against their live SHA, and 13
+are absent with exact-target or traversable-ancestor evidence. It records mode,
+UID/GID and label for existing files. These are preparation evidence, not a
+write ticket; every affected target must be rechecked immediately before apply.
+
+The live JIT script has SHA `aa1234d2` and device/inode `66352:437034` through
+both the public runtime and parent9529's namespace. The native namespace helper,
+host_spawn and effective request match the integration candidates. Conversely,
+the two old watchdog aliases differ (`9ae770bd` versus `7f4fc311`); the second
+alias has no sibling owner helper. Do not restore both aliases from one assumed
+preimage.
+
+Neither `tr` nor `toybox tr` exists on this board. `strings` is available and
+was exercised against the real parent environment. `snapshot_display` is
+`1af5524c`, while the PNG-only classifier is `808f58a1`; a filename extension or
+an approval boolean is not proof that their image formats are compatible.
+No app data, old stop, deployment, runtime, service, consent or reboot was
+changed by these collections. API atlas verification is unrelated to board UI
+acceptance.
+
 ## Confirmed chain — current boot, not the old Bug7 attribution
 
 Input root: `$WORKSPACES/westlake-harness-wiki/benchmark/2026-10-10-demo-seal-61b/seal-run-20261012T094950/acceptance-evidence/`.
