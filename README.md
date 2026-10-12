@@ -92,7 +92,11 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
-| **`benchmark/2026-10-12-v1-seal-execution/`** | **Real v1 control deployment and clean-boot evidence: 319 baseline hashes match, U13 READY56/Permissive; Toutiao ownership refusal and subsequent signal 11 remain unresolved, NOT sealed.** |
+| **`benchmark/2026-10-12-v1-seal-execution/`** | **Real v1 control evidence: 319 baseline hashes match; r3 autonomously retries two SIG11 exits and reaches interactive Toutiao feed. Capture-path and real-feed classifier fixes are being combined; NOT sealed.** |
+| **`benchmark/2026-10-12-child-readiness/`** | **Bounded read-only child readiness, strict identity diagnostics and measured OH audit overhead; r3 removes success encoding without relaxing the two-second deadline.** |
+| **`benchmark/2026-10-12-snapshot-path/`** | **OH-permitted screenshot capture with exclusive directory identity, fresh-image checks and preserved app state on failure.** |
+| **`benchmark/2026-10-12-feed-classifier/`** | **Measured Toutiao feed layout recognition; old/new positives and non-feed negatives, reproducible native build and separate ARM evidence.** |
+| **`benchmark/2026-10-12-v1-seal-assembly/`** | **Disabled restore assemblies for 487 targets with per-file metadata, original source pins and reproducible local delivery; spare execution and seal admission remain pending.** |
 | **`benchmark/2026-10-12-seal-snapshot-adapter/`** | **Receipt-backed final seal snapshot conversion and real BMS top-level package identity; offline compiler and refusal checks.** |
 | **`benchmark/2026-10-12-recovery-classifier-probe/`** | **Frozen JPEG/PNG classifier on ARM: two valid formats pass, corrupt/missing inputs reject; synthetic images, not UI acceptance.** |
 | **`benchmark/2026-10-01-u8-prospective/`** | **U8 N10/J8 donor-qualified batch list: 22 U7 clusters, 32 unlit keys, conditional wall movement and source/commit evidence; old narrow draft superseded, not frozen.** |

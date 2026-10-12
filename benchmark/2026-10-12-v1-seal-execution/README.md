@@ -1,5 +1,13 @@
 # v1 seal execution: not sealed
 
+Latest result (2026-10-12, boot `52533d3f-e49c-451e-a632-4902d77ffcb0`): r3 passed the bounded readiness worker and original ownership guard three times. The first two children exited with signal 11; the same parent was retained and the guardian retried after 5 and 10 seconds. The third child displayed a real feed, opened an article, returned to the feed, and refreshed to changed content. Its process remained alive more than 25 minutes after birth. All 319 baseline SHAs still match. These observations supersede the earlier ownership refusal as the current control blocker, but do not prove the native crash is fixed.
+
+Two deterministic UI-verification defects were found before the next deployment: `snapshot_display` rejects the guardian state directory, and the old classifier labels three current real feed frames `unknown`. T10 captures under an exclusive inode-checked directory in `/data/local/tmp`; T11 preserves the previous branches and adds measured multi-region feed recognition. Exact classifier `0bf966d7` passed 10/10 fixed-image ARM probes on spare 5ea (four feeds, privacy, actual login, IME host, article, corrupt and missing input). This is archived-image/ABI evidence, not live recovery acceptance. T10 and T11 must enter one new package before the next 61b reboot.
+
+The initial r3 t5/t20 shots are still IME host; later real-feed and interaction images are separately preserved under `r3-current-screen/` and `r3-interaction/`. No screenshot or host-UID liveness count has been promoted to Toutiao child/UI acceptance. Final-version 20-key regression, final selfcheck and spare restoration remain pending. The derived UID/window-ID equivalence proposal still requires the user's decision; no exact acceptance gate or seal signature was changed.
+
+Earlier revision evidence follows and retains its original scope.
+
 The previous offline checks missed a deployed executable-path mismatch: the Route B launch script executes `/data/local/tmp/asx/appspawn-x`, while three ownership guards accepted only the historical `asx-spawner` path. Candidate `0cc5a5bd` adds exact aliases while preserving all identity predicates. Independent review passed 18/18 inventory bindings and 6/6 tests. The rule is to compare every guard with the actual deployed launch command and captured process identity before a reboot.
 
 The revised 23-member controls package was placed with exit 0 and per-member byte/metadata readback. A complete preboot snapshot, supplemental labels and 32 policy proofs preceded exactly one reboot for this revision. New boot `ad2ba003-0d0a-43d2-a85d-e023e7702db7` autonomously reached U13 READY with 56 layers and Permissive mode; all 319 baseline hashes match. No Mac runtime repair was applied.
