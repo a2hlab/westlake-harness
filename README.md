@@ -92,7 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
-| **`benchmark/2026-10-12-v1-seal-execution/`** | **Real v1 control evidence: 319 baseline hashes match; r3 autonomously retries two SIG11 exits and reaches interactive Toutiao feed. Capture-path and real-feed classifier fixes are being combined; NOT sealed.** |
+| **`benchmark/2026-10-12-v1-seal-execution/`** | **Combined capture/classifier live recovery and Toutiao interaction PASS; native SIG11 remains. Final regression and exact spare restoration are in progress; 5cd base controls placed and verified, NOT sealed.** |
 | **`benchmark/2026-10-12-child-readiness/`** | **Bounded read-only child readiness, strict identity diagnostics and measured OH audit overhead; r3 removes success encoding without relaxing the two-second deadline.** |
 | **`benchmark/2026-10-12-snapshot-path/`** | **OH-permitted screenshot capture with exclusive directory identity, fresh-image checks and preserved app state on failure.** |
 | **`benchmark/2026-10-12-feed-classifier/`** | **Measured Toutiao feed layout recognition; old/new positives and non-feed negatives, reproducible native build and separate ARM evidence.** |

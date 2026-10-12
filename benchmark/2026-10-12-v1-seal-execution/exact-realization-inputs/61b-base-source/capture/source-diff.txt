@@ -1,0 +1,13 @@
+--- repo-v3
++++ deployed61b-v3
+@@ -220,6 +220,10 @@
+ { echo "selinux_requested=$selinux_requested"; echo "selinux_mode=${selinux_actual:-unknown}"; } >> "$RECEIPT"
+ # <<< selinux-mode-switch END <<<
+ param set "$READY_PARAM" true 2>/dev/null || fail READY_PARAM_SET
++# Fire the Toutiao boot-slot trigger (the cfg job param:westlake-u13-toutiao-overlay-start, condition
++# sys.westlake.demo.u13.ready=true which is set one line above). Without this the autostart job never
++# fires -- the condition was set but the trigger param was set by nobody (#91 cc-wiki 2026-10-10, Bug 1).
++param set westlake-u13-toutiao-overlay-start 1 2>/dev/null || true
+ journal "READY set (runtime prepared, appspawnx ondemand, sha+label verified)"
+ log "READY (runtime prepared, applications stopped, appspawn-x ondemand) — boat overlay job follows on ready param"
+ exit 0
