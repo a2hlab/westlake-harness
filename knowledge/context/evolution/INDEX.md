@@ -10,5 +10,7 @@
 | FLAW-006 | closed | Governance | — | — |
 | FLAW-007 | closed | Verification | — | — |
 | FLAW-008 | closed | Verification | — | — |
+| FLAW-009 | open | Design, Verification, Execution | — | — |
+| FLAW-010 | open | Lifecycle, Measurement | — | — |
 
 retired_prose: 0

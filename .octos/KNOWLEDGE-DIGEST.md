@@ -898,3 +898,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-13 #91 R6交互补证闭环：同child5158/birth7195先水上left/right/right，再accelerate/reset，实际图证明双向航向响应、位移碰远岩、reset回水及LAP0→1/3；0→1仅为原验收圈数转移，不宣称完整绕场一圈。原五触PARTIAL与朝向门timeout保留；不加朝向前置、不重编f28即可补齐。新boot b711全337原Reader24calls+离线回放过，full128/终封另判。证据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-interactive-main/`。
 
 - 2026-10-13 API全景增量：315条=原314条字段不变+R6 nativeUpdate独立能力一条；仅OH6.1.0.31/5ea实测，Android区间unknown，full128 pending且未API冻结。生成证据链接必须按最终逻辑布局而非生产worktree计算，否则隔离land的Markdown/HTML复验漂移；原失败留存、固定定位后复验通过。见 `benchmark/2026-10-13-api-progress-r6/`。
+
+- 2026-10-13 #91 接缝复验：held输出/挂载target域/restore-entry schema三次迟发现不兼容，生产者输出须交给主树原消费者做真实disabled CLI预演；先冻结可独立执行的核心，与后继接口复审并行，动态UID/boot只列实测缺口，不造值。见 FLAW-009、main069d943684。
