@@ -1,0 +1,85 @@
+--- BMS-identity-r4/run_candidate_post_reboot.py
++++ fresh128-handoff-r2/run_candidate_post_reboot.py
+@@ -15,7 +15,7 @@
+ import uuid
+ import shlex
+ 
+-LOCAL = Path(__file__).resolve().parent
++LOCAL = Path(os.environ['WORKSPACES']) / 'westlake-harness-bms/benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/identity-r4'
+ sys.path.insert(0, str(LOCAL))
+ import candidate_identity as candidate_gate
+ WS = candidate_gate.WS
+@@ -24,6 +24,15 @@
+ BASE = MASTER / 'benchmark/2026-10-09-demo-baseline'
+ HERE = BASE / 't4'
+ CANDIDATE_HOOK = LOCAL / 'candidate_identity.py'
++MAC_HDC_SHIM = MASTER / 'benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/smoke10-r4b/mac-tools/hdc'
++
++def identity_python():
++    # Reader needs Orb; the board_run controller stays on Mac.
++    if sys.platform == 'darwin':
++        return ['orb', '-m', 'a2hlab', 'env', 'WORKSPACES=' + str(WS),
++                'MAC_HOME=' + str(Path.home()), 'python3']
++    return [sys.executable]
++
+ SERIAL = '61b0657200000000000000000324012c'
+ ALLOWED_SERIALS = frozenset({'61b0657200000000000000000324012c', '5cd1e3dd00000000000000000923012c', '5ea34a4500000000000000001123012c'})
+ 
+@@ -101,7 +110,7 @@
+                      'bindings': {name: pin(p) for name, p in {'manifest': manifest, 'tiers': tiers,
+                            'install_index': install_index, 'smoke': smoke,
+                            'prepare_t3': BASE / 'prepare_t3.py', 'driver': Path(__file__),
+-                           'identity_hook': CANDIDATE_HOOK,
++                           'identity_hook': CANDIDATE_HOOK, 'hdc_shim': MAC_HDC_SHIM,
+                            't3_identity': BASE / 't3/verify_identity.py',
+                            'comparator': HERE / 'regress_vs_signoff.py',
+                            'facts': MASTER / 'scripts/lab/run_facts.py',
+@@ -129,9 +138,9 @@
+                     demo_install_index=portable(out / 'install-index.json'),
+                     demo_ability_pins={a['key']: pins[a['key']] for a, _ in group if a['key'] in pins},
+                     pending_before_execution=[],
+-                    after_lock=[sys.executable, portable(CANDIDATE_HOOK), '--round', portable(out),
++                    after_lock=identity_python() + [portable(CANDIDATE_HOOK), '--round', portable(out),
+                                 '--out', portable(d / 'before-identity')],
+-                    before_unlock=[sys.executable, portable(CANDIDATE_HOOK), '--round', portable(out),
++                    before_unlock=identity_python() + [portable(CANDIDATE_HOOK), '--round', portable(out),
+                                    '--out', portable(d / 'after-identity')])
+         plan['offline_precheck']['expect'] = {
+             'confirm': 'All 128 installed pinned keys produce t10/t20 snapshots on the same post-reboot U13 boot; outer signs UI.',
+@@ -245,7 +254,7 @@
+         # The round is detached once; each board_run synchronously finishes/unlocks before the next.
+         subprocess.run(['orb', '-m', 'a2hlab', 'true'], check=True, timeout=20)
+         subprocess.run(['hdc', 'list', 'targets'], check=True, timeout=20)
+-        subprocess.run([sys.executable, str(CANDIDATE_HOOK), '--round', str(out),
++        subprocess.run(identity_python() + [str(CANDIDATE_HOOK), '--round', str(out),
+                         '--out', str(plan_path.parent / 'pre-lock-identity')], check=True)
+         plan['execution_enabled'] = True
+         save(plan_path, plan)
+@@ -274,9 +283,9 @@
+         plan = read(expand(config['windows'][0]))
+         plan.update(serial=serial, why='Demo t4 reviewed Route B foreground desktop capture only',
+                     out=portable(special / 'runner'), shards=[],
+-                    after_lock=[sys.executable, portable(CANDIDATE_HOOK), '--round', portable(out),
++                    after_lock=identity_python() + [portable(CANDIDATE_HOOK), '--round', portable(out),
+                                 '--out', portable(special / 'before-identity')],
+-                    before_unlock=[sys.executable, portable(CANDIDATE_HOOK), '--round', portable(out),
++                    before_unlock=identity_python() + [portable(CANDIDATE_HOOK), '--round', portable(out),
+                                    '--out', portable(special / 'after-identity')],
+                     after_shards=[sys.executable, portable(HERE / 'foreground_toutiao.py'), '--round', portable(out)],
+                     window_limit_minutes=30, stop_new_tests_by_minute=20)
+@@ -331,12 +340,9 @@
+                                      stdin=subprocess.DEVNULL, start_new_session=True)
+         print(json.dumps({'detached_pid': child.pid, 'log': str(log)}))
+     else:
+-        tools = a.out / 'vm-tools'
+-        tools.mkdir(exist_ok=True)
+-        if not (tools / 'hdc').exists():
+-            (tools / 'hdc').write_text('#!/bin/sh\nexec orb -m a2hlab env WORKSPACES=' + shlex.quote(str(WS)) + ' MAC_HOME=' + shlex.quote(str(Path.home())) + ' bash ' + shlex.quote(str(WS / 'westlake-inputs/tools/hdc_mac.sh')) + ' \"$@\"\n')
+-            (tools / 'hdc').chmod(0o755)
+-        os.environ['PATH'] = str(tools.resolve()) + os.pathsep + os.environ['PATH']
++        if not MAC_HDC_SHIM.is_file():
++            raise ValueError('reviewed Mac native HDC shim missing')
++        os.environ['PATH'] = str(MAC_HDC_SHIM.parent) + os.pathsep + os.environ['PATH']
+         os.environ['WORKSPACES'] = str(WS)
+         os.environ['MAC_HOME'] = str(Path.home())
+         execute(a.out.resolve(), a.authorization)
