@@ -8,3 +8,5 @@ Archive only completed stable windows after their after-identity gate passes and
 Running later windows are excluded. The final128 aggregate and outer signoff remain separate work. No device calls or running-pin changes occur in this archiving lane.
 
 - [Window-03](window-03/README.md): durable and verified; single-window scope only.
+
+- [Window-04](window-04/README.md): durable and verified; single-window scope only.
