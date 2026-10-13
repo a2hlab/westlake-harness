@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Documentation of existing frozen Boat installer authorization; not a new validator",
+  "type": "object",
+  "required": [
+    "approved_by",
+    "plan_sha256",
+    "serial",
+    "origin_boot_id",
+    "boot_id",
+    "expires_epoch",
+    "action",
+    "holder"
+  ],
+  "properties": {
+    "approved_by": {
+      "const": "outer(codex)"
+    },
+    "plan_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "serial": {
+      "const": "5cd1e3dd00000000000000000923012c"
+    },
+    "origin_boot_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$"
+    },
+    "boot_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$"
+    },
+    "expires_epoch": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "action": {
+      "enum": [
+        "apply",
+        "rollback"
+      ]
+    },
+    "holder": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cleanup_receipt": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "retained_audit": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "target",
+          "exists",
+          "sha256",
+          "mode",
+          "uid",
+          "gid",
+          "label"
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "minLength": 1
+          },
+          "exists": {
+            "const": true
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "mode": {
+            "const": "644"
+          },
+          "uid": {
+            "const": 0
+          },
+          "gid": {
+            "const": 0
+          },
+          "label": {
+            "const": "u:object_r:data_file:s0"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "rollback"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "cleanup_receipt",
+          "retained_audit"
+        ]
+      }
+    }
+  ],
+  "description": "Runtime also checks exact plan SHA, serial, origin boot, actual boot, expiry > current time and complete held stdout. Apply boot must equal origin. Rollback cleanup/raw audit/transaction/backups must be independently real and complete. JSON schema alone does not authorize or establish those facts."
+}
