@@ -900,3 +900,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-13 API全景增量：315条=原314条字段不变+R6 nativeUpdate独立能力一条；仅OH6.1.0.31/5ea实测，Android区间unknown，full128 pending且未API冻结。生成证据链接必须按最终逻辑布局而非生产worktree计算，否则隔离land的Markdown/HTML复验漂移；原失败留存、固定定位后复验通过。见 `benchmark/2026-10-13-api-progress-r6/`。
 
 - 2026-10-13 #91 接缝复验：held输出/挂载target域/restore-entry schema三次迟发现不兼容，生产者输出须交给主树原消费者做真实disabled CLI预演；先冻结可独立执行的核心，与后继接口复审并行，动态UID/boot只列实测缺口，不造值。见 FLAW-009、main069d943684。
+
+- 2026-10-13 #91 内容态复核：不能只按控件存在判无回退，须同时比较 signed/R4/R6。Toodoo 原APK重复启动读tasks仅填allTasks，filters.xml缺失跳过selected刷新，0/6源于集合计数；sNotz首次Welcome自动写偏好，后续不再展示教程。5ea恢复原947后两app launch-only同样复现sNotz空列表/Toodoo0of6（非单变量因果对照），保留空态/笔记存储未证，不宣称功能可用。证据 `benchmark/2026-10-13-content-state-preflight/` 与 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/content-state-baseline947-r2/`。

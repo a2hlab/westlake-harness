@@ -1,0 +1,71 @@
+{
+ "task": "91-content-state-preflight-outer-codex",
+ "status": "DONE_LOGS_PLUS_DEX_CONTENT_DIFF_UNRESOLVED",
+ "device_calls": 0,
+ "data_mutations": 0,
+ "git_mutations": 0,
+ "rea_dir_present_at_conclusion": false,
+ "budget": "4 minutes; log comparison done, APK/dexdump (~40-116MB) NOT parsed in-budget",
+ "inputs": {
+  "logs": [
+   "snotz-R4.own-pid-hilog.txt (6953 lines, PIDs 21702/21733)",
+   "snotz-R6.own-pid-hilog.txt (6639 lines, PIDs 8625/8655)",
+   "toodoo-R4.own-pid-hilog.txt (3768 lines, PID 22822)",
+   "toodoo-R6.own-pid-hilog.txt (3724 lines, PID 9728)"
+  ],
+  "selection": "source-index.json: exact own-PID column-3 selection, original line numbers retained; R4 boot 35da6f13…, R6 boot b7116cfc…; both launches launch_only (no reinstall), review=pending_review"
+ },
+ "verified_facts": [
+  "SNOTZ ACTIVITY CHAIN DIVERGES: R4 schedules StartActivity -> MainActivity -> WelcomeActivity; R6 schedules StartActivity -> MainActivity ONLY (no WelcomeActivity anywhere in R6 log). Quoted: R4 '10-13 14:29:41.746 21733 21744 I C00f00/OH_AppSchedulerBridge: LaunchActivity transaction scheduled: com.sunilpaulmathew.snotz.activities.WelcomeActivity' and R4 'BBQ.create name=VRI[WelcomeActivity] ptr=0000007F0A2D9520'; R6 has zero WelcomeActivity lines (grep -c: R4=17, R6=0).",
+  "R6 skips the welcome/tutorial stage the R4 run displayed; MainActivity performCreate+RESUME_ACTIVITY occurs in both (R6: '10-13 21:04:45.311 8655 8667 … [tag=30057] arr=[18102322,\"com.sunilpaulmathew.snotz.MainActivity\",\"performCreate\",42L]'; R4 equivalent at 14:29:41.674).",
+  "TOODOO: R4 and R6 own-PID logs are structurally symmetric: same APPSPAWN errno:2 bind-mount warnings (same paths), same SQLiteConnection RegHook registration blocks (nativeOpen/nativePrepareStatement etc.), same final view-tree state at T=8000ms ('decor childCount=1 | child[0]=LinearLayout meas=1200x1920 … lvl2[0]=ViewStub … lvl2[1]=FrameLayout'), same CHD/VRN count 20. No adapter/onBind/itemCount/db-query content lines exist in either log — hilog cannot see list contents.",
+  "No fatal crash, no own-PID SIGSEGV/SIGABRT distinction between R4/R6 for either app (fatal-ish greps: snotz 39 vs 29 lines, toodoo 19 vs 19; spot-checks show APPSPAWN mount warnings, not app crashes).",
+  "snotz-R4 has 2x G2.14as-CHD blocks (40 vs 20) consistent with the extra WelcomeActivity window pass in R4 only."
+ ],
+ "facts_vs_hypotheses": {
+  "facts": [
+   "snotz R6 lacks the WelcomeActivity launch that R4 had",
+   "toodoo logs contain no content-bearing signals (db read results, adapter counts) in either run"
+  ],
+  "hypotheses_not_established": [
+   "H1 snotz: WelcomeActivity skip could be first-run-state divergence (R4 saw welcome because first-run flag unset; R6 skipped because flag already set) OR a navigation/regression difference. Log alone cannot distinguish — no SharedPreferences read/write lines captured.",
+   "H2 toodoo: 0-of-6 vs 6-of-6 could be (a) db seed/insert path not executed under R6 runtime, (b) query executed but returned empty (db file missing/unreadable), or (c) list rendered but items not drawn (render layer). No SQLite DB-open success/failure or query-result lines exist in own-PID hilog to discriminate."
+  ]
+ },
+ "unknowns": [
+  "No per-app .db open success/fail, SQL text, SharedPreferences key read/write, or adapter item-count lines exist in any of the four logs — the shim RegHook lines are registration-time only, identical in both runs.",
+  "APK dexdump staged (snotz 40MB, toodoo 116MB) not yet read; seed/first-run code paths (e.g. snotz welcome gating, toodoo demo '6 tasks' seeding) not located within budget.",
+  "inputs/rea/ was empty/absent at conclusion; no REA APK evidence integrated yet.",
+  "Screenshots exist (R4/R6/signed_baseline jpegs) but visual diffing is human review (records say pending_review); not treated as PASS or FAIL here."
+ ],
+ "minimal_discriminating_future_observation": [
+  "snotz: rerun once and capture whether WelcomeActivity is scheduled when app data dir is wiped vs retained — one line in own-PID log ('LaunchActivity transaction scheduled: …WelcomeActivity') cleanly separates first-run-state divergence (H1a) from navigation regression (H1b). No new instrumentation needed.",
+  "toodoo: on a single R6-style launch, log SQLiteOpenHelper onCreate/onUpgrade invocation and one adapter getItemCount() return (or `wc -l` equivalent of the task table via own-PID db trace). 6 vs 0 at getItem​Count discriminates seed-not-executed (a) / query-empty (b) / render-loss (c)."
+ ],
+ "conclusion": "Content differences are UNRESOLVED — not PASS, not regression-proven. The only hard finding is snotz R6 skipping WelcomeActivity that R4 displayed (welcome/tutorial content absent), which matches the reported empty-notes R6 screenshot premise. Toodoo 0-of-6 vs 6-of-6 is not explainable from these logs at all.",
+ "rea_supplement": {
+  "provider": "outer ran existing Android SDK dexdump/aapt rc0 (JADX MCP unavailable, no install); staged inputs/snotz-classes/*.txt, inputs/toodoo-classes/*.txt per-class dumps",
+  "snotz_mainactivity_welcome_gate": {
+   "file": "inputs/snotz-classes/MainActivity.txt",
+   "dex_offsets": [
+    "0df21a |0061: const-string v0, \"welcome_message\" // string@2454",
+    "0df21e |0063: const/4 v1, #int 0",
+    "0df220 |0064: invoke-static {v0, v1, v7}, Landroid/support/v4/media/session/a;.G:(Ljava/lang/String;ZLandroid/content/Context;)Z // method@1085",
+    "0df226 |0067: move-result v3",
+    "0df228 |0068: if-nez v3, 0077  (skip-welcome jump when pref returns TRUE)",
+    "0df22a-0df23a |006a-0071: new Intent -> WelcomeActivity -> startActivity",
+    "0df240 |0074: invoke-static {v0, v8, v7}, a;.A0:…(String;Z;Context;)V  (sets welcome_message=TRUE after showing)"
+   ],
+   "interpretation": "MainActivity gates WelcomeActivity on boolean pref 'welcome_message' via obfuscated wrapper a;.G (get-boolean, def=false). if-nez skips when already true. This makes H1a (persisted first-run flag) the code-grounded mechanism: R6 lacking WelcomeActivity is consistent with welcome_message=true already persisted. NOTE: a;.G/A0 semantics inferred from call pattern (get/set boolean pref), wrapper not decompiled."
+  },
+  "snotz_startactivity": "Same a;.G/A0 get/set pattern gates 'color_customized' (0e11f4/0e11f8) and 'use_biometric' — StartActivity is a preference-router; no welcome_message logic there.",
+  "toodoo": {
+   "files_scanned": "FragmentTaskLst.txt (353 lines listed), AppState*.txt present",
+   "finding": "FragmentTaskLst dump grep for count/size/filter/items shows only synthetic accessors and insns-size headers — no list-size or filter-count logic found in the listed method headers; deeper method-body analysis not completed within 2-minute timebox.",
+   "conclusion": "No dex-level evidence yet on seed/count path; H2 (a) seed-not-executed / (b) query-empty / (c) render-loss remains 3-way open."
+  },
+  "timebox": "Stopped at ~2 min per reviewer instruction; no full dexdump.txt read (only staged per-class files)",
+  "runtime_pass_claimed": false,
+  "new_gate": false
+ }
+}

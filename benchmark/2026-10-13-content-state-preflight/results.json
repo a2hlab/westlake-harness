@@ -1,0 +1,42 @@
+{
+  "status": "STATIC_PREDICTION_WITH_OWN_PID_CORROBORATION_NOT_RUNTIME_PASS",
+  "at": "2026-10-13T22:20:47.481588+08:00",
+  "device_calls": 0,
+  "app_data_writes": 0,
+  "new_runtime_builds": 0,
+  "snotz": {
+    "observed": "R4 actual own PID21733 launches WelcomeActivity; R6 own PID8655 launches MainActivity but no WelcomeActivity in captured own-PID excerpt.",
+    "APK_condition": "MainActivity.onCreate dex0df21a reads default SharedPreferences welcome_message=false; if false launches WelcomeActivity and immediately stores true with Editor.apply at0df240 via helper08b694. Subsequent launches skip tutorial.",
+    "resource_origin": "Welcome Note/tutorial are packaged welcome_note* resources; R4 tutorial screen is not evidence of a persisted user note.",
+    "unknown": "Actual current preference bytes and persistent note-store contents were not read. Cannot certify the empty notes list itself correct from absent fatal or visible toolbar."
+  },
+  "toodoo": {
+    "observed_R4": "Own PID22822: categories/tasks/filters/sorts XML all ENOENT; writes6 categories and6 tasks; pictured6 of6.",
+    "observed_R6": "Own PID9728: reads6 categories and6 original tasks; only filters/sorts XML ENOENT; pictured0 of6.",
+    "APK_count": "FragmentTaskLst.textNumTasks dex3425e0 uses selectedTasks.size + of + allTasks.size, before TextView rendering.",
+    "state_chain": [
+      "Tasks constructor initializes selectedTasks empty and current/pending list modes both FILTERED_LIST.",
+      "readTasksFromStream3475c0 -> setTasksFromStorage34adc8 replaces allTasks and nextId only, does not fill/refresh selectedTasks.",
+      "Successful readFiltersFromStream346ffc refreshes selectedTasks; missing filters.xml is caught in MainActivity.readFilters344174 and returns without that call.",
+      "FragmentTaskLst.onCreateView calls applyPendingListMode34ab60; equal current/pending mode skips refresh.",
+      "First-run example creation instead calls addTask34ab10, which populates allTasks and selectedTasks for accepted tasks."
+    ],
+    "prediction": "Existing tasks/categories plus missing filters produces selected0/all6 on repeat startup; first-run sample generation produces6/6. This explains the observed count without a runtime geometry/render-count call in the inspected branch chain.",
+    "unknown": "No fresh native947 launch with unchanged app data performed; not a runtime nonregression signoff."
+  },
+  "minimum_experiment_recommendation": {
+    "board": "5ea only, original947 same current boot",
+    "scope": "launch-only sNotz and Toodoo once each using existing data, screenshot at original t10/t20 tier and own-PID logs",
+    "prohibitions": [
+      "no reinstall",
+      "no data clearing",
+      "no filter edits",
+      "no preference edits",
+      "no runtime substitution",
+      "no 61b call"
+    ],
+    "predicted_snotz": "Welcome remains skipped; current list stays as original data dictates, actual store still unknown",
+    "predicted_toodoo": "0 of6 with tasks/categories read and filters missing again; if so supports application restart-state mechanism under original runtime",
+    "stop": "three-minute bounded contrast; outer decides whether to run; not performed here"
+  }
+}
