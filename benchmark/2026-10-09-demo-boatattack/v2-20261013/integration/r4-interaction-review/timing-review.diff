@@ -1,0 +1,42 @@
+--- interaction_runner-r4.py
++++ timing-replay/interaction_runner-r4.py
+@@ -124,7 +124,7 @@
+     try:candidates.append(proc_identity(b,row['pid'],plan['uid']))
+     except ValueError:pass
+   need(len(candidates)==1,'unique Boat child not ready');identity=candidates[0];rec['child']=identity;child_view()
+-  for t in (15,30,45):
++  for t in (15,30):
+    time.sleep(max(0,t-(time.monotonic()-rec['click_monotonic'])));shot('t'+str(t))
+    try:rec['images']['t'+str(t)]['target_window']=window('t'+str(t))
+    except Exception as e:rec['images']['t'+str(t)]['wms_diagnostic_error']=str(e)
+--- five-touch.py
++++ timing-replay/five-touch.py
+@@ -3,7 +3,7 @@
+ W=Path(__file__).resolve().parent;os.environ['WORKSPACES']=str(Path.cwd().parent)
+ s=importlib.util.spec_from_file_location('r',W/'interaction_runner-r4.py');R=importlib.util.module_from_spec(s);s.loader.exec_module(R)
+ s=importlib.util.spec_from_file_location('b','benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py');B=importlib.util.module_from_spec(s);sys.modules[s.name]=B;s.loader.exec_module(B)
+-o=W/'five-touch';o.mkdir();p=json.loads((W/'interaction-plan.json').read_text());old=json.loads((W/'interaction/record.json').read_text());identity=old['child'];b=B.Board(p['serial'],p['hdc'],str(Path.cwd().parent/'westlake-inputs/tools/board_note.sh'),p['owner'],o/'commands');deadline=time.monotonic()+150;remote='/data/local/tmp/boat-v2-r4-five-touch'
++o=W/'five-touch';o.mkdir();p=json.loads((W/'interaction-plan.json').read_text());old=json.loads((W/'interaction/record.json').read_text());identity=old['child'];b=B.Board(p['serial'],p['hdc'],str(Path.cwd().parent/'westlake-inputs/tools/board_note.sh'),p['owner'],o/'commands');deadline=time.monotonic()+150;remote='/data/local/tmp/boat-v2-r4-timing-five-touch'
+ rec={'serial':p['serial'],'boot_id':p['boot_id'],'child':identity,'images':{},'inputs':[],'accepted':False,'approved_by':'outer(codex)','input_basis':'Root personally viewed current t15/t30 racing images; known embedded-child WMS focus mismatch is advisory, exact PID/UID/birth/parent/seven file pins retained','visual_reference_sha256':R.sha(W/'interaction/t30.jpeg')}
+ R.save(o/'record.json',rec)
+ def guard():
+@@ -15,5 +15,5 @@
+  guard();info=B.capture(b,remote+'/'+tag+'.jpeg',o/(tag+'.jpeg'));assert R.jpeg_size(o/(tag+'.jpeg'))==(1920,1200);rec['images'][tag]=info;R.save(o/'record.json',rec)
+ for n,(name,cmd) in enumerate(R.TOUCHES,1):
+  shot('touch-%d-before'%n);guard();_,wms=b.shell("hidumper -s WindowManagerService -a '-a'");R.target_window(wms,identity['pid']);(o/('wms-%d.txt'%n)).write_text(wms)
+- rc,text=b.shell(cmd,required=False);assert rc==0;rec['inputs'].append({'index':n,'name':name,'command':cmd,'rc':rc,'response':text});R.save(o/'record.json',rec);time.sleep(2);shot('touch-%d-after'%n)
++ rc,text=b.shell(cmd,required=False);assert rc==0;rec['inputs'].append({'index':n,'name':name,'command':cmd,'rc':rc,'response':text});R.save(o/'record.json',rec);time.sleep(2 if n==5 else 0);shot('touch-%d-after'%n)
+ guard();rc,log=b.shell('hilog -z 2000',required=False,timeout=15);(o/'hilog.txt').write_text(log);assert rc==0 and '[CODE:' not in log;rec['status']='CAPTURED_PENDING_VISUAL_REVIEW';R.save(o/'record.json',rec);print('FIVE_TOUCH_CAPTURED',flush=True)
+--- run-interaction.py
++++ timing-replay/run-interaction.py
+@@ -1,8 +1,8 @@
+ from pathlib import Path
+ import json,hashlib,time,subprocess,os
+-D=Path(__file__).resolve().parent;I=D.parents[1]/'interaction'
++D=Path(__file__).resolve().parent;I=D.parents[2]/'interaction'
+ sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+-b=json.loads((D/'boot-result.json').read_text());p=json.loads((I/'plan.disabled.json').read_text());p.update(execution_enabled=True,serial='5ea34a4500000000000000001123012c',owner='outer(codex)',boot_id=b['boot_id'],uid=20011062,hdc='/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc');f=D/'interaction-plan.json';f.write_text(json.dumps(p,indent=2)+'\n')
++b=json.loads((D.parent/'boot-result.json').read_text());p=json.loads((I/'plan.disabled.json').read_text());p.update(execution_enabled=True,serial='5ea34a4500000000000000001123012c',owner='outer(codex)',boot_id=b['boot_id'],uid=20011062,hdc='/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc');f=D/'interaction-plan.json';f.write_text(json.dumps(p,indent=2)+'\n')
+ a=json.loads((I/'authorization.example.json').read_text());a.update(plan_sha256=sha(f),runner_sha256=sha(D/'interaction_runner-r4.py'),serial=p['serial'],owner=p['owner'],boot_id=p['boot_id'],expires_epoch=time.time()+420,spare_board_authorized=True);g=D/'interaction-authorization.json';g.write_text(json.dumps(a,indent=2)+'\n');os.environ['WORKSPACES']=str(Path.cwd().parent)
+ with (D/'interaction.stdout.txt').open('w') as o,(D/'interaction.stderr.txt').open('w') as e:r=subprocess.run(['python3',str(D/'interaction_runner-r4.py'),'--plan',str(f),'--out',str(D/'interaction'),'--execute','--authorization',str(g),'--authorization-sha256',sha(g)],stdout=o,stderr=e)
+ print('INTERACTION_RC',r.returncode);print((D/'interaction.stdout.txt').read_text());print((D/'interaction.stderr.txt').read_text())
