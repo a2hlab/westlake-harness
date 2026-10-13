@@ -1,0 +1,308 @@
+--- final-v2-candidate-r2/boat_provider.py
++++ final-v2-rehearsal-5cd/provider/boat_provider.py
+@@ -28,7 +28,7 @@
+     base=Path(a.deployment).resolve().parent;dep=read(a.deployment);seal=read(a.seal)
+     need(dep.get('schema')=='demo-restore-deployment/v1','deployment schema')
+     need(seal.get('schema')=='demo-seal/v1' and seal.get('seal_stage')=='v2','explicit v2 seal/candidate required')
+-    need(a.serial=='61b0657200000000000000000324012c' and seal.get('serial')==a.serial,'61b candidate only')
++    need(a.serial=='5cd1e3dd00000000000000000923012c' and seal.get('serial')==a.serial,'5cd candidate only')
+     rows=[p for p in dep['providers'] if p.get('layer')=='boatattack'];need(len(rows)==1,'one Boat provider required');p=rows[0]
+     need(pinned(p['program'],base)==Path(__file__).resolve(),'provider self-pin')
+     need(p['common']['sha256']=='df39c939529c9b571091c6df1c11b10c19003298d3f1f42bc98ce0e8ca915341','reviewed common SHA')
+--- final-v2-candidate-r2/candidate_contract.py
++++ final-v2-rehearsal-5cd/provider/candidate_contract.py
+@@ -1,8 +1,9 @@
+-"""61b-only offline derivation contract. Historical identity is never a fresh capture."""
+-import hashlib,json,os,re
++"""5cd-only offline derivation contract. Historical identity is never a fresh capture."""
++import hashlib,json,os,re,sys
+ from pathlib import Path
+ HERE=Path(__file__).resolve().parent
+-SERIAL='61b0657200000000000000000324012c'
++sys.path.insert(0,str(HERE))
++SERIAL='5cd1e3dd00000000000000000923012c'
+ ROOT='/data/westlake-demo/u13/boat-v2-20261013-r4'
+ BOAT_APK='/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/base.apk'
+ BOAT_SHA='8dc636657cccdad1310332928b8cc8eca7da03f4b528de6fb0c63118173e0444'
+@@ -11,7 +12,7 @@
+ ROUTE_DIRS={RT+'/'+n for n in ['app-data','data','webview-t-data']}
+ META=('mode','uid','gid','label')
+ SEAL_SHA='7f5b6f996482149ffd958bcdf55981cdc8ac6e69cb17738a2984153421f72780'
+-SELF_SHA='f2e7dfe273758a684a93fcf2126754456dbb7149e5afae257cbb3f9badd7d170'
++SELF_SHA='542c5176572dcde4ad8a89718bed486dca585457a3326dd5924b6e02026bceff'
+ R4_SHA='ba35319e22e0b160fadc24c3432ea8666fd2d7c0ae614a6f035a33c85247f798'
+ def need(ok,why):
+     if not ok:raise ValueError(why)
+@@ -40,23 +41,15 @@
+ def protected():
+     refs,seal,checked,old=sources()
+     need(checked['passed'] is True and checked['serial']==SERIAL and not checked['synthetic'],'historical selfcheck identity')
+-    checks={r['target']:r for r in checked['checks']};route=[r for r in seal['overlay_deployments'] if r['id']=='toutiao-route-b'][0]
+-    need(route['state']=='active' and len(route['files'])==487,'complete RouteB487 source')
+-    wanted={r['target']:r['sha256'] for r in route['files']}
+-    hap=[r for r in seal['packages'] if r['package']=='org.westlake.imehost'];need(len(hap)==1,'host HAP source')
+-    wanted[hap[0]['apk_path']]=hap[0]['apk_sha256']
+-    for target in wanted:
+-        row=checks[target];need(row['equal'] is True and row['actual']==row['expected'],'historical source check failed')
+-        # The reviewed same-board realization includes the independently observed WID.
+-        # Use its complete checked byte identity, never substitute the seal's template WID.
+-        wanted[target]=row['actual']
+-    need(len(wanted)==488,'RouteB487 plus HAP required')
+-    return wanted
++    need(sha(HERE/'source_5cd.py')=='28a43f20003bd79cfcb195ec5e81f76987c86fa14f151949291b2046cbb126c6','5cd source helper pin')
++    from source_5cd import validate_sources
++    data=validate_sources()
++    return data['protected']
+ 
+ def validate(plan,core):
+-    need(plan['serial']==SERIAL,'61b only; no spare-board absence substitution')
++    need(plan['serial']==SERIAL,'5cd only; no spare-board absence substitution')
+     cap=read(pinned(plan['capture']))
+-    need(cap.get('schema')=='boat-61b-capture/v1' and cap['serial']==SERIAL,'capture scope')
++    need(cap.get('schema')=='boat-5cd-capture/v1' and cap['serial']==SERIAL,'capture scope')
+     need(cap.get('complete') is True and cap['boot_before']==cap['boot_after']==plan['boot_id'],'complete same-boot capture required')
+     need(re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}',plan['boot_id']),'boot format')
+     need(cap.get('synthetic',False)==plan.get('synthetic',False),'synthetic provenance mismatch')
+@@ -71,12 +64,16 @@
+     need(identity_path.resolve()==HERE/'boat_identity.py','local reviewed identity reader')
+     identity.validate(cap['boat_identity'],SERIAL,plan['boot_id'],plan['boat_uid'],pinned,read)
+     need(plan['prerequisites']==old['prerequisites'],'original prerequisites unchanged')
++    need(sha(HERE/'source_5cd.py')=='28a43f20003bd79cfcb195ec5e81f76987c86fa14f151949291b2046cbb126c6','5cd source helper pin')
++    from source_5cd import validate_sources
++    source5cd=validate_sources()
+     wanted=protected();seen={r['target']:r['before'] for r in plan['preserved']}
+     need(len(seen)==len(plan['preserved'])==496 and set(seen)==set(wanted)|{r['target'] for r in old['binds']}|{BOAT_APK},'all RouteB488 plus seven stock targets and actual Boat APK required')
+     for target,h in wanted.items():
+         b=seen[target];core.metadata(b,'RouteB preimage')
+         need(b['exists'] is True and b['sha256']==h,'RouteB identity drift (new WID needs new independently verified realization): '+target)
+         need(b==cap['files'][target],'RouteB capture metadata mismatch')
++        need({k:b[k] for k in META}==source5cd['metadata'][target],'actual5cd RouteB metadata differs')
+     need(len(plan['binds'])==7,'seven binds')
+     for row,original in zip(plan['binds'],old['binds']):
+         need(all(row[k]==original[k] for k in ('target','source','sha256')),'original seven bind order/content')
+@@ -105,7 +102,9 @@
+     need(cap['baseline319']==plan['baseline319'],'captured baseline pin')
+     need(set(cap['route_b_directories'])==ROUTE_DIRS,'all three RouteB directory prerequisites')
+     need(plan['directory_prerequisites']==[{'target':t,'after':cap['route_b_directories'][t]} for t in sorted(ROUTE_DIRS)],'directory prerequisite capture binding')
+-    for d in plan['directory_prerequisites']:core.metadata(d['after'],'existing RouteB directory')
++    for d in plan['directory_prerequisites']:
++        core.metadata(d['after'],'existing RouteB directory')
++        need(d['after']==dict(mode='755',uid=20011300,gid=20011300,label='u:object_r:appdat:s0'),'actual5cd RouteB directory metadata')
+     need(plan['tools']==old['tools'] and plan['hdc']==old['hdc'],'original transport/tool identities')
+     old_members={r['target']:r for r in old['members']}
+     original=pinned(sources()[0]['r4_plan']).parent
+--- final-v2-candidate-r2/prepare.py
++++ final-v2-rehearsal-5cd/provider/prepare.py
+@@ -1,4 +1,4 @@
+-"""Offline 61b Boat candidate compiler. Default emits a concrete pending blueprint; never probes a device."""
++"""Offline 5cd Boat candidate compiler. Default emits a concrete pending blueprint; never probes a device."""
+ import argparse,copy,json,os,shutil
+ from pathlib import Path
+ import candidate_contract as c
+@@ -13,10 +13,10 @@
+         changes.append({'target':row['target'],'source':row.get('source'),'candidate_sha256':row['sha256'],
+                         'v1_seal_sha256':files.get(row['target']),'fresh_before':'pending',
+                         'operation':'place' if row in old['members'] else 'cold-boot-bind'})
+-    return {'schema':'boat-61b-disabled-blueprint/v1','execution_enabled':False,'serial':c.SERIAL,
++    return {'schema':'boat-5cd-disabled-blueprint/v1','execution_enabled':False,'serial':c.SERIAL,
+             'source_pins':refs,'placement_members':11,'boot_binds':7,'changes':changes,
+             'route_b_protected':wanted,'route_b_count':488,'global319_members_retained':319,
+-            'pending':['fresh 61b bookend boot and raw capture','Boat installed UID and APK identity',
++            'pending':['fresh 5cd bookend boot and raw capture','Boat installed UID and APK identity',
+                        'cfg CAS and exact file metadata','all RouteB487 plus host HAP fresh SHA/metadata',
+                        'seven stock bind preimages','r4 root absence and declared directory metadata',
+                        'same-boot full319 equality','full128 candidate result and outer device authorization'],
+@@ -30,7 +30,7 @@
+                 candidate_contract=c.pin(HERE/'candidate_contract.py'),boat_identity_program=c.pin(HERE/'boat_identity.py'),pending_capture=[])
+     plan['evidence']={'historical_sources':refs,'fresh_capture':plan['capture']}
+     plan['directory_prerequisites']=[{'target':t,'after':cap['route_b_directories'][t]} for t in sorted(c.ROUTE_DIRS)]
+-    plan['notes']=['61b disabled candidate; historical r4 is not 61b admission','Full RouteB488 preserved; no data enumeration/copy/removal',
++    plan['notes']=['5cd disabled candidate; historical r4 is not 5cd admission','Full RouteB488 preserved; no data enumeration/copy/removal',
+                    'Placement is not restoration; external single boot and full exact selfcheck required']
+     absence={'exists':False,'proof':plan['capture']};by_target={r['target']:r for r in plan['members']}
+     for row in plan['binds']:
+--- final-v2-candidate-r2/test_candidate.py
++++ final-v2-rehearsal-5cd/provider/test_candidate.py
+@@ -4,7 +4,7 @@
+ from unittest.mock import patch
+ HERE=Path(__file__).resolve().parent
+ sys.path.insert(0,str(HERE))
+-os.environ.setdefault('WORKSPACES',str(HERE.parents[5]))
++os.environ.setdefault('WORKSPACES',str(next(p for p in HERE.parents if (p/'scripts/lab/lab_paths.py').is_file()).parent))
+ import candidate_contract as c
+ import prepare,installer,boat_provider as provider
+ import boat_identity
+@@ -18,14 +18,16 @@
+         baseline=c.read(c.pinned(old['baseline319']))
+         baseline.update(serial=c.SERIAL,boot_before=self.boot,boot_after=self.boot,actual=baseline['expected'],complete=True,synthetic=True)
+         bp=self.root/'baseline.json';prepare.save(bp,baseline)
+-        files={target:dict(exists=True,sha256=h,mode='644',uid=20011206,gid=20011206,label='u:object_r:appdat:s0') for target,h in c.protected().items()}
++        from source_5cd import validate_sources
++        sources=validate_sources()
++        files={target:dict(exists=True,sha256=h,**sources['metadata'][target]) for target,h in c.protected().items()}
+         files[c.BOAT_APK]=dict(exists=True,sha256=c.BOAT_SHA,mode='644',uid=0,gid=0,label='u:object_r:data_app_el1_file:s0')
+         files.update({r['target']:copy.deepcopy(r['before']) for r in old['binds']})
+         b=copy.deepcopy(old['members'][-1]['before']);source=b.pop('source');files[c.CFG]=b
+-        cap=dict(schema='boat-61b-capture/v1',serial=c.SERIAL,complete=True,synthetic=True,boot_before=self.boot,boot_after=self.boot,
++        cap=dict(schema='boat-5cd-capture/v1',serial=c.SERIAL,complete=True,synthetic=True,boot_before=self.boot,boot_after=self.boot,
+                  boat_package=old['boat_package'],boat_uid=20019001,raw=[c.pin(raw)],files=files,
+                  cfg_source={'path':source,'sha256':b['sha256']},baseline319=c.pin(bp),root_absent={'target':c.ROOT,'exists':False},
+-                 route_b_directories={t:dict(mode='755',uid=20011206,gid=20011206,label='u:object_r:appdat:s0') for t in c.ROUTE_DIRS},
++                 route_b_directories={t:dict(mode='755',uid=20011300,gid=20011300,label='u:object_r:appdat:s0') for t in c.ROUTE_DIRS},
+                  directory_after={d['target']:d['after'] for d in old['directories']})
+         def raw_triplet(name,command,body,t):
+             import shlex
+--- final-v2-entry/prepare_boat.py
++++ final-v2-rehearsal-5cd/entry/prepare_boat.py
+@@ -53,12 +53,12 @@
+         r.need(result.get('status')=='installed' and result.get('install',{}).get('return_code')==0,'actual missing-only install failed')
+     else:
+         # No reinstall, cold_stop, uninstall, -r, or directory cleanup path.
+-        identity=module(HERE.parent/'final-v2-candidate-r2/boat_identity.py','preinstall_identity')
++        identity=module(HERE.parent/'provider/boat_identity.py','preinstall_identity')
+         identity.parse(dump);r.need(installed.get('sha256')==APK_SHA,'existing Boat APK drift')
+         result={'status':'already-equal'}
+     protect(board)
+     r.need(metadata(board,APK).get('sha256')==APK_SHA,'installed APK SHA readback')
+-    identity=module(HERE.parent/'final-v2-candidate-r2/boat_identity.py','installed_boat_identity')
++    identity=module(HERE.parent/'provider/boat_identity.py','installed_boat_identity')
+     rc,dump=board.shell('bm dump -n '+PACKAGE,required=False);r.need(rc==0,'BMS readback');uid=identity.parse(dump)
+     before=metadata(board,SIGNAL);wanted=dict(exists=True,sha256=EMPTY,**SIGNAL_META)
+     if before=={'exists':False}:
+@@ -85,7 +85,7 @@
+         b=module(r.pin(data['executor'],base,BMS_SHA),'frozen_bms');entry=module(HERE/'frozen-apk/missing_apk_entry.py','missing_only')
+         r.need(r.sha(HERE/'frozen-apk/missing_apk_entry.py')==ENTRY_SHA,'missing-only source drift')
+         r.need(r.sha(HERE/'frozen-apk/provider_common.py')==COMMON_SHA,'common source drift');common=module(HERE/'frozen-apk/provider_common.py','preinstall_common')
+-        identity=r.pin(data['identity_program'],base);r.need(identity==(HERE.parent/'final-v2-candidate-r2/boat_identity.py').resolve(),'identity program location')
++        identity=r.pin(data['identity_program'],base);r.need(identity==(HERE.parent/'provider/boat_identity.py').resolve(),'identity program location')
+         resolved=b.resolve_input(r.path(data['input_root'],base),data['app']);r.need(resolved['package']==PACKAGE and resolved['apk_sha256']==APK_SHA and r.sha(resolved['apk'])==APK_SHA,'original local APK')
+         r.need(not a.out.exists(),'fresh preinstall evidence output')
+         if not a.execute:print(json.dumps({'status':'OFFLINE_PREINSTALL_PREVIEW','device_calls':0,'next':'fresh same-boot BMS UID/private metadata capture; then compile new disabled provider'}));return 0
+--- final-v2-entry/prepare_request.py
++++ final-v2-rehearsal-5cd/entry/prepare_request.py
+@@ -20,7 +20,7 @@
+     r.save(inputs/'app-input.json',{'application':{'package':p.PACKAGE,'launch_activity':'com.unity3d.player.UnityPlayerActivity'},'apk_sha256':p.APK_SHA,'source_apk':os.path.relpath(a.apk.resolve(),inputs.resolve()),'native_libraries':{}})
+     main=Path(os.environ['WORKSPACES'])/'westlake-harness'
+     request={'schema':'boat-missing-preinstall/v1','execution_enabled':False,'serial':r.SERIAL,'boot_id':c['boot_before'],'preinstall_snapshot':pin(a.capture),
+-             'executor':pin(main/'benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py'),'identity_program':pin(HERE.parent/'final-v2-candidate-r2/boat_identity.py'),
++             'executor':pin(main/'benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py'),'identity_program':pin(HERE.parent/'provider/boat_identity.py'),
+              'app':{'key':'boatattack','package':p.PACKAGE,'apk_sha256':p.APK_SHA,'launch_activity':'com.unity3d.player.UnityPlayerActivity'},'input_root':portable(a.out/'input'),
+              'transport':{'hdc_cmd':'/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc','lock_cmd':'bash '+str(main/'scripts/lab/board_note.sh').replace(str(main.parent),'$WORKSPACES'),'lane':'PENDING_REAL_LOCK_HOLDER'}}
+     r.save(a.out/'request.disabled.json',request)
+--- final-v2-entry/restore_entry.py
++++ final-v2-rehearsal-5cd/entry/restore_entry.py
+@@ -3,11 +3,12 @@
+ import argparse,hashlib,json,os,subprocess,sys
+ from pathlib import Path
+ HERE=Path(__file__).resolve().parent
+-SERIAL='61b0657200000000000000000324012c'
++SERIAL='5cd1e3dd00000000000000000923012c'
+ R5='a5eb301d77f92c1755c53c93e9d59ca60d5da5030b77f495d5859b2cf68012d8'
+ R2='6a5b6bf5a1284304e14fa23def844db36b59c47b014faee1b981fe8bda3bd759'
++DIRECTORY_ENTRY='302c47c1fea1c1f2e327435a0b94b19558c09fab4bb24173531fa952e749075c'
+ BUILDER='8f8b1553eff79d934383f62e014c5a5869d98f533f8fe8da972b1e1a67594367'
+-PROVIDER='c8d17ab84da3ce3f3d7ec2f431625735b21e9171a19dc25def801aa9cd8728b7'
++PROVIDER='641a82eeb1064f747ccccff1f990e97b72e7cdbd279220e06f02269070e12851'
+ def need(ok,msg):
+     if not ok:raise ValueError(msg)
+ def read(p):return json.loads(Path(p).read_text())
+@@ -15,7 +16,7 @@
+ def save(p,obj):
+     with Path(p).open('x') as f:json.dump(obj,f,indent=2);f.write('\n')
+ def path(text,base):
+-    p=Path(str(text).replace('$WORKSPACES',os.environ.get('WORKSPACES',str(HERE.parents[5]))))
++    p=Path(str(text).replace('$WORKSPACES',os.environ.get('WORKSPACES',str(next(p for p in HERE.parents if (p/"scripts/lab/lab_paths.py").is_file()).parent))))
+     return p.resolve() if p.is_absolute() else (base/p).resolve()
+ def pin(ref,base,expected=None):
+     need(isinstance(ref,dict) and set(ref)=={'path','sha256'},'typed independent pin required')
+@@ -24,7 +25,7 @@
+ def prepare(args):
+     recipe=args.v2_recipe.resolve();need(sha(recipe)==args.recipe_sha256,'recipe independent pin mismatch')
+     data=read(recipe);base=recipe.parent
+-    need(data['schema']=='boat-v2-staged-restore/v1' and data['serial']==SERIAL,'recipe schema/61b scope')
++    need(data['schema']=='boat-v2-staged-restore/v1' and data['serial']==SERIAL,'recipe schema/5cd scope')
+     need(data.get('signed_by') is None,'recipe cannot sign seal')
+     if data.get('phase')=='preinstall':
+         request=pin(data['preinstall']['request'],base);req=read(request)
+@@ -36,10 +37,11 @@
+         if args.execute:command.append('--execute')
+         return data,None,None,[('boat-preinstall',command)]
+     need(data.get('phase')=='placement','explicit preinstall or placement phase required')
+-    rb=data['route_b'];boat=data['boat'];need(rb['mode'] in ('verify-existing','restore'),'explicit RouteB mode')
++    rb=data['route_b'];boat=data['boat'];need(rb['mode'] in ('verify-existing','restore-directory-complete'),'explicit RouteB mode')
+     proofpath=pin(rb['realization'],base);proof=read(proofpath)
+     need(proof['schema']=='exact-realization/v1' and proof['parameters']['serial']==SERIAL,'RouteB proof serial')
+-    boot=proof['parameters']['boot_id'];need(boot==data['boot_id'],'origin boot binding')
++    boot=data['boot_id'] # Current readback boot is independent of historical placement boot.
++    need(proof['parameters']['host_uid']==proof['parameters']['host_gid']==20011300 and proof['parameters']['control_root']=='/data/westlake-demo/toutiao/recovery-attempts/restore-v1-5cd-20261012','actual5cd RouteB derivation')
+     sealpath=pin(boat['seal'],base);sealp=read(sealpath)
+     need(sealp['serial']==SERIAL and sealp['seal_stage']=='v2','v2 full identity required')
+     dep_path=pin(boat['deployment'],base);dep=read(dep_path)
+@@ -48,7 +50,7 @@
+     need(pin(providers[0]['program'],dep_path.parent,PROVIDER)==provider and providers[0]['action']=='apply','same apply provider')
+     planpath=pin(providers[0]['prepared'],dep_path.parent);plan=read(planpath)
+     executor=pin(providers[0]['executor'],dep_path.parent)
+-    need(executor==(HERE.parent/'final-v2-candidate-r2/installer.py').resolve() and plan['installer_sha256']==providers[0]['executor']['sha256'],'r2 UID-checked executor required')
++    need(executor==(HERE.parent/'provider/installer.py').resolve() and plan['installer_sha256']==providers[0]['executor']['sha256'],'r2 UID-checked executor required')
+     need(plan['serial']==SERIAL and plan['boot_id']==boot,'Boat/RouteB serial and origin boot differ')
+     if args.execute:
+         need(data.get('execution_enabled') is True and not data.get('synthetic'),'disabled/synthetic recipe')
+@@ -56,18 +58,21 @@
+     steps=[]
+     if rb['mode']=='verify-existing':
+         entry=pin(rb['entry'],base,R5);hdc=pin(rb['hdc'],base)
+-        command=[sys.executable,str(entry),'--checker','realization','--realization',str(proofpath),'--serial',SERIAL,'--boot-id',boot,'--hdc',str(hdc),'--out',str(args.out/'route-b-selfcheck.json')]
++        binding_path=pin(rb['activation_binding'],base)
++        binding=read(binding_path)
++        need(binding['realization']['sha256']==rb['realization']['sha256'] and not binding.get('synthetic'),'5cd actual activation binding')
++        command=[sys.executable,str(entry),'--checker','activation','--activation-binding',str(binding_path),'--binding-sha256',rb['activation_binding']['sha256'],'--serial',SERIAL,'--boot-id',boot,'--hdc',str(hdc),'--out',str(args.out/'route-b-selfcheck.json')]
+         steps.append(('route-b-selfcheck',command))
+     else:
+-        entry=pin(rb['entry'],base,R2);manifest=pin(rb['prepared_manifest'],base)
+-        admission=pin(rb['admission'],base);auth=pin(rb['authorization'],base);lock=pin(rb['lock_tool'],base)
+-        builder=pin(rb['history_builder'],base,BUILDER);adapter=pin(rb['restore_adapter'],base)
+-        need(adapter==entry.parent/'restore.py','original adjacent r2 adapter required')
+-        txn=args.out/'route-b-transaction'
+-        command=[sys.executable,str(entry),'--realization',str(proofpath),'--prepared',str(manifest.parent),'--admission',str(admission),'--admission-sha256',rb['admission']['sha256'],'--authorization',str(auth),'--authorization-sha256',rb['authorization']['sha256'],'--lock-tool',str(lock),'--lock-tool-sha256',rb['lock_tool']['sha256'],'--transaction-action','apply','--execute','--out',str(txn)]
+-        steps.append(('route-b-restore',command))
+-        command=[sys.executable,str(builder),'--realization',str(proofpath),'--origin-realization',str(proofpath),'--prepared-manifest',str(manifest),'--admission',str(admission),'--restore-adapter',str(adapter),'--execution-receipt',str(txn)+'.realization-receipt.json','--transaction-dir',str(txn),'--execution-cwd',str(path(rb['execution_cwd'],base)),'--out',str(args.out/'activation-binding.json')]
+-        steps.append(('route-b-history487',command))
++        entry=pin(rb['entry'],base,DIRECTORY_ENTRY)
++        recipe_path=pin(rb['directory_recipe'],base);directory=read(recipe_path)
++        need(directory['mode']=='restore-then-complete','fresh complete restore recipe required; no historical replay authority')
++        need(directory['core']['realization']['sha256']==rb['realization']['sha256'],'same RouteB restore origin')
++        manifest=read(pin(directory['supplement']['manifest'],recipe_path.parent))
++        need(manifest['serial']==SERIAL and manifest['boot_id']==boot,'directory completion serial/boot')
++        command=[sys.executable,str(entry),'--directory-recipe',str(recipe_path),'--recipe-sha256',rb['directory_recipe']['sha256'],'--out',str(args.out/'route-b-completed')]
++        if args.execute:command.append('--execute')
++        steps.append(('route-b-complete',command))
+     steps.append(('boat-placement',[sys.executable,str(provider),'--seal',str(sealpath),'--serial',SERIAL,'--deployment',str(dep_path),'--out',str(args.out/'boat')]))
+     return data,plan,planpath,steps
+ 
+@@ -80,18 +85,18 @@
+         r=read(out/'route-b-selfcheck.json')
+         need(r.get('mode')=='live-readonly' and r.get('status')=='PASS' and r.get('passed') is True and not r.get('synthetic'),'real live RouteB selfcheck required')
+         need(r['serial']==SERIAL and r['boot_before']==r['boot_after']==data['boot_id'],'RouteB selfcheck boot changed')
+-        need(r['realization']['sha256']==data['route_b']['realization']['sha256'],'RouteB proof receipt binding')
++        need(r['activation']['realization']['sha256']==data['route_b']['realization']['sha256'] and r['activation']['binding']['sha256']==data['route_b']['activation_binding']['sha256'],'RouteB activated proof receipt binding')
+         checks={x['target']:x for x in r['checks']}
+         for row in plan['preserved']:
+             if row['target'] in {x['target'] for x in plan['binds']} or row['target'].endswith('/com.Unity3d.BoatAttackDay/android/base.apk'):continue
+             check=checks[row['target']];need(check['equal'] is True and check['actual']==row['before']['sha256'],'RouteB preserved SHA differs from live check')
+-    elif name=='route-b-restore':
+-        r=read(str(out/'route-b-transaction')+'.realization-receipt.json')
+-        need(type(r.get('executor_rc')) is int and r['executor_rc']==0 and r.get('action')=='apply','actual r2 executor success required')
+-    elif name=='route-b-history487':
+-        binding=read(out/'activation-binding.json')
+-        need(binding['schema']=='exact-activation-selfcheck-binding/v1' and not binding.get('synthetic') and len(binding['member_receipts'])==487,'admitted full487 binding required')
+-        need(len(list((out/'route-b-transaction').glob('placed-[0-9][0-9][0-9].json')))==487,'actual487 placed receipts required')
++    elif name=='route-b-complete':
++        root=out/'route-b-completed';r=read(root/'recipe-receipt.json')
++        need(r.get('complete') is True and type(r.get('executor_rc')) is int and r['executor_rc']==0 and r.get('core_rc')==0 and r.get('reboots')==0,'actual complete r2+r4b restoration required')
++        binding=read(root/'activation-binding.json')
++        need(binding['schema']=='exact-activation-selfcheck-binding/v1' and not binding.get('synthetic') and len(binding['member_receipts'])==487 and sha(root/'activation-binding.json')==r['history_binding_sha256'],'all487 history binding required')
++        applied=root/'directory-transaction/applied.json';a=read(applied)
++        need(sha(applied)==r['directory_receipt_sha256'] and type(a.get('executor_rc')) is int and a['executor_rc']==0 and a['state'] in ('CREATED_VERIFIED','ALREADY_EQUAL'),'exact empty directory completion required')
+     elif name=='boat-placement':
+         r=read(out/'boat/receipt.json')
+         need(type(r.get('executor_rc')) is int and r['executor_rc']==0 and r.get('status')=='PLACED_PENDING_AUTHORIZED_SINGLE_BOOT' and r.get('restored') is False and r.get('reboots')==0,'Boat actual placement incomplete')
