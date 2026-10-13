@@ -1,0 +1,92 @@
+--- a/candidate_identity.py
++++ b/candidate_identity.py
+@@ -13,7 +13,7 @@
+ JAR='/system/android/framework/oh-adapter-runtime.jar'
+ RUNTIME='/system/android/lib64/liboh_android_runtime.so'
+ ANDROID='/system/android/lib64/libandroid.so'
+-CHANGES={ADAPTER:'8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e',JAR:'6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852',RUNTIME:'94718e0d0b617a0f9a860e0b50b879b0d7d4639f32e8230b1f90f8e26e2c1354',ANDROID:'adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130'}
++CHANGES={ADAPTER:'8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e',JAR:'6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852',RUNTIME:'f28bd1b3d44e2944f77911c2ad71376869f7f3ebc6dcd8434dfea869f4056db0',ANDROID:'adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130'}
+ PRIVATE={'libunity.so':'1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac','libil2cpp.so':'f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746','libwestlake_bionic_signal_box.so':'7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da'}
+ OWN='/data/westlake-demo/u13/boat-v2-20261013-r4'
+ CFG='/system/etc/init/00_westlake_u13_recover-v3.cfg'
+@@ -50,11 +50,47 @@
+         need(re.fullmatch('[a-f0-9]{64}',h) is not None,'not full SHA: '+p)
+ 
+ def generation(doc):
+-    value={k:doc[k] for k in ['serial','expected','absent_files','placement_plan','r4_freeze']}
++    value={k:doc[k] for k in ['serial','expected','absent_files','placement_plan','r4_freeze','original_r4_proof','successor_plan','successor_program','artifact_archive','successor_freeze']}
+     return hashlib.sha256(json.dumps(value,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+ 
++def effective_plan(doc, original):
++    # Preserve original independently validated r4 proof; never reinterpret its pins.
++    import copy
++    original_gate = MAIN.parent/'westlake-harness-bms/benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/identity-r4/candidate_identity.py'
++    need(sha(original_gate)=='9cdea3d175c2aa8b17b7f9039b2d98cfc91d6034288f3fea61bd3f84224c8c18','original r4 gate identity')
++    spec=importlib.util.spec_from_file_location('r4_original_gate',original_gate);oldgate=importlib.util.module_from_spec(spec);spec.loader.exec_module(oldgate)
++    need(doc['original_r4_proof']['sha256']=='d8f13bf33e431bc8821e4e29c573161c41d1527e276828b8e725efad3e959b22','exact corrected actual5ea r4 proof')
++    old=oldgate.load_proof(pinned(doc['original_r4_proof']),doc['original_r4_proof']['sha256'])
++    need(old['placement_plan']==doc['placement_plan'] and old['r4_freeze']==doc['r4_freeze'] and old['baseline']==doc['baseline'] and old['protected_files']==doc['protected_files'] and old['current_cfg']==doc['current_cfg'] and old['absent_files']==doc['absent_files'],'original r4 guard inputs unchanged')
++    archive=read(pinned(doc['artifact_archive']));need(archive['runtime']['sha256']==CHANGES[RUNTIME] and archive['remote_verified'] is True and archive['archive_sha256']=='94bd613889ad24944d7ad89bc3e95b360475fc228b9e66f986d788ae3350b4d9','root archived exact source-build artifact')
++    pinned(archive['runtime'])
++    successor=read(pinned(doc['successor_plan']));program=pinned(doc['successor_program']);need(successor['executor']==doc['successor_program'],'exact final successor executor pin')
++    freeze_path=pinned(doc['successor_freeze']);need(doc['successor_freeze']['sha256']=='40f0b103afe4e4af767f95bee53f4c5e140ff9daf0c2c5f164b962964eb0508c','root landed exact R6 author freeze')
++    frozen=read(freeze_path);need(any(r['sha256']==sha(program) and (MAIN/r['path']).resolve()==program.resolve() for r in frozen['files']),'successor program outside root freeze')
++    for r in frozen['files']:need(sha(MAIN/r['path'])==r['sha256'],'root freeze member drift')
++    spec=importlib.util.spec_from_file_location('r6_exact_successor',program);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);module.validate(successor)
++    need(successor['serial']==SPARE and successor['boot_id']==module.BOOT and successor['boat_uid']==original['boat_uid'] and successor['boat_package']==original['boat_package'],'actual5ea successor scope')
++    need(successor['candidate_runtime_sha256']==CHANGES[RUNTIME] and successor['execution_enabled'] is False,'exact disabledf28 successor')
++    targets=[OWN+'/sources/liboh_android_runtime.so',OWN+'/binds.tsv',OWN+'/worker.sh']
++    need([r['target'] for r in successor['members']]==targets and successor['directories']==[],'only exact three already installed members')
++    need(successor['binds']==original['binds'] and successor['core']==original['core'] and successor['tools']==original['tools'],'original seven bind/tool guards')
++    baseline=read(pinned(old['baseline']))['expected'];need(successor['expected319']=={t:old['expected'][t] for t in baseline},'old full319 expected cannot be weakened')
++    oldmembers={r['target']:r for r in original['members']}
++    expected_preserved=[dict(target=r['target'],before=dict(exists=True,sha256=r['sha256'],**r['after'])) for r in original['members'] if r['target'] not in targets]+[{'target':ROUTEB,'before':{'exists':False}}]
++    need(successor['preserved']==expected_preserved,'all other W3 controls and RouteB absence required')
++    effective=copy.deepcopy(original)
++    bytarget={r['target']:r for r in successor['members']}
++    for target,new in bytarget.items():
++        before=new['before'];oldrow=oldmembers[target]
++        need(before['exists'] is True and before['sha256']==old['expected'][target] and {k:before[k] for k in ('mode','uid','gid','label')}==oldrow['after'] and new['after']==oldrow['after'],'actual successor preimage/metadata differs')
++    for row in effective['members']:
++        if row['target'] in bytarget:row['sha256']=bytarget[row['target']]['sha256']
++    for row in effective['binds']:
++        if row['target']==RUNTIME:row['sha256']=CHANGES[RUNTIME]
++    return effective,successor
++
+ def validate(doc):
+-    need(doc['schema']=='boat-candidate-identity/v4','schema')
++    need(doc['schema']=='boat-candidate-identity/r6' and doc['execution_enabled'] is False,'disabled R6 schema')
+     need(doc['serial']==SPARE,'this proof scope is 5ea only; 5cd/61b require full actual RouteB inventory')
+     need(doc['baseline']==pin(BASE),'exact original baseline pin required')
+     base=read(pinned(doc['baseline']))['expected']; need(len(base)==319,'original 319 inventory required')
+@@ -80,6 +116,7 @@
+         if target not in CHANGES and target!=cfg:need(expected.get(target)==digest,'protected object drift: '+target)
+     plan_path=pinned(doc['placement_plan']);plan=read(plan_path)
+     need(sha(plan_path)=='8ee3a7e4ea6bb68a7482b3aafb635920bc1e1716a01cc2161b4acfc05a2a18b1','reviewed actual r4 placement pin')
++    plan, successor = effective_plan(doc,plan)
+     freeze=pinned(doc['r4_freeze']);need(sha(freeze)=='c72fa0b2f63a7a4a4da5431538bd0fe322108f1cd9e5037987ab802529204677','reviewed r4 freeze pin')
+     need(plan['serial']==doc['serial'],'placement serial mismatch')
+     members={r['target']:r for r in plan['members']};need(len(members)==11,'eleven placement objects required')
+@@ -88,7 +125,7 @@
+     for row in plan['binds']:
+         need(expected.get(row['target'])==row['sha256']==expected.get(row['source']),'bind target/source identity differs')
+         if row['target'] in base:need(row['before']['sha256']==base[row['target']],'bind baseline preimage differs')
+-    need(expected[OWN+'/worker.sh']=='3f1a464338ce5b2f4c4d93ed0dc0db9c5fdf52c1e3156fae4d7e9e056b6898c2','reviewed r4 worker required')
++    need(expected[OWN+'/worker.sh']==successor['members'][2]['sha256'],'reviewed exact successor worker required')
+     need(expected[OWN+'/recover-v3-boat.sh']=='291451a1a3b821a5527e3c8619d932664d047e25116e9c653d185d2ea5ee878f','reviewed synchronous recover required')
+     for name,h in PRIVATE.items():need(expected.get(LIB+name)==h,'missing Boat private SHA: '+name)
+     for p in [CFG,'/system/etc/westlake-u13-recover-v3.sh',OWN+'/worker.sh',OWN+'/recover-v3-boat.sh',OWN+'/binds.tsv','/data/westlake-demo/u13/selinux-mode','/data/westlake-demo/u13/u13-recover-table.json','/data/westlake-demo/u13/u13-recover-table.tsv']:
+@@ -100,8 +137,12 @@
+     evidence=read(pinned(absent[0]['evidence']))
+     need(evidence['serial']==SPARE and {'target':ROUTEB,'before':{'exists':False}} in evidence['preserved'],'absence not grounded in actual serial-specific placement plan')
+     need(expected['/system/etc/westlake-u13-recover-v3.sh']=='43491d3aae7dbded7fec2aee38a448087270261a795402c6955db6e7d5de0fae','CURRENT recovery only')
+-    need(expected[RUNTIME]==CHANGES[RUNTIME],'exact geometry runtime947 required')
++    need(expected[RUNTIME]==CHANGES[RUNTIME],'exact geometry runtimef28 required')
+     need(doc['expected']==expected,'complete candidate inventory mismatch')
++    old = read(pinned(doc['original_r4_proof']))
++    need(set(expected)==set(old['expected']),'original full337 membership cannot change')
++    want={RUNTIME:CHANGES[RUNTIME],**{r['target']:r['sha256'] for r in successor['members']}}
++    need({t:h for t,h in expected.items() if h!=old['expected'][t]}==want,'only exact four successor object SHAs may change')
+     need(doc['generation_sha256']==generation(doc),'full generation digest mismatch')
+     runtime,boot=parts({p:expected[p] for p in base})
+     need(doc['fingerprints']=={'runtime_sha256':fp(runtime),'boot_sha256':fp(boot)},'full fingerprints differ')

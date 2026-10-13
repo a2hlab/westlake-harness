@@ -1,0 +1,27 @@
+--- a/prepare_smoke10.py
++++ b/prepare_smoke10.py
+@@ -8,13 +8,14 @@
+ HERE = Path(__file__).resolve().parent
+ 
+ 
+-def prepare(out, proof_path, proof_sha, boot_before):
++def prepare(out, proof_path, proof_sha, boot_before, install_index):
+     proof = identity.load_proof(proof_path, proof_sha)
++    identity.need(identity.sha(install_index)=='38b70b09d66f0e11b6e738b6e504f07c2ac8a4c9b564c38cfef7f60d41c62275','exact actual5ea installed index required')
+     spec = importlib.util.spec_from_file_location('r4_existing_driver', HERE / 'run_candidate_post_reboot.py')
+     driver = importlib.util.module_from_spec(spec)
+     spec.loader.exec_module(driver)
+     config = driver.prepare(HERE / 'full128-stable-first-manifest.json', HERE / 'smoke10-t20-tiers.json',
+-                            driver.BASE / 't3/install-index-final.json', out, boot_before,
++                            install_index, out, boot_before,
+                             identity.pinned(proof['smoke']), count=10, serial=identity.SPARE,
+                             candidate_proof=proof_path, candidate_sha=proof_sha)
+     config['bindings']['smoke10_preparer'] = identity.pin(Path(__file__))
+@@ -41,5 +42,6 @@
+     parser.add_argument('--candidate-proof', type=Path, required=True)
+     parser.add_argument('--candidate-proof-sha256', required=True)
+     parser.add_argument('--boot-before', required=True)
++    parser.add_argument('--install-index', type=Path, required=True)
+     args = parser.parse_args()
+-    print(json.dumps(prepare(args.out, args.candidate_proof, args.candidate_proof_sha256, args.boot_before)))
++    print(json.dumps(prepare(args.out, args.candidate_proof, args.candidate_proof_sha256, args.boot_before, args.install_index)))

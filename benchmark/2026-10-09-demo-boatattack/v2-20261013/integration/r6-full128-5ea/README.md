@@ -1,0 +1,13 @@
+# Actual5ea R6 full128 and original ten t20 controls — disabled
+
+This sibling consumes main r6-experiment-main/package/plan.disabled.json SHA002d977f and root successor freeze40f0b103,starting from corrected5ea r4 proofd8f13bf3 and completed actual5ea full128. It does not use5cd/R5/954. Original319 remains315keep+4replace;337 SHA objects and typedRouteB ABSENT remain. Only runtime target/source,bindstable andworker update;333 objects remain identical. Count is derived mechanically from original membership.
+
+Original identity check/main/parse/runtime/boot/parent/version functions and absenceReader remain AST/byte identical. Driver differs only inLOCAL:128 canonical order,121t10+7t20,eight windows,Mac controller/Orb identity/prelock,binding/resolve/records/collect/capture timing/error exits stay. Actual5ea index38b70b09 includes verifiedNoice72 SHA8e11;no installation,data operation or old screenshot credit is created.
+
+Actualprepare and actualdriver CLI pass with process/transport launches denied. SevenPython tests,three lifecycle scenarios pass. Use prepare.py --request request.disabled.json --out <fresh> after landing to regenerate localself-pins. Output preview-main is disabled; actualnewboot/full337/ABSENT/runtime/boot/parent/version,input resolution androotAB approval remain pending. NoHDC/deploy/enable occurred.
+
+## Original ten bright controls at t20
+
+prepare_smoke10.py reuses the original preparer and driver.prepare(count=10),three originalcontrol/order/tier JSON files,and the actual5ea index(required --install-index38b70b09). Run with --candidate-proof <newproof> --candidate-proof-sha256 <fullSHA> --boot-before <actualR6origin> --out <fresh> --install-index <actual5eaindex>. Its originalalgorithm emits13 windows; ONLY smoke10-main/window-01/plan.json contains the ten controls. Do not dispatch driver--execute on that13-window configuration as smoke10. Future rootadmitted execution uses original demo-baseline/t3/demo_board_run.py on that first plan,with originalpre-lock identity and bothOrb337 hooks retained. Receipt smoke10-preparation.json binds exactten keys and all20seconds. Freshfull128 is a separate new eight-window round; no residual13 windows/historicalframes count.
+
+Delivery checks use20 source/input/spec/test files only: tests first invoke the real guardedprepare+smoke10CLIs under their landedpath,then check regeneratedlocalself-pins. Actualisolatedcargo7testsPASS. Nextboot must regenerate inputs/proof from newmainobservations; current002d977f/40f0 snapshot is not execution authority and noT4oldplan can be used. Rootreports R6 geometry/accelerate/reset andDropCount recovery,whileleft/right/LAP awaitsupplementalbehavior;this is not a runtime rejection orfull128pass.

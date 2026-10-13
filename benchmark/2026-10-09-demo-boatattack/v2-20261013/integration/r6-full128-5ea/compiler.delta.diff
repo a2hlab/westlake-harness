@@ -1,0 +1,12 @@
+--- a/compile_candidate.py
++++ b/compile_candidate.py
+@@ -18,7 +18,8 @@
+     for row in extras:
+         c.need(row['target'] not in expected,'overlap baseline');c.need(c.sha(c.pinned(row['source']))==row['sha256'],'source SHA');expected[row['target']]=row['sha256']
+     runtime,boot=c.parts({p:expected[p] for p in base})
+-    proof={'schema':'boat-candidate-identity/v4','status':'candidate/not_sealed','execution_enabled':False,'serial':request['serial'],'baseline':request['baseline'],'protected_files':request['protected_files'],'current_cfg':request['current_cfg'],'replacements':{p:{'before':base[p],'after':h} for p,h in c.CHANGES.items()},'additional_files':extras,'expected':expected,'generation_sha256':None,'absent_files':request['absent_files'],'placement_plan':request['placement_plan'],'r4_freeze':request['r4_freeze'],'fingerprints':{'runtime_sha256':c.fp(runtime),'boot_sha256':c.fp(boot)},'programs':{'identity':c.pin(c.HERE/'candidate_identity.py'),'reader':c.pin(c.UPSTREAM),'compiler':c.pin(Path(__file__)),'absence_reader':c.pin(c.HERE/'absence_reader.py')},'request':c.pin(request['_request_path'])}
++    proof={'schema':'boat-candidate-identity/r6','status':'candidate/not_sealed','execution_enabled':False,'serial':request['serial'],'baseline':request['baseline'],'protected_files':request['protected_files'],'current_cfg':request['current_cfg'],'replacements':{p:{'before':base[p],'after':h} for p,h in c.CHANGES.items()},'additional_files':extras,'expected':expected,'generation_sha256':None,'absent_files':request['absent_files'],'placement_plan':request['placement_plan'],'r4_freeze':request['r4_freeze'],'fingerprints':{'runtime_sha256':c.fp(runtime),'boot_sha256':c.fp(boot)},'programs':{'identity':c.pin(c.HERE/'candidate_identity.py'),'reader':c.pin(c.UPSTREAM),'compiler':c.pin(Path(__file__)),'absence_reader':c.pin(c.HERE/'absence_reader.py')},'request':c.pin(request['_request_path'])}
++    for name in ['original_r4_proof','successor_plan','successor_program','artifact_archive','successor_freeze']:proof[name]=request[name]
+     proof['generation_sha256']=c.generation(proof)
+     c.validate(proof)
+     smoke=copy.deepcopy(c.read(c.pinned(request['baseline_smoke'])))
