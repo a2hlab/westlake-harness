@@ -1,0 +1,7 @@
+# R6 original serial dispatch — frozen source
+
+This thin wrapper calls only originalsmoke10/window01 prelock and demo_board_run,then originalfull128 eight-window driver,then originalretained recovery in finally. Root supplied exactenabledcopies and reviewed source/stopflag and copied the executable to mainouter/r6-serial-main/tools. T0 did not execute any device command or change main. Root's actualrequest.prepared.json matches this request.disabled.json SHA116517e7.
+
+q keeps handoff/events as pathstrings. Root signs q first,then emits handoff and waits for the oldwatch accepted actualhandoffSHA. Runtime checks exactbatchauthor. Signalhandlers record only stop_requested;the currentchild must actuallyexit before stop raises. Recovery ignores the stopflag. No lock uses originalrecoveryrunner;cx-t0 lock uses originalrecover-retained/HWZZ/verify/ownerunlock,with fullheld recheck. Otherowner or any originalgate failure preserveslock and reportsroot. Recoveryauth is a fresh10min+10min copy only under explicitroot renewal authority. Original337/window/records/collect gates remain.
+
+SourceSHA60f3761cdfc727814223df0441e2ad351f571642fbde8bf6b5fa250df05fb370 is now immutable. SixT0 mock boundaries include deferredsignal;root independently tested both recoveryfamilies and signal and passed its6-case executioncopy test. Actualpreview and two lifecycle scenarios pass. These tests do not claim realruntime/full128/recovery success. Root owns batchexecution and finalrollback.

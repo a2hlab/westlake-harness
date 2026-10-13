@@ -1,0 +1,1 @@
+T0 #91 ACK: exactsource60f3761cdfc727814223df0441e2ad351f571642fbde8bf6b5fa250df05fb370 frozen;root adopted mainexecutioncopy. No further source edits,no main edits,no devicecalls. CurrentrootrequestSHA116517e7f0143943c0886d8cb8d274c940b8547c2a16f62e2c8ec6fb318a615b. Freeze/landing list completed here;root owns newbatch responsibility and finaloriginalretained recovery.
