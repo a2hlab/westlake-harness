@@ -1,0 +1,76 @@
+# Task Contract: Stability rounds and reboot check for the demo set
+
+## Intent
+确认演示集合可以反复展示,用加速方案(用户 2026-10-09 采纳):t3 那一轮算第 1 轮,t4 只再跑 1 轮常规和 1 轮重启后;历史稳定的应用只复测 1 次,多轮复测集中在边缘应用。对外说法只能是「关键应用多轮验证、其余有历史多轮证据」。
+
+## Must
+- 只用一块 D600 做演示板,由 t1 按证据选定并在黑板登记序列号;另两块板保持统一态实验板,本计划不改它们。
+- 演示板的最终状态必须是一个有记录的版本:runtime-fingerprint 逐件可查,`check_frozen.py` 0 违规;在统一态之上加的东西(头条等)一律单文件叠加、带回滚脚本,不整代重建。
+- 截图是地面真相。计数一律贴运行目录 `facts.txt` 或 `run_facts.py` 的原样输出;数不出来写 unknown。
+- 「点亮」只按启动后约 20 秒截图里是应用自己的界面判;首屏空列表、加载中、带错误框分列,不算进 100+。
+- 板子纪律照 AGENTS.md:写操作前先只读检查;每块板同一时刻一个上板任务;单项实验 ≤30 分钟,批量 ≤45 分钟,用完即释放锁。
+- 静态优先:路径、命名空间、部署件内容这类问题先离线扫描再上板。
+- 交件只走 `land.py`;不推送;不提交密码、服务器账号。
+- 封存(t5)之后,演示板零改动,心跳只做只读巡检;解封只有用户能批。
+
+## Decisions
+- 范围:不再新点亮。现有 128 个照旧:演示手册里亮的 112 个演示,半亮/不亮的 16 个留附录不修。全力只做三件:128 个可演示、BoatAttack 可玩、头条可交互。
+- BoatAttack 可玩 = t2b 判据:横屏 1920×1200 满屏、HUD 清晰不拉伸、颜色正常不偏紫、加速后 KPH 到两位数且圈数推进、转向有效,与原版 PASS 画面并排对照。
+- 头条可交互 = 前台桌面点击能启动、能刷首页、能点开文章。
+- 硬要求:拔电重启后不接 Mac 也能演示(开机自启),三者都算。
+- 冻结底线:为 Boat 与渲染修复重编的共享件(liboh_adapter_bridge、liboh_android_runtime、oh-adapter-runtime.jar)可以替换冻结项,条件 = 重启后全量 128 回归(t4/regress_vs_signoff.py)不退步,并在 knowledge/frozen/frozen.json 登记新版本(原因、对照、重验证据、全量路径)后再部署。演示板解封已批,封存前可写。
+- 封存两步:v1 = 128 + 头条 + 自启;Boat 达标后重封 v2;每次封存只重启一次,重启前先拍快照并过 sepolicy 门。
+- 第 1 轮 = t3 的签认结果;第 2 轮 = 常规全量;第 3 轮 = 重启后全量,验证开机后不用人工补步骤。三轮之间不改板。
+- 分两组(决定**复测几轮**):**历史稳定组** = 在 U13/U14 签认里至少 2 次运行、跨至少 2 块板都亮、且从未白屏的包;**边缘组** = 32 个空首屏点击类、游戏、头条、BoatAttack、历史上偶发白屏或只在一块板亮过的包。分组表由历史签认文件机械算出,不手挑。
+- **截图等多久另按首帧快慢分档**(用户 2026-10-09 更正,与稳定性分组无关):从历史运行 hilog 取 child 起到 `activityResumed (first-frame)` 的秒数,所有历史运行最大值 ≤4 秒的截图 10 秒,其余(含无首帧记录、头条、BoatAttack)20 秒;分档表机械算出、两次生成字节一致。
+- 历史稳定组在第 2 轮可跳过、只在第 3 轮(重启后)复测;边缘组第 2、3 轮都跑。最终演示清单 = 历史稳定组里第 1、3 轮都亮的 + 边缘组里三轮都亮的;其余标「不稳定」写 k/n。
+- 签认用 contact_sheet.sh 拼图一次看几十张,外环逐格签认;拼图文件与签认结果一起入库。
+- 每个游戏点一下开始或下一步,前后截图确认界面有变化;头条在第 3 轮再跑一次 toutiao_accept.sh。
+- 发现回退不修,记首个致命点并移出最终清单。
+- 多板预筛(用户 2026-10-09 采纳):5ea/5cd 做完头条、BoatAttack 实验后,接着做边缘组预筛——游戏与偶发白屏应用优先;32 个空首屏(可选,板有空才做)用界面树找到真实控件、点一下确认出内容,产出点击表(包、控件 id/文本、坐标、点后截图);游戏与偶发白屏应用跑 k/n。空闲板上每次都失败的直接剔除。空闲板运行时指纹与 61b 不同(821de739 对 452447a4),预筛结果只作剔除与点击依据,不算 61b 验收。
+- 61b 至少跑两轮:t3 一轮全量 + 重启后一轮全量;边缘组在 61b 上只在这两轮出现,多轮 k/n 由空闲板预筛承担。
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-09-demo-baseline/**
+- specs/demo-baseline/**
+- tools/spec-checks/tests/demo_baseline.rs
+Out of scope:
+- 修墙;重烤运行时;动另两块板。
+
+## Completion Criteria
+Scenario: Final demo list follows the stable and edge group rules
+  Test:
+    Filter: demo_baseline_stability
+  Given Round one from t3 a normal round two and a post-reboot round three are recorded
+  When The final list is computed from facts.txt of each round
+  Then Every stable-group package is lit in rounds one and three every edge-group package is lit in all three rounds and the others appear with k of n
+
+Scenario: Spare-board prescreen produces a replayable tap map
+  Test:
+    Filter: demo_baseline_stability
+  Given A spare board ran the empty-first-screen apps with view-tree lookup
+  When The tap map is validated
+  Then Every entry names the control by id or text with coordinates and a before and after screenshot pair and entries without a found control are marked no_control
+
+Scenario: Group assignment is computed from signed history not chosen by hand
+  Test:
+    Filter: demo_baseline_stability
+  Given U13 and U14 signoff files are available
+  When The grouping table is generated twice
+  Then Both outputs are byte identical and every stable-group package cites at least two lit runs on at least two boards with no white screen
+
+Scenario: Games respond to a tap and Toutiao still passes after reboot
+  Test:
+    Filter: demo_baseline_stability
+  Given The post-reboot round is complete
+  When Each game is tapped once and Toutiao acceptance runs
+  Then Before and after screenshots differ for every listed game and Toutiao acceptance passes
+
+Scenario: Board that does not come back after reboot stops the round
+  Test:
+    Filter: demo_baseline_stability
+  Given The demo board is not listed by hdc within ten minutes after reboot
+  When The post-reboot round starts
+  Then The round is marked aborted with the timestamp and the outer loop is notified instead of retrying silently
+
