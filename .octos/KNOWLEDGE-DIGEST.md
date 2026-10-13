@@ -892,3 +892,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-13 #91 R5(187+ADC)已实证失败：5cd coldboot0bc46610，READY56/BOUND6且Boat child七件SHA全对，SurfaceView Bounds/default1920×1200但3个retained buffer均1200×1920，原runner在五触前拒绝；截图有渲染不能推成可玩。不要重试该组合；下一候选从947保留成功专属SurfaceView requested geometry、主窗口恢复原兼容尺寸，须同时防child失败fallback并验Boat主ViewRoot。证据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r5-experiment-main-r4/outer-visual-verdict.json`。
 
 - 2026-10-13 #91 R6(f28)首窗：5ea实测SurfaceView retained全1920×1200且五popup t20控件恢复，不能将五触rc0当可玩PASS；本轮ready已偏沙滩、首次加速搁浅，左右与LAP未证，reset明确回水。对照R4成功原图朝水道；补证须先游戏ResetPosition建立水上/waypoint朝向，保持原partial证据、独立验证左右/LAP，不能把不同起始状态当同一对照。原947已完整恢复并解锁，证据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-experiment-main/completion.json`。
+
+- 2026-10-13 #91 R6 reset补证更正：ResetPosition只回最近waypoint并清速度/设rotation，不保证朝水道；加设WATER_FACING_COURSE前置导致本轮inputs=[]审核超时，不能判成runtime/游戏不可操作。原t2b要求实际左右与LAP，不含该前置；Engine水深门允许水上静止转向，下一先左/右实际图再加速，保留本轮失败，不靠新增审核门替代行为实验。证据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-followup-main/completion.json`。
