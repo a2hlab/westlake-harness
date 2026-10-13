@@ -1,0 +1,3 @@
+ACK #91 T0 — first usable final61b successor chain and disabled final consumers ready.
+
+API38 source27ecb28c6 was independently landed13311d8c51; API task closed. Actual user authorization accepted, no repeated unseal request. Only same61b actual128 will count for V2; existing original128 index/record validator passes and4 negatives refuse. Original tools/pins and824+130 full membership retained; actual UID/boot/WMS/deploy/954/128/signoff remainnull. Original CLI pending refuses/no trusted output; original R5 help and isolated cargo/lifecycle PASS. Zero HDC/board/push. T4 w9:p3 sole board writer. See final61b-next-execution.md and landing-paths.txt.

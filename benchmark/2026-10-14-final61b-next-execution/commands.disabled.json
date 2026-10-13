@@ -1,0 +1,214 @@
+{
+  "status": "DISABLED_UNRESOLVED_ARGV_ONLY",
+  "serial": "61b0657200000000000000000324012c",
+  "user_authorization_received": true,
+  "commands_executed": 0,
+  "execution_enabled": false,
+  "substitution": "${...} stays unresolved until actual receipt/pin supplied. Expand WORKSPACES explicitly. No command is automatically runnable. Device argv reserved toT4. Offline replay is not live PASS.",
+  "commands": [
+    {
+      "id": "bind_actual_plan_and_newboot",
+      "program": "producer_bind",
+      "actor": "offline",
+      "execution_enabled": false,
+      "argv": [
+        "python3",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-v2-f28/selfcheck/bind_request.py",
+        "--template",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-v2-f28/selfcheck/request.61b.pending.json",
+        "--plan",
+        "${actual.actual61b_plan}",
+        "--base-selfcheck",
+        "${actual.source940_selfcheck}",
+        "--base-observation",
+        "${actual.source940_raw}",
+        "--running-parameter-evidence",
+        "${actual.newboot_WMS}",
+        "--current-boot",
+        "${actual.candidate_boot}",
+        "--out",
+        "${fresh.bound_request}"
+      ]
+    },
+    {
+      "id": "compile_original_union",
+      "program": "producer_compile",
+      "actor": "offline",
+      "execution_enabled": false,
+      "argv": [
+        "python3",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-v2-f28/selfcheck/compile_selfcheck.py",
+        "--request",
+        "${fresh.bound_request}",
+        "--out",
+        "${fresh.composed}"
+      ]
+    },
+    {
+      "id": "prepare_original954_and128",
+      "program": "identity_prepare",
+      "actor": "offline",
+      "execution_enabled": false,
+      "argv": [
+        "python3",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-v2-identity-f28/prepare_identity.py",
+        "--composition",
+        "${actual.composition}",
+        "--composition-sha256",
+        "${actual.composition_sha256}",
+        "--install-index",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/t3/install-index-final.json",
+        "--install-index-sha256",
+        "f123249f9670c2af5cb6b1d6ed7aef0f7b803af2ea8d69e4f74009d46005f63b",
+        "--boot-before",
+        "${actual.origin_boot}",
+        "--out",
+        "${fresh.identity_and_round}"
+      ]
+    },
+    {
+      "id": "same61b_original128_execute",
+      "program": "full128_driver",
+      "actor": "T4 sole device writer only; source grant plus reviewed actual round/lock responsibility required",
+      "execution_enabled": false,
+      "argv": [
+        "python3",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-v2-identity-f28-61b/run_candidate_post_reboot.py",
+        "--out",
+        "${fresh.identity_and_round}/round",
+        "--execute",
+        "--serial",
+        "61b0657200000000000000000324012c",
+        "--authorization",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/final61b-user-authorization.json"
+      ]
+    },
+    {
+      "id": "restore_original_provider_transaction",
+      "program": "provider_rollback",
+      "actor": "T4 only on failure; actual current full held line, same-owner recovery, currentboot and original transaction required",
+      "execution_enabled": false,
+      "argv": [
+        "python3",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-v2-f28/board61b/provider/installer.py",
+        "--plan",
+        "${actual.enabled_provider_plan}",
+        "--action",
+        "rollback",
+        "--execute",
+        "--authorization",
+        "${actual.rollback_authorization}",
+        "--authorization-sha256",
+        "${actual.rollback_authorization_sha256}",
+        "--out",
+        "${actual.provider_transaction}"
+      ]
+    },
+    {
+      "id": "map_actual824_source_files",
+      "program": "source_map_prepare",
+      "actor": "offline",
+      "execution_enabled": false,
+      "argv": [
+        "python3",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-13-final61b-source-map/prepare_sources.py",
+        "--composition",
+        "${actual.composition}",
+        "--composition-sha256",
+        "${actual.composition_sha256}",
+        "--out",
+        "${fresh.source_map}"
+      ]
+    },
+    {
+      "id": "original_unsigned_seal",
+      "program": "seal_compile",
+      "actor": "offline",
+      "execution_enabled": false,
+      "argv": [
+        "python3",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/t5/build_seal.py",
+        "--snapshot",
+        "${actual.snapshot954}",
+        "--overlays",
+        "${actual.admitted_overlays}",
+        "--manifest",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-baseline/demo-manifest.json",
+        "--out",
+        "${fresh.unsigned_seal}"
+      ]
+    },
+    {
+      "id": "original_running_realization",
+      "program": "realization",
+      "actor": "offline",
+      "execution_enabled": false,
+      "argv": [
+        "python3",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-12-exact-realization/realization.py",
+        "compile",
+        "--request",
+        "${fresh.filled_running_request}",
+        "--out",
+        "${fresh.v2_realization}"
+      ]
+    },
+    {
+      "id": "original_realization_verify",
+      "program": "realization",
+      "actor": "offline",
+      "execution_enabled": false,
+      "argv": [
+        "python3",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-12-exact-realization/realization.py",
+        "verify",
+        "--realization",
+        "${fresh.v2_realization}/realization.json"
+      ]
+    },
+    {
+      "id": "original_final954_offline_raw_replay",
+      "program": "r5_binary_entry",
+      "actor": "offline",
+      "execution_enabled": false,
+      "argv": [
+        "python3",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-12-toutiao-recovery-review/r5-binary-collector/selfcheck_entry.py",
+        "--checker",
+        "realization",
+        "--realization",
+        "${fresh.v2_realization}/realization.json",
+        "--serial",
+        "61b0657200000000000000000324012c",
+        "--boot-id",
+        "${actual.candidate_boot}",
+        "--observed",
+        "${actual.full954_observation}",
+        "--out",
+        "${fresh.offline_replay}"
+      ]
+    },
+    {
+      "id": "original_final954_live_T4_only",
+      "program": "r5_binary_entry",
+      "actor": "T4 sole device writer; actual newly compiled V2 proof/current boot/HDC required",
+      "execution_enabled": false,
+      "argv": [
+        "python3",
+        "$WORKSPACES/westlake-harness/benchmark/2026-10-12-toutiao-recovery-review/r5-binary-collector/selfcheck_entry.py",
+        "--checker",
+        "realization",
+        "--realization",
+        "${fresh.v2_realization}/realization.json",
+        "--serial",
+        "61b0657200000000000000000324012c",
+        "--boot-id",
+        "${actual.candidate_boot}",
+        "--hdc",
+        "${actual.hdc_executable}",
+        "--out",
+        "${fresh.live954}"
+      ]
+    }
+  ]
+}
