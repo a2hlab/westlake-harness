@@ -873,3 +873,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 
 - 2026-10-13 #91 v1封板：61b受保护，final-signoff SHA5ee1f907/原seal7f5b6f99；61b与5cd实际R5自检均940PASS（811件+129 APK身份，不是940次app执行），Plan2当前20+历史5cd128，10游戏不入可玩。5cd隐私待本人选择不阻塞t5指纹恢复；随机SIG11未根治。最终说明/持久归档见 `benchmark/2026-10-12-v1-seal-execution/seal-final-20261013/`。
 - 2026-10-13 #91 r4b：mock执行器PASS不代表真实CLI可用；复用Transport前须建宿主logs目录，否则首次只读probe后落原始回执即FileNotFoundError。CLI经真实Transport+fake HDC首读拒绝用例确认stdout/stderr/JSON落盘且零intent后才交付；证据 `benchmark/2026-10-12-exact-realization/r4b-directory-logdir/`。
+
+- 2026-10-13 #91 v2备机：319文件SHA一致仍可能全app加载失败；5ea旧seq1目录十处750/root:root，普通UID在sealed child dlopen adapter errno13/exit123。对照正常5cd的31祖先目录，仅这10处差异；保留SHA/UID/label并CAS改755后HelloWorld t20正常上屏。恢复门须同时核挂载目录祖先可遍历元数据；证据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/{ancestor-metadata-diff.json,5ea-base-recovery/dir-repair,5ea-base-recovery/smoke-modefix/}`。
