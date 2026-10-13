@@ -1,0 +1,13 @@
+上板单(#91,Exact missing-only Boat preinstallation on verified5cd v1; no runtime replacement/reboot):在 westlake-harness 下执行
+  python3 scripts/lab/board_run.py /Users/zhaoyue/orca/workspaces/westlake-harness/benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/5cd-v2-preinstall-window/plan.enabled.json
+这条命令固定做下面几件事,不要拆开手写:
+  1. board_run.py 一条命令做完,不手写步骤
+  2. 先 LOCK 板(board_note.sh),结束或出错都 UNLOCK
+  3. 先过生效冒烟门(activation_smoke.py:指纹 / 对照 / 每个修复的生效日志 / 子进程单份库 / 子进程视图 sha),FAIL 就停
+  4. 每块板同一时刻只跑一个 bms_batch 进程,分片顺序跑(bms_batch 自带同板进程锁)
+  5. 每个分片都带 --reinstall --hilog --shots 5,20,各进新目录
+  6. 原始运行目录一个字节不删;落库只复制
+  7. 车道里用 --detach 起(agent 的工具调用超时会连带杀掉前台进程),再按日志和黑板轮询
+  8. 上板前先用已有证据离线核这次的假设(运行目录的 maps / hilog / faultlog、DIGEST、本机 AOSP 源码),能离线证伪就不上板;plan 里写 offline_precheck(hypothesis / evidence / result=not-falsified),缺了 board_run 拒跑
+  9. 每个分片的 facts.txt TOTAL 行原样贴黑板;截图交外环读图签数
+跑完贴每个分片 facts.txt 的 TOTAL 行原样(脚本已自动贴一份),截图不自判、交外环。

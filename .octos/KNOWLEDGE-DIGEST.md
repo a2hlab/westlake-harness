@@ -883,3 +883,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - **Boat R4路径/验收节奏/控件闭包(2026-10-13,W3)**：历史9cc→adc49字节修复须落libandroid.so原位、runtime保留947，漏第七bind时R3仍拉伸；W3同PID10322几何+LAP0→1/3+左右响应已证，原surface-ready后3+6+6+15再五触，仅reset后2秒，额外收尾/人工等待不能冒充同节奏；Race_Canvas固定0.7派生reset1584,1074/油门1794,1074/摇杆154,1046，旧reset1440在命中区外、旧摇杆220,1000仍在矩形内，不能凭圆圈猜命中；ADC本次精确重放rc0不冒充缺失历史build日志，10控制回归/最终v2封板另判。证据：benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/r4-knowledge-closure。
 
 - 2026-10-13 #91 Noice备份：5ea OH tar --selinux在相对/绝对路径均getfilecon崩溃rc139，不能套安卓备份命令；普通原始tar双端SHA留存+逐member实读stat/ls-Z构造本地PAX，原严格内容/owner/mode/label门不动。真实同签名66→72后16files/四根/UID/GID/token/permissions全等、337与HW/ZZ通过；原始私有资料不入公开库。证据 benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/noice-upgrade-r2/。
+
+- 2026-10-13 **原R5收尾必须恢复原宿主前台**：5cd Boat缺项安装+HW/ZZ冒烟后，imehost0仍PID5323/WID29但ZOrd=-1，原940检查在visibility门正确拒绝；aa start返回shell rc0却10107101，必须查成功文本。复用原BMS desktop_launch点精确宿主图标后原R5全940+非文件PASS；不放宽门、不把宿主UI当头条feed（benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/5cd-v2-preinstall-window/results.json）。
