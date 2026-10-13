@@ -1,0 +1,90 @@
+{
+  "schema": "r6-water-input-diagnostic/v1",
+  "device_operations": 0,
+  "human_signoff": false,
+  "image_reviews": [
+    {
+      "path": "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-followup-main/run/boat/reset-baseline.jpeg",
+      "sha256": "84f8ebf086914c091d730ef3a9116717eb451fb7382db1c5dcb977ea2ba96f54",
+      "personally_viewed": true,
+      "water": true,
+      "heading": "towards village/pier",
+      "speed_display": "006"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-followup-main/run/boat/reset-baseline-extra.jpeg",
+      "sha256": "9a9a575774e54c912dc44ac5e3dc797bc2fa0176762bc2813271473110f0b22a",
+      "personally_viewed": true,
+      "water": true,
+      "heading": "towards village/pier",
+      "speed_display": "002"
+    }
+  ],
+  "failure_scope": {
+    "status": "baseline_review_timeout_before_five_commands",
+    "runtime_unplayable_proven": false,
+    "new_course_facing_gate_is_original_contract": false,
+    "no_late_approval": true,
+    "original_r6_partial_retained": true
+  },
+  "mapping": {
+    "canvas_scale": 0.7,
+    "screen": [
+      1920,
+      1200
+    ],
+    "steer_center": [
+      154,
+      1046
+    ],
+    "steer_radius_screen": 105,
+    "left": [
+      49,
+      1046
+    ],
+    "right": [
+      259,
+      1046
+    ],
+    "reset": [
+      1584,
+      1074
+    ],
+    "accelerate": [
+      1794,
+      1074
+    ],
+    "input_axis": "leftStick/left negative; leftStick/right positive; AxisDeadzone(min0.1,max1)",
+    "source_chain": "OnScreenStick delta/movementRange -> Gamepad.leftStick -> Steering -> HumanController._steering -> Engine.Turn; release clears value"
+  },
+  "source_inference": {
+    "turn_requires_speed": false,
+    "turn_condition": "_yHeight > -0.1; actual value not measured",
+    "yaw_torque": "signed steeringTorque multiplied by modifier; not coupled to throttle",
+    "reset_condition": "closest waypoint and waypoint rotation; not course-facing guarantee"
+  },
+  "minimal_diagnostic": {
+    "execution_enabled": false,
+    "no_new_window_implementation": true,
+    "no_new_precondition": "Do not require WATER_FACING_COURSE to permit the original contracted interaction; water/heading screenshots are observations.",
+    "steps": [
+      {
+        "purpose": "Left response in water before long throttle",
+        "command": "uinput -T -m 154 1046 49 1046 -k 5000 700",
+        "evidence": "same-PID before/after image; heading against fixed shore landmarks; rc0 alone insufficient"
+      },
+      {
+        "purpose": "Right response in water",
+        "command": "uinput -T -m 154 1046 259 1046 -k 5000 700",
+        "evidence": "opposite heading response; do not confuse camera animation/engine model rotation with hull yaw"
+      }
+    ],
+    "remaining": "Acceleration/scene motion and LAP advancement still require actual screenshots. Extra left/right diagnostics are supplemental, not replacement for original five contracted commands.",
+    "limits": [
+      "No script modification or execution by reviewer.",
+      "Preserve source-derived coordinates/durations and actual7pins/fullidentity.",
+      "If collision obscures response, label unproved, not automatically missing input.",
+      "No inferred live steering value/_yHeight/physics cause without evidence."
+    ]
+  }
+}
