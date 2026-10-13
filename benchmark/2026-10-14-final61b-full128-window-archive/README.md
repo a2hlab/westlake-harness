@@ -6,3 +6,5 @@ Archive only completed stable windows after their after-identity gate passes and
 - [Window02](window-02/README.md): durable and verified; before_unlock/smoke0, no full-round verdict.
 
 Running later windows are excluded. The final128 aggregate and outer signoff remain separate work. No device calls or running-pin changes occur in this archiving lane.
+
+- [Window-03](window-03/README.md): durable and verified; single-window scope only.
