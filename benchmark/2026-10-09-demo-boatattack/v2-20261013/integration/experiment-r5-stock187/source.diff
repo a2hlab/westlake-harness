@@ -1,0 +1,311 @@
+--- frozen/boat_provider.py
++++ r5/boat_provider.py
+@@ -40,7 +40,7 @@
+     plan=read(planpath);need(plan['serial']==a.serial,'plan serial')
+     need(plan['installer_sha256']==p['executor']['sha256'],'executor independent/self pin differs')
+     expected={r['target']:r['sha256'] for r in plan['members']+plan['binds']}
+-    need(len(expected)==18 and len(p['targets'])==18 and set(p['targets'])==set(expected),'complete18 Boat target coverage')
++    need(len(expected)==16 and len(p['targets'])==16 and set(p['targets'])==set(expected),'complete16 Boat target coverage')
+     overlays=[r for r in seal.get('overlay_deployments',[]) if r.get('id')=='boatattack']
+     need(len(overlays)==1 and overlays[0]['state']=='active','active declared Boat layer required')
+     need({r['target']:r['sha256'] for r in overlays[0]['files']}==expected,'Boat declaration differs from exact package')
+@@ -53,7 +53,7 @@
+     e=importlib.util.module_from_spec(executor_spec);executor_spec.loader.exec_module(e)
+     e.validate(plan,e.core_for(plan))
+     if dep.get('execution_enabled') is not True:
+-        print(json.dumps({'status':'DISABLED_PREVIEW','targets':18,'placement_members':11,'boot_binds':7,
++        print(json.dumps({'status':'DISABLED_PREVIEW','targets':16,'placement_members':10,'boot_binds':6,
+                          'pending':plan.get('pending_capture',[]),'device_calls':0,'restored':False}));return 0
+     need(not dep.get('synthetic') and not seal.get('synthetic'),'synthetic execution forbidden')
+     need(plan.get('execution_enabled') is True and not plan.get('pending_capture'),'incomplete/disabled plan')
+@@ -78,7 +78,7 @@
+             need(tx==dict(plan_sha256=digest(planpath),serial=a.serial,boot_id=plan['boot_id'],backups=backups),'actual transaction identity/member mismatch')
+             protected=read(txn/'preserved-verified.json')
+             need(protected==dict(plan_sha256=digest(planpath),serial=a.serial,boot_id=plan['boot_id'],count=len(plan['preserved']),success=True),'protected RouteB readback incomplete')
+-            need(len(list(txn.glob('placed-[0-9][0-9][0-9].json')))==11,'exact11 placement receipts')
++            need(len(list(txn.glob('placed-[0-9][0-9][0-9].json')))==10,'exact10 placement receipts')
+             for n,row in enumerate(plan['members']):
+                 member=read(txn/('placed-%03d.json'%n))
+                 need(member=={'target':row['target'],'sha256':row['sha256']},'placement member receipt mismatch')
+--- frozen/candidate_contract.py
++++ r5/candidate_contract.py
+@@ -13,7 +13,9 @@
+ META=('mode','uid','gid','label')
+ SEAL_SHA='7f5b6f996482149ffd958bcdf55981cdc8ac6e69cb17738a2984153421f72780'
+ SELF_SHA='542c5176572dcde4ad8a89718bed486dca585457a3326dd5924b6e02026bceff'
+-R4_SHA='ba35319e22e0b160fadc24c3432ea8666fd2d7c0ae614a6f035a33c85247f798'
++R4_SHA='5e2bd57b6ea41da5b7d7e55343c2c1ac478dc9523707cceae0ee9f53d1213b77'
++RUNTIME='/system/android/lib64/liboh_android_runtime.so'
++STOCK_RUNTIME='18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae'
+ def need(ok,why):
+     if not ok:raise ValueError(why)
+ def read(p):return json.loads(Path(p).read_text())
+@@ -68,22 +70,24 @@
+     from source_5cd import validate_sources
+     source5cd=validate_sources()
+     wanted=protected();seen={r['target']:r['before'] for r in plan['preserved']}
+-    need(len(seen)==len(plan['preserved'])==496 and set(seen)==set(wanted)|{r['target'] for r in old['binds']}|{BOAT_APK},'all RouteB488 plus seven stock targets and actual Boat APK required')
++    need(len(seen)==len(plan['preserved'])==496 and set(seen)==set(wanted)|{r['target'] for r in old['binds']}|{BOAT_APK,RUNTIME},'all RouteB488 plus seven stock targets and actual Boat APK required')
+     for target,h in wanted.items():
+         b=seen[target];core.metadata(b,'RouteB preimage')
+         need(b['exists'] is True and b['sha256']==h,'RouteB identity drift (new WID needs new independently verified realization): '+target)
+         need(b==cap['files'][target],'RouteB capture metadata mismatch')
+         need({k:b[k] for k in META}==source5cd['metadata'][target],'actual5cd RouteB metadata differs')
+-    need(len(plan['binds'])==7,'seven binds')
++    need(len(plan['binds'])==6,'six binds; stock runtime never overlaid')
++    runtime=cap['files'][RUNTIME];core.metadata(runtime,'stock runtime')
++    need(runtime['exists'] is True and runtime['sha256']==STOCK_RUNTIME and seen[RUNTIME]==runtime,'stock runtime before/preservation')
+     for row,original in zip(plan['binds'],old['binds']):
+-        need(all(row[k]==original[k] for k in ('target','source','sha256')),'original seven bind order/content')
++        need(all(row[k]==original[k] for k in ('target','source','sha256')),'original six retained bind order/content')
+         before=cap['files'][row['target']];core.metadata(before,'bind before')
+         need(before['exists'] is True and before['sha256']==original['before']['sha256'],'stock bind preimage')
+         need(row['before']==before==seen[row['target']],'bind before capture mismatch')
+         need(row['after']=={k:before[k] for k in META},'bind metadata must preserve captured target metadata')
+     apk=cap['files'][BOAT_APK];core.metadata(apk,'actual Boat APK')
+     need(apk['exists'] is True and apk['sha256']==BOAT_SHA and seen[BOAT_APK]==apk,'actual Boat APK pin')
+-    wanted_capture={BOAT_APK}|set(wanted)|{r['target'] for r in old['binds']}|{CFG}
++    wanted_capture={BOAT_APK,RUNTIME}|set(wanted)|{r['target'] for r in old['binds']}|{CFG}
+     need(set(cap['files'])==wanted_capture,'capture exact file membership')
+     need(cap['files'][CFG]['sha256']==old['members'][-1]['before']['sha256'],'current v3 cfg differs')
+     for row in plan['members']:
+--- frozen/installer.py
++++ r5/installer.py
+@@ -1,5 +1,5 @@
+ """Narrow Boat placement adapter: reuse reviewed restore-v6 backup/place executor.
+-No launch, reboot, runtime bind or installation. Boot worker owns exactly seven binds.
++No launch, reboot, runtime bind or installation. Boot worker owns exactly six binds.
+ """
+ import argparse, hashlib, importlib.util, json, os, re, subprocess, sys, time
+ from pathlib import Path
+@@ -27,10 +27,10 @@
+     need(sha(path)==ref['sha256'],'candidate contract drift')
+     spec=importlib.util.spec_from_file_location('boat_61b_contract',path);contract=importlib.util.module_from_spec(spec);spec.loader.exec_module(contract)
+     contract.validate(plan,core)
+-    allowed={ROOT+'/'+n for n in ['recover-v3-boat.sh','worker.sh','binds.tsv']}|{ROOT+'/sources/'+n for n in ['liboh_adapter_bridge.so','oh-adapter-runtime.jar','libunity.so','libil2cpp.so','libwestlake_bionic_signal_box.so','liboh_android_runtime.so','libandroid.so']}|{CFG}
+-    need(len(plan['members'])==11 and {r['target'] for r in plan['members']}==allowed,'exact eleven placement objects')
++    allowed={ROOT+'/'+n for n in ['recover-v3-boat.sh','worker.sh','binds.tsv']}|{ROOT+'/sources/'+n for n in ['liboh_adapter_bridge.so','oh-adapter-runtime.jar','libunity.so','libil2cpp.so','libwestlake_bionic_signal_box.so','libandroid.so']}|{CFG}
++    need(len(plan['members'])==10 and {r['target'] for r in plan['members']}==allowed,'exact ten placement objects')
+     need(plan['members'][-1]['target']==CFG,'activate cfg last')
+-    need(len(plan['binds'])==7 and len({r['target'] for r in plan['binds']})==7,'exact seven bind objects')
++    need(len(plan['binds'])==6 and len({r['target'] for r in plan['binds']})==6,'exact six bind objects')
+     for row in plan['members']:
+         need(sha(resolve(row['source']))==row['sha256'],'member source SHA');core.metadata(row['after'],'after')
+         b=row['before'];need(type(b['exists']) is bool,'unknown before')
+@@ -80,7 +80,7 @@
+         wanted=':'.join(str(row['after'][k]) for k in ['mode','uid','gid','label'])+':'+own['identity'];need(actual==wanted,'directory identity/metadata drift')
+ 
+ def rollback_preflight(plan,dev,out,core):
+-    """Original core intent/observation rule; all eleven backups checked before first unmount."""
++    """Original core intent/observation rule; all ten backups checked before first unmount."""
+     tx=core.read(out/'transaction.json')
+     expected=[dict(target=r['target'],before=r['before'],backup='backup-%03d'%n if r['before']['exists'] else None,candidate_sha256=r['sha256']) for n,r in enumerate(plan['members'])]
+     need(tx.get('plan_sha256')==plan['_sha'] and tx.get('serial')==plan['serial'] and tx.get('boot_id')==plan['boot_id'],'transaction identity drift')
+@@ -109,7 +109,7 @@
+     tx,current=rollback_preflight(plan,dev,out,core)
+     core.check_identity(dev,plan);no_consumers(plan,dev)
+     retained=audit_rows(plan,auth);audit_verify(plan,dev,out,core,retained,True)
+-    # Remove only owned seven-bind tops, in reverse donor order. No global unmount or process signals.
++    # Remove only owned six-bind tops, in reverse donor order. No global unmount or process signals.
+     for row in reversed(plan['binds']):
+         no_consumers(plan,dev)
+         target=row['target'];source=row['source'];bound=dev.probe(target)
+@@ -146,7 +146,7 @@
+ def main():
+     ap=argparse.ArgumentParser();ap.add_argument('--plan',type=Path,required=True);ap.add_argument('--action',choices=['apply','rollback'],default='apply');ap.add_argument('--execute',action='store_true');ap.add_argument('--authorization',type=Path);ap.add_argument('--authorization-sha256');ap.add_argument('--out',type=Path);a=ap.parse_args()
+     plan=read(a.plan);plan['_sha']=sha(a.plan);core=core_for(plan);validate(plan,core)
+-    if not a.execute:print(json.dumps({'status':'PREVIEW','members':11,'boot_binds':7,'device_calls':0,'plan_sha256':plan['_sha']}));return 0
++    if not a.execute:print(json.dumps({'status':'PREVIEW','members':10,'boot_binds':6,'device_calls':0,'plan_sha256':plan['_sha']}));return 0
+     need(plan['execution_enabled'] is True and not plan.get('synthetic') and not plan.get('pending_capture'),'disabled/synthetic/incomplete plan');need(a.authorization and sha(a.authorization)==a.authorization_sha256,'independent authorization pin');auth=read(a.authorization)
+     need(auth['approved_by']=='outer(codex)' and auth['plan_sha256']==plan['_sha'] and auth['serial']==plan['serial'],'authorization binding')
+     need(auth['origin_boot_id']==plan['boot_id'] and auth['expires_epoch']>time.time(),'origin/expiry');need(auth['action']==a.action,'action authorization')
+--- frozen/prepare.py
++++ r5/prepare.py
+@@ -14,11 +14,11 @@
+                         'v1_seal_sha256':files.get(row['target']),'fresh_before':'pending',
+                         'operation':'place' if row in old['members'] else 'cold-boot-bind'})
+     return {'schema':'boat-5cd-disabled-blueprint/v1','execution_enabled':False,'serial':c.SERIAL,
+-            'source_pins':refs,'placement_members':11,'boot_binds':7,'changes':changes,
++            'source_pins':refs,'placement_members':10,'boot_binds':6,'changes':changes,
+             'route_b_protected':wanted,'route_b_count':488,'global319_members_retained':319,
+             'pending':['fresh 5cd bookend boot and raw capture','Boat installed UID and APK identity',
+                        'cfg CAS and exact file metadata','all RouteB487 plus host HAP fresh SHA/metadata',
+-                       'seven stock bind preimages','r4 root absence and declared directory metadata',
++                       'six bind preimages plus unchanged stock runtime','r4 root absence and declared directory metadata',
+                        'same-boot full319 equality','full128 candidate result and outer device authorization'],
+             'device_calls':0,'sealed':False}
+ 
+@@ -31,7 +31,7 @@
+     plan['evidence']={'historical_sources':refs,'fresh_capture':plan['capture']}
+     plan['directory_prerequisites']=[{'target':t,'after':cap['route_b_directories'][t]} for t in sorted(c.ROUTE_DIRS)]
+     plan['notes']=['5cd disabled candidate; historical r4 is not 5cd admission','Full RouteB488 preserved; no data enumeration/copy/removal',
+-                   'Placement is not restoration; external single boot and full exact selfcheck required']
++                   'Stock187 comparison only; T0 static review and outer authorization pending; not promotion evidence']
+     absence={'exists':False,'proof':plan['capture']};by_target={r['target']:r for r in plan['members']}
+     for row in plan['binds']:
+         before=copy.deepcopy(cap['files'][row['target']]);row['before']=before;row['after']={k:before[k] for k in c.META}
+@@ -45,6 +45,7 @@
+     for row in plan['directories']:row['before']=copy.deepcopy(absence);row['after']=cap['directory_after'][row['target']]
+     plan['preserved']=[{'target':target,'before':cap['files'][target]} for target in sorted(c.protected())]
+     plan['preserved'].append({'target':c.BOAT_APK,'before':cap['files'][c.BOAT_APK]})
++    plan['preserved'].append({'target':c.RUNTIME,'before':cap['files'][c.RUNTIME]})
+     plan['preserved'] += [{'target':r['target'],'before':r['before']} for r in plan['binds']]
+     out.mkdir(parents=True)
+     original=c.pinned(refs['r4_plan']).parent
+@@ -68,7 +69,7 @@
+ 
+ def main():
+     ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--capture',type=Path);ap.add_argument('--out',type=Path,required=True);a=ap.parse_args()
+-    if a.capture:build(a.capture,a.out);print('PREPARED_DISABLED: 11 placement / 7 cold-boot binds / 488 RouteB protections; zero device calls')
++    if a.capture:build(a.capture,a.out);print('PREPARED_DISABLED: 10 placement / 6 cold-boot binds / 488 RouteB protections; zero device calls')
+     else:c.need(not a.out.exists(),'fresh output required');save(a.out,blueprint());print('PENDING_CAPTURE: blueprint only; zero device calls')
+ if __name__=='__main__':
+     try:main()
+--- frozen/r4-reference/binds.tsv
++++ r5/r4-reference/binds.tsv
+@@ -3,5 +3,4 @@
+ libwestlake_bionic_signal_box.so	/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libwestlake_bionic_signal_box.so	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855	7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da	644:0:0:u:object_r:data_app_el1_file:s0	755:0:0:u:object_r:data_app_el1_file:s0
+ libunity.so	/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libunity.so	1e44603c528af84aed2e4a538d411c119166b9ccadd7aa2abf51ffa97ef47ca2	1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac	755:0:0:u:object_r:data_app_el1_file:s0	755:0:0:u:object_r:data_app_el1_file:s0
+ libil2cpp.so	/data/app/el1/bundle/public/com.Unity3d.BoatAttackDay/android/lib/arm64-v8a/libil2cpp.so	58555c421de763165225e8bd9e2940f2e5c84515a2c87cdefc0892cae216f4fe	f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746	755:0:0:u:object_r:data_app_el1_file:s0	755:0:0:u:object_r:data_app_el1_file:s0
+-liboh_android_runtime.so	/system/android/lib64/liboh_android_runtime.so	18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae	94718e0d0b617a0f9a860e0b50b879b0d7d4639f32e8230b1f90f8e26e2c1354	755:0:0:u:object_r:system_lib_file:s0	755:0:0:u:object_r:system_lib_file:s0
+ libandroid.so	/system/android/lib64/libandroid.so	9ccf64f8d1f6e1748665057273eaa4c2770098934d39afa160f2c6b4c18b06db	adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130	644:0:0:u:object_r:system_lib_file:s0	644:0:0:u:object_r:system_lib_file:s0
+--- frozen/r4-reference/plan.disabled.json
++++ r5/r4-reference/plan.disabled.json
+@@ -1,5 +1,5 @@
+ {
+-  "schema": "boat-seven-bind-place/v1",
++  "schema": "boat-stock-runtime-six-bind-place/v1",
+   "boat_uid": 20011062,
+   "boat_package": "com.Unity3d.BoatAttackDay",
+   "baseline319": {
+@@ -107,24 +107,6 @@
+       }
+     },
+     {
+-      "target": "/data/westlake-demo/u13/boat-v2-20261013-r4/sources/liboh_android_runtime.so",
+-      "source": "$WORKSPACES/westlake-harness-bms/benchmark/2026-10-10-boat-runtime-port-spec/.artifacts/fresh-link-zpsaydde/cold/runtime-out/liboh_android_runtime.so",
+-      "sha256": "94718e0d0b617a0f9a860e0b50b879b0d7d4639f32e8230b1f90f8e26e2c1354",
+-      "before": {
+-        "exists": false,
+-        "proof": {
+-          "path": "$WORKSPACES/westlake-harness/benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/candidate-window2/r4-readonly/stdout.txt",
+-          "sha256": "4c5dd0608a4c32924291e48f26a60e958fb95daacf61243f639d2f70311f4641"
+-        }
+-      },
+-      "after": {
+-        "mode": "755",
+-        "uid": 0,
+-        "gid": 0,
+-        "label": "u:object_r:system_lib_file:s0"
+-      }
+-    },
+-    {
+       "target": "/data/westlake-demo/u13/boat-v2-20261013-r4/sources/libandroid.so",
+       "source": "$WORKSPACES/../00.Workspace-games-ad1ab0a7/.bridge-payload/zigzag-candidates/strict-boat-assembled-20260924T074522Z-25403/files/libandroid.so",
+       "sha256": "adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130",
+@@ -145,7 +127,7 @@
+     {
+       "source": "$PACKAGE/binds.tsv",
+       "target": "/data/westlake-demo/u13/boat-v2-20261013-r4/binds.tsv",
+-      "sha256": "a10586a19ca0a812356e6dc65490f3e4a4f236e011021909bb174015c2c66cde",
++      "sha256": "3da87785285be59b5b9c159f0e41813331919885766ed085762eb4327f9cc346",
+       "before": {
+         "exists": false,
+         "proof": {
+@@ -163,7 +145,7 @@
+     {
+       "source": "$PACKAGE/worker.sh",
+       "target": "/data/westlake-demo/u13/boat-v2-20261013-r4/worker.sh",
+-      "sha256": "3f1a464338ce5b2f4c4d93ed0dc0db9c5fdf52c1e3156fae4d7e9e056b6898c2",
++      "sha256": "5c0e7ff48ab13011d6312ad5882a546586badbbd39c6b975ad520ca695d85569",
+       "before": {
+         "exists": false,
+         "proof": {
+@@ -311,25 +293,6 @@
+         "uid": 0,
+         "gid": 0,
+         "label": "u:object_r:data_app_el1_file:s0"
+-      }
+-    },
+-    {
+-      "target": "/system/android/lib64/liboh_android_runtime.so",
+-      "source": "/data/westlake-demo/u13/boat-v2-20261013-r4/sources/liboh_android_runtime.so",
+-      "sha256": "94718e0d0b617a0f9a860e0b50b879b0d7d4639f32e8230b1f90f8e26e2c1354",
+-      "before": {
+-        "exists": true,
+-        "sha256": "18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae",
+-        "mode": "755",
+-        "uid": 0,
+-        "gid": 0,
+-        "label": "u:object_r:system_lib_file:s0"
+-      },
+-      "after": {
+-        "mode": "755",
+-        "uid": 0,
+-        "gid": 0,
+-        "label": "u:object_r:system_lib_file:s0"
+       }
+     },
+     {
+--- frozen/r4-reference/worker.sh
++++ r5/r4-reference/worker.sh
+@@ -1,11 +1,11 @@
+ #!/system/bin/sh
+-# Retains a8bb2 five-bind order; appends the reviewed runtime port then original ADC libandroid repair; no app launch, global disable, or relabel fallback.
++# Retains a8bb2 five-bind order; retains stock runtime in place and appends original ADC libandroid repair; no app launch, global disable, or relabel fallback.
+ set -eu
+ umask 022
+ ROOT=/data/westlake-demo/u13
+ OWN="$ROOT/boat-v2-20261013-r4"
+ TABLE="$OWN/binds.tsv"
+-TABLE_SHA=a10586a19ca0a812356e6dc65490f3e4a4f236e011021909bb174015c2c66cde
++TABLE_SHA=3da87785285be59b5b9c159f0e41813331919885766ed085762eb4327f9cc346
+ BOOT=$(cat /proc/sys/kernel/random/boot_id)
+ LOG="$OWN/boat-$BOOT.log"
+ receipt="$OWN/boat-$BOOT.receipt"
+@@ -36,16 +36,16 @@
+         [ "$(sha /system/android/lib64/libandroid.so)" = 9ccf64f8d1f6e1748665057273eaa4c2770098934d39afa160f2c6b4c18b06db ] || fail STOCK_LIBANDROID
+         no_parent;;
+     --verify-bound)
+-        [ "$(sha /system/android/lib64/liboh_android_runtime.so)" = 94718e0d0b617a0f9a860e0b50b879b0d7d4639f32e8230b1f90f8e26e2c1354 ] || fail CANDIDATE_RUNTIME
++        [ "$(sha /system/android/lib64/liboh_android_runtime.so)" = 18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae ] || fail CANDIDATE_RUNTIME
+         [ "$(sha /system/android/lib64/libandroid.so)" = adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130 ] || fail CANDIDATE_LIBANDROID
+-        grep -qx 'state=BOUND' "$receipt" && grep -qx "boot_id=$BOOT" "$receipt" && grep -qx 'layers=7' "$receipt" || fail NO_SYNCHRONOUS_BOUND
++        grep -qx 'state=BOUND' "$receipt" && grep -qx "boot_id=$BOOT" "$receipt" && grep -qx 'layers=6' "$receipt" || fail NO_SYNCHRONOUS_BOUND
+         n=0
+         while IFS="$(printf '\t')" read -r name target before after before_meta metadata; do
+             n=$((n+1)); src="$OWN/sources/$name"
+             [ "$(sha "$target")" = "$after" ] && [ "$(meta "$target")" = "$metadata" ] || fail "VERIFY_$n"
+             [ "$(stat -c '%d:%i' "$target")" = "$(stat -c '%d:%i' "$src")" ] || fail "VERIFY_OWNER_$n"
+         done < "$TABLE"
+-        [ "$n" = 7 ] || fail VERIFY_COUNT
++        [ "$n" = 6 ] || fail VERIFY_COUNT
+         exit 0;;
+     *) fail UNKNOWN_MODE;;
+ esac
+@@ -60,7 +60,7 @@
+     [ "$(sha "$src")" = "$after" ] && [ "$(meta "$src")" = "$metadata" ] || fail "SOURCE_$n"
+     [ "$(sha "$target")" = "$before" ] && [ "$(meta "$target")" = "$before_meta" ] || fail "PREIMAGE_$n"
+ done < "$TABLE"
+-[ "$n" = 7 ] || fail COUNT
++[ "$n" = 6 ] || fail COUNT
+ # Repeated invocation rejects rather than double-binding; immutable per-boot intents retain partial failure evidence.
+ [ ! -e "$OWN/boat-$BOOT.intents" ] || fail ALREADY_ATTEMPTED_THIS_BOOT
+ (set -C; : > "$OWN/boat-$BOOT.intents") || fail INTENT_CREATE
+@@ -78,4 +78,4 @@
+     log "BOUND $n $target $after"
+ done < "$TABLE"
+ no_parent
+-printf 'state=BOUND\nboot_id=%s\nlayers=7\nui_accepted=false\n' "$BOOT" > "$receipt"
++printf 'state=BOUND\nboot_id=%s\nlayers=6\nui_accepted=false\n' "$BOOT" > "$receipt"
+--- frozen/source-pins.json
++++ r5/source-pins.json
+@@ -1,7 +1,7 @@
+ {
+   "r4_plan": {
+     "path": "r4-reference/plan.disabled.json",
+-    "sha256": "ba35319e22e0b160fadc24c3432ea8666fd2d7c0ae614a6f035a33c85247f798"
++    "sha256": "5e2bd57b6ea41da5b7d7e55343c2c1ac478dc9523707cceae0ee9f53d1213b77"
+   },
+   "seal": {
+     "path": "$WORKSPACES/westlake-harness/benchmark/2026-10-12-v1-seal-execution/seal-final-20261013/seal.json",

@@ -1,0 +1,11 @@
+# #91 R5 stock187 experiment — frozen disabled handoff
+
+11/11 focused offline tests PASS; original BMS --resolve-inputs5/5 rc0. Actual5cd capture UID20011301 supplies10 placement/6 bind/496 protections. Stock187 remains in place; no same-byte bind. Six other artifact SHAs match T0 static-checkpoint.json exactly. No device/VM/SSH calls;61b protected.
+
+Actual original board_run plan: `window-disabled/board-run.disabled.json`; concrete after_lock/before_unlock route to `window_hooks.py`. Source-derived touch centers and3+6+6+15 surface-ready waits are in `interaction_runner.py`. Three lost-control popups+LifeCounter+ClipboardEditor are launch-only; HW/ZZ uses the original activation smoke. No final acceptance is inferred.
+
+No-placement and completed-rollback exits restore actual host foreground via original BMS desktop_launch then run original940 R5. Experiment deadline20min and rollback deadline30min are independent; an expired experiment does not block the reserved cleanup phase. Backups/partial observations/reverse rollback logic match frozen installer AST. An incomplete rollback keeps the board_run lock.
+
+After landing, run `python3 $R5/prepare_window.py --out $FRESH_WINDOW` from main with WORKSPACES set and MAC_HOME=$HOME exported. This recreates the5-key symlink index (never copies APK/meta), rechecks all5 real inputs, and renders main-bound package/request/board-run plan. Review and fill authorization.required.json as a separate root-owned authorization; set R5_AUTH and R5_AUTH_SHA to that exact file and SHA. Then root alone runs `python3 scripts/lab/board_run.py $FRESH_WINDOW/board-run.disabled.json --detach`. The hooks refuse absent/unapproved authorization even though board_run itself does not enforce execution_enabled. The authorization explicitly covers one candidate boot and one baseline-return boot, not61b.
+
+Archived t4 outputs are review artifacts; do not edit their paths into main. Source symlinks and large original resolve stdout are excluded from landing; prepare_window recreates them and captures new raw receipts. T0 checkpoint is static permission-to-test only, not Boat/UI/functionality evidence. Cross-board r4 comparison is not single-cause proof. Root owns visual judgment and the final decision.

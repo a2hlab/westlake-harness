@@ -1,0 +1,78 @@
+--- r4-original-cadence
++++ r5-source-coordinates-original-waits
+@@ -5,10 +5,10 @@
+ 
+ HERE=Path(__file__).resolve().parent
+ WS=Path(os.environ.get('WORKSPACES',HERE.parents[4])).resolve()
+-SERIALS={'5ea34a4500000000000000001123012c','5cd1e3dd00000000000000000923012c','61b0657200000000000000000324012c'}
++SERIALS={'5cd1e3dd00000000000000000923012c'}
+ PKG='com.Unity3d.BoatAttackDay';ABILITY='com.unity3d.player.UnityPlayerActivity'
+-TOUCHES=[('accelerate','uinput -T -d 1740 1100 -i 9000 -u 1740 1100'),('left','uinput -T -m 220 1000 70 1000 -k 5000 700'),('accelerate','uinput -T -d 1740 1100 -i 9000 -u 1740 1100'),('right','uinput -T -m 220 1000 370 1000 -k 5000 700'),('reset','uinput -T -c 1440 1100 200')]
+-ASSETS={'/system/android/lib64/libandroid.so':'adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130','/system/android/lib64/liboh_android_runtime.so':'94718e0d0b617a0f9a860e0b50b879b0d7d4639f32e8230b1f90f8e26e2c1354','/system/android/lib64/liboh_adapter_bridge.so':'8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e','/system/android/framework/oh-adapter-runtime.jar':'6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852'}
++TOUCHES=[('accelerate','uinput -T -d 1794 1074 -i 9000 -u 1794 1074'),('left','uinput -T -m 154 1046 49 1046 -k 5000 700'),('accelerate','uinput -T -d 1794 1074 -i 9000 -u 1794 1074'),('right','uinput -T -m 154 1046 259 1046 -k 5000 700'),('reset','uinput -T -c 1584 1074 200')]
++ASSETS={'/system/android/lib64/libandroid.so':'adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130','/system/android/lib64/liboh_android_runtime.so':'18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae','/system/android/lib64/liboh_adapter_bridge.so':'8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e','/system/android/framework/oh-adapter-runtime.jar':'6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852'}
+ for name,sha in {'libunity.so':'1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac','libil2cpp.so':'f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746','libwestlake_bionic_signal_box.so':'7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da'}.items():ASSETS['/data/app/el1/bundle/public/'+PKG+'/android/lib/arm64-v8a/'+name]=sha
+ DONORS={'rehearsal':('westlake-harness-t3/benchmark/2026-10-11-boat-autostart-seal/rehearsal_runner.py','39e18712c342ba29312d07fd631fbca8a2541efe780a901e86b0741d6d2b3ff7'),'keeper':('westlake-harness-t3/benchmark/2026-10-11-boat-window9/onscreen_keeper.sh','a55ebc4c50092a59dc0a0cf2c68ed91312d034fd619d388451a0c7170937c83d'),'batch':('westlake-harness/benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py','f41efa6ae2450adadda1f02c3c09335b74479c7d025872bbf95b3c8a444b177c')}
+ 
+@@ -109,27 +109,48 @@
+   guard();seen={}
+   for target,want in ASSETS.items():
+    _,text=b.shell('sha256sum '+shlex.quote('/proc/%d/root'%identity['pid']+target));tokens=text.split();seen[target]=tokens[0] if tokens else None
+-  save(out/'child-view.json',seen);need(seen==ASSETS,'child-view port947/adapter8ab/JAR633/private3 mismatch')
++  save(out/'child-view.json',seen);need(seen==ASSETS,'child-view stock187/adapter8ab/JAR633/private3 mismatch')
+  try:
+   context();_,text=b.shell('bm dump -n '+PKG);(out/'bundle.txt').write_text(text);bundle=B.parse_bundle(text,PKG);need(bundle['uid']==plan['uid'],'installed Boat UID differs')
+   _,text=b.shell('sha256sum /data/app/el1/bundle/public/'+PKG+'/android/base.apk');need(text.split()[0]=='8dc636657cccdad1310332928b8cc8eca7da03f4b528de6fb0c63118173e0444','installed APK differs')
+   b.shell('mkdir -m 700 '+remote);b.shell('printf %s '+shlex.quote(plan['owner'])+' > '+remote+'/owner');_,dir_inode=b.shell('stat -c %d:%i '+remote);dir_inode=dir_inode.strip()
+   b.send(found['keeper'],remote+'/keeper.sh');_,readback=b.shell('sha256sum '+remote+'/keeper.sh');need(readback.split()[0]==DONORS['keeper'][1],'keeper transfer mismatch')
+   b.shell('(KDIR='+remote+' INTERVAL=5 nohup sh '+remote+'/keeper.sh > '+remote+'/keeper-transport.log 2>&1 < /dev/null &)')
+-  rec['launch_method']='desktop';B.desktop_launch(b,{'package':PKG,'launch_activity':bundle.get('desktop_activity') or ABILITY},remote,out,rec);time.sleep(max(0,12-(time.monotonic()-rec['click_monotonic'])))
+-  context();_,ps=b.shell('ps -A -o PID,PPID,UID,NAME');(out/'ps-launch.txt').write_text(ps)
++  _,tree_before=b.shell("hidumper -s RenderService -a 'RSTree'");(out/'tree-before.txt').write_text(tree_before)
++  old_nodes=set(re.findall(r'SURFACE_NODE\[([0-9]+)\].*abilityState: foreground.*Name \[AdapterSurfaceView\]',tree_before))
++  rec['launch_method']='desktop';B.desktop_launch(b,{'package':PKG,'launch_activity':bundle.get('desktop_activity') or ABILITY},remote,out,rec)
+   candidates=[]
+-  for row in B.processes(ps):
+-   if row['uid']==plan['uid']:
+-    try:candidates.append(proc_identity(b,row['pid'],plan['uid']))
+-    except ValueError:pass
++  for attempt in range(80):
++   context();_,ps=b.shell('ps -A -o PID,PPID,UID,NAME');(out/'ps-launch.txt').write_text(ps)
++   candidates=[]
++   for row in B.processes(ps):
++    if row['uid']==plan['uid']:
++     try:candidates.append(proc_identity(b,row['pid'],plan['uid']))
++     except ValueError:pass
++   if len(candidates)==1:break
++   time.sleep(.1)
+   need(len(candidates)==1,'unique Boat child not ready');identity=candidates[0];rec['child']=identity;child_view()
+-  for t in (15,30):
+-   time.sleep(max(0,t-(time.monotonic()-rec['click_monotonic'])));shot('t'+str(t))
+-   try:rec['images']['t'+str(t)]['target_window']=window('t'+str(t))
+-   except Exception as e:rec['images']['t'+str(t)]['wms_diagnostic_error']=str(e)
+-   save(out/'record.json',rec)
+-  # Exact r4 geometry was personally accepted in two prior runs on this boot.
++  node=None
++  for attempt in range(160):
++   guard();_,tree=b.shell("hidumper -s RenderService -a 'RSTree'");(out/'tree-current.txt').write_text(tree)
++   nodes=set(re.findall(r'SURFACE_NODE\[([0-9]+)\].*abilityState: foreground.*Name \[AdapterSurfaceView\]',tree))-old_nodes
++   need(len(nodes)<=1,'ambiguous new foreground surface')
++   if nodes:node=next(iter(nodes));break
++   time.sleep(.1)
++  need(node is not None,'new foreground surface missing')
++  configs=[]
++  for attempt in range(120):
++   guard();_,surface=b.shell("hidumper -s RenderService -a 'surfacenode "+node+"'");(out/'surface-node.txt').write_text(surface)
++   configs=re.findall(r'sequence = ([0-9]+).*config = \[([0-9]+x[0-9]+),',surface)
++   if configs:break
++   time.sleep(.1)
++  need(configs and all(size=='1920x1200' for seq,size in configs),'retained Unity buffers must all be1920x1200')
++  need(re.search(r'Bounds.*1920.*1200',surface) and re.search(r'default-size.*1920x1200',surface),'surface bounds/default-size')
++  rec['surface_ready_monotonic']=time.monotonic();rec['surface_node']=node;rec['cadence']=[3,6,6,15]
++  for delay,tag in [(3,'t3'),(6,'t9'),(6,'t15'),(15,'ready')]:
++   time.sleep(delay);guard();shot(tag)
++   rec['images'][tag]['target_window']=window(tag);save(out/'record.json',rec)
++  # Geometry acceptance for this new candidate remains pending root visual review.
+   # Keep input identity/geometry checks; known embedded-child focus is recorded advisory.
+   for n,(name,cmd) in enumerate(TOUCHES,1):
+    rec['target_window']=window('touch-%d'%n);guard()
