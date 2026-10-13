@@ -1,0 +1,54 @@
+--- minimal-r3/package/worker.sh
++++ minimal-r4/package/worker.sh
+@@ -1,11 +1,11 @@
+ #!/system/bin/sh
+-# Retains a8bb2 five-bind order; appends the reviewed runtime geometry port; no app launch, global disable, or relabel fallback.
++# Retains a8bb2 five-bind order; appends the reviewed runtime port then original ADC libandroid repair; no app launch, global disable, or relabel fallback.
+ set -eu
+ umask 022
+ ROOT=/data/westlake-demo/u13
+-OWN="$ROOT/boat-v2-20261013-r3"
++OWN="$ROOT/boat-v2-20261013-r4"
+ TABLE="$OWN/binds.tsv"
+-TABLE_SHA=bd1fb91bc5741fed8036ff987a97a7a6a6f92fb1fe1d99fac557addd7f5bbcbf
++TABLE_SHA=a10586a19ca0a812356e6dc65490f3e4a4f236e011021909bb174015c2c66cde
+ BOOT=$(cat /proc/sys/kernel/random/boot_id)
+ LOG="$OWN/boat-$BOOT.log"
+ receipt="$OWN/boat-$BOOT.receipt"
+@@ -33,17 +33,19 @@
+ case "${1:---verify-bound}" in
+     --bind-before-ready)
+         [ "$(sha /system/android/lib64/liboh_android_runtime.so)" = 18763dd4b3a48aefaaf80c9f9630b849e282175eea8da04f7918d6d2cfa3fbae ] || fail STOCK_RUNTIME
++        [ "$(sha /system/android/lib64/libandroid.so)" = 9ccf64f8d1f6e1748665057273eaa4c2770098934d39afa160f2c6b4c18b06db ] || fail STOCK_LIBANDROID
+         no_parent;;
+     --verify-bound)
+         [ "$(sha /system/android/lib64/liboh_android_runtime.so)" = 94718e0d0b617a0f9a860e0b50b879b0d7d4639f32e8230b1f90f8e26e2c1354 ] || fail CANDIDATE_RUNTIME
+-        grep -qx 'state=BOUND' "$receipt" && grep -qx "boot_id=$BOOT" "$receipt" && grep -qx 'layers=6' "$receipt" || fail NO_SYNCHRONOUS_BOUND
++        [ "$(sha /system/android/lib64/libandroid.so)" = adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130 ] || fail CANDIDATE_LIBANDROID
++        grep -qx 'state=BOUND' "$receipt" && grep -qx "boot_id=$BOOT" "$receipt" && grep -qx 'layers=7' "$receipt" || fail NO_SYNCHRONOUS_BOUND
+         n=0
+         while IFS="$(printf '\t')" read -r name target before after before_meta metadata; do
+             n=$((n+1)); src="$OWN/sources/$name"
+             [ "$(sha "$target")" = "$after" ] && [ "$(meta "$target")" = "$metadata" ] || fail "VERIFY_$n"
+             [ "$(stat -c '%d:%i' "$target")" = "$(stat -c '%d:%i' "$src")" ] || fail "VERIFY_OWNER_$n"
+         done < "$TABLE"
+-        [ "$n" = 6 ] || fail VERIFY_COUNT
++        [ "$n" = 7 ] || fail VERIFY_COUNT
+         exit 0;;
+     *) fail UNKNOWN_MODE;;
+ esac
+@@ -58,7 +60,7 @@
+     [ "$(sha "$src")" = "$after" ] && [ "$(meta "$src")" = "$metadata" ] || fail "SOURCE_$n"
+     [ "$(sha "$target")" = "$before" ] && [ "$(meta "$target")" = "$before_meta" ] || fail "PREIMAGE_$n"
+ done < "$TABLE"
+-[ "$n" = 6 ] || fail COUNT
++[ "$n" = 7 ] || fail COUNT
+ # Repeated invocation rejects rather than double-binding; immutable per-boot intents retain partial failure evidence.
+ [ ! -e "$OWN/boat-$BOOT.intents" ] || fail ALREADY_ATTEMPTED_THIS_BOOT
+ (set -C; : > "$OWN/boat-$BOOT.intents") || fail INTENT_CREATE
+@@ -76,4 +78,4 @@
+     log "BOUND $n $target $after"
+ done < "$TABLE"
+ no_parent
+-printf 'state=BOUND\nboot_id=%s\nlayers=6\nui_accepted=false\n' "$BOOT" > "$receipt"
++printf 'state=BOUND\nboot_id=%s\nlayers=7\nui_accepted=false\n' "$BOOT" > "$receipt"

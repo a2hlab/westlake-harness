@@ -8,6 +8,12 @@ difference table the spec's `demo_baseline_boatattack_static` scenario requires,
 Sources (read-only): BoatAttack = `~/orca/00.Workspace-games-ad1ab0a7` (branch `games/boatattack-repro`, HEAD `43ec24af9`),
 bundle `strict-boat-assembled-20260924T074522Z-25403`. Our side = U13 (deployed `plan.expected`, jar anchor `bbc3f530`).
 
+## 2026-10-13 correction: preserve the full geometry repair
+
+The original recommendation below understated the byte delta: 47 of the 49 changed bytes implement four geometry behaviors; it is not merely a class-name fix. The successful historical recipe places `adc125f4…` at **both** `libandroid.so` and `liboh_android_runtime.so`. The r3 candidate ported the runtime behaviors into `94718e0d…` while leaving `libandroid.so` at `9ccf64f8…`. Exact child-root reads and maps confirm this omission, and the actual screenshot still has a stretched HUD. See [r3 observations](v2-20261013/outer/candidate-window2/owner-readonly/results.json). Maps alone do not prove which duplicate definition handled a call.
+
+The SQLite/API regression prevents replacing the larger U13 **runtime** with `adc`; it does not establish that the historical `9cc -> adc` fix at the **libandroid** path is incompatible. The latter must be evaluated against its own preimage. Restoring that omitted fix is pending a controlled screen/input check; r3 is rejected and rolled back. The historical route judgment below is retained as the superseded analysis, not current deployment guidance.
+
 ## Bottom line
 **Route ① (unified state's 9 shared paths + BoatAttack's 3 app-private files) is the right first attempt and is
 well-founded.** Every Unity-specific adaptation lives in the 3 app-private files; the 9 shared paths carry **no**

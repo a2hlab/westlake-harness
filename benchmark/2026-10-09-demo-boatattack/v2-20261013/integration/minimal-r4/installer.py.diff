@@ -1,0 +1,59 @@
+--- minimal-r3/package/installer.py
++++ minimal-r4/package/installer.py
+@@ -1,5 +1,5 @@
+ """Narrow Boat placement adapter: reuse reviewed restore-v6 backup/place executor.
+-No launch, reboot, runtime bind or installation. Boot worker owns exactly six binds.
++No launch, reboot, runtime bind or installation. Boot worker owns exactly seven binds.
+ """
+ import argparse, hashlib, importlib.util, json, os, re, subprocess, sys, time
+ from pathlib import Path
+@@ -9,7 +9,7 @@
+         if (repository/'scripts/lab/lab_paths.py').is_file():
+             os.environ['WORKSPACES']=str(repository.parent);break
+     else:raise ValueError('WORKSPACES is required outside a repository')
+-ROOT='/data/westlake-demo/u13/boat-v2-20261013-r3'
++ROOT='/data/westlake-demo/u13/boat-v2-20261013-r4'
+ CFG='/system/etc/init/00_westlake_u13_recover-v3.cfg'
+ 
+ def need(ok,msg):
+@@ -25,10 +25,10 @@
+ def validate(plan,core):
+     need(plan['serial']=='5ea34a4500000000000000001123012c','this captured package is 5ea only; 5cd/61b need their complete RouteB protections')
+     need(any(r['target']=='/system/etc/init/01_westlake_u13_toutiao.cfg' and r['before']=={'exists':False} for r in plan['preserved']),'5ea RouteB absence must remain protected')
+-    allowed={ROOT+'/'+n for n in ['recover-v3-boat.sh','worker.sh','binds.tsv']}|{ROOT+'/sources/'+n for n in ['liboh_adapter_bridge.so','oh-adapter-runtime.jar','libunity.so','libil2cpp.so','libwestlake_bionic_signal_box.so','liboh_android_runtime.so']}|{CFG}
+-    need(len(plan['members'])==10 and {r['target'] for r in plan['members']}==allowed,'exact ten placement objects')
++    allowed={ROOT+'/'+n for n in ['recover-v3-boat.sh','worker.sh','binds.tsv']}|{ROOT+'/sources/'+n for n in ['liboh_adapter_bridge.so','oh-adapter-runtime.jar','libunity.so','libil2cpp.so','libwestlake_bionic_signal_box.so','liboh_android_runtime.so','libandroid.so']}|{CFG}
++    need(len(plan['members'])==11 and {r['target'] for r in plan['members']}==allowed,'exact eleven placement objects')
+     need(plan['members'][-1]['target']==CFG,'activate cfg last')
+-    need(len(plan['binds'])==6 and len({r['target'] for r in plan['binds']})==6,'exact six bind objects')
++    need(len(plan['binds'])==7 and len({r['target'] for r in plan['binds']})==7,'exact seven bind objects')
+     for row in plan['members']:
+         need(sha(resolve(row['source']))==row['sha256'],'member source SHA');core.metadata(row['after'],'after')
+         b=row['before'];need(type(b['exists']) is bool,'unknown before')
+@@ -78,7 +78,7 @@
+         wanted=':'.join(str(row['after'][k]) for k in ['mode','uid','gid','label'])+':'+own['identity'];need(actual==wanted,'directory identity/metadata drift')
+ 
+ def rollback_preflight(plan,dev,out,core):
+-    """Original core intent/observation rule; all ten backups checked before first unmount."""
++    """Original core intent/observation rule; all eleven backups checked before first unmount."""
+     tx=core.read(out/'transaction.json')
+     expected=[dict(target=r['target'],before=r['before'],backup='backup-%03d'%n if r['before']['exists'] else None,candidate_sha256=r['sha256']) for n,r in enumerate(plan['members'])]
+     need(tx.get('plan_sha256')==plan['_sha'] and tx.get('serial')==plan['serial'] and tx.get('boot_id')==plan['boot_id'],'transaction identity drift')
+@@ -107,7 +107,7 @@
+     tx,current=rollback_preflight(plan,dev,out,core)
+     core.check_identity(dev,plan);no_consumers(plan,dev)
+     retained=audit_rows(plan,auth);audit_verify(plan,dev,out,core,retained,True)
+-    # Remove only owned six-bind tops, in reverse donor order. No global unmount or process signals.
++    # Remove only owned seven-bind tops, in reverse donor order. No global unmount or process signals.
+     for row in reversed(plan['binds']):
+         no_consumers(plan,dev)
+         target=row['target'];source=row['source'];bound=dev.probe(target)
+@@ -144,7 +144,7 @@
+ def main():
+     ap=argparse.ArgumentParser();ap.add_argument('--plan',type=Path,required=True);ap.add_argument('--action',choices=['apply','rollback'],default='apply');ap.add_argument('--execute',action='store_true');ap.add_argument('--authorization',type=Path);ap.add_argument('--authorization-sha256');ap.add_argument('--out',type=Path);a=ap.parse_args()
+     plan=read(a.plan);plan['_sha']=sha(a.plan);core=core_for(plan);validate(plan,core)
+-    if not a.execute:print(json.dumps({'status':'PREVIEW','members':10,'boot_binds':6,'device_calls':0,'plan_sha256':plan['_sha']}));return 0
++    if not a.execute:print(json.dumps({'status':'PREVIEW','members':11,'boot_binds':7,'device_calls':0,'plan_sha256':plan['_sha']}));return 0
+     need(plan['execution_enabled'] is True,'disabled plan');need(a.authorization and sha(a.authorization)==a.authorization_sha256,'independent authorization pin');auth=read(a.authorization)
+     need(auth['approved_by']=='outer(codex)' and auth['plan_sha256']==plan['_sha'] and auth['serial']==plan['serial'],'authorization binding')
+     need(auth['origin_boot_id']==plan['boot_id'] and auth['expires_epoch']>time.time(),'origin/expiry');need(auth['action']==a.action,'action authorization')

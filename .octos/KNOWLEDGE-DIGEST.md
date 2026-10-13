@@ -875,3 +875,8 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-13 #91 r4b：mock执行器PASS不代表真实CLI可用；复用Transport前须建宿主logs目录，否则首次只读probe后落原始回执即FileNotFoundError。CLI经真实Transport+fake HDC首读拒绝用例确认stdout/stderr/JSON落盘且零intent后才交付；证据 `benchmark/2026-10-12-exact-realization/r4b-directory-logdir/`。
 
 - 2026-10-13 #91 v2备机：319文件SHA一致仍可能全app加载失败；5ea旧seq1目录十处750/root:root，普通UID在sealed child dlopen adapter errno13/exit123。对照正常5cd的31祖先目录，仅这10处差异；保留SHA/UID/label并CAS改755后HelloWorld t20正常上屏。恢复门须同时核挂载目录祖先可遍历元数据；证据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/{ancestor-metadata-diff.json,5ea-base-recovery/dir-repair,5ea-base-recovery/smoke-modefix/}`。
+
+- 2026-10-13 #91 Boat v2：init service 的 root UID 不等于 hdc root 权限；同四项 caps 的只读诊断 self ns=mnt:[4026531841]/rc0，而 /proc/1/ns/mnt readlink rc1 空输出，hdc 读 PID1 同 ns。不能把 readlink 比较失败报成 namespace 不同，须分离读取 rc 与值比较。原 worker 已精确恢复；证据 benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/candidate-window1/nsdiag/。
+
+- 2026-10-13 #91 更正 DIGEST 848 的适用范围：stock187+8ab/633/private3只证明 Boat 渲染，不能推导 geometry port947“非必需”。本轮同boot07903d2f/六pin全等，真实原五触后仍HUD/控件横拉伸、操作效果未证，strict t2b拒；stock187确缺839四几何行为。下一步复用原94718e0d源码移植件（787API/SQLite registrar保留、真实rc0构建），不重走已解决的显示/输入问题，947实板严格通过仍待验证。证据 benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/candidate-window1/；原失败已回滚+冷boot+HW/ZZ截图PASS。
+- 2026-10-13 #91 Boat v2：历史成功配方在 libandroid.so 与 liboh_android_runtime.so 两路径均放 adc125；r3只把后者移植为947，前者仍9cc（同child /proc/5058/root实读），遗漏libandroid原有四处geometry修复。adc不能覆盖U13 runtime187的SQLite/API结论不可扩大为禁止9cc->adc原位修复；两文件同导出不代表行为等价。r3截图仍拉伸，旧libandroid为调用原因尚属假设，待补齐单变量验证；证据 benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/candidate-window2/owner-readonly/。
