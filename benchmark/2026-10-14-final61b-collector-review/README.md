@@ -1,0 +1,13 @@
+# Independent final61b V2 collector review
+
+The earlier output location nested new capture under archived approved-execution. The reviewed sidecar and command now use the fresh `outer/final61b-seal-capture-v2` directory. Original read-only collector entry is acceptable after the current full128 window releases, subject to unchanged frozen pins and a nonexistent output directory. Producer freeze was not yet present at review time; exact landing remains pending its verification.
+
+Independent checks matched 574 pin references across 541 unique files. The expected set contains 824 unique source files and 130 disjoint package archives, exactly the actual prior live954 set. Four file groups contain 829 memberships because five targets overlap. Both overlay sets (487 RouteB and 18 Boat) match the expected hashes. Boat actual enabled plan `49d7ac76` differs from disabled source plan `3989a2d8` only in execution_enabled; the original transaction retains all 11 before-images, including the one existing CFG backup. Original RouteB source boot is `9f5af7c8`; original rollback origin boot is `52533d3f`, with 24 controls and board_exercised=false. Historical bytes were not relabeled.
+
+The supplied preview was independently replayed with subprocess.run and subprocess.Popen forbidden. It recorded the original collector's 181 read-only commands (130 BMS, 48 SHA batches, two boot reads and one version read), then intentionally stopped before adapter.convert. The original overlay checker rejected null admission pins. Its in-memory typed-pin positive check is ABI evidence only. No actual snapshot, errors array, admission, device observation or complete seal build was manufactured. The new consume.py seam was read and independently rejected a missing actual capture without creating output. Its complete real chain remains to be executed after root collection and admissions.
+
+Actual capture, signed admissions, full128 final review and V2 signoff remain pending. Existing limited-scope game/feed review pins do not imply general stability or a random SIG11 repair. ROOT-COMMAND's statement that UI review fields are null lags the JSON, which already pins those existing reports; signature and actual capture fields remain null correctly.
+
+Use the original collector argv and entry conditions in results.json. Preserve all raw capture files on failure; never rewrite errors or replace the original capture with a generic state summary. No HDC, board lock, source mutation, 128 input mutation, commit or push occurred in this review.
+
+Evidence: preview-independent.json, pins-independent.json and consume-negative.json.
