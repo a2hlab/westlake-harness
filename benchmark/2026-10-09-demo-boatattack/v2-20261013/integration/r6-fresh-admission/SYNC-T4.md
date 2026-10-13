@@ -1,0 +1,13 @@
+# T0 fresh admission interface — root relay
+
+Consume MAIN outer/r6-full128-main/identity/candidate-proof.json SHA a4da342b3ed2fda8205e63758bb18ceacca82a2197d5b9851521dd885a5bb5fc and MAIN outer/r6-smoke10-main/window-01/plan.json only. Do not rebuild identity. 40f0/4757/35da identify the reviewed artifact combination only.
+
+T4 owns fresh stage. Please retain exact new enabled plan, original transaction.json, three intent-NNN.json and placed-NNN.json, placed.json, source-apply-*.json, apply authorization and original successful command receipt/raw logs; then candidate-boot-intent.json and candidate-boot-result.json plus numbered transport stdout/stderr/receipt. Original core protocol is authoritative. Candidate boot remains null until actual cold boot. New plan origin must equal fresh pre-stage read; all three staged SHA/metadata must equal the reviewed artifact combination, and all seven binds/319/preserved/ABSENT gates remain.
+
+T0 owns independent fresh Reader replay and binding. Raw records must preserve argv, host returncode, separate stdout/stderr and explicit remote markers. Fresh check invokes the frozen original candidate_identity.check, full337 + runtime/boot membership + parent/version/bookends + typedABSENT. It must bind actual serial and candidate boot and run after stage/new boot. Unknown inputs reject; no synthetic PASS, no execution enable. T4 need not rewrite identity/driver.
+
+The main full128 round still carries historical35da origin; the ten-control round carries actual a75c3bdd-a300-4f10-9747-4baee78330f3. Admission will bind actual new boot separately and seed the existing observed-post-reboot-boot marker only through an explicit local binding entry; no driver guard change. All main templates stay disabled. No HDC was run by T0.
+
+Exact request.deployment field names: plan,authorization,transaction,backups[3],intents[3],placed_members[3],placed,source_result,apply_command,boot_intent,boot_result,boot_command,ready_command,bound_command. Each ordinary value is fullfile ref; command values are {receipt,stdout,stderr} fullfile refs. All fields remain pending until actual execution. Root may derive these references from the original output tree without modifying T4 records.
+
+Origin update (supersedes the earliera75 assumption): productioncode contains no originUUID. Currentrequest derives14a4b932-f396-40fa-864c-543c47b99875 from MAIN outer/r6-interactive-readonly capture program12cbb734,probe raw bookends,metadata before/after,and fourrealrecv rawreceipts/bytes. prepare_origin.py repins a future retry capture and resets candidate_boot/deployment/fresh_capture to null without rebuildingartifact identity. Exactnewstage origin must equal this derivedboot; olderattempt receipts reject by boot andchronology.
