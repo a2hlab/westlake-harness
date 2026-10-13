@@ -902,3 +902,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-13 #91 接缝复验：held输出/挂载target域/restore-entry schema三次迟发现不兼容，生产者输出须交给主树原消费者做真实disabled CLI预演；先冻结可独立执行的核心，与后继接口复审并行，动态UID/boot只列实测缺口，不造值。见 FLAW-009、main069d943684。
 
 - 2026-10-13 #91 内容态复核：不能只按控件存在判无回退，须同时比较 signed/R4/R6。Toodoo 原APK重复启动读tasks仅填allTasks，filters.xml缺失跳过selected刷新，0/6源于集合计数；sNotz首次Welcome自动写偏好，后续不再展示教程。5ea恢复原947后两app launch-only同样复现sNotz空列表/Toodoo0of6（非单变量因果对照），保留空态/笔记存储未证，不宣称功能可用。证据 `benchmark/2026-10-13-content-state-preflight/` 与 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/content-state-baseline947-r2/`。
+
+- 2026-10-14 #91 61b f28实际补证：boot086db6c7、同child17734/birth46774先partial左转/LAP0→1，root等步骤timeout后原进程续接right/right/left/accelerate/reset完成；1920×1200/圆HUD、方向响应、位移及reset回水经双审，顶部状态栏遮挡保留，不称绕完一圈。头条关闭空登录推广后feed→正文→返回→刷新有实际图，正文灰插图/右裁切与历史SIG11未修复保留；第三次954 PASS后已启动同61b128，尚未V2封板。证据 benchmark/2026-10-14-final61b-game-resume-review/、benchmark/2026-10-14-final61b-toutiao-review/、benchmark/2026-10-14-final61b-ui-archive/。
