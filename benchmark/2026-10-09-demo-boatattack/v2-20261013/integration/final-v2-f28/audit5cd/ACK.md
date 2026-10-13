@@ -1,0 +1,1 @@
+Archive-only handoff: actual returned boot is used in remote success JSON and host exact-match check. Fresh outer audit input is bound and validated; 5/5 offline tests PASS, no device calls. Frozen provider/history unchanged. Root relays this ACK and executes only inside its authorized window.
