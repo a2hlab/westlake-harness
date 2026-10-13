@@ -886,3 +886,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 
 - 2026-10-13 **原R5收尾必须恢复原宿主前台**：5cd Boat缺项安装+HW/ZZ冒烟后，imehost0仍PID5323/WID29但ZOrd=-1，原940检查在visibility门正确拒绝；aa start返回shell rc0却10107101，必须查成功文本。复用原BMS desktop_launch点精确宿主图标后原R5全940+非文件PASS；不放宽门、不把宿主UI当头条feed（benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/5cd-v2-preinstall-window/results.json）。
 - 2026-10-13 #91 r5：board_note.sh held 返回 owner/PID/时间整行，调用者须像原 board_run 一样 split 后比较首 token；整行等于 owner 的窄测假通过，实际首窗在任何 HDC 前拒绝并保锁。外环用真实 held 输出及空/异主/非零 rc 三负例验修，原包不改；证据 benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r5-preflight/held-protocol-review.json。
+
+- 2026-10-13 #91 R5 编排：candidate snapshot 只列真实挂载 target（原56+新增6），不能把 /data/westlake-demo 的 owned source/control members 塞进 label target；原 safe_target 正确拒绝这些路径。owned members 仍由 installer 逐件核 SHA/metadata。r3 已实际10 placement 后因此在冷boot前拒绝，自动回滚319全等、原940 PASS，未产生候选运行结论；证据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r5-preflight/snapshot-r4-review.json` 与 `outer/r5-experiment-main-r3/run/restored-r5.json`。

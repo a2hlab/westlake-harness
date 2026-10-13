@@ -240,3 +240,5 @@ Native-only U7/U8 experiment bundle preparation: derive baseline reference SHAs 
 - 2026-10-13 #91 final v1: 61b已封为演示板；签认、自检R5入口、备机r4b恢复边界与持久归档见 `benchmark/2026-10-12-v1-seal-execution/seal-final-20261013/OPERATIONS.zh-CN.md`。`approved_by=outer(claude)` 为旧协议角色字面值，实际外环为codex；不得覆盖原seal或重放旧boot/授权。5cd隐私选择只影响其后续UI交互，不新增t5指纹演练门。
 
 - 2026-10-13：若原R5 before/after包围HW/ZZ或全量冒烟，before_unlock前按原BMS desktop_launch恢复org.westlake.imehost/EntryAbility前台，再跑原R5；冒烟会把imehost0置ZOrd=-1。aa start可能rc0但文本10107101，不能当成功。保留失败输出，R5重验使用新目录；PASS后才解锁，截图只显示宿主UI时不得称头条feed通过。
+
+- 2026-10-13 #91 R5：`param get` 的真实成功输出可为 `true `；READY/56/current-boot/Permissive 仍逐值严格比较，但先对每行 strip，不能仅 strip 整段。`board_note held` 对 board_run/BMS 比首 token，对原 installer 的 authorization.holder 则绑定完整 owner/PID/time 行。rollback 保留的 owned audit 根要经精确 member/SHA/metadata/inode 与无消费者/无挂载检查后原子归档，不能删除审计或在 absent-root plan 上直接重跑；OH 无 awk，hdc rc0 也可能夹远端 shell 错误，须核显式远端 rc 和成功回执。证据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r5-audit-archive/execution-r2.json`、`integration/experiment-r5-hook-r3/window_hooks.r4.py`。
