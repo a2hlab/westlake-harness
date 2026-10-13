@@ -1,0 +1,18 @@
+--- review1/installer.py
++++ uid-r2/installer.py
+@@ -169,6 +169,15 @@
+             need(held.returncode==0 and not held.stderr and held.stdout.strip()==auth['holder'],'external lock holder mismatch')
+             return super().command(name,argv)
+     logs=a.out/('transport-'+str(time.time_ns()));logs.mkdir(exist_ok=False);dev=GuardedDevice(plan,logs)
++    identity_ref=plan['boat_identity_program'];identity_path=resolve(identity_ref['path'])
++    need(sha(identity_path)==identity_ref['sha256'],'UID reader independent pin')
++    spec=importlib.util.spec_from_file_location('boat_uid_live',identity_path);identity=importlib.util.module_from_spec(spec);spec.loader.exec_module(identity)
++    identity.fresh(plan,dev)
++    original_fresh=core.fresh
++    def fresh_with_uid(device,checked_plan):
++        original_fresh(device,checked_plan)
++        identity.fresh(checked_plan,device)
++    core.fresh=fresh_with_uid  # Both original all-preimage rounds, including immediately before the first write.
+     if a.action=='apply':
+         dev.shell('boat-switch-absence','test ! -e /data/westlake-demo/u13/BOAT_DISABLED && test ! -L /data/westlake-demo/u13/BOAT_DISABLED')
+         core.apply(plan,dev,a.out)
