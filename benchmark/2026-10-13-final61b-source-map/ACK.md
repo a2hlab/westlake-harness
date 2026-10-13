@@ -1,0 +1,3 @@
+# T0 ACK disabled final61b source mapping
+
+Static missing0, dynamicunknown3(table/worker actual61b7bind metadata/BMSUID;run.sh newboot independentWMS).824file sources+130APK=954,319315keep+4replace. Originalbuild_seal/realization CLIs bothrc0 in explicit nondeployable synthetic source-schema fixtures; actualpending bothrc2/nooutput.3Pythoncases/3lifecycle scenarios/isolatedcargoPASS; actualMain5cd composition rejected for61b. No device, no frozen edits, no extra5cd128. See results.json/gaps.json/README.md for exactpins and actualpostboot fill steps. Actual61b plan/composition/newboot/approval/snapshot/overlayadmission remainpending, no runtimePASS/signature.
