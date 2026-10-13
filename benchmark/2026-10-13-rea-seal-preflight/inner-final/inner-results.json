@@ -1,0 +1,111 @@
+{
+ "task": "91-rea-static-supplement-outer-codex",
+ "status": "DONE_STATIC_PLUS_REA_DISASSEMBLY",
+ "device_calls": 0,
+ "git_mutations": 0,
+ "permission_changes": 0,
+ "scope": "benchmark/2026-10-13-rea-seal-preflight only (read inputs elsewhere; wrote only inner-results.json, inner-README.md, dispatch.md ACK)",
+ "read_first": [
+  "AGENTS.md",
+  ".octos/KNOWLEDGE-DIGEST.md (head)",
+  ".octos/OPS-RUNBOOK.md (head, unavailable→absent)"
+ ],
+ "inputs_reviewed": {
+  "runtime_surfaceview_split_README": "benchmark/2026-10-13-runtime-surfaceview-split/README.md",
+  "runtime_surfaceview_split_results": "benchmark/2026-10-13-runtime-surfaceview-split/results.json",
+  "shim_source": "benchmark/2026-10-13-runtime-surfaceview-split/source/android_graphics_compat_shim.cpp",
+  "root_abi_vs_947": "benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-source-review/abi-vs-947.json",
+  "offline_receipts": "evidence/offline/{dedicated-child,popup-main,named-child-fallback,boat-main-counterexample,child-and-main-unavailable,no-session}.{receipt.json,stdout.txt}"
+ },
+ "sha256": {
+  "README.md": "8c717086d56daeea",
+  "results.json": "39c11f45ff1325a4",
+  "predictions.json": "b77300b21ab6ac75",
+  "source-over-947.patch": "30db37ceec423e41",
+  "verify.py": "8a2532b369301b7a",
+  "offline_functions.py": "8ff4e8b9fd02e6f5",
+  "abi-vs-947.json": "[computed but hex display redacted; verified structurally]",
+  "source/android_graphics_compat_shim.cpp": "c208788a… (full hex redacted in display; SHA matches results.json source.sha256 byte-for-byte, 78283 bytes verified)"
+ },
+ "verified_facts": [
+  "Source c208788a (78283 B) exists in-repo; results.json source.sha256 recomputed and MATCHES.",
+  "BBQ_nativeUpdate change is minimal and matches README claim: single semantic delta vs 947 in source-over-947.patch (8 added lines) — hasDedicatedChildWindow flag; geometry stamp applies b->width/b->height ONLY when dedicated child resolution succeeded, else 1200x1920 panel policy for main/ViewRoot and failed-child fallback.",
+  "No name/package/aspect heuristic added; SurfaceView detection is the pre-existing name check (strstr 'SurfaceView'), and only child-resolution outcome gates requested geometry.",
+  "Offline host branch checks (6 cases) all PASS per evidence/offline/results.json: dedicated-child (child selected, child_writes=1, main_writes=0), popup-main, named-child-fallback, boat-main-counterexample (main stamped 1200x1920), child-and-main-unavailable, no-session; receipts rc=0 with argv recorded.",
+  "Lazy getSurface + 3 other geometry functions (nwfs_seed_window_geometry, ANativeWindow_fromSurface, ANativeWindow_setBuffersGeometry) recorded as unchanged in evidence/offline/results.json with per-function hashes.",
+  "Build: rc=0, 787 exports before/after, removed/added/new_undefined/attribute_drift all empty, 4 SQLite/CursorWindow registrars present; source closure 6347 files all_match before AND after; candidate 3194360 bytes.",
+  "Root ABI vs actual947: removed/added/drift/consumer_breaks all empty across consumers (adapter bridge, unity, libandroid); old vs new .so SHA differ (rebuilt), confirming it compares rebuilt artifact against 947 baseline.",
+  "No runtime evidence of the successful dedicated SurfaceView geometry ON DEVICE exists in this workspace: candidate .so, build log, archives, toolchain paths point to westlake-harness-t0 and westlake-inputs workspaces, all MISSING locally.",
+  "Landing r2 evidence claims 29 files present and isolated cargo PASS; landing-r2.json itself lives under t0, not locally verifiable here."
+ ],
+ "unknowns": [
+  "Whether the f28 candidate behaves on real hardware (all runtime acceptance pending: strict Boat main/child buffer + HUD + five-touch/LAP/reset AB, Seal/StudyTracker/DropCount restoration, ClipboardEditor).",
+  "Actual artifact bytes of candidate f28bd1b3 .so and build log (not present in this workspace; recorded SHAs cannot be independently recomputed here).",
+  "Whether Boat main ViewRoot regression (main falls back to panel 1200x1920 vs 947's requested geometry) is acceptable — explicitly flagged NOT equivalent to accepted 947 in README; same-PID AB pending.",
+  "Root's separate REA artifact evidence: not provided in this workspace, so REA was NOT independently re-verified here.",
+  "Only the six offline stdout receipts were read; raw host binary and compiler were not re-run (read-only task)."
+ ],
+ "critical_path_assessment": {
+  "new_action_justified": false,
+  "reason": "All static/offline evidence internally consistent and locally verifiable where files exist. The only unmet items are runtime AB and board controls, which are already explicitly pending in results.json/README and gated on hardware access root holds. No new static finding emerges that would change the critical path: proceed with root's same-PID AB when hardware is available; no source change justified before that."
+ },
+ "rea_note": "Root obtains actual REA artifact evidence separately; this supplement does not claim REA verification. REA not called: no device access attempted, consistent with dispatch constraints.",
+ "rea_supplement": {
+  "provided_by": "external-reviewer (root) at 2026-10-13 local, inputs/ dir",
+  "subject_identity": {
+   "file": "inputs/liboh_android_runtime.so",
+   "size_bytes": 3194360,
+   "sha256": "f28bd1b3… (full hex redacted in display; recomputed locally and EQUALS results.json candidate.sha256, open.json and search.json subject digests)",
+   "note": "Bit-exact the f28 candidate recorded in benchmark/2026-10-13-runtime-surfaceview-split/results.json"
+  },
+  "evidence_ids": {
+   "analyze_function": "ev_6d726ba3… (function.json evidence_id)",
+   "search": "ev_b2c0… prefix (search.json evidence_id)",
+   "provider": "Hopper Disassembler, launcher-sha256 dad6f886…, arm64 ELF"
+  },
+  "target": "BBQ_nativeUpdate = _ZN7android12_GLOBAL__N_116BBQ_nativeUpdateEP7_JNIEnvP7_jclasslllli @ 0x1989ac",
+  "assembly_findings": {
+   "prologue_requests_stored": "0x1989d8 mov w22,w6 (format); 0x1989dc mov x19,x5 (height); 0x1989e0 mov x20,x4 (width); 0x198a20 stp w20,w19,[x24,#0x44] stores width@+0x44, height@+0x48; 0x198a24 str w22,[x24,#0x4c] (format@+0x4c)",
+   "surfaceview_name_check": "0x198a4c-0x198a58: adrp/add x1,#0x63000+#0xb10 (\"SurfaceView\" literal), bl sub_1fc5c0 (strstr); 0x198a5c cbz x0 -> not-SurfaceView path falls to main window resolution",
+   "dedicated_child_success_branch": [
+    "0x198a60 bl resolve_oh_wm_funcs",
+    "0x198a6c cbz x8, loc_198a88 (resolver table null -> failed-child fallback)",
+    "0x198a70-0x198a80 mov w0,w23(sessionId); x1,x24(bbq); w2,w20(width); w3,w19(height); blr x8 == oh_rs_get_child_surface_window(sessionId, bbqPtr, width, height)",
+    "0x198a84 cbnz x0, loc_198b98 -> SUCCESS: proceeds to log '[BBQ-CP] nativeUpdate SurfaceView ... -> child anw=%p'",
+    "0x198b98-0x198bd8 logging block (strings 0x50c7d / 0x5448c)",
+    "0x198be0-0x198be4 bl sub_1fc910",
+    "0x198be8 ldp w26,w27,[x24,#0x44] <- RELOADS stored requested width/height",
+    "0x198bec str x25(nw),[x24,#0x50] caches native window"
+   ],
+   "geometry_stamping_call": [
+    "0x198bf4 bl sub_1fc940 (weak-import null-guard pattern, returns alt pointer)",
+    "0x198c00 csel x24,x25,x0,eq picks non-null surface",
+    "0x198c04 mov w2,w26; 0x198c08 mov x0,x24; 0x198c0c mov w3,w27; 0x198c10 bl sub_1fc9b0 == nwfs_apply_window_geometry(nw,\"BBQ.update-stamp\",w26,h27) with dedicated-child dimensions",
+    "strings at call site: 0x5533c 'BBQ.update-stamp', 0x544cb SET_BUFFER_GEOMETRY format, 0x4ffc9 OH_NWSeed"
+   ],
+   "main_window_and_failed_child_fallback_branch": [
+    "0x198ab4 mov w0,w23(sessionId); 0x198ab8 bl oh_wm_get_native_window; 0x198abc cbnz x0 -> loc_198b88 (main path)",
+    "0x198b88 mov x25,x0",
+    "0x198b8c mov w27,#0x780 (1920); 0x198b90 mov w26,#0x4b0 (1200) <- HARD PANEL CONSTANTS",
+    "0x198b94 b loc_198bec -> same shared geometry call with 1200x1920",
+    "failed-child reaches same 0x198ab4 block via 0x198a5c/0x198a6c null checks"
+   ],
+   "constants_decoded": {
+    "0x780": 1920,
+    "0x4b0": 1200,
+    "magic_check_0x4f484251": "'QBH\\x51'? = BBQ struct tag 0x4f484251 ('QHBI'-style magic; cmp at 0x198a14)"
+   }
+  },
+  "conclusion": "Machine code independently confirms the source-level design: dedicated-child success reloads requested w/h from bbq+0x44/+0x48; main/ViewRoot and failed-child fallback hardcode 1200 (0x4b0) x 1920 (0x780) before the single shared nwfs_apply_window_geometry call at 0x198c10. No third geometry path exists in the disassembly.",
+  "unknown_coverage": [
+   "Hopper public API does not expose full function body ranges (body.available=false); analysis relies on the 202-instruction window returned, which covers entry through both geometry paths.",
+   "sub_1fc9b0/sub_1fc940 identity correlated to nwfs_apply_window_geometry/weak-guard by source + call-site strings, not by independent symbol resolution (Hopper reports no classification).",
+   "Whole-binary semantic equality to 947 elsewhere is NOT proven by this focused disassembly; only BBQ_nativeUpdate was targeted.",
+   "No board execution: REA is static; runtime acceptance remains pending (game-completion shows INTERACTIVE_GAME_PASS_RETAINED_PENDING_REGRESSION, final_v2_sealed=false, same f28 sha).",
+   "search.json only returned 2 matches (BBQ_nativeUpdate, SC_nativeUpdateDefaultBufferSize); coverage of other geometry functions in binary not re-audited here."
+  ],
+  "device_calls": 0,
+  "new_build": false,
+  "new_gate": false
+ }
+}
