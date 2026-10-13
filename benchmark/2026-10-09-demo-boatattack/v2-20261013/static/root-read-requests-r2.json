@@ -1,0 +1,9 @@
+[
+  {
+    "id": "SOURCE-HW248-02",
+    "purpose": "Follow only directories disclosed by SOURCE-HW248-01 to identify whether8ab was a retained input or an output tied to an exact receipt; compare adjacent artifact SHAs before attributing sources. No recursive find or build.",
+    "cmd": "ssh -o BatchMode=yes -o ConnectTimeout=8 hw248 'D=/opt/build-runs/boatattack-runtime-source-20260813T141442Z; for d in \"$D/metadata\" \"$D/inputs\" \"$D/logs\" \"$D/private-out\" \"$D/adapter/out/adapter\" \"$D/baseline-adapter/out/adapter\"; do if [ -d \"$d\" ]; then ls -la \"$d\"; else printf \"MISSING_DIR %s\\n\" \"$d\"; fi; done; for p in \"$D/recover-old-bridge/out/liboh_adapter_bridge.so\" \"$D/private-out/liboh_adapter_bridge.so\" \"$D/adapter/out/adapter/liboh_adapter_bridge.so\" \"$D/baseline-adapter/out/adapter/liboh_adapter_bridge.so\"; do if [ -f \"$p\" ]; then ls -l \"$p\"; sha256sum \"$p\"; fi; done; for p in \"$D\"/metadata/*.json \"$D\"/inputs/*.json; do if [ -f \"$p\" ]; then printf \"RECEIPT %s\\n\" \"$p\"; sha256sum \"$p\"; sed -n \"1,100p\" \"$p\"; fi; done'",
+    "write_operations": 0,
+    "limit": "one named historical run and explicitly shown direct subdirectories only"
+  }
+]

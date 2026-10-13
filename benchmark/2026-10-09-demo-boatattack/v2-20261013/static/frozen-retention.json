@@ -1,0 +1,56 @@
+{
+  "schema": "boat-v2-frozen-api-retention/v1",
+  "registry_sha256": "41971d779e43c08e18c2e82c98efc9832a43959e89aaf05636d53295fbfcdb46",
+  "rows": [
+    {
+      "id": "FZ-001",
+      "api": "START_ABILITIES_FROM_BACKGROUND for BMS-installed Android bundles (installer grants the permission via APL_NORMAL + ACL + preAuthorizationInfo, and prefers the app's own launcher entry)",
+      "retention": "existing boot/baseline/provider/runtime files unchanged; nonBCP JAR existing methods retained as smali; no new board validation",
+      "behavioral_revalidation": "candidate128 required, static export/class retention is not sufficient"
+    },
+    {
+      "id": "FZ-002",
+      "api": "Android child ActivityThread runs on an explicit 8 MiB pthread (big-stack runtime provider)",
+      "retention": "existing boot/baseline/provider/runtime files unchanged; nonBCP JAR existing methods retained as smali; no new board validation",
+      "behavioral_revalidation": "candidate128 required, static export/class retention is not sufficient"
+    },
+    {
+      "id": "FZ-003",
+      "api": "AssetManager.nativeOpenAssetFd returns a real ParcelFileDescriptor for an uncompressed asset (was 'Implement me')",
+      "retention": "existing boot/baseline/provider/runtime files unchanged; nonBCP JAR existing methods retained as smali; no new board validation",
+      "behavioral_revalidation": "candidate128 required, static export/class retention is not sufficient"
+    },
+    {
+      "id": "FZ-004",
+      "api": "JAR-layer: sun.security.jca.Providers.jarVerificationProviders[0] rewritten conscrypt->BouncyCastle so getSunProvider() stops throwing 'Sun provider not found' during JAR signature verification on route-A (JarVerificationProviderFix.apply, called from B7BindFixes at bind)",
+      "retention": "existing boot/baseline/provider/runtime files unchanged; nonBCP JAR existing methods retained as smali; no new board validation",
+      "behavioral_revalidation": "candidate128 required, static export/class retention is not sufficient"
+    },
+    {
+      "id": "FZ-005",
+      "api": "dex2oat-once toolchain (dex2oat-once T7): host dex2oat64 (T3c, r1 tree + 22-patch series, explicit suspend-check / implicit_suspend_checks_=false) + t5_gen_image.sh generator that produce a board-R155-compatible 27-file boot image offline; verified image-only (T5c/T6c) and image+stubs-jar package (T7c). Freezes the toolchain that regenerates boot classes (tagsoup, MediaStore, boot-api stubs) without a decommissioned build machine.",
+      "retention": "existing boot/baseline/provider/runtime files unchanged; nonBCP JAR existing methods retained as smali; no new board validation",
+      "behavioral_revalidation": "candidate128 required, static export/class retention is not sufficient"
+    },
+    {
+      "id": "FZ-006",
+      "api": "android.os.VibratorManager.getVibratorIds() -> int[0] on route-A: SystemVibratorManager allocated without its constructor, IVibratorManagerService.getVibratorIds() stubbed to int[0], and the constructor-only final mLock seeded so getVibratorIds()'s synchronized(mLock) block runs instead of monitor-entering null.",
+      "retention": "existing boot/baseline/provider/runtime files unchanged; nonBCP JAR existing methods retained as smali; no new board validation",
+      "behavioral_revalidation": "candidate128 required, static export/class retention is not sufficient"
+    },
+    {
+      "id": "FZ-007",
+      "api": "Full AOSP android-14.0.0_r1 external/tagsoup in the boot-classpath adapter-mainline-stubs jar (org.ccil.cowan.tagsoup.Parser extends DefaultHandler implements ScanHandler, XMLReader, LexicalHandler), replacing the incomplete 2-file stub. The BCP tagsoup shadows an app's bundled tagsoup (AOSP keeps full tagsoup on the boot classpath); a stub Parser lacking 'implements org.xml.sax.XMLReader' crashed apps with java.lang.IncompatibleClassChangeError when they use tagsoup as an XMLReader.",
+      "retention": "existing boot/baseline/provider/runtime files unchanged; nonBCP JAR existing methods retained as smali; no new board validation",
+      "behavioral_revalidation": "candidate128 required, static export/class retention is not sufficient"
+    },
+    {
+      "id": "FZ-008",
+      "api": "android.net.ssl.SSLSockets stub in the boot-classpath adapter-mainline-stubs jar (public static isSupportedSocket(SSLSocket)->false, setUseSessionTickets(SSLSocket,boolean)->no-op). OkHttp's AndroidPlatform probes SSLSockets; without the class it throws NoClassDefFoundError on the OkHttp Dispatcher, killing the app's network. isSupportedSocket=false makes OkHttp fall back to the standard SSLSocket TLS path.",
+      "retention": "existing boot/baseline/provider/runtime files unchanged; nonBCP JAR existing methods retained as smali; no new board validation",
+      "behavioral_revalidation": "candidate128 required, static export/class retention is not sufficient"
+    }
+  ],
+  "gate_jars": "0 frozen class conflicts",
+  "gate_adapter": "no removed/drifted export;2 common function callsets changed"
+}
