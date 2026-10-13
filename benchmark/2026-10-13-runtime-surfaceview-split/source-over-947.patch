@@ -1,0 +1,31 @@
+--- a/android_graphics_compat_shim.cpp
++++ b/android_graphics_compat_shim.cpp
+@@ -575,6 +575,7 @@
+     // main producer -> eglCreateWindowSurface EGL_BAD_ALLOC (§12-13).
+     bool isSurfaceView = (std::strstr(b->name, "SurfaceView") != nullptr);
+     void* nw = nullptr;
++    bool hasDedicatedChildWindow = false;
+     if (isSurfaceView) {
+         nw = oh_rs_get_child_surface_window(sessionId, bbqPtr,
+                                             static_cast<int32_t>(width),
+@@ -584,6 +585,7 @@
+                   "session=%d; falling back to main producer", b->name, sessionId);
+             nw = oh_wm_get_native_window(sessionId);
+         } else {
++            hasDedicatedChildWindow = true;
+             ALOGI("BBQ.update: SurfaceView '%s' -> dedicated child surface anw=%p",
+                   b->name, nw);
+             fprintf(stderr, "[BBQ-CP] nativeUpdate SurfaceView '%s' -> child anw=%p\n",
+@@ -599,7 +601,11 @@
+         return;
+     }
+     b->ohNativeWindow = nw;
+-    nwfs_apply_window_geometry(nw, "BBQ.update-stamp", b->width, b->height);
++    // Dedicated child resolution, not the name alone, selects requested geometry.
++    // Main/ViewRoot and failed-child fallback retain the original panel policy.
++    nwfs_apply_window_geometry(nw, "BBQ.update-stamp",
++                               hasDedicatedChildWindow ? b->width : 1200,
++                               hasDedicatedChildWindow ? b->height : 1920);
+     ALOGI("BBQ.update: sessionId=%d → OHNativeWindow=%p (%dx%d fmt=%d)",
+           sessionId, nw, (int)width, (int)height, format);
+     fprintf(stderr, "[BBQ-CP] nativeUpdate RESOLVED sessionId=%d OHNativeWindow=%p (%lldx%lld)\n",

@@ -1,0 +1,9 @@
+# Dedicated-child geometry candidate from exact947
+
+947 applied requested geometry after SurfaceView/main branches joined, reaching popup ViewRoot buffers. Stock187+ADC was then rejected by root because Boat retained1200x1920 buffers despite1920x1200 bounds and matching child7. This candidate changes only BBQ_nativeUpdate: requested size requires successful dedicated-child resolution; main and failed-child fallback use the original1200x1920 panel policy. No new name/package/aspect heuristic is introduced.
+
+Source c208788a was independently host-recompiled by root; dedicated/main/fallback/unavailable/no-session branches pass. Lazy getSurface and all three other geometry functions remain byte-identical source to947; lazy/STAGE0 preserve and width0 setter remain non-mutating. Actual cold container build rc0 produces f28bd1b3,3194360 bytes;787 exact exports,zero added/removed/attribute drift/new undefined;four GLOBAL real SQLite/CursorWindow registrars. Original6347 inputs match before/after. Full build log and frozen source/archive/recipe/toolchain pins are retained in evidence/build-provenance.json.
+
+The source layer archive plus original ba5906c6 archive closes source reconstruction; recipe replaces only one TU path and retains strict link flags. No HDC/deploy or frozen-source modification occurred. Boat main ViewRoot also changes to panel: this is NOT equivalent to accepted947 until strict same-PID/buffer/HUD/five-touch/LAP/reset AB. Seal/StudyTracker/DropCount control restoration and ClipboardEditor grade remain pending; LifeCounter is a negative control.
+
+Landing revision2 includes all29 required files, including actual six-case raw receipts and build-location. Recipe verification retains the original build source path from the immutable receipt and checks itsSHA against relocated source bytes. Actual isolated cargo PASS, no source/ELF rebuild or host experiment rerun; see evidence/landing-r2.json.
