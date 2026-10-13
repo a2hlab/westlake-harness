@@ -14,3 +14,5 @@ Running later windows are excluded. The final128 aggregate and outer signoff rem
 - [Window-05](window-05/README.md): durable and verified; single-window scope only.
 
 - [Window-06](window-06/README.md): durable and verified; single-window scope only.
+
+- [Window-07](window-07/README.md): durable and verified; single-window scope only.
