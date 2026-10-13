@@ -1,0 +1,222 @@
+--- identity-r3/candidate_identity.py
++++ identity-r4/candidate_identity.py
+@@ -6,15 +6,16 @@
+ HERE=Path(__file__).resolve().parent
+ WS=Path(os.environ.get('WORKSPACES',str(HERE.parents[5])))
+ MAIN=WS/'westlake-harness'
+-R3=WS/'westlake-harness-t4/benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/minimal-r3'
++R4=WS/'westlake-harness-t4/benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/minimal-r4'
+ BASE=MAIN/'benchmark/2026-10-03-u14-stage-a-plan/inputs/recovery-61b.json'
+ UPSTREAM=MAIN/'benchmark/2026-10-09-demo-baseline/t3/verify_identity.py'
+ ADAPTER='/system/android/lib64/liboh_adapter_bridge.so'
+ JAR='/system/android/framework/oh-adapter-runtime.jar'
+ RUNTIME='/system/android/lib64/liboh_android_runtime.so'
+-CHANGES={ADAPTER:'8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e',JAR:'6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852',RUNTIME:'94718e0d0b617a0f9a860e0b50b879b0d7d4639f32e8230b1f90f8e26e2c1354'}
++ANDROID='/system/android/lib64/libandroid.so'
++CHANGES={ADAPTER:'8ab85446f8b386c4a649576326d5f393669b3a22529874fb673eea7c3b1cd71e',JAR:'6333bcab4ca2daad03965712deac6adf028a6ff0dfac04fc8ea91af177828852',RUNTIME:'94718e0d0b617a0f9a860e0b50b879b0d7d4639f32e8230b1f90f8e26e2c1354',ANDROID:'adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130'}
+ PRIVATE={'libunity.so':'1bea0fae1e6e76db15f17fca2bfa91b9c303ce278d6a4dcfba6af233b68b64ac','libil2cpp.so':'f6b806b5c55e702b98caa2e85d2f9afb678bc47dcc4067017b33f5269afed746','libwestlake_bionic_signal_box.so':'7a931c79c0be28468bdd02a626a637431f2447f5fd0aba87176e5acdb071f5da'}
+-OWN='/data/westlake-demo/u13/boat-v2-20261013-r3'
++OWN='/data/westlake-demo/u13/boat-v2-20261013-r4'
+ CFG='/system/etc/init/00_westlake_u13_recover-v3.cfg'
+ ROUTEB='/system/etc/init/01_westlake_u13_toutiao.cfg'
+ SPARE='5ea34a4500000000000000001123012c'
+@@ -27,7 +28,11 @@
+ def read(p): return json.loads(Path(p).read_text())
+ def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+ def expand(p): return Path(str(p).replace('$WORKSPACES',str(WS)))
+-def portable(p): return str(Path(p).resolve()).replace(str(WS),'$WORKSPACES')
++def portable(p):
++    resolved=Path(p).resolve();workspace=WS.resolve()
++    if resolved.is_relative_to(workspace):return '$WORKSPACES/'+str(resolved.relative_to(workspace))
++    if resolved.is_relative_to(workspace.parent):return '$WORKSPACES/../'+str(resolved.relative_to(workspace.parent))
++    return str(resolved)
+ def pin(p): return {'path':portable(p),'sha256':sha(p)}
+ def pinned(p):
+     path=expand(p['path']); need(sha(path)==p['sha256'],'source pin drift: '+str(path)); return path
+@@ -45,16 +50,16 @@
+         need(re.fullmatch('[a-f0-9]{64}',h) is not None,'not full SHA: '+p)
+ 
+ def generation(doc):
+-    value={k:doc[k] for k in ['serial','expected','absent_files','placement_plan','r3_freeze']}
++    value={k:doc[k] for k in ['serial','expected','absent_files','placement_plan','r4_freeze']}
+     return hashlib.sha256(json.dumps(value,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+ 
+ def validate(doc):
+-    need(doc['schema']=='boat-candidate-identity/v3','schema')
++    need(doc['schema']=='boat-candidate-identity/v4','schema')
+     need(doc['serial']==SPARE,'this proof scope is 5ea only; 5cd/61b require full actual RouteB inventory')
+     need(doc['baseline']==pin(BASE),'exact original baseline pin required')
+     base=read(pinned(doc['baseline']))['expected']; need(len(base)==319,'original 319 inventory required')
+     valid_rows(base); expected=dict(base)
+-    need(doc['replacements']=={p:{'before':base[p],'after':h} for p,h in CHANGES.items()},'only exact three replacements permitted')
++    need(doc['replacements']=={p:{'before':base[p],'after':h} for p,h in CHANGES.items()},'only exact four replacements permitted')
+     expected.update(CHANGES)
+     extras=doc['additional_files']; need(len({r['target'] for r in extras})==len(extras),'duplicate extra target')
+     for row in extras:
+@@ -74,21 +79,21 @@
+     for target,digest in protected.items():
+         if target not in CHANGES and target!=cfg:need(expected.get(target)==digest,'protected object drift: '+target)
+     plan_path=pinned(doc['placement_plan']);plan=read(plan_path)
+-    need(sha(plan_path)=='ea88945fd9051a95d11994eceb2fd9b4ef16ce13c49aab31e38ca8e201b9af4a','reviewed actual r3 placement pin')
+-    freeze=pinned(doc['r3_freeze']);need(sha(freeze)=='7d79c085a54bbebafc072df279419c2328f6b86c3db49dfb481b30c565b2c8ac','reviewed r3 freeze pin')
++    need(sha(plan_path)=='8ee3a7e4ea6bb68a7482b3aafb635920bc1e1716a01cc2161b4acfc05a2a18b1','reviewed actual r4 placement pin')
++    freeze=pinned(doc['r4_freeze']);need(sha(freeze)=='c72fa0b2f63a7a4a4da5431538bd0fe322108f1cd9e5037987ab802529204677','reviewed r4 freeze pin')
+     need(plan['serial']==doc['serial'],'placement serial mismatch')
+-    members={r['target']:r for r in plan['members']};need(len(members)==10,'ten placement objects required')
++    members={r['target']:r for r in plan['members']};need(len(members)==11,'eleven placement objects required')
+     for target,row in members.items():need(expected.get(target)==row['sha256'],'placement identity differs: '+target)
+-    need(len(plan['binds'])==6 and plan['binds'][-1]['target']==RUNTIME,'six binds with runtime last required')
++    need(len(plan['binds'])==7 and plan['binds'][-1]['target']==ANDROID and plan['binds'][-2]['target']==RUNTIME,'seven binds with runtime sixth/libandroid last required')
+     for row in plan['binds']:
+         need(expected.get(row['target'])==row['sha256']==expected.get(row['source']),'bind target/source identity differs')
+         if row['target'] in base:need(row['before']['sha256']==base[row['target']],'bind baseline preimage differs')
+-    need(expected[OWN+'/worker.sh']=='1bba356bc93de83a8da133348b8c1e357f4ab21ee990d4026bf6e197656f1fd0','reviewed r3 worker required')
+-    need(expected[OWN+'/recover-v3-boat.sh']=='b41490c0b09f04fc1e1509fd1bc398c28abd52e0028fe09adab235b3e30e14fc','reviewed synchronous recover required')
++    need(expected[OWN+'/worker.sh']=='3f1a464338ce5b2f4c4d93ed0dc0db9c5fdf52c1e3156fae4d7e9e056b6898c2','reviewed r4 worker required')
++    need(expected[OWN+'/recover-v3-boat.sh']=='291451a1a3b821a5527e3c8619d932664d047e25116e9c653d185d2ea5ee878f','reviewed synchronous recover required')
+     for name,h in PRIVATE.items():need(expected.get(LIB+name)==h,'missing Boat private SHA: '+name)
+     for p in [CFG,'/system/etc/westlake-u13-recover-v3.sh',OWN+'/worker.sh',OWN+'/recover-v3-boat.sh',OWN+'/binds.tsv','/data/westlake-demo/u13/selinux-mode','/data/westlake-demo/u13/u13-recover-table.json','/data/westlake-demo/u13/u13-recover-table.tsv']:
+         need(p in expected,'required control missing: '+p)
+-    for name,h in {**PRIVATE,'liboh_adapter_bridge.so':CHANGES[ADAPTER],'oh-adapter-runtime.jar':CHANGES[JAR],'liboh_android_runtime.so':CHANGES[RUNTIME]}.items():
++    for name,h in {**PRIVATE,'liboh_adapter_bridge.so':CHANGES[ADAPTER],'oh-adapter-runtime.jar':CHANGES[JAR],'liboh_android_runtime.so':CHANGES[RUNTIME],'libandroid.so':CHANGES[ANDROID]}.items():
+         need(expected.get(OWN+'/sources/'+name)==h,'missing durable Boat source: '+name)
+     absent=doc['absent_files'];need(len(absent)==1 and absent[0]['target']==ROUTEB and absent[0]['exists'] is False,'exact typed 5ea RouteB absence required')
+     need(ROUTEB not in expected and ROUTEB not in protected,'absent RouteB cannot be a SHA row')
+--- identity-r3/compile_candidate.py
++++ identity-r4/compile_candidate.py
+@@ -18,7 +18,7 @@
+     for row in extras:
+         c.need(row['target'] not in expected,'overlap baseline');c.need(c.sha(c.pinned(row['source']))==row['sha256'],'source SHA');expected[row['target']]=row['sha256']
+     runtime,boot=c.parts({p:expected[p] for p in base})
+-    proof={'schema':'boat-candidate-identity/v3','status':'candidate/not_sealed','execution_enabled':False,'serial':request['serial'],'baseline':request['baseline'],'protected_files':request['protected_files'],'current_cfg':request['current_cfg'],'replacements':{p:{'before':base[p],'after':h} for p,h in c.CHANGES.items()},'additional_files':extras,'expected':expected,'generation_sha256':None,'absent_files':request['absent_files'],'placement_plan':request['placement_plan'],'r3_freeze':request['r3_freeze'],'fingerprints':{'runtime_sha256':c.fp(runtime),'boot_sha256':c.fp(boot)},'programs':{'identity':c.pin(c.HERE/'candidate_identity.py'),'reader':c.pin(c.UPSTREAM),'compiler':c.pin(Path(__file__)),'absence_reader':c.pin(c.HERE/'absence_reader.py')},'request':c.pin(request['_request_path'])}
++    proof={'schema':'boat-candidate-identity/v4','status':'candidate/not_sealed','execution_enabled':False,'serial':request['serial'],'baseline':request['baseline'],'protected_files':request['protected_files'],'current_cfg':request['current_cfg'],'replacements':{p:{'before':base[p],'after':h} for p,h in c.CHANGES.items()},'additional_files':extras,'expected':expected,'generation_sha256':None,'absent_files':request['absent_files'],'placement_plan':request['placement_plan'],'r4_freeze':request['r4_freeze'],'fingerprints':{'runtime_sha256':c.fp(runtime),'boot_sha256':c.fp(boot)},'programs':{'identity':c.pin(c.HERE/'candidate_identity.py'),'reader':c.pin(c.UPSTREAM),'compiler':c.pin(Path(__file__)),'absence_reader':c.pin(c.HERE/'absence_reader.py')},'request':c.pin(request['_request_path'])}
+     proof['generation_sha256']=c.generation(proof)
+     c.validate(proof)
+     smoke=copy.deepcopy(c.read(c.pinned(request['baseline_smoke'])))
+--- identity-r3/prepare_actual.py
++++ identity-r4/prepare_actual.py
+@@ -1,13 +1,13 @@
+-"""Offline request assembly from root window2 r3 exact sources. No transport."""
++"""Offline request assembly from root window3 r4 exact sources. No transport."""
+ import argparse,json
+ from pathlib import Path
+ import candidate_identity as c
+ 
+ def prepare(out):
+  c.need(not out.exists(),'fresh request directory required');out.mkdir(parents=True)
+- window=c.MAIN/'benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/candidate-window2'
+- plan_path=window/'plan.json';plan=c.read(plan_path);freeze_path=c.R3/'freeze.json'
+- c.need(c.sha(plan_path)=='ea88945fd9051a95d11994eceb2fd9b4ef16ce13c49aab31e38ca8e201b9af4a','root r3 actual plan pin')
++ window=c.MAIN/'benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/candidate-window3'
++ plan_path=window/'plan.json';plan=c.read(plan_path);freeze_path=c.R4/'freeze.json'
++ c.need(c.sha(plan_path)=='8ee3a7e4ea6bb68a7482b3aafb635920bc1e1716a01cc2161b4acfc05a2a18b1','root r4 actual plan pin')
+  rows=[];protected={}
+  def add(target,path):rows.append({'target':target,'sha256':c.sha(path),'source':c.pin(path)})
+  for row in plan['members']:
+@@ -22,7 +22,7 @@
+   source=c.expand(sources[target]['path']);add(target,source);protected[target]=c.sha(source)
+  current=c.expand(plan['members'][-1]['before']['source']);protected[c.CFG]=c.sha(current)
+  p=out/'protected.json';p.write_text(json.dumps(protected,indent=2)+'\n')
+- request={'serial':plan['serial'],'baseline':c.pin(c.BASE),'placement_plan':c.pin(plan_path),'r3_freeze':c.pin(freeze_path),'current_cfg':c.pin(current),'protected_files':c.pin(p),'additional_files':rows,'absent_files':[{'target':c.ROUTEB,'exists':False,'evidence':c.pin(plan_path)}],'baseline_smoke':c.pin(c.MAIN/'benchmark/2026-10-03-u13-stage-b/61b/smoke-61b.json'),'status':'OFFLINE_EXPECTED_CANDIDATE_NOT_LIVE_EVIDENCE','source_note':'Original U13 controls use pinned final source bytes as expected identity; live hook must read all paths. No historical 128 pass is copied.'}
++ request={'serial':plan['serial'],'baseline':c.pin(c.BASE),'placement_plan':c.pin(plan_path),'r4_freeze':c.pin(freeze_path),'current_cfg':c.pin(current),'protected_files':c.pin(p),'additional_files':rows,'absent_files':[{'target':c.ROUTEB,'exists':False,'evidence':c.pin(plan_path)}],'baseline_smoke':c.pin(c.MAIN/'benchmark/2026-10-03-u13-stage-b/61b/smoke-61b.json'),'status':'OFFLINE_EXPECTED_CANDIDATE_NOT_LIVE_EVIDENCE','source_note':'Original U13 controls use pinned final source bytes as expected identity; live hook must read all paths. No historical 128 pass is copied.'}
+  (out/'request.json').write_text(json.dumps(request,indent=2)+'\n');return out/'request.json'
+ if __name__=='__main__':
+  ap=argparse.ArgumentParser();ap.add_argument('--out',required=True,type=Path);a=ap.parse_args();print(prepare(a.out))
+--- identity-r3/replay_clean.py
++++ identity-r4/replay_clean.py
+@@ -2,7 +2,7 @@
+ import json,os,shutil,subprocess,sys,tempfile
+ from pathlib import Path
+ HERE=Path(__file__).resolve().parent
+-FILES=['candidate_identity.py','absence_reader.py','compile_candidate.py','prepare_actual.py','run_candidate_post_reboot.py','test_candidate.py','test_r3_delta.py']
++FILES=['candidate_identity.py','absence_reader.py','compile_candidate.py','prepare_actual.py','run_candidate_post_reboot.py','test_candidate.py','test_r4_delta.py','prepare_smoke10.py','full128-stable-first-manifest.json','smoke10-t20-tiers.json','smoke10-controls-t20.json']
+ def main():
+  env=dict(os.environ);env.setdefault('WORKSPACES',str(HERE.parents[5]))
+  with tempfile.TemporaryDirectory() as tmp:
+@@ -14,8 +14,8 @@
+   run([root/'compile_candidate.py','--request',root/'inputs/request.json','--out',root/'compiled'])
+   import hashlib
+   proof=root/'compiled/candidate-proof.json';digest=hashlib.sha256(proof.read_bytes()).hexdigest()
+-  run([root/'run_candidate_post_reboot.py','--out',root/'round','--serial','5ea34a4500000000000000001123012c','--boot-before','2b56f769-1a91-43ab-b8f2-b7ca4432bad3','--candidate-proof',proof,'--candidate-proof-sha256',digest,'--smoke',root/'compiled/smoke.json'])
++  run([root/'run_candidate_post_reboot.py','--out',root/'round','--serial','5ea34a4500000000000000001123012c','--boot-before','d0e1f5eb-ac35-4c39-9e1a-7c40d9251220','--candidate-proof',proof,'--candidate-proof-sha256',digest,'--smoke',root/'compiled/smoke.json'])
+   config=json.loads((root/'round/round.json').read_text());assert config['apps']==128 and config['execution_enabled'] is False
+   assert len(json.loads((root/'round/batch-apps.json').read_text())['apps'])==128
+-  print(json.dumps({'status':'CLEAN_REPLAY_PASS','tests':18,'canonical_apps':128,'execution_enabled':False,'device_calls':0,'generation_sha256':config['generation_sha256']}))
++  print(json.dumps({'status':'CLEAN_REPLAY_PASS','tests':22,'canonical_apps':128,'execution_enabled':False,'device_calls':0,'generation_sha256':config['generation_sha256']}))
+ if __name__=='__main__':main()
+--- identity-r3/test_candidate.py
++++ identity-r4/test_candidate.py
+@@ -1,4 +1,4 @@
+-"""Offline current root window2 r3 inputs; no old live result is accepted."""
++"""Offline current root window3 r4 inputs; no old live result is accepted."""
+ import ast, copy, json, tempfile, unittest
+ from pathlib import Path
+ import candidate_identity as c
+@@ -13,8 +13,8 @@
+         cls.request=request;cls.proof=compiler.build(request,cls.out/'compiled')
+     @classmethod
+     def tearDownClass(cls):cls.temp.cleanup()
+-    def test_full319_and_three_exact_replacements(self):
+-        d=self.proof;e=c.validate(d);b=c.read(c.BASE)['expected'];self.assertTrue(set(b)<=set(e));self.assertEqual(len([p for p in b if b[p]!=e[p]]),3);self.assertEqual(e[c.RUNTIME],c.CHANGES[c.RUNTIME]);self.assertEqual(len(d['generation_sha256']),64)
++    def test_full319_and_four_exact_replacements(self):
++        d=self.proof;e=c.validate(d);b=c.read(c.BASE)['expected'];self.assertTrue(set(b)<=set(e));self.assertEqual(len([p for p in b if b[p]!=e[p]]),4);self.assertEqual(e[c.RUNTIME],c.CHANGES[c.RUNTIME]);self.assertEqual(len(d['generation_sha256']),64)
+     def test_old_runtime_rejected(self):
+         d=copy.deepcopy(self.proof);d['expected'][c.RUNTIME]='adc125f4dfb800c25d80e7d73216c8885fd64a31c6b91f064494166c63a59130'
+         with self.assertRaises(ValueError):c.validate(d)
+--- identity-r3/test_r3_delta.py
++++ identity-r4/test_r4_delta.py
+@@ -4,27 +4,47 @@
+ from absence_reader import decode
+ import test_candidate as fixtures
+ 
+-class R3Delta(unittest.TestCase):
++class R4Delta(unittest.TestCase):
+  @classmethod
+  def setUpClass(cls):
+   fixtures.CandidateTests.setUpClass();cls.proof=fixtures.CandidateTests.proof
+  @classmethod
+  def tearDownClass(cls):fixtures.CandidateTests.tearDownClass()
+- def test_r3_actual_members(self):
+-  e=c.validate(self.proof);self.assertEqual(len(e),336)
+-  self.assertEqual(e[c.OWN+'/worker.sh'],'1bba356bc93de83a8da133348b8c1e357f4ab21ee990d4026bf6e197656f1fd0')
+-  self.assertEqual(e[c.CFG],'e962a57afda27f9198d30cd5b0685002df824b4f509dbd10e99e82396a790cbb')
++ def test_r4_actual_members(self):
++  e=c.validate(self.proof);self.assertEqual(len(e),337)
++  self.assertEqual(e[c.OWN+'/worker.sh'],'3f1a464338ce5b2f4c4d93ed0dc0db9c5fdf52c1e3156fae4d7e9e056b6898c2')
++  self.assertEqual(e[c.CFG],'897f9ca073c0396c47c681860a601aaa14ba812c63b083711d7e386785e1a762')
+   self.assertNotIn(c.ROUTEB,e)
+  def test_stock_cannot_pass_candidate_gate(self):
+   d=copy.deepcopy(self.proof);d['expected'][c.RUNTIME]=c.read(c.BASE)['expected'][c.RUNTIME];d['generation_sha256']=c.generation(d)
+   with self.assertRaises(ValueError):c.validate(d)
++ def test_old_libandroid_cannot_pass(self):
++  d=copy.deepcopy(self.proof);d['expected'][c.ANDROID]=c.read(c.BASE)['expected'][c.ANDROID];d['generation_sha256']=c.generation(d)
++  with self.assertRaises(ValueError):c.validate(d)
++ def test_missing_libandroid_durable_source_rejected(self):
++  d=copy.deepcopy(self.proof);target=c.OWN+'/sources/libandroid.so'
++  d['additional_files']=[r for r in d['additional_files'] if r['target']!=target];del d['expected'][target];d['generation_sha256']=c.generation(d)
++  with self.assertRaises(ValueError):c.validate(d)
++ def test_old_r3_schema_rejected(self):
++  d=copy.deepcopy(self.proof);d['schema']='boat-candidate-identity/v3'
++  with self.assertRaisesRegex(ValueError,'schema'):c.validate(d)
++ def test_smoke10_actual_t20_preparation(self):
++  import contextlib,io
++  from prepare_smoke10 import prepare
++  with tempfile.TemporaryDirectory() as tmp,contextlib.redirect_stdout(io.StringIO()):
++   out=Path(tmp)/'smoke';proof_path=fixtures.CandidateTests.out/'compiled/candidate-proof.json'
++   receipt=prepare(out,proof_path,c.sha(proof_path),'00000000-0000-0000-0000-000000000000')
++   self.assertEqual(receipt['capture_seconds'],20);self.assertEqual(len(receipt['smoke_keys']),10)
++   plan=c.read(c.expand(receipt['first_plan']));tiers={r['key']:r for r in c.read(c.expand(plan['demo_shot_tiers']))['apps']}
++   self.assertTrue(all(tiers[k]['screenshot_seconds']==20 for k in receipt['smoke_keys']))
++   self.assertFalse(plan['execution_enabled']);self.assertEqual(plan['demo_mode'],'launch')
+  def test_missing_runtime_durable_source_rejected(self):
+   d=copy.deepcopy(self.proof);target=c.OWN+'/sources/liboh_android_runtime.so'
+   d['additional_files']=[r for r in d['additional_files'] if r['target']!=target];del d['expected'][target];d['generation_sha256']=c.generation(d)
+   with self.assertRaises(ValueError):c.validate(d)
+- def test_r2_plan_cannot_borrow_r3_identity(self):
++ def test_r2_plan_cannot_borrow_r4_identity(self):
+   d=copy.deepcopy(self.proof);d['placement_plan']=c.pin(c.MAIN/'benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/candidate-window1/plan.json');d['generation_sha256']=c.generation(d)
+-  with self.assertRaisesRegex(ValueError,'r3 placement pin'):c.validate(d)
++  with self.assertRaisesRegex(ValueError,'r4 placement pin'):c.validate(d)
+  def test_5cd_cannot_borrow_5ea_absence(self):
+   d=copy.deepcopy(self.proof);d['serial']='5cd1e3dd00000000000000000923012c';d['generation_sha256']=c.generation(d)
+   with self.assertRaisesRegex(ValueError,'5ea only'):c.validate(d)

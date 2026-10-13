@@ -1,0 +1,66 @@
+# Task Contract: BoatAttack on the demo board's unified state
+
+## Intent
+让之前在 00.Workspace(`~/orca/00.Workspace-games-ad1ab0a7`,分支 `games/boatattack-repro` 43ec24af9)点亮过的 BoatAttack(`com.Unity3d.BoatAttackDay`,APK SHA 8dc63665…)在演示板上跑起来:1920×1200 赛艇画面、同一进程、触摸有响应,并且和另外 100 多个应用用同一套统一态。
+
+## Must
+- 只用一块 D600 做演示板,由 t1 按证据选定并在黑板登记序列号;另两块板保持统一态实验板,本计划不改它们。
+- 演示板的最终状态必须是一个有记录的版本:runtime-fingerprint 逐件可查,`check_frozen.py` 0 违规;在统一态之上加的东西(头条等)一律单文件叠加、带回滚脚本,不整代重建。
+- 截图是地面真相。计数一律贴运行目录 `facts.txt` 或 `run_facts.py` 的原样输出;数不出来写 unknown。
+- 「点亮」只按启动后约 20 秒截图里是应用自己的界面判;首屏空列表、加载中、带错误框分列,不算进 100+。
+- 板子纪律照 AGENTS.md:写操作前先只读检查;每块板同一时刻一个上板任务;单项实验 ≤30 分钟,批量 ≤45 分钟,用完即释放锁。
+- 静态优先:路径、命名空间、部署件内容这类问题先离线扫描再上板。
+- 交件只走 `land.py`;不推送;不提交密码、服务器账号。
+- 封存(t5)之后,演示板零改动,心跳只做只读巡检;解封只有用户能批。
+
+## Decisions
+- 范围:不再新点亮。现有 128 个照旧:演示手册里亮的 112 个演示,半亮/不亮的 16 个留附录不修。全力只做三件:128 个可演示、BoatAttack 可玩、头条可交互。
+- BoatAttack 可玩 = t2b 判据:横屏 1920×1200 满屏、HUD 清晰不拉伸、颜色正常不偏紫、加速后 KPH 到两位数且圈数推进、转向有效,与原版 PASS 画面并排对照。
+- 头条可交互 = 前台桌面点击能启动、能刷首页、能点开文章。
+- 硬要求:拔电重启后不接 Mac 也能演示(开机自启),三者都算。
+- 冻结底线:为 Boat 与渲染修复重编的共享件(liboh_adapter_bridge、liboh_android_runtime、oh-adapter-runtime.jar)可以替换冻结项,条件 = 重启后全量 128 回归(t4/regress_vs_signoff.py)不退步,并在 knowledge/frozen/frozen.json 登记新版本(原因、对照、重验证据、全量路径)后再部署。演示板解封已批,封存前可写。
+- 封存两步:v1 = 128 + 头条 + 自启;Boat 达标后重封 v2;每次封存只重启一次,重启前先拍快照并过 sepolicy 门。
+- 已知事实:BoatAttack 的共享运行代(`strict-boat-assembled-20260924T074522Z-25403`)与我们的统一态在 9 个共享路径中只有 `libwestlake_bionic_pthread_bridge.so` 同 SHA;appspawn-x、adapter bridge、android runtime、nativeloader、oh-adapter-runtime.jar 都不同。两代不能同路径共存。
+- 先静态:列出 BoatAttack 共享代相对我们统一态的差异里,哪些是它的必要修复(横屏父会话、真实触摸投射、Swappy、JNI attach 等,出处是该分支提交与 `src/tools/devices/boat-attack-apk-lightup.sh`),哪些与我们已有修复等价;产出逐件对照表。
+- 路线顺序:① 统一态 + BoatAttack 私有三件(C7 libunity、C4 libil2cpp、signal-box,应用私有 bind,不碰共享路径);② ① 不行时按对照表把必要修复以新文件移植进统一态,不改冻结项;③ 仍不行再报告给外环,不擅自换整代。
+- 每一步先在空闲板上做,通过后才叠到演示板;复用该分支的驱动脚本时只扩白名单,不改判据。
+- 验收以原版 PASS 截图为对照(00.Workspace var/state/reproduce-boat-attack-apk/20260924T080718Z-quick):HUD 字号与清晰度一致(非放大拉伸)、色彩一致(非偏紫)、按原版同一组五次触摸(five-touches.txt:加速/左/加速/右/复位)后船在动、转向改变航向、LAP 计数推进(原版 PASS 在 0:42 到 1/3;原版自身 KPH 帧为 000,KPH 两位数不作判据)、转向触摸改变航向、1920×1200 整屏。只看尺寸和 KPH 000→001 不算通过(2026-10-10 外环签错一次)。
+- 路线以原版复现为准:先在空闲板原样跑 reproduce.sh 到 PASS,再按差异表把缺的原版件补到目标板,不自行裁件。
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-09-demo-boatattack/**
+- specs/demo-baseline/**
+- tools/spec-checks/tests/demo_baseline.rs
+Out of scope:
+- 修改 APK 或重签;整代换成 BoatAttack 的共享代;改另外两块实验板的统一态。
+
+## Completion Criteria
+Scenario: Generation difference table is complete and sourced
+  Test:
+    Filter: demo_baseline_boatattack_static
+  Given Both generations are pinned by SHA
+  When The difference table is built offline
+  Then Each of the nine shared paths lists both SHAs the commit that introduced the BoatAttack side and whether our unified state has an equivalent fix
+
+Scenario: BoatAttack runs on the unified state with touch
+  Test:
+    Filter: demo_baseline_boatattack_run
+  Given The chosen route is overlaid on a spare board running the unified state
+  When BoatAttack is launched from the desktop and touched five times
+  Then The screenshot shows the 1920x1200 racing scene the PID stays the same and the scene changes after touch
+
+Scenario: Overlay that breaks other apps is rolled back
+  Test:
+    Filter: demo_baseline_boatattack_run
+  Given The BoatAttack overlay is installed
+  When Ten previously lit keys are relaunched
+  Then If any of them is no longer lit by t20 screenshot the overlay is rolled back and the failure is recorded
+
+Scenario: Missing or mismatched inputs reject before any board write
+  Test:
+    Filter: demo_baseline_boatattack_static
+  Given The APK or a private candidate SHA does not match its pin
+  When The overlay step starts
+  Then It exits nonzero naming the mismatched file and no board write is logged
+
