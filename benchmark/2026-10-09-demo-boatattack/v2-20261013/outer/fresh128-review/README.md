@@ -1,0 +1,9 @@
+# R4 full128 rejected for popup UI regressions
+
+The original coarse `lit` category was insufficient to detect lost controls: a surviving title still looked like app content. Compare the actual reference and candidate controls, not the label alone. Root personally viewed128 scheduled terminal frames and separately viewed original/candidate images for Seal, StudyTracker, DropCount and ClipboardEditor.
+
+All128 canonical records and256 screenshots were collected. The original facts read `TOTAL keys=128 screenshots_captured=256/256 alive_t5=125 alive_t10=120 alive_t20=5`. This is capture/process evidence, not128 functional passes. Root rejects promotion because Seal lost Close/Open Settings, StudyTracker lost its input and Cancel/Create, and DropCount lost its explanation/pagination/Close. ClipboardEditor retains visible controls but is vertically stretched. ItsDicey remains the same reference Activity-title/black-content state; do not upgrade that to usable app content.
+
+The independent BMS report's512 record/hilog/facts/image pins were rechecked by root. A later popup-wide review added DropCount; the earlier two-regression report remains preserved. Java requested window sizes and density match their reference, while candidate OH buffer geometry differs. This is a strongly supported mechanism, not a completed isolated causal experiment. Boat's own earlier geometry/input acceptance remains valid, but does not waive these public UI regressions.
+
+The complete runtime round finished at15:25 and released the lock. A subsequent root stop attempt found the process already gone; no signal or device mutation occurred. The driver round-complete file still truthfully says pending_outer_review. This separate root result rejects candidate promotion. Full raw evidence is preserved in the archive referenced by ../archive-5cd-full128-20261013T1656.json; later root review files are repository evidence.
