@@ -1,0 +1,11 @@
+# Same-board final61b API evidence consumer
+
+The previous5ea full128 API increment cannot serve as current61b acceptance. The original detached driver also never stores its final OS exit code, and BMS observer plus BMS closeout are one reviewer route. This sibling preserves the original315 atlas, updates only NATIVE-173's five evidence fields, and waits for a pinned actual outer61b verdict.
+
+The original atlas assembler/validator, historical aliases and bilingual presentation methods remain in use. The original314 rows, Android unknown/source-only range, partial implementation, empty API frozen IDs and existing functional-validation count stay unchanged. Logical links use the final MAIN layout independently of the producer or verification directory.
+
+The [minimal interface](INTERFACE.zh.md) accepts existing comparison/facts and BMS/nativepeer receipts, without a new experiment. Global driver exit code remains null/unknown; the original4938 driver terminal completion, eight real window return-code triples and24 identity receipts establish the detached completion chain. Nativepeer original final-image rows are matched to the canonical record SHA, APK, boot and original shot tier. Its verdict/observation is preserved; absent original fields are not manufactured.
+
+Preparation only: actual outer authority is null, no formal views exist and no actual full128 acceptance is produced. The available six-window static seam matched108 keys/216 BMS images/108 nativepeer final images; it is not full128 evidence. Temporary unit fixtures test the five-field delta, original rendering, cross-tree Markdown/HTML/data identity and fail-closed inputs; they are deleted and never usable as an actual admission. Rust selector `api_progress_final61b` invokes the original style of Python check, and will also check actual bound outputs when supplied later.
+
+Root supplies actual acceptance path/fullSHA after completion. Then bind an independent request and run `increment.py build --request ... --out ...`, followed by `increment.py check --request ... --out ...`. All actual validation occurs before output creation; staging failures leave no published views. Zero HDC/device calls, no MAIN/round/frozen-package writes and no push.
