@@ -896,3 +896,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-13 #91 R6 reset补证更正：ResetPosition只回最近waypoint并清速度/设rotation，不保证朝水道；加设WATER_FACING_COURSE前置导致本轮inputs=[]审核超时，不能判成runtime/游戏不可操作。原t2b要求实际左右与LAP，不含该前置；Engine水深门允许水上静止转向，下一先左/右实际图再加速，保留本轮失败，不靠新增审核门替代行为实验。证据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-followup-main/completion.json`。
 
 - 2026-10-13 #91 R6交互补证闭环：同child5158/birth7195先水上left/right/right，再accelerate/reset，实际图证明双向航向响应、位移碰远岩、reset回水及LAP0→1/3；0→1仅为原验收圈数转移，不宣称完整绕场一圈。原五触PARTIAL与朝向门timeout保留；不加朝向前置、不重编f28即可补齐。新boot b711全337原Reader24calls+离线回放过，full128/终封另判。证据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-interactive-main/`。
+
+- 2026-10-13 API全景增量：315条=原314条字段不变+R6 nativeUpdate独立能力一条；仅OH6.1.0.31/5ea实测，Android区间unknown，full128 pending且未API冻结。生成证据链接必须按最终逻辑布局而非生产worktree计算，否则隔离land的Markdown/HTML复验漂移；原失败留存、固定定位后复验通过。见 `benchmark/2026-10-13-api-progress-r6/`。
