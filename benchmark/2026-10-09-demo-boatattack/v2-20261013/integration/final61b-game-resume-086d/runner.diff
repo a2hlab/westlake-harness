@@ -1,0 +1,89 @@
+--- benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final61b-execution-20261013/handoff/boat61b/interaction_steps.py
++++ benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final61b-game-resume-086d/interaction_resume.py
+@@ -33,6 +33,19 @@
+  need(type(auth.get('expires_epoch')) in (int,float) and auth['expires_epoch']>time.time(),'authorization expired')
+  need(auth.get('spare_board_authorized') is True,'separate spare-board window required')
+  need(Path(plan.get('hdc','')).is_file(),'explicit local HDC missing')
++ resume_binding(plan)
++
++def resume_binding(plan):
++ r=plan.get('resume',{});p=Path(os.path.expandvars(r.get('record_path','')))
++ need(p.is_file() and sha(p)==r.get('record_sha256'),'prior record pin differs')
++ old=json.loads(p.read_text())
++ need(old.get('status')=='FAILED_EVIDENCE_RETAINED' and old.get('error')=='step experiment deadline reached','only evidence-wait timeout may resume')
++ need(all(old.get(k)==plan.get(k) for k in ('serial','boot_id','owner')),'prior identity differs')
++ child=old.get('child',{});need(child==r.get('child') and child.get('uid')==plan['uid'],'resume child differs')
++ need(set(child)=={'pid','birth','ppid','parent_birth','uid'} and all(type(v) is int and v>0 for v in child.values()),'complete child identity required')
++ need(old.get('surface_node')==r.get('surface_node') and re.fullmatch(r'[0-9]+',r.get('surface_node','')),'resume surface differs')
++ need(old.get('target_window',{}).get('window_id')==r.get('window_id') and type(r.get('window_id')) is int,'resume WMS window differs')
++ return r
+ 
+ def jpeg_size(path):
+  data=Path(path).read_bytes();need(data[:2]==b'\xff\xd8','screenshot not JPEG');i=2
+@@ -104,7 +117,17 @@
+   rec['images'][tag]=info;save(out/'record.json',rec)
+   info['dimensions']=jpeg_size(p);save(out/'record.json',rec)
+  def window(tag):
+-  guard();_,dump=b.shell("hidumper -s WindowManagerService -a '-a'");(out/('wms-'+tag+'.txt')).write_text(dump);return target_window(dump,identity['pid'])
++  surface_guard()
++  guard();_,dump=b.shell("hidumper -s WindowManagerService -a '-a'");(out/('wms-'+tag+'.txt')).write_text(dump);observed=target_window(dump,identity['pid']);need(observed['window_id']==plan['resume']['window_id'],'resume WMS window changed');return observed
++ def surface_guard():
++  guard();node=plan['resume']['surface_node']
++  _,tree=b.shell("hidumper -s RenderService -a 'RSTree'");(out/'tree-current.txt').write_text(tree)
++  nodes=set(re.findall(r'SURFACE_NODE\[([0-9]+)\].*abilityState: foreground.*Name \[AdapterSurfaceView\]',tree))
++  need(node in nodes,'original foreground surface missing')
++  _,surface=b.shell("hidumper -s RenderService -a 'surfacenode "+node+"'");(out/'surface-node.txt').write_text(surface)
++  configs=re.findall(r'sequence = ([0-9]+).*config = \[([0-9]+x[0-9]+),',surface)
++  need(configs and all(size=='1920x1200' for seq,size in configs),'retained Unity buffers must all be1920x1200')
++  need(re.search(r'Bounds.*1920.*1200',surface) and re.search(r'default-size.*1920x1200',surface),'surface bounds/default-size')
+  def child_view():
+   guard();seen={}
+   for target,want in ASSETS.items():
+@@ -113,43 +136,13 @@
+  try:
+   context();_,text=b.shell('bm dump -n '+PKG);(out/'bundle.txt').write_text(text);bundle=B.parse_bundle(text,PKG);need(bundle['uid']==plan['uid'],'installed Boat UID differs')
+   _,text=b.shell('sha256sum /data/app/el1/bundle/public/'+PKG+'/android/base.apk');need(text.split()[0]=='8dc636657cccdad1310332928b8cc8eca7da03f4b528de6fb0c63118173e0444','installed APK differs')
++  binding=resume_binding(plan);identity=dict(binding['child']);guard();child_view();surface_guard()
+   b.shell('mkdir -m 700 '+remote);b.shell('printf %s '+shlex.quote(plan['owner'])+' > '+remote+'/owner');_,dir_inode=b.shell('stat -c %d:%i '+remote);dir_inode=dir_inode.strip()
+   b.send(found['keeper'],remote+'/keeper.sh');_,readback=b.shell('sha256sum '+remote+'/keeper.sh');need(readback.split()[0]==DONORS['keeper'][1],'keeper transfer mismatch')
+   b.shell('(KDIR='+remote+' INTERVAL=5 nohup sh '+remote+'/keeper.sh > '+remote+'/keeper-transport.log 2>&1 < /dev/null &)')
+-  _,tree_before=b.shell("hidumper -s RenderService -a 'RSTree'");(out/'tree-before.txt').write_text(tree_before)
+-  old_nodes=set(re.findall(r'SURFACE_NODE\[([0-9]+)\].*abilityState: foreground.*Name \[AdapterSurfaceView\]',tree_before))
+-  rec['launch_method']='desktop';B.desktop_launch(b,{'package':PKG,'launch_activity':bundle.get('desktop_activity') or ABILITY},remote,out,rec)
+-  candidates=[]
+-  for attempt in range(80):
+-   context();_,ps=b.shell('ps -A -o PID,PPID,UID,NAME');(out/'ps-launch.txt').write_text(ps)
+-   candidates=[]
+-   for row in B.processes(ps):
+-    if row['uid']==plan['uid']:
+-     try:candidates.append(proc_identity(b,row['pid'],plan['uid']))
+-     except ValueError:pass
+-   if len(candidates)==1:break
+-   time.sleep(.1)
+-  need(len(candidates)==1,'unique Boat child not ready');identity=candidates[0];rec['child']=identity;child_view()
+-  node=None
+-  for attempt in range(160):
+-   guard();_,tree=b.shell("hidumper -s RenderService -a 'RSTree'");(out/'tree-current.txt').write_text(tree)
+-   nodes=set(re.findall(r'SURFACE_NODE\[([0-9]+)\].*abilityState: foreground.*Name \[AdapterSurfaceView\]',tree))-old_nodes
+-   need(len(nodes)<=1,'ambiguous new foreground surface')
+-   if nodes:node=next(iter(nodes));break
+-   time.sleep(.1)
+-  need(node is not None,'new foreground surface missing')
+-  configs=[]
+-  for attempt in range(120):
+-   guard();_,surface=b.shell("hidumper -s RenderService -a 'surfacenode "+node+"'");(out/'surface-node.txt').write_text(surface)
+-   configs=re.findall(r'sequence = ([0-9]+).*config = \[([0-9]+x[0-9]+),',surface)
+-   if configs:break
+-   time.sleep(.1)
+-  need(configs and all(size=='1920x1200' for seq,size in configs),'retained Unity buffers must all be1920x1200')
+-  need(re.search(r'Bounds.*1920.*1200',surface) and re.search(r'default-size.*1920x1200',surface),'surface bounds/default-size')
+-  rec['surface_ready_monotonic']=time.monotonic();rec['surface_node']=node;rec['cadence']=[3,6,6,15]
+-  for delay,tag in [(3,'t3'),(6,'t9'),(6,'t15'),(15,'ready')]:
+-   time.sleep(delay);guard();shot(tag)
+-   rec['images'][tag]['target_window']=window(tag);save(out/'record.json',rec)
++  binding=resume_binding(plan);identity=dict(binding['child']);rec['child']=identity
++  rec['launch_method']='resume-existing-no-launch';rec['resume']=binding;rec['surface_node']=binding['surface_node'];rec['cadence']=[]
++  guard();child_view();surface_guard();shot('ready');rec['images']['ready']['target_window']=window('ready');save(out/'record.json',rec)
+   # Geometry acceptance for this new candidate remains pending root visual review.
+   # Keep input identity/geometry checks; known embedded-child focus is recorded advisory.
+   # Root-controlled supplement. No orientation precondition and no synthesized visual PASS.

@@ -1,0 +1,23 @@
+--- test_resume.py.before
++++ test_resume.py
+@@ -2,7 +2,10 @@
+ from pathlib import Path
+ from unittest.mock import patch
+ HERE=Path(__file__).resolve().parent
+-os.environ.setdefault('WORKSPACES',str(next(p for p in HERE.parents if p.name=='westlake-harness-t4').parent))
++ROOT=next(p for p in HERE.parents if (p/'AGENTS.md').is_file() and (p/'scripts/lab/lab_paths.py').is_file())
++if not os.environ.get('WORKSPACES'):
++ paths_spec=importlib.util.spec_from_file_location('resume_lab_paths',ROOT/'scripts/lab/lab_paths.py');paths=importlib.util.module_from_spec(paths_spec);paths_spec.loader.exec_module(paths)
++ os.environ['WORKSPACES']=str(paths.workspaces(start=ROOT))
+ spec=importlib.util.spec_from_file_location('resume',HERE/'interaction_resume.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+ class ResumeTests(unittest.TestCase):
+  def setUp(self):
+@@ -25,7 +28,7 @@
+  def test_no_launch_and_preserved_assets_inputs(self):
+   tree=ast.parse(Path(m.__file__).read_text());names=[n.func.attr for n in ast.walk(tree) if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute)]
+   self.assertNotIn('desktop_launch',names)
+-  src=json.loads((HERE/'source.json').read_text());root=next(p for p in HERE.parents if p.name=='westlake-harness-t4');old=ast.parse((root/src['original_runner']).read_text())
++  src=json.loads((HERE/'source.json').read_text());old=ast.parse((ROOT/src['original_runner']).read_text())
+   def function(t,n):return ast.dump(next(x for x in t.body if isinstance(x,ast.FunctionDef) and x.name==n))
+   self.assertEqual(function(tree,'proc_identity'),function(old,'proc_identity'))
+   self.assertEqual(function(tree,'target_window'),function(old,'target_window'))
