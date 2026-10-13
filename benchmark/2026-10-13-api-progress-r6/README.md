@@ -1,0 +1,15 @@
+# R6 API atlas one-row increment
+
+The previous atlas has314 records and cannot promote a whole JNI family from symbol presence or oneapp result. This increment preserves all314 rows byte-equivalent as JSON fieldvalues and appends exactlyNATIVE-173 for BLASTBufferQueue.nativeUpdate(JJJJI)V. It reuses originalatlas.py SHA0ffdc81893c8a10fdc18c739e1acf7ad06a988dc27af5fe93e3f38769703d2f2 and the originalschema/curation. The searchableHTML,Chinese table,CSV andJSON are rebuilt together in views/. Total315 records;original8 frozenindexes remain,while the newcapability frozen_ids stays empty.
+
+Source c208788a90ee19ad891af5cbe6fb8d7b29f339467ece084255d168dab45d1aef andruntimef28bd1b3d44e2944f77911c2ad71376869f7f3ebc6dcd8434dfea869f4056db0 are exact. Only successful dedicatedchild resolution uses requestedgeometry;main/ViewRoot andfailedchildfallback retain1200x1920. The otherthree geometry functions,lazy/STAGE0,M1 andSQLite remain unchanged. HistoricalBLAST transactionstub andr89 usp surfacegap rows remain untouched.
+
+OH scope is actual6.1.0.31 only. Android source/version/API compatibility andtest scope remain unknown/source-only. Boatfunctional evidence is root's actualb711 GAME_PASS,samePID/birth/UID andsevenpins,visible direction/accelerate/reset andLAP0/3→1/3;not completecourse acceptance. Fivepopup evidence is separateddb429 f28 t20 images andBMS image-review report,gradedreported here;originalforeground_unconfirmed records remain. Full128 is pending at this snapshot and the capability is not API-frozen. Runtimearchive/sourcefreeze does not confer APIregistration.
+
+OriginalREG-109's Boat README was changed after its signedatlasSHA. historical-evidence-aliases.json resolves that one immutableoldpath to byte-identical gitd9bf0d7b8cf1a07072f4336bdb143838af714d9f data SHA6467f9fcc09155e9a581308d436cb16ea9ed0d6d696b7329c72f394f760f22df. The oldrow andSHA are unchanged. No currentREADME is substituted. Allother originalsourcehash checks remain.
+
+Reproduce: `WORKSPACES=<workspace-parent> python3 benchmark/2026-10-13-api-progress-r6/increment.py build`,then `... increment.py check` or Rust selectorapi_progress_r6. Originalconsistency checks validate315rows,allCSVfields,Markdown/HTML regeneration,andfournegativecases. No boardoperation,build,freeze-registry change or main write occurred.
+
+## Relocation correction, original failure retained
+
+The first delivery was NOTLANDED: author-tree check passed,but originalsource_link used relpath(actualresolvedsource,HERE),so a copied verification tree failedMarkdown drift. evidence/landing-rejection retains the originalviews/deliverypins and an independentlyreproduced rc1 failure. No originalatlas or old314row was changed. The wrapper now renders Markdownlinks and HTMLlinkmap against the fixedlogical finalrepo/package/views layout;historicalalias points to ../evidence and no author/verification cwd enters hrefs. evidence/landing-fixed records actualisolatedPythoncheck and cargo selector rc0,315rows/314unchanged/fournegativecases. This corrected packet remains pendingouteracceptance,APIunfrozen/full128pending.
