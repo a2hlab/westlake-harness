@@ -5,6 +5,8 @@ from pathlib import Path,PurePosixPath
 HERE=Path(__file__).resolve().parent;WS=Path(os.environ.get('WORKSPACES',str(HERE.parents[2]))).resolve();MAIN=WS/'westlake-harness'
 CORE=MAIN/'benchmark/2026-10-14-api-progress-final61b';PARENT=MAIN/'benchmark/2026-10-13-api-progress-r6-full128'
 DELIVERY=('source_entry','source_revision','build_recipe','build_command','build_dependencies','build_outputs','build_verification')
+PUBLISH_REPOSITORY='a2hlab/westlake-harness'
+PUBLISH_BRANCH='master'
 def need(ok,msg):
  if not ok:raise ValueError(msg)
 def read(p):return json.loads(Path(p).read_text())
@@ -31,6 +33,11 @@ def master_tree(revision=None):
  for line in git('ls-tree','-rz','--full-tree',revision).split(b'\0'):
   if line:meta,name=line.split(b'\t',1);files[name.decode()]=meta.decode().split()[2]
  return revision,files
+def validate_publisher_url(audit):
+ if audit['master_tracked_exact']:
+  expected='https://github.com/'+PUBLISH_REPOSITORY+'/blob/'+PUBLISH_BRANCH+'/'+audit['master_relative_path']
+  need(audit['master_url']==expected,'publisher repository/branch/path ownership mismatch')
+ else:need(audit['master_url'] is None,'unpublished entry cannot have a publisher source URL')
 def audit_entry(entry,master,tree,allow_unpublished_missing=False):
  try:p=resolve(entry['path'])
  except ValueError:
@@ -40,7 +47,7 @@ def audit_entry(entry,master,tree,allow_unpublished_missing=False):
  if 'git_blob' in entry:need(actual_blob==entry['git_blob'],'source blob drift')
  rel=p.relative_to(MAIN).as_posix() if p.is_relative_to(MAIN) else None
  tracked=rel is not None and tree.get(rel)==actual_blob and not Path(entry['path']).is_absolute()
- return {'path':entry['path'],'sha256':entry['sha256'],'git_blob':actual_blob,'available':True,'master_commit_checked':master,'master_tracked_exact':tracked,'master_relative_path':rel if tracked else None,'master_url':'https://github.com/A2OH/westlake-harness/blob/master/'+rel if tracked else None,'remote_publication_verified':None}
+ return {'path':entry['path'],'sha256':entry['sha256'],'git_blob':actual_blob,'available':True,'master_commit_checked':master,'master_tracked_exact':tracked,'master_relative_path':rel if tracked else None,'master_url':'https://github.com/'+PUBLISH_REPOSITORY+'/blob/'+PUBLISH_BRANCH+'/'+rel if tracked else None,'remote_publication_verified':None}
 def complete(row,recipe,audit,build_audit):
  entries=row['source_entry'];verification=row['build_verification']
  return (bool(entries) and all(e.get('role')=='implementation' and e.get('exact_expected_match') is True for e in entries)
@@ -171,6 +178,9 @@ def build(mapping,mapping_sha,view,require_complete=False):
 def check(mapping,mapping_sha,view):
  recorded=read(view/'source-delivery.json')
  rows,recipes,summary=consume(mapping,mapping_sha,recorded['master_commit_checked']);need(summary==recorded,'source delivery summary drift');atlas,core=shell(view,rows,summary)
+ for row in read(view/'api-progress.json')['rows']:
+  for audit in row['source_master_audit']:validate_publisher_url(audit)
+  if row['build_entry_master_audit'] is not None:validate_publisher_url(row['build_entry_master_audit'])
  extended=atlas.CSV_FIELDS;atlas.CSV_FIELDS=tuple(k for k in extended if k not in DELIVERY and k not in ('source_delivery_status','source_delivery_gaps','source_master_audit','source_delivery_complete','build_entry','build_entry_master_audit','build_recipe_documents'))
  try:result=atlas.check()
  finally:atlas.CSV_FIELDS=extended

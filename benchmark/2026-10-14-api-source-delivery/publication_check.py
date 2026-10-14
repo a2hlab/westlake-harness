@@ -19,6 +19,10 @@ def validate(view):
  """The origin is the supplied real physical view directory, never a fixed logical path."""
  view=Path(view).resolve();pins=expected_refs(view);receipts=[];maps=[]
  canonical=g.read(view/'api-progress.json')['rows']
+ publisher_urls=0
+ for row in canonical:
+  audits=row['source_master_audit']+([row['build_entry_master_audit']] if row['build_entry_master_audit'] else [])
+  for audit in audits:g.validate_publisher_url(audit);publisher_urls+=audit['master_url'] is not None
  for language in ('index.html','index.en.html'):
   text=(view/language).read_text()
   match=re.search(r'const evidenceLinks=(\{[^\n]*\});',text)
@@ -38,7 +42,7 @@ def validate(view):
  for href in re.findall(r'\]\(<([^>]+)>\)',md):
   path=(view/href).resolve();g.need(path.is_file(),'Markdown physical link missing: '+href)
   md_receipts.append({'href':href,'physical_target':str(path),'sha256':g.sha(path)})
- return {'status':'PHYSICAL_LINKS_VERIFIED','physical_views':str(view),'rows':315,'links_per_language':len(pins),'markdown_links':len(md_receipts),'html_links':receipts,'markdown':md_receipts,'device_calls':0,'source_complete_claim':False}
+ return {'status':'PHYSICAL_LINKS_VERIFIED','physical_views':str(view),'rows':315,'links_per_language':len(pins),'markdown_links':len(md_receipts),'html_links':receipts,'markdown':md_receipts,'publisher_repository':g.PUBLISH_REPOSITORY,'publisher_branch':g.PUBLISH_BRANCH,'master_urls_checked':publisher_urls,'device_calls':0,'source_complete_claim':False}
 
 def simulate(view):
  """Copy the new packet at exact final directory depth; existing MAIN files stay read-only."""

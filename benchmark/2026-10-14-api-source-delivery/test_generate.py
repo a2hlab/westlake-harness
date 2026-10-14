@@ -22,6 +22,27 @@ class DeliveryTests(unittest.TestCase):
  def test_exact_main_master_entry_positive_control(self):
   self.assertTrue(self.audit['master_tracked_exact'])
   self.assertTrue(g.complete(self.row,{'entry':self.entry},[self.audit],self.audit))
+ def test_publisher_is_task_repository_and_default_master(self):
+  # Explicit release authority; intentionally independent of the stale local origin.
+  self.assertEqual(g.PUBLISH_REPOSITORY,'a2hlab/westlake-harness')
+  self.assertEqual(g.PUBLISH_BRANCH,'master')
+  self.assertEqual(self.audit['master_url'],'https://github.com/a2hlab/westlake-harness/blob/master/'+self.script)
+  g.validate_publisher_url(self.audit)
+ def test_local_sha_and_blob_do_not_authorize_wrong_remote_repository(self):
+  for prefix in ('https://github.com/A2OH/westlake-harness/blob/master/','https://github.com/a2hlab/westlake-harness/blob/main/'):
+   bad=copy.deepcopy(self.audit);bad['master_url']=prefix+self.script
+   self.assertEqual(bad['sha256'],self.audit['sha256'])
+   self.assertEqual(bad['git_blob'],self.audit['git_blob'])
+   self.assertTrue(bad['master_tracked_exact'])
+   with self.assertRaisesRegex(ValueError,'publisher repository/branch/path ownership mismatch'):g.validate_publisher_url(bad)
+ def test_physical_publication_rejects_wrong_owner_before_local_sha_checks(self):
+  import publication_check
+  with tempfile.TemporaryDirectory(prefix='publisher-negative-',dir=g.HERE) as tmp:
+   view=Path(tmp)/'views';shutil.copytree(g.HERE/'views',view)
+   data=g.read(view/'api-progress.json');audit=next(r for r in data['rows'] if r['source_master_audit'])['source_master_audit'][0]
+   audit['master_url']='https://github.com/A2OH/westlake-harness/blob/master/'+audit['master_relative_path']
+   g.write(view/'api-progress.json',data)
+   with self.assertRaisesRegex(ValueError,'publisher repository/branch/path ownership mismatch'):publication_check.validate(view)
  def test_external_real_script_same_sha_is_rejected(self):
   with tempfile.TemporaryDirectory(prefix='external-build-',dir=g.HERE) as tmp:
    copied=Path(tmp)/'build.py';shutil.copy2(g.MAIN/self.script,copied)
