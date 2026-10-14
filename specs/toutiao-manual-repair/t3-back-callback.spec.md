@@ -1,0 +1,34 @@
+spec: task
+name: "Exact RouteB back callback overlay"
+---
+## 意图
+从实际ea5d8b27 BCP独立派生返回回调候选，修复onBackPressed空实现，不改owner、inset或历史JAR。正文返回必须外环截图验证。
+## 已定决策
+- 只替换ActivityClientControllerAdapter.onBackPressed的代码，回调进入原Activity.finishAfterTransition和原finishActivity销毁链。
+- 保留全部其他类、方法、注解及冻结行为；从精确输入和锁定dexlib工具产生候选及原始执行日志。
+- 原parent已加载BCP，磁盘替换不能当现有child生效；部署和新进程由外环独占执行。
+## 边界
+### 允许修改
+- benchmark/2026-10-14-toutiao-manual-repair/back-callback-overlay/**
+- benchmark/2026-10-14-toutiao-manual-repair/return-lifecycle-review/**
+- specs/toutiao-manual-repair/t3-back-callback.spec.md
+- tools/spec-checks/tests/toutiao_back_callback.rs
+### 禁止
+- 不调用HDC、不改冻结原件、不杀parent、不改应用数据、不整代重烤。
+## 完成条件
+场景: 精确单方法派生
+  测试: toutiao_back_callback
+  Given 实际ea5d8b27输入和锁定工具
+  When 构建独立JAR并反汇编比较
+  Then 类集合不变且仅onBackPressed方法变化
+场景: 输入漂移拒绝
+  测试: toutiao_back_callback
+  Given 输入SHA或原方法不同
+  When 运行构建入口
+  Then 拒绝生成候选
+场景: 返回实屏
+  测试: toutiao_back_callback
+  审核: human
+  Given 外环在独占5cd新进程窗口部署精确候选
+  When 正文点击返回并保全回调日志与截图
+  Then 仅真实回到信息流才通过而非CLICK日志通过
