@@ -1,0 +1,27 @@
+{
+  "experiment": "T7d adapter-mainline-stubs jar + boot image, self-built by cc-wiki per BUILD.md dockbuild recipe; all gates pass",
+  "date": "2026-10-01T03:20-03:40+0800",
+  "lane": "cc-wiki",
+  "dispatch": "ACK(80) 03:23: build T7d myself via BUILD.md 'T7 -> jar 构建(dockbuild, 本机)' (image a2hlab-b5-java:24.04, 4 classpath jars); FWK_TURBINE path dead; add missing annotations to classpath; no hw248 cold build. Order: modify jar -> G3 -> image -> G1/G2 -> wait for 61b (queued after U6).",
+  "jar_build": {
+    "method": "dockbuild on this Mac: docker image a2hlab-b5-java:24.04 (amd64, emulated), workspace a2hlab VM /home/zhaoyue/a2hlab/ws/t7-stubs-build (oc-t4's T7c workspace, reused), mounted via OrbStack",
+    "classpath": "out/core-java/java/core-all-compile-only.jar + core-libart.classes.jar + out/framework-runtime/core-compile-only.jar + framework.classes.jar (the 4 compile-only/.classes jars; they carry the @hide types + framework-internal annotations the SDK android.jar lacks -- this is why FWK_TURBINE was unnecessary)",
+    "steps": "javac -encoding UTF-8 -classpath <4 jars> -d classes @srcs.txt (rc=0, 191 .class from 112 srcs) ; java -cp android-source/r8/r8.jar com.android.tools.r8.D8 --min-api 34 --classpath <4 jars> --output dex <classes> (rc=0) ; jar cfM (MANIFEST + classes.dex thin shell)",
+    "edits": "6 additions on feat/bms-walls 44ab7862e base: ColorMatrix.setSaturation(F)V, MediaStore.canManageMedia(Context)Z=false, MediaStore$Files.getContentUri(String)Uri=content://media/<vol>/file, NetworkCapabilities.getSignalStrength()I=MIN_VALUE, ConnectivityManager.requestNetwork(NetworkRequest,NetworkCallback)V=no-op, + new android/net/ssl/SSLSockets (isSupportedSocket=false, setUseSessionTickets no-op)",
+    "result": {"jar_sha16": "6e2f450e5c867ba3", "classes_dex_sha_size": "178468 B", "classes": 192, "vs_T7c": "T7c=191 (366acc27); T7d +1 class (SSLSockets), +5 methods; classes.dex 178468 vs T7c 181944 (d8 --min-api 34 encoding diff, not a content problem)"},
+    "members_verified": "dex parse confirms all 6: ColorMatrix.setSaturation, MediaStore.canManageMedia, MediaStore$Files.getContentUri, NetworkCapabilities.getSignalStrength, ConnectivityManager.requestNetwork, SSLSockets.isSupportedSocket+setUseSessionTickets"
+  },
+  "image_build": {
+    "method": "dex2oat64 (T3c ae865ddd, read-barrier-off) on hw248, 9 jars = 8 resident + T7d stubs jar, board cmdline form (--base 0x70000000 --compiler-filter speed -Xverify:none)",
+    "result": {"files": 27, "boot_oat_sha16": "9f64d69ca195f92a", "boot_art_sha16": "53b970ec3e0df1c6", "adapter_mainline_stubs_vdex_checksum": "0x37851856"}
+  },
+  "gates": {
+    "G3": "PASS -- T7d jar (192) vs resident v3c (190): 2 new classes (NetworkInfo$State, SSLSockets), both in NO other BCP jar -> no shadowing. (ColorMatrix/MediaStore/NetworkCapabilities/ConnectivityManager are METHODS added to classes already in the stubs jar.)",
+    "G1": "PASS -- adapter-mainline-stubs cand=0x37851856 (T7d, deployed together via --swap); other 8 segments match v3c",
+    "G2": "PASS -- java.lang.String#hashCode 36==36 insns vs v3c (explicit suspend check; T3c dex2oat64 entrypoints correct)",
+    "verdict": "PASS (G1=PASS G2=PASS G3=PASS)"
+  },
+  "coverage": "T7d stubs target the 4 stub-fixable FATAL walls (wikipedia SSLSockets, fd-gallery MediaStore.canManageMedia+getContentUri, fd-plus ColorMatrix.setSaturation, x NetworkCapabilities.getSignalStrength) + 2 bonus (vlc requestNetwork, — noice getMediaServiceManager dropped: framework-only shadow). fd-libretube/fd-feeder have NO android/java member wall -> not addressed by T7d. Board screenshots remain ground truth.",
+  "staged": "local _hw248-t7d/ (arm64/ 27 files + adapter-mainline-stubs.jar + boot-image-inputs.sha256); hw248 /home/alvin/cc-wiki-t7d-out + cc-wiki-t7d-jars + cc-wiki-t7d-stubs.jar",
+  "next": "board 61b as a package deploy (t6_board_test.sh SWAP_JAR=T7d jar, --reinstall, 4 targets + vlc + HW/ZZ/aegis/ooniprobe controls) AFTER U6 full sweep frees 61b; rollback to U5 byte-identical."
+}

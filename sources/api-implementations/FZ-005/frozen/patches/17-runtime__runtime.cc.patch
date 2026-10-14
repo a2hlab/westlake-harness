@@ -1,0 +1,139 @@
+--- a/runtime/runtime.cc
++++ b/runtime/runtime.cc
+@@ -1832,6 +1832,7 @@
+   }
+   if (GetHeap()->HasBootImageSpace()) {
+     bool result = class_linker_->InitFromBootImage(&error_msg);
++    fprintf(stderr, "[RTI_CP] A_after_InitFromBootImage result=%d\n", (int)result); fflush(stderr);
+     if (!result) {
+       LOG(ERROR) << "Could not initialize from image: " << error_msg;
+       return false;
+@@ -1842,14 +1843,22 @@
+       }
+     }
+     {
++      fprintf(stderr, "[AIST_CP] A_entry boot_img_spaces=%zu\n", heap_->GetBootImageSpaces().size()); fflush(stderr);
+       ScopedTrace trace2("AddImageStringsToTable");
++      int _aist_idx = 0;
+       for (gc::space::ImageSpace* image_space : heap_->GetBootImageSpaces()) {
++        fprintf(stderr, "[AIST_CP] B_before idx=%d space=%p\n", _aist_idx, (void*)image_space); fflush(stderr);
+         GetInternTable()->AddImageStringsToTable(image_space, VoidFunctor());
++        fprintf(stderr, "[AIST_CP] C_after idx=%d\n", _aist_idx); fflush(stderr);
++        _aist_idx++;
+       }
++      fprintf(stderr, "[AIST_CP] Z_done total=%d\n", _aist_idx); fflush(stderr);
+     }
++    fprintf(stderr, "[RTI_CP] B_after_AIST_block\n"); fflush(stderr);
+ 
+     const size_t total_components = gc::space::ImageSpace::GetNumberOfComponents(
+         ArrayRef<gc::space::ImageSpace* const>(heap_->GetBootImageSpaces()));
++    fprintf(stderr, "[RTI_CP] C_total_components=%zu bcp_size=%zu\n", total_components, GetBootClassPath().size()); fflush(stderr);
+     if (total_components != GetBootClassPath().size()) {
+       // The boot image did not contain all boot class path components. Load the rest.
+       CHECK_LT(total_components, GetBootClassPath().size());
+@@ -1867,15 +1876,20 @@
+                          bcp_fds,
+                          &extra_boot_class_path);
+       }
++      fprintf(stderr, "[RTI_CP] D_before_AddExtraBootDex count=%zu\n", extra_boot_class_path.size()); fflush(stderr);
+       class_linker_->AddExtraBootDexFiles(self, std::move(extra_boot_class_path));
++      fprintf(stderr, "[RTI_CP] E_after_AddExtraBootDex\n"); fflush(stderr);
+     }
+     if (IsJavaDebuggable() || jit_options_->GetProfileSaverOptions().GetProfileBootClassPath()) {
+       // Deoptimize the boot image if debuggable  as the code may have been compiled non-debuggable.
+       // Also deoptimize if we are profiling the boot class path.
+       ScopedThreadSuspension sts(self, ThreadState::kNative);
+       ScopedSuspendAll ssa(__FUNCTION__);
++      fprintf(stderr, "[RTI_CP] F_before_DeoptimizeBootImage\n"); fflush(stderr);
+       DeoptimizeBootImage();
++      fprintf(stderr, "[RTI_CP] G_after_DeoptimizeBootImage\n"); fflush(stderr);
+     }
++    fprintf(stderr, "[RTI_CP] H_exit_HasBootImage_block\n"); fflush(stderr);
+   } else {
+     std::vector<std::unique_ptr<const DexFile>> boot_class_path;
+     if (runtime_options.Exists(Opt::BootClassPathDexList)) {
+@@ -1903,14 +1917,19 @@
+ 
+   // Now that the boot image space is set, cache the boot classpath checksums,
+   // to be used when validating oat files.
++  fprintf(stderr, "[RTI_CP] I_before_checksums\n"); fflush(stderr);
+   ArrayRef<gc::space::ImageSpace* const> image_spaces(GetHeap()->GetBootImageSpaces());
+   ArrayRef<const DexFile* const> bcp_dex_files(GetClassLinker()->GetBootClassPath());
+   boot_class_path_checksums_ = gc::space::ImageSpace::GetBootClassPathChecksums(image_spaces,
+                                                                                 bcp_dex_files);
++  fprintf(stderr, "[RTI_CP] J_after_checksums\n"); fflush(stderr);
+ 
+   CHECK(class_linker_ != nullptr);
++  fprintf(stderr, "[RTI_CP] K_after_CLnull_check\n"); fflush(stderr);
+ 
++  fprintf(stderr, "[RTI_CP] L_before_ClassVerifier_Init\n"); fflush(stderr);
+   verifier::ClassVerifier::Init(class_linker_);
++  fprintf(stderr, "[RTI_CP] M_after_ClassVerifier_Init\n"); fflush(stderr);
+ 
+   if (runtime_options.Exists(Opt::MethodTrace)) {
+     trace_config_.reset(new TraceConfig());
+@@ -1925,12 +1944,16 @@
+ 
+   // TODO: Remove this in a follow up CL. This isn't used anywhere.
+   Trace::SetDefaultClockSource(runtime_options.GetOrDefault(Opt::ProfileClock));
++  fprintf(stderr, "[RTI_CP] N_after_SetDefaultClockSource\n"); fflush(stderr);
+ 
+   if (GetHeap()->HasBootImageSpace()) {
++    fprintf(stderr, "[RTI_CP] O_enter_2nd_HasBootImage\n"); fflush(stderr);
+     const ImageHeader& image_header = GetHeap()->GetBootImageSpaces()[0]->GetImageHeader();
++    fprintf(stderr, "[RTI_CP] P_after_GetImageHeader\n"); fflush(stderr);
+     ObjPtr<mirror::ObjectArray<mirror::Object>> boot_image_live_objects =
+         ObjPtr<mirror::ObjectArray<mirror::Object>>::DownCast(
+             image_header.GetImageRoot(ImageHeader::kBootImageLiveObjects));
++    fprintf(stderr, "[RTI_CP] Q_after_LiveObjects_DownCast\n"); fflush(stderr);
+     pre_allocated_OutOfMemoryError_when_throwing_exception_ = GcRoot<mirror::Throwable>(
+         boot_image_live_objects->Get(ImageHeader::kOomeWhenThrowingException)->AsThrowable());
+     DCHECK(pre_allocated_OutOfMemoryError_when_throwing_exception_.Read()->GetClass()
+@@ -1947,6 +1970,7 @@
+         boot_image_live_objects->Get(ImageHeader::kNoClassDefFoundError)->AsThrowable());
+     DCHECK(pre_allocated_NoClassDefFoundError_.Read()->GetClass()
+                ->DescriptorEquals("Ljava/lang/NoClassDefFoundError;"));
++    fprintf(stderr, "[RTI_CP] R_after_PreAllocated_from_image\n"); fflush(stderr);
+   } else {
+     // Pre-allocate an OutOfMemoryError for the case when we fail to
+     // allocate the exception to be thrown.
+@@ -1981,18 +2005,26 @@
+                                 "Class not found using the boot class loader; "
+                                     "no stack trace available");
+   }
++  fprintf(stderr, "[RTI_CP] S_exit_2nd_HasBootImage_block\n"); fflush(stderr);
+ 
+   // Class-roots are setup, we can now finish initializing the JniIdManager.
++  fprintf(stderr, "[RTI_CP] T_before_JniIdManager_Init\n"); fflush(stderr);
+   GetJniIdManager()->Init(self);
++  fprintf(stderr, "[RTI_CP] U_after_JniIdManager_Init\n"); fflush(stderr);
+ 
++  fprintf(stderr, "[RTI_CP] V_before_InitMetrics\n"); fflush(stderr);
+   InitMetrics();
++  fprintf(stderr, "[RTI_CP] W_after_InitMetrics\n"); fflush(stderr);
+ 
+   // Runtime initialization is largely done now.
+   // We load plugins first since that can modify the runtime state slightly.
+   // Load all plugins
++  fprintf(stderr, "[RTI_CP] X_before_Plugins_block plugins_size=%zu\n", plugins_.size()); fflush(stderr);
+   {
+     // The init method of plugins expect the state of the thread to be non runnable.
++    fprintf(stderr, "[RTI_CP] Y_before_ScopedThreadSuspension_kNative\n"); fflush(stderr);
+     ScopedThreadSuspension sts(self, ThreadState::kNative);
++    fprintf(stderr, "[RTI_CP] Z_after_ScopedThreadSuspension_kNative\n"); fflush(stderr);
+     for (auto& plugin : plugins_) {
+       std::string err;
+       if (!plugin.Load(&err)) {
+@@ -2028,10 +2060,12 @@
+   // Runtime::Start():
+   //   DidForkFromZygote(kInitialize) -> try to initialize any native bridge given.
+   //   No-op wrt native bridge.
++  fprintf(stderr, "[RTI_CP] AA_before_LoadNativeBridge_block\n"); fflush(stderr);
+   {
+     std::string native_bridge_file_name = runtime_options.ReleaseOrDefault(Opt::NativeBridge);
+     is_native_bridge_loaded_ = LoadNativeBridge(native_bridge_file_name);
+   }
++  fprintf(stderr, "[RTI_CP] BB_after_LoadNativeBridge_block\n"); fflush(stderr);
+ 
+   // Startup agents
+   // TODO Maybe we should start a new thread to run these on. Investigate RI behavior more.

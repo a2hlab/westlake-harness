@@ -1,0 +1,283 @@
+# BUILD.gn for apk-installer module
+#
+# L02.A01 package-boundary verifier/parser. This library is deliberately
+# read-only: BMS owns the transaction and installs owns privileged publication.
+#
+# This module is dlopen'd by BMS and returns the current GameInstallPlanWire.
+
+import("//build/ohos.gni")
+
+config("apk_installer_config") {
+  include_dirs = [
+    "jni",
+    "package_transaction/include",
+    "install_plan/include",
+    "signing_metadata/include",
+    "//third_party/minizip",
+    "//third_party/openssl/include",
+    "//base/hiviewdfx/hilog/interfaces/native/innerkits/include",
+  ]
+}
+
+ohos_static_library("fn01_package_transaction") {
+  sources = [
+    "install_plan/src/sha256.c",
+    "package_transaction/src/elf_prepass_analyzer.cpp",
+    "package_transaction/src/prepass_bundle.cpp",
+    "package_transaction/src/package_transaction.cpp",
+  ]
+
+  configs = [ ":apk_installer_config" ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_package_query") {
+  sources = [
+    "package_query/src/package_query_v1.cpp",
+  ]
+
+  include_dirs = [ "package_query/include" ]
+  configs = [ ":apk_installer_config" ]
+  deps = [ ":fn01_package_transaction" ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_package_authority") {
+  sources = [
+    "package_authority/src/package_authority_service_v1.cpp",
+  ]
+
+  include_dirs = [
+    "package_authority/include",
+    "package_query/include",
+  ]
+  configs = [ ":apk_installer_config" ]
+  deps = [
+    ":fn01_package_query",
+    ":fn01_package_transaction",
+  ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_package_list") {
+  sources = [
+    "package_list/src/package_list_v1.cpp",
+  ]
+
+  include_dirs = [
+    "install_plan/include",
+    "package_list/include",
+    "package_query/include",
+  ]
+  configs = [ ":apk_installer_config" ]
+  deps = [
+    ":fn01_package_query",
+    ":fn01_package_transaction",
+  ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_manifest_facts") {
+  sources = [
+    "jni/axml_parser.cpp",
+    "manifest_facts/src/manifest_facts_v1.cpp",
+  ]
+
+  include_dirs = [ "manifest_facts/include" ]
+  configs = [ ":apk_installer_config" ]
+  deps = [
+    ":fn01_package_transaction",
+    "//third_party/zlib:shared_libz",
+  ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_package_info") {
+  sources = [
+    "package_info/src/package_info_runtime_v1.cpp",
+    "package_info/src/package_info_v1.cpp",
+  ]
+
+  include_dirs = [ "package_info/include" ]
+  configs = [ ":apk_installer_config" ]
+  deps = [
+    ":fn01_package_query",
+    ":fn01_package_transaction",
+  ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_application_info") {
+  sources = [
+    "application_info/src/application_info_public_entry_v1.cpp",
+    "application_info/src/application_info_runtime_owner_v1.cpp",
+    "application_info/src/application_info_runtime_v1.cpp",
+    "application_info/src/application_info_v1.cpp",
+  ]
+
+  include_dirs = [
+    "application_info/include",
+    "package_info/include",
+  ]
+  configs = [ ":apk_installer_config" ]
+  deps = [
+    ":fn01_package_info",
+    ":fn01_package_query",
+    ":fn01_package_transaction",
+  ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_package_layout") {
+  sources = [
+    "package_layout/src/package_layout_v1.cpp",
+  ]
+
+  include_dirs = [ "package_layout/include" ]
+  configs = [ ":apk_installer_config" ]
+  deps = [ ":fn01_package_transaction" ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_resource_projection") {
+  sources = [
+    "resource_projection/src/resource_projection_v1.cpp",
+  ]
+
+  include_dirs = [
+    "resource_projection/include",
+    "package_layout/include",
+  ]
+  configs = [ ":apk_installer_config" ]
+  deps = [
+    ":fn01_package_layout",
+    ":fn01_package_transaction",
+  ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_bms_projection") {
+  sources = [
+    "bms_projection/src/bms_projection_v1.cpp",
+  ]
+
+  include_dirs = [
+    "bms_projection/include",
+    "install_plan/include",
+  ]
+  configs = [ ":apk_installer_config" ]
+  deps = [ ":fn01_package_transaction" ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_runtime_path_descriptor") {
+  sources = [
+    "runtime_path_descriptor/src/runtime_path_descriptor_v1.cpp",
+  ]
+
+  include_dirs = [ "runtime_path_descriptor/include" ]
+  configs = [ ":apk_installer_config" ]
+  deps = [ ":fn01_package_transaction" ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_component_resolver") {
+  sources = [
+    "component_resolver/src/component_resolver_runtime_v1.cpp",
+    "component_resolver/src/component_resolver_v1.cpp",
+  ]
+
+  include_dirs = [ "component_resolver/include" ]
+  configs = [ ":apk_installer_config" ]
+  deps = [ ":fn01_package_transaction" ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_shared_library("apk_installer") {
+  sources = [
+    "jni/apk_label_resolver.cpp",
+    "jni/apk_manifest_parser.cpp",
+    "jni/arsc_resolver.cpp",
+    "jni/apk_native_inventory.cpp",
+    "jni/apk_native_inventory_names.cpp",
+    "jni/axml_parser.cpp",
+    "jni/apk_verify_result.cpp",
+    "jni/apk_verifier_client.cpp",
+    "jni/apk_signature_verifier.cpp",
+    "signing_metadata/src/signing_metadata_v1.cpp",
+    # Provides the production resources-HAP transform exported through the
+    # stable C entry point.  Omitting this file left
+    # oh_adapter_build_resources_hap unresolved in a fresh library build.
+    "jni/apk_installer.cpp",
+    # task #65 launcher-icon unification: normalize (crop transparent margins
+    # + scale to fill canvas) at install-time icon extraction. PNG codec is
+    # the vendored lodepng (src/adapter/third_party/lodepng).
+    "jni/icon_normalize.cpp",
+    "../../third_party/lodepng/lodepng.cpp",
+    "jni/game_install_plan_wire.cpp",
+    "jni/install_prepass_materializer.cpp",
+    "jni/prepass_context_wire.cpp",
+    # Post-registration app data directory provisioning (appspawn-x sandbox
+    # bind-mount sources); exported as oh_adapter_create_app_data_dirs.
+    "jni/app_data_dir_provisioner.cpp",
+    "jni/oh_adapter_install_apk_c_entry.cpp",
+  ]
+
+  include_dirs = [ "../../third_party/lodepng" ]
+
+  configs = [ ":apk_installer_config" ]
+
+  deps = [
+    ":fn01_package_authority",
+    ":fn01_package_transaction",
+    "//third_party/minizip:minizip",
+    "//third_party/openssl:libcrypto_shared",
+  ]
+
+  external_deps = [
+    "hilog:libhilog",
+  ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}
+
+ohos_static_library("fn01_launcher_presentation") {
+  sources = [
+    "install_plan/src/sha256.c",
+    "launcher_presentation/src/launcher_presentation_v1.cpp",
+  ]
+
+  include_dirs = [
+    "install_plan/include",
+    "launcher_presentation/include",
+  ]
+  configs = [ ":apk_installer_config" ]
+
+  part_name = "oh_adapter"
+  subsystem_name = "oh_adapter"
+}

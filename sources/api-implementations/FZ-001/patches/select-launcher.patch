@@ -1,0 +1,82 @@
+diff --git a/bms/src/adapter/framework/package-manager/jni/launcher_activity.h b/bms/src/adapter/framework/package-manager/jni/launcher_activity.h
+index ae47580f1..054095d64 100644
+--- a/bms/src/adapter/framework/package-manager/jni/launcher_activity.h
++++ b/bms/src/adapter/framework/package-manager/jni/launcher_activity.h
+@@ -27,6 +27,34 @@ inline bool IsAndroidLauncherActivity(const ApkManifestParser::ActivityData& act
+     return false;
+ }
+ 
++// Choose the single desktop launcher activity for a manifest that may declare more than one
++// MAIN+LAUNCHER activity. A merged library can contribute its own launcher (e.g.
++// leakcanary.internal.activity.LeakLauncherActivity) that sorts ahead of or behind the app's real
++// launcher in manifest order; picking any such foreign launcher registers the diagnostic UI as the
++// desktop icon (AnkiDroid's icon launched LeakCanary's "Leaks" screen). Prefer a launcher declared in
++// the app's own package namespace, falling back to the first launcher of any package when none
++// matches -- so single-launcher apps and apps whose launcher lives in a different package are
++// unchanged. Returns nullptr when the manifest declares no launcher activity at all.
++inline const ApkManifestParser::ActivityData* SelectLauncherActivity(
++        const ApkManifestParser::ManifestData& manifest)
++{
++    const ApkManifestParser::ActivityData* firstLauncher = nullptr;
++    const std::string ownPrefix = manifest.packageName + ".";
++    for (const auto& activity : manifest.activities) {
++        if (!IsAndroidLauncherActivity(activity)) {
++            continue;
++        }
++        if (firstLauncher == nullptr) {
++            firstLauncher = &activity;
++        }
++        if (activity.name.size() >= ownPrefix.size() &&
++            activity.name.compare(0, ownPrefix.size(), ownPrefix) == 0) {
++            return &activity;
++        }
++    }
++    return firstLauncher;
++}
++
+ }  // namespace oh_adapter
+ 
+ #endif  // OH_ADAPTER_LAUNCHER_ACTIVITY_H
+diff --git a/bms/src/adapter/framework/package-manager/jni/oh_adapter_install_apk_c_entry.cpp b/bms/src/adapter/framework/package-manager/jni/oh_adapter_install_apk_c_entry.cpp
+index a8759abf8..b329fab0a 100755
+--- a/bms/src/adapter/framework/package-manager/jni/oh_adapter_install_apk_c_entry.cpp
++++ b/bms/src/adapter/framework/package-manager/jni/oh_adapter_install_apk_c_entry.cpp
+@@ -140,13 +140,10 @@ extern "C" int oh_adapter_prepare_install(const char* apkPath, int32_t userId,
+         return OH_ADAPTER_APK_VERIFY_RESPONSE_REJECTED;
+     }
+ 
+-    const oh_adapter::ApkManifestParser::ActivityData* launcher = nullptr;
+-    for (const auto& activity : manifest.activities) {
+-        if (oh_adapter::IsAndroidLauncherActivity(activity)) {
+-            launcher = &activity;
+-            break;
+-        }
+-    }
++    // Prefer the app's own-package launcher over a merged-library launcher (e.g. leakcanary's
++    // LeakLauncherActivity); a plain first-launcher pick registered the diagnostic UI as the icon.
++    const oh_adapter::ApkManifestParser::ActivityData* launcher =
++        oh_adapter::SelectLauncherActivity(manifest);
+     if (launcher == nullptr ||
+         !CopyPlanString(plan->packageName, sizeof(plan->packageName), manifest.packageName) ||
+         !CopyPlanString(plan->versionName, sizeof(plan->versionName), manifest.versionName) ||
+@@ -359,6 +356,11 @@ extern "C" int oh_adapter_install_apk_with_manifest(
+     json["debuggable"] = manifest.debuggable;
+ 
+     nlohmann::json abilities = nlohmann::json::array();
++    // Only the single chosen launcher (own-package preferred) is the desktop mainAbility: base_bundle
++    // installer sets moduleInfo.mainAbility from isMainAbility, so marking every MAIN+LAUNCHER activity
++    // let a merged-library launcher (leakcanary) win. Match the plan's launcher selection here.
++    const oh_adapter::ApkManifestParser::ActivityData* chosenMainAbility =
++        oh_adapter::SelectLauncherActivity(manifest);
+     for (const auto& activity : manifest.activities) {
+         nlohmann::json ability;
+         ability["name"] = activity.name;
+@@ -369,7 +371,7 @@ extern "C" int oh_adapter_install_apk_with_manifest(
+         ability["exported"] = activity.exported;
+         nlohmann::json actions = nlohmann::json::array();
+         nlohmann::json categories = nlohmann::json::array();
+-        const bool isMain = oh_adapter::IsAndroidLauncherActivity(activity);
++        const bool isMain = (chosenMainAbility == &activity);
+         for (const auto& filter : activity.intentFilters) {
+             for (const auto& action : filter.actions) {
+                 actions.push_back(action);

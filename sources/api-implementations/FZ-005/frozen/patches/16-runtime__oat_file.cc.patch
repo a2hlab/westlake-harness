@@ -1,0 +1,197 @@
+--- a/runtime/oat_file.cc
++++ b/runtime/oat_file.cc
+@@ -206,9 +206,12 @@
+                                       ArrayRef<const int> dex_fds,
+                                       /*inout*/MemMap* reservation,
+                                       /*out*/std::string* error_msg) {
++  fprintf(stderr, "[V1_CP] A_v1_entry\n"); fflush(stderr);
+   std::unique_ptr<OatFileBase> ret(new kOatFileBaseSubType(location, executable));
++  fprintf(stderr, "[V1_CP] B_v1_after_new\n"); fflush(stderr);
+ 
+   ret->PreLoad();
++  fprintf(stderr, "[V1_CP] C_v1_after_preload\n"); fflush(stderr);
+ 
+   if (!ret->Load(elf_filename,
+                  writable,
+@@ -216,22 +219,34 @@
+                  low_4gb,
+                  reservation,
+                  error_msg)) {
++  fprintf(stderr, "[V1_CP] D_v1_load_failed\n"); fflush(stderr);
++  fprintf(stderr, "[V1_CP] D_v1_load_failed_err=%s\n", error_msg ? error_msg->c_str() : "(null)"); fflush(stderr);
+     return nullptr;
+   }
++  fprintf(stderr, "[V1_CP] E_v1_after_load\n"); fflush(stderr);
+ 
+   if (!ret->ComputeFields(elf_filename, error_msg)) {
++  fprintf(stderr, "[V1_CP] F_v1_compute_failed\n"); fflush(stderr);
++  fprintf(stderr, "[V1_CP] F_v1_compute_failed_err=%s\n", error_msg ? error_msg->c_str() : "(null)"); fflush(stderr);
+     return nullptr;
+   }
++  fprintf(stderr, "[V1_CP] G_v1_after_compute\n"); fflush(stderr);
+ 
+   ret->PreSetup(elf_filename);
++  fprintf(stderr, "[V1_CP] H_v1_after_presetup\n"); fflush(stderr);
+ 
+   if (!ret->LoadVdex(vdex_filename, writable, low_4gb, error_msg)) {
++  fprintf(stderr, "[V1_CP] I_v1_loadvdex_failed\n"); fflush(stderr);
++  fprintf(stderr, "[V1_CP] I_v1_loadvdex_failed_err=%s\n", error_msg ? error_msg->c_str() : "(null)"); fflush(stderr);
+     return nullptr;
+   }
++  fprintf(stderr, "[V1_CP] J_v1_after_loadvdex\n"); fflush(stderr);
+ 
+   if (!ret->Setup(zip_fd, dex_filenames, dex_fds, error_msg)) {
++  fprintf(stderr, "[V1_CP] K_v1_setup_failed\n"); fflush(stderr);
+     return nullptr;
+   }
++  fprintf(stderr, "[V1_CP] L_v1_after_setup\n"); fflush(stderr);
+ 
+   return ret.release();
+ }
+@@ -249,7 +264,9 @@
+                                       ArrayRef<const int> dex_fds,
+                                       /*inout*/MemMap* reservation,
+                                       /*out*/std::string* error_msg) {
++  fprintf(stderr, "[OOF_CP] A_v2_entry\n"); fflush(stderr);
+   std::unique_ptr<OatFileBase> ret(new kOatFileBaseSubType(oat_location, executable));
++  fprintf(stderr, "[OOF_CP] B_v2_after_new\n"); fflush(stderr);
+ 
+   if (!ret->Load(oat_fd,
+                  writable,
+@@ -257,22 +274,31 @@
+                  low_4gb,
+                  reservation,
+                  error_msg)) {
++  fprintf(stderr, "[OOF_CP] C_v2_load_failed\n"); fflush(stderr);
+     return nullptr;
+   }
++  fprintf(stderr, "[OOF_CP] D_v2_after_load\n"); fflush(stderr);
+ 
+   if (!ret->ComputeFields(oat_location, error_msg)) {
++  fprintf(stderr, "[OOF_CP] E_v2_compute_failed\n"); fflush(stderr);
+     return nullptr;
+   }
++  fprintf(stderr, "[OOF_CP] F_v2_after_compute\n"); fflush(stderr);
+ 
+   ret->PreSetup(oat_location);
++  fprintf(stderr, "[OOF_CP] G_v2_after_presetup\n"); fflush(stderr);
+ 
+   if (!ret->LoadVdex(vdex_fd, vdex_location, writable, low_4gb, error_msg)) {
++  fprintf(stderr, "[OOF_CP] H_v2_loadvdex_failed\n"); fflush(stderr);
+     return nullptr;
+   }
++  fprintf(stderr, "[OOF_CP] I_v2_after_loadvdex\n"); fflush(stderr);
+ 
+   if (!ret->Setup(zip_fd, dex_filenames, dex_fds, error_msg)) {
++  fprintf(stderr, "[OOF_CP] J_v2_setup_failed\n"); fflush(stderr);
+     return nullptr;
+   }
++  fprintf(stderr, "[OOF_CP] K_v2_after_setup\n"); fflush(stderr);
+ 
+   return ret.release();
+ }
+@@ -1643,17 +1669,24 @@
+                       /*inout*/MemMap* reservation,
+                       /*out*/std::string* error_msg) {
+   ScopedTrace trace(__PRETTY_FUNCTION__);
++  fprintf(stderr, "[ELF_CP] A_load_entry\n"); fflush(stderr);
++  fprintf(stderr, "[ELF_CP] A_fname=%s exec=%d\n", elf_filename.c_str(), (int)executable); fflush(stderr);
+   std::unique_ptr<File> file(OS::OpenFileForReading(elf_filename.c_str()));
++  fprintf(stderr, "[ELF_CP] B_after_open_file\n"); fflush(stderr);
+   if (file == nullptr) {
++  fprintf(stderr, "[ELF_CP] C_open_failed\n"); fflush(stderr);
+     *error_msg = StringPrintf("Failed to open oat filename for reading: %s", strerror(errno));
+     return false;
+   }
+-  return ElfOatFile::ElfFileOpen(file.get(),
++  fprintf(stderr, "[ELF_CP] D_before_elffileopen\n"); fflush(stderr);
++  bool _rc = ElfOatFile::ElfFileOpen(file.get(),
+                                  writable,
+                                  executable,
+                                  low_4gb,
+                                  reservation,
+                                  error_msg);
++  fprintf(stderr, "[ELF_CP] E_elffileopen_rc=%d\n", (int)_rc); fflush(stderr);
++  return _rc;
+ }
+ 
+ bool ElfOatFile::Load(int oat_fd,
+@@ -1688,16 +1721,23 @@
+                              /*inout*/MemMap* reservation,
+                              /*out*/std::string* error_msg) {
+   ScopedTrace trace(__PRETTY_FUNCTION__);
++  fprintf(stderr, "[ELF_CP] F_elffileopen_entry\n"); fflush(stderr);
+   elf_file_.reset(ElfFile::Open(file,
+                                 writable,
+                                 /*program_header_only=*/true,
+                                 low_4gb,
+                                 error_msg));
++  fprintf(stderr, "[ELF_CP] G_after_elffile_open\n"); fflush(stderr);
++  fprintf(stderr, "[ELF_CP] G_elf_file_ptr=%p\n", (void*)elf_file_.get()); fflush(stderr);
+   if (elf_file_ == nullptr) {
++  fprintf(stderr, "[ELF_CP] H_elf_null\n"); fflush(stderr);
+     DCHECK(!error_msg->empty());
+     return false;
+   }
++  fprintf(stderr, "[ELF_CP] I_before_elf_load\n"); fflush(stderr);
+   bool loaded = elf_file_->Load(file, executable, low_4gb, reservation, error_msg);
++  fprintf(stderr, "[ELF_CP] J_after_elf_load\n"); fflush(stderr);
++  fprintf(stderr, "[ELF_CP] J_loaded=%d\n", (int)loaded); fflush(stderr);
+   DCHECK(loaded || !error_msg->empty());
+   return loaded;
+ }
+@@ -1905,21 +1945,31 @@
+                        /*inout*/MemMap* reservation,
+                        /*out*/std::string* error_msg) {
+   ScopedTrace trace("Open oat file " + oat_location);
++  fprintf(stderr, "[OAT_CP] A_open_entry\n"); fflush(stderr);
+   CHECK(!oat_filename.empty()) << oat_location;
+   CheckLocation(oat_location);
++  fprintf(stderr, "[OAT_CP] B_after_checkloc\n"); fflush(stderr);
+ 
+   std::string vdex_filename = GetVdexFilename(oat_filename);
++  fprintf(stderr, "[OAT_CP] C_after_vdex_fname\n"); fflush(stderr);
++
+ 
+   // Check that the vdex file even exists, fast-fail. We don't check the odex
+   // file as we use the absence of an odex file for test the functionality of
+   // vdex-only.
+-  if (!OS::FileExists(vdex_filename.c_str())) {
++  fprintf(stderr, "[OAT_CP] D_before_FileExists\n"); fflush(stderr);
++  bool _vdex_exists = OS::FileExists(vdex_filename.c_str());
++  fprintf(stderr, "[OAT_CP] D_vdex_fname=%s exists=%d\n", vdex_filename.c_str(), (int)_vdex_exists); fflush(stderr);
++  if (!_vdex_exists) {
+     *error_msg = StringPrintf("File %s does not exist.", vdex_filename.c_str());
++  fprintf(stderr, "[OAT_CP] E_vdex_missing\n"); fflush(stderr);
+     return nullptr;
+   }
++  fprintf(stderr, "[OAT_CP] F_vdex_exists\n"); fflush(stderr);
+ 
+   // Try dlopen first, as it is required for native debuggability. This will fail fast if dlopen is
+   // disabled.
++  fprintf(stderr, "[OAT_CP] G_before_dlopen\n"); fflush(stderr);
+   OatFile* with_dlopen = OatFileBase::OpenOatFile<DlOpenOatFile>(zip_fd,
+                                                                  vdex_filename,
+                                                                  oat_filename,
+@@ -1931,9 +1981,13 @@
+                                                                  dex_fds,
+                                                                  reservation,
+                                                                  error_msg);
++  fprintf(stderr, "[OAT_CP] H_dlopen_returned=%p\n", (void*)with_dlopen); fflush(stderr);
+   if (with_dlopen != nullptr) {
++  fprintf(stderr, "[OAT_CP] I_dlopen_ok\n"); fflush(stderr);
+     return with_dlopen;
+   }
++  fprintf(stderr, "[OAT_CP] J_dlopen_null\n"); fflush(stderr);
++
+   if (kPrintDlOpenErrorMessage) {
+     LOG(ERROR) << "Failed to dlopen: " << oat_filename << " with error " << *error_msg;
+   }
+@@ -1950,6 +2004,7 @@
+   //
+   // Another independent reason is the absolute placement of boot.oat. dlopen on the host usually
+   // does honor the virtual address encoded in the ELF file only for ET_EXEC files, not ET_DYN.
++  fprintf(stderr, "[OAT_CP] K_before_elfoat\n"); fflush(stderr);
+   OatFile* with_internal = OatFileBase::OpenOatFile<ElfOatFile>(zip_fd,
+                                                                 vdex_filename,
+                                                                 oat_filename,

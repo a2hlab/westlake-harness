@@ -1,0 +1,23 @@
+--- a/runtime/mirror/dex_cache-inl.h
++++ b/runtime/mirror/dex_cache-inl.h
+@@ -161,7 +161,19 @@
+ }
+ 
+ inline Class* DexCache::GetResolvedType(dex::TypeIndex type_idx) {
+-  return GetResolvedTypesEntry(type_idx.index_);
++  Class* resolved = GetResolvedTypesEntry(type_idx.index_);
++  // PRIMCLASS-GUARD (R155, recovered from R155 disassembly; DIGEST E.7): a single-char
++  // (primitive) type descriptor (e.g. 'Z'/'V') whose cached class is non-primitive is a
++  // stale/wrong entry; return null to force correct re-resolution, otherwise Z/V is read
++  // as Object and a LinkageError is thrown. Not present in the B6 art-hanbin snapshot.
++  if (resolved != nullptr) {
++    const DexFile* dex_file = GetDexFile();
++    const char* desc = dex_file->GetTypeDescriptor(dex_file->GetTypeId(type_idx));
++    if (desc[0] != '\0' && desc[1] == '\0' && !resolved->IsPrimitive()) {
++      return nullptr;
++    }
++  }
++  return resolved;
+ }
+ 
+ inline void DexCache::ClearResolvedType(dex::TypeIndex type_idx) {

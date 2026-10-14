@@ -1,0 +1,257 @@
+--- a/runtime/gc/space/image_space.cc
++++ b/runtime/gc/space/image_space.cc
+@@ -1737,6 +1737,7 @@
+     size_t bcp_index,
+     size_t component_count,
+     /*out*/std::string* error_msg) {
++  fprintf(stderr, "[VOF_CP] A_entry\n"); fflush(stderr);
+   std::string art_filename = ExpandLocation(base_filename, bcp_index);
+   std::string art_location = ExpandLocation(base_location, bcp_index);
+   std::string oat_filename = ImageHeader::GetOatLocationFromImageLocation(art_filename);
+@@ -1769,6 +1770,8 @@
+         /*reservation=*/ nullptr,
+         error_msg));
+   } else {
++    fprintf(stderr, "[VOF_CP] B_before_open_path\n"); fflush(stderr);
++    fprintf(stderr, "[VOF_CP] B_oat_fname=%s\n", oat_filename.c_str()); fflush(stderr);
+     oat_file.reset(OatFile::Open(
+         /*zip_fd=*/ -1,
+         oat_filename,
+@@ -1780,6 +1783,8 @@
+         /*reservation=*/ nullptr,
+         error_msg));
+   }
++  fprintf(stderr, "[VOF_CP] C_after_open\n"); fflush(stderr);
++  fprintf(stderr, "[VOF_CP] C_oat_file=%p err=%s\n", (void*)oat_file.get(), error_msg->c_str()); fflush(stderr);
+   if (oat_file == nullptr) {
+     *error_msg = StringPrintf("Failed to open oat file '%s' when validating it for image '%s': %s",
+                               oat_filename.c_str(),
+@@ -1787,9 +1792,13 @@
+                               error_msg->c_str());
+     return false;
+   }
++  fprintf(stderr, "[VOF_CP] D_before_validate\n"); fflush(stderr);
+   if (!ImageSpace::ValidateOatFile(*oat_file, error_msg, dex_filenames, dex_fds, apex_versions_)) {
++  fprintf(stderr, "[VOF_CP] E_validate_failed err=%s\n", error_msg ? error_msg->c_str() : "(null)"); fflush(stderr);
+     return false;
+   }
++  fprintf(stderr, "[VOF_CP] F_validate_ok\n"); fflush(stderr);
++
+   return true;
+ }
+ 
+@@ -1799,8 +1808,11 @@
+                                              /*out*/std::string* error_msg) {
+   DCHECK_LE(next_bcp_index_, bcp_index);
+   DCHECK_LT(bcp_index, boot_class_path_.size());
++  fprintf(stderr, "[RH_CP] A_entry\n"); fflush(stderr);
+ 
+   std::string actual_filename = ExpandLocation(base_filename, bcp_index);
++  fprintf(stderr, "[RH_CP] B_after_expand\n"); fflush(stderr);
++  fprintf(stderr, "[RH_CP] B_actual_fname=%s\n", actual_filename.c_str()); fflush(stderr);
+   int bcp_image_fd = bcp_index < boot_class_path_image_fds_.size()
+       ? boot_class_path_image_fds_[bcp_index]
+       : -1;
+@@ -1810,28 +1822,45 @@
+   auto image_file = bcp_image_fd >= 0
+       ? std::make_unique<File>(DupCloexec(bcp_image_fd), actual_filename, /*check_usage=*/ false)
+       : std::unique_ptr<File>(OS::OpenFileForReading(actual_filename.c_str()));
++  fprintf(stderr, "[RH_CP] C_after_open_file\n"); fflush(stderr);
+   if (!image_file || !image_file->IsOpened()) {
+     *error_msg = StringPrintf("Unable to open file \"%s\" for reading image header",
+                               actual_filename.c_str());
+     return false;
+   }
++  fprintf(stderr, "[RH_CP] D_before_read_specific\n"); fflush(stderr);
+   if (!ReadSpecificImageHeader(image_file.get(), actual_filename.c_str(), &header, error_msg)) {
++  fprintf(stderr, "[RH_CP] E_read_specific_failed\n"); fflush(stderr);
+     return false;
+   }
++  fprintf(stderr, "[RH_CP] F_read_specific_ok\n"); fflush(stderr);
++
+   const char* file_description = actual_filename.c_str();
++  fprintf(stderr, "[RH_CP] G_before_validate\n"); fflush(stderr);
+   if (!ValidateHeader(header, bcp_index, file_description, error_msg)) {
++  fprintf(stderr, "[RH_CP] H_validate_failed\n"); fflush(stderr);
+     return false;
+   }
++  fprintf(stderr, "[RH_CP] I_validate_ok\n"); fflush(stderr);
+ 
++
+   // Validate oat files. We do it here so that the boot image will be re-compiled in memory if it's
+   // outdated.
++  fprintf(stderr, "[RH_CP] J_before_validate_oat_loop\n"); fflush(stderr);
++  fprintf(stderr, "[RH_CP] J_isc=%u comp=%u\n", (unsigned)header.GetImageSpaceCount(), (unsigned)header.GetComponentCount()); fflush(stderr);
+   size_t component_count = (header.GetImageSpaceCount() == 1u) ? header.GetComponentCount() : 1u;
+   for (size_t i = 0; i < header.GetImageSpaceCount(); i++) {
++    fprintf(stderr, "[RH_CP] K_validate_oat_enter\n"); fflush(stderr);
++    fprintf(stderr, "[RH_CP] K_i=%u\n", (unsigned)i); fflush(stderr);
+     if (!ValidateOatFile(base_location, base_filename, bcp_index + i, component_count, error_msg)) {
++      fprintf(stderr, "[RH_CP] L_validate_oat_failed\n"); fflush(stderr);
+       return false;
+     }
++    fprintf(stderr, "[RH_CP] M_validate_oat_ok_iter\n"); fflush(stderr);
+   }
++  fprintf(stderr, "[RH_CP] N_after_validate_oat_loop\n"); fflush(stderr);
+ 
++
+   if (chunks_.empty()) {
+     base_address_ = reinterpret_cast32<uint32_t>(header.GetImageBegin());
+   }
+@@ -2056,22 +2085,27 @@
+ bool ImageSpace::BootImageLayout::Load(FilenameFn&& filename_fn,
+                                        bool allow_in_memory_compilation,
+                                        /*out*/ std::string* error_msg) {
++  fprintf(stderr, "[LAY_CP] P_load_entry\n"); fflush(stderr);
+   DCHECK(GetChunks().empty());
+   DCHECK_EQ(GetBaseAddress(), 0u);
+ 
+   ArrayRef<const std::string> components = image_locations_;
+   size_t named_components_count = 0u;
+   if (!VerifyImageLocation(components, &named_components_count, error_msg)) {
++  fprintf(stderr, "[LAY_CP] Q_verify_failed\n"); fflush(stderr);
+     return false;
+   }
++  fprintf(stderr, "[LAY_CP] R_verify_ok\n"); fflush(stderr);
+ 
+   ArrayRef<const std::string> named_components =
+       ArrayRef<const std::string>(components).SubArray(/*pos=*/ 0u, named_components_count);
+ 
+   std::vector<NamedComponentLocation> named_component_locations;
+   if (!MatchNamedComponents(named_components, &named_component_locations, error_msg)) {
++  fprintf(stderr, "[LAY_CP] S_match_failed\n"); fflush(stderr);
+     return false;
+   }
++  fprintf(stderr, "[LAY_CP] T_match_ok\n"); fflush(stderr);
+ 
+   // Load the image headers of named components.
+   DCHECK_EQ(named_component_locations.size(), named_components.size());
+@@ -2090,8 +2124,12 @@
+     }
+     std::string local_error_msg;
+     std::string base_filename;
+-    if (!filename_fn(base_location, &base_filename, &local_error_msg) ||
+-        !ReadHeader(base_location, base_filename, bcp_index, &local_error_msg)) {
++  fprintf(stderr, "[LAY_CP] U_before_readheader\n"); fflush(stderr);
++    bool _fn_ok = filename_fn(base_location, &base_filename, &local_error_msg);
++    fprintf(stderr, "[LAY_CP] V_fn_ret=%d fname=%s\n", (int)_fn_ok, base_filename.c_str()); fflush(stderr);
++    bool _rh_ok = _fn_ok && ReadHeader(base_location, base_filename, bcp_index, &local_error_msg);
++    fprintf(stderr, "[LAY_CP] W_rh_ret=%d err=%s\n", (int)_rh_ok, local_error_msg.c_str()); fflush(stderr);
++    if (!_fn_ok || !_rh_ok) {
+       LOG(ERROR) << "Error reading named image component header for " << base_location
+                  << ", error: " << local_error_msg;
+       // If the primary boot image is invalid, we generate a single full image. This is faster than
+@@ -3217,6 +3255,7 @@
+     /*out*/MemMap* extra_reservation,
+     /*out*/std::string* error_msg) {
+   TimingLogger logger(__PRETTY_FUNCTION__, /*precise=*/ true, VLOG_IS_ON(image));
++  fprintf(stderr, "[LBI2_CP] H_BIL_loadfromsys_enter\n"); fflush(stderr);
+ 
+   BootImageLayout layout(image_locations_,
+                          boot_class_path_,
+@@ -3225,12 +3264,16 @@
+                          boot_class_path_image_fds_,
+                          boot_class_path_vdex_fds_,
+                          boot_class_path_oat_fds_);
++  fprintf(stderr, "[LBI2_CP] I_after_layout_ctor\n"); fflush(stderr);
+   if (!layout.LoadFromSystem(image_isa_, allow_in_memory_compilation, error_msg)) {
++  fprintf(stderr, "[LBI2_CP] J_layout_load_failed\n"); fflush(stderr);
+     return false;
+   }
++  fprintf(stderr, "[LBI2_CP] K_layout_load_ok\n"); fflush(stderr);
+ 
+   // Load the image. We don't validate oat files in this stage because they have been validated
+   // before.
++  fprintf(stderr, "[LBI2_CP] L_before_LoadImage\n"); fflush(stderr);
+   if (!LoadImage(layout,
+                  /*validate_oat_file=*/ false,
+                  extra_reservation_size,
+@@ -3238,8 +3281,10 @@
+                  boot_image_spaces,
+                  extra_reservation,
+                  error_msg)) {
++  fprintf(stderr, "[LBI2_CP] M_LoadImage_failed\n"); fflush(stderr);
+     return false;
+   }
++  fprintf(stderr, "[LBI2_CP] N_LoadImage_ok\n"); fflush(stderr);
+ 
+   if (VLOG_IS_ON(image)) {
+     LOG(INFO) << "ImageSpace::BootImageLoader::LoadFromSystem exiting "
+@@ -3292,6 +3337,7 @@
+     /*out*/std::vector<std::unique_ptr<ImageSpace>>* boot_image_spaces,
+     /*out*/MemMap* extra_reservation) {
+   ScopedTrace trace(__FUNCTION__);
++  fprintf(stderr, "[LBI_CP] A_entry\n"); fflush(stderr);
+ 
+   DCHECK(boot_image_spaces != nullptr);
+   DCHECK(boot_image_spaces->empty());
+@@ -3302,6 +3348,7 @@
+   if (image_locations.empty()) {
+     return false;
+   }
++  fprintf(stderr, "[LBI_CP] B_after_empty_check\n"); fflush(stderr);
+ 
+   BootImageLoader loader(boot_class_path,
+                          boot_class_path_locations,
+@@ -3313,19 +3360,25 @@
+                          image_isa,
+                          relocate,
+                          executable);
++  fprintf(stderr, "[LBI_CP] C_after_loader_ctor\n"); fflush(stderr);
+   loader.FindImageFiles();
++  fprintf(stderr, "[LBI_CP] D_after_find_image_files\n"); fflush(stderr);
+ 
++
+   // Collect all the errors.
+   std::vector<std::string> error_msgs;
+ 
+   std::string error_msg;
++  fprintf(stderr, "[LBI_CP] E_before_load_from_system\n"); fflush(stderr);
+   if (loader.LoadFromSystem(extra_reservation_size,
+                             allow_in_memory_compilation,
+                             boot_image_spaces,
+                             extra_reservation,
+                             &error_msg)) {
++  fprintf(stderr, "[LBI_CP] F_load_from_system_true\n"); fflush(stderr);
+     return true;
+   }
++  fprintf(stderr, "[LBI_CP] G_load_from_system_false\n"); fflush(stderr);
+   error_msgs.push_back(error_msg);
+ 
+   std::ostringstream oss;
+@@ -3439,8 +3492,10 @@
+                             apex_versions,
+                             oat_file.GetLocation(),
+                             error_msg)) {
++    fprintf(stderr, "[VOF_IN] branch=apex_versions err=%s\n", error_msg ? error_msg->c_str() : "(null)"); fflush(stderr);
+     return false;
+   }
++  fprintf(stderr, "[VOF_IN] apex_ok\n"); fflush(stderr);
+ 
+   // For a boot image, the key value store only exists in the first OAT file. Skip other OAT files.
+   if (oat_file.GetOatHeader().GetKeyValueStoreSize() != 0 &&
+@@ -3448,6 +3503,7 @@
+     *error_msg =
+         "ValidateOatFile found read barrier state mismatch (oat file: {}, runtime: {})"_format(
+             oat_file.GetOatHeader().IsConcurrentCopying(), gUseReadBarrier);
++    fprintf(stderr, "[VOF_IN] branch=rb_mismatch err=%s\n", error_msg->c_str()); fflush(stderr);
+     return false;
+   }
+ 
+@@ -3467,13 +3523,16 @@
+ 
+     std::vector<uint32_t> checksums;
+     std::vector<std::string> dex_locations_ignored;
++    fprintf(stderr, "[VOF_IN] loop_iter %zu dex=%s\n", dex_file_index-1, dex_file_location.c_str()); fflush(stderr);
+     if (!ArtDexFileLoader::GetMultiDexChecksums(
+             dex_file_location.c_str(), &checksums, &dex_locations_ignored, error_msg, dex_fd)) {
++      fprintf(stderr, "[VOF_IN] GetMultiDexChecksums FAIL dex=%s pre_err=%s\n", dex_file_location.c_str(), error_msg ? error_msg->c_str() : "(null)"); fflush(stderr);
+       *error_msg = StringPrintf("ValidateOatFile failed to get checksums of dex file '%s' "
+                                 "referenced by oat file %s: %s",
+                                 dex_file_location.c_str(),
+                                 oat_file.GetLocation().c_str(),
+                                 error_msg->c_str());
++      fprintf(stderr, "[VOF_IN] branch=multidex_fail err=%s\n", error_msg->c_str()); fflush(stderr);
+       return false;
+     }
+     CHECK(!checksums.empty());

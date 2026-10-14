@@ -1,0 +1,67 @@
+--- a/runtime/gc/heap.cc
++++ b/runtime/gc/heap.cc
+@@ -421,6 +421,8 @@
+   }
+ 
+   LOG(INFO) << "Using " << foreground_collector_type_ << " GC.";
++  fprintf(stderr, "[HEAP_CP] 01_after_using_gc\n"); fflush(stderr);
++  fprintf(stderr, "[HEAP_CP] 02_before_uffd_check\n"); fflush(stderr);
+   if (!gUseUserfaultfd) {
+     // This ensures that userfaultfd syscall is done before any seccomp filter is installed.
+     // TODO(b/266731037): Remove this when we no longer need to collect metric on userfaultfd
+@@ -431,6 +433,7 @@
+     CHECK_IMPLIES(minor_fault_supported, uffd_supported);
+   }
+ 
++  fprintf(stderr, "[HEAP_CP] 03_before_readbarrier_check\n"); fflush(stderr);
+   if (gUseReadBarrier) {
+     CHECK_EQ(foreground_collector_type_, kCollectorTypeCC);
+     CHECK_EQ(background_collector_type_, kCollectorTypeCCBackground);
+@@ -439,7 +442,9 @@
+         << "Changing from " << foreground_collector_type_ << " to "
+         << background_collector_type_ << " (or visa versa) is not supported.";
+   }
++  fprintf(stderr, "[HEAP_CP] 04_before_verification\n"); fflush(stderr);
+   verification_.reset(new Verification(this));
++  fprintf(stderr, "[HEAP_CP] 05_after_verification\n"); fflush(stderr);
+   CHECK_GE(large_object_threshold, kMinLargeObjectThreshold);
+   ScopedTrace trace(__FUNCTION__);
+   Runtime* const runtime = Runtime::Current();
+@@ -453,9 +458,13 @@
+       background_collector_type_ = foreground_collector_type_;
+     }
+   }
++  fprintf(stderr, "[HEAP_CP] 06_before_change_collector\n"); fflush(stderr);
+   ChangeCollector(desired_collector_type_);
++  fprintf(stderr, "[HEAP_CP] 07_after_change_collector\n"); fflush(stderr);
++  fprintf(stderr, "[HEAP_CP] 08_before_live_bitmap\n"); fflush(stderr);
+   live_bitmap_.reset(new accounting::HeapBitmap(this));
+   mark_bitmap_.reset(new accounting::HeapBitmap(this));
++  fprintf(stderr, "[HEAP_CP] 09_after_mark_bitmap\n"); fflush(stderr);
+ 
+   // We don't have hspace compaction enabled with CC.
+   if (foreground_collector_type_ == kCollectorTypeCC
+@@ -486,6 +495,7 @@
+   // Load image space(s).
+   std::vector<std::unique_ptr<space::ImageSpace>> boot_image_spaces;
+   MemMap heap_reservation;
++  fprintf(stderr, "[HEAP_CP] 10_before_load_boot_image\n"); fflush(stderr);
+   if (space::ImageSpace::LoadBootImage(boot_class_path,
+                                        boot_class_path_locations,
+                                        boot_class_path_fds,
+@@ -500,6 +510,7 @@
+                                        runtime->AllowInMemoryCompilation(),
+                                        &boot_image_spaces,
+                                        &heap_reservation)) {
++  fprintf(stderr, "[HEAP_CP] 11a_loadbootimage_returned_true\n"); fflush(stderr);
+     DCHECK_EQ(heap_reservation_size, heap_reservation.IsValid() ? heap_reservation.Size() : 0u);
+     DCHECK(!boot_image_spaces.empty());
+     request_begin = boot_image_spaces.back()->GetImageHeader().GetOatFileEnd();
+@@ -530,6 +541,7 @@
+       request_begin = reinterpret_cast<uint8_t*>(kAllocSpaceBeginForDeterministicAoT);
+     }
+   }
++  fprintf(stderr, "[HEAP_CP] 11_after_load_boot_image_block\n"); fflush(stderr);
+ 
+   /*
+   requested_alloc_space_begin ->     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-

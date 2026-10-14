@@ -1,0 +1,42 @@
+# Task Contract: API implementation source delivery on default branch
+
+## Intent
+把API全表对应的实际实现源码、补丁与可重建入口合入默认主分支master，使接收方无需访问agent工作树即可定位实现。对所有315记录出来源映射；历史桩不得冒充已冻结实际实现，缺源码不签完整交付。
+
+## Must
+- 本轮用户授权整理61b演示APK与图标；只对实时发现且匹配61b06572的完整32字符序列号操作。
+- 操作前只读核对，单板单写锁，批量窗口≤45分钟；其他板仅在明确派单后使用。
+- 保留既有V2签认与原始证据；整理后的安装集合单独记录，不冒称仍符合原130包指纹。
+- 不删除系统包、用户头条数据、宿主与运行时服务；卸载仅限已识别语料测试APK且不在批准演示集合。
+- 截图人工复核；图标、点击启动、首屏、功能、源码可重建各自判定，不互相替代。
+- 不提交秘密或大二进制；配方与持久归档必须有来源、SHA与原始执行日志。
+
+## Decisions
+- 优先使用源码快照和冻结blob/构建SHA匹配的现有本地、VM、远端原件，保留上游许可。
+- 新源码交付放独立sources目录；不替换当前板产物或改冻结期望。每项区分仓内完整源码、上游锁定依赖与未闭环缺口。
+- 中文英文表格从同一增量源生成，保留既有验证事实及unknown版本，实际点击链接验证后合入master。
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-14-api-source-delivery/**
+- sources/api-implementations/**
+- tools/spec-checks/tests/api_source_delivery.rs
+Forbidden:
+- 不修改冻结实际运行时文件或原签认证据，不把旧空桩当成生产实现。
+- 不提交凭据或大型构建产物，不伪造原构建日志。
+
+## Completion Criteria
+Scenario: 实现定位完整
+  Test:
+    Filter: api_source_delivery
+  Given API rows and pinned actual implementation source hashes
+  When delivering source files on the default branch
+  Then every delivered row resolves to exact tracked source files and a documented build entry
+
+Scenario: 拒绝缺失源码
+  Test:
+    Filter: api_source_delivery
+  Given a missing implementation or an old stub conflicting with frozen source
+  When generating the source coverage table
+  Then the row reports the missing source and cannot be marked complete
+

@@ -1,0 +1,5 @@
+# Build and dependency boundary
+
+`AOSP_R1_ROOT=... JARS_DIR=... OUT_DIR=/new/output ./build.sh` invokes the existing repository reproduction driver, pointing at the delivered 22 frozen patches and exact original generator. Supply the recorded BOARD_LIBART/T5C_DIR reference inputs required by that driver. It changes only the explicit build tree and output, never a device. `SKIP_IMAGE=1` selects the original host-toolchain-only path.
+
+The exact frozen generator (SHA `14b1f709cbeae35c2e606ee923d26a9f59e92dd827da84bdf5126de79a675d46`) was retrieved read-only from the original hw248 location and verified; it is preserved separately from the later repo copy SHA05252808. Original 24 frozen Git blobs all match. AOSP base commit `3c05e56adf` and named Android/OH versions, source locations, build flags and generation commands are documented in the copied upstream-manifest/BUILD/SOURCES. Use the existing persisted AOSP tree at `$HW248_HOME/aosp-14.0.0_r1-art` or the recorded upstream checkout; check the original 22-patch series before compiling. The exact native toolchain expected SHA is enforced by build.sh. Large upstream trees are not claimed as in-repository files.

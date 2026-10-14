@@ -1,0 +1,3 @@
+# Build and dependency boundary
+
+`ANDROID_JAR=/pinned/android.jar BUILD_OUT=/new/output ./build.sh` compiles the exact API unit. The entry rejects a compile jar whose SHA is not `d9eb9da824d9e247a352f570f01e1169e725b2954bca9e283a71786c59b59f9a`. `build-evidence/build-result-j7b.json` retains the complete original input SHA set and build output identity. This compilation does not claim whole-J7b byte reproduction. The original producer is preserved as build.py.original.txt; integration/B7BindFixes.java invokes this file. mLock and the zero-length service array belong to the same allocated manager and remain unchanged.
