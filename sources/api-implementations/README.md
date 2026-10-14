@@ -16,3 +16,8 @@ These directories contain the actual historical implementations recovered for th
 The API atlas must join each capability to its implementation paths, revision or source SHA, build entry, dependencies, output and verification evidence. A report path alone is not an implementation. Source delivery, source build, deployed identity and app behavior are separate facts; unknown evidence remains explicitly unknown.
 
 Original source bytes and license notices are preserved, including upstream whitespace. Large toolchains and binary dependencies are kept in the SHA-pinned durable archives referenced by each recipe. Historical missing execution logs are not replaced by claims based on newly generated inventories.
+
+## Additional implementation families
+
+- [Later Java and host sources](source-build-host/README.java.md): the actual 206-file Java snapshot, host declarations, original build tools, source locks and patches; [build entry](source-build-host/build-java.py). [A new executed build](../../benchmark/2026-10-14-api-source-delivery/review/later-java-build-01.md) compiled 83 adapter inputs to 160 owned classes. This does not assert byte identity with the historical r84–r89 runtime.
+- [SQLite JNI runtime187 sources](native-sqlite187/README.md): eight exact native compilation inputs with source provenance and the original runtime build route.
