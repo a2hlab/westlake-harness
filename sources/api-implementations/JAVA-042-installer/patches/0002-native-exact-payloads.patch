@@ -1,0 +1,61 @@
+--- a/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_operator.cpp
++++ b/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_operator.cpp
+@@ -3252,7 +3252,37 @@
+             (header.e_ident[EI_VERSION] == EV_CURRENT || header.e_ident[EI_VERSION] == 0) &&
+             header.e_version == EV_CURRENT && header.e_type == ET_DYN && header.e_machine == EM_ARM;
+     };
+-    auto verifyOutput = [&checkElf](const std::string &path, const ZipEntry &entry) {
++    // #77 review candidate. The table is generated from native-data-exceptions.json.
++    // No generic .zip.so bypass: retain strict ELF checks for all other bytes.
++    // Copy exact reviewed payloads intact, including an ARM32 artifact packaged in arm64.
++    // This is extraction compatibility, not permission/ability to load them as ARM64 DSOs.
++    struct DataPayloadException {
++        const char *bundle;
++        const char *abi;
++        const char *name;
++        const char *sha256;
++    };
++    const DataPayloadException dataPayloadExceptions[] = {
++        {"com.junkfood.seal", "arm64-v8a", "libaria2c.zip.so", "d3c2dc0a6db502aa1820cca94db978e793070bfb16c4fe7edfb72306837697bb"},
++        {"com.junkfood.seal", "arm64-v8a", "libffmpeg.zip.so", "68359d6cbac6adc021419ee7974f346721e5d8a306729e3e1bd771426375f3c6"},
++        {"com.junkfood.seal", "arm64-v8a", "libpython.zip.so", "0210b1223ec8895a0b76679e643e777d37b4c6e4912ea6a95a0759e20bb0ae50"},
++        {"com.ss.android.article.news", "arm64-v8a", "libcvt.so", "132e6c2058b9fa58df568a551ceddabef27cf6a03d8be915e464cd32520763af"},
++    };
++    auto checkPayload = [&](const std::string &path, const std::string &name) {
++        if (checkElf(path)) {
++            return true;
++        }
++        for (const auto &exception : dataPayloadExceptions) {
++            if (bundleName == exception.bundle && extractParam.cpuAbi == exception.abi &&
++                name == exception.name && Sha256File(path) == exception.sha256) {
++                LOG_I(BMS_TAG_INSTALLD, "accepted reviewed APK payload exception %{public}s", name.c_str());
++                return true;
++            }
++        }
++        return false;
++    };
++    auto verifyOutput = [&checkPayload](const std::string &path, const ZipEntry &entry,
++        const std::string &name) {
+         struct stat fileStat = {};
+         if (lstat(path.c_str(), &fileStat) != 0 || !S_ISREG(fileStat.st_mode) ||
+             fileStat.st_uid != 0 || fileStat.st_gid != 0 || (fileStat.st_mode & 0777) != 0755 ||
+@@ -3269,7 +3299,7 @@
+             crc = crc32(crc, reinterpret_cast<const Bytef *>(buffer.data()),
+                 static_cast<uInt>(input.gcount()));
+         }
+-        return !input.bad() && static_cast<uint32_t>(crc) == entry.crc && checkElf(path);
++        return !input.bad() && static_cast<uint32_t>(crc) == entry.crc && checkPayload(path, name);
+     };
+ 
+     ExtractParam fileParam = extractParam;
+@@ -3314,8 +3344,8 @@
+         outputPath += targetName;
+         if (!ChangeFileAttr(outputPath, 0, 0) ||
+             !OHOS::ChangeModeFile(outputPath, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) ||
+-            !verifyOutput(outputPath, entry)) {
+-            return failAndClean("CRC/ELF/owner/mode verification failed");
++            !verifyOutput(outputPath, entry, targetName)) {
++            return failAndClean("CRC/payload/owner/mode verification failed: " + targetName);
+         }
+         const std::string digest = Sha256File(outputPath);
+         if (digest.empty()) {
