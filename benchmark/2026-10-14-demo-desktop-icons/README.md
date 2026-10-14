@@ -94,7 +94,10 @@ pins. It is metadata-ready, **not an admitted solution to the unresolved UI
 cache source**; compose it with the native lane's actual cache repair rather
 than repeating an ineffective restart.
 
-## Actual execution and remaining source boundary
+## First-window execution and historical unresolved boundary
+
+This section records the original unsuccessful UI refresh; it is superseded by
+the resolved cache source and actual final eight-icon acceptance below.
 
 Root's first-three apply is real rc0 with sidecar and 80-row readback.
 `icon-repair/results.json` records the exact rollback entry. It is **not** an
@@ -126,8 +129,8 @@ reject even in conditional shell contexts. Real replay digests are recorded in
 `landing-paths.txt` explicitly includes eight PNGs (force-add ignored assets),
 their small source XML/SVG/receipts, code, evidence and the Rust wrapper. It excludes
 all DB copies, multi-megabyte SQL and failed/incomplete rendering attempts.
-Human/current-icon acceptance remains pending the actual cache fix and new
-screenshots. Author device/VM/SSH calls are zero; no push or index changes.
+At the first checkpoint human acceptance was pending; actual final eight-icon
+acceptance follows below. Author device/VM/SSH calls are zero; no push or index changes.
 
 ## Resolved persistent cache source (supersedes the earlier unknown)
 
@@ -153,3 +156,26 @@ CAS and exact failure-rollback pattern. Root stages the four SQL files under
 does not clear data, replace a DB, change a HAP or send a signal. Root must reload
 SceneBoard's current memory cache and review fresh pictures after this persistent
 cache update. No previous failed restart is reclassified as successful.
+
+## Actual final eight-icon acceptance
+
+Root executed five sidecars/49 BMS rows and 17 Launcher combine_pic rows with
+preview/apply rc0, then guarded only SceneBoard 22751 -> 5817. Host4583,
+Toutiao6789 and appspawn4782/10651 stayed unchanged on boot086d. Root's actual
+`desktop-final-icons/outer-icon-review.json` and BMS's independent views of
+pages01/03/04/06/08 confirm all eight original-resource artworks. `final-receipt.json`
+pins actual execution and pictures. These eight are now **visually confirmed**,
+not pending root. Failed earlier restart pictures remain failures. This is not
+a complete alpha/artwork-source audit of every remaining desktop/117 package.
+
+Frequent Habits is a separate blank suspect outside demo117. Its current sidecar
+is the exact original malformed UTF8-expanded WebP. Strict inverse encoding and
+PNG conversion preserve all decoded 48x48 RGBA bytes; 1779 pixels have nonzero
+alpha. Both FFmpeg and native macOS ImageIO show a cyan/green pixel pattern.
+The earlier blue-ring/check description was wrong and immediately withdrawn.
+Valid decoding is **not artwork design acceptance**. The read-only tool
+`restore_utf8_webp.py` and `frequent-habits-readonly-conclusion.json` preserve the
+evidence. Outer stopped out-of-manifest repair: no device sidecar/BMS/cache
+write, no insert, no further board reads requested, and no mixing with the
+signed eight. Original received files remain unchanged. Derived diagnostics
+stay local and are not delivered as an approved device candidate.
