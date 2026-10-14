@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[`benchmark/2026-10-14-toutiao-manual-crash/`](benchmark/2026-10-14-toutiao-manual-crash/README.md)** | **5cd WebView ENOENT and owner-only repair, preserved failed apply, delivered click with return still failing, separate61bwindow incident and private evidence hashes; no new seal.** |
 | **[`benchmark/2026-10-14-verified-source-closeout/`](benchmark/2026-10-14-verified-source-closeout/README.md)** | **Recovered validated production code and recipes, exact historical JAR replays, pinned input archives and honest remaining source/output gaps; no device changes.** |
 | **[`benchmark/2026-10-14-worktree-retirement/`](benchmark/2026-10-14-worktree-retirement/README.md)** | **Recoverable worktree cleanup: full private archives, actual restore and remote SHA checks, two merged candidates, seven stale registrations, branches and unarchived evidence retained.** |
 | **[`benchmark/2026-10-14-demo-desktop-ready/cache-static-analysis/`](benchmark/2026-10-14-demo-desktop-ready/cache-static-analysis/README.md)** | **Actual SceneBoard bytecode binds stale desktop icons to EL1 Launcher.db persistent cache: 8 packages, 17 exact icon rows, scoped invalidation evidence and original artifact pins.** |
