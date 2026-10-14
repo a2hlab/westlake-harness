@@ -909,3 +909,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 
 - 2026-10-14 #91 前台对象：原 BMS `foreground(wm,pids)` 的 pids 是当前目标 UID 全进程集合，非 `{host_pid}`；同 boot086d 的 host4583/WID33 可见、头条6789/WID30获焦点是原954已接受状态，宿主参数/WL_PARENT_ID仍33，不改成焦点30。身份/UID未知或焦点歧义仍停；保留错误 singleton 原失败，按原调用对象纠正后新824文件/130包采集、新proof live954实际PASS，实际签字另据最终 S。证据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-foreground-object-review/`、`benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/final61b-finalization/`、`benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/final61b-v2-realization/`。
 - 2026-10-14：仅本次 SceneBoard.hap@9c11b9f0（ABC@4fa98da8）已实证 memoryCache→EL1 Launcher.db.icon_info→BMS 取图；uNote/PostWriter/Tasks 6 行 combine_pic 同旧 placeholder，TERM 不清持久表。先核真实消费链与精确键/旧 SHA，再做可回滚 CAS 与内存失效，不能泛化其它 launcher（证据：benchmark/2026-10-14-demo-desktop-ready/cache-static-analysis/）。
+
+- 2026-10-14 API 发布归属：本轮实际推送远端为 a2hlab/westlake-harness、默认 master；本地 SHA/相对链接通过不能证明硬编码 GitHub 链接正确，生成器的 master_url 必须与实际 publish remote/default branch 对账（旧 A2OH origin 不等于本轮发布目标），并用错误 repo 负例约束。证据 benchmark/2026-10-14-api-source-delivery/；旧冻结视图仅保留历史不改写。
