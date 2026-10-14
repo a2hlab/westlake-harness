@@ -1,0 +1,11 @@
+# Independent API source-delivery review
+
+Two build-entry failures were found and fixed before acceptance: FZ-005 pointed at a non-executable historical generator, and FZ-001 could accept an incomplete translation-unit build. The corrected wrappers preserve the original producer evidence and reject incomplete output. Five independent FZ-001 guard fixtures pass (one positive, four negative).
+
+The review checked **227 declared file SHA-256 pins and 71 Git blob pins**, with **zero mismatches**, across FZ-001 through FZ-006 and FZ-008. Source and historical evidence are present in the new repository delivery directories. FZ-002's relocated two-command compile/link recipe was independently dry-run without executing a compiler. All seven entry points pass syntax checks. See `pin-review.json` and `results.json`.
+
+Acceptance is limited to truthful source delivery and usable scoped recipes. It does not assert full native dependency closure or recreate missing historical logs. External OH/AOSP toolchains and pinned generation inputs remain explicit dependencies. Original project units without license declarations remain identified as such. FZ-008 matches the SSLSockets unit in the complete FZ-007 T7d source build; the new build reproduces the historical DEX, not the JAR ZIP wrapper. No device was accessed and no deployment grade was changed.
+
+`java-source-resolutions.json` records separate source-to-capability findings for the Java table, with source-member evidence and build limitations. It must not replace later deployed behavior with an older same-named compatibility stub.
+
+The later Java recovery adds **206 real Java files, five host source/resource files, an upstream host build script, and 102 pinned manifest recipe/lock/patch inputs** under `sources/api-implementations/source-build-host/`. All **315 original blobs** match their exact originating commits. Source-lock verification, import closure, recursive lock reads and four referenced patch hashes pass. The 40 additional API mappings include exact member evidence; native JAVA104 and launcher JAVA115 remain assigned to their own source lane. A new full Java compilation and exact historical production artifact binding remain unproven. See `source-build-host-results.json` and `source-build-host-landing-paths.txt`.

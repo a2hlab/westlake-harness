@@ -1,0 +1,82 @@
+{
+  "scope": "Independent static source delivery review of FZ-001..006 and FZ-008",
+  "status": "PASS_WITH_DECLARED_BUILD_CLOSURE_LIMITS",
+  "declared_file_sha_checks": 227,
+  "git_blob_checks": 71,
+  "pin_mismatches": 0,
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "blocking_before_fix",
+      "item": "FZ-005",
+      "problem": "Historical generator is mode 0644; original reproduction driver requires executable input.",
+      "status": "FIXED",
+      "resolution": "Build wrapper creates a separate executable exact-SHA scratch copy before invoking the original driver. Historical bytes and mode remain preserved.",
+      "original_generator_sha256": "14b1f709cbeae35c2e606ee923d26a9f59e92dd827da84bdf5126de79a675d46",
+      "reviewed_wrapper_sha256": "b72f063fbeb51e9df0a242838b82ee23a45dc7302303fa7284ccc9ba7b015b35",
+      "checks": {
+        "copy": true,
+        "chmod": true,
+        "hash_check_before_driver": true
+      }
+    },
+    {
+      "id": "R2",
+      "severity": "blocking_before_fix",
+      "item": "FZ-001",
+      "problem": "Original compiler can continue after translation unit failures; wrapper must reject partial output even when link returns zero.",
+      "status": "FIXED",
+      "resolution": "Wrapper checks exactly one positive complete compilation count and successful link.",
+      "independent_guard_fixtures": [
+        {
+          "name": "complete",
+          "exit_code": 0,
+          "expected": 0,
+          "passed": true
+        },
+        {
+          "name": "partial",
+          "exit_code": 1,
+          "expected": 1,
+          "passed": true
+        },
+        {
+          "name": "zero",
+          "exit_code": 1,
+          "expected": 1,
+          "passed": true
+        },
+        {
+          "name": "linkfail",
+          "exit_code": 1,
+          "expected": 1,
+          "passed": true
+        },
+        {
+          "name": "missing",
+          "exit_code": 1,
+          "expected": 1,
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "fz002_dry_run": {
+    "compiler_link_commands": 2,
+    "executed": false,
+    "all_original_worktree_prefixes_relocated": true,
+    "new_output_created": false
+  },
+  "limitations": [
+    "No native full build was performed in this review; all seven declarations still state incomplete full dependency closure.",
+    "FZ-001 requires OH/AOSP toolchain and BMS kit dependency restoration; FZ-002 requires its pinned generation inputs; FZ-003 requires matching runtime source and toolchain; FZ-005 requires AOSP and pinned jars.",
+    "FZ-004/006 component Java helpers do not alone reproduce their historically merged runtime JAR.",
+    "Original project units without an explicit license header are reported as such; no license was fabricated.",
+    "FZ-008 is the historical intentional SSLSockets compatibility fallback; its bytes equal the delivered FZ-007 T7d override, whose new full build reproduces classes.dex but not historical ZIP bytes.",
+    "No table grade or deployment/UI result is upgraded by locating source."
+  ],
+  "device_calls": 0,
+  "heavy_builds": 0,
+  "historical_build_logs_fabricated": false,
+  "author_delta_receipt": "benchmark/2026-10-14-api-source-delivery/frozen/review-delta-verification.json"
+}
