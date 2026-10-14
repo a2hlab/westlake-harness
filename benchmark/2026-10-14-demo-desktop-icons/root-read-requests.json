@@ -1,0 +1,166 @@
+{
+  "schema": "demo-desktop-icons-root-readonly-requests/v1",
+  "device_operations_by_author": 0,
+  "serial": "61b0657200000000000000000324012c",
+  "requests": [
+    {
+      "id": "ICONS-BOOT-BEFORE",
+      "purpose": "Pin current boot before icon metadata sampling",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "cat /proc/sys/kernel/random/boot_id"
+      ]
+    },
+    {
+      "id": "ICONS-XML-CANDIDATES",
+      "purpose": "Bounded ten adaptive/fallback candidates: discover exact code/resource files and pin existing side-written icon SHA/metadata; missing fields remain unknown",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "for p in com.kaajjo.libresudoku com.lcdcode.moodcairns com.paperknifeplus.app com.groce.app org.fossify.calendar org.tasks eu.dfdx.jslab app.varlorg.unote com.alxgnon.postwriter com.fsck.k9; do d=/data/app/el1/bundle/public/$p; printf '\\nPACKAGE=%s\\n' \"$p\"; ls -ldZ \"$d\" \"$d/android\"; ls -lZ \"$d/android\"; f=\"$d/android/icon.png\"; if [ -f \"$f\" ] && [ ! -L \"$f\" ]; then stat -c '%u:%g %a %s %d:%i' \"$f\"; sha256sum \"$f\"; fi; done; printf '\\nREMOTE_RC=%s\\n' \"$?\""
+      ],
+      "note": "Outer must preserve each command's error/absence, not treat final REMOTE_RC alone as proof every requested path exists."
+    },
+    {
+      "id": "ICONS-BMS-01",
+      "purpose": "Read exact BMS application/ability labels and icon IDs/codePath for com.kaajjo.libresudoku",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "bm dump -n com.kaajjo.libresudoku"
+      ]
+    },
+    {
+      "id": "ICONS-BMS-02",
+      "purpose": "Read exact BMS application/ability labels and icon IDs/codePath for com.lcdcode.moodcairns",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "bm dump -n com.lcdcode.moodcairns"
+      ]
+    },
+    {
+      "id": "ICONS-BMS-03",
+      "purpose": "Read exact BMS application/ability labels and icon IDs/codePath for com.paperknifeplus.app",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "bm dump -n com.paperknifeplus.app"
+      ]
+    },
+    {
+      "id": "ICONS-BMS-04",
+      "purpose": "Read exact BMS application/ability labels and icon IDs/codePath for com.groce.app",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "bm dump -n com.groce.app"
+      ]
+    },
+    {
+      "id": "ICONS-BMS-05",
+      "purpose": "Read exact BMS application/ability labels and icon IDs/codePath for org.fossify.calendar",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "bm dump -n org.fossify.calendar"
+      ]
+    },
+    {
+      "id": "ICONS-BMS-06",
+      "purpose": "Read exact BMS application/ability labels and icon IDs/codePath for org.tasks",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "bm dump -n org.tasks"
+      ]
+    },
+    {
+      "id": "ICONS-BMS-07",
+      "purpose": "Read exact BMS application/ability labels and icon IDs/codePath for eu.dfdx.jslab",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "bm dump -n eu.dfdx.jslab"
+      ]
+    },
+    {
+      "id": "ICONS-BMS-08",
+      "purpose": "Read exact BMS application/ability labels and icon IDs/codePath for app.varlorg.unote",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "bm dump -n app.varlorg.unote"
+      ]
+    },
+    {
+      "id": "ICONS-BMS-09",
+      "purpose": "Read exact BMS application/ability labels and icon IDs/codePath for com.alxgnon.postwriter",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "bm dump -n com.alxgnon.postwriter"
+      ]
+    },
+    {
+      "id": "ICONS-BMS-10",
+      "purpose": "Read exact BMS application/ability labels and icon IDs/codePath for com.fsck.k9",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "bm dump -n com.fsck.k9"
+      ]
+    },
+    {
+      "id": "ICONS-BYTES",
+      "purpose": "After metadata proves regular exact paths, receive android/icon.png per relevant retained package; root records remote/local SHA equality. No writes to device.",
+      "argv_template": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "file",
+        "recv",
+        "/data/app/el1/bundle/public/<exact-package>/android/icon.png",
+        "<fresh-local-evidence>/icons/<exact-package>.bin"
+      ],
+      "execution_enabled": false
+    },
+    {
+      "id": "ICONS-BOOT-AFTER",
+      "purpose": "Bookend same boot",
+      "argv": [
+        "$HDC",
+        "-t",
+        "61b0657200000000000000000324012c",
+        "shell",
+        "cat /proc/sys/kernel/random/boot_id"
+      ]
+    }
+  ],
+  "no_device_writes": true
+}

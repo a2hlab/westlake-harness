@@ -1,0 +1,28 @@
+{
+  "requests": [
+    {
+      "id": "CURRENT-LAUNCHER-DB-PATHS",
+      "shell": "ls -lnZ /data/app/el2/100/base/com.ohos.sceneboard/files /data/app/el2/100/base/com.ohos.sceneboard/haps/entry/files /data/app/el2/100/database/com.ohos.sceneboard /data/app/el2/100/database/com.ohos.sceneboard/entry /data/app/el2/100/database/com.ohos.sceneboard/entry/rdb; printf '\\nREMOTE_RC=%s\\n' \"$?\"",
+      "purpose": "Locate exact launcher own persistent icon cache/database without deletion or broad traversal; preserve each absence independently"
+    },
+    {
+      "id": "RESOURCE-MASTER-SLAVE-ROWS",
+      "shell": "for f in /data/service/el1/public/bms/bundle_resources/bundleResource.db /data/service/el1/public/bms/bundle_resources/bundleResource_slave.db; do printf '\\nDATABASE=%s\\n' \"$f\"; stat -c '%d:%i %u:%g %a' \"$f\"; /bin/sqlite3 -readonly -json \"$f\" \"SELECT NAME,LABEL,length(ICON) AS icon_length,length(FOREGROUND) AS foreground_length,length(BACKGROUND) AS background_length FROM bundleResource WHERE NAME IN ('app.varlorg.unote','app.varlorg.unote/entry/app.varlorg.unote.NoteMain','com.alxgnon.postwriter','com.alxgnon.postwriter/entry/com.alxgnon.postwriter.MainActivity','org.tasks','org.tasks/entry/com.todoroo.astrid.activity.TaskListActivity');\"; done; printf '\\nREMOTE_RC=%s\\n' \"$?\"",
+      "purpose": "Distinguish changed master from unchanged NativeRdb slave and stale BACKGROUND values; no writes"
+    },
+    {
+      "id": "FOUNDATION-NAMESPACE-RESOURCE-PATHS",
+      "purpose": "Root fills actual current foundation PID from existing process evidence, then compares both candidate paths/dev:inode through its /proc/PID/root; no guessed PID",
+      "paths": [
+        "/proc/<current-foundation-pid>/root/data/service/el1/public/bms/bundle_resources/bundleResource.db",
+        "/proc/<current-foundation-pid>/root/data/storage/bundle_resources/bundleResource.db"
+      ]
+    }
+  ],
+  "no_mutation": true,
+  "hypotheses_not_findings": [
+    "Launcher persistent grid/icon cache holds old source",
+    "BMS getter reads a different namespace database/replica or in-memory resource cache",
+    "Launcher falls back to iconId/resourcePath entry.hap (still original placeholder), rather than updated resource URI"
+  ]
+}
