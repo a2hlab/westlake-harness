@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[`benchmark/2026-10-14-worktree-retirement/`](benchmark/2026-10-14-worktree-retirement/README.md)** | **Recoverable worktree cleanup: full private archives, actual restore and remote SHA checks, two merged candidates, seven stale registrations, branches and unarchived evidence retained.** |
 | **[`benchmark/2026-10-14-demo-desktop-ready/cache-static-analysis/`](benchmark/2026-10-14-demo-desktop-ready/cache-static-analysis/README.md)** | **Actual SceneBoard bytecode binds stale desktop icons to EL1 Launcher.db persistent cache: 8 packages, 17 exact icon rows, scoped invalidation evidence and original artifact pins.** |
 | **`benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/final61b-v2-seal/`** | **Signed 61b V2: actual same-board 128 keys/256 captures, new-proof live954, scoped Boat/Toutiao interactions, 109 core startup screens + 6 limited appendix + 13 exclusions; operations, restore and durable evidence receipts.** |
 | **[`benchmark/2026-10-14-demo-desktop-ready/`](benchmark/2026-10-14-demo-desktop-ready/README.md)** | **61b demo list reconciliation: 13 excluded apps removed, three actual icon-launch gaps closed, eight original app icons visually corrected with exact persistent-cache repair and durable raw evidence.** |
