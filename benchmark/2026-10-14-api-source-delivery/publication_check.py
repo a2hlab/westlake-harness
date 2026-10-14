@@ -60,7 +60,9 @@ def simulate(view):
   if (existing/'evidence').exists():
    for child in (existing/'evidence').iterdir():(packet/'evidence'/child.name).symlink_to(child,target_is_directory=child.is_dir())
   for alias in g.read(g.HERE/'historical-aliases.json').values():
-   dest=packet/alias['path'];dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(g.HERE/alias['path'],dest)
+   dest=packet/alias['path'];dest.parent.mkdir(parents=True,exist_ok=True)
+   if dest.is_symlink():dest.unlink()
+   shutil.copy2(g.HERE/alias['path'],dest)
   result=validate(packet/'views');result.update(mode='ISOLATED_PHYSICAL_LANDING_SIMULATION',actual_main_written=False,final_relative_path=PACKAGE+'/views')
   return result
 
