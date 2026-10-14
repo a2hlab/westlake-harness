@@ -1,0 +1,20 @@
+--- frozen-5cd-JIT51
++++ parameterized-JIT51
+@@ -2,12 +2,16 @@
+ # Successor candidate of prepare_jit50.sh; NOT installed or source-pin admitted.
+ # Run as root in the verified existing RouteB parent's mount namespace.
+ set -eu
+-app_uid=20011300
++[ "$#" = 2 ] && [ "$1" = --expected-uid ] || { echo '[JIT51-REFUSE] explicit expected UID required' >&2; exit 2; }
++app_uid=$2
++case "$app_uid" in ''|*[!0-9]*) echo '[JIT51-REFUSE] UID syntax' >&2; exit 2;; esac
++[ "$app_uid" -ge 20000000 ] && [ "$app_uid" -le 2147483647 ] || { echo '[JIT51-REFUSE] UID range' >&2; exit 2; }
+ base=/data/data/com.ss.android.article.news
+ code=$base/code_cache
+ cache=$code/art-volatile
+ fail() { printf '[JIT51-REFUSE] %s\n' "$*" >&2; exit 2; }
+ for p in /data /data/data; do [ -d "$p" ] && [ ! -L "$p" ] || fail ancestor; done
++[ "$(stat -c '%u:%g' /data/app/el2/100/base/org.westlake.imehost)" = "$app_uid:$app_uid" ] || fail installed_host_owner
+ [ "$(stat -c '%u:%g' /data/data)" = "$app_uid:$app_uid" ] || fail data_owner
+ # Validate all existing explicit directories BEFORE changing any owner.
+ for p in "$base" "$code" "$cache"; do
