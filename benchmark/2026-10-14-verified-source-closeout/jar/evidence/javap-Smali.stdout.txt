@@ -1,0 +1,584 @@
+Compiled from "Smali.java"
+public class org.jf.smali.Smali {
+  public org.jf.smali.Smali();
+    Code:
+       0: aload_0
+       1: invokespecial #2                  // Method java/lang/Object."<init>":()V
+       4: return
+
+  public static boolean assemble(org.jf.smali.SmaliOptions, java.lang.String...) throws java.io.IOException;
+    Code:
+       0: aload_0
+       1: aload_1
+       2: invokestatic  #3                  // Method java/util/Arrays.asList:([Ljava/lang/Object;)Ljava/util/List;
+       5: invokestatic  #4                  // Method assemble:(Lorg/jf/smali/SmaliOptions;Ljava/util/List;)Z
+       8: ireturn
+
+  public static boolean assemble(org.jf.smali.SmaliOptions, java.util.List<java.lang.String>) throws java.io.IOException;
+    Code:
+       0: new           #5                  // class java/util/TreeSet
+       3: dup
+       4: invokespecial #6                  // Method java/util/TreeSet."<init>":()V
+       7: astore_2
+       8: aload_1
+       9: invokeinterface #7,  1            // InterfaceMethod java/util/List.iterator:()Ljava/util/Iterator;
+      14: astore_3
+      15: aload_3
+      16: invokeinterface #8,  1            // InterfaceMethod java/util/Iterator.hasNext:()Z
+      21: ifeq          122
+      24: aload_3
+      25: invokeinterface #9,  1            // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+      30: checkcast     #10                 // class java/lang/String
+      33: astore        4
+      35: new           #11                 // class java/io/File
+      38: dup
+      39: aload         4
+      41: invokespecial #12                 // Method java/io/File."<init>":(Ljava/lang/String;)V
+      44: astore        5
+      46: aload         5
+      48: invokevirtual #13                 // Method java/io/File.exists:()Z
+      51: ifne          87
+      54: new           #14                 // class java/lang/IllegalArgumentException
+      57: dup
+      58: new           #15                 // class java/lang/StringBuilder
+      61: dup
+      62: invokespecial #16                 // Method java/lang/StringBuilder."<init>":()V
+      65: ldc           #17                 // String Cannot find file or directory \"
+      67: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      70: aload         4
+      72: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      75: ldc           #19                 // String \"
+      77: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      80: invokevirtual #20                 // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+      83: invokespecial #21                 // Method java/lang/IllegalArgumentException."<init>":(Ljava/lang/String;)V
+      86: athrow
+      87: aload         5
+      89: invokevirtual #22                 // Method java/io/File.isDirectory:()Z
+      92: ifeq          104
+      95: aload         5
+      97: aload_2
+      98: invokestatic  #23                 // Method getSmaliFilesInDir:(Ljava/io/File;Ljava/util/Set;)V
+     101: goto          119
+     104: aload         5
+     106: invokevirtual #24                 // Method java/io/File.isFile:()Z
+     109: ifeq          119
+     112: aload_2
+     113: aload         5
+     115: invokevirtual #25                 // Method java/util/TreeSet.add:(Ljava/lang/Object;)Z
+     118: pop
+     119: goto          15
+     122: iconst_0
+     123: istore_3
+     124: new           #26                 // class org/jf/dexlib2/writer/builder/DexBuilder
+     127: dup
+     128: aload_0
+     129: getfield      #27                 // Field org/jf/smali/SmaliOptions.apiLevel:I
+     132: invokestatic  #28                 // Method org/jf/dexlib2/Opcodes.forApi:(I)Lorg/jf/dexlib2/Opcodes;
+     135: invokespecial #29                 // Method org/jf/dexlib2/writer/builder/DexBuilder."<init>":(Lorg/jf/dexlib2/Opcodes;)V
+     138: astore        4
+     140: aload_0
+     141: getfield      #30                 // Field org/jf/smali/SmaliOptions.jobs:I
+     144: invokestatic  #31                 // Method java/util/concurrent/Executors.newFixedThreadPool:(I)Ljava/util/concurrent/ExecutorService;
+     147: astore        5
+     149: invokestatic  #32                 // Method com/google/common/collect/Lists.newArrayList:()Ljava/util/ArrayList;
+     152: astore        6
+     154: aload_2
+     155: invokevirtual #33                 // Method java/util/TreeSet.iterator:()Ljava/util/Iterator;
+     158: astore        7
+     160: aload         7
+     162: invokeinterface #8,  1            // InterfaceMethod java/util/Iterator.hasNext:()Z
+     167: ifeq          212
+     170: aload         7
+     172: invokeinterface #9,  1            // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+     177: checkcast     #11                 // class java/io/File
+     180: astore        8
+     182: aload         6
+     184: aload         5
+     186: new           #34                 // class org/jf/smali/Smali$1
+     189: dup
+     190: aload         8
+     192: aload         4
+     194: aload_0
+     195: invokespecial #35                 // Method org/jf/smali/Smali$1."<init>":(Ljava/io/File;Lorg/jf/dexlib2/writer/builder/DexBuilder;Lorg/jf/smali/SmaliOptions;)V
+     198: invokeinterface #36,  2           // InterfaceMethod java/util/concurrent/ExecutorService.submit:(Ljava/util/concurrent/Callable;)Ljava/util/concurrent/Future;
+     203: invokeinterface #37,  2           // InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z
+     208: pop
+     209: goto          160
+     212: aload         6
+     214: invokeinterface #7,  1            // InterfaceMethod java/util/List.iterator:()Ljava/util/Iterator;
+     219: astore        7
+     221: aload         7
+     223: invokeinterface #8,  1            // InterfaceMethod java/util/Iterator.hasNext:()Z
+     228: ifeq          287
+     231: aload         7
+     233: invokeinterface #9,  1            // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+     238: checkcast     #38                 // class java/util/concurrent/Future
+     241: astore        8
+     243: aload         8
+     245: invokeinterface #39,  1           // InterfaceMethod java/util/concurrent/Future.get:()Ljava/lang/Object;
+     250: checkcast     #40                 // class java/lang/Boolean
+     253: invokevirtual #41                 // Method java/lang/Boolean.booleanValue:()Z
+     256: ifne          261
+     259: iconst_1
+     260: istore_3
+     261: goto          276
+     264: astore        9
+     266: new           #43                 // class java/lang/RuntimeException
+     269: dup
+     270: aload         9
+     272: invokespecial #44                 // Method java/lang/RuntimeException."<init>":(Ljava/lang/Throwable;)V
+     275: athrow
+     276: goto          284
+     279: astore        9
+     281: goto          243
+     284: goto          221
+     287: aload         5
+     289: invokeinterface #46,  1           // InterfaceMethod java/util/concurrent/ExecutorService.shutdown:()V
+     294: iload_3
+     295: ifeq          300
+     298: iconst_0
+     299: ireturn
+     300: aload         4
+     302: new           #47                 // class org/jf/dexlib2/writer/io/FileDataStore
+     305: dup
+     306: new           #11                 // class java/io/File
+     309: dup
+     310: aload_0
+     311: getfield      #48                 // Field org/jf/smali/SmaliOptions.outputDexFile:Ljava/lang/String;
+     314: invokespecial #12                 // Method java/io/File."<init>":(Ljava/lang/String;)V
+     317: invokespecial #49                 // Method org/jf/dexlib2/writer/io/FileDataStore."<init>":(Ljava/io/File;)V
+     320: invokevirtual #50                 // Method org/jf/dexlib2/writer/builder/DexBuilder.writeTo:(Lorg/jf/dexlib2/writer/io/DexDataStore;)V
+     323: iconst_1
+     324: ireturn
+    Exception table:
+       from    to  target type
+         243   261   264   Class java/util/concurrent/ExecutionException
+         243   276   279   Class java/lang/InterruptedException
+
+  public static boolean printTokens(org.jf.smali.SmaliOptions, java.util.List<java.lang.String>) throws java.io.IOException;
+    Code:
+       0: new           #5                  // class java/util/TreeSet
+       3: dup
+       4: invokespecial #6                  // Method java/util/TreeSet."<init>":()V
+       7: astore_2
+       8: aload_1
+       9: invokeinterface #7,  1            // InterfaceMethod java/util/List.iterator:()Ljava/util/Iterator;
+      14: astore_3
+      15: aload_3
+      16: invokeinterface #8,  1            // InterfaceMethod java/util/Iterator.hasNext:()Z
+      21: ifeq          122
+      24: aload_3
+      25: invokeinterface #9,  1            // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+      30: checkcast     #10                 // class java/lang/String
+      33: astore        4
+      35: new           #11                 // class java/io/File
+      38: dup
+      39: aload         4
+      41: invokespecial #12                 // Method java/io/File."<init>":(Ljava/lang/String;)V
+      44: astore        5
+      46: aload         5
+      48: invokevirtual #13                 // Method java/io/File.exists:()Z
+      51: ifne          87
+      54: new           #14                 // class java/lang/IllegalArgumentException
+      57: dup
+      58: new           #15                 // class java/lang/StringBuilder
+      61: dup
+      62: invokespecial #16                 // Method java/lang/StringBuilder."<init>":()V
+      65: ldc           #17                 // String Cannot find file or directory \"
+      67: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      70: aload         4
+      72: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      75: ldc           #19                 // String \"
+      77: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      80: invokevirtual #20                 // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+      83: invokespecial #21                 // Method java/lang/IllegalArgumentException."<init>":(Ljava/lang/String;)V
+      86: athrow
+      87: aload         5
+      89: invokevirtual #22                 // Method java/io/File.isDirectory:()Z
+      92: ifeq          104
+      95: aload         5
+      97: aload_2
+      98: invokestatic  #23                 // Method getSmaliFilesInDir:(Ljava/io/File;Ljava/util/Set;)V
+     101: goto          119
+     104: aload         5
+     106: invokevirtual #24                 // Method java/io/File.isFile:()Z
+     109: ifeq          119
+     112: aload_2
+     113: aload         5
+     115: invokevirtual #25                 // Method java/util/TreeSet.add:(Ljava/lang/Object;)Z
+     118: pop
+     119: goto          15
+     122: iconst_0
+     123: istore_3
+     124: aload_2
+     125: invokevirtual #33                 // Method java/util/TreeSet.iterator:()Ljava/util/Iterator;
+     128: astore        4
+     130: aload         4
+     132: invokeinterface #8,  1            // InterfaceMethod java/util/Iterator.hasNext:()Z
+     137: ifeq          187
+     140: aload         4
+     142: invokeinterface #9,  1            // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+     147: checkcast     #11                 // class java/io/File
+     150: astore        5
+     152: iload_3
+     153: aload         5
+     155: aload_0
+     156: invokestatic  #51                 // Method printTokensForSingleFile:(Ljava/io/File;Lorg/jf/smali/SmaliOptions;)Z
+     159: ifne          166
+     162: iconst_1
+     163: goto          167
+     166: iconst_0
+     167: ior
+     168: istore_3
+     169: goto          184
+     172: astore        6
+     174: new           #43                 // class java/lang/RuntimeException
+     177: dup
+     178: aload         6
+     180: invokespecial #44                 // Method java/lang/RuntimeException."<init>":(Ljava/lang/Throwable;)V
+     183: athrow
+     184: goto          130
+     187: iload_3
+     188: ifeq          193
+     191: iconst_0
+     192: ireturn
+     193: iconst_1
+     194: ireturn
+    Exception table:
+       from    to  target type
+         152   169   172   Class java/lang/Exception
+
+  private static void getSmaliFilesInDir(java.io.File, java.util.Set<java.io.File>);
+    Code:
+       0: aload_0
+       1: invokevirtual #53                 // Method java/io/File.listFiles:()[Ljava/io/File;
+       4: astore_2
+       5: aload_2
+       6: ifnull        76
+       9: aload_2
+      10: astore_3
+      11: aload_3
+      12: arraylength
+      13: istore        4
+      15: iconst_0
+      16: istore        5
+      18: iload         5
+      20: iload         4
+      22: if_icmpge     76
+      25: aload_3
+      26: iload         5
+      28: aaload
+      29: astore        6
+      31: aload         6
+      33: invokevirtual #22                 // Method java/io/File.isDirectory:()Z
+      36: ifeq          48
+      39: aload         6
+      41: aload_1
+      42: invokestatic  #23                 // Method getSmaliFilesInDir:(Ljava/io/File;Ljava/util/Set;)V
+      45: goto          70
+      48: aload         6
+      50: invokevirtual #54                 // Method java/io/File.getName:()Ljava/lang/String;
+      53: ldc           #55                 // String .smali
+      55: invokevirtual #56                 // Method java/lang/String.endsWith:(Ljava/lang/String;)Z
+      58: ifeq          70
+      61: aload_1
+      62: aload         6
+      64: invokeinterface #57,  2           // InterfaceMethod java/util/Set.add:(Ljava/lang/Object;)Z
+      69: pop
+      70: iinc          5, 1
+      73: goto          18
+      76: return
+
+  private static boolean assembleSmaliFile(java.io.File, org.jf.dexlib2.writer.builder.DexBuilder, org.jf.smali.SmaliOptions) throws java.lang.Exception;
+    Code:
+       0: aconst_null
+       1: astore_3
+       2: new           #58                 // class java/io/FileInputStream
+       5: dup
+       6: aload_0
+       7: invokespecial #59                 // Method java/io/FileInputStream."<init>":(Ljava/io/File;)V
+      10: astore_3
+      11: new           #60                 // class java/io/InputStreamReader
+      14: dup
+      15: aload_3
+      16: ldc           #61                 // String UTF-8
+      18: invokespecial #62                 // Method java/io/InputStreamReader."<init>":(Ljava/io/InputStream;Ljava/lang/String;)V
+      21: astore        4
+      23: new           #63                 // class org/jf/smali/smaliFlexLexer
+      26: dup
+      27: aload         4
+      29: aload_2
+      30: getfield      #27                 // Field org/jf/smali/SmaliOptions.apiLevel:I
+      33: invokespecial #64                 // Method org/jf/smali/smaliFlexLexer."<init>":(Ljava/io/Reader;I)V
+      36: astore        5
+      38: aload         5
+      40: checkcast     #63                 // class org/jf/smali/smaliFlexLexer
+      43: aload_0
+      44: invokevirtual #65                 // Method org/jf/smali/smaliFlexLexer.setSourceFile:(Ljava/io/File;)V
+      47: new           #66                 // class org/antlr/runtime/CommonTokenStream
+      50: dup
+      51: aload         5
+      53: checkcast     #67                 // class org/antlr/runtime/TokenSource
+      56: invokespecial #68                 // Method org/antlr/runtime/CommonTokenStream."<init>":(Lorg/antlr/runtime/TokenSource;)V
+      59: astore        6
+      61: aload_2
+      62: getfield      #69                 // Field org/jf/smali/SmaliOptions.printTokens:Z
+      65: ifeq          190
+      68: aload         6
+      70: invokevirtual #70                 // Method org/antlr/runtime/CommonTokenStream.getTokens:()Ljava/util/List;
+      73: pop
+      74: iconst_0
+      75: istore        7
+      77: iload         7
+      79: aload         6
+      81: invokevirtual #71                 // Method org/antlr/runtime/CommonTokenStream.size:()I
+      84: if_icmpge     184
+      87: aload         6
+      89: iload         7
+      91: invokevirtual #72                 // Method org/antlr/runtime/CommonTokenStream.get:(I)Lorg/antlr/runtime/Token;
+      94: astore        8
+      96: aload         8
+      98: invokeinterface #73,  1           // InterfaceMethod org/antlr/runtime/Token.getChannel:()I
+     103: bipush        99
+     105: if_icmpne     111
+     108: goto          178
+     111: aload         8
+     113: invokeinterface #75,  1           // InterfaceMethod org/antlr/runtime/Token.getType:()I
+     118: iconst_m1
+     119: if_icmpne     129
+     122: ldc           #76                 // String EOF
+     124: astore        9
+     126: goto          142
+     129: getstatic     #77                 // Field org/jf/smali/smaliParser.tokenNames:[Ljava/lang/String;
+     132: aload         8
+     134: invokeinterface #75,  1           // InterfaceMethod org/antlr/runtime/Token.getType:()I
+     139: aaload
+     140: astore        9
+     142: getstatic     #78                 // Field java/lang/System.out:Ljava/io/PrintStream;
+     145: new           #15                 // class java/lang/StringBuilder
+     148: dup
+     149: invokespecial #16                 // Method java/lang/StringBuilder."<init>":()V
+     152: aload         9
+     154: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     157: ldc           #79                 // String :
+     159: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     162: aload         8
+     164: invokeinterface #80,  1           // InterfaceMethod org/antlr/runtime/Token.getText:()Ljava/lang/String;
+     169: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     172: invokevirtual #20                 // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     175: invokevirtual #81                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V
+     178: iinc          7, 1
+     181: goto          77
+     184: getstatic     #78                 // Field java/lang/System.out:Ljava/io/PrintStream;
+     187: invokevirtual #82                 // Method java/io/PrintStream.flush:()V
+     190: new           #74                 // class org/jf/smali/smaliParser
+     193: dup
+     194: aload         6
+     196: invokespecial #83                 // Method org/jf/smali/smaliParser."<init>":(Lorg/antlr/runtime/TokenStream;)V
+     199: astore        7
+     201: aload         7
+     203: aload_2
+     204: getfield      #84                 // Field org/jf/smali/SmaliOptions.verboseErrors:Z
+     207: invokevirtual #85                 // Method org/jf/smali/smaliParser.setVerboseErrors:(Z)V
+     210: aload         7
+     212: aload_2
+     213: getfield      #86                 // Field org/jf/smali/SmaliOptions.allowOdexOpcodes:Z
+     216: invokevirtual #87                 // Method org/jf/smali/smaliParser.setAllowOdex:(Z)V
+     219: aload         7
+     221: aload_2
+     222: getfield      #27                 // Field org/jf/smali/SmaliOptions.apiLevel:I
+     225: invokevirtual #88                 // Method org/jf/smali/smaliParser.setApiLevel:(I)V
+     228: aload         7
+     230: invokevirtual #89                 // Method org/jf/smali/smaliParser.smali_file:()Lorg/jf/smali/smaliParser$smali_file_return;
+     233: astore        8
+     235: aload         7
+     237: invokevirtual #90                 // Method org/jf/smali/smaliParser.getNumberOfSyntaxErrors:()I
+     240: ifgt          253
+     243: aload         5
+     245: invokeinterface #91,  1           // InterfaceMethod org/jf/smali/LexerErrorInterface.getNumberOfSyntaxErrors:()I
+     250: ifle          267
+     253: iconst_0
+     254: istore        9
+     256: aload_3
+     257: ifnull        264
+     260: aload_3
+     261: invokevirtual #92                 // Method java/io/FileInputStream.close:()V
+     264: iload         9
+     266: ireturn
+     267: aload         8
+     269: invokevirtual #93                 // Method org/jf/smali/smaliParser$smali_file_return.getTree:()Lorg/antlr/runtime/tree/CommonTree;
+     272: astore        9
+     274: new           #94                 // class org/antlr/runtime/tree/CommonTreeNodeStream
+     277: dup
+     278: aload         9
+     280: invokespecial #95                 // Method org/antlr/runtime/tree/CommonTreeNodeStream."<init>":(Ljava/lang/Object;)V
+     283: astore        10
+     285: aload         10
+     287: aload         6
+     289: invokevirtual #96                 // Method org/antlr/runtime/tree/CommonTreeNodeStream.setTokenStream:(Lorg/antlr/runtime/TokenStream;)V
+     292: aload_2
+     293: getfield      #69                 // Field org/jf/smali/SmaliOptions.printTokens:Z
+     296: ifeq          310
+     299: getstatic     #78                 // Field java/lang/System.out:Ljava/io/PrintStream;
+     302: aload         9
+     304: invokevirtual #97                 // Method org/antlr/runtime/tree/CommonTree.toStringTree:()Ljava/lang/String;
+     307: invokevirtual #81                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V
+     310: new           #98                 // class org/jf/smali/smaliTreeWalker
+     313: dup
+     314: aload         10
+     316: invokespecial #99                 // Method org/jf/smali/smaliTreeWalker."<init>":(Lorg/antlr/runtime/tree/TreeNodeStream;)V
+     319: astore        11
+     321: aload         11
+     323: aload_2
+     324: getfield      #27                 // Field org/jf/smali/SmaliOptions.apiLevel:I
+     327: invokevirtual #100                // Method org/jf/smali/smaliTreeWalker.setApiLevel:(I)V
+     330: aload         11
+     332: aload_2
+     333: getfield      #84                 // Field org/jf/smali/SmaliOptions.verboseErrors:Z
+     336: invokevirtual #101                // Method org/jf/smali/smaliTreeWalker.setVerboseErrors:(Z)V
+     339: aload         11
+     341: aload_1
+     342: invokevirtual #102                // Method org/jf/smali/smaliTreeWalker.setDexBuilder:(Lorg/jf/dexlib2/writer/builder/DexBuilder;)V
+     345: aload         11
+     347: invokevirtual #103                // Method org/jf/smali/smaliTreeWalker.smali_file:()Lorg/jf/dexlib2/iface/ClassDef;
+     350: pop
+     351: aload         11
+     353: invokevirtual #104                // Method org/jf/smali/smaliTreeWalker.getNumberOfSyntaxErrors:()I
+     356: ifne          363
+     359: iconst_1
+     360: goto          364
+     363: iconst_0
+     364: istore        12
+     366: aload_3
+     367: ifnull        374
+     370: aload_3
+     371: invokevirtual #92                 // Method java/io/FileInputStream.close:()V
+     374: iload         12
+     376: ireturn
+     377: astore        13
+     379: aload_3
+     380: ifnull        387
+     383: aload_3
+     384: invokevirtual #92                 // Method java/io/FileInputStream.close:()V
+     387: aload         13
+     389: athrow
+    Exception table:
+       from    to  target type
+           2   256   377   any
+         267   366   377   any
+         377   379   377   any
+
+  private static boolean printTokensForSingleFile(java.io.File, org.jf.smali.SmaliOptions) throws java.lang.Exception;
+    Code:
+       0: aconst_null
+       1: astore_2
+       2: new           #58                 // class java/io/FileInputStream
+       5: dup
+       6: aload_0
+       7: invokespecial #59                 // Method java/io/FileInputStream."<init>":(Ljava/io/File;)V
+      10: astore_2
+      11: new           #60                 // class java/io/InputStreamReader
+      14: dup
+      15: aload_2
+      16: ldc           #61                 // String UTF-8
+      18: invokespecial #62                 // Method java/io/InputStreamReader."<init>":(Ljava/io/InputStream;Ljava/lang/String;)V
+      21: astore_3
+      22: new           #63                 // class org/jf/smali/smaliFlexLexer
+      25: dup
+      26: aload_3
+      27: aload_1
+      28: getfield      #27                 // Field org/jf/smali/SmaliOptions.apiLevel:I
+      31: invokespecial #64                 // Method org/jf/smali/smaliFlexLexer."<init>":(Ljava/io/Reader;I)V
+      34: astore        4
+      36: aload         4
+      38: checkcast     #63                 // class org/jf/smali/smaliFlexLexer
+      41: aload_0
+      42: invokevirtual #65                 // Method org/jf/smali/smaliFlexLexer.setSourceFile:(Ljava/io/File;)V
+      45: new           #66                 // class org/antlr/runtime/CommonTokenStream
+      48: dup
+      49: aload         4
+      51: checkcast     #67                 // class org/antlr/runtime/TokenSource
+      54: invokespecial #68                 // Method org/antlr/runtime/CommonTokenStream."<init>":(Lorg/antlr/runtime/TokenSource;)V
+      57: astore        5
+      59: aload         5
+      61: invokevirtual #105                // Method org/antlr/runtime/CommonTokenStream.fill:()V
+      64: iconst_0
+      65: istore        6
+      67: iload         6
+      69: aload         5
+      71: invokevirtual #71                 // Method org/antlr/runtime/CommonTokenStream.size:()I
+      74: if_icmpge     182
+      77: aload         5
+      79: iload         6
+      81: invokevirtual #72                 // Method org/antlr/runtime/CommonTokenStream.get:(I)Lorg/antlr/runtime/Token;
+      84: astore        7
+      86: aload         7
+      88: invokeinterface #73,  1           // InterfaceMethod org/antlr/runtime/Token.getChannel:()I
+      93: bipush        99
+      95: if_icmpne     101
+      98: goto          176
+     101: aload         7
+     103: invokeinterface #75,  1           // InterfaceMethod org/antlr/runtime/Token.getType:()I
+     108: iconst_m1
+     109: if_icmpne     119
+     112: ldc           #76                 // String EOF
+     114: astore        8
+     116: goto          132
+     119: getstatic     #77                 // Field org/jf/smali/smaliParser.tokenNames:[Ljava/lang/String;
+     122: aload         7
+     124: invokeinterface #75,  1           // InterfaceMethod org/antlr/runtime/Token.getType:()I
+     129: aaload
+     130: astore        8
+     132: getstatic     #78                 // Field java/lang/System.out:Ljava/io/PrintStream;
+     135: new           #15                 // class java/lang/StringBuilder
+     138: dup
+     139: invokespecial #16                 // Method java/lang/StringBuilder."<init>":()V
+     142: aload         8
+     144: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     147: ldc           #106                // String (\"
+     149: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     152: aload         7
+     154: invokeinterface #80,  1           // InterfaceMethod org/antlr/runtime/Token.getText:()Ljava/lang/String;
+     159: invokestatic  #107                // Method org/jf/util/StringUtils.escapeString:(Ljava/lang/String;)Ljava/lang/String;
+     162: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     165: ldc           #108                // String \")
+     167: invokevirtual #18                 // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     170: invokevirtual #20                 // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     173: invokevirtual #81                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V
+     176: iinc          6, 1
+     179: goto          67
+     182: getstatic     #78                 // Field java/lang/System.out:Ljava/io/PrintStream;
+     185: invokevirtual #82                 // Method java/io/PrintStream.flush:()V
+     188: aload         4
+     190: invokeinterface #91,  1           // InterfaceMethod org/jf/smali/LexerErrorInterface.getNumberOfSyntaxErrors:()I
+     195: ifne          202
+     198: iconst_1
+     199: goto          203
+     202: iconst_0
+     203: istore        6
+     205: aload_2
+     206: ifnull        213
+     209: aload_2
+     210: invokevirtual #92                 // Method java/io/FileInputStream.close:()V
+     213: iload         6
+     215: ireturn
+     216: astore        9
+     218: aload_2
+     219: ifnull        226
+     222: aload_2
+     223: invokevirtual #92                 // Method java/io/FileInputStream.close:()V
+     226: aload         9
+     228: athrow
+    Exception table:
+       from    to  target type
+           2   205   216   any
+         216   218   216   any
+
+  static boolean access$000(java.io.File, org.jf.dexlib2.writer.builder.DexBuilder, org.jf.smali.SmaliOptions) throws java.lang.Exception;
+    Code:
+       0: aload_0
+       1: aload_1
+       2: aload_2
+       3: invokestatic  #1                  // Method assembleSmaliFile:(Ljava/io/File;Lorg/jf/dexlib2/writer/builder/DexBuilder;Lorg/jf/smali/SmaliOptions;)Z
+       6: ireturn
+}
