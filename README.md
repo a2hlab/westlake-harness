@@ -93,6 +93,7 @@ kind of work from where the corpus started
 | Path | Contents |
 |---|---|
 | **`benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/final61b-v2-seal/`** | **Signed 61b V2: actual same-board 128 keys/256 captures, new-proof live954, scoped Boat/Toutiao interactions, 109 core startup screens + 6 limited appendix + 13 exclusions; operations, restore and durable evidence receipts.** |
+| **[`sources/api-implementations/`](sources/api-implementations/README.md)** | **Actual frozen API implementation sources and executable build recipes on the default branch, with pinned dependencies and explicit build verification boundaries.** |
 | **`benchmark/2026-10-14-api-progress-final61b/`** | **315-entry API knowledge atlas: implementations, platform evidence, APK validation and gaps; bilingual HTML, Markdown, CSV and JSON with final61b evidence bindings.** |
 | **`benchmark/2026-10-12-v1-seal-execution/`** | **Combined capture/classifier live recovery and Toutiao interaction PASS; native SIG11 remains. Final regression and exact spare restoration are in progress; 5cd base controls placed and verified, NOT sealed.** |
 | **`benchmark/2026-10-12-child-readiness/`** | **Bounded read-only child readiness, strict identity diagnostics and measured OH audit overhead; r3 removes success encoding without relaxing the two-second deadline.** |
