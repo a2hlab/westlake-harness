@@ -34,3 +34,6 @@ See the [complete API/source/build correspondence table](../../benchmark/2026-10
 
 - [Activity manifest theme (J10d)](JAVA-033-theme/README.md): exact tracked Java source, original caller patch and newly executed build reproducing historical JAR `57d62183`.
 - [Boat C9 input-dispatch JAR](boat-c9-jar/README.md): original producer, two exact donor smali inputs, locked baseline/tools, and independent archived-input replay reproducing signed JAR `6333bcab`.
+
+- [Boat V2 production sources](boat-v2-production/README.md): exact signal shim source, C7/C4 transforms, project revision and build inputs. C7/C4 output hashes match; the new signal build differs only in GNU build-id.
+- [J1/J7b full producer source and recipes](jar-production-closeout/README.md): 39/51 exact source inputs, 14 locked dependencies and raw new build receipts. All 129/161 disassembled classes match historical outputs; whole JAR hashes differ and the historical exact-byte gate remains rejected.
