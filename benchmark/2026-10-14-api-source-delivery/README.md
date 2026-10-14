@@ -10,7 +10,7 @@ The final mapping is [release-v2/source-build-mapping.json](release-v2/source-bu
 
 ## Verification
 
-The generator passed 10 refusal/data tests and its Rust wrapper. The supplement passed 15 mapping tests. An [actual MAIN physical-link audit](evidence/actual-main-links-v2.json) resolved 460 links in each language and 1,993 Markdown links, checking the source/build bytes where pinned. This is an audit of the landed directory, not a simulated staging directory. Build receipts separately record the new 83-input Java compilation, production-matching TagSoup DEX, and J1/J7b historical DEX mismatches.
+The generator passed 13 refusal/data tests and its Rust wrapper. The supplement passed 15 mapping tests. An [actual MAIN physical-link audit](evidence/actual-main-links-publisher-fix.json) resolved 460 links in each language and 1,993 Markdown links, checking the source/build bytes where pinned. All 470 published source/build URLs are bound to `a2hlab/westlake-harness/master`, checked against the repository default branch. An [independent Git-object audit](evidence/actual-master-publisher-source-audit.json) verified all 340 source and 130 build references against actual default-branch bytes. This is an audit of the landed directory, not a simulated staging directory. Build receipts separately record the new 83-input Java compilation, production-matching TagSoup DEX, and J1/J7b historical DEX mismatches.
 
 From the repository root:
 
