@@ -25,3 +25,9 @@ Original source bytes and license notices are preserved, including upstream whit
 - [Later native implementations](source-build-native691/README.md): 177 exact upstream blobs, original bionic and missing-native build entries, headers, locks and 22 API member mappings. Source and shell checks passed; a new native compilation and historical ELF equivalence are not yet claimed.
 - [Activity-name launcher](JAVA-115-launcher/README.md): actual Python launcher, imported helper and locks; its relative/bare/qualified/invalid Activity checks passed.
 - [Historical graphics compatibility source](legacy-graphics-7e4b38/README.md): preserved implementation and provenance for the legacy supporting record.
+
+- [Exact APK native extraction](JAVA-042-installer/README.md): the two historical production C++ inputs, patches and isolated build entry using the SHA-pinned OH kit.
+- [Boat V2 overlay implementation](NATIVE-138-boat-overlay/README.md): five original orchestration scripts/configuration files and an offline staging entry. Unity binary dependencies do not imply delivery of Unity engine source.
+- [Bitmap owner source reference](NATIVE-122-bitmap-reference/README.md): exact Android 14 upstream implementation; historical deployed ELF binding and the unimplemented proposed patch remain separate.
+
+See the [complete API/source/build correspondence table](../../benchmark/2026-10-14-api-source-delivery/views/API-PROGRESS.zh.md) or its [searchable HTML view](../../benchmark/2026-10-14-api-source-delivery/views/index.html).
