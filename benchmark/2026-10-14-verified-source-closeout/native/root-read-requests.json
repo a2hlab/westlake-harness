@@ -1,0 +1,19 @@
+[
+  {
+    "id": "SOURCE-CLOSEOUT-VM-01",
+    "purpose": "Read only the recorded historical bridge source/build directories; no a2hlab build.",
+    "argv": ["orb", "-m", "a2hlab", "sh", "-c", "for d in \"$HOME/a2hlab/ws/westlake/historical/workspace/bridge-build-arm64\" \"$HOME/a2hlab/ws/companion\"; do printf 'DIRECTORY %s\\n' \"$d\"; ls -la \"$d\"; done"],
+    "local_attempt": "orb read-only query timed out after 8 seconds; this is access failure, not evidence of missing source"
+  },
+  {
+    "id": "SOURCE-CLOSEOUT-HW-01",
+    "purpose": "Read named original bridge/libandroid production cohorts and their direct metadata; exclude the known wrong recover-old-bridge output.",
+    "argv": ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "hw248", "for d in /opt/build-runs/fn02-v7scb-20260731 /opt/build-runs/fn02-abi-fix-20260730T1935Z /opt/build-runs/boatattack-runtime-source-20260813T141442Z; do printf 'DIRECTORY %s\\n' \"$d\"; ls -la \"$d\"; for p in \"$d\"/build*.sh \"$d\"/build*.env \"$d\"/build*.log \"$d\"/metadata/*.json; do if test -f \"$p\"; then printf 'FILE %s\\n' \"$p\"; sha256sum \"$p\"; head -n 15 \"$p\"; tail -n 12 \"$p\"; fi; done; done"],
+    "local_attempt": "ssh returned rc255 Operation not permitted; remote absence is not inferred"
+  },
+  {
+    "id": "SOURCE-CLOSEOUT-HW-02",
+    "purpose": "Verify named external FZ-001/FZ-002 dependency archives and list archive roots without rebuilding or altering source trees.",
+    "argv": ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "hw248", "for p in /home/alvin/westlake-oh6.1-installer-background-launcher-6aadb8b4/westlake-installer-background-launcher-6aadb8b4-source.tar.gz /home/alvin/westlake-oh6.1-b79-bms-2220df48-installs-51e1b525/oh61-bms-kit-b79-r3-final.tar.gz /home/alvin/westlake-oh6.1-b9-v3-74d1d6d4-source/build-inputs.tar.gz /home/alvin/westlake-oh6.1-b9-v3-74d1d6d4-source/external-link-inputs.tar.gz; do printf 'ARCHIVE %s\\n' \"$p\"; if test -f \"$p\"; then sha256sum \"$p\"; tar -tzf \"$p\" | sed -n '1,12p'; else printf 'MISSING_NAMED_ARCHIVE\\n'; fi; done"]
+  }
+]

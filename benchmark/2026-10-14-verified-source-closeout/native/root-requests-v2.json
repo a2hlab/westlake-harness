@@ -1,0 +1,12 @@
+[
+  {
+    "id": "SOURCE-CLOSEOUT-HW-03",
+    "purpose": "Pin target bytes in the named earlier FN02 output cohorts and inspect their exact recipe/source anchors; no global search or build.",
+    "argv": ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "hw248", "for d in /opt/build-runs/fn02-v7scb-20260731/adapter/out /opt/build-runs/fn02-abi-fix-20260730T1935Z/adapter/out /opt/build-runs/fn02-abi-fix-20260730T1935Z/gen-out; do printf 'OUTPUT_ROOT %s\\n' \"$d\"; if test -d \"$d\"; then find \"$d\" -maxdepth 3 -type f \\( -name 'liboh_adapter_bridge.so*' -o -name 'libandroid.so*' -o -name 'liboh_android_runtime.so*' -o -name 'build*.log' -o -name 'build*.env' \\) -exec sha256sum {} \\;; fi; done; for p in /opt/build-runs/fn02-abi-fix-20260730T1935Z/clangxx-fn02-degraded /opt/build-runs/fn02-v7scb-20260731/adapter/build/inner/compile_oh_adapter_bridge_arm64.sh; do if test -f \"$p\"; then printf 'RECIPE %s\\n' \"$p\"; sha256sum \"$p\"; head -n 12 \"$p\"; fi; done; for p in /opt/build-runs/fn02-v7scb-20260731/adapter/framework/window/jni/oh_window_manager_client.cpp /opt/build-runs/fn02-v7scb-20260731/adapter/framework/activity/jni/ability_scheduler_adapter.cpp /opt/build-runs/fn02-abi-fix-20260730T1935Z/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp; do if test -f \"$p\"; then printf 'SOURCE %s\\n' \"$p\"; sha256sum \"$p\"; fi; done"]
+  },
+  {
+    "id": "SOURCE-CLOSEOUT-HW-04",
+    "purpose": "Find only the generation root among direct children of the already named preserved dependency directory; verify the fourth dependency archive independently of slow tar listings.",
+    "argv": ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "hw248", "D=/home/alvin/westlake-oh6.1-b9-v3-74d1d6d4-source; ls -la \"$D\"; sha256sum \"$D/external-link-inputs.tar.gz\"; for p in \"$D\"/*/.work/product-tls-generation/frozen/toolchain/bin/clang-15; do if test -f \"$p\"; then printf 'GENERATION_COMPILER %s\\n' \"$p\"; sha256sum \"$p\"; fi; done"]
+  }
+]
