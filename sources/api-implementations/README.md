@@ -21,3 +21,7 @@ Original source bytes and license notices are preserved, including upstream whit
 
 - [Later Java and host sources](source-build-host/README.java.md): the actual 206-file Java snapshot, host declarations, original build tools, source locks and patches; [build entry](source-build-host/build-java.py). [A new executed build](../../benchmark/2026-10-14-api-source-delivery/review/later-java-build-01.md) compiled 83 adapter inputs to 160 owned classes. This does not assert byte identity with the historical r84–r89 runtime.
 - [SQLite JNI runtime187 sources](native-sqlite187/README.md): eight exact native compilation inputs with source provenance and the original runtime build route.
+
+- [Later native implementations](source-build-native691/README.md): 177 exact upstream blobs, original bionic and missing-native build entries, headers, locks and 22 API member mappings. Source and shell checks passed; a new native compilation and historical ELF equivalence are not yet claimed.
+- [Activity-name launcher](JAVA-115-launcher/README.md): actual Python launcher, imported helper and locks; its relative/bare/qualified/invalid Activity checks passed.
+- [Historical graphics compatibility source](legacy-graphics-7e4b38/README.md): preserved implementation and provenance for the legacy supporting record.
