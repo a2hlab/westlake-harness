@@ -1,0 +1,11 @@
+# BACK51 window: visual returns, unproven cause, baseline crash
+
+Two candidate interactions returned from content to the feed, but all four captured candidate log files contain zero `[BACK51]` markers. The visual result therefore does not prove callback-patch execution or causality. The candidate was rolled back. On the restored original JAR, child 23306 then crashed naturally at 18:54:41.163 after a reported 8-second lifetime. The OS crash report names thread ChromiumNet0 (TID 23380), SIGSEGV/SEGV_MAPERR, and the stack `get_meta -> nontrivial_free -> __libc_free -> libsscronet.so`. This identifies a terminal fault site, not the origin of memory corruption and not a verified match to earlier crashes.
+
+[Results](results.json) separate the candidate experiment, byte rollback, baseline crash and final visual state. Candidate parent/child were 20112/20299. The original JAR SHA `ea5d8b277f1207c928d289196876ad69505d73ab586815daccbda7080169523e` and metadata `20011300:20011300:644:u:object_r:appdat:s0` were verified after rollback. The replacement original parent 23113/birth 7580270 remained alive, while child 23306 was absent. At 18:57:09 the final screenshot showed only Westlake IME host. Outer reported lock release at 18:57:28; the window ran from 18:39:05 for 18 minutes 23 seconds. Correct byte restoration did not restore a stable running Toutiao instance.
+
+Five private screenshots were independently reviewed: article content, its return to feed, PostInnerFeed content, its return to feed, and host-only closure. [Evidence pins](evidence-pins.json) retain their hashes without publishing article/account content. [Technical excerpts](technical-excerpts.json) contain only necessary stack, process, metadata and lifecycle lines. Full logs and images remain private.
+
+Failed observations remain explicit: step 20 queried an unavailable OH proc children path; step 21 mixed stat/process output was misparsed before the corrected captures; outer reports step 22 was rejected locally for a serial typo, with its private directory empty and no device receipt available. None is represented as a successful board mutation. Original receipts and original pending visual verdicts are unchanged.
+
+BACK51 was not promoted. No callback fix, random SIG11 fix, stable recovery, or new seal is claimed. This reviewer performed no device action.
