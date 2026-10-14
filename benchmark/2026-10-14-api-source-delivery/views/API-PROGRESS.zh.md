@@ -5044,7 +5044,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 - [Scanner.java](<../../../sources/api-implementations/FZ-007-tagsoup/src/org/ccil/cowan/tagsoup/Scanner.java>) `c1bd7e81cdc56f811e26d69edfa9150b58c1be967ffb7b3cb6a4f586e743375b`；role=implementation
 - [Schema.java](<../../../sources/api-implementations/FZ-007-tagsoup/src/org/ccil/cowan/tagsoup/Schema.java>) `15a2598a73327590375effe8fa0584efd4178e588f5b11c5aba2db31536bb7f9`；role=implementation
 - [XMLWriter.java](<../../../sources/api-implementations/FZ-007-tagsoup/src/org/ccil/cowan/tagsoup/XMLWriter.java>) `851fff7807dd50d40a3ca4158183401c7bc8a506c7e0c7bc80f534151a82ec4e`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["045f363bf8e7cebe78664385b3f388afb9a647394354e40db5aaaaa3f15c900e", "0c1f8ae43274a9f86a1b88cbf3bd4a7744402e631249746d3493216ddcda45cb", "15a2598a73327590375effe8fa0584efd4178e588f5b11c5aba2db31536bb7f9", "256b8ddd7a75926386f6dd262ee702c59a1117576e8f6d32793f028ea8f67397", "2bfa19e9e91196647d681d9fa4b122b5a63685de83a34c61dd1e4fd48ce347c0", "3983dadc6ad3d7313d49bc98f5b40fb4c616e6497c3e732940be43cad959d3ef", "48fdd7a6d03236a5ee820dd4eb9d509c7ac62a62e8f10298cb7d26d0008d5f25", "5e2baba30c4222a0205b6f64ea5b95b91cc760258c027599966a9b3e88701f93", "78699fdaf23e929ce4d72b01b398b4b95a54f2f3adb1f39592c27a7250980f46", "851fff7807dd50d40a3ca4158183401c7bc8a506c7e0c7bc80f534151a82ec4e", "aa68cc4d04869aee423b799eb990237301cf40d2f59b77c47549a88e32b38425", "c1bd7e81cdc56f811e26d69edfa9150b58c1be967ffb7b3cb6a4f586e743375b", "de0c852e37a571bae0805af2fd8718686d1a090ecba9c21ae7c9bfd7c7c22f13", "e46e3ff03f09ede4be1ba800795f58aca78aaf0b7c1087e83ffa6f46bf8ab434", "f5751e8fab9a23c1959b5078d8069fa4e5bb149fc72a6cf70e173168c931aeb7"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["045f363bf8e7cebe78664385b3f388afb9a647394354e40db5aaaaa3f15c900e", "0c1f8ae43274a9f86a1b88cbf3bd4a7744402e631249746d3493216ddcda45cb", "15a2598a73327590375effe8fa0584efd4178e588f5b11c5aba2db31536bb7f9", "256b8ddd7a75926386f6dd262ee702c59a1117576e8f6d32793f028ea8f67397", "2bfa19e9e91196647d681d9fa4b122b5a63685de83a34c61dd1e4fd48ce347c0", "3983dadc6ad3d7313d49bc98f5b40fb4c616e6497c3e732940be43cad959d3ef", "48fdd7a6d03236a5ee820dd4eb9d509c7ac62a62e8f10298cb7d26d0008d5f25", "5e2baba30c4222a0205b6f64ea5b95b91cc760258c027599966a9b3e88701f93", "78699fdaf23e929ce4d72b01b398b4b95a54f2f3adb1f39592c27a7250980f46", "851fff7807dd50d40a3ca4158183401c7bc8a506c7e0c7bc80f534151a82ec4e", "aa68cc4d04869aee423b799eb990237301cf40d2f59b77c47549a88e32b38425", "c1bd7e81cdc56f811e26d69edfa9150b58c1be967ffb7b3cb6a4f586e743375b", "de0c852e37a571bae0805af2fd8718686d1a090ecba9c21ae7c9bfd7c7c22f13", "e46e3ff03f09ede4be1ba800795f58aca78aaf0b7c1087e83ffa6f46bf8ab434", "f5751e8fab9a23c1959b5078d8069fa4e5bb149fc72a6cf70e173168c931aeb7"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-007](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-007-tagsoup/build.py>)
 - build_command: `{"status": "EXISTING_BUILD_ENTRY", "argv": ["python3", "sources/api-implementations/FZ-007-tagsoup/build.py", "--mode", "t7d", "--dependencies", "$A2HLAB_WS", "--out", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output only; original T7d build log not recreated retroactively."}`
@@ -5065,7 +5065,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [NetworkRequest.java](<../../../sources/api-implementations/FZ-007-tagsoup/t7d-overrides/java/android/net/NetworkRequest.java>) `3fc1c699345e5c910cb9c08467b4444bfe1001fd24f5236c22bfceab5647fbcc`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["3fc1c699345e5c910cb9c08467b4444bfe1001fd24f5236c22bfceab5647fbcc"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["3fc1c699345e5c910cb9c08467b4444bfe1001fd24f5236c22bfceab5647fbcc"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-007](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-007-tagsoup/build.py>)
 - build_command: `{"status": "EXISTING_BUILD_ENTRY", "argv": ["python3", "sources/api-implementations/FZ-007-tagsoup/build.py", "--mode", "t7d", "--dependencies", "$A2HLAB_WS", "--out", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output only; original T7d build log not recreated retroactively."}`
@@ -5086,7 +5086,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [MediaStore.java](<../../../sources/api-implementations/FZ-007-tagsoup/t7d-overrides/java/android/provider/MediaStore.java>) `dd14a98fd206cdb68527379a09a604758bb0c0c0b047ad01a659a110d5a6c8aa`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["dd14a98fd206cdb68527379a09a604758bb0c0c0b047ad01a659a110d5a6c8aa"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["dd14a98fd206cdb68527379a09a604758bb0c0c0b047ad01a659a110d5a6c8aa"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-007](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-007-tagsoup/build.py>)
 - build_command: `{"status": "EXISTING_BUILD_ENTRY", "argv": ["python3", "sources/api-implementations/FZ-007-tagsoup/build.py", "--mode", "t7d", "--dependencies", "$A2HLAB_WS", "--out", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output only; original T7d build log not recreated retroactively."}`
@@ -5107,7 +5107,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [NetworkInfo.java](<../../../sources/api-implementations/FZ-007-tagsoup/t7d-overrides/java/android/net/NetworkInfo.java>) `9c5846f6117c465f710c0f018e90484e5923a3e88871051ad5c0dee5252be66b`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["9c5846f6117c465f710c0f018e90484e5923a3e88871051ad5c0dee5252be66b"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["9c5846f6117c465f710c0f018e90484e5923a3e88871051ad5c0dee5252be66b"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-007](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-007-tagsoup/build.py>)
 - build_command: `{"status": "EXISTING_BUILD_ENTRY", "argv": ["python3", "sources/api-implementations/FZ-007-tagsoup/build.py", "--mode", "t7d", "--dependencies", "$A2HLAB_WS", "--out", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output only; original T7d build log not recreated retroactively."}`
@@ -5128,7 +5128,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [NetworkCapabilities.java](<../../../sources/api-implementations/FZ-007-tagsoup/t7d-overrides/java/android/net/NetworkCapabilities.java>) `79a09903a146753a681c7a7010ddf48920d4db80e1865fc9f42d9c6d0ff57d82`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["79a09903a146753a681c7a7010ddf48920d4db80e1865fc9f42d9c6d0ff57d82"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["79a09903a146753a681c7a7010ddf48920d4db80e1865fc9f42d9c6d0ff57d82"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-007](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-007-tagsoup/build.py>)
 - build_command: `{"status": "EXISTING_BUILD_ENTRY", "argv": ["python3", "sources/api-implementations/FZ-007-tagsoup/build.py", "--mode", "t7d", "--dependencies", "$A2HLAB_WS", "--out", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output only; original T7d build log not recreated retroactively."}`
@@ -5149,15 +5149,20 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [AppWidgetFetcher.java](<../../../sources/api-implementations/FZ-006/full-jar/source-tree/bms/src/adapter/framework/activity/java/AppWidgetFetcher.java>) `2468225508867299182ce8012e7ee13be54231a7f5b94874bf56e5109449d125`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["2468225508867299182ce8012e7ee13be54231a7f5b94874bf56e5109449d125"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
-- recipe: [java-reviewed-JAVA-006](<recipes/recipes.json>)
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2468225508867299182ce8012e7ee13be54231a7f5b94874bf56e5109449d125"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-FZ-006-full-jar](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-006/full-jar/build.py>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}], "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
+- build_command: `{"status": "ACTUAL_OVERLAY_BUILD_ENTRY_STRICT_HISTORICAL_REJECTION", "argv": ["python3", "sources/api-implementations/FZ-006/full-jar/build.py", "--inputs", "$PINNED_JAR_INPUTS", "--out", "$FRESH_OUT", "--run"], "working_directory": "$REPO", "notes": "Fetch/verify the14 pinned jars first. Full overlay producer, not full baseline source build. Actual producer rc0; strict wrapper rc2 for changed DEX/whole JAR.", "preparation_argv": ["python3", "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "--out", "$PINNED_JAR_INPUTS"]}`
+- build_dependencies: `{"status": "PINNED_COMPLETE_OVERLAY_INPUTS_BASELINE_BINARY", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}, {"path": "sources/api-implementations/FZ-006/full-jar/dependencies.lock.json", "sha256": "01cf9e0ce51ffea06c1a4a9a6660f8391b3def30f0890b27eb3acaccf379fc00"}, {"path": "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "sha256": "5e33e79fee15ec7cd67f406291b86651bb261941b78f4a7135dbe847495abd0b"}], "gaps": ["Baseline JAR remains binary input; original historical stdout/stderr not recovered."]}`
+- [dependencies.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/dependencies.lock.json>)
+- [fetch-dependencies.py](<../../../sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py>)
 - [sources.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/sources.lock.json>)
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "ACTUAL_MEMBER_SOURCE_REVIEW_NOT_BUILD_RECEIPT", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs/java-source-resolutions.json", "sha256": "8c26facba9132ad9362458e94295cc2fa9127bd8cee3482f6658b8e978e9cb15"}], "executed_this_audit": false, "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
-- [java-source-resolutions.json](<../frozen-inputs/java-source-resolutions.json>)
+- build_outputs: `{"status": "NEW_BUILD_AND_HISTORICAL_DISTINCT", "entries": [{"name": "historical_jar", "sha256": "381110a675fb543b6ad4102c8fc721fcb5673bc0da8644ececd1bab1ca60bec8"}, {"name": "new_jar", "sha256": "7a681e264de0b9b3c0446729a7b784690731990f510fa8cd24895f5dec3b2e22"}, {"name": "historical_classes.dex", "sha256": "58c7122918ccc306bf4898eeff4edada852cc92b3e3791a203720fb79bc57f44"}, {"name": "new_classes.dex", "sha256": "9f8d5fc5b4f9d81afb1a5b359ec9d96fac6702079db1824e1ef0120b4cc0bb45"}]}`
+- build_verification: `{"status": "PRODUCER_RC0_WRAPPER_RC2_DEX_AND_JAR_DIFFER", "producer_rc": 0, "wrapper_rc": 2, "historical_dex_equal": false, "historical_jar_equal": false, "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/full-jar/results.json", "sha256": "de769139ec407efbdbe7a003cbc189441fb060cb8860351e242d0303a620ccd7"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/build-comparison.json", "sha256": "b7b888821f687afd1be45bf49b9622ca064b410be0afaee986f3a57813f49deb"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/FZ-006-execution.json", "sha256": "691e510a621864f5321abff50fcba34c4172f0f49a0235e578179b01321f34ca"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/archive-verification.json", "sha256": "a7cd28fee8ab9c82a98eb1b576d9dec9694959151ce4754e0c1439e4f7b1a435"}], "executed_this_audit": false, "gaps": ["Byte-difference root cause unknown; no equivalent frozen artifact or recovered historical build logs asserted."]}`
+- [FZ-006-execution.json](<../full-jar/FZ-006-execution.json>)
+- [archive-verification.json](<../full-jar/archive-verification.json>)
+- [build-comparison.json](<../full-jar/build-comparison.json>)
+- [results.json](<../full-jar/results.json>)
 - 交付缺口：The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.；Compatibility stub/fallback API scope is unchanged.
 
 ### JAVA-007 source/build
@@ -5165,15 +5170,20 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [VibratorFetcher.java](<../../../sources/api-implementations/FZ-006/full-jar/source-tree/bms/src/adapter/framework/activity/java/VibratorFetcher.java>) `11bfe963d4ca47b10bce7777fcdffbd0e23d68ad766bdf3a7fe0c935f3455dd3`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["11bfe963d4ca47b10bce7777fcdffbd0e23d68ad766bdf3a7fe0c935f3455dd3"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
-- recipe: [java-reviewed-JAVA-007](<recipes/recipes.json>)
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["11bfe963d4ca47b10bce7777fcdffbd0e23d68ad766bdf3a7fe0c935f3455dd3"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-FZ-006-full-jar](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-006/full-jar/build.py>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}], "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
+- build_command: `{"status": "ACTUAL_OVERLAY_BUILD_ENTRY_STRICT_HISTORICAL_REJECTION", "argv": ["python3", "sources/api-implementations/FZ-006/full-jar/build.py", "--inputs", "$PINNED_JAR_INPUTS", "--out", "$FRESH_OUT", "--run"], "working_directory": "$REPO", "notes": "Fetch/verify the14 pinned jars first. Full overlay producer, not full baseline source build. Actual producer rc0; strict wrapper rc2 for changed DEX/whole JAR.", "preparation_argv": ["python3", "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "--out", "$PINNED_JAR_INPUTS"]}`
+- build_dependencies: `{"status": "PINNED_COMPLETE_OVERLAY_INPUTS_BASELINE_BINARY", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}, {"path": "sources/api-implementations/FZ-006/full-jar/dependencies.lock.json", "sha256": "01cf9e0ce51ffea06c1a4a9a6660f8391b3def30f0890b27eb3acaccf379fc00"}, {"path": "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "sha256": "5e33e79fee15ec7cd67f406291b86651bb261941b78f4a7135dbe847495abd0b"}], "gaps": ["Baseline JAR remains binary input; original historical stdout/stderr not recovered."]}`
+- [dependencies.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/dependencies.lock.json>)
+- [fetch-dependencies.py](<../../../sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py>)
 - [sources.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/sources.lock.json>)
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "ACTUAL_MEMBER_SOURCE_REVIEW_NOT_BUILD_RECEIPT", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs/java-source-resolutions.json", "sha256": "8c26facba9132ad9362458e94295cc2fa9127bd8cee3482f6658b8e978e9cb15"}], "executed_this_audit": false, "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
-- [java-source-resolutions.json](<../frozen-inputs/java-source-resolutions.json>)
+- build_outputs: `{"status": "NEW_BUILD_AND_HISTORICAL_DISTINCT", "entries": [{"name": "historical_jar", "sha256": "381110a675fb543b6ad4102c8fc721fcb5673bc0da8644ececd1bab1ca60bec8"}, {"name": "new_jar", "sha256": "7a681e264de0b9b3c0446729a7b784690731990f510fa8cd24895f5dec3b2e22"}, {"name": "historical_classes.dex", "sha256": "58c7122918ccc306bf4898eeff4edada852cc92b3e3791a203720fb79bc57f44"}, {"name": "new_classes.dex", "sha256": "9f8d5fc5b4f9d81afb1a5b359ec9d96fac6702079db1824e1ef0120b4cc0bb45"}]}`
+- build_verification: `{"status": "PRODUCER_RC0_WRAPPER_RC2_DEX_AND_JAR_DIFFER", "producer_rc": 0, "wrapper_rc": 2, "historical_dex_equal": false, "historical_jar_equal": false, "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/full-jar/results.json", "sha256": "de769139ec407efbdbe7a003cbc189441fb060cb8860351e242d0303a620ccd7"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/build-comparison.json", "sha256": "b7b888821f687afd1be45bf49b9622ca064b410be0afaee986f3a57813f49deb"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/FZ-006-execution.json", "sha256": "691e510a621864f5321abff50fcba34c4172f0f49a0235e578179b01321f34ca"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/archive-verification.json", "sha256": "a7cd28fee8ab9c82a98eb1b576d9dec9694959151ce4754e0c1439e4f7b1a435"}], "executed_this_audit": false, "gaps": ["Byte-difference root cause unknown; no equivalent frozen artifact or recovered historical build logs asserted."]}`
+- [FZ-006-execution.json](<../full-jar/FZ-006-execution.json>)
+- [archive-verification.json](<../full-jar/archive-verification.json>)
+- [build-comparison.json](<../full-jar/build-comparison.json>)
+- [results.json](<../full-jar/results.json>)
 - 交付缺口：The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.；Compatibility stub/fallback API scope is unchanged.
 
 ### JAVA-008 source/build
@@ -5181,15 +5191,20 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [WifiFetcher.java](<../../../sources/api-implementations/FZ-006/full-jar/source-tree/bms/src/adapter/framework/activity/java/WifiFetcher.java>) `b13b5118a08fb1d9371e289b10691b49e5e2ca5160edac3502ae00f3285ce0b5`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["b13b5118a08fb1d9371e289b10691b49e5e2ca5160edac3502ae00f3285ce0b5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
-- recipe: [java-reviewed-JAVA-008](<recipes/recipes.json>)
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["b13b5118a08fb1d9371e289b10691b49e5e2ca5160edac3502ae00f3285ce0b5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-FZ-006-full-jar](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-006/full-jar/build.py>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}], "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
+- build_command: `{"status": "ACTUAL_OVERLAY_BUILD_ENTRY_STRICT_HISTORICAL_REJECTION", "argv": ["python3", "sources/api-implementations/FZ-006/full-jar/build.py", "--inputs", "$PINNED_JAR_INPUTS", "--out", "$FRESH_OUT", "--run"], "working_directory": "$REPO", "notes": "Fetch/verify the14 pinned jars first. Full overlay producer, not full baseline source build. Actual producer rc0; strict wrapper rc2 for changed DEX/whole JAR.", "preparation_argv": ["python3", "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "--out", "$PINNED_JAR_INPUTS"]}`
+- build_dependencies: `{"status": "PINNED_COMPLETE_OVERLAY_INPUTS_BASELINE_BINARY", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}, {"path": "sources/api-implementations/FZ-006/full-jar/dependencies.lock.json", "sha256": "01cf9e0ce51ffea06c1a4a9a6660f8391b3def30f0890b27eb3acaccf379fc00"}, {"path": "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "sha256": "5e33e79fee15ec7cd67f406291b86651bb261941b78f4a7135dbe847495abd0b"}], "gaps": ["Baseline JAR remains binary input; original historical stdout/stderr not recovered."]}`
+- [dependencies.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/dependencies.lock.json>)
+- [fetch-dependencies.py](<../../../sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py>)
 - [sources.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/sources.lock.json>)
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "ACTUAL_MEMBER_SOURCE_REVIEW_NOT_BUILD_RECEIPT", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs/java-source-resolutions.json", "sha256": "8c26facba9132ad9362458e94295cc2fa9127bd8cee3482f6658b8e978e9cb15"}], "executed_this_audit": false, "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
-- [java-source-resolutions.json](<../frozen-inputs/java-source-resolutions.json>)
+- build_outputs: `{"status": "NEW_BUILD_AND_HISTORICAL_DISTINCT", "entries": [{"name": "historical_jar", "sha256": "381110a675fb543b6ad4102c8fc721fcb5673bc0da8644ececd1bab1ca60bec8"}, {"name": "new_jar", "sha256": "7a681e264de0b9b3c0446729a7b784690731990f510fa8cd24895f5dec3b2e22"}, {"name": "historical_classes.dex", "sha256": "58c7122918ccc306bf4898eeff4edada852cc92b3e3791a203720fb79bc57f44"}, {"name": "new_classes.dex", "sha256": "9f8d5fc5b4f9d81afb1a5b359ec9d96fac6702079db1824e1ef0120b4cc0bb45"}]}`
+- build_verification: `{"status": "PRODUCER_RC0_WRAPPER_RC2_DEX_AND_JAR_DIFFER", "producer_rc": 0, "wrapper_rc": 2, "historical_dex_equal": false, "historical_jar_equal": false, "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/full-jar/results.json", "sha256": "de769139ec407efbdbe7a003cbc189441fb060cb8860351e242d0303a620ccd7"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/build-comparison.json", "sha256": "b7b888821f687afd1be45bf49b9622ca064b410be0afaee986f3a57813f49deb"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/FZ-006-execution.json", "sha256": "691e510a621864f5321abff50fcba34c4172f0f49a0235e578179b01321f34ca"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/archive-verification.json", "sha256": "a7cd28fee8ab9c82a98eb1b576d9dec9694959151ce4754e0c1439e4f7b1a435"}], "executed_this_audit": false, "gaps": ["Byte-difference root cause unknown; no equivalent frozen artifact or recovered historical build logs asserted."]}`
+- [FZ-006-execution.json](<../full-jar/FZ-006-execution.json>)
+- [archive-verification.json](<../full-jar/archive-verification.json>)
+- [build-comparison.json](<../full-jar/build-comparison.json>)
+- [results.json](<../full-jar/results.json>)
 - 交付缺口：The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.；Compatibility stub/fallback API scope is unchanged.
 
 ### JAVA-009 source/build
@@ -5197,15 +5212,20 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [OnlineConnectivityManager.java](<../../../sources/api-implementations/FZ-006/full-jar/source-tree/bms/src/adapter/framework/activity/java/OnlineConnectivityManager.java>) `57f18067565ab96ec400ed9583ee4c3781524f1cb6cc4e2825f4bea8c4a968f9`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["57f18067565ab96ec400ed9583ee4c3781524f1cb6cc4e2825f4bea8c4a968f9"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
-- recipe: [java-reviewed-JAVA-009](<recipes/recipes.json>)
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["57f18067565ab96ec400ed9583ee4c3781524f1cb6cc4e2825f4bea8c4a968f9"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-FZ-006-full-jar](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-006/full-jar/build.py>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}], "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
+- build_command: `{"status": "ACTUAL_OVERLAY_BUILD_ENTRY_STRICT_HISTORICAL_REJECTION", "argv": ["python3", "sources/api-implementations/FZ-006/full-jar/build.py", "--inputs", "$PINNED_JAR_INPUTS", "--out", "$FRESH_OUT", "--run"], "working_directory": "$REPO", "notes": "Fetch/verify the14 pinned jars first. Full overlay producer, not full baseline source build. Actual producer rc0; strict wrapper rc2 for changed DEX/whole JAR.", "preparation_argv": ["python3", "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "--out", "$PINNED_JAR_INPUTS"]}`
+- build_dependencies: `{"status": "PINNED_COMPLETE_OVERLAY_INPUTS_BASELINE_BINARY", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}, {"path": "sources/api-implementations/FZ-006/full-jar/dependencies.lock.json", "sha256": "01cf9e0ce51ffea06c1a4a9a6660f8391b3def30f0890b27eb3acaccf379fc00"}, {"path": "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "sha256": "5e33e79fee15ec7cd67f406291b86651bb261941b78f4a7135dbe847495abd0b"}], "gaps": ["Baseline JAR remains binary input; original historical stdout/stderr not recovered."]}`
+- [dependencies.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/dependencies.lock.json>)
+- [fetch-dependencies.py](<../../../sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py>)
 - [sources.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/sources.lock.json>)
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "ACTUAL_MEMBER_SOURCE_REVIEW_NOT_BUILD_RECEIPT", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs/java-source-resolutions.json", "sha256": "8c26facba9132ad9362458e94295cc2fa9127bd8cee3482f6658b8e978e9cb15"}], "executed_this_audit": false, "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
-- [java-source-resolutions.json](<../frozen-inputs/java-source-resolutions.json>)
+- build_outputs: `{"status": "NEW_BUILD_AND_HISTORICAL_DISTINCT", "entries": [{"name": "historical_jar", "sha256": "381110a675fb543b6ad4102c8fc721fcb5673bc0da8644ececd1bab1ca60bec8"}, {"name": "new_jar", "sha256": "7a681e264de0b9b3c0446729a7b784690731990f510fa8cd24895f5dec3b2e22"}, {"name": "historical_classes.dex", "sha256": "58c7122918ccc306bf4898eeff4edada852cc92b3e3791a203720fb79bc57f44"}, {"name": "new_classes.dex", "sha256": "9f8d5fc5b4f9d81afb1a5b359ec9d96fac6702079db1824e1ef0120b4cc0bb45"}]}`
+- build_verification: `{"status": "PRODUCER_RC0_WRAPPER_RC2_DEX_AND_JAR_DIFFER", "producer_rc": 0, "wrapper_rc": 2, "historical_dex_equal": false, "historical_jar_equal": false, "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/full-jar/results.json", "sha256": "de769139ec407efbdbe7a003cbc189441fb060cb8860351e242d0303a620ccd7"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/build-comparison.json", "sha256": "b7b888821f687afd1be45bf49b9622ca064b410be0afaee986f3a57813f49deb"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/FZ-006-execution.json", "sha256": "691e510a621864f5321abff50fcba34c4172f0f49a0235e578179b01321f34ca"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/archive-verification.json", "sha256": "a7cd28fee8ab9c82a98eb1b576d9dec9694959151ce4754e0c1439e4f7b1a435"}], "executed_this_audit": false, "gaps": ["Byte-difference root cause unknown; no equivalent frozen artifact or recovered historical build logs asserted."]}`
+- [FZ-006-execution.json](<../full-jar/FZ-006-execution.json>)
+- [archive-verification.json](<../full-jar/archive-verification.json>)
+- [build-comparison.json](<../full-jar/build-comparison.json>)
+- [results.json](<../full-jar/results.json>)
 - 交付缺口：The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.；Compatibility stub/fallback API scope is unchanged.
 
 ### JAVA-010 source/build
@@ -5213,15 +5233,20 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [WlSearchService.java](<../../../sources/api-implementations/FZ-006/full-jar/source-tree/bms/src/adapter/framework/activity/java/WlSearchService.java>) `2193de98908d85a6ef9c7ff8b1d3d3f421e8f6a1414f96a13ecd5c679c7b3054`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["2193de98908d85a6ef9c7ff8b1d3d3f421e8f6a1414f96a13ecd5c679c7b3054"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
-- recipe: [java-reviewed-JAVA-010](<recipes/recipes.json>)
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2193de98908d85a6ef9c7ff8b1d3d3f421e8f6a1414f96a13ecd5c679c7b3054"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-FZ-006-full-jar](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-006/full-jar/build.py>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}], "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
+- build_command: `{"status": "ACTUAL_OVERLAY_BUILD_ENTRY_STRICT_HISTORICAL_REJECTION", "argv": ["python3", "sources/api-implementations/FZ-006/full-jar/build.py", "--inputs", "$PINNED_JAR_INPUTS", "--out", "$FRESH_OUT", "--run"], "working_directory": "$REPO", "notes": "Fetch/verify the14 pinned jars first. Full overlay producer, not full baseline source build. Actual producer rc0; strict wrapper rc2 for changed DEX/whole JAR.", "preparation_argv": ["python3", "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "--out", "$PINNED_JAR_INPUTS"]}`
+- build_dependencies: `{"status": "PINNED_COMPLETE_OVERLAY_INPUTS_BASELINE_BINARY", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}, {"path": "sources/api-implementations/FZ-006/full-jar/dependencies.lock.json", "sha256": "01cf9e0ce51ffea06c1a4a9a6660f8391b3def30f0890b27eb3acaccf379fc00"}, {"path": "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "sha256": "5e33e79fee15ec7cd67f406291b86651bb261941b78f4a7135dbe847495abd0b"}], "gaps": ["Baseline JAR remains binary input; original historical stdout/stderr not recovered."]}`
+- [dependencies.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/dependencies.lock.json>)
+- [fetch-dependencies.py](<../../../sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py>)
 - [sources.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/sources.lock.json>)
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "ACTUAL_MEMBER_SOURCE_REVIEW_NOT_BUILD_RECEIPT", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs/java-source-resolutions.json", "sha256": "8c26facba9132ad9362458e94295cc2fa9127bd8cee3482f6658b8e978e9cb15"}], "executed_this_audit": false, "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
-- [java-source-resolutions.json](<../frozen-inputs/java-source-resolutions.json>)
+- build_outputs: `{"status": "NEW_BUILD_AND_HISTORICAL_DISTINCT", "entries": [{"name": "historical_jar", "sha256": "381110a675fb543b6ad4102c8fc721fcb5673bc0da8644ececd1bab1ca60bec8"}, {"name": "new_jar", "sha256": "7a681e264de0b9b3c0446729a7b784690731990f510fa8cd24895f5dec3b2e22"}, {"name": "historical_classes.dex", "sha256": "58c7122918ccc306bf4898eeff4edada852cc92b3e3791a203720fb79bc57f44"}, {"name": "new_classes.dex", "sha256": "9f8d5fc5b4f9d81afb1a5b359ec9d96fac6702079db1824e1ef0120b4cc0bb45"}]}`
+- build_verification: `{"status": "PRODUCER_RC0_WRAPPER_RC2_DEX_AND_JAR_DIFFER", "producer_rc": 0, "wrapper_rc": 2, "historical_dex_equal": false, "historical_jar_equal": false, "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/full-jar/results.json", "sha256": "de769139ec407efbdbe7a003cbc189441fb060cb8860351e242d0303a620ccd7"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/build-comparison.json", "sha256": "b7b888821f687afd1be45bf49b9622ca064b410be0afaee986f3a57813f49deb"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/FZ-006-execution.json", "sha256": "691e510a621864f5321abff50fcba34c4172f0f49a0235e578179b01321f34ca"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/archive-verification.json", "sha256": "a7cd28fee8ab9c82a98eb1b576d9dec9694959151ce4754e0c1439e4f7b1a435"}], "executed_this_audit": false, "gaps": ["Byte-difference root cause unknown; no equivalent frozen artifact or recovered historical build logs asserted."]}`
+- [FZ-006-execution.json](<../full-jar/FZ-006-execution.json>)
+- [archive-verification.json](<../full-jar/archive-verification.json>)
+- [build-comparison.json](<../full-jar/build-comparison.json>)
+- [results.json](<../full-jar/results.json>)
 - 交付缺口：The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.；Compatibility stub/fallback API scope is unchanged.
 
 ### JAVA-011 source/build
@@ -5229,15 +5254,20 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [WlWallpaperColors.java](<../../../sources/api-implementations/FZ-006/full-jar/source-tree/bms/src/adapter/framework/activity/java/WlWallpaperColors.java>) `63506e9780d1b4cf7e4f489acc04424e15087262d7e3b90ba8e3c727159bc412`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["63506e9780d1b4cf7e4f489acc04424e15087262d7e3b90ba8e3c727159bc412"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
-- recipe: [java-reviewed-JAVA-011](<recipes/recipes.json>)
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["63506e9780d1b4cf7e4f489acc04424e15087262d7e3b90ba8e3c727159bc412"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-FZ-006-full-jar](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-006/full-jar/build.py>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}], "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
+- build_command: `{"status": "ACTUAL_OVERLAY_BUILD_ENTRY_STRICT_HISTORICAL_REJECTION", "argv": ["python3", "sources/api-implementations/FZ-006/full-jar/build.py", "--inputs", "$PINNED_JAR_INPUTS", "--out", "$FRESH_OUT", "--run"], "working_directory": "$REPO", "notes": "Fetch/verify the14 pinned jars first. Full overlay producer, not full baseline source build. Actual producer rc0; strict wrapper rc2 for changed DEX/whole JAR.", "preparation_argv": ["python3", "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "--out", "$PINNED_JAR_INPUTS"]}`
+- build_dependencies: `{"status": "PINNED_COMPLETE_OVERLAY_INPUTS_BASELINE_BINARY", "entries": [{"path": "sources/api-implementations/FZ-006/full-jar/sources.lock.json", "sha256": "45f8002072a08436148d60fca5e1f87b7b0b83f671c7a0a89c379d291e53c1a3"}, {"path": "sources/api-implementations/FZ-006/full-jar/dependencies.lock.json", "sha256": "01cf9e0ce51ffea06c1a4a9a6660f8391b3def30f0890b27eb3acaccf379fc00"}, {"path": "sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py", "sha256": "5e33e79fee15ec7cd67f406291b86651bb261941b78f4a7135dbe847495abd0b"}], "gaps": ["Baseline JAR remains binary input; original historical stdout/stderr not recovered."]}`
+- [dependencies.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/dependencies.lock.json>)
+- [fetch-dependencies.py](<../../../sources/api-implementations/FZ-006/full-jar/fetch-dependencies.py>)
 - [sources.lock.json](<../../../sources/api-implementations/FZ-006/full-jar/sources.lock.json>)
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "ACTUAL_MEMBER_SOURCE_REVIEW_NOT_BUILD_RECEIPT", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs/java-source-resolutions.json", "sha256": "8c26facba9132ad9362458e94295cc2fa9127bd8cee3482f6658b8e978e9cb15"}], "executed_this_audit": false, "gaps": ["The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.", "Compatibility stub/fallback API scope is unchanged."]}`
-- [java-source-resolutions.json](<../frozen-inputs/java-source-resolutions.json>)
+- build_outputs: `{"status": "NEW_BUILD_AND_HISTORICAL_DISTINCT", "entries": [{"name": "historical_jar", "sha256": "381110a675fb543b6ad4102c8fc721fcb5673bc0da8644ececd1bab1ca60bec8"}, {"name": "new_jar", "sha256": "7a681e264de0b9b3c0446729a7b784690731990f510fa8cd24895f5dec3b2e22"}, {"name": "historical_classes.dex", "sha256": "58c7122918ccc306bf4898eeff4edada852cc92b3e3791a203720fb79bc57f44"}, {"name": "new_classes.dex", "sha256": "9f8d5fc5b4f9d81afb1a5b359ec9d96fac6702079db1824e1ef0120b4cc0bb45"}]}`
+- build_verification: `{"status": "PRODUCER_RC0_WRAPPER_RC2_DEX_AND_JAR_DIFFER", "producer_rc": 0, "wrapper_rc": 2, "historical_dex_equal": false, "historical_jar_equal": false, "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/full-jar/results.json", "sha256": "de769139ec407efbdbe7a003cbc189441fb060cb8860351e242d0303a620ccd7"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/build-comparison.json", "sha256": "b7b888821f687afd1be45bf49b9622ca064b410be0afaee986f3a57813f49deb"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/FZ-006-execution.json", "sha256": "691e510a621864f5321abff50fcba34c4172f0f49a0235e578179b01321f34ca"}, {"path": "benchmark/2026-10-14-api-source-delivery/full-jar/archive-verification.json", "sha256": "a7cd28fee8ab9c82a98eb1b576d9dec9694959151ce4754e0c1439e4f7b1a435"}], "executed_this_audit": false, "gaps": ["Byte-difference root cause unknown; no equivalent frozen artifact or recovered historical build logs asserted."]}`
+- [FZ-006-execution.json](<../full-jar/FZ-006-execution.json>)
+- [archive-verification.json](<../full-jar/archive-verification.json>)
+- [build-comparison.json](<../full-jar/build-comparison.json>)
+- [results.json](<../full-jar/results.json>)
 - 交付缺口：The new full producer exits zero, but its DEX differs from the historical pinned output; strict wrapper rejects it. No deployed equivalent claim.；Compatibility stub/fallback API scope is unchanged.
 
 ### JAVA-012 source/build
@@ -5246,7 +5276,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [UserManagerProjectionProxy.java](<../../../bms/src/adapter/framework/activity/java/UserManagerProjectionProxy.java>) `70a63c4740a522f1db32dc4dde68f220c37c2561d4ef5999194b323303dd6c3f`；role=source_candidate
 - [B7BindFixes.java](<../../../bms/src/adapter/framework/activity/java/B7BindFixes.java>) `9f255c186094063a561759f722accfa9cabf602086f038b4db30b7a2a7334106`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["70a63c4740a522f1db32dc4dde68f220c37c2561d4ef5999194b323303dd6c3f", "9f255c186094063a561759f722accfa9cabf602086f038b4db30b7a2a7334106"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["70a63c4740a522f1db32dc4dde68f220c37c2561d4ef5999194b323303dd6c3f", "9f255c186094063a561759f722accfa9cabf602086f038b4db30b7a2a7334106"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-012](<recipes/recipes.json>)
 - build entry: [build.py](<../../2026-09-29-bms-link-entry-walls/build.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
@@ -5261,7 +5291,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [B7BindFixes.java](<../../../bms/src/adapter/framework/activity/java/B7BindFixes.java>) `9f255c186094063a561759f722accfa9cabf602086f038b4db30b7a2a7334106`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["9f255c186094063a561759f722accfa9cabf602086f038b4db30b7a2a7334106"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["9f255c186094063a561759f722accfa9cabf602086f038b4db30b7a2a7334106"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-013](<recipes/recipes.json>)
 - build entry: [build.py](<../../2026-09-29-bms-link-entry-walls/build.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
@@ -5276,7 +5306,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [LaunchActivityAliasProjection.java](<../../../bms/src/adapter/framework/activity/java/LaunchActivityAliasProjection.java>) `a8f24cbc61f72385faae546c611c91cb33ec6093d3eddd7ba1c874762061d609`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["a8f24cbc61f72385faae546c611c91cb33ec6093d3eddd7ba1c874762061d609"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["a8f24cbc61f72385faae546c611c91cb33ec6093d3eddd7ba1c874762061d609"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-014](<recipes/recipes.json>)
 - build entry: [build.py](<../../2026-09-29-bms-link-entry-walls/build.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
@@ -5291,7 +5321,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [apk_installer.cpp](<../../../sources/api-implementations/FZ-001/archive-source/adapter/framework/package-manager/jni/apk_installer.cpp>) `45438280ccc14d676c32e0d9596e0470aa618ce2e4ee08ed43b43f7a8ad92d5a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["45438280ccc14d676c32e0d9596e0470aa618ce2e4ee08ed43b43f7a8ad92d5a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["45438280ccc14d676c32e0d9596e0470aa618ce2e4ee08ed43b43f7a8ad92d5a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-015](<recipes/recipes.json>)
 - build entry: [build.sh](<../../../sources/api-implementations/FZ-001/build.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
@@ -5306,7 +5336,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [TelephonyFetcher.java](<../../2026-10-01-u11-jar/src/TelephonyFetcher.java>) `4e9e7358568f10137aa7cd78c45efa882cc4ec4f514e5d069dd787109b55703e`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["4e9e7358568f10137aa7cd78c45efa882cc4ec4f514e5d069dd787109b55703e"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["4e9e7358568f10137aa7cd78c45efa882cc4ec4f514e5d069dd787109b55703e"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-d71a896c3bda](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5320,7 +5350,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [WlSSLEngine.java](<../../2026-10-01-u11-jar/src/WlSSLEngine.java>) `8516d602bf74dbe4d85eabbecac64302cfba18e26c990e0eff5188cc2f6b7989`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["8516d602bf74dbe4d85eabbecac64302cfba18e26c990e0eff5188cc2f6b7989"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["8516d602bf74dbe4d85eabbecac64302cfba18e26c990e0eff5188cc2f6b7989"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-fe0a4edfbc37](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5334,7 +5364,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [AppContentProviders.java](<../../2026-10-01-u11-jar/src/AppContentProviders.java>) `ecd98575914d8a41275e43535d7a7f7d8760d0be815283e2fae1132cc8361dfb`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["ecd98575914d8a41275e43535d7a7f7d8760d0be815283e2fae1132cc8361dfb"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["ecd98575914d8a41275e43535d7a7f7d8760d0be815283e2fae1132cc8361dfb"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-c01b840ff400](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5348,7 +5378,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 - [KeystoreBoardProbe.java](<../../2026-10-01-u11-jar/src/KeystoreBoardProbe.java>) `a586dcaee3d214e7143d5f465f260d198334c2b35cc24d8f04d62e45fde1a54a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["a586dcaee3d214e7143d5f465f260d198334c2b35cc24d8f04d62e45fde1a54a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["a586dcaee3d214e7143d5f465f260d198334c2b35cc24d8f04d62e45fde1a54a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-cdfe094be7a1](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5362,7 +5392,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [ProviderAuthorityRefs.java](<../../2026-10-02-u12-java-walls/src-runtime/adapter/activity/ProviderAuthorityRefs.java>) `7301380458abd05abfb20d08bb5469989bba59faf911e6126a93ed37b87b1891`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["7301380458abd05abfb20d08bb5469989bba59faf911e6126a93ed37b87b1891"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["7301380458abd05abfb20d08bb5469989bba59faf911e6126a93ed37b87b1891"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-c216d786d80f](<recipes/recipes.json>)
 - build entry: [build_u12r2.py](<../../2026-10-02-u12-java-walls/build_u12r2.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -5378,7 +5408,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [TelephonyServiceNames.java](<../../2026-10-02-u12-java-walls/src-runtime/adapter/activity/TelephonyServiceNames.java>) `b14ab13c9905c20e577e5122dbdec6c0f21926ac2e864c44fd88573f8498259c`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["b14ab13c9905c20e577e5122dbdec6c0f21926ac2e864c44fd88573f8498259c"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["b14ab13c9905c20e577e5122dbdec6c0f21926ac2e864c44fd88573f8498259c"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-fe292b622fb7](<recipes/recipes.json>)
 - build entry: [build_u12r2.py](<../../2026-10-02-u12-java-walls/build_u12r2.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -5394,7 +5424,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [TelephonyFrameworkInitializer.java](<../../2026-10-02-u12-java-walls/stubs/donor/android/telephony/TelephonyFrameworkInitializer.java>) `4ab5d2fa87829e0027f701b5e9a859d5cc7b6f228da344bcc63cce0021c1d3bf`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-36ce60ac10fd](<recipes/recipes.json>)
 - build entry: [build_u12r2.py](<../../2026-10-02-u12-java-walls/build_u12r2.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -5410,7 +5440,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [Predicate.java](<../../2026-10-02-u12-java-walls/stubs/donor/com/android/internal/util/Predicate.java>) `b42b6e36e4ede9f6e03f7db0955814eadeede974a8d754150e9430e8424f3f99`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-36ce60ac10fd](<recipes/recipes.json>)
 - build entry: [build_u12r2.py](<../../2026-10-02-u12-java-walls/build_u12r2.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -5426,7 +5456,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [GcmDefaultNonce.java](<../../2026-10-02-u12-java-walls/src-runtime/adapter/core/GcmDefaultNonce.java>) `5e6352389d84cdf1fd5a184abb3d6be57d2a08bcb1ae559dd5b20358d4443ab9`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-67a8c85566aa](<recipes/recipes.json>)
 - build entry: [build_u12r2.py](<../../2026-10-02-u12-java-walls/build_u12r2.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -5442,7 +5472,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [GcmDefaultNonce.java](<../../2026-10-03-u13-jar-v3-gcm/src/adapter/core/GcmDefaultNonce.java>) `793ee91486b17211a82b12e9398212e00b002b9d6ca331fbbd33321e7c3ed921`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["793ee91486b17211a82b12e9398212e00b002b9d6ca331fbbd33321e7c3ed921"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["793ee91486b17211a82b12e9398212e00b002b9d6ca331fbbd33321e7c3ed921"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-d6fc2bef7771](<recipes/recipes.json>)
 - build entry: [build_v3.py](<../../2026-10-03-u13-jar-v3-gcm/build_v3.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -5458,7 +5488,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [WlSettingsProvider.java](<../../2026-10-02-u12-jar-plan/src/adapter/activity/WlSettingsProvider.java>) `fd1d70e2739b948655ad5533c52299792404a17cf5bbccc859716f1b95036bba`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["fd1d70e2739b948655ad5533c52299792404a17cf5bbccc859716f1b95036bba"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["fd1d70e2739b948655ad5533c52299792404a17cf5bbccc859716f1b95036bba"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-dab03b93f809](<recipes/recipes.json>)
 - build entry: [build_u12.py](<../../2026-10-02-u12-jar-plan/build_u12.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -5473,7 +5503,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [OwnProviderLocal.java](<../../2026-10-02-own-provider-local/src/OwnProviderLocal.java>) `fafc3e37761b8ef288a4fd3451c126d1f25f71b81769669839d6d47c1525bd02`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["fafc3e37761b8ef288a4fd3451c126d1f25f71b81769669839d6d47c1525bd02"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["fafc3e37761b8ef288a4fd3451c126d1f25f71b81769669839d6d47c1525bd02"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-027](<recipes/recipes.json>)
 - build entry: [build_u12.py](<../../2026-10-02-u12-jar-plan/build_u12.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
@@ -5488,7 +5518,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [J10eViewDelegate.java](<../../2026-10-01-j10-freeze-draft/split/sources/J10eViewDelegate.java>) `aa48184ace8cdfbc60c3c374e65386aff7e6c08433859b399b189ff343d3d2fd`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["aa48184ace8cdfbc60c3c374e65386aff7e6c08433859b399b189ff343d3d2fd"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["aa48184ace8cdfbc60c3c374e65386aff7e6c08433859b399b189ff343d3d2fd"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-028](<recipes/recipes.json>)
 - build entry: [build_j10e.py](<../../2026-10-01-j10e-jar/build/build_j10e.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
@@ -5502,7 +5532,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-015056402424](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5515,7 +5545,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-ced81351cd5d](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5532,7 +5562,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 - [OhNWebProvider.java](<../../2026-10-03-m2-route-a-java/src/org/westlake/webview/OhNWebProvider.java>) `c9ea0a75ccbe472dc2598d7f9e291342007070fdf629d6a4b36652ee12380997`；role=source_candidate
 - [NativeNWebBackend.java](<../../2026-10-03-m2-route-a-java/src/org/westlake/webview/NativeNWebBackend.java>) `796ba66a73c6c34eac658fb901fd65e3ef1e09ac86aa85ca3c32ea7ba5980a6c`；role=source_candidate
 - [OhNWebController.java](<../../2026-10-03-m2-route-a-java/src/org/westlake/webview/OhNWebController.java>) `bba180200476fc3b3a921cedb058923f8e2ee512ea751b439be1b0800e3603ef`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["796ba66a73c6c34eac658fb901fd65e3ef1e09ac86aa85ca3c32ea7ba5980a6c", "adb3c8182f10c7bc34cdd366ee31bd845a4e066378a903151bc01b902c9ea204", "bba180200476fc3b3a921cedb058923f8e2ee512ea751b439be1b0800e3603ef", "c9ea0a75ccbe472dc2598d7f9e291342007070fdf629d6a4b36652ee12380997"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["796ba66a73c6c34eac658fb901fd65e3ef1e09ac86aa85ca3c32ea7ba5980a6c", "adb3c8182f10c7bc34cdd366ee31bd845a4e066378a903151bc01b902c9ea204", "bba180200476fc3b3a921cedb058923f8e2ee512ea751b439be1b0800e3603ef", "c9ea0a75ccbe472dc2598d7f9e291342007070fdf629d6a4b36652ee12380997"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-031](<recipes/recipes.json>)
 - build entry: [build.sh](<../../2026-10-03-m2-route-a-java/recipe/build.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
@@ -5546,7 +5576,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-7250244430fe](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5560,7 +5590,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [J10dTheme.smali](<../../2026-10-01-j10d-jar/smali-evidence/J10dTheme.smali>) `25f10e5327efc1ec9ae6feb7bf3bac634a5638f7ce28a091b462745b09738d29`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["25f10e5327efc1ec9ae6feb7bf3bac634a5638f7ce28a091b462745b09738d29"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["25f10e5327efc1ec9ae6feb7bf3bac634a5638f7ce28a091b462745b09738d29"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-033](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Executable implementation exists as smali; original Java producer recipe still not located. Do not call this a complete source rebuild closure."]}`
@@ -5574,7 +5604,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [build_v1.py](<../../2026-10-03-u15-jar-v1/build_v1.py>) `f7e0fdb55167c77779abe7d4957981c722df1ea33c7bccb4c46e435fdb60aa3d`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f7e0fdb55167c77779abe7d4957981c722df1ea33c7bccb4c46e435fdb60aa3d"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f7e0fdb55167c77779abe7d4957981c722df1ea33c7bccb4c46e435fdb60aa3d"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-034](<recipes/recipes.json>)
 - build entry: [build_v1.py](<../../2026-10-03-u15-jar-v1/build_v1.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
@@ -5589,7 +5619,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [InProcessBindOrder.java](<../../2026-10-03-u14-jar-v1/src/adapter/activity/InProcessBindOrder.java>) `0b073543a31ff040ef85ccec324cbc1740ae877887158226d94c29e7ee467bdd`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["0b073543a31ff040ef85ccec324cbc1740ae877887158226d94c29e7ee467bdd"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["0b073543a31ff040ef85ccec324cbc1740ae877887158226d94c29e7ee467bdd"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-0c8d1c00c7d1](<recipes/recipes.json>)
 - build entry: [build_v1.py](<../../2026-10-03-u14-jar-v1/build_v1.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -5604,7 +5634,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [TrampolineFinishOrder.java](<../../2026-10-03-u15-jar-v1/src/adapter/activity/TrampolineFinishOrder.java>) `1bb66fd9966e9485f1ee6d0ccd037c02d78c53e89e396fbfb2b2bf7c4d864050`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["1bb66fd9966e9485f1ee6d0ccd037c02d78c53e89e396fbfb2b2bf7c4d864050"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["1bb66fd9966e9485f1ee6d0ccd037c02d78c53e89e396fbfb2b2bf7c4d864050"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-de633ca8911a](<recipes/recipes.json>)
 - build entry: [build_v1.py](<../../2026-10-03-u15-jar-v1/build_v1.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -5619,7 +5649,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [apk_network_permissions.h](<../../../sources/api-implementations/FZ-001/archive-source/adapter/framework/package-manager/jni/apk_network_permissions.h>) `c68cfac4657cf24c0d1b3b0dac4d751aaddd9e7df39754524147ab066d94c16c`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["c68cfac4657cf24c0d1b3b0dac4d751aaddd9e7df39754524147ab066d94c16c"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["c68cfac4657cf24c0d1b3b0dac4d751aaddd9e7df39754524147ab066d94c16c"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-11803592e8e7](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5633,7 +5663,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [base_bundle_installer.cpp](<../../../sources/api-implementations/FZ-001/archive-source/base_bundle_installer.cpp>) `9acb43858dd43c4d1898f2e2a7ef4b960e2719c9c17f758b7826512c9989225a`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["9acb43858dd43c4d1898f2e2a7ef4b960e2719c9c17f758b7826512c9989225a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["9acb43858dd43c4d1898f2e2a7ef4b960e2719c9c17f758b7826512c9989225a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-001](<recipes/recipes.json>)
 - build entry: [build.sh](<../../../sources/api-implementations/FZ-001/build.sh>)
 - build_command: `{"status": "DELIVERED_BUILD_ENTRY_NOT_EXECUTED_THIS_AUDIT", "argv": ["bash", "sources/api-implementations/FZ-001/build.sh"], "environment": {"OH_ROOT": "$OH_ROOT", "AOSP_ROOT": "$AOSP_ROOT", "BUILD_OUT": "$BUILD_OUT"}, "working_directory": "$REPO", "notes": "Read BUILD.md and supply exact pinned dependencies in a fresh scratch tree. API-unit build is not whole production artifact reproduction."}`
@@ -5654,7 +5684,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [base_bundle_installer.cpp](<../../../sources/api-implementations/FZ-001/archive-source/base_bundle_installer.cpp>) `9acb43858dd43c4d1898f2e2a7ef4b960e2719c9c17f758b7826512c9989225a`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["9acb43858dd43c4d1898f2e2a7ef4b960e2719c9c17f758b7826512c9989225a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["9acb43858dd43c4d1898f2e2a7ef4b960e2719c9c17f758b7826512c9989225a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-001](<recipes/recipes.json>)
 - build entry: [build.sh](<../../../sources/api-implementations/FZ-001/build.sh>)
 - build_command: `{"status": "DELIVERED_BUILD_ENTRY_NOT_EXECUTED_THIS_AUDIT", "argv": ["bash", "sources/api-implementations/FZ-001/build.sh"], "environment": {"OH_ROOT": "$OH_ROOT", "AOSP_ROOT": "$AOSP_ROOT", "BUILD_OUT": "$BUILD_OUT"}, "working_directory": "$REPO", "notes": "Read BUILD.md and supply exact pinned dependencies in a fresh scratch tree. API-unit build is not whole production artifact reproduction."}`
@@ -5675,7 +5705,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [arsc_resolver.cpp](<../../../sources/api-implementations/FZ-001/archive-source/adapter/framework/package-manager/jni/arsc_resolver.cpp>) `22b27c2e88b9763fc4843df3a17edf2941729084c8a6f97e8c4a7322490c7bb1`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["22b27c2e88b9763fc4843df3a17edf2941729084c8a6f97e8c4a7322490c7bb1"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["22b27c2e88b9763fc4843df3a17edf2941729084c8a6f97e8c4a7322490c7bb1"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-040](<recipes/recipes.json>)
 - build entry: [build.sh](<../../../sources/api-implementations/FZ-001/build.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
@@ -5690,7 +5720,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [adaptive_icon.cpp](<../../../sources/api-implementations/FZ-001/archive-source/adapter/framework/package-manager/jni/adaptive_icon.cpp>) `b6fbd545fabc114288b124f1f44160afc5209247c0355701ab33de799caa8fab`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["b6fbd545fabc114288b124f1f44160afc5209247c0355701ab33de799caa8fab"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["b6fbd545fabc114288b124f1f44160afc5209247c0355701ab33de799caa8fab"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-041](<recipes/recipes.json>)
 - build entry: [build.sh](<../../../sources/api-implementations/FZ-001/build.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
@@ -5702,22 +5732,29 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 ### JAVA-042 source/build
 
-UNKNOWN_IMPLEMENTATION_SOURCE
+MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
-- recipe: [unknown-6f9fb816c8db](<recipes/recipes.json>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "unknown", "evidence": [{"path": "benchmark/2026-10-10-spare-installer-unify/provenance.json", "sha256": "2e2b09648fe04855d843051fb9093013f9624a1c8505df98041a3a44a8795dd8", "supports": "具体实现/边界/历史版本；本轮只读，未重判截图"}], "executed_this_audit": false, "gaps": ["No paired actual producing receipt established."]}`
-- [provenance.json](<../../2026-10-10-spare-installer-unify/provenance.json>)
-- 交付缺口：Actual implementation revision-to-source full SHA binding remains partial/unknown; current file presence alone is insufficient.
+- [base_bundle_installer.cpp](<../../../sources/api-implementations/JAVA-042-installer/source/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/base_bundle_installer.cpp>) `b8d3c90a8083737d4de3c5fbd5f1670032a1090b48d63b0b46e031aa3f17c90a`；role=source_candidate
+- [installd_operator.cpp](<../../../sources/api-implementations/JAVA-042-installer/source/foundation/bundlemanager/bundle_framework/services/bundlemgr/src/installd/installd_operator.cpp>) `7a6b2101c2fcf54a19ac2d1c9879cec144dd25b1d00d4b668b7fa17545b1d607`；role=source_candidate
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["7a6b2101c2fcf54a19ac2d1c9879cec144dd25b1d00d4b668b7fa17545b1d607", "b8d3c90a8083737d4de3c5fbd5f1670032a1090b48d63b0b46e031aa3f17c90a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-JAVA-042](<recipes/recipes.json>)
+- build entry: [build.py](<../../../sources/api-implementations/JAVA-042-installer/build.py>)
+- build_command: `{"status": "DELIVERED_ISOLATED_NINJA_ENTRY", "argv": ["python3", "sources/api-implementations/JAVA-042-installer/build.py", "--archive", "$PINNED_ARCHIVE", "--out", "$NEW_SCRATCH"], "preflight_argv": ["python3", "sources/api-implementations/JAVA-042-installer/build.py", "--archive", "$PINNED_ARCHIVE", "--check-only"], "working_directory": "$REPO", "notes": "Verifies archive/toolchain, recompiles actual source, preserves raw logs; not executed by this mapper."}`
+- build_dependencies: `{"entries": [{"path": "sources/api-implementations/JAVA-042-installer/source.lock.json", "sha256": "c0e57db05af7896a29a5d82b875f854eed44216256e448298ac28b001d382890", "git_blob": "6a998ae0445c3eda9d0f8cab93742ff4628bca49", "master_tracked": false, "master_blob": null, "member_evidence": []}, {"path": "sources/api-implementations/JAVA-042-installer/historical/build_narrow.sh.original.txt", "sha256": "efd9e986c45fd2c4e5b8e8b0146a3f2d37a93274d307aea3f2319046cf16a006", "git_blob": "78ab4c243ddb7b1921468b6312aded1d1d639c2b", "master_tracked": false, "master_blob": null, "member_evidence": []}, {"path": "sources/api-implementations/JAVA-042-installer/patches/0001-reuse-manifest-1mib.patch", "sha256": "f6c35fb7b388f7f7f92e6e429cea26b8fe2748f24dc174b215d6a90827c65111", "git_blob": "69827444e78687ffa4ac10c72ff5557cd4222133", "master_tracked": false, "master_blob": null, "member_evidence": []}, {"path": "sources/api-implementations/JAVA-042-installer/patches/0002-native-exact-payloads.patch", "sha256": "94aa389364cb9c4f1857b08b4ed63cd531affebfbc71637f57a718612669afc0", "git_blob": "a4f16d687731d47a6cd75b39773148a50ae14317", "master_tracked": false, "master_blob": null, "member_evidence": []}], "status": "LOCKED_ARCHIVE_OR_EXTERNAL_BINARY_INPUTS", "gaps": ["Exact frozen archive candidate inputs; mutable unpacked source rejected.", "Original full kit archive SHA and source pins checked successfully. Native build not executed; no fresh historical byte-equivalence claim."]}`
+- [build_narrow.sh.original.txt](<../../../sources/api-implementations/JAVA-042-installer/historical/build_narrow.sh.original.txt>)
+- [0001-reuse-manifest-1mib.patch](<../../../sources/api-implementations/JAVA-042-installer/patches/0001-reuse-manifest-1mib.patch>)
+- [0002-native-exact-payloads.patch](<../../../sources/api-implementations/JAVA-042-installer/patches/0002-native-exact-payloads.patch>)
+- [source.lock.json](<../../../sources/api-implementations/JAVA-042-installer/source.lock.json>)
+- build_outputs: `{"status": "unknown_new_build", "entries": []}`
+- build_verification: `{"status": "SOURCE_REVIEW_ONLY_NO_NEW_BUILD", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs-v2/remaining-api-resolutions.json", "sha256": "e8aa0f647a3248a5f5eea18b5bc194657c39dce8f5fc5ca27fa11cd4f4a25a71"}], "executed_this_audit": false, "gaps": ["Exact frozen archive candidate inputs; mutable unpacked source rejected.", "Original full kit archive SHA and source pins checked successfully. Native build not executed; no fresh historical byte-equivalence claim."]}`
+- [remaining-api-resolutions.json](<../frozen-inputs-v2/remaining-api-resolutions.json>)
+- 交付缺口：Exact frozen archive candidate inputs; mutable unpacked source rejected.；Original full kit archive SHA and source pins checked successfully. Native build not executed; no fresh historical byte-equivalence claim.
 
 ### JAVA-043 source/build
 
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f28df8a795aa](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5729,23 +5766,27 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 ### JAVA-044 source/build
 
-UNKNOWN_IMPLEMENTATION_SOURCE
+MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
-- recipe: [unknown-f28df8a795aa](<recipes/recipes.json>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "unknown", "evidence": [{"path": "benchmark/2026-10-01-system-service-gap/provided-services.md", "sha256": "a234155bc216e38633ceb22614123e79725503f60143a5f15c499a09f3d72d41", "supports": "具体实现/边界/历史版本；本轮只读，未重判截图"}, {"path": "benchmark/2026-10-01-system-service-gap/README.md", "sha256": "cf4e2c528dff6d601e7acb430cf1909fb19679f97adb6227ac4fcbf24d43844c", "supports": "修正旧源码快照与实际部署jar不一致的限制"}], "executed_this_audit": false, "gaps": ["No paired actual producing receipt established."]}`
-- [README.md](<../../2026-10-01-system-service-gap/README.md>)
-- [provided-services.md](<../../2026-10-01-system-service-gap/provided-services.md>)
-- 交付缺口：Actual implementation revision-to-source full SHA binding remains partial/unknown; current file presence alone is insufficient.
+- [LocalServiceBinders.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/core/java/LocalServiceBinders.java>) `2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f`；role=source_candidate
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-JAVA-044](<recipes/recipes.json>)
+- build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
+- build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
+- build_dependencies: `{"status": "unknown", "entries": [{"path": "sources/api-implementations/source-build-host/java-source.lock.json", "sha256": "e9000872a56a65134f745a278d7c79121cd1cfc81a6282e46cf9a069895207dd"}], "gaps": ["External locked JDK/AOSP and prerequisite class artifacts are required."]}`
+- [java-source.lock.json](<../../../sources/api-implementations/source-build-host/java-source.lock.json>)
+- build_outputs: `{"status": "NEW_CLASS_JAR_NOT_DEPLOYABLE", "entries": [{"name": "westlake-unrelocated.classes.jar", "bytes": 394578, "sha256": "f89e80256cbb174ef9ea81b10defc868892b7ad8cf7a230c0af0a17128511c6f"}]}`
+- build_verification: `{"status": "NEW_ADAPTER_JAVA_BUILD_PASS", "exit_code": 0, "source_input_count": 83, "owned_class_count": 160, "historical_r84_r89_output_equivalent": false, "deployable_runtime_jar": false, "new_dex_or_boot_image_built": false, "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs-v2/remaining-api-resolutions.json", "sha256": "e8aa0f647a3248a5f5eea18b5bc194657c39dce8f5fc5ca27fa11cd4f4a25a71"}, {"path": "benchmark/2026-10-14-api-source-delivery/review/later-java-build-01.json", "sha256": "46d914637afcd4bb4a823db6086acc481c32403554d9eed983156a70ca1f6a0a"}, {"path": "benchmark/2026-10-14-api-source-delivery/review/later-java-build-01-archive.json", "sha256": "405a4fdb68d18d1e827ab0e9b80e1965a34229218c6e17a0de4578b73d155ac6"}], "executed_this_audit": false, "gaps": ["New javac class JAR is not the historical runtime JAR/DEX or deployment identity.", "Process-local compatibility behavior; no OH clipboard sharing or complete UiMode service claim.", "Later source snapshot is buildable; historical 2026-10-01 deployment-source identity remains unproven."]}`
+- [remaining-api-resolutions.json](<../frozen-inputs-v2/remaining-api-resolutions.json>)
+- [later-java-build-01-archive.json](<../review/later-java-build-01-archive.json>)
+- [later-java-build-01.json](<../review/later-java-build-01.json>)
+- 交付缺口：Process-local compatibility behavior; no OH clipboard sharing or complete UiMode service claim.；Later source snapshot is buildable; historical 2026-10-01 deployment-source identity remains unproven.
 
 ### JAVA-045 source/build
 
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f28df8a795aa](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5759,7 +5800,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f28df8a795aa](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5771,23 +5812,27 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 ### JAVA-047 source/build
 
-UNKNOWN_IMPLEMENTATION_SOURCE
+MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
-- recipe: [unknown-f28df8a795aa](<recipes/recipes.json>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "unknown", "evidence": [{"path": "benchmark/2026-10-01-system-service-gap/provided-services.md", "sha256": "a234155bc216e38633ceb22614123e79725503f60143a5f15c499a09f3d72d41", "supports": "具体实现/边界/历史版本；本轮只读，未重判截图"}, {"path": "benchmark/2026-10-01-system-service-gap/README.md", "sha256": "cf4e2c528dff6d601e7acb430cf1909fb19679f97adb6227ac4fcbf24d43844c", "supports": "修正旧源码快照与实际部署jar不一致的限制"}], "executed_this_audit": false, "gaps": ["No paired actual producing receipt established."]}`
-- [README.md](<../../2026-10-01-system-service-gap/README.md>)
-- [provided-services.md](<../../2026-10-01-system-service-gap/provided-services.md>)
-- 交付缺口：Actual implementation revision-to-source full SHA binding remains partial/unknown; current file presence alone is insufficient.
+- [LocalServiceBinders.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/core/java/LocalServiceBinders.java>) `2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f`；role=source_candidate
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-JAVA-047](<recipes/recipes.json>)
+- build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
+- build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
+- build_dependencies: `{"status": "unknown", "entries": [{"path": "sources/api-implementations/source-build-host/java-source.lock.json", "sha256": "e9000872a56a65134f745a278d7c79121cd1cfc81a6282e46cf9a069895207dd"}], "gaps": ["External locked JDK/AOSP and prerequisite class artifacts are required."]}`
+- [java-source.lock.json](<../../../sources/api-implementations/source-build-host/java-source.lock.json>)
+- build_outputs: `{"status": "NEW_CLASS_JAR_NOT_DEPLOYABLE", "entries": [{"name": "westlake-unrelocated.classes.jar", "bytes": 394578, "sha256": "f89e80256cbb174ef9ea81b10defc868892b7ad8cf7a230c0af0a17128511c6f"}]}`
+- build_verification: `{"status": "NEW_ADAPTER_JAVA_BUILD_PASS", "exit_code": 0, "source_input_count": 83, "owned_class_count": 160, "historical_r84_r89_output_equivalent": false, "deployable_runtime_jar": false, "new_dex_or_boot_image_built": false, "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs-v2/remaining-api-resolutions.json", "sha256": "e8aa0f647a3248a5f5eea18b5bc194657c39dce8f5fc5ca27fa11cd4f4a25a71"}, {"path": "benchmark/2026-10-14-api-source-delivery/review/later-java-build-01.json", "sha256": "46d914637afcd4bb4a823db6086acc481c32403554d9eed983156a70ca1f6a0a"}, {"path": "benchmark/2026-10-14-api-source-delivery/review/later-java-build-01-archive.json", "sha256": "405a4fdb68d18d1e827ab0e9b80e1965a34229218c6e17a0de4578b73d155ac6"}], "executed_this_audit": false, "gaps": ["New javac class JAR is not the historical runtime JAR/DEX or deployment identity.", "Process-local compatibility behavior; no OH clipboard sharing or complete UiMode service claim.", "Later source snapshot is buildable; historical 2026-10-01 deployment-source identity remains unproven."]}`
+- [remaining-api-resolutions.json](<../frozen-inputs-v2/remaining-api-resolutions.json>)
+- [later-java-build-01-archive.json](<../review/later-java-build-01-archive.json>)
+- [later-java-build-01.json](<../review/later-java-build-01.json>)
+- 交付缺口：Process-local compatibility behavior; no OH clipboard sharing or complete UiMode service claim.；Later source snapshot is buildable; historical 2026-10-01 deployment-source identity remains unproven.
 
 ### JAVA-048 source/build
 
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f28df8a795aa](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5801,7 +5846,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f28df8a795aa](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5815,7 +5860,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f28df8a795aa](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5829,7 +5874,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3f898a58e832](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5841,7 +5886,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3f898a58e832](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5853,7 +5898,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3f898a58e832](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5865,7 +5910,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3f898a58e832](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5877,7 +5922,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3f898a58e832](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5889,7 +5934,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3f898a58e832](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5901,7 +5946,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3f898a58e832](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5913,7 +5958,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5925,7 +5970,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5937,7 +5982,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5949,7 +5994,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5961,7 +6006,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5973,7 +6018,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5985,7 +6030,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -5997,7 +6042,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6009,7 +6054,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6021,7 +6066,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6033,7 +6078,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6045,7 +6090,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6057,7 +6102,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6069,7 +6114,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-dd86d45401a4](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6082,7 +6127,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [ConnectivityManager.java](<../../2026-10-02-android-net-stub-members/donor/android/net/ConnectivityManager.java>) `245d35c0855aedbb498d29f99b5a44a1da13cbfae49f0c9c95b8defe08950ce5`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["245d35c0855aedbb498d29f99b5a44a1da13cbfae49f0c9c95b8defe08950ce5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["245d35c0855aedbb498d29f99b5a44a1da13cbfae49f0c9c95b8defe08950ce5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-713519eba9f6](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6098,7 +6143,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [InetAddresses.java](<../../2026-10-02-android-net-stub-members/donor/android/net/InetAddresses.java>) `ecbcdc924b0422d2ff9489fbfa05db111cf396b69f8afac36b6fe1a70bffd6c5`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["ecbcdc924b0422d2ff9489fbfa05db111cf396b69f8afac36b6fe1a70bffd6c5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["ecbcdc924b0422d2ff9489fbfa05db111cf396b69f8afac36b6fe1a70bffd6c5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-e886f03cc0eb](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6114,7 +6159,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [IpPrefix.java](<../../2026-10-02-android-net-stub-members/donor/android/net/IpPrefix.java>) `70abfc4eb9b0fab89d45441dd6cdcc3c77cde875e132cf0c7afd3b398679e820`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["70abfc4eb9b0fab89d45441dd6cdcc3c77cde875e132cf0c7afd3b398679e820"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["70abfc4eb9b0fab89d45441dd6cdcc3c77cde875e132cf0c7afd3b398679e820"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-79b2bff195e6](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6130,7 +6175,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [LinkAddress.java](<../../2026-10-02-android-net-stub-members/donor/android/net/LinkAddress.java>) `364dec577131ea5cfcdb3e453198a2246406be7bdf1b7e47798f74d0265d5d71`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["364dec577131ea5cfcdb3e453198a2246406be7bdf1b7e47798f74d0265d5d71"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["364dec577131ea5cfcdb3e453198a2246406be7bdf1b7e47798f74d0265d5d71"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-196ef21b60bc](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6146,7 +6191,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [LinkProperties.java](<../../2026-10-02-android-net-stub-members/donor/android/net/LinkProperties.java>) `89cebf30f3072bb7c2d278c13e35119e55dfe23617ee08fa60ceadd540021e93`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["89cebf30f3072bb7c2d278c13e35119e55dfe23617ee08fa60ceadd540021e93"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["89cebf30f3072bb7c2d278c13e35119e55dfe23617ee08fa60ceadd540021e93"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-cdc2a898c73e](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6162,7 +6207,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [Network.java](<../../2026-10-02-android-net-stub-members/donor/android/net/Network.java>) `a6dce9bbbb3e84c0baf216f50eefedec6da97422be65e6db74c27150d4370ed4`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["a6dce9bbbb3e84c0baf216f50eefedec6da97422be65e6db74c27150d4370ed4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["a6dce9bbbb3e84c0baf216f50eefedec6da97422be65e6db74c27150d4370ed4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-9fd9a422d0e1](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6178,7 +6223,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [NetworkCapabilities.java](<../../2026-10-02-android-net-stub-members/donor/android/net/NetworkCapabilities.java>) `3beb996ca5383705276f55fbf003b248aded7a1f8d5ec6c1c43dcdd470fe1b54`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["3beb996ca5383705276f55fbf003b248aded7a1f8d5ec6c1c43dcdd470fe1b54"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["3beb996ca5383705276f55fbf003b248aded7a1f8d5ec6c1c43dcdd470fe1b54"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-aedecaa0a2e8](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6194,7 +6239,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [NetworkInfo.java](<../../2026-10-02-android-net-stub-members/donor/android/net/NetworkInfo.java>) `f04ad8c7353c59336ce61930442e7845a84e58356e518707d44d9f58692926e4`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f04ad8c7353c59336ce61930442e7845a84e58356e518707d44d9f58692926e4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f04ad8c7353c59336ce61930442e7845a84e58356e518707d44d9f58692926e4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-49ab397ecbef](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6210,7 +6255,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [NetworkInfo.java](<../../2026-10-02-android-net-stub-members/donor/android/net/NetworkInfo.java>) `f04ad8c7353c59336ce61930442e7845a84e58356e518707d44d9f58692926e4`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f04ad8c7353c59336ce61930442e7845a84e58356e518707d44d9f58692926e4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f04ad8c7353c59336ce61930442e7845a84e58356e518707d44d9f58692926e4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-49ab397ecbef](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6226,7 +6271,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [RouteInfo.java](<../../2026-10-02-android-net-stub-members/donor/android/net/RouteInfo.java>) `2ca1cc0a8b0ada39d296356adbb5f280c09807da626cae92940328cbbb32e4f0`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["2ca1cc0a8b0ada39d296356adbb5f280c09807da626cae92940328cbbb32e4f0"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2ca1cc0a8b0ada39d296356adbb5f280c09807da626cae92940328cbbb32e4f0"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-0a05fc932065](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6242,7 +6287,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [TrafficStats.java](<../../2026-10-02-android-net-stub-members/donor/android/net/TrafficStats.java>) `67f92ea75f14d770016b8aff6e325df320db19b3ecb7534e20a87488b77f4786`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["67f92ea75f14d770016b8aff6e325df320db19b3ecb7534e20a87488b77f4786"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["67f92ea75f14d770016b8aff6e325df320db19b3ecb7534e20a87488b77f4786"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-6a2389c09768](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6258,7 +6303,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [ScanResult.java](<../../2026-10-02-android-net-stub-members/donor/android/net/wifi/ScanResult.java>) `f876d0b07b03e690b980cdd6162dc06b0ae201756b8ee36fd9b6d088095e530d`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f876d0b07b03e690b980cdd6162dc06b0ae201756b8ee36fd9b6d088095e530d"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f876d0b07b03e690b980cdd6162dc06b0ae201756b8ee36fd9b6d088095e530d"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-d8348399469d](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6274,7 +6319,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [WifiInfo.java](<../../2026-10-02-android-net-stub-members/donor/android/net/wifi/WifiInfo.java>) `eb4d246a604e244c0527190698ffa2318f67b522b54dfef817a64b7e3ba5e3bc`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["eb4d246a604e244c0527190698ffa2318f67b522b54dfef817a64b7e3ba5e3bc"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["eb4d246a604e244c0527190698ffa2318f67b522b54dfef817a64b7e3ba5e3bc"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-0eb22cf8e6f0](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6290,7 +6335,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [WifiManager.java](<../../2026-10-02-android-net-stub-members/donor/android/net/wifi/WifiManager.java>) `282daa1c8b20ef25d177f26d7060d75c20e2244a2b7453d4faf7cabcf305356a`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["282daa1c8b20ef25d177f26d7060d75c20e2244a2b7453d4faf7cabcf305356a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["282daa1c8b20ef25d177f26d7060d75c20e2244a2b7453d4faf7cabcf305356a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-8ecb47f3ea57](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6306,7 +6351,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [NetworkRequest.java](<../../2026-10-02-android-net-stub-members/donor/android/net/NetworkRequest.java>) `7f616f13b6fbe4c2e1cd1bdd72cd4fc26e65ed2364b40da8139295f770c93903`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["7f616f13b6fbe4c2e1cd1bdd72cd4fc26e65ed2364b40da8139295f770c93903"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["7f616f13b6fbe4c2e1cd1bdd72cd4fc26e65ed2364b40da8139295f770c93903"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-5ab5b4e0e556](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6322,7 +6367,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [NetworkRequest.java](<../../2026-10-02-android-net-stub-members/donor/android/net/NetworkRequest.java>) `7f616f13b6fbe4c2e1cd1bdd72cd4fc26e65ed2364b40da8139295f770c93903`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["7f616f13b6fbe4c2e1cd1bdd72cd4fc26e65ed2364b40da8139295f770c93903"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["7f616f13b6fbe4c2e1cd1bdd72cd4fc26e65ed2364b40da8139295f770c93903"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-5ab5b4e0e556](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6338,7 +6383,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [WifiConfiguration.java](<../../2026-10-02-android-net-stub-members/donor/android/net/wifi/WifiConfiguration.java>) `18664c80905db42eb6a25ec9f64fea014b5b98dcc8f54e8405becf0cf245dce0`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["18664c80905db42eb6a25ec9f64fea014b5b98dcc8f54e8405becf0cf245dce0"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["18664c80905db42eb6a25ec9f64fea014b5b98dcc8f54e8405becf0cf245dce0"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-4493fcb374aa](<recipes/recipes.json>)
 - build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6351,23 +6396,43 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 ### JAVA-089 source/build
 
-UNKNOWN_IMPLEMENTATION_SOURCE
+MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
-- recipe: [unknown-423f43badd82](<recipes/recipes.json>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "unknown", "evidence": [{"path": "benchmark/2026-10-02-android-net-stub-members/README.md", "sha256": "ddac1392df77f58b09de036a0d9f3cfc5960c725dc7609f1529f40dbac977a0a", "supports": "来源具体方法、实现边界及历史/候选证据"}], "executed_this_audit": false, "gaps": ["No paired actual producing receipt established."]}`
-- [README.md](<../../2026-10-02-android-net-stub-members/README.md>)
-- 交付缺口：Actual implementation revision-to-source full SHA binding remains partial/unknown; current file presence alone is insufficient.
+- [ConnectivityManager.java](<../../2026-10-02-android-net-stub-members/donor/android/net/ConnectivityManager.java>) `245d35c0855aedbb498d29f99b5a44a1da13cbfae49f0c9c95b8defe08950ce5`；role=source_candidate
+- [DhcpInfo.java](<../../2026-10-02-android-net-stub-members/donor/android/net/DhcpInfo.java>) `2bb5fe7f0924925f767c72e84e39318d0e13211ed38652ac171e8dab3adf262b`；role=source_candidate
+- [InetAddresses.java](<../../2026-10-02-android-net-stub-members/donor/android/net/InetAddresses.java>) `ecbcdc924b0422d2ff9489fbfa05db111cf396b69f8afac36b6fe1a70bffd6c5`；role=source_candidate
+- [IpPrefix.java](<../../2026-10-02-android-net-stub-members/donor/android/net/IpPrefix.java>) `70abfc4eb9b0fab89d45441dd6cdcc3c77cde875e132cf0c7afd3b398679e820`；role=source_candidate
+- [LinkAddress.java](<../../2026-10-02-android-net-stub-members/donor/android/net/LinkAddress.java>) `364dec577131ea5cfcdb3e453198a2246406be7bdf1b7e47798f74d0265d5d71`；role=source_candidate
+- [LinkProperties.java](<../../2026-10-02-android-net-stub-members/donor/android/net/LinkProperties.java>) `89cebf30f3072bb7c2d278c13e35119e55dfe23617ee08fa60ceadd540021e93`；role=source_candidate
+- [Network.java](<../../2026-10-02-android-net-stub-members/donor/android/net/Network.java>) `a6dce9bbbb3e84c0baf216f50eefedec6da97422be65e6db74c27150d4370ed4`；role=source_candidate
+- [NetworkCapabilities.java](<../../2026-10-02-android-net-stub-members/donor/android/net/NetworkCapabilities.java>) `3beb996ca5383705276f55fbf003b248aded7a1f8d5ec6c1c43dcdd470fe1b54`；role=source_candidate
+- [NetworkInfo.java](<../../2026-10-02-android-net-stub-members/donor/android/net/NetworkInfo.java>) `f04ad8c7353c59336ce61930442e7845a84e58356e518707d44d9f58692926e4`；role=source_candidate
+- [NetworkRequest.java](<../../2026-10-02-android-net-stub-members/donor/android/net/NetworkRequest.java>) `7f616f13b6fbe4c2e1cd1bdd72cd4fc26e65ed2364b40da8139295f770c93903`；role=source_candidate
+- [RouteInfo.java](<../../2026-10-02-android-net-stub-members/donor/android/net/RouteInfo.java>) `2ca1cc0a8b0ada39d296356adbb5f280c09807da626cae92940328cbbb32e4f0`；role=source_candidate
+- [TrafficStats.java](<../../2026-10-02-android-net-stub-members/donor/android/net/TrafficStats.java>) `67f92ea75f14d770016b8aff6e325df320db19b3ecb7534e20a87488b77f4786`；role=source_candidate
+- [ScanResult.java](<../../2026-10-02-android-net-stub-members/donor/android/net/wifi/ScanResult.java>) `f876d0b07b03e690b980cdd6162dc06b0ae201756b8ee36fd9b6d088095e530d`；role=source_candidate
+- [SupplicantState.java](<../../2026-10-02-android-net-stub-members/donor/android/net/wifi/SupplicantState.java>) `42b92a46f343de019c5516fed24fdd63608de61bc63189cd15646e4734e3ceac`；role=source_candidate
+- [WifiConfiguration.java](<../../2026-10-02-android-net-stub-members/donor/android/net/wifi/WifiConfiguration.java>) `18664c80905db42eb6a25ec9f64fea014b5b98dcc8f54e8405becf0cf245dce0`；role=source_candidate
+- [WifiInfo.java](<../../2026-10-02-android-net-stub-members/donor/android/net/wifi/WifiInfo.java>) `eb4d246a604e244c0527190698ffa2318f67b522b54dfef817a64b7e3ba5e3bc`；role=source_candidate
+- [WifiManager.java](<../../2026-10-02-android-net-stub-members/donor/android/net/wifi/WifiManager.java>) `282daa1c8b20ef25d177f26d7060d75c20e2244a2b7453d4faf7cabcf305356a`；role=source_candidate
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["18664c80905db42eb6a25ec9f64fea014b5b98dcc8f54e8405becf0cf245dce0", "245d35c0855aedbb498d29f99b5a44a1da13cbfae49f0c9c95b8defe08950ce5", "282daa1c8b20ef25d177f26d7060d75c20e2244a2b7453d4faf7cabcf305356a", "2bb5fe7f0924925f767c72e84e39318d0e13211ed38652ac171e8dab3adf262b", "2ca1cc0a8b0ada39d296356adbb5f280c09807da626cae92940328cbbb32e4f0", "364dec577131ea5cfcdb3e453198a2246406be7bdf1b7e47798f74d0265d5d71", "3beb996ca5383705276f55fbf003b248aded7a1f8d5ec6c1c43dcdd470fe1b54", "42b92a46f343de019c5516fed24fdd63608de61bc63189cd15646e4734e3ceac", "67f92ea75f14d770016b8aff6e325df320db19b3ecb7534e20a87488b77f4786", "70abfc4eb9b0fab89d45441dd6cdcc3c77cde875e132cf0c7afd3b398679e820", "7f616f13b6fbe4c2e1cd1bdd72cd4fc26e65ed2364b40da8139295f770c93903", "89cebf30f3072bb7c2d278c13e35119e55dfe23617ee08fa60ceadd540021e93", "a6dce9bbbb3e84c0baf216f50eefedec6da97422be65e6db74c27150d4370ed4", "eb4d246a604e244c0527190698ffa2318f67b522b54dfef817a64b7e3ba5e3bc", "ecbcdc924b0422d2ff9489fbfa05db111cf396b69f8afac36b6fe1a70bffd6c5", "f04ad8c7353c59336ce61930442e7845a84e58356e518707d44d9f58692926e4", "f876d0b07b03e690b980cdd6162dc06b0ae201756b8ee36fd9b6d088095e530d"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-JAVA-089](<recipes/recipes.json>)
+- build entry: [build_patch.sh](<../../2026-10-02-android-net-stub-members/build_patch.sh>)
+- build_command: `{"status": "ORIGINAL_SCRIPT_INTERFACE", "argv": ["bash", "benchmark/2026-10-02-android-net-stub-members/build_patch.sh", "$PINNED_DEPLOYED_STUB_JAR", "$FRESH_OUT_JAR", "$FRESH_WORK"], "working_directory": "$REPO", "notes": "Preserves resources and allowlisted stub signatures. Requires original Android34/D8/smali dependency pins; no build executed."}`
+- build_dependencies: `{"entries": [{"path": "benchmark/2026-10-02-android-net-stub-members/merge_smali.py", "sha256": "a4648de274edb9f61cfc35766b4a78bf6e69dbb1f0ec40121c07255ffb372cdc", "git_blob": "17492a2c83ff50cbbaba9b3d71b942f39380f6f1", "master_tracked": true, "master_blob": "17492a2c83ff50cbbaba9b3d71b942f39380f6f1", "member_evidence": []}, {"path": "benchmark/2026-10-02-android-net-stub-members/gates/receipt-on-2f365a75.json", "sha256": "74db8bf34f669ef8f6f168a6219dca6a36441eac409dab14aa61be3d28461d1e", "git_blob": "252a168061beec79448e502e4f34f53db8c5c398", "master_tracked": true, "master_blob": "252a168061beec79448e502e4f34f53db8c5c398", "member_evidence": []}], "status": "PARTIAL_EXTERNAL_PREREQUISITES_PRESERVED", "gaps": ["Only allowlisted signature dependency/new classes, preserving stub semantics.", "Existing historical gate receipts are evidence; no fresh artifact rebuild performed."]}`
+- [receipt-on-2f365a75.json](<../../2026-10-02-android-net-stub-members/gates/receipt-on-2f365a75.json>)
+- [merge_smali.py](<../../2026-10-02-android-net-stub-members/merge_smali.py>)
+- build_outputs: `{"status": "unknown_new_build", "entries": []}`
+- build_verification: `{"status": "SOURCE_REVIEW_ONLY_NO_NEW_BUILD", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs-v2/remaining-api-resolutions.json", "sha256": "e8aa0f647a3248a5f5eea18b5bc194657c39dce8f5fc5ca27fa11cd4f4a25a71"}], "executed_this_audit": false, "gaps": ["Only allowlisted signature dependency/new classes, preserving stub semantics.", "Existing historical gate receipts are evidence; no fresh artifact rebuild performed."]}`
+- [remaining-api-resolutions.json](<../frozen-inputs-v2/remaining-api-resolutions.json>)
+- 交付缺口：Only allowlisted signature dependency/new classes, preserving stub semantics.；Existing historical gate receipts are evidence; no fresh artifact rebuild performed.
 
 ### JAVA-090 source/build
 
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [NsdManager.java](<../../2026-10-03-u15-stubs-nsd/stubs/donor/android/net/nsd/NsdManager.java>) `61c0dff8b1d92c74f2ab1b84e2897cb9b3ab90f88ef216e7c519d1a2b34aff70`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["61c0dff8b1d92c74f2ab1b84e2897cb9b3ab90f88ef216e7c519d1a2b34aff70"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["61c0dff8b1d92c74f2ab1b84e2897cb9b3ab90f88ef216e7c519d1a2b34aff70"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-4bb8f4d17126](<recipes/recipes.json>)
 - build entry: [build_stubs_nsd.py](<../../2026-10-03-u15-stubs-nsd/build_stubs_nsd.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6382,7 +6447,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [NsdServiceInfo.java](<../../2026-10-03-u15-stubs-nsd/stubs/donor/android/net/nsd/NsdServiceInfo.java>) `f9173b9b7bf36aeb9b80e4990893aaa212ac51777b29399b8a730ce76a417cad`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f9173b9b7bf36aeb9b80e4990893aaa212ac51777b29399b8a730ce76a417cad"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f9173b9b7bf36aeb9b80e4990893aaa212ac51777b29399b8a730ce76a417cad"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-b51ab2874de9](<recipes/recipes.json>)
 - build entry: [build_stubs_nsd.py](<../../2026-10-03-u15-stubs-nsd/build_stubs_nsd.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6397,7 +6462,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [NsdManager.java](<../../2026-10-03-u15-stubs-nsd/stubs/donor/android/net/nsd/NsdManager.java>) `61c0dff8b1d92c74f2ab1b84e2897cb9b3ab90f88ef216e7c519d1a2b34aff70`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["61c0dff8b1d92c74f2ab1b84e2897cb9b3ab90f88ef216e7c519d1a2b34aff70"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["61c0dff8b1d92c74f2ab1b84e2897cb9b3ab90f88ef216e7c519d1a2b34aff70"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-4bb8f4d17126](<recipes/recipes.json>)
 - build entry: [build_stubs_nsd.py](<../../2026-10-03-u15-stubs-nsd/build_stubs_nsd.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6412,7 +6477,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [ScanCallback.java](<../../2026-10-03-bt-le-scancallback/stubs/donor/android/bluetooth/le/ScanCallback.java>) `eae1a43c088ebceea9f21c3f7316e886f11cd5f129132b5a47c4d37d9a68c60f`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["eae1a43c088ebceea9f21c3f7316e886f11cd5f129132b5a47c4d37d9a68c60f"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["eae1a43c088ebceea9f21c3f7316e886f11cd5f129132b5a47c4d37d9a68c60f"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-7ff8151df0c9](<recipes/recipes.json>)
 - build entry: [build_stubs_bt.py](<../../2026-10-03-bt-le-scancallback/build_stubs_bt.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -6427,7 +6492,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-89c9607b4982](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6441,7 +6506,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-89c9607b4982](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6457,7 +6522,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [ActivityClientControllerAdapter.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/ActivityClientControllerAdapter.java>) `ebdfdaa13da5e9372bffd431b6b519c86cf194803103856cce51e006465ada66`；role=source_candidate
 - [ActivityTaskManagerAdapter.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/ActivityTaskManagerAdapter.java>) `25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13", "ebdfdaa13da5e9372bffd431b6b519c86cf194803103856cce51e006465ada66"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13", "ebdfdaa13da5e9372bffd431b6b519c86cf194803103856cce51e006465ada66"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-096](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6475,7 +6540,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [InProcessServiceBinder.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/InProcessServiceBinder.java>) `dfb743a3fa9da65a37e03b4f787f63e15c565aad58ae681a38a1c70a7b50b7cc`；role=source_candidate
 - [AppSpawnXInit.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/appspawn-x/java/com/android/internal/os/AppSpawnXInit.java>) `e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["dfb743a3fa9da65a37e03b4f787f63e15c565aad58ae681a38a1c70a7b50b7cc", "e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["dfb743a3fa9da65a37e03b4f787f63e15c565aad58ae681a38a1c70a7b50b7cc", "e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-097](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6493,7 +6558,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [LocalBroadcasts.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/LocalBroadcasts.java>) `661f452058540b4b229a1fc8fd834ee9dd3113617838b9ae176639e95ee7d323`；role=source_candidate
 - [AppSpawnXInit.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/appspawn-x/java/com/android/internal/os/AppSpawnXInit.java>) `e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["661f452058540b4b229a1fc8fd834ee9dd3113617838b9ae176639e95ee7d323", "e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["661f452058540b4b229a1fc8fd834ee9dd3113617838b9ae176639e95ee7d323", "e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-098](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6511,7 +6576,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [CallerProcess.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/CallerProcess.java>) `ab1774c895dc7e6f5a6760043b74763f413506e5071418a0e501d5dfcb48889d`；role=source_candidate
 - [AppSpawnXInit.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/appspawn-x/java/com/android/internal/os/AppSpawnXInit.java>) `e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["ab1774c895dc7e6f5a6760043b74763f413506e5071418a0e501d5dfcb48889d", "e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["ab1774c895dc7e6f5a6760043b74763f413506e5071418a0e501d5dfcb48889d", "e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-099](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6528,7 +6593,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [AppSchedulerBridge.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/AppSchedulerBridge.java>) `40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-100](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6545,7 +6610,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [LocalServiceBinders.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/core/java/LocalServiceBinders.java>) `2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-101](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6562,7 +6627,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [PackageManagerAdapter.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/package-manager/java/PackageManagerAdapter.java>) `86d358752f952676ae518baad909cb45ad1d191739aaf5378f181cf3ce416ac5`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["86d358752f952676ae518baad909cb45ad1d191739aaf5378f181cf3ce416ac5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["86d358752f952676ae518baad909cb45ad1d191739aaf5378f181cf3ce416ac5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-102](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6581,7 +6646,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 - [ActivityTaskManagerAdapter.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/ActivityTaskManagerAdapter.java>) `25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13`；role=source_candidate
 - [PendingLaunchIntents.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/PendingLaunchIntents.java>) `2ada76341d8ea794617c53b6e8e25a20a569dd65366b2c0fe4eaa6a3761d3b14`；role=source_candidate
 - [AppSchedulerBridge.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/AppSchedulerBridge.java>) `40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13", "2ada76341d8ea794617c53b6e8e25a20a569dd65366b2c0fe4eaa6a3761d3b14", "40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13", "2ada76341d8ea794617c53b6e8e25a20a569dd65366b2c0fe4eaa6a3761d3b14", "40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-103](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6598,7 +6663,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [missing_natives.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/javacore-shim/missing_natives.c>) `c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-JAVA-104](<recipes/recipes.json>)
 - build entry: [build_missing_natives.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh", "$ANDROID_SOURCE", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -6618,7 +6683,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [WindowSessionAdapter.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/window/java/WindowSessionAdapter.java>) `3f15d1f89c5235dd9c8e97f18429f00ba131fa52591a0db67fdbb90c600d9f09`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["3f15d1f89c5235dd9c8e97f18429f00ba131fa52591a0db67fdbb90c600d9f09"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["3f15d1f89c5235dd9c8e97f18429f00ba131fa52591a0db67fdbb90c600d9f09"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-105](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6637,7 +6702,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 - [SourcePackageRegistry.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/package-manager/java/SourcePackageRegistry.java>) `9483abc448c60f89432d0286e506c1561298f600e5ba6168270c5e48a355fe92`；role=source_candidate
 - [PackageManagerAdapter.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/package-manager/java/PackageManagerAdapter.java>) `86d358752f952676ae518baad909cb45ad1d191739aaf5378f181cf3ce416ac5`；role=source_candidate
 - [ActivityTaskManagerAdapter.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/ActivityTaskManagerAdapter.java>) `25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13", "86d358752f952676ae518baad909cb45ad1d191739aaf5378f181cf3ce416ac5", "9483abc448c60f89432d0286e506c1561298f600e5ba6168270c5e48a355fe92"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13", "86d358752f952676ae518baad909cb45ad1d191739aaf5378f181cf3ce416ac5", "9483abc448c60f89432d0286e506c1561298f600e5ba6168270c5e48a355fe92"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-106](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6654,7 +6719,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [AppSchedulerBridge.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/AppSchedulerBridge.java>) `40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-107](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6672,7 +6737,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [WindowCallbackBridge.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/window/java/WindowCallbackBridge.java>) `110e64a9d34933aca1e7e01ec56e32b2179fb483d3008c33aeb5a84592b0f7c2`；role=source_candidate
 - [WindowSessionAdapter.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/window/java/WindowSessionAdapter.java>) `3f15d1f89c5235dd9c8e97f18429f00ba131fa52591a0db67fdbb90c600d9f09`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["110e64a9d34933aca1e7e01ec56e32b2179fb483d3008c33aeb5a84592b0f7c2", "3f15d1f89c5235dd9c8e97f18429f00ba131fa52591a0db67fdbb90c600d9f09"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["110e64a9d34933aca1e7e01ec56e32b2179fb483d3008c33aeb5a84592b0f7c2", "3f15d1f89c5235dd9c8e97f18429f00ba131fa52591a0db67fdbb90c600d9f09"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-108](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6689,7 +6754,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [ActivityTaskManagerAdapter.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/ActivityTaskManagerAdapter.java>) `25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["25da1c3173521057482ae8c6b1d722061319e6dcf8c16ede9f73c6b6a21dfa13"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-109](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6706,7 +6771,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [AppSpawnXInit.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/appspawn-x/java/com/android/internal/os/AppSpawnXInit.java>) `e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-110](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6723,7 +6788,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [AppSchedulerBridge.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/activity/java/AppSchedulerBridge.java>) `40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["40a20861209633e9603ee1d34b600414f69c987f9e60d9f9347767c3859cbd49"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-111](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6741,7 +6806,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [LocalServiceBinders.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/core/java/LocalServiceBinders.java>) `2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f`；role=source_candidate
 - [OHServiceManager.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/core/java/OHServiceManager.java>) `50626c91933a6a67ef9181121058682ca23370db682e61cbb0e4658cc7dc9195`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f", "50626c91933a6a67ef9181121058682ca23370db682e61cbb0e4658cc7dc9195"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f", "50626c91933a6a67ef9181121058682ca23370db682e61cbb0e4658cc7dc9195"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-112](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6759,7 +6824,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [LocalServiceBinders.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/core/java/LocalServiceBinders.java>) `2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f`；role=source_candidate
 - [OHServiceManager.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/core/java/OHServiceManager.java>) `50626c91933a6a67ef9181121058682ca23370db682e61cbb0e4658cc7dc9195`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f", "50626c91933a6a67ef9181121058682ca23370db682e61cbb0e4658cc7dc9195"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f", "50626c91933a6a67ef9181121058682ca23370db682e61cbb0e4658cc7dc9195"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-113](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6776,7 +6841,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [OHUserManager.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/package-manager/java/OHUserManager.java>) `f415f0f72135fe63aa9b0b69b3ba42d19956f9e471a8385292987e3fdde10168`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f415f0f72135fe63aa9b0b69b3ba42d19956f9e471a8385292987e3fdde10168"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f415f0f72135fe63aa9b0b69b3ba42d19956f9e471a8385292987e3fdde10168"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-114](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6793,7 +6858,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [probe_source_app.py](<../../../sources/api-implementations/JAVA-115-launcher/tools/probe_source_app.py>) `6c318323ad94fc3ece68e424d91d6b9ef34d1f1817cb8cc5637acc5011e3ec48`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["6c318323ad94fc3ece68e424d91d6b9ef34d1f1817cb8cc5637acc5011e3ec48"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["6c318323ad94fc3ece68e424d91d6b9ef34d1f1817cb8cc5637acc5011e3ec48"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-115](<recipes/recipes.json>)
 - build entry: [probe_source_app.py](<../../../sources/api-implementations/JAVA-115-launcher/tools/probe_source_app.py>)
 - build_command: `{"status": "INTERPRETED_LAUNCHER_INTERFACE_CHECK", "argv": ["python3", "sources/api-implementations/JAVA-115-launcher/tools/probe_source_app.py", "--help"], "working_directory": "$REPO", "notes": "interface check only; no compilation needed for the Python normalizer; not a launch receipt"}`
@@ -6813,7 +6878,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [module.json](<../../../sources/api-implementations/source-build-host/westlake-java/apps/imehost/module.json>) `5ace8024ae8fffdd7c5502933069d7dcb060f174eadb93f3c2f89f861373d676`；role=permission_resource
 - [PermissionMapper.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/package-manager/java/PermissionMapper.java>) `2f07d2c05726ba53787dbcc465b6be7a0172eab00c05351b8d0d9f7f2e9dc33b`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["2f07d2c05726ba53787dbcc465b6be7a0172eab00c05351b8d0d9f7f2e9dc33b", "5ace8024ae8fffdd7c5502933069d7dcb060f174eadb93f3c2f89f861373d676"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2f07d2c05726ba53787dbcc465b6be7a0172eab00c05351b8d0d9f7f2e9dc33b", "5ace8024ae8fffdd7c5502933069d7dcb060f174eadb93f3c2f89f861373d676"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-116](<recipes/recipes.json>)
 - build entry: [build_apps.py](<../../../sources/api-implementations/source-build-host/westlake-java/tools/build_apps.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
@@ -6829,7 +6894,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [AppSpawnXInit.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/appspawn-x/java/com/android/internal/os/AppSpawnXInit.java>) `e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["e6f1509df722fb34b0ccd36de79a01054ec601bd25fe1f7263a44c7fb1477b64"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-117](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6847,7 +6912,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [LocalServiceBinders.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/core/java/LocalServiceBinders.java>) `2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f`；role=source_candidate
 - [OHServiceManager.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/core/java/OHServiceManager.java>) `50626c91933a6a67ef9181121058682ca23370db682e61cbb0e4658cc7dc9195`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f", "50626c91933a6a67ef9181121058682ca23370db682e61cbb0e4658cc7dc9195"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2ca1c244d26dd958486de5c4d039b3db1d7e14aecc1616c08d603a6d52efc04f", "50626c91933a6a67ef9181121058682ca23370db682e61cbb0e4658cc7dc9195"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-118](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6864,7 +6929,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [SoftwareAndroidKeyStore.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/core/java/SoftwareAndroidKeyStore.java>) `c3f134f6c0f5b08400b599e10786e60139ee44aadcaa404e33b68d4433b873b4`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["c3f134f6c0f5b08400b599e10786e60139ee44aadcaa404e33b68d4433b873b4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["c3f134f6c0f5b08400b599e10786e60139ee44aadcaa404e33b68d4433b873b4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-119](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6881,7 +6946,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [PackageManagerAdapter.java](<../../../sources/api-implementations/source-build-host/westlake-java/framework/package-manager/java/PackageManagerAdapter.java>) `86d358752f952676ae518baad909cb45ad1d191739aaf5378f181cf3ce416ac5`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["86d358752f952676ae518baad909cb45ad1d191739aaf5378f181cf3ce416ac5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["86d358752f952676ae518baad909cb45ad1d191739aaf5378f181cf3ce416ac5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [java-reviewed-JAVA-120](<recipes/recipes.json>)
 - build entry: [build-java.py](<../../../sources/api-implementations/source-build-host/build-java.py>)
 - build_command: `{"status": "DELIVERED_ACTUAL_SOURCE_COMPILER", "argv": ["python3", "sources/api-implementations/source-build-host/build-java.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--core-build", "$CORE_JAVA_BUILD", "--framework-build", "$FRAMEWORK_JAVA_BUILD", "--core-extension-build", "$JAVA_EXTENSIONS_BUILD", "--out", "$FRESH_OUTPUT"], "working_directory": "$REPO", "notes": "New class JAR only; no historical DEX or deployed-byte equivalence."}`
@@ -6897,7 +6962,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-8ecb035c0075](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6911,7 +6976,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-44fa5869c9e7](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6925,7 +6990,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3d8df01d392b](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6939,7 +7004,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3d8df01d392b](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6953,7 +7018,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f7d3e1ade2e0](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6967,7 +7032,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-45a9a8772a90](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6981,7 +7046,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-c65efed61ee5](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -6995,7 +7060,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-4da35186c8c3](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7009,7 +7074,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-9be1ae112046](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7023,7 +7088,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-2b1bc2f8b1d0](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7037,7 +7102,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-43869b4328f6](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7051,7 +7116,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-139c286b0407](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7065,7 +7130,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-139c286b0407](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7079,7 +7144,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-c4ca507edeef](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7093,7 +7158,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-1fa4fc6bdb49](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7107,7 +7172,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-40586ce95831](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7121,7 +7186,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-1fa4fc6bdb49](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7135,7 +7200,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-fd73ddcc6fe5](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7149,7 +7214,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-a80fc64ee0e1](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7163,7 +7228,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-a80fc64ee0e1](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7177,7 +7242,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-0181f944f610](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7191,7 +7256,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-ca720806680c](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7205,7 +7270,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-ca720806680c](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7219,7 +7284,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-bc2f63802870](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7233,7 +7298,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-a04716086e78](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7247,7 +7312,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-a04716086e78](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7261,7 +7326,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-4736b372b5a2](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7275,7 +7340,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-4736b372b5a2](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7289,7 +7354,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-e33d73dc5efa](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7303,7 +7368,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-d1d49d1fd563](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7317,7 +7382,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-d1d49d1fd563](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7331,7 +7396,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6160eb6c6890](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7345,7 +7410,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-ea23335dc4da](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7359,7 +7424,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-ea23335dc4da](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7373,7 +7438,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-8e966174fa14](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7387,7 +7452,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-b67235690dc1](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7401,7 +7466,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-72f5cf4f9c44](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7415,7 +7480,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-76b3722f6918](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7430,7 +7495,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_app_Activity.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_app_Activity.cpp>) `dff1c401514f1830f3cb5220d13d744211dc032ec971faf05f2e971d02fc28a0`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-9416185aea98](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7443,7 +7508,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_database_CursorWindow.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_database_CursorWindow.cpp>) `d23b677f9950d85b989dd9917fc2a96203038f9f8b82d74f47813454e84e7c7e`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-38746f4ba862](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7456,7 +7521,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7469,7 +7534,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7482,7 +7547,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7495,7 +7560,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7508,7 +7573,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7521,7 +7586,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7534,7 +7599,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7547,7 +7612,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7560,7 +7625,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7573,7 +7638,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7586,7 +7651,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7599,7 +7664,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7612,7 +7677,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_Typeface.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_Typeface.cpp>) `2bf99585eeec22ad581ac9aa79952f09efa056b6a3ef8533adb2279e4fe7669f`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f9e0549b166c](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7625,7 +7690,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_Typeface.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_Typeface.cpp>) `2bf99585eeec22ad581ac9aa79952f09efa056b6a3ef8533adb2279e4fe7669f`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f9e0549b166c](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7638,7 +7703,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_Typeface.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_Typeface.cpp>) `2bf99585eeec22ad581ac9aa79952f09efa056b6a3ef8533adb2279e4fe7669f`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f9e0549b166c](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7651,7 +7716,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_Typeface.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_Typeface.cpp>) `2bf99585eeec22ad581ac9aa79952f09efa056b6a3ef8533adb2279e4fe7669f`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f9e0549b166c](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7664,7 +7729,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_hardware_SensorManager.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_hardware_SensorManager.cpp>) `e1da2d079a05f4ee010320da7ccc1ab237d2960dd5f6bb48bfe2492eb42b8c68`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-2801963eaa2e](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7677,7 +7742,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_hardware_SensorManager.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_hardware_SensorManager.cpp>) `e1da2d079a05f4ee010320da7ccc1ab237d2960dd5f6bb48bfe2492eb42b8c68`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-2801963eaa2e](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7690,7 +7755,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_hardware_SensorManager.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_hardware_SensorManager.cpp>) `e1da2d079a05f4ee010320da7ccc1ab237d2960dd5f6bb48bfe2492eb42b8c68`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-2801963eaa2e](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7703,7 +7768,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_hardware_SensorManager.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_hardware_SensorManager.cpp>) `e1da2d079a05f4ee010320da7ccc1ab237d2960dd5f6bb48bfe2492eb42b8c68`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-2801963eaa2e](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7716,7 +7781,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_hardware_SensorManager.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_hardware_SensorManager.cpp>) `e1da2d079a05f4ee010320da7ccc1ab237d2960dd5f6bb48bfe2492eb42b8c68`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-2801963eaa2e](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7729,7 +7794,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_hardware_SensorManager.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_hardware_SensorManager.cpp>) `e1da2d079a05f4ee010320da7ccc1ab237d2960dd5f6bb48bfe2492eb42b8c68`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-2801963eaa2e](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7742,7 +7807,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_hardware_SensorManager.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_hardware_SensorManager.cpp>) `e1da2d079a05f4ee010320da7ccc1ab237d2960dd5f6bb48bfe2492eb42b8c68`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-2801963eaa2e](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7755,7 +7820,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_media_AudioSystemCapabilities.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_media_AudioSystemCapabilities.cpp>) `31e0f98a8ca5cc5feb99bf4791ff6bedad01a661f806c6b3a16c57da7d67c319`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f6a8dd2e2489](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7768,7 +7833,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_media_AudioSystemCapabilities.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_media_AudioSystemCapabilities.cpp>) `31e0f98a8ca5cc5feb99bf4791ff6bedad01a661f806c6b3a16c57da7d67c319`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f6a8dd2e2489](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7781,7 +7846,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_media_AudioTrack.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_media_AudioTrack.cpp>) `a83f1dd8774bdbf863134c01b499959b12ca17b3c3058a0b3022341510f7e9f8`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-966687adbdbc](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7794,7 +7859,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_media_AudioTrack.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_media_AudioTrack.cpp>) `a83f1dd8774bdbf863134c01b499959b12ca17b3c3058a0b3022341510f7e9f8`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-966687adbdbc](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7807,7 +7872,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_media_MediaPlayer.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_media_MediaPlayer.cpp>) `a0ba386b451ae2ced2092d1dea7a81788a8c3740e13d1c5ce22928299b460994`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-e76348624114](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7820,7 +7885,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_media_AudioSystemCapabilities.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_media_AudioSystemCapabilities.cpp>) `31e0f98a8ca5cc5feb99bf4791ff6bedad01a661f806c6b3a16c57da7d67c319`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-f6a8dd2e2489](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7833,7 +7898,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_opengl_EGL14_adapter.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_opengl_EGL14_adapter.cpp>) `d34310dfc1d476e5ea308e1c9e00d7635e46c5236e36ad94444e11c776aa6ebe`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-d7df5585de81](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7846,7 +7911,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Binder.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Binder.cpp>) `887cc54d5d76dccb0e4a3f35b9009c7301a00daa51a4c1e923f6c80e09d4a3c7`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3a7789d3bdf6](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7859,7 +7924,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Binder.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Binder.cpp>) `887cc54d5d76dccb0e4a3f35b9009c7301a00daa51a4c1e923f6c80e09d4a3c7`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3a7789d3bdf6](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7872,7 +7937,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Binder.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Binder.cpp>) `887cc54d5d76dccb0e4a3f35b9009c7301a00daa51a4c1e923f6c80e09d4a3c7`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3a7789d3bdf6](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7885,7 +7950,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Binder.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Binder.cpp>) `887cc54d5d76dccb0e4a3f35b9009c7301a00daa51a4c1e923f6c80e09d4a3c7`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3a7789d3bdf6](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7898,7 +7963,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Debug.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Debug.cpp>) `2499303a20c341f1f9f8ec941263f9b7dba5f4cc022dcbab82582c8419a964ae`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-4643dcb34414](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7911,7 +7976,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_GraphicsEnvironment.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_GraphicsEnvironment.cpp>) `924e7cbb1c4b56b7159d1af4e8df872a256dde0c0ab0db6c955d0c611f6f8a13`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-7556c5f9e7bb](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7924,7 +7989,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_GraphicsEnvironment.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_GraphicsEnvironment.cpp>) `924e7cbb1c4b56b7159d1af4e8df872a256dde0c0ab0db6c955d0c611f6f8a13`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-7556c5f9e7bb](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7937,7 +8002,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_GraphicsEnvironment.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_GraphicsEnvironment.cpp>) `924e7cbb1c4b56b7159d1af4e8df872a256dde0c0ab0db6c955d0c611f6f8a13`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-7556c5f9e7bb](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7950,7 +8015,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_MessageQueue.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_MessageQueue.cpp>) `18b1e896afd5dd3e125213d027f7fa75fb516c3574468164d44b6856e02b9335`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-60ae2cfee866](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7963,7 +8028,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Parcel_aosp.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Parcel_aosp.cpp>) `e4ec259ce86cd511453e9b51e6fe43fc39c2ed64607a4a9daf1811cf49494b75`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-0348900628b1](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7976,7 +8041,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Parcel_aosp.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Parcel_aosp.cpp>) `e4ec259ce86cd511453e9b51e6fe43fc39c2ed64607a4a9daf1811cf49494b75`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-0348900628b1](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -7989,7 +8054,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Parcel_aosp.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Parcel_aosp.cpp>) `e4ec259ce86cd511453e9b51e6fe43fc39c2ed64607a4a9daf1811cf49494b75`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-0348900628b1](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8002,7 +8067,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Parcel_aosp.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Parcel_aosp.cpp>) `e4ec259ce86cd511453e9b51e6fe43fc39c2ed64607a4a9daf1811cf49494b75`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-0348900628b1](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8015,7 +8080,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Parcel_aosp.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Parcel_aosp.cpp>) `e4ec259ce86cd511453e9b51e6fe43fc39c2ed64607a4a9daf1811cf49494b75`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-0348900628b1](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8028,7 +8093,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_SystemProperties.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_SystemProperties.cpp>) `bf6cf738d49999b760b7e4639eb0d40a8ae04face812dd97450db3922fc84a8c`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-800da2db7d14](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8041,7 +8106,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [android_os_SystemProperties.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_SystemProperties.cpp>) `bf6cf738d49999b760b7e4639eb0d40a8ae04face812dd97450db3922fc84a8c`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-800da2db7d14](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8054,7 +8119,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_SystemProperties.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_SystemProperties.cpp>) `bf6cf738d49999b760b7e4639eb0d40a8ae04face812dd97450db3922fc84a8c`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-800da2db7d14](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8067,7 +8132,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_SystemProperties.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_SystemProperties.cpp>) `bf6cf738d49999b760b7e4639eb0d40a8ae04face812dd97450db3922fc84a8c`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-800da2db7d14](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8080,7 +8145,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_util_EventLog.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_util_EventLog.cpp>) `d46a28ab3b44372a9cae89b985002f60ed8dbb250143bc1e07df947ab5c1d7f1`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-d40ed5210b21](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8093,7 +8158,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_util_EventLog.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_util_EventLog.cpp>) `d46a28ab3b44372a9cae89b985002f60ed8dbb250143bc1e07df947ab5c1d7f1`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-d40ed5210b21](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8106,7 +8171,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_DisplayEventReceiver.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_DisplayEventReceiver.cpp>) `eeb66fb90cf4a6affd2830be4f9ff493cd6e366fbe413fc3e1deb0e680bc25c8`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-28839a2825e9](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8119,7 +8184,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_InputChannel.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_InputChannel.cpp>) `89e0deae1772b6e1f6437ae7d4a83a9fefb38dba78b4af162fa7f996280070a2`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-242317a2db9b](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8132,7 +8197,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_InputChannel.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_InputChannel.cpp>) `89e0deae1772b6e1f6437ae7d4a83a9fefb38dba78b4af162fa7f996280070a2`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-242317a2db9b](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8145,7 +8210,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_InputChannel.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_InputChannel.cpp>) `89e0deae1772b6e1f6437ae7d4a83a9fefb38dba78b4af162fa7f996280070a2`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-242317a2db9b](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8158,7 +8223,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_InputChannel.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_InputChannel.cpp>) `89e0deae1772b6e1f6437ae7d4a83a9fefb38dba78b4af162fa7f996280070a2`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-242317a2db9b](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8171,7 +8236,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_InputChannel.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_InputChannel.cpp>) `89e0deae1772b6e1f6437ae7d4a83a9fefb38dba78b4af162fa7f996280070a2`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-242317a2db9b](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8184,7 +8249,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_InputChannel.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_InputChannel.cpp>) `89e0deae1772b6e1f6437ae7d4a83a9fefb38dba78b4af162fa7f996280070a2`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-242317a2db9b](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8197,7 +8262,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_KeyCharacterMap_aosp.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_KeyCharacterMap_aosp.cpp>) `b80cd0f4ebb13abfd82b0542442ab9865a71760a4ccc8106b8b137ec9028b1b6`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-a6431767c1b3](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8210,7 +8275,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_KeyCharacterMap_aosp.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_KeyCharacterMap_aosp.cpp>) `b80cd0f4ebb13abfd82b0542442ab9865a71760a4ccc8106b8b137ec9028b1b6`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-a6431767c1b3](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8223,7 +8288,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_KeyCharacterMap_aosp.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_KeyCharacterMap_aosp.cpp>) `b80cd0f4ebb13abfd82b0542442ab9865a71760a4ccc8106b8b137ec9028b1b6`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-a6431767c1b3](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8236,7 +8301,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_KeyCharacterMap_aosp.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_KeyCharacterMap_aosp.cpp>) `b80cd0f4ebb13abfd82b0542442ab9865a71760a4ccc8106b8b137ec9028b1b6`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-a6431767c1b3](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8249,7 +8314,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_MotionEvent_aosp.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_MotionEvent_aosp.cpp>) `398b9b073726b74b1c7a1e30eed350c3d21036fafc6896b9b3705c6766cee453`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-440a8aeca46b](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8262,7 +8327,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8275,7 +8340,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8288,7 +8353,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8301,7 +8366,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_graphics_compat_shim.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_graphics_compat_shim.cpp>) `b94f69e4c68ad2141a1911040ec0e8b5aafce9cec2fe9fc1f6cf129f5749daea`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-6335ab3805ea](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8314,7 +8379,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_SurfaceControl.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_SurfaceControl.cpp>) `391fd84f198053ee0b14b5f2b8940222c9514dbc9e6b164bc963ed6fac74aa21`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-5a6dfc23fe41](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8327,7 +8392,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_SurfaceControl.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_SurfaceControl.cpp>) `391fd84f198053ee0b14b5f2b8940222c9514dbc9e6b164bc963ed6fac74aa21`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-5a6dfc23fe41](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8340,7 +8405,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_SurfaceControl.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_SurfaceControl.cpp>) `391fd84f198053ee0b14b5f2b8940222c9514dbc9e6b164bc963ed6fac74aa21`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-5a6dfc23fe41](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8353,7 +8418,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_SurfaceControl.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_SurfaceControl.cpp>) `391fd84f198053ee0b14b5f2b8940222c9514dbc9e6b164bc963ed6fac74aa21`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-5a6dfc23fe41](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8366,7 +8431,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_SurfaceControl.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_SurfaceControl.cpp>) `391fd84f198053ee0b14b5f2b8940222c9514dbc9e6b164bc963ed6fac74aa21`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-5a6dfc23fe41](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8379,7 +8444,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_view_SurfaceControl.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_view_SurfaceControl.cpp>) `391fd84f198053ee0b14b5f2b8940222c9514dbc9e6b164bc963ed6fac74aa21`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-5a6dfc23fe41](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8392,7 +8457,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Binder.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Binder.cpp>) `887cc54d5d76dccb0e4a3f35b9009c7301a00daa51a4c1e923f6c80e09d4a3c7`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3a7789d3bdf6](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8405,7 +8470,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_os_Binder.cpp](<../../../bms/src/adapter/framework/android-runtime/src/android_os_Binder.cpp>) `887cc54d5d76dccb0e4a3f35b9009c7301a00daa51a4c1e923f6c80e09d4a3c7`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-3a7789d3bdf6](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8421,7 +8486,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 - [android_database_SQLiteCommon.cpp](<../../../sources/api-implementations/native-sqlite187/src/android_database_SQLiteCommon.cpp>) `895feacbd4787bc54bfd57377146bd0cc383548d2dfd1b69d9b100a43c9411bc`；role=implementation
 - [sqlite3_android_shim.cpp](<../../../sources/api-implementations/native-sqlite187/src/sqlite3_android_shim.cpp>) `7219cae7aaef1aaf6736e3c6e3fbacb838c8ab1b129ef0e64143ad6e3b9490a6`；role=implementation
 - [AndroidRuntime.cpp](<../../../sources/api-implementations/native-sqlite187/src/AndroidRuntime.cpp>) `141791a7936e0373dcca462241b6b73d7caa60f4e8335cf950431aa35c5139ea`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["141791a7936e0373dcca462241b6b73d7caa60f4e8335cf950431aa35c5139ea", "6467e92a12f3dbe3d153b38137792102897873b47f652b67e38fd2c42c77c867", "7219cae7aaef1aaf6736e3c6e3fbacb838c8ab1b129ef0e64143ad6e3b9490a6", "895feacbd4787bc54bfd57377146bd0cc383548d2dfd1b69d9b100a43c9411bc"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["141791a7936e0373dcca462241b6b73d7caa60f4e8335cf950431aa35c5139ea", "6467e92a12f3dbe3d153b38137792102897873b47f652b67e38fd2c42c77c867", "7219cae7aaef1aaf6736e3c6e3fbacb838c8ab1b129ef0e64143ad6e3b9490a6", "895feacbd4787bc54bfd57377146bd0cc383548d2dfd1b69d9b100a43c9411bc"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-115](<recipes/recipes.json>)
 - build entry: [prepare_runtime_cold.py](<../../2026-10-10-adapter-buildchain/prepare_runtime_cold.py>)
 - build_command: `{"status": "EXISTING_RECIPE_WITH_EXTERNAL_DEPENDENCIES", "argv": ["python3", "benchmark/2026-10-10-adapter-buildchain/prepare_runtime_cold.py", "--workspaces", "$WORKSPACES", "--out", "$FRESH_OUT"], "environment": {}, "working_directory": "$REPO", "notes": "Exact t2c187 inventory bytes; full71-object recipe/6347 dependencies remain external. This command prepares; run generated run.sh via original pinned dockbuild to compile."}`
@@ -8441,7 +8506,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 - [android_database_SQLiteGlobal.cpp](<../../../sources/api-implementations/native-sqlite187/src/android_database_SQLiteGlobal.cpp>) `9ab190f1dc037168207f03917677b95632bbe4ad2bdf06160ee5119b4c92d7ae`；role=implementation
 - [android_database_SQLiteDebug.cpp](<../../../sources/api-implementations/native-sqlite187/src/android_database_SQLiteDebug.cpp>) `766bc174d1c00dfdac7c98d6610c68a50fbc8b739be5fe718430455b8ae5c967`；role=implementation
 - [CursorWindow.cpp](<../../../sources/api-implementations/native-sqlite187/src/CursorWindow.cpp>) `6952435d9963184bb48b2745c5a80eb63f47b538ff8961f5e7f1022603da8948`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["6952435d9963184bb48b2745c5a80eb63f47b538ff8961f5e7f1022603da8948", "766bc174d1c00dfdac7c98d6610c68a50fbc8b739be5fe718430455b8ae5c967", "9ab190f1dc037168207f03917677b95632bbe4ad2bdf06160ee5119b4c92d7ae", "d23b677f9950d85b989dd9917fc2a96203038f9f8b82d74f47813454e84e7c7e"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["6952435d9963184bb48b2745c5a80eb63f47b538ff8961f5e7f1022603da8948", "766bc174d1c00dfdac7c98d6610c68a50fbc8b739be5fe718430455b8ae5c967", "9ab190f1dc037168207f03917677b95632bbe4ad2bdf06160ee5119b4c92d7ae", "d23b677f9950d85b989dd9917fc2a96203038f9f8b82d74f47813454e84e7c7e"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-116](<recipes/recipes.json>)
 - build entry: [prepare_runtime_cold.py](<../../2026-10-10-adapter-buildchain/prepare_runtime_cold.py>)
 - build_command: `{"status": "EXISTING_RECIPE_WITH_EXTERNAL_DEPENDENCIES", "argv": ["python3", "benchmark/2026-10-10-adapter-buildchain/prepare_runtime_cold.py", "--workspaces", "$WORKSPACES", "--out", "$FRESH_OUT"], "environment": {}, "working_directory": "$REPO", "notes": "Exact t2c187 source inventory bytes; original full runtime recipe, not the old weak SQLite shim. Preparation is not build."}`
@@ -8457,7 +8522,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-a96fd0e5ab5d](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8472,7 +8537,7 @@ UNKNOWN_IMPLEMENTATION_SOURCE
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [owner_wrappers.c](<../../2026-10-01-u11-native/window-lock/owner_wrappers.c>) `1eb348fc11aba4f8afb0138a7293b3a563b173f51b2d0c45e3ec87e1ae8cfa27`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["1eb348fc11aba4f8afb0138a7293b3a563b173f51b2d0c45e3ec87e1ae8cfa27"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["1eb348fc11aba4f8afb0138a7293b3a563b173f51b2d0c45e3ec87e1ae8cfa27"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-57761c75940f](<recipes/recipes.json>)
 - build entry: [build_window_shim.py](<../../2026-10-01-u11-native/build_window_shim.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -8487,7 +8552,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [android_graphics_m1_copy.cpp](<../../2026-10-03-m1-split/src/android_graphics_m1_copy.cpp>) `bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["bd3d420b7902e17ff885580c226aca0fbf1120cef38a3dd2221d0a6be54ec5b8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-119](<recipes/recipes.json>)
 - build entry: [build_t4_hw248.sh](<../../2026-10-03-u16-t4-m1-runtime/build_t4_hw248.sh>)
 - build_command: `{"status": "EXISTING_RECIPE_WITH_EXTERNAL_DEPENDENCIES", "argv": ["bash", "benchmark/2026-10-03-u16-t4-m1-runtime/build_t4_hw248.sh"], "environment": {"T4_ROOT": "$RESTORED_T4_ROOT"}, "working_directory": "$REPO", "notes": "U16 M1 TU located; original mirror objects/compiler remain dependencies. Not asserted as finalV2 selected source."}`
@@ -8499,23 +8564,29 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 ### NATIVE-120 source/build
 
-UNKNOWN_IMPLEMENTATION_SOURCE
+MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
-- recipe: [unknown-04dd10577cf8](<recipes/recipes.json>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "unknown", "evidence": [{"path": "benchmark/2026-10-03-u14-bridge-m5-m6/README.md", "sha256": "c5b3d7e0580191bc1cd177dc48dd29068b00c1fb8cee402c438afedf077f2037", "supports": "该route的实现/限制与历史观察摘要，不是本轮上板或完整支持证明"}], "executed_this_audit": false, "gaps": ["No paired actual producing receipt established."]}`
-- [README.md](<../../2026-10-03-u14-bridge-m5-m6/README.md>)
-- 交付缺口：Actual implementation revision-to-source full SHA binding remains partial/unknown; current file presence alone is insufficient.
+- [u14-bridge-window.cpp](<../../2026-10-03-u14-native-assembly/inputs/u14-bridge-window.cpp>) `af066e2b17e4d8d7a88ea94226b0f9bd055d9f3524f9df9ec4a8333ea7b859a6`；role=source_candidate
+- [u14-bridge-ability.cpp](<../../2026-10-03-u14-native-assembly/inputs/u14-bridge-ability.cpp>) `42c2b0a1884bbda527230aea37035238f148441ec56e61ee2d3fea3eb4ba0874`；role=source_candidate
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["42c2b0a1884bbda527230aea37035238f148441ec56e61ee2d3fea3eb4ba0874", "af066e2b17e4d8d7a88ea94226b0f9bd055d9f3524f9df9ec4a8333ea7b859a6"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-NATIVE-120](<recipes/recipes.json>)
+- build entry: [build_m5m6.sh](<../../2026-10-03-u14-bridge-m5-m6/build_m5m6.sh>)
+- build_command: `{"status": "documented_not_executed_this_audit", "argv": null, "notes": "Use the pinned original build entry with its documented prerequisite inputs; no complete closure or deployment equivalence is inferred."}`
+- build_dependencies: `{"entries": [{"path": "benchmark/2026-10-03-u14-native-assembly/inputs/patches/win-m5-dialog-zlevel.patch", "sha256": "9caf89e87e9e8a0d5f7578c54d125691dcd26371d99d9f356add9956ebee8d21", "git_blob": "09c54fa78081dacd08acaeb54008965960ed7a8a", "master_tracked": true, "master_blob": "09c54fa78081dacd08acaeb54008965960ed7a8a", "member_evidence": []}, {"path": "benchmark/2026-10-03-u14-native-assembly/inputs/patches/adapter-m6-finishing-background.patch", "sha256": "bb479ec0f0fff4b761ebbe66146fa5360b79f363b198c0d9f3fb5358f80bf60c", "git_blob": "c0afe7cd22acee67ad5ed3bdbffcb17ffc31281c", "master_tracked": true, "master_blob": "c0afe7cd22acee67ad5ed3bdbffcb17ffc31281c", "member_evidence": []}, {"path": "benchmark/2026-10-02-u14-bridge-r1r3/build_r1r3.sh", "sha256": "dba82e570d66341aad75d072442ef97e0f69f4633765cb2916eb94c75c6e753c", "git_blob": "539cfecb8a695b2775611cc23589e615b2bf4e18", "master_tracked": true, "master_blob": "539cfecb8a695b2775611cc23589e615b2bf4e18", "member_evidence": []}], "status": "PARTIAL_EXTERNAL_PREREQUISITES_PRESERVED", "gaps": ["Original U14 implementation sources and M5/M6 patches are present; build still requires original pinned bridge/window closure.", "M5-only predictions were corrected: dddmodel2 requires runtime M1, preserve the erratum."]}`
+- [build_r1r3.sh](<../../2026-10-02-u14-bridge-r1r3/build_r1r3.sh>)
+- [adapter-m6-finishing-background.patch](<../../2026-10-03-u14-native-assembly/inputs/patches/adapter-m6-finishing-background.patch>)
+- [win-m5-dialog-zlevel.patch](<../../2026-10-03-u14-native-assembly/inputs/patches/win-m5-dialog-zlevel.patch>)
+- build_outputs: `{"status": "unknown_new_build", "entries": []}`
+- build_verification: `{"status": "SOURCE_REVIEW_ONLY_NO_NEW_BUILD", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs-v2/remaining-api-resolutions.json", "sha256": "e8aa0f647a3248a5f5eea18b5bc194657c39dce8f5fc5ca27fa11cd4f4a25a71"}], "executed_this_audit": false, "gaps": ["Original U14 implementation sources and M5/M6 patches are present; build still requires original pinned bridge/window closure.", "M5-only predictions were corrected: dddmodel2 requires runtime M1, preserve the erratum."]}`
+- [remaining-api-resolutions.json](<../frozen-inputs-v2/remaining-api-resolutions.json>)
+- 交付缺口：Original U14 implementation sources and M5/M6 patches are present; build still requires original pinned bridge/window closure.；M5-only predictions were corrected: dddmodel2 requires runtime M1, preserve the erratum.
 
 ### NATIVE-121 source/build
 
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [flutter_egl_getprocaddress.cpp](<../../2026-10-03-u16-flutter-egl-names/src/flutter_egl_getprocaddress.cpp>) `fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["fbc96152cddb826407bcd43eed5e3bd0c022e8b7a908528e33cbddedb025435b"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-8f5658f1a7d0](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8526,16 +8597,21 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 ### NATIVE-122 source/build
 
-UNKNOWN_IMPLEMENTATION_SOURCE
+OWNER_REFERENCE_PROPOSAL_NOT_HISTORICAL_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
-- recipe: [unknown-b96093651a10](<recipes/recipes.json>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "unknown", "evidence": [{"path": "benchmark/2026-10-03-bitmap-colorspace/README.md", "sha256": "906a3b04b3eb16e0e02606408bc48ba223c729c54158aed17699c846e7571777", "supports": "该route的实现/限制与历史观察摘要，不是本轮上板或完整支持证明"}], "executed_this_audit": false, "gaps": ["No paired actual producing receipt established."]}`
-- [README.md](<../../2026-10-03-bitmap-colorspace/README.md>)
-- 交付缺口：Actual implementation revision-to-source full SHA binding remains partial/unknown; current file presence alone is insufficient.
+- [Bitmap.cpp](<../../../sources/api-implementations/NATIVE-122-bitmap-reference/Bitmap.cpp>) `7bcb7148d6333f5f89b35f761de8ccecc24a4ec6ae0408a4539f3c4fbec40877`；role=EXACT_UPSTREAM_OWNER_REFERENCE_NOT_HISTORICAL_ARTIFACT_BINDING
+- [bitmap-computecolorspace-srgb.patch](<../../2026-10-03-bitmap-colorspace/recipe/bitmap-computecolorspace-srgb.patch>) `0e2be22f6749593cc630d18b8992cfc7e51d834323f867bd1b32e0fac4360389`；role=proposal_patch_not_deployed
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["0e2be22f6749593cc630d18b8992cfc7e51d834323f867bd1b32e0fac4360389", "7bcb7148d6333f5f89b35f761de8ccecc24a4ec6ae0408a4539f3c4fbec40877"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-NATIVE-122](<recipes/recipes.json>)
+- build entry: [build_hwui_objects.py](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_hwui_objects.py>)
+- build_command: `{"status": "source_validation_only", "argv": null}`
+- build_dependencies: `{"entries": [{"path": "benchmark/2026-10-03-bitmap-colorspace/evidence/aosp14-bitmap-refs.txt", "sha256": "c46b355d0a80b3abb40a28c7e7ee242e0ae79657092b06dbdead2a053f2f64ce", "git_blob": "2ae7795380678e50ef694882f7cf655dcc85bd64", "master_tracked": true, "master_blob": "2ae7795380678e50ef694882f7cf655dcc85bd64", "member_evidence": []}, {"path": "sources/api-implementations/source-build-native691/westlake/native/hwui-sources.json", "sha256": "5372cc0575ecb94f5de5691e5f93000898fac596bd75aaba682610218d5f8163", "git_blob": "1626e91186b8cd5b7e1e070e1eed3854d411527d", "master_tracked": true, "master_blob": "1626e91186b8cd5b7e1e070e1eed3854d411527d", "member_evidence": []}], "status": "INCOMPLETE_OWNER_SOURCE", "gaps": ["Original report proves JNI ownership/completeness and documents actual null ColorSpace boundary; its sRGB patch is explicitly a proposal, not an implemented or deployed fix.", "Exact AOSP14 Bitmap.cpp is now delivered and independently byte-equal to official upstream; full binding to historical be59260f remains unproven.", "Build entry is a relevant general HWUI producer only; exact historical Bitmap.cpp and full historical HWUI source/toolchain closure remain required."]}`
+- [aosp14-bitmap-refs.txt](<../../2026-10-03-bitmap-colorspace/evidence/aosp14-bitmap-refs.txt>)
+- [hwui-sources.json](<../../../sources/api-implementations/source-build-native691/westlake/native/hwui-sources.json>)
+- build_outputs: `{"status": "unknown_new_build", "entries": []}`
+- build_verification: `{"status": "OWNER_REFERENCE_AND_UNEXECUTED_PROPOSAL_ONLY", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs-v2/remaining-api-resolutions.json", "sha256": "e8aa0f647a3248a5f5eea18b5bc194657c39dce8f5fc5ca27fa11cd4f4a25a71"}], "executed_this_audit": false, "gaps": ["Original report proves JNI ownership/completeness and documents actual null ColorSpace boundary; its sRGB patch is explicitly a proposal, not an implemented or deployed fix.", "Exact AOSP14 Bitmap.cpp is now delivered and independently byte-equal to official upstream; full binding to historical be59260f remains unproven.", "Build entry is a relevant general HWUI producer only; exact historical Bitmap.cpp and full historical HWUI source/toolchain closure remain required."]}`
+- [remaining-api-resolutions.json](<../frozen-inputs-v2/remaining-api-resolutions.json>)
+- 交付缺口：Original report proves JNI ownership/completeness and documents actual null ColorSpace boundary; its sRGB patch is explicitly a proposal, not an implemented or deployed fix.；Exact AOSP14 Bitmap.cpp is now delivered and independently byte-equal to official upstream; full binding to historical be59260f remains unproven.；Build entry is a relevant general HWUI producer only; exact historical Bitmap.cpp and full historical HWUI source/toolchain closure remain required.
 
 ### NATIVE-123 source/build
 
@@ -8544,7 +8620,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=stub
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=stub
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -8563,7 +8639,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [iid_width.h](<../../2026-10-02-u12-upstream-audio/iid_width.h>) `ee8f1d746c8ceb04229afb9f6ff806da492da62e8654866247a57c0c67c76a4d`；role=implementation
 - [opensles_android_adapter.c](<../../2026-10-02-u12-upstream-audio/candidate/opensles_android_adapter.c>) `00fbfddc8c842ccca87cd08c6b468eb4085bef013e945b65e1d237ea268885a6`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["00fbfddc8c842ccca87cd08c6b468eb4085bef013e945b65e1d237ea268885a6", "ee8f1d746c8ceb04229afb9f6ff806da492da62e8654866247a57c0c67c76a4d"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["00fbfddc8c842ccca87cd08c6b468eb4085bef013e945b65e1d237ea268885a6", "ee8f1d746c8ceb04229afb9f6ff806da492da62e8654866247a57c0c67c76a4d"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-124](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "environment": {}, "working_directory": "$REPO", "notes": "Actual offline width/IID primitives; PLAY12 callback limitation remains. Candidate source is not admission."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Actual offline width/IID primitives; PLAY12 callback limitation remains. Candidate source is not admission."]}`
@@ -8576,7 +8652,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-e3536fc46550](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -8591,7 +8667,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [ctype_compat.c](<../../2026-10-03-u13-compat-ctype/ctype_compat.c>) `2908c8c0ba6e0e2dcec6d71cf9023a5731fd29e1d354919de54c548f514776a2`；role=source_candidate
 - [ctype_.c](<../../2026-10-03-u13-compat-ctype/inputs/aosp/libc/upstream-openbsd/lib/libc/gen/ctype_.c>) `8fc63bd8bbfd6e17b2b55701a68a6e02dc6fb27f4d99eac277175863d7cf12f4`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["2908c8c0ba6e0e2dcec6d71cf9023a5731fd29e1d354919de54c548f514776a2", "8fc63bd8bbfd6e17b2b55701a68a6e02dc6fb27f4d99eac277175863d7cf12f4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2908c8c0ba6e0e2dcec6d71cf9023a5731fd29e1d354919de54c548f514776a2", "8fc63bd8bbfd6e17b2b55701a68a6e02dc6fb27f4d99eac277175863d7cf12f4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-bd0288fc9c5c](<recipes/recipes.json>)
 - build entry: [build.py](<../../2026-10-03-u13-compat-ctype/build.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -8606,7 +8682,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [vlc_bionic_residue.c](<../../2026-10-02-u12-vlc-bionic-residue/vlc_bionic_residue.c>) `a600f0d5a8af4cb2ea8e9fc1bb603adf8c188b5ae0c992630227682f2e2c2474`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["a600f0d5a8af4cb2ea8e9fc1bb603adf8c188b5ae0c992630227682f2e2c2474"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["a600f0d5a8af4cb2ea8e9fc1bb603adf8c188b5ae0c992630227682f2e2c2474"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-b0351448ac6c](<recipes/recipes.json>)
 - build entry: [build.py](<../../2026-10-02-u12-vlc-bionic-residue/build.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -8621,7 +8697,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [vlc_bionic_residue.c](<../../2026-10-02-u12-vlc-bionic-residue/vlc_bionic_residue.c>) `a600f0d5a8af4cb2ea8e9fc1bb603adf8c188b5ae0c992630227682f2e2c2474`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["a600f0d5a8af4cb2ea8e9fc1bb603adf8c188b5ae0c992630227682f2e2c2474"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["a600f0d5a8af4cb2ea8e9fc1bb603adf8c188b5ae0c992630227682f2e2c2474"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-b0351448ac6c](<recipes/recipes.json>)
 - build entry: [build.py](<../../2026-10-02-u12-vlc-bionic-residue/build.py>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -8636,7 +8712,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [cmsg_android.c](<../../2026-10-02-toutiao-bionic-scope/cmsg_android.c>) `c6b2243bc1fe2df9dc77e5cbebf4ebe094fe1c4e8822a13c42a4d407b15208aa`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["c6b2243bc1fe2df9dc77e5cbebf4ebe094fe1c4e8822a13c42a4d407b15208aa"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["c6b2243bc1fe2df9dc77e5cbebf4ebe094fe1c4e8822a13c42a4d407b15208aa"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-129](<recipes/recipes.json>)
 - build entry: [build.py](<../../2026-10-02-toutiao-bionic-scope/build.py>)
 - build_command: `{"status": "unknown", "argv": null, "environment": {}, "working_directory": "$REPO", "notes": "cmsg body located; errno full source/revision still unresolved. Partial row, not complete."}`
@@ -8651,7 +8727,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [android_dlopen_ext.c](<../../2026-10-03-u14-native-abi-gecko/src/android_dlopen_ext.c>) `7337a3935c426801002ca56508189ea2e74d7d59a3cc4600b46c9e3b3f2e1649`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["7337a3935c426801002ca56508189ea2e74d7d59a3cc4600b46c9e3b3f2e1649"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["7337a3935c426801002ca56508189ea2e74d7d59a3cc4600b46c9e3b3f2e1649"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-b7105ae88a3a](<recipes/recipes.json>)
 - build entry: [build_hw248.sh](<../../2026-10-03-u14-native-abi-gecko/build_hw248.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -8666,7 +8742,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [gecko_abi.c](<../../2026-10-03-u14-native-abi-gecko/src/gecko_abi.c>) `09aef138c904c2656925faf8d1326ddeb73734a22560d742a7930a1c5a01f61d`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["09aef138c904c2656925faf8d1326ddeb73734a22560d742a7930a1c5a01f61d"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["09aef138c904c2656925faf8d1326ddeb73734a22560d742a7930a1c5a01f61d"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-f721582b7fe9](<recipes/recipes.json>)
 - build entry: [build_hw248.sh](<../../2026-10-03-u14-native-abi-gecko/build_hw248.sh>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "Existing build files found; exact producing argv/dependency closure not inferred. Follow linked original receipt/README."}`
@@ -8682,7 +8758,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [ctype_compat.c](<../../2026-10-03-u14-native-abi-v2/src/ctype_compat.c>) `2908c8c0ba6e0e2dcec6d71cf9023a5731fd29e1d354919de54c548f514776a2`；role=implementation
 - [ctype_.c](<../../2026-10-03-u14-native-abi-v2/src/inputs/aosp/libc/upstream-openbsd/lib/libc/gen/ctype_.c>) `8fc63bd8bbfd6e17b2b55701a68a6e02dc6fb27f4d99eac277175863d7cf12f4`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["2908c8c0ba6e0e2dcec6d71cf9023a5731fd29e1d354919de54c548f514776a2", "8fc63bd8bbfd6e17b2b55701a68a6e02dc6fb27f4d99eac277175863d7cf12f4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2908c8c0ba6e0e2dcec6d71cf9023a5731fd29e1d354919de54c548f514776a2", "8fc63bd8bbfd6e17b2b55701a68a6e02dc6fb27f4d99eac277175863d7cf12f4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-132](<recipes/recipes.json>)
 - build entry: [build_v2_hw248.sh](<../../2026-10-03-u14-native-abi-v2/build_v2_hw248.sh>)
 - build_command: `{"status": "EXISTING_RECIPE_WITH_EXTERNAL_DEPENDENCIES", "argv": ["bash", "benchmark/2026-10-03-u14-native-abi-v2/build_v2_hw248.sh", "$RESTORED_MIRROR", "$FRESH_OUT", "$REPO/benchmark/2026-10-03-u14-native-abi-v2/src"], "environment": {}, "working_directory": "$REPO", "notes": "Actual table source and historical recipe. Restored mirror plus extra objects/versionmap must follow original receipt."}`
@@ -8697,7 +8773,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [zlib-route.h](<../../2026-10-02-u12-private-zlib/inputs/zlib-route.h>) `695b7a95ecc9de90e92b8b80f5443182dcef601c7d45facb6291c141527eea32`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["695b7a95ecc9de90e92b8b80f5443182dcef601c7d45facb6291c141527eea32"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["695b7a95ecc9de90e92b8b80f5443182dcef601c7d45facb6291c141527eea32"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-133](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "environment": {}, "working_directory": "$REPO", "notes": "Actual N8/U12 private zlib route body; wholehost producer binding still partial."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Actual N8/U12 private zlib route body; wholehost producer binding still partial."]}`
@@ -8708,16 +8784,21 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 ### NATIVE-134 source/build
 
-UNKNOWN_IMPLEMENTATION_SOURCE
+MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
-- recipe: [unknown-445a41cd7e84](<recipes/recipes.json>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "unknown", "evidence": [{"path": "benchmark/2026-10-02-u12-mediandk/README.md", "sha256": "b95908dd925d1103f08187b2089b0736a29c39d94936f6974eab88fbe3daef60", "supports": "该route的实现/限制与历史观察摘要，不是本轮上板或完整支持证明"}], "executed_this_audit": false, "gaps": ["No paired actual producing receipt established."]}`
-- [README.md](<../../2026-10-02-u12-mediandk/README.md>)
-- 交付缺口：Actual implementation revision-to-source full SHA binding remains partial/unknown; current file presence alone is insufficient.
+- [system_loader.cpp](<../../2026-10-02-u13-single-native/sources/candidate/policy/src/system_loader.cpp>) `56a4fec07c4933f05fd737874c3e0546b9af33a1fe2184284a3264a62f880588`；role=source_candidate
+- [native_bridge_policy.h](<../../2026-10-02-u13-single-native/sources/candidate/policy/include/nativeloader/native_bridge_policy.h>) `c1eea114c7f0a6ffceeb41dd586c6b0fa96a7c4d0845a3d24cc27c805b7f6f7a`；role=source_candidate
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["56a4fec07c4933f05fd737874c3e0546b9af33a1fe2184284a3264a62f880588", "c1eea114c7f0a6ffceeb41dd586c6b0fa96a7c4d0845a3d24cc27c805b7f6f7a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-NATIVE-134](<recipes/recipes.json>)
+- build entry: [build.py](<../../2026-10-02-u13-single-native/build.py>)
+- build_command: `{"status": "documented_not_executed_this_audit", "argv": null, "notes": "Use the pinned original build entry with its documented prerequisite inputs; no complete closure or deployment equivalence is inferred."}`
+- build_dependencies: `{"entries": [{"path": "benchmark/2026-10-02-u13-single-native/policy.patch", "sha256": "2de4625ffd01d476d13e1eb354db87da949d643ae15f8bd9fefaae6b65095cc4", "git_blob": "46cb9d151b57392b235bb7139a951783481ab91c", "master_tracked": true, "master_blob": "46cb9d151b57392b235bb7139a951783481ab91c", "member_evidence": []}, {"path": "benchmark/2026-10-02-u13-single-native/policy-build-receipt.json", "sha256": "73042cdbcabea34cd3cc2132d37f2a84784f53a7900bb9a0be475cadfe8fa07b", "git_blob": "82f92f9d8412e9e587929ff1b37e0420e995138b", "master_tracked": true, "master_blob": "82f92f9d8412e9e587929ff1b37e0420e995138b", "member_evidence": []}], "status": "PARTIAL_EXTERNAL_PREREQUISITES_PRESERVED", "gaps": ["U13 resident runtime alias is the actual implementation; U12 media provider explicitly has no media_jni alias.", "Original build recipe uses pinned prior-generation objects/toolchain; no new build or whole closure claim."]}`
+- [policy-build-receipt.json](<../../2026-10-02-u13-single-native/policy-build-receipt.json>)
+- [policy.patch](<../../2026-10-02-u13-single-native/policy.patch>)
+- build_outputs: `{"status": "unknown_new_build", "entries": []}`
+- build_verification: `{"status": "SOURCE_REVIEW_ONLY_NO_NEW_BUILD", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs-v2/remaining-api-resolutions.json", "sha256": "e8aa0f647a3248a5f5eea18b5bc194657c39dce8f5fc5ca27fa11cd4f4a25a71"}], "executed_this_audit": false, "gaps": ["U13 resident runtime alias is the actual implementation; U12 media provider explicitly has no media_jni alias.", "Original build recipe uses pinned prior-generation objects/toolchain; no new build or whole closure claim."]}`
+- [remaining-api-resolutions.json](<../frozen-inputs-v2/remaining-api-resolutions.json>)
+- 交付缺口：U13 resident runtime alias is the actual implementation; U12 media provider explicitly has no media_jni alias.；Original build recipe uses pinned prior-generation objects/toolchain; no new build or whole closure claim.
 
 ### NATIVE-135 source/build
 
@@ -8726,7 +8807,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 - [app_native_loader.c](<../../2026-10-03-u15-jitsi-native-domain/src/anl/app_native_loader.c>) `bd6ae525f56a5cef83d42b8647b15b43337f95d42292eb1c506b6254f031f919`；role=implementation
 - [candidate-stock-host.c](<../../2026-10-03-u15-jitsi-native-domain/inputs/candidate-stock-host.c>) `8be12abcb99ccc5f7fbd01f31d04b41a0b47db83d0ceac7f6bfda872b34e7b90`；role=implementation
 - [resident-compat.h](<../../2026-10-03-u15-jitsi-native-domain/inputs/resident-compat.h>) `e4f7321547d6cafac5734a7ff3b9338cc0e8a93e94ff5932bafa3caa23cb35e0`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["8be12abcb99ccc5f7fbd01f31d04b41a0b47db83d0ceac7f6bfda872b34e7b90", "bd6ae525f56a5cef83d42b8647b15b43337f95d42292eb1c506b6254f031f919", "e4f7321547d6cafac5734a7ff3b9338cc0e8a93e94ff5932bafa3caa23cb35e0"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["8be12abcb99ccc5f7fbd01f31d04b41a0b47db83d0ceac7f6bfda872b34e7b90", "bd6ae525f56a5cef83d42b8647b15b43337f95d42292eb1c506b6254f031f919", "e4f7321547d6cafac5734a7ff3b9338cc0e8a93e94ff5932bafa3caa23cb35e0"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-135](<recipes/recipes.json>)
 - build entry: [build_u15j_host.py](<../../2026-10-03-u15-jitsi-native-domain/recipe/build_u15j_host.py>)
 - build_command: `{"status": "unknown", "argv": null, "environment": {}, "working_directory": "$REPO", "notes": "ANL contains Jitsi; host source is the baseline body. Linked producer applies the two explicit JITSI_NEW deltas; not a claim baseline host alone implements Jitsi route."}`
@@ -8738,49 +8819,63 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 ### NATIVE-136 source/build
 
-UNKNOWN_IMPLEMENTATION_SOURCE
+MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
-- recipe: [unknown-9985fa8ccc85](<recipes/recipes.json>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "unknown", "evidence": [{"path": "benchmark/2026-10-03-u14-appns-build/README.md", "sha256": "ac757f85e73a306a9272fd2f95e386be09bce3f59f6fa16808ea8fb915044c60", "supports": "该route的实现/限制与历史观察摘要，不是本轮上板或完整支持证明"}], "executed_this_audit": false, "gaps": ["No paired actual producing receipt established."]}`
-- [README.md](<../../2026-10-03-u14-appns-build/README.md>)
-- 交付缺口：Actual implementation revision-to-source full SHA binding remains partial/unknown; current file presence alone is insufficient.
+- [win-u14-appns-public-libs.patch](<../../2026-10-03-u14-appns-build/recipe/win-u14-appns-public-libs.patch>) `2f9765b15f38c72d4b07bbaa3aa090ee71c4c3e40c551cec825f8e979c26ac46`；role=implementation_patch
+- [icu74_shim.S](<../../2026-10-03-u14-appns-build/recipe/icu74_shim.S>) `8ded070dd4ee61fb22b0c0083867854beeb85820c30800b757d6499e89d31686`；role=source_candidate
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["2f9765b15f38c72d4b07bbaa3aa090ee71c4c3e40c551cec825f8e979c26ac46", "8ded070dd4ee61fb22b0c0083867854beeb85820c30800b757d6499e89d31686"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-NATIVE-136](<recipes/recipes.json>)
+- build entry: [reproduce_host.py](<../../2026-10-03-u14-appns-build/recipe/reproduce_host.py>)
+- build_command: `{"status": "documented_not_executed_this_audit", "argv": null, "notes": "Use the pinned original build entry with its documented prerequisite inputs; no complete closure or deployment equivalence is inferred."}`
+- build_dependencies: `{"entries": [], "status": "PARTIAL_EXTERNAL_PREREQUISITES_PRESERVED", "gaps": ["Exact policy patch and ICU shim source are in main.", "Original reproduce_host inputs directory is absent in main; external pinned host objects/header/toolchain closure still required.", "wall2_build is relinking prior frozen ICU objects; this is not a full ICU source reproduction claim."]}`
+- build_outputs: `{"status": "unknown_new_build", "entries": []}`
+- build_verification: `{"status": "SOURCE_REVIEW_ONLY_NO_NEW_BUILD", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs-v2/remaining-api-resolutions.json", "sha256": "e8aa0f647a3248a5f5eea18b5bc194657c39dce8f5fc5ca27fa11cd4f4a25a71"}], "executed_this_audit": false, "gaps": ["Exact policy patch and ICU shim source are in main.", "Original reproduce_host inputs directory is absent in main; external pinned host objects/header/toolchain closure still required.", "wall2_build is relinking prior frozen ICU objects; this is not a full ICU source reproduction claim."]}`
+- [remaining-api-resolutions.json](<../frozen-inputs-v2/remaining-api-resolutions.json>)
+- 交付缺口：Exact policy patch and ICU shim source are in main.；Original reproduce_host inputs directory is absent in main; external pinned host objects/header/toolchain closure still required.；wall2_build is relinking prior frozen ICU objects; this is not a full ICU source reproduction claim.
 
 ### NATIVE-137 source/build
 
-UNKNOWN_IMPLEMENTATION_SOURCE
+MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
-- recipe: [unknown-fb6b7cb35d5b](<recipes/recipes.json>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "unknown", "evidence": [{"path": "benchmark/2026-10-02-u12-icu-zeroinit/README.md", "sha256": "7b9515affdf3f4988bb88332103b6cc2ab4b0204fa6842d4d0a361afb20628c2", "supports": "该route的实现/限制与历史观察摘要，不是本轮上板或完整支持证明"}], "executed_this_audit": false, "gaps": ["No paired actual producing receipt established."]}`
-- [README.md](<../../2026-10-02-u12-icu-zeroinit/README.md>)
-- 交付缺口：Actual implementation revision-to-source full SHA binding remains partial/unknown; current file presence alone is insufficient.
+- [build_android_native.py](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_android_native.py>) `376b17493b26c62a5e1608cb242cc2df3087c9e2882c4f95dbf2937b4590dfb1`；role=source_candidate
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["376b17493b26c62a5e1608cb242cc2df3087c9e2882c4f95dbf2937b4590dfb1"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-NATIVE-137](<recipes/recipes.json>)
+- build entry: [build_android_native.py](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_android_native.py>)
+- build_command: `{"status": "ORIGINAL_SCRIPT_INTERFACE", "argv": ["python3", "sources/api-implementations/source-build-native691/westlake/tools/build_android_native.py", "--workspace", "$RESTORED_SOURCE_WORKSPACE", "--out", "$FRESH_OUT", "--target", "ohos"], "working_directory": "$REPO", "notes": "Full original dependency graph required. This is compiler-option source delivery, not historical ICU byte reproduction."}`
+- build_dependencies: `{"entries": [{"path": "benchmark/2026-10-02-u12-icu-zeroinit/evidence/03678da-zeroinit.patch", "sha256": "bb0dc8f8f75de1c620eacd077d2d4817ba41df603c17ecab3628806faa6f9482", "git_blob": "9947832a6c7f6b8922b39c3c51fe6291b7e30561", "master_tracked": true, "master_blob": "9947832a6c7f6b8922b39c3c51fe6291b7e30561", "member_evidence": []}, {"path": "sources/api-implementations/source-build-native691/westlake/native/libraries.json", "sha256": "7fe186092f016a038e3da4356da3cbccca33eb99fd419df36a27c5d939e1a0b2", "git_blob": "18d6ab09b09a8f897f024099394ca6a9b163789f", "master_tracked": true, "master_blob": "18d6ab09b09a8f897f024099394ca6a9b163789f", "member_evidence": []}], "status": "PARTIAL_EXTERNAL_PREREQUISITES_PRESERVED", "gaps": ["The actual fix is compiler zero-init options, now present in the source build driver.", "Historical deployed ICU source/config differed from the candidate; preserve original byte-reproduction STOP and ABI distinctions."]}`
+- [03678da-zeroinit.patch](<../../2026-10-02-u12-icu-zeroinit/evidence/03678da-zeroinit.patch>)
+- [libraries.json](<../../../sources/api-implementations/source-build-native691/westlake/native/libraries.json>)
+- build_outputs: `{"status": "unknown_new_build", "entries": []}`
+- build_verification: `{"status": "SOURCE_REVIEW_ONLY_NO_NEW_BUILD", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs-v2/remaining-api-resolutions.json", "sha256": "e8aa0f647a3248a5f5eea18b5bc194657c39dce8f5fc5ca27fa11cd4f4a25a71"}], "executed_this_audit": false, "gaps": ["The actual fix is compiler zero-init options, now present in the source build driver.", "Historical deployed ICU source/config differed from the candidate; preserve original byte-reproduction STOP and ABI distinctions."]}`
+- [remaining-api-resolutions.json](<../frozen-inputs-v2/remaining-api-resolutions.json>)
+- 交付缺口：The actual fix is compiler zero-init options, now present in the source build driver.；Historical deployed ICU source/config differed from the candidate; preserve original byte-reproduction STOP and ABI distinctions.
 
 ### NATIVE-138 source/build
 
-UNKNOWN_IMPLEMENTATION_SOURCE
+MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
-- recipe: [unknown-4d61ece55f2b](<recipes/recipes.json>)
-- build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
-- build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
-- build_outputs: `{"status": "unknown", "entries": []}`
-- build_verification: `{"status": "unknown", "evidence": [{"path": "benchmark/2026-10-12-boat-v2-handoff/README.md", "sha256": "10ef7e4413793d7bdc76372d0dd180cda68ac7ed7b6cf86f8f45da2850f46a6d", "supports": "离线接班摘要转引v2配置与历史观察；不是新上板证据"}], "executed_this_audit": false, "gaps": ["No paired actual producing receipt established."]}`
-- [README.md](<../../2026-10-12-boat-v2-handoff/README.md>)
-- 交付缺口：Actual implementation revision-to-source full SHA binding remains partial/unknown; current file presence alone is insufficient.
+- [westlake-u13-boat-overlay-v2.sh](<../../../sources/api-implementations/NATIVE-138-boat-overlay/payload/scripts/westlake-u13-boat-overlay-v2.sh>) `ecc227e95576fe5f21b14af737b0a658c0344cce0576bcde9243eec5f2d0e5c9`；role=source_candidate
+- [install-boat-overlay.sh](<../../../sources/api-implementations/NATIVE-138-boat-overlay/payload/scripts/install-boat-overlay.sh>) `fe30f96935802264cbd25cde298f79677d20063995f848ecb1e7bcbbeb4b6260`；role=source_candidate
+- [rollback-boat-overlay.sh](<../../../sources/api-implementations/NATIVE-138-boat-overlay/payload/scripts/rollback-boat-overlay.sh>) `5c1d2cbbcf5e277b9dc3edf30a34a5f1f111d93af73d3ef390f155b34a6ee129`；role=source_candidate
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["5c1d2cbbcf5e277b9dc3edf30a34a5f1f111d93af73d3ef390f155b34a6ee129", "ecc227e95576fe5f21b14af737b0a658c0344cce0576bcde9243eec5f2d0e5c9", "fe30f96935802264cbd25cde298f79677d20063995f848ecb1e7bcbbeb4b6260"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-NATIVE-138](<recipes/recipes.json>)
+- build entry: [build.py](<../../../sources/api-implementations/NATIVE-138-boat-overlay/build.py>)
+- build_command: `{"status": "OFFLINE_INTERPRETED_COMPOSITION_STAGING", "argv": ["python3", "sources/api-implementations/NATIVE-138-boat-overlay/build.py", "--out", "$NEW_PAYLOAD"], "working_directory": "$REPO", "notes": "Stages verified script/config bytes only; never invokes historical device scripts or compiles the five binaries."}`
+- build_dependencies: `{"entries": [{"path": "sources/api-implementations/NATIVE-138-boat-overlay/source.lock.json", "sha256": "35d980238ac6750bdd0a6ed8e592a8b454ccb42146d517d08e67ec52ad17a41d", "git_blob": "23025b78d74ceeebda6067c35ed03631deaa4ee8", "master_tracked": false, "master_blob": null, "member_evidence": []}, {"path": "sources/api-implementations/NATIVE-138-boat-overlay/payload/init/00_westlake_u13_recover-boatv2.cfg", "sha256": "68278c42863b037d23409847c14ab70115cfadd525b701582d20a8d8fa4c265c", "git_blob": "141fcc0cfe308eb61eacfd6f972b50a093d09fad", "master_tracked": false, "master_blob": null, "member_evidence": []}, {"path": "sources/api-implementations/NATIVE-138-boat-overlay/payload/scripts/westlake-boat-overlay-disable.sh", "sha256": "8a163d7a375f320a1b786dbd3746732ee66e98f23c76ef40bc5f1c79aef0a531", "git_blob": "029c0e5df97c3850cd9d2a6c0d9342a5f0561e9f", "master_tracked": false, "master_blob": null, "member_evidence": []}], "status": "LOCKED_ARCHIVE_OR_EXTERNAL_BINARY_INPUTS", "gaps": ["Exact historical composition source and byte pins, independently validated against the existing handoff inventory.", "Interpreted script/config staging only. The adapter/JAR and three private library binaries remain separately pinned inputs; Unity source and whole runtime source-to-binary equality are not claimed.", "Historical deployment scripts are evidence, not commands to run on the current sealed board."]}`
+- [00_westlake_u13_recover-boatv2.cfg](<../../../sources/api-implementations/NATIVE-138-boat-overlay/payload/init/00_westlake_u13_recover-boatv2.cfg>)
+- [westlake-boat-overlay-disable.sh](<../../../sources/api-implementations/NATIVE-138-boat-overlay/payload/scripts/westlake-boat-overlay-disable.sh>)
+- [source.lock.json](<../../../sources/api-implementations/NATIVE-138-boat-overlay/source.lock.json>)
+- build_outputs: `{"status": "HISTORICAL_SCRIPT_CONFIG_PAYLOAD_NOT_BINARY_REBUILD", "entries": []}`
+- build_verification: `{"status": "SOURCE_REVIEW_ONLY_NO_NEW_BUILD", "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs-v2/remaining-api-resolutions.json", "sha256": "e8aa0f647a3248a5f5eea18b5bc194657c39dce8f5fc5ca27fa11cd4f4a25a71"}], "executed_this_audit": false, "gaps": ["Exact historical composition source and byte pins, independently validated against the existing handoff inventory.", "Interpreted script/config staging only. The adapter/JAR and three private library binaries remain separately pinned inputs; Unity source and whole runtime source-to-binary equality are not claimed.", "Historical deployment scripts are evidence, not commands to run on the current sealed board."]}`
+- [remaining-api-resolutions.json](<../frozen-inputs-v2/remaining-api-resolutions.json>)
+- 交付缺口：Exact historical composition source and byte pins, independently validated against the existing handoff inventory.；Interpreted script/config staging only. The adapter/JAR and three private library binaries remain separately pinned inputs; Unity source and whole runtime source-to-binary equality are not claimed.；Historical deployment scripts are evidence, not commands to run on the current sealed board.
 
 ### NATIVE-139 source/build
 
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [webview_bionic_shim.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/webview_bionic_shim.c>) `f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-139](<recipes/recipes.json>)
 - build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -8800,7 +8895,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [missing_natives.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/javacore-shim/missing_natives.c>) `c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-140](<recipes/recipes.json>)
 - build entry: [build_missing_natives.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh", "$ANDROID_SOURCE", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -8820,7 +8915,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [webview_bionic_shim.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/webview_bionic_shim.c>) `f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-141](<recipes/recipes.json>)
 - build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -8840,7 +8935,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [canvas_natives.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/javacore-shim/canvas_natives.c>) `9fa02d826d2652b77d0cf77cb205bc86519578764f92fb8ff857d9b530ec77c5`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["9fa02d826d2652b77d0cf77cb205bc86519578764f92fb8ff857d9b530ec77c5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["9fa02d826d2652b77d0cf77cb205bc86519578764f92fb8ff857d9b530ec77c5"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-142](<recipes/recipes.json>)
 - build entry: [build_missing_natives.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh", "$ANDROID_SOURCE", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -8860,7 +8955,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [missing_natives.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/javacore-shim/missing_natives.c>) `c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-143](<recipes/recipes.json>)
 - build entry: [build_missing_natives.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh", "$ANDROID_SOURCE", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -8880,7 +8975,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [missing_natives.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/javacore-shim/missing_natives.c>) `c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-144](<recipes/recipes.json>)
 - build entry: [build_missing_natives.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh", "$ANDROID_SOURCE", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -8900,7 +8995,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [localsocket_natives.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/javacore-shim/localsocket_natives.c>) `ba5f07ddd99d514845edc4cc802b2b565453ea5450ab0ef3b65a8184817d7ae4`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["ba5f07ddd99d514845edc4cc802b2b565453ea5450ab0ef3b65a8184817d7ae4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["ba5f07ddd99d514845edc4cc802b2b565453ea5450ab0ef3b65a8184817d7ae4"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-145](<recipes/recipes.json>)
 - build entry: [build_missing_natives.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh", "$ANDROID_SOURCE", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -8920,7 +9015,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [sqlite_natives.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/javacore-shim/sqlite_natives.c>) `a16e635f9018d240c9aced50b3f93d12621a2d1cdc5e20d562513454fb4ac4a3`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["a16e635f9018d240c9aced50b3f93d12621a2d1cdc5e20d562513454fb4ac4a3"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["a16e635f9018d240c9aced50b3f93d12621a2d1cdc5e20d562513454fb4ac4a3"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-146](<recipes/recipes.json>)
 - build entry: [build_missing_natives.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh", "$ANDROID_SOURCE", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -8940,7 +9035,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [webview_bionic_shim.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/webview_bionic_shim.c>) `f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-147](<recipes/recipes.json>)
 - build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -8960,7 +9055,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [missing_natives.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/javacore-shim/missing_natives.c>) `c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["c44ffb7e7eb48a4feb84fdf402c53a69c9874b1cd27cf9c85d47703ff6b953d8"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-148](<recipes/recipes.json>)
 - build entry: [build_missing_natives.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh", "$ANDROID_SOURCE", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -8980,7 +9075,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [webview_bionic_shim.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/webview_bionic_shim.c>) `f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-149](<recipes/recipes.json>)
 - build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -9000,7 +9095,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [bionic_fts.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/bionic_fts.c>) `e4680d77f18f15275e3be2c6b4a074fe1a610a0a0f2bb4432a29b717f7b29468`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["e4680d77f18f15275e3be2c6b4a074fe1a610a0a0f2bb4432a29b717f7b29468"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["e4680d77f18f15275e3be2c6b4a074fe1a610a0a0f2bb4432a29b717f7b29468"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-150](<recipes/recipes.json>)
 - build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -9020,7 +9115,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [webview_bionic_shim.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/webview_bionic_shim.c>) `f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-151](<recipes/recipes.json>)
 - build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -9040,7 +9135,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [webview_bionic_shim.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/webview_bionic_shim.c>) `f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-152](<recipes/recipes.json>)
 - build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -9060,7 +9155,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [android_ndk_config.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/android_ndk_config.c>) `ad47209ba97a141617232dae437c5552550b838e7b50c809c8e9ea3123f1c341`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["ad47209ba97a141617232dae437c5552550b838e7b50c809c8e9ea3123f1c341"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["ad47209ba97a141617232dae437c5552550b838e7b50c809c8e9ea3123f1c341"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-153](<recipes/recipes.json>)
 - build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -9080,7 +9175,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [webview_bionic_shim.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/webview_bionic_shim.c>) `f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-154](<recipes/recipes.json>)
 - build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -9099,28 +9194,28 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
+- [gapmap.py](<../../../harness/westlake_gap/gapmap.py>) `e64fd26d8a7388e4e66ec993df15533b4d8a3cd33ae5d9d10301540f5cd5181b`；role=source_candidate
+- [probe_source_app.py](<../../../sources/api-implementations/JAVA-115-launcher/tools/probe_source_app.py>) `6c318323ad94fc3ece68e424d91d6b9ef34d1f1817cb8cc5637acc5011e3ec48`；role=source_candidate
+- [check_launch_args.py](<../../../scripts/check_launch_args.py>) `6f141ad9a2c22e7be5c59478cadf99b19a50c5a6caf961b2b0d6ba5a9635f5b5`；role=source_candidate
 - [webview_bionic_shim.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/webview_bionic_shim.c>) `f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
-- recipe: [reviewed-NATIVE-155](<recipes/recipes.json>)
-- build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
-- build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
-- build_dependencies: `{"status": "DELIVERED_NATIVE_INPUTS_EXTERNAL_AOSP_OH_SDK_LOCKS", "entries": [{"path": "sources/api-implementations/source-build-native691/sources.lock.json", "sha256": "9eb97abf5d5acbc7b6531837ffabc4ed920257b53502c11bdaadc249f62d49c6"}, {"path": "sources/api-implementations/source-build-host/manifest-tools/upstream.lock.json", "sha256": "3dea04d0b25ed3ce8565783a6aa330989d9463bf295829ff9f9e9b43135375ed"}, {"path": "sources/api-implementations/source-build-host/manifest-tools/toolchains.lock.json", "sha256": "8abc61ec88602369b4eb897b1315248257e3e7bcfa6ca592928d20d80af16daf"}, {"path": "sources/api-implementations/source-build-host/manifest-tools/native-sources.lock.json", "sha256": "0ab9d88a547ded0e45a9ee9bff074bf3d2de53fddd33fa55991139a7375d5d74"}], "gaps": ["External AOSP libcore/libnativehelper/expat and OH SDK compiler/sysroot/CRT are not vendored by this package. Their exact historical producing hashes remain unproven."]}`
-- [native-sources.lock.json](<../../../sources/api-implementations/source-build-host/manifest-tools/native-sources.lock.json>)
-- [toolchains.lock.json](<../../../sources/api-implementations/source-build-host/manifest-tools/toolchains.lock.json>)
-- [upstream.lock.json](<../../../sources/api-implementations/source-build-host/manifest-tools/upstream.lock.json>)
-- [sources.lock.json](<../../../sources/api-implementations/source-build-native691/sources.lock.json>)
-- build_outputs: `{"status": "DECLARED_NEW_BUILD_OUTPUTS_NOT_EXECUTED", "entries": [{"name": "libwebview_bionic_shim.so", "sha256": null}, {"name": "libaaudio.so", "sha256": null}]}`
-- build_verification: `{"status": "EXACT_SOURCE_GIT_BLOBS_AND_RECIPE_SYNTAX_PASS_NO_NATIVE_BUILD", "evidence": [{"path": "sources/api-implementations/source-build-native691/api-resolutions.json", "sha256": "d0e80260b038993b607126ced0713d6419f118dbe2a96748d1e218cd11680ad5"}, {"path": "sources/api-implementations/source-build-native691/results.json", "sha256": "202685d9ad56e7ce598d21969321e84ab7fc6108d421b57a609e48d89215eefd"}], "executed_this_audit": false, "gaps": ["Consumer of explicit routed names; default routing producer pending launcher delivery", "Unknown historical r84-r89 and V2 equality; no build executed in this delivery."]}`
-- [api-resolutions.json](<../../../sources/api-implementations/source-build-native691/api-resolutions.json>)
-- [results.json](<../../../sources/api-implementations/source-build-native691/results.json>)
-- 交付缺口：Consumer of explicit routed names; default routing producer pending launcher delivery
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["6c318323ad94fc3ece68e424d91d6b9ef34d1f1817cb8cc5637acc5011e3ec48", "6f141ad9a2c22e7be5c59478cadf99b19a50c5a6caf961b2b0d6ba5a9635f5b5", "e64fd26d8a7388e4e66ec993df15533b4d8a3cd33ae5d9d10301540f5cd5181b", "f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- recipe: [supplement-NATIVE-155](<recipes/recipes.json>)
+- build entry: [cli.py](<../../../harness/westlake_gap/cli.py>)
+- build_command: `{"status": "INTERPRETED_PROJECT_ENTRY", "argv": ["westlake-apk-gap", "--help"], "environment": {"PYTHONPATH": "harness"}, "working_directory": "$REPO", "notes": "Installed pyproject.toml entry westlake_gap.cli:main; interface only, no device launch."}`
+- build_dependencies: `{"status": "PYTHON_PROJECT_DEPENDENCIES", "entries": [{"path": "pyproject.toml", "sha256": "8554bceb1d36d1a463fa29482d199ce40361e11b5c664a774fc233174ef17ed9"}], "gaps": ["androguard unavailable in original reviewer environment; no tests were executed."]}`
+- [pyproject.toml](<../../../pyproject.toml>)
+- build_outputs: `{"status": "INTERPRETED_SOURCE_NO_COMPILED_ARTIFACT", "entries": []}`
+- build_verification: `{"status": "NOT_RUN_DEPENDENCY_MISSING", "actual_exit_code": 1, "tests_executed": 0, "evidence": [{"path": "benchmark/2026-10-14-api-source-delivery/frozen-inputs-v2/native155-resolution.json", "sha256": "d721247c1dc4cf6465b41bfb43ea060454beeae05c2cbd8da6d3261655b88bc1"}, {"path": "tests/test_gapmap.py", "sha256": "1989eb66728de28d405af5db69234f8f21552b72a9e2dd76f7957d1dc2e26778", "git_blob": "8cef4bed33f903ca7d2df19bc50fae80eeda9a1b", "head_blob": "8cef4bed33f903ca7d2df19bc50fae80eeda9a1b"}], "executed_this_audit": false, "gaps": ["Default routing selection is in gapmap.interposition_rows, not in the launcher alone.", "Launcher validates/transports selected target names and namespace environment.", "Static source delivery does not prove equivalence to the historical r88 deployed source or a new 129-app runtime result.", "Two unittest import attempts failed before tests: first tests path missing, then androguard unavailable in system Python; no test PASS claimed."]}`
+- [native155-resolution.json](<../frozen-inputs-v2/native155-resolution.json>)
+- [test_gapmap.py](<../../../tests/test_gapmap.py>)
+- 交付缺口：Default routing selection is in gapmap.interposition_rows, not in the launcher alone.；Launcher validates/transports selected target names and namespace environment.；Static source delivery does not prove equivalence to the historical r88 deployed source or a new 129-app runtime result.；Two unittest import attempts failed before tests: first tests path missing, then androguard unavailable in system Python; no test PASS claimed.
 
 ### NATIVE-156 source/build
 
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [webview_bionic_shim.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/webview_bionic_shim.c>) `f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-156](<recipes/recipes.json>)
 - build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -9140,7 +9235,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [webview_bionic_shim.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/webview-shim/webview_bionic_shim.c>) `f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-157](<recipes/recipes.json>)
 - build entry: [build_bionic_shim.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_bionic_shim.sh", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -9160,7 +9255,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [ojluni_nio_natives.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/javacore-shim/ojluni_nio_natives.c>) `3424a154f924a88e83233a44c2c65fb098215bf255515c3e967fe6ac39b91d32`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["3424a154f924a88e83233a44c2c65fb098215bf255515c3e967fe6ac39b91d32"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["3424a154f924a88e83233a44c2c65fb098215bf255515c3e967fe6ac39b91d32"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-158](<recipes/recipes.json>)
 - build entry: [build_missing_natives.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh", "$ANDROID_SOURCE", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -9179,7 +9274,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 UNKNOWN_IMPLEMENTATION_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-22ceb155b702](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9194,7 +9289,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [audiorecord_natives.c](<../../../sources/api-implementations/source-build-native691/westlake/framework/javacore-shim/audiorecord_natives.c>) `baa5ba26e6b298872877ec6692c65093a60eb26161a41995aae452e083f20e6b`；role=source_candidate
 - [module.json](<../../../sources/api-implementations/source-build-host/westlake-java/apps/imehost/module.json>) `5ace8024ae8fffdd7c5502933069d7dcb060f174eadb93f3c2f89f861373d676`；role=permission_resource
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["5ace8024ae8fffdd7c5502933069d7dcb060f174eadb93f3c2f89f861373d676", "baa5ba26e6b298872877ec6692c65093a60eb26161a41995aae452e083f20e6b"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["5ace8024ae8fffdd7c5502933069d7dcb060f174eadb93f3c2f89f861373d676", "baa5ba26e6b298872877ec6692c65093a60eb26161a41995aae452e083f20e6b"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [reviewed-NATIVE-160](<recipes/recipes.json>)
 - build entry: [build_missing_natives.sh](<../../../sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh>)
 - build_command: `{"status": "DELIVERED_ORIGINAL_BUILD_SCRIPT_NOT_EXECUTED", "argv": ["bash", "sources/api-implementations/source-build-native691/westlake/tools/build_missing_natives.sh", "$ANDROID_SOURCE", "$OH_SDK_NATIVE", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output required. Original source script unchanged. Restore exact external SDK/AOSP prerequisites first."}`
@@ -9216,7 +9311,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=stub
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=stub
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9236,7 +9331,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=source_candidate
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=source_candidate
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9256,7 +9351,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=stub
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=stub
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9276,7 +9371,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=stub
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=stub
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9296,7 +9391,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=source_candidate
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=source_candidate
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9316,7 +9411,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=source_candidate
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=source_candidate
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9336,7 +9431,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=source_candidate
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=source_candidate
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9356,7 +9451,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=stub
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=stub
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9376,7 +9471,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=source_candidate
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=source_candidate
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9396,7 +9491,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=source_candidate
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=source_candidate
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9416,7 +9511,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=source_candidate
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=source_candidate
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9436,7 +9531,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 - [candidate.c](<../../2026-10-02-u12-mediandk/candidate.c>) `666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b`；role=source_candidate
 - [objects.c.inc](<../../2026-10-02-u12-mediandk/objects.c.inc>) `7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d`；role=source_candidate
 - [platform.h](<../../2026-10-02-u12-mediandk/platform.h>) `9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [u12-mediandk8fc](<recipes/recipes.json>)
 - build_command: `{"status": "EXACT_RECORDED_COMPILER_ARGV", "argv": ["/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "--target=aarch64-linux-ohos", "--sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot", "-std=c11", "-D_GNU_SOURCE", "-fPIC", "-shared", "-O2", "-Werror", "-I$REPO/benchmark/2026-10-02-u12-mediandk", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/public-types", "-I$REPO/benchmark/2026-10-02-u12-mediandk/inputs/aosp14/media/ndk/include", "-Wl,-soname,libmediandk.so", "-Wl,-z,defs", "-Wl,--build-id=sha1", "-Wl,--version-script=$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "-o", "$REPO/benchmark/2026-10-02-u12-mediandk/.artifacts/libmediandk-build1.so", "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c"], "working_directory": "$REPO", "notes": "Historic output names must be mapped to a fresh output path; no invocation here."}`
 - build_dependencies: `{"status": "PARTIAL_PINNED_TOOLS_AND_SOURCES", "entries": [{"path": "$REPO/benchmark/2026-10-02-u12-mediandk/candidate.c", "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/objects.c.inc", "sha256": "7ccd20833484f489746c0505d048dd9079fe2f2f6af16329955eb3f7f463118d"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/platform.h", "sha256": "9f7d151a7d5ceb28316f12304562efb16e507a4ef1d0e6d3f6bfb15542e80d5a"}, {"path": "$REPO/benchmark/2026-10-02-u12-mediandk/exports.map", "sha256": "0c15cba2f4bb5b7b4a006e9d51ae3d34b33e2bad65ae2b90e7df4201a49881fe"}, {"path": "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang", "sha256": "6a5ec84488cd11db8118fab8160affc40b90885f82481dbc31624f561f7b72a1"}], "gaps": ["Complete SDK/sysroot redistribution and original split stderr not established by this receipt."]}`
@@ -9454,7 +9549,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [android_graphics_compat_shim.cpp](<../../2026-10-13-runtime-surfaceview-split/source/android_graphics_compat_shim.cpp>) `c208788a90ee19ad891af5cbe6fb8d7b29f339467ece084255d168dab45d1aef`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["c208788a90ee19ad891af5cbe6fb8d7b29f339467ece084255d168dab45d1aef"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["c208788a90ee19ad891af5cbe6fb8d7b29f339467ece084255d168dab45d1aef"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [runtime-f28](<recipes/recipes.json>)
 - build entry: [build_candidate.py](<../../2026-10-13-runtime-surfaceview-split/build_candidate.py>)
 - build_command: `{"status": "EXISTING_BUILD_ENTRY", "argv": ["python3", "benchmark/2026-10-13-runtime-surfaceview-split/build_candidate.py"], "working_directory": "$REPO", "notes": "Requires retained original source layout, pinned Docker image and sibling dependency trees; creates a fresh .artifacts/cold-* output. Not executed here."}`
@@ -9473,7 +9568,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [base_bundle_installer.cpp](<../../../sources/api-implementations/FZ-001/archive-source/base_bundle_installer.cpp>) `9acb43858dd43c4d1898f2e2a7ef4b960e2719c9c17f758b7826512c9989225a`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["9acb43858dd43c4d1898f2e2a7ef4b960e2719c9c17f758b7826512c9989225a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["9acb43858dd43c4d1898f2e2a7ef4b960e2719c9c17f758b7826512c9989225a"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-001](<recipes/recipes.json>)
 - build entry: [build.sh](<../../../sources/api-implementations/FZ-001/build.sh>)
 - build_command: `{"status": "DELIVERED_BUILD_ENTRY_NOT_EXECUTED_THIS_AUDIT", "argv": ["bash", "sources/api-implementations/FZ-001/build.sh"], "environment": {"OH_ROOT": "$OH_ROOT", "AOSP_ROOT": "$AOSP_ROOT", "BUILD_OUT": "$BUILD_OUT"}, "working_directory": "$REPO", "notes": "Read BUILD.md and supply exact pinned dependencies in a fresh scratch tree. API-unit build is not whole production artifact reproduction."}`
@@ -9497,7 +9592,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 - [child_main.h](<../../../sources/api-implementations/FZ-002/src/child_main.h>) `1d5063dfb188c4161485a9ad1da0bd230335bcd9de47f4820b7dc6d4ac4c6445`；role=implementation
 - [adapter_bridge_identity.h](<../../../sources/api-implementations/FZ-002/src/adapter_bridge_identity.h>) `d43a2c9ad698b7713821d69bcbc9da60f09ad80060e83eb366142a3e442fb54c`；role=implementation
 - [appspawnx_runtime.h](<../../../sources/api-implementations/FZ-002/src/appspawnx_runtime.h>) `4785fedd3e7bc84e9a4d22072c08c269ea215f825c96f895e6a790c90f655d7e`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["1d5063dfb188c4161485a9ad1da0bd230335bcd9de47f4820b7dc6d4ac4c6445", "3fc2060ea0f705cce50555caa509b215ea64edc343a714b20c438dba505b61d8", "4785fedd3e7bc84e9a4d22072c08c269ea215f825c96f895e6a790c90f655d7e", "d43a2c9ad698b7713821d69bcbc9da60f09ad80060e83eb366142a3e442fb54c"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["1d5063dfb188c4161485a9ad1da0bd230335bcd9de47f4820b7dc6d4ac4c6445", "3fc2060ea0f705cce50555caa509b215ea64edc343a714b20c438dba505b61d8", "4785fedd3e7bc84e9a4d22072c08c269ea215f825c96f895e6a790c90f655d7e", "d43a2c9ad698b7713821d69bcbc9da60f09ad80060e83eb366142a3e442fb54c"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-002](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-002/build.py>)
 - build_command: `{"status": "DELIVERED_BUILD_ENTRY_NOT_EXECUTED_THIS_AUDIT", "argv": ["python3", "sources/api-implementations/FZ-002/build.py", "--generation", "$GENERATION", "--out", "$FRESH_OUT", "--run"], "environment": {"GENERATION": "$GENERATION", "FRESH_OUT": "$FRESH_OUT"}, "working_directory": "$REPO", "notes": "Read BUILD.md and supply exact pinned dependencies in a fresh scratch tree. API-unit build is not whole production artifact reproduction."}`
@@ -9523,7 +9618,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [android_util_AssetManager_aosp.cpp](<../../../sources/api-implementations/FZ-003/src/android_util_AssetManager_aosp.cpp>) `5d2a33ea5c09931a06e72165e80e987990c13b8081033c44455b6ed9a6c1e5e1`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["5d2a33ea5c09931a06e72165e80e987990c13b8081033c44455b6ed9a6c1e5e1"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["5d2a33ea5c09931a06e72165e80e987990c13b8081033c44455b6ed9a6c1e5e1"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-003](<recipes/recipes.json>)
 - build entry: [build.sh](<../../../sources/api-implementations/FZ-003/build.sh>)
 - build_command: `{"status": "DELIVERED_BUILD_ENTRY_NOT_EXECUTED_THIS_AUDIT", "argv": ["bash", "sources/api-implementations/FZ-003/build.sh"], "environment": {"ADAPTER_ROOT": "$ADAPTER_ROOT", "AOSP_ROOT": "$AOSP_ROOT", "OH_ROOT": "$OH_ROOT", "AOSP_LIB_DIR": "$AOSP_LIB_DIR", "BUILD_OUT": "$BUILD_OUT"}, "working_directory": "$REPO", "notes": "Read BUILD.md and supply exact pinned dependencies in a fresh scratch tree. API-unit build is not whole production artifact reproduction."}`
@@ -9543,7 +9638,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 - [JarVerificationProviderFix.java](<../../../sources/api-implementations/FZ-004/src/JarVerificationProviderFix.java>) `e65dfb8590e67211a4a6797530a13bb35f29035c4e514166fb2d277914868473`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["e65dfb8590e67211a4a6797530a13bb35f29035c4e514166fb2d277914868473"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["e65dfb8590e67211a4a6797530a13bb35f29035c4e514166fb2d277914868473"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-004](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-004/full-jar/build.py>)
 - build_command: `{"status": "ACTUAL_OVERLAY_BUILD_ENTRY_STRICT_HISTORICAL_REJECTION", "argv": ["python3", "sources/api-implementations/FZ-004/full-jar/build.py", "--inputs", "$PINNED_JAR_INPUTS", "--out", "$FRESH_OUT", "--run"], "working_directory": "$REPO", "notes": "Fetch/verify the14 pinned jars first. Full overlay producer, not full baseline source build. Actual producer rc0; strict wrapper rc2 for changed DEX/whole JAR."}`
@@ -9563,7 +9658,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 
 UPSTREAM_DEPENDENCY_AND_RECIPE_NOT_FULL_SOURCE
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [FZ-005](<recipes/recipes.json>)
 - build entry: [build.sh](<../../../sources/api-implementations/FZ-005/build.sh>)
 - build_command: `{"status": "DELIVERED_BUILD_ENTRY_NOT_EXECUTED_THIS_AUDIT", "argv": ["bash", "sources/api-implementations/FZ-005/build.sh"], "environment": {"AOSP_R1_ROOT": "$AOSP_R1_ROOT", "JARS_DIR": "$JARS_DIR", "OUT_DIR": "$OUT_DIR", "BOARD_LIBART": "$BOARD_LIBART", "T5C_DIR": "$T5C_DIR"}, "working_directory": "$REPO", "notes": "Read BUILD.md and supply exact pinned dependencies in a fresh scratch tree. API-unit build is not whole production artifact reproduction."}`
@@ -9582,7 +9677,7 @@ UPSTREAM_DEPENDENCY_AND_RECIPE_NOT_FULL_SOURCE
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [VibratorFetcher.java](<../../../sources/api-implementations/FZ-006/src/VibratorFetcher.java>) `11bfe963d4ca47b10bce7777fcdffbd0e23d68ad766bdf3a7fe0c935f3455dd3`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["11bfe963d4ca47b10bce7777fcdffbd0e23d68ad766bdf3a7fe0c935f3455dd3"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["11bfe963d4ca47b10bce7777fcdffbd0e23d68ad766bdf3a7fe0c935f3455dd3"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-006](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-006/full-jar/build.py>)
 - build_command: `{"status": "ACTUAL_OVERLAY_BUILD_ENTRY_STRICT_HISTORICAL_REJECTION", "argv": ["python3", "sources/api-implementations/FZ-006/full-jar/build.py", "--inputs", "$PINNED_JAR_INPUTS", "--out", "$FRESH_OUT", "--run"], "working_directory": "$REPO", "notes": "Fetch/verify the14 pinned jars first. Full overlay producer, not full baseline source build. Actual producer rc0; strict wrapper rc2 for changed DEX/whole JAR."}`
@@ -9617,7 +9712,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 - [Scanner.java](<../../../sources/api-implementations/FZ-007-tagsoup/src/org/ccil/cowan/tagsoup/Scanner.java>) `c1bd7e81cdc56f811e26d69edfa9150b58c1be967ffb7b3cb6a4f586e743375b`；role=implementation
 - [Schema.java](<../../../sources/api-implementations/FZ-007-tagsoup/src/org/ccil/cowan/tagsoup/Schema.java>) `15a2598a73327590375effe8fa0584efd4178e588f5b11c5aba2db31536bb7f9`；role=implementation
 - [XMLWriter.java](<../../../sources/api-implementations/FZ-007-tagsoup/src/org/ccil/cowan/tagsoup/XMLWriter.java>) `851fff7807dd50d40a3ca4158183401c7bc8a506c7e0c7bc80f534151a82ec4e`；role=implementation
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["045f363bf8e7cebe78664385b3f388afb9a647394354e40db5aaaaa3f15c900e", "0c1f8ae43274a9f86a1b88cbf3bd4a7744402e631249746d3493216ddcda45cb", "15a2598a73327590375effe8fa0584efd4178e588f5b11c5aba2db31536bb7f9", "256b8ddd7a75926386f6dd262ee702c59a1117576e8f6d32793f028ea8f67397", "2bfa19e9e91196647d681d9fa4b122b5a63685de83a34c61dd1e4fd48ce347c0", "3983dadc6ad3d7313d49bc98f5b40fb4c616e6497c3e732940be43cad959d3ef", "48fdd7a6d03236a5ee820dd4eb9d509c7ac62a62e8f10298cb7d26d0008d5f25", "5e2baba30c4222a0205b6f64ea5b95b91cc760258c027599966a9b3e88701f93", "78699fdaf23e929ce4d72b01b398b4b95a54f2f3adb1f39592c27a7250980f46", "851fff7807dd50d40a3ca4158183401c7bc8a506c7e0c7bc80f534151a82ec4e", "aa68cc4d04869aee423b799eb990237301cf40d2f59b77c47549a88e32b38425", "c1bd7e81cdc56f811e26d69edfa9150b58c1be967ffb7b3cb6a4f586e743375b", "de0c852e37a571bae0805af2fd8718686d1a090ecba9c21ae7c9bfd7c7c22f13", "e46e3ff03f09ede4be1ba800795f58aca78aaf0b7c1087e83ffa6f46bf8ab434", "f5751e8fab9a23c1959b5078d8069fa4e5bb149fc72a6cf70e173168c931aeb7"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["045f363bf8e7cebe78664385b3f388afb9a647394354e40db5aaaaa3f15c900e", "0c1f8ae43274a9f86a1b88cbf3bd4a7744402e631249746d3493216ddcda45cb", "15a2598a73327590375effe8fa0584efd4178e588f5b11c5aba2db31536bb7f9", "256b8ddd7a75926386f6dd262ee702c59a1117576e8f6d32793f028ea8f67397", "2bfa19e9e91196647d681d9fa4b122b5a63685de83a34c61dd1e4fd48ce347c0", "3983dadc6ad3d7313d49bc98f5b40fb4c616e6497c3e732940be43cad959d3ef", "48fdd7a6d03236a5ee820dd4eb9d509c7ac62a62e8f10298cb7d26d0008d5f25", "5e2baba30c4222a0205b6f64ea5b95b91cc760258c027599966a9b3e88701f93", "78699fdaf23e929ce4d72b01b398b4b95a54f2f3adb1f39592c27a7250980f46", "851fff7807dd50d40a3ca4158183401c7bc8a506c7e0c7bc80f534151a82ec4e", "aa68cc4d04869aee423b799eb990237301cf40d2f59b77c47549a88e32b38425", "c1bd7e81cdc56f811e26d69edfa9150b58c1be967ffb7b3cb6a4f586e743375b", "de0c852e37a571bae0805af2fd8718686d1a090ecba9c21ae7c9bfd7c7c22f13", "e46e3ff03f09ede4be1ba800795f58aca78aaf0b7c1087e83ffa6f46bf8ab434", "f5751e8fab9a23c1959b5078d8069fa4e5bb149fc72a6cf70e173168c931aeb7"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-007](<recipes/recipes.json>)
 - build entry: [build.py](<../../../sources/api-implementations/FZ-007-tagsoup/build.py>)
 - build_command: `{"status": "EXISTING_BUILD_ENTRY", "argv": ["python3", "sources/api-implementations/FZ-007-tagsoup/build.py", "--mode", "t7d", "--dependencies", "$A2HLAB_WS", "--out", "$FRESH_OUT"], "working_directory": "$REPO", "notes": "Fresh output only; original T7d build log not recreated retroactively."}`
@@ -9638,7 +9733,7 @@ MASTER_EXACT_SOURCE_LOCATED_BUILD_SCOPE_SEPARATE
 STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 - [SSLSockets.java](<../../../sources/api-implementations/FZ-008/src/android/net/ssl/SSLSockets.java>) `0a5eae71b2034cc12c9da5d64bb7a2c4cc88dd0f4a80512e2728d1877556b89e`；role=stub
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["0a5eae71b2034cc12c9da5d64bb7a2c4cc88dd0f4a80512e2728d1877556b89e"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["0a5eae71b2034cc12c9da5d64bb7a2c4cc88dd0f4a80512e2728d1877556b89e"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [FZ-008](<recipes/recipes.json>)
 - build entry: [build.sh](<../../../sources/api-implementations/FZ-008/build.sh>)
 - build_command: `{"status": "DELIVERED_BUILD_ENTRY_NOT_EXECUTED_THIS_AUDIT", "argv": ["bash", "sources/api-implementations/FZ-008/build.sh"], "environment": {"BUILD_OUT": "$BUILD_OUT"}, "working_directory": "$REPO", "notes": "Read BUILD.md and supply exact pinned dependencies in a fresh scratch tree. API-unit build is not whole production artifact reproduction."}`
@@ -9655,7 +9750,7 @@ STUB_SOURCE_ONLY_NOT_COMPLETE_API
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-d1f2d1c2c8e6](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9668,7 +9763,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-b875f2fde216](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9681,7 +9776,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-8aea8f8b1668](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9694,7 +9789,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-479f894b1114](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9707,7 +9802,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-842c2edb3098](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9721,7 +9816,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-a8b8450031fd](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9734,7 +9829,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-fb2ee5a78be6](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9746,7 +9841,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-79622dc42575](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9758,7 +9853,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-468ad97e1db9](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9772,7 +9867,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 - [android_graphics_compat_shim.cpp](<../../../sources/api-implementations/legacy-graphics-7e4b38/android_graphics_compat_shim.cpp>) `7e4b38a0dbf3191245ef85df52e49e627895e2982f6acc72193bf066667e8cac`；role=source_candidate
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": ["7e4b38a0dbf3191245ef85df52e49e627895e2982f6acc72193bf066667e8cac"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": ["7e4b38a0dbf3191245ef85df52e49e627895e2982f6acc72193bf066667e8cac"], "exact_binding": true, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "exact_pins_match"}`
 - recipe: [unknown-8e93e8ebd3e5](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9784,7 +9879,7 @@ MASTER_SOURCE_LOCATED_BINDING_PARTIAL
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-69144a52523c](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9797,7 +9892,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-0f439d7003df](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9811,7 +9906,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-cdafd73d9ac0](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
@@ -9826,7 +9921,7 @@ SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
 SUPPORTING_RECORD_NOT_IMPLEMENTATION
 
-- revision: `{"master_commit": "42c87ab42b896c68762b88f943ee40b6bd3bfa45", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
+- revision: `{"master_commit": "b7d63270327c3ec4f97fb9ecaab820d981fca614", "expected_source_sha256": [], "exact_binding": false, "binding_scope": "source_evidence_pins_not_automatic_current_deployment", "status": "partial_or_unknown"}`
 - recipe: [unknown-b834bbabc49d](<recipes/recipes.json>)
 - build_command: `{"status": "unknown", "argv": null, "working_directory": null, "notes": "No command invented from source presence."}`
 - build_dependencies: `{"status": "unknown", "entries": [], "gaps": ["Complete producing inputs/toolchain not established."]}`
