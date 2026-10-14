@@ -92,6 +92,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[`benchmark/2026-10-14-demo-desktop-ready/cache-static-analysis/`](benchmark/2026-10-14-demo-desktop-ready/cache-static-analysis/README.md)** | **Actual SceneBoard bytecode binds stale desktop icons to EL1 Launcher.db persistent cache: 8 packages, 17 exact icon rows, scoped invalidation evidence and original artifact pins.** |
 | **`benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/final61b-v2-seal/`** | **Signed 61b V2: actual same-board 128 keys/256 captures, new-proof live954, scoped Boat/Toutiao interactions, 109 core startup screens + 6 limited appendix + 13 exclusions; operations, restore and durable evidence receipts.** |
 | **[`sources/api-implementations/`](sources/api-implementations/README.md)** | **Actual frozen API implementation sources and executable build recipes on the default branch, with pinned dependencies and explicit build verification boundaries.** |
 | **`benchmark/2026-10-14-api-progress-final61b/`** | **315-entry API knowledge atlas: implementations, platform evidence, APK validation and gaps; bilingual HTML, Markdown, CSV and JSON with final61b evidence bindings.** |

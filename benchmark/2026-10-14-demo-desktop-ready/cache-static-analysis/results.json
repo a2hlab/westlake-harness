@@ -1,0 +1,88 @@
+{
+  "status": "ACTUAL_SCENEBOARD_PERSISTENT_ICON_CACHE_ROOT_CAUSE",
+  "device_calls": 0,
+  "production_changes": 0,
+  "facts": [
+    {
+      "id": "RDB_NORMAL_MASTER",
+      "conclusion": "The pinned 6.1 normal BMS QueryByStep path uses a normal connection on configured master DB. Replica statements are separate; a stale slave does not establish normal reads from slave.",
+      "source": [
+        "source/rdb_data_manager.cpp:551",
+        "source/rdb_store_impl.cpp:1526",
+        "source/step_result_set.cpp:82",
+        "source/connection_pool.cpp:430",
+        "source/sqlite_connection.cpp:578"
+      ],
+      "scope": "Pinned upstream; exact deployed binary equality unknown"
+    },
+    {
+      "id": "BMS_OVERRIDE",
+      "conclusion": "Normal launcher resource rows may be replaced by matching dynamic/theme icon rows. The existing copied DB reports zero bundleIconResource rows, so this override is not evidenced for these icons.",
+      "source": [
+        "source/bundle_resource_manager.cpp:174",
+        "source/bundle_resource_rdb.cpp:495"
+      ],
+      "runtime_evidence": "../cache-readonly/results.json"
+    },
+    {
+      "id": "LAUNCHER_HAP_CANDIDATE",
+      "conclusion": "Official applications_launcher retrieves media by iconId from module resource manager on cache miss. This can reload unchanged HAP placeholder after restart.",
+      "source": [
+        "source/ResourceManager.ts:70",
+        "source/ResourceManager.ts:106"
+      ],
+      "scope": "Candidate only; actual com.ohos.sceneboard linkage UNKNOWN"
+    },
+    {
+      "id": "NOT_DISK_CACHE",
+      "conclusion": "Despite its name, this pinned DiskLruCache uses only Map and empty initMap; no persistent file operation.",
+      "source": [
+        "source/DiskLruCache.ts:27",
+        "source/DiskLruCache.ts:35"
+      ]
+    },
+    {
+      "id": "REAL_EL1_NOT_EMPTY",
+      "conclusion": "Actual SceneBoard EL1 database includes phone_sceneboard and rdb; EL2 emptiness does not rule out persisted launcher state.",
+      "runtime_evidence": "../launcher-cache-readonly-extra/el1.txt"
+    }
+  ],
+  "unknowns": [
+    "Future exact CAS refresh screen result",
+    "Exact deployed BMS/NativeRdb source equality; not required to bind actual SceneBoard bytecode cache chain"
+  ],
+  "do_not_infer": [
+    "Old slave means normal reader uses slave",
+    "DiskLruCache class name means persistent cache",
+    "EL2 empty means EL1 empty",
+    "Official applications_launcher is actual com.ohos.sceneboard"
+  ],
+  "next_readonly": [
+    "Enumerate exact SceneBoard EL1 files/haps/preferences and database paths only",
+    "bm dump -n com.ohos.sceneboard to locate actual HAP",
+    "After paths known, offline copy relevant DB plus WAL/SHM with stable bookends and actual HAP for local static analysis"
+  ],
+  "refresh_status": "BMS to prepare exact row CAS plus process-memory invalidation with backup and rollback; no device execution by this lane",
+  "actual_module_hap": "/system/app/SceneBoard/SceneBoard.hap",
+  "actual_launcher_db": {
+    "path": "/data/app/el1/100/database/com.ohos.sceneboard/phone_sceneboard/rdb/Launcher.db",
+    "size": 7028736,
+    "wal_size": 3790432,
+    "source": "../launcher-cache-el1-list/directories.txt",
+    "contents": "INSPECTED_WORK_COPY_WITH_WAL"
+  },
+  "actual_sceneboard_bound": true,
+  "actual_chain": [
+    "AppIconResConfig.loadIconResourceByCache -> IconResourceManager.getCombIcon -> getCombineIcon",
+    "MainAbility.initIconResourceCache configures memoryCache then dbCache, BundleManagerFwk only after cache miss",
+    "DbCache opens EL1 Launcher.db; icon_info exact (bundle_name,module_name,ability_name); COMBINE_PIC -> changeBase64ToPixel -> combinePicSrc",
+    "Valid cached image returns after version guard; miss falls through to BundleManagerFwk BMS APIs"
+  ],
+  "affected_three_rows": 6,
+  "affected_three_same_placeholder_sha256": "3554d69ae22fe60a485a56e6099cb873943fc34f461b42898d2f8e42c5c0fc7f",
+  "all_eight_package_rows": 17,
+  "runtime_fix_verified": false,
+  "findings_supersede": [
+    "LAUNCHER_HAP_CANDIDATE: actual packaged module binds BundleManagerFwk after persistent cache; public launcher 6.0 was only a prior candidate."
+  ]
+}
