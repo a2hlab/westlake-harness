@@ -1,0 +1,168 @@
+{
+  "schema": "j10d-source-rebuild/v1",
+  "commands": [
+    {
+      "argv": [
+        "$JAVAC",
+        "-version"
+      ],
+      "rc": 0,
+      "stdout": {
+        "file": "00.stdout.txt",
+        "sha256": "fc1904a51a7019658c64e5d4870c6640cb45d29f50e02643a0f045af6fd0b15c"
+      },
+      "stderr": {
+        "file": "00.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "argv": [
+        "$JAVA",
+        "-version"
+      ],
+      "rc": 0,
+      "stdout": {
+        "file": "01.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "01.stderr.txt",
+        "sha256": "2fe83b0053132e4e834defa82250462f4c62733d29bf76b19ee1bb3c14b06b39"
+      }
+    },
+    {
+      "argv": [
+        "$JAVA",
+        "-cp",
+        "$INPUTS/baksmali-2.5.2.jar:$INPUTS/dexlib2-2.5.2.jar:$INPUTS/guava-27.1-android.jar:$INPUTS/jcommander-1.64.jar:$INPUTS/util-2.5.2.jar",
+        "org.jf.baksmali.Main",
+        "disassemble",
+        "$OUT/baseline.dex",
+        "-o",
+        "$OUT/smali"
+      ],
+      "rc": 0,
+      "stdout": {
+        "file": "02.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "02.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "argv": [
+        "$JAVAC",
+        "-source",
+        "8",
+        "-target",
+        "8",
+        "-cp",
+        "$INPUTS/android.jar",
+        "-d",
+        "$OUT/classes",
+        "$REPO/benchmark/2026-10-01-j10-freeze-draft/sources/J10dTheme.java",
+        "$OUT/compile-only/adapter/activity/ManifestJsonFallback.java"
+      ],
+      "rc": 0,
+      "stdout": {
+        "file": "03.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "03.stderr.txt",
+        "sha256": "a3b1de55303279161eef96c187a0b73628b0af4395891624e7aa13652f63c5ef"
+      }
+    },
+    {
+      "argv": [
+        "$JAVA",
+        "-cp",
+        "$INPUTS/d8.jar",
+        "com.android.tools.r8.D8",
+        "--min-api",
+        "28",
+        "--lib",
+        "$INPUTS/android.jar",
+        "--output",
+        "$OUT/unit-dex",
+        "$OUT/classes/adapter/activity/J10dTheme.class"
+      ],
+      "rc": 0,
+      "stdout": {
+        "file": "04.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "04.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "argv": [
+        "$JAVA",
+        "-cp",
+        "$INPUTS/baksmali-2.5.2.jar:$INPUTS/dexlib2-2.5.2.jar:$INPUTS/guava-27.1-android.jar:$INPUTS/jcommander-1.64.jar:$INPUTS/util-2.5.2.jar",
+        "org.jf.baksmali.Main",
+        "disassemble",
+        "$OUT/unit-dex/classes.dex",
+        "-o",
+        "$OUT/unit-smali"
+      ],
+      "rc": 0,
+      "stdout": {
+        "file": "05.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "05.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "argv": [
+        "$JAVA",
+        "-cp",
+        "$INPUTS/smali-2.5.2.jar:$INPUTS/dexlib2-2.5.2.jar:$INPUTS/guava-27.1-android.jar:$INPUTS/jcommander-1.64.jar:$INPUTS/util-2.5.2.jar:$INPUTS/antlr-runtime-3.5.2.jar:$INPUTS/stringtemplate-3.2.1.jar",
+        "org.jf.smali.Main",
+        "assemble",
+        "-j",
+        "1",
+        "$OUT/smali",
+        "-o",
+        "$OUT/classes.dex"
+      ],
+      "rc": 0,
+      "stdout": {
+        "file": "06.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "06.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "historical_build_log_recovered": false,
+  "toolchain": {
+    "javac": {
+      "sha256": "e565938fe0dba26546105392dba23850468e56d65c17fd5c375fa2ef8701e211",
+      "name": "javac"
+    },
+    "java": {
+      "sha256": "4ac51957da9d64cc468d4ce67fc2f53644edc5585f8c4c92ce08ea30ee71db8a",
+      "name": "java"
+    }
+  },
+  "baseline_sha256": "ea24291a898812ff1f13c11cd15e5747392fb975966a54b7c6e73e0d123517e1",
+  "source_lock_sha256": "57ca6342dface7b8b6d5ed8141b0f2cb72f6fc4faf7ad6d728b409cb932bb8b2",
+  "output": {
+    "sha256": "57d621837eee4d065a49929f0a7f981e811becc4beba988c18b0ab847e67058c",
+    "classes_dex_sha256": "b6bbe64c72eda52486136741e3d7c56d68ba79aa4b718ee94a4d9da1d68a8c42"
+  },
+  "historical_jar_equal": true,
+  "rc": 0,
+  "status": "EXACT_HISTORICAL_JAR_MATCH"
+}

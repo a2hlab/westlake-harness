@@ -1,0 +1,16 @@
+diff --git a/bms/src/adapter/framework/activity/java/AppSchedulerBridge.java b/bms/src/adapter/framework/activity/java/AppSchedulerBridge.java
+index 8fef286877..f8ca201435 100755
+--- a/bms/src/adapter/framework/activity/java/AppSchedulerBridge.java
++++ b/bms/src/adapter/framework/activity/java/AppSchedulerBridge.java
+@@ -1561,6 +1561,11 @@ public class AppSchedulerBridge {
+                 aiApp.banner = 0;
+                 aiApp.roundIconRes = 0;
+             }
++            // J10d (#appcompat-actionbar-theme): the block above overwrites/zeros activityInfo.theme, so
++            // performLaunchActivity.setTheme(getThemeResource()) falls back to the app theme (Theme.Knot,
++            // windowActionBar=true) instead of the activity's manifest *.NoActionBar theme -> AppCompat
++            // createSubDecor installs a decor action bar -> ISE. Restore the activity's OWN manifest theme.
++            J10dTheme.restore(activityInfo);
+             // Schedule the transaction — triggers the full activity launch sequence
+             System.err.println("[B47-SLA] BEFORE scheduleTransaction className="
+                     + activityInfo.name);

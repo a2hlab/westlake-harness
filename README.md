@@ -4,7 +4,8 @@ Requirements, analysis and tooling for **systematically finding what a stock And
 an Android-compatibility layer on OpenHarmony does not yet provide** — and classifying each gap so
 it gets the right repair instead of a guess.
 
-This repo is the *method*. The runtime itself (ART, bridge, framework jars) lives elsewhere.
+This repo contains the compatibility method, recovered implementation sources and build recipes.
+Start with [the source index](sources/api-implementations/README.md); large runtime artifacts and toolchains use SHA-pinned external archives.
 
 ---
 
@@ -92,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[`benchmark/2026-10-14-verified-source-closeout/`](benchmark/2026-10-14-verified-source-closeout/README.md)** | **Recovered validated production code and recipes, exact historical JAR replays, pinned input archives and honest remaining source/output gaps; no device changes.** |
 | **[`benchmark/2026-10-14-worktree-retirement/`](benchmark/2026-10-14-worktree-retirement/README.md)** | **Recoverable worktree cleanup: full private archives, actual restore and remote SHA checks, two merged candidates, seven stale registrations, branches and unarchived evidence retained.** |
 | **[`benchmark/2026-10-14-demo-desktop-ready/cache-static-analysis/`](benchmark/2026-10-14-demo-desktop-ready/cache-static-analysis/README.md)** | **Actual SceneBoard bytecode binds stale desktop icons to EL1 Launcher.db persistent cache: 8 packages, 17 exact icon rows, scoped invalidation evidence and original artifact pins.** |
 | **`benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/final61b-v2-seal/`** | **Signed 61b V2: actual same-board 128 keys/256 captures, new-proof live954, scoped Boat/Toutiao interactions, 109 core startup screens + 6 limited appendix + 13 exclusions; operations, restore and durable evidence receipts.** |

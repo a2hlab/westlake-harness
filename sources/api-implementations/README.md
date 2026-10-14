@@ -31,3 +31,6 @@ Original source bytes and license notices are preserved, including upstream whit
 - [Bitmap owner source reference](NATIVE-122-bitmap-reference/README.md): exact Android 14 upstream implementation; historical deployed ELF binding and the unimplemented proposed patch remain separate.
 
 See the [complete API/source/build correspondence table](../../benchmark/2026-10-14-api-source-delivery/views/API-PROGRESS.zh.md) or its [searchable HTML view](../../benchmark/2026-10-14-api-source-delivery/views/index.html).
+
+- [Activity manifest theme (J10d)](JAVA-033-theme/README.md): exact tracked Java source, original caller patch and newly executed build reproducing historical JAR `57d62183`.
+- [Boat C9 input-dispatch JAR](boat-c9-jar/README.md): original producer, two exact donor smali inputs, locked baseline/tools, and independent archived-input replay reproducing signed JAR `6333bcab`.
