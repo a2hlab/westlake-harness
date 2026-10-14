@@ -1,20 +1,22 @@
-# API source delivery renderer checkpoint
+# API implementation, source and build correspondence
 
-The first completeness predicate accepted a nonempty, hash-matching build entry without proving that the script was tracked on MAIN/master. The corrected predicate requires an independently read build-entry Git blob to match the recorded master tree, using a repository source path. A real, identical master script copied into T0 fails; `$WORKSPACES` cross-tree and absolute-path forms also fail. This is a renderer checkpoint, not complete source delivery or API functionality acceptance.
+The earlier API atlas linked several reports without the actual implementation or a runnable build entry. The default branch now contains the recovered implementation source and build plans, and the 315-row atlas links them directly. There are **340 exact master source references and 130 non-null build entries**. All 315 original capability, Android/OH evidence and APK validation grades remain unchanged.
 
-Ten independent checks and the `api_source_delivery` Rust wrapper passed. The unchanged task contract has 0 failed, 0 skipped and 2 pending_review scenarios (lint 100%). Final views have **not** been frozen. Preview tables were actually generated, but later mapping pins refer to mutable Java review data and were rejected. The failures remain in `evidence/pin-drift-failures.json`; no alias hides them. Generation will resume once ROOT reports `ALL_SOURCE_LANDED` and supplies a stable mapping/recipe snapshot.
+Start with the [Chinese table](views/API-PROGRESS.zh.md), [searchable Chinese HTML](views/index.html), [English HTML](views/index.en.html), [CSV](views/api-progress.csv) or [JSON](views/api-progress.json). The [source index](../../sources/api-implementations/README.md) groups the frozen API, Java, native, installer and Boat implementations. No agent worktree or branch switch is needed to find the delivered code.
 
-The renderer reuses the signed315 JSON and original atlas, adding source/build fields without changing any original315 semantic field. Source and build entry navigation is enabled only for exact MAIN/master-tracked entries. Unpublished candidates have no user source entry. Unknown/stub/incomplete build evidence remains incomplete. The generator never executes recipes or device commands. The source/build mapping in `inputs` is a preview test input only; its mutable evidence pins are not accepted for final generation.
+Each row connects its API to source files and revision/blob hashes, implementation scope, executable build recipe and command, dependency/toolchain locks, expected outputs, and separately scoped build/deployment/app evidence. Missing APIs, stubs, upstream-only references and unavailable historical build inputs remain explicit. An existing source file does not establish a successful fresh native build, historical byte equality or complete API behavior. Unity engine binaries remain external dependencies; their proprietary source is not claimed to be in this repository.
 
-## Commands
+The final mapping is [release-v2/source-build-mapping.json](release-v2/source-build-mapping.json), SHA `c78e9e61f79b958f22e5f69a9309287d383c3824b74e38a16c4413e619c1d6b0`. Its [recipes](release-v2/recipes/recipes.json) are SHA `c6ad2f46e5b27578d4c1cda90ea7c973018f2ed49bcbb868c7c77cd6fd909261`. Earlier v1 snapshots are retained as historical evidence.
+
+## Verification
+
+The generator passed 10 refusal/data tests and its Rust wrapper. The supplement passed 15 mapping tests. An [actual MAIN physical-link audit](evidence/actual-main-links-v2.json) resolved 460 links in each language and 1,993 Markdown links, checking the source/build bytes where pinned. This is an audit of the landed directory, not a simulated staging directory. Build receipts separately record the new 83-input Java compilation, production-matching TagSoup DEX, and J1/J7b historical DEX mismatches.
+
+From the repository root:
 
 ```sh
-WORKSPACES=/path/to/workspaces PYTHONDONTWRITEBYTECODE=1 python3 benchmark/2026-10-14-api-source-delivery/verify.py
-WORKSPACES=/path/to/workspaces cargo test --manifest-path tools/spec-checks/Cargo.toml --test api_source_delivery -- --nocapture
+python3 benchmark/2026-10-14-api-source-delivery/verify.py
+python3 benchmark/2026-10-14-api-source-delivery/publication_check.py actual --views benchmark/2026-10-14-api-source-delivery/views
 ```
 
-After stable source delivery, copy the exact mapping and its pinned `recipes/recipes.json` into `inputs`, update `inputs/request.json`, and run `generate.py build --mapping inputs/mapping.json --mapping-sha256 <ROOT fullSHA>` from this packet. Outputs land directly at `MAIN/benchmark/2026-10-14-api-source-delivery/views`; no flattening layer is required. The checker validates the generating master commit as an ancestor of current master, so unrelated later commits do not cause a false rejection.
-
-`publication_check.py simulate` copies the new view at this exact physical directory depth inside T0, reusing existing MAIN source files read-only, then resolves the rendered links and checks their SHA. After ROOT lands final views, `publication_check.py actual --views <actual MAIN views> --receipt <T0 receipt>` uses the real supplied MAIN directory as origin. It never writes MAIN. Only this latter receipt may be called an actual MAIN physical-link audit.
-
-The historical alias is solely the immutable original315 registration evidence (`knowledge/gates/unlanded-ack.json`), independently recovered from its exact old Git blob. It cannot supply live source or mutable delivery review bytes. No old signed packet, runtime, active round, or device was changed.
+The historical 315-row signed snapshot remains unchanged. `all315_complete=false` records remaining API/build/deployment gaps; it does not hide the code and build plans that are now available on the default branch.
