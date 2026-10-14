@@ -1,0 +1,7 @@
+# V4 scoped build evidence update
+
+V3 correctly retained failed provider restore attempts but could not include the later successful execution. V4 retains all 27 cumulative amendments and updates only REG-002 to the committed new compile/link receipt. The 504,984-byte provider matches frozen SHA `0509fe235a7883b5cd9b57477221cb868465de944c6f70ed0cf2835b0fe4a97c`. Only the delivered child TU was recompiled; linking consumes locked original objects. Historical producing logs and whole-generation source reproduction remain unproven.
+
+[Results](results.json) record 13 renderer/refusal tests, 6 closeout tests, 544 physical links per language, 2,170 Markdown links and 535 master URLs. [Independent delta/object audit](master-object-and-delta-audit.json) verifies 392 source references and 143 build entries against 261 actual master Git objects. All original fields in 315 historical records are unchanged. V3 mapping, amendments and views-v3-review are preserved; canonical views now equal views-v4. Other producer and API gaps remain explicit.
+
+The command receipts record successful local map, render, verify, closeout-test, physical-link and user-path checks. Only the current repository prefix is normalized to `$REPO` in text receipts. This task made no build, device, commit, push or remote-verification call. Exact landing paths are in [landing-paths.txt](landing-paths.txt); file hashes exclude that self-referential manifest.

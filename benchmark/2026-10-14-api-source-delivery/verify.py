@@ -8,7 +8,7 @@ import test_generate
 def main():
  parser=argparse.ArgumentParser();parser.add_argument('--request',type=g.Path)
  args=parser.parse_args()
- request_path=args.request or next(p for p in (g.HERE/'final-v3-inputs/request.json',g.HERE/'final-v2-inputs/request.json',g.HERE/'final-inputs/request.json',g.HERE/'inputs/request.json') if p.is_file())
+ request_path=args.request or next(p for p in (g.HERE/'final-v4-inputs/request.json',g.HERE/'final-v3-inputs/request.json',g.HERE/'final-v2-inputs/request.json',g.HERE/'final-inputs/request.json',g.HERE/'inputs/request.json') if p.is_file())
  request=g.read(request_path)
  tests=unittest.TextTestRunner(verbosity=1).run(unittest.defaultTestLoader.loadTestsFromModule(test_generate))
  g.need(tests.wasSuccessful(),'source delivery refusal tests failed')
