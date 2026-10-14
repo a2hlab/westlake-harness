@@ -37,3 +37,5 @@ See the [complete API/source/build correspondence table](../../benchmark/2026-10
 
 - [Boat V2 production sources](boat-v2-production/README.md): exact signal shim source, C7/C4 transforms, project revision and build inputs. C7/C4 output hashes match; the new signal build differs only in GNU build-id.
 - [J1/J7b full producer source and recipes](jar-production-closeout/README.md): 39/51 exact source inputs, 14 locked dependencies and raw new build receipts. All 129/161 disassembled classes match historical outputs; whole JAR hashes differ and the historical exact-byte gate remains rejected.
+
+- [Shared native production source archive](shared-native-production/README.md): 155 frozen and 92 related source/evidence files, exact-byte restoration, locked dependency archives and isolated provider build entry. Related bridge/libandroid source is not certified as the exact deployed producer; fresh native compilation remains separately gated.

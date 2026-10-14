@@ -1,0 +1,1 @@
+The 27 reviewed source/build amendments preserve all 315 capability and historical device evidence rows. Actual producing source remains unproven for bridge8ab and libandroid9cc/ADC; two provider restore failures are retained. New Toutiao repair is independently in progress and is not a sealed runtime claim.
