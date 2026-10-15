@@ -912,3 +912,4 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 
 - 2026-10-14 API 发布归属：本轮实际推送远端为 a2hlab/westlake-harness、默认 master；本地 SHA/相对链接通过不能证明硬编码 GitHub 链接正确，生成器的 master_url 必须与实际 publish remote/default branch 对账（旧 A2OH origin 不等于本轮发布目标），并用错误 repo 负例约束。证据 benchmark/2026-10-14-api-source-delivery/；旧冻结视图仅保留历史不改写。
 - 2026-10-14 头条5cd目录根因：JIT50以root mkdir -p深层cache却只chown末端，fresh包根可遗留0:0/0755；现场UID20011300无法建app_webview，WebView锁ENOENT→主循环退出→_exit(1)。单包根owner修正后同父新child17175自建目录并显示feed/内容，原apply读回rc2与零写reconcile均保留；返回点击已到title-icon且同刻栏高87，栏拦截假设反证，重入/长期稳定/历史SIG11与61b活进程无窗均未解决。见 `benchmark/2026-10-14-toutiao-manual-crash/`。
+- 2026-10-16 D2R 对照：公开 entry.S + gatefn 在 Mac arm64 的60条合成输入原件60/60通过，单变量删除x10/x11恢复后60/60拒绝；只证明该离线调用边界判据能识别此缺陷，不是Android/OH API已接入、游戏全验或桥接提速。现有跨APK冻结/namespace/构建追溯早于本次借鉴，不能算新增收益。证据 benchmark/2026-10-16-d2r-comparison/。

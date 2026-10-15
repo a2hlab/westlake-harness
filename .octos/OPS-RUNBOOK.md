@@ -246,3 +246,19 @@ Native-only U7/U8 experiment bundle preparation: derive baseline reference SHAs 
 - 2026-10-13 进化采集Mac修复：系统Bash3.2不展开Unicode转义的全角分隔符，使用连续数字前缀解析（portable harvester SHA b52e7879b37a054f8aa25a5d26e045ed0768fe567f90059e8693edded41a53c0）；独立运行副本在 `$HOME/.octos/outer/evo/runtime-20261013-portable`，watch.sh显式GNU coreutils PATH与app-lighting review board，双哨日志落 `benchmark/2026-10-13-evolution-health/live-*.{stdout,stderr}.txt`。139旧卡隔离幂等通过，真实新R2已采EVO-0140/0141；检查进程、失败日志、真实新卡三者，不能仅看进程存活。全局发行脚本未改，prepare-runtime.sh可重建。
 
 - 收尾前台核验先沿原 `bms_batch.py:767–772` 取同boot当前目标UID进程集合，再传原 `foreground(wm,pids)`；宿主唯一可见性、UID/GID、PID/birth/rawNUL与宿主WID按原observations独立核。不得把合法同UID应用焦点收窄成host-only，不因child获焦点改WL_PARENT_ID/run.sh；UID未知/焦点歧义照原门拒绝。失败留原目录，纠正只写新侧件；新824精确核对→collector→新proof→实际live954仍全部执行，历史PASS只证明对象语义，实际签字另据最终 S。依据 `benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-foreground-object-review/NOTE.zh.md`。
+# REA 免费工具链（2026-10-16）
+
+本次 Mac 已安装 REA 6.5.0、Ghidra 12.1.4、JADX 1.5.6、OpenJDK 21；REA Android provider 使用独立的 jadx-headless-mcp 0.7.1 JAR，不能用普通 jadx CLI 代替该 JAR。Codex、Claude Code、Claude Desktop 的 REA 配置均指定 `REA_ANALYSIS_PROVIDER=ghidra`，移除了 `HOPPER_LAUNCHER_PATH`；正在运行的客户端须重连 MCP。Hopper 6.6.0-demo 应用已移到废纸篓，分析工程保留；用户要求的 REA 配置备份已删除。
+
+CLI 使用同样环境（不改系统全局 Java）：
+
+```sh
+export GHIDRA_INSTALL_DIR="$(brew --prefix ghidra)/libexec"
+export JAVA_HOME="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home"
+export REA_JADX_MCP_JAR="$HOME/.local/share/rea/android/jadx-headless-mcp-0.7.1-all.jar"
+export REA_ANALYSIS_PROVIDER=ghidra
+rea doctor --client codex --provider ghidra --provider jadx --skill --json
+rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
+```
+
+官方 JADX provider JAR SHA256：`6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75`。安装与原始验证回执位于 `$HOME/.local/share/rea/setup-20261016/`：`doctor-final.json` 全部指定检查通过，`ghidra-decompile.json` 实际解出自建 arm64 Mach-O 测试函数；不是仅凭安装成功。此轮没有实测 REA 的 APK 查询，JADX provider 只通过依赖检查。Ghidra GUI 操作与 Hopper 不等价，不承诺原 Hopper 专属 MCP 操作可用。
