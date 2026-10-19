@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""Offline final raw checks. No device invocation or exit diagnosis."""
+import argparse,hashlib,json,re,shutil
+from pathlib import Path
+HERE=Path(__file__).resolve().parent
+BASE=Path.home()/'.local/share/westlake'
+A=BASE/'toutiao-resume-20261019';B=BASE/'toutiao-resume-20261020'
+def pin(p):return {'path':('BASE19/' if p.is_relative_to(A) else 'BASE20/')+str(p.relative_to(A if p.is_relative_to(A) else B)),'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'bytes':p.stat().st_size}
+def dump(n,d):(HERE/n).write_text(json.dumps(d,indent=2)+'\n')
+def main():
+ parser=argparse.ArgumentParser(description='Offline final raw checks. Default makes no writes; use --write to regenerate review JSON.')
+ parser.add_argument('--write',action='store_true',help='Explicitly regenerate local final review files from raw evidence')
+ args=parser.parse_args()
+ if not args.write:
+  print(json.dumps({'mode':'READ_ONLY_NO_WRITE','review_executed':False,'hint':'Use --write only to explicitly regenerate the review; --help prints usage.'}));return
+ close=json.loads((B/'r13-video-close.json').read_text());assert close['status']=='RUNTIME_RESTORED_UI_NOT_RESTORED_NO_ATTACH_NO_SAMPLES' and close['tracer_pid'] is None
+ assert hashlib.sha256((HERE/'restored-screen.jpeg').read_bytes()).hexdigest()==close['terminal_screenshot_sha256']
+ g=A/'video-r13-video-live/restored-reentry-settled/guardian-after.txt';lines=g.read_text().splitlines();events=[]
+ for pid,birth,event in [(8654,18108,200),(15013,25390,273)]:
+  x=[s for s in lines if f'child={pid} child_birth={birth}' in s];assert any(s.startswith(str(event)+' ') and 'reason=process_exit first_read_exited' in s for s in x);events.extend(x)
+ (HERE/'baseline-guardian-excerpt.txt').write_text('\n'.join(events)+'\n')
+ ps=A/'video-r13-video-live/restored-reentry-settled/processes-after.txt';rows=[s.split() for s in ps.read_text().splitlines()];assert all(not any(r[:1]==[str(pid)] for r in rows) for pid in [8654,15013]);assert any(r[:1]==['6101'] for r in rows)
+ dump('baseline-children.json',{'source_guardian':pin(g),'source_processes':pin(ps),'children':close['restore_children'],'parent':6101,'parent_birth':16617,'exit_cause':'NOT_INVESTIGATED','visual_terminal':'Westlake IME host; independently viewed, no Toutiao feed'})
+ d=B/'r13-video-close-readonly';s=(d/'1.stdout').read_text();assert json.loads((d/'0.json').read_text())['rc']==json.loads((d/'1.json').read_text())['rc']==0
+ assert (d/'0.stdout').read_text().strip()=='[Empty]';assert 'errNum is:106!' in s and close['restored_boot'] in s and '/proc/8654/status: No such file or directory' in s
+ tcp=[l.split() for l in s.splitlines() if len(l.split())>=4 and l.split()[0].rstrip(':').isdigit() and ':' in l.split()[1]];assert not any(r[1].endswith(':13AF') and r[3]=='0A' for r in tcp)
+ dump('cleanup-review.json',{'sources':[pin(p) for p in sorted(d.iterdir()) if p.is_file()],'parameter_absent_106':True,'forward5039_absent':True,'listener5039_absent':True,'tracer_pid':None,'tracer_reason':'Child exited; failed proc read is preserved. Shell transport rc0 does not prove individual proc reads succeeded. No attach was performed.','public_network_rows_omitted':True})
+ d=A/'video-r13-video-restored-preflight';plan=json.loads((d/'plan.json').read_text());refs=[]
+ for idx,key in [('00011','before_sha'),('00027','media_before_sha'),('00039','player_before_sha')]:
+  cmd=d/'commands'/f'command-{idx}.json';out=cmd.with_suffix('.stdout.txt');s=out.read_text();assert json.loads(cmd.read_text())['exit_code']==0 and s.split()[0]==plan[key] and re.search(r'__BMS_REMOTE_RC_[a-f0-9]+__0\s*$',s);refs.append({'command':pin(cmd),'stdout':pin(out),'expected_sha256':plan[key]})
+ cmd=d/'commands/command-00051.json';out=cmd.with_suffix('.stdout.txt');s=out.read_text();c=json.loads(cmd.read_text());assert c['exit_code']==0 and re.search(r'__BMS_REMOTE_RC_[a-f0-9]+__0\s*$',s)
+ dump('runtime-restore-review.json',{'plan':pin(d/'plan.json'),'exact_original_hashes':refs,'private_inode_and_compat_absence':{'command':pin(cmd),'stdout':pin(out),'remote_rc':0},'status':'RUNTIME_RESTORED_UI_NOT_RESTORED'})
+ archive_status='PENDING_LANE_SSH_DENIED_SEE_ARCHIVE_RECEIPT'
+ outer_path=HERE/'outer-success/receipt.json'
+ if outer_path.exists():
+  outer=json.loads(outer_path.read_text());local=json.loads((HERE/'archive/receipt.json').read_text())
+  assert outer.get('remote_verified') is True and outer.get('outer_rcs')==[0,0,0],'invalid outer success receipt'
+  for key in ['archive_sha256','bytes','member_count','remote']:assert outer[key]==local[key],'outer archive binding mismatch: '+key
+  archive_status='VERIFIED_OUTER_SUCCESS_SIDECAR'
+ r=json.loads((HERE/'results.json').read_text());r.update({'token':'r13-video-window-final-ready','status':close['status'],'visual_review':'HOST_NO_FEED_INDEPENDENTLY_VIEWED','cleanup_identity_review':'RUNTIME_AND_NO_DEBUG_TRANSPORT_VERIFIED_TRACER_UNKNOWN','restored_boot':close['restored_boot'],'restore_children':close['restore_children'],'locked_at':close['locked_at'],'closed_at':close['closed_at'],'elapsed_seconds':766,'tracer_pid':None,'playback':'NOT_PASSED','remote_archive':archive_status});dump('results.json',r)
+ print(json.dumps({'status':r['status'],'baseline_exits':2,'tracer_pid':None,'runtime_checks':'PASS','UI':'NOT_RESTORED'}))
+if __name__=='__main__':main()
