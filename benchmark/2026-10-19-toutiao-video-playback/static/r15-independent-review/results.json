@@ -1,0 +1,64 @@
+{
+  "task": "t10 typed-provider-adapter — independent review (reviewer lane, cc-video)",
+  "date": "2026-10-20",
+  "role": "independent reviewer; cx-seal owns implementation; R14 read-only",
+  "status_under_review": "OFFLINE_ADAPTER_ONLY_NOT_DEPLOYABLE",
+  "verdict": "NO_CODE_BLOCKER_BOUNDED_PASS",
+  "t10_scenarios": {"total": 7, "automated_method_conformant": 6, "human_review_receipt_pendingreview": 1},
+  "pins_verified": {
+    "provider_adapter.c": "5fc32ea58014a43a78d2942ccbe5e79229abef372bb612f8f14a7bfcd8b01617",
+    "test_adapter.c": "814040519123905407b7bc4f33384815ff4e45c18cb74145b857ee1e6e51acb5",
+    "r14_window_module.c": "1f42a3936449b75db6c08163c21cf68882d664065705c2d2f9afd7e2c1af4707",
+    "r14_window_module.h": "28a88796febf5063e374fbc3d1d007a53f1004eafb24f46d6f925783724cbe32",
+    "all_match_author_declared": true,
+    "r14_drift": false
+  },
+  "run_evidence": {
+    "source": "outer-loop independent full-core (authoritative; not re-run by reviewer)",
+    "raw_files": 27,
+    "raw_records": 1149,
+    "all_sha_matched": true,
+    "host_suite_cases": {"pair": 7, "layout": 16, "failures": 13, "concurrency": 8, "total": 44, "status": "PASS", "note": "44 is a host CASE count, not a byte comparison"},
+    "oh_object_byte_identical": {"artifact": "provider_adapter.o (ET_REL, OH compile-only)", "sha256_prefix": "5a3ed9e2", "note": "byte-identical refers to the OH object only, not to the host cases"},
+    "reviewer_recompile": "NOT_RUN_per_outer_directive_keep_pins"
+  },
+  "axes": {
+    "duplicate_identity": {
+      "verdict": "pass",
+      "evidence": "lower op dispatched only for identity unique-under-lock at dispatch; duplicate detected on return (collision 37-41) or next op (by_identity 25-29 ->-1, deny_identity 33-36) -> bits NOT published + no FURTHER lower op dispatched (cleanup suppressed, slot retained); an already-in-flight lower call is irrevocable and completes then its result is discarded (test:138 map runs; new ops gate-denied); capacity -ENOSPC pre-side-effect test:133",
+      "fail_closed_scope": "no NEW lower op / no publish / cleanup suppressed / retained; NOT 'no lower side-effect ever' and NOT 'map always caught' (an in-flight dispatched call cannot be revoked)"
+    },
+    "failure_cleanup": {
+      "verdict": "pass",
+      "evidence": "uncertain-flag drives R14 unmap/abort suppression; sentinel(89->unmap deny 98), map-error(89->abort deny 119), request-contradiction(55->abort deny); Abort=0 never release (116-121 no memset); reclaim only on full-success flush (113); cross-checked R14 fail-path window_module.c:86-92",
+      "fail_closed": true
+    },
+    "signed_24byte_handle": {
+      "verdict": "pass",
+      "evidence": "offset-order locals(65) + positional init(69) cross-over correct; int32->int64 sign-extend; 24-byte bound PROVEN by guard page test:66-67/94; byte0-3 unread; units not asserted (R14 validates)"
+    },
+    "region_by_value_abi": {
+      "verdict": "pass",
+      "evidence": "LTRB->xywh gated pre-provider(109); Region by value rectNumber=1 fence=-1 (111-112); host _Static_assert 8-9; OH MATCH 11-17 proven by outer byte-identical OH object (reviewer did not re-run)"
+    },
+    "tests_prove_contract": {
+      "verdict": "pass",
+      "evidence": "two-layer public/internal journal, guard page, pthread barrier+gate are mechanical proofs not a success-only mock"
+    }
+  },
+  "bugs": [],
+  "conditions_not_blockers": [
+    "request/convert may return 0 for a record a concurrent collision poisons microseconds later; every SUBSEQUENT/new op is gated (by_identity ambiguity or uncertain) before dispatch, bits not published, cleanup suppressed; an already-in-flight lower call cannot be revoked and completes then its result is discarded (test:138 map runs)",
+    "duplicate identity poisons an innocent in-flight window (collateral) -> retained, not reclaimed (fail-closed leak on provider misbehaviour); mandated by t10 '禁止猜测清理'",
+    "adapter encodes R14 call order (handle-before-convert) in phase gates; valid under one-adapter<->one-R14 binding; ordering assumption not an independent invariant",
+    "OH ABI static asserts (Rect/Region layout, SDK prototype MATCH) are compile-only; proven by outer byte-identical OH ET_REL, not by a reviewer run",
+    "abort-count for null_handle/null_convert (test:114 k=3/4) not pinned by assertion; adapter permits clean abort there; behaviourally safe"
+  ],
+  "unknown_out_of_scope": [
+    "real dynamic resolver / window factory / production caller routing",
+    "actual unwrap object + provider instance + returned geometry/format sanity on device",
+    "playback / video progress"
+  ],
+  "deployment_gate": "NOT_DEPLOYABLE: missing real factory/object/provider/caller-scoped routing; OFFLINE_ADAPTER_ONLY status preserved; no production binding, no .so, no device, no push",
+  "token": "r15-review-ready"
+}
