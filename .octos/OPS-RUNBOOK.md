@@ -264,3 +264,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 官方 JADX provider JAR SHA256：`6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75`。安装与原始验证回执位于 `$HOME/.local/share/rea/setup-20261016/`：`doctor-final.json` 全部指定检查通过，`ghidra-decompile.json` 实际解出自建 arm64 Mach-O 测试函数；不是仅凭安装成功。此轮没有实测 REA 的 APK 查询，JADX provider 只通过依赖检查。Ghidra GUI 操作与 Hopper 不等价，不承诺原 Hopper 专属 MCP 操作可用。
 
 - 2026-10-20 r11：HDC shell cat /proc/PID/cmdline 文本可能在首NUL截断，身份校验用od -An -tx1后逐字节解码，另核精确exeSHA/birth与/proc/net/tcp socket inode归属。fport移除必须读回ls；返回rc0或发出rm不算成功，本轮首次rm失败、freshboot后列表Empty，原始失败保留。
+
+- **OH param缺键不看退出码(2026-10-20)**：`param get debug.ttplayer.log.enable` 在本板输出 `errNum is:106!` 时仍可 rc=0；验缺失须同时保留原始输出并精确判106，不能用 shell `if param get ...` 把 rc0当键存在。R13 retry恢复只读检查因此误拒一次，原件保留，改文本判据复验通过；未改板参数。
