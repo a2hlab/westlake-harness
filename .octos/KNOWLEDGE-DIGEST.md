@@ -915,3 +915,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-16 D2R 对照：公开 entry.S + gatefn 在 Mac arm64 的60条合成输入原件60/60通过，单变量删除x10/x11恢复后60/60拒绝；只证明该离线调用边界判据能识别此缺陷，不是Android/OH API已接入、游戏全验或桥接提速。现有跨APK冻结/namespace/构建追溯早于本次借鉴，不能算新增收益。证据 benchmark/2026-10-16-d2r-comparison/。
 
 - 2026-10-19 #91 头条 P0 r2：自然/受控退出后真实桌面图标可重入 feed，并有第二 boot 的恢复证据；首启随机退出、网络就绪依赖和约23–24秒点击至spawn延迟仍在，过早7秒截图不能判漏触发。READY 可滞后于子进程退出，需结合精确boot/PID/birth与events/ps。证据 benchmark/2026-10-19-icon-reentry-live-r2/。
+
+- 2026-10-19 #91 视频静态门：只清空libttmplayer直接导入会漏其DT_NEEDED里的libvcbasekit C++重定位失败；应按实际namespace、已加载SONAME/provider顺序递归依赖，不能取全机导出并集。compat映射且旧错误消失不证明player加载/GOT或播放，P1实际失败已回滚；证据 benchmark/2026-10-19-toutiao-rea-methods/video-1919-live-review/。
