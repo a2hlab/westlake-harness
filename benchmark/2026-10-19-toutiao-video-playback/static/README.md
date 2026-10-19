@@ -33,7 +33,7 @@ The log format and musl wording are taken from a real RouteB child log ([excerpt
 
 **Prior art (copy first):** the original Westlake Toutiao route already solved this load. In `westlake/scripts/toutiao/run_tt.sh` (last touched at a9fd5ad7) and `native/build.sh` (0d8e4f43), libttmplayer was loaded through `nsprobe/libwestlake_player_anchor.so`. That anchor's ordered DT_NEEDED places `libopensles_android_compat.so` (source `cf45ad43`, which defines exactly these two IIDs and maps SIMPLEBUFFERQUEUE to OH's `SL_IID_BUFFERQUEUE`) before `libttmplayer.so`. RouteB dropped it: no anchor env, no `nsprobe/`, libttmplayer outside NATIVE_TARGETS. RouteB libart `78e34445` also supports only one `ANCHOR` (no `NEXT_ANCHOR`). See [prior-art-player-route.txt](evidence/prior-art-player-route.txt). Westlake never evidenced playback beyond this load, so the prior route only addresses P1.
 
-**RQ1 (outer, 61b parent mount ns):** the first `libOpenSLES.so` is `/system/lib64/libOpenSLES.so` `05d8ac90`. It exports `SL_IID_OH_BUFFERQUEUE` but **neither Android IID** ([outer-rq1](evidence/outer-rq1.txt), [exports](evidence/outer-61b-OpenSLES-exports.txt)). The static precondition therefore holds on the device. P1 is still **unknown, not confirmed**: no load attempt has been observed. It would be refuted by another global provider, by a different first libttmplayer error, or by the engine never trying libttmplayer.
+**RQ1 (outer, 61b parent mount ns):** the first `libOpenSLES.so` is `/system/lib64/libOpenSLES.so` `05d8ac90`. It exports `SL_IID_OH_BUFFERQUEUE` but **neither Android IID** ([outer-rq1](evidence/outer-rq1.txt), [exports](evidence/outer-61b-OpenSLES-exports.txt)). The static precondition therefore holds on the device. P1 is still **unknown, not confirmed**: no load attempt has been observed. It would be refuted only by an exact load-result record for the libttmplayer object showing success, or by a different first libttmplayer error. An unobserved attempt leaves it unknown.
 
 ## Conditional next walls
 
@@ -57,12 +57,12 @@ Rank by **load-time closure first**. Before blaming a render or buffer layer, pr
 
 Files: [prediction.json](prediction.json), [source-search.json](source-search.json), [readonly-requests.json](readonly-requests.json), [static-receipt.json](static-receipt.json), [results.json](results.json). No device command, build, runtime change or push was made by this lane.
 
-## Update — REA method evidence (outer MCP, 17:27)
+## Update 1 — REA method evidence (outer MCP, 17:27) — **SUPERSEDED in part by Update 3; do not cite the struck claims**
 
 We consumed four REA records from the main tree `.octos/` (hashes and evidence IDs are in [rea-analysis.json](rea-analysis.json)): the package summary, `TTPlayerLibLoader.loadLibrary()`, `loadPlayerlibrary(String)` and `TTPlayerRef.setSurface(Surface)`.
 
-- **The load is lazy, and a failure is silent.** `TTPlayer.<clinit>` calls `loadLibrary()`. The load order is `VCBaseKitLoader` → `ttcrypto`/`ttboringssl` → `mffmpeg` → `ttmplayer`; the beta/pgo variants depend on server config. Every Throwable is caught, `IsErrored` is set, and nothing is rethrown. `loadPlayerlibrary` returns `false` without an app log. **A failed libttmplayer load therefore produces neither a crash nor an app log line.** The RouteB `[SOURCE-NATIVE-LOAD-FAIL]` trace is the only observable. This fits the historical silent frozen cover but does not prove it.
-- `setSurface` → native `setVideoSurface` → `ANativeWindow_fromSurface`. A new `[WESTLAKE-ANWFS]` line is the surface-handoff marker, but only after a successful load.
+- ~~**The load is lazy, and a failure is silent.**~~ *(superseded: silence is branch-conditional, see Update 3)* `TTPlayer.<clinit>` calls `loadLibrary()`. The load order is `VCBaseKitLoader` → `ttcrypto`/`ttboringssl` → `mffmpeg` → `ttmplayer`; the beta/pgo variants depend on server config. Every Throwable is caught, `IsErrored` is set, and nothing is rethrown. `loadPlayerlibrary` returns `false` without an app log. **A failed libttmplayer load therefore produces neither a crash nor an app log line.** The RouteB `[SOURCE-NATIVE-LOAD-FAIL]` trace is the only observable. This fits the historical silent frozen cover but does not prove it.
+- ~~`setSurface` → native `setVideoSurface` → `ANativeWindow_fromSurface`. A new `[WESTLAKE-ANWFS]` line is the surface-handoff marker~~ *(superseded: consumer is a static-import inference; an unattributed ANWFS line is supporting evidence only)*
 - New **P1b** (unknown): `libvcbasekit` is an android-native-namespace target in RouteB, while libttmplayer (NEEDED `libvcbasekit.so`) loads in namespace 0. Observe which namespace each load reports.
 
 **Minimal observation point** ([readonly-requests.json](readonly-requests.json) `observation_point`):
@@ -82,12 +82,23 @@ New REA records (main `.octos/`): `method-3` `TTPlayerLibLoader.loadLibs` (`1eba
 - **Which loader runs:** `loadLibs` dispatches to a configurable `ILibraryLoader` or to `mDefaultLibLoader`. Only the configurable branch catches Throwable. The actual mechanism (`System.load`, `System.loadLibrary` or a custom linker) is **not established**. We withdraw the implicit `System.loadLibrary` assumption.
 - **Surface handoff:** `setVideoSurface` calls native `_setVideoSurface` only when `mHandle != 0`; otherwise it returns `-1` silently. Naming `ANativeWindow_fromSurface`/libhwui as the runtime consumer is a static-import inference that REA does not show.
 
-**Static conclusion:** every Java-level outcome of a failed player load is silent. `IsErrored` may stay false, `setVideoSurface` returns `-1`, and no crash occurs. This agrees with t4: no MediaPlayer fallback is shown in these methods, and hotfix branches can override the static paths. In-app state cannot confirm or refute P1, which stays **needs_observation**.
+~~**Static conclusion:** every Java-level outcome of a failed player load is silent. `IsErrored` may stay false, `setVideoSurface` returns `-1`, and no crash occurs.~~ *(superseded by Update 3)* This agrees with t4: no MediaPlayer fallback is shown in these methods, and hotfix branches can override the static paths. In-app state cannot confirm or refute P1, which stays **needs_observation**.
 
 **Minimal runtime observation (amended `observation_point`)** — three independent runtime-side signals, all read-only:
 
 1. The RouteB ART loader trace (`SOURCE-NATIVE-LOAD(-FAIL)`), which covers `System.load`/`loadLibrary`.
-2. **Child `/proc/<pid>/maps`** for `libttmplayer/libmffmpeg/libvcbasekit/libOpenSLES/libEGL`. This covers custom loaders and is new in OP0 and OP1.
+2. ~~Child `/proc/<pid>/maps` … covers custom loaders~~ *(superseded: maps shows mappings only; see Update 3)*
 3. `ASX_DIAG_THROWABLE` output for `UnsatisfiedLinkError` on `com.ss.ttm.player` natives.
 
-OP1 adds decision **E**: the library is present in maps without a trace line, meaning a custom loader; P1 is refuted for that copy. OP1 also adds decision **F**: an UnsatisfiedLinkError with no maps entry. OP1 still requires a real feed with video cards first; Wi-Fi/board choice is pending the user's clarification.
+~~OP1 adds decision **E**: … meaning a custom loader; P1 is refuted for that copy.~~ *(superseded by Update 3)* OP1 also adds decision **F**: an UnsatisfiedLinkError with no maps entry. OP1 still requires a real feed with video cards first; Wi-Fi/board choice is pending the user's clarification.
+
+## Update 3 — independent review corrections (t4 `video-branch-review-ack.md` `87804615…`, cx-seal); no device operation
+
+These statements replace any conflicting text in Updates 1–2. All stay **unknown**, and P1 stays **needs_observation**.
+
+1. **Maps:** `/proc/<pid>/maps` proves only that a file was mapped at that instant. It shows neither which loader made the call nor which linker namespace (maps has no namespace field). It does not show relocation success, JNI registration, or which copy the player uses. A mapping without a trace line can also be an inherited/pre-existing mapping or a gap in trace coverage. **Maps never refutes P1.** We keep full maps lines (address, perms, offset, dev, inode, path), not basename counts.
+2. **Silence is conditional:** the ordinary loader branches may absorb failures. If execution reaches `setVideoSurface` with a zero handle, it returns `-1`. These methods do not prove that a failed load implies `mHandle==0`. They do not rule out earlier or later native-call errors: the nonzero-handle call has no local catch, and `loadLibrary`'s hotfix path lies outside its inner catch. **Overall error/crash behavior and the actual caller are unproved.** t4 did not make the stronger claim; it was ours.
+3. **Decision rows:** if no attempt appears in the trace, the result is "attempt not observed; player creation unknown". A LOAD marker plus an unattributed `[WESTLAKE-ANWFS]` line is supporting evidence only. Refuting P1 needs a documented successful load result for the exact libttmplayer object, plus attribution of the consumer.
+4. `ILibraryLoader` alone is not evidence of a custom native linker.
+
+`rea-analysis.json` F2/F3/F4/F7/F8 are edited in place with superseded markers. The `readonly-requests.json` decisions C/D/E/F are rewritten accordingly.

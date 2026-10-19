@@ -114,9 +114,9 @@
     "-t",
     "<serial>",
     "shell",
-    "for p in $(pidof com.ss.android.article.news); do echo \"== $p\"; grep -E 'libttmplayer|libmffmpeg|libvcbasekit|libttcrypto|libttboringssl|libOpenSLES|libEGL|libGLESv2' /proc/$p/maps | awk '{print $6}' | sort | uniq -c; done; echo MAPS_END"
+    "for p in $(pidof com.ss.android.article.news); do echo \"== $p\"; grep -E 'libttmplayer|libmffmpeg|libvcbasekit|libttcrypto|libttboringssl|libOpenSLES|libEGL|libGLESv2' /proc/$p/maps; done; echo MAPS_END"
    ],
-   "maps_note": "maps covers non-ART/custom loaders that the SOURCE-NATIVE-LOAD trace would miss (F6); if pidof finds no child, record 'no child' and skip; never use bare pgrep -f"
+   "maps_note": "keep full lines (addr perms offset dev inode path). Mapping-only evidence: does not show loader, namespace, relocation, JNI registration or which copy is used; never refutes P1. No child -> record 'no child'. Never bare pgrep -f."
   },
   "OP1_trigger": {
    "when": "only after a real feed with video cards is on screen (network page != feed; P0 currently at network-exception page -> not eligible yet); spare board 5cd/5ea preferred; never touch 61b UI while user is on WiFi",
@@ -134,14 +134,14 @@
    "decision": {
     "A_confirm_P1": "LOAD-FAIL libttmplayer.so with 'SL_IID_ANDROID(SIMPLEBUFFERQUEUE|CONFIGURATION): symbol not found' -> P1 confirmed; outer may then authorize t2 selected-change drafting",
     "B_other_first_error": "LOAD-FAIL libttmplayer/libmffmpeg/libvcbasekit with another symbol or file error -> that is the first fatal; record verbatim",
-    "C_refute_P1": "libttmplayer LOAD without FAIL, then new [WESTLAKE-ANWFS] -> P1 refuted; proceed to P3 (surface) / P2 (audio) evidence from same window",
-    "D_no_attempt": "no libttmplayer line in delta: grep whole file (preload earlier?) ; if none anywhere -> player not created (network/content external or other player); do not infer root cause",
+    "C_refute_P1": "only with a documented successful load result for the exact libttmplayer object (trace record for that path showing completed load, e.g. INITARRAY/JNI_OnLoad marker) plus consumer attribution; LOAD marker + unattributed ANWFS = supporting evidence only, P1 stays unknown",
+    "D_no_attempt": "attempt not observed; player creation unknown (trace coverage incomplete); do not infer root cause",
     "noise": "LOAD-FAIL 'No such file' for libttmplayerbeta/libttmplayerpgo is expected when server cfg29/76 is set and is NOT a fatal (falls back to ttmplayer)",
-    "E_loaded_outside_trace": "no SOURCE-NATIVE-LOAD line for libttmplayer but libttmplayer.so present in child maps -> loaded by a non-ART/custom loader; P1 refuted for that copy, record namespace/path from maps",
-    "F_silent_java": "UnsatisfiedLinkError on com.ss.ttm.player natives (ASX_DIAG_THROWABLE) with no maps entry -> consistent with P1/B; take symbol from loader trace, not from app state"
+    "E_mapping_only": "mapping observed; loader, namespace, symbol resolution, JNI registration and active consumer remain unknown; P1 unresolved absent exact load-result evidence",
+    "F_throwable": "UnsatisfiedLinkError on com.ss.ttm.player natives in ASX_DIAG_THROWABLE output: record verbatim with time; symbol/first fatal still taken only from an exact loader record"
    },
    "screenshot_rule": "two identical frames = not playing; process alive/READY is not success"
   },
-  "static_markers_reconciled": "per t4: in-app IsErrored / setVideoSurface return values are NOT acceptance signals; ANWFS after a tap is only supporting evidence of the native surface path"
+  "static_markers_reconciled": "per t4 review 87804615: app IsErrored / setVideoSurface -1 are not acceptance signals; silence is branch-conditional, crash behavior unproved"
  }
 }
