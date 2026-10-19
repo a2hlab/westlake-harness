@@ -1,0 +1,19 @@
+--- video_guarded_window.py
++++ video_guarded_window_r3.py
+@@ -1,4 +1,4 @@
+-"""One-off outer execution of the reviewed two-file card using bms_batch.Board."""
++"""Prepared r2 namespace candidate executor; requires reviewed card before use."""
+ import argparse,hashlib,json,re,shlex,sys
+ from pathlib import Path
+ p=argparse.ArgumentParser();p.add_argument('mode',choices=['preflight','apply','rollback']);p.add_argument('--boot',required=True);p.add_argument('--parent',required=True);p.add_argument('--birth',required=True);p.add_argument('--out',type=Path,required=True);p.add_argument('--apply-plan',type=Path);a=p.parse_args()
+@@ -23,8 +23,8 @@
+ label=read('ls -Zd '+RT+'/run.sh').split()[0];dlabel=read('ls -Zd '+RT+'/libandroid_native_network_compat.so').split()[0]
+ assert re.fullmatch(r'u:object_r:[A-Za-z0-9_]+:s0',label) and re.fullmatch(r'u:object_r:[A-Za-z0-9_]+:s0',dlabel),(label,dlabel)
+ base=repo/'benchmark/2026-10-19-toutiao-video-playback'
+-before=(base/'static/selected-change/run.sh.d3518cef.orig').read_bytes();after=(base/'static/selected-change/run.sh.candidate').read_bytes()
+-assert sha(before)=='d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4' and sha(after)=='ea98494255b05699ca24b134e6ada8849b023b4ab59d3d7e291194cfa8425f73'
++before=(base/'static/selected-change/run.sh.d3518cef.orig').read_bytes();after=(base/'candidate-r2/deploy-inputs/run.sh').read_bytes()
++assert sha(before)=='d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4' and sha(after)=='79275cf9f9a72be72beb551b978ee5f2faaed84129980aa5c79d2f51acd040d5'
+ for data in [before,after]:assert data.count(b'export WL_PARENT_ID=33\n')==1
+ before=before.replace(b'export WL_PARENT_ID=33\n',f'export WL_PARENT_ID={wid}\n'.encode());after=after.replace(b'export WL_PARENT_ID=33\n',f'export WL_PARENT_ID={wid}\n'.encode())
+ expected=sha(before)
