@@ -1,0 +1,108 @@
+{
+  "task": "video-2020-r11-call-observation + r12 tool-compat review",
+  "role": "independent-reviewer (cc-video); CX owns observer/tool-compat code",
+  "date": "2026-10-20",
+  "mode": "offline review-only; no board, no build, no device call",
+  "current_summary": {
+    "as_of": "2026-10-20",
+    "timeline": [
+      "t6 observer (observer.py e9eb4a4f -> final 07bde2de): reviewed A/B/C/D PASS-logic; 3 final deltas (disable-memory-cache, platform select remote-ohos, os._exit on unverified cleanup) reviewed -> no new on-device blocker.",
+      "r11 device run #1 (BASE20/r11-observation, freshboot d02104c8): ZERO call samples. ConnectRemote got no stop reply; SDK15 lldb-server DataExtractor GetMaxU64 assertion exited. winner/object/geometry ALL unknown; magic gate never ran; NO layout/playback pass. External /proc proof tracer_pid=0 state=S identity-stable -> fail-safe held, child safe. Selection table => object unknown => NO modification.",
+      "t7 debug-tool-compat contract: 4-axis review -> NO substantive blocker (safer than r11: disposable self-owned probe+server on idle 5cd).",
+      "r12 code (policy 8aa6308e / guard dbbebcb6 / engine 8ee1fe0e; probe 8ab9acaf, marker 0x1af0): 5-area review (pin/target-PID, handshake-failure teardown, hardware Continue, new StopID, timeout force-exit) -> NO substantive blocker. Re-verify at final SHA."
+    ],
+    "headline_verdict": "Observer/tool-compat METHOD is contract-conformant and register/SHA-grounded. NO Toutiao window-object type, winner, geometry, or playback has been established on device (r11 captured zero samples). All such facts remain UNKNOWN pending a successful capture + human review."
+  },
+  "device_run_1": {
+    "raw": "BASE20/toutiao-resume-20261020/r11-observation",
+    "freshboot": "d02104c8",
+    "samples": {
+      "fromSurface": 0,
+      "lock": 0
+    },
+    "winner": "unknown",
+    "object": "unknown",
+    "geometry": "unknown",
+    "playback": "UNKNOWN_NOT_TESTED",
+    "root_cause": "SDK15 lldb-server DataExtractor GetMaxU64 assertion exited (CX tool bug; being addressed by t7/r12)",
+    "child_safe": "external /proc tracer_pid=0 state=S identity stable (fail-safe held)",
+    "observer_conduct": "correct (refused on connect, persisted evidence, OUTER_RECOVERY_REQUIRED, os._exit(2))",
+    "selection_table_outcome": "object unknown => NO modification; shim f12c5c92 unwrap+OH lock/unlock remains the standing reuse candidate for a FUTURE run that observes an AdapterAnw_layout_matches object",
+    "detail": "r11-observation-review.md"
+  },
+  "r12_code_review": {
+    "files_sha256_short": {
+      "policy.py": "8aa6308ec6f867ff",
+      "guard.py": "dbbebcb6d17ba9d6",
+      "engine.py": "8ee1fe0ea1877819"
+    },
+    "verdict": "no substantive blocker at these SHAs; re-verify at final SHA",
+    "detail": "r12-code-review.md"
+  },
+  "archived_superseded": {
+    "note": "Earlier interim entries, kept for provenance but NO LONGER the current verdict — do not cite against current_summary:",
+    "items": [
+      "pre-landing 'pending-observer' rubric for t6 (axes A-D pending): superseded once observer.py landed and was reviewed PASS-logic.",
+      "early 'A real-identity pass-logic' before the field counter-evidence: superseded — core.py:25 was fixed (parent_uid==0 and uid==20011206); the per-axis observer review is authoritative.",
+      "pinned SHA split/truncation in an early draft: corrected to full 64-hex (see README pinned-target section)."
+    ]
+  },
+  "not_claimed": [
+    "no observer/tool-compat implementation by reviewer",
+    "no Toutiao window-object type, winner, geometry, or playback established (r11 = zero samples)",
+    "no layout or playback pass",
+    "libhwui is only a static DT_NEEDED candidate provider; runtime fromSurface winner undecided",
+    "the standing shim reuse candidate is NOT authorized until a run observes AdapterAnw_layout_matches"
+  ],
+  "device_calls": 0,
+  "builds": 0,
+  "landing_paths_file": "landing-paths.txt",
+  "deployed_binary_facts_checkpoint02": {
+    "src": "main tree static/r10-live-review/checkpoint-02 (disasm vs received bytes + LLVM rc0)",
+    "shim_85c789f4_lock_0x5e48": "UNCONDITIONAL errno 19 / return -19 (early branch diagnostic only; both normal-return paths -19)",
+    "shim_85c789f4_unlockAndPost_0x5ff0": "flat errno 19 / return -19",
+    "implication": "deployed shim does NOT unwrap and does NOT call OH request/flush; returns -19 regardless of window object type",
+    "got_binding": "player lock/unlock -> shim 85c789f4 @0x5e48/0x5ff0; 6 getter/fromSurface/release slots -> libandroid 76512d97 (double-mapped, per-instance selected)"
+  },
+  "corrected_error": "Prior verified_fix_candidate_standing said \"deployed shim 85c789f4 returns -19 only when oh_anw_get_oh(window)==NULL\" — that was f12c SOURCE logic wrongly attributed to the deployed binary. DELETED. Deployed 85c789f4 is unconditional -19 (checkpoint-02).",
+  "source_fix_candidate_not_verified": {
+    "status": "SOURCE CANDIDATE ONLY — not deployed, not a verified replacement",
+    "candidate": "webview_bionic_shim.c (src sha f12c5c92) lock@3962 / unlockAndPost@4040 — wrapper-aware OH path via oh_anw_get_oh (bridge d4fae8e5@0x125a00)",
+    "not_claimed": [
+      "f12c source is NOT the deployed 85c789f4 implementation",
+      "a different implementation does NOT imply the deployed build is \"older\"; deployed provenance unestablished",
+      "libandroid 76512d97 lock@0x3ee4 raw behavior is SOURCE-derived (c8772d05), not an independent deployed-0x3ee4 disasm",
+      "libhwui a11c9154 has NO lock/unlockAndPost"
+    ],
+    "required_gate_before_candidate_replacement": [
+      "independent build via build_bionic_shim.sh",
+      "symbol gate: built .so actually EXPORTS lock/unlockAndPost + oh_anw_get_oh resolves the observed AdapterAnw layout",
+      "original-behavior regression: other callers unchanged + check_frozen clean",
+      "on-device verify"
+    ],
+    "authorization": "only applicable IF a run observes AdapterAnw_layout_matches; r11 run #1 = zero samples => NO modification",
+    "detail": "fix-selection.md"
+  },
+  "r12_probe_compat_signoff": {
+    "status": "SIGNED (5cd self-owned probe tool compatibility only)",
+    "verified_from_raw": "marker 0x557bae4af0, 2 hardware hits TID 1610 x0 9->10 StopID 2->4, --hardware ok, detach keep-stopped false ok, after-detach TracerPid0 state S count 12->16, host rc0 not-timed",
+    "signed": "SDK15 host c6008509 + NDK r23b server 13c0b4bf can attach + 1 hardware bp + register read + Continue + clean detach on an OH probe (works around r11 DataExtractor GetMaxU64 assertion)",
+    "not_signed": "probe read a REGISTER at a marker, NOT ANW object memory (+0/+0xc8/+0xc0) or business handshake; Toutiao object/winner/geometry/playback remain UNKNOWN; no extrapolation to 61b/Toutiao",
+    "detail": "r12-signoff-and-t8-review.md"
+  },
+  "t8_r13_contract_review": {
+    "verdict": "no substantive blocker",
+    "summary": "t6 window-call-observation with ONLY server pin d6d9a233->13c0b4bf (r12-validated r23b) + r13 prefix; all r11/t6 gates preserved incl. no-kill (61b Toutiao child not disposable)",
+    "residual_unknown": "r12 proved a REGISTER read; r13 does ANW object-MEMORY reads — whether r23b server survives that path is unproven (contract acknowledges \"实际业务握手失败仍unknown\"); r13 is the real test",
+    "final_diff_gate": "when diagnostic-r13 lands, confirm diff vs passed r11 observer is ONLY server pin + r13 prefix + _r13 test name; no observer-logic/magic-gate/cleanup/no-kill change"
+  },
+  "r13_final_diff_review": {
+    "verdict": "NO code blocker; minimal-successor gate PASSES",
+    "independently_verified": "r13 core.py/identity.py/observer.py/observe.py == substitute(r11, {r11->r13, R11->R13, d6d9a233->13c0b4bf}) = True (reran substitution myself); observer logic/magic-gate/return-point/cleanup/no-kill byte-identical to passed r11",
+    "test_delta": "test_observer.py keeps all 11 original tests (substituted) + 1 ADDED negative test test_old_server_and_schema_refused (refuses old server/schema) — strengthening, not logic change",
+    "check_successor_py": "rigorous offline exact-parent proof (pins parent SHAs, asserts no parent drift, child==substituted parent, slices the 1 new test; never executes observer)",
+    "r13_outer_py": "outer-owned orchestration (fport rc + mapping read-back, NUL od, listen inode ownership); outside inner-observer scope; outer diff-checks",
+    "residual": "r23b server survival on ANW object-MEMORY reads still unproven (r12 proved only a register read) — contract-acknowledged, r13 is the real test; not a code blocker",
+    "tests": "CX reports 12 tests / 3 Rust passed"
+  }
+}
