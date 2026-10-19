@@ -943,3 +943,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 R16：6c2dcfa shim源码1257–1274的not implemented只是日志，实际once日志后errno=ENODEV/return -ENODEV，与85c789的已检查-19分支相容；相容不证明整库同源/字节复现。不得用日志文案替代执行分支，也不得把旧bridge SHA的源码结论迁移当前SHA；证据 static/r16-independent-review。
 
 - 2026-10-20 #91 R13收口：early-window归档4c3bbc74已验；随后video-window锁窗766秒，候选和恢复baseline各2child均未获feed，末图host，未attach/0samples。64targets/351labels和原runtime恢复不等于UI恢复；完整5124原件归档e1715e48与远端已验，见 diagnostic-r13/video-window/final。5cd UID20011300/cfg19d0201/run5a3aef与61b不同，不能直接套61b的动态WID/进程/部署凭证。
+
+- 2026-10-20 #91 T11：5cd一次真实图标后spawn.txt明确FOREGROUND_HOST_NOT_READY，实际wrapper两次前台核验均早于exec real-spawn，具体哪次unknown；后采WID29第8字段-1和锁屏只支持前台丢失，不是头条随机退出。外环“禁止改设置”误省RUNBOOK保活步骤，后续UI窗应先保存屏幕超时、临时保活并精确恢复，不削弱前台守卫；证据 benchmark/2026-10-20-5cd-icon-readiness/window/first-fatal-addendum/，原件归档7202fe5d远端已验。

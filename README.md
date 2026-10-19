@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[5cd actual icon readiness window](benchmark/2026-10-20-5cd-icon-readiness/window/first-fatal-addendum/)** | **One actual icon click; foreground guard refused before business spawn. No feed or video pass. Sources, failed attempts and 1,666 raw archive members preserved; remote SHA verified.** |
 | **[R13 video-page window closure](benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/video-window/final/)** | **Exact runtime restored in 766 seconds; candidate and baseline terminal images remain host, no attach or playback samples; 5,124 raw archive members verified.** |
 | **[Alternate OH board readiness](benchmark/2026-10-20-alternate-board-readonly/)** | **Read-only identity comparison: 5cd needs its own UID, startup and live-module evidence; 5ea lacks the known deployment paths. Neither is admitted by the 61b evidence.** |
 | **[R11 failed debugger handshake and restoration](benchmark/2026-10-19-toutiao-video-playback/diagnostic-r11/window/)** | **Zero call samples; exact original baseline and real feed restored within 798 seconds; no video pass.** |
