@@ -1,0 +1,65 @@
+{
+  "status": "PROPOSED_NOT_RUN",
+  "cases": [
+    {
+      "id": "double_map_second_failure",
+      "input": "first Map0; GetVirAddr invokes second Map error -> public0/NULL",
+      "required_outcome": "No output; one adapter Unmap attempt; Abort only if safe Unmap succeeds; FAILED retained; journal two internal calls, not two driver calls"
+    },
+    {
+      "id": "map_skip_no_storage",
+      "input": "usage skip-bit, virAddr NULL",
+      "required_outcome": "public0/NULL never publishes storage; preserve raw status and retained outcome"
+    },
+    {
+      "id": "cached_map_failed",
+      "input": "existing virAddr all-ones, valid geometry",
+      "required_outcome": "No output; no unproved lower Unmap/Cancel; explicit synthetic refusal and retained state"
+    },
+    {
+      "id": "map_error_mutation",
+      "input": "public Map error with changed/non-NULL lower state",
+      "required_outcome": "Do not equate error with no effects; no blind Abort, no published bits; raw error retained"
+    },
+    {
+      "id": "unmap_error_mutation",
+      "input": "Unmap lower changes state then returns error",
+      "required_outcome": "No Flush or Abort; retained state, raw error"
+    },
+    {
+      "id": "cancel_error_swallowed",
+      "input": "lower Cancel fails, public Abort0",
+      "required_outcome": "Public0 recorded; lower release unknown; FAILED stays occupied, no reuse"
+    },
+    {
+      "id": "signed_prefix",
+      "input": "width/stride/size0xffffffff in signed32 fields",
+      "required_outcome": "Interpret -1, not 4294967295; reject; read only established fields within24bytes"
+    },
+    {
+      "id": "geometry_capacity",
+      "input": "bad byte stride divisibility, stride smaller than row, or product above capacity",
+      "required_outcome": "No output; cleanup follows actual Map phase, not geometry guess"
+    },
+    {
+      "id": "region_by_value",
+      "input": "nonzero LTRB rect with independent provider spy",
+      "required_outcome": "xywh computed with checked arithmetic; Region passed by value; never pointer cast"
+    },
+    {
+      "id": "borrowed_lifetime",
+      "input": "request owner invalidated before adapter use",
+      "required_outcome": "Reject through trusted ownership boundary before read; no unref added to borrowed conversion"
+    },
+    {
+      "id": "alias_and_quiescence",
+      "input": "two wrappers same OH, plus occupied slot destroy",
+      "required_outcome": "No second Request; destroy EBUSY; external quiescence required, unchanged R14"
+    },
+    {
+      "id": "cleanup_suppressed_trace",
+      "input": "adapter refuses unsafe lower cleanup",
+      "required_outcome": "Journal distinguishes thunk invocation from lower invocation and synthetic rc from raw rc; no false release claim"
+    }
+  ]
+}

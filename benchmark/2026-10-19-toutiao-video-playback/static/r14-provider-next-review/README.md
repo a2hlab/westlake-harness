@@ -1,0 +1,27 @@
+# R14 typed-provider review
+
+The exact ELF evidence supports the reported Map/Unmap/Abort differences. It does **not** make a direct callback cast into R14 safe. R14 remains `OFFLINE_MODULE_ONLY_NOT_DEPLOYABLE`; its OH ET_REL compilation is accepted separately. This review changes no implementation and runs no build or device command. The 51 internals references and 38 getter-addendum references match their SHA256 declarations. File hashes and line ranges are in `sources.json`; instruction addresses below are ELF VAs for libsurface `8f1879f8…`, not live addresses.
+
+## Confirmed differences
+
+- Public Map at `64734` calls SurfaceBufferImpl::Map, then `64794` calls GetVirAddr. GetVirAddr `789d8` invokes Map again. Thus one R14 ops invocation can perform two internal Map calls; it does not necessarily perform two driver maps. Existing virAddr or usage bit 11 bypasses the lower call (`77f68–77f84`). A second Map error outside the getter's accepted [-999,999] interval yields NULL, yet public Map returns 0 (`6479c`). Do not add another Map or retry in an adapter.
+- R14 `window_module.c:79,87–92` already handles rc0/NULL as mapped: Unmap once, Abort only after successful Unmap, then retain FAILED. Error/non-NULL takes the other branch: no Unmap, possible Abort. Therefore changing a successful public rc into an adapter error changes cleanup, not merely reporting.
+- Existing virAddr `(void*)-1` passes the internal nonzero fast path. R14's current non-NULL check would publish it if geometry passes. This is a **defensive counterexample, not an observed fault**. Merely normalizing it to NULL would force Unmap; safe lower Unmap on that sentinel is unproved. The adapter must reject publication and retain uncertainty, without inventing a safe cancellation/unmap result.
+- Unmap lower failure returns an error; only lower success clears handle+0x20 (`7809c–78168`). A lower provider may mutate before failure: this audit does not prove otherwise. R14 correctly prevents Flush/Abort after failed Unmap and retains the slot.
+- Public Abort calls lower CancelBuffer at `67f64`, then overwrites status with zero at `67f68`. Its zero is public-call success, **not verified release**. R14 already keeps FAILED even after Abort=0; no R14 reclamation change is needed. Lower cancellation rc must remain unknown.
+
+## Minimum next adapter, three evidence classes
+
+**Before execution:** implement a separate typed ops adapter, not changes to frozen R14. Use explicit injected provider functions and trusted unwrap; no arbitrary wrapper dereference, ambient dlsym fallback or global caller replacement. Preserve one ownership domain and borrowed request lifetime. Convert the R14 LTRB rect to OH xywh and pass Region **by value**; do not cast callback types. Keep raw public rc, adapter decision and whether a lower operation was actually invoked separate.
+
+The handle callback only needs a valid, stable **24-byte prefix** while copying width@4, stride@8, height@12, size@16 and format@20 individually as signed32 then widening. The five exact getters close those offsets; usage/virAddr and the 56/64-byte tail are not needed. Do not copy `sizeof(BufferHandle)` or cast it to `r14_handle`. Source config documentation (`native_buffer.h:132`) states byte stride; the f12c donor converts byte stride to pixels. Handle size documentation says memory size. Treat byte stride/capacity as the selected provider contract, validate returned positive/range/divisibility/product values, and do not claim instructions alone prove units.
+
+A bounded adapter-side record is necessary only to suppress unsafe cleanup for rejected/uncertain Map outcomes. For example, sentinel detection can expose no bits while preserving raw rc0; its Unmap thunk can refuse without a lower call and return an explicitly synthetic error, causing existing R14 to retain and skip Abort. For Map-error/uncertain side effects, its Abort thunk must likewise not blindly cancel. This is a proposed fail-closed policy to test, **not implemented or approved code**. Never describe suppressed calls as successful provider cleanup. Normal proven paths should remain direct typed calls, without extra retries.
+
+**During a bounded admitted experiment:** establish actual unwrap object/provider instance, request lifetime, returned dimensions/format/byte-stride/capacity sanity, Map bits and fence/Unmap/Flush results. Unknown or rejected output means no publication and retained ownership. Actual video progress remains separately unproved. No need to reverse the entire HDI before this narrow path; pursue it only if a consumed field or cleanup outcome contradicts the declared contract.
+
+**Not needed for this path:** full 56/64-byte extent/key/phyAddr/reserve layout, CloneBufferHandle implementation, unused usage field, all SDK implementations or successful reuse after failed Abort. No evidence here authorizes resetting FAILED slots. The original R13 production-object admission remains unchanged.
+
+## Offline tests to prepare next
+
+`negative-cases.json` lists 12 proposed cases. They are **NOT_RUN**: this task is analysis only. Use an independent two-layer journal (public calls versus lower calls) so double internal Map and swallowed Cancel rc cannot be hidden by a success-only mock. Include the real signed32 boundary, byte-stride mismatch, by-value Region, same-OH aliases and borrowed lifetime. Existing R14 tests and the OH object are not rerun or rewritten.
