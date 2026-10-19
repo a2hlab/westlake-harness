@@ -93,6 +93,8 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[R13 video-page window closure](benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/video-window/final/)** | **Exact runtime restored in 766 seconds; candidate and baseline terminal images remain host, no attach or playback samples; 5,124 raw archive members verified.** |
+| **[Alternate OH board readiness](benchmark/2026-10-20-alternate-board-readonly/)** | **Read-only identity comparison: 5cd needs its own UID, startup and live-module evidence; 5ea lacks the known deployment paths. Neither is admitted by the 61b evidence.** |
 | **[R11 failed debugger handshake and restoration](benchmark/2026-10-19-toutiao-video-playback/diagnostic-r11/window/)** | **Zero call samples; exact original baseline and real feed restored within 798 seconds; no video pass.** |
 | **[API current observations](benchmark/2026-10-19-api-progress-update/)** | **Source/build/evidence correspondence for manual recovery and the unsuccessful video candidate, alongside the unchanged historical315 atlas.** |
 | **[Toutiao player r4 window](benchmark/2026-10-19-toutiao-rea-methods/video-1919-r4-live-review/)** | **Three object-slot reads matched; three cover-only observation groups failed playback acceptance; four-file rollback and fresh-boot feed verified.** |

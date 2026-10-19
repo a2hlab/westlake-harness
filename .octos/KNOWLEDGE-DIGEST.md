@@ -939,3 +939,7 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 窗口接入静态边界：exact libsurface 8f1879 的 GetVirAddr 会再调 Map，公共 Map rc0 可伴随空地址；Abort 吞下层失败，rc0不证明归还。精确转换当前类借用 this，仍不证明实调用对象/生命周期；未知指针的魔数解引用不构成安全分类。见 provider-abi/exact-surface-internals/；R14仅离线模块，接入仍未准入。
 
 - 2026-10-20 R13 early：`ps -A -o PID,PPID,UID,NAME` 给完整 `com.ss.android.article.news`，`/proc/PID/stat` comm 是截短 `id.article.news`，选择器须核真实探查面并绑定UID/PID/birth；同child feed已亮的9次maps均无libttmplayer、另4模块齐，不能把feed当播放器就绪，正常视频tab之后再核五模块（原始窗口归档待交）。
+
+- 2026-10-20 #91 R16：6c2dcfa shim源码1257–1274的not implemented只是日志，实际once日志后errno=ENODEV/return -ENODEV，与85c789的已检查-19分支相容；相容不证明整库同源/字节复现。不得用日志文案替代执行分支，也不得把旧bridge SHA的源码结论迁移当前SHA；证据 static/r16-independent-review。
+
+- 2026-10-20 #91 R13收口：early-window归档4c3bbc74已验；随后video-window锁窗766秒，候选和恢复baseline各2child均未获feed，末图host，未attach/0samples。64targets/351labels和原runtime恢复不等于UI恢复；完整5124原件归档e1715e48与远端已验，见 diagnostic-r13/video-window/final。5cd UID20011300/cfg19d0201/run5a3aef与61b不同，不能直接套61b的动态WID/进程/部署凭证。
