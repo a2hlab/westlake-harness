@@ -23,9 +23,39 @@ test "$(stat -c %u /data/app/el2/100/base/org.westlake.imehost)" = {UID};
 '''
 def implementation_pins():
  return {n:sha((HERE/n).read_bytes()) for n in ['derive.py','t12_derive.py','tool.py','ui.py','source-pins.json']}
-def adoption_check(root):
- q=shlex.quote(root)
- return 'HERE='+q+'; . "$HERE/config-common.sh"; . "$HERE/launch-common.sh"; . "$HERE/adoption-guard.sh"; t13_adoption_guard'
+def adoption_wait_budget(deadline,now):
+ # Leave the existing 60-second recovery reserve plus 5 seconds for transport.
+ budget=min(30,int(deadline-now-60-5))
+ need(budget>=1,'no adoption observation budget before recovery reserve')
+ return budget
+
+def adoption_wait(root,guardian,budget):
+ need(type(budget)==int and 1<=budget<=30,'bounded adoption wait')
+ pid=guardian['pid'];birth=guardian['birth']
+ need(type(pid)==int and pid>1 and type(birth)==int and birth>0,'guardian wait identity')
+ return 'HERE='+shlex.quote(root)+'; . "$HERE/config-common.sh"; . "$HERE/launch-common.sh"; . "$HERE/adoption-guard.sh";\n'+f'''
+read taw_up taw_rest < "$PROC/uptime"
+taw_until=$((${{taw_up%%.*}}+{budget}))
+while :; do
+ t12_launch_guard
+ [ "$(rb_birth {pid})" = {birth} ]
+ [ "$(rb_uid {pid})" = 0:0:0:0 ]
+ [ "$(readlink "$PROC/{pid}/exe")" = /system/bin/sh ]
+ taw_cmd=$(timeout 2 strings "$PROC/{pid}/cmdline")
+ [ "$taw_cmd" = "$(printf '/system/bin/sh\\n%s' "$HERE/entry.sh")" ] || [ "$taw_cmd" = "$(printf '/system/bin/sh\\n%s' "$HERE/watchdog.sh")" ]
+ [ "$(rb_birth {pid})" = {birth} ]
+ read taw_up taw_rest < "$PROC/uptime"
+ [ "${{taw_up%%.*}}" -lt "$taw_until" ] || {{ echo ADOPTION_WAIT_EXPIRED >&2; exit 2; }}
+ [ ! -L "$HERE/adopted" ]
+ if [ -f "$HERE/adopted" ]; then
+  t13_adoption_guard
+  [ "$t13_gp:$t13_gb" = '{pid}:{birth}' ]
+  cat "$HERE/adopted"
+  break
+ fi
+ sleep 1
+done
+'''
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('action',choices=['preflight','apply','stop','restore','refresh-awake','term-once'])
  ap.add_argument('--execute',action='store_true');ap.add_argument('--serial',default=SERIAL)
@@ -51,21 +81,21 @@ def main():
   if not recovery:need(receipt['exit_mode']==a.exit_mode and receipt['implementation_pins']==implementation_pins(),'mode/source receipt drift')
  result={'action':a.action,'serial':SERIAL,'boot':BOOT,'root':a.root,'window_start':a.window_start,'monotonic_deadline':deadline,'recovery_only':recovery,'holder':a.holder,'status':'UNKNOWN','device_commands':0,'exit_mode':a.exit_mode,'implementation_pins':implementation_pins(),'visual':'pending_review','playback':'unknown','audio':'unknown'}
  seq=0
- def run(argv,label):
+ def run(argv,label,command_timeout=15,reserve=0):
   nonlocal seq
   seq+=1;p=out/f'{seq:03d}-{label}';p.with_suffix('.argv.json').write_text(json.dumps(argv)+'\n')
-  left=deadline-time.monotonic();need(left>0,'deadline; outer recovery required')
-  try:r=subprocess.run(argv,capture_output=True,timeout=min(left,15))
+  left=deadline-time.monotonic()-reserve;need(left>0,'deadline/reserve; outer recovery required')
+  try:r=subprocess.run(argv,capture_output=True,timeout=min(left,command_timeout))
   except subprocess.TimeoutExpired as ex:
    p.with_suffix('.stdout').write_bytes(ex.stdout or b'');p.with_suffix('.stderr').write_bytes(ex.stderr or b'');p.with_suffix('.rc.json').write_text('{"timeout":true}\n');raise
   p.with_suffix('.stdout').write_bytes(r.stdout);p.with_suffix('.stderr').write_bytes(r.stderr);p.with_suffix('.rc.json').write_text(json.dumps({'rc':r.returncode})+'\n');need(r.returncode==0,'transport '+label)
   return r.stdout.decode('utf8','replace')
- def remote(body,label,parent=True):
-  held=run(['bash',str(a.repo.resolve()/'scripts/lab/board_note.sh'),'held',SERIAL],'lock');need(held.strip()==a.holder,'lock changed')
+ def remote(body,label,parent=True,command_timeout=15,reserve=0):
+  held=run(['bash',str(a.repo.resolve()/'scripts/lab/board_note.sh'),'held',SERIAL],'lock',reserve=reserve);need(held.strip()==a.holder,'lock changed')
   guard=shell_guard() if parent else f'test "$(cat /proc/sys/kernel/random/boot_id)" = {BOOT};\n'
   marker='T13_RC_'+uuid.uuid4().hex
   s='( set -eu;\n'+guard+body+'\n'+guard+'printf "\\n'+marker+'=0\\n" )'
-  text=run([str(a.hdc.resolve()),'-t',SERIAL,'shell',s],label);result['device_commands']+=1
+  text=run([str(a.hdc.resolve()),'-t',SERIAL,'shell',s],label,command_timeout=command_timeout,reserve=reserve);result['device_commands']+=1
   need(text.rstrip().endswith(marker+'=0'),'remote failure '+label);return text.rsplit(marker+'=0',1)[0].rstrip()
  def hashes():
   paths={CFG:CFG_SHA,RUNTIME+'/run.sh':RUN_SHA,RUNTIME+'/prepare_jit50.sh':JIT_SHA,STAGE+'/host_spawn':HOST_SHA,STAGE+'/request.bin':REQUEST_SHA,OLD+'/screen-gate':DECODER_SHA}
@@ -133,9 +163,12 @@ def main():
    result['guardian']=st
    (out/'result.json').write_text(json.dumps(result,indent=2)+'\n')
    # Nohup is not ARMED: require the actual R2 instance and a live guardian.
-   adopted=remote('for n in 1 2 3 4 5; do [ ! -f '+shlex.quote(a.root+'/adopted')+' ] || break; sleep 1; done; '+adoption_check(a.root)+'; cat '+shlex.quote(a.root+'/adopted'),'adopted')
+   wait_budget=adoption_wait_budget(deadline,time.monotonic())
+   result['adoption_wait_seconds']=wait_budget
+   (out/'result.json').write_text(json.dumps(result,indent=2)+'\n')
+   adopted=remote(adoption_wait(a.root,st,wait_budget),'adopted',command_timeout=wait_budget+5,reserve=60)
    need(adopted==f"{st['pid']} {st['birth']} {BOOT} {PARENT} {BIRTH} {CHILD} {CHILD_BIRTH} 1",'adoption guardian mismatch')
-   remote(ownership_probe(),'armed-child-alive')
+   remote(ownership_probe(),'armed-child-alive',reserve=60)
    result.update({'status':'ARMED_ADOPTED_CHILD','adopted':adopted,'child':{'pid':CHILD,'birth':CHILD_BIRTH},'payload_sha256':{n:sha(v.encode()) for n,v in payload.items()}})
   elif a.action=='term-once':
    need(receipt and receipt['status']=='ARMED_ADOPTED_CHILD' and receipt['exit_mode']=='term-once','armed term-once receipt required')
