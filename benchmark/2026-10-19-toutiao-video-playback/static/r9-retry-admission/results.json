@@ -1,0 +1,40 @@
+{
+  "token": "video-2020-r9-retry-admission",
+  "verdict": "SCOPED_ACCEPT_EXISTING_EXECUTOR_WITH_OUTER_BOUNDED_WINDOW",
+  "source_sha256": "ffa3969a4752ed84f2b4293b35bc5cdaa145a39028d6d1d5ea76ce2e97de6e4a",
+  "baseline": {
+    "boot": "4117236f-c834-4f70-82fd-c39929d76573",
+    "parent": 4995,
+    "birth": 7022,
+    "fresh_check_required_by_existing_executor": true
+  },
+  "candidate_unchanged": true,
+  "checks": "checks.json",
+  "bounds": {
+    "normal_icon_attempts_max": 5,
+    "start_rollback_no_later_than_seconds_from_lock": 1200,
+    "hard_window_seconds_from_lock": 1800,
+    "clock_not_reset_on_reboot_or_reentry": true,
+    "enforcer": "outer window owner; NOT this executor or Board.ready"
+  },
+  "stop_conditions": [
+    "Any existing identity/CAS/binding guard failure: stop experiment and use original recovery path.",
+    "After fifth normal icon attempt, do not retry if consumer not reached.",
+    "At lock+1200s, stop candidate observation and begin rollback even if attempts remain."
+  ],
+  "rollback": {
+    "apply_plan": "MUST be this retry apply/plan.json, never previous r9 apply plan",
+    "live_identity": "current actual boot,parent,birth after candidate reboot; not baseline values",
+    "run_wid": "original executor exact original/current WMS four-SHA set; no guessed WID",
+    "completion": "original source/private identities, compat absent, cfg, param106, same snapshot and actual restored feed; unlock",
+    "failure": "foreign bytes remain fail-closed; report without cleanup or overwrite"
+  },
+  "nonclaims": [
+    "No network repair effectiveness or video success evidence.",
+    "Three candidate exits and two baseline exits do not prove regression.",
+    "No current remote absence or current parent liveness asserted by offline review."
+  ],
+  "device_calls": 0,
+  "remote_calls": 0,
+  "new_builds": 0
+}
