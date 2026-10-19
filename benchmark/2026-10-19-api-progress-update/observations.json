@@ -1,6 +1,6 @@
 {
   "schema": "api-progress-observations/v1",
-  "as_of": "2026-10-19T19:04:29+08:00",
+  "as_of": "2026-10-19T19:46:55+08:00",
   "historical_rows": 315,
   "historical_semantics_changed": false,
   "remote_publication_verified": false,
@@ -71,7 +71,7 @@
       "method": "独立DSO提供两个Android OpenSL IID并经LD_PRELOAD加入；父/子映射可见，但libttmplayer依赖libvcbasekit的std::__ndk1符号重定位失败。",
       "platform": "OH 61b / arm64，boot db544de8；APK a1112a0c；本增量未独立复核OH小版本。",
       "apps": "今日头条1个APK；t20/t25截图相同，无动态播放或音频通过证据。",
-      "limitations": "不能据映射宣称OpenSL完整语义、GOT绑定、解码、Surface或fallback可用；后续namespace候选尚未上板。",
+      "limitations": "不能据映射宣称OpenSL完整语义、GOT绑定、解码、Surface或fallback可用；此条仅记录P1窗口，后续r3实测见独立观察。",
       "deployment": "实验候选9f558aaf + run ea984942已撤回；fresh boot da213fc2恢复run d3518cef并验证feed。",
       "source": [
         {
@@ -117,6 +117,72 @@
         {
           "path": "benchmark/2026-10-19-toutiao-rea-methods/video-1919-live-review/rollback/runtime-proof.txt",
           "sha256": "61b29107a7bdcb41d02d5185a336850758a93e6d2c4765c3ed31904bf277d1de"
+        }
+      ],
+      "frozen": false
+    },
+    {
+      "id": "OBS-20261019-PLAYER-R3",
+      "kind": "加载器兼容派生件 / 播放器集成观察（未冻结）",
+      "name": "TTPlayer 命名空间路由与空构造槽兼容",
+      "status": "视频未通过；播放器线程崩溃，候选已回滚",
+      "method": "把媒体消费者加入既有 android-native namespace，保留 OpenSL IID 兼容件；复用已有 SanitizeInitArray 语义，将精确 libmffmpeg 输入的 DT_INIT_ARRAYSZ 从8改为0，仅1字节差异，形成固定SHA派生件。",
+      "platform": "61b / arm64；本轮 cppcrash 原始头为 OpenHarmony 6.1.0.31；boot 8a1f0e6f；APK a1112a0c。",
+      "apps": "今日头条1个APK。真实桌面图标打开feed后点击视频，async_video_pla线程在libttmplayer执行中SIGSEGV，t5/t20/t25为IMEhost；无播放或声音通过证据。",
+      "limitations": "旧C++重定位错误在本次播放器调用后未见，但GOT未读到，完整加载判据未通过；崩溃机制和候选因果仍需分析，不归为反虚拟化或历史随机崩溃。报告帧偏移须按实际ELF和映射调和。",
+      "deployment": "三件候选run79275cf9/compat9f558aaf/media d2882303已撤回。fresh boot 0dd753ea恢复run d3518cef/media fecf91e1，compat文件和父进程映射均无；P0 cfg91e31b95保留，真实feed2d42383d已确认。",
+      "source": [
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r3/derive_mffmpeg.py",
+          "sha256": "2165a64fd206af09eb252761f5374827b1d812100a5955c9ea2ccb9f9805e923"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r3/deploy-inputs/run.sh",
+          "sha256": "79275cf9f9a72be72beb551b978ee5f2faaed84129980aa5c79d2f51acd040d5"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/candidate/src/opensles_android_compat.c",
+          "sha256": "cf45ad430a08cbe090f030357a346be7a0bac49f48c06196a11c7818de3f9351"
+        }
+      ],
+      "build": [
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r3/README.md",
+          "sha256": "ece3501fd12846ec513a5971ca10c763581601526d5d3767a412ee099b2489f7"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r3/raw-log-manifest.txt",
+          "sha256": "e6adfe81153dd9b8fd8c4265aa0153dcd6a657d7b7fe76e9163f1a41a5e83bf6"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review/archive/build-artifacts-receipt.json",
+          "sha256": "e25448ac27547ac84c7dc9ff4a9a25795528967a4ea7143bf58728a78bfcbeb9"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review/historical-recipes/README.md",
+          "sha256": "ea4fc71101921ec873e80a5352eac439f615d60074acc1c35618296a101a88fa"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review/README.md",
+          "sha256": "c2a92b256e18d542aaadb0ff1df58a4cadb69481a33474c9a0d7865f865e8b98"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review/results.json",
+          "sha256": "c9c7723f8d07f28f557bb28eb08dd902e22f1a1f5c6fe6192eea97371dd3a785"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review/play1/t20.jpeg",
+          "sha256": "39e60bb16d2b06290c70a97db64df5d337afc91652352999d9e494f6589adf94"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review/rollback-final/screen.jpeg",
+          "sha256": "2d42383d3a7f4708da879845f3b87abd17c9963cda007e0e78f67d80175e9002"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review/archive/window-archive.json",
+          "sha256": "fccc7aadf9ea9c0e2748fb138fd6314791c5cd303a1ec23fa20991484b025b25"
         }
       ],
       "frozen": false

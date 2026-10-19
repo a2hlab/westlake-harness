@@ -94,6 +94,7 @@ kind of work from where the corpus started
 | Path | Contents |
 |---|---|
 | **[API current observations](benchmark/2026-10-19-api-progress-update/)** | **Source/build/evidence correspondence for manual recovery and the unsuccessful video candidate, alongside the unchanged historical315 atlas.** |
+| **[Toutiao player r3 window](benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review/)** | **Three-file candidate reached player code but failed playback; exact source/build/archive receipts, real screenshots and verified rollback to the feed.** |
 | **[Toutiao player load and rollback](benchmark/2026-10-19-toutiao-rea-methods/video-1919-live-review/)** | **libvcbasekit C++ relocation failure, static video captures, exact historical execution recipes and verified recovery after rollback.** |
 | **[Toutiao manual recovery evidence](benchmark/2026-10-19-icon-reentry-live-r2/)** | **Natural and controlled exits followed by real-icon feed recovery, plus persistence across two boots; random crashes and startup latency remain.** |
 | **[APK demonstration materials](benchmark/2026-10-19-apk-demo-materials/)** | **17-slide showcase, 50-slide classified catalog, 130 illustrated rows, 130 selected originals and 256 baseline capture originals; historical scope retained.** |
