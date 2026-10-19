@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[Toutiao manual recovery evidence](benchmark/2026-10-19-icon-reentry-live-r2/)** | **Natural and controlled exits followed by real-icon feed recovery, plus persistence across two boots; random crashes and startup latency remain.** |
 | **[APK demonstration materials](benchmark/2026-10-19-apk-demo-materials/)** | **17-slide showcase, 50-slide classified catalog, 130 illustrated rows, 130 selected originals and 256 baseline capture originals; historical scope retained.** |
 | **[Toutiao live observations](benchmark/2026-10-19-toutiao-live-observations/)** | **Controlled-exit icon recovery failure and an independently confirmed player-library IID relocation blocker; no playback pass.** |
 | **[Board lock serial guard](benchmark/2026-10-19-board-lock-serial-guard/)** | **Reject truncated OH serials consistently for lock, held and unlock; three rejection checks preserve the board ledger.** |
