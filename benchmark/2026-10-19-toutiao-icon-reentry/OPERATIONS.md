@@ -25,8 +25,9 @@ Defaults: `--root /data/westlake-demo/toutiao/recovery-attempts/icon-manual-2026
 (the generator refuses any ROOT not under `recovery-attempts/icon-manual-`),
 `--serial 61b0657200000000000000000324012c`, `--owner-uid 20011206`,
 `--service westlake-icon-manual-20261019`. `--enable` without
-`--approved-by 'outer(codex)'` is refused. The generator verifies every base source
-against `generator/base-pins.json` and fails closed on any mismatch; it never reads
+`--approved-by 'outer(codex)'` is refused. The generator hash-verifies the 16 base
+sources it consumes against `generator/base-pins.json` (the other 3 pins are diff bases
+only; see §7) and fails closed on any mismatch; it never reads
 the untracked capture-feed payload. Output is deterministic (identical `MANIFEST.sha256`
 across runs). `prepare.py` must see `STARTUP_ENABLED=1` and
 `STARTUP_APPROVED_BY='outer(codex)'` before it treats the payload as armed.
@@ -119,6 +120,13 @@ random SIG11 is fixed — this candidate only adds manual reentry.
 ## 7. Source correspondence & integrity
 
 - `generator/base-pins.json` — SHA-256 + provenance (V/R/base-ref) of all 19 base files.
+  **Verification split (accurate):** the generator itself hash-verifies **16** of them at
+  run time (12 `copy` rows + 3 `sed-*` rows config-common/entry/recovery.cfg +
+  `base-ref/startup.env`; see `build.log` `pin OK`/`sed-*` lines). The remaining **3** —
+  base `watchdog.sh` (2b635ef1, superseded by `src/watchdog-reentry.sh`),
+  `base-ref/members.tsv` (5aa8940e) and `base-ref/startup.expected.sha256` (9799ad8e) —
+  are used only as diff bases and are **not** checked by the generator. All **19/19** were
+  confirmed by the outer loop's independent offline review, not by the generator.
 - `generator/base-ref/` — the 3 mechanical base files (members.tsv, startup.env,
   startup.expected.sha256) pinned so the generator runs on a clean checkout.
 - `candidate-payload/diffs/` — exact base→candidate unified diffs (watchdog, entry,

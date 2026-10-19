@@ -50,7 +50,8 @@ all PASS). This lane owns the parser, generator, inputs, tests, docs and spec se
 | generator smoke + SHA cascade linkage | **PASS** (21 files, cascade linked, disabled) |
 | Rust selector `cargo test --test toutiao_icon_reentry` | **ok, 1 passed** |
 | `agent-spec lint t1-reentry.spec.md` | **100%** (det/test/cov 100%, ≥0.7 gate) |
-| generator base-pin verification | **19/19 base files match pins** |
+| generator base-pin verification (run-time, by the generator itself) | **16/16 consumed base files match pins** (12 copy + 3 sed + base-ref/startup.env) |
+| base-pin coverage of all 19 pinned files | **19/19** — confirmed by the outer loop's independent offline review; the 3 diff-base-only pins (base watchdog.sh, base-ref members.tsv, base-ref startup.expected.sha256) are not checked by the generator |
 | device calls | **0** |
 
 ## Rules established this round

@@ -10,7 +10,9 @@ Not a crash fix — adds manual desktop→home icon reentry on top of the sealed
   adapter-owned `src/reentry-common.sh` (`43d7b073…`) and `src/watchdog-reentry.sh`
   (`bd2f83be…`) unchanged.
 - `generator/derive-candidate.sh` + `base-pins.json` + `base-ref/` — deterministic,
-  clean-checkout generator; verifies 19/19 base pins (V 12 + R 4 + base-ref 3); never
+  clean-checkout generator; hash-verifies the 16 base sources it consumes against the
+  19 pins (the 3 diff-base-only pins are not generator-checked; all 19/19 were confirmed
+  by outer's independent offline review); never
   reads untracked capture-feed; default DISABLED; `--enable --approved-by 'outer(codex)'`
   to arm; refuses non-`icon-manual-` ROOT and `--enable` without approval.
 - `candidate-payload/` — committed DISABLED payload (21 files, 15 members) with
