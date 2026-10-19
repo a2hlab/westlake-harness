@@ -4,6 +4,28 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
+fn ttvideo_observation_derivation() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap();
+    let status =
+        Command::new(std::env::var("PYTHON").unwrap_or_else(|_| "python3".into()))
+            .arg(root.join(
+                "benchmark/2026-10-19-toutiao-video-playback/candidate-r8/verify_derivation.py",
+            ))
+            .current_dir(root)
+            .env("PYTHONDONTWRITEBYTECODE", "1")
+            .status()
+            .expect("execute exact ELF derivation CLI checks");
+    assert!(
+        status.success(),
+        "ELF derivation or refusal behavior failed"
+    );
+}
+
+#[test]
 fn ttvideo_observation_forwarding() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
