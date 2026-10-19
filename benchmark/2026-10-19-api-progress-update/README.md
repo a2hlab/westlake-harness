@@ -1,6 +1,6 @@
 # Current observations beside the API source/build atlas
 
-The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **19 observations with 333 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
+The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **20 observations with 357 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
 
 Open the [current observations](index.html), [JSON](observations.json) or [CSV](observations.csv), alongside the [complete historical source/build atlas](../2026-10-14-api-source-delivery/views/index.html).
 
@@ -31,3 +31,7 @@ R15 adds the typed provider adapter as offline-only evidence: 44 host cases, nin
 Historical factory logs correlate factory output with player initialization in two retained runs. A later R10 head read contradicts valid-wrapper continuity; lifetime and runtime winner remain unresolved. The early-attach entry is a conditional plan only, without current-window or playback conclusions.
 
 For an isolated review worktree, the same renderer supports `--source-root <reference-repository>`: it reads exact references there and writes only beside the renderer; generated links retain the final repository layout. Default rendering after landing remains unchanged. `pending-references.json` records the formerly pending archive paths and their landed hashes.
+
+The independent R15 review preserves six automated scenarios and one human PendingReview. Duplicate identity blocks subsequent lower operations, publication and uncertain cleanup while retaining slots. It cannot revoke an already-dispatched provider call: that call may complete with effects before its returned result is discarded. This is not a claim that Map never ran. The five pinned review references are README, results, sources, duplicate-identity and failure-cleanup.
+
+The separate early-window observation records actual non-execution: the initial truncated-name mismatch was corrected on the same child, but nine maps responses still lacked the exact player path. No attach, admission or observer samples followed. The original baseline and reviewed feed were restored in 694 seconds with 64 targets, 351 labels and all eight comparable invariants equal. Original facts retain two unknown liveness records. The archive has 4,825 members and SHA256 `4c3bbc74f887b05998b7a3a40533f82f1e4bca5424421007ba6932f124e30f37`; the original lane rc255 and subsequent outer three rc0 receipts remain separate. The earlier plan row stays plan-only. No ongoing video-tab window outcome is included.
