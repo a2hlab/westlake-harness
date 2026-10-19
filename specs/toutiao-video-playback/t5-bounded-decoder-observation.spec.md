@@ -13,6 +13,7 @@ r9 retry的256条镜像在video resetCodec处耗尽，后续缺日志无法判�
 - 独立复制既有host oracle并适配4095/4096/4097边界，加入并发饱和检查；混合参数/长格式/%m/%n/位置参数/别名既有用例继续覆盖，原测试文件不改。
 - 复制并调整已验证r8构建配方，只重编compat。固定原OpenSL源码cf45ad43、link-only锚点、真实liblog d8ad及原工具链，源码新SHA显式钉住。player0b4d95c5及105重定位、media d2882303和r9 run b5625757原样复用；不重新派生这些件。
 - 构建前check_frozen；原始命令/stdout/stderr/rc当场落持久位置。先交源码/recipe/host oracle供独立复核，外环认可后才执行生产构建；输出实际新compat SHA、导入导出比较与构建哈希清单。没有构建就明确not built。
+- 构建机挂载不可用时，可在candidate-r10另加本地Docker运行器，配方显式选用它并记录脚本SHA；仍用原镜像与逐件同SHA工具链/sysroot，读写挂载仅显式SOURCE_REPO、OH_NATIVE和OUT。不得改共享dockbuild、重启VM或改变编译链接参数；环境替代不算源码构建失败。
 - 对接收据写独立检查器，Rust选择器转调Python和真实host oracle。构建验收仍需人工审实际日志；动态provider及播放明确unknown。公开材料不含原始URL/账户/用户数据。
 ## 边界
 ### 允许修改
@@ -27,7 +28,7 @@ r9 retry的256条镜像在video resetCodec处耗尽，后续缺日志无法判�
   测试: ttvideo_decoder_observation_source
   假设 原r8镜像源码与复用的三个运行输入具有指定SHA
   当 检查r10源码差异与构建入口
-  那么 差异仅为256到4096常量且配方选中r10新源码与新SHA，原历史文件未改变
+  那么 差异仅为256到4096常量且配方选中r10新源码与新SHA，原历史文件未改变；可选本地Docker运行器仅替换挂载方式且工具链哈希和编译参数不变
 场景: 饱和边界及并发不越界
   测试: ttvideo_decoder_observation_forwarding
   假设 独立参考后端与r10镜像已链接
