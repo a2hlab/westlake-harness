@@ -1,0 +1,94 @@
+{
+  "target": {
+    "name": "liboh_adapter_bridge.so",
+    "sha256": "d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b",
+    "provider": "ghidra 12.1.4",
+    "arch": "arm64"
+  },
+  "baseline_identity": {
+    "note": "These are the CURRENT recovery-baseline binaries read-only-pulled 2026-10-20T02:27 into media-provider-readonly-0227 (board 61b; provenance /proc/4864). They establish what THIS baseline registers. They do NOT prove the r8/r9 FINAL RegisterNatives winner \u2014 only one register_MediaCodec_shim implementation exists (this bridge), but the final JNI_OnLoad order (libmedia_jni vs runtime, both calling this same bridge symbol) is unverified.",
+    "pulled": {
+      "libmedia_jni.so": "f394360144069bf6bd08d702f4bdadcd8a77883cf0854c1608bb6eba56c366d9",
+      "liboh_android_runtime.so": "8ab6742d58de5b9df94a2bfa80cebed46f136c0251083793fcbef8293cc23ab1",
+      "liboh_adapter_bridge.so": "d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b"
+    }
+  },
+  "address_model": {
+    "ghidra_imagebase": "0x100000",
+    "note": "ELF entry = Ghidra address - 0x100000. Independently cross-checked by LLVM disasm at $HOME/.local/share/westlake/toutiao-resume-20261020/codec-enumeration-independent (same mclCount/mclGetName/mclSupportedTypes ELF entries)."
+  },
+  "disassembly_confirmed": {
+    "register_MediaCodec_shim": {
+      "elf_entry": "0xf0778",
+      "ghidra_entry": "0x1f0778",
+      "note": "symbol ambiguous in Ghidra [0x1f0778,0x262610]; the JNINativeMethod body (register-string load) is at ELF 0xf0d4c / Ghidra 0x1f0d4c inside the 0xf0778 function; 0x262610 is a separate symbol (likely thunk/alias)",
+      "evidence_id": "ev_b9c43a10d6354530311afa37e4ccfed5fb8fbf14f1a4009f319b2caece29cf39",
+      "registers": [
+        "android/media/MediaCodec (18 methods)",
+        "MediaCodec.getOwnCodecInfo",
+        "android/media/MediaCodecList (9 methods)"
+      ],
+      "mediacodeclist_table": [
+        "native_getCodecCount->mclCount",
+        "native_init->mclInit",
+        "getCodecName->mclGetName",
+        "getCanonicalName->mclGetCanonical",
+        "getSupportedTypes->mclSupportedTypes",
+        "getCodecCapabilities->mclGetCaps",
+        "getAttributes->mclGetAttributes",
+        "findCodecByName->mclFindByName",
+        "native_getGlobalSettings->mclGlobalSettings"
+      ]
+    },
+    "mclCount": {
+      "elf_entry": "0xf2e88",
+      "ghidra_entry": "0x1f2e88",
+      "evidence_id_body": "ev_ce71bef36a2f6751f6c75efbac9d652cbc6f5630899d4062f3543480f63883a3",
+      "evidence_id_addr": "ev_c4c4899658766ef0b739615085b3b18d3f911bec0c131b488e95a26bf2e4b4ae",
+      "body": "return 1;",
+      "llvm_independent": "mov w0,1; ret",
+      "meaning": "MediaCodecList reports exactly 1 codec"
+    },
+    "mclGetName": {
+      "elf_entry": "0xf2e90",
+      "ghidra_entry": "0x1f2e90",
+      "evidence_id_body": "ev_6e0a4d161ef0f83b8268449ae4f83ac27176dcfacd04795879a695e4d06c8674",
+      "evidence_id_addr": "ev_5676deb8dd20703351a8f9a8cc9a0ec6be3bebc9ec13fe7748b437ca763e9248",
+      "body": "NewStringUTF(\"OH.audio.mp3.decoder\")",
+      "meaning": "the one codec name",
+      "name_string_load": {
+        "elf": "0xf2e94/0xf2e98",
+        "note": "independent asm: the OH.audio.mp3.decoder address is materialized at ELF 0xf2e94/0xf2e98 inside mclGetName (entry 0xf2e90). The earlier 0xf2ef8 ref belongs to mclFindByName, NOT mclGetName."
+      }
+    },
+    "mclSupportedTypes": {
+      "elf_entry": "0xf2f40",
+      "ghidra_entry": "0x1f2f40",
+      "evidence_id_body": "ev_6cff535a4e14ffdd4ace14e1a35d95eece8684a0df71487c1431b4e52590559b",
+      "evidence_id_addr": "ev_48e9341b8e86a0f0228b81c8d39d85895c1ed220e47edc7eb1feb44900e76137",
+      "body": "String[1]; elem[0]=NewStringUTF(\"audio/mpeg\")  (else return 0)",
+      "meaning": "the one codec supportedTypes = [audio/mpeg]"
+    },
+    "string_addrs_ghidra": {
+      "OH.audio.mp3.decoder": "0x187b6d",
+      "audio/mpeg": "0x172f8d",
+      "register MediaCodecList rc=%d (%d methods)": "0x18bada",
+      "getSupportedTypes": "0x18475a"
+    }
+  },
+  "raw_json_archive": {
+    "complete": "$HOME/.local/share/westlake/toutiao-resume-20261019/codec-java-20261020-rea-raw/outer-extracted-bridge-results/ (12/12 complete tool_result: raw_result+subject+provider+SHA, extracted by outer from session transcript)",
+    "summaries_only": "../rea-tool-json/rea.bridge-ops.json (hand digests; NOT complete)",
+    "big_evidence": "../rea-tool-json/rea.{analyze_function.libttmplayer.FUN_003561e4,inspect_android_class.AJMediaCodec,inspect_android_method.getBestCodecName}.json"
+  },
+  "conclusion": "DISASSEMBLY-CONFIRMED (this baseline): deployed MediaCodecList enumerates exactly one codec (OH.audio.mp3.decoder, supportedTypes [audio/mpeg]) -> no video decoder. getBestCodecName(video/hevc) finds no video/* match -> null -> native 'non hardware codecname match'.",
+  "not_claimed": [
+    "r8/r9 FINAL JNI RegisterNatives winner (order unverified)",
+    "that libmffmpeg SW-decode executed or succeeded (loading != decoding)"
+  ],
+  "notes_corrections": [
+    "mclGetName name-string load is ELF 0xf2e94/0xf2e98 (not 0xf2ef8, which is in mclFindByName)",
+    "source oh_mediacodec_shim.cpp 6cf6caba is a SOURCE file; its SHA differs from the ELF by nature. This does NOT prove a different build \u2014 only that the source->product build mapping is unproven.",
+    "claim scope: only THIS baseline ELF enumeration implementation; final JNI RegisterNatives winner on r8/r9 NOT proven."
+  ]
+}

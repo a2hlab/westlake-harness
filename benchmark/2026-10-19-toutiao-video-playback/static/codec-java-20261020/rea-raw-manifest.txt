@@ -1,0 +1,31 @@
+# video-2020-codec-java — REA/source evidence manifest (current state; persistent copies outside git)
+# Raw REA tool JSON archived: $HOME/.local/share/westlake/toutiao-resume-20261019/codec-java-20261020-rea-raw/rea-tool-json/
+# AUTHORITATIVE complete bridge tool_result (12/12, raw_result+subject+provider+SHA, outer-extracted): $HOME/.local/share/westlake/toutiao-resume-20261019/codec-java-20261020-rea-raw/outer-extracted-bridge-results/
+
+## APK (commercial; hw248/private only, never committed)
+toutiao.apk  a1112a0c941f865847c2fab9138cf815735268fbfcd41d697412fb80992c7395  (hw248 vm-copies/apks-77/toutiao/toutiao.apk)
+
+## APK Java selector (REA JADX 0.7.1, jar 6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75)
+inspect_android_class  AJMediaCodec     ev_8e058da89b36e594f83d3fda539085622a97130e7bcff693ff59b037246d2061
+inspect_android_method getBestCodecName ev_1f71ced0a2314f63da7697965a3342757c1cb8ed769cec3b8e3b161c74b66f02
+getBestCodecName.java  a942140ab967231fcee9648ebd18d9e2214e5aa66697eb0c16d877a772f29475  (restructured; control-flow suspect)
+getBestCodecName.fallback.java / AJMediaCodec.fallback.java  (jadx --fallback instruction-level; used to verify polarity)
+
+## Native player (object B native side) — libttmplayer, code identical r4/r8
+libttmplayer.so r4-deployed 5fba80506cd1a494de5fb6aee63930192d6d0539657cca51e99381ff8a052ee4  FUN_003561e4 aj_media_codec_async.cpp:open
+  r4 5fba8050 vs r8 0b4d95c5 differ ONLY in 17 log-import name bytes (prior task, llvm-readelf: dynsym 227 rename, JUMP_SLOT 0x471f88 sym idx 0xe3=227 unchanged); codec logic byte-identical.
+
+## Deployed OH MediaCodec provider — CURRENT recovery baseline (read-only pulled 2026-10-20T02:27, media-provider-readonly-0227, board 61b /proc/4864)
+libmedia_jni.so           f394360144069bf6bd08d702f4bdadcd8a77883cf0854c1608bb6eba56c366d9  (thin registrar: register_MediaCodec_shim UND; JNI_OnLoad@ELF0x1adc; DT_NEEDED liboh_adapter_bridge.so)
+liboh_android_runtime.so  8ab6742d58de5b9df94a2bfa80cebed46f136c0251083793fcbef8293cc23ab1  (also register_MediaCodec_shim UND; log [WESTLAKE-494] rc)
+liboh_adapter_bridge.so   d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b  (DEFINES register_MediaCodec_shim + MediaCodecList natives; disassembly-confirmed MP3-only, see bridge-mediacodeclist-rea.json)
+  bridge ELF entries (imagebase 0x100000; Ghidra = ELF+0x100000): mclCount 0xf2e88 (return 1), mclGetName 0xf2e90 (OH.audio.mp3.decoder), mclSupportedTypes 0xf2f40 ([audio/mpeg]), register_MediaCodec_shim 0xf0778.
+  Independent LLVM disasm cross-check: $HOME/.local/share/westlake/toutiao-resume-20261020/codec-enumeration-independent (same ELF entries).
+  STATUS: final r8/r9 RegisterNatives winner UNVERIFIED (single bridge impl; JNI_OnLoad order not read). register rc=0 once in r8 child log line 147.
+
+## Source candidate (NOT the deployed build): oh_mediacodec_shim.cpp 6cf6caba47d86229ef4704b3ac1bdd54d7de71f2dea134c6ca3955f55b6c1b42 (vm-copies/westlake-current) — also MP3-only. NOTE: a source-file SHA necessarily differs from an ELF SHA; this does NOT prove a different build — the source->product build mapping is unproven.
+
+## Software-decode library (present/loaded in r8; NOT proven to have executed/decoded)
+libmffmpeg.so  d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4  full H264 SW decoder + HEVC parse + bytevc2; full HEVC/bytevc2 DECODER registration = next static object.
+
+## Network (object A -> cx): platform HAS IPv6 (webview-net connect#9/#16 AF_INET6 rc=0); player ff_listen_connect2 -97 is player-socket-specific.
