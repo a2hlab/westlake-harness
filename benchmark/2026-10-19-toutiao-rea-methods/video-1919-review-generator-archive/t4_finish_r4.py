@@ -1,0 +1,41 @@
+from pathlib import Path
+import json,hashlib,shutil,subprocess
+R=Path.cwd();M=R.parent/'westlake-harness';S=Path.home()/'.local/share/westlake/toutiao-resume-20261019';P=R/'benchmark/2026-10-19-toutiao-rea-methods/video-1919-r4-live-review'
+def h(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+def w(p,d):p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
+pins=json.loads((P/'source-pins.json').read_text());rows={x['path']:x for x in pins['files']}
+def pin(f):
+ rel='$HOME/'+str(f.relative_to(Path.home())) if f.is_relative_to(Path.home()) and not f.is_relative_to(R.parent) else '$WORKSPACES/'+str(f.relative_to(R.parent))
+ v={'path':rel,'sha256':h(f),'bytes':f.stat().st_size};rows[rel]=v;return v
+def cp(f,rel):
+ b=f.read_bytes()
+ if f.suffix not in ['.jpeg','.png']:assert b'/Users/' not in b and b'/home/' not in b, f
+ out=P/rel;out.parent.mkdir(parents=True,exist_ok=True);out.write_bytes(b);pin(f)
+for n in ['result.json','identity.txt']:cp(S/'video-r4-restored-identity'/n,'rollback-final/'+n)
+for f in sorted((S/'video-r4-restored-identity/commands').glob('command-00007.*')):cp(f,'rollback-final/commands/'+f.name)
+cp(S/'video-r4-rollback-reboot/receipt.json','rollback/reboot-receipt.json')
+cp(S/'video-r4-state-restored-diff.json','state/restored-diff.original.json')
+for n in ['plan.json','result.json','swap.sh','before.run.sh','after.run.sh']:cp(S/'video-r4-apply'/n,'apply/'+n)
+for n in ['video_guarded_window_r6.py','video_probe_r2.py','video_probe_swipe_r4.py','video_r4_got_read_r2.py','live_tools.py','board_step.py']:cp(S/n,'historical-recipes/'+n)
+assert h(P/'historical-recipes/video_guarded_window_r6.py')=='b8e9c4b2296bebf91f2364e272f6047cfc494e7f70e719688b73fd0ae695a531'
+screen=S/'video-r4-rollback-live/restored-observe/screen.jpeg';assert h(screen)=='ccc500ec9e3576de2405b4b732716f702e6702f22bbeb58ab02df3b3f9b66655';cp(screen,'rollback-final/screen.jpeg')
+rec=S/'video-r4-rollback-live/restored-observe/record.json';d=json.loads(rec.read_text());d['source_record_sha256']=h(rec);pin(rec)
+for img in d['screenshots']:img['path']='screen.jpeg'
+d['independent_visual_review']='Actual recommended feed with text and image cards; recovery confirmed. No playback claim.';w(P/'rollback-final/record.json',d)
+board=M/'.octos/boards/app-lighting.md';lines=board.read_bytes().splitlines();line='UNLOCK(61b0657200000000000000000324012c) outer(codex) 2026-10-19T20:28:45+0800';idx=lines.index(line.encode());(P/'rollback-final/canonical-unlock.txt').write_text(line+'\n'+lines[idx+1].decode('utf-8')+'\n');w(P/'rollback-final/unlock-source.json',{'source':'$WORKSPACES/westlake-harness/.octos/boards/app-lighting.md','source_sha256_at_read':h(board),'line':idx+1,'excerpt_sha256':h(P/'rollback-final/canonical-unlock.txt'),'review':'Actual MAIN board, not producer worktree board.'})
+check=json.loads((P/'rollback/independent-check.json').read_text());check.update(status='ROLLBACK_AND_FEED_RECOVERY_VERIFIED',runtime_postboot_hash_proof='rollback-final/commands/command-00007.json + identity.txt; host and explicit remote rc0',final_feed='rollback-final/screen.jpeg',unlock='rollback-final/canonical-unlock.txt');w(P/'rollback/independent-check.json',check)
+res=json.loads((P/'results.json').read_text());res.update(token='video-1919-r4-final-packet',status='PLAYBACK_NOT_PASSED_ROLLBACK_AND_FEED_VERIFIED',frozen=False,evidence_content_closed=True,final_manifest='pending remote archive receipt',unlock={'time':'2026-10-19T20:28:45+0800','evidence':'rollback-final/canonical-unlock.txt'},rollback={'status':'VERIFIED','fresh_boot':d['boot_id'],'parent':'5826/8498','child':'8384/10007','runtime_proof':'rollback-final/identity.txt','compat':'absent and parent unmapped','physical_private_inode':'equality checked by actual command-00007','final_feed_sha256':h(screen),'scope':'original source bytes restored; same62-target plan/351labels/config unchanged'},archive={'status':'pending outer receipt','does_not_change_playback_verdict':True});w(P/'results.json',res)
+pins['files']=list(rows.values());w(P/'source-pins.json',pins)
+raw=json.loads((P/'raw-command-pins.json').read_text());rr={x['path']:x for x in raw['files']}
+for folder in ['video-r4-apply/commands','video-r4-restored-identity/commands','video-r4-rollback-reboot/commands']:
+ for f in sorted((S/folder).rglob('*')):
+  if f.is_file():
+   k='$HOME/'+str(f.relative_to(Path.home()));rr[k]={'path':k,'sha256':h(f),'bytes':f.stat().st_size}
+raw['files']=list(rr.values());w(P/'raw-command-pins.json',raw)
+p=subprocess.run(['python3','scripts/lab/run_facts.py',str(P.relative_to(R))],capture_output=True,text=True);assert p.returncode==0;(P/'facts.txt').write_text(p.stdout);w(P/'facts-command.json',{'argv':['python3','scripts/lab/run_facts.py',str(P.relative_to(R))],'rc':p.returncode,'stdout_sha256':h(P/'facts.txt'),'stderr':p.stderr})
+s=(P/'README.md').read_text().replace('# Toutiao r4 observations — partial, window closure pending','# Toutiao r4: slot bindings observed; playback not passed; rollback verified').replace('## Provenance and pending closure','## Provenance and scope').replace('It finds11/11 captures (nine observation images and two navigation images). Standard alive tables are absent, so all five alive entries remain unknown','It finds12/12 captures (nine observation images, two failed-navigation images and one recovery-feed image). Standard alive tables are absent, so all six alive entries remain unknown')
+s=s[:s.index('**Pending:**')]+'''## Candidate navigation failed\n\n`leave-video` remains a video page; `home-feed` is an empty comment composer, not feed. Both original images remain in navigation-*; outer reports no input or send. Producer directory names are not verdicts.\n\n## Recovery and closure\n\n[Rollback](rollback/result.json) executed against the original apply-plan with host/explicit remote rc0. The original run d3518cef/media fecf91e1/player b427614d bytes are restored; compat is absent. After fresh boot `eef63e15-9d12-47ad-b0d0-fb57ad8dbf90`, [the actual verification command](rollback-final/commands/command-00007.json) checks parent5826/birth8498, child8384/birth10007, physical/private SHA and inode equality, and compat absence/unmapped. [The final screenshot](rollback-final/screen.jpeg) was independently viewed and shows real recommended feed. [MAIN UNLOCK](rollback-final/canonical-unlock.txt) is20:28:45. The same62-target snapshot/351labels/config SHA is unchanged; this remains a scoped comparison.\n\nPlayback remains **NOT PASSED**; recovery is verified. Archive receipt and final whole-packet manifest are pending. The evidence-content listing freezes the current images/facts; it is not API capability freezing. No device calls/builds/runtime tests were performed by this reviewer. Prior r3 packet is unchanged.\n''';(P/'README.md').write_text(s)
+(P/'historical-recipes/README.md').write_text('''# Actual one-off execution recipes\n\nThese are byte-exact scripts used by the outer operator, preserved with source-pins. They are historical execution evidence, not generic rerun tools. The executor uses the already reviewed Board guards, fixed artifact pins, original apply-plan and a controlled reboot. No scripts were executed against a device during this review. Apply and rollback plan/result/swap.sh are preserved separately. Big command/log originals remain in private persistent storage with portable hashes; no APK/DSO is published here.\n''')
+(P/'ACK-final.md').write_text('''# video-1919-r4-final-packet\n\nScoped evidence ACCEPT: three actual GOT slots matched; playback NOT PASSED. Three25-second cover observations are not two audible playback cycles. Original unknown receipts and failed navigation images remain unchanged. Four-file rollback, fresh boot and real feed verified; actual MAIN UNLOCK20:28:45 read.\n\n'''+p.stdout+'\nStandard alive tables remain unknown; raw identity samples are separate. Evidence content is closed; remote archive binding/final package manifest pending. No device/build/push. Old draft ACK is retained as historical checkpoint.\n')
+(P/'layout-suggestion.md').write_text('| **2026-10-19 Toutiao r4 live evidence** | Three object-slot reads matched; three cover-only observation groups did not pass playback; four-file rollback and fresh-boot feed verified. |\n')
+print(p.stdout)

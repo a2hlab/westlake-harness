@@ -1,0 +1,13 @@
+# R5 transient-parameter diagnostic: not observed, restored
+
+Parameter set/get true did not establish player consumption. Three actual children (7078, 14207, 21760) exited before any video tap and never displayed feed in this candidate window. Icon reentry did spawn new children. This is P1 NOT_OBSERVED, not a playback-causal failure or a successful playback test. Audio and diagnostic-consumer true remain unknown/not observed. No random-crash mechanism was investigated.
+
+The same r4 four artifacts were reused; no new build occurred. Existing source/provider evidence remains at MAIN commit3d326919cf and is not redelivered. Source mapping, artifact build receipts, parameter readback, and live playback are separate claims.
+
+Rollback restored the exact original run/media/player and physical/private inode equality, removed compat (also absent from parent maps), retained cfg91e31, and freshboot d90678dd returned exact parameter error106. First baseline child8092 exited; a second real icon spawned14317 and the reviewed image shows a news list with a gray video card, not playing video. This does not establish stable first-launch recovery. All4 same-plan snapshots have62targets/351labels with unchanged labels/init configs/SELinux. The canonical lock was released21:01:41 after13m37s.
+
+## Layout and provenance
+
+Small original screenshots, command triplets and technical guardian excerpts are public. Portable private paths and exact SHA values are in source-pins.json; full stderr/crashes and large raw evidence remain in the remotely verified window archive referenced by ../video-1919-r5-review/window-archive.json. Public archive/close/state metadata are copied byte-for-byte from MAIN. Normalized screenshot records change only private path representation and add a separate independent review; original record SHA is retained. Raw sources remain untouched.
+
+The archive_video_r5.portable.py derivative is explicitly marked and binds the exact private original; only its remote-root literal is replaced by HW248_ARTIFACT_ROOT. Other historical execution sources under historical-recipes are exact recipes for the original guarded window, not generic safe rerun entrypoints. review-tools and api-preview preserve earlier checkpoints; their pending text is historical and superseded by results.json. No live commands were executed by this reviewer. Actual screenshot/alive counts are solely facts.txt; absent standard alive tables mean unknown. Final landing includes a separate historical review-generator archive. The API update adds one observation, preserves the first4 objects and does not change the signed315 table or its grades.

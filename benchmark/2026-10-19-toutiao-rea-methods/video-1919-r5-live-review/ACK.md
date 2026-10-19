@@ -1,0 +1,1 @@
+video-1919-r5-final-packet: scoped ACCEPT of diagnostic evidence and restoration only. P1 NOT_OBSERVED; audio unknown; no consumer-true or stable P0 claim. See results.json and facts.txt. No device/build calls or push.

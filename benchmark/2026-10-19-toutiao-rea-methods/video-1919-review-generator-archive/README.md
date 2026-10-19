@@ -1,0 +1,3 @@
+# Historical evidence-generation sources
+
+These small useful review generators are copied byte-for-byte from the temporary authoring location into persistent workspace delivery. They are historical implementation records, **not safe generic rerun tools**. In particular they may overwrite already frozen review packets and use their original inter-script temporary-path references. Do not run them against frozen packets; the original output packets remain unchanged. No runtime/device action was performed by preserving these files. This directory is a separate supplemental landing, not an alteration to r4 or source-final freezes.

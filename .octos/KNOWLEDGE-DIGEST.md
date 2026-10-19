@@ -921,3 +921,4 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-19 #91 视频崩溃定位：cppcrash帧偏移不可直接当ELF地址，须以实际PC+maps+PT_LOAD求load bias，再处理Ghidra imagebase；本次报告0x21a6714，ELF实际0xde714，call参数x0指向eglPresentationTimeANDROID，x1残留glActiveShaderProgram不是参数。原报告保留，LOAD尝试/无FAIL/已执行player代码都不替代GOT与播放验收。证据 benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review/，独立LLVM原件在持久video-r3-independent-pc。
 
 - 2026-10-19 #91 r4：同一ELF的多个PT_LOAD可因小p_offset分别向页对齐而在maps出现多个offset0，不能据此判多份库；本次compat四页按各自p_vaddr求同一bias，独立读三GOT槽全匹配，player缓存自绑已证但三组25秒仍封面，不等于播放。证据 video-r4-compat-load-bias + video-r4-got-read-r2；原unknown探针保留，原件持久归档见 benchmark/2026-10-19-toutiao-rea-methods/video-1919-r4-review/window-archive.json。
+- 2026-10-19 REA证据纪律：字符串归属必须在所引normalized方法正文逐字存在，入口委托不代替被调方法；0 DEX入边只限静态扫描覆盖，不排除reflection/JNI/hotfix。沿实测栈追生产路径，普通HWUI/一次wchan/缺日志不升级为播放器因果；三次复发见 FLAW-011 / EVO-0148–0150。
