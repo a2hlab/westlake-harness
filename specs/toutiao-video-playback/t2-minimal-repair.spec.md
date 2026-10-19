@@ -12,12 +12,14 @@ tags: [media, ready, opensles-iid]
 - 只在candidate下复制并修改获准的源码单元，不改冻结原件；需要不同文件时先修订契约再lint。
 - 获准源码仅两件，逐字复制不改：opensles_android_compat.c（sha256 cf45ad430a08cbe090f030357a346be7a0bac49f48c06196a11c7818de3f9351）与link_only_stub.c（sha256 fa47585b8fb702e8da05c52d732c9c964b5ec50a34edfa6815dea7f962898e13），配方为westlake build.sh 0d8e4f43第89至93行，经dockbuild.sh cc用OHOS clang 15.0.4 feef13a3编出libopensles_android_compat.so。
 - 部署输入仅两件：新增/data/local/tmp/asx/libopensles_android_compat.so，以及run.sh第33行LD_PRELOAD末尾追加该路径（d3518cef→ea98494255b05699ca24b134e6ada8849b023b4ab59d3d7e291194cfa8425f73），libttmplayer保持namespace 0；回滚为恢复d3518cef并删除该库。
+- r2（2026-10-19 实板新首阻断：namespace 0 中 libttmplayer 依赖的 libvcbasekit 绑定到 OH libc++_shared 缺 std::__ndk1，见 static/selected-change-r2.json）：不新增源码、不重编；只在 candidate-r2 下产出 run.sh，相对 P1 候选仅改两行——WESTLAKE_ANDROID_NATIVE_TARGETS 追加 libmffmpeg.so:libttmplayer.so，WESTLAKE_ANDROID_NATIVE_INHERIT 追加 libopensles_android_compat.so:libOpenSLES.so；P1 证据与候选原样保留。r2 静态门须对 libttmplayer 递归依赖闭包按实际 namespace 与 provider 优先序求解，未解析集为空方可送审。
 - 离线门：导出仅两个IID、DT_NEEDED含libOpenSLES.so、不导出libc类符号、用t1 reproduce.sh闭包加入该库后libttmplayer未解析集为空。
 - 保留相同namespace/ABI与未改行为；构建前check_frozen、逐部署件strings/class/open-site对照、工具链哈希和原始stdout/stderr及rc=0都入回执。
 - 功能检查按真实修复API增加正例、拒绝例和释放/生命周期测试；不以返回OK、空数据或注册成功代替视频解码/呈现。
 ## 边界
 ### 允许修改
 - benchmark/2026-10-19-toutiao-video-playback/candidate/**
+- benchmark/2026-10-19-toutiao-video-playback/candidate-r2/**
 - specs/toutiao-video-playback/t2-minimal-repair.spec.md
 ### 禁止
 - 不上板、不改冻结文件、不改主窗口几何、图标watchdog、启动器或应用数据；不替换完整运行时世代。
