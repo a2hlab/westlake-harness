@@ -1,0 +1,50 @@
+{
+  "token": "video-1919-player-observation-contract-review",
+  "verdict": "ACCEPT_OFFLINE_SCOPE_WITH_TWO_IMPLEMENTATION_CAVEATS",
+  "device_calls": 0,
+  "builds": 0,
+  "spec": {
+    "path": "specs/toutiao-video-playback/t4-player-observation.spec.md",
+    "sha256": "45028fcf2f2996913fab1d6d14ca6a7a629086f21a18a776a22c3c4670d86539"
+  },
+  "evidence": {
+    "liblog_sha256": "d8ad176b41b820a4868b74394188429ad2dc69025661d320d0986dd713048ca4",
+    "player_sha256": "5fba80506cd1a494de5fb6aee63930192d6d0539657cca51e99381ff8a052ee4",
+    "feasibility_sha256": "a81d6893ec61fca37796aea1f15fa55a171681ac4ceda2b994c4f74d890422ab"
+  },
+  "exact_findings": [
+    {
+      "topic": "print/vprint",
+      "result": "Exact normal-return bodies have the same priority/tag filter(default2), 1024-byte vsnprintf buffer, null-tag default, logger slot e6f8, return -1 when filtered / 1 after logger, and restore entry errno. vprint accepts the AArch64 va_list address and copies its32 bytes. This establishes static forwarding feasibility, not the future compat provider binding.",
+      "addresses": {
+        "vprint": "0x7450-0x7544",
+        "print": "0x7548-0x7670"
+      }
+    },
+    {
+      "topic": "unique import",
+      "result": "One dynsym FUNC GLOBAL UND at index227, one JUMP_SLOT at0x471f88; dynstr start0x3051/file0xa6f1, only dynsym227 starts within its name. Version index0. GNU hash starts at601 and excludes227. SysV hash DOES include227 in bucket413 of521. This scan alone does not close all other possible string references.",
+      "minimal_direction": "Prove every relevant string reference and hash effect. An equal-length unique replacement with the same SysV bucket can retain its existing chain; otherwise a string-only all-other-bytes-unchanged claim is not established. Do not silently change hash tables or105 prior relocations."
+    },
+    {
+      "topic": "double formatting",
+      "result": "va_copy separates argument cursors, not pointed-to data or formatting side effects. Unconditional mirror vsnprintf followed by original vprint does not preserve all valid formats: %n writes twice; a filtered original call would not format at all. %s/%n aliasing can change the text subsequently passed to the original backend.",
+      "minimal_direction": "Before mirroring, recognize a bounded supported format subset; unsupported/side-effecting formats forward unchanged exactly once, optionally emit only a fixed bounded skipped marker. No mirror evaluation of %n (including positional/length variants). Keep %m tied to restored entry errno. Add a narrow filtered-%n and aliasing-negative case to the existing forwarding test, not a new framework. Explicitly state this mirror coverage exception."
+    },
+    {
+      "topic": "limits",
+      "result": "1024 bytes must include marker/tag/newline, not just payload; at most256 mirror attempts, saturating atomic reservation, cap checked before formatting. Never retry a short/error write; preserve original forwarding regardless of mirror failure. A bounded blocking fd2 write still has timing/blocking risk; no claim of nonblocking behavior."
+    },
+    {
+      "topic": "105 and scope",
+      "result": "Contract correctly requires105 self-relative records and all other bytes unchanged, original OpenSL behavior retained, fixed run/media, no API/device changes. Actual105 output equality belongs to the future derivation; no candidate was generated or admitted here."
+    }
+  ],
+  "unknowns": [
+    "New unique symbol/export and final output hashes",
+    "New compat vprint GOT actual provider instance and ABI execution",
+    "Actual mirror execution/diagnostic coverage",
+    "Playback/audio"
+  ],
+  "conclusion": "No static impossibility blocks offline work. A blind equal-length rename or unconditional double-vsnprintf implementation would fail this contract. Resolve the two caveats in the narrow implementation/coverage wording before claiming preserved semantics. No device admission."
+}
