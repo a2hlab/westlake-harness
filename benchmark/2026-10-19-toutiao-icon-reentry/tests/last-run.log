@@ -1,0 +1,104 @@
+=== parser tests ===
+PASS real.focus.row
+PASS real.focus.class.other
+PASS real.owned.child.yes
+PASS real.owned.hostpid.matches
+PASS real.owned.absent.no
+PASS desktop.row
+PASS desktop.class
+PASS host.row
+PASS host.class
+PASS host.class.wrongwid
+PASS hidden.focus.error
+PASS syn.owned.yes
+PASS syn.owned.no
+PASS err.no_header
+PASS err.no_footer
+PASS err.dup_focus
+PASS err.truncated_row
+PASS err.total_lt_count
+PASS err.all_heading_only
+PASS err.missing_file.focus
+PASS err.missing_file.owned
+
+parser-tests: 21 passed, 0 failed
+
+=== reentry state-machine tests ===
+PASS s1.attempts
+PASS s1.ok
+PASS xcrash.host_at_start.nospawn
+PASS xnotif.nospawn
+PASS xwmserr.nospawn
+PASS s2.alive.nospawn
+PASS s2.alive.consume
+PASS s2.window.nospawn
+PASS s2.window.consume
+PASS s3.refuse.nospawn
+PASS s3.refuse.rc
+PASS s3.refuse.event
+PASS s3.stop.nospawn
+PASS s3.stop.rc
+PASS s3.stop.event
+PASS s3.invalid.nospawn
+PASS s3.invalid.rc
+PASS s4.21.attempts
+PASS s4.21.ok
+PASS s4.fail.attempts
+PASS s4.fail.ok
+PASS s4.fail.failevent
+PASS s4.unknown.attempts
+PASS s4.unknown.hold
+PASS s4.unknown.heldevent
+PASS spawnrc.nonzero.nook
+PASS spawnrc.nonzero.hold
+PASS quiet.only_stop
+PASS quiet.is_stop
+
+reentry-tests: 29 passed, 0 failed
+
+=== generator smoke + SHA cascade linkage ===
+# derive-candidate.sh 2026-10-19T09:02:48Z
+ROOT=/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r1 SERIAL=61b0657200000000000000000324012c OWNER_UID=20011206 SERVICE=westlake-icon-manual-20261019 ENABLE=0 APPROVED=<none>
+
+## base source verification + file production
+src       watchdog.sh <- src/watchdog-reentry.sh sha=bd2f83be4875d8a241dfe32d43c65f0ba7af6fff062bc1d790a426940e65c520
+src       reentry-common.sh <- src/reentry-common.sh sha=43d7b073467708770c8c69724633666e410d45581f8c0099d5098c31215e78ab
+src       reentry-seams.sh <- src/reentry-seams.sh sha=febc7094b9d90b6a8c6c305199395d92da1ccde42d2b82b8c2754f0cb60f9d04
+copy      route-b-owner.sh <- V/route-b-owner.sh pin OK
+sed-root  config-common.sh <- R/config-common.sh (ROOT=/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r1) sha=ddee0b6c8c440d04148a22e83eec74beca5c4241a921c4bc398df3e4daf38934
+sed-wd    entry.sh <- V/entry.sh (watchdog sha -> bd2f83be4875d8a241dfe32d43c65f0ba7af6fff062bc1d790a426940e65c520) sha=54d8d9e35ebb8e9f34e6a65e916504298497a0ba9b6e99d72a3eef836cf7cae2
+copy      launch-common.sh <- V/launch-common.sh pin OK
+copy      real-start-parent.sh <- R/real-start-parent.sh pin OK
+copy      real-spawn.sh <- V/real-spawn.sh pin OK
+copy      start-parent.sh <- V/start-parent-prepared.sh pin OK
+copy      spawn.sh <- V/spawn-prepared.sh pin OK
+copy      screen-gate <- V/screen-gate-feed pin OK
+copy      decoder-probe.jpeg <- V/decoder-probe.jpeg pin OK
+copy      real-start-parent-bounded.sh <- R/real-start-parent-bounded.sh pin OK
+copy      readiness-probe.sh <- V/readiness-probe.sh pin OK
+copy      boot-entry.sh <- V/boot-entry.sh pin OK
+sed-recov recovery.cfg <- R/recovery.cfg (ROOT=icon-manual-20261019-r1 service=westlake-icon-manual-20261019) sha=4d502f3e78f50743bdfb290ba8d49c1882244cd6ab42b29b041ff5d208976e20
+copy      rollback-inert.cfg <- V/rollback-inert.cfg pin OK
+
+## cascade: members.tsv -> startup.env -> startup.expected.sha256
+members.tsv sha=6d96deca0a721305d8f8c276a5f8b43b0101ee9a6ef499547fb80d239390218f (15 members)
+startup.env sha=da40b9c2516c99ea9f799dcc8402d1e01bf40783950976ea2793349532c60863 ENABLED=0 APPROVED=DISABLED-PENDING-OUTER
+startup.expected.sha256 = da40b9c2516c99ea9f799dcc8402d1e01bf40783950976ea2793349532c60863
+
+## diffs (base -> candidate)
+diff watchdog.sh -> diffs/watchdog.sh.diff
+diff entry.sh -> diffs/entry.sh.diff
+diff config-common.sh -> diffs/config-common.sh.diff
+diff recovery.cfg -> diffs/recovery.cfg.diff
+diff members.tsv -> diffs/members.tsv.diff
+diff startup.env -> diffs/startup.env.diff
+diff startup.expected.sha256 -> diffs/startup.expected.sha256.diff
+diff reentry-common.sh -> diffs/reentry-common.sh.diff
+diff reentry-seams.sh -> diffs/reentry-seams.sh.diff
+
+## MANIFEST.sha256 (21 files)
+
+OK candidate written to /var/folders/4b/52jp6mr96b75p8tr62l0bz2r0000gn/T//rc-gen.M3gBy3/cand (armed=no)
+generator smoke: PASS (21 files, cascade linked, disabled by default)
+
+=== run-all result: PASS ===

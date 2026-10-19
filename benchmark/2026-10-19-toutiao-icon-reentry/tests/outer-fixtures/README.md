@@ -1,0 +1,5 @@
+# Actual 61b WMS fixture supplied by outer
+
+Captured after a real feed observation, but this dump itself is LOCKED: Focus15 is SCBScreenLock10. Expected focus classification=other, not desktop. DesktopPID2408/Win11 exists Z2 but is not focused. Host imehost0 PID11318/Win33 Z-1 is hidden. Bound child13101 has multiple hidden rows including Popup windows: owned-window must=yes. HostPID must never be counted as child. `All Focus window:` is a different summary heading from exact `Focus window:`. Table rows do not equal reported Total window num; do not invent a completeness constraint from that count. No user content is in this WMS fixture. SHA of original stdout:1bddfeba923ff5a40e669062b0bed128baec69b02a745babc6ef0601a0c7b103.
+
+Derived positive fixtures must be labeled synthetic: Focus11 with matching desktop identity ->desktop; Focus33 AND hostZ>=0 with matching host UID/birth and parent WL_PARENT_ID33 ->host. Just changing focus to33 while its Z remains-1 must reject. This file is evidence from one read, not a desktop→host event sequence.

@@ -1,0 +1,68 @@
+{
+  "status": "ADAPTER_WRITTEN_OFFLINE_TESTED_REQUIRES_CC_INTEGRATION",
+  "files": {
+    "watchdog-reentry.sh": {
+      "source_path": "benchmark/2026-10-19-toutiao-icon-reentry/src/watchdog-reentry.sh",
+      "sha256": "bd2f83be4875d8a241dfe32d43c65f0ba7af6fff062bc1d790a426940e65c520",
+      "base_sha256": "35bec8e3684a87d0e361d25c4bf8a61aa5a80ea545a67b63f56012af967dc595"
+    },
+    "reentry-common.sh": {
+      "source_path": "benchmark/2026-10-19-toutiao-icon-reentry/src/reentry-common.sh",
+      "sha256": "43d7b073467708770c8c69724633666e410d45581f8c0099d5098c31215e78ab",
+      "base_sha256": "faebdb73336ae932dee41c39367f539a36ffa11b53dfb854d94ff85b04aa87d9"
+    }
+  },
+  "source_root": "benchmark/2026-10-19-toutiao-icon-reentry/src",
+  "patch": {
+    "path": "benchmark/2026-10-19-toutiao-icon-review/adapter-fix/fix.patch",
+    "sha256": "03e586a5b34af5c31d179778b4d89d7243976d906cb934e87ff2dbacb70323ff"
+  },
+  "tests": {
+    "script": "benchmark/2026-10-19-toutiao-icon-review/adapter-fix/test_adapter.py",
+    "sha256": "1968405b2e47f6f3053c5cb07498f7599f4d6f5b9dec48326aac0ee8af52fb78",
+    "shells": [
+      {
+        "shell": "/bin/sh",
+        "tests": 18,
+        "rc": 0,
+        "stderr_path": "benchmark/2026-10-19-toutiao-icon-review/adapter-fix/tests-sh-1s.stderr.txt",
+        "stderr_sha256": "89377fa96527466a8b8f3444bb60c12795b33f2bc412826fcaa51ca53ec77632"
+      },
+      {
+        "shell": "/bin/dash",
+        "tests": 18,
+        "rc": 0,
+        "stderr_path": "benchmark/2026-10-19-toutiao-icon-review/adapter-fix/tests-dash-1s.stderr.txt",
+        "stderr_sha256": "814894d1bbf87b555d22f0fd1fb2d948ebc4a0d0b08ae94f8cf4e91bcb93d375"
+      }
+    ],
+    "production_assignment_case": "actual do_one_launch -> rc_do_spawn -> instance/write_exact: parent shell child=200 birth=20 seq=2",
+    "device_calls": 0
+  },
+  "must_apply_parser_from": "../westlake-harness/benchmark/2026-10-19-toutiao-icon-review/parser-review/fixed-reentry-seams.sh",
+  "must_apply_parser_sha256": "febc7094b9d90b6a8c6c305199395d92da1ccde42d2b82b8c2754f0cb60f9d04",
+  "parser_instruction": "CC must copy this reviewed file to src/reentry-seams.sh before generator/integration tests; 900c54a2 is not the required parser. Adapter expects file arguments.",
+  "seam_contract": {
+    "rc_focus_state": "current shell; sets rc_focus_result",
+    "rc_owned_window_present": "current shell; sets rc_owned_result",
+    "rc_do_spawn": "current shell; sets rc_spawn_result; fatal exits propagate",
+    "rc_classify_spawn": "current shell; sets rc_sres/rc_spawn_pid/rc_spawn_birth"
+  },
+  "window_identity_evidence": {
+    "path": "$HOME/.local/share/westlake/toutiao-icon-reentry-20261019/window-identities/stdout.txt",
+    "sha256": "7985097d9f6afdb0a73d22cf76af2a72c0a6d1c9f637f8b4c32c14174799fc74",
+    "desktop_uid": 20010018,
+    "desktop_cmdline": "com.ohos.sceneboard",
+    "host_uid": 20011206,
+    "host_cmdline": "org.westlake.imehost",
+    "exe": "/system/bin/appspawn",
+    "pid_and_birth": "read dynamically; not pinned to observed boot"
+  },
+  "limitations": [
+    "No hardware execution or deployment acceptance.",
+    "Parser/generator remain CC-owned and were not modified.",
+    "First dash invocation used an unavailable path; preserved tests-dash.stderr.txt. Actual /bin/dash run passed.",
+    "Original capture/ownership helpers retained; test process/tool boundaries are synthetic.",
+    "Reentry polling is 1 second (integer sleep); extremely fast Home-to-icon transitions can be missed. No automatic retry or HAP changes; hardware acceptance uses normal manual taps."
+  ]
+}

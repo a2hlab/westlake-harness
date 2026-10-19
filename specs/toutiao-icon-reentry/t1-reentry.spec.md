@@ -1,0 +1,44 @@
+spec: task
+name: "Durable manual icon reentry"
+inherits: project
+---
+## 意图
+在当前2b635ef1 watchdog上增加崩溃后等待手动图标重入，复用原启动、身份及截图门，形成可部署独立候选。
+## 已定决策
+- 保留现行boot-entry每次开机独立目录与首次手点启动；后续child确证退出后等待桌面到宿主焦点转换，每次事件仅一次spawn。
+- 保留原parent/child身份、readiness-probe及截图判据；child活着或仍有窗口不终止不重复启动；parent异常停止，不杀parent。
+- 新增脚本兼容OH现有shell工具，不依赖awk/python；不会按固定20次耗尽或无限追加无变化轮询文件。
+## 边界
+### 允许修改
+- specs/toutiao-icon-reentry/**
+- benchmark/2026-10-19-toutiao-icon-reentry/**
+- tools/spec-checks/tests/toutiao_icon_reentry.rs
+### 禁止
+- 内环不HDC、不部署、不改原capture-feed-package、不推送、不改随机崩溃和用户数据。
+## 完成条件
+场景: 崩溃后仅手动重入启动
+  测试: toutiao_icon_reentry
+  假设 当前child确证退出且parent身份完整
+  当 未观察桌面到宿主转换及之后观察到一次转换
+  那么 前者零spawn后者恰好一次spawn并保留原readiness门
+场景: 活进程或窗口保留
+  测试: toutiao_icon_reentry
+  假设 child仍活或有隐藏窗口
+  当 宿主获得焦点
+  那么 不TERM不spawn且消费该事件
+场景: 错误身份及停止拒绝
+  测试: toutiao_icon_reentry
+  假设 boot变更或PID复用或stop存在或parent身份不符
+  当 处理重入
+  那么 拒绝启动且不删除stop不信号parent
+场景: 多次手点与失败不自动重试
+  测试: toutiao_icon_reentry
+  假设 已有至少21次独立手点事件及一次启动失败
+  当 持续运行
+  那么 不因旧20次上限退出且失败后无新手点不重试
+场景: 实板截图验收
+  测试: toutiao_icon_reentry
+  审核: human
+  假设 外环已独占部署新候选并保存回滚
+  当 头条退出后经真实桌面图标启动并再次开机验证
+  那么 实际信息流截图、进程身份及回执齐全才通过且不冒称崩溃修复
