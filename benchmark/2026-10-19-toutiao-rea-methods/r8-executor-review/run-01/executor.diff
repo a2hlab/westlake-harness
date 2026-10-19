@@ -1,0 +1,42 @@
+--- successor-r6
++++ candidate-r8
+@@ -1,15 +1,17 @@
+-"""Reviewed four-file r4 executor successor; outer-held exact-identity window only."""
++"""DISABLED r8 draft; exact artifacts and independent admission are pending."""
+ import argparse,hashlib,json,re,shlex,sys
+ from pathlib import Path
+ # Candidate source and bytes accepted by outer; unapproved sentinels still refuse before Board setup.
+ PLAYER='lib/arm64-v8a/libttmplayer.so'
+ PBEFORE='b427614d57e4a7279f362b3f341de3cdd4b9f9a8859257016bcda24e5f6d3a02'
+-PAFTER='5fba80506cd1a494de5fb6aee63930192d6d0539657cca51e99381ff8a052ee4'
+-EXECUTION_REVIEW='APPROVED'
+-PLAYER_INPUT_REL='benchmark/2026-10-19-toutiao-video-playback/candidate-r4/deploy-inputs/libttmplayer.so'
++PAFTER='0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471'
++EXECUTION_REVIEW='UNAPPROVED'
++DSHA='6e83e924aae709f0c90ba2a966910febb63471b7a9a6294c6dee585a73ff3b4b'
++PLAYER_INPUT_REL='benchmark/2026-10-19-toutiao-video-playback/candidate-r8/deploy-inputs/libttmplayer.so'
+ PLAYER_METADATA='644:20011206:20011206'
+ PLAYER_LABEL='u:object_r:appdat:s0'
+ if (EXECUTION_REVIEW!='APPROVED' or not re.fullmatch(r'[0-9a-f]{64}',PAFTER)
++    or not re.fullmatch(r'[0-9a-f]{64}',DSHA)
+     or PLAYER_INPUT_REL=='UNAPPROVED'
+     or PLAYER_METADATA=='UNAPPROVED' or PLAYER_LABEL=='UNAPPROVED'):
+  sys.exit('UNAPPROVED_DRAFT: final candidate card/receipts or source binding unapproved; zero device calls')
+@@ -19,7 +21,7 @@
+ p=argparse.ArgumentParser();p.add_argument('mode',choices=['preflight','apply','rollback']);p.add_argument('--boot',required=True);p.add_argument('--parent',required=True);p.add_argument('--birth',required=True);p.add_argument('--out',type=Path,required=True);p.add_argument('--apply-plan',type=Path);a=p.parse_args()
+ repo=Path.cwd();sys.path.insert(0,str(repo/'benchmark/2026-09-28-bms-route-deploy/batch'));import bms_batch as b
+ q=shlex.quote;sha=lambda x:hashlib.sha256(x).hexdigest()
+-RT='/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d';DSO='libopensles_android_compat.so';DSHA='9f558aaf1d48cedbc10e6774073d71177efb6d1e196fe528f0203505d1ee761f';CFG='/system/etc/init/01_westlake_u13_toutiao.cfg';CSHA='91e31b959995772d305d5b034c9a5ebdbf3f8371495e3964185ada928db4ee2e'
++RT='/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d';DSO='libopensles_android_compat.so';CFG='/system/etc/init/01_westlake_u13_toutiao.cfg';CSHA='91e31b959995772d305d5b034c9a5ebdbf3f8371495e3964185ada928db4ee2e'
+ MEDIA='lib/arm64-v8a/libmffmpeg.so'; MBEFORE='fecf91e1fcda600661f501ce76a97456ad7e330b584013f2b742afb680b337c9'; MAFTER='d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4'
+ assert re.fullmatch('[0-9a-f-]{36}',a.boot) and a.parent.isdigit() and a.birth.isdigit()
+ a.out.mkdir(parents=True,exist_ok=False)
+@@ -103,7 +105,7 @@
+ new=before if a.mode=='rollback' else after;newfile=a.out/('before.run.sh' if a.mode=='rollback' else 'after.run.sh')
+ board.send(newfile,stage+'/run.sh');shell(f'test "$(sha256sum {stage}/run.sh | cut -d\' \' -f1)" = {sha(new)}\n')
+ if a.mode=='apply':
+- dso=base/'candidate/deploy-inputs'/DSO;assert sha(dso.read_bytes())==DSHA
++ dso=base/'candidate-r8/deploy-inputs'/DSO;assert sha(dso.read_bytes())==DSHA
+  board.send(dso,stage+'/'+DSO);shell(f'test "$(sha256sum {stage}/{DSO} | cut -d\' \' -f1)" = {DSHA}\n')
+ if a.mode=='apply':
+  media=base/'candidate-r3/deploy-inputs/libmffmpeg.so';assert sha(media.read_bytes())==MAFTER
