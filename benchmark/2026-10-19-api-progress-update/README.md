@@ -1,6 +1,6 @@
 # Current observations beside the API source/build atlas
 
-The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **3 observations with 32 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. One is runtime integration, not a new public Android API; two record unsuccessful player compatibility windows.
+The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **8 observations with 125 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
 
 Open the [current observations](index.html), [JSON](observations.json) or [CSV](observations.csv), alongside the [complete historical source/build atlas](../2026-10-14-api-source-delivery/views/index.html).
 
@@ -13,3 +13,5 @@ python3 benchmark/2026-10-19-api-progress-update/render.py
 ```
 
 The renderer verifies each referenced file against its full SHA256 before generating HTML and CSV. [results.json](results.json) records the actual reference count. Source/build recipes are linked separately from their live evidence. Raw large logs remain at the persistent locations and hashes in the respective evidence manifests. This view records local repository delivery; remote publication has not been verified for this update.
+
+R8 adds a reproducible bounded player log mirror, actual two-hop binding verification, 256 player messages, static-cover evidence and verified rollback. Codec-open and media-network failures are observed; their provider-level cause and successful playback remain unresolved.
