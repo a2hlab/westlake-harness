@@ -1,0 +1,11 @@
+# R9: reuse the native networking ABI boundary for FFmpeg
+
+R8 captured connect returning errno97, while earlier reports incorrectly inferred no IPv6 calls from a filtered log slice. Static analysis now identifies the exact media TCP code using Bionic addrinfo pointer order and an existing compatibility library that translates OH addrinfo only for selected immediate callers. The previous run selected only libsscronet.so and omitted the network compatibility DSO from android-native inheritance. Actual R8 media GOT binding remains unknown; this is a conditional candidate, not a proven root cause.
+
+`run.sh` changes exactly two lines from the R8 template: append libmffmpeg.so to NET_TARGETS and append the existing libandroid_native_network_compat.so to INHERIT. PRELOAD remains the original single WebView-shim path. The three R8 runtime binaries are reused byte-for-byte; no compiler or linker is run. `verify_config.py` verifies exact template/output hashes, two-line scope and reused binary hashes. Existing source/build archives and original execution logs remain under ../candidate-r8/archive-receipt.json.
+
+`video_guarded_window_r9.py` retains the reviewed four-artifact backups/CAS/WID derivation/rollback. It adds a read-only check for the exact f6c354d1 network DSO and parent-view inode. It is disabled until independent review and explicit outer admission. Never change the runtime DSO or patch live memory.
+
+`read_network_binding.py` uses exact PT_LOAD-derived biases and private mapped-object SHA/dev/inode. It reads six FFmpeg GOT slots and five cached libc delegates, preserving complete raw results. getaddrinfo and freeaddrinfo must BOTH resolve to the exact network compatibility functions, otherwise the reader returns nonzero and the outer restores the original baseline. Other slots and cached zero values are observations, not playback proof. Candidate validation and real video share one <=30 minute board window; no extra old-configuration window is required.
+
+The target remains two actual dynamic/audio playback cycles with pause/resume/exit and icon recovery. Static cover, binding success or log progress cannot pass that gate. Failure restores original run/media/player, removes the known temporary compatibility library, fresh-boots, verifies diagnostic parameter absence and real feed, then unlocks.

@@ -1,0 +1,70 @@
+{
+  "token": "video-2020-network-calls",
+  "verdict": "STATIC_ABI_SELECTION_GAP_CONFIRMED; R8_CAUSAL_PROVIDER_UNKNOWN",
+  "findings": [
+    {
+      "id": "F1",
+      "text": "Exact media TCP reads addrinfo family+4/type+8/protocol+12, addr+32/len+16/next+40. This is Bionic pointer order. Real f6 netcompat converts OH addr+24/canon+32 to Bionic canon+24/addr+32 only for selected immediate caller.",
+      "elf_pcs": [
+        "0x2a7120",
+        "0x2a712c",
+        "0x2a7144",
+        "0x2a7148",
+        "0x2a72ec",
+        "0x2a72f0",
+        "0x2a72fc"
+      ],
+      "source_ref": "android_native_network_compat.c:75-83,90-112,185-211,246-284",
+      "provider_pcs": [
+        "0x2440",
+        "0x2464",
+        "0x2500",
+        "0x25b4",
+        "0x25c4",
+        "0x25dc",
+        "0x25f0"
+      ]
+    },
+    {
+      "id": "F2",
+      "text": "r8 network.c:519 is synchronous connect-nonzero -> __errno -> negation -> generic-error branch. Not a socket() failure and not SO_ERROR result. No synthetic -97 mapping in this helper; actual errno provider remains to bind.",
+      "elf_pcs": [
+        "0x271464",
+        "0x271470",
+        "0x27147c",
+        "0x271498",
+        "0x271604",
+        "0x27162c"
+      ]
+    },
+    {
+      "id": "F3",
+      "text": "Actual template selects android_native for media/player, but NET_TARGETS only selects sscronet, and INHERIT omits netcompat. PRELOAD is a single dlopen_ns path, not a colon list. Candidate adds media selector and netcompat inheritance, preserving WebView. Inheritance order is not claimed to guarantee symbol precedence.",
+      "source_ref": "link_stubs_arm64.cc:267-324,550-560; candidate-r3/run.sh:29,33-37"
+    },
+    {
+      "id": "F4",
+      "text": "Current restored parent has exact f6 provider and baseline d351 run, confirmed by fresh outer rc0/birth/boot evidence. This pins next-window input, does not backfill r8 child GOT.",
+      "evidence": "BASE20/baseline-readonly-0222/network-provider.txt,network-command.json"
+    },
+    {
+      "id": "F5",
+      "text": "No socket/connect/getaddrinfo direct PLT imports in exact player. Network imports and analyzed TCP implementation are media. All direct PLT sites scanned; indirect/custom network callbacks are not claimed exhaustively resolved."
+    }
+  ],
+  "minimal_candidate": "candidate.json",
+  "readpoints": "got-readpoints.json",
+  "unknowns": [
+    "r8 media actual GOT providers and dynamic lookup order",
+    "actual addrinfo object/sockaddr bytes at failed connect; no proof that this mismatch caused errno97",
+    "exact producing build closure of f6 remains historical unknown; exact ELF conversion behavior is independently checked",
+    "codec/dynamic video/audio success remain outside this static finding"
+  ],
+  "not_inferred": [
+    "zero selected NATIVENET logs means no call",
+    "maps pathname proves symbol binding",
+    "hex context addresses prove thread identity",
+    "one unrelated SO_ERROR0 proves media transport",
+    "IPv6 literal alone proves unavailable IPv6 stack"
+  ]
+}

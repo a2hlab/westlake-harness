@@ -1,0 +1,36 @@
+--- r8
++++ r9
+@@ -1,11 +1,11 @@
+-"""DISABLED r8 draft; exact artifacts and independent admission are pending."""
++"""Disabled r9 two-line network ABI configuration; exact prior artifact tuple reused."""
+ import argparse,hashlib,json,re,shlex,sys
+ from pathlib import Path
+ # Candidate source and bytes accepted by outer; unapproved sentinels still refuse before Board setup.
+ PLAYER='lib/arm64-v8a/libttmplayer.so'
+ PBEFORE='b427614d57e4a7279f362b3f341de3cdd4b9f9a8859257016bcda24e5f6d3a02'
+ PAFTER='0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471'
+-EXECUTION_REVIEW='APPROVED'
++EXECUTION_REVIEW='UNAPPROVED'
+ DSHA='6e83e924aae709f0c90ba2a966910febb63471b7a9a6294c6dee585a73ff3b4b'
+ PLAYER_INPUT_REL='benchmark/2026-10-19-toutiao-video-playback/candidate-r8/deploy-inputs/libttmplayer.so'
+ PLAYER_METADATA='644:20011206:20011206'
+@@ -41,8 +41,8 @@
+ label=read('ls -Zd '+RT+'/run.sh').split()[0];dlabel=read('ls -Zd '+RT+'/libandroid_native_network_compat.so').split()[0]
+ assert re.fullmatch(r'u:object_r:[A-Za-z0-9_]+:s0',label) and re.fullmatch(r'u:object_r:[A-Za-z0-9_]+:s0',dlabel),(label,dlabel)
+ base=repo/'benchmark/2026-10-19-toutiao-video-playback'
+-before=(base/'static/selected-change/run.sh.d3518cef.orig').read_bytes();after=(base/'candidate-r3/deploy-inputs/run.sh').read_bytes()
+-assert sha(before)=='d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4' and sha(after)=='79275cf9f9a72be72beb551b978ee5f2faaed84129980aa5c79d2f51acd040d5'
++before=(base/'static/selected-change/run.sh.d3518cef.orig').read_bytes();after=(base/'candidate-r9/run.sh').read_bytes()
++assert sha(before)=='d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4' and sha(after)=='b5625757fcd812a64106a43897525b685216c7f61af5e9312969998c9485ee8a'
+ before_template,after_template=before,after
+ for data in [before,after]:assert data.count(b'export WL_PARENT_ID=33\n')==1
+ before=before.replace(b'export WL_PARENT_ID=33\n',f'export WL_PARENT_ID={wid}\n'.encode());after=after.replace(b'export WL_PARENT_ID=33\n',f'export WL_PARENT_ID={wid}\n'.encode())
+@@ -86,6 +86,8 @@
+ pre=parent_guard+fg(RT+'/run.sh',expected,meta,label)+fg(RT+'/'+MEDIA,mactual,mmeta,mlabel)
+ pre+=f'test "$(stat -L -c %d:%i {RT}/{MEDIA})" = "$(stat -L -c %d:%i /proc/{a.parent}/root/data/local/tmp/asx/{MEDIA})"\n'
+ pre+=fg(RT+'/'+PLAYER,pactual,pmeta,plabel)
++pre+=fg(RT+'/libandroid_native_network_compat.so','f6c354d1513071533fddcc91749f44e57a626177a584fb1bb9f48bf6446ef01e','644:20011206:20011206',dlabel)
++pre+=f'test "$(stat -L -c %d:%i {RT}/libandroid_native_network_compat.so)" = "$(stat -L -c %d:%i /proc/{a.parent}/root/data/local/tmp/asx/libandroid_native_network_compat.so)"\n'
+ pre+=f'test "$(stat -L -c %d:%i {RT}/{PLAYER})" = "$(stat -L -c %d:%i /proc/{a.parent}/root/data/local/tmp/asx/{PLAYER})"\n'
+ pre+=fg(RT+'/'+DSO,DSHA,'644:20011206:20011206',dlabel) if dso_present else pathguard(RT+'/'+DSO)+f'test ! -e {RT}/{DSO}\n'
+ if a.mode=='rollback':

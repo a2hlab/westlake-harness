@@ -1,0 +1,74 @@
+{
+  "token": "video-2020-network-calls",
+  "mode": "read-only memory; no patching",
+  "media_sha256": "d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4",
+  "player_sha256": "0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471",
+  "netcompat_sha256": "f6c354d1513071533fddcc91749f44e57a626177a584fb1bb9f48bf6446ef01e",
+  "slots": [
+    {
+      "symbol": "getaddrinfo",
+      "version": "LIBC",
+      "media_elf_va": "0x48f978",
+      "bytes": 8,
+      "desired_netcompat_symbol_va": "0x23f4",
+      "criterion": "must equal exact netcompat PT_LOAD bias + symbol offset, getaddrinfo/freeaddrinfo as a pair before playback acceptance"
+    },
+    {
+      "symbol": "freeaddrinfo",
+      "version": "LIBC",
+      "media_elf_va": "0x48fb60",
+      "bytes": 8,
+      "desired_netcompat_symbol_va": "0x2a00",
+      "criterion": "must equal exact netcompat PT_LOAD bias + symbol offset, getaddrinfo/freeaddrinfo as a pair before playback acceptance"
+    },
+    {
+      "symbol": "socket",
+      "version": "LIBC",
+      "media_elf_va": "0x490728",
+      "bytes": 8,
+      "desired_netcompat_symbol_va": "0x2ac8",
+      "criterion": "record provider; socket/connect pass arguments unchanged in netcompat"
+    },
+    {
+      "symbol": "connect",
+      "version": "LIBC",
+      "media_elf_va": "0x48fb88",
+      "bytes": 8,
+      "desired_netcompat_symbol_va": "0x2c14",
+      "criterion": "record provider; socket/connect pass arguments unchanged in netcompat"
+    },
+    {
+      "symbol": "__errno",
+      "version": "LIBC",
+      "media_elf_va": "0x490340",
+      "bytes": 8,
+      "desired_netcompat_symbol_va": null,
+      "criterion": "record exact function provider; __errno must be consistent with actual delegated libc TLS errno, no netcompat export expected"
+    },
+    {
+      "symbol": "getsockopt",
+      "version": "LIBC",
+      "media_elf_va": "0x48f218",
+      "bytes": 8,
+      "desired_netcompat_symbol_va": "0x2f64",
+      "criterion": "record provider; socket/connect pass arguments unchanged in netcompat"
+    }
+  ],
+  "guards": [
+    "same explicit boot/parent PID+birth/child PID+birth before and after",
+    "source SHA and mapped dev/inode for media, netcompat and resolved providers",
+    "derive each bias from matching PT_LOAD file offsets, not first maps row; reject ambiguous copies",
+    "retain all six exact 8-byte reads and maps; report UNKNOWN for missing/short read",
+    "record actual NET_TARGETS and INHERIT from child without publishing full environ"
+  ],
+  "optional_second_hop": {
+    "netcompat_real_getaddrinfo": "0x5d08",
+    "netcompat_real_free_after_conversion": "0x5d10",
+    "netcompat_real_free_unselected": "0x5d18",
+    "netcompat_real_socket": "0x5d20",
+    "netcompat_real_connect": "0x5d28",
+    "note": "read only if first hop resolves netcompat; zero can mean not called yet, not failure proof"
+  },
+  "window": "candidate configuration plus reads plus playback in one existing bounded window; no mandatory separate old-config window",
+  "rollback": "unchanged outer four-artifact restore plan with candidate run exact SHA/WID bookkeeping; this report adds no device operation"
+}

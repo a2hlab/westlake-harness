@@ -18,12 +18,15 @@ tags: [media, ready, opensles-iid]
 - 离线门：导出仅两个IID、DT_NEEDED含libOpenSLES.so、不导出libc类符号、用t1 reproduce.sh闭包加入该库后libttmplayer未解析集为空。
 - 保留相同namespace/ABI与未改行为（r2/r3 例外：libttmplayer 由 ns0 移入既有 android-native namespace 是本次核准的路由修复；r3 对 libmffmpeg 仅做 DT_INIT_ARRAYSZ 8→0 的单字节派生，去掉 bionic 本就跳过的空 init 槽，不改导出符号/代码段/ABI/其它构造器——已 strings 外其余字节逐字相同）（r4 例外：仅把 105 个 GLES/EGL proc-loader 缓存槽的 GLOB_DAT 改成自绑 RELATIVE，符号表/导出/代码段/hash/段权限不变，只改 .rela.dyn 该族 105 条的 r_info+r_addend）；构建前check_frozen、逐部署件strings/class/open-site对照、工具链哈希和原始stdout/stderr及rc=0都入回执。
 - 功能检查按真实修复API增加正例、拒绝例和释放/生命周期测试；不以返回OK、空数据或注册成功代替视频解码/呈现。
+- r9（2026-10-20 r8实际media连接-97后静态追踪）：仅派生run配置（79275cf9→b5625757）：NET_TARGETS保留libsscronet.so并加入libmffmpeg.so；ANDROID_NATIVE_INHERIT原列表追加现有netcompat f6c354d1，不改其源码/二进制；PRELOAD原样保留（它是单一路径，不能冒号追加）。r8 player0b4d/compat6e83/media d288全部复用，新增运行时编译为0。静态证据：mffmpeg TCP读取addrinfo ai_addr+32，OH libc原布局+24，既有netcompat提供转换但旧caller选择/命名空间配置未覆盖media；这是候选动机，尚非已证实际provider根因。上板必须读取mffmpeg getaddrinfo/freeaddrinfo实际GOT成对等于精确netcompat函数，任一不匹配就失败回滚；不要用配置存在代替符号绑定。
 ## 边界
 ### 允许修改
 - benchmark/2026-10-19-toutiao-video-playback/candidate/**
 - benchmark/2026-10-19-toutiao-video-playback/candidate-r2/**
 - benchmark/2026-10-19-toutiao-video-playback/candidate-r3/**
 - benchmark/2026-10-19-toutiao-video-playback/candidate-r4/**
+- benchmark/2026-10-19-toutiao-video-playback/candidate-r9/**
+- tools/spec-checks/tests/toutiao_network_config.rs
 - specs/toutiao-video-playback/t2-minimal-repair.spec.md
 ### 禁止
 - 不上板、不改冻结文件、不改主窗口几何、图标watchdog、启动器或应用数据；不替换完整运行时世代。
@@ -48,5 +51,11 @@ tags: [media, ready, opensles-iid]
   假设 实现只返回OK或仅有JNI注册且无帧输出
   当 审查行为与差异
   那么 拒绝认定播放修复且不进入成功封板
+场景: r9配置最小化与复用产物身份
+  测试: ttvideo_network_config_receipt
+  审核: human
+  假设 r8三个运行时二进制已归档且网络静态路径已定位
+  当 仅派生NET_TARGETS与INHERIT两行并核所有输入SHA
+  那么 PRELOAD与所有其余配置逐字不变且三个二进制不重编；检查只证明离线输入，不证明实际网络provider或播放
 ## 排除范围
 - 随机崩溃根因、安全机制改造、用户数据清理和自动远程推送。

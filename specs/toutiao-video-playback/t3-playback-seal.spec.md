@@ -17,6 +17,7 @@ tags: [media, waiting-for-p1-window, human-review]
 - r5只作诊断时沿用已核r4四件，不新增运行时二进制；只有精确播放器REA证明JNI_OnLoad读取debug.ttplayer.log.enable并接受true、实际provider与OH参数恢复路径已绑定后，才允许在fresh boot后、真实图标启动前临时设置该单键true。先保存原值或明确absent（errNum106）及原始远端回执；禁用file日志模式，不改变安全策略。原absent必须在回滚fresh boot后再次读为absent，空串不算恢复；日志开关未读到true、诊断无结论或窗口到限也恢复四件与参数并核真实feed，诊断成功不降低两轮有声播放验收。
 - r8为t4离线候选的独立短窗：player为0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471，compat为6e83e924aae709f0c90ba2a966910febb63471b7a9a6294c6dee585a73ff3b4b；run79275cf9与media d2882303模板不变。来源与原始构建日志见candidate-r8/archive-receipt.json，独立离线审查见video-1919-r8-elf-review。继承四件备份/CAS/原apply-plan回滚，未定后像仍在设备调用前拒绝；不部署链接输入liblog或OpenSL anchor，不改系统运行时。
 - r8 fresh boot后先按r5精确参数路径启日志，再真实图标进入feed并触发视频；一次采齐实际player GOT0x471f88→本次compat+0x1aac、compat GOT0x3258→exact d8ad liblog+0x7450，以及映射SHA/inode/load bias。缺任一绑定时仅记unknown，不把DT_NEEDED或编译通过当运行时解析证明。沿现有child fd2收有界镜像，原始payload只在私有持久归档。镜像无输出不能证明播放器从未执行；按真实画面和原两轮声音门裁定，到限仍按原基线恢复与参数absent、feed核验后解锁。
+- r9继承r8四件和日志开关/原基线恢复路径，仅run模板使用t2的b5625757两行网络配置派生；netcompat原件f6c354d1需前置校验SHA/metadata与parent private同inode，不写该原件。候选加载后读取mffmpeg getaddrinfo/freeaddrinfo/socket/connect/__errno/getsockopt六槽及其精确ELF/provider身份，前两者必须成对指向netcompat；任何绑定不符或日志/图像仍不支持动态播放，窗口内按原apply-plan恢复四件、fresh boot恢复参数absent和真实feed后解锁。最多30分钟，不增加随机崩溃诊断。
 ## 边界
 ### 允许修改
 - benchmark/2026-10-19-toutiao-video-playback/diagnostic-r5/**
@@ -24,6 +25,7 @@ tags: [media, waiting-for-p1-window, human-review]
 - benchmark/2026-10-19-toutiao-video-playback/api-delta/**
 - benchmark/2026-10-19-toutiao-video-playback/candidate-r8/deployment/**
 - benchmark/2026-10-19-toutiao-rea-methods/video-r4-executor-draft/**
+- benchmark/2026-10-19-toutiao-video-playback/candidate-r9/**
 - specs/toutiao-video-playback/t3-playback-seal.spec.md
 ### 禁止
 - 不夺板锁、不覆盖历史签认、不重签旧boot、不改冻结登记或主API表历史证据；不删用户数据。
