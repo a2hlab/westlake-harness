@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[R11 failed debugger handshake and restoration](benchmark/2026-10-19-toutiao-video-playback/diagnostic-r11/window/)** | **Zero call samples; exact original baseline and real feed restored within 798 seconds; no video pass.** |
 | **[API current observations](benchmark/2026-10-19-api-progress-update/)** | **Source/build/evidence correspondence for manual recovery and the unsuccessful video candidate, alongside the unchanged historical315 atlas.** |
 | **[Toutiao player r4 window](benchmark/2026-10-19-toutiao-rea-methods/video-1919-r4-live-review/)** | **Three object-slot reads matched; three cover-only observation groups failed playback acceptance; four-file rollback and fresh-boot feed verified.** |
 | **[Toutiao player r3 window](benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review/)** | **Three-file candidate reached player code but failed playback; exact source/build/archive receipts, real screenshots and verified rollback to the feed.** |
