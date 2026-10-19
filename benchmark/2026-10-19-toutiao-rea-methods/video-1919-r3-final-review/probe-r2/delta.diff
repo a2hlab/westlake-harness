@@ -1,0 +1,20 @@
+--- video_probe.py
++++ video_probe_r2.py
+@@ -23,7 +23,7 @@
+ remote='/data/local/tmp/ttvideo-probe-'+a.tag;board.shell('mkdir '+remote)
+ r={'key':'toutiao','serial':board.serial,'boot_id':a.boot,'parent':a.parent,'parent_birth':a.parent_birth,'child':a.child,'child_birth':a.child_birth,'run_sha256':a.run_sha,'tap':{'x':a.x,'y':a.y},'stderr_baseline_lines':start_line,'screenshots':[],'playback_verdict':'pending_visual_review','audio_verdict':'unknown'}
+ b.save(out/'record.json',r)
+-board.shell(f'uitest uiInput click {a.x} {a.y}');board.shell('power-shell timeout -o 86400000');r['tap_completed_at']=time.time();start=time.monotonic()
++board.shell(f'uitest uiInput click {a.x} {a.y}');r['tap_completed_at']=time.time();start=time.monotonic();board.shell('power-shell timeout -o 86400000')
+ for seconds in (5,20,25):
+  time.sleep(max(0,seconds-(time.monotonic()-start)))
+  shot=b.capture(board,remote+f'/t{seconds}.jpeg',out/f't{seconds}.jpeg');shot['captured']=True;shot['target_seconds']=seconds;r['screenshots'].append(shot);b.save(out/'record.json',r)
+@@ -48,7 +48,7 @@
+    dst=remote+f'/got-{off:x}.bin'
+    cmd=f'( set -eu; row=$(cat /proc/{a.child}/stat); rest=${{row##*) }}; set -- $rest; test \"${{20}}\" = {a.child_birth}; test \"$2\" = {a.parent}; dd if=/proc/{a.child}/mem of={dst} bs=8 skip={addr//8} count=1 2>/dev/null; test \"$(stat -c %s {dst})\" = 8; od -An -tx8 {dst} )'
+    rc,text=read(f'got-{off:x}.txt',cmd,False)
+-   actual=text.strip();got['reads'].append({'slot':hex(addr),'expected':hex(compat[0]+expected),'observed':actual,'command_rc':rc,'matches':bool(re.fullmatch('[0-9a-fA-F]{16}',actual)) and int(actual,16)==compat[0]+expected})
++   actual=text.strip();got['reads'].append({'slot':hex(addr),'expected':hex(compat[0]+expected),'observed':actual,'command_rc':rc,'matches':rc==0 and bool(re.fullmatch('[0-9a-fA-F]{16}',actual)) and int(actual,16)==compat[0]+expected})
+   got['status']='matched' if all(x['matches'] for x in got['reads']) else 'unproved'
+  b.save(out/'got.json',got)
+ b.save(out/'record.json',r);print(out);print('\n'.join(x for x in lines if 'SOURCE-NATIVE-LOAD-FAIL' in x)[-3000:])

@@ -1,6 +1,6 @@
 # candidate-r3 — Toutiao video load blocker (three-file: run + compat + mffmpeg)
 
-**Status: static proposal, no board.** Supersedes r2 (`79275cf9`), which the outer and cx-seal both rejected on static evidence. r3 keeps r2's run.sh **unchanged** and adds one byte-exact derived file. The three-file CAS executor is cx-seal's (r4/r5, accepted); this directory supplies the reviewable inputs, the reproducible derivation, and the load-experiment card.
+**Status: static proposal, no board.** Supersedes r2 (`79275cf9`), which the outer and cx-seal both rejected on static evidence. r3 keeps r2's run.sh **unchanged** and adds one byte-exact derived file. The three-file CAS executor is outer executor r5 (89b054e1, independently reviewed by cx-seal); this directory supplies the reviewable inputs, the reproducible derivation, and the load-experiment card.
 
 ## What was wrong with r2 (proven, not inferred)
 
@@ -9,7 +9,7 @@ r2 moves `libttmplayer.so` into the android-native namespace so its NDK-C++ chai
 - `libttmplayer` `DT_NEEDED libmffmpeg.so` is resolved by musl's **by-name** path (`find_library_by_name` → `load_library`, oh61 dynlink `e50b30f2` L2408/L2552).
 - That path **never** runs RouteB `SanitizeInitArray`, which fires only on ART's explicit `System.loadLibrary` entry (`link_stubs_arm64.cc` `87a2e823` L552-559).
 - APK `libmffmpeg.so` (`fecf91e1`) has one `INIT_ARRAY` slot at vaddr `0x45c168`, file value `0`, **zero** relocations (`evidence/r2-review/object-facts.txt`).
-- musl `do_init_fini` has **no null guard** (`e50b30f2` L3446-3457: `while (n--) ((void(*)(void))*fn++)();`) → it would call address `0` — a **predicted** crash (static); the observed r2 LOAD-FAIL was the libvcbasekit ns0 relocation, which masks this.
+- musl `do_init_fini` has **no null guard** (`e50b30f2` L3446-3457: `while (n--) ((void(*)(void))*fn++)();`) → it would call address `0` — a **predicted** crash (static); the observed P1 window LOAD-FAIL was the libvcbasekit ns0 relocation, which masks this.
 
 Adding `libmffmpeg` to `NATIVE_TARGETS` (as r2 does) does not save it: ART loads it, `SanitizeInitArray` writes the dotted sibling `.libmffmpeg.so.westlake-init.<pid>.<seq>`, and the by-name `DT_NEEDED` lookup misses that dotted shortname and reloads the original — null slot included.
 

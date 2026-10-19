@@ -1,7 +1,7 @@
 {
  "schema": "ttvideo-selected-change/v1",
  "id": "r3",
- "status": "proposed_static_awaiting_window (three-file deploy; executor = cx-seal r4/r5, accepted)",
+ "status": "proposed_static_awaiting_window (three-file deploy; executor = cx-seal r5, accepted)",
  "supersedes": "r2 (79275cf9) REJECTED on static evidence; P1 (selected-change.json) kept as history",
  "key": "toutiao (1 key)",
  "one_line": "r2's namespace/compat routing + a byte-exact pre-sanitized libmffmpeg.so so libttmplayer's by-name DT_NEEDED load no longer hits a null init slot.",
@@ -59,14 +59,14 @@
     "same_inode_requirement": "after the swap, both the ART explicit load (System.loadLibrary mffmpeg) and libttmplayer's DT_NEEDED libmffmpeg.so must open this one physical path/inode: with INIT_ARRAYSZ=0 SanitizeInitArray early-returns (kept==count) and opens the real path, so no dotted sibling is produced and musl's find_library_by_fstat matches one inode"
    }
   ],
-  "executor": "cx-seal three-file CAS executor r4/r5 (limited ACCEPT) -- this lane does not rebuild the deploy framework",
+  "executor": "cx-seal three-file CAS executor r5 (limited ACCEPT) -- this lane does not rebuild the deploy framework",
   "rollback": "restore run.sh to before(W), remove the compat DSO (then test ! -e), restore libmffmpeg.so from the single-file backup (CAS verify sha == fecf91e1), fresh reboot; verify baseline run.sh/environ/maps and feed screenshot equivalent"
  },
  "closure_by_real_provider": {
   "gate_stance": "NOT all-pass. The recursive closure is reported with its proven edges and its still-unproven edges kept EXPLICIT; the unproven edges become small-window verification items, they are not asserted resolved.",
   "proven_static": [
    "SanitizeInitArray fires only on the ART OpenNativeLibrary entry; musl by-name DT_NEEDED does not (link_stubs 87a2e823 L552-559; dynlink e50b30f2 L2408/L2552)",
-   "do_init_fini has no null guard; original mffmpeg sole slot 0x45c168=0 with 0 relocs -> the r2 PREDICTED fatal (static; the observed r2 failure was the libvcbasekit ns0 relocation that masks it); d2882303 sets INIT_ARRAYSZ=0 so n=0 and no slot is called",
+   "do_init_fini has no null guard; original mffmpeg sole slot 0x45c168=0 with 0 relocs -> the r2 PREDICTED fatal (static; the observed P1 window failure was the libvcbasekit ns0 relocation that masks it); d2882303 sets INIT_ARRAYSZ=0 so n=0 and no slot is called",
    "d2882303 makes Java-explicit and DT_NEEDED converge on one inode (SanitizeInitArray early-return)",
    "libvcbasekit.so loads in the android ns as a target with no LOAD-FAIL and no INITARRAY drop (child-full.stderr:2833) -> shortname libvcbasekit.so -> libttmplayer NEEDED libvcbasekit.so matches by name in the android ns (find_library_by_name)",
    "libttcrypto.so (init slot relocated, kept=1) and libttboringssl.so (no init array) are not dotted-renamed and load as targets -> by-name reuse for libmffmpeg's NEEDED",

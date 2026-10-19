@@ -1,6 +1,6 @@
 # r3 minimal load-experiment card (61b, outer-run, read-only after deploy)
 
-**Purpose.** r3 removes one *statically proven* fatal (libmffmpeg null init slot reached by libttmplayer's by-name `DT_NEEDED`). Whether that makes the whole android-ns routing correct is **inference**, not proof. This card lists the read-only items to confirm in one small window. It is a card, not a script; the three-file apply/rollback is cx-seal's CAS executor (r4/r5). No writes here; all reads after one video tap in the identified Toutiao child `C`.
+**Purpose.** r3 removes one *statically proven* fatal (libmffmpeg null init slot reached by libttmplayer's by-name `DT_NEEDED`). Whether that makes the whole android-ns routing correct is **inference**, not proof. This card lists the read-only items to confirm in one small window. It is a card, not a script; the three-file apply/rollback is outer CAS executor r5 (89b054e1, independently reviewed by cx-seal). No writes here; all reads after one video tap in the identified Toutiao child `C`.
 
 ## Preconditions (apply done by the CAS executor)
 - Three files at their postimages (`selected-change-r3.json` → `deploy_three_files`): run.sh `79275cf9` (at `W_new`), compat `9f558aaf`, `$RT/lib/arm64-v8a/libmffmpeg.so` `d2882303`.
@@ -8,7 +8,7 @@
 
 ## Already proven statically (do NOT re-litigate on the board)
 - `SanitizeInitArray` runs only on the ART explicit entry; musl by-name `DT_NEEDED` does not (link_stubs 87a2e823 L552-559; dynlink e50b30f2 L2408/L2552).
-- `do_init_fini` has no null guard (e50b30f2 L3446-3457). Original mffmpeg slot `0x45c168`=0, 0 relocs → the r2 **predicted** fatal (static; observed r2 LOAD-FAIL was the libvcbasekit ns0 relocation that masks it).
+- `do_init_fini` has no null guard (e50b30f2 L3446-3457). Original mffmpeg slot `0x45c168`=0, 0 relocs → the r2 **predicted** fatal (static; observed P1 window LOAD-FAIL was the libvcbasekit ns0 relocation that masks it).
 - `d2882303` = original with `DT_INIT_ARRAYSZ` `8→0` only; `INIT_ARRAYSZ=0` ⇒ `n=0` ⇒ no slot called; `SanitizeInitArray` early-returns ⇒ ART opens the real path ⇒ one inode shared with the `DT_NEEDED` load.
 
 ## Verification items (this is what the window is for)
