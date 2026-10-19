@@ -30,7 +30,9 @@ esac
 case "$OUT" in /*) ;; *) echo 'OUT must be absolute' >&2; exit 2;; esac
 case "$OUT" in /tmp/*|/private/tmp/*) echo 'OUT must be persistent' >&2; exit 2;; esac
 SOURCE_REPO=$(cd "$SOURCE_REPO" && pwd)
-DB="$SOURCE_REPO/scripts/lab/dockbuild.sh"
+DB=${R10_DOCKBUILD:-"$SOURCE_REPO/scripts/lab/dockbuild.sh"}
+case "$DB" in /*) ;; *) echo 'R10_DOCKBUILD must be an absolute reviewed script path' >&2; exit 2;; esac
+test -f "$DB"
 B="$SOURCE_REPO/benchmark/2026-10-19-toutiao-video-playback"
 SELF=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
 mkdir "$OUT" # Existing output, including a symlink, is refused.
@@ -111,7 +113,7 @@ CONTAINER
 container_step() {
   local label=$1 action=$2 command
   printf -v command 'bash %q %q %q' "$OUT/container-stage.sh" "$OH_NATIVE" "$action"
-  step "$label" "$DB" run -- "$command"
+  step "$label" bash "$DB" run -- "$command"
 }
 container_step 04-tools tools
 container_step 05-liblog-abi liblog-abi
