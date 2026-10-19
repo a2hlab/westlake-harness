@@ -77,3 +77,27 @@ Commit SHA: see board line (committed on branch `analysis/toutiao-icon-reentry-2
   (OPERATIONS §8); fresh boot only; never delete the r1 ROOT.
 - Pending (outer, real board): controlled exit → `AWAITING_REENTRY` → manual icon tap → feed
   screenshot; reboot → manual tap → feed. No device action by this lane.
+
+## r2 revision after the cx-seal r2 review (2026-10-19), token ACK(91-1919-icon)
+
+- cx-seal (t4 `r2-4390a193/probe-real-paths.sh`, real frozen functions + I/O injected at
+  named race sites) reproduced **6 blockers** on commit `4390a193`. All real, all fixed:
+  (1) listing stderr went through `$TMPDIR` → `unknown` when `/tmp` is absent → no temp
+  files now; (2) a numeric directory passed as a proc root → root identity is
+  `sys/kernel/random/boot_id == $BOOT`; (3) PID-1 ns / host-runtime inode `<read-error>`
+  classed as child death → field-aware classifier over the **decoded** deny JSON;
+  (4) the real `rb_owned` emits an **empty** `exe_sha` when the exe vanished → that is
+  child death (verdict still has to prove absence on the verified root); (5) an unrelated
+  init read error while the child vanishes → fixed refuse.
+- Interop: cx-seal's unmodified probe re-run on the revised sources → **7/7 PASS,
+  0 reproductions**. Own suite now two lanes (Lane B = **real `child_owned` + real
+  `rb_owned`, only `sha256sum`/`stat`/`readlink` shimmed**, their six cases ported):
+  **116/0/0** on `sh` and `dash`; parser 21/0; reentry 29/0; generator smoke PASS
+  (22 files); `cargo test` ok.
+- Identity: watchdog `41f1bf65…`, exit-verdict `c0751340…`; `candidate-payload-r2/`
+  members `bff9e437…`, startup `fa793f7b…` (ROOT `icon-manual-20261019-r2`, disabled).
+  Parser `febc7094`, common `43d7b073`, first-launch chain, parent guard unchanged; r1 and
+  its field evidence retained. The first r2 identity (`1bc35b59…`) was never deployed.
+- **Not claimed board-ready.** Real-board re-verification (controlled exit →
+  `AWAITING_REENTRY` → manual tap → feed; reboot → manual tap → feed) remains outer
+  pending. No device action by this lane; not a crash fix.

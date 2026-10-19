@@ -51,29 +51,36 @@
     "evidence": "$HOME/.local/share/westlake/toutiao-resume-20261019/icon-manual-live-r2/controlled-exit-1/",
     "root_cause_status": "code race confirmed statically (first rb_birth matches, multi-read child_owned then fails on a dying process); field trace consistent; no per-read instantaneous log, so the specific failing sub-read is NOT claimed; not PID reuse",
     "fix_sources": {
-      "exit-verdict.sh": "cb4cc73cd3e4ac654c3d9523d413fae6e4c426f67f7970a85c7f224bd21c7466",
-      "watchdog-reentry.sh": "1bc35b59f5aea70546eafc49cca5ec87f004174869334256e0eac99b773688d3",
+      "exit-verdict.sh": "c07513405efa8e6cd2bbdc1aeb8b35a72be269c856a8ac316eaf70a147df8736",
+      "watchdog-reentry.sh": "41f1bf653f4becf3bb40a1a754f8e0c35520ce9fa6a0eb3da84c01ef96e64a28",
       "reentry-common.sh": "43d7b073467708770c8c69724633666e410d45581f8c0099d5098c31215e78ab",
       "reentry-seams.sh": "febc7094b9d90b6a8c6c305199395d92da1ccde42d2b82b8c2754f0cb60f9d04"
     },
-    "contract": "exited only for complete stat same-pid+same-birth+Z or absence proven by a successful complete /proc PID listing; reuse/malformed/unreadable/missing-root -> refuse or unknown (fail closed); confirmed uid/exe/inode/ns/ppid mismatch (from the frozen guard's deny JSON) -> fixed refuse even if the process vanishes afterwards; first-read birth mismatch -> refuse, guard not consulted; parent never signalled; manual wait still requires a NEW desktop->host",
+    "superseded_first_r2": {"commit": "4390a1932a94cf4c763bb91d4d52a17807fbb18f", "watchdog": "1bc35b59f5aea70546eafc49cca5ec87f004174869334256e0eac99b773688d3", "exit-verdict": "cb4cc73cd3e4ac654c3d9523d413fae6e4c426f67f7970a85c7f224bd21c7466", "deployed": false},
+    "contract": "one complete stat read first; exited only for same-pid+same-birth+Z, or absence proven by a successful complete PID listing of the identity-verified proc root (sys/kernel/random/boot_id == monitored BOOT; a numeric directory is not /proc); no temp files; reuse/malformed/unreadable/unverifiable-root -> refuse or unknown (fail closed); the frozen guard's deny JSON is decoded and classified by field: only child read failures (birth|birth_after|uid|exe|namespace|private_inode|ppid '<read-error...>', or empty exe_sha from the real rb_owned on a vanished exe) are classified; PID-1/host-runtime read errors and every value mismatch are a fixed refuse even if the process vanishes afterwards; first-read birth mismatch -> refuse, guard not consulted; parent never signalled; manual wait still requires a NEW desktop->host",
+    "cx_seal_r2_review": {
+      "source": "westlake-harness-t4/benchmark/2026-10-19-icon-resume-review/r2-4390a193/probe-real-paths.sh (real frozen functions, I/O injected at named race sites)",
+      "blockers_reproduced_on_4390a193": ["absence_with_unavailable_tmp", "numeric_directory_is_not_proc", "init_namespace_read_error_is_not_child_death", "physical_inode_read_error_is_not_child_death", "real_rb_owned_exe_vanish_should_enter_wait", "unrelated_init_read_error_must_refuse"],
+      "probe_rerun_on_revised_sources": "7/7 PASS, 0 reproductions"
+    },
     "candidate_payload_r2": {
       "path": "benchmark/2026-10-19-toutiao-icon-reentry/candidate-payload-r2",
       "root": "/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2",
       "payload_files": 22,
       "members": 16,
       "default_disabled": true,
-      "candidate_watchdog_sha256": "1bc35b59f5aea70546eafc49cca5ec87f004174869334256e0eac99b773688d3",
-      "members_tsv_sha256": "bf9cc39a7cadf182a0f51b4dd978d1dbdf900f75bc30a7ebbd21dc18029f3608",
-      "startup_env_sha256": "2484f353b685e94451479dae1197b39f90bc93928b81045f62da0936c52b7a12",
-      "startup_expected": "2484f353b685e94451479dae1197b39f90bc93928b81045f62da0936c52b7a12"
+      "candidate_watchdog_sha256": "41f1bf653f4becf3bb40a1a754f8e0c35520ce9fa6a0eb3da84c01ef96e64a28",
+      "members_tsv_sha256": "bff9e4377602ebd333bdc3833de0660601d2345afb092a07e4e49ea4443f099a",
+      "startup_env_sha256": "fa793f7bba6546879477cb70e64159f938d901b54144130fee8c59e81b287207",
+      "startup_expected": "fa793f7bba6546879477cb70e64159f938d901b54144130fee8c59e81b287207"
     },
     "r1_payload_retained_as_deployed_evidence": true,
     "tests": {
-      "race": {"script": "tests/run-race-tests.sh", "passed": 72, "failed": 0, "skipped": 0, "shells": ["sh", "dash"], "method": "fake /proc mutated during the ownership check; real rb_birth and real rb_deny encoder from frozen route-b-owner.sh; real monitor_child/rc_child_state bodies extracted from the final source"},
-      "full_suite": "parser 21/0, reentry 29/0, race 72/0, generator smoke PASS (22 files)",
+      "race": {"script": "tests/run-race-tests.sh", "passed": 116, "failed": 0, "skipped": 0, "shells": ["sh", "dash"], "method": "Lane A: stub guard emitting the real rb_deny records + fake /proc mutated during the ownership check; Lane B: the REAL child_owned + REAL rb_owned unmodified with only sha256sum/stat/readlink shimmed (cx-seal's method, their six cases ported); real rb_birth; real monitor_child/rc_child_state bodies extracted from the final source"},
+      "full_suite": "parser 21/0, reentry 29/0, race 116/0, generator smoke PASS (22 files)",
       "rust_selector": "ok, 1 passed"
     },
+    "board_ready_claimed": false,
     "real_board_pending": "controlled exit -> AWAITING_REENTRY -> manual desktop icon tap -> feed screenshot; reboot -> manual tap -> feed (outer)"
   },
   "scenario_coverage": {

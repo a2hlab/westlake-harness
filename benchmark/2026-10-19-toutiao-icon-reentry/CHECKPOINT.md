@@ -343,8 +343,40 @@ still refused; different numeric birth between reads then vanish ⇒ refused; fi
 mismatch (asserts the guard is never called); missing proc root ⇒ unknown ⇒ refused;
 pre-existing zombie same/different birth; parent never signalled; no capture on exit.
 
-**Delivery.** Candidate regenerated to a **new ROOT** `icon-manual-20261019-r2`
-(`candidate-payload-r2/`, disabled, 22 files/16 members, watchdog `1bc35b59…`,
-exit-verdict `cb4cc73c…`, members `bf9cc39a…`, startup `2484f353…`); r1 directory and its
+**cx-seal r2 review (t4 `r2-4390a193/probe-real-paths.sh`, real frozen functions with
+I/O injected at named race sites) reproduced 6 blockers on commit `4390a193`; all were
+real and are fixed in this revision — converged against their probe, not around it:**
+
+1. `absence_with_unavailable_tmp`: the listing check wrote stderr to `$TMPDIR` (OH may
+   have no `/tmp`) → `unknown` instead of `exited`. → No temp files: stderr is checked by
+   a separate capture (`{ ls -1 root >/dev/null; } 2>&1`), then the listing is read.
+2. `numeric_directory_is_not_proc`: "has a numeric entry" accepted `not-proc/1` as a proc
+   root → `exited`. → Root identity = `<root>/sys/kernel/random/boot_id` readable **and
+   equal to the monitored `$BOOT`** (`child_exit_verdict <pid> <birth> <boot>`); a
+   numeric-looking directory is `unknown`.
+3. `init_namespace` / `physical_inode` `<read-error>` classified as death. → Field-aware
+   classifier: the deny JSON is **decoded** (`cev_decode`, pure sh) and only
+   `birth|birth_after|uid|exe|namespace|private_inode|ppid` with `<read-error…>` is child
+   death; PID 1 and host-runtime read errors are `mismatch` (fixed refuse).
+4. `real_rb_owned_exe_vanish`: the real `rb_owned` emits `exe_sha` with an **empty**
+   actual when `/proc/<pid>/exe` vanished (sha256sum prints nothing), which the old
+   classifier read as a value mismatch → refused forever. → `exe_sha` with empty actual
+   is child death (then the verdict must still prove absence via the verified listing).
+5. `unrelated_init_read_error_must_refuse` (child vanishes while PID 1 ns read fails) →
+   now `confirmed_mismatch_no_verdict` refuse, as required.
+
+Interop proof: cx-seal's unmodified probe re-run against these sources (functions
+re-extracted from the final watchdog): **7/7 PASS, 0 blocker reproductions**. Own suite
+`tests/run-race-tests.sh` now has two lanes — Lane A (stub guard emitting the real deny
+records + fake-/proc mutation) and **Lane B (the REAL `child_owned` + REAL `rb_owned`,
+only `sha256sum`/`stat`/`readlink` shimmed — cx-seal's method)** with their six cases
+ported plus private-inode/child-ns vanish, exe-sha and uid value mismatches, pre-zombie:
+**116/0/0 on sh and dash**. "Only replacing child_owned then passing" is explicitly not
+what Lane B does.
+
+**Delivery.** Candidate regenerated to the **new ROOT** `icon-manual-20261019-r2`
+(`candidate-payload-r2/`, disabled, 22 files/16 members, watchdog `41f1bf65…`,
+exit-verdict `c0751340…`, members `bff9e437…`, startup `fa793f7b…`); r1 directory and its
 field evidence untouched. Not a fix for the random crash; no device action by this lane.
-Real-board re-verification of the controlled-exit → manual-tap path is outer pending.
+**Not yet claimed board-ready**: real-board re-verification of the controlled-exit →
+`AWAITING_REENTRY` → manual-tap path is outer pending.

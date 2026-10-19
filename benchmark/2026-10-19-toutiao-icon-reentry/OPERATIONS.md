@@ -149,11 +149,17 @@ root, and any confirmed uid/exe/inode/ns/ppid mismatch (even if the process vani
 afterwards) stay refused. Parent guard, reentry loop, parser and first-launch chain are
 unchanged. It is not a fix for the random crash.
 
-**Identity (disabled build, `candidate-payload-r2/`).** ROOT
-`/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2`; 22 files /
-16 members; watchdog `1bc35b59…`; exit-verdict `cb4cc73c…`; members.tsv `bf9cc39a…`;
-startup.env = startup.expected `2484f353…`. Sources: watchdog-reentry.sh `1bc35b59…`,
-exit-verdict.sh `cb4cc73c…`, reentry-common.sh `43d7b073…`, reentry-seams.sh `febc7094…`.
+**Identity (disabled build, `candidate-payload-r2/`, revised after the cx-seal r2
+review).** ROOT `/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2`;
+22 files / 16 members; watchdog `41f1bf65…`; exit-verdict `c0751340…`; members.tsv
+`bff9e437…`; startup.env = startup.expected `fa793f7b…`. Sources: watchdog-reentry.sh
+`41f1bf65…`, exit-verdict.sh `c0751340…`, reentry-common.sh `43d7b073…`,
+reentry-seams.sh `febc7094…`. The earlier r2 identity (watchdog `1bc35b59…`, commit
+`4390a193`) was never deployed and is superseded; cx-seal reproduced 6 blockers on it
+(`CHECKPOINT.md §11`), all fixed here: no temp files (device may lack `/tmp`), proc-root
+identity by `boot_id == $BOOT` (a numeric directory is not `/proc`), field-aware
+classification of the guard's deny JSON (PID 1 / host-runtime read errors are not child
+death; the real `rb_owned` empty `exe_sha` on a vanished exe is).
 
 **Generate (armed, outer only):**
 
@@ -170,10 +176,13 @@ captured by the r2 transaction points at the r1 boot-entry (the sealed original 
 r1 transaction's `before.cfg`). **Never delete the r1 ROOT** — it is the field evidence of
 the blocker. Rollback = restore the chosen `before.cfg`; r1/r2 ROOTs are retained.
 
-**Offline proof (this lane).** `tests/run-race-tests.sh` 72/0/0 on `sh` and `dash` (real
-fake-`/proc` mutation mid-ownership-check, real `rb_birth` and real `rb_deny` encoder, real
-`monitor_child`/`rc_child_state` bodies); parser 21/0; reentry 29/0; generator smoke PASS
-(22 files, cascade linked, disabled); `cargo test --test toutiao_icon_reentry` ok.
+**Offline proof (this lane).** `tests/run-race-tests.sh` **116/0/0** on `sh` and `dash`:
+Lane A (stub guard emitting the real deny records + fake-`/proc` mutation mid-check) and
+Lane B (the **real** `child_owned` + **real** `rb_owned` unmodified, only
+`sha256sum`/`stat`/`readlink` shimmed — cx-seal's injection method, their six cases
+ported); cx-seal's unmodified probe re-run on these sources: 7/7 PASS, 0 reproductions;
+parser 21/0; reentry 29/0; generator smoke PASS (22 files, cascade linked, disabled);
+`cargo test --test toutiao_icon_reentry` ok.
 
 **Real-board pending (outer).** Re-run the controlled-exit scenario on r2: child exits →
 guardian reaches `AWAITING_REENTRY` → a real desktop→icon tap → feed screenshot; plus the

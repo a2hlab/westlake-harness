@@ -64,22 +64,33 @@ reason is "first `rb_birth` read matches, then the multi-read ownership guard fa
 process dying between those reads lands there. Not PID reuse (that differs on the first
 read). No per-read field log exists, so we do not claim which sub-read failed.
 
-**Fix (`src/exit-verdict.sh` `cb4cc73c…`, wired into `monitor_child`/`rc_child_state`,
-watchdog `1bc35b59…`):** `exited` only for a complete stat with same pid + same birth + `Z`,
-or absence proven by a successful complete `/proc` PID listing; PID reuse, malformed /
-unreadable stat, missing or unlistable proc root ⇒ refused/unknown (fail closed); a
-**confirmed** uid/exe/inode/ns/ppid mismatch (decoded from the frozen guard's own deny
-JSON) is a fixed refuse even if the process vanishes afterwards. First-read birth mismatch
-refuses outright with the guard never consulted. Parent guard, reentry loop, parser and
-first-launch chain unchanged; still not a crash fix.
+**Fix (`src/exit-verdict.sh` `c0751340…`, wired into `monitor_child`/`rc_child_state`,
+watchdog `41f1bf65…`):** one complete stat read first; `exited` only for same pid + same
+birth + `Z`, or absence proven by a successful complete PID listing of the
+**identity-verified** proc root (`sys/kernel/random/boot_id` equals the monitored boot — a
+numeric directory is not `/proc`); no temp files (the device may lack `/tmp`); PID reuse,
+malformed / unreadable stat, unverifiable root ⇒ refused/unknown (fail closed). The frozen
+guard's own deny JSON is **decoded and classified by field**: only a read failure *of the
+child* (`birth|birth_after|uid|exe|namespace|private_inode|ppid` `<read-error…>`, or the
+real `rb_owned`'s empty `exe_sha` on a vanished exe) may be classified; PID 1 / host-runtime
+read errors and every value mismatch are a fixed refuse even if the process vanishes
+afterwards. First-read birth mismatch refuses outright with the guard never consulted.
+Parent guard, reentry loop, parser and first-launch chain unchanged; still not a crash fix.
+
+**cx-seal r2 review** (t4 `r2-4390a193`, real frozen functions + I/O injected at named
+race sites) reproduced 6 blockers on the first r2 commit `4390a193` (missing `/tmp`, fake
+proc root, PID-1/host-inode read errors classed as death, real-`rb_owned` empty `exe_sha`
+refused, unrelated init error excused). All fixed; their unmodified probe re-run on these
+sources: **7/7 PASS, 0 reproductions**.
 
 | check | result |
 |---|---|
-| real exit-race tests (`tests/run-race-tests.sh`: fake `/proc` mutated mid-ownership-check, real `rb_birth` + real `rb_deny` encoder, real `monitor_child`/`rc_child_state` bodies) | **72 passed, 0 failed, 0 skipped** (`sh` and `dash`) |
-| full suite (`tests/run-all.sh`) with r2 | parser 21/0 · reentry 29/0 · race 72/0 · generator smoke PASS (22 files) |
+| real exit-race tests (`tests/run-race-tests.sh`): Lane A stub guard + real deny records; **Lane B real `child_owned` + real `rb_owned`, only `sha256sum`/`stat`/`readlink` shimmed** (cx-seal's six cases ported) | **116 passed, 0 failed, 0 skipped** (`sh` and `dash`) |
+| cx-seal's own probe (`probe-real-paths.sh`) against these sources | **7/7 PASS, 0 blockers** |
+| full suite (`tests/run-all.sh`) with r2 | parser 21/0 · reentry 29/0 · race 116/0 · generator smoke PASS (22 files) |
 | `cargo test --test toutiao_icon_reentry` | **ok, 1 passed** |
-| `candidate-payload-r2/` (ROOT `icon-manual-20261019-r2`, disabled) | 22 files / 16 members; members `bf9cc39a…`; startup `2484f353…` |
-| real-board re-verification (controlled exit → `AWAITING_REENTRY` → manual tap → feed) | **PENDING (outer)** |
+| `candidate-payload-r2/` (ROOT `icon-manual-20261019-r2`, disabled) | 22 files / 16 members; watchdog `41f1bf65…`; members `bff9e437…`; startup `fa793f7b…` |
+| real-board re-verification (controlled exit → `AWAITING_REENTRY` → manual tap → feed) | **PENDING (outer) — not claimed board-ready** |
 
 The r1 directory `candidate-payload/` is kept frozen as the deployed evidence; see
 `OPERATIONS.md §8` and `CHECKPOINT.md §11`.

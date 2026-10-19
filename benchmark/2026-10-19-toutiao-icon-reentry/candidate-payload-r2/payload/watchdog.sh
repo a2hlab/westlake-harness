@@ -335,7 +335,7 @@ rc_child_state() {
  [ -n "$child" ] && [ "$child" != none ] || { echo gone; return 0; }
  cs_b=$(rb_birth "$child" 2>/dev/null) || {
   # First read failed: same verdict as the monitor (r2 race fix); unknown stays unknown.
-  rc_verdict_to_state "$(child_exit_verdict "$child" "$child_birth")"; return 0
+  rc_verdict_to_state "$(child_exit_verdict "$child" "$child_birth" "$BOOT")"; return 0
  }
  # A different birth on the first read is PID reuse: invalid, never laundered.
  [ "$cs_b" = "$child_birth" ] || { echo invalid; return 0; }
@@ -343,7 +343,7 @@ rc_child_state() {
  # Ownership failed after a matching read: only a child-death related read failure
  # is classified; a confirmed value mismatch is invalid regardless of what follows.
  case "$(owned_failure_kind "$cs_err")" in
-  death) rc_verdict_to_state "$(child_exit_verdict "$child" "$child_birth")";;
+  death) rc_verdict_to_state "$(child_exit_verdict "$child" "$child_birth" "$BOOT")";;
   *) echo invalid;;
  esac
 }
@@ -399,7 +399,7 @@ monitor_child() {
    # exited only for confirmed-absent or same-pid+same-birth+Z; everything else
    # (PID reuse, malformed, unreadable) stays refused. (r2: the old Z branch did not
    # verify the birth.)
-   exit_v=$(child_exit_verdict "$child" "$child_birth")
+   exit_v=$(child_exit_verdict "$child" "$child_birth" "$BOOT")
    case "$exit_v" in
     exited) event process_exit "first_read_$exit_v"; return 0;;
     *) state OWNER_REFUSED "identity_unreadable_or_reused_no_relaunch verdict=$exit_v"; return 2;;
@@ -417,7 +417,7 @@ monitor_child() {
     death)
      # Only a child-death related read failure may be classified. A proven exit
      # enters the manual-icon wait; reuse / malformed / unknown stays refused.
-     exit_v=$(child_exit_verdict "$child" "$child_birth")
+     exit_v=$(child_exit_verdict "$child" "$child_birth" "$BOOT")
      case "$exit_v" in
       exited) event process_exit during_ownership_check; return 0;;
       *) state OWNER_REFUSED "child_identity_changed_no_signal verdict=$exit_v"; return 2;;

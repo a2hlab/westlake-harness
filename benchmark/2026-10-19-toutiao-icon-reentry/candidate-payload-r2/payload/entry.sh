@@ -20,7 +20,7 @@ while ! foreground_window_id >/dev/null; do
  sleep 1
 done
 [ ! -e "$AUTH_SOCKET" ] || fail EXISTING_SOCKET_NO_TAKEOVER
-[ "$(sha256sum "$HERE/watchdog.sh" | cut -d' ' -f1)" = 1bc35b59f5aea70546eafc49cca5ec87f004174869334256e0eac99b773688d3 ] || fail WATCHDOG_CHANGED
+[ "$(sha256sum "$HERE/watchdog.sh" | cut -d' ' -f1)" = 41f1bf653f4becf3bb40a1a754f8e0c35520ce9fa6a0eb3da84c01ef96e64a28 ] || fail WATCHDOG_CHANGED
 [ "$(sha256sum "$HERE/route-b-owner.sh" | cut -d' ' -f1)" = 6bce7c3c8f84ad1047313c5dd76bcb084637d9095b9163dc710c88aaee12fe4c ] || fail HELPER_CHANGED
 unset TT_PARENT_PID TT_PARENT_BIRTH TT_CHILD_PID TT_CHILD_BIRTH TT_OPERATOR_ROOT TT_INTEGRATION_AUTH TT_INTEGRATION_HERE
 export TT_PROC=/proc TT_MAX_ATTEMPTS=3 TT_MAX_POLLS=0
