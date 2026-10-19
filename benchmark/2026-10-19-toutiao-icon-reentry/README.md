@@ -65,8 +65,16 @@ all PASS). This lane owns the parser, generator, inputs, tests, docs and spec se
    exactly one numeric `ok <pid> <birth>`; anything that reached `host_spawn` but cannot
    prove the child state is `unknown` → sticky hold, never blind-respawn.
 4. **Never work around a stale socket/parent.** The candidate refuses socket/parent
-   takeover by design; recovery is a reboot (fresh boot) or a reviewed attach, never
-   clearing the socket or signalling the parent (see `OPERATIONS.md §4`).
+   takeover by design; the only execution path this round is a **fresh boot** — never
+   clearing the socket or signalling the parent, and no ad-hoc attach (no reviewed attach
+   implementation exists in this delivery; see `OPERATIONS.md §4`).
+5. **Deploy reuses the existing init cfg.** The real transaction
+   (`benchmark/2026-10-19-toutiao-icon-deploy/prepare.py` + `deploy.py`) keeps
+   `/system/etc/init/01_westlake_u13_toutiao.cfg`'s service `westlake-u13-toutiao-overlay`,
+   trigger `sys.westlake.demo.u13.ready` and permissions, and changes **only** the
+   boot-entry path to the new ROOT; the payload's `recovery.cfg` is a reference artifact
+   and is not installed. Rollback restores `before.cfg` and **never deletes** the candidate
+   ROOT evidence (`OPERATIONS.md §3, §5`).
 
 ## Layout
 

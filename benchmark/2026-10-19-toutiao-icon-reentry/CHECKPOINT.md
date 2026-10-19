@@ -268,6 +268,15 @@ superseded by this section:
   cascade. Default ROOT `/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r1`.
 - **Restart/first-launch boundary (board fact 2026-10-19).** Child 13101 exited (uptime
   22640); the OLD watchdog auto-retried then `START_FAILED`; parent 11444 (birth 107387)
-  still alive. The candidate refuses socket/parent takeover by design; recovery is a
-  reboot or a reviewed attach, never clearing the socket or signalling the parent
-  (OPERATIONS §4). Not a regression of this candidate (not deployed).
+  still alive. The candidate refuses socket/parent takeover by design; the only execution
+  path this round is a fresh boot (no reviewed attach implementation exists, so none is
+  offered), never clearing the socket or signalling the parent (OPERATIONS §4). Not a
+  regression of this candidate (not deployed).
+- **Deploy transaction correction (outer clean-checkout review).** The real transaction
+  `benchmark/2026-10-19-toutiao-icon-deploy/prepare.py` + `deploy.py` keeps the existing
+  `/system/etc/init/01_westlake_u13_toutiao.cfg` (service `westlake-u13-toutiao-overlay`,
+  trigger `sys.westlake.demo.u13.ready`, permissions) and only repoints the boot-entry
+  path to the new ROOT; it requires an armed payload and rejects any other cfg change.
+  The payload's `recovery.cfg` (with its own service/trigger) is a reference artifact and
+  is NOT installed; OPERATIONS §2/§3/§5 were corrected accordingly. Rollback restores
+  `before.cfg` and never deletes the candidate ROOT evidence.

@@ -41,7 +41,13 @@ Not a crash fix — adds manual desktop→home icon reentry on top of the sealed
 - Spec scenario 5: real-board screenshot acceptance (crash→manual tap→feed; reboot→manual
   tap→feed) with process identity + capture receipts.
 - Outer cfg deploy/arm/rollback transaction under board lock.
-- On same boot, parent 11444 is alive: bring online via reboot or reviewed attach — never
-  clear the socket or signal the parent (OPERATIONS §4).
+- On same boot, parent 11444 is alive: bring online via **fresh boot only** (the sole
+  execution path this round; no reviewed attach implementation exists, so none is
+  offered) — never clear the socket or signal the parent (OPERATIONS §4).
+- Deploy binds to the real transaction `benchmark/2026-10-19-toutiao-icon-deploy/`
+  (`prepare.py` + `deploy.py`): existing cfg `/system/etc/init/01_westlake_u13_toutiao.cfg`
+  keeps service/trigger/permissions, only the boot-entry path is repointed; the payload's
+  `recovery.cfg` is not installed; rollback restores `before.cfg` and never deletes the
+  candidate ROOT evidence (OPERATIONS §3, §5).
 
 Commit SHA: see board line (committed on branch `analysis/toutiao-icon-reentry-20261019`, not pushed).
