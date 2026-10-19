@@ -935,3 +935,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 r11：SDK15 server d6d9可attach却在握手GetMaxU64长度断言退出，零fromSurface/lock；离线LLDB API可用≠真机工具兼容，具体寄存器/长度/SVE原因unknown。先在空闲板自有probe验证attach→两次硬件命中→Continue→detach，再接业务进程。61b原plan恢复8423f320真实feed、04:30:24解锁；证据 diagnostic-r11/window。
 
 - 2026-10-20 #91 r12：SDK15 host c6008509 + NDK r23b静态server13c0在5cd自有OH probe实证2次硬件命中(x0 9→10/StopID2→4)、detach后Tracer0/S且计数12→16、自有进程/forward清理；只证此工具/探针组合，不外推ANW内存读、61b业务握手或播放。源码/原始构建和实测归档见 tool-compat-r12/window，继任观测器必须另版本明确pin，不热换旧契约。
+
+- 2026-10-20 #91 窗口接入静态边界：exact libsurface 8f1879 的 GetVirAddr 会再调 Map，公共 Map rc0 可伴随空地址；Abort 吞下层失败，rc0不证明归还。精确转换当前类借用 this，仍不证明实调用对象/生命周期；未知指针的魔数解引用不构成安全分类。见 provider-abi/exact-surface-internals/；R14仅离线模块，接入仍未准入。

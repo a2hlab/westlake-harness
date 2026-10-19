@@ -6,10 +6,10 @@ repo: A2OH/westlake-harness
 layers: [Verification, Measurement]
 status: open
 severity: S2
-recurrence: 7
+recurrence: 8
 fingerprint: verification/proxy-not-target
 issue:
-cards: [EVO-0148, EVO-0149, EVO-0150, EVO-0151, EVO-0153, EVO-0154, EVO-0155]
+cards: [EVO-0148, EVO-0149, EVO-0150, EVO-0151, EVO-0153, EVO-0154, EVO-0155, EVO-0156]
 filed: 2026-10-19
 ---
 
@@ -24,6 +24,8 @@ filed: 2026-10-19
 - r9/r10：把手写 REA 摘要当作完整工具原件、把 decoder open/尺寸日志当完整解码、把 native_ready 当有效几何，又把自定义 OH libandroid 称为 AOSP 实现。精确部署 ELF 与实际槽指针已反证；修正报告仍须按源版本与实际调用逐条采认。见 `benchmark/2026-10-19-toutiao-video-playback/static/r10-window-contract-review/`、`candidate-r10/window/`，EVO-0153/0154。
 
 - r11 复审：把候选 f12c 源码的 unwrap-NULL 分支归给部署 shim85c；精确部署 ELF 的 lock/unlock 正常路径固定 errno19/-19，不能用相邻源码冒充实际实现。原错误与更正均保留，见 `benchmark/2026-10-19-toutiao-video-playback/static/r11-independent-review/`，EVO-0155。
+
+- r13 后续提案：把会解引用输入的魔数检查当未知指针安全分类，把进程内日志当作可绕过启动前退出。NULL不能证明对象类型，未到 lock 的进程也不会产生该日志；原提案已拒绝，继续精确静态来源链，见 EVO-0156。
 
 ## 处置
 
