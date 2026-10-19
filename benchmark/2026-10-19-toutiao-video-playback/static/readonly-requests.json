@@ -108,7 +108,15 @@
     "shell",
     "for f in /data/service/el1/public/appspawnx/adapter_child_*.stderr; do echo \"== $f $(wc -l < $f)\"; grep -n -E 'SOURCE-NATIVE-LOAD(-FAIL)?\\] path=[^ ]*(libvcbasekit|libttcrypto|libttboringssl|libmffmpeg|libttmplayer|libttmplayerbeta|libttmplayerpgo)\\.so|WESTLAKE-ANWFS|WESTLAKE-ANW\\]|UnsatisfiedLinkError|ExceptionInInitializerError|TTPlayer|TTVideoEngine|AJMediaCodec|OpenSLES|AudioTrack' \"$f\" | grep -v TOUCH21 | head -120; done; echo OP0_END"
    ],
-   "use": "if the current child already attempted the player load (preload/autoplay), OP0 alone confirms/refutes P1 with no tap"
+   "use": "if the current child already attempted the player load (preload/autoplay), OP0 alone confirms/refutes P1 with no tap",
+   "maps_argv": [
+    "hdc",
+    "-t",
+    "<serial>",
+    "shell",
+    "for p in $(pidof com.ss.android.article.news); do echo \"== $p\"; grep -E 'libttmplayer|libmffmpeg|libvcbasekit|libttcrypto|libttboringssl|libOpenSLES|libEGL|libGLESv2' /proc/$p/maps | awk '{print $6}' | sort | uniq -c; done; echo MAPS_END"
+   ],
+   "maps_note": "maps covers non-ART/custom loaders that the SOURCE-NATIVE-LOAD trace would miss (F6); if pidof finds no child, record 'no child' and skip; never use bare pgrep -f"
   },
   "OP1_trigger": {
    "when": "only after a real feed with video cards is on screen (network page != feed; P0 currently at network-exception page -> not eligible yet); spare board 5cd/5ea preferred; never touch 61b UI while user is on WiFi",
@@ -119,16 +127,21 @@
    "action": "single tap on one feed video card; no other input; wait 30 s; snapshot_display at t+20 s and t+25 s",
    "post": [
     "tail -n +$BASE $SE | grep -v TOUCH21 | grep -n -E 'SOURCE-NATIVE-LOAD(-FAIL)?\\] path=[^ ]*(libvcbasekit|libttcrypto|libttboringssl|libmffmpeg|libttmplayer|libttmplayerbeta|libttmplayerpgo)\\.so|WESTLAKE-ANWFS|WESTLAKE-ANW\\]|UnsatisfiedLinkError|ExceptionInInitializerError|TTPlayer|TTVideoEngine|AJMediaCodec|OpenSLES|AudioTrack'",
-    "hilog delta grep -E 'OpenSLES|AudioRenderer|SetMetadata'"
+    "hilog delta grep -E 'OpenSLES|AudioRenderer|SetMetadata'",
+    "immediately after t+25s screenshot: same maps_argv on the Toutiao child pid",
+    "tail -n +$BASE $SE | grep -n -E 'UnsatisfiedLinkError.*(com\\.ss\\.ttm|ttmplayer)|_setVideoSurface|_create'"
    ],
    "decision": {
     "A_confirm_P1": "LOAD-FAIL libttmplayer.so with 'SL_IID_ANDROID(SIMPLEBUFFERQUEUE|CONFIGURATION): symbol not found' -> P1 confirmed; outer may then authorize t2 selected-change drafting",
     "B_other_first_error": "LOAD-FAIL libttmplayer/libmffmpeg/libvcbasekit with another symbol or file error -> that is the first fatal; record verbatim",
     "C_refute_P1": "libttmplayer LOAD without FAIL, then new [WESTLAKE-ANWFS] -> P1 refuted; proceed to P3 (surface) / P2 (audio) evidence from same window",
     "D_no_attempt": "no libttmplayer line in delta: grep whole file (preload earlier?) ; if none anywhere -> player not created (network/content external or other player); do not infer root cause",
-    "noise": "LOAD-FAIL 'No such file' for libttmplayerbeta/libttmplayerpgo is expected when server cfg29/76 is set and is NOT a fatal (falls back to ttmplayer)"
+    "noise": "LOAD-FAIL 'No such file' for libttmplayerbeta/libttmplayerpgo is expected when server cfg29/76 is set and is NOT a fatal (falls back to ttmplayer)",
+    "E_loaded_outside_trace": "no SOURCE-NATIVE-LOAD line for libttmplayer but libttmplayer.so present in child maps -> loaded by a non-ART/custom loader; P1 refuted for that copy, record namespace/path from maps",
+    "F_silent_java": "UnsatisfiedLinkError on com.ss.ttm.player natives (ASX_DIAG_THROWABLE) with no maps entry -> consistent with P1/B; take symbol from loader trace, not from app state"
    },
    "screenshot_rule": "two identical frames = not playing; process alive/READY is not success"
-  }
+  },
+  "static_markers_reconciled": "per t4: in-app IsErrored / setVideoSurface return values are NOT acceptance signals; ANWFS after a tap is only supporting evidence of the native surface path"
  }
 }

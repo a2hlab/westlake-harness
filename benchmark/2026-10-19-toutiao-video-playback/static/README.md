@@ -71,3 +71,23 @@ We consumed four REA records from the main tree `.octos/` (hashes and evidence I
 - **OP1**: a single video-card tap, only once a real feed is on screen. A network-exception page does not qualify. Use baseline/delta, two screenshots, and decision rows A–D.
 
 `libttmplayerbeta`/`libttmplayerpgo` "No such file" lines are expected noise. Optional next REA reads: `TTPlayerLibLoader.loadLibs(ArrayList,boolean)` and `ITTPlayerRef.create`. t2 stays closed.
+
+## Update 2 — loadLibs / setVideoSurface and reconciliation with t4 (no device operation)
+
+New REA records (main `.octos/`): `method-3` `TTPlayerLibLoader.loadLibs` (`1ebaf718…`, `ev_0fd7b0e4…`) and `method-4` `TTPlayer.setVideoSurface` (`2fd77ae4…`, `ev_213e4d2e…`). We also reconciled with the t4 assessment `westlake-harness-t4/benchmark/2026-10-19-toutiao-rea-methods/assessment.md` (`0c724fb5…`). Its input hashes and evidence IDs for package and method-0/1/2 are identical to ours.
+
+**Corrections to Update 1**
+
+- **What the loader returns:** `loadPlayerlibrary` ignores the boolean from `loadLibs` and returns `true` unless `loadLibs` throws. In per-library mode (cfg3), a failed load can therefore leave `IsErrored=false`. "Returns false on failure" was too strong.
+- **Which loader runs:** `loadLibs` dispatches to a configurable `ILibraryLoader` or to `mDefaultLibLoader`. Only the configurable branch catches Throwable. The actual mechanism (`System.load`, `System.loadLibrary` or a custom linker) is **not established**. We withdraw the implicit `System.loadLibrary` assumption.
+- **Surface handoff:** `setVideoSurface` calls native `_setVideoSurface` only when `mHandle != 0`; otherwise it returns `-1` silently. Naming `ANativeWindow_fromSurface`/libhwui as the runtime consumer is a static-import inference that REA does not show.
+
+**Static conclusion:** every Java-level outcome of a failed player load is silent. `IsErrored` may stay false, `setVideoSurface` returns `-1`, and no crash occurs. This agrees with t4: no MediaPlayer fallback is shown in these methods, and hotfix branches can override the static paths. In-app state cannot confirm or refute P1, which stays **needs_observation**.
+
+**Minimal runtime observation (amended `observation_point`)** — three independent runtime-side signals, all read-only:
+
+1. The RouteB ART loader trace (`SOURCE-NATIVE-LOAD(-FAIL)`), which covers `System.load`/`loadLibrary`.
+2. **Child `/proc/<pid>/maps`** for `libttmplayer/libmffmpeg/libvcbasekit/libOpenSLES/libEGL`. This covers custom loaders and is new in OP0 and OP1.
+3. `ASX_DIAG_THROWABLE` output for `UnsatisfiedLinkError` on `com.ss.ttm.player` natives.
+
+OP1 adds decision **E**: the library is present in maps without a trace line, meaning a custom loader; P1 is refuted for that copy. OP1 also adds decision **F**: an UnsatisfiedLinkError with no maps entry. OP1 still requires a real feed with video cards first; Wi-Fi/board choice is pending the user's clarification.

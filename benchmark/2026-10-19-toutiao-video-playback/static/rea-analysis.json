@@ -24,6 +24,18 @@
    "bytes": 18080,
    "evidence_id": "ev_793a98a52d9eec8bd13ef933a5f94537fe9019cdd63f6d1ee4033c4a51cd9310",
    "operation": "inspect_android_method"
+  },
+  "rea-toutiao-method-3-20261019.json": {
+   "sha256": "1ebaf718335bdb0591cffaa466f648e9e8113564f59e42a9f636f43f2915fcef",
+   "bytes": 11213,
+   "evidence_id": "ev_0fd7b0e4d74a308ace13539f8bd1a96dee3318dc2051e99ced9039429705e0dc",
+   "operation": "inspect_android_method"
+  },
+  "rea-toutiao-method-4-20261019.json": {
+   "sha256": "2fd77ae4fbd0aa653ce9e0f831b101b9e1e481a733972f0d8b8ee183c08807b2",
+   "bytes": 34200,
+   "evidence_id": "ev_213e4d2ed1a3c33abe3f1774cc1d38bca11edd509b7292e65b178bb8707a3b3a",
+   "operation": "inspect_android_method"
   }
  },
  "apk": "a1112a0c (JADX 0.7.1, 139838 classes, targetSdk30/min21, 13.9.0)",
@@ -51,6 +63,20 @@
   {
    "id": "F5",
    "fact": "load is lazy: triggered at TTPlayer class init (first player creation). RouteB feed-only child 6243 has no libttmplayer/libvcbasekit-for-player line, so the attempt has not been captured in any retained log."
+  },
+  {
+   "id": "F6",
+   "method": "com.ss.ttm.player.TTPlayerLibLoader.loadLibs(List<String>,boolean)",
+   "fact": "if !force && mLibraryLoaded return cached; if mLibraryLoader!=null: onLoadNativeLibs(list) with catch(Throwable)->mErrorInfo=msg (returns stale mLibraryLoaded); else mDefaultLibLoader.onLoadNativeLibs(list) with NO catch. Loader mechanism (System.load vs System.loadLibrary vs custom linker) not established."
+  },
+  {
+   "id": "F7",
+   "method": "com.ss.ttm.player.TTPlayer.setVideoSurface(Surface)",
+   "fact": "returns -1 without any JNI call when mHandle==0; else _setVideoSurface(mHandle, surface) (native; libttmplayer carries matching JNI signature string (JLandroid/view/Surface;)I). A failed native load therefore degrades to a silent -1, not a crash."
+  },
+  {
+   "id": "F8",
+   "fact": "Combined F1/F2/F6/F7: every Java-level outcome of a failed player load is silent (IsErrored may be false, setVideoSurface -1). Only runtime-side evidence discriminates: RouteB ART loader trace (covers System.load/loadLibrary via libart), child /proc/<pid>/maps (covers any loader incl. custom), and ASX_DIAG_THROWABLE=1 throwable output for UnsatisfiedLinkError on TTPlayer natives."
   }
  ],
  "new_prediction": {
@@ -58,9 +84,24 @@
   "state": "unknown",
   "statement": "VCBaseKitLoader runs first; libvcbasekit.so is in RouteB WESTLAKE_ANDROID_NATIVE_TARGETS (android-native namespace) while libttmplayer (NEEDED libvcbasekit.so) loads in namespace 0 -> either a second libvcbasekit copy in ns0 or a lookup failure; observe which ns each load reports."
  },
- "p1_status": "unchanged: unknown/static precondition holds; REA shows failure would be silent (no app log, no crash), consistent with the historical frozen cover but not proof of it",
+ "p1_status": "unchanged: needs_observation (unknown). Static precondition holds; REA adds that in-app state cannot confirm or refute it.",
  "requested_next_methods_optional": [
-  "com.ss.ttm.player.TTPlayerLibLoader.loadLibs(java.util.ArrayList,boolean) — confirm System.loadLibrary vs custom loader (affects which namespace/loader trace applies)",
-  "com.ss.ttm.player.ITTPlayerRef.create (static; sole caller of TTPlayerRef.create per dexdump) — how IsErrored/getErrorInfo is consumed and whether a fallback player is chosen"
- ]
+  "com.ss.ttm.player.TTPlayerLibLoader mDefaultLibLoader concrete class .onLoadNativeLibs(List) — loader mechanism",
+  "com.ss.ttm.player.ITTPlayerRef.create — upper player selection / error handling"
+ ],
+ "reconciliation_t4": {
+  "file": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-19-toutiao-rea-methods/assessment.md",
+  "sha256": "0c724fb53e98649d047aee684a41bbef20c7e83446f5b03a40cf3ae5b566ea8e",
+  "input_hash_match": "package + method-0/1/2 SHA256 and evidence IDs identical to this report's inputs",
+  "agreed": [
+   "no evidence of fallback to a Java/android.media.MediaPlayer player in these methods",
+   "static default paths only; hotfix (ChangeQuickRedirect) branches may override at runtime",
+   "no method here names the runtime Surface consumer"
+  ],
+  "corrections_to_this_report": [
+   "F2 corrected: loadPlayerlibrary ignores the boolean from loadLibs and returns true unless loadLibs THROWS; so a failed load can leave IsErrored=false (cfg3 per-lib mode). Earlier text 'returns false on failure' was too strong.",
+   "F4 corrected: setSurface->TTPlayer.setVideoSurface->native _setVideoSurface only when mHandle!=0; naming ANativeWindow_fromSurface/libhwui as the consumer is a static-import inference, not shown by REA.",
+   "Earlier implicit 'loadLibs = System.loadLibrary' withdrawn: loadLibs dispatches to configurable ILibraryLoader mLibraryLoader or mDefaultLibLoader (implementation not decompiled)."
+  ]
+ }
 }
