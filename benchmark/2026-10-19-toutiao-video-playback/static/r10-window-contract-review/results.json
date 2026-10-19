@@ -1,0 +1,104 @@
+{
+  "token": "video-2020-window-contract-cx",
+  "status": "CONDITIONAL_CALLER_SCOPED_REUSE_REQUIRES_OBJECT_AND_WINNER_EVIDENCE",
+  "bridge_sha256": "d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b",
+  "bridge_needed": [
+    "libwestlake_input_transport.so",
+    "liblog.so",
+    "libnativehelper.so",
+    "libz.so",
+    "libhwui.so",
+    "liboh_android_runtime.so",
+    "libc++.so",
+    "libc.so",
+    "libEGL.so",
+    "libability_connect_callback_stub.z.so",
+    "libability_manager.z.so",
+    "libapp_manager.z.so",
+    "libappexecfwk_base.z.so",
+    "libappexecfwk_core.z.so",
+    "libbegetutil.z.so",
+    "libcesfwk_innerkits.z.so",
+    "libconfiguration.z.so",
+    "libdatashare_consumer.z.so",
+    "libdm.z.so",
+    "libeventhandler.z.so",
+    "libhilog.so",
+    "libhitrace_ndk.z.so",
+    "libinputmethod_client.z.so",
+    "libipc_single.z.so",
+    "libmission_info.z.so",
+    "libmmi-client.z.so",
+    "libnative_image.so",
+    "libpasteboard.so",
+    "librender_service_base.z.so",
+    "librender_service_client.z.so",
+    "libsamgr_proxy.z.so",
+    "libscene_session.z.so",
+    "libsurface.z.so",
+    "libsync_fence.z.so",
+    "libudmf.so",
+    "libutils.z.so",
+    "libwant.z.so",
+    "libwindow_scene_common.z.so",
+    "libwm.z.so",
+    "libwmutil.z.so",
+    "libwmutil_base.z.so",
+    "libzuri.z.so"
+  ],
+  "bridge_exports": {
+    "ANativeWindow_fromSurface": null,
+    "ANativeWindow_getFormat": null,
+    "oh_anw_get_oh": {
+      "value": "0x125a00",
+      "size": 60,
+      "defined": true
+    },
+    "oh_anw_wrap": {
+      "value": "0x124698",
+      "size": 444,
+      "defined": true
+    }
+  },
+  "exact_unwrap": {
+    "entry": "0x125a00",
+    "base_magic_offset": 0,
+    "base_magic": "0x5f776e64",
+    "adapter_magic_offset": "0xc8",
+    "adapter_magic": "0x414e5731",
+    "oh_pointer_offset": "0xc0",
+    "reject": "NULL for either magic mismatch"
+  },
+  "existing_head": {
+    "address": "0x7fa995fba0",
+    "first_word": "0x7fa717dc14",
+    "low32": "0xa717dc14",
+    "matches_base_magic": false,
+    "limitation": "Only historical 64-byte head, read separately from rendering call; +c0/+c8 missing. Not proof of live object type or corruption."
+  },
+  "from_surface": {
+    "outer_winner": "actual player GOT -> provider765 +3b9c",
+    "inner_delegate": "bridge_symbol +37d4 calls dlsym(handle,name) at3814 and returns pointer; d720 stores handle, NOT resolved function",
+    "hwui_static": "a11c9154 +807238 calls oh_anw_get_oh; nonnull retains original and try_acquire; otherwise oh_anw_wrap; may return null",
+    "actual_inner_winner": "UNKNOWN: DT_NEEDED includes hwui but actual dlsym dependency/namespace winner not read"
+  },
+  "raw_oh_consumers": {
+    "provider": "76512d97",
+    "getWidth": "3ca4 /3cec passes unchanged window to table call3cf8",
+    "getHeight": "3d14 /3d5c passes unchanged window to3d68",
+    "setGeometry": "3d84 /3e44 and3ec4 pass unchanged window",
+    "lock": "3ee4 /3f98 passes unchanged window to request3fa0",
+    "unlock": "42e4; source ownership must match paired lock state",
+    "native_ready": "1 proves init flag only, not object validity, successful geometry or buffer request"
+  },
+  "minimal_reuse": "If AdapterAnw is confirmed, unwrap at the player-only OH boundary for width/height/geometry/lock/unlock while preserving original AOSP object for acquire/release; use paired lock state and existing format/stride/fence/flush handling. Never pass raw OH pointer to wrapper release. Do not globally replace shared libandroid or shim for WebView callers. Raw-OH input requires its own provenance; do not treat unwrap NULL as automatically valid raw OH.",
+  "source_limit": "related-source oh_anw_get_oh has directPathLive; exact d4fa has two magic checks without that branch. native691 source getFormat calls OH directly whereas exact765 delegates. Use exact ELF as authority.",
+  "missing_minimal_evidence": [
+    "Actual inner dlsym winner from the same provider765 instance/namespace (not opaque d720 handle); function is not persistently cached in examined helper. Existing resolver/caller trace or exact loaded lookup graph needed, no guessed GOT slot.",
+    "Current video window pointer tied to latest fromSurface/render call; read +0, +c0, +c8 with same child birth and mapping guards; only after both exact magic checks may +c0 be interpreted as OH pointer. Historical address must not be reused blindly.",
+    "Exact d4fa/hwui instance binding for oh_anw_get_oh and OH table targets; no native_ready or maps-only promotion."
+  ],
+  "regression_scope": "Preserve all non-player callers and WebView bindings; caller-directed selection must be demonstrated for actual libttmplayer. Existing frozen providers stay unchanged. Geometry and playback remain runtime acceptance items.",
+  "device_calls": 0,
+  "builds": 0
+}
