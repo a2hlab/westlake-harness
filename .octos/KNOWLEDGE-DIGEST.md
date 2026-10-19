@@ -919,3 +919,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-19 #91 视频静态门：只清空libttmplayer直接导入会漏其DT_NEEDED里的libvcbasekit C++重定位失败；应按实际namespace、已加载SONAME/provider顺序递归依赖，不能取全机导出并集。compat映射且旧错误消失不证明player加载/GOT或播放，P1实际失败已回滚；证据 benchmark/2026-10-19-toutiao-rea-methods/video-1919-live-review/。
 
 - 2026-10-19 #91 视频崩溃定位：cppcrash帧偏移不可直接当ELF地址，须以实际PC+maps+PT_LOAD求load bias，再处理Ghidra imagebase；本次报告0x21a6714，ELF实际0xde714，call参数x0指向eglPresentationTimeANDROID，x1残留glActiveShaderProgram不是参数。原报告保留，LOAD尝试/无FAIL/已执行player代码都不替代GOT与播放验收。证据 benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review/，独立LLVM原件在持久video-r3-independent-pc。
+
+- 2026-10-19 #91 r4：同一ELF的多个PT_LOAD可因小p_offset分别向页对齐而在maps出现多个offset0，不能据此判多份库；本次compat四页按各自p_vaddr求同一bias，独立读三GOT槽全匹配，player缓存自绑已证但三组25秒仍封面，不等于播放。证据 video-r4-compat-load-bias + video-r4-got-read-r2；原unknown探针保留，原件持久归档见 benchmark/2026-10-19-toutiao-rea-methods/video-1919-r4-review/window-archive.json。
