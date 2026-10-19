@@ -1239,7 +1239,7 @@
       "name": "配对窗口lock/unlock模块与失败并发测试",
       "status": "OFFLINE_MODULE_ONLY_NOT_DEPLOYABLE；49 C用例通过，播放未通过",
       "method": "参考f12c窗口闭包，显式ops注入；8槽按真实OH身份互斥、单调fence总预算、Map/Unmap配对、失败所有权保留。",
-      "platform": "Mac arm64 host实测；OH/Android生产provider ABI与路由尚未接入，不声明平台兼容。",
+      "platform": "Mac arm64 host49用例；OH工具链AArch64 ET_REL编译及布局断言通过，独立重建同SHA；未在OH执行，实际provider和路由未接入。",
       "apps": "预计帮助toutiao仅为条件假设；0 APK用此模块实测，0上板。",
       "limitations": "真实wrapper/实例及provider ABI/caller-scoped成对路由未证；无动态resolver、无.so、无部署admission。Human PendingReview保留。",
       "deployment": "仅源码与host构建/测试；原始日志远端持久归档并核SHA。",
@@ -1259,6 +1259,22 @@
         {
           "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/source-lock.json",
           "sha256": "6346b07d06b41344659858ae16e381d1a7dd660297d2f97d97c3d8e650ff8cd1"
+        },
+        {
+          "path": "benchmark/2026-10-20-window-candidate-preflight/provider-abi/README.md",
+          "sha256": "ac787971f8e7065b7724497459257c7c85a58676a944a2f6217a38f837ff22bf"
+        },
+        {
+          "path": "benchmark/2026-10-20-window-candidate-preflight/provider-abi/source-index.json",
+          "sha256": "af8456fb1da64098a30f74ad6e6cea1cbaf085c6ead0a84880c58e425cd48c4e"
+        },
+        {
+          "path": "benchmark/2026-10-20-window-candidate-preflight/provider-abi/exact-surface/README.md",
+          "sha256": "0a4eebbcd704cbe507ef4fbac268ed6035be5a1fdabd09f3ef4d05300af9c8dc"
+        },
+        {
+          "path": "benchmark/2026-10-20-window-candidate-preflight/provider-abi/exact-surface/results.json",
+          "sha256": "a3b8a4ea52512c8b2f1e067d9b7b9718137ed3149fc359f1d8b8272a397035ee"
         }
       ],
       "build": [
@@ -1277,6 +1293,18 @@
         {
           "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/run_checks.py",
           "sha256": "95f73f34919afe2d7e0829a5ef21f200ba55e23026086ec682c90bec261f3832"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/build_oh_object.py",
+          "sha256": "a4d227c08a1207daaa7fed13d65e7e7ed1b5e66bfa37c6d47de56e8e1d8c6ab4"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/oh-object-evidence/README.md",
+          "sha256": "9c0da98bf7947c77264dbdda4793eb1eb2e6beea1e34825f65925e4a0a9e9bc9"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/oh-object-evidence/build-receipt.portable.json",
+          "sha256": "3597bfbb54fcd1fabbd6e0e39209692aeff5e28ad86e16a4e765631ed9821fbc"
         }
       ],
       "evidence": [
@@ -1307,6 +1335,82 @@
         {
           "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/outer-review/lifecycle-summary.json",
           "sha256": "bf367a834a81f0670afeca825cbc8dc2fd474ab4e787863d19f4a5ad71209a88"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/outer-review/oh-independent-summary.json",
+          "sha256": "c7ca18454bacea22661bdc55e937254fcb022d89154e0bb5f7f1b70e01a10db2"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/outer-review/oh-archive-receipt.json",
+          "sha256": "c9e3495db45048bc55fbd12ae431a548e7ff8fc3055ac2313245b82c2d456b84"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/static/r14-independent-review/results.json",
+          "sha256": "f9665d66093c4129dd974b46655cf2e31b0409899c9376beeb7e4badf7860517"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/static/provider-abi-review/results.json",
+          "sha256": "cdf33cfbdb322455fb4b75c86e106f97fbd1c1f62d86181622a2d0ef885b6fb0"
+        }
+      ],
+      "frozen": false
+    },
+    {
+      "id": "OBS-20261020-WINDOW-R13-RETRY",
+      "kind": "同版观测重试（非新增公共API）",
+      "name": "3次正常图标仍在观测前退出，890秒内恢复真实feed",
+      "status": "0 attach / 0 server starts / 0 window events；视频NOT_PASSED，声音UNKNOWN",
+      "method": "复用已审R13观察器和R10精确候选，不热改观察逻辑；未达到业务前提即退出，按本次原apply-plan恢复。",
+      "platform": "61b arm64；candidate a58f9124→restored2d012f31；仅该设备/运行。",
+      "apps": "今日头条1APK；3次候选图标/3个子进程退出。原基线恢复后首2子进程也退出，第3图标到真实feed。",
+      "limitations": "不归因退出；没有业务握手、对象、winner或播放证据。9候选与9恢复capture groups不是18APK；alive_unknown仍unknown。",
+      "deployment": "05:08:19–05:23:09限时锁；64targets/351labels八项不变量一致，源码/私有视图SHA+inode和参数恢复，真实feed截图复核后解锁。原close写入时间误作unlock多计17秒，纠正保留。",
+      "source": [],
+      "build": [],
+      "evidence": [
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/retry-window/README.md",
+          "sha256": "878a30ed8288dc3757c5de97822ec8f7c0591bba15bb3b4e13901e86ee649ccc"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/retry-window/results.json",
+          "sha256": "5cdda11d24121f279dd9b004f1e9dba8f14d77a08f989c7a0d7eefc0edab72e7"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/retry-window/original-apply-plan.json",
+          "sha256": "c0d22e65405e06d9c80cc192a05fbc6e2b703938ce759f12e8646e73d0f50d9c"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/retry-window/rollback-result.json",
+          "sha256": "8d51825a1b3de44edfb160a31cd59c99ccc55e60a87cfaa43fdb308df8563703"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/retry-window/snapshot-invariants.json",
+          "sha256": "5ad3cc939516fa4f8bf07f382487d01698145a255c05e3f8bbe7c51448cc101c"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/retry-window/restored-identity.json",
+          "sha256": "c06f39cca5d3b15198a68926d54c7782df09d560fd5430a270fee99412fde659"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/retry-window/restored-feed.jpeg",
+          "sha256": "5b20635727668a6f5c42f6237ea61b6f6262485a6db83f65589d044ffb29e743"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/retry-window/candidate-facts.txt",
+          "sha256": "48d506c84cec5161b769c0c9293401fcb93c791b419530f25419316c6c638651"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/retry-window/restoration-facts.txt",
+          "sha256": "ea452658f348936ccd30450b62eab4650e34282f16b10275f22b8b44df604cd8"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/retry-window/archive-receipt.json",
+          "sha256": "4b1dbea1b858d96944ff95671108c71680316f3f6176651dbd6cf459f768e9d5"
+        },
+        {
+          "path": "benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/retry-window/close-correction.json",
+          "sha256": "d42c043c239e72d251bc371da69c831441ec3de4f2a0c9db77de46e05af095f6"
         }
       ],
       "frozen": false
