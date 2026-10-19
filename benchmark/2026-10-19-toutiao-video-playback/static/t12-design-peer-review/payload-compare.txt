@@ -1,0 +1,122 @@
+VERBATIM:{'route-b-owner.sh': True, 'launch-common.sh': True, 'real-spawn.sh': True, 'readiness-probe.sh': True, 'reentry-seams.sh': True, 'exit-verdict.sh': True}
+vpw src=2 pay=2
+
+== reentry-common ==
+--- src/reentry-common.sh
++++ payload/reentry-common.sh
+@@ -83,7 +83,7 @@
+ 			;;
+ 		desktop)
+ 			# Verified desktop focus arms the trigger. Quiet on repeats.
+-			[ "$rc_arm" = DESKTOP_SEEN ] || rc_arm=DESKTOP_SEEN
++			if [ "$rc_arm" != DESKTOP_SEEN ]; then rc_arm=DESKTOP_SEEN; rc_event t12_desktop_seen; fi
+ 			rc_sleep
+ 			continue
+ 			;;
+
+== spawn ==
+--- src/spawn-prepared.sh
++++ payload/spawn.sh
+@@ -25,7 +25,9 @@
+ [ "$(sha256sum "$AUTH_STAGE/host_spawn" | cut -d' ' -f1)" = "$AUTH_HOST_SPAWN_SHA" ] || fail HOST_SPAWN_SHA_CHANGED
+ [ "$(sha256sum "$AUTH_STAGE/request.bin" | cut -d' ' -f1)" = "$AUTH_REQUEST_SHA" ] || fail REQUEST_SHA_CHANGED
+ # Preserve the original, proven order: parent namespace -> JIT -> host_spawn.
++t12_launch_guard
+ timeout 8 /bin/nsenter -t "$TT_PARENT_PID" -m -- /system/bin/sh /data/local/tmp/asx/prepare_jit50.sh >&2 || fail JIT_PREPARE_FAILED
+ parent_owned "$TT_PARENT_PID" "$TT_PARENT_BIRTH" || fail PARENT_CHANGED_AFTER_JIT
+ verify_parent_window "$TT_PARENT_PID" "$TT_PARENT_BIRTH"
++t12_launch_guard
+ exec /system/bin/sh "$HERE/real-spawn.sh"
+
+== watchdog ==
+--- src/watchdog-reentry.sh
++++ payload/watchdog.sh
+@@ -268,7 +268,17 @@
+ }
+ 
+ # --- Reentry production seams (wrap device primitives; parsing via reentry-seams.sh) ---
+-rc_stop_present() { [ -e "$F/stop" ] || [ -L "$F/stop" ]; }
++t12_deadline_stop() {
++ if [ -e "$F/stop" ] || [ -L "$F/stop" ]; then return 0; fi
++ t12_now=$(uptime_s) || { write_exact "$F/stop" uptime_unreadable; return 0; }
++ if [ "$t12_now" -ge "$TT_DEADLINE_UPTIME" ]; then write_exact "$F/stop" deadline; return 0; fi
++ return 1
++}
++rc_stop_present() {
++ t12_deadline_stop && return 0
++ if [ "$seq" -ge 1 ]; then write_exact "$F/stop" single_launch_complete; return 0; fi
++ return 1
++}
+ # Sampled edges: normal manual Home -> icon taps; sub-second switches may be missed.
+ rc_sleep() { sleep 1; }
+ rc_event() { event "$@"; }
+@@ -318,7 +328,9 @@
+ rc_owned_window_present() {
+  rc_capture_wms "$F/wms-owned.txt" || { rc_owned_result=unknown; return 0; }
+  ow_extra=$(rb_owned_pids 2>/dev/null) || ow_extra=
+- rc_owned_result=$(rc_parse_owned_window "$F/wms-owned.txt" "$child $ow_extra") || rc_owned_result=unknown
++ ow_ids=$ow_extra
++ [ "$child" = none ] || ow_ids="$child $ow_ids"
++ rc_owned_result=$(rc_parse_owned_window "$F/wms-owned.txt" "$ow_ids") || rc_owned_result=unknown
+  return 0
+ }
+ # Map the single-read exit verdict onto the child-state vocabulary used by the loop:
+@@ -352,6 +364,7 @@
+  do_reason=; do_spawn_started=0
+  verify_exact "$F/lock/owner" "$$ $self_birth $BOOT"
+  [ -z "$(rb_owned_pids)" ] || { do_reason=existing_child_without_attach_identity; return 2; }
++ t12_deadline_stop && { do_reason=t12_stop_before_spawn; return 2; }
+  do_spawn_started=1
+  if ! timeout 15 sh "$F/spawn.sh" > "$F/spawn.txt" 2>&1; then do_reason=spawn_command_nonzero; return 3; fi
+  child=$(sed -n 's/.*result=0 pid=\([0-9][0-9]*\).*/\1/p' "$F/spawn.txt" | tail -1)
+@@ -390,7 +403,7 @@
+ monitor_child() {
+  state BOOTSTRAP data_preserved_no_rotation
+  feed_count=0; ready=0
+- while [ ! -e "$F/stop" ]; do
++ while ! t12_deadline_stop; do
+   verify_exact "$F/lock/owner" "$$ $self_birth $BOOT"
+   [ "$(cat "$PROC/sys/kernel/random/boot_id")" = "$BOOT" ] || { state OWNER_REFUSED boot_changed; return 2; }
+   live_birth=$(rb_birth "$child") || live_birth=none
+@@ -487,6 +500,7 @@
+  state SUPERVISOR_STARTING control_persistence_checked_before_launch
+  capture_init
+  parent=${TT_PARENT_PID:-none}; parent_birth=${TT_PARENT_BIRTH:-none}
++ [ "$parent:$parent_birth" = "19163:7265322" ] || { state OWNER_REFUSED t12_exact_existing_parent; return 2; }
+  if [ "$parent" != none ]; then
+   parent_owned "$parent" "$parent_birth" || { state OWNER_REFUSED existing_parent_identity; return 2; }
+  else
+@@ -498,31 +512,8 @@
+   parent_owned "$parent" "$parent_birth" || { state OWNER_REFUSED new_parent_identity; return 2; }
+  fi
+  polls=0
+- # Original first-launch chain: exactly one spawn, unchanged behaviour.
+- verify_exact "$F/lock/owner" "$$ $self_birth $BOOT"
+- [ ! -e "$F/stop" ] || { state STOPPED existing_stop; return 0; }
+- [ "$(cat "$PROC/sys/kernel/random/boot_id")" = "$BOOT" ] || { state OWNER_REFUSED boot_changed; return 2; }
+- parent_owned "$parent" "$parent_birth" || { state OWNER_REFUSED parent_identity_changed; return 2; }
+- if [ -n "${TT_CHILD_PID:-}" ]; then
+-  child=$TT_CHILD_PID; child_birth=${TT_CHILD_BIRTH:-none}
+-  child_owned "$child" "$child_birth" || { state OWNER_REFUSED child_identity; return 2; }
+-  seq=$(cat "$F/sequence") || io_fail sequence_read_failed
+-  case "$seq" in ''|*[!0-9]*) io_fail sequence_invalid;; esac
+-  seq=$((seq+1)); write_exact "$F/sequence" "$seq"; instance
+- else
+-  do_one_launch; first_rc=$?
+-  if [ "$first_rc" != 0 ]; then
+-   if [ "$do_spawn_started" = 1 ]; then
+-    state OWNER_REFUSED "first_launch_indeterminate_${do_reason:-spawn} app_parent_retained"; return 2
+-   fi
+-   state START_FAILED "first_launch_${do_reason:-spawn}"; return 3
+-  fi
+- fi
+- # Supervise the first child to exit, then hand off to manual reentry.
+- if ! monitor_child; then return 2; fi
+- [ ! -e "$F/stop" ] || { state STOPPED existing_stop; return 0; }
+- # DERIVED TAIL: wait for a manual desktop->host icon tap for every later launch.
+- state AWAITING_REENTRY child_exited_wait_manual_icon
++ # T12: an existing parent does not authorize an immediate spawn.
++ state AWAITING_REENTRY existing_parent_wait_actual_desktop_icon
+  rc_reentry_loop
+ }
+ main "$@"
