@@ -1,0 +1,7 @@
+# Independent baseline codec enumeration check
+
+A string inventory cannot establish an enumeration implementation, and a Ghidra address is not automatically an ELF entry. LLVM disassembly of the exact baseline bridge `d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b` confirms `mclCount` at ELF `0xf2e88` returns 1; `mclGetName` at `0xf2e90` loads `OH.audio.mp3.decoder`; `mclSupportedTypes` at `0xf2f40` constructs a one-element String array containing `audio/mpeg`. The name load is `0xf2e94/0xf2e98`; `0xf2ef8` belongs to `mclFindByName`. The registrar symbol is ELF `0xf0778`. Ghidra's image base is `0x100000`.
+
+Twelve complete original REA tool-result blocks were recovered from the selected session and checked against the exact bridge SHA; the earlier 1727-byte hand-written ops summary is not a raw Evidence bundle. The private durable archive preserves those original blocks, three full player/Java Evidence records, baseline binary/provenance receipts and independent LLVM outputs. Public disassembly headers replace only the local home path; private original bytes remain in the verified archive.
+
+This proves this file's enumeration implementation. It does not prove the final JNI registration winner, that hardware decode was the only attempted path, or that the whole software/plugin chain lacks HEVC. Recorded FFmpeg configure flags cannot settle the latter. No build or device write was performed by this check.

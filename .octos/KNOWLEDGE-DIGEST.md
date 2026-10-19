@@ -928,3 +928,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-19 #91 r8：player→mirror→liblog两跳GOT实读匹配且256条原生消息证实setDataSource/prepare；镜像到上限后无日志不能作否证，跨线程codec open fail与network -97的文件顺序不等于单一因果，须追实际provider后修。5–25秒四图同封面；回滚boot17035e03真实feed、同64targets/351labels集合一致，23:55:54解锁。证据 benchmark/2026-10-19-toutiao-video-playback/candidate-r8/window/。
 
 - 2026-10-20 #91 外环续调度：内环ACK/idle哨只报告信号，不会让已结束的外环自行继续；持续任务期间不能派单后发final自称持续监督。00:06至02:19两窗空闲实案，须保持外环活跃并完成收割→处置→回执。
+
+- 2026-10-20 #91 codec枚举：exact baseline bridge d4fa的mclCount ELF0xf2e88返回1、mclGetName f2e90与mclSupportedTypes f2f40仅MP3/audio-mpeg，12完整REA+独立LLVM已核；Ghidra imagebase100000不可混入ELF，f2ef8属FindByName。只证该文件实现，最终JNI winner/外部bytevc插件未证，不凭FFmpeg configure字符串断言全链无HEVC；手写ops摘要不是原始Evidence。见static/codec-enumeration-independent与codec-java-20261020。
