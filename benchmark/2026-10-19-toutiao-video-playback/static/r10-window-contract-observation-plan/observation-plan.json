@@ -1,0 +1,124 @@
+{
+  "token": "video-2020-window-contract-cx",
+  "mode": "DESIGN_ONLY_NOT_EXECUTABLE",
+  "execution_enabled": false,
+  "objects_sha256": {
+    "player": "0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471",
+    "libandroid": "76512d97758c308acf7baff4647f07db792c02b8fae2eda93399bd18eda03727",
+    "shim": "85c789f48b2bc0c31658c9dc591cd27784cc0ddfe559005e8d36d1d7d220476a",
+    "bridge": "d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b",
+    "hwui_candidate_winner": "a11c9154ca16dd7acf5e3ea99727ae37c25b1b4494a9133816bc58c553c128e2"
+  },
+  "address_rule": "New actual PT_LOAD load bias plus listed ELF address; never reuse r10 absolute addresses. Each mapped instance pinned by SHA/dev/inode and segment coverage.",
+  "player_import_got_elf": {
+    "fromSurface": "0x472688",
+    "lock": "0x472490",
+    "release": "0x4724b8"
+  },
+  "points": [
+    {
+      "id": "resolve_and_call",
+      "object": "libandroid",
+      "elf_pc": "0x3bd4",
+      "instruction": "br x2",
+      "record": [
+        "tid",
+        "monotonic_timestamp",
+        "call_seq",
+        "x2 winner",
+        "x0 JNIEnv",
+        "x1 jobject Surface (opaque only)",
+        "x30 original return_PC",
+        "sp"
+      ],
+      "meaning": "Exact bridge_symbol returned x0 at3bbc and moved it to x2 at3bc0; this event observes the real nonnull dlsym result used by this invocation, not a new dlsym query. Tail branch has already restored original caller LR and SP.",
+      "filter": "validated caller return_PC in exact player executable PT_LOAD and player fromSurface GOT selects this libandroid instance"
+    },
+    {
+      "id": "fromSurface_return",
+      "object": "actual runtime caller",
+      "elf_pc": "DYNAMIC: original x30 from resolve_and_call",
+      "record": [
+        "same tid and call_seq",
+        "x0 returned_window",
+        "sp equals recorded caller sp",
+        "window snapshot at return"
+      ],
+      "meaning": "Observe before the caller executes the instruction at original return_PC. This is the same invocation; fixed libandroid3bd8/3be0 is NOT a successful-return hook because the successful path tail-calls winner."
+    },
+    {
+      "id": "lock_entry",
+      "object": "shim",
+      "elf_pc": "0x5e48",
+      "instruction": "stp x29,x30,[sp,#-0x40]! (observe before execution)",
+      "record": [
+        "tid",
+        "monotonic_timestamp",
+        "lock_seq",
+        "x0 window",
+        "x1 outBuffer",
+        "x2 dirtyBounds",
+        "x30 return_PC",
+        "window snapshot immediately before lock"
+      ],
+      "filter": "validated exact player caller and player lock GOT selects this shim instance",
+      "meaning": "Record actual argument, not a pointer parsed from an earlier log; original hard -19 path remains unchanged."
+    },
+    {
+      "id": "release_lifetime_marker",
+      "object": "libandroid",
+      "elf_pc": "0x3c24",
+      "record": [
+        "tid",
+        "x0 window",
+        "x30 caller",
+        "event_seq"
+      ],
+      "meaning": "Conservatively invalidate association on any observed release of the tracked pointer, regardless of caller. Release need not destroy it; an invalidated association is UNKNOWN, not a free/corruption claim."
+    },
+    {
+      "id": "resolve_null_optional",
+      "object": "libandroid",
+      "elf_pc": "0x3be0",
+      "record": [
+        "tid",
+        "x0 NULL",
+        "x30 caller"
+      ],
+      "meaning": "Records missing-symbol branch, if it occurs. Not required for a successful fromSurface/lock chain."
+    }
+  ],
+  "wrapper_snapshot": {
+    "strategy": "Capture during the observed invocation boundary while relevant threads are stopped consistently. A late asynchronous memory read does not meet this proposal. No injected function calls or raw-pointer dereference inside target.",
+    "first_read": "+0 uint32, exact size/rc and readable mapping",
+    "first_magic": "0x5f776e64",
+    "if_first_magic_matches": [
+      "+0xc8 uint32 ==0x414e5731",
+      "+0xc0 uint64 OH pointer, record as opaque until both magic checks pass"
+    ],
+    "if_mismatch": "NON_ADAPTER_AT_THIS_EVENT; +c0 not interpreted as OH pointer. Does not prove raw OH, dangling pointer or corruption.",
+    "if_read_error": "UNKNOWN; no EFAULT masking, no zero fill, no speculative unwrapping"
+  },
+  "correlation": {
+    "fromSurface": "same tid/call sequence and captured return_PC/SP; nesting must be tracked or explicitly refused",
+    "lock": "may occur on another thread. Match exact pointer plus last observed generation, matched wrapper snapshots and no observed intervening release/new-return of same address. A gap or missed event makes association UNKNOWN.",
+    "separate_calls": "fromSurface and lock are not one C invocation; report their two boundary records and generation link, not a fictitious atomic combined call."
+  },
+  "winner_evidence": "Map captured x2 to exact mapped instance PT_LOAD, SHA/inode and ELF symbol/offset. If it is a11c9154+807238, say so; otherwise identify actual bytes. d720 is a loader handle, never a code-address proof.",
+  "bounds": {
+    "scope": "one exact child, first useful fromSurface-to-lock chain; stop on identity/mapping drift",
+    "max_records": 32,
+    "max_observation_seconds": 30,
+    "incomplete": "NOT_REACHED/UNKNOWN, no extra launch policy introduced"
+  },
+  "invariants": [
+    "No replacement of system liblog/libandroid or global WebView behavior in this observation proposal",
+    "No new dlsym/dlopen/oh_anw_get_oh call on the target; no refcount changes or target-memory modification",
+    "Preserve original arguments, return value, errno, and invocation count; externally buffered records only",
+    "A tracing backend may pause threads or alter debug registers/timing. It must be separately selected/reviewed; this is not an ordinary passive file-read plan or a playback/performance test",
+    "No binary patch/trap fallback silently introduced if read-only execution tracing is unavailable"
+  ],
+  "next_decision": "Confirmed AdapterAnw plus raw-OH consumer requires caller-scoped unwrap across geometry and paired buffer operations while keeping wrapper reference ownership; valid raw-OH input needs separate provenance. Neither native_ready nor successful binding proves usable geometry or video playback.",
+  "device_calls": 0,
+  "builds": 0
+}
