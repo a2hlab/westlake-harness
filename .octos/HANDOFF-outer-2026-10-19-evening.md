@@ -1,6 +1,6 @@
 # #91 outer continuation — 2026-10-19 evening
 
-## Current checkpoint — 19:49 (supersedes older board/next-step details below)
+## Current checkpoint — 19:57 (supersedes older board/next-step details below)
 
 - User still requires continuous work. P0 and materials are complete within their stated scopes; video remains incomplete. No push in this continuation.
 - r2 run-only was rejected statically. r3 three-file candidate actually ran: run template79275cf9 + compat9f558aaf + exact mffmpeg derivative d2882303 (fecf91e1, only DT_INIT_ARRAYSZ byte at0x48aca8:8→0). Derive source2165a64f and actual rc0 raw logs are committed/mirrored. Sources integrated master3eb8643e5a/3ba41c508d; review/probe2f5cce8aa; earlier reviewc7b23462b.
@@ -9,7 +9,7 @@
 - cc-video w9:pD is doing actual REA/Ghidra analysis of the player GLES proc-loader function. Token video-1919-r3-readout; no new repair admitted. cx-seal w9:p3 is finalizing the independent live+rollback evidence packet (currently compacting, do not interrupt): benchmark/2026-10-19-toutiao-rea-methods/video-1919-r3-live-review, exact landing/SHA lists pending final freeze. Copy only its listed paths, never unrelated worktree changes.
 - Private base remains $HOME/.local/share/westlake/toutiao-resume-20261019. Actual scripts video_guarded_window_r5.py(89b054e1), video_probe_r2.py(92d162e0). Earlier r4 executor rejected, old probe lacks rc guard. r3 raw dirs video-r3-{preflight,apply,reboot,boot-ready,live,play1,exit-evidence,rollback,rollback-reboot,rollback-ready,rollback-live}. Preserve all.
 - Durable hw248 mirror: source/input/output/actual derive logs in operator-configured $HW248_ARTIFACT_ROOT/toutiao-video-r3-20261019T192945; this variable is a NEW placeholder, not an existing env.md setting. Exact remote root in private video-r3-persistent-mirror/receipt.json. Complete raw window archive SHAa2f430e0e51f1fed0cb4fe86f376cd0e7f714924256be9bb14d6aa11a8fe5a93,3,580,863 bytes; public window-archive.json currently uncommitted, exact receipt in video-r3-window-archive/receipt.json.
-- Next: harvest final live review, integrate API third observation from private api-r3-row-draft.json with actual source/build/evidence SHA pins, commit locally; independently review CC new PC mechanism and smallest API fix. Do not stop after this checkpoint. Watchers: positive exec69905(readout),33333(live-review); negative21233(pD+p3),95904(p3) may have exited when a lane completed, rearm when needed. Resident evolution sentinels unchanged.
+- Completed: r3 live review60files and API3observations/32SHArefs independently accepted, integrated masterd60b191ac. Next: cc-video is narrowing a candidate-r4 player-only derivative for105 GLES/EGL cache GLOB_DAT→RELATIVE entries; prior HIDDEN idea rejected by actual musl source (only STB_LOCAL direct-self). No final r4 bytes or admission yet. cx-seal concurrently preparing fail-closed four-file r6 executor draft under video-r4-executor-draft; no device calls. Positive watcher96343, negative58106. EVO0148 collected. Do not stop after this checkpoint. Watchers: positive exec69905(readout),33333(live-review); negative21233(pD+p3),95904(p3) may have exited when a lane completed, rearm when needed. Resident evolution sentinels unchanged.
 
 ## Earlier checkpoint (historical)
 
