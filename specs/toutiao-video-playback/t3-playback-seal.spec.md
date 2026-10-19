@@ -3,12 +3,12 @@ name: "Toutiao video dynamic playback and API delivery"
 inherits: project
 satisfies: [REQ-TTVIDEO]
 depends: [t2-minimal-repair]
-tags: [media, waiting-for-candidate, human-review]
+tags: [media, waiting-for-p1-window, human-review]
 ---
 ## 意图
-在外环分配的空闲板验证候选实际播放，再与图标重开主任务合流到61b。交付有声动态帧、暂停恢复退出证据与实现/构建/API表对照，不把一张封面或探针结果当头条通过。
+在61b（唯一RouteB同代板）于图标P0锁释放后的外环窗口验证候选实际播放，并与图标重开主任务合流。交付有声动态帧、暂停恢复退出证据与实现/构建/API表对照，不把一张封面或探针结果当头条通过。
 ## 已定决策
-- 外环分配serial并持板锁，开窗前核只读身份与原回滚；先空闲5cd或5ea，61b图标任务锁释放且候选通过后另开窗口。APK/视频内容/网络条件和runtime指纹均记录。
+- 外环分配serial并持板锁，开窗前核只读身份与原回滚；5cd(run.sh 5a3aef63)与5ea均非RouteB同代，故只在61b验证，须在图标P0锁释放后另开窗口，先过t2候选的P1加载窗（candidate/OPERATIONS.md）再做播放周期。APK/视频内容/网络条件和runtime指纹均记录；run.sh按WL_PARENT_ID归一化SHA核对。
 - 两个周期各播放20秒、暂停3秒、恢复10秒、退出回feed并手点图标再次进入；120秒观察窗包含视频进入与回退，超出30分钟实验限时则保存未完证据并回滚解锁。
 - 每周期采t0/t5/t10/t20及暂停/恢复/退出snapshot_display，记录视频内容ROI、播放时间与对应Surface；内容帧变化排除spinner/字幕/控件假动，声音须外部录音或人工听验具名回执，音频计数不能替代听到声音。
 - 更新独立API增量表：精确API→源码blob/commit→构建配方→产物SHA→OH完整版本/ABI→APK SHA与targetSdk→实测范围与证据；生成与当前主表的合并清单，由外环统一出版，历史版本/unknown不改写。
@@ -26,7 +26,7 @@ tags: [media, waiting-for-candidate, human-review]
 场景: 两轮有声播放暂停恢复退出
   测试: ttvideo_playback_receipt
   审核: human
-  假设 空闲板serial已分配且持板锁，只读身份及真实APK和候选SHA及原回滚均核对
+  假设 61b serial已由外环分配且持板锁，只读身份及真实APK和候选SHA及原回滚均核对
   当 在120秒观察窗按两轮20秒播放3秒暂停10秒恢复及退出序列执行并保存t0/t5/t10/t20的snapshot_display与ROI和声音回执
   那么 两轮视频内容持续变化、声音与内容对应、暂停停止前进、恢复继续、退出显示feed且图标可再打开
   并且 保留按实际captured计数的facts而非计划截图数

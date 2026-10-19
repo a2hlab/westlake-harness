@@ -95,7 +95,24 @@
    "after single video tap: no SOURCE-NATIVE-LOAD-FAIL for libttmplayer; libttmplayer present in child maps; no _setSupprotSampleRates UnsatisfiedLinkError",
    "record next first fatal verbatim; screenshots decide playback (not expected)"
   ],
-  "fail_or_any_regression": "rollback"
+  "fail_or_any_regression": "rollback",
+  "superseded_note": "earlier steps targeted /data/local/tmp/asx/run.sh with whole-file sha d3518cef; both were wrong for the live entry (see entry_facts). Use ops/video_p1_window.sh + OPERATIONS.md.",
+  "entry_facts": {
+   "chain": "init cfg /system/etc/init/01_westlake_u13_toutiao.cfg -> state-root boot-entry.sh -> start-parent.sh -> real-start-parent-bounded.sh (r1 and r2 payloads identical for this file; P0 r2 sha f77f0f70)",
+   "executed_run_sh": "physical /data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/run.sh, executed as /data/local/tmp/asx/run.sh inside source_app_namespace's private mount (RT bound at /data/local/tmp/asx)",
+   "mutation": "real-start-parent*.sh sed -i rewrites export WL_PARENT_ID=<current imehost0 WID> in $RT/run.sh before every parent start -> whole-file run.sh SHA is not stable (d3518cef == WL_PARENT_ID=33)",
+   "pinning": "P0 members.tsv/startup.env pin payload scripts only, not run.sh -> the LD_PRELOAD edit does not trip P0 gates",
+   "verify_by": "normalized SHA (WL_PARENT_ID line -> N): before ea575abe..., after db82cc15..."
+  },
+  "targets": {
+   "dso": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/libopensles_android_compat.so (seen as /data/local/tmp/asx/libopensles_android_compat.so)",
+   "run_sh": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/run.sh (line edit, not file push)"
+  },
+  "normalized_sha256": {
+   "before": "ea575abea86e8afd0aebbbb6cdc1900df3ff40c5d9c40ed290e8ac1b1f9c1cf4",
+   "after": "db82cc159412026d274300a4f0a80ac8bb65cfe53c69d11690cfeeb664b95561"
+  },
+  "handoff": "../candidate/OPERATIONS.md"
  },
  "rollback": [
   "restore /data/local/tmp/asx/run.sh from run.sh.d3518cef.bak, verify sha d3518cef",
