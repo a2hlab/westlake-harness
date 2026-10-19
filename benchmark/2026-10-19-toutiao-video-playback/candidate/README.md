@@ -42,3 +42,14 @@ On 61b boot `8f7f12bf`, child 9290, run.sh `d3518cef`, a tap on a real feed vide
 ## Log provenance correction
 
 The first build commit `f3668cef85` had scrubbed `$HOME` **in place** in `logs/`, with no backup, so those files were not raw originals. They are removed. The small build was re-run (`build_candidate.sh`, now with a private `LOGDIR` that is never scrubbed). The rerun is byte-identical: DSO `9f558aaf`, unstripped `701ba399`, link-only `486936c0`. Public copies are produced by [sanitize_logs.sh](sanitize_logs.sh) under distinct names. The closure inputs used by the gates are also persisted privately (`closure-inputs/`).
+
+## Execution card r2
+
+[OPERATIONS.md](OPERATIONS.md) is now a card only and closes t4 review `d953c270` blockers 1–4:
+
+- physical `$RT` targets with preimages and metadata;
+- fresh reboot → new parent for both apply and rollback;
+- WID-exact `before(W)`/`after(W)` CAS (normalization withdrawn);
+- an exact object-specific load result via GOT relocation reads.
+
+The `ops/` script was removed. The candidate bytes are unchanged.

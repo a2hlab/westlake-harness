@@ -87,14 +87,6 @@
  "board_verification_window": {
   "board": "61b only (spares not RouteB same-generation)",
   "max_minutes": 30,
-  "pre": "record run.sh sha d3518cef, parent/child stat, maps; back up run.sh to /data/local/tmp/asx/run.sh.d3518cef.bak",
-  "deploy": "push DSO (sha pinned), replace run.sh with candidate (sha ea98494…), restart via the original cfg path (no kill -9 appspawn-x)",
-  "pass_criteria": [
-   "parent maps contains /data/local/tmp/asx/libopensles_android_compat.so and /system/lib64/libOpenSLES.so (single copy)",
-   "feed screenshot as before (main window unaffected)",
-   "after single video tap: no SOURCE-NATIVE-LOAD-FAIL for libttmplayer; libttmplayer present in child maps; no _setSupprotSampleRates UnsatisfiedLinkError",
-   "record next first fatal verbatim; screenshots decide playback (not expected)"
-  ],
   "fail_or_any_regression": "rollback",
   "superseded_note": "earlier steps targeted /data/local/tmp/asx/run.sh with whole-file sha d3518cef; both were wrong for the live entry (see entry_facts). Use ops/video_p1_window.sh + OPERATIONS.md.",
   "entry_facts": {
@@ -108,11 +100,36 @@
    "dso": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/libopensles_android_compat.so (seen as /data/local/tmp/asx/libopensles_android_compat.so)",
    "run_sh": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/run.sh (line edit, not file push)"
   },
-  "normalized_sha256": {
+  "handoff": "../candidate/OPERATIONS.md (r2)",
+  "normalized_sha256_superseded_r2": {
    "before": "ea575abea86e8afd0aebbbb6cdc1900df3ff40c5d9c40ed290e8ac1b1f9c1cf4",
    "after": "db82cc159412026d274300a4f0a80ac8bb65cfe53c69d11690cfeeb664b95561"
   },
-  "handoff": "../candidate/OPERATIONS.md"
+  "pass_criteria_superseded_r2": [
+   "parent maps contains /data/local/tmp/asx/libopensles_android_compat.so and /system/lib64/libOpenSLES.so (single copy)",
+   "feed screenshot as before (main window unaffected)",
+   "after single video tap: no SOURCE-NATIVE-LOAD-FAIL for libttmplayer; libttmplayer present in child maps; no _setSupprotSampleRates UnsatisfiedLinkError",
+   "record next first fatal verbatim; screenshots decide playback (not expected)"
+  ],
+  "deploy_superseded_r2": "push DSO (sha pinned), replace run.sh with candidate (sha ea98494…), restart via the original cfg path (no kill -9 appspawn-x)",
+  "pre_superseded_r2": "record run.sh sha d3518cef, parent/child stat, maps; back up run.sh to /data/local/tmp/asx/run.sh.d3518cef.bak",
+  "execution_card": "OPERATIONS.md (r2; closes t4 video-1919-review-final d953c270 blockers 1-4)",
+  "superseded_in_r2": [
+   "ops/video_p1_window.sh deleted (unguarded EXECUTE path)",
+   "normalized-SHA acceptance withdrawn -> exact WID-derived before(W)/after(W) CAS",
+   "'restart via original cfg' replaced by fresh reboot -> new parent route (OPERATIONS §4)",
+   "'no LOAD-FAIL + maps + no native error' demoted to supporting; exact result = GOT relocation read (OPERATIONS §5)"
+  ],
+  "exact_success": {
+   "got_slots": {
+    "SL_IID_ANDROIDSIMPLEBUFFERQUEUE": "mem[B+0x4730b0] == Cb+0x3b98",
+    "SL_IID_ANDROIDCONFIGURATION": "mem[B+0x4730e8] == Cb+0x3b90"
+   },
+   "B": "offset-0 mapping start of /data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so in child",
+   "Cb": "offset-0 mapping start of /data/local/tmp/asx/libopensles_android_compat.so in child",
+   "unreadable": "unknown, not success"
+  },
+  "wid_derivation": "sed 's/^export WL_PARENT_ID=33$/export WL_PARENT_ID=<W>/' on committed templates; W from WMS imehost0 == live run.sh field; exactly one line changed"
  },
  "rollback": [
   "restore /data/local/tmp/asx/run.sh from run.sh.d3518cef.bak, verify sha d3518cef",
