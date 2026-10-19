@@ -14,8 +14,10 @@ tags: [media, waiting-for-p1-window, human-review]
 - 更新独立API增量表：精确API→源码blob/commit→构建配方→产物SHA→OH完整版本/ABI→APK SHA与targetSdk→实测范围与证据；生成与当前主表的合并清单，由外环统一出版，历史版本/unknown不改写。
 - 失败保留运行目录/facts并按原基线回滚；没有第二个app验证同API时标unfrozen。正式合代码与远程发布由外环执行。
 - r4部署执行器沿已验r5仅增加libttmplayer派生件，形成run/compat/mffmpeg/player四件；新后像未审定时UNAPPROVED必须在设备调用前拒绝。只读核父进程boot/birth、物理与private-view同inode、四件前像SHA及metadata；run/media/player三份完整备份都在首个swap前建立并验证。每个rename紧邻旧SHA/metadata CAS；回滚必须绑定原apply-plan及原boot备份，known pre/post可恢复、foreign拒绝，不删历史或父进程。apply/rollback后均fresh boot，30分钟窗口与原播放门不变。
+- r5只作诊断时沿用已核r4四件，不新增运行时二进制；只有精确播放器REA证明JNI_OnLoad读取debug.ttplayer.log.enable并接受true、实际provider与OH参数恢复路径已绑定后，才允许在fresh boot后、真实图标启动前临时设置该单键true。先保存原值或明确absent（errNum106）及原始远端回执；禁用file日志模式，不改变安全策略。原absent必须在回滚fresh boot后再次读为absent，空串不算恢复；日志开关未读到true、诊断无结论或窗口到限也恢复四件与参数并核真实feed，诊断成功不降低两轮有声播放验收。
 ## 边界
 ### 允许修改
+- benchmark/2026-10-19-toutiao-video-playback/diagnostic-r5/**
 - benchmark/2026-10-19-toutiao-video-playback/runs/**
 - benchmark/2026-10-19-toutiao-video-playback/api-delta/**
 - benchmark/2026-10-19-toutiao-rea-methods/video-r4-executor-draft/**
@@ -63,5 +65,18 @@ tags: [media, waiting-for-p1-window, human-review]
   当 使用原apply-plan执行回滚
   那么 逐件CAS恢复原件并核metadata，移除仅有的已知compat，fresh boot后核原前像和真实feed
   并且 foreign目标或缺失备份拒绝自动覆盖，不声称任意中断都能恢复
+场景: 日志开关必须绑定实际消费者与可恢复前像
+  测试: ttvideo_playback_receipt
+  审核: human
+  假设 计划临时设置debug.ttplayer.log.enable以观察prepare后的真实播放状态
+  当 核查REA读取时点和值、实际provider及原参数值或absent前像和恢复依据
+  那么 任一项unknown时拒绝参数写入且保留static-only结论，不以日志缺失推断解码未启动
+场景: 诊断日志不替代播放且恢复原参数缺失态
+  测试: ttvideo_playback_receipt
+  审核: human
+  假设 r4四件已过只读检查并在独占30分钟窗口中临时开启日志true
+  当 实际图标启动和视频操作后采集回调及原始日志并结束窗口
+  那么 只按日志证明具体播放阶段，未见动态声音仍NOT_PASSED，并按原apply-plan恢复四件和fresh boot后原参数态
+  并且 原absent须实际读回errNum106，恢复真实feed后释放板锁，空字符串或仅transport rc0不得冒充参数恢复
 ## 排除范围
 - 随机崩溃根因、安全机制改造、用户数据清理和自动远程推送。
