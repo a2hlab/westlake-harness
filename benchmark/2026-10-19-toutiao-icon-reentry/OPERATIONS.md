@@ -171,10 +171,13 @@ sh benchmark/2026-10-19-toutiao-icon-reentry/generator/derive-candidate.sh \
 
 **Deploy / rollback.** Exactly the §3/§5 transaction with the r2 payload: `prepare.py`
 repoints `services[0].path[1]` to `…/icon-manual-20261019-r2/boot-entry.sh` and rejects
-any other cfg change; **fresh boot is the only execution path**. Note that the `before.cfg`
-captured by the r2 transaction points at the r1 boot-entry (the sealed original is the
-r1 transaction's `before.cfg`). **Never delete the r1 ROOT** — it is the field evidence of
-the blocker. Rollback = restore the chosen `before.cfg`; r1/r2 ROOTs are retained.
+any other cfg change; **fresh boot is the only execution path**. For the exact arm /
+generate / prepare / apply / rollback commands, the verified starting state, and the
+host-side diff checks against the r1 plan, see **`OPERATIONS-addendum.md`** (supersedes
+the earlier wording here: rollback-r1 had already restored the sealed cfg `1589c9f2…`, so
+the r2 transaction's `before.cfg` is the **sealed original**, not r1's `after.cfg`; the
+r2 rollback therefore returns the board to the sealed entry). **Never delete the r1 ROOT**
+— it is the field evidence of the blocker. r1/r2 ROOTs are retained.
 
 **Offline proof (this lane).** `tests/run-race-tests.sh` **116/0/0** on `sh` and `dash`:
 Lane A (stub guard emitting the real deny records + fake-`/proc` mutation mid-check) and
