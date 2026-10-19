@@ -930,3 +930,4 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 外环续调度：内环ACK/idle哨只报告信号，不会让已结束的外环自行继续；持续任务期间不能派单后发final自称持续监督。00:06至02:19两窗空闲实案，须保持外环活跃并完成收割→处置→回执。
 
 - 2026-10-20 #91 codec枚举：exact baseline bridge d4fa的mclCount ELF0xf2e88返回1、mclGetName f2e90与mclSupportedTypes f2f40仅MP3/audio-mpeg，12完整REA+独立LLVM已核；Ghidra imagebase100000不可混入ELF，f2ef8属FindByName。只证该文件实现，最终JNI winner/外部bytevc插件未证，不凭FFmpeg configure字符串断言全链无HEVC；手写ops摘要不是原始Evidence。见static/codec-enumeration-independent与codec-java-20261020。
+- 2026-10-20 #91 r10：actual player 8槽读取显示6个ANW接口落libandroid76512d97、lock/unlock落shim85c789f4；精确后者ELF正常返回固定errno19/-19，与drawPicture锁buffer错误吻合。ByteVC1创建/参数712x360与first-frame消息不证明上屏，10图仍同封面；native_ready1不证明geometry(实测0/0/-1)或窗口对象契约。证据 candidate-r10/window 与 static/r10-live-review/checkpoint-02，已回滚24353a4b真实feed并解锁。
