@@ -1,0 +1,46 @@
+# OH SLOHBufferQueueItf vtable (sysroot OpenSLES_OpenHarmony.h sha256 c2e5b0ff39cdbb147dcc0a5c1a83335df08f9bc9b43b8f15b9edf688b72964df; also in benchmark/2026-10-02-u12-upstream-audio/inputs/SLES/)
+struct SLOHBufferQueueItf_;
+typedef const struct SLOHBufferQueueItf_ * const * SLOHBufferQueueItf;
+
+typedef void (SLAPIENTRY *SlOHBufferQueueCallback)(
+    SLOHBufferQueueItf caller,
+    void *pContext,
+    SLuint32 size
+);
+
+/** OH Buffer queue state **/
+
+typedef struct SLOHBufferQueueState_ {
+    SLuint32    count;
+    SLuint32    index;
+} SLOHBufferQueueState;
+
+
+struct SLOHBufferQueueItf_ {
+    SLresult (*Enqueue) (
+        SLOHBufferQueueItf self,
+        const void *buffer,
+        SLuint32 size
+    );
+    SLresult (*Clear) (
+        SLOHBufferQueueItf self
+    );
+    SLresult (*GetState) (
+        SLOHBufferQueueItf self,
+        SLOHBufferQueueState *state
+    );
+    SLresult (*GetBuffer) (
+        SLOHBufferQueueItf self,
+        SLuint8** buffer,
+        SLuint32* size
+    );
+    SLresult (*RegisterCallback) (
+        SLOHBufferQueueItf self,
+        SlOHBufferQueueCallback callback,
+        void* pContext
+    );
+};
+
+# Android NDK SLAndroidSimpleBufferQueueItf_ (AOSP OpenSLES_Android.h, for comparison): Enqueue, Clear, GetState, RegisterCallback(self, slAndroidSimpleBufferQueueCallback(caller,pContext), pContext)
+# => Android slot 3 (RegisterCallback) lands on OH slot 3 (GetBuffer) if GetInterface(SL_IID_ANDROIDSIMPLEBUFFERQUEUE->SL_IID_BUFFERQUEUE) returns the OH queue object.
+# board OH libOpenSLES 05d8ac90 exports (outer-61b-OpenSLES-exports.txt): IOHBufferQueueInit(void*, SLInterfaceID, ulong), RegisterCallback(SLOHBufferQueueItf, cb(itf,ctx,size), ctx), AudioPlayerAdapter::GetBufferAdapter

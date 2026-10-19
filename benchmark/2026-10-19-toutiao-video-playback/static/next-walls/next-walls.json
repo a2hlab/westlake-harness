@@ -1,0 +1,123 @@
+{
+ "schema": "ttvideo-next-walls/v1",
+ "status": "static_candidates_only",
+ "precondition": "P1 OpenSL IID load blocker removed on 61b (OPERATIONS r2 §5 exact GOT result). Until then every row below is unknown and NOT a first blocker; expected keys moved = unknown pending P1 result.",
+ "no_build_no_runtime_change": true,
+ "walls": [
+  {
+   "id": "P2a",
+   "route": "audio",
+   "state": "unknown",
+   "consumer": "libttmplayer b427614d OpenSL ES: GetInterface(SL_IID_ANDROIDSIMPLEBUFFERQUEUE) then (*bq)->RegisterCallback / Enqueue (Android push model)",
+   "provider_after_P1": "P1 compat constructor remaps SL_IID_ANDROIDSIMPLEBUFFERQUEUE -> OH SL_IID_BUFFERQUEUE; OH 05d8ac90 queue object is SLOHBufferQueueItf {Enqueue,Clear,GetState,GetBuffer,RegisterCallback(cb(itf,ctx,size))} (pull model)",
+   "static_basis": "vtable slot 3: Android RegisterCallback vs OH GetBuffer -> calling Android RegisterCallback would invoke OH GetBuffer(self,(SLuint8**)callback,(SLuint32*)ctx); callback arity/semantics also differ (evidence next-walls/oh-opensles-vtable-excerpt.txt)",
+   "also": "Android data locator SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE (0x800007BD) acceptance by OH CreateAudioPlayer unknown; SL_IID_ANDROIDCONFIGURATION GetInterface unknown to OH",
+   "trigger_log": [
+    "Toutiao child fatal signal (DfxFaultLogger/crash42) whose frames include /system/lib64/libOpenSLES.so (GetBuffer / AudioPlayerAdapter::GetBufferAdapter) or fault address inside libttmplayer text (callback written as buffer pointer)",
+    "or: no new AudioRenderer creation in hilog delta for the child after video start (silent), with player continuing",
+    "record verbatim; not a root cause until attributed to the exact OpenSL call"
+   ],
+   "copy_source": {
+    "primary": {
+     "repo": "$WORKSPACES/vm-copies/westlake-current",
+     "commit": "c7d29921d5a39057ba3c2c2c4dccbd1b391bedc3 (branch origin/corpus2-fixes; history 0b5c9af -> 1e98162 -> c7d2992)",
+     "path": "framework/webview-shim/opensles_android_adapter.c",
+     "sha256": "4aac5856824293c8a55825b7b7c28c1dfce7cd2bbb8c356639b0a95d93457513",
+     "snapshot_in_repo": "benchmark/2026-10-02-u12-upstream-audio/upstream/opensles_android_adapter.c",
+     "what": "interposes slCreateEngine, defines both Android IIDs, Android32<->OH64 wrappers, locator/PCM conversion, OH pull queue -> Android push callback with continuous refill"
+    },
+    "fixed_variant": {
+     "path": "benchmark/2026-10-02-u12-upstream-audio/candidate/opensles_android_adapter.c",
+     "sha256": "00fbfddc8c842ccca87cd08c6b468eb4085bef013e945b65e1d237ea268885a6",
+     "what": "U12 fixes: Android16 vs OH24 IID field compare, no bare backend dlopen (injected owner handle; caller/publication NOT implemented)",
+     "build": "benchmark/2026-10-02-u12-upstream-audio/stage.py (two byte-identical builds 0e9b211e)"
+    }
+   },
+   "minimal_build_unit": "one DSO from one adapter source, preloaded (RouteB LD_PRELOAD) so its slCreateEngine + IIDs precede libttmplayer; it would REPLACE the P1 compat DSO (same two IID names; do not ship both)",
+   "known_limits": [
+    "U12: OH 05d8 PLAY RegisterCallback/SetCallbackEventsMask return 12 (FEATURE_UNSUPPORTED); adapter forwards PLAY callbacks -> any ttmplayer use of Play callbacks still fails (use unknown)",
+    "upstream design lived inside a different (larger) webview_bionic_shim; RouteB shim 85c789f4 lacks it",
+    "audible output never evidenced for Toutiao"
+   ]
+  },
+  {
+   "id": "P3a",
+   "route": "video_surface (CPU)",
+   "state": "unknown",
+   "consumer": "libttmplayer ANativeWindow_lock/unlockAndPost (JUMP_SLOT)",
+   "provider_now": "LD_PRELOAD libwebview_bionic_shim 85c789f4 stub: logs once '[WESTLAKE-ANW] ANativeWindow_lock: CPU rendering path not implemented' and fails",
+   "trigger_log": [
+    "exact line '[WESTLAKE-ANW] ANativeWindow_lock: CPU rendering path not implemented' in the Toutiao child stderr delta after video start",
+    "plus identical t20/t25 video ROI"
+   ],
+   "copy_source": {
+    "donor": {
+     "repo": "$WORKSPACES/vm-copies/westlake-current",
+     "commit": "532633da63b770d3d459c74683db6d7a1f82a022 (HEAD; last touch f82d1f1)",
+     "path": "framework/webview-shim/libandroid_webview_shim.c",
+     "blob": "7b31d8cfd64d59b99e5169bd50ad47ad982fa37e",
+     "sha256": "c8772d05c5a815f1820809d6c1a6af265e51514c297d82bf427dd6a17b0e7f43",
+     "what": "WESTLAKE §772 lock = NativeWindowRequestBuffer + map/fence + flush, written for libttmplayer on an OH SurfaceTexture producer"
+    },
+    "routeb_adapter": {
+     "path": "benchmark/2026-10-01-u11-native/window-lock/owner_wrappers.c",
+     "sha256": "1eb348fc11aba4f8afb0138a7293b3a563b173f51b2d0c45e3ec87e1ae8cfa27",
+     "build": "benchmark/2026-10-01-u11-native/build_window_shim.py (candidate 8728134a, offline verified 9 tests/11 modes, never deployed)",
+     "unwrap": "oh_anw_get_oh via dlsym(RTLD_DEFAULT) — RouteB bridge d4fae8e5 exports oh_anw_get_oh/oh_anw_wrap (ABI equality with U-series bridge unverified)"
+    }
+   },
+   "minimal_build_unit": "U11 window-lock DSO (exports only ANativeWindow_lock/unlockAndPost); must precede libwebview_bionic_shim in LD_PRELOAD to win; its NEEDED liboh_android_runtime.so resolves to RouteB 8ab6742d (symbol closure unverified -> offline gate first)"
+  },
+  {
+   "id": "P3b",
+   "route": "video_surface (GLES)",
+   "state": "unknown",
+   "consumer": "libttmplayer eglCreateWindowSurface(window from ANativeWindow_fromSurface)",
+   "provider_now": "fromSurface = libhwui a11c9154 returning the prewrapped Surface.mNativeObject (AdapterAnw); no RouteB eglCreateWindowSurface interposer (only bridge exports eglSwapBuffers); real = OH platformsdk libEGL 96bc1421 -> libGLES_mali",
+   "static_basis": "DIGEST 2026-10-03 (Flutter): raw AdapterAnw handed to mali -> SEGV at ANativeWindow_getFormat+60",
+   "trigger_log": [
+    "Toutiao child SIGSEGV with libGLES_mali.z.so / libEGL frames after video start",
+    "or EGL error (EGL_BAD_NATIVE_WINDOW 0x300B) if surfaced by a trace",
+    "[WESTLAKE-ANWFS] for the same window immediately before is supporting only"
+   ],
+   "copy_source": {
+    "repo": "$WORKSPACES/vm-copies/westlake-current",
+    "commit": "532633da63b770d3d459c74683db6d7a1f82a022 (last touch f82d1f1)",
+    "path": "framework/player-gl-shim/player_egl_trace.c",
+    "blob": "d532cea213b4c4b734035a74dff8c479d9d567cc",
+    "sha256": "63bb217d0c7d594d83258dd1bb31066c28e433e4cbd8d215c8b6f9f78a8e3dee",
+    "build": "framework/player-gl-shim/build_arm64.sh (c29e847c; SONAME libEGL.so, -lnative_window)",
+    "what": "player-only EGL boundary: traces surfaces, translates EGL_ANDROID_presentation_time to OH window, avoids eglPresentationTimeANDROID ELF preemption fault at libttmplayer+0x47b380"
+   },
+   "routeb_gap": "donor assumes a raw OHNativeWindow (Westlake player namespace + bridge fromSurface); RouteB needs oh_anw_get_oh unwrap before real eglCreateWindowSurface and must stay player-scoped (global libEGL interposition would also hit hwui; RouteB libart has one ANCHOR, no NEXT_ANCHOR)"
+  },
+  {
+   "id": "P3c",
+   "route": "video_surface (presentation time)",
+   "state": "unknown",
+   "consumer": "libttmplayer eglGetProcAddress('eglPresentationTimeANDROID') cached in its exported OBJECT slot",
+   "trigger_log": [
+    "SIGSEGV with pc in libttmplayer near +0x47b380 or a NULL indirect call after first frame"
+   ],
+   "copy_source": "same as P3b (westlake_egl_presentation_time)"
+  },
+  {
+   "id": "P4",
+   "route": "network",
+   "state": "unknown",
+   "consumer": "TTVideoEngine MDL",
+   "observed": "libavmdl*/libttopenssl 'No such file' LOAD-FAIL in RouteB feed logs (non-fatal there)",
+   "trigger_log": [
+    "after P1: player error/retry without data, plus hilog network errors; external service refusal kept separate (external_blocked)"
+   ],
+   "copy_source": "none identified (APK lacks these libs)"
+  }
+ ],
+ "order_note": "P2a and P3a/P3b/P3c all sit behind the P1 load; which fires first is unknown and is decided only by the first post-P1 window log (record verbatim, rank by first fatal)",
+ "inputs": {
+  "oh_vtable_excerpt": "next-walls/oh-opensles-vtable-excerpt.txt",
+  "oh_vtable_excerpt_sha256": "2210eb76c18f9a80c6fef4eccfe5f18ba3c1cde2a867ffc187cfcb54fb126e65",
+  "u12_readme": "benchmark/2026-10-02-u12-upstream-audio/README.md",
+  "u11_readme": "benchmark/2026-10-01-u11-native/README.md"
+ }
+}

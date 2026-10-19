@@ -136,3 +136,19 @@ These statements replace any conflicting text in Updates 1–2. All stay **unkno
 ## Update 6 — log provenance correction
 
 `evidence/reproduce.stdout.txt` and `evidence-checks.cargo.*` had been scrubbed in place. They are replaced with `*.sanitized.txt` copies of a fresh raw rerun, whose output is identical in substance (the same 2 unresolved IIDs). The raw originals are kept privately; their SHA256 is in [evidence/t1-raw-log-manifest.txt](evidence/t1-raw-log-manifest.txt).
+
+## Update 7 — next-wall candidates behind P1 (static only; [next-walls/next-walls.json](next-walls/next-walls.json))
+
+None of these is a first blocker. The expected keys moved stay unknown until the P1 window result.
+
+- **P2a audio (strongest static signal):** after P1, the compat remaps the Android simple queue to OH `SL_IID_BUFFERQUEUE`. OH's queue vtable is `{Enqueue,Clear,GetState,GetBuffer,RegisterCallback}` (pull), while Android's is `{Enqueue,Clear,GetState,RegisterCallback}` (push). A call to Android `RegisterCallback` would land on OH `GetBuffer` ([vtable excerpt](next-walls/oh-opensles-vtable-excerpt.txt)).
+  - **Copy:** Westlake `corpus2-fixes` `c7d2992` `opensles_android_adapter.c` (`4aac5856`), or the U12 fixed variant (`00fbfddc`).
+  - **Shape:** one preloaded DSO that *replaces* the P1 compat.
+  - **Limit:** PLAY callbacks are still unsupported by OH.
+- **P3a CPU surface:**
+  - **Trigger:** the exact `[WESTLAKE-ANW] ANativeWindow_lock: CPU rendering path not implemented` line.
+  - **Copy:** the Westlake §772 lock in `libandroid_webview_shim.c` (`c8772d05`), via the U11 RouteB-style wrapper `owner_wrappers.c` (`1eb348fc`, `oh_anw_get_oh` unwrap) and `build_window_shim.py`.
+- **P3b/P3c GLES surface:** the hwui-prewrapped window goes straight to OH libEGL/mali (DIGEST Flutter precedent).
+  - **Copy:** Westlake `player-gl-shim/player_egl_trace.c` (`63bb217d`, presentation-time translation and `+0x47b380` preemption fix).
+  - **RouteB gaps:** it needs an unwrap step and player scoping (one ANCHOR).
+- **P4 network/MDL:** observed `libavmdl*` absence; external refusal is kept separate.
