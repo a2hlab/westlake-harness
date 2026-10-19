@@ -922,3 +922,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 
 - 2026-10-19 #91 r4：同一ELF的多个PT_LOAD可因小p_offset分别向页对齐而在maps出现多个offset0，不能据此判多份库；本次compat四页按各自p_vaddr求同一bias，独立读三GOT槽全匹配，player缓存自绑已证但三组25秒仍封面，不等于播放。证据 video-r4-compat-load-bias + video-r4-got-read-r2；原unknown探针保留，原件持久归档见 benchmark/2026-10-19-toutiao-rea-methods/video-1919-r4-review/window-archive.json。
 - 2026-10-19 REA证据纪律：字符串归属必须在所引normalized方法正文逐字存在，入口委托不代替被调方法；0 DEX入边只限静态扫描覆盖，不排除reflection/JNI/hotfix。沿实测栈追生产路径，普通HWUI/一次wchan/缺日志不升级为播放器因果；三次复发见 FLAW-011 / EVO-0148–0150。
+
+- 2026-10-19 #91 r7日志链：默认logger函数体为RET不能代表当前消费者；实际player GOT、liblog callback、libbase函数对象须逐跳读值并钉ELF/inode。别的caller有C00f00日志也不证明本caller通路；真实runtime格式43a5c为[%s:%u] %s，摘要不能冒充REA原件。本轮24条完整REA与r7证据见 benchmark/2026-10-19-toutiao-video-playback/diagnostic-r5/retry-r7/；仍为静止封面，非播放通过。
