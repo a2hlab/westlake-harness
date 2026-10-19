@@ -6,10 +6,10 @@ repo: A2OH/westlake-harness
 layers: [Verification, Measurement]
 status: open
 severity: S2
-recurrence: 6
+recurrence: 7
 fingerprint: verification/proxy-not-target
 issue:
-cards: [EVO-0148, EVO-0149, EVO-0150, EVO-0151, EVO-0153, EVO-0154]
+cards: [EVO-0148, EVO-0149, EVO-0150, EVO-0151, EVO-0153, EVO-0154, EVO-0155]
 filed: 2026-10-19
 ---
 
@@ -22,6 +22,8 @@ filed: 2026-10-19
 - r7：以另一caller的C00f00输出代替本caller绑定，又把实际ELF的`[%s:%u] %s`及file参数误写为public格式及message；独立字节和指令复核后撤回，错误稿未采认。24条完整REA工具结果与原件哈希已落主仓，避免摘要冒充verbatim。见 `benchmark/2026-10-19-toutiao-video-playback/diagnostic-r5/retry-r7/`，EVO-0151。
 
 - r9/r10：把手写 REA 摘要当作完整工具原件、把 decoder open/尺寸日志当完整解码、把 native_ready 当有效几何，又把自定义 OH libandroid 称为 AOSP 实现。精确部署 ELF 与实际槽指针已反证；修正报告仍须按源版本与实际调用逐条采认。见 `benchmark/2026-10-19-toutiao-video-playback/static/r10-window-contract-review/`、`candidate-r10/window/`，EVO-0153/0154。
+
+- r11 复审：把候选 f12c 源码的 unwrap-NULL 分支归给部署 shim85c；精确部署 ELF 的 lock/unlock 正常路径固定 errno19/-19，不能用相邻源码冒充实际实现。原错误与更正均保留，见 `benchmark/2026-10-19-toutiao-video-playback/static/r11-independent-review/`，EVO-0155。
 
 ## 处置
 
