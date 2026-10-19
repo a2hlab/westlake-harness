@@ -23,7 +23,7 @@
 
 ## P1 — ranked first-fatal candidate
 
-`libttmplayer.so` is `BIND_NOW`. Both IIDs are non-weak `GLOBAL OBJECT UND` and use `R_AARCH64_GLOB_DAT`. We resolved its full undefined set against every known provider in the run.sh lookup scope: preloads, NEEDED closure, RouteB libs and OH sysroot ABI. **Exactly two symbols remain unresolved: `SL_IID_ANDROIDCONFIGURATION` and `SL_IID_ANDROIDSIMPLEBUFFERQUEUE`** ([reproduce.sh](evidence/reproduce.sh), [stdout](evidence/reproduce.stdout.txt)). The prediction is that the first player init logs:
+`libttmplayer.so` is `BIND_NOW`. Both IIDs are non-weak `GLOBAL OBJECT UND` and use `R_AARCH64_GLOB_DAT`. We resolved its full undefined set against every known provider in the run.sh lookup scope: preloads, NEEDED closure, RouteB libs and OH sysroot ABI. **Exactly two symbols remain unresolved: `SL_IID_ANDROIDCONFIGURATION` and `SL_IID_ANDROIDSIMPLEBUFFERQUEUE`** ([reproduce.sh](evidence/reproduce.sh), [stdout](evidence/reproduce.stdout.sanitized.txt)). The prediction is that the first player init logs:
 
 ```
 [SOURCE-NATIVE-LOAD-FAIL] path=.../libttmplayer.so namespace=0 error=Error relocating .../libttmplayer.so: SL_IID_ANDROID…: symbol not found
@@ -132,3 +132,7 @@ These statements replace any conflicting text in Updates 1–2. All stay **unkno
 - The compat DSO is **not data-only**. It exports two data symbols **and runs a constructor**.
 - That constructor remaps `SL_IID_ANDROIDSIMPLEBUFFERQUEUE` to OH's standard **`SL_IID_BUFFERQUEUE`**, not `SL_IID_OH_BUFFERQUEUE`.
 - The source comment "Android's simple queue is API-compatible for PCM playback" is the author's assertion. It is **not** evidence from this work. Whether OH OpenSL serves libttmplayer's queue use remains unknown (P2).
+
+## Update 6 — log provenance correction
+
+`evidence/reproduce.stdout.txt` and `evidence-checks.cargo.*` had been scrubbed in place. They are replaced with `*.sanitized.txt` copies of a fresh raw rerun, whose output is identical in substance (the same 2 unresolved IIDs). The raw originals are kept privately; their SHA256 is in [evidence/t1-raw-log-manifest.txt](evidence/t1-raw-log-manifest.txt).

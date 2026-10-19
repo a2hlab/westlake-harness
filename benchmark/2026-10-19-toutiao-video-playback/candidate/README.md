@@ -25,9 +25,9 @@ On 61b boot `8f7f12bf`, child 9290, run.sh `d3518cef`, a tap on a real feed vide
 
 ## Build
 
-[build_candidate.sh](build_candidate.sh) uses `scripts/lab/dockbuild.sh` with the pinned OHOS clang 15.0.4 `feef13a3`, the same compiler string as the RouteB preload DSOs. The recipe is Westlake `build.sh` `0d8e4f43` (lines 89–93). All steps returned rc 0. Raw stdout/stderr/rc for each step is in [logs/](logs/), and toolchain hashes are in [toolchain-manifest.json](toolchain-manifest.json).
+[build_candidate.sh](build_candidate.sh) uses `scripts/lab/dockbuild.sh` with the pinned OHOS clang 15.0.4 `feef13a3`, the same compiler string as the RouteB preload DSOs. The recipe is Westlake `build.sh` `0d8e4f43` (lines 89–93). All steps returned rc 0. **Raw logs** are kept privately and unmodified at `$HOME/.local/share/westlake/toutiao-video-t2-build/20261019T180522/`, with their SHA256 listed in [logs-sanitized/raw-log-manifest.txt](logs-sanitized/raw-log-manifest.txt). The repo carries renamed `*.sanitized.txt` copies in [logs-sanitized/](logs-sanitized/) only, and toolchain hashes are in [toolchain-manifest.json](toolchain-manifest.json).
 
-## Offline gates ([logs/40-offline-gates.stdout.txt](logs/40-offline-gates.stdout.txt))
+## Offline gates ([logs-sanitized/40-offline-gates.stdout.sanitized.txt](logs-sanitized/40-offline-gates.stdout.sanitized.txt))
 
 - **Negative:** without the compat DSO, libttmplayer has 2 unresolved symbols (the two IIDs).
 - **Positive:** with it, **0 unresolved** against the RouteB/APK/OH-ABI provider set.
@@ -38,3 +38,7 @@ On 61b boot `8f7f12bf`, child 9290, run.sh `d3518cef`, a tap on a real feed vide
 **Not testable offline:** loading in the RouteB preload; the constructor's effect; OH OpenSL behavior with the remapped IID; release/lifecycle. These belong to the board window in [rollback-plan.json](rollback-plan.json), together with the exact deploy steps, rollback and pass criteria (this change only).
 
 **Not claimed:** audio, video playback, or the next wall (P2 audio callbacks, P3 surface, network/content stay unknown).
+
+## Log provenance correction
+
+The first build commit `f3668cef85` had scrubbed `$HOME` **in place** in `logs/`, with no backup, so those files were not raw originals. They are removed. The small build was re-run (`build_candidate.sh`, now with a private `LOGDIR` that is never scrubbed). The rerun is byte-identical: DSO `9f558aaf`, unstripped `701ba399`, link-only `486936c0`. Public copies are produced by [sanitize_logs.sh](sanitize_logs.sh) under distinct names. The closure inputs used by the gates are also persisted privately (`closure-inputs/`).

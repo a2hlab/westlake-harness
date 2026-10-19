@@ -2,19 +2,23 @@
 # t2 offline build of libopensles_android_compat.so (Toutiao video P1).
 # Recipe: westlake scripts/toutiao/native/build.sh 0d8e4f43 (build_link_only + build_shared, lines 89-93),
 # executed through scripts/lab/dockbuild.sh with the pinned OHOS clang-15 + sysroot. Run from this directory.
-# Every step's stdout/stderr/rc is kept under logs/; link-only outputs are never deployable.
+# Every step's raw stdout/stderr/rc is written to LOGDIR (default: a private persistent dir under
+# $HOME/.local/share/westlake/, never scrubbed); the repo keeps renamed *.sanitized.txt copies made by
+# sanitize_logs.sh. Link-only outputs are never deployable.
 set -uo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd); cd "$HERE"
 REPO=$(cd "$HERE/../../.." && pwd)
 DB="$REPO/scripts/lab/dockbuild.sh"
 SEL="$REPO/benchmark/2026-10-19-toutiao-video-playback/static/selected-change"
 OH=/home/dspfac/a2hlab/source-closure/verify/toolchains/ohos-sdk/native
-mkdir -p src logs out/link-only.NOT-FOR-DEPLOY out/unstripped out/asx
+LOGDIR=${LOGDIR:-$HOME/.local/share/westlake/toutiao-video-t2-build/$(date +%Y%m%dT%H%M%S)}
+mkdir -p src "$LOGDIR" out/link-only.NOT-FOR-DEPLOY out/unstripped out/asx
+echo "raw logs: $LOGDIR"
 step() {  # step NAME CMD...
   local n=$1; shift
-  echo "== $n: $*" > "logs/$n.cmd.txt"
-  "$@" > "logs/$n.stdout.txt" 2> "logs/$n.stderr.txt"; local rc=$?
-  echo "$rc" > "logs/$n.rc.txt"; echo "$n rc=$rc"
+  echo "== $n: $*" > "$LOGDIR/$n.cmd.txt"
+  "$@" > "$LOGDIR/$n.stdout.txt" 2> "$LOGDIR/$n.stderr.txt"; local rc=$?
+  echo "$rc" > "$LOGDIR/$n.rc.txt"; echo "$n rc=$rc"
   [ "$rc" -eq 0 ] || { echo "FAILED $n" >&2; exit "$rc"; }
 }
 # 1. verbatim sources (SHA pinned by the t2 contract)
