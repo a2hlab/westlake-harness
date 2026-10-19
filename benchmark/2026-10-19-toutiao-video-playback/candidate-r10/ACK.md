@@ -1,0 +1,1 @@
+ACK video-2020-r10-budget: exact single-constant419aa6ea successor;16/16 independent host cases;7 receipt negatives;Rust3/3 plus final receipt selector PASS. Core3 frozen; only compat production rebuild proposed and delegated to outer, not executed here. No device calls, no provider or playback PASS. See landing-paths.txt and SHA256SUMS.
