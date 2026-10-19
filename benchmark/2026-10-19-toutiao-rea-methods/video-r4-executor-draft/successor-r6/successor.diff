@@ -1,0 +1,65 @@
+--- frozen-draft/video_guarded_window_r6.py
++++ successor-r6/video_guarded_window_r6.py
+@@ -1,17 +1,18 @@
+-"""UNAPPROVED four-file executor draft; no device calls until separately reviewed successor."""
++"""Reviewed four-file r4 executor successor; outer-held exact-identity window only."""
+ import argparse,hashlib,json,re,shlex,sys
+ from pathlib import Path
+-# Deliberately unresolved. This draft is evidence, never a board entry point.
++# Candidate source and bytes accepted by outer; unapproved sentinels still refuse before Board setup.
+ PLAYER='lib/arm64-v8a/libttmplayer.so'
+ PBEFORE='b427614d57e4a7279f362b3f341de3cdd4b9f9a8859257016bcda24e5f6d3a02'
+-PAFTER='UNAPPROVED'
+-PLAYER_INPUT_REL='UNAPPROVED'
++PAFTER='5fba80506cd1a494de5fb6aee63930192d6d0539657cca51e99381ff8a052ee4'
++EXECUTION_REVIEW='APPROVED'
++PLAYER_INPUT_REL='benchmark/2026-10-19-toutiao-video-playback/candidate-r4/deploy-inputs/libttmplayer.so'
+ PLAYER_METADATA='644:20011206:20011206'
+ PLAYER_LABEL='u:object_r:appdat:s0'
+-if (not re.fullmatch(r'[0-9a-f]{64}',PAFTER)
++if (EXECUTION_REVIEW!='APPROVED' or not re.fullmatch(r'[0-9a-f]{64}',PAFTER)
+     or PLAYER_INPUT_REL=='UNAPPROVED'
+     or PLAYER_METADATA=='UNAPPROVED' or PLAYER_LABEL=='UNAPPROVED'):
+- sys.exit('UNAPPROVED_DRAFT: player after SHA/source path and fresh metadata pins unresolved; zero device calls')
++ sys.exit('UNAPPROVED_DRAFT: final candidate card/receipts or source binding unapproved; zero device calls')
+ assert re.fullmatch(r'[0-7]{3,4}:20011206:20011206',PLAYER_METADATA)
+ assert re.fullmatch(r'u:object_r:[A-Za-z0-9_]+:s0',PLAYER_LABEL)
+ assert not Path(PLAYER_INPUT_REL).is_absolute() and '..' not in Path(PLAYER_INPUT_REL).parts
+@@ -27,7 +28,7 @@
+ def pathguard(path):
+  return 'walk='+q(path)+'; while [ "$walk" != / ]; do test ! -L "$walk"; walk=$(dirname "$walk"); done\n'
+ def fg(path,digest,meta,label):
+- return pathguard(path)+f'test -f {q(path)}\ntest "$(sha256sum {q(path)} | cut -d\' \' -f1)" = {q(digest)}\ntest "$(stat -c %a:%u:%g {q(path)})" = {q(meta)}\nls -Zd {q(path)} | grep -F {q(label)} >/dev/null\n'
++ return pathguard(path)+f'test -f {q(path)}\ntest "$(sha256sum {q(path)} | cut -d\' \' -f1)" = {q(digest)}\ntest "$(stat -c %a:%u:%g {q(path)})" = {q(meta)}\ntest "$(ls -Zd {q(path)} | cut -d\' \' -f1)" = {q(label)}\n'
+ def shell(c):return board.shell('( set -eu;\n'+c+'\n)')[1]
+ board.ready()
+ wm=read("hidumper -s WindowManagerService -a '-a'");(a.out/'wms.txt').write_text(wm)
+@@ -40,6 +41,7 @@
+ base=repo/'benchmark/2026-10-19-toutiao-video-playback'
+ before=(base/'static/selected-change/run.sh.d3518cef.orig').read_bytes();after=(base/'candidate-r3/deploy-inputs/run.sh').read_bytes()
+ assert sha(before)=='d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4' and sha(after)=='79275cf9f9a72be72beb551b978ee5f2faaed84129980aa5c79d2f51acd040d5'
++before_template,after_template=before,after
+ for data in [before,after]:assert data.count(b'export WL_PARENT_ID=33\n')==1
+ before=before.replace(b'export WL_PARENT_ID=33\n',f'export WL_PARENT_ID={wid}\n'.encode());after=after.replace(b'export WL_PARENT_ID=33\n',f'export WL_PARENT_ID={wid}\n'.encode())
+ mactual=read('sha256sum '+RT+'/'+MEDIA).split()[0]
+@@ -61,7 +63,11 @@
+  assert mactual in (MBEFORE,MAFTER),'foreign media bytes'
+  assert apply_plan['mode']=='apply' and apply_plan['runtime']==RT and apply_plan['dso_sha']==DSHA and apply_plan['cfg_sha']==CSHA
+  assert re.fullmatch('[0-9a-f-]{36}',apply_plan['boot'])
+- assert actual in (sha(before),sha(after)),(actual,'foreign run.sh')
++ origin_wid=str(apply_plan['wid']);assert origin_wid.isdigit(),'invalid original WID'
++ origin_before=before_template.replace(b'export WL_PARENT_ID=33\n',f'export WL_PARENT_ID={origin_wid}\n'.encode())
++ origin_after=after_template.replace(b'export WL_PARENT_ID=33\n',f'export WL_PARENT_ID={origin_wid}\n'.encode())
++ assert apply_plan['before_sha']==sha(origin_before) and apply_plan['after_sha']==sha(origin_after),'original WID/template pins differ'
++ assert actual in (sha(before),sha(after),sha(origin_before),sha(origin_after)),(actual,'foreign run.sh')
+  assert (meta,label,dlabel)==(apply_plan['run_metadata'],apply_plan['run_label'],apply_plan['dso_label'])
+  expected=actual
+  dso_present=read(f'if [ -e {RT}/{DSO} ]; then echo yes; else echo no; fi').strip()=='yes'
+@@ -90,6 +96,7 @@
+ 
+ shell(pre)
+ plan={'mode':a.mode,'boot':a.boot,'parent':a.parent,'parent_birth':a.birth,'wid':wid,'before_sha':sha(before),'after_sha':sha(after),'run_metadata':meta,'run_label':label,'dso_label':dlabel,'dso_sha':DSHA,'cfg_sha':CSHA,'runtime':RT,'media_before_sha':MBEFORE,'media_after_sha':MAFTER,'media_metadata':mmeta,'media_label':mlabel,'player_path':PLAYER,'player_before_sha':PBEFORE,'player_after_sha':PAFTER,'player_metadata':pmeta,'player_label':plabel,'player_input_rel':PLAYER_INPUT_REL}
++if apply_plan is not None:plan['origin_apply_plan_sha256']=sha(a.apply_plan.read_bytes());plan['origin_apply_boot']=apply_plan['boot'];plan['origin_apply_wid']=origin_wid
+ (a.out/'plan.json').write_text(json.dumps(plan,indent=2)+'\n');(a.out/'before.run.sh').write_bytes(before);(a.out/'after.run.sh').write_bytes(after)
+ if a.mode=='preflight':print(json.dumps(plan));sys.exit()
+ stage='/data/local/tmp/ttvideo-'+a.mode+'-'+a.boot[:8]+'-'+sha(str(a.out).encode())[:8];shell(parent_guard+pathguard(stage)+f'test ! -e {stage}; mkdir {stage}; chmod 700 {stage}\n')
