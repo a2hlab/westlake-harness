@@ -3,13 +3,16 @@ name: "Toutiao video first-blocker minimal repair"
 inherits: project
 satisfies: [REQ-TTVIDEO]
 depends: [t1-static-evidence]
-tags: [media, waiting-for-evidence]
+tags: [media, ready, opensles-iid]
 ---
 ## 意图
-仅在t1把当前首阻断API归属到精确消费者与提供方后，制作独立可回滚候选；优先移植已验证实现，保持已封板的主窗口和图标路径。当前未选定具体API，不能先重写媒体栈。
+仅在t1把当前首阻断API归属到精确消费者与提供方后，制作独立可回滚候选；优先移植已验证实现，保持已封板的主窗口和图标路径。t1已确认首阻断：61b boot 8f7f12bf child 9290 中 libttmplayer.so 在 namespace 0 重定位缺 SL_IID_ANDROIDSIMPLEBUFFERQUEUE（selected-change.json）。本任务只解决该加载阻断，不宣称播放。
 ## 已定决策
 - t1的selected-change.json必须绑定input SHA、源码blob、允许文件列表、预计移走首致命点的key与已验证来源；外环确认后才开建，unknown或external_blocked禁止开建。
 - 只在candidate下复制并修改获准的源码单元，不改冻结原件；需要不同文件时先修订契约再lint。
+- 获准源码仅两件，逐字复制不改：opensles_android_compat.c（sha256 cf45ad430a08cbe090f030357a346be7a0bac49f48c06196a11c7818de3f9351）与link_only_stub.c（sha256 fa47585b8fb702e8da05c52d732c9c964b5ec50a34edfa6815dea7f962898e13），配方为westlake build.sh 0d8e4f43第89至93行，经dockbuild.sh cc用OHOS clang 15.0.4 feef13a3编出libopensles_android_compat.so。
+- 部署输入仅两件：新增/data/local/tmp/asx/libopensles_android_compat.so，以及run.sh第33行LD_PRELOAD末尾追加该路径（d3518cef→ea98494255b05699ca24b134e6ada8849b023b4ab59d3d7e291194cfa8425f73），libttmplayer保持namespace 0；回滚为恢复d3518cef并删除该库。
+- 离线门：导出仅两个IID、DT_NEEDED含libOpenSLES.so、不导出libc类符号、用t1 reproduce.sh闭包加入该库后libttmplayer未解析集为空。
 - 保留相同namespace/ABI与未改行为；构建前check_frozen、逐部署件strings/class/open-site对照、工具链哈希和原始stdout/stderr及rc=0都入回执。
 - 功能检查按真实修复API增加正例、拒绝例和释放/生命周期测试；不以返回OK、空数据或注册成功代替视频解码/呈现。
 ## 边界

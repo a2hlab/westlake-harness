@@ -1,6 +1,6 @@
 # Toutiao video t1 — static evidence and first-fatal prediction (2026-10-19)
 
-**Status: `needs_observation`. No route is confirmed; no selected change; t2 stays closed.** All five media routes are `unknown`. One load-time first-fatal candidate (P1) is ranked first, with two read-only requests and one short window that confirm or refute it.
+**Status (Update 4): P1 CONFIRMED on 61b; selected change proposed for outer approval — see Update 4.** *(Original status: needs_observation; kept below for history.)* All five media routes are `unknown`. One load-time first-fatal candidate (P1) is ranked first, with two read-only requests and one short window that confirm or refute it.
 
 ## What was wrong before
 
@@ -102,3 +102,27 @@ These statements replace any conflicting text in Updates 1–2. All stay **unkno
 4. `ILibraryLoader` alone is not evidence of a custom native linker.
 
 `rea-analysis.json` F2/F3/F4/F7/F8 are edited in place with superseded markers. The `readonly-requests.json` decisions C/D/E/F are rewritten accordingly.
+
+## Update 4 — P1 confirmed on the real board; selected change proposed (no device operation by this lane)
+
+**Observed (outer raw capture, [binding](evidence/live-r1-tap1-binding.txt)):** board 61b, boot `8f7f12bf`, parent 5287, child 9290, run.sh `d3518cef`. One tap was made at (600,1090) on the real recommended feed. The stderr delta shows `SOURCE-NATIVE-LOAD` for libmffmpeg, which succeeded including its init array. It then shows libttmplayer:
+
+```
+[SOURCE-NATIVE-LOAD-FAIL] path=/data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so namespace=0 error=Error relocating /data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so: SL_IID_ANDROIDSIMPLEBUFFERQUEUE: symbol not found
+```
+
+`TTPlayer` class init is then rejected: `UnsatisfiedLinkError … TTPlayer._setSupprotSampleRates`. The JNI was never registered because the DSO did not load. The t20 and t25 screenshots are byte-identical (`b866c6b3`). Child maps contain libmffmpeg, libvcbasekit, libttcrypto and libttboringssl, with no libttmplayer and no libOpenSLES. This is decision **A**, and P1 is confirmed. The visible error also falsifies the old "silent" wording, which Update 3 had already withdrawn.
+
+**Selected change ([selected-change.json](selected-change.json)), single variable, rollbackable:**
+
+| Item | Value |
+|---|---|
+| New file | `/data/local/tmp/asx/libopensles_android_compat.so`, built verbatim from `opensles_android_compat.c` `cf45ad43` (Westlake, the same blob already deployed in the original Toutiao player route) |
+| Edit | `run.sh` line 33: append `:/data/local/tmp/asx/libopensles_android_compat.so` to `LD_PRELOAD` (`d3518cef` → `ea984942`; [diff](selected-change/run.sh.diff)) |
+| Namespace | libttmplayer stays in namespace 0. Only the provider of the two IIDs is added to the global preload set, which is the same mechanism RouteB already uses for libwebview_bionic_shim |
+| Build | `dockbuild.sh cc` with OHOS clang 15.0.4 `feef13a3`, the same compiler as the existing RouteB preload DSOs. Recipe: Westlake `build.sh` `0d8e4f43` lines 89–93. Sources are copied into [selected-change/](selected-change/) |
+| Rollback | Restore run.sh `d3518cef` from backup, remove the DSO, restart through the original cfg path |
+
+**Why preload rather than player_anchor:** RouteB libart has a single android-native `ANCHOR` and no `NEXT_ANCHOR`. Anchoring would move libttmplayer into another namespace. The preload gives the same "compat before player" ordering without a namespace change.
+
+**Expected:** the libttmplayer load result moves past the IID relocation. The next first fatal is unknown (P2 audio callbacks, P3 surface, network/content). **This is not a playback claim.** The t2 contract now pins the two sources, the recipe and the offline gates (lint 100%, [t2-lint.txt](selected-change/t2-lint.txt)). The board window, pass criteria and rollback are in `selected-change.json`.

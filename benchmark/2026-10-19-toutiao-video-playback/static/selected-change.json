@@ -1,0 +1,113 @@
+{
+ "schema": "ttvideo-selected-change/v1",
+ "status": "proposed_for_outer_approval",
+ "first_blocker_state": "confirmed",
+ "first_blocker": {
+  "key": "toutiao (com.ss.android.article.news) video detail / first TTPlayer creation",
+  "observed": "[SOURCE-NATIVE-LOAD-FAIL] path=/data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so namespace=0 error=Error relocating /data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so: SL_IID_ANDROIDSIMPLEBUFFERQUEUE: symbol not found",
+  "followed_by": "class_linker Rejecting re-init on previously-failed class com.ss.ttm.player.TTPlayer: UnsatisfiedLinkError No implementation found for TTPlayer._setSupprotSampleRates(int[],int) (consequence: JNI never registered because the DSO did not load)",
+  "board": "61b0657200000000000000000324012c",
+  "boot_id": "8f7f12bf-fc42-49c6-b398-2fea3ab4363c",
+  "parent": "5287 birth 14185",
+  "child": "9290 birth 17865",
+  "run_sh_sha256": "d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4",
+  "apk_sha256": "a1112a0c941f865847c2fab9138cf815735268fbfcd41d697412fb80992c7395",
+  "tap": "(600,1090) on real recommended feed",
+  "screens": "t20 == t25 sha b866c6b3 (no frame change)",
+  "evidence": "evidence/live-r1-tap1-binding.txt (raw files persist under $HOME/.local/share/westlake/toutiao-resume-20261019/video-live-r1/tap-1/, SHA listed)"
+ },
+ "consumer": {
+  "object": "libttmplayer.so b427614d (APK a1112a0c lib/arm64-v8a)",
+  "namespace": "0 (RouteB default; unchanged by this change)",
+  "imports": [
+   "SL_IID_ANDROIDSIMPLEBUFFERQUEUE (GLOB_DAT, OBJECT, non-weak)",
+   "SL_IID_ANDROIDCONFIGURATION (GLOB_DAT, OBJECT, non-weak)"
+  ],
+  "flags": "BIND_NOW"
+ },
+ "provider_now": {
+  "first_libOpenSLES": "/system/lib64/libOpenSLES.so 05d8ac90 (OH): exports SL_IID_OH_BUFFERQUEUE, SL_IID_BUFFERQUEUE, lacks both Android IIDs",
+  "other_global": "none in RouteB preload/NEEDED closure (evidence/reproduce.stdout.txt)"
+ },
+ "change": {
+  "summary": "Add one data-only provider DSO libopensles_android_compat.so to RouteB default-namespace LD_PRELOAD so libttmplayer's two Android OpenSL IID relocations resolve. No change to libttmplayer namespace, APK, runtime, JAR, native media libs, main window, icon/watchdog or user data.",
+  "files": [
+   {
+    "device_path": "/data/local/tmp/asx/libopensles_android_compat.so",
+    "action": "add (new file)",
+    "owner": "20011206:20011206",
+    "mode": "0644",
+    "source": "selected-change/opensles_android_compat.c",
+    "source_sha256": "cf45ad430a08cbe090f030357a346be7a0bac49f48c06196a11c7818de3f9351",
+    "source_provenance": [
+     "$ORCA/westlake scripts/toutiao/native/src/opensles_android_compat.c (westlake 0d8e4f43)",
+     "identical blob: vm-copies/westlake-current framework/appspawn-x/bionic_compat/src, westlake-harness-b4 native-compat/westlake-bionic, a2hlab ws/westlake.75d82d5 (commit 75d82d5)"
+    ],
+    "verified_history": "built and deployed in the original Westlake Toutiao route as nsprobe/libopensles_android_compat.so, loaded ahead of libttmplayer by libwestlake_player_anchor (run_tt.sh a9fd5ad7). Playback beyond load was never evidenced there."
+   },
+   {
+    "device_path": "/data/local/tmp/asx/run.sh",
+    "action": "one-line edit: append ':/data/local/tmp/asx/libopensles_android_compat.so' to export LD_PRELOAD (line 33)",
+    "before_sha256": "d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4",
+    "after_sha256": "ea98494255b05699ca24b134e6ada8849b023b4ab59d3d7e291194cfa8425f73",
+    "diff": "selected-change/run.sh.diff",
+    "before_copy": "selected-change/run.sh.d3518cef.orig (reconstructed from outer 61b-runtime.txt, SHA verified)"
+   }
+  ],
+  "why_preload_not_anchor": "RouteB libart 78e34445 has a single ANCHOR (android-native ns) and no NEXT_ANCHOR; anchoring libttmplayer would move it into the android-native namespace (namespace change, libc++ ordering risk). LD_PRELOAD keeps libttmplayer in namespace 0 and gives the same ordering guarantee the player_anchor provided (compat before player). Same mechanism already used by RouteB for libwebview_bionic_shim/libttcrypto.",
+  "build_recipe": {
+   "entry": "scripts/lab/dockbuild.sh cc (pinned OHOS clang 15.0.4 feef13a3 + OH sysroot = same compiler as RouteB libwebview_bionic_shim/libandroid_native_network_compat .comment)",
+   "recipe_source": "westlake scripts/toutiao/native/build.sh sha256 0d3b61f72e98a9e0916087211e1bc02edc3dd6b68b86af06311d3b493faca20b (commit 0d8e4f43), lines 89-93 + build_link_only + build_shared",
+   "steps": [
+    "dockbuild.sh cc --target=aarch64-linux-ohos -fPIC -O2 -shared -fuse-ld=lld -Wl,-z,relro,-z,now selected-change/link_only_stub.c -Wl,-soname,libOpenSLES.so -o out/link-only/libOpenSLES.so",
+    "dockbuild.sh cc --target=aarch64-linux-ohos -fPIC -O2 -g -Wall -Wextra -shared -fuse-ld=lld -Wl,-z,relro,-z,now -Wl,-soname,libopensles_android_compat.so selected-change/opensles_android_compat.c -ldl -Lout/link-only -Wl,--no-as-needed -lOpenSLES -Wl,--as-needed -o out/unstripped/libopensles_android_compat.so",
+    "llvm-strip --strip-unneeded -> out/asx/libopensles_android_compat.so; tee stdout/stderr+rc to candidate/ build logs"
+   ],
+   "link_only_stub_sha256": "fa47585b8fb702e8da05c52d732c9c964b5ec50a34edfa6815dea7f962898e13",
+   "offline_gates": [
+    "check_frozen.py rc0",
+    "dynsym exports == {SL_IID_ANDROIDCONFIGURATION, SL_IID_ANDROIDSIMPLEBUFFERQUEUE} (+ no libc/sigaction-class exports, DIGEST #48)",
+    "DT_NEEDED == {libOpenSLES.so, libdl.so?, libc.so}; SONAME libopensles_android_compat.so; .comment OHOS clang 15.0.4 feef13a3",
+    "re-run evidence/reproduce.sh closure with the built DSO added to providers -> libttmplayer unresolved set must be EMPTY",
+    "dlopen(RTLD_NOW|RTLD_GLOBAL) self-test is NOT possible off-board; first load proof is the board window"
+   ]
+  }
+ },
+ "expected_effect": {
+  "moves_first_fatal_for_keys": [
+   "toutiao video detail (libttmplayer load)"
+  ],
+  "predicted_next": "libttmplayer load result recorded; next first fatal unknown (P2 OpenSLES callbacks FEATURE_UNSUPPORTED, P3 surface/CPU-lock stub, network/content). Not a playback claim."
+ },
+ "risks": [
+  "OH libOpenSLES 05d8ac90 becomes loaded in appspawn-x parent at preload (NEEDED of compat); its init side effects are untested — gate: parent start + icon launch + feed screenshot unchanged before any video tap",
+  "constructor maps SIMPLEBUFFERQUEUE pointer to OH SL_IID_BUFFERQUEUE via dlsym(RTLD_DEFAULT) at preload time; if lookup fails it keeps the Android IID value (load still succeeds, GetInterface semantics differ)"
+ ],
+ "board_verification_window": {
+  "board": "61b only (spares not RouteB same-generation)",
+  "max_minutes": 30,
+  "pre": "record run.sh sha d3518cef, parent/child stat, maps; back up run.sh to /data/local/tmp/asx/run.sh.d3518cef.bak",
+  "deploy": "push DSO (sha pinned), replace run.sh with candidate (sha ea98494…), restart via the original cfg path (no kill -9 appspawn-x)",
+  "pass_criteria": [
+   "parent maps contains /data/local/tmp/asx/libopensles_android_compat.so and /system/lib64/libOpenSLES.so (single copy)",
+   "feed screenshot as before (main window unaffected)",
+   "after single video tap: no SOURCE-NATIVE-LOAD-FAIL for libttmplayer; libttmplayer present in child maps; no _setSupprotSampleRates UnsatisfiedLinkError",
+   "record next first fatal verbatim; screenshots decide playback (not expected)"
+  ],
+  "fail_or_any_regression": "rollback"
+ },
+ "rollback": [
+  "restore /data/local/tmp/asx/run.sh from run.sh.d3518cef.bak, verify sha d3518cef",
+  "rm /data/local/tmp/asx/libopensles_android_compat.so",
+  "restart via original cfg path; verify parent maps no longer contains the compat DSO and feed screenshot matches baseline"
+ ],
+ "not_in_scope": [
+  "random crash diagnosis",
+  "anti-virtualization",
+  "main window/icon/watchdog",
+  "user data",
+  "media stack rewrite",
+  "namespace change for libttmplayer",
+  "claiming audio or video playback"
+ ]
+}
