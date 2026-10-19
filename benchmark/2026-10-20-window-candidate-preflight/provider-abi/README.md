@@ -2,7 +2,7 @@
 
 **ABI_REFERENCE_ONLY_NOT_A_PROVIDER_OR_DEPLOYMENT_CANDIDATE.** The R14 host callback interface is not an OH ABI and none of its callbacks is implemented here. This read-only audit uses master `3f429fd5ba`, its existing exact-ELF reviews, the archived OH6.1 window source/header, and already-present local OH6.1-profile headers. It does not use a current SDK header as proof of the deployed firmware. Helpful key remains **toutiao, conditional**; current playback and provider admission are unknown.
 
-[results.json](results.json) records the eight operation signatures, layout values and missing runtime evidence. [source-index.json](source-index.json) pins 11 references with SHA and master blobs where available. Local paths use `$WORKSPACES`; the OH6.1-labelled directory alone does not prove an upstream revision. Such declarations are explicitly source-profile evidence, not deployment evidence.
+[results.json](results.json) records the eight operation signatures, layout values and missing runtime evidence. [source-index.json](source-index.json) pins 11 references with SHA and master blobs where available. The three formerly external public headers are now copied byte-for-byte under [source-profile/](source-profile/metadata.json), with their original notices and [full Apache-2.0 license](source-profile/LICENSE). Original locations remain `$WORKSPACES` aliases in the index; no personal absolute path is published. The OH6.1-labelled directory alone does not prove an upstream revision. These declarations remain source-profile evidence, not deployment evidence. The index’s `in_master` fields describe its original `master_commit`; the new copies are delivered for subsequent master landing.
 
 ## What is exact and what remains unbound
 
@@ -11,7 +11,7 @@
 | unwrap | Master `static/r10-window-contract-review/bridge-unwrap.stdout.txt`, exact d4fa SHA `d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b`, entry0x125a00 | Actual function returns a pointer, while R14 returns int and writes `void**`. It checks `_wnd` at0 and ANW1 at0xc8, returns pointer0xc0; no directPathLive. R13 call object and resolver instance remain unbound. |
 | request | `benchmark/2026-10-01-n9-first-damage/upstream/native_window.cpp:205–234` and paired header | int32 request(window,buffer**,int*fence). R14 adds ctx; use a typed thunk, not a cast. Actual loaded OH provider SHA/instance unknown. |
 | handle | Same source:558–564; local BufferHandle declarations | Returns pointer, not R14's int+output-record. Validate pointer then copy/widen individual signed fields. No whole-struct reinterpretation. |
-| FromNativeWindowBuffer | Existing `b6-latest/upstream/openharmony-6.1.0.31/interface/sdk_c/graphic/graphic_2d/native_buffer/native_buffer.h:267–280` | int32 convert(windowBuffer,nativeBuffer**). Declaration found; no exact deployed provider/disassembly or borrowed-reference proof found. R14's borrowed assumption requires an actual provider contract. |
+| FromNativeWindowBuffer | [Copied SDK-C native_buffer.h](source-profile/sdk-c/native_buffer/native_buffer.h):267–280 | int32 convert(windowBuffer,nativeBuffer**). Declaration found; no exact deployed provider/disassembly or borrowed-reference proof found. R14's borrowed assumption requires an actual provider contract. |
 | Map / Unmap | Same header:215–241 | int32 Map(nativeBuffer,void**), int32 Unmap(nativeBuffer). Must preserve separate rc/non-null evidence and pairing. Real provider SHA/namespace and cache/lifetime semantics unknown. |
 | Flush | Archived OH window source:237–280 and header Region:88–98 | int32 flush(window,buffer,int fence,**Region by value**). R14 callback accepts a rectangle pointer and ctx: a typed conversion wrapper is mandatory. |
 | Abort | Archived source:322–329 and weak alias:1132 | int32 abort(window,buffer); wrapper calls CancelBuffer but drops its lower return. API rc0 cannot by itself certify lower queue ownership completion. Actual board implementation still unbound. |
@@ -20,7 +20,7 @@ The archived window source receipt identifies graphic_surface revision `0bf226a1
 
 ## BufferHandle: do not import a tail-layout mistake
 
-The existing source profile `sources/api-implementations/source-build-native691/westlake/native/hwui/oh61_buffer_handle.h:7–17` explicitly warns against the SDK's extra shared-memory `key`. Two locally present declarations confirm the mismatch:
+The existing source profile `sources/api-implementations/source-build-native691/westlake/native/hwui/oh61_buffer_handle.h:7–17` explicitly warns against the SDK's extra shared-memory `key`. The [copied source declaration](source-profile/graphic-surface/buffer_handle.h) and [copied SDK-C declaration](source-profile/sdk-c/native_window/buffer_handle.h) preserve the observed mismatch:
 
 | AArch64 LP64 field | Common offset | Type |
 |---|---:|---|
@@ -45,4 +45,4 @@ OH `Rect` is `{int32 x,y; uint32 w,h;}` and Region is `{Rect *rects; int32 rectN
 3. Bind the returned BufferHandle layout/fields and native-buffer lifetime to that provider. In particular conversion being borrowed, failure ownership and real stride/format require provider evidence beyond a header declaration.
 4. Request/fence/map/unmap/flush/abort results must form the paired ownership journal; then real consecutive video frames and sound must establish playback. Host tests, a successful callback return or queue acceptance do not satisfy that gate.
 
-No code, tests, binary, provider resolver or installation plan is produced. Existing accepted preflight files are unchanged.
+No implementation, tests, binary, provider resolver or installation plan is produced. The source copies are unmodified public header evidence; they do not supply native_buffer.h’s transitive buffer_common.h dependency and are not a standalone build kit. The earlier preflight and edge-contract files are unchanged.
