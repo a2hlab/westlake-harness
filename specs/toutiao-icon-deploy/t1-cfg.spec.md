@@ -1,0 +1,39 @@
+spec: task
+name: "Exact icon recovery cfg placement"
+inherits: project
+---
+## 意图
+以新ROOT独立部署控制文件，最后原子切换唯一头条init cfg，回滚恢复本次真实cfg前像。
+## 已定决策
+- 只接受61b完整serial和新recovery-attempts/icon-manual-*根，计划绑定boot及原cfg SHA/550:0:0/system_etc_file元数据。
+- 发布前完整读回成员SHA，cfg切换前再查旧SHA；remount前设置回封标记，EXIT无条件恢复ro并核对。
+- 回滚仅当cfg仍为本轮候选SHA才恢复原cfg；新ROOT保留作证，不删除用户数据或历史状态。
+## 边界
+### 允许修改
+- specs/toutiao-icon-deploy/**
+- benchmark/2026-10-19-toutiao-icon-deploy/**
+- tools/spec-checks/tests/toutiao_icon_deploy.rs
+### 禁止
+- 不重装APK、不改native/JAR、不停止系统父进程、不清stop、不覆盖其他cfg。
+## 完成条件
+场景: 精确cfg前后像
+  测试: toutiao_icon_deploy
+  假设 合法计划与完整候选成员
+  当 生成部署和回滚脚本
+  那么 只修改唯一cfg且回滚来源为本轮备份并保留元数据
+场景: 漂移输入拒绝
+  测试: toutiao_icon_deploy
+  假设 错serial或旧ROOT或候选越界或修改权限
+  当 校验计划
+  那么 拒绝部署
+场景: 失败回封
+  测试: toutiao_icon_deploy
+  假设 cfg替换失败或remount返回非零
+  当 脚本退出
+  那么 已设置回封标记并尝试恢复ro且不打印成功
+场景: 实板生效
+  测试: toutiao_icon_deploy
+  审核: human
+  假设 外环在唯一板锁内发布新包
+  当 再次开机后用户点击图标
+  那么 当前boot新guardian及截图证据齐全才认可且保留原入口回滚
