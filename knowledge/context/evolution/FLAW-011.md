@@ -6,10 +6,10 @@ repo: A2OH/westlake-harness
 layers: [Verification, Measurement]
 status: open
 severity: S2
-recurrence: 8
+recurrence: 9
 fingerprint: verification/proxy-not-target
 issue:
-cards: [EVO-0148, EVO-0149, EVO-0150, EVO-0151, EVO-0153, EVO-0154, EVO-0155, EVO-0156]
+cards: [EVO-0148, EVO-0149, EVO-0150, EVO-0151, EVO-0153, EVO-0154, EVO-0155, EVO-0156, EVO-0157]
 filed: 2026-10-19
 ---
 
@@ -27,6 +27,8 @@ filed: 2026-10-19
 
 - r13 后续提案：把会解引用输入的魔数检查当未知指针安全分类，把进程内日志当作可绕过启动前退出。NULL不能证明对象类型，未到 lock 的进程也不会产生该日志；原提案已拒绝，继续精确静态来源链，见 EVO-0156。
 
+- r13 early（外环自身）：把 `/proc/PID/stat` 的截短 comm `id.article.news` 直接用于 `ps -A -o PID,PPID,UID,NAME` 的完整 NAME 匹配，漏认同窗实际 child 7462（完整名 `com.ss.android.article.news`），得到 `chosen=null`。这是探查面替代实际对象的同类错误，且从内环静态归属复发到外环进程选择；不是新增独立故障家族。原失败保留，同 boot/birth 纠正后 9 次 maps 仅 player 缺失，未 attach；feed 已亮不等于播放器已加载。见 `.octos/boards/app-lighting.md` R13 early 原 PROGRESS/R2 与 `.octos/EVOLUTION.md` EVO-0157；规则摘要已在 commit `c6a45e3b53713edb0518da0f00aba9168078745e` 的 DIGEST，原始窗口归档仍待交，不以本记录宣称播放已验。
+
 ## 处置
 
 每个结论绑定对象 SHA、实际方法/指令/进程、证据范围与 unknown。字符串归属须在所引方法正文逐字存在，入口委托不能替代被调用方法；零入边须附扫描覆盖，不升级成运行时不可达。实际路径优先沿已观测栈 `VideoPlayerImpl.doPrepareAction → TTVideoEngine.play → X.4cC.play` 追踪。
@@ -40,3 +42,5 @@ filed: 2026-10-19
 2026-10-19 r7调整：REA车道负责原件与精确地址，独立车道解释，外环按部署ELF/运行时读数采认；上下文压缩后派单显式列对象路径。此分工尚需后续效果验证，不将它记为已消除复发。
 
 2026-10-20 r10调整：报告不得由库名或相邻版本源码推定部署实现。先提交精确 ELF 的函数证据与相关源码差异，再写结论；调用当时对象与事后旧地址分开。当前已转向有界同次调用观测，不再用全机导出并集猜 namespace winner。本规则尚不能机械检验自然语言声明，记录保持 open。
+
+2026-10-20 r13 early调整：进程选择器须对实际探查命令的原始字段建谓词，并以 UID/PID/birth 绑定身份；不得把其他探查面的短名照搬成完整 NAME 判据，也不得把选择器未命中等同于目标不存在。
