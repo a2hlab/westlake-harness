@@ -1,0 +1,55 @@
+# Task Contract: Toutiao video first-blocker minimal repair
+
+## Intent
+仅在t1把当前首阻断API归属到精确消费者与提供方后，制作独立可回滚候选；优先移植已验证实现，保持已封板的主窗口和图标路径。当前未选定具体API，不能先重写媒体栈。
+
+## Must
+- 当前规划不证明当前板失败根因；历史 ReliableSurface/SetMetadata 只是待归属的候选。
+- 冻结源码与历史签认只读；构建前 check_frozen，候选另目录，源码/补丁/工具链哈希/原始构建日志保存在持久位置。
+- 每板唯一锁、只读身份检查先行、实验30分钟内、失败按原签认回滚；61b图标重开锁未释放时视频不得占用61b，优先空闲5cd或5ea。
+- 真实APK播放与本地媒体探针分开；探针成功不能替代头条成功。网络不可达、内容服务拒绝和桥接错误分列。
+- 未知字段写unknown；缺回执拒绝通过。测试仅核回执结构，视觉/声音/因果判断用human审核及lifecycle --review-mode strict，保持pending_review直到审查签认。
+- 不诊断随机崩溃、不改反虚拟化逻辑、不清应用数据、不提交凭据/个人数据、不推送远程。
+
+## Decisions
+- t1输出精确预测与待修文件清单，t2只派发已绑定的最小修复；无可归属首致命点则t1交短窗观察方案，先补证不猜修复。
+- t3成功记录至少两个完整播放周期，每周期不少于20秒动态播放、3秒暂停及10秒恢复，并记录退出和重新图标进入结果。
+- API表新增本次版本映射，保留历史315条证据等级；冻结仍要求两个不同app过墙，头条单应用成功不自动冻结。
+- t1的selected-change.json必须绑定input SHA、源码blob、允许文件列表、预计移走首致命点的key与已验证来源；外环确认后才开建，unknown或external_blocked禁止开建。
+- 只在candidate下复制并修改获准的源码单元，不改冻结原件；需要不同文件时先修订契约再lint。
+- 保留相同namespace/ABI与未改行为；构建前check_frozen、逐部署件strings/class/open-site对照、工具链哈希和原始stdout/stderr及rc=0都入回执。
+- 功能检查按真实修复API增加正例、拒绝例和释放/生命周期测试；不以返回OK、空数据或注册成功代替视频解码/呈现。
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-19-toutiao-video-playback/candidate/**
+- specs/toutiao-video-playback/t2-minimal-repair.spec.md
+Forbidden:
+- 不上板、不改冻结文件、不改主窗口几何、图标watchdog、启动器或应用数据；不替换完整运行时世代。
+Out of scope:
+- 随机崩溃根因、安全机制改造、用户数据清理和自动远程推送。
+
+## Completion Criteria
+
+Rule: evidence-before-verdict — 先绑定证据再判断
+Scenario: 绑定首阻断的可复现候选
+  Test:
+    Filter: ttvideo_build_receipt
+  Given t1已审查确认且selected-change列出精确允许源码
+  When 在candidate目录仅改获准源码、运行check_frozen与namespace扫描后重建并执行API正反例及释放生命周期测试
+  Then 记录输入输出SHA、工具链、原始stdout/stderr成功日志、源码差异及未改ABI，产出单变量部署和回滚输入
+
+Scenario: 未绑定或漂移输入拒绝
+  Test:
+    Filter: ttvideo_build_receipt
+  Given 首致命点unknown或输入SHA与selected-change不同
+  When 请求构建
+  Then 拒绝发布候选且保留失败回执
+
+Scenario: 行为桩不冒充修复
+  Test:
+    Filter: ttvideo_build_receipt
+  Given 实现只返回OK或仅有JNI注册且无帧输出
+  When 审查行为与差异
+  Then 拒绝认定播放修复且不进入成功封板
+

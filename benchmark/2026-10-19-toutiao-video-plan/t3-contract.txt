@@ -1,0 +1,65 @@
+# Task Contract: Toutiao video dynamic playback and API delivery
+
+## Intent
+在外环分配的空闲板验证候选实际播放，再与图标重开主任务合流到61b。交付有声动态帧、暂停恢复退出证据与实现/构建/API表对照，不把一张封面或探针结果当头条通过。
+
+## Must
+- 当前规划不证明当前板失败根因；历史 ReliableSurface/SetMetadata 只是待归属的候选。
+- 冻结源码与历史签认只读；构建前 check_frozen，候选另目录，源码/补丁/工具链哈希/原始构建日志保存在持久位置。
+- 每板唯一锁、只读身份检查先行、实验30分钟内、失败按原签认回滚；61b图标重开锁未释放时视频不得占用61b，优先空闲5cd或5ea。
+- 真实APK播放与本地媒体探针分开；探针成功不能替代头条成功。网络不可达、内容服务拒绝和桥接错误分列。
+- 未知字段写unknown；缺回执拒绝通过。测试仅核回执结构，视觉/声音/因果判断用human审核及lifecycle --review-mode strict，保持pending_review直到审查签认。
+- 不诊断随机崩溃、不改反虚拟化逻辑、不清应用数据、不提交凭据/个人数据、不推送远程。
+
+## Decisions
+- t1输出精确预测与待修文件清单，t2只派发已绑定的最小修复；无可归属首致命点则t1交短窗观察方案，先补证不猜修复。
+- t3成功记录至少两个完整播放周期，每周期不少于20秒动态播放、3秒暂停及10秒恢复，并记录退出和重新图标进入结果。
+- API表新增本次版本映射，保留历史315条证据等级；冻结仍要求两个不同app过墙，头条单应用成功不自动冻结。
+- 外环分配serial并持板锁，开窗前核只读身份与原回滚；先空闲5cd或5ea，61b图标任务锁释放且候选通过后另开窗口。APK/视频内容/网络条件和runtime指纹均记录。
+- 两个周期各播放20秒、暂停3秒、恢复10秒、退出回feed并手点图标再次进入；120秒观察窗包含视频进入与回退，超出30分钟实验限时则保存未完证据并回滚解锁。
+- 每周期采t0/t5/t10/t20及暂停/恢复/退出snapshot_display，记录视频内容ROI、播放时间与对应Surface；内容帧变化排除spinner/字幕/控件假动，声音须外部录音或人工听验具名回执，音频计数不能替代听到声音。
+- 更新独立API增量表：精确API→源码blob/commit→构建配方→产物SHA→OH完整版本/ABI→APK SHA与targetSdk→实测范围与证据；生成与当前主表的合并清单，由外环统一出版，历史版本/unknown不改写。
+- 失败保留运行目录/facts并按原基线回滚；没有第二个app验证同API时标unfrozen。正式合代码与远程发布由外环执行。
+
+## Boundaries
+Allowed changes:
+- benchmark/2026-10-19-toutiao-video-playback/runs/**
+- benchmark/2026-10-19-toutiao-video-playback/api-delta/**
+- specs/toutiao-video-playback/t3-playback-seal.spec.md
+Forbidden:
+- 不夺板锁、不覆盖历史签认、不重签旧boot、不改冻结登记或主API表历史证据；不删用户数据。
+Out of scope:
+- 随机崩溃根因、安全机制改造、用户数据清理和自动远程推送。
+
+## Completion Criteria
+
+Rule: evidence-before-verdict — 先绑定证据再判断
+Scenario: 两轮有声播放暂停恢复退出
+  Test:
+    Filter: ttvideo_playback_receipt
+  Given 空闲板serial已分配且持板锁，只读身份及真实APK和候选SHA及原回滚均核对
+  When 在120秒观察窗按两轮20秒播放3秒暂停10秒恢复及退出序列执行并保存t0/t5/t10/t20的snapshot_display与ROI和声音回执
+  Then 两轮视频内容持续变化、声音与内容对应、暂停停止前进、恢复继续、退出显示feed且图标可再打开
+  And 保留按实际captured计数的facts而非计划截图数
+
+Scenario: 封面冻结静音或服务拒绝拒绝通过
+  Test:
+    Filter: ttvideo_playback_receipt
+  Given 只有封面变化或无听验或网络服务拒绝
+  When 审查当前boot证据
+  Then 记failed或external_blocked而非playback_pass并保留原始证据和facts回滚结果；30分钟超时同样回滚解锁
+
+Scenario: 图标任务占锁与回归拒绝
+  Test:
+    Filter: ttvideo_playback_receipt
+  Given 61b仍由图标任务占用或候选使图文入口回归
+  When 准备61b发布
+  Then 不写61b且前者等释放后重排，后者回滚并禁止封板
+
+Scenario: API源码构建实测对应
+  Test:
+    Filter: ttvideo_playback_receipt
+  Given 实测结论与候选源构建证据已定
+  When 生成api-delta与主表合并清单
+  Then 每个变化API有源码blob/commit、构建配方、产物SHA、OH完整版本/ABI、APK SHA/targetSdk和实测边界且只有单app时冻结状态为unfrozen
+
