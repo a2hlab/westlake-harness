@@ -1,0 +1,78 @@
+{
+  "token": "video-1919-r8-mirror-source-review",
+  "verdict": "SCOPED_ACCEPT_SOURCE_AND_HOST_ORACLE",
+  "source": {
+    "path": "../westlake-harness/benchmark/2026-10-19-toutiao-video-playback/candidate-r8/ttplayer_log_mirror.c",
+    "sha256": "3becb0f688e9dba9f5626a8453756848dd51e2f5347c4688672de0fbe3384e8e"
+  },
+  "oracle_cases_passed": 8,
+  "blocking_findings": [],
+  "static_checks": [
+    {
+      "lines": "19-27,92",
+      "finding": "Relaxed atomic CAS reserves before format/varargs evaluation; value stops at256 with no unsigned wrap. No global mutex."
+    },
+    {
+      "lines": "40-86,93-96",
+      "finding": "Bounded4096-byte format scan; unsupported positional/%n/length combinations reject to a fixed skipped marker, preserving original forwarding. Escaped %% consumes no argument."
+    },
+    {
+      "lines": "99-115",
+      "finding": "Tag precision64 and1024-byte whole buffer. Payload capped at available-1, then newline replaces NUL; write length at most1024 including marker/tag/newline. One direct fd2 write; no retry of EINTR/short write."
+    },
+    {
+      "lines": "102-107,121-130",
+      "finding": "Independent va_copy for mirror; entry errno restored before formatting %m and before the original vprint. Original args/priority/tag/format passed once, original return and post-call errno retained."
+    }
+  ],
+  "tests": [
+    {
+      "case": "mixed",
+      "rc": 0
+    },
+    {
+      "case": "filtered-n",
+      "rc": 0
+    },
+    {
+      "case": "alias-n",
+      "rc": 0
+    },
+    {
+      "case": "limit",
+      "rc": 0
+    },
+    {
+      "case": "long",
+      "rc": 0
+    },
+    {
+      "case": "write-error",
+      "rc": 0
+    },
+    {
+      "case": "short-write",
+      "rc": 0
+    },
+    {
+      "case": "null-tag",
+      "rc": 0
+    }
+  ],
+  "unchanged_prior_oracle_packet": true,
+  "source_unchanged_during_review": true,
+  "not_proven": [
+    "AArch64 production ABI execution",
+    "OH build and unchanged OpenSL behavior in linked artifact",
+    "Exact player import/hash/string derivation and105 retained relocations",
+    "Actual provider/namespace/GOT binding",
+    "Mirror visibility or playback/audio on device"
+  ],
+  "limits": [
+    "Host oracle mocks direct write and vprint only.",
+    "%m entry errno reset reviewed statically; target-libc formatting not tested here.",
+    "Thread scheduling and atomic lock-free code generation require final artifact review; no concurrency claim from single-process-per-case oracle."
+  ],
+  "production_builds": 0,
+  "device_calls": 0
+}
