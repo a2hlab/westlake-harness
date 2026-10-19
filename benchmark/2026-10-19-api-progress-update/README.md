@@ -1,6 +1,6 @@
 # Current observations beside the API source/build atlas
 
-The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **10 observations with 158 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
+The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **11 observations with 191 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
 
 Open the [current observations](index.html), [JSON](observations.json) or [CSV](observations.csv), alongside the [complete historical source/build atlas](../2026-10-14-api-source-delivery/views/index.html).
 
@@ -17,3 +17,5 @@ The renderer verifies each referenced file against its full SHA256 before genera
 R8 adds a reproducible bounded player log mirror, actual two-hop binding verification, 256 player messages, static-cover evidence and verified rollback. Codec-open and media-network failures are observed; their provider-level cause and successful playback remain unresolved.
 
 R9 first attempt did not reach video. Its bounded retry directly verified paired getaddrinfo/freeaddrinfo binding and progressed to decoder preparation, but the 256-message budget ended at video resetCodec. Three25-second groups retained the same cover. Original baseline, exact private identities, parameter absence, same snapshot collection and actual feed were restored.
+
+R10 expands the bounded mirror to4096 messages and binds the actual player window-lock import to a fixed -19 stub. ByteVC1 creation and712x360 parameters precede the observed failure; they do not establish complete decode or display. Two25-second groups retained the cover. Original baseline restoration and the second normal icon reaching the feed were independently reviewed. Window object compatibility remains under investigation.
