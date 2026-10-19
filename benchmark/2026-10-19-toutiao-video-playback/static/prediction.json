@@ -39,7 +39,7 @@
    "observed": "no libttmplayer load attempt exists in any retained RouteB child log; libttmplayer has no AMediaCodec imports",
    "unknown": "decoder selection; whether player library loads at all (see audio P1)",
    "evidence_refs": [
-    "evidence/reproduce.stdout.txt"
+    "evidence/reproduce.stdout.sanitized.txt"
    ]
   },
   "video_surface": {
@@ -50,25 +50,27 @@
    "observed": "feed-only RouteB child shows 5 ANWFS conversions (consumer unattributed)",
    "unknown": "actual player Surface owner (SurfaceView/TextureView), whether OH libEGL accepts the hwui-prewrapped window, ReliableSurface ownership (HWUI main window; not proven video producer)",
    "evidence_refs": [
-    "evidence/reproduce.stdout.txt",
+    "evidence/reproduce.stdout.sanitized.txt",
     "evidence/routeb-child6243-loader-excerpt.txt",
     "evidence/outer-rq1.txt"
    ]
   },
   "audio": {
-   "state": "unknown",
+   "state": "confirmed",
    "consumer": "libttmplayer OpenSL ES (slCreateEngine, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, SL_IID_ANDROIDCONFIGURATION, PLAY, VOLUME...) + JNI string android/media/AudioTrack",
    "provider": "board first libOpenSLES.so = /system/lib64/libOpenSLES.so 05d8ac90 (OH): exports SL_IID_OH_BUFFERQUEUE/BUFFERQUEUE/PLAY..., NOT SL_IID_ANDROIDSIMPLEBUFFERQUEUE / SL_IID_ANDROIDCONFIGURATION; no RouteB or APK lib exports them",
    "namespace": "default (LD_LIBRARY_PATH order of run.sh)",
    "observed": "libttmplayer FLAGS BIND_NOW, both IIDs are GLOBAL non-weak OBJECT UND with R_AARCH64_GLOB_DAT; closure against known providers leaves exactly these 2 unresolved",
    "unknown": "board libOpenSLES exports; any RTLD_GLOBAL provider loaded before the player",
    "evidence_refs": [
-    "evidence/reproduce.stdout.txt",
+    "evidence/reproduce.stdout.sanitized.txt",
     "evidence/reproduce.sh",
     "evidence/prior-art-player-route.txt",
     "evidence/outer-rq1.txt",
-    "evidence/outer-61b-OpenSLES-exports.txt"
-   ]
+    "evidence/outer-61b-OpenSLES-exports.txt",
+    "evidence/live-r1-tap1-binding.txt"
+   ],
+   "first_fatal": "libttmplayer load fails on SL_IID_ANDROIDSIMPLEBUFFERQUEUE (OpenSL IID provider missing in ns0)"
   },
   "lifecycle": {
    "state": "unknown",
@@ -78,7 +80,7 @@
    "observed": "none",
    "unknown": "everything downstream of player load",
    "evidence_refs": [
-    "evidence/reproduce.stdout.txt"
+    "evidence/reproduce.stdout.sanitized.txt"
    ]
   }
  },
@@ -87,7 +89,7 @@
    "id": "P1",
    "rank": 1,
    "kind": "first_fatal_candidate",
-   "state": "unknown",
+   "state": "confirmed",
    "statement": "On RouteB (61b asx runtime) the first video-player init fails at load: libttmplayer.so dlopen in namespace 0 aborts on unresolved SL_IID_ANDROIDSIMPLEBUFFERQUEUE or SL_IID_ANDROIDCONFIGURATION (BIND_NOW + GLOB_DAT).",
    "predicted_log": "[SOURCE-NATIVE-LOAD-FAIL] path=/data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so namespace=0 error=Error relocating /data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so: SL_IID_ANDROID(SIMPLEBUFFERQUEUE|CONFIGURATION): symbol not found",
    "keys_expected_to_move": [
@@ -100,14 +102,20 @@
    ],
    "basis": "static closure only; consistent with but not proven by 2026-09-28 no-crash frozen cover; prior Westlake Toutiao route (run_tt.sh @a9fd5ad7, build.sh @0d8e4f43) loaded libttmplayer through nsprobe/libwestlake_player_anchor.so whose ordered DT_NEEDED put libopensles_android_compat.so (defines exactly these two IIDs) ahead of libttmplayer; RouteB run.sh d3518cef has no anchor, no nsprobe dir, libttmplayer outside NATIVE_TARGETS, and RouteB libart 78e34445 supports only one ANCHOR (no NEXT_ANCHOR key)",
    "evidence_refs": [
-    "evidence/reproduce.stdout.txt",
+    "evidence/reproduce.stdout.sanitized.txt",
     "evidence/prior-art-player-route.txt",
     "evidence/61b-run.sh.excerpt.txt",
     "evidence/outer-rq1.txt",
     "evidence/outer-61b-OpenSLES-exports.txt"
    ],
    "static_support": "board provider check RQ1: first libOpenSLES 05d8ac90 lacks both IIDs (has SL_IID_OH_BUFFERQUEUE) -> static precondition holds on 61b; P1 still not triggered/observed",
-   "unknown_if": "no attempt observed in trace -> attempt not observed, player creation unknown"
+   "unknown_if": "no attempt observed in trace -> attempt not observed, player creation unknown",
+   "confirmation": {
+    "evidence": "evidence/live-r1-tap1-binding.txt",
+    "boot": "8f7f12bf",
+    "child": "9290",
+    "line": "stderr-delta.txt:20741"
+   }
   },
   {
    "id": "P2",
@@ -136,8 +144,8 @@
    "statement": "2026-09-28 'ReliableSurface stub + SetMetadata -5' is not current first fatal: ReliableSurface wraps HWUI's main window, no retained raw log binds it to a video producer, and that run's runtime identity is unrecorded."
   }
  ],
- "selected_change": null,
- "selected_change_reason": "first fatal not confirmed; t2 must not open (contract rule: unknown -> minimal observation)",
+ "selected_change": "selected-change.json",
+ "selected_change_reason": "P1 confirmed on 61b boot 8f7f12bf child 9290; proposal awaits outer approval before t2 build",
  "candidate_pointers_for_after_confirmation": [
   "COPY-FIRST: westlake scripts/toutiao/native/src/opensles_android_compat.c sha256 cf45ad43 (same blob in vm-copies, harness-b4, a2hlab 75d82d5) + westlake_player_anchor.c load-group recipe build.sh @0d8e4f43; adapt to RouteB single-ANCHOR loader (WESTLAKE_ANDROID_NATIVE_ANCHOR_TARGET=libttmplayer.so) or a default-ns preload — exact placement must be decided after RQ1/RQ2; playback beyond load was never evidenced in Westlake",
   "U-series IID-only libOpenSLES 5891f899 (benchmark/2026-09-30-v3c-r17j-prospective/freezes/v2/evidence/libOpenSLES.so.exports.txt) - exports exactly the two IIDs; RouteB placement/ownership not designed; insufficient alone for audio (P2)",

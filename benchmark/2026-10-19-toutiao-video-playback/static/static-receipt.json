@@ -3,13 +3,12 @@
  "status": "ready_for_human_review",
  "human_review_required": true,
  "historical_is_current": false,
- "verdict": "needs_observation",
+ "verdict": "p1_confirmed",
  "first_fatal": {
   "id": "P1",
-  "state": "unknown",
-  "static_precondition": "holds on 61b (RQ1)"
+  "state": "confirmed"
  },
- "selected_change": null,
+ "selected_change": "selected-change.json",
  "identity": {
   "board": "61b0657200000000000000000324012c",
   "boot_id": "6944c37e-31a6-4846-8f1f-48088a917153",
@@ -43,7 +42,7 @@
    "provider": "software decoders self-contained in APK; android.media.MediaCodec natives in RouteB bridge d4fae8e5 (mc46 fail-loud) per p7 pin",
    "namespace": "default",
    "evidence_refs": [
-    "evidence/reproduce.stdout.txt",
+    "evidence/reproduce.stdout.sanitized.txt",
     "rea-analysis.json"
    ]
   },
@@ -54,22 +53,23 @@
    "namespace": "default; libandroid c9969638 exports no ANativeWindow_* (resolution is via its NEEDED libhwui and the global preload)",
    "evidence_refs": [
     "evidence/outer-rq1.txt",
-    "evidence/reproduce.stdout.txt",
+    "evidence/reproduce.stdout.sanitized.txt",
     "evidence/routeb-child6243-loader-excerpt.txt",
     "rea-analysis.json"
    ]
   },
   "audio": {
-   "state": "unknown",
+   "state": "confirmed",
    "consumer": "libttmplayer OpenSL ES (slCreateEngine, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, SL_IID_ANDROIDCONFIGURATION, PLAY, VOLUME...) + JNI string android/media/AudioTrack",
    "provider": "board first libOpenSLES.so = /system/lib64/libOpenSLES.so 05d8ac90 (OH): exports SL_IID_OH_BUFFERQUEUE/BUFFERQUEUE/PLAY..., NOT SL_IID_ANDROIDSIMPLEBUFFERQUEUE / SL_IID_ANDROIDCONFIGURATION; no RouteB or APK lib exports them",
    "namespace": "default (LD_LIBRARY_PATH order of run.sh)",
    "evidence_refs": [
-    "evidence/reproduce.stdout.txt",
-    "evidence/reproduce.sh",
-    "evidence/prior-art-player-route.txt",
+    "evidence/live-r1-tap1-binding.txt",
+    "evidence/outer-61b-OpenSLES-exports.txt",
     "evidence/outer-rq1.txt",
-    "evidence/outer-61b-OpenSLES-exports.txt"
+    "evidence/prior-art-player-route.txt",
+    "evidence/reproduce.sh",
+    "evidence/reproduce.stdout.sanitized.txt"
    ]
   },
   "lifecycle": {
@@ -78,7 +78,7 @@
    "provider": "n/a until player loads",
    "namespace": "n/a",
    "evidence_refs": [
-    "evidence/reproduce.stdout.txt"
+    "evidence/reproduce.stdout.sanitized.txt"
    ]
   }
  },
@@ -87,7 +87,7 @@
    "id": "P1",
    "rank": 1,
    "kind": "first_fatal_candidate",
-   "state": "unknown",
+   "state": "confirmed",
    "statement": "On RouteB (61b asx runtime) the first video-player init fails at load: libttmplayer.so dlopen in namespace 0 aborts on unresolved SL_IID_ANDROIDSIMPLEBUFFERQUEUE or SL_IID_ANDROIDCONFIGURATION (BIND_NOW + GLOB_DAT).",
    "predicted_log": "[SOURCE-NATIVE-LOAD-FAIL] path=/data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so namespace=0 error=Error relocating /data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so: SL_IID_ANDROID(SIMPLEBUFFERQUEUE|CONFIGURATION): symbol not found",
    "keys_expected_to_move": [
@@ -100,14 +100,20 @@
    ],
    "basis": "static closure only; consistent with but not proven by 2026-09-28 no-crash frozen cover; prior Westlake Toutiao route (run_tt.sh @a9fd5ad7, build.sh @0d8e4f43) loaded libttmplayer through nsprobe/libwestlake_player_anchor.so whose ordered DT_NEEDED put libopensles_android_compat.so (defines exactly these two IIDs) ahead of libttmplayer; RouteB run.sh d3518cef has no anchor, no nsprobe dir, libttmplayer outside NATIVE_TARGETS, and RouteB libart 78e34445 supports only one ANCHOR (no NEXT_ANCHOR key)",
    "evidence_refs": [
-    "evidence/reproduce.stdout.txt",
+    "evidence/reproduce.stdout.sanitized.txt",
     "evidence/prior-art-player-route.txt",
     "evidence/61b-run.sh.excerpt.txt",
     "evidence/outer-rq1.txt",
     "evidence/outer-61b-OpenSLES-exports.txt"
    ],
    "static_support": "board provider check RQ1: first libOpenSLES 05d8ac90 lacks both IIDs (has SL_IID_OH_BUFFERQUEUE) -> static precondition holds on 61b; P1 still not triggered/observed",
-   "unknown_if": "no attempt observed in trace -> attempt not observed, player creation unknown"
+   "unknown_if": "no attempt observed in trace -> attempt not observed, player creation unknown",
+   "confirmation": {
+    "evidence": "evidence/live-r1-tap1-binding.txt",
+    "boot": "8f7f12bf",
+    "child": "9290",
+    "line": "stderr-delta.txt:20741"
+   }
   },
   {
    "id": "P2",
@@ -142,17 +148,25 @@
   "hw248"
  ],
  "required_evidence": [
+  "evidence/live-r1-tap1-binding.txt",
   "evidence/outer-61b-OpenSLES-exports.txt",
   "evidence/outer-rq1.txt",
   "evidence/prior-art-player-route.txt",
   "evidence/reproduce.sh",
-  "evidence/reproduce.stdout.txt",
+  "evidence/reproduce.stdout.sanitized.txt",
   "prediction.json",
   "rea-analysis.json",
   "readonly-requests.json",
+  "selected-change.json",
+  "selected-change/opensles_android_compat.c",
+  "selected-change/run.sh.diff",
   "source-search.json"
  ],
  "evidence": [
+  {
+   "path": "README.md",
+   "sha256": "94b6599c21ba1c453753892f16fc881a446b257fd84810086b0c131868334dda"
+  },
   {
    "path": "evidence/61b-media-identity.txt",
    "sha256": "c9422c316a0e74cc1881b785c6c68c33269a5f0b06f93633925c41840bae79a2"
@@ -160,6 +174,10 @@
   {
    "path": "evidence/61b-run.sh.excerpt.txt",
    "sha256": "5792139971012a86af4e643a107ba91e85c26e230aaff32bbf9789896c545b41"
+  },
+  {
+   "path": "evidence/live-r1-tap1-binding.txt",
+   "sha256": "0512132784e9a94009a2100f5928ea2575ab4ec7326c8188aac67f75b9d39159"
   },
   {
    "path": "evidence/outer-61b-OpenSLES-exports.txt",
@@ -182,11 +200,11 @@
    "sha256": "115c333d11a98abb343b04d82700163a9772bfc62c9a1259e9493c3567899f27"
   },
   {
-   "path": "evidence/reproduce.stderr.txt",
+   "path": "evidence/reproduce.stderr.sanitized.txt",
    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   {
-   "path": "evidence/reproduce.stdout.txt",
+   "path": "evidence/reproduce.stdout.sanitized.txt",
    "sha256": "f33be225b17bf3bbbf02eaf240cf487b78fc538dac70dead37299d7c9550cf40"
   },
   {
@@ -194,24 +212,52 @@
    "sha256": "52df1cb55a0abdacc74ac6167badc0bdae6143783c1376b3e7783f4bdfef14c8"
   },
   {
+   "path": "evidence/t1-raw-log-manifest.txt",
+   "sha256": "9f939537b0c653173d5f88f136f5d615c45b3413723178307c74541c547be82f"
+  },
+  {
    "path": "prediction.json",
-   "sha256": "717fb3aa199de16db14e1633da49a93e676d370bd23a719c77d501ea55a3d557"
-  },
-  {
-   "path": "source-search.json",
-   "sha256": "c5bb48784d07b314359c91617dd9c9bad5523ae06b89202a45ab1862ab0c74c7"
-  },
-  {
-   "path": "readonly-requests.json",
-   "sha256": "3795267c8a1ced12253a546502c694364fba281572a973cb735f32ecd0cf3599"
-  },
-  {
-   "path": "README.md",
-   "sha256": "ac63d9e1d673207466798730203507f50d904ddf998c712ab17b7d73c30cf3a3"
+   "sha256": "312d62c51928ab3bd640584620be8b96d0bba98638ae1d59b11851df0a701bbd"
   },
   {
    "path": "rea-analysis.json",
    "sha256": "baa49e1acceb4cc4a0d22b5304468f1e8f0962ce214ce223b6cd436610d05466"
+  },
+  {
+   "path": "readonly-requests.json",
+   "sha256": "9eafbb9e8ff240908d39082ed8667d7aedfebbc60561d27060dca186bb1131e0"
+  },
+  {
+   "path": "selected-change.json",
+   "sha256": "645e55780d82122c0793336c41ec6c743aedfa6d4cdcf87a0a83fc4d493b48db"
+  },
+  {
+   "path": "selected-change/link_only_stub.c",
+   "sha256": "fa47585b8fb702e8da05c52d732c9c964b5ec50a34edfa6815dea7f962898e13"
+  },
+  {
+   "path": "selected-change/opensles_android_compat.c",
+   "sha256": "cf45ad430a08cbe090f030357a346be7a0bac49f48c06196a11c7818de3f9351"
+  },
+  {
+   "path": "selected-change/run.sh.candidate",
+   "sha256": "ea98494255b05699ca24b134e6ada8849b023b4ab59d3d7e291194cfa8425f73"
+  },
+  {
+   "path": "selected-change/run.sh.d3518cef.orig",
+   "sha256": "d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4"
+  },
+  {
+   "path": "selected-change/run.sh.diff",
+   "sha256": "127bb9122d90326e910c66e427838ce251331329ced50b4ccbaf8c73029c11ec"
+  },
+  {
+   "path": "selected-change/t2-lint.txt",
+   "sha256": "89c3f82991710ad624bccfa04f1af47933606ca086204fb029709c918375ef49"
+  },
+  {
+   "path": "source-search.json",
+   "sha256": "0b8c385a0b8aa7149204a1de37f6cd41aaa897bd7782b29a129e262ace751b3b"
   }
  ],
  "rea_update": "Update 3: t4 review 87804615 corrections applied (maps scope, conditional silence, decision rows); P1 needs_observation"
