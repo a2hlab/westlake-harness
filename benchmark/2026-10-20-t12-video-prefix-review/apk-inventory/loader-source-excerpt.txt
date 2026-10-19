@@ -1,0 +1,89 @@
+void* OpenNativeLibrary(void* raw_env, int, const char* path, void*, const char*, void* raw_library_path,
+                        bool* needs_native_bridge, char** error_msg) {
+    if (needs_native_bridge != nullptr) *needs_native_bridge = false;
+    if (error_msg != nullptr) *error_msg = nullptr;
+    if (getenv("WESTLAKE_TRACE_NATIVE_LOADER")) {
+        auto* env = static_cast<JNIEnv*>(raw_env);
+        auto library_path = static_cast<jstring>(raw_library_path);
+        const char* search = library_path ? env->GetStringUTFChars(library_path, nullptr) : nullptr;
+        fprintf(stderr, "[SOURCE-NATIVE-LOADER] path=%s class_paths=%s\n",
+                path ? path : "<null>", search ? search : "<none>");
+        void* errno_symbol = dlsym(RTLD_DEFAULT, "__errno");
+        Dl_info errno_provider{};
+        bool errno_known = errno_symbol && dladdr(errno_symbol, &errno_provider);
+        fprintf(stderr, "[SOURCE-NATIVE-ABI] errno=%p provider=%s\n", errno_symbol,
+                errno_known ? errno_provider.dli_fname : "<none>");
+        if (search && path && !strchr(path, '/')) {
+            for (const char* first = search; *first;) {
+                const char* end = strchr(first, ':');
+                std::string directory(first, end ? size_t(end - first) : strlen(first));
+                if (!directory.empty() && directory[0] == '/' && directory.find('!') == std::string::npos) {
+                    std::string candidate = directory + "/" + path;
+                    int fd = open(candidate.c_str(), O_RDONLY | O_CLOEXEC);
+                    int error = fd < 0 ? errno : 0;
+                    if (fd >= 0) close(fd);
+                    fprintf(stderr, "[SOURCE-NATIVE-CANDIDATE] path=%s open_errno=%d\n", candidate.c_str(), error);
+                }
+                if (!end) break;
+                first = end + 1;
+            }
+        }
+        if (search) env->ReleaseStringUTFChars(library_path, search);
+        if (env->ExceptionCheck()) return nullptr;
+    }
+    dlerror();
+    const bool use_anchor = BasenameInList(
+            path, getenv("WESTLAKE_ANDROID_NATIVE_ANCHOR_TARGET"));
+    const bool use_namespace = use_anchor || BasenameInList(
+            path, getenv("WESTLAKE_ANDROID_NATIVE_TARGETS"));
+    // Android DSOs may carry init slots bionic skips; hand musl a copy without
+    // them rather than let it jump to a null function pointer.
+    const std::string adjusted = SanitizeInitArray(path);
+    const char* open_path = adjusted.empty() ? path : adjusted.c_str();
+    void* handle = use_namespace
+            ? OpenInAndroidNamespace(open_path, use_anchor)
+            : dlopen(open_path, RTLD_NOW | RTLD_LOCAL);
+    // Preserve the first error before cleanup/JNI calls can overwrite dlerror.
+    const char* raw_error = handle == nullptr ? dlerror() : nullptr;
+    std::string load_error = raw_error ? raw_error : "dlopen failed";
+    if (!adjusted.empty() && adjusted.compare(0, 6, "/proc/") != 0) unlink(adjusted.c_str());
+    // OH may deny executable mappings of an app-private data copy. Reuse only
+    // an identical image already supplied in this ClassLoader's APK library
+    // directory. This neither changes its bytes nor relaxes mapping policy.
+    if (handle == nullptr && path != nullptr &&
+        load_error.find("failed to map library") != std::string::npos &&
+        load_error.find("errno=13") != std::string::npos) {
+        auto* env = static_cast<JNIEnv*>(raw_env);
+        auto library_path = static_cast<jstring>(raw_library_path);
+        const char* search = library_path ? env->GetStringUTFChars(library_path, nullptr) : nullptr;
+        std::string digest;
+        std::string packaged = westlake_app_library::FindPackagedCopy(path, search, &digest);
+        if (search) env->ReleaseStringUTFChars(library_path, search);
+        if (!env->ExceptionCheck() && !packaged.empty()) {
+            fprintf(stderr, "[SOURCE-NATIVE-IDENTICAL-COPY] from=%s to=%s sha256=%s\n",
+                    path, packaged.c_str(), digest.c_str());
+            const char* retry_path = packaged.c_str();
+            dlerror();
+            handle = use_namespace ? OpenInAndroidNamespace(retry_path, use_anchor)
+                                   : dlopen(retry_path, RTLD_NOW | RTLD_LOCAL);
+            const char* retry_error = handle == nullptr ? dlerror() : nullptr;
+            if (retry_error) load_error = retry_error;
+
+        }
+    }
+    if (handle == nullptr && error_msg != nullptr) {
+        fprintf(stderr, "[SOURCE-NATIVE-LOAD-FAIL] path=%s namespace=%d error=%s\n",
+                path ? path : "<null>", use_namespace, load_error.c_str());
+        *error_msg = strdup(load_error.c_str());
+    }
+    return handle;
+}
+int CloseNativeLibrary(void* handle, void*, void*) {
+    return handle == nullptr ? 0 : dlclose(handle);
+}
+void NativeLoaderFreeErrorMessage(char* message) { free(message); }
+#endif
+
+// === LZMA ===
+void Lzma2EncProps_Init(void*) {}
+void Lzma2EncProps_Normalize(void*) {}
