@@ -1,0 +1,9 @@
+# Exact-player log mirror candidate (offline, incomplete)
+
+Previous observation: r7 reached a static video cover; absence of player messages in hilog did not establish that the player call path was unexecuted. The active logger callback differed from the default logger body. This candidate adds bounded observation at one exact player import, without changing the system logger.
+
+`ttplayer_log_mirror.c` SHA256 `3becb0f688e9dba9f5626a8453756848dd51e2f5347c4688672de0fbe3384e8e` forwards each original call once through the reviewed exact-liblog `__android_log_vprint` ABI. It makes at most 256 mirror attempts on the existing fd2, each at most 1024 bytes including marker, tag and newline. Unsupported formats, including `%n` and positional formats, are not evaluated by the mirror. A write may block; no nonblocking guarantee is claimed.
+
+Independent host oracle: **8/8 passed**, source SHA unchanged. [Review and raw command receipts](../../2026-10-19-toutiao-rea-methods/video-1919-r8-mirror-source-review/results.json) are committed with the [oracle source and negative controls](../../2026-10-19-toutiao-rea-methods/video-1919-player-observation-contract-review/independent-tests/). Run the oracle with `python3 benchmark/2026-10-19-toutiao-rea-methods/video-1919-player-observation-contract-review/independent-tests/run.py --source benchmark/2026-10-19-toutiao-video-playback/candidate-r8/ttplayer_log_mirror.c --out <fresh-persistent-directory>` from the repository root.
+
+This is source-level and host-mock evidence only. ELF derivation, OH build recipe and raw build logs, target ABI and actual provider binding remain pending. There is no deployment admission or playback/audio pass. Follow [t4](../../../specs/toutiao-video-playback/t4-player-observation.spec.md); original OpenSL source, prior candidates and all run evidence remain intact.
