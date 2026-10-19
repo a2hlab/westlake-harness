@@ -1,0 +1,21 @@
+# r4 crash mechanism (REA Ghidra 12.1.4 on libttmplayer b427614d; image base 0x100000)
+# load-bias: abs pc 0x7eb529e714 - offset-0 base 0x7eb51c0000 = 0xde714 (ghidra 0x1de714). frame +0x21a6714 NOT used.
+
+## FUN_001ddcf0 GLES/EGL proc-loader, faulting window:
+0x1de6f0 adrp x0,0x4b9000 ; 0x1de6f4 add x0,x0,#0x3d   -> x0 = file 0x3b903d = "eglPresentationTimeANDROID"
+0x1de6f8 bl 0x00187150 (<EXTERNAL>::eglGetProcAddress)  -> x0 = resolved proc ptr
+0x1de70c ldr x9,[x9,#0xe58]  ; x9 = *GOT[0x573e58 ghidra = 0x473e58 file]
+0x1de714 str x0,[x9]         ; FAULT: x9=0x7d1d95e1f8 (libEGL r-x) -> SEGV_ACCERR
+
+## GOT reloc + symbol:
+0000000000473e58  0000028c00000401 R_AARCH64_GLOB_DAT     000000000047b380 eglPresentationTimeANDROID + 0
+   652: 000000000047b380     8 OBJECT  GLOBAL DEFAULT    23 eglPresentationTimeANDROID
+
+## family (OBJECT GLOBAL gl*/egl* in .bss shndx 23 with GLOB_DAT): 105
+## excluded (OBJECT GLOBAL GLOB_DAT in .data.rel.ro shndx 19, kept as GLOB_DAT): 4 C++ vtables
+   _ZTVN6vcloud8ttplayer12TTUserConfigE shndx DEFAULT
+   _ZTVN6vcloud8ttplayer12TTOnceConfigE shndx DEFAULT
+   _ZTVN6vcloud8ttplayer12TTPageConfigE shndx DEFAULT
+   _ZTVN6vcloud8ttplayer12TTFlexPlayerE shndx DEFAULT
+
+## OH musl e50b30f2: L1389 self-bind only STB_LOCAL; L1452 REL_RELATIVE = base+addend

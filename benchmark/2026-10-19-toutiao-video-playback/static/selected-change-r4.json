@@ -1,0 +1,98 @@
+{
+ "schema": "ttvideo-selected-change/v1",
+ "id": "r4",
+ "status": "proposed_static_awaiting_window (four-file deploy; executor = cx-seal CAS r6 draft)",
+ "supersedes": "none \u2014 extends r3; r3's three files stay unchanged, r4 only ADDS the player derive",
+ "key": "toutiao (1 key)",
+ "one_line": "Stop libttmplayer's GLES/EGL proc-loader from writing into provider code: rewrite its 105 dispatch-cache GLOB_DAT relocations to self-relative so each slot binds to libttmplayer's own .bss.",
+ "observed_crash": {
+  "where": "r3 window, board 61b fresh boot 8a1f0e6f, child 6662, player thread async_video_pla (tid 9141)",
+  "signal": "SIGSEGV SEGV_ACCERR @0x7d1d95e1f8 (ESR data abort, permission L3); fault addr is inside libEGL r-x segment 7d1d959000-7d1d979000",
+  "pc_reconciled": "abs pc 0x7eb529e714 - libttmplayer offset-0 base 0x7eb51c0000 = 0xde714 (ghidra 0x1de714). The cppcrash frame offset +0x21a6714 is NOT used (load-bias reconciliation, cx-seal concurrence).",
+  "evidence": "video-r3-exit-evidence/cppcrash-6662.txt; REA disasm of FUN_001ddcf0; evidence/r4-crash/ (to be archived)"
+ },
+ "root_cause": {
+  "mechanism": "libttmplayer's GLES3/3.1 + EGL-ANDROID proc-address cache slots are declared OBJECT GLOBAL DEFAULT in .bss (105 of them: gl*/egl*). The proc-loader FUN_001ddcf0 does `p = eglGetProcAddress(name); *slot = p`, where &slot comes from a GOT entry bound by R_AARCH64_GLOB_DAT on that symbol name. OH musl do_relocs (oh61-dynlink-linux.c e50b30f2 L1389) self-binds ONLY when st_info>>4 == STB_LOCAL; for a GLOBAL symbol it calls find_sym_by_saved_so_list, which returns the OH provider's exported FUNC (libEGL/mali) of the same name. So GOT[0x473e58] (eglPresentationTimeANDROID) points at libEGL code (0x7d1d95e1f8), and the proc-loader's `str x0,[x9]` writes a pointer into a read-only code page -> SEGV_ACCERR.",
+  "faulting_instruction": "0x1de6f0 adrp x0,0x4b9000 / 0x1de6f4 add x0,#0x3d (x0=\"eglPresentationTimeANDROID\", file 0x3b903d); 0x1de6f8 bl eglGetProcAddress; 0x1de70c ldr x9,[x9,#0xe58] (x9=*GOT[0x473e58]); 0x1de714 str x0,[x9] = FAULT",
+  "correction_note": "an earlier readback named glActiveShaderProgram; that string was the crash-time x1 residual (a mali name-table pointer), not the call argument. The resolved name is eglPresentationTimeANDROID (byte-verified at file 0x3b903d). OBJECT<-FUNC preemption direction unchanged.",
+  "classification": "deterministic symbol preemption (OBJECT data slot preempted by provider FUNC) / API-assembly. NOT a random crash, NOT a surface/window problem, NOT anti-virtualization.",
+  "r3_relation": "revealed by r3 (which correctly got the player chain to load); masked before r3 because the libvcbasekit ns0 relocation died first."
+ },
+ "fix": {
+  "summary": "single derived libttmplayer.so: rewrite the 105 family GLOB_DAT relocations in .rela.dyn to R_AARCH64_RELATIVE with addend = each symbol's own .bss st_value. OH musl L1452 does *slot = base + addend, so each GOT slot self-binds to libttmplayer's own writable .bss cache; the proc-loader's store then lands in .bss.",
+  "derived": {
+   "before_sha256": "b427614d57e4a7279f362b3f341de3cdd4b9f9a8859257016bcda24e5f6d3a02",
+   "after_sha256": "5fba80506cd1a494de5fb6aee63930192d6d0539657cca51e99381ff8a052ee4",
+   "size_bytes": 4662040,
+   "transform": "105 GLOB_DAT(sym,addend=0) -> RELATIVE(sym=0,addend=st_value); 627 bytes differ, all within those 105 relocations' r_info/r_addend (1680-byte written span). Symbol table, .gnu.hash/.hash, code, section permissions byte-identical.",
+   "scope_filter": "GLOB_DAT whose symbol is OBJECT GLOBAL, st_shndx == .bss (23), name gl*/egl*. Count == 105 (gate). Excludes the 4 C++ vtables _ZTVN6vcloud8ttplayer*ConfigE / TTFlexPlayer (OBJECT GLOBAL GLOB_DAT in .data.rel.ro shndx 19) -> left as GLOB_DAT.",
+   "recipe": "candidate-r4/derive_ttmplayer_selfrel.py (sha 5e1530098039...)",
+   "reject_gates": [
+    "input SHA != b427614d / size != 4662040",
+    "converted != 105",
+    "target symbol UNDEF / not OBJECT / not STB_GLOBAL / not .bss / not gl*egl*",
+    "any byte changed outside the 105 relocs' r_info/r_addend",
+    "output SHA != 5fba8050 (fixed point)"
+   ],
+   "reject_gate_receipts": "candidate-r4/receipt-tests/reject-gates.txt",
+   "raw_receipt": "$HOME/.local/share/westlake/toutiao-video-r4-derive/<ts>/ (rc=0); large .so mirrored to hw248 by outer",
+   "independent_cross_check": "outer in-memory relocation derivation: same after 5fba8050, 4662040 B, 627 changed bytes; $HOME/.local/share/westlake/toutiao-resume-20261019/video-r4-independent-relocations.json"
+  },
+  "loader_correctness": "verified against OH musl e50b30f2: L1389 self-binds only STB_LOCAL (so STV_HIDDEN/DT_SYMBOLIC/DEEPBIND do NOT help); L1452 REL_RELATIVE = base+addend (so the self-relative rewrite binds to own .bss).",
+  "preserves": [
+   "OH EGL/GLES provider FUNC semantics (providers untouched; libttmplayer still resolves real funcs via eglGetProcAddress)",
+   "P0",
+   "libttmplayer exports / symbol table / code / section permissions",
+   "no mprotect / no code-page write relaxation"
+  ]
+ },
+ "rejected_alternatives": {
+  "STV_HIDDEN": "musl do_relocs does not check visibility (L1389 only STB_LOCAL) -> hidden GLOBAL still preempted. Ineffective.",
+  "STB_LOCAL": "would self-bind (L1389) but ELF requires locals before globals; moving 105 scattered globals needs .dynsym reorder + sh_info + .gnu.hash/.hash rebuild. Large blast radius; also de-exports them. Rejected as non-minimal.",
+  "DF_SYMBOLIC/RTLD_DEEPBIND": "musl do_relocs does not honor either at L1389. Ineffective.",
+  "loader_local_first": "a link_stubs/musl change affecting ALL targets; broader, needs P0/feed re-verification. Deferred.",
+  "surface_window_wrapping": "not the cause (fault is symbol preemption, not a window/ANW call). Not pursued this round.",
+  "mprotect_or_rw_code": "rejected by directive \u2014 would mask the wrong binding, not fix it."
+ },
+ "blast_radius": {
+  "chosen_B_selfrel": "1 file, 105 .rela.dyn entries (r_info+r_addend). Symbol table/hash/code/perms unchanged. Fixes all 105 collisions at once (data caches, 0 PLT uses).",
+  "A_stb_local": "1 file but multi-section surgery (dynsym order + sh_info + 2 hash tables); high regression risk.",
+  "C_loader": "cross-cutting loader behavior change; affects every target."
+ },
+ "deploy_four_files": {
+  "note": "r4 = r3's three files (unchanged) + the player derive. run.sh stays 79275cf9 (libttmplayer already in NATIVE_TARGETS). Physical RT as in r3.",
+  "files": [
+   {
+    "target": "$RT/run.sh",
+    "after_sha256": "79275cf9...",
+    "change": "unchanged from r3"
+   },
+   {
+    "target": "$RT/libopensles_android_compat.so",
+    "after_sha256": "9f558aaf...",
+    "change": "unchanged from r3 (absent before)"
+   },
+   {
+    "target": "$RT/lib/arm64-v8a/libmffmpeg.so",
+    "after_sha256": "d2882303...",
+    "change": "unchanged from r3"
+   },
+   {
+    "target": "$RT/lib/arm64-v8a/libttmplayer.so",
+    "before_sha256": "b427614d57e4a7279f362b3f341de3cdd4b9f9a8859257016bcda24e5f6d3a02",
+    "after_sha256": "5fba80506cd1a494de5fb6aee63930192d6d0539657cca51e99381ff8a052ee4",
+    "metadata": "0644, 20011206:20011206, appdat label, same inode (video-r4-readonly/player-metadata/step-0.txt)",
+    "backup": "$RT/lib/arm64-v8a/libttmplayer.so.ttvideo-before-<boot8>"
+   }
+  ],
+  "executor": "cx-seal CAS r6 four-file draft (this lane does not build the deploy framework)",
+  "rollback": "restore libttmplayer from its single-file backup (CAS verify sha == b427614d), plus the r3 rollbacks; fresh reboot; verify feed screenshot equivalent and P0 intact"
+ },
+ "verify_small_window": "candidate-r4/load-experiment-card.md \u2014 read-only: the async_video_pla SEGV is gone, GOT 0x473e58 now points into libttmplayer .bss (not libEGL), and record the next first-fatal (if any). Playback/decode NOT claimed.",
+ "not_claimed": "audio/video playback, decode, or surface present. r4 removes one deterministic crash in the proc-loader; subsequent player stages are unknown.",
+ "allowed_files": [
+  "benchmark/2026-10-19-toutiao-video-playback/candidate-r4/**",
+  "benchmark/2026-10-19-toutiao-video-playback/static/selected-change-r4.json",
+  "specs/toutiao-video-playback/t2-minimal-repair.spec.md"
+ ]
+}
