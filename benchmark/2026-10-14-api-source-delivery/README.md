@@ -1,5 +1,7 @@
 # API implementation, source and build correspondence
 
+Latest observations: [2026-10-19 manual recovery and player loading](../2026-10-19-api-progress-update/index.html). This additive view links the actual source, build recipes and live evidence without changing the historical315 grades. Manual recovery has scoped feed evidence; video playback remains unpassed and its candidate was rolled back.
+
 The earlier API atlas linked several reports without the actual implementation or a runnable build entry. The default branch now contains the recovered implementation source and build plans, and the 315-row atlas links them directly. There are **392 exact master source references and 143 non-null build entries**. All 315 original capability, Android/OH evidence and APK validation grades remain unchanged.
 
 Start with the [Chinese table](views/API-PROGRESS.zh.md), [searchable Chinese HTML](views/index.html), [English HTML](views/index.en.html), [CSV](views/api-progress.csv) or [JSON](views/api-progress.json). The [source index](../../sources/api-implementations/README.md) groups the frozen API, Java, native, installer and Boat implementations. No agent worktree or branch switch is needed to find the delivered code.
