@@ -1,0 +1,63 @@
+{
+  "token": "video-2020-decoder-select",
+  "target": {
+    "name": "libttmplayer.so",
+    "sha256": "5fba80506cd1a494de5fb6aee63930192d6d0539657cca51e99381ff8a052ee4",
+    "provider": "ghidra 12.1.4",
+    "arch": "arm64"
+  },
+  "complete_raw_tool_result": "$HOME/.local/share/westlake/toutiao-resume-20261019/codec-java-20261020-rea-raw/rea-tool-json/rea.procedure_pseudo_code.libttmplayer.FUN_0028d0fc.json (full procedure_pseudo_code JSON; op/target/sha inside)",
+  "selection_function": {
+    "name": "FUN_0028d0fc",
+    "source": "ff_vcodecer.cpp:open (src line 0x5e=94)",
+    "range": "0x28d0fc-0x28e533",
+    "evidence_id_pseudocode": "ev_7aa1d0ab3f48a3442eebb9a2a07a5cc24ca0f0ac920dcff67697a3c5fa0d0215",
+    "evidence_id_containing": "ev_0767ef96d3e7cd667e09484d6977b0ccf1775d38b98c30d40cdbedda8ecd6eca",
+    "byte_identity_r4_r8_r9": {
+      "range_sha256": "31901285ef2164e9b7c555caf1969202d810ea5ae576220afa8d1db5565777ca",
+      "targets": "r4 5fba == deployed r8/r9 0b4d (FUN_0028d0fc body byte-identical) -> selection logic read on r4 applies verbatim to deployed player"
+    }
+  },
+  "selection_logic_CONFIRMED_static": {
+    "reads": "internal codecId uVar2 (logged as 'start.codecId:%d' at ff_vcodecer.cpp:open:0x5e)",
+    "dispatch_by_avcodec_find_decoder_by_name": {
+      "0x41000": "libbytevc2dec",
+      "0xc5": "libvvcdec (VVC/H.266)",
+      "0xae": "\"libbytevc1dec\" (name looked up; NOT proven registered/has-body)",
+      "else_or_null": "avcodec_find_decoder(codecId) fallback; if still 0 -> error path"
+    },
+    "post_select": "strcmp on resolved name ('h264'/'libbytevc1dec'/'libbytevc2dec') sets codec-specific params; logs 'mVideoCodecName %s'",
+    "note": "avcodec_find_decoder_by_name performs a literal by-NAME registry lookup. Proven: the code looks up these names by codecId. NOT proven: that a decoder named 'libbytevc1dec'/'libbytevc2dec'/'libvvcdec' is actually REGISTERED (AVCodec entry) or that the lookup returns non-null."
+  },
+  "decode_and_error_nodes": {
+    "decoder_open": "avcodec_find_decoder_by_name/avcodec_find_decoder -> mCodec (param_1[0x29]); null -> error branch",
+    "internal_ByteVC1_decode": "ByteVC1_dec_decode_inner / bytevc1_decode_frame_data (compiled in; ffmpeg/libbytevc1.c)",
+    "error_return_string": "ByteVC1_dec_decode error:(%x) %d @0x49bc51"
+  },
+  "NOT_confirmed_downgraded": [
+    "the r9 video/hevc stream's actual internal codecId \u2014 the 'start.codecId' line is NOT present in the available r9 256-mirror or r8-play1 logs, so WHICH branch r9 took is unknown",
+    "that video/hevc maps to codecId 0xae (ByteDance FFmpeg enum not verified; 0xae selects libbytevc1dec, but hevc->0xae itself unconfirmed)",
+    "that decode produced frames / rendered (dec_start = thread-start log point only; no completion/frame evidence)",
+    "that a decoder named 'libbytevc1dec' is registered (AVCodec entry) and avcodec_find_decoder_by_name returns non-null; bytevc1_* symbols/strings are present but not tied to a registered 'libbytevc1dec' entry in this pass"
+  ],
+  "status": "Selection LOGIC + codecId->name map statically read (Ghidra VA, imagebase 0x100000). All of: r9 actual codecId, hevc==0xae, libbytevc1dec registration/non-null lookup, and decode outcome remain UNKNOWN. Internal bytevc1 symbols present but registry/body not proven. Candidate path only.",
+  "codecId_source": {
+    "how_read": "FUN_0028d0fc reads codecId from the track/stream object via a vtable call ((*vtbl+0x48)(obj,5,0xffffffff) -> FUN_001e09b4), i.e. the demuxer-assigned AV codec id \u2014 not a literal mime/fourcc table.",
+    "fourcc_table_absent": "no 'hvc1'/'hev1' strings in libttmplayer (ev_aa4b3f82) -> the video/hevc->0xae binding is NOT a cheap static string lookup; it is set during demux/codec probe.",
+    "cheapest_resolver": "r10 4096-line mirror 'start.codecId:%d' (ff_vcodecer.cpp:open:0x5e) gives the actual codecId -> branch directly; alternative is a static demuxer(ff_demuxer_android)/codecpar trace."
+  },
+  "bytevc1_internal_decoder_strings_evidence_id": "ev_4f8a1c3b4c6a1fec9f0b94223a55a0fefdb8afec1d4bc7f546945abd60c044d6",
+  "address_model": {
+    "kind": "ghidra_virtual_address",
+    "image_base": "0x100000",
+    "image_base_evidence_id": "ev_6677486f29b4f93b4ff6cf9d7f0f6f4e34686a36be2dd0cd2474c18b05bd2f4f",
+    "elf_vaddr": "ghidra_VA - 0x100000",
+    "file_offset": "segment-dependent; use address_to_file_offset (NOT a constant subtraction)",
+    "selection_function_elf_file_offset": {
+      "ghidra_va": "0x28d0fc-0x28e533",
+      "elf_file": "0x18d0fc-0x18e534 (end-exclusive)",
+      "confirmed_by": "independent LLVM, $HOME/.local/share/westlake/toutiao-resume-20261020/decoder-select-independent",
+      "note": "for this .text function ELF/file = Ghidra VA - 0x100000; do not generalize the equality to all sections"
+    }
+  }
+}
