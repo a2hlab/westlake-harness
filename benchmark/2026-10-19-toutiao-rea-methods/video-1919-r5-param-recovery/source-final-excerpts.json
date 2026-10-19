@@ -1,0 +1,1301 @@
+{
+  "source_report_sha256": "9a89cd2b57641cb1ba68c43651f9fe2f374093a07f4ac969f2d5340929ac4f44",
+  "note": "Line-numbered excerpts from outer read-only source report; full-file SHA values were computed by that reader. This reviewer hashes the report, not unavailable remote full files.",
+  "files": [
+    {
+      "path": "base/startup/init/services/param/manager/param_persist.c",
+      "sha256": "86bd8d70feb970a33d7682921b1e2a1fb4c1439444a9e6a02eaeeda240304574",
+      "line_ranges": [
+        [
+          27,
+          34
+        ],
+        [
+          65,
+          80
+        ],
+        [
+          101,
+          125
+        ],
+        [
+          180,
+          195
+        ]
+      ],
+      "lines": [
+        {
+          "line": 27,
+          "text": "static int IsNeedToSave(const char *name)"
+        },
+        {
+          "line": 28,
+          "text": "{"
+        },
+        {
+          "line": 29,
+          "text": "#if defined(__LITEOS_M__) || defined(__LITEOS_A__)"
+        },
+        {
+          "line": 30,
+          "text": "    return IS_READY_ONLY(name) ? 0 : 1;"
+        },
+        {
+          "line": 31,
+          "text": "#else"
+        },
+        {
+          "line": 32,
+          "text": "    return (strncmp(name, PARAM_PERSIST_PREFIX, strlen(PARAM_PERSIST_PREFIX)) == 0) ? 1 : 0;"
+        },
+        {
+          "line": 33,
+          "text": "#endif"
+        },
+        {
+          "line": 34,
+          "text": "}"
+        },
+        {
+          "line": 65,
+          "text": "static int SavePersistParam(const WorkSpace *workSpace, const ParamTrieNode *node, const void *cookie)"
+        },
+        {
+          "line": 66,
+          "text": "{"
+        },
+        {
+          "line": 67,
+          "text": "    ParamTrieNode *current = (ParamTrieNode *)node;"
+        },
+        {
+          "line": 68,
+          "text": "    if (current == NULL || current->dataIndex == 0) {"
+        },
+        {
+          "line": 69,
+          "text": "        return 0;"
+        },
+        {
+          "line": 70,
+          "text": "    }"
+        },
+        {
+          "line": 71,
+          "text": "    ParamNode *entry = (ParamNode *)GetTrieNode(workSpace, current->dataIndex);"
+        },
+        {
+          "line": 72,
+          "text": "    if (entry == NULL) {"
+        },
+        {
+          "line": 73,
+          "text": "        return 0;"
+        },
+        {
+          "line": 74,
+          "text": "    }"
+        },
+        {
+          "line": 75,
+          "text": ""
+        },
+        {
+          "line": 76,
+          "text": "    if (!IsNeedToSave(entry->data)) {"
+        },
+        {
+          "line": 77,
+          "text": "        return 0;"
+        },
+        {
+          "line": 78,
+          "text": "    }"
+        },
+        {
+          "line": 79,
+          "text": ""
+        },
+        {
+          "line": 80,
+          "text": "    if ((entry->commitId & PARAM_FLAGS_PERSIST) == 0) {"
+        },
+        {
+          "line": 101,
+          "text": "#if defined(__LITEOS_M__) || defined(__LITEOS_A__) || defined(__LINUX__)"
+        },
+        {
+          "line": 102,
+          "text": "    PERSIST_SAVE_HANDLE handle;"
+        },
+        {
+          "line": 103,
+          "text": "    int ret = g_persistWorkSpace.persistParamOps.batchSaveBegin(&handle);"
+        },
+        {
+          "line": 104,
+          "text": "#if defined(__LITEOS_M__) || defined(__LITEOS_A__)"
+        },
+        {
+          "line": 105,
+          "text": "    const char *prefix = \"\";"
+        },
+        {
+          "line": 106,
+          "text": "#else"
+        },
+        {
+          "line": 107,
+          "text": "    const char *prefix = PARAM_PERSIST_PREFIX;"
+        },
+        {
+          "line": 108,
+          "text": "#endif"
+        },
+        {
+          "line": 109,
+          "text": "#else"
+        },
+        {
+          "line": 110,
+          "text": "    PERSIST_SAVE_HANDLE handle[PERSIST_HANDLE_MAX] = { NULL, NULL };"
+        },
+        {
+          "line": 111,
+          "text": "    int ret = g_persistWorkSpace.persistParamOps.batchSaveBegin(handle);"
+        },
+        {
+          "line": 112,
+          "text": "    const char *prefix = PARAM_PERSIST_PREFIX;"
+        },
+        {
+          "line": 113,
+          "text": "#endif"
+        },
+        {
+          "line": 114,
+          "text": "    PARAM_CHECK(ret == 0, return PARAM_CODE_INVALID_NAME, \"Failed to save persist\");"
+        },
+        {
+          "line": 115,
+          "text": "    // walk and save persist param"
+        },
+        {
+          "line": 116,
+          "text": "    WorkSpace *workSpace = GetNextWorkSpace(NULL);"
+        },
+        {
+          "line": 117,
+          "text": "    while (workSpace != NULL) {"
+        },
+        {
+          "line": 118,
+          "text": "        WorkSpace *next = GetNextWorkSpace(workSpace);"
+        },
+        {
+          "line": 119,
+          "text": "        ParamTrieNode *root = FindTrieNode(workSpace, prefix, strlen(prefix), NULL);"
+        },
+        {
+          "line": 120,
+          "text": "        PARAMSPACE_AREA_RD_LOCK(workSpace);"
+        },
+        {
+          "line": 121,
+          "text": "        TraversalTrieNode(workSpace, root, SavePersistParam, (void *)handle);"
+        },
+        {
+          "line": 122,
+          "text": "        PARAMSPACE_AREA_RW_UNLOCK(workSpace);"
+        },
+        {
+          "line": 123,
+          "text": "        workSpace = next;"
+        },
+        {
+          "line": 124,
+          "text": "    }"
+        },
+        {
+          "line": 125,
+          "text": "    g_persistWorkSpace.persistParamOps.batchSaveEnd(handle);"
+        },
+        {
+          "line": 180,
+          "text": "INIT_LOCAL_API int WritePersistParam(const char *name, const char *value)"
+        },
+        {
+          "line": 181,
+          "text": "{"
+        },
+        {
+          "line": 182,
+          "text": "    PARAM_CHECK(value != NULL && name != NULL, return PARAM_CODE_INVALID_PARAM, \"Invalid param\");"
+        },
+        {
+          "line": 183,
+          "text": "    if (!IsNeedToSave(name)) {"
+        },
+        {
+          "line": 184,
+          "text": "        return 0;"
+        },
+        {
+          "line": 185,
+          "text": "    }"
+        },
+        {
+          "line": 186,
+          "text": "    PARAM_LOGV(\"WritePersistParam name %s \", name);"
+        },
+        {
+          "line": 187,
+          "text": "    if (g_persistWorkSpace.persistParamOps.save != NULL) {"
+        },
+        {
+          "line": 188,
+          "text": "        g_persistWorkSpace.persistParamOps.save(name, value);"
+        },
+        {
+          "line": 189,
+          "text": "    }"
+        },
+        {
+          "line": 190,
+          "text": "    // update commit for check"
+        },
+        {
+          "line": 191,
+          "text": "    UpdatePersistCommitId();"
+        },
+        {
+          "line": 192,
+          "text": "    // for liteos-m, start task to check and save parameter"
+        },
+        {
+          "line": 193,
+          "text": "    // for linux, start timer after set persist parameter"
+        },
+        {
+          "line": 194,
+          "text": "    // for liteos-a, start timer in init to check and save parameter"
+        },
+        {
+          "line": 195,
+          "text": "#ifdef PARAM_SUPPORT_REAL_CHECK"
+        }
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/linux/param_service.c",
+      "sha256": "681131bb370dca8b815b97f7a4b498bcb826151ac760ce2369d54411a1d66b02",
+      "line_ranges": [
+        [
+          141,
+          158
+        ],
+        [
+          422,
+          437
+        ]
+      ],
+      "lines": [
+        {
+          "line": 141,
+          "text": "    PARAM_LOGV(\"SystemWriteParam name %s value: %s\", name, value);"
+        },
+        {
+          "line": 142,
+          "text": "    uint32_t ctrlService = 0;"
+        },
+        {
+          "line": 143,
+          "text": "    int ret = CheckParameterSet(name, value, srcLabel, &ctrlService);"
+        },
+        {
+          "line": 144,
+          "text": "    PARAM_CHECK(ret == 0, return ret, \"Forbid to set parameter %s\", name);"
+        },
+        {
+          "line": 145,
+          "text": ""
+        },
+        {
+          "line": 146,
+          "text": "    unsigned int mode = 0;"
+        },
+        {
+          "line": 147,
+          "text": "    if (strncmp(name, PARAM_PERSIST_PREFIX, strlen(PARAM_PERSIST_PREFIX)) == 0) {"
+        },
+        {
+          "line": 148,
+          "text": "        mode |= LOAD_PARAM_PERSIST;"
+        },
+        {
+          "line": 149,
+          "text": "    }"
+        },
+        {
+          "line": 150,
+          "text": "    if ((ctrlService & PARAM_CTRL_SERVICE) != PARAM_CTRL_SERVICE) { // ctrl param"
+        },
+        {
+          "line": 151,
+          "text": "        uint32_t dataIndex = 0;"
+        },
+        {
+          "line": 152,
+          "text": "        ret = WriteParam(name, value, &dataIndex, mode);"
+        },
+        {
+          "line": 153,
+          "text": "        PARAM_CHECK(ret == 0, return ret, \"Failed to set param %d name %s %s\", ret, name, value);"
+        },
+        {
+          "line": 154,
+          "text": "        ret = WritePersistParam(name, value);"
+        },
+        {
+          "line": 155,
+          "text": "        PARAM_CHECK(ret == 0, return ret, \"Failed to set persist param name %s\", name);"
+        },
+        {
+          "line": 156,
+          "text": "        CheckAndSendTrigger(dataIndex, name, value);"
+        },
+        {
+          "line": 157,
+          "text": "    }"
+        },
+        {
+          "line": 158,
+          "text": "    return ret;"
+        },
+        {
+          "line": 422,
+          "text": "    PARAM_LOGI(\"InitParamService pipe: %s.\", PIPE_NAME);"
+        },
+        {
+          "line": 423,
+          "text": "    CheckAndCreateDir(PIPE_NAME);"
+        },
+        {
+          "line": 424,
+          "text": "    CheckAndCreateDir(PARAM_STORAGE_PATH\"/\");"
+        },
+        {
+          "line": 425,
+          "text": "    // param space"
+        },
+        {
+          "line": 426,
+          "text": "    PARAM_WORKSPACE_OPS ops = {0};"
+        },
+        {
+          "line": 427,
+          "text": "    ops.updaterMode = InUpdaterMode();"
+        },
+        {
+          "line": 428,
+          "text": "    // init open log"
+        },
+        {
+          "line": 429,
+          "text": "    ops.logFunc = InitLog;"
+        },
+        {
+          "line": 430,
+          "text": "    ops.getServiceGroupIdByPid = GetServiceGroupIdByPid;"
+        },
+        {
+          "line": 431,
+          "text": "#ifdef PARAM_SUPPORT_SELINUX"
+        },
+        {
+          "line": 432,
+          "text": "    ops.setfilecon = setfilecon;"
+        },
+        {
+          "line": 433,
+          "text": "#endif"
+        },
+        {
+          "line": 434,
+          "text": "    int ret = InitParamWorkSpace(0, &ops);"
+        },
+        {
+          "line": 435,
+          "text": "    PARAM_CHECK(ret == 0, return ret, \"Init parameter workspace fail\");"
+        },
+        {
+          "line": 436,
+          "text": "    ret = InitPersistParamWorkSpace();"
+        },
+        {
+          "line": 437,
+          "text": "    PARAM_CHECK(ret == 0, return ret, \"Init persist parameter workspace fail\");"
+        }
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/linux/param_osadp.c",
+      "sha256": "8f21cdb30bd2eaa52fffc5f74b133c4ec53b2a9cf16ec0628440b09595ac6c08",
+      "line_ranges": [
+        [
+          81,
+          97
+        ]
+      ],
+      "lines": [
+        {
+          "line": 81,
+          "text": "INIT_LOCAL_API void *GetSharedMem(const char *fileName, MemHandle *handle, uint32_t spaceSize, int readOnly)"
+        },
+        {
+          "line": 82,
+          "text": "{"
+        },
+        {
+          "line": 83,
+          "text": "    PARAM_CHECK(fileName != NULL, return NULL, \"Invalid filename or handle\");"
+        },
+        {
+          "line": 84,
+          "text": "    int mode = readOnly ? O_RDONLY : O_CREAT | O_RDWR | O_TRUNC;"
+        },
+        {
+          "line": 85,
+          "text": "    int fd = open(fileName, mode, S_IRWXU | S_IRWXG | S_IROTH);"
+        },
+        {
+          "line": 86,
+          "text": "    PARAM_ONLY_CHECK(fd >= 0, return NULL);"
+        },
+        {
+          "line": 87,
+          "text": ""
+        },
+        {
+          "line": 88,
+          "text": "    int prot = PROT_READ;"
+        },
+        {
+          "line": 89,
+          "text": "    if (!readOnly) {"
+        },
+        {
+          "line": 90,
+          "text": "        prot = PROT_READ | PROT_WRITE;"
+        },
+        {
+          "line": 91,
+          "text": "        ftruncate(fd, spaceSize);"
+        },
+        {
+          "line": 92,
+          "text": "    }"
+        },
+        {
+          "line": 93,
+          "text": "    void *areaAddr = (void *)mmap(NULL, spaceSize, prot, MAP_SHARED, fd, 0);"
+        },
+        {
+          "line": 94,
+          "text": "    PARAM_CHECK_DUMPE(areaAddr != MAP_FAILED && areaAddr != NULL, close(fd);"
+        },
+        {
+          "line": 95,
+          "text": "        return NULL, \"mmap err %d file %s\", errno, fileName);"
+        },
+        {
+          "line": 96,
+          "text": "    close(fd);"
+        },
+        {
+          "line": 97,
+          "text": "    return areaAddr;"
+        }
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/base/param_trie.c",
+      "sha256": "30525492d44220b1552d9f46e4dd50fc52792165bda5cc7aa5a184c61b6c1eb1",
+      "line_ranges": [
+        [
+          31,
+          48
+        ]
+      ],
+      "lines": [
+        {
+          "line": 31,
+          "text": "static int GetRealFileName(WorkSpace *workSpace, char *buffer, uint32_t size)"
+        },
+        {
+          "line": 32,
+          "text": "{"
+        },
+        {
+          "line": 33,
+          "text": "    int ret = PARAM_SPRINTF(buffer, size, \"%s/%s\", PARAM_STORAGE_PATH, workSpace->fileName);"
+        },
+        {
+          "line": 34,
+          "text": "    PARAM_CHECK(ret > 0, return -1, \"Failed to copy file name %s\", workSpace->fileName);"
+        },
+        {
+          "line": 35,
+          "text": "    buffer[ret] = '\\0';"
+        },
+        {
+          "line": 36,
+          "text": "    return 0;"
+        },
+        {
+          "line": 37,
+          "text": "}"
+        },
+        {
+          "line": 38,
+          "text": ""
+        },
+        {
+          "line": 39,
+          "text": "static int InitWorkSpace_(WorkSpace *workSpace, uint32_t spaceSize, int readOnly)"
+        },
+        {
+          "line": 40,
+          "text": "{"
+        },
+        {
+          "line": 41,
+          "text": "    PARAM_CHECK(workSpace != NULL, return PARAM_CODE_INVALID_PARAM, \"Invalid workSpace\");"
+        },
+        {
+          "line": 42,
+          "text": "    PARAM_CHECK(sizeof(ParamTrieHeader) < spaceSize,"
+        },
+        {
+          "line": 43,
+          "text": "        return PARAM_CODE_INVALID_PARAM, \"Invalid spaceSize %u name %s\", spaceSize, workSpace->fileName);"
+        },
+        {
+          "line": 44,
+          "text": ""
+        },
+        {
+          "line": 45,
+          "text": "    char buffer[FILENAME_LEN_MAX] = {0};"
+        },
+        {
+          "line": 46,
+          "text": "    int ret = GetRealFileName(workSpace, buffer, sizeof(buffer));"
+        },
+        {
+          "line": 47,
+          "text": "    PARAM_CHECK(ret == 0, return -1, \"Failed to get file name %s\", workSpace->fileName);"
+        },
+        {
+          "line": 48,
+          "text": "    void *areaAddr = GetSharedMem(buffer, &workSpace->memHandle, spaceSize, readOnly);"
+        }
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/include/param_utils.h",
+      "sha256": "59d6cd21af9036cd9d6d46430f3f0e693181eb6cad8afcb76f6e6502ea87aab8",
+      "line_ranges": [
+        [
+          54,
+          54
+        ],
+        [
+          76,
+          89
+        ]
+      ],
+      "lines": [
+        {
+          "line": 54,
+          "text": "#define PARAM_PERSIST_PREFIX \"persist.\""
+        },
+        {
+          "line": 76,
+          "text": "#define DATA_PATH          STARTUP_INIT_UT_PATH\"/data/service/el1/startup/parameters/\""
+        },
+        {
+          "line": 77,
+          "text": "#endif"
+        },
+        {
+          "line": 78,
+          "text": "#define PARAM_AREA_SIZE_CFG STARTUP_INIT_UT_PATH\"/etc/param/ohos.para.size\""
+        },
+        {
+          "line": 79,
+          "text": "#define CLIENT_PIPE_NAME \"/dev/unix/socket/paramservice\""
+        },
+        {
+          "line": 80,
+          "text": "#define PIPE_NAME STARTUP_INIT_UT_PATH \"/dev/unix/socket/paramservice\""
+        },
+        {
+          "line": 81,
+          "text": "#define PARAM_STORAGE_PATH STARTUP_INIT_UT_PATH \"/dev/__parameters__\""
+        },
+        {
+          "line": 82,
+          "text": "#define PARAM_PERSIST_SAVE_PATH DATA_PATH \"persist_parameters\""
+        },
+        {
+          "line": 83,
+          "text": "#define PARAM_PERSIST_SAVE_TMP_PATH DATA_PATH \"tmp_persist_parameters\""
+        },
+        {
+          "line": 84,
+          "text": "#define PRIVATE_DATA_PATH STARTUP_INIT_UT_PATH \"/data/service/el1/public/startup/parameters/\""
+        },
+        {
+          "line": 85,
+          "text": "#define PARAM_OLD_PERSIST_SAVE_PATH PRIVATE_DATA_PATH \"persist_parameters\""
+        },
+        {
+          "line": 86,
+          "text": "#define PARAM_PUBLIC_PERSIST_SAVE_PATH DATA_PATH \"public_persist_parameters\""
+        },
+        {
+          "line": 87,
+          "text": "#define PARAM_PUBLIC_PERSIST_SAVE_TMP_PATH DATA_PATH \"tmp_public_persist_parameters\""
+        },
+        {
+          "line": 88,
+          "text": "#define PARAM_PRIVATE_PERSIST_SAVE_PATH PRIVATE_DATA_PATH \"private_persist_parameters\""
+        },
+        {
+          "line": 89,
+          "text": "#define PARAM_PRIVATE_PERSIST_SAVE_TMP_PATH PRIVATE_DATA_PATH \"tmp_private_persist_parameters\""
+        }
+      ]
+    },
+    {
+      "path": "base/startup/init/services/init/standard/device.c",
+      "sha256": "6b9e4d69254553a18657b14b8f899beb757a327e2b8a50d0323f44b04d8c2120",
+      "line_ranges": [
+        [
+          30,
+          39
+        ]
+      ],
+      "lines": [
+        {
+          "line": 30,
+          "text": "static void MountBasicFs(void)"
+        },
+        {
+          "line": 31,
+          "text": "{"
+        },
+        {
+          "line": 32,
+          "text": "    if (access(\"dev/null\", F_OK) != 0) {"
+        },
+        {
+          "line": 33,
+          "text": "        INIT_LOGI(\"mount dev tmpfs\");"
+        },
+        {
+          "line": 34,
+          "text": "        if (mount(\"tmpfs\", \"/dev\", \"tmpfs\", MS_NOSUID, \"mode=0755\") != 0) {"
+        },
+        {
+          "line": 35,
+          "text": "            INIT_LOGE(\"Mount tmpfs failed. %s\", strerror(errno));"
+        },
+        {
+          "line": 36,
+          "text": "        }"
+        },
+        {
+          "line": 37,
+          "text": "    } else {"
+        },
+        {
+          "line": 38,
+          "text": "        INIT_LOGI(\"dev already mounted\");"
+        },
+        {
+          "line": 39,
+          "text": "    }"
+        }
+      ]
+    },
+    {
+      "path": "base/startup/init/services/init/standard/init.c",
+      "sha256": "e4c4bbcb7d3758f773eed3e157fba325fe53b9733cb1fb4d5d3444b60792a51a",
+      "line_ranges": [
+        [
+          170,
+          190
+        ]
+      ],
+      "lines": [
+        {
+          "line": 170,
+          "text": "static void InitLoadParamFiles(void)"
+        },
+        {
+          "line": 171,
+          "text": "{"
+        },
+        {
+          "line": 172,
+          "text": "    if (InUpdaterMode() != 0) {"
+        },
+        {
+          "line": 173,
+          "text": "        LoadDefaultParams(\"/etc/param/ohos_const\", LOAD_PARAM_NORMAL);"
+        },
+        {
+          "line": 174,
+          "text": "        LoadDefaultParams(\"/etc/param\", LOAD_PARAM_ONLY_ADD);"
+        },
+        {
+          "line": 175,
+          "text": "        LoadDefaultParams(\"/vendor/etc/param\", LOAD_PARAM_ONLY_ADD);"
+        },
+        {
+          "line": 176,
+          "text": "        return;"
+        },
+        {
+          "line": 177,
+          "text": "    }"
+        },
+        {
+          "line": 178,
+          "text": ""
+        },
+        {
+          "line": 179,
+          "text": "    // Load developer mode param"
+        },
+        {
+          "line": 180,
+          "text": "    LoadDefaultParams(\"/proc/dsmm/developer\", LOAD_PARAM_NORMAL);"
+        },
+        {
+          "line": 181,
+          "text": ""
+        },
+        {
+          "line": 182,
+          "text": "    // Load const params, these can't be override!"
+        },
+        {
+          "line": 183,
+          "text": "    LoadDefaultParams(\"/system/etc/param/ohos_const\", LOAD_PARAM_NORMAL);"
+        },
+        {
+          "line": 184,
+          "text": "    CfgFiles *files = GetCfgFiles(\"etc/param\");"
+        },
+        {
+          "line": 185,
+          "text": "    for (int i = MAX_CFG_POLICY_DIRS_CNT - 1; files && i >= 0; i--) {"
+        },
+        {
+          "line": 186,
+          "text": "        if (files->paths[i]) {"
+        },
+        {
+          "line": 187,
+          "text": "            LoadDefaultParams(files->paths[i], LOAD_PARAM_ONLY_ADD);"
+        },
+        {
+          "line": 188,
+          "text": "        }"
+        },
+        {
+          "line": 189,
+          "text": "    }"
+        },
+        {
+          "line": 190,
+          "text": "    FreeCfgFiles(files);"
+        }
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/manager/param_server.c",
+      "sha256": "9d89897dcd09d3063b55804a25dca22fc94f62e8dabd088534b7eda512548d3a",
+      "line_ranges": [
+        [
+          313,
+          325
+        ],
+        [
+          421,
+          452
+        ]
+      ],
+      "lines": [
+        {
+          "line": 313,
+          "text": "static int LoadFileFromImport(char *target, uint32_t mode)"
+        },
+        {
+          "line": 314,
+          "text": "{"
+        },
+        {
+          "line": 315,
+          "text": "    if (strstr(target, \".para.dac\")) {"
+        },
+        {
+          "line": 316,
+          "text": "        LoadSecurityLabel(target);"
+        },
+        {
+          "line": 317,
+          "text": "    } else {"
+        },
+        {
+          "line": 318,
+          "text": "        LoadDefaultParams(target, mode);"
+        },
+        {
+          "line": 319,
+          "text": "    }"
+        },
+        {
+          "line": 320,
+          "text": "    return 0;"
+        },
+        {
+          "line": 321,
+          "text": "}"
+        },
+        {
+          "line": 322,
+          "text": ""
+        },
+        {
+          "line": 323,
+          "text": "// Content format of .import.para is \"import /dir/param.para\""
+        },
+        {
+          "line": 324,
+          "text": "// Use ${} to pass parameter like \"import /dir/${const.product.productid}.para\""
+        },
+        {
+          "line": 325,
+          "text": "static int LoadParamFromImport_(char *buffer, const int buffSize, uint32_t mode)"
+        },
+        {
+          "line": 421,
+          "text": "static int ProcessParamFile(const char *fileName, void *context)"
+        },
+        {
+          "line": 422,
+          "text": "{"
+        },
+        {
+          "line": 423,
+          "text": "    static const char *exclude[] = {\"ctl.\", \"selinux.restorecon_recursive\"};"
+        },
+        {
+          "line": 424,
+          "text": "    uint32_t mode = *(int *)context;"
+        },
+        {
+          "line": 425,
+          "text": "    int ret = LoadDefaultParam_(fileName, mode, exclude, ARRAY_LENGTH(exclude), LoadOneParam_);"
+        },
+        {
+          "line": 426,
+          "text": "    if (ret == PARAM_DEFAULT_PARAM_MEMORY_NOT_ENOUGH) {"
+        },
+        {
+          "line": 427,
+          "text": "        PARAM_LOGE(\"[startup_failed]default_param memory is not enough, system reboot! %d\", SYS_PARAM_INIT_FAILED);"
+        },
+        {
+          "line": 428,
+          "text": "        ExecReboot(\"panic\");"
+        },
+        {
+          "line": 429,
+          "text": "    }"
+        },
+        {
+          "line": 430,
+          "text": "    return ret;"
+        },
+        {
+          "line": 431,
+          "text": "}"
+        },
+        {
+          "line": 432,
+          "text": ""
+        },
+        {
+          "line": 433,
+          "text": "int LoadParamsFile(const char *fileName, bool onlyAdd)"
+        },
+        {
+          "line": 434,
+          "text": "{"
+        },
+        {
+          "line": 435,
+          "text": "    return LoadDefaultParams(fileName, onlyAdd ? LOAD_PARAM_ONLY_ADD : LOAD_PARAM_NORMAL);"
+        },
+        {
+          "line": 436,
+          "text": "}"
+        },
+        {
+          "line": 437,
+          "text": ""
+        },
+        {
+          "line": 438,
+          "text": "int LoadDefaultParams(const char *fileName, uint32_t mode)"
+        },
+        {
+          "line": 439,
+          "text": "{"
+        },
+        {
+          "line": 440,
+          "text": "    PARAM_CHECK(fileName != NULL, return -1, \"Invalid filename for load\");"
+        },
+        {
+          "line": 441,
+          "text": "    PARAM_LOGI(\"Load default parameters from %s.\", fileName);"
+        },
+        {
+          "line": 442,
+          "text": "    struct stat st;"
+        },
+        {
+          "line": 443,
+          "text": "    if ((stat(fileName, &st) == 0) && !S_ISDIR(st.st_mode)) {"
+        },
+        {
+          "line": 444,
+          "text": "        if (strstr(fileName, \".para.dac\")) {"
+        },
+        {
+          "line": 445,
+          "text": "            return LoadSecurityLabel(fileName);"
+        },
+        {
+          "line": 446,
+          "text": "        } else {"
+        },
+        {
+          "line": 447,
+          "text": "            return ProcessParamFile(fileName, &mode);"
+        },
+        {
+          "line": 448,
+          "text": "        }"
+        },
+        {
+          "line": 449,
+          "text": "    } else {"
+        },
+        {
+          "line": 450,
+          "text": "        (void)ReadFileInDir(fileName, \".para\", ProcessParamFile, &mode);"
+        },
+        {
+          "line": 451,
+          "text": "        (void)ReadFileInDir(fileName, \".para.import\", LoadParamFromImport, &mode);"
+        },
+        {
+          "line": 452,
+          "text": "        return LoadSecurityLabel(fileName);"
+        }
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/manager/param_manager.c",
+      "sha256": "c91f1013282894c7745954193b26b022aca50f114d938ccfb68d354ebfc13565",
+      "line_ranges": [
+        [
+          748,
+          772
+        ]
+      ],
+      "lines": [
+        {
+          "line": 748,
+          "text": "int SystemReadParam(const char *name, char *value, uint32_t *len)"
+        },
+        {
+          "line": 749,
+          "text": "{"
+        },
+        {
+          "line": 750,
+          "text": "    PARAM_WORKSPACE_CHECK(GetParamWorkSpace(), return PARAM_WORKSPACE_NOT_INIT,"
+        },
+        {
+          "line": 751,
+          "text": "        \"SystemReadParam failed! name is:%s, errNum is:%d!\", name, PARAM_WORKSPACE_NOT_INIT);"
+        },
+        {
+          "line": 752,
+          "text": "    PARAM_CHECK(name != NULL && len != NULL, return PARAM_CODE_ERROR,"
+        },
+        {
+          "line": 753,
+          "text": "        \"SystemReadParam failed! name is:%s, errNum is:%d!\", name, PARAM_CODE_ERROR);"
+        },
+        {
+          "line": 754,
+          "text": "    ParamTrieNode *node = NULL;"
+        },
+        {
+          "line": 755,
+          "text": "    WorkSpace *workspace = NULL;"
+        },
+        {
+          "line": 756,
+          "text": "    int ret = CheckParamPermission_(&workspace, &node, GetParamSecurityLabel(), name, DAC_READ);"
+        },
+        {
+          "line": 757,
+          "text": "    if (ret != 0) {"
+        },
+        {
+          "line": 758,
+          "text": "        PARAM_DUMPW(\"SystemReadParam failed!name is:%s,err:%d\", name, ret);"
+        },
+        {
+          "line": 759,
+          "text": "        return ret;"
+        },
+        {
+          "line": 760,
+          "text": "    }"
+        },
+        {
+          "line": 761,
+          "text": "#ifdef PARAM_SUPPORT_SELINUX"
+        },
+        {
+          "line": 762,
+          "text": "    // search from real workspace"
+        },
+        {
+          "line": 763,
+          "text": "    node = FindTrieNode(workspace, name, strlen(name), NULL);"
+        },
+        {
+          "line": 764,
+          "text": "#endif"
+        },
+        {
+          "line": 765,
+          "text": "    if (node == NULL) {"
+        },
+        {
+          "line": 766,
+          "text": "        return PARAM_CODE_NOT_FOUND;"
+        },
+        {
+          "line": 767,
+          "text": "    }"
+        },
+        {
+          "line": 768,
+          "text": "    ret =  ReadParamValue((ParamNode *)GetTrieNode(workspace, node->dataIndex), value, len);"
+        },
+        {
+          "line": 769,
+          "text": "    if (ret != 0) {"
+        },
+        {
+          "line": 770,
+          "text": "        PARAM_LOGE(\"SystemReadParam failed!name is:%s,errNum is:%d\", name, ret);"
+        },
+        {
+          "line": 771,
+          "text": "    }"
+        },
+        {
+          "line": 772,
+          "text": "    return ret;"
+        }
+      ]
+    },
+    {
+      "path": "base/startup/init/interfaces/innerkits/BUILD.gn",
+      "sha256": "bbf8075123ef1c043721f4bcbee6843dc1ab5ff8e61b61b6f83e18e6f636733e",
+      "line_ranges": [
+        [
+          292,
+          308
+        ],
+        [
+          472,
+          488
+        ]
+      ],
+      "lines": [
+        {
+          "line": 292,
+          "text": "  ohos_shared_library(\"libbegetutil\") {"
+        },
+        {
+          "line": 293,
+          "text": "    sources = ["
+        },
+        {
+          "line": 294,
+          "text": "      \"fd_holder/fd_holder.c\","
+        },
+        {
+          "line": 295,
+          "text": "      \"reboot/init_reboot_innerkits.c\","
+        },
+        {
+          "line": 296,
+          "text": "      \"service_control/service_control.c\","
+        },
+        {
+          "line": 297,
+          "text": "    ]"
+        },
+        {
+          "line": 298,
+          "text": "    sources += syspara_sources"
+        },
+        {
+          "line": 299,
+          "text": "    sources += [ \"syspara/param_wrapper.cpp\" ]"
+        },
+        {
+          "line": 300,
+          "text": "    sources += modulemgr_sources"
+        },
+        {
+          "line": 301,
+          "text": ""
+        },
+        {
+          "line": 302,
+          "text": "    innerapi_tags = ["
+        },
+        {
+          "line": 303,
+          "text": "      \"chipsetsdk_sp\","
+        },
+        {
+          "line": 304,
+          "text": "      \"platformsdk\","
+        },
+        {
+          "line": 305,
+          "text": "      \"sasdk\","
+        },
+        {
+          "line": 306,
+          "text": "    ]"
+        },
+        {
+          "line": 307,
+          "text": ""
+        },
+        {
+          "line": 308,
+          "text": "    version_script = \"libbegetutil.versionscript\""
+        },
+        {
+          "line": 472,
+          "text": "  if (default_toolchain == current_toolchain) {"
+        },
+        {
+          "line": 473,
+          "text": "    ohos_prebuilt_shared_library(\"libbegetutil-pub-sdk\") {"
+        },
+        {
+          "line": 474,
+          "text": "      source = \"${root_out_dir}/startup/init/libbegetutil.z.so\""
+        },
+        {
+          "line": 475,
+          "text": "      if (target_cpu == \"arm64\" || target_cpu == \"x86_64\" ||"
+        },
+        {
+          "line": 476,
+          "text": "          target_cpu == \"riscv64\") {"
+        },
+        {
+          "line": 477,
+          "text": "        symlink_ext = [ \"lib64/chipset-pub-sdk/libbegetutil.z.so\" ]"
+        },
+        {
+          "line": 478,
+          "text": "      } else {"
+        },
+        {
+          "line": 479,
+          "text": "        symlink_ext = [ \"lib/chipset-pub-sdk/libbegetutil.z.so\" ]"
+        },
+        {
+          "line": 480,
+          "text": "      }"
+        },
+        {
+          "line": 481,
+          "text": "      deps = [ \"//base/startup/init/interfaces/innerkits:libbegetutil\" ]"
+        },
+        {
+          "line": 482,
+          "text": "      install_enable = true"
+        },
+        {
+          "line": 483,
+          "text": "      install_images = ["
+        },
+        {
+          "line": 484,
+          "text": "        system_base_dir,"
+        },
+        {
+          "line": 485,
+          "text": "      ]"
+        },
+        {
+          "line": 486,
+          "text": "      relative_install_dir = \"chipset-sdk-sp\""
+        },
+        {
+          "line": 487,
+          "text": "      part_name = \"init\""
+        },
+        {
+          "line": 488,
+          "text": "      subsystem_name = \"startup\""
+        }
+      ]
+    },
+    {
+      "path": "base/startup/init/interfaces/innerkits/include/param/init_param.h",
+      "sha256": "48e1acaaacbadb58f46151e74cc7a31675cc8e0004adb76a42d9ce402a0c5780",
+      "line_ranges": [
+        [
+          38,
+          47
+        ]
+      ],
+      "lines": []
+    }
+  ]
+}

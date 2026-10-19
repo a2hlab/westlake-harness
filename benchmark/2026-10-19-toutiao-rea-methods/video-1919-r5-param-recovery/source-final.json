@@ -1,0 +1,328 @@
+{
+  "token": "video-1919-r5-param-source-final",
+  "status": "SOURCE_RECOVERY_FEASIBLE_BASELINE_PROVIDER_VERIFIED",
+  "source_report": {
+    "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-param-source-outer/oh-param-source-read.json",
+    "sha256": "9a89cd2b57641cb1ba68c43651f9fe2f374093a07f4ac969f2d5340929ac4f44",
+    "bytes": 687776,
+    "git_head": "74b4ce92a32cab30b6b34df7ae58b0419c1a21b7",
+    "reader_scope": "base/startup/init source and default files only; NOT complete deployed vendor/config inventory"
+  },
+  "source_evidence": [
+    {
+      "path": "base/startup/init/services/param/manager/param_persist.c",
+      "sha256": "86bd8d70feb970a33d7682921b1e2a1fb4c1439444a9e6a02eaeeda240304574",
+      "line_ranges": [
+        [
+          27,
+          34
+        ],
+        [
+          65,
+          80
+        ],
+        [
+          101,
+          125
+        ],
+        [
+          180,
+          195
+        ]
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/linux/param_service.c",
+      "sha256": "681131bb370dca8b815b97f7a4b498bcb826151ac760ce2369d54411a1d66b02",
+      "line_ranges": [
+        [
+          141,
+          158
+        ],
+        [
+          422,
+          437
+        ]
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/linux/param_osadp.c",
+      "sha256": "8f21cdb30bd2eaa52fffc5f74b133c4ec53b2a9cf16ec0628440b09595ac6c08",
+      "line_ranges": [
+        [
+          81,
+          97
+        ]
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/base/param_trie.c",
+      "sha256": "30525492d44220b1552d9f46e4dd50fc52792165bda5cc7aa5a184c61b6c1eb1",
+      "line_ranges": [
+        [
+          31,
+          48
+        ]
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/include/param_utils.h",
+      "sha256": "59d6cd21af9036cd9d6d46430f3f0e693181eb6cad8afcb76f6e6502ea87aab8",
+      "line_ranges": [
+        [
+          54,
+          54
+        ],
+        [
+          76,
+          89
+        ]
+      ]
+    },
+    {
+      "path": "base/startup/init/services/init/standard/device.c",
+      "sha256": "6b9e4d69254553a18657b14b8f899beb757a327e2b8a50d0323f44b04d8c2120",
+      "line_ranges": [
+        [
+          30,
+          39
+        ]
+      ]
+    },
+    {
+      "path": "base/startup/init/services/init/standard/init.c",
+      "sha256": "e4c4bbcb7d3758f773eed3e157fba325fe53b9733cb1fb4d5d3444b60792a51a",
+      "line_ranges": [
+        [
+          170,
+          190
+        ]
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/manager/param_server.c",
+      "sha256": "9d89897dcd09d3063b55804a25dca22fc94f62e8dabd088534b7eda512548d3a",
+      "line_ranges": [
+        [
+          313,
+          325
+        ],
+        [
+          421,
+          452
+        ]
+      ]
+    },
+    {
+      "path": "base/startup/init/services/param/manager/param_manager.c",
+      "sha256": "c91f1013282894c7745954193b26b022aca50f114d938ccfb68d354ebfc13565",
+      "line_ranges": [
+        [
+          748,
+          772
+        ]
+      ]
+    },
+    {
+      "path": "base/startup/init/interfaces/innerkits/BUILD.gn",
+      "sha256": "bbf8075123ef1c043721f4bcbee6843dc1ab5ff8e61b61b6f83e18e6f636733e",
+      "line_ranges": [
+        [
+          292,
+          308
+        ],
+        [
+          472,
+          488
+        ]
+      ]
+    },
+    {
+      "path": "base/startup/init/interfaces/innerkits/include/param/init_param.h",
+      "sha256": "48e1acaaacbadb58f46151e74cc7a31675cc8e0004adb76a42d9ce402a0c5780",
+      "line_ranges": [
+        [
+          38,
+          47
+        ]
+      ]
+    }
+  ],
+  "findings": {
+    "nonpersist_filter": "Standard non-LiteOS IsNeedToSave only accepts persist. prefix; WritePersistParam returns0 before save for this debug key. Batch traversal prefix and per-entry filter also exclude it. Do not generalize this rule to LiteOS branches.",
+    "memory": "InitParamService calls InitParamWorkSpace(0); workspace files use /dev/__parameters__. GetSharedMem writer opens O_CREAT|O_RDWR|O_TRUNC, ftruncate and MAP_SHARED. Standard device init mounts /dev tmpfs if not already mounted. Fresh init recreates runtime workspace rather than preserving this nonpersistent write.",
+    "freshboot_recovery": "Source-supported conditional restoration path: unchanged default/import/persistent inputs plus new boot and no subsequent writer should recreate absence. Exact postboot errNum106 is mandatory acceptance; source is not a guarantee against vendor/default/service redefinition. Restarting only the app/parent does not clear parameter-service state.",
+    "default_files": "Normal standard init loads /proc/dsmm/developer, /system/etc/param/ohos_const and GetCfgFiles(etc/param) directories in reverse policy order with ONLY_ADD. Loader handles .para and .para.import and recursively imports target files.",
+    "key_search": "Zero exact-key occurrences in outer captured base/startup/init report. Reader scanned bounded suffixes, skipped symlinks and files>2MB, and did not cover all vendor/product/generated configs or .para.import extension files. This is NOT a complete deployed-default absence proof.",
+    "provider": "Current baseline cached shim pointer equals the exact actual library SystemReadParam symbol; provider-final.json contains arithmetic and raw-guard evidence."
+  },
+  "recovery_acceptance": [
+    "Preserve original boot and exact get semantic NOT_FOUND106; transport_rc0 alone is insufficient.",
+    "For this diagnostic window set only exact true after freshboot and before new JNI_OnLoad; candidate logging must prove true was consumed.",
+    "Rollback original four files and execute the separately authorized freshboot; do not use empty/false/save or modify parameter backing files to simulate absence.",
+    "After changed boot, param get must again report exact106 with retained command/stdout/stderr and transport status. Any returned value, permission/read error or malformed output refuses absence restoration.",
+    "Verify original runtime identities and actual restored feed before unlock."
+  ],
+  "unknown": [
+    "Complete vendor/product/generated/default/import configuration inventory and later service writers.",
+    "Next candidate provider/logtrue consumption and playback outcome; to be verified in actual bounded window."
+  ],
+  "provider": {
+    "status": "BASELINE_CACHED_PROVIDER_BINDING_VERIFIED",
+    "boot": "eef63e15-9d12-47ad-b0d0-fb57ad8dbf90",
+    "parent": "5826/8498",
+    "child": "8384/10007",
+    "shim_sha256": "85c789f48b2bc0c31658c9dc591cd27784cc0ddfe559005e8d36d1d7d220476a",
+    "shim_load_bias": "0x7f97740000",
+    "cache_symbol_value": "0x11478",
+    "resolved_symbol_value": "0x11480",
+    "cache_address": "0x7f97751478",
+    "read_bytes": "d0 a0 3d 93 7f 00 00 00 01",
+    "byte_count": 9,
+    "resolved": 1,
+    "pointer": "0x7f933da0d0",
+    "provider_load_bias": "0x7f933c0000",
+    "SystemReadParam_st_value": "0x1a0d0",
+    "provider_sha256": "1f114e636be004950428e82ebdff19dc9c755507c90a9bddcb412f6356029460",
+    "provider_executable_mapping": "7f933cc000-7f933e2000 r-xp 0000b000 103:20 2584                          /system/lib64/chipset-sdk-sp/libbegetutil.z.so",
+    "other_begetutil_mapping_also_present": true,
+    "command_checks": {
+      "transport_rc": 0,
+      "dd_rc": 0,
+      "remote_rc": 0,
+      "before_after_child_birth": 10007,
+      "before_ppid": 5826
+    },
+    "limits": "Baseline cached function binding only. Does not establish next candidate reading true or successful video playback. Two mapped instances exist; pointer selects one, not a global-symbol-union inference.",
+    "local_symbol_checks": [
+      {
+        "tool": "llvm-readelf",
+        "arguments": [
+          "--symbols"
+        ],
+        "input_sha256": "85c789f48b2bc0c31658c9dc591cd27784cc0ddfe559005e8d36d1d7d220476a",
+        "rc": 0,
+        "selected_output": "shim-symbols.final.txt"
+      },
+      {
+        "tool": "llvm-readelf",
+        "arguments": [
+          "--dyn-syms"
+        ],
+        "input_sha256": "1f114e636be004950428e82ebdff19dc9c755507c90a9bddcb412f6356029460",
+        "rc": 0,
+        "selected_output": "provider-symbols.final.txt"
+      }
+    ]
+  },
+  "provider_raw_pins": [
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/cache-pointer.json",
+      "sha256": "352ccd04a1135f0fcdc1354e6976db4cf664356f90354972a47fa21be3fb308f",
+      "bytes": 485
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/cache-pointer.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/cache-pointer.stdout",
+      "sha256": "107dec9723f42a799a14fc7e890f4fa2a442c4f3870f3815a2256ce1d764919c",
+      "bytes": 52
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/identity.json",
+      "sha256": "49ed3eed624b3b8917fbc3ae17d68e2ad5d15d46fad07d091acd552c7ded84d6",
+      "bytes": 482
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/identity.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/identity.stdout",
+      "sha256": "e71c9c22d3ca776778b6a0b26d572c715b4795beffb3f220473a44baa624d90b",
+      "bytes": 999
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/libwebview_bionic_shim.so",
+      "sha256": "85c789f48b2bc0c31658c9dc591cd27784cc0ddfe559005e8d36d1d7d220476a",
+      "bytes": 51816
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/maps.json",
+      "sha256": "bac0696ea61c67ad28d96ec88a75437d5671e74765fb4d475f831bf622ca9ab6",
+      "bytes": 198
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/maps.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/maps.stdout",
+      "sha256": "efb7cd371846bc49458e32c125ac5948124e10fa13ba7abd0ab421765e2a2317",
+      "bytes": 496567
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/player-loads.rc",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/player-loads.txt",
+      "sha256": "a82ce5681105d9644f2cb1d6bbceae398a64bb525ce262d712ce0baf8e1a1e61",
+      "bytes": 1476
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/player-onload.rc",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/player-onload.txt",
+      "sha256": "3059aca775d9845c4c2fe9189fe8e1b66581e2277a9ed2362947ce075ad4e488",
+      "bytes": 12028
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/shim-provider.rc",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/shim-provider.txt",
+      "sha256": "08e2e990c3889e39a00764a188762de74fda597bea4db60a61411af6038994dc",
+      "bytes": 2026
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/shim-recv.json",
+      "sha256": "59ec9080a1ca33fcf5a22e1d2846de19434fc88faf91d0af04b3984b56fa7dd4",
+      "bytes": 292
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/shim-recv.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/shim-recv.stdout",
+      "sha256": "cb1e681d707ab2fb5f772fab07f11b8ffac5390d38f68c8e8c5c54ee4907adce",
+      "bytes": 76
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/shim-symbols.rc",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    {
+      "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r5-provider-readonly/shim-symbols.txt",
+      "sha256": "6739614e06d3d29a4e4f56f12132f1e7d180317f8548c4d963c87704754568ae",
+      "bytes": 9123
+    }
+  ],
+  "reviewer_device_calls": 0,
+  "reviewer_builds": 0,
+  "reviewer_ssh_retries": 0
+}
