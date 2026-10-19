@@ -1,0 +1,172 @@
+--- r11/core.py
++++ r13/core.py
+@@ -1,9 +1,9 @@
+-"""R11 fixed admission and observation decisions; shared by runtime and offline tests."""
++"""R13 fixed admission and observation decisions; shared by runtime and offline tests."""
+ import hashlib, json, os, re, struct, time
+ from pathlib import Path
+ SERIAL='61b0657200000000000000000324012c'
+ HOST_SHA='c6008509f6b4bd8b5766eaad671738364eaa01a039db00e5d94e47204972dbf1'
+-SERVER_SHA='d6d9a233fd3b9bd2ff60a69eec78aa2e70eaf4d94b98e0cbb55fae90706fb229'
++SERVER_SHA='13c0b4bfcb0b8b83cd9d73df2be0ebffcb1cc5fea2eb420cb7b2f5629254a06a'
+ PINS={'player':'0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471','android':'76512d97758c308acf7baff4647f07db792c02b8fae2eda93399bd18eda03727','shim':'85c789f48b2bc0c31658c9dc591cd27784cc0ddfe559005e8d36d1d7d220476a','bridge':'d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b','hwui':'a11c9154ca16dd7acf5e3ea99727ae37c25b1b4494a9133816bc58c553c128e2'}
+ EXE_SHA='a7a358c60bec293c26531b0eecbf14979f77411c227cec4767742c0c82791a0c'
+ MAX_SECONDS=120; MAX_FROM=4; MAX_LOCK=4
+@@ -15,7 +15,7 @@
+ def positive(v): return type(v) is int and v>0
+ def validate(a,now=None,files=True):
+     now=time.time() if now is None else now
+-    need(a['schema']=='r11-admission-v1' and a['execution_enabled'] is True and a['approved_by']=='outer(codex)','authorization')
++    need(a['schema']=='r13-admission-v1' and a['execution_enabled'] is True and a['approved_by']=='outer(codex)','authorization')
+     need(a['serial']==SERIAL,'serial')
+     need(type(a['created_at']) in (float,int) and 0<=now-a['created_at']<=300,'stale admission')
+     need(now<a['expires_at']<=a['created_at']+1800,'expiry')
+--- r11/identity.py
++++ r13/identity.py
+@@ -12,7 +12,7 @@
+         (dest/'held.stdout.txt').write_bytes(held.stdout);(dest/'held.stderr.txt').write_bytes(held.stderr)
+         if not after:need(held.returncode==0 and held.stdout.decode().strip()==a['holder'],'lock owner changed')
+         chunks=['set -eu']
+-        def section(name,cmd):chunks.extend(["printf '%s\\n' "+shlex.quote('R11_'+name),cmd])
++        def section(name,cmd):chunks.extend(["printf '%s\\n' "+shlex.quote('R13_'+name),cmd])
+         section('BOOT','cat /proc/sys/kernel/random/boot_id')
+         processes=[('PARENT',e['parent']),('CHILD',e['child'])]+([] if after else [('SERVER',server['pid'])])
+         for name,pid in processes:
+@@ -28,7 +28,7 @@
+             section('INODE_'+role,"stat -L -c '%d:%i' "+target)
+         for name,pid in processes:section(name+'_END','cat /proc/%d/stat'%pid)
+         section('BOOT_END','cat /proc/sys/kernel/random/boot_id')
+-        chunks.append("printf '%s\\n' 'R11_REMOTE_RC=0'")
++        chunks.append("printf '%s\\n' 'R13_REMOTE_RC=0'")
+         cmd='; '.join(chunks)
+         argv=[str(path(a['hdc']['path'])),'-t',SERIAL,'shell',cmd]
+         (dest/'command.json').write_text(json.dumps({'argv':argv,'phase':phase})+'\n')
+@@ -37,10 +37,10 @@
+         except subprocess.TimeoutExpired as ex:
+             (dest/'stdout.txt').write_bytes(ex.stdout or b'');(dest/'stderr.txt').write_bytes(ex.stderr or b'');(dest/'rc.json').write_text('{"timeout":true}\n');raise
+         (dest/'stdout.txt').write_bytes(p.stdout);(dest/'stderr.txt').write_bytes(p.stderr);(dest/'rc.json').write_text(json.dumps({'rc':p.returncode})+'\n')
+-        text=p.stdout.decode('utf-8','strict');need(p.returncode==0 and text.splitlines()[-1]=='R11_REMOTE_RC=0','remote rc absent/nonzero')
++        text=p.stdout.decode('utf-8','strict');need(p.returncode==0 and text.splitlines()[-1]=='R13_REMOTE_RC=0','remote rc absent/nonzero')
+         parts={};key=None
+         for line in text.splitlines()[:-1]:
+-            if line.startswith('R11_'):
++            if line.startswith('R13_'):
+                 key=line[4:];need(key not in parts,'duplicate identity section');parts[key]=[]
+             else:
+                 need(key is not None,'unexpected remote preamble');parts[key].append(line)
+--- r11/observer.py
++++ r13/observer.py
+@@ -9,7 +9,7 @@
+         self.L=L;self.db=debugger;self.a=a;self.out=Path(out);self.clock=clock
+         self.start=clock();self.deadline=min(self.start+MAX_SECONDS,self.start+max(0,a['expires_at']-time.time()))
+         self.guard=guard_factory(a,out,self.deadline);self.target=None;self.proc=None;self.owned={};self.calls=Calls();self.rows=[];self.selected={};self.cancel=False;self.resume_stop_id=None;self.ignored=0
+-        self.result={'schema':'r11-result-v1','playback':'UNKNOWN_NOT_TESTED','audio':'UNKNOWN','events':[],'tool_version':L.SBDebugger.GetVersionString(),'requested_identity':a['identity'],'limits':{'seconds':120,'fromSurface':4,'lock':4},'cleanup':{'verified':False,'outer_recovery_required':True}}
++        self.result={'schema':'r13-result-v1','playback':'UNKNOWN_NOT_TESTED','audio':'UNKNOWN','events':[],'tool_version':L.SBDebugger.GetVersionString(),'requested_identity':a['identity'],'limits':{'seconds':120,'fromSurface':4,'lock':4},'cleanup':{'verified':False,'outer_recovery_required':True}}
+     def emit(self,e):
+         e['elapsed_s']=self.clock()-self.start;self.result['events'].append(e)
+         with (self.out/'events.jsonl').open('a') as f:f.write(json.dumps(e)+'\n');f.flush()
+--- r11/test_observer.py
++++ r13/test_observer.py
+@@ -8,9 +8,15 @@
+ from identity import Guard
+ 
+ def admission():
+-    return {'schema':'r11-admission-v1','execution_enabled':True,'approved_by':'outer(codex)','serial':SERIAL,'created_at':1000,'expires_at':1300,'holder':'outer(codex) 123 timestamp','identity':{'boot':'00000000-0000-0000-0000-000000000001','parent':10,'parent_birth':20,'parent_uid':0,'child':11,'child_birth':21,'uid':20011206,'child_exe_sha256':EXE_SHA,'parent_exe_sha256':EXE_SHA},'server':{'pid':12,'birth':22,'uid':0,'sha256':SERVER_SHA},'host':{'path':'unknown','sha256':HOST_SHA},'hdc':{'path':'unknown','sha256':'1'*64},'lock_script':{'path':'unknown','sha256':'2'*64},'modules':{k:{'local_path':'unknown','remote_path':'/data/'+k+'.so','sha256':v,'device':66352,'inode':100+i} for i,(k,v) in enumerate(PINS.items())}}
++    return {'schema':'r13-admission-v1','execution_enabled':True,'approved_by':'outer(codex)','serial':SERIAL,'created_at':1000,'expires_at':1300,'holder':'outer(codex) 123 timestamp','identity':{'boot':'00000000-0000-0000-0000-000000000001','parent':10,'parent_birth':20,'parent_uid':0,'child':11,'child_birth':21,'uid':20011206,'child_exe_sha256':EXE_SHA,'parent_exe_sha256':EXE_SHA},'server':{'pid':12,'birth':22,'uid':0,'sha256':SERVER_SHA},'host':{'path':'unknown','sha256':HOST_SHA},'hdc':{'path':'unknown','sha256':'1'*64},'lock_script':{'path':'unknown','sha256':'2'*64},'modules':{k:{'local_path':'unknown','remote_path':'/data/'+k+'.so','sha256':v,'device':66352,'inode':100+i} for i,(k,v) in enumerate(PINS.items())}}
+ 
+ class Identity(unittest.TestCase):
++    def test_old_server_and_schema_refused(self):
++        a=admission();validate(a,now=1001,files=False)
++        a['server']['sha256']='d6d9a233fd3b9bd2ff60a69eec78aa2e70eaf4d94b98e0cbb55fae90706fb229'
++        with self.assertRaisesRegex(Refuse,'tool pin'):validate(a,now=1001,files=False)
++        a=admission();a['schema']='r11-admission-v1'
++        with self.assertRaisesRegex(Refuse,'authorization'):validate(a,now=1001,files=False)
+     def test_admission_fixed_values(self):
+         a=admission();validate(a,now=1001,files=False)
+         mutations=[('max_seconds',121),('max_fromSurface',5),('max_lock',5),('serial','other'),('execution_enabled',False)]
+@@ -63,7 +69,7 @@
+                 d['SHA_'+k]=m['sha256']+' file';d['INODE_'+k]=f'{m["device"]}:{m["inode"]}'
+             d['MAPS']='\n'.join(lines)
+             if drift:d.update(drift)
+-            return ('\n'.join('R11_'+k+'\n'+v for k,v in d.items())+'\nR11_REMOTE_RC=0\n').encode()
++            return ('\n'.join('R13_'+k+'\n'+v for k,v in d.items())+'\nR13_REMOTE_RC=0\n').encode()
+         for drift in [None,{'BOOT_END':'bad'},{'CHILD_END':stat(11,10,999)},{'SHA_shim':'0'*64+' file'},{'PARENT_STATUS':'Uid: 1 1 1 1\nTracerPid: 0'},{'CHILD_STATUS':'Uid: 20011206 20011206 20011206 20011206\nTracerPid: 99'},{'CHILD_STATUS':'Uid: 20011206 20011206 20011206 20011206\nTracerPid: 0'}]:
+             with tempfile.TemporaryDirectory() as tmp:
+                 outputs=[NS(returncode=0,stdout=(a['holder']+'\n').encode(),stderr=b''),NS(returncode=0,stdout=payload(drift),stderr=b'')]
+@@ -72,7 +78,7 @@
+                     if drift:
+                         with self.assertRaises(Refuse):g.capture('test')
+                     else:self.assertEqual(g.capture('test')['child_birth'],21)
+-                    argv=run.call_args.args[0];self.assertEqual(argv[1:3],['-t',SERIAL]);self.assertIn('R11_REMOTE_RC=0',argv[-1]);self.assertNotIn('kill',argv[-1])
++                    argv=run.call_args.args[0];self.assertEqual(argv[1:3],['-t',SERIAL]);self.assertIn('R13_REMOTE_RC=0',argv[-1]);self.assertNotIn('kill',argv[-1])
+ 
+ class FakeErr:
+     def Success(self):return True
+--- r11/admission.disabled.example.json
++++ r13/admission.disabled.example.json
+@@ -1,5 +1,5 @@
+ {
+-  "schema": "r11-admission-v1",
++  "schema": "r13-admission-v1",
+   "execution_enabled": false,
+   "approved_by": "outer(codex)",
+   "serial": "61b0657200000000000000000324012c",
+@@ -21,7 +21,7 @@
+     "pid": null,
+     "birth": null,
+     "uid": 0,
+-    "sha256": "d6d9a233fd3b9bd2ff60a69eec78aa2e70eaf4d94b98e0cbb55fae90706fb229"
++    "sha256": "13c0b4bfcb0b8b83cd9d73df2be0ebffcb1cc5fea2eb420cb7b2f5629254a06a"
+   },
+   "host": {
+     "path": "REQUIRED_EXISTING_LOCAL_PATH",
+--- r11/README.md
++++ r13/README.md
+@@ -1,7 +1,7 @@
+-# R11 bounded call observer
++# R13 bounded call observer
+ 
+ This is a diagnostic, not a playback fix. Outer owns the exclusive board lock,
+-exact SDK server, serial-qualified forwarding and recovery. No device invocation
++exact NDK r23b server, serial-qualified forwarding and recovery. No device invocation
+ has been made by this implementation lane. Actual attach/hardware support remains
+ unknown until outer execution.
+ 
+@@ -15,8 +15,8 @@
+ admission must be at most 300 seconds old and expire within 30 minutes.
+ 
+ ```sh
+-python3 diagnostic-r11/observe.py --admission "$ADMISSION" --port 5039 --out "$PREVIEW"
+-python3 diagnostic-r11/observe.py --admission "$ADMISSION" --port 5039 --out "$RUN" --execute
++python3 diagnostic-r13/observe.py --admission "$ADMISSION" --port 5039 --out "$PREVIEW"
++python3 diagnostic-r13/observe.py --admission "$ADMISSION" --port 5039 --out "$RUN" --execute
+ ```
+ 
+ Use the real repository-relative script path; each output directory must be new.
+@@ -62,3 +62,26 @@
+ The Rust selectors only invoke these offline classes. No JSON self-declaration is
+ accepted in lieu of the runtime checks. Fresh admission/actual observations and
+ outer recovery remain separately reviewed device evidence.
++
++## Successor scope and outer-owned staging
++
++R11 remains unchanged. The five executable Python files differ only in the R13
++version/receipt labels and the exact NDK server SHA. Object selection, hardware,
++StopID, return pairing, budgets and cleanup are unchanged.
++
++Outer must use a fresh owned directory `/data/local/tmp/r13-lldb-<boot8>-<tag>`
++for `lldb-server`; never reuse or clean an R11/R12 directory. This prefix is an
++outer staging/cleanup requirement, not a new device-mutation capability in the
++observer. As in R11, the observer checks the actual server PID/birth/UID/exe SHA;
++outer additionally pins its exact executable path, command line, port and unique
++forward before generating admission. Pre-connect TracerPid must equal that server
++PID; after detach it must be zero. No observer-created server or forwarding.
++
++Client is the existing SDK15 LLDB (c6008509…); server is NDK r23b's static aarch64
++`lldb-server` (13c0b4bf…). See the exact pins in core.py and the disabled template.
++R12 proves two hardware stops and continuing detach on the owned probe only.
++Business attach and window-object observations remain UNKNOWN until actual R13.
++The tool path may be obtained from
++`$HOME/Library/Android/sdk/ndk/23.1.7779620/toolchains/llvm/prebuilt/darwin-x86_64/lib64/clang/12.0.8/lib/linux/aarch64/lldb-server`.
++Outer starts rollback by 20 minutes and closes the entire window within 30 minutes;
++120 seconds is the observer budget, not an extension of that window.
