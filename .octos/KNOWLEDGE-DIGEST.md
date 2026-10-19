@@ -933,3 +933,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 r10：actual player 8槽读取显示6个ANW接口落libandroid76512d97、lock/unlock落shim85c789f4；精确后者ELF正常返回固定errno19/-19，与drawPicture锁buffer错误吻合。ByteVC1创建/参数712x360与first-frame消息不证明上屏，10图仍同封面；native_ready1不证明geometry(实测0/0/-1)或窗口对象契约。证据 candidate-r10/window 与 static/r10-live-review/checkpoint-02，已回滚24353a4b真实feed并解锁。
 
 - 2026-10-20 #91 r11：SDK15 server d6d9可attach却在握手GetMaxU64长度断言退出，零fromSurface/lock；离线LLDB API可用≠真机工具兼容，具体寄存器/长度/SVE原因unknown。先在空闲板自有probe验证attach→两次硬件命中→Continue→detach，再接业务进程。61b原plan恢复8423f320真实feed、04:30:24解锁；证据 diagnostic-r11/window。
+
+- 2026-10-20 #91 r12：SDK15 host c6008509 + NDK r23b静态server13c0在5cd自有OH probe实证2次硬件命中(x0 9→10/StopID2→4)、detach后Tracer0/S且计数12→16、自有进程/forward清理；只证此工具/探针组合，不外推ANW内存读、61b业务握手或播放。源码/原始构建和实测归档见 tool-compat-r12/window，继任观测器必须另版本明确pin，不热换旧契约。
