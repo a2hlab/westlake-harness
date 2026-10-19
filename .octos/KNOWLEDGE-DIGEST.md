@@ -937,3 +937,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 r12：SDK15 host c6008509 + NDK r23b静态server13c0在5cd自有OH probe实证2次硬件命中(x0 9→10/StopID2→4)、detach后Tracer0/S且计数12→16、自有进程/forward清理；只证此工具/探针组合，不外推ANW内存读、61b业务握手或播放。源码/原始构建和实测归档见 tool-compat-r12/window，继任观测器必须另版本明确pin，不热换旧契约。
 
 - 2026-10-20 #91 窗口接入静态边界：exact libsurface 8f1879 的 GetVirAddr 会再调 Map，公共 Map rc0 可伴随空地址；Abort 吞下层失败，rc0不证明归还。精确转换当前类借用 this，仍不证明实调用对象/生命周期；未知指针的魔数解引用不构成安全分类。见 provider-abi/exact-surface-internals/；R14仅离线模块，接入仍未准入。
+
+- 2026-10-20 R13 early：`ps -A -o PID,PPID,UID,NAME` 给完整 `com.ss.android.article.news`，`/proc/PID/stat` comm 是截短 `id.article.news`，选择器须核真实探查面并绑定UID/PID/birth；同child feed已亮的9次maps均无libttmplayer、另4模块齐，不能把feed当播放器就绪，正常视频tab之后再核五模块（原始窗口归档待交）。
