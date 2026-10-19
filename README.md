@@ -513,6 +513,7 @@ kind of work from where the corpus started
 | **2026-10-02-n11h-window/window1-evidence** | N11h host-only single-owner refutation, actual marker/maps evidence and verified U10.1T8 recovery. |
 | **2026-10-02-n11h-window** | Host-only N11h observation plan on signed U10.1T8, corrected deployment declaration, exact gate rebinding and unconditional current-base rollback. |
 | **2026-10-02-double-copy-universality** | The bridge/runtime double copy is in 115/115 lit keys too: it does not separate white from lit; only the 7 AssetManager JniAbort keys have a copy-plausible mechanism. |
+| **[R12 dedicated OH debugger compatibility](benchmark/2026-10-19-toutiao-video-playback/tool-compat-r12/window/)** | Two actual hardware hits and verified detach/cleanup on an owned probe; application playback remains untested. |
 
 ---
 
