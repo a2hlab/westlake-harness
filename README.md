@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[APK demonstration materials](benchmark/2026-10-19-apk-demo-materials/)** | **17-slide showcase, 50-slide classified catalog, 130 illustrated rows, 130 selected originals and 256 baseline capture originals; historical scope retained.** |
 | **[Toutiao live observations](benchmark/2026-10-19-toutiao-live-observations/)** | **Controlled-exit icon recovery failure and an independently confirmed player-library IID relocation blocker; no playback pass.** |
 | **[Board lock serial guard](benchmark/2026-10-19-board-lock-serial-guard/)** | **Reject truncated OH serials consistently for lock, held and unlock; three rejection checks preserve the board ledger.** |
 | **[Toutiao video playback plan](benchmark/2026-10-19-toutiao-video-plan/)** | **Three evidence-first contracts; dynamic video/audio and lifecycle acceptance pending, source/build/API mapping required.** |
