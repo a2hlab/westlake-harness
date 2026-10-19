@@ -48,17 +48,20 @@
   {
    "id": "F2",
    "method": "com.ss.ttm.player.TTPlayerLibLoader.loadPlayerlibrary(String)",
-   "fact": "debug path -> System.load(path); otherwise loadLibs([name], true); on Throwable returns false WITHOUT logging (mErrorInfo not set on this branch). => the app emits no own log for a failed libttmplayer load; the RouteB loader trace [SOURCE-NATIVE-LOAD-FAIL] is the only observable."
+   "fact": "debug path -> System.load-wrapper or mDebugLibraryLoader; otherwise loadLibs([name], true). Returns false only if loadLibs THROWS; the boolean returned by loadLibs is ignored (ordinary path; hotfix interception separate). App-side logging on failure is not shown for this branch.",
+   "superseded": "earlier wording 'returns false WITHOUT logging on failure; loader trace is the only observable' (superseded 2026-10-19 Update 3)"
   },
   {
    "id": "F3",
    "method": "com.ss.ttm.player.TTPlayer.<clinit> (dexdump classes13, local cross-check)",
-   "fact": "calls TTPlayerLibLoader.loadLibrary() then getPlayerLibName(), detectAudioFormat(); only an UnsatisfiedLinkError escaping loadLibrary is rethrown (with getErrorInfo) — by F1 it never escapes, so class init succeeds even when the native lib failed; failure surfaces later through IsErrored or a native-method UnsatisfiedLinkError (consumer not yet decompiled)."
+   "fact": "TTPlayer.<clinit> calls loadLibrary(), getPlayerLibName(), detectAudioFormat(); rethrows only an UnsatisfiedLinkError escaping loadLibrary. loadLibrary's ordinary inner catch may absorb failures, but its hotfix path is outside that catch; runtime class-init outcome is unknown.",
+   "superseded": "earlier 'class init succeeds even when the native lib failed' (superseded Update 3)"
   },
   {
    "id": "F4",
    "method": "com.ss.ttm.player.TTPlayerRef.setSurface(Surface)",
-   "fact": "delegates to mPlayer.setVideoSurface(surface) -> native (JLandroid/view/Surface;)I in libttmplayer -> ANativeWindow_fromSurface (RouteB provider libhwui a11c9154, emits [WESTLAKE-ANWFS]). A new ANWFS line after a video tap is the surface-handoff marker, valid only if libttmplayer loaded."
+   "fact": "TTPlayerRef.setSurface delegates to mPlayer(TTPlayer).setVideoSurface(surface) (default branch; hotfix may intercept). Downstream native consumer not shown by REA.",
+   "superseded": "earlier '-> ANativeWindow_fromSurface (libhwui), ANWFS is the handoff marker' (superseded Update 2/3: static-import inference only)"
   },
   {
    "id": "F5",
@@ -72,11 +75,13 @@
   {
    "id": "F7",
    "method": "com.ss.ttm.player.TTPlayer.setVideoSurface(Surface)",
-   "fact": "returns -1 without any JNI call when mHandle==0; else _setVideoSurface(mHandle, surface) (native; libttmplayer carries matching JNI signature string (JLandroid/view/Surface;)I). A failed native load therefore degrades to a silent -1, not a crash."
+   "fact": "setVideoSurface returns -1 if mHandle==0, else calls native _setVideoSurface(mHandle, surface) with no local catch. Not shown: that a failed load implies mHandle==0; caller; overall error/crash behavior.",
+   "superseded": "earlier 'a failed native load therefore degrades to a silent -1, not a crash' (superseded Update 3)"
   },
   {
    "id": "F8",
-   "fact": "Combined F1/F2/F6/F7: every Java-level outcome of a failed player load is silent (IsErrored may be false, setVideoSurface -1). Only runtime-side evidence discriminates: RouteB ART loader trace (covers System.load/loadLibrary via libart), child /proc/<pid>/maps (covers any loader incl. custom), and ASX_DIAG_THROWABLE=1 throwable output for UnsatisfiedLinkError on TTPlayer natives."
+   "fact": "These ordinary loader branches may absorb failures; whole-app error/crash behavior and the actual caller are unproved. Runtime-side records to collect: RouteB ART loader trace (exact load result per object), full child maps lines (mapping only: no loader/namespace/relocation/JNI proof), ASX_DIAG_THROWABLE output. None of these alone refutes P1 except an exact successful load result for the libttmplayer object.",
+   "superseded": "earlier 'every Java-level outcome is silent; maps covers custom loaders' (superseded Update 3)"
   }
  ],
  "new_prediction": {
@@ -84,7 +89,7 @@
   "state": "unknown",
   "statement": "VCBaseKitLoader runs first; libvcbasekit.so is in RouteB WESTLAKE_ANDROID_NATIVE_TARGETS (android-native namespace) while libttmplayer (NEEDED libvcbasekit.so) loads in namespace 0 -> either a second libvcbasekit copy in ns0 or a lookup failure; observe which ns each load reports."
  },
- "p1_status": "unchanged: needs_observation (unknown). Static precondition holds; REA adds that in-app state cannot confirm or refute it.",
+ "p1_status": "needs_observation (unknown)",
  "requested_next_methods_optional": [
   "com.ss.ttm.player.TTPlayerLibLoader mDefaultLibLoader concrete class .onLoadNativeLibs(List) — loader mechanism",
   "com.ss.ttm.player.ITTPlayerRef.create — upper player selection / error handling"
@@ -102,6 +107,18 @@
    "F2 corrected: loadPlayerlibrary ignores the boolean from loadLibs and returns true unless loadLibs THROWS; so a failed load can leave IsErrored=false (cfg3 per-lib mode). Earlier text 'returns false on failure' was too strong.",
    "F4 corrected: setSurface->TTPlayer.setVideoSurface->native _setVideoSurface only when mHandle!=0; naming ANativeWindow_fromSurface/libhwui as the consumer is a static-import inference, not shown by REA.",
    "Earlier implicit 'loadLibs = System.loadLibrary' withdrawn: loadLibs dispatches to configurable ILibraryLoader mLibraryLoader or mDefaultLibLoader (implementation not decompiled)."
+  ]
+ },
+ "review_t4_ack": {
+  "file": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-19-toutiao-rea-methods/video-branch-review-ack.md",
+  "sha256": "878046153731dde12ec77ff392ea8a873e92aafd2622f9ce6f8c98d5215b8cfc",
+  "verdict": "CHANGES_REQUIRED",
+  "applied": [
+   "maps scope",
+   "conditional silence",
+   "decision rows C/D/E/F",
+   "F2/F3/F4/F7/F8 superseded in place",
+   "ILibraryLoader != custom linker"
   ]
  }
 }
