@@ -1,0 +1,209 @@
+{
+ "stage": "static",
+ "status": "ready_for_human_review",
+ "human_review_required": true,
+ "historical_is_current": false,
+ "verdict": "needs_observation",
+ "first_fatal": {
+  "id": "P1",
+  "state": "unknown",
+  "static_precondition": "holds on 61b (RQ1)"
+ },
+ "selected_change": null,
+ "identity": {
+  "board": "61b0657200000000000000000324012c",
+  "boot_id": "6944c37e-31a6-4846-8f1f-48088a917153",
+  "os": "OpenHarmony-6.1.0.31 aarch64",
+  "scope": "parent pid 11444 mount ns 4026533005 only; no live child",
+  "apk_sha256": "a1112a0c941f865847c2fab9138cf815735268fbfcd41d697412fb80992c7395",
+  "run_sh_sha256": "d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4",
+  "libandroid_sha256": "c9969638b0175b7077332e1b7a65f4354392def62b5f6e1049ca763b9677148e",
+  "libhwui_sha256": "a11c9154ca16dd7acf5e3ea99727ae37c25b1b4494a9133816bc58c553c128e2",
+  "libmedia_jni_sha256": "f394360144069bf6bd08d702f4bdadcd8a77883cf0854c1608bb6eba56c366d9",
+  "bridge_runtime": "historical RouteB pins d4fae8e5/8ab6742d (route-b-source.json, p7); NOT freshly read",
+  "libttmplayer_on_board": "size 4662040 listed; SHA not freshly read (local b427614d from SHA-identical APK)",
+  "input_files": {
+   "$HOME/.local/share/westlake/toutiao-resume-20261019/61b-media-identity.txt": "c9422c316a0e74cc1881b785c6c68c33269a5f0b06f93633925c41840bae79a2",
+   "$HOME/.local/share/westlake/toutiao-resume-20261019/61b-runtime.txt": "c5de14c595aac3afaf36a5c1db79101a387906da37d8328f723e06830064b602"
+  }
+ },
+ "routes": {
+  "network": {
+   "state": "unknown",
+   "consumer": "TTVideoEngine media data loader (libavmdl*/libavmdlv2/libavmdls/libavmdlbase) + libttmplayer/libmffmpeg/libvcn direct fetch",
+   "provider": "libavmdl* absent from APK lib/ and from RouteB search path; libvcn/libmffmpeg present (default ns, TLS via LD_PRELOAD libttcrypto)",
+   "namespace": "default (namespace=0 in loader trace)",
+   "evidence_refs": [
+    "evidence/routeb-child6243-loader-excerpt.txt"
+   ]
+  },
+  "decode": {
+   "state": "unknown",
+   "consumer": "libttmplayer.so b427614d (software: libmffmpeg/ByteVC1/ByteVC2; hardware: Java com.ss.ttm.player.AJMediaCodec via JNI strings)",
+   "provider": "software decoders self-contained in APK; android.media.MediaCodec natives in RouteB bridge d4fae8e5 (mc46 fail-loud) per p7 pin",
+   "namespace": "default",
+   "evidence_refs": [
+    "evidence/reproduce.stdout.txt"
+   ]
+  },
+  "video_surface": {
+   "state": "unknown",
+   "consumer": "libttmplayer ANativeWindow_fromSurface -> eglCreateWindowSurface (GLES) or ANativeWindow_lock/unlockAndPost (CPU); libtexturerender_native ANativeWindow_fromSurface",
+   "provider": "ANativeWindow_fromSurface/getWidth/setBuffersGeometry/release = libhwui a11c9154 (exports; emits [WESTLAKE-ANWFS], prewrapped mNativeObject); ANativeWindow_lock/unlockAndPost = LD_PRELOAD libwebview_bionic_shim 85c789f4 STUB ('CPU rendering path not implemented'); libEGL = OH platformsdk libEGL (parent maps); board first libEGL /system/lib64/platformsdk/libEGL.so 96bc1421, libGLESv2 /system/lib64/ndk/libGLESv2.so 5b4f734b",
+   "namespace": "default; libandroid c9969638 exports no ANativeWindow_* (resolution is via its NEEDED libhwui and the global preload)",
+   "evidence_refs": [
+    "evidence/reproduce.stdout.txt",
+    "evidence/routeb-child6243-loader-excerpt.txt",
+    "evidence/outer-rq1.txt"
+   ]
+  },
+  "audio": {
+   "state": "unknown",
+   "consumer": "libttmplayer OpenSL ES (slCreateEngine, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, SL_IID_ANDROIDCONFIGURATION, PLAY, VOLUME...) + JNI string android/media/AudioTrack",
+   "provider": "board first libOpenSLES.so = /system/lib64/libOpenSLES.so 05d8ac90 (OH): exports SL_IID_OH_BUFFERQUEUE/BUFFERQUEUE/PLAY..., NOT SL_IID_ANDROIDSIMPLEBUFFERQUEUE / SL_IID_ANDROIDCONFIGURATION; no RouteB or APK lib exports them",
+   "namespace": "default (LD_LIBRARY_PATH order of run.sh)",
+   "evidence_refs": [
+    "evidence/reproduce.stdout.txt",
+    "evidence/reproduce.sh",
+    "evidence/prior-art-player-route.txt",
+    "evidence/outer-rq1.txt",
+    "evidence/outer-61b-OpenSLES-exports.txt"
+   ]
+  },
+  "lifecycle": {
+   "state": "unknown",
+   "consumer": "TTVideoEngine pause/resume/release over libttmplayer",
+   "provider": "n/a until player loads",
+   "namespace": "n/a",
+   "evidence_refs": [
+    "evidence/reproduce.stdout.txt"
+   ]
+  }
+ },
+ "predictions": [
+  {
+   "id": "P1",
+   "rank": 1,
+   "kind": "first_fatal_candidate",
+   "state": "unknown",
+   "statement": "On RouteB (61b asx runtime) the first video-player init fails at load: libttmplayer.so dlopen in namespace 0 aborts on unresolved SL_IID_ANDROIDSIMPLEBUFFERQUEUE or SL_IID_ANDROIDCONFIGURATION (BIND_NOW + GLOB_DAT).",
+   "predicted_log": "[SOURCE-NATIVE-LOAD-FAIL] path=/data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so namespace=0 error=Error relocating /data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so: SL_IID_ANDROID(SIMPLEBUFFERQUEUE|CONFIGURATION): symbol not found",
+   "keys_expected_to_move": [
+    "toutiao (com.ss.android.article.news) video detail"
+   ],
+   "refuted_if": [
+    "RQ2/RQ3: a libttmplayer SOURCE-NATIVE-LOAD with no LOAD-FAIL, or a different first error",
+    "RQ3: no libttmplayer load attempt at all after tapping a video (engine chose another player)",
+    "any other RTLD_GLOBAL provider of the two IIDs loaded before player init (not seen in parent maps)"
+   ],
+   "basis": "static closure only; consistent with but not proven by 2026-09-28 no-crash frozen cover; prior Westlake Toutiao route (run_tt.sh @a9fd5ad7, build.sh @0d8e4f43) loaded libttmplayer through nsprobe/libwestlake_player_anchor.so whose ordered DT_NEEDED put libopensles_android_compat.so (defines exactly these two IIDs) ahead of libttmplayer; RouteB run.sh d3518cef has no anchor, no nsprobe dir, libttmplayer outside NATIVE_TARGETS, and RouteB libart 78e34445 supports only one ANCHOR (no NEXT_ANCHOR key)",
+   "evidence_refs": [
+    "evidence/reproduce.stdout.txt",
+    "evidence/prior-art-player-route.txt",
+    "evidence/61b-run.sh.excerpt.txt",
+    "evidence/outer-rq1.txt",
+    "evidence/outer-61b-OpenSLES-exports.txt"
+   ],
+   "static_support": "board provider check RQ1: first libOpenSLES 05d8ac90 lacks both IIDs (has SL_IID_OH_BUFFERQUEUE) -> static precondition holds on 61b; P1 still not triggered/observed"
+  },
+  {
+   "id": "P2",
+   "rank": 2,
+   "kind": "conditional_next_wall",
+   "state": "unknown",
+   "statement": "If P1 is cleared by IID symbols only, audio still fails at Engine GetInterface/Callback level (OH OpenSLES PLAY RegisterCallback is FEATURE_UNSUPPORTED per DIGEST 616); a data-only IID shim cannot be claimed as audio playback.",
+   "refuted_if": [
+    "RQ3 after a repair shows OpenSLES buffer-queue callbacks firing and audible output"
+   ]
+  },
+  {
+   "id": "P3",
+   "rank": 3,
+   "kind": "conditional_next_wall",
+   "state": "unknown",
+   "statement": "If the player loads and uses the CPU render path, frames are dropped silently by the libwebview_bionic_shim ANativeWindow_lock stub ([WESTLAKE-ANW] once-logged); if it uses GLES, eglCreateWindowSurface receives the hwui prewrapped window and its OH-libEGL acceptance is unverified (DIGEST 733 precedent).",
+   "refuted_if": [
+    "RQ3 shows player EGL surface creation success and frame progress, or no [WESTLAKE-ANW] line"
+   ]
+  },
+  {
+   "id": "H0",
+   "kind": "historical_claim_status",
+   "state": "unknown",
+   "statement": "2026-09-28 'ReliableSurface stub + SetMetadata -5' is not current first fatal: ReliableSurface wraps HWUI's main window, no retained raw log binds it to a video producer, and that run's runtime identity is unrecorded."
+  }
+ ],
+ "source_search": [
+  "local Mac",
+  "OrbStack a2hlab",
+  "hw248"
+ ],
+ "required_evidence": [
+  "prediction.json",
+  "readonly-requests.json",
+  "source-search.json",
+  "evidence/reproduce.sh",
+  "evidence/reproduce.stdout.txt",
+  "evidence/outer-rq1.txt",
+  "evidence/outer-61b-OpenSLES-exports.txt",
+  "evidence/prior-art-player-route.txt"
+ ],
+ "evidence": [
+  {
+   "path": "evidence/61b-media-identity.txt",
+   "sha256": "c9422c316a0e74cc1881b785c6c68c33269a5f0b06f93633925c41840bae79a2"
+  },
+  {
+   "path": "evidence/61b-run.sh.excerpt.txt",
+   "sha256": "5792139971012a86af4e643a107ba91e85c26e230aaff32bbf9789896c545b41"
+  },
+  {
+   "path": "evidence/outer-61b-OpenSLES-exports.txt",
+   "sha256": "69672108c38665d1d614260a9e013f23e9b571f8b63699846e64e21e45d5a4de"
+  },
+  {
+   "path": "evidence/outer-rq1.txt",
+   "sha256": "411e777e7540316f651a424ae44b08cfbe6f8806ac62a96b4a5413894b076b4e"
+  },
+  {
+   "path": "evidence/outer-rq2.txt",
+   "sha256": "483a6f2b896b8c97b6fb2f7a17cf632ae7516a75196a96a602adba74cefce1bc"
+  },
+  {
+   "path": "evidence/prior-art-player-route.txt",
+   "sha256": "749a431536a4325d3b2b317540602602b49343b497fc80426e8cae8850be8e52"
+  },
+  {
+   "path": "evidence/reproduce.sh",
+   "sha256": "115c333d11a98abb343b04d82700163a9772bfc62c9a1259e9493c3567899f27"
+  },
+  {
+   "path": "evidence/reproduce.stderr.txt",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "path": "evidence/reproduce.stdout.txt",
+   "sha256": "f33be225b17bf3bbbf02eaf240cf487b78fc538dac70dead37299d7c9550cf40"
+  },
+  {
+   "path": "evidence/routeb-child6243-loader-excerpt.txt",
+   "sha256": "52df1cb55a0abdacc74ac6167badc0bdae6143783c1376b3e7783f4bdfef14c8"
+  },
+  {
+   "path": "prediction.json",
+   "sha256": "baade11aa7d515a548acdd669fddf480ea3c1ab0a8fb0233158413e20141e51c"
+  },
+  {
+   "path": "source-search.json",
+   "sha256": "c5bb48784d07b314359c91617dd9c9bad5523ae06b89202a45ab1862ab0c74c7"
+  },
+  {
+   "path": "readonly-requests.json",
+   "sha256": "b64303ae3c1a8f34a627bb90978b4ef4f0989da55d0ef89491097c53e5a3f853"
+  },
+  {
+   "path": "README.md",
+   "sha256": "2ef6df700b3205190775834e2a22237d836a0c3417cbac61049e2d4a4422a41e"
+  }
+ ]
+}
