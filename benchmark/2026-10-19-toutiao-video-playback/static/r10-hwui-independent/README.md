@@ -5,3 +5,5 @@ A wrapper-producing function was previously conflated with an OH raw-window cons
 At ELF 0x807238, fromSurface preserves/acquires an existing wrapper or wraps a raw window; getWidth at0x807518 and getFormat at0x8075a8 first call oh_anw_get_oh. This is an exact binary candidate, not proof of the live inner dlsym winner. The observed player imports bind to libandroid765, whose bridge_symbol dependency lookup remains to be observed during the actual call. A later read of an old object address cannot prove the original object's type or corruption.
 
 Only the local workspace prefix is normalized in public commands/output; raw and public SHA256 are recorded separately. No build, device access or runtime behavior change was performed for this inspection.
+
+The public symbol listing is a relevant-row excerpt; the complete raw symbol table remains in the persistent original directory identified by the manifest. Empty stderr records are listed in the manifest and have the standard empty-file hash.
