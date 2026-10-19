@@ -1,0 +1,11 @@
+# R10 play2 and ANativeWindow provider checkpoint
+
+The actual eight player GOT slots and exact received provider ELFs close the observed lock-failure path. Six functions bind libandroid76512d97 at bias0x7eaa700000; lock and unlockAndPost bind shim85c789f4 at bias0x7fa9700000, offsets0x5e48/0x5ff0. The same libandroid pathname/inode also has a second load bias0x7ebcf40000. The reviewed six slots select the former instance by actual pointer minus exact symbol value, with all PT_LOAD mappings checked. Maps presence alone was not used as provider proof.
+
+The shim lock first-call branch performs diagnostic output; its normal return still unconditionally sets errno19 and returns-19. unlockAndPost also sets errno19 and returns-19. The exact encoded return/store instructions were checked against received bytes, in addition to the original LLVM rc0 disassembly. This matches the observed an_render.cpp drawPicture lock-buffer ret:-19 (first at play1 line69895). It is not proof that unlock was invoked, that the first call PC was traced, or that this is the only defect affecting all videos. Getter zero/function table/object validity remain for separate actual evidence.
+
+The child/parent/birth stayed7080/9491 and5160/7985 on boot34309d1e. Play2 complete stderr has4096 captured mirrors,858 after its baseline, with1023 repeated lock-buffer failures. The mirror budget is reached: later missing messages cannot exclude later events. The large raw log and received SOs remain in private persistent storage, pinned in private-source-index.json.
+
+Two new distinct images t10/t25 were independently viewed; t20 is byte-equal to t10 and t0/t5 match already viewed play1. The woman cover/play triangle is unchanged; statusbar/control changes are not video content motion. Playback NOT_PASSED; audio UNKNOWN. Standard process-table facts are unknown, independently checked before/after stat confirms the same sleeping child. Restoration and outer close are pending.
+
+collect.py is a local-only reproducible check. window-binding.json preserves the original small read result. shim-functions-excerpt.txt contains exact function text extracted from the private disassembly, with original raw SHA listed separately; no personal path or URL is published. No device call, build, repair, or API update occurs.
