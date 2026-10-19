@@ -1,0 +1,66 @@
+{
+ "schema": "ttvideo-rea-analysis/v1",
+ "inputs_main_tree_dotoctos": {
+  "rea-toutiao-package-20261019.json": {
+   "sha256": "00b76f662c47d518faff0431ac01727dba0ae9d70f90c31d1e4365e5621251cf",
+   "bytes": 17861,
+   "evidence_id": "ev_880970c826268fcb6cf45583bb35f95d28c37d7bdea411e7623ac72b5610a575",
+   "operation": "inspect_analysis_view"
+  },
+  "rea-toutiao-method-0-20261019.json": {
+   "sha256": "3526b643da8d8ee4faf7b55508c065439f78e3dbc917fea2a8a5ab2e6c175e2c",
+   "bytes": 21546,
+   "evidence_id": "ev_ed7d5aef66f21f398e8059b38c1a67fdbaf96c44c485668b71a7c5ea0b70cdfd",
+   "operation": "inspect_android_method"
+  },
+  "rea-toutiao-method-1-20261019.json": {
+   "sha256": "7bafcaf3a502a645853a18bc9a6611599876329deb1b19c1724760e39db6a383",
+   "bytes": 13255,
+   "evidence_id": "ev_d092472f95cd75777db1e7c07266a2588192aa9ad8290ec4d920e7649d5c2e50",
+   "operation": "inspect_android_method"
+  },
+  "rea-toutiao-method-2-20261019.json": {
+   "sha256": "205d775fc774bfcd0dcb8e9f1636291d0c65af4cf3b6cb2138e7e4dd9e090eb9",
+   "bytes": 18080,
+   "evidence_id": "ev_793a98a52d9eec8bd13ef933a5f94537fe9019cdd63f6d1ee4033c4a51cd9310",
+   "operation": "inspect_android_method"
+  }
+ },
+ "apk": "a1112a0c (JADX 0.7.1, 139838 classes, targetSdk30/min21, 13.9.0)",
+ "facts": [
+  {
+   "id": "F1",
+   "method": "com.ss.ttm.player.TTPlayerLibLoader.loadLibrary()",
+   "fact": "order: VCBaseKitLoader.loadLibrary(); then ttcrypto+ttboringssl (unless cfg28), mffmpeg (unless mVersion==2925); then player lib: ttmplayerbeta (cfg29) or ttmplayerpgo (cfg76) with fallback to ttmplayer, else ttmplayer. Whole body wrapped in catch(Throwable): sets IsErrored=true, mErrorInfo='load default library error.'+th; nothing rethrown."
+  },
+  {
+   "id": "F2",
+   "method": "com.ss.ttm.player.TTPlayerLibLoader.loadPlayerlibrary(String)",
+   "fact": "debug path -> System.load(path); otherwise loadLibs([name], true); on Throwable returns false WITHOUT logging (mErrorInfo not set on this branch). => the app emits no own log for a failed libttmplayer load; the RouteB loader trace [SOURCE-NATIVE-LOAD-FAIL] is the only observable."
+  },
+  {
+   "id": "F3",
+   "method": "com.ss.ttm.player.TTPlayer.<clinit> (dexdump classes13, local cross-check)",
+   "fact": "calls TTPlayerLibLoader.loadLibrary() then getPlayerLibName(), detectAudioFormat(); only an UnsatisfiedLinkError escaping loadLibrary is rethrown (with getErrorInfo) — by F1 it never escapes, so class init succeeds even when the native lib failed; failure surfaces later through IsErrored or a native-method UnsatisfiedLinkError (consumer not yet decompiled)."
+  },
+  {
+   "id": "F4",
+   "method": "com.ss.ttm.player.TTPlayerRef.setSurface(Surface)",
+   "fact": "delegates to mPlayer.setVideoSurface(surface) -> native (JLandroid/view/Surface;)I in libttmplayer -> ANativeWindow_fromSurface (RouteB provider libhwui a11c9154, emits [WESTLAKE-ANWFS]). A new ANWFS line after a video tap is the surface-handoff marker, valid only if libttmplayer loaded."
+  },
+  {
+   "id": "F5",
+   "fact": "load is lazy: triggered at TTPlayer class init (first player creation). RouteB feed-only child 6243 has no libttmplayer/libvcbasekit-for-player line, so the attempt has not been captured in any retained log."
+  }
+ ],
+ "new_prediction": {
+  "id": "P1b",
+  "state": "unknown",
+  "statement": "VCBaseKitLoader runs first; libvcbasekit.so is in RouteB WESTLAKE_ANDROID_NATIVE_TARGETS (android-native namespace) while libttmplayer (NEEDED libvcbasekit.so) loads in namespace 0 -> either a second libvcbasekit copy in ns0 or a lookup failure; observe which ns each load reports."
+ },
+ "p1_status": "unchanged: unknown/static precondition holds; REA shows failure would be silent (no app log, no crash), consistent with the historical frozen cover but not proof of it",
+ "requested_next_methods_optional": [
+  "com.ss.ttm.player.TTPlayerLibLoader.loadLibs(java.util.ArrayList,boolean) — confirm System.loadLibrary vs custom loader (affects which namespace/loader trace applies)",
+  "com.ss.ttm.player.ITTPlayerRef.create (static; sole caller of TTPlayerRef.create per dexdump) — how IsErrored/getErrorInfo is consumed and whether a fallback player is chosen"
+ ]
+}

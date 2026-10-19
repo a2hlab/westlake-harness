@@ -56,3 +56,18 @@ The log format and musl wording are taken from a real RouteB child log ([excerpt
 Rank by **load-time closure first**. Before blaming a render or buffer layer, prove that the consumer DSO loads in the namespace the runtime actually uses. Compute the undefined-symbol closure against the deployed providers of that exact bundle; RouteB ≠ unified runtime.
 
 Files: [prediction.json](prediction.json), [source-search.json](source-search.json), [readonly-requests.json](readonly-requests.json), [static-receipt.json](static-receipt.json), [results.json](results.json). No device command, build, runtime change or push was made by this lane.
+
+## Update — REA method evidence (outer MCP, 17:27)
+
+We consumed four REA records from the main tree `.octos/` (hashes and evidence IDs are in [rea-analysis.json](rea-analysis.json)): the package summary, `TTPlayerLibLoader.loadLibrary()`, `loadPlayerlibrary(String)` and `TTPlayerRef.setSurface(Surface)`.
+
+- **The load is lazy, and a failure is silent.** `TTPlayer.<clinit>` calls `loadLibrary()`. The load order is `VCBaseKitLoader` → `ttcrypto`/`ttboringssl` → `mffmpeg` → `ttmplayer`; the beta/pgo variants depend on server config. Every Throwable is caught, `IsErrored` is set, and nothing is rethrown. `loadPlayerlibrary` returns `false` without an app log. **A failed libttmplayer load therefore produces neither a crash nor an app log line.** The RouteB `[SOURCE-NATIVE-LOAD-FAIL]` trace is the only observable. This fits the historical silent frozen cover but does not prove it.
+- `setSurface` → native `setVideoSurface` → `ANativeWindow_fromSurface`. A new `[WESTLAKE-ANWFS]` line is the surface-handoff marker, but only after a successful load.
+- New **P1b** (unknown): `libvcbasekit` is an android-native-namespace target in RouteB, while libttmplayer (NEEDED `libvcbasekit.so`) loads in namespace 0. Observe which namespace each load reports.
+
+**Minimal observation point** ([readonly-requests.json](readonly-requests.json) `observation_point`):
+
+- **OP0** (zero UI, allowed now, including on 61b): grep the current `adapter_child_*.stderr` for the player load chain.
+- **OP1**: a single video-card tap, only once a real feed is on screen. A network-exception page does not qualify. Use baseline/delta, two screenshots, and decision rows A–D.
+
+`libttmplayerbeta`/`libttmplayerpgo` "No such file" lines are expected noise. Optional next REA reads: `TTPlayerLibLoader.loadLibs(ArrayList,boolean)` and `ITTPlayerRef.create`. t2 stays closed.
