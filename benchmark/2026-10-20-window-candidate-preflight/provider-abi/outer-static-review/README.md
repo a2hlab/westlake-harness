@@ -1,0 +1,5 @@
+# Independent exact-surface review
+
+The provider source headers alone could not establish deployed field offsets. The exact-file REA and LLVM increments now establish the accessed offsets and widths across the first 40 bytes, including the five getters. The outer review independently verified all 51 internals and 38 getter indexed SHA/size pairs, the 12 complete REA envelopes' exact subject, and the five complete getter instruction bodies. A 32-bit return register does not establish unsigned source type. Map may execute twice through GetVirAddr; Abort discards its lower result.
+
+[Archive receipt](archive-receipt.json) pins the original ELF, complete unfiltered analysis-r1/r2/r3 outputs, command receipts and symbol check in durable remote storage, with remote SHA and size verification. The public provider evidence directories retain their individual indexes. No board modification, runtime binding, playback, API freeze or seal is claimed. Whole handle extent, mapping byte capacity and actual object/provider identity remain open.
