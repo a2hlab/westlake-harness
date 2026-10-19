@@ -1,6 +1,6 @@
 # Current observations beside the API source/build atlas
 
-The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **16 observations with 298 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
+The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **19 observations with 333 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
 
 Open the [current observations](index.html), [JSON](observations.json) or [CSV](observations.csv), alongside the [complete historical source/build atlas](../2026-10-14-api-source-delivery/views/index.html).
 
@@ -25,3 +25,9 @@ R11 attempted exact window-call observation using the installed SDK debugger, bu
 R12 validates the exact debugger pair on an owned OH probe only. R13 did not start the server or attach because the business process exited first; no object conclusion follows. R14 adds an offline paired window module with 49 independently rerun C cases and archived original build logs. It is explicitly not deployable: real object identity, provider ABI and caller routing remain prerequisites.
 
 R14 also has an independently reproduced AArch64 OH relocatable object with byte-identical SHA256 and archived compiler logs. This is compile-only evidence, not linking, provider binding or execution. The R13 retry collected no window calls because all three candidate processes exited before observation; its original baseline and real feed were restored within 890 seconds.
+
+R15 adds the typed provider adapter as offline-only evidence: 44 host cases, nine receipt rejection cases, five Rust selectors, and lifecycle six Passed plus one PendingReview (original rc1). The byte-identical OH AArch64 ET_REL object is compile-only, not deployable or a demonstrated provider binding. Original archive rc255 remains in its receipt; the later independent outer receipt records matching remote SHA/size for 1,280 members and 1,077,410 bytes.
+
+Historical factory logs correlate factory output with player initialization in two retained runs. A later R10 head read contradicts valid-wrapper continuity; lifetime and runtime winner remain unresolved. The early-attach entry is a conditional plan only, without current-window or playback conclusions.
+
+For an isolated review worktree, the same renderer supports `--source-root <reference-repository>`: it reads exact references there and writes only beside the renderer; generated links retain the final repository layout. Default rendering after landing remains unchanged. `pending-references.json` records the formerly pending archive paths and their landed hashes.

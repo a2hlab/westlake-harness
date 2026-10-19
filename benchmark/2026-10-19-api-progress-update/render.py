@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Render additive observations without changing the signed historical atlas."""
+import argparse
 import csv
 import hashlib
 import html
@@ -15,6 +16,10 @@ BASE = '../2026-10-14-api-source-delivery/views/index.html'
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--source-root', type=Path, default=ROOT,
+                        help='Read-only reference repository; outputs stay beside this script')
+    source_root = parser.parse_args().source_root.resolve()
     data = json.loads((HERE / 'observations.json').read_text())
     assert data['schema'] == 'api-progress-observations/v1'
     assert data['historical_semantics_changed'] is False
@@ -26,7 +31,7 @@ def main():
             for item in row[group]:
                 p = Path(item['path'])
                 assert not p.is_absolute() and '..' not in p.parts
-                target = ROOT / p
+                target = source_root / p
                 assert target.is_file() and not target.is_symlink(), p
                 assert hashlib.sha256(target.read_bytes()).hexdigest() == item['sha256'], p
                 count += 1
