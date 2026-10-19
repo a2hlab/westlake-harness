@@ -18,3 +18,10 @@ Ghidra image base 0x100000. First R-E PT_LOAD has p_offset==p_vaddr==0, so .text
 - inspect_android_class DataLoaderHelper (methods -> DataLoaderHelper.methods.txt). evidence_id ev_b74c7e05a19ae565a42025b59b6077853a7e697c55f03e86078134fc2d2e6fd1
 - inspect_android_method _supportProxy ov0 (delegates to ov1 after hotfix hook). evidence_id ev_8e1953c0f86507cc1886c97f7da9ecebadada08d74e70eee142c0a341fe3700c
 - inspect_android_method _supportProxy ov1 (proxy-eligibility by URL scheme/HLS; NOT the loader-ready gate). evidence_id ev_bf3f098ba1a99cfa372131626edeec07c4adfe4da0d59ae3118917b5e98ff58d
+
+## DEX direct-vs-proxy branch (DataLoaderHelper._proxyUrl ov1) — evidence ev_4fb1bcc39dbb28f6de615149cb3408110347e2412264aa70a2033eec8dabdab6
+Decisive branch (saved DataLoaderHelper._proxyUrl.ov1.java):
+- per URL: `if (!_supportProxy(url,i)) { mInvalidCode=ProxyNotSupport; log "not support"; return url; }`  → DIRECT url returned only when NOT proxy-eligible (mdl://, http://127.0.0.1, file://, non-HLS .m3u8). Normal progressive http(s) is proxy-eligible → not returned here.
+- `if (mInnerDataLoader == null) { log "start mdl first"; mInvalidCode=StateError; return null; }` → proxy-eligible URL yields NULL when the MDL loader object was never created (the case when avmdl native failed to load; cf. field `isProxyLibraryLoaded`).
+- `if (mState != 0) return null` (StateError) earlier; `if (!mInnerDataLoader.isRunning()) return null` ("dataloader is not running"); `getLocalAddr() empty → "local host error" return null`.
+Caller's null-handling (pend vs direct) NOT yet decompiled; field `isProxyLibraryLoaded:boolean` and `mInnerDataLoader` are the readiness state. "Dataloader is not ready. Put it to the pending list" is the pend path (caller). Runtime verbose log will disambiguate.
