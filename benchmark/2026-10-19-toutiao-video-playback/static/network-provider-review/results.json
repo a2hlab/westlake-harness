@@ -1,0 +1,234 @@
+{
+  "token": "video-1919-network-provider-review",
+  "verdict": "DRAFT_NETWORK_PROVIDER_INFERENCES_REJECTED",
+  "mode": "offline read-only; no board/build/VM/SSH call",
+  "provider_object": {
+    "historical_inventory_sha256": "f6c354d1513071533fddcc91749f44e57a626177a584fb1bb9f48bf6446ef01e",
+    "local_CAS_verified": true,
+    "r8_mapped_path": "/data/local/tmp/asx/libandroid_native_network_compat.so",
+    "r8_maps_device_inode": "103:30 / 414847",
+    "r8_maps_lines": [
+      5328,
+      5329,
+      5330,
+      5331
+    ],
+    "fresh_r8_SHA_receipt": "NOT_FOUND_IN_SUPPLIED_BOUNDED_READOUTS",
+    "exact_r8_player_socket_connect_getaddrinfo_binding": "UNKNOWN",
+    "historical_inventory_ref": {
+      "path": "MAIN/benchmark/2026-10-14-demo-reproducibility/release-audit/artifact-inventory.json",
+      "sha256": "a198bee31e78b685d23939a1f8cadad3b54943f6ddbfd5a0850b96595aadccef",
+      "bytes": 1520677,
+      "line": 18426,
+      "end_line": 18460
+    },
+    "maps_ref": {
+      "path": "BASE/video-r8-play1/maps-after.txt",
+      "sha256": "fd38420c61da8f46af88af423dbb7d56b180edfaa20a625571d7fb5de9ca086c",
+      "bytes": 530579,
+      "line": 5328,
+      "end_line": 5331
+    },
+    "source_sha256": "a25134d60f618356af905727e915d73a36440f03ea830faa4787c3d85e234125",
+    "source_status": "Two local copies identical; bounded ELF socket/connect behavior corroborated. Not an exact producing-source/toolchain/log proof.",
+    "source_rebuild_status": "UNKNOWN_EXACT_BUILD_CLOSURE",
+    "existing_recipe": {
+      "path": "WORKSPACES/../westlake/scripts/toutiao/native/build.sh",
+      "sha256": "0d3b61f72e98a9e0916087211e1bc02edc3dd6b68b86af06311d3b493faca20b",
+      "bytes": 6855,
+      "line": 34,
+      "end_line": 76
+    }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "claim": "Whole-run zero IPv6 / only one socket is false. Whole raw has 124 socket records (74 domain10) and 101 connect records (52 family10). Only post-baseline has one domain2 socket/connect.",
+      "refs": [
+        {
+          "path": "BASE/video-r8-play1/child-full.stderr",
+          "sha256": "59c0cc2d63d84d25b273aaf9cec8ae5ee8b24c28d0235b650c91463407c01519",
+          "bytes": 26053457,
+          "line": 419,
+          "end_line": 444
+        },
+        {
+          "path": "BASE/video-r8-play1/stderr-delta.txt",
+          "sha256": "692de1e3e96f0b99a7a99f0b1a74d43052e818f4f8d9b5055ca45a370cba703e",
+          "bytes": 1879031,
+          "line": 1,
+          "end_line": 1
+        }
+      ],
+      "counts": {
+        "whole": {
+          "socket_count": 124,
+          "socket_domains": {
+            "2": 49,
+            "10": 74,
+            "1": 1
+          },
+          "connect_count": 101,
+          "connect_families": {
+            "2": 49,
+            "10": 52
+          },
+          "first_ipv6_socket_line": 421,
+          "first_ipv6_connect_line": 422
+        },
+        "post_baseline": {
+          "socket_count": 1,
+          "socket_domains": {
+            "2": 1
+          },
+          "connect_count": 1,
+          "connect_families": {
+            "2": 1
+          },
+          "first_ipv6_socket_line": null,
+          "first_ipv6_connect_line": null
+        }
+      }
+    },
+    {
+      "id": "F2",
+      "claim": "Trace is conditional on env plus immediate return-address DSO basename. Candidate run config selects libsscronet.so only. No trace does not prove no interposed call, especially for player/mffmpeg callers.",
+      "refs": [
+        {
+          "path": "WORKSPACES/../westlake/scripts/toutiao/native/src/android_native_network_compat.c",
+          "sha256": "a25134d60f618356af905727e915d73a36440f03ea830faa4787c3d85e234125",
+          "bytes": 18511,
+          "line": 49,
+          "end_line": 88
+        },
+        {
+          "path": "WORKSPACES/../westlake/scripts/toutiao/native/src/android_native_network_compat.c",
+          "sha256": "a25134d60f618356af905727e915d73a36440f03ea830faa4787c3d85e234125",
+          "bytes": 18511,
+          "line": 287,
+          "end_line": 306
+        },
+        {
+          "path": "MAIN/benchmark/2026-10-19-toutiao-video-playback/candidate-r3/deploy-inputs/run.sh",
+          "sha256": "79275cf9f9a72be72beb551b978ee5f2faaed84129980aa5c79d2f51acd040d5",
+          "bytes": 2988,
+          "line": 29,
+          "end_line": 33
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "claim": "socket/connect preserve requested domain/address and delegate through a lazily resolved real function. No AF_INET6 rejection or numerical call-count log limit in these functions. Missing real symbol returns -1/ENOSYS before trace.",
+      "refs": [
+        {
+          "path": "WORKSPACES/../westlake/scripts/toutiao/native/src/android_native_network_compat.c",
+          "sha256": "a25134d60f618356af905727e915d73a36440f03ea830faa4787c3d85e234125",
+          "bytes": 18511,
+          "line": 287,
+          "end_line": 336
+        }
+      ],
+      "elf_addresses": [
+        "socket 0x2ac8; real call 0x2b70",
+        "missing-real errno38 store 0x2bc8",
+        "connect 0x2c14"
+      ]
+    },
+    {
+      "id": "F4",
+      "claim": "Resolver uses dlopen(libc.so, NOLOAD), then /system/lib64/libc.so NOLOAD, dlsym on handle, else RTLD_NEXT. This is a libc interposer, not a raw-syscall implementation. Exact target pointer/provider is not captured for r8 media.",
+      "refs": [
+        {
+          "path": "WORKSPACES/../westlake/scripts/toutiao/native/src/android_native_network_compat.c",
+          "sha256": "a25134d60f618356af905727e915d73a36440f03ea830faa4787c3d85e234125",
+          "bytes": 18511,
+          "line": 29,
+          "end_line": 47
+        }
+      ],
+      "binary_check": "Exact CAS full disassembly has no svc instruction or syscall PLT reference."
+    },
+    {
+      "id": "F5",
+      "claim": "getaddrinfo invokes libc and conditionally converts musl addrinfo pointer order to Bionic only for selected callers; family is copied unchanged. Result trace prints at most16 nodes; this is not a socket-call limit. Non-selected caller receives unconverted libc results.",
+      "refs": [
+        {
+          "path": "WORKSPACES/../westlake/scripts/toutiao/native/src/android_native_network_compat.c",
+          "sha256": "a25134d60f618356af905727e915d73a36440f03ea830faa4787c3d85e234125",
+          "bytes": 18511,
+          "line": 90,
+          "end_line": 112
+        },
+        {
+          "path": "WORKSPACES/../westlake/scripts/toutiao/native/src/android_native_network_compat.c",
+          "sha256": "a25134d60f618356af905727e915d73a36440f03ea830faa4787c3d85e234125",
+          "bytes": 18511,
+          "line": 185,
+          "end_line": 272
+        }
+      ],
+      "boundary": "Whether the media path calls this function and requires this translation is UNKNOWN; not a diagnosed ABI bug."
+    },
+    {
+      "id": "F6",
+      "claim": "Other trace omissions are intentional: epoll_wait/poll omit zero-result/zero-saved-errno cases; epoll event detail max8 per call. No global numerical trace cap found in this493-line source.",
+      "refs": [
+        {
+          "path": "WORKSPACES/../westlake/scripts/toutiao/native/src/android_native_network_compat.c",
+          "sha256": "a25134d60f618356af905727e915d73a36440f03ea830faa4787c3d85e234125",
+          "bytes": 18511,
+          "line": 440,
+          "end_line": 493
+        }
+      ]
+    },
+    {
+      "id": "F7",
+      "claim": "SO_ERROR0 only reports the sampled fd socket error status. No media URL/fd linkage, TLS completion, stream bytes or decode established. IPv6 UDP connect success is also not remote reachability.",
+      "refs": [
+        {
+          "path": "BASE/video-r8-play1/child-full.stderr",
+          "sha256": "59c0cc2d63d84d25b273aaf9cec8ae5ee8b24c28d0235b650c91463407c01519",
+          "bytes": 26053457,
+          "line": 429,
+          "end_line": 444
+        },
+        {
+          "path": "WORKSPACES/../westlake/scripts/toutiao/native/src/android_native_network_compat.c",
+          "sha256": "a25134d60f618356af905727e915d73a36440f03ea830faa4787c3d85e234125",
+          "bytes": 18511,
+          "line": 363,
+          "end_line": 390
+        }
+      ]
+    },
+    {
+      "id": "F8",
+      "claim": "Hexadecimal values in mirrored <object,file,function,line> and [tcp @ object] are not thread IDs. The draft different-threads assertion lacks TID evidence. Error-line ordering still cannot establish a single causal chain.",
+      "refs": [
+        {
+          "path": "BASE/video-r8-play1/child-full.stderr",
+          "sha256": "59c0cc2d63d84d25b273aaf9cec8ae5ee8b24c28d0235b650c91463407c01519",
+          "bytes": 26053457,
+          "line": 218385,
+          "end_line": 218404
+        }
+      ]
+    }
+  ],
+  "minimum_next_static_work": [
+    "Inspect exact libttmplayer/libmffmpeg network.c ff_listen_connect2 call/errno conversion sites and referenced socket/connect/getaddrinfo symbols/versioning; do not identify a provider from maps alone.",
+    "Separate immediate caller selection and returned addrinfo layout from socket family failure. Before claiming this is a libc or interposer failure, establish actual call target or an already-retained binding receipt.",
+    "No additional logging deployment is justified by the draft zero-domain premise; existing full raw and source already disprove it."
+  ],
+  "not_claimed": [
+    "Media IPv4 or IPv6 end-to-end connectivity",
+    "System IPv6 routing support from UDP connect alone",
+    "Root cause of -97",
+    "Exact errno translation source",
+    "Threads from hexadecimal object addresses",
+    "Playback success"
+  ],
+  "privacy": "URL/IP/token remain private; excerpt address fields redacted; references bind original file SHA and line numbers."
+}

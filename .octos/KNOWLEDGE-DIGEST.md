@@ -926,3 +926,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-19 #91 r7日志链：默认logger函数体为RET不能代表当前消费者；实际player GOT、liblog callback、libbase函数对象须逐跳读值并钉ELF/inode。别的caller有C00f00日志也不证明本caller通路；真实runtime格式43a5c为[%s:%u] %s，摘要不能冒充REA原件。本轮24条完整REA与r7证据见 benchmark/2026-10-19-toutiao-video-playback/diagnostic-r5/retry-r7/；仍为静止封面，非播放通过。
 
 - 2026-10-19 #91 r8：player→mirror→liblog两跳GOT实读匹配且256条原生消息证实setDataSource/prepare；镜像到上限后无日志不能作否证，跨线程codec open fail与network -97的文件顺序不等于单一因果，须追实际provider后修。5–25秒四图同封面；回滚boot17035e03真实feed、同64targets/351labels集合一致，23:55:54解锁。证据 benchmark/2026-10-19-toutiao-video-playback/candidate-r8/window/。
+
+- 2026-10-20 #91 外环续调度：内环ACK/idle哨只报告信号，不会让已结束的外环自行继续；持续任务期间不能派单后发final自称持续监督。00:06至02:19两窗空闲实案，须保持外环活跃并完成收割→处置→回执。

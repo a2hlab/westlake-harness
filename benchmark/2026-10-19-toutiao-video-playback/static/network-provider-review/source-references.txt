@@ -1,0 +1,202 @@
+Source WORKSPACES/../westlake/scripts/toutiao/native/src/android_native_network_compat.c SHA256 a25134d60f618356af905727e915d73a36440f03ea830faa4787c3d85e234125
+29: static pthread_once_t westlake_libc_once = PTHREAD_ONCE_INIT;
+30: static void *westlake_libc_handle;
+31: 
+32: static void westlake_open_libc(void) {
+33:     westlake_libc_handle = dlopen("libc.so", RTLD_NOW | RTLD_NOLOAD);
+34:     if (westlake_libc_handle == NULL) {
+35:         westlake_libc_handle = dlopen("/system/lib64/libc.so",
+36:                                       RTLD_NOW | RTLD_NOLOAD);
+37:     }
+38: }
+39: 
+40: static void *westlake_libc_symbol(const char *name) {
+41:     pthread_once(&westlake_libc_once, westlake_open_libc);
+42:     if (westlake_libc_handle != NULL) {
+43:         void *symbol = dlsym(westlake_libc_handle, name);
+44:         if (symbol != NULL) return symbol;
+45:     }
+46:     return dlsym(RTLD_NEXT, name);
+47: }
+48: 
+49: static int westlake_network_trace_enabled(void) {
+50:     const char *value = getenv("WESTLAKE_TRACE_ANDROID_NATIVE_NET");
+51:     return value != NULL && value[0] != '\0' && strcmp(value, "0") != 0 &&
+52:            strcmp(value, "false") != 0 && strcmp(value, "FALSE") != 0 &&
+53:            strcmp(value, "off") != 0 && strcmp(value, "OFF") != 0;
+75: static int westlake_network_callsite_selected(void *return_address) {
+76:     Dl_info info;
+77:     if (return_address == NULL ||
+78:         dladdr(return_address, &info) == 0 || info.dli_fname == NULL) {
+79:         return 0;
+80:     }
+81:     return westlake_basename_in_list(
+82:             info.dli_fname, getenv("WESTLAKE_ANDROID_NATIVE_NET_TARGETS"));
+83: }
+84: 
+85: static int westlake_network_trace_callsite(void *return_address) {
+86:     return westlake_network_trace_enabled() &&
+87:            westlake_network_callsite_selected(return_address);
+88: }
+185: int getaddrinfo(const char *node, const char *service,
+186:                 const struct addrinfo *hints, struct addrinfo **result) {
+187:     typedef int (*Fn)(const char *, const char *, const struct addrinfo *,
+188:                       struct addrinfo **);
+189:     static Fn real;
+190:     if (real == NULL) real = (Fn)westlake_libc_symbol("getaddrinfo");
+191:     if (real == NULL) return EAI_SYSTEM;
+192:     const void *return_address = __builtin_return_address(0);
+193:     const int selected = westlake_network_callsite_selected(
+194:             (void *)return_address);
+195:     const int trace = westlake_network_trace_enabled() && selected;
+196:     struct addrinfo oh_hints;
+197:     const struct addrinfo *real_hints = hints;
+198:     struct addrinfo *oh_result = NULL;
+199:     struct addrinfo **real_result = result;
+200:     if (selected) {
+201:         if (hints != NULL) {
+202:             memset(&oh_hints, 0, sizeof(oh_hints));
+203:             oh_hints.ai_flags = hints->ai_flags;
+204:             oh_hints.ai_family = hints->ai_family;
+205:             oh_hints.ai_socktype = hints->ai_socktype;
+206:             oh_hints.ai_protocol = hints->ai_protocol;
+207:             real_hints = &oh_hints;
+208:         }
+209:         real_result = &oh_result;
+210:     }
+211:     int rc = real(node, service, real_hints, real_result);
+212:     if (trace) {
+213:         fprintf(stderr,
+214:                 "[WESTLAKE-NATIVENET-767] getaddrinfo node=%s service=%s"
+215:                 " hints_family=%d hints_socktype=%d hints_protocol=%d"
+246:     if (selected && rc == 0) {
+247:         typedef void (*FreeFn)(struct addrinfo *);
+248:         static FreeFn real_free;
+249:         if (real_free == NULL) {
+250:             real_free = (FreeFn)westlake_libc_symbol("freeaddrinfo");
+251:         }
+252:         struct westlake_bionic_addrinfo *bionic_result =
+253:                 westlake_copy_bionic_addrinfo(oh_result);
+254:         if (real_free != NULL) real_free(oh_result);
+255:         if (bionic_result == NULL && oh_result != NULL) {
+256:             if (result != NULL) *result = NULL;
+257:             return EAI_MEMORY;
+258:         }
+259:         if (result != NULL) {
+260:             *result = (struct addrinfo *)bionic_result;
+261:         } else {
+262:             westlake_free_bionic_addrinfo(bionic_result);
+263:             return EAI_FAIL;
+264:         }
+265:         if (trace) {
+266:             fprintf(stderr,
+267:                     "[WESTLAKE-NATIVEADDRINFO-769] translated OH addrinfo"
+268:                     " to Bionic field order\n");
+269:             fflush(stderr);
+270:         }
+271:     }
+272:     return rc;
+287: int socket(int domain, int type, int protocol) {
+288:     typedef int (*Fn)(int, int, int);
+289:     static Fn real;
+290:     if (real == NULL) real = (Fn)westlake_libc_symbol("socket");
+291:     if (real == NULL) {
+292:         errno = ENOSYS;
+293:         return -1;
+294:     }
+295:     int trace = westlake_network_trace_callsite(__builtin_return_address(0));
+296:     int fd = real(domain, type, protocol);
+297:     int saved_errno = errno;
+298:     if (trace) {
+299:         fprintf(stderr,
+300:                 "[WESTLAKE-NATIVENET-767] socket domain=%d type=0x%x"
+301:                 " protocol=%d result=%d errno=%d\n",
+302:                 domain, type, protocol, fd, fd < 0 ? saved_errno : 0);
+303:         fflush(stderr);
+304:     }
+305:     errno = saved_errno;
+306:     return fd;
+307: }
+308: 
+309: int connect(int fd, const struct sockaddr *address,
+310:             socklen_t address_length) {
+311:     typedef int (*Fn)(int, const struct sockaddr *, socklen_t);
+312:     static Fn real;
+313:     if (real == NULL) real = (Fn)westlake_libc_symbol("connect");
+314:     if (real == NULL) {
+315:         errno = ENOSYS;
+316:         return -1;
+317:     }
+318:     int trace = westlake_network_trace_callsite(__builtin_return_address(0));
+319:     int rc = real(fd, address, address_length);
+320:     int saved_errno = errno;
+321:     if (trace) {
+322:         char text[INET6_ADDRSTRLEN];
+323:         unsigned int port;
+324:         westlake_format_sockaddr(address, address_length, text, sizeof(text),
+325:                                  &port);
+326:         fprintf(stderr,
+327:                 "[WESTLAKE-NATIVENET-767] connect fd=%d family=%d len=%u"
+328:                 " address=%s port=%u result=%d errno=%d\n",
+329:                 fd, address != NULL ? address->sa_family : -1,
+330:                 (unsigned int)address_length,
+331:                 text[0] != '\0' ? text : "?", port, rc,
+332:                 rc < 0 ? saved_errno : 0);
+333:         fflush(stderr);
+334:     }
+335:     errno = saved_errno;
+336:     return rc;
+440: int epoll_wait(int epoll_fd, struct epoll_event *events, int max_events,
+441:                int timeout) {
+442:     typedef int (*Fn)(int, struct epoll_event *, int, int);
+443:     static Fn real;
+444:     if (real == NULL) real = (Fn)westlake_libc_symbol("epoll_wait");
+445:     if (real == NULL) {
+446:         errno = ENOSYS;
+447:         return -1;
+448:     }
+449:     int trace = westlake_network_trace_callsite(__builtin_return_address(0));
+450:     int rc = real(epoll_fd, events, max_events, timeout);
+451:     int saved_errno = errno;
+452:     if (trace && (rc != 0 || saved_errno != 0)) {
+453:         fprintf(stderr,
+454:                 "[WESTLAKE-NATIVENET-807] epoll_wait epfd=%d max=%d"
+455:                 " timeout=%d result=%d errno=%d\n",
+456:                 epoll_fd, max_events, timeout, rc,
+457:                 rc < 0 ? saved_errno : 0);
+458:         const int limit = rc > 8 ? 8 : rc;
+459:         for (int i = 0; i < limit; ++i) {
+460:             fprintf(stderr,
+461:                     "[WESTLAKE-NATIVENET-807] epoll_event[%d] events=0x%x"
+462:                     " data_fd=%d data_u64=%llu\n",
+463:                     i, events[i].events, events[i].data.fd,
+464:                     (unsigned long long)events[i].data.u64);
+465:         }
+466:         fflush(stderr);
+467:     }
+468:     errno = saved_errno;
+469:     return rc;
+470: }
+471: 
+472: int poll(struct pollfd *fds, nfds_t count, int timeout) {
+473:     typedef int (*Fn)(struct pollfd *, nfds_t, int);
+474:     static Fn real;
+475:     if (real == NULL) real = (Fn)westlake_libc_symbol("poll");
+476:     if (real == NULL) {
+477:         errno = ENOSYS;
+478:         return -1;
+479:     }
+480:     int trace = westlake_network_trace_callsite(__builtin_return_address(0));
+481:     int rc = real(fds, count, timeout);
+482:     int saved_errno = errno;
+483:     if (trace && (rc != 0 || saved_errno != 0)) {
+484:         fprintf(stderr,
+485:                 "[WESTLAKE-NATIVENET-807] poll count=%llu timeout=%d"
+486:                 " result=%d errno=%d\n",
+487:                 (unsigned long long)count, timeout, rc,
+488:                 rc < 0 ? saved_errno : 0);
+489:         fflush(stderr);
+490:     }
+491:     errno = saved_errno;
+492:     return rc;
+493: }
