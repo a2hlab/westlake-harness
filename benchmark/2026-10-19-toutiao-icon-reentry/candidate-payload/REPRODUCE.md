@@ -1,5 +1,13 @@
 # How this payload was produced (and the two binary members)
 
+> **FROZEN r1 evidence (2026-10-19).** This directory is the r1 payload that was actually
+> deployed to 61b (watchdog `bd2f83be…`, 21 files / 15 members, generated at commit
+> `54cf7133` with the generator of that commit). It is retained unchanged as the field
+> evidence of the exit-race blocker. Re-running the *current* generator with the command
+> below now yields r2 content (22 files, `exit-verdict.sh`, watchdog `1bc35b59…`); the
+> committed r2 payload lives in `../candidate-payload-r2/`. Do not regenerate into this
+> directory.
+
 This disabled payload was generated on a clean tracked checkout with:
 
 ```

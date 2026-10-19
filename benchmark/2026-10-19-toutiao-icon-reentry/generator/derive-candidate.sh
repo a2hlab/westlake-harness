@@ -80,6 +80,7 @@ cat > "$PLAN" <<'PLAN'
 watchdog.sh                  src           SRC   watchdog-reentry.sh          2b635ef1ea9e00546e1306b0fe6872a415a8c7d5653e19f9fb42fca04386db4a 550 1
 reentry-common.sh            src-new       SRC   reentry-common.sh            - 550 1
 reentry-seams.sh             src-new       SRC   reentry-seams.sh             - 550 1
+exit-verdict.sh              src-new       SRC   exit-verdict.sh              - 550 1
 route-b-owner.sh             copy          V     route-b-owner.sh             6bce7c3c8f84ad1047313c5dd76bcb084637d9095b9163dc710c88aaee12fe4c 550 1
 config-common.sh             sed-root      R     config-common.sh             4ffdc4017c15448cb2d7f78a50800df78977b126427f84ba29d3b749ded3bddd 550 1
 entry.sh                     sed-wd        V     entry.sh                     81dd055764b0737f497d1dd9fb8358dd42521360bc6e359c9428c9b2ac8b21a1 550 1
@@ -157,7 +158,7 @@ done < "$PLAN"
 log ""; log "## cascade: members.tsv -> startup.env -> startup.expected.sha256"
 MEMB="$OUT/payload/members.tsv"
 : > "$MEMB"
-member_order="watchdog.sh route-b-owner.sh config-common.sh entry.sh launch-common.sh real-start-parent.sh real-spawn.sh start-parent.sh spawn.sh screen-gate decoder-probe.jpeg real-start-parent-bounded.sh readiness-probe.sh reentry-common.sh reentry-seams.sh"
+member_order="watchdog.sh route-b-owner.sh config-common.sh entry.sh launch-common.sh real-start-parent.sh real-spawn.sh start-parent.sh spawn.sh screen-gate decoder-probe.jpeg real-start-parent-bounded.sh readiness-probe.sh reentry-common.sh reentry-seams.sh exit-verdict.sh"
 for m in $member_order; do
 	mf="$OUT/payload/$m"; [ -f "$mf" ] || die "member file missing: $m"
 	mode=550; [ "$m" != decoder-probe.jpeg ] || mode=440
@@ -201,6 +202,7 @@ diffone startup.env "$BREF/startup.env" "$SENV"
 diffone startup.expected.sha256 "$BREF/startup.expected.sha256" "$SEXP"
 diffone reentry-common.sh "" "$OUT/payload/reentry-common.sh"
 diffone reentry-seams.sh "" "$OUT/payload/reentry-seams.sh"
+diffone exit-verdict.sh "" "$OUT/payload/exit-verdict.sh"
 
 # ---- per-file manifest for the whole candidate ROOT ----
 MAN="$OUT/MANIFEST.sha256"

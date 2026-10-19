@@ -46,6 +46,36 @@
     "remote_rollback": "8 PASS",
     "identity_edge": "1 PASS"
   },
+  "r2_exit_race_fix": {
+    "trigger": "P0 live blocker 2026-10-19: r1 deployed on boot f59c05dd (parent 5430/14767, child 7233/16206, READY on real feed); controlled SIGTERM to the child -> OWNER_REFUSED child_identity_changed_no_signal instead of AWAITING_REENTRY; no process_exit event",
+    "evidence": "$HOME/.local/share/westlake/toutiao-resume-20261019/icon-manual-live-r2/controlled-exit-1/",
+    "root_cause_status": "code race confirmed statically (first rb_birth matches, multi-read child_owned then fails on a dying process); field trace consistent; no per-read instantaneous log, so the specific failing sub-read is NOT claimed; not PID reuse",
+    "fix_sources": {
+      "exit-verdict.sh": "cb4cc73cd3e4ac654c3d9523d413fae6e4c426f67f7970a85c7f224bd21c7466",
+      "watchdog-reentry.sh": "1bc35b59f5aea70546eafc49cca5ec87f004174869334256e0eac99b773688d3",
+      "reentry-common.sh": "43d7b073467708770c8c69724633666e410d45581f8c0099d5098c31215e78ab",
+      "reentry-seams.sh": "febc7094b9d90b6a8c6c305199395d92da1ccde42d2b82b8c2754f0cb60f9d04"
+    },
+    "contract": "exited only for complete stat same-pid+same-birth+Z or absence proven by a successful complete /proc PID listing; reuse/malformed/unreadable/missing-root -> refuse or unknown (fail closed); confirmed uid/exe/inode/ns/ppid mismatch (from the frozen guard's deny JSON) -> fixed refuse even if the process vanishes afterwards; first-read birth mismatch -> refuse, guard not consulted; parent never signalled; manual wait still requires a NEW desktop->host",
+    "candidate_payload_r2": {
+      "path": "benchmark/2026-10-19-toutiao-icon-reentry/candidate-payload-r2",
+      "root": "/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2",
+      "payload_files": 22,
+      "members": 16,
+      "default_disabled": true,
+      "candidate_watchdog_sha256": "1bc35b59f5aea70546eafc49cca5ec87f004174869334256e0eac99b773688d3",
+      "members_tsv_sha256": "bf9cc39a7cadf182a0f51b4dd978d1dbdf900f75bc30a7ebbd21dc18029f3608",
+      "startup_env_sha256": "2484f353b685e94451479dae1197b39f90bc93928b81045f62da0936c52b7a12",
+      "startup_expected": "2484f353b685e94451479dae1197b39f90bc93928b81045f62da0936c52b7a12"
+    },
+    "r1_payload_retained_as_deployed_evidence": true,
+    "tests": {
+      "race": {"script": "tests/run-race-tests.sh", "passed": 72, "failed": 0, "skipped": 0, "shells": ["sh", "dash"], "method": "fake /proc mutated during the ownership check; real rb_birth and real rb_deny encoder from frozen route-b-owner.sh; real monitor_child/rc_child_state bodies extracted from the final source"},
+      "full_suite": "parser 21/0, reentry 29/0, race 72/0, generator smoke PASS (22 files)",
+      "rust_selector": "ok, 1 passed"
+    },
+    "real_board_pending": "controlled exit -> AWAITING_REENTRY -> manual desktop icon tap -> feed screenshot; reboot -> manual tap -> feed (outer)"
+  },
   "scenario_coverage": {
     "s1_zero_then_one_spawn": "covered (tests)",
     "s2_alive_or_window_consume": "covered (tests)",

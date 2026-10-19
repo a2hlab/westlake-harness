@@ -27,6 +27,7 @@ RB_OWNER_UID=${TT_OWNER_UID:-$(stat -c %u /data/app/el2/100/base/org.westlake.im
 RC_DESKTOP_UID=${TT_DESKTOP_UID-20010018}
 . "$HERE/route-b-owner.sh"
 . "$HERE/reentry-seams.sh"
+. "$HERE/exit-verdict.sh"
 . "$HERE/reentry-common.sh"
 BOOT=unknown; seq=0; child=none; child_birth=none; parent=none; parent_birth=none
 keep_lock=0; owner_verified=0; parent_wid=
@@ -320,18 +321,31 @@ rc_owned_window_present() {
  rc_owned_result=$(rc_parse_owned_window "$F/wms-owned.txt" "$child $ow_extra") || rc_owned_result=unknown
  return 0
 }
+# Map the single-read exit verdict onto the child-state vocabulary used by the loop:
+# exited -> gone (manual wait allowed); unreadable -> unknown (consume, no spawn);
+# reuse / malformed / alive-with-ownership-failure -> invalid (fatal refuse).
+rc_verdict_to_state() {
+ case "$1" in
+  exited) echo gone;;
+  unknown) echo unknown;;
+  *) echo invalid;;
+ esac
+}
 rc_child_state() {
  [ -n "$child" ] && [ "$child" != none ] || { echo gone; return 0; }
  cs_b=$(rb_birth "$child" 2>/dev/null) || {
-  if [ ! -d "$PROC/$child" ]; then echo gone; return 0; fi
-  cs_row=$(cat "$PROC/$child/stat" 2>/dev/null) || { echo unknown; return 0; }
-  cs_rest=${cs_row##*) }; set -- $cs_rest
-  [ "${20:-none}" = "$child_birth" ] || { echo invalid; return 0; }
-  if [ "${1:-none}" = Z ]; then echo gone; else echo unknown; fi
-  return 0
+  # First read failed: same verdict as the monitor (r2 race fix); unknown stays unknown.
+  rc_verdict_to_state "$(child_exit_verdict "$child" "$child_birth")"; return 0
  }
+ # A different birth on the first read is PID reuse: invalid, never laundered.
  [ "$cs_b" = "$child_birth" ] || { echo invalid; return 0; }
- if child_owned "$child" "$child_birth" >/dev/null 2>&1; then echo alive; else echo invalid; fi
+ cs_err=$(child_owned "$child" "$child_birth" 2>&1 >/dev/null) && { echo alive; return 0; }
+ # Ownership failed after a matching read: only a child-death related read failure
+ # is classified; a confirmed value mismatch is invalid regardless of what follows.
+ case "$(owned_failure_kind "$cs_err")" in
+  death) rc_verdict_to_state "$(child_exit_verdict "$child" "$child_birth")";;
+  *) echo invalid;;
+ esac
 }
 # One fresh spawn + readiness (NO monitor). Sets child/child_birth on success.
 do_one_launch() {
@@ -381,14 +395,40 @@ monitor_child() {
   [ "$(cat "$PROC/sys/kernel/random/boot_id")" = "$BOOT" ] || { state OWNER_REFUSED boot_changed; return 2; }
   live_birth=$(rb_birth "$child") || live_birth=none
   if [ "$live_birth" = none ]; then
-   if [ -d "$PROC/$child" ]; then
-    row=$(cat "$PROC/$child/stat" 2>/dev/null) || { state OWNER_REFUSED identity_unreadable_no_relaunch; return 2; }
-    rest=${row##*) }; set -- $rest
-    [ "${1:-none}" = Z ] || { state OWNER_REFUSED identity_unreadable_no_relaunch; return 2; }
-   fi
-   event process_exit; return 0
+   # First read failed (zombie / absent / unreadable): ONE complete stat read decides.
+   # exited only for confirmed-absent or same-pid+same-birth+Z; everything else
+   # (PID reuse, malformed, unreadable) stays refused. (r2: the old Z branch did not
+   # verify the birth.)
+   exit_v=$(child_exit_verdict "$child" "$child_birth")
+   case "$exit_v" in
+    exited) event process_exit "first_read_$exit_v"; return 0;;
+    *) state OWNER_REFUSED "identity_unreadable_or_reused_no_relaunch verdict=$exit_v"; return 2;;
+   esac
   fi
-  [ "$live_birth" = "$child_birth" ] && child_owned "$child" "$child_birth" || { state OWNER_REFUSED child_identity_changed_no_signal; return 2; }
+  # A different birth on the FIRST read is PID reuse: refuse outright. It can never be
+  # laundered into an exit by a later disappearance (ownership guard is not consulted).
+  [ "$live_birth" = "$child_birth" ] || { state OWNER_REFUSED child_identity_changed_no_signal; return 2; }
+  # Run the frozen ownership guard, keeping its deny JSON (stderr) for classification
+  # AND re-emitting it on stderr so the original audit trail is unchanged.
+  owned_err=$(child_owned "$child" "$child_birth" 2>&1 >/dev/null); owned_rc=$?
+  if [ "$owned_rc" != 0 ]; then
+   [ -z "$owned_err" ] || printf '%s\n' "$owned_err" >&2
+   case "$(owned_failure_kind "$owned_err")" in
+    death)
+     # Only a child-death related read failure may be classified. A proven exit
+     # enters the manual-icon wait; reuse / malformed / unknown stays refused.
+     exit_v=$(child_exit_verdict "$child" "$child_birth")
+     case "$exit_v" in
+      exited) event process_exit during_ownership_check; return 0;;
+      *) state OWNER_REFUSED "child_identity_changed_no_signal verdict=$exit_v"; return 2;;
+     esac;;
+    *)
+     # Confirmed value mismatch (uid/exe/inode/ns/ppid, or a different numeric birth
+     # between reads): fixed refuse, the verdict is NOT consulted, so a later
+     # disappearance can never launder it into an exit.
+     state OWNER_REFUSED "child_identity_changed_no_signal confirmed_mismatch_no_verdict"; return 2;;
+   esac
+  fi
   polls=$((polls+1))
   if [ "$ready" = 0 ]; then
    label=unknown; capture_rc=0; classifier_rc=0

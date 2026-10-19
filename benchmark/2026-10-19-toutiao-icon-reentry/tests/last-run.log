@@ -56,17 +56,94 @@ PASS quiet.is_stop
 
 reentry-tests: 29 passed, 0 failed
 
+=== exit-race tests (real fake-/proc mutation, r2 fix) ===
+PASS k.death_birth
+PASS k.death_birth_after
+PASS k.death_readerror
+PASS k.mismatch_uid
+PASS k.mismatch_exe
+PASS k.mismatch_numeric_birth
+PASS k.no_record_failclosed
+PASS v.zombie_same_birth
+PASS v.zombie_other_birth
+PASS v.alive_same_birth
+PASS v.alive_other_birth
+PASS v.absent_via_listing
+PASS v.short_stat
+PASS v.empty_stat
+PASS v.pid_mismatch
+PASS v.root_missing
+PASS v.root_without_numeric
+PASS v.stat_unreadable_pid_listed
+PASS v.root_unlistable
+PASS v.bad_args
+PASS m1.race_zombie.rc
+PASS m1.exit_event
+PASS m1.no_refuse
+PASS m2.race_vanish.rc
+PASS m2.exit_event
+PASS m3.reuse_alive.rc
+PASS m3.fixed_refuse
+PASS m3.no_exit
+PASS m4.reuse_zombie.rc
+PASS m4.no_exit
+PASS m5.mismatch_alive.rc
+PASS m5.fixed_refuse
+PASS m5.no_exit
+PASS m6.mismatch_then_vanish.rc
+PASS m6.fixed_refuse
+PASS m6.no_exit
+PASS m7.mismatch_then_zombie.rc
+PASS m7.fixed_refuse
+PASS m7.no_exit
+PASS m8.reuse_then_vanish.rc
+PASS m8.fixed_refuse
+PASS m8.no_exit
+PASS m9.first_read_other_birth.rc
+PASS m9.owned_not_called
+PASS m9.not_laundered
+PASS m9.refuse
+PASS m10.zombie_same_birth.rc
+PASS m10.exit_event
+PASS m11.zombie_other_birth.rc
+PASS m11.refuse
+PASS m11.no_exit
+PASS m12.root_missing.rc
+PASS m12.no_exit
+PASS m13.unreadable.rc
+PASS m13.unknown_refused
+PASS m13.no_exit
+PASS m14.malformed.rc
+PASS m14.refuse
+PASS m15.parent_never_signalled
+PASS m16.no_capture_on_exit
+PASS c1.race_zombie
+PASS c2.race_vanish
+PASS c3.race_reuse
+PASS c4.mismatch_alive
+PASS c5.mismatch_then_vanish
+PASS c6.alive_owned
+PASS c7.first_read_other_birth
+PASS c8.zombie_same_birth
+PASS c9.zombie_other_birth
+PASS c10.absent
+PASS c11.root_missing
+PASS c12.unreadable
+
+race-tests: 72 passed, 0 failed, 0 skipped
+
 === generator smoke + SHA cascade linkage ===
-# derive-candidate.sh 2026-10-19T09:02:48Z
+# derive-candidate.sh 2026-10-19T09:56:25Z
 ROOT=/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r1 SERIAL=61b0657200000000000000000324012c OWNER_UID=20011206 SERVICE=westlake-icon-manual-20261019 ENABLE=0 APPROVED=<none>
 
 ## base source verification + file production
-src       watchdog.sh <- src/watchdog-reentry.sh sha=bd2f83be4875d8a241dfe32d43c65f0ba7af6fff062bc1d790a426940e65c520
+src       watchdog.sh <- src/watchdog-reentry.sh sha=1bc35b59f5aea70546eafc49cca5ec87f004174869334256e0eac99b773688d3
 src       reentry-common.sh <- src/reentry-common.sh sha=43d7b073467708770c8c69724633666e410d45581f8c0099d5098c31215e78ab
 src       reentry-seams.sh <- src/reentry-seams.sh sha=febc7094b9d90b6a8c6c305199395d92da1ccde42d2b82b8c2754f0cb60f9d04
+src       exit-verdict.sh <- src/exit-verdict.sh sha=cb4cc73cd3e4ac654c3d9523d413fae6e4c426f67f7970a85c7f224bd21c7466
 copy      route-b-owner.sh <- V/route-b-owner.sh pin OK
 sed-root  config-common.sh <- R/config-common.sh (ROOT=/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r1) sha=ddee0b6c8c440d04148a22e83eec74beca5c4241a921c4bc398df3e4daf38934
-sed-wd    entry.sh <- V/entry.sh (watchdog sha -> bd2f83be4875d8a241dfe32d43c65f0ba7af6fff062bc1d790a426940e65c520) sha=54d8d9e35ebb8e9f34e6a65e916504298497a0ba9b6e99d72a3eef836cf7cae2
+sed-wd    entry.sh <- V/entry.sh (watchdog sha -> 1bc35b59f5aea70546eafc49cca5ec87f004174869334256e0eac99b773688d3) sha=722f1c129c8220010d5f6840bcc592dbc5ea864ca5858089ab5f44fbcfc0153b
 copy      launch-common.sh <- V/launch-common.sh pin OK
 copy      real-start-parent.sh <- R/real-start-parent.sh pin OK
 copy      real-spawn.sh <- V/real-spawn.sh pin OK
@@ -81,9 +158,9 @@ sed-recov recovery.cfg <- R/recovery.cfg (ROOT=icon-manual-20261019-r1 service=w
 copy      rollback-inert.cfg <- V/rollback-inert.cfg pin OK
 
 ## cascade: members.tsv -> startup.env -> startup.expected.sha256
-members.tsv sha=6d96deca0a721305d8f8c276a5f8b43b0101ee9a6ef499547fb80d239390218f (15 members)
-startup.env sha=da40b9c2516c99ea9f799dcc8402d1e01bf40783950976ea2793349532c60863 ENABLED=0 APPROVED=DISABLED-PENDING-OUTER
-startup.expected.sha256 = da40b9c2516c99ea9f799dcc8402d1e01bf40783950976ea2793349532c60863
+members.tsv sha=b4de1a6db23e60b1f998ccd32f507f64b5fe40a5004222991f4fc36557c934d2 (16 members)
+startup.env sha=3941ab66e555abb6f4e96cf0b74ae5d41c5335ce9d33686c0a3f2be0fc7406bd ENABLED=0 APPROVED=DISABLED-PENDING-OUTER
+startup.expected.sha256 = 3941ab66e555abb6f4e96cf0b74ae5d41c5335ce9d33686c0a3f2be0fc7406bd
 
 ## diffs (base -> candidate)
 diff watchdog.sh -> diffs/watchdog.sh.diff
@@ -95,10 +172,11 @@ diff startup.env -> diffs/startup.env.diff
 diff startup.expected.sha256 -> diffs/startup.expected.sha256.diff
 diff reentry-common.sh -> diffs/reentry-common.sh.diff
 diff reentry-seams.sh -> diffs/reentry-seams.sh.diff
+diff exit-verdict.sh -> diffs/exit-verdict.sh.diff
 
-## MANIFEST.sha256 (21 files)
+## MANIFEST.sha256 (22 files)
 
-OK candidate written to /var/folders/4b/52jp6mr96b75p8tr62l0bz2r0000gn/T//rc-gen.M3gBy3/cand (armed=no)
-generator smoke: PASS (21 files, cascade linked, disabled by default)
+OK candidate written to /var/folders/4b/52jp6mr96b75p8tr62l0bz2r0000gn/T//rc-gen.Zi4GE5/cand (armed=no)
+generator smoke: PASS (22 files, cascade linked, disabled by default)
 
 === run-all result: PASS ===

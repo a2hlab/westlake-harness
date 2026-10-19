@@ -54,6 +54,36 @@ all PASS). This lane owns the parser, generator, inputs, tests, docs and spec se
 | base-pin coverage of all 19 pinned files | **19/19** — confirmed by the outer loop's independent offline review; the 3 diff-base-only pins (base watchdog.sh, base-ref members.tsv, base-ref startup.expected.sha256) are not checked by the generator |
 | device calls | **0** |
 
+## r2 — exit race fix (P0 live blocker, 2026-10-19)
+
+**What was wrong (field, r1 deployed, boot `f59c05dd`):** after a controlled SIGTERM to
+exactly the owned child 7233/16206 (`rb_signal` guard PASS, parent 5430 untouched), the
+guardian went `READY` → `OWNER_REFUSED child_identity_changed_no_signal` ~15 s later with
+no `process_exit`, instead of `AWAITING_REENTRY`. Statically confirmed: the only path to that
+reason is "first `rb_birth` read matches, then the multi-read ownership guard fails" — a
+process dying between those reads lands there. Not PID reuse (that differs on the first
+read). No per-read field log exists, so we do not claim which sub-read failed.
+
+**Fix (`src/exit-verdict.sh` `cb4cc73c…`, wired into `monitor_child`/`rc_child_state`,
+watchdog `1bc35b59…`):** `exited` only for a complete stat with same pid + same birth + `Z`,
+or absence proven by a successful complete `/proc` PID listing; PID reuse, malformed /
+unreadable stat, missing or unlistable proc root ⇒ refused/unknown (fail closed); a
+**confirmed** uid/exe/inode/ns/ppid mismatch (decoded from the frozen guard's own deny
+JSON) is a fixed refuse even if the process vanishes afterwards. First-read birth mismatch
+refuses outright with the guard never consulted. Parent guard, reentry loop, parser and
+first-launch chain unchanged; still not a crash fix.
+
+| check | result |
+|---|---|
+| real exit-race tests (`tests/run-race-tests.sh`: fake `/proc` mutated mid-ownership-check, real `rb_birth` + real `rb_deny` encoder, real `monitor_child`/`rc_child_state` bodies) | **72 passed, 0 failed, 0 skipped** (`sh` and `dash`) |
+| full suite (`tests/run-all.sh`) with r2 | parser 21/0 · reentry 29/0 · race 72/0 · generator smoke PASS (22 files) |
+| `cargo test --test toutiao_icon_reentry` | **ok, 1 passed** |
+| `candidate-payload-r2/` (ROOT `icon-manual-20261019-r2`, disabled) | 22 files / 16 members; members `bf9cc39a…`; startup `2484f353…` |
+| real-board re-verification (controlled exit → `AWAITING_REENTRY` → manual tap → feed) | **PENDING (outer)** |
+
+The r1 directory `candidate-payload/` is kept frozen as the deployed evidence; see
+`OPERATIONS.md §8` and `CHECKPOINT.md §11`.
+
 ## Rules established this round
 
 1. **A crash leaves the host foreground**, so manual reentry must be a *sequence*

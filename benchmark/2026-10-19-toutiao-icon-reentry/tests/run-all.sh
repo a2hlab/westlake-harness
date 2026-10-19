@@ -22,6 +22,10 @@ printf '\n=== reentry state-machine tests ===\n' | tee -a "$LOG"
 sh "$HERE/run-reentry-tests.sh" 2>&1 | tee -a "$LOG"
 case "$(tail -1 "$LOG")" in *"0 failed"*) :;; *) rc=1;; esac
 
+printf '\n=== exit-race tests (real fake-/proc mutation, r2 fix) ===\n' | tee -a "$LOG"
+sh "$HERE/run-race-tests.sh" 2>&1 | tee -a "$LOG"
+case "$(tail -1 "$LOG")" in *" 0 failed"*) :;; *) rc=1;; esac
+
 printf '\n=== generator smoke + SHA cascade linkage ===\n' | tee -a "$LOG"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/rc-gen.XXXXXX") || { echo "mktemp failed" | tee -a "$LOG"; exit 2; }
 trap 'rm -rf "$WORK"' EXIT
@@ -37,9 +41,10 @@ if sh "$GEN" --out "$WORK/cand" >> "$LOG" 2>&1; then
 	[ "$mt" = "$se" ] || { echo "LINK FAIL members.tsv($mt) != STARTUP_MEMBERS_SHA($se)" | tee -a "$LOG"; linkfail=1; }
 	[ "$ee" = "$ev" ] || { echo "LINK FAIL startup.expected($ee) != sha(startup.env)($ev)" | tee -a "$LOG"; linkfail=1; }
 	grep -q "$wd" "$WORK/cand/payload/entry.sh" || { echo "LINK FAIL entry.sh missing candidate watchdog sha" | tee -a "$LOG"; linkfail=1; }
-	[ "$nfiles" = 21 ] || { echo "LINK FAIL payload file count=$nfiles (want 21)" | tee -a "$LOG"; linkfail=1; }
+	[ "$nfiles" = 22 ] || { echo "LINK FAIL payload file count=$nfiles (want 22)" | tee -a "$LOG"; linkfail=1; }
 	grep -q "STARTUP_ENABLED='0'" "$WORK/cand/payload/startup.env" || { echo "LINK FAIL default package is not disabled" | tee -a "$LOG"; linkfail=1; }
-	if [ "$linkfail" = 0 ]; then echo "generator smoke: PASS (21 files, cascade linked, disabled by default)" | tee -a "$LOG"
+	grep -q ' exit-verdict.sh 550$' "$WORK/cand/payload/members.tsv" || { echo "LINK FAIL exit-verdict.sh not a pinned member" | tee -a "$LOG"; linkfail=1; }
+	if [ "$linkfail" = 0 ]; then echo "generator smoke: PASS (22 files, cascade linked, disabled by default)" | tee -a "$LOG"
 	else rc=1; fi
 else
 	echo "generator smoke: FAIL (non-zero exit)" | tee -a "$LOG"; rc=1

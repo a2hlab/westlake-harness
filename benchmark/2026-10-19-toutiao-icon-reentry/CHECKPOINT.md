@@ -280,3 +280,71 @@ superseded by this section:
   The payload's `recovery.cfg` (with its own service/trigger) is a reference artifact and
   is NOT installed; OPERATIONS §2/§3/§5 were corrected accordingly. Rollback restores
   `before.cfg` and never deletes the candidate ROOT evidence.
+
+## 11. r2 — P0 live blocker: exit race misjudged as identity change (2026-10-19)
+
+**Field fact (outer, read-only, boot `f59c05dd`, parent 5430/birth 14767, child 7233/birth
+16206, r1 deployed via the real transaction, guardian `READY` on a real feed).** A controlled
+SIGTERM to exactly child 7233/16206 (`rb_signal` guard PASS, parent untouched) was followed
+~15 s later by `OWNER_REFUSED child_identity_changed_no_signal` instead of
+`AWAITING_REENTRY`. Evidence: `$HOME/.local/share/westlake/toutiao-resume-20261019/icon-manual-live-r2/controlled-exit-1/`
+(`events.log` tail: `1408 READY` → `1502 OWNER_REFUSED child_identity_changed_no_signal`,
+**no** `process_exit` in between).
+
+**Static verification (cx-seal criteria; verified against the final source, not assumed).**
+The only path to that reason in `monitor_child` (r1 `watchdog-reentry.sh:382-391`) is: the
+first `rb_birth` read succeeds with the bound birth, then the multi-read ownership guard
+`child_owned` (≥5 further `/proc` reads; `rb_birth` returns 1 on state `Z`) fails. A process
+dying between those reads therefore lands in the "identity changed" branch. **The code race
+is confirmed. The field trace is consistent with it, but no instantaneous per-read log
+exists (the deny JSON goes to guardian stderr, not captured), so we do NOT claim which
+specific sub-read failed.** It is not PID reuse: reuse would already differ on the first
+read. Two more same-family gaps found: the pre-existing first-read `Z` branch did not verify
+the birth, and `rc_child_state:334` had the same race.
+
+**p3 pre-review blockers on the first r2 draft (converged before commit).** (1) a bare
+`[ ! -d /proc/<pid> ]` would read a missing/unreadable proc root as "exited"; (2) a `-d`
+pre-test followed by `cat stat` still misjudged a process that exits between the two as
+`unreadable`→refuse; (3) a *confirmed* uid/exe mismatch followed by the process vanishing
+could be laundered into an exit by a later verdict read.
+
+**Minimal fix (r2), fail-closed by construction.** New file `src/exit-verdict.sh`:
+
+- `child_exit_verdict <pid> <birth>` → `exited | refuse:* | unknown`. Order: (1) ONE
+  complete `stat` read first — no `-d` pre-test; complete row ⇒ field1==pid, starttime
+  (field 22)==bound birth, state `Z` ⇒ `exited`; different birth ⇒ `refuse:pid_reused`;
+  malformed/short/empty ⇒ `refuse:stat_*`; same birth not `Z` ⇒
+  `refuse:alive_ownership_failed`. (2) If the read failed, absence is proven **only** by a
+  SUCCESSFUL complete PID listing of the proc root (`ls -1` rc 0, empty stderr, non-empty,
+  numeric entries) that does not contain the pid ⇒ `exited`; a missing/unlistable/empty root
+  ⇒ `unknown`. (3) pid still listed ⇒ re-read; same-birth `Z` ⇒ `exited`, else `unknown`.
+  Callers fail closed on `unknown`.
+- `owned_failure_kind <child_owned stderr>` → `death | mismatch`, decoded from the frozen
+  guard's own deny JSON (unchanged helper, stderr captured and re-emitted): only an
+  `"actual"` beginning with `<read-error…>` is child-death related and may be classified;
+  any value mismatch (uid/exe/exe_sha/inode/ns/ppid, or a different *numeric* birth read
+  between checks) is a confirmed mismatch ⇒ **fixed refuse, verdict never consulted**.
+
+Wiring in `monitor_child`: first-read birth mismatch ⇒ refuse outright (guard not
+consulted; never laundered); first-read failure ⇒ verdict (`exited`→`process_exit`,
+`unknown`/`refuse`→`OWNER_REFUSED`); ownership failure after a matching read ⇒
+`death`→verdict, `mismatch`→`confirmed_mismatch_no_verdict` refuse. The pre-existing
+first-read `Z` branch is now birth-verified. `rc_child_state` maps the same way
+(`gone`/`unknown`/`invalid`). Parent guard and `rc_reentry_loop` unchanged: entering the
+manual wait still requires a NEW desktop→host transition.
+
+**Real race tests (`tests/run-race-tests.sh`, 72/0/0 on sh and dash).** Fake `/proc` + the
+real frozen `rb_birth` **and the real `rb_deny` encoder** + the real `monitor_child` /
+`rc_child_state` bodies extracted from the final source. The race is reproduced by mutating
+`stat` *during* the ownership check: S→Z same birth, directory removal (absence via
+listing), birth swap alive/zombie, chmod 000 (pid listed, stat unreadable ⇒ unknown ⇒
+refuse), short stat; confirmed uid/exe mismatch then vanish / then same-birth zombie ⇒
+still refused; different numeric birth between reads then vanish ⇒ refused; first-read
+mismatch (asserts the guard is never called); missing proc root ⇒ unknown ⇒ refused;
+pre-existing zombie same/different birth; parent never signalled; no capture on exit.
+
+**Delivery.** Candidate regenerated to a **new ROOT** `icon-manual-20261019-r2`
+(`candidate-payload-r2/`, disabled, 22 files/16 members, watchdog `1bc35b59…`,
+exit-verdict `cb4cc73c…`, members `bf9cc39a…`, startup `2484f353…`); r1 directory and its
+field evidence untouched. Not a fix for the random crash; no device action by this lane.
+Real-board re-verification of the controlled-exit → manual-tap path is outer pending.

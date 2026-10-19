@@ -53,3 +53,27 @@ Not a crash fix — adds manual desktop→home icon reentry on top of the sealed
   candidate ROOT evidence (OPERATIONS §3, §5).
 
 Commit SHA: see board line (committed on branch `analysis/toutiao-icon-reentry-20261019`, not pushed).
+
+## r2 — P0 exit-race fix (2026-10-19), token ACK(91-1919-icon)
+
+- Field blocker (outer, r1 deployed, boot `f59c05dd`): controlled SIGTERM to child
+  7233/16206 → `OWNER_REFUSED child_identity_changed_no_signal`, no `process_exit`, parent
+  5430 untouched. Code race confirmed statically; field trace consistent; the specific
+  failing sub-read is not claimed (no per-read log).
+- Fix: new `src/exit-verdict.sh` (`cb4cc73c…`) + wiring in `monitor_child`/`rc_child_state`
+  (watchdog `1bc35b59…`). Converged with cx-seal + p3 criteria: exited only for complete
+  stat same-pid/same-birth/Z or absence proven by a successful complete `/proc` listing;
+  reuse / malformed / unreadable / missing root ⇒ refuse or unknown (fail closed);
+  confirmed uid/exe/… mismatch ⇒ fixed refuse even if the process vanishes afterwards;
+  first-read birth mismatch ⇒ refuse with the guard never consulted; parent never
+  signalled; manual wait still needs a NEW desktop→host. Parser, common, first-launch
+  chain unchanged. Not a crash fix.
+- Offline proof: race 72/0/0 (`sh`+`dash`, real fake-/proc mutation + real `rb_deny`
+  encoder + real function bodies); parser 21/0; reentry 29/0; generator smoke PASS
+  (22 files); `cargo test` ok.
+- Delivery: `candidate-payload-r2/` (ROOT `icon-manual-20261019-r2`, disabled, 22 files /
+  16 members, members `bf9cc39a…`, startup `2484f353…`); r1 payload and field evidence
+  retained. Deploy/rollback = the same real transaction with the r2 payload/root
+  (OPERATIONS §8); fresh boot only; never delete the r1 ROOT.
+- Pending (outer, real board): controlled exit → `AWAITING_REENTRY` → manual icon tap → feed
+  screenshot; reboot → manual tap → feed. No device action by this lane.

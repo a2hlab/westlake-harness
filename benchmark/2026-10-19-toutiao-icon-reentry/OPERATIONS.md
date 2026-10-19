@@ -132,5 +132,49 @@ random SIG11 is fixed — this candidate only adds manual reentry.
 - `candidate-payload/diffs/` — exact base→candidate unified diffs (watchdog, entry,
   config-common, recovery.cfg, members, startup, startup.expected) + the two new files.
 - `candidate-payload/MANIFEST.sha256`, `generation.json` — per-file hashes + the cascade.
-- Final reviewed source SHAs: watchdog-reentry.sh `bd2f83be…`, reentry-common.sh
-  `43d7b073…`, reentry-seams.sh `febc7094…`.
+- r1 reviewed source SHAs (deployed 2026-10-19): watchdog-reentry.sh `bd2f83be…`,
+  reentry-common.sh `43d7b073…`, reentry-seams.sh `febc7094…`.
+
+## 8. r2 — exit-race fix (P0 live blocker, 2026-10-19)
+
+**Why r2 exists.** With r1 deployed (boot `f59c05dd`, parent 5430/14767, child 7233/16206,
+guardian `READY` on a real feed), a controlled SIGTERM to exactly the child ended in
+`OWNER_REFUSED child_identity_changed_no_signal` instead of `AWAITING_REENTRY`. The code
+race is confirmed statically (first birth read passes, the multi-read ownership guard then
+fails on a dying process); see `CHECKPOINT.md §11`. r2 adds `exit-verdict.sh` and wires it
+into `monitor_child` / `rc_child_state` so that **only a proven exit** (complete stat with
+same pid + same birth + `Z`, or absence proven by a successful complete `/proc` PID
+listing) enters the manual-icon wait; PID reuse, malformed/unreadable stat, missing proc
+root, and any confirmed uid/exe/inode/ns/ppid mismatch (even if the process vanishes
+afterwards) stay refused. Parent guard, reentry loop, parser and first-launch chain are
+unchanged. It is not a fix for the random crash.
+
+**Identity (disabled build, `candidate-payload-r2/`).** ROOT
+`/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2`; 22 files /
+16 members; watchdog `1bc35b59…`; exit-verdict `cb4cc73c…`; members.tsv `bf9cc39a…`;
+startup.env = startup.expected `2484f353…`. Sources: watchdog-reentry.sh `1bc35b59…`,
+exit-verdict.sh `cb4cc73c…`, reentry-common.sh `43d7b073…`, reentry-seams.sh `febc7094…`.
+
+**Generate (armed, outer only):**
+
+```
+sh benchmark/2026-10-19-toutiao-icon-reentry/generator/derive-candidate.sh \
+   --out <OUT> --root /data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2 \
+   --enable --approved-by 'outer(codex)'
+```
+
+**Deploy / rollback.** Exactly the §3/§5 transaction with the r2 payload: `prepare.py`
+repoints `services[0].path[1]` to `…/icon-manual-20261019-r2/boot-entry.sh` and rejects
+any other cfg change; **fresh boot is the only execution path**. Note that the `before.cfg`
+captured by the r2 transaction points at the r1 boot-entry (the sealed original is the
+r1 transaction's `before.cfg`). **Never delete the r1 ROOT** — it is the field evidence of
+the blocker. Rollback = restore the chosen `before.cfg`; r1/r2 ROOTs are retained.
+
+**Offline proof (this lane).** `tests/run-race-tests.sh` 72/0/0 on `sh` and `dash` (real
+fake-`/proc` mutation mid-ownership-check, real `rb_birth` and real `rb_deny` encoder, real
+`monitor_child`/`rc_child_state` bodies); parser 21/0; reentry 29/0; generator smoke PASS
+(22 files, cascade linked, disabled); `cargo test --test toutiao_icon_reentry` ok.
+
+**Real-board pending (outer).** Re-run the controlled-exit scenario on r2: child exits →
+guardian reaches `AWAITING_REENTRY` → a real desktop→icon tap → feed screenshot; plus the
+reboot → manual-tap path. No claims until the screenshot and receipts exist.
