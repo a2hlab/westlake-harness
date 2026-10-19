@@ -6,10 +6,10 @@ repo: A2OH/westlake-harness
 layers: [Verification, Measurement]
 status: open
 severity: S2
-recurrence: 4
+recurrence: 6
 fingerprint: verification/proxy-not-target
 issue:
-cards: [EVO-0148, EVO-0149, EVO-0150, EVO-0151]
+cards: [EVO-0148, EVO-0149, EVO-0150, EVO-0151, EVO-0153, EVO-0154]
 filed: 2026-10-19
 ---
 
@@ -20,6 +20,8 @@ filed: 2026-10-19
 - r5 静态：`addTask(PreloaderURLItem)` 正文仅委托 `_addTask`，未含 pending 原句；公开 `proxyUrl` 的零 DEX 入边也未覆盖反射、JNI、hotfix。不能据此断言 pending 仅属预加载或生产路径绝不调用。原 ACK 和外环纠偏保留在战役板；相关方法及完整 REA 结果位于内环 `static/evidence/r4-nextstate/rea-raw/`，修订未采认前不合入其因果判词。
 
 - r7：以另一caller的C00f00输出代替本caller绑定，又把实际ELF的`[%s:%u] %s`及file参数误写为public格式及message；独立字节和指令复核后撤回，错误稿未采认。24条完整REA工具结果与原件哈希已落主仓，避免摘要冒充verbatim。见 `benchmark/2026-10-19-toutiao-video-playback/diagnostic-r5/retry-r7/`，EVO-0151。
+
+- r9/r10：把手写 REA 摘要当作完整工具原件、把 decoder open/尺寸日志当完整解码、把 native_ready 当有效几何，又把自定义 OH libandroid 称为 AOSP 实现。精确部署 ELF 与实际槽指针已反证；修正报告仍须按源版本与实际调用逐条采认。见 `benchmark/2026-10-19-toutiao-video-playback/static/r10-window-contract-review/`、`candidate-r10/window/`，EVO-0153/0154。
 
 ## 处置
 
@@ -32,3 +34,5 @@ filed: 2026-10-19
 现有工具能提供精确证据，但尚无通用门禁约束自然语言因果声明。本记录保持 open；不能因新增散文规则就宣称该类错误已消除。
 
 2026-10-19 r7调整：REA车道负责原件与精确地址，独立车道解释，外环按部署ELF/运行时读数采认；上下文压缩后派单显式列对象路径。此分工尚需后续效果验证，不将它记为已消除复发。
+
+2026-10-20 r10调整：报告不得由库名或相邻版本源码推定部署实现。先提交精确 ELF 的函数证据与相关源码差异，再写结论；调用当时对象与事后旧地址分开。当前已转向有界同次调用观测，不再用全机导出并集猜 namespace winner。本规则尚不能机械检验自然语言声明，记录保持 open。
