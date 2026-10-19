@@ -2,7 +2,7 @@ spec: task
 name: "Toutiao video dynamic playback and API delivery"
 inherits: project
 satisfies: [REQ-TTVIDEO]
-depends: [t2-minimal-repair, t4-player-observation]
+depends: [t2-minimal-repair, t4-player-observation, t5-bounded-decoder-observation]
 tags: [media, waiting-for-p1-window, human-review]
 ---
 ## 意图
@@ -18,6 +18,7 @@ tags: [media, waiting-for-p1-window, human-review]
 - r8为t4离线候选的独立短窗：player为0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471，compat为6e83e924aae709f0c90ba2a966910febb63471b7a9a6294c6dee585a73ff3b4b；run79275cf9与media d2882303模板不变。来源与原始构建日志见candidate-r8/archive-receipt.json，独立离线审查见video-1919-r8-elf-review。继承四件备份/CAS/原apply-plan回滚，未定后像仍在设备调用前拒绝；不部署链接输入liblog或OpenSL anchor，不改系统运行时。
 - r8 fresh boot后先按r5精确参数路径启日志，再真实图标进入feed并触发视频；一次采齐实际player GOT0x471f88→本次compat+0x1aac、compat GOT0x3258→exact d8ad liblog+0x7450，以及映射SHA/inode/load bias。缺任一绑定时仅记unknown，不把DT_NEEDED或编译通过当运行时解析证明。沿现有child fd2收有界镜像，原始payload只在私有持久归档。镜像无输出不能证明播放器从未执行；按真实画面和原两轮声音门裁定，到限仍按原基线恢复与参数absent、feed核验后解锁。
 - r9继承r8四件和日志开关/原基线恢复路径，仅run模板使用t2的b5625757两行网络配置派生；netcompat原件f6c354d1需前置校验SHA/metadata与parent private同inode，不写该原件。候选加载后读取mffmpeg getaddrinfo/freeaddrinfo/socket/connect/__errno/getsockopt六槽及其精确ELF/provider身份，前两者必须成对指向netcompat；任何绑定不符或日志/图像仍不支持动态播放，窗口内按原apply-plan恢复四件、fresh boot恢复参数absent和真实feed后解锁。最多30分钟，不增加随机崩溃诊断。
+- r10独立观测窗复用r9 run b5625757、player0b4d与media d288，仅compat换为t5实际构建5f591f5ed92e608a622ab4b59bb2061a846600d0ac5e5d4698405e6301ac8c3c（镜像预算256→4096，每条1024字节，其余C源码不变）。构建原件r10-build-copy-02 rc0，固定工具链/镜像经无挂载容器执行；r10-build-copy-01缺host libxml2属环境失败，原日志保留。离线复审后另建r10 executor与reader，不修改历史r9；读取player GOT0x471f88→compat+0x1aac、compat GOT0x3258→d8ad liblog+0x7450及r9网络配对。记录实际镜像计数及是否耗尽，4096不保证覆盖25秒。保留逐件备份/CAS、原apply-plan回滚、20分钟开始恢复/30分钟硬限、最多5次正常图标启动；拒绝实际绑定不符，绝不以新日志可见代替播放验收。
 ## 边界
 ### 允许修改
 - benchmark/2026-10-19-toutiao-video-playback/diagnostic-r5/**
@@ -26,6 +27,7 @@ tags: [media, waiting-for-p1-window, human-review]
 - benchmark/2026-10-19-toutiao-video-playback/candidate-r8/deployment/**
 - benchmark/2026-10-19-toutiao-rea-methods/video-r4-executor-draft/**
 - benchmark/2026-10-19-toutiao-video-playback/candidate-r9/**
+- benchmark/2026-10-19-toutiao-video-playback/candidate-r10/**
 - specs/toutiao-video-playback/t3-playback-seal.spec.md
 ### 禁止
 - 不夺板锁、不覆盖历史签认、不重签旧boot、不改冻结登记或主API表历史证据；不删用户数据。
