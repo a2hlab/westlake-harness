@@ -1,0 +1,130 @@
+{
+  "status": "ABI_REFERENCE_ONLY_NOT_A_PROVIDER_OR_DEPLOYMENT_CANDIDATE",
+  "master_commit": "3f429fd5ba5963f6b8e558658799417e6dc3afc6",
+  "expected_helpful_keys": [
+    {
+      "key": "toutiao",
+      "condition": "R13 proves actual wrapper/provider and a later admitted caller-scoped provider passes ABI and runtime gates"
+    }
+  ],
+  "ops": [
+    {
+      "op": "unwrap",
+      "declared_provider_abi": "void *oh_anw_get_oh(void *wrapper)",
+      "source": "exact_unwrap_disassembly",
+      "scope": "exact deployed d4fa SHA review",
+      "rules": [
+        "NULL -> NULL",
+        "u32 +0 must equal 0x5f776e64",
+        "u32 +0xc8 must equal 0x414e5731",
+        "return ptr +0xc0; no directPathLive"
+      ],
+      "r14_adaptation": "callback returns int and writes void**; cannot cast direct function",
+      "live_provider_instance": "unknown"
+    },
+    {
+      "op": "request",
+      "declared_provider_abi": "int32_t OH_NativeWindow_NativeWindowRequestBuffer(OHNativeWindow *, OHNativeWindowBuffer **, int *)",
+      "source": "oh61_window_source:205-234; oh61_window_header",
+      "r14_adaptation": "ctx-dropping thunk; initialize outputs, preserve returned fence/error",
+      "live_provider_instance": "unknown"
+    },
+    {
+      "op": "handle",
+      "declared_provider_abi": "BufferHandle *OH_NativeWindow_GetBufferHandleFromNative(OHNativeWindowBuffer *)",
+      "source": "oh61_window_source:558-564; local_source_buffer_handle; sdk_c_buffer_handle",
+      "r14_adaptation": "load signed int32 fields from verified prefix then widen to int64 r14_handle; no struct cast",
+      "live_provider_instance": "unknown"
+    },
+    {
+      "op": "convert",
+      "declared_provider_abi": "int32_t OH_NativeBuffer_FromNativeWindowBuffer(OHNativeWindowBuffer *, OH_NativeBuffer **)",
+      "source": "sdk_c_native_buffer:267-280",
+      "r14_adaptation": "ctx-dropping thunk; nonnull plus rc0 required",
+      "borrowed_lifetime_on_deployed_provider": "unknown",
+      "live_provider_instance": "unknown"
+    },
+    {
+      "op": "map",
+      "declared_provider_abi": "int32_t OH_NativeBuffer_Map(OH_NativeBuffer *, void **)",
+      "source": "sdk_c_native_buffer:215-229",
+      "r14_adaptation": "ctx-dropping thunk; record rc and pointer independently",
+      "live_provider_instance": "unknown"
+    },
+    {
+      "op": "unmap",
+      "declared_provider_abi": "int32_t OH_NativeBuffer_Unmap(OH_NativeBuffer *)",
+      "source": "sdk_c_native_buffer:231-241",
+      "r14_adaptation": "ctx-dropping thunk; failure is not completed ownership release",
+      "live_provider_instance": "unknown"
+    },
+    {
+      "op": "flush",
+      "declared_provider_abi": "int32_t OH_NativeWindow_NativeWindowFlushBuffer(OHNativeWindow *, OHNativeWindowBuffer *, int, Region)",
+      "source": "oh61_window_source:237-280; oh61_window_header:88-98",
+      "r14_adaptation": "convert ARect LTRB to Rect xywh; Region by value, never cast r14 callback; fence=-1 per R14",
+      "live_provider_instance": "unknown"
+    },
+    {
+      "op": "abort",
+      "declared_provider_abi": "int32_t OH_NativeWindow_NativeWindowAbortBuffer(OHNativeWindow *, OHNativeWindowBuffer *)",
+      "source": "oh61_window_source:322-329,1132",
+      "r14_adaptation": "ctx-dropping thunk; archived implementation discards lower CancelBuffer rc",
+      "lower_release_confirmation": "unknown",
+      "live_provider_instance": "unknown"
+    }
+  ],
+  "buffer_prefix_lp64": {
+    "fd": 0,
+    "width": 4,
+    "stride": 8,
+    "height": 12,
+    "size": 16,
+    "format": 20,
+    "usage": 24,
+    "virAddr": 32,
+    "field_widths": "first six signed int32, usage uint64, virAddr 64-bit pointer",
+    "safe_common_prefix_bytes": 40,
+    "source_no_key_layout": {
+      "phyAddr": 40,
+      "reserveFds": 48,
+      "reserveInts": 52,
+      "reserve": 56,
+      "sizeof": 56
+    },
+    "sdk_c_with_key_layout": {
+      "key": 40,
+      "phyAddr": 48,
+      "reserveFds": 56,
+      "reserveInts": 60,
+      "reserve": 64,
+      "sizeof": 64
+    },
+    "actual_deployed_layout": "unknown; prefix agreement is source ABI evidence, not current pointer validation"
+  },
+  "stride": {
+    "source_contract": "bytes per row; pinned window header GET_STRIDE bytes and recommends BufferHandle; local NativeBuffer_Config says bytes",
+    "r14_input": "stride_bytes unchanged, not pixels",
+    "r14_output": "pixels after checked division by bytes-per-pixel",
+    "warning": "archived HandleNativeWindowGetStride returns config.strideAlignment, so do not substitute GET_STRIDE for returned BufferHandle stride",
+    "actual_buffer_stride": "unknown"
+  },
+  "rect_region_lp64": {
+    "Rect": "int32 x,y; uint32 w,h; size16",
+    "Region": "Rect* at0; int32 count at8; size16/alignment8",
+    "ARect": "int32 left,top,right,bottom; size16, different semantics",
+    "layout_verification": "source-derived AArch64 LP64 layout; no compiler probe performed"
+  },
+  "required_live_evidence": [
+    "same boot/child birth and actual caller window returned by fromSurface and used by lock",
+    "each ops address tied to exact ELF SHA/load bias and namespace instance, not maps presence or library name",
+    "exact OH native_window/native_buffer versions and symbol implementations matching referenced signatures/layout",
+    "returned buffer and BufferHandle fields plus validated geometry/format/stride; conversion borrowed-lifetime contract",
+    "paired request fence, successful readiness, Map/Unmap and flush/abort rc with ownership journal",
+    "actual content frames/audio, pause/resume/exit; queue acceptance alone is not visible playback"
+  ],
+  "device_calls": 0,
+  "debugger_calls": 0,
+  "builds": 0,
+  "production_changes": 0
+}
