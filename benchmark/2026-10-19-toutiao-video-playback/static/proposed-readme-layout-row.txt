@@ -1,0 +1,1 @@
+| **[Toutiao video t1 static evidence](benchmark/2026-10-19-toutiao-video-playback/static/)** | **RouteB libttmplayer (BIND_NOW) has exactly 2 unresolved imports, SL_IID_ANDROID{SIMPLEBUFFERQUEUE,CONFIGURATION}; 61b OpenSLES 05d8ac90 lacks both; prior Westlake player-anchor compat dropped from RouteB. P1 untriggered — needs one observation.** |

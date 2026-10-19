@@ -1,0 +1,100 @@
+{
+ "schema": "ttvideo-readonly-requests/v1",
+ "requester": "video-cc t1 (no HDC)",
+ "owner": "outer",
+ "order": "RQ1 and RQ2 are pure reads (no launch, no write, no lock needed beyond outer policy); RQ3 only if RQ2 holds no video-tap evidence",
+ "requests": [
+  {
+   "id": "RQ1",
+   "purpose": "Which libOpenSLES/libEGL/libGLESv2 the RouteB default namespace resolves first (run.sh LD_LIBRARY_PATH order), and whether it exports the Android OpenSL IIDs",
+   "boards": [
+    "61b0657200000000000000000324012c",
+    "5cd1e3dd00000000000000000923012c",
+    "5ea34a4500000000000000001123012c"
+   ],
+   "precondition": "read-only; on 5cd/5ea first confirm /data/local/tmp/asx/run.sh sha256 == d3518cef... (else report board not RouteB-parity)",
+   "argv": [
+    "hdc",
+    "-t",
+    "<serial>",
+    "shell",
+    "for d in /data/local/tmp/asx /system/lib64 /system/lib64/platformsdk /system/lib64/chipset-sdk /system/lib64/chipset-sdk-sp /system/lib64/ndk /vendor/lib64/chipsetsdk /vendor/lib64/hw /vendor/lib64 /data/local/tmp/asx/lib/arm64-v8a /data/local/tmp/asx/webview-t-lib; do for n in libOpenSLES.so libEGL.so libGLESv2.so; do [ -e $d/$n ] && { ls -lL $d/$n; sha256sum $d/$n; }; done; done; echo RQ1_END"
+   ],
+   "followup_argv": [
+    "hdc",
+    "-t",
+    "<serial>",
+    "file",
+    "recv",
+    "<first libOpenSLES.so hit in RQ1 order>",
+    "<persistent dir>/<serial>-libOpenSLES.so"
+   ],
+   "local_analysis": "llvm-nm -D --defined-only <pulled libOpenSLES.so> | grep -E 'SL_IID_ANDROID(SIMPLEBUFFERQUEUE|CONFIGURATION)'",
+   "criterion": {
+    "refutes_P1": "first hit exports both SL_IID_ANDROIDSIMPLEBUFFERQUEUE and SL_IID_ANDROIDCONFIGURATION",
+    "supports_P1": "first hit lacks either symbol"
+   },
+   "status": "done_by_outer",
+   "result": {
+    "evidence": [
+     "evidence/outer-rq1.txt",
+     "evidence/outer-61b-OpenSLES-exports.txt"
+    ],
+    "first_libOpenSLES": "/system/lib64/libOpenSLES.so sha256 05d8ac90dbced47c8b47275a5d978bc922d4d8f6f84cd3df1b456633ae6d1100 (parent 11444 mount ns; /proc/11444/root copy SHA-identical per outer)",
+    "first_libEGL": "/system/lib64/platformsdk/libEGL.so 96bc1421",
+    "first_libGLESv2": "/system/lib64/ndk/libGLESv2.so 5b4f734b",
+    "verdict": "supports_P1_static: no SL_IID_ANDROIDSIMPLEBUFFERQUEUE / SL_IID_ANDROIDCONFIGURATION export; SL_IID_OH_BUFFERQUEUE present. Not a triggered wall."
+   }
+  },
+  {
+   "id": "RQ2",
+   "purpose": "Mine already-existing RouteB child stderr (61b child 13101 just exited; 5cd may retain 2026-09-28 pid 20465) for player load/consumer lines; no app launch",
+   "boards": [
+    "61b0657200000000000000000324012c",
+    "5cd1e3dd00000000000000000923012c",
+    "5ea34a4500000000000000001123012c"
+   ],
+   "argv": [
+    "hdc",
+    "-t",
+    "<serial>",
+    "shell",
+    "ls -l /data/service/el1/public/appspawnx/ | grep -E 'adapter_child_.*stderr'; for f in /data/service/el1/public/appspawnx/adapter_child_*.stderr; do echo \"== $f $(wc -l < $f)\"; grep -n -E 'libttmplayer|libtexturerender|libavmdl|SL_IID|OpenSLES|WESTLAKE-ANW|AJMediaCodec|MediaCodec|AudioTrack|MediaPlayer|TTVideoEngine|TikTokActivity|SOURCE-NATIVE-LOAD-FAIL' \"$f\" | grep -v TOUCH21 | head -200; done; echo RQ2_END"
+   ],
+   "criterion": {
+    "confirms_P1": "[SOURCE-NATIVE-LOAD-FAIL] ...libttmplayer.so ... SL_IID_ANDROID*: symbol not found",
+    "refutes_P1": "libttmplayer LOAD without LOAD-FAIL, or a different first libttmplayer error",
+    "inconclusive": "no libttmplayer line (no video tap in retained logs) -> RQ3"
+   },
+   "status": "redo_with_corrected_path",
+   "previous_attempt": {
+    "evidence": "evidence/outer-rq2.txt",
+    "issue": "requested /data/local/tmp/asx/private-tmp path does not exist; NOT evidence of absent playback logs"
+   },
+   "path_source": "2026-10-12 RouteB capture: quiet-posttap/final/001-child-state.stdout line 28 '[AppSpawnX] [CHILD] opened /data/service/el1/public/appspawnx/adapter_child_6243.stderr'"
+  },
+  {
+   "id": "RQ3",
+   "purpose": "Minimal observation window: one video tap on a spare RouteB-parity board",
+   "boards": [
+    "5cd or 5ea after RQ1 parity; not 61b while icon lane holds it"
+   ],
+   "authorization": "outer device window, <=10 min, no installs/writes beyond normal app launch; 61b excluded while icon-reentry lock is held",
+   "steps": [
+    "SE=/data/service/el1/public/appspawnx/adapter_child_<tt_child_pid>.stderr; BASE=$(hdc -t <serial> shell \"wc -l < $SE\"); save BASE",
+    "HBASE: hdc -t <serial> shell \"hilog -x > /data/local/tmp/ttvideo-hilog-base.txt; wc -l /data/local/tmp/ttvideo-hilog-base.txt\" OR outer's existing non-clearing hilog snapshot method (do NOT run hilog -r)",
+    "tap a feed video card (uinput -T -c <x> <y>), wait 30 s; snapshot_display at t+20 s and t+25 s",
+    "hdc -t <serial> shell \"tail -n +$BASE $SE | grep -v TOUCH21 | grep -n -E 'SOURCE-NATIVE-LOAD|libttmplayer|libtexturerender|libavmdl|SL_IID|OpenSLES|WESTLAKE-ANW|AJMediaCodec|MediaCodec|AudioTrack|MediaPlayer|TTVideoEngine|TikTokActivity|ANWFS'\"",
+    "hilog delta vs HBASE, grep -E 'OpenSLES|AudioRenderer|SetMetadata|libttmplayer'"
+   ],
+   "criterion": {
+    "confirms_P1": "LOAD-FAIL on libttmplayer with SL_IID_ANDROID* symbol",
+    "refutes_P1": "libttmplayer loaded; then classify first new error into network/decode/video_surface/audio",
+    "engine_did_not_try": "no libttmplayer line at all -> record player choice unknown, next read is Java stack/class trace",
+    "screenshots": "two identical frames = no playback; never use process state as success"
+   },
+   "rollback": "force-stop app only if outer policy requires; no runtime file changes",
+   "note": "keep baseline/delta; no hilog clearing (outer 2026-10-19)"
+  }
+ ]
+}

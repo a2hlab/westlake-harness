@@ -1,0 +1,99 @@
+# Prior-art Toutiao player route in local Westlake repo (source lookup order step 1: local)
+# repo HEAD-independent blobs; commands: git -C $ORCA/westlake log/grep, shasum
+## run_tt.sh  sha256 00dfd006c1a25ef06bf54f3440548a37a189548b6444482537a885c21c87b064  last-touch a9fd5ad7511855a63cfb2d1d68b558b4533fe332
+export WESTLAKE_ANDROID_NATIVE_TARGETS=libkeva.so:libvcbasekit.so:libttheif_dec.so:libbdheif.so:libsscronet.so:liblynxsecurity.so:liblynx.so:libnapi.so:libquick.so
+export WESTLAKE_ANDROID_NATIVE_ANCHOR_TARGET=libkeva.so
+export WESTLAKE_ANDROID_NATIVE_ANCHOR=/data/local/tmp/asx/nsprobe/libwestlake_native_bootstrap_anchor.so
+export WESTLAKE_ANDROID_NATIVE_NEXT_ANCHOR_TARGET=libttmplayer.so
+export WESTLAKE_ANDROID_NATIVE_NEXT_ANCHOR=/data/local/tmp/asx/nsprobe/libwestlake_player_anchor.so
+# Resolve the APK's own libc++ before the compatibility directory inside this
+# isolated namespace. The staged nsprobe libc++ covers the media/image graph
+# but lacks codecvt<char16_t>, which libnapi (and therefore Lynx) requires.
+# ABI comparison of the selected media, image, Cronet, QuickJS, and Lynx graphs
+# shows that the APK libc++ satisfies their complete std::__ndk1 import set.
+# This ordering is namespace-local; appspawn-x still uses the OH platform
+# libc++ selected by the separate, libs-last LD_LIBRARY_PATH below.
+export WESTLAKE_ANDROID_NATIVE_SEARCH_PATH=/data/local/tmp/asx/lib/arm64:/data/local/tmp/asx/nsprobe:/data/local/tmp/asx/webview-t-lib:/data/local/tmp/asx:/system/lib64/ndk:/system/lib64/platformsdk:/system/lib64/chipset-sdk-sp:/system/lib64
+# The isolated image/media namespace still inherits its normal platform ABI.
+export WESTLAKE_ANDROID_NATIVE_INHERIT=libc.so:libdl.so:libm.so:libz.so:libbionic_abi_shim.so
+# Bionic and OH/musl reverse the two pointer fields in struct addrinfo.
+# Cronet and Android WebView both perform DNS in Android-built DSOs, so select
+# both at the boundary without altering OH-native callers.
+export WESTLAKE_ANDROID_NATIVE_NET_TARGETS=libmffmpeg.so:libttmplayer.so:libsscronet.so:libwebviewchromium.so
+## build.sh  sha256 0d3b61f72e98a9e0916087211e1bc02edc3dd6b68b86af06311d3b493faca20b  last-touch 0d8e4f43d9e89d235fb70d9345d89de088d3848e
+
+# The compat DSO is an input of libwestlake_player_anchor's ordered load group.
+build_shared "$CLANG" "$STAGE_DIR/nsprobe/libopensles_android_compat.so" \
+    libopensles_android_compat.so "$SRC_DIR/opensles_android_compat.c" \
+    -ldl -L"$LINK_ONLY_DIR" -Wl,--no-as-needed -lOpenSLES -Wl,--as-needed
+
+build_shared "$CLANG" \
+    "$STAGE_DIR/nsprobe/libwestlake_native_bootstrap_anchor.so" \
+    libwestlake_native_bootstrap_anchor.so \
+    "$SRC_DIR/westlake_native_bootstrap_anchor.c" \
+    -L"$STAGE_DIR" -L"$LINK_ONLY_DIR" -Wl,--no-as-needed \
+    -landroid_native_network_compat -lkeva -Wl,--as-needed
+
+# Include the network wrappers in this anchor. This preserves the deployed
+# anchor's LIBC-versioned socket ABI while its ordered DT_NEEDED group brings
+# in stdio, OpenSL ES compatibility, and the APK player DSO.
+build_shared "$CLANG" "$STAGE_DIR/nsprobe/libwestlake_player_anchor.so" \
+    libwestlake_player_anchor.so "$SRC_DIR/westlake_player_anchor.c" \
+    "$SRC_DIR/android_native_network_compat.c" \
+    -Wl,--version-script="$SRC_DIR/android_native_network_compat.map" \
+    -L"$STAGE_DIR/nsprobe" -L"$LINK_ONLY_DIR" -Wl,--no-as-needed \
+    -lbionic_stdio_shim -lopensles_android_compat -lttmplayer \
+    -Wl,--as-needed -ldl -lpthread
+## opensles_android_compat.c sha256 cf45ad430a08cbe090f030357a346be7a0bac49f48c06196a11c7818de3f9351 (identical: vm-copies/westlake-current/framework/appspawn-x/bionic_compat/src, westlake-harness-b4 bms native-compat/westlake-bionic, a2hlab ws/westlake.75d82d5 commit 75d82d5)
+/* Android OpenSL ES extension identifiers on the OpenHarmony audio boundary. */
+#include <dlfcn.h>
+#include <stdint.h>
+
+typedef struct SlInterfaceId {
+    uint32_t time_low;
+    uint16_t time_mid;
+    uint16_t time_high_and_version;
+    uint16_t clock_sequence;
+    uint8_t node[6];
+} SlInterfaceId;
+
+typedef const SlInterfaceId* SlInterfaceIdPtr;
+
+static const SlInterfaceId kAndroidConfiguration = {
+    0x89f6a7e0, 0xbeac, 0x11df, 0x8b5c,
+    {0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b},
+};
+static const SlInterfaceId kAndroidSimpleBufferQueue = {
+    0x198e4940, 0xc5d7, 0x11df, 0xa2a6,
+    {0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b},
+};
+
+/* ELF data symbols: Android clients load the pointer stored in each one. */
+__attribute__((visibility("default")))
+SlInterfaceIdPtr SL_IID_ANDROIDCONFIGURATION = &kAndroidConfiguration;
+
+__attribute__((visibility("default")))
+SlInterfaceIdPtr SL_IID_ANDROIDSIMPLEBUFFERQUEUE = &kAndroidSimpleBufferQueue;
+
+__attribute__((constructor))
+static void westlake_map_simple_buffer_queue(void) {
+    /* OH implements the standard buffer queue and compares IID pointers.
+     * Android's simple queue is API-compatible for PCM playback, so use the
+     * exact IID pointer exported by OH when it is present. */
+    SlInterfaceIdPtr* oh_buffer_queue =
+            (SlInterfaceIdPtr*)dlsym(RTLD_DEFAULT, "SL_IID_BUFFERQUEUE");
+    if (oh_buffer_queue != 0 && *oh_buffer_queue != 0) {
+        SL_IID_ANDROIDSIMPLEBUFFERQUEUE = *oh_buffer_queue;
+    }
+}
+## RouteB (61b asx) comparison
+run.sh d3518cef: no WESTLAKE_ANDROID_NATIVE_ANCHOR / NEXT_ANCHOR; libttmplayer not in NATIVE_TARGETS; NET_TARGETS=libsscronet.so only; no /data/local/tmp/asx/nsprobe in 61b listing (61b-runtime.txt) nor sealed package
+RouteB libart 78e344455ec300f7 env keys:
+WESTLAKE_ANDROID_NATIVE_ANCHOR
+WESTLAKE_ANDROID_NATIVE_INHERIT
+WESTLAKE_ANDROID_NATIVE_ANCHOR_TARGET
+WESTLAKE_ANDROID_NATIVE_SEARCH_PATH
+WESTLAKE_ANDROID_NATIVE_TARGETS
+WESTLAKE_ANDROID_NATIVE_PRELOAD
+RouteB libs containing SL_IID_ANDROID text: libwebviewchromium.so  (webviewchromium imports, not provider; see reproduce.stdout.txt exports)
+RouteB ANWFS emitter: libhwui.so a11c9154 (strings [WESTLAKE-ANWFS])
