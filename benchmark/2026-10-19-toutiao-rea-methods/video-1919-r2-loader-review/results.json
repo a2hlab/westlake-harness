@@ -1,0 +1,68 @@
+{
+  "token": "video-1919-r2-final",
+  "scope": "loader-path supplemental review; final delivery not yet complete",
+  "verdict": "REJECT_79275cf9_RUN_ONLY_CANDIDATE",
+  "candidate_sha256": "79275cf9f9a72be72beb551b978ee5f2faaed84129980aa5c79d2f51acd040d5",
+  "source_pins": [
+    {
+      "path": "$WORKSPACES/westlake-harness-video/benchmark/2026-10-19-toutiao-video-playback/static/evidence/r2-review/link_stubs_arm64.cc",
+      "sha256": "87a2e823fadc8dfa6752542a8f68777145f8774557bedd32f7b9479c9a6654eb"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness-video/benchmark/2026-10-19-toutiao-video-playback/static/evidence/r2-review/object-facts.txt",
+      "sha256": "a3240f1bc0ed4e8adbc980987239a77f8b8334beecfdda7d4978537fca9853f1"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness-video/benchmark/2026-10-19-toutiao-video-playback/static/evidence/r2-review/libart-binding.sanitized.txt",
+      "sha256": "408e4bc5943ab360c330fd4736367f995f22be3b3ef391a90105858b7a87ab42"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness-video/benchmark/2026-10-19-toutiao-video-playback/static/evidence/r2-review/initialized-relink.sanitized.json",
+      "sha256": "1274fdf798b931dc9fc003770cc25452e89076b3846f8052c7a1cf0a0a67627e"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness-video/benchmark/2026-10-19-toutiao-video-playback/static/evidence/r2-review/oh61-musl-rules-excerpt.txt",
+      "sha256": "9d1a1365e928421e0c0b56939e45e099d95c85b5e5430b52237dca99e4cf0658"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness-video/benchmark/2026-10-01-n10b-child/evidence/oh61-dynlink-linux.c",
+      "sha256": "e50b30f22a1d2248509c438e33c5e1b143462c4f001cf05a4230f1376c152e9f"
+    }
+  ],
+  "chain": [
+    {
+      "source": "link_stubs_arm64.cc:550-560",
+      "fact": "Basename routing is selected using the original path before SanitizeInitArray; temporary-name mismatch does NOT defeat TARGETS."
+    },
+    {
+      "source": "link_stubs_arm64.cc:344-513,564",
+      "fact": "Explicit Java native load alone sanitizes; writes a separate sibling inode, opens it, then unlinks it. Original library remains unchanged."
+    },
+    {
+      "source": "object-facts.txt:5-6",
+      "fact": "ttmplayer DT_NEEDED names libmffmpeg.so. Exact fecf91e1 mffmpeg has one 8-byte init-array slot, zero value, no relocation targeting the slot."
+    },
+    {
+      "source": "oh61-dynlink-linux.c:2371-2392,2514-2534,2572-2578,2627-2628",
+      "fact": "Dependency loader reuses by shortname or device/inode. Explicit temporary-path mapping has no canonical libmffmpeg shortname; the original canonical file has a different inode. Merely preserving SONAME is not sufficient in this source."
+    },
+    {
+      "source": "oh61-dynlink-linux.c:3446-3457",
+      "fact": "If relocation reaches constructor dispatch for the reopened original, it calls the null entry without the bionic skip. DT_NEEDED does not call ART SanitizeInitArray."
+    }
+  ],
+  "qualification": "OH musl source is release-matched, not byte-rebuilt against the deployed ldso. This is a static admission rejection based on supplied exact ART/object facts and OH loader implementation, not a claim that a new on-device SIGSEGV has occurred. An earlier relocation failure may precede constructor execution.",
+  "smallest_candidate_direction": {
+    "preferred": "Reuse the existing bionic null-slot transformation as a deterministic derived libmffmpeg artifact at the single canonical file reached both by Java absolute path and DT_NEEDED. For this exact input only, verify whole SHA, sole unrelocated null slot and change DT_INIT_ARRAYSZ from 8 to 0; retain all other bytes. Then ART no longer creates a second sanitized inode and the dependency lookup can reuse the same inode.",
+    "required": "Independent candidate/source-transform receipt and exact output SHA; guarded per-file original backup/CAS/rollback; recursive actual namespace/provider closure remains necessary. This adds one explicit derived deployment object and requires the corresponding narrow allowed-file update before use. No application data changes.",
+    "alternative": "If changing the loader instead, keep a canonical sanitized object reachable by exact dependency basename within that namespace and ensure Java and DT_NEEDED resolve the same inode/handle. Merely omitting unlink, setting RTLD_GLOBAL, appending TARGETS, adding SONAME, or reordering Java load calls is insufficient. This is more invasive than the exact derived artifact.",
+    "not_in_scope": "No anti-emulation policy, monitoring/refusal policy or random-crash repair. Do not drop any real/relocated constructor."
+  },
+  "additional_resolved_points": [
+    "OpenInAndroidNamespace checks create and inherit return values and opens namespace preload and consumer RTLD_NOW|RTLD_GLOBAL (lines303-325).",
+    "Existing compatibility source and namespace direction remain reviewable; this does not establish actual IID/GOT binding, audio or playback."
+  ],
+  "device_calls": 0,
+  "builds": 0,
+  "tests_rerun": 0
+}

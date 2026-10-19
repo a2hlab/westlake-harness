@@ -1,0 +1,37 @@
+{
+  "token": "video-1919-r3-review",
+  "status": "PRE_REVIEW_SCRIPT_FIX_REQUIRED_ARTIFACT_PENDING",
+  "script": {
+    "path": "$WORKSPACES/westlake-harness-video/benchmark/2026-10-19-toutiao-video-playback/candidate-r3/derive_mffmpeg.py",
+    "sha256": "55ba5ec4498ffcb17f18f48cb7c4abbfa8c583429d286cfc6fd61f62418c4c96"
+  },
+  "blocking_script_issue": {
+    "expression": "diff = [i for i in range(IN_SIZE) if d[i] != open(src,\"rb\").read()[i]]",
+    "impact": "4,870,376 complete input reads/opens rather than one; approximately 23.7 TB of logical reads. Do not run this version.",
+    "minimal_correction": "Keep first input bytes as original, form bytearray(original), compute byte differences once using enumerate(zip(original,d)). Preserve both full SHA pins and exact one-byte output check."
+  },
+  "scope_assessment": {
+    "input_sha256": "fecf91e1fcda600661f501ce76a97456ad7e330b584013f2b742afb680b337c9",
+    "expected_after_sha256": "d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4",
+    "expected_run_sha256": "79275cf9f9a72be72beb551b978ee5f2faaed84129980aa5c79d2f51acd040d5",
+    "compat_sha256": "9f558aaf1d48cedbc10e6774073d71177efb6d1e196fe528f0203505d1ee761f",
+    "transformation": "Full-SHA fixed input, output fixed SHA, sole DT_INIT_ARRAYSZ byte8->0; existing exact object has one genuinely null unrelocated slot. This is existing bionic null-slot semantics, not an anti-emulation policy.",
+    "comment_correction": "With array_size=0, deployed SanitizeInitArray returns at the array_size<8 check, not kept==count. Both mean no temporary rewrite; correct commentary only."
+  },
+  "two_levels": {
+    "mffmpeg_reuse": "Once exact derived artifact is placed at the canonical runtime path, Java sanitizer returns unchanged path. Dependency basename lookup can open that same file and reuse its dev/inode, avoiding the temporary-original split. Final artifact and placement/load evidence still pending.",
+    "namespace_provider": "Exact ART source proves routing before sanitize and checked namespace creation/inheritance. It does not prove the actual run has selected every intended provider or IID pointer. Remaining inheritance/selection uncertainty can be judged in the existing bounded window; no new whole-platform proof requested."
+  },
+  "bounded_window_criteria": [
+    "Fresh parent/child identities, unchanged P0 cfg, exact three postimages and canonical mffmpeg physical/parent/child view agree.",
+    "Player attempt: record actual load outcome plus namespace diagnostics; correlate mffmpeg maps dev/inode and load bias with exact transformed file, no original/temp second copy. Missing ttmplayer mapping or relocation failure means player load did not pass.",
+    "Read consumer-specific 8-byte GOT only against exact ttmplayer artifact and current mapped base/identity; attribute pointer to the actual compat/provider mapping. Distinguish GOT slot address from the IID pointer value stored in the exported data object. No all-machine symbol union.",
+    "Use prepared real video click and t5/t20/t25 plus raw stderr/maps. Loaded libraries/IID binding alone are not rendered playback or audio success; static frames remain non-PASS.",
+    "Any new first blocker: retain logs and restore the original three preimages through admitted executor; do not extend scope to random crashes or anti-emulation."
+  ],
+  "executed": {
+    "script": false,
+    "build": false,
+    "device": false
+  }
+}

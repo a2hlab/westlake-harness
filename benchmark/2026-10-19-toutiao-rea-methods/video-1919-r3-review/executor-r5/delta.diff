@@ -1,0 +1,29 @@
+--- video_guarded_window_r4.py
++++ video_guarded_window_r5.py
+@@ -76,9 +76,10 @@
+ if a.mode=='apply':
+  media=base/'candidate-r3/deploy-inputs/libmffmpeg.so';assert sha(media.read_bytes())==MAFTER
+  board.send(media,stage+'/libmffmpeg.so');shell(f'test "$(sha256sum {stage}/libmffmpeg.so | cut -d\' \' -f1)" = {MAFTER}\n')
+-def swap(name,source,digest,fmeta,flabel):
+- dst=RT+'/'+name;tmp=dst+'.ttvideo-'+a.boot[:8]+'.tmp';mode,uid,gid=fmeta.split(':')
+- return pathguard(tmp)+f'test ! -e {q(tmp)}\ncp {q(source)} {q(tmp)}\nchown {uid}:{gid} {q(tmp)}\nchmod {mode} {q(tmp)}\nchcon {q(flabel)} {q(tmp)}\n'+fg(tmp,digest,fmeta,flabel)+f'mv {q(tmp)} {q(dst)}\n'+fg(dst,digest,fmeta,flabel)
++def swap(name,source,digest,fmeta,flabel,preimage):
++ dst=RT+'/'+name;tmp=dst+'.ttvideo-'+a.boot[:8]+'-'+sha(str(a.out).encode())[:8]+'.tmp';mode,uid,gid=fmeta.split(':')
++ before_guard=fg(dst,preimage,fmeta,flabel) if preimage is not None else pathguard(dst)+f'test ! -e {q(dst)}\n'
++ return pathguard(tmp)+f'test ! -e {q(tmp)}\ncp {q(source)} {q(tmp)}\nchown {uid}:{gid} {q(tmp)}\nchmod {mode} {q(tmp)}\nchcon {q(flabel)} {q(tmp)}\n'+fg(tmp,digest,fmeta,flabel)+before_guard+f'mv {q(tmp)} {q(dst)}\n'+fg(dst,digest,fmeta,flabel)
+ script=pre
+ if a.mode=='apply':
+  backup=RT+'/run.sh.ttvideo-before-'+a.boot[:8]
+@@ -86,9 +87,9 @@
+ if a.mode=='apply':
+  media_backup=RT+'/'+MEDIA+'.ttvideo-before-'+a.boot[:8]
+  script+=pathguard(media_backup)+f'test ! -e {q(media_backup)}\ncp -p {RT}/{MEDIA} {q(media_backup)}\n'+fg(media_backup,MBEFORE,mmeta,mlabel)
+-script+=swap(MEDIA,media_backup if a.mode=='rollback' else stage+'/libmffmpeg.so',MBEFORE if a.mode=='rollback' else MAFTER,mmeta,mlabel)
+-if a.mode=='apply':script+=swap(DSO,stage+'/'+DSO,DSHA,'644:20011206:20011206',dlabel)
+-script+=fg(RT+'/run.sh',expected,meta,label)+swap('run.sh',stage+'/run.sh',sha(new),meta,label)
++script+=swap(MEDIA,media_backup if a.mode=='rollback' else stage+'/libmffmpeg.so',MBEFORE if a.mode=='rollback' else MAFTER,mmeta,mlabel,mactual)
++if a.mode=='apply':script+=swap(DSO,stage+'/'+DSO,DSHA,'644:20011206:20011206',dlabel,None)
++script+=fg(RT+'/run.sh',expected,meta,label)+swap('run.sh',stage+'/run.sh',sha(new),meta,label,expected)
+ if a.mode=='rollback' and dso_present:script+=fg(RT+'/'+DSO,DSHA,'644:20011206:20011206',dlabel)+f'rm {RT}/{DSO}\ntest ! -e {RT}/{DSO}\n'
+ script+=parent_guard+'echo VIDEO_FILES_SWAPPED_FRESH_BOOT_REQUIRED\n'
+ (a.out/'swap.sh').write_text(script);result=shell(script);assert 'VIDEO_FILES_SWAPPED_FRESH_BOOT_REQUIRED' in result

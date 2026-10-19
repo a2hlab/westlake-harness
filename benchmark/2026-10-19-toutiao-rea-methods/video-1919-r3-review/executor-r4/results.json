@@ -1,0 +1,43 @@
+{
+  "token": "video-1919-r3-review",
+  "verdict": "BLOCKED_EXECUTOR_DELTA",
+  "executor": {
+    "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video_guarded_window_r4.py",
+    "sha256": "047d6679cc42f9c5e35edf8d503e42c4bfd3ab4cb3349cb8432e09b1c429ba37"
+  },
+  "independent_derivation": {
+    "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/video-r3-readonly/independent-derived-sha.json",
+    "sha256": "49621083f0681eb38fdc8a0a2cd4b12396539de12aa67cd4a4f76a0090eae275",
+    "reported_after": "d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4",
+    "independent_recompute_in_this_review": false
+  },
+  "accepted_parts": [
+    "Original WID33 before and candidate templates are full-SHA pinned before exact single-line current-WID derivation.",
+    "mffmpeg before/after SHA are fixed; metadata 644:20011206:20011206 and appdat label fixed. Parent physical/view inode equality checked in initial preflight.",
+    "Both original backups are created and SHA/meta verified before the first target swap. Rollback validates both original backups before any target restore.",
+    "Replacement writes a sibling temporary file, not the live mapped target; P0 cfg guard is retained."
+  ],
+  "blockers": [
+    {
+      "id": "R3-CAS",
+      "location": "swap(): temporary postimage guard immediately followed by mv; script=pre is earlier than backups and swaps",
+      "reason": "The new mffmpeg target is not checked against the authorized before SHA/meta/dev-inode immediately before rename. A changed target after initial preflight can be overwritten. Parent-view equality is also only checked before the transaction.",
+      "minimal_fix": "Extend existing swap with expected_current and captured dev/inode; after temporary postimage verification recheck target SHA/meta/identity and parent guard before mv. Apply compat requires absence at this point. Rollback uses its explicitly verified admitted current state, never arbitrary newly observed bytes. Record before/after physical and view inode facts; final parent guard should include media view equality."
+    },
+    {
+      "id": "R3-TEMP",
+      "location": "swap(): tmp=dst + .ttvideo- + boot[:8] + .tmp",
+      "reason": "Apply and same-boot rollback share the same temporary path. A failure while preparing the mffmpeg temp leaves it present; rollback then refuses test ! -e before restoring even exact admitted before/after media. This is a reachable failed-apply recovery obstruction.",
+      "minimal_fix": "Use the already available per-output unique stage suffix (or equivalent mode+output digest) in sibling temporary filenames. Keep earlier temp as audit evidence; do not delete or silently reuse it. No new transaction framework needed."
+    }
+  ],
+  "not_blockers": [
+    "Apply currently orders media then compat then run. Run remains last and current processes retain old mappings; exact reverse ordering alone is not elevated into an additional blocker.",
+    "A restored file receives a new inode. Require exact restored SHA/meta and agreement between physical and namespace views, not numeric equality to the old inode."
+  ],
+  "limits": [
+    "No executor or device command was called.",
+    "No build or old tests rerun.",
+    "Final CC artifact, namespace closure and execution card remain pending; this reviews only the current private executor snapshot."
+  ]
+}
