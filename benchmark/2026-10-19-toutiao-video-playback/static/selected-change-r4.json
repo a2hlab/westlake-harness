@@ -16,7 +16,7 @@
   "faulting_instruction": "0x1de6f0 adrp x0,0x4b9000 / 0x1de6f4 add x0,#0x3d (x0=\"eglPresentationTimeANDROID\", file 0x3b903d); 0x1de6f8 bl eglGetProcAddress; 0x1de70c ldr x9,[x9,#0xe58] (x9=*GOT[0x473e58]); 0x1de714 str x0,[x9] = FAULT",
   "correction_note": "an earlier readback named glActiveShaderProgram; that string was the crash-time x1 residual (a mali name-table pointer), not the call argument. The resolved name is eglPresentationTimeANDROID (byte-verified at file 0x3b903d). OBJECT<-FUNC preemption direction unchanged.",
   "classification": "deterministic symbol preemption (OBJECT data slot preempted by provider FUNC) / API-assembly. NOT a random crash, NOT a surface/window problem, NOT anti-virtualization.",
-  "r3_relation": "revealed by r3 (which correctly got the player chain to load); masked before r3 because the libvcbasekit ns0 relocation died first."
+  "r3_relation": "r3 progressed execution to the proc-loader instruction (reached eglGetProcAddress + the storing str); this is NOT a complete-load verdict \u2014 the player's own GOT/loading was never fully verified. Masked before r3 because the libvcbasekit ns0 relocation died first."
  },
  "fix": {
   "summary": "single derived libttmplayer.so: rewrite the 105 family GLOB_DAT relocations in .rela.dyn to R_AARCH64_RELATIVE with addend = each symbol's own .bss st_value. OH musl L1452 does *slot = base + addend, so each GOT slot self-binds to libttmplayer's own writable .bss cache; the proc-loader's store then lands in .bss.",
@@ -55,7 +55,7 @@
   "mprotect_or_rw_code": "rejected by directive \u2014 would mask the wrong binding, not fix it."
  },
  "blast_radius": {
-  "chosen_B_selfrel": "1 file, 105 .rela.dyn entries (r_info+r_addend). Symbol table/hash/code/perms unchanged. Fixes all 105 collisions at once (data caches, 0 PLT uses).",
+  "chosen_B_selfrel": "1 file, 105 .rela.dyn entries (r_info+r_addend). Symbol table/hash/code/perms unchanged. Rewrites the 105-symbol potential same-family cache set in one pass (data caches, 0 PLT uses); this run OBSERVED exactly 1 fault (eglPresentationTimeANDROID at GOT 0x473e58) \u2014 the other 104 are foreseeable same-class collisions, not observed.",
   "A_stb_local": "1 file but multi-section surgery (dynsym order + sh_info + 2 hash tables); high regression risk.",
   "C_loader": "cross-cutting loader behavior change; affects every target."
  },
@@ -88,7 +88,7 @@
   "executor": "cx-seal CAS r6 four-file draft (this lane does not build the deploy framework)",
   "rollback": "restore libttmplayer from its single-file backup (CAS verify sha == b427614d), plus the r3 rollbacks; fresh reboot; verify feed screenshot equivalent and P0 intact"
  },
- "verify_small_window": "candidate-r4/load-experiment-card.md \u2014 read-only: the async_video_pla SEGV is gone, GOT 0x473e58 now points into libttmplayer .bss (not libEGL), and record the next first-fatal (if any). Playback/decode NOT claimed.",
+ "verify_small_window": "candidate-r4/load-experiment-card.md \u2014 read-only: the async_video_pla SEGV is gone, GOT 0x473e58 (the one observed-faulting slot) now points into libttmplayer .bss (not libEGL), and record the next first-fatal (if any). Playback/decode NOT claimed.",
  "not_claimed": "audio/video playback, decode, or surface present. r4 removes one deterministic crash in the proc-loader; subsequent player stages are unknown.",
  "allowed_files": [
   "benchmark/2026-10-19-toutiao-video-playback/candidate-r4/**",
