@@ -1,0 +1,81 @@
+    public static synchronized int init(boolean z, boolean z2, boolean z3) {
+        int i;
+        int i2;
+        int i3;
+        ChangeQuickRedirect changeQuickRedirect2 = changeQuickRedirect;
+        if (changeQuickRedirect2 != null) {
+            C31U c31uQ1 = DRm.Q1(z, z2, z3, null, changeQuickRedirect2, true, 704693);
+            if (c31uQ1.a) {
+                return c31uQ1.g;
+            }
+        }
+        if (mIsLibraryLoaded) {
+            return 0;
+        }
+        Locale locale = Locale.US;
+        Object[] objArr = new Object[3];
+        if (z) {
+            i = 1;
+        } else {
+            i = 0;
+        }
+        objArr[0] = Integer.valueOf(i);
+        if (z2) {
+            i2 = 1;
+        } else {
+            i2 = 0;
+        }
+        objArr[1] = Integer.valueOf(i2);
+        if (z3) {
+            i3 = 1;
+        } else {
+            i3 = 0;
+        }
+        objArr[2] = Integer.valueOf(i3);
+        AVMDLLog.e("AVMDLDataLoader", String.format(locale, "init loadLibrary:%d, needLoadP2PLib:%d, useV2:%d", objArr));
+        mIsLibraryLoaded = z;
+        if (!mIsLibraryLoaded) {
+            try {
+                System.loadLibrary("ttopenssl");
+            } catch (Throwable unused) {
+            }
+            loadAVMDLBaseLibrary();
+            if (z3) {
+                try {
+                    System.loadLibrary("avmdlv2");
+                    mIsLibraryLoaded = true;
+                } catch (UnsatisfiedLinkError unused2) {
+                }
+            }
+            if (!mIsLibraryLoaded) {
+                try {
+                    try {
+                        System.loadLibrary("avmdl");
+                        mIsLibraryLoaded = true;
+                    } catch (Throwable th) {
+                        StringBuilder sb = StringBuilderOpt.get();
+                        sb.append("other exception when loading avmdl library: ");
+                        sb.append(th);
+                        mLoadFailMsg = StringBuilderOpt.release(sb);
+                    }
+                } catch (UnsatisfiedLinkError e) {
+                    StringBuilder sb2 = StringBuilderOpt.get();
+                    sb2.append("Can't load avmdl library: ");
+                    sb2.append(e);
+                    mLoadFailMsg = StringBuilderOpt.release(sb2);
+                }
+                if (z2) {
+                    try {
+                        System.loadLibrary("avmdlp2p");
+                    } catch (Throwable unused3) {
+                    }
+                }
+                tryLoadTTNetLoaderPlugin();
+                tryLoadByteMediaNetLoaderPlugin();
+            }
+        }
+        if (mIsLibraryLoaded) {
+            return 0;
+        }
+        return -1;
+    }

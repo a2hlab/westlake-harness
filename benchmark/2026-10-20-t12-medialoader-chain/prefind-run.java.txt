@@ -1,0 +1,62 @@
+    @Override // java.lang.Runnable
+    @SuppressLint({"LongLogTag"})
+    public void run() {
+        ChangeQuickRedirect changeQuickRedirect = a;
+        if (changeQuickRedirect != null && DRm.z0(this, changeQuickRedirect, false, 624834).a) {
+            return;
+        }
+        Logger.i("MediaLoaderPreFindABInitTask", "MediaLoaderPreFindABInitTask run");
+        final IMiraService iMiraService = (IMiraService) ServiceManager.getService(IMiraService.class);
+        if (iMiraService.isMediaLoaderInternalPlugin()) {
+            PlatformThreadPool.getIOThreadPool().submit(new Runnable() { // from class: X.A3a
+                /* JADX WARN: Code duplicated, block: B:14:0x0057  */
+                /* JADX WARN: Code duplicated, block: B:23:0x0086  */
+                @Override // java.lang.Runnable
+                public final void run() {
+                    PreStartDataLoaderLocalSettings preStartDataLoaderLocalSettings;
+                    IMiraService iMiraService2 = iMiraService;
+                    ChangeQuickRedirect changeQuickRedirect2 = MediaLoaderPreFindABInitTask.a;
+                    boolean z = true;
+                    if (changeQuickRedirect2 != null && DRm.N0(iMiraService2, null, changeQuickRedirect2, true, 624836).a) {
+                        return;
+                    }
+                    String mDlPluginPath = iMiraService2.getMDlPluginPath();
+                    StringBuilder sb = StringBuilderOpt.get();
+                    sb.append("MediaLoaderPreFindABInitTask isMediaLoaderInternalPlugin = true, mdlPluginPath = ");
+                    sb.append(mDlPluginPath);
+                    Logger.i("MediaLoaderPreFindABInitTask", StringBuilderOpt.release(sb));
+                    A3Y a3y = A3Y.a;
+                    ChangeQuickRedirect changeQuickRedirect3 = A3Y.b;
+                    boolean z2 = false;
+                    if (changeQuickRedirect3 != null) {
+                        a3y.getClass();
+                        C31U c31uZ0 = DRm.z0(a3y, changeQuickRedirect3, false, 387823);
+                        if (c31uZ0.a) {
+                            z2 = c31uZ0.e;
+                        } else if (a3y.a() && ((IAccountService) ServiceManager.getService(IAccountService.class)).isFirstInstall()) {
+                            Object objObtain = SettingsManager.obtain(PreStartDataLoaderLocalSettings.class);
+                            Intrinsics.checkNotNullExpressionValue(objObtain, "obtain(...)");
+                            preStartDataLoaderLocalSettings = (PreStartDataLoaderLocalSettings) objObtain;
+                            if (preStartDataLoaderLocalSettings.enable() != preStartDataLoaderLocalSettings.getResult()) {
+                                z = false;
+                            }
+                            z2 = z;
+                        }
+                    } else if (a3y.a()) {
+                        Object objObtain2 = SettingsManager.obtain(PreStartDataLoaderLocalSettings.class);
+                        Intrinsics.checkNotNullExpressionValue(objObtain2, "obtain(...)");
+                        preStartDataLoaderLocalSettings = (PreStartDataLoaderLocalSettings) objObtain2;
+                        if (preStartDataLoaderLocalSettings.enable() != preStartDataLoaderLocalSettings.getResult()) {
+                            z = false;
+                        }
+                        z2 = z;
+                    }
+                    if (!z2) {
+                        return;
+                    }
+                    ((IDataLoaderService) ServiceManager.getService(IDataLoaderService.class)).startDataLoader();
+                    Logger.i("MediaLoaderPreFindABInitTask", "MediaLoaderPreFindABInitTask PreStartDataLoader");
+                }
+            });
+        }
+    }
