@@ -1,6 +1,6 @@
 # Current observations beside the API source/build atlas
 
-The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **23 observations with 382 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
+The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **24 observations with 401 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
 
 Open the [current observations](index.html), [JSON](observations.json) or [CSV](observations.csv), alongside the [complete historical source/build atlas](../2026-10-14-api-source-delivery/views/index.html).
 
@@ -41,3 +41,5 @@ Three later observations are appended without rewriting the earlier 20. R13 vide
 R16 corrects the behavioral mismatch inference: the inspected source and deployed shim both log once and return -ENODEV with matching errno. That does not prove whole-library provenance or byte reproduction. A wrapper's outer forward target is not the inner dlsym winner; natural binding remains unknown, with zero first-fatal keys removed.
 
 Alternate-board evidence is read-only preparation: 5cd retains matching media/player files but has different UID/run/config and no observed business parent/child. Its live recovery entry does not establish readiness. 5ea lacks the known deployment paths; other paths were not searched. Neither board is admitted for video observation, and the old 61b-only whitelist is not extended.
+
+T11 adds one actual 5cd icon-readiness window, not video admission. One real icon click followed an initial pre-click focus rejection. The preserved spawn refusal is FOREGROUND_HOST_NOT_READY before exec real-spawn; which of the two foreground checks refused remains unknown. No business child, video action or attach followed. The final lock screen and ordinary host image do not establish feed; original facts retain four captures across five records and five unknown liveness values. Omitting awake override was an outer execution-plan issue; no unpublished power-value dump is cited and the foreground guard remains strict. Archive02 (1,666 members, 607,729 bytes, SHA256 7202fe5d…) is independently remote-verified by three rc0 commands, separate from the retained archive01 rc255. All 94 current complete-manifest file hashes and sizes were checked before binding these 19 references.
