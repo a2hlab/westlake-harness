@@ -1,0 +1,11 @@
+# R10 observed window-lock blocker, baseline restored
+
+The r9 mirror ended before the decoder outcome could be inspected. R10 changed only its bounded attempt budget from256 to4096; the actual production build and durable toolchain/log receipts are linked in `../BUILD-ACTUAL.md` and `../deployment/outer-window-admission.json`.
+
+Actual logger two-hop binding and network getaddrinfo/freeaddrinfo binding matched exact mapped providers on boot34309d1e, parent5160/b7985, child7080/b9491. The two25-second capture groups contain10 real screenshots of one APK, not two applications. The woman cover stayed static. Playback is NOT_PASSED and audio UNKNOWN; statusbar/control changes do not prove video motion. The process-table counts in facts remain unknown; separate before/after stat reads bind the same child identity.
+
+New full logs show ByteVC1 creation, JXByteVC1 open/write and712x360 parameter updates, then `Unable to lock window buffer` with ret:-19 (play1 line69895). The nearby first-frame message does not prove display. Actual player GOT slots for lock/unlock point at shim85c789f4, whose exact ELF normal-return paths set errno19 and return-19. Six other ANativeWindow functions bind libandroid76512d97. This explains the observed lock failure, not every possible video defect. Native function-table availability does not prove valid geometry or window-object compatibility. Play1 has3126 captured mirrors; play2 reaches4096, so later silence is not exclusion evidence.
+
+The original apply-plan restored all four targets, then a fresh boot restored the parameter's absent106 state. Physical/private hashes and inodes, CFG, compat absence and the same64-target/351-label snapshot passed. Baseline first child exited; the second normal desktop icon entered the actual feed pictured here. The outer released the lock at03:39:55. No random-crash mechanism was investigated or repaired.
+
+Raw commands, stderr, original records, received providers and independent LLVM output are in the durable archive pinned by `archive-receipt.json`. Public independent reviews are `../../static/r10-live-review/checkpoint-01` and `checkpoint-02`; no API is frozen from this diagnostic window. The main runtime remains the original baseline.
