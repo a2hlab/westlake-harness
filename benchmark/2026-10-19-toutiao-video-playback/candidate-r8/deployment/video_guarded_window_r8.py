@@ -5,7 +5,7 @@ from pathlib import Path
 PLAYER='lib/arm64-v8a/libttmplayer.so'
 PBEFORE='b427614d57e4a7279f362b3f341de3cdd4b9f9a8859257016bcda24e5f6d3a02'
 PAFTER='0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471'
-EXECUTION_REVIEW='UNAPPROVED'
+EXECUTION_REVIEW='APPROVED'
 DSHA='6e83e924aae709f0c90ba2a966910febb63471b7a9a6294c6dee585a73ff3b4b'
 PLAYER_INPUT_REL='benchmark/2026-10-19-toutiao-video-playback/candidate-r8/deploy-inputs/libttmplayer.so'
 PLAYER_METADATA='644:20011206:20011206'
