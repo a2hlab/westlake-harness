@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Preserve this completed window, including failed attempts; no device operations."""
+import argparse,hashlib,json,os,shlex,subprocess,tarfile,time
+from pathlib import Path
+HERE=Path(__file__).resolve().parent
+REMOTE='toutiao-t11-5cd-window-20261020'
+def sha(p):
+ h=hashlib.sha256()
+ with p.open('rb') as f:
+  for b in iter(lambda:f.read(1048576),b''):h.update(b)
+ return h.hexdigest()
+def main():
+ ap=argparse.ArgumentParser();ap.add_argument('--out',required=True);ap.add_argument('--close',required=True);ap.add_argument('--upload',action='store_true');ap.add_argument('--remote-root',default=os.environ.get('HW248_ARTIFACT_ROOT'));args=ap.parse_args()
+ close=Path(args.close).expanduser().resolve();closed=json.loads(close.read_text());assert closed.get('closed_at') or closed.get('unlocked_at'),'actual terminal receipt required'
+ out=Path(args.out).resolve();assert not str(out).startswith(('/tmp/','/private/tmp/'));out.mkdir(parents=True,exist_ok=False)
+ bases={f'BASE{day}':Path.home()/f'.local/share/westlake/toutiao-resume-202610{day}' for day in [19,20]}
+ selected={}
+ base=bases['BASE20']
+ for name in ['t11-5cd-window-01','t11-5cd-spawn-readonly','t11-before-reviewed-70377471f','t11_ui.py','t11_unlock_launch.py']:
+  root=base/name;assert root.exists(),name
+  for p in ([root] if root.is_file() else sorted(root.rglob('*'))):
+   if p.is_file():selected['BASE20/'+str(p.relative_to(base))]=p
+ mainrepo=Path(os.environ.get('SOURCE_REPO',str(next(p for p in HERE.parents if (p/'scripts/lab/run_facts.py').is_file()).parent/'westlake-harness')))
+ for n in ['core.py','collect.py','profile.json']:
+  p=mainrepo/'benchmark/2026-10-20-5cd-icon-readiness'/n;selected['source/current-collector/'+n]=p
+ for rel in ['scripts/lab/run_facts.py','benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py']:
+  selected['source/'+rel]=mainrepo/rel
+ for p in (mainrepo/'specs/toutiao-video-playback').glob('t11*'):selected['source/specs/'+p.name]=p
+ for n in ['prepare_archive.py','prepare_archive_v2.py','build_packet.py']:selected['review-source/'+n]=HERE/n
+ for n in ['receipt.json','remote-0.command.json','remote-0.stdout','remote-0.stderr','remote-0.rc']:selected['prior-archive-attempt/'+n]=HERE/'.private/archive-01'/n
+ selected['source/OPS-RUNBOOK.md']=mainrepo/'.octos/OPS-RUNBOOK.md'
+ for p in (HERE/'first-fatal-addendum').rglob('*'):
+  if p.is_file():selected['review-addendum/'+str(p.relative_to(HERE/'first-fatal-addendum'))]=p
+ members=[{'path':n,'bytes':p.stat().st_size,'sha256':sha(p)} for n,p in sorted(selected.items())]
+ (out/'members.json').write_text(json.dumps({'files':members},indent=2)+'\n')
+ selected['archive/members.json']=out/'members.json'
+ indexed={r['path']:r for r in members};indexed['archive/members.json']={'sha256':sha(out/'members.json'),'bytes':(out/'members.json').stat().st_size}
+ tarpath=out/'window.tar.gz'
+ with tarfile.open(tarpath,'w:gz') as t:
+  for n,p in sorted(selected.items()):t.add(p.resolve(),arcname=n,recursive=False)
+ with tarfile.open(tarpath,'r:gz') as t:
+  ms=t.getmembers();assert len(ms)==len(selected) and {m.name for m in ms}==set(selected)
+  for m in ms:
+   assert m.isfile();assert m.size==indexed[m.name]['bytes'];assert hashlib.sha256(t.extractfile(m).read()).hexdigest()==indexed[m.name]['sha256']
+ assert all(sha(p)==indexed[n]['sha256'] for n,p in selected.items()),'input changed while archiving'
+ receipt={'token':'t11-window-final-ready','archive_sha256':sha(tarpath),'bytes':tarpath.stat().st_size,'member_count':len(selected),'local_member_sha_verified':True,'remote':'HW248_ARTIFACT_ROOT/'+REMOTE+'/window.tar.gz','remote_verified':False,'commands':[],'scope':'raw evidence; no playback or observer success'}
+ remote_root=args.remote_root
+ if not remote_root:
+  old=json.loads((bases['BASE19']/'video-r10-window-archive/receipt.json').read_text());remote_root=str(Path(old['remote']).parent.parent)
+ assert remote_root.startswith('/')
+ rd=remote_root.rstrip('/')+'/'+REMOTE
+ commands=[['ssh','-o','BatchMode=yes','-o','ConnectTimeout=10','hw248','test ! -e '+shlex.quote(rd)+' && mkdir -p '+shlex.quote(rd)],['scp','-o','BatchMode=yes','-o','ConnectTimeout=10',str(tarpath),'hw248:'+rd+'/window.tar.gz'],['ssh','-o','BatchMode=yes','-o','ConnectTimeout=10','hw248','sha256sum '+shlex.quote(rd+'/window.tar.gz')+' && stat -c %s '+shlex.quote(rd+'/window.tar.gz')]]
+ (out/'remote-commands.private.json').write_text(json.dumps(commands,indent=2)+'\n')
+ def save():(out/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+ save()
+ if args.upload:
+  for i,cmd in enumerate(commands):
+   stem=f'remote-{i}';(out/(stem+'.command.json')).write_text(json.dumps(cmd,indent=2)+'\n');start=time.time()
+   with (out/(stem+'.stdout')).open('wb') as so,(out/(stem+'.stderr')).open('wb') as se:
+    try:rc=subprocess.run(cmd,stdout=so,stderr=se,timeout=180).returncode
+    except subprocess.TimeoutExpired:rc=124
+    except OSError as e:se.write(str(e).encode());rc=127
+   (out/(stem+'.rc')).write_text(str(rc)+'\n')
+   receipt['commands'].append({'name':stem,'rc':rc,'seconds':time.time()-start,'files':[{'name':p.name,'sha256':sha(p),'bytes':p.stat().st_size} for p in sorted(out.glob(stem+'.*'))]});save()
+   if rc:receipt['upload_status']='STOPPED_AT_FIRST_ERROR';save();print(json.dumps(receipt));return 2
+  lines=(out/'remote-2.stdout').read_text().splitlines();assert len(lines)==2 and lines[0].split()[0]==receipt['archive_sha256'] and int(lines[1])==receipt['bytes'];receipt['remote_verified']=True;receipt['upload_status']='VERIFIED';save()
+ print(json.dumps(receipt));return 0
+if __name__=='__main__':raise SystemExit(main())
