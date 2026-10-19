@@ -1,0 +1,33 @@
+{
+ "board": "61b0657200000000000000000324012c (only; spares not RouteB same-generation)",
+ "status": "not_executed (offline only; board window pending outer P0r2 review)",
+ "baseline": {
+  "run_sh": "/data/local/tmp/asx/run.sh sha256 d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4 (2863 bytes, owner 20011206:20011206, mode 0755)",
+  "compat_dso": "absent"
+ },
+ "deploy": [
+  "read-only pre: sha256sum /data/local/tmp/asx/run.sh == d3518cef...; ls /data/local/tmp/asx/libopensles_android_compat.so -> absent; save parent/child stat + maps",
+  "cp -p /data/local/tmp/asx/run.sh /data/local/tmp/asx/run.sh.d3518cef.bak; verify bak sha == d3518cef",
+  "push deploy-inputs/libopensles_android_compat.so -> /data/local/tmp/asx/libopensles_android_compat.so; chown 20011206:20011206; chmod 0644; verify sha == 9f558aaf1d48cedbc10e6774073d71177efb6d1e196fe528f0203505d1ee761f",
+  "push deploy-inputs/run.sh -> /data/local/tmp/asx/run.sh; chown 20011206:20011206; chmod 0755; verify sha == ea98494255b05699ca24b134e6ada8849b023b4ab59d3d7e291194cfa8425f73",
+  "restart through the original cfg path used by outer (begetctl/original cfg); never kill -9 appspawn-x"
+ ],
+ "rollback_exact": [
+  "cp -p /data/local/tmp/asx/run.sh.d3518cef.bak /data/local/tmp/asx/run.sh; verify sha256 == d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4; chown 20011206:20011206; chmod 0755",
+  "rm /data/local/tmp/asx/libopensles_android_compat.so; verify absent",
+  "restart through the same original cfg path",
+  "verify: parent maps has no libopensles_android_compat.so; feed screenshot vs pre-change baseline; run.sh sha d3518cef"
+ ],
+ "rollback_triggers": [
+  "any feed/main-window/icon regression",
+  "parent fails to start or child does not reach feed",
+  "any new crash attributable to preload (record, do not diagnose random crashes)",
+  "window > 30 min"
+ ],
+ "pass_criteria_for_this_change_only": [
+  "parent maps: one /data/local/tmp/asx/libopensles_android_compat.so and one /system/lib64/libOpenSLES.so",
+  "feed screenshot equivalent to baseline",
+  "after a single video tap: no SOURCE-NATIVE-LOAD-FAIL for libttmplayer; libttmplayer in child maps; no _setSupprotSampleRates UnsatisfiedLinkError",
+  "next first fatal recorded verbatim; playback not claimed"
+ ]
+}

@@ -30,7 +30,7 @@
   "other_global": "none in RouteB preload/NEEDED closure (evidence/reproduce.stdout.txt)"
  },
  "change": {
-  "summary": "Add one data-only provider DSO libopensles_android_compat.so to RouteB default-namespace LD_PRELOAD so libttmplayer's two Android OpenSL IID relocations resolve. No change to libttmplayer namespace, APK, runtime, JAR, native media libs, main window, icon/watchdog or user data.",
+  "summary": "Add one provider DSO libopensles_android_compat.so (two exported data symbols SL_IID_ANDROIDCONFIGURATION/SL_IID_ANDROIDSIMPLEBUFFERQUEUE plus a constructor) to RouteB default-namespace LD_PRELOAD so libttmplayer's two Android OpenSL IID relocations resolve. No change to libttmplayer namespace, APK, runtime, JAR, native media libs, main window, icon/watchdog or user data.",
   "files": [
    {
     "device_path": "/data/local/tmp/asx/libopensles_android_compat.so",
@@ -71,7 +71,8 @@
     "re-run evidence/reproduce.sh closure with the built DSO added to providers -> libttmplayer unresolved set must be EMPTY",
     "dlopen(RTLD_NOW|RTLD_GLOBAL) self-test is NOT possible off-board; first load proof is the board window"
    ]
-  }
+  },
+  "constructor_behavior": "westlake_map_simple_buffer_queue(): dlsym(RTLD_DEFAULT,\"SL_IID_BUFFERQUEUE\") and, if non-null, overwrite SL_IID_ANDROIDSIMPLEBUFFERQUEUE with OH's standard SL_IID_BUFFERQUEUE pointer (NOT SL_IID_OH_BUFFERQUEUE); otherwise keep the Android IID value. The source comment's claim that Android's simple queue is API-compatible for PCM playback is the author's assertion, NOT verified in this work."
  },
  "expected_effect": {
   "moves_first_fatal_for_keys": [
@@ -81,7 +82,7 @@
  },
  "risks": [
   "OH libOpenSLES 05d8ac90 becomes loaded in appspawn-x parent at preload (NEEDED of compat); its init side effects are untested — gate: parent start + icon launch + feed screenshot unchanged before any video tap",
-  "constructor maps SIMPLEBUFFERQUEUE pointer to OH SL_IID_BUFFERQUEUE via dlsym(RTLD_DEFAULT) at preload time; if lookup fails it keeps the Android IID value (load still succeeds, GetInterface semantics differ)"
+  "constructor runs at preload in appspawn-x and remaps SL_IID_ANDROIDSIMPLEBUFFERQUEUE to OH SL_IID_BUFFERQUEUE via dlsym(RTLD_DEFAULT); whether OH OpenSL then serves libttmplayer's queue usage is unverified; if lookup fails the Android IID value stays (relocation still resolves, GetInterface semantics differ)"
  ],
  "board_verification_window": {
   "board": "61b only (spares not RouteB same-generation)",
@@ -109,5 +110,10 @@
   "media stack rewrite",
   "namespace change for libttmplayer",
   "claiming audio or video playback"
+ ],
+ "wording_corrections": [
+  "not data-only: has a constructor",
+  "maps to SL_IID_BUFFERQUEUE, not SL_IID_OH_BUFFERQUEUE",
+  "'API-compatible for PCM playback' is a source comment, not evidence from this work"
  ]
 }
