@@ -1,0 +1,21 @@
+--- ui-7f094f42
++++ ui-623a703b
+@@ -26,14 +26,15 @@
+   if rc or holder.strip()!=a.holder:raise b.BatchStop('exact lock holder changed')
+  def shell(self,cmd,required=True,timeout=60):
+   ui='uitest ' in cmd
++  dispatch=cmd
+   if ui:
+    if a.action=='launch' and record.get('selected_icon') and cmd=='uitest uiInput click %d %d'%tuple(record['selected_icon']['center']):
+-    # Recheck the existing adoption/deadline guard at the final UI boundary.
++    # One remote shell: no HDC gap between the final guard and exact icon input.
+     rr=shlex.quote(authority['root'])
+-    super().shell('(set -eu; HERE='+rr+'; . "$HERE/config-common.sh"; . "$HERE/launch-common.sh"; . "$HERE/adoption-guard.sh"; t13_adoption_guard; test "$(cat "$HERE/state")" = AWAITING_REENTRY; test -f "$HERE/icon.intent"; test ! -L "$HERE/icon.intent")',True,10)
++    dispatch='(set -eu; HERE='+rr+'; . "$HERE/config-common.sh"; . "$HERE/launch-common.sh"; . "$HERE/adoption-guard.sh"; t13_adoption_guard; test "$(cat "$HERE/state")" = AWAITING_REENTRY; test -f "$HERE/icon.intent"; test ! -L "$HERE/icon.intent"; '+cmd+')'
+    entry={'command':cmd,'attempted':True,'result':'unknown'}
+    record.setdefault('ui_calls',[]).append(entry);b.save(out/'record.json',record)
+-  result=super().shell(cmd,required,timeout)
++  result=super().shell(dispatch,required,timeout)
+   if ui:
+    entry.update(result='completed' if result[0]==0 else 'failed',remote_rc=result[0])
+    selected=record.get('selected_icon')
