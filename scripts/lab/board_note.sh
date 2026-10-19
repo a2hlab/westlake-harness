@@ -22,6 +22,15 @@ LOCKS=${BOARD_LOCK_DIR:-$HOME/.octos/board-locks}
 now() { date +%Y-%m-%dT%H:%M:%S%z; }
 mkdir -p "$LOCKS"
 
+validate_serial() {
+  # Apply the same target check to reads and unlocks: a truncated OH serial
+  # must not report a successful unlock for an unrelated, empty lock slot.
+  if [[ "$1" =~ ^[0-9a-f]+$ ]] && [ ${#1} -ne 32 ]; then
+    echo "REFUSE: '$1' is ${#1} hex digits; an OH connect-key has 32" >&2
+    return 2
+  fi
+}
+
 holder() {  # holder <serial> -> "lane pid time" if the recorded holder process is alive
   local f="$LOCKS/$1.holder"
   [ -f "$f" ] || return 1
@@ -47,9 +56,7 @@ case "$cmd" in
     [ $# -ge 3 ] || { echo "usage: board_note.sh lock <board> <serial> <lane> [why...]" >&2; exit 2; }
     board=$1 serial=$2 lane=$3; shift 3
     # An OH connect-key is 32 hex digits; a truncated one locks a board that does not exist (seen 2026-09-28).
-    if [[ "$serial" =~ ^[0-9a-f]+$ ]] && [ ${#serial} -ne 32 ]; then
-      echo "REFUSE: '$serial' is ${#serial} hex digits; an OH connect-key has 32" >&2; exit 2
-    fi
+    validate_serial "$serial"
     if h=$(holder "$serial"); then
       set -- $h; [ "$1" = "$lane" ] && { echo "already held by $lane (pid $2)"; exit 0; }
       echo "BUSY: $serial held by $1 (pid $2 since $3)" >&2; exit 75
@@ -83,6 +90,7 @@ PY
   unlock)
     [ $# -eq 3 ] || { echo "usage: board_note.sh unlock <board> <serial> <lane>" >&2; exit 2; }
     board=$1 serial=$2 lane=$3
+    validate_serial "$serial"
     if h=$(holder "$serial"); then
       set -- $h
       [ "$1" = "$lane" ] || { echo "REFUSE: $serial is held by $1, not $lane" >&2; exit 1; }
@@ -98,6 +106,7 @@ PY
     rm -f "$LOCKS/$serial.holder"
     printf 'UNLOCK(%s) %s %s\n' "$serial" "$lane" "$(now)" | "$APPEND" "$board" ;;
   held)
+    validate_serial "${1:-}"
     [ $# -eq 1 ] || { echo "usage: board_note.sh held <serial>" >&2; exit 2; }
     holder "$1" ;;
   *)

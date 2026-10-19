@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[Board lock serial guard](benchmark/2026-10-19-board-lock-serial-guard/)** | **Reject truncated OH serials consistently for lock, held and unlock; three rejection checks preserve the board ledger.** |
 | **[Toutiao video playback plan](benchmark/2026-10-19-toutiao-video-plan/)** | **Three evidence-first contracts; dynamic video/audio and lifecycle acceptance pending, source/build/API mapping required.** |
 | **[Exact icon recovery placement](benchmark/2026-10-19-toutiao-icon-deploy/)** | Narrow cfg transaction and original-entry rollback; 14 offline checks, device acceptance pending. |
 | **[`benchmark/2026-10-16-d2r-comparison/`](benchmark/2026-10-16-d2r-comparison/README.md)** | **Evidence-based D2R comparison: 60 synthetic ARM64 gate cases pass, one omitted register-restore mutation is detected in all 60; 70 existing Westlake tooling tests pass, bridge speedup unmeasured.** |
