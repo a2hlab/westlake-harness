@@ -1,0 +1,1 @@
+video-1919-observability archive supplement: 15/15 local originals SHA+size verified; previous9 REA originals and C4cC.play match the snapshot. Public MAIN receipt binds remotely verified f29edafb archive. This is not full-session coverage; future logger methods remain separately pending. Prior7/9-file reviews and frozen115 unchanged.

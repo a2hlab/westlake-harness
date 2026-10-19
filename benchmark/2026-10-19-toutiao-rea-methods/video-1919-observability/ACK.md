@@ -1,0 +1,1 @@
+video-1919-observability: native true is not evidence of Java logging enabled. Exact C4cC.play has an additional Java predicate; Java defaults/sinks remain unknown. Related MAIN log bridge is not deployed binding proof. Minimal two-method shared request and bounded dual-sink observations only; no new root cause, runtime change or gate.
