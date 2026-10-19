@@ -1,0 +1,1 @@
+video-1919-r6-final-packet: scoped ACCEPT of evidence/restoration. Playback NOT_PASSED, audio unknown. Original helper errors preserved; explicit r2 guardian and actual final feed close restoration. See facts.txt for counts. No device/build calls or push.
