@@ -931,3 +931,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 
 - 2026-10-20 #91 codec枚举：exact baseline bridge d4fa的mclCount ELF0xf2e88返回1、mclGetName f2e90与mclSupportedTypes f2f40仅MP3/audio-mpeg，12完整REA+独立LLVM已核；Ghidra imagebase100000不可混入ELF，f2ef8属FindByName。只证该文件实现，最终JNI winner/外部bytevc插件未证，不凭FFmpeg configure字符串断言全链无HEVC；手写ops摘要不是原始Evidence。见static/codec-enumeration-independent与codec-java-20261020。
 - 2026-10-20 #91 r10：actual player 8槽读取显示6个ANW接口落libandroid76512d97、lock/unlock落shim85c789f4；精确后者ELF正常返回固定errno19/-19，与drawPicture锁buffer错误吻合。ByteVC1创建/参数712x360与first-frame消息不证明上屏，10图仍同封面；native_ready1不证明geometry(实测0/0/-1)或窗口对象契约。证据 candidate-r10/window 与 static/r10-live-review/checkpoint-02，已回滚24353a4b真实feed并解锁。
+
+- 2026-10-20 #91 r11：SDK15 server d6d9可attach却在握手GetMaxU64长度断言退出，零fromSurface/lock；离线LLDB API可用≠真机工具兼容，具体寄存器/长度/SVE原因unknown。先在空闲板自有probe验证attach→两次硬件命中→Continue→detach，再接业务进程。61b原plan恢复8423f320真实feed、04:30:24解锁；证据 diagnostic-r11/window。
