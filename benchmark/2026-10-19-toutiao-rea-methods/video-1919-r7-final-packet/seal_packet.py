@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+"""Freeze the closed r7 evidence delta plus four canonical observation views."""
+from pathlib import Path
+import hashlib,json,subprocess
+F=Path(__file__).resolve().parent;R=next(p for p in F.parents if (p/'scripts/lab/run_facts.py').is_file());P=F.parent/'video-1919-r7-live-review';A=R/'benchmark/2026-10-19-api-progress-update'
+assert not (F/'freeze.json').exists(),'already frozen'
+h=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+c=json.loads((F/'checks.json').read_text());assert c['first_six_objects_unchanged'] and c['csv_all_fields_equal'] and c['all_links_resolved'];refs=sum(c['refs_by_row'])
+facts=(P/'facts.txt').read_text();total=next(x for x in facts.splitlines() if x.startswith('TOTAL'))
+(F/'README.md').write_text('''# R7 closed evidence delta\n\nScoped acceptance of evidence and baseline restoration, not playback. Actual8slot provider/flag observations and registered callback chain are bound to candidate child6951/b8704. HiLogPrint GOT remains unknown; chromium/domain output is not a substitute. Three actual video images remain a static cover. Restored child7422/b8420 seq1 eventually shows the real feed; original bytes/parameter106/same-plan state and canonical UNLOCK22:39:03 close the window. See live-review/results.json and facts.txt.\n\nRaw archivec3b9073a is remotely verified,7,452,482bytes. Public metadata uses HW248_ARTIFACT_ROOT. Exact new read-only scripts and raw/static receipt hashes are preserved, while unchanged r6 execution recipes and r4 build evidence are referenced instead of recopied. Full environment, full stderr/hilog and large private originals are not public. Screenshots are unmodified; derived records pin their originals.\n\nreview_inputs.py and assemble.py preserve useful offline review/assembly work, no device calls. Static feasibility/next-readpoints are proposals only, not implemented or admitted. Intermediate checkpoint files remain historical; final results govern. API adds only row7; old6 objects and historical315 remain unchanged. Collect exact landing-paths only; no staging or push.\n''')
+(F/'ACK.md').write_text('# ACK video-1919-r7-final-packet\n\nScoped ACCEPT evidence/restoration. Playback NOT_PASSED_STATIC_COVER; audio UNKNOWN. Runtime callback registration identified, downstream HiLogPrint provider and invocation remain unproven. Restored feed11671a14 personally viewed, originalSHA/privateinode/compatabsence/cfg/param106 and snapshots checked; UNLOCK22:39:03. Zero device/build calls.\n\nFacts verbatim (standard alive-table unknown is not failure count):\n\n```text\n'+total+'\n```\n\nAPI7 rows, '+str(refs)+' refs (new20), '+str(c['html_links'])+' HTML links; CSV all fields equal; old6 objects and historical315 unchanged.\n')
+api=[A/n for n in ['observations.json','observations.csv','index.html','results.json']]
+files=sorted(set([q for base in [F,P] for q in base.rglob('*') if q.is_file()]+api))
+r=subprocess.run(['python3',str(R/'scripts/lab/check_user_paths.py'),*[str(q.relative_to(R)) for q in files]],capture_output=True,text=True)
+(F/'path-gate.stdout.txt').write_text(r.stdout);(F/'path-gate.stderr.txt').write_text(r.stderr);assert r.returncode==0,r.stdout
+(F/'path-gate.json').write_text(json.dumps({'rc':r.returncode,'exact_files_checked':len(files),'tool_sha256':h(R/'scripts/lab/check_user_paths.py')},indent=2)+'\n')
+files=sorted(set([q for base in [F,P] for q in base.rglob('*') if q.is_file()]+api));payload=[q for q in files if not(q.parent==F and q.name in {'freeze.json','SHA256SUMS','landing-paths.txt'})]
+f={'token':'video-1919-r7-final-packet','scope':'evidence/restoration only; no playback PASS; diagnostic proposals not implemented','payload_count':len(payload),'files':[{'path':str(q.relative_to(R)),'sha256':h(q),'bytes':q.stat().st_size} for q in payload]}
+(F/'freeze.json').write_text(json.dumps(f,indent=2)+'\n');(F/'SHA256SUMS').write_text(''.join(h(q)+'  '+str(q.relative_to(R))+'\n' for q in payload+[F/'freeze.json']));(F/'landing-paths.txt').write_text(''.join(str(q.relative_to(R))+'\n' for q in sorted(payload+[F/'freeze.json',F/'SHA256SUMS',F/'landing-paths.txt'])))
+for row in f['files']:assert h(R/row['path'])==row['sha256']
+print('FROZEN',len(payload)+3,'landing',len(payload),'payload','freeze',h(F/'freeze.json'));print(r.stdout.strip());print(total)
