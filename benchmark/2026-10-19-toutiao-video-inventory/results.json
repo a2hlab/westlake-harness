@@ -1,0 +1,628 @@
+{
+  "schema": "toutiao-video-readonly-inventory/v1",
+  "status": "BOUNDED_CHECKPOINT_NOT_CURRENT_ROOT_CAUSE",
+  "task": "91-1919-video-inventory",
+  "date": "2026-10-19",
+  "board_calls": 0,
+  "remote_calls": 0,
+  "builds": 0,
+  "implementation_changes": 0,
+  "pushes": 0,
+  "contract": "Outer preparing task contract; inventory only, no implementation expansion",
+  "knowledge_read": [
+    {
+      "path": "$WORKSPACES/westlake-harness-bms/.octos/OPS-RUNBOOK.md",
+      "sha256": "2e39c5032ae91c06db693e87a731304fc413fe32b898d9dba778c5ae1433a350"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness/.octos/KNOWLEDGE-DIGEST.md",
+      "sha256": "abd3888812dda7149c9b8c0aebc593e0abaaac393103e918032a8a8c5f308e20"
+    }
+  ],
+  "findings": [
+    {
+      "id": "VIDEO-01",
+      "capability": "MediaCodec JNI -> OH AudioCodec",
+      "sources": [
+        {
+          "path": "$WORKSPACES/vm-copies/westlake-current/framework/core/jni/oh_mediacodec_shim.cpp",
+          "sha256": "6cf6caba47d86229ef4704b3ac1bdd54d7de71f2dea134c6ca3955f55b6c1b42",
+          "bytes": 38340,
+          "last_touch_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+        },
+        {
+          "path": "$WORKSPACES/vm-copies/westlake-current/framework/core/jni/adapter_bridge.cpp",
+          "sha256": "2bedd66a7054c65079c810c9015f577a91b9b4047581637a8414c1b228af436a",
+          "bytes": 38987,
+          "last_touch_commit": "e2b0bf669ca33459c74618883614f4c603fbccbb"
+        }
+      ],
+      "status": "REAL_AUDIO_DECODE_ADAPTER_SOURCE",
+      "mechanism": "dlopen libnative_media_acodec/core; async OH callbacks queued for synchronous Android dequeue; audio sample_rate/channel_count; native_configure Surface argument ignored; codec list names OH.audio.mp3.decoder",
+      "route": "source-build/core bridge, not proven identical to RouteB mc46 binary",
+      "artifact_binding": {
+        "reported_historical_RouteB_bridge": "d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b",
+        "source_to_exact_D4_build_verified": false
+      },
+      "validation": {
+        "apk": "noice",
+        "generation": "FIX-AUDIO2026-07-02 source comment; later source checkpoint",
+        "level": "source_intent_not_playback_receipt",
+        "result": "MP3->PCM intent exists; no timed decoded/audio/visible video success record located in bounded search"
+      },
+      "limits": [
+        "Not a hardware video decoder bridge; no validated OH VideoDecoder/surface-output path in this source",
+        "Historical DIGEST#46 MediaCodec setup/getOwnCodecInfo fail-clean repair is a different claim from successful video playback"
+      ],
+      "current_20261019_playback_proven": false
+    },
+    {
+      "id": "VIDEO-02",
+      "capability": "AudioTrack JNI -> OH AudioRenderer",
+      "sources": [
+        {
+          "path": "$WORKSPACES/vm-copies/westlake-current/framework/core/jni/oh_audiotrack_shim.cpp",
+          "sha256": "8e922c5de969aeeebc61f4c22188611e5f909689e25b70b4db43e51d529d2650",
+          "bytes": 31666,
+          "last_touch_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+        },
+        {
+          "path": "$WORKSPACES/vm-copies/westlake-current/framework/core/jni/adapter_bridge.cpp",
+          "sha256": "2bedd66a7054c65079c810c9015f577a91b9b4047581637a8414c1b228af436a",
+          "bytes": 38987,
+          "last_touch_commit": "e2b0bf669ca33459c74618883614f4c603fbccbb"
+        }
+      ],
+      "status": "REAL_PCM_PUSH_PULL_ADAPTER_SOURCE",
+      "mechanism": "Ring buffer, OH write-data callback, silence on underrun, per-track start/pause/flush and real-app-frame/timestamp accounting",
+      "route": "source-build/core bridge; not U-series stub JNI registration",
+      "artifact_binding": "Exact source-to-current-deployed bridge SHA unknown",
+      "validation": {
+        "apk": "noice; mousepounce; musekit",
+        "generation": "source comments plus upstream blockers-ledger batch16/18",
+        "level": "comments/reported historical, no new audible validation",
+        "result": "Noice MP3 intended; mousepounce reported process alive and audio despite absent window; musekit missing AudioTrack methods fixed5ae6, not proof of sound correctness"
+      },
+      "limits": [
+        "OH callback activity is not audible playback proof",
+        "Not interchangeable with historical ac59 AudioTrack fixed/void stubs"
+      ],
+      "current_20261019_playback_proven": false
+    },
+    {
+      "id": "VIDEO-03",
+      "capability": "MediaPlayer JNI -> OH AVPlayer",
+      "sources": [
+        {
+          "path": "benchmark/2026-10-02-u12-upstream-audio/upstream/media_natives.c",
+          "sha256": "52c3658b52a606806b56a2f41aadacb7e11ca0dc08005ed228158df49eaa7f93",
+          "bytes": 43101,
+          "last_touch_commit": "b52f2fbdfc5d151bba503579aef3152778194913"
+        },
+        {
+          "path": "benchmark/2026-10-02-u12-upstream-audio/architecture.json",
+          "sha256": "f9fd70afd3115acfe6e7bfea224aaf7dcfb16346697cff7e7d2183aa6ff8257c",
+          "bytes": 22444,
+          "last_touch_commit": "b52f2fbdfc5d151bba503579aef3152778194913"
+        }
+      ],
+      "status": "REAL_AUDIO_PLAYER_PORT_WITH_VIDEO_OUTPUT_UNIMPLEMENTED",
+      "mechanism": "OH_AVPlayer create/setUrl/setFd/prepare/play/pause/seek and callback events; source mp_set_video_surface explicitly does nothing at lines770-772",
+      "route": "Upstream framework68 + extra missing-natives owner",
+      "source_original_commit": "5ae6b7547407ca343565fc3ccf650be704f74e19",
+      "artifact_binding": "No current RouteB or route-A deployment SHA bound to this port",
+      "validation": {
+        "apk": "ntfy; Astro Loop(game); Doors of Doom; mousepounce",
+        "generation": "upstream5ae6b75, batch16/19/20",
+        "level": "reported loader-wall movement / retained failure",
+        "result": "MediaPlayer.native_init registration fixes listed; Doors of Doom still rejects FD and GET_TRACK_INFO then MEDIA_ERROR(1,-1010). Not video-playback PASS"
+      },
+      "limits": [
+        "Audio only by explicit video-surface no-op",
+        "Cannot register over an existing runtime owner blindly",
+        "Native-init loading success and first frame do not verify media output"
+      ],
+      "current_20261019_playback_proven": false
+    },
+    {
+      "id": "VIDEO-04",
+      "capability": "Legacy route-A MediaPlayer/AudioTrack JNI",
+      "sources": [
+        {
+          "path": "$WORKSPACES/westlake-harness-bms/bms/src/adapter/framework/android-runtime/src/android_media_MediaPlayer.cpp",
+          "sha256": "a0ba386b451ae2ced2092d1dea7a81788a8c3740e13d1c5ce22928299b460994",
+          "bytes": 28841,
+          "last_touch_commit": "a115654434001a1575c70daa46086a46d3150005"
+        },
+        {
+          "path": "$WORKSPACES/westlake-harness-bms/bms/src/adapter/framework/android-runtime/src/android_media_AudioTrack.cpp",
+          "sha256": "a83f1dd8774bdbf863134c01b499959b12ca17b3c3058a0b3022341510f7e9f8",
+          "bytes": 13192,
+          "last_touch_commit": "a115654434001a1575c70daa46086a46d3150005"
+        }
+      ],
+      "status": "HISTORICAL_LIFECYCLE_STUBS_NOT_PLAYER",
+      "mechanism": "49 MediaPlayer bindings; prepared callback/state; setVideoSurface obtains ANativeWindow and logs dimensions but no decode/pixels; AudioTrack contains fixed/void compatibility methods",
+      "route": "BMS legacy ac59/L12 census; distinct from later source-build AudioRenderer",
+      "artifact_binding": "Historical ac59 prefix only; these source snapshots not certified as current RouteB JNI owner",
+      "validation": {
+        "apk": "HelloWorld L12 probe; ChessClock clinit",
+        "generation": "legacyL12 / U8-U13 alias work",
+        "level": "reported lifecycle/surface-handoff/manifest wall only",
+        "result": "No decoded frame or audible-media success claim"
+      },
+      "limits": [
+        "Do not port current source-build capabilities onto historical ac59 by name",
+        "Existing source comments about missing lock exports are historical, not current live ABI evidence"
+      ],
+      "current_20261019_playback_proven": false
+    },
+    {
+      "id": "VIDEO-05",
+      "capability": "AMedia NDK compatibility library",
+      "sources": [
+        {
+          "path": "benchmark/2026-10-02-u12-mediandk/candidate.c",
+          "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b",
+          "bytes": 8979,
+          "last_touch_commit": "d1a36df5a2bf5ef512b0404b9c314bdd2ef2ddf8"
+        },
+        {
+          "path": "benchmark/2026-10-02-u12-mediandk/build-receipt.json",
+          "sha256": "fe9b781dade79cd0e1de5e597ab42eb43e2ad187a571075422b885528a734739",
+          "bytes": 10173,
+          "last_touch_commit": "d1a36df5a2bf5ef512b0404b9c314bdd2ef2ddf8"
+        }
+      ],
+      "status": "CONTAINERS_REAL_CODEC_UNSUPPORTED",
+      "mechanism": "AMediaFormat int32 property container/DataSource lifetime; codec/extractor configured operations return AMEDIA_ERROR_UNSUPPORTED=-10002",
+      "route": "U12 Unity consumer compatibility candidate",
+      "artifact_binding": "8fc0752dd561a62992268981164c5e75c87ceb802f93d6d0b958c23b54ddaa58",
+      "validation": {
+        "apk": "SubwaySurfers libunity",
+        "generation": "U12",
+        "level": "host/static provider behavior",
+        "result": "50-name/type consumer coverage and legal error behavior, not decoding/playback"
+      },
+      "limits": [
+        "Do not call all APIs empty stubs; containers are implemented",
+        "No Stagefright/OH video engine implemented"
+      ],
+      "current_20261019_playback_proven": false
+    },
+    {
+      "id": "VIDEO-06",
+      "capability": "NativeWindow CPU software-video producer",
+      "sources": [
+        {
+          "path": "benchmark/2026-10-01-n10-native/flutter/libandroid_webview_shim.c",
+          "sha256": "c8772d05c5a815f1820809d6c1a6af265e51514c297d82bf427dd6a17b0e7f43",
+          "bytes": 53634,
+          "last_touch_commit": "bf07c8e4d612b8cd721ebee4ab3b1aadcf73019f"
+        },
+        {
+          "path": "benchmark/2026-10-01-u11-native/window-lock/owner_wrappers.c",
+          "sha256": "1eb348fc11aba4f8afb0138a7293b3a563b173f51b2d0c45e3ec87e1ae8cfa27",
+          "bytes": 2731,
+          "last_touch_commit": "e1ce2af5ce02641869dd32126800bfe0bc4145cc"
+        }
+      ],
+      "status": "REAL_LOCK_POST_AND_YV12_CONVERSION_SOURCE_DIFFERENT_PROFILES",
+      "mechanism": "N10 private shim exposes lock/post and YV12-to-RGBX handling, explicitly references libttmplayer; U11 owner_wrappers dequeue/fence/map/queue through unique runtime and OH surface",
+      "route": "N10 private/flutter/WebView libandroid vs U11 root shim, neither automatically current RouteB libandroid",
+      "artifact_binding": "U11 candidate8728134a reported; full current RouteB/source equivalence unknown",
+      "validation": {
+        "apk": "libttmplayer consumer;21-key static consumers",
+        "generation": "N10/U11",
+        "level": "source/ABI/host behavior, not successful Toutiao playback",
+        "result": "A potential reusable producer implementation exists; no video-throughput/frame-change evidence admitted"
+      },
+      "limits": [
+        "Keep producer ownership and exact namespace/SONAME mapping explicit",
+        "Presence of lock symbols/decoder libraries does not prove frames queued/consumed"
+      ],
+      "current_20261019_playback_proven": false
+    },
+    {
+      "id": "VIDEO-07",
+      "capability": "Surface/SurfaceTexture producer-consumer adapters",
+      "sources": [
+        {
+          "path": "$WORKSPACES/vm-copies/westlake-current/framework/surface/jni/oh_graphic_buffer_producer.cpp",
+          "sha256": "6fc7824f45bdf17f887f2ff54bb4ef4d85c36dd3a31ef0c93c96996fc948ae88",
+          "bytes": 13118,
+          "last_touch_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+        },
+        {
+          "path": "$WORKSPACES/vm-copies/westlake-current/framework/surface/jni/oh_surface_texture_jni.cpp",
+          "sha256": "c8d3bb700923c393c6e9aad43acf5004dba6d8a168ecfe829d66ec1c9c6f3f61",
+          "bytes": 17597,
+          "last_touch_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+        }
+      ],
+      "status": "REAL_OH_QUEUE_SURFACETEXTURE_SOURCE",
+      "mechanism": "OHGraphicBufferProducer RequestBuffer/FlushBuffer with slots/fences; SurfaceTexture nativeUpdateTexImage delegates OH update",
+      "route": "source-build/framework surface JNI",
+      "artifact_binding": "No exact bind of these source files to active RouteB Surface providers located",
+      "validation": {
+        "apk": "unknown for timed video",
+        "generation": "local source checkpoint f82d/HEAD532633",
+        "level": "source inspection only",
+        "result": "Queue/update implementation exists; do not equate it with actual current secondary video surface path"
+      },
+      "limits": [
+        "ReliableSurface old stub log does not establish which provider is used now",
+        "Primary EGL drawing does not validate secondary Surface video delivery"
+      ],
+      "current_20261019_playback_proven": false
+    },
+    {
+      "id": "VIDEO-08",
+      "capability": "Dedicated-child SurfaceView geometry successor",
+      "sources": [
+        {
+          "path": "benchmark/2026-10-13-runtime-surfaceview-split/source/android_graphics_compat_shim.cpp",
+          "sha256": "c208788a90ee19ad891af5cbe6fb8d7b29f339467ece084255d168dab45d1aef",
+          "bytes": 78283,
+          "last_touch_commit": "6289a0958c04256c235a5624739611a202e9af1a"
+        },
+        {
+          "path": "benchmark/2026-10-13-runtime-surfaceview-split/evidence/build-provenance.json",
+          "sha256": "f8c0da42da2c4993658dfd84b889b1e46626f0b452f21f7a3625c7c13342fd86",
+          "bytes": 8688,
+          "last_touch_commit": "6289a0958c04256c235a5624739611a202e9af1a"
+        },
+        {
+          "path": "benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-interactive-main/game-visual-review.json",
+          "sha256": "bdc7baded3a115516b7160ec2ddd2008415d5da7578d6273486d5ba440fbd705",
+          "bytes": 6339,
+          "last_touch_commit": "27d3f8e2cd12a0387d0038eea49861f1126eb1d6"
+        }
+      ],
+      "status": "COLD_BUILD_ABI_AND_BOAT_INTERACTION_VALIDATED_NOT_VIDEO",
+      "mechanism": "Only dedicated child uses requested geometry; main/popup/fallback retains panel geometry",
+      "route": "Boat V2 shared-runtime187->947->f28 lineage, NOT the distinct RouteB private runtime8ab674",
+      "artifact_binding": {
+        "runtime_prefix": "f28bd1b3",
+        "source_sha256": "c208788a90ee19ad891af5cbe6fb8d7b29f339467ece084255d168dab45d1aef",
+        "cold_build_rc": 0,
+        "exact_full_artifact_sha256_location": "benchmark/2026-10-13-runtime-surfaceview-split/evidence/build-provenance.json"
+      },
+      "validation": {
+        "apk": "BoatAttack and five popup controls",
+        "generation": "R6 V2 2026-10-13",
+        "level": "existing outer visual/game review",
+        "result": "Game interaction/LAP and popup controls recorded; none establishes Toutiao video decode or A/V sync"
+      },
+      "limits": [
+        "Do not turn Boat geometry PASS into media playback PASS",
+        "Do not substitute shared runtime source for RouteB private owner"
+      ],
+      "current_20261019_playback_proven": false
+    }
+  ],
+  "historical_toutiao_playback": {
+    "id": "HISTORY-VIDEO-20260928",
+    "apk": "com.ss.android.article.news",
+    "version": "13.9.0 according to historical lab baseline; report itself does not pin APK SHA",
+    "route": "5cd private RouteB, report PID20465",
+    "evidence": {
+      "path": "benchmark/2026-09-28-toutiao-video-playback/README.md",
+      "sha256": "960a1e1cc5e28a4d285bcedd9cc76d72a324765320195e57599de77ef5c30ccf",
+      "bytes": 3478,
+      "last_touch_commit": "e61930e2d4945837fe765ebf830fe6469cefe531"
+    },
+    "reported": {
+      "activity": "com.ss.android.ugc.detail.activity.TikTokActivity",
+      "result": "Frozen cover, not playback PASS",
+      "ReliableSurface_reserveNext": 37265,
+      "ReliableSurface_init": 27,
+      "buffer_SetMetadata_minus5": 280,
+      "two_timepoint_md5_equal": "reported687e7c86; second distinct source frame not retained in report directory"
+    },
+    "files_present": [
+      {
+        "path": "benchmark/2026-09-28-toutiao-video-playback/feed-with-video-cards.jpeg",
+        "sha256": "8467b6ffd778f0c66024b9e2f39fbc7e1b53695931896b903d4b041b28008f33"
+      },
+      {
+        "path": "benchmark/2026-09-28-toutiao-video-playback/video-detail-frozen-on-cover.jpeg",
+        "sha256": "fb62badb5a03272ab95682381d9af4e5b17ac028672fad806d9a895f8f194ed8"
+      }
+    ],
+    "raw_stderr_or_hilog_in_report_directory": false,
+    "claim_limit": "README headline attributes cause too strongly; counts are reported, not freshly recounted. Decoder file presence and missing MediaCodec logs cannot prove successful software decoding or current root cause. Treat secondary-surface/metadata issues as historical hypotheses only."
+  },
+  "historical_routeB_artifact_index": {
+    "source": {
+      "path": "benchmark/2026-10-12-v1-seal-execution/seal-final-20261013/route-b-source.json",
+      "sha256": "858990f658cbbb44ff00ce7970f6a334b37e227a99d063f25d917d59103c050a",
+      "bytes": 239569,
+      "last_touch_commit": "unknown"
+    },
+    "as_of": "2026-10-13 historical signed source closure, not current2026-10-19 device read",
+    "artifacts": [
+      {
+        "target": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/lib/arm64-v8a/libByteVC1_dec.so",
+        "sha256": "bed098904c2a287f96d6b27281e306493122636588a546c68e6ffe23541797ea",
+        "scope": "Historical61b RouteB signed source index2026-10-13; NOT current2026-10-19 live attestation"
+      },
+      {
+        "target": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/lib/arm64-v8a/libbyteVC2dec.so",
+        "sha256": "62f77bbf035dc26d5a8973a8e58c70dddf8e120604b7e0539b0dbc1a37d8401e",
+        "scope": "Historical61b RouteB signed source index2026-10-13; NOT current2026-10-19 live attestation"
+      },
+      {
+        "target": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/lib/arm64-v8a/libttmplayer.so",
+        "sha256": "b427614d57e4a7279f362b3f341de3cdd4b9f9a8859257016bcda24e5f6d3a02",
+        "scope": "Historical61b RouteB signed source index2026-10-13; NOT current2026-10-19 live attestation"
+      },
+      {
+        "target": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/lib/arm64-v8a/libvcn.so",
+        "sha256": "ec5cdb76b5e630e5c3d65335272830245b4e6b464d2085a3cc17c0f3c84cc35f",
+        "scope": "Historical61b RouteB signed source index2026-10-13; NOT current2026-10-19 live attestation"
+      },
+      {
+        "target": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/libandroid.so",
+        "sha256": "c9969638b0175b7077332e1b7a65f4354392def62b5f6e1049ca763b9677148e",
+        "scope": "Historical61b RouteB signed source index2026-10-13; NOT current2026-10-19 live attestation"
+      },
+      {
+        "target": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/libhwui.so",
+        "sha256": "a11c9154ca16dd7acf5e3ea99727ae37c25b1b4494a9133816bc58c553c128e2",
+        "scope": "Historical61b RouteB signed source index2026-10-13; NOT current2026-10-19 live attestation"
+      },
+      {
+        "target": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/libmedia_jni.so",
+        "sha256": "f394360144069bf6bd08d702f4bdadcd8a77883cf0854c1608bb6eba56c366d9",
+        "scope": "Historical61b RouteB signed source index2026-10-13; NOT current2026-10-19 live attestation"
+      },
+      {
+        "target": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/liboh_adapter_bridge.so",
+        "sha256": "d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b",
+        "scope": "Historical61b RouteB signed source index2026-10-13; NOT current2026-10-19 live attestation"
+      },
+      {
+        "target": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/liboh_android_runtime.so",
+        "sha256": "8ab6742d58de5b9df94a2bfa80cebed46f136c0251083793fcbef8293cc23ab1",
+        "scope": "Historical61b RouteB signed source index2026-10-13; NOT current2026-10-19 live attestation"
+      },
+      {
+        "target": "/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d/webview-t-lib/libandroid.so",
+        "sha256": "76512d97758c308acf7baff4647f07db792c02b8fae2eda93399bd18eda03727",
+        "scope": "Historical61b RouteB signed source index2026-10-13; NOT current2026-10-19 live attestation"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/core/jni/oh_mediacodec_shim.cpp",
+      "sha256": "6cf6caba47d86229ef4704b3ac1bdd54d7de71f2dea134c6ca3955f55b6c1b42",
+      "bytes": 38340,
+      "last_touch_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/core/jni/oh_audiotrack_shim.cpp",
+      "sha256": "8e922c5de969aeeebc61f4c22188611e5f909689e25b70b4db43e51d529d2650",
+      "bytes": 31666,
+      "last_touch_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/core/jni/adapter_bridge.cpp",
+      "sha256": "2bedd66a7054c65079c810c9015f577a91b9b4047581637a8414c1b228af436a",
+      "bytes": 38987,
+      "last_touch_commit": "e2b0bf669ca33459c74618883614f4c603fbccbb"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/surface/jni/oh_graphic_buffer_producer.cpp",
+      "sha256": "6fc7824f45bdf17f887f2ff54bb4ef4d85c36dd3a31ef0c93c96996fc948ae88",
+      "bytes": 13118,
+      "last_touch_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+    },
+    {
+      "path": "$WORKSPACES/vm-copies/westlake-current/framework/surface/jni/oh_surface_texture_jni.cpp",
+      "sha256": "c8d3bb700923c393c6e9aad43acf5004dba6d8a168ecfe829d66ec1c9c6f3f61",
+      "bytes": 17597,
+      "last_touch_commit": "f82d1f1a9d0a8760de6bb215f8d130cbb81b21a4"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness-bms/bms/src/adapter/framework/android-runtime/src/android_media_MediaPlayer.cpp",
+      "sha256": "a0ba386b451ae2ced2092d1dea7a81788a8c3740e13d1c5ce22928299b460994",
+      "bytes": 28841,
+      "last_touch_commit": "a115654434001a1575c70daa46086a46d3150005"
+    },
+    {
+      "path": "$WORKSPACES/westlake-harness-bms/bms/src/adapter/framework/android-runtime/src/android_media_AudioTrack.cpp",
+      "sha256": "a83f1dd8774bdbf863134c01b499959b12ca17b3c3058a0b3022341510f7e9f8",
+      "bytes": 13192,
+      "last_touch_commit": "a115654434001a1575c70daa46086a46d3150005"
+    },
+    {
+      "path": "benchmark/2026-10-02-u12-upstream-audio/upstream/media_natives.c",
+      "sha256": "52c3658b52a606806b56a2f41aadacb7e11ca0dc08005ed228158df49eaa7f93",
+      "bytes": 43101,
+      "last_touch_commit": "b52f2fbdfc5d151bba503579aef3152778194913"
+    },
+    {
+      "path": "benchmark/2026-10-02-u12-upstream-audio/architecture.json",
+      "sha256": "f9fd70afd3115acfe6e7bfea224aaf7dcfb16346697cff7e7d2183aa6ff8257c",
+      "bytes": 22444,
+      "last_touch_commit": "b52f2fbdfc5d151bba503579aef3152778194913"
+    },
+    {
+      "path": "benchmark/2026-10-02-u12-upstream-audio/README.md",
+      "sha256": "d1d71e9b848a9c8fd6d9a4f59a6fabaa72520d23d351c53415cfffd8bb81b6eb",
+      "bytes": 8817,
+      "last_touch_commit": "b52f2fbdfc5d151bba503579aef3152778194913"
+    },
+    {
+      "path": "benchmark/2026-10-02-u12-mediandk/candidate.c",
+      "sha256": "666d51171718cb19a5922d744e2332edbbd6a45e0b578e94109b1ee8c581776b",
+      "bytes": 8979,
+      "last_touch_commit": "d1a36df5a2bf5ef512b0404b9c314bdd2ef2ddf8"
+    },
+    {
+      "path": "benchmark/2026-10-02-u12-mediandk/build-receipt.json",
+      "sha256": "fe9b781dade79cd0e1de5e597ab42eb43e2ad187a571075422b885528a734739",
+      "bytes": 10173,
+      "last_touch_commit": "d1a36df5a2bf5ef512b0404b9c314bdd2ef2ddf8"
+    },
+    {
+      "path": "benchmark/2026-10-01-n10-native/flutter/libandroid_webview_shim.c",
+      "sha256": "c8772d05c5a815f1820809d6c1a6af265e51514c297d82bf427dd6a17b0e7f43",
+      "bytes": 53634,
+      "last_touch_commit": "bf07c8e4d612b8cd721ebee4ab3b1aadcf73019f"
+    },
+    {
+      "path": "benchmark/2026-10-01-u11-native/window-lock/owner_wrappers.c",
+      "sha256": "1eb348fc11aba4f8afb0138a7293b3a563b173f51b2d0c45e3ec87e1ae8cfa27",
+      "bytes": 2731,
+      "last_touch_commit": "e1ce2af5ce02641869dd32126800bfe0bc4145cc"
+    },
+    {
+      "path": "benchmark/2026-10-13-runtime-surfaceview-split/source/android_graphics_compat_shim.cpp",
+      "sha256": "c208788a90ee19ad891af5cbe6fb8d7b29f339467ece084255d168dab45d1aef",
+      "bytes": 78283,
+      "last_touch_commit": "6289a0958c04256c235a5624739611a202e9af1a"
+    },
+    {
+      "path": "benchmark/2026-10-13-runtime-surfaceview-split/evidence/build-provenance.json",
+      "sha256": "f8c0da42da2c4993658dfd84b889b1e46626f0b452f21f7a3625c7c13342fd86",
+      "bytes": 8688,
+      "last_touch_commit": "6289a0958c04256c235a5624739611a202e9af1a"
+    },
+    {
+      "path": "benchmark/2026-09-28-toutiao-video-playback/README.md",
+      "sha256": "960a1e1cc5e28a4d285bcedd9cc76d72a324765320195e57599de77ef5c30ccf",
+      "bytes": 3478,
+      "last_touch_commit": "e61930e2d4945837fe765ebf830fe6469cefe531"
+    },
+    {
+      "path": "benchmark/blockers-ledger.json",
+      "sha256": "ba776685f62f01073713286fdf32ab5dd04421844cb48addc7b67d41decee445",
+      "bytes": 28724,
+      "last_touch_commit": "6a28ee002f56247ee5691332c1462f962ee9eadb"
+    },
+    {
+      "path": "benchmark/2026-10-12-v1-seal-execution/seal-final-20261013/route-b-source.json",
+      "sha256": "858990f658cbbb44ff00ce7970f6a334b37e227a99d063f25d917d59103c050a",
+      "bytes": 239569,
+      "last_touch_commit": "unknown"
+    },
+    {
+      "path": "benchmark/2026-10-04-r84-silent-answers/README.md",
+      "sha256": "068b14d4192fed36fa98a68079321606ec22bf39d20af1db9aa6ff11d0d799e1",
+      "bytes": 15901,
+      "last_touch_commit": "9eb0df3458f424a2e70827e6d10b1e6962f52385"
+    },
+    {
+      "path": "benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-interactive-main/game-visual-review.json",
+      "sha256": "bdc7baded3a115516b7160ec2ddd2008415d5da7578d6273486d5ba440fbd705",
+      "bytes": 6339,
+      "last_touch_commit": "27d3f8e2cd12a0387d0038eea49861f1126eb1d6"
+    }
+  ],
+  "current_parent_namespace_identity": {
+    "status": "CURRENT_CAPTURED_PARENT_ONLY_NOT_VIDEO_CONSUMER",
+    "collected_by": "outer; consumed locally without device access by this lane",
+    "inputs": [
+      {
+        "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/61b-runtime.txt",
+        "sha256": "c5de14c595aac3afaf36a5c1db79101a387906da37d8328f723e06830064b602",
+        "bytes": 205203
+      },
+      {
+        "path": "$HOME/.local/share/westlake/toutiao-resume-20261019/61b-media-identity.txt",
+        "sha256": "c9422c316a0e74cc1881b785c6c68c33269a5f0b06f93633925c41840bae79a2",
+        "bytes": 1867
+      }
+    ],
+    "boot_id": "6944c37e-31a6-4846-8f1f-48088a917153",
+    "parent": {
+      "pid": 11444,
+      "ppid": 1,
+      "birth_ticks": 107387,
+      "mount_namespace": "mnt:[4026533005]",
+      "stat_bookends_identical": true,
+      "stat_evidence_lines": [2, 18],
+      "identity_scope": "Captured parent identity only; not a promise of continuing liveness"
+    },
+    "platform": {"fullname": "OpenHarmony-6.1.0.31", "architecture": "aarch64"},
+    "sha256_in_parent_mount_namespace": [
+      {"path": "/data/local/tmp/asx/toutiao.apk", "sha256": "a1112a0c941f865847c2fab9138cf815735268fbfcd41d697412fb80992c7395", "evidence_line": 6},
+      {"path": "/data/local/tmp/asx/appspawn-x", "sha256": "a7a358c60bec293c26531b0eecbf14979f77411c227cec4767742c0c82791a0c", "evidence_line": 7},
+      {"path": "/data/local/tmp/asx/libandroid.so", "sha256": "c9969638b0175b7077332e1b7a65f4354392def62b5f6e1049ca763b9677148e", "evidence_line": 8, "matches_historical_source_index_sha": true},
+      {"path": "/data/local/tmp/asx/libmedia_jni.so", "sha256": "f394360144069bf6bd08d702f4bdadcd8a77883cf0854c1608bb6eba56c366d9", "evidence_line": 9, "matches_historical_source_index_sha": true},
+      {"path": "/data/local/tmp/asx/libhwui.so", "sha256": "a11c9154ca16dd7acf5e3ea99727ae37c25b1b4494a9133816bc58c553c128e2", "evidence_line": 10, "matches_historical_source_index_sha": true},
+      {"path": "/data/local/tmp/asx/liboh_hwui_shim.so", "sha256": "5e54081289d112c8819f1ceec2dbf1b3bc4b4b6bbeacba28db9283487fd2cf1c", "evidence_line": 11},
+      {"path": "/data/local/tmp/asx/run.sh", "sha256": "d3518cefb37a81be01f386ac7ac54193ab47da3475bdb00d16803853c80077d4", "evidence_line": 12}
+    ],
+    "run_configuration": {
+      "source": "61b-runtime.txt lines 4-37; configuration, not child linker evidence",
+      "runtime_root": "/data/local/tmp/asx",
+      "runtime_owner_uid": 20011206,
+      "package": "com.ss.android.article.news",
+      "window_parent_id": 33,
+      "webview_apk": "/data/local/tmp/asx/webview-t.apk",
+      "webview_library_directory": "/data/local/tmp/asx/webview-t-lib",
+      "native_library_directory": "/data/local/tmp/asx/lib/arm64-v8a",
+      "native_network_targets": "libsscronet.so",
+      "ld_preload": [
+        "/data/local/tmp/asx/lib/arm64-v8a/libttcrypto.so",
+        "/data/local/tmp/asx/libandroid_native_network_compat.so",
+        "/data/local/tmp/asx/webview-t-lib/libwebview_bionic_shim.so"
+      ],
+      "configured_native_targets_include_libttmplayer": false,
+      "target_list_limit": "Absence from WESTLAKE_ANDROID_NATIVE_TARGETS does not prove absence from all load routes"
+    },
+    "parent_maps_present": [
+      {"path": "/data/local/tmp/asx/liboh_hwui_shim.so", "first_evidence_line": 352},
+      {"path": "/data/local/tmp/asx/libhwui.so", "first_evidence_line": 1222},
+      {"path": "/data/local/tmp/asx/libandroid.so", "first_evidence_line": 1469},
+      {"path": "/data/local/tmp/asx/liboh_android_runtime.so", "first_evidence_line": 1677},
+      {"path": "/data/local/tmp/asx/liboh_adapter_bridge.so", "first_evidence_line": 1718},
+      {"path": "/data/local/tmp/asx/libmedia_jni.so", "first_evidence_line": 1811}
+    ],
+    "file_presence_without_sha": [
+      {"path": "/data/local/tmp/asx/lib/arm64-v8a/libbdvideouploader.so", "bytes": 989520, "evidence_line": 13},
+      {"path": "/data/local/tmp/asx/lib/arm64-v8a/libmffmpeg.so", "bytes": 4870376, "evidence_line": 14},
+      {"path": "/data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so", "bytes": 4662040, "evidence_line": 15},
+      {"path": "/data/local/tmp/asx/lib/arm64-v8a/libvideodec.so", "bytes": 43032, "evidence_line": 16}
+    ],
+    "current_child": null,
+    "current_video_consumer": "unknown; outer confirms no live child in this capture",
+    "remaining_identity_gaps": [
+      "Mapped RouteB bridge/runtime are not freshly SHA-pinned by these inputs; historical d4fa/8ab674 hashes remain historical",
+      "Player/codec files have presence/size evidence, not fresh SHA or active-consumer evidence",
+      "No child maps, selected decoder, output Surface/audio owner or timed playback evidence"
+    ],
+    "claim_limit": "Parent maps and configured routes cannot establish child relocation scope, active decoder, frame production, sound or current root cause. No playback PASS is added."
+  },
+  "validation_summary": {
+    "confirmed_current_toutiao_video_playback_pass": 0,
+    "confirmed_historical_toutiao_video_playback_pass_found": 0,
+    "source_groups": 8,
+    "not_claimed": [
+      "End-to-end video decoder -> output Surface -> advancing pictures + audible/synchronized audio",
+      "Current first fatal/media wall",
+      "No MediaCodec errors means no MediaCodec usage",
+      "Feed/video cover or game rendering equals successful video playback"
+    ],
+    "limited_positive_evidence": [
+      "Real source for MP3 OH AudioCodec and OH AudioRenderer exists",
+      "Upstream MediaPlayer OH AVPlayer audio port exists, video surface explicitly no-op",
+      "NDK format containers and CPU NativeWindow/fence/queue code exist",
+      "Historical Boat visual/input and local buffer/lifecycle controls are separate validated scopes"
+    ]
+  },
+  "excluded_scope": [
+    "User-data content, credentials and private article/screenshot reproduction",
+    "Random SIGSEGV/mallocng residual diagnosis",
+    "New API/daemon/decoder implementation, device probing or remote build"
+  ],
+  "next_evidence_for_outer_contract": [
+    "Current parent namespace already pins APK, appspawn-x, libandroid, media_jni, libhwui, hwui shim and run.sh. Remaining bounded read, if requested: in the same guarded parent mount namespace SHA256 liboh_adapter_bridge.so, liboh_android_runtime.so and lib/arm64-v8a/{libttmplayer.so,libmffmpeg.so,libvideodec.so,libByteVC1_dec.so,libbyteVC2dec.so}, with parent stat/boot bookends; do not substitute historical hashes",
+    "For an explicitly authorized new video observation only: own PID and current video activity, timestamps/frame advancement, selected decoder/output-surface route, configure/start/input/output errors, producer dequeue/queue/fence and audio PCM progression",
+    "Keep user data/consent untouched; do not broaden this inventory into those operations"
+  ]
+}
