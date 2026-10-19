@@ -945,3 +945,6 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 R13收口：early-window归档4c3bbc74已验；随后video-window锁窗766秒，候选和恢复baseline各2child均未获feed，末图host，未attach/0samples。64targets/351labels和原runtime恢复不等于UI恢复；完整5124原件归档e1715e48与远端已验，见 diagnostic-r13/video-window/final。5cd UID20011300/cfg19d0201/run5a3aef与61b不同，不能直接套61b的动态WID/进程/部署凭证。
 
 - 2026-10-20 #91 T11：5cd一次真实图标后spawn.txt明确FOREGROUND_HOST_NOT_READY，实际wrapper两次前台核验均早于exec real-spawn，具体哪次unknown；后采WID29第8字段-1和锁屏只支持前台丢失，不是头条随机退出。外环“禁止改设置”误省RUNBOOK保活步骤，后续UI窗应先保存屏幕超时、临时保活并精确恢复，不削弱前台守卫；证据 benchmark/2026-10-20-5cd-icon-readiness/window/first-fatal-addendum/，原件归档7202fe5d远端已验。
+
+- 2026-10-20 #91 T12：5cd同boot/parent受限existing-parent监护，保留前台/JIT守卫并临时awake，单真实桌面图标生成31210/b7485570且feed亮；50秒两视频图同封面、声音unknown。仅证一次启动，非退出后重开或永久封板。528秒新guardian停、原10000/10000和旧controls/cfg/run不变；完整证据及远端6a127efd归档见 benchmark/2026-10-20-5cd-icon-recovery/window/。
+- 2026-10-20 #91 APK静态扫描须递归嵌套插件：exact头条13.9.0/a1112a0c顶层138个so不含avmdlbase/avmdlv2，但assets/plugins/com.ss.ttplugin.medialoader.jar含这两库等6个；缺顶层条目≠APK缺实现。原5缺库已在历史feed日志出现，不能直接升级为视频首致命点；见 benchmark/2026-10-20-t12-video-prefix-review/apk-inventory/。

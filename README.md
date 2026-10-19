@@ -93,6 +93,8 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[5cd bounded icon recovery](benchmark/2026-10-20-5cd-icon-recovery/window/packet/)** | **One desktop icon opened a new Toutiao child and real feed; same video cover after 50 seconds, audio unknown. Temporary guardian stopped, power and old controls restored; 3,760 original archive members verified remotely.** |
+| **[Toutiao exact APK and nested media inventory](benchmark/2026-10-20-t12-video-prefix-review/apk-inventory/)** | **138 top-level native libraries plus an embedded six-library media plugin; exact APK SHA, ELF dependencies and 87 original loader excerpts. Missing top-level entries do not prove absent packaged implementations or video causality.** |
 | **[5cd actual icon readiness window](benchmark/2026-10-20-5cd-icon-readiness/window/first-fatal-addendum/)** | **One actual icon click; foreground guard refused before business spawn. No feed or video pass. Sources, failed attempts and 1,666 raw archive members preserved; remote SHA verified.** |
 | **[R13 video-page window closure](benchmark/2026-10-19-toutiao-video-playback/diagnostic-r13/video-window/final/)** | **Exact runtime restored in 766 seconds; candidate and baseline terminal images remain host, no attach or playback samples; 5,124 raw archive members verified.** |
 | **[Alternate OH board readiness](benchmark/2026-10-20-alternate-board-readonly/)** | **Read-only identity comparison: 5cd needs its own UID, startup and live-module evidence; 5ea lacks the known deployment paths. Neither is admitted by the 61b evidence.** |
