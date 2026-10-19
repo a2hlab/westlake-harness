@@ -515,6 +515,7 @@ kind of work from where the corpus started
 | **2026-10-02-double-copy-universality** | The bridge/runtime double copy is in 115/115 lit keys too: it does not separate white from lit; only the 7 AssetManager JniAbort keys have a copy-plausible mechanism. |
 | **[R12 dedicated OH debugger compatibility](benchmark/2026-10-19-toutiao-video-playback/tool-compat-r12/window/)** | Two actual hardware hits and verified detach/cleanup on an owned probe; application playback remains untested. |
 | **[Window candidate static preflight](benchmark/2026-10-20-window-candidate-preflight/)** | **Pinned f12c source inputs and minimal lock/unlock extraction closure; no build or device admission.** |
+| **`benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/`** | Offline paired window module, 49 host tests and reproducible build receipts; no production binding or deployment. |
 
 ---
 
