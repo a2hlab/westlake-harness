@@ -1,8 +1,8 @@
 {
  "schema": "ttvideo-selected-change/v1",
  "id": "r2",
- "status": "proposed_static_awaiting_outer_review (no build needed)",
- "supersedes": "none — P1 change (selected-change.json, candidate/) stays as evidence; r2 extends it",
+ "status": "REJECTED_static (superseded by r3)",
+ "supersedes": "none \u2014 P1 change (selected-change.json, candidate/) stays as evidence; r2 extends it",
  "first_blocker_state": "confirmed",
  "first_blocker": {
   "observed": "[SOURCE-NATIVE-LOAD-FAIL] path=/data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so namespace=0 error=Error relocating /data/local/tmp/asx/lib/arm64-v8a/libvcbasekit.so: _ZNSt6__ndk18ios_baseD2Ev: symbol not found",
@@ -20,7 +20,7 @@
   "ns0_binding": "in namespace 0 the SONAME libc++_shared.so is already the OH object /system/lib64/libc++_shared.so (maps inode 2939), which lacks std::__ndk1 -> a second ns0 libvcbasekit copy fails relocation",
   "android_ns_binding": "the only mapped libvcbasekit (inode 386489) and the APK libc++_shared.so e8373ee4 (inode 379322) live in the android-native namespace: libvcbasekit is a RouteB WESTLAKE_ANDROID_NATIVE_TARGETS member and loaded there without LOAD-FAIL (child-full.stderr:2833)",
   "same_class_precedent": "RouteB feed logs: libsysoptimizer/libwasm 'Error relocating ...: _ZNSt6__ndk1...: symbol not found' in ns0",
-  "verified_route": "Westlake run_tt.sh (a9fd5ad7): media graph (libvcbasekit ...) in the isolated android namespace with APK libc++ first; libttmplayer loaded into that same namespace (NEXT_ANCHOR) — comment: loading NDK C++ DSOs in the default OH namespace binds OH libc++ first and fails relocation before JNI_OnLoad"
+  "verified_route": "Westlake run_tt.sh (a9fd5ad7): media graph (libvcbasekit ...) in the isolated android namespace with APK libc++ first; libttmplayer loaded into that same namespace (NEXT_ANCHOR) \u2014 comment: loading NDK C++ DSOs in the default OH namespace binds OH libc++ first and fails relocation before JNI_OnLoad"
  },
  "change": {
   "summary": "run.sh only, two single-line token appends on top of the P1 candidate: (1) WESTLAKE_ANDROID_NATIVE_TARGETS += libmffmpeg.so:libttmplayer.so (player graph joins libvcbasekit/APK libc++ in the android-native namespace, single copies); (2) WESTLAKE_ANDROID_NATIVE_INHERIT += libopensles_android_compat.so:libOpenSLES.so (android namespace reuses the ns0 P1 compat and the single OH OpenSLES object instead of loading second copies). No new C/C++ source, no rebuild: compat DSO stays 9f558aaf.",
@@ -37,10 +37,23 @@
   "why_not_ns0": "ns0 cannot rebind SONAME libc++_shared.so away from the already-loaded OH object; moving the consumer to the namespace that already holds its correct provider is the verified Westlake placement",
   "adaptation_unverified": [
    "Westlake used NEXT_ANCHOR + player_anchor DT_NEEDED order; RouteB libart has only ANCHOR, so r2 uses NATIVE_TARGETS + NATIVE_INHERIT (INHERIT format proven by existing libc/libdl/libm/libz/liblog entries; inheriting a preload-loaded DSO is unproven)",
-   "libttmplayer's libandroid/libjnigraphics/libEGL/libGLESv2 then resolve in the android namespace (webview-t-lib/libandroid 76512d97 with libsurface CPU boundary; existing second EGL/GLES copies) — this changes the P3 provider picture (next-walls rows to be re-ranked after the window)"
+   "libttmplayer's libandroid/libjnigraphics/libEGL/libGLESv2 then resolve in the android namespace (webview-t-lib/libandroid 76512d97 with libsurface CPU boundary; existing second EGL/GLES copies) \u2014 this changes the P3 provider picture (next-walls rows to be re-ranked after the window)"
   ]
  },
  "static_gate": "recursive dependency closure with actual namespace/provider priority (candidate-r2/closure_gate.py), to be run before outer approval",
  "rollback": "restore run.sh to the P1 candidate after(W) (or orig before(W) when rolling back P1 too) via the r2 CAS card; compat DSO untouched by r2",
- "not_claimed": "playback, audio, surface success; next first fatal unknown"
+ "not_claimed": "playback, audio, surface success; next first fatal unknown",
+ "rejected": {
+  "by": [
+   "outer video-1919-r2-review",
+   "cx-seal video-1919-r2-loader-review"
+  ],
+  "reason": "libttmplayer DT_NEEDED libmffmpeg.so is resolved by musl's by-name path, which does not run SanitizeInitArray; the APK libmffmpeg (fecf91e1) sole INIT_ARRAY slot 0x45c168 is 0 with no relocation, so musl do_init_fini (no null guard) would jump to address 0 -- a PREDICTED fatal (static); the OBSERVED r2 failure was the libvcbasekit ns0 relocation LOAD-FAIL, which masks it. Adding libmffmpeg to NATIVE_TARGETS does not help: ART's load writes the dotted sibling, the by-name NEEDED misses that shortname and reloads the original.",
+  "evidence": [
+   "evidence/r2-review/object-facts.txt",
+   "evidence/r2-review/link_stubs_arm64.cc",
+   "evidence/r2-review/oh61-musl-rules-excerpt.txt"
+  ],
+  "successor": "selected-change-r3.json (same run.sh 79275cf9 + byte-exact pre-sanitized libmffmpeg d2882303)"
+ }
 }

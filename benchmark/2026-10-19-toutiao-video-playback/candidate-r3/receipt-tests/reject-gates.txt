@@ -1,0 +1,26 @@
+# r3 derive reject-gate receipts (derive_mffmpeg.py 2165a64f; gate_probe.py mirrors its slot-liveness lines)
+
+## deploy tool derive_mffmpeg.py -- input-drift gate (1 byte flipped)
+REJECT: input SHA 60bfef97c0278d0e1042deff20f5b652818cabd7a772bcac815549769937fbb4 != fecf91e1fcda600661f501ce76a97456ad7e330b584013f2b742afb680b337c9 (input drift)
+rc=1
+
+## deploy tool -- wrong size gate
+REJECT: input size 100 != 4870376
+rc=1
+
+## deploy tool -- happy path (pinned input)
+OK input=fecf91e1fcda size=4870376
+OK DT_INIT_ARRAYSZ d_val @ 0x48aca8: 8 -> 0 (1 byte, 1 null slot dropped)
+OK output=d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4  (/private/tmp/claude-501/-Users-zhaoyue-orca-workspaces-westlake-harness-video/7f25f2f3-9c80-48b3-9d33-751b56041b1e/scratchpad/o.so)
+rc=0
+
+# The SHA pin subsumes slot-liveness on the pinned input (its sole slot is already null).
+# gate_probe.py exercises the slot-liveness gate (pin removed) to show a live slot is refused:
+
+## probe -- real input, null slot (accept)
+OK all 1 slot(s) null -> safe to set INIT_ARRAYSZ=0
+rc=0
+
+## probe -- synthetic live slot at file 0x458168 (reject)
+REJECT: 1 of 1 init slot(s) live/relocated -- refusing to drop a real constructor
+rc=1

@@ -1,0 +1,91 @@
+{
+ "schema": "ttvideo-selected-change/v1",
+ "id": "r3",
+ "status": "proposed_static_awaiting_window (three-file deploy; executor = cx-seal r4/r5, accepted)",
+ "supersedes": "r2 (79275cf9) REJECTED on static evidence; P1 (selected-change.json) kept as history",
+ "key": "toutiao (1 key)",
+ "one_line": "r2's namespace/compat routing + a byte-exact pre-sanitized libmffmpeg.so so libttmplayer's by-name DT_NEEDED load no longer hits a null init slot.",
+ "why_r2_rejected": {
+  "mechanism": "r2 moves libttmplayer into the android-native namespace (NATIVE_TARGETS) so its NDK-C++ chain resolves against the APK libc++. libttmplayer DT_NEEDED libmffmpeg.so is then resolved by musl's by-NAME path (find_library_by_name -> load_library, oh61 dynlink e50b30f2 L2408/L2552). That path never runs RouteB SanitizeInitArray, which fires only on ART's explicit System.loadLibrary entry (link_stubs_arm64.cc 87a2e823 L552-559). The APK libmffmpeg.so (fecf91e1) has a single INIT_ARRAY slot at vaddr 0x45c168 whose file value is 0 with zero relocations targeting it (object-facts.txt). musl do_init_fini has no null guard (e50b30f2 L3446-3457: `while (n--) ((void(*)(void))*fn++)();`) -> it would call address 0: a PREDICTED crash (static), not an observed one -- in the observed r2 run the libvcbasekit ns0 relocation LOAD-FAIL fired first and masked it. Same outcome whether libmffmpeg is a target (ART loads it, SanitizeInitArray writes the dotted sibling, the by-name NEEDED misses the dotted shortname and reloads the original) or ns0 (previously masked by the libvcbasekit relocation failure).",
+  "adopted_by": "outer (video-1919-r2-review) and cx-seal (video-1919-r2-loader-review) independently",
+  "evidence": [
+   "evidence/r2-review/object-facts.txt",
+   "evidence/r2-review/link_stubs_arm64.cc",
+   "evidence/r2-review/oh61-musl-rules-excerpt.txt"
+  ]
+ },
+ "derived_artifact": {
+  "name": "libmffmpeg.so (pre-sanitized)",
+  "before_sha256": "fecf91e1fcda600661f501ce76a97456ad7e330b584013f2b742afb680b337c9",
+  "after_sha256": "d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4",
+  "size_bytes": 4870376,
+  "byte_diff": "exactly 1 word: DT_INIT_ARRAYSZ d_val at file offset 0x48aca8, 8 -> 0",
+  "semantics": "reuses RouteB SanitizeInitArray verbatim (link_stubs 87a2e823 L344-466): the sole init slot is effectively null, kept=0, so it sets DT_INIT_ARRAYSZ = kept*8 = 0. The slot bytes are already 0, so the only on-disk change is the ARRAYSZ word -> byte-identical to the loader's own sibling copy. No new filter, no security-logic change.",
+  "recipe": "candidate-r3/derive_mffmpeg.py (sha256 2165a64fd206af09eb252761f5374827b1d812100a5955c9ea2ccb9f9805e923)",
+  "raw_receipt": "$HOME/.local/share/westlake/toutiao-video-r3-derive/20261019T192945/ (command.txt, derive.stdout.txt, derive.stderr.txt, derive.rc=0, SHA256SUMS, derive_mffmpeg.py, libmffmpeg.so)",
+  "large_binary_policy": "the 4.87 MB .so is NOT committed; mirrored on hw248 (above). derive_mffmpeg.py (source/recipe) is committed.",
+  "independent_cross_check": "outer video-r3-readonly/independent-derived-sha.json: same offset 0x48aca8, same after SHA d2882303 (in-memory, no artifact); three-way agreement (this lane, outer, cx-seal)",
+  "reject_gates": [
+   "input SHA != fecf91e1 (drift)",
+   "size != 4870376",
+   "packed/undecodable relocs present",
+   "any init slot live/relocated (refuse to drop a real constructor)",
+   "byte diff != the single DT_INIT_ARRAYSZ word",
+   "output SHA != d2882303 (fixed point)"
+  ],
+  "reject_gate_receipts": "candidate-r3/receipt-tests/reject-gates.txt (drift/size/live-slot all refuse; happy path -> d2882303)",
+  "persistent_mirror": "$HW248_ARTIFACT_ROOT/toutiao-video-r3-20261019T192945/{raw,input} (8 files, per-file remote SHA verified; env.md maps the root). raw/libmffmpeg.so=d2882303 (output), input/libmffmpeg.so=fecf91e1 (input). Private receipt: $HOME/.local/share/westlake/toutiao-resume-20261019/video-r3-persistent-mirror/receipt.json"
+ },
+ "deploy_three_files": {
+  "note": "run.sh is unchanged from r2; r3 adds only the file replacement. Preimages are from the CURRENT board baseline (d3518cef, compat absent, mffmpeg original). Physical target root RT=/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d bound at /data/local/tmp/asx in the parent's private namespace (never the global-shell /data/local/tmp/asx).",
+  "files": [
+   {
+    "target": "$RT/run.sh",
+    "before": "before(W_live) derived from static/selected-change/run.sh.d3518cef.orig (WID-exact, see OPERATIONS card \u00a72)",
+    "after": "after(W_live) derived from candidate-r3/deploy-inputs/run.sh (sha 79275cf9f9a72be72beb551b978ee5f2faaed84129980aa5c79d2f51acd040d5 at WID=33), 2 token lines vs P1: NATIVE_TARGETS += libmffmpeg.so:libttmplayer.so, NATIVE_INHERIT += libopensles_android_compat.so:libOpenSLES.so",
+    "metadata": "owner 20011206:20011206, mode 0755, SELinux label read in preflight"
+   },
+   {
+    "target": "$RT/libopensles_android_compat.so",
+    "before": "absent (test ! -e, test ! -L)",
+    "after": "sha 9f558aaf1d48cedbc10e6774073d71177efb6d1e196fe528f0203505d1ee761f (candidate/deploy-inputs/, unchanged from P1)",
+    "metadata": "owner 20011206:20011206, mode 0644, label of sibling libandroid_native_network_compat.so"
+   },
+   {
+    "target": "$RT/lib/arm64-v8a/libmffmpeg.so",
+    "before": "sha fecf91e1fcda600661f501ce76a97456ad7e330b584013f2b742afb680b337c9, 4870376 B, mode 0644, owner 20011206:20011206, SELinux appdat label (outer video-r3-readonly/metadata.txt; parent private view = same inode)",
+    "after": "sha d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4, 4870376 B, SAME mode/owner/label (single-word edit preserves all metadata)",
+    "backup": "single-file backup $RT/lib/arm64-v8a/libmffmpeg.so.ttvideo-before-<boot8> (sha = before; name matches the r5 executor's ttvideo-before-<boot8>), guarded absent beforehand",
+    "same_inode_requirement": "after the swap, both the ART explicit load (System.loadLibrary mffmpeg) and libttmplayer's DT_NEEDED libmffmpeg.so must open this one physical path/inode: with INIT_ARRAYSZ=0 SanitizeInitArray early-returns (kept==count) and opens the real path, so no dotted sibling is produced and musl's find_library_by_fstat matches one inode"
+   }
+  ],
+  "executor": "cx-seal three-file CAS executor r4/r5 (limited ACCEPT) -- this lane does not rebuild the deploy framework",
+  "rollback": "restore run.sh to before(W), remove the compat DSO (then test ! -e), restore libmffmpeg.so from the single-file backup (CAS verify sha == fecf91e1), fresh reboot; verify baseline run.sh/environ/maps and feed screenshot equivalent"
+ },
+ "closure_by_real_provider": {
+  "gate_stance": "NOT all-pass. The recursive closure is reported with its proven edges and its still-unproven edges kept EXPLICIT; the unproven edges become small-window verification items, they are not asserted resolved.",
+  "proven_static": [
+   "SanitizeInitArray fires only on the ART OpenNativeLibrary entry; musl by-name DT_NEEDED does not (link_stubs 87a2e823 L552-559; dynlink e50b30f2 L2408/L2552)",
+   "do_init_fini has no null guard; original mffmpeg sole slot 0x45c168=0 with 0 relocs -> the r2 PREDICTED fatal (static; the observed r2 failure was the libvcbasekit ns0 relocation that masks it); d2882303 sets INIT_ARRAYSZ=0 so n=0 and no slot is called",
+   "d2882303 makes Java-explicit and DT_NEEDED converge on one inode (SanitizeInitArray early-return)",
+   "libvcbasekit.so loads in the android ns as a target with no LOAD-FAIL and no INITARRAY drop (child-full.stderr:2833) -> shortname libvcbasekit.so -> libttmplayer NEEDED libvcbasekit.so matches by name in the android ns (find_library_by_name)",
+   "libttcrypto.so (init slot relocated, kept=1) and libttboringssl.so (no init array) are not dotted-renamed and load as targets -> by-name reuse for libmffmpeg's NEEDED",
+   "compat 9f558aaf is is_global via LD_PRELOAD (dynlink L3946-3972) so it is in every namespace's relocation search list (L1036-1060 add_can_search_so_list) without being inherited"
+  ],
+  "unproven_needs_small_window": [
+   "libttmplayer's FULL relocation closure in the android ns succeeds -- specifically libvcbasekit's _ZNSt6__ndk18ios_baseD2Ev binds to the APK libc++_shared (e8373ee4, __ndk1) and NOT OH /system/lib64/libc++_shared (1cdf4eae, __n1): inferred from 'libvcbasekit already loads there', but adding libttmplayer as a target changes the provider set; verify no [SOURCE-NATIVE-LOAD-FAIL] for libttmplayer and no __ndk1 relocation error",
+   "__assert2 for libmffmpeg/libvcbasekit resolves from RouteB libwestlake_bionic (99baf31d) -- empirical only, not a named-export check",
+   "the compat IID pointer identity from the android ns (P1 success criterion: GOT [B+0x4730b0]==Cb+0x3b98, [B+0x4730e8]==Cb+0x3b90) now that libttmplayer is in the android ns rather than ns0",
+   "inherit of libOpenSLES yields a single OH libOpenSLES inode (check child maps, inode of /system/lib64/libOpenSLES.so)",
+   "next first-fatal after the load blocker (surface / ANativeWindow / EGL, next-walls.json P2/P3) is unknown and not predicted"
+  ]
+ },
+ "not_claimed": "playback, audio, video decode or surface present. r3 is a LOAD-blocker candidate only; the routing-becomes-correct statement is an inference until the small-window items above are read.",
+ "scope_note": "no constructor added, no security mechanism changed, no other runtime re-baked. Only correct routing + reuse + API loading of already-deployed parts plus the one byte-exact derived file.",
+ "allowed_files": [
+  "benchmark/2026-10-19-toutiao-video-playback/candidate-r3/**",
+  "benchmark/2026-10-19-toutiao-video-playback/static/selected-change-r3.json",
+  "benchmark/2026-10-19-toutiao-video-playback/static/selected-change-r2.json (rejected marker)",
+  "specs/toutiao-video-playback/t2-minimal-repair.spec.md"
+ ]
+}

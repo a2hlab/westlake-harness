@@ -1,0 +1,120 @@
+# OH 6.1 musl ldso/linux/dynlink.c commit 02dd8d82, sha e50b30f2 (repo: benchmark/2026-10-01-n10b-child/evidence/oh61-dynlink-linux.c). Board ld-musl /system/lib/ld-musl-aarch64.so.1 sha fd3c4701 (outer pull, deployed-cpp-provider/); source->binary binding = same OH 6.1 release only, not byte-rebuilt.
+## lines 2408,2427
+static struct dso *find_library_by_name(const char *name, const ns_t *ns, bool check_inherited)
+{
+	LD_LOGD("find_library_by_name name:%{public}s, ns_name:%{public}s, check_inherited:%{public}d",
+		name,
+		ns ? ns->ns_name : "NULL",
+		!!check_inherited);
+	struct dso *p = search_dso_by_name(name, ns);
+	if (p) return p;
+	if (check_inherited && ns->ns_inherits) {
+		for (size_t i = 0; i < ns->ns_inherits->num; i++) {
+			ns_inherit * inherit = ns->ns_inherits->inherits[i];
+			p = search_dso_by_name(name, inherit->inherited_ns);
+			if (p && is_sharable(inherit, name)) {
+			    if (app_has_same_name_so(name, ns) != -1) {
+			        return NULL;
+			    }
+			    return p;
+			}
+		}
+	}
+## lines 2552,2566
+		if (!check_inherited || !namespace->ns_inherits) return 0;
+		/* Load lib in inherited namespace. Do not check inherited again.*/
+		for (size_t i = 0; i < namespace->ns_inherits->num; i++) {
+			ns_inherit *inherit = namespace->ns_inherits->inherits[i];
+			if (strchr(name, '/') == 0 && !is_sharable(inherit, name)) continue;
+			p = load_library(name, needed_by, inherit->inherited_ns, false, reserved_params);
+			if (p) {
+				LD_LOGD("load_library search in inherited, found p ,inherited_ns name:%{public}s",
+						inherit->inherited_ns->ns_name);
+				return p;
+			}
+		}
+		return 0;
+	}
+	if (fstat(fd, &st) < 0) {
+## lines 1036,1060
+
+/* The list of so that can be accessed during relocation include:
+ * - The is_global flag of the so is true which means accessible by default.
+ *   Global so includes exe, ld preload so and ldso.
+ * - We only check whether ns is accessible for the so if is_reloc_head_so_dep is true.
+ *
+ *   How to set is_reloc_head_so_dep:
+ *   When dlopen A, we set is_reloc_head_so_dep to true for
+ *   all direct and indirect dependent sos of A, including A itself. */
+static void add_can_search_so_list_in_dso(struct dso *dso_relocating, struct dso *start_check_dso) {
+	struct dso *p = start_check_dso;
+	for (; p; p = p->syms_next) {
+		if (p->is_global) {
+			add_reloc_can_search_dso(dso_relocating, p);
+			continue;
+		}
+
+		if (p->is_reloc_head_so_dep) {
+			if (dso_relocating->namespace && check_sym_accessible(p, dso_relocating->namespace)) {
+				add_reloc_can_search_dso(dso_relocating, p);
+			}
+		}
+	}
+
+	return;
+## lines 3946,3972
+	if (env_preload) {
+		load_preload(env_preload, get_default_ns(), tasks);
+	}
+	for (struct dso *q = head; q; q = q->next) {
+		q->is_global = true;
+		q->is_preload = true;
+	}
+	preload_deps(&app, tasks);
+	unmap_preloaded_sections(tasks);
+	shuffle_loadtasks(tasks);
+	run_loadtasks(tasks, NULL);
+	free_loadtasks(tasks);
+	assign_tls(app.next);
+#else
+	load_preload(dfx_preload, get_default_ns());
+	if (env_preload) load_preload(env_preload, get_default_ns());
+	for (struct dso *q = head; q; q = q->next) {
+		q->is_global = true;
+		q->is_preload = true;
+	}
+ 	load_deps(&app, NULL);
+#endif
+
+	/* Set is_reloc_head_so_dep to true for all direct and indirect dependent sos of app, including app self. */
+	for (struct dso *p = head; p; p = p->next) {
+		p->is_reloc_head_so_dep = true;
+		add_syms(p);
+## lines 2253,2266
+{
+	size_t dyn[DYN_CNT];
+	size_t flags1 = 0;
+	decode_vec(p->dynv, dyn, DYN_CNT);
+	search_vec(p->dynv, &flags1, DT_FLAGS_1);
+	if (flags1 & DF_1_GLOBAL) {
+		LD_LOGI("Add DF_1_GLOBAL for %{public}s", p->name);
+		p->is_global = true;
+	}
+	if (flags1 & DF_1_NODELETE) {
+		p->flags |= DSO_FLAGS_NODELETE;
+	}
+	p->syms = laddr(p, dyn[DT_SYMTAB]);
+	p->strings = laddr(p, dyn[DT_STRTAB]);
+## do_init_fini (no null guard) lines 3446-3457
+			if (dyn[0] & (1 << DT_INIT_ARRAY)) {
+				n = dyn[DT_INIT_ARRAYSZ] / sizeof(size_t);
+				fn = laddr(p, dyn[DT_INIT_ARRAY]);
+			} 
+		}
+ 
+		if (n) {
+			if (p != &ldso) {
+				trace_marker_begin(HITRACE_TAG_MUSL, "calling constructors: ", p->name);
+			}
+			while (n--) ((void (*)(void))*fn++)();
+			if (p != &ldso) {
