@@ -1,0 +1,21 @@
+# Outer only: one read-only shell body, supplied to the established exact-61b transport.
+set -eu
+expected=dcc12383-c47d-4a54-acf2-b437f44a3823
+test "$(cat /proc/sys/kernel/random/boot_id)" = "$expected"
+root=/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2
+attempt="$root/boots/$expected"
+printf 'OWNER\n'
+cat "$attempt/lock/owner"
+read pid birth owner_boot < "$attempt/lock/owner"
+case "$pid:$birth" in *[!0-9:]*) exit 2;; esac
+test -n "$pid"; test -n "$birth"; test "$pid" -gt 1; test "$owner_boot" = "$expected"
+printf 'STAT\n'; cat "/proc/$pid/stat"
+printf 'CMDLINE\n'; timeout 2 strings "/proc/$pid/cmdline"
+printf 'STATUS\n'; cat "/proc/$pid/status"
+for marker in "$root/stop" "$attempt/stop"; do
+ if [ -e "$marker" ] || [ -L "$marker" ]; then printf 'STOP_PRESENT=%s\n' "$marker"; else printf 'STOP_ABSENT=%s\n' "$marker"; fi
+done
+printf 'OWNER_AGAIN\n'; cat "$attempt/lock/owner"
+printf 'STAT_AGAIN\n'; cat "/proc/$pid/stat"
+test "$(cat /proc/sys/kernel/random/boot_id)" = "$expected"
+printf 'READ_COMPLETE\n'
