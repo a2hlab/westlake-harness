@@ -1,0 +1,11 @@
+# T30 production archive
+
+The two-unit recovery candidate previously had only local persistent build evidence. It now has a self-contained remote archive covering all 82 exact recipe input rows (79 unique input byte streams), including the original object files, compiler, linker, ELF tool, SDK headers, libraries and source. No T26/T29 base archive is required to recover this package.
+
+Archive: `HW248_ARTIFACT_ROOT/t30-production-20261020-7f8d75bb/production.tar.gz`, **58,652,095 bytes**, SHA256 **`6cfa7abfb68c2395dd076e3501f963f37b4e4b79897570fcef216dfe659f4b01`**, **217 members**. Candidate shim: `7f8d75bbf09e28e2b57a4621f1181ff944e79e462b78707c620dd67aef0b0bcb` (107,544 bytes). The unchanged bridge is included as exact bytes too.
+
+The bundle contains `frozen-01`, complete `production-01`, original execution argv/stdout/stderr/rc, both actual compiler dependency files, author source/patch/design, final independent host fixtures, and earlier preparation history. `input-map.json` maps every portable recipe path to an exact content-addressed member. Restore those files to the corresponding recipe anchors before rebuilding; original private command paths are evidence, not required installation locations. Public implementation and build entry references remain in [source-refs.json](source-refs.json).
+
+Before upload the remote directory was absent. Creation, transfer and final verification all returned 0; directory mode 700 and archive mode 600 were read back. The original verifier checked full archive hash/size, safe unique member names, and every member hash/size both locally and remotely. [remote-success.json](remote-success.json) is the completed receipt; the earlier pending record is preserved separately. The published private index was replayed from its own declared `$HOME` root and passed.
+
+An initial local packaging attempt stopped before creating any archive because the peer index uses `root` instead of `private_root`; its preparation script and empty initial directory remain historical. The corrected `archive-02` is the sole uploaded archive. No production rebuild, new test run or device operation was performed for archival work. Archive integrity does not establish recovery of the first RequestBuffer error or successful device video switching.
