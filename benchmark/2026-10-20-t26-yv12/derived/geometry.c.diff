@@ -1,0 +1,55 @@
+--- benchmark/2026-10-20-t25-geometry/geometry.c
++++ T26/derived/geometry.c
+@@ -1,5 +1,6 @@
+ #define _GNU_SOURCE 1
+ #include "geometry.h"
++#include "wiring.h"
+ #include <dlfcn.h>
+ #include <errno.h>
+ #include <pthread.h>
+@@ -8,7 +9,7 @@
+ #include <string.h>
+ 
+ static int32_t mapped_format(int32_t f) {
+- switch(f){case 1:return 12;case 2:return 11;case 3:return 13;case 4:return 3;case 0x32315659:return 11;default:return f;}
++ switch(f){case 1:return 12;case 2:return 11;case 3:return 13;case 4:return 3;case 0x32315659:return 12;default:return f;}
+ }
+ int32_t r25_apply(const struct r25_ops *o,void *w,int32_t width,int32_t height,int32_t format,struct r25_report *r) {
+  if(!r)return -EINVAL;
+@@ -48,6 +49,7 @@
+ }
+ static pthread_once_t once=PTHREAD_ONCE_INIT;
+ static struct r25_ops ops;
++static struct r26_context *cache;
+ static void *owner_handle,*owner_base,*surface_base,*shim_base,*own_lock,*own_unlock,*own_geometry;
+ static uintptr_t player_base;
+ static int bind_error=-ENODEV;
+@@ -78,7 +80,8 @@
+  own_lock=dlsym(h,"ANativeWindow_lock");own_unlock=dlsym(h,"ANativeWindow_unlockAndPost");own_geometry=dlsym(h,"ANativeWindow_setBuffersGeometry");
+  void *fns[]={own_lock,own_unlock,own_geometry};
+  for(unsigned n=0;n<3;n++){Dl_info fi={0};if(!fns[n] || !dladdr(fns[n],&fi) || fi.dli_fbase!=shim_base)return;}
+- ops=(struct r25_ops){(int(*)(void*))acquire,(void*(*)(void*))get,(int(*)(void*))release,(int32_t(*)(void*,int32_t,...))opt};bind_error=0;
++ ops=(struct r25_ops){(int(*)(void*))acquire,(void*(*)(void*))get,(int(*)(void*))release,(int32_t(*)(void*,int32_t,...))opt};
++ struct r26_owner owner={ops.acquire,ops.get,ops.release};bind_error=r26_create(&owner,NULL,&cache);
+  diagnostic("[WL-R25-BIND] owner=%p surface=%p HandleOpt=%p geometry=%p lock=%p unlock=%p owner_file=/data/local/tmp/asx/liboh_adapter_bridge.so surface_file=%s shim_file=%s\n",owner_base,surface_base,opt,own_geometry,own_lock,own_unlock,ri.dli_fname,self.dli_fname);
+ }
+ static int admitted_caller(void *pc) {
+@@ -95,13 +98,17 @@
+  (void)__atomic_compare_exchange_n(&player_base,&empty,want,0,__ATOMIC_RELAXED,__ATOMIC_RELAXED);
+  return __atomic_load_n(&player_base,__ATOMIC_RELAXED)==want;
+ }
++int wl_r26_gate(void *caller){pthread_once(&once,bind_once);return bind_error?bind_error:(admitted_caller(caller)?0:-EXDEV);}
++struct r26_context *wl_r26_cache(void){return cache;}
+ static int32_t dispatch(void *w,int32_t width,int32_t height,int32_t format,void *caller) {
+  if(!w)return -EINVAL;
+  pthread_once(&once,bind_once);
+  if(bind_error || !admitted_caller(caller)){
+   int rc=bind_error?bind_error:-EXDEV;diagnostic("[WL-R25-GEOMETRY] rejected caller=%p wrapper=%p rc=%d\n",caller,w,rc);return rc;
+  }
+- struct r25_report r;int rc=r25_apply(&ops,w,width,height,format,&r);
++ struct r26_token token;int rc=r26_geometry_begin(cache,w,&token);if(rc)return rc;
++ struct r25_report r;rc=r25_apply(&ops,w,width,height,format,&r);
++ int cleanup=r26_geometry_end(cache,token,format,rc,r.release_called && r.release_rc!=1);if(!rc && cleanup)rc=cleanup;
+  diagnostic("[WL-R25-GEOMETRY] caller=%p entry=%p wrapper=%p oh=%p wh=%dx%d fmt=%d acquire=%u/%d unwrap=%u/%d geometry=%u/%d format=%u/%d release=%u/%d result=%d\n",caller,own_geometry,w,r.oh,width,height,format,r.acquire_called,r.acquire_rc,r.unwrap_called,r.unwrap_rc,r.geometry_called,r.geometry_rc,r.format_called,r.format_rc,r.release_called,r.release_rc,rc);
+  return rc;
+ }

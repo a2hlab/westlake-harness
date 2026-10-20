@@ -1,0 +1,28 @@
+--- benchmark/2026-10-20-t23-egl-import/egl_import.c
++++ T26/derived/egl_import.c
+@@ -2,6 +2,7 @@
+  * Narrow changes: explicit slot ownership, failure retention and unique-display
+  * selection without consuming EGL error state. See donor-index.json. */
+ #include "egl_import.h"
++#include "observation.h"
+ #include <pthread.h>
+ #include <stddef.h>
+ #include <stdint.h>
+@@ -53,7 +54,7 @@
+  for(unsigned i=0;i<R23_SLOTS;i++)if(slots[i].state==FREE){index=i;slots[i].state=RESERVED;generation=++slots[i].generation;break;}
+  pthread_mutex_unlock(&table_lock);
+  if(index==R23_SLOTS){diagnostic("[WL-R23-EGL] client refused table_full\n");return NULL;}
+- pthread_mutex_lock(&provider_lock);void *window=platform.create_buffer((void*)buffer);pthread_mutex_unlock(&provider_lock);
++ pthread_mutex_lock(&provider_lock);void *window=platform.create_buffer((void*)buffer);pthread_mutex_unlock(&provider_lock);if(window)wl_r27_import((void*)buffer,window,index,generation);
+  pthread_mutex_lock(&table_lock);
+  if(slots[index].state!=RESERVED || slots[index].generation!=generation){pthread_mutex_unlock(&table_lock);if(window)destroy_native(window);return NULL;}
+  slots[index].buffer=window;slots[index].state=window?CLIENT:FREE;
+@@ -71,7 +72,7 @@
+  if(refused){diagnostic("[WL-R23-EGL] create refused tracked_busy_or_target\n");return NULL;}
+  if(index==R23_SLOTS)return platform.next_create?platform.next_create(display,context,target,buffer,attribs):NULL;
+  int selected=implementation(display);void *image=NULL;
+- if(selected>=0 && platform.impl[selected].create_image)image=platform.impl[selected].create_image(display,context,OH_BUFFER,buffer,attribs);
++ if(selected>=0 && platform.impl[selected].create_image)image=wl_r27_create(index,generation,(void*)platform.impl[selected].create_image,display,context,OH_BUFFER,buffer,attribs);
+  if(!image){diagnostic("[WL-R23-EGL] create failed display=%p selected=%d window_buffer=%p\n",display,selected,buffer);release_failed_create(index,generation);return NULL;}
+  pthread_mutex_lock(&table_lock);
+  /* No other operation can mutate CREATING. It remains owned across the driver call. */

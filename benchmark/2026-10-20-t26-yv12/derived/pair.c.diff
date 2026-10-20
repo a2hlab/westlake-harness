@@ -1,0 +1,37 @@
+--- benchmark/2026-10-20-t20-provider-link-slice/shim/pair.c
++++ T26/derived/pair.c
+@@ -1,5 +1,7 @@
+ #define _GNU_SOURCE 1
+ #include "entry.h"
++#include "wiring.h"
++#include "observation.h"
+ #include <dlfcn.h>
+ #include <errno.h>
+ #include <pthread.h>
+@@ -90,6 +92,7 @@
+  RESOLVE(flush,OH_NativeWindow_NativeWindowFlushBuffer);
+  RESOLVE(abort,OH_NativeWindow_NativeWindowAbortBuffer);
+ #undef RESOLVE
++ wl_r27_bind_cpu(owner_handle,provider_base);
+  const struct r20_owner own={NULL,unwrap};bind_error=r20_create(&p,&own,&context);
+  pair_log("[WL-R20-BIND] result=%d context=%p owner_base=%p provider_base=%p\n",bind_error,(void*)context,base,provider_base);
+ }
+@@ -99,6 +102,7 @@
+ }
+ __attribute__((visibility("hidden"))) int wl_r20_pair_lock(void *window,void *out,void *dirty,void *caller){
+  if(!player_caller(caller))return original_lock_refusal();
++ int route=wl_r26_gate(caller);if(route)return fail(route);
+  if(!window || !out)return fail(-EINVAL);
+  pthread_once(&once,bind_once);if(bind_error || !context)return fail(bind_error);
+  int acquired=owner_acquire(window);
+@@ -110,8 +114,9 @@
+ }
+ __attribute__((visibility("hidden"))) int wl_r20_pair_unlock(void *window,void *caller){
+  if(!player_caller(caller))return fail(-ENODEV);
++ int route=wl_r26_gate(caller);if(route)return fail(route);
+  if(!window)return fail(-EINVAL);pthread_once(&once,bind_once);if(bind_error || !context)return fail(bind_error);
+  struct r14_report report={0};int rc=r20_unlock(context,window,&report);
+- if(!rc && owner_release(window)!=1)rc=-EPROTO;
++ if(!rc && owner_release(window)!=1){(void)r26_poison(wl_r26_cache(),window);rc=-EPROTO;}
+  diagnostic("unlock",window,caller,rc,&report);return rc?fail(rc):0;
+ }

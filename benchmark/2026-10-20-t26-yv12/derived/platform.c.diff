@@ -1,0 +1,17 @@
+--- benchmark/2026-10-20-t23-egl-import/platform.c
++++ T26/derived/platform.c
+@@ -1,5 +1,6 @@
+ #define _GNU_SOURCE 1
+ #include "egl_import.h"
++#include "observation.h"
+ #include <dlfcn.h>
+ #include <stdint.h>
+ #include <stdio.h>
+@@ -58,6 +59,7 @@
+  void *create=external(h,"OH_NativeWindow_CreateNativeWindowBufferFromNativeBuffer",0);
+  void *destroy=external(h,"OH_NativeWindow_DestroyNativeWindowBuffer",0);
+  if(!native_member(create,0x6702c) || !native_member(destroy,0x66e18))return -1;
++ wl_r27_bind_import(h,surface_base);
+  p->create_buffer=(void*(*)(void*))create;p->destroy_buffer=(void(*)(void*))destroy;
+  fprintf(stderr,"[WL-R23-BIND] hwui_base=%p surface_base=%p create=%p destroy=%p\n",(void*)hwui_base,surface_base,create,destroy);return 0;
+ }
