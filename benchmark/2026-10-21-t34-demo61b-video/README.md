@@ -7,6 +7,7 @@ success and restoration of files do not establish video or healthy-feed acceptan
 
 - [Actual W02 images, rollback and corrected verdict](window-02-closed/README.md)
 - [Verified archive: 3,828 payloads, 20,366,770 bytes](archive-01/README.md)
+- [Verified publication to remote master](publication-01/results.json)
 - [Candidate source and original build correspondence](source-map/README.md)
 - [Existing startup evidence and bounded interpretation](triage-01/README.md)
 - [Reviewed UI runner commands](ui-01/COMMANDS.md)
@@ -16,7 +17,8 @@ success and restoration of files do not establish video or healthy-feed acceptan
 The W02 report and its initial API review describe their creation-time state.
 Those records remain unchanged; their archive-pending note is superseded by
 the linked verified archive receipt. The failed observation is now integrated
-into the main working tree. Git publication is a separate verification step.
+into the main working tree and published to remote `master`; the linked
+publication receipt records the exact remotely verified commit.
 
 The UI successor passed eight independent offline tests but has not yet been
 used for a device acceptance run. W02's closed lock and admission must never
