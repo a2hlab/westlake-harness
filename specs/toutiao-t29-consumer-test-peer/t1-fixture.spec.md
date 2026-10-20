@@ -15,6 +15,7 @@ depends: []
 - benchmark/2026-10-20-t29-consumer-test-peer/**
 - specs/toutiao-t29-consumer-test-peer/**
 - tools/spec-checks/tests/toutiao_t29_consumer_test_peer.rs
+- tools/spec-checks/tests/toutiao_t29_consumer.rs
 ### 禁止
 - sources/api-implementations/bridge-d4fa-source-snapshot/**
 - benchmark/2026-10-20-t29-window-observation/consumer/**
