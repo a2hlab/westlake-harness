@@ -973,3 +973,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 T31宿主页：实际桌面入口为org.westlake.imehost.EntryAbility，旧Index.js开发标题/输入框与首图对应，foreground guardian随后启动Android child并到真实feed；仓库已有空黑页源，但未证明与当前签名HAP等价，也未证明加速。宿主窗口是WL_PARENT_ID前置条件，HAP替换可能变WID，不能套用仅live-parent/WID29的六态恢复。证据 benchmark/2026-10-20-t31-launcher-triage/。
 
 - 2026-10-20 #91 T32：精确Linux编译器复现原HAP两ABC后，仅Index去开发标题/输入框、同cert/profile覆盖，5cd实际一次图标到feed并见视频内容进展；UID/token及5目录身份/六runtime保存，516.600s留板收窗。冷启仍空背景等待（首次采到feed约55.867s，非精确首帧），不称提速或新公共API。源码/配方/原始签包回执在 benchmark/2026-10-20-toutiao-launcher-page/，实际证据和原HAP回退归档在 benchmark/2026-10-20-t32-host-page-accepted/。
+
+- 2026-10-20 #91 T33：61b同原HAP df385可直接复用T32 b189，但UID20011206/token、icon-manual-r2 guardian、原power30000/86400000及旧视频库须从本板采；仅HAP覆盖、既有WID33→30派生，单图标真实feed，325.997s签/326.466s收窗。同app两板不计2app冻结，未迁T31视频；证据 benchmark/2026-10-20-t33-demo61b-host/accepted/。
