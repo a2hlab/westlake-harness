@@ -1,0 +1,13 @@
+# T29 joint production archive
+
+T29 consumer/shim source, original build commands, inputs and independent reviews are preserved remotely. This proves archival integrity; runtime binding and transition diagnosis remain separate.
+
+Archive: `HW248_ARTIFACT_ROOT/t29-joint-production-20261020-b0e5602a/production.tar.gz`, **15,049,846 bytes**, SHA256 **`ead48782e4d6cd61308f963b4eeb9f743c97f25ff53b76395eb8896371d0a0e8`**, **2,693 members**. Bridge: `b0e5602a97133ebb1dca12972a8931a86528322685a211bb1a7a0a2185fefbd4` (2,023,136 bytes). Shim: `9f3cecdeec89bd7aaa09a2d71a34f24bdc59ce41059a551144cef682526d3087` (106,456 bytes).
+
+This increment requires the verified T26 base at `HW248_ARTIFACT_ROOT/t26-t27-joint-production-20261020-fc58cec5/production.tar.gz`, SHA256 `5d16542a056fca0b2ac102743b1669236de4b4670f35c88924e81247c80ed515`, 69,494,594 bytes. All **948** production receipt input rows were checked against actual bytes. **203** match exact base members, each read back and hashed from the base archive; **745** new rows are included here. `base-reference.json` identifies the required members, and the private input map preserves original-path to member mappings. Both archives are required for recovery.
+
+The new archive contains the complete T29 local benchmark source/recipe/host and production raw tree, the immutable consumer `snapshot-01`, all 22 original production command envelopes and both candidate/baseline ELF files, plus design, implementation and final production peer evidence. Failed intermediate fixtures, old owner extraction and superseded assertions remain recorded. The two original consumer object rebuilds differed; the independent peer classified the differences as `.comment` bytes, while original build status remains unchanged. No extra runtime or rebuild claim is inferred from archival success.
+
+Local preparation 01 completed before the final peer arrived and was not uploaded; preparation 02 independently includes that peer and is the sole uploaded archive. Both preparation records are retained. The remote directory was absent before creation, with directory mode 700 and file mode 600. All three transfer steps returned 0; full archive SHA/size, unique membership and every member SHA/size were checked locally and remotely. Original upload argv/stdout/stderr/rc and verification stdin are private; public envelopes are explicitly sanitized views. The public raw index is replayed from its own declared root, not a separate source variable.
+
+No device command, test rerun, REA call or production rebuild was performed for this archival task. Earlier pending publication records remain historical and are not rewritten.
