@@ -1,0 +1,63 @@
+{
+  "status": "READ_ONLY_BOUNDED_ANALYSIS_CAUSE_UNKNOWN",
+  "device_calls": 0,
+  "builds": 0,
+  "frozen_files_changed": false,
+  "counts": {
+    "geometry_records": 4,
+    "r23_images": 5,
+    "r23_destroys": 5,
+    "r23_create_failed": 0,
+    "surface_update_failure_logs": 0
+  },
+  "established": [
+    "All four recorded geometry requests are YV12 and return 0; this prefix does not exercise RGBX2.",
+    "New OH window 0x7d10194650 receives geometry rc0, frame-available records and two nonnull EGL images; all five recorded images have successful destroy records.",
+    "Old OH 0x7f8b853970 reappears in TextureView producer-window setup, then a new wrapper is returned for it. This does not prove wrong association."
+  ],
+  "source_interpretation": [
+    {
+      "file": "sources/api-implementations/bridge-d4fa-source-snapshot/base/westlake/framework/surface/jni/oh_texture_view_jni.cpp",
+      "lines": "23-48",
+      "claim": "nCreateNativeWindow releases its previous producer endpoint then references the supplied SurfaceTexture endpoint. The marker is not a HWUI consumer reattachment receipt."
+    },
+    {
+      "file": "sources/api-implementations/bridge-d4fa-source-snapshot/base/westlake/framework/surface/jni/oh_surface_texture_jni.cpp",
+      "lines": "186-214,277-302",
+      "claim": "NativeImage/window pinning is intentional; attach/detach return raw rc without these lifecycle logs. Old address reuse is not by itself proof of dangling ownership."
+    },
+    {
+      "file": "benchmark/2026-10-20-t28-rgbx/derived/geometry.c",
+      "lines": "103-114",
+      "claim": "geometry_begin error returns before the GEOMETRY diagnostic; absence of a later record does not prove no geometry call."
+    },
+    {
+      "file": "benchmark/2026-10-20-t28-rgbx/yv12.c",
+      "lines": "115-157",
+      "claim": "Geometry history is wrapper-specific; successful geometry invalidates IDLE aliases on the same OH. A new unknown wrapper uses the approved original-format path. Whether it was locked after return is not recorded."
+    }
+  ],
+  "source_provenance_limit": "Bridge sources are SHA-matched to the committed d4fa source snapshot; this review does not newly prove exact compiled machine-code identity for every bridge method. Candidate geometry/cache source pins are exact inspected T28 source.",
+  "coverage_limits": [
+    "R20/T27 capped before the transition.",
+    "OnFrameAvailable logs first8 then every120; missing records do not establish zero frames.",
+    "Post-trigger hilog is a late short interval, not a complete transition trace.",
+    "No screenshot was newly judged by this review. Dynamic/pause/audio and later same-child recovered playback are outer/user observations, not inferred from logs."
+  ],
+  "outer_observations": [
+    "Initial video dynamic, pause stable, resume dynamic; user confirmed sound.",
+    "Later navigation produced a black video ROI while child7636 stayed alive.",
+    "Normal icon warm reentry retained child7636, showed feed and then played another video. Second pause/resume was still being observed when reported."
+  ],
+  "first_causal_failure": "UNKNOWN",
+  "minimal_next_evidence": {
+    "scope": "Only if another diagnostic is authorized; no new candidate or device command is proposed here.",
+    "first_target": "First post-transition lock/geometry call for wrapper0x7ec65848e0/OH0x7f8b853970: actual call/no-call, cache-begin rc, returned format/dimensions, and completion rc; retain actual raw rc on early return.",
+    "second_target": "Correlate SurfaceTexture state/image/window with actual consumer attach/update return and frame count across the same transition. Existing producer-create log alone cannot settle this.",
+    "do_not_do": [
+      "Do not change OH12/YV12 mapping based on black pixels.",
+      "Do not treat balanced image destruction as playback proof.",
+      "Do not force unknown aliases to YV12; preserve the approved RGB pass-through contract."
+    ]
+  }
+}
