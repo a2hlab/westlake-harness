@@ -1,0 +1,70 @@
+{
+  "status": "STATIC_FORMAT_CONTRACT_REVIEW_NOT_ROOT_CAUSE",
+  "device_calls": 0,
+  "new_builds": 0,
+  "candidate_sha256": "2a867f78905bdc37020bec36c951f628c6393456a1770514c1d73f974fd3d5bc",
+  "actual_linked_inputs": [
+    {
+      "basename": "r14.o",
+      "sha256": "cf833ee929e755fa65a2251583be2aeb299c0886ba6996bc19d377cf24b87ab3",
+      "bytes": 6304
+    },
+    {
+      "basename": "r15.o",
+      "sha256": "b6917536bdc29f19a2c249efabd9b3ff91fd526268ea87be3b26514978948f8b",
+      "bytes": 9560
+    },
+    {
+      "basename": "entry.o",
+      "sha256": "32de0302ac24ae8f802c7fad63a22cc95198870b914f252cc858fd8c2f0ee5c9",
+      "bytes": 3152
+    },
+    {
+      "basename": "pair.o",
+      "sha256": "13bff1757c749237a59e0c9bb59060009b84991fb6e93884a113bfd0f4c9b015",
+      "bytes": 12672
+    },
+    {
+      "basename": "egl_import.o",
+      "sha256": "4d1d6cc859cbc8c9b8a20d2cb34029d4d7c2429d35e1bdd6f5b2afd3072895ca",
+      "bytes": 8752
+    },
+    {
+      "basename": "platform.o",
+      "sha256": "16d66b7b2de2d99b44be9c474a4837974f9ab700a18d0ce9834b5a7a42bacb9d",
+      "bytes": 8992
+    }
+  ],
+  "determined": [
+    "T25 maps Android YV12 FourCC 842094169 to OH RGBX8888 enum11; no pixel conversion in geometry.",
+    "R14/T20 maps returned OH11 to Android2, stride_bytes/4, same mapped pointer. No YV12 scratch/converter in this selected lock/unlock chain.",
+    "Related legacy core source preserves requested YV12 in a per-window ring, returns planar scratch, and converts YV12 to RGBX at unlock. It is a different path, not evidence that T20 converts.",
+    "T20 supplies writable memory/layout; actual pixel writer is player code, whose chosen branch is not established by these sources.",
+    "R23 changes Android native-buffer target to OH target0x34e1, forwards context/attribs; no format conversion or usage modification in wrapper. selected0 is an index, not failure to select."
+  ],
+  "observed_prefix": {
+    "geometry_success": 4,
+    "lock_success": 3,
+    "unlock_flush_success": 3,
+    "requested_format": 842094169,
+    "requested_wh": [
+      576,
+      1024
+    ],
+    "import_return": null,
+    "selected_egl_index": 0
+  },
+  "unknown": [
+    "Actual per-frame OH width/height/stride/size/format/usage, and native handle identity correspondence between CPU lock and HWUI import.",
+    "Player writer branch and whether it honors returned Android format2 or still writes planar YV12.",
+    "Pixel bytes/layout consistency; successful map/flush does not prove correct contents.",
+    "Actual EGL error and support for this exact format+usage+context+attribs tuple.",
+    "Selected hardware allocator tiling/modifier/usage constraints; no evidence yet that unsupported format caused null image."
+  ],
+  "next_minimal_falsifiers": [
+    "First statically inspect exact player lock-return consumer/write branch: determine returned-format branch vs hardcoded YV12; do not substitute related source for exact bytes.",
+    "If runtime observation is authorized later: in one live owned lock transaction, record returned Android width/height/pixel-stride/format and OH native handle width/height/byte-stride/size/format; read usage through trusted bound accessor without dereferencing an unvalidated tail.",
+    "Correlate that same buffer identity to R23 import; record exact format/usage and EGL context/attribs/error. Do not infer common buffer identity from equal dimensions.",
+    "If player selects RGBX writer for format2, a missing-YV12-conversion explanation is falsified for that frame; if it writes planar bytes into RGBX while ignoring outputformat, there is a writer contract mismatch, still not proof of EGL allocation/import failure."
+  ]
+}
