@@ -13,7 +13,7 @@ The user requests Genshin work after the current demo task. No exact Genshin pac
 
 ## Requirements
 
-[REQ-GENSHIN-STATIC-INPUT] The intake MUST identify lawfully available existing base APK, splits and associated assets by actual metadata, provenance and full SHA256, or report MISSING/PARTIAL/UNKNOWN without acquiring new inputs.
+[REQ-GENSHIN-STATIC-INPUT] The intake MUST identify existing user-authorized workspace base APK, splits and associated assets by actual metadata, provenance and full SHA256, or report MISSING/PARTIAL/UNKNOWN without acquiring new inputs. Unknown provenance is recorded as UNKNOWN and does not block ordinary read-only analysis of authorized workspace inputs. MISSING applies only to the explicitly searched local scope; next_action identifies unsearched locations, including OrbStack and hw248.
 
 [REQ-GENSHIN-STATIC-MAP] The intake MUST record version, ABI, SDK, JNI and graphics observations with exact input references and distinguish static candidates from runtime failures and verified BoatAttack behavior.
 
