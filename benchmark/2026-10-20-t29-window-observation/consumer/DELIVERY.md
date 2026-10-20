@@ -10,7 +10,7 @@ receive their independent error quota. The old incorrect test assertion and its
 actual failure are preserved. The corrected fourteen modes and two new budget
 regressions passed an independent outer replay. Both method translation units
 and the header are unchanged. Current source pins are in `design/source-pins.json`;
-the final integrated method replay and production build are still pending.
+the final integrated method replay passed (40 cases, 40 independent processes, three Rust selectors with no ignored tests). The paired production build and independent ELF review also passed; see `design/final-review.json` and `benchmark/2026-10-20-t29-production-peer/`. Actual runtime binding and black-screen repair remain unaccepted.
 
 Independent derivation + hidden logger for the T29 consumer observation. **No REA, no HDC, no device,
 no production build, no deploy.** Scope owned by CC: `consumer/**` + `tools/spec-checks/tests/
