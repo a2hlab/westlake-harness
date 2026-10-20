@@ -51,4 +51,13 @@ class Checks(unittest.TestCase):
    self.assertEqual(subprocess.run(['sh'],input=script.encode(),capture_output=True).returncode,rc)
   p=copy.deepcopy(self.p);p['init_mnt']='invalid'
   with self.assertRaises(AssertionError):prepare.prepare(p,self.run,'hdc')
+ def test_local_zero_remote_82_rejected(self):
+  lines=[]
+  for role in ['physical','parent']:
+   for rel in ['run.sh',*prepare.KNOWN]:
+    lines.append('CV_FILE|'+role+'|'+rel+'|66352:1:10:644:20011206:20011206|'+('a'*64))
+  base='\n'.join(lines)+'\nCHILD_UNKNOWN_NOT_SELECTED\n'
+  for remote,status in [('CV_REMOTE_RC|0','COLLECTED_IDENTITY_GUARDED'),('CV_REMOTE_RC|82','INCOMPLETE_OR_REJECTED'),('CV_REMOTE_RC|0\nCV_REMOTE_RC|0','INCOMPLETE_OR_REJECTED'),('','INCOMPLETE_OR_REJECTED')]:
+   with self.subTest(remote=remote):
+    self.assertEqual(report.decode(base+remote+'\nCANDIDATE_VIEW_END_IDENTITY_MATCH\n',0)['status'],status)
 if __name__=='__main__':unittest.main()

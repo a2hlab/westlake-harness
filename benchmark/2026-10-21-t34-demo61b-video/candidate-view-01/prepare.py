@@ -93,7 +93,7 @@ test "$rw" = {p['wid']} || OBS_BAD=82
     for role in ['parent','child']:
         if not p.get(role):shell+='echo CHILD_UNKNOWN_NOT_SELECTED\n';continue
         n=p[role]['pid'];shell+=f'echo MAPS_BEGIN_{role}; cat /proc/{n}/maps || {{ echo UNKNOWN_MAPS_{role}; OBS_BAD=82; }}; echo MAPS_END_{role}\necho MOUNTS_BEGIN_{role}; cat /proc/{n}/mountinfo || {{ echo UNKNOWN_MOUNTS_{role}; OBS_BAD=82; }}; echo MOUNTS_END_{role}\n'
-    shell+=guard+'echo CANDIDATE_VIEW_END_IDENTITY_MATCH\nexit "$OBS_BAD"\n'
+    shell+=guard+"printf 'CV_REMOTE_RC|%s\\n' \"$OBS_BAD\"\necho CANDIDATE_VIEW_END_IDENTITY_MATCH\nexit \"$OBS_BAD\"\n"
     assert len(shell.encode())<32768
     return [str(hdc),'-t',SERIAL,'shell',shell]
 

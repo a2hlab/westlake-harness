@@ -30,8 +30,10 @@ def decode(text,rc):
         report[role+':'+rel]={'physical_same_sha':physical['sha256']==f['sha256'] if physical else None,'physical_same_devinode':physical['stat'].split(':')[:2]==f['stat'].split(':')[:2] if physical else None,'maps_rows':rows,'mapping_status':'FILE_IDENTITY_MATCH' if rows and all(x['same_file_identity'] for x in rows) else ('MAPPING_IDENTITY_MISMATCH' if rows else 'UNKNOWN_NOT_MAPPED_AT_EXACT_PATH')}
     counts={role:len([x for x in files if x[0]==role]) for role in ['physical','parent','child']}
     sufficient=counts['physical']==6 and counts['parent']==6 and ('CHILD_UNKNOWN_NOT_SELECTED' in text or counts['child']==6)
-    ok=rc==0 and complete and sufficient and not errors
-    return {'status':'COLLECTED_IDENTITY_GUARDED' if ok else 'INCOMPLETE_OR_REJECTED','rc':rc,'final_identity_marker':complete,'observed_lines':observations,'errors':errors,'counts':counts,'file_views':report,'child':'UNKNOWN_NOT_SELECTED' if 'CHILD_UNKNOWN_NOT_SELECTED' in text else ('EXPLICIT_IDENTITY_COLLECTED' if counts['child']==6 else 'UNKNOWN_INCOMPLETE'),'loaded_winner':'UNKNOWN; maps identity is not a dynamic symbol binding'}
+    remote_rows=[line for line in text.splitlines() if line.startswith('CV_REMOTE_RC|')]
+    remote_ok=remote_rows==['CV_REMOTE_RC|0']
+    ok=rc==0 and remote_ok and complete and sufficient and not errors
+    return {'status':'COLLECTED_IDENTITY_GUARDED' if ok else 'INCOMPLETE_OR_REJECTED','rc':rc,'remote_rc_lines':remote_rows,'remote_rc_zero_unique':remote_ok,'final_identity_marker':complete,'observed_lines':observations,'errors':errors,'counts':counts,'file_views':report,'child':'UNKNOWN_NOT_SELECTED' if 'CHILD_UNKNOWN_NOT_SELECTED' in text else ('EXPLICIT_IDENTITY_COLLECTED' if counts['child']==6 else 'UNKNOWN_INCOMPLETE'),'loaded_winner':'UNKNOWN; maps identity is not a dynamic symbol binding'}
 def main():
     a=argparse.ArgumentParser();a.add_argument('--stdout',type=Path,required=True);a.add_argument('--rc',type=Path,required=True);a.add_argument('--out',type=Path,required=True);a=a.parse_args()
     a.out.write_text(json.dumps(decode(a.stdout.read_text(),int(a.rc.read_text())),indent=2)+'\n')
