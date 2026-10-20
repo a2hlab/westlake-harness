@@ -11,6 +11,11 @@ is preserved. No video candidate was retained.
 - [Verified W03 archive: 4,746 payloads, 1,163,052 bytes](archive-03/README.md)
 - [Runtime comparison: proven facts and missing evidence](environment-diff-01/README.md)
 - [Bounded read-only runtime collection](environment-collect-01/README.md)
+- [Actual two-board parent comparison and reusable comparison tool](environment-actual-01/README.md)
+- [Guardian source chain and remaining candidate-generation evidence gap](guardian-source-chain-01/README.md)
+- [Immediate candidate private-view collector](candidate-view-01/README.md)
+- [W04 fresh preparation review, not deployment acceptance](window-04-prep-peer/README.md)
+- [Actual APK and application native-library comparison](app-package-peer-01/README.md)
 
 The API increment now contains 47 observations and 1,173 exact file references,
 preserving all preceding 46 objects and historical 315 semantics. W03-b is a
