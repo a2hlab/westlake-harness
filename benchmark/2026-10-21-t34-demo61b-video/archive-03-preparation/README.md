@@ -1,11 +1,11 @@
 # W03 follow-up archive: prepared, not executed
 
-No live files were snapshotted and no upload occurred. The persistent private script is `$HOME/.local/share/westlake/t34-window-archive-03-preparation/archive.py`, pinned in `results.json`. It reuses the original archive SSH/SCP argv configuration and the exact original command-2 remote verifier without publishing accounts or personal paths.
+No live files were snapshotted and no upload occurred. The reusable script is [archive.py](archive.py), pinned in `results.json`; its bytes are identical to the reviewed persistent private copy. It reuses the original archive SSH/SCP argv configuration and the exact original command-2 remote verifier without publishing accounts or personal paths.
 
 After root explicitly confirms W-03 and W-03-b closed and unlocked, provide a private JSON confirmation with `approved_by: outer(codex)`, `status: CLOSED_AND_UNLOCKED`, `windows: [W-03, W-03-b]`, and nonempty `evidence` entries containing local receipt `path` (HOME alias allowed) and `sha256`. Then run:
 
 ```sh
-python3 "$HOME/.local/share/westlake/t34-window-archive-03-preparation/archive.py" \
+python3 benchmark/2026-10-21-t34-demo61b-video/archive-03-preparation/archive.py \
   --execute --closed-confirmation "$PRIVATE/root-closed.json" \
   --out "$HOME/.local/share/westlake/t34-window-archive-03"
 ```
