@@ -539,6 +539,7 @@ kind of work from where the corpus started
 | **[T19 ANW integration readiness](benchmark/2026-10-20-t19-anw-integration-readiness/)** | **Exact current unwrap bytes and finite owner/provider/entrypoint gates after 249 lock failures; user-confirmed clip audio, video pending.** |
 | **[T18 outer-owned observer](benchmark/2026-10-20-t18-observer-outer/)** | **5cd fresh-identity staging, pinned T18 observer and owned cleanup; device acceptance pending.** |
 | **[2026-10-20 AudioTrack production getter](benchmark/2026-10-20-t18-audiotrack-production/README.md)** | Exact deployed bridge relink; one AudioTrack getter; reproducible incremental candidate and raw evidence |
+| **[T21 complete video-window evidence](benchmark/2026-10-20-t21-window-evidence/)** | Five successful CPU buffer pairs, later texture-import fatal, exact runtime rollback and remotely verified original evidence; video not passed. |
 
 ---
 
