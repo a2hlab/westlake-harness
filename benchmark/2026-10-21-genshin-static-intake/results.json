@@ -1,0 +1,585 @@
+{
+ "task": "GENSHIN-T1",
+ "spec": "specs/genshin-static-intake/t1-bounded-static-intake.spec.md@0a52b42dd5",
+ "status": "MISSING",
+ "runtime_verdict": "NOT_TESTED",
+ "scope": {
+  "searched": [
+   {
+    "scope": "$WORKSPACES/westlake-inputs/** filenames",
+    "receipt": "s03-files-name",
+    "result": "NO_MATCH"
+   },
+   {
+    "scope": "$WORKSPACES/westlake-inputs/**/*.{json,md,txt} content (<=20M)",
+    "receipt": "s04-index-content",
+    "result": "NO_MATCH"
+   },
+   {
+    "scope": "$WORKSPACES/00.Workspace/** and $WORKSPACES/vm-copies/** filenames",
+    "receipt": "s07-files-name-00ws-vmcopies",
+    "result": "NO_MATCH"
+   },
+   {
+    "scope": "APK/OBB stores (westlake-inputs/apks, 00.Workspace/APKS, vm-copies/apks-77, demo-baseline-inputs-20261009-original) filenames",
+    "receipt": "s08-apk-obb-inventory",
+    "result": "441 files, none Genshin by name"
+   },
+   {
+    "scope": "westlake-harness repo text indexes",
+    "receipt": "s06-repo-index",
+    "result": "2 doc pointers (package name com.miHoYo.Yuanshen; remote macserver Android env), no local input"
+   }
+  ],
+  "not_searched": [
+   "OrbStack machine a2hlab (orb -m a2hlab) — NOT searched",
+   "hw248 remote — NOT searched",
+   "remote macserver named in bms/src/tools/infra/access.md as hosting an Android emulator with Genshin — NOT accessed (remote, out of t1 scope)",
+   "other $WORKSPACES siblings (westlake-generation-*, westlake-harness-* worktrees, *-build, tarballs) — NOT searched",
+   "rest of $HOME, Downloads, external volumes — NOT searched (spec forbids whole-home scan)",
+   "content/manifest of the 441 named APKs — NOT read (a renamed Genshin APK would be missed; package-name corpus JSON content search s04 found none)",
+   "'Westlake' and 'real-work' trees: no directory with those names under $WORKSPACES; location UNKNOWN"
+  ],
+  "missing_means": "no Genshin base APK, split, OBB or asset found in the searched scope only; NOT a claim that none exists elsewhere"
+ },
+ "elapsed": {
+  "seconds": 376,
+  "budget_seconds": 900,
+  "start_local": "2026-10-21T04:34:21+0800"
+ },
+ "limits": [
+  "15-minute bound",
+  "filename + text-index search only; no binary content scan after outer correction",
+  "no device/HDC/ADB, download, install, login, REA",
+  "BoatAttack evidence is reference only, never Genshin runtime evidence"
+ ],
+ "unknowns": [
+  "existence of Genshin inputs outside searched scope (OrbStack/hw248/macserver/other siblings)",
+  "Genshin version/ABI/SDK/JNI/graphics surface — no input, all UNKNOWN",
+  "whether any of the 441 APKs is a renamed Genshin package (manifests not read)",
+  "resource completeness — not applicable without input; UNKNOWN"
+ ],
+ "next_action": "Genshin inputs MISSING within the listed local scope only. If the outer loop wants t2: (1) supply/point to an authorized base APK + splits/OBB, or authorize a read-only filename search on OrbStack a2hlab and hw248 (both NOT searched) and on the remote macserver Android env named in bms access.md; (2) then rerun t1 static reads (manifest/SDK/ABI/DT_NEEDED/JNI/GLES-Vulkan/Unity) on the exact SHA; exact binary questions go to Codex/OC via outer, not REA here. No device task, download, install or login is proposed.",
+ "device_operations": 0,
+ "frozen_changes": 0,
+ "command_receipts": [
+  {
+   "id": "s01-index-grep",
+   "purpose": "content grep of listed indexes (overbroad: recursed into corpus-v2/run-index/demo-baseline binaries)",
+   "scope": [
+    "$WORKSPACES/westlake-inputs/{app-inputs.lock.json,corpus*.json,HANDOFF.md,static100-provenance.json,corpus-v2/,run-index/,demo-baseline-inputs-20261009-original/}"
+   ],
+   "argv": [
+    "grep",
+    "-ril",
+    "-E",
+    "genshin|yuanshen|miHoYo|hoyoverse|com\\.mihoyo|原神",
+    "$WORKSPACES/westlake-inputs/app-inputs.lock.json",
+    "$WORKSPACES/westlake-inputs/corpus-commercial-candidates.json",
+    "$WORKSPACES/westlake-inputs/corpus100.json",
+    "$WORKSPACES/westlake-inputs/commercial100-results.json",
+    "$WORKSPACES/westlake-inputs/HANDOFF.md",
+    "$WORKSPACES/westlake-inputs/static100-provenance.json",
+    "$WORKSPACES/westlake-inputs/corpus-v2",
+    "$WORKSPACES/westlake-inputs/run-index",
+    "$WORKSPACES/westlake-inputs/demo-baseline-inputs-20261009-original"
+   ],
+   "rc": null,
+   "stdout_lines": 0,
+   "raw_refs": [
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s01-index-grep.argv.json",
+     "sha256": "1f90541611c637d844bfc57879ca5db9231c47901b9ba5c6f805941e5980e27e",
+     "size": 729
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s01-index-grep.stdout",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s01-index-grep.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s01-index-grep.rc",
+     "sha256": "b5488aec5ec9937ff8f4e6a855c99db538f5009fc518db223369d2af8ffc9579",
+     "size": 66
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s01-outer-cancel.json",
+     "sha256": "b595d5f51ddfbce855ed1cc15930c7d625dd1fc6be2a393a41855333ba8a3c82",
+     "size": 223
+    }
+   ],
+   "status_note": "CANCELLED per outer correction (>60s); partial stdout/stderr kept as-is (both 0 bytes); no rc produced; not counted as search coverage"
+  },
+  {
+   "id": "s03-files-name",
+   "purpose": "filename-only search for genshin/yuanshen/mihoyo/hoyo/原神",
+   "scope": [
+    "$WORKSPACES/westlake-inputs/** (incl. hidden, ignore files disabled)"
+   ],
+   "argv": [
+    "gtimeout",
+    "60",
+    "rg",
+    "--files",
+    "--no-ignore",
+    "--hidden",
+    "--iglob",
+    "*genshin*",
+    "--iglob",
+    "*yuanshen*",
+    "--iglob",
+    "*mihoyo*",
+    "--iglob",
+    "*hoyo*",
+    "--iglob",
+    "*原神*",
+    "--iglob",
+    "*YuanShen*",
+    "$WORKSPACES/westlake-inputs"
+   ],
+   "rc": 1,
+   "stdout_lines": 0,
+   "raw_refs": [
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s03-files-name.argv.json",
+     "sha256": "c13b417ec624ab26b34193a0017c66f9876b0021ac3b84df262f7a682f1f10f7",
+     "size": 260
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s03-files-name.stdout",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s03-files-name.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s03-files-name.rc",
+     "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+     "size": 2
+    }
+   ],
+   "status_note": "rc=1 means no match (rg)"
+  },
+  {
+   "id": "s04-index-content",
+   "purpose": "content search restricted to *.json/*.md/*.txt <=20M",
+   "scope": [
+    "$WORKSPACES/westlake-inputs/**/*.{json,md,txt}"
+   ],
+   "argv": [
+    "gtimeout",
+    "60",
+    "rg",
+    "-n",
+    "-i",
+    "--no-ignore",
+    "-g",
+    "*.json",
+    "-g",
+    "*.md",
+    "-g",
+    "*.txt",
+    "--max-filesize",
+    "20M",
+    "-e",
+    "genshin",
+    "-e",
+    "yuanshen",
+    "-e",
+    "mihoyo",
+    "-e",
+    "hoyoverse",
+    "-e",
+    "原神",
+    "$WORKSPACES/westlake-inputs"
+   ],
+   "rc": 1,
+   "stdout_lines": 0,
+   "raw_refs": [
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s04-index-content.argv.json",
+     "sha256": "1616e3cdc8ccf44cb1fde91083b1315cde2d565fc8c54d74b7baa04757eb94aa",
+     "size": 264
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s04-index-content.stdout",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s04-index-content.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s04-index-content.rc",
+     "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+     "size": 2
+    }
+   ],
+   "status_note": "rc=1 means no match"
+  },
+  {
+   "id": "s05-files-name-siblings",
+   "purpose": "INVALID: intended sibling-tree filename search",
+   "scope": [],
+   "argv": [
+    "gtimeout",
+    "90",
+    "rg",
+    "--files",
+    "--no-ignore",
+    "--hidden",
+    "-g",
+    "!**/.git/**",
+    "--iglob",
+    "*genshin*",
+    "--iglob",
+    "*yuanshen*",
+    "--iglob",
+    "*mihoyo*",
+    "--iglob",
+    "*hoyo*",
+    "--iglob",
+    "*原神*"
+   ],
+   "rc": 1,
+   "stdout_lines": 0,
+   "raw_refs": [
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s05-files-name-siblings.argv.json",
+     "sha256": "f9e31c562351a96665e4e152bdb10161773e315dedfb8f2d43226349c89cd0f7",
+     "size": 206
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s05-files-name-siblings.stdout",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s05-files-name-siblings.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s05-files-name-siblings.rc",
+     "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+     "size": 2
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s05-files-name-siblings.note",
+     "sha256": "5f53b33bb0ff3946e5a4ce123c682c64ebe8f0d2b5ec735bf4bbd82f5ae310bf",
+     "size": 161
+    }
+   ],
+   "status_note": "INVALID_SCOPE: zsh glob failure dropped all path args; rg searched only the private evidence dir; excluded from coverage"
+  },
+  {
+   "id": "s06-repo-index",
+   "purpose": "repo index content search *.json/*.md/*.txt",
+   "scope": [
+    "cc-video worktree of westlake-harness (git-tracked + untracked text)"
+   ],
+   "argv": [
+    "gtimeout",
+    "60",
+    "rg",
+    "-n",
+    "-i",
+    "-l",
+    "-g",
+    "*.json",
+    "-g",
+    "*.md",
+    "-g",
+    "*.txt",
+    "-e",
+    "genshin",
+    "-e",
+    "yuanshen",
+    "-e",
+    "mihoyo",
+    "-e",
+    "原神",
+    "$WORKSPACES/westlake-harness-video"
+   ],
+   "rc": 0,
+   "stdout_lines": 2,
+   "raw_refs": [
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s06-repo-index.argv.json",
+     "sha256": "ada6aaedcada93bd5946ebb6d4ed8400efda16d21381a968e742860626f0ac11",
+     "size": 218
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s06-repo-index.stdout",
+     "sha256": "2d0a23e2c8d123569a274adf7a6036c00f79cd9449c05156baef9dfb4b118ba3",
+     "size": 177
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s06-repo-index.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s06-repo-index.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ],
+   "status_note": "rc=0; 2 doc hits, both pointers to a remote macserver Android environment, not local inputs"
+  },
+  {
+   "id": "s07-files-name-00ws-vmcopies",
+   "purpose": "filename-only search for genshin/yuanshen/mihoyo/hoyo/原神",
+   "scope": [
+    "$WORKSPACES/00.Workspace/**",
+    "$WORKSPACES/vm-copies/** (.git excluded)"
+   ],
+   "argv": [
+    "gtimeout",
+    "90",
+    "rg",
+    "--files",
+    "--no-ignore",
+    "--hidden",
+    "-g",
+    "!**/.git/**",
+    "--iglob",
+    "*genshin*",
+    "--iglob",
+    "*yuanshen*",
+    "--iglob",
+    "*mihoyo*",
+    "--iglob",
+    "*hoyo*",
+    "--iglob",
+    "*原神*",
+    "$WORKSPACES/00.Workspace",
+    "$WORKSPACES/vm-copies"
+   ],
+   "rc": 1,
+   "stdout_lines": 0,
+   "raw_refs": [
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s07-files-name-00ws-vmcopies.argv.json",
+     "sha256": "a4498983d9359b08c84c1997fe46ef259ccc1c42e0cfe47928e36f0b0cd95187",
+     "size": 297
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s07-files-name-00ws-vmcopies.stdout",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s07-files-name-00ws-vmcopies.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s07-files-name-00ws-vmcopies.rc",
+     "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+     "size": 2
+    }
+   ],
+   "status_note": "rc=1 means no match"
+  },
+  {
+   "id": "s08-apk-obb-inventory",
+   "purpose": "APK/APKS/XAPK/OBB filename inventory of known APK stores",
+   "scope": [
+    "$WORKSPACES/westlake-inputs/apks",
+    "$WORKSPACES/00.Workspace/APKS",
+    "$WORKSPACES/vm-copies/apks-77",
+    "$WORKSPACES/westlake-inputs/demo-baseline-inputs-20261009-original"
+   ],
+   "argv": [
+    "gtimeout",
+    "90",
+    "rg",
+    "--files",
+    "--no-ignore",
+    "-g",
+    "*.apk",
+    "-g",
+    "*.apks",
+    "-g",
+    "*.xapk",
+    "-g",
+    "*.obb",
+    "$WORKSPACES/westlake-inputs/apks",
+    "$WORKSPACES/00.Workspace/APKS",
+    "$WORKSPACES/vm-copies/apks-77",
+    "$WORKSPACES/westlake-inputs/demo-baseline-inputs-20261009-original"
+   ],
+   "rc": 0,
+   "stdout_lines": 441,
+   "raw_refs": [
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s08-apk-obb-inventory.argv.json",
+     "sha256": "fdca783ba372dc87b448399cd0ac8a53440b18638646b650fc80b0bec5ac66d7",
+     "size": 361
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s08-apk-obb-inventory.stdout",
+     "sha256": "07237009dd385cee981741c46c6bf6ae1c368e7985c6215b42741d74cdd1a362",
+     "size": 43588
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s08-apk-obb-inventory.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s08-apk-obb-inventory.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ],
+   "status_note": "rc=0; 441 files, none named after Genshin/miHoYo; filenames are app names (no hash-named files), manifests NOT read"
+  },
+  {
+   "id": "s09-boat-sources-sha-INVALID",
+   "purpose": "first Boat source hash attempt",
+   "scope": [
+    "cc-video worktree"
+   ],
+   "argv": [
+    "sh",
+    "-c",
+    "for f in <6 handoff Boat sources + specs/demo-baseline/t2b-boatattack.spec.md>; do shasum -a 256 $R/$f; wc -c <$R/$f; done  # R=cc-video worktree (read-only)"
+   ],
+   "rc": 0,
+   "stdout_lines": 7,
+   "raw_refs": [
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s09-boat-sources-sha-INVALID.argv.json",
+     "sha256": "00579947ed7b5e6c303de714121e6c3fd24c2e7c268d4600f06e016730e6247f",
+     "size": 172
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s09-boat-sources-sha-INVALID.stdout",
+     "sha256": "b7e8614bb489f4e79c3e0e6d7d6a4b1e0ef0bcbfc626f34bf24a5bf87fff984e",
+     "size": 1100
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s09-boat-sources-sha-INVALID.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s09-boat-sources-sha-INVALID.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s09-boat-sources-sha-INVALID.note",
+     "sha256": "6c14942967e8410e1a6dcaa700aef12458ec6b47edeffb205a1f62ff6ba1bbe1",
+     "size": 150
+    }
+   ],
+   "status_note": "INVALID_RECEIPT: argv.json was a hand-written placeholder, not captured argv; kept unchanged as original, superseded by s10/s11; not used as evidence"
+  },
+  {
+   "id": "s10-boat-sources-sha256",
+   "purpose": "read-only SHA256 of 10 explicit comparison sources (rec.sh captured argv)",
+   "scope": [
+    "cc-video worktree (relative paths)"
+   ],
+   "argv": [
+    "shasum",
+    "-a",
+    "256",
+    "benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/final61b-v2-seal/OPERATIONS.zh.md",
+    "benchmark/2026-10-14-final61b-game-resume-review/review.json",
+    "benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-v2-operations-draft-r2/evidence-bindings.json",
+    "benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-source-review/artifact-archive.json",
+    "benchmark/2026-10-10-boat-runtime-port-spec/source/android_graphics_compat_shim.cpp",
+    "benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/r4-knowledge-closure/sources/Boat.cs",
+    "specs/demo-baseline/t2b-boatattack.spec.md",
+    "benchmark/2026-10-09-demo-boatattack/v2-20261013/static/provenance-closure.json",
+    "bms/src/tools/android-oracle/README.md",
+    "bms/src/tools/infra/access.md"
+   ],
+   "rc": 0,
+   "stdout_lines": 10,
+   "raw_refs": [
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s10-boat-sources-sha256.argv.json",
+     "sha256": "f1b813941c46c7fc6b5d09f2941dcc982cea681eb1c28f46fd02751c14c010c1",
+     "size": 785
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s10-boat-sources-sha256.stdout",
+     "sha256": "5d7869a90c5f16bdead331178d41b7bef2c5f5a6cdefc804ab4633d9fa416a12",
+     "size": 1391
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s10-boat-sources-sha256.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s10-boat-sources-sha256.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ],
+   "status_note": "rc=0"
+  },
+  {
+   "id": "s11-boat-sources-size",
+   "purpose": "read-only byte sizes of the same 10 sources (rec.sh captured argv)",
+   "scope": [
+    "cc-video worktree (relative paths)"
+   ],
+   "argv": [
+    "wc",
+    "-c",
+    "benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/final61b-v2-seal/OPERATIONS.zh.md",
+    "benchmark/2026-10-14-final61b-game-resume-review/review.json",
+    "benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/final-v2-operations-draft-r2/evidence-bindings.json",
+    "benchmark/2026-10-09-demo-boatattack/v2-20261013/outer/r6-source-review/artifact-archive.json",
+    "benchmark/2026-10-10-boat-runtime-port-spec/source/android_graphics_compat_shim.cpp",
+    "benchmark/2026-10-09-demo-boatattack/v2-20261013/integration/r4-knowledge-closure/sources/Boat.cs",
+    "specs/demo-baseline/t2b-boatattack.spec.md",
+    "benchmark/2026-10-09-demo-boatattack/v2-20261013/static/provenance-closure.json",
+    "bms/src/tools/android-oracle/README.md",
+    "bms/src/tools/infra/access.md"
+   ],
+   "rc": 0,
+   "stdout_lines": 11,
+   "raw_refs": [
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s11-boat-sources-size.argv.json",
+     "sha256": "d3f7a1fa9c23d9790f69d6b2a4077c822ec8be48fd95bed4b0bc5ab7b120d859",
+     "size": 774
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s11-boat-sources-size.stdout",
+     "sha256": "d93c0a2910b3252520b67ca2b92fa291ef021f2ece6b6a6a10d17ea06c3b6b93",
+     "size": 836
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s11-boat-sources-size.stderr",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "size": 0
+    },
+    {
+     "alias": "$GENSHIN_T1_PRIVATE/raw/s11-boat-sources-size.rc",
+     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+     "size": 2
+    }
+   ],
+   "status_note": "rc=0"
+  }
+ ]
+}
