@@ -1,0 +1,215 @@
+{
+  "status": "STATIC_YV12_EXPECTATION_DISJOINT_FROM_SUCCESSFUL_LOCK_OUTPUT",
+  "created_utc": "2026-10-20T04:45:56.771404+00:00",
+  "device_calls": 0,
+  "new_rea_queries": 0,
+  "functions_examined": 3,
+  "artifact_sha256": "0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471",
+  "reused_rea": {
+    "evidence_id": "ev_25df362b51418dd3cd64bdec8631e8f1070f65397ce136fc2de3e83e8ced9f9a",
+    "operation": "procedure_pseudo_code",
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "analysis_profile": {
+      "digest": "73e1cb475c2e2db20fa06886ffd7e09089e3c060afaeb5a952facaabce0566f5",
+      "parameters": {
+        "analyzer_preset": "ghidra-default",
+        "annotation_policy": "atomic-function-entry-metadata-v1",
+        "architecture": "arm64",
+        "available_architectures": [
+          "arm64"
+        ],
+        "call_relationship_coverage": "function-body-call-coverage-v5",
+        "compiler_spec_id": "auto-default",
+        "decompiler_jump_loads": true,
+        "function_body_evidence": "complete-inclusive-ranges-v1",
+        "function_boundary_observations": "ghidra-function-boundary-limitations-v3",
+        "function_dossier_coverage": "observed-facets-and-call-relationships-v1",
+        "function_references": "complete-body-and-entry-reference-manager-v2",
+        "import_mode": "ephemeral-source-immutable",
+        "instruction_flow_evidence": "decoded-return-pcode-v1",
+        "instruction_references": "exact-address-incoming-v1",
+        "jump_table_evidence": "typed-case-default-blocks-v1",
+        "language_id": "auto-from-header",
+        "load_image_observations": "source-mappings-entry-context-v2",
+        "loader": "auto-from-header",
+        "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+        "no_return_repair": "returning-imports-decoded-return-v2",
+        "procedure_file_offset_resolution": "address-first-unique-target-source-mapping-v2",
+        "process_launch": "inspected-jvm-launch-support-v1",
+        "string_inventory_evidence": "defined-data-coverage-v1",
+        "target_format": "elf",
+        "target_kind": "executable"
+      },
+      "provider": {
+        "id": "ghidra",
+        "name": "Ghidra",
+        "version": "12.1.4"
+      }
+    },
+    "drawPicture_provider_address": "0x2f977c",
+    "drawPicture_elf_address": "0x1f977c"
+  },
+  "source_of_addresses": "REA image base 0x100000 for this binary; independent LLVM disassembly addresses are ELF. Runtime VA mapping is not assumed.",
+  "static_findings": [
+    {
+      "finding": "lock success does not authorize a video writer",
+      "evidence": "drawPicture ELF0x1f9af0 calls lock; ELF0x1f9b00-0x1f9b34 compare returned width/height with this+0x190/+0x194, reset flag at +0x1d4, and returned format at buffer+0xc with expected format this+0x1d8."
+    },
+    {
+      "finding": "returned Android2 with expected YV12 does not switch to an RGBX video writer or continue a YV12 video writer",
+      "evidence": "ELF0x1f9b28-0x1f9b34 loads and compares the two formats; mismatch jumps to ELF0x1f9c64, logging window-is-changed. The changed branch optionally clears, then calls unlock at0x1f9f48, geometry at0x1f9fa4, and returns. Actual video writer dispatch is only in the all-matching branch."
+    },
+    {
+      "finding": "optional clear-color is format-aware but is not video conversion",
+      "evidence": "helper ELF0x1fad50-0x1faf38 reads bits at buffer+0x10 and format at+0xc. Format2 branch 0x1fad7c-0x1fadb4 computes stride*height*4 and clears bytes; YV12 is a separate clear pattern. Do not label this packed video-frame writing."
+    }
+  ],
+  "runtime_correlation": {
+    "window_changed_count": 3,
+    "geometry_calls": 4,
+    "interpretation": "Three actual window-changed diagnostics and retry geometry logs reading this+0x1d8 as842094169 agree with the statically mandatory mismatch for YV12 mode. Exact live format value is unknown and no longer required for the disjoint-set proof; which early comparison fired first remains unknown.",
+    "VA_to_ELF": {
+      "status": "UNBOUND_DERIVED_ONLY",
+      "geometry_runtime_return": "0x7d37839fa8",
+      "geometry_static_return": "0x1f9fa8",
+      "candidate_base": "0x7d37640000",
+      "consistency": "The runtime lock return0x7d37839af4 is at this candidate base+0x1f9af4 and unlock return0x7d37839f4c at base+0x1f9f4c. No player mapping found in the existing T25 .stdout/.txt/.raw files scanned, so this arithmetic is not mapping evidence.",
+      "other_geometry_runtime_return": "0x7d37838994",
+      "other_geometry_site": "static configuration request return0x1f8994, consistent with same candidate base but still no live maps binding"
+    }
+  },
+  "next_evidence": [
+    "Validate expected-format mode plus retained exact T20 route when interpreting the window; no need to guess a particular live OH format to establish the YV12 contract mismatch. Future diagnostics still need actual buffer attributes for the independent EGL NULL.",
+    "If return2/requestYV12 is confirmed, retain the advertised/requested buffer-layout contract (e.g. verified scratch+conversion route) or make producer format negotiation explicit; mapping allocation alone does not satisfy this caller. This is a future design implication, not an authorized fix.",
+    "Keep the EGL import NULL investigation separate: an untouched/cleared frame does not by itself explain image rejection."
+  ],
+  "limits": [
+    "No claim of player returned format2 actually being logged in T25.",
+    "No per-frame buffer identity between CPU and EGL import established.",
+    "No newly run REA analysis; one old exact REA record reused and one narrowly bounded LLVM helper disassembly added."
+  ],
+  "private_raw_manifest": [
+    {
+      "file": "clear-helper.receipt.json",
+      "sha256": "e9c3aee7bbcd5bb404c0b69b8756674bb4fb14c4fd3a4d86a6f6628c8036411f",
+      "bytes": 431
+    },
+    {
+      "file": "clear-helper.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "clear-helper.stdout",
+      "sha256": "b25d734bdfe7e48ca3e91ec49ccb0b0dd6a0657544296b89951d68bffb23a1af",
+      "bytes": 7373
+    },
+    {
+      "file": "configure.receipt.json",
+      "sha256": "eb455a8d1306596a1abf844c8d952703dda6b6860f5bb02203e4d1a824fec156",
+      "bytes": 431
+    },
+    {
+      "file": "configure.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "configure.stdout",
+      "sha256": "4f355860e4785b792be84a8a92e33ff98ffe73b7495ab819d94a517c2a70cb85",
+      "bytes": 39334
+    },
+    {
+      "file": "drawPicture.llvm.stdout",
+      "sha256": "5d90d100cc4989af1c9f53c2672356ef48190a47c5d6e117434161505b2cb6e5",
+      "bytes": 44067
+    },
+    {
+      "file": "drawPicture.pseudocode.txt",
+      "sha256": "9f711b3caaaf487574ba3a41f05283514918377c9019cdf63ced4b7c9014f0be",
+      "bytes": 15359
+    },
+    {
+      "file": "drawPicture.receipt.json",
+      "sha256": "0e5a765257494c4d3332c52807a68dbb66e3f97e28631db3e22f0fb96bbd8d55",
+      "bytes": 478
+    },
+    {
+      "file": "drawPicture_FUN_002f977c.evidence.json",
+      "sha256": "43b3f227e5f3e35cd265ea0a0a66e18372745a0be26701cb0220e7f4180a3100",
+      "bytes": 36007
+    },
+    {
+      "file": "geometry-plt.stdout",
+      "sha256": "4c2b6afdbdb57a79b375bd24194f0027d12af30f802f4e350bae1034a7d0893a",
+      "bytes": 399
+    },
+    {
+      "file": "input.json",
+      "sha256": "d5c55dff4452c34a38740fe28f8277d0d191b73a8698f60a576166879fa0cb28",
+      "bytes": 251
+    },
+    {
+      "file": "lock-plt.stdout",
+      "sha256": "63caca05d5c078df4fc2709ca93d395c567dbb0cd8dce24aec0358d256c383bc",
+      "bytes": 389
+    },
+    {
+      "file": "relocations.stdout",
+      "sha256": "bd285e33ca50118dabffe1f284e06e36c4cbc506ec2638637c6a977c2e2b3fba",
+      "bytes": 1577431
+    },
+    {
+      "file": "results-v1.json",
+      "sha256": "8826ce753b10fa5c926a42e2ce23a35459b7b67cf75ee3f4deba92f92950e4b0",
+      "bytes": 7562
+    },
+    {
+      "file": "runtime-excerpt.json",
+      "sha256": "133075b2d3d43dc69857e98695e52bac5c539f9b61c15680f557b3c0d2635d92",
+      "bytes": 3340
+    },
+    {
+      "file": "unlock-plt.stdout",
+      "sha256": "6f5278477dd81f99dce7a7e4b514fa6ea93bd9ff677f2a6472b15cb5af77c0d1",
+      "bytes": 389
+    }
+  ],
+  "configuration_bounded_slice": {
+    "entry_elf": "0x1f7f88",
+    "examined_through_exclusive": "0x1f89b0",
+    "function_full_extent": "not claimed; only reachable field-write and geometry-call slice required",
+    "YV12_expected_store": "ELF0x1f86a8/0x1f86ac construct0x32315659;0x1f86b8 stores this+0x1d8",
+    "YV12_geometry_request": "ELF0x1f8988/0x1f898c construct0x32315659;0x1f8990 calls geometry; return0x1f8994",
+    "draw_retry_behavior": "Successful retry geometry at0x1f9fa4 clears only reset flag+0x1d4 at0x1f9fd8, does not replace expected format; it returns after logging."
+  },
+  "adapter_format_set_proof": {
+    "source": "benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/window_module.c",
+    "sha256": "1f42a3936449b75db6c08163c21cf68882d664065705c2d2f9afd7e2c1af4707",
+    "lines": [
+      54,
+      85
+    ],
+    "successful_formats": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      22,
+      43
+    ],
+    "expected_YV12": 842094169,
+    "intersection": [],
+    "conclusion": "For a caller retaining YV12 expected format and using this successful R14/T20 lock, the format-equality gate necessarily fails regardless of which supported host format was actually allocated. Width/height/reset may reject earlier; no automatic RGBX video-writer fallback is reached.",
+    "assumptions": [
+      "Exact R14 source/object provenance and same T20 runtime route as reviewed by cx-seal/root.",
+      "Valid returned buffer is not externally rewritten before comparison.",
+      "Expected YV12 mode is retained; concurrent reconfiguration is not statically excluded."
+    ]
+  }
+}
