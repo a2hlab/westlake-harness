@@ -1,0 +1,13 @@
+--- a/consumer/logger/observe29c.c
++++ b/consumer/logger/observe29c.c
+@@ -96,7 +96,9 @@
+  }
+  *epoch=e->epoch;
+  if(e->epoch>=R29C_EPOCHS)return notice(1);
+- unsigned failure=(r->existing_exception_branch || r->rc!=0 || r->raw_rc!=0);
++ unsigned failure=(r->existing_exception_branch || r->rc!=0 || r->raw_rc!=0 ||
++  (r->ref_called && r->ref_rc_valid && (r->valid&R29C_REFRC) && r->ref_rc!=0) ||
++  (r->unref_called && r->unref_rc_valid && (r->valid&R29C_UNREFRC) && r->unref_rc!=0));
+  if(e->count[r->phase][failure]>=2)return notice(0);
+  e->count[r->phase][failure]++;return 3;
+ }

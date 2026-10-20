@@ -143,15 +143,15 @@ int main(int argc, char **argv) {
     c.ref_called = 1; c.ref_rc_valid = 0; c.ref_rc = 0;         /* void ref */
     emit_preserve(&c);
     r29c_stats_read(&a); assert(a.writes == 2 && a.losses == 0);
-    /* ref_rc_valid/ref_rc must NOT change the lane: three success replaces (rc=0,raw=0,exbranch=0)
-     * with varying ref_rc still land in the SAME success lane -> 2 fit, 3rd -> FIRST_LIMIT */
+    /* A valid nonzero ref result changes only the diagnostic error quota, never business control.
+     * One success plus two ref failures fit their independent quotas without FIRST_LIMIT. */
     for (int i = 0; i < 3; i++) {
       struct r29c_record e = rec(0xC00); e.phase = R29C_PRODUCER_REPLACE;
       e.valid = R29C_NEWWIN | R29C_REFRC; e.new_window = 0xBB;
-      e.ref_called = 1; e.ref_rc_valid = 1; e.ref_rc = i;  /* recorded, but never a control signal */
+      e.ref_called = 1; e.ref_rc_valid = 1; e.ref_rc = i;  /* diagnostic quota only, never business control */
       emit_preserve(&e);
     }
-    r29c_stats_read(&b); assert(b.first_limit == 1 && b.writes == a.writes + 3);
+    r29c_stats_read(&b); assert(b.first_limit == 0 && b.writes == a.writes + 3);
   } else if (!strcmp(mode, "invalid_consumer")) {
     /* an invalid early-return (state released / null) logs only safe fields and uses the 30 quota;
      * it never touches the normal identity lane. */
