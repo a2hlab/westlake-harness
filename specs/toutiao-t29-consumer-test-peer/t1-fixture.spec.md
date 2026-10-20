@@ -41,5 +41,10 @@ depends: []
   假设 新版路径缺失或真实方法改变provider调用/状态/errno
   当 指定--consumer-source-dir运行同一fixture
   那么 缺文件或编译失败非零且保留原件，运行行为不等于baseline则拒绝PASS；未指定新版明确PENDING
+场景: 诊断字段不能借行为一致冒认覆盖
+  测试: ttvideo_t29_observation_fields
+  假设 解释器收到OH误标image、update detached误报、缺少早退phase或ref与unref返回串用
+  当 对实际记录解释器运行独立拒绝用例
+  那么 所有失真均拒绝；这些解释器测试不冒充最终方法包通过，method-ready后另跑真实logger加每case独立进程
 ## 排除范围
 不实现日志预算或sink，不代替CC自有并发logger测试，不构建生产DSO或判断实板winner。

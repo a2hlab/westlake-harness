@@ -18,13 +18,14 @@ def command(argv,out,name):
     if r.returncode:raise RuntimeError(name+' failed: '+r.stderr.decode(errors='replace')[-3000:])
     return r
 
-def build(source,out,extra,includes):
+def build(source,out,extra,includes,fixture=None):
+    fixture=fixture or P/'fixture.cpp'
     out.mkdir()
     paths=[(source/n).resolve() for n in NAMES]+[x.resolve() for x in extra]
     headers=list((P/'include').rglob('*.h'))
     for directory in [*includes,*[x.parent for x in extra]]:
         headers.extend(directory.resolve().glob('*.h'))
-    inputs=list(dict.fromkeys(paths+headers+[P/'fixture.cpp']))
+    inputs=list(dict.fromkeys(paths+headers+[fixture]))
     before={str(x):sha(x) for x in inputs}
     snapshot=out/'input-snapshot';snapshot.mkdir()
     snapshot_rows=[]
@@ -43,7 +44,7 @@ def build(source,out,extra,includes):
     argv=['clang++','-std=c++17','-pthread','-I'+str(P/'include'),'-I'+str(source),
           '-DPEER_SURFACE_SOURCE="'+str(paths[0])+'"',
           '-DPEERER_TEXTURE_SOURCE="'+str(paths[1])+'"']
-    argv+=['-I'+str(d.resolve()) for d in includes]+[str(P/'fixture.cpp'),*objects,'-o',str(exe)]
+    argv+=['-I'+str(d.resolve()) for d in includes]+[str(fixture),*objects,'-o',str(exe)]
     command(argv,out,'compile')
     assert before=={str(x):sha(x) for x in inputs},'source changed during compilation'
     r=command([str(exe)],out,'run')
