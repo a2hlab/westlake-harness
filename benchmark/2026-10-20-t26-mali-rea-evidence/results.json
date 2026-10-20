@@ -1,0 +1,197 @@
+{
+  "status": "BOUNDED_STATIC_FORMAT_GATE_CONFIRMED_RUNTIME_CAUSE_UNPROVEN",
+  "target": {
+    "name": "libGLES_mali.z.so",
+    "sha256": "e0cb108121981c6ad30c9e3f338c384172ef3be2dc790a457e0287a10efa2cfe",
+    "bytes": 16734912,
+    "identity_scope": "current-restored system file; historical T25 content SHA not independently captured"
+  },
+  "analysis_budget": {
+    "functions": 2,
+    "device_operations": 0,
+    "target_executed": false,
+    "session_closed": true
+  },
+  "functions": [
+    {
+      "name": "eglCreateImageKHR",
+      "elf_entry": "0x33e814",
+      "provider_entry": "0x43e814",
+      "body_bytes": 848,
+      "evidence_id": "ev_df813acba30aa55389f3a5c7c522def614ce26cc21ef26aa4ba8c421e5585139"
+    },
+    {
+      "name": "eglCreateImageKHRImpl",
+      "elf_entry": "0x33ded0",
+      "provider_entry": "0x43ded0",
+      "body_bytes": 2372,
+      "evidence_id": "ev_f59c0ad6ef22cc9e339082d70354914e21ca43ede854e4b7b6793193732aea91"
+    }
+  ],
+  "facts": [
+    {
+      "kind": "observed static machine code",
+      "claim": "OH target 0x34e1 converts native window buffer through OH_NativeBufferFromNativeWindowBuffer and OH_NativeBuffer_GetBufferHandle, then reads uint32 at handle+0x14.",
+      "elf_sites": [
+        "0x33e848",
+        "0x33e858",
+        "0x33e85c",
+        "0x33e898"
+      ]
+    },
+    {
+      "kind": "derived from exact bitmask branches",
+      "claim": "Only values 3,12,13,20,24,25,28,29 reach conversion/Impl. Any other uint32 value returns NULL without calling Impl.",
+      "allowed_values": [
+        3,
+        12,
+        13,
+        20,
+        24,
+        25,
+        28,
+        29
+      ],
+      "elf_sites": [
+        "0x33e8a0",
+        "0x33e8b8",
+        "0x33e8c0",
+        "0x33e8d0",
+        "0x33eb2c"
+      ]
+    },
+    {
+      "kind": "reference header ABI corroboration",
+      "claim": "Pinned local OH BufferHandle places format at +0x14 and usage at +0x18. Entry never reads usage.",
+      "reference_header_sha256": "3246d49d110882b2eadc25632b42a1aa32a0efa5ec2457993ef4b6449cdc833e",
+      "reference_path": "westlake-inputs/oh61-oh-root/oh_mirror/foundation/graphic/graphic_surface/interfaces/inner_api/buffer_handle/buffer_handle.h"
+    },
+    {
+      "kind": "observed static machine code",
+      "claim": "format12 is converted to FOURCC 0x34324241. Supported formats build fd/width/height/stride plane attributes and forward original attributes; then call Impl with target0x3270, clientbuffer0, original display/context. Passing this gate does not establish downstream import success.",
+      "elf_sites": [
+        "0x33e9d4",
+        "0x33e9d8",
+        "0x33ea94",
+        "0x33eb1c",
+        "0x33eb24"
+      ]
+    },
+    {
+      "kind": "observed decompiler and bounded body",
+      "claim": "Impl validates display/context and attributes; target0x3270 attempts get_native_buffer_dma_buf. IMAGE_PRESERVED(0x30d2) value>1 produces0x3004. T25 value1 does not violate this local value check; iterator and downstream imports remain uninspected."
+    }
+  ],
+  "inferences": [
+    {
+      "claim": "If the real runtime buffer format is11 and create routes through this exact public entry, NULL is statically inevitable before Impl. This is a sufficient rejection condition, not a proven historical T25 root cause."
+    },
+    {
+      "claim": "Using format12 avoids this one wrapper rejection; it is not proof of video success or a recommendation to retag pixels without matching storage/conversion."
+    }
+  ],
+  "unknowns": [
+    "Historical T25 deployed driver SHA was not independently pre-captured.",
+    "T25 actual buffer format was not logged. Geometry request mapped toOH11 does not prove actual buffer contents.",
+    "T25 selected=0 alone does not prove actual create function address is this public entry.",
+    "No downstream dma-buf importer analyzed beyond the two-function budget.",
+    "No runtime usage, fd validity, protected state or successful new video result established.",
+    "Early branch contains no explicit error-setting call and skips Impl; side effects of external getters were not analyzed."
+  ],
+  "artifacts": [
+    {
+      "name": "rea-evidence-bundle.json",
+      "bytes": 3882459,
+      "sha256": "6dab8da874b6fb6d83078b36eb9c9ac4bf2d3c6581f0f672a1d79831b502c4e6"
+    },
+    {
+      "name": "rea-analysis-snapshot.json",
+      "bytes": 7763168,
+      "sha256": "e36a35ba7c309d5aad92294729078984b970e70999eb8a68b5d71414720213d6"
+    },
+    {
+      "name": "rea-call-receipts.json",
+      "bytes": 2081,
+      "sha256": "8825c25418b47a202cb4f66e4039a6d05f219415c3a4c73e8540333d901dc914"
+    },
+    {
+      "name": "entry.llvm.stdout",
+      "bytes": 10656,
+      "sha256": "70c82f5a93f2fe5a5ac943438d4fcba4509845bdf7e86757910f166ce01b5657"
+    },
+    {
+      "name": "entry.llvm.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "entry.llvm.argv.json",
+      "bytes": 184,
+      "sha256": "042580022fa351632d5a932283988dea350263a8169bf9ec128e367786832264"
+    },
+    {
+      "name": "entry.llvm.rc",
+      "bytes": 1,
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "name": "entry-symbols.txt",
+      "bytes": 78,
+      "sha256": "99c1ed4f306e58b5dfecf97d371036768cb21af11add050c0af8fefd8ccd4fd9"
+    },
+    {
+      "name": "buffer_handle.reference.h",
+      "bytes": 1962,
+      "sha256": "3246d49d110882b2eadc25632b42a1aa32a0efa5ec2457993ef4b6449cdc833e"
+    },
+    {
+      "name": "identity-manifest.json",
+      "bytes": 1518,
+      "sha256": "b30660b84b27e01fd3441dfb33bae545f5c45caf9ade26ee114179085fb6ed47"
+    }
+  ],
+  "analysis_profile": {
+    "digest": "73e1cb475c2e2db20fa06886ffd7e09089e3c060afaeb5a952facaabce0566f5",
+    "parameters": {
+      "analyzer_preset": "ghidra-default",
+      "annotation_policy": "atomic-function-entry-metadata-v1",
+      "architecture": "arm64",
+      "available_architectures": [
+        "arm64"
+      ],
+      "call_relationship_coverage": "function-body-call-coverage-v5",
+      "compiler_spec_id": "auto-default",
+      "decompiler_jump_loads": true,
+      "function_body_evidence": "complete-inclusive-ranges-v1",
+      "function_boundary_observations": "ghidra-function-boundary-limitations-v3",
+      "function_dossier_coverage": "observed-facets-and-call-relationships-v1",
+      "function_references": "complete-body-and-entry-reference-manager-v2",
+      "import_mode": "ephemeral-source-immutable",
+      "instruction_flow_evidence": "decoded-return-pcode-v1",
+      "instruction_references": "exact-address-incoming-v1",
+      "jump_table_evidence": "typed-case-default-blocks-v1",
+      "language_id": "auto-from-header",
+      "load_image_observations": "source-mappings-entry-context-v2",
+      "loader": "auto-from-header",
+      "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+      "no_return_repair": "returning-imports-decoded-return-v2",
+      "procedure_file_offset_resolution": "address-first-unique-target-source-mapping-v2",
+      "process_launch": "inspected-jvm-launch-support-v1",
+      "string_inventory_evidence": "defined-data-coverage-v1",
+      "target_format": "elf",
+      "target_kind": "executable"
+    },
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    }
+  },
+  "providers": [
+    {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    }
+  ]
+}
