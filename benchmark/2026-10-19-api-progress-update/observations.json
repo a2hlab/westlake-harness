@@ -4573,6 +4573,188 @@
         }
       ],
       "frozen": false
+    },
+    {
+      "id": "OBS-20261020-T30-REQUEST-RECOVERY",
+      "kind": "recovery implementation, host regression, actual production and scoped single-app runtime observation",
+      "name": "T30 resource-free Request failure cleanup and visible video across fullscreen/detail switching",
+      "status": "RESOURCE_FREE_FAILURE_CLEANUP_OBSERVED; TWO_CLIPS_AND_FULLSCREEN_SWITCH_SAMPLED_DYNAMIC; FIRST_CLIP_AUDIO_USER_CONFIRMED; WARM_SAME_CHILD_RETURN; ORIGINAL_RUNTIME_RESTORED; WINDOW_OVERRUN; NOT_PERMANENTLY_DEPLOYED; NOT_SEALED",
+      "method": "Two derived translation units only: R14 frees the current reservation for a strict resource-free Request failure; R15 frees only its own pristine RESERVED record when the real provider returned nonzero with NULL buffer and fd=-1. Under the adapter mutex, pristine state is captured before self-writes and requires exact window, no buffer/native/failed/uncertain and clean call/suppression/error fields. R26 and pair keep their original sequential completion and owner-release behavior.",
+      "platform": "5cd short experimental window; candidate boot 3c094359-fef6-4c7e-bb0a-60a5eeb07aea, child7649/b11242, parent5793/b9986. No permanent deployment or seal is asserted.",
+      "apps": "Toutiao on 5cd: first clip shows changing content at 0/20 seconds; fullscreen sampled at 0/5/10/20 seconds; returned detail and a second clip also show content progress. Normal desktop icon returns the same live child to the second-clip feed. User confirmed corresponding first-clip sound; second-clip audio remains UNKNOWN. No new public API or cross-app freeze.",
+      "limitations": "First Q40601000 root cause remains UNKNOWN. Prefix01 contains two failed objects, each with an R14 record and pair record: retained=0, paired owner release R=1/1/1, original rc=-5 preserved. Subsequent Q/F on those same failed objects is NOT_DIRECTLY_OBSERVED; a different object later has Q/F success. Bounded logging quotas preclude global absence claims. Sampled changing frames do not establish uninterrupted playback between samples. Warm return is not crash recovery or cold restart; no post-warm 20-second run is claimed. Audio confirmation is limited to the first clip. Host history preserves the incomplete R14-only attempt and unsafe R15 clearing before the final pristine-record fix; prior nine resource/format cases retain their original pins. This experiment does not freeze a public API or establish a permanent video seal. The window exceeded 1800 seconds by 28.498791 seconds; original runtime restoration is distinct from restored UI, which was immediately host-only and finally lock-screen.",
+      "deployment": "Actual production-01 compiled the two derived TUs and linked shim 7f8d75bbf09e28e2b57a4621f1181ff944e79e462b78707c620dd67aef0b0bcb (107544 bytes); bridge b0e5602a97133ebb1dca12972a8931a86528322685a211bb1a7a0a2185fefbd4 (2023136 bytes) was not rebuilt. The public receipt records seven commands rc0, 38 verified outputs, 78 ABI definitions and libc.so as the sole NEEDED entry. Production archive 6cfa7abfb68c2395dd076e3501f963f37b4e4b79897570fcef216dfe659f4b01 (58652095 bytes, 217 members) has a real remote verification receipt. Five actual slots matched the candidate player/owner routing. The experiment then restored the original six physical/private states, snapshot518 and supplement26, power timeout/override10000/10000 and absent debug parameter106. Closure elapsed1828.498791s exceeded the1800s contract; unlock retry succeeded and held-after was empty per outer receipt. Immediate restored-icon UI was host-only; final UI was lock-screen. Candidate permanently deployed=false. Public runtime, close and remote-window receipts are bound. Window archive63237691e0676847bf26c1ff9777dbc52a01ba8075c4943a52933074b6e54a4b has13877708 bytes/13020 members with three remote rc0 receipts and all-member verification. Historical41 rows and315 semantic grades remain unchanged.",
+      "source": [
+        {
+          "path": "benchmark/2026-10-20-t30-request-recovery/src/window_module.c",
+          "sha256": "f02a8094103da4f92aa9345c81e29da4b7a767a443fd0580446f5ccbc593157c"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-request-recovery/src/provider_adapter.c",
+          "sha256": "cffeb51b211cbb361c892f46386091930c468a3ccbef70a7e61d02f393f687f5"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-request-recovery/patch/window_module.r14.patch",
+          "sha256": "7b82d8308e0915a312155ef340b466a39c49d32b99d79678a7b68d0570f6099a"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-request-recovery/patch/provider_adapter.r15.patch",
+          "sha256": "a122f6c518e1b4beee6222803ebab066fa71e6d4c29da840c980517a36000c44"
+        }
+      ],
+      "build": [
+        {
+          "path": "benchmark/2026-10-20-t30-request-recovery/production/build.py",
+          "sha256": "49986c59bd0ddc8bf08b32ca6011a82c0bcf053a93f84484f6ecf6d822f7a1de"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-request-recovery/production/recipe.json",
+          "sha256": "e110e0ebe27c94092410845ca70dfb901a4b3bcd8915b9f4416d192c1d7575f0"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-request-recovery/production/check.py",
+          "sha256": "34c1f51b0f4ffb5f923649f0587d11e582fd4aa8c3f6cf300199e91c4ccbdf7b"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-request-recovery/production/preparation-results.json",
+          "sha256": "c31e77ee6ac39222da71cdc8b696c18cbfd3aa7d5adc3a4ee761ca899ef77c11"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-request-recovery/production/production-01/results.json",
+          "sha256": "0921434d04d676c2feb24d32384e37f1d91b8da06c4b20c80deb77d8cf6ec4e9"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-request-recovery/production/production-01/source-freeze.json",
+          "sha256": "58e6d12bea9d38df3da86a7cbed57e451ba5d56f4aab0bd07a25b519f3536cf1"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-request-recovery/production/production-01/private-raw-index.json",
+          "sha256": "f26e88d8df852f0f9a4082dfff2edad1446b36084056018044e6bfacf51a53b1"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "benchmark/2026-10-20-t30-recovery-peer/replay.py",
+          "sha256": "214e2967026b31cb3a92a3de51b9c2c5c3a85804f08d4a0789ff25a9ca3a0924"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-recovery-peer/baseline-results.json",
+          "sha256": "f10f6de8bb7f456ea9cba22cb4c674f8f65f643a6914a6fd310b1178aa2cd87e"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-recovery-peer/baseline-source-pins.json",
+          "sha256": "76be469b58c39596c54e6845ab726cf0990a6999d8660f361fb3c87e102c0c6e"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-recovery-peer/candidate-01-blocker.json",
+          "sha256": "b443bce0fc0e9e205e80545daedd4d6904b5826d3c987a94161122db6e47beac"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-recovery-peer/candidate-02-review.json",
+          "sha256": "11752189a72365beb5704b7ee6075a12fd9935b48299ad357a59527eaa245a8f"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-recovery-peer/adapter_pollution.c",
+          "sha256": "aeaf5d013f08cb71f106a4b544ff9d1890cd5b891ddab396929a626c39087f44"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-recovery-peer/candidate-03-signoff.json",
+          "sha256": "fff53a2b14aef75da51a23e6e0e65145365fc1d46f3ffdfd9c65eaeb8ea1f2b7"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-recovery-peer/candidate-03-raw-index.json",
+          "sha256": "c02929fd64ab4f4ae7d3137777cadd8d8336cb2507c0366c6f7d4c9b036880ca"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-production-archive/remote-success.json",
+          "sha256": "9a2c7f4cc57a706049d5bd7784be9cee2e2f0a8aa740867c67da1931f34c710c"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-production-archive/source-refs.json",
+          "sha256": "fc004b3c6042f4b9840dd5fe697d643a7e53854adfaa809c034bbbf7e780e81b"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-production-archive/input-map.json",
+          "sha256": "7ed25d77cdaeff5b7d94b3286d38d239030f7ec6ea3b04bcdbc52234f2947cd6"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-production-archive/index-check.json",
+          "sha256": "ab7f1cb169887246b02047a54e42f8898e893dda390f53189e09fc7bdacd0183"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-production-archive/private-raw-index.json",
+          "sha256": "27a02852d0993b9616ffcb0ab651f8628a42c5fd01cfd63f0d205c352c460654"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-runtime-peer/results.json",
+          "sha256": "2670e29549cefcbd5f480963e6857b37a3e7aa16f0a38557f5f6e7b090f75def"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-runtime-peer/source-index.json",
+          "sha256": "d03da090bc5c1abd901bb81559330e863eaa141f4a1d018e2c124deb490fd463"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-runtime-peer/followup-results.json",
+          "sha256": "4a72c663fc1c4d973513aa29723614d36881c5e16c8f8e61d7926c2adb0f19d9"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-runtime-peer/followup-source-index.json",
+          "sha256": "5e9ee7a4871e274414c3a269aece3c75a6ba94aa839621b0f4a84595a0482fc7"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-runtime-peer/bounded-excerpt.txt",
+          "sha256": "37329eb47198d8e819dd718ae65d6122a26c8c900db82a18c5189977c6808afa"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-deployment-peer/results.json",
+          "sha256": "06cfaa2c0bc2349167a0f69451521f8410d7ff29bcf04265630a56506136fd81"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-deployment-peer/source-pins.json",
+          "sha256": "260cbf6a8512e40445d1b66721546f0225cd4091a2d606bd1dd290c3fea2f427"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-deployment-peer/main-land-results.json",
+          "sha256": "1a02cd943bde36c630cdb807e9627959f2629cce6b343b5d6899e4572038b66d"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-window-archive/results.json",
+          "sha256": "daa8320eb366aa9c3034e99c93ba9778f03931031fb03ea9a98d3443b297c14f"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-window-archive/window-close.json",
+          "sha256": "72328e1c38fb8119a4d23534f805792abdbdc01592af2c702dcf6dd2d53ae39e"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-window-archive/remote-success.json",
+          "sha256": "92a772e641034c22698515e2df63e9f475dab3507de369af3adc67a9903167cb"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-window-archive/critical-members.json",
+          "sha256": "59d31a0150617a77fd6f52a1ed7e7fbd1394750e30ce82f89c4d0d3c3574bb29"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-window-archive/private-raw-index.json",
+          "sha256": "efc099ebfa90c0f8d8eb1861516a480d2ee963820f5ad564fe29ba98dc3397df"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-window-archive/user-audio-confirmation.json",
+          "sha256": "41aabfd2ab136ea764a9cb8652ac68df40a9f3c3ebdd12e88a1dd1133435a4ca"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-window-archive/restore-comparison.json",
+          "sha256": "1992256be4d35c2d670dc11c4732a8c370c9237f3353b4d662de3e5368f3de66"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-window-archive/source-index.json",
+          "sha256": "9f31149f6df8a4e11d09bdcb42b1b43dfc0897e3c0eebbdc90539a2f929dd8d0"
+        },
+        {
+          "path": "benchmark/2026-10-20-t30-window-archive/index-replay.json",
+          "sha256": "d7a05084d76f05bf26fdd63d46e8610ef4f5cdce38901b8200c17c1ba01e5fda"
+        }
+      ],
+      "frozen": false
     }
   ]
 }
