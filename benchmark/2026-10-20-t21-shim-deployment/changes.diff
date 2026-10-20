@@ -1,0 +1,155 @@
+--- T18/executor.py
++++ T21/executor.py
+@@ -1,4 +1,4 @@
+-"""5cd R9 plus AudioTrack bridge CAS derivation. Preview default; separate exact-source admission required."""
++"""5cd T21 six-artifact CAS derivation. Preview default; separate exact-source admission required."""
+ import argparse,hashlib,json,re,shlex,sys,time,datetime,subprocess
+ from pathlib import Path
+ # Candidate source and bytes accepted by outer; unapproved sentinels still refuse before Board setup.
+@@ -35,7 +35,21 @@
+ for ref in candidate['production_refs']:
+  assert not Path(ref['path']).is_absolute() and '..' not in Path(ref['path']).parts
+  assert sha_file(a.repo/ref['path'])==ref['sha256'],'production receipt drift'
++shim_candidate=json.loads((here/'shim-candidate.json').read_text())
++SHIM='webview-t-lib/libwebview_bionic_shim.so'
++SHIM_INPUT='libwebview_bionic_shim.so'
++SBEFORE='85c789f48b2bc0c31658c9dc591cd27784cc0ddfe559005e8d36d1d7d220476a'
++SAFTER=shim_candidate['after_sha256']
++assert shim_candidate['path']==SHIM and shim_candidate['before_sha256']==SBEFORE
++assert isinstance(SAFTER,str) and re.fullmatch('[0-9a-f]{64}',SAFTER) and SAFTER!=SBEFORE,'shim candidate pin required'
++assert shim_candidate['build_status']=='PRODUCTION_BUILD_VERIFIED' and shim_candidate['production_refs'],'shim production closure required'
++for ref in shim_candidate['production_refs']:
++ assert not Path(ref['path']).is_absolute() and '..' not in Path(ref['path']).parts
++ assert sha_file(a.repo/ref['path'])==ref['sha256'],'shim production receipt drift'
+ ad=json.loads(a.admission.read_text())
++assert ad['shim_candidate_sha256']==sha_file(here/'shim-candidate.json'),'shim candidate admission drift'
++assert re.fullmatch(r'[0-7]{3,4}:20011300:20011300',ad['shim_metadata']),'fresh shim metadata required'
++assert ad['shim_label']=='u:object_r:appdat:s0','shim label' 
+ assert ad['bridge_candidate_sha256']==sha_file(here/'bridge-candidate.json'),'candidate admission drift'
+ assert re.fullmatch(r'[0-7]{3,4}:20011300:20011300',ad['bridge_metadata']),'fresh bridge metadata required'
+ assert ad['bridge_label']=='u:object_r:appdat:s0','bridge label'
+@@ -56,7 +70,7 @@
+ else:
+  assert not a.apply_plan,'apply-plan only for rollback'
+ if a.mode=='apply':
+- for name,digest in [('libopensles_android_compat.so',DSHA),('libmffmpeg.so','d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4'),('libttmplayer.so',PAFTER),(BRIDGE,BAFTER)]:
++ for name,digest in [('libopensles_android_compat.so',DSHA),('libmffmpeg.so','d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4'),('libttmplayer.so',PAFTER),(BRIDGE,BAFTER),(SHIM_INPUT,SAFTER)]:
+   assert sha_file(a.inputs/name)==digest,name
+  check=subprocess.run([sys.executable,str(a.repo/'scripts/lab/check_frozen.py')],cwd=a.repo,capture_output=True,timeout=min(60,deadline-time.monotonic()-600))
+  assert check.returncode==0,'check_frozen failed: '+check.stderr.decode('utf-8','replace')
+@@ -137,6 +151,9 @@
+ bactual=read('sha256sum '+RT+'/'+BRIDGE).split()[0]
+ bmeta=read('stat -c %a:%u:%g '+RT+'/'+BRIDGE).strip();assert bmeta==ad['bridge_metadata'],'bridge metadata drift'
+ blabel=read('ls -Zd '+RT+'/'+BRIDGE).split()[0];assert blabel==ad['bridge_label'],'bridge label drift'
++sactual=read('sha256sum '+RT+'/'+SHIM).split()[0]
++smeta=read('stat -c %a:%u:%g '+RT+'/'+SHIM).strip();assert smeta==ad['shim_metadata'],'shim metadata drift'
++slabel=read('ls -Zd '+RT+'/'+SHIM).split()[0];assert slabel==ad['shim_label'],'shim label drift'
+ expected=sha(before)
+ apply_plan=None; dso_present=False
+ if a.mode=='rollback':
+@@ -144,6 +161,11 @@
+  apply_plan=json.loads(a.apply_plan.read_text())
+  assert apply_plan['executor_sha256']==sha_file(Path(__file__)) and apply_plan['holder']==a.holder and apply_plan['start']==a.start,'same execution window/source'
+  assert apply_plan['compat_before_absent'] is True
++ assert apply_plan['shim_path']==SHIM and apply_plan['shim_before_sha']==SBEFORE and apply_plan['shim_after_sha']==SAFTER
++ assert apply_plan['shim_candidate_sha256']==sha_file(here/'shim-candidate.json')
++ assert (smeta,slabel)==(apply_plan['shim_metadata'],apply_plan['shim_label'])
++ assert sactual in (SBEFORE,SAFTER),'foreign shim bytes'
++ assert apply_plan['compat_absence_marker_sha256']==sha(b'ABSENT\n')
+  assert apply_plan['bridge_path']==BRIDGE and apply_plan['bridge_before_sha']==BBEFORE and apply_plan['bridge_after_sha']==BAFTER
+  assert apply_plan['bridge_candidate_sha256']==sha_file(here/'bridge-candidate.json')
+  assert (bmeta,blabel)==(apply_plan['bridge_metadata'],apply_plan['bridge_label'])
+@@ -169,6 +191,7 @@
+  assert mactual==MBEFORE,'media before drift'
+  assert pactual==PBEFORE,'player before drift'
+  assert bactual==BBEFORE,'bridge before drift'
++ assert sactual==SBEFORE,'shim before drift'
+ physical_guard=f'test "$(cat /proc/sys/kernel/random/boot_id)" = {q(a.boot)}\ntest "$(sha256sum {CFG} | cut -d\' \' -f1)" = {CSHA}\n'
+ if a.recovery_no_parent:parent_guard=physical_guard
+ else:
+@@ -199,13 +222,22 @@
+  # /proc/PID/root is the intentional, identity-bound namespace link.
+  pre+=fg(private_bridge,bactual,bmeta,blabel)[len(pathguard(private_bridge)):]
+  pre+=f'test "$(stat -L -c %d:%i {RT}/{BRIDGE})" = "$(stat -L -c %d:%i {private_bridge})"\n'
++pre+=fg(RT+'/'+SHIM,sactual,smeta,slabel)
++if not a.recovery_no_parent:
++ private_shim=f'/proc/{a.parent}/root/data/local/tmp/asx/{SHIM}'
++ pre+=fg(private_shim,sactual,smeta,slabel)[len(pathguard(private_shim)):]
++ pre+=f'test "$(stat -L -c %d:%i {RT}/{SHIM})" = "$(stat -L -c %d:%i {private_shim})"\n'
+ pre+=fg(RT+'/'+DSO,DSHA,'644:20011300:20011300',dlabel) if dso_present else pathguard(RT+'/'+DSO)+f'test ! -e {RT}/{DSO}\n'
+ if a.mode=='rollback':
+- backup=RT+'/run.sh.t18-5cd-before-'+apply_plan['boot'][:8]
+- media_backup=RT+'/'+MEDIA+'.t18-5cd-before-'+apply_plan['boot'][:8]
+- player_backup=RT+'/'+PLAYER+'.t18-5cd-before-'+apply_plan['boot'][:8]
+- bridge_backup=RT+'/'+BRIDGE+'.t18-5cd-before-'+apply_plan['boot'][:8]
+- for target,back,digest,fmeta,flabel,current in [('run.sh',backup,apply_plan['before_sha'],meta,label,actual),(MEDIA,media_backup,MBEFORE,mmeta,mlabel,mactual),(PLAYER,player_backup,PBEFORE,pmeta,plabel,pactual),(BRIDGE,bridge_backup,BBEFORE,bmeta,blabel,bactual)]:
++ backup=RT+'/run.sh.t21-5cd-before-'+apply_plan['boot'][:8]
++ media_backup=RT+'/'+MEDIA+'.t21-5cd-before-'+apply_plan['boot'][:8]
++ player_backup=RT+'/'+PLAYER+'.t21-5cd-before-'+apply_plan['boot'][:8]
++ bridge_backup=RT+'/'+BRIDGE+'.t21-5cd-before-'+apply_plan['boot'][:8]
++ shim_backup=RT+'/'+SHIM+'.t21-5cd-before-'+apply_plan['boot'][:8]
++ absence_backup=RT+'/'+DSO+'.t21-5cd-before-'+apply_plan['boot'][:8]+'.absent'
++ assert apply_plan['compat_absence_marker']==absence_backup
++ if dso_present:pre+=pathguard(absence_backup)+f'test -f {q(absence_backup)}\ntest "$(sha256sum {q(absence_backup)} | cut -d\' \' -f1)" = {apply_plan["compat_absence_marker_sha256"]}\n'
++ for target,back,digest,fmeta,flabel,current in [('run.sh',backup,apply_plan['before_sha'],meta,label,actual),(MEDIA,media_backup,MBEFORE,mmeta,mlabel,mactual),(PLAYER,player_backup,PBEFORE,pmeta,plabel,pactual),(BRIDGE,bridge_backup,BBEFORE,bmeta,blabel,bactual),(SHIM,shim_backup,SBEFORE,smeta,slabel,sactual)]:
+   present=read('if [ -e '+q(back)+' ]; then echo yes; else echo no; fi').strip()=='yes'
+   if present:pre+=fg(back,digest,fmeta,flabel)
+   else:assert current==digest,'missing backup for changed target'
+@@ -223,10 +255,11 @@
+ shell(pre)
+ plan={'mode':a.mode,'compat_before_absent':True,'serial':board.serial,'uid':20011300,'holder':a.holder,'start':a.start,'admission_sha256':sha_file(a.admission),'executor_sha256':sha_file(Path(__file__)),'boot':a.boot,'parent':a.parent,'parent_birth':a.birth,'physical_only':a.recovery_no_parent,'wid':wid,'before_sha':sha(before),'after_sha':sha(after),'run_metadata':meta,'run_label':label,'dso_label':dlabel,'dso_sha':DSHA,'cfg_sha':CSHA,'runtime':RT,'media_before_sha':MBEFORE,'media_after_sha':MAFTER,'media_metadata':mmeta,'media_label':mlabel,'player_path':PLAYER,'player_before_sha':PBEFORE,'player_after_sha':PAFTER,'player_metadata':pmeta,'player_label':plabel,'player_input_rel':PLAYER_INPUT_REL}
+ plan.update(bridge_path=BRIDGE,bridge_before_sha=BBEFORE,bridge_after_sha=BAFTER,bridge_metadata=bmeta,bridge_label=blabel,bridge_candidate_sha256=sha_file(here/'bridge-candidate.json'))
++plan.update(shim_path=SHIM,shim_before_sha=SBEFORE,shim_after_sha=SAFTER,shim_metadata=smeta,shim_label=slabel,shim_candidate_sha256=sha_file(here/'shim-candidate.json'),compat_absence_marker=RT+'/'+DSO+'.t21-5cd-before-'+(apply_plan['boot'] if apply_plan else a.boot)[:8]+'.absent',compat_absence_marker_sha256=sha(b'ABSENT\n'))
+ if apply_plan is not None:plan['origin_apply_plan_sha256']=sha(a.apply_plan.read_bytes());plan['origin_apply_boot']=apply_plan['boot'];plan['origin_apply_wid']=origin_wid
+ (a.out/'plan.json').write_text(json.dumps(plan,indent=2)+'\n');(a.out/'before.run.sh').write_bytes(before);(a.out/'after.run.sh').write_bytes(after)
+ if a.mode=='preflight':print(json.dumps(plan));sys.exit()
+-stage='/data/local/tmp/t18-5cd-'+a.mode+'-'+a.boot[:8]+'-'+sha(str(a.out).encode())[:8];shell(parent_guard+pathguard(stage)+f'test ! -e {stage}; mkdir {stage}; chmod 700 {stage}\n')
++stage='/data/local/tmp/t21-5cd-'+a.mode+'-'+a.boot[:8]+'-'+sha(str(a.out).encode())[:8];shell(parent_guard+pathguard(stage)+f'test ! -e {stage}; mkdir {stage}; chmod 700 {stage}\n')
+ new=before if a.mode=='rollback' else after;newfile=a.out/('before.run.sh' if a.mode=='rollback' else 'after.run.sh')
+ board.send(newfile,stage+'/run.sh');shell(f'test "$(sha256sum {stage}/run.sh | cut -d\' \' -f1)" = {sha(new)}\n')
+ if a.mode=='apply':
+@@ -241,24 +274,33 @@
+ if a.mode=='apply':
+  bridge=a.inputs/BRIDGE;assert sha(bridge.read_bytes())==BAFTER
+  board.send(bridge,stage+'/'+BRIDGE);shell(f'test "$(sha256sum {stage}/{BRIDGE} | cut -d\' \' -f1)" = {BAFTER}\n')
++if a.mode=='apply':
++ shim=a.inputs/SHIM_INPUT;assert sha(shim.read_bytes())==SAFTER
++ board.send(shim,stage+'/'+SHIM_INPUT);shell(f'test "$(sha256sum {stage}/{SHIM_INPUT} | cut -d\' \' -f1)" = {SAFTER}\n')
+ def swap(name,source,digest,fmeta,flabel,preimage):
+  dst=RT+'/'+name;tmp=dst+'.ttvideo-'+a.boot[:8]+'-'+sha(str(a.out).encode())[:8]+'.tmp';mode,uid,gid=fmeta.split(':')
+  before_guard=fg(dst,preimage,fmeta,flabel) if preimage is not None else pathguard(dst)+f'test ! -e {q(dst)}\n'
+  return pathguard(tmp)+f'test ! -e {q(tmp)}\ncp {q(source)} {q(tmp)}\nchown {uid}:{gid} {q(tmp)}\nchmod {mode} {q(tmp)}\nchcon {q(flabel)} {q(tmp)}\n'+fg(tmp,digest,fmeta,flabel)+before_guard+f'mv {q(tmp)} {q(dst)}\n'+fg(dst,digest,fmeta,flabel)
+ script=pre
+ if a.mode=='apply':
+- backup=RT+'/run.sh.t18-5cd-before-'+a.boot[:8]
++ backup=RT+'/run.sh.t21-5cd-before-'+a.boot[:8]
+  script+=pathguard(backup)+f'test ! -e {q(backup)}\ncp -p {RT}/run.sh {q(backup)}\n'+fg(backup,expected,meta,label)
+ if a.mode=='apply':
+- media_backup=RT+'/'+MEDIA+'.t18-5cd-before-'+a.boot[:8]
++ media_backup=RT+'/'+MEDIA+'.t21-5cd-before-'+a.boot[:8]
+  script+=pathguard(media_backup)+f'test ! -e {q(media_backup)}\ncp -p {RT}/{MEDIA} {q(media_backup)}\n'+fg(media_backup,MBEFORE,mmeta,mlabel)
+ if a.mode=='apply':
+- player_backup=RT+'/'+PLAYER+'.t18-5cd-before-'+a.boot[:8]
++ player_backup=RT+'/'+PLAYER+'.t21-5cd-before-'+a.boot[:8]
+  script+=pathguard(player_backup)+f'test ! -e {q(player_backup)}\ncp -p {RT}/{PLAYER} {q(player_backup)}\n'+fg(player_backup,PBEFORE,pmeta,plabel)
+ if a.mode=='apply':
+- bridge_backup=RT+'/'+BRIDGE+'.t18-5cd-before-'+a.boot[:8]
++ bridge_backup=RT+'/'+BRIDGE+'.t21-5cd-before-'+a.boot[:8]
+  script+=pathguard(bridge_backup)+f'test ! -e {q(bridge_backup)}\ncp -p {RT}/{BRIDGE} {q(bridge_backup)}\n'+fg(bridge_backup,BBEFORE,bmeta,blabel)
+-# All four original backups are complete and verified before the first target swap.
++if a.mode=='apply':
++ shim_backup=RT+'/'+SHIM+'.t21-5cd-before-'+a.boot[:8]
++ script+=pathguard(shim_backup)+f'test ! -e {q(shim_backup)}\ncp -p {RT}/{SHIM} {q(shim_backup)}\n'+fg(shim_backup,SBEFORE,smeta,slabel)
++ absence_backup=plan['compat_absence_marker']
++ script+=pathguard(absence_backup)+f'test ! -e {q(absence_backup)}\n(set -C; printf "ABSENT\\n" > {q(absence_backup)})\nchmod 600 {q(absence_backup)}\ntest "$(sha256sum {q(absence_backup)} | cut -d\' \' -f1)" = {plan["compat_absence_marker_sha256"]}\n'
++# Six preimages: five verified file backups plus the compat ABSENT receipt.
++if a.mode!='rollback' or sactual!=SBEFORE:script+=swap(SHIM,shim_backup if a.mode=='rollback' else stage+'/'+SHIM_INPUT,SBEFORE if a.mode=='rollback' else SAFTER,smeta,slabel,sactual)
+ if a.mode!='rollback' or bactual!=BBEFORE:script+=swap(BRIDGE,bridge_backup if a.mode=='rollback' else stage+'/'+BRIDGE,BBEFORE if a.mode=='rollback' else BAFTER,bmeta,blabel,bactual)
+ if a.mode!='rollback' or mactual!=MBEFORE:script+=swap(MEDIA,media_backup if a.mode=='rollback' else stage+'/libmffmpeg.so',MBEFORE if a.mode=='rollback' else MAFTER,mmeta,mlabel,mactual)
+ if a.mode!='rollback' or pactual!=PBEFORE:script+=swap(PLAYER,player_backup if a.mode=='rollback' else stage+'/libttmplayer.so',PBEFORE if a.mode=='rollback' else PAFTER,pmeta,plabel,pactual)
+@@ -269,4 +311,4 @@
+ completion='PHYSICAL_FILES_RESTORED_REQUIRES_FRESH_BOOT' if a.mode=='rollback' else 'VIDEO_FILES_SWAPPED_FRESH_BOOT_REQUIRED'
+ script+=parent_guard+'echo '+completion+'\n'
+ (a.out/'swap.sh').write_text(script);result=shell(script);assert completion in result
+-(a.out/'result.json').write_text(json.dumps(dict(plan,status=completion,backup=backup,media_backup=media_backup,player_backup=player_backup,bridge_backup=bridge_backup),indent=2)+'\n');print(result)
++(a.out/'result.json').write_text(json.dumps(dict(plan,status=completion,backup=backup,media_backup=media_backup,player_backup=player_backup,bridge_backup=bridge_backup,shim_backup=shim_backup),indent=2)+'\n');print(result)
