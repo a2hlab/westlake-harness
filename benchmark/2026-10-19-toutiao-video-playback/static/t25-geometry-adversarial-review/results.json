@@ -1,0 +1,68 @@
+{
+  "task": "T25 geometry fix — adversarial review (principles; spec not yet generated)",
+  "reviewer": "cc-video (read-only; no REA/device/build)",
+  "inputs": "~/.local/share/westlake/t23-codex-rea/geometry/ (SUMMARY.zh-CN.md, handleopt-8f + geometry-765 pseudocode, shim-dynsym)",
+  "t25_tree_spec_status": "westlake-harness-t25-geometry present but NO geometry spec yet -> reviewed principles",
+  "grounding": {
+    "handleopt_8f_0x68c10": "returns 0x2625de8(=40001000) unless window!=0 && *(window+0x18)!=0 && *(int*)(window+0x10)==0x57494e44('WIND'); opcode0=SET_BUFFER_GEOMETRY; 40001000 = object-validity gate, not w/h/format value",
+    "setBuffersGeometry_765_0x3d84": "provider(window,0,w,h) with window UNCHANGED (no unwrap); format mapped+provider(window,3,fmt) only if format>0 && opcode0 rc==0; else returns opcode0 rc",
+    "shim_a9ab_exports": "only ANativeWindow_lock/unlockAndPost; no setBuffersGeometry (not in shim)",
+    "log": "120x(1080x1920,fmt2,win 0x7faf173a60)+1x(576x1024,fmt842094169,win 0x7fb2b9c2a0) all ret40001000; distinct from T20-unwrapped OH window 0x7fae81ad30"
+  },
+  "verdict": "approach structurally sound and evidence-aligned (opcode0->opcode3 matches 765; unwrap-to-OH-window is the right lever; EGL/CPU untouched). 3 guardrails must be resolved before build/deploy.",
+  "blocking_questions": [
+    "Q1 winner-instance guard: geometry resolver winner is UNKNOWN (only lock/post base 7faee40000 logged; geometry HandleOpt slot not captured); T18 proved same-SHA=2 instances. How does the fix prove geometry provider winner == T20 unwrap owner at runtime and REFUSE on mismatch, so it can't bind a wrong libsurface instance? Else mis-deployment not blocked.",
+    "Q2 lifetime + format-ring key: 765 makes two sequential provider calls with no lock across them and keys the 64-slot format ring by raw window ptr. Does the fix hold a reference on the unwrapped OH window across opcode0->opcode3 (no concurrent free), and key the ring consistently (wrapper vs OH window) to avoid UAF/wrong-key, without regressing T23 EGL/CPU wrapper lifecycle?",
+    "Q3 preserve 40001000 (no swallow): on opcode0 failure does the fix return the REAL rc (40001000), never a forged 0 / format-ring success, and run opcode3 only when opcode0 rc==0? Foreign/null reject must refuse at the shim boundary before the provider call, while passing through already-valid OH windows (no double-unwrap). Legacy 'ignore OH error return 0' must NOT be inherited."
+  ],
+  "non_blocking": [
+    "new unfrozen geometry-adapter unit; do not lift whole legacy android_graphics_compat_shim.cpp / webview_bionic_shim.c:3842 (carry return-0-on-error + re-dlopen)",
+    "do not 'fix' 40001000 by changing requested w/h/format (object-validity, not parameter)",
+    "a geometry pass does NOT imply video-visible: R23 EGLImage draw-time sampling + non-empty producer content remain separate open questions"
+  ],
+  "re_review_2026_10_20": {
+    "read": [
+      "westlake-harness-t25-geometry/specs/toutiao-video-playback/t25-geometry-unwrapping.spec.md",
+      "westlake-harness-t25-geometry/benchmark/2026-10-20-t25-geometry/BLUEPRINT.md (lint 78%)"
+    ],
+    "Q3_no_swallow": "RESOLVED by spec (return first real failure; explicit uncalled status; reject null/foreign before any OH call; don't copy donor return0)",
+    "Q2_ring_key": "MOOT: new TU calls HandleOpt(oh,0/3) directly, bypassing libandroid765 g_requested_formats ring; format map 1/2/3/4/YV12->12/11/13/3/11 matches 765 switch exactly (YV12=0x32315659=842094169->0xb)",
+    "Q1_winner": "partially in-spec (actual_winner from geometry chain, refuse foreign, no CPU-pair substitute); sharpened to B1",
+    "real_blockers": {
+      "B1_same_instance_provable": "TOP: resolve_and_admit must pick HandleOpt from the SAME instance that minted borrowed_oh, but owner.unwrap returns only the OH ptr and geometry winner was never logged (T18: same SHA=2 instances); borrowed_oh does not dladdr to libsurface. Does T20 entry.h expose the owning provider base/handle, OR does the OH window carry a provider back-pointer at window+N to dladdr-bind HandleOpt in that exact base? If neither, same-instance HandleOpt is unprovable -> TU resolves independently = wrong-instance bind the spec forbids",
+      "B2_runtime_routing_unspecified": "exporting ANativeWindow_setBuffersGeometry from the shim does not make the player call it instead of libandroid765's same-named export (765 is the source of the logged 40001000); spec requires runtime proof the player entered the new entry but defines NO routing mechanism (interpose/DT_NEEDED order/namespace precedence) -> adapter risks being dead code",
+      "B3_cross_api_serialization": "borrow-no-ref relies on T20 external serialization; geometry(UI thread) vs lock/unlockAndPost(render thread) on the SAME window from different threads -> does T20 owner serialization cover cross-API same-window concurrency or only same-API? If only same-API, concurrent lock/post can invalidate borrowed_oh under the adapter"
+    },
+    "standing_caveats": [
+      "geometry pass moves ONE wall only; video-visible needs R23 EGLImage draw-time sampling + non-empty producer content; spec final human scenario keeps this separate (two full cycles; static/host pass != video pass)",
+      "R23 'import non-null image' != whole import path proven (API-level create success, not end-to-end import correctness)",
+      "Android reference now has an ACTUAL run completed (old 'main process not running' was only baseline); an Android success is still NOT an OH pass"
+    ],
+    "codex_seam_response": {
+      "B1_same_instance": "RESOLVED/implementable: RTLD_NOLOAD owner; require get/acquire/release 0x125dc0/0x125dfc/0x125e4c; PT_LOAD coverage; owner Reference/Unreference slots 0x1740a0/0x173fc8 == owner-handle dep-scope dlsym sharing one libsurface base; resolve HandleOpt via same handle, dladdr base==that base and offset==0x68c10",
+      "B3_lifetime": "RESOLVED: dca owner acquire atomic +1 @0x125e28-38, release -1 @0x125e80-9c + destroy; hold one extra owner ref before unwrap across both opcodes, balance per exit; caller must own a valid ref on entry",
+      "ring_correction": "I was WRONG to call MOOT: exact765 writes format under original wrapper key before HandleOpt even on failure (libandroid_webview_core_shim.c writer@527/reader@547/legacy lock@745 YV12); T20 lock reads format from returned OH buffer not this ring; invent no new T25 ring; within proven-T20-lock player the legacy ring is out of path; mixed-765-lock routing is a regression risk -> reject admission until handled",
+      "raw_oh_passthrough": "out of scope (no OH provenance registry; accept trusted wrappers only, foreign reject before OH)"
+    },
+    "B2_routing_static_resolution": {
+      "method": "llvm-objdump (binutils, no REA) on delivered artifacts",
+      "player_libttmplayer": "ANativeWindow_setBuffersGeometry/lock/unlockAndPost all *UND* unversioned; NEEDED libandroid.so; does NOT NEED the shim",
+      "libandroid_765": "SONAME libandroid.so (= player NEEDED); exports all three: setBuffersGeometry@0x3d84, lock@0x3ee4, unlockAndPost@0x42e4",
+      "current_shim": "SONAME libwebview_bionic_shim.so, NEEDED only libc; exports ONLY lock@0x6a00/unlockAndPost@0x6a14 (ver LIBC); NO setBuffersGeometry",
+      "observed": "52.9MB log: player lock/unlockAndPost run through the SHIM (WL-R20) despite player NEEDing libandroid.so and not the shim -> shim is in the global/preload group shadowing libandroid for its exported symbols; setBuffersGeometry (not exported by shim) falls through to libandroid-765 = source of 40001000",
+      "status": "STATIC ADMISSION SUPPORT, RUNTIME PENDING (human gate retained)",
+      "prediction_not_proof": "adding setBuffersGeometry to the same shim (default-export like lock) should inherit the same global-group precedence that routes lock to the shim, shadowing libandroid-765 geometry; lock+geometry are both UND in the same player/scope. This is a supported static admission, NOT 'inevitable/already-proven' -- the dynamic geometry entry/GOT/winner is uncaptured, so the on-board human gate stays required.",
+      "source_artifacts": {
+        "player": "toutiao-video-r2-gate-inputs/apk-lib/libttmplayer.so",
+        "libandroid_765": "t23-codex-rea-package/packet-01/inputs/libandroid-765.so",
+        "shim": "toutiao-resume-20261020/t23-candidate-inputs/libwebview_bionic_shim.so"
+      },
+      "preconditions": [
+        "export geometry as a DEFAULT GLOBAL symbol like lock (not hidden/version-incompatible), else no shadow",
+        "mixed-765-lock routing excluded -- cx now limits via a 3-slot actual gate, tests on real dispatch",
+        "spec runtime proof that the player's call entered the new entry is the closing evidence (human gate)"
+      ]
+    },
+    "net": "B1/B3 resolved by Codex seams; B2 has STATIC ADMISSION SUPPORT, RUNTIME PENDING (human gate kept). Remaining: spec's own gates -- on-board winner/route evidence + two-cycle video acceptance + explicit mixed-765 rejection (cx 3-slot gate). No geometry-only pass signs video."
+  }
+}
