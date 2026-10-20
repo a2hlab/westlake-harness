@@ -54,6 +54,23 @@ chown() { return 0; }
     def test_real_cas_success(self):self.run_swap('good')
     def test_foreign_cas_refuses(self):self.run_swap('foreign')
     def test_symlink_refuses(self):self.run_swap('symlink')
+    def test_actual_strings_environment_and_host_guards(self):
+        calls=[n for n in ast.walk(TREE) if isinstance(n,ast.Call) and isinstance(n.func,ast.Name) and n.func.id=='read' and n.args and 'strings /proc/' in ast.unparse(n.args[0])]
+        self.assertEqual(len(calls),2)
+        env={'a':type('A',(),{'parent':'19163'})()}
+        for call in calls:
+            cmd=eval(compile(ast.Expression(call.args[0]),'actual-env-command','eval'),env)
+            good=subprocess.run(['sh','-c','strings() { printf "WL_PARENT_ID=29\\n"; }; '+cmd],capture_output=True)
+            self.assertEqual(good.returncode,0);self.assertEqual(good.stdout.strip(),b'29')
+            duplicate=subprocess.run(['sh','-c','strings() { printf "WL_PARENT_ID=29\\nWL_PARENT_ID=29\\n"; }; '+cmd],capture_output=True)
+            self.assertNotEqual(duplicate.stdout.strip(),b'29')
+            failed=subprocess.run(['sh','-c','strings() { return 127; }; '+cmd],capture_output=True)
+            self.assertNotEqual(failed.returncode,0)
+        node=next(n for n in TREE.body if isinstance(n,ast.AugAssign) and isinstance(n.target,ast.Name) and n.target.id=='hostguard')
+        cmd=eval(compile(ast.Expression(node.value),'actual-host-command','eval'),{'host':{'pid':18952}})
+        for text,ok in [('org.westlake.imehost',True),('prefix-org.westlake.imehost',False)]:
+            got=subprocess.run(['sh','-c','set -e; strings() { printf "%s\\n" '+shlex.quote(text)+'; }; '+cmd],capture_output=True)
+            self.assertEqual(got.returncode==0,ok)
     def test_shell_syntax(self):
         e=helpers(Path('/data/example'))
         p=subprocess.run(['sh','-n'],input=e['swap']('target','/input','a'*64,'644:1:1','u:object_r:appdat:s0','b'*64).encode(),capture_output=True)

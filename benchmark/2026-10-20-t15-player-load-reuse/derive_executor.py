@@ -138,5 +138,8 @@ change("assert re.fullmatch(r'u:object_r:[A-Za-z0-9_]+:s0',label) and re.fullmat
 change("pre=parent_guard+fg(RT+'/run.sh',expected,meta,label)",'for control,digest in readonly[\'controls\'].items():\n assert control.startswith(\'/data/westlake-demo/toutiao/recovery-attempts/restore-v1-5cd-20261012/\') and re.fullmatch(\'[0-9a-f]{64}\',digest)\n parent_guard+=pathguard(control)+f\'test "$(sha256sum {q(control)} | cut -d\\\' \\\' -f1)" = {digest}\\n\'\npre=parent_guard+fg(RT+\'/run.sh\',expected,meta,label)')
 change('wid=rows[0][3];assert wid.isdigit()',"wid=rows[0][3];assert wid.isdigit()\n assert len(rows[0])>=8 and rows[0][2]==str(ad['host']['pid']),'WMS host PID binding'")
 change('if not a.recovery_no_parent:pre+=hostguard','hostguard+=f"tr \'\\\\000\' \'\\\\n\' < /proc/{host[\'pid\']}/cmdline | grep -Fx org.westlake.imehost >/dev/null\\n"\nif not a.recovery_no_parent:pre+=hostguard')
+# Actual OH environment lacks tr; strings is verified by the outer read.
+change(' assert read(\'tr "\\\\000" "\\\\n" < /proc/\'+a.parent+\'/environ | sed -n "s/^WL_PARENT_ID=//p"\').strip()==wid,\'parent environment/WID\'',' assert read(\'set -eu; envraw=$(strings /proc/\'+a.parent+\'/environ); printf "%s\\\\n" "$envraw" | sed -n "s/^WL_PARENT_ID=//p"\').strip()==wid,\'parent environment/WID\'',count=2)
+change('hostguard+=f"tr \'\\\\000\' \'\\\\n\' < /proc/{host[\'pid\']}/cmdline | grep -Fx org.westlake.imehost >/dev/null\\n"','hostguard+=f\'cmdraw=$(strings /proc/{host["pid"]}/cmdline); printf "%s\\\\n" "$cmdraw" | grep -Fx org.westlake.imehost >/dev/null\\n\'')
 (BASE/'executor.py').write_text(s)
 print(hashlib.sha256(s.encode()).hexdigest())

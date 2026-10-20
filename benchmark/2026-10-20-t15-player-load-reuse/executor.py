@@ -98,7 +98,7 @@ normalized,current_wid=normalize_wid(current_bytes)
 (a.out/'run-normalization.json').write_text(json.dumps({'original_reference_wid':29,'current_wid':current_wid,'actual_sha256':actual,'normalized_sha256':sha(normalized),'only_allowed_difference':'one exact WL_PARENT_ID numeric value'},indent=2)+'\n')
 if not a.recovery_no_parent:
  assert str(current_wid)==wid,'current raw WID/live WMS'
- assert read('tr "\\000" "\\n" < /proc/'+a.parent+'/environ | sed -n "s/^WL_PARENT_ID=//p"').strip()==wid,'parent environment/WID'
+ assert read('set -eu; envraw=$(strings /proc/'+a.parent+'/environ); printf "%s\\n" "$envraw" | sed -n "s/^WL_PARENT_ID=//p"').strip()==wid,'parent environment/WID'
 
 meta=read('stat -c %a:%u:%g '+RT+'/run.sh').strip();assert meta=='755:20011300:20011300',meta
 label=read('ls -Zd '+RT+'/run.sh').split()[0];dlabel=read('ls -Zd '+RT+'/libandroid_native_network_compat.so').split()[0]
@@ -111,7 +111,7 @@ assert sha(after)==params['run_derivation']['after_wid29_reference_sha256']
 assert ad['cfg_sha256']==CSHA
 if a.mode!='rollback':
  assert wid=='29','fresh WID differs from exact admitted baseline; re-review required'
- assert read('tr "\\000" "\\n" < /proc/'+a.parent+'/environ | sed -n "s/^WL_PARENT_ID=//p"').strip()==wid,'parent environment/WID'
+ assert read('set -eu; envraw=$(strings /proc/'+a.parent+'/environ); printf "%s\\n" "$envraw" | sed -n "s/^WL_PARENT_ID=//p"').strip()==wid,'parent environment/WID'
 
 before_template,after_template=before,after
 for data in [before,after]:assert data.count(b'export WL_PARENT_ID=29\n')==1
@@ -183,7 +183,7 @@ if a.mode=='rollback':
 host=ad['host'];assert host['uid']==20011300 and str(host['pid']).isdigit() and str(host['birth']).isdigit()
 assert re.fullmatch(r'mnt:\[[0-9]+\]',ad['parent_mnt'])
 hostguard=f"r=$(cat /proc/{host['pid']}/stat); z=${{r##*) }}; set -- $z; test \"${{20}}\" = {host['birth']}; test \"$1\" != Z; u=$(sed -n 's/^Uid:[[:space:]]*//p' /proc/{host['pid']}/status); set -- $u; test \"$1:$2:$3:$4\" = 20011300:20011300:20011300:20011300\n"
-hostguard+=f"tr '\\000' '\\n' < /proc/{host['pid']}/cmdline | grep -Fx org.westlake.imehost >/dev/null\n"
+hostguard+=f'cmdraw=$(strings /proc/{host["pid"]}/cmdline); printf "%s\\n" "$cmdraw" | grep -Fx org.westlake.imehost >/dev/null\n'
 if not a.recovery_no_parent:pre+=hostguard
 for provider in ad['providers']:
  assert provider['path'] in ('/system/lib64/libOpenSLES.so',RT+'/liblog.so') and re.fullmatch('[0-9a-f]{64}',provider['sha256'])
