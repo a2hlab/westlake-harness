@@ -1,0 +1,19 @@
+{
+  "task": "T26 YV12 scratch/RGBX adversarial review (BLOCKERS only; read-only; no REA by CC; no board/build/push)",
+  "inputs": "westlake-harness-t4: specs/.../t26-yv12-presentation.spec.md (parse0/lint88, 9 scenarios) + benchmark/2026-10-20-t26-yv12/BLUEPRINT.md + t25-observation-blueprint/BLUEPRINT.md",
+  "blockers": {
+    "W1_wiring": "prepare_output/before_unmap seams must sit on the player-bound SHIM ANativeWindow_lock/unlockAndPost path (R20, proven to win over libandroid-765), not a bypassed libandroid R14 window_module the player never reaches; else the scratch seam never runs",
+    "C1_cache_eviction": "'active cannot evict' must be ATOMIC with the cache-entry owner-ref release (one lock spanning active-check + release); else idle/quiescent eviction races an incoming lock and releases the trusted-owner ref the lock is about to use (TOCTOU use-after-release)",
+    "R1_rgb_regression": "once the derived glue copy is on the shim lock path, EVERY RGB lock traverses T26's copy; byte-identical {1,2,3,4,5,22,43} must be proven THROUGH the derived copy (not 'original file untouched'), incl. the no-recorded-request RGB pass-through case",
+    "S1_scratch_stride": "SHARPEST: the YV12 scratch strides handed to the player must MATCH the player's own YV12 plane-offset assumption; spec pins the donor formula (YS=align16(W), CS=align16(ceil(W/2))) but NOT the player's expected YV12 stride from evidence; mismatch = chroma written to wrong offsets = silently wrong colors, not a clean failure",
+    "F1_conversion_failure": "failure scenarios cover allocator/map/Unmap/Flush/owner-release but NOT a failure DURING the YV12->RGBX conversion (after scratch filled, before Unmap); must be FAILED-retained, no Flush/publish of a partially-converted dest"
+  },
+  "covered": [
+    "geometry failure state (failed call keeps prior request; format0 preserves; evicted->re-geometry; unknown-history lock refuses) -- MINOR pin: refused lock must return the error code the player already tolerates, not a novel failure",
+    "three-slot + mixed-765 refuse; export tuple/symbol-version/NEEDED/hidden-helper + T25 byte-identical relink obligations",
+    "overflow/budget/checked-arith/odd-dims (1x1,3x5,17x3); dest stride div4/>=4W/padding preserved",
+    "failure cleanup retention (FAILED not FREE, no retry, convert-then-Unmap/Flush-once, cache-vs-pair refs separate)",
+    "observation blueprint (GetConfig no-rc, usage_low32 only, no eglGetError consume, no dlopen/NOLOAD, no raw +0x18, retained handles only, errno preserved)"
+  ],
+  "net": "resolve W1,C1,R1,S1,F1 before build authorization; S1 (player YV12 stride contract) and W1 (seam on real shim path) most directly decide if the fix works. No implement/build/device until outer admits. CC did not call REA."
+}
