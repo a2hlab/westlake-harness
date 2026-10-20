@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[T21 sixth-artifact shim transaction](benchmark/2026-10-20-t21-shim-deployment/)** | **Six guarded preimages and partial rollback tests; exact production pins and fresh outer admission are required before execution.** |
 | **[T18 audible clip and exact experiment closeout](benchmark/2026-10-20-t18-window-evidence/)** | **User confirmed the specified clip audio; visual playback remains blocked. Original runtime and snapshots restored, final UI host-only. All failures retained and 10,204 raw archive members remotely verified.** |
 | **[Exact bridge source snapshot](benchmark/2026-10-20-d4fa-source-snapshot/)** | **138 preserved source, header, license and original-recipe payloads with SHA pins and incremental build provenance; full clean rebuilding remains distinct from the reproduced link.** |
 | **[T16 actual player load-chain experiment](benchmark/2026-10-20-t16-window-evidence/)** | **R8 reuse reached TTPlayer; a complete 30,236,818-byte prefix exposed subsequent network failures. Playback not passed. Original runtime, 518+26 targets, power and real feed restored; full archive remotely verified.** |
