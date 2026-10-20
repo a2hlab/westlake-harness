@@ -962,3 +962,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 
 - 2026-10-20 #91 T23：52,899,334B选定前缀实证12次非null EGLImage、3次destroy与实际R23绑定，用户确认本窗有声；4张同封面及随后黑画面仍判视频未过，frame-available/swap计数不证明解码像素。121次geometry 40001000在exact surface8f对象校验处、早于尺寸/格式分派；实际旧geometry winner未采到，不能直接签黑屏根因。六态回滚与快照一致、末图host-only，原件远端e5ef04ef已验，见 benchmark/2026-10-20-t23-window-evidence/。
 - 2026-10-20 #91 T25：4次geometry/format及3次lock/flush rc0仍非视频像素；exact player在保持YV12配置时比较expected format，而R14成功返回集合不含YV12，必进changed→可选clear→unlock→重设geometry，须先静态核生产者如何消费返回布局。此契约缺口与随后EGL create-null/576x1024 Invalid GrBackendTexture分别处理；995.726秒六态/518+26恢复解锁、末图host-only，T23有声确认不移植给T25，见 benchmark/2026-10-20-t25-window-evidence/ 与 t25-player-lock-consumer/。
+
+- 2026-10-20 原件索引根门禁：`private-raw-index.json` 发布前必须按公开索引自身 `private_root` 解析每条相对路径并重放 SHA/size，不能只核生成器来源变量；T26/T28 同类复制遗留的 root alias 两次错误均保留原件并仅修索引，错误根反例实报 13 项不匹配、rc1。证据 `benchmark/2026-10-20-private-index-root-check/`。
