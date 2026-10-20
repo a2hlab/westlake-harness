@@ -8,7 +8,7 @@ def execute(d):
  plan=json.loads((d.w/'apply/result.json').read_text());assert plan.get('status')=='VIDEO_FILES_SWAPPED_FRESH_BOOT_REQUIRED'
  new=d.reboot(pre)
  # One normal icon; collect the new process view before waiting for a gray-screen outcome.
- d.ui(new,'first-icon','launch',0)
+ d.ui(new,'first-icon','launch',20)
  parent,host,child,wid,init=d.discover(new)
  run=d.w/'apply/after.run.sh';assert run.is_file(),'Use the actual applied run, not a data template'
  p=json.loads((d.repo/REL/'candidate-view-01/profile.template.json').read_text())
