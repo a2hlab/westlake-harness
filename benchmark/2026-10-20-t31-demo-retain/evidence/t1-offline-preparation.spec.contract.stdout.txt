@@ -1,0 +1,58 @@
+# Task Contract: T31 bounded offline preparation
+
+## Intent
+给出可审的最小复用计划、现有提交和真实缺口。机器预演只校验固定候选、WID分支与计划结构，不产生fresh admission、不执行远程命令、不签认留候选。
+
+## Must
+- 仅5cd1e3dd00000000000000000923012c、UID20011300；61b/5ea不动。不更改T30冻结42件、旧spec、原始回执、候选二进制或历史API等级。
+- 当前授权只允许独立规格草案、本地预演和命令卡；不调用设备、不编译、不部署、不推送。实际窗口和签认由outer(codex)组织，不以离线PASS代替human签认。
+- 候选shim7f8d75bbf09e28e2b57a4621f1181ff944e79e462b78707c620dd67aef0b0bcb与bridgeb0e5602a97133ebb1dca12972a8931a86528322685a211bb1a7a0a2185fefbd4不变；其余四态沿T30精确数据。原六态executor693448c26cb72002031f58cca467691f09ac61674b2c76353eb71bd44a5b63bb保留。
+- 每周期20秒动态、暂停3秒、恢复10秒、退出feed并手点图标再入；两个周期各有对应内容声音确认。声音unknown不通过，封面/字幕/控件变化不充当视频内容变化。
+- 新窗fresh身份、前像和holder/start不能继承T30；正常观察1200秒止，600秒用于恢复，1800秒硬限。T30真实1828.498791秒超时和恢复末图锁屏保留，不改为合规或feed恢复。
+- 永久留候选必须在1200秒前有可恢复签认；否则执行原计划回滚，不等待声音或签字耗尽恢复预算。只允许单板scoped demo，不升级通用API冻结或全部随机退出已修。
+
+## Decisions
+- preview.py默认只向stdout输出PREVIEW_ONLY、device_calls0、fresh字段null；--repo可指定MAIN，--wid仅作为离线分支输入，不证明现场值。未知参数和漂移以stderr及非零rc拒绝，不创建输出目录。
+- fresh WID29且前像逐字等于5a3a参考时复用原executor/fill与两run模板。owner已20011300，不再执行20011206替换。其他WID返回WID_DERIVATION_REQUIRED，不自动生成执行件；未来只能另目录派生executor normalize/apply/template/rollback、fill及两模板并重钉自pins，不能仅改admission。
+- 参数与源码取已落MAIN的T30 final-01/helpers；核本轮使用文件SHA，不运行旧候选测试。T31使用新输出根，不调用硬钉t30-5cd-window-01的acquire/launch助手。
+- 原rollback有同holder/start和1800秒门，仅能原窗恢复。留候选前必须另审recovery-only继任入口：不可变origin apply-plan/backup哈希，与新鲜恢复窗口holder/start/boot/父身份分开绑定；保留原六态CAS/foreign拒绝/backup校验/跨boot精确run/WID集合、freshboot和518+26恢复，不伪造旧start或重写原plan。
+
+## Boundaries
+Allowed changes:
+- specs/toutiao-t31-demo-retain/**
+- benchmark/2026-10-20-t31-demo-retain/**
+- tools/spec-checks/tests/toutiao_t31_preview.rs
+Forbidden:
+- benchmark/2026-10-20-t30-request-recovery/**
+- knowledge/frozen/**
+- 禁止设备调用、生产构建、共享主表改动及自动签字。
+
+## Completion Criteria
+Scenario: 默认预演无设备和输出目录副作用
+  Test:
+    Filter: ttvideo_t31_preview
+  Given T30精确来源存在
+  When 以MAIN和未知fresh WID运行preview
+  Then 输出PREVIEW_ONLY和null身份，device_calls为0且没有写输出目录
+
+Scenario: 29与漂移WID不同处理
+  Test:
+    Filter: ttvideo_t31_preview
+  Given 两模板owner已为20011300且参考WID29
+  When 分别预演29与41及非法WID
+  Then 29可列原样复用，41仅列需派生，非法值非零拒绝且不生成admission
+
+Scenario: 源漂移和未知执行参数拒绝
+  Test:
+    Filter: ttvideo_t31_preview
+  Given executor或模板SHA漂移或传入execute参数
+  When 运行preview
+  Then stderr列拒绝且非零退出，不调用执行器或设备
+
+Scenario: 过期恢复与永久签认不能冒充已就绪
+  Test:
+    Filter: ttvideo_t31_preview
+  Given 当前只有T30原rollback实现
+  When 读取预演的recovery和retain状态
+  Then 原窗恢复可复用而跨窗恢复继任待交，永久留候选为NOT_AUTHORIZED且两段音频与签字均pending
+

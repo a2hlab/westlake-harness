@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""Actual successor code blocks; fake read transport, no Board import or HDC."""
+import ast,copy,datetime,hashlib,itertools,json,os,re,shlex,subprocess,sys,tempfile,unittest
+from pathlib import Path
+from types import SimpleNamespace
+D=Path(__file__).resolve().parent;sys.path.insert(0,str(D/'recovery'))
+import recovery_policy as policy
+import recovery_core as core
+import preview
+MAIN=Path(os.environ.get('T31_MAIN',str(D.parents[1].parent/'westlake-harness'))).resolve()
+if (D.parents[1]/'benchmark/2026-10-20-t30-request-recovery/deployment/final-01').is_dir() and not os.environ.get('T31_MAIN'):
+    # Prefer landed MAIN named westlake-harness; producer's stale pending tree is not an origin.
+    if D.parents[1].name=='westlake-harness':MAIN=D.parents[1]
+DATA=MAIN/'benchmark/2026-10-20-t30-request-recovery/deployment/final-01'
+S=(D/'recovery/recovery.py').read_text();TREE=ast.parse(S);sha=lambda b:hashlib.sha256(b).hexdigest()
+OLD=json.loads((D/'fixtures/historical-t30-plan.json').read_text());OA=json.loads((D/'fixtures/historical-t30-admission.json').read_text());RAW=(D/'fixtures/historical-restored-read.txt').read_text()
+NEWSTART=OLD['start']+86400;HOLDER='inner(cx-seal) 99991 '+datetime.datetime.fromtimestamp(NEWSTART,datetime.timezone(datetime.timedelta(hours=8))).isoformat()
+BOOT='02ad5a1a-0070-441e-9508-902c69cc6da4'
+BT=(DATA/'run5cd.before.reference.sh').read_bytes();AT=(DATA/'run5cd.after.wid29.reference.sh').read_bytes()
+FUNCS=[n for n in TREE.body if isinstance(n,ast.FunctionDef) and n.name in ('normalize_wid','pathguard','fg','swap')]
+BLOCK=S[S.index('expected=sha(before)'):S.index('physical_guard=')]
+BACKUP=next(n for n in TREE.body if isinstance(n,ast.If) and ast.unparse(n.test)=="a.mode == 'rollback'" and any(isinstance(x,ast.Assign) and any(isinstance(y,ast.Name) and y.id=='backup' for y in x.targets) for x in n.body))
+SCRIPT=S[S.index('script=pre'):S.index("(a.out/'swap.sh')")]
+COUNTS={'known':0,'cutpoints':0,'foreign':0}
+class Checks(unittest.TestCase):
+ def setUp(self):
+    self.tmp=tempfile.TemporaryDirectory(prefix='t31-offline-');self.addCleanup(self.tmp.cleanup);self.root=Path(self.tmp.name)
+    self.win=self.root/'t31-5cd-window-91';(self.win/'apply').mkdir(parents=True)
+    self.ap=self.win/'apply/plan.json';self.oa=self.win/'apply-admission.json'
+    self.o=copy.deepcopy(OA);self.o.update(deployment_scope='T31_5CD_DEMO_CANDIDATE',origin_window_id=self.win.name)
+    self.oa.write_text(json.dumps(self.o));self.p=copy.deepcopy(OLD);self.p['admission_sha256']=policy.sha(self.oa);self.ap.write_text(json.dumps(self.p))
+ def env(self,bits=(1,1,1,1,1,1),missing=None,plan=None):
+    p=self.p if plan is None else plan;self.ap.write_text(json.dumps(p))
+    e=dict(sha=sha,sha_file=policy.sha,q=shlex.quote,re=re,json=json,Path=Path,origin_plan=p,origin_admission=self.o)
+    e.update(a=SimpleNamespace(mode='rollback',apply_plan=self.ap,origin_admission=self.oa,boot=BOOT,parent='10926',birth='23590',holder=HOLDER,start=NEWSTART,out=self.root/'out',recovery_no_parent=False),here=DATA,before=BT,after=AT,before_template=BT,after_template=AT,wid='29',normalized=AT if bits[0] else BT,actual=sha(AT if bits[0] else BT),meta=p['run_metadata'],label=p['run_label'],dlabel=p['dso_label'],MEDIA='lib/arm64-v8a/libmffmpeg.so',PLAYER=p['player_path'],BRIDGE=p['bridge_path'],SHIM=p['shim_path'],DSO='libopensles_android_compat.so',DSHA=p['dso_sha'],CSHA=p['cfg_sha'],RT=p['runtime'],pre='',parent_guard='',stage='/data/local/tmp/offline-t31-stage',new=BT)
+    for role,short,idx in [('media','m',1),('player','p',2),('bridge','b',3),('shim','s',4)]:
+        cap={'media':'M','player':'P','bridge':'B','shim':'S'}[role];e[cap+'BEFORE']=p[role+'_before_sha'];e[cap+'AFTER']=p[role+'_after_sha'];e[short+'actual']=p[role+('_after_sha' if bits[idx] else '_before_sha')];e[short+'meta']=p[role+'_metadata'];e[short+'label']=p[role+'_label']
+    def read(cmd):
+        if missing and missing in cmd:return 'no'
+        if '.t21-5cd-before-' in cmd:return 'yes'
+        return 'yes' if bits[5] else 'no'
+    e['read']=read
+    for f in FUNCS:exec(compile(ast.Module(body=[f],type_ignores=[]),'actual-recovery-functions','exec'),e)
+    return e
+ def test_preview_and_cli(self):
+    self.assertEqual(preview.plan(MAIN,None)['fresh']['boot'],None)
+    self.assertEqual(preview.plan(MAIN,29)['wid_branch'],'REUSE_EXACT_693448')
+    self.assertIn('REFUSE',preview.plan(MAIN,41)['wid_branch'])
+    with self.assertRaises(ValueError):preview.plan(MAIN,0)
+    for args,rc in [(['rollback'],0),(['apply'],2),(['rollback','--execute'],1)]:
+        r=subprocess.run([sys.executable,str(D/'recovery/recovery.py'),*args],capture_output=True);self.assertEqual(r.returncode,rc)
+    r=subprocess.run([sys.executable,str(D/'preview.py'),'--repo',str(MAIN),'--execute'],capture_output=True);self.assertEqual(r.returncode,2)
+ def test_origin_and_new_window(self):
+    p,o=policy.validate_origin(DATA,self.ap,self.oa);self.assertEqual(p['start'],OLD['start'])
+    c=dict(repo=str(MAIN),deploy=str(DATA),serial=policy.SERIAL,holder=HOLDER,start=NEWSTART)
+    ad,ids,b=core.fill(MAIN,c,HOLDER,RAW,NEWSTART+5,p,o,DATA)
+    policy.validate_window(ad,p,HOLDER,NEWSTART,BOOT,NEWSTART+5)
+    self.assertEqual(b['recovery_remaining_seconds'],1795);self.assertEqual(p['holder'],OLD['holder'])
+    for change,now in [({'holder':OLD['holder']},NEWSTART+5),({},NEWSTART+1800),({},NEWSTART-1)]:
+        a=dict(ad,**change)
+        with self.assertRaises(ValueError):policy.validate_window(a,p,a['holder'],NEWSTART,BOOT,now)
+    for badraw in [RAW.replace('imehost0', 'other-host'),RAW.replace(' 29 ', ' 41 '),RAW.replace(core.EXE,'f'*64),RAW.replace('H_TRACER_BEFORE=0','H_TRACER_BEFORE=1')]:
+        with self.assertRaises(ValueError):core.fill(MAIN,c,HOLDER,badraw,NEWSTART+5,p,o,DATA)
+ def test_reject_historical_origin_and_drift(self):
+    self.o.pop('deployment_scope');self.oa.write_text(json.dumps(self.o));self.p['admission_sha256']=policy.sha(self.oa);self.ap.write_text(json.dumps(self.p))
+    with self.assertRaises(ValueError):policy.validate_origin(DATA,self.ap,self.oa)
+    self.o['deployment_scope']='T31_5CD_DEMO_CANDIDATE';self.oa.write_text(json.dumps(self.o));self.p['admission_sha256']=policy.sha(self.oa)
+    for k,v in [('boot',BOOT),('shim_after_sha','a'*64),('shim_metadata','644:0:0'),('wid','41'),('compat_absence_marker','foreign')]:
+        p=dict(self.p,**{k:v});self.ap.write_text(json.dumps(p))
+        with self.assertRaises(ValueError):policy.validate_origin(DATA,self.ap,self.oa)
+    with self.assertRaises(ValueError):policy.validate_sources({'recovery_source_pins':{}})
+ def test_64_known_states_actual_source(self):
+    for bits in itertools.product((0,1),repeat=6):
+        e=self.env(bits);exec(BLOCK,e);exec(compile(ast.Module(body=[BACKUP],type_ignores=[]),'actual-backups','exec'),e);exec(SCRIPT,e)
+        self.assertEqual(e['apply_plan']['start'],OLD['start']);self.assertIn(OLD['boot'][:8],e['backup']);self.assertNotIn(BOOT[:8],e['backup']);COUNTS['known']+=1
+ def test_foreign_and_missing_backups(self):
+    for key in ('actual','mactual','pactual','bactual','sactual'):
+        e=self.env();e[key]='a'*64
+        if key=='actual':e['normalized']=AT+b'\n'
+        with self.assertRaises(AssertionError):exec(BLOCK,e)
+        COUNTS['foreign']+=1
+    for name in ('run.sh','libmffmpeg.so','libttmplayer.so','liboh_adapter_bridge.so','libwebview_bionic_shim.so'):
+        e=self.env(missing=name+'.t21');exec(BLOCK,e)
+        with self.assertRaises(AssertionError):exec(compile(ast.Module(body=[BACKUP],type_ignores=[]),'actual-backups','exec'),e)
+ def test_real_shell_guards_backup_compat_metadata(self):
+    # Actual fg() shell; only OH stat/SELinux presentation is substituted on macOS.
+    e=self.env();f=self.root/'local-backup';f.write_bytes(b'original fixture bytes\n');digest=sha(f.read_bytes())
+    prefix='stat() { printf "%s\\n" "$TEST_META"; }; ls() { printf "%s local\\n" "$TEST_LABEL"; };\n'
+    for name,content,meta,label in [('ok',b'original fixture bytes\n','644:20011300:20011300','u:object_r:appdat:s0'),('backup-byte-drift',b'foreign','644:20011300:20011300','u:object_r:appdat:s0'),('compat-foreign',b'other compat','644:20011300:20011300','u:object_r:appdat:s0'),('backup-metadata-drift',b'original fixture bytes\n','755:0:0','u:object_r:appdat:s0'),('backup-label-drift',b'original fixture bytes\n','644:20011300:20011300','u:object_r:wrong:s0')]:
+        f.write_bytes(content);script=prefix+e['fg'](str(f),digest,'644:20011300:20011300','u:object_r:appdat:s0')+'echo GUARD_COMPLETE\n'
+        r=subprocess.run(['bash','-eu','-c',script],env=dict(os.environ,TEST_META=meta,TEST_LABEL=label),capture_output=True)
+        self.assertEqual(r.returncode==0,name=='ok',name)
+        self.assertEqual(b'GUARD_COMPLETE' in r.stdout,name=='ok',name)
+    f.unlink();r=subprocess.run(['bash','-eu','-c',prefix+e['fg'](str(f),digest,'644:20011300:20011300','u:object_r:appdat:s0')],capture_output=True)
+    self.assertNotEqual(r.returncode,0)
+    marker=self.root/'absent';marker.write_bytes(b'ABSENT\n')
+    # Exact absence-marker test from the successor, with only the fixture path substituted.
+    guard='test -f '+shlex.quote(str(marker))+'\ntest "$(sha256sum '+shlex.quote(str(marker))+" | cut -d' ' -f1)" = "+OLD['compat_absence_marker_sha256']+'\n'
+    for payload,ok in [(b'ABSENT\n',True),(b'ABSENT',False),(b'',False)]:
+        marker.write_bytes(payload);r=subprocess.run(['bash','-eu','-c',guard],capture_output=True);self.assertEqual(r.returncode==0,ok)
+    marker.unlink();self.assertNotEqual(subprocess.run(['bash','-eu','-c',guard],capture_output=True).returncode,0)
+ def test_six_cutpoints_cas_and_backup_guards(self):
+    # Actual emitted rollback writes: shim, bridge, media, player, run, compat rm.
+    bits=[1]*6;order=[4,3,1,2,0,5]
+    for cut in range(6):
+        e=self.env(tuple(bits));exec(BLOCK,e);exec(compile(ast.Module(body=[BACKUP],type_ignores=[]),'actual-backups','exec'),e);exec(SCRIPT,e)
+        script=e['script'];first=script.index('\nmv ') if '\nmv ' in script else script.index('\nrm ')
+        for name,back,digest,meta,label in [('run.sh',e['backup'],self.p['before_sha'],e['meta'],e['label']),('media',e['media_backup'],e['MBEFORE'],e['mmeta'],e['mlabel']),('player',e['player_backup'],e['PBEFORE'],e['pmeta'],e['plabel']),('bridge',e['bridge_backup'],e['BBEFORE'],e['bmeta'],e['blabel']),('shim',e['shim_backup'],e['SBEFORE'],e['smeta'],e['slabel'])]:
+            self.assertLess(script.index(e['fg'](back,digest,meta,label)),first)
+        self.assertIn(self.p['compat_absence_marker_sha256'],script[:first])
+        for path,pre,meta,label in [(e['SHIM'],e['sactual'],e['smeta'],e['slabel']),(e['BRIDGE'],e['bactual'],e['bmeta'],e['blabel']),(e['MEDIA'],e['mactual'],e['mmeta'],e['mlabel']),(e['PLAYER'],e['pactual'],e['pmeta'],e['plabel']),('run.sh',e['actual'],e['meta'],e['label'])]:
+            dst=e['RT']+'/'+path;tmp=dst+'.ttvideo-'+BOOT[:8]+'-'+sha(str(e['a'].out).encode())[:8]+'.tmp';cas=e['fg'](dst,pre,meta,label)+'mv '+shlex.quote(tmp)+' '+shlex.quote(dst)+'\n'
+            if '\nmv '+shlex.quote(tmp) in script:self.assertIn(cas,script)
+        COUNTS['cutpoints']+=1;bits[order[cut]]=0
+    self.assertEqual(bits,[0]*6)
+if __name__=='__main__':
+    result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(Checks))
+    print(json.dumps({'device_calls':0,'counts':COUNTS,'tests':result.testsRun,'success':result.wasSuccessful(),'limits':'No shell/device execution; actual source branch and emitted guard checks, not remote filesystem proof.'}))
+    raise SystemExit(0 if result.wasSuccessful() else 1)
