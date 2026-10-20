@@ -1,0 +1,70 @@
+{
+  "status": "TWO_BLOCKERS_IN_REVIEWED_SNAPSHOT",
+  "source_prefix": "benchmark/2026-10-20-t27-buffer-observation",
+  "source_pins": {
+    "observer.c": "e572f026a6b6859dcca46a72f51bbf4fe2ad26416a98add3f42fd861c9a40357",
+    "observer.h": "a71b9f4434177f9e5458b9c6a858c2534d0d6bd7d9c2f3948ae31d74b6b50a20",
+    "WIRING.md": "8ef9061ce5fe5ed0fadcfb9d841e92468d179c4922071b36ae2d8b81b9404312"
+  },
+  "blockers": [
+    {
+      "id": "B1",
+      "lines": "observer.c:33-38",
+      "finding": "Only in-memory append, no stderr emission or production drain in current files. 403 actual observer entry calls generated zero stderr bytes. Crash-time diagnostic evidence is unavailable.",
+      "minimal_fix": "Bounded immediate diagnostic emission at required production points; no unbounded retry/thread or dependency on post-crash drain. Preserve errno and do not log under provider/observer locks."
+    },
+    {
+      "id": "B2",
+      "lines": "observer.c:95-114",
+      "finding": "dladdr side effects reach provider; provider errno overwritten by incoming errno after call.",
+      "actual_fixture": {
+        "incoming_errno": 7,
+        "dladdr_errno": 34,
+        "provider_observed_entry_errno": 34,
+        "provider_set_exit_errno": 5,
+        "wrapper_observed_exit_errno": 7,
+        "provider_calls": 1,
+        "return_unchanged": true
+      },
+      "minimal_fix": "Restore incoming errno immediately before single create call; capture provider errno immediately after; restore that after record/log work. Correct header/WIRING errno wording for wrapped provider."
+    }
+  ],
+  "checked": {
+    "build_rc": 0,
+    "run_rc": 0,
+    "null_getter_calls": 0,
+    "import_getter_calls": 2,
+    "concurrent_threads": 4,
+    "concurrent_calls": 400,
+    "retained": 256,
+    "dropped": 144,
+    "actual_getters": 400,
+    "counted_getters": 400,
+    "run_stderr_bytes": 0
+  },
+  "pending_not_bug": [
+    "Final derived call sites not yet written in reviewed directory; no claim of completed integration",
+    "Getter instance admission delegated to cx retained-handle resolver: require actual pointer/base checks and NULL on unadmitted identity; observer itself cannot establish this",
+    "Ring capacity bounds retained records only; getter operations still happen for dropped records (400 getter calls for256 records), as fixture proves",
+    "No production runtime or crash-safety acceptance from host test"
+  ],
+  "raw_alias": "$HOME/.local/share/westlake/t27-observer-peer/r2",
+  "raw_pins": {
+    "run.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "observer.h": "a71b9f4434177f9e5458b9c6a858c2534d0d6bd7d9c2f3948ae31d74b6b50a20",
+    "WIRING.md": "8ef9061ce5fe5ed0fadcfb9d841e92468d179c4922071b36ae2d8b81b9404312",
+    "build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run.stdout": "893ed2b2aafce62eacdd2dbf8a8ac1919eb3c43eddaed1c6cdffc523938b1832",
+    "observer.c": "e572f026a6b6859dcca46a72f51bbf4fe2ad26416a98add3f42fd861c9a40357",
+    "build.argv.json": "c1d39185d646a1511e7c1dcfac095cfc3edac09c4ce9776eb485801d01b3b7df",
+    "run.argv.json": "f8f929415cfc000266d75bfdbfc5e7cceccf4e7a3cb4991a6f316c608f7b88fa",
+    "pins.json": "ad80fe00487ab12fe38698118a211420da0db71bf0faf797d53ca79df2af075d",
+    "run.rc": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+    "probe.c": "1d29393f987fdbcbeb267cff1ba2a6ca9b16aa4fbe5f0d130a4d2c31f07e14a7",
+    "build.rc": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+  },
+  "earlier_fixture_compile_failure": "r1 retained: peer fixture variable gets collided with stdio symbol; fixed only fixture name inr2; no author code changed",
+  "device_calls": 0,
+  "rea_calls": 0
+}
