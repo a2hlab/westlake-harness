@@ -547,6 +547,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-20-t27-codex-peer/`** | T27 SDK ABI, derived R23 host regression and production02 independent review; verified private archive, runtime remains unverified. |
 | **`benchmark/2026-10-20-t26-joint-production-archive/`** | T26/T27 joint production complete input/source/raw archive: 116 exact inputs, 1,793 verified private members; no device outcome claim. |
 | **`benchmark/2026-10-20-t28-shim-deployment/`** | T28 RGBX candidate, unchanged six-state executor and five other artifacts; exact production/export pins with fresh admission left null. |
+| **`benchmark/2026-10-20-t26-window-archive/`** | Closed T26 complete window archive: two stderr/hilog captures, snapshots, helpers and original verdict; 13,043 private members verified. |
 | **[T26 YV12 implementation and build](benchmark/2026-10-20-t26-yv12/README.md)** | Bounded YV12 scratch to OH12/RGBA conversion, actual CPU/EGL glue, host and combined production build commands, and the exact `fc58cec5` source/artifact/archive chain. |
 | **[T27 buffer observer](benchmark/2026-10-20-t27-buffer-observation/README.md)** | Bounded CPU/import metadata and single-call EGL observation; SDK ABI, same-provider glue and links to the joint build. Host/production evidence is separate from playback acceptance. |
 | **[T23 EGL native-buffer import candidate](benchmark/2026-10-20-t23-egl-import/)** | **R77 reuse in the existing T20 shim; same-instance AHB/EGL gates, 23 host cases and real PIC/ABI evidence; device playback pending.** |
