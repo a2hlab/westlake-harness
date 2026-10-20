@@ -1,0 +1,86 @@
+{
+  "status": "TEMPLATE_REQUIRES_FRESH_IDENTITY_NOT_EXECUTED",
+  "cwd": "$MAIN",
+  "read_identity_argv": [
+    "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+    "-t",
+    "5cd1e3dd00000000000000000923012c",
+    "shell",
+    "(set -eu; test \"$(cat /proc/sys/kernel/random/boot_id)\" = af001b38-659a-4f1f-9dd7-b85960587a2c; for p in 5806 5647; do echo T23_ID_$p; cat /proc/$p/stat; sed -n \"/^Uid:/p;/^TracerPid:/p\" /proc/$p/status; readlink /proc/$p/ns/mnt; sha256sum /proc/$p/exe; done; hidumper -s WindowManagerService -a \"-a\"; test \"$(cat /proc/sys/kernel/random/boot_id)\" = af001b38-659a-4f1f-9dd7-b85960587a2c; echo T23_RECOVERY_ID_COMPLETE)"
+  ],
+  "rollback_wrapper_argv": [
+    "python3",
+    "$BASE20/t23_exec.py",
+    "rollback",
+    "af001b38-659a-4f1f-9dd7-b85960587a2c",
+    "5806",
+    "${FRESH_PARENT_BIRTH}",
+    "rollback-admission.json",
+    "rollback"
+  ],
+  "reboot_wrapper_argv": [
+    "python3",
+    "$BASE20/t23_outer.py",
+    "reboot",
+    "af001b38-659a-4f1f-9dd7-b85960587a2c"
+  ],
+  "wait_ready_argv": [
+    "python3",
+    "$BASE20/t23_wait_boot.py",
+    "af001b38-659a-4f1f-9dd7-b85960587a2c",
+    "restored"
+  ],
+  "power_restore_argv": [
+    "python3",
+    "$BASE20/t23_outer.py",
+    "shell",
+    "${RESTORED_BOOT}",
+    "power-shell timeout -o 10000; power-shell dump -s"
+  ],
+  "restored_capture_argv": [
+    "python3",
+    "$BASE20/t23_outer.py",
+    "capture",
+    "${RESTORED_BOOT}"
+  ],
+  "unlock_argv": [
+    "bash",
+    "$MAIN/scripts/lab/board_note.sh",
+    "unlock",
+    "$MAIN/.octos/boards/app-lighting.md",
+    "5cd1e3dd00000000000000000923012c",
+    "outer(codex)"
+  ],
+  "held_after_argv": [
+    "bash",
+    "$MAIN/scripts/lab/board_note.sh",
+    "held",
+    "5cd1e3dd00000000000000000923012c"
+  ],
+  "snapshot_argv": [
+    "python3",
+    "scripts/lab/board_state_snapshot.py",
+    "5cd1e3dd00000000000000000923012c",
+    "--out",
+    "$BASE20/t23-5cd-window-01/restored-snapshot",
+    "--plan",
+    "$BASE20/t16-reviewed-snapshot-plan.json",
+    "--hdc",
+    "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+    "--label",
+    "T23 restored same-plan"
+  ],
+  "supplement_argv": [
+    "python3",
+    "benchmark/2026-10-20-t16-snapshot-scope/collect_supplement.py",
+    "--execute",
+    "--repo",
+    "$MAIN",
+    "--out",
+    "$BASE20/t23-5cd-window-01/restored-supplement",
+    "--hdc",
+    "/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc",
+    "--boot",
+    "${RESTORED_BOOT}"
+  ]
+}

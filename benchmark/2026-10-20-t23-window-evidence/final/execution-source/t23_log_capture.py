@@ -1,0 +1,9 @@
+from pathlib import Path
+import sys,json,time,hashlib,subprocess,uuid
+repo=Path.cwd();base=Path(__file__).parent/'t23-5cd-window-01';out=base/'candidate-full-log-prefix';out.mkdir(exist_ok=False);c=json.loads((base/'context.json').read_text());sys.path.insert(0,str(repo/'benchmark/2026-10-20-t14-fixed-range-read'));import read_range as r
+assert hashlib.sha256((repo/'benchmark/2026-10-20-t14-fixed-range-read/read_range.py').read_bytes()).hexdigest()=='336e81dac5a29e27e43a79a6d86341a7fa87b1987035366f3d821120828e5b60'
+def held():
+ x=subprocess.run(['bash','scripts/lab/board_note.sh','held',c['serial']],capture_output=True,timeout=5);assert x.returncode==0 and x.stdout.decode().strip()==c['holder'];assert time.time()-c['start']<1200
+held();log='/data/service/el1/public/appspawnx/adapter_child_7655.stderr';end=33156759;plan=r.plan(0,end);tok=uuid.uuid4().hex
+g='test "$(cat /proc/sys/kernel/random/boot_id)" = af001b38-659a-4f1f-9dd7-b85960587a2c; s=$(cat /proc/7655/stat); s=${s##*) }; set -- $s; test "$2" = 5806; test "${20}" = 11575; test "$1" != Z; test "$1" != X; test "$(readlink /proc/7655/fd/2)" = '+log+'; test "$(stat -L -c %d:%i '+log+')" = 66352:191839; test "$(stat -L -c %s '+log+')" -ge '+str(end)
+cmd=r.script(log,plan,tok,'/data/local/tmp/t23-log-'+tok,g);(out/'recipe.sh').write_text(cmd);receipt=r.capture([c['hdc'],'-t',c['serial'],'shell',cmd],out,60);raw=(out/'stdout.raw').read_bytes();selected=r.decode(raw,plan,tok,receipt['rc'],receipt['timed_out']);held();(out/'selected.raw').write_bytes(selected);result=dict(status='FIXED_PREFIX_COMPLETE',boot='af001b38-659a-4f1f-9dd7-b85960587a2c',pid=7655,birth=11575,source_start=0,source_end=end,selected_bytes=len(selected),sha256=hashlib.sha256(selected).hexdigest(),same_inode_does_not_prove_content_immutability=True);(out/'result.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
