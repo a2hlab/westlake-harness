@@ -93,6 +93,8 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[T16 actual player load-chain experiment](benchmark/2026-10-20-t16-window-evidence/)** | **R8 reuse reached TTPlayer; a complete 30,236,818-byte prefix exposed subsequent network failures. Playback not passed. Original runtime, 518+26 targets, power and real feed restored; full archive remotely verified.** |
+| **[T17 network routing reuse and actual-binding tools](benchmark/2026-10-20-t17-network-reuse/)** | **Two existing run-line changes, exact binary reuse, guarded deployment/rollback and fresh paired-GOT reader. Static checks are separate from live results; the unchanged network provider retains unknown exact build closure.** |
 | **[61b current icon recovery and complete video log interval](benchmark/2026-10-20-t15-61b-evidence/)** | **Existing permanent R2 guardian recovered a real feed after one normal icon click; no redeployment. Separate 5cd read recovered 30,863,473 bytes. Original receipts and failed attempts retained; full archive verified remotely.** |
 | **[5cd reusable player load repair](benchmark/2026-10-20-t15-player-load-reuse/)** | **Exact IID relocation evidence, archived R8 source/build correspondence, guarded four-file deployment and physical rollback. Runtime playback remains unverified.** |
 | **[5cd controlled-exit icon recovery](benchmark/2026-10-20-5cd-owned-child-reentry/two-window-evidence/)** | **One owned child exit followed by one normal icon and real feed; temporary guardian stopped and settings restored. Includes the earlier failed window.** |
