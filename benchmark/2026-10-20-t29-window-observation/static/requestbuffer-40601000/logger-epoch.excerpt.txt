@@ -1,0 +1,37 @@
+63: static int eligible(const struct r29c_record *r,unsigned *key,unsigned *epoch) {
+64:  *key=UINT32_MAX;*epoch=0;
+65:  if(r->invalid || !r->wrapper || r->phase>=R29C_PHASES){
+66:   if(stats.invalids<30){stats.invalids++;return 3;}
+67:   return notice(0);
+68:  }
+69:  struct identity *e=NULL;
+70:  for(unsigned i=0;i<R29C_IDENTITIES;i++){
+71:   if(ids[i].used && ids[i].wrapper==r->wrapper){e=&ids[i];*key=i;break;}
+72:  }
+73:  if(!e){
+74:   for(unsigned i=0;i<R29C_IDENTITIES;i++)if(!ids[i].used){
+75:    e=&ids[i];*key=i;e->used=1;e->wrapper=r->wrapper;stats.identities++;break;
+76:   }
+77:   if(!e)return notice(1);
+78:  }
+79:  int changed=0;
+80:  if(r->valid&R29C_OH){
+81:   if(e->oh_valid && e->oh!=r->oh)changed=1;
+82:   e->oh=r->oh;e->oh_valid=1;
+83:  }
+84:  /* consumer "configuration" = the producer window + attach state the method just observed */
+85:  if(r->transition){
+86:   uintptr_t nw=(r->valid&R29C_NEWWIN)?r->new_window:0;
+87:   int tx=(r->valid&R29C_TEX)?r->tex_name:0;
+88:   int dt=r->detached_valid?r->detached:0;
+89:   if(e->config_valid && (e->cfg_newwin!=nw || e->cfg_tex!=tx || e->cfg_detached!=dt))changed=1;
+90:   e->cfg_newwin=nw;e->cfg_tex=tx;e->cfg_detached=dt;e->config_valid=1;
+91:  }
+92:  if(changed){
+93:   /* Saturated epochs remain saturated; a later event must not re-open quota. */
+94:   if(e->epoch<R29C_EPOCHS)e->epoch++;
+95:   if(e->epoch<R29C_EPOCHS)memset(e->count,0,sizeof(e->count));
+96:  }
+97:  *epoch=e->epoch;
+98:  if(e->epoch>=R29C_EPOCHS)return notice(1);
+99:  unsigned failure=(r->existing_exception_branch || r->rc!=0 || r->raw_rc!=0 ||

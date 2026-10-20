@@ -1,0 +1,83 @@
+1: /*
+2:  * android.view.TextureView JNI at the OHOS native-window boundary.
+3:  *
+4:  * TextureView's hardware path is owned by TextureLayer/HWUI.  These methods
+5:  * only keep the producer native window used by the optional software-canvas
+6:  * API.  Preserve Android's Java object and store a referenced OH producer
+7:  * endpoint in mNativeWindow.
+8:  */
+9: 
+10: #include "external_window.h"
+11: 
+12: #include <jni.h>
+13: 
+14: #include <cstdio>
+15: #include <cstring>
+16: #include <cstdint>
+17: 
+18: // T29 derivation: observe-only. The ONLY change vs the pinned original (sha256 7189e5c2…1878a0558b)
+69:     if (diag != nullptr) diag->field_resolved = true;
+70:     auto* window = reinterpret_cast<OHNativeWindow*>(
+71:         env->GetLongField(textureView, gTextureViewNativeWindow));
+72:     int32_t unrefRc = 0;
+73:     bool unrefCalled = false;
+74:     if (window != nullptr) {
+75:         // Same single call as the original — its int32 return was ignored there; we only CAPTURE it.
+76:         unrefRc = OH_NativeWindow_NativeObjectUnreference(window);
+77:         unrefCalled = true;
+78:         env->SetLongField(textureView, gTextureViewNativeWindow, 0);
+79:     }
+80:     if (diag != nullptr) {   // hand the ALREADY-READ old window + unref result back to nCreate
+81:         diag->had_window = (window != nullptr);
+82:         diag->old_window = reinterpret_cast<uintptr_t>(window);
+83:         diag->unref_called = unrefCalled;
+84:         diag->unref_rc = unrefRc;
+85:     }
+86:     {   // T29 observe-only: producer-destroy. unref_rc is a REAL int32 return (valid=1 when the call
+87:         // ran), independent of any method rc. Values only; `window` is a local, never dereferenced.
+88:         r29c_record _r;
+89:         std::memset(&_r, 0, sizeof(_r));
+90:         _r.phase = R29C_PRODUCER_DESTROY;
+91:         _r.call = r29c_call_id();
+92:         _r.self = _self; _r.caller = _caller;
+93:         _r.wrapper = reinterpret_cast<uintptr_t>(window);   // 0 when there was nothing to destroy
+94:         if (unrefCalled) {
+95:             _r.valid |= R29C_OLDWIN | R29C_OH | R29C_UNREFRC;
+96:             _r.old_window = reinterpret_cast<uintptr_t>(window);
+97:             _r.oh = reinterpret_cast<uintptr_t>(window);     // the OH window IS the correlation handle
+98:             _r.unref_called = 1;
+99:             _r.unref_rc_valid = 1;
+100:             _r.unref_rc = unrefRc;
+101:             _r.called = 1;
+102:             _r.transition = 1;        // the producer endpoint was torn down
+103:         }
+104:         r29c_observe(&_r);
+105:     }
+106: }
+107: 
+108: void TextureView_nDestroyNativeWindow(JNIEnv* env, jobject textureView)
+109: {
+110:     // Public JNI entry: identical behavior to the original (forwards to the extracted body, no diag).
+111:     destroyNativeWindowImpl(env, textureView, nullptr);
+112: }
+113: 
+114: void TextureView_nCreateNativeWindow(JNIEnv* env, jobject textureView,
+115:                                      jobject surfaceTexture)
+116: {
+117:     const uintptr_t _self = reinterpret_cast<uintptr_t>(&TextureView_nCreateNativeWindow);
+118:     const uintptr_t _caller = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
+119:     R29cDestroyDiag diag;
+120:     destroyNativeWindowImpl(env, textureView, &diag);   // same destroy-first call as the original
+121:     const jlong handle = oh_surface_texture_get_native_window(env, surfaceTexture);
+122:     auto* window = reinterpret_cast<OHNativeWindow*>(handle);
+123:     int32_t refRc = 0;
+124:     bool refCalled = false;
+125:     if (window != nullptr) {
+126:         // Same single call as the original — its int32 return was ignored there; we only CAPTURE it.
+127:         // The original SetLongField strategy (always, after ref, within this branch) is unchanged.
+128:         refRc = OH_NativeWindow_NativeObjectReference(window);
+129:         refCalled = true;
+130:         env->SetLongField(textureView, gTextureViewNativeWindow, handle);
+131:     }
+132:     {   // T29 observe-only: producer-replace. This SINGLE record correlates the OLD window (captured by
+133:         // the destroy body via diag — no extra read) with the NEW window, so no cross-call/cross-thread

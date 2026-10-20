@@ -1,0 +1,98 @@
+1: /*
+2:  * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+3:  * Licensed under the Apache License, Version 2.0 (the "License");
+4:  * you may not use this file except in compliance with the License.
+5:  * You may obtain a copy of the License at
+6:  *
+7:  *     http://www.apache.org/licenses/LICENSE-2.0
+8:  *
+9:  * Unless required by applicable law or agreed to in writing, software
+10:  * distributed under the License is distributed on an "AS IS" BASIS,
+11:  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+12:  * See the License for the specific language governing permissions and
+13:  * limitations under the License.
+14:  */
+15: 
+64:      * 
+65:      * @param buffer [out] The buffer for data production.
+66:      * @param fence [out] fence fd for asynchronous waiting mechanism.
+67:      * @param config [in] The parameter type for requesting a buffer.
+68:      * @return {@link GSERROR_OK} 0 - Success.
+69:      * {@link GSERROR_INVALID_ARGUMENTS} 40001000 - Param invalid.
+70:      * {@link GSERROR_NO_CONSUMER} 41202000 - no consumer.
+71:      * {@link GSERROR_NO_BUFFER} 40601000 - no buffer.
+72:      * {@link} GSERROR_CONSUMER_IS_CONNECTED 41206000 - consumer is connected already.
+73:      * 
+74:      * @see FlushBuffer
+75:      */
+76:     GSError RequestBuffer(sptr<SurfaceBuffer>& buffer,
+77:                           int32_t &fence, BufferRequestConfig &config) override;
+78:     /**
+79:      * @brief Request buffers for data production.
+395:      * @brief The client establishes a connection to the server.
+396:      * 
+397:      * @return {@link GSERROR_OK} 0 - Success.
+398:      * {@link GSERROR_INVALID_ARGUMENTS} 40001000 - Param invalid.
+399:      * {@link GSERROR_CONSUMER_IS_CONNECTED} 41206000 - surface is connected by other client.
+400:      */
+401:     GSError Connect() override;
+402:     /**
+403:      * @brief Terminate the client-server connection.
+404:      * 
+405:      * @return {@link GSERROR_OK} 0 - Success.
+406:      * {@link GSERROR_INVALID_ARGUMENTS} 40001000 - Param invalid.
+407:      * {@link SURFACE_ERROR_CONSUMER_DISCONNECTED} 41211000 - surface is already disconnected.
+408:      */
+409:     GSError Disconnect() override;
+410:     /**
+707:     GSError SetGlobalAlpha(int32_t alpha) override;
+708:     /**
+709:      * @brief Set the request buffer isblocked for the surface.
+710:      * Blocking mode: Keep the original logic unchanged.
+711:      * Non-blocking mode:
+712:      * 1.If all buffers are requested and no buffer is in flushed state, immediately return GSERROR_NO_BUFFER.
+713:      * 2.If all buffers are requested and there are buffers in flushed state, return the earliest flushed buffer
+714:      * to the user through the RequestBuffer interface.
+715:      *
+716:      * @param noblock [in] Request buffer mode flag:
+717:      * - false: Blocking request mode (default)
+718:      * - true: Non-blocking request mode
+719:      * @return {@link GSERROR_OK} 0 - Success.
+720:      * {@link GSERROR_INVALID_ARGUMENTS} 40001000 - Param invalid.
+721:      */
+722:     GSError SetRequestBufferNoblockMode(bool noblock = false) override;
+797:     /**
+798:     * @brief The client establishes a connection to the server.
+799:     * In the strictly disconnected state, the producer must call the ConnectStrictly() interface before request
+800:     * buffer. Unlike Connect(), ConnectStrictly() does not distinguish between process IDs (PIDs) and is
+801:     * suitable for stricter connection management scenarios.
+802:     * @return {@link GSERROR_OK} 0 - Success.
+803:     * {@link GSERROR_INVALID_ARGUMENTS} 40001000 - Param invalid.
+804:     */
+805:     GSError ConnectStrictly() override;
+806:     /**
+807:     * @brief Terminate the client-server connection.
+808:     * After calling DisconnectStrictly(), the consumer (server) enter the strictly disconnected state.
+809:     * In this state, any attempt by the producer (client) to request buffer will fail and return the error code
+810:     * GSERROR_CONSUMER_DISCONNECTED.
+811:     * @return {@link GSERROR_OK} 0 - Success.
+812:     * {@link GSERROR_INVALID_ARGUMENTS} 40001000 - Param invalid.
+813:     */
+814:     GSError DisconnectStrictly() override;
+815:     /**
+816:     * @brief Advance buffer allocation.
+817:     * 1.The interface needs to be used before first use of requestBuffer; otherwise, the buffer is already
+818:     * allocated, causing the preAlloc interface to fail to optimize the buffer allocation time;
+906:     mutable std::mutex mutex_;
+907:     std::atomic_bool inited_ = false;
+908:     std::map<int32_t, sptr<SurfaceBuffer>> bufferProducerCache_;
+909:     std::map<std::string, std::string> userData_;
+910:     sptr<IBufferProducer> producer_ = nullptr;
+911:     std::string name_ = "not init";
+912:     uint64_t queueId_ = 0;
+913:     bool isDisconnected_ = true;
+914:     sptr<IProducerListener> listener_;
+915:     sptr<IProducerListener> listenerBackup_;
+916:     OnReleaseFuncWithSequenceAndFence funcWithSequenceAndFence_;
+917:     std::mutex listenerMutex_;
+918:     wptr<NativeWindow> wpNativeWindow_ = nullptr;
