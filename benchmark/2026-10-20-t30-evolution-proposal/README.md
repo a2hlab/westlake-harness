@@ -1,0 +1,9 @@
+# T30 state-recovery and handoff retrospective proposals
+
+The first recovery change cleared R14 but left R15 state behind: the next real-route lock still failed. The two-TU successor recovered in the sequential fixture, yet erased concurrent adapter pollution. Actual pthread flush/abort counterexamples blocked it before production. The accepted host-only delta captures this reservation's pristine state under the mutex before any return bookkeeping writes, then clears only that index when the strict resource-free conditions hold.
+
+`candidate-01-blocker.json` records a successful host build followed by failing real-route execution. `candidate-02-review.json` records sequential recovery plus two failing concurrency counterexamples. `candidate-03-signoff.json` records the same two pollution paths retained, next request refused without another lower call, and clean retry success. Its original pinned results are not silently promoted into new full-suite or runtime passes.
+
+`DIGEST-proposal.md` is one proposed append, not a change to the canonical digest. `retro-candidates.json` contains two bounded review candidates: layered cleanup and completed-work handoff. These do not repeat T29's initial server-error diagnosis, allocate FLAW identifiers, alter freeze rules, or promote knowledge. The T29 window is already closed; future runtime acceptance remains independent.
+
+The handoff observation is from the standing watch: CC source-fix completion at 16:26:38 was followed by the next working state at 16:30:48 (about 250 seconds). This establishes a handoff interval, not a claim that every idle agent was blocked or should duplicate peer work. The user identified the gap and the outer assigned distinct selector/helper work; both were observed consuming tools. Suggested action: every done signal reaches the outer immediately with the next eligible task or explicit reason to wait.

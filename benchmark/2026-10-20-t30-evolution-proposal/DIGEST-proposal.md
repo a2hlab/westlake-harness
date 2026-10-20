@@ -1,0 +1,1 @@
+- 2026-10-20 #91 T30：失败恢复须覆盖真实全链状态：仅清R14时R15残留仍拒第二次lock；两TU顺序恢复PASS不覆盖解锁期间并发污染，须在重获mutex后、任何自身写之前保存本reservation的pristine条件，仅清本idx；真实pthread flush/abort反例必须保留污染。证据 benchmark/2026-10-20-t30-recovery-peer/（candidate-01/02拒、03仅host准入）；首次Q根因及实板切换恢复仍未证。
