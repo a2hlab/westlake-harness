@@ -532,6 +532,7 @@ kind of work from where the corpus started
 | **[R12 dedicated OH debugger compatibility](benchmark/2026-10-19-toutiao-video-playback/tool-compat-r12/window/)** | Two actual hardware hits and verified detach/cleanup on an owned probe; application playback remains untested. |
 | **[Window candidate static preflight](benchmark/2026-10-20-window-candidate-preflight/)** | **Pinned f12c source inputs and minimal lock/unlock extraction closure; no build or device admission.** |
 | **`benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/`** | Offline paired window module, 49 host tests and reproducible build receipts; no production binding or deployment. |
+| **[T21 saved-log binding review](benchmark/2026-10-20-t21-bind-log-review/)** | **Offline exact-offset instance/operation reconciliation and fresh slot checklist; no device execution.** |
 | **[T20 paired ANW shim candidate](benchmark/2026-10-20-t20-provider-link-slice/)** | **Exact85 baseline reproduction, owner-bound typed OH provider and paired candidate; two identical DSO builds, actual host lifecycle tests, device playback pending.** |
 | **[T19 ANW integration readiness](benchmark/2026-10-20-t19-anw-integration-readiness/)** | **Exact current unwrap bytes and finite owner/provider/entrypoint gates after 249 lock failures; user-confirmed clip audio, video pending.** |
 | **[T18 outer-owned observer](benchmark/2026-10-20-t18-observer-outer/)** | **5cd fresh-identity staging, pinned T18 observer and owned cleanup; device acceptance pending.** |
