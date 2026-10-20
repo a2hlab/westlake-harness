@@ -1,0 +1,322 @@
+--- benchmark/2026-10-20-t30-request-recovery/deployment/final-01/executor.py
++++ deployment/executor61b.py
+@@ -1,30 +1,37 @@
+-"""5cd T21 six-artifact CAS derivation. Preview default; separate exact-source admission required."""
++"""61b T34 six-artifact CAS derivation. Preview default; separate exact-source admission required."""
+ import argparse,hashlib,json,re,shlex,sys,time,datetime,subprocess
+ from pathlib import Path
+ # Candidate source and bytes accepted by outer; unapproved sentinels still refuse before Board setup.
+ PLAYER='lib/arm64-v8a/libttmplayer.so'
+ PBEFORE='b427614d57e4a7279f362b3f341de3cdd4b9f9a8859257016bcda24e5f6d3a02'
+ PAFTER='0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471'
+-EXECUTION_REVIEW='PENDING_5CD'
++EXECUTION_REVIEW='EXTERNAL_REVIEW_REQUIRED_61B'
+ DSHA='6e83e924aae709f0c90ba2a966910febb63471b7a9a6294c6dee585a73ff3b4b'
+ PLAYER_INPUT_REL='benchmark/2026-10-19-toutiao-video-playback/candidate-r8/deploy-inputs/libttmplayer.so'
+-PLAYER_METADATA='644:20011300:20011300'
++PLAYER_METADATA='644:20011206:20011206'
+ PLAYER_LABEL='u:object_r:appdat:s0'
+-assert re.fullmatch(r'[0-7]{3,4}:20011300:20011300',PLAYER_METADATA)
++assert re.fullmatch(r'[0-7]{3,4}:20011206:20011206',PLAYER_METADATA)
+ assert re.fullmatch(r'u:object_r:[A-Za-z0-9_]+:s0',PLAYER_LABEL)
+ assert not Path(PLAYER_INPUT_REL).is_absolute() and '..' not in Path(PLAYER_INPUT_REL).parts
+ p=argparse.ArgumentParser();p.add_argument('mode',choices=['preflight','apply','rollback'])
+ for key in ('boot','parent','birth','hdc','holder'):p.add_argument('--'+key)
+-for key in ('out','apply-plan','repo','inputs','admission'):p.add_argument('--'+key,type=Path)
++for key in ('out','apply-plan','repo','inputs','admission','data','origin-admission'):p.add_argument('--'+key,type=Path)
+ p.add_argument('--start',type=float);p.add_argument('--execute',action='store_true');p.add_argument('--recovery-no-parent',action='store_true');a=p.parse_args()
+ assert not a.recovery_no_parent or a.mode=='rollback','recovery flag is rollback-only'
+ if not a.execute:
+- print(json.dumps({'execute':False,'device_calls':0,'mode':a.mode,'serial':'5cd1e3dd00000000000000000923012c'}));sys.exit()
+-assert all([a.boot,a.hdc,a.holder,a.out,a.repo,a.inputs,a.admission,a.start]),'explicit inputs'
++ print(json.dumps({'execute':False,'device_calls':0,'mode':a.mode,'serial':'61b0657200000000000000000324012c'}));sys.exit()
++assert all([a.boot,a.hdc,a.holder,a.out,a.repo,a.inputs,a.admission,a.start,a.data]),'explicit inputs'
+ assert a.recovery_no_parent or (a.parent and a.birth),'live parent required except physical recovery'
+ assert a.out.is_absolute() and not str(a.out).startswith(('/tmp/','/private/tmp/')),'persistent output'
+ sha_file=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+-here=Path(__file__).resolve().parent
++here=a.data.resolve()
++params=json.loads((here/'parameters.json').read_text())
++assert params['status']=='FRESH_DATA_BOUND_NOT_AUTHORIZED','fresh data not reviewed'
++assert params['serial']=='61b0657200000000000000000324012c' and params['uid']==20011206
++REFERENCE_WID=params['run_derivation']['wid']
++assert isinstance(REFERENCE_WID,int) and 0<REFERENCE_WID<2147483648
++assert params['runtime']=='/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d'
++
+ candidate=json.loads((here/'bridge-candidate.json').read_text())
+ BRIDGE='liboh_adapter_bridge.so'
+ BBEFORE='d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b'
+@@ -48,17 +55,29 @@
+  assert sha_file(a.repo/ref['path'])==ref['sha256'],'shim production receipt drift'
+ ad=json.loads(a.admission.read_text())
+ assert ad['shim_candidate_sha256']==sha_file(here/'shim-candidate.json'),'shim candidate admission drift'
+-assert re.fullmatch(r'[0-7]{3,4}:20011300:20011300',ad['shim_metadata']),'fresh shim metadata required'
++assert re.fullmatch(r'[0-7]{3,4}:20011206:20011206',ad['shim_metadata']),'fresh shim metadata required'
+ assert ad['shim_label']=='u:object_r:appdat:s0','shim label' 
+ assert ad['bridge_candidate_sha256']==sha_file(here/'bridge-candidate.json'),'candidate admission drift'
+-assert re.fullmatch(r'[0-7]{3,4}:20011300:20011300',ad['bridge_metadata']),'fresh bridge metadata required'
++assert re.fullmatch(r'[0-7]{3,4}:20011206:20011206',ad['bridge_metadata']),'fresh bridge metadata required'
+ assert ad['bridge_label']=='u:object_r:appdat:s0','bridge label'
+-assert ad['approved_by']=='outer(codex)' and ad['serial']=='5cd1e3dd00000000000000000923012c' and ad['uid']==20011300
++assert ad['approved_by']=='outer(codex)' and ad['serial']=='61b0657200000000000000000324012c' and ad['uid']==20011206
+ assert ad['executor_sha256']==sha_file(Path(__file__)) and ad['parameters_sha256']==sha_file(here/'parameters.json')
+ assert ad['source_pins_sha256']==sha_file(here/'executor-source-pins.json') and ad['readonly_inputs_sha256']==sha_file(here/'readonly-inputs.json')
+ readonly=json.loads((here/'readonly-inputs.json').read_text())
+ assert ad['providers']==readonly['providers']
+ assert ad['holder']==a.holder and ad['window_start']==a.start and ad['boot']==a.boot
++assert re.fullmatch(r'inner\(cc-video\) [1-9][0-9]* [^ ]+',a.holder),'only delegated cc-video holder'
++assert ad['deployment_scope']=='T34_61B_VIDEO'
++assert ad['fresh_data_sha256']==sha_file(here/'fresh.json')
++assert ad['wid']==REFERENCE_WID
++assert ad['directory_identities']==params['directory_identities']
++assert ad['protected_directories']==params['protected_directories']
++assert ad['physical_only']==a.recovery_no_parent
++if a.recovery_no_parent:
++ assert ad['parent'] is None and ad['host'] is None,'physical recovery must not claim live identities'
++else:
++ assert str(ad['parent']['pid'])==a.parent and str(ad['parent']['birth'])==a.birth and ad['parent']['uid']==0,'admitted exact parent'
++
+ assert abs(a.start-datetime.datetime.fromisoformat(a.holder.split()[2]).timestamp())<1
+ age=time.time()-a.start;assert 0<=age<1800,'window expired'
+ deadline=time.monotonic()+1800-age
+@@ -67,6 +86,12 @@
+  assert sha_file(a.repo/rel)==digest,rel
+ if a.mode=='rollback':
+  assert a.apply_plan and sha_file(a.apply_plan)==ad['origin_apply_plan_sha256'],'original apply-plan admission'
++ assert a.origin_admission and sha_file(a.origin_admission)==json.loads(a.apply_plan.read_text())['admission_sha256'],'original apply admission'
++ origin_ad=json.loads(a.origin_admission.read_text())
++ assert origin_ad['deployment_scope']=='T34_61B_VIDEO' and origin_ad['approved_by']=='outer(codex)'
++ for key in ('executor_sha256','parameters_sha256','source_pins_sha256','readonly_inputs_sha256','fresh_data_sha256','holder','window_start'):
++  assert origin_ad[key]==ad[key],('origin admission drift',key)
++
+ else:
+  assert not a.apply_plan,'apply-plan only for rollback'
+ if a.mode=='apply':
+@@ -77,7 +102,7 @@
+ 
+ repo=a.repo;sys.path.insert(0,str(repo/'benchmark/2026-09-28-bms-route-deploy/batch'));import bms_batch as b
+ q=shlex.quote;sha=lambda x:hashlib.sha256(x).hexdigest()
+-RT='/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d';DSO='libopensles_android_compat.so';CFG='/system/etc/init/01_westlake_u13_toutiao.cfg';CSHA='19d0201b59a6edac821feffa5f51ca8e9a08d6ba87d5bc9fd15b4e4d00775152'
++RT='/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d';DSO='libopensles_android_compat.so';CFG='/system/etc/init/01_westlake_u13_toutiao.cfg';CSHA='91e31b959995772d305d5b034c9a5ebdbf3f8371495e3964185ada928db4ee2e'
+ MEDIA='lib/arm64-v8a/libmffmpeg.so'; MBEFORE='fecf91e1fcda600661f501ce76a97456ad7e330b584013f2b742afb680b337c9'; MAFTER='d2882303bf5dc34e297a404e4b57a214d9c30ddaf0f496eb2ef9f7dcac09c4b4'
+ assert re.fullmatch('[0-9a-f-]{36}',a.boot)
+ assert a.recovery_no_parent or (a.parent.isdigit() and a.birth.isdigit())
+@@ -98,14 +123,30 @@
+  def ready(self):
+   super().ready();rc,held=self.command(self.lock+['held',self.serial],10)
+   assert rc==0 and held.strip()==a.holder,'exact holder drift'
+-board=Board('5cd1e3dd00000000000000000923012c',a.hdc,'bash '+q(str(repo/'scripts/lab/board_note.sh')),a.holder.split()[0],a.out/'commands');board.boot=a.boot
++board=Board('61b0657200000000000000000324012c',a.hdc,'bash '+q(str(repo/'scripts/lab/board_note.sh')),a.holder.split()[0],a.out/'commands');board.boot=a.boot
+ read=lambda c:board.shell(c)[1]
+ def pathguard(path):
+  return 'walk='+q(path)+'; while [ "$walk" != / ]; do test ! -L "$walk"; walk=$(dirname "$walk"); done\n'
+ def fg(path,digest,meta,label):
+  return pathguard(path)+f'test -f {q(path)}\ntest "$(sha256sum {q(path)} | cut -d\' \' -f1)" = {q(digest)}\ntest "$(stat -c %a:%u:%g {q(path)})" = {q(meta)}\ntest "$(ls -Zd {q(path)} | cut -d\' \' -f1)" = {q(label)}\n'
+ def shell(c):return board.shell('( set -eu;\n'+c+'\n)')[1]
++def directory_guard():
++ dirs=ad['directory_identities']; protected=ad['protected_directories']
++ required={RT,RT+'/lib',RT+'/lib/arm64-v8a',RT+'/webview-t-lib'}
++ assert set(dirs)==required and len(set(dirs.values()))==len(dirs),'directory alias'
++ assert set(protected)=={'/system/lib64','/data/local/tmp/asx','/data/local/tmp/asx/lib','/data/local/tmp/asx/lib/arm64-v8a','/data/local/tmp/asx/webview-t-lib'},'protected root inventory'
++ text=''
++ for path,identity in dirs.items():
++  assert re.fullmatch(r'[0-9]+:[0-9]+',identity),'directory dev:inode'
++  text+=pathguard(path)+f'test -d {q(path)}\ntest "$(stat -L -c %d:%i {q(path)})" = {q(identity)}\n'
++ for path,identity in protected.items():
++  if identity is None:text+=f'test ! -e {q(path)}; test ! -L {q(path)}\n'
++  else:
++   assert re.fullmatch(r'[0-9]+:[0-9]+',identity) and identity not in dirs.values(),'shared directory alias'
++   text+=f'test -d {q(path)}\ntest "$(stat -L -c %d:%i {q(path)})" = {q(identity)}\n'
++ return text
+ board.ready()
++shell(directory_guard())
+ if a.recovery_no_parent:
+  wid=str(json.loads(a.apply_plan.read_text())['wid'])
+ else:
+@@ -120,30 +161,30 @@
+ def normalize_wid(data):
+  matches=list(re.finditer(rb'^export WL_PARENT_ID=([0-9]+)\n',data,re.M))
+  assert len(matches)==1 and 0<int(matches[0][1])<2147483648,'single numeric WID line'
+- m=matches[0];return data[:m.start()]+b'export WL_PARENT_ID=29\n'+data[m.end():],int(m[1])
++ m=matches[0];return data[:m.start()]+('export WL_PARENT_ID=%d\n'%REFERENCE_WID).encode()+data[m.end():],int(m[1])
+ normalized,current_wid=normalize_wid(current_bytes)
+-(a.out/'run-normalization.json').write_text(json.dumps({'original_reference_wid':29,'current_wid':current_wid,'actual_sha256':actual,'normalized_sha256':sha(normalized),'only_allowed_difference':'one exact WL_PARENT_ID numeric value'},indent=2)+'\n')
++(a.out/'run-normalization.json').write_text(json.dumps({'original_reference_wid':REFERENCE_WID,'current_wid':current_wid,'actual_sha256':actual,'normalized_sha256':sha(normalized),'only_allowed_difference':'one exact WL_PARENT_ID numeric value'},indent=2)+'\n')
+ if not a.recovery_no_parent:
+  assert str(current_wid)==wid,'current raw WID/live WMS'
+  assert read('set -eu; envraw=$(strings /proc/'+a.parent+'/environ); printf "%s\\n" "$envraw" | sed -n "s/^WL_PARENT_ID=//p"').strip()==wid,'parent environment/WID'
+ 
+-meta=read('stat -c %a:%u:%g '+RT+'/run.sh').strip();assert meta=='755:20011300:20011300',meta
++meta=read('stat -c %a:%u:%g '+RT+'/run.sh').strip();assert meta=='755:20011206:20011206',meta
+ label=read('ls -Zd '+RT+'/run.sh').split()[0];dlabel=read('ls -Zd '+RT+'/libandroid_native_network_compat.so').split()[0]
+ assert label==dlabel=='u:object_r:appdat:s0',(label,dlabel)
+ base=repo/'benchmark/2026-10-19-toutiao-video-playback'
+-before=(here/'run5cd.before.reference.sh').read_bytes();after=(here/'run5cd.after.wid29.reference.sh').read_bytes()
++before=(here/'run61b.before.reference.sh').read_bytes();after=(here/'run61b.after.reference.sh').read_bytes()
+ params=json.loads((here/'parameters.json').read_text())
+-assert sha(before)==params['run_derivation']['before_sha256']=='5a3aef638000e49f2a966b2179d57fe7628c29a4897921209fec539bd5dc1b79'
+-assert sha(after)==params['run_derivation']['after_wid29_reference_sha256']
++assert sha(before)==params['run_derivation']['before_sha256']
++assert sha(after)==params['run_derivation']['after_sha256']
+ assert ad['cfg_sha256']==CSHA
+ if a.mode!='rollback':
+- assert wid=='29','fresh WID differs from exact admitted baseline; re-review required'
++ assert wid==str(REFERENCE_WID),'fresh WID differs from reviewed 61b data'
+  assert read('set -eu; envraw=$(strings /proc/'+a.parent+'/environ); printf "%s\\n" "$envraw" | sed -n "s/^WL_PARENT_ID=//p"').strip()==wid,'parent environment/WID'
+ 
+ before_template,after_template=before,after
+-for data in [before,after]:assert data.count(b'export WL_PARENT_ID=29\n')==1
++for data in [before,after]:assert data.count(('export WL_PARENT_ID=%d\n'%REFERENCE_WID).encode())==1
+ mactual=read('sha256sum '+RT+'/'+MEDIA).split()[0]
+-mmeta=read('stat -c %a:%u:%g '+RT+'/'+MEDIA).strip();assert mmeta=='644:20011300:20011300'
++mmeta=read('stat -c %a:%u:%g '+RT+'/'+MEDIA).strip();assert mmeta=='644:20011206:20011206'
+ mlabel=read('ls -Zd '+RT+'/'+MEDIA).split()[0];assert mlabel=='u:object_r:appdat:s0'
+ pactual=read('sha256sum '+RT+'/'+PLAYER).split()[0]
+ pmeta=read('stat -c %a:%u:%g '+RT+'/'+PLAYER).strip();assert pmeta==PLAYER_METADATA,'player metadata drift'
+@@ -161,6 +202,10 @@
+  apply_plan=json.loads(a.apply_plan.read_text())
+  assert apply_plan['executor_sha256']==sha_file(Path(__file__)) and apply_plan['holder']==a.holder and apply_plan['start']==a.start,'same execution window/source'
+  assert apply_plan['compat_before_absent'] is True
++ assert apply_plan['deployment_scope']=='T34_61B_VIDEO'
++ assert apply_plan['parameters_sha256']==sha_file(here/'parameters.json')
++ assert apply_plan['directory_identities']==ad['directory_identities']
++
+  assert apply_plan['shim_path']==SHIM and apply_plan['shim_before_sha']==SBEFORE and apply_plan['shim_after_sha']==SAFTER
+  assert apply_plan['shim_candidate_sha256']==sha_file(here/'shim-candidate.json')
+  assert (smeta,slabel)==(apply_plan['shim_metadata'],apply_plan['shim_label'])
+@@ -179,10 +224,12 @@
+  assert apply_plan['mode']=='apply' and apply_plan['runtime']==RT and apply_plan['dso_sha']==DSHA and apply_plan['cfg_sha']==CSHA
+  assert re.fullmatch('[0-9a-f-]{36}',apply_plan['boot'])
+  origin_wid=str(apply_plan['wid']);assert origin_wid.isdigit(),'invalid original WID'
+- assert origin_wid=='29' and apply_plan['serial']=='5cd1e3dd00000000000000000923012c' and apply_plan['uid']==20011300
++ assert origin_wid==str(REFERENCE_WID) and apply_plan['serial']=='61b0657200000000000000000324012c' and apply_plan['uid']==20011206
+  origin_before=before_template;origin_after=after_template
+  assert apply_plan['before_sha']==sha(origin_before) and apply_plan['after_sha']==sha(origin_after),'original WID/template pins differ'
+- assert sha(normalized) in (sha(origin_before),sha(origin_after)),(actual,'foreign run.sh beyond admitted WID value')
++ assert ad['recovery_run_sha256']==actual and ad['recovery_wid']==current_wid,'fresh recovery run binding'
++ assert sha(normalized) in (sha(origin_before),sha(origin_after)),(actual,'foreign run.sh beyond one approved WID')
++
+  assert (meta,label,dlabel)==(apply_plan['run_metadata'],apply_plan['run_label'],apply_plan['dso_label'])
+  expected=actual
+  dso_present=read(f'if [ -e {RT}/{DSO} ]; then echo yes; else echo no; fi').strip()=='yes'
+@@ -207,12 +254,12 @@
+  test "$(sha256sum {CFG} | cut -d' ' -f1)" = {CSHA}
+  '''
+ for control,digest in readonly['controls'].items():
+- assert control.startswith('/data/westlake-demo/toutiao/recovery-attempts/restore-v1-5cd-20261012/') and re.fullmatch('[0-9a-f]{64}',digest)
++ assert control.startswith('/data/westlake-demo/toutiao/recovery-attempts/icon-manual-20261019-r2/') and re.fullmatch('[0-9a-f]{64}',digest)
+  parent_guard+=pathguard(control)+f'test "$(sha256sum {q(control)} | cut -d\' \' -f1)" = {digest}\n'
+-network_guard=fg(RT+'/libandroid_native_network_compat.so','f6c354d1513071533fddcc91749f44e57a626177a584fb1bb9f48bf6446ef01e','644:20011300:20011300',dlabel)
++network_guard=fg(RT+'/libandroid_native_network_compat.so','f6c354d1513071533fddcc91749f44e57a626177a584fb1bb9f48bf6446ef01e','644:20011206:20011206',dlabel)
+ if not a.recovery_no_parent:network_guard+=f'test "$(stat -L -c %d:%i {RT}/libandroid_native_network_compat.so)" = "$(stat -L -c %d:%i /proc/{a.parent}/root/data/local/tmp/asx/libandroid_native_network_compat.so)"\n'
+ parent_guard+=network_guard
+-pre=parent_guard+fg(RT+'/run.sh',expected,meta,label)+fg(RT+'/'+MEDIA,mactual,mmeta,mlabel)
++pre=directory_guard()+parent_guard+fg(RT+'/run.sh',expected,meta,label)+fg(RT+'/'+MEDIA,mactual,mmeta,mlabel)
+ if not a.recovery_no_parent:pre+=f'test "$(stat -L -c %d:%i {RT}/{MEDIA})" = "$(stat -L -c %d:%i /proc/{a.parent}/root/data/local/tmp/asx/{MEDIA})"\n'
+ pre+=fg(RT+'/'+PLAYER,pactual,pmeta,plabel)
+ if not a.recovery_no_parent:pre+=f'test "$(stat -L -c %d:%i {RT}/{PLAYER})" = "$(stat -L -c %d:%i /proc/{a.parent}/root/data/local/tmp/asx/{PLAYER})"\n'
+@@ -227,39 +274,42 @@
+  private_shim=f'/proc/{a.parent}/root/data/local/tmp/asx/{SHIM}'
+  pre+=fg(private_shim,sactual,smeta,slabel)[len(pathguard(private_shim)):]
+  pre+=f'test "$(stat -L -c %d:%i {RT}/{SHIM})" = "$(stat -L -c %d:%i {private_shim})"\n'
+-pre+=fg(RT+'/'+DSO,DSHA,'644:20011300:20011300',dlabel) if dso_present else pathguard(RT+'/'+DSO)+f'test ! -e {RT}/{DSO}\n'
++pre+=fg(RT+'/'+DSO,DSHA,'644:20011206:20011206',dlabel) if dso_present else pathguard(RT+'/'+DSO)+f'test ! -e {RT}/{DSO}\n'
+ if a.mode=='rollback':
+- backup=RT+'/run.sh.t21-5cd-before-'+apply_plan['boot'][:8]
+- media_backup=RT+'/'+MEDIA+'.t21-5cd-before-'+apply_plan['boot'][:8]
+- player_backup=RT+'/'+PLAYER+'.t21-5cd-before-'+apply_plan['boot'][:8]
+- bridge_backup=RT+'/'+BRIDGE+'.t21-5cd-before-'+apply_plan['boot'][:8]
+- shim_backup=RT+'/'+SHIM+'.t21-5cd-before-'+apply_plan['boot'][:8]
+- absence_backup=RT+'/'+DSO+'.t21-5cd-before-'+apply_plan['boot'][:8]+'.absent'
++ backup=RT+'/run.sh.t34-61b-before-'+apply_plan['boot'][:8]
++ media_backup=RT+'/'+MEDIA+'.t34-61b-before-'+apply_plan['boot'][:8]
++ player_backup=RT+'/'+PLAYER+'.t34-61b-before-'+apply_plan['boot'][:8]
++ bridge_backup=RT+'/'+BRIDGE+'.t34-61b-before-'+apply_plan['boot'][:8]
++ shim_backup=RT+'/'+SHIM+'.t34-61b-before-'+apply_plan['boot'][:8]
++ absence_backup=RT+'/'+DSO+'.t34-61b-before-'+apply_plan['boot'][:8]+'.absent'
+  assert apply_plan['compat_absence_marker']==absence_backup
+- if dso_present:pre+=pathguard(absence_backup)+f'test -f {q(absence_backup)}\ntest "$(sha256sum {q(absence_backup)} | cut -d\' \' -f1)" = {apply_plan["compat_absence_marker_sha256"]}\n'
++ if dso_present or any((actual!=sha(before),mactual!=MBEFORE,pactual!=PBEFORE,bactual!=BBEFORE,sactual!=SBEFORE)):pre+=pathguard(absence_backup)+f'test -f {q(absence_backup)}\ntest "$(sha256sum {q(absence_backup)} | cut -d\' \' -f1)" = {apply_plan["compat_absence_marker_sha256"]}\n'
+  for target,back,digest,fmeta,flabel,current in [('run.sh',backup,apply_plan['before_sha'],meta,label,actual),(MEDIA,media_backup,MBEFORE,mmeta,mlabel,mactual),(PLAYER,player_backup,PBEFORE,pmeta,plabel,pactual),(BRIDGE,bridge_backup,BBEFORE,bmeta,blabel,bactual),(SHIM,shim_backup,SBEFORE,smeta,slabel,sactual)]:
+   present=read('if [ -e '+q(back)+' ]; then echo yes; else echo no; fi').strip()=='yes'
+   if present:pre+=fg(back,digest,fmeta,flabel)
+-  else:assert current==digest,'missing backup for changed target'
+-
+-
+-host=ad['host'];assert host['uid']==20011300 and str(host['pid']).isdigit() and str(host['birth']).isdigit()
+-assert re.fullmatch(r'mnt:\[[0-9]+\]',ad['parent_mnt'])
+-hostguard=f"r=$(cat /proc/{host['pid']}/stat); z=${{r##*) }}; set -- $z; test \"${{20}}\" = {host['birth']}; test \"$1\" != Z; u=$(sed -n 's/^Uid:[[:space:]]*//p' /proc/{host['pid']}/status); set -- $u; test \"$1:$2:$3:$4\" = 20011300:20011300:20011300:20011300\n"
+-hostguard+=f'cmdraw=$(strings /proc/{host["pid"]}/cmdline); printf "%s\\n" "$cmdraw" | grep -Fx org.westlake.imehost >/dev/null\n'
+-if not a.recovery_no_parent:pre+=hostguard
++  else:assert not dso_present and actual==sha(before) and mactual==MBEFORE and pactual==PBEFORE and bactual==BBEFORE and sactual==SBEFORE,'missing backup after any mutation'
++
++
++if not a.recovery_no_parent:
++ host=ad['host'];assert host['uid']==20011206 and str(host['pid']).isdigit() and str(host['birth']).isdigit()
++ assert re.fullmatch(r'mnt:\[[0-9]+\]',ad['parent_mnt'])
++ hostguard=f"r=$(cat /proc/{host['pid']}/stat); z=${{r##*) }}; set -- $z; test \"${{20}}\" = {host['birth']}; test \"$1\" != Z; u=$(sed -n 's/^Uid:[[:space:]]*//p' /proc/{host['pid']}/status); set -- $u; test \"$1:$2:$3:$4\" = 20011206:20011206:20011206:20011206\n"
++ hostguard+=f'cmdraw=$(strings /proc/{host["pid"]}/cmdline); printf "%s\\n" "$cmdraw" | grep -Fx org.westlake.imehost >/dev/null\n'
++ if not a.recovery_no_parent:pre+=hostguard
+ for provider in ad['providers']:
+  assert provider['path'] in ('/system/lib64/libOpenSLES.so',RT+'/liblog.so') and re.fullmatch('[0-9a-f]{64}',provider['sha256'])
+  pre+=f"test \"$(sha256sum {provider['path']} | cut -d' ' -f1)\" = {provider['sha256']}\n"
+ assert {v['path'] for v in ad['providers']}=={'/system/lib64/libOpenSLES.so',RT+'/liblog.so'}
++hap='/data/app/el1/bundle/public/org.westlake.imehost/entry.hap'
++pre+=pathguard(hap)+f'test "$(sha256sum {hap} | cut -d\' \' -f1)" = b18978b875098bc66f1ee78e471ef64c7899978bf46052502c41801f168e9ff0\n'
+ shell(pre)
+-plan={'mode':a.mode,'compat_before_absent':True,'serial':board.serial,'uid':20011300,'holder':a.holder,'start':a.start,'admission_sha256':sha_file(a.admission),'executor_sha256':sha_file(Path(__file__)),'boot':a.boot,'parent':a.parent,'parent_birth':a.birth,'physical_only':a.recovery_no_parent,'wid':wid,'before_sha':sha(before),'after_sha':sha(after),'run_metadata':meta,'run_label':label,'dso_label':dlabel,'dso_sha':DSHA,'cfg_sha':CSHA,'runtime':RT,'media_before_sha':MBEFORE,'media_after_sha':MAFTER,'media_metadata':mmeta,'media_label':mlabel,'player_path':PLAYER,'player_before_sha':PBEFORE,'player_after_sha':PAFTER,'player_metadata':pmeta,'player_label':plabel,'player_input_rel':PLAYER_INPUT_REL}
++plan={'mode':a.mode,'compat_before_absent':True,'serial':board.serial,'uid':20011206,'holder':a.holder,'start':a.start,'admission_sha256':sha_file(a.admission),'executor_sha256':sha_file(Path(__file__)),'boot':a.boot,'parent':a.parent,'parent_birth':a.birth,'physical_only':a.recovery_no_parent,'deployment_scope':'T34_61B_VIDEO','parameters_sha256':sha_file(here/'parameters.json'),'directory_identities':ad['directory_identities'],'wid':wid,'before_sha':sha(before),'after_sha':sha(after),'run_metadata':meta,'run_label':label,'dso_label':dlabel,'dso_sha':DSHA,'cfg_sha':CSHA,'runtime':RT,'media_before_sha':MBEFORE,'media_after_sha':MAFTER,'media_metadata':mmeta,'media_label':mlabel,'player_path':PLAYER,'player_before_sha':PBEFORE,'player_after_sha':PAFTER,'player_metadata':pmeta,'player_label':plabel,'player_input_rel':PLAYER_INPUT_REL}
+ plan.update(bridge_path=BRIDGE,bridge_before_sha=BBEFORE,bridge_after_sha=BAFTER,bridge_metadata=bmeta,bridge_label=blabel,bridge_candidate_sha256=sha_file(here/'bridge-candidate.json'))
+-plan.update(shim_path=SHIM,shim_before_sha=SBEFORE,shim_after_sha=SAFTER,shim_metadata=smeta,shim_label=slabel,shim_candidate_sha256=sha_file(here/'shim-candidate.json'),compat_absence_marker=RT+'/'+DSO+'.t21-5cd-before-'+(apply_plan['boot'] if apply_plan else a.boot)[:8]+'.absent',compat_absence_marker_sha256=sha(b'ABSENT\n'))
++plan.update(shim_path=SHIM,shim_before_sha=SBEFORE,shim_after_sha=SAFTER,shim_metadata=smeta,shim_label=slabel,shim_candidate_sha256=sha_file(here/'shim-candidate.json'),compat_absence_marker=RT+'/'+DSO+'.t34-61b-before-'+(apply_plan['boot'] if apply_plan else a.boot)[:8]+'.absent',compat_absence_marker_sha256=sha(b'ABSENT\n'))
+ if apply_plan is not None:plan['origin_apply_plan_sha256']=sha(a.apply_plan.read_bytes());plan['origin_apply_boot']=apply_plan['boot'];plan['origin_apply_wid']=origin_wid
+ (a.out/'plan.json').write_text(json.dumps(plan,indent=2)+'\n');(a.out/'before.run.sh').write_bytes(before);(a.out/'after.run.sh').write_bytes(after)
+ if a.mode=='preflight':print(json.dumps(plan));sys.exit()
+-stage='/data/local/tmp/t21-5cd-'+a.mode+'-'+a.boot[:8]+'-'+sha(str(a.out).encode())[:8];shell(parent_guard+pathguard(stage)+f'test ! -e {stage}; mkdir {stage}; chmod 700 {stage}\n')
++stage='/data/local/tmp/t34-61b-'+a.mode+'-'+a.boot[:8]+'-'+sha(str(a.out).encode())[:8];shell(parent_guard+pathguard(stage)+f'test ! -e {stage}; mkdir {stage}; chmod 700 {stage}\n')
+ new=before if a.mode=='rollback' else after;newfile=a.out/('before.run.sh' if a.mode=='rollback' else 'after.run.sh')
+ board.send(newfile,stage+'/run.sh');shell(f'test "$(sha256sum {stage}/run.sh | cut -d\' \' -f1)" = {sha(new)}\n')
+ if a.mode=='apply':
+@@ -280,22 +330,22 @@
+ def swap(name,source,digest,fmeta,flabel,preimage):
+  dst=RT+'/'+name;tmp=dst+'.ttvideo-'+a.boot[:8]+'-'+sha(str(a.out).encode())[:8]+'.tmp';mode,uid,gid=fmeta.split(':')
+  before_guard=fg(dst,preimage,fmeta,flabel) if preimage is not None else pathguard(dst)+f'test ! -e {q(dst)}\n'
+- return pathguard(tmp)+f'test ! -e {q(tmp)}\ncp {q(source)} {q(tmp)}\nchown {uid}:{gid} {q(tmp)}\nchmod {mode} {q(tmp)}\nchcon {q(flabel)} {q(tmp)}\n'+fg(tmp,digest,fmeta,flabel)+before_guard+f'mv {q(tmp)} {q(dst)}\n'+fg(dst,digest,fmeta,flabel)
++ return pathguard(tmp)+f'test ! -e {q(tmp)}\ncp {q(source)} {q(tmp)}\nchown {uid}:{gid} {q(tmp)}\nchmod {mode} {q(tmp)}\nchcon {q(flabel)} {q(tmp)}\n'+fg(tmp,digest,fmeta,flabel)+directory_guard()+before_guard+f'mv {q(tmp)} {q(dst)}\n'+fg(dst,digest,fmeta,flabel)
+ script=pre
+ if a.mode=='apply':
+- backup=RT+'/run.sh.t21-5cd-before-'+a.boot[:8]
++ backup=RT+'/run.sh.t34-61b-before-'+a.boot[:8]
+  script+=pathguard(backup)+f'test ! -e {q(backup)}\ncp -p {RT}/run.sh {q(backup)}\n'+fg(backup,expected,meta,label)
+ if a.mode=='apply':
+- media_backup=RT+'/'+MEDIA+'.t21-5cd-before-'+a.boot[:8]
++ media_backup=RT+'/'+MEDIA+'.t34-61b-before-'+a.boot[:8]
+  script+=pathguard(media_backup)+f'test ! -e {q(media_backup)}\ncp -p {RT}/{MEDIA} {q(media_backup)}\n'+fg(media_backup,MBEFORE,mmeta,mlabel)
+ if a.mode=='apply':
+- player_backup=RT+'/'+PLAYER+'.t21-5cd-before-'+a.boot[:8]
++ player_backup=RT+'/'+PLAYER+'.t34-61b-before-'+a.boot[:8]
+  script+=pathguard(player_backup)+f'test ! -e {q(player_backup)}\ncp -p {RT}/{PLAYER} {q(player_backup)}\n'+fg(player_backup,PBEFORE,pmeta,plabel)
+ if a.mode=='apply':
+- bridge_backup=RT+'/'+BRIDGE+'.t21-5cd-before-'+a.boot[:8]
++ bridge_backup=RT+'/'+BRIDGE+'.t34-61b-before-'+a.boot[:8]
+  script+=pathguard(bridge_backup)+f'test ! -e {q(bridge_backup)}\ncp -p {RT}/{BRIDGE} {q(bridge_backup)}\n'+fg(bridge_backup,BBEFORE,bmeta,blabel)
+ if a.mode=='apply':
+- shim_backup=RT+'/'+SHIM+'.t21-5cd-before-'+a.boot[:8]
++ shim_backup=RT+'/'+SHIM+'.t34-61b-before-'+a.boot[:8]
+  script+=pathguard(shim_backup)+f'test ! -e {q(shim_backup)}\ncp -p {RT}/{SHIM} {q(shim_backup)}\n'+fg(shim_backup,SBEFORE,smeta,slabel)
+  absence_backup=plan['compat_absence_marker']
+  script+=pathguard(absence_backup)+f'test ! -e {q(absence_backup)}\n(set -C; printf "ABSENT\\n" > {q(absence_backup)})\nchmod 600 {q(absence_backup)}\ntest "$(sha256sum {q(absence_backup)} | cut -d\' \' -f1)" = {plan["compat_absence_marker_sha256"]}\n'
+@@ -304,10 +354,10 @@
+ if a.mode!='rollback' or bactual!=BBEFORE:script+=swap(BRIDGE,bridge_backup if a.mode=='rollback' else stage+'/'+BRIDGE,BBEFORE if a.mode=='rollback' else BAFTER,bmeta,blabel,bactual)
+ if a.mode!='rollback' or mactual!=MBEFORE:script+=swap(MEDIA,media_backup if a.mode=='rollback' else stage+'/libmffmpeg.so',MBEFORE if a.mode=='rollback' else MAFTER,mmeta,mlabel,mactual)
+ if a.mode!='rollback' or pactual!=PBEFORE:script+=swap(PLAYER,player_backup if a.mode=='rollback' else stage+'/libttmplayer.so',PBEFORE if a.mode=='rollback' else PAFTER,pmeta,plabel,pactual)
+-if a.mode=='apply':script+=swap(DSO,stage+'/'+DSO,DSHA,'644:20011300:20011300',dlabel,None)
++if a.mode=='apply':script+=swap(DSO,stage+'/'+DSO,DSHA,'644:20011206:20011206',dlabel,None)
+ script+=fg(RT+'/run.sh',expected,meta,label)
+-if a.mode!='rollback' or actual!=sha(before):script+=swap('run.sh',stage+'/run.sh',sha(new),meta,label,expected)
+-if a.mode=='rollback' and dso_present:script+=fg(RT+'/'+DSO,DSHA,'644:20011300:20011300',dlabel)+f'rm {RT}/{DSO}\ntest ! -e {RT}/{DSO}\n'
++if a.mode!='rollback' or actual!=sha(before):script+=swap('run.sh',backup if a.mode=='rollback' else stage+'/run.sh',sha(new),meta,label,expected)
++if a.mode=='rollback' and dso_present:script+=directory_guard()+fg(RT+'/'+DSO,DSHA,'644:20011206:20011206',dlabel)+f'rm {RT}/{DSO}\ntest ! -e {RT}/{DSO}\n'
+ completion='PHYSICAL_FILES_RESTORED_REQUIRES_FRESH_BOOT' if a.mode=='rollback' else 'VIDEO_FILES_SWAPPED_FRESH_BOOT_REQUIRED'
+ script+=parent_guard+'echo '+completion+'\n'
+ (a.out/'swap.sh').write_text(script);result=shell(script);assert completion in result
