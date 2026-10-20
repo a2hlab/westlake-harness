@@ -6,10 +6,10 @@ repo: A2OH/westlake-harness
 layers: [Verification, Measurement]
 status: open
 severity: S2
-recurrence: 9
+recurrence: 11
 fingerprint: verification/proxy-not-target
 issue:
-cards: [EVO-0148, EVO-0149, EVO-0150, EVO-0151, EVO-0153, EVO-0154, EVO-0155, EVO-0156, EVO-0157]
+cards: [EVO-0148, EVO-0149, EVO-0150, EVO-0151, EVO-0153, EVO-0154, EVO-0155, EVO-0156, EVO-0157, EVO-0158, EVO-0161]
 filed: 2026-10-19
 ---
 
@@ -31,6 +31,9 @@ filed: 2026-10-19
 
 ## 处置
 
+- R16（EVO-0158）：源码日志措辞被当成返回行为不同；精确源码与部署 ELF 实际都设 errno19 并返回 -19。日志句子不能替代返回值与副作用比较。
+- T32/T33（EVO-0161）：旧 parent5257/guardian 状态被当成当前状态，并推断图标必须卸载重建。原错误稿 `aecbe7dc94` 保留，更正 `90abb890f9` 撤回主张；实际同签覆盖保留 UID/token/目录身份，5cd 与61b均一次图标到feed。跨板仍须各采 guardian ROOT、power 和实际 runtime，不能把5cd视频库归给61b。见 `benchmark/2026-10-20-t32-host-page-accepted/`、`benchmark/2026-10-20-t33-demo61b-host/accepted/`。
+
 每个结论绑定对象 SHA、实际方法/指令/进程、证据范围与 unknown。字符串归属须在所引方法正文逐字存在，入口委托不能替代被调用方法；零入边须附扫描覆盖，不升级成运行时不可达。实际路径优先沿已观测栈 `VideoPlayerImpl.doPrepareAction → TTVideoEngine.play → X.4cC.play` 追踪。
 
 外环已用精确原件 disassembly、进程内只读指针、REA normalized method 正文分别复核，纠偏同步内环。静态定位与运行时播放分开验收；文件名、目录标签、日志缺失都不替代截图或实际调用。
@@ -44,3 +47,5 @@ filed: 2026-10-19
 2026-10-20 r10调整：报告不得由库名或相邻版本源码推定部署实现。先提交精确 ELF 的函数证据与相关源码差异，再写结论；调用当时对象与事后旧地址分开。当前已转向有界同次调用观测，不再用全机导出并集猜 namespace winner。本规则尚不能机械检验自然语言声明，记录保持 open。
 
 2026-10-20 r13 early调整：进程选择器须对实际探查命令的原始字段建谓词，并以 UID/PID/birth 绑定身份；不得把其他探查面的短名照搬成完整 NAME 判据，也不得把选择器未命中等同于目标不存在。
+
+2026-10-20 T33收尾：新增 `scripts/lab/host_hap_preflight.py` 对精确T33真实输入做离线门禁，真实正例通过、6种缺项/错包副本拒绝，真实land消费入口通过。它只验证记录完整性和已钉对象，不证明fresh身份，也不自动审查任意因果文字；本记录保持open。见 `benchmark/2026-10-20-evolution-closeout/`。

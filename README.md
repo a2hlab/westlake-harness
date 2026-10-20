@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[Campaign evolution closeout](benchmark/2026-10-20-evolution-closeout/README.md)** | Exact-input host preflight with one real positive and six rejection cases; evidence/scheduling retrospective, freeze-readiness matrix and collector receipts. |
 | **[61b one-click Toutiao host page](benchmark/2026-10-20-t33-demo61b-host/accepted/README.md)** | Same-signature host update; real desktop icon to feed; source/build, rollback and verified archive. |
 | **[T21 sixth-artifact shim transaction](benchmark/2026-10-20-t21-shim-deployment/)** | **Six guarded preimages and partial rollback tests; exact production pins and fresh outer admission are required before execution.** |
 | **[T18 audible clip and exact experiment closeout](benchmark/2026-10-20-t18-window-evidence/)** | **User confirmed the specified clip audio; visual playback remains blocked. Original runtime and snapshots restored, final UI host-only. All failures retained and 10,204 raw archive members remotely verified.** |

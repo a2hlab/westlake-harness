@@ -279,3 +279,6 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - retain短窗先备unsigned模板/精确复用引用/addendum/peer接线，窗口内只补fresh身份、状态、恢复绑定与实际签字，严守该窗停试验/签认/回滚截止；未及时签认就保留原未签记录并恢复，不边写报告边耗恢复余量。恢复Timeout/OverrideTimeout10000/10000后立即截图并绑身份，避免10秒锁屏；长报告与归档上传在实际决定和close之后。
 
 - 2026-10-20 #91 T32：OH `param get` 正值可能带尾空格（实测`true `），解析先strip再比较，完整原输出仍留；不要把读取器误拒当设备启动失败。HAP同签覆盖前后核bundle服务身份/token与数据目录、保留整包回退件；现有图标无需卸载重建。实证见 benchmark/2026-10-20-t32-host-page-accepted/。
+
+- 2026-10-20 #91 宿主预检：先从本板采bundle/guardian ROOT/runtime/power/原HAP，再用 `python3 scripts/lab/host_hap_preflight.py --intake "$T33_SAMPLE_ROOT/intake-01" --release "$T33_SAMPLE_ROOT/release-01"` 核精确T33旧回执；仅支持该已钉基线，仍须fresh读检、锁、回滚和实际签认。power恢复本板原值（61b30000/86400000，不能抄5cd10000/10000）；签认结构/peer前置，长报告归档后置。
+- 2026-10-20 #91 进化采集：手动harvest/retro须显式GNU coreutils gnubin PATH及 `OLP_EVO_REVIEW_BOARD`，沿10月13日已验portable runtime；本次漏PATH调用stat -c失败rc1，随后显式PATH重跑harvest0新增/retro5卡成功。锁等待超时先查现有采集者，不能杀常驻哨或把等待称掉线；记录rc/耗时/最后输出。现脚本仍全文扫描+逐行wc子进程，性能改造待做。派单正ACK/负状态哨持续至实际采认回执，不能发送后结束跟进。

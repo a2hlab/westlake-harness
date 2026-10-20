@@ -975,3 +975,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 T32：精确Linux编译器复现原HAP两ABC后，仅Index去开发标题/输入框、同cert/profile覆盖，5cd实际一次图标到feed并见视频内容进展；UID/token及5目录身份/六runtime保存，516.600s留板收窗。冷启仍空背景等待（首次采到feed约55.867s，非精确首帧），不称提速或新公共API。源码/配方/原始签包回执在 benchmark/2026-10-20-toutiao-launcher-page/，实际证据和原HAP回退归档在 benchmark/2026-10-20-t32-host-page-accepted/。
 
 - 2026-10-20 #91 T33：61b同原HAP df385可直接复用T32 b189，但UID20011206/token、icon-manual-r2 guardian、原power30000/86400000及旧视频库须从本板采；仅HAP覆盖、既有WID33→30派生，单图标真实feed，325.997s签/326.466s收窗。同app两板不计2app冻结，未迁T31视频；证据 benchmark/2026-10-20-t33-demo61b-host/accepted/。
+
+- 2026-10-20 #91 收尾进化：T33精确HAP离线预检已入库（真实正例+6拒绝反例，land无参数消费也过），只能核旧回执/钉死对象，不能充fresh授权；T18 getter及T30 ANW恢复仍只验头条，同app两板不能凑2app冻结。FLAW-011补EVO158/161、FLAW-012保留open；进化采集真实到EVO161，手动入口必须沿GNU工具PATH，进程活着不等于采集成功；见 benchmark/2026-10-20-evolution-closeout/。
