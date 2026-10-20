@@ -1286,6 +1286,76 @@ class AppFrameworkContracts(unittest.TestCase):
             self.assertTrue(wm["placement_from_gravity"]["present"], "a call to Android's WindowLayout places windows")
             self.assertTrue(wm["dim_behind"]["present"])
 
+    def test_popup_windows_need_a_session_of_their_own(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="westlake-wm-") as temp:
+            root = Path(temp)
+            adapter = root / "framework/window/java/WindowSessionAdapter.java"
+            # Naming the sub-window range in a comment is not asking for a session for it.
+            _write(adapter, """class WindowSessionAdapter {
+                // sub-windows (FIRST_SUB_WINDOW..LAST_SUB_WINDOW) should ask as TYPE_APPLICATION
+                int addToDisplay() { return nativeCreateSession(window, attrs.type); }
+            }""")
+            wm = window_adapter_model(root)
+            self.assertFalse(wm["sub_windows_shown"]["present"])
+            popups = {"inventory": {"platform_method_names": {"Landroid/widget/PopupWindow;": ["showAsDropDown"],
+                                                              "Landroid/widget/Spinner;": ["setAdapter"]}}}
+            bare = {"proxy_stub": False, "answered": [], "source": None}
+            row = next(r for r in gapmap.app_framework_rows(popups, bare, wm) if r["id"] == "wm:popup-window")
+            self.assertEqual((row["verdict"], row["effort"]), ("missing", "S"))
+            self.assertIn("PopupWindow, Spinner", row["app_evidence"])
+
+            _write(adapter, """class WindowSessionAdapter {
+                static int sessionTypeFor(int type) {
+                    return type >= WindowManager.LayoutParams.FIRST_SUB_WINDOW
+                            && type <= WindowManager.LayoutParams.LAST_SUB_WINDOW
+                            ? WindowManager.LayoutParams.TYPE_APPLICATION : type;
+                }
+            }""")
+            wm = window_adapter_model(root)
+            self.assertTrue(wm["sub_windows_shown"]["present"])
+            row = next(r for r in gapmap.app_framework_rows(popups, bare, wm) if r["id"] == "wm:popup-window")
+            self.assertEqual(row["verdict"], "supplied")
+            self.assertFalse([r for r in gapmap.app_framework_rows({"inventory": {"platform_method_names": {}}}, bare, wm)
+                              if r["id"] == "wm:popup-window"], "an app that shows no popup has no row")
+
+    def test_focus_goes_back_to_the_window_under_a_closed_one(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="westlake-wm-") as temp:
+            root = Path(temp)
+            window = root / "framework/window/java"
+            _write(window / "WindowSessionAdapter.java", """class WindowSessionAdapter {
+                public void remove(IWindow window) throws RemoteException {
+                    InputEventBridge.getInstance().destroyInputChannel(window.asBinder());
+                    %s
+                }
+            }""" % "")
+            _write(window / "WindowCallbackBridge.java", """class WindowCallbackBridge {
+                static void windowRemoved(IWindow removed) { next.windowFocusChanged(true); }
+            }""")
+            self.assertFalse(window_adapter_model(root)["focus_handoff"]["present"], "a helper nobody calls on remove")
+            _write(window / "WindowSessionAdapter.java", """class WindowSessionAdapter {
+                public void remove(IWindow window) throws RemoteException {
+                    // WindowCallbackBridge.windowRemoved(window) would hand focus on
+                    InputEventBridge.getInstance().destroyInputChannel(window.asBinder());
+                }
+            }""")
+            self.assertFalse(window_adapter_model(root)["focus_handoff"]["present"], "a comment is not a call")
+            _write(window / "WindowSessionAdapter.java", """class WindowSessionAdapter {
+                public void remove(IWindow window) throws RemoteException {
+                    WindowCallbackBridge.windowRemoved(window);
+                }
+            }""")
+            wm = window_adapter_model(root)
+            self.assertTrue(wm["focus_handoff"]["present"])
+            bare = {"proxy_stub": False, "answered": [], "source": None}
+            editor_and_dialog = {"inventory": {"platform_method_names": {"Landroid/widget/EditText;": ["getText"],
+                                                                         "Landroid/app/Dialog;": ["show"]}}}
+            row = next(r for r in gapmap.app_framework_rows(editor_and_dialog, bare, wm) if r["id"] == "wm:focus-handoff")
+            self.assertEqual(row["verdict"], "supplied")
+            self.assertIn("Dialog", row["app_evidence"])
+            dialogs_only = {"inventory": {"platform_method_names": {"Landroid/app/Dialog;": ["show"]}}}
+            self.assertFalse([r for r in gapmap.app_framework_rows(dialogs_only, bare, wm) if r["id"] == "wm:focus-handoff"],
+                             "no text field, no keyboard to lose")
+
     def test_probe_results_apply_only_to_their_commit(self) -> None:
         def fresh():
             return {"provider": {"westlake": {"commit": "f4e0366953002a33"}},
@@ -1523,9 +1593,26 @@ class KeystoreAndLoaderOrder(unittest.TestCase):
 }""")
             model = gapmap.webview_process_model(root / "aosp", root / "westlake")
             row = gapmap.webview_rows(scan, model)[0]
-            self.assertEqual((row["verdict"], row["effort"]), ("missing", "L"))
+            # The flag's value belongs to the provider's framework build: the probe decides.
+            self.assertEqual((row["verdict"], row["effort"], row["probe"]),
+                             ("unverified", "L", "probes/webview-boundaries"))
             self.assertIn("Flags.updateServiceV2()", row["provider"])
             self.assertEqual(gapmap.webview_rows({"inventory": {"platform_method_names": {}}}, model), [])
+
+            def measured(passed: bool) -> dict:
+                gap = {"provider": {"westlake": {"commit": "5ea7245"}}, "rows": gapmap.webview_rows(scan, model)}
+                gapmap.apply_probe_results(gap, {"results": [
+                    {"probe": "webview-boundaries", "westlake_commit": "5ea724541b096990", "passed": True,
+                     "verdict": "phase=searchpath verdict=OBSERVED_SHADOWING"},
+                    {"probe": "webview-boundaries/wv:renderer-process", "row": "wv:renderer-process",
+                     "outcome": "pass" if passed else "fail", "passed": passed, "westlake_commit": "5ea724541b096990",
+                     "verdict": "phase=multiprocess verdict=" + ("PASS_SINGLE_PROCESS" if passed else "FAIL_MULTIPROCESS")}]})
+                return gap["rows"][0]
+            single = measured(True)
+            self.assertEqual((single["verdict"], single["measured"]), ("supplied", "conformant"))
+            multi = measured(False)
+            self.assertEqual((multi["verdict"], multi["effort"], multi["measured"]), ("missing", "L", "broken"),
+                             "the probe-level pass does not hide the row's own failing line")
 
     def test_a_load_that_reports_success_without_opening_the_library(self) -> None:
         with tempfile.TemporaryDirectory(prefix="westlake-load-") as temp:
@@ -2222,6 +2309,19 @@ class DeviceAnswers(unittest.TestCase):
             "usb": "No USB device or accessory attached: the device list is empty."})
 
 
+    def test_an_alarm_accepted_and_never_delivered_is_hollow(self) -> None:
+        """Chrono's timer expired in silence: its expiry is an alarm, and every alarm call answered
+        the type default."""
+        from westlake_gap import services
+        self.assertEqual(services.undelivered(self.SOURCE), {}, "an alarm handler that answers something of its own")
+        pure = self.SOURCE.replace('if ("set".equals(method)) return null;\n', "")
+        found = services.undelivered(pure)
+        self.assertEqual(list(found), ["alarm"])
+        self.assertEqual(services.provision_verdict([{"kind": "adapter", "detail": "", "source": "x:1"},
+                                                     {"kind": "hollow-proxy", "detail": found["alarm"][0], "source": "x:2"}])[0],
+                         services.HOLLOW)
+
+
 class StubNatives(unittest.TestCase):
     STUB = """
 static jlong UnixFileSystem_getSpace0(JNIEnv* env, jobject thiz, jobject file, jint t) {
@@ -2377,6 +2477,38 @@ public class VpnService {
             self.assertEqual((row["framework_fetch_throws"], row["binder_interfaces"]),
                              (["android.net.VpnService.prepare"], ["IVpnManager"]))
             self.assertFalse(row.get("throws_in_framework"), "not the predictor's blocking signal")
+
+
+    def test_static_helpers_that_fetch_a_manager(self) -> None:
+        """Chrono died starting a timer: TileService.requestListeningState gets StatusBarManager, whose
+        service was null. The helper checks the manager, not its binder."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _write(root / "frameworks-base/core/java/android/content/Context.java",
+                   'public abstract class Context {\n    public static final String STATUS_BAR_SERVICE = "statusbar";\n}\n')
+            _write(root / "frameworks-base/core/java/android/app/SystemServiceRegistry.java", """
+public final class SystemServiceRegistry {
+    static {
+        registerService(Context.STATUS_BAR_SERVICE, StatusBarManager.class,
+                new CachedServiceFetcher<StatusBarManager>() { });
+    }
+}
+""")
+            _write(root / "frameworks-base/core/java/android/service/quicksettings/TileService.java", """
+public class TileService {
+    public static final void requestListeningState(Context context, ComponentName component) {
+        StatusBarManager sbm = context.getSystemService(StatusBarManager.class);
+        if (sbm == null) { return; }
+        sbm.requestTileServiceListeningState(component);
+    }
+    public void onClick(Context context) {
+        context.getSystemService(Context.STATUS_BAR_SERVICE);
+    }
+}
+""")
+            tile = gapmap.implicit_service_census(root)["Landroid/service/quicksettings/TileService;"]
+            self.assertEqual(tile, {"requestListeningState": {"services": ["statusbar"], "interfaces": [], "null_checked": False}},
+                             "an instance method's manager is the manager's own row")
 
 
 class BatchTwentyTwoRows(unittest.TestCase):
@@ -2872,3 +3004,91 @@ public final class ActivityClientControllerAdapter {
         self.assertEqual(supplied[0]["verdict"], "supplied")
         self.assertEqual(gapmap.activity_result_rows({"inventory": {"platform_method_names": {}}},
                                                      {"delivered": False}), [])
+
+
+class LaunchLifecycle(unittest.TestCase):
+    """An activity the app starts is resumed once: no pause and resume just after it started."""
+
+    BRIDGE = """package adapter.activity;
+public final class AppSchedulerBridge {
+    public static void nativeOnScheduleLaunchAbility(Object a, String p, String n, int abilityRecordId,
+            String i, String w, long ohTokenAddr) {
+        IBinder token = OhTokenRegistry.acquireAndroidToken(abilityRecordId, ohTokenAddr);
+        transaction.addTransactionItem(LaunchActivityItem.obtain(token, intent));
+        if (ohTokenAddr == 0L) {
+            transaction.addTransactionItem(ResumeActivityItem.obtain(token, true, false));
+            %s
+        } else {
+            transaction.addTransactionItem(StartActivityItem.obtain(token, null));
+        }
+    }
+}
+"""
+    NATIVE = """static void wl_dl2_resume(JNIEnv* env, int rec) {
+    jclass resultCls = env->FindClass("android/app/servertransaction/%s");
+}
+static int startAbility(JNIEnv* env) {
+    wl_dl2_resume(env, rec);
+    return 0;
+}
+"""
+
+    def model(self, in_process: str, callback: str = "ActivityResultItem") -> dict:
+        with tempfile.TemporaryDirectory() as tmp:
+            java = Path(tmp) / "framework/activity/java"
+            jni = Path(tmp) / "framework/activity/jni"
+            java.mkdir(parents=True)
+            jni.mkdir(parents=True)
+            (java / "AppSchedulerBridge.java").write_text(self.BRIDGE % in_process)
+            (jni / "activity_task_manager_adapter.cpp").write_text(self.NATIVE % callback)
+            return contracts.launch_lifecycle_model(Path(tmp))
+
+    def test_a_second_resume_with_a_result_item_pauses_the_started_activity(self) -> None:
+        self.assertFalse(self.model("// the native start resumes it again")["once"])
+        self.assertTrue(self.model("OhTokenRegistry.forgetRecord(abilityRecordId);")["once"])
+        self.assertTrue(self.model("", callback="TopResumedActivityChangeItem")["once"],
+                        "a second resume without a result item does not pause the activity")
+
+    def test_the_row_follows_the_app_and_the_model(self) -> None:
+        scan = {"apk": {"activities": 5},
+                "inventory": {"platform_method_names": {"Landroid/content/Context;": ["startActivity"]}}}
+        broken = gapmap.launch_lifecycle_rows(scan, {"once": False, "source": "x:1"})
+        self.assertEqual([(r["id"], r["verdict"], r["effort"]) for r in broken], [("am:launch-lifecycle", "missing", "XS")])
+        self.assertEqual(gapmap.launch_lifecycle_rows(scan, {"once": True, "source": "x:1"})[0]["verdict"], "supplied")
+        single = {**scan, "apk": {"activities": 1}}
+        self.assertEqual(gapmap.launch_lifecycle_rows(single, {"once": False}), [], "one activity starts none of its own")
+        self.assertEqual(gapmap.launch_lifecycle_rows({"apk": {"activities": 5}, "inventory": {}}, {"once": False}), [])
+
+
+class RecreateRows(unittest.TestCase):
+    REGISTRY = """public final class OhTokenRegistry {
+    public static IBinder acquireAndroidToken(int abilityRecordId, long ohTokenAddr) {
+        IBinder b = new %s();
+        return b;
+    }
+}
+"""
+
+    def model(self, token: str, token_class: str | None = None) -> dict:
+        with tempfile.TemporaryDirectory() as tmp:
+            core = Path(tmp) / "framework/core/java"
+            core.mkdir(parents=True)
+            (core / "OhTokenRegistry.java").write_text(self.REGISTRY % token)
+            if token_class:
+                (core / f"{token}.java").write_text(token_class)
+            return contracts.recreate_model(Path(tmp))
+
+    def test_a_local_binder_token_is_never_relaunched(self) -> None:
+        self.assertFalse(self.model("Binder")["relaunched"])
+        self.assertTrue(self.model("ActivityToken", "public final class ActivityToken implements IBinder { }")["relaunched"])
+        self.assertFalse(self.model("ActivityToken", "final class ActivityToken extends android.os.Binder { }")["relaunched"])
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsNone(contracts.recreate_model(Path(tmp))["relaunched"])
+
+    def test_the_row_follows_the_app_and_the_model(self) -> None:
+        scan = {"inventory": {"platform_method_names": {"Landroid/app/Activity;": ["recreate", "finish"]}}}
+        broken = gapmap.recreate_rows(scan, {"relaunched": False, "source": "x:1"})
+        self.assertEqual([(r["id"], r["verdict"], r["effort"]) for r in broken], [("am:recreate", "missing", "S")])
+        self.assertEqual(gapmap.recreate_rows(scan, {"relaunched": True, "source": "x:1"})[0]["verdict"], "supplied")
+        self.assertEqual(gapmap.recreate_rows({"inventory": {}}, {"relaunched": False}), [], "an app that never recreates")
+        self.assertEqual(gapmap.recreate_rows(scan, {"relaunched": None}), [])

@@ -574,6 +574,50 @@ def activity_result_model(westlake_root: Path) -> dict[str, Any]:
             "source": f"{path.relative_to(westlake_root)}:{text.count(chr(10), 0, start.start()) + 1}"}
 
 
+def launch_lifecycle_model(westlake_root: Path) -> dict[str, Any]:
+    """Whether an activity the app starts is resumed once. The in-process start resumes it in its
+    launch transaction (AppSchedulerBridge, a launch with no OH token behind it); the native start
+    then resumes it again, in a transaction of its own whose callback is an ActivityResultItem, by the
+    record it looks up in OhTokenRegistry. ActivityThread pauses a resumed activity before it
+    delivers results, so that second resume is an onPause and an onResume, unless the launch forgot
+    the record."""
+    bridge = westlake_root / "framework/activity/java/AppSchedulerBridge.java"
+    native = westlake_root / "framework/activity/jni/activity_task_manager_adapter.cpp"
+    java = _strip_java_comments(bridge.read_text(errors="replace")) if bridge.exists() else ""
+    launch = re.search(r"public\s+static\s+void\s+nativeOnScheduleLaunchAbility\s*\(", java)
+    if not launch or not native.exists():
+        return {"once": None, "source": None}
+    body = _braced_block(java, launch.start())
+    branch = re.search(r"if\s*\(\s*ohTokenAddr\s*==\s*0L?\s*\)\s*\{", body)
+    in_process = _braced_block(body, branch.start()) if branch else ""
+    cpp = _strip_java_comments(native.read_text(errors="replace"))
+    second = re.search(r"static\s+void\s+wl_dl2_resume\s*\(", cpp)
+    resumed_again = (second is not None and "ActivityResultItem" in _braced_block(cpp, second.start())
+                     and len(re.findall(r"\bwl_dl2_resume\s*\(", cpp)) > 1)
+    once = not ("ResumeActivityItem.obtain(" in in_process and resumed_again) or "forgetRecord(" in in_process
+    return {"once": once,
+            "source": f"{bridge.relative_to(westlake_root)}:{java.count(chr(10), 0, launch.start()) + 1}"}
+
+
+def recreate_model(westlake_root: Path) -> dict[str, Any]:
+    """Whether Activity.recreate() relaunches an in-process activity. ActivityThread schedules the
+    relaunch only for a token the system knows: it skips a token that is a local Binder (an activity
+    an ActivityGroup embeds), so recreate() does nothing while the provider hands its activities
+    Binder tokens (OhTokenRegistry.acquireAndroidToken)."""
+    registry = westlake_root / "framework/core/java/OhTokenRegistry.java"
+    java = _strip_java_comments(registry.read_text(errors="replace")) if registry.exists() else ""
+    head = re.search(r"public\s+static\s+IBinder\s+acquireAndroidToken\s*\(", java)
+    made = re.findall(r"\bnew\s+([\w.]+)\s*\(", _braced_block(java, head.start())) if head else []
+    if not made:
+        return {"relaunched": None, "source": None}
+    token = made[0].rsplit(".", 1)[-1]
+    local = token == "Binder" or any(
+        re.search(rf"class\s+{token}\s+extends\s+(?:android\.os\.)?Binder\b", _strip_java_comments(path.read_text(errors="replace")))
+        for path in (westlake_root / "framework").rglob(f"{token}.java"))
+    return {"relaunched": not local, "token": token,
+            "source": f"{registry.relative_to(westlake_root)}:{java.count(chr(10), 0, head.start()) + 1}"}
+
+
 def host_permission_model(westlake_root: Path) -> dict[str, Any]:
     """The OH permissions the host application requests, and the OH permission each Android permission
     maps to. Android apps run in the host's process, so OH checks the host's access token: what the
@@ -635,7 +679,36 @@ def window_adapter_model(westlake_root: Path) -> dict[str, Any]:
             text, r"WindowLayout\(\)\s*\.computeFrames\(|Gravity\.apply|attrs\.gravity", path, westlake_root),
         # Android: FLAG_DIM_BEHIND puts a dim layer of dimAmount under the window.
         "dim_behind": _evidence(text, r"FLAG_DIM_BEHIND|dimAmount", path, westlake_root),
+        # Android: a sub-window (a PopupWindow's panel, FIRST_SUB_WINDOW to LAST_SUB_WINDOW) shows over
+        # its parent. The board refuses an OH main window for it, so the adapter must ask for its
+        # session as an application window, as for a dialog. Read in code, not comments.
+        "sub_windows_shown": _evidence(_strip_java_comments(text),
+                                       r"FIRST_SUB_WINDOW[\s\S]{0,300}?TYPE_APPLICATION\b", path, westlake_root),
+        # Android: when the focused window goes (a dialog dismissed, an activity finished), WMS gives
+        # window focus to the next window, and the input method manager serves that window's editor.
+        # In code: the adapter's remove hands focus on, through a helper that delivers
+        # windowFocusChanged to another window.
+        "focus_handoff": _focus_handoff(westlake_root),
     }
+
+
+def _focus_handoff(westlake_root: Path) -> dict[str, Any]:
+    window = westlake_root / "framework/window/java"
+    adapter = window / "WindowSessionAdapter.java"
+    text = _strip_java_comments(adapter.read_text(errors="replace")) if adapter.exists() else ""
+    remove = re.search(r"public\s+void\s+remove\s*\(\s*IWindow\s+\w+\s*\)", text)
+    if not remove:
+        return {"present": False, "source": None}
+    for owner, method in re.findall(r"\b([A-Z]\w*)\.(\w+)\s*\(", _braced_block(text, remove.start())):
+        helper_path = window / f"{owner}.java"
+        if not helper_path.exists():
+            continue
+        helper = _strip_java_comments(helper_path.read_text(errors="replace"))
+        found = re.search(rf"\b{method}\s*\([^;{{]*\)\s*\{{", helper)
+        if found and "windowFocusChanged" in _braced_block(helper, found.start()):
+            return {"present": True,
+                    "source": f"{helper_path.relative_to(westlake_root)}:{helper.count(chr(10), 0, found.start()) + 1}"}
+    return {"present": False, "source": f"{adapter.relative_to(westlake_root)}:{text.count(chr(10), 0, remove.start()) + 1}"}
 
 
 # JCA providers only Android's zygote installs (AndroidKeyStoreProvider.install), not libcore's defaults.

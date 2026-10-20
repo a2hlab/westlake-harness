@@ -785,7 +785,56 @@ def app_framework_rows(scan: dict[str, Any], am: dict[str, Any], wm: dict[str, A
                 else "no dim layer is drawn",
                 provider_source=check.get("source"),
                 app_evidence="app shows dialogs (Dialog.show referenced)", shim=shim))
+    shown = sorted(owner[len("Landroid/widget/"):-1] for owner, calls in POPUP_CALLS.items()
+                   if calls & set(names.get(owner, [])))
+    if shown:
+        check = (wm or {}).get("sub_windows_shown", {})
+        present = bool(check.get("present"))
+        rows.append(_row(
+            "app-framework", "wm:popup-window", "Popup windows (menus, dropdowns) shown over their window",
+            oh_touchpoint="window_manager (a sub-window session above the parent's)",
+            verdict="supplied" if present else "missing", shim_class="C0" if present else "C6",
+            effort="verify" if present else "S", confidence=STATIC,
+            provider=("a popup's window gets an OH sub-window session spanning the display, its content placed at "
+                      "its frame" if present else
+                      "a popup's window is asked for as an OH main window, which the board refuses: it draws into a "
+                      "surface node nothing shows, and still takes taps"),
+            provider_source=check.get("source"),
+            app_evidence="app shows popups (" + ", ".join(shown) + ")",
+            seen_blocking=["fclock (calibration flow fclock-menu: the overflow menu took taps and was never drawn)"],
+            shim="ask for a sub-window's OH session as an application window, display-sized, and place its content "
+                 "at its frame"))
+    covers = sorted(({"Dialog"} if "show" in names.get("Landroid/app/Dialog;", []) else set()) | set(shown))
+    if names.get("Landroid/widget/EditText;") and covers:
+        check = (wm or {}).get("focus_handoff", {})
+        present = bool(check.get("present"))
+        rows.append(_row(
+            "app-framework", "wm:focus-handoff",
+            "Window focus back to the window under a closed dialog or popup (its editors get the keyboard)",
+            oh_touchpoint="window_manager (focus: the app's sessions are not focusable, so OH sends no handoff)",
+            verdict="supplied" if present else "missing", shim_class="C0" if present else "C6",
+            effort="verify" if present else "S", confidence=STATIC,
+            provider=("a removed window's focus goes to the topmost remaining window, as WMS moves it" if present else
+                      "OH sends the app's sessions no focus when a window closes: the window under a closed dialog "
+                      "keeps none, and its editor's showSoftInput is ignored (\"not served\")"),
+            provider_source=check.get("source"),
+            app_evidence="app has text fields (EditText) and shows " + ", ".join(covers),
+            seen_blocking=["markor (calibration flow markor-type: after its changelog closed, the editor brought up "
+                           "no keyboard)"],
+            shim="when a window that has focus is removed, deliver window focus to the topmost remaining focusable "
+                 "window"))
     return rows
+
+
+# Calls that put up a popup window (a sub-window): PopupWindow itself, and the platform widgets that
+# open one, a menu or a dropdown, when shown or given their items.
+POPUP_CALLS = {
+    "Landroid/widget/PopupWindow;": {"showAsDropDown", "showAtLocation"},
+    "Landroid/widget/ListPopupWindow;": {"show"},
+    "Landroid/widget/PopupMenu;": {"show"},
+    "Landroid/widget/Spinner;": {"setAdapter"},
+    "Landroid/widget/AutoCompleteTextView;": {"setAdapter", "showDropDown"},
+}
 
 
 # Fixed Android paths code reads without asking the framework, with where a runtime that supplies
@@ -1017,10 +1066,16 @@ def _implicit_service_census(java_root: str) -> dict[str, dict[str, dict[str, An
     context = root / "android/content/Context.java"
     constants = dict(re.findall(r'public static final String (\w+) = "([\w.]+)";',
                                 context.read_text(errors="replace"))) if context.exists() else {}
+    # A static helper that takes a Context and fetches a manager reaches the manager's service just as
+    # well: TileService.requestListeningState gets StatusBarManager, whose null binder killed Chrono.
+    registry = root / "android/app/SystemServiceRegistry.java"
+    managed = {cls: constants.get(const) for const, cls in re.findall(
+        r"registerService\(\s*Context\.(\w+)\s*,\s*(\w+)\.class", registry.read_text(errors="replace"))} \
+        if registry.exists() else {}
     census: dict[str, dict[str, dict[str, Any]]] = {}
     for path in sorted((root / "android").rglob("*.java")):
         original = path.read_text(errors="replace")
-        if "ServiceManager" not in original:
+        if "ServiceManager" not in original and "getSystemService(" not in original:
             continue
         text = contracts._strip_java_comments(original)
         local = dict(re.findall(r'static final String (\w+)\s*=\s*"([\w.]+)"\s*;', text))
@@ -1046,6 +1101,11 @@ def _implicit_service_census(java_root: str) -> dict[str, dict[str, dict[str, An
             calls[method] |= {n for n in re.findall(r"(?<![\w.])(\w+)\s*\(", body) if n in names and n != method}
             if re.match(r"(?:\w+\s+)*public\b", head.group(0)):
                 public.add(method)
+                if re.search(r"\bstatic\b", head.group(0)) and re.search(r"\bContext\s+\w+\s*[,)]", head.group(0)):
+                    direct[method] |= {n for n in (managed.get(cls) for cls in
+                                                   re.findall(r"getSystemService\(\s*(\w+)\.class\s*\)", body)) if n}
+                    direct[method] |= {n for n in (constants.get(c) for c in
+                                                   re.findall(r"getSystemService\(\s*Context\.(\w+)\s*\)", body)) if n}
         # Checked: a variable that holds the binder (from ServiceManager or a fetching helper) is
         # compared with null. A chain such as getService().prepareVpn(...) is not.
         fetchers = "|".join(re.escape(m) for m in direct if direct[m]) or r"(?!)"
@@ -1425,23 +1485,32 @@ def runtime_resolved_rows(scan: dict[str, Any], ndk_cov: dict[str, Any] | None,
 
 
 def webview_rows(scan: dict[str, Any], model: dict[str, Any]) -> list[dict[str, Any]]:
+    """WebView renders in process, or in its sandboxed renderer service. WebViewDelegate decides, and
+    with an update-service flag on it says multiprocess without asking IWebViewUpdateService; then the
+    renderer service must be hosted, and direct launch hosts none (Burger King: the bind failed and
+    Chromium aborted). Whether the flag is on belongs to the provider's framework build, which its
+    source does not show, so unless the renderer is hosted the row waits for probes/webview-boundaries,
+    whose multiprocess line is this row's result on each build. A false reading here cost the
+    calibration flow markor-preview a false alarm: the build ran WebView single-process all along."""
     called = scan["inventory"].get("platform_method_names", {}).get("Landroid/webkit/WebView;", [])
     if "<init>" not in called:
         return []
     forced, hosted = model["multiprocess_forced"], model["renderer_hosted"]
     return [_row(
-        "app-framework", "wv:renderer-process", "WebView's renderer runs in an isolated service process",
+        "app-framework", "wv:renderer-process", "WebView renders: in process, or with its renderer service hosted",
         oh_touchpoint="process spawn (appspawn): an isolated Android service process with its own sandbox",
-        verdict="supplied" if hosted["present"] else "missing", shim_class="C0" if hosted["present"] else "C4",
-        effort="verify" if hosted["present"] else "L", confidence=STATIC,
+        verdict="supplied" if hosted["present"] else "unverified", shim_class="C0" if hosted["present"] else "CU",
+        effort="verify" if hosted["present"] else "L", confidence=STATIC, probe="probes/webview-boundaries",
         provider=("the runtime hosts WebView's sandboxed renderer service" if hosted["present"] else
-                  "direct launch starts no isolated service processes: binding the renderer fails and Chromium aborts"
-                  + (f"; answering isMultiProcessEnabled()=false does not help, WebViewDelegate returns true while "
-                     f"{forced['flag']} is on" if forced["present"] else "")),
+                  "direct launch starts no isolated service processes, so WebView works only in process: "
+                  + (f"WebViewDelegate says multiprocess without asking while {forced['flag']} is on, and the "
+                     "provider's framework build decides that flag" if forced["present"] else
+                     "IWebViewUpdateService's isMultiProcessEnabled answer decides")
+                  + "; probes/webview-boundaries measures which"),
         provider_source=hosted["source"] or forced["source"],
         app_evidence=f"app constructs WebViews and calls {len(called)} WebView methods",
-        shim="host the renderer: spawn an isolated child and bind Chromium's SandboxedProcessService over a local "
-             "channel; or build the framework with the update-service flag off so WebView runs single-process",
+        shim="build the framework with the update-service flags off so WebView runs in process, or host the "
+             "renderer: spawn an isolated child and bind Chromium's SandboxedProcessService over a local channel",
     )]
 
 
@@ -1731,6 +1800,61 @@ def activity_result_rows(scan: dict[str, Any], model: dict[str, Any]) -> list[di
         app_evidence="the app calls Activity.startActivityForResult",
         seen_blocking=["mpv (calibration flow mpv-play-file: the picked file never reached the player)"],
         shim="send the result to the caller in an ActivityResultItem when the started activity finishes",
+    )]
+
+
+ACTIVITY_START_CALLS = {"startActivity", "startActivityForResult", "startActivities"}
+
+
+def launch_lifecycle_rows(scan: dict[str, Any], model: dict[str, Any]) -> list[dict[str, Any]]:
+    """The lifecycle of an activity the app starts. Android creates, starts and resumes it, and pauses
+    it only when something covers it or it finishes. A provider that pauses and resumes it again
+    just after it started leaves whatever the activity stops in onPause stopped: mpv pauses its
+    player there, and the picked file opened at 0:00 and stayed there (calibration flow
+    mpv-play-file). Apps that declare one activity start none of their own."""
+    names = scan["inventory"].get("platform_method_names", {})
+    starts = any(ACTIVITY_START_CALLS & set(names.get(owner, []))
+                 for owner in ("Landroid/app/Activity;", "Landroid/content/Context;", "Landroid/content/ContextWrapper;"))
+    activities = scan.get("apk", {}).get("activities") or 0
+    if not starts or activities < 2 or model.get("once") is None:
+        return []
+    once = bool(model["once"])
+    return [_row(
+        "app-framework", "am:launch-lifecycle", "The lifecycle of an activity the app starts (onCreate, onStart, onResume, once)",
+        oh_touchpoint="none: the app's own activities, in its process",
+        verdict="supplied" if once else "missing", shim_class="C0" if once else "C9",
+        effort="verify" if once else "XS", confidence=STATIC,
+        provider=("the started activity is resumed once, in its launch transaction" if once else
+                  "the started activity is resumed in its launch and again in a transaction carrying an "
+                  "ActivityResultItem, which pauses it first: onPause and onResume just after it started"),
+        provider_source=model.get("source"),
+        app_evidence=f"the app declares {activities} activities and starts activities (startActivity)",
+        seen_blocking=["mpv (calibration flow mpv-play-file: the player opened the picked file at 0:00, paused and silent)"],
+        shim="resume an activity the app starts once, in its launch transaction",
+    )]
+
+
+def recreate_rows(scan: dict[str, Any], model: dict[str, Any]) -> list[dict[str, Any]]:
+    """Activity.recreate(): apps call it to apply a new theme or language, and Android destroys the
+    activity and brings a new instance up with the state it saved. ActivityThread skips the relaunch
+    for an activity whose token is a local Binder, so a provider that hands its in-process
+    activities Binder tokens makes recreate() do nothing: AntennaPod's dark theme stayed light
+    (calibration flow antennapod-theme)."""
+    called = set(scan["inventory"].get("platform_method_names", {}).get("Landroid/app/Activity;", []))
+    if "recreate" not in called or model.get("relaunched") is None:
+        return []
+    relaunched = bool(model["relaunched"])
+    return [_row(
+        "app-framework", "am:recreate", "Recreating an activity (Activity.recreate: a new theme or language)",
+        oh_touchpoint="none: the app's own activities, in its process",
+        verdict="supplied" if relaunched else "missing", shim_class="C0" if relaunched else "C9",
+        effort="verify" if relaunched else "S", confidence=STATIC,
+        provider=("activity tokens are not local Binders, so ActivityThread relaunches the activity" if relaunched else
+                  "activity tokens are local Binders: ActivityThread skips the relaunch, and recreate() does nothing"),
+        provider_source=model.get("source"),
+        app_evidence="the app calls Activity.recreate",
+        seen_blocking=["antennapod (calibration flow antennapod-theme: the dark theme was chosen and the screens stayed light)"],
+        shim="give in-process activities tokens that are not local Binders",
     )]
 
 
@@ -3960,6 +4084,8 @@ def build_map(
             + post_create_rows(scan, contracts.launch_start_model(westlake_root))
             + permission_request_rows(scan, contracts.permission_request_model(westlake_root))
             + activity_result_rows(scan, contracts.activity_result_model(westlake_root))
+            + launch_lifecycle_rows(scan, contracts.launch_lifecycle_model(westlake_root))
+            + recreate_rows(scan, contracts.recreate_model(westlake_root))
             + host_permission_rows(facts, contracts.host_permission_model(westlake_root), westlake_root)
             + ce_storage_rows(scan, contracts.ce_storage_model(westlake_root))
             + feature_rows(scan, contracts.feature_claims_model(westlake_root), aosp_services, westlake_services)

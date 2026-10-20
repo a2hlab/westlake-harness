@@ -147,6 +147,58 @@ fix) the probe passes: max volume 15, volume 5, one output, focus granted, ringe
 that ask for focus, devices or volumes all draw, as in r89. The build 101 results are in
 `probe-results.json` under the fix's commit.
 
+**Two fixes from the calibration flows** ([calibration](../calibration/README.md)): build 102
+(Westlake #33) delivers activity results between the app's own activities, and build 103 (Westlake
+#34) resumes an activity the app starts once. Each added a line to framework-contracts:
+`am:activity-result` passes on build 102, and `am:launch-lifecycle` reads `onCreate onStart onResume
+onPause onResume` on build 102 and `onCreate onStart onResume` on build 103, both under SELinux
+enforcing. Their results are in `probe-results.json` under each fix's commit; every other
+framework-contracts line reads as on build 101.
+
+**Build 105** (Westlake #35) shows popup windows: a sub-window gets an OH session of its own. The whole
+suite, run under its commit, gives each line the outcome of its last run (builds 100 to 103); the fix
+shows only on screen, in the calibration flow `fclock-menu`, which is the measurement of the gap map's
+`wm:popup-window` row.
+
+**Build 106** (Westlake #36) tells an app where its windows are: each window's configuration has the
+display's bounds. `wm:window-placement` passes for the first time (the dialog at 280,634, centred),
+and `wm:dialog-stacking` with it. `wv:renderer-process` has a result of its own from this build on:
+webview-boundaries' multiprocess line, mapped onto the row (`rows` in `probes/suite.json`).
+
+**Build 107** (Westlake #37) hands window focus on when a window closes. framework-contracts gains
+`svc:input_method` (a focused editor is served and the keyboard shown: passes on builds 106 and 107)
+and `wm:focus-handoff` (fails on build 106, passes on build 107). `wm:window-placement` failed in this
+run on the AlertDialog's first, 1282 px wide layout, which a later layout fits; it caught that on
+build 105 as well (see the calibration record).
+
+**Build 108** (Westlake #38) gives the in-process notification service the app's channels and posts,
+and plays a post's sound. framework-contracts gains `svc:notification` (a channel created is kept,
+`areNotificationsEnabled` answers as `POST_NOTIFICATIONS` does, a post is listed while notifications
+are allowed and gone once cancelled): it fails on build 107 (the channel created is not kept) and passes on build 108, whose answers come
+from OH's per-application notification switch, allowed for the board's host application in OH
+Settings. `wm:window-placement` passed in this run (the AlertDialog at 30 to 1170).
+
+**Build 109** (Westlake #39) relaunches an activity that calls recreate(). framework-contracts gains
+`am:recreate`: the probe's own activity calls recreate() once resumed, and a new instance must come
+up within 10 s with the state the first saved. It fails on build 108 (no new instance) and passes on
+build 109; every other line reads as on build 108. On build 109 before its native was added, the
+relaunch ran and the probe died in it: the relaunched window's first draw needed
+`SurfaceControl.nativeAddTransactionCompletedListener`, which no library registered.
+
+**Build 110** (Westlake #40) places dialogs where they are drawn. dialog-before-window's
+`wm:window-placement` line now also relays the dialog out with its own attributes and checks that
+it stays put, and checks that the alert is centred, not only that it fits. On build 109 the
+relaid-out dialog moved to (40,0): the window adapter gave every window an attached frame of its
+own size, and ViewRootImpl lays a dialog out inside its attached frame. On build 110 it stays at
+(280,634); every other line reads as on build 109.
+
+**Build 112** (Westlake #41) delivers alarms in process. framework-contracts gains an `svc:alarm`
+line: a listener alarm and a PendingIntent alarm to a receiver the probe's manifest declares, both
+set 1.5 s ahead, must arrive within 8 s. On build 110 neither arrived, because the alarm service
+accepted every alarm and delivered none. On build 112 both arrive, and
+`pm:call:queryBroadcastReceivers` passes too, as the package manager now resolves the app's own
+receivers. Every other line reads as on build 110.
+
 ## Running it
 
 On a new build, run the suite with that build's provider flags, merging into this file:

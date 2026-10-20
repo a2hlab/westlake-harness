@@ -1,7 +1,12 @@
 package org.westlake.probe.contracts;
 
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.KeyguardManager;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.job.JobInfo;
 import android.app.job.JobScheduler;
 import android.content.ActivityNotFoundException;
@@ -23,11 +28,15 @@ import android.media.AudioManager;
 import android.media.metrics.MediaMetricsManager;
 import android.media.metrics.PlaybackSession;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.os.Process;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.service.notification.StatusBarNotification;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.KeyCharacterMap;
@@ -332,9 +341,70 @@ public class MainActivity extends Activity {
             if (source == null) throw fail("getInstallSourceInfo returned null");
             return "installer=" + installer + " (as for an app installed from a file), install source answered";
         });
-        // Last, as it brings another activity up over this one: startActivityForResult to an
-        // activity of this app, which sets a result and finishes; Android delivers it to
-        // onActivityResult before this activity resumes.
+        // The notification service keeps the app's channels and its posts, and answers whether the
+        // user allows them the same way it answers POST_NOTIFICATIONS. LOW importance: no sound.
+        check("svc:notification", () -> {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            nm.createNotificationChannel(new NotificationChannel("wl-probe", "Probe", NotificationManager.IMPORTANCE_LOW));
+            NotificationChannel kept = nm.getNotificationChannel("wl-probe");
+            if (kept == null) throw fail("the channel created is not kept (getNotificationChannel null)");
+            boolean enabled = nm.areNotificationsEnabled();
+            boolean permitted = checkSelfPermission("android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED;
+            if (enabled != permitted) {
+                throw fail("areNotificationsEnabled=" + enabled + " but POST_NOTIFICATIONS " + (permitted ? "granted" : "denied"));
+            }
+            nm.notify(4244, new Notification.Builder(this, "wl-probe")
+                    .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("probe").build());
+            boolean listed = false;
+            for (StatusBarNotification posted : nm.getActiveNotifications()) listed |= posted.getId() == 4244;
+            nm.cancel(4244);
+            boolean gone = true;
+            for (StatusBarNotification posted : nm.getActiveNotifications()) gone &= posted.getId() != 4244;
+            if (enabled && !listed) throw fail("posted with notifications allowed, and not among the active notifications");
+            if (!enabled && listed) throw fail("listed though the user has not allowed notifications");
+            if (!gone) throw fail("still active after cancel");
+            return "channel kept; notifications " + (enabled ? "allowed (POST_NOTIFICATIONS granted): the post listed, then cancelled"
+                    : "not allowed by the user (POST_NOTIFICATIONS denied): the post dropped, as Android drops it");
+        });
+        // An alarm set while the app runs is delivered at its time: a listener alarm to its listener,
+        // and a PendingIntent alarm to the receiver it names, one declared in this app's manifest.
+        check("svc:alarm", () -> {
+            AlarmManager am = getSystemService(AlarmManager.class);
+            CountDownLatch heard = new CountDownLatch(1);
+            long at = SystemClock.elapsedRealtime() + 1500;
+            am.setExact(AlarmManager.ELAPSED_REALTIME, at, "wl-probe", heard::countDown,
+                    new Handler(Looper.getMainLooper()));
+            Intent ring = new Intent(this, ProbeReceiver.class).setAction(ProbeReceiver.ALARM);
+            PendingIntent operation = PendingIntent.getBroadcast(this, 7, ring, PendingIntent.FLAG_IMMUTABLE);
+            am.set(AlarmManager.ELAPSED_REALTIME, at, operation);
+            boolean listened = heard.await(8, TimeUnit.SECONDS);
+            boolean received = ProbeReceiver.ALARMED.await(listened ? 2 : 8, TimeUnit.SECONDS);
+            am.cancel(operation);
+            if (!listened && !received) throw fail("neither alarm arrived in 8 s: an alarm set is accepted and never delivered");
+            if (!listened) throw fail("the listener alarm never arrived (the PendingIntent alarm did)");
+            if (!received) throw fail("the PendingIntent alarm never reached the receiver it names (the listener alarm arrived)");
+            return "a listener alarm, and a PendingIntent alarm to the app's own receiver, each delivered at its time";
+        });
+        // These two bring another activity up over this one, so they come last. An activity this app
+        // starts is created, started and resumed, and stays resumed while it is on top: a player
+        // that pauses in onPause (mpv) stays paused after an extra pause and resume.
+        check("am:launch-lifecycle", () -> {
+            runOnUiThread(() -> startActivity(new Intent(this, LifecycleActivity.class)));
+            if (!LifecycleActivity.RESUMED.await(10, TimeUnit.SECONDS)) {
+                throw fail("the started activity was not resumed in 10 s: " + LifecycleActivity.seen());
+            }
+            Thread.sleep(2000);
+            String seen = LifecycleActivity.seen();
+            LifecycleActivity started = LifecycleActivity.current;
+            if (started != null) runOnUiThread(started::finish);
+            LifecycleActivity.DESTROYED.await(5, TimeUnit.SECONDS);
+            if (!"onCreate onStart onResume".equals(seen)) {
+                throw fail("callbacks " + seen + " in 2 s on top; Android gives onCreate onStart onResume");
+            }
+            return "onCreate onStart onResume, and no pause in 2 s on top";
+        });
+        // startActivityForResult to an activity of this app, which sets a result and finishes;
+        // Android delivers it to onActivityResult before this activity resumes.
         check("am:activity-result", () -> {
             runOnUiThread(() -> startActivityForResult(new Intent(this, ResultActivity.class), RESULT_REQUEST));
             if (!resultArrived.await(10, TimeUnit.SECONDS)) {
@@ -342,6 +412,34 @@ public class MainActivity extends Activity {
             }
             if (!("resultCode=" + RESULT_OK + " answer=42").equals(resultSeen)) throw fail("wrong result: " + resultSeen);
             return "onActivityResult got " + resultSeen;
+        });
+        // An activity that calls recreate() is destroyed and a new instance brought up with the
+        // state it saved, as when an app applies a new theme or language.
+        check("am:recreate", () -> {
+            runOnUiThread(() -> startActivity(new Intent(this, RecreateActivity.class)));
+            boolean recreated = RecreateActivity.SECOND.await(10, TimeUnit.SECONDS);
+            RecreateActivity open = RecreateActivity.current;
+            if (open != null) runOnUiThread(open::finish);
+            RecreateActivity.FINISHED.await(5, TimeUnit.SECONDS);
+            if (!recreated) {
+                throw fail("recreate() brought no new instance up in 10 s (" + RecreateActivity.instances + " created)");
+            }
+            if (RecreateActivity.savedSeen != 42) throw fail("a new instance came up without the state the first saved");
+            return "a new instance came up with the state the first saved";
+        });
+        // A focused editor gets the soft keyboard: the input method manager serves it, and the
+        // window's insets report the keyboard. Last, as its activity stays up over this one.
+        check("svc:input_method", () -> {
+            runOnUiThread(() -> startActivity(new Intent(this, KeyboardActivity.class)));
+            if (!KeyboardActivity.KEYBOARD.await(15, TimeUnit.SECONDS)) throw fail(KeyboardActivity.keyboardDetail);
+            if (!KeyboardActivity.keyboardPassed) throw fail(KeyboardActivity.keyboardDetail);
+            return KeyboardActivity.keyboardDetail;
+        });
+        // Then a dialog over that editor, closed: WMS gives window focus back to the window under it.
+        check("wm:focus-handoff", () -> {
+            if (!KeyboardActivity.HANDOFF.await(15, TimeUnit.SECONDS)) throw fail(KeyboardActivity.handoffDetail);
+            if (!KeyboardActivity.handoffPassed) throw fail(KeyboardActivity.handoffDetail);
+            return KeyboardActivity.handoffDetail;
         });
         line("done", "", "");
     }
