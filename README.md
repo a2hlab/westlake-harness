@@ -536,6 +536,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-20-t24-api37-proposal/`** | Proposed observation 37: same-APK Android reference, unchanged canonical/history preimages and original-renderer validation; no API implementation or OH pass. |
 | **`benchmark/2026-10-20-t23-codex-rea-evidence/`** | Exact NativeImage/geometry REA evidence packet and reusable snapshot; private archive remotely verified with 66 member hashes and manifest. |
 | **`benchmark/2026-10-20-t25-shim-deployment/`** | T25 data-only six-file deployment preparation using the unchanged T23 executor, fresh-identity refusal and same-player geometry/lock/unlock evidence requirements. |
+| **`benchmark/2026-10-20-t25-production-archive/`** | T25 original production archive continuation: three transfer commands rc0, remote SHA/size and all 1,419 members verified, original SSH failure preserved. |
 | **[T23 EGL native-buffer import candidate](benchmark/2026-10-20-t23-egl-import/)** | **R77 reuse in the existing T20 shim; same-instance AHB/EGL gates, 23 host cases and real PIC/ABI evidence; device playback pending.** |
 | **[Exact765 geometry source closure](benchmark/2026-10-20-t22-geometry-source/)** | **Original source/recipe and unchanged baseline executable-content comparison; narrowly scoped unwrap repair, GPU causality still open.** |
 | **[T21 first live CPU-window pairs](benchmark/2026-10-20-t21-first-live-pair/)** | **Five actual lock/unlock/flush successes, then splash-video NativeImage texture import fatal; pointer/size chain and exact excerpts, video pending.** |
