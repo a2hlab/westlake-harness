@@ -1,0 +1,69 @@
+{
+  "finding": "R26-001",
+  "status": "CLOSED_HOST_REGRESSION_VERIFIED",
+  "scope": "Static/source review and actual host C execution only; not device/runtime validation",
+  "before": {
+    "source_sha256": "85b5f9a72519fc5d9cf5affd4ec009dd5b53a5265db317fa77108e6a1cbf8391",
+    "snapshot_utc": "2026-10-20T05:04:36.743677+00:00",
+    "fixture": "capacity_before.c",
+    "compile_rc": 0,
+    "run_rc": 0,
+    "meaning": "Bug detector succeeds only when ninth new RGB lock is -ENOSPC while eight cached RGB entries are IDLE and reserved=0.",
+    "stdout": "before.stdout"
+  },
+  "unchanged_fixture_after": {
+    "source_sha256": "28827c1c8eaef3212c13ed2be2399ec4b51ff4501abf3b5a75c6df6f933e5f97",
+    "snapshot_utc": "2026-10-20T05:08:12.755186+00:00",
+    "fixture": "capacity_before.c",
+    "compile_rc": 0,
+    "run_rc": 5,
+    "meaning": "Ninth lock now succeeds. Original bug detector expects failure, omits finish, and sees destroy -EBUSY for the now-active lock; this is expected protection, not a regression.",
+    "stdout": "unchanged-fixture-after.stdout"
+  },
+  "after": {
+    "source_sha256": "28827c1c8eaef3212c13ed2be2399ec4b51ff4501abf3b5a75c6df6f933e5f97",
+    "fixture": "capacity_after.c",
+    "compile_rc": 0,
+    "run_rc": 0,
+    "meaning": "Ninth RGB lock succeeds; prepare preserves the complete output descriptor, before_unmap and finish succeed, destroy succeeds, reserved remains0.",
+    "stdout": "after.stdout"
+  },
+  "common_yv12_header_sha256": "294361ad7c74b1709d3d3d960bc62fcf7afdb67b18df537e75dfdc4372e84545",
+  "window_header_sha256": "28a88796febf5063e374fbc3d1d007a53f1004eafb24f46d6f925783724cbe32",
+  "source_repository_path": "benchmark/2026-10-20-t26-yv12/yv12.c",
+  "independent_review_sha256": "c75228afa0ff90d33e7223e47ac96aaf252d1a005882409bce040bbd686b9b06",
+  "private_index": "private-index.json",
+  "public_files": [
+    {
+      "name": "capacity_before.c",
+      "sha256": "91d76c3b2c89c11261e058934b60fda14313e217f2a5f19553d558494d24f2ed",
+      "bytes": 714
+    },
+    {
+      "name": "capacity_after.c",
+      "sha256": "30849b253372bcf440fc01fc0a905b4178c452eb297d3178e33a370686fec062",
+      "bytes": 1299
+    },
+    {
+      "name": "before.stdout",
+      "sha256": "b7eb0f89cf41def2004535deff50ec132a4742096e0d9b50e6d4fa78381bc9e1",
+      "bytes": 73
+    },
+    {
+      "name": "unchanged-fixture-after.stdout",
+      "sha256": "e6e267e4460977c050b251e3bdcb92661a70bec2830ebf051fef7a4a7804ada2",
+      "bytes": 73
+    },
+    {
+      "name": "after.stdout",
+      "sha256": "3ca2a18e5068797fc6395c4a259c3d214a01841e80a1d133420a520300d49365",
+      "bytes": 126
+    }
+  ],
+  "limits": [
+    "This fixture links actual snapshotted yv12.c with fake owner callbacks; it does not execute a board or native driver.",
+    "Caller pointers are opaque test identities and are not dereferenced.",
+    "The two source SHA pins may not be the final T27/combined-production source; subsequent changes need source attribution.",
+    "No production linker, dynamic provider identity, video output, audio or native deployment claim."
+  ]
+}
