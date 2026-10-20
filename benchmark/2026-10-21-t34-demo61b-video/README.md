@@ -1,5 +1,23 @@
 # Demo61b video migration — not yet accepted
 
+W03-b also failed visual acceptance: nine candidate frames across 89.891
+seconds showed a gray host. The original files were restored in physical and
+parent-private views; the final image contains text feed cards with image
+placeholders. The window closed at 1,488 seconds. Rollback signing was 18.073
+seconds late against the 1,200-second experiment cutoff; the original timing
+is preserved. No video candidate was retained.
+
+- [W03-b actual images, facts and independent restoration review](../2026-10-21-t34-w03-peer/README.md)
+- [Verified W03 archive: 4,746 payloads, 1,163,052 bytes](archive-03/README.md)
+- [Runtime comparison: proven facts and missing evidence](environment-diff-01/README.md)
+- [Bounded read-only runtime collection](environment-collect-01/README.md)
+
+The API increment now contains 47 observations and 1,173 exact file references,
+preserving all preceding 46 objects and historical 315 semantics. W03-b is a
+failed-migration/restoration observation, not a new API freeze.
+
+## Earlier W02 result
+
 W02 deployment succeeded, but the candidate screenshots showed a blank host.
 The original runtime was restored and the window closed after 1,672 seconds.
 The final homepage reported a network error with no feed cards. Deployment
@@ -20,8 +38,10 @@ the linked verified archive receipt. The failed observation is now integrated
 into the main working tree and published to remote `master`; the linked
 publication receipt records the exact remotely verified commit.
 
-The UI successor passed eight independent offline tests but has not yet been
-used for a device acceptance run. W02's closed lock and admission must never
+The UI successor passed eight independent offline tests and was subsequently
+used for W03-b's actual baseline, failed candidate and restored captures.
+The baseline capture was interrupted by the outer controller and remains
+partial. W02's closed lock and admission must never
 be reused. A future run requires fresh board readiness, identity, lock,
 admission and the same bounded recovery discipline.
 

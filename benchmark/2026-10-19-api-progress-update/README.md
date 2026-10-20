@@ -1,6 +1,6 @@
 # Current observations beside the API source/build atlas
 
-The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **45 observations with 1097 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
+The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **47 observations with 1173 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
 
 Open the [current observations](index.html), [JSON](observations.json) or [CSV](observations.csv), alongside the [complete historical source/build atlas](../2026-10-14-api-source-delivery/views/index.html).
 
@@ -83,3 +83,13 @@ T31 adds a separate retained-deployment observation43; it does not overwrite the
 T32 adds one host-page deployment observation: one normal icon reaches Toutiao without the development title/input, while cold-start waiting remains. Exact ABC replay/signing and the retained HAP are recorded separately from live evidence. Six retained T31 runtime contents and bundle/directory identities are preserved; short-video image progression and prior user audio confirmation are scoped as recorded. This does not claim a random-crash fix, faster startup, all-video success or a new public API. The first43 observation objects remain unchanged.
 
 T33 propagates only the accepted host HAP to61b. One normal icon reaches real feed without development controls; cold-start waiting remains. The61b runtime/guardian/data identities are preserved, with the original single WID field derivation33-to30. No5cd video runtime transfer or new61b video/audio acceptance is claimed. The first sampled feed at74.339 seconds is not exact startup latency. All44 preceding observation objects and historical315 semantics remain unchanged.
+
+T34 W03-b adds observation47. Actual candidate captures remain gray through
+89.891 seconds; retention was rejected. Five original physical/private hashes
+and compat absence, 18 guardian hashes, HAP/cfg and final power/debug were
+restored. The final image shows text feed cards with image placeholders.
+Rollback signing was 18.073 seconds late; actual unlock was at 1,488 seconds.
+The failed WID environment read remains unknown. The new archive verifies
+4,746 payloads remotely; it does not upgrade video or API acceptance.
+All preceding 46 observation objects, 315 historical semantics and 8 frozen
+entries remain unchanged.
