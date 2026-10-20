@@ -1,0 +1,44 @@
+{
+ "schema": "octoscode-t21-audit-v1",
+ "date": "2026-10-20",
+ "status": "BLOCKED_INPUTS_INACCESSIBLE",
+ "scope": "Bounded read-only T21 audit: independently verify child-11040 receipt facts (R20 lock/unlock0 counts, map/unmap/flush fields, first fatal source byte offset, NativeImage frame-available count) against MAIN benchmark/2026-10-20-t21-first-live-pair/results.json. No canonical/MAIN writes, no HDC, no builds, no permission changes.",
+ "checks_performed": [],
+ "requested_facts": {
+  "child_11040_r20_lock_unlock0_counts": "NOT_ESTABLISHED (receipt unreadable)",
+  "child_11040_map_unmap_flush_fields": "NOT_ESTABLISHED (receipt unreadable)",
+  "child_11040_first_fatal_source_byte_offset": "NOT_ESTABLISHED (receipt unreadable)",
+  "child_11040_nativeimage_frame_available_count": "NOT_ESTABLISHED (receipt unreadable)"
+ },
+ "blocked_inputs": [
+  {
+   "path": "$HOME/.local/share/westlake/toutiao-resume-20261020/t21-5cd-window-01/candidate-logs/child-11040.stderr",
+   "attempted_command": "ls $HOME/.local/share/westlake/toutiao-resume-20261020/t21-5cd-window-01/candidate-logs/",
+   "failure": "Operation not permitted (OS sandbox denies home-directory reads in this lane)"
+  },
+  {
+   "path": "benchmark/2026-10-20-t21-first-live-pair/results.json (sibling MAIN)",
+   "attempted_command": "ls benchmark/2026-10-20-t21-first-live-pair/",
+   "failure": "No such file or directory in this tree; sibling MAIN direct reads were already denied in tasks #1-#2 (Operation not permitted); no outer-supplied T21 input package exists under .octos/ (only api33-proposal-inputs, api33-audio-addendum-inputs, source-audit-main-inputs)"
+  },
+  {
+   "path": "local repo git objects (fallback per task instruction)",
+   "attempted_command": "git rev-parse HEAD (task #1) and .git inspection",
+   "failure": "worktree gitdir points outside workspace; git denied by sandbox (~/.gitconfig unreadable, gitdir path not a readable git repository); no retry of sandbox/permission repair per instruction"
+  }
+ ],
+ "searched_and_not_found": {
+  "workspace_paths": "grep -rln 'first-live-pair|child-11040|t21-5cd' benchmark/ sources/ .octos/ -> 0 matches; find for *t21* -> only pre-existing benchmark/2026-10-20-t21-executor-independent-review (different scope: executor source review, contains no live-pair/child-11040 receipt data) and unrelated build artifacts",
+  "octos_packages": ".octos/ contains no t21 input package"
+ },
+ "writes": {
+  "device_calls": 0,
+  "builds": 0,
+  "canonical_writes": 0,
+  "main_writes": 0,
+  "git_commits": 0,
+  "permission_changes": 0
+ },
+ "conclusion_limit": "No counts are asserted. Per task ceiling, any eventual conclusion must not exceed: video not visually passed; ad-path CPU5 pairs only. No statement about the window beyond that ceiling is made here.",
+ "unblock_condition": "Outer supplies exact git-show copies of the three candidate-logs receipts (child-8306/11040/13834.stderr) and MAIN benchmark/2026-10-20-t21-first-live-pair/results.json under a .octos/ input package (as done for tasks #2/#3), or grants read access to the stated paths; then the five child-11040 facts can be verified in one bounded pass."
+}
