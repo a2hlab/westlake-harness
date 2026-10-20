@@ -18,6 +18,7 @@ class ShimTests(unittest.TestCase):
     bridge=json.loads((B/'bridge-candidate.json').read_text());bridge['production_refs']=[ref]
     (root/'bridge-candidate.json').write_text(json.dumps(bridge))
     c=json.loads((B/'shim-candidate.json').read_text())
+    c.update(after_sha256=None,build_status='PENDING_PRODUCTION_BUILD',production_refs=[])
     if case!='null':c['after_sha256']='a'*64
     if case=='ref_drift':c.update(build_status='PRODUCTION_BUILD_VERIFIED',production_refs=[dict(ref,sha256='b'*64)])
     (root/'shim-candidate.json').write_text(json.dumps(c))
