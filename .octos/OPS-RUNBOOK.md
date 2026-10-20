@@ -272,3 +272,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-20 #91 用户调度约束：REA 只由 Codex / octoscode 调用，CC 仅接收证据做分析；原因是工具安全约束，不是模型能力。工具可用性须以实际调用回执证明，用户指定车道本身不证明 MCP 或本地 provider 已接通。
 
 - 2026-10-20 #91 T23日志采集：真实hilog help中的 `-x` 与 `-z` 不可组合，正文 `[CODE: -31]` 即使传输rc0也必须拒绝；后继离线工具见 `benchmark/2026-10-20-t23-hilog-tail-successor/`，按实际PID生成单一tail模式并记录首末日志时间，不把采集耗时当覆盖时长。大stderr使用固定前缀落板文件→file recv→SHA/size核验；原60秒流式超时仍保留，完整前缀不宣称源文件不可变。
+
+- 2026-10-20 #91 T25/T26：视频触发后、回滚/重启前须按同boot实际child PID采一次有界hilog（沿已验-P/-z入口、拒正文错误），并记录首末事件时间；启动quick采集早于fatal，不能用它或stderr无eglGetError否定后续系统日志。已有HWUI eglGetError读取点优先从原日志补证，不额外消费错误状态；采不到写unknown，见 t25-first-fatal-egl-create/ 与 T23 hilog successor。

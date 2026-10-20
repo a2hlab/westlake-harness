@@ -19,8 +19,9 @@ Codex public: `~/.local/share/westlake/t25-egl-contract/public/results.json`
 Codex exact REA: HWUI a11c `MakeGLBackendTexture` (0x5dc1bc) and OH's `native_image CreateEGLImage` (0x14ddc)
 agree on `context=0`, `target` (0x3140→0x34e1) and `attrs=[0x30d2,1,0x3038]`, and R23's translation matches all
 three. **This rules out those three surface differences only; it does not establish why create returned NULL.**
-No `eglGetError` code is in the log (HWUI's `eglGetError`@0x5dc318→`SkDebugf` routes to a sink not captured here;
-searched same-thread L80160–90 and whole-file).
+No `eglGetError` code was found in the selected stderr (searched L80160–90 and the whole file).
+HWUI calls `eglGetError`@0x5dc318 then `SkDebugf`; its output destination or suppression was not established.
+The quick hilog capture preceded the video failure, so it cannot exclude a later hilog error message.
 - Provider base: the only `[WL-R23-BIND] extension=` line is the fence (same base `0x7fa11c0000`); create/destroy
   have no fallback line, so they resolved by direct `dlsym` on that Mali base. `selected=0` is the display-matched
   impl — a working design uses only the display's impl, so the single attempt is **expected, not a divergence**.
