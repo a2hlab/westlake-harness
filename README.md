@@ -529,6 +529,7 @@ kind of work from where the corpus started
 | **[R12 dedicated OH debugger compatibility](benchmark/2026-10-19-toutiao-video-playback/tool-compat-r12/window/)** | Two actual hardware hits and verified detach/cleanup on an owned probe; application playback remains untested. |
 | **[Window candidate static preflight](benchmark/2026-10-20-window-candidate-preflight/)** | **Pinned f12c source inputs and minimal lock/unlock extraction closure; no build or device admission.** |
 | **`benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/`** | Offline paired window module, 49 host tests and reproducible build receipts; no production binding or deployment. |
+| **[2026-10-20 AudioTrack production getter](benchmark/2026-10-20-t18-audiotrack-production/README.md)** | Exact deployed bridge relink; one AudioTrack getter; reproducible incremental candidate and raw evidence |
 
 ---
 
