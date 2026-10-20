@@ -1,0 +1,87 @@
+{
+  "status": "NOT_EXECUTED_OUTER_ONLY",
+  "serial": "N100CU025C18D000128",
+  "preconditions": [
+    "Outer uses normal UI to launch the existing app and select the same visible clip; no data reset or account/network change",
+    "Pin fresh main PID/birth, boot, package SHA, actual content and timestamps before comparing",
+    "Replace RUN_ID and LOCAL_OUTPUT with unique persistent paths; refuse preexisting remote/local output",
+    "Every adb command uses explicit serial and a 10-second host timeout; timeouts preserve partial output and are not PASS"
+  ],
+  "remote_path": "/data/misc/perfetto-traces/t23-android-reference-RUN_ID.pftrace",
+  "steps": [
+    {
+      "purpose": "Fresh process/boot before collection",
+      "argv": [
+        "adb",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "pidof",
+        "com.ss.android.article.news"
+      ]
+    },
+    {
+      "purpose": "Start a self-expiring 20-second trace; this command changes tracing state and writes only the unique trace file, so outer executes it later, not during this read-only baseline",
+      "argv": [
+        "adb",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "sh",
+        "-c",
+        "'test ! -e /data/misc/perfetto-traces/t23-android-reference-RUN_ID.pftrace && perfetto --background -t 20s -b 16mb -s 32mb -a com.ss.android.article.news -o /data/misc/perfetto-traces/t23-android-reference-RUN_ID.pftrace gfx view audio video sched'"
+      ],
+      "host_timeout_seconds": 10,
+      "acceptance": "Retain actual rc/streams and emitted own perfetto PID; unknown outcome is not rerun blindly."
+    },
+    {
+      "purpose": "Wait locally while normal matching clip plays; take timestamped visual samples separately",
+      "local_wait_seconds": 23,
+      "device_command": false
+    },
+    {
+      "purpose": "Confirm session ended via query; do not stop unrelated sessions",
+      "argv": [
+        "adb",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "perfetto",
+        "--query"
+      ]
+    },
+    {
+      "purpose": "Read produced trace to private persistent local output",
+      "argv": [
+        "adb",
+        "-s",
+        "N100CU025C18D000128",
+        "pull",
+        "/data/misc/perfetto-traces/t23-android-reference-RUN_ID.pftrace",
+        "LOCAL_OUTPUT/trace.pftrace"
+      ],
+      "host_timeout_seconds": 10
+    },
+    {
+      "purpose": "Read existing app-scoped bounded logs; substitute fresh matched PID",
+      "argv": [
+        "adb",
+        "-s",
+        "N100CU025C18D000128",
+        "logcat",
+        "-d",
+        "-t",
+        "500",
+        "--pid=FRESH_PID",
+        "-v",
+        "threadtime"
+      ]
+    }
+  ],
+  "not_included": [
+    "No trace started by author",
+    "No installation/UI/input/force-stop/log-clear/root/elevation command",
+    "No claim trace proves visible motion or sound; outer must correlate real clip and timestamps",
+    "No SurfaceFlinger content/layer dump in baseline; optional frame timeline config requires separate exact config review"
+  ]
+}
