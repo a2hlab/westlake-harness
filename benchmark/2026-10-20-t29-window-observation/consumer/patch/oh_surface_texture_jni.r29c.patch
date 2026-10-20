@@ -1,0 +1,172 @@
+diff --git a/derived/.orig/oh_surface_texture_jni.cpp b/derived/oh_surface_texture_jni.cpp
+index e30be885e7..c5b3db4805 100644
+--- a/derived/.orig/oh_surface_texture_jni.cpp
++++ b/derived/oh_surface_texture_jni.cpp
+@@ -16,6 +16,13 @@
+ 
+ #include <atomic>
+ #include <cstdio>
++#include <cstring>
++#include <cstdint>
++
++// T29 derivation: observe-only. The ONLY change vs the pinned original (sha256
++// c8d3bb70…c9c6f3f61) is this include plus the r29c_begin helper and the r29c_observe() calls at
++// the consumer entry points. No provider/getter is added, no control flow or lifecycle is changed.
++#include "observe29c.h"
+ 
+ namespace android {
+ namespace {
+@@ -103,6 +110,41 @@ void ThrowException(JNIEnv* env, const char* className, const char* message)
+     }
+ }
+ 
++// T29 observe-only helper: pre-fill a values-only record from the already-validated, caller-owned
++// `state` (and its owned image/detached fields). It copies opaque pointer VALUES only — it never
++// calls a provider/getter and never dereferences beyond fields this TU already owns. The per-method
++// caller fills raw_rc/public_rc/tex/transition/invalid/exbranch and then calls r29c_observe.
++inline r29c_record r29c_begin(unsigned phase, OhSurfaceTextureState* state,
++                              uintptr_t self_pc, uintptr_t caller_pc)
++{
++    r29c_record r;
++    std::memset(&r, 0, sizeof(r));
++    r.phase = phase;
++    r.call = r29c_call_id();
++    r.self = self_pc;       // the enclosing method's address (always locatable, non-zero)
++    r.caller = caller_pc;   // the method's return address, or 0 when it is not safely available
++    r.wrapper = reinterpret_cast<uintptr_t>(state);   // 0 when state is null -> invalid/overflow lane
++    if (state != nullptr) {
++        r.valid |= R29C_STATE;
++        r.state = reinterpret_cast<uintptr_t>(state);
++        // OH correlation is the PRODUCER NativeWindow (the handle the CPU side also observes), NOT the
++        // image. nativeWindow is write-once (set in nativeInit), so this is a safe race-free owned read.
++        if (state->nativeWindow != nullptr) {
++            r.valid |= R29C_OH;
++            r.oh = reinterpret_cast<uintptr_t>(state->nativeWindow);
++        }
++        if (state->image != nullptr) {
++            r.valid |= R29C_IMAGE;
++            r.image = reinterpret_cast<uintptr_t>(state->image);
++        }
++    }
++    // `detached` is NOT read here: it is a non-atomic field written by attach/detach, so a fill-only
++    // read could race those writers. Each method sets detached_valid/detached ONLY where THIS call
++    // determines the value (a successful attach -> false, a successful detach -> true); update, the
++    // invalid early-returns, and any failed attach/detach leave it UNKNOWN (detached_valid = 0).
++    return r;
++}
++
+ void OnFrameAvailable(void* context)
+ {
+     auto* state = static_cast<OhSurfaceTextureState*>(context);
+@@ -242,13 +284,34 @@ void SurfaceTexture_nativeSetDefaultBufferSize(JNIEnv* env, jobject thiz,
+ 
+ void SurfaceTexture_nativeUpdateTexImage(JNIEnv* env, jobject thiz)
+ {
++    const uintptr_t _self = reinterpret_cast<uintptr_t>(&SurfaceTexture_nativeUpdateTexImage);
++    const uintptr_t _caller = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
+     OhSurfaceTextureState* state = GetState(env, thiz);
+     if (state == nullptr || state->image == nullptr ||
+         state->released.load(std::memory_order_acquire)) {
++        {   // T29: invalid early-return (the ORIGINAL released/null gate is unchanged); safe fields only
++            r29c_record _r = r29c_begin(R29C_UPDATE, state, _self, _caller);
++            _r.invalid = 1;
++            _r.existing_exception_branch = 1;
++            if (state != nullptr) {
++                _r.valid |= R29C_RELEASED;
++                _r.released_valid = 1;
++                _r.released = state->released.load(std::memory_order_acquire) ? 1 : 0;
++            }
++            r29c_observe(&_r);
++        }
+         ThrowException(env, "java/lang/IllegalStateException", "SurfaceTexture is released");
+         return;
+     }
+     const int32_t result = OH_NativeImage_UpdateSurfaceImage(state->image);
++    {   // T29: dispatched; raw_rc = provider result. updateTexImage is void -> no public rc recorded.
++        r29c_record _r = r29c_begin(R29C_UPDATE, state, _self, _caller);
++        _r.called = 1;
++        _r.valid |= R29C_RAWRC;
++        _r.raw_rc = result;
++        _r.existing_exception_branch = (result != 0) ? 1 : 0;
++        r29c_observe(&_r);
++    }
+     if (result != 0) {
+         fprintf(stderr, "[WESTLAKE-SURFACETEXTURE] updateTexImage failed ret=%d\n", result);
+         fflush(stderr);
+@@ -276,21 +339,54 @@ void SurfaceTexture_nativeReleaseTexImage(JNIEnv* env, jobject thiz)
+ 
+ jint SurfaceTexture_nativeDetachFromGLContext(JNIEnv* env, jobject thiz)
+ {
++    const uintptr_t _self = reinterpret_cast<uintptr_t>(&SurfaceTexture_nativeDetachFromGLContext);
++    const uintptr_t _caller = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
+     OhSurfaceTextureState* state = GetState(env, thiz);
+     if (state == nullptr || state->image == nullptr) {
++        {   // T29: invalid early-return (ORIGINAL gate = null state/image only, NO released gate)
++            r29c_record _r = r29c_begin(R29C_DETACH, state, _self, _caller);
++            _r.invalid = 1;
++            _r.valid |= R29C_PUBRC;
++            _r.rc = -1;
++            r29c_observe(&_r);
++        }
+         return -1;
+     }
+     const int32_t result = OH_NativeImage_DetachContext(state->image);
+     if (result == 0) {
+         state->detached = true;
+     }
++    {   // T29: dispatched; raw_rc and the jint public rc are the same provider result here.
++        r29c_record _r = r29c_begin(R29C_DETACH, state, _self, _caller);
++        _r.called = 1;
++        _r.valid |= R29C_RAWRC | R29C_PUBRC;
++        _r.raw_rc = result;
++        _r.rc = result;
++        if (result == 0) {   // THIS call determined the new attach state; no state read needed
++            _r.valid |= R29C_DETACHED;
++            _r.detached_valid = 1;
++            _r.detached = 1;         // a successful detach -> detached = true
++            _r.transition = 1;
++        }
++        r29c_observe(&_r);
++    }
+     return result;
+ }
+ 
+ jint SurfaceTexture_nativeAttachToGLContext(JNIEnv* env, jobject thiz, jint texName)
+ {
++    const uintptr_t _self = reinterpret_cast<uintptr_t>(&SurfaceTexture_nativeAttachToGLContext);
++    const uintptr_t _caller = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
+     OhSurfaceTextureState* state = GetState(env, thiz);
+     if (state == nullptr || state->image == nullptr) {
++        {   // T29: invalid early-return (ORIGINAL gate = null state/image only, NO released gate)
++            r29c_record _r = r29c_begin(R29C_ATTACH, state, _self, _caller);
++            _r.invalid = 1;
++            _r.valid |= R29C_PUBRC | R29C_TEX;
++            _r.rc = -1;
++            _r.tex_name = texName;   // the requested texture name (value only)
++            r29c_observe(&_r);
++        }
+         return -1;
+     }
+     const int32_t result =
+@@ -299,6 +395,21 @@ jint SurfaceTexture_nativeAttachToGLContext(JNIEnv* env, jobject thiz, jint texN
+         state->texName = texName;
+         state->detached = false;
+     }
++    {   // T29: dispatched; raw_rc and the jint public rc are the same provider result here.
++        r29c_record _r = r29c_begin(R29C_ATTACH, state, _self, _caller);
++        _r.called = 1;
++        _r.valid |= R29C_RAWRC | R29C_PUBRC | R29C_TEX;
++        _r.raw_rc = result;
++        _r.rc = result;
++        _r.tex_name = texName;
++        if (result == 0) {   // THIS call determined the new attach state; no state read needed
++            _r.valid |= R29C_DETACHED;
++            _r.detached_valid = 1;
++            _r.detached = 0;         // a successful attach -> detached = false
++            _r.transition = 1;
++        }
++        r29c_observe(&_r);
++    }
+     return result;
+ }
+ 

@@ -1,0 +1,96 @@
+{
+  "task": "T29 consumer call logging (CC derivation + hidden logger)",
+  "status": "METHOD-READY: four sources stable; base5 40-method + 40-process PASS vs consumer/derived (outer-confirmed). FINAL pending logger fix R29-C04 (Codex, see known_issues); CC four sources + test frozen",
+  "generated_by": "cc-video",
+  "repo_relative_root": "benchmark/2026-10-20-t29-window-observation/consumer",
+  "baseline_pins": {
+    "oh_surface_texture_jni.cpp": {
+      "pinned_sha256": "c8d3bb700923c393c6e9aad43acf5004dba6d8a168ecfe829d66ec1c9c6f3f61",
+      "bytes": 17597,
+      "baseline_copy": "derived/.orig/oh_surface_texture_jni.cpp",
+      "baseline_copy_sha256": "c8d3bb700923c393c6e9aad43acf5004dba6d8a168ecfe829d66ec1c9c6f3f61",
+      "source_of_truth": "sources/api-implementations/bridge-d4fa-source-snapshot/base/westlake/framework/surface/jni/oh_surface_texture_jni.cpp",
+      "pin_match": true
+    },
+    "oh_texture_view_jni.cpp": {
+      "pinned_sha256": "7189e5c2b70af0aa5fff155ca1bb464305f958655e994737dce4ac1878a0558b",
+      "bytes": 3538,
+      "baseline_copy": "derived/.orig/oh_texture_view_jni.cpp",
+      "baseline_copy_sha256": "7189e5c2b70af0aa5fff155ca1bb464305f958655e994737dce4ac1878a0558b",
+      "source_of_truth": "sources/api-implementations/bridge-d4fa-source-snapshot/base/westlake/framework/surface/jni/oh_texture_view_jni.cpp",
+      "pin_match": true
+    }
+  },
+  "method_ready_sources": {
+    "logger_header": {
+      "path": "logger/observe29c.h",
+      "sha256": "dfc07b884e03e82d4f2b0c5dfd58ebd6b27b8d5d9db40b227ec134b3aca1fd67"
+    },
+    "logger_impl": {
+      "path": "logger/observe29c.c",
+      "sha256": "ddd684fb6ee75b3f32634a6f730ccf07e35c0e48dff7cff7956909f440e46664"
+    },
+    "derived_surface_texture": {
+      "path": "derived/oh_surface_texture_jni.cpp",
+      "sha256": "7bac8975d4afa98b7dcedc788f66f4543c9494283ed068a693c07c97639a583a",
+      "baseline": "oh_surface_texture_jni.cpp",
+      "patch": "patch/oh_surface_texture_jni.r29c.patch",
+      "deviation": "purely additive: an #include, the r29c_begin helper, and r29c_observe() calls at update/detach/attach. No original line removed; no control flow or lifecycle change."
+    },
+    "derived_texture_view": {
+      "path": "derived/oh_texture_view_jni.cpp",
+      "sha256": "973b287218535b0a3fd9b7343db98dd46de9d0d205fd6d60171f554653922910",
+      "baseline": "oh_texture_view_jni.cpp",
+      "patch": "patch/oh_texture_view_jni.r29c.patch",
+      "deviation": "additive hooks PLUS four behavior-preserving edits: (1) nDestroy body extracted verbatim into destroyNativeWindowImpl, (2) public nDestroy forwards to it, (3) nCreate calls that impl (same destroy-first order/count) and takes a diagnostic out-param to correlate old->new in one record, (4) the two OH ref/unref calls capture their EXISTING int32 return into ref_rc/unref_rc. Call count/order and the original SetLongField strategy are unchanged."
+    }
+  },
+  "logger_api": {
+    "entry": "r29c_observe(const struct r29c_record*)",
+    "call_id": "r29c_call_id(void)",
+    "stats": "r29c_stats_read(struct r29c_stats*)",
+    "visibility": "R29_HIDDEN (hidden); extern \"C\" for the C++ derived TUs; prefix r29c_ keeps it an independent per-DSO logger with no clash against the cpu observe29.c",
+    "no_new_dynamic_export": true,
+    "record_is_value_type": true
+  },
+  "observe_properties": {
+    "values_only": "no address-valued field is ever dereferenced by the logger",
+    "oh_correlation": "OH = the PRODUCER NativeWindow (state->nativeWindow, write-once) or the TextureView OH window — NOT the image",
+    "detached": "set ONLY by a successful attach(false)/detach(true); update/invalid/failed paths leave it UNKNOWN (no racy non-atomic read)",
+    "ref_unref_independent": "producer ref/unref each record called/rc_valid/rc; the real int32 return is captured (rc_valid=1); never substituted for raw_rc/public_rc",
+    "self_caller": "self = the enclosing function address (locatable, non-zero); caller = __builtin_return_address(0) (0 = unknown). surface update/detach/attach and TextureView nCreate record their JNI entry; the producer-destroy record's self is the EXTRACTED HELPER &destroyNativeWindowImpl (the public nDestroy forwards to it and emits no record of its own), NOT the JNI entry TextureView_nDestroyNativeWindow",
+    "errno_neutral": true,
+    "provider_called_once": true,
+    "zero_extra_ref_field_write_or_destroy": true,
+    "budget_per_dso": {"identities": 16, "epochs": 8, "phases": 6, "success_per_phase": 2, "error_per_phase": 2, "normal": 3072, "reserved_invalid_overflow": 30, "first_limit": 1, "final_exhaustion": 1, "max_records": 3104, "max_bytes": 2383872, "max_record_bytes": 768},
+    "sink": "private CLOEXEC dup of fd2, verified S_IFREG with saved dev/ino re-checked before every eligible write; a pipe/socket/identity-drift disables observation (coverage UNKNOWN), never falls back; one write per record, no retry, short/failed write -> loss + disable; SIGPIPE disposition unchanged"
+  },
+  "method_comparison": {
+    "owner": "base5 (independent integration fixture)",
+    "entry": "../westlake-harness-api-progress-peer/benchmark/2026-10-20-t29-consumer-test-peer/replay.py",
+    "invocation_args": {
+      "--source-root": "<MAIN repo root with the real OH/JNI seam>",
+      "--consumer-source-dir": "<this repo>/benchmark/2026-10-20-t29-window-observation/consumer/derived",
+      "--extra-source": "<this repo>/benchmark/2026-10-20-t29-window-observation/consumer/logger/observe29c.c",
+      "--include-dir": "<this repo>/benchmark/2026-10-20-t29-window-observation/consumer/logger",
+      "--out": "<new durable dir>"
+    },
+    "coverage": "40 per-case independent-process checks (27 consumer + 13 producer): OH identity, self, old->new correlation, ref(-29)/unref(-31) double rc; originals baseline preserved",
+    "status": "base5 40 actual-method behaviors + 40 independent-process diagnostics PASS against consumer/derived (outer-confirmed 2026-10-20). In THIS tree the Rust selector keeps _calls/_invalid/_producer NOT_YET_VERIFIED (fixture not in this tree); external PASS recorded, not impersonated by a local green"
+  },
+  "known_issues": {
+    "R29-C04": {
+      "scope": "logger-side only (observe29c.c eligible failure classification)",
+      "detail": "failure = (existing_exception_branch || rc || raw_rc) does NOT count a non-zero valid ref_rc/unref_rc as error; after two successes, two producer records whose only failure signal is unref_rc=-31 (rc=0, raw_rc=0) are mis-lane'd as success, share the 2-success lane, and can be dropped",
+      "derived_tus_affected": false,
+      "derived_note": "the derived TUs already record independent ref_rc/unref_rc with rc_valid=1; once the classification includes a non-zero valid ref/unref rc, those records land in the error lane correctly -- no derived change needed",
+      "test_caveat": "test/test_observe29c.c refunref mode asserts the PRE-FIX behavior (non-zero ref_rc does NOT flip the lane); the 14-mode PASS therefore does NOT represent the final/correct error budget for ref/unref",
+      "ownership": "Codex derives the minimal failure-classification fix (+ real negative cases) from observe29c.c ddd684fb in its own tree and delivers the official replacement logger + test; CC keeps the four sources and test unchanged; root selects/unifies the single FINAL logger"
+    }
+  },
+  "local_checks": {
+    "runner": "tools/spec-checks/tests/toutiao_t29_consumer.rs -> consumer/tests/check.py",
+    "logger_host_test": "consumer/test/test_observe29c.c (14 modes PASS; cite only for sink/concurrency/budget-shape, NOT ref/unref error classification -- see known_issues.R29-C04)",
+    "pins": "derived baseline == pinned originals (verified)"
+  }
+}
