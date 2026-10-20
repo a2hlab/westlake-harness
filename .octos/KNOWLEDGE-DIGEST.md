@@ -953,3 +953,4 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 T14/T15：64KiB完整传输不等于覆盖视频交互；补读原固定区间30,863,473B/87be9dff在源offset26606466见SL_IID_ANDROIDSIMPLEBUFFERQUEUE装载失败，精确匹配旧R8修复，先复用不造MediaPlayer假JNI。前后inode/size相同仍不能排除原位改写或truncate-regrow；T14两图39.63秒全字节同封面无播放通过，旧unknown以追加证据补充不篡改，见 benchmark/2026-10-20-t15-player-load-reuse/。
 
 - 2026-10-20 #91 T16：5cd exact R8复用实际到TTPlayer JNI_OnLoad，固定[0,30236818)日志见7条ff_listen_connect2 -97；只证明装载点已越过及后续可见失败，不证明所有provider绑定/视频播放。恢复需区分启动广告5cfcd938与真实feed7714468a；518+26快照相等不能替代UI，1523.8秒回滚解锁见 benchmark/2026-10-20-t16-window-evidence/。
+- 2026-10-20 #91 T17：actual5cd paired getaddrinfo/freeaddrinfo已匹配，完整选定31,631,741B日志到读包/decoder并显露AudioTrack缺失getter与ANW诊断；254行镜像受256预算限制，不能据局部无-97宣称全局消失；guardian换child后的feed截图不算连续视频，见 benchmark/2026-10-20-t17-window-evidence/（1722.4秒恢复解锁，远端原件已验）。
