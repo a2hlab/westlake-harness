@@ -13,5 +13,6 @@
 | FLAW-009 | open | Design, Verification, Execution | — | — |
 | FLAW-010 | open | Lifecycle, Measurement | — | — |
 | FLAW-011 | open | Verification, Measurement | — | — |
+| FLAW-012 | open | Execution, Verification | — | — |
 
 retired_prose: 0

@@ -275,3 +275,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 
 - 2026-10-20 #91 T25/T26：视频触发后、回滚/重启前须按同boot实际child PID采一次有界hilog（沿已验-P/-z入口、拒正文错误），并记录首末事件时间；启动quick采集早于fatal，不能用它或stderr无eglGetError否定后续系统日志。已有HWUI eglGetError读取点优先从原日志补证，不额外消费错误状态；采不到写unknown，见 t25-first-fatal-egl-create/ 与 T23 hilog successor。
 - 2026-10-20 #91 T30恢复纪律：同板所有UI/电源写入严格串行，图标helper的uitest会把override改为10秒并再升长，不能并行恢复power（本次触发guard拒绝）；先结束UI再恢复10000/10000。开窗前准备绝对board路径的unlock命令与执行环境，1200秒前启动恢复、不等外环交接；1800秒仍未解锁须如实记超时，禁止重置start。末图锁屏或host-only保留原判，详见 benchmark/2026-10-20-t30-window-archive/。
+
+- retain短窗先备unsigned模板/精确复用引用/addendum/peer接线，窗口内只补fresh身份、状态、恢复绑定与实际签字，严守该窗停试验/签认/回滚截止；未及时签认就保留原未签记录并恢复，不边写报告边耗恢复余量。恢复Timeout/OverrideTimeout10000/10000后立即截图并绑身份，避免10秒锁屏；长报告与归档上传在实际决定和close之后。
