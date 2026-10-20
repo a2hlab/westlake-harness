@@ -1,0 +1,77 @@
+[
+  {
+    "name": "preflight",
+    "argv": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=10",
+      "hw248",
+      "if test ! -e HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020 && test ! -L HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020; then printf \"REMOTE_DIRECTORY_ABSENT\\n\"; else printf \"REMOTE_DIRECTORY_EXISTS_STOP\\n\"; exit 9; fi"
+    ],
+    "stdout": "REMOTE_DIRECTORY_ABSENT\n",
+    "stderr": "",
+    "rc": 0
+  },
+  {
+    "name": "local-verify",
+    "argv": [
+      "python3",
+      "$HOME/.local/share/westlake/t25-window-publication/upload-01/verify_archive.py",
+      "$HOME/.local/share/westlake/t25-window-publication/archive-01/window.tar.gz",
+      "0a4704f65d1a9f51128d7d1ddee35dda8c7853dda446014839d117ac462b43f0",
+      "9260149",
+      "c98f635028e9cea134e29fda719ab4eb74b22550e36c7a04549257bc14a12c00",
+      "10030"
+    ],
+    "stdout": "{\"status\": \"ARCHIVE_AND_ALL_MEMBERS_VERIFIED\", \"sha256\": \"0a4704f65d1a9f51128d7d1ddee35dda8c7853dda446014839d117ac462b43f0\", \"bytes\": 9260149, \"members\": 10030, \"data_members\": 10029, \"member_manifest_sha256\": \"c98f635028e9cea134e29fda719ab4eb74b22550e36c7a04549257bc14a12c00\"}\n",
+    "stderr": "",
+    "rc": 0
+  },
+  {
+    "name": "0",
+    "argv": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=10",
+      "hw248",
+      "set -eu; umask 077; test ! -e HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020; test ! -L HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020; mkdir -m 700 HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020"
+    ],
+    "stdout": "",
+    "stderr": "",
+    "rc": 0
+  },
+  {
+    "name": "1",
+    "argv": [
+      "scp",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=10",
+      "$HOME/.local/share/westlake/t25-window-publication/archive-01/window.tar.gz",
+      "hw248:HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020/window.tar.gz"
+    ],
+    "stdout": "",
+    "stderr": "",
+    "rc": 0
+  },
+  {
+    "name": "2",
+    "argv": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=10",
+      "hw248",
+      "set -eu; test -f HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020/window.tar.gz; test ! -L HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020/window.tar.gz; chmod 600 HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020/window.tar.gz; sha256sum HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020/window.tar.gz; stat -c %s HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020/window.tar.gz; test \"$(stat -c %a HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020)\" = 700; test \"$(stat -c %a HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020/window.tar.gz)\" = 600; python3 - HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020/window.tar.gz 0a4704f65d1a9f51128d7d1ddee35dda8c7853dda446014839d117ac462b43f0 9260149 c98f635028e9cea134e29fda719ab4eb74b22550e36c7a04549257bc14a12c00 10030"
+    ],
+    "stdout": "0a4704f65d1a9f51128d7d1ddee35dda8c7853dda446014839d117ac462b43f0  HW248_ARTIFACT_ROOT/toutiao-t25-geometry-window-20261020/window.tar.gz\n9260149\n{\"status\": \"ARCHIVE_AND_ALL_MEMBERS_VERIFIED\", \"sha256\": \"0a4704f65d1a9f51128d7d1ddee35dda8c7853dda446014839d117ac462b43f0\", \"bytes\": 9260149, \"members\": 10030, \"data_members\": 10029, \"member_manifest_sha256\": \"c98f635028e9cea134e29fda719ab4eb74b22550e36c7a04549257bc14a12c00\"}\n",
+    "stderr": "",
+    "rc": 0
+  }
+]

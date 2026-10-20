@@ -1,0 +1,227 @@
+{
+  "status": "STATIC_CONTRACT_COMPATIBLE_DRIVER_FAILURE_REASON_UNKNOWN",
+  "created_utc": "2026-10-20T04:42:27.841023+00:00",
+  "device_calls": 0,
+  "new_rea_queries": 1,
+  "exact_artifacts": {
+    "hwui": "a11c9154ca16dd7acf5e3ea99727ae37c25b1b4494a9133816bc58c553c128e2",
+    "native_image": "74b6ea0de10d8e9171a35042e46aa5d4a2d44e3a3ba529b6202603f9af749b9f",
+    "shim": "2a867f78905bdc37020bec36c951f628c6393456a1770514c1d73f974fd3d5bc"
+  },
+  "parameter_comparison": [
+    {
+      "field": "context",
+      "hwui": "0 / EGL_NO_CONTEXT at ELF 0x5dc2b8",
+      "r23": "unchanged",
+      "native_image": "0"
+    },
+    {
+      "field": "target",
+      "hwui": "0x3140 at ELF 0x5dc2bc",
+      "r23": "tracked Android target -> OH 0x34e1",
+      "native_image": "0x34e1"
+    },
+    {
+      "field": "attributes when unprotected",
+      "hwui": "[0x30d2,1,0x3038] built at ELF 0x5dc280-0x5dc2ac; constant at 0x2c4d48",
+      "r23": "unchanged",
+      "native_image": "[0x30d2,1,0x3038]"
+    },
+    {
+      "field": "client object",
+      "hwui": "AHardwareBuffer argument passed unchanged to eglGetNativeClientBufferANDROID at ELF 0x5dc278-0x5dc27c",
+      "r23": "OH_NativeBuffer -> same-provider OHNativeWindowBuffer via CreateNativeWindowBufferFromNativeBuffer",
+      "native_image": "SurfaceBuffer smart pointer -> OHNativeWindowBuffer via CreateNativeWindowBufferFromSurfaceBuffer"
+    }
+  ],
+  "object_evidence": {
+    "hwui_native_contract": "Exact AHardwareBuffer_allocate calls OH_NativeBuffer_Alloc and returns pointer; acquire/release forward OH Reference/Unreference; describe calls OH_NativeBuffer_GetConfig at ELF 0x80a030-0x80a254. The source-build-native691 ASurfaceTexture_dequeueBuffer source corroborates FromNativeWindowBuffer then cast to AHardwareBuffer, but is a reference source, not by itself a complete exact-build source match.",
+    "runtime_binding": "Prior T25 runtime-review-01 proves R23 consumer conversion GOT and wrapper create/destroy share the observed surface base; live create_image address and buffer descriptor were not logged."
+  },
+  "rea_function": {
+    "name": "OHOS::SurfaceImage::CreateEGLImage",
+    "elf_address": "0x14ddc",
+    "provider_address": "0x114ddc",
+    "body_inclusive": [
+      "0x114ddc",
+      "0x114f07"
+    ],
+    "evidence_id": "ev_57352e6eb028372b264b1f6a170ebe482f7692512725d301509ca54f5dd4b5d8",
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "analysis_profile": {
+      "digest": "73e1cb475c2e2db20fa06886ffd7e09089e3c060afaeb5a952facaabce0566f5",
+      "parameters": {
+        "analyzer_preset": "ghidra-default",
+        "annotation_policy": "atomic-function-entry-metadata-v1",
+        "architecture": "arm64",
+        "available_architectures": [
+          "arm64"
+        ],
+        "call_relationship_coverage": "function-body-call-coverage-v5",
+        "compiler_spec_id": "auto-default",
+        "decompiler_jump_loads": true,
+        "function_body_evidence": "complete-inclusive-ranges-v1",
+        "function_boundary_observations": "ghidra-function-boundary-limitations-v3",
+        "function_dossier_coverage": "observed-facets-and-call-relationships-v1",
+        "function_references": "complete-body-and-entry-reference-manager-v2",
+        "import_mode": "ephemeral-source-immutable",
+        "instruction_flow_evidence": "decoded-return-pcode-v1",
+        "instruction_references": "exact-address-incoming-v1",
+        "jump_table_evidence": "typed-case-default-blocks-v1",
+        "language_id": "auto-from-header",
+        "load_image_observations": "source-mappings-entry-context-v2",
+        "loader": "auto-from-header",
+        "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+        "no_return_repair": "returning-imports-decoded-return-v2",
+        "procedure_file_offset_resolution": "address-first-unique-target-source-mapping-v2",
+        "process_launch": "inspected-jvm-launch-support-v1",
+        "string_inventory_evidence": "defined-data-coverage-v1",
+        "target_format": "elf",
+        "target_kind": "executable"
+      },
+      "provider": {
+        "id": "ghidra",
+        "name": "Ghidra",
+        "version": "12.1.4"
+      }
+    },
+    "limits": "Static shipped-artifact query; native_image is a restored-system exact file and reference consumer. Does not prove this native_image GL path ran in T25."
+  },
+  "runtime_failure_interpretation": [
+    "selected=0 means the supplied display uniquely matches implementation[0].current_display in R23; it is not an error number.",
+    "A registered implementation has a non-null create function, so create failed selected=0 records a driver create returning NULL after tracked-object admission.",
+    "MakeGLBackendTexture checks NULL at ELF 0x5dc2cc then calls eglGetError at 0x5dc318 and SkDebugf at 0x5dc328; GL texture generation and ImageTargetTexture occur only on a non-null image.",
+    "implementation_entry first requires direct dlsym same-base; its eglGetProcAddress fallback accepts a returned external base other than shim. selected=0 alone does not independently prove the resolved create function address."
+  ],
+  "recommendations": [
+    {
+      "priority": 1,
+      "action": "Recover exact existing eglGetError consumer output from the same render-thread hilog, or add a bounded diagnostic at its existing read point. Do not insert an unpaired extra eglGetError read that changes caller-visible error state."
+    },
+    {
+      "priority": 2,
+      "action": "In a separately authorized diagnostic candidate, record selected create_image address/base, incoming context/target/terminated attrs, and the tracked buffer descriptor via the already bound provider public getters (format, dimensions, stride, usage), before attempting any parameter/format change."
+    },
+    {
+      "priority": 3,
+      "action": "Compare one known successful R23 import with the failing T25 import using those exact fields. Keep T25 geometry and previous T20/R23 behaviors unchanged until evidence identifies the first mismatch."
+    }
+  ],
+  "bounded_search": {
+    "locations": [
+      "repository sources and T23 static evidence",
+      "persistent westlake evidence file names containing mali/gles"
+    ],
+    "found_mali_create_target_source_or_existing_rea": false,
+    "scope_limit": "No claim that no source exists elsewhere. No broad Mali decompilation performed."
+  },
+  "sources": [
+    {
+      "path": "benchmark/2026-10-20-t23-egl-import/egl_import.c",
+      "sha256": "5bd6686c626e6ba34277432f6f7b35f578ee981ebe05d540d409be9f509e0477"
+    },
+    {
+      "path": "benchmark/2026-10-20-t23-egl-import/platform.c",
+      "sha256": "ec23d9b08aa073fa44123f89c63a572a6565d63c147cacb9ad3e9788a1043124"
+    },
+    {
+      "path": "benchmark/2026-10-20-t23-egl-import/exact_binding.h",
+      "sha256": "c833860325331d3550079cf1f7a09a9ef04dca84359976192e7c8064ddfbd253"
+    },
+    {
+      "path": "sources/api-implementations/source-build-native691/westlake/native/hwui/oh_surface_texture.cpp",
+      "sha256": "4179b4ecf11ae6be6bc5317a6bfadcc5a7db52cb6f279dfdfedd580b94bcefb7"
+    }
+  ],
+  "private_raw_files": [
+    {
+      "file": "ahbuffer.argv.json",
+      "bytes": 318,
+      "sha256": "9ed4d3d109b00ee1bf2b7de454f8ae8c0b34d1de9d3edd994b073e6ca33e8c47"
+    },
+    {
+      "file": "ahbuffer.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "ahbuffer.stdout",
+      "bytes": 7092,
+      "sha256": "cdd0f138166763254a634e38832c1b1bb92356fe0191bffa6c692b2ec42fc1f5"
+    },
+    {
+      "file": "constant-0x2be4fd.json",
+      "bytes": 364,
+      "sha256": "f75ddabc2f6b30b1b8fa173de8f24691507e616ff725b21eb989d9223e5dccca"
+    },
+    {
+      "file": "constant-0x2c4d48.json",
+      "bytes": 80,
+      "sha256": "0b67f5040d37cc0f5f4ba034f0a773ddbabafb5ad7e0e0f8d5002e4c49961e3a"
+    },
+    {
+      "file": "makegl.receipt.json",
+      "bytes": 460,
+      "sha256": "acf0dbed90b648110e87f29c6337e1f82e1c5d7ba3d544abdfabda3cce7db3fd"
+    },
+    {
+      "file": "makegl.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "makegl.stdout",
+      "bytes": 33082,
+      "sha256": "65cd106c9e40946e314ab40bba4721c5974d81ba962642fc8cddca4be6a36886"
+    },
+    {
+      "file": "native-image-create-egl-bundle.json",
+      "bytes": 3499012,
+      "sha256": "bd68085ac53afc6c06bd3234701cbbc9a5784034b1086972e147aecbad9c3c70"
+    },
+    {
+      "file": "native-image-create-egl-snapshot.json",
+      "bytes": 6985224,
+      "sha256": "3b7ca19cd7f805d49313ea02a4c39cc2297d93838b6f3e1cf0980381095ed7d5"
+    },
+    {
+      "file": "native-image-create-egl.assembly.txt",
+      "bytes": 2040,
+      "sha256": "4067389dbdb5e21ecc8956be7c3841d9a81495ba044910df079375f9ae030d20"
+    },
+    {
+      "file": "native-image-create-egl.pseudocode.txt",
+      "bytes": 1356,
+      "sha256": "e9ab71b961cbed2e63812978e2930e67df6eda3a4e42c8aebaca248e77861ada"
+    },
+    {
+      "file": "rea-call-receipts.json",
+      "bytes": 738836,
+      "sha256": "564a256c2facca6137f71030e3fdaca5011770c207562789f4ea77498750b2da"
+    },
+    {
+      "file": "skdebugf.argv.json",
+      "bytes": 318,
+      "sha256": "217e4b82345242b020320225d583cb2851894097ecf7cda47d7a49430c456ced"
+    },
+    {
+      "file": "skdebugf.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "skdebugf.stdout",
+      "bytes": 454,
+      "sha256": "bd0f30d0e98663681c3c611cef2885e153661d81cdeb0af24a010fac5ce39915"
+    }
+  ],
+  "conclusions_not_supported": [
+    "format/usage as proven root cause",
+    "wrong EGL target/context/attributes as proven cause",
+    "successful video or frozen API status"
+  ]
+}
