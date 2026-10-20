@@ -16,3 +16,7 @@ Expected outcome: a scoped compatibility assessment and, if inputs and admission
 ## 2026-10-21 preparation transition
 
 T34 W04 was visually rejected, restored and unlocked; its evidence/API48 delivery was published and read back at `f42df4de62e9ee353e030865679e1b625e1d0072` ([publication](publication-02/results.json)). This closes that attempted window, not the unresolved 61b video acceptance. Bounded Genshin static-intake contract preparation has started. No Genshin device work or package download is authorized by this transition; actual package availability remains unknown.
+
+### First preparation result
+
+The [bounded local intake](../2026-10-21-genshin-static-intake/README.md) is reviewed: 441 APK/XAPK path entries, no named Genshin input in the searched scope, no manifest or remote inventory. The historical remote Android environment is a lead, not a recovered package. [Outer review](../2026-10-21-genshin-static-intake/outer-review.json) records the checks and limitations. The game remains NOT_TESTED; its device experiment stays queued.
