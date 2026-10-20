@@ -948,3 +948,6 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 
 - 2026-10-20 #91 T12：5cd同boot/parent受限existing-parent监护，保留前台/JIT守卫并临时awake，单真实桌面图标生成31210/b7485570且feed亮；50秒两视频图同封面、声音unknown。仅证一次启动，非退出后重开或永久封板。528秒新guardian停、原10000/10000和旧controls/cfg/run不变；完整证据及远端6a127efd归档见 benchmark/2026-10-20-5cd-icon-recovery/window/。
 - 2026-10-20 #91 APK静态扫描须递归嵌套插件：exact头条13.9.0/a1112a0c顶层138个so不含avmdlbase/avmdlv2，但assets/plugins/com.ss.ttplugin.medialoader.jar含这两库等6个；缺顶层条目≠APK缺实现。原5缺库已在历史feed日志出现，不能直接升级为视频首致命点；见 benchmark/2026-10-20-t12-video-prefix-review/apk-inventory/。
+
+- 2026-10-20 #91 T13/T15/61b：5cd受限临时监护下one-owned-exit→one-icon恢复真实feed，原power/controls恢复；61b既有永久R2在旧child已退出后一次正常图标生成seq3并获93413897真实feed，guardian未重装未停。临时演练与既有永久机制分开签认；均不代表视频或随机退出修复，见 benchmark/2026-10-20-t15-61b-evidence/ 与 2026-10-20-5cd-owned-child-reentry/two-window-evidence/。
+- 2026-10-20 #91 T14/T15：64KiB完整传输不等于覆盖视频交互；补读原固定区间30,863,473B/87be9dff在源offset26606466见SL_IID_ANDROIDSIMPLEBUFFERQUEUE装载失败，精确匹配旧R8修复，先复用不造MediaPlayer假JNI。前后inode/size相同仍不能排除原位改写或truncate-regrow；T14两图39.63秒全字节同封面无播放通过，旧unknown以追加证据补充不篡改，见 benchmark/2026-10-20-t15-player-load-reuse/。
