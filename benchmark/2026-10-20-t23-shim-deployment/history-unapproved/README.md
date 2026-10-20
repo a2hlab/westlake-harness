@@ -1,0 +1,11 @@
+# T23 disabled parameter successor
+
+This directory copies the T21 six-artifact executor byte-for-byte: `693448c26cb72002031f58cca467691f09ac61674b2c76353eb71bd44a5b63bb`. There is no implementation delta. The five other artifact declarations, original six-state recovery, both run references, source pins, bridge production declaration and executor provider list remain unchanged. `data-only.diff` contains every donor-data change.
+
+The shim after-SHA is the literal `UNAPPROVED`, size is null, production status is UNAPPROVED and production references are empty. The intermediate ecaf platform candidate is not a deployment input. All current boot/holder/process/metadata fields remain unfilled and approved_by remains null. A preview returning zero is not admission. The synthetic offline --execute test stopped at `shim candidate pin required`, before admission read or Board import; it created no execution directory and made no device calls. Old CAS/rollback tests were not repeated because executor bytes are unchanged.
+
+When the author freezes final production evidence, update only the shim after-SHA/size/build status/commit/production references and the corresponding parameter artifact. Each reference must resolve to exact MAIN bytes. Recompute parameters and shim-candidate hashes in the disabled admission template, then provide a new data diff and review. Fresh root-held boot, identities, metadata, WID and authorization are still required before any actual execution. No candidate binary is included here.
+
+Root's additional physical/private libhwui `a11c…` and actual surface `8f…` readbacks belong in a separate outer read-only receipt with complete actual SHA and inode evidence. This package does not guess their full SHA or extend the executor's hard provider set. Existing preimage/backup/partial rollback/foreign-state/CAS rules and 1800-second total / 600-second recovery reserve remain as implemented in the byte-identical donor. Rollback must bind the new window's original apply-plan.
+
+The preserved T21 executor docstring/version label and historical parameter explanations are provenance, not an instruction to reuse old authorization or WID29 as fresh identity. `unchanged-pins.json` records exact donor equality; `checks/` contains the new sentinel-only receipts.

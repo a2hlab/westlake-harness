@@ -1,0 +1,11 @@
+# T23 production-02 parameter successor
+
+The exact T21 executor remains `693448c26cb72002031f58cca467691f09ac61674b2c76353eb71bd44a5b63bb`, byte-for-byte unchanged. The five other artifacts, both run reference files, source/provider pins, backup/CAS/partial rollback and original apply-plan recovery rules are unchanged. The only runtime candidate substitution is the shim after-image.
+
+Pinned production-02: `a9abaf09ce020c45dea5a30d1030a8ae7f939a2f4434cd6ff3aec53cfc9726b6`, 77,792 bytes, `$HOME/.local/share/westlake/t23-egl-build/production-02/candidate.so`. This is not production-01. Nine exact repository-relative production/source/build references are resolved from MAIN; 165 raw-index files and nine original build command rc0 records were independently verified. ANativeWindow_lock/unlockAndPost offsets in the author's exact-artifact receipt are 0x6a00/0x6a14; these are not actual runtime binding observations.
+
+`production02-verification.json` records the source/artifact/receipt checks. `data-only.diff` is the complete T21-to-T23 data delta. `production02-vs-unapproved.diff` shows only the pending-to-final-pin update. Original UNAPPROVED declarations and receipt manifest remain in `history-unapproved/`; original sentinel checks in `checks/` apply to those historical declarations.
+
+`admission.template.json` still has approved_by=null and no fresh boot/holder/process/metadata. The actual unchanged executor, using MAIN refs and this template, passed the production reference checks and refused at `fresh shim metadata required`, before Board import; no device call occurred. See `checks-production02/`. Outer must render its new fresh admission and use the new apply-plan for rollback. No runtime validation, provider binding, visual/audio success or deployment authorization is asserted by this packet.
+
+Root's extra physical/private libhwui a11c and actual surface8f readbacks remain separate outer evidence. The executor hard provider set is not expanded. Existing 1800-second total/600-second restoration reserve remains unchanged. Candidate file is not copied into git; the exact persistent input above must be copied as flat input basename `libwebview_bionic_shim.so` by outer alongside the unchanged five-artifact inputs.
