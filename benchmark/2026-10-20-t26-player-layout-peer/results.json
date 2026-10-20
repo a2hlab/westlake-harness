@@ -1,0 +1,71 @@
+{
+  "status": "EXACT_PLAYER_PLANAR_WRITER_LAYOUT_CONFIRMED_STATIC_ONLY",
+  "player_sha256": "0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471",
+  "writer_elf_pc": "0x1fa3e4",
+  "format_selection": "internal4 -> Android YV12 0x32315659 at configure0x1f8548/1f854c/1f86a8/1f86ac/1f86b8; drawPicture0x1fa198/1fa1d4 -> helper1fa3e4",
+  "definitions": {
+    "B": "lock buffer bits (+16)",
+    "YS": "lock buffer stride (+8), not computed from requested W by writer",
+    "BH": "lock buffer height (+4)",
+    "SW_SH": "source dimensions getters15/16"
+  },
+  "positive_nonoverflow_layout": {
+    "Y": "B",
+    "CS": "alignup(floor(YS/2),16)",
+    "CH": "ceil(BH/2)",
+    "V": "B + YS*BH",
+    "U": "V + CS*CH"
+  },
+  "pc": {
+    "YS": "1fa5f8/1fa608 destination row advance; 1fa630 loads BH/YS",
+    "CS": "1fa640/1fa64c signed division correction;1fa668 shift;1fa674 +15;1fa68c &~15",
+    "CH": "1fa644/1fa650/1fa654/1fa65c/1fa66c => (BH+1)/2 for positive BH",
+    "planes": "1fa6d8/1fa6dc/1fa6e8 V;1fa6ec/1fa6f0 U",
+    "copy": "source267 -> U and source268 -> V at1fa86c-1fa894; source chroma width ceil(SW/2)1fa69c-1fa6b8; no-crop rows=min(ceil(BH/2),ceil(SH/2))1fa670-1fa690"
+  },
+  "draft_compatibility": "If adapter returns YS=alignup(W,16), its CS=alignup(ceil(W/2),16) equals player alignup(floor(YS/2),16) for positive nonoverflow W. CH is ceil, not floor. This does not establish general odd-size allocation/crop/conversion correctness. Even-only admission is sufficient for observed 576x1024 and1920x1080.",
+  "limits": [
+    "No device or new REA queries",
+    "Existing full drawPicture REA + bounded exact local LLVM helper disassembly",
+    "1fa3e4 fallback/direct CPU writer examined; optimized1faf3c/1c7114 path not separately analyzed",
+    "Earlier exploratory writer.stdout is format19 helper1fb09c, not YV12; yv12-writer.stdout is generic1fa980 despite its filename, neither used for this conclusion"
+  ],
+  "sources": [
+    {
+      "path": "$HOME/.local/share/westlake/t25-player-lock-consumer/drawPicture.pseudocode.txt",
+      "sha256": "9f711b3caaaf487574ba3a41f05283514918377c9019cdf63ced4b7c9014f0be"
+    },
+    {
+      "path": "$HOME/.local/share/westlake/t25-player-lock-consumer/drawPicture.llvm.stdout",
+      "sha256": "5d90d100cc4989af1c9f53c2672356ef48190a47c5d6e117434161505b2cb6e5"
+    },
+    {
+      "path": "$HOME/.local/share/westlake/t25-player-lock-consumer/configure.stdout",
+      "sha256": "4f355860e4785b792be84a8a92e33ff98ffe73b7495ab819d94a517c2a70cb85"
+    },
+    {
+      "path": "$HOME/.local/share/westlake/t26-yv12-writer-peer/planar-writer.stdout",
+      "sha256": "4a15dad44f3133e116c2e433ba44048c2a91eab621cb863bded5eb93e3d5f8a8"
+    }
+  ],
+  "original_commands": [
+    {
+      "path": "$HOME/.local/share/westlake/t26-yv12-writer-peer/planar-writer.argv.json",
+      "sha256": "c8bcf78d901d915d625e3ed95b6c970406408586236ae3c0f95e6ad894a116b9"
+    },
+    {
+      "path": "$HOME/.local/share/westlake/t26-yv12-writer-peer/planar-writer.stdout",
+      "sha256": "4a15dad44f3133e116c2e433ba44048c2a91eab621cb863bded5eb93e3d5f8a8"
+    },
+    {
+      "path": "$HOME/.local/share/westlake/t26-yv12-writer-peer/planar-writer.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "$HOME/.local/share/westlake/t26-yv12-writer-peer/planar-writer.rc",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    }
+  ],
+  "rc": 0,
+  "evidence_method": "Reused existing full drawPicture REA; no new REA invocation. Additional bounded local LLVM disassembly of exact pinned ELF helper."
+}
