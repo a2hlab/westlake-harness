@@ -969,3 +969,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 T30：R14与R15须一起清本次无资源失败；R15须在重获mutex后、自身写入前确认原reservation未受并发污染。真实窗两次40601000均retained0/owner release1/1/1，全屏往返及第二片有内容进展、第一片用户确认声音；同失败对象后续Q/F未直证、首错根因unknown，暖图标返回非崩溃重启。候选已回滚，不能称永久封板；恢复六态/518+26/power后1828.5秒解锁（超28.5秒）、末图锁屏。证据 benchmark/2026-10-20-t30-runtime-peer/ 与 benchmark/2026-10-20-t30-window-archive/。
 
 - 2026-10-20 #91 T31原窗与replay02均未及时签retain；replay02两视觉周期已通过却错过1100停试验/1200签认，1724.974s恢复收窗，不能写成播放失败。后继t4以明确addendum复用实证、提前准备unsigned与peer，实际590.842s签认/608.565s收窗；旧unsigned/unknown不隐改，报告归档后置，恢复10000ms电源后截图与身份核验紧连。证据 benchmark/2026-10-20-t31-evolution-review/（EVO-0160）。
+
+- 2026-10-20 #91 T31宿主页：实际桌面入口为org.westlake.imehost.EntryAbility，旧Index.js开发标题/输入框与首图对应，foreground guardian随后启动Android child并到真实feed；仓库已有空黑页源，但未证明与当前签名HAP等价，也未证明加速。宿主窗口是WL_PARENT_ID前置条件，HAP替换可能变WID，不能套用仅live-parent/WID29的六态恢复。证据 benchmark/2026-10-20-t31-launcher-triage/。
