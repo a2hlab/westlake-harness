@@ -1,0 +1,13 @@
+# T33: exact 61b host-page reuse and root-only helper
+
+The complete installed HAP matches the T32 original (`df385638…`,53303 bytes), including all9 members. The exact signed candidate `b18978b8…` can reuse the existing certificate/profile equality proof. No new build, signing or device call occurred here.
+
+The T32 device parameters cannot be reused. This intake has UID20011206/token537243994, host WID33, a root parent, and original power30000/86400000. The init config names `icon-manual-20261019-r2/boot-entry.sh`. `controls/stdout` contains the actual config/runtime UID and existing bounded WID derivation; `env/stdout` independently confirms WID33. The earlier `tr` failure and two guessed missing runtime paths remain indexed. Correct bridge is `liboh_adapter_bridge.so`; compat is `libopensles_android_compat.so` (absent). These are observations, not future admission identities.
+
+`window_ops.py` derives from the accepted T32 helper. It binds the61b serial, reads the exact intake-derived `reference.json` and `reference-run.sh`, then creates a new locked `fresh-before.json`. Later reads compare against that pinned fresh before state. Run bytes may differ only in the single numeric `export WL_PARENT_ID` line; live final reads require run/WMS/parent environment agreement, fresh PID/birth and physical/private SHA+inode equality. No run, guardian or library is written by this helper. Guardian SHA and five directory identities/labels are checked. The normal guardian may perform its existing WID-only derivation after boot.
+
+Install keeps live identity checks. Rollback records the current HAP first, then checks exact HAP/bundle/data/runtime with `live=False`, so missing host/parent does not prevent reinstalling the original package. An already-original HAP becomes an explicit checked no-op; foreign HAP is rejected. Final post-reboot `read` still requires live identity; missing feed cannot be called full visual recovery. No uninstall or data-clear action exists.
+
+The local10 checks exercise actual extracted parser and dispatch code, including rollback without a host, foreign rejection before send and WID-only comparison. They do not establish transport or device success. Root independently reviews and executes. No new signing or retention decision is generated here.
+
+The full contract remains MAIN `specs/toutiao-launcher-transition/t4-demo61b-host-update.spec.md`; no new framework or public-API claim is introduced. Other apps are not written; root retains its fresh package-list evidence separately. Do not use the old5cd T30 artifact parameters. Exact source and private raw aliases are in `source-index.json`.

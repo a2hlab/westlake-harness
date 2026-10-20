@@ -1,0 +1,60 @@
+# Task Contract: Propagate accepted host page to the 61b demo device
+
+## Intent
+将5cd已接受的无开发控件宿主页同步到用户指定的61b演示机，正常图标自动打开真实头条信息流；以61b自己的当前态为保存和回退依据。
+
+## Must
+- 仅本地准备、源码闭合、构建和复验；HDC/安装/重启/留板操作仅root另行持锁执行，内环零设备调用、不推送。
+- 不改T31留板来源、t1原诊断、旧HAP/旧日志或旧冻结源码；root只读intake是本任务输入，不伪造fresh身份。
+- 不绕过OH宿主窗口，不改变正常图标、EntryAbility生命周期、guardian/spawn策略、运行时库、app数据或签名权限；黑/空背景不等于提速。
+- 公开源码与配方可复现，原始新stdout/stderr/rc持久保存；只有公开上游开发签名材料可用，私有凭据不得入库。
+
+## Decisions
+- 本任务显式扩展project的5cd范围，仅root可操作61b0657200000000000000000324012c；内环继续零设备调用。5cd和5ea不动。
+- 候选沿用T32 b18978b875098bc66f1ee78e471ef64c7899978bf46052502c41801f168e9ff0。先核61b真实HAP、cert/profile、全部成员和启动链；不因同名包就安装。原件不等价时先做差异审查，不照搬5cd身份参数。
+- 当前61b的UID/token、数据目录、运行库、guardian、图标与其他演示app保持本窗前态；不宣称同步视频修复。只允许同签bm install -r -p覆盖，不卸载不清数据。旧HAP及原始操作回执保存到持久目录。
+- 复用T32的最小执行路径，按61b实读参数核对，不重建运行时、不修改guardian。重启仅正常重启；如原启动链按WID派生run.sh，允许该原有字段派生，其余字节保持并记录。
+- root取得新板锁和fresh状态后开窗，1200秒前决定retain或回退，最迟1800秒恢复电源/debug原态、解锁。失败覆盖回本窗原HAP，核身份/运行时与真实feed；缺图则明确恢复未完整。
+- 图标验收以实际早期及最终截图判定：无开发标题和输入框，自动进入真实feed。不以READY或存活替代截图，不承诺秒开，不诊断头条随机崩溃，不再次询问声音。
+- 交件补API观察记录、源码/配方/实际设备关联；不改315历史语义，不推送远端Git。
+
+## Boundaries
+Allowed changes:
+- specs/toutiao-launcher-transition/t4-demo61b-host-update.spec.md
+- benchmark/2026-10-20-t33-demo61b-host/**
+- benchmark/2026-10-19-api-progress-update/**
+- README.md
+- .octos/KNOWLEDGE-DIGEST.md
+- root独占61b同签宿主HAP安装、正常启动验证、恢复及原始持久证据。
+Forbidden:
+- 5cd/5ea设备操作、卸载/清数据、运行库或guardian源码更改、修改历史签认、推送。
+
+## Completion Criteria
+Scenario: 精确61b原包匹配与身份保存
+  Test:
+    Filter: launcher_page_closure
+  Given 61b只读原包和T32签名成员对账一致且旧包持久备份
+  When root持锁进行同签覆盖并读取实际bundle及目录状态
+  Then UID及token和目录身份保存，运行库指纹等于61b本窗前态，其他app不变
+
+Scenario: 一次图标进入真实信息流
+  Test:
+    Filter: launcher_page_closure
+  Given 正常重启且fresh宿主与parent身份和WID链相符
+  When root一次点击真实桌面头条图标并采早期和最终图
+  Then 开发控件消失且最终为真实feed，等待时长如实报告
+
+Scenario: 不匹配或视觉失败回退
+  Test:
+    Filter: launcher_page_negative
+  Given 原包签名不匹配或覆盖后身份漂移或1200秒内视觉未过
+  When root停止实验并执行本窗原包回退
+  Then 未安装则保持原态，已安装则恢复精确原HAP并核原身份和运行时，缺feed不宣称恢复完整
+
+Scenario: 真实有界收窗与可追溯交件
+  Test:
+    Filter: launcher_page_closure
+  Given 原始命令回执与窗口起点存在
+  When root作出retain或回退决定后恢复电源并解锁
+  Then 记录实际时长及判词并关联API表，超时如实保留，原始证据持久保存
+

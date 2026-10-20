@@ -1,0 +1,1 @@
+ACK t33-static-ready: complete original HAP equal,9 member pins match, exact same-signature candidate reusable;61b-specific helper supplied for root review.10 local checks rc0; no device calls/build/push. Core window_ops SHA 1759e0a8b6b573c07a7e01431453471266c2f4d3bc4da7d7f5fdfcb586ebcd46. Original31/32 frozen artifacts unchanged.
