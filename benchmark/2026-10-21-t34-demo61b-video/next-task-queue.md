@@ -12,3 +12,7 @@ First bounded preparation:
 4. Only after preparation, outer selects an available experiment board, verifies current baseline/identity, holds its lock and establishes a bounded rollback window. Keep the 61b demonstration board untouched. Do not transfer historical BoatAttack coordinates, process identities or approvals to this game.
 
 Expected outcome: a scoped compatibility assessment and, if inputs and admission permit, an attempted launch with actual screenshots/logs and explicit limits. No promise of successful installation, login, rendering, gameplay, stability or cross-app API freezing. No new research, download, build or device action has been performed for this queue.
+
+## 2026-10-21 preparation transition
+
+T34 W04 was visually rejected, restored and unlocked; its evidence/API48 delivery was published and read back at `f42df4de62e9ee353e030865679e1b625e1d0072` ([publication](publication-02/results.json)). This closes that attempted window, not the unresolved 61b video acceptance. Bounded Genshin static-intake contract preparation has started. No Genshin device work or package download is authorized by this transition; actual package availability remains unknown.
