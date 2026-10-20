@@ -1,0 +1,59 @@
+spec: task
+name: "Execute bounded T31 video migration on demo61b"
+inherits: project
+satisfies: [REQ-TTVIDEO]
+---
+## 意图
+复用T31已验候选与T33宿主成果，完成61b正常图标、视频播放、全屏返回和重新打开验证；把实际部署与源码构建关联后交外环验收。
+## 已定决策
+- 内环cx-seal在独立worktree执行。先做HDC只读可用性检查，确认61b0657200000000000000000324012c锁空闲；能力不通报blocked原件，不绕过工具权限。5cd只读，5ea零操作。
+- 复用T30/T31已验5个native产物与run派生逻辑，不重编、不改候选源码；先核61b UID/token、guardian ROOT、run、cfg、HAP、runtime/namespace、power、compat是否缺失及现有控制文件。禁止复制5cd UID/WID/power/恢复包。
+- 修改范围仅本板头条私有runtime的精确候选集合及原有run字段派生；宿主b189、其他演示app、共享统一运行时和guardian保留。未知差异先静态审查；不为放行篡改旧门禁。
+- cx-seal先交机器可读差异、操作卡、原件备份与失败退路，经外环和独立peer离线复核后才开窗。窗口实验到1200秒前结束，留600秒恢复，1800秒前恢复power/debug原值并解锁；不等待报告/上传才回退。
+- 视频验收采可见内容进展、全屏及返回、退出后普通图标重开。已有用户有声确认不重复索取、不移植为新61b听觉实证；本板音频日志是软件证据，未经听验不声称新的人工音频通过。截图以实际图像为准。
+- BoatAttack与至少1个本板已知可用普通演示app做正常图标抽查，记录实际截图；不改这些app。retain必须外环看图与实际状态后签approved_by=outer(codex)，内环不得预签。若未及时获签，按已审退路恢复。
+- 收窗后提交源码/构建/实际部署/回滚证据链接及API观察记录，保留315历史语义、45已有观察与8冻结项；同头条跨板不新增公共API冻结。
+## 边界
+### 允许修改
+- specs/demo61b-video-delivery/**
+- benchmark/2026-10-21-t34-demo61b-video/**
+- benchmark/2026-10-19-api-progress-update/**
+- tools/spec-checks/tests/demo61b_video_delivery.rs
+- README.md
+- .octos/KNOWLEDGE-DIGEST.md
+- .octos/OPS-RUNBOOK.md
+- 指定cx-seal独占61b本任务所需只读检查、持锁部署、正常重启、UI验收、失败回滚与收窗。
+### 禁止
+- 未经外环离线采认即写设备、5cd写入、5ea操作、清数据/卸载、运行时源码变更、共享库升级、改旧签认、内环推送、强推。
+## 完成条件
+场景: 本板差异与只读准备
+  测试: demo61b_video_preflight
+  审核: human
+  假设 本板实际回执与T31候选和T33基线可读取
+  当 内环生成逐件SHA和身份差异及回滚清单
+  那么 所有写对象有精确前后像或原缺失断言，未知对象拒绝，数据与共享runtime不在修改集合
+场景: 错对象与部分失败拒绝
+  测试: demo61b_video_negative
+  假设 UID或候选SHA不符或部分替换后失败
+  当 重放既有拒绝与恢复检查
+  那么 未持锁不写且错对象拒绝，部分写入按本窗原备份恢复而不借用5cd备份
+场景: 实际视频和图标验收
+  测试: demo61b_video_evidence
+  审核: human
+  假设 内环在本板新boot实际装载候选且私有指纹吻合
+  当 正常图标开头条并播放视频全屏返回和退出再开
+  那么 真实截图证明feed及视频内容进展，不出现持续切换黑屏，不重复要求用户确认声音
+场景: 演示抽查与有界收窗
+  测试: demo61b_video_evidence
+  审核: human
+  假设 BoatAttack和普通演示app基线已知且窗口起点存在
+  当 内环抽查并由外环在截止前决定留板或回退
+  那么 记录实际截图与签认时间，恢复本板power/debug并解锁，失败不冒充封板成功
+场景: 源码配方证据交付
+  测试: demo61b_video_preflight
+  审核: human
+  假设 实际执行回执及所有候选原有源码构建记录已保存
+  当 内环提交API观察和交付清单
+  那么 每个候选有源路径配方SHA和实际设备证据，历史记录保持且不新增不合格冻结项
+## 排除范围
+随机崩溃根因修复、全量128APK复测、新API开发、播放性能优化、调度平台重构、重复逐片音频问答。
