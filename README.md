@@ -534,6 +534,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/`** | Offline paired window module, 49 host tests and reproducible build receipts; no production binding or deployment. |
 | **`benchmark/2026-10-20-t23-android-reference/`** | Same-APK Android 16 baseline and actual 20-second different-clip motion/Perfetto reference; no OH acceptance implied. |
 | **`benchmark/2026-10-20-t24-api37-proposal/`** | Proposed observation 37: same-APK Android reference, unchanged canonical/history preimages and original-renderer validation; no API implementation or OH pass. |
+| **`benchmark/2026-10-20-t23-codex-rea-evidence/`** | Exact NativeImage/geometry REA evidence packet and reusable snapshot; private archive remotely verified with 66 member hashes and manifest. |
 | **[T23 EGL native-buffer import candidate](benchmark/2026-10-20-t23-egl-import/)** | **R77 reuse in the existing T20 shim; same-instance AHB/EGL gates, 23 host cases and real PIC/ABI evidence; device playback pending.** |
 | **[Exact765 geometry source closure](benchmark/2026-10-20-t22-geometry-source/)** | **Original source/recipe and unchanged baseline executable-content comparison; narrowly scoped unwrap repair, GPU causality still open.** |
 | **[T21 first live CPU-window pairs](benchmark/2026-10-20-t21-first-live-pair/)** | **Five actual lock/unlock/flush successes, then splash-video NativeImage texture import fatal; pointer/size chain and exact excerpts, video pending.** |

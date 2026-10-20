@@ -1,0 +1,111 @@
+{
+  "notice": "Recorded aliased evidence, not directly runnable argv. Step0 is local archive verification; steps1-4 are remote upload and full readback.",
+  "steps": [
+    {
+      "argv.json": [
+        "python3",
+        "$HOME/.local/share/westlake/t23-codex-rea-package/upload-01/verify_archive.py",
+        "$HOME/.local/share/westlake/t23-codex-rea-package/t23-codex-rea-evidence.tar.gz",
+        "934e425dd25b4c3432d65d0757a60cc87269e56117249c21c4fc0ce71be13631",
+        "6198752",
+        "a38e36ee8a8c878908c1499c55c029a6379956920ad44850376879d4c49dedf1"
+      ],
+      "stdout": "{\"status\": \"ALL_MEMBERS_VERIFIED\", \"archive_sha256\": \"934e425dd25b4c3432d65d0757a60cc87269e56117249c21c4fc0ce71be13631\", \"archive_bytes\": 6198752, \"manifest_sha256\": \"a38e36ee8a8c878908c1499c55c029a6379956920ad44850376879d4c49dedf1\", \"data_members\": 66, \"all_members\": 67}\n",
+      "stderr": "",
+      "rc": "0\n"
+    },
+    {
+      "argv.json": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "hw248",
+        "test ! -e HW248_ARTIFACT_ROOT/t23-codex-rea-evidence-20261020 && umask 077 && mkdir HW248_ARTIFACT_ROOT/t23-codex-rea-evidence-20261020"
+      ],
+      "stdout": "",
+      "stderr": "",
+      "rc": "0\n"
+    },
+    {
+      "argv.json": [
+        "scp",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "$HOME/.local/share/westlake/t23-codex-rea-package/t23-codex-rea-evidence.tar.gz",
+        "hw248:HW248_ARTIFACT_ROOT/t23-codex-rea-evidence-20261020/t23-codex-rea-evidence.tar.gz"
+      ],
+      "stdout": "",
+      "stderr": "",
+      "rc": "0\n"
+    },
+    {
+      "argv.json": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "hw248",
+        "chmod 600 HW248_ARTIFACT_ROOT/t23-codex-rea-evidence-20261020/t23-codex-rea-evidence.tar.gz && sha256sum HW248_ARTIFACT_ROOT/t23-codex-rea-evidence-20261020/t23-codex-rea-evidence.tar.gz && stat -c \"%s %a\" HW248_ARTIFACT_ROOT/t23-codex-rea-evidence-20261020/t23-codex-rea-evidence.tar.gz && stat -c \"%a\" HW248_ARTIFACT_ROOT/t23-codex-rea-evidence-20261020"
+      ],
+      "stdout": "934e425dd25b4c3432d65d0757a60cc87269e56117249c21c4fc0ce71be13631  HW248_ARTIFACT_ROOT/t23-codex-rea-evidence-20261020/t23-codex-rea-evidence.tar.gz\n6198752 600\n700\n",
+      "stderr": "",
+      "rc": "0\n"
+    },
+    {
+      "argv.json": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "hw248",
+        "python3 -c 'import hashlib,json,sys,tarfile\nfrom pathlib import Path\np=Path(sys.argv[1]); expected=sys.argv[2];size=int(sys.argv[3]);mh=sys.argv[4]\nassert p.stat().st_size==size\nassert hashlib.sha256(p.read_bytes()).hexdigest()==expected\nwith tarfile.open(p,\"r:gz\") as t:\n members=t.getmembers();assert len({m.name for m in members})==len(members)\n assert all(m.isfile() and not Path(m.name).is_absolute() and \"..\" not in Path(m.name).parts for m in members)\n raw=t.extractfile(\"MANIFEST.json\").read();assert hashlib.sha256(raw).hexdigest()==mh\n files=json.loads(raw)[\"files\"];assert len(files)==66 and len(members)==67\n assert {m.name for m in members}=={x[\"path\"] for x in files}|{\"MANIFEST.json\"}\n for x in files:\n  b=t.extractfile(x[\"path\"]).read();assert len(b)==x[\"bytes\"] and hashlib.sha256(b).hexdigest()==x[\"sha256\"],x[\"path\"]\nprint(json.dumps({\"status\":\"ALL_MEMBERS_VERIFIED\",\"archive_sha256\":expected,\"archive_bytes\":size,\"manifest_sha256\":mh,\"data_members\":len(files),\"all_members\":len(members)}))\n' HW248_ARTIFACT_ROOT/t23-codex-rea-evidence-20261020/t23-codex-rea-evidence.tar.gz 934e425dd25b4c3432d65d0757a60cc87269e56117249c21c4fc0ce71be13631 6198752 a38e36ee8a8c878908c1499c55c029a6379956920ad44850376879d4c49dedf1"
+      ],
+      "stdout": "{\"status\": \"ALL_MEMBERS_VERIFIED\", \"archive_sha256\": \"934e425dd25b4c3432d65d0757a60cc87269e56117249c21c4fc0ce71be13631\", \"archive_bytes\": 6198752, \"manifest_sha256\": \"a38e36ee8a8c878908c1499c55c029a6379956920ad44850376879d4c49dedf1\", \"data_members\": 66, \"all_members\": 67}\n",
+      "stderr": "",
+      "rc": "0\n"
+    }
+  ],
+  "timing": [
+    {
+      "step": 0,
+      "rc": 0,
+      "status": "completed",
+      "start": 1792469689.038464,
+      "end": 1792469689.12357
+    },
+    {
+      "step": 1,
+      "rc": 0,
+      "status": "completed",
+      "start": 1792469689.1237419,
+      "end": 1792469689.195231
+    },
+    {
+      "step": 2,
+      "rc": 0,
+      "status": "completed",
+      "start": 1792469689.195411,
+      "end": 1792469691.2482839
+    },
+    {
+      "step": 3,
+      "rc": 0,
+      "status": "completed",
+      "start": 1792469691.249501,
+      "end": 1792469691.361515
+    },
+    {
+      "step": 4,
+      "rc": 0,
+      "status": "completed",
+      "start": 1792469691.362748,
+      "end": 1792469691.710597
+    }
+  ]
+}

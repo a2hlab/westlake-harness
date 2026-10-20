@@ -1,0 +1,9 @@
+# Codex NativeImage and geometry evidence packet
+
+REA 6.5.0 / Ghidra 12.1.4 actually analyzed eight focused functions in the 98,160-byte native-image artifact (SHA 74b6ea0d…). The current session initially had no open target and no retained records; the target was opened and those functions queried, then a portable REA snapshot was saved. This was not reuse of a persistent Ghidra project. The separate geometry review reused previously recorded exact765/surface8f REA output and used LLVM/source/log reads; it did not execute a new geometry REA session.
+
+AcquireLatestNativeWindowBuffer and UpdateSurfaceImage are distinct consumer paths. The former returns a buffer and duplicated acquire fence without performing the latter's GL texture update. Geometry 40001000 is an exact surface object-admission rejection before opcode dispatch; actual player geometry relocation winner remains unknown. Neither finding proves the cause of black video. The restored system native-image file matched the analyzed SHA, but a cross-boot file match is not a recorded candidate slot binding.
+
+`archive-index.json` lists every private member hash and the 6.2 MB archive identity. The package includes complete REA raw records, reusable snapshot, exact binary inputs, existing geometry REA records, LLVM evidence, selected-log excerpts and source indexes. Large/raw data stays private because it contains local operational paths. `focused-functions.json` preserves evidence IDs and body extents. `reusable-analysis.json` gives the exact snapshot/profile identity. `upload-plan.json` is a plan only; no upload is claimed.
+
+Ghidra's UpdateEGLImageAndTexture pseudocode erroneously spills past the ELF/Listing function end into AttachContext after a sanitizer abort. Interpret only the verified 1092-byte body (Ghidra 0x1144d8–0x11491b); raw output is preserved without silently editing it. Source analysis and static binary results do not establish runtime execution or playback success.
