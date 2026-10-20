@@ -1,0 +1,48 @@
+diff --git a/pinned-src/shim/derived/provider_adapter.c b/src/provider_adapter.c
+index 4cab11a99d..058f3b1f90 100644
+--- a/pinned-src/shim/derived/provider_adapter.c
++++ b/src/provider_adapter.c
+@@ -22,6 +22,19 @@ static int by_window(struct r15_adapter *a,void *w) {
+  for(int i=0;i<R15_RECORDS;i++)if(a->r[i].phase && a->r[i].window==w)return i;
+  return -1;
+ }
++/* T30: true iff THIS record is still exactly the pristine RESERVED state that request() left before it
++ * dropped the lock for the real provider call -- i.e. no concurrent flush/abort (which reach a RESERVED
++ * record through by_window and deny->failed) polluted it during that unlocked window. Pure read; it only
++ * authorizes clearing this call's OWN idx when the call also proves it took no resource. */
++static int t30_reserved_pristine(const struct r15_record *r,const void *w) {
++ if(r->phase!=RESERVED || (const void *)r->window!=w || r->buffer || r->native || r->uncertain || r->failed)return 0;
++ for(int op=0;op<R15_OPERATIONS;op++){
++  const struct r15_call *c=&r->calls[op];
++  unsigned want_called=(op==R15_REQUEST)?1u:0u;
++  if(c->called!=want_called || c->suppressed || c->raw_valid || c->adapter_error || c->raw_rc)return 0;
++ }
++ return 1;
++}
+ static int by_identity(struct r15_adapter *a,void *v,int native) {
+  int found=-1;
+  for(int i=0;i<R15_RECORDS;i++)if(a->r[i].phase && v && (native?(void *)a->r[i].native:(void *)a->r[i].buffer)==v){if(found>=0)return -1;found=i;}
+@@ -51,9 +64,21 @@ static int request(void *v,void *w,void **out,int *fence) {
+  struct r15_record *r=&a->r[idx];r->phase=RESERVED;r->window=w;r->calls[R15_REQUEST].called++;
+  pthread_mutex_unlock(&a->mu);
+  OHNativeWindowBuffer *b=NULL;int fd=-1;int rc=a->p.request(w,&b,&fd);
+- pthread_mutex_lock(&a->mu);r->buffer=b;raw(r,R15_REQUEST,rc);r->phase=REQUESTED;
++ pthread_mutex_lock(&a->mu);
++ /* T30: capture the recovery pre-condition BEFORE any self-write. If a concurrent flush/abort reached
++  * this RESERVED record (by_window) and marked it failed/suppressed during the unlocked provider call,
++  * it is no longer pristine and recovery is disqualified -- the concurrent evidence is preserved. */
++ int recoverable_eligible=t30_reserved_pristine(r,w);
++ r->buffer=b;raw(r,R15_REQUEST,rc);r->phase=REQUESTED;
+  int bad=collision(a,idx,0);if(rc || !b || fd < -1 || bad){r->uncertain=1;r->failed=1;if(!rc)r->calls[R15_REQUEST].adapter_error=-EPROTO;}
+- *out=b;*fence=fd;int result=rc?rc:(r->uncertain?-EPROTO:0);pthread_mutex_unlock(&a->mu);return result;
++ *out=b;*fence=fd;int result=rc?rc:(r->uncertain?-EPROTO:0);
++ /* T30: clear ONLY this idx record (never by_window to an older one), and only when it was pristine
++  * RESERVED (no concurrent pollution) AND this request provably took no resource (rc!=0, no buffer,
++  * fd==-1, no duplicate-identity collision). A later legitimate request on the same window is then not
++  * permanently blocked at the by_window -EBUSY guard. The original raw rc is already in `result`; any
++  * acquired buffer, a fence (fd!=-1), a collision, or concurrent pollution keeps the record conservative. */
++ if(recoverable_eligible && rc && !b && fd==-1 && !bad)memset(r,0,sizeof(*r));
++ pthread_mutex_unlock(&a->mu);return result;
+ }
+ static int handle(void *v,void *b,struct r14_handle *out) {
+  struct r15_adapter *a=v;memset(out,0,sizeof(*out));pthread_mutex_lock(&a->mu);int i=by_identity(a,b,0);

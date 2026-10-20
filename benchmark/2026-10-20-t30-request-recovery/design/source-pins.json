@@ -1,0 +1,68 @@
+{
+  "task": "T30 resource-free Request-failure recovery (two-TU minimal derivation)",
+  "status": "CANDIDATE_REAL_ROUTE_RECOVERY_PASSED_HOST_ONLY (staged; not final; runtime/device evidence outer-reviewed)",
+  "generated_by": "cc-video",
+  "repo_relative_root": "benchmark/2026-10-20-t30-request-recovery",
+  "production_lane": "swap exactly two objects: r14 (window_module.o) + r15 (provider_adapter.o); all other objects/bridge unchanged",
+  "derived_tus": {
+    "window_module_r14": {
+      "baseline_path": "pinned-src/shim/derived/window_module.c",
+      "baseline_sha256": "87d822d55ef637eddde42daf1e9460ed9c93ab0325f275b655b3d675ddea8a1e",
+      "derived_path": "src/window_module.c",
+      "derived_sha256": "f02a8094103da4f92aa9345c81e29da4b7a767a443fd0580446f5ccbc593157c",
+      "patch": "patch/window_module.r14.patch",
+      "change": "a pure predicate t30_request_resource_free(report,buffer,native,mapped,fd) and, at the fail path, complete(m,idx,&r,recoverable) instead of complete(...,0). On a proven resource-free failure the existing success/free arm releases the reservation (slot FREE, r.retained stays 0), so the existing done: r26_finish(token,0) restores R26 to IDLE and pair.c releases the owner ref once. Any acquired resource / fd!=-1 / mapped / cleanup keeps the original conservative retained+FAILED path. Original raw rc returned unchanged."
+    },
+    "provider_adapter_r15": {
+      "baseline_path": "pinned-src/shim/derived/provider_adapter.c",
+      "baseline_sha256": "5fc32ea58014a43a78d2942ccbe5e79229abef372bb612f8f14a7bfcd8b01617",
+      "derived_path": "src/provider_adapter.c",
+      "derived_sha256": "cffeb51b211cbb361c892f46386091930c468a3ccbef70a7e61d02f393f687f5",
+      "patch": "patch/provider_adapter.r15.patch",
+      "change": "BEFORE any self-write after re-acquiring the lock, capture recoverable_eligible = the record is still the pristine RESERVED state request() left (phase RESERVED, window==w, no buffer/native/uncertain/failed, calls clean: REQUEST.called==1, all else 0) so a concurrent flush/abort that marked it failed during the unlocked provider call disqualifies recovery. Then the original logic runs. memset THIS idx record (never by_window) ONLY when recoverable_eligible AND real callee rc!=0 AND buffer NULL AND fd==-1 AND no duplicate-identity collision. Original raw rc returned in result; any acquired buffer / fence / collision / concurrent pollution keeps the conservative record."
+    }
+  },
+  "poison_layers_closed": [
+    "R14 slot: complete() set slot FAILED unconditionally",
+    "R26 token: r26_finish(token, retained=1) -> R26_FAILED -> next r26_lock_begin -EBUSY(-16)",
+    "R15 request history: failed REQUESTED record blocks next request at by_window -EBUSY (the third, independent layer found by the real fixture)"
+  ],
+  "real_route_validation": {
+    "harness": "../westlake-harness-api-progress-peer/benchmark/2026-10-20-t30-recovery-peer/replay.py (actual test_route pair/geometry + real R14/R15/R26/entry; only OH/provider/owner/sink are doubles)",
+    "baseline": {
+      "expect": "baseline",
+      "first": -5,
+      "second": -16,
+      "request_calls": 1,
+      "refs": 3,
+      "r26_cache_state": "FAILED(4)",
+      "status": "BASELINE_FAILURE_REPRODUCED_CANDIDATE_PENDING"
+    },
+    "recovery": {
+      "expect": "recovery",
+      "window_module": "src/window_module.c",
+      "provider_adapter": "src/provider_adapter.c",
+      "first": -5,
+      "second": 0,
+      "request_calls": 2,
+      "map_calls": 1,
+      "unmap_calls": 1,
+      "flush_calls": 1,
+      "abort_calls": 0,
+      "first_refs": 2,
+      "final_refs": 2,
+      "first_report_retained": 0,
+      "r26_cache_state": "IDLE(2)",
+      "journal": "AGAGDFRAGQRAGQHCMUPR",
+      "status": "CANDIDATE_REAL_ROUTE_RECOVERY_PASSED_HOST_ONLY",
+      "provider_adapter_sha256": "cffeb51b211cbb361c892f46386091930c468a3ccbef70a7e61d02f393f687f5"
+    }
+  },
+  "preserved_unknowns": [
+    "first Q=40601000 root cause remains UNKNOWN (cx owns); recovery does not explain or fix it, only removes the persistent -16 a proven no-resource failure causes afterward",
+    "same OH address != same object (unref rc0 != freed); recovery never infers ownership from the error code",
+    "host-only machine pass != real-device switch recovery; runtime/device frame evidence is outer-reviewed (spec runtime_evidence scenario, human)"
+  ],
+  "receipts": "$HOME/.local/share/westlake/t30-recovery-cc/ (replay baseline + recovery both argv/stdout/stderr/rc + out dirs with results.json/run.stderr)",
+  "concurrency_blocker_fix": "R15 clear is gated on a pristine-RESERVED pre-condition captured before any self-write, so a concurrent illegal flush/abort marking the RESERVED record failed during the unlocked real-provider call is never erased and never triggers a wrongful clear (base5 concurrent re-validation)."
+}

@@ -1,0 +1,37 @@
+diff --git a/pinned-src/shim/derived/window_module.c b/src/window_module.c
+index ba658c129c..811d31bcfd 100644
+--- a/pinned-src/shim/derived/window_module.c
++++ b/src/window_module.c
+@@ -65,6 +65,16 @@ static void observed_step(struct r29_record *d,int stage,int called,int raw,uint
+  d->stage=stage;d->called=called;d->raw_valid=called;d->raw_rc=called?raw:0;
+  d->provider=provider;d->valid&=~R29_PROVIDER;if(provider)d->valid|=R29_PROVIDER;
+ }
++/* T30: a PURE predicate (no side effects, no provider calls). It reports whether this failed Request
++ * provably acquired NO resource, so the reservation can be released instead of conservatively retained.
++ * Strict by contract: the Request ran and failed, no buffer/native, nothing mapped, fd==-1, and none of
++ * handle/convert/map/unmap/flush/abort/close ran. ANY acquired resource, mapped buffer, fd!=-1, or
++ * cleanup step keeps the old conservative retained path. Ownership is never inferred from the error code. */
++static int t30_request_resource_free(const struct r14_report *r,const void *buffer,const void *native,int mapped,int fd) {
++ return r->request_called && r->request_rc && !buffer && !native && !mapped && fd==-1
++        && !r->handle_called && !r->convert_called && !r->map_called
++        && !r->unmap_called && !r->flush_called && !r->abort_called && !r->close_called;
++}
+ int r14_lock(struct r14_module *m,const void *wrapper,struct r14_buffer *out,struct r14_rect *dirty,struct r14_report *report) {
+  struct r26_token token={0};int claimed=0;struct r14_report r={0};int rc=-EINVAL,idx=-1,fd=-1,mapped=0;void *oh=NULL,*buffer=NULL,*native=NULL,*bits=NULL;
+  struct r29_record d={.phase=R29_ENTRY,.call=r29_call_id(),.self=(uintptr_t)r14_lock,.wrapper=(uintptr_t)wrapper};
+@@ -108,8 +118,14 @@ fail:
+  /* Failed Unmap or Flush never permits cancel: backend ownership is unknown. */
+  if(buffer && (!mapped || !r.unmap_rc)){r.abort_called=1;r.abort_rc=o->abort(o->ctx,oh,buffer);}
+  r.primary=rc;
++ /* T30: only a PROVEN resource-free failure releases this reservation (slot FREE, retained stays 0) so a
++  * legitimate later lock is not permanently rejected; every other failure keeps the original conservative
++  * retained/FAILED path. complete(...,1) is the existing success/free arm; r.retained is left 0, so the
++  * existing done: r26_finish(token, r.retained) restores R26 to IDLE and pair.c releases the owner ref once.
++  * The original normalized error (rc) and raw request rc are returned unchanged -- the failure is not hidden. */
++ int recoverable=t30_request_resource_free(&r,buffer,native,mapped,fd);
+  pthread_mutex_lock(&m->mutex);m->slots[idx].buffer=buffer;m->slots[idx].native=native;pthread_mutex_unlock(&m->mutex);
+- complete(m,idx,&r,0);
++ complete(m,idx,&r,recoverable);
+ done:
+  if(rc && claimed)(void)r26_finish(m->extension,token,r.retained);
+  r.primary=rc;if(report)*report=r;
