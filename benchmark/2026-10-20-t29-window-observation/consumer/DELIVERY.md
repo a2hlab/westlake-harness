@@ -1,5 +1,17 @@
 # T29 consumer — CC delivery (METHOD-READY)
 
+## Outer integration addendum
+
+The historical CC delivery below pins logger `ddd684fb`. The current integrated
+logger is `8d8ff860f659379cbb5d6f493fbb169ed36b94c8c1a7390200b890570ae212fb`.
+R29-C04 is closed by the minimal error-quota correction in
+`benchmark/2026-10-20-t29-consumer-budget-fix/`: valid, called ref/unref failures
+receive their independent error quota. The old incorrect test assertion and its
+actual failure are preserved. The corrected fourteen modes and two new budget
+regressions passed an independent outer replay. Both method translation units
+and the header are unchanged. Current source pins are in `design/source-pins.json`;
+the final integrated method replay and production build are still pending.
+
 Independent derivation + hidden logger for the T29 consumer observation. **No REA, no HDC, no device,
 no production build, no deploy.** Scope owned by CC: `consumer/**` + `tools/spec-checks/tests/
 toutiao_t29_consumer.rs`. The pinned originals are read-only; the real on-board/method comparison is

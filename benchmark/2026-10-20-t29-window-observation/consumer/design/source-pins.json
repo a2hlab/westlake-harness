@@ -1,6 +1,6 @@
 {
   "task": "T29 consumer call logging (CC derivation + hidden logger)",
-  "status": "METHOD-READY: four sources stable; base5 40-method + 40-process PASS vs consumer/derived (outer-confirmed). FINAL pending logger fix R29-C04 (Codex, see known_issues); CC four sources + test frozen",
+  "status": "INTEGRATED_SOURCE_REVIEWED_PENDING_FINAL_METHOD_REPLAY",
   "generated_by": "cc-video",
   "repo_relative_root": "benchmark/2026-10-20-t29-window-observation/consumer",
   "baseline_pins": {
@@ -28,7 +28,7 @@
     },
     "logger_impl": {
       "path": "logger/observe29c.c",
-      "sha256": "ddd684fb6ee75b3f32634a6f730ccf07e35c0e48dff7cff7956909f440e46664"
+      "sha256": "8d8ff860f659379cbb5d6f493fbb169ed36b94c8c1a7390200b890570ae212fb"
     },
     "derived_surface_texture": {
       "path": "derived/oh_surface_texture_jni.cpp",
@@ -62,7 +62,20 @@
     "errno_neutral": true,
     "provider_called_once": true,
     "zero_extra_ref_field_write_or_destroy": true,
-    "budget_per_dso": {"identities": 16, "epochs": 8, "phases": 6, "success_per_phase": 2, "error_per_phase": 2, "normal": 3072, "reserved_invalid_overflow": 30, "first_limit": 1, "final_exhaustion": 1, "max_records": 3104, "max_bytes": 2383872, "max_record_bytes": 768},
+    "budget_per_dso": {
+      "identities": 16,
+      "epochs": 8,
+      "phases": 6,
+      "success_per_phase": 2,
+      "error_per_phase": 2,
+      "normal": 3072,
+      "reserved_invalid_overflow": 30,
+      "first_limit": 1,
+      "final_exhaustion": 1,
+      "max_records": 3104,
+      "max_bytes": 2383872,
+      "max_record_bytes": 768
+    },
     "sink": "private CLOEXEC dup of fd2, verified S_IFREG with saved dev/ino re-checked before every eligible write; a pipe/socket/identity-drift disables observation (coverage UNKNOWN), never falls back; one write per record, no retry, short/failed write -> loss + disable; SIGPIPE disposition unchanged"
   },
   "method_comparison": {
@@ -76,7 +89,7 @@
       "--out": "<new durable dir>"
     },
     "coverage": "40 per-case independent-process checks (27 consumer + 13 producer): OH identity, self, old->new correlation, ref(-29)/unref(-31) double rc; originals baseline preserved",
-    "status": "base5 40 actual-method behaviors + 40 independent-process diagnostics PASS against consumer/derived (outer-confirmed 2026-10-20). In THIS tree the Rust selector keeps _calls/_invalid/_producer NOT_YET_VERIFIED (fixture not in this tree); external PASS recorded, not impersonated by a local green"
+    "status": "Original two TUs unchanged and 40+40 method-ready PASS. Final logger integration replay pending."
   },
   "known_issues": {
     "R29-C04": {
@@ -85,12 +98,20 @@
       "derived_tus_affected": false,
       "derived_note": "the derived TUs already record independent ref_rc/unref_rc with rc_valid=1; once the classification includes a non-zero valid ref/unref rc, those records land in the error lane correctly -- no derived change needed",
       "test_caveat": "test/test_observe29c.c refunref mode asserts the PRE-FIX behavior (non-zero ref_rc does NOT flip the lane); the 14-mode PASS therefore does NOT represent the final/correct error budget for ref/unref",
-      "ownership": "Codex derives the minimal failure-classification fix (+ real negative cases) from observe29c.c ddd684fb in its own tree and delivers the official replacement logger + test; CC keeps the four sources and test unchanged; root selects/unifies the single FINAL logger"
+      "ownership": "Codex derives the minimal failure-classification fix (+ real negative cases) from observe29c.c ddd684fb in its own tree and delivers the official replacement logger + test; CC keeps the four sources and test unchanged; root selects/unifies the single FINAL logger",
+      "status": "CLOSED_HOST_ONLY",
+      "resolution": "Valid called nonzero ref/unref results now select independent diagnostic error quota. Original negative evidence and old incorrect test assertion retained in budget-fix package; corrected 14 modes plus 2 budget regressions independently replayed."
     }
   },
   "local_checks": {
     "runner": "tools/spec-checks/tests/toutiao_t29_consumer.rs -> consumer/tests/check.py",
-    "logger_host_test": "consumer/test/test_observe29c.c (14 modes PASS; cite only for sink/concurrency/budget-shape, NOT ref/unref error classification -- see known_issues.R29-C04)",
+    "logger_host_test": "Corrected 14 modes plus 2 ref/unref error-budget regressions PASS; see budget-fix/results.json. Historical CC receipts remain pre-fix.",
     "pins": "derived baseline == pinned originals (verified)"
+  },
+  "integration": {
+    "owner": "outer(codex)",
+    "previous_method_ready_logger_sha256": "ddd684fb6ee75b3f32634a6f730ccf07e35c0e48dff7cff7956909f440e46664",
+    "budget_fix": "benchmark/2026-10-20-t29-consumer-budget-fix/results.json",
+    "scope": "HOST_ONLY; no production or runtime acceptance"
   }
 }
