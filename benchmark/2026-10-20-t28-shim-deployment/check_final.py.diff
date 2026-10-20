@@ -1,0 +1,49 @@
+--- T26/check_final.py
++++ T28/check_final.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Check only T26 data and pre-Board refusals; no transaction or device replay."""
++"""Check only T28 data and pre-Board refusals; no transaction or device replay."""
+ import argparse
+ import hashlib
+ import json
+@@ -31,7 +31,7 @@
+     for row in load(P / "unchanged-pins.json"):
+         assert sha(P / row["file"]) == row["sha256"]
+         assert (P / row["file"]).read_bytes() == resolve(row["donor"], row["sha256"]).read_bytes()
+-    pending = load(P / "history-pending/parameters.json")
++    pending = load(P / "donor-t26-parameters.json")
+     params = load(P / "parameters.json")
+     assert params["artifacts"][:5] == pending["artifacts"][:5]
+     ad = load(P / "admission.template.json")
+@@ -56,9 +56,9 @@
+     slots = load(P / "three-slot-admission.json")
+     assert slots["candidate_sha256"] == candidate["after_sha256"]
+     assert [(x["symbol"], x["player_slot"], x["candidate_export_offset"]) for x in slots["slots"]] == [
+-        ("ANativeWindow_setBuffersGeometry", "0x472048", "0xe3c0"),
+-        ("ANativeWindow_lock", "0x472490", "0x6ec8"),
+-        ("ANativeWindow_unlockAndPost", "0x472760", "0x6edc")]
++        ("ANativeWindow_setBuffersGeometry", "0x472048", "0xe3b0"),
++        ("ANativeWindow_lock", "0x472490", "0x6ec0"),
++        ("ANativeWindow_unlockAndPost", "0x472760", "0x6ed4")]
+     assert all(x["actual_slot_value"] is None and x["matched"] is False for x in slots["slots"])
+     view = a.out / "receipt-view"
+     for record in (load(P / "bridge-candidate.json"), candidate):
+@@ -68,7 +68,7 @@
+             dest = view / ref["path"]
+             dest.parent.mkdir(parents=True, exist_ok=True)
+             dest.write_bytes(src.read_bytes())
+-    manifest_ref = next(ref for ref in candidate["production_refs"] if ref["path"].endswith("/production-landing-manifest.json"))
++    manifest_ref = next(ref for ref in candidate["production_refs"] if ref["path"].endswith("/manifest.json"))
+     public_manifest = load(resolve(manifest_ref["path"], manifest_ref["sha256"]))
+     for row in public_manifest:
+         file = resolve(row["path"], row["sha256"])
+@@ -79,7 +79,7 @@
+             argv = [sys.executable, str(P / "executor.py"), mode]
+             if execute:
+                 argv += ["--execute", "--boot", "OFFLINE_SENTINEL", "--parent", "1",
+-                         "--birth", "1", "--hdc", "/NONEXISTENT_T26_NO_DEVICE",
++                         "--birth", "1", "--hdc", "/NONEXISTENT_T28_NO_DEVICE",
+                          "--holder", "OFFLINE_SENTINEL", "--out", str(a.out.resolve() / mode),
+                          "--repo", str(view.resolve()), "--inputs", str(a.out.resolve()),
+                          "--admission", str(P / "admission.template.json"), "--start", "1"]
