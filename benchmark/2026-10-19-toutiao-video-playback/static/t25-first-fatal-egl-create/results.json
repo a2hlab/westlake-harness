@@ -1,0 +1,31 @@
+{
+  "task": "T25 live first-fatal read-out (read-only; no REA by CC; no board; no build; no push)",
+  "hdc_executor": "root (rolled back)",
+  "evidence": {
+    "path": "~/.local/share/westlake/toutiao-resume-20261020/t25-5cd-window-01/candidate-log-7777/selected.raw",
+    "sha256": "f1e4330f1b75c1e8d5413cce28e14c1e8f12dee09c2d7633deb3002f8b56ac31",
+    "bytes": 12642788, "lines": 80451,
+    "codex_public_doc": "~/.local/share/westlake/t25-egl-contract/public/results.json (STATIC_CONTRACT_COMPATIBLE_DRIVER_FAILURE_REASON_UNKNOWN)"
+  },
+  "log_shows": {
+    "geometry_adapter": "L80056 R25-BIND HandleOpt=0x7fa6a28c10 (=surface 0x7fa69c0000 + 0x68c10); L80057/159/247/261 R25-GEOMETRY wh=576x1024 fmt=842094169(YV12) result=0 x4 -- API calls rc0; 40001000 gatekeeper gone",
+    "lock_flush": "T20 lock/unlockAndPost x3 rc0 -- API success only; pixels NOT proven",
+    "first_fatal": "L80181 R23 eglCreateImageKHR returned NULL (selected=0 display-matched Mali) -> L80183 skia Invalid GrBackendTexture 576x1024 protected0 -> SIGABRT"
+  },
+  "egl_params": {
+    "match": "context=0, target 0x3140->0x34e1, attrs=[0x30d2,1,0x3038] -- HWUI 0x5dc1bc == OH native_image 0x14ddc == r23 (Codex)",
+    "scope": "ruling out these 3 surface differences does NOT establish why create returned NULL",
+    "egl_error_code": "UNKNOWN -- no eglGetError output in log (HWUI eglGetError@0x5dc318->SkDebugf sink not captured here; searched same-thread L80160-90 + whole-file)",
+    "provider_base": "only [WL-R23-BIND] extension= line is the fence (same base 0x7fa11c0000); no create/destroy fallback line -> create/destroy via direct dlsym on that Mali base; selected=0 = display-matched impl, single attempt is expected (a working design also uses only the display's impl), NOT a divergence; exact create address not independently logged",
+    "buffer": "request = YV12 mapped to OH 11; actual OH buffer descriptor (format/stride/usage) UNKNOWN -- not logged; do NOT assume the buffer is YV12-laid-out or RGB-tagged"
+  },
+  "two_findings": {
+    "T1_layout_contract_CONFIRMED": "Codex REA 3 fns, separate from EGL NULL: player writes expectedFormat=YV12 to this+0x1d8 (0x1f86b8), requests geometry YV12 (0x1f8990); drawPicture geometry-success branch (0x1f9fd8) only clear/reset and does NOT update expectedFormat; successful R14 returned-format set excludes YV12. So WHILE the player stays in YV12 mode, returned!=expected and it re-enters the changed->clear->unlockAndPost->geometry branch (0x1f977c; this window's 3 entries match). UNDER that clear condition the pixels are blank, not decoded video -- not an unconditional per-frame claim.",
+    "T2_egl_null_OPEN": "eglCreateImageKHR NULL for the 576x1024 buffer; buffer descriptor and exact EGL error uncaptured; tied-to-YV12/OH11 vs independent import limit is undecided; keep separate from T1"
+  },
+  "next_cc_readonly": {
+    "T26_cx_goal": "hand the player a YV12 scratch buffer (meets its YV12 expectation) and convert YV12->real RGBX on unlock for the surface -- NOT 'make the window return a format R14 reports'",
+    "cc_will_review": "T26 spec adversarially (lifetime, odd/even dims/stride/color, references, preserved RGB behavior) ONCE delivered and the draft is consistent",
+    "do_not": "change EGL target/context/attrs (match OH path); read geometry/lock rc0 as playback"
+  }
+}
