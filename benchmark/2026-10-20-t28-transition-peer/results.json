@@ -1,0 +1,29 @@
+{
+  "task": "T28 transition black-ROI adversarial read-out (read-only; no REA/HDC/device/T28-edit/rebuild)",
+  "evidence": {
+    "path": "~/.local/share/westlake/toutiao-resume-20261020/t28-5cd-window-01/candidate-log-7636-video/selected.raw",
+    "sha256": "e2b0c32f14e7e910bb2b13296dc92b37d990f395ae2f03769bf08d3835c17100",
+    "bytes": 48685186,
+    "lines": 554390,
+    "pid": 7636
+  },
+  "defect": "first video (dynamic/pause/resume/audio) PASS; after ONE fullscreen teaching mask, return-to-feed shows a persistent BLACK video ROI, child alive",
+  "timeline": {
+    "fullscreen_video_works": "oh=0x7f8b853970 wrapper=0x7f8b689910; R25-GEOMETRY YV12 result=0 (L67858/68218); T27 fmt=12 OH12/RGBA stride=1920 usage=9 (L68007+); R20-PAIR rc0 L68009-70023; R23-EGL L68114+",
+    "return_to_feed_new_node": "RSNODE TikTokActivity GetSurface=0x7e96461f50 (L428434); WSA getSurfaceNodeId/nativeShowWindow re-attach L428563-429739",
+    "producer_migrates_oh": "R25-GEOMETRY wrapper=0x7f89e933e0 oh=0x7d10194650 (L429804) -- post-mask producer targets a NEW oh, not 0x7f8b853970",
+    "address_reuse": "SAME-ADDRESS observed: TEXTUREVIEW surfaceTexture=0x7eee190dbc window=0x7f8b853970 (L430040) and 0x7eee1906ac window=0x7f8b853970 (L441058) -- distinct SurfaceTexture objects naming the SAME window ptr; ANWFS #15 mNativeObject=0x7f8b853970 (L454063). Proves only address identity, NOT free/realloc. Could be (a) one LIVE OH NativeWindow shared by multiple SurfaceTextures, (b) free-then-realloc same address, or (c) coincidence; needs destroy/free + object-generation evidence (absent in this log)."
+  },
+  "hypotheses": {
+    "H1_producer_vs_consumer_different_oh": "STRONGEST: post-mask producer geometry targets oh=0x7d10194650 while the feed re-created a SurfaceTexture naming the same-address fullscreen window 0x7f8b853970; black ROI's consumer and producer may be bound to DIFFERENT oh -> ROI samples an unfilled surface -> black. CONTINGENT (unproven): if 0x7f8b853970 was truly freed+realloced (case b), it would imply T26/R20 'prevent address reuse via owner ref' did not hold across the teardown -- hypothesis pending destroy/free+generation. Falsify: capture producer-filled oh vs display-node(TikTokActivity 0x7e96461f50)-sampled oh for the feed ROI -- one oh or two distinct.",
+    "H2_orphaned_detached_surfacetexture": "feed SurfaceTexture at reused 0x7f8b853970 is detached=1 tex=0 and may never be re-attached/updated under the new RSNODE 0x7e96461f50 -> samples black. Falsify: compare attach/update seq of first (working) vs post-mask reused-address SurfaceTexture under their RSNODEs."
+  },
+  "not_supported": {
+    "producer_stopped_from_marker_absence": "FORBIDDEN as a conclusion: T27 256-budget exhausted during the EARLY first-video/fullscreen phase (print-cap L75980; last R20-PAIR L70023 -- both early, NOT 'at boot'). After that the log CANNOT exclude other buffer formats, later producer activity, or subsequent failures (coverage gap, not evidence). R23-EGL destroy L441056 shows import continues. Which oh the black ROI samples is UNCAPTURED.",
+    "geometry_or_format": "geometry SUCCEEDED in the captured window (4x YV12 rc0, buffer fmt=12 Mali-accepted); this does NOT assert geometry/format is excluded as a contributor, nor that no later format/failure occurred (coverage gap). Transition lifecycle / window-identity is a LEAD HYPOTHESIS, not an established cause.",
+    "allocation_reuse": "NOT proven -- only same-address observed; free/realloc requires destroy/free + object-generation evidence absent here"
+  },
+  "next_minimal_observation": "Raise/reset the T27 observer cap or scope a transition-window observe so the post-mask producer-filled oh and the TikTokActivity(0x7e96461f50) display-sampled oh are both captured for the feed video ROI; two distinct oh (0x7d10194650 vs reused 0x7f8b853970) confirms H1. Read-only; no device change implied by this report.",
+  "scope": "read-only on SHA-pinned T28 log; no REA/HDC/device, no T28 edit, no rebuild",
+  "static_review_allowed": "read-only review of T28 source owner retain/release + SurfaceTexture<->nativeWindow sharing semantics may continue to narrow (a)/(b)/(c); without a destroy/free+generation signal, 'reuse' stays a hypothesis"
+}
