@@ -1,0 +1,39 @@
+--- t21/read_slots.py
++++ t29/read_slots.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Four fixed T21 slots, 5cd only. Default preview; no ptrace or memory writes."""
++"""Five fixed T29 slots, 5cd only. Default preview; no ptrace or memory writes."""
+ import argparse,datetime,hashlib,importlib.util,json,re,shlex,sys,time,uuid
+ from pathlib import Path
+ HERE=Path(__file__).resolve().parent
+@@ -8,10 +8,10 @@
+ RT='/data/app/el2/100/base/org.westlake.imehost/files/a2hlab-source-c91d26bfb4db4fd5a002287011c4916d'
+ MODULES={
+  'player':('/data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so','0b4d95c5f9d96826a95ede998df20be037299eaf6fbfcd1cd2afa39793ba9471'),
+- 'bridge':('/data/local/tmp/asx/liboh_adapter_bridge.so','dca530eb4b1b53e5dd0ecc41c36953f7463609c5b70bbdf67a49dc3cae17f9d9'),
+- 'shim':('/data/local/tmp/asx/webview-t-lib/libwebview_bionic_shim.so','5cc23582d8cd8f28b24f89dc9bcf439de2177c0be33bb4783dd1baad3ab32eca'),
++ 'bridge':('/data/local/tmp/asx/liboh_adapter_bridge.so','b0e5602a97133ebb1dca12972a8931a86528322685a211bb1a7a0a2185fefbd4'),
++ 'shim':('/data/local/tmp/asx/webview-t-lib/libwebview_bionic_shim.so','9f3cecdeec89bd7aaa09a2d71a34f24bdc59ce41059a551144cef682526d3087'),
+  'surface':('/system/lib64/chipset-sdk-sp/libsurface.z.so','8f1879f82a307d3a95555067575132918a05244fbdeee1c2f2db37834a58f4a3')}
+-SLOTS=[('player_lock','player',0x472490,'shim',0x6430),('player_unlock','player',0x472760,'shim',0x6444),('owner_reference','bridge',0x1740a0,'surface',0x66d78),('owner_unreference','bridge',0x173fc8,'surface',0x66ea4)]
++SLOTS=[('player_lock','player',0x472490,'shim',0x72c8),('player_unlock','player',0x472760,'shim',0x72dc),('owner_reference','bridge',0x175520,'surface',0x66d78),('owner_unreference','bridge',0x175448,'surface',0x66ea4),('player_geometry','player',0x472048,'shim',0xf488)]
+ def need(v,s):
+  if not v:raise ValueError(s)
+ def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+@@ -84,13 +84,13 @@
+   rows,before=capture('before');bb={role:biases(role,rows,getattr(a,role+'_elf'),donor) for role in MODULES};result.update(files_before=before,biases={k:list(map(hex,v)) for k,v in bb.items()});save()
+   for name,owner,offset,target,expected in SLOTS:
+    address=bb[owner][0]+offset;need(any(x['path']==MODULES[owner][0] and x['raw'].split()[1].startswith('r') and x['lo']<=address and address+8<=x['hi'] for x in rows),'slot outside readable exact owner')
+-   token='T21_'+uuid.uuid4().hex.upper();text=read(r.word_command(a.child,address,token));(a.out/f'{name}.txt').write_text(text);value=r.parse_word(text,token)
++   token='T29_'+uuid.uuid4().hex.upper();text=read(r.word_command(a.child,address,token));(a.out/f'{name}.txt').write_text(text);value=r.parse_word(text,token)
+    matches=[base for base in bb[target] if value==base+expected and any(x['path']==MODULES[target][0] and 'x' in x['raw'].split()[1] and x['lo']<=value<x['hi'] for x in rows)]
+    result['reads'].append({'label':name,'address':hex(address),'value':hex(value),'matching_target_bases':list(map(hex,matches)),'match':len(matches)==1});save()
+   after,files_after=capture('after');need(before==files_after,'file identity drift')
+   for path,_ in MODULES.values():need([x for x in rows if x['path']==path]==[x for x in after if x['path']==path],'module mappings drift')
+   result['files_after']=files_after;read('true');need(result['reads'][2]['matching_target_bases']==result['reads'][3]['matching_target_bases'],'owner reference targets cross instances')
+-  result['status']='FOUR_SLOTS_MATCH' if all(x['match'] for x in result['reads']) else 'FOUR_SLOTS_MISMATCH';save()
++  result['status']='FIVE_SLOTS_MATCH' if all(x['match'] for x in result['reads']) else 'FIVE_SLOTS_MISMATCH';save()
+  except Exception as e:result['error']=str(e);save();raise
+  print(json.dumps({'status':result['status'],'reads':result['reads'],'memory_writes':0}))
+ if __name__=='__main__':main()
