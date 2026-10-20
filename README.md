@@ -544,6 +544,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-20-t26-mali-rea-evidence/`** | Current-restored Mali two-function REA format-gate evidence and verified private archive; historical T25 format/binding and import success remain unknown. |
 | **`benchmark/2026-10-20-t26-shim-deployment/`** | Pending T26 + T27 single-shim deployment data; unchanged T25 six-state executor, no production candidate or admission. |
 | **`benchmark/2026-10-20-t26-capacity-review/`** | R26-001 IDLE-cache ninth-RGB-lock host regression, original peer files and verified private archive; no device or final-production claim. |
+| **`benchmark/2026-10-20-t26-shim-deployment/`** | T26 + T27 production-02 single-shim data, unchanged six-state executor, exact production/export pins and fresh-admission refusal; original pending preserved. |
 | **[T23 EGL native-buffer import candidate](benchmark/2026-10-20-t23-egl-import/)** | **R77 reuse in the existing T20 shim; same-instance AHB/EGL gates, 23 host cases and real PIC/ABI evidence; device playback pending.** |
 | **[Exact765 geometry source closure](benchmark/2026-10-20-t22-geometry-source/)** | **Original source/recipe and unchanged baseline executable-content comparison; narrowly scoped unwrap repair, GPU causality still open.** |
 | **[T21 first live CPU-window pairs](benchmark/2026-10-20-t21-first-live-pair/)** | **Five actual lock/unlock/flush successes, then splash-video NativeImage texture import fatal; pointer/size chain and exact excerpts, video pending.** |
