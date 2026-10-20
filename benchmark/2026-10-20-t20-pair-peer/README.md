@@ -1,0 +1,7 @@
+# T20 paired-entry narrow peer review
+
+The first pair accepted an unrelated library solely because its basename was `libttmplayer.so`. The actual C fixture reproduced that mistake. Reviewed pair `61005354…` now requires the exact player path and one module base. Its provider table is anchored to the exact owner's two resolved GOT slots, and all seven provider functions must belong to that same module base; equal artifact hashes do not establish instance equality.
+
+Ten host cases passed with actual pair/entry/R14/R15 code. They cover successful pairing and duplicate-reference conservation, failed-slot retention, mixed provider bases, split owner GOT bases, slot/resolver drift, unreadable slot, wrong owner offsets, unrelated caller, same-basename caller and second player base. Two non-player lock calls retain the original single diagnostic and errno19. The fixture explicitly substitutes loader metadata/OH methods and, after the real binding succeeds, callable owner reference counters. This is not an OH execution or playback result.
+
+Run `python3 replay_pair.py --source-root <main-repo> --candidate-root <author-repo> --out <new-persistent-directory>`. The test requires the reviewed pair SHA. `results.json` records exact source pins and ELF offsets; `private-raw-index.json` binds original compile and execution receipts. Production remains conditional on a valid same-owner ANativeWindow and the outer's actual identity/module admission, paired binding and visual verification.
