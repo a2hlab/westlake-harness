@@ -550,6 +550,8 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-20-t26-window-archive/`** | Closed T26 complete window archive: two stderr/hilog captures, snapshots, helpers and original verdict; 13,043 private members verified. |
 | **`benchmark/2026-10-20-t28-production-archive/`** | T28 incremental production archive: 156 exact inputs with explicit verified T26 base reuse, 589 new private members; no device outcome claim. |
 | **`benchmark/2026-10-20-t28-window-archive/`** | Closed T28 complete window archive and exact T26 before-snapshot reference; private full logs and original verdict preserved. |
+| **`benchmark/2026-10-20-t28-window-evidence/`** | T28 closed-window visual/audio evidence and restoration: two scoped clip cycles, separate transition-black failure, RGBX runtime uncovered; not sealed. |
+| **`benchmark/2026-10-20-t28-bridge-surface-static/`** | Exact dca530 bridge SurfaceTexture/TextureView call sites and observation gaps; no runtime JNI/PLT winner proof or black-screen cause claim. |
 | **`benchmark/2026-10-20-t28-bridge-surface-archive/`** | Exact bridge SurfaceTexture/TextureView static packet: original public evidence plus verified private archive. |
 | **[T26 YV12 implementation and build](benchmark/2026-10-20-t26-yv12/README.md)** | Bounded YV12 scratch to OH12/RGBA conversion, actual CPU/EGL glue, host and combined production build commands, and the exact `fc58cec5` source/artifact/archive chain. |
 | **[T27 buffer observer](benchmark/2026-10-20-t27-buffer-observation/README.md)** | Bounded CPU/import metadata and single-call EGL observation; SDK ABI, same-provider glue and links to the joint build. Host/production evidence is separate from playback acceptance. |
