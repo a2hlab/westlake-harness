@@ -1,0 +1,70 @@
+{
+  "task": "T23 live read-out (read-only, no board, no REA by CC, no build, no push)",
+  "hdc_executor": "root",
+  "authoritative_evidence": {
+    "path": "~/.local/share/westlake/toutiao-resume-20261020/t23-5cd-window-01/candidate-prefix-file-02/selected.raw",
+    "sha256": "03f0adb2799f511d41d5178bbdb7ad83b2cf3cfd3e1c74c958361a6761d3fa56",
+    "bytes": 52899334, "lines": 597357,
+    "status": "FIXED_PREFIX_COMPLETE", "immutability_not_proven": true,
+    "boot": "af001b38-659a-4f1f-9dd7-b85960587a2c",
+    "pid": 7655, "parent": 5806, "birth": 11575,
+    "covers": "center-click + black-video phase",
+    "scope_note": "all 'no fatal' counts are scoped to this 52.9MB selected prefix only, not absolute"
+  },
+  "proven_from_prefix": {
+    "fatal_in_prefix": 0, "SIGABRT_in_prefix": 0, "AutoBackendTextureRelease": 0, "Invalid_GrBackendTexture": 0,
+    "WL_R23_BIND": 5,
+    "WL_R23_EGL_events": 27,
+    "WL_R23_EGL_breakdown": "12 client + 12 image + 3 destroy (peer independent) = 12 imports, NOT 27 imports",
+    "R23_image_non_null": true, "R23_create_failed": 0, "R23_refused": 0, "R23_implementation_selected": "0 (Mali)",
+    "WL_R20_PAIR": 42,
+    "surfacetexture_frame_available_max_count": 5640,
+    "frame_available_meaning": "notification/signalling ONLY; does NOT prove decoded pixel content and does NOT rule out a decode stall",
+    "egl_swap_max_index": 8040, "egl_swap_rc": 1,
+    "surfacetexture_tex_values": {"0": 9},
+    "setBuffersGeometry_ret": {"40001000": 121, "w1080_h1920": 120, "w576_h1024": 1}
+  },
+  "runtime_bind_matches_t23_static": {
+    "convert_slot": "0x7fabdc1850 = hwui_base 0x7fab580000 + 0x841850",
+    "convert": "0x7faeea4be0 = provider_base 0x7faee40000 + 0x64be0",
+    "note": "live dladdr/base match resolves hwui GOT-0x841850 -> libsurface+0x64be0, exactly the T23 static readout"
+  },
+  "geometry_40001000_codex": {
+    "mechanism": "libsurface 8f HandleOpt door-step reject: window empty / inner surface empty / magic != WIND",
+    "not_a_geometry_parameter_problem": true,
+    "legit_window_missing_opcode_returns": "rc0",
+    "not_in_shim": "exact T23 shim a9ab exports only ANativeWindow_lock/unlockAndPost; no setBuffersGeometry",
+    "reusable": ["t21-geometry-peer/geometry-765-rea.json", "provider-0.so"],
+    "open_question": "which window object reaches setBuffersGeometry and from which provider; is it a valid WIND OH surface (Codex verifying actual binding)"
+  },
+  "codex_rea_consume_paths": {
+    "artifact": "libnative_image.so sha74b6ea0d... 98160B (REA 6.5.0 + Ghidra 12.1.4); ELF-vaddr+0x100000=Ghidra addr, not runtime",
+    "A_AcquireLatestNativeWindowBuffer": "ELF 0x12d20 -> 0x15610; NO UpdateEGLImageAndTexture, no GL bind; hwui ASurfaceTexture_dequeueBuffer uses THIS",
+    "B_UpdateSurfaceImage": "0x127dc -> 0x14104 -> UpdateEGLImageAndTexture (body 0x1144d8-0x11491b size 1092; ignore ubsan tail) -> glBindTexture/glEGLImageTargetTexture2DOES -> fence lifecycle",
+    "boundary": "missing Path-B (UpdateSurfaceImage) log does NOT prove broken chain; absence consistent with Path A by design"
+  },
+  "screenshots_root": {
+    "cover_static_sha": "490f60 (0/5/10/20s identical = static cover)",
+    "after_center_click": "video region BLACK, progress bar advancing (cycle-observation-02 0/10/20)"
+  },
+  "verdict": {
+    "R23_EGL_import": "PASS at API level (12 non-null images, no skia fatal in prefix); T21 import-crash absent here. A non-null image = API-level create success, NOT the whole import path proven settled end-to-end (draw-time sampling separate/open)",
+    "video_playback": "NOT A PASS -- black video; no fatal in prefix but a standing gatekeeper reject (40001000); not localized to single cause",
+    "audio_this_window": "user-confirmed present (operator heard sound)",
+    "unproven": ["continuous playback", "pause/seek", "audio continuity across clips/cycles", "prefix immutability", "end-to-end import correctness beyond non-null create"],
+    "android_reference": "video_plan assist lane: BASELINE = Android16/API36, Toutiao 13.9.0 target30, APK a1112a0c byte-identical to OH, main proc NOT running (identity baseline only); a SUBSEQUENT actual Android run has since completed -- treat separately from baseline; an Android success is NOT an OH pass"
+  },
+  "corrections_applied": [
+    "retracted quick-r2 inference 'not entered render / early net / just mapped not driven' (contradicts full prefix R23 events)",
+    "quick elapsed 2.18s = collection time, not 2.18s of log coverage",
+    "66352:191839:8620433 = stderr dev:inode:size, not unlabeled counters",
+    "hilog -31 'Mutlti commands can't be used in combination' is a real tool error (zero log lines)",
+    "HDC executor is root, not cx",
+    "retracted 'tex=0/no bind marker = defect' -> hwui uses Path A (AcquireLatest) which by design does not GL-bind",
+    "'no fatal' scoped to the 52.9MB selected prefix, not absolute",
+    "frame-available count = signalling only, not decoded pixels, not 'no decode stall'",
+    "setBuffersGeometry 40001000 IS a logged anomaly (so not 'no logged anomaly'); it is a HandleOpt gatekeeper reject (window/surface empty / magic != WIND), NOT a geometry-parameter problem, and NOT in the shim",
+    "audio is user-confirmed present this window; only cross-clip/cross-cycle continuity is unproven",
+    "R23-EGL = 27 events (12 client + 12 image + 3 destroy = 12 imports), not 27 imports"
+  ]
+}
