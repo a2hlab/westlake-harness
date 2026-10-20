@@ -1,0 +1,95 @@
+{
+  "status": "PROPOSED_INTERFACE_NO_IMPLEMENTATION",
+  "ownership": {
+    "consumer": "CC: consumer/** only",
+    "shim_and_production": "T4: shim/** and production/** only",
+    "shared_schema": "design/interface.json; changes require coordinated review"
+  },
+  "linkage": "Hidden local logger in each DSO; no cross-DSO dependency or new dynamic export. No shared mutable business state.",
+  "entry": "void r29_observe(const struct r29_record *snapshot); conceptual interface only; preserves errno and never dereferences address-valued fields",
+  "record": {
+    "common": [
+      "schema=R29/1",
+      "side=cpu|consumer",
+      "phase",
+      "call_seq",
+      "mono_ns",
+      "tid",
+      "identity_index",
+      "epoch",
+      "valid_mask",
+      "self_pc",
+      "caller_pc",
+      "wrapper",
+      "oh",
+      "state",
+      "image",
+      "call_executed",
+      "raw_rc",
+      "public_rc",
+      "provider_pc_valid",
+      "provider_pc",
+      "incoming_errno",
+      "outgoing_errno"
+    ],
+    "cpu": [
+      "request_w",
+      "request_h",
+      "request_format",
+      "history_known",
+      "history_format",
+      "buffer",
+      "native",
+      "width",
+      "height",
+      "pixel_stride",
+      "format",
+      "bits",
+      "request_rc",
+      "map_rc",
+      "unmap_rc",
+      "flush_rc",
+      "abort_rc",
+      "retained",
+      "failure_stage"
+    ],
+    "consumer": [
+      "old_window",
+      "new_window",
+      "tex_name",
+      "released_valid",
+      "released",
+      "detached_valid",
+      "detached",
+      "existing_exception_branch",
+      "ref_called",
+      "unref_called"
+    ]
+  },
+  "field_rules": [
+    "Only bounded numeric fields; no strings supplied by apps or media URLs.",
+    "valid_mask distinguishes unavailable from zero; missing state/window remains unknown.",
+    "Copy only values safely read by existing code; no added unsynchronized state reads. If prior/post state is not safely available, mark unknown.",
+    "jobject is call-local only and not retained or used as an identity-table key. For producer records use opaque TextureView.mNativeWindow old/new values plus call sequence; do not infer Java identity from a local reference address.",
+    "Provider pointer is valid only if the existing dispatch already supplies that actual typed function pointer; named PLT imports remain unknown until exact ELF/GOT evidence."
+  ],
+  "budgets": {
+    "per_dso_identity_slots": 16,
+    "epochs_per_identity": 8,
+    "phases_per_epoch": 6,
+    "success_records_per_phase": 2,
+    "error_records_per_phase": 2,
+    "independent_invalid_overflow_cap_records": 32,
+    "maximum_records_per_dso": 3104,
+    "maximum_bytes_per_record": 768,
+    "maximum_bytes_per_dso": 2383872,
+    "write_attempts_per_record": 1
+  },
+  "correlation": [
+    "CPU keys: wrapper with trusted OH when available; upgrade unknown OH in-place rather than adding another identity.",
+    "Consumer keys: trusted state/image/OH or producer old/new OH pair; no pointer dereference by logger.",
+    "Epoch only advances for actual observed configuration/producer/attach-detach transition, not every frame/token or repeated same failure.",
+    "Fresh identities and transitions have reserved per-key budget; a prior clip cannot spend another key budget. Same-key transitions invisible to hooks remain explicitly outside coverage.",
+    "Across DSOs join trusted OH and operation chronology; distinct local counters do not imply the same transaction."
+  ]
+}

@@ -1,0 +1,35 @@
+# T29: bounded observation of the T28 surface transition
+
+**DESIGN ONLY — pending outer acceptance. No source changes, build or device action.** The purpose is to locate the transition's first failed/missing operation, not repair it. T28 already has scoped dynamic video/audio evidence, and the same child recovered playback after the black ROI. Neither its RGBX startup path nor the later black-screen cause is established by those successes.
+
+## Ownership and source seams
+
+| Owner | New files after acceptance | Existing seam (read-only input) | Values to capture |
+|---|---|---|---|
+| CC | `consumer/derived/oh_surface_texture_jni.cpp` and local hidden logger | snapshot native update/attach/detach, lines243–302 | safe state/image/OH, actual call vs early return, raw rc, existing exception branch; no new getter |
+| CC | `consumer/derived/oh_texture_view_jni.cpp` | producer replace/destroy, lines23–48 | old field window, new getter result, existing ref/unref calls; void return is not rc0 |
+| T4 | `shim/derived/geometry.c` | T28 dispatch103–114 | caller/request, gate/cache-begin return including formerly silent errors, trusted OH when obtained, final rc |
+| T4 | `shim/derived/pair.c`, `window_module.c`, only necessary provider seams | gate; lock60–102; unlock104–118 | lock entry, cache rejection, prepared output before publication, final raw request/map/unmap/flush/abort results and retained state |
+| T4 | `production/**` | T28 shim build plus T18 incremental bridge recipe | one batch containing one observed shim and one observed bridge; all other runtime inputs unchanged |
+
+Exact deployed dca evidence pins are in `source-pins.json`: update call11f24c, detach11f46c, attach11f4f0; JNI entries11f1ec/11f414/11f490. Producer create11fb2c only replaces/references the endpoint; it does not attach the consumer. Old GOT offsets174068/174078/174080/174030 are **not reusable as new offsets** after relink.
+
+## Shared record interface and bounded coverage
+
+`interface.json` defines a values-only record and hidden `r29_observe(snapshot)` interface. All addresses are opaque to the logger. Copy values while existing code owns them; do not add unwrap/GetState/ref/provider calls, raw tail reads, extra JNI exception queries, or unsynchronized state reads. Missing values carry valid bits, never fabricated zeros. Snapshot under existing locks when required, emit outside them; no object pointer is later dereferenced by the logger. Keep original publication and release ordering.
+
+Each DSO reserves16 diagnostic identities ×8 transition epochs ×6 phases ×(2 normal+2 error records), plus32 independent cap/invalid records. At768bytes each this is at most3,104 records/2,383,872 bytes per DSO. Fixed-size storage; one fd2 write per record, no retry, truncation marked, atomic saturation/no wrapping under concurrency. CPU key uses wrapper/trusted OH; consumer key uses trusted native state or producer old/new endpoint. A new wrapper/transition has its own allowance, so10,000 initial frame calls cannot consume it. Repeated same configuration, failure or frame token must not create epochs. Exceeding identity/epoch bounds emits explicit coverage exhaustion; it must not reject application work. Same-key transitions not visible at these hooks remain unknown rather than silently promised coverage.
+
+CPU phases: cache-begin, lock-entry, prepare-output, lock-return, flush-return, geometry-return. Invalid gate input logs only opaque wrapper/caller and unknown OH. Reports preserve raw provider rc as well as normalized public rc. Consumer phases: attach, detach, update, producer-replace, producer-destroy, invalid. A record may encode entry and result together where the original call returns; failure/early-return records identify that no provider call ran. Use per-call sequence/TID/time and native OH for correlation, not JNI local-handle equality or matching counters from separate DSOs.
+
+Every hook saves/restores errno at its insertion point. Immediately preserve post-provider errno before logging; restore it before subsequent original work. Do not change return/exception/ref/fence/format/cleanup behavior. Logging failure is a separate diagnostic loss, never a provider failure. A failed/hung original call need not produce a return record; do not invent completion from entry alone.
+
+## Actual binding and the single production handoff
+
+An observed entry with the new method self-PC establishes execution of that code body; static JNI table membership alone does not establish the runtime registration winner. Generate new exact ELF JNI entries/call sites/GOT relocation indices after linking. Preserve existing typed dispatch pointers where available, without new symbol resolution. For the bridge PLT imports, retain provider UNKNOWN until outer supplies sameboot/PID/birth/DSO SHA+mapped inode/bias and pre/post slot reads for the observed interval. Compare each slot to its actual provider artifact symbol/offset. Bracketing stable slots is interval evidence, not atomic per-instruction target proof; if slots drift or the call is absent, do not promote the binding claim. No additional broad runtime scan or device implementation belongs to these tasks.
+
+CC delivers only two derived consumer sources, hidden logger/test source and exact source pins/patch. T4 owns the shim and all production linking. Reuse T18's complete object/dependency/toolchain closure and replace only the two consumer objects plus hidden logging support; audio and other objects remain exact. Reproduce the original dca link and89b9 shim baseline before linking the candidate batch. The two consumer sources have narrow exact-ELF corroboration; if clean recompilation differs from their historical objects, preserve and review that delta rather than call it historical byte reproduction. Validate nonempty export/version/NEEDED/JNI/consumer ABI outputs and hidden logging symbols. Store raw argv/stdout/stderr/rc and input/output hashes persistently. No unrelated runtime rebuild, deployment or playback signoff.
+
+## Acceptance before any future device window
+
+Real C/C++ tests exercise the derived production functions, not only logger mocks: gate/early errors, prepared layout and cleanup failure; consumer null/released and provider errors; producer alias/ref rules; errno and failed writes; real pthread saturation and hot-loop followed by new-wrapper transitions. Preserve T28 route/format/alias regression. Rust selectors in the two specs are planned bindings, **not implemented or passed in this design delivery**. Future scoped runtime observation remains human review; it must not be used to weaken T28 guards or to claim a black-screen fix.
