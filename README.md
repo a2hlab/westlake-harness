@@ -546,6 +546,7 @@ kind of work from where the corpus started
 | **`benchmark/2026-10-20-t26-capacity-review/`** | R26-001 IDLE-cache ninth-RGB-lock host regression, original peer files and verified private archive; no device or final-production claim. |
 | **`benchmark/2026-10-20-t26-shim-deployment/`** | T26 + T27 production-02 single-shim data, unchanged six-state executor, exact production/export pins and fresh-admission refusal; original pending preserved. |
 | **`benchmark/2026-10-20-t27-codex-peer/`** | T27 SDK ABI, derived R23 host regression and production02 independent review; verified private archive, runtime remains unverified. |
+| **`benchmark/2026-10-20-t26-joint-production-archive/`** | T26/T27 joint production complete input/source/raw archive: 116 exact inputs, 1,793 verified private members; no device outcome claim. |
 | **[T23 EGL native-buffer import candidate](benchmark/2026-10-20-t23-egl-import/)** | **R77 reuse in the existing T20 shim; same-instance AHB/EGL gates, 23 host cases and real PIC/ABI evidence; device playback pending.** |
 | **[Exact765 geometry source closure](benchmark/2026-10-20-t22-geometry-source/)** | **Original source/recipe and unchanged baseline executable-content comparison; narrowly scoped unwrap repair, GPU causality still open.** |
 | **[T21 first live CPU-window pairs](benchmark/2026-10-20-t21-first-live-pair/)** | **Five actual lock/unlock/flush successes, then splash-video NativeImage texture import fatal; pointer/size chain and exact excerpts, video pending.** |
