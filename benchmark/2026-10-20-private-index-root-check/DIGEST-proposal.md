@@ -1,0 +1,1 @@
+- 2026-10-20 原件索引根门禁：`private-raw-index.json` 发布前必须按公开索引自身 `private_root` 解析每条相对路径并重放 SHA/size，不能只核生成器来源变量；T26/T28 同类复制遗留的 root alias 两次错误均保留原件并仅修索引，错误根反例实报 13 项不匹配、rc1。证据 `benchmark/2026-10-20-private-index-root-check/`。
