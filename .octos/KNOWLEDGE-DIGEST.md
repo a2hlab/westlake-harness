@@ -966,3 +966,4 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 原件索引根门禁：`private-raw-index.json` 发布前必须按公开索引自身 `private_root` 解析每条相对路径并重放 SHA/size，不能只核生成器来源变量；T26/T28 同类复制遗留的 root alias 两次错误均保留原件并仅修索引，错误根反例实报 13 项不匹配、rc1。证据 `benchmark/2026-10-20-private-index-root-check/`。
 
 - 2026-10-20 #91 T29：真实全屏切换后RequestBuffer=40601000（NO_BUFFER，首次服务端原因仍unknown）且bufNULL/未Map，R14无条件FAILED+retained1传入R26使后续同通路永久-16；只对有完整无资源证明的分支恢复，不把地址相同当对象代际。RGBX2与YV12本窗均实际flush成功，但全屏四图同帧、同child暖重入不恢复；1219.877秒六态/518+26/power恢复解锁，最终真实feed。证据 benchmark/2026-10-20-t29-runtime-review/；T30契约禁止泛化所有错误重试。
+- 2026-10-20 #91 T30：R14与R15须一起清本次无资源失败；R15须在重获mutex后、自身写入前确认原reservation未受并发污染。真实窗两次40601000均retained0/owner release1/1/1，全屏往返及第二片有内容进展、第一片用户确认声音；同失败对象后续Q/F未直证、首错根因unknown，暖图标返回非崩溃重启。候选已回滚，不能称永久封板；恢复六态/518+26/power后1828.5秒解锁（超28.5秒）、末图锁屏。证据 benchmark/2026-10-20-t30-runtime-peer/ 与 benchmark/2026-10-20-t30-window-archive/。
