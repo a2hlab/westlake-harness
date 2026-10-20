@@ -1,0 +1,126 @@
+{
+  "status": "MINIMAL_BLUEPRINT_REVIEW_NO_BUILD_NO_DEVICE",
+  "scope": [
+    "existing T20 shim separate egl_import.c; existing pair source unchanged",
+    "trio getClientBuffer/createImage/destroyImage",
+    "same-display dup-native-fence forwarding only for identified GL nativeFence branch"
+  ],
+  "source_refs": [
+    {
+      "path": "sources/api-implementations/source-build-native691/westlake/framework/webview-shim/webview_bionic_shim.c",
+      "sha256": "f12c5c921bdff7df8ea2f955b1de69eed2e4cec12fc7b830028027f30572a02a"
+    },
+    {
+      "path": "sources/api-implementations/source-build-native691/westlake/native/hwui/oh_surface_texture.cpp",
+      "sha256": "4179b4ecf11ae6be6bc5317a6bfadcc5a7db52cb6f279dfdfedd580b94bcefb7"
+    },
+    {
+      "path": "benchmark/2026-10-01-r77-first-blocker-scoring/README.md",
+      "sha256": "e923647cc9e2a6c6ab19045e1d529f1230fed328a8075e411b0e463a3bc09f46"
+    }
+  ],
+  "source_lines": {
+    "EGL_dispatch": [
+      3632,
+      3734
+    ],
+    "trio": [
+      4081,
+      4193
+    ],
+    "release_fence": [
+      4206,
+      4230
+    ],
+    "historical_chain": [
+      76,
+      106
+    ],
+    "consumer_release_current": [
+      42,
+      71
+    ]
+  },
+  "required_invariants": [
+    "Use exact already-loaded surface implementation for FromNativeBuffer/DestroyWindowBuffer; do not create a bare libnative_window alias instance. Actual AHardwareBuffer consumer provenance remains a distinct binding obligation.",
+    "Reserve table slot before native wrapper creation; full table returns NULL before allocation. Native create failure releases only its reserved generation.",
+    "Serialize non-thread-safe native wrapper create/destroy through dedicated provider mutex; no driver call under table mutex.",
+    "Atomically claim CLIENT to CREATING. Duplicate tracked/busy create must reject, never fall through foreign passthrough.",
+    "Successful create stores exact display,image,implementation,windowbuffer; failed create disposes own wrapper exactly once and clears only its claimed slot.",
+    "Destroy matches (display,image), marks DESTROYING and calls saved implementation. Wrong display or duplicate destroy never drops refs. Provider destroy failure restores IMAGE and retains wrapper; success releases wrapper exactly once.",
+    "Tracked create uses unique current_display()==display; no match or ambiguous match fails without foreign-driver trial or eglGetError consumption. Such local refusal does not claim setting a new EGL error.",
+    "Destroy uses saved implementation even if current display differs on destroy thread.",
+    "Foreign inputs/targets/images use original single RTLD_NEXT entry without target conversion; validate entry is not the new shim itself.",
+    "Fence owns no fd: return provider result unchanged; choose unique current display and resolve missing driver export through that same implementation eglGetProcAddress. Unmatched fallback preserves old path only, not a verified same-implementation fix."
+  ],
+  "host_cases": [
+    "full capacity: no native allocation",
+    "native-create failure: slot reusable and no extra destroy",
+    "driver-create failure: exactly one native destroy",
+    "two concurrent create on one tracked buffer: at most one image, no passthrough",
+    "destroy failure followed by successful retry: ref retained then exactly one release",
+    "wrong display / duplicate destroy: no release",
+    "same numeric image on distinct display keys remains disambiguated",
+    "no/ambiguous current display: no driver trial and no error consumption",
+    "provider native create/destroy maximum concurrent depth=1",
+    "foreign target unchanged",
+    "fence fd success/failure unchanged, no close, selected proc owner"
+  ],
+  "exact_hwui": {
+    "sha256": "a11c9154ca16dd7acf5e3ea99727ae37c25b1b4494a9133816bc58c553c128e2",
+    "GL_branch": "DeferredLayerUpdater createReleaseFence 0x31bd74 -> 0x31be6c..0x31be9c -> EglManager 0x809584",
+    "native_fence_feature_test": "0x8095b4..0x8095b8",
+    "calls": [
+      "0x8095cc eglCreateSyncKHR(display,0x3144,NULL)",
+      "0x8095d8 glFlush",
+      "0x8095e4 eglDupNativeFenceFDANDROID(same display,sync)",
+      "0x8095f4 eglDestroySyncKHR(same display,sync)"
+    ],
+    "fd_minus_one": "0x8095f8..0x8095fc -> 0x8096a8 -> INT_MIN",
+    "actual_runtime_feature_flag": "UNKNOWN; static conditional path only"
+  },
+  "excluded": [
+    "damage hint override",
+    "eglTerminate behavior",
+    "Vulkan changes",
+    "window geometry changes",
+    "claims of current runtime EGL winner or playback"
+  ],
+  "raw_root": "$HOME/.local/share/westlake/t23-egl-blueprint-peer",
+  "raw_files": {
+    "deferred-release-fence.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "deferred-release-fence.argv.json": {
+      "sha256": "942c393bc032aba04392dabe5460eb10404e8d0ff988eee43234808ae065f826",
+      "bytes": 242
+    },
+    "egl-release-fence.argv.json": {
+      "sha256": "4e7e51b1e2ada0177176044665d8132a88c4d8a5cffc803211e7ad8ba4d5f79b",
+      "bytes": 242
+    },
+    "deferred-release-fence.stdout": {
+      "sha256": "3cbe283e846d33c397a45ab91926e990633eaafecfb5bc9e70b9287d1723db89",
+      "bytes": 5877
+    },
+    "egl-release-fence.stdout": {
+      "sha256": "5d522a3bef164cbfc611cc02fb3a0ecfd981e755752ee4b90c546b82cf175327",
+      "bytes": 7505
+    },
+    "deferred-release-fence.rc": {
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    "egl-release-fence.rc": {
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    "egl-release-fence.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "device_calls": 0,
+  "builds": 0
+}
