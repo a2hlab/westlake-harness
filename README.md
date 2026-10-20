@@ -574,6 +574,7 @@ kind of work from where the corpus started
 | **[T18 outer-owned observer](benchmark/2026-10-20-t18-observer-outer/)** | **5cd fresh-identity staging, pinned T18 observer and owned cleanup; device acceptance pending.** |
 | **[2026-10-20 AudioTrack production getter](benchmark/2026-10-20-t18-audiotrack-production/README.md)** | Exact deployed bridge relink; one AudioTrack getter; reproducible incremental candidate and raw evidence |
 | **[T21 complete video-window evidence](benchmark/2026-10-20-t21-window-evidence/)** | Five successful CPU buffer pairs, later texture-import fatal, exact runtime rollback and remotely verified original evidence; video not passed. |
+| **[T32 one-click Toutiao host page](benchmark/2026-10-20-t32-host-page-accepted/README.md)** | **Exact same-signature page update retained on 5cd; one desktop tap to real feed, video visual progress, preserved runtime, reproducible source and verified recovery archive.** |
 
 ---
 
