@@ -8,11 +8,11 @@ import shutil
 import tempfile
 import unittest
 
-P = Path(__file__).resolve().parent
+P = Path(__file__).resolve().parent / 'history-pending'
 spec = importlib.util.spec_from_file_location('t29_pending_checker', P / 'check_final.py')
 check = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(check)
-local = P.parents[1]
+local = P.parents[2]
 ROOT = Path(os.environ.get('T29_SOURCE_ROOT', str(local)))
 if not (ROOT / 'benchmark/2026-10-20-t28-shim-deployment').exists():
     ROOT = local.parent / 'westlake-harness'

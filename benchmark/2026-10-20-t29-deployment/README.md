@@ -1,23 +1,23 @@
-# T29 dual-artifact deployment data — pending
+# T29 dual-artifact deployment data
 
-The T28 data assumed that only the shim changed. T29 changes the bridge and shim together: the first four artifacts remain byte-identical, while both new candidates have null SHA, size, artifact location and production receipt. Old bridge owner/GOT and shim export offsets are not reused as new evidence.
+The original pending template could not bind a new bridge or its shifted owner addresses. `history-pending/` preserves those original files byte-for-byte. The final data binds the actual joint production outputs: bridge `b0e5602a…` (2,023,136 bytes) and shim `9f3cecde…` (106,456 bytes). The transaction executor remains exact `693448c2…`; run, compat, media and player parameters are unchanged.
 
-`executor.py` is byte-identical to T28/T21 (`693448c26cb72002031f58cca467691f09ac61674b2c76353eb71bd44a5b63bb`). This package adds no deployment transaction. The exact executable was exercised in 3 preview calls and 15 negative calls: both missing, either candidate missing, and either production closure missing, across preflight/apply/rollback. Every negative call rejected before Board import. Two Python tests additionally cover five data/source/admission mutations; one Rust test and the strict lifecycle passed. Raw argv/stdout/stderr/rc are indexed in `private-raw-index.json`; synthetic receipts exist only inside those offline fixture directories and are never production evidence.
+Fifteen public production references include the 22-command build receipt, original raw index, JNI tables, generated owner binding, source/build pins and independent production review. The production receipt still says the original objects are not byte-identical. The separate peer proves that each differs only in 38 bytes of the non-ALLOC `.comment` compiler revision; this is not described as exact object reproduction.
 
-Reproduce the pending check from the repository root:
+Actual ELF inspection confirms shim geometry/lock/unlock offsets `0xf488 / 0x72c8 / 0x72dc`; bridge get/acquire/release `0x12670c / 0x126748 / 0x126798`, Reference/Unreference slots `0x175520 / 0x175448`. These are static offsets, not measured runtime winners. Fresh admission, actual slot values and provider-instance receipt remain null.
+
+## Recheck
 
 ```sh
 python3 benchmark/2026-10-20-t29-deployment/check_final.py \
-  --source-root "$PWD" \
-  --out "$HOME/.local/share/westlake/t29-deployment-pending/new-check"
+  --source-root "$WORKSPACES/westlake-harness" \
+  --out "$HOME/.local/share/westlake/t29-deployment-final/replay-unique"
 cargo test --manifest-path tools/spec-checks/Cargo.toml \
-  --test toutiao_t29_deployment ttvideo_t29_deployment_pending -- --exact
+  --test toutiao_t29_deployment ttvideo_t29_deployment_final -- --exact
 ```
 
-The output directory must be new and persistent. The checker currently accepts only the pending template; it is not a production admission checker. Final production needs a separate data freeze and matching checker update, preserving this pending version. `handoff.json` records the precise integration boundaries.
+`check_final.py` verifies actual public references and all data cross-links, then calls the unchanged executor in three preview modes and three execute sentinels. Execute stops at the unsigned template's missing fresh metadata before Board import. The two final Python tests cover actual references and five deliberate drifts. The old pending test now reads the preserved historical directory; it was not rerun as part of this final increment.
 
-Before that freeze, obtain both final ELF hashes/sizes and public source/build/raw/ABI receipts, regenerate bridge owner/GOT and consumer JNI/slot evidence, then bind the shim to that bridge and its three new export offsets. Player relocation offsets remain fixed. External static/live binding requirements in `bridge-binding-pending.json` and `three-slot-admission.json` are not enforced by the unchanged executor and must not be claimed as observed.
+Root must collect a **fresh T29** baseline and identity, sign an actual admission, retain original apply-plan backups, and enforce the existing 1800-second window with 600-second restoration reserve. T26 reused baseline is not a fresh T29 baseline. No deployment, playback or seal result is claimed here.
 
-Preserved execution rules: exact 5cd/UID/cfg/runtime and current holder/boot/parent/host identity; physical/private hash, inode, metadata and label checks; all five backups plus compat-ABSENT marker before any swap; original apply-plan CAS and partial recovery; 1800-second window with 600 seconds reserved for recovery; fresh boot and original snapshot verification. The original executor still requires fresh host WID 29 for non-rollback execution. Historical `.t21-5cd-before-*` backup names remain unchanged and cannot be overwritten. No-parent recovery is rollback-only and proves physical recovery, not private-runtime recovery.
-
-Root must collect a fresh T29 baseline and admission. A reused T26 before snapshot is not a fresh T29 sample. No device operation, build, approval, playback upgrade or seal claim is made here.
+Evidence: `candidate-inspection.json`, `final-check-results.json`, `results.json`, and `final-private-raw-index.json`. Original pending evidence remains in `history-pending/`. Parent/private inode, metadata, labels, mixed-state rollback, fresh boot and same-instance routing checks retain their existing scope.
