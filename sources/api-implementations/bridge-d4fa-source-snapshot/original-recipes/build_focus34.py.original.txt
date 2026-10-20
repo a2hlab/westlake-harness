@@ -1,0 +1,142 @@
+"""VM only: rebuild changed TUs and their two DSOs over out-touch21/wake."""
+from pathlib import Path
+import json, subprocess, hashlib, concurrent.futures, shlex, time, sys
+A=Path('/home/dspfac/a2hlab/source-closure/verify')
+W=Path(__file__).resolve().parents[1]
+O=Path.home()/'a2hlab/ws/out-focus34/incremental'
+O.mkdir(parents=True,exist_ok=True)
+def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+records=[]
+def execute(command, label):
+    out=Path(command[command.index('-o')+1]);out.parent.mkdir(parents=True,exist_ok=True)
+    stamp=Path(str(out)+'.link-key')
+    key=None
+    if label.startswith('link-'):
+        inputs={v:sha(v) for v in command if v != str(out) and Path(v).is_file()}
+        key=hashlib.sha256(json.dumps([command,inputs],sort_keys=True).encode()).hexdigest()
+        if out.exists() and stamp.exists() and stamp.read_text()==key:
+            print('reuse',label,flush=True);return True
+    proc=subprocess.run(command,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+    (O/(label+'.log')).write_bytes(proc.stdout)
+    records.append(dict(label=label,command=command,rc=proc.returncode,sha256=sha(out) if proc.returncode==0 else None))
+    if proc.returncode==0 and key:stamp.write_text(key)
+    print(label,proc.returncode,proc.stdout.decode()[-5000:],flush=True)
+    return proc.returncode==0
+
+# The only new compilation unit is the private AOSP input transport DSO.
+inventory=json.loads((W/"native/input-transport34-sources.json").read_text())
+transport=O.parent/"input-transport-2"
+aidl=O.parent/"input-aidl"
+schema=W/"native/input-aosp14/aidl/android/os/IInputConstants.aidl"
+generated=aidl/"include/android/os/IInputConstants.h"
+if not generated.exists() or generated.stat().st_mtime < schema.stat().st_mtime:
+    subprocess.run([str(A/"toolchains/android-build-tools35/android-15/aidl"),
+        "--lang=cpp","--structured","--min_sdk_version=35",
+        "-I"+str(schema.parents[2]),"-h"+str(aidl/"include"),"-o"+str(aidl/"src"),str(schema)],check=True)
+def resolved(name):
+    return W/name[len("westlake/"):] if name.startswith("westlake/") else Path.home()/"a2hlab/ws"/name
+helper_objects=[]
+for source in inventory["sources"]:
+    output=transport/"objects"/(source.replace("/","_")+".o")
+    dep=Path(str(output)+".d")
+    command=[str(A/"toolchains/ohos-sdk/native/llvm/bin/clang++"),
+        "--target=aarch64-linux-ohos","--sysroot="+str(A/"toolchains/ohos-sdk/native/sysroot"),
+        "-fPIC","-O2","-Werror=date-time","-ffile-prefix-map="+str(A)+"=/src",
+        "-ffile-prefix-map="+str(transport)+"=/build/native",
+        "-I"+str(aidl/"include"),"-I"+str(A/"out/gui-aidl/include")]
+    command += ["-I"+str(resolved(x)) for x in inventory["includes"]]
+    command += ["-D"+x for x in inventory["defines"]]
+    command += ["-nostdinc++","-isystem",str(A/"toolchains/clang-15/include/libcxx-ohos/include/c++/v1")]
+    command += inventory["cpp_flags"]+["-include","sys/types.h","-MMD","-MF",str(dep),"-c",str(resolved(source)),"-o",str(output)]
+    dependencies=shlex.split(dep.read_text().replace("\\\n"," "))[1:] if dep.exists() else []
+    dependencies += [str(resolved(source)),str(generated)]
+    key=hashlib.sha256(json.dumps([command,{x:sha(x) for x in dependencies if Path(x).is_file()}],sort_keys=True).encode()).hexdigest()
+    stamp=Path(str(output)+".key")
+    if not output.exists() or not stamp.exists() or stamp.read_text()!=key:
+        if not execute(command,output.name): raise SystemExit(1)
+        dependencies=shlex.split(dep.read_text().replace("\\\n"," "))[1:]+[str(resolved(source)),str(generated)]
+        key=hashlib.sha256(json.dumps([command,{x:sha(x) for x in dependencies if Path(x).is_file()}],sort_keys=True).encode()).hexdigest()
+        stamp.write_text(key)
+    else: print("reuse",output.name,flush=True)
+    helper_objects.append(str(output))
+    helper_compile_command=command[:]
+
+# Isolate canonical Input.h C++ symbols from the legacy runtime's other ABI.
+version=O/'transport.map';version.write_text('{ global: wl_input_*; local: *; };\n')
+links=json.loads((A/'out-touch21/wake/native-platform/artifacts.json').read_text())['commands']
+bridge=next(c for c in links if '-Wl,-soname,liboh_adapter_bridge.so' in c)
+runtime=next(c for c in links if '-Wl,-soname,liboh_android_runtime.so' in c)
+helper=bridge[:bridge.index('-Wl,-soname,liboh_adapter_bridge.so')]+[
+    '-Wl,-soname,libwestlake_input_transport.so','-Wl,--gc-sections','-Wl,-Bsymbolic',
+    '-Wl,--version-script='+str(version)]
+helper += sorted(helper_objects)
+helper += bridge[bridge.index('-Wl,--as-needed'):-2]
+helper += [str(A/'out-touch21/wake/native-platform/libwestlake_binder.so'),
+           str(A/'out-touch21/wake/native-platform/libhwui.so'),
+           '-o',str(O/'libwestlake_input_transport.so')]
+if not execute(helper,'link-transport'):
+    (O/'build.json').write_text(json.dumps(records,indent=2));raise SystemExit(1)
+
+changed=subprocess.check_output(['git','-C',str(W),'diff','b3dae7aed16f10ba492e2bd6c7a02bc17b2bbf58','--name-only'],text=True).splitlines()
+replacements={}
+jobs=[]
+for base in ['out-touch21/fd/bridge15','out-touch21/wake/android-runtime15']:
+    meta=json.loads((A/base/'artifacts.json').read_text())
+    for cmd in meta['commands']:
+        oldobj=cmd[cmd.index('-o')+1]
+        deps=Path(oldobj+'.d').read_text() if Path(oldobj+'.d').exists() else ''
+        src=cmd[cmd.index('-c')+1]
+        if not any('/westlake-touch21/'+f in deps or src.endswith('/westlake-touch21/'+f) for f in changed):
+            continue
+        out=O/'objects'/Path(oldobj).name
+        command=[s.replace(str(A/'westlake-touch21'),str(W)) for s in cmd]
+        command[command.index('-o')+1]=str(out)
+        if '-MF' in command: command[command.index('-MF')+1]=str(out)+'.d'
+        if src.endswith('/oh_input_bridge.cpp'):
+            command[1:1]=['-I'+str(A/'android-source/oh-eventhandler/interfaces/inner_api'),
+                           '-I'+str(A/'android-source/oh-eventhandler/frameworks/eventhandler/include')]
+        # Cache key uses all compiler-recorded dependencies, not just the TU.
+        all_deps=shlex.split(deps.replace('\\\n',' '))[1:] if deps else [src]
+        inputs={}
+        for dep in all_deps:
+            dp=Path(dep.replace(str(A/'westlake-touch21'),str(W)))
+            if dp.is_file(): inputs[str(dp)]=sha(dp)
+        inputs[str(W/'native/input_transport_boundary.h')]=sha(W/'native/input_transport_boundary.h')
+        key=hashlib.sha256(json.dumps([command,inputs],sort_keys=True).encode()).hexdigest()
+        stamp=Path(str(out)+'.key')
+        replacements[oldobj]=str(out)
+        if out.exists() and stamp.exists() and stamp.read_text()==key:
+            print('reuse',out.name,flush=True);continue
+        jobs.append((command,out.name,stamp,key))
+def compile(job):
+    cmd,name,stamp,key=job
+    ok=execute(cmd,name)
+    if ok:stamp.write_text(key)
+    return ok
+with concurrent.futures.ThreadPoolExecutor(4) as pool: ok=all(list(pool.map(compile,jobs)))
+if ok:
+    for cmd,name in [(runtime,'liboh_android_runtime.so'),(bridge,'liboh_adapter_bridge.so')]:
+        c=[replacements.get(x,x) for x in cmd];c[c.index('-o')+1]=str(O/name)
+        if name=='liboh_adapter_bridge.so': c.insert(c.index('-Wl,--as-needed'),str(O/'libwestlake_input_transport.so'))
+        ok=execute(c,'link-'+name) and ok
+if ok and '--test' in sys.argv:
+    # Use the same pinned canonical headers as the publisher, through a real socketpair.
+    test_object=transport/'input_transport_test.o'
+    test_command=helper_compile_command[:]
+    test_command[test_command.index('-c')+1]=str(W/'native/input_transport_test.cpp')
+    test_command[test_command.index('-o')+1]=str(test_object)
+    test_command[test_command.index('-MF')+1]=str(test_object)+'.d'
+    ok=execute(test_command,'test-compile')
+    if ok:
+        test_link=[x for x in bridge[:bridge.index('-Wl,-soname,liboh_adapter_bridge.so')] if x not in ('-shared','-nostdlib')]
+        test_link += [str(test_object),str(O/'libwestlake_input_transport.so')]
+        test_link += [x for x in bridge[bridge.index('-Wl,--as-needed'):-2] if 'clang_rt.' not in x]
+        test_link += ['-Wl,-rpath-link,'+str(A/'out-touch21/wake/native-platform'),
+                     '-o',str(transport/'input-transport-test')]
+        ok=execute(test_link,'link-test')
+artifacts={p.name:{'sha256':sha(p),'bytes':p.stat().st_size} for p in O.glob('*.so')}
+summary={'time':time.time(),'executed':records,'artifacts':artifacts,
+         'base':'out-touch21/wake','source_base':'b3dae7aed16f10ba492e2bd6c7a02bc17b2bbf58'}
+(O/'build.json').write_text(json.dumps(summary,indent=2)+'\n')
+with (O/'build-history.jsonl').open('a') as f:f.write(json.dumps(summary)+'\n')
+raise SystemExit(0 if ok else 1)

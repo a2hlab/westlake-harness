@@ -1,0 +1,25 @@
+#!/bin/bash
+set -euo pipefail
+A=/home/dspfac/a2hlab/source-closure/verify
+W=$A/westlake-touch21
+O=$A/out-touch21/fd
+B=$A/out
+T=$W/tools
+cd ~/a2hlab/manifest
+step() { local name=$1; shift; echo "START $name $(date -Is)"; if "$@" > "$O/$name.log" 2>&1; then echo "PASS $name $(date -Is)"; else tail -70 "$O/$name.log"; return 1; fi; }
+step bridge15 python3 "$T/compile_native_inventory.py" --workspace "$A" --westlake-source "$W" --jobs 5 --inventory "$W/native/bridge15-sources.json" --header-build "$B/oh61-headers" --out "$O/bridge15"
+# step android-runtime15 python3 "$T/compile_native_inventory.py" --workspace "$A" --westlake-source "$W" --jobs 5 --inventory "$W/native/android-runtime15-sources.json" --header-build "$B/gui-aidl" --out "$O/android-runtime15"
+# step appspawn-objects python3 "$T/compile_native_inventory.py" --workspace "$A" --westlake-source "$W" --jobs 5 --inventory "$W/native/appspawn-sources.json" --out "$A/out-touch21/appspawn-objects"
+python3 - "$A" "$O" <<'PY'
+import json,sys
+from pathlib import Path
+a,o=map(Path,sys.argv[1:]); m=json.loads((a/'native-object-map.json').read_text())
+m['liboh_android_runtime.so']['build']=str(o.parent/'diag2/android-runtime15')
+m['liboh_adapter_bridge.so']['build']=str(o/'bridge15')
+(o/'native-object-map.json').write_text(json.dumps(m,indent=2)+'\n')
+PY
+step native-imports python3 "$T/build_native_imports.py" --workspace "$A" --firmware-abi "$W/native/oh61-firmware-abi.json" --object-map "$O/native-object-map.json" --out "$O/native-imports"
+step native-platform python3 "$T/link_native_platform.py" --workspace "$A" --object-map "$O/native-object-map.json" --imports "$O/native-imports" --core-runtime "$B/art/runtime" --out "$O/native-platform"
+step media-jni python3 tools/build_media_jni_compat.py --workspace "$A" --westlake-source "$W" --bridge-build "$O/native-platform" --out "$O/media-jni"
+step appspawn python3 "$T/link_appspawn.py" --workspace "$A" --objects "$A/out-touch21/appspawn-objects" --runtime "$O/native-platform" --core-runtime "$B/art/runtime" --imports "$O/native-imports" --out "$O/appspawn"
+step native-runtime python3 tools/compose_native_runtime.py --build "$B/art/runtime" --build "$O/native-platform" --build "$B/connectivity-native" --build "$O/media-jni" --build "$B/runtime-extras" --build "$B/runtime-helpers" --replace libminikin.so --out "$O/native-runtime"
