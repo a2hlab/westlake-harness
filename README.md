@@ -93,6 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
+| **[Exact bridge source snapshot](benchmark/2026-10-20-d4fa-source-snapshot/)** | **138 preserved source, header, license and original-recipe payloads with SHA pins and incremental build provenance; full clean rebuilding remains distinct from the reproduced link.** |
 | **[T16 actual player load-chain experiment](benchmark/2026-10-20-t16-window-evidence/)** | **R8 reuse reached TTPlayer; a complete 30,236,818-byte prefix exposed subsequent network failures. Playback not passed. Original runtime, 518+26 targets, power and real feed restored; full archive remotely verified.** |
 | **[T17 network routing reuse and actual-binding tools](benchmark/2026-10-20-t17-network-reuse/)** | **Two existing run-line changes, exact binary reuse, guarded deployment/rollback and fresh paired-GOT reader. Static checks are separate from live results; the unchanged network provider retains unknown exact build closure.** |
 | **[T17 actual network binding and restored window](benchmark/2026-10-20-t17-window-evidence/)** | **Live paired bindings matched; the complete selected log reached packet read and decoder setup, then exposed AudioTrack JNI and ANW diagnostics. Playback not passed. Original runtime and real feed restored; 10,127 raw archive members and remote SHA verified.** |
