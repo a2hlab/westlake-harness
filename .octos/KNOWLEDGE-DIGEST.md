@@ -964,3 +964,5 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-20 #91 T25：4次geometry/format及3次lock/flush rc0仍非视频像素；exact player在保持YV12配置时比较expected format，而R14成功返回集合不含YV12，必进changed→可选clear→unlock→重设geometry，须先静态核生产者如何消费返回布局。此契约缺口与随后EGL create-null/576x1024 Invalid GrBackendTexture分别处理；995.726秒六态/518+26恢复解锁、末图host-only，T23有声确认不移植给T25，见 benchmark/2026-10-20-t25-window-evidence/ 与 t25-player-lock-consumer/。
 
 - 2026-10-20 原件索引根门禁：`private-raw-index.json` 发布前必须按公开索引自身 `private_root` 解析每条相对路径并重放 SHA/size，不能只核生成器来源变量；T26/T28 同类复制遗留的 root alias 两次错误均保留原件并仅修索引，错误根反例实报 13 项不匹配、rc1。证据 `benchmark/2026-10-20-private-index-root-check/`。
+
+- 2026-10-20 #91 T29：真实全屏切换后RequestBuffer=40601000（NO_BUFFER，首次服务端原因仍unknown）且bufNULL/未Map，R14无条件FAILED+retained1传入R26使后续同通路永久-16；只对有完整无资源证明的分支恢复，不把地址相同当对象代际。RGBX2与YV12本窗均实际flush成功，但全屏四图同帧、同child暖重入不恢复；1219.877秒六态/518+26/power恢复解锁，最终真实feed。证据 benchmark/2026-10-20-t29-runtime-review/；T30契约禁止泛化所有错误重试。
