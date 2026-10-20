@@ -1,0 +1,85 @@
+{
+  "status": "DESIGN_DIRECTION_ACCEPTED_IMPLEMENTATION_ADMISSION_PENDING",
+  "reviewed_at": "2026-10-20T09:26:55.897173+00:00",
+  "scope": "Read-only narrow contract and early source review; no device, no REA, no tests executed. Author source may still change.",
+  "source_tree": "westlake-harness-t4",
+  "source_snapshot": [
+    {
+      "path": "benchmark/2026-10-20-t31-demo-retain/recovery/core.delta.patch",
+      "sha256": "1dbbfe6579c68802adea30d12c5105347e7d93d38c53e9bc50bda584f0a2d94c",
+      "bytes": 1208
+    },
+    {
+      "path": "benchmark/2026-10-20-t31-demo-retain/recovery/executor.delta.patch",
+      "sha256": "6f9131656eb4f300a7af1a5e9f24f51f2182afec02c7e86618f2cdaf25137d4d",
+      "bytes": 6931
+    },
+    {
+      "path": "benchmark/2026-10-20-t31-demo-retain/recovery/origin-data-pins.json",
+      "sha256": "91c129af57b0ea76d4b35decc4cef5386821172b251a63a143b8c097164ecf91",
+      "bytes": 1700
+    },
+    {
+      "path": "benchmark/2026-10-20-t31-demo-retain/recovery/recovery.py",
+      "sha256": "60b1b11dc76db72c7a7de1669808f76f55685a63b73883aee555306efec43563",
+      "bytes": 27340
+    },
+    {
+      "path": "benchmark/2026-10-20-t31-demo-retain/recovery/recovery_admission.py",
+      "sha256": "ef4d51dc393a19e263eddb4e630d8859db0c47c82510ecb0591079f911e52a00",
+      "bytes": 2450
+    },
+    {
+      "path": "benchmark/2026-10-20-t31-demo-retain/recovery/recovery_core.py",
+      "sha256": "ebf9d6725dd86ae4c5827176f959beb43c862bf26cfd924abe1f33dfa1b84028",
+      "bytes": 8925
+    },
+    {
+      "path": "benchmark/2026-10-20-t31-demo-retain/recovery/recovery_policy.py",
+      "sha256": "6e594bc4c420023ce3b03144dda025818200265879caa122a0c6fa3be4ee672b",
+      "bytes": 3521
+    },
+    {
+      "path": "specs/toutiao-t31-demo-retain/project.spec.md",
+      "sha256": "84890e50169d166f58a30de5db9f20783f02a6364ad3d584b6aea110e779ca38",
+      "bytes": 1671
+    },
+    {
+      "path": "specs/toutiao-t31-demo-retain/t1-offline-preparation.spec.md",
+      "sha256": "b2b70971580e677b38fb1fbe7bf031b335959f7b8bf256ca914eee07fb3e9ee2",
+      "bytes": 2862
+    },
+    {
+      "path": "specs/toutiao-t31-demo-retain/t2-final-acceptance.spec.md",
+      "sha256": "ea4fd625bf42c3fddb6d3cb1186143b5f085fbce73bf361c785fcd52e4634de7",
+      "bytes": 4362
+    },
+    {
+      "path": "specs/toutiao-t31-demo-retain/t3-durable-recovery.spec.md",
+      "sha256": "6c0642e39e8b2a6713fd26750e69c6410887427c70adf6a5d77415295ffdc5cf",
+      "bytes": 3509
+    }
+  ],
+  "private_snapshot_root": "$HOME/.local/share/westlake/t31-codex-recovery-review/snapshot-01",
+  "accepted": [
+    "Independent new holder/start and 1800-second budget; immutable origin apply-plan/admission and origin boot backup names.",
+    "All five backups and ABSENT marker required before mutation, exact source pins, six-state known-before/known-after checks and per-target CAS.",
+    "Original T30 executor remains unchanged; successor is rollback-only and rejects physical-only recovery."
+  ],
+  "pending": [
+    "Actual fake-transport execution of the successor, not only policy unit assertions.",
+    "Apply WID29 drift rejection and recovery numeric-only WID normalization must be stated separately.",
+    "Recovery origin must be the apply transaction actually retained, not the previously rolled-back T30 transaction.",
+    "Live parent/host required; dead identity recovery is not supported by this successor.",
+    "Partial recovery after run.sh changes back to WID29 while current WMS/parent still use another WID is fail-closed on retry. Exercise this exact cut-point or explicitly narrow support."
+  ],
+  "suggested_minimal_cases": [
+    "All 64 combinations of five file before/after and compat absent/after, with all backups intact.",
+    "Each foreign artifact; missing each backup/ABSENT marker; wrong metadata/label; physical/private inode mismatch; altered plan/admission/source pin.",
+    "Old holder/start reuse, expired new start, current lock drift, boot/PID/birth/UID/namespace/WMS drift.",
+    "Apply WID41 rejected; recovery WID41 accepted only if raw run and environment/WMS match and normalized bytes equal an exact original template.",
+    "Failure after run replacement but before compat removal, then retry with unchanged live WID41: retain refusal explicitly, do not claim full arbitrary partial-state retry.",
+    "Changed backup after pre-read, foreign target before rename, wrong compat before unlink: generated shell retains adjacent CAS and no success receipt."
+  ],
+  "runtime": "UNKNOWN"
+}
