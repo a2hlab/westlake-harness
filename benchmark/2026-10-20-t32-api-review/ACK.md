@@ -1,0 +1,1 @@
+ACK t32-api-ready: 44 observations /1073 exact references /1076 HTML links; CSV fields PASS; original43 objects unchanged; historical315 untouched. Newrow21 references. No device calls, build or push. Exact delivery: benchmark/2026-10-19-api-progress-update/landing-t32-paths.txt.
