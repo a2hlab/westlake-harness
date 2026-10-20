@@ -9,8 +9,9 @@ depends: []
 ## 已定决策
 - 最小恢复谓词为request_called且request_rc非零、buffer/native均NULL、mapped为0、fd为-1，H/N/M/U/F/B均未调用；不根据错误码名称单独推断所有权。
 - fd非-1、已返回buffer、已Map或任何cleanup失败均沿旧保守保留路径；即使Abort成功也不在本轮扩大恢复范围。若后续需要放宽fd条件，先补准确provider资源契约与用例并修订本规格。
-- 无资源分支返回原规范化错误并保留raw rc；R14 reservation释放、R26 token恢复到原可用状态、pair额外owner ref恰好释放一次。R26既有geometry/cache常驻ref不误删；正常后续调用可重新Request，当前调用只Request一次。
+- 无资源分支返回原规范化错误并保留raw rc；R15本次Request reservation、R14 reservation释放、R26 token恢复到原可用状态、pair额外owner ref恰好释放一次。R26既有geometry/cache常驻ref不误删；正常后续调用可重新Request，当前调用只Request一次。
 - 原T29诊断预算/regular-file sink及errno纪律保留。引用释放失败不冒报恢复成功，也不强制清空未知ownership；用真实owner返回值覆盖这一边界。
+- 必须另派生真实provider_adapter.c：在lower Request返回并重获a->mu后、尚未自行设置uncertain/failed之前核本次idx仍RESERVED且window相等，既有failed/uncertain及其他调用、suppressed、adapter_error均无污染；只有lower rc非零、bNULL、fd为-1才可清本次record。不得按窗口重新挑record，不清并发污染记录，不改变返回原lower rc。
 ## 边界
 ### 允许修改
 - benchmark/2026-10-20-t30-request-recovery/**
@@ -42,6 +43,14 @@ depends: []
   假设 Request失败带非NULLbuffer、fd非-1、或后续已持有资源、或cleanup失败
   当 真实lock或unlock走失败路径
   那么 原首错与cleanup raw rc保留，retained1及原FAILED保护不清除，不重复Abort或释放不明owner，也不自动再次Request
+场景: R15本次失败与并发污染明确区分
+  测试: ttvideo_t30_retained
+  层级: integration
+  替身: 阻塞真实adapter lower Request的外部provider与pthread barrier
+  假设 lower Request在途时同一record可能被并发非法Flush或Abort经deny标记failed
+  当 lower返回非零且bufNULL与fd为-1并重获adapter mutex
+  那么 未污染的本次RESERVED记录可清且下一次调用到达lower；被并发污染的记录保持保护且后续不得被当作新空槽使用，首lower raw错误不被改写
+  并且 无关窗口记录不变，不能将本次55行自设uncertain与调用返回前已有uncertain混为一谈
 场景: owner释放失败不可伪报完整恢复
   测试: ttvideo_t30_retained
   假设 无资源失败的额外owner release返回非成功

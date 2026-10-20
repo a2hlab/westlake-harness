@@ -1,0 +1,57 @@
+{
+  "status": "DESIGN_CORE_ALIGNED_WITH_REQUIRED_CLARIFICATIONS",
+  "design_sha256": "524fe651bc1f6c7bb052486e820f442140b3e3b51b260b5593c44ba5f7305cb6",
+  "design_commit": "e3af2364e1",
+  "device_calls": 0,
+  "build_calls": 0,
+  "sources": [
+    {
+      "path": "benchmark/2026-10-20-t29-window-observation/shim/derived/window_module.c",
+      "sha256": "87d822d55ef637eddde42daf1e9460ed9c93ab0325f275b655b3d675ddea8a1e"
+    },
+    {
+      "path": "benchmark/2026-10-20-t29-window-observation/shim/yv12.c",
+      "sha256": "f91495f56702e15e22bedf9d5759ec342d10db31e691e83db403a4eeefa6579f"
+    },
+    {
+      "path": "benchmark/2026-10-20-t29-window-observation/production-01/derived/pair.c",
+      "sha256": "6018e5991b30a8238dd900b5269d0d1436ae7e65fa2d1a71e9d469400f99025b"
+    },
+    {
+      "path": "benchmark/2026-10-20-t29-window-observation/shim/derived/entry.c",
+      "sha256": "079df445dd9d7684ee10d30cd396f6de2fbf338611abe885aca16580d3c5f909"
+    },
+    {
+      "path": "benchmark/2026-10-20-t29-window-observation/shim/derived/window_module.h",
+      "sha256": "386f5c739aa15a9e6e0f1500300567ed24c71aa79d9ded5e60b2e1ba3e61e68b"
+    },
+    {
+      "path": "benchmark/2026-10-20-t29-window-observation/shim/yv12.h",
+      "sha256": "294361ad7c74b1709d3d3d960bc62fcf7afdb67b18df537e75dfdc4372e84545"
+    }
+  ],
+  "private_snapshot_equivalence": {
+    "window_module.c": "87d822d55ef637eddde42daf1e9460ed9c93ab0325f275b655b3d675ddea8a1e",
+    "yv12.c": "f91495f56702e15e22bedf9d5759ec342d10db31e691e83db403a4eeefa6579f"
+  },
+  "required_changes": [
+    {
+      "section": "1",
+      "finding": "A=1/1/1 is owner acquire success, not Abort cleanup. B=0 says Abort not called."
+    },
+    {
+      "section": "4",
+      "finding": "Existing R14 completion, R26 finish and pair release are sequential under distinct scopes, not an atomic all-or-nothing cross-layer transaction. Preserve ordering and current reservation; do not promise rollback across all three."
+    },
+    {
+      "section": "8",
+      "finding": "Derive actual complete window_module.c and test it linked with actual R26/entry/production pair. A values-only outcome/predicate or reimplemented recovery fixture cannot establish real integration."
+    }
+  ],
+  "owner_release_failure": {
+    "existing_code": "production-01/derived/pair.c:118-122",
+    "behavior": "Non-success release changes public rc to -EPROTO; raw Q remains in report and release_rc is logged. At that point R14 reservation is already free and R26 token already usable. This does not prove reference balance.",
+    "scope": "Do not add an unrequested cross-layer transaction or wrapper-only poison that can target a subsequent concurrent call."
+  },
+  "implementation": "PENDING_ACTUAL_DERIVED_CODE_AND_REAL_FUNCTION_TESTS"
+}

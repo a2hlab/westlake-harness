@@ -9,4 +9,4 @@ T29实测Request返回40601000且buffer为空，后续provider阶段未调用，
 - 不新增provider选择、调用循环、定时重试或force reset；不改几何、YV12布局/转换、RGBX输出、三槽same-provider门、owner实例验证、8槽alias和生命周期前提。
 - 恢复只针对本次Request非零且明确无buffer/native/map/fence资源；任何已取得资源、cleanup失败或资源状态不明仍保留FAILED及引用保护。禁止把首错吞成成功。
 - 锁内只转移当前占有reservation，保持既有mutex/线性化点；错误报告含原Request raw rc与实际调用/retained字段，成功路径顺序、调用次数、输出和errno保持原行为。
-- 离线fixture必须调用真实派生pair/R14/R26实现，只有外部OH/provider/sink为替身。机器通过不等于真机切换恢复；运行时图像由外环审核，不用进程存活替代。
+- 离线fixture必须调用真实派生pair/R14/R15/R26实现，只有外部OH/provider/sink为替身。机器通过不等于真机切换恢复；运行时图像由外环审核，不用进程存活替代。
