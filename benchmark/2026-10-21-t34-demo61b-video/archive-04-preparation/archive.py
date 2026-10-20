@@ -5,6 +5,8 @@ from pathlib import Path,PurePosixPath
 HOME=Path.home(); OLD=HOME/'.local/share/westlake/t34-window-archive-01'
 ROOTS={
  'window/W-04':HOME/'.local/share/westlake/t34-demo61b-video-20261021/W-04',
+ 'window/W04-after-close-read-01':HOME/'.local/share/westlake/t34-demo61b-video-20261021/W04-after-close-read-01',
+ 'peer/window-driver-outer':HOME/'.local/share/westlake/t34-window-driver-outer-01',
  'environment-read':HOME/'.local/share/westlake/t34-environment-read-20261021',
  'peer/environment':HOME/'.local/share/westlake/t34-environment-peer',
  'peer/window-driver-author':HOME/'.local/share/westlake/t34-window-driver-peer',
