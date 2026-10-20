@@ -1,6 +1,6 @@
 # Current observations beside the API source/build atlas
 
-The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **34 observations with 650 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
+The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **41 observations with 958 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
 
 Open the [current observations](index.html), [JSON](observations.json) or [CSV](observations.csv), alongside the [complete historical source/build atlas](../2026-10-14-api-source-delivery/views/index.html).
 
@@ -73,3 +73,5 @@ T26 archive completion addendum: the later original remote receipts verify archi
 Observation40 records T28 only: first icon reaches feed, two different clips visibly play/pause/resume, first-clip audio is user-confirmed and story audio unknown. The intervening20second black-video transition remains a failure and RGBX2 was not observed; NOT SEALED. Runtime restoration uses explicitly referenced T26 restored baseline, not a new before capture. Original39 rows/historical315 remain unchanged; T26 semantics are untouched.
 
 T28 window archive is now independently linked: fb3c26ac…/24,577,617B/12,236 members; reused before state explicitly requires T26 archive ef027d5a… (1540 referenced members verified). This storage closure changes neither the black-transition failure nor the RGBX runtime coverage gap.
+
+T29 appends one diagnostic runtime row while preserving the preceding 40 objects exactly. Both RGBX2 and YV12 reached actual flush0, and the initial video moved. Fullscreen then froze; Back and warm foreground of the same child did not recover it. The first Request40601000 cause remains unknown. The actual log and exact deployed source identify subsequent retained/FAILED cache rejection, but no recovery patch ran in this window. Audio has no new T29 human confirmation. Original runtime and real feed were restored, independently of the failed candidate video transition. Source, joint production, actual five-slot evidence, initial/final review and verified complete-window archive are pinned in the new row. No historical315 grade, frozen API or video seal is promoted.
