@@ -6,8 +6,9 @@ Runtime verdict: **NOT_TESTED**. Device operations: 0. Frozen changes: 0. No dow
 ## What was wrong first (kept, not rewritten)
 
 - `s01-index-grep`: a recursive `grep -ril` over index dirs descended into large binaries (corpus-v2, run-index,
-  demo-baseline inputs) and was cancelled by outer correction after >60 s. Partial stdout/stderr (both 0 B) and
-  argv are kept; no process rc exists (the `.rc` file is a cancellation marker). It is **not** counted as coverage.
+  demo-baseline inputs) and was stopped by cc-video (TaskStop) on outer correction after >60 s; the outer loop sent no
+  signal (`signal_sent=false`). Partial stdout/stderr (both 0 B) and
+  argv are kept; actual rc unknown (`rc=null`) (the `.rc` file is a cancellation marker). It is **not** counted as coverage.
 - `s05-files-name-siblings`: a zsh glob failure dropped every path argument, so rg only searched the private
   evidence directory. Kept, marked `INVALID_SCOPE`, excluded from coverage.
 - `s09-boat-sources-sha-INVALID`: its `argv.json` was a hand-written placeholder, not a captured argv. Kept
@@ -24,14 +25,14 @@ No Genshin base APK, split, OBB or asset was found **in the searched scope only*
 | Scope | Receipt | Result |
 |---|---|---|
 | `$WORKSPACES/westlake-inputs/**` filenames | s03 | no match (rc 1) |
-| `$WORKSPACES/westlake-inputs/**/*.{json,md,txt}` ≤20 MB content | s04 | no match (rc 1) |
+| `$WORKSPACES/westlake-inputs/**/*.{json,md,txt}` ≤20 MB content, non-hidden text-index scope (no `--hidden`) | s04 | no match (rc 1) |
 | `$WORKSPACES/00.Workspace/**`, `$WORKSPACES/vm-copies/**` filenames | s07 | no match (rc 1) |
-| APK/OBB stores (westlake-inputs/apks, 00.Workspace/APKS, vm-copies/apks-77, demo-baseline originals) | s08 | 441 files, none Genshin by name; manifests not read |
+| APK stores (westlake-inputs/apks, 00.Workspace/APKS, vm-copies/apks-77, demo-baseline originals), globs .apk/.apks/.xapk/.obb | s08 | 441 distinct APK/XAPK path entries (393 .apk + 48 .xapk, no OBB), none Genshin by name; not content/package deduplicated; manifests not read |
 | repo text indexes | s06 | 2 doc pointers only: package `com.miHoYo.Yuanshen`, and a *remote* macserver Android emulator said to host Genshin |
 
 **Not searched** (no claim about them): OrbStack `a2hlab`, hw248, the remote macserver, other `$WORKSPACES`
 siblings (generations, worktrees, build dirs, tarballs), the rest of `$HOME`, and the manifests of the 441
-named APKs (a renamed package would be missed). No `Westlake`/`real-work` directory exists under `$WORKSPACES`;
+APK/XAPK path entries (a renamed package would be missed). No `Westlake`/`real-work` directory exists under `$WORKSPACES`;
 their location is UNKNOWN.
 
 `input-index.json` and `static-matrix.json` therefore carry empty arrays plus the searched scope; every

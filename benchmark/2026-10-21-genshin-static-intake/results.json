@@ -11,7 +11,7 @@
     "result": "NO_MATCH"
    },
    {
-    "scope": "$WORKSPACES/westlake-inputs/**/*.{json,md,txt} content (<=20M)",
+    "scope": "$WORKSPACES/westlake-inputs/**/*.{json,md,txt} content (<=20M), non-hidden text-index scope",
     "receipt": "s04-index-content",
     "result": "NO_MATCH"
    },
@@ -21,9 +21,9 @@
     "result": "NO_MATCH"
    },
    {
-    "scope": "APK/OBB stores (westlake-inputs/apks, 00.Workspace/APKS, vm-copies/apks-77, demo-baseline-inputs-20261009-original) filenames",
+    "scope": "APK stores (westlake-inputs/apks, 00.Workspace/APKS, vm-copies/apks-77, demo-baseline-inputs-20261009-original) filenames",
     "receipt": "s08-apk-obb-inventory",
-    "result": "441 files, none Genshin by name"
+    "result": "441 APK/XAPK path entries (no OBB present), none Genshin by name; not content/package deduplicated"
    },
    {
     "scope": "westlake-harness repo text indexes",
@@ -37,7 +37,7 @@
    "remote macserver named in bms/src/tools/infra/access.md as hosting an Android emulator with Genshin — NOT accessed (remote, out of t1 scope)",
    "other $WORKSPACES siblings (westlake-generation-*, westlake-harness-* worktrees, *-build, tarballs) — NOT searched",
    "rest of $HOME, Downloads, external volumes — NOT searched (spec forbids whole-home scan)",
-   "content/manifest of the 441 named APKs — NOT read (a renamed Genshin APK would be missed; package-name corpus JSON content search s04 found none)",
+   "content/manifest of the 441 APK/XAPK path entries — NOT read (a renamed Genshin APK would be missed; package-name corpus JSON content search s04 found none)",
    "'Westlake' and 'real-work' trees: no directory with those names under $WORKSPACES; location UNKNOWN"
   ],
   "missing_means": "no Genshin base APK, split, OBB or asset found in the searched scope only; NOT a claim that none exists elsewhere"
@@ -56,7 +56,7 @@
  "unknowns": [
   "existence of Genshin inputs outside searched scope (OrbStack/hw248/macserver/other siblings)",
   "Genshin version/ABI/SDK/JNI/graphics surface — no input, all UNKNOWN",
-  "whether any of the 441 APKs is a renamed Genshin package (manifests not read)",
+  "whether any of the 441 APK/XAPK path entries is a renamed Genshin package (manifests not read)",
   "resource completeness — not applicable without input; UNKNOWN"
  ],
  "next_action": "Genshin inputs MISSING within the listed local scope only. If the outer loop wants t2: (1) supply/point to an authorized base APK + splits/OBB, or authorize a read-only filename search on OrbStack a2hlab and hw248 (both NOT searched) and on the remote macserver Android env named in bms access.md; (2) then rerun t1 static reads (manifest/SDK/ABI/DT_NEEDED/JNI/GLES-Vulkan/Unity) on the exact SHA; exact binary questions go to Codex/OC via outer, not REA here. No device task, download, install or login is proposed.",
@@ -170,9 +170,9 @@
   },
   {
    "id": "s04-index-content",
-   "purpose": "content search restricted to *.json/*.md/*.txt <=20M",
+   "purpose": "content search restricted to *.json/*.md/*.txt <=20M (non-hidden; --hidden not passed)",
    "scope": [
-    "$WORKSPACES/westlake-inputs/**/*.{json,md,txt}"
+    "$WORKSPACES/westlake-inputs/**/*.{json,md,txt} non-hidden text-index scope"
    ],
    "argv": [
     "gtimeout",
@@ -394,7 +394,7 @@
   },
   {
    "id": "s08-apk-obb-inventory",
-   "purpose": "APK/APKS/XAPK/OBB filename inventory of known APK stores",
+   "purpose": "filename inventory of known APK stores (globs *.apk/*.apks/*.xapk/*.obb)",
    "scope": [
     "$WORKSPACES/westlake-inputs/apks",
     "$WORKSPACES/00.Workspace/APKS",
@@ -444,7 +444,7 @@
      "size": 2
     }
    ],
-   "status_note": "rc=0; 441 files, none named after Genshin/miHoYo; filenames are app names (no hash-named files), manifests NOT read"
+   "status_note": "rc=0; 441 distinct APK/XAPK path entries (393 .apk + 48 .xapk; no .apks, no .obb); none named after Genshin/miHoYo; not deduplicated by content or package; manifests NOT read"
   },
   {
    "id": "s09-boat-sources-sha-INVALID",
