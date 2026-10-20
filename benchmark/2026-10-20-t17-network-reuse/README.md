@@ -32,3 +32,43 @@ The candidate places the same three R8 DSOs and the R9 run onto the restored bas
 `derive_t17.py --repo "$REPO"` checks exact T16 executor SHA05099f6c and produces `executor.py`. Differences are the T17 backup/stage namespace, description and unchanged-f6 hash/metadata/private-inode guards. Physical-only recovery checks the physical f6 object without depending on a missing parent. All remaining CAS/admission/window/recovery behavior comes from T16. Local reference/parameter files select the exact two-line R9 postimage. The admission template is unsigned; outer supplies fresh next-window identities after T16 restoration. The unchanged three-DSO input directory remains `$BASE20/t16-r8-candidate-inputs` and is hash-checked again before apply. CLI is the same as T16, using this directory's executor and its new admission.
 
 Eight reused host checks plus exact two-line/public-excerpt checks pass through a real Rust selector. These checks do not replace independent source review or actual network-binding evidence. Preparing the5cd paired reader remains a separate narrow task; the old61b helper cannot be called as-is.
+
+## Read-only paired binding reader
+
+`read_binding.py` replaces the historical reader's fixed 61b identity only for this
+5cd window. It reuses the pinned original `map_rows`/`bias_for` PT_LOAD algorithm.
+It reads media GOT offsets 4782456 and 4782944, comparing against exact f6 load
+bias + 0x23f4 / 0x2a00. It does not read unknown pointees, patch memory, attach,
+change UI/settings, or execute on import/preview. Existing build-closure unknowns
+above are unchanged.
+
+Outer must supply a new post-reboot `reader-profile.template.json` filled from
+fresh raw evidence: boot, observed_at, exact parent/child PID/PPID/birth/UID/exe/mnt,
+init mnt, actual libc SHA/path, actual candidate run SHA, and receipt SHA. Supply
+the matching raw candidate run as `--run-file`; only its one numeric WID line may
+differ from the R9 11d3d671 reference. No old 6395 profile is a current identity.
+Profile age must be at most 120 seconds at entry. The reader has a monotonic
+120-second limit and stops before the T17 window's 10-minute recovery reserve.
+
+```sh
+python3 "$REPO/benchmark/2026-10-20-t17-network-reuse/read_binding.py"
+python3 "$REPO/benchmark/2026-10-20-t17-network-reuse/read_binding.py" --execute \
+  --repo "$REPO" --profile "$FRESH_PROFILE" --receipt "$FRESH_RAW_RECEIPT" \
+  --run-file "$FRESH_RUN_COPY" --inputs "$BASE20/t16-r8-candidate-inputs" \
+  --net-elf "$WORKSPACES/westlake-inputs/seal-artifacts-20261012/sha256/f6c354d1513071533fddcc91749f44e57a626177a584fb1bb9f48bf6446ef01e" \
+  --hdc "$HDC" --holder "$EXACT_T17_HOLDER" --start "$T17_START_EPOCH" \
+  --out "$BASE20/t17-network-binding-new-child"
+```
+
+The output directory must be new. Raw Board commands survive timeout. Each read
+has before/after boot, UID, birth, PPID, tracer, executable, namespace, run hash
+and private-run-inode guards. Four mapped objects (player/media/libc/netcompat)
+are verified by file SHA and mapped dev:inode, then repeated with unchanged
+relevant maps. Merged HDC output uses explicit dd rc and one exact eight-byte od
+line; no stderr suppression and no remote temporary file. Missing marker,
+short read, process drift or map drift produces UNKNOWN/nonzero. Both exact GOT
+matches are required for PAIRED_BINDING_MATCH. This proves these two sampled
+slots only, not effective getenv, every loader namespace, audio or playback.
+
+`test_reader.py` runs eight host tests including real shell binary/short/error
+reads with merged stdout/stderr. These are not on-board transport validation.
