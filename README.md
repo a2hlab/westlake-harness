@@ -532,6 +532,7 @@ kind of work from where the corpus started
 | **[R12 dedicated OH debugger compatibility](benchmark/2026-10-19-toutiao-video-playback/tool-compat-r12/window/)** | Two actual hardware hits and verified detach/cleanup on an owned probe; application playback remains untested. |
 | **[Window candidate static preflight](benchmark/2026-10-20-window-candidate-preflight/)** | **Pinned f12c source inputs and minimal lock/unlock extraction closure; no build or device admission.** |
 | **`benchmark/2026-10-19-toutiao-video-playback/candidate-r14-offline/`** | Offline paired window module, 49 host tests and reproducible build receipts; no production binding or deployment. |
+| **[T23 EGL native-buffer import candidate](benchmark/2026-10-20-t23-egl-import/)** | **R77 reuse in the existing T20 shim; same-instance AHB/EGL gates, 23 host cases and real PIC/ABI evidence; device playback pending.** |
 | **[Exact765 geometry source closure](benchmark/2026-10-20-t22-geometry-source/)** | **Original source/recipe and unchanged baseline executable-content comparison; narrowly scoped unwrap repair, GPU causality still open.** |
 | **[T21 first live CPU-window pairs](benchmark/2026-10-20-t21-first-live-pair/)** | **Five actual lock/unlock/flush successes, then splash-video NativeImage texture import fatal; pointer/size chain and exact excerpts, video pending.** |
 | **[T21 saved-log binding review](benchmark/2026-10-20-t21-bind-log-review/)** | **Offline exact-offset instance/operation reconciliation and fresh slot checklist; no device execution.** |

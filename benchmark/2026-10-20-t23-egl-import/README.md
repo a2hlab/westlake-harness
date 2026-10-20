@@ -1,0 +1,21 @@
+# T23 native-buffer EGL import candidate
+
+T21 crossed the CPU lock wall five times, then failed at `Invalid GrBackendTexture` in startup splash video. The earlier R77 implementation already addressed the OH-native-buffer versus Android EGL import mismatch and display ownership. This candidate reuses that mechanism in the existing shim, retaining the unchanged T20 CPU objects. It is a static candidate, not evidence of restored video.
+
+The final library is **a9abaf09ce020c45dea5a30d1030a8ae7f939a2f4434cd6ff3aec53cfc9726b6**, 77,792 bytes. Production-02 used platform `ec23d9b0` and binding `c8338603`, after independent review of their actual code. Production-01 is superseded and must not be deployed. Full hashes, exact exported offsets and build records are in `results.json`, `source-pins.json`, `production-02.json` and `private-raw-index.json`.
+
+The source donor and historical validation are indexed in `donor-index.json`. `egl_import.c` implements the three import functions plus conditional native-fence dispatch. It reserves a slot before creating the OH wrapper, prevents concurrent duplicate image creation, matches destroy by `(display,image)`, and retains the wrapper if driver destruction fails. OH wrapper create/destroy calls are serialized independently of the slot lock. Foreign calls preserve their target/arguments through one next-provider call. A failed local admission returns failure without claiming to synthesize a standard EGL error; no wrapper consumes `eglGetError`.
+
+`platform.c` accepts only a single current-display implementation. Direct functions must belong to that implementation's base; an extension may come only from its own `eglGetProcAddress`. Create/destroy must both exist. It opens existing handles with NOLOAD, never a speculative new namespace. `exact_binding.h` checks the actual a11c converter GOT slot `0x841850` against its dependency-scope resolution and surface `0x64be0`; OH wrapper create/destroy must be in that same instance at `0x6702c/0x66e18`. The normal valid-AHardwareBuffer contract still applies. This does not validate arbitrary application pointers.
+
+The exact a11c consumer calls that converter at `0x80aad4`, receives the native buffer at stack offset 32, references the same pointer at `0x80ada4`, and returns it via `0x80ad7c`. LLVM commands and original output are preserved. This is file implementation evidence; the current runtime slot is checked by the candidate and still requires outer file/identity admission. Likewise, the GL/nativeFence release branch is statically proven, but the T21 runtime backend and extension flag remain unknown. No damage, terminate or geometry changes are included.
+
+## Reproduce and inspect
+
+Run `python3 benchmark/2026-10-20-t23-egl-import/check.py` for 23 actual-C host cases, including a real concurrent-create thread and independent platform-loader seams. These are not device tests. The Rust selector `ttvideo_t23_egl_import` runs that checker. Contract parse/lint scored 100%; screenshot/playback acceptance remains human pending.
+
+`build.py` defaults to preview. Supply `--repo`, `--sdk`, `--inputs`, `--t20-build` and a new persistent `--out`, plus `--execute` to build. The T20 directory must contain its original receipt, raw link argv and exact pinned objects; the existing T20 source/build archive is the producing prerequisite, not a new whole-shim source rebuild. It first relinks the unchanged T20 objects to exact 5cc, then adds the two new PIC translation units. Every command saves argv/stdout/stderr/rc; frozen and ABI checks run. The observed production-02 gate retained 73 exports and added only four EGL symbols, with unchanged NEEDED and no TEXTREL. The repository `abi_diff.py` with exact a11c consumer returned 0: no removed exports, signature drift or consumer breaks.
+
+**Use the final offsets:** ANW lock `0x6a00`, unlock `0x6a14`; EGL client `0xc058`, create `0xc358`, destroy `0xc660`, dup fence `0xc874`. Neither the old T20 nor superseded production-01 offsets are valid for the final candidate.
+
+New archive upload is pending and belongs to the outer loop. Preserve the incremental build directories and raw indexes; reuse the already archived T20 inputs rather than repacking the large original closure. No board operation or push was made by this task.
