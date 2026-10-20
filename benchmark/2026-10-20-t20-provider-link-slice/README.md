@@ -1,0 +1,29 @@
+# Same-route paired native-window candidate
+
+The deployed shim returns `-19` for CPU locking. T18 recorded 249 failures in the reviewed interval; the user separately confirmed the clip's audio. The original shim's producing source and objects were located. **The untouched link reproduces exact `85c789f4…`; this package changes only its two Android CPU entrypoints and adds the internal R14/R15 integration.** It does not create another PRELOAD route or claim video has passed.
+
+Final candidate: **`5cc23582d8cd8f28b24f89dc9bcf439de2177c0be33bb4783dd1baad3ab32eca`**, 70,184 bytes. Two complete runs (`production-03` and `production-04`) produced identical bytes from final `pair.c` **`610053541b996e41377aae1270f42eed52610b60e17e5e948c2f297a78aa2155`**. The original C object recompile differs only by 38 bytes in non-ALLOC `.comment`; all other file bytes and section headers agree. Defined exports and DT_NEEDED remain unchanged. Four added libc imports implement the existing adapter's real clock/poll/mutex operations. The source is original Westlake commit `b14e4d08d933879e631ec5c735582f6755b68f64`, C SHA `45f0b40c…`, with its license preserved. The surviving #49 directory lacked its original argv/log; a same-family recorded link recipe is reused and validated by the new exact-baseline result, not presented as the missing historical execution.
+
+## Actual entry and instance boundaries
+
+`shim/derive.py` replaces only `ANativeWindow_lock` and `ANativeWindow_unlockAndPost` in the exact original source. The accepted caller is `/data/local/tmp/asx/lib/arm64-v8a/libttmplayer.so`, with one fixed load base per shim. Other callers retain the original one-time message and `-ENODEV` behavior. A caller must hold a valid ANativeWindow reference. This is not a validator for arbitrary pointers.
+
+The existing dca530 owner supplies `oh_anw_get_oh`/`try_acquire`/`try_release`. The normal wrapper lifetime is retained across successful lock and uncertain retained failure; duplicate lock releases only its newly acquired reference, and successful unlock releases the held reference. Failed slots remain owned until process recovery. No raw-OH fallback is implemented. Unchanged R14/R15 handle fences, typed buffer conversion, map/unmap, flush and conservative uncertain failures; the new entry supplies real POSIX clock/poll/close capabilities.
+
+A plain `libnative_window.so` lookup would be wrong here: its expected system alias is absent, and T18 mapped two instances of the same `libsurface.z.so` artifact. The new pair resolves through the existing owner handle, verifies exact owner symbol offsets and readable ELF PT_LOAD coverage, reads its actual Reference/Unreference GOT targets (`0x1740a0`/`0x173fc8`), and requires their dependency-scope resolutions plus all seven OH functions to select the same mapped provider base. `provider-evidence.json` and `exact-surface-exports.txt` bind file-level evidence. Failure to see the existing owner, unresolved/foreign targets or another provider instance refuses without loading a substitute. Bounded logs report scalar inputs, unwrap result, provider function/base and actual operation results; they do not dereference an additional unknown window object.
+
+## Reproduction and checks
+
+```sh
+python3 benchmark/2026-10-20-t20-provider-link-slice/shim/build_candidate.py \
+  --execute --repo "$MAIN" --inputs "$INPUTS" --sdk "$OH_SDK_NATIVE" \
+  --out "$HOME/.local/share/westlake/t20-provider-link/new-production-run"
+```
+
+Without `--execute` the script previews only. `$INPUTS` is the recovered original build workspace; `input-pins.json` identifies its required files and the SDK inputs. The recipe runs frozen checks, exact original-object relink, original-source object comparison, candidate PIC compilation and link, and actual ELF export/dependency checks. Each command writes argv/stdout/stderr/rc immediately into a new persistent directory; timeouts retain partial output. Failed exploratory attempts remain in `private-raw-index.json`. The successful runs record 104 input files. Candidate headers are pinned before candidate compilation and every recorded input is checked again at completion; the original-source comparison compiled earlier in the run. This is an incremental shim build reusing its original ASM/CRT/library inputs, not a whole-platform source rebuild. Large inputs, binaries and original logs are persistent locally; remote archival remains pending its separate outer receipt.
+
+`check.py` compiles actual `pair.c`, entry, R14 and R15. Ten loader/OH-seam cases cover successful duplicate lock/unlock reference conservation, failed-retained duplicate calls, mixed provider members, mixed owner slots, slot/resolver disagreement, unreadable GOT segment, wrong owner offsets, non-player, foreign same-basename and changed player base. A separate actual entry suite exercises real pipe/poll/clock/close plus success/refusal/retained paths. Fake provider/loader metadata are explicit fixtures; these are not OH playback observations. `tools/spec-checks/tests/toutiao_t20_paired_candidate.rs` executes these checks. Spec parse/lint passed (100%). Independent peer review is `benchmark/2026-10-20-t20-pair-peer/` (commit `1315b21a66c383e3d57f25b6e24f070562f27b86`).
+
+## Remaining device criterion
+
+Only the outer loop may deploy through the separately reviewed 5cd six-file CAS transaction and restore route. Fresh evidence must bind the exact player, single selected bridge, shim and surface SHA/inodes; actual player lock/unlock slots must select this shim. Its owner/provider logs must agree with the fresh mappings and reference slots. A real successful lock/map/unmap/flush sequence and continuous content frames are required for video acceptance. An absent or refused binding remains an explicit result, not success. The user-confirmed T18 clip audio remains recorded; static build success does not upgrade the picture result.
