@@ -1,0 +1,1 @@
+These are exact historical T30 inputs, used only as offline fixture donors. They are NOT T31 admission. Tests create explicitly synthetic T31 scope and a new holder in a temporary directory; no fixture is admissible as current board evidence.

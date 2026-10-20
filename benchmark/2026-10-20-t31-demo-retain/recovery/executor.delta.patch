@@ -1,0 +1,84 @@
+--- T30/executor.py
++++ T31/recovery.py
+@@ -13,18 +13,26 @@
+ assert re.fullmatch(r'[0-7]{3,4}:20011300:20011300',PLAYER_METADATA)
+ assert re.fullmatch(r'u:object_r:[A-Za-z0-9_]+:s0',PLAYER_LABEL)
+ assert not Path(PLAYER_INPUT_REL).is_absolute() and '..' not in Path(PLAYER_INPUT_REL).parts
+-p=argparse.ArgumentParser();p.add_argument('mode',choices=['preflight','apply','rollback'])
++p=argparse.ArgumentParser();p.add_argument('mode',choices=['rollback'])
+ for key in ('boot','parent','birth','hdc','holder'):p.add_argument('--'+key)
+ for key in ('out','apply-plan','repo','inputs','admission'):p.add_argument('--'+key,type=Path)
+-p.add_argument('--start',type=float);p.add_argument('--execute',action='store_true');p.add_argument('--recovery-no-parent',action='store_true');a=p.parse_args()
++p.add_argument('--origin-data',type=Path);p.add_argument('--origin-admission',type=Path);p.add_argument('--start',type=float);p.add_argument('--execute',action='store_true');p.add_argument('--recovery-no-parent',action='store_true');a=p.parse_args()
+ assert not a.recovery_no_parent or a.mode=='rollback','recovery flag is rollback-only'
+ if not a.execute:
+  print(json.dumps({'execute':False,'device_calls':0,'mode':a.mode,'serial':'5cd1e3dd00000000000000000923012c'}));sys.exit()
+-assert all([a.boot,a.hdc,a.holder,a.out,a.repo,a.inputs,a.admission,a.start]),'explicit inputs'
++assert all([a.boot,a.hdc,a.holder,a.out,a.repo,a.inputs,a.admission,a.start,a.origin_data,a.origin_admission,a.apply_plan]),'explicit recovery inputs'
++assert not a.recovery_no_parent,'T31 requires live identity; no new physical-only authority'
+ assert a.recovery_no_parent or (a.parent and a.birth),'live parent required except physical recovery'
+ assert a.out.is_absolute() and not str(a.out).startswith(('/tmp/','/private/tmp/')),'persistent output'
+ sha_file=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+-here=Path(__file__).resolve().parent
++here=a.origin_data.resolve()
++from recovery_policy import validate_origin, validate_window, validate_sources
++origin_plan,origin_admission=validate_origin(here,a.apply_plan,a.origin_admission)
++recovery_ad=json.loads(a.admission.read_text())
++validate_window(recovery_ad,origin_plan,a.holder,a.start,a.boot,time.time())
++validate_sources(recovery_ad)
++assert recovery_ad['origin_apply_admission_sha256']==sha_file(a.origin_admission)
++assert recovery_ad['origin_apply_plan_sha256']==sha_file(a.apply_plan)
+ candidate=json.loads((here/'bridge-candidate.json').read_text())
+ BRIDGE='liboh_adapter_bridge.so'
+ BBEFORE='d4fae8e5802f3153a85175243edf665714900381d463ffc5ca1e64d0b308775b'
+@@ -111,7 +119,7 @@
+ else:
+  wm=read("hidumper -s WindowManagerService -a '-a'");(a.out/'wms.txt').write_text(wm)
+  rows=[l.split() for l in wm.splitlines() if l.split() and l.split()[0]=='imehost0'];assert len(rows)==1
+- wid=rows[0][3];assert wid.isdigit()
++ wid=rows[0][3];assert wid=='29','T31 recovery fresh WID29 only'
+  assert len(rows[0])>=8 and rows[0][2]==str(ad['host']['pid']),'WMS host PID binding'
+ actual=read('sha256sum '+RT+'/run.sh').split()[0]
+ board.receive(RT+'/run.sh',a.out/'current.run.sh')
+@@ -122,6 +130,7 @@
+  assert len(matches)==1 and 0<int(matches[0][1])<2147483648,'single numeric WID line'
+  m=matches[0];return data[:m.start()]+b'export WL_PARENT_ID=29\n'+data[m.end():],int(m[1])
+ normalized,current_wid=normalize_wid(current_bytes)
++assert current_wid==29,'T31 recovery raw WID29 only'
+ (a.out/'run-normalization.json').write_text(json.dumps({'original_reference_wid':29,'current_wid':current_wid,'actual_sha256':actual,'normalized_sha256':sha(normalized),'only_allowed_difference':'one exact WL_PARENT_ID numeric value'},indent=2)+'\n')
+ if not a.recovery_no_parent:
+  assert str(current_wid)==wid,'current raw WID/live WMS'
+@@ -159,7 +168,8 @@
+ if a.mode=='rollback':
+  assert a.apply_plan is not None,'bound original apply plan required'
+  apply_plan=json.loads(a.apply_plan.read_text())
+- assert apply_plan['executor_sha256']==sha_file(Path(__file__)) and apply_plan['holder']==a.holder and apply_plan['start']==a.start,'same execution window/source'
++ assert apply_plan==origin_plan,'origin plan changed during recovery'
++ assert apply_plan['executor_sha256']==origin_admission['executor_sha256'] and apply_plan['holder']==origin_admission['holder'] and apply_plan['start']==origin_admission['window_start'],'immutable origin window/source'
+  assert apply_plan['compat_before_absent'] is True
+  assert apply_plan['shim_path']==SHIM and apply_plan['shim_before_sha']==SBEFORE and apply_plan['shim_after_sha']==SAFTER
+  assert apply_plan['shim_candidate_sha256']==sha_file(here/'shim-candidate.json')
+@@ -236,11 +246,11 @@
+  shim_backup=RT+'/'+SHIM+'.t21-5cd-before-'+apply_plan['boot'][:8]
+  absence_backup=RT+'/'+DSO+'.t21-5cd-before-'+apply_plan['boot'][:8]+'.absent'
+  assert apply_plan['compat_absence_marker']==absence_backup
+- if dso_present:pre+=pathguard(absence_backup)+f'test -f {q(absence_backup)}\ntest "$(sha256sum {q(absence_backup)} | cut -d\' \' -f1)" = {apply_plan["compat_absence_marker_sha256"]}\n'
++ pre+=pathguard(absence_backup)+f'test -f {q(absence_backup)}\ntest "$(sha256sum {q(absence_backup)} | cut -d\' \' -f1)" = {apply_plan["compat_absence_marker_sha256"]}\n'
+  for target,back,digest,fmeta,flabel,current in [('run.sh',backup,apply_plan['before_sha'],meta,label,actual),(MEDIA,media_backup,MBEFORE,mmeta,mlabel,mactual),(PLAYER,player_backup,PBEFORE,pmeta,plabel,pactual),(BRIDGE,bridge_backup,BBEFORE,bmeta,blabel,bactual),(SHIM,shim_backup,SBEFORE,smeta,slabel,sactual)]:
+   present=read('if [ -e '+q(back)+' ]; then echo yes; else echo no; fi').strip()=='yes'
+-  if present:pre+=fg(back,digest,fmeta,flabel)
+-  else:assert current==digest,'missing backup for changed target'
++  assert present,'missing durable origin backup'
++  pre+=fg(back,digest,fmeta,flabel)
+ 
+ 
+ host=ad['host'];assert host['uid']==20011300 and str(host['pid']).isdigit() and str(host['birth']).isdigit()
+@@ -256,7 +266,7 @@
+ plan={'mode':a.mode,'compat_before_absent':True,'serial':board.serial,'uid':20011300,'holder':a.holder,'start':a.start,'admission_sha256':sha_file(a.admission),'executor_sha256':sha_file(Path(__file__)),'boot':a.boot,'parent':a.parent,'parent_birth':a.birth,'physical_only':a.recovery_no_parent,'wid':wid,'before_sha':sha(before),'after_sha':sha(after),'run_metadata':meta,'run_label':label,'dso_label':dlabel,'dso_sha':DSHA,'cfg_sha':CSHA,'runtime':RT,'media_before_sha':MBEFORE,'media_after_sha':MAFTER,'media_metadata':mmeta,'media_label':mlabel,'player_path':PLAYER,'player_before_sha':PBEFORE,'player_after_sha':PAFTER,'player_metadata':pmeta,'player_label':plabel,'player_input_rel':PLAYER_INPUT_REL}
+ plan.update(bridge_path=BRIDGE,bridge_before_sha=BBEFORE,bridge_after_sha=BAFTER,bridge_metadata=bmeta,bridge_label=blabel,bridge_candidate_sha256=sha_file(here/'bridge-candidate.json'))
+ plan.update(shim_path=SHIM,shim_before_sha=SBEFORE,shim_after_sha=SAFTER,shim_metadata=smeta,shim_label=slabel,shim_candidate_sha256=sha_file(here/'shim-candidate.json'),compat_absence_marker=RT+'/'+DSO+'.t21-5cd-before-'+(apply_plan['boot'] if apply_plan else a.boot)[:8]+'.absent',compat_absence_marker_sha256=sha(b'ABSENT\n'))
+-if apply_plan is not None:plan['origin_apply_plan_sha256']=sha(a.apply_plan.read_bytes());plan['origin_apply_boot']=apply_plan['boot'];plan['origin_apply_wid']=origin_wid
++if apply_plan is not None:plan['origin_apply_plan_sha256']=sha(a.apply_plan.read_bytes());plan['origin_apply_boot']=apply_plan['boot'];plan['origin_apply_wid']=origin_wid;plan['origin_holder']=apply_plan['holder'];plan['origin_start']=apply_plan['start'];plan['origin_apply_admission_sha256']=sha_file(a.origin_admission)
+ (a.out/'plan.json').write_text(json.dumps(plan,indent=2)+'\n');(a.out/'before.run.sh').write_bytes(before);(a.out/'after.run.sh').write_bytes(after)
+ if a.mode=='preflight':print(json.dumps(plan));sys.exit()
+ stage='/data/local/tmp/t21-5cd-'+a.mode+'-'+a.boot[:8]+'-'+sha(str(a.out).encode())[:8];shell(parent_guard+pathguard(stage)+f'test ! -e {stage}; mkdir {stage}; chmod 700 {stage}\n')

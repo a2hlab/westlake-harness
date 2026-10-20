@@ -1,0 +1,34 @@
+--- T30/rollback_core.py
++++ T31/recovery_core.py
+@@ -70,9 +70,8 @@
+     return int(m[1]), int(fields[1]), int(fields[19])
+ 
+ 
+-def fill(repo, context, held, raw, now, plan):
+-    from window_paths import deploy
+-    d = deploy()
++def fill(repo, context, held, raw, now, plan, original, d):
++    d = Path(d).resolve()
+     require(Path(context["deploy"]).resolve() == d, "context deployment")
+     require(context["serial"] == SERIAL, "serial")
+     require(Path(context["repo"]).resolve() == repo.resolve(), "context MAIN")
+@@ -116,7 +115,7 @@
+     require(values["P_MNT_BEFORE"] != values["INIT_MNT"], "parent private namespace")
+     rows = [x.split() for x in lines[lo + 1:hi] if x.split() and x.split()[0] == "imehost0"]
+     require(len(rows) == 1 and len(rows[0]) >= 8, "unique host WMS")
+-    require(rows[0][2] == str(identities["H"][0]) and rows[0][3].isdigit() and int(rows[0][3]) > 0, "host/WID")
++    require(rows[0][2] == str(identities["H"][0]) and rows[0][3] == "29", "host/WID")
+     ad = json.loads((d / "admission.template.json").read_text())
+     for key, name in (
+         ("executor_sha256", "executor.py"), ("parameters_sha256", "parameters.json"),
+@@ -146,8 +145,8 @@
+                 "foreign current SHA")
+         ad[key.lower() + "_metadata"] = ":".join(meta.split(":")[:3])
+         ad[key.lower() + "_label"] = label
+-    require(plan["mode"] == "apply" and plan["holder"] == holder and
+-            plan["start"] == start and plan["serial"] == SERIAL and
++    require(plan["mode"] == "apply" and plan["holder"] == original["holder"] and
++            plan["start"] == original["window_start"] and plan["serial"] == SERIAL and
+             plan["uid"] == UID and plan["compat_before_absent"] is True,
+             "original apply plan identity")
+     require(plan["executor_sha256"] == ad["executor_sha256"], "plan executor")

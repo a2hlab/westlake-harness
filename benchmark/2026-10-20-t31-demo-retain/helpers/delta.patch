@@ -1,0 +1,169 @@
+--- T30/window_paths.py
++++ T31/window_paths.py
+@@ -1,27 +1,27 @@
+-"""T30 paths/remaining budget for the existing one-board helper sequence."""
++"""T31 paths/remaining budget for the existing one-board helper sequence."""
+ from pathlib import Path
+ import datetime, hashlib, json, os, re, time
+-BASE = Path(os.environ.get('T30_BASE', str(Path.home()/'.local/share/westlake/toutiao-resume-20261020'))).resolve()
+-WINDOW = BASE/'t30-5cd-window-01'
++BASE = Path(os.environ.get('T31_BASE', str(Path.home()/'.local/share/westlake/toutiao-resume-20261020'))).resolve()
++WINDOW = BASE/'t31-5cd-window-01'
+ HELPERS = Path(__file__).resolve().parent
+-DEFAULT_DEPLOY = HELPERS.parent/"final-01"
++DEFAULT_DEPLOY = Path.cwd()/"benchmark/2026-10-20-t30-request-recovery/deployment/final-01"
+ SERIAL = '5cd1e3dd00000000000000000923012c'
+ EXECUTOR_SHA = '693448c26cb72002031f58cca467691f09ac61674b2c76353eb71bd44a5b63bb'
+ 
+ def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+ def load(p): return json.loads(Path(p).read_text())
+-def deploy(): return Path(os.environ.get('T30_DEPLOY', str(DEFAULT_DEPLOY))).resolve()
++def deploy(): return Path(os.environ.get('T31_DEPLOY', str(DEFAULT_DEPLOY))).resolve()
+ def final_data():
+     d=deploy()
+     assert sha(d/'executor.py')==EXECUTOR_SHA, 'executor drift'
+     c=load(d/'shim-candidate.json')
+-    assert re.fullmatch('[0-9a-f]{64}',str(c.get('after_sha256'))), 'T30 candidate UNAPPROVED'
++    assert re.fullmatch('[0-9a-f]{64}',str(c.get('after_sha256'))), 'T31 candidate UNAPPROVED'
+     assert c['build_status']=='PRODUCTION_BUILD_VERIFIED' and c['production_refs'], 'production closure missing'
+     assert load(d/'bridge-candidate.json')['after_sha256']=='b0e5602a97133ebb1dca12972a8931a86528322685a211bb1a7a0a2185fefbd4'
+     return d
+ 
+ def live():
+-    assert os.environ.get('T30_EXECUTE')=='1', 'root channel only; set T30_EXECUTE=1 explicitly'
++    assert os.environ.get('T31_EXECUTE')=='1', 'root channel only; set T31_EXECUTE=1 explicitly'
+     repo=Path.cwd().resolve();assert repo.name=='westlake-harness', 'run helper cwd=MAIN'
+     d=final_data()
+     for role in ('bridge','shim'):
+--- T30/t30_outer.py
++++ T31/t31_outer.py
+@@ -14,17 +14,17 @@
+     stem.with_suffix('.stdout').write_bytes(r.stdout);stem.with_suffix('.stderr').write_bytes(r.stderr);stem.with_suffix('.rc').write_text(str(r.returncode));assert r.returncode==0,(label,r.returncode,r.stderr.decode());return r.stdout.decode()
+ if action=='acquire':
+     out.mkdir(exist_ok=False)
+-    call('lock',['bash',str(repo/'scripts/lab/board_note.sh'),'lock',str(repo/'.octos/boards/app-lighting.md'),SERIAL,'inner(cx-seal)','T30 5cd resource-free request failure recovery, six states, 1800s total/1200s experiment/600s restore'])
++    call('lock',['bash',str(repo/'scripts/lab/board_note.sh'),'lock',str(repo/'.octos/boards/app-lighting.md'),SERIAL,'inner(cx-seal)','T31 5cd final playback/recoverable retention, six states, 1800s total/1200s experiment/600s restore'])
+     holder=call('holder',['bash',str(repo/'scripts/lab/board_note.sh'),'held',SERIAL]).strip();start=datetime.datetime.fromisoformat(holder.split()[2]).timestamp()
+     names=list(load(d/'reuse-index.json')['selfpins'].values())+['admission.template.json']
+-    c=dict(repo=str(repo),serial=SERIAL,hdc=hdc,holder=holder,start=start,deploy=str(d),data_pins={n:sha(d/n) for n in names})
++    c=dict(purpose="T31_FINAL_ACCEPTANCE",repo=str(repo),serial=SERIAL,hdc=hdc,holder=holder,start=start,deploy=str(d),data_pins={n:sha(d/n) for n in names})
+     (out/'context.json').write_text(json.dumps(c,indent=2));print(json.dumps(c));sys.exit()
+ c=context();phase=sys.argv[2];recovery=phase_limit(phase);deadline=time.monotonic()+budget(c,recovery)
+ held=call('held',['bash',str(repo/'scripts/lab/board_note.sh'),'held',SERIAL]).strip();assert held==c['holder']
+ boot=sys.argv[3];assert str(uuid.UUID(boot))==boot
+ if action=='shell':
+-    script=sys.argv[4];s='(set -eu; test "$(cat /proc/sys/kernel/random/boot_id)" = '+shlex.quote(boot)+'; '+script+'; test "$(cat /proc/sys/kernel/random/boot_id)" = '+shlex.quote(boot)+'; echo T30_SHELL_COMPLETE)'
+-    raw=call('shell',[hdc,'-t',SERIAL,'shell',s]);print(raw);assert 'T30_SHELL_COMPLETE' in raw.splitlines()
++    script=sys.argv[4];s='(set -eu; test "$(cat /proc/sys/kernel/random/boot_id)" = '+shlex.quote(boot)+'; '+script+'; test "$(cat /proc/sys/kernel/random/boot_id)" = '+shlex.quote(boot)+'; echo T31_SHELL_COMPLETE)'
++    raw=call('shell',[hdc,'-t',SERIAL,'shell',s]);print(raw);assert 'T31_SHELL_COMPLETE' in raw.splitlines()
+ elif action=='reboot':
+     raw=call('boot-guard',[hdc,'-t',SERIAL,'shell','test "$(cat /proc/sys/kernel/random/boot_id)" = '+shlex.quote(boot)+' && echo BOOT_GUARD_OK']);assert raw.strip()=='BOOT_GUARD_OK'
+     print(call('reboot',[hdc,'-t',SERIAL,'target','boot'],20))
+@@ -35,6 +35,6 @@
+             left=deadline-time.monotonic();assert left>0;return super().command(argv,min(timeout,left))
+     dest=out/('capture-'+str(time.time_ns()));dest.mkdir();bd=Board(SERIAL,hdc,'bash '+shlex.quote(str(repo/'scripts/lab/board_note.sh')),'inner(cx-seal)',dest/'commands');bd.boot=boot;bd.ready()
+     rc,h=bd.command(bd.lock+['held',SERIAL],5);assert rc==0 and h.strip()==c['holder']
+-    result=b.capture(bd,'/data/local/tmp/t30-shot-'+str(time.time_ns())+'.jpeg',dest/'screen.jpeg');(dest/'screenshot.json').write_text(json.dumps(result,indent=2));print(json.dumps(result));print(dest)
++    result=b.capture(bd,'/data/local/tmp/t31-shot-'+str(time.time_ns())+'.jpeg',dest/'screen.jpeg');(dest/'screenshot.json').write_text(json.dumps(result,indent=2));print(json.dumps(result));print(dest)
+ else:raise ValueError(action)
+ print('elapsed',time.time()-c['start'])
+--- T30/t30_launch.py
++++ T31/t31_launch.py
+@@ -15,11 +15,11 @@
+    super().shell('power-shell timeout -o 86400000',True,10)
+    _,power=super().shell('power-shell dump -s',True,10);assert 'OverrideTimeout=86400000ms' in power
+   return result
+-bd=UI(c['serial'],c['hdc'],'bash '+shlex.quote(str(repo/'scripts/lab/board_note.sh')),'inner(cx-seal)',out/'commands');bd.boot=boot;bd.ready();remote='/data/local/tmp/t30-'+tag+'-'+str(int(c['start']));bd.shell('mkdir '+remote);record=dict(key='toutiao',serial=c['serial'],boot=boot,action='single-normal-icon',screenshots=[])
++bd=UI(c['serial'],c['hdc'],'bash '+shlex.quote(str(repo/'scripts/lab/board_note.sh')),'inner(cx-seal)',out/'commands');bd.boot=boot;bd.ready();remote='/data/local/tmp/t31-'+tag+'-'+str(int(c['start']));bd.shell('mkdir '+remote);record=dict(key='toutiao',serial=c['serial'],boot=boot,action='single-normal-icon',screenshots=[])
+ try:
+  b.desktop_launch(bd,{'package':'org.westlake.imehost','launch_activity':'EntryAbility'},remote,out,record)
+- sys.path.insert(0,str(Path(__file__).parent)); import t30_quick_read
+- if not recovery: t30_quick_read.collect(bd,out/'quick',boot,c)
++ sys.path.insert(0,str(Path(__file__).parent)); import t31_quick_read
++ if not recovery: t31_quick_read.collect(bd,out/'quick',boot,c)
+  shot=b.capture(bd,remote+'/after-icon.jpeg',out/'after-icon.jpeg');shot['captured']=True;record['screenshots'].append(shot)
+  for name,cmd in [('ps','ps -A -o PID,PPID,UID,NAME'),('windows',"hidumper -s WindowManagerService -a '-a'")]:
+   _,raw=bd.shell(cmd);(out/(name+'.txt')).write_text(raw)
+--- T30/t30_frames.py
++++ T31/t31_frames.py
+@@ -4,5 +4,5 @@
+ base=HELPERS;w=WINDOW;c=context();tag(sys.argv[1]);out=w/sys.argv[1];out.mkdir(exist_ok=False);start=time.monotonic();deadline=start+budget(c);r=[]
+ for offset in [0,5,10,20]:
+  time.sleep(max(0,start+offset-time.monotonic()));assert time.monotonic()<deadline
+- x=subprocess.run([sys.executable,str(base/'t30_outer.py'),'capture','candidate',sys.argv[2]],capture_output=True,timeout=min(20,deadline-time.monotonic()));(out/(str(offset)+'.stdout')).write_bytes(x.stdout);(out/(str(offset)+'.stderr')).write_bytes(x.stderr);r.append(dict(offset=offset,rc=x.returncode,elapsed=time.monotonic()-start));(out/'result.json').write_text(json.dumps(r,indent=2));assert x.returncode==0
++ x=subprocess.run([sys.executable,str(base/'t31_outer.py'),'capture','candidate',sys.argv[2]],capture_output=True,timeout=min(20,deadline-time.monotonic()));(out/(str(offset)+'.stdout')).write_bytes(x.stdout);(out/(str(offset)+'.stderr')).write_bytes(x.stderr);r.append(dict(offset=offset,rc=x.returncode,elapsed=time.monotonic()-start));(out/'result.json').write_text(json.dumps(r,indent=2));assert x.returncode==0
+ (out/'result.json').write_text(json.dumps(r,indent=2));print(json.dumps(r))
+--- T30/t30_restore_collect.py
++++ T31/t31_restore_collect.py
+@@ -2,7 +2,7 @@
+ import json,subprocess,time
+ from window_paths import BASE,WINDOW,context,budget
+ repo=Path.cwd();base=BASE;w=WINDOW;c=context();deadline=time.monotonic()+budget(c,True);boot=json.loads((w/'restored-boot.json').read_text())['boot']
+-jobs=[('restored-snapshot',['python3','scripts/lab/board_state_snapshot.py',c['serial'],'--out',str(w/'restored-snapshot'),'--plan',str(base/'t16-reviewed-snapshot-plan.json'),'--hdc',c['hdc'],'--label','T30 restored original runtime after fresh boot']),('restored-supplement',['python3','benchmark/2026-10-20-t16-snapshot-scope/collect_supplement.py','--execute','--repo',str(repo),'--out',str(w/'restored-supplement'),'--hdc',c['hdc'],'--boot',boot,'--holder',c['holder']])]
++jobs=[('restored-snapshot',['python3','scripts/lab/board_state_snapshot.py',c['serial'],'--out',str(w/'restored-snapshot'),'--plan',str(base/'t16-reviewed-snapshot-plan.json'),'--hdc',c['hdc'],'--label','T31 restored original runtime after fresh boot']),('restored-supplement',['python3','benchmark/2026-10-20-t16-snapshot-scope/collect_supplement.py','--execute','--repo',str(repo),'--out',str(w/'restored-supplement'),'--hdc',c['hdc'],'--boot',boot,'--holder',c['holder']])]
+ for tag,a in jobs:
+  assert time.monotonic()<deadline
+  h=subprocess.run(['bash','scripts/lab/board_note.sh','held',c['serial']],capture_output=True,timeout=min(5,deadline-time.monotonic()));assert h.returncode==0 and h.stdout.decode().strip()==c['holder']
+--- T30/t30_baseline_collect.py
++++ T31/t31_baseline_collect.py
+@@ -2,7 +2,7 @@
+ import json,subprocess,time
+ from window_paths import BASE,WINDOW,context,budget
+ repo=Path.cwd();base=BASE;w=WINDOW;c=context();deadline=time.monotonic()+budget(c,False);boot=json.loads((w/'fresh-admission/identity.json').read_text())['boot']
+-jobs=[('before-snapshot',['python3','scripts/lab/board_state_snapshot.py',c['serial'],'--out',str(w/'before-snapshot'),'--plan',str(base/'t16-reviewed-snapshot-plan.json'),'--hdc',c['hdc'],'--label','T30 fresh original runtime before placement']),('before-supplement',['python3','benchmark/2026-10-20-t16-snapshot-scope/collect_supplement.py','--execute','--repo',str(repo),'--out',str(w/'before-supplement'),'--hdc',c['hdc'],'--boot',boot,'--holder',c['holder']])]
++jobs=[('before-snapshot',['python3','scripts/lab/board_state_snapshot.py',c['serial'],'--out',str(w/'before-snapshot'),'--plan',str(base/'t16-reviewed-snapshot-plan.json'),'--hdc',c['hdc'],'--label','T31 fresh original runtime before placement']),('before-supplement',['python3','benchmark/2026-10-20-t16-snapshot-scope/collect_supplement.py','--execute','--repo',str(repo),'--out',str(w/'before-supplement'),'--hdc',c['hdc'],'--boot',boot,'--holder',c['holder']])]
+ for tag,a in jobs:
+  assert time.monotonic()<deadline
+  h=subprocess.run(['bash','scripts/lab/board_note.sh','held',c['serial']],capture_output=True,timeout=min(5,deadline-time.monotonic()));assert h.returncode==0 and h.stdout.decode().strip()==c['holder']
+--- T30/t30_quick_read.py
++++ T31/t31_quick_read.py
+@@ -48,33 +48,33 @@
+             'test "$#" = 4; test "$1:$2:$3:$4" = 20011300:20011300:20011300:20011300; '
+             'test "$(sed -n "s/^TracerPid:[[:space:]]*//p" /proc/%d/status)" = 0; '%pid+
+             'test "$(sha256sum /proc/%d/exe | cut -d\' \' -f1)" = '%pid+EXE)
+-        script = ('(set -eu; '+guard+'; printf "T30_IDENTITY_BEFORE\n"; '
++        script = ('(set -eu; '+guard+'; printf "T31_IDENTITY_BEFORE\n"; '
+                   'cat /proc/{p}/stat; readlink /proc/{p}/ns/mnt; '
+-                  'printf "T30_MAPS\n"; cat /proc/{p}/maps; '
+-                  'printf "T30_FD2\n"; log=$(readlink /proc/{p}/fd/2); '
++                  'printf "T31_MAPS\n"; cat /proc/{p}/maps; '
++                  'printf "T31_FD2\n"; log=$(readlink /proc/{p}/fd/2); '
+                   'printf "%s\n" "$log"; test -f "$log"; test ! -L "$log"; '
+-                  'printf "T30_LOG_BEFORE\n"; stat -c %d:%i:%s "$log"; '
+-                  'printf "T30_LOG_TAIL\n"; tail -c 65536 "$log"; '
+-                  'printf "\nT30_LOG_AFTER\n"; stat -c %d:%i:%s "$log"; '
+-                  'printf "T30_IDENTITY_AFTER\n"; '.format(p=pid)+guard+
+-                  '; cat /proc/%d/stat; printf "T30_QUICK_COMPLETE\n")'%pid)
++                  'printf "T31_LOG_BEFORE\n"; stat -c %d:%i:%s "$log"; '
++                  'printf "T31_LOG_TAIL\n"; tail -c 65536 "$log"; '
++                  'printf "\nT31_LOG_AFTER\n"; stat -c %d:%i:%s "$log"; '
++                  'printf "T31_IDENTITY_AFTER\n"; '.format(p=pid)+guard+
++                  '; cat /proc/%d/stat; printf "T31_QUICK_COMPLETE\n")'%pid)
+         _, raw = read(script, required=False, timeout=8)
+         (out/'quick.raw.txt').write_text(raw)
+-        result['quick_complete'] = 'T30_QUICK_COMPLETE' in raw.splitlines()
++        result['quick_complete'] = 'T31_QUICK_COMPLETE' in raw.splitlines()
+         # A dead child still has useful PID-filtered historical logs. Preserve boot
+         # and before/after proc existence; absence is not proof against PID reuse.
+         hilog = ('(test "$(cat /proc/sys/kernel/random/boot_id)" = '+q(boot)+' || exit 91; '
+-                 'printf "T30_HILOG_PROC_BEFORE\n"; cat /proc/{p}/stat; '
+-                 'printf "T30_HILOG_START\n"; hilog -P {p} -z 2000 -L D,I,W,E,F -v epoch; '
+-                 'rc=$?; printf "T30_HILOG_RC=%s\n" "$rc"; '
+-                 'printf "T30_HILOG_PROC_AFTER\n"; cat /proc/{p}/stat; '
++                 'printf "T31_HILOG_PROC_BEFORE\n"; cat /proc/{p}/stat; '
++                 'printf "T31_HILOG_START\n"; hilog -P {p} -z 2000 -L D,I,W,E,F -v epoch; '
++                 'rc=$?; printf "T31_HILOG_RC=%s\n" "$rc"; '
++                 'printf "T31_HILOG_PROC_AFTER\n"; cat /proc/{p}/stat; '
+                  'test "$(cat /proc/sys/kernel/random/boot_id)" = '.format(p=pid)+q(boot)+
+-                 ' || exit 92; printf "T30_HILOG_COMPLETE\n"; exit "$rc")')
++                 ' || exit 92; printf "T31_HILOG_COMPLETE\n"; exit "$rc")')
+         _, raw = read(hilog, required=False, timeout=8)
+         (out/'hilog.raw.txt').write_text(raw)
+         result['hilog_body_errors'] = re.findall(r'\[CODE:\s*(-?\d+)\]', raw)
+-        result['hilog_complete'] = 'T30_HILOG_COMPLETE' in raw.splitlines() and not any(int(v) != 0 for v in result['hilog_body_errors'])
+-        result['hilog_remote_rc'] = re.findall(r'^T30_HILOG_RC=(\d+)$', raw, re.M)
++        result['hilog_complete'] = 'T31_HILOG_COMPLETE' in raw.splitlines() and not any(int(v) != 0 for v in result['hilog_body_errors'])
++        result['hilog_remote_rc'] = re.findall(r'^T31_HILOG_RC=(\d+)$', raw, re.M)
+         result['status'] = 'CAPTURED_REQUIRES_IDENTITY_AND_TIME_REVIEW'
+     except Exception as e:
+         result['status'] = 'PARTIAL'; result['error'] = str(e)
