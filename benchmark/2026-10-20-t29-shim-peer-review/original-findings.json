@@ -1,0 +1,40 @@
+{
+  "status": "HOST_ASSERTIONS_PASS_OBSERVATION_SEMANTICS_NEED_DELTA",
+  "source_pins": "receipt.json",
+  "logger_cases_passed": 12,
+  "actual_route_cases_passed": 27,
+  "commands_rc0": 41,
+  "findings": [
+    {
+      "id": "R29-S01",
+      "severity": "blocking_for_observation_candidate",
+      "source": "derived/window_module.c r14_lock done",
+      "evidence_cases": [
+        "request_failure",
+        "map_failure",
+        "alloc_failure"
+      ],
+      "issue": "raw_rc/called/stage retains successful cache-begin while public rc is downstream error. Individual Q/M fields retain request/map errors, but stage and raw_rc cannot be treated as first failed operation.",
+      "request": "Set explicit operation/stage and raw rc on actual failure using existing local/report; test parsed stderr from actual route cases."
+    },
+    {
+      "id": "R29-S02",
+      "severity": "blocking_for_observation_candidate",
+      "source": "derived/window_module.c r14_unlock",
+      "evidence_cases": [
+        "precheck_failure"
+      ],
+      "issue": "before-unmap conversion fails with -EINVAL, but record raw_rc is uncalled flush default0 and generic stage42; no independent conversion result field.",
+      "request": "Record the existing conversion local and first-failure stage separately without extra provider calls; assert actual precheck case record."
+    }
+  ],
+  "positive": [
+    "Real exported shim -> pair -> typed adapter -> R14 route fixture executed",
+    "wrong caller and slot mismatch assert zero owner/OH operations",
+    "original format/output/ref/cleanup assertions pass",
+    "real closed-pipe and fd2 rebind logger fixture pass",
+    "real pthread and quota fixtures pass"
+  ],
+  "coverage_note": "Current author build_host validates presence of R29 records and selected cache/wrong-stage markers, not all primary-failure fields. Host-only; no runtime/provider binding conclusion.",
+  "device_calls": 0
+}
