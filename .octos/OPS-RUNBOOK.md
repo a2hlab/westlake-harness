@@ -268,3 +268,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - **OH param缺键不看退出码(2026-10-20)**：`param get debug.ttplayer.log.enable` 在本板输出 `errNum is:106!` 时仍可 rc=0；验缺失须同时保留原始输出并精确判106，不能用 shell `if param get ...` 把 rc0当键存在。R13 retry恢复只读检查因此误拒一次，原件保留，改文本判据复验通过；未改板参数。
 
 - 2026-10-20 #91 日志覆盖与沙箱输入：hilog -x在25秒超时前输出7MB仍只含boot 10:52:10–22，不能否定10:56:31的EGL错误；后续先读实际hilog --help，用-P实际PID与-z有界尾部并保存boot/进程birth/首末时间，超时保留partial且标覆盖范围。octoscode机械审计派单前把精确文件副本+SHA清单放入其允许工作树，不能默认可读外环HOME或邻树；审计代码/日志不存在时不得把算法伪例称实际执行命令。见 benchmark/2026-10-20-t21-first-live-pair/ 和 benchmark/2026-10-20-octoscode-t21-audit/。
+
+- 2026-10-20 #91 用户调度约束：REA 只由 Codex / octoscode 调用，CC 仅接收证据做分析；原因是工具安全约束，不是模型能力。工具可用性须以实际调用回执证明，用户指定车道本身不证明 MCP 或本地 provider 已接通。
