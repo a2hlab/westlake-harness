@@ -1,5 +1,25 @@
 # Demo61b video migration — not yet accepted
 
+W04 verified all six candidate files in physical, parent and child views:
+18 observations match in SHA and file identity. Both the first observation
+and the sole normal-icon reopen still showed a gray page. Retention was
+rejected at 620.67 seconds; the original runtime was restored and the window
+closed at 785.66 seconds. The restored t30 image and a later read-only image
+at 04:21 also remain gray. Runtime restoration is verified; feed/video
+acceptance is not. The signal11 exit is observed without attributing its cause.
+
+- [W04 actual candidate views and images](window-04-runtime-peer/README.md)
+- [W04 recovery and closure](window-04-closed-peer/README.md)
+- [Later unchanged gray image](window-04-afterclose-peer/README.md)
+- [Verified W04 archive: 6,743 payloads, 933,743 bytes](archive-04/README.md)
+- [Reusable bounded execution and recovery drivers](window-driver-01/README.md)
+
+The API increment now contains 48 observations and 1,219 exact file references,
+preserving the preceding 47 objects, historical315 semantics and all eight
+frozen entries. This is a failed-migration/restoration observation, not a new API freeze.
+
+## Earlier W03-b result
+
 W03-b also failed visual acceptance: nine candidate frames across 89.891
 seconds showed a gray host. The original files were restored in physical and
 parent-private views; the final image contains text feed cards with image
@@ -17,9 +37,8 @@ is preserved. No video candidate was retained.
 - [W04 fresh preparation review, not deployment acceptance](window-04-prep-peer/README.md)
 - [Actual APK and application native-library comparison](app-package-peer-01/README.md)
 
-The API increment now contains 47 observations and 1,173 exact file references,
-preserving all preceding 46 objects and historical 315 semantics. W03-b is a
-failed-migration/restoration observation, not a new API freeze.
+At W03-b publication the increment contained 47 observations and 1,173 exact
+file references; that prior state remains recorded in its original append check.
 
 ## Earlier W02 result
 

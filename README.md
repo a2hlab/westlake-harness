@@ -93,7 +93,7 @@ kind of work from where the corpus started
 
 | Path | Contents |
 |---|---|
-| **[61b video migration attempt and recovery](benchmark/2026-10-21-t34-demo61b-video/README.md)** | W02/W03-b candidates failed visual acceptance; W03-b original runtime restored and text feed visible. Source/build mapping, exact evidence archives, runtime comparison tools and API observation47 are linked. |
+| **[61b video migration attempt and recovery](benchmark/2026-10-21-t34-demo61b-video/README.md)** | W04 candidate files match across three views but both launches remain gray; original runtime restored and unlocked in785.66s, without a healthy-feed claim. Source/build mapping, complete archives, reusable tools and API observation48 are linked. |
 | **[Campaign evolution closeout](benchmark/2026-10-20-evolution-closeout/README.md)** | Exact-input host preflight with one real positive and six rejection cases; evidence/scheduling retrospective, freeze-readiness matrix and collector receipts. |
 | **[61b one-click Toutiao host page](benchmark/2026-10-20-t33-demo61b-host/accepted/README.md)** | Same-signature host update; real desktop icon to feed; source/build, rollback and verified archive. |
 | **[T21 sixth-artifact shim transaction](benchmark/2026-10-20-t21-shim-deployment/)** | **Six guarded preimages and partial rollback tests; exact production pins and fresh outer admission are required before execution.** |

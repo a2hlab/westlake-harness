@@ -284,3 +284,4 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 - 2026-10-20 #91 进化采集：手动harvest/retro须显式GNU coreutils gnubin PATH及 `OLP_EVO_REVIEW_BOARD`，沿10月13日已验portable runtime；本次漏PATH调用stat -c失败rc1，随后显式PATH重跑harvest0新增/retro5卡成功。锁等待超时先查现有采集者，不能杀常驻哨或把等待称掉线；记录rc/耗时/最后输出。现脚本仍全文扫描+逐行wc子进程，性能改造待做。派单正ACK/负状态哨持续至实际采认回执，不能发送后结束跟进。
 
 - 2026-10-21 #91 T34：大shell传输出现本机rc0但缺远端marker时不得认成功或盲重试；transport-01按原字节上传、远端SHA核验并保留原执行守卫，W02 apply/rollback实际rc0。后续UI用已审ui-01保留UITest rc并同dispatch恢复awake、逐图目读再点；8项离线通过不代表已真机验证，闭窗holder/start不可复用。
+- 2026-10-21 #91 W04：wrapper 回执目录必须与 driver 独占输出目录分离，禁止外层预建后者；构造前拒绝只有原始 Trace 与零子命令证据齐备才可判零副作用，原件无损另存后纠正调用，锁起点不变。见 T34/window-driver-01/ 与 W04 的 wrapper-receipt-relocation.json。
