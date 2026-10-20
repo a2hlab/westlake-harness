@@ -1,0 +1,245 @@
+--- $BASE20/t29_outer.py
++++ t30_outer.py
+@@ -1,24 +1,40 @@
+ from pathlib import Path
+-import json,subprocess,datetime,time,sys,hashlib,shlex
+-repo=Path.cwd();assert repo.name=='westlake-harness';base=Path(__file__).parent;out=base/'t29-5cd-window-01';serial='5cd1e3dd00000000000000000923012c';hdc='/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc';action=sys.argv[1]
+-def call(tag,argv,timeout=40):
+- stem=out/(tag+'-'+str(time.time_ns()));stem.with_suffix('.argv.json').write_text(json.dumps(argv));t=time.time()
+- try:r=subprocess.run(argv,capture_output=True,timeout=timeout)
+- except subprocess.TimeoutExpired as e:
+-  stem.with_suffix('.stdout').write_bytes(e.stdout or b'');stem.with_suffix('.stderr').write_bytes(e.stderr or b'');stem.with_suffix('.rc').write_text('timeout');raise
+- stem.with_suffix('.stdout').write_bytes(r.stdout);stem.with_suffix('.stderr').write_bytes(r.stderr);stem.with_suffix('.rc').write_text(str(r.returncode));assert r.returncode==0,(tag,r.returncode,r.stderr.decode());return r.stdout.decode()
++import json,subprocess,datetime,time,sys,shlex,uuid
++from window_paths import BASE,WINDOW,SERIAL,live,context,budget,load,sha,phase_limit
++repo,d=live();action=sys.argv[1];out=WINDOW;hdc='/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc'
++c=None;deadline=None
++
++def call(label,argv,timeout=40):
++    if deadline is not None:
++        left=deadline-time.monotonic();assert left>0,'window phase deadline';timeout=min(timeout,left)
++    stem=out/(label+'-'+str(time.time_ns()));stem.with_suffix('.argv.json').write_text(json.dumps(argv))
++    try:r=subprocess.run(argv,capture_output=True,timeout=timeout)
++    except subprocess.TimeoutExpired as e:
++        stem.with_suffix('.stdout').write_bytes(e.stdout or b'');stem.with_suffix('.stderr').write_bytes(e.stderr or b'');stem.with_suffix('.rc').write_text('timeout');raise
++    stem.with_suffix('.stdout').write_bytes(r.stdout);stem.with_suffix('.stderr').write_bytes(r.stderr);stem.with_suffix('.rc').write_text(str(r.returncode));assert r.returncode==0,(label,r.returncode,r.stderr.decode());return r.stdout.decode()
+ if action=='acquire':
+- out.mkdir(exist_ok=False)
+- call('lock',['bash',str(repo/'scripts/lab/board_note.sh'),'lock',str(repo/'.octos/boards/app-lighting.md'),serial,'inner(cx-seal)','T29 5cd bounded producer and consumer transition observation, six files, fresh boot and rollback, 1800s total/600s recovery reserve'])
+- holder=call('holder',['bash',str(repo/'scripts/lab/board_note.sh'),'held',serial]).strip();start=datetime.datetime.fromisoformat(holder.split()[2]).timestamp();c=dict(repo=str(repo),serial=serial,hdc=hdc,holder=holder,start=start);(out/'context.json').write_text(json.dumps(c,indent=2));print(json.dumps(c));sys.exit()
+-c=json.loads((out/'context.json').read_text());held=call('held',['bash',str(repo/'scripts/lab/board_note.sh'),'held',serial]).strip();assert held==c['holder'];age=time.time()-c['start'];assert 0<=age<1800,'window expired'
+-boot=sys.argv[2];assert len(boot)==36
++    out.mkdir(exist_ok=False)
++    call('lock',['bash',str(repo/'scripts/lab/board_note.sh'),'lock',str(repo/'.octos/boards/app-lighting.md'),SERIAL,'inner(cx-seal)','T30 5cd resource-free request failure recovery, six states, 1800s total/1200s experiment/600s restore'])
++    holder=call('holder',['bash',str(repo/'scripts/lab/board_note.sh'),'held',SERIAL]).strip();start=datetime.datetime.fromisoformat(holder.split()[2]).timestamp()
++    names=list(load(d/'reuse-index.json')['selfpins'].values())+['admission.template.json']
++    c=dict(repo=str(repo),serial=SERIAL,hdc=hdc,holder=holder,start=start,deploy=str(d),data_pins={n:sha(d/n) for n in names})
++    (out/'context.json').write_text(json.dumps(c,indent=2));print(json.dumps(c));sys.exit()
++c=context();phase=sys.argv[2];recovery=phase_limit(phase);deadline=time.monotonic()+budget(c,recovery)
++held=call('held',['bash',str(repo/'scripts/lab/board_note.sh'),'held',SERIAL]).strip();assert held==c['holder']
++boot=sys.argv[3];assert str(uuid.UUID(boot))==boot
+ if action=='shell':
+- script=sys.argv[3];s='(set -eu; test "$(cat /proc/sys/kernel/random/boot_id)" = '+shlex.quote(boot)+'; '+script+'; test "$(cat /proc/sys/kernel/random/boot_id)" = '+shlex.quote(boot)+'; echo T29_SHELL_COMPLETE)';raw=call('shell',[hdc,'-t',serial,'shell',s]);print(raw);assert 'T29_SHELL_COMPLETE' in raw.splitlines(), 'remote shell did not complete'
++    script=sys.argv[4];s='(set -eu; test "$(cat /proc/sys/kernel/random/boot_id)" = '+shlex.quote(boot)+'; '+script+'; test "$(cat /proc/sys/kernel/random/boot_id)" = '+shlex.quote(boot)+'; echo T30_SHELL_COMPLETE)'
++    raw=call('shell',[hdc,'-t',SERIAL,'shell',s]);print(raw);assert 'T30_SHELL_COMPLETE' in raw.splitlines()
+ elif action=='reboot':
+- guard=call('boot-guard',[hdc,'-t',serial,'shell','test "$(cat /proc/sys/kernel/random/boot_id)" = '+shlex.quote(boot)+' && echo BOOT_GUARD_OK']);assert guard.strip()=='BOOT_GUARD_OK';print(call('reboot',[hdc,'-t',serial,'target','boot'],20))
++    raw=call('boot-guard',[hdc,'-t',SERIAL,'shell','test "$(cat /proc/sys/kernel/random/boot_id)" = '+shlex.quote(boot)+' && echo BOOT_GUARD_OK']);assert raw.strip()=='BOOT_GUARD_OK'
++    print(call('reboot',[hdc,'-t',SERIAL,'target','boot'],20))
+ elif action=='capture':
+- sys.path.insert(0,str(repo/'benchmark/2026-09-28-bms-route-deploy/batch'));import bms_batch as b
+- dest=out/('capture-'+str(time.time_ns()));dest.mkdir();bd=b.Board(serial,hdc,'bash '+shlex.quote(str(repo/'scripts/lab/board_note.sh')),'inner(cx-seal)',dest/'commands');bd.boot=boot;bd.ready();r=b.capture(bd,'/data/local/tmp/t29-shot-'+str(time.time_ns())+'.jpeg',dest/'screen.jpeg');(dest/'screenshot.json').write_text(json.dumps(r,indent=2));print(json.dumps(r));print(dest)
++    sys.path.insert(0,str(repo/'benchmark/2026-09-28-bms-route-deploy/batch'));import bms_batch as b
++    class Board(b.Board):
++        def command(self,argv,timeout=60):
++            left=deadline-time.monotonic();assert left>0;return super().command(argv,min(timeout,left))
++    dest=out/('capture-'+str(time.time_ns()));dest.mkdir();bd=Board(SERIAL,hdc,'bash '+shlex.quote(str(repo/'scripts/lab/board_note.sh')),'inner(cx-seal)',dest/'commands');bd.boot=boot;bd.ready()
++    rc,h=bd.command(bd.lock+['held',SERIAL],5);assert rc==0 and h.strip()==c['holder']
++    result=b.capture(bd,'/data/local/tmp/t30-shot-'+str(time.time_ns())+'.jpeg',dest/'screen.jpeg');(dest/'screenshot.json').write_text(json.dumps(result,indent=2));print(json.dumps(result));print(dest)
+ else:raise ValueError(action)
+ print('elapsed',time.time()-c['start'])
+--- $BASE20/t29_exec.py
++++ t30_exec.py
+@@ -1,8 +1,31 @@
+ from pathlib import Path
+-import sys,subprocess,json,time
+-repo=Path.cwd();base=Path(__file__).parent;out=base/'t29-5cd-window-01';c=json.loads((out/'context.json').read_text());mode,boot,parent,birth,adfile,tag=sys.argv[1:];dest=out/tag
+-argv=[sys.executable,str(repo/'benchmark/2026-10-20-t29-deployment/executor.py'),mode,'--execute','--repo',str(repo),'--inputs',str(base/'t29-candidate-inputs'),'--boot',boot,'--parent',parent,'--birth',birth,'--hdc',c['hdc'],'--holder',c['holder'],'--start',str(c['start']),'--admission',str(out/adfile),'--out',str(dest)]
+-if mode=='rollback':argv+=['--apply-plan',str(out/'apply/plan.json')]
+-(out/(tag+'-exec.argv.json')).write_text(json.dumps(argv));t=time.time()
+-with (out/(tag+'-exec.stdout')).open('wb') as so,(out/(tag+'-exec.stderr')).open('wb') as se:r=subprocess.run(argv,stdout=so,stderr=se,timeout=180)
+-(out/(tag+'-exec.rc')).write_text(str(r.returncode));print('rc',r.returncode,'seconds',time.time()-t);print((out/(tag+'-exec.stdout')).read_text()[-3000:]);print((out/(tag+'-exec.stderr')).read_text()[-3000:]);sys.exit(r.returncode)
++import argparse,sys,subprocess,json,time
++from window_paths import WINDOW,BASE,context,budget,deploy,tag,load,sha
++
++def command(mode,boot,parent,birth,adfile,label,c):
++    assert mode in ('preflight','apply','rollback')
++    tag(label);tag(adfile) if '/' not in adfile else None
++    ad=(WINDOW/adfile).resolve();assert ad.is_relative_to(WINDOW) and ad.is_file()
++    a=load(ad);assert a['boot']==boot and a['holder']==c['holder'] and a['window_start']==c['start']
++    argv=[sys.executable,str(deploy()/'executor.py'),mode,'--execute','--repo',c['repo'],
++          '--inputs',str(BASE/'t30-candidate-inputs'),'--boot',boot,'--parent',str(parent),
++          '--birth',str(birth),'--hdc',c['hdc'],'--holder',c['holder'],'--start',str(c['start']),
++          '--admission',str(ad),'--out',str(WINDOW/label)]
++    if mode=='rollback':
++        plan=WINDOW/'apply/plan.json';assert a['origin_apply_plan_sha256']==sha(plan)
++        original=load(plan);assert original['holder']==c['holder'] and original['start']==c['start']
++        argv+=['--apply-plan',str(plan)]
++    else:assert a['origin_apply_plan_sha256'] is None
++    return argv
++
++def main():
++    p=argparse.ArgumentParser();p.add_argument('mode',choices=['preflight','apply','rollback'])
++    for n in ('boot','parent','birth','adfile','tag'):p.add_argument(n)
++    a=p.parse_args();c=context();left=budget(c,a.mode=='rollback');argv=command(a.mode,a.boot,a.parent,a.birth,a.adfile,a.tag,c)
++    stem=WINDOW/(a.tag+'-exec');assert not stem.with_suffix('.argv.json').exists()
++    stem.with_suffix('.argv.json').write_text(json.dumps(argv));start=time.monotonic()
++    with stem.with_suffix('.stdout').open('wb') as so,stem.with_suffix('.stderr').open('wb') as se:
++        try:r=subprocess.run(argv,stdout=so,stderr=se,timeout=min(180,left))
++        except subprocess.TimeoutExpired:stem.with_suffix('.rc').write_text('timeout\n');raise
++    stem.with_suffix('.rc').write_text(str(r.returncode)+'\n');print(json.dumps({'rc':r.returncode,'elapsed':time.monotonic()-start,'out':str(WINDOW/a.tag)}));sys.exit(r.returncode)
++if __name__=='__main__':main()
+--- $BASE20/t29_frames.py
++++ t30_frames.py
+@@ -1,7 +1,8 @@
+ from pathlib import Path
+ import subprocess,time,json,sys
+-base=Path(__file__).parent;w=base/'t29-5cd-window-01';c=json.loads((w/'context.json').read_text());out=w/sys.argv[1];out.mkdir(exist_ok=False);start=time.monotonic();r=[]
++from window_paths import HELPERS,WINDOW,context,budget,tag
++base=HELPERS;w=WINDOW;c=context();tag(sys.argv[1]);out=w/sys.argv[1];out.mkdir(exist_ok=False);start=time.monotonic();deadline=start+budget(c);r=[]
+ for offset in [0,5,10,20]:
+- time.sleep(max(0,start+offset-time.monotonic()));assert time.time()-c['start']<1150
+- x=subprocess.run([sys.executable,str(base/'t29_outer.py'),'capture',sys.argv[2]],capture_output=True,timeout=20);(out/(str(offset)+'.stdout')).write_bytes(x.stdout);(out/(str(offset)+'.stderr')).write_bytes(x.stderr);r.append(dict(offset=offset,rc=x.returncode,elapsed=time.monotonic()-start));assert x.returncode==0
++ time.sleep(max(0,start+offset-time.monotonic()));assert time.monotonic()<deadline
++ x=subprocess.run([sys.executable,str(base/'t30_outer.py'),'capture','candidate',sys.argv[2]],capture_output=True,timeout=min(20,deadline-time.monotonic()));(out/(str(offset)+'.stdout')).write_bytes(x.stdout);(out/(str(offset)+'.stderr')).write_bytes(x.stderr);r.append(dict(offset=offset,rc=x.returncode,elapsed=time.monotonic()-start));(out/'result.json').write_text(json.dumps(r,indent=2));assert x.returncode==0
+ (out/'result.json').write_text(json.dumps(r,indent=2));print(json.dumps(r))
+--- $BASE20/t29_launch.py
++++ t30_launch.py
+@@ -1,22 +1,25 @@
+ from pathlib import Path
+ import sys,json,time,shlex
+-repo=Path.cwd();base=Path(__file__).parent/'t29-5cd-window-01';c=json.loads((base/'context.json').read_text());boot,tag=sys.argv[1:];out=base/tag;out.mkdir(exist_ok=False);assert time.time()-c['start']<1500
++from window_paths import WINDOW,context,budget,phase_limit,tag as safe_tag
++repo=Path.cwd();base=WINDOW;c=context();phase,boot,tag=sys.argv[1:];safe_tag(tag);recovery=phase_limit(phase);deadline=time.monotonic()+budget(c,recovery);out=base/tag;out.mkdir(exist_ok=False)
+ sys.path.insert(0,str(repo/'benchmark/2026-09-28-bms-route-deploy/batch'));import bms_batch as b
+ class UI(b.Board):
++ def command(self,argv,timeout=60):
++  left=deadline-time.monotonic();assert left>0;return super().command(argv,min(timeout,left))
+  def ready(self):
+   super().ready();rc,h=self.command(self.lock+['held',self.serial],10);assert rc==0 and h.strip()==c['holder']
+  def shell(self,cmd,required=True,timeout=60):
+-  assert time.time()-c['start']<1700
++  assert time.monotonic()<deadline
+   result=super().shell(cmd,required,min(timeout,20))
+   if cmd.startswith('uitest '):
+    super().shell('power-shell timeout -o 86400000',True,10)
+    _,power=super().shell('power-shell dump -s',True,10);assert 'OverrideTimeout=86400000ms' in power
+   return result
+-bd=UI(c['serial'],c['hdc'],'bash '+shlex.quote(str(repo/'scripts/lab/board_note.sh')),'inner(cx-seal)',out/'commands');bd.boot=boot;bd.ready();remote='/data/local/tmp/t17-'+tag+'-'+str(int(c['start']));bd.shell('mkdir '+remote);record=dict(key='toutiao',serial=c['serial'],boot=boot,action='single-normal-icon',screenshots=[])
++bd=UI(c['serial'],c['hdc'],'bash '+shlex.quote(str(repo/'scripts/lab/board_note.sh')),'inner(cx-seal)',out/'commands');bd.boot=boot;bd.ready();remote='/data/local/tmp/t30-'+tag+'-'+str(int(c['start']));bd.shell('mkdir '+remote);record=dict(key='toutiao',serial=c['serial'],boot=boot,action='single-normal-icon',screenshots=[])
+ try:
+  b.desktop_launch(bd,{'package':'org.westlake.imehost','launch_activity':'EntryAbility'},remote,out,record)
+- sys.path.insert(0,str(Path(__file__).parent)); import t29_quick_read
+- t29_quick_read.collect(bd,out/'quick',boot,c)
++ sys.path.insert(0,str(Path(__file__).parent)); import t30_quick_read
++ if not recovery: t30_quick_read.collect(bd,out/'quick',boot,c)
+  shot=b.capture(bd,remote+'/after-icon.jpeg',out/'after-icon.jpeg');shot['captured']=True;record['screenshots'].append(shot)
+  for name,cmd in [('ps','ps -A -o PID,PPID,UID,NAME'),('windows',"hidumper -s WindowManagerService -a '-a'")]:
+   _,raw=bd.shell(cmd);(out/(name+'.txt')).write_text(raw)
+--- $BASE20/t29_quick_read.py
++++ t30_quick_read.py
+@@ -48,33 +48,33 @@
+             'test "$#" = 4; test "$1:$2:$3:$4" = 20011300:20011300:20011300:20011300; '
+             'test "$(sed -n "s/^TracerPid:[[:space:]]*//p" /proc/%d/status)" = 0; '%pid+
+             'test "$(sha256sum /proc/%d/exe | cut -d\' \' -f1)" = '%pid+EXE)
+-        script = ('(set -eu; '+guard+'; printf "T29_IDENTITY_BEFORE\n"; '
++        script = ('(set -eu; '+guard+'; printf "T30_IDENTITY_BEFORE\n"; '
+                   'cat /proc/{p}/stat; readlink /proc/{p}/ns/mnt; '
+-                  'printf "T29_MAPS\n"; cat /proc/{p}/maps; '
+-                  'printf "T29_FD2\n"; log=$(readlink /proc/{p}/fd/2); '
++                  'printf "T30_MAPS\n"; cat /proc/{p}/maps; '
++                  'printf "T30_FD2\n"; log=$(readlink /proc/{p}/fd/2); '
+                   'printf "%s\n" "$log"; test -f "$log"; test ! -L "$log"; '
+-                  'printf "T29_LOG_BEFORE\n"; stat -c %d:%i:%s "$log"; '
+-                  'printf "T29_LOG_TAIL\n"; tail -c 65536 "$log"; '
+-                  'printf "\nT29_LOG_AFTER\n"; stat -c %d:%i:%s "$log"; '
+-                  'printf "T29_IDENTITY_AFTER\n"; '.format(p=pid)+guard+
+-                  '; cat /proc/%d/stat; printf "T29_QUICK_COMPLETE\n")'%pid)
++                  'printf "T30_LOG_BEFORE\n"; stat -c %d:%i:%s "$log"; '
++                  'printf "T30_LOG_TAIL\n"; tail -c 65536 "$log"; '
++                  'printf "\nT30_LOG_AFTER\n"; stat -c %d:%i:%s "$log"; '
++                  'printf "T30_IDENTITY_AFTER\n"; '.format(p=pid)+guard+
++                  '; cat /proc/%d/stat; printf "T30_QUICK_COMPLETE\n")'%pid)
+         _, raw = read(script, required=False, timeout=8)
+         (out/'quick.raw.txt').write_text(raw)
+-        result['quick_complete'] = 'T29_QUICK_COMPLETE' in raw.splitlines()
++        result['quick_complete'] = 'T30_QUICK_COMPLETE' in raw.splitlines()
+         # A dead child still has useful PID-filtered historical logs. Preserve boot
+         # and before/after proc existence; absence is not proof against PID reuse.
+         hilog = ('(test "$(cat /proc/sys/kernel/random/boot_id)" = '+q(boot)+' || exit 91; '
+-                 'printf "T29_HILOG_PROC_BEFORE\n"; cat /proc/{p}/stat; '
+-                 'printf "T29_HILOG_START\n"; hilog -P {p} -z 2000 -L D,I,W,E,F -v epoch; '
+-                 'rc=$?; printf "T29_HILOG_RC=%s\n" "$rc"; '
+-                 'printf "T29_HILOG_PROC_AFTER\n"; cat /proc/{p}/stat; '
++                 'printf "T30_HILOG_PROC_BEFORE\n"; cat /proc/{p}/stat; '
++                 'printf "T30_HILOG_START\n"; hilog -P {p} -z 2000 -L D,I,W,E,F -v epoch; '
++                 'rc=$?; printf "T30_HILOG_RC=%s\n" "$rc"; '
++                 'printf "T30_HILOG_PROC_AFTER\n"; cat /proc/{p}/stat; '
+                  'test "$(cat /proc/sys/kernel/random/boot_id)" = '.format(p=pid)+q(boot)+
+-                 ' || exit 92; printf "T29_HILOG_COMPLETE\n"; exit "$rc")')
++                 ' || exit 92; printf "T30_HILOG_COMPLETE\n"; exit "$rc")')
+         _, raw = read(hilog, required=False, timeout=8)
+         (out/'hilog.raw.txt').write_text(raw)
+         result['hilog_body_errors'] = re.findall(r'\[CODE:\s*(-?\d+)\]', raw)
+-        result['hilog_complete'] = 'T29_HILOG_COMPLETE' in raw.splitlines() and not any(int(v) != 0 for v in result['hilog_body_errors'])
+-        result['hilog_remote_rc'] = re.findall(r'^T29_HILOG_RC=(\d+)$', raw, re.M)
++        result['hilog_complete'] = 'T30_HILOG_COMPLETE' in raw.splitlines() and not any(int(v) != 0 for v in result['hilog_body_errors'])
++        result['hilog_remote_rc'] = re.findall(r'^T30_HILOG_RC=(\d+)$', raw, re.M)
+         result['status'] = 'CAPTURED_REQUIRES_IDENTITY_AND_TIME_REVIEW'
+     except Exception as e:
+         result['status'] = 'PARTIAL'; result['error'] = str(e)
+--- $BASE20/t29_wait_boot.py
++++ t30_wait_boot.py
+@@ -1,15 +1,16 @@
+ from pathlib import Path
+ import json,subprocess,time,sys
+-p=Path(__file__).parent/'t29-5cd-window-01';c=json.loads((p/'context.json').read_text());old,tag=sys.argv[1:];d=p/(tag+'-boot-wait');d.mkdir()
++from window_paths import WINDOW,context,budget,phase_limit,tag as safe_tag
++p=WINDOW;c=context();phase,old,tag=sys.argv[1:];safe_tag(tag);deadline=time.monotonic()+budget(c,phase_limit(phase));d=p/(tag+'-boot-wait');d.mkdir()
+ for i in range(24):
+- assert time.time()-c['start']<1700
+- h=subprocess.run(['bash','scripts/lab/board_note.sh','held',c['serial']],capture_output=True,timeout=5);assert h.returncode==0 and h.stdout.decode().strip()==c['holder']
++ assert time.monotonic()<deadline
++ h=subprocess.run(['bash',str(Path(c['repo'])/'scripts/lab/board_note.sh'),'held',c['serial']],capture_output=True,timeout=min(5,deadline-time.monotonic()));assert h.returncode==0 and h.stdout.decode().strip()==c['holder']
+  a=[c['hdc'],'-t',c['serial'],'shell','cat /proc/sys/kernel/random/boot_id; param get sys.westlake.demo.u13.ready'];(d/f'{i}.argv.json').write_text(json.dumps(a))
+- try:r=subprocess.run(a,capture_output=True,timeout=5)
++ try:r=subprocess.run(a,capture_output=True,timeout=min(5,deadline-time.monotonic()))
+  except subprocess.TimeoutExpired as e:
+-  (d/f'{i}.stdout').write_bytes(e.stdout or b'');(d/f'{i}.stderr').write_bytes(e.stderr or b'');(d/f'{i}.rc').write_text('timeout');time.sleep(3);continue
++  (d/f'{i}.stdout').write_bytes(e.stdout or b'');(d/f'{i}.stderr').write_bytes(e.stderr or b'');(d/f'{i}.rc').write_text('timeout');time.sleep(max(0,min(3,deadline-time.monotonic())));continue
+  (d/f'{i}.stdout').write_bytes(r.stdout);(d/f'{i}.stderr').write_bytes(r.stderr);(d/f'{i}.rc').write_text(str(r.returncode));lines=r.stdout.decode().splitlines()
+  if r.returncode==0 and len(lines)==2 and len(lines[0].strip())==36 and lines[0].strip()!=old and lines[1].strip()=='true':
+   v={'boot':lines[0].strip(),'observed_at':time.time()};(p/(tag+'-boot.json')).write_text(json.dumps(v));print(json.dumps(v));break
+- time.sleep(3)
++ time.sleep(max(0,min(3,deadline-time.monotonic())))
+ else:raise SystemExit('not ready within bounded poll')
+--- $BASE20/t29_restore_collect.py
++++ t30_restore_collect.py
+@@ -1,11 +1,12 @@
+ from pathlib import Path
+ import json,subprocess,time
+-repo=Path.cwd();base=Path(__file__).parent;w=base/'t29-5cd-window-01';c=json.loads((w/'context.json').read_text());boot=json.loads((w/'restored-boot.json').read_text())['boot']
+-jobs=[('restored-snapshot',['python3','scripts/lab/board_state_snapshot.py',c['serial'],'--out',str(w/'restored-snapshot'),'--plan',str(base/'t16-reviewed-snapshot-plan.json'),'--hdc',c['hdc'],'--label','T29 restored original runtime after fresh boot']),('restored-supplement',['python3','benchmark/2026-10-20-t16-snapshot-scope/collect_supplement.py','--execute','--repo',str(repo),'--out',str(w/'restored-supplement'),'--hdc',c['hdc'],'--boot',boot,'--holder',c['holder']])]
++from window_paths import BASE,WINDOW,context,budget
++repo=Path.cwd();base=BASE;w=WINDOW;c=context();deadline=time.monotonic()+budget(c,True);boot=json.loads((w/'restored-boot.json').read_text())['boot']
++jobs=[('restored-snapshot',['python3','scripts/lab/board_state_snapshot.py',c['serial'],'--out',str(w/'restored-snapshot'),'--plan',str(base/'t16-reviewed-snapshot-plan.json'),'--hdc',c['hdc'],'--label','T30 restored original runtime after fresh boot']),('restored-supplement',['python3','benchmark/2026-10-20-t16-snapshot-scope/collect_supplement.py','--execute','--repo',str(repo),'--out',str(w/'restored-supplement'),'--hdc',c['hdc'],'--boot',boot,'--holder',c['holder']])]
+ for tag,a in jobs:
+- assert time.time()-c['start']<1600
+- h=subprocess.run(['bash','scripts/lab/board_note.sh','held',c['serial']],capture_output=True,timeout=5);assert h.returncode==0 and h.stdout.decode().strip()==c['holder']
++ assert time.monotonic()<deadline
++ h=subprocess.run(['bash','scripts/lab/board_note.sh','held',c['serial']],capture_output=True,timeout=min(5,deadline-time.monotonic()));assert h.returncode==0 and h.stdout.decode().strip()==c['holder']
+  (w/(tag+'.argv.json')).write_text(json.dumps(a))
+  with (w/(tag+'.stdout')).open('wb') as so,(w/(tag+'.stderr')).open('wb') as se:
+-  r=subprocess.run(a,stdout=so,stderr=se,timeout=150)
++  r=subprocess.run(a,stdout=so,stderr=se,timeout=min(150,deadline-time.monotonic()))
+  (w/(tag+'.rc')).write_text(str(r.returncode));print(tag,r.returncode,flush=True);assert r.returncode==0
