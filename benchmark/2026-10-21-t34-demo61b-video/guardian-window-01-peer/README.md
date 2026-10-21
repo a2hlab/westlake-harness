@@ -9,3 +9,5 @@ The initial compat check used the private data/app path. The later `y07` receipt
 Images were directly inspected: t30 gray; t45 feed with promotion overlay; t60 populated feed, matching t75/t90 hashes; final image populated feed. The final identity and original power `30000/86400000` remain unchanged. Debug output reports absent parameter error 106 while the command itself returns 0. Root reported actual unlock at 09:41:00, 731 seconds after lock; that statement is distinguished from directly read file receipts in `results.json`.
 
 The outer retain decision explicitly limits retention to guardian r3. Natural-exit reentry was not observed; no forced exit was performed. No video or audio result is claimed. The private raw root is represented by `T34_GUARDIAN_WINDOW_01`; source filenames, sizes and hashes are preserved in `source-index.json`. This peer used no device commands.
+
+Close evidence addendum: direct authoritative board LOCK/UNLOCK lines give 731 seconds. The independent local `board_note.sh held` call returned 1 with empty output. See `board-close-excerpt.json` and `held-readonly.json`. No original CC unlock invocation is reconstructed.
