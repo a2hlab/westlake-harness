@@ -1,0 +1,23 @@
+--- benchmark/2026-10-21-t34-demo61b-video/ui-01/ui.py
++++ benchmark/2026-10-21-t34-demo61b-video/tap-pair-01/ui.py
+@@ -161,7 +161,7 @@
+     p.add_argument("--x", type=int)
+     p.add_argument("--y", type=int)
+     p.add_argument("--power", choices=("awake", "original"), default="awake")
+-    p.add_argument("action", choices=("launch", "capture", "tap", "back", "power"))
++    p.add_argument("action", choices=("tap-pair",))
+     a = p.parse_args(argv)
+     require(re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}", a.tag), "invalid tag")
+     require(a.action == "tap" or (a.x is None and a.y is None), "coordinates only for tap")
+@@ -198,8 +198,9 @@
+         if a.action == "launch":
+             b.desktop_launch(board, {"package": "org.westlake.imehost",
+                                     "launch_activity": "EntryAbility"}, remote, out, record)
+-        elif a.action == "tap":
+-            board.shell(f"uitest uiInput click {a.x} {a.y}")
++        elif a.action == "tap-pair":
++            board.shell("uitest uiInput click 600 960")
++            board.shell("uitest uiInput click 1120 1862")
+         elif a.action == "back":
+             board.shell("uitest uiInput keyEvent Back")
+         elif a.action == "power":
