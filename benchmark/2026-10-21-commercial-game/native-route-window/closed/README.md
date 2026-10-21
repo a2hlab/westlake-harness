@@ -19,6 +19,6 @@ The original unlock stdout/stderr and actual closure assertions are retained. Th
 - [Exact current admission and preflight](../admission-01/README.md)
 - [Source, patch and reproducible build](../../native-route-candidate/README.md)
 
-[Independent closure review](independent-review.json) and [later lock recheck](postclose-held.json) preserve their original receipt hashes. The original 69,799,110-byte window archive is retained on local persistent storage; remote upload is still pending verification and is not claimed complete. Its snapshot predates the later lock recheck and final peer review.
+[Independent closure review](independent-review.json) and [later lock recheck](postclose-held.json) preserve their original receipt hashes. The original 69,799,110-byte window archive is retained locally and [remotely SHA-verified](remote-archive.json) as `8844053ffd021606fac21e58b73543fea753a7a1b523927baa777a15c76aabd2`. Its snapshot predates the later lock recheck and final peer review.
 
 The unchanged launch-addendum checker passed all 46 references in its original retained inner worktree. It also requires private ELF inspection inputs there; running the copied checker from main without restoring those inputs fails at the missing dynsym file. The public landing is not presented as a standalone reproduction of that private evidence environment.
