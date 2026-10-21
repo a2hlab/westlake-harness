@@ -1,0 +1,46 @@
+--- a/bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
++++ b/bms/src/adapter/framework/appspawn-x/security_specialization/stock_child_plugin/src/westlake_stock_host_main.c
+@@ -24,6 +24,7 @@
+ #include "westlake_elf_identity.h"
+ #include "westlake_stock_host_services.h"
+ #include "resident-compat.h"
++#include "zlib-route.h"
+ 
+ #define WLASC_STOCK_PRELOAD "libappspawn_helper.z.so"
+ #define WLASC_PLUGIN_NAME "westlake_android_child"
+@@ -230,6 +231,18 @@
+         }
+     }
+ 
++    const char* u11_original_search = app_search_paths;
++    char u11_search[4 * PATH_MAX], u11_permitted[5 * PATH_MAX];
++    const char* u11_zlib_root = U11ZlibRoot(app_search_paths, app_permitted_paths);
++    if (u11_zlib_root != NULL) {
++        int search_length = snprintf(u11_search, sizeof(u11_search), "%s:%s", u11_zlib_root, app_search_paths);
++        int permitted_length = snprintf(u11_permitted, sizeof(u11_permitted), "%s:%s", u11_zlib_root, app_permitted_paths);
++        if (search_length < 0 || permitted_length < 0 ||
++            search_length >= (int)sizeof(u11_search) || permitted_length >= (int)sizeof(u11_permitted))
++            return NamespaceResultFence(ENAMETOOLONG);
++        app_search_paths = u11_search;
++        app_permitted_paths = u11_permitted;
++    }
+     dlns_init(app_namespace, app_name);
+     result = dlns_create2(app_namespace, app_search_paths,
+                           LOCAL_NS_PREFERED);
+@@ -254,7 +267,7 @@
+                 strlen("/system/android/lib64/westlake_flutter:")) == 0 &&
+         (flutter_package_path(app_search_paths) || flutter_package_path(app_permitted_paths));
+     const bool native_private = wants_bridge &&
+-        strncmp(app_search_paths, "/system/android/lib64/westlake_native:",
++        strncmp(u11_original_search, "/system/android/lib64/westlake_native:",
+                 strlen("/system/android/lib64/westlake_native:")) == 0 &&
+         (native_cluster_path(app_search_paths) || native_cluster_path(app_permitted_paths));
+     if (flutter_private || native_private) {
+@@ -341,6 +354,7 @@
+         fprintf(stderr, "[N2-OWNER] %s ABI global ready; search=%s permitted=%s\n",
+                 app_name, app_search_paths, app_permitted_paths);
+     }
++    if (u11_zlib_root != NULL) APPSPAWN_LOGI("[U11-ZLIB-ROUTE] ns=%{public}s root=%{public}s", app_name, u11_zlib_root);
+     return NamespaceResultFence(0);
+ }
+ 

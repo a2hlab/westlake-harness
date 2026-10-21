@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+"""Package existing static scan; no toolchain/build/device calls."""
+import hashlib,json,csv
+from pathlib import Path
+O=Path(__file__).resolve().parent;W=O.parents[3].parent;C=Path.home()/'.local/share/westlake/commercial-game-20261021'
+def dump(n,d):(O/n).write_text(json.dumps(d,indent=2)+'\n')
+def sha(p):
+ h=hashlib.sha256()
+ with p.open('rb') as f:
+  while b:=f.read(1024*1024):h.update(b)
+ return h.hexdigest()
+def alias(p):return str(p).replace(str(C),'$COMMERCIAL').replace(str(W),'$WORKSPACES')
+r=json.loads((O/'.private/scan-results.json').read_text());objs=json.loads((O/'.private/provider-objects.json').read_text());mp={d['path']:d for d in objs};g=r['libraries']['libyuanshen.so'];abi=next(d for d in objs if d['path'].endswith('/westlake_native/libwestlake_native_abi.so'))
+rows=[]
+for n,v in r['libraries'].items():
+ rows.append({'library':n,'sha256':v['elf']['sha256'],'bytes':v['elf']['bytes'],'needed':v['elf']['needed'],'unknown_dynamic_names':'<?>' in v['elf']['needed'],'strong_imports_without_observed_relocation':v['strong_imports_without_observed_relocation'],'routes':{k:{z:q[z] for z in ['unresolved','first_unresolved','abi_only_covered','unlocated_dependencies']} for k,q in v['routes'].items()}})
+dump('32-elf-comparison.json',rows)
+mat=[]
+for mode in ['current','native_cluster']:
+ for e in g['routes'][mode]['edges']:
+  if e['from']==g['elf']['path']:
+   d=mp[e['to']];mat.append({'route':mode,'needed':e['needed'],'resolved_reference':d['path'],'sha256':d['sha256'],'bytes':d['bytes'],'actual_game_mapping':'UNKNOWN'})
+mat.append({'route':'native_cluster','role':'host GLOBAL publication','resolved_reference':abi['path'],'sha256':abi['sha256'],'exports':abi['exports'],'needed':abi['needed'],'strong_imports': [s for s in abi['imports'] if s['binding']!='WEAK'],'actual_game_mapping':'NOT_EXECUTED'})
+dump('provider-matrix.json',mat)
+dump('libyuanshen-closure.json',{'model':'DT_NEEDED disk graph, not namespace reachability proof','routes':{k:{'objects':[{'path':q,'sha256':mp[q]['sha256']} for q in v['closure']],'edges':v['edges'],'unlocated_dependencies':v['unlocated_dependencies']} for k,v in g['routes'].items() if k!='single_atfork'},'single_atfork':'same graph as current plus hypothetical single LIBC export; no built object'})
+abi_pairs=[{'library':n,**s} for n,v in r['libraries'].items() for s in v['routes']['native_cluster']['abi_only_covered']]
+res={'status':'STATIC_COMPARISON_ONLY','recommendation':'Prioritize exact-package reuse of native-cluster/public d205 ABI for review; do not implement membership-only until mediandk inheritance and provider ownership are admitted. Single-atfork is narrower but predictably leaves both FD checks.','runtime_changes':0,'device_calls':0,'builds':0,'game_success':False,'contract':'specs/commercial-game-round1/t16-runtime-loader-triage.spec.md','selector':'commercial_game_loader_triage','selector_execution':'NOT_EXECUTED: this task forbids compilation; additive offline checker only','ELFs_scanned':32,'opaque_needed_ELFs':['libmsaoaidsec.so'],'current_candidate_loader_sha256':'878c7019b1b78c8affbf9808d69fdc8478554273fe5d06d499b6775b7d004f23','baseline_loader_sha256':'b8be63d2f617ba202373e4a60b34cc4eadba84bcfe31e42b64cfe4f01bfa62f7','current_ANL_sha256':'eebd62f2e9107e7915745280d4de85d44e4106a589508d25fa5f867007b2473c','current_host_sha256':'2a87118e7e8e62fb73ef71a436517cda406c308668753a478cf52331e996072e','core_missing_order':g['routes']['current']['unresolved'],'native_abi_sha256':abi['sha256'],'native_abi_global_export_names':len(abi['exports']),'ABI_only_covered_import_pairs':len(abi_pairs),'ABI_only_affected_ELFs':len({s['library'] for s in abi_pairs}),'ABI_only_pairs':abi_pairs,'single_atfork_covered_pairs':4,'single_atfork_affected_ELFs':4,'expected_first_fatal_key_count':{'native_cluster':1,'single_atfork':1},'expected_first_fatal_key':'genshin (conditional static prediction; zero newly executed successes)','core_coverage':{'native_cluster':'3/3 under successful exact native-domain + d205 NOW|GLOBAL publication','single_atfork':'1/3; next predicted __FD_SET_chk@LIBC then __FD_ISSET_chk@LIBC'},'disk_graph_diagnostic_counts':{k:{a:b for a,b in v.items() if a!='missing'} for k,v in r['summary'].items()},'count_warning':'50 -> 28 / 46 is the generous disk-closure model, NOT namespace-complete resolved counts. 20 pairs are attributable to exact ABI; two other reductions depend on transitive providers. The native model still uses legacy android OpenSLES disk resolution, while actual native host inherits system OpenSLES. Audio rows therefore need owner correction before gate use.','new_namespace_gap':{'consumer':'libcri_vip_unity.so','needed':'libmediandk.so','reason':'native flutter_prepare shared list and native direct-owner list omit mediandk; absent in private/app libraries. Current G18 normal bridge includes it. No name-based exemption.','count':1},'other_domains':{'native_exact_selector_existing_packages':13,'flutter_exact_selector_existing_packages':6,'proposed_new_package':'com.miHoYo.Yuanshen','expected_changed_other_package_selections':0,'caveat':'host/ANL are common binaries; GLOBAL visibility can affect other namespaces in the same process, not proven confined by a package predicate; requires negative controls. Native reuse publishes 26 names including stdio/property; new seam proposes one. Neither changes other app ELF bytes.'},'unknowns':['Actual game loader/bridge/provider winner and namespace parent graph were not captured; no runtime mapping inferred.','System pool transitive objects are local reference artifacts, not a fresh full board hash binding; musl/version algorithm linkage is historical source evidence.','Native branch needs its own mediandk admission, and actual system OpenSLES resolution must replace disk-model audio rows.','libmsaoaidsec.so has six unreadable DT_NEEDED names in llvm-readelf; zero decoded misses is NOT a pass.','Graph has unlocated libohosffmpeg.z.so/libexif.z.so under system image dependencies.','Dynamic GL dlsym/extensions, ABI semantics, callbacks/unload, timing and frames are not proven by relocation scan.','Both atfork forwarders drop DSO handle; pthread_atfork forwarding is not full bionic unregister behavior.','Source/build history is delegated to cx-reentry-peer; new host seam has no built ELF; neither route was compiled here.'],'eighty_percent':'Core relocation cluster: native reuse 3/3 vs single 1/3. Whole 32-ELF known disk misses: only 20/50 (40%) directly covered by d205, 22/50 (44%) including conditional provider changes, versus 4/50 (8%). Do not claim 80% of app blockers or launch success.'}
+dump('results.json',res)
+# Persist exact commands, raw hashes, local references. No giant outputs in landing.
+index=[]
+for p in sorted((O/'.private').rglob('*')):
+ if p.is_file():index.append({'path':alias(p),'sha256':sha(p),'bytes':p.stat().st_size})
+for rel in ['g24-window02/game-observe/hilog.txt','normal-ui-02/attempt2/child-hilog.stdout','g24-window02/apply.json']:
+ p=C/rel;index.append({'path':alias(p),'sha256':sha(p),'bytes':p.stat().st_size})
+dump('evidence-index.json',index)
+# Exact observed fatal excerpts; original timestamps and lines retained.
+p=C/'g24-window02/game-observe/hilog.txt';lines=p.read_text(errors='replace').splitlines();(O/'observed.txt').write_text('\n'.join(f'L{i}: {lines[i-1]}' for i in [3135,3276,3277,3278,3682,3733])+'\n')
+dump('documentation.json',{'proposed_digest_line':'G16/G24 comparison: exact native-cluster uses a separate shared list (mediandk absent), private-first providers and host GLOBAL d205; one atfork export leaves libyuanshen __FD_SET_chk/__FD_ISSET_chk. Disk DT_NEEDED closure is not namespace visibility or game success.','applied_to_shared_docs':False})
+print(json.dumps({'status':'PACKAGED','ELFs':32,'abi_pairs':len(abi_pairs),'raw_files':len(index)}))
