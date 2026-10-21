@@ -1,5 +1,7 @@
 # COMMERCIAL-G05 — 5ea fresh read-only preflight + minimal Genshin first-launch plan
 
+**Outer disposition:** fresh observations accepted; the disabled plan and rollback are not executable approvals. See [outer-review.md](outer-review.md) for known defects and the G06 successor boundary.
+
 Contract: `specs/commercial-game-round1/t5-spare-preflight.spec.md` @ `b3971d0379`. Device writes **0**: no lock, install,
 click, reboot, file write or REA; 61b untouched. Input: official APK `abd3c4d5…` (COMMERCIAL-G03). Runtime NOT_TESTED.
 
