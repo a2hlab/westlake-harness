@@ -21,6 +21,26 @@ def save(p,x):
 def module(name,path):
     s=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
 
+def apply_attempt(cfg,window):
+    """Permit a fresh read-only admission attempt, never replay a transaction."""
+    need(not (window/'g13-transaction.json').exists(),'transaction exists; do not retry apply')
+    previous=[p for p in window.glob('g13-apply*') if p.is_dir()]
+    if not previous:return 'g13-apply'
+    proof=cfg.get('admission_retry') or {}
+    latest=max(previous,key=lambda p:p.stat().st_mtime_ns)
+    need(proof.get('previous_attempt')==latest.name,'latest apply attempt lacks explicit refusal receipt')
+    for field in ['receipt','stderr']:
+        path=proof.get(field+'_path')
+        need(path and Path(path).is_file() and sha(path)==proof.get(field+'_sha256'),'apply refusal '+field+' evidence missing/drift')
+    receipt=json.loads(Path(proof['receipt_path']).read_text())
+    argv=receipt.get('argv',[])
+    need(receipt.get('rc')==1 and isinstance(receipt.get('start'),(int,float)) and isinstance(receipt.get('end'),(int,float)) and receipt['start']<=receipt['end']<=time.time(),'prior apply did not definitively finish with refusal')
+    runner=Path(cfg['bindings']['repo'])/'benchmark/2026-10-21-commercial-game/apk-extractor/device-window/run_window.py'
+    need(len(argv)==6 and Path(argv[1]).resolve()==runner.resolve() and argv[2:4]==['apply','--plan'] and argv[5]=='--execute','receipt is not this apply entry')
+    failure=Path(proof['stderr_path']).read_text().strip().splitlines()
+    need(failure and re.fullmatch(r'policy\.Refuse: uncovered non-observer PID [0-9]+',failure[-1]),'prior outcome is not the explicit maps admission refusal')
+    return 'g13-apply-'+str(time.time_ns())
+
 def execute(phase,cfg):
     v=cfg['bindings'];need(all(v.get(k) is not None for k in ['repo','window','hdc','holder','lane','transaction','kit','hook_config','manifest','input_root','source_pins']),'missing binding')
     need(cfg['candidate_sha256']==CANDIDATE and cfg['original_sha256']==ORIGINAL and cfg['apk_sha256']==APK,'input pins drift')
@@ -29,7 +49,7 @@ def execute(phase,cfg):
     for rel,digest in v['source_pins'].items():need(sha(repo/rel)==digest,'source drift '+rel)
     need(bool(cfg.get('local_pins')), 'local pins missing')
     for name,digest in cfg['local_pins'].items():need(sha(name)==digest,'local pin drift '+name)
-    attempt=('g13-'+phase+'-'+str(time.time_ns())) if phase in ['restore','reconcile'] else 'g13-'+phase
+    attempt=apply_attempt(cfg,window) if phase=='apply' else (('g13-'+phase+'-'+str(time.time_ns())) if phase in ['restore','reconcile'] else 'g13-'+phase)
     log=window/attempt;log.mkdir(parents=True,exist_ok=False)
     sys.path[:0]=[str(repo/'scripts/lab'),str(repo/'benchmark/2026-09-28-bms-route-deploy/batch')]
     import bms_batch as b
