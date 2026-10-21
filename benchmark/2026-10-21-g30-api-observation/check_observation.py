@@ -2,8 +2,8 @@
 """Check G33's one-row append (63rd observation, G30 locale ABI candidate); no device, REA, build or cited-code run.
 
 Reuses the G31 checker (G15 58 / G17 59 / G25 60 / G29 61 / G31 62 strict prefixes, original-renderer byte
-equality of index.html/observations.csv/results.json, G24/G26/G28 failure semantics) and adds: exactly 63
-rows, row 63 equals added-row.json, references are exactly the 56 fixed public G30 paths, independent
+equality of index.html/observations.csv/results.json, G24/G26/G28 failure semantics) and adds: the 63-row prefix (G35: strict, later
+rows may follow), row 63 equals added-row.json, references are exactly the 56 fixed public G30 paths, independent
 semantic guards (offline only, not deployed, not frozen, no OS closure or OH semantics claim, rc124 kept as
 an environment failure, archive status as a snapshot of the fixed G30 landing), cross-checks against the G30
 receipts, positive and negative cases. The archive statement is proven from pinned snapshot sources only, so
@@ -48,7 +48,7 @@ def check(data, source_root, rendered=True):
     count = g31.check(data, source_root, rendered)
     base = old.read(HERE / 'original-62.json')
     old.require(len(base['rows']) == 62 and data['rows'][:62] == base['rows'], 'original62 objects changed')
-    old.require(len(data['rows']) == 63, 'G33 requires exactly 63 rows')
+    old.require(len(data['rows']) >= 63, 'G33 requires the 63-row prefix')
     row = data['rows'][62]
     semantic(row)
     for g in ('source', 'build', 'evidence'):
@@ -121,8 +121,9 @@ def main():
         ('false success in table', lambda: guard('status', 'GAME_PLAYABLE；已部署'), 'game success'),
         ('HTML-only false success', lambda: g25.rendered_equal(data, source_root, dict(files(), **{'index.html': forged_html()})), 'index.html differs'),
         ('CSV-only edit', lambda: g25.rendered_equal(data, source_root, dict(files(), **{'observations.csv': files()['observations.csv'] + b'x'})), 'observations.csv differs'),
-        ('truncated to 62', lambda: check(mut(lambda d: d['rows'].pop()), source_root, False), 'exactly 63 rows'),
-        ('64th row appended', lambda: check(mut(lambda d: d['rows'].append(dict(d['rows'][62], id='OBS-FUTURE'))), source_root, False), 'exactly 63 rows'),
+        ('rows truncated below 63', lambda: check(mut(lambda d: d['rows'].__delitem__(slice(62, None))), source_root, False), '63-row prefix'),
+        ('appended row with unverified missing reference', lambda: g25.rendered_equal(mut(lambda d: d['rows'].append(dict(d['rows'][62], id='OBS-FUTURE',
+            evidence=[dict(item, path=f'{L}/final/intentionally-missing.json')]))), source_root, {}), 'renderer refused'),
         ('row63 edited', lambda: check(mut(lambda d: d['rows'][62].__setitem__('name', 'changed')), source_root, False), 'G33 observation changed'),
         ('evidence dropped', lambda: check(mut(lambda d: d['rows'][62].__setitem__('evidence', [])), source_root, False), 'evidence references dropped'),
         ('claimed frozen', lambda: guard('frozen', True), 'freeze'),
@@ -145,6 +146,8 @@ def main():
         old.require(check(data, later, False) == count, 'a later genuine remote receipt falsified the historical observation')
     finally:
         shutil.rmtree(later)
+    later_row = mut(lambda d: d['rows'].append(dict(d['rows'][62], id='OBS-FUTURE')))
+    old.require(check(later_row, source_root, False) == count, 'G33 allows a later append')
     refusals = []
     for name, call, expected in cases:
         try: call()
