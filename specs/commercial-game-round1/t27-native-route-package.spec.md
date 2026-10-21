@@ -10,7 +10,7 @@ satisfies: [REQ-COMMERCIAL-GAME]
 - 基线是G24已实际恢复的319目标，host2a871、ANLeebd双别名、policy b8be双别名，以及单列Boat3指纹。复用G24窗口原bundle及原U7事务工具，不新写部署或首启编排，不假造旧owned state。
 - 候选沿已验G24 policy878c保持其GLES共享名增量，再叠G26新host与ANL，方便和实报atfork结果对照。相对板上恢复基线逻辑变化恰5目标：host1、ANL2、policy2；同库双别名必须同SHA。实际U7写入成员按真实manifest逐项列，不称仅5次写操作。
 - G26目前ANL候选640b3c87e2f0f86d31b7defbd8b892515636afa61dcbbab5030d422ec1fb7d86已实际编译；host候选仅在G26原始rc0及独立复验固定后消费，不从半写文件或预估哈希取值。先准备恢复包和组装入口，缺候选时输出pending，不伪造产物。
-- 公共源码、构建原件、工具链和原始日志引用G26固定包及G18，不另编译。先核现有组装器的哈希消费者、host启动检查和全部别名，若有硬编码旧host阻断，报告原代码位置与最小缺口，不在此卡改工具。
+- 公共源码、构建原件、工具链和原始日志引用G26固定包及G18，不另编译运行时；本卡Rust验收selector与离线测试可以执行。先核现有组装器的哈希消费者、host启动检查和全部别名，若有硬编码旧host阻断，报告原代码位置与最小缺口，不在此卡改工具。
 - 复用原完整离线preflight/native/frozen/namespace检查；Linux执行通道若内环超时，保留终态并交精确argv，外环核后单一执行，不重复构建或重启服务。输出实际argv/rc/stdout/stderr，不把工具没运行称PASS。
 - 不复用G24撤销的窗口例外或旧签字。默认rollout_ready=false，列明待外环精确审签和fresh只读基线绑定；本卡不得修改全局exceptions、签字或设备。缺签名导致门禁拒绝如实保留，候选离线齐套不等于deployable或游戏成功。
 - 5分钟首片交实际包位置、5目标表和待补字段；随后消费G26固定结果完成机器可读包、英文README及path-only清单。公开不放大二进制与stderr；原始执行日志和产物保存在持久目录。

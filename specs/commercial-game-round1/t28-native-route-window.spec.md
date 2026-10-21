@@ -10,7 +10,7 @@ satisfies: [REQ-COMMERCIAL-GAME]
 - 仅5ea34a4500000000000000001123012c；原神APK与数据不改。host候选ee5649f2778430e1c997f4bb2d4d4f42f53a46208b4a1b1bbaca185ddf401887、ANL候选640b3c87e2f0f86d31b7defbd8b892515636afa61dcbbab5030d422ec1fb7d86；保留G24已验policy878c7019。基线仍host2a871、ANLeebd、policyb8be。
 - 原G27包逻辑变更5目标（host1、ANL2、policy2）；实际35写入项中30同SHA。完整319基线和Boat3私有库保持恢复依据，旧74e6路由不改。所有实际manifest与SHA必须先独立复核，不把本契约数字代替机器清单。
 - G26全部源/补丁/配方/工具链与实际构建日志须先持久化并入库索引；两基线精确重建及候选真实函数回归已通过，但OH回调测试替身不替代设备。候选全套原preflight必须实际执行，未通过不取得写窗口。
-- 外环逐项评审当前原native检查的N1/N2及其他拒绝；只可对有精确对象/SHA/理由/证据的本窗既有容许项签名outer(codex)，不沿用撤销的G24窗口签名、不放宽门禁、不略过新发现阻断。无合格准入则留离线包并停止写操作。
+- 外环逐项评审当前原native检查的N1/N2及其他拒绝；只可对有精确对象/SHA/理由/证据的本窗既有容许项签认（按RUNBOOK 2026-10-13旧协议approved_by填outer(claude)，actual_reviewer明确outer(codex)，不冒称Claude模型审核），不沿用撤销的G24窗口签名、不放宽门禁、不略过新发现阻断。无合格准入则留离线包并停止写操作。
 - 仅用主树原u7_executor.py apply/rollback及既有bms_batch普通图标入口，不创建部署/首启编排器，不重做G14/T38。内环可准备离线材料，实际执行唯一owner由外环明确；同一块板不得并发写。
 - 写前与持锁后核fresh boot/串号、父进程exe/birth、完整基线、BMS UID、mount栈与原电源；使用新journal和本窗锁。最大1800秒，900秒停止新增观察，1200秒前开始恢复；失败仅跟踪原自动恢复，不在本窗重复apply。
 - apply active_verified后先看控制应用实图；仅普通图标点击原神一次，保存截图、boot/PID/birth、本次有界hilog及可取得的实际maps。既有三项符号不再报错只算过墙；白黑屏、退出或缺图仍失败/unknown。遇登录/资源下载页仅记录，不登录下载，不hook/注入或绕保护。
