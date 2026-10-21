@@ -1,6 +1,6 @@
 # Current observations beside the API source/build atlas
 
-The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **49 observations with 1243 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
+The previous fixed315 atlas cannot accept additional IDs without violating its signed historical boundary. This additive view records **50 observations with 1293 exact source/build/evidence references** while leaving all315 original semantic grades unchanged. These record runtime integration and player compatibility/diagnostic windows, not new verified public Android APIs.
 
 Open the [current observations](index.html), [JSON](observations.json) or [CSV](observations.csv), alongside the [complete historical source/build atlas](../2026-10-14-api-source-delivery/views/index.html).
 
@@ -95,3 +95,7 @@ All preceding 46 observation objects, 315 historical semantics and 8 frozen
 entries remain unchanged.
 
 G01 adds a guardian deployment observation: the separately generated r3 control chain was retained on 61b and actual screenshots show the Toutiao feed. Natural-exit reentry remains NOT_OBSERVED and video remains NOT_SEALED. The original five runtime files and compat absence were preserved. [Source, generation, actual retain and closure](../2026-10-21-t34-demo61b-video/guardian-window-01-public/README.md) and the [verified 3485-member archive](../2026-10-21-t34-demo61b-video/guardian-archive-01/README.md) provide exact links. This does not add a public Android API or freeze; W05 remains in progress with no result entered.
+
+W05 subsequently retained the scoped61b video demo after the G01 guardian baseline. Actual video/fullscreen progress, same-child normal-icon warm return and BoatAttack/LibreSudoku first-screen smoke are recorded. Final feed was reached from another clip detail after closing a login promotion; direct first-clip return and tap-pair causality are not established. No new61b audible confirmation or natural-exit reentry is claimed. [Actual signed scope and failed observations](../2026-10-21-t34-demo61b-video/window-05-public/README.md) and [verified10479-member archive](../2026-10-21-t34-demo61b-video/archive-05/README.md) preserve the evidence. No public API freeze was added.
+
+The post-archive [final signoff](../2026-10-21-t34-demo61b-video/window-05-public/final-signoff.json) records SEALED_SCOPED_TOUTIAO_VIDEO_DEMO_61B with the same explicit limits; it does not rewrite the original retain or close.

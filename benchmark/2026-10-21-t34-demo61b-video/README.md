@@ -1,9 +1,33 @@
-# Demo61b video migration — guardian retained, video not yet accepted
+# Demo61b — scoped video demo sealed
+
+W05 retained the scoped61b video demo after G01. Actual video content and subtitles
+progressed, fullscreen playback was observed, and a normal desktop icon returned
+to the same live child with continuing video. BoatAttack and LibreSudoku passed
+first-screen smoke. Six candidate files remain deployed; actual unlock occurred
+at1172s, with heldrc1/empty. No rollback was performed.
+
+Return-to-feed scope is specific: the tap pair was followed by a login promotion;
+closing it exposed another clip detail, whose back arrow reached the feed. Earlier
+Back/shrink attempts failed. First-clip direct return, tap-pair causality, cold
+reentry and natural-exit recovery are not established. There is no new61b human-ear
+audio assertion; prior5cd confirmations remain prior evidence.
+
+- [Final scoped signoff](window-05-public/final-signoff.json)
+- [W05 actual scoped retain, screenshots and limitations](window-05-public/README.md)
+- [Six deployed artifacts: exact sources, recipes and original execution logs](archive-05-preparation/source-build-refs.json)
+- [Verified W05 archive:10479 payloads,5982325 bytes](archive-05/README.md)
+- [Independent runtime review](window-05-runtime-peer/results.json)
+
+The API increment contains50 observations; all preceding49 objects,315 historical
+grades and eight frozen entries are unchanged. This is a deployment observation,
+not an additional verified public Android API.
+
+## Earlier G01 guardian baseline
 
 G01 subsequently retained the separate r3 guardian on 61b and verified the actual
 Toutiao feed. The original five runtime files and compat absence were preserved.
 Natural-exit reentry was **NOT_OBSERVED**; video remains **NOT_SEALED**.
-W05 is a separate in-progress window; this page does not report its result.
+At G01 publication W05 was in progress; its later limited outcome is recorded above.
 
 - [G01 actual retain, feed and 731-second closure](guardian-window-01-public/README.md)
 - [r3 source and generation recipe](reentry-retirement-01/README.md)
@@ -11,7 +35,7 @@ W05 is a separate in-progress window; this page does not report its result.
 - [Guarded deployment and original-plan recovery](guardian-deployment-01/README.md)
 - [Verified G01 archive: 3485 payloads, 2515180 bytes](guardian-archive-01/README.md)
 
-The additive API view now records 49 observations, preserving its preceding 48
+At G01 publication the additive API view recorded49 observations, preserving its preceding 48
 objects, historical 315 grades and all eight frozen entries. G01 is a guardian
 deployment observation, not a new public Android API.
 
