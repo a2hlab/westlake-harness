@@ -113,6 +113,18 @@ class Recovery(unittest.TestCase):
         b=EmptyTransport()
         with self.assertRaises(bms.BatchStop):b.raw_shell('bm dump -a')
         self.assertEqual(len(b.calls),1)
+    def test_real_kernel_names_with_spaces(self):
+        text=(Path(__file__).parent/'evidence/ps-format-01/kernel-rows.txt').read_text()
+        self.assertEqual(h.ps_rows(text),[
+            {'pid':298,'ppid':2,'uid':0,'name':'[usb pnp notify ]'},
+            {'pid':299,'ppid':2,'uid':0,'name':'[gadget pnp noti]'},
+            {'pid':696,'ppid':2,'uid':0,'name':'[compr drain]'}])
+    def test_ps_numeric_identity_still_required(self):
+        for row in ['298 X 0 [usb pnp notify ]','298 2 root [usb pnp notify ]',
+                    'X 2 0 [compr drain]','298 2 0',
+                    '__BMS_REMOTE_RC_not_a_process__0']:
+            with self.subTest(row=row),self.assertRaises(h.Refuse):
+                h.ps_rows('PID PPID UID NAME\n'+row+'\n')
 
 
 if __name__=='__main__':unittest.main()

@@ -85,7 +85,8 @@ def ps_rows(text):
     for line in lines[1:]:
         if not line.strip():
             continue
-        f = line.split()
+        # NAME is the remainder: OH kernel thread names can contain spaces.
+        f = line.split(maxsplit=3)
         require(len(f) == 4 and all(x.isdigit() for x in f[:3]), 'malformed ps row')
         result.append(dict(pid=int(f[0]), ppid=int(f[1]), uid=int(f[2]), name=f[3]))
     require(bool(result), 'empty ps table')
