@@ -1,0 +1,25 @@
+--- benchmark/2026-10-21-t34-demo61b-video/ui-01/ui.py
++++ benchmark/2026-10-21-t34-demo61b-video/demo-smoke-01/ui.py
+@@ -151,6 +151,7 @@
+ 
+ def main(argv=None):
+     p = argparse.ArgumentParser(description=__doc__)
++    p.add_argument("--app", choices=("boatattack", "libresudoku"), required=True)
+     p.add_argument("--repo", type=Path, required=True)
+     p.add_argument("--window", type=Path, required=True)
+     p.add_argument("--session", type=Path, required=True,
+@@ -196,8 +197,12 @@
+         board.ready()
+         board.shell("mkdir -p " + shlex.quote(remote))
+         if a.action == "launch":
+-            b.desktop_launch(board, {"package": "org.westlake.imehost",
+-                                    "launch_activity": "EntryAbility"}, remote, out, record)
++            b.desktop_launch(board, {
++                "boatattack": {"package": "com.Unity3d.BoatAttackDay",
++                               "launch_activity": "com.unity3d.player.UnityPlayerActivity"},
++                "libresudoku": {"package": "com.kaajjo.libresudoku",
++                               "launch_activity": "com.kaajjo.libresudoku.MainActivity"},
++            }[a.app], remote, out, record)
+         elif a.action == "tap":
+             board.shell(f"uitest uiInput click {a.x} {a.y}")
+         elif a.action == "back":
