@@ -285,3 +285,5 @@ rea decompile "$BINARY" "$FUNCTION" --provider ghidra --json
 
 - 2026-10-21 #91 T34：大shell传输出现本机rc0但缺远端marker时不得认成功或盲重试；transport-01按原字节上传、远端SHA核验并保留原执行守卫，W02 apply/rollback实际rc0。后续UI用已审ui-01保留UITest rc并同dispatch恢复awake、逐图目读再点；8项离线通过不代表已真机验证，闭窗holder/start不可复用。
 - 2026-10-21 #91 W04：wrapper 回执目录必须与 driver 独占输出目录分离，禁止外层预建后者；构造前拒绝只有原始 Trace 与零子命令证据齐备才可判零副作用，原件无损另存后纠正调用，锁起点不变。见 T34/window-driver-01/ 与 W04 的 wrapper-receipt-relocation.json。
+- 2026-10-21 #91 UI操作：对已目读且同布局的短时控件，锁外准备有界连续动作入口，每次仍独立exact holder/boot/budget、UITest rc及电源恢复回执；动作间避免无必要截图，序列后再采图，首失败即停、未知不重试。不得用复合shell只保留末rc，成功与否按实际落点图而非动作名或rc判。
+- 2026-10-21 #91 源码映射：从部署after SHA反查最后producer的output SHA，再沿input SHA逐级接前序派生及真实build/raw/archive；仅文件引用SHA正确不证明它产出当前件。链未到最终SHA标缺口，旧映射不隐改，用addendum补R8等最后步骤；二进制派生/增量链接不升级成全源重编。

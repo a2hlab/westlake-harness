@@ -983,3 +983,4 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-21 #91 T34 W04：候选physical/parent/child共18文件观察SHA及inode一致、bridge/shim/compat映射匹配，首轮与唯一正常重开仍灰；620.67秒签回退、785.66秒恢复解锁，恢复末图及闭窗后只读图仍灰。运行时恢复、feed健康、候选保留分别取证，rc0或加载一致不替代实图，SIG11不自动归因候选；见 T34/window-04-runtime-peer/、window-04-closed-peer/。
 
 - 2026-10-21 #91 T34 r3：守护已严格确认 child exited 后须按 (boot,seq,pid,birth) 退役旧身份；继续把旧 PID 当活动身份，后续复用会触发 child_identity 拒绝并退出守护。仅两处 strict exited 可退役，spawn/adopt 清除；仍保留 boot/parent/lock 与当前 child 核验。21 项独立实际函数/循环重放及71项作者测试通过；历史 uptime7024 具体触发值未知，不把离线复现当该事件根因。见 benchmark/2026-10-21-t34-demo61b-video/reentry-retirement-peer-01/。
+- 2026-10-21 #91 W05：控件时序敏感操作应分开记录动作与观察；两点助手实际到登录弹层，后续另一视频详情返回才到feed，不能称直接缩屏修复。源码链须从实际部署SHA回溯至最后派生：player0b4d需R4(5fba)→R8、compat6e83需R8实构建；旧v3漏链保留并追加更正，见 T34/window-05-evolution-proposal/。
