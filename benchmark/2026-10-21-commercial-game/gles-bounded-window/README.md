@@ -1,5 +1,11 @@
 # G21 bounded paired-loader trial
 
+**Window 01 is closed:** the candidate reached its full hash check, but a
+heredoc transport defect stopped service start. G23 repaired that defect; the
+original baseline was restored and Hello World was visibly verified within
+942.457 seconds. No game launch occurred. See [actual window evidence](window-01/README.md).
+The 318 window-specific native exceptions have been retired after recovery.
+
 Original U7 preflight in OrbStack returned rc0, `gates_passed=true` and
 `deployable=true` for bundle `7eca21993f23dd6e1f5fbbe582ca9a905928e2d091c02a1cd742ae1d3864521c`.
 This is **preflight evidence only**. Device activation and game results require
