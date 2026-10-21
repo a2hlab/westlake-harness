@@ -1,0 +1,321 @@
+{
+  "schema": "g12-offline-window-plan/v1",
+  "execution_enabled": false,
+  "serial": "5ea34a4500000000000000001123012c",
+  "other_boards_access": false,
+  "budget_seconds": 1800,
+  "stop_new_tests_seconds": 1200,
+  "candidate": {
+    "path": "$WORKSPACES/westlake-harness-t4/benchmark/2026-10-21-commercial-game/apk-extractor/native-build/.private/native-03/candidate/libinstalls.z.so",
+    "sha256": "7c24bd11190b0728b81ecd958519f01c688efb2533ef26c9b7ae4eefc82151db",
+    "bytes": 1286024,
+    "build_proof": "build-proof.json"
+  },
+  "original_sha256": "51e1b52538b3198d2a8a3236a9479bf8512f51acc74c0d68e34acca358f39be5",
+  "only_mutable_system_paths": [
+    "/system/lib64/libinstalls.z.so",
+    "/system/lib64/platformsdk/libinstalls.z.so"
+  ],
+  "package": "com.miHoYo.Yuanshen",
+  "apk_sha256": "abd3c4d59217d78745a65aaa952367872354298bff5bc1ba2faae00b8f37a9cc",
+  "source_sha256": "4068fdbae99b602062311b1f477b14b8702b07814bba44d09ffdbfa792c601c1",
+  "network": {
+    "expected_ssid": "UpstreamLabs_Compatibility",
+    "mode": "readonly",
+    "write_argv": [],
+    "ssid_reader_argv": [
+      "$HDC",
+      "-t",
+      "5ea34a4500000000000000001123012c",
+      "shell",
+      "hidumper -s WifiDevice"
+    ],
+    "reachability_reader_argv": null,
+    "user_network_intent": "upstreamlabswifi",
+    "fresh_receipt": "fresh-review.json",
+    "repeat_under_lock_required": true,
+    "interpretation": "observed readonly; outer preserves current configuration; no claim of user acceptance of name difference"
+  },
+  "fresh_required": {
+    "boot_id": {
+      "value": "a1d869b4-69a2-40a4-937e-4860f5b54239",
+      "evidence": "fresh-review.json",
+      "repeat_under_lock": true
+    },
+    "lock_holder_and_start": null,
+    "loader_pid_birth_uid_ppid_exe_cmdline": null,
+    "loader_service_config_binding": null,
+    "two_aliases_type_dev_inode_links_mode_owner_label_mounts": {
+      "evidence": "fresh-review.json",
+      "repeat_under_lock": true
+    },
+    "six_aliases_and_full_runtime_boot_fingerprint": null,
+    "original_two_alias_host_backups": null,
+    "captured_packages_power_focus_hilog": null,
+    "genshin_absent_and_no_preexisting_data": null,
+    "network_ssid_and_reachability_readonly_receipt": null,
+    "reviewed_reload_argv_and_source": null,
+    "current_generation_recovery_argv_and_source": null,
+    "rollback_reload_and_loaded_verification_binding": null,
+    "control_inputs_and_rollback_smoke_binding": null,
+    "outer_execution_binding": null,
+    "all_process_maps_complete_and_stable": null,
+    "on_demand_declaration_and_referenced_profile": null
+  },
+  "unknown_never_means_pass": true,
+  "historical_reload": {
+    "source": "scripts/lab/swap_installer.py:114",
+    "shell": "begetctl stop_service installs; begetctl stop_service foundation; sleep 3; begetctl start_service foundation",
+    "enabled": false,
+    "limitation": "#79 records black frame after foundation-only restart; reboot+historical-runtime replay was used. No proven5ea installs-only reload in read sources. Never guess start_service installd or kill PID."
+  },
+  "transaction": {
+    "source": "scripts/lab/swap_installer.py",
+    "manifest": {
+      "schema": 1,
+      "baseline": {
+        "libinstalls.z.so": "51e1b52538b3198d2a8a3236a9479bf8512f51acc74c0d68e34acca358f39be5"
+      },
+      "candidate": {
+        "libinstalls.z.so": "7c24bd11190b0728b81ecd958519f01c688efb2533ef26c9b7ae4eefc82151db"
+      }
+    },
+    "cli_template": [
+      "python3",
+      "$REPO/scripts/lab/swap_installer.py",
+      "$ACTION",
+      "--serial",
+      "5ea34a4500000000000000001123012c",
+      "--kit",
+      "$ONE_LIB_KIT",
+      "--transaction-name",
+      "$FRESH_TRANSACTION",
+      "--lane",
+      "$LOCK_OWNER"
+    ],
+    "admitted_actions_after_outer_binding": [
+      "dry-run",
+      "apply",
+      "rollback"
+    ],
+    "restart_and_verify_not_standalone_admission": true,
+    "limitations": [
+      "external guard must enforce boot+full holder before each mutation",
+      "fresh regular non-symlink aliases; nlink1; root-ro; no nested/bind mount affecting either alias; preserve unrelated runtime mounts exactly",
+      "existing provider writes0:0/0755/system_lib_file; require captured metadata exactly matches or refuse",
+      "independent host backups of both aliases before apply; provider retains its own board backups/state",
+      "verify root ro after success and failure; finally required=False is insufficient proof",
+      "verify actual installs loader; provider foundation-only verify is insufficient",
+      "never --accept-baseline (pair-only override), old 2c9 rollback, historical BMS/JAR/runtime replacement"
+    ]
+  },
+  "stages": [
+    {
+      "id": "fresh",
+      "requires": [
+        "build_proof",
+        "no_device_mutation"
+      ],
+      "source": [
+        "fresh-reads.json",
+        "first-launch/recovery_hook.py before",
+        "installation_chain.py collect"
+      ],
+      "evidence": [
+        "boot bracket",
+        "full process identity",
+        "aliases+mounts+six hashes",
+        "current runtime/boot members",
+        "network readonly",
+        "packages/11 dirs absent",
+        "settings before"
+      ],
+      "failure": "refuse before writes"
+    },
+    {
+      "id": "lock-and-backup",
+      "source": [
+        "board_note.sh",
+        "swap_installer.py apply",
+        "benchmark/2026-10-10-spare-installer-unify/remote-transaction.sh patterns only"
+      ],
+      "requires": [
+        "fresh repeat under matching lock",
+        "freeze gate0",
+        "reviewed reload+recovery",
+        "budget1800"
+      ],
+      "evidence": [
+        "full holder/start/boot",
+        "two independent persistent host original files+SHA51e1",
+        "board backup state before apply",
+        "one-lib manifest+candidate hash"
+      ],
+      "failure": "do not apply; no preexisting app/data cleanup"
+    },
+    {
+      "id": "apply",
+      "source": [
+        "swap_installer.py apply"
+      ],
+      "requires": [
+        "only two aliases",
+        "physical topology exact",
+        "metadata exact0755",
+        "no drift at guard"
+      ],
+      "evidence": [
+        "original backup state",
+        "stage hash7c24",
+        "atomic replacement both aliases",
+        "metadata readback",
+        "root ro readback",
+        "full fingerprint only2expected diffs"
+      ],
+      "failure": "stop tests; state-bound rollback; hold lock until recovery"
+    },
+    {
+      "id": "consumer-strategy",
+      "source": [
+        "next-reads.json",
+        "fresh existing init declaration+referenced SA profile REQUIRED"
+      ],
+      "requires": [
+        "complete stable maps and declaration binding"
+      ],
+      "evidence": [
+        "zero-consumer demand-start branch OR exact live-consumer recycle binding"
+      ],
+      "failure": "no inferred service start; no default foundation restart; refuse unresolved branch"
+    },
+    {
+      "id": "loaded-candidate",
+      "source": [
+        "installation_chain.py mappings/check_loaded",
+        "fresh_argv.py --pid"
+      ],
+      "requires": [
+        "actual loader identity stable",
+        "no deleted mapping",
+        "maps dev+inode == process-root stat",
+        "process-root SHA == candidate",
+        "same boot/birth/exe across reads"
+      ],
+      "evidence": [
+        "loader before/after identities",
+        "maps",
+        "process-root hashes+stat",
+        "six alias snapshot"
+      ],
+      "failure": "unknown loader or disk-only match refuses installation acceptance",
+      "ordering": "before install for pre-existing/reloaded loader; during real install for proven-empty demand-start branch; missing mapping forbids candidate-attributed success"
+    },
+    {
+      "id": "control-and-genshin",
+      "source": [
+        "G06 execution",
+        "bms_batch.py bm_success/desktop_launch/capture"
+      ],
+      "requires": [
+        "zigzag launch-only smoke",
+        "genshin still absent before install",
+        "exact APK SHA",
+        "consumer-strategy accepted; loaded-candidate before/during install per selected branch"
+      ],
+      "evidence": [
+        "control screenshots+facts",
+        "bm transport+body (success required,any nonzero error code fails)",
+        "bundle UID/nativeLibraryDir/readback",
+        "installed ABI member SHA",
+        "install-hilog before launch reset",
+        "first fatal or explicit unknown coverage",
+        "same launch shots5/20/60",
+        "record.json captured flags and run_facts verbatim"
+      ],
+      "failure": "retain raw failure/0shots;stop further tests;restore"
+    },
+    {
+      "id": "restore",
+      "source": [
+        "swap_installer.py rollback",
+        "G06 recovery_hook.py restore"
+      ],
+      "requires": [
+        "original state+both backups",
+        "exact owned target stop only",
+        "candidate/baseline partial mix handled by original transaction",
+        "no uninstall/data deletion"
+      ],
+      "evidence": [
+        "both aliases51e1+metadata+root ro",
+        "original loader actualSHA51e1/inode/birth",
+        "runtime/boot/six aliases original",
+        "power/focus/hilog original",
+        "new package retained inventory",
+        "ZigZag restore smoke+actual screenshots",
+        "no unknown service/process change"
+      ],
+      "failure": "recovery incomplete;retain lock;outer handoff"
+    },
+    {
+      "id": "unlock",
+      "source": [
+        "board_run.py before_unlock failure keeps lock"
+      ],
+      "requires": [
+        "complete recovery evidence",
+        "budget report",
+        "outer image review/status truthful"
+      ],
+      "evidence": [
+        "restore result",
+        "facts verbatim",
+        "all failure logs retained"
+      ],
+      "failure": "never release as successful recovery when missing fields"
+    }
+  ],
+  "rollback_order": [
+    "stop only this-window proven target (if installed)",
+    "restore two physical original files from exact state backups",
+    "consumer-aware restore: no service action if complete maps empty; otherwise exact bound service reclaim; no default foundation stop",
+    "prove original loaded object and full fingerprints",
+    "restore captured settings through G06 semantics",
+    "restore smoke and verify settings again",
+    "release lock only when recovery accounted for"
+  ],
+  "preservation": [
+    "no APK modification",
+    "no preexisting package uninstall",
+    "no user-data deletion",
+    "no wifi changes",
+    "no other boards",
+    "no automatic reboot/generation replay"
+  ],
+  "not_claimed": [
+    "lock-time fresh complete",
+    "service branch proven",
+    "current runtime recovered",
+    "candidate loaded",
+    "Genshin installed or lit",
+    "recovery performed",
+    "window executed"
+  ],
+  "fresh_observed": "fresh-review.json",
+  "consumer_strategy": {
+    "preferred": "zero_consumers_proven_on_demand",
+    "before_apply": "repeat complete maps under same boot+lock; all reads covered, no libinstalls mapping, no drift; exact existing declaration and referenced SA profile prove demand start",
+    "reload": "no preliminary service stop/start; real installation triggers service naturally",
+    "candidate_loaded": "capture actual new mapping/identity during install; disk-only SHA insufficient; install trigger can precede mapped SHA only in this proven-empty branch",
+    "race_limit": "lock is not an OS-wide installer mutex; unexpected install/service activation between repeat and rename aborts admission and requires inspection, never assume lock prevents all system races",
+    "fallback": "live consumer requires source-bound precise service recycle; no foundation restart by default",
+    "rollback": "repeat full maps; if no candidate consumers remain, restore aliases without service action; otherwise require exact bound consumer service reclaim then restore/recheck",
+    "restored_loaded_proof": "observed baseline mapping51e1 after approved validation; if still demand-idle, retain loaded proof pending and no successful recovery claim"
+  },
+  "superseded_for_execution_by": "../device-window/plan.disabled.json",
+  "latest_observations": {
+    "maps": "fresh-next-review.json",
+    "runtime": "../device-window/runtime-review.json",
+    "note": "fresh_required below preserves preparation binding requirements; later observations are not lock-time execution approval"
+  }
+}

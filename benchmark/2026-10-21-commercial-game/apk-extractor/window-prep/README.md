@@ -1,0 +1,7 @@
+# G12 offline installer window preparation
+
+The old assumptions were insufficient: missing process NAME does not prove an unloaded library, and a new boot cannot inherit old recovery state. Native03 was independently rehashed:13 rc0 stages,52 raw references,candidate7c24,1286024bytes. Complete process maps cover345 stable births/parents with zero libinstalls consumers. Existing init declares ondemand and SA511 profile run-on-create=false, idle unload180. No preliminary foundation stop is required for this observed-empty branch; repeat under lock before replacement.
+
+Final evidence: `fresh-next-review.json`; operator sequence: `OPERATIONS.zh-CN.md`; source paths/commits:`sources.json`; build:`build-proof.json`. `plan.disabled.json` records offline preparation, superseded for execution by G13 `../device-window/`. Runtime-fresh-01 has160 exact members/READY true on the same new boot, reviewed in G13 `runtime-review.json`; no runtime repair is proposed. Historical required fields are not an assertion that later raw evidence is absent.
+
+SSID UpstreamLabs_Compatibility is a readonly observation. Outer preserves current user configuration; no assertion of explicit user acceptance of a naming difference. No device/build operation was performed by this lane. G10 artifacts remain intact. Shared Git/board writes were already refused; pending ACK and landing list are provided without retry/commit/push.
