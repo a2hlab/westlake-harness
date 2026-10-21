@@ -82,6 +82,18 @@ def close_maps(board,snapshot,before,after):
         current=following;snapshot['count']=len(snapshot['identities'])
     raise Refuse('maps closure incomplete')
 
+def loader_role(stat,status,exe,cmdline_hex,passwd):
+    ident=identity(stat)
+    accounts=[line.split(':') for line in passwd.splitlines() if line.startswith('installs:')]
+    need(len(accounts)==1 and len(accounts[0])==7 and accounts[0][2].isdigit(),'installs account unresolved')
+    uid=int(accounts[0][2]);uids=re.findall(r'^Uid:\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*$',status,re.M)
+    need(len(uids)==1 and all(int(x)==uid for x in uids[0]),'loader UID differs from declared account')
+    need(ident['comm']=='installs' and ident['ppid']==1 and exe.strip()=='/system/bin/sa_main','loader role/parent/executable mismatch')
+    need(re.fullmatch(r'(?:[0-9a-fA-F]{2}(?:\s+|$))+',cmdline_hex.strip()) is not None,'malformed cmdline hex')
+    args=[x for x in bytes.fromhex(cmdline_hex).split(b'\0') if x]
+    need(args in [[b'installs'],[b'/system/bin/sa_main',b'/system/profile/installs.json']],'loader cmdline neither declared argv nor renamed process')
+    return dict(identity=ident,uid=uid,cmdline_form='renamed' if args==[b'installs'] else 'declared')
+
 def execute(phase,cfg):
     v=cfg['bindings'];need(all(v.get(k) is not None for k in ['repo','window','hdc','holder','lane','transaction','kit','hook_config','manifest','input_root','source_pins']),'missing binding')
     need(cfg['candidate_sha256']==CANDIDATE and cfg['original_sha256']==ORIGINAL and cfg['apk_sha256']==APK,'input pins drift')
@@ -90,7 +102,7 @@ def execute(phase,cfg):
     for rel,digest in v['source_pins'].items():need(sha(repo/rel)==digest,'source drift '+rel)
     need(bool(cfg.get('local_pins')), 'local pins missing')
     for name,digest in cfg['local_pins'].items():need(sha(name)==digest,'local pin drift '+name)
-    attempt=apply_attempt(cfg,window) if phase=='apply' else (('g13-'+phase+'-'+str(time.time_ns())) if phase in ['restore','reconcile'] else 'g13-'+phase)
+    attempt=apply_attempt(cfg,window) if phase=='apply' else (('g13-'+phase+'-'+str(time.time_ns())) if phase in ['restore','reconcile','launch-only'] else 'g13-'+phase)
     log=window/attempt;log.mkdir(parents=True,exist_ok=False)
     sys.path[:0]=[str(repo/'scripts/lab'),str(repo/'benchmark/2026-09-28-bms-route-deploy/batch')]
     import bms_batch as b
@@ -188,20 +200,25 @@ def execute(phase,cfg):
         save(log/('consumers-'+str(time.time_ns())+'.json'),snap);return snap
     def declaration():
         _,text=board.shell('cat /system/etc/init/installs.cfg');data=json.loads(text)
-        s=[s for s in data['services'] if s['name']=='installs'];need(len(s)==1 and s[0]['ondemand'] is True and s[0]['path']==['/system/bin/sa_main','/system/profile/installs.json'],'init declaration drift')
+        s=[s for s in data['services'] if s['name']=='installs'];need(len(s)==1 and s[0]['ondemand'] is True and s[0].get('uid')=='installs' and s[0]['path']==['/system/bin/sa_main','/system/profile/installs.json'],'init declaration drift')
         _,text=board.shell('cat /system/profile/installs.json');profile=json.loads(text);sa=[s for s in profile['systemability'] if s['name']==511]
         need(profile['process']=='installs' and len(sa)==1 and sa[0]['libpath']=='libinstalls.z.so' and sa[0]['run-on-create'] is False and sa[0]['stop-on-demand']['longtimeunused-unload']==180,'SA511 declaration drift')
     def loaded(snap,expected):
-        need(snap['hits'],'actual loaded object unobserved');result=[]
+        need(snap['hits'],'actual loaded object unobserved');declaration();_,passwd=board.shell('cat /system/etc/passwd');result=[];seen=set()
         for row in snap['hits']:
+            key=(row['pid'],row['path'],row['dev'],row['inode'])
+            if key in seen:continue
+            seen.add(key)
             pid=row['pid'];path=row['path'];need(path in TARGETS and '(deleted)' not in path,'unexpected/deleted loaded path')
-            _,a=board.shell(f'cat /proc/{pid}/stat');_,exe=board.shell(f'readlink /proc/{pid}/exe');_,cmd_hex=board.shell(f'od -An -v -tx1 /proc/{pid}/cmdline');cmd=bytes.fromhex(cmd_hex).split(b"\0")
-            need(exe=='/system/bin/sa_main' and b'/system/profile/installs.json' in cmd,'loader executable/profile mismatch')
+            _,a=board.shell(f'cat /proc/{pid}/stat');_,exe=board.shell(f'readlink /proc/{pid}/exe');_,cmd_hex=board.shell(f'od -An -v -tx1 /proc/{pid}/cmdline')
+            _,status=board.shell(f'cat /proc/{pid}/status');role=loader_role(a,status,exe,cmd_hex,passwd)
             _,out=board.shell(f'sha256sum /proc/{pid}/root{path}; stat -L -c "%d:%i" /proc/{pid}/root{path}')
             lines=out.splitlines();need(lines[0].split()[0]==expected,'process-root SHA mismatch');dev,ino=map(int,lines[1].split(':'))
             major=((dev>>8)&0xfff)|((dev>>32)&0xfffff000);minor=(dev&0xff)|((dev>>12)&0xffffff00)
             need(int(row['dev'].split(':')[0],16)==major and int(row['dev'].split(':')[1],16)==minor and ino==row['inode'],'mapped dev/inode mismatch')
+            _,status_after=board.shell(f'cat /proc/{pid}/status');_,exe_after=board.shell(f'readlink /proc/{pid}/exe')
             _,z=board.shell(f'cat /proc/{pid}/stat');need(identity(a)==identity(z)==snap['identities'][pid],'loader identity drift')
+            need(loader_role(z,status_after,exe_after,cmd_hex,passwd)==role,'loader role drift')
             result.append(dict(pid=pid,path=path,sha256=expected,identity=identity(a)))
         return result
     def swap(action):
@@ -256,6 +273,19 @@ def execute(phase,cfg):
         rec=b.collect_app(board,entry,Path(v['input_root']),window/'shards/genshin','/data/local/tmp/'+v['transaction']+'/genshin',60,reinstall=False,hilog_seconds=60,shots=[5,20,60],focus_check=True)
         if str(rec.get('error','')).startswith('G13_FIRST_LAUNCH_NOT_TESTED'):
             rec['status']='installed_launch_not_tested';save(window/'shards/genshin/record.json',rec)
+        save(log/'result.json',rec)
+    elif phase=='launch-only':
+        guard(cfg,v['holder'],board.boot,time.time(),True)
+        need(cfg.get('launch_enabled') is True,'first launch disabled')
+        review=v.get('control_review');need(review and Path(review).is_file(),'control review missing')
+        r=json.loads(Path(review).read_text());need(r.get('reviewer')=='outer(codex)' and r.get('actual_t20_lit') is True and r.get('boot_id')==board.boot and r.get('holder')==v['holder'],'control review not bound to window')
+        original=json.loads((window/'shards/genshin/record.json').read_text());context=json.loads((window/'g06-context.json').read_text())
+        _,bundle=board.shell('bm dump -n com.miHoYo.Yuanshen');uid=b.parse_bundle(bundle,'com.miHoYo.Yuanshen')['uid']
+        g06.install_origin(original,context,uid)
+        aliases(CANDIDATE);fingerprint(True)
+        objects=loaded(consumers(),CANDIDATE);save(log/'loader.json',dict(status='observed',objects=objects))
+        # A separate output leaves the successful installation origin and failed observer receipt intact.
+        rec=b.collect_app(board,entry,Path(v['input_root']),log/'genshin','/data/local/tmp/'+v['transaction']+'/launch-only',60,reinstall=False,launch_only=True,hilog_seconds=60,shots=[5,20,60],focus_check=True)
         save(log/'result.json',rec)
     elif phase=='restore':
         statefile=window/'g13-transaction.json'

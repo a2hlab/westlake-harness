@@ -7,7 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
-PHASES = ['before', 'apply', 'install', 'restore', 'reconcile']
+PHASES = ['before', 'apply', 'install', 'restore', 'reconcile', 'launch-only']
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
