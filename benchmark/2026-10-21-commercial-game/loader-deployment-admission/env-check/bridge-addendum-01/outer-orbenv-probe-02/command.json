@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "orb",
+    "-m",
+    "a2hlab",
+    "python3",
+    "-c",
+    "import os,re,subprocess,hashlib,json,sys\nfrom pathlib import Path\nsource=Path(sys.argv[1])/\"aosp-14.0.0_r1-src/SOURCE.txt\"\nvalue=re.search(r\"hw248:([^\\s,]+?)/aosp-14\\.0\\.0_r1-art\",source.read_text()).group(1)\nenv=dict(os.environ,LAB_HOME=value,ORBENV=\"LAB_HOME\")\nmac_code='import os,hashlib; print(hashlib.sha256(os.environ[\"LAB_HOME\"].encode()).hexdigest())'\np=subprocess.run([\"mac\",\"python3\",\"-c\",mac_code],env=env,capture_output=True,text=True,timeout=12)\nprint(json.dumps({\"rc\":p.returncode,\"expected\":hashlib.sha256(value.encode()).hexdigest(),\"stdout\":p.stdout,\"stderr\":p.stderr}))\n",
+    "$WORKSPACES/westlake-inputs"
+  ],
+  "rc": 0
+}
