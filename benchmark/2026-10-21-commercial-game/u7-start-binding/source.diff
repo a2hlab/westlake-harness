@@ -1,0 +1,75 @@
+--- a/scripts/lab/u7_executor.py
++++ b/scripts/lab/u7_executor.py
+@@ -5,6 +5,7 @@
+ remount-rw, parent kill, runtime hash-policy bypass, or implicit unlock.
+ """
+ import argparse
++import copy
+ import fcntl
+ import hashlib
+ import importlib.util
+@@ -378,6 +379,9 @@
+ class DeviceIO(native.Deployment):
+     """Reuse trusted native stop/start/hash/ps primitives; no complete native deploy call."""
+     def __init__(self, serial, lane, out):
++        self.a = argparse.Namespace(no_label_recipe=False)
++        self.m = None
++        self._start_context = None
+         if sys.platform == 'darwin': raise RuntimeError('apply/rollback must run through orb -m a2hlab')
+         if serial not in native.SERIALS: raise ValueError('serial not whitelisted')
+         source=lab_paths.harness()/'benchmark/2026-09-28-bms-route-deploy/batch/bms_batch.py'
+@@ -458,12 +462,53 @@
+             staged[row['target']]=sources[key]
+         return staged
+ 
+-    def check_ticket(self, plan): unchanged(plan)
++    def _bind_start(self, plan, restoring):
++        """Bind the explicit verified side, never infer it from a shared host SHA."""
++        ticket = copy.deepcopy(plan['native_tickets'][1 if restoring else 0])
++        if restoring:
++            package = Path(plan['baseline_native']).resolve()
++        else:
++            root = Path(plan['root'])
++            data = json.loads((root/'bundle.json').read_text())
++            package = bundle.safe(root, data['native']['directory']).resolve()
++        if Path(ticket['package']).resolve() != package:
++            raise RuntimeError('start package differs from verified native ticket')
++        digest = ticket['report']['package_manifest_sha256']
++        manifest = native.load_package(package)
++        if bundle.sha(package/'package.json') != digest:
++            raise RuntimeError('start manifest differs from verified native ticket')
++        host = plan['baseline' if restoring else 'expected'][HOST]
++        if effective_files(manifest).get(HOST, {}).get('sha256') != host:
++            raise RuntimeError('start host differs from verified manifest')
++        self.m = manifest
++        self._start_context = dict(package=package, ticket=ticket, manifest_sha256=digest,
++                                   manifest=bundle.digest(manifest), host=host,
++                                   side='baseline' if restoring else 'candidate')
++
++    def start(self, digest):
++        context = getattr(self, '_start_context', None)
++        if context is None:
++            raise RuntimeError('start requires a verified manifest binding')
++        if digest != context['host'] or bundle.digest(self.m) != context['manifest']:
++            raise RuntimeError('start context drift')
++        if self.a.no_label_recipe is not False:
++            raise RuntimeError('U7 start requires the original label recipe')
++        native_gate.assert_unchanged(context['ticket'])
++        if bundle.sha(context['package']/'package.json') != context['manifest_sha256']:
++            raise RuntimeError('start manifest drift')
++        return super().start(digest)
++
++    def check_ticket(self, plan):
++        self._start_context = None; self.m = None
++        unchanged(plan)
++        self._bind_start(plan, restoring=False)
+ 
+     def check_restore(self, plan):
++        self._start_context = None; self.m = None
+         old=Path(plan['baseline_native']);ticket=plan['native_tickets'][1]
+         native_gate.check(old,expected_binding=ticket['binding'])
+         native.check_frozen_package(old);native.check_frozen_restore(plan['baseline'],plan['additions'])
++        self._bind_start(plan, restoring=True)
+ 
+     def placeholder(self, target):
+         self.shell('(set -C; : > '+shlex.quote(target)+')')
