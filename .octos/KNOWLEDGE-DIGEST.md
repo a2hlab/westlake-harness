@@ -987,3 +987,4 @@ AppCompat 簇(MainActivity 声明 *.NoActionBar 的 app)死于 `IllegalStateExce
 - 2026-10-21 D600 wireless-debug check: all three OH6.1.0.31 boards have running wlan0/IPv4 and hdcd TCP implementation; current observed sessions are USB, TCP8710 unobserved, no wireless session tested. Wi-Fi presence is not HDC acceptance; benchmark/2026-10-21-d600-wifi-debug/.
 
 - 2026-10-21 #91 G06：OH `ps -A -o PID,PPID,UID,NAME` 的 NAME 可含空格（`[compr drain]`等内核线程）；新解析器须只拆前三个数字字段、保留NAME余串，并用实际完整stdout经原remote-rc解析入口离线重放。仅合成四列用例漏掉真格式，导致首次窗口在安装前拒绝；原失败及修复见 benchmark/2026-10-21-commercial-game/first-launch/。
+- 2026-10-21 #91 T35：r3严格退休child并不覆盖宿主重建；生产重入以parent启动时绑定WID核当前host，且real-spawn无rebind。W05仅同活child暖返回；本轮白屏已证AWAITING_REENTRY无新spawn，旧parent实际WID仍缺证。后继必须独立验host重建路径，不把暖返回或字幕/进度条变化当完整重开和视频帧验收；见 benchmark/2026-10-21-manual-video-regression/whitescreen-01/。
