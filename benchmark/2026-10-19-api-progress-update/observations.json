@@ -6830,6 +6830,199 @@
         }
       ],
       "frozen": false
+    },
+    {
+      "id": "OBS-20261021-G26-NATIVE-ROUTE-CANDIDATE",
+      "kind": "原生命名空间路由离线候选（公共兼容层源码/构建观察；不是游戏修改，不是公共API冻结）",
+      "name": "G26 原神精确native域共享名单候选：host与ANL成员资格加mediandk，离线构建且未部署",
+      "status": "OFFLINE_CANDIDATES_BUILT_NOT_DEPLOYED；runtime_binding UNKNOWN；candidate_currently_deployed=false；无游戏运行证据",
+      "method": "改动3个复制源文件：host与ANL对原神精确包名的成员资格（双selector），以及ANL原神native域app→bridge共享名单加入libmediandk.so；不新增叶库、owner、open-site、runtime/音频发布，不改游戏。两个精确基线复现：host 2a87118e…、ANL eebd62f2…；候选 host ee5649f2…（646840 B）、ANL 640b3c87…（60208 B）。8条compile/link全部rc0：host由inner在Mac执行（DevEco clang 6a5ec844… / ld.lld 489c6d66…），ANL由outer按冻结inner配方执行（clang-15 b107ce03… / ld.lld 8583bdc8…）。",
+      "platform": "离线构建与宿主C回归，无设备。每版本实际生产函数回归：ANL 37个domain、host 50条路由，OH回调为替身（fake OH boundary callbacks），不是运行时provider绑定。host 216个动态符号与12个NEEDED、ANL 46个符号与1个NEEDED均不变，无TEXTREL。",
+      "apps": "目标为com.miHoYo.Yuanshen（精确游戏3dd8a20d…导入__register_atfork、__FD_SET_chk、__FD_ISSET_chk，复用未改的私有ABI d2053066…三项导出覆盖，其atfork DSO卸载/注销限制仍在）。未上板：实际OH继承/provider赢家、完整加载、游戏帧、音视频与可玩均未验证。仅离线一例，不满足2app冻结条件。",
+      "limitations": "host复用原stock对象/归档与provider库，属增量可复现构建，不是全源清洁重编；超出所记输入的历史源码重建不声明。mediandk只经既有配置bridge的CREATE_INHERIT_DEFAULT共享名单进入，不在host直接owner列表，不是新的GLOBAL发布或已观测的运行时赢家。ANL零命名open-site不代表零open（经host回调）。已初始化域的跨应用复用不受这些测试支持。原G24失败（白屏回桌面exit1、无游戏帧）不因本条改变。",
+      "deployment": "candidate_currently_deployed=false：本条不部署、不授权部署、不冻结。G26 README所写原始日志local-only为交件时刻声明，原README与manifest不改；其后外环远端SHA核验G26原始构建归档e58740f5…（4547472 B），见native-route-build-archive。原stderr与二进制留私有/归档，不入git。",
+      "source": [
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/candidate.patch",
+          "sha256": "d85f22af68afda382f20d0928aa994ada40e33c95466b650fd7c17988d144937",
+          "bytes": 3979
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/source-pins.json",
+          "sha256": "743060db1eacd25f60e5a7e55794288d0d5df036e5c7dd4fdf77bba519fcefd9",
+          "bytes": 4066
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/sources/baseline/anl/flutter_domain.inc",
+          "sha256": "0117797953a738f248d13f9f8be04e76d6052f1e0f70cf0f0e5c88f16472c15b",
+          "bytes": 3800
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/anl/flutter_domain.inc",
+          "sha256": "7422698e38f40f0a26e583d602c8826f5d7c4fb47059e1c114b4d3d825fdd99f",
+          "bytes": 4183
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/sources/baseline/anl/app_native_loader.c",
+          "sha256": "aa1cd7c09164f1e6eefb928e8bc856ecb4df3ce22f81842d6595911c5c1f1d06",
+          "bytes": 21206
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/anl/app_native_loader.c",
+          "sha256": "946064aac445faff916d83d000f285c014bed3e6b5e23612884a73a085e52c41",
+          "bytes": 21918
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/sources/baseline/host/candidate-stock-host.c",
+          "sha256": "8be12abcb99ccc5f7fbd01f31d04b41a0b47db83d0ceac7f6bfda872b34e7b90",
+          "bytes": 27813
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/sources/candidate/host/candidate-stock-host.c",
+          "sha256": "ea50c2d052c9f53d653cb3691726304b54fc33494427d1326c5ad47113505c20",
+          "bytes": 27836
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/owner-source/native_loader.cpp",
+          "sha256": "cdd53c08d36d5c7bad6d80eeb8bce01cc3ba063a22bb86103ba1638b14920734",
+          "bytes": 7751
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/owner-source/native_bridge_policy.h",
+          "sha256": "b5d3f6c18f417dd5b7c10274fe908e72569f289297c074fd11e795009dae0622",
+          "bytes": 1982
+        }
+      ],
+      "build": [
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/build_host.py",
+          "sha256": "e2c21f85af52afe4f9d6a7cee923623cf3d28cec13f849c4d84563e4b735d35c",
+          "bytes": 2875
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/build_anl.py",
+          "sha256": "dd7c11f3ed4ada95a0f1b466b1f7fba5b91e4c2046c09ca36026bcb861da172f",
+          "bytes": 3925
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/host-baseline-01.json",
+          "sha256": "1638f8b42734fe378b6d1243c177819d7f768af1a332fd14ce199c39da049b24",
+          "bytes": 1278
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/host-candidate-01.json",
+          "sha256": "176395554a2a937e2cb93d5033d29c86fc9884e0fbe77eda9b8f3dea16dea2d2",
+          "bytes": 1289
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/anl-production-01.json",
+          "sha256": "b920638ff27a1fffca64402c56fe5882639c004ac2600afff987e1852dd165a8",
+          "bytes": 4223
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/raw-index.json",
+          "sha256": "a2c4717656770611b71f171c282ce2477dc2927f2bb94e34b956d176d081f9a4",
+          "bytes": 41233
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/input-closure.json",
+          "sha256": "c1823733ec86bfc5c1e0f0fb9c8b69008f1210898615310e36f1c94d6656b180",
+          "bytes": 57497
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/u13-host-build-receipt.json",
+          "sha256": "5e83913417c50f77ab839357fa5271e25163e4929c1db736929788e978e62857",
+          "bytes": 63767
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-build-archive/remote-archive.json",
+          "sha256": "96df07152c3aba0ef2ab9c9b802960c4b076fc1d4eabdc6713feb2f818005056",
+          "bytes": 862
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-build-archive/README.md",
+          "sha256": "268a10b8d7d272e40e6b90281f43c50bfc8d610dae6eb756a38055e960b628f4",
+          "bytes": 712
+        }
+      ],
+      "evidence": [
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/README.md",
+          "sha256": "8539677c3f0c614c7276e870a5a0a89df9ee91e9f9d6e2cc20780c82fbc5a5fb",
+          "bytes": 5803
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/results.json",
+          "sha256": "f5c880fa8632657c493a2d6af02a83dbc137474fe3c5979df4f5d1dbed7adb15",
+          "bytes": 4715
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/validation.json",
+          "sha256": "737e381c13a1a83a99a49fb7cccb49ce38618f68003742ab20b40884cfd68e8d",
+          "bytes": 858
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/manifest.json",
+          "sha256": "5bccf92cf7565a858f27a65bdacf1f779cabbad9dcc71c7a8481302b3331bdf5",
+          "bytes": 15685
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/SHA256SUMS",
+          "sha256": "1331e4b1e80a444b59b095944985493534e1e59d0b3d1ef4ea1f59494bcea54c",
+          "bytes": 10952
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/check_delivery.py",
+          "sha256": "31389ab6b7f342bd9adb7612da8e8cbdca3288ea3ddcc0cb7bce5c9e49e27a73",
+          "bytes": 2558
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/check_routes.py",
+          "sha256": "de8b01bc302aca969cc30d9ac871336209c961db309e499fac67fae4d5623fd5",
+          "bytes": 2145
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/tests/anl_probe.c",
+          "sha256": "b633df6c4992791533effef9cbf1d988d8d56b3219563132ee24b9d72b4b33e8",
+          "bytes": 3714
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/tests/host_main.c",
+          "sha256": "97dee49707c17a7529bde55d17a711a8ef3a5d054711ed37b419633a186e00d4",
+          "bytes": 2815
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/host-abi-diff.json",
+          "sha256": "4ed25916ff21efa0c33d8b7d08b02b70a930c25a200afa8cc509d3d907c07ce9",
+          "bytes": 344
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/anl-abi-diff.json",
+          "sha256": "7a10cd94a4066f5f531d636ca83bc811bf29cf80bfbfc341780b8330036a1ed3",
+          "bytes": 348
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/elf-facts.json",
+          "sha256": "fec006e9e11b084abdc24156f5278243cb341e71f91137d30054b9621a376984",
+          "bytes": 138603
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/routes-02.json",
+          "sha256": "8a26ca421fd59f9908e0465291d2cc6b868093942a343c299ea3d0c706a9a69a",
+          "bytes": 4276
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/peer-final-host-routes.json",
+          "sha256": "a89aae731ff03d313640d3089fee4c9a8ad628a93346d8caca13cc2f7218df0d",
+          "bytes": 5696
+        },
+        {
+          "path": "benchmark/2026-10-21-commercial-game/native-route-candidate/evidence/open-sites.json",
+          "sha256": "85f7f8fb550b8e1083714bc5b421776b92a0655fb9d60244132cedd38106389f",
+          "bytes": 14145
+        }
+      ],
+      "frozen": false
     }
   ]
 }

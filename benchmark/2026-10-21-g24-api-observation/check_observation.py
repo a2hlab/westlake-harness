@@ -2,7 +2,7 @@
 """Check G25's one-row append (60th observation, G24 loader trial); no device, REA, build or cited-code run.
 
 Reuses the G17 checker (strict 59-row prefix, G15 58-row prefix, renderer CSV/HTML/results consistency)
-and adds: row 60 equals added-row.json, independent semantic guards (no game success, candidate not the
+and adds: row 60 equals added-row.json (G29: the 60-row prefix is strict and later rows may follow), independent semantic guards (no game success, candidate not the
 current deployment, not frozen), cross-checks against the G24 receipts, and negative cases.
 """
 import argparse, copy, hashlib, importlib.util, json, shutil, subprocess, sys, tempfile
@@ -50,7 +50,7 @@ def check(data, source_root, rendered=True):
     count = g17.check(data, source_root, rendered)
     base = old.read(HERE / 'original-59.json')
     old.require(len(base['rows']) == 59 and data['rows'][:59] == base['rows'], 'original59 objects changed')
-    old.require(len(data['rows']) == 60, 'G25 requires exactly 60 rows')
+    old.require(len(data['rows']) >= 60, 'G25 requires the 60-row prefix')
     row = data['rows'][59]
     semantic(row)
     old.require(row == old.read(HERE / 'added-row.json'), 'G25 observation changed')
@@ -96,13 +96,14 @@ def main():
         ('row60 edited', lambda: check(mut(lambda d: d['rows'][59].__setitem__('name', 'changed')), source_root, False), 'G25 observation changed'),
         ('missing reference', lambda: old.check_ref(source_root, dict(item, path=f'{C}/gles-window02/closed/intentionally-missing.json')), 'missing/nonregular'),
         ('reference SHA drift', lambda: old.check_ref(source_root, dict(item, sha256='0' * 64)), 'SHA drift'),
-        ('rows truncated to 59', lambda: check(mut(lambda d: d['rows'].pop()), source_root, False), 'exactly 60 rows'),
-        ('61 rows', lambda: check(mut(lambda d: d['rows'].append(dict(d['rows'][59], id='OBS-FUTURE'))), source_root, False), 'exactly 60 rows'),
-        ('61 rows with unverified missing reference', lambda: check(mut(lambda d: d['rows'].append(dict(d['rows'][59], id='OBS-FUTURE',
-            evidence=[dict(item, path=f'{C}/gles-window02/closed/intentionally-missing.json')]))), source_root, False), 'exactly 60 rows'),
+        ('rows truncated below 60', lambda: check(mut(lambda d: d['rows'][59:] and d['rows'].__delitem__(slice(59, None))), source_root, False), '60-row prefix'),
+        ('appended row with unverified missing reference', lambda: rendered_equal(mut(lambda d: d['rows'].append(dict(d['rows'][59], id='OBS-FUTURE',
+            evidence=[dict(item, path=f'{C}/gles-window02/closed/intentionally-missing.json')]))), source_root, {}), 'renderer refused'),
         ('HTML-only status forgery', lambda: rendered_equal(data, source_root, dict({n: (API / n).read_bytes() for n in OUTPUTS},
             **{'index.html': forged_html()})), 'index.html differs'),
     ]
+    later = mut(lambda d: d['rows'].append(dict(d['rows'][59], id='OBS-FUTURE')))
+    old.require(check(later, source_root, False) == count, 'G25 allows a later append')
     refusals = []
     for name, call, expected in cases:
         try: call()
