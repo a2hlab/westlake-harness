@@ -1,0 +1,15 @@
+# G36 Android reference — BLOCKED
+
+The first fresh read did not reach the Android device. Local ADB failed to install its smartsocket listener (`Operation not permitted`); this is an execution-environment permission failure, not evidence that the device is offline or that the APK failed. No retry, alternate port/server/tool/lane, permission change, or delegated execution is authorized.
+
+The single attempted `get-state` ran from 2026-10-22 00:09:23.284600 to 00:09:23.887862 +08:00, returned rc1, and had empty stdout. Original stderr SHA256: `af2664dd0b84849cc575c1b9e22666e7c6ed0200c0393164ad45a1428902ef68`. The immutable originals remain under `$CARD/.private/readonly-01/`; `raw-index.json` gives every file hash and size. Public paths use sanitized aliases; original files are unchanged.
+
+The official APK was independently hashed before the attempted read: **513290344 bytes**, SHA256 `abd3c4d59217d78745a65aaa952367872354298bff5bc1ba2faae00b8f37a9cc`. Input: `$HOME/.local/share/westlake/commercial-game-20261021/official-input/apk/yuanshen_7.1.0.apk`. Its source is main `benchmark/2026-10-21-commercial-game/official-input/input-index.json`; `input-pins.json` binds that index, APK, ADB, prior path receipt and copied contract. Previous SDK36/arm64/package-absence observations are historical and do not satisfy fresh checks.
+
+Actual counts: **1 attempted ADB command; 0 completed fresh device checks; 0 installations; 0 launches; 0 screenshots; 0 lock acquisitions; 0 cleanup commands; 0 OH/VM commands.** Fresh device identity, boot, SDK/ABI, package state and storage remain unknown. No device mutation occurred through this task and no cleanup was needed. No first-screen or acceptance PASS is claimed.
+
+`command-sequence.disabled.json` records the minimal ordinary install / explicit Activity first-screen / cleanup design for static review only. It is not runnable authorization or a request for another agent to repeat the denied action. The existing `collect_readonly.py` is preserved as the recipe for the failed invocation and must not be rerun. Installation/launch and all later commands remain NOT_RUN. There is no new execution framework or generalized test suite.
+
+The design uses the exact serial `N100CU025C18D000128`, original lock tool, one plain install with no overwrite flags, one explicit Activity launch, ordinary screenshots/process/logcat observations capped at120 seconds, and origin-bound force-stop plus launcher return while retaining the installed test package. Modal screens end observation without interaction. A future executable window would need a separate authorized resolution; this delivery does not propose bypassing the present denial.
+
+`source-contract.spec.md` is an unchanged snapshot, not a new standalone spec. Known shared Git/board write restrictions were not retried; this is path-only delivery for outer landing. Only this card directory was written. The small documentation proposal is for outer incorporation, not an edit to shared knowledge files.

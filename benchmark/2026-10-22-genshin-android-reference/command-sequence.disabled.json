@@ -1,0 +1,303 @@
+{
+  "enabled": false,
+  "status": "STATIC_REVIEW_ONLY_BLOCKED",
+  "not_an_execution_handoff": true,
+  "variables": {
+    "MAIN": "$WORKSPACES/westlake-harness",
+    "ADB": "$HOME/Library/Android/sdk/platform-tools/adb",
+    "APK": "$HOME/.local/share/westlake/commercial-game-20261021/official-input/apk/yuanshen_7.1.0.apk"
+  },
+  "recording": "Before each command persist argv/time; capture real stdout/stderr/rc/end time in a new private run. Never replace a missing result with PASS. Abort on permission denial without a new port/server/tool/lane/policy or agent retry. No commands in this sequence have been executed.",
+  "phases": [
+    {
+      "id": "fresh-state",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "get-state"
+      ],
+      "condition": "NOT AUTHORIZED TO RETRY under the current permission denial; historical design only.",
+      "executed": false
+    },
+    {
+      "id": "fresh-serial",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "get-serialno"
+      ],
+      "condition": "NOT AUTHORIZED TO RETRY under the current permission denial; historical design only.",
+      "executed": false
+    },
+    {
+      "id": "fresh-boot",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "cat",
+        "/proc/sys/kernel/random/boot_id"
+      ],
+      "condition": "NOT AUTHORIZED TO RETRY under the current permission denial; historical design only.",
+      "executed": false
+    },
+    {
+      "id": "fresh-sdk",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "getprop",
+        "ro.build.version.sdk"
+      ],
+      "condition": "NOT AUTHORIZED TO RETRY under the current permission denial; historical design only.",
+      "executed": false
+    },
+    {
+      "id": "fresh-abi",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "getprop",
+        "ro.product.cpu.abilist"
+      ],
+      "condition": "NOT AUTHORIZED TO RETRY under the current permission denial; historical design only.",
+      "executed": false
+    },
+    {
+      "id": "fresh-package-list",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "pm",
+        "list",
+        "packages",
+        "--user",
+        "0",
+        "com.miHoYo.Yuanshen"
+      ],
+      "condition": "NOT AUTHORIZED TO RETRY under the current permission denial; historical design only.",
+      "executed": false
+    },
+    {
+      "id": "fresh-package-path",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "pm",
+        "path",
+        "--user",
+        "0",
+        "com.miHoYo.Yuanshen"
+      ],
+      "condition": "NOT AUTHORIZED TO RETRY under the current permission denial; historical design only.",
+      "executed": false
+    },
+    {
+      "id": "fresh-space",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "df",
+        "-k",
+        "/data"
+      ],
+      "condition": "NOT AUTHORIZED TO RETRY under the current permission denial; historical design only.",
+      "executed": false
+    },
+    {
+      "id": "lock",
+      "argv": [
+        "$MAIN/scripts/lab/board_note.sh",
+        "lock",
+        "$MAIN/.octos/boards/app-lighting.md",
+        "N100CU025C18D000128",
+        "cx-g36-android-reference",
+        "G36 exact APK ordinary reference"
+      ],
+      "condition": "Only in a separately authorized unblocked window after successful fresh review; <=20 minutes.",
+      "executed": false
+    },
+    {
+      "id": "held",
+      "argv": [
+        "$MAIN/scripts/lab/board_note.sh",
+        "held",
+        "N100CU025C18D000128"
+      ],
+      "condition": "Require exact owner; recheck boot and package absence under the lock before any write.",
+      "executed": false
+    },
+    {
+      "id": "install",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "install",
+        "$APK"
+      ],
+      "condition": "Exact SHA/size, fresh target/ABI/SDK, reviewed sufficient storage, absent package and lock must all hold; no -r/-d. One attempt only.",
+      "executed": false,
+      "timeout_seconds": 300
+    },
+    {
+      "id": "installed-path",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "pm",
+        "path",
+        "--user",
+        "0",
+        "com.miHoYo.Yuanshen"
+      ],
+      "condition": "Only after rc0 and Success body. Unknown install result stops; never retry installation.",
+      "executed": false
+    },
+    {
+      "id": "installed-version",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "dumpsys",
+        "package",
+        "com.miHoYo.Yuanshen"
+      ],
+      "condition": "Save actual version, UID and installed path; inconsistent or missing package evidence stops launch.",
+      "executed": false
+    },
+    {
+      "id": "launch",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "am",
+        "start",
+        "-W",
+        "-n",
+        "com.miHoYo.Yuanshen/com.miHoYo.GetMobileInfo.MainActivity"
+      ],
+      "condition": "One explicit Activity launch only; rc/body failure stops observation and preserves evidence.",
+      "executed": false,
+      "timeout_seconds": 30
+    },
+    {
+      "id": "screenshot",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "exec-out",
+        "screencap",
+        "-p"
+      ],
+      "condition": "Capture binary stdout at t5, t20, and end (planned t30, hard cap120s from launch). Inspect each actual image; on a modal record and stop without interacting.",
+      "executed": false,
+      "stdout_type": "PNG"
+    },
+    {
+      "id": "process",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "ps",
+        "-A"
+      ],
+      "condition": "At each capture and after cleanup; host-side match exact package or package colon process names, retain UID/PID. Do not infer first screen from liveness.",
+      "executed": false
+    },
+    {
+      "id": "logcat",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "logcat",
+        "-d",
+        "-v",
+        "threadtime",
+        "-t",
+        "4000"
+      ],
+      "condition": "At each capture/end; full output private. Correlate timestamps with launch. Bounded tail may omit evidence: report coverage limits; never clear logs.",
+      "executed": false
+    },
+    {
+      "id": "cleanup-stop",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "am",
+        "force-stop",
+        "--user",
+        "0",
+        "com.miHoYo.Yuanshen"
+      ],
+      "condition": "Only for this window’s proven newly installed package; no uninstall/clear. Save rc/body and verify with process command.",
+      "executed": false
+    },
+    {
+      "id": "cleanup-home",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "shell",
+        "input",
+        "keyevent",
+        "KEYCODE_HOME"
+      ],
+      "condition": "Return to launcher after authorized observation; never interact with agreement, download, login or permission prompts.",
+      "executed": false
+    },
+    {
+      "id": "cleanup-home-check",
+      "argv": [
+        "$ADB",
+        "-s",
+        "N100CU025C18D000128",
+        "exec-out",
+        "screencap",
+        "-p"
+      ],
+      "condition": "Inspect actual launcher screenshot; no success claim without observation.",
+      "executed": false,
+      "stdout_type": "PNG"
+    },
+    {
+      "id": "unlock",
+      "argv": [
+        "$MAIN/scripts/lab/board_note.sh",
+        "unlock",
+        "$MAIN/.octos/boards/app-lighting.md",
+        "N100CU025C18D000128",
+        "cx-g36-android-reference"
+      ],
+      "condition": "Release only lock acquired by this run even if cleanup fails; retain failure. Verify held returns rc1 with empty body.",
+      "executed": false
+    }
+  ]
+}
