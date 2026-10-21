@@ -5,8 +5,10 @@
 - Recipe `3b2a31e0abdd5f89d7612c275af38ef136d5b80a9b45b6ddf0d55d9f208e71bc`; source4068, only zip TU recompiled. Original246/effective247 argv recorded. ABI1539/NEEDED28 equal; APK unchanged.
 - Four recipe tests rc0; actual private-output receipt check rc0; public receipt check rc0; Rust1 PASS/0 ignored with G09_BUILD_RUN; frozen8 entries/30 checks/0 violations.
 - Native-01 object mismatch and native-02 missing real host SONAME16 remain preserved, alongside actual outer metadata proof and R10 host dependency provenance.
-- Local archive `G09_PRIVATE/archive-01/g09-native-build.tar.gz`: c7ad618645f8a7b80486b51b5a95ec43a20f5dc0abb098826719d4ee3d7c4965 /10867480B/552 members; remote pending, not claimed uploaded.
-- Exact landing: `landing-paths.txt` (236 paths, 232 payload). Manifest SHA `dc30f1a7fadba9fa32a8a973156a42df2a8b5c33be21b6918ef9bc2c5ee070ca`.
+- Local archive `G09_PRIVATE/archive-01/g09-native-build.tar.gz`: c7ad618645f8a7b80486b51b5a95ec43a20f5dc0abb098826719d4ee3d7c4965 /10867480B/552 members; remote verified by outer; original pending receipt preserved.
+- Exact landing: `landing-paths.txt` (248 paths, 243 payload). Manifest SHA `d5e0f9a56be6ab65e5d2dbe095ba9ac7fda2694c50641676f74ae2b066bc2041`.
 - Installation and gameplay NOT_TESTED. No new public API freeze. Git/blackboard submission delegated to outer under the already-known permission boundary; no commit claimed.
 
 - Clean-checkout correction: original test wrapper rc1/errors2 reproduced; revised wrapper 4/4 rc0 with no ignored `.private` dependency. Test SHA `90bf8f8594c7afb063021feeaf9dd3a17562998a1fff262ca3598bfc736212e6`. Native recipe/logs/artifacts/archive unchanged; no rebuild. Evidence: `evidence/clean-test-fix-01/`.
+
+- Remote closure: outer three commands rc0; exact archive SHA/10867480B read back. Independent success sidecar and incremental landing: `remote-confirmation/landing-paths.txt`. No archive repack, native rebuild, upload or device command by inner.
